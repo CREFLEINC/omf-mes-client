@@ -7,13 +7,14 @@ import {
   SkeletonText,
   Table,
 } from '@crefle/web-ui';
+import { messages } from '@omf-mes/i18n';
 import { useEffect, useState } from 'react';
 
 import { useLotActorOptions, useLotHolds } from './queries';
 import type { LotHoldView } from './types';
 
+const t = messages.lotStatusHistory;
 const EMPTY = '—';
-const HISTORY_NOTICE = '보류 등록·해제 이력만 표시하며 전체 상태 전이는 기록되지 않습니다.';
 
 const formatDateTime = (value: string | null): string => {
   if (value === null) return EMPTY;
@@ -28,13 +29,13 @@ export const LotHoldDocuments = ({ lotId }: { lotId: number }) => {
   const actorName = (id: number | null): string => {
     if (id === null) return EMPTY;
     const actor = actors.data?.items.find((item) => item.appUserId === id);
-    if (actor === undefined) return actors.isPending ? '확인 중…' : String(id);
+    if (actor === undefined) return actors.isPending ? t.holdDocuments.actorPending : String(id);
     return actor.userName === '' ? actor.loginId : actor.userName;
   };
   const columns: Column<LotHoldView>[] = [
     {
       key: 'times',
-      header: '등록·해제',
+      header: t.holdDocuments.columns.times,
       render: (row) => (
         <span className="field-cell">
           <span>{formatDateTime(row.heldAt)}</span>
@@ -44,10 +45,10 @@ export const LotHoldDocuments = ({ lotId }: { lotId: number }) => {
         </span>
       ),
     },
-    { key: 'reasonCode', header: '사유' },
+    { key: 'reasonCode', header: t.holdDocuments.columns.reason },
     {
       key: 'holdStatusCode',
-      header: '보류 건 상태',
+      header: t.holdDocuments.columns.holdStatus,
       render: (row) => (
         <Chip variant="status" size="sm">
           {row.holdStatusCode}
@@ -56,13 +57,13 @@ export const LotHoldDocuments = ({ lotId }: { lotId: number }) => {
     },
     {
       key: 'holdQty',
-      header: '보류 수량',
+      header: t.holdDocuments.columns.holdQty,
       align: 'end',
-      render: (row) => (row.holdQty === null ? '전량' : String(row.holdQty)),
+      render: (row) => (row.holdQty === null ? t.holdDocuments.fullQty : String(row.holdQty)),
     },
     {
       key: 'releaseCondition',
-      header: '해제 조건',
+      header: t.holdDocuments.columns.releaseCondition,
       render: (row) => row.releaseCondition ?? EMPTY,
     },
   ];
@@ -87,33 +88,33 @@ export const LotHoldDocuments = ({ lotId }: { lotId: number }) => {
     meta === undefined
       ? ''
       : rows.length === 0
-        ? `전체 ${meta.total}건`
-        : `${start}–${start + rows.length - 1} / 전체 ${meta.total}건`;
+        ? t.range.total(String(meta.total))
+        : t.range.span(String(start), String(start + rows.length - 1), String(meta.total));
   const actorsLimited =
     actors.isError ||
     (actors.data !== undefined && actors.data.page.total > actors.data.items.length);
 
   return (
     <section aria-labelledby="lot-hold-documents-title">
-      <h3 id="lot-hold-documents-title">보류 문서</h3>
-      <AlertBanner variant="info">{HISTORY_NOTICE}</AlertBanner>
+      <h3 id="lot-hold-documents-title">{t.holdDocuments.pane}</h3>
+      <AlertBanner variant="info">{t.scopeNotice}</AlertBanner>
       {holds.isPending && (
-        <div role="status" aria-label="보류 문서를 불러오는 중">
+        <div role="status" aria-label={t.holdDocuments.loading}>
           <SkeletonText lines={3} />
         </div>
       )}
       {holds.isError && (
         <AlertBanner
           variant="error"
-          title="보류 문서를 불러오지 못했습니다."
+          title={t.holdDocuments.failed}
           action={
             <Button
               variant="outlined"
               size="sm"
-              aria-label="보류 문서 다시 시도"
+              aria-label={t.actions.retryLabel(t.holdDocuments.pane)}
               onClick={() => void holds.refetch()}
             >
-              다시 시도
+              {t.actions.retry}
             </Button>
           }
         />
@@ -122,21 +123,21 @@ export const LotHoldDocuments = ({ lotId }: { lotId: number }) => {
         <>
           {holds.isFetching && (
             <p className="field-note" role="status">
-              보류 문서를 갱신하는 중입니다.
+              {t.holdDocuments.refreshingText}
             </p>
           )}
           <div className="wide-table" aria-busy={holds.isFetching}>
             <Table
               density="compact"
-              caption="보류 문서"
+              caption={t.holdDocuments.pane}
               columns={columns}
               rows={rows}
               getRowId={(row) => String(row.lotHoldId)}
-              empty={<EmptyState size="sm" title="보류 문서가 없습니다" />}
+              empty={<EmptyState size="sm" title={t.holdDocuments.empty} />}
             />
           </div>
           {meta !== undefined && (
-            <nav className="form-actions" aria-label="보류 문서 쪽 이동">
+            <nav className="form-actions" aria-label={t.holdDocuments.pagination}>
               <p className="field-note form-actions-secondary">{range}</p>
               <Button
                 variant="outlined"
@@ -144,7 +145,7 @@ export const LotHoldDocuments = ({ lotId }: { lotId: number }) => {
                 disabled={currentPage <= 1}
                 onClick={() => setPage(currentPage - 1)}
               >
-                이전 쪽
+                {t.actions.previousPage}
               </Button>
               <Button
                 variant="outlined"
@@ -152,15 +153,13 @@ export const LotHoldDocuments = ({ lotId }: { lotId: number }) => {
                 disabled={currentPage >= totalPages}
                 onClick={() => setPage(currentPage + 1)}
               >
-                다음 쪽
+                {t.actions.nextPage}
               </Button>
             </nav>
           )}
         </>
       )}
-      {actorsLimited && (
-        <p className="field-note">일부 행위자 이름을 확인하지 못해 사용자 번호를 표시합니다.</p>
-      )}
+      {actorsLimited && <p className="field-note">{t.holdDocuments.actorsLimited}</p>}
     </section>
   );
 };

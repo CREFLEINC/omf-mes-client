@@ -163,6 +163,8 @@ beforeEach(() => {
   store.clear();
 });
 
+const OTHER_LOT_NO = '00000000000000000000000000000099';
+
 describe('긴급 IQC 생략 요청 화면', () => {
   /* 이름이 긴급이라 누르면 되는 것으로 읽힌다. 무엇이 아직 안 되는지를 먼저 말한다. */
   it('지금 바로 투입되지 않는다고 먼저 말한다', async () => {
@@ -459,5 +461,54 @@ describe('긴급 IQC 생략 요청 화면', () => {
     await user.click(screen.getByRole('button', { name: '다른 자재 요청' }));
 
     expect(await screen.findByText(/요청 대기 1건/)).toBeInTheDocument();
+  });
+  /*
+   * 스캔 하나가 이 화면의 대상을 정한다. 이미 읽은 뒤에 다른 라벨을 스치면 대상이 조용히
+   * 바뀌는데, 작업자는 앞엣것에 적는 줄 알고 다음 단계로 넘어간다.
+   */
+  it('이미 읽은 뒤 다른 값을 읽으면 되묻는다', async () => {
+    mount();
+    await screen.findByLabelText('입하 LOT 스캔');
+    scan(LOT_NO);
+    await screen.findByText('ABC-100 PP 수지');
+
+    scan(OTHER_LOT_NO);
+
+    /* 제목은 창이 닫혀도 DOM 에 남는다. 닿을 수 있는 단추로 열렸는지를 잰다. */
+    expect(await screen.findByRole('button', { name: '그대로 두기' })).toBeTruthy();
+    expect(screen.queryByText(`${OTHER_LOT_NO} LOT을 찾지 못했습니다`)).toBeNull();
+  });
+
+  it('되물은 창에서 새 값을 받으면 그때 대상이 바뀐다', async () => {
+    const user = userEvent.setup();
+    mount();
+    await screen.findByLabelText('입하 LOT 스캔');
+    scan(LOT_NO);
+    await screen.findByText('ABC-100 PP 수지');
+    scan(OTHER_LOT_NO);
+
+    await user.click(await screen.findByRole('button', { name: '새로 읽은 값으로' }));
+
+    expect(await screen.findByText(`${OTHER_LOT_NO} LOT을 찾지 못했습니다`)).toBeTruthy();
+  });
+
+  /*
+   * 사유는 「이 LOT 을 왜 급히 써야 하는가」다. 다른 LOT 을 읽었는데 앞 LOT 을 위해 쓴 사유가
+   * 남으면 그대로 요청이 올라가고, 승인자는 그 사유만 보고 판단한다.
+   */
+  it('새 LOT 을 받으면 적어 둔 사유가 비워진다', async () => {
+    const user = userEvent.setup();
+    mount();
+    await screen.findByLabelText('입하 LOT 스캔');
+
+    scan(LOT_NO);
+    await screen.findByText('ABC-100 PP 수지');
+    await user.type(screen.getByLabelText(/사유/), '라인 정지 임박');
+
+    scan(OTHER_LOT_NO);
+    await user.click(await screen.findByRole('button', { name: '새로 읽은 값으로' }));
+
+    await screen.findByText(`${OTHER_LOT_NO} LOT을 찾지 못했습니다`);
+    expect(screen.getByLabelText(/사유/)).toHaveValue('');
   });
 });

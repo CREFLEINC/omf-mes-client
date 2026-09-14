@@ -1,4 +1,5 @@
 import { useQuery, type UseQueryResult } from '@tanstack/react-query';
+import { messages } from '@omf-mes/i18n';
 
 import { ApiRequestError } from '../../patterns/request';
 import type { DashboardFilterQuery } from './filters';
@@ -37,8 +38,7 @@ export const dashboardKeys = {
  *
  * 서버가 구현하면 이 함수만 원래 `client.GET` 호출로 되돌리면 화면이 다시 산다.
  */
-export const DASHBOARD_SUMMARY_NOT_READY_REASON =
-  '대시보드 통합 집계는 서버가 아직 지원하지 않습니다. 카드마다의 화면에서 개별로 확인하세요.';
+export const DASHBOARD_SUMMARY_NOT_READY_REASON = messages.dashboard.summaryNotReady;
 
 const fetchSummary = async (): Promise<DashboardView> => {
   throw new ApiRequestError({

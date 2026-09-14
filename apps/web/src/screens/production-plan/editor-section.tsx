@@ -1,9 +1,12 @@
 import { AlertBanner, Button, SkeletonText } from '@crefle/web-ui';
+import { messages } from '@omf-mes/i18n';
 
 import type { NewProductionPlanDefaults } from './editor-state';
 import { ProductionPlanEditorPane, type ProductionPlanEditorOption } from './editor-pane';
 import { useProductionPlanEditorSession } from './editor-session';
 import { ProductionPlanRowActions } from './row-actions';
+
+const t = messages.productionPlan.editor;
 
 interface ProductionPlanEditorSectionProps {
   productionOrderId: number;
@@ -37,17 +40,17 @@ export const ProductionPlanEditorSection = ({
       return (
         <AlertBanner
           variant="error"
-          title="생산계획을 불러오지 못했습니다."
+          title={t.loadFailed}
           action={
             <Button size="sm" variant="outlined" onClick={() => void editor.plans.refetch()}>
-              다시 시도
+              {t.retry}
             </Button>
           }
         />
       );
     }
     return (
-      <div role="status" aria-label="생산계획을 불러오는 중">
+      <div role="status" aria-label={t.loading}>
         <SkeletonText lines={3} />
       </div>
     );
@@ -59,14 +62,14 @@ export const ProductionPlanEditorSection = ({
       {editor.plans.isError && (
         <AlertBanner
           variant="error"
-          title="최신 생산계획을 확인하지 못했습니다."
+          title={t.staleTitle}
           action={
             <Button size="sm" variant="outlined" onClick={() => void editor.plans.refetch()}>
-              다시 시도
+              {t.retry}
             </Button>
           }
         >
-          현재 편집 내용은 유지됩니다. 다시 조회한 뒤 신규 계획을 추가하세요.
+          {t.staleDescription}
         </AlertBanner>
       )}
       <ProductionPlanEditorPane

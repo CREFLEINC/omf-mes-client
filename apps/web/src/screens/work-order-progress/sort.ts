@@ -61,7 +61,10 @@ export const parseSort = (raw: string | null, period: PeriodInput): SortState =>
 };
 
 /** 서버가 받는 표기. 「열,방향」 한 문자열이다. */
-export const toSortParam = (sort: SortState, period: PeriodInput): string => {
+export const toSortParam = (
+  sort: SortState,
+  period: PeriodInput,
+): `${SortKey},${SortDirection}` => {
   /* 주소를 손으로 고쳐 넣어도 여기서 한 번 더 막는다 — 문이 둘이어야 하나가 무너져도 남는다. */
   const safe = isSortKeyAllowed(sort.key, period) ? sort : DEFAULT_SORT;
 

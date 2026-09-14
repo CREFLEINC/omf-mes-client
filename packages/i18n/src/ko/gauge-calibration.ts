@@ -104,6 +104,8 @@ export const gaugeCalibration = {
     cancel: '취소',
     masterEffect: '이 이력은 계측기의 최근 검교정일과 차기 예정일을 갱신합니다.',
     noMasterEffect: '이 이력은 계측기의 검교정일을 갱신하지 않습니다.',
+    /** 요약 한 줄에 끼는 유효기한 조각. 「검교정 · 2026-08-11 · 합격 · 유효 ~2027-08-10」 꼴이다. */
+    validUntil: (date: string): string => `유효 ~${date}`,
   },
 
   codes: {
@@ -117,6 +119,19 @@ export const gaugeCalibration = {
       `${name} 값 목록이 아직 없어 고를 수 없습니다. 값이 등록되면 열립니다.`,
     /** 결과 코드가 없으면 필수 칸을 채울 수 없어 저장 자체가 막힌다. */
     resultBlocked: '결과 값 목록이 없어 이력을 저장할 수 없습니다. 값이 등록되면 열립니다.',
+
+    /**
+     * 계약이 이름을 못 박은 값들. **없는 이름을 지어내지 않는다** — 수리·폐기·조정 후 합격·
+     * 정상·이상·완료·불가는 공통코드 마스터가 정할 때까지 이름이 없다.
+     */
+    historyType: {
+      calibration: '검교정',
+      check: '점검',
+    },
+    result: {
+      pass: '합격',
+      fail: '불합격',
+    },
   },
 
   save: {

@@ -217,7 +217,12 @@ export const ReturnReceiptScreen = () => {
     <>
       <PageHeader
         title={t.title}
-        breadcrumb={<Breadcrumb items={[{ label: t.breadcrumbRoot }, { label: t.title }]} />}
+        breadcrumb={
+          <Breadcrumb
+            items={[{ label: t.breadcrumbRoot }, { label: t.title }]}
+            aria-label={messages.common.shell.breadcrumb}
+          />
+        }
       />
       {/* 확정된 출하의 사후 경로가 이 화면 하나다 — 그 사실과 다음 화면을 상단에 상시 둔다(§5-1). */}
       <div className="banner-slot">

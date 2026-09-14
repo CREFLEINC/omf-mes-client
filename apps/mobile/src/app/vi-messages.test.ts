@@ -103,13 +103,31 @@ describe('베트남어 문구', () => {
     expect(offenders).toEqual([]);
   });
 
-  /* 웹·POP 몫은 건드리지 않는다. 그쪽은 베트남어를 고르지 않아 옮기면 손만 간다. */
-  it('모바일이 쓰지 않는 슬라이스는 한국어 그대로 둔다', () => {
+  /**
+   * 모바일이 쓰지 않는 슬라이스 — **옮겼으면 끝까지 옮겼는가.**
+   *
+   * ⚠ **이 자리는 원래 「한국어 그대로 둔다」였다.** 그때는 베트남어를 고르는 셸이 모바일뿐이라
+   * 남의 슬라이스를 건드리는 것이 헛손질이었지만, 관리웹이 언어 선택을 갖게 되면서(#1113) 그
+   * 전제가 뒤집혔다 — 이제 그 단언은 **다른 셸의 정당한 번역을 막는 빗장**이 된다.
+   *
+   * 막을 값이 남아 있어 지우지는 않는다: 어느 셸이 옮기든 **반쯤 옮긴 슬라이스**는 사고다.
+   * 한 화면에 두 언어가 섞이면 안 옮긴 화면보다 읽기 어렵다.
+   */
+  it('모바일이 쓰지 않는 슬라이스도 옮겼으면 한국어가 남지 않는다', () => {
     const mobile = new Set(slices);
-    const changed = Object.keys(ko).filter(
-      (name) => !mobile.has(name) && vi[name as keyof Messages] !== ko[name as keyof Messages],
-    );
+    const offenders: string[] = [];
 
-    expect(changed).toEqual([]);
+    for (const name of Object.keys(ko) as (keyof Messages)[]) {
+      if (mobile.has(name) || vi[name] === ko[name]) continue;
+
+      const found: [string, string][] = [];
+      leaves(vi[name], name, found);
+
+      for (const [path, text] of found) {
+        if (HANGUL.test(text)) offenders.push(`${path} — ${text}`);
+      }
+    }
+
+    expect(offenders).toEqual([]);
   });
 });

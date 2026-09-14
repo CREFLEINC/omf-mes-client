@@ -75,7 +75,12 @@ export const SuspiciousMaterialHoldScreen = () => (
   <div className="screen suspicious-material-hold-screen">
     <PageHeader
       title={t.title}
-      breadcrumb={<Breadcrumb items={[{ label: t.breadcrumbRoot }, { label: t.title }]} />}
+      breadcrumb={
+        <Breadcrumb
+          items={[{ label: t.breadcrumbRoot }, { label: t.title }]}
+          aria-label={messages.common.shell.breadcrumb}
+        />
+      }
     />
     <SuspiciousMaterialHoldFlow targetLotStatusCode={SUSPICIOUS_MATERIAL_TARGET_LOT_STATUS_CODE} />
   </div>

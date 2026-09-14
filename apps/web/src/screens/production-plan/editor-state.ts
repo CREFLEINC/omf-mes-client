@@ -1,4 +1,5 @@
 import type { components } from '@omf-mes/api-client';
+import { messages } from '@omf-mes/i18n';
 
 import type { ProductionPlanEditorRow } from './editor-pane';
 import {
@@ -116,7 +117,7 @@ export const appendProductionPlanRow = (
     displayNo: Math.max(0, ...current.map((row) => row.displayNo)) + 1,
     productionPlanId: null,
     planNo: null,
-    statusCode: '신규',
+    statusCode: messages.productionPlan.editor.newStatus,
     confirmed: false,
     isPending: false,
     isDirty: true,

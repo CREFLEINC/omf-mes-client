@@ -1,14 +1,27 @@
-import type { ApiClient } from '@omf-mes/api-client';
-import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from 'react';
+import { createIdempotencyKey, isTransientStatus, type ApiClient } from '@omf-mes/api-client';
+import { useQueryClient } from '@tanstack/react-query';
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from 'react';
+import { useLocation } from 'react-router';
 
 import { useApiClient } from './api-context';
+import { popAccessKeys } from './pop-access';
 import { PopIdentityProvider } from './pop-identity';
 import {
   currentTerminalToken,
+  discardStoredTerminalToken,
   setCandidateTerminalToken,
   writeTerminalToken,
 } from './pop-terminal-token';
-import { runRequest } from './request';
+import { ApiRequestError, runRequest, toApiError } from './request';
 import { useWorkerSession } from './worker-session';
 
 /**
@@ -33,7 +46,8 @@ import { useWorkerSession } from './worker-session';
  *
  * ## 등록과 준비는 다른 층이다
  *
- * 검증 200 은 「이 단말이 누구인가」까지다. 업무로 넘기려면 **자기 공정 목록**을 받아야 하고,
+ * 검증 200 은 「이 단말이 누구인가」까지다. 업무로 넘기려면 서버에 등록 완료를 확인시키고
+ * **자기 공정 목록**을 받아야 한다. 보관 토큰은 켤 때 같은 확인·준비를 자동으로 다시 거친다.
  * 그 둘을 한 덩이로 다루면 준비 실패가 등록 실패처럼 보여 설치 담당자가 토큰부터 다시
  * 의심한다(F-4 「등록 성공과 준비 실패는 구분하고 재시도한다」).
  *
@@ -78,8 +92,8 @@ export interface TerminalProcessRow {
  * - `unregistered` 후보 토큰이 없다. 붙여넣기를 기다린다
  * - `verifying` 후보 토큰으로 서버에 묻는 중
  * - `verified` 서버가 확인했다. **설치 담당자가 단말 코드를 확인하고 적용해야 한다**
- * - `preparing` 적용했고 자기 공정 목록을 받는 중
- * - `prepare-failed` 등록은 됐는데 준비가 실패했다 — 토큰 문제가 아니다
+ * - `preparing` 적용했고 서버 등록 확인·자기 공정 목록을 받는 중
+ * - `prepare-failed` 보관은 됐으나 서버 등록 확인 또는 업무 준비가 실패했다
  * - `ready` 업무로 넘어갈 수 있다
  */
 export type RegistrationPhase =
@@ -93,15 +107,30 @@ export type RegistrationPhase =
 export type RegistrationFailure =
   | 'malformed' // 토큰 모양이 아니다 — sub 를 읽을 수 없다
   | 'rejected' // 401 — 위조·만료·세대 폐기·비활성이거나 없는 단말
+  | 'unreachable' // 서버가 답하지 않았다 — 토큰을 판정한 적이 없다
   | 'foreign' // 403 — 다른 단말을 가리킨다
   | 'wrong-type' // POP 단말이 아니다
   | 'offline' // 신규 등록은 온라인 전용이다
   | 'no-store' // 셸이 없어 자격증명 저장소에 보관할 수 없다
   | 'queue-blocked'; // 미전송 기록이 있는데 다른 신원으로 바꾸려 한다
 
+/**
+ * 판정이 **어느 토큰에 대한 것인가.**
+ *
+ * ⛔ **없으면 화면이 무엇을 말하는지 알 수 없다**(#1137). 켤 때 보관된 토큰을 스스로 확인하는데
+ *    (`app/pop-main` 의 `PopRegistrationGate`), 그 실패가 입력란이 «빈» 등록 화면에 그대로
+ *    떴다 — 설치 담당자는 한 글자도 넣지 않았는데 「이 토큰은 더 이상 쓸 수 없습니다」를
+ *    받았다(실측 2026-09-12 · 사용자 지적 · 실서버 설치본).
+ */
+export type FailureSource =
+  | 'stored' // 켤 때 스스로 확인한 보관 토큰
+  | 'entered'; // 설치 담당자가 방금 붙여넣은 값
+
 export interface RegistrationState {
   phase: RegistrationPhase;
   failure: RegistrationFailure | null;
+  /** 위 `failure` 가 «어느» 토큰 이야기인가. 실패가 없으면 뜻이 없다. */
+  failureSource: FailureSource;
   /** 적용을 막은 미전송 건수. `queue-blocked` 일 때만 값이 있다. */
   pendingCount: number;
   /** 검증이 확인해 준 단말. `verified` 이후에만 있다. */
@@ -111,19 +140,31 @@ export interface RegistrationState {
 }
 
 export interface PopRegistration extends RegistrationState {
-  /** 붙여넣은 후보 토큰을 서버에 확인시킨다. */
-  verify: (token: string) => Promise<void>;
+  /**
+   * 후보 토큰을 서버에 확인시킨다.
+   *
+   * ⚠ `source` 는 **실패 문구가 누구 이야기인지**를 정한다. 기본은 사람이 방금 넣은 값이고,
+   *   켤 때 보관 토큰을 스스로 확인하는 자리만 `'stored'` 로 부른다(#1137).
+   */
+  verify: (token: string, source?: FailureSource) => Promise<void>;
   /** 확인된 바로 그 후보 토큰을 적용한다. 설치 담당자가 단말 코드를 본 뒤에 부른다. */
   apply: () => Promise<void>;
   /** 준비만 다시 시도한다 — 토큰은 그대로다. */
   retryPrepare: () => Promise<void>;
   /** 등록 정보를 바꾸러 간다. 후보·검증 결과를 버리고 입력 상태로 되돌린다. */
   restart: () => void;
+  /**
+   * 등록된 단말의 상세·공정 목록을 **다시 받는다**(#1202). 화면에 들어올 때 부른다.
+   *
+   * ⛔ 받지 못하면 **아무것도 바꾸지 않는다** — 알고 있던 값을 그대로 쓴다.
+   */
+  refresh: () => Promise<void>;
 }
 
 const INITIAL: RegistrationState = {
   phase: 'unregistered',
   failure: null,
+  failureSource: 'entered',
   pendingCount: 0,
   terminal: null,
   processes: null,
@@ -179,14 +220,59 @@ const readPendingCount = async (): Promise<number> => {
   }
 };
 
-/** HTTP 상태를 사유로 옮긴다. 401 과 403 이 뜻하는 것이 다르다(F-4). */
+/**
+ * HTTP 상태를 사유로 옮긴다. 401 과 403 이 뜻하는 것이 다르다(F-4).
+ *
+ * ⛔ **답이 «없는» 것을 거절로 읽지 않는다.** 상태가 없으면 요청이 서버에 닿지도 못한 것이라
+ *    토큰은 판정된 적이 없다. 전부 `rejected` 로 뭉쳤더니 설치본이 서버에 못 닿는 동안 화면이
+ *    「이 토큰은 더 이상 쓸 수 없습니다」를 말했고, 담당자는 멀쩡한 토큰을 몇 번씩 재발급
+ *    받았다(실측 2026-09-12 · 사용자 지적 — 서버 CORS 가 닫혀 요청이 브라우저에서 막힌 건이다).
+ *    ⚠ 사유가 다르면 사람이 할 일이 다르다 — 하나는 재발급, 하나는 연결 확인이다.
+ */
 const failureOf = (error: unknown): RegistrationFailure => {
-  const status = (error as { status?: unknown })?.status;
+  /*
+   * ⛔ **오류에서 `status` 를 바로 읽지 않는다.** 요청 경로는 정규화된 봉투(`ApiRequestError`)
+   *    를 던지므로 그 자리에 `status` 가 없다 — 그렇게 읽던 동안 403 갈래가 «한 번도» 서지
+   *    못하고 모든 실패가 「토큰이 죽었다」로 떨어졌다.
+   *
+   * ⛔ **정규화된 갈래로도 상태를 못 읽는다.** 서버가 403 을 계약 오류 봉투로 보내면 정규화가
+   *    그것을 `validation` 으로 접으면서 상태 코드를 버린다 — 봉투만 보고 고치면 403 갈래는
+   *    «여전히» 죽어 있다(리뷰 2회차 지적). 정규화 전 상태를 남겨 둔 자리를 본다.
+   */
+  const status = error instanceof ApiRequestError ? error.httpStatus : undefined;
 
   if (status === 403) return 'foreign';
 
+  /*
+   * ⛔ **「지금은 못 받는다」를 판정으로 읽지 않는다**(#1137 · 독립 검증 지적). 5xx·429·408 은
+   *    서버가 토큰을 «보고» 답한 것이 아니다 — 그런데 이번에 판정 갈래에 삭제가 붙어, 그대로
+   *    두면 서버가 잠깐 앓는 사이 멀쩡한 보관 토큰이 지워지고 설치 담당자를 현장으로 다시
+   *    불러야 한다.
+   *
+   * ⚠ **판정은 여기서 다시 짓지 않는다.** 같은 구분을 오프라인 큐도 쓰므로 기준이 두 곳에
+   *   생기면 한쪽만 고쳐졌을 때 조용히 어긋난다(`api-client` 의 `isTransientStatus` 주석).
+   */
+  if (status !== undefined && isTransientStatus(status)) return 'unreachable';
+
+  /* 응답 자체가 없었다 — 토큰은 아직 판정된 적이 없다. */
+  if (toApiError(error).kind === 'network') return 'unreachable';
+
   return 'rejected';
 };
+
+/**
+ * 보관 토큰을 버릴 «판정» — 서버가 그 토큰을 보고 답했을 때만이다(#1137 ②).
+ *
+ * ⛔ `unreachable`·`offline` 은 들어오지 않는다 — 판정이 아니라 **못 물어본 것**이다. 서버가
+ *    「지금은 못 받는다」고 답한 갈래(5xx·429·408)도 `failureOf` 가 그쪽으로 접는다.
+ * ⛔ `no-store`·`queue-blocked` 도 아니다 — 토큰이 아니라 적용 단계의 사정이다.
+ */
+const DISCARDABLE_FAILURES: ReadonlySet<RegistrationFailure> = new Set([
+  'malformed',
+  'rejected',
+  'foreign',
+  'wrong-type',
+]);
 
 const fetchTerminal = (client: Client, terminalId: number): Promise<VerifiedTerminal> =>
   runRequest(() =>
@@ -207,6 +293,30 @@ const fetchProcesses = (client: Client, terminalId: number): Promise<TerminalPro
     client.GET('/mdm/terminals/{terminalId}/processes', { params: { path: { terminalId } } }),
   ).then((data) => [...data.items]);
 
+/** 저장된 현재 세대 토큰으로 서버 등록 상태를 확인한다(P-7). 재기동·재시도에도 멱등이다. */
+const confirmRegistration = async (client: Client, terminalId: number): Promise<void> => {
+  const data = await runRequest(() =>
+    client.POST('/mdm/terminals/{terminalId}:confirm-registration', {
+      params: {
+        path: { terminalId },
+        header: { 'Idempotency-Key': createIdempotencyKey() },
+      },
+      body: {},
+    }),
+  );
+
+  if (
+    data.terminalId !== terminalId ||
+    data.registrationStatusCode !== 'REGISTERED' ||
+    !Number.isSafeInteger(data.tokenVersion) ||
+    data.tokenVersion < 1 ||
+    typeof data.registrationConfirmedAt !== 'string' ||
+    data.registrationConfirmedAt === ''
+  ) {
+    throw new Error('단말 등록 완료 응답이 요청한 단말과 일치하지 않습니다.');
+  }
+};
+
 const PopRegistrationContext = createContext<PopRegistration | null>(null);
 
 /**
@@ -215,6 +325,7 @@ const PopRegistrationContext = createContext<PopRegistration | null>(null);
  */
 export const PopRegistrationProvider = ({ children }: { children: ReactNode }) => {
   const { client } = useApiClient();
+  const queryClient = useQueryClient();
   const session = useWorkerSession();
   const [state, setState] = useState<RegistrationState>(INITIAL);
   /* 검증을 통과한 «바로 그» 후보. 적용은 이 값에만 한다(F-4). */
@@ -229,17 +340,31 @@ export const PopRegistrationProvider = ({ children }: { children: ReactNode }) =
    */
   const [registered, setRegistered] = useState<VerifiedTerminal | null>(null);
 
+  /**
+   * 다시 받기 요청의 순번(#1202). **가장 최근 요청의 답만 넣는다.**
+   *
+   * ⛔ 없으면 늦게 온 옛 답이 새 값을 덮는다 — 화면을 연달아 옮기거나, 답이 오기 전에 같은
+   *    단말로 재등록하면 단말 번호 비교로는 가를 수 없다(독립 검증 재현). 준비·재등록도 순번을
+   *    올려 그 전에 떠난 요청을 무효로 만든다.
+   */
+  const refreshSeq = useRef(0);
+
   const prepare = useCallback(
     async (terminal: VerifiedTerminal) => {
+      refreshSeq.current += 1;
       setState((prev) => ({ ...prev, phase: 'preparing', failure: null }));
 
       try {
+        await confirmRegistration(client, terminal.terminalId);
+        // 같은 단말에 새 토큰 세대를 적용해도 이전 화면 정책을 재사용하지 않는다.
+        queryClient.removeQueries({ queryKey: popAccessKeys.terminal(terminal.terminalId), exact: true });
         const processes = await fetchProcesses(client, terminal.terminalId);
 
         setRegistered(terminal);
         setState({
           phase: 'ready',
           failure: null,
+          failureSource: 'entered',
           pendingCount: 0,
           terminal,
           processes,
@@ -249,24 +374,45 @@ export const PopRegistrationProvider = ({ children }: { children: ReactNode }) =
         setState((prev) => ({ ...prev, phase: 'prepare-failed', failure: null, terminal }));
       }
     },
-    [client],
+    [client, queryClient],
+  );
+
+  /**
+   * 보관된 토큰이 걸러졌으면 **그 자리에서 버린다**(#1137 ②).
+   *
+   * ⛔ **닿지 못한 것은 버리지 않는다.** 서버가 답하지 않아 확인하지 못한 것과 서버가 「이
+   *    토큰은 끝났다」고 판정한 것은 다르다 — 잠깐 망이 끊긴 사이에 멀쩡한 토큰을 지우면
+   *    설치 담당자를 현장으로 다시 불러야 한다(같은 근거로 `unreachable` 갈래를 만들었다).
+   *
+   * ⚠ 버리지 않으면 껐다 켤 때마다 같은 실패가 되풀이된다 — 화면은 매번 아무도 넣지 않은
+   *   토큰의 부고를 전한다.
+   */
+  const discardIfStored = useCallback(
+    async (source: FailureSource, failure: RegistrationFailure): Promise<void> => {
+      if (source !== 'stored') return;
+      if (!DISCARDABLE_FAILURES.has(failure)) return;
+
+      await discardStoredTerminalToken();
+    },
+    [],
   );
 
   const verify = useCallback(
-    async (token: string) => {
+    async (token: string, source: FailureSource = 'entered') => {
       const trimmed = token.trim();
       const terminalId = readTerminalIdFromToken(trimmed);
 
       setApproved(null);
 
       if (terminalId === null) {
-        setState({ ...INITIAL, failure: 'malformed' });
+        setState({ ...INITIAL, failure: 'malformed', failureSource: source });
+        await discardIfStored(source, 'malformed');
 
         return;
       }
 
       if (!navigator.onLine) {
-        setState({ ...INITIAL, failure: 'offline' });
+        setState({ ...INITIAL, failure: 'offline', failureSource: source });
 
         return;
       }
@@ -278,21 +424,31 @@ export const PopRegistrationProvider = ({ children }: { children: ReactNode }) =
         const terminal = await fetchTerminal(client, terminalId);
 
         if (terminal.terminalTypeCode !== 'POP') {
-          setState({ ...INITIAL, failure: 'wrong-type', terminal });
+          setState({ ...INITIAL, failure: 'wrong-type', failureSource: source, terminal });
+          await discardIfStored(source, 'wrong-type');
 
+          return;
+        }
+
+        if (source === 'stored') {
+          // 저장된 토큰은 재발급·재입력 없이 서버 등록 상태를 복구하고 업무를 준비한다.
+          await prepare(terminal);
           return;
         }
 
         setApproved(trimmed);
         setState({ ...INITIAL, phase: 'verified', terminal });
       } catch (error) {
-        setState({ ...INITIAL, failure: failureOf(error) });
+        const failure = failureOf(error);
+
+        setState({ ...INITIAL, failure, failureSource: source });
+        await discardIfStored(source, failure);
       } finally {
         /* 후보 창을 닫는다 — 열어 두면 이후 업무 요청까지 후보 토큰으로 나간다. */
         setCandidateTerminalToken(null);
       }
     },
-    [client],
+    [client, discardIfStored, prepare],
   );
 
   const apply = useCallback(async () => {
@@ -345,14 +501,53 @@ export const PopRegistrationProvider = ({ children }: { children: ReactNode }) =
    *    「갈 곳이 달라지는가」를 이 값과 비교해 재고, 실제로 바뀔 때만 미전송 건수를 본다.
    */
   const restart = useCallback(() => {
+    refreshSeq.current += 1;
     setApproved(null);
     setCandidateTerminalToken(null);
     setState(INITIAL);
   }, []);
 
+  /**
+   * ⭐ **등록 때 받은 단말 정보를 화면 진입마다 갈아 둔다**(#1202). 공정 목록을 켤 때 한 번만
+   *    받았더니, 관리웹에서 공정을 매핑해도 단말 PC 를 다시 켜기 전까지 작업 시작 화면이
+   *    「매핑된 공정이 없습니다」로 막혀 있었다(실기 2026-09-14). 설비는 화면이 따로 조회해
+   *    바로 바뀌는데 공정만 묵어 있어, 같은 관리웹 저장이 반쪽만 보였다.
+   *
+   * ⛔ **실패는 조용히 넘긴다.** 오프라인·일시 오류로 못 받은 것을 「공정이 없다」로 바꾸면
+   *    멀쩡히 일하던 단말이 막힌다 — 알고 있던 값이 못 받은 값보다 낫다. 등록을 무르지도 않는다.
+   *
+   * ⛔ **답이 도착했을 때 그 단말이 아직 등록돼 있을 때만 반영한다.** 조회 도중 재등록으로
+   *    단말이 바뀌면 옛 단말의 공정이 새 단말 신원에 얹힌다.
+   */
+  const refresh = useCallback(async () => {
+    const terminalId = state.phase === 'ready' ? (state.terminal?.terminalId ?? null) : null;
+
+    if (terminalId === null || !navigator.onLine) return;
+
+    refreshSeq.current += 1;
+    const seq = refreshSeq.current;
+
+    try {
+      const [terminal, processes] = await Promise.all([
+        fetchTerminal(client, terminalId),
+        fetchProcesses(client, terminalId),
+      ]);
+
+      setState((prev) =>
+        seq === refreshSeq.current &&
+        prev.phase === 'ready' &&
+        prev.terminal?.terminalId === terminalId
+          ? { ...prev, terminal, processes }
+          : prev,
+      );
+    } catch {
+      /* 위 ⛔ — 못 받았으면 알고 있던 값을 쓴다. */
+    }
+  }, [client, state.phase, state.terminal?.terminalId]);
+
   const value = useMemo<PopRegistration>(
-    () => ({ ...state, verify, apply, retryPrepare, restart }),
-    [apply, restart, retryPrepare, state, verify],
+    () => ({ ...state, verify, apply, retryPrepare, restart, refresh }),
+    [apply, refresh, restart, retryPrepare, state, verify],
   );
 
   return (
@@ -365,6 +560,22 @@ export const PopRegistrationProvider = ({ children }: { children: ReactNode }) =
            */
           terminalId: state.phase === 'ready' ? (state.terminal?.terminalId ?? null) : null,
           processes: state.phase === 'ready' ? state.processes : null,
+          /*
+           * ⭐ **단말에 붙은 설비를 여기서 내린다**(#1149). 스펙이 「POP 은 설비에 붙어 있다」로
+           *    정한 값이고 단말 상세가 이미 답해 준다 — 내리지 않으면 설비를 쓰는 화면이
+           *    주소에 손으로 번호를 붙여야만 열렸고, 「설비를 고르세요」라고 말하면서 고를
+           *    자리를 주지 않는 화면이 됐다(88단계 3회차).
+           */
+          equipment:
+            state.phase === 'ready' &&
+            state.terminal !== null &&
+            state.terminal.equipmentId !== null
+              ? {
+                  equipmentId: state.terminal.equipmentId,
+                  equipmentCode: state.terminal.equipmentCode,
+                  equipmentName: state.terminal.equipmentName,
+                }
+              : null,
           workerNo: session?.worker.workerNo ?? null,
         }}
       >
@@ -385,4 +596,22 @@ export const usePopRegistration = (): PopRegistration => {
   }
 
   return value;
+};
+
+/**
+ * **화면에 들어올 때마다** 단말 정보를 다시 받는다(#1202). 라우터 안 겹에서 한 번 부른다.
+ *
+ * ⛔ **주소가 바뀔 때만 돈다.** 등록 상태가 바뀔 때마다 돌면 받은 값이 상태를 바꾸고, 그 변화가
+ *    다시 조회를 부른다. 그래서 최신 `refresh` 는 ref 로 들고 조건은 경로 하나만 본다.
+ */
+export const useRefreshPopTerminalOnScreenEntry = (): void => {
+  const { pathname } = useLocation();
+  const { refresh } = usePopRegistration();
+  const latest = useRef(refresh);
+
+  latest.current = refresh;
+
+  useEffect(() => {
+    void latest.current();
+  }, [pathname]);
 };

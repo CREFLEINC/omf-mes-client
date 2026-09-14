@@ -217,6 +217,7 @@ export const GroupListPane = ({
           value={draft.q}
           onChange={(event) => setDraft((prev) => ({ ...prev, q: event.target.value }))}
           onSearch={(value) => applyDraft({ q: value })}
+          clearLabel={messages.common.clear}
         />
         {/* 같은 화면 안에서 라벨 붙은 선택칸을 두 가지로 만들지 않는다 — 부품 하나가 그 규약을 갖는다. */}
         <SelectField

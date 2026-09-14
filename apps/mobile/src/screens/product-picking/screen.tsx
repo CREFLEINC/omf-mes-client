@@ -14,6 +14,8 @@ import { toApiError } from '../../patterns/request';
 import { useScanField } from '../../patterns/use-scan-field';
 import { useScreenTitle } from '../../patterns/screen-title';
 import { useWorkerSession } from '../../patterns/worker-session';
+import { FailureBanner } from '../../patterns/failure-banner';
+import { useLoadFailure } from '../../patterns/load-failure';
 import {
   toCandidates,
   useAvailableByLot,
@@ -178,6 +180,7 @@ const CandidateCard = ({
 
 export const ProductPickingScreen = () => {
   useScreenTitle(t.title);
+  const failureText = useLoadFailure();
 
   const online = useOnlineStatus();
   const { worker } = useWorkerSession();
@@ -395,7 +398,7 @@ export const ProductPickingScreen = () => {
           {chosen !== null ? <AlertBanner variant="warning" title={t.targets.dropped} /> : null}
           {requests.isPending ? <p role="status">{t.targets.loading}</p> : null}
           {requests.isError ? <AlertBanner variant="error" title={t.targets.loadFailed} /> : null}
-          {requests.data !== undefined && requests.data.length === 0 ? (
+          {requests.isSuccess && requests.data.length === 0 ? (
             <p className="picking__note">{t.targets.none}</p>
           ) : null}
           <ul className="picking__targets">
@@ -578,7 +581,10 @@ export const ProductPickingScreen = () => {
         <h2>{t.candidates.legend(policyLabel(item.data?.fifoPolicyCode ?? ''))}</h2>
         {pool.isPending || available.isPending ? <p role="status">{t.candidates.loading}</p> : null}
         {pool.isError || available.isError ? (
-          <AlertBanner variant="error" title={t.candidates.loadFailed} />
+          <FailureBanner
+            variant="error"
+            title={failureText(pool.error ?? available.error, t.candidates.loadFailed)}
+          />
         ) : null}
         {pool.data !== undefined && candidates.length === 0 ? (
           <AlertBanner variant="warning" title={t.candidates.none} />

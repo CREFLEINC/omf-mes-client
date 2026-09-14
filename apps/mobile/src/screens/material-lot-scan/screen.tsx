@@ -10,9 +10,12 @@ import { currentPlantId } from '../../patterns/plant';
 import { useAdvanceTo } from '../../patterns/advance-to';
 import { useBackStep } from '../../patterns/back-step';
 import { playErrorTone } from '../../patterns/error-tone';
+import { ScanReplaceDialog } from '../../patterns/scan-replace-dialog';
 import { useScanField } from '../../patterns/use-scan-field';
 import { useScreenTitle } from '../../patterns/screen-title';
 import { useWorkerSession } from '../../patterns/worker-session';
+import { FailureBanner } from '../../patterns/failure-banner';
+import { useLoadFailure } from '../../patterns/load-failure';
 import { useFillableLines, useSupplierLotReceipts } from './queries';
 import {
   LOT_LABEL,
@@ -46,6 +49,7 @@ const initialQtyOf = (draft: { body: unknown }): number =>
 
 export const MaterialLotScanScreen = () => {
   useScreenTitle(t.title);
+  const failureText = useLoadFailure();
 
   const { enqueue, flush, isRejected, loaded, pendingOf } = useOutbox();
   const { worker } = useWorkerSession();
@@ -67,7 +71,7 @@ export const MaterialLotScanScreen = () => {
   const receipts = useSupplierLotReceipts();
   const lines = useFillableLines(receiptId);
 
-  const itemLabels = useItemLabels((lines.data ?? []).length > 0);
+  const itemLabels = useItemLabels((lines.data ?? []).map((each) => each.itemId));
   const plantId = currentPlantId();
 
   /*
@@ -92,7 +96,7 @@ export const MaterialLotScanScreen = () => {
 
   /* 이 회차에 보낸 번호는 큐에 없다. 다시 스캔하면 서버가 400 으로 되돌린다. */
   const usedLotNos = [...queuedLotNos, ...registered.map((each) => each.lotNo)];
-  const lineItemCode = line === null ? undefined : itemLabels.data?.get(line.itemId)?.itemCode;
+  const lineItemCode = line === null ? undefined : itemLabels.get(line.itemId)?.itemCode;
   const problem = scanned.trim() === '' ? null : scanProblemOf(scanned, usedLotNos, lineItemCode);
   const labelQty = labelQtyOf(scanned);
   const ready =
@@ -100,6 +104,7 @@ export const MaterialLotScanScreen = () => {
     canRegister(line, scanned, worker !== null, plantId, usedLotNos, filled, lineItemCode);
 
   const scanField = useScanField({
+    applied: scanned.trim(),
     onScan: (value) => {
       const taken = value.trim();
       setScanned(taken);
@@ -234,8 +239,13 @@ export const MaterialLotScanScreen = () => {
       <section className="material-lot-scan__section">
         <h2>{t.receipt.legend}</h2>
         {receipts.isPending ? <p role="status">{t.receipt.loading}</p> : null}
-        {receipts.isError ? <AlertBanner variant="error" title={t.receipt.loadFailed} /> : null}
-        {receipts.data?.length === 0 ? <p>{t.receipt.none}</p> : null}
+        {receipts.isError ? (
+          <FailureBanner
+            variant="error"
+            title={failureText(receipts.error, t.receipt.loadFailed)}
+          />
+        ) : null}
+        {receipts.isSuccess && receipts.data.length === 0 ? <p>{t.receipt.none}</p> : null}
         <label htmlFor="material-lot-scan-receipt">{t.receipt.pick}</label>
         <Select
           id="material-lot-scan-receipt"
@@ -258,7 +268,9 @@ export const MaterialLotScanScreen = () => {
         <section className="material-lot-scan__section" ref={lineSection}>
           <h2>{t.line.legend}</h2>
           {lines.isPending ? <p role="status">{t.line.loading}</p> : null}
-          {lines.isError ? <AlertBanner variant="error" title={t.line.loadFailed} /> : null}
+          {lines.isError ? (
+            <FailureBanner variant="error" title={failureText(lines.error, t.line.loadFailed)} />
+          ) : null}
           {lines.data !== undefined && openLines.length === 0 ? (
             <AlertBanner variant="warning" title={t.line.none} />
           ) : null}
@@ -276,7 +288,7 @@ export const MaterialLotScanScreen = () => {
               value: String(each.inboundReceiptLineId),
               label: t.line.item(
                 String(each.lineNo),
-                itemLabels.data?.get(each.itemId)?.itemCode ?? '',
+                itemLabels.get(each.itemId)?.itemCode ?? '',
                 String(each.receivedQty),
               ),
             }))}
@@ -338,9 +350,13 @@ export const MaterialLotScanScreen = () => {
                 }
               />
             )}
-            {problem === null && scanned.trim() !== '' ? (
+            {/*
+             * 읽은 값은 문제가 있을 때도 보인다. 무엇이 잘못됐다는 말만 있고 읽은 값이
+             * 없으면, 스캐너가 잘못 읽은 것인지 라벨이 그런 것인지 가릴 수 없다.
+             */}
+            {scanned.trim() === '' ? null : (
               <p className="material-lot-scan__scanned">{formatMaterialLotNo(scanned.trim())}</p>
-            ) : null}
+            )}
             {/* 라벨 수량은 최초 납품 스냅샷이라 라인 수량과 다를 수 있다. 막지 않는다. */}
             {problem === null && labelQty !== null && labelQty !== line.receivedQty ? (
               <AlertBanner
@@ -394,6 +410,8 @@ export const MaterialLotScanScreen = () => {
           </div>
         </section>
       )}
+
+      <ScanReplaceDialog field={scanField} format={formatMaterialLotNo} />
     </div>
   );
 };

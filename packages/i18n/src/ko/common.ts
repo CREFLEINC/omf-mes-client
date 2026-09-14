@@ -11,6 +11,12 @@ export const common = {
   reset: '초기화',
   confirm: '확인',
   close: '닫기',
+  /*
+   * 검색칸의 지우기 단추 접근명. 디자인 시스템이 기본값을 한국어로 들고 있어, 넘기지 않으면
+   * 다른 언어로 열어도 이 자리만 한국어로 남는다. 조건을 모두 비우는 「초기화」와 다르다 —
+   * 이것은 검색칸 하나만 비운다.
+   */
+  clear: '지우기',
   deactivate: '사용 중지',
   saved: '저장했습니다',
   created: '등록했습니다',
@@ -26,6 +32,10 @@ export const common = {
     main: '본문',
     skipToMain: '본문으로 건너뛰기',
     notifications: '알림',
+    /** 사이드바의 접근명. 관리웹에만 선다 — 모바일에는 사이드바가 없다. */
+    mainMenu: '주 메뉴',
+    /** 표제 위 경로의 접근명. 관리웹에만 선다. */
+    breadcrumb: '탐색 경로',
   },
   connection: {
     online: '온라인',
@@ -64,5 +74,19 @@ export const common = {
     label: '사번',
     /** 아직 못 받았다 - 없다가 아니라 모른다다. */
     unknown: '사번 미확인',
+  },
+
+  /**
+   * 스캔 하나가 대상을 정하는 화면에서, 이미 정해진 뒤에 다른 것을 읽었을 때 되묻는 말.
+   *
+   * 옆 라벨을 스친 것인지 일부러 바꾼 것인지 화면은 모른다. 조용히 바뀌면 작업자는 앞엣것에
+   * 적는 줄 알고 진행한다.
+   */
+  rescan: {
+    title: '다시 스캔했습니다',
+    body: (before: string, after: string) =>
+      `지금 대상은 ${before} 입니다. 새로 읽은 ${after} 로 바꿀까요?`,
+    keep: '그대로 두기',
+    replace: '새로 읽은 값으로',
   },
 } as const;

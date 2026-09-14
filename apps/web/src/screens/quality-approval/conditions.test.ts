@@ -101,7 +101,7 @@ describe('toConcessionCardView', () => {
       ...concession(),
       allowedWorkOrderId: 1_201,
       allowedCustomerId: 1_401,
-      unrestrictedAxes: ['SYNTH-UNDEFINED-AXIS'],
+      unrestrictedAxes: ['allowedProcessId'],
     };
     const unavailable: ConditionReferenceStates = {
       uom: { kind: 'unknown' },

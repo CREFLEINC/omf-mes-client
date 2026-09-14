@@ -1,3 +1,4 @@
+import { messages } from '@omf-mes/i18n';
 import { useQuery } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
@@ -27,7 +28,7 @@ export interface NameLookup {
   isTruncated: boolean;
 }
 
-export const NAME_UNKNOWN = '이름 확인 중';
+export const NAME_UNKNOWN = messages.workOrderProgress.nameUnknown;
 
 /** 한 번에 받아 둘 최대 건수. 넘치면 이름을 못 붙이는 것이 있을 수 있다. */
 export const LOOKUP_SIZE = 200;

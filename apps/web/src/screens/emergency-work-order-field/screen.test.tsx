@@ -146,6 +146,14 @@ describe('POP 상단 띠', () => {
 
     expect(await screen.findByText(t.header.terminalUnknown)).toBeInTheDocument();
   });
+
+  it('셸이 아는 단말 번호를 머리줄에 세운다', async () => {
+    /* 다른 POP 화면은 「단말 1001」로 뜨는데 이 화면만 비어 있었다(#1147). */
+    renderScreen({ terminalId: 1001 });
+
+    expect(await screen.findByText(t.header.terminalLabel('1001'))).toBeInTheDocument();
+    expect(screen.queryByText(t.header.terminalUnknown)).not.toBeInTheDocument();
+  });
 });
 
 describe('통제 우회 표시', () => {

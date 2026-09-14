@@ -1,3 +1,4 @@
+import { messages } from '@omf-mes/i18n';
 import { useSearchParams } from 'react-router';
 
 import { selectableLookupOptions } from '../../patterns/lookup-display';
@@ -14,6 +15,8 @@ import { InsightTabs } from './insight-tabs';
 import type { InspectionLookup } from './lookups';
 import { ResultDetailDialog } from './result-detail-dialog';
 import { ResultOverview } from './result-overview';
+
+const t = messages.inspectionResultInsights;
 
 export interface InspectionResultLookupSources {
   inspectionType: InspectionLookup;
@@ -99,9 +102,9 @@ export const InspectionResultInsightsScreen = ({
   };
 
   return (
-    <section className="inspection-results-workspace" aria-label="검사실적·검사결과 조회">
-      <section className="pane inspection-results-pane" aria-label="검사 결과 조회 조건">
-        <h2 className="pane-title">조회 조건</h2>
+    <section className="inspection-results-workspace" aria-label={t.title}>
+      <section className="pane inspection-results-pane" aria-label={t.filter.pane}>
+        <h2 className="pane-title">{t.filter.paneTitle}</h2>
         <InspectionInsightFilterBar
           appliedFilters={filters}
           options={options}
@@ -137,14 +140,10 @@ export const InspectionResultInsightsScreen = ({
       />
       <section
         className={`pane inspection-results-pane inspection-results-insights-pane${insightsReady ? '' : ' inspection-results-insights-pane-empty'}`}
-        aria-label="검사 결과 분석"
+        aria-label={t.tabs.pane}
       >
-        <h2 className="pane-title">결과 분석</h2>
-        {!insightsReady && (
-          <p className="field-note">
-            조회 조건을 적용하면 불량률 추이와 분포를 확인할 수 있습니다.
-          </p>
-        )}
+        <h2 className="pane-title">{t.tabs.paneTitle}</h2>
+        {!insightsReady && <p className="field-note">{t.tabs.notReady}</p>}
         <InsightTabs
           filters={filters}
           sourceAxisCode={filters.inspectionTypeCode}

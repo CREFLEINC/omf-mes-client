@@ -63,7 +63,7 @@ export const putaway = {
     expected: (lotNo: string) => `지시 LOT ${lotNo}`,
     matched: (lotNo: string) => `스캔됨 ${lotNo}`,
     /** 다른 자재를 얹으면 그 뒤로 재고가 있다는 자리에 없다. */
-    mismatch: '이 지시의 LOT 이 아닙니다',
+    mismatch: (lotNo: string) => `이 지시의 LOT 이 아닙니다 — 읽은 값 ${lotNo}`,
   },
   verdict: {
     matched: '권장 위치와 같습니다',
@@ -85,7 +85,7 @@ export const putaway = {
     `수용량 ${capacity} · 현재 ${held} + ${adding}`,
   /** 막지 않는다. 냉장 자리가 없어 상온에 두어야 하는 날이 있다. */
   storageMismatch: (itemCondition: string, locationCondition: string) =>
-    `품목은 ${itemCondition} 보관인데 이 자리는 ${locationCondition} 입니다`,
+    `품목은 ${itemCondition} 보관인데 이 위치는 ${locationCondition} 입니다`,
   /** 건별로 저장하고 마지막에 한 번 마친다. 연속 작업이라 매 건 화면을 끝내면 손이 더 간다. */
   record1: '이 지시 적치',
   done: {

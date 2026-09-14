@@ -9,19 +9,37 @@ import { toApiError } from '../../patterns/request';
  *
  * 이 화면 슬라이스가 소유한다 — 다른 화면 슬라이스의 같은 이름 부품을 참조하지 않는다.
  */
+/**
+ * 서버가 준 글을 **사용자에게 그대로 보여도 되는 자리**인가(#1094).
+ *
+ * ⭐ **검증 계열의 글은 사용자 몫이다** — 「수량이 0보다 커야 합니다」처럼 **무엇을 고치면
+ * 되는지**를 담고, 그것을 삼키면 작업자가 할 일을 알 수 없다(공유계약 A-12).
+ *
+ * ⛔ **그 밖의 상태 코드에서 오는 글은 개발자 몫이다.** 500·404 따위에 실려 오는 문장은
+ * 서버 내부 사정이라, 그대로 내면 **작업자가 할 수 있는 일이 하나도 없는 글**이 화면에 선다.
+ * 실제로 목 서버의 「씨앗에 없는 자원입니다.」가 사용자 화면에 그대로 떴다(88단계 2회차).
+ */
+const KEEPS_USER_TEXT = new Set([400, 409, 422]);
+
 export const describeError = (error: ApiError): string => {
   switch (error.kind) {
     case 'network':
       return messages.httpError.offline;
-    case 'http':
+    case 'http': {
       if (error.status === 403) return messages.httpError.forbidden;
+
+      /* ⛔ 개발자 몫의 글을 화면에 올리지 않는다 — 정해진 안내로 덮는다. */
+      if (!KEEPS_USER_TEXT.has(error.status)) return messages.httpError.description;
+
       return error.message === undefined || error.message === ''
         ? messages.httpError.description
         : error.message;
+    }
     case 'conflict':
       return error.message === '' ? messages.httpError.description : error.message;
     case 'stateLocked':
     case 'validation': {
+      /* 검증 계열은 사용자가 고칠 것을 말한다 — 그대로 보인다. */
       const lines = error.errors.map((item) => item.message).join(' ');
       return lines === '' ? messages.httpError.description : lines;
     }

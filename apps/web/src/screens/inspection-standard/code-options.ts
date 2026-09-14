@@ -26,9 +26,9 @@ export const DEFAULT_PLAN_FILTERS: PlanFilters = {
  * **PQC의 세부 구분(공정·초중종·자주)은 만들지 않는다** — 계약에 담을 자리가 없다.
  */
 export const INSPECTION_TYPE_OPTIONS: SelectOption[] = [
-  { value: 'IQC', label: 'IQC (수입검사)' },
-  { value: 'PQC', label: 'PQC (공정검사)' },
-  { value: 'OQC', label: 'OQC (출하검사)' },
+  { value: 'IQC', label: messages.inspectionStandard.values.inspectionTypes.iqc },
+  { value: 'PQC', label: messages.inspectionStandard.values.inspectionTypes.pqc },
+  { value: 'OQC', label: messages.inspectionStandard.values.inspectionTypes.oqc },
 ];
 
 /**

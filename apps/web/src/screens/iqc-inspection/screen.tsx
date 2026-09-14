@@ -213,6 +213,16 @@ export const IqcInspectionScreen = () => {
    * 새 결과에 없을 수 있다. 두 일을 `toSearchParams` 가 한 자리에서 한다.
    */
   const applyFilters = (next: QueueFilters): void => {
+    // 같은 조건의 '조회'도 사용자가 서버를 다시 보겠다는 명시적 액션이다.
+    // URL/React Query 키가 그대로면 외부 POP가 새로 만든 의뢰가 캐시에 가려진다.
+    if (
+      page === 1 &&
+      next.itemId === filters.itemId &&
+      next.supplierId === filters.supplierId &&
+      next.keyword === filters.keyword
+    ) {
+      void queue.refetch();
+    }
     setSearchParams(toSearchParams(next));
   };
 
@@ -401,7 +411,12 @@ export const IqcInspectionScreen = () => {
     <>
       <PageHeader
         title={t.title}
-        breadcrumb={<Breadcrumb items={[{ label: t.breadcrumbRoot }, { label: t.title }]} />}
+        breadcrumb={
+          <Breadcrumb
+            items={[{ label: t.breadcrumbRoot }, { label: t.title }]}
+            aria-label={messages.common.shell.breadcrumb}
+          />
+        }
       />
 
       <div className="two-pane">

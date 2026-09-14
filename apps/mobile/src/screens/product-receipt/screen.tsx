@@ -14,6 +14,8 @@ import { currentPlantId } from '../../patterns/plant';
 import { useScanField } from '../../patterns/use-scan-field';
 import { useScreenTitle } from '../../patterns/screen-title';
 import { useWorkerSession } from '../../patterns/worker-session';
+import { FailureBanner } from '../../patterns/failure-banner';
+import { useLoadFailure, useQueryErrorOf } from '../../patterns/load-failure';
 import {
   useHandlingUnitByNo,
   useLots,
@@ -52,6 +54,9 @@ type Outcome = 'held' | 'sent' | 'receivedOnly' | 'putawayRejected' | 'rejected'
 
 export const ProductReceiptScreen = () => {
   useScreenTitle(t.title);
+  const failureText = useLoadFailure();
+  /* 확인하지 못한 까닭. 판정 훅은 까닭을 싣지 않아 캐시에서 읽는다. */
+  const stockedError = useQueryErrorOf('product-receipt-stocked');
 
   const { enqueue, flush, isRejected, loaded, pendingOf } = useOutbox();
   const { worker } = useWorkerSession();
@@ -89,7 +94,7 @@ export const ProductReceiptScreen = () => {
   const atLocation = useLocationByCode(warehouseId, scannedLocation);
   const destination = destinationOf(warehouse, atLocation.data ?? null, locations.data ?? []);
 
-  const itemLabels = useItemLabels(lines.length > 0);
+  const itemLabels = useItemLabels(lines.map((line) => line.itemId));
   const plantId = currentPlantId();
 
   /*
@@ -204,7 +209,7 @@ export const ProductReceiptScreen = () => {
 
   const nameOf = (line: DraftLine): string =>
     t.contents.name(
-      itemLabels.data?.get(line.itemId)?.itemCode ?? '',
+      itemLabels.get(line.itemId)?.itemCode ?? '',
       lots.data?.get(line.lotId)?.lotNo ?? String(line.lotId),
     );
 
@@ -346,7 +351,12 @@ export const ProductReceiptScreen = () => {
       <section className="product-receipt__section">
         <h2>{t.warehouse.legend}</h2>
         {warehouses.isPending ? <p role="status">{t.warehouse.loading}</p> : null}
-        {warehouses.isError ? <AlertBanner variant="error" title={t.warehouse.loadFailed} /> : null}
+        {warehouses.isError ? (
+          <FailureBanner
+            variant="error"
+            title={failureText(warehouses.error, t.warehouse.loadFailed)}
+          />
+        ) : null}
         <label htmlFor="product-receipt-warehouse">{t.warehouse.pick}</label>
         <Select
           id="product-receipt-warehouse"
@@ -389,12 +399,14 @@ export const ProductReceiptScreen = () => {
             </Button>
           )}
           {scannedUnit !== null && unit.isPending ? <p role="status">{t.unit.loading}</p> : null}
-          {unit.isError ? <AlertBanner variant="error" title={t.unit.loadFailed} /> : null}
+          {unit.isError ? (
+            <FailureBanner variant="error" title={failureText(unit.error, t.unit.loadFailed)} />
+          ) : null}
           {scannedUnit !== null && unit.data === null ? (
             <AlertBanner variant="error" title={t.unit.notFound(scannedUnit)} />
           ) : null}
           {foundUnit === null ? null : <p>{t.unit.picked(foundUnit.handlingUnitNo)}</p>}
-          {foundUnit !== null && contents.data?.length === 0 ? (
+          {foundUnit !== null && contents.isSuccess && contents.data.length === 0 ? (
             <AlertBanner variant="warning" title={t.unit.empty} />
           ) : null}
         </section>
@@ -412,7 +424,9 @@ export const ProductReceiptScreen = () => {
             ) : null}
             {alreadyStocked.length === 0 && unverified.length > 0 ? (
               <AlertBanner variant="warning" title={t.unverified.title}>
-                {t.unverified.description}
+                {failureText(stockedError, t.unverified.description, {
+                  caution: t.unverified.caution,
+                })}
               </AlertBanner>
             ) : null}
             {lines.map((line, index) => {

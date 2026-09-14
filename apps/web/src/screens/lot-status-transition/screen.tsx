@@ -10,7 +10,12 @@ export const LotStatusTransitionScreen = () => (
   <div className="screen lot-status-transition-screen">
     <PageHeader
       title={t.title}
-      breadcrumb={<Breadcrumb items={[{ label: t.breadcrumbRoot }, { label: t.title }]} />}
+      breadcrumb={
+        <Breadcrumb
+          items={[{ label: t.breadcrumbRoot }, { label: t.title }]}
+          aria-label={messages.common.shell.breadcrumb}
+        />
+      }
     />
     <div className="lot-status-transition-workspace">
       <div className="lot-status-transition-notice-row">

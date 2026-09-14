@@ -27,6 +27,10 @@ export const terminalProcessMap = {
     code: '단말 코드',
     type: '유형',
     status: '상태',
+    registration: '등록 상태',
+    registrationPending: '미등록',
+    registrationComplete: '등록 완료',
+    registrationUnknown: '확인 전',
     equipment: '설비',
     active: '사용',
     inactive: '중지',
@@ -46,14 +50,17 @@ export const terminalProcessMap = {
     codeLocked: '등록한 뒤에는 바꿀 수 없습니다. 키로 쓰입니다.',
     plant: '공장',
     type: '유형',
-    status: '상태',
+    status: '운영 상태',
+    registration: '등록 상태',
+    registrationPending: '미등록',
+    registrationComplete: '등록 완료',
+    registrationUnknown: '확인 전',
     equipment: '설치 설비',
     equipmentNone: '설비에 붙이지 않음',
     /** POP 이 「이 설비」를 전제로 도는 화면들이 이 값을 쓴다. */
     equipmentNote: 'POP 화면이 「이 설비」를 전제로 도는 자리에서 이 값을 씁니다.',
-    /** ⚠ 값 목록이 아직 확정되지 않아 코드를 직접 적는다. */
-    codeListPending:
-      '값 목록이 아직 확정되지 않아 코드를 직접 적습니다. 확정되면 고르는 칸이 됩니다.',
+    codeListPending: '단말 유형 코드를 적으세요.',
+    statusHelp: 'RUNNING 또는 STOPPED를 적으세요.',
     /** 설치 위치는 창고를 먼저 골라야 조회되는 자원이라 이 화면에서 열지 않는다. */
     locationOmitted: '설치 위치는 창고를 먼저 골라야 조회할 수 있어 이 화면에서 다루지 않습니다.',
     save: '저장',
@@ -68,7 +75,7 @@ export const terminalProcessMap = {
     requiredCode: '단말 코드를 적으세요.',
     requiredPlant: '공장을 고르세요.',
     requiredType: '유형 코드를 적으세요.',
-    requiredStatus: '상태 코드를 적으세요.',
+    requiredStatus: '운영 상태 코드를 적으세요.',
     plantLookupFailed: '공장 목록을 불러오지 못해 지금은 고를 수 없습니다.',
     equipmentLookupFailed: '설비 목록을 불러오지 못해 지금은 고를 수 없습니다.',
     lookupTruncated: '목록의 일부만 보입니다. 찾는 것이 없으면 담당자에게 문의하세요.',
@@ -78,19 +85,20 @@ export const terminalProcessMap = {
   token: {
     issue: '등록 토큰 발급',
     title: '단말 등록 토큰',
-    /** ⭐ 기기는 서버를 부르지 않는다 — 이 그림이 유일한 전달 경로다. */
-    lead: '기기의 카메라로 이 그림을 읽어 등록합니다. 기기가 서버를 따로 부르지 않으므로 이 그림이 유일한 전달 경로입니다.',
+    lead: '기기에서 QR을 스캔하거나 등록 코드를 붙여넣으세요. 기기가 서버 확인과 작업자 정보 수신을 마치면 등록 완료로 표시됩니다.',
     /** ⭐ 재발급하면 이전 기기가 끊긴다 — 계약이 세대 번호를 올린다. */
     reissueWarning:
       '재발급하면 이전에 등록한 기기가 모두 끊깁니다. 그 기기들은 다시 등록해야 합니다.',
     imageLabel: '단말 등록용 코드 그림',
+    copy: '등록 코드 복사',
+    copied: '등록 코드를 복사했습니다.',
+    copyFailed: '복사하지 못했습니다. 브라우저의 클립보드 권한을 확인하세요.',
     issuedAt: '발급 시각',
     expiresAt: '만료',
     noExpiry: '만료 없음',
     close: '닫기',
     failed: '등록 토큰을 발급하지 못했습니다. 다시 시도해 주세요.',
-    /** ⛔ 토큰 글자를 화면에 적지 않는다 — 그림으로만 넘긴다. */
-    textOmitted: '토큰 글자는 화면에 적지 않습니다. 그림으로만 넘어갑니다.',
+    textOmitted: '등록 코드는 화면에 표시하지 않습니다. QR을 스캔하거나 복사해 기기에 붙여넣으세요.',
   },
 
   grid: {

@@ -9,6 +9,7 @@
  */
 import userEvent from '@testing-library/user-event';
 
+import { PopIdentityProvider, UNKNOWN_POP_IDENTITY } from '../../patterns/pop-identity';
 import { jsonResponse, renderWithProviders, type StubFetch } from '../../test/api-harness';
 import { EmergencyWorkOrderFieldScreen } from './screen';
 
@@ -85,13 +86,17 @@ const stub = (options: StubOptions = {}): { urls: string[]; fetch: StubFetch } =
   return { urls, fetch };
 };
 
-export const renderScreen = (options: StubOptions & { typeCode?: string } = {}) => {
-  const { typeCode, ...stubOptions } = options;
+export const renderScreen = (
+  options: StubOptions & { typeCode?: string; terminalId?: number } = {},
+) => {
+  const { typeCode, terminalId, ...stubOptions } = options;
   const stubbed = stub(stubOptions);
-  const rendered = renderWithProviders(<EmergencyWorkOrderFieldScreen typeCode={typeCode} />, {
-    fetch: stubbed.fetch,
-    route: '/pop/emergency-work-orders',
-  });
+  const rendered = renderWithProviders(
+    <PopIdentityProvider value={{ ...UNKNOWN_POP_IDENTITY, terminalId: terminalId ?? null }}>
+      <EmergencyWorkOrderFieldScreen typeCode={typeCode} />
+    </PopIdentityProvider>,
+    { fetch: stubbed.fetch, route: '/pop/emergency-work-orders' },
+  );
 
   return { ...rendered, urls: stubbed.urls, user: userEvent.setup() };
 };

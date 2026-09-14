@@ -8,10 +8,14 @@ import { useBackStep } from '../../patterns/back-step';
 import { displayNameOf, useCodeValues } from '../../patterns/code-values';
 import { useScannedLot } from '../../patterns/lots';
 import { useItem, useUomCodes } from '../../patterns/masters';
+import { formatMaterialLotNo } from '../../patterns/material-lot-no';
 import { useOutbox } from '../../patterns/outbox';
+import { ScanReplaceDialog } from '../../patterns/scan-replace-dialog';
 import { useScanField } from '../../patterns/use-scan-field';
 import { useScreenTitle } from '../../patterns/screen-title';
 import { useWorkerSession } from '../../patterns/worker-session';
+import { FailureBanner } from '../../patterns/failure-banner';
+import { useLoadFailure } from '../../patterns/load-failure';
 import {
   APPROVAL_REQUEST_STATUS,
   useMyRequests,
@@ -62,7 +66,9 @@ const MyRequests = ({
              * 아직 못 받았으면 코드로 물러나되 지어내지는 않는다.
              */}
             <Chip>{displayNameOf(statuses, request.statusCode)}</Chip>
-            <span className="iqc-skip__request-name">{request.target.displayName}</span>
+            <span className="iqc-skip__request-name">
+              {formatMaterialLotNo(request.target.displayName)}
+            </span>
             <span className="iqc-skip__request-when">
               {t.mine.requestedAt(when(request.requestedAt))}
             </span>
@@ -75,6 +81,7 @@ const MyRequests = ({
 
 export const IqcSkipRequestScreen = () => {
   useScreenTitle(t.title);
+  const failureText = useLoadFailure();
 
   const { countPending, enqueue, flush, isRejected } = useOutbox();
   const { worker } = useWorkerSession();
@@ -91,7 +98,21 @@ export const IqcSkipRequestScreen = () => {
   const [noRoute, setNoRoute] = useState(false);
   const reasonSection = useRef<HTMLDivElement | null>(null);
 
-  const scanField = useScanField({ onScan: setScanned });
+  /*
+   * 새 LOT 을 받으면 적어 둔 것을 비운다. 사유는 이 LOT 을 왜 급히 써야 하는가를 적는 자리라
+   * 앞 LOT 을 위해 쓴 글이 다른 LOT 의 요청으로 올라간다 - 승인자는 그 사유만 보고 판단한다.
+   *
+   * 같은 LOT 을 다시 댄 것은 바꾸는 것이 아니므로 훅이 여기까지 오지 않는다.
+   */
+  const scanField = useScanField({
+    applied: scanned,
+    onScan: (value) => {
+      setScanned(value);
+      setReason('');
+      setNoRoute(false);
+      setSaveFailed(false);
+    },
+  });
 
   const lot = useScannedLot(scanned);
   const found = lot.data ?? null;
@@ -244,12 +265,12 @@ export const IqcSkipRequestScreen = () => {
         {lot.isPending && scanned !== null ? <p role="status">{t.lot.loading}</p> : null}
         {lot.isError ? <AlertBanner variant="error" title={t.lot.loadFailed} /> : null}
         {scanned !== null && !lot.isPending && found === null && !lot.isError ? (
-          <AlertBanner variant="warning" title={t.lot.notFound(scanned)} />
+          <AlertBanner variant="warning" title={t.lot.notFound(formatMaterialLotNo(scanned))} />
         ) : null}
         {found === null ? null : (
           <Card bordered>
             <Card.Body className="card-body iqc-skip__lot">
-              <strong>{found.lotNo}</strong>
+              <strong>{formatMaterialLotNo(found.lotNo)}</strong>
               {item.data === undefined ? null : (
                 <span>{`${item.data.itemCode} ${item.data.itemName}`}</span>
               )}
@@ -315,12 +336,16 @@ export const IqcSkipRequestScreen = () => {
         <h2>{t.mine.legend}</h2>
         {worker === null ? <p>{t.mine.noWorker}</p> : null}
         {worker !== null && mine.isPending ? <p role="status">{t.mine.loading}</p> : null}
-        {mine.isError ? <AlertBanner variant="warning" title={t.mine.loadFailed} /> : null}
+        {mine.isError ? (
+          <FailureBanner variant="warning" title={failureText(mine.error, t.mine.loadFailed)} />
+        ) : null}
         {mine.data === undefined || mine.data.length > 0 ? null : <p>{t.mine.empty}</p>}
         {mine.data === undefined ? null : (
           <MyRequests requests={mine.data} statuses={statuses.data ?? []} />
         )}
       </section>
+
+      <ScanReplaceDialog field={scanField} format={formatMaterialLotNo} />
     </div>
   );
 };

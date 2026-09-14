@@ -11,10 +11,12 @@ import { useLocation } from '../../patterns/locations';
 import { useItemLabels } from '../../patterns/masters';
 import { useOnlineStatus } from '../../patterns/online-status';
 import { useOutbox } from '../../patterns/outbox';
-import { toApiError } from '../../patterns/request';
+import { ScanReplaceDialog } from '../../patterns/scan-replace-dialog';
 import { useScanField } from '../../patterns/use-scan-field';
 import { useScreenTitle } from '../../patterns/screen-title';
 import { useWorkerSession } from '../../patterns/worker-session';
+import { FailureBanner } from '../../patterns/failure-banner';
+import { useLoadFailure, useQueryErrorOf } from '../../patterns/load-failure';
 import {
   useAlreadyReceived,
   useHopperStock,
@@ -56,6 +58,9 @@ const VARIANCE_REASON = 'VARIANCE_REASON';
 
 export const ShopfloorReceiptScreen = () => {
   useScreenTitle(t.title);
+  const failureText = useLoadFailure();
+  /* 확인하지 못한 까닭. 판정 훅은 까닭을 싣지 않아 캐시에서 읽는다. */
+  const receivedError = useQueryErrorOf('shopfloor-receipt-existing');
 
   const { enqueue, flush, isRejected, loaded, pendingOf } = useOutbox();
   const { worker } = useWorkerSession();
@@ -74,7 +79,6 @@ export const ShopfloorReceiptScreen = () => {
   const issue = found.data ?? null;
   const received = useAlreadyReceived(issue?.issue.goodsIssueId ?? null);
 
-  const itemLabels = useItemLabels(issue !== null);
   const lotLabels = useLineLotLabels(issue?.lines ?? []);
   const reasons = useCodeValues(VARIANCE_REASON);
   /*
@@ -141,6 +145,12 @@ export const ShopfloorReceiptScreen = () => {
   const hopperLocationId = hopperLocationOf(equipment);
   const hopper = useLocation(hopperLocationId);
   const hopperStock = useHopperStock(hopperLocationId);
+
+  /* 호퍼 잔량의 품목도 함께 묻는다 - 전표에 없는 품목이 섞여 있어 그 줄만 대리키로 남는다. */
+  const itemLabels = useItemLabels([
+    ...(issue?.lines ?? []).map((line) => line.itemId),
+    ...(hopperStock.data ?? []).map((stock) => stock.itemId),
+  ]);
   const stocks = hopperStock.data ?? [];
   /*
    * 사유는 고객이 늘리는 값이라 화면이 박지 않는다. 서버가 모른다고 답하면 막는다 - 지어낸
@@ -199,10 +209,21 @@ export const ShopfloorReceiptScreen = () => {
   const [hopperKeypadFor, setHopperKeypadFor] = useState<number | null>(null);
 
   const scanField = useScanField({
+    applied: scanned,
     onScan: (value) => {
       setScanned(value.trim());
       /* 같은 라벨을 다시 스캔한 것도 한 회차다. 값만 보면 두 번째 스캔이 조용히 지나간다. */
       setScanSeq((seq) => seq + 1);
+
+      /*
+       * 전표가 바뀌면 호퍼 쪽도 비운다. 수령 수량은 전표가 바뀌면 다시 만들어지는데 여기만
+       * 남아, 앞 전표를 보며 고른 설비와 잰 값이 다른 전표의 작업으로 이어진다.
+       */
+      setEquipmentId(null);
+      setMeasured({});
+      setHopperOutcome(null);
+      setHopperSaveFailed(false);
+      setSaveFailed(false);
     },
   });
 
@@ -230,7 +251,7 @@ export const ShopfloorReceiptScreen = () => {
   });
 
   const nameOf = (line: DraftLine): string => {
-    const item = itemLabels.data?.get(line.itemId);
+    const item = itemLabels.get(line.itemId);
     const lotNo = lotLabels.get(line.lotId) ?? String(line.lotId);
 
     return t.lines.name(item === undefined ? '' : item.itemCode, lotNo);
@@ -346,7 +367,9 @@ export const ShopfloorReceiptScreen = () => {
         </Button>
 
         {scanned !== null && found.isPending ? <p role="status">{t.issue.loading}</p> : null}
-        {found.isError ? <AlertBanner variant="error" title={t.issue.loadFailed} /> : null}
+        {found.isError ? (
+          <FailureBanner variant="error" title={failureText(found.error, t.issue.loadFailed)} />
+        ) : null}
         {scanned !== null && found.data === null ? (
           <AlertBanner variant="error" title={t.issue.notFound(scanned)} />
         ) : null}
@@ -363,9 +386,9 @@ export const ShopfloorReceiptScreen = () => {
               )}
               {destination.isError ? (
                 <p className="shopfloor-receipt__note">
-                  {toApiError(destination.error).kind === 'network'
-                    ? t.issue.destinationOffline
-                    : t.issue.destinationUnknown}
+                  {failureText(destination.error, t.issue.destinationOffline, {
+                    other: t.issue.destinationUnknown,
+                  })}
                 </p>
               ) : null}
               {issue.lines.length === 0 ? <p>{t.issue.empty}</p> : null}
@@ -390,7 +413,9 @@ export const ShopfloorReceiptScreen = () => {
         */}
         {received === 'unknown' && issue !== null ? (
           <AlertBanner variant="warning" title={t.unverified.title}>
-            {t.unverified.description}
+            {failureText(receivedError, t.unverified.description, {
+              caution: t.unverified.caution,
+            })}
           </AlertBanner>
         ) : null}
       </section>
@@ -506,7 +531,10 @@ export const ShopfloorReceiptScreen = () => {
             <h2>{t.hopper.legend}</h2>
             {equipments.isPending ? <p role="status">{t.hopper.loading}</p> : null}
             {equipments.isError ? (
-              <AlertBanner variant="error" title={t.hopper.loadFailed} />
+              <FailureBanner
+                variant="error"
+                title={failureText(equipments.error, t.hopper.loadFailed)}
+              />
             ) : null}
             {equipments.data === undefined ? null : (
               <div className="shopfloor-receipt__field">
@@ -538,7 +566,10 @@ export const ShopfloorReceiptScreen = () => {
               <p role="status">{t.hopper.stockLoading}</p>
             ) : null}
             {hopperStock.isError ? (
-              <AlertBanner variant="error" title={t.hopper.stockFailed} />
+              <FailureBanner
+                variant="error"
+                title={failureText(hopperStock.error, t.hopper.stockFailed)}
+              />
             ) : null}
             {hopperStock.isSuccess && stocks.length === 0 ? (
               <p className="shopfloor-receipt__note">{t.hopper.empty}</p>
@@ -547,7 +578,7 @@ export const ShopfloorReceiptScreen = () => {
             {stocks.map((stock) => {
               const value = measured[stock.itemId] ?? '';
               const problem = measureProblemOf(value);
-              const item = itemLabels.data?.get(stock.itemId);
+              const item = itemLabels.get(stock.itemId);
               const name = item === undefined ? String(stock.itemId) : item.itemCode;
 
               return (
@@ -631,6 +662,8 @@ export const ShopfloorReceiptScreen = () => {
           </div>
         </>
       )}
+
+      <ScanReplaceDialog field={scanField} />
     </div>
   );
 };

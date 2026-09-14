@@ -163,6 +163,9 @@ export const routing = {
     draft: '작성중',
     confirmed: '확정',
     obsolete: '폐기',
+    /** 공정 마스터의 사용여부. 표의 칸과 편집 폼이 같은 말을 써야 두 자리가 갈리지 않는다. */
+    active: '사용',
+    inactive: '미사용',
     none: '없음',
     empty: '—',
     inactiveSuffix: ' (미사용)',

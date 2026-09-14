@@ -198,6 +198,7 @@ describe('production plan maintain mutations', () => {
     );
     expect(result.current.mutation.error).toEqual({
       kind: 'validation',
+      status: 400,
       errors: [{ scope: 'screen', code: 'PLAN_CONFLICT', message: 'Synthetic plan error' }],
     });
     expect(onSuccess).not.toHaveBeenCalled();
@@ -261,6 +262,7 @@ describe('production plan maintain mutations', () => {
     await waitFor(() =>
       expect(result.current.mutation.error).toEqual({
         kind: 'conflict',
+        status: 409,
         cause: 'user',
         message: 'Synthetic concurrent edit',
       }),

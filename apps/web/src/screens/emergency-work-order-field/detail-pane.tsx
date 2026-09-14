@@ -97,7 +97,7 @@ export const DetailPane = ({ workOrder, uomLabel }: DetailPaneProps) => {
             <Button size="2xl" variant="filled" disabled>
               {handoff.materialInput}
             </Button>
-            <Button size="2xl" variant="tonal" disabled>
+            <Button size="2xl" variant="filled" disabled>
               {handoff.productionResult}
             </Button>
           </>
@@ -109,7 +109,7 @@ export const DetailPane = ({ workOrder, uomLabel }: DetailPaneProps) => {
               </Button>
             </Link>
             <Link to={toWorkOrderHref(PRODUCTION_RESULT_PATH, workOrder.workOrderId)}>
-              <Button size="2xl" variant="tonal">
+              <Button size="2xl" variant="filled">
                 {handoff.productionResult}
               </Button>
             </Link>

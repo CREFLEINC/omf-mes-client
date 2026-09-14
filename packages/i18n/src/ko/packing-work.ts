@@ -37,6 +37,14 @@ export const packingWork = {
     submit: '담기',
     manualEntry: '직접 입력',
     quantityLabel: '수량',
+    /*
+     * 화면 내장 숫자 키패드(D-4). ⛔ **운영체제 키보드에 기대지 않는다** — 현장 POP 은
+     * 키오스크로 잠겨 있어 키보드가 뜨지 않고, 그러면 이 칸에 입력 수단이 아예 없다.
+     */
+    keypadLabel: '수량 키패드',
+    keypadBackspace: '한 자 지움',
+    keypadClear: '지움',
+    keypadDecimal: '소수점',
     unknownLot: '포장 대상 목록에 없는 LOT 입니다. 이 작업지시의 완료 LOT 만 담을 수 있습니다.',
     quantityRequired: '수량을 넣으십시오.',
     quantityPositive: '수량은 0보다 커야 합니다.',

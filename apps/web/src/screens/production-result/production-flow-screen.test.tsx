@@ -1,5 +1,5 @@
 import { messages } from '@omf-mes/i18n';
-import { screen, waitFor } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -191,15 +191,26 @@ const routes = (writes: Request[]): StubRoute[] => [
   },
 ];
 
-const renderScreen = (writes: Request[], extraRoutes: StubRoute[] = []) =>
+const renderScreen = (
+  writes: Request[],
+  extraRoutes: StubRoute[] = [],
+  options: { workerNo?: string | null; route?: string } = {},
+) =>
   renderWithProviders(
     <PopIdentityProvider
-      value={{ terminalId: 10, processes: [{ processId: 20 }], workerNo: '100029' }}
+      value={{
+        terminalId: 10,
+        processes: [{ processId: 20 }],
+        equipment: null,
+        workerNo: options.workerNo === undefined ? '100029' : options.workerNo,
+      }}
     >
       <ProductionFlowScreen />
     </PopIdentityProvider>,
     {
-      route: `/pop/production-result?workOrderId=${String(WORK_ORDER_ID)}&workerNo=100029`,
+      route:
+        options.route ??
+        `/pop/production-result?workOrderId=${String(WORK_ORDER_ID)}&workerNo=100029`,
       fetch: createStubFetch([...extraRoutes, ...routes(writes)]),
     },
   );
@@ -944,5 +955,71 @@ describe('ProductionFlowScreen — 잔여수량 초과', () => {
 
     await user.click(output);
     await waitFor(() => expect(savedCount(writes)).toBe(1));
+  });
+
+  /**
+   * ⛔ **「모른다」의 이유 셋을 한 문장으로 덮지 않는다**(#1094). 작업지시가 없는 것 · 아직
+   * 안 물어본 것 · 물어봤는데 실패한 것은 작업자가 할 일이 다르다.
+   */
+  it('작업지시를 못 받았으면 잔여수량이 왜 없는지 그 사유로 말한다', async () => {
+    renderScreen([], [], { route: '/pop/production-result' });
+
+    expect(await screen.findByText(t.quantity.remainingNoWorkOrder)).toBeInTheDocument();
+    expect(screen.queryByText(t.quantity.remainingUnknown)).not.toBeInTheDocument();
+  });
+
+  /* 공통 [화면 이동]으로 오면 작업지시가 없다 — 할 일까지 말해야 고장으로 읽히지 않는다(#1151). */
+  it('작업지시 없이 들어오면 작업 시작 화면에서 고르라고 안내한다', async () => {
+    renderScreen([], [], { route: '/pop/production-result' });
+
+    expect(await screen.findByText(t.entry.missingWorkOrder)).toBeInTheDocument();
+  });
+
+  it('작업지시를 받고 들어오면 그 안내를 세우지 않는다', async () => {
+    renderScreen([]);
+
+    await screen.findByText(/WO-SYN-001/u);
+
+    expect(screen.queryByText(t.entry.missingWorkOrder)).not.toBeInTheDocument();
+  });
+});
+
+/* 긴급 W/O 에서 넘어오면 긴급 표식이 머리줄에 남는다(`P-02-12` §5-1 · #1147). */
+describe('ProductionFlowScreen — 긴급 표식', () => {
+  const emergencyWorkOrder: StubRoute = {
+    match: (request) => pathOf(request) === `/production/work-orders/${String(WORK_ORDER_ID)}`,
+    respond: () =>
+      jsonResponse({
+        workOrderId: WORK_ORDER_ID,
+        workOrderNo: 'WO-SYN-001',
+        productionOrderId: 1,
+        productionOrderNo: 'ERP-SYN-001',
+        productionPlanId: 1,
+        routingOperationId: 1,
+        itemId: 101,
+        itemCode: 'ITEM-SYN-01',
+        orderQty: 12,
+        uomId: 1,
+        workOrderTypeCode: 'EMERGENCY',
+        statusCode: 'IN_PROGRESS',
+        priorityNo: 1,
+        progress: { goodQty: 0, varianceQty: 12 },
+      }),
+  };
+
+  const header = (): HTMLElement => screen.getAllByRole('banner')[0] as HTMLElement;
+
+  it('긴급 작업지시면 머리줄에 긴급을 세운다', async () => {
+    renderScreen([], [emergencyWorkOrder]);
+
+    expect(await within(header()).findByText(t.flow.header.emergency)).toBeInTheDocument();
+  });
+
+  it('긴급이 아니면 세우지 않는다', async () => {
+    renderScreen([]);
+
+    await within(header()).findByText(/WO-SYN-001/);
+
+    expect(within(header()).queryByText(t.flow.header.emergency)).not.toBeInTheDocument();
   });
 });

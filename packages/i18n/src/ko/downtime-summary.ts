@@ -77,6 +77,18 @@ export const downtimeSummary = {
     unitCount: '건',
   },
 
+  /**
+   * 분을 「H시간 M분」으로 곁들여 읽는 꼴. **분 표기를 대체하지 않고 곁들인다** — 원래 값이
+   * 분이므로 그 수는 그대로 두고 읽기를 돕는다.
+   *
+   * ⛔ 60분 미만이면 시간 칸을 만들지 않는다(「0시간 32분」은 시간 칸이 있다는 오해를 준다).
+   */
+  duration: {
+    minutesOnly: (minutes: string): string => `${minutes}분`,
+    hoursOnly: (hours: string): string => `${hours}시간`,
+    hoursMinutes: (hours: string, minutes: string): string => `${hours}시간 ${minutes}분`,
+  },
+
   tabs: {
     reason: '사유별',
     equipment: '설비별',

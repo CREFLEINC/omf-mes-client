@@ -4,10 +4,7 @@ import { messages } from '@omf-mes/i18n';
 export interface PopHeaderProps {
   /** 표제와 본문을 잇는 id. 셸이 없는 화면이라 표제가 본문의 이름이 된다. */
   titleId: string;
-  /**
-   * 이 단말의 번호. **셸이 아는 값**이라 화면은 받기만 한다 — 채우는 곳이 아직 없어 기본은
-   * 「모른다」다.
-   */
+  /** 이 단말의 번호. **셸이 아는 값**이라 화면은 받기만 한다 — 모르면 「모른다」다. */
   terminalNo?: string;
   /**
    * 서버에 닿았는가. **아직 모르면 `undefined`** — 그때는 아무 말도 하지 않는다.

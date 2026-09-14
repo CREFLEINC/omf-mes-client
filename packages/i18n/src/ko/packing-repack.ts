@@ -38,6 +38,8 @@ export const packingRepack = {
   unverified: {
     title: (numbers: string) => `${numbers} 의 출하 배분 여부를 확인하지 못했습니다`,
     description: '연결된 뒤에 다시 확인하세요. 이미 배분된 포장이면 재구성 전송이 실패합니다.',
+    /** 연결이 아닌 이유로 확인하지 못했을 때 그 이유 뒤에 붙인다. */
+    caution: '이미 배분된 포장이면 재구성 전송이 실패합니다.',
   },
   type: {
     legend: '재구성 유형',

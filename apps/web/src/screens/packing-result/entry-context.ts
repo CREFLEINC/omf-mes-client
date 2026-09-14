@@ -54,6 +54,8 @@ export const mergeIdentity = (
    *    단말 번호의 주소 대체는 개발 확인용으로 남겨 둔다 — 그쪽은 판정이 아니라 조회 축이다.
    */
   processes: identity.processes,
+  /* 설비는 단말이 정한다 — 주소로 덮지 않는다(#1149 · 공정과 같은 이유). */
+  equipment: identity.equipment,
   workerNo:
     identity.workerNo ?? parseWorkerNo(sessionWorkerNo) ?? parseWorkerNo(params.get('workerNo')),
 });

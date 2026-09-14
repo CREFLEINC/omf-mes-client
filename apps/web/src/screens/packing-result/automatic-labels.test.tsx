@@ -11,8 +11,8 @@ import { AutomaticLabels, type AutomaticLabelRun } from './automatic-labels';
 const t = messages.packingResult.automaticLabels;
 
 /*
- * ⛔ `shipmentRequestNo`·`customerName`·`shippingInspectionStatusCode` 를 더는 싣지 않는다 —
- * 셋 다 계약에서 빠졌다(2026-09-11 전달본). 이 시험은 애초에 그 값을 읽지도 않았다.
+ * 현행 배분 응답은 목표 선택 필드 `shippingInspectionStatusCode`를 생략한다.
+ * 이 흐름은 서버가 준 `oqcPassed`만 발행 조건으로 사용한다.
  */
 const allocation = (id: number, oqcPassed: boolean) => ({
   shipmentLotAllocationId: id,
@@ -45,23 +45,10 @@ afterEach(() => {
 
 describe('AutomaticLabels', () => {
   /*
-   * ⚠ **동작이 바뀌었다.** 이 시험은 원래 「포장 라벨 뒤 OQC 통과 납품 라벨도 함께 낸다」였다.
-   *
-   * ① `shipping-packing-label/codes.ts` 의 `DELIVERY_LABEL_ISSUE_LOCKED` 가 서버 결정
-   *    (대응표 P1 「공용 문서 발행」· I-27 마감 결정 — `DELIVERY_LABEL` 은 항상 422
-   *    `INVALID`)을 반영해 참으로 잠긴 뒤, 자동 출력도 `deliveryRows` 를 비워 납품 라벨
-   *    발행 자체를 시도하지 않는다(`automatic-labels.tsx`). `POST /app/document-issues`
-   *    는 포장 라벨 한 번만 나가는 것이 이제 맞는 동작이다.
-   *
-   * ② **포장 라벨도 인쇄까지 이어지지 않는다** — 이건 ①과 별개로, `GET
-   *    /app/document-issues/{id}/rendition` 경로 자체가 서버에 없다(대응표 P1 「미구현
-   *    5건」· `patterns/pop-label-rendition` 머리말). 그림을 받는 걸음이 셸을 보기도
-   *    전에 막혀 `shipping-packing-label/issue-flow.test.tsx` 의 같은 시험들과 같은
-   *    사유로 멈춘다 — Electron 인쇄 통로(`window.pop.rendition.save`)는 아예 불리지
-   *    않는다. 그래서 이 시험은 «발행 요청이 무엇을 실었는가»와 «셸을 부르지 않았는가»만
-   *    잰다.
+   * 포장 라벨 렌더링은 이 배포 흐름에서 아직 막혀 있다. 따라서 포장 라벨 발행 뒤
+   * 실패 상태가 되고, 뒤따르는 납품 라벨 발행 단계에는 도달하지 않는다.
    */
-  it('납품 라벨은 발행 자체를 시도하지 않는다 — 포장 라벨도 그림을 받지 못해 인쇄로 가지 못한다', async () => {
+  it('포장 라벨 그림을 받지 못하면 이어지는 납품 라벨 발행에 진입하지 않는다', async () => {
     const issued: string[] = [];
     const save = vi.fn(async () => 'syn://printed');
     Object.defineProperty(window, 'pop', {
@@ -134,10 +121,8 @@ describe('AutomaticLabels', () => {
           },
           {
             /*
-             * ⛔ **닿을 일이 없다.** 그림을 받는 걸음이 `client.GET` 을 아예 부르지 않고
-             * `LabelRenditionNotReadyError` 로 곧바로 거부한다(`shipping-packing-label/
-             * mutations.ts` 의 `fetchRendition`). 스텁은 그대로 두어, 서버가 이 경로를
-             * 구현해 되돌릴 때 이 목도 다시 살아나게 한다.
+             * 포장 라벨은 배포 렌더링을 요청하기 전에 멈춘다. 납품 라벨용 렌더링
+             * 스텁은 그 후속 단계가 이 시험에서 실행되지 않음을 확인한다.
              */
             match: (request) => new URL(request.url).pathname.endsWith('/rendition'),
             respond: () => new Response(new Uint8Array([1, 2, 3])),
@@ -156,7 +141,7 @@ describe('AutomaticLabels', () => {
     await waitFor(() => {
       expect(issued).toEqual(['PACKING_LABEL']);
     });
-    /* ⛔ 납품 라벨은 절대 요청되지 않는다 — 잠긴 문서 유형을 서버에 묻지 않는다. */
+    /* 앞 단계 포장 라벨 실패로 납품 라벨 후속 발행에는 도달하지 않는다. */
     expect(issued).not.toContain('DELIVERY_LABEL');
     /* ⛔ 그림을 받지 못했으니 셸까지 넘어가지 않는다. */
     expect(save).not.toHaveBeenCalled();

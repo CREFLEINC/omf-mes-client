@@ -102,6 +102,11 @@ export const HandlingUnitPane = ({
     ) : (
       // ⛔ 표에 이름표(caption)를 다시 달지 않는다 — 바로 위 「내용물 · LOT n건」이 같은 말이다.
       <Table
+        /*
+         * ⛔ **긴 LOT 이 품목·수량 열을 밀어내지 못하게 한다**(#1092 — 출고 QR·포장 라벨
+         *    재출력과 같은 사유·같은 처리). 겨냥할 이름이 있어야 폭을 못박을 수 있다.
+         */
+        className="pop-repack-contents"
         columns={columns}
         rows={[...rows]}
         getRowId={(row) => String(row.handlingUnitContentId)}

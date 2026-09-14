@@ -10,6 +10,7 @@ import {
   renderWithProviders,
   type StubRoute,
 } from '../../test/api-harness';
+import { itemRoutes } from '../../test/master-routes';
 import { runBackStep } from '../../patterns/back-step';
 import { useWorkerSession } from '../../patterns/worker-session';
 import { PackingRepackScreen } from './screen';
@@ -152,17 +153,13 @@ const routes = (options: Options = {}): StubRoute[] => {
         });
       },
     },
-    {
-      match: (req) => new URL(req.url).pathname === '/mdm/items',
-      respond: () =>
-        jsonResponse({
-          items: [
-            { itemId: 100, itemCode: 'FG-1001', itemName: '외장 커버', fifoPolicyCode: 'FEFO' },
-            { itemId: 101, itemCode: 'FG-2002', itemName: '내장 커버', fifoPolicyCode: 'FEFO' },
-          ],
-          page,
-        }),
-    },
+    ...itemRoutes(
+      [
+        { itemId: 100, itemCode: 'FG-1001', itemName: '외장 커버', fifoPolicyCode: 'FEFO' },
+        { itemId: 101, itemCode: 'FG-2002', itemName: '내장 커버', fifoPolicyCode: 'FEFO' },
+      ],
+      page,
+    ),
     {
       match: (req) => new URL(req.url).pathname === '/mdm/uoms',
       respond: () => jsonResponse({ items: [{ uomId: 9, uomCode: 'EA' }], page }),

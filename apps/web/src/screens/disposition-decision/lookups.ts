@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
 import type { LookupEntry, LookupSource } from '../../patterns/lookup-display';
+import { masterName } from '../../patterns/master-name';
 import { runRequest } from '../../patterns/request';
 import { NONCONFORMANCE_STATUS_CODE_GROUP, SEVERITY_CODE_GROUP } from './disposition-codes';
 import type { PageMeta } from './types';
@@ -29,13 +30,13 @@ const toLookup = (
 const nameOr = (value: string): string =>
   value.trim() === '' ? messages.common.reference.unknown : value;
 
-/** 코드값 표시명 — 다국어 컬럼이 먼저, 기본 이름이 fallback, 둘 다 비면 코드(G-33). 로케일 스위치 전이라 한국어만 본다. */
-const codeLabelOf = (value: { code: string; codeName: string; nameKo?: string | null }): string => {
-  const localized = (value.nameKo ?? '').trim();
-  if (localized !== '') return localized;
-  const base = value.codeName.trim();
-  return base === '' ? value.code : base;
-};
+/** 코드값 표시명 — 고른 언어의 다국어 컬럼이 먼저, 기본 이름이 fallback, 둘 다 비면 코드(G-33). */
+const codeLabelOf = (value: {
+  code: string;
+  codeName: string;
+  nameKo?: string | null;
+  nameVi?: string | null;
+}): string => masterName(value, value.codeName.trim() || value.code);
 
 /**
  * 심각도·상태의 공통코드 조회(G-32). 비활성 값도 받는다 — 목록 셀은 지난 값의 이름도 보여야 하고,

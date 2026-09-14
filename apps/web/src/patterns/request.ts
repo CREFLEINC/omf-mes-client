@@ -19,11 +19,24 @@ const NO_HTTP_STATUS = 0;
  */
 export class ApiRequestError extends Error {
   readonly apiError: ApiError;
+  /**
+   * 정규화 **전**의 HTTP 상태. 응답이 없었으면 `undefined` 다.
+   *
+   * ⭐ **`apiError` 에서 사라지는 값이라 여기 남긴다.** 서버가 4xx 를 계약 오류 봉투
+   * (`errors[]`)에 담아 보내면 정규화가 그것을 `validation`·`stateLocked` 로 접으면서
+   * 상태 코드를 버린다(401·5xx·429·408 만 앞세워 지킨다). 그래서 「403 이면 남의 것」 같은
+   * 판정이 **한 번도 서지 못한 채** 조용히 죽어 있었다(리뷰 지적 · #999).
+   *
+   * ⛔ **이것으로 갈래를 새로 만들지 않는다.** 화면의 `switch (error.kind)` 는 그대로다 —
+   *    상태 코드가 꼭 필요한 자리만 이 값을 «덧대어» 본다.
+   */
+  readonly httpStatus: number | undefined;
 
-  constructor(apiError: ApiError, options?: ErrorOptions) {
+  constructor(apiError: ApiError, options?: ErrorOptions & { httpStatus?: number }) {
     super(`API 요청 실패 (${apiError.kind})`, options);
     this.name = 'ApiRequestError';
     this.apiError = apiError;
+    this.httpStatus = options?.httpStatus;
   }
 }
 
@@ -55,7 +68,9 @@ export const runRequestWithResponse = async <TData>(
   }
 
   if (!result.response.ok) {
-    throw new ApiRequestError(normalizeApiError(result.response.status, result.error));
+    throw new ApiRequestError(normalizeApiError(result.response.status, result.error), {
+      httpStatus: result.response.status,
+    });
   }
 
   // 본문 없는 200(사용 중지 등)에서는 data가 undefined이며 그 자체가 정상 결과다.

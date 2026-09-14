@@ -25,7 +25,7 @@ export interface ProgressListQuery {
   statusCode?: string;
   productionOrderId?: number;
   q?: string;
-  sort: string;
+  sort: ReturnType<typeof toSortParam>;
   page?: number;
   size: number;
   /** 실적 누계를 함께 받는다 — 목록의 양품·불량·달성률이 여기서 온다. */

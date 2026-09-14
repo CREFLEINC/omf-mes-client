@@ -154,6 +154,7 @@ export const WarehouseListPane = ({
           value={draft.q}
           onChange={(event) => setDraft((prev) => ({ ...prev, q: event.target.value }))}
           onSearch={(value) => onApplyFilters({ ...draft, q: value })}
+          clearLabel={messages.common.clear}
         />
         <div className="field-cell">
           <label className="field-label" htmlFor={typeSelectId}>

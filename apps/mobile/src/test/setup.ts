@@ -1,6 +1,8 @@
 import '@testing-library/jest-dom/vitest';
 import { cleanup, configure } from '@testing-library/react';
-import { afterEach } from 'vitest';
+import { afterEach, beforeEach } from 'vitest';
+
+import { noteServerAnswered } from '../patterns/online-status';
 
 /*
  * findBy 의 기본 기다림 1초는 전체 시험을 한꺼번에 돌릴 때 모자란다. 파일 61개가 나란히
@@ -15,6 +17,14 @@ configure({ asyncUtilTimeout: 5000 });
 // 켜지 않는다. 없으면 이전 테스트의 DOM 이 남아 랜드마크 조회가 중복으로 잡힌다.
 afterEach(() => {
   cleanup();
+});
+
+/*
+ * 연결 표시는 마지막 요청이 답을 받았는지를 모듈 하나에 들고 있다. 스텁에 없는 요청은
+ * 던지므로 한 시험의 실패가 다음 시험까지 오프라인으로 물들인다 - 회차마다 되돌린다.
+ */
+beforeEach(() => {
+  noteServerAnswered();
 });
 
 /*

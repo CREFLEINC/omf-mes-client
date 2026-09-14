@@ -1,6 +1,7 @@
 import { createContext, use, useCallback, useEffect, useState, type ReactNode } from 'react';
 
 import { clearDeviceToken, readDeviceToken, writeDeviceToken } from './device-token';
+import { forgetPlant, readPlantId } from './plant';
 
 export type RegistrationStatus = 'loading' | 'unregistered' | 'registered';
 
@@ -34,6 +35,15 @@ export const DeviceRegistrationProvider = ({ children }: { children: ReactNode }
     // 읽지 못한 것은 등록을 증명하지 못한 것이다. 다시 등록을 청하는 쪽이 안전하다.
     void readDeviceToken()
       .catch(() => null)
+      /*
+       * 공장도 함께 읽어 둔다 — 토큰이 싣고 오지 않으므로 등록 때 남겨 둔 것을 여기서
+       * 되살린다. 화면이 서기 전에 서 있어야 첫 쓰기가 「공장을 모른다」로 막히지 않는다.
+       */
+      .then(async (token) => {
+        await readPlantId().catch(() => null);
+
+        return token;
+      })
       .then((token) => {
         if (!cancelled) {
           setStatus(token === null ? 'unregistered' : 'registered');
@@ -51,7 +61,12 @@ export const DeviceRegistrationProvider = ({ children }: { children: ReactNode }
     try {
       await verify();
     } catch (error) {
-      await clearDeviceToken();
+      /*
+       * 되돌리기가 걸려도 원래 오류를 그대로 올린다. 여기서 보관소 오류로 바뀌면 화면이 잠깐
+       * 끊긴 것을 거절로 읽어, 다시 걸면 되는 작업자에게 새 QR 을 받아 오라고 말한다.
+       */
+      await clearDeviceToken().catch(() => undefined);
+      await forgetPlant().catch(() => undefined);
       throw error;
     }
 
@@ -60,6 +75,13 @@ export const DeviceRegistrationProvider = ({ children }: { children: ReactNode }
 
   const unregister = useCallback(async () => {
     await clearDeviceToken();
+
+    /*
+     * 공장을 남겨 두면 다음 등록까지 옛 공장으로 쓴다 — 다른 공장의 재고가 는다. 다만 여기서
+     * 걸려도 멈추지 않는다. 토큰은 이미 사라져 되돌릴 수 없고, 등록된 채로 두면 셸이 앱을
+     * 그대로 세워 모든 요청이 401 이 된다 - 남은 공장은 다음 등록이 덮는다.
+     */
+    await forgetPlant().catch(() => undefined);
     setStatus('unregistered');
   }, []);
 

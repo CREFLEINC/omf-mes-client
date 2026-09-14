@@ -102,7 +102,17 @@ export const WorkOrderList = ({
       render: (row) => (
         <span className="stacked-cell pop-stacked-center">
           <span>{itemText(row)}</span>
-          <span>{`${t.columns.releasedAt} ${dateTimeText(row.releasedAt)}`}</span>
+          {/*
+           * ⚠ **낱말 단위로만 접힌다**(#1147). 좌단이 좁아 한 줄로 두면 표가 구획을 넘쳐 수량
+           *    열이 잘렸다. 그렇다고 그냥 접으면 「2026-」·「09-」처럼 날짜가 붙임표에서 쪼개진다.
+           */}
+          <span className="pop-emergency-released">
+            {[t.columns.releasedAt, ...dateTimeText(row.releasedAt).split(' ')].map(
+              (word, index) => (
+                <span key={index}>{word}</span>
+              ),
+            )}
+          </span>
         </span>
       ),
     },
@@ -110,7 +120,6 @@ export const WorkOrderList = ({
       key: 'quantity',
       header: t.columns.quantity,
       align: 'center',
-      width: '140px',
       render: (row) => `${qtyText(row.orderQty)} ${uomLabel(row.uomId)}`,
     },
   ];

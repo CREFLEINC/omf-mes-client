@@ -145,6 +145,32 @@ beforeEach(() => {
   held.failWrite = null;
 });
 
+const OTHER_CODE = 'XYZ-999';
+const SECOND_CODE = 'XYZ-777';
+
+const scan = (code: string) => {
+  const field = screen.getByLabelText('품목코드') as HTMLInputElement;
+  field.focus();
+  Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set?.call(field, code);
+  field.dispatchEvent(new InputEvent('input', { bubbles: true, inputType: 'insertFromPaste' }));
+};
+
+/* 기본 스텁은 어떤 코드에도 같은 행을 준다. 대상이 바뀌었는지 재려면 코드를 갈라야 한다. */
+const byCode: StubRoute = {
+  match: (req) => new URL(req.url).pathname === '/mdm/items',
+  respond: (req) => {
+    const asked = new URL(req.url).searchParams.get('q');
+    const rows =
+      asked === CODE
+        ? [itemRow()]
+        : asked === SECOND_CODE
+          ? [itemRow({ itemId: 41, itemCode: SECOND_CODE })]
+          : [];
+
+    return jsonResponse({ items: rows, page });
+  },
+};
+
 describe('재생재 등록 화면', () => {
   /*
    * 품목코드 하나에 행이 둘 온다. 신재를 잡으면 신재로 재고가 늘고 되돌릴 자리가 없다.
@@ -175,7 +201,7 @@ describe('재생재 등록 화면', () => {
     mount([], { items: [itemRow({ itemId: 30, mesCategoryCode: 'NEW' })] });
     await findItem(user);
 
-    expect(await screen.findByText('등록되지 않은 재생재 품목입니다')).toBeTruthy();
+    expect(await screen.findByText(/등록되지 않은 재생재 품목입니다 — 읽은 값 /)).toBeTruthy();
     expect(screen.getByText('관리웹에서 재생재 품목을 먼저 등록해야 합니다.')).toBeTruthy();
     expect(screen.queryByRole('button', { name: '재생재 등록' })).toBeNull();
   });
@@ -325,5 +351,62 @@ describe('재생재 등록 화면', () => {
     });
     expect(seen[0]?.headers.get('X-Worker-No')).toBe('900028');
     expect(seen[0]?.headers.get('Idempotency-Key')).toBeTruthy();
+  });
+  /*
+   * 스캔 하나가 이 화면의 대상을 정한다. 이미 읽은 뒤에 다른 라벨을 스치면 대상이 조용히
+   * 바뀌는데, 작업자는 앞엣것에 적는 줄 알고 다음 단계로 넘어간다.
+   */
+  it('이미 읽은 뒤 다른 값을 읽으면 되묻는다', async () => {
+    mount([byCode]);
+    await screen.findByLabelText('품목코드');
+    scan(CODE);
+    await screen.findByText('ABC-123 원자재');
+
+    scan(OTHER_CODE);
+
+    /* 제목은 창이 닫혀도 DOM 에 남는다. 닿을 수 있는 단추로 열렸는지를 잰다. */
+    expect(await screen.findByRole('button', { name: '그대로 두기' })).toBeTruthy();
+    expect(
+      screen.queryByText(`등록되지 않은 재생재 품목입니다 — 읽은 값 ${OTHER_CODE}`),
+    ).toBeNull();
+  });
+
+  it('되물은 창에서 새 값을 받으면 그때 대상이 바뀐다', async () => {
+    const user = userEvent.setup();
+    mount([byCode]);
+    await screen.findByLabelText('품목코드');
+    scan(CODE);
+    await screen.findByText('ABC-123 원자재');
+    scan(OTHER_CODE);
+
+    await user.click(await screen.findByRole('button', { name: '새로 읽은 값으로' }));
+
+    expect(
+      await screen.findByText(`등록되지 않은 재생재 품목입니다 — 읽은 값 ${OTHER_CODE}`),
+    ).toBeTruthy();
+  });
+
+  /*
+   * 품목을 바꿨는데 앞 품목을 넣으려던 창고·위치·수량이 남으면, 재생재 재고가 엉뚱한 품목으로
+   * 는다. 되돌릴 자리가 없는 쓰기다.
+   *
+   * 못 찾는 코드로 재면 안 된다 - 수량 칸 자체가 안 그려져 값이 남았는지 가릴 수 없다. 찾아지는
+   * 코드로 바꿔 칸이 선 채로 잰다.
+   */
+  it('새 품목을 받으면 적어 둔 것이 비워진다', async () => {
+    const user = userEvent.setup();
+    mount([byCode]);
+    await screen.findByLabelText('품목코드');
+    scan(CODE);
+    await screen.findByText('ABC-123 원자재');
+    await fill(user, '12.5');
+    expect(screen.getByLabelText('수량')).toHaveValue('12.5');
+
+    scan(SECOND_CODE);
+    await user.click(await screen.findByRole('button', { name: '새로 읽은 값으로' }));
+
+    await screen.findByText('XYZ-777 원자재');
+    expect(screen.getByLabelText('수량')).toHaveValue('');
+    expect(screen.queryByRole('combobox', { name: '위치' })).toBeNull();
   });
 });

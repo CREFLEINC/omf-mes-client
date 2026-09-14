@@ -9,5 +9,10 @@ export {
   type ApiError,
   type ConflictCause,
   type ErrorItem,
+  STATE_LOCKED_CODE,
 } from './errors';
 export type { components, paths } from './generated/api';
+export type {
+  TerminalRegistrationConfirmation,
+  TerminalRegistrationStatusCode,
+} from './forward-contract';

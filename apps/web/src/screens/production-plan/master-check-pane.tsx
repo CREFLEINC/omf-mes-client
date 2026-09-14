@@ -1,8 +1,11 @@
 import { AlertBanner, Button, Card, Chip, Select, SkeletonText } from '@crefle/web-ui';
+import { messages } from '@omf-mes/i18n';
 import { useEffect } from 'react';
 import { Link } from 'react-router';
 
 import type { BomRevisionFact, RoutingRevisionFact } from './reference-queries';
+
+const t = messages.productionPlan.masterCheck;
 
 interface ReferenceState<T> {
   items: readonly T[];
@@ -38,7 +41,7 @@ export const isMasterCheckReady = (
   routings.some((item) => String(item.routingId) === routingId);
 
 const period = (from: string | null, to: string | null): string =>
-  `${from ?? '시작일 미확인'} ~ ${to ?? '종료일 없음'}`;
+  `${from ?? t.periodFrom} ~ ${to ?? t.periodTo}`;
 
 export const bomRevisionLabel = (item: BomRevisionFact): string =>
   `${item.bomCode} · Rev ${String(item.bomVersion)} · ${item.statusCode}`;
@@ -93,58 +96,56 @@ export const MasterCheckPane = ({
       return (
         <AlertBanner
           variant="error"
-          title={`${kind} 개정을 불러오지 못했습니다.`}
+          title={t.loadFailed(kind)}
           action={
             <Button size="sm" variant="outlined" onClick={reference.refetch}>
-              {kind} 다시 시도
+              {t.retry(kind)}
             </Button>
           }
         />
       );
     if (options.length === 0)
       return kind === 'BOM' ? (
-        <AlertBanner variant="error" title="BOM이 없어 전개할 수 없습니다." />
+        <AlertBanner variant="error" title={t.bomMissing} />
       ) : (
-        <AlertBanner variant="error" title="Routing이 없어 전개할 수 없습니다.">
-          <Link to="/master-data/routing">Routing 등록으로 이동</Link>
+        <AlertBanner variant="error" title={t.routingMissing}>
+          <Link to="/master-data/routing">{t.openRouting}</Link>
         </AlertBanner>
       );
 
     return (
       <>
         <Select
-          aria-label={`${kind} Rev`}
+          aria-label={t.revisionLabel(kind)}
           value={value}
           options={options}
-          placeholder="사용할 개정을 선택하세요"
+          placeholder={t.revisionPlaceholder}
           onChange={onChange}
         />
-        {kind === 'BOM' && automaticBom !== null && <p>기본 BOM Rev를 자동으로 선택했습니다.</p>}
+        {kind === 'BOM' && automaticBom !== null && <p>{t.bomAutoSelected}</p>}
         {kind === 'BOM' && automaticBom === null && options.length > 0 && (
-          <AlertBanner variant="warning">기본 BOM Rev를 하나로 판단할 수 없습니다.</AlertBanner>
+          <AlertBanner variant="warning">{t.bomAmbiguous}</AlertBanner>
         )}
         {kind === 'Routing' && options.length > 1 && (
-          <AlertBanner variant="warning">
-            Routing 기본 Rev 플래그가 없습니다. 사용할 개정을 직접 선택하세요.
-          </AlertBanner>
+          <AlertBanner variant="warning">{t.routingNoDefault}</AlertBanner>
         )}
       </>
     );
   };
 
   return (
-    <section className="pane production-plan-section" aria-label="마스터 점검">
+    <section className="pane production-plan-section" aria-label={t.pane}>
       <div className="production-plan-section-heading">
         <span className="production-plan-step" aria-hidden="true">
           1
         </span>
-        <h2>마스터 점검</h2>
+        <h2>{t.heading}</h2>
       </div>
       <div className="production-plan-master-grid">
         <Card bordered className="production-plan-master-card">
           <Card.Header className="production-plan-master-card-header">
-            <h3>BOM (ERP 정본)</h3>
-            {isBomSelected && <Chip status="success">선택됨</Chip>}
+            <h3>{t.bomCard}</h3>
+            {isBomSelected && <Chip status="success">{t.selected}</Chip>}
           </Card.Header>
           <Card.Body className="production-plan-master-card-body">
             {referenceBody(
@@ -160,14 +161,16 @@ export const MasterCheckPane = ({
             {boms.items
               .filter((item) => String(item.bomId) === bomId)
               .map((item) => (
-                <p key={item.bomId}>유효기간 {period(item.effectiveFrom, item.effectiveTo)}</p>
+                <p key={item.bomId}>
+                  {t.effectivePeriod(period(item.effectiveFrom, item.effectiveTo))}
+                </p>
               ))}
           </Card.Body>
         </Card>
         <Card bordered className="production-plan-master-card">
           <Card.Header className="production-plan-master-card-header">
-            <h3>Routing (MES 정본)</h3>
-            {isRoutingSelected && <Chip status="success">선택됨</Chip>}
+            <h3>{t.routingCard}</h3>
+            {isRoutingSelected && <Chip status="success">{t.selected}</Chip>}
           </Card.Header>
           <Card.Body className="production-plan-master-card-body">
             {referenceBody(
@@ -183,7 +186,9 @@ export const MasterCheckPane = ({
             {routings.items
               .filter((item) => String(item.routingId) === routingId)
               .map((item) => (
-                <p key={item.routingId}>유효기간 {period(item.effectiveFrom, item.effectiveTo)}</p>
+                <p key={item.routingId}>
+                  {t.effectivePeriod(period(item.effectiveFrom, item.effectiveTo))}
+                </p>
               ))}
           </Card.Body>
         </Card>

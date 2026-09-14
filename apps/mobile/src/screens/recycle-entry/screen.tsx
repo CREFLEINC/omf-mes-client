@@ -5,7 +5,9 @@ import { Link } from 'react-router';
 
 import { useLocations } from '../../patterns/locations';
 import { useUomCodes } from '../../patterns/masters';
+import { formatMaterialLotNo } from '../../patterns/material-lot-no';
 import { useOutbox } from '../../patterns/outbox';
+import { ScanReplaceDialog } from '../../patterns/scan-replace-dialog';
 import { useScanField } from '../../patterns/use-scan-field';
 import { useScreenTitle } from '../../patterns/screen-title';
 import { useWorkerSession } from '../../patterns/worker-session';
@@ -61,10 +63,18 @@ export const RecycleEntryScreen = () => {
     }
 
     setSearching(code);
-    patch({ itemCode: code });
+
+    /*
+     * 품목이 바뀌면 그 아래 적어 둔 것을 비운다. 남으면 앞 품목을 넣으려던 창고·위치·수량으로
+     * 다른 품목의 재고가 늘고, 되돌릴 자리가 없다.
+     *
+     * 같은 코드를 다시 댄 것은 바꾸는 것이 아니므로 훅이 여기까지 오지 않는다.
+     */
+    setDraft({ ...emptyDraft, itemCode: code });
+    setSaveFailed(false);
   };
 
-  const scanField = useScanField({ onScan: take });
+  const scanField = useScanField({ onScan: take, applied: draft.itemCode });
 
   const rows = useItemsByCode(searching);
   const warehouses = useWarehouses();
@@ -164,7 +174,7 @@ export const RecycleEntryScreen = () => {
       <div className="recycle">
         {outcome === 'sent' ? (
           <AlertBanner variant="success" title={t.sent.title}>
-            {lotNo === null ? null : <p>{t.sent.lotNo(lotNo)}</p>}
+            {lotNo === null ? null : <p>{t.sent.lotNo(formatMaterialLotNo(lotNo))}</p>}
           </AlertBanner>
         ) : null}
         {outcome === 'queued' ? (
@@ -215,7 +225,7 @@ export const RecycleEntryScreen = () => {
         {rows.isError ? <AlertBanner variant="error" title={t.item.loadFailed} /> : null}
         {/* 이 화면은 품목을 만들지 않는다. 없으면 어디서 만드는지 알린다. */}
         {missing ? (
-          <AlertBanner variant="warning" title={t.item.notRecycled}>
+          <AlertBanner variant="warning" title={t.item.notRecycled(searching ?? draft.itemCode)}>
             {t.item.notRecycledWhy}
           </AlertBanner>
         ) : null}
@@ -238,7 +248,7 @@ export const RecycleEntryScreen = () => {
             {warehouses.isError ? (
               <AlertBanner variant="error" title={t.place.warehouseLoadFailed} />
             ) : null}
-            {warehouses.data !== undefined && warehouses.data.length === 0 ? (
+            {warehouses.isSuccess && warehouses.data.length === 0 ? (
               <AlertBanner variant="warning" title={t.place.warehouseNone} />
             ) : null}
             {warehouses.data === undefined ? null : (
@@ -267,7 +277,7 @@ export const RecycleEntryScreen = () => {
                 {locations.isError ? (
                   <AlertBanner variant="error" title={t.place.locationLoadFailed} />
                 ) : null}
-                {locations.data !== undefined && locations.data.length === 0 ? (
+                {locations.isSuccess && locations.data.length === 0 ? (
                   <AlertBanner variant="warning" title={t.place.locationNone} />
                 ) : null}
                 {locations.data === undefined ? null : (
@@ -348,6 +358,8 @@ export const RecycleEntryScreen = () => {
           </section>
         </>
       )}
+
+      <ScanReplaceDialog field={scanField} />
     </div>
   );
 };

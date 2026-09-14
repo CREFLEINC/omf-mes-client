@@ -240,6 +240,7 @@ export const SuspiciousMaterialCandidatePane = ({
           disabled={isLocked}
           onChange={(event) => setDraft((value) => ({ ...value, q: event.target.value }))}
           onSearch={apply}
+          clearLabel={messages.common.clear}
         />
         {filterSelects.map(([label, key, entries]) => (
           <div className="field-cell wide-select" key={key}>
@@ -297,7 +298,7 @@ export const SuspiciousMaterialCandidatePane = ({
           </div>
           <div className="suspicious-material-hold-list-footer">
             <p className="field-note">
-              총 {new Intl.NumberFormat('ko-KR').format(meta?.total ?? 0)}건 · {page} / {pages}쪽
+              {t.summary(new Intl.NumberFormat('ko-KR').format(meta?.total ?? 0), page, pages)}
             </p>
             <nav className="form-actions" aria-label={t.pagination}>
               <Button

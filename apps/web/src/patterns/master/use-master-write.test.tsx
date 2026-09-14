@@ -443,6 +443,7 @@ describe('useMasterWrite', () => {
     });
     expect(result.current.error).toEqual({
       kind: 'validation',
+      status: 400,
       errors: [
         { scope: 'field', field: '모르는칸', code: 'RANGE', message: '값이 범위를 벗어납니다' },
       ],
@@ -706,6 +707,7 @@ describe('useMasterWrite — 화면의 말로 되말하기', () => {
     await waitFor(() => {
       expect(result.current.error).toEqual({
         kind: 'validation',
+        status: 400,
         errors: [{ scope: 'field', field: 'name', code: 'DUPLICATE', message: '서버 문구' }],
       });
     });
@@ -772,6 +774,43 @@ describe('requireIfMatch', () => {
     expect(toApiError(thrown)).toEqual({
       kind: 'validation',
       errors: [{ scope: 'screen', code: 'STALE_TOKEN', message: messages.save.staleToken }],
+    });
+  });
+});
+
+/**
+ * #1148 — **응답보다 부품이 먼저 사라져도 처리기는 불린다.**
+ *
+ * 실측: 쓰기 둘이 사슬로 묶인 화면에서 앞엣것의 성공 처리기가 버려져, 서버에는 앞 쓰기가
+ * 남았는데 뒤 쓰기는 나가지 않고 화면은 아무 말도 하지 않았다. `mutate` 의 인자로 넘긴
+ * 처리기는 부품이 사라지면 버려지므로, 훅 옵션 쪽에 둔다.
+ */
+describe('useMasterWrite — 부품이 사라진 뒤에 응답이 와도', () => {
+  it('성공 처리기를 버리지 않는다', async () => {
+    const onSuccess = vi.fn();
+    let settle = (): void => undefined;
+    const held = new Promise<void>((resolve) => {
+      settle = resolve;
+    });
+
+    const { result, unmount } = renderWrite({
+      onSuccess,
+      request: async () => {
+        await held;
+
+        return { data: { id: 1 }, response: okResponse() };
+      },
+    });
+
+    act(() => {
+      result.current.write({ name: '가' });
+    });
+
+    unmount();
+    settle();
+
+    await waitFor(() => {
+      expect(onSuccess).toHaveBeenCalledWith({ id: 1 });
     });
   });
 });

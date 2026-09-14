@@ -1,3 +1,4 @@
+import { messages } from '@omf-mes/i18n';
 import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useEffect, type ReactNode } from 'react';
@@ -147,7 +148,7 @@ const mount = (extra: StubRoute[] = [], options: Options = {}) =>
 const chooseLine = async (user: ReturnType<typeof userEvent.setup>) => {
   await user.click(await screen.findByRole('combobox', { name: '입하 고르기' }));
   await user.click(await screen.findByRole('option', { name: 'IB-2026-0002' }));
-  await user.click(await screen.findByRole('button', { name: /1번 줄/ }));
+  await user.click(await screen.findByRole('button', { name: /1번 라인/ }));
   await screen.findByText('ABC-123 원자재');
 };
 
@@ -177,9 +178,9 @@ describe('입하 오류 등록 화면', () => {
     mount();
     await openReceipt(user);
 
-    const pick = await screen.findByRole('button', { name: /1번 줄/ });
+    const pick = await screen.findByRole('button', { name: /1번 라인/ });
 
-    expect(pick.querySelector('strong')?.textContent).toBe('1번 줄');
+    expect(pick.querySelector('strong')?.textContent).toBe('1번 라인');
     expect(pick.querySelector('p')?.textContent).toContain('실입하');
   });
 
@@ -187,7 +188,7 @@ describe('입하 오류 등록 화면', () => {
   it('입하 조회 실패를 입하 없음으로 말하지 않는다', async () => {
     mount([], { receiptsStatus: 500 });
 
-    expect(await screen.findByText('입하를 확인할 수 없습니다. 연결을 확인하세요.')).toBeTruthy();
+    expect(await screen.findByText(messages.httpError.loadServer)).toBeTruthy();
     expect(screen.queryByText('입하를 찾지 못했습니다')).toBeNull();
   });
 
@@ -196,11 +197,11 @@ describe('입하 오류 등록 화면', () => {
     mount();
     await chooseLine(user);
 
-    expect(screen.getByText('고른 줄 1번 · 실입하 480 EA')).toBeTruthy();
+    expect(screen.getByText('고른 라인 1번 · 실입하 480 EA')).toBeTruthy();
   });
 
   /* 수정도 삭제도 없다. 무엇이 이미 적혀 있는지 보이지 않으면 같은 것을 두 번 적는다. */
-  it('이 줄에 이미 적힌 오류를 보인다', async () => {
+  it('이 라인에 이미 적힌 오류를 보인다', async () => {
     const user = userEvent.setup();
     mount([], {
       known: [

@@ -197,7 +197,12 @@ export const ToolPmResultScreen = () => {
     <>
       <PageHeader
         title={t.title}
-        breadcrumb={<Breadcrumb items={[{ label: t.breadcrumbRoot }, { label: t.title }]} />}
+        breadcrumb={
+          <Breadcrumb
+            items={[{ label: t.breadcrumbRoot }, { label: t.title }]}
+            aria-label={messages.common.shell.breadcrumb}
+          />
+        }
       />
 
       <section className="pane tool-pm-result-pane" aria-label={t.panes.tool}>
@@ -248,6 +253,7 @@ export const ToolPmResultScreen = () => {
             onDismiss={() => {
               setSaved(false);
             }}
+            dismissLabel={messages.common.close}
           >
             {t.form.saved}
           </AlertBanner>

@@ -14,6 +14,7 @@ import {
   formatMaterialLotNo,
   isMaterialLotNo,
 } from '../../patterns/material-lot-no';
+import { useLoadFailure } from '../../patterns/load-failure';
 import { useLotBalances, useLotHolds, type InventoryBalance, type LotHold } from './queries';
 import { byOnHandDesc } from './sort';
 import './screen.css';
@@ -138,6 +139,8 @@ export const MaterialLocationScreen = () => {
   };
 
   useScreenTitle(t.title);
+
+  const failureText = useLoadFailure();
   const scanField = useScanField({ onScan: accept });
 
   const lot = useScannedLot(code);
@@ -227,7 +230,11 @@ export const MaterialLocationScreen = () => {
         {pending ? <p role="status">{t.loading}</p> : null}
 
         {!pending && !failed && lot.data === null ? (
-          <EmptyState live title={t.notFound.title} description={t.notFound.description} />
+          <EmptyState
+            live
+            title={t.notFound.title}
+            description={t.notFound.description(formatMaterialLotNo(code ?? ''))}
+          />
         ) : null}
 
         {lot.data !== null && lot.data !== undefined ? (
@@ -239,7 +246,9 @@ export const MaterialLocationScreen = () => {
             ) : null}
             {holdState === 'failed' ? (
               <AlertBanner variant="warning" title={t.hold.unconfirmed}>
-                {t.hold.unconfirmedDescription}
+                {failureText(holds.error, t.hold.unconfirmedDescription, {
+                  caution: t.hold.unconfirmedCaution,
+                })}
               </AlertBanner>
             ) : null}
             {holds.data !== undefined && holds.data.length > 0 ? (
@@ -248,7 +257,7 @@ export const MaterialLocationScreen = () => {
             {balances.data !== undefined && balances.data.length > 1 ? (
               <p>{t.location.countSuffix(balances.data.length)}</p>
             ) : null}
-            {balances.data !== undefined && balances.data.length === 0 ? (
+            {balances.isSuccess && balances.data.length === 0 ? (
               <EmptyState
                 live
                 title={t.location.emptyTitle}

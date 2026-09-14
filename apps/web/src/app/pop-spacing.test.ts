@@ -60,9 +60,7 @@ describe('POP 덮개', () => {
    * 않는가」를 적는 그 형태. 그 목록에 덮개가 빠져 있으면 덮개가 화면 구획으로 취급된다.
    */
   it('최상위 자식을 겨냥하는 규칙은 모두 덮개를 뺀다', () => {
-    const childRules = rules
-      .split('}')
-      .filter((block) => /\.pop-ui\s*>\s*:not\(/u.test(block));
+    const childRules = rules.split('}').filter((block) => /\.pop-ui\s*>\s*:not\(/u.test(block));
 
     expect(childRules.length).toBeGreaterThan(0);
 
@@ -90,12 +88,9 @@ describe('POP 구획 눌림', () => {
     .filter((block) => /flex:\s*none/u.test(block))
     .map((block) => block.split('{')[0] ?? '');
 
-  it.each(['.omf-numeric-keypad', '.worker-no-notice'])(
-    '`%s` 가 눌리지 않는다',
-    (selector) => {
-      expect(noShrinkSelectors.some((list) => list.includes(selector))).toBe(true);
-    },
-  );
+  it.each(['.omf-numeric-keypad', '.worker-no-notice'])('`%s` 가 눌리지 않는다', (selector) => {
+    expect(noShrinkSelectors.some((list) => list.includes(selector))).toBe(true);
+  });
 });
 
 /**
@@ -115,5 +110,22 @@ describe('POP 사번 키패드 높이', () => {
 
   it('[확인]도 같은 높이를 지킨다', () => {
     expect(rules).toMatch(/\.worker-no-submit\s*\{[^}]*min-height:\s*72px/u);
+  });
+});
+
+/*
+ * ⛔ **격자에는 쌓기 여백을 얹지 않는다**(#1092 · 사용자 지적 2026-09-12).
+ *
+ * `app.css` 의 `.pop-section > * > * + *` 가 구획 안 블록 사이에 간격을 주는데, 그 규칙이
+ * **숫자 키패드의 키에도 닿는다.** 격자는 `gap` 으로 이미 간격을 갖고 있어 두 벌이 겹치고,
+ * `+ *` 가 첫 자식을 비껴가므로 **첫 키만 홀로 위로 올라선다** — 키패드가 일그러져 보인다.
+ *
+ * ⚠ 렌더 시험으로는 잡히지 않는다(`css: false`). 원문으로 겨눈다.
+ */
+describe('POP 키패드 — 격자에 쌓기 여백이 겹치지 않는다', () => {
+  it('포장 작업 키패드가 쌓기 여백을 되돌린다', () => {
+    expect(rules).toMatch(
+      /\.pop-ui\s+\.pack-work-scan\s+\.pack-work-keypad\s*>\s*\*\s*\+\s*\*\s*\{[^}]*margin-block-start:\s*0\s*[;}]/u,
+    );
   });
 });

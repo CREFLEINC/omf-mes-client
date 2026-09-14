@@ -2,15 +2,9 @@ import { createIdempotencyKey } from '@omf-mes/api-client';
 import { useCallback, useRef, useState } from 'react';
 
 import { useApiClient } from '../../patterns/api-context';
-import { fetchLabelRendition } from '../../patterns/pop-label-rendition';
+import { fetchLabelRendition, labelRenditionFormat } from '../../patterns/pop-label-rendition';
 import { runRequest } from '../../patterns/request';
-import {
-  LABEL_RENDITION_FORMAT,
-  printAll,
-  renditionShell,
-  type PrintOutcome,
-  type PrintTarget,
-} from './print';
+import { printAll, renditionShell, type PrintOutcome, type PrintTarget } from './print';
 
 /**
  * 인쇄 절차를 화면에 붙인다 — ③ 세 걸음의 진행 상태와 실행.
@@ -98,7 +92,7 @@ export const usePrintRunner = (workerNo: string | null): PrintRunner => {
         fetchRendition: async (documentIssueLogId) =>
           new Uint8Array(await fetchLabelRendition(client, documentIssueLogId)),
         send: async (bytes, label) => {
-          await shell.save(bytes, label, new Date().toISOString(), LABEL_RENDITION_FORMAT);
+          await shell.save(bytes, label, new Date().toISOString(), labelRenditionFormat());
         },
         report: async (documentIssueLogId, failureReason) => {
           await runRequest(() =>

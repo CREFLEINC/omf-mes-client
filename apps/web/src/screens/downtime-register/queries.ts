@@ -297,10 +297,16 @@ export interface ReasonOptionsResult {
   options: ReasonOption[];
   isPending: boolean;
   /**
-   * 고를 것이 하나도 없다 — 조회가 실패했거나 값이 오지 않았다. **작업자가 할 일이 같으므로
-   * 묶는다**(스펙 §6-1 —「필드를 감추지 않고 비활성 + 사유」).
+   * 고를 것이 하나도 없다 — 조회가 실패했거나 값이 오지 않았다.
+   *
+   * ⚠ **무엇이 없는지는 아래 `isError` 가 가른다**(#1094). 한때 둘을 묶어 두고 「연결을
+   *    확인한 뒤 다시 시도하세요」 한 문장을 냈는데, **연결이 멀쩡한데도 그 말이 떴다** —
+   *    실제로는 등록된 사유가 0건이었다(88단계 2회차). 작업자가 할 일이 다르다: 하나는
+   *    다시 시도, 하나는 관리자에게 등록 요청이다.
    */
   isUnavailable: boolean;
+  /** 조회 자체가 실패했는가. 거짓이면 「받았는데 0건」이다. */
+  isError: boolean;
 }
 
 /**
@@ -341,5 +347,6 @@ export const useReasonOptions = (): ReasonOptionsResult => {
     options,
     isPending: query.isPending,
     isUnavailable: !query.isPending && options.length === 0,
+    isError: query.isError,
   };
 };

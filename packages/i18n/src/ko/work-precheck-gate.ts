@@ -14,8 +14,9 @@ export const workPrecheckGate = {
 
   header: {
     equipmentUnknown: '설비 확인 전',
+    /* ⭐ 「설비 <이름>」으로 읽힌다 — 이름이 비면 코드(사용자 지시 2026-09-14). */
     equipmentLabel: (code: string, name: string): string =>
-      name.trim() === '' ? code : `${code} ${name}`,
+      `설비 ${name.trim() === '' ? code : name}`,
     workOrderLabel: (workOrderNo: string): string => workOrderNo,
     workerUnset: '사번 미입력',
     workerLabel: (workerNo: string): string => `사번 ${workerNo}`,
@@ -93,9 +94,6 @@ export const workPrecheckGate = {
 
     /** ⛔ 부여가 없는 것과 이력이 없는 것은 다르다. */
     notTargeted: '이 설비에는 부여된 점검 항목이 없습니다.',
-
-    /** ⚠ 「없음」이 「안 했음」이 아닐 수 있다는 사실(§5-4). */
-    unsentWarning: '미전송 점검이 있을 수 있습니다 — 점검 단말을 확인하세요.',
 
     /** ⚠ 고장은 보이되 막지 않는다(§5-6). */
     openBreakdowns: (count: number): string => `이 설비에 처리 중인 고장 ${count}건`,

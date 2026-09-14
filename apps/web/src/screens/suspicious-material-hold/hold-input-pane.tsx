@@ -5,6 +5,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useEffect, useId, useMemo, useState } from 'react';
 
 import { useApiClient } from '../../patterns/api-context';
+import { masterName } from '../../patterns/master-name';
 import { runRequest } from '../../patterns/request';
 import type { SelectedLotSnapshot } from './candidate-model';
 
@@ -115,8 +116,8 @@ export const SuspiciousMaterialHoldInputPane = ({
         .map((value) => ({
           ...value,
           code: value.code.trim(),
-          /* 표시명은 다국어 컬럼이 먼저, 기본 이름이 fallback(G-33). 로케일 스위치 전이라 한국어만 본다. */
-          label: (value.nameKo ?? '').trim() || value.codeName.trim(),
+          /* 표시명은 고른 언어의 다국어 컬럼이 먼저, 기본 이름이 fallback(G-33). */
+          label: masterName(value, value.codeName.trim()),
         })) ?? [],
     [reasons.data],
   );

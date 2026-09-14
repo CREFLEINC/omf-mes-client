@@ -6,11 +6,14 @@ import { Link } from 'react-router';
 import { useLocationByCode } from '../../patterns/locations';
 import { useScannedLot } from '../../patterns/lots';
 import { useItemLabels } from '../../patterns/masters';
+import { formatMaterialLotNo } from '../../patterns/material-lot-no';
 import { useOnlineStatus } from '../../patterns/online-status';
 import { useOutbox } from '../../patterns/outbox';
 import { useScanField } from '../../patterns/use-scan-field';
 import { useScreenTitle } from '../../patterns/screen-title';
 import { useWorkerSession } from '../../patterns/worker-session';
+import { FailureBanner } from '../../patterns/failure-banner';
+import { useLoadFailure } from '../../patterns/load-failure';
 import { useLotBalances, useUnfinishedTransfers, useWarehouses } from './queries';
 import {
   DEFECT_RETURN,
@@ -45,6 +48,7 @@ const TYPES: { value: TransferType; label: string }[] = [
 
 export const StockTransferScreen = () => {
   useScreenTitle(t.title);
+  const failureText = useLoadFailure();
 
   const { enqueue, flush, isRejected, loaded, pendingOf } = useOutbox();
   const { worker } = useWorkerSession();
@@ -76,7 +80,7 @@ export const StockTransferScreen = () => {
   const destination = useLocationByCode(toWarehouseId, scannedLocation);
   const foundLot = useScannedLot(scannedLot);
   const balances = useLotBalances(foundLot.data?.lotId ?? null);
-  const itemLabels = useItemLabels(lines.length > 0);
+  const itemLabels = useItemLabels(lines.map((line) => line.itemId));
 
   const toWarehouse = (warehouses.data ?? []).find((each) => each.warehouseId === toWarehouseId);
   const toLocation = destination.data ?? null;
@@ -176,7 +180,7 @@ export const StockTransferScreen = () => {
   });
 
   const nameOf = (line: DraftLine): string =>
-    t.from.name(itemLabels.data?.get(line.itemId)?.itemCode ?? '', line.lotNo);
+    t.from.name(itemLabels.get(line.itemId)?.itemCode ?? '', line.lotNo);
 
   const restart = () => {
     setLines([]);
@@ -318,11 +322,14 @@ export const StockTransferScreen = () => {
         <h2>{t.unfinished.legend}</h2>
         {unfinished.isPending ? <p role="status">{t.unfinished.loading}</p> : null}
         {unfinished.isError ? (
-          <AlertBanner variant="warning" title={t.unfinished.loadFailed} />
+          <FailureBanner
+            variant="warning"
+            title={failureText(unfinished.error, t.unfinished.loadFailed)}
+          />
         ) : null}
         {/* 다른 단말이 반출한 것은 오프라인에서 오지 않는다. 없다고 단정하면 안 된다. */}
         {!online ? <p className="stock-transfer__note">{t.unfinished.offline}</p> : null}
-        {unfinished.data?.length === 0 ? <p>{t.unfinished.none}</p> : null}
+        {unfinished.isSuccess && unfinished.data.length === 0 ? <p>{t.unfinished.none}</p> : null}
         {(unfinished.data ?? []).map((each) => (
           <Card bordered key={each.transfer.stockTransferId}>
             <Card.Header>
@@ -455,9 +462,17 @@ export const StockTransferScreen = () => {
             {scannedLot !== null && foundLot.isPending ? (
               <p role="status">{t.from.loading}</p>
             ) : null}
-            {foundLot.isError ? <AlertBanner variant="error" title={t.from.loadFailed} /> : null}
+            {foundLot.isError ? (
+              <FailureBanner
+                variant="error"
+                title={failureText(foundLot.error, t.from.loadFailed)}
+              />
+            ) : null}
             {scannedLot !== null && foundLot.data === null ? (
-              <AlertBanner variant="error" title={t.from.notFound(scannedLot)} />
+              <AlertBanner
+                variant="error"
+                title={t.from.notFound(formatMaterialLotNo(scannedLot))}
+              />
             ) : null}
             {duplicate ? <AlertBanner variant="warning" title={t.from.already} /> : null}
             {noStock ? <AlertBanner variant="error" title={t.from.noStock} /> : null}

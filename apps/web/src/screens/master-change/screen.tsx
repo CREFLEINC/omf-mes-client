@@ -242,7 +242,12 @@ export const MasterChangeScreen = () => {
     <>
       <PageHeader
         title={t.title}
-        breadcrumb={<Breadcrumb items={[{ label: t.breadcrumbRoot }, { label: t.title }]} />}
+        breadcrumb={
+          <Breadcrumb
+            items={[{ label: t.breadcrumbRoot }, { label: t.title }]}
+            aria-label={messages.common.shell.breadcrumb}
+          />
+        }
         /*
          * 배치 규범 4 — 개정 발행은 여기서 할 수 없지만 **버튼을 감추지 않는다.**
          * 감추면 개정 발행이 어디서 이루어지는지 화면에서 알 방법이 없어진다.

@@ -42,6 +42,7 @@ const workOrder = (workOrderId: number) => ({
   orderQty: 10,
   uomId: 901,
   workOrderTypeCode: 'SYN_NORMAL',
+  processId: 901,
   priorityNo: 1,
   statusCode: 'SYN_DRAFT',
 });
@@ -254,6 +255,7 @@ describe('useUpdateWorkOrder', () => {
     );
     expect(result.current.mutation.error).toEqual({
       kind: 'validation',
+      status: 400,
       errors: [
         {
           scope: 'field',
@@ -306,6 +308,7 @@ describe('useUpdateWorkOrder', () => {
     await waitFor(() =>
       expect(result.current.mutation.error).toEqual({
         kind: 'conflict',
+        status: 409,
         cause: 'user',
         message: 'Synthetic concurrent assignment',
       }),

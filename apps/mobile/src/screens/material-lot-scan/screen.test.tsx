@@ -10,7 +10,9 @@ import {
   renderWithProviders,
   type StubRoute,
 } from '../../test/api-harness';
+import { itemRoutes } from '../../test/master-routes';
 import { runBackStep } from '../../patterns/back-step';
+import { formatMaterialLotNo } from '../../patterns/material-lot-no';
 import { useWorkerSession } from '../../patterns/worker-session';
 import { MaterialLotScanScreen } from './screen';
 
@@ -37,6 +39,10 @@ vi.mock('../../patterns/local-store', () => ({
 
 vi.mock('../../patterns/plant', () => ({
   currentPlantId: () => claims.plantId,
+  /* 셸이 기동할 때 부른다. 빠뜨리면 모의가 실제 모듈과 어긋나 처리되지 않은 오류가 난다. */
+  readPlantId: () => Promise.resolve(null),
+  rememberPlant: () => Promise.resolve(),
+  forgetPlant: () => Promise.resolve(),
 }));
 
 const page = { page: 1, size: 200, total: 1, totalElements: 1, totalPages: 1 };
@@ -148,22 +154,18 @@ const routes = (options: Options = {}): StubRoute[] => [
         : jsonResponse({ lotId: 8101 }, { status: 201 });
     },
   },
-  {
-    match: (req) => new URL(req.url).pathname === '/mdm/items',
-    respond: () =>
-      jsonResponse({
-        items: [
-          {
-            itemId: 2002,
-            itemCode: options.itemCode ?? 'ABC-123',
-            itemName: '하우징',
-            fifoPolicyCode: 'FIFO',
-          },
-          { itemId: 2001, itemCode: 'RM-1001', itemName: '수지A', fifoPolicyCode: 'FEFO' },
-        ],
-        page,
-      }),
-  },
+  ...itemRoutes(
+    [
+      {
+        itemId: 2002,
+        itemCode: options.itemCode ?? 'ABC-123',
+        itemName: '하우징',
+        fifoPolicyCode: 'FIFO',
+      },
+      { itemId: 2001, itemCode: 'RM-1001', itemName: '수지A', fifoPolicyCode: 'FEFO' },
+    ],
+    page,
+  ),
 ];
 
 const SignedIn = ({ children }: { children: ReactNode }) => {
@@ -526,5 +528,51 @@ describe('자재LOT 스캔·등록 화면', () => {
     await user.click(screen.getByRole('button', { name: '이 라인 등록' }));
 
     expect(await screen.findByText('등록을 저장하지 못했습니다')).toBeTruthy();
+  });
+  /**
+   * 스캔 하나가 이 화면의 대상을 정한다. 이미 읽은 뒤에 다른 라벨을 스치면 대상이 조용히
+   * 바뀌는데, 작업자는 앞엣것에 적는 줄 알고 등록 단추를 누른다.
+   */
+  it('이미 읽은 뒤 다른 값을 읽으면 되묻는다', async () => {
+    const user = userEvent.setup();
+    mount();
+    await pickLine(user);
+
+    await scanAndWait(LOT_NO);
+
+    const other = '123456789' + '000000500' + '260731' + '778899' + '0009';
+    scan(other);
+
+    expect(await screen.findByText('다시 스캔했습니다')).toBeTruthy();
+    expect(await screen.findByRole('button', { name: '그대로 두기' })).toBeTruthy();
+  });
+
+  it('되물은 창에서 그대로 두면 앞엣것이 남는다', async () => {
+    const user = userEvent.setup();
+    mount();
+    await pickLine(user);
+
+    await scanAndWait(LOT_NO);
+    scan('123456789' + '000000500' + '260731' + '778899' + '0009');
+
+    await user.click(await screen.findByRole('button', { name: '그대로 두기' }));
+
+    /* 창이 사라지는 것이 아니라 대상이 안 바뀐 것을 잰다 - 그것이 이 단추가 하는 일이다. */
+    expect(screen.getByText(formatMaterialLotNo(LOT_NO))).toBeTruthy();
+    expect(screen.getByRole('button', { name: '이 라인 등록' })).not.toBeDisabled();
+  });
+
+  it('되물은 창에서 바꾸면 새로 읽은 값이 대상이 된다', async () => {
+    const user = userEvent.setup();
+    mount();
+    await pickLine(user);
+
+    await scanAndWait(LOT_NO);
+    const other = '123456789' + '000000500' + '260731' + '778899' + '0009';
+    scan(other);
+
+    await user.click(await screen.findByRole('button', { name: '새로 읽은 값으로' }));
+
+    expect(await screen.findByText(formatMaterialLotNo(other))).toBeTruthy();
   });
 });

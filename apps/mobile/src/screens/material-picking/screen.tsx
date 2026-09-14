@@ -19,12 +19,15 @@ import { useBackStep } from '../../patterns/back-step';
 import { LOT_HOLD_REASON, displayNameOf, useCodeValues } from '../../patterns/code-values';
 import { playErrorTone } from '../../patterns/error-tone';
 import { useLocation } from '../../patterns/locations';
+import { formatMaterialLotNo } from '../../patterns/material-lot-no';
 import { useOutbox } from '../../patterns/outbox';
 import { toApiError } from '../../patterns/request';
 import { useScanField } from '../../patterns/use-scan-field';
 import { useScreenTitle } from '../../patterns/screen-title';
 import { useWorkerId } from '../../patterns/workers';
 import { useWorkerSession } from '../../patterns/worker-session';
+import { FailureBanner } from '../../patterns/failure-banner';
+import { useLoadFailure } from '../../patterns/load-failure';
 import { PickingOrderList } from './order-list';
 import {
   ISSUE_TYPE,
@@ -83,6 +86,7 @@ const batchIdOf = (pickingOrderId: number): string => `picking-order-${String(pi
 
 export const MaterialPickingScreen = () => {
   useScreenTitle(t.title);
+  const failureText = useLoadFailure();
 
   const { enqueue, flush, isRejected, loaded, pendingOf, rejected } = useOutbox();
   const { worker } = useWorkerSession();
@@ -470,11 +474,16 @@ export const MaterialPickingScreen = () => {
             ) : null}
             {request.isError || destination.isError ? (
               <p className="picking-out__note">
-                {[request.error, destination.error].some(
-                  (error) => error !== null && toApiError(error).kind === 'network',
-                )
-                  ? t.orders.destinationOffline
-                  : t.orders.destinationUnknown}
+                {failureText(
+                  /* 둘 중 하나라도 닿지 못했으면 연결 문제로 말한다 - 그쪽이 사람이 풀 수 있다. */
+                  [request.error, destination.error].find(
+                    (error) => error !== null && toApiError(error).kind === 'network',
+                  ) ??
+                    request.error ??
+                    destination.error,
+                  t.orders.destinationOffline,
+                  { other: t.orders.destinationUnknown },
+                )}
               </p>
             ) : null}
             {destination.data === undefined ? null : (
@@ -530,7 +539,9 @@ export const MaterialPickingScreen = () => {
           {held === 0 ? '' : ` · ${t.lines.heldCount(String(held))}`}
         </h2>
         {detail.isPending ? <p role="status">{t.lines.loading}</p> : null}
-        {detail.isError ? <AlertBanner variant="error" title={t.lines.loadFailed} /> : null}
+        {detail.isError ? (
+          <FailureBanner variant="error" title={failureText(detail.error, t.lines.loadFailed)} />
+        ) : null}
         {detail.data !== undefined && lines.length === 0 ? (
           <AlertBanner variant="warning" title={t.lines.none} />
         ) : null}
@@ -571,7 +582,7 @@ export const MaterialPickingScreen = () => {
                 /* 보류 라인은 비활성으로 두고 사유를 함께 보인다. 서버가 표시해 내려준 값이다. */
                 disabled={trouble !== null}
                 /*
-                 * 이미 고른 줄을 다시 누르면 고른 값이 바뀌지 않아 change 가 나지 않는다.
+                 * 이미 고른 라인을 다시 누르면 고른 값이 바뀌지 않아 change 가 나지 않는다.
                  * 되돌아온 뒤 같은 줄을 다시 집는 길이 그 누름이라 눌림으로도 잇는다.
                  */
                 onClick={() => {
@@ -597,7 +608,7 @@ export const MaterialPickingScreen = () => {
                     </span>
                   )}
                   {each.lotNo === null || each.lotNo === undefined ? null : (
-                    <span className="picking-out__line-lot">{each.lotNo}</span>
+                    <span className="picking-out__line-lot">{formatMaterialLotNo(each.lotNo)}</span>
                   )}
                   {place.length === 0 ? null : (
                     <span className="picking-out__line-note">{place.join(' · ')}</span>
@@ -645,7 +656,10 @@ export const MaterialPickingScreen = () => {
             {scanned === null ? null : matched ? (
               <Chip status="success">{t.scan.matched}</Chip>
             ) : (
-              <AlertBanner variant="error" title={t.scan.mismatch(line.lotNo ?? '')} />
+              <AlertBanner
+                variant="error"
+                title={t.scan.mismatch(formatMaterialLotNo(line.lotNo ?? ''))}
+              />
             )}
 
             {isOutOfSequence(line, lines, queued) ? (
@@ -692,7 +706,7 @@ export const MaterialPickingScreen = () => {
       <section className="picking-out__section">
         <p className="picking-out__note">{t.partialNote}</p>
         {issueTypes.isError ? <AlertBanner variant="error" title={t.issueTypeLoadFailed} /> : null}
-        {issueTypes.data !== undefined && issueTypes.data.length === 0 ? (
+        {issueTypes.isSuccess && issueTypes.data.length === 0 ? (
           <AlertBanner variant="warning" title={t.noIssueType} />
         ) : null}
         {/* 기본값이 잡히면 고를 일이 없다. 고객이 그 값을 지웠을 때만 고르게 연다. */}

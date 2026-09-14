@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
 import type { LookupEntry, LookupSource } from '../../patterns/lookup-display';
+import { masterName } from '../../patterns/master-name';
 import { runRequest } from '../../patterns/request';
 import {
   CUSTOMER_ROLE,
@@ -87,7 +88,7 @@ export const useItemLookup = (): ReceiptLookup => {
       return {
         entries: data.items.map((item) => ({
           value: String(item.itemId),
-          label: `${item.itemCode} · ${nameOr(item.nameKo ?? item.itemName)}`,
+          label: `${item.itemCode} · ${nameOr(masterName(item, item.itemName))}`,
           isActive: item.isActive,
         })),
         page: data.page,
@@ -113,7 +114,7 @@ export const useShipmentStatusLookup = (): ReceiptLookup => {
       return {
         entries: data.items.map((item) => ({
           value: item.code,
-          label: nameOr(item.nameKo ?? item.codeName),
+          label: nameOr(masterName(item, item.codeName)),
           isActive: item.isActive,
         })),
         page: data.page,
@@ -173,7 +174,7 @@ export const useReasonOptions = (): CodeOptionSource => {
 
       return data.items
         .filter((item) => item.isActive)
-        .map((item) => ({ value: item.code, label: nameOr(item.nameKo ?? item.codeName) }));
+        .map((item) => ({ value: item.code, label: nameOr(masterName(item, item.codeName)) }));
     },
   });
 

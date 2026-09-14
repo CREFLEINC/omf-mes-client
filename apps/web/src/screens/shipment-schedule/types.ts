@@ -59,6 +59,7 @@ export interface ShipmentRequestView {
   customerId: number;
   shipToPartnerId: number;
   requestedShipDate: string;
+  fulfillmentPlantId: number | null | undefined;
   shipmentProgressCode: ShipmentProgressCode;
   inspectionStatus: ShipmentRequestResponse['shippingInspectionStatusCode'];
   lineTotals: LineQtyTotals | null;
@@ -71,6 +72,7 @@ export const toShipmentRequestView = (data: ShipmentRequestResponse): ShipmentRe
   customerId: data.customerId,
   shipToPartnerId: data.shipToPartnerId,
   requestedShipDate: data.requestedShipDate,
+  fulfillmentPlantId: data.fulfillmentPlantId,
   shipmentProgressCode: data.shipmentProgressCode,
   inspectionStatus: data.shippingInspectionStatusCode,
   lineTotals: toLineQtyTotals(data.lines),

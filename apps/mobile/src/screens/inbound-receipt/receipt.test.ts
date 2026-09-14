@@ -6,6 +6,7 @@ import {
   UNDER,
   businessDateOf,
   canSubmit,
+  openLinesFirst,
   isExpiryBeforeManufactured,
   packageProblem,
   qtyProblem,
@@ -359,6 +360,49 @@ describe('등록 본문', () => {
   });
 });
 
+describe('라인 차례', () => {
+  const line = (id: number, ordered: number, received: number) =>
+    poLine({ purchaseOrderLineId: id, orderedQty: ordered, receivedQty: received });
+
+  /*
+   * 후보 목록은 발주 단위라 그 품목의 라인이 다 찬 발주도 선다. 다 받은 줄이 맨 위에 서면
+   * 작업자가 그것부터 고르고 초과 판정을 받는다 - 실기기에서 그 차례로 나왔다.
+   */
+  it('남은 것이 있는 줄을 위로 올린다', () => {
+    const lines = [line(1, 100, 100), line(2, 50, 0), line(3, 20, 20), line(4, 30, 10)];
+
+    expect(openLinesFirst(lines, () => 0).map((each) => each.purchaseOrderLineId)).toEqual([
+      2, 4, 1, 3,
+    ]);
+  });
+
+  /* 같은 무리 안에서는 서버가 준 차례를 지킨다. 흔들면 고르던 자리가 매번 바뀐다. */
+  it('같은 무리 안에서는 받은 차례를 지킨다', () => {
+    const lines = [line(1, 50, 0), line(2, 60, 0), line(3, 70, 0)];
+
+    expect(openLinesFirst(lines, () => 0).map((each) => each.purchaseOrderLineId)).toEqual([
+      1, 2, 3,
+    ]);
+  });
+
+  /* 담아 둔 것까지 빼고 센다. 카드가 보이는 수와 차례를 가르는 수가 다르면 안 된다. */
+  it('담아 둔 수량으로 다 찬 줄은 아래로 내린다', () => {
+    const lines = [line(1, 100, 0), line(2, 50, 0)];
+    const queued = (id: number) => (id === 1 ? 100 : 0);
+
+    expect(openLinesFirst(lines, queued).map((each) => each.purchaseOrderLineId)).toEqual([2, 1]);
+  });
+
+  /* 원본을 흔들지 않는다. 조회가 준 배열을 제자리에서 뒤집으면 캐시가 함께 바뀐다. */
+  it('받은 배열을 제자리에서 바꾸지 않는다', () => {
+    const lines = [line(1, 100, 100), line(2, 50, 0)];
+
+    openLinesFirst(lines, () => 0);
+
+    expect(lines.map((each) => each.purchaseOrderLineId)).toEqual([1, 2]);
+  });
+});
+
 describe('초과 입하 분리 본문', () => {
   const NOW = new Date(2026, 8, 1, 9, 12);
 
@@ -369,6 +413,23 @@ describe('초과 입하 분리 본문', () => {
       normal: 20,
       excess: 10,
     });
+  });
+
+  /*
+   * 실기기에서 나온 값이다 - 안료 7.5 에 허용 0.5, 도착 8.01 이면 초과분이
+   * 0.009999999999999787 로 나왔다. 그 값은 화면에만 머물지 않고 요청 본문의 수량으로
+   * 나가는데, 서버는 6자리로 반올림해 받으므로 거르지 못한다.
+   */
+  it('소수 수량에서 초과분이 부동소수 꼬리를 달지 않는다', () => {
+    expect(
+      splitQuantitiesOf(poLine({ orderedQty: 7.5, receivedQty: 0, toleranceOverQty: 0.5 }), 8.01),
+    ).toEqual({ remaining: 7.5, normal: 8, excess: 0.01 });
+  });
+
+  /* 남은 예정도 뺄셈이 셋이라 같은 자리에서 샌다. */
+  it('남은 예정이 소수 뺄셈에서 꼬리를 달지 않는다', () => {
+    expect(remainingQtyOf(poLine({ orderedQty: 8.01, receivedQty: 8 }))).toBe(0.01);
+    expect(remainingQtyOf(poLine({ orderedQty: 2.3, receivedQty: 0.1 }), 0.1)).toBe(2.1);
   });
 
   it('BOTH는 정량과 초과를 한 본문에 싣고 초과분의 발주 귀속을 끊는다', () => {

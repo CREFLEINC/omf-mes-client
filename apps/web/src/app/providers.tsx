@@ -1,4 +1,5 @@
 import { ThemeProvider, ToastProvider } from '@crefle/web-ui';
+import { messages } from '@omf-mes/i18n';
 import { QueryClient, QueryClientProvider, type DefaultOptions } from '@tanstack/react-query';
 import type { ReactNode } from 'react';
 
@@ -59,7 +60,10 @@ export const AppProviders = ({ children }: AppProvidersProps) => {
       <ApiClientProvider client={apiClient}>
         <SessionProvider>
           <ThemeProvider defaultTheme="system">
-            <ToastProvider position="bottom-right">{children}</ToastProvider>
+            {/* 알림 영역의 접근명 — 넘기지 않으면 디자인 시스템 기본값인 한국어가 선다(#1131). */}
+            <ToastProvider label={messages.common.shell.notifications} position="bottom-right">
+              {children}
+            </ToastProvider>
           </ThemeProvider>
         </SessionProvider>
       </ApiClientProvider>

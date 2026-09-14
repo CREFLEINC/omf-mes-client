@@ -1,6 +1,6 @@
 import createClient from 'openapi-fetch';
 
-import type { paths } from './generated/api';
+import type { ApiPaths } from './forward-contract';
 import { createEtagStore, type EtagStore } from './etag-store';
 
 export interface ApiClientOptions {
@@ -26,7 +26,7 @@ export interface ApiClientOptions {
 }
 
 export interface ApiClient {
-  client: ReturnType<typeof createClient<paths>>;
+  client: ReturnType<typeof createClient<ApiPaths>>;
   etags: EtagStore;
   /**
    * 서버 주소.
@@ -89,14 +89,39 @@ const etagPath = (requestUrl: string, baseUrl: string): string => {
 };
 
 /**
+ * **HTTP 캐시를 쓰지 않는다** — 브라우저가 알아서 붙이는 `If-None-Match` 를 막는다.
+ *
+ * ⛔ **304 가 돌아오면 «그때 캐시에 있던 것»이 그대로 답이 된다.** 실측 2026-09-13(실서버 ·
+ *    실기 POP): 사번 조회가 인증 전에 한 번 빈 목록으로 캐시됐고, 그 뒤 등록을 마치고 다시
+ *    물어도 서버가 `304` 를 돌려줘 **빈 목록이 계속 재사용**됐다. 화면은 0건을 받아
+ *    「등록되지 않은 사번입니다」라고 말했다 — 서버에는 그 사번이 멀쩡히 있는데도.
+ *
+ * ⭐ **헤더로 풀지 않는다.** `Cache-Control: no-cache` 를 붙이면 그 헤더가 preflight 의
+ *    `Access-Control-Request-Headers` 에 실리는데, 서버의 허용 목록(`Authorization` ·
+ *    `Content-Type` · `Idempotency-Key` · `If-Match` · `X-Worker-No`)에 없어 **preflight 가
+ *    통째로 막힌다.** `cache: 'no-store'` 는 요청 헤더를 늘리지 않고 같은 결과를 낸다.
+ *
+ * ⚠ **ETag 낙관적 잠금과 다른 축이다.** 이 저장소가 쓰는 ETag 는 `etags` 보관소가 들고 있다가
+ *   수정 요청에 `If-Match` 로 싣는 것이고, 여기서 끄는 것은 브라우저가 조회에 자동으로 붙이는
+ *   쪽이다 — 잠금 동작은 그대로 선다.
+ */
+const noStoreFetch =
+  (inner: ApiClientOptions['fetch']) =>
+  (input: Request): Promise<Response> => {
+    const request = new Request(input, { cache: 'no-store' });
+
+    return inner === undefined ? fetch(request) : inner(request);
+  };
+
+/**
  * 계약 기반 클라이언트. 응답의 ETag를 경로별로 자동 캡처한다 —
  * 저장 응답의 ETag까지 받아 갱신해야 연속 수정 시 재조회가 필요 없다(공유계약 B-1).
  */
 export const createApiClient = (options: ApiClientOptions): ApiClient => {
   const etags = createEtagStore();
-  const client = createClient<paths>({
+  const client = createClient<ApiPaths>({
     baseUrl: options.baseUrl,
-    fetch: options.fetch,
+    fetch: noStoreFetch(options.fetch),
     credentials: options.credentials,
     querySerializer: serializeQuery,
   });

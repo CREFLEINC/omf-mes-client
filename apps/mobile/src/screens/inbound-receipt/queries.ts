@@ -12,8 +12,12 @@ import type { PurchaseOrder, PurchaseOrderLine } from './receipt';
  */
 export const SUBSTITUTE_LOT_REASON = 'SUBSTITUTE_LOT_REASON';
 
+/** 담는 쪽과 지우는 쪽이 함께 쓴다. 한쪽만 문자열로 적으면 이름이 바뀔 때 조용히 어긋난다. */
+const ORDERS_KEY = 'inbound-purchase-orders';
+
 export const receiptKeys = {
-  orders: (itemId: number | null) => ['inbound-purchase-orders', itemId] as const,
+  allOrders: [ORDERS_KEY] as const,
+  orders: (itemId: number | null) => [ORDERS_KEY, itemId] as const,
   scannedItem: (code: string | null) => ['inbound-scanned-item', code] as const,
   detail: (purchaseOrderId: number | null) => ['inbound-po-detail', purchaseOrderId] as const,
 };
@@ -49,7 +53,7 @@ export const useOpenPurchaseOrders = (itemId: number | null): UseQueryResult<Pur
 /**
  * 스캔한 번호가 가리키는 품목.
  *
- * 번호 앞 아홉 자리가 제품코드다. 그것으로 품목을 찾으면 미마감 ERP W/O 를 그 품목이 있는
+ * 번호 앞 아홉 자리가 제품코드다. 그것으로 품목을 찾으면 미마감 자재 P/O 를 그 품목이 있는
  * 것만으로 좁힐 수 있다. 못 찾으면 좁히지 않는다 - 양식이 다른 번호도 들어오고, 그때
  * 후보를 0건으로 만들면 담당자가 고를 것이 사라진다.
  */

@@ -1,10 +1,16 @@
+import { messages } from '@omf-mes/i18n';
 import { describe, expect, it } from 'vitest';
 
-import { USER_FORM_FIELDS, validateUserForm } from './user-validation';
+import { INITIAL_PASSWORD_MIN_LENGTH } from './initial-password';
+import { USER_CREATE_FORM_FIELDS, USER_FORM_FIELDS, validateUserForm } from './user-validation';
 import type { UserFormValues } from './types';
 
+const t = messages.usersRoles.user.validation;
+
+// 등록 검증 시험이 통과해야 하는 값 — 초기 비밀번호 규칙(숫자+알파벳 8자 이상)을 채운다.
 const valid: UserFormValues = {
   loginId: 'SYN-LOGIN-01',
+  password: 'SynPw1234',
   userName: '합성 사용자 A',
   departmentId: '3001',
   email: 'syn.user.a@example.invalid',
@@ -12,7 +18,7 @@ const valid: UserFormValues = {
 };
 
 describe('USER_FORM_FIELDS', () => {
-  /** 목록에 없는 필드명의 서버 오류는 삼키지 않고 배너로 간다. */
+  /** 목록에 없는 필드명의 서버 오류는 삼키지 않고 배너로 간다. 이 목록 자체는 바뀌지 않았다. */
   it('폼이 소유한 입력칸 이름을 계약이 쓰는 이름 그대로 둔다', () => {
     expect([...USER_FORM_FIELDS]).toEqual([
       'loginId',
@@ -21,6 +27,19 @@ describe('USER_FORM_FIELDS', () => {
       'email',
       'statusCode',
     ]);
+  });
+});
+
+describe('USER_CREATE_FORM_FIELDS', () => {
+  /*
+   * ⭐ 수정 폼에는 `password` 칸이 없다 — `USER_FORM_FIELDS`(수정·등록 공용 knownFields)에
+   * 그 이름을 넣으면, 수정 저장에서 서버가 `field: "password"` 오류를 내려보낼 때 그것이
+   * 「인라인」으로 분류되는데 정작 수정 폼에는 그릴 자리가 없어 조용히 삼켜진다. 그래서 등록
+   * 전용 목록을 따로 두고, 위 목록에는 여전히 없다는 것을 함께 못 박는다.
+   */
+  it('등록 목록은 USER_FORM_FIELDS 에 password 를 더한 것이고, 그 목록 자체에는 없다', () => {
+    expect([...USER_CREATE_FORM_FIELDS]).toEqual([...USER_FORM_FIELDS, 'password']);
+    expect(USER_FORM_FIELDS).not.toContain('password');
   });
 });
 
@@ -116,6 +135,29 @@ describe('validateUserForm — 등록', () => {
   it('로그인 ID 중복을 검사하지 않는다', () => {
     expect(validateUserForm(valid, 'create').loginId).toBeUndefined();
   });
+
+  /*
+   * 규칙 자체는 `initial-password.ts`가 소유한다 — 여기서는 그 판정을 부르고, 그 결과가
+   * `password` 키에 제자리로 실리는지만 본다.
+   */
+  it('초기 비밀번호가 비면 password 오류가 선다', () => {
+    expect(validateUserForm({ ...valid, password: '' }, 'create').password).toBe(t.required);
+  });
+
+  it('초기 비밀번호가 규칙을 어기면 password 오류가 선다', () => {
+    // 알파벳만 8자 — 숫자가 없어 규칙 미달이다.
+    expect(validateUserForm({ ...valid, password: 'abcdefgh' }, 'create').password).toBe(
+      t.initialPasswordWeak(INITIAL_PASSWORD_MIN_LENGTH),
+    );
+  });
+
+  /*
+   * 반환형이 `Record<string, string>`이라 `undefined`를 담을 수 없다 — 담기면 「오류가 있다」를
+   * 키 수로 세는 자리에서 통과한 칸이 오류로 세어진다. 키 자체가 없어야 한다.
+   */
+  it('초기 비밀번호가 규칙을 채우면 password 키 자체가 없다', () => {
+    expect(validateUserForm(valid, 'create')).not.toHaveProperty('password');
+  });
 });
 
 describe('validateUserForm — 수정', () => {
@@ -152,5 +194,14 @@ describe('validateUserForm — 수정', () => {
     expect(
       validateUserForm({ ...valid, email: `${'a'.repeat(191)}@b.invalid` }, 'edit').email,
     ).toBeDefined();
+  });
+
+  /*
+   * 수정 본문에 `password` 자리가 없다 — 수정 폼에서 이 칸을 검사하면 그릴 자리가 없는
+   * 오류로 저장이 잠긴다. 비었든 규칙을 어겼든 오류를 만들지 않아야 한다.
+   */
+  it('비밀번호가 비어 있거나 규칙을 어겨도 password 오류를 만들지 않는다', () => {
+    expect(validateUserForm({ ...valid, password: '' }, 'edit').password).toBeUndefined();
+    expect(validateUserForm({ ...valid, password: 'abcdefgh' }, 'edit').password).toBeUndefined();
   });
 });

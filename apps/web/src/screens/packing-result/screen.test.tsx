@@ -49,6 +49,8 @@ interface Options {
   missingProcessRow?: boolean;
   /** 쓰기 요청을 담아 둔다 — 확정이 세 단계를 도는지 본다 */
   writes?: Request[];
+  /** 포장 만들기가 실패하는 갈래 — 담긴 줄은 있는데 포장이 없는 상태를 만든다(#1093). */
+  createUnitFails?: boolean;
   reads?: Request[];
 }
 
@@ -125,7 +127,9 @@ const renderScreen = (options: Options = {}) => {
       respond: (request) => {
         options.writes?.push(request.clone());
 
-        return jsonResponse(handlingUnitBody, { status: 201, headers: { ETag: '"7"' } });
+        return options.createUnitFails === true
+          ? jsonResponse({ message: '만들지 못했습니다' }, { status: 500 })
+          : jsonResponse(handlingUnitBody, { status: 201, headers: { ETag: '"7"' } });
       },
     },
     {
@@ -192,7 +196,12 @@ const renderScreen = (options: Options = {}) => {
 
   return renderWithProviders(
     <PopIdentityProvider
-      value={{ terminalId: 101, processes: [{ processId: 301 }], workerNo: '3391' }}
+      value={{
+        terminalId: 101,
+        processes: [{ processId: 301 }],
+        equipment: null,
+        workerNo: '3391',
+      }}
     >
       <PackingResultScreen />
     </PopIdentityProvider>,
@@ -270,6 +279,34 @@ describe('PackingResultScreen', () => {
     await waitFor(() => {
       expect(screen.getByLabelText(t.scan.label.productionLot)).toHaveProperty('disabled', false);
     });
+  });
+
+  /*
+   * ⛔ **라벨 모드에서 돌아올 길이 사라지면 현장 단말은 갇힌다**(E-4 — 주 액션을 화면 «안»에
+   * 유지한다). 한때 액션 줄을 통째로 숨겼는데 되돌아가는 단추가 그 안에 있었다. 개발용
+   * 브라우저는 새로고침으로 빠져나오지만 단말에는 주소창이 없다(88단계 2회차 실측 · #1092).
+   */
+  it('라벨 모드에 들어가도 돌아오는 단추가 남는다', async () => {
+    const user = userEvent.setup();
+    renderScreen();
+
+    await scan(user, t.scan.label.deliveryLabel, 'SYN-DL-0455-001');
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: t.actions.labels })).toBeEnabled();
+    });
+
+    await user.click(screen.getByRole('button', { name: t.actions.labels }));
+
+    const back = await screen.findByRole('button', { name: t.actions.packing });
+    expect(back).toBeEnabled();
+
+    /* ⛔ 포장 조작은 함께 서지 않는다 — 라벨 화면에서 누를 일이 없다. */
+    expect(screen.queryByRole('button', { name: t.actions.confirm })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: t.actions.rescan })).not.toBeInTheDocument();
+
+    /* 눌러서 실제로 돌아온다 — 단추가 있는 것과 동작하는 것은 다른 축이다. */
+    await user.click(back);
+    expect(await screen.findByRole('button', { name: t.actions.confirm })).toBeInTheDocument();
   });
 
   it('없는 납품라벨은 «빈 목록»으로 오고 화면이 그것을 사유로 말한다', async () => {
@@ -430,6 +467,26 @@ describe('PackingResultScreen — 담기와 확정', () => {
     await scan(user, t.scan.label.shipment, 'SYN-SH-0502');
     expect(await screen.findByText(t.match.openUnitBlocksShipmentChange)).toBeInTheDocument();
     expect(sentToOtherShipment()).toBe(false);
+  });
+
+  /**
+   * ⛔ **포장이 없으면 확정 단추를 잠근다**(#1093 · 사용자 지시 「눌러도 안 되면 비활성」).
+   *
+   * 담는 것은 화면이 즉시 하고 포장은 서버가 만들어 준다. 만들기가 실패하면 담긴 줄은 있는데
+   * 포장이 없는 상태로 남는데, 그때 확정 처리기는 조용히 되돌아온다 — 단추가 열려 있으면
+   * 작업자는 계속 누르고 아무 말도 듣지 못한다.
+   */
+  it('포장 만들기가 실패하면 확정이 잠기고 그 사실을 말한다', async () => {
+    const user = userEvent.setup();
+    renderScreen({ createUnitFails: true });
+
+    await scanUntilMatched(user);
+    await pack(user, '60');
+    await user.click(screen.getByRole('combobox', { name: t.fields.handlingUnitType }));
+    await user.click(await screen.findByRole('option', { name: '카톤' }));
+
+    expect(await screen.findByText(t.locks.unitMissing)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: t.actions.confirm })).toBeDisabled();
   });
 
   it('키패드로 친 수량이 화면에 보인다 — 누른 값이 어디로 갔는지 보이지 않으면 오입력을 못 알아챈다', async () => {

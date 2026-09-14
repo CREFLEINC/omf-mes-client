@@ -121,6 +121,9 @@ export const warehouseLocation = {
       `${String(count)}건의 발행 기록을 만들었습니다. 서버가 생성한 이미지를 확인해 내려받으세요. 물리 인쇄는 이 화면에서 하지 않습니다.`,
     alt: (locationCode: string, issueSeq: number): string =>
       `${locationCode} Location 라벨 ${String(issueSeq)}회차`,
+    /** 그림 아래 설명. 보이는 글자라 `alt`와 따로 둔다 — 둘은 같은 값이 아니다. */
+    caption: (locationCode: string, issueSeq: number): string =>
+      `${locationCode} · ${String(issueSeq)}회`,
     download: '이미지 내려받기',
     loadFailed: '라벨 이미지를 불러오지 못했습니다.',
     loadSummary: (success: number, failed: number, pending: number): string =>

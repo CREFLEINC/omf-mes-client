@@ -4,7 +4,9 @@ import { messages } from '@omf-mes/i18n';
 export interface PopHeaderProps {
   /** 표제와 본문을 잇는 id. 셸이 없는 화면이라 표제가 본문의 이름이 된다. */
   titleId: string;
-  /** 이 단말이 붙어 있는 설비. 못 받았으면 `null`. */
+  /** 이 단말의 코드. 못 받았으면 `null`. */
+  terminalCode: string | null;
+  /** 이 단말에 매핑된 설비. 모르거나 없으면 `null` — 타이틀 옆 자리를 비운다. */
   equipmentCode: string | null;
   equipmentName: string | null;
   /** 확인이 끝난 사번. 아직이면 `null`. */
@@ -29,6 +31,7 @@ export interface PopHeaderProps {
  */
 export const PopHeader = ({
   titleId,
+  terminalCode,
   equipmentCode,
   equipmentName,
   workerNo,
@@ -42,11 +45,16 @@ export const PopHeader = ({
         {t.title}
       </h1>
 
+      {/* ⭐ 무엇 앞에 서 있는가(설비)는 타이틀 옆, 단말·사번·연결은 오른쪽(사용자 지시 2026-09-14). */}
+      {equipmentCode !== null && equipmentCode.trim() !== '' && (
+        <p className="pop-context">{t.header.equipmentLabel(equipmentCode, equipmentName ?? '')}</p>
+      )}
+
       <p className="pop-context pop-context-right">
         <span>
-          {equipmentCode === null || equipmentCode.trim() === ''
-            ? t.header.equipmentUnknown
-            : t.header.equipmentLabel(equipmentCode, equipmentName ?? '')}
+          {terminalCode === null || terminalCode.trim() === ''
+            ? t.header.terminalUnknown
+            : t.header.terminalLabel(terminalCode)}
         </span>
 
         <span>

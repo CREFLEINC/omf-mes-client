@@ -213,6 +213,8 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
+const OTHER_LOT_NO = 'PLOT-2026-0805-0099';
+
 describe('WIP 공정 이동 화면', () => {
   /*
    * 스캔은 연속 작업이라, 다 해 놓고 저장에서 막히면 작업을 통째로 버린다. 진입 자체를
@@ -571,4 +573,34 @@ describe('WIP 공정 이동 화면', () => {
     /* 연속 작업이다. 한 건 넘기면 다음 LOT 을 바로 스캔할 수 있어야 한다. */
     expect(screen.getByLabelText(/LOT 스캔/)).toBeTruthy();
   });
+  /*
+   * 스캔 하나가 이 화면의 대상을 정한다. 이미 읽은 뒤에 다른 라벨을 스치면 대상이 조용히
+   * 바뀌는데, 작업자는 앞엣것에 적는 줄 알고 다음 단계로 넘어간다.
+   */
+  it('이미 읽은 뒤 다른 값을 읽으면 되묻는다', async () => {
+    mount();
+    await screen.findByLabelText(/LOT 스캔/);
+    scan(LOT_NO);
+    await screen.findByText(LOT_NO);
+
+    scan(OTHER_LOT_NO);
+
+    /* 제목은 창이 닫혀도 DOM 에 남는다. 닿을 수 있는 단추로 열렸는지를 잰다. */
+    expect(await screen.findByRole('button', { name: '그대로 두기' })).toBeTruthy();
+    expect(screen.queryByText(`${OTHER_LOT_NO} LOT을 찾지 못했습니다`)).toBeNull();
+  });
+
+  it('되물은 창에서 새 값을 받으면 그때 대상이 바뀐다', async () => {
+    const user = userEvent.setup();
+    mount();
+    await screen.findByLabelText(/LOT 스캔/);
+    scan(LOT_NO);
+    await screen.findByText(LOT_NO);
+    scan(OTHER_LOT_NO);
+
+    await user.click(await screen.findByRole('button', { name: '새로 읽은 값으로' }));
+
+    expect(await screen.findByText(`${OTHER_LOT_NO} LOT을 찾지 못했습니다`)).toBeTruthy();
+  });
+
 });

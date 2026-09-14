@@ -67,11 +67,14 @@ const toContent = (error: ApiError): BannerContent => {
         };
       }
 
-      const serverLines =
-        error.message === undefined ? [] : usableMessages([{ message: error.message }]);
-
-      if (serverLines.length > 0) return { lines: serverLines, canRetry: true };
-
+      /*
+       * ⛔ **400 밖의 상태 코드에서 오는 글은 개발자 몫이다**(#1094 · 실기 2026-09-12).
+       *
+       * 400 은 계약이 「무엇이 잘못됐는지」를 담는 자리라 위에서 그대로 보이지만, 그 밖의
+       * 코드(404·500…)에 실려 오는 문장은 서버 내부 사정이다. 그대로 내면 **작업자가 할 수
+       * 있는 일이 하나도 없는 글**이 화면에 선다 — 목의 「씨앗에 없는 자원입니다」가 포장
+       * 확정 실패 띠에 그대로 떴다.
+       */
       return { lines: [messages.httpError.description], canRetry: true };
     }
   }

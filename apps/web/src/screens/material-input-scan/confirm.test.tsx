@@ -26,6 +26,7 @@ const ROUTE = `/pop/material-input?workOrderId=${String(WORK_ORDER_ID)}`;
 const GATED: PopIdentity = {
   terminalId: TERMINAL_ID,
   processes: [{ processId: PROCESS_ID }],
+  equipment: null,
   workerNo: WORKER_NO,
 };
 

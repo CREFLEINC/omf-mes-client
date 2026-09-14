@@ -12,3 +12,22 @@
 .worker-sign-in p {
   margin: 0;
 }
+
+/*
+ * 세 열을 똑같이 나눈다. 공용 격자의 `1fr` 은 가장 긴 글자만큼 열을 늘려, 「모두 지우기」가
+ * 선 오른쪽 열만 넓어진다(#1187 실기 확인). 공용 부품을 바꾸면 POP 키패드 배치까지 움직여
+ * 이 화면에서만 좁힌다.
+ */
+.worker-sign-in .omf-numeric-keypad {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+/*
+ * 창 본문의 간격. 디자인 시스템의 본문은 패딩만 주고 자식 사이는 비워 두는데, 위의
+ * p 규칙이 후손 선택자라 창 안 문단까지 닿아 안내와 경고가 서로 붙는다.
+ */
+.worker-sign-in__dialog-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3, 12px);
+}

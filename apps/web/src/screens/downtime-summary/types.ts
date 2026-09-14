@@ -1,4 +1,5 @@
 import type { components } from '@omf-mes/api-client';
+import { messages } from '@omf-mes/i18n';
 
 import type { GroupBy } from './filters';
 
@@ -11,6 +12,8 @@ import type { GroupBy } from './filters';
  *
  * 이 화면이 소유한다 — 다른 화면 슬라이스의 같은 이름 파일을 참조하지 않는다.
  */
+
+const t = messages.downtimeSummary;
 
 type DowntimeSummary = components['schemas']['DowntimeSummary'];
 type Downtime = components['schemas']['Downtime'];
@@ -118,10 +121,10 @@ export const formatDuration = (minutes: number): string => {
   const hours = Math.trunc(total / 60);
   const rest = total % 60;
 
-  if (hours === 0) return `${formatCount(rest)}분`;
-  if (rest === 0) return `${formatCount(hours)}시간`;
+  if (hours === 0) return t.duration.minutesOnly(formatCount(rest));
+  if (rest === 0) return t.duration.hoursOnly(formatCount(hours));
 
-  return `${formatCount(hours)}시간 ${String(rest)}분`;
+  return t.duration.hoursMinutes(formatCount(hours), String(rest));
 };
 
 const nullable = (value: number | null | undefined): number | null => value ?? null;

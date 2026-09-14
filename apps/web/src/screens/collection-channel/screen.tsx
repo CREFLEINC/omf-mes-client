@@ -518,7 +518,12 @@ export const CollectionChannelScreen = () => {
     <div className="screen">
       <PageHeader
         title={t.title}
-        breadcrumb={<Breadcrumb items={[{ label: t.breadcrumbRoot }, { label: t.title }]} />}
+        breadcrumb={
+          <Breadcrumb
+            items={[{ label: t.breadcrumbRoot }, { label: t.title }]}
+            aria-label={messages.common.shell.breadcrumb}
+          />
+        }
       />
 
       {/* 고를 목록이 반쪽이면 없는 공장처럼 보인다 — 감추지 않고 밝힌다. 실패가 잘림보다 앞선다. */}

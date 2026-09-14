@@ -15,7 +15,7 @@ const allocation = (id: number) => ({
   warehouseId: 1001,
   allocatedQty: 10,
   uomId: 920001,
-  /* ⛔ `shippingInspectionStatusCode` 는 계약에서 빠졌다(2026-09-11 전달본) — `oqcPassed` 만 남는다. */
+  /* 현행 배분 응답은 목표 선택 필드 `shippingInspectionStatusCode`를 생략하고 `oqcPassed`를 준다. */
   oqcPassed: true,
   packedQty: 0,
 });

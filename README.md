@@ -78,7 +78,9 @@ pnpm --filter @omf-mes/mobile dev   # 모바일 셸 개발 서버 (브라우저)
 **인증이 쿠키(`omf_session`, HttpOnly)라 이 편이 맞기도 하다.** 같은 출처면 쿠키가 그대로
 실려 화면 코드를 고치지 않아도 로그인 세션이 유지된다.
 
-`apps/web/.env.example`을 `apps/web/.env.local`로 복사하고 두 값을 채운다.
+`apps/web/.env.example`을 `apps/web/.env.local`로 복사하고 프록시 두 값을 채운다. 같은 파일의
+`VITE_DEFAULT_INITIAL_PASSWORD`(사용자 등록 폼의 초기 비밀번호 기본값)는 **선택**이다 — 비워 두면
+화면 코드의 기본값을 쓴다.
 
 ```bash
 cp apps/web/.env.example apps/web/.env.local   # 주소를 채운다 — .local 은 커밋되지 않는다
@@ -92,8 +94,9 @@ pnpm --filter @omf-mes/web dev:pop             # POP
 curl -s http://localhost:5173/api/health       # POP 은 5174
 ```
 
-⚠ **프록시는 개발 서버 전용이다.** 빌드 산출물에는 이 경로가 없으므로, 설치본·배포본은
-백엔드가 CORS를 열어 주거나 화면과 같은 출처로 서비스돼야 한다.
+⚠ **프록시는 개발 서버 전용이다.** 빌드 산출물에는 이 경로가 없으므로, 배포본은 백엔드가
+CORS를 열어 주거나 화면과 같은 출처로 서비스돼야 한다. **POP 설치본은 셸이 그 자리를
+대신한다** — `apps/pop/RELEASE-BUILD.md`.
 
 ⚠ **계약 경로는 로그인을 요구한다.** 로그인하지 않으면 모든 조회가 `401`로 답한다.
 로그인은 `POST /api/app/sessions`이며 성공하면 서버가 세션 쿠키를 내린다 — 프록시를 거치면

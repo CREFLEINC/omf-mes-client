@@ -10,6 +10,7 @@ import {
   renderWithProviders,
   type StubRoute,
 } from '../../test/api-harness';
+import { itemRoutes } from '../../test/master-routes';
 import { runBackStep } from '../../patterns/back-step';
 import { useWorkerSession } from '../../patterns/worker-session';
 import { ShopfloorReceiptScreen } from './screen';
@@ -75,6 +76,16 @@ const routes = (options: Options = {}): StubRoute[] => [
             sourceDocumentId: 300,
             sourceWarehouseId: 5,
             issuedAt: '2026-09-07T09:00:00+09:00',
+            statusCode: 'POSTED',
+          },
+          {
+            goodsIssueId: 501,
+            goodsIssueNo: SECOND_ISSUE_NO,
+            issueTypeCode: 'PRODUCTION',
+            sourceDocumentTypeCode: 'PICKING_ORDER',
+            sourceDocumentId: 300,
+            sourceWarehouseId: 5,
+            issuedAt: '2026-09-07T10:00:00+09:00',
             statusCode: 'POSTED',
           },
         ],
@@ -247,14 +258,10 @@ const routes = (options: Options = {}): StubRoute[] => [
       });
     },
   },
-  {
-    match: (req) => new URL(req.url).pathname === '/mdm/items',
-    respond: () =>
-      jsonResponse({
-        items: [{ itemId: 100, itemCode: 'RM-1001', itemName: '원자재', fifoPolicyCode: 'FEFO' }],
-        page,
-      }),
-  },
+  ...itemRoutes(
+    [{ itemId: 100, itemCode: 'RM-1001', itemName: '원자재', fifoPolicyCode: 'FEFO' }],
+    page,
+  ),
   {
     match: (req) => new URL(req.url).pathname === '/mdm/code-values',
     respond: (req) => {
@@ -337,6 +344,9 @@ beforeEach(() => {
   /* 연결 상태를 흉내 낸 것이 다음 시험으로 새면 엉뚱한 자리에서 오프라인이 된다. */
   vi.restoreAllMocks();
 });
+
+const OTHER_ISSUE_NO = 'GI-2026-000999';
+const SECOND_ISSUE_NO = 'GI-2026-000403';
 
 describe('생산창고 입고 화면', () => {
   /*
@@ -751,5 +761,89 @@ describe('생산창고 입고 화면', () => {
     await user.click(screen.getByRole('button', { name: '입고 확정' }));
 
     expect(await screen.findByText('입고를 전송하지 못했습니다')).toBeTruthy();
+  });
+  /*
+   * 스캔 하나가 이 화면의 대상을 정한다. 이미 읽은 뒤에 다른 라벨을 스치면 대상이 조용히
+   * 바뀌는데, 작업자는 앞엣것에 적는 줄 알고 다음 단계로 넘어간다.
+   */
+  it('이미 읽은 뒤 다른 값을 읽으면 되묻는다', async () => {
+    mount();
+    await screen.findByLabelText(/출고 QR 스캔/);
+    scan(ISSUE_NO);
+    await screen.findByText(`${ISSUE_NO} · 1라인`);
+
+    scan(OTHER_ISSUE_NO);
+
+    /* 제목은 창이 닫혀도 DOM 에 남는다. 닿을 수 있는 단추로 열렸는지를 잰다. */
+    expect(await screen.findByRole('button', { name: '그대로 두기' })).toBeTruthy();
+    expect(screen.queryByText(`${OTHER_ISSUE_NO} 출고 전표를 찾지 못했습니다`)).toBeNull();
+  });
+
+  it('되물은 창에서 새 값을 받으면 그때 대상이 바뀐다', async () => {
+    const user = userEvent.setup();
+    mount();
+    await screen.findByLabelText(/출고 QR 스캔/);
+    scan(ISSUE_NO);
+    await screen.findByText(`${ISSUE_NO} · 1라인`);
+    scan(OTHER_ISSUE_NO);
+
+    await user.click(await screen.findByRole('button', { name: '새로 읽은 값으로' }));
+
+    expect(await screen.findByText(`${OTHER_ISSUE_NO} 출고 전표를 찾지 못했습니다`)).toBeTruthy();
+  });
+
+  /*
+   * 전표를 바꿨는데 앞 전표를 보며 고른 설비와 잰 값이 남으면, 그 값이 다른 전표의 작업으로
+   * 이어진다. 수령 수량은 전표가 바뀌면 다시 만들어지는데 호퍼 쪽만 남는다.
+   */
+  it('새 전표를 받으면 고른 설비와 잰 값이 비워진다', async () => {
+    const user = userEvent.setup();
+    mount();
+    await screen.findByLabelText(/출고 QR 스캔/);
+    scan(ISSUE_NO);
+    await receivedField();
+
+    await user.click(await screen.findByRole('combobox', { name: '설비' }));
+    await user.click(await screen.findByRole('option', { name: /EQ-01/ }));
+    await screen.findByText(/HOP-01/);
+
+    scan(SECOND_ISSUE_NO);
+    await user.click(await screen.findByRole('button', { name: '새로 읽은 값으로' }));
+
+    await screen.findByText(`${SECOND_ISSUE_NO} · 1라인`);
+    /* 전표가 바뀌었는데 앞 전표를 보며 고른 설비가 남아 있으면 그 호퍼가 계속 보인다. */
+    expect(screen.queryByText(/HOP-01/)).toBeNull();
+  });
+  /*
+   * 호퍼 결과 배너도 전표에 딸린 값이다. 남으면 새 전표 화면에 앞 전표의 기록 결과가 떠 있어,
+   * 이번 것도 이미 적은 줄로 읽힌다.
+   */
+  it('새 전표를 받으면 앞 전표의 호퍼 결과가 남지 않는다', async () => {
+    const user = userEvent.setup();
+    mount({
+      extra: [
+        {
+          match: (req: Request) =>
+            new URL(req.url).pathname === '/inventory/adjustments' && req.method === 'POST',
+          respond: () => jsonResponse({ inventoryAdjustmentId: 1 }, { status: 201 }),
+        },
+      ],
+    });
+    await screen.findByLabelText(/출고 QR 스캔/);
+    scan(ISSUE_NO);
+    await receivedField();
+
+    await user.click(await screen.findByRole('combobox', { name: '설비' }));
+    await user.click(await screen.findByRole('option', { name: /EQ-01/ }));
+    await user.type(await screen.findByLabelText(/RM-1001 실측 잔량/), '100');
+    await user.click(screen.getByRole('button', { name: '호퍼 잔량 기록' }));
+
+    expect(await screen.findByText('호퍼 잔량을 기록했습니다')).toBeTruthy();
+
+    scan(SECOND_ISSUE_NO);
+    await user.click(await screen.findByRole('button', { name: '새로 읽은 값으로' }));
+    await screen.findByText(`${SECOND_ISSUE_NO} · 1라인`);
+
+    expect(screen.queryByText('호퍼 잔량을 기록했습니다')).toBeNull();
   });
 });

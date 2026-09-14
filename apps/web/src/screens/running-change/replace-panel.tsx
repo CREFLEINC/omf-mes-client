@@ -225,6 +225,13 @@ export const ReplacePanel = ({
           id={targetId}
           className="pop-rc-select"
           size="xl"
+          /*
+           * ⭐ **대화상자 제목은 «명사»로 선다**(#1094). 선택기는 제목을 「접근 이름 + 선택」
+           *    으로 만드는데, 접근 이름이 비면 자리글(「교체 대상을 고르세요」)을 집어
+           *    **「교체 대상을 고르세요 선택」**이 됐다 — 다른 대화상자는 전부 「명사 + 선택」이다.
+           *    자리글은 칸 안의 안내로 그대로 두고, 제목에 쓸 이름만 따로 준다.
+           */
+          aria-label={t.replace.targetLabel}
           placeholder={t.replace.targetPlaceholder}
           value={selectedTargetId === null ? null : String(selectedTargetId)}
           options={targets.map((row) => ({

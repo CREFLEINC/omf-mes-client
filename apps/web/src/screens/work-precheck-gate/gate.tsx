@@ -99,12 +99,17 @@ const HISTORY_COLUMNS = (names: Map<string, string>): Column<PrecheckTarget>[] =
   {
     key: 'type',
     header: t.history.columnType,
+    /* 유형 이름이 가장 길다 — 줄바꿈 없이 서도록 남는 폭을 이 열이 갖는다(사용자 지시). */
+    width: '40%',
+    /* ⚠ 정렬은 «부품»에 맡긴다 — CSS 로 셀만 옮기면 머리글이 제자리에 남아 두 줄이 어긋난다. */
+    align: 'center',
     render: (row) => typeLabel(names, row.inspectionTypeCode),
   },
   {
     key: 'result',
     header: t.history.columnResult,
-    width: '96px',
+    width: '25%',
+    align: 'center',
     render: (row) =>
       row.latest === null ? (
         <Chip variant="status" size="sm" status="error">
@@ -123,6 +128,9 @@ const HISTORY_COLUMNS = (names: Map<string, string>): Column<PrecheckTarget>[] =
   {
     key: 'detail',
     header: t.history.columnDetail,
+    /* ⚠ 값이 비는 일이 잦은 열이다 — 폭을 줄여 앞의 두 열에 넘긴다(사용자 지시). */
+    width: '35%',
+    align: 'center',
     render: (row) =>
       row.latest === null
         ? ''
@@ -159,10 +167,7 @@ export const PrecheckGate = ({
   const policy = usePrecheckPolicy(plantId, processId, canAsk);
   const assignments = useInspectionAssignments(equipmentId, canAsk);
 
-  const windows = useMemo(
-    () => toTypeWindows(assignments.data, today),
-    [assignments.data, today],
-  );
+  const windows = useMemo(() => toTypeWindows(assignments.data, today), [assignments.data, today]);
 
   const inspections = useLatestInspections(
     equipmentId,
@@ -173,7 +178,8 @@ export const PrecheckGate = ({
   const typeNames = useInspectionTypeNames(canAsk);
 
   const isEmergency = (workOrderTypeCode ?? '').trim() === EMERGENCY_WORK_ORDER_TYPE_CODE;
-  const controlLevel = policy.data === undefined ? UNRESOLVED_CONTROL_LEVEL : toControlLevel(policy.data);
+  const controlLevel =
+    policy.data === undefined ? UNRESOLVED_CONTROL_LEVEL : toControlLevel(policy.data);
 
   /*
    * ⛔ **확인하지 못한 것을 통과로 다루지 않는다.** 순서가 뜻이다 — 연결·설비를 먼저
@@ -324,17 +330,24 @@ export const PrecheckGate = ({
           {t.title}
         </h1>
 
-        <p className="pop-context pop-context-right">
+        {/*
+         * ⭐ **도면은 3단이다**(스펙 §4 — 「작업 전 점검 확인 · WO-… · PRS-01 · 사번 …」).
+         *    무엇을 시작하려다 막혔는지(W/O·설비)는 제목 «옆»에 서고, 사번 같은 단말 상태만
+         *    오른쪽 끝에 모인다. 셋을 한 덩이로 오른쪽에 몰면 정작 막힌 대상이 상태 표시들
+         *    사이에 끼여 읽힌다(사용자 지시 2026-09-12).
+         */}
+        <p className="pop-context precheck-gate-subject">
           <span>{t.header.workOrderLabel(workOrderNo)}</span>
           <span>
             {equipmentCode === null || equipmentCode.trim() === ''
               ? t.header.equipmentUnknown
               : t.header.equipmentLabel(equipmentCode, equipmentName ?? '')}
           </span>
+        </p>
+
+        <p className="pop-context pop-context-right">
           <span>
-            {workerNo.trim() === ''
-              ? t.header.workerUnset
-              : t.header.workerLabel(workerNo)}
+            {workerNo.trim() === '' ? t.header.workerUnset : t.header.workerLabel(workerNo)}
           </span>
         </p>
       </header>
@@ -399,29 +412,40 @@ export const PrecheckGate = ({
           />
         )}
 
-        {/* ⚠ 「없음」이 「안 했음」이 아닐 수 있다 — 그 사실을 말하되 통과시키지는 않는다. */}
-        {verdict?.reason === 'missing' && (
-          <p className="precheck-gate-note">{t.history.unsentWarning}</p>
-        )}
-
         {/* ⚠ 고장은 보이되 막지 않는다 — 점검과 축이 다르다. */}
         {openBreakdownCount > 0 && (
           <p className="precheck-gate-note">{t.history.openBreakdowns(openBreakdownCount)}</p>
         )}
       </section>
 
+      {/*
+       * ③ 안내 — **라벨 형식으로 강조한다**(사용자 지시 2026-09-12). 막힌 화면에서 사용자가
+       *    찾는 것은 「왜 막혔나」 다음에 「그래서 무엇을 하나」이고, 본문과 같은 색으로 두면
+       *    그 자리가 눈에 띄지 않는다.
+       */}
+      {/*
+       * ⭐ **할 일은 파란 라벨 «한 상자»다**(사용자 지시 2026-09-12). 줄마다 라벨을 달면 같은
+       *    말이 네 조각으로 흩어져 어디까지가 한 이야기인지 흐려진다 — 막힌 뒤에 읽어야 할
+       *    것은 「① → ② → (우회)」 한 흐름이다.
+       */}
       <section className="precheck-gate-guide">
-        <h2 className="precheck-gate-section-title">{t.guide.title}</h2>
-        <p>{t.guide.step1}</p>
-        <p>{t.guide.step2}</p>
-
-        <p className="precheck-gate-note">
-          {verdict?.reason === 'failed'
-            ? t.guide.failedNoOverride
-            : verdict?.canOverride === true
-              ? t.guide.emergency
-              : t.guide.emergencyOnly}
-        </p>
+        {/*
+         * ⛔ **부품의 `title` 을 쓰지 않는다** — 제목이 붙으면 첫 줄의 줄높이가 본문과 달라져
+         *    아이콘이 그 줄과 어긋난다(실측 · 판정 배너는 20, 제목이 붙으면 24). 같은 굵기를
+         *    첫 줄로 두면 두 배너가 같은 구조가 되어 한 규칙으로 맞는다.
+         */}
+        <AlertBanner variant="info">
+          <strong className="precheck-gate-guide-step">{t.guide.title}</strong>
+          <span className="precheck-gate-guide-step">{t.guide.step1}</span>
+          <span className="precheck-gate-guide-step">{t.guide.step2}</span>
+          <span className="precheck-gate-guide-step">
+            {verdict?.reason === 'failed'
+              ? t.guide.failedNoOverride
+              : verdict?.canOverride === true
+                ? t.guide.emergency
+                : t.guide.emergencyOnly}
+          </span>
+        </AlertBanner>
       </section>
 
       {record.error !== null && (

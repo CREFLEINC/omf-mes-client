@@ -26,7 +26,7 @@ export const repairRoundtrip: Translated<typeof ko.repairRoundtrip> = {
     legend: 'Thông tin lỗi',
     loading: 'Đang tải bản ghi lỗi',
     loadFailed: 'Không xác nhận được bản ghi lỗi. Hãy kiểm tra kết nối rồi quét lại.',
-    none: 'Đây không phải LOT bị đánh giá là lỗi',
+    none: (lotNo: string) => `Đây không phải LOT bị đánh giá là lỗi — đã đọc ${lotNo}`,
     window: (days: number) => `Đã tìm trong ${String(days)} ngày gần đây`,
     pick: 'Hãy chọn lỗi cần sửa',
     qty: (qty: string, uom: string) => `Lỗi ${qty} ${uom}`,

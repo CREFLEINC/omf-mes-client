@@ -242,6 +242,7 @@ export const ToolListPane = ({
           value={draft.q}
           onChange={(event) => setDraft((prev) => ({ ...prev, q: event.target.value }))}
           onSearch={(value) => applyDraft({ q: value })}
+          clearLabel={messages.common.clear}
         />
         <SelectField
           label={t.fields.plant}

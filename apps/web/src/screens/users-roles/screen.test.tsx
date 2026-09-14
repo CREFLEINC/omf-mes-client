@@ -3,7 +3,7 @@ import type { QueryClient } from '@tanstack/react-query';
 import { act, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useLocation, useNavigate } from 'react-router';
-import { describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
   createStubFetch,
@@ -23,6 +23,7 @@ import {
   userDataScopeFixtures,
   userRoleFixtures,
 } from './fixtures';
+import { FALLBACK_INITIAL_PASSWORD } from './initial-password';
 import { UsersRolesScreen } from './screen';
 import type { AppUser, Role } from './types';
 
@@ -86,6 +87,10 @@ const userListRoute = (items = appUserFixtures, pageMeta: PageStub = DEFAULT_PAG
   match: (request) => isGet(request, USERS_PATH),
   respond: () => jsonResponse({ items, page: pageMeta }),
 });
+
+const forbiddenResponse = {
+  errors: [{ scope: 'screen', code: 'PERMISSION_DENIED', message: '이 기능을 쓸 권한이 없습니다.' }],
+};
 
 const userListErrorRoute = (status: number, body: unknown = { errors: [] }): StubRoute => ({
   match: (request) => isGet(request, USERS_PATH),
@@ -777,6 +782,43 @@ describe('UsersRolesScreen 조회 실패', () => {
     });
   });
 
+  /** 접근 확인을 다시 하는 동안에는 이미 확인한 선택 상세를 지우지 않는다. */
+  it('일반 목록 재조회 중과 500 실패 뒤에는 기존 선택 상세가 남는다', async () => {
+    const listRoute = userListRoute();
+    let listCalls = 0;
+    let finishRefetch: ((response: Response) => void) | null = null;
+    const { requests, queryClient } = renderScreen(
+      [
+        {
+          match: listRoute.match,
+          respond: (request) => {
+            listCalls += 1;
+            if (listCalls === 1) return listRoute.respond(request);
+            return new Promise<Response>((resolve) => { finishRefetch = resolve; });
+          },
+        },
+        departmentsRoute(),
+        userDetailRoute(),
+        ...roleRoutes(),
+      ],
+      '?usr=1001',
+    );
+
+    expect(await screen.findByRole('textbox', { name: '이름' })).toHaveValue('합성 사용자 A');
+
+    act(() => {
+      void queryClient.invalidateQueries({ queryKey: ['users-roles-users', 'list'] });
+    });
+    await waitFor(() => expect(userRequests(requests)).toHaveLength(2));
+    expect(within(userFormPane()).getByRole('textbox', { name: '이름' })).toHaveValue('합성 사용자 A');
+
+    await act(async () => {
+      finishRefetch?.(jsonResponse({ errors: [] }, { status: 500 }));
+    });
+    expect(await within(userListPane()).findByText('목록을 불러오지 못했습니다')).toBeInTheDocument();
+    expect(within(userFormPane()).getByRole('textbox', { name: '이름' })).toHaveValue('합성 사용자 A');
+  });
+
   /** 서버가 빈 문구를 주는 일이 실제로 있다 — 빈 배너가 아니라 기본 안내가 나와야 한다. */
   it('서버가 빈 문구를 줘도 배너 본문이 비지 않는다', async () => {
     const { requests } = renderScreen([
@@ -795,18 +837,22 @@ describe('UsersRolesScreen 조회 실패', () => {
    * 계약이 「이 화면 자체가 권한 관리 화면이라 진입 자체를 막고 배너로 사유를 표시한다」고 못 박았다.
    * 표·빈 상태를 함께 내면 볼 수 없는 자료가 있는 것처럼 읽힌다.
    */
-  it('권한이 없으면 배너만 나오고 표도 빈 상태도 나오지 않는다', async () => {
-    const { requests } = renderScreen([userListErrorRoute(403), departmentsRoute()]);
-
-    await waitFor(() => {
-      expect(requestsTo(requests, USERS_PATH).length).toBeGreaterThan(0);
-    });
+  it('권한이 없으면 지난 선택 주소여도 관리 본문과 상세 요청을 막는다', async () => {
+    const { requests } = renderScreen(
+      [userListErrorRoute(403, forbiddenResponse), departmentsRoute(), userDetailRoute(), ...roleRoutes()],
+      '?usr=1001',
+    );
 
     expect(await screen.findByText(/이 작업을 수행할 권한이 없습니다/)).toBeInTheDocument();
+    expect(detailRequests(requests)).toHaveLength(0);
     expect(screen.queryByRole('table')).not.toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: '사용자 정보' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: '역할 부여' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: '데이터 접근범위' })).not.toBeInTheDocument();
+    expect(within(userListPane()).queryByRole('button', { name: '사용자 추가' })).not.toBeInTheDocument();
+    expect(within(userListPane()).queryByRole('textbox')).not.toBeInTheDocument();
     expect(screen.queryByText('등록된 사용자가 없습니다')).not.toBeInTheDocument();
     expect(screen.queryByText('조건에 맞는 사용자가 없습니다')).not.toBeInTheDocument();
-    // 다시 불러도 같은 답이 온다 — 누를 수 있는 조치를 주면 사용자를 헛돌게 한다.
     expect(screen.queryByRole('button', { name: '다시 시도' })).not.toBeInTheDocument();
   });
 });
@@ -1202,6 +1248,31 @@ describe('UsersRolesScreen 저장 실패', () => {
 });
 
 describe('UsersRolesScreen 등록', () => {
+  /*
+   * ⚠⚠ **이 describe 의 모든 등록 경로가 환경변수 기본값에 매여 있다.** 등록 폼은 초기
+   * 비밀번호 칸을 `defaultInitialPassword()`로 채우고, 그 값이 화면 규칙(숫자+알파벳 8자
+   * 이상)을 못 채우면 `handleSaveUser`가 요청을 아예 보내지 않는다(`screen.tsx`). 아래
+   * `fillCreateForm`을 부르는 시험들(멱등 키만 실림 · 상태 코드 미포함 · 성공 후 이동 · 사용
+   * 중지 부재)은 **초기 비밀번호 칸을 직접 채우지 않는다** — 즉 전부 「기본값이 규칙을
+   * 통과한다」에 암묵적으로 매여 있다.
+   *
+   * 이 저장소에는 실제로 `apps/web/.env.local`이 있고 vite 는 모드와 무관하게 그것을 읽어
+   * vitest 에도 싣는다. 누가 거기에 규칙을 어기는 값을 넣으면 위 네 시험이 **그 기계에서만**
+   * 「초기 비밀번호가 이상해서」가 아니라 「요청이 아예 안 나갔다」는 엉뚱한 이유로 실패한다.
+   * 그래서 이 describe 최상위에서 값을 합성 상수로 못 박는다 — 안쪽 `describe('초기
+   * 비밀번호')`가 자기 갈래(환경변수 있음/없음/규칙 위반)를 재려고 다시 `vi.stubEnv`를 부르는
+   * 것은 그대로 둔다(더 안쪽 stub 이 이 stub 을 덮어써도 맞는 동작이다).
+   */
+  const SYNTHETIC_PASSING_DEFAULT_PASSWORD = 'SynParentPw1';
+
+  beforeEach(() => {
+    vi.stubEnv('VITE_DEFAULT_INITIAL_PASSWORD', SYNTHETIC_PASSING_DEFAULT_PASSWORD);
+  });
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
   const fillCreateForm = async (extraRoutes: StubRoute[] = []) => {
     const rendered = renderScreen([
       userListRoute(),
@@ -1285,6 +1356,286 @@ describe('UsersRolesScreen 등록', () => {
     expect(
       within(userFormPane()).queryByRole('button', { name: '사용 중지' }),
     ).not.toBeInTheDocument();
+  });
+
+  /**
+   * 초기 비밀번호 칸의 화면 시험.
+   *
+   * ⚠⚠ **vite 는 모드와 무관하게 `.env.local`을 읽고 그 값이 vitest 에도 실린다.** 이 저장소에는
+   * 이미 `apps/web/.env.local`이 있다 — 누가 거기에 `VITE_DEFAULT_INITIAL_PASSWORD`를 넣으면
+   * **그 기계에서만** 아래 시험들이 갈린다. 그래서 기본값에 닿는 시험마다 `vi.stubEnv`로 값을 못
+   * 박는다. **이 stub을 지우지 마라** — 지우면 이 그룹이 다시 기계 종속이 된다.
+   */
+  describe('초기 비밀번호', () => {
+    /* 공개 저장소에 실리는 값이다 — 합성 접두 없이도 명백히 지어낸 값을 쓴다. */
+    const SYNTHETIC_DEFAULT_PASSWORD = 'SynDefault-01';
+    const SYNTHETIC_TYPED_PASSWORD = 'SynTyped02';
+
+    const passwordErrorText = '초기 비밀번호는 숫자와 알파벳을 함께 넣어 8자 이상이어야 합니다.';
+    const passwordRequiredText = '필수 입력 항목입니다.';
+
+    afterEach(() => {
+      vi.unstubAllEnvs();
+    });
+
+    const openCreateForm = async () => {
+      const rendered = renderScreen([userListRoute(), departmentsRoute(), userDetailRoute()]);
+
+      await waitForUserList(rendered.requests);
+      await rendered.user.click(
+        within(userListPane()).getByRole('button', { name: '사용자 추가' }),
+      );
+      await within(userFormPane()).findByLabelText('초기 비밀번호');
+
+      return rendered;
+    };
+
+    const passwordBoxOf = (): HTMLElement => within(userFormPane()).getByLabelText('초기 비밀번호');
+
+    it('등록 본문에 고친 초기 비밀번호가 실린다', async () => {
+      const { requests, user } = await fillCreateForm([userCreateRoute()]);
+
+      await user.clear(passwordBoxOf());
+      await user.type(passwordBoxOf(), SYNTHETIC_TYPED_PASSWORD);
+      await user.click(within(userFormPane()).getByRole('button', { name: '사용자 추가' }));
+
+      await waitFor(() => {
+        expect(requests.some((request) => request.method === 'POST')).toBe(true);
+      });
+      expect(createBodyOf(requests).password).toBe(SYNTHETIC_TYPED_PASSWORD);
+    });
+
+    it('손대지 않으면 환경변수 기본값이 그대로 실린다', async () => {
+      vi.stubEnv('VITE_DEFAULT_INITIAL_PASSWORD', SYNTHETIC_DEFAULT_PASSWORD);
+
+      const { requests, user } = await fillCreateForm([userCreateRoute()]);
+
+      expect(passwordBoxOf()).toHaveValue(SYNTHETIC_DEFAULT_PASSWORD);
+
+      await user.click(within(userFormPane()).getByRole('button', { name: '사용자 추가' }));
+
+      await waitFor(() => {
+        expect(requests.some((request) => request.method === 'POST')).toBe(true);
+      });
+      expect(createBodyOf(requests).password).toBe(SYNTHETIC_DEFAULT_PASSWORD);
+    });
+
+    /** 「환경변수가 없을 때」도 값을 못 박는다 — 빈 문자열을 명시한다. */
+    it('환경변수가 없으면 코드 기본값이 실린다', async () => {
+      vi.stubEnv('VITE_DEFAULT_INITIAL_PASSWORD', '');
+
+      const { requests, user } = await fillCreateForm([userCreateRoute()]);
+
+      expect(passwordBoxOf()).toHaveValue(FALLBACK_INITIAL_PASSWORD);
+
+      await user.click(within(userFormPane()).getByRole('button', { name: '사용자 추가' }));
+
+      await waitFor(() => {
+        expect(requests.some((request) => request.method === 'POST')).toBe(true);
+      });
+      expect(createBodyOf(requests).password).toBe(FALLBACK_INITIAL_PASSWORD);
+    });
+
+    it('폼을 열면 아직 손대지 않아 안내도 필수 표시도 없다', async () => {
+      vi.stubEnv('VITE_DEFAULT_INITIAL_PASSWORD', SYNTHETIC_DEFAULT_PASSWORD);
+
+      await openCreateForm();
+
+      expect(passwordBoxOf()).toHaveValue(SYNTHETIC_DEFAULT_PASSWORD);
+      expect(passwordBoxOf()).toBeValid();
+      expect(within(userFormPane()).queryByText(passwordErrorText)).not.toBeInTheDocument();
+      expect(within(userFormPane()).queryByText(passwordRequiredText)).not.toBeInTheDocument();
+    });
+
+    it('비우면 저장을 누르지 않아도 즉시 필수 안내가 서고 요청이 나가지 않는다', async () => {
+      vi.stubEnv('VITE_DEFAULT_INITIAL_PASSWORD', SYNTHETIC_DEFAULT_PASSWORD);
+
+      const { requests, user } = await openCreateForm();
+
+      await user.clear(passwordBoxOf());
+
+      await waitFor(() => {
+        expect(within(userFormPane()).getByText(passwordRequiredText)).toBeInTheDocument();
+      });
+      expect(passwordBoxOf()).toBeInvalid();
+
+      // 저장을 눌러도 화면 검증이 막아 요청을 보내지 않는다.
+      await user.click(within(userFormPane()).getByRole('button', { name: '사용자 추가' }));
+      expect(requests.some((request) => request.method === 'POST')).toBe(false);
+    });
+
+    it('규칙을 어기는 값은 즉시 메시지가 뜨고 채우면 사라진다', async () => {
+      vi.stubEnv('VITE_DEFAULT_INITIAL_PASSWORD', SYNTHETIC_DEFAULT_PASSWORD);
+
+      const { user } = await openCreateForm();
+
+      // 양성을 먼저 세운다 — 시작 값(환경변수 기본값)은 규칙을 통과한다.
+      expect(passwordBoxOf()).toBeValid();
+
+      await user.clear(passwordBoxOf());
+      await user.type(passwordBoxOf(), 'aaaaaaaa'); // 알파벳뿐 — 숫자가 없어 규칙을 어긴다
+
+      await waitFor(() => {
+        expect(passwordBoxOf()).toBeInvalid();
+      });
+      expect(within(userFormPane()).getByText(passwordErrorText)).toBeInTheDocument();
+
+      await user.type(passwordBoxOf(), '1'); // 숫자를 더해 조건을 채운다
+
+      await waitFor(() => {
+        expect(passwordBoxOf()).toBeValid();
+      });
+      expect(within(userFormPane()).queryByText(passwordErrorText)).not.toBeInTheDocument();
+    });
+
+    /**
+     * `isPasswordTouched`를 `formState` 안에 둔 근거가 이것이다 — 별 상태로 두면 폼을 닫는 길
+     * (여기서는 취소)에서 초기화를 잊을 수 있는데, 폼 값과 수명이 같으면 잊을 자리가 없다.
+     */
+    it('폼을 닫았다 다시 열면 앞선 흔적이 남지 않는다', async () => {
+      vi.stubEnv('VITE_DEFAULT_INITIAL_PASSWORD', SYNTHETIC_DEFAULT_PASSWORD);
+
+      const { user } = await openCreateForm();
+
+      await user.clear(passwordBoxOf());
+      await waitFor(() => {
+        expect(within(userFormPane()).getByText(passwordRequiredText)).toBeInTheDocument();
+      });
+
+      await user.click(within(userFormPane()).getByRole('button', { name: '취소' }));
+      await waitFor(() => {
+        expect(within(userFormPane()).queryByLabelText('초기 비밀번호')).not.toBeInTheDocument();
+      });
+
+      await user.click(within(userListPane()).getByRole('button', { name: '사용자 추가' }));
+      const reopened = await within(userFormPane()).findByLabelText('초기 비밀번호');
+
+      expect(reopened).toHaveValue(SYNTHETIC_DEFAULT_PASSWORD);
+      expect(within(userFormPane()).queryByText(passwordRequiredText)).not.toBeInTheDocument();
+    });
+
+    it('수정 폼에는 칸이 없다', async () => {
+      await openUserDetail([userUpdateRoute()]);
+
+      expect(within(userFormPane()).queryByLabelText('초기 비밀번호')).not.toBeInTheDocument();
+    });
+  });
+});
+
+/**
+ * `USER_CREATE_FORM_FIELDS`가 `USER_FORM_FIELDS`를 등록·수정으로 가른 것의 배선 시험.
+ * `user-validation.test.ts`는 상수 배열만 단언한다 — 배열은 맞는데
+ * `userCreateWrite`(`knownFields`) → `splitError` → `fieldErrors` 병합 → `UserFormPane` 렌더
+ * 중 한 곳이 끊겨도 그 시험은 잡지 못한다. 이 describe 는 그 배선 전체를 화면까지 재는
+ * 등록 모드 판이다 — 선례는 위 `describe('UsersRolesScreen 저장 실패')`의 `userName` 인라인
+ * 시험(수정 모드)이고, 이 아래는 그 꼴을 등록 모드 · `password` 칸으로 옮긴 것이다.
+ *
+ * ⚠ **이 describe 는 `describe('UsersRolesScreen 등록')`의 `beforeEach` 밖에 있다** —
+ * 환경변수 기본값에 기대지 않고 초기 비밀번호 칸을 직접 규칙 통과 값으로 채운다. 그래서
+ * 여기서는 `vi.stubEnv`를 쓰지 않는다.
+ */
+describe('UsersRolesScreen 등록 저장 실패', () => {
+  // 환경변수 기본값과 무관하게 규칙을 통과하는 값 — 이 describe 가 그 stub 에 기대지 않는 근거다.
+  const SYNTHETIC_PASSING_PASSWORD = 'SynCreatePw1';
+
+  // `initial-password.ts`의 `t.initialPasswordWeak(INITIAL_PASSWORD_MIN_LENGTH)` 실측(위 중첩
+  // describe('초기 비밀번호')와 같은 문구 — 그쪽도 상수로 옮기지 않고 문구 그대로 못 박는다).
+  const passwordErrorText = '초기 비밀번호는 숫자와 알파벳을 함께 넣어 8자 이상이어야 합니다.';
+
+  const openFilledCreateForm = async (extraRoutes: StubRoute[]) => {
+    const rendered = renderScreen([
+      userListRoute(),
+      departmentsRoute(),
+      userDetailRoute(),
+      ...extraRoutes,
+    ]);
+
+    await waitForUserList(rendered.requests);
+    await rendered.user.click(within(userListPane()).getByRole('button', { name: '사용자 추가' }));
+    await within(userFormPane()).findByRole('textbox', { name: '로그인 ID' });
+
+    await rendered.user.type(
+      within(userFormPane()).getByRole('textbox', { name: '로그인 ID' }),
+      'SYN-LOGIN-10',
+    );
+    await rendered.user.type(
+      within(userFormPane()).getByRole('textbox', { name: '이름' }),
+      '합성 사용자 필드오류',
+    );
+
+    /*
+     * 초기 비밀번호 칸은 가려진 칸이라 `role="textbox"`로 잡히지 않는다 — `getByLabelText`로
+     * 찾는다. 환경변수 기본값에 기대지 않도록 명시로 규칙 통과 값을 채운다.
+     */
+    const passwordBox = within(userFormPane()).getByLabelText('초기 비밀번호');
+    await rendered.user.clear(passwordBox);
+    await rendered.user.type(passwordBox, SYNTHETIC_PASSING_PASSWORD);
+
+    return rendered;
+  };
+
+  it('서버가 초기 비밀번호 칸에 낸 400은 그 칸 옆에 인라인으로 선다 — 배너로 새지 않는다', async () => {
+    const serverMessage = '서버가 정한 초기 비밀번호 오류(합성).';
+    const { user } = await openFilledCreateForm([
+      userCreateRoute(() =>
+        jsonResponse(
+          {
+            errors: [{ scope: 'field', field: 'password', code: 'RANGE', message: serverMessage }],
+          },
+          { status: 400 },
+        ),
+      ),
+    ]);
+
+    await user.click(within(userFormPane()).getByRole('button', { name: '사용자 추가' }));
+
+    // 인라인 — 그 칸 옆에 선다.
+    expect(await within(userFormPane()).findByText(serverMessage)).toBeInTheDocument();
+    expect(within(userFormPane()).getByLabelText('초기 비밀번호')).toBeInvalid();
+    // 배너로 새지 않는다 — `AlertBanner`의 `variant="error"`만 `role="alert"`를 갖는다.
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  });
+
+  it('서버 오류가 선 뒤 규칙을 어기는 값을 치면 로컬 문구가 그 서버 오류를 덮는다', async () => {
+    const serverMessage = '서버가 정한 초기 비밀번호 오류(합성).';
+    const { user } = await openFilledCreateForm([
+      userCreateRoute(() =>
+        jsonResponse(
+          {
+            errors: [{ scope: 'field', field: 'password', code: 'RANGE', message: serverMessage }],
+          },
+          { status: 400 },
+        ),
+      ),
+    ]);
+
+    await user.click(within(userFormPane()).getByRole('button', { name: '사용자 추가' }));
+    // 이 병합 순간에는 값이 화면 규칙을 통과한 채였다 — 파생값이 비어 서버 오류가 그대로 보인다
+    // (screen.tsx 주석의 그 갈래).
+    await within(userFormPane()).findByText(serverMessage);
+
+    const passwordBox = within(userFormPane()).getByLabelText('초기 비밀번호');
+    await user.clear(passwordBox);
+    await user.type(passwordBox, 'aaaaaaaa'); // 알파벳뿐 — 숫자가 없어 규칙을 어긴다
+
+    await waitFor(() => {
+      expect(within(userFormPane()).getByText(passwordErrorText)).toBeInTheDocument();
+    });
+    expect(within(userFormPane()).queryByText(serverMessage)).not.toBeInTheDocument();
+
+    /*
+     * ⚠ 여기서 숫자를 더해 값이 다시 규칙을 통과해도 서버 문구는 돌아오지 않는다 —
+     * `changeUserValues`(`screen.tsx`)가 이 칸을 고칠 때마다
+     * `activeUserWrite.clearFieldError('password')`를 불러 서버 필드 오류 자체를 지우기
+     * 때문이다. 「값이 규칙을 통과하면 파생값이 비어 서버 오류가 다시 보인다」는 병합 순서는
+     * **아직 아무도 그 칸을 고치지 않은 순간**(위 시험이 잰 400 직후)에만 관찰된다 — 한 번
+     * 고치고 나면 지울 서버 오류 자체가 남아 있지 않다.
+     */
+    await user.type(passwordBox, '1');
+    await waitFor(() => {
+      expect(within(userFormPane()).queryByText(passwordErrorText)).not.toBeInTheDocument();
+    });
+    expect(within(userFormPane()).queryByText(serverMessage)).not.toBeInTheDocument();
   });
 });
 
@@ -2891,17 +3242,21 @@ describe('UsersRolesScreen 역할 목록 표시', () => {
   });
 
   /** 계약이 「이 화면 자체가 권한 관리 화면이라 진입 자체를 막고 배너로 사유를 표시한다」고 못 박았다. */
-  it('권한이 없으면 배너만 나오고 다시 시도를 주지 않는다', async () => {
-    const { requests } = renderScreen([roleListErrorRoute(403)], ROLES_TAB);
+  it('권한이 없으면 지난 역할 선택 주소여도 관리 본문과 상세 요청을 막는다', async () => {
+    const { requests } = renderScreen(
+      [roleListErrorRoute(403, forbiddenResponse), ...roleDetailRoutes()],
+      `${ROLES_TAB}&rol=5001`,
+    );
 
-    await waitFor(() => {
-      expect(roleRequests(requests).length).toBeGreaterThan(0);
-    });
-
-    const banner = await within(roleListPane()).findByRole('alert');
+    const banner = await screen.findByRole('alert');
 
     expect(within(banner).queryByRole('button', { name: '다시 시도' })).not.toBeInTheDocument();
     expect(within(roleListPane()).queryByRole('table')).not.toBeInTheDocument();
+    expect(requestsTo(requests, rolePath(5001))).toHaveLength(0);
+    expect(screen.queryByRole('region', { name: '역할 정보' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: '기능 권한' })).not.toBeInTheDocument();
+    expect(within(roleListPane()).queryByRole('button', { name: '역할 추가' })).not.toBeInTheDocument();
+    expect(within(roleListPane()).queryByRole('textbox')).not.toBeInTheDocument();
   });
 
   it('범위 밖 쪽에는 다른 안내가 나온다', async () => {

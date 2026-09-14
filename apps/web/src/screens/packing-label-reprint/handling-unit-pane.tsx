@@ -88,6 +88,12 @@ export const HandlingUnitPane = ({
 
       <h3 className="pane-title">{t.contentsLabel}</h3>
       <Table
+        /*
+         * ⛔ **겨냥할 이름이 있어야 폭을 못박을 수 있다**(#1092). 이름이 없어 CSS 가 이 표에
+         *    닿지 못했고, 열의 `%` 폭이 기본 배치에서 희망값에 그쳐 긴 LOT 이 품목·수량 열을
+         *    눌렀다.
+         */
+        className="pop-reprint-contents"
         columns={columns}
         rows={[...rows]}
         getRowId={(row) => String(row.handlingUnitContentId)}

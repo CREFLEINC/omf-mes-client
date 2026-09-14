@@ -1,4 +1,5 @@
 import type { components } from '@omf-mes/api-client';
+import { messages } from '@omf-mes/i18n';
 
 type ProductionResult = components['schemas']['ProductionResult'];
 export type ProductionResultCorrect = components['schemas']['ProductionResultCorrect'];
@@ -68,7 +69,7 @@ export const createProductionResultCorrectionDraft = (
   reworkQty: String(result.reworkQty),
 });
 
-const quantityError = '0 이상의 수량을 입력하세요.';
+const quantityError = messages.workOrderClose.correction.errors.quantity;
 
 /**
  * 화면은 등급을 계산하지 않는다. 입력값을 계약 본문으로 옮기고 A/B 판정은 서버 응답에 맡긴다.
@@ -81,7 +82,8 @@ export const toProductionResultCorrect = (
   const fieldErrors: CorrectionDraftResult['fieldErrors'] = {};
   const reasonCode = draft.reasonCode.trim();
 
-  if (reasonCode === '') fieldErrors.reasonCode = '정정 사유를 선택하세요.';
+  if (reasonCode === '')
+    fieldErrors.reasonCode = messages.workOrderClose.correction.errors.reasonRequired;
 
   const body: ProductionResultCorrect = { reasonCode };
   const note = draft.note.trim();

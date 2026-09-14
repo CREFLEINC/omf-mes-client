@@ -91,7 +91,7 @@ describe('입하 라인 조회', () => {
 });
 
 describe('적힌 오류 조회', () => {
-  it('고른 줄의 오류만 묻는다', async () => {
+  it('고른 라인의 오류만 묻는다', async () => {
     const seen: URL[] = [];
     const fetch = createStubFetch([
       capturing('/logistics/inbound-receipt-lines/55/variances', { items: [] }, seen),

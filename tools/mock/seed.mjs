@@ -31,6 +31,9 @@ export const createSeed = (now = new Date()) => {
     return at.toISOString();
   };
 
+  /** 지금으로부터 n 분 전. 날짜를 글자로 박지 않고 되짚어 잡을 때 쓴다. */
+  const minutesAgo = (minutes) => new Date(now.getTime() - minutes * 60 * 1000).toISOString();
+
   /** 열려 있는 작업 세션이 시작된 순간 — 지금으로부터 6시간 12분 전(설계 도면의 예시 크기). */
   const SESSION_STARTED_AT = new Date(now.getTime() - (6 * 60 + 12) * 60 * 1000).toISOString();
 
@@ -2703,6 +2706,11 @@ export const createSeed = (now = new Date()) => {
     inspectionPlans: [inspectionPlan],
     inspectionPlanVersions: [inspectionPlanVersion],
     inspectionItemSpecs,
+    /*
+     * 검사 «결과»는 비어서 시작한다 — 화면이 저장한 것만 쌓인다. 미리 한 건 넣어 두면
+     * 처음 여는 의뢰가 이미 검사된 것처럼 보여, 「확정하면 무엇이 달라지는가」를 잴 수 없다.
+     */
+    inspectionResults: [],
     inspectionMeasurements: [],
     /*
      * 지난 고장 하나. 없으면 지난 증상 재사용 제안이 실기에서 한 번도 서지 않는다 - 끝난
@@ -2721,7 +2729,63 @@ export const createSeed = (now = new Date()) => {
         statusCode: 'DONE',
       },
     ],
+    /*
+     * 비가동 실적(P-05-02 · W-05-08).
+     *
+     * ⚠ **끝난 구간만 둔다.** 열린 구간이 하나라도 있으면 P-05-02 가 새 저장을 막으므로
+     *    (스펙 §6-1) 「넣어 보기」를 목만으로 해 볼 수 없다 — 열린 구간은 화면이 만든다.
+     * ⚠ **지금에서 되짚어 잡는다.** 날짜를 글자로 박으면 날이 갈수록 「오늘」에서 빠져나가
+     *    오늘 목록이 늘 비게 된다.
+     */
+    downtimes: [
+      {
+        downtimeId: 8901,
+        equipmentId: 5001,
+        equipmentCode: 'PRS-01',
+        reasonCode: 'MATERIAL_WAIT',
+        reasonName: '자재 대기',
+        startedAt: minutesAgo(200),
+        endedAt: minutesAgo(185),
+        breakdownId: null,
+        workSessionId: null,
+        recordedByWorkerNo: '100028',
+        remarks: null,
+      },
+      {
+        downtimeId: 8902,
+        equipmentId: 5001,
+        equipmentCode: 'PRS-01',
+        reasonCode: 'MOLD_CHANGE',
+        reasonName: '금형 교체',
+        startedAt: minutesAgo(140),
+        endedAt: minutesAgo(90),
+        breakdownId: 8801,
+        workSessionId: null,
+        recordedByWorkerNo: '100027',
+        remarks: null,
+      },
+      {
+        downtimeId: 8903,
+        equipmentId: 5002,
+        equipmentCode: 'EQ-03',
+        reasonCode: 'EQUIPMENT_FAILURE',
+        reasonName: '설비 고장',
+        startedAt: minutesAgo(1900),
+        endedAt: minutesAgo(1840),
+        breakdownId: null,
+        workSessionId: null,
+        recordedByWorkerNo: '100029',
+        remarks: null,
+      },
+    ],
     operationHandovers: [],
+    /**
+     * 작업 전 점검 통제 판정 — `P-02-02` 게이트가 «뜨는 순간» 남기는 기록이다.
+     *
+     * ⛔ **비워 둔다.** 이 목록은 화면이 만든다 — 미리 넣어 두면 게이트가 무엇을 남겼는지
+     *    구분되지 않는다. 게이트의 판정 근거는 점검 «이력»(inspections)이지 이 목록이 아니다.
+     */
+    precheckDecisions: [],
     /**
      * 작업 세션 — P-02-10 이 중단·재개를 거는 자리다.
      *

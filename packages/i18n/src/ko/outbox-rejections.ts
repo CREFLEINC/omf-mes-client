@@ -12,6 +12,23 @@ export const outboxRejections = {
   occurredAt: (at: string) => `${at}에 적음`,
   cascaded: '앞 기록이 실패해 이 기록도 보내지 못했습니다',
   dismiss: '목록에서 내리기',
+  /**
+   * 사유 문구만으로는 담당자에게 물을 것을 적을 수 없다. 같은 401 이라도 등록이 풀린 것과
+   * 권한이 없는 것이 같은 말로 오므로, 무엇을 어디로 보내 무엇이 돌아왔는지를 함께 보인다.
+   */
+  details: {
+    pane: '상세',
+    open: '상세 보기',
+    close: '상세 닫기',
+    request: '요청',
+    status: '응답 코드',
+    code: '오류 코드',
+    scope: '걸린 칸',
+    message: '돌아온 문구',
+    key: '요청 번호',
+    rejectedAt: '되돌아온 때',
+    none: '없음',
+  },
   reason: {
     invalid: '적은 내용에 문제가 있습니다.',
     conflict: '다른 곳에서 먼저 바뀌었습니다.',

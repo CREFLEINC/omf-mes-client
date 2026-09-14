@@ -1,3 +1,4 @@
+import { messages } from '@omf-mes/i18n';
 import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useEffect, type ReactNode } from 'react';
@@ -6,10 +7,13 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
   createStubFetch,
+  createTestQueryClient,
   jsonResponse,
   renderWithProviders,
   type StubRoute,
 } from '../../test/api-harness';
+import { itemRoutes } from '../../test/master-routes';
+import { rememberPlant } from '../../patterns/plant';
 import { useWorkerSession } from '../../patterns/worker-session';
 import { PutawayScreen } from './screen';
 
@@ -144,22 +148,18 @@ const routes = (options: Options = {}): StubRoute[] => [
         page,
       }),
   },
-  {
-    match: (req) => new URL(req.url).pathname === '/mdm/items',
-    respond: () =>
-      jsonResponse({
-        items: [
-          {
-            itemId: 31,
-            itemCode: 'RM-1001',
-            itemName: '수지A',
-            fifoPolicyCode: 'FEFO',
-            storageConditionCode: options.itemStorage,
-          },
-        ],
-        page,
-      }),
-  },
+  ...itemRoutes(
+    [
+      {
+        itemId: 31,
+        itemCode: 'RM-1001',
+        itemName: '수지A',
+        fifoPolicyCode: 'FEFO',
+        storageConditionCode: options.itemStorage,
+      },
+    ],
+    page,
+  ),
   {
     match: (req) => new URL(req.url).pathname === '/trace/lots/4',
     respond: () =>
@@ -195,7 +195,11 @@ const HandoffProbe = () => {
   return <p>{state !== null && 'location' in state ? '위치 넘김' : '위치 안 넘김'}</p>;
 };
 
-const mount = (extra: StubRoute[] = [], options: Options = {}) =>
+const mount = (
+  extra: StubRoute[] = [],
+  options: Options = {},
+  queryClient = createTestQueryClient(),
+) =>
   renderWithProviders(
     <MemoryRouter>
       <SignedIn>
@@ -205,7 +209,7 @@ const mount = (extra: StubRoute[] = [], options: Options = {}) =>
         </Routes>
       </SignedIn>
     </MemoryRouter>,
-    { fetch: createStubFetch([...extra, ...routes(options)]) },
+    { fetch: createStubFetch([...extra, ...routes(options)]), queryClient },
   );
 
 const into = (field: HTMLInputElement, value: string) => {
@@ -300,10 +304,72 @@ describe('적치·입고 완료 화면', () => {
   it('지시 조회 실패를 지시 없음으로 말하지 않는다', async () => {
     mount([], { tasksStatus: 500 });
 
-    expect(
-      await screen.findByText('적치 지시를 확인할 수 없습니다. 연결을 확인하세요.'),
-    ).toBeTruthy();
+    /* 서버가 답을 못 준 것이다. 연결을 보라고 하면 멀쩡한 망을 뒤진다(#1187). */
+    expect(await screen.findByText(messages.httpError.loadServer)).toBeTruthy();
     expect(screen.queryByText('받은 적치 지시가 없습니다')).toBeNull();
+  });
+
+  /*
+   * 실기(#1198) - 등록이 끊기기 전에 받은 「0건」이 남아, 다시 묻다 거절된 뒤에도 「받은 적치
+   * 지시가 없습니다」가 떴다. 지금 확인하지 못한 것을 없다고 말하지 않는다.
+   */
+  it('앞서 0건을 받았어도 다시 묻다 실패하면 지시 없음이라고 하지 않는다', async () => {
+    const queryClient = createTestQueryClient();
+    const options: Options = { tasks: [] };
+    mount([], options, queryClient);
+
+    expect(await screen.findByText('받은 적치 지시가 없습니다')).toBeTruthy();
+
+    options.tasksStatus = 500;
+    await queryClient.refetchQueries({ queryKey: ['putaway-tasks'] });
+
+    expect(await screen.findByText(messages.httpError.loadServer)).toBeTruthy();
+    expect(screen.queryByText('받은 적치 지시가 없습니다')).toBeNull();
+  });
+
+  it('사번 조회에 닿지 못하면 연결을 확인하라고 한다', async () => {
+    mount([
+      {
+        match: (req) => new URL(req.url).pathname === '/mdm/workers',
+        respond: () => Promise.reject(new TypeError('Failed to fetch')),
+      },
+    ]);
+
+    expect(await screen.findByText('사번을 확인할 수 없습니다. 연결을 확인하세요.')).toBeTruthy();
+    /* 지시 조회는 사번이 풀려야 나간다. 실패 옆에 불러오는 중이 남으면 기다리게 된다(#1198). */
+    expect(screen.queryByText('적치 지시를 불러오는 중입니다')).toBeNull();
+  });
+
+  /*
+   * 실기 실측(#1187) - 서버는 닿았고 단말 토큰이 무효라 401 이었는데 화면은 연결을 보라고 했다.
+   * 토큰 확인까지 거절되면 새 QR 이 필요하다는 말은 셸이 한 번만 한다(#1198 - 화면이 사번·지시
+   * 조회마다 달아 두 번 떴다). 화면은 연결을 보라고도, 만료라고도 따로 말하지 않는다.
+   */
+  it('사번 조회가 거절되고 토큰도 무효면 연결 탓도 만료도 화면이 따로 말하지 않는다', async () => {
+    await rememberPlant(3);
+    const denied = { errors: [{ scope: 'screen', code: 'PERMISSION_DENIED', message: '거절' }] };
+    let probed = false;
+    mount([
+      {
+        match: (req) => new URL(req.url).pathname === '/mdm/workers',
+        respond: (req) => {
+          /* 토큰 확인은 공장을 싣고 묻는다. 그것까지 거절돼야 토큰이 죽은 것이다. */
+          if (new URL(req.url).searchParams.get('plantId') === '3') {
+            probed = true;
+          }
+
+          return jsonResponse(denied, { status: 401 });
+        },
+      },
+    ]);
+
+    await waitFor(() => {
+      expect(probed).toBe(true);
+      expect(screen.queryByText(messages.httpError.deviceRejected)).toBeNull();
+    });
+    expect(screen.queryByText(messages.httpError.deviceExpired)).toBeNull();
+    expect(screen.queryByText('사번을 확인할 수 없습니다. 연결을 확인하세요.')).toBeNull();
+    expect(screen.queryByText('적치 지시를 불러오는 중입니다')).toBeNull();
   });
 
   it('지시를 고르면 권장 위치를 코드로 보인다', async () => {
@@ -349,7 +415,8 @@ describe('적치·입고 완료 화면', () => {
     await screen.findByText('권장 위치와 같습니다');
     await scanLot('RM-LOT-9999');
 
-    expect(await screen.findByText('이 지시의 LOT 이 아닙니다')).toBeTruthy();
+    /* 읽은 값이 함께 보여야 잘못 읽은 것인지 다른 LOT 인지 가릴 수 있다. */
+    expect(await screen.findByText(/이 지시의 LOT 이 아닙니다 — 읽은 값 /)).toBeTruthy();
     expect(screen.getByRole('button', { name: '이 지시 적치' })).toBeDisabled();
   });
 
@@ -646,7 +713,7 @@ describe('적치·입고 완료 화면', () => {
    * 막지 않는다 - 설계가 경고로 정했고 냉장 자리가 없어 상온에 두어야 하는 날이 있다.
    * 다만 말하지 않으면 아무도 모른 채 지나간다.
    */
-  it('품목과 자리의 보관조건이 어긋나면 말하되 막지 않는다', async () => {
+  it('품목과 위치의 보관조건이 어긋나면 말하되 막지 않는다', async () => {
     const user = userEvent.setup();
     mount([], {
       itemStorage: 'COLD',
@@ -658,7 +725,7 @@ describe('적치·입고 완료 화면', () => {
 
     /* 표시명은 서버가 갖는다. 코드 문자열을 그대로 보이면 현장이 영문을 읽는다. */
     expect(
-      await screen.findByText('품목은 냉장 보관인데 이 자리는 상온 입니다'),
+      await screen.findByText('품목은 냉장 보관인데 이 위치는 상온 입니다'),
     ).toBeInTheDocument();
     expect(screen.queryByText(/COLD/)).toBeNull();
     /* 경고다. 자리 판정은 그대로 통과한다. */
@@ -677,6 +744,6 @@ describe('적치·입고 완료 화면', () => {
     scan('A-01-03');
 
     await screen.findByLabelText(/LOT 라벨 스캔/);
-    expect(screen.queryByText(/보관인데 이 자리는/)).toBeNull();
+    expect(screen.queryByText(/보관인데 이 위치는/)).toBeNull();
   });
 });

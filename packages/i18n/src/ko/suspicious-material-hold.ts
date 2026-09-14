@@ -33,6 +33,9 @@ export const suspiciousMaterialHold = {
       previous: '이전 쪽',
       next: '다음 쪽',
     },
+    /** 쪽 이동 줄의 건수·쪽수 표기. 숫자 서식은 부르는 쪽이 맞춘다. */
+    summary: (total: string, page: number, pages: number): string =>
+      `총 ${total}건 · ${String(page)} / ${String(pages)}쪽`,
     loading: '의심자재 후보를 불러오는 중',
     failed: '의심자재 후보를 불러오지 못했습니다.',
     empty: '조건에 맞는 LOT이 없습니다.',

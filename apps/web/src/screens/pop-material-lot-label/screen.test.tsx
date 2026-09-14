@@ -157,34 +157,20 @@ const selectFirst = async (user: ReturnType<typeof userEvent.setup>) => {
   );
 };
 
-/**
- * ⛔ **배포본은 발행 대상 목록을 «부르지 않는다»**(#1095).
- *
- * 이 목록의 정의는 두 조건의 곱인데(실물 라벨 미부착 · 아직 안 찍음) 서버 구현 기준선에는
- * 앞엣것이 없고, 실서버는 없는 축을 거부하지 않고 **무시한다.** 그대로 부르면 이미 라벨이
- * 붙어 온 자재까지 목록에 서고 그 줄에 MES 가 자기 번호로 라벨을 한 장 더 찍는다.
- *
- * ⚠ **요청이 나가지 않는 것까지 본다** — 목록이 비어 보이는 것만으로는 증거가 되지 못한다.
- */
-describe('PopMaterialLotLabelScreen — 서버 구현 기준선', () => {
+describe('PopMaterialLotLabelScreen — 배포본 대상 조회', () => {
   afterEach(() => {
     vi.unstubAllEnvs();
   });
 
-  it('배포본에서는 발행 대상 목록을 부르지 않고 사유를 적는다', async () => {
+  it('배포본에서도 미부착·미발행 조건을 서버에 함께 보낸다', async () => {
     vi.stubEnv('MODE', 'production');
     const asked: URL[] = [];
+    renderScreen({ onReceiptRequest: (url) => asked.push(url) });
 
-    renderScreen({
-      onReceiptRequest: (url) => {
-        asked.push(url);
-      },
-    });
-
-    expect(
-      await screen.findByText(messages.popMaterialLotLabel.receipts.unsupported),
-    ).toBeInTheDocument();
-    expect(asked).toHaveLength(0);
+    await waitFor(() => expect(asked.length).toBeGreaterThan(0));
+    expect(asked[0]?.searchParams.get('supplierLotLabelAttached')).toBe('false');
+    expect(asked[0]?.searchParams.get('labelIssued')).toBe('false');
+    expect(await screen.findByRole('button', { name: /SYN-IB-0001/u })).toBeInTheDocument();
   });
 });
 

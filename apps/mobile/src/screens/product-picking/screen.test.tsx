@@ -1,3 +1,4 @@
+import { messages } from '@omf-mes/i18n';
 import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useEffect, type ReactNode } from 'react';
@@ -614,7 +615,7 @@ describe('제품LOT 피킹 스캔 화면', () => {
     mount([], { lotsStatus: 500 });
     await chooseTarget(user);
 
-    expect(await screen.findByText('LOT을 확인할 수 없습니다. 연결을 확인하세요.')).toBeTruthy();
+    expect(await screen.findByText(messages.httpError.loadServer)).toBeTruthy();
     expect(screen.queryByText('이 품목에 집을 수 있는 LOT이 없습니다')).toBeNull();
   });
 
@@ -883,7 +884,7 @@ describe('제품LOT 피킹 스캔 화면', () => {
       { requests: [request({ lines: [line(), second] })] },
     );
 
-    await user.click(await screen.findByRole('button', { name: /1번 줄/ }));
+    await user.click(await screen.findByRole('button', { name: /1번 라인/ }));
     await screen.findByText('FG-1001 완제품');
     await screen.findByText('FG-0298');
 
@@ -896,7 +897,7 @@ describe('제품LOT 피킹 스캔 화면', () => {
     });
 
     await user.click(screen.getByRole('button', { name: '다른 대상 고르기' }));
-    await user.click(await screen.findByRole('button', { name: /2번 줄/ }));
+    await user.click(await screen.findByRole('button', { name: /2번 라인/ }));
     await screen.findByText('FG-0298');
     await pickLot(user, EARLY.lotNo);
     await user.type(await screen.findByLabelText(/피킹 수량/), '180');

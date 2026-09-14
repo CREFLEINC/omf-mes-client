@@ -94,6 +94,7 @@ export const ActionBar = ({
        *    위 띠가 이미 말했다.
        */}
       {blockedReason !== null &&
+        blockedReason !== saveBlockedReason &&
         blockedReason !== t.confirmBlockedByTotals &&
         blockedReason !== t.confirmed && <p className="field-note">{blockedReason}</p>}
     </div>

@@ -95,6 +95,10 @@ capacitor-cordova-android-plugins
 # Copied web assets
 app/src/main/assets/public
 
+# 릴리스 전용 평문 허용 설정 — release-build.sh 가 API 주소의 호스트로 만든다.
+# 그 호스트는 사내 주소이고 이 저장소는 공개다. 절대 커밋하지 않는다.
+app/src/release/
+
 # Generated Config files
 app/src/main/assets/capacitor.config.json
 app/src/main/assets/capacitor.plugins.json

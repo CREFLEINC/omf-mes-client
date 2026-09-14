@@ -33,8 +33,10 @@ import './app.css';
  * 근거는 그 파일 머리말에 있다.
  */
 import './pop.css';
+/* ⛔ 화면을 싣는 import 보다 위에 둔다 — 아래 import 들이 문구를 붙잡기 전에 언어를 정한다. */
+import './pop-locale';
 
-import { StrictMode, useEffect, type ReactNode } from 'react';
+import { StrictMode, useEffect, useRef, type ReactNode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { Navigate, Outlet, RouterProvider, createBrowserRouter } from 'react-router';
 
@@ -42,7 +44,11 @@ import { popRoutes } from '../routes/pop';
 import { applyPopFit } from '../patterns/pop-fit';
 import { PopLogoutButton } from '../patterns/pop-logout';
 import { PopScreenNavButton } from '../patterns/pop-screen-nav';
-import { PopRegistrationProvider, usePopRegistration } from '../patterns/pop-registration';
+import {
+  PopRegistrationProvider,
+  usePopRegistration,
+  useRefreshPopTerminalOnScreenEntry,
+} from '../patterns/pop-registration';
 import { RegistrationPanel } from '../screens/worker-assignment/registration-panel';
 import { currentTerminalToken, readTerminalToken } from '../patterns/pop-terminal-token';
 import { AppProviders } from './providers';
@@ -60,15 +66,27 @@ import { AppProviders } from './providers';
 const PopRegistrationGate = ({ children }: { children: ReactNode }) => {
   const registration = usePopRegistration();
   const { phase, verify } = registration;
+  /**
+   * 이미 스스로 확인해 본 보관 토큰. **한 번만 시도한다.**
+   *
+   * ⛔ **없으면 무한히 되돈다.** 검증이 실패하면 상태가 `unregistered` 로 돌아오는데, 그것이
+   *    바로 이 effect 의 조건이다 — 보관 토큰은 그대로 남아 있으므로 즉시 또 물어보고, 또
+   *    실패하고, 다시 돌아온다. 화면은 「확인하는 중…」 과 실패 문구 사이를 끝없이 오가고
+   *    설치 담당자는 입력조차 할 수 없다(실측 2026-09-12 · 사용자 지적 — 실 서버 설치본).
+   */
+  const attempted = useRef<string | null>(null);
 
   useEffect(() => {
     if (phase !== 'unregistered') return;
 
     const stored = currentTerminalToken();
 
-    if (stored === null) return;
+    if (stored === null || attempted.current === stored) return;
 
-    void verify(stored);
+    attempted.current = stored;
+
+    /* ⚠ 사람이 넣은 값이 아니다 — 실패 문구가 그 사실을 말해야 한다(#1137). */
+    void verify(stored, 'stored');
   }, [phase, verify]);
 
   if (phase !== 'ready') return <RegistrationPanel />;
@@ -99,13 +117,18 @@ const POP_ENTRY_PATH = '/pop/worker-assignment';
  * 진입 화면에서 스스로 빠질 수 있다. 라우터 밖에 두면 주소를 직접 읽어야 하고, 화면을 옮겨도
  * 다시 그려지지 않는다.
  */
-const PopChrome = () => (
-  <>
-    <Outlet />
-    <PopScreenNavButton />
-    <PopLogoutButton />
-  </>
-);
+const PopChrome = () => {
+  /* ⭐ 관리웹에서 바꾼 단말 공정·설비가 단말을 다시 켜지 않아도 보이게 한다(#1202). */
+  useRefreshPopTerminalOnScreenEntry();
+
+  return (
+    <>
+      <Outlet />
+      <PopScreenNavButton />
+      <PopLogoutButton />
+    </>
+  );
+};
 
 const popRouter = createBrowserRouter([
   {

@@ -189,6 +189,22 @@ describe('ShippingPackingLabelScreen — 진입', () => {
     expect(screen.queryByRole('radio', { name: /포장라벨/u })).not.toBeInTheDocument();
   });
 
+  /**
+   * ⭐ **종류를 고르기 전에도 «왜» 못 누르는지 말한다**(#1094 · 88단계 2회차 실기).
+   *
+   * 종전에는 이 상태에서 발행 버튼이 꺼진 채 아무 말도 하지 않아 현장이 고장으로 읽었다.
+   *
+   * ⛔ 대상 목록의 「라벨 종류를 먼저 고르세요」와 **같은 문장을 쓰지 않는다** — 한 화면에
+   *    같은 말이 둘 서면 어느 쪽을 고쳐야 하는지 흐려진다.
+   */
+  it('라벨 종류를 고르기 전에는 발행이 왜 막혔는지 말한다', async () => {
+    renderScreen();
+
+    expect(await screen.findByText(t.actions.needsKind)).toBeInTheDocument();
+    expect(issueButton()).toBeDisabled();
+    expect(t.actions.needsKind).not.toBe(t.targets.beforeKind);
+  });
+
   it('사번을 모르면 발행하지 않는다 — 서버가 거부할 쓰기를 만들지 않는다', async () => {
     const user = userEvent.setup();
     renderScreen({}, ROUTE_WITHOUT_WORKER);
@@ -254,6 +270,17 @@ describe('ShippingPackingLabelScreen — 대상 목록', () => {
 
     expect(await screen.findByText(t.actions.needsTarget)).toBeInTheDocument();
     expect(issueButton()).toBeDisabled();
+  });
+
+  it('납품라벨은 합격 대상을 고르면 발행 단추가 열린다', async () => {
+    const user = userEvent.setup();
+    renderScreen();
+
+    await chooseKind(user, '납품라벨');
+    await user.click(await rowCheckbox(0));
+
+    await waitFor(() => expect(issueButton()).toBeEnabled());
+    expect(screen.queryByText(t.actions.deliveryLocked)).toBeNull();
   });
 
   it('종류를 포장라벨로 바꾸면 대상이 취급 단위로 갈린다', async () => {
@@ -531,15 +558,7 @@ describe('ShippingPackingLabelScreen — 발행과 인쇄', () => {
 });
 
 describe('ShippingPackingLabelScreen — 재진입 복구', () => {
-  /*
-   * ⛔⛔ **`DELIVERY_LABEL` 발행은 서버가 항상 422 `INVALID` 로 거부한다**(대응표 P1
-   * 「공용 문서 발행」· I-27 마감 결정 · `codes.ts` 의 `DELIVERY_LABEL_ISSUE_LOCKED`).
-   * 대상 유형 `SHIPMENT_LOT_ALLOCATION` 도 계약 enum 에서 빠졌다 — 원래 이 시험은 복구
-   * 액션이 누락된 OQC 통과 납품 라벨을 자동으로 발행·인쇄까지 잇는 것을 쟀다. 그 발행
-   * 동작 자체를 잠갔으므로, 이제는 «몇 건이 빠졌는지»는 그대로 안내하되 복구 단추는
-   * 눌러도 반응하지 않는지를 잰다 — 눌러도 요청이 나가지 않아야 한다(완료 조건).
-   */
-  it('summary에서 누락된 OQC 통과 납품 라벨의 건수는 안내하지만, 복구 단추는 잠겨 있어 요청을 보내지 않는다', async () => {
+  it('summary에서 누락된 OQC 통과 납품 라벨의 복구 요청을 보낸다', async () => {
     const user = userEvent.setup();
     const requests: { request: Request; body: string }[] = [];
     const save = vi.fn(async () => 'syn://printed');
@@ -582,16 +601,11 @@ describe('ShippingPackingLabelScreen — 재진입 복구', () => {
     });
 
     const deliveryAction = screen.getByRole('button', { name: t.recovery.deliveryAction });
-    expect(deliveryAction).toBeDisabled();
+    await waitFor(() => expect(deliveryAction).toBeEnabled());
 
     await user.click(deliveryAction);
 
-    expect(
-      requests.some(
-        ({ request }) => request.method === 'POST' && pathOf(request) === '/app/document-issues',
-      ),
-    ).toBe(false);
-    expect(save).not.toHaveBeenCalled();
-    expect(requests.some(({ request }) => pathOf(request).endsWith(':report-print'))).toBe(false);
+    await waitFor(() => expect(requests.some(({ request }) =>
+      request.method === 'POST' && pathOf(request) === '/app/document-issues')).toBe(true));
   });
 });

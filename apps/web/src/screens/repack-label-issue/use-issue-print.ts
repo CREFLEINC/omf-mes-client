@@ -5,7 +5,7 @@ import { useApiClient } from '../../patterns/api-context';
 import { fetchLabelRendition } from '../../patterns/pop-label-rendition';
 import { runRequest } from '../../patterns/request';
 import { printFailureReason, renditionShell } from './print';
-import { LABEL_RENDITION_FORMAT } from './types';
+import { labelRenditionFormat } from '../../patterns/pop-label-rendition';
 
 /**
  * 발행 뒤의 절차를 화면에 붙인다 — **받기 → 미리보기 → 보내기 → 보고.**
@@ -162,14 +162,14 @@ export const useIssuePrintRunner = (workerNo: string | null): IssuePrintRunner =
          * ⚠ 그림을 못 받아도 인쇄는 막지 않는다 — 종이로 나갈 바이트는 이미 손에 있다.
          */
         const previewBytes =
-          LABEL_RENDITION_FORMAT === 'png'
+          labelRenditionFormat() === 'png'
             ? received
             : /*
                * ⛔ 여기도 같은 경로다 — 배포본에서는 위 줄에서 이미 던져 이 자리까지 오지
                * 않는다. 서버가 구현해 첫 호출이 성공하게 되는 날에도 «명령형 인쇄용 프린터
                * 형식은 png 로 다시 받는다»는 이 갈래의 뜻은 그대로 남아야 한다.
                */
-              await fetchLabelRendition(client, target.documentIssueLogId)
+              await fetchLabelRendition(client, target.documentIssueLogId, 'png')
                 .then((drawn) => new Uint8Array(drawn))
                 .catch(() => null);
 
@@ -213,7 +213,7 @@ export const useIssuePrintRunner = (workerNo: string | null): IssuePrintRunner =
     setState((current) => ({ ...current, phase: 'printing', reason: null }));
 
     try {
-      await shell.save(payload, target.label, new Date().toISOString(), LABEL_RENDITION_FORMAT);
+      await shell.save(payload, target.label, new Date().toISOString(), labelRenditionFormat());
     } catch (error) {
       const reason = printFailureReason(error);
 

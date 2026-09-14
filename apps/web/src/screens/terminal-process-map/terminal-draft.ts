@@ -9,8 +9,8 @@ import type { TerminalView } from './types';
  * ⛔ **단말 코드는 등록한 뒤에 바꾸지 않는다** — 키다. 수정 본문에 아예 실리지 않으므로
  * 화면도 그 칸을 잠근다. 잠그기만 하고 보내지 않는 것이 아니라, **보낼 자리가 없다.**
  *
- * ⚠ **유형·상태는 값 목록이 확정되기 전이라 코드를 직접 받는다.** 고르는 칸으로 만들면
- * 채울 값이 없어 단말을 등록할 수 없다 — 열어 두되 그 사정을 화면에 적는다.
+ * 새 단말의 운영 상태는 화면에서 묻지 않는다. 생성 계약은 필수 `statusCode`를 요구하므로
+ * 서버가 허용하는 RUNNING으로 시작하고, 이후 수정에서만 운영 상태를 바꾼다.
  *
  * **순수 함수만 둔다.** 「지금」을 읽지 않는다.
  *
@@ -18,6 +18,7 @@ import type { TerminalView } from './types';
  */
 
 const t = messages.terminalProcessMap;
+const NEW_TERMINAL_STATUS = 'RUNNING';
 
 type TerminalCreate = components['schemas']['TerminalCreate'];
 type TerminalUpdate = components['schemas']['TerminalUpdate'];
@@ -58,7 +59,7 @@ export const validateTerminal = (draft: TerminalDraft, isNew: boolean): Terminal
   if (isNew && draft.terminalCode.trim() === '') errors.terminalCode = t.terminal.requiredCode;
   if (draft.plant === '') errors.plant = t.terminal.requiredPlant;
   if (draft.terminalTypeCode.trim() === '') errors.terminalTypeCode = t.terminal.requiredType;
-  if (draft.statusCode.trim() === '') errors.statusCode = t.terminal.requiredStatus;
+  if (!isNew && draft.statusCode.trim() === '') errors.statusCode = t.terminal.requiredStatus;
 
   return errors;
 };
@@ -78,7 +79,7 @@ export const toCreateBody = (draft: TerminalDraft): TerminalCreate => ({
   terminalCode: draft.terminalCode.trim(),
   plantId: Number(draft.plant),
   terminalTypeCode: draft.terminalTypeCode.trim(),
-  statusCode: draft.statusCode.trim(),
+  statusCode: NEW_TERMINAL_STATUS,
   ...equipmentField(draft),
 });
 

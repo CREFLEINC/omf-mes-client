@@ -149,6 +149,16 @@ export const PackingPane = ({
         </label>
       </div>
 
+      {/*
+       * ⭐ **잠긴 이유를 눈에 보이게 세운다**(#1094 · 88단계 2회차 실기).
+       *
+       * ⛔ **툴팁으로 끝내지 않는다.** 종전에는 `title` 에만 있었는데 **현장 단말은 터치라
+       *    호버가 없어 영영 보이지 않았다.** 마우스가 있는 개발 기계에서만 보이던 문구다.
+       *
+       * ⚠ **화면 가로로 줄을 세우지 않는다**(사용자 지시 2026-09-10) — 잠긴 그 칸 «아래»에
+       *    붙는다. `title` 도 남겨 둔다: 마우스를 쓰는 자리에서는 그쪽이 더 빠르다.
+       */}
+      {locked && <p className="field-note">{t.unit.lockedReason}</p>}
       {typeError !== null && <p className="field-error">{typeError}</p>}
       {unitTypesFailed && <p className="field-error">{t.unit.typeLoadFailed}</p>}
       {parentsFailed && <p className="field-error">{t.unit.parentLoadFailed}</p>}

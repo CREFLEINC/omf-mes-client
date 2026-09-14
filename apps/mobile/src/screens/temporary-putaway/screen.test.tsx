@@ -1,3 +1,4 @@
+import { messages } from '@omf-mes/i18n';
 import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useEffect, type ReactNode } from 'react';
@@ -207,12 +208,12 @@ describe('임시 위치 적재 화면', () => {
   });
 
   /* 고객이 임시 유형을 지우면 한 자리도 남지 않는다. 목록을 비우면 포화된 현장이 선다. */
-  it('임시 유형으로 등록된 자리가 없으면 전체를 보이고 그 사실을 말한다', async () => {
+  it('임시 유형으로 등록된 위치가 없으면 전체를 보이고 그 사실을 말한다', async () => {
     const user = userEvent.setup();
     mount({ task: task() }, [], { locations: [location()] });
 
     expect(
-      await screen.findByText('임시 위치로 등록된 자리가 없어 전체 위치를 보입니다'),
+      await screen.findByText('임시 유형으로 등록된 위치가 없어 전체 위치를 보입니다'),
     ).toBeTruthy();
 
     await openList(user);
@@ -457,7 +458,7 @@ describe('임시 위치 적재 화면', () => {
     await screen.findByLabelText('임시 위치 코드 스캔');
     scan('TMP-01');
 
-    expect(await screen.findByText('위치를 확인할 수 없습니다. 연결을 확인하세요.')).toBeTruthy();
+    expect(await screen.findByText(messages.httpError.loadServer)).toBeTruthy();
     expect(screen.queryByText('TMP-01 위치를 이 창고에서 찾지 못했습니다')).toBeNull();
     expect(screen.getByRole('button', { name: '임시 적치 등록' }).hasAttribute('disabled')).toBe(
       true,

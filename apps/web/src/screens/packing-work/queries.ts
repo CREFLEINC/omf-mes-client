@@ -125,9 +125,31 @@ export const useParentHandlingUnits = (): UseQueryResult<HandlingUnit[]> => {
  * ⚠ **품목은 줄마다, 단위는 한 번에 받는다.** 단위는 기준정보라 줄마다 다시 물을 것이 아니고,
  * 미사용 단위를 쓰는 값이 와도 이름이 비지 않게 사용 여부로 좁히지 않는다(전례 `P-02-09`).
  */
+/**
+ * 한 번에 받아 오는 단위 수.
+ *
+ * ⛔ **상한을 주지 않으면 첫 쪽만 받는다.** `/mdm/uoms` 는 쪽 응답이라 상한이 없으면 서버
+ * 기본 크기에서 잘리는데, 잘린 단위는 `allowsDecimal` 이 «거짓»으로 떨어뜨려 **소수점 키를
+ * 지운다.** 이 화면의 수량 칸은 읽기 전용이라 키패드가 유일한 입력 수단이므로, 그러면
+ * `KG`·`L` 자리에서 **값을 넣을 길이 아예 사라진다** — 화면은 「원래 정수만 받는다」로 보인다.
+ *
+ * 전례를 따른다 — `P-04-01`·`P-04-03` 이 같은 끝점을 같은 목적으로 부르며 100 을 준다.
+ */
+const UOM_PAGE_SIZE = 100;
+
 export interface CodeLabels {
   itemCodeOf: (itemId: number) => string | null;
   uomCodeOf: (uomId: number) => string | null;
+  /**
+   * 이 단위가 소수를 받는가 — **숫자 키패드의 소수점 키를 여는 기준이다.**
+   *
+   * ⛔ **화면이 정하지 않는다.** 개수로 세는 단위(EA·BOX)에 소수점 키를 두면 서버가 거부할
+   * 값을 넣게 되고, 무게·부피 단위(KG·L)에 없으면 값을 넣을 길이 사라진다. 마스터가 그
+   * 자릿수를 들고 있으므로 그대로 따른다(전례 `P-04-01`).
+   *
+   * ⚠ **모르면 «받지 않는» 쪽으로 둔다** — 못 받은 상태에서 소수를 열어 두면 쓰기가 거부된다.
+   */
+  allowsDecimal: (uomId: number | null) => boolean;
 }
 
 export const useCodeLabels = (
@@ -150,7 +172,11 @@ export const useCodeLabels = (
     queryKey: packingWorkKeys.uoms,
     enabled: uomIds.length > 0,
     queryFn: () =>
-      runRequest(() => client.GET('/mdm/uoms', { params: { query: { includeInactive: true } } })),
+      runRequest(() =>
+        client.GET('/mdm/uoms', {
+          params: { query: { includeInactive: true, size: UOM_PAGE_SIZE } },
+        }),
+      ),
   });
 
   const itemCodeOf = new Map(
@@ -163,9 +189,23 @@ export const useCodeLabels = (
   const uomCodeOf = new Map(
     (uoms.data?.items ?? []).map((uom) => [uom.uomId, uom.uomCode] as const),
   );
+  /* 같은 응답에서 함께 꺼낸다 — 자릿수를 물으려고 단위를 다시 부르지 않는다. */
+  const decimalScaleOf = new Map(
+    (uoms.data?.items ?? []).map((uom) => [uom.uomId, uom.decimalScale] as const),
+  );
 
   return {
     itemCodeOf: (itemId) => itemCodeOf.get(itemId) ?? null,
     uomCodeOf: (uomId) => uomCodeOf.get(uomId) ?? null,
+    /*
+     * ⚠ **조회가 «실패»했을 때는 연다.** 「모르면 받지 않는다」는 칸을 직접 칠 수 있는 화면의
+     * 규칙이고(전례 `P-04-01`), 이 화면은 수량 칸이 읽기 전용이라 키패드가 유일한 입력
+     * 수단이다 — 닫아 두면 조회 실패가 곧 **작업 불가**가 된다. 열어 두면 정수 단위에 소수를
+     * 넣었을 때 서버가 거부하는 데 그친다. 둘 중 뒤가 가볍다.
+     *
+     * ⚠ 아직 «부르는 중»일 때는 닫아 둔다 — 잠시 뒤 답이 오면 열린다.
+     */
+    allowsDecimal: (uomId) =>
+      uoms.isError ? true : uomId !== null && (decimalScaleOf.get(uomId) ?? 0) > 0,
   };
 };

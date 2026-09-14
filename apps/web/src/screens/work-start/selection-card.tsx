@@ -1,8 +1,9 @@
-import { AlertBanner, Card } from '@crefle/web-ui';
+import { AlertBanner, Card, Chip } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 
 import { idText, isOtherEquipment, itemText, qtyText } from './row-view';
 import type { WorkOrder } from './types';
+import { isEmergency } from './work-order-type';
 
 const t = messages.workStart.selection;
 
@@ -48,6 +49,17 @@ export const SelectionCard = ({
       <Card bordered surface="low">
         <Card.Body>
           <p>
+            {/*
+             * 목록에서 본 긴급 표식을 고른 뒤에도 남긴다(스펙 §5-3 · #1147) — 확인하는 자리에서
+             * 사라지면 긴급 지시를 고른 것인지 다시 목록을 봐야 한다.
+             */}
+            {isEmergency(workOrder) && (
+              <>
+                <Chip status="error" size="md">
+                  {messages.workStart.list.emergencyBadge}
+                </Chip>{' '}
+              </>
+            )}
             {workOrder.workOrderNo} · {itemText(workOrder)} ·{' '}
             {qtyText(workOrder.orderQty, uomCodeOf(workOrder.uomId))}
           </p>

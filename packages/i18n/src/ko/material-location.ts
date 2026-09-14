@@ -26,7 +26,7 @@ export const materialLocation = {
     countSuffix: (count: number): string => `위치 ${String(count)}곳`,
     depleted: '(소진)',
     emptyTitle: '재고가 있는 위치가 없습니다',
-    emptyDescription: '등록된 LOT이지만 지금 재고가 잡힌 자리가 없습니다.',
+    emptyDescription: '등록된 LOT이지만 지금 재고가 있는 위치가 없습니다.',
   },
   quantity: {
     onHand: '보유',
@@ -40,6 +40,8 @@ export const materialLocation = {
     checking: '보류 여부를 확인하는 중입니다',
     unconfirmed: '보류 여부를 확인하지 못했습니다',
     unconfirmedDescription: '묶여 있을 수 있으니 연결된 뒤에 확인하고 옮기세요.',
+    /** 연결이 아닌 이유로 확인하지 못했을 때 그 이유 뒤에 붙인다. 주의는 이유와 상관없다. */
+    unconfirmedCaution: '묶여 있을 수 있으니 확인한 뒤에 옮기세요.',
     wholeLot: '전량 보류',
     quantity: (amount: string): string => `${amount} 보류`,
     releaseCondition: (condition: string): string => `해제 조건: ${condition}`,
@@ -48,7 +50,8 @@ export const materialLocation = {
   loading: '조회 중입니다',
   notFound: {
     title: '등록되지 않은 LOT입니다',
-    description: '읽은 번호를 확인하고 다시 스캔해 주세요.',
+    /* 읽은 값을 보인다. 없으면 잘못 읽은 것인지 등록이 안 된 것인지 가릴 수 없다. */
+    description: (lotNo: string) => `읽은 번호 ${lotNo} — 확인하고 다시 스캔해 주세요.`,
   },
   loadFailed: {
     title: '조회하지 못했습니다',

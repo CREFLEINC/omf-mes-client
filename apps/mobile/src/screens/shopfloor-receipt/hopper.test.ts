@@ -148,6 +148,9 @@ describe('조정 본문', () => {
     expect(entry.path).toBe('/inventory/adjustments');
     expect(entry.workerNo).toBe('100027');
     expect(body.reasonCode).toBe(HOPPER_MEASUREMENT);
+    expect(body.businessDate).toBe('2026-09-10');
+    expect(body.occurredAt).toBe(NOW.toISOString());
+    expect(entry.occurredAt).toBe(body.occurredAt);
     expect(body.lines).toHaveLength(1);
     expect(body.lines[0]).toMatchObject({
       locationId: 55,
@@ -157,5 +160,15 @@ describe('조정 본문', () => {
       uomId: 9,
       reasonCode: HOPPER_MEASUREMENT,
     });
+  });
+
+  it('단말 로컬 자정 직후의 전송에도 같은 발생시각과 업무일을 고정한다', () => {
+    const instant = new Date(2026, 8, 12, 0, 10);
+    const entry = toHopperDraft(55, [stock()], { 31: '121' }, instant, '100027');
+    const body = entry.body as InventoryAdjustmentCreate;
+
+    expect(body.businessDate).toBe('2026-09-12');
+    expect(body.occurredAt).toBe(instant.toISOString());
+    expect(entry.occurredAt).toBe(body.occurredAt);
   });
 });

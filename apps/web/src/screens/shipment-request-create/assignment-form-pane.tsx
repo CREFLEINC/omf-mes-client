@@ -23,6 +23,7 @@ import type {
 const t = messages.shipmentRequestCreate;
 
 export interface HeaderFieldPatch {
+  fulfillmentPlantId?: string;
   customerId?: string;
   shipToPartnerId?: string;
   requestedShipDate?: string;
@@ -31,11 +32,14 @@ export interface HeaderFieldPatch {
 export interface AssignmentFormPaneProps {
   mode: AssignmentMode;
   customerId: string;
+  fulfillmentPlantId: string;
   shipToPartnerId: string;
   requestedShipDate: string;
   customerOptions: SelectOption[];
+  fulfillmentPlantOptions: SelectOption[];
   shipToPartnerOptions: SelectOption[];
   customerLookup: ReferenceSource;
+  fulfillmentPlantNote?: string;
   shipToPartnerLookup: ReferenceSource;
   customerNote?: string;
   shipToPartnerNote?: string;
@@ -79,11 +83,14 @@ export interface AssignmentFormPaneProps {
 export const AssignmentFormPane = ({
   mode,
   customerId,
+  fulfillmentPlantId,
   shipToPartnerId,
   requestedShipDate,
   customerOptions,
+  fulfillmentPlantOptions,
   shipToPartnerOptions,
   customerLookup,
+  fulfillmentPlantNote,
   shipToPartnerLookup,
   customerNote,
   shipToPartnerNote,
@@ -118,6 +125,20 @@ export const AssignmentFormPane = ({
         {isFromOrder && <p className="field-note">{t.notes.fromOrderLocked}</p>}
 
         <div className="form-grid">
+          <SelectField
+            wide
+            required
+            label={t.fields.fulfillmentPlant}
+            options={fulfillmentPlantOptions}
+            value={fulfillmentPlantId}
+            note={fulfillmentPlantNote}
+            error={headerErrors.fulfillmentPlantId}
+            disabled={isLocked}
+            onChange={(value) => {
+              onChangeHeader({ fulfillmentPlantId: value });
+            }}
+          />
+
           {isFromOrder ? (
             <div className="field-cell">
               <span id={customerValueId} className="field-label">

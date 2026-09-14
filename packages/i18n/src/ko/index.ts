@@ -133,7 +133,10 @@ import { workHoldRegister } from './work-hold-register';
 import { shopfloorReceipt } from './shopfloor-receipt';
 import { stockTransfer } from './stock-transfer';
 import { physicalCount } from './physical-count';
+import { lotStatusHistory } from './lot-status-history';
+import { inspectionResultInsights } from './inspection-result-insights';
 import { productDisposalRequest } from './product-disposal-request';
+import { productionPlan } from './production-plan';
 
 export const ko = {
   popPageNav,
@@ -256,6 +259,9 @@ export const ko = {
   stockTransfer,
   physicalCount,
   productDisposalRequest,
+  productionPlan,
+  lotStatusHistory,
+  inspectionResultInsights,
 } as const;
 
 export type Messages = typeof ko;

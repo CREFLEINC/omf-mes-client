@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
+import { masterName } from '../../patterns/master-name';
 import { runRequest } from '../../patterns/request';
 import type { LookupEntry, PageMeta } from './types';
 
@@ -51,8 +52,13 @@ export const lookupKeys = {
   plants: ['users-roles-lookups', 'plants'] as const,
 };
 
-const codeLabel = (value: { code: string; codeName: string; nameKo?: string | null }): string =>
-  value.nameKo?.trim() || value.codeName.trim() || value.code;
+/** 표시명은 고른 언어의 다국어 컬럼이 먼저, 기본 이름이 fallback, 둘 다 비면 코드(G-33). */
+const codeLabel = (value: {
+  code: string;
+  codeName: string;
+  nameKo?: string | null;
+  nameVi?: string | null;
+}): string => masterName(value, value.codeName.trim() || value.code);
 
 /** 사용자 인사 상태 — APP_USER_STATUS는 고객이 늘리는 마스터안전형 목록이다. */
 export const useUserStatusOptions = (enabled: boolean): LookupResult => {

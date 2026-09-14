@@ -26,6 +26,8 @@ import { isTransitionStale, transitionStaleMessage } from './transition-error';
 
 type LotHold = components['schemas']['LotHold'];
 type LotHoldRelease = components['schemas']['LotHoldRelease'];
+const t = messages.lotStatusTransition.release;
+const tReason = messages.lotStatusTransition.reason;
 const ROOT_KEY = ['lot-status-transition'] as const;
 const HISTORY_KEY = ['lot-status-history'] as const;
 
@@ -54,18 +56,17 @@ const validate = (
   target: string,
   reasons: ReasonOptions,
 ): Validation => {
-  const tReason = messages.lotStatusTransition.reason;
   const text = draft.releaseQty.trim();
   const quantity = Number(text);
   const quantityError =
     draft.mode === 'FULL'
       ? undefined
       : text === '' || !Number.isFinite(quantity) || quantity <= 0
-        ? '해제 수량은 0보다 커야 합니다.'
+        ? t.quantityPositive
         : maximum === undefined || !Number.isFinite(maximum) || maximum <= 0
-          ? '해제 가능한 보류 수량을 확인하지 못했습니다.'
+          ? t.quantityUnknown
           : quantity > maximum
-            ? `해제 수량은 보류 수량 ${String(maximum)} 이하여야 합니다.`
+            ? t.quantityMax(String(maximum))
             : undefined;
   const releaseReasonCode = draft.releaseReasonCode.trim();
   const releaseReasonError =
@@ -76,7 +77,7 @@ const validate = (
         ? undefined
         : tReason.unknown);
   const remarks = draft.remarks.trim();
-  const remarksError = remarks === '' ? '비고를 입력하세요.' : undefined;
+  const remarksError = remarks === '' ? t.remarksRequired : undefined;
   return {
     quantityError,
     releaseReasonError,
@@ -142,7 +143,7 @@ export const ReleaseHoldExecution = (props: ReleaseHoldExecutionProps) => {
     onSuccess: () => {
       setConfirmation(null);
       props.onConfirmationChange(false);
-      toast.show({ variant: 'success', description: 'LOT 보류를 해제했습니다.' });
+      toast.show({ variant: 'success', description: t.success });
       props.onReleased();
     },
   });
@@ -157,16 +158,19 @@ export const ReleaseHoldExecution = (props: ReleaseHoldExecutionProps) => {
     props.onStale();
     void queryClient.invalidateQueries({ queryKey: ROOT_KEY });
   };
-  const location = `창고 ${props.warehouseId === undefined ? '미확인' : String(props.warehouseId)} / Location ${props.locationId === undefined ? '미확인' : String(props.locationId)}`;
+  const location = t.impact.location(
+    props.warehouseId === undefined ? t.impact.unknown : String(props.warehouseId),
+    props.locationId === undefined ? t.impact.unknown : String(props.locationId),
+  );
 
   return (
-    <section className="lot-status-transition-execution" aria-label="보류 해제 입력">
+    <section className="lot-status-transition-execution" aria-label={t.pane}>
       <RadioGroup
         name={`release-mode-${String(props.lotHoldId)}`}
         orientation="horizontal"
         value={draft.mode}
         disabled={write.isSaving}
-        aria-label="해제 범위"
+        aria-label={t.scope}
         onChange={(value) => {
           setDraft({
             mode: value === 'PARTIAL' ? 'PARTIAL' : 'FULL',
@@ -178,13 +182,13 @@ export const ReleaseHoldExecution = (props: ReleaseHoldExecutionProps) => {
           write.reset();
         }}
       >
-        <Radio value="FULL">전량 해제</Radio>
-        <Radio value="PARTIAL">일부 해제</Radio>
+        <Radio value="FULL">{t.full}</Radio>
+        <Radio value="PARTIAL">{t.partial}</Radio>
       </RadioGroup>
       <div className="form-grid lot-status-transition-execution-form">
         {draft.mode === 'PARTIAL' && (
           <TextField
-            label="해제 수량"
+            label={t.quantity}
             inputMode="decimal"
             required
             value={draft.releaseQty}
@@ -197,13 +201,13 @@ export const ReleaseHoldExecution = (props: ReleaseHoldExecutionProps) => {
         {/* 규범 3 — Select 에 label prop 이 없어 라벨을 직접 세운다. 잠긴 사유는 상시 텍스트(규범 4). */}
         <div className="field-cell wide-select">
           <label className="field-label" htmlFor={reasonId}>
-            {messages.lotStatusTransition.reason.releaseLabel}
+            {tReason.releaseLabel}
           </label>
           <Select
             id={reasonId}
             options={reasons.options}
             value={draft.releaseReasonCode === '' ? null : draft.releaseReasonCode}
-            placeholder={messages.lotStatusTransition.reason.placeholder}
+            placeholder={tReason.placeholder}
             disabled={write.isSaving || reasons.unavailableReason !== undefined}
             invalid={validation.releaseReasonError !== undefined && draft.releaseReasonCode !== ''}
             aria-required
@@ -221,7 +225,7 @@ export const ReleaseHoldExecution = (props: ReleaseHoldExecutionProps) => {
           )}
         </div>
         <TextArea
-          label="비고"
+          label={t.remarks}
           required
           fullWidth
           rows={3}
@@ -240,7 +244,7 @@ export const ReleaseHoldExecution = (props: ReleaseHoldExecutionProps) => {
             }
           }}
         >
-          해제 확인
+          {t.confirm}
         </Button>
       </div>
       {confirmation !== null && (
@@ -248,14 +252,14 @@ export const ReleaseHoldExecution = (props: ReleaseHoldExecutionProps) => {
           open
           closeOnBackdropClick={false}
           showCloseButton={false}
-          title={`LOT 보류 해제 — ${props.lotNo}`}
+          title={t.dialogTitle(props.lotNo)}
           onClose={() => {
             if (!write.isSaving) closeDialog();
           }}
           footer={
             <>
               <Button variant="outlined" disabled={write.isSaving} onClick={closeDialog}>
-                취소
+                {t.cancel}
               </Button>
               <Button
                 loading={write.isSaving}
@@ -264,27 +268,29 @@ export const ReleaseHoldExecution = (props: ReleaseHoldExecutionProps) => {
                   if (!write.isSaving && !stale) write.write(confirmation);
                 }}
               >
-                보류 해제
+                {t.release}
               </Button>
             </>
           }
         >
           {stale ? (
-            <AlertBanner variant="error" action={<Button onClick={reload}>최신 불러오기</Button>}>
+            <AlertBanner variant="error" action={<Button onClick={reload}>{t.reload}</Button>}>
               {transitionStaleMessage(write.error, props.statusLabel)}
             </AlertBanner>
           ) : (
             <SaveErrorBanner error={write.error} />
           )}
-          <AlertBanner variant="warning" title="이 전이가 하는 일">
-            <p>보류 해제는 대상 수량의 출고·출하 및 피킹 제한을 풉니다.</p>
+          <AlertBanner variant="warning" title={t.impact.title}>
+            <p>{t.impact.description}</p>
             <p>
-              대상 수량: {confirmation.releaseQty === undefined ? '전량' : confirmation.releaseQty}
+              {t.impact.targetQuantity(
+                confirmation.releaseQty === undefined
+                  ? t.impact.fullQuantity
+                  : String(confirmation.releaseQty),
+              )}
             </p>
-            <p>대상 위치: {location}</p>
-            <p>
-              다시 보류가 필요하면 새 Hold를 등록해야 하며, 이미 출고된 수량은 회수되지 않습니다.
-            </p>
+            <p>{t.impact.targetLocation(location)}</p>
+            <p>{t.impact.recovery}</p>
           </AlertBanner>
         </Dialog>
       )}

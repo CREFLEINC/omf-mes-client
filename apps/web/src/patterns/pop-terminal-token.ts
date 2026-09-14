@@ -151,6 +151,40 @@ export const writeTerminalToken = async (
   return true;
 };
 
+/**
+ * 보관된 토큰을 **버린다** — 서버가 그 토큰을 보고 「더는 못 쓴다」고 답했을 때만 부른다(#1137).
+ *
+ * ⛔ **못 물어본 것을 버리지 않는다.** 판정 여부는 부르는 쪽(`patterns/pop-registration`)이
+ *    가리고, 이 자리는 지우기만 한다 — 여기서 다시 판단하면 규칙이 두 곳에 생긴다.
+ *
+ * ⚠ **빈 값으로 덮어쓴다.** 셸의 보관 통로에는 지우는 문이 따로 없고(`deviceToken` 은
+ *   `get`·`set` 둘뿐), 읽는 쪽이 빈 문자열을 「없음」으로 본다(`readTerminalToken`). 통로를
+ *   넓히지 않고 같은 결과를 낸다.
+ *
+ * ⚠ **지우지 못했어도 메모리는 비운다.** `cached = null` 은 「없다」가 아니라 「아직 안 읽었다」
+ *   이므로, 다음 `readTerminalToken()` 이 셸에서 다시 읽어 «보관된 진실»로 돌아온다 — 죽은
+ *   토큰이 이 자리 때문에 되살아나는 길은 없다. 반대로 비우지 않으면 이번 세션 내내 방금 버린
+ *   토큰을 계속 들고 있게 된다.
+ *
+ * ⚠ **셸이 저장에 실패한 경우는 화면이 알지 못한다.** 그때는 보관값이 남아 다음 기동에서 같은
+ *   화면이 한 번 더 선다 — 화면을 막을 일은 아니지만, 문구가 「지웠습니다」라고 단정하는 것과
+ *   어긋나는 유일한 갈래다(셸 자격증명 저장소가 통째로 고장 난 경우).
+ */
+export const discardStoredTerminalToken = async (): Promise<void> => {
+  const pop = bridge();
+
+  if (pop !== null) {
+    try {
+      await pop.deviceToken.set('');
+    } catch {
+      /* 못 지웠으면 다음 기동에서 같은 길을 다시 지난다 — 화면을 막을 일은 아니다. */
+    }
+  }
+
+  cached = null;
+  candidate = null;
+};
+
 /** 시험 전용 — 모듈에 남은 값을 지운다. 시험 사이에 토큰이 새지 않게 한다. */
 export const forgetTerminalToken = (): void => {
   cached = null;

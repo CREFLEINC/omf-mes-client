@@ -106,9 +106,8 @@ apps/mobile/scripts/emulator-run.sh    # 창 2 — 부팅 → 빌드 → 동기�
 `emulator-run.sh` 는 웹을 빌드할 때 `VITE_API_BASE_URL=http://10.0.2.2:4010` 을 준다.
 단말 안의 `127.0.0.1` 은 **단말 자신**이라 목 서버에 닿지 않는다 — `10.0.2.2` 가 호스트다.
 
-평문 HTTP 는 디버그 빌드에서만, 그 세 주소로만 열려 있다
-(`android/app/src/debug/`). 운영 서버의 HTTPS 여부는 아직 정해지지 않았고(#580) 릴리스
-빌드는 이 설정을 받지 않는다.
+디버그 빌드의 평문 HTTP 는 그 세 주소로만 열려 있다(`android/app/src/debug/`). 릴리스는
+이 설정을 받지 않는다 — 릴리스의 평문은 빌드할 때 따로 만든다([RELEASE-BUILD.md](./RELEASE-BUILD.md)).
 
 | 스크립트 | 무엇을 하나 |
 | --- | --- |
@@ -206,8 +205,8 @@ MOBILE_API_PROXY_TARGET=http://<사내-주소> pnpm --filter @omf-mes/mobile dev
 # .env.local
 VITE_API_BASE_URL=http://<사내-주소>/api
 
-CAP_NATIVE_HTTP=1 CAP_ALLOW_LOCAL_HTTP=1 pnpm --filter @omf-mes/mobile build
-CAP_NATIVE_HTTP=1 CAP_ALLOW_LOCAL_HTTP=1 npx cap sync android
+CAP_NATIVE_HTTP=1 CAP_ALLOW_CLEARTEXT_HTTP=1 pnpm --filter @omf-mes/mobile build
+CAP_NATIVE_HTTP=1 CAP_ALLOW_CLEARTEXT_HTTP=1 npx cap sync android
 ```
 
 `CAP_NATIVE_HTTP` 는 기본이 꺼짐이다. 켜면 목 서버로 도는 경로까지 함께 바뀐다.
@@ -248,6 +247,18 @@ curl -s http://127.0.0.1:5173/api/health
 서명이 개발용이라 실서버가 받지 않는다.
 
 배선은 서 있고 상태 확인 경로로 검증된다. 진행은 착수 이슈에 적는다.
+
+## 릴리스 APK 만들기
+
+배포용 APK 는 우리 키로 서명한다. 절차·준비물·평문 HTTP 설정·서명 확인은 **[RELEASE-BUILD.md](./RELEASE-BUILD.md)** 에 있다.
+
+```bash
+# apps/mobile/.env.local 에 API 주소를 적고
+apps/mobile/scripts/release-build.sh
+```
+
+⛔ **서명 키와 비밀번호를 이 저장소에 두지 않는다.** 공개 저장소다. `build.gradle` 은 값을
+환경변수로만 받는다.
 
 ## 버전 조합
 

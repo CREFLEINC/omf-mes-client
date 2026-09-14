@@ -16,6 +16,7 @@ import {
   moldListResponse,
   unresolvedPolicies,
 } from './fixtures';
+import { PopIdentityProvider, UNKNOWN_POP_IDENTITY } from '../../patterns/pop-identity';
 import { ToolUsageScreen } from './screen';
 import type { Mold } from './types';
 
@@ -118,6 +119,33 @@ const renderScreen = (options: Options = {}, route: string = ENTRY_ROUTE) =>
 const scanTool = async (user: ReturnType<typeof userEvent.setup>, code = TOOL_CODE) => {
   await user.type(screen.getByLabelText(t.scan.inputLabel), `${code}{Enter}`);
 };
+
+/** ⭐ 사용자 지시 2026-09-14 — 도면 머리줄 「W/O · 설비」. 설비는 단말이 준다. */
+describe('ToolUsageScreen — 머리줄', () => {
+  it('타이틀 옆에 W/O 와 단말 설비를 함께 보인다', async () => {
+    renderWithProviders(
+      <PopIdentityProvider
+        value={{
+          ...UNKNOWN_POP_IDENTITY,
+          equipment: { equipmentId: 6, equipmentCode: 'PRS-01', equipmentName: '프레스 1호기' },
+        }}
+      >
+        <ToolUsageScreen />
+      </PopIdentityProvider>,
+      { fetch: createStubFetch(routes({})), route: ENTRY_ROUTE },
+    );
+
+    expect(
+      await screen.findByText(`${t.entry.workOrderLabel} 1001 · 설비 프레스 1호기`),
+    ).toBeInTheDocument();
+  });
+
+  it('단말 설비가 없으면 W/O 만 보인다', async () => {
+    renderScreen();
+
+    expect(await screen.findByText(`${t.entry.workOrderLabel} 1001`)).toBeInTheDocument();
+  });
+});
 
 describe('ToolUsageScreen — 툴 스캔', () => {
   it('찍은 코드의 툴 정보를 보인다', async () => {

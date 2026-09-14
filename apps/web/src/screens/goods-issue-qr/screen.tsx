@@ -318,7 +318,14 @@ export const GoodsIssueQrScreen = () => {
           itemNames={itemNames}
           lotNames={lotNames}
           uomNames={uomNames}
-          isLoading={lines.isPending}
+          /*
+           * ⛔ **부르지도 않은 조회를 「불러오는 중」으로 그리지 않는다**(#1093 ②).
+           *    react-query 는 꺼 둔 조회(`enabled: false`)를 계속 `pending` 으로 둔다 —
+           *    그대로 쓰면 전표 없이 들어왔을 때 뼈대가 **영영 걷히지 않는다.** 위 배너는
+           *    「전표를 고른 뒤 들어오세요」라고 옳게 말하는데 옆은 로딩이라, 작업자는
+           *    화면이 곧 뜰 줄 알고 기다린다. 아래 파렛트 줄이 같은 일을 이미 하고 있다.
+           */
+          isLoading={lines.isPending && entry.goodsIssueId !== null}
           isError={lines.isError}
         />
         <TargetPane

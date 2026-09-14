@@ -3,6 +3,7 @@ import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
 import { useMasterWrite, type MasterWriteResult } from '../../patterns/master';
+import { masterName } from '../../patterns/master-name';
 import { runRequest } from '../../patterns/request';
 import type {
   DecisionResponse,
@@ -166,7 +167,8 @@ export const useLookups = (): UseQueryResult<Lookups> => {
           .filter((item) => item.isActive)
           .map((item) => ({
             value: item.code,
-            label: nameOf(item.nameKo ?? item.codeName, item.code),
+            /* 표시명은 고른 언어의 다국어 컬럼이 먼저, 기본 이름이 fallback(G-33). */
+            label: masterName(item, nameOf(item.codeName, item.code)),
           }));
       return {
         warehouses: warehouses.items,

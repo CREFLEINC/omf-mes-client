@@ -21,9 +21,12 @@ import { useScannedLot } from '../../patterns/lots';
 import { useDefectCodes, useItem, useUomCodes, type DefectCodeLabel } from '../../patterns/masters';
 import { useOnlineStatus } from '../../patterns/online-status';
 import { toApiError } from '../../patterns/request';
+import { ScanReplaceDialog } from '../../patterns/scan-replace-dialog';
 import { useScanField } from '../../patterns/use-scan-field';
 import { useScreenTitle } from '../../patterns/screen-title';
 import { useWorkerSession } from '../../patterns/worker-session';
+import { FailureBanner } from '../../patterns/failure-banner';
+import { useLoadFailure } from '../../patterns/load-failure';
 import {
   useDefectRecords,
   useDispatchRepair,
@@ -83,6 +86,7 @@ const codeLabel = (
 
 export const RepairRoundtripScreen = () => {
   useScreenTitle(t.title);
+  const failureText = useLoadFailure();
 
   const online = useOnlineStatus();
   const { worker } = useWorkerSession();
@@ -113,6 +117,8 @@ export const RepairRoundtripScreen = () => {
   const returnKey = useIdempotencyKey(`${String(executionId)}:${String(result)}`);
 
   const scanField = useScanField({
+    /* 끝낸 뒤에는 묻지 않는다. 이미 적혔으니 다음 LOT 을 읽는 것이 잃을 것이 없다. */
+    applied: done === null ? scanned : null,
     onScan: (value) => {
       setScanned(value);
       setScanSeq((seq) => seq + 1);
@@ -262,7 +268,9 @@ export const RepairRoundtripScreen = () => {
   const scannedCard = (
     <>
       {lot.isPending && scanned !== null ? <p role="status">{t.scan.loading}</p> : null}
-      {lot.isError ? <AlertBanner variant="error" title={t.scan.loadFailed} /> : null}
+      {lot.isError ? (
+        <FailureBanner variant="error" title={failureText(lot.error, t.scan.loadFailed)} />
+      ) : null}
       {lot.isSuccess && lot.data === null ? (
         <AlertBanner variant="warning" title={t.scan.notFound(scanned ?? '')} />
       ) : null}
@@ -287,10 +295,12 @@ export const RepairRoundtripScreen = () => {
       {scannedCard}
       {defects.isPending && lotId !== null ? <p role="status">{t.defect.loading}</p> : null}
       {/* 확인하지 못한 것을 불량이 아닌 것으로 말하지 않는다. */}
-      {defects.isError ? <AlertBanner variant="error" title={t.defect.loadFailed} /> : null}
+      {defects.isError ? (
+        <FailureBanner variant="error" title={failureText(defects.error, t.defect.loadFailed)} />
+      ) : null}
       {defects.isSuccess && defects.data.length === 0 ? (
         <>
-          <AlertBanner variant="warning" title={t.defect.none} />
+          <AlertBanner variant="warning" title={t.defect.none(scanned ?? '')} />
           <p className="repair__note">{t.defect.window(DEFECT_WINDOW_DAYS)}</p>
         </>
       ) : null}
@@ -539,7 +549,9 @@ export const RepairRoundtripScreen = () => {
         <h2>{t.open.legend(allOpen.data?.length ?? 0)}</h2>
         {allOpen.isError ? <AlertBanner variant="error" title={t.open.loadFailed} /> : null}
         {allOpen.data === undefined ? null : allOpen.data.length === 0 ? (
-          <p className="repair__note">{t.open.none}</p>
+          allOpen.isSuccess ? (
+            <p className="repair__note">{t.open.none}</p>
+          ) : null
         ) : (
           <div className="repair__table">
             <Table
@@ -552,6 +564,8 @@ export const RepairRoundtripScreen = () => {
           </div>
         )}
       </section>
+
+      <ScanReplaceDialog field={scanField} />
     </div>
   );
 };

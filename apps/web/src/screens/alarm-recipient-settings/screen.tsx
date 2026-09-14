@@ -186,7 +186,7 @@ export const AlarmRecipientSettingsScreen = () => {
       header: t.columns.status,
       render: (user) => (
         <Chip status={user.isActive ? 'success' : 'warning'}>
-          {user.isActive ? '사용 중' : '비활성'}
+          {user.isActive ? t.values.statusActive : t.values.statusInactive}
         </Chip>
       ),
     },
@@ -200,7 +200,12 @@ export const AlarmRecipientSettingsScreen = () => {
       <PageHeader
         title={t.title}
         description={t.description}
-        breadcrumb={<Breadcrumb items={[{ label: t.breadcrumbRoot }, { label: t.title }]} />}
+        breadcrumb={
+          <Breadcrumb
+            items={[{ label: t.breadcrumbRoot }, { label: t.title }]}
+            aria-label={messages.common.shell.breadcrumb}
+          />
+        }
       />
       <div className="two-pane alarm-recipient-layout">
         <section className="pane alarm-recipient-pane" aria-labelledby="alarm-events-title">

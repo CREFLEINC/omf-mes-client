@@ -171,6 +171,7 @@ export const LocationPane = ({
           value={filterText}
           onChange={(event) => onFilterTextChange(event.target.value)}
           onClear={() => onFilterTextChange('')}
+          clearLabel={messages.common.clear}
         />
         <div className="field-cell field-cell-unlabeled">
           <Button

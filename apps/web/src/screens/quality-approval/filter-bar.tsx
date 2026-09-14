@@ -109,6 +109,7 @@ export const FilterBar = ({
         value={draft.q}
         onChange={(event) => setDraft((current) => ({ ...current, q: event.target.value }))}
         onSearch={(value) => onApply({ ...draft, q: value })}
+        clearLabel={messages.common.clear}
       />
       <div className="quality-approval-filter-footer">
         <Checkbox

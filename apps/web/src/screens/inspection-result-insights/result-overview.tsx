@@ -7,6 +7,7 @@ import {
   type SortState,
   Table,
 } from '@crefle/web-ui';
+import { messages } from '@omf-mes/i18n';
 
 import { lookupDisplayLabelWithInactive, type LookupSource } from '../../patterns/lookup-display';
 import type { InspectionInsightFilters, InspectionResultSort } from './filters';
@@ -15,12 +16,12 @@ import { toInspectionResultTreeRows, type InspectionResultTreeRow } from './rein
 import { toInspectionListQuery } from './request-queries';
 import { SummaryPanels } from './summary-panels';
 
-const EMPTY = '미확인';
-const TYPE_LABELS = new Map([
-  ['IQC', '수입검사'],
-  ['PQC', '공정검사'],
-  ['OQC', '출하검사'],
-]);
+const t = messages.inspectionResultInsights.overview;
+const EMPTY = t.unknown;
+/* 목록의 유형 열은 요약·추이의 모집단 이름과 같은 말을 쓴다. */
+const TYPE_LABELS = new Map<string, string>(
+  Object.entries(messages.inspectionResultInsights.inspectionTypes),
+);
 
 const dateTime = (value: string): string => {
   const match = /^(\d{4}-\d{2}-\d{2})T(\d{2}:\d{2})/.exec(value);
@@ -85,23 +86,23 @@ export const ResultOverview = ({
         aria-labelledby="inspection-results-title"
       >
         <h2 className="pane-title" id="inspection-results-title">
-          검사실적 요약
+          {t.pane}
         </h2>
         <EmptyState
           size="sm"
           title={
             queriesEnabled
-              ? '기간을 선택하세요'
+              ? t.blockedPeriod
               : validationPending
-                ? '조회 조건 이름을 확인하는 중입니다'
-                : '주소의 날짜 또는 코드 조건이 유효하지 않습니다'
+                ? t.blockedPending
+                : t.blockedInvalid
           }
           description={
             queriesEnabled
-              ? '조회 기간은 필수입니다.'
+              ? t.blockedPeriodDescription
               : validationPending
-                ? '준비가 끝날 때까지 조회 요청을 보내지 않습니다.'
-                : '날짜를 확인하고 준비된 검사유형·판정 코드로 다시 조회하세요.'
+                ? t.blockedPendingDescription
+                : t.blockedInvalidDescription
           }
         />
       </section>
@@ -111,7 +112,7 @@ export const ResultOverview = ({
   const columns: Column<InspectionResultTreeRow>[] = [
     {
       key: 'inspectionRequestNo',
-      header: '의뢰번호',
+      header: t.columns.inspectionRequestNo,
       sortable: true,
       render: (row) => (
         <Button
@@ -120,7 +121,7 @@ export const ResultOverview = ({
           className="tree-toggle"
           data-depth={row.depth}
           style={{ paddingInlineStart: `${String(row.depth)}rem` }}
-          aria-label={`${row.result.inspectionRequestNo ?? EMPTY} 상세 보기`}
+          aria-label={t.detailOf(row.result.inspectionRequestNo ?? EMPTY)}
           onClick={() => onSelectResult(row.result.inspectionResultId)}
         >
           {row.result.inspectionRequestNo ?? EMPTY}
@@ -129,18 +130,18 @@ export const ResultOverview = ({
     },
     {
       key: 'inspectionTypeCode',
-      header: '검사유형',
+      header: t.columns.inspectionType,
       render: (row) => TYPE_LABELS.get(row.result.inspectionTypeCode ?? '') ?? EMPTY,
     },
     {
       key: 'item',
-      header: '품목',
+      header: t.columns.item,
       render: (row) => lookupDisplayLabelWithInactive(labels.item, row.result.itemId),
     },
-    { key: 'lotNo', header: 'LOT', render: (row) => row.result.lotNo ?? EMPTY },
+    { key: 'lotNo', header: t.columns.lotNo, render: (row) => row.result.lotNo ?? EMPTY },
     {
       key: 'rejectedQty',
-      header: '검사/합격/불합격',
+      header: t.columns.quantities,
       sortable: true,
       align: 'end',
       render: (row) =>
@@ -148,45 +149,42 @@ export const ResultOverview = ({
     },
     {
       key: 'overallJudgmentCode',
-      header: '종합판정',
+      header: t.columns.judgment,
       render: (row) =>
         lookupDisplayLabelWithInactive(labels.judgment, row.result.overallJudgmentCode),
     },
     {
       key: 'inspectedAt',
-      header: '검사시각/회차',
+      header: t.columns.inspectedAt,
       sortable: true,
-      render: (row) => `${dateTime(row.result.inspectedAt)} / ${row.result.inspectionRound}회`,
+      render: (row) =>
+        t.inspectedAtWithRound(dateTime(row.result.inspectedAt), row.result.inspectionRound),
     },
   ];
   return (
     <section className="pane inspection-results-pane" aria-labelledby="inspection-results-title">
       <h2 className="pane-title" id="inspection-results-title">
-        검사실적 요약
+        {t.pane}
       </h2>
-      <p className="field-note">
-        {filters.finalRoundOnly
-          ? '최종 회차만 집계합니다.'
-          : '뿌리 결과 기준 페이지에서 재검 사슬 전체를 회차 순서로 표시합니다.'}
-      </p>
+      <p className="field-note">{filters.finalRoundOnly ? t.finalRoundNote : t.allRoundsNote}</p>
       <SummaryPanels
         filters={filters}
         queriesEnabled={queriesEnabled}
         onViewExpiredCalibration={onViewExpiredCalibration}
       />
-      <h3 className="inspection-results-subtitle">검사 결과</h3>
+      <h3 className="inspection-results-subtitle">{t.listTitle}</h3>
       {(list.isPending || list.isPlaceholderData) && (
-        <div role="status" aria-label="검사 결과 페이지를 불러오는 중">
+        <div role="status" aria-label={t.loading}>
           <SkeletonText lines={3} />
         </div>
       )}
       {list.isError && (
         <AlertBanner
           variant="error"
-          title="검사 결과를 불러오지 못했습니다."
+          title={t.failed}
           action={
             <Button size="sm" variant="outlined" onClick={() => void list.refetch()}>
-              다시 시도
+              {t.retry}
             </Button>
           }
         />
@@ -196,29 +194,31 @@ export const ResultOverview = ({
           <div className="wide-table inspection-results-table" aria-busy={list.isFetching}>
             <Table
               density="compact"
-              caption="검사 결과 목록"
+              caption={t.caption}
               columns={columns}
               rows={toInspectionResultTreeRows(list.data.items)}
               getRowId={(row) => String(row.result.inspectionResultId)}
               sort={toTableSort(sort)}
               onSortChange={(next) => onSortChange(toServerSort(next))}
-              empty={<EmptyState size="sm" title="조건에 맞는 검사 결과가 없습니다" />}
+              empty={<EmptyState size="sm" title={t.empty} />}
             />
           </div>
           <div className="inspection-results-list-footer">
             <p className="field-note">
-              총 {new Intl.NumberFormat('ko-KR').format(list.data.page.total)}건 ·{' '}
-              {list.data.page.page} /{' '}
-              {Math.max(1, Math.ceil(list.data.page.total / Math.max(1, list.data.page.size)))}쪽
+              {t.pageSummary(
+                number(list.data.page.total),
+                list.data.page.page,
+                Math.max(1, Math.ceil(list.data.page.total / Math.max(1, list.data.page.size))),
+              )}
             </p>
-            <nav className="form-actions" aria-label="검사 결과 쪽 이동">
+            <nav className="form-actions" aria-label={t.pagination}>
               <Button
                 variant="outlined"
                 size="sm"
                 disabled={list.data.page.page <= 1}
                 onClick={() => onPageChange(list.data.page.page - 1)}
               >
-                이전 쪽
+                {t.previous}
               </Button>
               <Button
                 variant="outlined"
@@ -226,7 +226,7 @@ export const ResultOverview = ({
                 disabled={list.data.page.page * list.data.page.size >= list.data.page.total}
                 onClick={() => onPageChange(list.data.page.page + 1)}
               >
-                다음 쪽
+                {t.next}
               </Button>
             </nav>
           </div>

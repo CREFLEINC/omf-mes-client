@@ -7,10 +7,18 @@ export const deviceRegistration: Translated<typeof ko.deviceRegistration> = {
   checking: 'Đang kiểm tra trạng thái đăng ký',
   unregistered: {
     title: 'Máy này chưa được đăng ký',
-    description: 'Hãy quét mã QR đăng ký trên màn hình quản trị.',
+    description:
+      'Quét mã QR đăng ký trên màn hình quản trị. Nếu không quét được, hãy nhập mã đăng ký.',
     where: 'Quản trị viên tạo mã đăng ký tại Web quản trị > Hệ thống > Cài đặt.',
   },
+  code: {
+    label: 'Mã đăng ký',
+    submit: 'Đăng ký bằng mã',
+    switch: 'Nhập mã đăng ký trực tiếp',
+    help: 'Dán hoặc nhập mã đăng ký đã sao chép từ Web quản trị.',
+  },
   camera: {
+    start: 'Quay lại quét QR',
     preparing: 'Đang chuẩn bị camera',
     unsupported: 'Máy này không dùng được nhận dạng camera',
     denied: 'Không có quyền camera nên không đọc được mã QR đăng ký',
@@ -25,8 +33,8 @@ export const deviceRegistration: Translated<typeof ko.deviceRegistration> = {
     description: 'Đang nhận danh sách nhân viên. Hãy đợi cho đến khi xong.',
   },
   rejected: {
-    title: 'Thông tin đăng ký đã hết hạn',
-    description: 'Hãy yêu cầu quản trị viên cấp mã QR mới.',
+    title: 'Không xác nhận được mã đăng ký',
+    description: 'Kiểm tra mã hoặc yêu cầu quản trị viên cấp mã đăng ký mới.',
   },
   retry: 'Thử lại',
   terminal: {
@@ -48,6 +56,18 @@ export const deviceRegistration: Translated<typeof ko.deviceRegistration> = {
       label: 'Nhập mã nhân viên',
       backspace: 'Xóa một ký tự',
       clear: 'Xóa hết',
+    },
+    unregister: {
+      open: 'Hủy đăng ký thiết bị',
+      title: 'Hủy đăng ký sẽ không thể hoàn tác',
+      notice:
+        'Để sử dụng lại thiết bị này, cần xin mã QR đăng ký mới từ quản trị viên. Vẫn tiếp tục chứ?',
+      pending: (count: string) => `${count} bản ghi chưa gửi sẽ mất`,
+      returned: (count: string) => `${count} bản ghi gửi thất bại cũng sẽ mất`,
+      counting: 'Đang đếm các bản ghi chưa gửi',
+      failed: 'Không thể hủy đăng ký. Hãy thử lại',
+      confirm: 'Hủy đăng ký',
+      cancel: 'Quay lại',
     },
     current: {
       label: 'Nhân viên hiện tại',

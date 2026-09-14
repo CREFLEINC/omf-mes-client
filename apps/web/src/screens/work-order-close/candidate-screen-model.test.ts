@@ -92,6 +92,9 @@ const fact = (workOrderId: number, itemId = 910001, uomId = 920001): WorkOrderCl
   completedAt: null,
   completionVarianceReasonCode: null,
   closedAt: null,
+  defaultWipLocationId: null,
+  defaultFgLocationId: null,
+  defaultScrapLocationId: null,
 });
 
 describe('work-order close candidate screen state', () => {

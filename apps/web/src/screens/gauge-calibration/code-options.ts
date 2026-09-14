@@ -34,8 +34,8 @@ export const PASS_RESULT_CODE = 'PASS';
  * ⚠ 수리 유형은 설비 사용 가부 판정의 한 항이라 빠질 수 없다. 값이 서면 여기에 더한다.
  */
 export const PLACEHOLDER_HISTORY_TYPES: readonly CodeOption[] = [
-  { value: CALIBRATION_TYPE_CODE, label: '검교정' },
-  { value: 'CHECK', label: '점검' },
+  { value: CALIBRATION_TYPE_CODE, label: t.codes.historyType.calibration },
+  { value: 'CHECK', label: t.codes.historyType.check },
 ];
 
 /**
@@ -46,8 +46,8 @@ export const PLACEHOLDER_HISTORY_TYPES: readonly CodeOption[] = [
  * 목록이 잠정임을 밝힌다 — 거르는 규칙을 지어내면 고를 수 있어야 할 값이 사라진다.
  */
 export const PLACEHOLDER_RESULT_CODES: readonly CodeOption[] = [
-  { value: PASS_RESULT_CODE, label: '합격' },
-  { value: 'FAIL', label: '불합격' },
+  { value: PASS_RESULT_CODE, label: t.codes.result.pass },
+  { value: 'FAIL', label: t.codes.result.fail },
 ];
 
 /**

@@ -54,8 +54,8 @@ importers:
         specifier: 8.0.1
         version: 8.0.1(@capacitor/core@8.5.0)
       '@crefle/web-ui':
-        specifier: github:CREFLEINC/design-system-v2-webui#d63fdcf
-        version: https://codeload.github.com/CREFLEINC/design-system-v2-webui/tar.gz/d63fdcf0809791301bef8c3d3144ff7490c81155(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
+        specifier: github:CREFLEINC/design-system-v2-webui#0307884
+        version: https://codeload.github.com/CREFLEINC/design-system-v2-webui/tar.gz/0307884f890331bdb8a323c9404c817f4de8b308(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
       '@omf-mes/api-client':
         specifier: workspace:*
         version: link:../../packages/api-client
@@ -146,8 +146,8 @@ importers:
   apps/web:
     dependencies:
       '@crefle/web-ui':
-        specifier: github:CREFLEINC/design-system-v2-webui#d63fdcf
-        version: https://codeload.github.com/CREFLEINC/design-system-v2-webui/tar.gz/d63fdcf0809791301bef8c3d3144ff7490c81155(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
+        specifier: github:CREFLEINC/design-system-v2-webui#0307884
+        version: https://codeload.github.com/CREFLEINC/design-system-v2-webui/tar.gz/0307884f890331bdb8a323c9404c817f4de8b308(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
       '@omf-mes/api-client':
         specifier: workspace:*
         version: link:../../packages/api-client
@@ -238,8 +238,8 @@ importers:
   packages/ui:
     dependencies:
       '@crefle/web-ui':
-        specifier: github:CREFLEINC/design-system-v2-webui#d63fdcf
-        version: https://codeload.github.com/CREFLEINC/design-system-v2-webui/tar.gz/d63fdcf0809791301bef8c3d3144ff7490c81155(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
+        specifier: github:CREFLEINC/design-system-v2-webui#0307884
+        version: https://codeload.github.com/CREFLEINC/design-system-v2-webui/tar.gz/0307884f890331bdb8a323c9404c817f4de8b308(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
     devDependencies:
       '@types/react':
         specifier: ^19.1.9
@@ -412,8 +412,8 @@ packages:
     peerDependencies:
       '@capacitor/core': '>=8.0.0'
 
-  '@crefle/web-ui@https://codeload.github.com/CREFLEINC/design-system-v2-webui/tar.gz/d63fdcf0809791301bef8c3d3144ff7490c81155':
-    resolution: {gitHosted: true, integrity: sha512-q7d3r+Q/Am+OoRs5P/V5VVAsl85vM3zFaGFs3zXPZvJtJsfXL84Q9O3EkKXHpFm+ROk3VKk61x08tP3h4GcfZA==, tarball: https://codeload.github.com/CREFLEINC/design-system-v2-webui/tar.gz/d63fdcf0809791301bef8c3d3144ff7490c81155}
+  '@crefle/web-ui@https://codeload.github.com/CREFLEINC/design-system-v2-webui/tar.gz/0307884f890331bdb8a323c9404c817f4de8b308':
+    resolution: {gitHosted: true, integrity: sha512-Nqn15TCuByKH5XnUfTPzokiPcCxvo729j4RGbS/DZp/cESERwA0VRDOvafGg4pb+GadGT4o6V0WC5MVTXRnF9Q==, tarball: https://codeload.github.com/CREFLEINC/design-system-v2-webui/tar.gz/0307884f890331bdb8a323c9404c817f4de8b308}
     version: 0.2.0
     engines: {node: '>=20.19'}
     peerDependencies:
@@ -3518,7 +3518,7 @@ snapshots:
     dependencies:
       '@capacitor/core': 8.5.0
 
-  '@crefle/web-ui@https://codeload.github.com/CREFLEINC/design-system-v2-webui/tar.gz/d63fdcf0809791301bef8c3d3144ff7490c81155(react-dom@19.2.8(react@19.2.8))(react@19.2.8)':
+  '@crefle/web-ui@https://codeload.github.com/CREFLEINC/design-system-v2-webui/tar.gz/0307884f890331bdb8a323c9404c817f4de8b308(react-dom@19.2.8(react@19.2.8))(react@19.2.8)':
     dependencies:
       react: 19.2.8
       react-dom: 19.2.8(react@19.2.8)

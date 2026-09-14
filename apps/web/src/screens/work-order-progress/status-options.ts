@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
+import { masterName } from '../../patterns/master-name';
 import { runRequest } from '../../patterns/request';
 
 /**
@@ -69,10 +70,10 @@ export const useWorkOrderStatusOptions = (): StatusOptions => {
         [...data.items]
           /* 마스터가 정한 순서를 그대로 따른다 — 화면이 다시 줄 세우면 마스터와 어긋난다. */
           .sort((left, right) => left.displayOrder - right.displayOrder)
-          /* 표시명은 다국어 컬럼이 먼저, 기본 이름이 fallback(G-33). 로케일 스위치 전이라 한국어만 본다. */
+          /* 표시명은 다국어 컬럼이 먼저, 기본 이름이 fallback(G-33). 고르는 일은 patterns 가 한다. */
           .map((value) => ({
             value: value.code,
-            label: (value.nameKo ?? '').trim() || value.codeName,
+            label: masterName(value, value.codeName),
           }))
       );
     },

@@ -1,4 +1,5 @@
 import { AlertBanner, Button } from '@crefle/web-ui';
+import { messages } from '@omf-mes/i18n';
 import { useEffect, useRef, useState } from 'react';
 import { SaveErrorBanner, type MasterWriteResult } from '../../patterns/master';
 import { ProductionPlanConfirmDialog } from './confirm-dialog';
@@ -16,6 +17,9 @@ import {
 } from './mutations';
 import { useProductionPlanDetail } from './queries';
 import type { ProductionPlanFact } from './types';
+
+const t = messages.productionPlan.rowActions;
+
 type WriteFeedback = Pick<MasterWriteResult<unknown>, 'isSaving' | 'fieldErrors' | 'error'>;
 interface ProductionPlanRowActionsProps {
   row: ProductionPlanEditorStateRow;
@@ -86,7 +90,7 @@ const NewPlanActions = (props: ProductionPlanRowActionsProps) => {
     <>
       <div className="inline-actions">
         <Button size="sm" disabled={row.isPending || feedback.isSaving} onClick={save}>
-          저장
+          {t.save}
         </Button>
         <Button
           size="sm"
@@ -94,7 +98,7 @@ const NewPlanActions = (props: ProductionPlanRowActionsProps) => {
           disabled={row.isPending || feedback.isSaving}
           onClick={() => props.onRemove(row.key)}
         >
-          삭제
+          {t.remove}
         </Button>
       </div>
       <SaveErrorBanner error={feedback.error} />
@@ -161,10 +165,10 @@ const ExistingPlanActions = (
     <>
       <div className="inline-actions">
         <Button size="sm" disabled={locked || !row.isDirty} onClick={save}>
-          저장
+          {t.save}
         </Button>
         <Button size="sm" variant="text" disabled={locked} onClick={erase}>
-          삭제
+          {t.remove}
         </Button>
         {!row.confirmed && (
           <Button
@@ -176,7 +180,7 @@ const ExistingPlanActions = (
               setConfirmOpen(true);
             }}
           >
-            전개 확정
+            {t.confirm}
           </Button>
         )}
         {row.confirmed && props.onShowResults !== undefined && (
@@ -185,17 +189,17 @@ const ExistingPlanActions = (
             variant="outlined"
             onClick={() => props.onShowResults?.(productionPlanId)}
           >
-            전개 결과
+            {t.showResults}
           </Button>
         )}
       </div>
       {detail.isError && (
         <AlertBanner
           variant="error"
-          title="저장 잠금 정보를 불러오지 못했습니다."
+          title={t.lockLoadFailed}
           action={
             <Button size="sm" variant="outlined" onClick={() => void detail.refetch()}>
-              다시 시도
+              {t.retry}
             </Button>
           }
         />
@@ -203,7 +207,7 @@ const ExistingPlanActions = (
       <SaveErrorBanner error={feedback.error} onReload={reload} />
       {confirmOpen && (
         <ProductionPlanConfirmDialog
-          planNo={row.planNo ?? `계획 ${String(productionPlanId)}`}
+          planNo={row.planNo ?? t.fallbackPlanNo(productionPlanId)}
           banner={<SaveErrorBanner error={confirm.error} onReload={reload} />}
           isSubmitting={confirm.isSaving}
           onClose={() => {

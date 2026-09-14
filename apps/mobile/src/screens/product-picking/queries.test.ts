@@ -30,7 +30,6 @@ const lotRow = (lotId: number, lotNo: string) => ({
   sourceTypeCode: 'PRODUCTION',
   sourceId: 1,
   statusCode: 'NORMAL',
-  /* workOrderSequenceNo·workOrderLotCount 는 2026-09-11 전달본 계약에서 완전히 빠졌다(대체 필드 없음) — 지어내지 않는다. 타입 오류는 아니었지만(반환형 미지정 리터럴) 같은 화면이라 함께 정리한다. */
 });
 
 describe('오늘 출하분', () => {

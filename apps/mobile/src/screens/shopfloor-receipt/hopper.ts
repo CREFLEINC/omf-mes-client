@@ -3,6 +3,7 @@ import { messages } from '@omf-mes/i18n';
 
 import type { Equipment } from '../../patterns/equipments';
 import { createIdempotencyKey, type OutboxDraft } from '../../patterns/outbox';
+import { businessDateOf } from '../putaway/putaway';
 
 export type InventoryAdjustmentCreate = components['schemas']['InventoryAdjustmentCreate'];
 export type InventoryAdjustmentLineUpsert = components['schemas']['InventoryAdjustmentLineUpsert'];
@@ -129,6 +130,8 @@ export const toHopperDraft = (
   const body: InventoryAdjustmentCreate = {
     reasonCode: HOPPER_MEASUREMENT,
     lines,
+    businessDate: businessDateOf(now),
+    occurredAt,
   };
 
   return {

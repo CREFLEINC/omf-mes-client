@@ -31,6 +31,7 @@ export const materialLocation: Translated<typeof ko.materialLocation> = {
     checking: 'Đang kiểm tra tình trạng tạm giữ',
     unconfirmed: 'Không kiểm tra được tình trạng tạm giữ',
     unconfirmedDescription: 'Có thể đang bị giữ, hãy kiểm tra sau khi có kết nối rồi mới chuyển.',
+    unconfirmedCaution: 'Có thể đang bị giữ, hãy kiểm tra rồi mới chuyển.',
     wholeLot: 'Tạm giữ toàn bộ',
     quantity: (amount: string): string => `Tạm giữ ${amount}`,
     releaseCondition: (condition: string): string => `Điều kiện gỡ: ${condition}`,
@@ -39,7 +40,7 @@ export const materialLocation: Translated<typeof ko.materialLocation> = {
   loading: 'Đang tra cứu',
   notFound: {
     title: 'LOT chưa được đăng ký',
-    description: 'Hãy kiểm tra số vừa đọc rồi quét lại.',
+    description: (lotNo: string) => `Số vừa đọc ${lotNo} — hãy kiểm tra rồi quét lại.`,
   },
   loadFailed: {
     title: 'Không tra cứu được',

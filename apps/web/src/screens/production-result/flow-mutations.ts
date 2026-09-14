@@ -3,6 +3,7 @@ import type { components } from '@omf-mes/api-client';
 import { useApiClient } from '../../patterns/api-context';
 import { useMasterWrite, type MasterWriteResult } from '../../patterns/master';
 import { productionFlowKeys } from './flow-queries';
+import { productionResultKeys } from './queries';
 import type { DocumentIssueCreate, LotComplete } from './flow-state';
 
 type SerialNumberBatchCreate = components['schemas']['SerialNumberBatchCreate'];
@@ -33,7 +34,7 @@ export const useSerialIssue = ({
         body,
       }),
     etagPath: null,
-    invalidateKeys: [productionFlowKeys.all],
+    invalidateKeys: [productionFlowKeys.all, productionResultKeys.all],
     knownFields: ['quantity'],
     keyLifetime: 'until-applied',
     onSuccess,
@@ -58,7 +59,7 @@ export const useDocumentIssue = ({
         body,
       }),
     etagPath: null,
-    invalidateKeys: [productionFlowKeys.all],
+    invalidateKeys: [productionFlowKeys.all, productionResultKeys.all],
     knownFields: [],
     keyLifetime: 'until-applied',
     onSuccess,
@@ -106,7 +107,7 @@ export const useLotComplete = ({
       });
     },
     etagPath: null,
-    invalidateKeys: [productionFlowKeys.all],
+    invalidateKeys: [productionFlowKeys.all, productionResultKeys.all],
     knownFields: [],
     keyLifetime: 'until-applied',
     onSuccess,

@@ -1,8 +1,10 @@
-import { waitFor } from '@testing-library/react';
+import { act, waitFor } from '@testing-library/react';
+import type { ReactNode } from 'react';
 import { describe, expect, it } from 'vitest';
 
-import { createStubFetch, jsonResponse, renderHookWithProviders } from '../test/api-harness';
-import { useAccessiblePopScreens } from './pop-access';
+import { createStubFetch, jsonResponse, renderHookWithProviders, renderWithProviders } from '../test/api-harness';
+import { popAccessKeys, useAccessiblePopScreens } from './pop-access';
+import { PopIdentityProvider } from './pop-identity';
 
 const sessionRoute = (body: unknown, init: ResponseInit = {}) => ({
   match: (request: Request) => request.url.endsWith('/app/sessions/current'),
@@ -22,6 +24,88 @@ const renderAccess = (route: ReturnType<typeof sessionRoute>) =>
   });
 
 describe('useAccessiblePopScreens — [화면 이동] 후보', () => {
+  it('등록된 POP은 관리자 세션 대신 자기 단말의 명시적 화면 정책만 사용한다', async () => {
+    const box = { current: null as ReturnType<typeof useAccessiblePopScreens> | null };
+    const Probe = () => {
+      box.current = useAccessiblePopScreens();
+      return null;
+    };
+    const Identity = ({ children }: { children: ReactNode }) => (
+      <PopIdentityProvider
+        value={{ terminalId: 5, processes: [], equipment: null, workerNo: '900028' }}
+      >
+        {children}
+      </PopIdentityProvider>
+    );
+    renderWithProviders(
+      <Identity><Probe /></Identity>,
+      {
+        fetch: createStubFetch([{
+          match: (request) => request.url.endsWith('/mdm/terminals/5/accessible-screens'),
+          respond: () => jsonResponse({ screenCodes: ['P-01-01', 'W-06-01'] }),
+        }]),
+        session: null,
+      },
+    );
+
+    await waitFor(() => expect(box.current?.state).toBe('ready'));
+    expect(box.current?.screens.map((screen) => screen.code)).toEqual(['P-01-01']);
+  });
+
+  it('단말 화면 정책 조회가 실패하면 세션 권한이나 전체 메뉴로 물러서지 않는다', async () => {
+    const box = { current: null as ReturnType<typeof useAccessiblePopScreens> | null };
+    const Probe = () => {
+      box.current = useAccessiblePopScreens();
+      return null;
+    };
+    renderWithProviders(
+      <PopIdentityProvider value={{ terminalId: 5, processes: [], equipment: null, workerNo: null }}>
+        <Probe />
+      </PopIdentityProvider>,
+      {
+        fetch: createStubFetch([{
+          match: (request) => request.url.endsWith('/mdm/terminals/5/accessible-screens'),
+          respond: () => jsonResponse({ errors: [{ scope: 'screen', code: 'PERMISSION_DENIED', message: '권한 없음' }] }, { status: 401 }),
+        }]),
+        session: null,
+      },
+    );
+
+    await waitFor(() => expect(box.current?.state).toBe('unknown'));
+    expect(box.current?.screens).toEqual([]);
+  });
+
+  it('새 정책 조회 실패 시 캐시에 남은 이전 화면 권한도 숨긴다', async () => {
+    let fail = false;
+    const box = { current: null as ReturnType<typeof useAccessiblePopScreens> | null };
+    const Probe = () => {
+      box.current = useAccessiblePopScreens();
+      return null;
+    };
+    const { queryClient } = renderWithProviders(
+      <PopIdentityProvider value={{ terminalId: 5, processes: [], equipment: null, workerNo: null }}>
+        <Probe />
+      </PopIdentityProvider>,
+      {
+        fetch: createStubFetch([{
+          match: (request) => request.url.endsWith('/mdm/terminals/5/accessible-screens'),
+          respond: () => fail
+            ? jsonResponse({ errors: [{ scope: 'screen', code: 'UNAVAILABLE', message: '점검 중' }] }, { status: 503 })
+            : jsonResponse({ screenCodes: ['P-01-01'] }),
+        }]),
+        session: null,
+      },
+    );
+
+    await waitFor(() => expect(box.current?.state).toBe('ready'));
+    fail = true;
+    await act(async () => {
+      await queryClient.invalidateQueries({ queryKey: popAccessKeys.terminal(5), exact: true });
+    });
+    await waitFor(() => expect(box.current?.state).toBe('unknown'));
+    expect(box.current?.screens).toEqual([]);
+  });
+
   it('세션 권한에 있는 화면만 후보로 남긴다', async () => {
     const { result } = renderAccess(
       sessionRoute({ ...SESSION, permissions: ['P-02-01', 'P-05-02', 'W-01-03'] }),

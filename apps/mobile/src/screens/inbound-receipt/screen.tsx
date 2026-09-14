@@ -1,20 +1,40 @@
-import { AlertBanner, Button, Card, Chip, NumberPad, Select, TextField } from '@crefle/web-ui';
+import {
+  AlertBanner,
+  Button,
+  Card,
+  Chip,
+  NumberPad,
+  SearchInput,
+  Select,
+  TextField,
+} from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
+import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router';
 
 import { isMaterialLotNo } from '../../patterns/material-lot-no';
-import { useItem, useItemLabels, useSuppliers, useUomCodes } from '../../patterns/masters';
+import {
+  useItem,
+  useItemLabels,
+  useItemSearch,
+  useSuppliers,
+  useUomCodes,
+} from '../../patterns/masters';
 import { useOutbox } from '../../patterns/outbox';
 import { currentPlantId } from '../../patterns/plant';
+import { ScanReplaceDialog } from '../../patterns/scan-replace-dialog';
 import { useScanField } from '../../patterns/use-scan-field';
 import { useScreenTitle } from '../../patterns/screen-title';
 import { useWorkerSession } from '../../patterns/worker-session';
 import { useCodeValues } from '../../patterns/code-values';
 import { useAdvanceTo } from '../../patterns/advance-to';
 import { playErrorTone } from '../../patterns/error-tone';
+import { FailureBanner } from '../../patterns/failure-banner';
+import { useLoadFailure } from '../../patterns/load-failure';
 import {
   SUBSTITUTE_LOT_REASON,
+  receiptKeys,
   useOpenPurchaseOrders,
   usePurchaseOrderLines,
   useScannedItem,
@@ -25,6 +45,7 @@ import {
   UNDER,
   canSubmit,
   isExpiryBeforeManufactured,
+  openLinesFirst,
   packageProblem,
   qtyProblem,
   queuedQtyOf,
@@ -74,9 +95,11 @@ const emptyDraft: ReceiptDraft = {
 
 export const InboundReceiptScreen = () => {
   useScreenTitle(t.title);
+  const failureText = useLoadFailure();
 
   const navigate = useNavigate();
   const { enqueue, flush, isRejected, loaded, pendingOf } = useOutbox();
+  const queryClient = useQueryClient();
   const { worker } = useWorkerSession();
 
   const [draft, setDraft] = useState<ReceiptDraft>(emptyDraft);
@@ -132,6 +155,31 @@ export const InboundReceiptScreen = () => {
     }
 
     setMalformed(null);
+
+    /*
+     * 라벨이 바뀌면 그 아래 고른 것을 비운다.
+     *
+     * 라벨의 앞자리가 어느 발주 라인이 후보인지를 가른다. 다른 품목의 라벨로 바꿨는데 앞서
+     * 고른 라인이 남으면 그 라인에 남의 라벨이 붙은 채 등록되고, 화면은 아무 말도 하지 않는다.
+     *
+     * 같은 라벨을 다시 댄 것은 바꾸는 것이 아니므로 그대로 둔다 - 비우면 잘못 읽어 다시 댄
+     * 사람이 적어 둔 것을 잃는다.
+     */
+    if (code !== draft.supplierLotNo) {
+      setContinueUnder(false);
+      setVarianceNext(false);
+      setSplitExceptionType('');
+      setSplitExceptionReason('');
+      setShowAllOrders(false);
+      setKeypadFor(null);
+      setDraft({
+        ...emptyDraft,
+        supplierLotNo: code,
+        supplierLotLabelAttached: true,
+      });
+      return;
+    }
+
     patch({
       supplierLotNo: code,
       supplierLotMissing: false,
@@ -166,14 +214,14 @@ export const InboundReceiptScreen = () => {
     setExternalLotError(null);
   };
 
-  const scanField = useScanField({ onScan: take });
+  const scanField = useScanField({ onScan: take, applied: draft.supplierLotNo });
 
   /* 세로 화면이라 채운 구획이 화면을 차지한 채 남으면 다음에 할 일이 접힌 자리에 있다. */
   useAdvanceTo(draft.supplierLotNo !== '' || draft.supplierLotMissing, poSection);
   useAdvanceTo(draft.purchaseOrderLine !== null || draft.unordered, qtySection);
 
   /*
-   * 스캔한 번호가 품목을 가리키면 그 품목이 있는 미마감 ERP W/O 만 후보로 낸다. 못 찾거나
+   * 스캔한 번호가 품목을 가리키면 그 품목이 있는 미마감 자재 P/O 만 후보로 낸다. 못 찾거나
    * 후보가 비면 좁히지 않는다 - 양식이 다른 번호도 들어오고, 그때 0건으로 만들면 담당자가
    * 고를 것이 사라진다(화면 스펙 §5-1 · §6).
    */
@@ -199,18 +247,42 @@ export const InboundReceiptScreen = () => {
   const item = useItem((draft.unordered ? draft.itemId : draft.purchaseOrderLine?.itemId) ?? null);
   const uoms = useUomCodes(true);
   /* 목록의 발주 라인은 품목 식별자만 준다. 그 번호로는 실물 라벨과 대조할 수 없다. */
-  const itemLabels = useItemLabels(draft.purchaseOrder !== null || draft.unordered);
+  const itemLabels = useItemLabels((lines.data ?? []).map((each) => each.itemId));
   const suppliers = useSuppliers(draft.unordered);
+  /* 무발주는 작업자가 품목을 직접 고른다. 고르기 전에는 마스터 전체가 후보라 찾아서 좁힌다. */
+  const [itemTerm, setItemTerm] = useState('');
+  const itemSearch = useItemSearch(draft.unordered ? itemTerm : '');
+  const itemPlaceholder =
+    itemSearch.data === undefined
+      ? t.exception.itemSearchFirst
+      : itemSearch.data.length === 0
+        ? t.exception.itemSearchEmpty
+        : t.exception.itemPlaceholder;
+  /*
+   * 고른 품목은 찾은 결과가 바뀌어도 후보에 남긴다. 찾는 말을 지운 순간 칸이 빈 것으로
+   * 보이는데 등록에는 앞서 고른 품목이 실리면, 화면과 보내는 것이 갈린다.
+   */
+  const itemOptions =
+    draft.itemId === null || item.data === undefined
+      ? (itemSearch.data ?? [])
+      : [
+          { itemId: draft.itemId, ...item.data },
+          ...(itemSearch.data ?? []).filter((each) => each.itemId !== draft.itemId),
+        ];
   /* 공장은 단말 토큰이 싣고 온다. 발주가 없으면 승계할 곳이 여기뿐이다. */
   const plantId = draft.unordered ? currentPlantId() : (draft.purchaseOrder?.plantId ?? null);
 
   const started = draft.supplierLotNo !== '' || draft.supplierLotMissing;
   const received = Number(draft.receivedQty.trim());
-  /* 서버의 누적 입하에는 큐에 있는 것이 없다. 셈에 넣지 않으면 초과가 초과로 보이지 않는다. */
-  const queuedQty = queuedQtyOf(
-    pendingOf(t.record),
-    draft.purchaseOrderLine?.purchaseOrderLineId ?? -1,
-  );
+  /*
+   * 서버의 누적 입하에는 큐에 있는 것이 없다. 셈에 넣지 않으면 초과가 초과로 보이지 않는다.
+   *
+   * 라인마다 따로 센다. 카드와 판정이 다른 수를 세면 담아 둔 것이 있는 라인에서 카드는
+   * 남은 예정 500, 그 카드를 누른 뒤 수량 칸은 0 이 된다 - 고치려던 어긋남이 그대로 남는다.
+   */
+  const queuedFor = (purchaseOrderLineId: number): number =>
+    queuedQtyOf(pendingOf(t.record), purchaseOrderLineId);
+  const queuedQty = queuedFor(draft.purchaseOrderLine?.purchaseOrderLineId ?? -1);
   const verdict =
     draft.purchaseOrderLine === null || qtyProblem(draft.receivedQty) !== null
       ? null
@@ -239,14 +311,19 @@ export const InboundReceiptScreen = () => {
    * 상태에서 저장이 여기로 새어 나간다.
    */
   const varianceReady = loaded && plantId !== null && canSubmit(draft, worker !== null);
-  const uom =
-    uoms.data?.get((draft.unordered ? draft.uomId : draft.purchaseOrderLine?.uomId) ?? -1) ?? '';
+  /*
+   * 단위는 따로 조회한다. 못 찾았을 때 빈 글자를 끼우면 수량 뒤가 그냥 비어, 무엇을 세는
+   * 단위인지 없는 것인지 화면만 보고는 가릴 수 없다.
+   */
+  const uomOf = (uomId: number | null | undefined): string =>
+    uoms.data?.get(uomId ?? -1) ?? t.po.uomUnknown;
+  const uom = uomOf(draft.unordered ? draft.uomId : draft.purchaseOrderLine?.uomId);
 
   /* 코드와 이름을 함께 보인다. 라벨에는 코드가 찍혀 있고 사람은 이름으로 고른다. */
   const itemLabelOf = (itemId: number): string => {
-    const found = itemLabels.data?.get(itemId);
+    const found = itemLabels.get(itemId);
 
-    return found === undefined ? '' : `${found.itemCode} ${found.itemName}`;
+    return found === undefined ? t.po.itemUnknown : `${found.itemCode} ${found.itemName}`;
   };
 
   const qtyMessage = (): string | undefined => {
@@ -331,7 +408,28 @@ export const InboundReceiptScreen = () => {
         return;
       }
 
-      setOutcome(result === null || result.remaining.some(mine) ? 'queued' : 'sent');
+      const queued = result === null || result.remaining.some(mine);
+
+      /*
+       * 보낸 뒤에는 발주가 달라져 있다 - 다 받은 라인은 닫히고 그 라인뿐이던 발주는 후보에서
+       * 빠진다. 목록 조회는 키가 바뀌지 않아 스스로 다시 돌지 않으므로, 지우지 않으면 다음
+       * 입하에서 받을 것이 없는 발주를 고르게 된다.
+       */
+      if (!queued) {
+        const purchaseOrderId = draft.purchaseOrder?.purchaseOrderId ?? null;
+
+        /*
+         * 기다리지 않는다. 무효화는 부르는 즉시 낡음으로 표시하고, 기다리면 성공 배너가 조회
+         * 두 번 뒤에야 뜬다 - 그 사이 단추도 흐려지지 않아 화면이 아무 말도 하지 않는다.
+         */
+        void queryClient.invalidateQueries({ queryKey: receiptKeys.allOrders });
+
+        if (purchaseOrderId !== null) {
+          void queryClient.invalidateQueries({ queryKey: receiptKeys.detail(purchaseOrderId) });
+        }
+      }
+
+      setOutcome(queued ? 'queued' : 'sent');
     } finally {
       inFlight.current = false;
     }
@@ -456,7 +554,12 @@ export const InboundReceiptScreen = () => {
                     setExternalLotError(null);
                   }}
                 />
-                <Button className="receipt__wide" variant="filled" size="xl" onClick={takeExternalLot}>
+                <Button
+                  className="receipt__wide"
+                  variant="filled"
+                  size="xl"
+                  onClick={takeExternalLot}
+                >
                   {t.scan.externalSubmit}
                 </Button>
               </div>
@@ -508,8 +611,10 @@ export const InboundReceiptScreen = () => {
             {/* 번호만으로는 어느 발주 물품인지 확정되지 않는다. 담당자가 고른다. */}
             <p className="receipt__note">{narrowed ? t.po.narrowedNote : t.po.pickNote}</p>
             {orders.isPending ? <p role="status">{t.po.loading}</p> : null}
-            {orders.isError ? <AlertBanner variant="error" title={t.po.loadFailed} /> : null}
-            {orders.data !== undefined && orders.data.length === 0 ? (
+            {orders.isError ? (
+              <FailureBanner variant="error" title={failureText(orders.error, t.po.loadFailed)} />
+            ) : null}
+            {orders.isSuccess && orders.data.length === 0 ? (
               <p className="receipt__note">{t.po.none}</p>
             ) : null}
             {orders.data === undefined ? null : (
@@ -576,42 +681,60 @@ export const InboundReceiptScreen = () => {
                 {lines.isError ? (
                   <AlertBanner variant="error" title={t.po.linesLoadFailed} />
                 ) : null}
-                {lines.data !== undefined && lines.data.length === 0 ? (
+                {lines.isSuccess && lines.data.length === 0 ? (
                   <AlertBanner variant="warning" title={t.po.linesNone} />
                 ) : null}
                 <ul className="receipt__lines">
-                  {(lines.data ?? []).map((line: PurchaseOrderLine) => (
-                    <li key={line.purchaseOrderLineId}>
-                      <Card
-                        bordered
-                        interactive
-                        onClick={() => {
-                          patch({ purchaseOrderLine: line });
-                        }}
-                      >
-                        <Card.Body className="card-body receipt__line">
-                          <strong>
-                            {t.po.lineLabel(
-                              itemLabelOf(line.itemId),
-                              String(line.orderedQty),
-                              uoms.data?.get(line.uomId) ?? '',
-                            )}
-                          </strong>
-                          <p>{t.po.received(String(line.receivedQty))}</p>
-                          <p>
-                            {t.po.tolerance(
-                              String(line.toleranceOverQty),
-                              String(line.toleranceUnderQty),
-                            )}
-                          </p>
-                          {draft.purchaseOrderLine?.purchaseOrderLineId ===
-                          line.purchaseOrderLineId ? (
-                            <Chip status="success">{t.po.linePicked}</Chip>
-                          ) : null}
-                        </Card.Body>
-                      </Card>
-                    </li>
-                  ))}
+                  {openLinesFirst(lines.data ?? [], queuedFor).map((line: PurchaseOrderLine) => {
+                    /* 표시와 표식이 갈리지 않게 한 번만 센다. */
+                    const lineRemaining = remainingQtyOf(line, queuedFor(line.purchaseOrderLineId));
+
+                    return (
+                      <li key={line.purchaseOrderLineId}>
+                        <Card
+                          bordered
+                          interactive
+                          onClick={() => {
+                            patch({ purchaseOrderLine: line });
+                          }}
+                        >
+                          <Card.Body className="card-body receipt__line">
+                            <strong>
+                              {t.po.lineLabel(
+                                itemLabelOf(line.itemId),
+                                String(line.orderedQty),
+                                uomOf(line.uomId),
+                              )}
+                            </strong>
+                            <p>{t.po.received(String(line.receivedQty))}</p>
+                            {/*
+                             * 후보 목록은 발주 단위라 그 품목의 라인이 다 찬 발주도 선다.
+                             * 견주는 수를 카드가 직접 말하지 않으면 발주량대로 적게 된다.
+                             */}
+                            <p>
+                              {t.po.lineRemaining(String(lineRemaining))}
+                              {lineRemaining > 0 ? null : (
+                                <>
+                                  {' · '}
+                                  <strong>{t.po.lineClosed}</strong>
+                                </>
+                              )}
+                            </p>
+                            <p>
+                              {t.po.tolerance(
+                                String(line.toleranceOverQty),
+                                String(line.toleranceUnderQty),
+                              )}
+                            </p>
+                            {draft.purchaseOrderLine?.purchaseOrderLineId ===
+                            line.purchaseOrderLineId ? (
+                              <Chip status="success">{t.po.linePicked}</Chip>
+                            ) : null}
+                          </Card.Body>
+                        </Card>
+                      </li>
+                    );
+                  })}
                 </ul>
                 <Button
                   variant="text"
@@ -657,7 +780,7 @@ export const InboundReceiptScreen = () => {
               {suppliers.isError ? (
                 <AlertBanner variant="error" title={t.exception.supplierLoadFailed} />
               ) : null}
-              {suppliers.data !== undefined && suppliers.data.length === 0 ? (
+              {suppliers.isSuccess && suppliers.data.length === 0 ? (
                 <AlertBanner variant="warning" title={t.exception.supplierNone} />
               ) : null}
               {suppliers.data === undefined || suppliers.data.length === 0 ? null : (
@@ -679,27 +802,43 @@ export const InboundReceiptScreen = () => {
                 </div>
               )}
 
-              {itemLabels.isError ? (
-                <AlertBanner variant="error" title={t.exception.itemLoadFailed} />
-              ) : null}
-              {itemLabels.data === undefined ? null : (
-                <div className="receipt__field">
-                  <label htmlFor="receipt-item">{required(t.exception.itemLabel)}</label>
-                  <Select
-                    id="receipt-item"
-                    placeholder={t.exception.itemPlaceholder}
-                    size="xl"
-                    value={draft.itemId === null ? null : String(draft.itemId)}
-                    onChange={(value) => {
-                      patch({ itemId: Number(value) });
-                    }}
-                    options={[...itemLabels.data].map(([itemId, label]) => ({
-                      value: String(itemId),
-                      label: `${label.itemCode} ${label.itemName}`,
-                    }))}
-                  />
-                </div>
-              )}
+              {/*
+                마스터가 9,000건인 곳이 있어 목록으로 늘어놓지 않는다. 앞에서 잘린 목록을
+                보이면 있는 품목이 없는 것으로 읽혀, 고르지 못하고도 이유를 알 수 없다.
+              */}
+              <div className="receipt__field">
+                <SearchInput
+                  label={t.exception.itemSearchLabel}
+                  placeholder={t.exception.itemSearchPlaceholder}
+                  helperText={t.exception.itemSearchHint}
+                  error={itemSearch.isError ? t.exception.itemSearchFailed : undefined}
+                  loading={itemSearch.isFetching}
+                  size="xl"
+                  fullWidth
+                  value={itemTerm}
+                  onChange={(event) => {
+                    setItemTerm(event.target.value);
+                  }}
+                />
+              </div>
+
+              {/* 찾기 전에도 세워 둔다 - 칸이 없으면 무엇을 더 채워야 하는지 보이지 않는다. */}
+              <div className="receipt__field">
+                <label htmlFor="receipt-item">{required(t.exception.itemLabel)}</label>
+                <Select
+                  id="receipt-item"
+                  placeholder={itemPlaceholder}
+                  size="xl"
+                  value={draft.itemId === null ? null : String(draft.itemId)}
+                  onChange={(value) => {
+                    patch({ itemId: Number(value) });
+                  }}
+                  options={itemOptions.map((each) => ({
+                    value: String(each.itemId),
+                    label: `${each.itemCode} ${each.itemName}`,
+                  }))}
+                />
+              </div>
               {/* 품목 마스터의 주인은 ERP 다. 여기서 만들 길을 찾지 않는다. */}
               <AlertBanner variant="info" title={t.exception.itemUnregistered}>
                 {t.exception.itemUnregisteredWhy}
@@ -815,7 +954,7 @@ export const InboundReceiptScreen = () => {
                 <Card.Body className="card-body receipt__card">
                   <strong>
                     {item.data === undefined
-                      ? String(draft.itemId ?? draft.purchaseOrderLine?.itemId ?? '')
+                      ? t.po.itemUnknown
                       : `${item.data.itemCode} ${item.data.itemName}`}
                   </strong>
                   {item.isError ? <p className="receipt__note">{t.qty.itemLoadFailed}</p> : null}
@@ -1142,6 +1281,8 @@ export const InboundReceiptScreen = () => {
           )}
         </>
       )}
+
+      <ScanReplaceDialog field={scanField} />
     </div>
   );
 };

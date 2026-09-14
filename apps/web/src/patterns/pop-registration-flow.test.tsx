@@ -1,13 +1,16 @@
 import { act, waitFor } from '@testing-library/react';
+import { useNavigate } from 'react-router';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import {
   PopRegistrationProvider,
   usePopRegistration,
+  useRefreshPopTerminalOnScreenEntry,
   type PopRegistration,
 } from './pop-registration';
 import { forgetTerminalToken } from './pop-terminal-token';
-import { createStubFetch, jsonResponse, renderWithProviders } from '../test/api-harness';
+import { popAccessKeys } from './pop-access';
+import { createStubFetch, jsonResponse, renderWithProviders, type StubFetch } from '../test/api-harness';
 
 /**
  * 등록 상태 기계가 **갈래마다 다르게 움직이는지** 잰다.
@@ -30,9 +33,23 @@ interface TerminalRow {
   plantId: number;
 }
 
-/** 단말 단건과 자기 공정 목록 — 등록이 부르는 요청은 이 둘뿐이다. */
-const stubFor = (rows: TerminalRow[]) =>
+/** 단말 단건→등록 완료 확인→자기 공정 목록의 실제 요청 순서를 받는다. */
+const stubFor = (rows: TerminalRow[], confirm?: (request: Request) => Response | Promise<Response>) =>
   createStubFetch([
+    {
+      match: (request) =>
+        request.method === 'POST' && /\/mdm\/terminals\/\d+:confirm-registration(\?|$)/.test(request.url),
+      respond: (request) => {
+        if (confirm !== undefined) return confirm(request);
+        const terminalId = Number(/\/mdm\/terminals\/(\d+):confirm-registration/.exec(request.url)?.[1]);
+        return jsonResponse({
+          terminalId,
+          tokenVersion: 1,
+          registrationStatusCode: 'REGISTERED',
+          registrationConfirmedAt: '2026-09-14T00:00:00.000Z',
+        });
+      },
+    },
     {
       match: (request) => /\/mdm\/terminals\/\d+\/processes(\?|$)/.test(request.url),
       respond: () => jsonResponse({ items: [{ processId: 1001, processName: '사출' }] }),
@@ -71,7 +88,10 @@ const putShell = (pendingCount: number): void => {
  * 훅 전용 하네스는 프로바이더를 갈아 끼우지 못해, 화면 하네스 안에 탐침을 세우고 그 탐침이
  * 매 렌더의 값을 바깥 상자에 넣는다.
  */
-const openRegistration = (rows: TerminalRow[]): { current: PopRegistration } => {
+const openRegistration = (
+  rows: TerminalRow[],
+  fetch: StubFetch = stubFor(rows),
+): { current: PopRegistration; queryClient: ReturnType<typeof renderWithProviders>['queryClient'] } => {
   const box = { current: null as PopRegistration | null };
 
   const Probe = () => {
@@ -80,14 +100,14 @@ const openRegistration = (rows: TerminalRow[]): { current: PopRegistration } => 
     return null;
   };
 
-  renderWithProviders(
+  const { queryClient } = renderWithProviders(
     <PopRegistrationProvider>
       <Probe />
     </PopRegistrationProvider>,
-    { fetch: stubFor(rows), session: null },
+    { fetch, session: null },
   );
 
-  return box as { current: PopRegistration };
+  return Object.assign(box as { current: PopRegistration }, { queryClient });
 };
 
 /** 등록을 끝까지 밟는다 — 여러 시험이 「이미 등록된 상태」에서 시작한다. */
@@ -125,6 +145,95 @@ describe('POP 단말 등록 — 상태 전이', () => {
 
     await waitFor(() => expect(registration.current.phase).toBe('ready'));
     expect(registration.current.processes).toHaveLength(1);
+  });
+
+  it('토큰을 저장한 뒤 현재 단말 등록을 확인하고 공정을 조회한다', async () => {
+    const order: string[] = [];
+    (globalThis as { pop?: unknown }).pop = {
+      deviceToken: {
+        get: async () => undefined,
+        set: async () => { order.push('stored'); },
+      },
+      outbox: { size: async () => 0 },
+    };
+    const fetch = stubFor([{ terminalId: 1001, plantId: 10 }], async (request) => {
+      order.push('confirmed');
+      expect(request.headers.get('Idempotency-Key')).toMatch(/^[0-9a-f-]{36}$/i);
+      expect(await request.json()).toEqual({});
+      return jsonResponse({
+        terminalId: 1001,
+        tokenVersion: 1,
+        registrationStatusCode: 'REGISTERED',
+        registrationConfirmedAt: '2026-09-14T00:00:00.000Z',
+      });
+    });
+    const registration = openRegistration([{ terminalId: 1001, plantId: 10 }], fetch);
+
+    await register(registration, TOKEN_A);
+    expect(order).toEqual(['stored', 'confirmed']);
+  });
+
+  it('등록 확인 실패는 업무로 넘기지 않고 보관 코드를 유지하며 재시도한다', async () => {
+    let confirmations = 0;
+    let processReads = 0;
+    const fetch = stubFor([{ terminalId: 1001, plantId: 10 }], () => {
+      confirmations += 1;
+      return confirmations === 1
+        ? jsonResponse({ errors: [{ scope: 'screen', code: 'UNAVAILABLE', message: '점검 중' }] }, { status: 503 })
+        : jsonResponse({
+            terminalId: 1001,
+            tokenVersion: 1,
+            registrationStatusCode: 'REGISTERED',
+            registrationConfirmedAt: '2026-09-14T00:00:00.000Z',
+          });
+    });
+    const observed: StubFetch = async (request) => {
+      if (/\/mdm\/terminals\/\d+\/processes(\?|$)/.test(request.url)) processReads += 1;
+      return fetch(request);
+    };
+    putShell(0);
+    const registration = openRegistration([{ terminalId: 1001, plantId: 10 }], observed);
+
+    await act(async () => { await registration.current.verify(TOKEN_A); });
+    await act(async () => { await registration.current.apply(); });
+    expect(registration.current.phase).toBe('prepare-failed');
+    expect(processReads).toBe(0);
+
+    await act(async () => { await registration.current.retryPrepare(); });
+    expect(registration.current.phase).toBe('ready');
+    expect(confirmations).toBe(2);
+    expect(processReads).toBe(1);
+  });
+
+  it('기존 보관 토큰은 켤 때 재발급·재입력 없이 등록 확인과 준비를 마친다', async () => {
+    let confirmations = 0;
+    putShell(0);
+    const registration = openRegistration(
+      [{ terminalId: 1001, plantId: 10 }],
+      stubFor([{ terminalId: 1001, plantId: 10 }], () => {
+        confirmations += 1;
+        return jsonResponse({
+          terminalId: 1001,
+          tokenVersion: 1,
+          registrationStatusCode: 'REGISTERED',
+          registrationConfirmedAt: '2026-09-14T00:00:00.000Z',
+        });
+      }),
+    );
+
+    await act(async () => { await registration.current.verify(TOKEN_A, 'stored'); });
+    expect(registration.current.phase).toBe('ready');
+    expect(confirmations).toBe(1);
+  });
+
+  it('같은 단말의 새 토큰을 적용하면 예전 화면 정책 캐시를 버린다', async () => {
+    putShell(0);
+    const registration = openRegistration([{ terminalId: 1001, plantId: 10 }]);
+    const key = popAccessKeys.terminal(1001);
+    registration.queryClient.setQueryData(key, { codes: ['P-01-01'] });
+
+    await register(registration, TOKEN_A);
+    expect(registration.queryClient.getQueryData(key)).toBeUndefined();
   });
 
   /**
@@ -181,6 +290,189 @@ describe('POP 단말 등록 — 상태 전이', () => {
     expect(registration.current.phase).toBe('unregistered');
   });
 
+  /**
+   * ⛔⛔ **넣지도 않은 토큰의 부고를 전하지 않는다**(#1137).
+   *
+   * 켤 때 보관된 토큰을 스스로 확인하는데(`app/pop-main` 의 `PopRegistrationGate`), 그 실패가
+   * 입력란이 «빈» 등록 화면에 그대로 떴다 — 설치 담당자는 한 글자도 넣지 않고 「이 토큰은 더
+   * 이상 쓸 수 없습니다」를 받았다(실측 2026-09-12 · 사용자 지적 · 실서버 설치본).
+   *
+   * ⚠ 여기서 재는 것은 **판정이 누구 이야기인가**다. 문구 자체는 화면이 고르고, 이 자리는 그
+   *   화면이 고를 수 있게 하는 값을 잰다.
+   */
+  it('보관된 토큰이 걸러지면 그 판정이 사람이 넣은 값의 것이 아님을 밝힌다', async () => {
+    putShell(0);
+    const registration = openRegistration([{ terminalId: 1001, plantId: 10 }]);
+
+    await act(async () => {
+      await registration.current.verify(TOKEN_B, 'stored');
+    });
+
+    expect(registration.current.failure).toBe('rejected');
+    expect(registration.current.failureSource).toBe('stored');
+  });
+
+  it('사람이 붙여넣은 값의 판정은 보관 토큰 이야기로 새지 않는다', async () => {
+    putShell(0);
+    const registration = openRegistration([{ terminalId: 1001, plantId: 10 }]);
+
+    await act(async () => {
+      await registration.current.verify(TOKEN_B);
+    });
+
+    expect(registration.current.failureSource).toBe('entered');
+  });
+
+  /**
+   * ⛔⛔ **거절당한 보관 토큰을 남겨 두지 않는다**(#1137 ②). 남기면 껐다 켤 때마다 같은
+   *    실패가 되풀이되고, 화면은 매번 아무도 넣지 않은 토큰의 부고를 전한다.
+   */
+  it('서버가 보관 토큰을 거절하면 그 자리에서 버린다', async () => {
+    putShell(0);
+    const written: string[] = [];
+    (globalThis as { pop?: unknown }).pop = {
+      deviceToken: {
+        get: async () => TOKEN_B,
+        set: async (value: string) => {
+          written.push(value);
+        },
+      },
+      outbox: { size: async () => 0 },
+    };
+
+    const registration = openRegistration([{ terminalId: 1001, plantId: 10 }]);
+
+    await act(async () => {
+      await registration.current.verify(TOKEN_B, 'stored');
+    });
+
+    expect(written).toEqual(['']);
+  });
+
+  /**
+   * ⛔⛔ **사람이 넣은 값이 틀렸다고 보관 토큰을 지우지 않는다**(#1137 · 독립 검증 지적).
+   *
+   * 등록을 마친 단말에서 담당자가 오타 토큰을 한 번 붙여넣었다고 멀쩡한 보관 토큰이 사라지면,
+   * 다음 기동에서 단말이 미등록으로 돌아간다 — 고친 것보다 나쁜 결과다.
+   */
+  it('사람이 넣은 값이 거절돼도 보관 토큰은 그대로 둔다', async () => {
+    const written: string[] = [];
+    (globalThis as { pop?: unknown }).pop = {
+      deviceToken: {
+        get: async () => TOKEN_A,
+        set: async (value: string) => {
+          written.push(value);
+        },
+      },
+      outbox: { size: async () => 0 },
+    };
+
+    const registration = openRegistration([{ terminalId: 1001, plantId: 10 }]);
+
+    await act(async () => {
+      await registration.current.verify(TOKEN_B);
+    });
+
+    expect(registration.current.failure).toBe('rejected');
+    expect(written).toEqual([]);
+  });
+
+  /**
+   * ⛔⛔ **「지금은 못 받는다」는 판정이 아니다**(#1137 ③ · 독립 검증 지적). 5xx·429·408 은
+   *    서버가 토큰을 보고 답한 것이 아니라 서버 자신의 사정이다 — 그 사이에 보관 토큰을
+   *    지우면 서버가 회복돼도 단말은 미등록으로 남아 설치 담당자를 다시 불러야 한다.
+   */
+  it('서버가 잠깐 앓는 동안에는 보관 토큰을 버리지 않는다', async () => {
+    const written: string[] = [];
+    (globalThis as { pop?: unknown }).pop = {
+      deviceToken: {
+        get: async () => TOKEN_A,
+        set: async (value: string) => {
+          written.push(value);
+        },
+      },
+      outbox: { size: async () => 0 },
+    };
+
+    const box = { current: null as PopRegistration | null };
+    const Probe = () => {
+      box.current = usePopRegistration();
+
+      return null;
+    };
+
+    renderWithProviders(
+      <PopRegistrationProvider>
+        <Probe />
+      </PopRegistrationProvider>,
+      {
+        fetch: createStubFetch([
+          {
+            match: (request) => /\/mdm\/terminals\/\d+(\?|$)/.test(request.url),
+            respond: () =>
+              jsonResponse(
+                { errors: [{ scope: 'screen', code: 'UNAVAILABLE', message: '점검 중' }] },
+                { status: 503 },
+              ),
+          },
+        ]),
+        session: null,
+      },
+    );
+
+    const registration = box as { current: PopRegistration };
+
+    await act(async () => {
+      await registration.current.verify(TOKEN_A, 'stored');
+    });
+
+    expect(registration.current.failure).toBe('unreachable');
+    expect(written).toEqual([]);
+  });
+
+  /**
+   * ⛔⛔ **닿지 못한 것은 버리지 않는다.** 잠깐 망이 끊긴 사이에 멀쩡한 토큰을 지우면 설치
+   *    담당자를 현장으로 다시 불러야 한다 — 판정과 못 물어본 것은 다르다.
+   */
+  it('서버에 닿지 못했으면 보관 토큰을 버리지 않는다', async () => {
+    const written: string[] = [];
+    (globalThis as { pop?: unknown }).pop = {
+      deviceToken: {
+        get: async () => TOKEN_A,
+        set: async (value: string) => {
+          written.push(value);
+        },
+      },
+      outbox: { size: async () => 0 },
+    };
+
+    const box = { current: null as PopRegistration | null };
+    const Probe = () => {
+      box.current = usePopRegistration();
+
+      return null;
+    };
+
+    renderWithProviders(
+      <PopRegistrationProvider>
+        <Probe />
+      </PopRegistrationProvider>,
+      {
+        fetch: () => Promise.reject(new TypeError('Failed to fetch')),
+        session: null,
+      },
+    );
+
+    const registration = box as { current: PopRegistration };
+
+    await act(async () => {
+      await registration.current.verify(TOKEN_A, 'stored');
+    });
+
+    expect(registration.current.failure).toBe('unreachable');
+    expect(written).toEqual([]);
+  });
+
   it('토큰 모양이 아니면 서버에 묻지 않는다 — 붙여넣기 실수를 등록 시도로 만들지 않는다', async () => {
     putShell(0);
     const registration = openRegistration([{ terminalId: 1001, plantId: 10 }]);
@@ -190,5 +482,267 @@ describe('POP 단말 등록 — 상태 전이', () => {
     });
 
     expect(registration.current.failure).toBe('malformed');
+  });
+
+  /**
+   * ⭐ **서버에 닿지 못한 것과 거절당한 것을 가른다.** 사람이 할 일이 다르다 — 하나는 연결
+   * 확인이고 하나는 재발급이다. 실 서버 설치본이 CORS 로 막혔을 때 화면이 「이 토큰은 더
+   * 이상 쓸 수 없습니다」를 말해, 담당자가 멀쩡한 토큰을 몇 번씩 다시 발급받았다(실측
+   * 2026-09-12 · 사용자 지적).
+   */
+  it('응답이 아예 없으면 토큰을 의심하지 않는다 — 연결 실패는 거절이 아니다', async () => {
+    putShell(0);
+    const box = { current: null as PopRegistration | null };
+
+    const Probe = () => {
+      box.current = usePopRegistration();
+
+      return null;
+    };
+
+    renderWithProviders(
+      <PopRegistrationProvider>
+        <Probe />
+      </PopRegistrationProvider>,
+      /* 브라우저가 요청을 막았을 때와 같다 — 응답이 없고 fetch 자체가 던진다. */
+      { fetch: () => Promise.reject(new TypeError('Failed to fetch')), session: null },
+    );
+
+    const registration = box as { current: PopRegistration };
+
+    await act(async () => {
+      await registration.current.verify(TOKEN_A);
+    });
+
+    expect(registration.current.failure).toBe('unreachable');
+  });
+
+  /**
+   * ⭐ **403 갈래가 실제로 선다.** 오류에서 `status` 를 바로 읽던 동안 이 갈래는 한 번도
+   * 서지 못했다 — 요청 경로가 정규화된 봉투를 던져 그 자리에 `status` 가 없기 때문이다.
+   *
+   * ⛔ **몸통을 계약 모양(`errors[]`)으로 낸다.** 계약에 없는 `{ message }` 로 재면 정규화가
+   *    상태 코드를 그대로 들고 와 갈래가 서는 것처럼 보인다 — 실제 서버 응답은 봉투라
+   *    거기서 상태가 접혀 사라지고, 감지기만 초록인 채 갈래는 죽어 있다(리뷰 2회차 실측).
+   */
+  it('다른 단말을 가리키면 거절이 아니라 「남의 토큰」이다', async () => {
+    putShell(0);
+    const box = { current: null as PopRegistration | null };
+
+    const Probe = () => {
+      box.current = usePopRegistration();
+
+      return null;
+    };
+
+    renderWithProviders(
+      <PopRegistrationProvider>
+        <Probe />
+      </PopRegistrationProvider>,
+      {
+        fetch: createStubFetch([
+          {
+            match: (request) => /\/mdm\/terminals\/\d+(\?|$)/.test(request.url),
+            respond: () =>
+              jsonResponse(
+                { errors: [{ scope: 'screen', code: 'FORBIDDEN', message: '남의 단말' }] },
+                { status: 403 },
+              ),
+          },
+        ]),
+        session: null,
+      },
+    );
+
+    const registration = box as { current: PopRegistration };
+
+    await act(async () => {
+      await registration.current.verify(TOKEN_A);
+    });
+
+    expect(registration.current.failure).toBe('foreign');
+  });
+});
+
+/**
+ * ⭐ 관리웹에서 바꾼 단말 매핑이 단말을 다시 켜지 않아도 보여야 한다(#1202). 켤 때 한 번만
+ * 받았더니 공정을 매핑한 뒤에도 작업 시작이 「매핑된 공정이 없습니다」로 막혀 있었다.
+ */
+describe('POP 단말 등록 — 화면 진입 시 다시 받기', () => {
+  /** 서버 쪽 매핑을 시험 도중에 바꿀 수 있는 대역. `down` 이면 서버가 답하지 않는다. */
+  const liveServer = () => {
+    const server = {
+      processIds: [] as number[],
+      equipmentId: null as number | null,
+      down: false,
+      processCalls: 0,
+      /** 값이 있으면 공정 답을 그 약속이 풀릴 때까지 붙잡는다. */
+      hold: null as Promise<void> | null,
+    };
+    const fetch = createStubFetch([
+      {
+        match: (request) =>
+          request.method === 'POST' && /\/mdm\/terminals\/\d+:confirm-registration(\?|$)/.test(request.url),
+        respond: () => jsonResponse({
+          terminalId: 1001,
+          tokenVersion: 1,
+          registrationStatusCode: 'REGISTERED',
+          registrationConfirmedAt: '2026-09-14T00:00:00.000Z',
+        }),
+      },
+      {
+        match: (request) => /\/mdm\/terminals\/\d+\/processes(\?|$)/.test(request.url),
+        respond: async () => {
+          server.processCalls += 1;
+          if (server.down) throw new TypeError('Failed to fetch');
+
+          /* 요청이 떠난 시점의 매핑으로 답한다 — 붙잡혀 있는 동안 바뀐 값을 싣지 않는다. */
+          const items = server.processIds.map((processId) => ({ processId, canStartWork: true }));
+          const hold = server.hold;
+          if (hold !== null) await hold;
+
+          return jsonResponse({ items });
+        },
+      },
+      {
+        match: (request) => /\/mdm\/terminals\/\d+(\?|$)/.test(request.url),
+        respond: () => {
+          if (server.down) throw new TypeError('Failed to fetch');
+
+          return jsonResponse({
+            terminalId: 1001,
+            terminalCode: 'POP-1001',
+            terminalTypeCode: 'POP',
+            plantId: 10,
+            isActive: true,
+            equipmentId: server.equipmentId,
+          });
+        },
+      },
+    ]);
+
+    return { server, fetch };
+  };
+
+  const open = (fetch: ReturnType<typeof liveServer>['fetch'], withNav = false) => {
+    const box = {
+      current: null as PopRegistration | null,
+      go: null as ((to: string) => void) | null,
+    };
+
+    const Probe = () => {
+      box.current = usePopRegistration();
+
+      return null;
+    };
+
+    const Nav = () => {
+      useRefreshPopTerminalOnScreenEntry();
+      const navigate = useNavigate();
+      box.go = (to) => void navigate(to);
+
+      return null;
+    };
+
+    renderWithProviders(
+      <PopRegistrationProvider>
+        <Probe />
+        {withNav ? <Nav /> : null}
+      </PopRegistrationProvider>,
+      { fetch, session: null },
+    );
+
+    return box as { current: PopRegistration; go: ((to: string) => void) | null };
+  };
+
+  it('다시 받으면 관리웹에서 새로 매핑한 공정·설비가 신원에 들어온다', async () => {
+    putShell(0);
+    const { server, fetch } = liveServer();
+    const registration = open(fetch);
+
+    await register(registration, TOKEN_A);
+    expect(registration.current.processes).toEqual([]);
+
+    server.processIds = [7];
+    server.equipmentId = 55;
+
+    await act(async () => {
+      await registration.current.refresh();
+    });
+
+    expect(registration.current.processes?.map((row) => row.processId)).toEqual([7]);
+    expect(registration.current.terminal?.equipmentId).toBe(55);
+  });
+
+  it('⛔ 다시 받지 못하면 알고 있던 값을 그대로 쓰고 등록을 무르지 않는다', async () => {
+    putShell(0);
+    const { server, fetch } = liveServer();
+    server.processIds = [7];
+    const registration = open(fetch);
+
+    await register(registration, TOKEN_A);
+
+    server.processIds = [];
+    server.down = true;
+
+    await act(async () => {
+      await registration.current.refresh();
+    });
+
+    expect(registration.current.phase).toBe('ready');
+    expect(registration.current.processes?.map((row) => row.processId)).toEqual([7]);
+  });
+
+  it('⛔ 늦게 도착한 앞 요청의 답이 뒤 요청의 답을 덮지 않는다', async () => {
+    putShell(0);
+    const { server, fetch } = liveServer();
+    server.processIds = [1];
+    const registration = open(fetch);
+
+    await register(registration, TOKEN_A);
+
+    /* 첫 요청의 공정 답을 붙잡아 둔다. */
+    let release: () => void = () => undefined;
+    server.hold = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    let first: Promise<void> = Promise.resolve();
+    act(() => {
+      first = registration.current.refresh();
+    });
+
+    server.hold = null;
+    server.processIds = [9];
+    await act(async () => {
+      await registration.current.refresh();
+    });
+    expect(registration.current.processes?.map((row) => row.processId)).toEqual([9]);
+
+    await act(async () => {
+      release();
+      await first;
+    });
+
+    expect(registration.current.processes?.map((row) => row.processId)).toEqual([9]);
+  });
+
+  it('화면 주소가 바뀌면 다시 받는다', async () => {
+    putShell(0);
+    const { server, fetch } = liveServer();
+    const registration = open(fetch, true);
+
+    await register(registration, TOKEN_A);
+    const before = server.processCalls;
+
+    server.processIds = [7];
+
+    await act(async () => {
+      registration.go?.('/pop/work-start');
+    });
+
+    await waitFor(() =>
+      expect(registration.current.processes?.map((row) => row.processId)).toEqual([7]),
+    );
+    expect(server.processCalls).toBeGreaterThan(before);
   });
 });

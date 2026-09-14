@@ -25,6 +25,9 @@ export interface WorkOrderFact {
   plannedEquipmentId: number | null;
   plannedMoldId: number | null;
   plannedShiftId: number | null;
+  defaultWipLocationId: number | null;
+  defaultFgLocationId: number | null;
+  defaultScrapLocationId: number | null;
   remarks: string | null;
 }
 
@@ -74,6 +77,9 @@ export const toWorkOrderFact = (workOrder: WorkOrder): WorkOrderFact => ({
   plannedEquipmentId: workOrder.plannedEquipmentId ?? null,
   plannedMoldId: workOrder.plannedMoldId ?? null,
   plannedShiftId: workOrder.plannedShiftId ?? null,
+  defaultWipLocationId: workOrder.defaultWipLocationId ?? null,
+  defaultFgLocationId: workOrder.defaultFgLocationId ?? null,
+  defaultScrapLocationId: workOrder.defaultScrapLocationId ?? null,
   remarks: workOrder.remarks ?? null,
 });
 

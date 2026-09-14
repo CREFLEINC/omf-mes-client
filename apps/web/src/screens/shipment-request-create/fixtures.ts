@@ -30,6 +30,7 @@ export const salesOrderListFixtures: SalesOrderResponse[] = [
     shipToPartnerId: 8211,
     orderDate: '2026-08-10',
     statusCode: 'SAMPLE_SO_S_A',
+    lines: [],
   },
   {
     salesOrderId: 8102,
@@ -38,6 +39,7 @@ export const salesOrderListFixtures: SalesOrderResponse[] = [
     shipToPartnerId: 8212,
     orderDate: '2026-08-11',
     statusCode: 'SAMPLE_SO_S_B',
+    lines: [],
   },
 ];
 

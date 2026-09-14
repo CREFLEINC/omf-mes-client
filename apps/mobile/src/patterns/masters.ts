@@ -1,4 +1,4 @@
-import { useQuery, type UseQueryResult } from '@tanstack/react-query';
+import { useQueries, useQuery, type UseQueryResult } from '@tanstack/react-query';
 
 import { useApiClient } from './api-context';
 import { masterName } from './master-name';
@@ -6,7 +6,7 @@ import { runRequest } from './request';
 
 export const masterKeys = {
   item: (itemId: number | null) => ['master-item', itemId] as const,
-  items: () => ['master-items'] as const,
+  itemSearch: (term: string) => ['master-item-search', term] as const,
   uoms: () => ['master-uoms'] as const,
   suppliers: () => ['master-suppliers'] as const,
   customers: () => ['master-customers'] as const,
@@ -22,6 +22,21 @@ export interface ItemSummary {
   storageConditionCode?: string | null;
 }
 
+type ItemClient = ReturnType<typeof useApiClient>['client'];
+
+const fetchItem = async (client: ItemClient, itemId: number): Promise<ItemSummary> => {
+  const data = await runRequest(() =>
+    client.GET('/mdm/items/{itemId}', { params: { path: { itemId } } }),
+  );
+
+  return {
+    itemCode: data.item.itemCode,
+    itemName: data.item.itemName,
+    fifoPolicyCode: data.item.fifoPolicyCode,
+    storageConditionCode: data.item.storageConditionCode,
+  };
+};
+
 /** 계약의 LOT 응답에 품목 이름이 없어 되짚어 부른다. 스캔한 것이 맞는지 사람이 볼 값이다. */
 export const useItem = (itemId: number | null): UseQueryResult<ItemSummary> => {
   const { client } = useApiClient();
@@ -34,16 +49,7 @@ export const useItem = (itemId: number | null): UseQueryResult<ItemSummary> => {
         throw new Error('LOT을 찾기 전에는 품목을 조회하지 않습니다.');
       }
 
-      const data = await runRequest(() =>
-        client.GET('/mdm/items/{itemId}', { params: { path: { itemId } } }),
-      );
-
-      return {
-        itemCode: data.item.itemCode,
-        itemName: data.item.itemName,
-        fifoPolicyCode: data.item.fifoPolicyCode,
-        storageConditionCode: data.item.storageConditionCode,
-      };
+      return fetchItem(client, itemId);
     },
   });
 };
@@ -70,29 +76,68 @@ export const useUomCodes = (enabled: boolean): UseQueryResult<Map<number, string
  *
  * 목록 응답이 품목 식별자만 주는 자리가 많다. 그 번호를 그대로 보이면 작업자가 실물 라벨과
  * 대조할 수 없다 - 라벨에는 품목 코드가 찍혀 있지 대리키가 찍혀 있지 않다.
+ *
+ * 필요한 번호만 하나씩 묻는다. 목록을 한 번 받아 지도를 만들면 그 한 번에 담기는 만큼만
+ * 이름을 얻고 나머지는 조용히 빈다 - 마스터가 9,000건인 곳에서 코드순 앞 200건 밖
+ * 품목이 전부 이름 없이 섰다. 부르는 횟수는 화면에 실제로 뜬 줄 수만큼이다.
+ *
+ * 단건 조회와 같은 열쇠를 쓴다. 한 화면이 여기서 받아 둔 것을 다른 자리가 다시 부르지 않는다.
  */
-export const useItemLabels = (enabled: boolean): UseQueryResult<Map<number, ItemSummary>> => {
+export const useItemLabels = (items: readonly number[]): Map<number, ItemSummary> => {
   const { client } = useApiClient();
+  const itemIds = [...new Set(items)];
+
+  return useQueries({
+    queries: itemIds.map((itemId) => ({
+      queryKey: masterKeys.item(itemId),
+      queryFn: () => fetchItem(client, itemId),
+    })),
+    combine: (results) =>
+      new Map(
+        results.flatMap((result, index) => {
+          const itemId = itemIds[index];
+
+          return result.data === undefined || itemId === undefined
+            ? []
+            : [[itemId, result.data] as const];
+        }),
+      ),
+  });
+};
+
+export interface ItemOption extends ItemSummary {
+  itemId: number;
+}
+
+/** 한 번에 보일 만큼만 받는다. 더 좁히는 것은 찾는 말을 더 적는 쪽이 빠르다. */
+const ITEM_SEARCH_LIMIT = 50;
+
+/**
+ * 고를 품목을 찾는다. 작업자가 직접 고르는 자리에만 쓴다.
+ *
+ * 보이는 줄의 품목을 묻는 것과 다르다 - 고르기 전에는 마스터 전체가 후보다. 전부
+ * 받아 늘어놓을 수 있는 양이 아니라서(마스터가 9,000건인 곳이 있다) 찾은 것만 보인다.
+ * 앞에서 잘린 목록을 늘어놓으면 없는 품목으로 보여, 있는 것을 못 고르고도 이유를 알 수 없다.
+ */
+export const useItemSearch = (term: string): UseQueryResult<ItemOption[]> => {
+  const { client } = useApiClient();
+  const q = term.trim();
 
   return useQuery({
-    queryKey: masterKeys.items(),
-    enabled,
+    queryKey: masterKeys.itemSearch(q),
+    enabled: q !== '',
     queryFn: async () => {
       const data = await runRequest(() =>
-        client.GET('/mdm/items', { params: { query: { size: 200 } } }),
+        client.GET('/mdm/items', { params: { query: { q, size: ITEM_SEARCH_LIMIT } } }),
       );
 
-      return new Map(
-        data.items.map((item) => [
-          item.itemId,
-          {
-            itemCode: item.itemCode,
-            itemName: item.itemName,
-            fifoPolicyCode: item.fifoPolicyCode,
-            storageConditionCode: item.storageConditionCode,
-          },
-        ]),
-      );
+      return data.items.map((item) => ({
+        itemId: item.itemId,
+        itemCode: item.itemCode,
+        itemName: item.itemName,
+        fifoPolicyCode: item.fifoPolicyCode,
+        storageConditionCode: item.storageConditionCode,
+      }));
     },
   });
 };

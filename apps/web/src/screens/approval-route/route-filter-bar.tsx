@@ -144,6 +144,7 @@ export const RouteFilterBar = ({
           }}
           /* 엔터로도 조회된다 — 검색칸에서 엔터가 아무 일도 하지 않으면 멈춘 것으로 읽힌다. */
           onSearch={search}
+          clearLabel={messages.common.clear}
         />
 
         <div className="field-cell field-cell-unlabeled">

@@ -18,6 +18,8 @@ import { createIdempotencyKey, useOutbox } from '../../patterns/outbox';
 import { useScanField } from '../../patterns/use-scan-field';
 import { useScreenTitle } from '../../patterns/screen-title';
 import { useWorkerSession } from '../../patterns/worker-session';
+import { FailureBanner } from '../../patterns/failure-banner';
+import { useLoadFailure, useQueryErrorOf } from '../../patterns/load-failure';
 import { useRepackEvents, useShipmentAllocations } from './queries';
 import {
   MERGE,
@@ -61,6 +63,9 @@ const TYPES: { value: RepackType; label: string }[] = [
 
 export const PackingRepackScreen = () => {
   useScreenTitle(t.title);
+  const failureText = useLoadFailure();
+  /* 확인하지 못한 까닭. 판정 훅은 까닭을 싣지 않아 캐시에서 읽는다. */
+  const allocationError = useQueryErrorOf('repack-shipment-allocation');
 
   const { enqueue, flush, isRejected } = useOutbox();
   const queryClient = useQueryClient();
@@ -89,7 +94,6 @@ export const PackingRepackScreen = () => {
   const found = useScannedHandlingUnit(scanned);
   const uoms = useUomCodes(sources.length > 0);
   /* 내용물은 품목·LOT 식별자만 준다. 그 번호로는 실물 라벨과 대조할 수 없다. */
-  const itemLabels = useItemLabels(sources.length > 0);
   const allocations = useShipmentAllocations(sources);
 
   const pooled = pooledContents(sources);
@@ -107,6 +111,12 @@ export const PackingRepackScreen = () => {
    * 이력에는 지금 이 포장에 없는 LOT 도 나온다 - 통째로 빠져나간 것이 그렇다. 그 번호표까지
    * 함께 물어야 이력이 대리키를 그대로 보이지 않는다.
    */
+  /* 이력의 품목도 함께 묻는다 - 펼친 이력이 대리키만 보이면 무엇을 되돌리는지 알 수 없다. */
+  const itemLabels = useItemLabels([
+    ...sources.flatMap((source) => source.contents.map((content) => content.itemId)),
+    ...(history.data ?? []).flatMap((event) => event.lines.map((line) => line.itemId)),
+  ]);
+
   const lotLabels = useLotLabels([
     ...sources.flatMap((source) => source.contents.map((content) => content.lotId)),
     ...(history.data ?? []).flatMap((event) => event.lines.map((line) => line.lotId)),
@@ -143,7 +153,7 @@ export const PackingRepackScreen = () => {
   const uomOf = (uomId: number): string => uoms.data?.get(uomId) ?? '';
 
   const nameOf = (content: { itemId: number; lotId: number }): string => {
-    const item = itemLabels.data?.get(content.itemId);
+    const item = itemLabels.get(content.itemId);
     const lotNo = lotLabels.get(content.lotId) ?? String(content.lotId);
 
     return t.contents.lot(item === undefined ? '' : item.itemCode, lotNo);
@@ -352,7 +362,9 @@ export const PackingRepackScreen = () => {
         )}
 
         {scanned !== null && found.isPending ? <p role="status">{t.source.loading}</p> : null}
-        {found.isError ? <AlertBanner variant="warning" title={t.source.loadFailed} /> : null}
+        {found.isError ? (
+          <FailureBanner variant="warning" title={failureText(found.error, t.source.loadFailed)} />
+        ) : null}
         {duplicate ? <AlertBanner variant="warning" title={t.source.already} /> : null}
         {scanned !== null && found.data === null ? (
           <AlertBanner variant="error" title={t.source.notFound(scanned)} />
@@ -389,7 +401,9 @@ export const PackingRepackScreen = () => {
         ) : null}
         {blocked.length === 0 && unverified.length > 0 ? (
           <AlertBanner variant="warning" title={t.unverified.title(numbersOf(unverified))}>
-            {t.unverified.description}
+            {failureText(allocationError, t.unverified.description, {
+              caution: t.unverified.caution,
+            })}
           </AlertBanner>
         ) : null}
       </section>

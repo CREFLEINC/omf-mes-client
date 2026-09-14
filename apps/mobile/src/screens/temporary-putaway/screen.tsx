@@ -23,6 +23,8 @@ import { useOutbox } from '../../patterns/outbox';
 import { useScanField } from '../../patterns/use-scan-field';
 import { useScreenTitle } from '../../patterns/screen-title';
 import { useWorkerSession } from '../../patterns/worker-session';
+import { FailureBanner } from '../../patterns/failure-banner';
+import { useLoadFailure } from '../../patterns/load-failure';
 import type { PutawayTask } from '../putaway/putaway';
 import { putawayKeys, usePutawayTask } from '../putaway/queries';
 import {
@@ -55,6 +57,7 @@ const isHandoff = (value: unknown): value is TemporaryPutawayHandoff =>
 
 export const TemporaryPutawayScreen = () => {
   useScreenTitle(t.title);
+  const failureText = useLoadFailure();
 
   const { enqueue, flush, isRejected, loaded, pendingOf } = useOutbox();
   const queryClient = useQueryClient();
@@ -113,7 +116,7 @@ export const TemporaryPutawayScreen = () => {
   const byCode = useLocationByCode(task?.warehouseId ?? null, scanned);
   const reasons = useCodeValues(PUTAWAY_TASK_TEMPORARY_REASON);
   const uoms = useUomCodes(true);
-  const itemLabels = useItemLabels(true);
+  const itemLabels = useItemLabels(task === null ? [] : [task.itemId]);
 
   /*
    * 정위치에 임시 적치를 적으면 옮길 대상 목록에 오르는데 이미 제자리에 있어, 다음 사람이
@@ -269,7 +272,7 @@ export const TemporaryPutawayScreen = () => {
           <Card.Body className="card-body temporary__card">
             <strong>
               {t.task.item(
-                itemLabels.data?.get(task.itemId)?.itemCode ?? '',
+                itemLabels.get(task.itemId)?.itemCode ?? '',
                 task.putawayTaskNo,
                 `${String(task.taskQty)} ${uoms.data?.get(task.uomId) ?? ''}`,
               )}
@@ -330,11 +333,18 @@ export const TemporaryPutawayScreen = () => {
         </Button>
         {/* 스캔한 코드를 확인하는 동안 등록이 잠긴다. 왜 잠겼는지 말하지 않으면 멈춘 것처럼 보인다. */}
         {scanned !== null && byCode.isPending ? <p role="status">{t.location.loading}</p> : null}
-        {byCode.isError ? <AlertBanner variant="error" title={t.location.loadFailed} /> : null}
+        {byCode.isError ? (
+          <FailureBanner variant="error" title={failureText(byCode.error, t.location.loadFailed)} />
+        ) : null}
 
         {locations.isPending ? <p role="status">{t.location.loading}</p> : null}
-        {locations.isError ? <AlertBanner variant="error" title={t.location.loadFailed} /> : null}
-        {locations.data !== undefined && locations.data.length === 0 ? (
+        {locations.isError ? (
+          <FailureBanner
+            variant="error"
+            title={failureText(locations.error, t.location.loadFailed)}
+          />
+        ) : null}
+        {locations.isSuccess && locations.data.length === 0 ? (
           <AlertBanner variant="warning" title={t.location.none} />
         ) : null}
         {/* 스캔이 정본이고 목록은 대체 경로다(공유계약 D-3). 접어 두어 스캔 칸을 앞에 세운다. */}
@@ -396,7 +406,7 @@ export const TemporaryPutawayScreen = () => {
         {reasons.isPending ? <p role="status">{t.reason.loading}</p> : null}
         {reasons.isError ? <p className="temporary__note">{t.reason.loadFailed}</p> : null}
         {/* 값이 없으면 고를 것이 없다. 비고로 적게 두고 그 사실을 말한다. */}
-        {reasons.data !== undefined && reasons.data.length === 0 ? (
+        {reasons.isSuccess && reasons.data.length === 0 ? (
           <AlertBanner variant="warning" title={t.reason.empty} />
         ) : null}
         {/*

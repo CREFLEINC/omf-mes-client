@@ -35,7 +35,7 @@ export const repairRoundtrip = {
     loading: '불량 기록을 불러오는 중입니다',
     /** 확인하지 못한 것을 불량이 아닌 것으로 말하지 않는다. */
     loadFailed: '불량 기록을 확인할 수 없습니다. 연결을 확인한 뒤 다시 스캔하세요.',
-    none: '불량 판정된 LOT이 아닙니다',
+    none: (lotNo: string) => `불량 판정된 LOT이 아닙니다 — 읽은 값 ${lotNo}`,
     /** 조회한 창의 길이를 함께 적는다. 창 밖의 불량을 없는 것으로 읽지 않게 한다. */
     window: (days: number) => `최근 ${String(days)}일 안에서 찾았습니다`,
     pick: '수리할 불량을 고르세요',

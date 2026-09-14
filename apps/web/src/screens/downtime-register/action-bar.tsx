@@ -24,25 +24,38 @@ export type SaveBlock =
 export interface SaveBlockInput {
   workerNo: string | null;
   equipmentId: number | null;
+  /**
+   * 이 단말의 번호. **설비를 모르는 «이유»를 가르는 데만 쓴다**(#1149) — 단말을 모르면 설비도
+   * 알 수 없으므로 「설비가 지정되지 않았다」는 사실이 아니라 **아직 아무것도 모르는 것**이다.
+   */
+  terminalId: number | null;
   gate: GateVerdict;
   hasOngoing: boolean;
 }
 
 /**
  * ⛔ **여기 담는 것은 「이 단말·이 작업자로는 안 된다」뿐이다.** 덜 채운 칸은 담지 않는다 —
- * 그쪽은 사유를 글로 적지 않고 버튼을 잠그는 것으로 말한다(`isIncomplete`).
+ * 그쪽은 **누른 순간** 화면이 무엇이 모자란지 말한다(#1094 · `screen.tsx` 의 `blockedNotice`).
  *
- * 두 갈래를 가르는 이유: 여기 담기는 것들은 **작업자가 화면에서 고칠 수 없다**(권한·사번·설비)
- * 라 무엇이 막는지 글로 말해야 하지만, 덜 채운 칸은 **화면에 그 자리가 보인다.**
+ * 두 갈래를 가르는 이유: 여기 담기는 것들은 **작업자가 화면에서 고칠 수 없어**(권한·사번·설비)
+ * 누르기 «전»에 말해야 하고, 덜 채운 칸은 작업자가 지금 채울 수 있어 누를 때 말하면 된다.
  */
 export const resolveSaveBlock = ({
   workerNo,
   equipmentId,
+  terminalId,
   gate,
   hasOngoing,
 }: SaveBlockInput): SaveBlock => {
   if (workerNo === null) return 'worker-missing';
-  if (equipmentId === null) return 'equipment-missing';
+  /*
+   * ⛔ **단말을 모르는 것을 「설비가 지정되지 않았다」로 말하지 않는다**(#1149). 설비는 단말에
+   *    붙어 오므로 단말이 서기 전에는 없는 것이 당연하고, 그때 관리자에게 설비 지정을
+   *    요청하라고 말하면 **아무도 풀 수 없는 심부름**이 된다 — 풀리는 것은 단말 등록이다.
+   */
+  if (equipmentId === null) {
+    return terminalId === null ? 'gate-unidentified' : 'equipment-missing';
+  }
   /*
    * ⛔ **「단말을 모른다」를 「권한이 없다」로 말하지 않는다.** 같은 슬라이스의
    *    `terminal-gating` 이 두 판정을 갈라 두었는데 여기서 다시 합쳐 놓았고, 그 결과 단말
@@ -87,8 +100,9 @@ export interface ActionBarProps {
   block: SaveBlock;
   /** 아직 아무것도 적지 않았다 — 비울 것이 없으면 「다시 입력」을 잠근다. */
   isEmpty: boolean;
-  /** 저장에 필요한 것이 덜 찼다 — **시작 시각과 사유**다(스펙 §5-1 활성 조건). */
+  /** 시작 시각·사유가 아직 덜 찼는가. 잠그되 사유는 화면이 말한다(#1094). */
   isIncomplete: boolean;
+  /** 저장에 필요한 것이 덜 찼다 — **시작 시각과 사유**다(스펙 §5-1 활성 조건). */
   onReset: () => void;
   onSave: () => void;
 }
@@ -124,12 +138,12 @@ export const ActionBar = ({ block, isEmpty, isIncomplete, onReset, onSave }: Act
       {/*
        * 큐에 담는 것이 곧 성공이라 「저장하는 중」이 없다 — 통신을 기다리지 않는다.
        *
-       * ⛔ **시작 시각과 사유가 차기 전에는 잠긴다**(스펙 §5-1 활성 조건 · 사용자 지적
-       *    2026-09-07). 빈 화면에서 눌리면 「눌러도 되는 것」으로 읽힌다.
+       * ⛔ **덜 차면 잠근다**(스펙 §5-1 활성 조건 · 사용자 확인 2026-09-12 실화면).
        *
-       * ⚠ **덜 찼다는 사유를 버튼 옆에 적지 않는다.** 스펙이 이 셋에 정한 처리는 「활성 조건」
-       *    뿐이고(§5-1), 비어 있는 칸은 화면에 이미 보인다 — 선례 `P-02-04` 도 같은 자리의
-       *    상주 사유를 걷었다(2026-09-07).
+       * ⚠ 한 회차 동안 「잠그지 않고 누르면 말한다」로 갔다가 되돌렸다 — 실제 화면에서
+       *    **눌리는 붉은 버튼**이 「지금 저장된다」로 읽혔다. 잠그되, 종전과 달리 **왜 잠겼는지는
+       *    화면이 말한다**(`screen.tsx` 의 `blockedNotice`) — 꺼진 버튼만으로는 무엇이 모자란지
+       *    알 수 없었던 것이 이 이슈의 출발점이다.
        */}
       <Button
         variant="filled"
