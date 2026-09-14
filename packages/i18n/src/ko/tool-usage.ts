@@ -10,6 +10,9 @@ export const toolUsage = {
     /** 헤더에 작업지시·사번을 세운다. 없으면 그 자리를 비운다 — 「알 수 없음」을 쓰지 않는다. */
     /* ⚠ 머리줄 표기는 「W/O」로 통일한다(사용자 지시 2026-09-10). */
     workOrderLabel: 'W/O',
+    /* ⭐ 「설비 <이름>」으로 읽힌다 — 이름이 비면 코드(사용자 지시 2026-09-14). */
+    equipmentLabel: (code: string, name: string): string =>
+      `설비 ${name.trim() === '' ? code : name}`,
     workerLabel: '사번',
   },
 

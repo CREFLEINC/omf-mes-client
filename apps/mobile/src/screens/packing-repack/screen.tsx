@@ -18,6 +18,7 @@ import { createIdempotencyKey, useOutbox } from '../../patterns/outbox';
 import { useScanField } from '../../patterns/use-scan-field';
 import { useScreenTitle } from '../../patterns/screen-title';
 import { useWorkerSession } from '../../patterns/worker-session';
+import { useLoadFailure, useQueryErrorOf } from '../../patterns/load-failure';
 import { useRepackEvents, useShipmentAllocations } from './queries';
 import {
   MERGE,
@@ -61,6 +62,9 @@ const TYPES: { value: RepackType; label: string }[] = [
 
 export const PackingRepackScreen = () => {
   useScreenTitle(t.title);
+  const failureText = useLoadFailure();
+  /* 확인하지 못한 까닭. 판정 훅은 까닭을 싣지 않아 캐시에서 읽는다. */
+  const allocationError = useQueryErrorOf('repack-shipment-allocation');
 
   const { enqueue, flush, isRejected } = useOutbox();
   const queryClient = useQueryClient();
@@ -352,7 +356,9 @@ export const PackingRepackScreen = () => {
         )}
 
         {scanned !== null && found.isPending ? <p role="status">{t.source.loading}</p> : null}
-        {found.isError ? <AlertBanner variant="warning" title={t.source.loadFailed} /> : null}
+        {found.isError ? (
+          <AlertBanner variant="warning" title={failureText(found.error, t.source.loadFailed)} />
+        ) : null}
         {duplicate ? <AlertBanner variant="warning" title={t.source.already} /> : null}
         {scanned !== null && found.data === null ? (
           <AlertBanner variant="error" title={t.source.notFound(scanned)} />
@@ -389,7 +395,9 @@ export const PackingRepackScreen = () => {
         ) : null}
         {blocked.length === 0 && unverified.length > 0 ? (
           <AlertBanner variant="warning" title={t.unverified.title(numbersOf(unverified))}>
-            {t.unverified.description}
+            {failureText(allocationError, t.unverified.description, {
+              caution: t.unverified.caution,
+            })}
           </AlertBanner>
         ) : null}
       </section>

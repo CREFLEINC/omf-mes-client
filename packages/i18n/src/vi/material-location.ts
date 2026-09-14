@@ -31,6 +31,7 @@ export const materialLocation: Translated<typeof ko.materialLocation> = {
     checking: 'Đang kiểm tra tình trạng tạm giữ',
     unconfirmed: 'Không kiểm tra được tình trạng tạm giữ',
     unconfirmedDescription: 'Có thể đang bị giữ, hãy kiểm tra sau khi có kết nối rồi mới chuyển.',
+    unconfirmedCaution: 'Có thể đang bị giữ, hãy kiểm tra rồi mới chuyển.',
     wholeLot: 'Tạm giữ toàn bộ',
     quantity: (amount: string): string => `Tạm giữ ${amount}`,
     releaseCondition: (condition: string): string => `Điều kiện gỡ: ${condition}`,

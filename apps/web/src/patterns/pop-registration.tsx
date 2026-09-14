@@ -1,6 +1,16 @@
 import { createIdempotencyKey, isTransientStatus, type ApiClient } from '@omf-mes/api-client';
 import { useQueryClient } from '@tanstack/react-query';
-import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from 'react';
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from 'react';
+import { useLocation } from 'react-router';
 
 import { useApiClient } from './api-context';
 import { popAccessKeys } from './pop-access';
@@ -143,6 +153,12 @@ export interface PopRegistration extends RegistrationState {
   retryPrepare: () => Promise<void>;
   /** 등록 정보를 바꾸러 간다. 후보·검증 결과를 버리고 입력 상태로 되돌린다. */
   restart: () => void;
+  /**
+   * 등록된 단말의 상세·공정 목록을 **다시 받는다**(#1202). 화면에 들어올 때 부른다.
+   *
+   * ⛔ 받지 못하면 **아무것도 바꾸지 않는다** — 알고 있던 값을 그대로 쓴다.
+   */
+  refresh: () => Promise<void>;
 }
 
 const INITIAL: RegistrationState = {
@@ -324,8 +340,18 @@ export const PopRegistrationProvider = ({ children }: { children: ReactNode }) =
    */
   const [registered, setRegistered] = useState<VerifiedTerminal | null>(null);
 
+  /**
+   * 다시 받기 요청의 순번(#1202). **가장 최근 요청의 답만 넣는다.**
+   *
+   * ⛔ 없으면 늦게 온 옛 답이 새 값을 덮는다 — 화면을 연달아 옮기거나, 답이 오기 전에 같은
+   *    단말로 재등록하면 단말 번호 비교로는 가를 수 없다(독립 검증 재현). 준비·재등록도 순번을
+   *    올려 그 전에 떠난 요청을 무효로 만든다.
+   */
+  const refreshSeq = useRef(0);
+
   const prepare = useCallback(
     async (terminal: VerifiedTerminal) => {
+      refreshSeq.current += 1;
       setState((prev) => ({ ...prev, phase: 'preparing', failure: null }));
 
       try {
@@ -475,14 +501,53 @@ export const PopRegistrationProvider = ({ children }: { children: ReactNode }) =
    *    「갈 곳이 달라지는가」를 이 값과 비교해 재고, 실제로 바뀔 때만 미전송 건수를 본다.
    */
   const restart = useCallback(() => {
+    refreshSeq.current += 1;
     setApproved(null);
     setCandidateTerminalToken(null);
     setState(INITIAL);
   }, []);
 
+  /**
+   * ⭐ **등록 때 받은 단말 정보를 화면 진입마다 갈아 둔다**(#1202). 공정 목록을 켤 때 한 번만
+   *    받았더니, 관리웹에서 공정을 매핑해도 단말 PC 를 다시 켜기 전까지 작업 시작 화면이
+   *    「매핑된 공정이 없습니다」로 막혀 있었다(실기 2026-09-14). 설비는 화면이 따로 조회해
+   *    바로 바뀌는데 공정만 묵어 있어, 같은 관리웹 저장이 반쪽만 보였다.
+   *
+   * ⛔ **실패는 조용히 넘긴다.** 오프라인·일시 오류로 못 받은 것을 「공정이 없다」로 바꾸면
+   *    멀쩡히 일하던 단말이 막힌다 — 알고 있던 값이 못 받은 값보다 낫다. 등록을 무르지도 않는다.
+   *
+   * ⛔ **답이 도착했을 때 그 단말이 아직 등록돼 있을 때만 반영한다.** 조회 도중 재등록으로
+   *    단말이 바뀌면 옛 단말의 공정이 새 단말 신원에 얹힌다.
+   */
+  const refresh = useCallback(async () => {
+    const terminalId = state.phase === 'ready' ? (state.terminal?.terminalId ?? null) : null;
+
+    if (terminalId === null || !navigator.onLine) return;
+
+    refreshSeq.current += 1;
+    const seq = refreshSeq.current;
+
+    try {
+      const [terminal, processes] = await Promise.all([
+        fetchTerminal(client, terminalId),
+        fetchProcesses(client, terminalId),
+      ]);
+
+      setState((prev) =>
+        seq === refreshSeq.current &&
+        prev.phase === 'ready' &&
+        prev.terminal?.terminalId === terminalId
+          ? { ...prev, terminal, processes }
+          : prev,
+      );
+    } catch {
+      /* 위 ⛔ — 못 받았으면 알고 있던 값을 쓴다. */
+    }
+  }, [client, state.phase, state.terminal?.terminalId]);
+
   const value = useMemo<PopRegistration>(
-    () => ({ ...state, verify, apply, retryPrepare, restart }),
-    [apply, restart, retryPrepare, state, verify],
+    () => ({ ...state, verify, apply, retryPrepare, restart, refresh }),
+    [apply, refresh, restart, retryPrepare, state, verify],
   );
 
   return (
@@ -531,4 +596,22 @@ export const usePopRegistration = (): PopRegistration => {
   }
 
   return value;
+};
+
+/**
+ * **화면에 들어올 때마다** 단말 정보를 다시 받는다(#1202). 라우터 안 겹에서 한 번 부른다.
+ *
+ * ⛔ **주소가 바뀔 때만 돈다.** 등록 상태가 바뀔 때마다 돌면 받은 값이 상태를 바꾸고, 그 변화가
+ *    다시 조회를 부른다. 그래서 최신 `refresh` 는 ref 로 들고 조건은 경로 하나만 본다.
+ */
+export const useRefreshPopTerminalOnScreenEntry = (): void => {
+  const { pathname } = useLocation();
+  const { refresh } = usePopRegistration();
+  const latest = useRef(refresh);
+
+  latest.current = refresh;
+
+  useEffect(() => {
+    void latest.current();
+  }, [pathname]);
 };

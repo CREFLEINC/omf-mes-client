@@ -14,6 +14,7 @@ import {
   formatMaterialLotNo,
   isMaterialLotNo,
 } from '../../patterns/material-lot-no';
+import { useLoadFailure } from '../../patterns/load-failure';
 import { useLotBalances, useLotHolds, type InventoryBalance, type LotHold } from './queries';
 import { byOnHandDesc } from './sort';
 import './screen.css';
@@ -138,6 +139,8 @@ export const MaterialLocationScreen = () => {
   };
 
   useScreenTitle(t.title);
+
+  const failureText = useLoadFailure();
   const scanField = useScanField({ onScan: accept });
 
   const lot = useScannedLot(code);
@@ -243,7 +246,9 @@ export const MaterialLocationScreen = () => {
             ) : null}
             {holdState === 'failed' ? (
               <AlertBanner variant="warning" title={t.hold.unconfirmed}>
-                {t.hold.unconfirmedDescription}
+                {failureText(holds.error, t.hold.unconfirmedDescription, {
+                  caution: t.hold.unconfirmedCaution,
+                })}
               </AlertBanner>
             ) : null}
             {holds.data !== undefined && holds.data.length > 0 ? (

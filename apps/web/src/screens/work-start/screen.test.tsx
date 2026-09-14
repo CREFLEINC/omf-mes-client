@@ -117,12 +117,23 @@ describe('P-02-01 작업 시작 — 단말 게이팅', () => {
     expect(screen.queryByText(t.blocked.unidentified)).not.toBeInTheDocument();
   });
 
-  it('머리줄은 설비가 아니라 단말 코드를 보인다', async () => {
+  /** ⭐ 사용자 지시 2026-09-14 — 설비는 타이틀 옆, 단말은 오른쪽. */
+  it('머리줄은 타이틀 옆에 설비, 오른쪽에 단말 코드를 보인다', async () => {
     renderScreen();
-    expect(
-      await screen.findByText(t.header.terminalLabel(TERMINAL.terminalCode)),
-    ).toBeInTheDocument();
-    expect(screen.queryByText(TERMINAL.equipmentCode, { exact: false })).not.toBeInTheDocument();
+    const equipment = await screen.findByText(`설비 ${TERMINAL.equipmentName}`);
+    const terminalLabel = screen.getByText(t.header.terminalLabel(TERMINAL.terminalCode));
+
+    expect(equipment.closest('.pop-context-right')).toBeNull();
+    expect(terminalLabel.closest('.pop-context-right')).not.toBeNull();
+  });
+
+  it('설비가 매핑되지 않으면 타이틀 옆 설비 자리를 비운다', async () => {
+    renderScreen({
+      terminal: { ...TERMINAL, equipmentId: null, equipmentCode: null, equipmentName: null },
+    });
+    await screen.findByText(t.blocked.equipmentMissing);
+
+    expect(document.querySelector('.pop-header .pop-context:not(.pop-context-right)')).toBeNull();
   });
 
   it('단말·공정을 모르면 조회하지 않고 사유를 말한다', async () => {

@@ -42,7 +42,11 @@ import { popRoutes } from '../routes/pop';
 import { applyPopFit } from '../patterns/pop-fit';
 import { PopLogoutButton } from '../patterns/pop-logout';
 import { PopScreenNavButton } from '../patterns/pop-screen-nav';
-import { PopRegistrationProvider, usePopRegistration } from '../patterns/pop-registration';
+import {
+  PopRegistrationProvider,
+  usePopRegistration,
+  useRefreshPopTerminalOnScreenEntry,
+} from '../patterns/pop-registration';
 import { RegistrationPanel } from '../screens/worker-assignment/registration-panel';
 import { currentTerminalToken, readTerminalToken } from '../patterns/pop-terminal-token';
 import { AppProviders } from './providers';
@@ -111,13 +115,18 @@ const POP_ENTRY_PATH = '/pop/worker-assignment';
  * 진입 화면에서 스스로 빠질 수 있다. 라우터 밖에 두면 주소를 직접 읽어야 하고, 화면을 옮겨도
  * 다시 그려지지 않는다.
  */
-const PopChrome = () => (
-  <>
-    <Outlet />
-    <PopScreenNavButton />
-    <PopLogoutButton />
-  </>
-);
+const PopChrome = () => {
+  /* ⭐ 관리웹에서 바꾼 단말 공정·설비가 단말을 다시 켜지 않아도 보이게 한다(#1202). */
+  useRefreshPopTerminalOnScreenEntry();
+
+  return (
+    <>
+      <Outlet />
+      <PopScreenNavButton />
+      <PopLogoutButton />
+    </>
+  );
+};
 
 const popRouter = createBrowserRouter([
   {

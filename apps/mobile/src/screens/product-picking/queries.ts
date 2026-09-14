@@ -81,6 +81,8 @@ export interface LotPoolResult {
   data: LotPool | undefined;
   isPending: boolean;
   isError: boolean;
+  /** 실패했으면 그 까닭. 연결이 끊긴 것과 서버가 거절한 것은 할 일이 다르다. */
+  error: Error | null;
 }
 
 export const useLotPool = (itemId: number | null): LotPoolResult => {
@@ -121,6 +123,7 @@ export const useLotPool = (itemId: number | null): LotPoolResult => {
     combine: ([all, held]) => ({
       isPending: all.isPending || held.isPending,
       isError: all.isError || held.isError,
+      error: all.error ?? held.error,
       data:
         all.data === undefined || held.data === undefined
           ? undefined

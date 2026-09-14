@@ -25,6 +25,13 @@ export const workStart = {
      */
     terminalUnknown: '단말 확인 전',
     terminalLabel: (code: string): string => `단말 ${code}`,
+    /**
+     * ⭐ **설비는 타이틀 옆에 선다**(스펙 §4 도면 · 사용자 지시 2026-09-14). 단말은 오른쪽 상태
+     * 쪽에 남는다. 설비를 모르거나 매핑이 없으면 자리를 비운다 — 사유는 막힘 띠가 말한다.
+     */
+    /* ⭐ 「설비 <이름>」으로 읽힌다 — 이름이 비면 코드(사용자 지시 2026-09-14). */
+    equipmentLabel: (code: string, name: string): string =>
+      `설비 ${name.trim() === '' ? code : name}`,
 
     workerUnset: '사번 미입력',
     workerLabel: (workerNo: string): string => `사번 ${workerNo}`,

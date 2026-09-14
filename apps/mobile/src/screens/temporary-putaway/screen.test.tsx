@@ -1,3 +1,4 @@
+import { messages } from '@omf-mes/i18n';
 import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useEffect, type ReactNode } from 'react';
@@ -457,7 +458,7 @@ describe('임시 위치 적재 화면', () => {
     await screen.findByLabelText('임시 위치 코드 스캔');
     scan('TMP-01');
 
-    expect(await screen.findByText('위치를 확인할 수 없습니다. 연결을 확인하세요.')).toBeTruthy();
+    expect(await screen.findByText(messages.httpError.loadServer)).toBeTruthy();
     expect(screen.queryByText('TMP-01 위치를 이 창고에서 찾지 못했습니다')).toBeNull();
     expect(screen.getByRole('button', { name: '임시 적치 등록' }).hasAttribute('disabled')).toBe(
       true,

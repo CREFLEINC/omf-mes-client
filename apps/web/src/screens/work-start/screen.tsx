@@ -433,6 +433,8 @@ export const WorkStartScreen = () => {
       <PopHeader
         titleId={titleId}
         terminalCode={terminal.data?.terminalCode ?? null}
+        equipmentCode={equipmentCode}
+        equipmentName={equipmentName}
         workerNo={confirmedNo}
         /*
          * ⭐ 연결 여부는 «마지막 조회가 서버에 닿았는가»로 말한다 — 브라우저의 온라인 표시는

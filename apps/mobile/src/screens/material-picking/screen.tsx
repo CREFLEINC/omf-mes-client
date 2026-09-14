@@ -26,6 +26,7 @@ import { useScanField } from '../../patterns/use-scan-field';
 import { useScreenTitle } from '../../patterns/screen-title';
 import { useWorkerId } from '../../patterns/workers';
 import { useWorkerSession } from '../../patterns/worker-session';
+import { useLoadFailure } from '../../patterns/load-failure';
 import { PickingOrderList } from './order-list';
 import {
   ISSUE_TYPE,
@@ -84,6 +85,7 @@ const batchIdOf = (pickingOrderId: number): string => `picking-order-${String(pi
 
 export const MaterialPickingScreen = () => {
   useScreenTitle(t.title);
+  const failureText = useLoadFailure();
 
   const { enqueue, flush, isRejected, loaded, pendingOf, rejected } = useOutbox();
   const { worker } = useWorkerSession();
@@ -471,11 +473,16 @@ export const MaterialPickingScreen = () => {
             ) : null}
             {request.isError || destination.isError ? (
               <p className="picking-out__note">
-                {[request.error, destination.error].some(
-                  (error) => error !== null && toApiError(error).kind === 'network',
-                )
-                  ? t.orders.destinationOffline
-                  : t.orders.destinationUnknown}
+                {failureText(
+                  /* 둘 중 하나라도 닿지 못했으면 연결 문제로 말한다 - 그쪽이 사람이 풀 수 있다. */
+                  [request.error, destination.error].find(
+                    (error) => error !== null && toApiError(error).kind === 'network',
+                  ) ??
+                    request.error ??
+                    destination.error,
+                  t.orders.destinationOffline,
+                  { other: t.orders.destinationUnknown },
+                )}
               </p>
             ) : null}
             {destination.data === undefined ? null : (
@@ -531,7 +538,9 @@ export const MaterialPickingScreen = () => {
           {held === 0 ? '' : ` · ${t.lines.heldCount(String(held))}`}
         </h2>
         {detail.isPending ? <p role="status">{t.lines.loading}</p> : null}
-        {detail.isError ? <AlertBanner variant="error" title={t.lines.loadFailed} /> : null}
+        {detail.isError ? (
+          <AlertBanner variant="error" title={failureText(detail.error, t.lines.loadFailed)} />
+        ) : null}
         {detail.data !== undefined && lines.length === 0 ? (
           <AlertBanner variant="warning" title={t.lines.none} />
         ) : null}

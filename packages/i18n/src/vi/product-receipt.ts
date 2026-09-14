@@ -71,6 +71,7 @@ export const productReceipt: Translated<typeof ko.productReceipt> = {
   unverified: {
     title: 'Không xác nhận được đã nhập kho hay chưa',
     description: 'Không có kết nối nên không hỏi được. Hãy kiểm tra tồn kho rồi mới làm tiếp.',
+    caution: 'Hãy kiểm tra tồn kho rồi mới làm tiếp.',
   },
   submit: 'Xong nhập kho và cất hàng',
   noWorker: 'Hãy xác nhận mã nhân viên trước',

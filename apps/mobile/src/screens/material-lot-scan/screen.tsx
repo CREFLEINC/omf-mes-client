@@ -14,6 +14,7 @@ import { ScanReplaceDialog } from '../../patterns/scan-replace-dialog';
 import { useScanField } from '../../patterns/use-scan-field';
 import { useScreenTitle } from '../../patterns/screen-title';
 import { useWorkerSession } from '../../patterns/worker-session';
+import { useLoadFailure } from '../../patterns/load-failure';
 import { useFillableLines, useSupplierLotReceipts } from './queries';
 import {
   LOT_LABEL,
@@ -47,6 +48,7 @@ const initialQtyOf = (draft: { body: unknown }): number =>
 
 export const MaterialLotScanScreen = () => {
   useScreenTitle(t.title);
+  const failureText = useLoadFailure();
 
   const { enqueue, flush, isRejected, loaded, pendingOf } = useOutbox();
   const { worker } = useWorkerSession();
@@ -236,7 +238,9 @@ export const MaterialLotScanScreen = () => {
       <section className="material-lot-scan__section">
         <h2>{t.receipt.legend}</h2>
         {receipts.isPending ? <p role="status">{t.receipt.loading}</p> : null}
-        {receipts.isError ? <AlertBanner variant="error" title={t.receipt.loadFailed} /> : null}
+        {receipts.isError ? (
+          <AlertBanner variant="error" title={failureText(receipts.error, t.receipt.loadFailed)} />
+        ) : null}
         {receipts.data?.length === 0 ? <p>{t.receipt.none}</p> : null}
         <label htmlFor="material-lot-scan-receipt">{t.receipt.pick}</label>
         <Select
@@ -260,7 +264,9 @@ export const MaterialLotScanScreen = () => {
         <section className="material-lot-scan__section" ref={lineSection}>
           <h2>{t.line.legend}</h2>
           {lines.isPending ? <p role="status">{t.line.loading}</p> : null}
-          {lines.isError ? <AlertBanner variant="error" title={t.line.loadFailed} /> : null}
+          {lines.isError ? (
+            <AlertBanner variant="error" title={failureText(lines.error, t.line.loadFailed)} />
+          ) : null}
           {lines.data !== undefined && openLines.length === 0 ? (
             <AlertBanner variant="warning" title={t.line.none} />
           ) : null}

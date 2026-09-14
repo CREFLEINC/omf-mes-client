@@ -1,3 +1,4 @@
+import { messages } from '@omf-mes/i18n';
 import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useEffect, type ReactNode } from 'react';
@@ -10,6 +11,7 @@ import {
   renderWithProviders,
   type StubRoute,
 } from '../../test/api-harness';
+import { rememberPlant } from '../../patterns/plant';
 import { useWorkerSession } from '../../patterns/worker-session';
 import { PutawayScreen } from './screen';
 
@@ -300,10 +302,38 @@ describe('적치·입고 완료 화면', () => {
   it('지시 조회 실패를 지시 없음으로 말하지 않는다', async () => {
     mount([], { tasksStatus: 500 });
 
-    expect(
-      await screen.findByText('적치 지시를 확인할 수 없습니다. 연결을 확인하세요.'),
-    ).toBeTruthy();
+    /* 서버가 답을 못 준 것이다. 연결을 보라고 하면 멀쩡한 망을 뒤진다(#1187). */
+    expect(await screen.findByText(messages.httpError.loadServer)).toBeTruthy();
     expect(screen.queryByText('받은 적치 지시가 없습니다')).toBeNull();
+  });
+
+  it('사번 조회에 닿지 못하면 연결을 확인하라고 한다', async () => {
+    mount([
+      {
+        match: (req) => new URL(req.url).pathname === '/mdm/workers',
+        respond: () => Promise.reject(new TypeError('Failed to fetch')),
+      },
+    ]);
+
+    expect(await screen.findByText('사번을 확인할 수 없습니다. 연결을 확인하세요.')).toBeTruthy();
+  });
+
+  /*
+   * 실기 실측(#1187) - 서버는 닿았고 단말 토큰이 무효라 401 이었는데 화면은 연결을 보라고 했다.
+   * 토큰 확인까지 거절되면 새 QR 이 필요하다고 말한다.
+   */
+  it('사번 조회가 거절되고 토큰도 무효면 등록 만료를 말한다', async () => {
+    await rememberPlant(3);
+    const denied = { errors: [{ scope: 'screen', code: 'PERMISSION_DENIED', message: '거절' }] };
+    mount([
+      {
+        match: (req) => new URL(req.url).pathname === '/mdm/workers',
+        respond: () => jsonResponse(denied, { status: 401 }),
+      },
+    ]);
+
+    expect(await screen.findByText(messages.httpError.deviceExpired)).toBeTruthy();
+    expect(screen.queryByText('사번을 확인할 수 없습니다. 연결을 확인하세요.')).toBeNull();
   });
 
   it('지시를 고르면 권장 위치를 코드로 보인다', async () => {

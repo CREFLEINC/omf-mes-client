@@ -35,6 +35,7 @@ export const shopfloorReceipt: Translated<typeof ko.shopfloorReceipt> = {
   unverified: {
     title: 'Chưa xác nhận được phiếu này đã nhận hay chưa',
     description: 'Hãy kiểm tra lại khi có kết nối. Nếu đã nhận rồi thì gửi nhập kho sẽ thất bại.',
+    caution: 'Nếu đã nhận rồi thì gửi nhập kho sẽ thất bại.',
   },
   queued: {
     title: 'Việc nhập kho của phiếu xuất kho này đang chờ gửi',

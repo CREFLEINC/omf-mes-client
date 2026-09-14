@@ -15,6 +15,7 @@ import { ScanReplaceDialog } from '../../patterns/scan-replace-dialog';
 import { useScanField } from '../../patterns/use-scan-field';
 import { useScreenTitle } from '../../patterns/screen-title';
 import { useWorkerSession } from '../../patterns/worker-session';
+import { useLoadFailure } from '../../patterns/load-failure';
 import {
   canConfirm,
   completedQtyOf,
@@ -43,6 +44,7 @@ interface Handed {
 
 export const WipHandoverScreen = () => {
   useScreenTitle(t.title);
+  const failureText = useLoadFailure();
 
   const navigate = useNavigate();
   const online = useOnlineStatus();
@@ -229,7 +231,9 @@ export const WipHandoverScreen = () => {
         </Button>
 
         {scanned !== null && lot.isPending ? <p role="status">{t.lot.loading}</p> : null}
-        {lot.isError ? <AlertBanner variant="warning" title={t.lot.loadFailed} /> : null}
+        {lot.isError ? (
+          <AlertBanner variant="warning" title={failureText(lot.error, t.lot.loadFailed)} />
+        ) : null}
         {scanned !== null && lot.data === null ? (
           <AlertBanner variant="error" title={t.lot.notFound(scanned)} />
         ) : null}
@@ -262,7 +266,10 @@ export const WipHandoverScreen = () => {
             <h2>{t.next.legend}</h2>
             {successors.isPending ? <p role="status">{t.next.loading}</p> : null}
             {successors.isError ? (
-              <AlertBanner variant="warning" title={t.next.loadFailed} />
+              <AlertBanner
+                variant="warning"
+                title={failureText(successors.error, t.next.loadFailed)}
+              />
             ) : null}
             {successors.data !== undefined && successors.data.length === 0 ? (
               <AlertBanner variant="info" title={t.next.none} />

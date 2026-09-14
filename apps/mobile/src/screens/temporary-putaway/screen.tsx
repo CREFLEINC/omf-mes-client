@@ -23,6 +23,7 @@ import { useOutbox } from '../../patterns/outbox';
 import { useScanField } from '../../patterns/use-scan-field';
 import { useScreenTitle } from '../../patterns/screen-title';
 import { useWorkerSession } from '../../patterns/worker-session';
+import { useLoadFailure } from '../../patterns/load-failure';
 import type { PutawayTask } from '../putaway/putaway';
 import { putawayKeys, usePutawayTask } from '../putaway/queries';
 import {
@@ -55,6 +56,7 @@ const isHandoff = (value: unknown): value is TemporaryPutawayHandoff =>
 
 export const TemporaryPutawayScreen = () => {
   useScreenTitle(t.title);
+  const failureText = useLoadFailure();
 
   const { enqueue, flush, isRejected, loaded, pendingOf } = useOutbox();
   const queryClient = useQueryClient();
@@ -330,10 +332,17 @@ export const TemporaryPutawayScreen = () => {
         </Button>
         {/* 스캔한 코드를 확인하는 동안 등록이 잠긴다. 왜 잠겼는지 말하지 않으면 멈춘 것처럼 보인다. */}
         {scanned !== null && byCode.isPending ? <p role="status">{t.location.loading}</p> : null}
-        {byCode.isError ? <AlertBanner variant="error" title={t.location.loadFailed} /> : null}
+        {byCode.isError ? (
+          <AlertBanner variant="error" title={failureText(byCode.error, t.location.loadFailed)} />
+        ) : null}
 
         {locations.isPending ? <p role="status">{t.location.loading}</p> : null}
-        {locations.isError ? <AlertBanner variant="error" title={t.location.loadFailed} /> : null}
+        {locations.isError ? (
+          <AlertBanner
+            variant="error"
+            title={failureText(locations.error, t.location.loadFailed)}
+          />
+        ) : null}
         {locations.data !== undefined && locations.data.length === 0 ? (
           <AlertBanner variant="warning" title={t.location.none} />
         ) : null}
