@@ -158,7 +158,6 @@ const routes = (options: Options = {}): StubRoute[] => {
         { itemId: 100, itemCode: 'FG-1001', itemName: '외장 커버', fifoPolicyCode: 'FEFO' },
         { itemId: 101, itemCode: 'FG-2002', itemName: '내장 커버', fifoPolicyCode: 'FEFO' },
       ],
-      page,
     ),
     {
       match: (req) => new URL(req.url).pathname === '/mdm/uoms',

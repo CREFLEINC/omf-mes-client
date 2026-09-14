@@ -81,11 +81,12 @@ export const inboundReceipt: Translated<typeof ko.inboundReceipt> = {
     title: 'Chọn mặt hàng',
     searchLabel: 'Tìm mặt hàng',
     searchPlaceholder: 'Nhập mã hoặc tên mặt hàng',
-    capped: (limit: string) => `Chỉ hiện ${limit} mục đầu. Hãy nhập từ khóa để thu hẹp.`,
+    more: (rest: string) => `Xem thêm (+${rest})`,
     loading: 'Đang tìm mặt hàng',
     empty: 'Không tìm thấy mặt hàng',
     failed: 'Không tìm được mặt hàng. Hãy kiểm tra kết nối.',
     cancel: 'Quay lại mà không chọn',
+    toTop: 'Lên đầu trang',
   },
   note: {
     legend: 'Phiếu giao hàng',

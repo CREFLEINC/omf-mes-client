@@ -178,7 +178,6 @@ const routes = (options: Options = {}): StubRoute[] => [
       { itemId: 2002, itemCode: 'ABC-123', itemName: '하우징', fifoPolicyCode: 'FIFO' },
       { itemId: 2001, itemCode: 'RM-1001', itemName: '수지A', fifoPolicyCode: 'FEFO' },
     ],
-    page,
   ),
   {
     match: (req) => new URL(req.url).pathname === '/mdm/code-values',

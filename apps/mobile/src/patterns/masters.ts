@@ -1,4 +1,11 @@
-import { useQueries, useQuery, type UseQueryResult } from '@tanstack/react-query';
+import {
+  type InfiniteData,
+  useInfiniteQuery,
+  useQueries,
+  useQuery,
+  type UseInfiniteQueryResult,
+  type UseQueryResult,
+} from '@tanstack/react-query';
 
 import { useApiClient } from './api-context';
 import { masterName } from './master-name';
@@ -109,39 +116,92 @@ export interface ItemOption extends ItemSummary {
   itemId: number;
 }
 
-/** 한 쪽에 보일 만큼만 받는다. 더 좁히는 것은 찾는 말을 적는 쪽이 빠르다. */
+/** 한 쪽에 보일 만큼만 받는다. 더 보려면 더 부르고, 좁히려면 찾는 말을 적는다. */
 export const ITEM_SEARCH_LIMIT = 50;
+
+interface ItemSearchPage {
+  items: ItemOption[];
+  /** 이 쪽의 번호. 계약의 쪽 번호는 1 부터다. */
+  page: number;
+  /** 조건에 맞는 전체 건수. 남은 수를 사람에게 보이려면 이것이 있어야 한다. */
+  total: number;
+}
+
+export interface ItemSearchResult {
+  /** 지금까지 받은 쪽을 이어 붙인 것. */
+  items: ItemOption[];
+  /** 조건에 맞는 전체 건수. 받은 수를 빼면 남은 수다. */
+  total: number;
+}
+
+/*
+ * 받은 쪽을 하나로 이어 준다. 남은 수를 세려면 전체 건수도 함께 나와야 한다.
+ *
+ * 부품 밖에 둔다 - 안에 적으면 렌더마다 새 함수라 조회가 이것을 다시 돌린다. 목록이 100줄을
+ * 넘는 자리라 글자를 칠 때마다 그 전부를 다시 이어 붙이게 된다.
+ */
+const toItemSearchResult = (data: InfiniteData<ItemSearchPage>): ItemSearchResult => ({
+  items: data.pages.flatMap((each) => each.items),
+  total: data.pages[0]?.total ?? 0,
+});
 
 /**
  * 고를 품목을 찾는다. 작업자가 직접 고르는 자리에만 쓴다.
  *
  * 보이는 줄의 품목을 묻는 것과 다르다 - 고르기 전에는 마스터 전체가 후보다. 전부 받아
- * 늘어놓을 수 있는 양이 아니라서(마스터가 9,000건인 곳이 있다) 한 쪽만 받는다.
+ * 늘어놓을 수 있는 양이 아니라서(마스터가 9,000건인 곳이 있다) 한 쪽씩 받는다.
  *
- * 찾는 말이 없어도 한 쪽은 받는다. 적기 전에 아무것도 보이지 않으면 무엇을 적어야 하는지
- * 알 수 없다. 잘린 목록이 전부인 것처럼 보이는 것은 부르는 쪽이 받은 수로 말해서 막는다.
+ * 찾는 말이 없어도 첫 쪽은 받는다. 적기 전에 아무것도 보이지 않으면 무엇을 적어야 하는지
+ * 알 수 없다. 뒤에 더 있다는 것은 부르는 쪽이 남은 수로 말한다.
+ *
+ * 찾는 말이 열쇠라 말이 바뀌면 쪽도 처음부터 다시 센다 - 앞 말로 받아 둔 쪽이 새 말의
+ * 결과에 이어 붙지 않는다.
  */
-export const useItemSearch = (term: string): UseQueryResult<ItemOption[]> => {
+export const useItemSearch = (term: string): UseInfiniteQueryResult<ItemSearchResult> => {
   const { client } = useApiClient();
   const q = term.trim();
 
-  return useQuery({
+  return useInfiniteQuery({
     queryKey: masterKeys.itemSearch(q),
-    queryFn: async () => {
+    initialPageParam: 1,
+    /*
+     * 찾는 말이 바뀌면 앞 말로 펼쳐 둔 쪽을 버린다.
+     *
+     * 남겨 두면 말을 지웠을 때 앞서 더 받아 둔 것이 그대로 돌아온다 - 사람은 목록을 처음부터
+     * 다시 보려고 지웠는데 150건이 펼쳐진 채로 서 있고, 더 받을 자리는 그 끝에 있다.
+     */
+    gcTime: 0,
+    queryFn: async ({ pageParam }): Promise<ItemSearchPage> => {
       const data = await runRequest(() =>
         client.GET('/mdm/items', {
-          params: { query: { ...(q === '' ? {} : { q }), size: ITEM_SEARCH_LIMIT } },
+          params: {
+            query: { ...(q === '' ? {} : { q }), page: pageParam, size: ITEM_SEARCH_LIMIT },
+          },
         }),
       );
 
-      return data.items.map((item) => ({
-        itemId: item.itemId,
-        itemCode: item.itemCode,
-        itemName: item.itemName,
-        fifoPolicyCode: item.fifoPolicyCode,
-        storageConditionCode: item.storageConditionCode,
-      }));
+      return {
+        items: data.items.map((item) => ({
+          itemId: item.itemId,
+          itemCode: item.itemCode,
+          itemName: item.itemName,
+          fifoPolicyCode: item.fifoPolicyCode,
+          storageConditionCode: item.storageConditionCode,
+        })),
+        page: data.page.page,
+        total: data.page.total,
+      };
     },
+    /*
+     * 받은 수로 센다. 쪽 번호에 1 을 더하는 것만으로는 서버가 빈 쪽을 답할 때 끝을 모른다.
+     * 받은 것이 없으면 거기서 멈춘다 - 전체 수가 틀려도 끝없이 부르지 않는다.
+     */
+    getNextPageParam: (last, pages) => {
+      const loaded = pages.reduce((count, each) => count + each.items.length, 0);
+
+      return last.items.length > 0 && loaded < last.total ? last.page + 1 : undefined;
+    },
+    select: toItemSearchResult,
   });
 };
 
