@@ -1210,6 +1210,41 @@ describe('입하 등록 화면 — 발주 없이 도착', () => {
     expect(screen.queryByLabelText('품목 검색')).toBeNull();
   });
 
+  /*
+   * 글자마다 물으면 한 번 찾는 데 요청이 글자 수만큼 나간다. 9,000건 마스터를 현장 무선으로
+   * 부르는 자리라 그 값이 그대로 기다림이 되고, 글자마다 결과가 비었다 찼다 해 깜빡인다.
+   */
+  it('찾는 말을 이어 적는 동안에는 묻지 않는다', async () => {
+    const asked: string[] = [];
+    const user = userEvent.setup();
+    mount([
+      {
+        match: (req) => new URL(req.url).pathname === '/mdm/items',
+        respond: (req) => {
+          asked.push(new URL(req.url).searchParams.get('q') ?? '');
+          return jsonResponse({ items: [], page });
+        },
+      },
+    ]);
+
+    await screen.findByLabelText('LOT 번호');
+    scan(SCANNED);
+    await user.click(await screen.findByRole('button', { name: '자재 P/O 없이 등록' }));
+    await user.click(await screen.findByRole('button', { name: '품목 찾기' }));
+    await screen.findByLabelText('품목 검색');
+
+    /* 여는 순간 한 쪽을 받는다. 그 한 번만 세어 두고 적는 동안 늘어나는지 본다. */
+    const opened = asked.length;
+    await user.type(screen.getByLabelText('품목 검색'), 'ABC');
+
+    await waitFor(() => {
+      expect(asked).toContain('ABC');
+    });
+
+    /* 다 적은 뒤의 한 번뿐이다. 글자마다 물으면 A · AB · ABC 로 세 번이 된다. */
+    expect(asked.slice(opened)).toEqual(['ABC']);
+  });
+
   /* 품목 마스터의 주인은 ERP 다. 여기서 만들 길을 찾지 않는다. */
   it('목록에 없는 품목은 여기서 만들 수 없다고 말한다', async () => {
     const user = userEvent.setup();
