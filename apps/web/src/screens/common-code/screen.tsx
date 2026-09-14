@@ -212,7 +212,7 @@ const toPartnerRoleSaveError = (error: ApiError | null): ApiError | null => {
   if (error === null || error.kind !== 'validation') return error;
 
   return {
-    kind: 'validation',
+    ...error,
     errors: error.errors.map((item) =>
       item.code === STALE_TOKEN_CODE
         ? { ...item, message: messages.commonCode.partnerRole.saveTokenUnavailable }

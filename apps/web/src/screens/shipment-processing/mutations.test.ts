@@ -135,6 +135,7 @@ describe('useShipmentProcessingMutation', () => {
     await waitFor(() =>
       expect(result.current.error).toEqual({
         kind: 'validation',
+        status: 400,
         errors: [
           {
             scope: 'field',
@@ -176,6 +177,7 @@ describe('useShipmentProcessingMutation', () => {
     await waitFor(() =>
       expect(result.current.error).toEqual({
         kind: 'conflict',
+        status: 409,
         cause: 'user',
         code: 'VERSION_CONFLICT',
         message: 'Synthetic state conflict',

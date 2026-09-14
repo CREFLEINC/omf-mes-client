@@ -16,6 +16,7 @@ export const outboxRejections: Translated<typeof ko.outboxRejections> = {
     request: 'Yêu cầu',
     status: 'Mã phản hồi',
     code: 'Mã lỗi',
+    scope: 'Trường bị lỗi',
     message: 'Thông báo nhận về',
     key: 'Mã yêu cầu',
     rejectedAt: 'Thời điểm bị trả về',

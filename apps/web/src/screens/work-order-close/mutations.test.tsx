@@ -155,6 +155,7 @@ describe('useWorkOrderCloseMutation', () => {
     await waitFor(() =>
       expect(result.current.error).toEqual({
         kind: 'conflict',
+        status: 409,
         cause: 'user',
         message: 'Synthetic concurrent close',
       }),

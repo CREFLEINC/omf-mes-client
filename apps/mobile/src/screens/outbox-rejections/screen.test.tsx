@@ -169,6 +169,306 @@ describe('전송 실패한 기록 화면', () => {
   });
 
   /*
+   * 서버가 상태와 코드를 주었는데 상세가 둘 다 없다고 적던 자리다. 계약 오류 봉투는
+   * validation 으로 접히는데 그 갈래가 상태를 싣지 않았고, 코드를 읽는 자리도 http·conflict
+   * 뿐이었다. 401 만 멀쩡했던 것은 그것이 봉투 모양과 무관하게 먼저 http 로 갈리기 때문이다.
+   *
+   * 봉투 모양은 서버가 갈래마다 다르게 싣는다 - 어느 칸이 걸렸는지가 field 에 오기도 하고
+   * uniqueScope 에 오기도 한다.
+   */
+  it('중복으로 거절되면 상태와 코드와 걸린 범위를 보인다', async () => {
+    seed([
+      record({
+        error: {
+          kind: 'validation',
+          status: 400,
+          errors: [
+            {
+              scope: 'screen',
+              code: 'UNIQUE_VIOLATION',
+              message: '이미 있는 값입니다.',
+              uniqueScope: ['plantId', 'lotNo'],
+            },
+          ],
+        },
+      }),
+    ]);
+
+    render();
+
+    await userEvent.click(await screen.findByRole('button', { name: '상세 보기' }));
+
+    const details = screen.getByRole('group', { name: '상세' });
+
+    expect(valueOf(details, '응답 코드')).toBe('400');
+    expect(valueOf(details, '오류 코드')).toBe('UNIQUE_VIOLATION');
+    expect(valueOf(details, '걸린 칸')).toBe('plantId, lotNo');
+  });
+
+  it('칸을 짚어 거절되면 그 칸 이름을 보인다', async () => {
+    seed([
+      record({
+        error: {
+          kind: 'validation',
+          status: 400,
+          errors: [
+            {
+              scope: 'field',
+              field: 'lines.0.receivedQty',
+              code: 'QTY_EXCEEDS_ORDERED',
+              message: '발주 수량과 허용치를 넘습니다.',
+            },
+          ],
+        },
+      }),
+    ]);
+
+    render();
+
+    await userEvent.click(await screen.findByRole('button', { name: '상세 보기' }));
+
+    const details = screen.getByRole('group', { name: '상세' });
+
+    expect(valueOf(details, '응답 코드')).toBe('400');
+    expect(valueOf(details, '오류 코드')).toBe('QTY_EXCEEDS_ORDERED');
+    expect(valueOf(details, '걸린 칸')).toBe('lines.0.receivedQty');
+  });
+
+  /*
+   * 코드와 걸린 칸은 같은 항목에서 와야 한다. 각각 따로 찾으면 항목이 섞여 올 때 서버가 한
+   * 적 없는 짝이 서고, 담당자는 엉뚱한 칸 이름을 듣는다 - 빈 칸보다 나쁘다.
+   */
+  it('여러 항목이 와도 코드와 걸린 칸을 한 항목에서 뽑는다', async () => {
+    seed([
+      record({
+        error: {
+          kind: 'validation',
+          status: 400,
+          errors: [
+            {
+              scope: 'screen',
+              code: 'UNIQUE_VIOLATION',
+              message: '이미 있는 값입니다.',
+              uniqueScope: ['plantId', 'lotNo'],
+            },
+            { scope: 'field', field: 'receivedQty', code: 'RANGE', message: '범위를 벗어납니다' },
+          ],
+        },
+      }),
+    ]);
+
+    render();
+
+    await userEvent.click(await screen.findByRole('button', { name: '상세 보기' }));
+
+    const details = screen.getByRole('group', { name: '상세' });
+
+    expect(valueOf(details, '오류 코드')).toBe('UNIQUE_VIOLATION');
+    expect(valueOf(details, '걸린 칸')).toBe('plantId, lotNo');
+  });
+
+  /*
+   * 코드 없는 항목이 앞에 올 수 있다. 그것을 대표로 삼으면 코드 칸이 비고, 걸린 칸도 그
+   * 항목 것이 되어 둘 다 엉뚱해진다.
+   */
+  it('코드 없는 항목이 앞에 와도 코드를 가진 항목을 대표로 삼는다', async () => {
+    seed([
+      record({
+        error: {
+          kind: 'validation',
+          status: 400,
+          errors: [
+            { scope: 'screen', code: '', message: '처리할 수 없습니다' },
+            {
+              scope: 'field',
+              field: 'receivedQty',
+              code: 'QTY_EXCEEDS_ORDERED',
+              message: '발주 수량과 허용치를 넘습니다.',
+            },
+          ],
+        },
+      }),
+    ]);
+
+    render();
+
+    await userEvent.click(await screen.findByRole('button', { name: '상세 보기' }));
+
+    const details = screen.getByRole('group', { name: '상세' });
+
+    expect(valueOf(details, '오류 코드')).toBe('QTY_EXCEEDS_ORDERED');
+    expect(valueOf(details, '걸린 칸')).toBe('receivedQty');
+  });
+
+  /* 서버가 칸을 비우는 방식이 키를 빼는 것일 수도, 빈 문자열일 수도 있다. */
+  it('걸린 칸이 빈 문자열로 오면 범위를 대신 보인다', async () => {
+    seed([
+      record({
+        error: {
+          kind: 'validation',
+          status: 400,
+          errors: [
+            {
+              scope: 'screen',
+              field: '   ',
+              code: 'UNIQUE_VIOLATION',
+              message: '이미 있는 값입니다.',
+              uniqueScope: ['plantId', 'lotNo'],
+            },
+          ],
+        },
+      }),
+    ]);
+
+    render();
+
+    await userEvent.click(await screen.findByRole('button', { name: '상세 보기' }));
+
+    expect(valueOf(screen.getByRole('group', { name: '상세' }), '걸린 칸')).toBe('plantId, lotNo');
+  });
+
+  /* 잠긴 상태도 같은 봉투로 온다. 다시 불러도 안 풀리는 갈래라 더 물어볼 일이 많다. */
+  it('잠긴 상태도 상태와 코드와 걸린 칸을 보인다', async () => {
+    seed([
+      record({
+        error: {
+          kind: 'stateLocked',
+          status: 422,
+          errors: [
+            {
+              scope: 'field',
+              field: 'statusCode',
+              code: 'STATE_LOCKED',
+              message: '확정된 뒤에는 고칠 수 없습니다',
+            },
+          ],
+        },
+      }),
+    ]);
+
+    render();
+
+    await userEvent.click(await screen.findByRole('button', { name: '상세 보기' }));
+
+    const details = screen.getByRole('group', { name: '상세' });
+
+    expect(valueOf(details, '응답 코드')).toBe('422');
+    expect(valueOf(details, '오류 코드')).toBe('STATE_LOCKED');
+    expect(valueOf(details, '걸린 칸')).toBe('statusCode');
+  });
+
+  /*
+   * 칸은 짚어 놓고 코드만 빈 봉투가 올 수 있다. 대표를 못 고르면 걸린 칸 줄이 통째로
+   * 사라져, 서버가 알려 준 것을 화면이 버리는 셈이 된다.
+   */
+  it('코드가 전부 비어 있어도 걸린 칸은 보인다', async () => {
+    seed([
+      record({
+        error: {
+          kind: 'validation',
+          status: 400,
+          errors: [
+            { scope: 'field', field: 'receivedQty', code: '  ', message: '고칠 수 없습니다' },
+          ],
+        },
+      }),
+    ]);
+
+    render();
+
+    await userEvent.click(await screen.findByRole('button', { name: '상세 보기' }));
+
+    const details = screen.getByRole('group', { name: '상세' });
+
+    expect(valueOf(details, '오류 코드')).toBe('없음');
+    expect(valueOf(details, '걸린 칸')).toBe('receivedQty');
+  });
+
+  /*
+   * 봉투를 잠긴 갈래로 가른 근거가 그 코드를 가진 항목이다. 다른 것을 대표로 세우면 카드가
+   * 말하는 사유와 상세의 코드가 서로 다른 것을 가리킨다.
+   */
+  it('잠긴 갈래는 그 코드를 가진 항목을 대표로 삼는다', async () => {
+    seed([
+      record({
+        error: {
+          kind: 'stateLocked',
+          status: 422,
+          errors: [
+            { scope: 'field', field: 'receivedQty', code: 'RANGE', message: '범위를 벗어납니다' },
+            {
+              scope: 'field',
+              field: 'statusCode',
+              code: 'STATE_LOCKED',
+              message: '확정된 뒤에는 고칠 수 없습니다',
+            },
+          ],
+        },
+      }),
+    ]);
+
+    render();
+
+    await userEvent.click(await screen.findByRole('button', { name: '상세 보기' }));
+
+    const details = screen.getByRole('group', { name: '상세' });
+
+    expect(valueOf(details, '오류 코드')).toBe('STATE_LOCKED');
+    expect(valueOf(details, '걸린 칸')).toBe('statusCode');
+  });
+
+  /*
+   * 잠긴 사유에 칸이 없으면 걸린 칸 줄을 내지 않는다. 서버가 그 사유로 짚은 칸이 없는데
+   * 옆 항목의 칸을 끌어다 쓰면 서버가 한 적 없는 짝이 되고, 그것이 이 화면이 막으려는 바다.
+   * 사유 자체는 돌아온 문구 줄에 그대로 남는다.
+   */
+  it('잠긴 사유에 칸이 없으면 걸린 칸을 지어내지 않는다', async () => {
+    seed([
+      record({
+        error: {
+          kind: 'stateLocked',
+          status: 422,
+          errors: [
+            { scope: 'field', field: 'plannedQty', code: 'RANGE', message: '범위를 벗어납니다' },
+            { scope: 'screen', code: 'STATE_LOCKED', message: '확정된 뒤에는 고칠 수 없습니다' },
+          ],
+        },
+      }),
+    ]);
+
+    render();
+
+    await userEvent.click(await screen.findByRole('button', { name: '상세 보기' }));
+
+    const details = screen.getByRole('group', { name: '상세' });
+
+    expect(valueOf(details, '오류 코드')).toBe('STATE_LOCKED');
+    expect(within(details).queryByText('걸린 칸')).toBeNull();
+    expect(valueOf(details, '돌아온 문구')).toContain('확정된 뒤에는 고칠 수 없습니다');
+  });
+
+  /* 화면이 스스로 만든 검증 오류에는 응답이 없다. 없는 상태를 지어내지 않는다. */
+  it('서버가 아니라 화면이 만든 오류는 상태를 비운다', async () => {
+    seed([
+      record({
+        error: {
+          kind: 'validation',
+          errors: [{ scope: 'screen', code: 'STALE_TOKEN', message: '다시 불러오세요' }],
+        },
+      }),
+    ]);
+
+    render();
+
+    await userEvent.click(await screen.findByRole('button', { name: '상세 보기' }));
+
+    const details = screen.getByRole('group', { name: '상세' });
+
+    expect(valueOf(details, '응답 코드')).toBe('없음');
+    expect(valueOf(details, '오류 코드')).toBe('STALE_TOKEN');
+  });
+
+  /*
    * 서버가 문구 없이 충돌만 돌려주면 정규화가 빈 문자열을 넣는다. 그 빈 값을 그대로 내면
    * 다른 칸은 없음이라 적혀 있는데 이 칸만 비어, 읽는 사람이 잘린 화면으로 읽는다.
    */

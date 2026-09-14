@@ -3,6 +3,13 @@ import type { components } from './generated/api';
 export type ErrorItem = components['schemas']['ErrorItem'];
 
 /**
+ * 다시 불러도 안 풀리는 잠김. 봉투를 이 코드로 가른다.
+ *
+ * 읽는 쪽도 같은 값을 봐야 한다 - 따로 적으면 한쪽만 바뀌었을 때 갈래와 표시가 어긋난다.
+ */
+export const STATE_LOCKED_CODE = 'STATE_LOCKED';
+
+/**
  * `ConflictResponse.conflictCause`에서 이름을 땄지만 `ShipmentConflictResponse`·
  * `StockReinstatementConflictResponse`의 `conflictCause`도 같은 값 집합이고 이제 셋 다
  * 필수다(통보 221 — 「서버는 공용 충돌 봉투를 사용하므로 항상 이 키를 싣는다」). 세 스키마가
@@ -33,9 +40,14 @@ export type ApiError =
       code?: string;
       message: string;
       currentLotStatusCode?: string;
+      status?: number;
     }
-  | { kind: 'stateLocked'; errors: ErrorItem[] }
-  | { kind: 'validation'; errors: ErrorItem[] }
+  /*
+   * 상태는 선택이다. 이 두 갈래는 서버 응답에서도 오고 화면이 스스로 만들기도 한다 - 저장을
+   * 시작조차 못 한 것처럼 응답이 없는 오류에 상태를 요구하면 지어내야 한다.
+   */
+  | { kind: 'stateLocked'; errors: ErrorItem[]; status?: number }
+  | { kind: 'validation'; errors: ErrorItem[]; status?: number }
   | { kind: 'http'; status: number; code?: string; message?: string; currentLotStatusCode?: string }
   | { kind: 'network' };
 
@@ -106,6 +118,7 @@ export const normalizeApiError = (status: number, body: unknown): ApiError => {
   if (status === 409 && isRecord(body) && isConflictCause(body.conflictCause)) {
     return {
       kind: 'conflict',
+      status,
       cause: body.conflictCause,
       /* 원인과 함께 **코드도 남긴다** — 위 `code` 주석 참고. 화면이 둘 다 보고 갈라야 한다. */
       ...(code === undefined ? {} : { code }),
@@ -164,9 +177,9 @@ export const normalizeApiError = (status: number, body: unknown): ApiError => {
   ) {
     const errors = body.errors;
     if (errors.length > 0) {
-      return errors.some((error) => error.code === 'STATE_LOCKED')
-        ? { kind: 'stateLocked', errors }
-        : { kind: 'validation', errors };
+      return errors.some((error) => error.code === STATE_LOCKED_CODE)
+        ? { kind: 'stateLocked', status, errors }
+        : { kind: 'validation', status, errors };
     }
   }
 

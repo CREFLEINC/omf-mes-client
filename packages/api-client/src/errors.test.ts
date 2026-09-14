@@ -10,6 +10,7 @@ describe('normalizeApiError', () => {
     });
     expect(result).toEqual({
       kind: 'conflict',
+      status: 409,
       cause: 'erpSync',
       message: 'ERP 재동기화로 원본이 갱신됐습니다',
     });
@@ -26,7 +27,7 @@ describe('normalizeApiError', () => {
     (cause) => {
       const result = normalizeApiError(409, { conflictCause: cause, message: '충돌' });
 
-      expect(result).toEqual({ kind: 'conflict', cause, message: '충돌' });
+      expect(result).toEqual({ kind: 'conflict', status: 409, cause, message: '충돌' });
     },
   );
 
@@ -45,6 +46,7 @@ describe('normalizeApiError', () => {
       }),
     ).toEqual({
       kind: 'conflict',
+      status: 409,
       cause: 'user',
       code: 'ALREADY_REINSTATED',
       message: '이미 재등록된 건입니다',
@@ -66,6 +68,7 @@ describe('normalizeApiError', () => {
       }),
     ).toEqual({
       kind: 'conflict',
+      status: 409,
       cause: 'user',
       currentLotStatusCode: 'DEFECTIVE',
       message: '합성 충돌 문구',
@@ -109,6 +112,22 @@ describe('normalizeApiError', () => {
     if (result.kind === 'stateLocked') {
       expect(result.errors[0]?.message).toBe('확정된 Rev는 수정할 수 없습니다');
     }
+  });
+
+  /*
+   * 상태를 여기서 버리면 화면이 다시 얻을 자리가 없다. 되돌아온 기록의 상세가 응답 코드를
+   * 빈 칸으로 내던 것이 그 결과였다 - 서버는 400 을 주었는데 목록에는 남지 않았다.
+   */
+  it('봉투로 온 오류도 응답 코드를 지고 온다', () => {
+    const invalid = normalizeApiError(400, {
+      errors: [{ scope: 'screen', code: 'UNIQUE_VIOLATION', message: '이미 있는 값입니다.' }],
+    });
+    const locked = normalizeApiError(422, {
+      errors: [{ scope: 'screen', code: 'STATE_LOCKED', message: '잠겼습니다' }],
+    });
+
+    expect(invalid.kind === 'validation' ? invalid.status : null).toBe(400);
+    expect(locked.kind === 'stateLocked' ? locked.status : null).toBe(422);
   });
 
   it('필드 오류 목록은 validation으로 정규화하고 scope·field를 보존한다', () => {
