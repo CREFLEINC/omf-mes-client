@@ -135,7 +135,9 @@ describe('ToolUsageScreen — 머리줄', () => {
       { fetch: createStubFetch(routes({})), route: ENTRY_ROUTE },
     );
 
-    expect(await screen.findByText(`${t.entry.workOrderLabel} 1001 · PRS-01`)).toBeInTheDocument();
+    expect(
+      await screen.findByText(`${t.entry.workOrderLabel} 1001 · 설비 프레스 1호기`),
+    ).toBeInTheDocument();
   });
 
   it('단말 설비가 없으면 W/O 만 보인다', async () => {
