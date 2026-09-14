@@ -1,7 +1,7 @@
 import { isUnauthenticated } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useQuery, useQueryClient, type Query, type QueryClient } from '@tanstack/react-query';
-import { useCallback, useEffect, useSyncExternalStore } from 'react';
+import { useCallback, useEffect, useState, useSyncExternalStore } from 'react';
 
 import { useApiClient } from './api-context';
 import { useOnlineStatus } from './online-status';
@@ -48,31 +48,52 @@ const probeDeviceToken = async (
  * 명단은 그대로라, 작업자는 들어간 뒤에야 모든 조회가 막힌다(#1198). 들어가기 전에 가른다.
  *
  * 망이 끊겼으면 묻지 않는다 - 사번 확인은 오프라인에서도 되어야 한다(M-CO-01 §5-7).
- * 들어올 때마다 다시 묻고, 묻는 동안은 모른다고 둔다. 새 QR 로 다시 등록한 직후에 앞 등록의
- * 「죽었다」가 캐시에 남아 있으면 멀쩡한 단말을 막는다.
+ * 설 때마다 새로 묻고, 이 화면이 선 뒤에 받은 답만 쓴다. 묻는 동안은 모른다고 둔다.
+ *
+ * ⛔ 앞서 보낸 확인을 이어받지 않고 취소한다. 새 QR 로 다시 등록하기 전에 앞 토큰으로 보낸
+ * 확인이 아직 답을 못 받았으면, 그 401 이 멀쩡한 새 단말을 막는다(#1198 독립 검증 재현).
+ * 캐시에 남은 앞 등록의 「죽었다」도 같은 이유로 쓰지 않는다.
  *
  * @returns `recheck` - 같은 화면에 머문 채 다시 물을 때 쓴다(교대로 사번을 바꿀 때).
  */
 export const useDeviceTokenState = (): { state: DeviceTokenState; recheck: () => void } => {
+  const queryClient = useQueryClient();
   const { client } = useApiClient();
   const online = useOnlineStatus();
+  const [mountedAt] = useState(() => Date.now());
 
   const token = useQuery({
     queryKey: deviceTokenKey,
     queryFn: () => probeDeviceToken(client),
-    enabled: online,
-    refetchOnMount: 'always',
+    enabled: false,
   });
   const { refetch } = token;
 
   const recheck = useCallback(() => {
-    if (navigator.onLine) {
-      void refetch();
+    if (!navigator.onLine) {
+      return;
     }
-  }, [refetch]);
+
+    /*
+     * `refetch({ cancelRefetch: true })` 로는 안 된다 - 받아 둔 값이 하나도 없으면 진행 중인
+     * 요청을 취소하지 않고 이어받는다. 먼저 취소하고 새로 묻는다.
+     */
+    void queryClient
+      .cancelQueries({ queryKey: deviceTokenKey })
+      .then(() => refetch())
+      .catch(() => undefined);
+  }, [queryClient, refetch]);
+
+  useEffect(() => {
+    if (online) {
+      recheck();
+    }
+  }, [online, recheck]);
+
+  const answeredHere = token.dataUpdatedAt >= mountedAt;
 
   return {
-    state: online && !token.isFetching ? (token.data ?? 'unknown') : 'unknown',
+    state: online && !token.isFetching && answeredHere ? (token.data ?? 'unknown') : 'unknown',
     recheck,
   };
 };

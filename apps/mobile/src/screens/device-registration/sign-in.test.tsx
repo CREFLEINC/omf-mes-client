@@ -7,6 +7,7 @@ import { OUTBOX_KEY, OUTBOX_REJECTED_KEY } from '../../patterns/outbox';
 import { forgetPlant, rememberPlant } from '../../patterns/plant';
 import {
   createStubFetch,
+  createTestQueryClient,
   jsonResponse,
   renderWithProviders,
   type StubRoute,
@@ -281,6 +282,49 @@ describe('등록이 서버에서 끊긴 기기', () => {
 
     await signedIn(user);
 
+    expect(screen.queryByText(EXPIRED)).not.toBeInTheDocument();
+  });
+
+  /*
+   * 망이 멈춘 사이 앞 토큰으로 보낸 확인이 답을 못 받은 채 다시 등록하면, 새로 선 화면이 그
+   * 옛 요청의 401 을 받아 멀쩡한 단말을 막았다(#1198 독립 검증). 설 때마다 새로 묻는다.
+   */
+  it('다시 섰으면 앞서 보낸 확인의 답으로 막지 않는다', async () => {
+    await rememberPlant(7);
+    const queryClient = createTestQueryClient();
+    const answers: ((response: Response) => void)[] = [];
+    const fetch = createStubFetch([
+      probe(
+        () =>
+          new Promise<Response>((resolve) => {
+            answers.push(resolve);
+          }),
+      ),
+    ]);
+    const screenOf = () => (
+      <MemoryRouter>
+        <WorkerSignInScreen />
+      </MemoryRouter>
+    );
+
+    const first = renderWithProviders(screenOf(), { fetch, queryClient });
+    await waitFor(() => {
+      expect(answers).toHaveLength(1);
+    });
+    first.unmount();
+
+    renderWithProviders(screenOf(), { fetch, queryClient });
+    await waitFor(() => {
+      expect(answers).toHaveLength(2);
+    });
+
+    answers[0]?.(jsonResponse(denied, { status: 401 }));
+    answers[1]?.(jsonResponse({ items: [], page: { page: 1, size: 1, total: 0 } }));
+
+    await screen.findByRole('group', { name: '사번 입력' });
+    await waitFor(() => {
+      expect(queryClient.getQueryData(['device-token-state'])).toBe('alive');
+    });
     expect(screen.queryByText(EXPIRED)).not.toBeInTheDocument();
   });
 
