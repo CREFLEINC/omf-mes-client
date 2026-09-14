@@ -51,9 +51,23 @@ const SelectedWorkOrderReleaseExecution = ({
   onClearSelection,
 }: SelectedWorkOrderReleaseExecutionProps) => {
   const toast = useToast();
+  const { dismiss: dismissToast } = toast;
   const [body, setBody] = useState<WorkOrderRelease | null>(null);
   const [writeOwnerMismatch, setWriteOwnerMismatch] = useState(false);
   const submitting = useRef(false);
+  const releasedToastId = useRef<string | null>(null);
+  /*
+   * 배포 성공 토스트는 **이 W/O 의 소식이다** — 다른 W/O 로 옮기면(이 부품이 `key` 로 새로 선다)
+   * 거둔다. 토스트는 우하단에 서고 자동 소멸(기본 5초)이 포인터가 올라가 있는 동안 멈추는데
+   * (디자인 시스템 규약), 「배포 확정」도 우하단이라 누른 자리에 뜬 토스트가 멈춘 채 다음 W/O 의
+   * 같은 버튼을 덮어 누름이 먹지 않았다(PLAN-WO-01 D5).
+   */
+  useEffect(
+    () => () => {
+      if (releasedToastId.current !== null) dismissToast(releasedToastId.current);
+    },
+    [dismissToast],
+  );
   const detail = useWorkOrderReleaseDetail(workOrderId);
   const validation = useWorkOrderValidation(workOrderId);
   const detailState = toWorkOrderReleaseDetailState({
@@ -84,7 +98,10 @@ const SelectedWorkOrderReleaseExecution = ({
         setWriteOwnerMismatch(true);
         return;
       }
-      toast.show({ variant: 'success', description: t.execution.released });
+      releasedToastId.current = toast.show({
+        variant: 'success',
+        description: t.execution.released,
+      });
     },
   });
   useEffect(() => {

@@ -180,6 +180,38 @@ describe('WorkOrderReleaseExecution', () => {
     expect(mocks.reset).toHaveBeenCalledTimes(3);
   });
 
+  /*
+   * 배포 성공 토스트는 우하단에 서고, 포인터가 올라가 있으면 자동 소멸이 멈춘다. 「배포 확정」도
+   * 우하단이라 다음 W/O 로 옮긴 뒤 같은 버튼을 덮었다(PLAN-WO-01 D5) — 옮기면 거둔다.
+   */
+  it('dismisses the release success toast when another work order is selected', async () => {
+    const view = render(execution());
+    const onSuccess = mocks.release.mock.calls[0]?.[0].onSuccess as (
+      saved: WorkOrderReleaseFact,
+    ) => void;
+
+    act(() => onSuccess(fact()));
+    expect(screen.getByText(messages.workOrderRelease.execution.released)).toBeVisible();
+
+    view.rerender(execution(705));
+
+    await waitFor(() =>
+      expect(screen.queryByText(messages.workOrderRelease.execution.released)).toBeNull(),
+    );
+  });
+
+  it('keeps the release success toast while the same work order stays selected', () => {
+    const view = render(execution());
+    const onSuccess = mocks.release.mock.calls[0]?.[0].onSuccess as (
+      saved: WorkOrderReleaseFact,
+    ) => void;
+
+    act(() => onSuccess(fact()));
+    view.rerender(execution());
+
+    expect(screen.getByText(messages.workOrderRelease.execution.released)).toBeVisible();
+  });
+
   it('distinguishes retries and recovers a settled foreign detail', async () => {
     const failedDetail = {
       data: fact(),
