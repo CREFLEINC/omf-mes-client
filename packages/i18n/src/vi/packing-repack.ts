@@ -32,6 +32,7 @@ export const packingRepack: Translated<typeof ko.packingRepack> = {
     title: (numbers: string) => `Chưa xác nhận được ${numbers} đã phân bổ xuất hàng hay chưa`,
     description:
       'Hãy kiểm tra lại khi có kết nối. Nếu là kiện đã phân bổ thì gửi sắp xếp lại sẽ thất bại.',
+    caution: 'Nếu là kiện đã phân bổ thì gửi sắp xếp lại sẽ thất bại.',
   },
   type: {
     legend: 'Kiểu sắp xếp lại',

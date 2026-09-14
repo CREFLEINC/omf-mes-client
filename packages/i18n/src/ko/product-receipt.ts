@@ -84,6 +84,8 @@ export const productReceipt = {
   unverified: {
     title: '이미 입고됐는지 확인할 수 없습니다',
     description: '연결이 없어 물어볼 수 없습니다. 재고를 확인한 뒤 진행하세요.',
+    /** 연결이 아닌 이유로 확인하지 못했을 때 그 이유 뒤에 붙인다. */
+    caution: '재고를 확인한 뒤 진행하세요.',
   },
   submit: '입고·적치 완료',
   noWorker: '사번을 먼저 확인하세요',

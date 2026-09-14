@@ -1,3 +1,4 @@
+import { messages } from '@omf-mes/i18n';
 import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useEffect, type ReactNode } from 'react';
@@ -187,7 +188,7 @@ describe('입하 오류 등록 화면', () => {
   it('입하 조회 실패를 입하 없음으로 말하지 않는다', async () => {
     mount([], { receiptsStatus: 500 });
 
-    expect(await screen.findByText('입하를 확인할 수 없습니다. 연결을 확인하세요.')).toBeTruthy();
+    expect(await screen.findByText(messages.httpError.loadServer)).toBeTruthy();
     expect(screen.queryByText('입하를 찾지 못했습니다')).toBeNull();
   });
 

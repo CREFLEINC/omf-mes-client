@@ -12,6 +12,7 @@ import { useOutbox } from '../../patterns/outbox';
 import { useScanField } from '../../patterns/use-scan-field';
 import { useScreenTitle } from '../../patterns/screen-title';
 import { useWorkerSession } from '../../patterns/worker-session';
+import { useLoadFailure } from '../../patterns/load-failure';
 import { useLotBalances, useUnfinishedTransfers, useWarehouses } from './queries';
 import {
   DEFECT_RETURN,
@@ -46,6 +47,7 @@ const TYPES: { value: TransferType; label: string }[] = [
 
 export const StockTransferScreen = () => {
   useScreenTitle(t.title);
+  const failureText = useLoadFailure();
 
   const { enqueue, flush, isRejected, loaded, pendingOf } = useOutbox();
   const { worker } = useWorkerSession();
@@ -319,7 +321,10 @@ export const StockTransferScreen = () => {
         <h2>{t.unfinished.legend}</h2>
         {unfinished.isPending ? <p role="status">{t.unfinished.loading}</p> : null}
         {unfinished.isError ? (
-          <AlertBanner variant="warning" title={t.unfinished.loadFailed} />
+          <AlertBanner
+            variant="warning"
+            title={failureText(unfinished.error, t.unfinished.loadFailed)}
+          />
         ) : null}
         {/* 다른 단말이 반출한 것은 오프라인에서 오지 않는다. 없다고 단정하면 안 된다. */}
         {!online ? <p className="stock-transfer__note">{t.unfinished.offline}</p> : null}
@@ -456,7 +461,9 @@ export const StockTransferScreen = () => {
             {scannedLot !== null && foundLot.isPending ? (
               <p role="status">{t.from.loading}</p>
             ) : null}
-            {foundLot.isError ? <AlertBanner variant="error" title={t.from.loadFailed} /> : null}
+            {foundLot.isError ? (
+              <AlertBanner variant="error" title={failureText(foundLot.error, t.from.loadFailed)} />
+            ) : null}
             {scannedLot !== null && foundLot.data === null ? (
               <AlertBanner
                 variant="error"

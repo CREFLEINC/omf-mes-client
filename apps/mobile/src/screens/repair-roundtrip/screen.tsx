@@ -25,6 +25,7 @@ import { ScanReplaceDialog } from '../../patterns/scan-replace-dialog';
 import { useScanField } from '../../patterns/use-scan-field';
 import { useScreenTitle } from '../../patterns/screen-title';
 import { useWorkerSession } from '../../patterns/worker-session';
+import { useLoadFailure } from '../../patterns/load-failure';
 import {
   useDefectRecords,
   useDispatchRepair,
@@ -84,6 +85,7 @@ const codeLabel = (
 
 export const RepairRoundtripScreen = () => {
   useScreenTitle(t.title);
+  const failureText = useLoadFailure();
 
   const online = useOnlineStatus();
   const { worker } = useWorkerSession();
@@ -265,7 +267,9 @@ export const RepairRoundtripScreen = () => {
   const scannedCard = (
     <>
       {lot.isPending && scanned !== null ? <p role="status">{t.scan.loading}</p> : null}
-      {lot.isError ? <AlertBanner variant="error" title={t.scan.loadFailed} /> : null}
+      {lot.isError ? (
+        <AlertBanner variant="error" title={failureText(lot.error, t.scan.loadFailed)} />
+      ) : null}
       {lot.isSuccess && lot.data === null ? (
         <AlertBanner variant="warning" title={t.scan.notFound(scanned ?? '')} />
       ) : null}
@@ -290,7 +294,9 @@ export const RepairRoundtripScreen = () => {
       {scannedCard}
       {defects.isPending && lotId !== null ? <p role="status">{t.defect.loading}</p> : null}
       {/* 확인하지 못한 것을 불량이 아닌 것으로 말하지 않는다. */}
-      {defects.isError ? <AlertBanner variant="error" title={t.defect.loadFailed} /> : null}
+      {defects.isError ? (
+        <AlertBanner variant="error" title={failureText(defects.error, t.defect.loadFailed)} />
+      ) : null}
       {defects.isSuccess && defects.data.length === 0 ? (
         <>
           <AlertBanner variant="warning" title={t.defect.none(scanned ?? '')} />

@@ -1,3 +1,4 @@
+import { messages } from '@omf-mes/i18n';
 import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useEffect } from 'react';
@@ -229,7 +230,7 @@ describe('설비 점검 입력 화면', () => {
 
     scan('PRS-01');
 
-    expect(await screen.findByText(/점검 항목을 확인할 수 없습니다/)).toBeInTheDocument();
+    expect(await screen.findByText(messages.httpError.loadServer)).toBeInTheDocument();
     expect(
       screen.queryByText('이 설비에 점검 항목이 등록돼 있지 않습니다'),
     ).not.toBeInTheDocument();
@@ -269,9 +270,7 @@ describe('설비 점검 입력 화면', () => {
     mount();
     await selectEquipment();
 
-    expect(
-      screen.getByText('점검하지 않은 필수 항목이 있습니다 — 유압 압력'),
-    ).toBeInTheDocument();
+    expect(screen.getByText('점검하지 않은 필수 항목이 있습니다 — 유압 압력')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: '점검 완료' })).toBeDisabled();
   });
 

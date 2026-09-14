@@ -423,9 +423,7 @@ describe('입하 등록 화면', () => {
     await screen.findByLabelText('LOT 번호');
     scan(SCANNED);
 
-    expect(
-      await screen.findByText('자재 P/O를 확인할 수 없습니다. 연결을 확인하세요.'),
-    ).toBeTruthy();
+    expect(await screen.findByText(messages.httpError.loadServer)).toBeTruthy();
     expect(screen.queryByText('미마감 자재 P/O가 없습니다')).toBeNull();
   });
 

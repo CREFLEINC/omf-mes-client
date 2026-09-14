@@ -25,6 +25,7 @@ import { useOutbox } from '../../patterns/outbox';
 import { useScanField } from '../../patterns/use-scan-field';
 import { useScreenTitle } from '../../patterns/screen-title';
 import { useWorkerSession } from '../../patterns/worker-session';
+import { useLoadFailure } from '../../patterns/load-failure';
 import {
   DAILY,
   MONTHLY,
@@ -155,6 +156,7 @@ const ItemCard = ({
 
 export const EquipmentInspectionScreen = () => {
   useScreenTitle(t.title);
+  const failureText = useLoadFailure();
 
   const { enqueue, flush, countPending, isRejected } = useOutbox();
   const queryClient = useQueryClient();
@@ -404,7 +406,9 @@ export const EquipmentInspectionScreen = () => {
           <h2>{t.items.legend}</h2>
           {items.isPending ? <p role="status">{t.items.loading}</p> : null}
           {/* 확인하지 못한 것을 등록되지 않은 것으로 말하지 않는다. */}
-          {items.isError ? <AlertBanner variant="error" title={t.items.loadFailed} /> : null}
+          {items.isError ? (
+            <AlertBanner variant="error" title={failureText(items.error, t.items.loadFailed)} />
+          ) : null}
           {items.data === undefined ? null : (
             <>
               <p className="inspection__note">

@@ -14,6 +14,7 @@ import { ScanReplaceDialog } from '../../patterns/scan-replace-dialog';
 import { useScanField } from '../../patterns/use-scan-field';
 import { useScreenTitle } from '../../patterns/screen-title';
 import { useWorkerSession } from '../../patterns/worker-session';
+import { useLoadFailure } from '../../patterns/load-failure';
 import {
   APPROVAL_REQUEST_STATUS,
   useMyRequests,
@@ -79,6 +80,7 @@ const MyRequests = ({
 
 export const IqcSkipRequestScreen = () => {
   useScreenTitle(t.title);
+  const failureText = useLoadFailure();
 
   const { countPending, enqueue, flush, isRejected } = useOutbox();
   const { worker } = useWorkerSession();
@@ -333,7 +335,9 @@ export const IqcSkipRequestScreen = () => {
         <h2>{t.mine.legend}</h2>
         {worker === null ? <p>{t.mine.noWorker}</p> : null}
         {worker !== null && mine.isPending ? <p role="status">{t.mine.loading}</p> : null}
-        {mine.isError ? <AlertBanner variant="warning" title={t.mine.loadFailed} /> : null}
+        {mine.isError ? (
+          <AlertBanner variant="warning" title={failureText(mine.error, t.mine.loadFailed)} />
+        ) : null}
         {mine.data === undefined || mine.data.length > 0 ? null : <p>{t.mine.empty}</p>}
         {mine.data === undefined ? null : (
           <MyRequests requests={mine.data} statuses={statuses.data ?? []} />
