@@ -338,15 +338,29 @@ describe('자재LOT 스캔·등록 화면', () => {
     expect(screen.queryByRole('option', { name: '#2 · ABC-123 · 480' })).toBeNull();
   });
 
-  /* 도착 때 스캔한 라인은 입하 등록이 이미 만들었다. 여기서 또 만들면 400 이다. */
-  it('LOT 이 이미 있는 라인은 고를 수 없다', async () => {
+  /*
+   * 도착 때 스캔한 라인은 입하 등록이 이미 만들었다. 그런 건이 후보에 서면 고른 뒤에야
+   * 채울 것이 없다고 알게 되고, 실측 2026-09-14 에 그런 건이 29건 중 27건이었다.
+   */
+  it('채울 라인이 없는 입하 건은 후보에 서지 않는다', async () => {
     const user = userEvent.setup();
     mount({ allFilled: true });
 
-    await user.click(await screen.findByRole('combobox', { name: '입하 건' }));
-    await user.click(await screen.findByRole('option', { name: `${RECEIPT_NO} · 2026-09-05` }));
+    expect(await screen.findByText(/LOT 이 비어 있는 사전부착 입하 건이 없습니다/)).toBeTruthy();
 
-    expect(await screen.findByText(/LOT 이 비어 있는 사전부착 라인이 없습니다/)).toBeTruthy();
+    await user.click(await screen.findByRole('combobox', { name: '입하 건' }));
+
+    expect(screen.queryByRole('option', { name: `${RECEIPT_NO} · 2026-09-05` })).toBeNull();
+  });
+
+  /* 채울 라인이 남은 건은 그대로 선다 - 거르기가 후보를 통째로 비우면 일을 못 한다. */
+  it('채울 라인이 남은 입하 건은 후보에 선다', async () => {
+    const user = userEvent.setup();
+    mount();
+
+    await user.click(await screen.findByRole('combobox', { name: '입하 건' }));
+
+    expect(await screen.findByRole('option', { name: `${RECEIPT_NO} · 2026-09-05` })).toBeTruthy();
   });
 
   it('34자리가 아니면 등록할 수 없다', async () => {

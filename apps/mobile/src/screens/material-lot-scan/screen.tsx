@@ -16,7 +16,7 @@ import { useScreenTitle } from '../../patterns/screen-title';
 import { useWorkerSession } from '../../patterns/worker-session';
 import { FailureBanner } from '../../patterns/failure-banner';
 import { useLoadFailure } from '../../patterns/load-failure';
-import { useFillableLines, useSupplierLotReceipts } from './queries';
+import { useFillableLineIds, useFillableLines, useSupplierLotReceipts } from './queries';
 import {
   LOT_LABEL,
   LOT_NO_LENGTH,
@@ -69,6 +69,9 @@ export const MaterialLotScanScreen = () => {
   const scanSection = useRef<HTMLElement | null>(null);
 
   const receipts = useSupplierLotReceipts();
+  const fillableIds = useFillableLineIds(
+    (receipts.data ?? []).map((each) => each.inboundReceiptId),
+  );
   const lines = useFillableLines(receiptId);
 
   const itemLabels = useItemLabels((lines.data ?? []).map((each) => each.itemId));
@@ -92,6 +95,16 @@ export const MaterialLotScanScreen = () => {
   const openLines = (lines.data ?? []).filter(
     (each) => !filled.includes(each.inboundReceiptLineId),
   );
+
+  /*
+   * 채울 라인이 하나도 없는 건은 후보에서 뺀다. 두면 고른 뒤에야 채울 것이 없다고 알게
+   * 되고, 그 건이 대부분이라 작업자가 고를 수 있는 것을 찾느라 목록을 훑는다.
+   */
+  const openReceipts = (receipts.data ?? []).filter((each) =>
+    (fillableIds.byReceipt.get(each.inboundReceiptId) ?? []).some((id) => !filled.includes(id)),
+  );
+  /* 다 받기 전에 거르면 목록이 섰다가 줄어들어, 누르려던 건이 손 아래에서 사라진다. */
+  const receiptsPending = receipts.isPending || fillableIds.isPending;
   const line = openLines.find((each) => each.inboundReceiptLineId === lineId) ?? null;
 
   /* 이 회차에 보낸 번호는 큐에 없다. 다시 스캔하면 서버가 400 으로 되돌린다. */
@@ -238,14 +251,16 @@ export const MaterialLotScanScreen = () => {
     <div className="material-lot-scan">
       <section className="material-lot-scan__section">
         <h2>{t.receipt.legend}</h2>
-        {receipts.isPending ? <p role="status">{t.receipt.loading}</p> : null}
+        {receiptsPending ? <p role="status">{t.receipt.loading}</p> : null}
         {receipts.isError ? (
           <FailureBanner
             variant="error"
             title={failureText(receipts.error, t.receipt.loadFailed)}
           />
         ) : null}
-        {receipts.isSuccess && receipts.data.length === 0 ? <p>{t.receipt.none}</p> : null}
+        {!receiptsPending && !receipts.isError && openReceipts.length === 0 ? (
+          <p>{t.receipt.none}</p>
+        ) : null}
         <label htmlFor="material-lot-scan-receipt">{t.receipt.pick}</label>
         <Select
           id="material-lot-scan-receipt"
@@ -257,7 +272,7 @@ export const MaterialLotScanScreen = () => {
             setLineId(null);
             setScanned('');
           }}
-          options={(receipts.data ?? []).map((each) => ({
+          options={openReceipts.map((each) => ({
             value: String(each.inboundReceiptId),
             label: t.receipt.item(each.inboundReceiptNo, each.receiptDatetime.slice(0, 10)),
           }))}
