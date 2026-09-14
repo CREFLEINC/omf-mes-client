@@ -126,10 +126,7 @@ const routes = (options: Options = {}): StubRoute[] => [
       });
     },
   },
-  ...itemRoutes(
-    [{ itemId: 31, itemCode: 'ABC-123', itemName: '원자재', fifoPolicyCode: 'FIFO' }],
-    page,
-  ),
+  ...itemRoutes([{ itemId: 31, itemCode: 'ABC-123', itemName: '원자재', fifoPolicyCode: 'FIFO' }]),
   {
     match: (req) => new URL(req.url).pathname === '/mdm/uoms',
     respond: () => jsonResponse({ items: [{ uomId: 9, uomCode: 'EA' }], page }),
@@ -185,6 +182,15 @@ beforeEach(() => {
 });
 
 const OTHER_LOT_NO = '7770001118880002229901015554440099';
+
+/** 쪽이 여럿 나오는 마스터. 한 쪽이 50건이라 그보다 많아야 더보기가 선다. */
+const manyItems = (count: number) =>
+  Array.from({ length: count }, (_, index) => ({
+    itemId: 9000 + index + 1,
+    itemCode: `MANY-${String(index + 1)}`,
+    itemName: `품목${String(index + 1)}`,
+    fifoPolicyCode: 'FIFO',
+  }));
 
 describe('입하 등록 화면', () => {
   /*
@@ -1243,6 +1249,66 @@ describe('입하 등록 화면 — 발주 없이 도착', () => {
 
     /* 다 적은 뒤의 한 번뿐이다. 글자마다 물으면 A · AB · ABC 로 세 번이 된다. */
     expect(asked.slice(opened)).toEqual(['ABC']);
+  });
+
+  /*
+   * 한 쪽으로 끝나지 않는다. 남은 수를 달고 선 단추를 누르면 뒤에 이어 붙고, 다 받으면
+   * 단추가 사라져 끝이라는 것이 보인다.
+   */
+  it('더보기로 다음 쪽을 이어 붙인다', async () => {
+    const user = userEvent.setup();
+    mount([...itemRoutes(manyItems(120))]);
+
+    await screen.findByLabelText('LOT 번호');
+    scan(SCANNED);
+    await user.click(await screen.findByRole('button', { name: '자재 P/O 없이 등록' }));
+    await user.click(await screen.findByRole('button', { name: '품목 찾기' }));
+
+    expect(await screen.findByRole('button', { name: 'MANY-1 품목1' })).toBeTruthy();
+    /* 120건 중 50건을 받았으니 70건이 남는다. */
+    const more = await screen.findByRole('button', { name: '더보기 (+70)' });
+    expect(screen.queryByRole('button', { name: 'MANY-51 품목51' })).toBeNull();
+
+    await user.click(more);
+
+    /* 앞 쪽은 그대로 있고 뒤 쪽이 붙는다. */
+    expect(await screen.findByRole('button', { name: 'MANY-51 품목51' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'MANY-1 품목1' })).toBeTruthy();
+
+    await user.click(await screen.findByRole('button', { name: '더보기 (+20)' }));
+
+    expect(await screen.findByRole('button', { name: 'MANY-120 품목120' })).toBeTruthy();
+    /* 다 받았으면 단추가 서지 않는다. */
+    expect(screen.queryByRole('button', { name: /더보기/ })).toBeNull();
+  });
+
+  /*
+   * 찾은 결과도 한 쪽씩이다. 찾는 말을 지우면 쪽이 처음부터 다시 세어져, 앞서 더 받아 둔
+   * 것이 찾은 결과에 섞이지 않는다.
+   */
+  it('찾은 결과도 쪽으로 나뉘고 말을 지우면 다시 센다', async () => {
+    const user = userEvent.setup();
+    mount([...itemRoutes(manyItems(120))]);
+
+    await screen.findByLabelText('LOT 번호');
+    scan(SCANNED);
+    await user.click(await screen.findByRole('button', { name: '자재 P/O 없이 등록' }));
+    await user.click(await screen.findByRole('button', { name: '품목 찾기' }));
+    await screen.findByRole('button', { name: '더보기 (+70)' });
+
+    /* MANY-1 · MANY-10~19 · MANY-100~119 로 31건이 걸린다. 한 쪽에 들어가 단추가 사라진다. */
+    await user.type(screen.getByLabelText('품목 검색'), 'MANY-1');
+
+    await waitFor(() => {
+      expect(screen.queryByRole('button', { name: /더보기/ })).toBeNull();
+    });
+    expect(screen.queryByRole('button', { name: 'MANY-2 품목2' })).toBeNull();
+
+    await user.clear(screen.getByLabelText('품목 검색'));
+
+    /* 지우면 전체로 돌아오고 남은 수도 처음 것으로 돌아온다. */
+    expect(await screen.findByRole('button', { name: '더보기 (+70)' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'MANY-2 품목2' })).toBeTruthy();
   });
 
   /* 품목 마스터의 주인은 ERP 다. 여기서 만들 길을 찾지 않는다. */

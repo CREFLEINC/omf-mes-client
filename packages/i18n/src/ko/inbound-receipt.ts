@@ -99,7 +99,7 @@ export const inboundReceipt = {
     title: '품목 고르기',
     searchLabel: '품목 검색',
     searchPlaceholder: '품목코드나 품목명을 적으세요',
-    capped: (limit: string) => `앞 ${limit}건만 보입니다. 찾는 말을 적어 좁히세요.`,
+    more: (rest: string) => `더보기 (+${rest})`,
     loading: '품목을 찾는 중입니다',
     empty: '찾은 품목이 없습니다',
     failed: '품목을 찾지 못했습니다. 연결을 확인하세요.',

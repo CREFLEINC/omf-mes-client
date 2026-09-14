@@ -210,7 +210,6 @@ const routes = (options: Options = {}): StubRoute[] => [
   },
   ...itemRoutes(
     [{ itemId: 2002, itemCode: 'ABC-123', itemName: '하우징', fifoPolicyCode: 'FIFO' }],
-    page,
   ),
 ];
 

@@ -158,7 +158,6 @@ const routes = (options: Options = {}): StubRoute[] => [
         storageConditionCode: options.itemStorage,
       },
     ],
-    page,
   ),
   {
     match: (req) => new URL(req.url).pathname === '/trace/lots/4',

@@ -2,7 +2,7 @@ import { AlertBanner, Button, Card, SearchInput } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useState } from 'react';
 
-import { ITEM_SEARCH_LIMIT, useItemSearch, type ItemOption } from '../../patterns/masters';
+import { useItemSearch, type ItemOption } from '../../patterns/masters';
 
 const t = messages.inboundReceipt.itemPicker;
 
@@ -48,9 +48,9 @@ export const ItemPicker = ({ onPick, onCancel }: ItemPickerProps) => {
   const [term, setTerm] = useState('');
   const settled = useSettled(term);
   const search = useItemSearch(settled);
-  const found = search.data ?? [];
-  /* 한 쪽에서 잘렸다. 말하지 않으면 뒤에 있는 품목이 없는 것으로 읽힌다. */
-  const capped = found.length >= ITEM_SEARCH_LIMIT;
+  const found = search.data?.items ?? [];
+  /* 뒤에 얼마나 더 있는지. 남은 수를 보여야 더 볼지 좁힐지 사람이 정할 수 있다. */
+  const remaining = Math.max((search.data?.total ?? 0) - found.length, 0);
 
   return (
     <div className="receipt-picker">
@@ -69,16 +69,14 @@ export const ItemPicker = ({ onPick, onCancel }: ItemPickerProps) => {
       />
 
       {search.isError ? <AlertBanner variant="error" title={t.failed} /> : null}
-      {search.isFetching ? (
+      {/* 첫 쪽을 받는 중에만 말한다. 더 부르는 중은 단추가 스스로 말한다. */}
+      {search.isFetching && !search.isFetchingNextPage ? (
         <p className="receipt-picker__note" role="status">
           {t.loading}
         </p>
       ) : null}
       {search.isSuccess && found.length === 0 ? (
         <p className="receipt-picker__note">{t.empty}</p>
-      ) : null}
-      {capped ? (
-        <p className="receipt-picker__note">{t.capped(String(ITEM_SEARCH_LIMIT))}</p>
       ) : null}
 
       <ul className="receipt-picker__list">
@@ -99,6 +97,21 @@ export const ItemPicker = ({ onPick, onCancel }: ItemPickerProps) => {
           </li>
         ))}
       </ul>
+
+      {/* 뒤에 더 있으면 그 수를 달고 선다. 없으면 서지 않아 끝이라는 것이 보인다. */}
+      {search.hasNextPage ? (
+        <Button
+          variant="outlined"
+          size="xl"
+          className="receipt-picker__more"
+          disabled={search.isFetchingNextPage}
+          onClick={() => {
+            void search.fetchNextPage();
+          }}
+        >
+          {search.isFetchingNextPage ? t.loading : t.more(String(remaining))}
+        </Button>
+      ) : null}
 
       <Button variant="outlined" size="xl" className="receipt-picker__back" onClick={onCancel}>
         {t.cancel}
