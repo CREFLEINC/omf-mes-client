@@ -1,3 +1,6 @@
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router';
@@ -625,6 +628,16 @@ describe('기기 등록 해제', () => {
 
     expect(box).not.toBeNull();
     expect(box?.contains(within(dialog).getByText(/보내지 못한 기록 1건이 사라집니다/))).toBe(true);
+  });
+
+  /*
+   * 상자를 둔 까닭은 간격 하나다. 담기만 하고 간격이 사라지면 감싼 보람이 없는데 화면 시험은
+   * 배치를 재지 못한다 - 선언이 살아 있는지를 원문에서 본다.
+   */
+  it('창 본문 상자가 간격을 준다', () => {
+    const css = readFileSync(join(import.meta.dirname, 'sign-in.css'), 'utf-8');
+
+    expect(css).toMatch(/\.worker-sign-in__dialog-body\s*\{[^}]*gap:/);
   });
 
   /* 사번이 남으면 새 QR 로 다시 등록했을 때 앞 작업자의 사번으로 기록이 쌓인다. */

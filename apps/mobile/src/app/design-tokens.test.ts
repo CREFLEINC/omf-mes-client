@@ -86,7 +86,7 @@ const selectorsIn = (css: string): string[] =>
 /**
  * 우리 것으로 좁히지 않고 태그만으로 고른 자리.
  *
- * `header.mobile-shell__topbar` 는 우리 클래스를 함께 요구하므로 남의 부품에 닿지 않는다.
+ * `header.mobile-shell__topbar` 처럼 클래스나 아이디로 좁힌 것은 남의 부품에 닿지 않는다.
  * 맨 `header` 와 `header:first-of-type` · `header[role]` · `:is(header, main)` 은 닿는다 -
  * 도달 범위가 같은데 글자만 다르다.
  *
@@ -146,12 +146,16 @@ describe('선택자 범위', () => {
       '0%',
     ];
 
+    /* 목록을 거쳐 판정한다. 태그를 목록에서 빼는 것도 감지기를 끄는 일이다. */
+    const reaches = (selector: string) =>
+      unscopedTagsIn(selector).some((tag) => DS_TAGS.includes(tag));
+
     for (const selector of reaching) {
-      expect([selector, unscopedTagsIn(selector).includes('header')]).toEqual([selector, true]);
+      expect([selector, reaches(selector)]).toEqual([selector, true]);
     }
 
     for (const selector of scoped) {
-      expect([selector, unscopedTagsIn(selector).includes('header')]).toEqual([selector, false]);
+      expect([selector, reaches(selector)]).toEqual([selector, false]);
     }
   });
 });

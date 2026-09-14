@@ -61,11 +61,11 @@ export const deviceRegistration: Translated<typeof ko.deviceRegistration> = {
       open: 'Hủy đăng ký thiết bị',
       title: 'Hủy đăng ký sẽ không thể hoàn tác',
       notice:
-        'Để sử dụng lại thiết bị này, cần xin mã QR đăng ký mới từ quản trị viên. Quý vị có muốn tiếp tục không?',
+        'Để sử dụng lại thiết bị này, cần xin mã QR đăng ký mới từ quản trị viên. Vẫn tiếp tục chứ?',
       pending: (count: string) => `${count} bản ghi chưa gửi sẽ mất`,
       returned: (count: string) => `${count} bản ghi gửi thất bại cũng sẽ mất`,
       counting: 'Đang đếm các bản ghi chưa gửi',
-      failed: 'Không thể hủy đăng ký. Vui lòng thử lại',
+      failed: 'Không thể hủy đăng ký. Hãy thử lại',
       confirm: 'Hủy đăng ký',
       cancel: 'Quay lại',
     },
