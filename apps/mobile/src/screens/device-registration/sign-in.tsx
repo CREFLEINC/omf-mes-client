@@ -135,6 +135,7 @@ export const WorkerSignInScreen = () => {
           <>
             <Button
               variant="outlined"
+              size="xl"
               onClick={() => {
                 setAsking(false);
               }}
@@ -143,6 +144,8 @@ export const WorkerSignInScreen = () => {
             </Button>
             {/* 큐를 읽기 전에는 몇 건을 잃는지 모른다. 모르는 채 풀게 두지 않는다. */}
             <Button
+              variant="filled"
+              size="xl"
               disabled={!loaded}
               onClick={() => {
                 setAsking(false);
@@ -155,18 +158,24 @@ export const WorkerSignInScreen = () => {
           </>
         }
       >
-        <p>{t.unregister.notice}</p>
-        {!loaded ? <p>{t.unregister.counting}</p> : null}
         {/*
-          앱바가 둘로 가른 것을 창에서 합치지 않는다. 기다리면 가는 것과 기다려도 가지
-          않는 것은 다른 일이라, 합치면 앱바의 두 수와 창의 한 수가 어긋난다.
+          디자인 시스템의 창 본문은 자식 사이 간격을 주지 않고, 이 화면은 문단 여백을 0 으로
+          둔다. 감싸지 않으면 안내와 경고가 서로 붙는다.
         */}
-        {loaded && pending > 0 ? (
-          <AlertBanner variant="warning" title={t.unregister.pending(String(pending))} />
-        ) : null}
-        {loaded && returned.length > 0 ? (
-          <AlertBanner variant="warning" title={t.unregister.returned(String(returned.length))} />
-        ) : null}
+        <div className="worker-sign-in__dialog-body">
+          <p>{t.unregister.notice}</p>
+          {!loaded ? <p>{t.unregister.counting}</p> : null}
+          {/*
+            앱바가 둘로 가른 것을 창에서 합치지 않는다. 기다리면 가는 것과 기다려도 가지
+            않는 것은 다른 일이라, 합치면 앱바의 두 수와 창의 한 수가 어긋난다.
+          */}
+          {loaded && pending > 0 ? (
+            <AlertBanner variant="warning" title={t.unregister.pending(String(pending))} />
+          ) : null}
+          {loaded && returned.length > 0 ? (
+            <AlertBanner variant="warning" title={t.unregister.returned(String(returned.length))} />
+          ) : null}
+        </div>
       </Dialog>
     </>
   );

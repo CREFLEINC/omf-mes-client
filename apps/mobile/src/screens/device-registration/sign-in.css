@@ -21,3 +21,13 @@
 .worker-sign-in .omf-numeric-keypad {
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
+
+/*
+ * 창 본문의 간격. 디자인 시스템의 본문은 패딩만 주고 자식 사이는 비워 두는데, 위의
+ * p 규칙이 후손 선택자라 창 안 문단까지 닿아 안내와 경고가 서로 붙는다.
+ */
+.worker-sign-in__dialog-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3, 12px);
+}

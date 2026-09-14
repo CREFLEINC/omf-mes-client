@@ -76,14 +76,14 @@ export const deviceRegistration = {
      */
     unregister: {
       open: '기기 등록 해제',
-      title: '이 기기의 등록을 풀까요?',
-      notice: '다시 쓰려면 관리자에게 새 QR 을 받아야 합니다.',
+      title: '등록을 해제하면 되돌릴 수 없습니다',
+      notice: '이 기기를 다시 사용하려면 관리자에게 새 등록 QR 을 받아야 합니다. 진행하시겠습니까?',
       pending: (count: string) => `보내지 못한 기록 ${count}건이 사라집니다`,
       returned: (count: string) => `전송 실패한 기록 ${count}건도 사라집니다`,
       counting: '보내지 못한 기록을 세는 중입니다',
-      failed: '등록을 풀지 못했습니다. 다시 시도하세요',
+      failed: '등록을 해제하지 못했습니다. 다시 시도해 주십시오',
       confirm: '등록 해제',
-      cancel: '그대로 두기',
+      cancel: '돌아가기',
     },
     current: {
       label: '현재 작업자',

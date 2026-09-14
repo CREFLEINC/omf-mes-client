@@ -66,3 +66,96 @@ describe('디자인 토큰', () => {
     expect([...new Set(offenders)]).toEqual([]);
   });
 });
+
+/**
+ * 디자인 시스템이 부품 속에 그리는 태그.
+ *
+ * 부품의 겉을 꾸미는 것은 정당하다 - 창을 시스템 바 밖으로 밀 때 `dialog` 를 고르는 것이
+ * 그렇다. 문제는 속에 닿는 것이다. 창의 머리와 바닥은 부르는 쪽이 겨냥한 적 없는데 닿는다.
+ *
+ * `p` 처럼 더 흔한 태그도 속에 있지만 화면 CSS 여러 곳이 이미 그것으로 고른다. `main` 은
+ * 랜드마크이나 셸이 직접 그려 자기 것이다.
+ */
+const DS_TAGS = ['header', 'footer', 'nav'];
+
+const selectorsIn = (css: string): string[] =>
+  [...css.replaceAll(/\/\*[\s\S]*?\*\//g, '').matchAll(/([^{}]+)\{/g)].map((match) =>
+    match[1]!.trim(),
+  );
+
+/**
+ * 우리 것으로 좁히지 않고 태그만으로 고른 자리.
+ *
+ * `header.mobile-shell__topbar` 처럼 클래스나 아이디로 좁힌 것은 남의 부품에 닿지 않는다.
+ * 맨 `header` 와 `header:first-of-type` · `header[role]` · `:is(header, main)` 은 닿는다 -
+ * 도달 범위가 같은데 글자만 다르다.
+ *
+ * `:not()` 과 `:has()` 안은 겨냥이 아니라 조건이라 펴지 않는다.
+ */
+const unscopedTagsIn = (selector: string): string[] => {
+  const opened = selector.replaceAll(/:(not|has)\([^)]*\)/g, ' ').replaceAll(/[():,]/g, ' ');
+
+  return opened
+    .split(/[\s>+~]+/)
+    .filter((part) => !/[.#]/.test(part))
+    .map((part) => /^[a-z][a-z0-9]*/.exec(part)?.[0])
+    .filter((tag): tag is string => tag !== undefined);
+};
+
+/**
+ * 디자인 시스템이 그리는 태그를 우리 것으로 좁히지 않고 고르지 않는다.
+ *
+ * 앱바를 `.mobile-shell header` 로 꾸몄더니 디자인 시스템이 창의 머리도 header 로 그려, 셸 안의
+ * 모든 창이 그 여백을 뒤집어썼다 - 제목이 상태바에 붙었다. 부품 안을 겨냥하지 않았는데 닿는
+ * 것이라 화면을 열어 보기 전에는 드러나지 않는다.
+ */
+describe('선택자 범위', () => {
+  it('디자인 시스템이 그리는 태그를 좁히지 않고 고르지 않는다', () => {
+    const offenders: string[] = [];
+
+    for (const css of filesUnder(SRC, '.css')) {
+      for (const selector of selectorsIn(readFileSync(css, 'utf-8'))) {
+        if (selector.startsWith('@')) {
+          continue;
+        }
+
+        if (unscopedTagsIn(selector).some((tag) => DS_TAGS.includes(tag))) {
+          offenders.push(`${css.slice(SRC.length + 1)} :: ${selector}`);
+        }
+      }
+    }
+
+    expect([...new Set(offenders)]).toEqual([]);
+  });
+
+  /* 이 시험 자체가 글자만 다른 같은 결함을 놓치면 아무것도 막지 못한다. */
+  it('좁힌 것과 좁히지 않은 것을 가른다', () => {
+    const reaching = [
+      '.mobile-shell header',
+      '.mobile-shell header:first-of-type',
+      '.mobile-shell header[role]',
+      '.mobile-shell header::before',
+      '.mobile-shell :is(header, main)',
+    ];
+    const scoped = [
+      '.mobile-shell header.mobile-shell__topbar',
+      '.mobile-shell header.x > *:first-child',
+      '.mobile-shell :not(header)',
+      '.mobile-shell .x:has(header)',
+      '.mobile-shell [data-x=header]',
+      '0%',
+    ];
+
+    /* 목록을 거쳐 판정한다. 태그를 목록에서 빼는 것도 감지기를 끄는 일이다. */
+    const reaches = (selector: string) =>
+      unscopedTagsIn(selector).some((tag) => DS_TAGS.includes(tag));
+
+    for (const selector of reaching) {
+      expect([selector, reaches(selector)]).toEqual([selector, true]);
+    }
+
+    for (const selector of scoped) {
+      expect([selector, reaches(selector)]).toEqual([selector, false]);
+    }
+  });
+});
