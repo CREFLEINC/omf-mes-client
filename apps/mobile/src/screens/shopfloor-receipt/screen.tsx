@@ -1,5 +1,6 @@
 import { AlertBanner, Button, Card, NumberPad, Select, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
+import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router';
 
@@ -18,6 +19,7 @@ import { useWorkerSession } from '../../patterns/worker-session';
 import { FailureBanner } from '../../patterns/failure-banner';
 import { useLoadFailure, useQueryErrorOf } from '../../patterns/load-failure';
 import {
+  hopperStockKey,
   useAlreadyReceived,
   useHopperStock,
   useLineLotLabels,
@@ -27,6 +29,7 @@ import {
   INVENTORY_ADJUSTMENT_REASON,
   canRecordHopper,
   hasHopper,
+  hopperKeyOf,
   isReasonMissing,
   hopperLocationOf,
   adjustmentQtyOf,
@@ -64,6 +67,7 @@ export const ShopfloorReceiptScreen = () => {
 
   const { enqueue, flush, isRejected, loaded, pendingOf } = useOutbox();
   const { worker } = useWorkerSession();
+  const queryClient = useQueryClient();
 
   const [scanned, setScanned] = useState<string | null>(null);
   const [lines, setLines] = useState<DraftLine[]>([]);
@@ -139,7 +143,7 @@ export const ShopfloorReceiptScreen = () => {
    * 되돌려야 하는데, 둘은 서로를 필요로 하지 않는다.
    */
   const [equipmentId, setEquipmentId] = useState<number | null>(null);
-  const [measured, setMeasured] = useState<Record<number, string>>({});
+  const [measured, setMeasured] = useState<Record<string, string>>({});
   const [hopperOutcome, setHopperOutcome] = useState<Outcome | null>(null);
   const [hopperSaveFailed, setHopperSaveFailed] = useState(false);
   const hopperInFlight = useRef(false);
@@ -186,14 +190,26 @@ export const ShopfloorReceiptScreen = () => {
       const mine = (each: { idempotencyKey: string }) =>
         each.idempotencyKey === entry.idempotencyKey;
 
-      setHopperOutcome(
+      const outcome: Outcome =
         (result !== null && result.rejected.some((each) => mine(each.entry))) ||
-          isRejected(entry.idempotencyKey)
+        isRejected(entry.idempotencyKey)
           ? 'rejected'
           : result === null || result.remaining.some(mine)
             ? 'held'
-            : 'sent',
-      );
+            : 'sent';
+
+      setHopperOutcome(outcome);
+
+      /*
+       * 서버에 닿았으면 장부가 그만큼 움직였다. 앞 값을 들고 있으면 곧바로 다시 잰 사람이
+       * 이미 반영된 차이를 또 보낸다 - 100 을 99 로 고친 뒤 다시 99 를 적으면 98 이 된다.
+       *
+       * 대기로 남은 것은 아직 서버에 가지 않아 장부가 그대로다.
+       */
+      if (outcome === 'sent') {
+        await queryClient.invalidateQueries({ queryKey: hopperStockKey(hopperLocationId) });
+      }
+
       setMeasured({});
     } finally {
       hopperInFlight.current = false;
@@ -207,10 +223,10 @@ export const ShopfloorReceiptScreen = () => {
   /* 라인이 여럿이라 어느 칸에 들어가는지 보이지 않으면 엉뚱한 줄에 수량이 적힌다(공유계약 D-4). */
   const [keypadFor, setKeypadFor] = useState<number | null>(null);
   /*
-   * 호퍼는 품목 번호로 세고 수령은 라인 번호로 센다. 한 자리에 담으면 두 번호가 겹칠 때
+   * 호퍼는 품목과 LOT 으로 세고 수령은 라인 번호로 센다. 한 자리에 담으면 두 값이 겹칠 때
    * 엉뚱한 구획의 칸에 숫자판이 열린다.
    */
-  const [hopperKeypadFor, setHopperKeypadFor] = useState<number | null>(null);
+  const [hopperKeypadFor, setHopperKeypadFor] = useState<string | null>(null);
 
   const scanField = useScanField({
     applied: scanned,
@@ -591,13 +607,16 @@ export const ShopfloorReceiptScreen = () => {
             ) : null}
 
             {stocks.map((stock) => {
-              const value = measured[stock.itemId] ?? '';
+              const key = hopperKeyOf(stock);
+              const value = measured[key] ?? '';
               const problem = measureProblemOf(value);
               const item = itemLabels.get(stock.itemId);
-              const name = item === undefined ? String(stock.itemId) : item.itemCode;
+              const code = item === undefined ? String(stock.itemId) : item.itemCode;
+              /* 같은 품목이 여러 LOT 으로 남으면 품목 코드만으로는 어느 줄인지 알 수 없다. */
+              const name = t.hopper.name(code, stock.lotNo ?? '');
 
               return (
-                <div key={stock.itemId} className="shopfloor-receipt__line">
+                <div key={key} className="shopfloor-receipt__line">
                   <TextField
                     label={t.hopper.measuredLabel(name)}
                     size="xl"
@@ -606,20 +625,20 @@ export const ShopfloorReceiptScreen = () => {
                     value={value}
                     onChange={(event) => {
                       const next = event.target.value;
-                      setMeasured((current) => ({ ...current, [stock.itemId]: next }));
+                      setMeasured((current) => ({ ...current, [key]: next }));
                     }}
                     onFocus={() => {
-                      setHopperKeypadFor(stock.itemId);
+                      setHopperKeypadFor(key);
                       setKeypadFor(null);
                     }}
                     error={problem === null ? undefined : t.hopper.problem[problem]}
                   />
                   {/* 줄마다 항상 그리면 어느 칸에 들어가는지 보이지 않는다(공유계약 D-4). */}
-                  {hopperKeypadFor !== stock.itemId ? null : (
+                  {hopperKeypadFor !== key ? null : (
                     <NumberPad
                       value={value}
                       onChange={(next) => {
-                        setMeasured((current) => ({ ...current, [stock.itemId]: next }));
+                        setMeasured((current) => ({ ...current, [key]: next }));
                       }}
                       allowDecimal
                     />

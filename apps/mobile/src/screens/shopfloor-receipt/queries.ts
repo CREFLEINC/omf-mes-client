@@ -190,11 +190,15 @@ export const useAlreadyReceived = (goodsIssueId: number | null): ReceivedCheck =
  * 조정은 증감량을 받으므로 잰 값에서 이것을 빼야 한다. 장부를 모른 채 잰 값만 보내면 화면이
  * 무엇을 빼야 할지 알 수 없다.
  */
+/** 조회하는 쪽과 다시 받게 하는 쪽이 이 열쇠를 함께 쓴다. 따로 적으면 조용히 어긋난다. */
+export const hopperStockKey = (locationId: number | null) =>
+  ['shopfloor-hopper-stock', locationId] as const;
+
 export const useHopperStock = (locationId: number | null): UseQueryResult<HopperStock[]> => {
   const { client } = useApiClient();
 
   return useQuery({
-    queryKey: ['shopfloor-hopper-stock', locationId] as const,
+    queryKey: hopperStockKey(locationId),
     enabled: locationId !== null,
     queryFn: async () => {
       if (locationId === null) {
@@ -210,6 +214,8 @@ export const useHopperStock = (locationId: number | null): UseQueryResult<Hopper
       return data.items.map((each) => ({
         itemId: each.itemId,
         lotId: each.lotId,
+        /* 같은 품목이 여러 LOT 으로 남으면 줄을 가르는 것이 이 번호뿐이다. */
+        lotNo: each.lotNo,
         onHandQty: each.onHandQty,
         uomId: each.uomId,
       }));

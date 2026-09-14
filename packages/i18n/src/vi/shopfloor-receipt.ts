@@ -70,6 +70,7 @@ export const shopfloorReceipt: Translated<typeof ko.shopfloorReceipt> = {
     stockLoading: 'Đang tải thứ đang có trong phễu',
     stockFailed: 'Không xác nhận được lượng còn lại trong phễu. Hãy kiểm tra kết nối.',
     empty: 'Trên sổ sách phễu này không còn gì',
+    name: (item: string, lotNo: string) => (lotNo === '' ? item : `${item} · ${lotNo}`),
     onHand: (qty: string) => `Sổ sách ${qty}`,
     measuredLabel: (name: string) => `Lượng còn lại đo được của ${name}`,
     difference: (qty: string) => `Chênh lệch ${qty}`,

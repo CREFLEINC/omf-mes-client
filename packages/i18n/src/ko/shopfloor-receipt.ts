@@ -103,6 +103,8 @@ export const shopfloorReceipt = {
     stockLoading: '호퍼에 있는 것을 불러오는 중입니다',
     stockFailed: '호퍼 잔량을 확인할 수 없습니다. 연결을 확인하세요.',
     empty: '이 호퍼에 장부상 남은 것이 없습니다',
+    /* 같은 품목이 여러 LOT 으로 남는다. 품목 코드만 적으면 어느 줄에 적는지 알 수 없다. */
+    name: (item: string, lotNo: string) => (lotNo === '' ? item : `${item} · ${lotNo}`),
     onHand: (qty: string) => `장부 ${qty}`,
     measuredLabel: (name: string) => `${name} 실측 잔량`,
     /** 부호를 사람이 적게 하면 뒤집어 적는 순간 재고가 반대로 움직인다. 화면이 뺀다. */
