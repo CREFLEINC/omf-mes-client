@@ -99,9 +99,14 @@ export const MaterialLotScanScreen = () => {
   /*
    * 채울 라인이 하나도 없는 건은 후보에서 뺀다. 두면 고른 뒤에야 채울 것이 없다고 알게
    * 되고, 그 건이 대부분이라 작업자가 고를 수 있는 것을 찾느라 목록을 훑는다.
+   *
+   * 못 물어본 건은 남긴다 - 조회 실패를 채울 라인이 없는 것으로 읽으면 멀쩡한 건이 조용히
+   * 사라지고, 화면은 고를 것이 없다고만 말한다. 고르면 라인 조회가 그 실패를 말한다.
    */
-  const openReceipts = (receipts.data ?? []).filter((each) =>
-    (fillableIds.byReceipt.get(each.inboundReceiptId) ?? []).some((id) => !filled.includes(id)),
+  const openReceipts = (receipts.data ?? []).filter(
+    (each) =>
+      fillableIds.unknown.has(each.inboundReceiptId) ||
+      (fillableIds.byReceipt.get(each.inboundReceiptId) ?? []).some((id) => !filled.includes(id)),
   );
   /* 다 받기 전에 거르면 목록이 섰다가 줄어들어, 누르려던 건이 손 아래에서 사라진다. */
   const receiptsPending = receipts.isPending || fillableIds.isPending;

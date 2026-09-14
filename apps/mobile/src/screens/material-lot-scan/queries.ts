@@ -81,6 +81,13 @@ export const useFillableLines = (
 export interface FillableLineIds {
   /** 건별로 채울 수 있는 라인 식별자. 아직 답하지 않은 건은 없다. */
   byReceipt: Map<number, number[]>;
+  /**
+   * 물어봤지만 답을 못 받은 건.
+   *
+   * 못 물어본 것과 채울 라인이 없는 것은 다르다 - 같이 다루면 조회 실패 한 번에 멀쩡한 건이
+   * 후보에서 사라지고, 화면은 고를 것이 없다고만 말한다.
+   */
+  unknown: Set<number>;
   /** 하나라도 아직 답하지 않았는가. 다 받기 전에 거르면 목록이 섰다가 줄어든다. */
   isPending: boolean;
 }
@@ -113,6 +120,13 @@ export const useFillableLineIds = (receiptIds: readonly number[]): FillableLineI
           return result.data === undefined || inboundReceiptId === undefined
             ? []
             : [[inboundReceiptId, result.data.map((line) => line.inboundReceiptLineId)] as const];
+        }),
+      ),
+      unknown: new Set(
+        results.flatMap((result, index) => {
+          const inboundReceiptId = ids[index];
+
+          return result.isError && inboundReceiptId !== undefined ? [inboundReceiptId] : [];
         }),
       ),
       isPending: results.some((result) => result.isPending),
