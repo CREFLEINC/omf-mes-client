@@ -177,12 +177,18 @@ export const useLoadFailure = (): ((
 
   const tokenState: DeviceTokenState = token.data ?? 'unknown';
   /* 판정이 났는가. 아직 물은 적이 없거나 묻는 중이면 아니다. */
-  const settled = token.data !== undefined && !token.isFetching;
+  const checking = token.isFetching;
+  const settled = token.data !== undefined && !checking;
   const [patienceOver, setPatienceOver] = useState(false);
 
+  /*
+   * 기다림은 확인을 보낸 때부터 센다. 화면이 선 때부터 세면 연 지 오래 뒤에 거절된 조회는
+   * 기다리지 않고 단정하지 않는 문구를 먼저 단다(#1198 리뷰) - 확인이 나갈 때마다 새로 센다.
+   */
   useEffect(() => {
+    setPatienceOver(false);
+
     if (settled) {
-      setPatienceOver(false);
       return;
     }
 
@@ -193,7 +199,7 @@ export const useLoadFailure = (): ((
     return () => {
       clearTimeout(timer);
     };
-  }, [settled]);
+  }, [settled, checking]);
 
   return useCallback(
     (error: unknown, offline: string, options: LoadFailureOptions = {}): string | null => {
