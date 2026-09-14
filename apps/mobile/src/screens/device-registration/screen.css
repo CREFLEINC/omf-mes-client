@@ -59,9 +59,29 @@
  */
 .camera-open,
 .camera-open body,
-.camera-open .mobile-shell,
 .camera-open .mobile-shell > main {
   background: transparent;
+}
+
+/*
+ * 앱바와 시스템 바 자리는 카메라가 열려도 가린다(사용자 지시 2026-09-14). 셸 바탕을 통째로
+ * 걷으면 셸이 상태바·내비게이션 바 높이만큼 두는 여백까지 비어 그 자리로 미리보기가 비친다 -
+ * 여백 띠만 칠해 둔다. 뷰파인더의 덮개 그림자는 본문 칸 안에서 잘려 이 자리까지 닿지 않는다.
+ */
+.camera-open .mobile-shell {
+  background:
+    linear-gradient(var(--surface), var(--surface)) top / 100%
+      var(--safe-area-inset-top, env(safe-area-inset-top, 0px)) no-repeat,
+    linear-gradient(var(--surface), var(--surface)) bottom / 100%
+      var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)) no-repeat,
+    linear-gradient(var(--surface), var(--surface)) left /
+      var(--safe-area-inset-left, env(safe-area-inset-left, 0px)) 100% no-repeat,
+    linear-gradient(var(--surface), var(--surface)) right /
+      var(--safe-area-inset-right, env(safe-area-inset-right, 0px)) 100% no-repeat;
+}
+
+.camera-open .mobile-shell__topbar {
+  background: var(--surface-container);
 }
 
 /*
