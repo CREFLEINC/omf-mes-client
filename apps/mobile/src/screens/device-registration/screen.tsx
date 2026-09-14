@@ -3,6 +3,7 @@ import { messages } from '@omf-mes/i18n';
 import { useEffect, useState } from 'react';
 
 import { readDeviceModel } from '../../patterns/device-model';
+import { LocalNetworkNotice } from '../../patterns/local-network';
 import { useScreenTitle } from '../../patterns/screen-title';
 import type { QrCamera } from '../../patterns/qr-camera';
 import { useRegistrationFlow } from './registration';
@@ -60,6 +61,8 @@ export const DeviceRegistrationScreen = ({ camera }: { camera?: QrCamera }) => {
         <h1 className="device-registration__headline">{t.unregistered.title}</h1>
       )}
 
+      <LocalNetworkNotice />
+
       {phase === 'offline' ? (
         <AlertBanner
           variant="warning"
@@ -95,6 +98,12 @@ export const DeviceRegistrationScreen = ({ camera }: { camera?: QrCamera }) => {
       {phase === 'rejected' ? (
         <AlertBanner variant="error" title={t.rejected.title}>
           {t.rejected.description}
+        </AlertBanner>
+      ) : null}
+
+      {phase === 'wrong-type' ? (
+        <AlertBanner variant="error" title={t.wrongType.title}>
+          {t.wrongType.description}
         </AlertBanner>
       ) : null}
 

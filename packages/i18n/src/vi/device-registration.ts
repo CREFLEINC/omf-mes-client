@@ -24,6 +24,10 @@ export const deviceRegistration: Translated<typeof ko.deviceRegistration> = {
     denied: 'Không có quyền camera nên không đọc được mã QR đăng ký',
     grant: 'Hãy cấp quyền rồi thử lại.',
   },
+  localNetwork: {
+    denied: 'Không có quyền Thiết bị ở gần nên có thể không kết nối được trong mạng nội bộ',
+    grant: 'Nếu máy dùng trong mạng nội bộ, hãy cấp quyền rồi thử lại.',
+  },
   offline: {
     title: 'Phải đăng ký khi đang kết nối',
     description: 'Đăng ký chỉ xong khi gửi đi và được xác nhận. Hãy kiểm tra kết nối rồi thử lại.',
@@ -35,6 +39,10 @@ export const deviceRegistration: Translated<typeof ko.deviceRegistration> = {
   rejected: {
     title: 'Không xác nhận được mã đăng ký',
     description: 'Kiểm tra mã hoặc yêu cầu quản trị viên cấp mã đăng ký mới.',
+  },
+  wrongType: {
+    title: 'Không phải mã đăng ký dành cho máy di động',
+    description: 'Hãy yêu cầu quản trị viên cấp mã đăng ký phù hợp với máy này.',
   },
   retry: 'Thử lại',
   terminal: {

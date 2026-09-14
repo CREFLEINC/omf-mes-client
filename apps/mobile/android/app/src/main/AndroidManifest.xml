@@ -40,6 +40,9 @@
 
     <uses-permission android:name="android.permission.INTERNET" />
 
+    <!-- 사내망 API 서버(사설 주소)에 닿는다. Android 17 부터 런타임 허용이 필요하고, 그 아래에서는 무시된다. -->
+    <uses-permission android:name="android.permission.ACCESS_LOCAL_NETWORK" />
+
     <!-- 등록 QR 을 읽는 자리에서만 쓴다. 바코드 스캔은 카메라를 쓰지 않는다. -->
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-feature android:name="android.hardware.camera" android:required="false" />
