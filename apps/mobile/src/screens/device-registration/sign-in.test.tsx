@@ -407,7 +407,7 @@ describe('기기 등록 해제', () => {
     await signedIn(user);
 
     await user.click(screen.getByRole('button', { name: '기기 등록 해제' }));
-    await user.click(await screen.findByRole('button', { name: '그대로 두기' }));
+    await user.click(await screen.findByRole('button', { name: '돌아가기' }));
 
     expect(token.cleared).toBe(0);
     expect(screen.getByText('작업자 1 · 900028')).toBeInTheDocument();
@@ -517,7 +517,9 @@ describe('기기 등록 해제', () => {
     refuse.key = OUTBOX_KEY;
     await user.click(await screen.findByRole('button', { name: '등록 해제' }));
 
-    expect(await screen.findByText('등록을 풀지 못했습니다. 다시 시도하세요')).toBeInTheDocument();
+    expect(
+      await screen.findByText('등록을 해제하지 못했습니다. 다시 시도해 주십시오'),
+    ).toBeInTheDocument();
     expect(token.cleared).toBe(0);
   });
 
@@ -534,7 +536,9 @@ describe('기기 등록 해제', () => {
     token.refuse = true;
     await user.click(await screen.findByRole('button', { name: '등록 해제' }));
 
-    expect(await screen.findByText('등록을 풀지 못했습니다. 다시 시도하세요')).toBeInTheDocument();
+    expect(
+      await screen.findByText('등록을 해제하지 못했습니다. 다시 시도해 주십시오'),
+    ).toBeInTheDocument();
     /* 창이 그대로 서 있으면 이 배너는 모달 뒤에 가려 읽히지 않는다. */
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   });
@@ -548,11 +552,13 @@ describe('기기 등록 해제', () => {
     await user.click(screen.getByRole('button', { name: '기기 등록 해제' }));
     token.refuse = true;
     await user.click(await screen.findByRole('button', { name: '등록 해제' }));
-    await screen.findByText('등록을 풀지 못했습니다. 다시 시도하세요');
+    await screen.findByText('등록을 해제하지 못했습니다. 다시 시도해 주십시오');
 
     await user.click(screen.getByRole('button', { name: '기기 등록 해제' }));
 
-    expect(screen.queryByText('등록을 풀지 못했습니다. 다시 시도하세요')).not.toBeInTheDocument();
+    expect(
+      screen.queryByText('등록을 해제하지 못했습니다. 다시 시도해 주십시오'),
+    ).not.toBeInTheDocument();
   });
 
   /*
@@ -596,7 +602,7 @@ describe('기기 등록 해제', () => {
     await user.click(screen.getByRole('button', { name: '기기 등록 해제' }));
 
     const dialog = within(await screen.findByRole('dialog'));
-    for (const name of ['그대로 두기', '등록 해제']) {
+    for (const name of ['돌아가기', '등록 해제']) {
       expect(dialog.getByRole('button', { name })).toHaveClass(/_xl_/);
     }
   });
@@ -614,7 +620,7 @@ describe('기기 등록 해제', () => {
     await user.click(screen.getByRole('button', { name: '기기 등록 해제' }));
 
     const dialog = await screen.findByRole('dialog');
-    const notice = await within(dialog).findByText(/다시 쓰려면 관리자에게/);
+    const notice = await within(dialog).findByText(/다시 사용하려면 관리자에게/);
     const box = notice.closest('.worker-sign-in__dialog-body');
 
     expect(box).not.toBeNull();

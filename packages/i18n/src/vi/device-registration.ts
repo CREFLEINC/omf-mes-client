@@ -7,7 +7,8 @@ export const deviceRegistration: Translated<typeof ko.deviceRegistration> = {
   checking: 'Đang kiểm tra trạng thái đăng ký',
   unregistered: {
     title: 'Máy này chưa được đăng ký',
-    description: 'Quét mã QR đăng ký trên màn hình quản trị. Nếu không quét được, hãy nhập mã đăng ký.',
+    description:
+      'Quét mã QR đăng ký trên màn hình quản trị. Nếu không quét được, hãy nhập mã đăng ký.',
     where: 'Quản trị viên tạo mã đăng ký tại Web quản trị > Hệ thống > Cài đặt.',
   },
   code: {
@@ -58,14 +59,15 @@ export const deviceRegistration: Translated<typeof ko.deviceRegistration> = {
     },
     unregister: {
       open: 'Hủy đăng ký thiết bị',
-      title: 'Hủy đăng ký thiết bị này?',
-      notice: 'Muốn dùng lại phải xin mã QR mới từ quản trị viên.',
+      title: 'Hủy đăng ký sẽ không thể hoàn tác',
+      notice:
+        'Để sử dụng lại thiết bị này, cần xin mã QR đăng ký mới từ quản trị viên. Quý vị có muốn tiếp tục không?',
       pending: (count: string) => `${count} bản ghi chưa gửi sẽ mất`,
       returned: (count: string) => `${count} bản ghi gửi thất bại cũng sẽ mất`,
       counting: 'Đang đếm các bản ghi chưa gửi',
-      failed: 'Không hủy được đăng ký. Hãy thử lại',
+      failed: 'Không thể hủy đăng ký. Vui lòng thử lại',
       confirm: 'Hủy đăng ký',
-      cancel: 'Giữ nguyên',
+      cancel: 'Quay lại',
     },
     current: {
       label: 'Nhân viên hiện tại',
