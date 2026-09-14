@@ -584,6 +584,43 @@ describe('기기 등록 해제', () => {
     expect(token.cleared).toBe(0);
   });
 
+  /*
+   * 되돌릴 수 없는 확인인데 창 단추가 화면에서 가장 작았다 - 크기를 주지 않아 기본값으로
+   * 섰고, 같은 화면의 다른 단추와 이 앱의 다른 창 둘은 모두 xl 이다.
+   */
+  it('창 단추를 화면의 다른 단추와 같은 크기로 세운다', async () => {
+    const user = userEvent.setup();
+    mount();
+    await signedIn(user);
+
+    await user.click(screen.getByRole('button', { name: '기기 등록 해제' }));
+
+    const dialog = within(await screen.findByRole('dialog'));
+    for (const name of ['그대로 두기', '등록 해제']) {
+      expect(dialog.getByRole('button', { name })).toHaveClass(/_xl_/);
+    }
+  });
+
+  /*
+   * 디자인 시스템의 창 본문은 자식 사이 간격을 주지 않고 이 화면은 문단 여백을 0 으로 둔다.
+   * 감싸지 않으면 안내와 경고가 서로 붙는다.
+   */
+  it('창 본문을 한 상자에 담는다', async () => {
+    store.set(OUTBOX_KEY, JSON.stringify([queuedEntry('a')]));
+    const user = userEvent.setup();
+    mount();
+    await signedIn(user);
+
+    await user.click(screen.getByRole('button', { name: '기기 등록 해제' }));
+
+    const dialog = await screen.findByRole('dialog');
+    const notice = await within(dialog).findByText(/다시 쓰려면 관리자에게/);
+    const box = notice.closest('.worker-sign-in__dialog-body');
+
+    expect(box).not.toBeNull();
+    expect(box?.contains(within(dialog).getByText(/보내지 못한 기록 1건이 사라집니다/))).toBe(true);
+  });
+
   /* 사번이 남으면 새 QR 로 다시 등록했을 때 앞 작업자의 사번으로 기록이 쌓인다. */
   it('풀면 사번도 함께 끊는다', async () => {
     const user = userEvent.setup();
