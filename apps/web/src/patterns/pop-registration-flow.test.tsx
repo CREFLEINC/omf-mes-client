@@ -1,9 +1,11 @@
 import { act, waitFor } from '@testing-library/react';
+import { useNavigate } from 'react-router';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import {
   PopRegistrationProvider,
   usePopRegistration,
+  useRefreshPopTerminalOnScreenEntry,
   type PopRegistration,
 } from './pop-registration';
 import { forgetTerminalToken } from './pop-terminal-token';
@@ -452,5 +454,178 @@ describe('POP 단말 등록 — 상태 전이', () => {
     });
 
     expect(registration.current.failure).toBe('foreign');
+  });
+});
+
+/**
+ * ⭐ 관리웹에서 바꾼 단말 매핑이 단말을 다시 켜지 않아도 보여야 한다(#1202). 켤 때 한 번만
+ * 받았더니 공정을 매핑한 뒤에도 작업 시작이 「매핑된 공정이 없습니다」로 막혀 있었다.
+ */
+describe('POP 단말 등록 — 화면 진입 시 다시 받기', () => {
+  /** 서버 쪽 매핑을 시험 도중에 바꿀 수 있는 대역. `down` 이면 서버가 답하지 않는다. */
+  const liveServer = () => {
+    const server = {
+      processIds: [] as number[],
+      equipmentId: null as number | null,
+      down: false,
+      processCalls: 0,
+      /** 값이 있으면 공정 답을 그 약속이 풀릴 때까지 붙잡는다. */
+      hold: null as Promise<void> | null,
+    };
+    const fetch = createStubFetch([
+      {
+        match: (request) => /\/mdm\/terminals\/\d+\/processes(\?|$)/.test(request.url),
+        respond: async () => {
+          server.processCalls += 1;
+          if (server.down) throw new TypeError('Failed to fetch');
+
+          /* 요청이 떠난 시점의 매핑으로 답한다 — 붙잡혀 있는 동안 바뀐 값을 싣지 않는다. */
+          const items = server.processIds.map((processId) => ({ processId, canStartWork: true }));
+          const hold = server.hold;
+          if (hold !== null) await hold;
+
+          return jsonResponse({ items });
+        },
+      },
+      {
+        match: (request) => /\/mdm\/terminals\/\d+(\?|$)/.test(request.url),
+        respond: () => {
+          if (server.down) throw new TypeError('Failed to fetch');
+
+          return jsonResponse({
+            terminalId: 1001,
+            terminalCode: 'POP-1001',
+            terminalTypeCode: 'POP',
+            plantId: 10,
+            isActive: true,
+            equipmentId: server.equipmentId,
+          });
+        },
+      },
+    ]);
+
+    return { server, fetch };
+  };
+
+  const open = (fetch: ReturnType<typeof liveServer>['fetch'], withNav = false) => {
+    const box = {
+      current: null as PopRegistration | null,
+      go: null as ((to: string) => void) | null,
+    };
+
+    const Probe = () => {
+      box.current = usePopRegistration();
+
+      return null;
+    };
+
+    const Nav = () => {
+      useRefreshPopTerminalOnScreenEntry();
+      const navigate = useNavigate();
+      box.go = (to) => void navigate(to);
+
+      return null;
+    };
+
+    renderWithProviders(
+      <PopRegistrationProvider>
+        <Probe />
+        {withNav ? <Nav /> : null}
+      </PopRegistrationProvider>,
+      { fetch, session: null },
+    );
+
+    return box as { current: PopRegistration; go: ((to: string) => void) | null };
+  };
+
+  it('다시 받으면 관리웹에서 새로 매핑한 공정·설비가 신원에 들어온다', async () => {
+    putShell(0);
+    const { server, fetch } = liveServer();
+    const registration = open(fetch);
+
+    await register(registration, TOKEN_A);
+    expect(registration.current.processes).toEqual([]);
+
+    server.processIds = [7];
+    server.equipmentId = 55;
+
+    await act(async () => {
+      await registration.current.refresh();
+    });
+
+    expect(registration.current.processes?.map((row) => row.processId)).toEqual([7]);
+    expect(registration.current.terminal?.equipmentId).toBe(55);
+  });
+
+  it('⛔ 다시 받지 못하면 알고 있던 값을 그대로 쓰고 등록을 무르지 않는다', async () => {
+    putShell(0);
+    const { server, fetch } = liveServer();
+    server.processIds = [7];
+    const registration = open(fetch);
+
+    await register(registration, TOKEN_A);
+
+    server.processIds = [];
+    server.down = true;
+
+    await act(async () => {
+      await registration.current.refresh();
+    });
+
+    expect(registration.current.phase).toBe('ready');
+    expect(registration.current.processes?.map((row) => row.processId)).toEqual([7]);
+  });
+
+  it('⛔ 늦게 도착한 앞 요청의 답이 뒤 요청의 답을 덮지 않는다', async () => {
+    putShell(0);
+    const { server, fetch } = liveServer();
+    server.processIds = [1];
+    const registration = open(fetch);
+
+    await register(registration, TOKEN_A);
+
+    /* 첫 요청의 공정 답을 붙잡아 둔다. */
+    let release: () => void = () => undefined;
+    server.hold = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    let first: Promise<void> = Promise.resolve();
+    act(() => {
+      first = registration.current.refresh();
+    });
+
+    server.hold = null;
+    server.processIds = [9];
+    await act(async () => {
+      await registration.current.refresh();
+    });
+    expect(registration.current.processes?.map((row) => row.processId)).toEqual([9]);
+
+    await act(async () => {
+      release();
+      await first;
+    });
+
+    expect(registration.current.processes?.map((row) => row.processId)).toEqual([9]);
+  });
+
+  it('화면 주소가 바뀌면 다시 받는다', async () => {
+    putShell(0);
+    const { server, fetch } = liveServer();
+    const registration = open(fetch, true);
+
+    await register(registration, TOKEN_A);
+    const before = server.processCalls;
+
+    server.processIds = [7];
+
+    await act(async () => {
+      registration.go?.('/pop/work-start');
+    });
+
+    await waitFor(() =>
+      expect(registration.current.processes?.map((row) => row.processId)).toEqual([7]),
+    );
+    expect(server.processCalls).toBeGreaterThan(before);
   });
 });
