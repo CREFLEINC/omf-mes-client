@@ -16,8 +16,15 @@ type Client = ReturnType<typeof useApiClient>['client'];
 export interface ScannedIssue {
   issue: GoodsIssue;
   lines: GoodsIssueLine[];
-  workOrderId: number;
-  destinationLocationId: number;
+  /**
+   * 피킹지시 원천이 아니면 둘 다 없다.
+   *
+   * 계약의 출고 원천은 셋이다 - `PICKING_ORDER` · `GOODS_RECEIPT` · `DISPOSITION_DECISION`.
+   * 뒤의 둘은 따라갈 사슬이 없어 이 화면이 두 값을 얻을 길이 없다. 서버가 막는 것은 아니고
+   * 본문으로 받으므로, 없다는 사실만 말하고 지어내지 않는다.
+   */
+  workOrderId: number | null;
+  destinationLocationId: number | null;
 }
 
 /**
@@ -45,11 +52,30 @@ const findIssue = async (client: Client, code: string): Promise<ScannedIssue | n
     }),
   );
 
+  /*
+   * 원천이 피킹지시일 때만 따라간다.
+   *
+   * 유형을 보지 않고 `sourceDocumentId` 를 피킹지시 식별자로 단정해 부르면, 입고 전표 원천
+   * 출고에서 그 번호의 피킹지시가 없어 401 이 온다. 그 401 은 조회 권한 이야기가 아닌데
+   * 화면은 조회 권한 문구를 달아 사람을 단말 설정으로 보냈다.
+   */
+  if (issue.sourceDocumentTypeCode !== 'PICKING_ORDER') {
+    return { issue, lines: lines.items, workOrderId: null, destinationLocationId: null };
+  }
+
   const picking = await runRequest(() =>
     client.GET('/logistics/picking-orders/{pickingOrderId}', {
       params: { path: { pickingOrderId: issue.sourceDocumentId } },
     }),
   );
+
+  /*
+   * 피킹지시의 원천도 판별자다 - 자재 출고요청과 출하 지시가 같은 표를 쓰고 이 값이 둘을
+   * 가른다. 출하 피킹에서 나온 출고를 여기 대면 출하 지시 번호로 자재 출고요청을 묻게 된다.
+   */
+  if (picking.pickingOrder.sourceDocumentTypeCode !== 'MATERIAL_ISSUE_REQUEST') {
+    return { issue, lines: lines.items, workOrderId: null, destinationLocationId: null };
+  }
 
   const request = await runRequest(() =>
     client.GET('/logistics/material-issue-requests/{materialIssueRequestId}', {
