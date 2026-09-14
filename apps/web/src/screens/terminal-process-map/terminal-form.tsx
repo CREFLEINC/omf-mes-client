@@ -5,6 +5,7 @@ import { useId } from 'react';
 
 import { SaveErrorBanner } from '../../patterns/master';
 import { FieldLabel } from './field-label';
+import { LoadErrorBanner } from './load-error-banner';
 import { lookupNote, type LookupResult } from './lookups';
 import { SelectField } from './select-field';
 import type { TerminalDraft, TerminalErrors } from './terminal-draft';
@@ -36,8 +37,7 @@ const toOptions = (entries: { value: string; label: string }[]): SelectOption[] 
  * ⛔ **수정에서 단말 코드 칸을 잠근다** — 키라서 계약이 아예 받지 않는다. 감추지 않고
  * 잠근 채 사유를 적는다: 감추면 「왜 못 고치는가」를 물을 자리가 사라진다.
  *
- * ⚠ **유형·상태는 값 목록이 확정되기 전이라 코드를 직접 받는다.** 고르는 칸으로 만들면 채울
- * 값이 없어 단말을 등록할 수 없다.
+ * 신규 등록은 운영 상태를 묻지 않는다. 수정할 때만 서버가 보유한 운영 상태를 편집한다.
  */
 export const TerminalForm = ({
   draft,
@@ -60,6 +60,10 @@ export const TerminalForm = ({
   return (
     <>
       <SaveErrorBanner error={saveError} />
+      {plants.isError ? <LoadErrorBanner error={plants.error} onRetry={plants.refetch} /> : null}
+      {equipments.isError ? (
+        <LoadErrorBanner error={equipments.error} onRetry={equipments.refetch} />
+      ) : null}
 
       <div className="form-grid">
         <div className="field-cell">
@@ -103,18 +107,20 @@ export const TerminalForm = ({
           />
         </div>
 
-        <div className="field-cell">
-          <FieldLabel htmlFor={statusId} label={t.terminal.status} />
-          <TextField
-            id={statusId}
-            value={draft.statusCode}
-            error={errors.statusCode ?? fieldErrors.statusCode}
-            helperText={t.terminal.codeListPending}
-            onChange={(event) => {
-              onChange({ statusCode: event.target.value });
-            }}
-          />
-        </div>
+        {!isNew ? (
+          <div className="field-cell">
+            <FieldLabel htmlFor={statusId} label={t.terminal.status} />
+            <TextField
+              id={statusId}
+              value={draft.statusCode}
+              error={errors.statusCode ?? fieldErrors.statusCode}
+              helperText={t.terminal.statusHelp}
+              onChange={(event) => {
+                onChange({ statusCode: event.target.value });
+              }}
+            />
+          </div>
+        ) : null}
 
         <SelectField
           label={t.terminal.equipment}

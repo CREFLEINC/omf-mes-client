@@ -2,7 +2,7 @@ import { AlertBanner, Button } from '@crefle/web-ui';
 import type { ApiError } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 
-import { toApiError } from '../../patterns/request';
+import { ApiRequestError, toApiError } from '../../patterns/request';
 
 /**
  * 조회 실패의 원인을 한 줄 안내로 옮긴다.
@@ -47,7 +47,8 @@ export interface LoadErrorBannerProps {
  */
 export const LoadErrorBanner = ({ error, onRetry }: LoadErrorBannerProps) => {
   const apiError = toApiError(error);
-  const forbidden = isForbidden(apiError);
+  const forbidden =
+    (error instanceof ApiRequestError && error.httpStatus === 403) || isForbidden(apiError);
 
   return (
     <div className="banner-slot">
