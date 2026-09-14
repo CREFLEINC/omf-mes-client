@@ -384,8 +384,8 @@ export const ShopfloorReceiptScreen = () => {
         ) : null}
         {/* 무엇이 없어서 받을 수 없는지 그 자리에서 말한다. 단말 설정과는 무관한 일이다. */}
         {issue !== null && issue.workOrderId === null ? (
-          <AlertBanner variant="error" title={t.issue.noChain}>
-            {t.issue.noChainWhy}
+          <AlertBanner variant="error" title={t.issue.notForShopfloor}>
+            {t.issue.notForShopfloorWhy}
           </AlertBanner>
         ) : null}
 

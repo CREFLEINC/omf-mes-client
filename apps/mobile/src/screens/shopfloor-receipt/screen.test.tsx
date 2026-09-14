@@ -411,9 +411,7 @@ describe('생산창고 입고 화면', () => {
 
     scan(ISSUE_NO);
 
-    expect(
-      await screen.findByText('이 출고 전표는 작업지시와 도착 위치를 찾을 수 없습니다'),
-    ).toBeTruthy();
+    expect(await screen.findByText('생산창고 입고 대상이 아닌 출고 전표입니다')).toBeTruthy();
     expect(asked.some((url) => url.includes('/logistics/picking-orders/'))).toBe(false);
     /* 단말 설정과 무관한 일에 조회 권한 문구를 달지 않는다. */
     expect(screen.queryByText(/기기 설정을 확인하세요/)).toBeNull();
@@ -425,7 +423,7 @@ describe('생산창고 입고 화면', () => {
     await screen.findByLabelText(/출고 QR 스캔/);
 
     scan(ISSUE_NO);
-    await screen.findByText('이 출고 전표는 작업지시와 도착 위치를 찾을 수 없습니다');
+    await screen.findByText('생산창고 입고 대상이 아닌 출고 전표입니다');
 
     expect(screen.getByRole('button', { name: '입고 확정' })).toBeDisabled();
   });

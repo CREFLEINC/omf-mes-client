@@ -22,9 +22,9 @@ export const shopfloorReceipt: Translated<typeof ko.shopfloorReceipt> = {
     notFound: (code: string) => `Không tìm thấy phiếu xuất kho ${code}`,
     loadFailed: 'Không mở được phiếu xuất kho. Hãy kiểm tra kết nối.',
     summary: (no: string, count: number) => `${no} · ${String(count)} dòng`,
-    noChain: 'Phiếu xuất kho này không tìm được lệnh sản xuất và vị trí đến',
-    noChainWhy:
-      'Đây không phải phiếu xuất từ lệnh lấy hàng nên không có nơi để kế thừa. Không thể nhận ở màn hình này.',
+    notForShopfloor: 'Phiếu xuất kho này không thuộc diện nhập kho sản xuất',
+    notForShopfloorWhy:
+      'Ở đây chỉ nhận phiếu xuất để đưa vào sản xuất. Phiếu xuất để trả hàng hoặc hủy bỏ thì không nhận. Hãy kiểm tra lại số phiếu.',
     destination: (code: string) => `Nơi đến ${code}`,
     destinationOffline: 'Không xác nhận được vị trí đến. Hãy kiểm tra kết nối.',
     destinationUnknown:
