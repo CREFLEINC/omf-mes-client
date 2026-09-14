@@ -469,17 +469,22 @@ describe('POP 단말 등록 — 화면 진입 시 다시 받기', () => {
       equipmentId: null as number | null,
       down: false,
       processCalls: 0,
+      /** 값이 있으면 공정 답을 그 약속이 풀릴 때까지 붙잡는다. */
+      hold: null as Promise<void> | null,
     };
     const fetch = createStubFetch([
       {
         match: (request) => /\/mdm\/terminals\/\d+\/processes(\?|$)/.test(request.url),
-        respond: () => {
+        respond: async () => {
           server.processCalls += 1;
           if (server.down) throw new TypeError('Failed to fetch');
 
-          return jsonResponse({
-            items: server.processIds.map((processId) => ({ processId, canStartWork: true })),
-          });
+          /* 요청이 떠난 시점의 매핑으로 답한다 — 붙잡혀 있는 동안 바뀐 값을 싣지 않는다. */
+          const items = server.processIds.map((processId) => ({ processId, canStartWork: true }));
+          const hold = server.hold;
+          if (hold !== null) await hold;
+
+          return jsonResponse({ items });
         },
       },
       {
@@ -569,6 +574,39 @@ describe('POP 단말 등록 — 화면 진입 시 다시 받기', () => {
 
     expect(registration.current.phase).toBe('ready');
     expect(registration.current.processes?.map((row) => row.processId)).toEqual([7]);
+  });
+
+  it('⛔ 늦게 도착한 앞 요청의 답이 뒤 요청의 답을 덮지 않는다', async () => {
+    putShell(0);
+    const { server, fetch } = liveServer();
+    server.processIds = [1];
+    const registration = open(fetch);
+
+    await register(registration, TOKEN_A);
+
+    /* 첫 요청의 공정 답을 붙잡아 둔다. */
+    let release: () => void = () => undefined;
+    server.hold = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    let first: Promise<void> = Promise.resolve();
+    act(() => {
+      first = registration.current.refresh();
+    });
+
+    server.hold = null;
+    server.processIds = [9];
+    await act(async () => {
+      await registration.current.refresh();
+    });
+    expect(registration.current.processes?.map((row) => row.processId)).toEqual([9]);
+
+    await act(async () => {
+      release();
+      await first;
+    });
+
+    expect(registration.current.processes?.map((row) => row.processId)).toEqual([9]);
   });
 
   it('화면 주소가 바뀌면 다시 받는다', async () => {

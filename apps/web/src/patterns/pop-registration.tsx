@@ -312,8 +312,18 @@ export const PopRegistrationProvider = ({ children }: { children: ReactNode }) =
    */
   const [registered, setRegistered] = useState<VerifiedTerminal | null>(null);
 
+  /**
+   * 다시 받기 요청의 순번(#1202). **가장 최근 요청의 답만 넣는다.**
+   *
+   * ⛔ 없으면 늦게 온 옛 답이 새 값을 덮는다 — 화면을 연달아 옮기거나, 답이 오기 전에 같은
+   *    단말로 재등록하면 단말 번호 비교로는 가를 수 없다(독립 검증 재현). 준비·재등록도 순번을
+   *    올려 그 전에 떠난 요청을 무효로 만든다.
+   */
+  const refreshSeq = useRef(0);
+
   const prepare = useCallback(
     async (terminal: VerifiedTerminal) => {
+      refreshSeq.current += 1;
       setState((prev) => ({ ...prev, phase: 'preparing', failure: null }));
 
       try {
@@ -454,6 +464,7 @@ export const PopRegistrationProvider = ({ children }: { children: ReactNode }) =
    *    「갈 곳이 달라지는가」를 이 값과 비교해 재고, 실제로 바뀔 때만 미전송 건수를 본다.
    */
   const restart = useCallback(() => {
+    refreshSeq.current += 1;
     setApproved(null);
     setCandidateTerminalToken(null);
     setState(INITIAL);
@@ -476,6 +487,9 @@ export const PopRegistrationProvider = ({ children }: { children: ReactNode }) =
 
     if (terminalId === null || !navigator.onLine) return;
 
+    refreshSeq.current += 1;
+    const seq = refreshSeq.current;
+
     try {
       const [terminal, processes] = await Promise.all([
         fetchTerminal(client, terminalId),
@@ -483,7 +497,9 @@ export const PopRegistrationProvider = ({ children }: { children: ReactNode }) =
       ]);
 
       setState((prev) =>
-        prev.phase === 'ready' && prev.terminal?.terminalId === terminalId
+        seq === refreshSeq.current &&
+        prev.phase === 'ready' &&
+        prev.terminal?.terminalId === terminalId
           ? { ...prev, terminal, processes }
           : prev,
       );
