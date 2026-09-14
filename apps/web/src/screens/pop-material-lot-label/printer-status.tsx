@@ -8,8 +8,8 @@ import type { PrinterStatus, PrinterView } from './types';
 const t = messages.popMaterialLotLabel.printer;
 
 /**
- * 상태 값을 **색으로만** 옮긴다. 문구는 서버가 준 `statusMessage`를 그대로 쓴다 —
- * 화면이 `status`로 한국어를 지어내면 서버가 값을 늘렸을 때 화면만 모르는 문구가 생긴다.
+ * 상태 값을 **색으로만** 옮긴다. 화면이 `status`로 한국어를 지어내면 서버가 값을 늘렸을 때
+ * 화면만 모르는 문구가 생긴다.
  */
 const CHIP_STATUS: Record<PrinterStatus, 'success' | 'warning' | 'error'> = {
   READY: 'success',
@@ -82,7 +82,11 @@ export const PrinterStatusIndicator = ({
   return (
     <div className="pop-lot-status">
       <Chip status={chipStatusOf(printer.status)}>
-        {`${t.label} ${printer.displayName} · ${printer.statusMessage ?? t.noStatusMessage}`}
+        {/*
+         * ⭐ **이름만 보인다**(사용자 지시 2026-09-14). 뒤에 붙던 설명(「이 프린터로 나갑니다」 등)은
+         *    머리줄을 길게 만들 뿐이라 뺐다. 상태는 칩 색이 말한다.
+         */}
+        {`${t.label} ${printer.displayName}`}
       </Chip>
     </div>
   );

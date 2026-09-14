@@ -21,7 +21,7 @@ export const popMaterialLotLabel: Translated<typeof ko.popMaterialLotLabel> = {
     retry: 'Tải lại',
   },
   device: {
-    terminalLabel: 'Máy trạm',
+    terminalLabel: 'Máy trạm#',
     terminalUnknown: 'Chưa xác nhận',
   },
 
@@ -32,7 +32,6 @@ export const popMaterialLotLabel: Translated<typeof ko.popMaterialLotLabel> = {
     none: 'Không có máy in nào dùng được.',
     unknown: 'Không kiểm tra được trạng thái máy in.',
     retry: 'Kiểm tra lại',
-    noStatusMessage: 'Không có mô tả trạng thái.',
   },
   target: {
     paneLabel: 'Đối tượng cấp số',

@@ -42,7 +42,8 @@ export const popMaterialLotLabel = {
   },
   /** 머리줄 오른쪽의 상태 묶음. 다른 POP 화면과 같은 말을 쓴다. */
   device: {
-    terminalLabel: '단말',
+    /** ⭐ 번호가 뒤에 붙는다 — 「단말# 5」(사용자 지시 2026-09-14). */
+    terminalLabel: '단말#',
     terminalUnknown: '확인되지 않음',
   },
 
@@ -63,8 +64,6 @@ export const popMaterialLotLabel = {
      */
     unknown: '프린터 상태를 확인할 수 없습니다.',
     retry: '다시 확인',
-    /** 서버가 사람이 읽는 설명을 주지 않았다. 상태 값을 화면이 한국어로 옮기지 않는다. */
-    noStatusMessage: '상태 설명이 없습니다.',
   },
   target: {
     paneLabel: '채번 대상',
