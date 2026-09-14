@@ -57,7 +57,7 @@ export const terminalProcessMap: Translated<typeof ko.terminalProcessMap> = {
     codeLocked: 'Đăng ký xong thì không đổi được. Đây là khóa.',
     plant: 'Nhà máy',
     type: 'Loại',
-    status: 'Trạng thái',
+    status: 'Trạng thái vận hành',
     registration: 'Trạng thái đăng ký',
     registrationPending: 'Chưa đăng ký',
     registrationComplete: 'Đã đăng ký',
@@ -65,8 +65,8 @@ export const terminalProcessMap: Translated<typeof ko.terminalProcessMap> = {
     equipment: 'Thiết bị lắp đặt',
     equipmentNone: 'Không gắn vào thiết bị nào',
     equipmentNote: 'Màn hình POP dùng giá trị này ở chỗ lấy «thiết bị này» làm tiền đề.',
-    codeListPending:
-      'Danh sách giá trị chưa chốt nên phải nhập mã trực tiếp. Chốt rồi thì sẽ thành ô chọn.',
+    codeListPending: 'Nhập mã loại máy quét.',
+    statusHelp: 'Nhập RUNNING hoặc STOPPED.',
     locationOmitted:
       'Vị trí lắp đặt phải chọn kho trước mới tra cứu được nên màn hình này không xử lý.',
     save: 'Lưu',
@@ -82,7 +82,7 @@ export const terminalProcessMap: Translated<typeof ko.terminalProcessMap> = {
     requiredCode: 'Hãy nhập mã máy quét.',
     requiredPlant: 'Hãy chọn nhà máy.',
     requiredType: 'Hãy nhập mã loại.',
-    requiredStatus: 'Hãy nhập mã trạng thái.',
+    requiredStatus: 'Hãy nhập mã trạng thái vận hành.',
     plantLookupFailed: 'Không tải được danh sách nhà máy nên hiện chưa chọn được.',
     equipmentLookupFailed: 'Không tải được danh sách thiết bị nên hiện chưa chọn được.',
     lookupTruncated:

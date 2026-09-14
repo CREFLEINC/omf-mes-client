@@ -9,12 +9,8 @@ import {
 } from './pop-label-rendition';
 
 /**
- * `GET /app/document-issues/{documentIssueLogId}/rendition` 은 **실서버에 경로가 없다.**
- * 그래서 호출 여부를 모드가 가른다(#1083) — 개발 모드만 부르고, 그 밖(배포본·이 시험 실행)은
- * **요청을 만들지 않고 거부한다.**
- *
- * ⭐ 이 시험이 도는 `MODE` 는 `test` 다 — 그래서 여기서 확인하는 것은 **부르지 않는 쪽**이다.
- * 개발 모드 갈래는 빌드 시점 상수로 접히므로 같은 실행 안에서 두 갈래를 함께 세울 수 없다.
+ * 준비된 문서 종류만 배포 호출을 허용한다. 자재 라벨은 TSPL을,
+ * 납품 라벨은 PNG를 요청하며, 미지정 문서 종류는 기존처럼 네트워크 전에 거부한다.
  */
 const clientSpy = () => {
   const get = vi.fn();
@@ -22,7 +18,7 @@ const clientSpy = () => {
   return { get, client: { GET: get } as unknown as ApiClient['client'] };
 };
 
-describe('fetchLabelRendition — 배포본에서는 부르지 않는다', () => {
+describe('fetchLabelRendition — 준비된 문서 종류만 배포 호출', () => {
   it('지원되는 납품 라벨만 발행 기록의 PNG를 조회한다', async () => {
     const { get, client } = clientSpy();
     const bytes = new Uint8Array([137, 80, 78, 71]).buffer;
@@ -30,6 +26,14 @@ describe('fetchLabelRendition — 배포본에서는 부르지 않는다', () =>
     await expect(fetchLabelRendition(client, 44101, 'png', 'DELIVERY_LABEL')).resolves.toEqual(bytes);
     expect(get).toHaveBeenCalledWith('/app/document-issues/{documentIssueLogId}/rendition',
       expect.objectContaining({ params: { path: { documentIssueLogId: 44101 }, query: { format: 'png' } } }));
+  });
+  it('배포본 자재 LOT 라벨의 TSPL rendition을 조회한다', async () => {
+    const { get, client } = clientSpy();
+    const bytes = new TextEncoder().encode('SIZE 60 mm,40 mm').buffer;
+    get.mockResolvedValue({ data: bytes, response: new Response(bytes) });
+    await expect(fetchLabelRendition(client, 44102, 'tspl', 'MATERIAL_LOT_LABEL')).resolves.toEqual(bytes);
+    expect(get).toHaveBeenCalledWith('/app/document-issues/{documentIssueLogId}/rendition',
+      expect.objectContaining({ params: { path: { documentIssueLogId: 44102 }, query: { format: 'tspl' } } }));
   });
   it('거부한다 — 성공으로 빠지는 길이 없다', async () => {
     const { client } = clientSpy();

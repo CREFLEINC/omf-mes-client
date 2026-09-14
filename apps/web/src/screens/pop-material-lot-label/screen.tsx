@@ -12,7 +12,6 @@ import { PageNav } from './page-nav';
 import { toPageView } from './pagination';
 import { PrinterStatusIndicator } from './printer-status';
 import {
-  isReceiptListUnsupported,
   useLotNo,
   usePrinters,
   useReceipts,
@@ -162,13 +161,7 @@ export const PopMaterialLotLabelScreen = () => {
            */}
           <h2 className="pop-lot-pane-title">{t.receipts.title}</h2>
 
-          {isReceiptListUnsupported() ? (
-            /*
-             * ⛔ **재시도 단추를 붙이지 않는다** — 눌러도 같은 자리로 돌아온다.
-             * ⛔ **오류로 칠하지 않는다** — 실패가 아니라 아직 서 있지 않은 자리다.
-             */
-            <AlertBanner variant="warning">{t.receipts.unsupported}</AlertBanner>
-          ) : isListError ? (
+          {isListError ? (
             <AlertBanner
               variant="error"
               title={t.receipts.loadFailed}

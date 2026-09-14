@@ -41,10 +41,10 @@ export const workerAssignment = {
     terminalType: '단말 유형',
     equipment: '설비',
     unassigned: '미지정',
-    /** 적용 뒤 — 공정 목록을 받는 동안. 등록은 이미 끝났다. */
-    preparing: '업무 준비 중…',
-    prepareFailedTitle: '등록은 끝났고, 업무 준비만 실패했습니다',
-    prepareFailedBody: '단말 토큰에는 문제가 없습니다. 연결을 확인하고 다시 시도하세요.',
+    /** 보관 뒤 — 서버 등록 완료 확인과 공정 목록을 받는 동안. */
+    preparing: '단말 등록 확인 및 업무 준비 중…',
+    prepareFailedTitle: '단말 등록 확인 또는 업무 준비에 실패했습니다',
+    prepareFailedBody: '보관된 코드는 유지됩니다. 연결과 단말 권한을 확인하고 다시 시도하세요.',
     retryPrepare: '준비 재시도',
     /**
      * 켤 때 스스로 확인한 **보관 토큰**이 걸러졌을 때의 말(#1137).

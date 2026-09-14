@@ -20,6 +20,7 @@ export interface LookupResult {
   entries: LookupEntry[];
   truncated: boolean;
   isError: boolean;
+  error: unknown;
   isLoading: boolean;
   refetch: () => void;
 }
@@ -59,6 +60,7 @@ export const usePlantOptions = (): LookupResult => {
       })) ?? EMPTY_ENTRIES,
     truncated: data !== undefined && isTruncated(data.page, data.items.length),
     isError: query.isError,
+    error: query.error,
     isLoading: query.isPending,
     refetch: () => {
       void query.refetch();
@@ -83,6 +85,7 @@ export const useEquipmentOptions = (): LookupResult => {
       })) ?? EMPTY_ENTRIES,
     truncated: data !== undefined && isTruncated(data.page, data.items.length),
     isError: query.isError,
+    error: query.error,
     isLoading: query.isPending,
     refetch: () => {
       void query.refetch();
@@ -108,6 +111,7 @@ export const useProcessOptions = (): LookupResult => {
       })) ?? EMPTY_ENTRIES,
     truncated: data !== undefined && isTruncated(data.page, data.items.length),
     isError: query.isError,
+    error: query.error,
     isLoading: query.isPending,
     refetch: () => {
       void query.refetch();

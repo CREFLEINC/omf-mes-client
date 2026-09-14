@@ -200,6 +200,24 @@ describe('IqcInspectionScreen', () => {
     expect(lastQuery(sent)?.get('itemId')).toBe('1001');
   });
 
+  it('같은 조건으로 다시 조회하면 외부에서 새로 생긴 의뢰를 받는다', async () => {
+    let calls = 0;
+    const { sent } = renderScreen('/', () => {
+      calls += 1;
+      return jsonResponse(calls === 1
+        ? queueResponse([], pageOf(0))
+        : queueResponse([waitingRequest], pageOf(1)));
+    });
+
+    expect(await screen.findByText(t.queue.empty)).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: t.filters.apply }));
+
+    await waitFor(() => expect(queueCalls(sent)).toHaveLength(2));
+    expect(await screen.findByText(waitingRequest.inspectionRequestNo)).toBeInTheDocument();
+    expect(lastQuery(sent)?.get('inspectionTypeCode')).toBe('IQC');
+    expect(lastQuery(sent)?.get('pendingOnly')).toBe('true');
+  });
+
   it('의뢰를 고르면 그 줄이 현재가 된다', async () => {
     renderScreen();
 

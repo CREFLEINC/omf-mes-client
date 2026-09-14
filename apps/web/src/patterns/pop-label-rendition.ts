@@ -3,42 +3,14 @@ import type { ApiClient, paths } from '@omf-mes/api-client';
 import { runRequest } from './request';
 
 /**
- * 라벨을 **무슨 형식으로, 부를 것인가 말 것인가**를 한 곳에서 정한다.
+ * POP 출력 형식과 배포 가능 문서 종류를 한 곳에서 고른다.
  *
- * ⭐ **셸이 있으면 명령형(`tspl`), 없으면 그림(`png`)** — 셸 유무가 형식을 가른다(#1104).
+ * Electron 셸이 있으면 RAW 인쇄용 TSPL, 브라우저이면 PNG를 요청한다. 미리보기는
+ * 셸에서도 PNG를 명시한다. 자재 LOT 라벨과 납품 라벨은 서버 rendition을 지원한다.
+ * 다른 문서 종류는 기존 준비 전 오류를 유지해 잘못된 재발행을 막는다.
  *
- * 그림으로 받으면 단말이 그것을 **Windows 드라이버에 넘겨** 그린다. 실기의 라벨 프린터는
- * TSPL 로 설정돼 있는데 드라이버가 다른 언어를 내보내 **프린터가 작업을 받아들이고 버렸다** —
- * 스풀러까지는 성공이라 앱은 그 너머를 알 수 없었고, 라벨이 한 장도 나오지 않았다(실기
- * 2026-09-12). 명령형으로 받으면 셸이 대기열의 RAW 자리로 그대로 보내 드라이버를 건너뛴다.
- *
- * ⛔ **`tspl` 은 고정한 계약에 없는 값이다** — `getDocumentRendition` 의 `format` 질의는
- * `"png" | "pdf"` 뿐이다. 목은 구현해 두었고 **사용자가 이 방향을 선택했다**(2026-09-12).
- * 계약을 벗어나는 자리는 아래 `fetchLabelRendition` 한 곳이며, 계약에 `tspl` 이 돌아오면
- * 그 우회만 걷어낸다.
- *
- * ⛔ **미리보기는 언제나 `png` 로 «명시해» 부른다.** 인쇄로 나가는 바이트만 명령형이면 된다 —
- * 명령문을 `<img>` 에 넣으면 언제나 「그릴 수 없습니다」가 뜨고, 명령형을 쓰는 자리는 실기
- * 단말뿐이라 **확인해야 할 그 단말에서만** 미리보기가 통째로 죽는다(리뷰 지적 2026-09-08).
- *
- * ## 부르는가 — **모드가 가른다**(#1083)
- *
- * `GET /app/document-issues/{documentIssueLogId}/rendition` 은 **실서버에 아직 없다**(전달본
- * `manifest.json` · `notImplementedOperations`). 그래서 **배포본은 부르지 않는다** — 없는 경로를
- * 두드려 봐야 계약이 보장하는 응답이 오지 않고, 실패가 「발행이 안 됐다」로 읽히면 사용자가
- * 발행을 다시 눌러 회차만 올린다.
- *
- * ⭐ **개발 모드는 부른다.** 그 환경이 보는 서버는 목이고, 목은 이 경로를 구현해 라벨을 그려
- * 준다. 부르지 않으면 **목으로 도는 시험에서 라벨을 한 장도 볼 수 없다** — 발행·인쇄·재출력
- * 단계가 통째로 확인 불가가 된다(실측 2026-09-11 · 88단계 시험).
- *
- * ⛔ **가름은 `MODE === 'development'` 한 표기뿐이다.** `import.meta.env.DEV` 는 이 저장소의
- * 설치본 빌드(`--mode development`)에서도 거짓이라 근거가 되지 못한다. 빌드 시점에 상수로
- * 접혀 배포 번들에서는 호출 가지째 걷힌다 — 런타임 조회로 바꾸면 현장 단말이 없는 경로를
- * 부르게 된다. 시험 실행(`MODE === 'test'`)도 부르지 않는 쪽이다.
- *
- * ⭐ **발행(`POST /app/document-issues`)은 이 가름과 무관하다** — 막힌 적이 없다. 막히는 것은
- * 발행 «뒤»의 미리보기·인쇄용 그림 취득뿐이라, 호출부는 그 둘을 뭉뚱그리지 않는다.
+ * TSPL은 현재 설계 사본의 png/pdf enum보다 앞선 서버 구현 항목이다. 계약 cast는
+ * 여기 한 곳에만 두고 서버 선행 계약 장부와 함께 추적한다.
  */
 type ContractRenditionFormat = NonNullable<
   NonNullable<
@@ -96,11 +68,8 @@ export class LabelRenditionNotReadyError extends Error {
 }
 
 /**
- * 발행 기록 한 건의 라벨 그림.
- *
- * **납품 라벨 또는 개발 모드에서 조회한다**(위 머리말). 그 밖에서는 요청을 만들지 않고 곧바로
- * `LabelRenditionNotReadyError` 로 거부하므로, 호출부의 기존 실패 처리(재발행을 유도하지 않고
- * 미리보기·인쇄만 막힌 것으로 다루는 경로)가 그대로 선다.
+ * 배포 서버가 지원하는 문서 종류만 명시적으로 통과시킨다.
+ * 준비되지 않은 종류는 네트워크 요청 전에 거부해 발행 실패와 구분한다.
  */
 export const fetchLabelRendition = async (
   client: ApiClient['client'],
@@ -112,10 +81,10 @@ export const fetchLabelRendition = async (
    *    바이트가 `<img>` 로 들어가 미리보기가 통째로 죽는다(#1104 리뷰 지적).
    */
   format: LabelRenditionFormat = labelRenditionFormat(),
-  /** 납품 라벨은 배포 서버가 PNG rendition을 제공한다. */
-  readyDocumentTypeCode?: 'DELIVERY_LABEL',
+  /** 배포 서버가 지원하는 문서 종류만 명시적으로 허용한다. */
+  readyDocumentTypeCode?: 'DELIVERY_LABEL' | 'MATERIAL_LOT_LABEL',
 ): Promise<ArrayBuffer> => {
-  if (import.meta.env.MODE !== 'development' && readyDocumentTypeCode !== 'DELIVERY_LABEL') {
+  if (import.meta.env.MODE !== 'development' && readyDocumentTypeCode !== 'DELIVERY_LABEL' && readyDocumentTypeCode !== 'MATERIAL_LOT_LABEL') {
     throw new LabelRenditionNotReadyError();
   }
 

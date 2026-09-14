@@ -50,7 +50,7 @@ export const terminalProcessMap = {
     codeLocked: '등록한 뒤에는 바꿀 수 없습니다. 키로 쓰입니다.',
     plant: '공장',
     type: '유형',
-    status: '상태',
+    status: '운영 상태',
     registration: '등록 상태',
     registrationPending: '미등록',
     registrationComplete: '등록 완료',
@@ -59,9 +59,8 @@ export const terminalProcessMap = {
     equipmentNone: '설비에 붙이지 않음',
     /** POP 이 「이 설비」를 전제로 도는 화면들이 이 값을 쓴다. */
     equipmentNote: 'POP 화면이 「이 설비」를 전제로 도는 자리에서 이 값을 씁니다.',
-    /** ⚠ 값 목록이 아직 확정되지 않아 코드를 직접 적는다. */
-    codeListPending:
-      '값 목록이 아직 확정되지 않아 코드를 직접 적습니다. 확정되면 고르는 칸이 됩니다.',
+    codeListPending: '단말 유형 코드를 적으세요.',
+    statusHelp: 'RUNNING 또는 STOPPED를 적으세요.',
     /** 설치 위치는 창고를 먼저 골라야 조회되는 자원이라 이 화면에서 열지 않는다. */
     locationOmitted: '설치 위치는 창고를 먼저 골라야 조회할 수 있어 이 화면에서 다루지 않습니다.',
     save: '저장',
@@ -76,7 +75,7 @@ export const terminalProcessMap = {
     requiredCode: '단말 코드를 적으세요.',
     requiredPlant: '공장을 고르세요.',
     requiredType: '유형 코드를 적으세요.',
-    requiredStatus: '상태 코드를 적으세요.',
+    requiredStatus: '운영 상태 코드를 적으세요.',
     plantLookupFailed: '공장 목록을 불러오지 못해 지금은 고를 수 없습니다.',
     equipmentLookupFailed: '설비 목록을 불러오지 못해 지금은 고를 수 없습니다.',
     lookupTruncated: '목록의 일부만 보입니다. 찾는 것이 없으면 담당자에게 문의하세요.',

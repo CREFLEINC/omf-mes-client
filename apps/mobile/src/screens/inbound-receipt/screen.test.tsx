@@ -412,7 +412,7 @@ describe('입하 등록 화면', () => {
     await screen.findByLabelText('LOT 번호');
     await user.click(screen.getByRole('button', { name: 'LOT 번호 없음' }));
 
-    expect(await screen.findByText('LOT 번호가 붙어 있지 않습니다')).toBeTruthy();
+    expect(await screen.findByText('공급사 LOT 번호가 없습니다.')).toBeTruthy();
     expect(screen.getByText(/대체\ LOT\ 사유/)).toBeTruthy();
   });
 

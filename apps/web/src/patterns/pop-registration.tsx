@@ -1,7 +1,9 @@
-import { isTransientStatus, type ApiClient } from '@omf-mes/api-client';
+import { createIdempotencyKey, isTransientStatus, type ApiClient } from '@omf-mes/api-client';
+import { useQueryClient } from '@tanstack/react-query';
 import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from 'react';
 
 import { useApiClient } from './api-context';
+import { popAccessKeys } from './pop-access';
 import { PopIdentityProvider } from './pop-identity';
 import {
   currentTerminalToken,
@@ -34,7 +36,8 @@ import { useWorkerSession } from './worker-session';
  *
  * ## 등록과 준비는 다른 층이다
  *
- * 검증 200 은 「이 단말이 누구인가」까지다. 업무로 넘기려면 **자기 공정 목록**을 받아야 하고,
+ * 검증 200 은 「이 단말이 누구인가」까지다. 업무로 넘기려면 서버에 등록 완료를 확인시키고
+ * **자기 공정 목록**을 받아야 한다. 보관 토큰은 켤 때 같은 확인·준비를 자동으로 다시 거친다.
  * 그 둘을 한 덩이로 다루면 준비 실패가 등록 실패처럼 보여 설치 담당자가 토큰부터 다시
  * 의심한다(F-4 「등록 성공과 준비 실패는 구분하고 재시도한다」).
  *
@@ -79,8 +82,8 @@ export interface TerminalProcessRow {
  * - `unregistered` 후보 토큰이 없다. 붙여넣기를 기다린다
  * - `verifying` 후보 토큰으로 서버에 묻는 중
  * - `verified` 서버가 확인했다. **설치 담당자가 단말 코드를 확인하고 적용해야 한다**
- * - `preparing` 적용했고 자기 공정 목록을 받는 중
- * - `prepare-failed` 등록은 됐는데 준비가 실패했다 — 토큰 문제가 아니다
+ * - `preparing` 적용했고 서버 등록 확인·자기 공정 목록을 받는 중
+ * - `prepare-failed` 보관은 됐으나 서버 등록 확인 또는 업무 준비가 실패했다
  * - `ready` 업무로 넘어갈 수 있다
  */
 export type RegistrationPhase =
@@ -274,6 +277,30 @@ const fetchProcesses = (client: Client, terminalId: number): Promise<TerminalPro
     client.GET('/mdm/terminals/{terminalId}/processes', { params: { path: { terminalId } } }),
   ).then((data) => [...data.items]);
 
+/** 저장된 현재 세대 토큰으로 서버 등록 상태를 확인한다(P-7). 재기동·재시도에도 멱등이다. */
+const confirmRegistration = async (client: Client, terminalId: number): Promise<void> => {
+  const data = await runRequest(() =>
+    client.POST('/mdm/terminals/{terminalId}:confirm-registration', {
+      params: {
+        path: { terminalId },
+        header: { 'Idempotency-Key': createIdempotencyKey() },
+      },
+      body: {},
+    }),
+  );
+
+  if (
+    data.terminalId !== terminalId ||
+    data.registrationStatusCode !== 'REGISTERED' ||
+    !Number.isSafeInteger(data.tokenVersion) ||
+    data.tokenVersion < 1 ||
+    typeof data.registrationConfirmedAt !== 'string' ||
+    data.registrationConfirmedAt === ''
+  ) {
+    throw new Error('단말 등록 완료 응답이 요청한 단말과 일치하지 않습니다.');
+  }
+};
+
 const PopRegistrationContext = createContext<PopRegistration | null>(null);
 
 /**
@@ -282,6 +309,7 @@ const PopRegistrationContext = createContext<PopRegistration | null>(null);
  */
 export const PopRegistrationProvider = ({ children }: { children: ReactNode }) => {
   const { client } = useApiClient();
+  const queryClient = useQueryClient();
   const session = useWorkerSession();
   const [state, setState] = useState<RegistrationState>(INITIAL);
   /* 검증을 통과한 «바로 그» 후보. 적용은 이 값에만 한다(F-4). */
@@ -301,6 +329,9 @@ export const PopRegistrationProvider = ({ children }: { children: ReactNode }) =
       setState((prev) => ({ ...prev, phase: 'preparing', failure: null }));
 
       try {
+        await confirmRegistration(client, terminal.terminalId);
+        // 같은 단말에 새 토큰 세대를 적용해도 이전 화면 정책을 재사용하지 않는다.
+        queryClient.removeQueries({ queryKey: popAccessKeys.terminal(terminal.terminalId), exact: true });
         const processes = await fetchProcesses(client, terminal.terminalId);
 
         setRegistered(terminal);
@@ -317,7 +348,7 @@ export const PopRegistrationProvider = ({ children }: { children: ReactNode }) =
         setState((prev) => ({ ...prev, phase: 'prepare-failed', failure: null, terminal }));
       }
     },
-    [client],
+    [client, queryClient],
   );
 
   /**
@@ -373,6 +404,12 @@ export const PopRegistrationProvider = ({ children }: { children: ReactNode }) =
           return;
         }
 
+        if (source === 'stored') {
+          // 저장된 토큰은 재발급·재입력 없이 서버 등록 상태를 복구하고 업무를 준비한다.
+          await prepare(terminal);
+          return;
+        }
+
         setApproved(trimmed);
         setState({ ...INITIAL, phase: 'verified', terminal });
       } catch (error) {
@@ -385,7 +422,7 @@ export const PopRegistrationProvider = ({ children }: { children: ReactNode }) =
         setCandidateTerminalToken(null);
       }
     },
-    [client, discardIfStored],
+    [client, discardIfStored, prepare],
   );
 
   const apply = useCallback(async () => {

@@ -57,7 +57,7 @@ import {
 } from './terminal-draft';
 import { TerminalForm } from './terminal-form';
 import { TokenDialog } from './token-dialog';
-import { formatMoment, type SelectOption, type TerminalView, type TokenView } from './types';
+import { formatMoment, statusTextOf, type SelectOption, type TerminalView, type TokenView } from './types';
 
 const t = messages.terminalProcessMap;
 
@@ -240,7 +240,14 @@ export const TerminalProcessMapScreen = () => {
       ),
     },
     { key: 'type', header: t.list.type, render: (row) => row.terminalTypeCode },
-    { key: 'status', header: t.list.status, render: (row) => row.statusCode },
+    {
+      key: 'status',
+      header: t.list.status,
+      render: (row) => statusTextOf(row, {
+        unregistered: t.list.registrationPending,
+        unknown: t.list.registrationUnknown,
+      }),
+    },
     {
       key: 'registration',
       header: t.list.registration,
@@ -392,8 +399,11 @@ export const TerminalProcessMapScreen = () => {
                   <dd>{selected.terminalCode}</dd>
                   <dt>{t.terminal.type}</dt>
                   <dd>{selected.terminalTypeCode}</dd>
-                  <dt>{t.terminal.status}</dt>
-                  <dd>{selected.statusCode}</dd>
+                  <dt>{t.list.status}</dt>
+                  <dd>{statusTextOf(selected, {
+                    unregistered: t.terminal.registrationPending,
+                    unknown: t.terminal.registrationUnknown,
+                  })}</dd>
                   <dt>{t.terminal.registration}</dt>
                   <dd>
                     {selected.registrationStatusCode === 'REGISTERED'
@@ -487,6 +497,9 @@ export const TerminalProcessMapScreen = () => {
         ) : (
           <>
             <SaveErrorBanner error={replace.error} />
+            {processes.isError ? (
+              <LoadErrorBanner error={processes.error} onRetry={processes.refetch} />
+            ) : null}
 
             <div className="filter-bar">
               <SelectField

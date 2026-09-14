@@ -29,7 +29,7 @@ export const inboundReceipt = {
       `공급사 LOT 번호는 ${String(max)}자 이하여야 합니다 (현재 ${String(actual)}자)`,
     externalTaken: (lotNo: string) => `라벨 미부착 · 공급사 LOT ${lotNo}`,
     missing: 'LOT 번호 없음',
-    missingChosen: 'LOT 번호가 붙어 있지 않습니다',
+    missingChosen: '공급사 LOT 번호가 없습니다.',
     reasonLabel: '대체 LOT 사유',
     reasonPlaceholder: '사유를 고르세요',
     reasonLoadFailed: '대체 LOT 사유를 불러오지 못했습니다',

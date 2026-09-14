@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { toTerminalView } from './types';
+import { statusTextOf, toTerminalView } from './types';
 
 const terminal = {
   terminalId: 77,
@@ -38,5 +38,12 @@ describe('단말 등록 확인 표시', () => {
     const view = toTerminalView(terminal);
     expect(view.registrationStatusCode).toBeNull();
     expect(view.registrationConfirmedAt).toBeNull();
+  });
+
+  it('미등록은 운영 RUNNING보다 먼저 보이고 등록 완료일 때만 운영 상태를 보인다', () => {
+    const labels = { unregistered: '미등록', unknown: '확인 전' };
+    expect(statusTextOf(toTerminalView({ ...terminal, registrationStatusCode: 'UNREGISTERED' }), labels)).toBe('미등록');
+    expect(statusTextOf(toTerminalView({ ...terminal, registrationStatusCode: 'REGISTERED' }), labels)).toBe('RUNNING');
+    expect(statusTextOf(toTerminalView(terminal), labels)).toBe('확인 전');
   });
 });

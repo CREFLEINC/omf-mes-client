@@ -49,6 +49,16 @@ export interface TerminalView {
   tokenVersion: number | null;
 }
 
+/** 기기 등록을 확인하기 전에는 서버의 운영 상태를 가동 중인 것으로 표시하지 않는다. */
+export const statusTextOf = (
+  terminal: Pick<TerminalView, 'statusCode' | 'registrationStatusCode'>,
+  labels: { unregistered: string; unknown: string },
+): string => {
+  if (terminal.registrationStatusCode === 'REGISTERED') return terminal.statusCode;
+  if (terminal.registrationStatusCode === 'UNREGISTERED') return labels.unregistered;
+  return labels.unknown;
+};
+
 export interface ProcessRowView extends Record<FlagKey, boolean> {
   processId: number;
   processName: string;

@@ -85,6 +85,8 @@ interface FlowOptions {
   issueHangs?: boolean;
   /** 인쇄 결과 보고만 실패시킨다. 종이는 이미 나온 상태다. */
   reportFails?: boolean;
+  /** rendition 서버 응답 실패를 재현한다. */
+  renderFails?: boolean;
   /** 셸 인쇄 통로를 심는다. 없으면 브라우저와 같은 상태다. */
   shellPrint?: (() => Promise<string>) | null;
   reissueReasons?: { code: string; codeName: string }[];
@@ -98,12 +100,16 @@ const renderFlow = (options: FlowOptions = {}) => {
   );
 
   const record = async (request: Request): Promise<void> => {
-    sent.push({
+    // The body parses asynchronously. Reserve the event slot first so the
+    // recorded order matches the actual network order.
+    const entry: Sent = {
       method: request.method,
       path: new URL(request.url).pathname,
       headers: request.headers,
-      body: request.body === null ? null : await request.clone().json(),
-    });
+      body: null,
+    };
+    sent.push(entry);
+    if (request.body !== null) entry.body = await request.clone().json();
   };
 
   /*
@@ -302,18 +308,14 @@ const renderFlow = (options: FlowOptions = {}) => {
             new URL(request.url).pathname ===
             `/app/document-issues/${String(ISSUE_LOG_ID)}/rendition`,
           respond: (request) => {
-            /*
-             * ⛔⛔ **서버에 이 경로가 없다**(대응표 P1 「미구현 5건」). 제품 코드가 이 스텁을
-             * 부르면 안 된다 — 그래도 응답을 준비해 두는 것은, 회귀로 다시 부르게 되면 이
-             * 200 이 조용히 성공 경로를 열어 아래 시험들의 「부르지 않는다」 단언이 실패로
-             * 드러나게 하려는 것이다.
-             */
             void record(request);
 
-            return new Response(new Uint8Array([1, 2, 3]), {
-              status: 200,
-              headers: { 'Content-Type': 'image/png' },
-            });
+            return options.renderFails === true
+              ? jsonResponse({ errors: [{ scope: 'screen', code: 'RENDITION_FAILED', message: '렌더링 실패' }] }, { status: 503 })
+              : new Response(new Uint8Array([1, 2, 3]), {
+                  status: 200,
+                  headers: { 'Content-Type': 'image/png' },
+                });
           },
         },
         {
@@ -362,14 +364,7 @@ describe('PopMaterialLotLabelScreen — 등록·인쇄', () => {
     expect(screen.getByText('사번을 확인한 뒤에 등록·인쇄할 수 있습니다.')).toBeInTheDocument();
   });
 
-  /*
-   * ⛔⛔ **서버에 `GET /app/document-issues/{id}/rendition` 경로가 없다**(`patterns/
-   * pop-label-rendition` 머리말 · 대응표 P1 「미구현 5건」). 원래 이 시험은 등록 → 발행 →
-   * 렌디션 → 인쇄 → 보고까지 다섯 걸음이 끝까지 이어지는 것을 쟀다 — `render` 걸음이
-   * 항상 막혀 있어 그 뒤(인쇄·보고)로는 갈 수 없다. **등록과 발행은 그대로 되고 요청도
-   * 사번도 그대로 실린다**는, 지금도 성립하는 절반만 다시 잰다.
-   */
-  it('등록 → 발행 기록까지는 그대로 부르고, 사번을 헤더에 싣는다 — 그림은 받으러 가지 않는다', async () => {
+  it('등록 → 발행 → rendition → 인쇄 → 보고를 순서대로 부르고 사번을 싣는다', async () => {
     const shellPrint = vi.fn(async () => 'C:/syn/label.png');
     const { user, sent } = renderFlow({ shellPrint });
     await chooseLine(user);
@@ -377,14 +372,16 @@ describe('PopMaterialLotLabelScreen — 등록·인쇄', () => {
     await user.click(screen.getByRole('button', { name: '등록·인쇄' }));
 
     await waitFor(() => {
-      expect(sentTo(sent, '/app/document-issues')).toBeDefined();
+      expect(sentTo(sent, `/app/document-issues/${String(ISSUE_LOG_ID)}:report-print`)).toBeDefined();
     });
-
-    /* 그림을 받으러 가지 않으니 인쇄 결과 보고까지 갈 자리도 없다. */
-    expect(sent.map((entry) => entry.path)).toEqual(['/trace/lots', '/app/document-issues']);
-    expect(shellPrint).not.toHaveBeenCalled();
-
-    for (const entry of sent) {
+    expect(sent.map((entry) => entry.path)).toEqual([
+      '/trace/lots',
+      '/app/document-issues',
+      `/app/document-issues/${String(ISSUE_LOG_ID)}/rendition`,
+      `/app/document-issues/${String(ISSUE_LOG_ID)}:report-print`,
+    ]);
+    expect(shellPrint).toHaveBeenCalledTimes(1);
+    for (const entry of sent.filter((each) => each.method === 'POST')) {
       expect(entry.headers.get('X-Worker-No')).toBe(WORKER_NO);
       expect(entry.headers.get('Idempotency-Key')).not.toBeNull();
     }
@@ -405,13 +402,9 @@ describe('PopMaterialLotLabelScreen — 등록·인쇄', () => {
     });
   });
 
-  /*
-   * ⛔⛔ **서버에 이 경로가 없다**(위와 같음). 셸이 있어도 `render` 걸음에서 이미 막혀 셸까지
-   * 넘어가지 않는다 — 「셸이 있어도 소용없다」는 사실 자체를 잰다.
-   */
-  it('셸이 있어도 그림을 받지 못해 인쇄까지 가지 않는다 — 셸을 부르지 않는다', async () => {
+  it('rendition 서버 실패면 셸이 있어도 인쇄·보고에 닿지 않는다', async () => {
     const shellPrint = vi.fn(async () => 'C:/syn/label.png');
-    const { user, sent } = renderFlow({ shellPrint });
+    const { user, sent } = renderFlow({ shellPrint, renderFails: true });
     await chooseLine(user);
     await user.click(screen.getByRole('button', { name: '등록·인쇄' }));
 
@@ -422,14 +415,8 @@ describe('PopMaterialLotLabelScreen — 등록·인쇄', () => {
     ).toBeUndefined();
   });
 
-  /*
-   * ⛔⛔ **서버에 이 경로가 없다**(위와 같음). 원래 이 시험은 셸이 없을 때 「실패 사유와 함께」
-   * 보고하는 것을 쟀다 — 이제는 셸을 보기도 «전»에 그림을 받는 걸음에서 멈춘다. 셸 유무와
-   * 무관하게 인쇄·보고 걸음에 아예 닿지 않는다는 사실과, 그래도 **LOT 은 만들어졌다**는
-   * 안내가 함께 서는지를 잰다.
-   */
-  it('⛔ 셸 통로가 없어도 같은 이유(그림 취득 실패)로 멈추고, LOT 은 만들어졌다고 말한다', async () => {
-    const { user, sent } = renderFlow();
+  it('셸 통로가 없고 rendition 서버가 실패해도 LOT 생성 사실을 보존한다', async () => {
+    const { user, sent } = renderFlow({ renderFails: true });
     await chooseLine(user);
     await user.click(screen.getByRole('button', { name: '등록·인쇄' }));
 
@@ -445,11 +432,6 @@ describe('PopMaterialLotLabelScreen — 등록·인쇄', () => {
   /**
    * ⛔ **결과는 그 결과를 만든 줄의 것이다.** 끝난 뒤 다른 자재를 고르면 「인쇄했습니다」가
    * 아직 찍지 않은 자재 밑에 서고, 사람은 그것을 자기 것으로 읽는다.
-   */
-  /*
-   * ⛔⛔ **서버에 렌디션 경로가 없어**(대응표 P1 「미구현 5건」) 지금은 이 흐름이 늘
-   * `render` 에서 멈춘다 — 「라벨이 나오지 않았습니다」·「인쇄했습니다」 대신 일반 실패
-   * 문구(`t.failed`)가 뜬다. 검사하려는 성질(결과가 줄을 따라가지 않는다)은 그대로다.
    */
   it('⛔ 끝난 뒤 다른 자재를 고르면 앞 자재의 결과가 따라오지 않는다', async () => {
     const { user } = renderFlow({
@@ -627,18 +609,9 @@ describe('PopMaterialLotLabelScreen — 등록·인쇄', () => {
     );
   });
 
-  /**
-   * ⚠ **종이가 안 나온 채 보고까지 실패한 것은 인쇄 실패다.** 기록은 남았으니 재인쇄로 이어간다 —
-   * 「끝내지 못했습니다」로 접으면 다음에 무엇을 할지가 사라진다.
-   */
-  /*
-   * ⛔⛔ **서버에 렌디션 경로가 없다**(대응표 P1 「미구현 5건」). 원래 이 시험은 셸도 없고
-   * 보고도 실패하는 조합을 쟀다 — 이제는 그 앞(그림 취득)에서 이미 멈춰 보고 자체가 나가지
-   * 않는다. 이미 등록된 자재(줄에 `lotId` 가 있다)라 이번 실행이 LOT 을 «새로 만들지 않았다»는
-   * 점과 함께, 일반 실패 문구만 남고 「LOT 이 생겼다」는 안내는 덧붙지 않는지를 잰다.
-   */
-  it('이미 등록된 자재도 그림을 받지 못하면 일반 실패만 말한다 — LOT 을 새로 만들었다는 말은 덧붙지 않는다', async () => {
-    const { user } = renderFlow({ lotId: LOT_ID, reportFails: true });
+  /** 서버 rendition 실패는 이미 등록된 LOT을 새로 만든 것처럼 알리지 않는다. */
+  it('이미 등록된 자재에서 rendition 실패면 새 LOT 생성 안내를 덧붙이지 않는다', async () => {
+    const { user } = renderFlow({ lotId: LOT_ID, renderFails: true });
     await chooseLine(user);
     await user.click(screen.getByRole('button', { name: '인쇄' }));
 
@@ -667,26 +640,22 @@ describe('PopMaterialLotLabelScreen — 등록·인쇄', () => {
   });
 
   /**
-   * ⚠ **종이가 나온 뒤의 실패는 다르게 말한다.** 「끝내지 못했습니다」로 내면 작업자가 다시 찍어
-   * 같은 LOT 의 라벨이 두 장 돌아다닌다.
+   * 셸은 인쇄 성공을 답했으나 보고만 실패한 경우, 다시 찍으라는 안내가 나오면
+   * 같은 라벨을 두 장 만든다. 발행 기록과 보고 요청은 그대로 남는다.
    */
-  /*
-   * ⛔⛔ **서버에 렌디션 경로가 없다**(대응표 P1 「미구현 5건」). 원래 이 시험은 «인쇄는 됐고
-   * 보고만 실패한» 상태를 쟀다 — 그림을 못 받으니 인쇄 자체가 없어 그 상태에 이를 수 없다.
-   * 셸이 있어도 부르지 않고, 보고 실패 설정(`reportFails`)과 무관하게 보고 요청 자체가
-   * 나가지 않는다는, 지금 실제로 성립하는 사실로 다시 잰다.
-   */
-  it('그림을 받지 못하면 보고 실패 여부와 무관하게 셸에도 보고에도 닿지 않는다', async () => {
+  it('인쇄 후 보고 실패를 라벨 출력 성공과 구분한다', async () => {
     const shellPrint = vi.fn(async () => 'C:/syn/label.png');
     const { user, sent } = renderFlow({ lotId: LOT_ID, reportFails: true, shellPrint });
     await chooseLine(user);
     await user.click(screen.getByRole('button', { name: '인쇄' }));
 
-    expect(await screen.findByText('등록·인쇄를 끝내지 못했습니다.')).toBeInTheDocument();
-    expect(shellPrint).not.toHaveBeenCalled();
+    expect(await screen.findByText(
+      '라벨은 나왔습니다. 인쇄 결과만 서버에 남기지 못했습니다 — 다시 찍지 마세요.',
+    )).toBeInTheDocument();
+    expect(shellPrint).toHaveBeenCalledTimes(1);
     expect(
       sentTo(sent, `/app/document-issues/${String(ISSUE_LOG_ID)}:report-print`),
-    ).toBeUndefined();
+    ).toBeDefined();
   });
 });
 
