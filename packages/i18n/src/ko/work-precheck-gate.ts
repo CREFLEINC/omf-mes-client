@@ -14,8 +14,9 @@ export const workPrecheckGate = {
 
   header: {
     equipmentUnknown: '설비 확인 전',
+    /* ⭐ 「설비 <이름>」으로 읽힌다 — 이름이 비면 코드(사용자 지시 2026-09-14). */
     equipmentLabel: (code: string, name: string): string =>
-      name.trim() === '' ? code : `${code} ${name}`,
+      `설비 ${name.trim() === '' ? code : name}`,
     workOrderLabel: (workOrderNo: string): string => workOrderNo,
     workerUnset: '사번 미입력',
     workerLabel: (workerNo: string): string => `사번 ${workerNo}`,

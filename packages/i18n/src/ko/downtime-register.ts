@@ -12,7 +12,9 @@ import { common } from './common';
 export const downtimeRegister = {
   title: '비가동 실적 입력',
   header: {
-    equipment: (equipmentCode: string): string => `설비 ${equipmentCode}`,
+    /* ⭐ 「설비 <이름>」으로 읽힌다 — 이름이 비면 코드(사용자 지시 2026-09-14). */
+    equipment: (equipmentCode: string, equipmentName: string): string =>
+      `설비 ${equipmentName.trim() === '' ? equipmentCode : equipmentName}`,
     /** 주소에 설비가 없으면 이 화면이 무엇을 기록하는지 정해지지 않는다. */
     worker: (workerNo: string): string => `사번 ${workerNo}`,
     /** 사번이 없으면 쓰기가 서버에서 거부된다 — 누르기 전에 그 사실을 말한다. */

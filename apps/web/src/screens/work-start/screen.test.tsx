@@ -120,9 +120,7 @@ describe('P-02-01 작업 시작 — 단말 게이팅', () => {
   /** ⭐ 사용자 지시 2026-09-14 — 설비는 타이틀 옆, 단말은 오른쪽. */
   it('머리줄은 타이틀 옆에 설비, 오른쪽에 단말 코드를 보인다', async () => {
     renderScreen();
-    const equipment = await screen.findByText(
-      t.header.equipmentLabel(TERMINAL.equipmentCode, TERMINAL.equipmentName),
-    );
+    const equipment = await screen.findByText(`설비 ${TERMINAL.equipmentName}`);
     const terminalLabel = screen.getByText(t.header.terminalLabel(TERMINAL.terminalCode));
 
     expect(equipment.closest('.pop-context-right')).toBeNull();
