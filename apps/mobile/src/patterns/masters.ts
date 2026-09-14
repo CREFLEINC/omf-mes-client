@@ -109,15 +109,17 @@ export interface ItemOption extends ItemSummary {
   itemId: number;
 }
 
-/** 한 번에 보일 만큼만 받는다. 더 좁히는 것은 찾는 말을 더 적는 쪽이 빠르다. */
-const ITEM_SEARCH_LIMIT = 50;
+/** 한 쪽에 보일 만큼만 받는다. 더 좁히는 것은 찾는 말을 적는 쪽이 빠르다. */
+export const ITEM_SEARCH_LIMIT = 50;
 
 /**
  * 고를 품목을 찾는다. 작업자가 직접 고르는 자리에만 쓴다.
  *
- * 보이는 줄의 품목을 묻는 것과 다르다 - 고르기 전에는 마스터 전체가 후보다. 전부
- * 받아 늘어놓을 수 있는 양이 아니라서(마스터가 9,000건인 곳이 있다) 찾은 것만 보인다.
- * 앞에서 잘린 목록을 늘어놓으면 없는 품목으로 보여, 있는 것을 못 고르고도 이유를 알 수 없다.
+ * 보이는 줄의 품목을 묻는 것과 다르다 - 고르기 전에는 마스터 전체가 후보다. 전부 받아
+ * 늘어놓을 수 있는 양이 아니라서(마스터가 9,000건인 곳이 있다) 한 쪽만 받는다.
+ *
+ * 찾는 말이 없어도 한 쪽은 받는다. 적기 전에 아무것도 보이지 않으면 무엇을 적어야 하는지
+ * 알 수 없다. 잘린 목록이 전부인 것처럼 보이는 것은 부르는 쪽이 받은 수로 말해서 막는다.
  */
 export const useItemSearch = (term: string): UseQueryResult<ItemOption[]> => {
   const { client } = useApiClient();
@@ -125,10 +127,11 @@ export const useItemSearch = (term: string): UseQueryResult<ItemOption[]> => {
 
   return useQuery({
     queryKey: masterKeys.itemSearch(q),
-    enabled: q !== '',
     queryFn: async () => {
       const data = await runRequest(() =>
-        client.GET('/mdm/items', { params: { query: { q, size: ITEM_SEARCH_LIMIT } } }),
+        client.GET('/mdm/items', {
+          params: { query: { ...(q === '' ? {} : { q }), size: ITEM_SEARCH_LIMIT } },
+        }),
       );
 
       return data.items.map((item) => ({

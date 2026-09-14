@@ -106,17 +106,21 @@ describe('품목 표시명', () => {
 });
 
 describe('품목 찾기', () => {
-  /* 찾는 말이 없을 때 마스터 전부를 청하면 단말이 그것을 다 받아 늘어놓으려 한다. */
-  it('찾는 말이 없으면 묻지 않는다', async () => {
+  /*
+   * 찾는 말이 없어도 한 쪽은 보인다 - 적기 전에 아무것도 없으면 무엇을 적어야 하는지 모른다.
+   * 다만 마스터 전부를 청하면 단말이 그것을 다 받아 늘어놓으려 한다.
+   */
+  it('찾는 말이 없어도 한 쪽만 청한다', async () => {
     const seen: URL[] = [];
     const fetch = createStubFetch(masterRoutes(9000, seen));
 
     const { result } = renderHookWithProviders(() => useItemSearch('   '), { fetch });
 
     await waitFor(() => {
-      expect(result.current.fetchStatus).toBe('idle');
+      expect(result.current.data?.length).toBe(50);
     });
-    expect(seen).toHaveLength(0);
+    expect(seen[0]?.searchParams.get('size')).toBe('50');
+    expect(seen[0]?.searchParams.get('q')).toBeNull();
   });
 
   /* 앞에서 잘린 목록을 늘어놓으면 있는 품목이 없는 것으로 보여 고르지 못하고도 이유를 모른다. */

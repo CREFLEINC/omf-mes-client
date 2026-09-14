@@ -12,6 +12,7 @@ import {
   type StubRoute,
 } from '../../test/api-harness';
 import { itemRoutes } from '../../test/master-routes';
+import { runBackStep } from '../../patterns/back-step';
 import { OUTBOX_KEY } from '../../patterns/outbox';
 import { useWorkerSession } from '../../patterns/worker-session';
 import { InboundReceiptScreen } from './screen';
@@ -1186,6 +1187,27 @@ describe('입하 등록 화면 — 발주 없이 도착', () => {
 
     expect(await screen.findByText(`공급사 LOT ${SCANNED}`)).toBeTruthy();
     expect(await screen.findByRole('combobox', { name: /공급사/ })).toHaveTextContent(/합성공급사/);
+  });
+
+  /*
+   * 실기 지적 2026-09-14 - 찾는 화면에서 단말 뒤로가기를 누르니 작업 목록까지 나갔다.
+   * 라우터 이력에는 이 화면 하나뿐이라 화면 안 단계를 등록해 두지 않으면 그대로 빠져나간다.
+   */
+  it('찾는 화면에서 뒤로가기는 폼으로 되돌린다', async () => {
+    const user = userEvent.setup();
+    mount();
+
+    await screen.findByLabelText('LOT 번호');
+    scan(SCANNED);
+    await user.click(await screen.findByRole('button', { name: '자재 P/O 없이 등록' }));
+    await user.click(await screen.findByRole('button', { name: '품목 찾기' }));
+    await screen.findByLabelText('품목 검색');
+
+    /* 단말의 뒤로가기가 부르는 것과 같은 자리다. */
+    expect(runBackStep()).toBe(true);
+
+    expect(await screen.findByText(`공급사 LOT ${SCANNED}`)).toBeTruthy();
+    expect(screen.queryByLabelText('품목 검색')).toBeNull();
   });
 
   /* 품목 마스터의 주인은 ERP 다. 여기서 만들 길을 찾지 않는다. */

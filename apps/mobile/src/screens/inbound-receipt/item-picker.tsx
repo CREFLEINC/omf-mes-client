@@ -2,7 +2,7 @@ import { AlertBanner, Button, Card, SearchInput } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useState } from 'react';
 
-import { useItemSearch, type ItemOption } from '../../patterns/masters';
+import { ITEM_SEARCH_LIMIT, useItemSearch, type ItemOption } from '../../patterns/masters';
 
 const t = messages.inboundReceipt.itemPicker;
 
@@ -22,8 +22,9 @@ interface ItemPickerProps {
 export const ItemPicker = ({ onPick, onCancel }: ItemPickerProps) => {
   const [term, setTerm] = useState('');
   const search = useItemSearch(term);
-  const asked = term.trim() !== '';
   const found = search.data ?? [];
+  /* 한 쪽에서 잘렸다. 말하지 않으면 뒤에 있는 품목이 없는 것으로 읽힌다. */
+  const capped = found.length >= ITEM_SEARCH_LIMIT;
 
   return (
     <div className="receipt-picker">
@@ -42,14 +43,16 @@ export const ItemPicker = ({ onPick, onCancel }: ItemPickerProps) => {
       />
 
       {search.isError ? <AlertBanner variant="error" title={t.failed} /> : null}
-      {!asked ? <p className="receipt-picker__note">{t.prompt}</p> : null}
-      {asked && search.isFetching ? (
+      {search.isFetching ? (
         <p className="receipt-picker__note" role="status">
           {t.loading}
         </p>
       ) : null}
-      {asked && search.isSuccess && found.length === 0 ? (
+      {search.isSuccess && found.length === 0 ? (
         <p className="receipt-picker__note">{t.empty}</p>
+      ) : null}
+      {capped ? (
+        <p className="receipt-picker__note">{t.capped(String(ITEM_SEARCH_LIMIT))}</p>
       ) : null}
 
       <ul className="receipt-picker__list">

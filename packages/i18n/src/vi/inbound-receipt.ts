@@ -81,7 +81,7 @@ export const inboundReceipt: Translated<typeof ko.inboundReceipt> = {
     title: 'Chọn mặt hàng',
     searchLabel: 'Tìm mặt hàng',
     searchPlaceholder: 'Nhập mã hoặc tên mặt hàng',
-    prompt: 'Hãy nhập mã hoặc tên của mặt hàng cần tìm',
+    capped: (limit: string) => `Chỉ hiện ${limit} mục đầu. Hãy nhập từ khóa để thu hẹp.`,
     loading: 'Đang tìm mặt hàng',
     empty: 'Không tìm thấy mặt hàng',
     failed: 'Không tìm được mặt hàng. Hãy kiểm tra kết nối.',

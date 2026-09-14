@@ -14,6 +14,7 @@ import { useScreenTitle } from '../../patterns/screen-title';
 import { useWorkerSession } from '../../patterns/worker-session';
 import { useCodeValues } from '../../patterns/code-values';
 import { useAdvanceTo } from '../../patterns/advance-to';
+import { useBackStep } from '../../patterns/back-step';
 import { playErrorTone } from '../../patterns/error-tone';
 import { FailureBanner } from '../../patterns/failure-banner';
 import { useLoadFailure } from '../../patterns/load-failure';
@@ -237,6 +238,13 @@ export const InboundReceiptScreen = () => {
   const suppliers = useSuppliers(draft.unordered);
   /* 무발주는 작업자가 품목을 직접 고른다. 마스터가 커서 찾는 일에 화면을 통째로 내준다. */
   const [pickingItem, setPickingItem] = useState(false);
+  /*
+   * 찾는 화면에서 뒤로가기는 폼으로 되돌린다. 라우터 이력에는 이 화면 하나뿐이라, 두지
+   * 않으면 품목을 고르러 들어간 사람이 한 번에 작업 목록까지 나가고 적어 둔 것을 잃는다.
+   */
+  useBackStep(pickingItem, () => {
+    setPickingItem(false);
+  });
   /* 공장은 단말 토큰이 싣고 온다. 발주가 없으면 승계할 곳이 여기뿐이다. */
   const plantId = draft.unordered ? currentPlantId() : (draft.purchaseOrder?.plantId ?? null);
 
