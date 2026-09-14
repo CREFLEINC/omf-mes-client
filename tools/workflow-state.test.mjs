@@ -129,7 +129,11 @@ test('저장소 정책 검사가 폐기된 하네스를 감지한다', () => {
   writeFileSync(path.join(root, 'README.md'), 'pnpm workflow:bootstrap --tool claude --team 3\n');
   assert.ok(repositoryPolicyErrors(root).some((error) => error.includes('폐지된 팀 번호 인자')));
   writeFileSync(path.join(root, 'README.md'), '착수 라벨: Agent : T3\n');
-  assert.ok(repositoryPolicyErrors(root).some((error) => error.includes('폐지된 팀 번호 라벨')));
+  assert.ok(repositoryPolicyErrors(root).some((error) => error.includes('폐지된 에이전트 라벨')));
+  writeFileSync(path.join(root, 'README.md'), '--add-label "Agent : Client"\n');
+  assert.ok(repositoryPolicyErrors(root).some((error) => error.includes('폐지된 에이전트 라벨')));
+  writeFileSync(path.join(root, 'README.md'), 'User-Agent: omf-mes-mock\n');
+  assert.ok(!repositoryPolicyErrors(root).some((error) => error.includes('폐지된 에이전트 라벨')));
   writeFileSync(path.join(root, 'AGENTS.md'), 'tracked local adapter\n');
   execFileSync('git', ['add', 'AGENTS.md'], { cwd: root });
   assert.ok(

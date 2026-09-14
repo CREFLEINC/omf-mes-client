@@ -320,7 +320,8 @@ export function repositoryPolicyErrors(root) {
     'tools/mock/resolve-spec.mjs',
   ];
   const forbiddenText = [
-    [/Agent\s*:\s*T\d+/, '폐지된 팀 번호 라벨'],
+    /* 라벨은 `Agent : Client` 처럼 콜론 앞뒤를 띄운다. `User-Agent:` 헤더는 붙여 써서 걸리지 않는다. */
+    [/\bAgent\s+:\s+\S/, '폐지된 에이전트 라벨'],
     [/--team\b/, '폐지된 팀 번호 인자'],
     [/\[uiux→client\]\s*착수 가능/, '폐기된 설계팀 착수 배정 채널'],
     [/crefle-agent-skills:/, '사용 가능성이 보장되지 않는 특정 스킬 의존'],

@@ -95,14 +95,12 @@ pnpm workflow:check
 
 작업 시작 시 다음을 표시한다.
 
-- `Agent : Client`
 - `in progress`
 - 현재 GitHub 사용자 담당자 지정
 
 ```bash
 gh issue edit <번호> \
   --repo CREFLEINC/omf-mes-client \
-  --add-label "Agent : Client" \
   --add-label "in progress" \
   --add-assignee @me
 pnpm workflow set-issue --issue <번호>
