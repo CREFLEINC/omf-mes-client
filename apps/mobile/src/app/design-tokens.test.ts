@@ -33,6 +33,17 @@ const declaredTokens = (): Set<string> => {
   return names;
 };
 
+/*
+ * 디자인 시스템이 아니라 Capacitor(SystemBars)가 실행 중에 문서에 넣어 주는 변수다.
+ * 시스템 바 높이라 우리가 정할 값이 아니고, CSS 파일에는 선언이 없다.
+ */
+const PLATFORM_VARIABLES = new Set([
+  '--safe-area-inset-top',
+  '--safe-area-inset-right',
+  '--safe-area-inset-bottom',
+  '--safe-area-inset-left',
+]);
+
 /**
  * 없는 토큰은 조용히 대체값으로 떨어진다.
  *
@@ -46,7 +57,7 @@ describe('디자인 토큰', () => {
 
     for (const css of filesUnder(SRC, '.css')) {
       for (const match of readFileSync(css, 'utf-8').matchAll(/var\((--[a-z0-9-]+)/g)) {
-        if (!declared.has(match[1]!)) {
+        if (!declared.has(match[1]!) && !PLATFORM_VARIABLES.has(match[1]!)) {
           offenders.push(`${css.slice(SRC.length + 1)} :: ${match[1]!}`);
         }
       }
