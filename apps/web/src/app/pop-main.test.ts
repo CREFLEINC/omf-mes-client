@@ -25,6 +25,19 @@ describe('POP 진입점 배선', () => {
     expect(source).not.toMatch(/appRouter/);
   });
 
+  /*
+   * ⛔ 언어는 화면이 문구를 붙잡기 전에 정해야 한다. 이 import 가 라우트 표 아래로 내려가면
+   *    타입 검사·빌드는 초록인데 단말 언어가 베트남어여도 화면은 한국어로 남는다.
+   */
+  it('언어를 정하는 import 가 화면을 싣는 import 보다 먼저다', () => {
+    const localeAt = source.indexOf("import './pop-locale';");
+
+    expect(localeAt).toBeGreaterThan(-1);
+    expect(localeAt).toBeLessThan(source.indexOf("from '../routes/pop'"));
+    expect(localeAt).toBeLessThan(source.indexOf("from '../patterns/"));
+    expect(localeAt).toBeLessThan(source.indexOf("from '../screens/"));
+  });
+
   it('진입 화면 주소가 POP 라우트 표에 실제로 있다', () => {
     expect(entryPath).toBeDefined();
     expect(popRoutes.map(({ path }) => path)).toContain(entryPath);

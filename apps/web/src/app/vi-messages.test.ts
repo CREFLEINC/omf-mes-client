@@ -123,6 +123,27 @@ const TRANSLATED = [
   'routing',
   'warehouseLayout',
   'warehouseLocation',
+  /* POP 현장 화면 20개 슬라이스 — 단말이 Windows 표시 언어를 따른다. */
+  'downtimeRegister',
+  'emergencyWorkOrderField',
+  'goodsIssueQr',
+  'materialInputScan',
+  'packingLabelReprint',
+  'packingResult',
+  'packingWork',
+  'popMaterialLotLabel',
+  'popPageNav',
+  'pqcInspection',
+  'productionResult',
+  'repackLabelIssue',
+  'reworkResultRegister',
+  'runningChange',
+  'shippingPackingLabel',
+  'toolUsage',
+  'workHoldRegister',
+  'workPrecheckGate',
+  'workStart',
+  'workerAssignment',
 ] as const satisfies readonly (keyof Messages)[];
 
 const HANGUL = /[가-힣]/;

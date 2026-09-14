@@ -846,7 +846,7 @@ export const ProductionFlowScreen = () => {
                *    규칙을 쓴다.
                */
               allowDecimal={uom.decimalScaleOf(lot?.uomId ?? workOrder.data?.uomId) > 0}
-              decimalLabel="소수점"
+              decimalLabel={t.quantity.decimalKey}
               onChange={setActualQty}
             />
           </Card.Body>
