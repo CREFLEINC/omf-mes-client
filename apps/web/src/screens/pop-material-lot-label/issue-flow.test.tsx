@@ -85,7 +85,7 @@ interface FlowOptions {
   issueHangs?: boolean;
   /** 인쇄 결과 보고만 실패시킨다. 종이는 이미 나온 상태다. */
   reportFails?: boolean;
-  /** rendition 서버 응답 실패를 재현한다. */
+  /** 라벨에 실을 품목 조회 실패를 재현한다. */
   renderFails?: boolean;
   /** 셸 인쇄 통로를 심는다. 없으면 브라우저와 같은 상태다. */
   shellPrint?: (() => Promise<string>) | null;
@@ -304,17 +304,15 @@ const renderFlow = (options: FlowOptions = {}) => {
           },
         },
         {
-          match: (request) =>
-            new URL(request.url).pathname ===
-            `/app/document-issues/${String(ISSUE_LOG_ID)}/rendition`,
+          match: (request) => new URL(request.url).pathname === '/mdm/items/8601',
           respond: (request) => {
             void record(request);
 
             return options.renderFails === true
-              ? jsonResponse({ errors: [{ scope: 'screen', code: 'RENDITION_FAILED', message: '렌더링 실패' }] }, { status: 503 })
-              : new Response(new Uint8Array([1, 2, 3]), {
-                  status: 200,
-                  headers: { 'Content-Type': 'image/png' },
+              ? jsonResponse({ errors: [{ scope: 'screen', code: 'ITEM_FAILED', message: '품목 조회 실패' }] }, { status: 503 })
+              : jsonResponse({
+                  item: { itemId: 8601, itemCode: 'SYN-ITEM-01', itemName: '합성 품목 가', isActive: true },
+                  editability: {},
                 });
           },
         },
@@ -364,7 +362,7 @@ describe('PopMaterialLotLabelScreen — 등록·인쇄', () => {
     expect(screen.getByText('사번을 확인한 뒤에 등록·인쇄할 수 있습니다.')).toBeInTheDocument();
   });
 
-  it('등록 → 발행 → rendition → 인쇄 → 보고를 순서대로 부르고 사번을 싣는다', async () => {
+  it('등록 → 발행 → 품목 조회 → 인쇄 → 보고를 순서대로 부르고 사번을 싣는다', async () => {
     const shellPrint = vi.fn(async () => 'C:/syn/label.png');
     const { user, sent } = renderFlow({ shellPrint });
     await chooseLine(user);
@@ -377,7 +375,7 @@ describe('PopMaterialLotLabelScreen — 등록·인쇄', () => {
     expect(sent.map((entry) => entry.path)).toEqual([
       '/trace/lots',
       '/app/document-issues',
-      `/app/document-issues/${String(ISSUE_LOG_ID)}/rendition`,
+      '/mdm/items/8601',
       `/app/document-issues/${String(ISSUE_LOG_ID)}:report-print`,
     ]);
     expect(shellPrint).toHaveBeenCalledTimes(1);
@@ -385,6 +383,27 @@ describe('PopMaterialLotLabelScreen — 등록·인쇄', () => {
       expect(entry.headers.get('X-Worker-No')).toBe(WORKER_NO);
       expect(entry.headers.get('Idempotency-Key')).not.toBeNull();
     }
+  });
+
+  /** ⭐ 서버 렌디션(100 × 60)이 아니라 POP 이 짠 80 × 30 라벨이 셸로 간다(사용자 지시 2026-09-14). */
+  it('셸에 80 × 30 TSPL 라벨을 넘기고 QR 에는 LOT 번호만 싣는다', async () => {
+    const shellPrint = vi.fn(async (..._args: unknown[]) => 'C:/syn/label.tspl');
+    const { user } = renderFlow({ shellPrint });
+    await chooseLine(user);
+    await user.click(screen.getByRole('button', { name: '등록·인쇄' }));
+
+    await waitFor(() => {
+      expect(shellPrint).toHaveBeenCalledTimes(1);
+    });
+
+    const [bytes, , , format] = shellPrint.mock.calls[0] ?? [];
+    const commands = new TextDecoder().decode(bytes as Uint8Array);
+
+    expect(format).toBe('tspl');
+    expect(commands.startsWith('SIZE 80 mm,30 mm')).toBe(true);
+    expect(commands).toContain(`"${LOT_NO}"\r\n`);
+    expect(commands).toContain('ITEM SYN-ITEM-01');
+    expect(commands).toContain('QTY 500 EA');
   });
 
   it('등록 본문의 원천 짝이 입하 «라인» 을 가리킨다', async () => {
@@ -402,7 +421,7 @@ describe('PopMaterialLotLabelScreen — 등록·인쇄', () => {
     });
   });
 
-  it('rendition 서버 실패면 셸이 있어도 인쇄·보고에 닿지 않는다', async () => {
+  it('라벨 값을 못 받으면 셸이 있어도 인쇄·보고에 닿지 않는다', async () => {
     const shellPrint = vi.fn(async () => 'C:/syn/label.png');
     const { user, sent } = renderFlow({ shellPrint, renderFails: true });
     await chooseLine(user);
@@ -415,7 +434,7 @@ describe('PopMaterialLotLabelScreen — 등록·인쇄', () => {
     ).toBeUndefined();
   });
 
-  it('셸 통로가 없고 rendition 서버가 실패해도 LOT 생성 사실을 보존한다', async () => {
+  it('셸 통로가 없고 라벨 값 조회가 실패해도 LOT 생성 사실을 보존한다', async () => {
     const { user, sent } = renderFlow({ renderFails: true });
     await chooseLine(user);
     await user.click(screen.getByRole('button', { name: '등록·인쇄' }));
@@ -609,8 +628,8 @@ describe('PopMaterialLotLabelScreen — 등록·인쇄', () => {
     );
   });
 
-  /** 서버 rendition 실패는 이미 등록된 LOT을 새로 만든 것처럼 알리지 않는다. */
-  it('이미 등록된 자재에서 rendition 실패면 새 LOT 생성 안내를 덧붙이지 않는다', async () => {
+  /** 라벨 값 조회 실패는 이미 등록된 LOT을 새로 만든 것처럼 알리지 않는다. */
+  it('이미 등록된 자재에서 라벨 값 조회 실패면 새 LOT 생성 안내를 덧붙이지 않는다', async () => {
     const { user } = renderFlow({ lotId: LOT_ID, renderFails: true });
     await chooseLine(user);
     await user.click(screen.getByRole('button', { name: '인쇄' }));

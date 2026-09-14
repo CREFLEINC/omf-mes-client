@@ -2,6 +2,7 @@ import { AlertBanner, Button, Chip } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useState } from 'react';
 
+import { toLookupDisplayState } from '../../patterns/lookup-display';
 import { usePopIdentity } from '../../patterns/pop-identity';
 import { popTouchClass } from '../../patterns/pop-touch';
 import { toIssueFailure } from './failure';
@@ -98,6 +99,13 @@ export const PopMaterialLotLabelScreen = () => {
    * ⛔ **사번이 없으면 부르지 않는다** — 서버가 거부한다. 단추도 함께 막혀 있지만, 판정을
    * 부르는 자리에도 두어 다른 경로로 새는 것을 막는다.
    */
+  /** 라벨에 적을 단위 코드. 이름을 못 풀었으면 적지 않는다 — 「불러오는 중」이 라벨에 찍히면 안 된다. */
+  const uomCodeOf = (uomId: number): string | null => {
+    const state = toLookupDisplayState(uomLookup, uomId);
+
+    return state.kind === 'named' ? state.label : null;
+  };
+
   const startIssue = (reissueReasonCode: string | null): void => {
     if (selectedRow === null || workerNo === null) return;
     /*
@@ -111,6 +119,7 @@ export const PopMaterialLotLabelScreen = () => {
       // 프린터 배정이 정해지기 전에는 한 대 전제다 — 고른 것이 없으면 서버 기본값에 맡긴다.
       printerName: headPrinter?.printerName ?? null,
       reissueReasonCode,
+      uomCode: uomCodeOf(selectedRow.uomId),
     });
   };
 
