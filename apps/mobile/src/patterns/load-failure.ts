@@ -14,6 +14,15 @@ export type DeviceTokenState = 'alive' | 'dead' | 'unknown';
 export const deviceTokenKey = ['device-token-state'] as const;
 
 /**
+ * 거절의 까닭을 가리는 토큰 확인을 기다리는 한도.
+ *
+ * 확인이 답하기 전에 문구를 달면 「받아들여지지 않았습니다」가 조회마다 떴다가 만료 한 줄로
+ * 바뀐다(#1198 실기). 그래서 기다리되, 확인까지 막혀 답이 오지 않으면 끝내 아무 말도 없게
+ * 되므로 이만큼 지나면 단정하지 않는 문구로 넘어간다.
+ */
+export const TOKEN_CHECK_PATIENCE_MS = 3_000;
+
+/**
  * 거절이 토큰 탓인지 조회 탓인지 가른다.
  *
  * 서버는 토큰이 죽은 것과 이 단말에 열리지 않은 조회를 같은 401 로 보내고, 돌려주는 문구로도
@@ -167,6 +176,24 @@ export const useLoadFailure = (): ((
   }, [client, queryClient]);
 
   const tokenState: DeviceTokenState = token.data ?? 'unknown';
+  /* 판정이 났는가. 아직 물은 적이 없거나 묻는 중이면 아니다. */
+  const settled = token.data !== undefined && !token.isFetching;
+  const [patienceOver, setPatienceOver] = useState(false);
+
+  useEffect(() => {
+    if (settled) {
+      setPatienceOver(false);
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      setPatienceOver(true);
+    }, TOKEN_CHECK_PATIENCE_MS);
+
+    return () => {
+      clearTimeout(timer);
+    };
+  }, [settled]);
 
   return useCallback(
     (error: unknown, offline: string, options: LoadFailureOptions = {}): string | null => {
@@ -175,6 +202,11 @@ export const useLoadFailure = (): ((
       }
 
       const rejected = error instanceof ApiRequestError && isUnauthenticated(error.apiError);
+
+      /* 까닭을 가리는 중이다. 먼저 단정하는 문구를 달았다가 바꾸지 않는다. */
+      if (rejected && !settled && !patienceOver) {
+        return null;
+      }
 
       if (rejected && tokenState === 'dead') {
         return null;
@@ -193,7 +225,7 @@ export const useLoadFailure = (): ((
 
       return options.caution === undefined ? told : `${told} ${options.caution}`;
     },
-    [tokenState],
+    [tokenState, settled, patienceOver],
   );
 };
 

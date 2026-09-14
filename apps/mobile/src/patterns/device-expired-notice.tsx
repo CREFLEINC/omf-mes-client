@@ -13,22 +13,28 @@ import { deviceTokenKey, type DeviceTokenState } from './load-failure';
  * (`ShellGate`). 판정은 조회 실패 문구 고르기와 사번 확인이 캐시에 남긴 토큰 확인을 그대로
  * 읽는다 - 여기서 새로 묻지 않는다. 묻는 중이면 보이지 않는다.
  */
-export const DeviceExpiredNotice = () => {
+export const DeviceExpiredNotice = () =>
+  useDeviceExpired() ? (
+    <div className="mobile-shell__notice">
+      <AlertBanner variant="error" title={messages.httpError.deviceExpired} />
+    </div>
+  ) : null;
+
+/**
+ * 서버가 이 기기의 등록을 끊었다고 판정했는가.
+ *
+ * 관찰자를 달지 않고 상태만 읽는다 - 달면 그 조회 함수가 토큰 확인의 것을 덮을 수 있다.
+ * 묻는 중이면 아니다.
+ */
+export const useDeviceExpired = (): boolean => {
   const queryClient = useQueryClient();
   const cache = queryClient.getQueryCache();
 
-  /* 관찰자를 달지 않고 상태만 읽는다 - 달면 그 조회 함수가 토큰 확인의 것을 덮을 수 있다. */
-  const expired = useSyncExternalStore(
+  return useSyncExternalStore(
     useCallback((notify: () => void) => cache.subscribe(notify), [cache]),
     () => {
       const state = queryClient.getQueryState<DeviceTokenState>(deviceTokenKey);
       return state?.data === 'dead' && state.fetchStatus === 'idle';
     },
   );
-
-  return expired ? (
-    <div className="mobile-shell__notice">
-      <AlertBanner variant="error" title={messages.httpError.deviceExpired} />
-    </div>
-  ) : null;
 };

@@ -2,6 +2,8 @@ import { AlertBanner } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useQuery } from '@tanstack/react-query';
 import { screen, waitFor } from '@testing-library/react';
+import type { ReactNode } from 'react';
+import { MemoryRouter } from 'react-router';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { useApiClient } from '../patterns/api-context';
@@ -51,13 +53,15 @@ afterEach(() => {
   store.clear();
 });
 
+/** 관문은 지금 경로로 무엇을 감출지 정한다. 라우터 안에서 세운다. */
+const at = (path: string, children: ReactNode) => (
+  <MemoryRouter initialEntries={[path]}>
+    <ShellGate>{children}</ShellGate>
+  </MemoryRouter>
+);
+
 const renderGate = () => {
-  renderWithProviders(
-    <ShellGate>
-      <p>작업 화면</p>
-    </ShellGate>,
-    { fetch: createStubFetch([]) },
-  );
+  renderWithProviders(at('/', <p>작업 화면</p>), { fetch: createStubFetch([]) });
 };
 
 describe('셸 관문', () => {
@@ -123,18 +127,13 @@ describe('등록 만료 알림', () => {
     await rememberPlant(7);
     const reject = () => jsonResponse(denied, { status: 401 });
 
-    renderWithProviders(
-      <ShellGate>
-        <TwoLookups />
-      </ShellGate>,
-      {
-        fetch: createStubFetch([
-          { match: (req) => new URL(req.url).pathname === '/mdm/items', respond: reject },
-          { match: (req) => new URL(req.url).pathname === '/mdm/uoms', respond: reject },
-          { match: (req) => new URL(req.url).pathname === '/mdm/workers', respond: reject },
-        ]),
-      },
-    );
+    renderWithProviders(at('/', <TwoLookups />), {
+      fetch: createStubFetch([
+        { match: (req) => new URL(req.url).pathname === '/mdm/items', respond: reject },
+        { match: (req) => new URL(req.url).pathname === '/mdm/uoms', respond: reject },
+        { match: (req) => new URL(req.url).pathname === '/mdm/workers', respond: reject },
+      ]),
+    });
 
     await screen.findByText('둘 다 거절됨');
     expect(await screen.findByText(messages.httpError.deviceExpired)).toBeInTheDocument();
@@ -147,16 +146,54 @@ describe('등록 만료 알림', () => {
     const queryClient = createTestQueryClient();
     queryClient.setQueryData(deviceTokenKey, 'dead');
 
-    renderWithProviders(
-      <ShellGate>
-        <p>작업 화면</p>
-      </ShellGate>,
-      { fetch: createStubFetch([]), queryClient },
-    );
+    renderWithProviders(at('/', <p>작업 화면</p>), { fetch: createStubFetch([]), queryClient });
 
     await screen.findByText('이 기기는 아직 등록되지 않았습니다');
     await waitFor(() => {
       expect(queryClient.getQueryData(deviceTokenKey)).toBeUndefined();
     });
+  });
+
+  /*
+   * 등록이 끊기면 작업 화면은 쓸 수 없다. 지시 목록·완료 단추를 보이지 않고 알림만 둔다
+   * (사용자 지시 2026-09-14). 등록을 풀 수 있는 사번 확인 화면은 남긴다.
+   */
+  it('만료면 작업 화면의 내용을 감추고 알림만 둔다', async () => {
+    keystore.token = 'tok-1';
+    const queryClient = createTestQueryClient();
+    queryClient.setQueryData(deviceTokenKey, 'dead');
+
+    renderWithProviders(at('/putaway', <p>작업 화면</p>), {
+      fetch: createStubFetch([]),
+      queryClient,
+    });
+
+    expect(await screen.findByText(messages.httpError.deviceExpired)).toBeInTheDocument();
+    expect(screen.queryByText('작업 화면')).not.toBeInTheDocument();
+  });
+
+  it('만료여도 사번 확인 화면은 남긴다 - 거기서 등록을 푼다', async () => {
+    keystore.token = 'tok-1';
+    const queryClient = createTestQueryClient();
+    queryClient.setQueryData(deviceTokenKey, 'dead');
+
+    renderWithProviders(at('/', <p>사번 확인</p>), { fetch: createStubFetch([]), queryClient });
+
+    expect(await screen.findByText(messages.httpError.deviceExpired)).toBeInTheDocument();
+    expect(screen.getByText('사번 확인')).toBeInTheDocument();
+  });
+
+  it('만료가 아니면 작업 화면을 그대로 둔다', async () => {
+    keystore.token = 'tok-1';
+    const queryClient = createTestQueryClient();
+    queryClient.setQueryData(deviceTokenKey, 'alive');
+
+    renderWithProviders(at('/putaway', <p>작업 화면</p>), {
+      fetch: createStubFetch([]),
+      queryClient,
+    });
+
+    expect(await screen.findByText('작업 화면')).toBeInTheDocument();
+    expect(screen.queryByText(messages.httpError.deviceExpired)).not.toBeInTheDocument();
   });
 });

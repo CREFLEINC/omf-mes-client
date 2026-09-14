@@ -10,7 +10,7 @@ import {
   type StubRoute,
 } from '../test/api-harness';
 import { useApiClient } from './api-context';
-import { useLoadFailure } from './load-failure';
+import { TOKEN_CHECK_PATIENCE_MS, useLoadFailure } from './load-failure';
 import { forgetPlant, rememberPlant } from './plant';
 import { runRequest } from './request';
 
@@ -125,6 +125,68 @@ describe('조회 실패 문구 고르기', () => {
     await waitFor(() => {
       expect(result.current.text).toBe(messages.httpError.deviceRejected);
     });
+  });
+
+  /*
+   * 실기(#1198) - 토큰 확인이 답하기 전 잠깐 조회마다 「받아들여지지 않았습니다」가 두 줄 떴다가
+   * 만료 한 줄로 바뀌었다. 판정이 나기 전에는 아무것도 달지 않는다.
+   */
+  it('토큰 확인이 답하기 전에는 거절 문구를 달지 않는다', async () => {
+    let answer: ((response: Response) => void) | null = null;
+    const fetch = createStubFetch([
+      items(() => jsonResponse(denied, { status: 401 })),
+      probe(
+        () =>
+          new Promise<Response>((resolve) => {
+            answer = resolve;
+          }),
+      ),
+    ]);
+
+    const { result } = renderHookWithProviders(useScreen, { fetch });
+
+    await waitFor(() => {
+      expect(answer).not.toBeNull();
+    });
+    expect(result.current.items.isError).toBe(true);
+    expect(result.current.text).toBeNull();
+
+    answer!(jsonResponse({ items: [], page }));
+
+    await waitFor(() => {
+      expect(result.current.text).toBe(messages.httpError.deviceNotAllowed);
+    });
+  });
+
+  /* 확인까지 막혀 답이 오지 않으면 끝내 아무 말도 없게 된다. 기다림에 끝을 둔다. */
+  it('토큰 확인이 오래 답하지 않으면 단정하지 않는 문구로 넘어간다', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+
+    try {
+      let asked = false;
+      const fetch = createStubFetch([
+        items(() => jsonResponse(denied, { status: 401 })),
+        probe(() => {
+          asked = true;
+          return new Promise<Response>(() => undefined);
+        }),
+      ]);
+
+      const { result } = renderHookWithProviders(useScreen, { fetch });
+
+      await waitFor(() => {
+        expect(asked).toBe(true);
+      });
+      expect(result.current.text).toBeNull();
+
+      await vi.advanceTimersByTimeAsync(TOKEN_CHECK_PATIENCE_MS);
+
+      await waitFor(() => {
+        expect(result.current.text).toBe(messages.httpError.deviceRejected);
+      });
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   /* 연결 문구에 함께 적혀 있던 주의는 까닭이 달라도 남아야 한다. */
