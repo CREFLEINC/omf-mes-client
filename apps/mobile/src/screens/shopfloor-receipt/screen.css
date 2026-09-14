@@ -47,6 +47,7 @@
 
 /* 줄을 훑는 눈이 가장 먼저 잡아야 할 값이다. */
 .shopfloor-receipt__stock-item {
+  margin: 0;
   overflow-wrap: anywhere;
 }
 
@@ -55,6 +56,14 @@
   margin: 0;
   font-family: var(--font-mono, monospace);
   overflow-wrap: anywhere;
+}
+
+/*
+ * 무엇을 보고 있는지 말하는 자리. 값보다 뒤로 물러나야 값이 먼저 잡힌다. DS 가 이 색을
+ * 약한 텍스트와 라벨용으로 정의했으므로 값에는 쓰지 않는다 - 34자리 LOT 은 실물 라벨과
+ * 한 자씩 견주는 값이라 또렷해야 한다.
+ */
+.shopfloor-receipt__stock-name {
   color: var(--on-surface-muted);
 }
 

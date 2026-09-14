@@ -623,11 +623,17 @@ export const ShopfloorReceiptScreen = () => {
                     이름도 잡지 못한다. 읽어 주는 이름은 그대로 전부를 싣는다.
                   */}
                   <div className="shopfloor-receipt__stock-head">
-                    <strong className="shopfloor-receipt__stock-item">{code}</strong>
+                    <p className="shopfloor-receipt__stock-item">
+                      <span className="shopfloor-receipt__stock-name">{t.hopper.itemLabel}</span>{' '}
+                      <strong>{code}</strong>
+                    </p>
                     {stock.lotNo === null ||
                     stock.lotNo === undefined ||
                     stock.lotNo === '' ? null : (
-                      <p className="shopfloor-receipt__stock-lot">{stock.lotNo}</p>
+                      <p className="shopfloor-receipt__stock-lot">
+                        <span className="shopfloor-receipt__stock-name">{t.hopper.lotLabel}</span>{' '}
+                        {stock.lotNo}
+                      </p>
                     )}
                   </div>
                   <TextField
