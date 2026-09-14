@@ -29,6 +29,7 @@ const ShellTopbar = () => {
 
   return (
     <Topbar
+      className="mobile-shell__topbar"
       brand={
         title === null ? (
           <strong>{shell.brand}</strong>
