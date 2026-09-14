@@ -54,7 +54,7 @@ export interface HopperStock {
  * LOT 을 두지 않는 품목은 그 위치에 한 줄뿐이라 품목만으로도 갈린다.
  */
 export const hopperKeyOf = (stock: HopperStock): string =>
-  `${String(stock.itemId)}:${stock.lotId === null || stock.lotId === undefined ? '' : String(stock.lotId)}`;
+  `${String(stock.itemId)}:${String(stock.lotId ?? '')}`;
 
 export type MeasureProblem = 'notNumber' | 'negative';
 

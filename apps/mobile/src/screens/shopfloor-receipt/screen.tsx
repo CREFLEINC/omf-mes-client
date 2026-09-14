@@ -190,7 +190,7 @@ export const ShopfloorReceiptScreen = () => {
       const mine = (each: { idempotencyKey: string }) =>
         each.idempotencyKey === entry.idempotencyKey;
 
-      const outcome: Outcome =
+      const hopperResult: Outcome =
         (result !== null && result.rejected.some((each) => mine(each.entry))) ||
         isRejected(entry.idempotencyKey)
           ? 'rejected'
@@ -198,7 +198,9 @@ export const ShopfloorReceiptScreen = () => {
             ? 'held'
             : 'sent';
 
-      setHopperOutcome(outcome);
+      setHopperOutcome(hopperResult);
+      /* 다시 받기를 기다리는 사이에 칸이 차 있으면 단추가 열린 채로 눌러도 아무 일이 없다. */
+      setMeasured({});
 
       /*
        * 서버에 닿았으면 장부가 그만큼 움직였다. 앞 값을 들고 있으면 곧바로 다시 잰 사람이
@@ -206,11 +208,9 @@ export const ShopfloorReceiptScreen = () => {
        *
        * 대기로 남은 것은 아직 서버에 가지 않아 장부가 그대로다.
        */
-      if (outcome === 'sent') {
+      if (hopperResult === 'sent') {
         await queryClient.invalidateQueries({ queryKey: hopperStockKey(hopperLocationId) });
       }
-
-      setMeasured({});
     } finally {
       hopperInFlight.current = false;
     }

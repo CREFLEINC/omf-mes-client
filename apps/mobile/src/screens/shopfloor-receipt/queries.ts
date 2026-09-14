@@ -184,16 +184,16 @@ export const useAlreadyReceived = (goodsIssueId: number | null): ReceivedCheck =
   return query.data === undefined ? 'unknown' : query.data ? 'received' : 'clear';
 };
 
+/** 조회하는 쪽과 다시 받게 하는 쪽이 이 열쇠를 함께 쓴다. 따로 적으면 조용히 어긋난다. */
+export const hopperStockKey = (locationId: number | null) =>
+  ['shopfloor-hopper-stock', locationId] as const;
+
 /**
  * 이 호퍼에 장부가 말하는 잔량.
  *
  * 조정은 증감량을 받으므로 잰 값에서 이것을 빼야 한다. 장부를 모른 채 잰 값만 보내면 화면이
  * 무엇을 빼야 할지 알 수 없다.
  */
-/** 조회하는 쪽과 다시 받게 하는 쪽이 이 열쇠를 함께 쓴다. 따로 적으면 조용히 어긋난다. */
-export const hopperStockKey = (locationId: number | null) =>
-  ['shopfloor-hopper-stock', locationId] as const;
-
 export const useHopperStock = (locationId: number | null): UseQueryResult<HopperStock[]> => {
   const { client } = useApiClient();
 
