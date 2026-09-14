@@ -4,6 +4,7 @@ import { useQuery, useQueryClient, type Query, type QueryClient } from '@tanstac
 import { useCallback, useEffect, useSyncExternalStore } from 'react';
 
 import { useApiClient } from './api-context';
+import { useOnlineStatus } from './online-status';
 import { currentPlantId } from './plant';
 import { ApiRequestError, runRequest, toApiError } from './request';
 
@@ -38,6 +39,42 @@ const probeDeviceToken = async (
   } catch (error) {
     return isUnauthenticated(toApiError(error)) ? 'dead' : 'unknown';
   }
+};
+
+/**
+ * 화면이 서는 자리에서 단말 토큰이 서버에서 살아 있는지 묻는다.
+ *
+ * 사번 확인은 받아 둔 명단만 보고 통과시킨다. 관리웹에서 QR 을 다시 발급해 토큰이 죽어도
+ * 명단은 그대로라, 작업자는 들어간 뒤에야 모든 조회가 막힌다(#1198). 들어가기 전에 가른다.
+ *
+ * 망이 끊겼으면 묻지 않는다 - 사번 확인은 오프라인에서도 되어야 한다(M-CO-01 §5-7).
+ * 들어올 때마다 다시 묻고, 묻는 동안은 모른다고 둔다. 새 QR 로 다시 등록한 직후에 앞 등록의
+ * 「죽었다」가 캐시에 남아 있으면 멀쩡한 단말을 막는다.
+ *
+ * @returns `recheck` - 같은 화면에 머문 채 다시 물을 때 쓴다(교대로 사번을 바꿀 때).
+ */
+export const useDeviceTokenState = (): { state: DeviceTokenState; recheck: () => void } => {
+  const { client } = useApiClient();
+  const online = useOnlineStatus();
+
+  const token = useQuery({
+    queryKey: deviceTokenKey,
+    queryFn: () => probeDeviceToken(client),
+    enabled: online,
+    refetchOnMount: 'always',
+  });
+  const { refetch } = token;
+
+  const recheck = useCallback(() => {
+    if (navigator.onLine) {
+      void refetch();
+    }
+  }, [refetch]);
+
+  return {
+    state: online && !token.isFetching ? (token.data ?? 'unknown') : 'unknown',
+    recheck,
+  };
 };
 
 export interface LoadFailureOptions {

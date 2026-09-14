@@ -283,7 +283,8 @@ export const PutawayScreen = () => {
             <AlertBanner variant="warning" title={t.worker.notFound(worker?.workerNo ?? '')} />
           ) : null}
 
-          {tasks.isPending && workerId.data !== null ? (
+          {/* 지시 조회는 사번이 풀려야 나간다. 사번 조회가 실패했으면 불러오고 있지 않다(#1198). */}
+          {tasks.isPending && workerId.isSuccess && workerId.data !== null ? (
             <p role="status">{t.tasks.loading}</p>
           ) : null}
           {tasks.isError ? (

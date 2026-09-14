@@ -43,7 +43,10 @@ export const PickingOrderList = ({
       {workerNo !== null && workerId.data === null ? (
         <AlertBanner variant="warning" title={t.worker.notFound(workerNo)} />
       ) : null}
-      {orders.isPending && workerId.data !== null ? <p role="status">{t.orders.loading}</p> : null}
+      {/* 지시 조회는 사번이 풀려야 나간다. 사번 조회가 실패했으면 불러오고 있지 않다(#1198). */}
+      {orders.isPending && workerId.isSuccess && workerId.data !== null ? (
+        <p role="status">{t.orders.loading}</p>
+      ) : null}
       {orders.isError ? (
         <AlertBanner variant="error" title={failureText(orders.error, t.orders.loadFailed)} />
       ) : null}

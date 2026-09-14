@@ -4,7 +4,13 @@ import { MemoryRouter } from 'react-router';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { OUTBOX_KEY, OUTBOX_REJECTED_KEY } from '../../patterns/outbox';
-import { createStubFetch, renderWithProviders } from '../../test/api-harness';
+import { forgetPlant, rememberPlant } from '../../patterns/plant';
+import {
+  createStubFetch,
+  jsonResponse,
+  renderWithProviders,
+  type StubRoute,
+} from '../../test/api-harness';
 import { WorkerSignInScreen } from './sign-in';
 
 const store = vi.hoisted(() => new Map<string, string>());
@@ -74,13 +80,25 @@ const DIRECTORY = [
   { workerNo: '900029', workerName: '작업자 2' },
 ];
 
-const mount = () =>
+const mount = (routes: StubRoute[] = []) =>
   renderWithProviders(
     <MemoryRouter>
       <WorkerSignInScreen />
     </MemoryRouter>,
-    { fetch: createStubFetch([]) },
+    { fetch: createStubFetch(routes) },
   );
+
+/** 토큰 확인은 등록 때와 같은 조회다 - 공장을 싣고 한 줄만 묻는다. */
+const probe = (respond: StubRoute['respond']): StubRoute => ({
+  match: (request) => {
+    const url = new URL(request.url);
+    return url.pathname === '/mdm/workers' && url.searchParams.get('plantId') === '7';
+  },
+  respond,
+});
+
+const EXPIRED = '등록 정보가 만료됐습니다. 관리자에게 새 QR을 요청하세요.';
+const denied = { errors: [{ scope: 'screen', code: 'PERMISSION_DENIED', message: '거절' }] };
 
 const press = async (user: ReturnType<typeof userEvent.setup>, digits: string) => {
   for (const digit of digits) {
@@ -106,7 +124,7 @@ const signedIn = async (user: ReturnType<typeof userEvent.setup>) => {
   await screen.findByText('작업자 1 · 900028');
 };
 
-beforeEach(() => {
+beforeEach(async () => {
   reads.gate = null;
   refuse.key = null;
   refuse.removeKey = null;
@@ -116,6 +134,8 @@ beforeEach(() => {
   token.value = 't';
   store.clear();
   store.set('worker-directory', JSON.stringify(DIRECTORY));
+  /* 공장은 모듈에 남는다. 앞 시험이 남긴 공장이 있으면 토큰 확인이 스텁에 없는 요청을 낸다. */
+  await forgetPlant();
 });
 
 describe('사번 확인 화면', () => {
@@ -200,6 +220,79 @@ describe('사번 확인 화면', () => {
     await press(user, long);
 
     expect(screen.getByLabelText('사번')).toHaveValue(long);
+  });
+});
+
+/*
+ * 관리웹에서 QR 을 다시 발급하면 앞 기기의 토큰이 서버에서 즉시 죽는다. 명단은 기기에 남아
+ * 사번 확인은 통과하고, 들어간 뒤에야 모든 조회가 막혔다(#1198 실기 실측).
+ */
+describe('등록이 서버에서 끊긴 기기', () => {
+  it('토큰이 거절되면 사번 확인을 막고 새 QR 을 받으라고 한다', async () => {
+    await rememberPlant(7);
+    const user = userEvent.setup();
+    mount([probe(() => jsonResponse(denied, { status: 401 }))]);
+
+    expect(await screen.findByText(EXPIRED)).toBeInTheDocument();
+
+    await press(user, '900028');
+
+    expect(screen.getByRole('button', { name: '확인' })).toBeDisabled();
+    expect(screen.queryByText('작업자 1 · 900028')).not.toBeInTheDocument();
+  });
+
+  /* 막기만 하면 갈 곳이 없다. 새 QR 로 다시 등록하려면 먼저 풀어야 한다. */
+  it('사번을 넣기 전에도 등록을 풀 수 있다', async () => {
+    await rememberPlant(7);
+    const user = userEvent.setup();
+    mount([probe(() => jsonResponse(denied, { status: 401 }))]);
+
+    await screen.findByText(EXPIRED);
+    await user.click(screen.getByRole('button', { name: '기기 등록 해제' }));
+
+    expect(await screen.findByRole('dialog')).toBeInTheDocument();
+  });
+
+  it('들어온 뒤에 끊겼으면 교대로 사번을 바꿀 때 막는다', async () => {
+    await rememberPlant(7);
+    let dead = false;
+    const user = userEvent.setup();
+    mount([
+      probe(() =>
+        dead
+          ? jsonResponse(denied, { status: 401 })
+          : jsonResponse({ items: [], page: { page: 1, size: 1, total: 0 } }),
+      ),
+    ]);
+
+    await signedIn(user);
+    dead = true;
+    await user.click(screen.getByRole('button', { name: '사번 바꾸기' }));
+    await press(user, '900028');
+
+    expect(await screen.findByText(EXPIRED)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '확인' })).toBeDisabled();
+  });
+
+  it('토큰이 살아 있으면 지금처럼 들어간다', async () => {
+    await rememberPlant(7);
+    const user = userEvent.setup();
+    mount([probe(() => jsonResponse({ items: [], page: { page: 1, size: 1, total: 0 } }))]);
+
+    await signedIn(user);
+
+    expect(screen.queryByText(EXPIRED)).not.toBeInTheDocument();
+  });
+
+  /* 사번 확인은 오프라인에서도 되어야 한다(M-CO-01 §5-7). 못 물었으면 막지 않는다. */
+  it('서버에 닿지 못하면 막지 않는다', async () => {
+    await rememberPlant(7);
+    const user = userEvent.setup();
+    mount([probe(() => Promise.reject(new TypeError('Failed to fetch')))]);
+
+    await signedIn(user);
+
+    expect(screen.queryByText(EXPIRED)).not.toBeInTheDocument();
   });
 });
 

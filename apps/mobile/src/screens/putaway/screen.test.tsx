@@ -316,6 +316,8 @@ describe('적치·입고 완료 화면', () => {
     ]);
 
     expect(await screen.findByText('사번을 확인할 수 없습니다. 연결을 확인하세요.')).toBeTruthy();
+    /* 지시 조회는 사번이 풀려야 나간다. 실패 옆에 불러오는 중이 남으면 기다리게 된다(#1198). */
+    expect(screen.queryByText('적치 지시를 불러오는 중입니다')).toBeNull();
   });
 
   /*
