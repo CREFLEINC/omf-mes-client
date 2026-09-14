@@ -107,6 +107,8 @@ export const DowntimeRegisterScreen = () => {
     paramEquipmentId === null
       ? (equipment?.equipmentCode ?? null)
       : readEquipmentCode(searchParams);
+  /* 주소가 가리킨 설비는 이름을 모른다 — 코드로 대신한다. */
+  const equipmentName = paramEquipmentId === null ? (equipment?.equipmentName ?? null) : null;
 
   const titleId = useId();
 
@@ -314,7 +316,7 @@ export const DowntimeRegisterScreen = () => {
         </h1>
         {equipmentId !== null && (
           <p className="pop-context">
-            {t.header.equipment(equipmentCode ?? `#${String(equipmentId)}`)}
+            {t.header.equipment(equipmentCode ?? `#${String(equipmentId)}`, equipmentName ?? '')}
           </p>
         )}
 

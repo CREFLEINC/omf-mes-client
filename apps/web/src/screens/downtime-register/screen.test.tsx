@@ -1077,7 +1077,7 @@ describe('DowntimeRegisterScreen — 단말에 붙은 설비', () => {
 
     /* 막히지 않는다 — 고를 수 없는 일을 시키지 않는다. */
     expect(screen.queryByText(t.errors.equipmentMissing)).toBeNull();
-    expect(screen.getByText(t.header.equipment(TERMINAL_EQUIPMENT_CODE))).toBeTruthy();
+    expect(screen.getByText('설비 합성 설비')).toBeTruthy();
 
     const asked = requests.find((request) => request.url.pathname === DOWNTIMES_PATH);
     expect(asked?.url.searchParams.get('equipmentId')).toBe(String(TERMINAL_EQUIPMENT_ID));
@@ -1095,7 +1095,7 @@ describe('DowntimeRegisterScreen — 단말에 붙은 설비', () => {
 
     await flush();
 
-    expect(screen.getByText(t.header.equipment(EQUIPMENT_CODE))).toBeTruthy();
+    expect(screen.getByText(`설비 ${EQUIPMENT_CODE}`)).toBeTruthy();
 
     const asked = requests.find((request) => request.url.pathname === DOWNTIMES_PATH);
     expect(asked?.url.searchParams.get('equipmentId')).toBe(String(EQUIPMENT_ID));
