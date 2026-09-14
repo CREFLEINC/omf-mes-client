@@ -98,7 +98,9 @@ export const ToolUsageScreen = () => {
   const { equipment } = usePopIdentity();
   const headerContext = [
     entry.workOrderId === null ? null : `${t.entry.workOrderLabel} ${String(entry.workOrderId)}`,
-    equipment?.equipmentCode ?? null,
+    equipment === null || equipment.equipmentCode === null || equipment.equipmentCode.trim() === ''
+      ? null
+      : t.entry.equipmentLabel(equipment.equipmentCode, equipment.equipmentName ?? ''),
   ]
     .filter((part): part is string => part !== null && part.trim() !== '')
     .join(' · ');
