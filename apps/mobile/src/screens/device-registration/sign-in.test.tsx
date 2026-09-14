@@ -1,3 +1,6 @@
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router';
@@ -407,7 +410,7 @@ describe('기기 등록 해제', () => {
     await signedIn(user);
 
     await user.click(screen.getByRole('button', { name: '기기 등록 해제' }));
-    await user.click(await screen.findByRole('button', { name: '그대로 두기' }));
+    await user.click(await screen.findByRole('button', { name: '돌아가기' }));
 
     expect(token.cleared).toBe(0);
     expect(screen.getByText('작업자 1 · 900028')).toBeInTheDocument();
@@ -517,7 +520,9 @@ describe('기기 등록 해제', () => {
     refuse.key = OUTBOX_KEY;
     await user.click(await screen.findByRole('button', { name: '등록 해제' }));
 
-    expect(await screen.findByText('등록을 풀지 못했습니다. 다시 시도하세요')).toBeInTheDocument();
+    expect(
+      await screen.findByText('등록을 해제하지 못했습니다. 다시 시도해 주십시오'),
+    ).toBeInTheDocument();
     expect(token.cleared).toBe(0);
   });
 
@@ -534,7 +539,9 @@ describe('기기 등록 해제', () => {
     token.refuse = true;
     await user.click(await screen.findByRole('button', { name: '등록 해제' }));
 
-    expect(await screen.findByText('등록을 풀지 못했습니다. 다시 시도하세요')).toBeInTheDocument();
+    expect(
+      await screen.findByText('등록을 해제하지 못했습니다. 다시 시도해 주십시오'),
+    ).toBeInTheDocument();
     /* 창이 그대로 서 있으면 이 배너는 모달 뒤에 가려 읽히지 않는다. */
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   });
@@ -548,11 +555,13 @@ describe('기기 등록 해제', () => {
     await user.click(screen.getByRole('button', { name: '기기 등록 해제' }));
     token.refuse = true;
     await user.click(await screen.findByRole('button', { name: '등록 해제' }));
-    await screen.findByText('등록을 풀지 못했습니다. 다시 시도하세요');
+    await screen.findByText('등록을 해제하지 못했습니다. 다시 시도해 주십시오');
 
     await user.click(screen.getByRole('button', { name: '기기 등록 해제' }));
 
-    expect(screen.queryByText('등록을 풀지 못했습니다. 다시 시도하세요')).not.toBeInTheDocument();
+    expect(
+      screen.queryByText('등록을 해제하지 못했습니다. 다시 시도해 주십시오'),
+    ).not.toBeInTheDocument();
   });
 
   /*
@@ -582,6 +591,53 @@ describe('기기 등록 해제', () => {
 
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     expect(token.cleared).toBe(0);
+  });
+
+  /*
+   * 되돌릴 수 없는 확인인데 창 단추가 화면에서 가장 작았다 - 크기를 주지 않아 기본값으로
+   * 섰고, 같은 화면의 다른 단추와 이 앱의 다른 창 둘은 모두 xl 이다.
+   */
+  it('창 단추를 화면의 다른 단추와 같은 크기로 세운다', async () => {
+    const user = userEvent.setup();
+    mount();
+    await signedIn(user);
+
+    await user.click(screen.getByRole('button', { name: '기기 등록 해제' }));
+
+    const dialog = within(await screen.findByRole('dialog'));
+    for (const name of ['돌아가기', '등록 해제']) {
+      expect(dialog.getByRole('button', { name })).toHaveClass(/_xl_/);
+    }
+  });
+
+  /*
+   * 디자인 시스템의 창 본문은 자식 사이 간격을 주지 않고 이 화면은 문단 여백을 0 으로 둔다.
+   * 감싸지 않으면 안내와 경고가 서로 붙는다.
+   */
+  it('창 본문을 한 상자에 담는다', async () => {
+    store.set(OUTBOX_KEY, JSON.stringify([queuedEntry('a')]));
+    const user = userEvent.setup();
+    mount();
+    await signedIn(user);
+
+    await user.click(screen.getByRole('button', { name: '기기 등록 해제' }));
+
+    const dialog = await screen.findByRole('dialog');
+    const notice = await within(dialog).findByText(/다시 사용하려면 관리자에게/);
+    const box = notice.closest('.worker-sign-in__dialog-body');
+
+    expect(box).not.toBeNull();
+    expect(box?.contains(within(dialog).getByText(/보내지 못한 기록 1건이 사라집니다/))).toBe(true);
+  });
+
+  /*
+   * 상자를 둔 까닭은 간격 하나다. 담기만 하고 간격이 사라지면 감싼 보람이 없는데 화면 시험은
+   * 배치를 재지 못한다 - 선언이 살아 있는지를 원문에서 본다.
+   */
+  it('창 본문 상자가 간격을 준다', () => {
+    const css = readFileSync(join(import.meta.dirname, 'sign-in.css'), 'utf-8');
+
+    expect(css).toMatch(/\.worker-sign-in__dialog-body\s*\{[^}]*gap:/);
   });
 
   /* 사번이 남으면 새 QR 로 다시 등록했을 때 앞 작업자의 사번으로 기록이 쌓인다. */
