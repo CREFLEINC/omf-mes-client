@@ -5,7 +5,11 @@ import { Link } from 'react-router';
 
 import { listenBackButton } from '../patterns/back-step';
 import { useServerReachable } from '../patterns/online-status';
-import { ScreenTitleProvider, useCurrentScreenTitle } from '../patterns/screen-title';
+import {
+  ScreenTitleProvider,
+  useCompactTopbar,
+  useCurrentScreenTitle,
+} from '../patterns/screen-title';
 import { useOutbox } from '../patterns/outbox';
 import { useWorkerSession } from '../patterns/worker-session';
 
@@ -19,6 +23,7 @@ const shell = messages.common.shell;
 const ShellTopbar = () => {
   const online = useServerReachable();
   const title = useCurrentScreenTitle();
+  const compact = useCompactTopbar();
   // 귀속 정보는 상시 표시다 - 누구로 기록되는지 안 보이면 남의 사번으로 쌓인다(D-5).
   const { worker } = useWorkerSession();
   /*
@@ -29,7 +34,9 @@ const ShellTopbar = () => {
 
   return (
     <Topbar
-      className="mobile-shell__topbar"
+      className={
+        compact ? 'mobile-shell__topbar mobile-shell__topbar--compact' : 'mobile-shell__topbar'
+      }
       brand={
         title === null ? (
           <strong>{shell.brand}</strong>
@@ -39,7 +46,13 @@ const ShellTopbar = () => {
       }
       actions={
         <>
-          {worker === null ? null : <Chip>{`${worker.workerName} · ${worker.workerNo}`}</Chip>}
+          {/*
+           * ⭐ 사번 확인 화면은 사번 칩을 싣지 않는다 - 확인한 사번은 본문의 확인 박스가 보여
+           * 준다(사용자 지시 2026-09-14). 그 화면을 떠나면 다시 싣는다.
+           */}
+          {worker === null || compact ? null : (
+            <Chip>{`${worker.workerName} · ${worker.workerNo}`}</Chip>
+          )}
           <Chip status={online ? 'success' : 'warning'}>{online ? t.online : t.offline}</Chip>
           {pending === 0 ? null : <Chip status="warning">{t.unsent(pending)}</Chip>}
           {/*
