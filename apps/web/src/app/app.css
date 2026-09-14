@@ -90,7 +90,7 @@
  * .pop-wide-note    구획 폭을 그대로 쓰는 보조 안내(.field-note 의 20rem 제한 밖)
  * .pop-lot-pane-title   구획 제목
  * .pop-target-fields 발번 대상의 읽기 전용 라벨·값 두 열
- * .pop-lot-no       34자리 LOT 번호 — 조각 사이에서만 접힌다
+ * .pop-lot-no       LOT 번호 — 멀리서 라벨과 대조하며 읽는다
  * .pop-lot-label    LOT 번호 자리의 라벨
  * .pop-target-actions 등록·인쇄와 재인쇄를 나란히 두는 줄
  * .pop-page-nav     쪽 이동 줄 — 위치 표시와 이전·다음
@@ -6367,8 +6367,8 @@ dl.filter-bar.approval-inbox-detail-facts {
 /*
  * LOT 번호 — **멀리서, 그리고 라벨과 대조하며 읽는다.**
  *
- * 34자리를 뜻의 경계로 끊어 그리므로 줄이 넘칠 수 있다. 끊긴 자리에서 줄바꿈이 일어나도
- * 조각이 쪼개지지 않게 공백에서만 접는다 — 조각 가운데가 갈라지면 대조가 성립하지 않는다.
+ * 자재 LOT 번호는 칸 사이에 구분자 `|` 가 있어 줄이 넘치면 그 뒤에서 접힌다. 칸 가운데가
+ * 갈라지면 대조가 성립하지 않는다.
  */
 .pop-lot-no {
   font-family: var(--font-mono, monospace);

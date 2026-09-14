@@ -57,9 +57,12 @@ export const materialLocation = {
     title: '조회하지 못했습니다',
     retry: '다시 시도',
   },
-  /** 읽은 자릿수를 함께 보인다. 몇 자를 덜 읽었는지 알아야 다시 대는 위치를 잡는다. */
-  invalidLength: (read: number, required: number): string =>
-    `자재 LOT은 ${String(required)}자리입니다. ${String(read)}자리를 읽었습니다.`,
+  /**
+   * 읽은 값을 함께 보인다. 스캐너 설정에 따라 구분자 `|` 가 다른 글자로 들어오는데, 읽은 값이
+   * 없으면 라벨이 잘못된 것인지 스캐너가 잘못 읽은 것인지 가릴 수 없다.
+   */
+  invalidFormat: (read: string): string =>
+    `자재 LOT 번호 형식이 아닙니다(제품코드|수량|날짜|공급사|번호). 읽은 값: ${read}`,
   offline: {
     title: '오프라인이라 조회할 수 없습니다',
     description: '저장해 둔 자료가 없습니다. 연결되면 다시 시도해 주세요.',

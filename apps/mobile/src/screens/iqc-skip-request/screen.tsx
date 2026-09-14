@@ -8,7 +8,6 @@ import { useBackStep } from '../../patterns/back-step';
 import { displayNameOf, useCodeValues } from '../../patterns/code-values';
 import { useScannedLot } from '../../patterns/lots';
 import { useItem, useUomCodes } from '../../patterns/masters';
-import { formatMaterialLotNo } from '../../patterns/material-lot-no';
 import { useOutbox } from '../../patterns/outbox';
 import { ScanReplaceDialog } from '../../patterns/scan-replace-dialog';
 import { useScanField } from '../../patterns/use-scan-field';
@@ -66,9 +65,7 @@ const MyRequests = ({
              * 아직 못 받았으면 코드로 물러나되 지어내지는 않는다.
              */}
             <Chip>{displayNameOf(statuses, request.statusCode)}</Chip>
-            <span className="iqc-skip__request-name">
-              {formatMaterialLotNo(request.target.displayName)}
-            </span>
+            <span className="iqc-skip__request-name">{request.target.displayName}</span>
             <span className="iqc-skip__request-when">
               {t.mine.requestedAt(when(request.requestedAt))}
             </span>
@@ -265,12 +262,12 @@ export const IqcSkipRequestScreen = () => {
         {lot.isPending && scanned !== null ? <p role="status">{t.lot.loading}</p> : null}
         {lot.isError ? <AlertBanner variant="error" title={t.lot.loadFailed} /> : null}
         {scanned !== null && !lot.isPending && found === null && !lot.isError ? (
-          <AlertBanner variant="warning" title={t.lot.notFound(formatMaterialLotNo(scanned))} />
+          <AlertBanner variant="warning" title={t.lot.notFound(scanned)} />
         ) : null}
         {found === null ? null : (
           <Card bordered>
             <Card.Body className="card-body iqc-skip__lot">
-              <strong>{formatMaterialLotNo(found.lotNo)}</strong>
+              <strong>{found.lotNo}</strong>
               {item.data === undefined ? null : (
                 <span>{`${item.data.itemCode} ${item.data.itemName}`}</span>
               )}
@@ -345,7 +342,7 @@ export const IqcSkipRequestScreen = () => {
         )}
       </section>
 
-      <ScanReplaceDialog field={scanField} format={formatMaterialLotNo} />
+      <ScanReplaceDialog field={scanField} />
     </div>
   );
 };

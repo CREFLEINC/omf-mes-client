@@ -24,7 +24,11 @@ const ENTRIES = [
   ['M-01-01 발주 목록', '/logistics/purchase-orders?statusCode=OPEN', 1],
   ['M-01-01 대체 LOT 사유', '/mdm/code-values?codeGroupCode=SUBSTITUTE_LOT_REASON', 1],
   ['M-01-01 예외입하 유형', '/mdm/code-values?codeGroupCode=INBOUND_RECEIPT_EXCEPTION_TYPE', 1],
-  ['M-01-04 LOT 정확 일치', '/trace/lots?lotNo=0001234500000012002607310001230007', 1],
+  [
+    'M-01-04 LOT 정확 일치',
+    `/trace/lots?lotNo=${encodeURIComponent('ABC-123|500|260731|SUP-001|0007')}`,
+    1,
+  ],
   ['M-01-04 잔액', '/inventory/balances?lotId=8001', 1],
   ['M-01-04 보류', '/trace/lots/8003/holds', 1],
   ['M-01-05 내 적치 지시', '/logistics/putaway-tasks?assignedWorkerId=1001', 1],

@@ -1,6 +1,12 @@
 import type { components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 
+import {
+  codeMismatchOf,
+  parseMaterialLotNo,
+  type MaterialLotCodeMismatch,
+  type MaterialLotCodes,
+} from '../../patterns/material-lot-no';
 import { createIdempotencyKey, type OutboxDraft } from '../../patterns/outbox';
 
 export type PurchaseOrder = components['schemas']['PurchaseOrder'];
@@ -214,6 +220,29 @@ export const canSubmit = (draft: ReceiptDraft, hasWorker: boolean): boolean => {
   }
 
   return draft.purchaseOrder !== null && draft.purchaseOrderLine !== null;
+};
+
+/** 스캔한 사전부착 라벨이 있는가. 외부 LOT 직접 입력과 미부착은 라벨 대조를 하지 않는다 - 서버도 보지 않는다. */
+export const hasScannedLabel = (draft: ReceiptDraft): boolean =>
+  !draft.supplierLotMissing && draft.supplierLotLabelAttached && draft.supplierLotNo !== '';
+
+/**
+ * 스캔한 라벨이 이 건의 품목·공급사와 다른가.
+ *
+ * 서버가 등록할 때 같은 대조로 거부한다(400). 담아 둔 뒤에 되돌아오면 한참 뒤 전송 실패로만
+ * 보이므로 등록 전에 막는다. 견줄 코드를 모르면 판정하지 않는다.
+ */
+export const labelMismatchOf = (
+  draft: ReceiptDraft,
+  codes: MaterialLotCodes | null,
+): MaterialLotCodeMismatch | null => {
+  if (codes === null || !hasScannedLabel(draft)) {
+    return null;
+  }
+
+  const segments = parseMaterialLotNo(draft.supplierLotNo);
+
+  return segments === null ? null : codeMismatchOf(segments, codes);
 };
 
 /** 이 건이 실을 품목·단위·공급사. 발주가 있으면 승계하고 없으면 고른 값을 쓴다. */

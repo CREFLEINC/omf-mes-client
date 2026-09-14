@@ -2,9 +2,12 @@ import type { components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 
 import {
-  MATERIAL_LOT_NO_LENGTH,
-  isYymmdd,
+  codeMismatchOf,
+  materialLotNoProblemOf,
   parseMaterialLotNo,
+  type MaterialLotCodeMismatch,
+  type MaterialLotCodes,
+  type MaterialLotNoProblem,
 } from '../../patterns/material-lot-no';
 import { createIdempotencyKey, type OutboxDraft } from '../../patterns/outbox';
 import { businessDateOf } from '../putaway/putaway';
@@ -30,9 +33,7 @@ export const MATERIAL = 'MATERIAL';
 /** 발번 단위가 건이 아니라 라인이라 원천은 라인을 가리킨다. */
 export const INBOUND_RECEIPT_LINE = 'INBOUND_RECEIPT_LINE';
 
-export const LOT_NO_LENGTH = MATERIAL_LOT_NO_LENGTH;
-
-export type ScanProblem = 'length' | 'notDigits' | 'badDate' | 'duplicate' | 'otherItem';
+export type ScanProblem = MaterialLotNoProblem | 'duplicate' | MaterialLotCodeMismatch;
 
 /**
  * 이 라인에 LOT 을 채울 수 있는가.
@@ -45,48 +46,33 @@ export const isFillable = (line: InboundReceiptLine): boolean =>
 /**
  * 스캔값 하나를 본다.
  *
- * 자릿수와 숫자 전용은 저장소 제약이 아니라 화면 책임이다. 서버가 받아 주므로 화면이
- * 막지 않으면 분절이 어긋난 번호가 그대로 남는다.
+ * ⛔ 이 경로(`POST /trace/lots` 공급사 채번)는 서버가 번호의 형식도 제품코드·공급사도 보지
+ *    않는다. 화면이 막지 않으면 형식이 틀리거나 남의 자재에 붙은 라벨이 그대로 LOT 이 된다.
  *
  * 큐 안의 중복만 여기서 본다 - 같은 공장에 이미 있는지는 서버만 안다.
+ *
+ * 코드를 아직 모르면(`null`) 코드 대조를 건너뛴다. 그동안 등록은 `canRegister` 가 막는다.
  */
 export const scanProblemOf = (
   value: string,
   queuedLotNos: string[],
-  lineItemCode?: string,
+  codes: MaterialLotCodes | null,
 ): ScanProblem | null => {
   const trimmed = value.trim();
+  const format = materialLotNoProblemOf(trimmed);
 
-  if (!/^\d*$/.test(trimmed)) {
-    return 'notDigits';
-  }
-
-  if (trimmed.length !== LOT_NO_LENGTH) {
-    return 'length';
-  }
-
-  const segments = parseMaterialLotNo(trimmed);
-
-  if (segments === null || !isYymmdd(segments.date)) {
-    return 'badDate';
+  if (format !== null) {
+    return format;
   }
 
   if (queuedLotNos.includes(trimmed)) {
     return 'duplicate';
   }
 
-  /*
-   * 라벨의 제품코드가 고른 라인의 품목과 다르면 다른 자재의 라벨이다. 그대로 등록하면 그
-   * 라인에 남의 LOT 이 붙는다.
-   *
-   * 품목코드가 아홉 자리 숫자일 때만 견준다 - 그 형식이 아닌 코드 체계에서는 라벨의 어느
-   * 자리와 견줄지가 정해져 있지 않고, 억지로 견주면 옳은 라벨을 전부 막는다.
-   */
-  return lineItemCode !== undefined &&
-    /^\d{9}$/.test(lineItemCode) &&
-    segments.itemCode !== lineItemCode
-    ? 'otherItem'
-    : null;
+  const segments = parseMaterialLotNo(trimmed);
+
+  /* 다른 품목·공급사의 라벨이면 그 라인에 남의 LOT 이 붙는다. 입하 등록이라면 서버가 막았을 라벨이다. */
+  return codes === null || segments === null ? null : codeMismatchOf(segments, codes);
 };
 
 /**
@@ -101,6 +87,12 @@ export const labelQtyOf = (value: string): number | null => {
   return segments === null ? null : Number(segments.qty);
 };
 
+/**
+ * 등록할 수 있는가.
+ *
+ * 견줄 코드를 모르면 등록하지 않는다 - 서버가 이 경로를 검사하지 않아, 모르는 채 보내면
+ * 대조 없이 LOT 이 선다.
+ */
 export const canRegister = (
   line: InboundReceiptLine | null,
   value: string,
@@ -108,13 +100,14 @@ export const canRegister = (
   plantId: number | null,
   queuedLotNos: string[],
   queuedLineIds: number[],
-  lineItemCode?: string,
+  codes: MaterialLotCodes | null,
 ): boolean =>
   line !== null &&
   hasWorker &&
   plantId !== null &&
+  codes !== null &&
   !queuedLineIds.includes(line.inboundReceiptLineId) &&
-  scanProblemOf(value, queuedLotNos, lineItemCode) === null &&
+  scanProblemOf(value, queuedLotNos, codes) === null &&
   (labelQtyOf(value) ?? 0) > 0;
 
 /**
