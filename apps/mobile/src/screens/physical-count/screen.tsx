@@ -55,7 +55,7 @@ export const PhysicalCountScreen = () => {
   const planned = useCountLines(countId, at?.locationId ?? null);
   const reasons = useCodeValues(VARIANCE_REASON);
 
-  const itemLabels = useItemLabels(lines.length > 0);
+  const itemLabels = useItemLabels(lines.map((line) => line.itemId));
 
   /*
    * 큐에 담긴 것은 서버 응답에 없다. 읽기 전에는 담긴 것이 없는 것과 구별되지 않아 그 사이에
@@ -131,7 +131,7 @@ export const PhysicalCountScreen = () => {
 
   const nameOf = (line: DraftLine): string =>
     t.lines.name(
-      itemLabels.data?.get(line.itemId)?.itemCode ?? '',
+      itemLabels.get(line.itemId)?.itemCode ?? '',
       line.lotId === null ? '' : (lotLabels.get(line.lotId) ?? ''),
     );
 

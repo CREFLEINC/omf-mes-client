@@ -90,7 +90,7 @@ export const PutawayScreen = () => {
   const locations = useLocations(task?.warehouseId ?? null);
   const byCode = useLocationByCode(task?.warehouseId ?? null, scanned);
   const uoms = useUomCodes(true);
-  const itemLabels = useItemLabels(true);
+  const itemLabels = useItemLabels((tasks.data ?? []).map((each) => each.itemId));
   const lotNo = useTaskLotNo(task?.lotId ?? null);
   const rule = usePutawayRule(task?.appliedPutawayRuleId ?? null);
 
@@ -124,7 +124,7 @@ export const PutawayScreen = () => {
    * 냉장 자리가 없어 상온에 두어야 하는 날이 있다.
    */
   const itemCondition =
-    task === null ? null : (itemLabels.data?.get(task.itemId)?.storageConditionCode ?? null);
+    task === null ? null : (itemLabels.get(task.itemId)?.storageConditionCode ?? null);
   const storageOff =
     location === null ? false : storageMismatch(itemCondition, location.storageConditionCode);
   /* 표시명은 서버가 갖는다. 코드 문자열을 그대로 보이면 현장이 영문을 읽는다. */
@@ -264,7 +264,7 @@ export const PutawayScreen = () => {
 
   const taskLabel = (each: PutawayTask) =>
     t.tasks.item(
-      itemLabels.data?.get(each.itemId)?.itemCode ?? '',
+      itemLabels.get(each.itemId)?.itemCode ?? '',
       each.putawayTaskNo,
       `${String(each.taskQty)} ${uoms.data?.get(each.uomId) ?? ''}`,
     );
