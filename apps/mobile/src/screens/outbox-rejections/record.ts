@@ -1,13 +1,10 @@
-import type { ApiError, ErrorItem } from '@omf-mes/api-client';
+import { STATE_LOCKED_CODE, type ApiError, type ErrorItem } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 
 import type { RejectedRecord } from '../../patterns/outbox';
 
 const t = messages.outboxRejections.reason;
 const d = messages.outboxRejections.details;
-
-/** 다시 불러도 안 풀리는 갈래. 봉투를 이 코드로 가르므로 대표 항목도 이것을 먼저 본다. */
-const STATE_LOCKED_CODE = 'STATE_LOCKED';
 
 /** 앞 건이 못 가 붙을 곳이 없던 건. 큐가 상태 없는 오류로 표시해 둔 값이다. */
 const NO_LEADER_STATUS = 0;

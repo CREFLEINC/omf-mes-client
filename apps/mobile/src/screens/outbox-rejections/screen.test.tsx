@@ -417,6 +417,36 @@ describe('전송 실패한 기록 화면', () => {
     expect(valueOf(details, '걸린 칸')).toBe('statusCode');
   });
 
+  /*
+   * 잠긴 사유에 칸이 없으면 걸린 칸 줄을 내지 않는다. 서버가 그 사유로 짚은 칸이 없는데
+   * 옆 항목의 칸을 끌어다 쓰면 서버가 한 적 없는 짝이 되고, 그것이 이 화면이 막으려는 바다.
+   * 사유 자체는 돌아온 문구 줄에 그대로 남는다.
+   */
+  it('잠긴 사유에 칸이 없으면 걸린 칸을 지어내지 않는다', async () => {
+    seed([
+      record({
+        error: {
+          kind: 'stateLocked',
+          status: 422,
+          errors: [
+            { scope: 'field', field: 'plannedQty', code: 'RANGE', message: '범위를 벗어납니다' },
+            { scope: 'screen', code: 'STATE_LOCKED', message: '확정된 뒤에는 고칠 수 없습니다' },
+          ],
+        },
+      }),
+    ]);
+
+    render();
+
+    await userEvent.click(await screen.findByRole('button', { name: '상세 보기' }));
+
+    const details = screen.getByRole('group', { name: '상세' });
+
+    expect(valueOf(details, '오류 코드')).toBe('STATE_LOCKED');
+    expect(within(details).queryByText('걸린 칸')).toBeNull();
+    expect(valueOf(details, '돌아온 문구')).toContain('확정된 뒤에는 고칠 수 없습니다');
+  });
+
   /* 화면이 스스로 만든 검증 오류에는 응답이 없다. 없는 상태를 지어내지 않는다. */
   it('서버가 아니라 화면이 만든 오류는 상태를 비운다', async () => {
     seed([

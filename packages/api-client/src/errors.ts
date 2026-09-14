@@ -3,6 +3,13 @@ import type { components } from './generated/api';
 export type ErrorItem = components['schemas']['ErrorItem'];
 
 /**
+ * 다시 불러도 안 풀리는 잠김. 봉투를 이 코드로 가른다.
+ *
+ * 읽는 쪽도 같은 값을 봐야 한다 - 따로 적으면 한쪽만 바뀌었을 때 갈래와 표시가 어긋난다.
+ */
+export const STATE_LOCKED_CODE = 'STATE_LOCKED';
+
+/**
  * `ConflictResponse.conflictCause`에서 이름을 땄지만 `ShipmentConflictResponse`·
  * `StockReinstatementConflictResponse`의 `conflictCause`도 같은 값 집합이고 이제 셋 다
  * 필수다(통보 221 — 「서버는 공용 충돌 봉투를 사용하므로 항상 이 키를 싣는다」). 세 스키마가
@@ -170,7 +177,7 @@ export const normalizeApiError = (status: number, body: unknown): ApiError => {
   ) {
     const errors = body.errors;
     if (errors.length > 0) {
-      return errors.some((error) => error.code === 'STATE_LOCKED')
+      return errors.some((error) => error.code === STATE_LOCKED_CODE)
         ? { kind: 'stateLocked', status, errors }
         : { kind: 'validation', status, errors };
     }
