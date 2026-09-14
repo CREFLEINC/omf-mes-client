@@ -67,6 +67,7 @@ export const popMaterialLotLabel: Translated<typeof ko.popMaterialLotLabel> = {
       issueForbidden: 'Máy trạm này không phát hành nhãn được. Hãy in ở máy trạm có máy in nhãn.',
       reportFailedAfterPrint:
         'Nhãn đã ra. Chỉ là chưa lưu được kết quả in lên máy chủ — đừng in lại.',
+      iqcPlanMissing: 'Không có tiêu chuẩn kiểm tra IQC hợp lệ nên không thể đăng ký · in.',
       failed: 'Chưa đăng ký · in xong.',
     },
     reissueDialog: {
