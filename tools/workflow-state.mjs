@@ -3,25 +3,12 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 
-import { bootstrapErrors, WORKFLOW_SOURCE } from './workflow/bootstrap.mjs';
+import { bootstrapErrors, rejectRetiredTeam, WORKFLOW_SOURCE } from './workflow/bootstrap.mjs';
 
 const STATE_VERSION = 1;
 const DEFAULT_STATE_PATH = '.client-dev/state.json';
 const DEFAULT_DESIGN_REF = '.client-dev/design/omf-mes';
 const DEFAULT_DESIGN_REPOSITORY = 'CREFLEINC/omf-mes';
-
-export function normalizeTeam(value) {
-  const match = String(value ?? '').match(/^(?:Agent\s*:\s*)?T?(\d+)$/i);
-  if (!match || Number(match[1]) < 1) {
-    throw new Error('팀은 1 이상의 번호로 지정하세요. 예: --team 5');
-  }
-  return `Agent : T${Number(match[1])}`;
-}
-
-export function inferBranchTeam(branch) {
-  const match = String(branch).match(/(?:^|[-_/])team[-_]?([0-9]+)(?:$|[-_/])/i);
-  return match ? `Agent : T${Number(match[1])}` : null;
-}
 
 export function normalizeNoticeReference(value, designRepository = DEFAULT_DESIGN_REPOSITORY) {
   const reference = String(value ?? '').trim();
@@ -51,11 +38,6 @@ export function validateState(state) {
   if (!state || typeof state !== 'object') return ['상태 파일이 JSON 객체가 아닙니다.'];
   if (state.schemaVersion !== STATE_VERSION)
     errors.push(`schemaVersion은 ${STATE_VERSION}이어야 합니다.`);
-  try {
-    normalizeTeam(state.team);
-  } catch (error) {
-    errors.push(error.message);
-  }
   if (
     state.activeIssue !== null &&
     (!Number.isInteger(state.activeIssue) || state.activeIssue < 1)
@@ -174,17 +156,11 @@ function requireState(root, statePath = DEFAULT_STATE_PATH) {
 function check(root, statePath = DEFAULT_STATE_PATH) {
   const { state } = requireState(root, statePath);
   const errors = validateState(state);
-  errors.push(...bootstrapErrors(root, state.team));
+  errors.push(...bootstrapErrors(root));
   const branch = git(['branch', '--show-current'], root);
   if (!branch || ['main', 'master'].includes(branch))
-    errors.push('main/master가 아닌 팀 전용 브랜치에서 작업해야 합니다.');
+    errors.push('main/master가 아닌 작업 브랜치에서 작업해야 합니다.');
 
-  const branchTeam = inferBranchTeam(branch);
-  if (!branchTeam) {
-    errors.push('브랜치 이름에 team<번호>를 포함해 담당 팀이 드러나야 합니다.');
-  } else if (branchTeam !== normalizeTeam(state.team)) {
-    errors.push(`브랜치 담당(${branchTeam})과 로컬 상태(${state.team})가 다릅니다.`);
-  }
   if (!Number.isInteger(state.activeIssue) || state.activeIssue < 1) {
     errors.push('진행 작업에는 activeIssue가 필요합니다. workflow set-issue로 기록하세요.');
   }
@@ -207,17 +183,17 @@ function check(root, statePath = DEFAULT_STATE_PATH) {
 
   if (errors.length) throw new Error(errors.map((error) => `- ${error}`).join('\n'));
   process.stdout.write(
-    `workflow ok: ${state.team}, issue #${state.activeIssue}, design ${state.designBaseline.commit}\n`,
+    `workflow ok: issue #${state.activeIssue}, design ${state.designBaseline.commit}\n`,
   );
 }
 
 function init(root, options) {
+  rejectRetiredTeam(options);
   const statePath = path.resolve(root, options.state ?? DEFAULT_STATE_PATH);
   if (existsSync(statePath)) throw new Error(`상태 파일이 이미 있습니다: ${statePath}`);
   const source = relativeSource(root, options['design-ref'] ?? DEFAULT_DESIGN_REF);
   const state = {
     schemaVersion: STATE_VERSION,
-    team: normalizeTeam(options.team),
     activeIssue: positiveIssue(options.issue, '--issue'),
     designBaseline: {
       repository: DEFAULT_DESIGN_REPOSITORY,
@@ -344,7 +320,9 @@ export function repositoryPolicyErrors(root) {
     'tools/mock/resolve-spec.mjs',
   ];
   const forbiddenText = [
-    [/Agent\s*:\s*T\d+/, '특정 팀 번호 하드코딩'],
+    /* 라벨은 `Agent : Client` 처럼 콜론 앞뒤를 띄운다. `User-Agent:` 헤더는 붙여 써서 걸리지 않는다. */
+    [/\bAgent\s+:\s+\S/, '폐지된 에이전트 라벨'],
+    [/--team\b/, '폐지된 팀 번호 인자'],
     [/\[uiux→client\]\s*착수 가능/, '폐기된 설계팀 착수 배정 채널'],
     [/crefle-agent-skills:/, '사용 가능성이 보장되지 않는 특정 스킬 의존'],
     [/gh issue create --repo CREFLEINC\/omf-mes/, '설계 저장소 직접 이슈 생성'],
@@ -413,8 +391,8 @@ function repoCheck(root) {
 
 function usage() {
   return `사용법:
-  pnpm workflow:bootstrap --tool <codex|claude|both> --team <번호>
-  pnpm workflow init --team <번호> --issue <번호> --design-ref <경로>
+  pnpm workflow:bootstrap --tool <codex|claude|both>
+  pnpm workflow init --issue <번호> --design-ref <경로>
   pnpm workflow check
   pnpm workflow set-issue --issue <번호>
   pnpm workflow clear-issue

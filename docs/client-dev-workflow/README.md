@@ -5,7 +5,7 @@
 AI 도구별 `AGENTS.md`와 `CLAUDE.md`는 저장소가 관리하지 않는다. 새 워크트리에서 다음 명령으로 필요한 로컬 어댑터를 생성한 뒤, 생성 파일의 `개인별 AI 도구 설정` 구역에 본인의 노하우를 추가한다.
 
 ```bash
-pnpm workflow:bootstrap --tool <codex|claude|both> --team <번호>
+pnpm workflow:bootstrap --tool <codex|claude|both>
 ```
 
 부트스트랩 실행 파일: `tools/workflow/bootstrap.mjs`

@@ -6,26 +6,11 @@ import path from 'node:path';
 import test from 'node:test';
 
 import {
-  inferBranchTeam,
   migrateLegacyNoticeState,
   normalizeNoticeReference,
-  normalizeTeam,
   repositoryPolicyErrors,
   validateState,
 } from './workflow-state.mjs';
-
-test('팀 번호를 표준 라벨로 정규화한다', () => {
-  assert.equal(normalizeTeam('5'), 'Agent : T5');
-  assert.equal(normalizeTeam('T5'), 'Agent : T5');
-  assert.equal(normalizeTeam('Agent : T5'), 'Agent : T5');
-  assert.throws(() => normalizeTeam('0'));
-});
-
-test('브랜치 이름에서 담당 팀을 찾는다', () => {
-  assert.equal(inferBranchTeam('codex/team5-feature'), 'Agent : T5');
-  assert.equal(inferBranchTeam('feature/team-12/api'), 'Agent : T12');
-  assert.equal(inferBranchTeam('feature/no-owner'), null);
-});
 
 test('공통 설계 변동 공지 참조를 정규화한다', () => {
   assert.equal(normalizeNoticeReference('CREFLEINC/omf-mes#123'), 'CREFLEINC/omf-mes#123');
@@ -48,7 +33,6 @@ test('공통 설계 변동 공지 참조를 정규화한다', () => {
 test('설계 변동 기준에는 공통 공지 참조가 필요하다', () => {
   const errors = validateState({
     schemaVersion: 1,
-    team: 'Agent : T5',
     activeIssue: 782,
     designBaseline: {
       repository: 'CREFLEINC/omf-mes',
@@ -62,10 +46,27 @@ test('설계 변동 기준에는 공통 공지 참조가 필요하다', () => {
   assert.ok(errors.some((error) => error.includes('notice-ref')));
 });
 
+/* 팀 번호가 폐지되기 전에 만든 로컬 상태에는 team 이 남아 있다. 그것 때문에 막지 않는다. */
+test('팀 번호가 남은 옛 상태를 받아들인다', () => {
+  const errors = validateState({
+    schemaVersion: 1,
+    team: 'Agent : T5',
+    activeIssue: 782,
+    designBaseline: {
+      repository: 'CREFLEINC/omf-mes',
+      commit: 'a'.repeat(40),
+      source: '.client-dev/design/omf-mes',
+      pinnedAt: new Date().toISOString(),
+      reason: 'initial',
+      noticeReference: null,
+    },
+  });
+  assert.deepEqual(errors, []);
+});
+
 test('과거 팀별 공지 이슈 상태를 거부한다', () => {
   const legacy = {
     schemaVersion: 1,
-    team: 'Agent : T5',
     activeIssue: 782,
     designBaseline: {
       repository: 'CREFLEINC/omf-mes',
@@ -125,6 +126,14 @@ test('저장소 정책 검사가 폐기된 하네스를 감지한다', () => {
       error.includes('클라이언트 전용 설계 변동 공지 채널'),
     ),
   );
+  writeFileSync(path.join(root, 'README.md'), 'pnpm workflow:bootstrap --tool claude --team 3\n');
+  assert.ok(repositoryPolicyErrors(root).some((error) => error.includes('폐지된 팀 번호 인자')));
+  writeFileSync(path.join(root, 'README.md'), '착수 라벨: Agent : T3\n');
+  assert.ok(repositoryPolicyErrors(root).some((error) => error.includes('폐지된 에이전트 라벨')));
+  writeFileSync(path.join(root, 'README.md'), '--add-label "Agent : Client"\n');
+  assert.ok(repositoryPolicyErrors(root).some((error) => error.includes('폐지된 에이전트 라벨')));
+  writeFileSync(path.join(root, 'README.md'), 'User-Agent: omf-mes-mock\n');
+  assert.ok(!repositoryPolicyErrors(root).some((error) => error.includes('폐지된 에이전트 라벨')));
   writeFileSync(path.join(root, 'AGENTS.md'), 'tracked local adapter\n');
   execFileSync('git', ['add', 'AGENTS.md'], { cwd: root });
   assert.ok(
