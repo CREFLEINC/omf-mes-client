@@ -54,7 +54,8 @@ vi.mock('../../patterns/local-store', () => ({
   },
 }));
 
-const SCANNED = '7770001118880002229901015554447777';
+/* 제품코드|수량|날짜|공급사|번호. 발주 라인 품목(ABC-123)과 발주 공급사(SUP-002)에 맞춘 라벨이다. */
+const SCANNED = 'ABC-123|500|260731|SUP-002|0007';
 
 const page = { page: 0, size: 20, totalElements: 0, totalPages: 1 };
 
@@ -87,6 +88,8 @@ const poLine = (overrides: Record<string, unknown> = {}) => ({
 interface Options {
   lines?: unknown[];
   ordersStatus?: number;
+  /** 공급사 단건 조회가 연결을 잃는다 - 라벨의 공급사를 확인하지 못한 채로 두는 자리다. */
+  partnerFails?: boolean;
 }
 
 const routes = (options: Options = {}): StubRoute[] => [
@@ -132,6 +135,18 @@ const routes = (options: Options = {}): StubRoute[] => [
   {
     match: (req) => new URL(req.url).pathname === '/mdm/uoms',
     respond: () => jsonResponse({ items: [{ uomId: 9, uomCode: 'EA' }], page }),
+  },
+  {
+    match: (req) => new URL(req.url).pathname === '/mdm/partners/2',
+    respond: () =>
+      options.partnerFails === true
+        ? Promise.reject(new TypeError('Failed to fetch'))
+        : jsonResponse({
+            partnerId: 2,
+            partnerCode: 'SUP-002',
+            partnerName: '합성공급사',
+            isActive: true,
+          }),
   },
   {
     match: (req) => new URL(req.url).pathname === '/mdm/partners',
@@ -183,11 +198,27 @@ beforeEach(() => {
   held.failWrite = null;
 });
 
-const OTHER_LOT_NO = '7770001118880002229901015554440099';
+const OTHER_LOT_NO = 'ABC-123|500|260731|SUP-002|0099';
+
+/*
+ * 라벨을 스캔하고 자재 P/O 후보가 자리 잡기를 기다린다.
+ *
+ * 라벨의 제품코드로 품목을 찾으면 후보가 그 품목의 P/O 로 한 번 더 바뀐다. 그 전에 목록을 열면
+ * 바뀌는 순간 목록이 닫혀, 고르려던 줄이 없는 것으로 읽힌다. 기본 스텁의 품목 마스터에는
+ * `ABC-123` 만 있어 그 제품코드일 때만 좁혀진다.
+ */
+const scanLabel = async (label: string = SCANNED, narrows = label.startsWith('ABC-123|')) => {
+  scan(label);
+  await screen.findByText('자재 P/O 선택');
+
+  if (narrows) {
+    await screen.findByText('스캔한 자재의 품목이 있는 자재 P/O만 보입니다.');
+  }
+};
 
 describe('입하 등록 화면', () => {
   /*
-   * 번호 앞 아홉 자리가 제품코드다. 그것으로 품목을 찾으면 후보를 좁힐 수 있고,
+   * 번호 첫 칸이 제품코드다. 그것으로 품목을 찾으면 후보를 좁힐 수 있고,
    * 좁히지 않으면 담당자가 미마감 전건을 훑는다 - 잘못 고르면 그 입하가 다른 발주에 붙는다.
    */
   it('스캔한 번호의 품목이 있는 자재 P/O 만 후보로 낸다', async () => {
@@ -198,7 +229,7 @@ describe('입하 등록 화면', () => {
         match: (req) => new URL(req.url).pathname === '/mdm/items',
         respond: () =>
           jsonResponse({
-            items: [{ itemId: 77, itemCode: SCANNED.slice(0, 9), itemName: '스캔한 자재' }],
+            items: [{ itemId: 77, itemCode: 'ABC-123', itemName: '스캔한 자재' }],
             page,
           }),
       },
@@ -236,7 +267,7 @@ describe('입하 등록 화면', () => {
         match: (req) => new URL(req.url).pathname === '/mdm/items',
         respond: () =>
           jsonResponse({
-            items: [{ itemId: 77, itemCode: SCANNED.slice(0, 9), itemName: '스캔한 자재' }],
+            items: [{ itemId: 77, itemCode: 'ABC-123', itemName: '스캔한 자재' }],
             page,
           }),
       },
@@ -310,7 +341,7 @@ describe('입하 등록 화면', () => {
     await screen.findByLabelText('LOT 번호');
     scan('123');
 
-    await screen.findByText('자재 LOT 번호는 34자리 숫자입니다 (현재 3자)');
+    await screen.findByText(/자재 LOT 번호 형식이 아닙니다/);
     expect(tone.played).toBe(1);
   });
 
@@ -332,14 +363,21 @@ describe('입하 등록 화면', () => {
     expect(screen.getByRole('button', { name: '넣기' })).toBeTruthy();
   });
 
-  /* 자릿수와 숫자 전용은 저장소가 막지 않는다. 화면이 지키지 않으면 어긋난 채로 저장된다. */
-  it('34자리 숫자가 아니면 받지 않고 몇 자인지 말한다', async () => {
+  /*
+   * 옛 34자리 숫자 번호도 형식 위반이다. 읽은 값을 보여야 스캐너가 구분자를 다른 글자로 넣었는지
+   * 라벨이 틀렸는지 가린다.
+   */
+  it('자재 LOT 번호 형식이 아니면 받지 않고 읽은 값을 말한다', async () => {
     mount();
 
     await screen.findByLabelText('LOT 번호');
-    scan('123');
+    scan('7770001118880002229901015554447777');
 
-    expect(await screen.findByText('자재 LOT 번호는 34자리 숫자입니다 (현재 3자)')).toBeTruthy();
+    expect(
+      await screen.findByText(
+        '자재 LOT 번호 형식이 아닙니다(제품코드|수량|날짜|공급사|번호). 읽은 값: 7770001118880002229901015554447777',
+      ),
+    ).toBeTruthy();
     expect(screen.queryByText('자재 P/O 선택')).toBeNull();
   });
 
@@ -353,7 +391,7 @@ describe('입하 등록 화면', () => {
     expect(screen.getByText('자재 P/O 선택')).toBeTruthy();
   });
 
-  it('라벨 없는 외부 LOT 원문은 34자리 형식 강제 없이 받는다', async () => {
+  it('라벨 없는 외부 LOT 원문은 자재 LOT 번호 형식 강제 없이 받는다', async () => {
     const user = userEvent.setup();
     mount();
 
@@ -449,21 +487,78 @@ describe('입하 등록 화면', () => {
 const choosePoLine = async (
   user: ReturnType<typeof userEvent.setup>,
   lineName: RegExp = /ABC-123|31/,
+  label: string = SCANNED,
+  narrows?: boolean,
 ) => {
-  scan(SCANNED);
-  await screen.findByText('자재 P/O 선택');
+  await scanLabel(label, narrows);
   await user.click(screen.getByRole('combobox', { name: '자재 P/O 번호' }));
   await user.click(await screen.findByRole('option', { name: 'PO-2026-0003' }));
   await user.click(await screen.findByRole('button', { name: lineName }));
 };
 
 describe('입하 등록 화면 — 발주 경로', () => {
+  /* 서버가 등록할 때 같은 대조로 거부한다. 담아 둔 뒤에 되돌아오면 한참 뒤 전송 실패로만 보인다. */
+  it('라벨의 제품코드가 발주 라인 품목과 다르면 등록할 수 없다', async () => {
+    const user = userEvent.setup();
+    mount();
+    await screen.findByLabelText('LOT 번호');
+    await choosePoLine(user, /ABC-123|31/, 'XYZ-999|500|260731|SUP-002|0007');
+
+    await user.type(await screen.findByLabelText(/실입하\ 수량/), '500');
+
+    expect(
+      await screen.findByText('스캔한 라벨의 제품코드가 이 건의 품목과 다릅니다'),
+    ).toBeTruthy();
+    expect(screen.getByRole('button', { name: '입하 등록' })).toBeDisabled();
+  });
+
+  it('라벨의 공급사가 발주 공급사와 다르면 등록할 수 없다', async () => {
+    const user = userEvent.setup();
+    mount();
+    await screen.findByLabelText('LOT 번호');
+    await choosePoLine(user, /ABC-123|31/, 'ABC-123|500|260731|SUP-999|0007');
+
+    await user.type(await screen.findByLabelText(/실입하\ 수량/), '500');
+
+    expect(
+      await screen.findByText('스캔한 라벨의 공급사가 이 건의 공급사와 다릅니다'),
+    ).toBeTruthy();
+    expect(screen.getByRole('button', { name: '입하 등록' })).toBeDisabled();
+  });
+
+  /* 막는 쪽으로만 기울면 옳은 라벨까지 막혀 현장이 선다. 막는 시험만으로는 그 기울기가 안 보인다. */
+  it('라벨의 제품코드·공급사가 맞으면 등록할 수 있다', async () => {
+    const user = userEvent.setup();
+    mount();
+    await screen.findByLabelText('LOT 번호');
+    await choosePoLine(user);
+
+    await user.type(await screen.findByLabelText(/실입하\ 수량/), '500');
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: '입하 등록' })).not.toBeDisabled();
+    });
+    expect(screen.queryByText(/스캔한 라벨의/)).toBeNull();
+  });
+
+  /* 입하 등록은 연결 없이도 담겨야 한다. 확인하지 못했다고 막으면 오프라인 입하가 선다. */
+  it('라벨의 공급사를 확인하지 못하면 알리되 막지 않는다', async () => {
+    const user = userEvent.setup();
+    mount([], { partnerFails: true });
+    await screen.findByLabelText('LOT 번호');
+    await choosePoLine(user, /ABC-123|31/, 'ABC-123|500|260731|SUP-999|0007');
+
+    await user.type(await screen.findByLabelText(/실입하\ 수량/), '500');
+
+    expect(await screen.findByText(/라벨의 제품코드·공급사를 확인하지 못했습니다/)).toBeTruthy();
+    expect(screen.getByRole('button', { name: '입하 등록' })).not.toBeDisabled();
+  });
+
   it('발주 라인을 고르면 예정 수량과 누적 입하와 허용치를 보인다', async () => {
     const user = userEvent.setup();
     mount();
     await screen.findByLabelText('LOT 번호');
-    scan(SCANNED);
-    await screen.findByText('자재 P/O 선택');
+    await scanLabel();
 
     await user.click(screen.getByRole('combobox', { name: '자재 P/O 번호' }));
     await user.click(await screen.findByRole('option', { name: 'PO-2026-0003' }));
@@ -486,8 +581,7 @@ describe('입하 등록 화면 — 발주 경로', () => {
       ],
     });
     await screen.findByLabelText('LOT 번호');
-    scan(SCANNED);
-    await screen.findByText('자재 P/O 선택');
+    await scanLabel();
 
     await user.click(screen.getByRole('combobox', { name: '자재 P/O 번호' }));
     await user.click(await screen.findByRole('option', { name: 'PO-2026-0003' }));
@@ -519,7 +613,8 @@ describe('입하 등록 화면 — 발주 경로', () => {
       },
     ]);
     await screen.findByLabelText('LOT 번호');
-    await choosePoLine(user, /품목 정보 없음/);
+    /* 품목 조회가 비어 스캔한 제품코드로 좁혀지지 않는다. */
+    await choosePoLine(user, /품목 정보 없음/, SCANNED, false);
 
     /* 라인 카드와 품목·수량 확인 두 자리 모두에 선다. */
     expect(await screen.findAllByText(/품목 정보 없음/)).toHaveLength(2);
@@ -539,8 +634,7 @@ describe('입하 등록 화면 — 발주 경로', () => {
       ],
     });
     await screen.findByLabelText('LOT 번호');
-    scan(SCANNED);
-    await screen.findByText('자재 P/O 선택');
+    await scanLabel();
 
     await user.click(screen.getByRole('combobox', { name: '자재 P/O 번호' }));
     await user.click(await screen.findByRole('option', { name: 'PO-2026-0003' }));
@@ -576,8 +670,7 @@ describe('입하 등록 화면 — 발주 경로', () => {
     );
     mount();
     await screen.findByLabelText('LOT 번호');
-    scan(SCANNED);
-    await screen.findByText('자재 P/O 선택');
+    await scanLabel();
 
     await user.click(screen.getByRole('combobox', { name: '자재 P/O 번호' }));
     await user.click(await screen.findByRole('option', { name: 'PO-2026-0003' }));
@@ -795,8 +888,9 @@ describe('입하 등록 화면 — 발주 경로', () => {
     ]);
     await screen.findByLabelText('LOT 번호');
     await choosePoLine(user);
+    /* 스캔한 제품코드로 좁히느라 이미 두 번 받았다(전체 → 그 품목). 그 뒤로 늘어야 다시 받은 것이다. */
     await waitFor(() => {
-      expect(orders).toBe(1);
+      expect(orders).toBe(2);
     });
 
     await user.type(await screen.findByLabelText(/실입하\ 수량/), '500');
@@ -804,7 +898,7 @@ describe('입하 등록 화면 — 발주 경로', () => {
     await screen.findByText('입하를 등록했습니다');
 
     await waitFor(() => {
-      expect(orders).toBeGreaterThan(1);
+      expect(orders).toBeGreaterThan(2);
     });
   });
 });
@@ -994,7 +1088,7 @@ describe('입하 등록 화면 — 되돌릴 수 없는 쓰기', () => {
 
 describe('입하 등록 화면 — 발주 없이 도착', () => {
   const openUnordered = async (user: ReturnType<typeof userEvent.setup>) => {
-    scan(SCANNED);
+    await scanLabel();
     await user.click(await screen.findByRole('button', { name: '자재 P/O 없이 등록' }));
   };
 

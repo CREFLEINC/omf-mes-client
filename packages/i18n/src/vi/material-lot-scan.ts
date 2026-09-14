@@ -33,15 +33,20 @@ export const materialLotScan: Translated<typeof ko.materialLotScan> = {
     scanPlaceholder: 'Hãy quét nhãn LOT vật tư',
     manualLabel: 'Nhập tay',
     manualSubmit: 'Đưa vào',
-    counter: (length: string, total: string) => `${length}/${total} ký tự`,
     problem: {
-      length: (length: string, total: string) =>
-        `Số LOT vật tư có ${total} ký tự (hiện ${length} ký tự)`,
-      notDigits: 'Chỉ nhập được chữ số',
-      badDate: 'Phần ngày trên nhãn không phải là ngày',
+      format:
+        'Không đúng định dạng số LOT vật tư (mã sản phẩm|số lượng|ngày|nhà cung cấp|số thứ tự)',
+      badDate: 'Ô ngày trên nhãn không phải là ngày có thật',
       duplicate: 'Số LOT này đã được đăng ký',
       otherItem: 'LOT này khác mặt hàng của dòng nhập hàng',
+      otherSupplier: 'LOT này khác nhà cung cấp của phiếu nhập hàng',
     },
+  },
+  codes: {
+    loading: 'Đang xác nhận mã mặt hàng và mã nhà cung cấp để đối chiếu với nhãn',
+    loadFailed:
+      'Không tải được mã mặt hàng và mã nhà cung cấp để đối chiếu. Chưa xác nhận thì không đăng ký được.',
+    retry: 'Thử lại',
   },
   qtyDiffers: (labelQty: string, lineQty: string) =>
     `Số lượng trên nhãn ${labelQty} khác số lượng của dòng ${lineQty}`,

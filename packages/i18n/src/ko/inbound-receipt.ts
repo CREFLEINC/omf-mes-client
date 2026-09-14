@@ -17,8 +17,9 @@ export const inboundReceipt = {
     placeholder: '자재 LOT 라벨을 스캔하세요',
     manualLabel: '직접 입력',
     manualSubmit: '넣기',
-    /** 자릿수와 숫자 전용은 저장소가 막지 않는다. 화면이 지킨다. */
-    malformed: (length: number) => `자재 LOT 번호는 34자리 숫자입니다 (현재 ${String(length)}자)`,
+    /** 읽은 값을 함께 보인다. 스캐너 설정에 따라 구분자 `|` 가 다른 글자로 들어온다. */
+    malformed: (read: string) =>
+      `자재 LOT 번호 형식이 아닙니다(제품코드|수량|날짜|공급사|번호). 읽은 값: ${read}`,
     scanned: (lotNo: string) => `공급사 LOT ${lotNo}`,
     externalEntry: '납품서의 공급사 LOT 번호 입력',
     externalLabel: '공급사 LOT 번호',
@@ -34,6 +35,15 @@ export const inboundReceipt = {
     reasonPlaceholder: '사유를 고르세요',
     reasonLoadFailed: '대체 LOT 사유를 불러오지 못했습니다',
     back: '스캔으로 되돌리기',
+  },
+  /** 스캔한 라벨과 이 건의 품목·공급사를 견준 결과. 다르면 서버가 거부할 라벨이다. */
+  label: {
+    otherItem: '스캔한 라벨의 제품코드가 이 건의 품목과 다릅니다',
+    otherSupplier: '스캔한 라벨의 공급사가 이 건의 공급사와 다릅니다',
+    rescan: '다른 자재의 라벨입니다. 라벨을 다시 스캔하거나 자재 P/O 를 다시 고르세요.',
+    checking: '라벨의 제품코드·공급사를 확인하는 중입니다',
+    /* 연결이 없으면 확인하지 못한다. 막지는 않는다 - 서버가 등록할 때 같은 대조를 한다. */
+    unverified: '라벨의 제품코드·공급사를 확인하지 못했습니다. 다르면 전송할 때 되돌아옵니다.',
   },
   po: {
     legend: '자재 P/O 선택',

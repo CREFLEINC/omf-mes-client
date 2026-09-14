@@ -4,7 +4,7 @@ import { messages } from '@omf-mes/i18n';
 import { lookupDisplayLabel, type LookupSource } from '../../patterns/lookup-display';
 import { popTouchClass } from '../../patterns/pop-touch';
 import type { IssueStep } from './mutations';
-import { formatLotNo, toIssueStage, type TargetRow } from './types';
+import { toIssueStage, type TargetRow } from './types';
 
 const t = messages.popMaterialLotLabel.target;
 
@@ -92,13 +92,13 @@ export const TargetCard = ({
          * 등록 전에는 번호가 없다 — 서버가 등록 시점에 매기므로 화면이 미리 만들면 실제
          * 번호와 달라진다(스펙 §3).
          *
-         * 등록이 끝난 뒤에는 **34자리를 뜻의 경계로 끊어** 보인다. 그래야 라벨에 인쇄된
-         * 번호와 눈으로 대조할 수 있다.
+         * 등록이 끝난 뒤에는 번호를 **원문 그대로** 보인다 — 칸 사이에 구분자 `|` 가 이미 있어
+         * 끊지 않아도 라벨에 인쇄된 번호와 눈으로 대조할 수 있다.
          */}
         {!isRegistered ? (
           <p className="field-note pop-wide-note">{t.lotPreview.pending}</p>
         ) : lotNo !== null ? (
-          <p className="pop-lot-no">{formatLotNo(lotNo)}</p>
+          <p className="pop-lot-no">{lotNo}</p>
         ) : (
           <p className="field-note pop-wide-note">
             {isLotNoError ? t.lotPreview.loadFailed : isLotNoLoading ? t.lotPreview.loading : ''}

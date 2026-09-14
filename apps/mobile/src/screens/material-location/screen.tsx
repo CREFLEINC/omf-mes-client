@@ -9,11 +9,7 @@ import { toApiError } from '../../patterns/request';
 import { useScreenTitle } from '../../patterns/screen-title';
 import { useScanField } from '../../patterns/use-scan-field';
 import { useReferenceNames, type ReferenceNames, type ReferenceState } from './lookups';
-import {
-  MATERIAL_LOT_NO_LENGTH,
-  formatMaterialLotNo,
-  isMaterialLotNo,
-} from '../../patterns/material-lot-no';
+import { isMaterialLotNo } from '../../patterns/material-lot-no';
 import { useLoadFailure } from '../../patterns/load-failure';
 import { useLotBalances, useLotHolds, type InventoryBalance, type LotHold } from './queries';
 import { byOnHandDesc } from './sort';
@@ -123,18 +119,18 @@ const HoldBanner = ({ holds, names }: { holds: LotHold[]; names: ReferenceNames 
 
 export const MaterialLocationScreen = () => {
   const [code, setCode] = useState<string | null>(null);
-  const [rejectedLength, setRejectedLength] = useState<number | null>(null);
+  const [rejected, setRejected] = useState<string | null>(null);
 
   const accept = (value: string) => {
     if (!isMaterialLotNo(value)) {
       // 앞 LOT 의 결과를 남기면 잘못 읽은 직후의 잔상이 새 결과로 읽힌다.
       setCode(null);
-      setRejectedLength(value.length);
+      setRejected(value);
       playErrorTone();
       return;
     }
 
-    setRejectedLength(null);
+    setRejected(null);
     setCode(value);
   };
 
@@ -169,7 +165,7 @@ export const MaterialLocationScreen = () => {
 
   const restart = () => {
     setCode(null);
-    setRejectedLength(null);
+    setRejected(null);
     scanField.focus();
   };
 
@@ -182,11 +178,7 @@ export const MaterialLocationScreen = () => {
           placeholder={t.scan.placeholder}
           size="xl"
           fullWidth
-          error={
-            rejectedLength === null
-              ? undefined
-              : t.invalidLength(rejectedLength, MATERIAL_LOT_NO_LENGTH)
-          }
+          error={rejected === null ? undefined : t.invalidFormat(rejected)}
         />
         {/*
          * 스캔 칸 하나로 받는다. 스캐너를 기다리는 동안에는 키보드를 열지 않고, 직접
@@ -233,13 +225,13 @@ export const MaterialLocationScreen = () => {
           <EmptyState
             live
             title={t.notFound.title}
-            description={t.notFound.description(formatMaterialLotNo(code ?? ''))}
+            description={t.notFound.description(code ?? '')}
           />
         ) : null}
 
         {lot.data !== null && lot.data !== undefined ? (
           <>
-            <p className="material-location__lot-no">{formatMaterialLotNo(lot.data.lotNo)}</p>
+            <p className="material-location__lot-no">{lot.data.lotNo}</p>
             <p>{referenceLabel(names.item(lot.data.itemId))}</p>
             {holdState === 'checking' ? (
               <AlertBanner variant="info" title={t.hold.checking} />

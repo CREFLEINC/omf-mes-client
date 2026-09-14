@@ -188,55 +188,6 @@ export const toTargetRows = (receipt: ReceiptView, lines: LineView[]): TargetRow
     lotId: line.lotId,
   }));
 
-/**
- * 자재 LOT 번호의 자릿수 구성 — **34자리·전부 숫자·구분문자 없음**이다(MLOT #16 ✓확정).
- *
- * | 조각 | 자릿수 | 무엇 |
- * | --- | :-: | --- |
- * | 제품코드 | 9 | |
- * | 수량 스냅샷 | 9 | 등록 시점의 수량 |
- * | 날짜 | 6 | `YYMMDD` |
- * | 공급사 성분 | 6 | |
- * | 번호 | 4 | 같은 날 같은 공급사 안의 일련 |
- */
-const LOT_NO_SEGMENTS = [9, 9, 6, 6, 4] as const;
-
-const LOT_NO_LENGTH = LOT_NO_SEGMENTS.reduce((sum, size) => sum + size, 0);
-
-/** 34자리 전부가 숫자여야 한다 — 계약이 「전부 숫자」로 못박았다. */
-const LOT_NO_PATTERN = /^\d+$/u;
-
-/**
- * LOT 번호를 **읽을 수 있게 끊어 보인다.**
- *
- * 34자리가 구분문자 없이 이어져 있어 그대로 그리면 사람이 대조할 수 없다 — 라벨에 인쇄된
- * 번호와 화면의 번호가 같은지 확인하는 것이 이 자리의 일이고, 그 확인은 눈으로 한다.
- * **끊는 자리는 뜻의 경계**(제품코드 · 수량 · 날짜 · 공급사 · 일련)라 조각마다 무엇인지
- * 알아볼 수 있다.
- *
- * **끊는 문자는 가운뎃점이다** — 스펙 §3 이 `000123450 · 000001200 · 260731 · 000123 · 0007`
- * 로 적었다. 공백만으로 끊으면 조각 사이가 숫자 사이 자간과 구별되지 않아, 34자리를 눈으로
- * 대조하는 자리에서 «몇 번째 조각을 보고 있는지»를 놓친다.
- *
- * ⛔ **보내는 값을 바꾸지 않는다.** 끊는 것은 보이기 위한 것이고, 서버로 가는 값에는 구분
- * 문자가 없다. 이 함수의 결과를 요청 본문에 싣지 않는다.
- *
- * ⛔ **형식이 아니면 원문을 그대로 낸다.** 34자리가 아니거나 숫자가 아닌 값이 오면 끊지 않고
- * 그대로 보인다 — 화면이 삼키면 서버가 무엇을 보냈는지 알 수 없다(공유계약 G-9).
- */
-export const formatLotNo = (value: string): string => {
-  if (value.length !== LOT_NO_LENGTH || !LOT_NO_PATTERN.test(value)) return value;
-
-  let cursor = 0;
-
-  return LOT_NO_SEGMENTS.map((size) => {
-    const piece = value.slice(cursor, cursor + size);
-    cursor += size;
-
-    return piece;
-  }).join(' · ');
-};
-
 type DocumentIssueResponse = components['schemas']['DocumentIssue'];
 
 /** 인쇄 결과. 계약의 enum 을 그대로 쓴다 — 보고 전에는 `PENDING` 이다. */

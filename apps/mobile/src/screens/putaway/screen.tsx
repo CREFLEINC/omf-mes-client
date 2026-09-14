@@ -9,7 +9,6 @@ import { useBackStep } from '../../patterns/back-step';
 import { playErrorTone } from '../../patterns/error-tone';
 import { displayNameOf, useCodeValues } from '../../patterns/code-values';
 import { useItemLabels, useUomCodes } from '../../patterns/masters';
-import { formatMaterialLotNo } from '../../patterns/material-lot-no';
 import { useOutbox } from '../../patterns/outbox';
 import { useScanField } from '../../patterns/use-scan-field';
 import { useScreenTitle } from '../../patterns/screen-title';
@@ -342,10 +341,7 @@ export const PutawayScreen = () => {
               <Card.Body className="card-body putaway__card">
                 <strong>{taskLabel(task)}</strong>
                 {lotNo.data === undefined ? null : (
-                  /* 34자리를 붙여 쓰면 실물 라벨과 눈으로 대조할 수 없다(공유계약 E-2). */
-                  <p className="putaway__scanned">
-                    {t.lot.expected(formatMaterialLotNo(lotNo.data))}
-                  </p>
+                  <p className="putaway__scanned">{t.lot.expected(lotNo.data)}</p>
                 )}
                 <p className="putaway__note">{t.tasks.from(codeOf(task.fromLocationId))}</p>
                 {task.recommendedLocationId === null || task.recommendedLocationId === undefined ? (
@@ -540,12 +536,9 @@ export const PutawayScreen = () => {
               </Button>
 
               {scannedLot === null ? null : lotMatches(lotNo.data ?? null, scannedLot) ? (
-                <p className="putaway__scanned">{t.lot.matched(formatMaterialLotNo(scannedLot))}</p>
+                <p className="putaway__scanned">{t.lot.matched(scannedLot)}</p>
               ) : (
-                <AlertBanner
-                  variant="error"
-                  title={t.lot.mismatch(formatMaterialLotNo(scannedLot))}
-                />
+                <AlertBanner variant="error" title={t.lot.mismatch(scannedLot)} />
               )}
             </section>
           )}
@@ -577,7 +570,7 @@ export const PutawayScreen = () => {
             {registered.map((each) => (
               <li key={each.key}>
                 <span className="putaway__scanned">
-                  {t.done.row(formatMaterialLotNo(each.lotNo), each.locationCode, each.qty)}
+                  {t.done.row(each.lotNo, each.locationCode, each.qty)}
                 </span>
                 {each.outcome === 'rejected' ? (
                   <Chip status="error">{t.rejected.title}</Chip>

@@ -17,7 +17,7 @@ const TitleProbe = () => {
   return title === null ? null : <h1>{title}</h1>;
 };
 
-const SCANNED = '7770001118880002229901015554447777';
+const SCANNED = 'RM-1001|12.5|260731|SUP-001|0001';
 
 const page = { page: 0, size: 20, totalElements: 1, totalPages: 1 };
 
@@ -98,13 +98,12 @@ describe('자재 위치 확인 화면', () => {
     expect(screen.queryByText('보유')).not.toBeInTheDocument();
   });
 
-  it('스캔한 LOT 번호를 다섯 토막으로 보인다', async () => {
+  /* 저장값에 구분자가 이미 있다. 끊어 보이면 실물 라벨과 다른 글자가 선다. */
+  it('스캔한 LOT 번호를 원문 그대로 보인다', async () => {
     renderWithProviders(<MaterialLocationScreen />, { fetch: stub() });
     await scan();
 
-    expect(
-      await screen.findByText('777000111 · 888000222 · 990101 · 555444 · 7777'),
-    ).toBeInTheDocument();
+    expect(await screen.findByText(SCANNED)).toBeInTheDocument();
   });
 
   it('어느 화면인지 셸에 넘겨 알린다', () => {
@@ -361,14 +360,14 @@ describe('자재 위치 확인 화면', () => {
     expect(screen.getByText('1공장 자재창고')).toBeInTheDocument();
   });
 
-  it('길이 위반 스캔은 앞 결과를 지운다', async () => {
+  it('형식 위반 스캔은 앞 결과를 지운다', async () => {
     renderWithProviders(<MaterialLocationScreen />, { fetch: stub() });
     await scan();
     await screen.findByText('1공장 자재창고');
 
-    await scan('0001234500');
+    await scan('RM-1001|12.5|260731|SUP-001');
 
-    expect(await screen.findByText(/34자리입니다/)).toBeInTheDocument();
+    expect(await screen.findByText(/자재 LOT 번호 형식이 아닙니다/)).toBeInTheDocument();
     expect(screen.queryByText('1공장 자재창고')).not.toBeInTheDocument();
   });
 
@@ -399,7 +398,8 @@ describe('자재 위치 확인 화면', () => {
     expect(await screen.findByText('등록되지 않은 LOT입니다')).toBeInTheDocument();
   });
 
-  it('34자리가 아니면 조회하지 않고 읽은 자릿수를 알린다', async () => {
+  /* 옛 34자리 숫자 번호도 형식 위반이다. 스캐너가 구분자를 바꿔 넣었는지 가리게 읽은 값을 보인다. */
+  it('형식이 아니면 조회하지 않고 읽은 값을 알린다', async () => {
     const seen: string[] = [];
     renderWithProviders(<MaterialLocationScreen />, {
       fetch: (request) => {
@@ -407,15 +407,17 @@ describe('자재 위치 확인 화면', () => {
         return Promise.resolve(jsonResponse({ items: [], page }));
       },
     });
-    await scan('0001234500');
+    await scan('7770001118880002229901015554447777');
 
     expect(
-      await screen.findByText('자재 LOT은 34자리입니다. 10자리를 읽었습니다.'),
+      await screen.findByText(
+        '자재 LOT 번호 형식이 아닙니다(제품코드|수량|날짜|공급사|번호). 읽은 값: 7770001118880002229901015554447777',
+      ),
     ).toBeInTheDocument();
     expect(seen).toEqual([]);
   });
 
-  it('길이 오류 뒤에도 스캔 칸은 비워지고 포커스가 남는다', async () => {
+  it('형식 오류 뒤에도 스캔 칸은 비워지고 포커스가 남는다', async () => {
     renderWithProviders(<MaterialLocationScreen />, { fetch: createStubFetch([]) });
     await scan('0001234500');
 
@@ -424,15 +426,15 @@ describe('자재 위치 확인 화면', () => {
     expect(field).toHaveFocus();
   });
 
-  it('길이가 맞으면 오류가 사라진다', async () => {
+  it('형식이 맞으면 오류가 사라진다', async () => {
     renderWithProviders(<MaterialLocationScreen />, { fetch: stub() });
     await scan('0001234500');
-    await screen.findByText(/34자리입니다/);
+    await screen.findByText(/자재 LOT 번호 형식이 아닙니다/);
 
     await scan();
 
     expect(await screen.findByText('1공장 자재창고')).toBeInTheDocument();
-    expect(screen.queryByText(/34자리입니다/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/자재 LOT 번호 형식이 아닙니다/)).not.toBeInTheDocument();
   });
 
   it('서버에 닿지 못하면 오프라인이라고 알린다', async () => {

@@ -9,6 +9,7 @@ export const masterKeys = {
   itemSearch: (term: string) => ['master-item-search', term] as const,
   uoms: () => ['master-uoms'] as const,
   suppliers: () => ['master-suppliers'] as const,
+  partner: (partnerId: number | null) => ['master-partner', partnerId] as const,
   customers: () => ['master-customers'] as const,
   defectCodes: () => ['master-defect-codes'] as const,
 };
@@ -171,6 +172,37 @@ export const useSuppliers = (enabled: boolean): UseQueryResult<SupplierSummary[]
         partnerId: partner.partnerId,
         partnerName: partner.partnerName,
       }));
+    },
+  });
+};
+
+export interface PartnerSummary {
+  partnerCode: string;
+  partnerName: string;
+}
+
+/**
+ * 거래처 한 곳.
+ *
+ * 자재 LOT 번호의 공급사 칸은 거래처코드 원본이다. 입하가 가리키는 공급사의 코드와 견주려고
+ * 부른다. 목록에서 찾지 않는다 - 한 쪽에 담긴 만큼만 받아, 밖의 공급사가 없는 것으로 읽힌다.
+ */
+export const usePartner = (partnerId: number | null): UseQueryResult<PartnerSummary> => {
+  const { client } = useApiClient();
+
+  return useQuery({
+    queryKey: masterKeys.partner(partnerId),
+    enabled: partnerId !== null,
+    queryFn: async () => {
+      if (partnerId === null) {
+        throw new Error('공급사를 모르면 거래처를 조회하지 않습니다.');
+      }
+
+      const data = await runRequest(() =>
+        client.GET('/mdm/partners/{partnerId}', { params: { path: { partnerId } } }),
+      );
+
+      return { partnerCode: data.partnerCode, partnerName: data.partnerName };
     },
   });
 };

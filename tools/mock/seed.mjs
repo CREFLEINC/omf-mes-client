@@ -745,10 +745,13 @@ export const createSeed = (now = new Date()) => {
     ],
   };
 
-  /* 34자리 전부 숫자 — 화면이 그 형식으로 스캔값을 거른다. */
-  const MATERIAL_LOT_A = '0001234500000012002607310001230007';
-  const MATERIAL_LOT_B = '0001234500000012002607310001230008';
-  const MATERIAL_LOT_HELD = '0001234500000012002607310001230009';
+  /*
+   * 제품코드|수량|날짜|공급사|번호(설계 통보 277) — 품목(ABC-123·RM-1001)·최초 수량·공급사(SUP-001)
+   * 를 아래 행과 맞춘다. 어긋나면 입하·자재 LOT 스캔 화면이 다른 자재의 라벨로 막는다.
+   */
+  const MATERIAL_LOT_A = 'ABC-123|500|260731|SUP-001|0007';
+  const MATERIAL_LOT_B = 'RM-1001|300|260731|SUP-001|0008';
+  const MATERIAL_LOT_HELD = 'ABC-123|120|260731|SUP-001|0009';
 
   const lots = [
     {
@@ -2502,7 +2505,7 @@ export const createSeed = (now = new Date()) => {
       target: {
         targetTypeCode: 'INBOUND_LOT',
         targetId: 8003,
-        displayName: '0001234500000012002607310001230009',
+        displayName: MATERIAL_LOT_HELD,
         openable: false,
       },
       requestedBy: 1001,

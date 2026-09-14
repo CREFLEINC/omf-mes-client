@@ -11,7 +11,8 @@ export const inboundReceipt: Translated<typeof ko.inboundReceipt> = {
     placeholder: 'Hãy quét nhãn LOT vật tư',
     manualLabel: 'Nhập tay',
     manualSubmit: 'Đưa vào',
-    malformed: (length: number) => `Số LOT vật tư gồm 34 chữ số (hiện ${String(length)} ký tự)`,
+    malformed: (read: string) =>
+      `Không đúng định dạng số LOT vật tư (mã sản phẩm|số lượng|ngày|nhà cung cấp|số thứ tự). Giá trị đã đọc: ${read}`,
     scanned: (lotNo: string) => `LOT của nhà cung cấp ${lotNo}`,
     externalEntry: 'Nhập số LOT nhà cung cấp trên phiếu giao hàng',
     externalLabel: 'Số LOT nhà cung cấp',
@@ -27,6 +28,14 @@ export const inboundReceipt: Translated<typeof ko.inboundReceipt> = {
     reasonPlaceholder: 'Hãy chọn lý do',
     reasonLoadFailed: 'Không tải được lý do dùng LOT thay thế',
     back: 'Quay lại quét',
+  },
+  label: {
+    otherItem: 'Mã sản phẩm trên nhãn vừa quét khác mặt hàng của phiếu này',
+    otherSupplier: 'Nhà cung cấp trên nhãn vừa quét khác nhà cung cấp của phiếu này',
+    rescan: 'Đây là nhãn của vật tư khác. Hãy quét lại nhãn hoặc chọn lại P/O vật tư.',
+    checking: 'Đang xác nhận mã sản phẩm và nhà cung cấp trên nhãn',
+    unverified:
+      'Không xác nhận được mã sản phẩm và nhà cung cấp trên nhãn. Nếu khác, bản ghi sẽ bị trả lại khi gửi.',
   },
   po: {
     legend: 'Chọn P/O vật tư',

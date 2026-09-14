@@ -18,6 +18,7 @@ import {
   useItem,
   useItemLabels,
   useItemSearch,
+  usePartner,
   useSuppliers,
   useUomCodes,
 } from '../../patterns/masters';
@@ -44,7 +45,9 @@ import {
   OVER,
   UNDER,
   canSubmit,
+  hasScannedLabel,
   isExpiryBeforeManufactured,
+  labelMismatchOf,
   openLinesFirst,
   packageProblem,
   qtyProblem,
@@ -292,6 +295,24 @@ export const InboundReceiptScreen = () => {
       ? splitQuantitiesOf(draft.purchaseOrderLine, received, queuedQty)
       : null;
   /*
+   * 스캔한 라벨을 이 건의 품목·공급사와 견준다. 다르면 서버가 거부할 라벨이라 등록 전에 막는다.
+   *
+   * 확인하는 동안은 기다린다. 확인하지 못했으면(연결이 없을 때 등) 막지 않는다 - 입하 등록은
+   * 오프라인에서도 담겨야 하고, 서버가 등록할 때 같은 대조를 한다.
+   */
+  const source = sourceOf(draft);
+  const labelChecked = hasScannedLabel(draft) && source !== null;
+  const labelSupplier = usePartner(labelChecked ? (source?.supplierId ?? null) : null);
+  const labelCodes =
+    item.data === undefined || labelSupplier.data === undefined
+      ? null
+      : { itemCode: item.data.itemCode, supplierCode: labelSupplier.data.partnerCode };
+  const labelMismatch = labelMismatchOf(draft, labelCodes);
+  const labelUnverified =
+    labelChecked && labelCodes === null && (item.isError || labelSupplier.isError);
+  const labelChecking = labelChecked && labelCodes === null && !labelUnverified;
+  const labelOk = labelMismatch === null && !labelChecking;
+  /*
    * 부족은 더 올 것이 남았다고 사람이 답해야 넘어간다. 마지막 회차면 갈 곳이 다르다.
    *
    * 큐를 읽기 전에는 막아 둔다 - 담긴 것이 없는 것과 구별되지 않아, 앞서 담은 입하가 셈에서
@@ -301,16 +322,21 @@ export const InboundReceiptScreen = () => {
     loaded &&
     plantId !== null &&
     canSubmit(draft, worker !== null) &&
+    labelOk &&
     verdict !== OVER &&
     (verdict !== UNDER || continueUnder);
   const splitReady =
-    loaded && plantId !== null && canSubmit(draft, worker !== null) && splitQuantities !== null;
+    loaded &&
+    plantId !== null &&
+    canSubmit(draft, worker !== null) &&
+    labelOk &&
+    splitQuantities !== null;
   /*
    * 오류로 적는 길도 같은 조건을 지난다. 부족 물음에 답한 것이 continueUnder 를 대신할 뿐,
    * 큐를 읽었는지와 필수 입력이 찼는지는 그대로 본다 - 이 길만 열어 두면 확정 단추가 막힌
    * 상태에서 저장이 여기로 새어 나간다.
    */
-  const varianceReady = loaded && plantId !== null && canSubmit(draft, worker !== null);
+  const varianceReady = loaded && plantId !== null && canSubmit(draft, worker !== null) && labelOk;
   /*
    * 단위는 따로 조회한다. 못 찾았을 때 빈 글자를 끼우면 수량 뒤가 그냥 비어, 무엇을 세는
    * 단위인지 없는 것인지 화면만 보고는 가릴 수 없다.
@@ -348,8 +374,6 @@ export const InboundReceiptScreen = () => {
   };
 
   const submit = async (splitMode?: SplitMode) => {
-    const source = sourceOf(draft);
-
     if (worker === null || source === null || plantId === null || inFlight.current) {
       return;
     }
@@ -483,7 +507,7 @@ export const InboundReceiptScreen = () => {
           placeholder={t.scan.placeholder}
           size="xl"
           fullWidth
-          error={malformed === null ? undefined : t.scan.malformed(malformed.length)}
+          error={malformed === null ? undefined : t.scan.malformed(malformed)}
         />
         {/*
          * 스캔 칸 하나로 받는다. 스캐너를 기다리는 동안에는 키보드를 열지 않고, 직접
@@ -1255,6 +1279,17 @@ export const InboundReceiptScreen = () => {
           )}
 
           <section className="receipt__section">
+            {labelMismatch === null ? null : (
+              <AlertBanner variant="error" title={t.label[labelMismatch]}>
+                {t.label.rescan}
+              </AlertBanner>
+            )}
+            {labelChecking ? (
+              <p className="receipt__note" role="status">
+                {t.label.checking}
+              </p>
+            ) : null}
+            {labelUnverified ? <p className="receipt__note">{t.label.unverified}</p> : null}
             {saveFailed ? (
               <AlertBanner variant="error" title={t.saveFailed.title}>
                 {t.saveFailed.description}
