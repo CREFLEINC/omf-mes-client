@@ -13,8 +13,8 @@ export const productionPlan: Translated<typeof ko.productionPlan> = {
   breadcrumbGroup: 'Kế hoạch · lệnh',
 
   order: {
-    pane: 'P/O sản xuất đã chọn',
-    heading: 'P/O sản xuất đã chọn',
+    pane: 'ERP W/O đã chọn',
+    heading: 'ERP W/O đã chọn',
     due: (dueDate: string) => ` · Ngày giao ${dueDate}`,
   },
 
@@ -44,7 +44,7 @@ export const productionPlan: Translated<typeof ko.productionPlan> = {
     loading: 'Đang tải dòng sản xuất',
     loadFailed: 'Không tải được dòng sản xuất.',
     retry: 'Thử lại dòng sản xuất',
-    plantMissing: 'P/O không có nhà máy nên dòng sản xuất sẽ lưu là chưa chỉ định.',
+    plantMissing: 'ERP W/O không có nhà máy nên dòng sản xuất sẽ lưu là chưa chỉ định.',
     parentUnknown: 'Dòng cấp trên',
     inactiveSuffix: ' · Ngừng dùng',
   },
@@ -54,7 +54,7 @@ export const productionPlan: Translated<typeof ko.productionPlan> = {
     pane: 'Soạn kế hoạch sản xuất',
     heading: 'Kế hoạch sản xuất',
     add: '+ Thêm kế hoạch',
-    tableCaption: 'Bảng soạn kế hoạch sản xuất của P/O',
+    tableCaption: 'Bảng soạn kế hoạch sản xuất của ERP W/O',
     empty: 'Chưa có kế hoạch nào được đăng ký.',
     loading: 'Đang tải kế hoạch sản xuất',
     loadFailed: 'Không tải được kế hoạch sản xuất.',
@@ -92,11 +92,11 @@ export const productionPlan: Translated<typeof ko.productionPlan> = {
   quantitySummary: {
     invalid: 'Hãy sửa lỗi số lượng kế hoạch trước.',
     empty: 'Phải thêm ít nhất 1 kế hoạch mới triển khai được.',
-    over: (amount: string, uomLabel: string) => `Vượt số lượng P/O ${amount} ${uomLabel}.`,
+    over: (amount: string, uomLabel: string) => `Vượt số lượng ERP W/O ${amount} ${uomLabel}.`,
     overDescription: 'Hãy kiểm tra chính sách sản xuất vượt.',
-    under: (amount: string, uomLabel: string) => `Thiếu so với số lượng P/O ${amount} ${uomLabel}.`,
+    under: (amount: string, uomLabel: string) => `Thiếu so với số lượng ERP W/O ${amount} ${uomLabel}.`,
     underDescription: 'Nếu đang chia nhỏ kế hoạch thì cứ soạn tiếp.',
-    matched: 'Tổng số lượng kế hoạch khớp với số lượng P/O.',
+    matched: 'Tổng số lượng kế hoạch khớp với số lượng ERP W/O.',
   },
 
   rowActions: {
@@ -149,12 +149,12 @@ export const productionPlan: Translated<typeof ko.productionPlan> = {
   },
 
   screen: {
-    unselected: 'Hãy chọn P/O sản xuất trước.',
-    openProductionOrders: 'Đến nhận · tra cứu P/O',
-    loading: 'Đang tải P/O sản xuất',
-    ownerMismatch: 'Đã nhận về chi tiết khác với P/O sản xuất đã yêu cầu.',
-    loadFailed: 'Không tải được P/O sản xuất.',
-    stale: 'Không xác nhận được P/O sản xuất mới nhất.',
+    unselected: 'Hãy chọn ERP W/O trước.',
+    openProductionOrders: 'Đến nhận · tra cứu ERP W/O',
+    loading: 'Đang tải ERP W/O',
+    ownerMismatch: 'Đã nhận về chi tiết khác với ERP W/O đã yêu cầu.',
+    loadFailed: 'Không tải được ERP W/O.',
+    stale: 'Không xác nhận được ERP W/O mới nhất.',
     retry: 'Thử lại',
     keepsEdits: 'Nội dung đang soạn vẫn được giữ.',
     lotNotice: 'Cỡ LOT sản xuất và phát trước sẽ nhập ở bước chốt · phát hành W/O.',

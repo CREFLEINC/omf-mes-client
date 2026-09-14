@@ -410,8 +410,8 @@ export const NAV_GROUPS: readonly NavGroup[] = [
       {
         to: '/production/production-orders',
         icon: 'account_tree',
-        label: 'P/O 수신·조회',
-        labelVi: 'Nhận · tra cứu P/O',
+        label: 'ERP W/O 수신·조회',
+        labelVi: 'Nhận · tra cứu ERP W/O',
       },
       /*
        * W-02-06 — 받은 P/O 가 «바뀌었을 때» 판정하는 자리라 수신·조회 바로 뒤다.
@@ -423,7 +423,7 @@ export const NAV_GROUPS: readonly NavGroup[] = [
         label: 'P/O 변경 관리자 확인',
         labelVi: 'Quản trị xác nhận thay đổi P/O',
       },
-      /* W-02-02 — 선택한 P/O를 계획·W/O로 전개하므로 조회 바로 뒤에 둔다. */
+      /* W-02-02 — 선택한 ERP W/O를 계획·W/O로 전개하므로 조회 바로 뒤에 둔다. */
       {
         to: '/production/production-plans',
         icon: 'schema',
