@@ -1,5 +1,5 @@
 import { messages } from '@omf-mes/i18n';
-import { screen, waitFor } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useEffect, type ReactNode } from 'react';
 import { MemoryRouter } from 'react-router';
@@ -431,7 +431,8 @@ describe('입하 등록 화면', () => {
 
     expect(await screen.findByText('자재 P/O 없이 도착')).toBeTruthy();
     expect(await screen.findByRole('combobox', { name: new RegExp('공급사') })).toBeTruthy();
-    expect(screen.getByRole('combobox', { name: new RegExp('품목') })).toBeTruthy();
+    /* 품목은 마스터가 커서 폼 안의 목록이 아니라 찾는 화면으로 간다. */
+    expect(screen.getByRole('button', { name: '품목 찾기' })).toBeTruthy();
     expect(screen.getByRole('combobox', { name: new RegExp('단위') })).toBeTruthy();
   });
 
@@ -1004,10 +1005,13 @@ describe('입하 등록 화면 — 발주 없이 도착', () => {
     await user.click(await screen.findByRole('option', { name: option }));
   };
 
-  /* 마스터를 다 늘어놓지 않으므로 찾는 말을 먼저 적어야 후보가 선다. */
+  /*
+   * 마스터를 다 늘어놓지 않으므로 찾는 화면으로 넘어가 적고 고른다. 고르면 폼으로 돌아온다.
+   */
   const chooseItem = async (user: ReturnType<typeof userEvent.setup>, term: string) => {
-    await user.type(await screen.findByLabelText('품목 찾기'), term);
-    await choose(user, '품목', new RegExp(term));
+    await user.click(await screen.findByRole('button', { name: /품목 (찾기|변경하기)/ }));
+    await user.type(await screen.findByLabelText('품목 검색'), term);
+    await user.click(await screen.findByRole('button', { name: new RegExp(term) }));
   };
 
   /*
@@ -1112,11 +1116,10 @@ describe('입하 등록 화면 — 발주 없이 도착', () => {
   });
 
   /*
-   * 고른 품목은 찾는 말과 함께 사라지면 안 된다. 후보를 찾은 결과에서만 만들면, 찾는 말을
-   * 지운 순간 칸이 빈 것으로 보이는데 등록에는 앞서 고른 품목이 그대로 실린다 - 화면과
-   * 보내는 것이 갈리고, 되돌릴 수 없는 쓰기다.
+   * 고른 품목은 폼으로 돌아온 뒤에도 보여야 한다. 칸이 빈 것으로 보이는데 등록에는 앞서
+   * 고른 품목이 실리면 화면과 보내는 것이 갈리고, 되돌릴 수 없는 쓰기다.
    */
-  it('찾는 말을 지워도 고른 품목이 칸에 남는다', async () => {
+  it('찾아서 고른 품목이 폼의 칸에 남는다', async () => {
     const user = userEvent.setup();
     const seen: Request[] = [];
     mount([
@@ -1135,9 +1138,17 @@ describe('입하 등록 화면 — 발주 없이 도착', () => {
     await choose(user, '공급사', /합성공급사/);
     await chooseItem(user, 'ABC-123');
 
-    await user.clear(await screen.findByLabelText('품목 찾기'));
+    /*
+     * 찾는 화면을 닫고 폼으로 돌아왔다. 품목·수량 확인 구간도 같은 글자를 내므로 품목 칸
+     * 안에서 잰다 - 화면 전체로 세면 다른 자리가 대신 서도 통과한다.
+     */
+    const itemField = (await screen.findByRole('button', { name: '품목 변경하기' })).closest(
+      '.receipt__field',
+    );
 
-    expect(await screen.findByRole('combobox', { name: /품목/ })).toHaveTextContent(/ABC-123/);
+    expect(itemField).not.toBeNull();
+    expect(within(itemField as HTMLElement).getByText('ABC-123 원자재')).toBeTruthy();
+    expect(screen.queryByText('고른 품목이 없습니다')).toBeNull();
 
     await choose(user, '단위', /EA/);
     await choose(user, '예외입하 유형', /긴급 입하/);
@@ -1151,6 +1162,30 @@ describe('입하 등록 화면 — 발주 없이 도착', () => {
 
     const body = (await seen[0]!.json()) as { lines: { itemId: number }[] };
     expect(body.lines[0]?.itemId).toBe(31);
+  });
+
+  /*
+   * 찾으러 간 사이 스캔한 번호와 고른 자재 P/O 가 사라지면 안 된다. 다른 주소로 넘기면
+   * 그 상태가 초기화되고, 작업자는 라벨을 다시 대야 한다.
+   */
+  it('품목을 찾으러 다녀와도 앞서 넣은 것이 남는다', async () => {
+    const user = userEvent.setup();
+    mount();
+
+    await screen.findByLabelText('LOT 번호');
+    scan(SCANNED);
+    await user.click(await screen.findByRole('button', { name: '자재 P/O 없이 등록' }));
+    await choose(user, '공급사', /합성공급사/);
+
+    await user.click(await screen.findByRole('button', { name: '품목 찾기' }));
+    /* 찾는 화면이 폼을 대신 서 있다 - 폼의 칸은 이때 DOM 에 없다. */
+    expect(await screen.findByLabelText('품목 검색')).toBeTruthy();
+    expect(screen.queryByRole('combobox', { name: /공급사/ })).toBeNull();
+
+    await user.click(screen.getByRole('button', { name: '고르지 않고 돌아가기' }));
+
+    expect(await screen.findByText(`공급사 LOT ${SCANNED}`)).toBeTruthy();
+    expect(await screen.findByRole('combobox', { name: /공급사/ })).toHaveTextContent(/합성공급사/);
   });
 
   /* 품목 마스터의 주인은 ERP 다. 여기서 만들 길을 찾지 않는다. */

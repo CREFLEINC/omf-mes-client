@@ -1,26 +1,11 @@
-import {
-  AlertBanner,
-  Button,
-  Card,
-  Chip,
-  NumberPad,
-  SearchInput,
-  Select,
-  TextField,
-} from '@crefle/web-ui';
+import { AlertBanner, Button, Card, Chip, NumberPad, Select, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router';
 
 import { isMaterialLotNo } from '../../patterns/material-lot-no';
-import {
-  useItem,
-  useItemLabels,
-  useItemSearch,
-  useSuppliers,
-  useUomCodes,
-} from '../../patterns/masters';
+import { useItem, useItemLabels, useSuppliers, useUomCodes } from '../../patterns/masters';
 import { useOutbox } from '../../patterns/outbox';
 import { currentPlantId } from '../../patterns/plant';
 import { ScanReplaceDialog } from '../../patterns/scan-replace-dialog';
@@ -61,6 +46,7 @@ import {
   type ReceiptDraft,
   type SplitMode,
 } from './receipt';
+import { ItemPicker } from './item-picker';
 import './screen.css';
 
 const t = messages.inboundReceipt;
@@ -249,26 +235,8 @@ export const InboundReceiptScreen = () => {
   /* 목록의 발주 라인은 품목 식별자만 준다. 그 번호로는 실물 라벨과 대조할 수 없다. */
   const itemLabels = useItemLabels((lines.data ?? []).map((each) => each.itemId));
   const suppliers = useSuppliers(draft.unordered);
-  /* 무발주는 작업자가 품목을 직접 고른다. 고르기 전에는 마스터 전체가 후보라 찾아서 좁힌다. */
-  const [itemTerm, setItemTerm] = useState('');
-  const itemSearch = useItemSearch(draft.unordered ? itemTerm : '');
-  const itemPlaceholder =
-    itemSearch.data === undefined
-      ? t.exception.itemSearchFirst
-      : itemSearch.data.length === 0
-        ? t.exception.itemSearchEmpty
-        : t.exception.itemPlaceholder;
-  /*
-   * 고른 품목은 찾은 결과가 바뀌어도 후보에 남긴다. 찾는 말을 지운 순간 칸이 빈 것으로
-   * 보이는데 등록에는 앞서 고른 품목이 실리면, 화면과 보내는 것이 갈린다.
-   */
-  const itemOptions =
-    draft.itemId === null || item.data === undefined
-      ? (itemSearch.data ?? [])
-      : [
-          { itemId: draft.itemId, ...item.data },
-          ...(itemSearch.data ?? []).filter((each) => each.itemId !== draft.itemId),
-        ];
+  /* 무발주는 작업자가 품목을 직접 고른다. 마스터가 커서 찾는 일에 화면을 통째로 내준다. */
+  const [pickingItem, setPickingItem] = useState(false);
   /* 공장은 단말 토큰이 싣고 온다. 발주가 없으면 승계할 곳이 여기뿐이다. */
   const plantId = draft.unordered ? currentPlantId() : (draft.purchaseOrder?.plantId ?? null);
 
@@ -434,6 +402,24 @@ export const InboundReceiptScreen = () => {
       inFlight.current = false;
     }
   };
+
+  /*
+   * 찾는 동안에는 폼을 접고 화면을 내준다. 스캔한 번호와 고른 자재 P/O 는 이 화면의 상태라
+   * 그대로 남는다 - 다른 주소로 나갔다 오면 그것들이 사라진다.
+   */
+  if (pickingItem) {
+    return (
+      <ItemPicker
+        onPick={(picked) => {
+          patch({ itemId: picked.itemId });
+          setPickingItem(false);
+        }}
+        onCancel={() => {
+          setPickingItem(false);
+        }}
+      />
+    );
+  }
 
   if (outcome !== null) {
     return (
@@ -807,37 +793,24 @@ export const InboundReceiptScreen = () => {
                 보이면 있는 품목이 없는 것으로 읽혀, 고르지 못하고도 이유를 알 수 없다.
               */}
               <div className="receipt__field">
-                <SearchInput
-                  label={t.exception.itemSearchLabel}
-                  placeholder={t.exception.itemSearchPlaceholder}
-                  helperText={t.exception.itemSearchHint}
-                  error={itemSearch.isError ? t.exception.itemSearchFailed : undefined}
-                  loading={itemSearch.isFetching}
+                <p>{required(t.exception.itemLabel)}</p>
+                {draft.itemId === null || item.data === undefined ? (
+                  <p className="receipt__note">{t.exception.itemNone}</p>
+                ) : (
+                  <p>
+                    <strong>{`${item.data.itemCode} ${item.data.itemName}`}</strong>
+                  </p>
+                )}
+                <Button
+                  variant="outlined"
                   size="xl"
-                  fullWidth
-                  value={itemTerm}
-                  onChange={(event) => {
-                    setItemTerm(event.target.value);
+                  className="receipt__wide"
+                  onClick={() => {
+                    setPickingItem(true);
                   }}
-                />
-              </div>
-
-              {/* 찾기 전에도 세워 둔다 - 칸이 없으면 무엇을 더 채워야 하는지 보이지 않는다. */}
-              <div className="receipt__field">
-                <label htmlFor="receipt-item">{required(t.exception.itemLabel)}</label>
-                <Select
-                  id="receipt-item"
-                  placeholder={itemPlaceholder}
-                  size="xl"
-                  value={draft.itemId === null ? null : String(draft.itemId)}
-                  onChange={(value) => {
-                    patch({ itemId: Number(value) });
-                  }}
-                  options={itemOptions.map((each) => ({
-                    value: String(each.itemId),
-                    label: `${each.itemCode} ${each.itemName}`,
-                  }))}
-                />
+                >
+                  {draft.itemId === null ? t.exception.itemPick : t.exception.itemChange}
+                </Button>
               </div>
               {/* 품목 마스터의 주인은 ERP 다. 여기서 만들 길을 찾지 않는다. */}
               <AlertBanner variant="info" title={t.exception.itemUnregistered}>

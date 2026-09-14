@@ -139,3 +139,37 @@
   flex-direction: column;
   gap: var(--space-3, 12px);
 }
+
+.receipt-picker {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3, 12px);
+  padding: var(--space-4, 16px);
+}
+
+.receipt-picker p {
+  margin: 0;
+}
+
+.receipt-picker__note {
+  color: var(--on-surface-muted, inherit);
+}
+
+.receipt-picker__list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2, 8px);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.receipt-picker__item {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1, 4px);
+}
+
+.receipt-picker__back {
+  width: 100%;
+}
