@@ -114,18 +114,18 @@ body {
 
 /*
  * 셸 밖 최상위 층에 뜨는 것도 시스템 바를 피한다. 알림은 셸 여백을 받지 않고 화면 맨 위에
- * 붙어 상태바를 덮는다. 대화상자는 가운데 서지만 높이 한도가 화면 전체 기준이라, 길어지면
- * 위아래 바에 닿는다.
+ * 붙어 상태바를 덮는다. 대화상자는 DS 가 좁은 화면(768px 이하)에서 전체 화면으로 띄워
+ * 머리줄의 닫기 단추가 상태바 밑에 깔린다 - 높이 한도만 줄이면 위에 붙은 채 아래만 비므로,
+ * 대화상자 상자 안쪽에 위아래 바 높이만큼 여백을 둬 판을 그 사이로 옮긴다.
  */
 [role='region'][data-position^='top'] {
   padding-top: calc(var(--space-4, 16px) + var(--safe-area-inset-top, env(safe-area-inset-top, 0px)));
 }
 
 .mobile-shell dialog {
-  --dialog-max-h: calc(
-    100dvh - var(--space-8, 32px) - var(--safe-area-inset-top, env(safe-area-inset-top, 0px)) -
-      var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px))
-  );
+  box-sizing: border-box;
+  padding-top: var(--safe-area-inset-top, env(safe-area-inset-top, 0px));
+  padding-bottom: var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px));
 }
 
 /* 앱바 한 줄에 들어가야 해서 본문 제목 크기를 그대로 쓰지 않는다. */
