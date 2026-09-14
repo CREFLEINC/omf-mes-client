@@ -2,6 +2,7 @@ import { messages } from '@omf-mes/i18n';
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
+import type { LookupSource } from '../../patterns/lookup-display';
 import { emptyLineDraft, lineDraftsFromShortage } from './line-draft';
 import { LineTable } from './line-table';
 import { shortageFixtures } from './fixtures';
@@ -38,12 +39,16 @@ const itemOptions = itemLookup.entries.map((entry) => ({
 }));
 const uomOptions = uomLookup.entries.map((entry) => ({ value: entry.value, label: entry.label }));
 
-const renderTable = (rows = lineDraftsFromShortage(shortageFixtures.map(toShortageLineView))) =>
+const renderTable = (
+  rows = lineDraftsFromShortage(shortageFixtures.map(toShortageLineView)),
+  itemNameSources: ReadonlyMap<string, LookupSource> = new Map(),
+) =>
   render(
     <LineTable
       rows={rows}
       errors={{}}
       itemLookup={itemLookup}
+      itemNameSources={itemNameSources}
       uomLookup={uomLookup}
       itemOptions={itemOptions}
       uomOptions={uomOptions}
@@ -96,6 +101,33 @@ describe('LineTable', () => {
 
     expect(screen.getAllByText(t.warnings.outsideBom)).toHaveLength(1);
     expect(screen.getByLabelText(t.lineTable.requestedQtyLabel(3))).toBeEnabled();
+  });
+
+  /*
+   * 소요 응답은 itemId 만 준다(문의 047). 품목 목록 한 쪽에 BOM 품목이 없어도 상세로 푼 이름이
+   * 서야 한다 — 목록으로만 풀면 품목이 많은 환경에서 전부 「알 수 없음」이 된다.
+   */
+  it('BOM 유래 줄의 품목 이름은 품목 목록에 없어도 상세로 푼 이름으로 선다', () => {
+    const named = (value: string, label: string): LookupSource => ({
+      entries: [{ value, label, isActive: true }],
+      isError: false,
+      isLoading: false,
+    });
+
+    renderTable(
+      lineDraftsFromShortage(shortageFixtures.map(toShortageLineView)),
+      new Map<string, LookupSource>([
+        ['7401', named('7401', 'BOM-ITEM-01 · 상세 품목 가')],
+        ['7402', { entries: [], isError: true, isLoading: false }],
+        ['7403', { entries: [], isError: false, isLoading: true }],
+      ]),
+    );
+
+    expect(screen.getByText('BOM-ITEM-01 · 상세 품목 가')).toBeInTheDocument();
+    expect(screen.queryByText('SAMPLE-ITEM-01 · 합성 품목 가')).not.toBeInTheDocument();
+    /* 줄마다 따로 판정한다 — 한 품목의 실패가 다른 줄의 이름을 지우지 않는다. */
+    expect(screen.getByText(messages.common.reference.failed)).toBeInTheDocument();
+    expect(screen.getByText(messages.common.reference.loading)).toBeInTheDocument();
   });
 
   it('손으로 더한 줄은 품목·단위를 고른다', () => {
