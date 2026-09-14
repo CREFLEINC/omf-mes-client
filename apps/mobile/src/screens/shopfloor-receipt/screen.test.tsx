@@ -58,6 +58,10 @@ interface Options {
   noReasonOptions?: boolean;
   /** 차이 사유 값 목록이 늦게 답한다 - 아직 모르는 것과 없는 것이 갈리는 자리다. */
   reasonsPending?: boolean;
+  /** 출고의 원천 유형. 피킹지시가 아니면 작업지시를 이어받을 사슬이 없다. */
+  sourceTypeCode?: string;
+  /** 물어본 주소를 모은다. 응답만 돌려주는 스텁은 부르지 말아야 할 것을 부른 것을 못 잡는다. */
+  asked?: string[];
   /** 이 시험에서만 필요한 길. 기본 길보다 먼저 본다. */
   extra?: StubRoute[];
 }
@@ -72,7 +76,7 @@ const routes = (options: Options = {}): StubRoute[] => [
             goodsIssueId: 500,
             goodsIssueNo: ISSUE_NO,
             issueTypeCode: 'PRODUCTION',
-            sourceDocumentTypeCode: 'PICKING_ORDER',
+            sourceDocumentTypeCode: options.sourceTypeCode ?? 'PICKING_ORDER',
             sourceDocumentId: 300,
             sourceWarehouseId: 5,
             issuedAt: '2026-09-07T09:00:00+09:00',
@@ -112,8 +116,10 @@ const routes = (options: Options = {}): StubRoute[] => [
   },
   {
     match: (req) => /\/logistics\/picking-orders\/\d+$/.test(new URL(req.url).pathname),
-    respond: () =>
-      jsonResponse({
+    respond: (req) => {
+      options.asked?.push(new URL(req.url).pathname);
+
+      return jsonResponse({
         pickingOrder: {
           pickingOrderId: 300,
           pickingOrderNo: 'PK-2026-000300',
@@ -124,7 +130,8 @@ const routes = (options: Options = {}): StubRoute[] => [
           statusCode: 'REGISTERED',
         },
         lines: [],
-      }),
+      });
+    },
   },
   {
     match: (req) => new URL(req.url).pathname === '/mdm/equipments',
@@ -390,6 +397,37 @@ describe('생산창고 입고 화면', () => {
     expect(
       await screen.findByText('도착 위치를 확인할 수 없습니다. 연결을 확인하세요.'),
     ).toBeTruthy();
+  });
+
+  /*
+   * 실기 실측 2026-09-14 - 입고 전표 원천 출고를 넣으니 조회 권한 문구가 떴다. 단말은 멀쩡한데
+   * 작업자는 관리자에게 기기 설정을 물으러 간다. 원천 유형을 보지 않고 피킹지시를 불러 401 이
+   * 난 것이었다.
+   */
+  it('피킹지시 원천이 아니면 피킹지시를 부르지 않는다', async () => {
+    const asked: string[] = [];
+    mount({ sourceTypeCode: 'GOODS_RECEIPT', asked });
+    await screen.findByLabelText(/출고 QR 스캔/);
+
+    scan(ISSUE_NO);
+
+    expect(
+      await screen.findByText('이 출고 전표는 작업지시와 도착 위치를 찾을 수 없습니다'),
+    ).toBeTruthy();
+    expect(asked.some((url) => url.includes('/logistics/picking-orders/'))).toBe(false);
+    /* 단말 설정과 무관한 일에 조회 권한 문구를 달지 않는다. */
+    expect(screen.queryByText(/기기 설정을 확인하세요/)).toBeNull();
+  });
+
+  /* 두 값이 없으면 수령 전표를 만들 수 없다. 지어내면 다른 작업지시에 재고가 붙는다. */
+  it('피킹지시 원천이 아니면 수령 기록을 열지 않는다', async () => {
+    mount({ sourceTypeCode: 'GOODS_RECEIPT' });
+    await screen.findByLabelText(/출고 QR 스캔/);
+
+    scan(ISSUE_NO);
+    await screen.findByText('이 출고 전표는 작업지시와 도착 위치를 찾을 수 없습니다');
+
+    expect(screen.getByRole('button', { name: '입고 확정' })).toBeDisabled();
   });
 
   it('스캔한 출고 전표의 라인을 보인다', async () => {
