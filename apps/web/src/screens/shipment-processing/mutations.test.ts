@@ -135,6 +135,7 @@ describe('useShipmentProcessingMutation', () => {
     await waitFor(() =>
       expect(result.current.error).toEqual({
         kind: 'validation',
+        status: 400,
         errors: [
           {
             scope: 'field',

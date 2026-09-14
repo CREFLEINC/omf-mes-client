@@ -6,6 +6,9 @@ import type { RejectedRecord } from '../../patterns/outbox';
 const t = messages.outboxRejections.reason;
 const d = messages.outboxRejections.details;
 
+/** 다시 불러도 안 풀리는 갈래. 봉투를 이 코드로 가르므로 대표 항목도 이것을 먼저 본다. */
+const STATE_LOCKED_CODE = 'STATE_LOCKED';
+
 /** 앞 건이 못 가 붙을 곳이 없던 건. 큐가 상태 없는 오류로 표시해 둔 값이다. */
 const NO_LEADER_STATUS = 0;
 
@@ -109,14 +112,31 @@ const trimmed = (value: string | undefined): string | null => value?.trim() || n
  *
  * 코드와 걸린 칸을 같은 항목에서 뽑아야 한다. 각각 따로 찾으면 항목이 섞여 올 때 서버가
  * 한 적 없는 짝이 화면에 선다 - 담당자에게 엉뚱한 칸 이름을 전하게 되고, 그것은 빈 칸보다
- * 나쁘다. 코드를 가진 첫 항목을 대표로 삼고, 하나도 없으면 첫 항목을 쓴다.
+ * 나쁘다.
+ *
+ * 잠긴 갈래는 그 코드를 가진 항목을 먼저 찾는다. 갈래를 정한 근거가 그 항목이라, 다른 것을
+ * 대표로 세우면 카드가 말하는 사유와 상세의 코드가 서로 다른 것을 가리킨다.
+ *
+ * 코드가 하나도 없으면 첫 항목을 쓴다 - 칸은 짚어 놓고 코드만 빈 봉투가 와도 그 칸은 보인다.
  */
 const culpritOf = (error: ApiError): ErrorItem | null => {
-  if (error.kind !== 'validation' && error.kind !== 'stateLocked') {
-    return null;
-  }
+  switch (error.kind) {
+    case 'validation':
+    case 'stateLocked': {
+      const locked =
+        error.kind === 'stateLocked'
+          ? error.errors.find((item) => item.code === STATE_LOCKED_CODE)
+          : undefined;
 
-  return error.errors.find((item) => item.code.trim() !== '') ?? error.errors[0] ?? null;
+      return (
+        locked ?? error.errors.find((item) => item.code.trim() !== '') ?? error.errors[0] ?? null
+      );
+    }
+    case 'http':
+    case 'conflict':
+    case 'network':
+      return null;
+  }
 };
 
 const codeOf = (error: ApiError, culprit: ErrorItem | null): string | null => {

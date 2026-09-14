@@ -219,7 +219,15 @@ export const splitError = (
 
   return {
     fieldErrors,
-    error: remaining.length > 0 ? { kind: 'validation', errors: remaining } : null,
+    /* 응답에서 온 오류는 상태를 진다. 다시 지으면서 떨구면 상세가 응답 코드를 비운다. */
+    error:
+      remaining.length > 0
+        ? {
+            kind: 'validation',
+            errors: remaining,
+            ...(apiError.status === undefined ? {} : { status: apiError.status }),
+          }
+        : null,
   };
 };
 

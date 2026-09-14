@@ -357,6 +357,66 @@ describe('전송 실패한 기록 화면', () => {
     expect(valueOf(details, '걸린 칸')).toBe('statusCode');
   });
 
+  /*
+   * 칸은 짚어 놓고 코드만 빈 봉투가 올 수 있다. 대표를 못 고르면 걸린 칸 줄이 통째로
+   * 사라져, 서버가 알려 준 것을 화면이 버리는 셈이 된다.
+   */
+  it('코드가 전부 비어 있어도 걸린 칸은 보인다', async () => {
+    seed([
+      record({
+        error: {
+          kind: 'validation',
+          status: 400,
+          errors: [
+            { scope: 'field', field: 'receivedQty', code: '  ', message: '고칠 수 없습니다' },
+          ],
+        },
+      }),
+    ]);
+
+    render();
+
+    await userEvent.click(await screen.findByRole('button', { name: '상세 보기' }));
+
+    const details = screen.getByRole('group', { name: '상세' });
+
+    expect(valueOf(details, '오류 코드')).toBe('없음');
+    expect(valueOf(details, '걸린 칸')).toBe('receivedQty');
+  });
+
+  /*
+   * 봉투를 잠긴 갈래로 가른 근거가 그 코드를 가진 항목이다. 다른 것을 대표로 세우면 카드가
+   * 말하는 사유와 상세의 코드가 서로 다른 것을 가리킨다.
+   */
+  it('잠긴 갈래는 그 코드를 가진 항목을 대표로 삼는다', async () => {
+    seed([
+      record({
+        error: {
+          kind: 'stateLocked',
+          status: 422,
+          errors: [
+            { scope: 'field', field: 'receivedQty', code: 'RANGE', message: '범위를 벗어납니다' },
+            {
+              scope: 'field',
+              field: 'statusCode',
+              code: 'STATE_LOCKED',
+              message: '확정된 뒤에는 고칠 수 없습니다',
+            },
+          ],
+        },
+      }),
+    ]);
+
+    render();
+
+    await userEvent.click(await screen.findByRole('button', { name: '상세 보기' }));
+
+    const details = screen.getByRole('group', { name: '상세' });
+
+    expect(valueOf(details, '오류 코드')).toBe('STATE_LOCKED');
+    expect(valueOf(details, '걸린 칸')).toBe('statusCode');
+  });
+
   /* 화면이 스스로 만든 검증 오류에는 응답이 없다. 없는 상태를 지어내지 않는다. */
   it('서버가 아니라 화면이 만든 오류는 상태를 비운다', async () => {
     seed([

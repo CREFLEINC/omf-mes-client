@@ -443,6 +443,7 @@ describe('useMasterWrite', () => {
     });
     expect(result.current.error).toEqual({
       kind: 'validation',
+      status: 400,
       errors: [
         { scope: 'field', field: '모르는칸', code: 'RANGE', message: '값이 범위를 벗어납니다' },
       ],
@@ -706,6 +707,7 @@ describe('useMasterWrite — 화면의 말로 되말하기', () => {
     await waitFor(() => {
       expect(result.current.error).toEqual({
         kind: 'validation',
+        status: 400,
         errors: [{ scope: 'field', field: 'name', code: 'DUPLICATE', message: '서버 문구' }],
       });
     });
