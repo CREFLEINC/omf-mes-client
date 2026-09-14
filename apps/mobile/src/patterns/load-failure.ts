@@ -112,11 +112,12 @@ export const useLoadFailure = (): ((
         return offline;
       }
 
+      /*
+       * 네트워크가 아니면 서버에 닿은 것이다. 요청 밖의 실패(응답을 읽다 난 예외 등)도 연결
+       * 문제가 아니다 - 연결을 보라고 하면 사람이 할 수 없는 조치를 하게 된다(`toApiError` 와
+       * 같은 판단).
+       */
       const told =
-        /*
-         * 요청 밖의 실패(응답을 읽다 난 예외 등)는 연결 문제가 아니다. 연결을 보라고 하면 사람이
-         * 할 수 없는 조치를 하게 된다(`toApiError` 와 같은 판단).
-         */
         error instanceof ApiRequestError && isUnauthenticated(error.apiError)
           ? tokenState === 'dead'
             ? messages.httpError.deviceExpired
