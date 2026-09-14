@@ -1,8 +1,9 @@
 import { Button } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router';
 
+import { useHeaderReservedWidth } from './pop-header-reserve';
 import { setWorkerSession } from './worker-session';
 
 /** 진입 화면 — 여기서는 「사용자 전환」이 할 일이 없다. */
@@ -36,6 +37,10 @@ export const PopLogoutButton = () => {
   const { pathname } = useLocation();
   const navigate = useNavigate();
   const visible = pathname !== ENTRY_PATH;
+  const box = useRef<HTMLDivElement>(null);
+
+  /* ⭐ 머리줄이 비울 폭을 문구 길이에 맞춘다 — 언어마다 버튼 폭이 다르다(`pop-header-reserve`). */
+  useHeaderReservedWidth(box, '--pop-logout-box-w', visible);
 
   useEffect(() => {
     if (!visible) return;
@@ -50,7 +55,7 @@ export const PopLogoutButton = () => {
   if (!visible) return null;
 
   return (
-    <div className="pop-logout">
+    <div className="pop-logout" ref={box}>
       {/*
        * ⛔ **터치 등급(`pop-touch-*`)을 쓰지 않는다.** 그 등급은 「틀렸을 때 무엇이
        *    일어나는가」로 «크기를 키우는» 장치인데, 이 버튼은 작아야 한다는 것이

@@ -1,10 +1,14 @@
 import { messages } from '@omf-mes/i18n';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router';
 
 import { useAccessiblePopScreens } from './pop-access';
+import { useHeaderReservedWidth } from './pop-header-reserve';
 import { POP_ENTRY_SCREEN_PATH } from './pop-screen-catalog';
 import { PopSelect } from './pop-select';
+
+/** 머리줄 항목 사이 간격 — `.pop-context-right` 의 `--space-3` 과 같다(사용자 지시 2026-09-10). */
+const HEADER_GAP_PX = 12;
 
 /**
  * 머리줄이 [화면 이동] 자리를 비울지 말지를 여는 표식. 규칙은 `app/pop.css` 꼬리에 있다.
@@ -49,6 +53,13 @@ export const PopScreenNavButton = () => {
   const navigate = useNavigate();
   const access = useAccessiblePopScreens();
   const visible = pathname !== POP_ENTRY_SCREEN_PATH;
+  const box = useRef<HTMLDivElement>(null);
+
+  /*
+   * ⭐ 머리줄이 비울 폭을 문구 길이에 맞춘다(`pop-header-reserve`). 자리 폭에는 상태 칩과의
+   *   간격 12 를 넣는다 — CSS 의 `--pop-screen-nav-w` 셈법(버튼 자리 + 간격)과 같다.
+   */
+  useHeaderReservedWidth(box, '--pop-screen-nav-w', visible, HEADER_GAP_PX);
 
   /* 지금 서 있는 화면은 뺀다 — 골라도 아무 일이 일어나지 않아 「눌리지 않는 항목」이 된다. */
   const candidates = access.screens.filter((candidate) => candidate.path !== pathname);
@@ -72,7 +83,7 @@ export const PopScreenNavButton = () => {
   if (!visible) return null;
 
   return (
-    <div className="pop-screen-nav">
+    <div className="pop-screen-nav" ref={box}>
       <PopSelect
         aria-label={messages.popChrome.screenNav}
         actionLabel={messages.popChrome.screenNav}
