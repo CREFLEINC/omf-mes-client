@@ -43,6 +43,7 @@ export const WorkerSignInScreen = () => {
    * 명단만 보고 통과시키면 서버에서 끊긴 등록도 들어간다. QR 을 다시 발급하면 앞 기기의 토큰이
    * 즉시 죽는데, 작업자는 들어간 뒤 모든 조회가 막히고서야 안다(#1198). 설계는 이때 새 QR 을
    * 요청하라고 막는다(M-CO-01 §6). 서버에 못 닿으면 모른다고 두고 막지 않는다(§5-7).
+   * 만료 문구는 셸이 화면 위에 한 번만 띄운다(`ShellGate`) - 여기서 또 띄우면 두 번 뜬다.
    */
   const token = useDeviceTokenState();
   const expired = token.state === 'dead';
@@ -117,10 +118,6 @@ export const WorkerSignInScreen = () => {
     setReleaseFailed(false);
   };
 
-  const expiredBanner = expired ? (
-    <AlertBanner variant="error" title={messages.httpError.deviceExpired} />
-  ) : null;
-
   /* 사번을 넣기 전에도 열린다 - 등록이 끊겼으면 풀어야 새 QR 로 다시 등록할 수 있다. */
   const unregisterDialog = (
     <>
@@ -177,7 +174,6 @@ export const WorkerSignInScreen = () => {
   if (worker !== null) {
     return (
       <div className="worker-sign-in">
-        {expiredBanner}
         {/* 누구로 기록되는지가 이 카드의 요점이라 머리말 자리에 둔다. */}
         <Card bordered aria-label={t.current.label}>
           <Card.Header>{`${worker.workerName} · ${worker.workerNo}`}</Card.Header>
@@ -212,8 +208,6 @@ export const WorkerSignInScreen = () => {
 
   return (
     <div className="worker-sign-in">
-      {expiredBanner}
-
       <TextField
         label={t.label}
         value={entry}

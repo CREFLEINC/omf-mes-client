@@ -15,6 +15,7 @@ import { ScanReplaceDialog } from '../../patterns/scan-replace-dialog';
 import { useScanField } from '../../patterns/use-scan-field';
 import { useScreenTitle } from '../../patterns/screen-title';
 import { useWorkerSession } from '../../patterns/worker-session';
+import { FailureBanner } from '../../patterns/failure-banner';
 import { useLoadFailure, useQueryErrorOf } from '../../patterns/load-failure';
 import {
   useAlreadyReceived,
@@ -362,7 +363,7 @@ export const ShopfloorReceiptScreen = () => {
 
         {scanned !== null && found.isPending ? <p role="status">{t.issue.loading}</p> : null}
         {found.isError ? (
-          <AlertBanner variant="error" title={failureText(found.error, t.issue.loadFailed)} />
+          <FailureBanner variant="error" title={failureText(found.error, t.issue.loadFailed)} />
         ) : null}
         {scanned !== null && found.data === null ? (
           <AlertBanner variant="error" title={t.issue.notFound(scanned)} />
@@ -525,7 +526,7 @@ export const ShopfloorReceiptScreen = () => {
             <h2>{t.hopper.legend}</h2>
             {equipments.isPending ? <p role="status">{t.hopper.loading}</p> : null}
             {equipments.isError ? (
-              <AlertBanner
+              <FailureBanner
                 variant="error"
                 title={failureText(equipments.error, t.hopper.loadFailed)}
               />
@@ -560,7 +561,7 @@ export const ShopfloorReceiptScreen = () => {
               <p role="status">{t.hopper.stockLoading}</p>
             ) : null}
             {hopperStock.isError ? (
-              <AlertBanner
+              <FailureBanner
                 variant="error"
                 title={failureText(hopperStock.error, t.hopper.stockFailed)}
               />

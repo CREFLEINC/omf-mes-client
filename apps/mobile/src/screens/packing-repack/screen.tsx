@@ -18,6 +18,7 @@ import { createIdempotencyKey, useOutbox } from '../../patterns/outbox';
 import { useScanField } from '../../patterns/use-scan-field';
 import { useScreenTitle } from '../../patterns/screen-title';
 import { useWorkerSession } from '../../patterns/worker-session';
+import { FailureBanner } from '../../patterns/failure-banner';
 import { useLoadFailure, useQueryErrorOf } from '../../patterns/load-failure';
 import { useRepackEvents, useShipmentAllocations } from './queries';
 import {
@@ -357,7 +358,7 @@ export const PackingRepackScreen = () => {
 
         {scanned !== null && found.isPending ? <p role="status">{t.source.loading}</p> : null}
         {found.isError ? (
-          <AlertBanner variant="warning" title={failureText(found.error, t.source.loadFailed)} />
+          <FailureBanner variant="warning" title={failureText(found.error, t.source.loadFailed)} />
         ) : null}
         {duplicate ? <AlertBanner variant="warning" title={t.source.already} /> : null}
         {scanned !== null && found.data === null ? (

@@ -15,6 +15,7 @@ import { useWorkerSession } from '../../patterns/worker-session';
 import { useCodeValues } from '../../patterns/code-values';
 import { useAdvanceTo } from '../../patterns/advance-to';
 import { playErrorTone } from '../../patterns/error-tone';
+import { FailureBanner } from '../../patterns/failure-banner';
 import { useLoadFailure } from '../../patterns/load-failure';
 import {
   SUBSTITUTE_LOT_REASON,
@@ -576,7 +577,7 @@ export const InboundReceiptScreen = () => {
             <p className="receipt__note">{narrowed ? t.po.narrowedNote : t.po.pickNote}</p>
             {orders.isPending ? <p role="status">{t.po.loading}</p> : null}
             {orders.isError ? (
-              <AlertBanner variant="error" title={failureText(orders.error, t.po.loadFailed)} />
+              <FailureBanner variant="error" title={failureText(orders.error, t.po.loadFailed)} />
             ) : null}
             {orders.data !== undefined && orders.data.length === 0 ? (
               <p className="receipt__note">{t.po.none}</p>

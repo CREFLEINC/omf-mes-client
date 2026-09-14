@@ -1,7 +1,10 @@
 import { messages } from '@omf-mes/i18n';
-import type { ReactNode } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
+import { useEffect, type ReactNode } from 'react';
 
+import { DeviceExpiredNotice } from '../patterns/device-expired-notice';
 import { useDeviceRegistration } from '../patterns/device-registration';
+import { deviceTokenKey } from '../patterns/load-failure';
 import { DeviceRegistrationScreen } from '../screens/device-registration/screen';
 
 const t = messages.deviceRegistration;
@@ -12,6 +15,17 @@ const t = messages.deviceRegistration;
  */
 export const ShellGate = ({ children }: { children: ReactNode }) => {
   const { status } = useDeviceRegistration();
+  const queryClient = useQueryClient();
+
+  /*
+   * 등록이 풀리면 앞 토큰의 판정을 버린다. 남겨 두면 새 QR 로 다시 등록한 멀쩡한 단말에
+   * 앞 등록의 만료가 뜬다.
+   */
+  useEffect(() => {
+    if (status === 'unregistered') {
+      queryClient.removeQueries({ queryKey: deviceTokenKey });
+    }
+  }, [queryClient, status]);
 
   if (status === 'loading') {
     return <p role="status">{t.checking}</p>;
@@ -21,5 +35,10 @@ export const ShellGate = ({ children }: { children: ReactNode }) => {
     return <DeviceRegistrationScreen />;
   }
 
-  return children;
+  return (
+    <>
+      <DeviceExpiredNotice />
+      {children}
+    </>
+  );
 };

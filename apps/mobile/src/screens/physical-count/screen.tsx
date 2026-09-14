@@ -11,6 +11,7 @@ import { useOutbox } from '../../patterns/outbox';
 import { useScanField } from '../../patterns/use-scan-field';
 import { useScreenTitle } from '../../patterns/screen-title';
 import { useWorkerSession } from '../../patterns/worker-session';
+import { FailureBanner } from '../../patterns/failure-banner';
 import { useLoadFailure } from '../../patterns/load-failure';
 import { useCountLines, useOpenCounts } from './queries';
 import {
@@ -211,7 +212,7 @@ export const PhysicalCountScreen = () => {
         <h2>{t.plan.legend}</h2>
         {counts.isPending ? <p role="status">{t.plan.loading}</p> : null}
         {counts.isError ? (
-          <AlertBanner variant="error" title={failureText(counts.error, t.plan.loadFailed)} />
+          <FailureBanner variant="error" title={failureText(counts.error, t.plan.loadFailed)} />
         ) : null}
         {counts.data?.length === 0 ? <p>{t.plan.none}</p> : null}
         <label htmlFor="physical-count-plan">{t.plan.pick}</label>
@@ -266,7 +267,7 @@ export const PhysicalCountScreen = () => {
           ) : null}
           {at !== null ? <p>{t.location.picked(at.locationCode)}</p> : null}
           {planned.isError ? (
-            <AlertBanner
+            <FailureBanner
               variant="error"
               title={failureText(planned.error, t.location.loadFailed)}
             />

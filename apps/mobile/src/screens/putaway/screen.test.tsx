@@ -322,20 +322,34 @@ describe('적치·입고 완료 화면', () => {
 
   /*
    * 실기 실측(#1187) - 서버는 닿았고 단말 토큰이 무효라 401 이었는데 화면은 연결을 보라고 했다.
-   * 토큰 확인까지 거절되면 새 QR 이 필요하다고 말한다.
+   * 토큰 확인까지 거절되면 새 QR 이 필요하다는 말은 셸이 한 번만 한다(#1198 - 화면이 사번·지시
+   * 조회마다 달아 두 번 떴다). 화면은 연결을 보라고도, 만료라고도 따로 말하지 않는다.
    */
-  it('사번 조회가 거절되고 토큰도 무효면 등록 만료를 말한다', async () => {
+  it('사번 조회가 거절되고 토큰도 무효면 연결 탓도 만료도 화면이 따로 말하지 않는다', async () => {
     await rememberPlant(3);
     const denied = { errors: [{ scope: 'screen', code: 'PERMISSION_DENIED', message: '거절' }] };
+    let probed = false;
     mount([
       {
         match: (req) => new URL(req.url).pathname === '/mdm/workers',
-        respond: () => jsonResponse(denied, { status: 401 }),
+        respond: (req) => {
+          /* 토큰 확인은 공장을 싣고 묻는다. 그것까지 거절돼야 토큰이 죽은 것이다. */
+          if (new URL(req.url).searchParams.get('plantId') === '3') {
+            probed = true;
+          }
+
+          return jsonResponse(denied, { status: 401 });
+        },
       },
     ]);
 
-    expect(await screen.findByText(messages.httpError.deviceExpired)).toBeTruthy();
+    await waitFor(() => {
+      expect(probed).toBe(true);
+      expect(screen.queryByText(messages.httpError.deviceRejected)).toBeNull();
+    });
+    expect(screen.queryByText(messages.httpError.deviceExpired)).toBeNull();
     expect(screen.queryByText('사번을 확인할 수 없습니다. 연결을 확인하세요.')).toBeNull();
+    expect(screen.queryByText('적치 지시를 불러오는 중입니다')).toBeNull();
   });
 
   it('지시를 고르면 권장 위치를 코드로 보인다', async () => {

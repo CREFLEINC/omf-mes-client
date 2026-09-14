@@ -119,7 +119,11 @@ const isRejectedQuery = (query: Query): boolean =>
  * 401 이 보이면 토큰 확인을 한 번 부른다. 확인은 캐시에 두어 여러 조회가 한꺼번에 거절돼도
  * 한 번만 나간다.
  *
- * @returns `(error, offline, options) => 문구` - `offline` 은 그 자리의 연결 실패 문구다.
+ * ⛔ 토큰이 죽었으면 null 을 준다. 등록 만료는 조회 하나의 실패가 아니라 기기의 상태라 셸이
+ * 화면 위에 한 번만 알린다(`ShellGate`). 조회마다 같은 문장을 달면 한 화면에 여러 번 뜬다(#1198).
+ * 받는 자리는 `FailureBanner` 로 그려 null 이면 배너째 감춘다.
+ *
+ * @returns `(error, offline, options) => 문구 | null` - `offline` 은 그 자리의 연결 실패 문구다.
  *   `other` 를 주면 서버 오류일 때 그 문구를 쓴다(그 자리가 이미 따로 적어 둔 경우).
  *   `caution` 은 연결이 아닌 실패 문구 뒤에 붙인다 - 연결 문구에 섞여 있던 주의를 잃지 않게.
  */
@@ -127,7 +131,7 @@ export const useLoadFailure = (): ((
   error: unknown,
   offline: string,
   options?: LoadFailureOptions,
-) => string) => {
+) => string | null) => {
   const queryClient = useQueryClient();
   const { client } = useApiClient();
 
@@ -165,9 +169,15 @@ export const useLoadFailure = (): ((
   const tokenState: DeviceTokenState = token.data ?? 'unknown';
 
   return useCallback(
-    (error: unknown, offline: string, options: LoadFailureOptions = {}): string => {
+    (error: unknown, offline: string, options: LoadFailureOptions = {}): string | null => {
       if (error instanceof ApiRequestError && error.apiError.kind === 'network') {
         return offline;
+      }
+
+      const rejected = error instanceof ApiRequestError && isUnauthenticated(error.apiError);
+
+      if (rejected && tokenState === 'dead') {
+        return null;
       }
 
       /*
@@ -175,14 +185,11 @@ export const useLoadFailure = (): ((
        * 문제가 아니다 - 연결을 보라고 하면 사람이 할 수 없는 조치를 하게 된다(`toApiError` 와
        * 같은 판단).
        */
-      const told =
-        error instanceof ApiRequestError && isUnauthenticated(error.apiError)
-          ? tokenState === 'dead'
-            ? messages.httpError.deviceExpired
-            : tokenState === 'alive'
-              ? messages.httpError.deviceNotAllowed
-              : messages.httpError.deviceRejected
-          : (options.other ?? messages.httpError.loadServer);
+      const told = rejected
+        ? tokenState === 'alive'
+          ? messages.httpError.deviceNotAllowed
+          : messages.httpError.deviceRejected
+        : (options.other ?? messages.httpError.loadServer);
 
       return options.caution === undefined ? told : `${told} ${options.caution}`;
     },

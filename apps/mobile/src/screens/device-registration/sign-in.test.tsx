@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { DeviceExpiredNotice } from '../../patterns/device-expired-notice';
 import { OUTBOX_KEY, OUTBOX_REJECTED_KEY } from '../../patterns/outbox';
 import { forgetPlant, rememberPlant } from '../../patterns/plant';
 import {
@@ -84,6 +85,16 @@ const DIRECTORY = [
 const mount = (routes: StubRoute[] = []) =>
   renderWithProviders(
     <MemoryRouter>
+      <WorkerSignInScreen />
+    </MemoryRouter>,
+    { fetch: createStubFetch(routes) },
+  );
+
+/** 만료 문구는 셸이 화면 위에 띄운다. 그것까지 보려면 셸이 두는 알림을 함께 세운다. */
+const mountGated = (routes: StubRoute[] = []) =>
+  renderWithProviders(
+    <MemoryRouter>
+      <DeviceExpiredNotice />
       <WorkerSignInScreen />
     </MemoryRouter>,
     { fetch: createStubFetch(routes) },
@@ -232,9 +243,11 @@ describe('등록이 서버에서 끊긴 기기', () => {
   it('토큰이 거절되면 사번 확인을 막고 새 QR 을 받으라고 한다', async () => {
     await rememberPlant(7);
     const user = userEvent.setup();
-    mount([probe(() => jsonResponse(denied, { status: 401 }))]);
+    mountGated([probe(() => jsonResponse(denied, { status: 401 }))]);
 
     expect(await screen.findByText(EXPIRED)).toBeInTheDocument();
+    /* 셸이 띄운 것 하나뿐이다. 화면이 또 띄우면 두 번 뜬다(#1198 실기). */
+    expect(screen.getAllByText(EXPIRED)).toHaveLength(1);
 
     await press(user, '900028');
 
@@ -246,7 +259,7 @@ describe('등록이 서버에서 끊긴 기기', () => {
   it('사번을 넣기 전에도 등록을 풀 수 있다', async () => {
     await rememberPlant(7);
     const user = userEvent.setup();
-    mount([probe(() => jsonResponse(denied, { status: 401 }))]);
+    mountGated([probe(() => jsonResponse(denied, { status: 401 }))]);
 
     await screen.findByText(EXPIRED);
     await user.click(screen.getByRole('button', { name: '기기 등록 해제' }));
@@ -258,7 +271,7 @@ describe('등록이 서버에서 끊긴 기기', () => {
     await rememberPlant(7);
     let dead = false;
     const user = userEvent.setup();
-    mount([
+    mountGated([
       probe(() =>
         dead
           ? jsonResponse(denied, { status: 401 })
@@ -278,7 +291,7 @@ describe('등록이 서버에서 끊긴 기기', () => {
   it('토큰이 살아 있으면 지금처럼 들어간다', async () => {
     await rememberPlant(7);
     const user = userEvent.setup();
-    mount([probe(() => jsonResponse({ items: [], page: { page: 1, size: 1, total: 0 } }))]);
+    mountGated([probe(() => jsonResponse({ items: [], page: { page: 1, size: 1, total: 0 } }))]);
 
     await signedIn(user);
 
@@ -303,6 +316,7 @@ describe('등록이 서버에서 끊긴 기기', () => {
     ]);
     const screenOf = () => (
       <MemoryRouter>
+        <DeviceExpiredNotice />
         <WorkerSignInScreen />
       </MemoryRouter>
     );
@@ -332,7 +346,7 @@ describe('등록이 서버에서 끊긴 기기', () => {
   it('서버에 닿지 못하면 막지 않는다', async () => {
     await rememberPlant(7);
     const user = userEvent.setup();
-    mount([probe(() => Promise.reject(new TypeError('Failed to fetch')))]);
+    mountGated([probe(() => Promise.reject(new TypeError('Failed to fetch')))]);
 
     await signedIn(user);
 

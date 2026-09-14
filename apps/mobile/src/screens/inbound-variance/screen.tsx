@@ -21,6 +21,7 @@ import { useItem, useUomCodes } from '../../patterns/masters';
 import { useOutbox } from '../../patterns/outbox';
 import { useScreenTitle } from '../../patterns/screen-title';
 import { useWorkerSession } from '../../patterns/worker-session';
+import { FailureBanner } from '../../patterns/failure-banner';
 import { useLoadFailure } from '../../patterns/load-failure';
 import {
   INBOUND_VARIANCE_REASON,
@@ -202,7 +203,10 @@ export const InboundVarianceScreen = () => {
         {receipts.isPending ? <p role="status">{t.receipt.loading}</p> : null}
         {/* 확인하지 못한 것을 입하가 없는 것으로 말하지 않는다. */}
         {receipts.isError ? (
-          <AlertBanner variant="error" title={failureText(receipts.error, t.receipt.loadFailed)} />
+          <FailureBanner
+            variant="error"
+            title={failureText(receipts.error, t.receipt.loadFailed)}
+          />
         ) : null}
         {receipts.data !== undefined && receipts.data.length === 0 ? (
           <p className="variance__note">{t.receipt.none}</p>

@@ -84,8 +84,11 @@ describe('조회 실패 문구 고르기', () => {
     });
   });
 
-  /* 재발급·단말 정보 변경으로 토큰이 죽으면 모든 조회가 401 이다. 새 QR 이 필요하다. */
-  it('거절됐고 토큰도 죽었으면 등록 만료를 말한다', async () => {
+  /*
+   * 재발급·단말 정보 변경으로 토큰이 죽으면 모든 조회가 401 이다. 새 QR 이 필요하다는 말은
+   * 셸이 한 번만 한다 - 조회마다 달면 한 화면에 여러 번 뜬다(#1198).
+   */
+  it('거절됐고 토큰도 죽었으면 조회 자리에는 아무 문구도 달지 않는다', async () => {
     const fetch = createStubFetch([
       items(() => jsonResponse(denied, { status: 401 })),
       probe(() => jsonResponse(denied, { status: 401 })),
@@ -94,7 +97,8 @@ describe('조회 실패 문구 고르기', () => {
     const { result } = renderHookWithProviders(useScreen, { fetch });
 
     await waitFor(() => {
-      expect(result.current.text).toBe(messages.httpError.deviceExpired);
+      expect(result.current.items.isError).toBe(true);
+      expect(result.current.text).toBeNull();
     });
   });
 
@@ -161,7 +165,8 @@ describe('조회 실패 문구 고르기', () => {
     );
 
     await waitFor(() => {
-      expect(result.current.first.text).toBe(messages.httpError.deviceExpired);
+      expect(result.current.first.items.isError).toBe(true);
+      expect(result.current.first.text).toBeNull();
     });
     expect(probes).toBe(1);
   });

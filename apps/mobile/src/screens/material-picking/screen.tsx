@@ -26,6 +26,7 @@ import { useScanField } from '../../patterns/use-scan-field';
 import { useScreenTitle } from '../../patterns/screen-title';
 import { useWorkerId } from '../../patterns/workers';
 import { useWorkerSession } from '../../patterns/worker-session';
+import { FailureBanner } from '../../patterns/failure-banner';
 import { useLoadFailure } from '../../patterns/load-failure';
 import { PickingOrderList } from './order-list';
 import {
@@ -539,7 +540,7 @@ export const MaterialPickingScreen = () => {
         </h2>
         {detail.isPending ? <p role="status">{t.lines.loading}</p> : null}
         {detail.isError ? (
-          <AlertBanner variant="error" title={failureText(detail.error, t.lines.loadFailed)} />
+          <FailureBanner variant="error" title={failureText(detail.error, t.lines.loadFailed)} />
         ) : null}
         {detail.data !== undefined && lines.length === 0 ? (
           <AlertBanner variant="warning" title={t.lines.none} />

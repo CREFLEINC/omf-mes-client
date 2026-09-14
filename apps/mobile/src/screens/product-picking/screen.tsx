@@ -14,6 +14,7 @@ import { toApiError } from '../../patterns/request';
 import { useScanField } from '../../patterns/use-scan-field';
 import { useScreenTitle } from '../../patterns/screen-title';
 import { useWorkerSession } from '../../patterns/worker-session';
+import { FailureBanner } from '../../patterns/failure-banner';
 import { useLoadFailure } from '../../patterns/load-failure';
 import {
   toCandidates,
@@ -580,7 +581,7 @@ export const ProductPickingScreen = () => {
         <h2>{t.candidates.legend(policyLabel(item.data?.fifoPolicyCode ?? ''))}</h2>
         {pool.isPending || available.isPending ? <p role="status">{t.candidates.loading}</p> : null}
         {pool.isError || available.isError ? (
-          <AlertBanner
+          <FailureBanner
             variant="error"
             title={failureText(pool.error ?? available.error, t.candidates.loadFailed)}
           />
