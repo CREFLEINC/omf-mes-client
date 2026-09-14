@@ -106,6 +106,9 @@ export const shopfloorReceipt = {
     /* 같은 품목이 여러 LOT 으로 남는다. 품목 코드만 적으면 어느 줄에 적는지 알 수 없다. */
     name: (item: string, lotNo: string) => (lotNo === '' ? item : `${item} · ${lotNo}`),
     onHand: (qty: string) => `장부 ${qty}`,
+    /* 화면에 보이는 칸 이름. 무엇을 재는 칸인지는 바로 위에 품목과 LOT 으로 서 있다. */
+    measured: '실측 잔량',
+    /** 읽어 주는 이름. 칸이 여럿이라 어느 줄의 것인지 이름만으로 갈려야 한다. */
     measuredLabel: (name: string) => `${name} 실측 잔량`,
     /** 부호를 사람이 적게 하면 뒤집어 적는 순간 재고가 반대로 움직인다. 화면이 뺀다. */
     difference: (qty: string) => `차이 ${qty}`,

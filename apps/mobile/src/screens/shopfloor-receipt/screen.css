@@ -11,10 +11,51 @@
   gap: var(--space-3, 12px);
 }
 
+/* Select 는 스스로 라벨을 갖지 않는다. 라벨과 칸을 한 덩이로 세운다. */
+.shopfloor-receipt__field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1, 4px);
+}
+
 .shopfloor-receipt__line {
   display: flex;
   flex-direction: column;
   gap: var(--space-2, 8px);
+}
+
+/*
+ * 호퍼는 같은 품목이 여러 LOT 으로 남아 줄이 길게 늘어선다. 줄 사이를 가르지 않으면 장부가
+ * 제 칸 아래인지 다음 칸 위인지 눈으로 갈리지 않는다 - 구획 간격과 줄 안 간격이 4px 밖에
+ * 차이 나지 않는다.
+ */
+.shopfloor-receipt__line + .shopfloor-receipt__line {
+  border-top: 1px solid var(--outline-variant);
+  margin-top: var(--space-1, 4px);
+  padding-top: var(--space-4, 16px);
+}
+
+/*
+ * 무엇을 재는 줄인가. 셋을 같은 간격으로 쌓으면 어디까지가 그 줄을 가리키는 값이고 어디부터
+ * 적는 자리인지 갈리지 않아, 한 덩이로 묶어 칸과 사이를 벌린다.
+ */
+.shopfloor-receipt__stock-head {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1, 4px);
+}
+
+/* 줄을 훑는 눈이 가장 먼저 잡아야 할 값이다. */
+.shopfloor-receipt__stock-item {
+  overflow-wrap: anywhere;
+}
+
+/* 34자리 LOT 은 한 줄에 안 들어간다. 마디가 없는 값이라 어디서든 접히게 둔다. */
+.shopfloor-receipt__stock-lot {
+  margin: 0;
+  font-family: var(--font-mono, monospace);
+  overflow-wrap: anywhere;
+  color: var(--on-surface-muted);
 }
 
 .shopfloor-receipt__issued {

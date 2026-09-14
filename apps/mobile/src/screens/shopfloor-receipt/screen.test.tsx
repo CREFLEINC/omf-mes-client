@@ -531,6 +531,10 @@ describe('생산창고 입고 화면', () => {
 
     expect(await screen.findByLabelText('RM-1001 · LOT-A 실측 잔량')).toBeTruthy();
     expect(await screen.findByLabelText('RM-1001 · LOT-B 실측 잔량')).toBeTruthy();
+
+    /* 읽어 주는 이름만으로는 눈으로 훑는 사람이 어느 줄인지 알 수 없다. */
+    expect(await screen.findByText('LOT-A')).toBeTruthy();
+    expect(await screen.findByText('LOT-B')).toBeTruthy();
   });
 
   /*

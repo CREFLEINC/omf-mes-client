@@ -617,8 +617,22 @@ export const ShopfloorReceiptScreen = () => {
 
               return (
                 <div key={key} className="shopfloor-receipt__line">
+                  {/*
+                    무엇을 재는 줄인지 먼저 세운다. 칸 이름 하나에 품목과 34자리 LOT 을 함께
+                    담으면 두 줄로 접히면서 「실측 잔량」이 갈라져, 줄을 훑는 눈이 품목도 칸
+                    이름도 잡지 못한다. 읽어 주는 이름은 그대로 전부를 싣는다.
+                  */}
+                  <div className="shopfloor-receipt__stock-head">
+                    <strong className="shopfloor-receipt__stock-item">{code}</strong>
+                    {stock.lotNo === null ||
+                    stock.lotNo === undefined ||
+                    stock.lotNo === '' ? null : (
+                      <p className="shopfloor-receipt__stock-lot">{stock.lotNo}</p>
+                    )}
+                  </div>
                   <TextField
-                    label={t.hopper.measuredLabel(name)}
+                    label={t.hopper.measured}
+                    aria-label={t.hopper.measuredLabel(name)}
                     size="xl"
                     fullWidth
                     inputMode="none"

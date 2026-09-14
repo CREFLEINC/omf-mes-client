@@ -72,6 +72,7 @@ export const shopfloorReceipt: Translated<typeof ko.shopfloorReceipt> = {
     empty: 'Trên sổ sách phễu này không còn gì',
     name: (item: string, lotNo: string) => (lotNo === '' ? item : `${item} · ${lotNo}`),
     onHand: (qty: string) => `Sổ sách ${qty}`,
+    measured: 'Lượng còn lại đo được',
     measuredLabel: (name: string) => `Lượng còn lại đo được của ${name}`,
     difference: (qty: string) => `Chênh lệch ${qty}`,
     problem: {
