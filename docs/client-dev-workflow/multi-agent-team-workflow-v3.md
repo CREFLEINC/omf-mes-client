@@ -61,10 +61,10 @@
 실행 파일은 `tools/workflow/bootstrap.mjs`다. 패키지 명령은 다음과 같다.
 
 ```bash
-pnpm workflow:bootstrap --tool <codex|claude|both> --team <번호>
+pnpm workflow:bootstrap --tool <codex|claude|both>
 ```
 
-부트스트랩은 이 문서 전체와 버전·해시·담당 팀을 포함하는 로컬 `AGENTS.md` 또는 `CLAUDE.md`를 생성한다. 두 파일은 Git 비추적 대상이다. 관리 블록 밖의 `개인별 AI 도구 설정` 구역에는 개인 노하우, 도구별 명령, 선호 모델이나 스킬을 추가할 수 있지만 이 문서의 필수 규칙을 무효화할 수 없다.
+부트스트랩은 이 문서 전체와 버전·해시를 포함하는 로컬 `AGENTS.md` 또는 `CLAUDE.md`를 생성한다. 두 파일은 Git 비추적 대상이다. 관리 블록 밖의 `개인별 AI 도구 설정` 구역에는 개인 노하우, 도구별 명령, 선호 모델이나 스킬을 추가할 수 있지만 이 문서의 필수 규칙을 무효화할 수 없다.
 
 이미 부트스트랩으로 만든 파일은 다시 실행하면 개인 설정을 보존하면서 관리 블록만 최신화한다. 출처를 확인할 수 없는 기존 파일은 보호를 위해 덮어쓰지 않으며, 의도적으로 교체할 때만 `--force`를 사용한다.
 
@@ -76,18 +76,18 @@ pnpm workflow migrate-v3 --notice-ref <설계저장소-공통공지-URL|CREFLEIN
 
 ## 6. 최초 개발환경 구성
 
-팀별 전용 워크트리와 브랜치를 만들고 격리된 설계 참조 클론을 준비한다. 팀 번호는 사용자가 배정한 값만 사용하며 추측하지 않는다.
+작업마다 전용 워크트리와 브랜치를 만들고 격리된 설계 참조 클론을 준비한다.
 
 ```bash
-git worktree add -b <도구접두>/team<N>-<작업> <전용-워크트리> origin/main
+git worktree add -b <도구접두>/<작업> <전용-워크트리> origin/main
 pnpm install
-pnpm workflow:bootstrap --tool <codex|claude|both> --team <N>
+pnpm workflow:bootstrap --tool <codex|claude|both>
 gh repo clone CREFLEINC/omf-mes .client-dev/design/omf-mes -- --single-branch --branch main
-pnpm workflow init --team <N> --issue <이슈번호> --design-ref .client-dev/design/omf-mes
+pnpm workflow init --issue <이슈번호> --design-ref .client-dev/design/omf-mes
 pnpm workflow:check
 ```
 
-`.client-dev/`에는 팀 번호, 활성 이슈, 설계 고정 버전, 비공개 요청서와 설계 참조 클론을 둔다. 이 디렉터리와 로컬 AI 어댑터는 커밋하지 않는다.
+`.client-dev/`에는 활성 이슈, 설계 고정 버전, 비공개 요청서와 설계 참조 클론을 둔다. 이 디렉터리와 로컬 AI 어댑터는 커밋하지 않는다.
 
 ## 7. 작업 선택과 공개
 
@@ -95,7 +95,6 @@ pnpm workflow:check
 
 작업 시작 시 다음을 표시한다.
 
-- `Agent : T{번호}`
 - `Agent : Client`
 - `in progress`
 - 현재 GitHub 사용자 담당자 지정
@@ -103,7 +102,6 @@ pnpm workflow:check
 ```bash
 gh issue edit <번호> \
   --repo CREFLEINC/omf-mes-client \
-  --add-label "Agent : T<번호>" \
   --add-label "Agent : Client" \
   --add-label "in progress" \
   --add-assignee @me

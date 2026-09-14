@@ -13,12 +13,11 @@ const ADAPTERS = {
   claude: { file: 'CLAUDE.md', title: 'Claude' },
 };
 
-function normalizeTeam(value) {
-  const match = String(value ?? '').match(/^(?:Agent\s*:\s*)?T?(\d+)$/i);
-  if (!match || Number(match[1]) < 1) {
-    throw new Error('팀은 1 이상의 번호로 지정하세요. 예: --team 5');
+/** 팀 번호는 폐지됐다. 옛 명령을 그대로 치면 조용히 넘기지 않고 알린다. */
+export function rejectRetiredTeam(options) {
+  if (options.team !== undefined) {
+    throw new Error('팀 번호는 더 이상 쓰지 않습니다. --team 없이 실행하세요.');
   }
-  return `Agent : T${Number(match[1])}`;
 }
 
 export function workflowHash(content) {
@@ -45,7 +44,7 @@ function personalTail(existing) {
   return existing.slice(end + MANAGED_END.length).trim();
 }
 
-export function renderAdapter({ tool, team, policyContent, personalTail: personal = '' }) {
+export function renderAdapter({ tool, policyContent, personalTail: personal = '' }) {
   const adapter = ADAPTERS[tool];
   if (!adapter) throw new Error(`지원하지 않는 AI 도구입니다: ${tool}`);
   const metadata = {
@@ -54,12 +53,11 @@ export function renderAdapter({ tool, team, policyContent, personalTail: persona
     workflowSource: WORKFLOW_SOURCE,
     workflowHash: workflowHash(policyContent),
     tool,
-    team: normalizeTeam(team),
   };
   const personalContent =
     personal ||
     `${PERSONAL_HEADING}\n\n<!-- 공통 규칙을 무효화하지 않는 개인 노하우를 여기에 적습니다. -->`;
-  return `# ${adapter.title} 로컬 개발환경\n\n<!-- workflow-bootstrap: ${JSON.stringify(metadata)} -->\n\n이 파일은 로컬 생성물이며 업무 규칙의 정본이 아닙니다. 아래 관리 블록은 직접 수정하지 말고 \`pnpm workflow:bootstrap\`으로 갱신하세요. 개인 설정은 공통 규칙을 무효화할 수 없습니다.\n\n현재 담당: **${metadata.team}**\n\n${MANAGED_START}\n${policyContent.trim()}\n${MANAGED_END}\n\n${personalContent}\n`;
+  return `# ${adapter.title} 로컬 개발환경\n\n<!-- workflow-bootstrap: ${JSON.stringify(metadata)} -->\n\n이 파일은 로컬 생성물이며 업무 규칙의 정본이 아닙니다. 아래 관리 블록은 직접 수정하지 말고 \`pnpm workflow:bootstrap\`으로 갱신하세요. 개인 설정은 공통 규칙을 무효화할 수 없습니다.\n\n${MANAGED_START}\n${policyContent.trim()}\n${MANAGED_END}\n\n${personalContent}\n`;
 }
 
 function parseMetadata(content) {
@@ -72,7 +70,7 @@ function parseMetadata(content) {
   }
 }
 
-export function bootstrapErrors(root, expectedTeam) {
+export function bootstrapErrors(root) {
   const errors = [];
   let currentPolicy;
   try {
@@ -97,8 +95,6 @@ export function bootstrapErrors(root, expectedTeam) {
       if (metadata.workflowHash !== currentPolicy.hash)
         errors.push(`${adapter.file}: 워크플로 정본 해시가 다릅니다. 부트스트랩을 갱신하세요.`);
       if (metadata.tool !== tool) errors.push(`${adapter.file}: AI 도구 식별자가 다릅니다.`);
-      if (expectedTeam && metadata.team !== normalizeTeam(expectedTeam))
-        errors.push(`${adapter.file}: 담당 팀(${metadata.team})이 로컬 상태와 다릅니다.`);
       const start = content.indexOf(MANAGED_START);
       const end = content.indexOf(MANAGED_END);
       const managed =
@@ -114,8 +110,8 @@ export function bootstrapErrors(root, expectedTeam) {
 
 export function bootstrap(root, options) {
   const currentPolicy = policy(root);
+  rejectRetiredTeam(options);
   const tools = selectedTools(options.tool);
-  const team = normalizeTeam(options.team);
   const writes = [];
   for (const tool of tools) {
     const target = path.join(root, ADAPTERS[tool].file);
@@ -137,7 +133,6 @@ export function bootstrap(root, options) {
       file: ADAPTERS[tool].file,
       content: renderAdapter({
         tool,
-        team,
         policyContent: currentPolicy.content,
         personalTail: preservedTail,
       }),
@@ -145,14 +140,14 @@ export function bootstrap(root, options) {
   }
   for (const write of writes) {
     writeFileSync(write.target, write.content, { flag: 'w' });
-    process.stdout.write(`workflow adapter ready: ${write.file} (${team})\n`);
+    process.stdout.write(`workflow adapter ready: ${write.file}\n`);
   }
 }
 
 function usage() {
   return `사용법:
-  pnpm workflow:bootstrap --tool <codex|claude|both> --team <번호>
-  pnpm workflow:bootstrap --tool <codex|claude|both> --team <번호> --force
+  pnpm workflow:bootstrap --tool <codex|claude|both>
+  pnpm workflow:bootstrap --tool <codex|claude|both> --force
 
 --force는 출처를 검증할 수 없는 기존 도구 파일을 의도적으로 교체할 때만 사용합니다.\n`;
 }

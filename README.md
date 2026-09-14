@@ -28,10 +28,10 @@ tools/
 - `docs/client-dev-workflow/references/`에 나뉘어 있던 설계 참조, 요청, 이슈, 검증, 병합 절차
 - 통합 정본: `docs/client-dev-workflow/multi-agent-team-workflow-v3.md`
 
-기존 개발자도 저장소를 갱신한 뒤 본인이 사용하는 AI 도구와 배정된 팀 번호로 개발환경을 다시 설정해야 한다. 삭제된 파일을 Git에서 복원하거나 강제로 추적하지 않는다.
+기존 개발자도 저장소를 갱신한 뒤 본인이 사용하는 AI 도구로 개발환경을 다시 설정해야 한다. 삭제된 파일을 Git에서 복원하거나 강제로 추적하지 않는다.
 
 ```bash
-pnpm workflow:bootstrap --tool <codex|claude|both> --team <팀번호>
+pnpm workflow:bootstrap --tool <codex|claude|both>
 pnpm workflow:check
 ```
 
@@ -48,9 +48,9 @@ pnpm workflow:check
 
 ```bash
 pnpm install
-pnpm workflow:bootstrap --tool <codex|claude|both> --team <팀번호>
+pnpm workflow:bootstrap --tool <codex|claude|both>
 gh repo clone CREFLEINC/omf-mes .client-dev/design/omf-mes -- --single-branch --branch main
-pnpm workflow init --team <팀번호> --issue <이슈번호> --design-ref .client-dev/design/omf-mes
+pnpm workflow init --issue <이슈번호> --design-ref .client-dev/design/omf-mes
 pnpm workflow:check
 pnpm typecheck     # 전 패키지 타입 검사
 pnpm mock          # 목 서버 (고정한 설계 참조본 사용 — tools/mock/README.md)
