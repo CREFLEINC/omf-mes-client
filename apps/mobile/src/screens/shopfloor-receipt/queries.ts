@@ -69,6 +69,14 @@ const findIssue = async (client: Client, code: string): Promise<ScannedIssue | n
     }),
   );
 
+  /*
+   * 피킹지시의 원천도 판별자다 - 자재 출고요청과 출하 지시가 같은 표를 쓰고 이 값이 둘을
+   * 가른다. 출하 피킹에서 나온 출고를 여기 대면 출하 지시 번호로 자재 출고요청을 묻게 된다.
+   */
+  if (picking.pickingOrder.sourceDocumentTypeCode !== 'MATERIAL_ISSUE_REQUEST') {
+    return { issue, lines: lines.items, workOrderId: null, destinationLocationId: null };
+  }
+
   const request = await runRequest(() =>
     client.GET('/logistics/material-issue-requests/{materialIssueRequestId}', {
       params: { path: { materialIssueRequestId: picking.pickingOrder.sourceDocumentId } },

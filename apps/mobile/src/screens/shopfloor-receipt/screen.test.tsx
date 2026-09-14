@@ -60,6 +60,8 @@ interface Options {
   reasonsPending?: boolean;
   /** 출고의 원천 유형. 피킹지시가 아니면 작업지시를 이어받을 사슬이 없다. */
   sourceTypeCode?: string;
+  /** 피킹지시의 원천 유형. 출하 지시면 자재 출고요청이 아니라 사슬이 거기서 끊긴다. */
+  pickingSourceTypeCode?: string;
   /** 물어본 주소를 모은다. 응답만 돌려주는 스텁은 부르지 말아야 할 것을 부른 것을 못 잡는다. */
   asked?: string[];
   /** 이 시험에서만 필요한 길. 기본 길보다 먼저 본다. */
@@ -124,7 +126,7 @@ const routes = (options: Options = {}): StubRoute[] => [
           pickingOrderId: 300,
           pickingOrderNo: 'PK-2026-000300',
           pickingTypeCode: 'MATERIAL',
-          sourceDocumentTypeCode: 'MATERIAL_ISSUE_REQUEST',
+          sourceDocumentTypeCode: options.pickingSourceTypeCode ?? 'MATERIAL_ISSUE_REQUEST',
           sourceDocumentId: 200,
           warehouseId: 5,
           statusCode: 'REGISTERED',
@@ -210,8 +212,10 @@ const routes = (options: Options = {}): StubRoute[] => [
   },
   {
     match: (req) => /\/logistics\/material-issue-requests\/\d+$/.test(new URL(req.url).pathname),
-    respond: () =>
-      jsonResponse({
+    respond: (req) => {
+      options.asked?.push(new URL(req.url).pathname);
+
+      return jsonResponse({
         materialIssueRequest: {
           materialIssueRequestId: 200,
           issueRequestNo: 'MR-2026-000200',
@@ -222,7 +226,8 @@ const routes = (options: Options = {}): StubRoute[] => [
           requestedBy: 900028,
         },
         lines: [],
-      }),
+      });
+    },
   },
   {
     match: (req) => new URL(req.url).pathname === '/logistics/shopfloor-receipts',
@@ -414,6 +419,22 @@ describe('생산창고 입고 화면', () => {
     expect(await screen.findByText('생산창고 입고 대상이 아닌 출고 전표입니다')).toBeTruthy();
     expect(asked.some((url) => url.includes('/logistics/picking-orders/'))).toBe(false);
     /* 단말 설정과 무관한 일에 조회 권한 문구를 달지 않는다. */
+    expect(screen.queryByText(/기기 설정을 확인하세요/)).toBeNull();
+  });
+
+  /*
+   * 사슬이 한 겹 더 있다. 피킹지시의 원천도 판별자라 자재 출고요청과 출하 지시를 가른다 -
+   * 출하 피킹에서 나온 출고를 여기 대면 출하 지시 번호로 자재 출고요청을 묻게 된다.
+   */
+  it('출하 피킹에서 나온 출고면 자재 출고요청을 부르지 않는다', async () => {
+    const asked: string[] = [];
+    mount({ pickingSourceTypeCode: 'SHIPMENT_REQUEST', asked });
+    await screen.findByLabelText(/출고 QR 스캔/);
+
+    scan(ISSUE_NO);
+
+    expect(await screen.findByText('생산창고 입고 대상이 아닌 출고 전표입니다')).toBeTruthy();
+    expect(asked.some((url) => url.includes('/logistics/material-issue-requests/'))).toBe(false);
     expect(screen.queryByText(/기기 설정을 확인하세요/)).toBeNull();
   });
 
