@@ -272,7 +272,7 @@ export const WipHandoverScreen = () => {
                 title={failureText(successors.error, t.next.loadFailed)}
               />
             ) : null}
-            {successors.data !== undefined && successors.data.length === 0 ? (
+            {successors.isSuccess && successors.data.length === 0 ? (
               <AlertBanner variant="info" title={t.next.none} />
             ) : null}
             {successors.data !== undefined && successors.data.length > 0 ? (

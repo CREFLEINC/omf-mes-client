@@ -257,7 +257,7 @@ export const MaterialLocationScreen = () => {
             {balances.data !== undefined && balances.data.length > 1 ? (
               <p>{t.location.countSuffix(balances.data.length)}</p>
             ) : null}
-            {balances.data !== undefined && balances.data.length === 0 ? (
+            {balances.isSuccess && balances.data.length === 0 ? (
               <EmptyState
                 live
                 title={t.location.emptyTitle}

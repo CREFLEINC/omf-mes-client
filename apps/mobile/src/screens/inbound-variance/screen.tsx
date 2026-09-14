@@ -208,7 +208,7 @@ export const InboundVarianceScreen = () => {
             title={failureText(receipts.error, t.receipt.loadFailed)}
           />
         ) : null}
-        {receipts.data !== undefined && receipts.data.length === 0 ? (
+        {receipts.isSuccess && receipts.data.length === 0 ? (
           <p className="variance__note">{t.receipt.none}</p>
         ) : null}
         {receipts.data === undefined ? null : (
@@ -239,7 +239,7 @@ export const InboundVarianceScreen = () => {
             {lines.isError ? (
               <AlertBanner variant="error" title={t.receipt.linesLoadFailed} />
             ) : null}
-            {lines.data !== undefined && lines.data.length === 0 ? (
+            {lines.isSuccess && lines.data.length === 0 ? (
               <AlertBanner variant="warning" title={t.receipt.linesNone} />
             ) : null}
             <ul className="variance__lines">
@@ -302,7 +302,7 @@ export const InboundVarianceScreen = () => {
             <h2>{t.known.legend}</h2>
             {known.isPending ? <p role="status">{t.known.loading}</p> : null}
             {known.isError ? <AlertBanner variant="error" title={t.known.loadFailed} /> : null}
-            {known.data !== undefined && known.data.length === 0 ? (
+            {known.isSuccess && known.data.length === 0 ? (
               <p className="variance__note">{t.known.none}</p>
             ) : null}
             <ul className="variance__known">

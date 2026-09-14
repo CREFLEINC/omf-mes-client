@@ -214,7 +214,7 @@ export const PhysicalCountScreen = () => {
         {counts.isError ? (
           <FailureBanner variant="error" title={failureText(counts.error, t.plan.loadFailed)} />
         ) : null}
-        {counts.data?.length === 0 ? <p>{t.plan.none}</p> : null}
+        {counts.isSuccess && counts.data.length === 0 ? <p>{t.plan.none}</p> : null}
         <label htmlFor="physical-count-plan">{t.plan.pick}</label>
         <Select
           id="physical-count-plan"
@@ -272,7 +272,7 @@ export const PhysicalCountScreen = () => {
               title={failureText(planned.error, t.location.loadFailed)}
             />
           ) : null}
-          {at !== null && planned.data?.length === 0 ? (
+          {at !== null && planned.isSuccess && planned.data.length === 0 ? (
             <AlertBanner variant="warning" title={t.location.empty} />
           ) : null}
         </section>

@@ -248,7 +248,7 @@ export const RecycleEntryScreen = () => {
             {warehouses.isError ? (
               <AlertBanner variant="error" title={t.place.warehouseLoadFailed} />
             ) : null}
-            {warehouses.data !== undefined && warehouses.data.length === 0 ? (
+            {warehouses.isSuccess && warehouses.data.length === 0 ? (
               <AlertBanner variant="warning" title={t.place.warehouseNone} />
             ) : null}
             {warehouses.data === undefined ? null : (
@@ -277,7 +277,7 @@ export const RecycleEntryScreen = () => {
                 {locations.isError ? (
                   <AlertBanner variant="error" title={t.place.locationLoadFailed} />
                 ) : null}
-                {locations.data !== undefined && locations.data.length === 0 ? (
+                {locations.isSuccess && locations.data.length === 0 ? (
                   <AlertBanner variant="warning" title={t.place.locationNone} />
                 ) : null}
                 {locations.data === undefined ? null : (

@@ -406,7 +406,7 @@ export const ProductReceiptScreen = () => {
             <AlertBanner variant="error" title={t.unit.notFound(scannedUnit)} />
           ) : null}
           {foundUnit === null ? null : <p>{t.unit.picked(foundUnit.handlingUnitNo)}</p>}
-          {foundUnit !== null && contents.data?.length === 0 ? (
+          {foundUnit !== null && contents.isSuccess && contents.data.length === 0 ? (
             <AlertBanner variant="warning" title={t.unit.empty} />
           ) : null}
         </section>

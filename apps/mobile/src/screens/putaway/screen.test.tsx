@@ -7,6 +7,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
   createStubFetch,
+  createTestQueryClient,
   jsonResponse,
   renderWithProviders,
   type StubRoute,
@@ -197,7 +198,11 @@ const HandoffProbe = () => {
   return <p>{state !== null && 'location' in state ? '위치 넘김' : '위치 안 넘김'}</p>;
 };
 
-const mount = (extra: StubRoute[] = [], options: Options = {}) =>
+const mount = (
+  extra: StubRoute[] = [],
+  options: Options = {},
+  queryClient = createTestQueryClient(),
+) =>
   renderWithProviders(
     <MemoryRouter>
       <SignedIn>
@@ -207,7 +212,7 @@ const mount = (extra: StubRoute[] = [], options: Options = {}) =>
         </Routes>
       </SignedIn>
     </MemoryRouter>,
-    { fetch: createStubFetch([...extra, ...routes(options)]) },
+    { fetch: createStubFetch([...extra, ...routes(options)]), queryClient },
   );
 
 const into = (field: HTMLInputElement, value: string) => {
@@ -303,6 +308,24 @@ describe('적치·입고 완료 화면', () => {
     mount([], { tasksStatus: 500 });
 
     /* 서버가 답을 못 준 것이다. 연결을 보라고 하면 멀쩡한 망을 뒤진다(#1187). */
+    expect(await screen.findByText(messages.httpError.loadServer)).toBeTruthy();
+    expect(screen.queryByText('받은 적치 지시가 없습니다')).toBeNull();
+  });
+
+  /*
+   * 실기(#1198) - 등록이 끊기기 전에 받은 「0건」이 남아, 다시 묻다 거절된 뒤에도 「받은 적치
+   * 지시가 없습니다」가 떴다. 지금 확인하지 못한 것을 없다고 말하지 않는다.
+   */
+  it('앞서 0건을 받았어도 다시 묻다 실패하면 지시 없음이라고 하지 않는다', async () => {
+    const queryClient = createTestQueryClient();
+    const options: Options = { tasks: [] };
+    mount([], options, queryClient);
+
+    expect(await screen.findByText('받은 적치 지시가 없습니다')).toBeTruthy();
+
+    options.tasksStatus = 500;
+    await queryClient.refetchQueries({ queryKey: ['putaway-tasks'] });
+
     expect(await screen.findByText(messages.httpError.loadServer)).toBeTruthy();
     expect(screen.queryByText('받은 적치 지시가 없습니다')).toBeNull();
   });

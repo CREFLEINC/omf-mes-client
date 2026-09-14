@@ -51,7 +51,7 @@ export const PickingOrderList = ({
       {orders.isError ? (
         <FailureBanner variant="error" title={failureText(orders.error, t.orders.loadFailed)} />
       ) : null}
-      {orders.data !== undefined && orders.data.length === 0 ? (
+      {orders.isSuccess && orders.data.length === 0 ? (
         <AlertBanner variant="info" title={t.orders.none} />
       ) : null}
       {(orders.data ?? []).map((order) => (

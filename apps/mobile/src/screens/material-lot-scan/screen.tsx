@@ -245,7 +245,7 @@ export const MaterialLotScanScreen = () => {
             title={failureText(receipts.error, t.receipt.loadFailed)}
           />
         ) : null}
-        {receipts.data?.length === 0 ? <p>{t.receipt.none}</p> : null}
+        {receipts.isSuccess && receipts.data.length === 0 ? <p>{t.receipt.none}</p> : null}
         <label htmlFor="material-lot-scan-receipt">{t.receipt.pick}</label>
         <Select
           id="material-lot-scan-receipt"

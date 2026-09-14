@@ -549,7 +549,9 @@ export const RepairRoundtripScreen = () => {
         <h2>{t.open.legend(allOpen.data?.length ?? 0)}</h2>
         {allOpen.isError ? <AlertBanner variant="error" title={t.open.loadFailed} /> : null}
         {allOpen.data === undefined ? null : allOpen.data.length === 0 ? (
-          <p className="repair__note">{t.open.none}</p>
+          allOpen.isSuccess ? (
+            <p className="repair__note">{t.open.none}</p>
+          ) : null
         ) : (
           <div className="repair__table">
             <Table

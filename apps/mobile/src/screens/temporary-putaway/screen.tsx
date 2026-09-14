@@ -344,7 +344,7 @@ export const TemporaryPutawayScreen = () => {
             title={failureText(locations.error, t.location.loadFailed)}
           />
         ) : null}
-        {locations.data !== undefined && locations.data.length === 0 ? (
+        {locations.isSuccess && locations.data.length === 0 ? (
           <AlertBanner variant="warning" title={t.location.none} />
         ) : null}
         {/* 스캔이 정본이고 목록은 대체 경로다(공유계약 D-3). 접어 두어 스캔 칸을 앞에 세운다. */}
@@ -406,7 +406,7 @@ export const TemporaryPutawayScreen = () => {
         {reasons.isPending ? <p role="status">{t.reason.loading}</p> : null}
         {reasons.isError ? <p className="temporary__note">{t.reason.loadFailed}</p> : null}
         {/* 값이 없으면 고를 것이 없다. 비고로 적게 두고 그 사실을 말한다. */}
-        {reasons.data !== undefined && reasons.data.length === 0 ? (
+        {reasons.isSuccess && reasons.data.length === 0 ? (
           <AlertBanner variant="warning" title={t.reason.empty} />
         ) : null}
         {/*

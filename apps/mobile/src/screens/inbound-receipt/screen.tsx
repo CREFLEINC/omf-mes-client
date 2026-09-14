@@ -579,7 +579,7 @@ export const InboundReceiptScreen = () => {
             {orders.isError ? (
               <FailureBanner variant="error" title={failureText(orders.error, t.po.loadFailed)} />
             ) : null}
-            {orders.data !== undefined && orders.data.length === 0 ? (
+            {orders.isSuccess && orders.data.length === 0 ? (
               <p className="receipt__note">{t.po.none}</p>
             ) : null}
             {orders.data === undefined ? null : (
@@ -646,7 +646,7 @@ export const InboundReceiptScreen = () => {
                 {lines.isError ? (
                   <AlertBanner variant="error" title={t.po.linesLoadFailed} />
                 ) : null}
-                {lines.data !== undefined && lines.data.length === 0 ? (
+                {lines.isSuccess && lines.data.length === 0 ? (
                   <AlertBanner variant="warning" title={t.po.linesNone} />
                 ) : null}
                 <ul className="receipt__lines">
@@ -745,7 +745,7 @@ export const InboundReceiptScreen = () => {
               {suppliers.isError ? (
                 <AlertBanner variant="error" title={t.exception.supplierLoadFailed} />
               ) : null}
-              {suppliers.data !== undefined && suppliers.data.length === 0 ? (
+              {suppliers.isSuccess && suppliers.data.length === 0 ? (
                 <AlertBanner variant="warning" title={t.exception.supplierNone} />
               ) : null}
               {suppliers.data === undefined || suppliers.data.length === 0 ? null : (

@@ -329,7 +329,7 @@ export const StockTransferScreen = () => {
         ) : null}
         {/* 다른 단말이 반출한 것은 오프라인에서 오지 않는다. 없다고 단정하면 안 된다. */}
         {!online ? <p className="stock-transfer__note">{t.unfinished.offline}</p> : null}
-        {unfinished.data?.length === 0 ? <p>{t.unfinished.none}</p> : null}
+        {unfinished.isSuccess && unfinished.data.length === 0 ? <p>{t.unfinished.none}</p> : null}
         {(unfinished.data ?? []).map((each) => (
           <Card bordered key={each.transfer.stockTransferId}>
             <Card.Header>

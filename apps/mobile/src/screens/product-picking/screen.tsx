@@ -398,7 +398,7 @@ export const ProductPickingScreen = () => {
           {chosen !== null ? <AlertBanner variant="warning" title={t.targets.dropped} /> : null}
           {requests.isPending ? <p role="status">{t.targets.loading}</p> : null}
           {requests.isError ? <AlertBanner variant="error" title={t.targets.loadFailed} /> : null}
-          {requests.data !== undefined && requests.data.length === 0 ? (
+          {requests.isSuccess && requests.data.length === 0 ? (
             <p className="picking__note">{t.targets.none}</p>
           ) : null}
           <ul className="picking__targets">

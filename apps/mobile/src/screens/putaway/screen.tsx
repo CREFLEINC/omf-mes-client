@@ -294,7 +294,11 @@ export const PutawayScreen = () => {
           {tasks.isError ? (
             <FailureBanner variant="error" title={failureText(tasks.error, t.tasks.loadFailed)} />
           ) : null}
-          {tasks.data !== undefined && tasks.data.length === 0 ? (
+          {/*
+            앞서 받은 0건이 남아 있어도 지금 조회가 실패했으면 없다고 말하지 않는다(#1198 실기 -
+            등록 만료 옆에 「받은 적치 지시가 없습니다」가 떴다). 빈 목록 안내는 성공일 때만.
+          */}
+          {tasks.isSuccess && tasks.data.length === 0 ? (
             <p className="putaway__note">{t.tasks.none}</p>
           ) : null}
           {tasks.data !== undefined && tasks.data.length > 0 ? (
@@ -376,7 +380,7 @@ export const PutawayScreen = () => {
                 title={failureText(locations.error, t.location.loadFailed)}
               />
             ) : null}
-            {locations.data !== undefined && locations.data.length === 0 ? (
+            {locations.isSuccess && locations.data.length === 0 ? (
               <AlertBanner variant="warning" title={t.location.none} />
             ) : null}
 
