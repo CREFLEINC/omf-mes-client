@@ -116,7 +116,7 @@ export const TemporaryPutawayScreen = () => {
   const byCode = useLocationByCode(task?.warehouseId ?? null, scanned);
   const reasons = useCodeValues(PUTAWAY_TASK_TEMPORARY_REASON);
   const uoms = useUomCodes(true);
-  const itemLabels = useItemLabels(true);
+  const itemLabels = useItemLabels(task === null ? [] : [task.itemId]);
 
   /*
    * 정위치에 임시 적치를 적으면 옮길 대상 목록에 오르는데 이미 제자리에 있어, 다음 사람이
@@ -272,7 +272,7 @@ export const TemporaryPutawayScreen = () => {
           <Card.Body className="card-body temporary__card">
             <strong>
               {t.task.item(
-                itemLabels.data?.get(task.itemId)?.itemCode ?? '',
+                itemLabels.get(task.itemId)?.itemCode ?? '',
                 task.putawayTaskNo,
                 `${String(task.taskQty)} ${uoms.data?.get(task.uomId) ?? ''}`,
               )}

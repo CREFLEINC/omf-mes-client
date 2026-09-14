@@ -77,6 +77,12 @@ export const inboundReceipt = {
     supplierNone: '고를 공급사가 없습니다',
     itemLabel: '품목',
     itemPlaceholder: '품목을 고르세요',
+    itemSearchLabel: '품목 찾기',
+    itemSearchPlaceholder: '품목코드나 품목명을 적으세요',
+    itemSearchHint: '마스터가 커서 목록을 다 늘어놓지 않습니다. 찾아서 고르세요.',
+    itemSearchFirst: '위에서 먼저 찾으세요',
+    itemSearchEmpty: '찾은 품목이 없습니다',
+    itemSearchFailed: '품목을 찾지 못했습니다. 연결을 확인하세요.',
     itemLoadFailed: '품목을 확인할 수 없습니다',
     /** 품목 마스터의 주인은 ERP 다. 이 화면이 품목을 만들 길은 계약에 없다. */
     itemUnregistered: '목록에 없는 품목은 여기서 만들 수 없습니다',

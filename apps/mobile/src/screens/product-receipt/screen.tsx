@@ -94,7 +94,7 @@ export const ProductReceiptScreen = () => {
   const atLocation = useLocationByCode(warehouseId, scannedLocation);
   const destination = destinationOf(warehouse, atLocation.data ?? null, locations.data ?? []);
 
-  const itemLabels = useItemLabels(lines.length > 0);
+  const itemLabels = useItemLabels(lines.map((line) => line.itemId));
   const plantId = currentPlantId();
 
   /*
@@ -209,7 +209,7 @@ export const ProductReceiptScreen = () => {
 
   const nameOf = (line: DraftLine): string =>
     t.contents.name(
-      itemLabels.data?.get(line.itemId)?.itemCode ?? '',
+      itemLabels.get(line.itemId)?.itemCode ?? '',
       lots.data?.get(line.lotId)?.lotNo ?? String(line.lotId),
     );
 

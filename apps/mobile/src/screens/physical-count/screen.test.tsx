@@ -11,6 +11,7 @@ import {
   renderWithProviders,
   type StubRoute,
 } from '../../test/api-harness';
+import { itemRoutes } from '../../test/master-routes';
 import { useWorkerSession } from '../../patterns/worker-session';
 import { PhysicalCountScreen } from './screen';
 
@@ -172,17 +173,13 @@ const routes = (options: Options = {}): StubRoute[] => [
       return jsonResponse({ lot: { lotId, lotNo: LOT_NO } });
     },
   },
-  {
-    match: (req) => new URL(req.url).pathname === '/mdm/items',
-    respond: () =>
-      jsonResponse({
-        items: [
-          { itemId: 2002, itemCode: 'ABC-123', itemName: '하우징', fifoPolicyCode: 'FIFO' },
-          { itemId: 2001, itemCode: 'RM-1001', itemName: '수지A', fifoPolicyCode: 'FEFO' },
-        ],
-        page,
-      }),
-  },
+  ...itemRoutes(
+    [
+      { itemId: 2002, itemCode: 'ABC-123', itemName: '하우징', fifoPolicyCode: 'FIFO' },
+      { itemId: 2001, itemCode: 'RM-1001', itemName: '수지A', fifoPolicyCode: 'FEFO' },
+    ],
+    page,
+  ),
   {
     match: (req) => new URL(req.url).pathname === '/mdm/code-values',
     respond: (req) => {

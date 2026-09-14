@@ -10,6 +10,7 @@ import {
   renderWithProviders,
   type StubRoute,
 } from '../../test/api-harness';
+import { itemRoutes } from '../../test/master-routes';
 import { useWorkerSession } from '../../patterns/worker-session';
 import { StockTransferScreen } from './screen';
 
@@ -207,14 +208,10 @@ const routes = (options: Options = {}): StubRoute[] => [
       return jsonResponse({ stockTransferId: 7001 });
     },
   },
-  {
-    match: (req) => new URL(req.url).pathname === '/mdm/items',
-    respond: () =>
-      jsonResponse({
-        items: [{ itemId: 2002, itemCode: 'ABC-123', itemName: '하우징', fifoPolicyCode: 'FIFO' }],
-        page,
-      }),
-  },
+  ...itemRoutes(
+    [{ itemId: 2002, itemCode: 'ABC-123', itemName: '하우징', fifoPolicyCode: 'FIFO' }],
+    page,
+  ),
 ];
 
 const SignedIn = ({ children }: { children: ReactNode }) => {

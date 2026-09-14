@@ -94,7 +94,6 @@ export const PackingRepackScreen = () => {
   const found = useScannedHandlingUnit(scanned);
   const uoms = useUomCodes(sources.length > 0);
   /* 내용물은 품목·LOT 식별자만 준다. 그 번호로는 실물 라벨과 대조할 수 없다. */
-  const itemLabels = useItemLabels(sources.length > 0);
   const allocations = useShipmentAllocations(sources);
 
   const pooled = pooledContents(sources);
@@ -112,6 +111,12 @@ export const PackingRepackScreen = () => {
    * 이력에는 지금 이 포장에 없는 LOT 도 나온다 - 통째로 빠져나간 것이 그렇다. 그 번호표까지
    * 함께 물어야 이력이 대리키를 그대로 보이지 않는다.
    */
+  /* 이력의 품목도 함께 묻는다 - 펼친 이력이 대리키만 보이면 무엇을 되돌리는지 알 수 없다. */
+  const itemLabels = useItemLabels([
+    ...sources.flatMap((source) => source.contents.map((content) => content.itemId)),
+    ...(history.data ?? []).flatMap((event) => event.lines.map((line) => line.itemId)),
+  ]);
+
   const lotLabels = useLotLabels([
     ...sources.flatMap((source) => source.contents.map((content) => content.lotId)),
     ...(history.data ?? []).flatMap((event) => event.lines.map((line) => line.lotId)),
@@ -148,7 +153,7 @@ export const PackingRepackScreen = () => {
   const uomOf = (uomId: number): string => uoms.data?.get(uomId) ?? '';
 
   const nameOf = (content: { itemId: number; lotId: number }): string => {
-    const item = itemLabels.data?.get(content.itemId);
+    const item = itemLabels.get(content.itemId);
     const lotNo = lotLabels.get(content.lotId) ?? String(content.lotId);
 
     return t.contents.lot(item === undefined ? '' : item.itemCode, lotNo);

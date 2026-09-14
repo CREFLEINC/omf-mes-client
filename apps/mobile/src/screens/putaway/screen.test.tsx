@@ -12,6 +12,7 @@ import {
   renderWithProviders,
   type StubRoute,
 } from '../../test/api-harness';
+import { itemRoutes } from '../../test/master-routes';
 import { rememberPlant } from '../../patterns/plant';
 import { useWorkerSession } from '../../patterns/worker-session';
 import { PutawayScreen } from './screen';
@@ -147,22 +148,18 @@ const routes = (options: Options = {}): StubRoute[] => [
         page,
       }),
   },
-  {
-    match: (req) => new URL(req.url).pathname === '/mdm/items',
-    respond: () =>
-      jsonResponse({
-        items: [
-          {
-            itemId: 31,
-            itemCode: 'RM-1001',
-            itemName: '수지A',
-            fifoPolicyCode: 'FEFO',
-            storageConditionCode: options.itemStorage,
-          },
-        ],
-        page,
-      }),
-  },
+  ...itemRoutes(
+    [
+      {
+        itemId: 31,
+        itemCode: 'RM-1001',
+        itemName: '수지A',
+        fifoPolicyCode: 'FEFO',
+        storageConditionCode: options.itemStorage,
+      },
+    ],
+    page,
+  ),
   {
     match: (req) => new URL(req.url).pathname === '/trace/lots/4',
     respond: () =>
