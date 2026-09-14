@@ -1,10 +1,27 @@
-import { useQuery, type UseQueryResult } from '@tanstack/react-query';
+import { useQueries, useQuery, type UseQueryResult } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
 import { runRequest } from '../../patterns/request';
 import { isFillable, type InboundReceipt, type InboundReceiptLine } from './lot';
 
 const PAGE_SIZE = 200;
+
+type LineClient = ReturnType<typeof useApiClient>['client'];
+
+const linesKey = (inboundReceiptId: number) => ['material-lot-lines', inboundReceiptId] as const;
+
+const fetchFillableLines = async (
+  client: LineClient,
+  inboundReceiptId: number,
+): Promise<InboundReceiptLine[]> => {
+  const data = await runRequest(() =>
+    client.GET('/logistics/inbound-receipts/{inboundReceiptId}/lines', {
+      params: { path: { inboundReceiptId }, query: { supplierLotMissing: false } },
+    }),
+  );
+
+  return data.items.filter(isFillable);
+};
 
 /**
  * 사전부착 라인을 가진 입하 건.
@@ -47,7 +64,7 @@ export const useFillableLines = (
   const { client } = useApiClient();
 
   return useQuery({
-    queryKey: ['material-lot-lines', inboundReceiptId] as const,
+    queryKey: linesKey(inboundReceiptId ?? 0),
     enabled: inboundReceiptId !== null,
     staleTime: 0,
     gcTime: 0,
@@ -56,13 +73,63 @@ export const useFillableLines = (
         throw new Error('입하 건을 고르기 전에는 라인을 조회하지 않습니다.');
       }
 
-      const data = await runRequest(() =>
-        client.GET('/logistics/inbound-receipts/{inboundReceiptId}/lines', {
-          params: { path: { inboundReceiptId }, query: { supplierLotMissing: false } },
-        }),
-      );
-
-      return data.items.filter(isFillable);
+      return fetchFillableLines(client, inboundReceiptId);
     },
+  });
+};
+
+export interface FillableLineIds {
+  /** 건별로 채울 수 있는 라인 식별자. 아직 답하지 않은 건은 없다. */
+  byReceipt: Map<number, number[]>;
+  /**
+   * 물어봤지만 답을 못 받은 건.
+   *
+   * 못 물어본 것과 채울 라인이 없는 것은 다르다 - 같이 다루면 조회 실패 한 번에 멀쩡한 건이
+   * 후보에서 사라지고, 화면은 고를 것이 없다고만 말한다.
+   */
+  unknown: Set<number>;
+  /** 하나라도 아직 답하지 않았는가. 다 받기 전에 거르면 목록이 섰다가 줄어든다. */
+  isPending: boolean;
+}
+
+/**
+ * 건마다 채울 라인이 남았는지.
+ *
+ * 계약의 입하 건 목록에는 채울 라인이 남았는지로 거르는 축이 없다. `supplierLotMissing`
+ * 은 사전부착 라인을 가졌는지만 보므로, 그 라인이 이미 다 채워진 건도 그대로 온다 - 실측
+ * 2026-09-14 에 29건 중 27건이 고를 수 없는 건이었고 작업자가 그 29개를 훑어야 했다.
+ *
+ * 라인 조회와 같은 열쇠를 쓴다. 건을 고르는 순간 이미 받아 둔 것이 있어 다시 부르지 않는다.
+ */
+export const useFillableLineIds = (receiptIds: readonly number[]): FillableLineIds => {
+  const { client } = useApiClient();
+  const ids = [...new Set(receiptIds)];
+
+  return useQueries({
+    queries: ids.map((inboundReceiptId) => ({
+      queryKey: linesKey(inboundReceiptId),
+      staleTime: 0,
+      gcTime: 0,
+      queryFn: () => fetchFillableLines(client, inboundReceiptId),
+    })),
+    combine: (results) => ({
+      byReceipt: new Map(
+        results.flatMap((result, index) => {
+          const inboundReceiptId = ids[index];
+
+          return result.data === undefined || inboundReceiptId === undefined
+            ? []
+            : [[inboundReceiptId, result.data.map((line) => line.inboundReceiptLineId)] as const];
+        }),
+      ),
+      unknown: new Set(
+        results.flatMap((result, index) => {
+          const inboundReceiptId = ids[index];
+
+          return result.isError && inboundReceiptId !== undefined ? [inboundReceiptId] : [];
+        }),
+      ),
+      isPending: results.some((result) => result.isPending),
+    }),
   });
 };
