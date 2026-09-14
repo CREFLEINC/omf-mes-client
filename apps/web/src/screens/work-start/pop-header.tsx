@@ -6,6 +6,9 @@ export interface PopHeaderProps {
   titleId: string;
   /** 이 단말의 코드. 못 받았으면 `null`. */
   terminalCode: string | null;
+  /** 이 단말에 매핑된 설비. 모르거나 없으면 `null` — 타이틀 옆 자리를 비운다. */
+  equipmentCode: string | null;
+  equipmentName: string | null;
   /** 확인이 끝난 사번. 아직이면 `null`. */
   workerNo: string | null;
   /**
@@ -26,7 +29,14 @@ export interface PopHeaderProps {
  * ⛔ **모르는 것을 빈칸으로 두지 않는다.** 설비를 비워 두면 단말이 하나뿐인 것처럼 읽히고,
  * 사번을 비워 두면 누구로 기록되는지 모르는 채 시작하게 된다.
  */
-export const PopHeader = ({ titleId, terminalCode, workerNo, isConnected }: PopHeaderProps) => {
+export const PopHeader = ({
+  titleId,
+  terminalCode,
+  equipmentCode,
+  equipmentName,
+  workerNo,
+  isConnected,
+}: PopHeaderProps) => {
   const t = messages.workStart;
 
   return (
@@ -34,6 +44,11 @@ export const PopHeader = ({ titleId, terminalCode, workerNo, isConnected }: PopH
       <h1 id={titleId} className="pop-title">
         {t.title}
       </h1>
+
+      {/* ⭐ 무엇 앞에 서 있는가(설비)는 타이틀 옆, 단말·사번·연결은 오른쪽(사용자 지시 2026-09-14). */}
+      {equipmentCode !== null && equipmentCode.trim() !== '' && (
+        <p className="pop-context">{t.header.equipmentLabel(equipmentCode, equipmentName ?? '')}</p>
+      )}
 
       <p className="pop-context pop-context-right">
         <span>
