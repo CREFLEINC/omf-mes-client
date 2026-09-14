@@ -109,7 +109,11 @@ export const ShopfloorReceiptScreen = () => {
       received === 'received' || received === 'checking',
       queuedReceipts,
       hasReasonOptions,
-    ) && issue !== null;
+    ) &&
+    issue !== null &&
+    /* 작업지시와 도착 위치를 못 찾은 전표는 수령 전표를 만들 수 없다. 단추를 열지 않는다. */
+    issue.workOrderId !== null &&
+    issue.destinationLocationId !== null;
 
   /* 전표를 열면 그 라인으로 적을 자리를 만든다. 조회가 끝난 뒤라 렌더 중에 하지 않는다. */
   useEffect(() => {
@@ -272,6 +276,11 @@ export const ShopfloorReceiptScreen = () => {
       return;
     }
 
+    /* 두 값이 없으면 수령 전표를 만들 수 없다. 지어내면 다른 작업지시에 재고가 붙는다. */
+    if (issue.workOrderId === null || issue.destinationLocationId === null) {
+      return;
+    }
+
     inFlight.current = true;
     setSaveFailed(false);
 
@@ -372,6 +381,12 @@ export const ShopfloorReceiptScreen = () => {
         ) : null}
         {scanned !== null && found.data === null ? (
           <AlertBanner variant="error" title={t.issue.notFound(scanned)} />
+        ) : null}
+        {/* 무엇이 없어서 받을 수 없는지 그 자리에서 말한다. 단말 설정과는 무관한 일이다. */}
+        {issue !== null && issue.workOrderId === null ? (
+          <AlertBanner variant="error" title={t.issue.notForShopfloor}>
+            {t.issue.notForShopfloorWhy}
+          </AlertBanner>
         ) : null}
 
         {issue === null ? null : (
