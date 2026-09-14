@@ -15,6 +15,7 @@ import { ScanReplaceDialog } from '../../patterns/scan-replace-dialog';
 import { useScanField } from '../../patterns/use-scan-field';
 import { useScreenTitle } from '../../patterns/screen-title';
 import { useWorkerSession } from '../../patterns/worker-session';
+import { FailureBanner } from '../../patterns/failure-banner';
 import { useLoadFailure } from '../../patterns/load-failure';
 import {
   canConfirm,
@@ -232,7 +233,7 @@ export const WipHandoverScreen = () => {
 
         {scanned !== null && lot.isPending ? <p role="status">{t.lot.loading}</p> : null}
         {lot.isError ? (
-          <AlertBanner variant="warning" title={failureText(lot.error, t.lot.loadFailed)} />
+          <FailureBanner variant="warning" title={failureText(lot.error, t.lot.loadFailed)} />
         ) : null}
         {scanned !== null && lot.data === null ? (
           <AlertBanner variant="error" title={t.lot.notFound(scanned)} />
@@ -266,12 +267,12 @@ export const WipHandoverScreen = () => {
             <h2>{t.next.legend}</h2>
             {successors.isPending ? <p role="status">{t.next.loading}</p> : null}
             {successors.isError ? (
-              <AlertBanner
+              <FailureBanner
                 variant="warning"
                 title={failureText(successors.error, t.next.loadFailed)}
               />
             ) : null}
-            {successors.data !== undefined && successors.data.length === 0 ? (
+            {successors.isSuccess && successors.data.length === 0 ? (
               <AlertBanner variant="info" title={t.next.none} />
             ) : null}
             {successors.data !== undefined && successors.data.length > 0 ? (

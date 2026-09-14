@@ -23,6 +23,7 @@ import { useOutbox } from '../../patterns/outbox';
 import { useScanField } from '../../patterns/use-scan-field';
 import { useScreenTitle } from '../../patterns/screen-title';
 import { useWorkerSession } from '../../patterns/worker-session';
+import { FailureBanner } from '../../patterns/failure-banner';
 import { useLoadFailure } from '../../patterns/load-failure';
 import type { PutawayTask } from '../putaway/putaway';
 import { putawayKeys, usePutawayTask } from '../putaway/queries';
@@ -333,17 +334,17 @@ export const TemporaryPutawayScreen = () => {
         {/* 스캔한 코드를 확인하는 동안 등록이 잠긴다. 왜 잠겼는지 말하지 않으면 멈춘 것처럼 보인다. */}
         {scanned !== null && byCode.isPending ? <p role="status">{t.location.loading}</p> : null}
         {byCode.isError ? (
-          <AlertBanner variant="error" title={failureText(byCode.error, t.location.loadFailed)} />
+          <FailureBanner variant="error" title={failureText(byCode.error, t.location.loadFailed)} />
         ) : null}
 
         {locations.isPending ? <p role="status">{t.location.loading}</p> : null}
         {locations.isError ? (
-          <AlertBanner
+          <FailureBanner
             variant="error"
             title={failureText(locations.error, t.location.loadFailed)}
           />
         ) : null}
-        {locations.data !== undefined && locations.data.length === 0 ? (
+        {locations.isSuccess && locations.data.length === 0 ? (
           <AlertBanner variant="warning" title={t.location.none} />
         ) : null}
         {/* 스캔이 정본이고 목록은 대체 경로다(공유계약 D-3). 접어 두어 스캔 칸을 앞에 세운다. */}
@@ -405,7 +406,7 @@ export const TemporaryPutawayScreen = () => {
         {reasons.isPending ? <p role="status">{t.reason.loading}</p> : null}
         {reasons.isError ? <p className="temporary__note">{t.reason.loadFailed}</p> : null}
         {/* 값이 없으면 고를 것이 없다. 비고로 적게 두고 그 사실을 말한다. */}
-        {reasons.data !== undefined && reasons.data.length === 0 ? (
+        {reasons.isSuccess && reasons.data.length === 0 ? (
           <AlertBanner variant="warning" title={t.reason.empty} />
         ) : null}
         {/*

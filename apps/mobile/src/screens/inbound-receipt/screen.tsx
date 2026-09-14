@@ -15,6 +15,7 @@ import { useWorkerSession } from '../../patterns/worker-session';
 import { useCodeValues } from '../../patterns/code-values';
 import { useAdvanceTo } from '../../patterns/advance-to';
 import { playErrorTone } from '../../patterns/error-tone';
+import { FailureBanner } from '../../patterns/failure-banner';
 import { useLoadFailure } from '../../patterns/load-failure';
 import {
   SUBSTITUTE_LOT_REASON,
@@ -576,9 +577,9 @@ export const InboundReceiptScreen = () => {
             <p className="receipt__note">{narrowed ? t.po.narrowedNote : t.po.pickNote}</p>
             {orders.isPending ? <p role="status">{t.po.loading}</p> : null}
             {orders.isError ? (
-              <AlertBanner variant="error" title={failureText(orders.error, t.po.loadFailed)} />
+              <FailureBanner variant="error" title={failureText(orders.error, t.po.loadFailed)} />
             ) : null}
-            {orders.data !== undefined && orders.data.length === 0 ? (
+            {orders.isSuccess && orders.data.length === 0 ? (
               <p className="receipt__note">{t.po.none}</p>
             ) : null}
             {orders.data === undefined ? null : (
@@ -645,7 +646,7 @@ export const InboundReceiptScreen = () => {
                 {lines.isError ? (
                   <AlertBanner variant="error" title={t.po.linesLoadFailed} />
                 ) : null}
-                {lines.data !== undefined && lines.data.length === 0 ? (
+                {lines.isSuccess && lines.data.length === 0 ? (
                   <AlertBanner variant="warning" title={t.po.linesNone} />
                 ) : null}
                 <ul className="receipt__lines">
@@ -744,7 +745,7 @@ export const InboundReceiptScreen = () => {
               {suppliers.isError ? (
                 <AlertBanner variant="error" title={t.exception.supplierLoadFailed} />
               ) : null}
-              {suppliers.data !== undefined && suppliers.data.length === 0 ? (
+              {suppliers.isSuccess && suppliers.data.length === 0 ? (
                 <AlertBanner variant="warning" title={t.exception.supplierNone} />
               ) : null}
               {suppliers.data === undefined || suppliers.data.length === 0 ? null : (

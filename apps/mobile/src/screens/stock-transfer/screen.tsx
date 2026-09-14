@@ -12,6 +12,7 @@ import { useOutbox } from '../../patterns/outbox';
 import { useScanField } from '../../patterns/use-scan-field';
 import { useScreenTitle } from '../../patterns/screen-title';
 import { useWorkerSession } from '../../patterns/worker-session';
+import { FailureBanner } from '../../patterns/failure-banner';
 import { useLoadFailure } from '../../patterns/load-failure';
 import { useLotBalances, useUnfinishedTransfers, useWarehouses } from './queries';
 import {
@@ -321,14 +322,14 @@ export const StockTransferScreen = () => {
         <h2>{t.unfinished.legend}</h2>
         {unfinished.isPending ? <p role="status">{t.unfinished.loading}</p> : null}
         {unfinished.isError ? (
-          <AlertBanner
+          <FailureBanner
             variant="warning"
             title={failureText(unfinished.error, t.unfinished.loadFailed)}
           />
         ) : null}
         {/* 다른 단말이 반출한 것은 오프라인에서 오지 않는다. 없다고 단정하면 안 된다. */}
         {!online ? <p className="stock-transfer__note">{t.unfinished.offline}</p> : null}
-        {unfinished.data?.length === 0 ? <p>{t.unfinished.none}</p> : null}
+        {unfinished.isSuccess && unfinished.data.length === 0 ? <p>{t.unfinished.none}</p> : null}
         {(unfinished.data ?? []).map((each) => (
           <Card bordered key={each.transfer.stockTransferId}>
             <Card.Header>
@@ -462,7 +463,10 @@ export const StockTransferScreen = () => {
               <p role="status">{t.from.loading}</p>
             ) : null}
             {foundLot.isError ? (
-              <AlertBanner variant="error" title={failureText(foundLot.error, t.from.loadFailed)} />
+              <FailureBanner
+                variant="error"
+                title={failureText(foundLot.error, t.from.loadFailed)}
+              />
             ) : null}
             {scannedLot !== null && foundLot.data === null ? (
               <AlertBanner

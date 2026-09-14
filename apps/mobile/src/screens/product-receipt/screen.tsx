@@ -14,6 +14,7 @@ import { currentPlantId } from '../../patterns/plant';
 import { useScanField } from '../../patterns/use-scan-field';
 import { useScreenTitle } from '../../patterns/screen-title';
 import { useWorkerSession } from '../../patterns/worker-session';
+import { FailureBanner } from '../../patterns/failure-banner';
 import { useLoadFailure, useQueryErrorOf } from '../../patterns/load-failure';
 import {
   useHandlingUnitByNo,
@@ -351,7 +352,7 @@ export const ProductReceiptScreen = () => {
         <h2>{t.warehouse.legend}</h2>
         {warehouses.isPending ? <p role="status">{t.warehouse.loading}</p> : null}
         {warehouses.isError ? (
-          <AlertBanner
+          <FailureBanner
             variant="error"
             title={failureText(warehouses.error, t.warehouse.loadFailed)}
           />
@@ -399,13 +400,13 @@ export const ProductReceiptScreen = () => {
           )}
           {scannedUnit !== null && unit.isPending ? <p role="status">{t.unit.loading}</p> : null}
           {unit.isError ? (
-            <AlertBanner variant="error" title={failureText(unit.error, t.unit.loadFailed)} />
+            <FailureBanner variant="error" title={failureText(unit.error, t.unit.loadFailed)} />
           ) : null}
           {scannedUnit !== null && unit.data === null ? (
             <AlertBanner variant="error" title={t.unit.notFound(scannedUnit)} />
           ) : null}
           {foundUnit === null ? null : <p>{t.unit.picked(foundUnit.handlingUnitNo)}</p>}
-          {foundUnit !== null && contents.data?.length === 0 ? (
+          {foundUnit !== null && contents.isSuccess && contents.data.length === 0 ? (
             <AlertBanner variant="warning" title={t.unit.empty} />
           ) : null}
         </section>
