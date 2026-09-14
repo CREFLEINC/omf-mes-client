@@ -33,7 +33,11 @@ export const toDurationLabel = (minutes: number): string => {
   const hours = Math.floor(whole / 60);
   const rest = whole % 60;
 
-  return hours === 0 ? `${String(rest)}분` : `${String(hours)}시간 ${String(rest)}분`;
+  const { duration } = messages.downtimeSummary;
+
+  return hours === 0
+    ? duration.minutesOnly(String(rest))
+    : duration.hoursMinutes(String(hours), String(rest));
 };
 
 /** `13:05~13:20` 꼴. 끝이 없으면 시작만 낸다 — 진행 중이라는 뜻이다. */

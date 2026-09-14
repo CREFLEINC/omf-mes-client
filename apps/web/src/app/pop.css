@@ -5493,3 +5493,60 @@
   margin-right: auto;
   white-space: nowrap;
 }
+
+/*
+ * 머리줄 항목 간격 — **어디서나 12 다**(사용자 지시 2026-09-14 「라벨 간 간격이 제각각이면 안 된다」).
+ *
+ * ⚠ 오른쪽 덩어리 안(`.pop-context-right`)과 [화면 이동]·[사용자 전환] 사이는 이미 12 였는데
+ *   (2026-09-10 지시), 머리줄 자체의 `gap` 이 16 이라 표제↔설비·설비↔오른쪽 덩어리만 16 이었다.
+ *
+ * ⛔ **넘치면 줄바꿈하거나 겹치지 않고 글자를 줄임표로 줄인다.** 베트남어처럼 문구가 긴 언어에서
+ *    ① 설비 이름이 두 줄로 접혀 옆 칸과의 사이가 달라졌고 ② 줄일 수 없는 항목들이 비워 둔
+ *    자리(`--pop-screen-nav-w`)를 밀고 들어가 [화면 이동]과의 사이가 2 로 붙었다(실측 2026-09-14).
+ *    오른쪽 덩어리(단말·사번·연결)는 줄이지 않는다 — 상태를 읽는 자리다. 표제와 표제 옆 맥락이
+ *    남은 폭 안에서 줄어든다.
+ */
+.pop-ui > .pop-header,
+.pop-ui > .pop-terminal-header,
+.pop-ui > .pop-overlay > .pop-header {
+  gap: var(--space-3);
+}
+
+.pop-ui > .pop-header > *,
+.pop-ui > .pop-terminal-header > *,
+.pop-ui > .pop-overlay > .pop-header > * {
+  min-width: 0;
+}
+
+.pop-ui > .pop-header > .pop-title,
+.pop-ui > .pop-header > .pop-context:not(.pop-context-right),
+.pop-ui > .pop-terminal-header > .pop-terminal-header__brand,
+.pop-ui > .pop-overlay > .pop-header > .pop-title,
+.pop-ui > .pop-overlay > .pop-header > .pop-context:not(.pop-context-right) {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pop-ui > .pop-header > .pop-context-right,
+.pop-ui > .pop-terminal-header > .pop-context-right,
+.pop-ui > .pop-overlay > .pop-header > .pop-context-right {
+  flex-shrink: 0;
+}
+
+/*
+ * 툴 사용실적 액션 줄 — **버튼은 한 줄에 다 선다. 긴 사유는 제 칸 안에서 두 줄로 접힌다**
+ * (사용자 지시 2026-09-14).
+ *
+ * ⚠ 사유 칸이 `flex: 1 1 auto` 라 글 길이만큼 폭을 요구했고, 베트남어 사유가 줄 폭을 넘자
+ *   [저장]이 다음 줄로 밀려 액션 줄이 두 층이 됐다(실측). 폭 요구를 0 에서 시작하게 해 남는
+ *   폭만 쓰고, 넘치는 글은 그 안에서 줄을 바꾼다.
+ */
+.pop-ui .pop-actions > .tool-usage-block {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.pop-ui .pop-actions > .tool-usage-block ~ button {
+  flex-shrink: 0;
+}
