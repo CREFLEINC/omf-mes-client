@@ -1,4 +1,5 @@
 import {
+  type InfiniteData,
   useInfiniteQuery,
   useQueries,
   useQuery,
@@ -133,6 +134,17 @@ export interface ItemSearchResult {
   total: number;
 }
 
+/*
+ * 받은 쪽을 하나로 이어 준다. 남은 수를 세려면 전체 건수도 함께 나와야 한다.
+ *
+ * 부품 밖에 둔다 - 안에 적으면 렌더마다 새 함수라 조회가 이것을 다시 돌린다. 목록이 100줄을
+ * 넘는 자리라 글자를 칠 때마다 그 전부를 다시 이어 붙이게 된다.
+ */
+const toItemSearchResult = (data: InfiniteData<ItemSearchPage>): ItemSearchResult => ({
+  items: data.pages.flatMap((each) => each.items),
+  total: data.pages[0]?.total ?? 0,
+});
+
 /**
  * 고를 품목을 찾는다. 작업자가 직접 고르는 자리에만 쓴다.
  *
@@ -189,11 +201,7 @@ export const useItemSearch = (term: string): UseInfiniteQueryResult<ItemSearchRe
 
       return last.items.length > 0 && loaded < last.total ? last.page + 1 : undefined;
     },
-    /* 받은 쪽을 하나로 이어 준다. 남은 수를 세려면 전체 건수도 함께 나와야 한다. */
-    select: (data) => ({
-      items: data.pages.flatMap((each) => each.items),
-      total: data.pages[0]?.total ?? 0,
-    }),
+    select: toItemSearchResult,
   });
 };
 
