@@ -3,6 +3,7 @@ import { messages } from '@omf-mes/i18n';
 import { NumericKeypad } from '@omf-mes/ui';
 import { useId, useRef, useState, type FormEvent } from 'react';
 
+import { usePopIdentity } from '../../patterns/pop-identity';
 import { toApiError } from '../../patterns/request';
 import { conversionState } from './conversion';
 import { ErrorBanner } from './error-banner';
@@ -93,6 +94,14 @@ export const ToolUsageScreen = () => {
   const shotInputId = useId();
 
   const entry = usePopEntry();
+  /* ⭐ 도면 머리줄 「W/O · 설비」의 설비는 단말이 준다(`PopIdentity.equipment` · 사용자 지시 2026-09-14). */
+  const { equipment } = usePopIdentity();
+  const headerContext = [
+    entry.workOrderId === null ? null : `${t.entry.workOrderLabel} ${String(entry.workOrderId)}`,
+    equipment?.equipmentCode ?? null,
+  ]
+    .filter((part): part is string => part !== null && part.trim() !== '')
+    .join(' · ');
   const isOnline = useOnline();
 
   /** 스캔칸에 치는 중인 값과, 조회를 건 값은 다르다 — 한 글자마다 서버를 부르지 않는다. */
@@ -286,9 +295,7 @@ export const ToolUsageScreen = () => {
          * 「지금 어떤 상태인가」(사번·연결)는 다른 축이고, 설계 도면은 POP 전 화면에서 둘을
          * 화면명 쪽과 오른쪽 끝으로 갈라 그린다. 섞으면 화면마다 눈이 다른 곳을 본다.
          */}
-        {entry.workOrderId === null ? null : (
-          <p className="pop-context">{`${t.entry.workOrderLabel} ${String(entry.workOrderId)}`}</p>
-        )}
+        {headerContext === '' ? null : <p className="pop-context">{headerContext}</p>}
         <div className="pop-context-right">
           {entry.workerNo !== null && <span>{`${t.entry.workerLabel} ${entry.workerNo}`}</span>}
           {/* 연결 표시는 셸이 이미 쓰는 것과 같은 말·같은 색을 쓴다(모바일 셸 전례). */}
