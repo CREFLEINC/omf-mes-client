@@ -258,6 +258,17 @@ export const InboundReceiptScreen = () => {
       : itemSearch.data.length === 0
         ? t.exception.itemSearchEmpty
         : t.exception.itemPlaceholder;
+  /*
+   * 고른 품목은 찾은 결과가 바뀌어도 후보에 남긴다. 찾는 말을 지운 순간 칸이 빈 것으로
+   * 보이는데 등록에는 앞서 고른 품목이 실리면, 화면과 보내는 것이 갈린다.
+   */
+  const itemOptions =
+    draft.itemId === null || item.data === undefined
+      ? (itemSearch.data ?? [])
+      : [
+          { itemId: draft.itemId, ...item.data },
+          ...(itemSearch.data ?? []).filter((each) => each.itemId !== draft.itemId),
+        ];
   /* 공장은 단말 토큰이 싣고 온다. 발주가 없으면 승계할 곳이 여기뿐이다. */
   const plantId = draft.unordered ? currentPlantId() : (draft.purchaseOrder?.plantId ?? null);
 
@@ -822,7 +833,7 @@ export const InboundReceiptScreen = () => {
                   onChange={(value) => {
                     patch({ itemId: Number(value) });
                   }}
-                  options={(itemSearch.data ?? []).map((each) => ({
+                  options={itemOptions.map((each) => ({
                     value: String(each.itemId),
                     label: `${each.itemCode} ${each.itemName}`,
                   }))}

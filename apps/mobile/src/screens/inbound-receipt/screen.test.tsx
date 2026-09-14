@@ -1111,6 +1111,48 @@ describe('입하 등록 화면 — 발주 없이 도착', () => {
     expect(screen.getByRole('button', { name: '입하 등록' })).toBeDisabled();
   });
 
+  /*
+   * 고른 품목은 찾는 말과 함께 사라지면 안 된다. 후보를 찾은 결과에서만 만들면, 찾는 말을
+   * 지운 순간 칸이 빈 것으로 보이는데 등록에는 앞서 고른 품목이 그대로 실린다 - 화면과
+   * 보내는 것이 갈리고, 되돌릴 수 없는 쓰기다.
+   */
+  it('찾는 말을 지워도 고른 품목이 칸에 남는다', async () => {
+    const user = userEvent.setup();
+    const seen: Request[] = [];
+    mount([
+      {
+        match: (req) =>
+          new URL(req.url).pathname === '/logistics/inbound-receipts' && req.method === 'POST',
+        respond: (req) => {
+          seen.push(req.clone());
+          return jsonResponse({ inboundReceipt: {}, lines: [] }, { status: 201 });
+        },
+      },
+    ]);
+
+    await screen.findByLabelText('LOT 번호');
+    await openUnordered(user);
+    await choose(user, '공급사', /합성공급사/);
+    await chooseItem(user, 'ABC-123');
+
+    await user.clear(await screen.findByLabelText('품목 찾기'));
+
+    expect(await screen.findByRole('combobox', { name: /품목/ })).toHaveTextContent(/ABC-123/);
+
+    await choose(user, '단위', /EA/);
+    await choose(user, '예외입하 유형', /긴급 입하/);
+    await user.type(screen.getByLabelText(/예외\ 사유/), '발주서 도착 전 긴급 입하');
+    await user.type(await screen.findByLabelText(/실입하\ 수량/), '40');
+    await user.click(screen.getByRole('button', { name: '입하 등록' }));
+
+    await waitFor(() => {
+      expect(seen).toHaveLength(1);
+    });
+
+    const body = (await seen[0]!.json()) as { lines: { itemId: number }[] };
+    expect(body.lines[0]?.itemId).toBe(31);
+  });
+
   /* 품목 마스터의 주인은 ERP 다. 여기서 만들 길을 찾지 않는다. */
   it('목록에 없는 품목은 여기서 만들 수 없다고 말한다', async () => {
     const user = userEvent.setup();
