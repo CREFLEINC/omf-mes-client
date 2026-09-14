@@ -86,6 +86,7 @@ export const inboundReceipt: Translated<typeof ko.inboundReceipt> = {
     empty: 'Không tìm thấy mặt hàng',
     failed: 'Không tìm được mặt hàng. Hãy kiểm tra kết nối.',
     cancel: 'Quay lại mà không chọn',
+    toTop: 'Lên đầu trang',
   },
   note: {
     legend: 'Phiếu giao hàng',

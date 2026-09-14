@@ -1,6 +1,6 @@
 import { AlertBanner, Button, Card, SearchInput } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import { useItemSearch, type ItemOption } from '../../patterns/masters';
 
@@ -51,12 +51,19 @@ export const ItemPicker = ({ onPick, onCancel }: ItemPickerProps) => {
   const found = search.data?.items ?? [];
   /* 뒤에 얼마나 더 있는지. 남은 수를 보여야 더 볼지 좁힐지 사람이 정할 수 있다. */
   const remaining = Math.max((search.data?.total ?? 0) - found.length, 0);
+  /*
+   * 구르는 것은 셸의 본문 영역이라 이 부품이 들고 있지 않다. 맨 위 요소를 화면 안으로
+   * 들이면 무엇이 구르든 브라우저가 알아서 그것을 굴린다.
+   */
+  const top = useRef<HTMLHeadingElement | null>(null);
+  const field = useRef<HTMLInputElement | null>(null);
 
   return (
     <div className="receipt-picker">
-      <h2>{t.title}</h2>
+      <h2 ref={top}>{t.title}</h2>
 
       <SearchInput
+        ref={field}
         label={t.searchLabel}
         placeholder={t.searchPlaceholder}
         size="xl"
@@ -65,6 +72,13 @@ export const ItemPicker = ({ onPick, onCancel }: ItemPickerProps) => {
         value={term}
         onChange={(event) => {
           setTerm(event.target.value);
+        }}
+        onClear={() => {
+          /*
+           * 지우기는 다 적었다는 뜻이다. 그대로 두면 자판이 목록을 절반 덮은 채로 남는다 -
+           * DS 의 지우기가 칸에 포커스를 되돌리므로 여기서 거둔다.
+           */
+          field.current?.blur();
         }}
       />
 
@@ -116,6 +130,23 @@ export const ItemPicker = ({ onPick, onCancel }: ItemPickerProps) => {
       <Button variant="outlined" size="xl" className="receipt-picker__back" onClick={onCancel}>
         {t.cancel}
       </Button>
+
+      {/* 목록이 길어 맨 끝까지 내려간 손이 처음으로 돌아올 길이 없다. 늘 같은 자리에 둔다. */}
+      <button
+        type="button"
+        className="receipt-picker__to-top"
+        aria-label={t.toTop}
+        onClick={() => {
+          top.current?.scrollIntoView({ block: 'start' });
+        }}
+      >
+        <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+          <path
+            d="M12 5.5 19 12.5 17.6 13.9 13 9.3V19h-2V9.3L6.4 13.9 5 12.5z"
+            fill="currentColor"
+          />
+        </svg>
+      </button>
     </div>
   );
 };

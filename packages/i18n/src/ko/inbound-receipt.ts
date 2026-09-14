@@ -104,6 +104,7 @@ export const inboundReceipt = {
     empty: '찾은 품목이 없습니다',
     failed: '품목을 찾지 못했습니다. 연결을 확인하세요.',
     cancel: '고르지 않고 돌아가기',
+    toTop: '맨 위로',
   },
   note: {
     legend: '거래명세서',

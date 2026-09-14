@@ -208,13 +208,17 @@ describe('품목 찾기', () => {
       );
     });
 
-    /* 다시 지우면 앞서 받아 둔 두 쪽이 그대로 돌아온다 - 열쇠가 같아 다시 부르지 않는다. */
+    /*
+     * 지우면 첫 쪽부터 다시 본다. 앞서 펼쳐 둔 두 쪽이 그대로 돌아오면, 처음부터 다시
+     * 보려고 지운 사람 앞에 100건이 펼쳐진 채로 서고 더 받을 자리는 그 끝에 있다.
+     */
     term = '';
     rerender();
 
     await waitFor(() => {
-      expect(result.current.data?.items.length).toBe(100);
+      expect(result.current.data?.items.length).toBe(50);
     });
+    expect(result.current.hasNextPage).toBe(true);
   });
 
   /* 앞에서 잘린 목록을 늘어놓으면 있는 품목이 없는 것으로 보여 고르지 못하고도 이유를 모른다. */

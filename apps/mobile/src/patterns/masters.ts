@@ -152,6 +152,13 @@ export const useItemSearch = (term: string): UseInfiniteQueryResult<ItemSearchRe
   return useInfiniteQuery({
     queryKey: masterKeys.itemSearch(q),
     initialPageParam: 1,
+    /*
+     * 찾는 말이 바뀌면 앞 말로 펼쳐 둔 쪽을 버린다.
+     *
+     * 남겨 두면 말을 지웠을 때 앞서 더 받아 둔 것이 그대로 돌아온다 - 사람은 목록을 처음부터
+     * 다시 보려고 지웠는데 150건이 펼쳐진 채로 서 있고, 더 받을 자리는 그 끝에 있다.
+     */
+    gcTime: 0,
     queryFn: async ({ pageParam }): Promise<ItemSearchPage> => {
       const data = await runRequest(() =>
         client.GET('/mdm/items', {

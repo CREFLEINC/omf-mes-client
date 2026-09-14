@@ -1311,6 +1311,84 @@ describe('입하 등록 화면 — 발주 없이 도착', () => {
     expect(screen.getByRole('button', { name: 'MANY-2 품목2' })).toBeTruthy();
   });
 
+  /*
+   * 펼친 것은 찾는 말과 함께 접힌다. 남겨 두면 처음부터 다시 보려고 지운 사람 앞에 펼쳐진
+   * 목록이 그대로 서고, 더 받을 자리는 그 끝에 있어 손이 닿지 않는다.
+   */
+  it('찾는 말을 지우면 펼친 것이 첫 쪽으로 접힌다', async () => {
+    const user = userEvent.setup();
+    mount([...itemRoutes(manyItems(120))]);
+
+    await screen.findByLabelText('LOT 번호');
+    scan(SCANNED);
+    await user.click(await screen.findByRole('button', { name: '자재 P/O 없이 등록' }));
+    await user.click(await screen.findByRole('button', { name: '품목 찾기' }));
+
+    await user.click(await screen.findByRole('button', { name: '더보기 (+70)' }));
+    expect(await screen.findByRole('button', { name: 'MANY-51 품목51' })).toBeTruthy();
+
+    await user.type(screen.getByLabelText('품목 검색'), 'MANY-1');
+    await waitFor(() => {
+      expect(screen.queryByRole('button', { name: 'MANY-2 품목2' })).toBeNull();
+    });
+
+    await user.clear(screen.getByLabelText('품목 검색'));
+
+    /* 다시 첫 쪽이다 - 펼쳐 둔 둘째 쪽은 접혔고 남은 수도 처음 것으로 돌아왔다. */
+    expect(await screen.findByRole('button', { name: '더보기 (+70)' })).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'MANY-51 품목51' })).toBeNull();
+  });
+
+  /*
+   * 지우기는 다 적었다는 뜻이다. DS 의 지우기가 칸에 포커스를 되돌려 두어, 그대로 두면
+   * 단말 자판이 목록을 절반 덮은 채로 남는다.
+   */
+  it('지우기를 누르면 칸에서 포커스를 거둔다', async () => {
+    const user = userEvent.setup();
+    mount([...itemRoutes(manyItems(120))]);
+
+    await screen.findByLabelText('LOT 번호');
+    scan(SCANNED);
+    await user.click(await screen.findByRole('button', { name: '자재 P/O 없이 등록' }));
+    await user.click(await screen.findByRole('button', { name: '품목 찾기' }));
+
+    const field = await screen.findByLabelText('품목 검색');
+    await user.type(field, 'MANY-1');
+    expect(field).toHaveFocus();
+
+    await user.click(screen.getByRole('button', { name: '지우기' }));
+
+    expect(field).not.toHaveFocus();
+  });
+
+  /* 목록이 길어 맨 끝까지 내려간 손이 처음으로 돌아올 길이 없다. */
+  it('맨 위로 단추가 목록을 처음으로 되돌린다', async () => {
+    const user = userEvent.setup();
+    const scrolled: string[] = [];
+    mount([...itemRoutes(manyItems(120))]);
+
+    await screen.findByLabelText('LOT 번호');
+    scan(SCANNED);
+    await user.click(await screen.findByRole('button', { name: '자재 P/O 없이 등록' }));
+    await user.click(await screen.findByRole('button', { name: '품목 찾기' }));
+    await screen.findByRole('button', { name: '더보기 (+70)' });
+
+    /*
+     * jsdom 은 구르지 않는다. 무엇을 화면 안으로 들이라 했는지로 잰다 - 같은 파일의 다른
+     * 시험이 이미 이 자리를 원형에 심어 두어 인스턴스에 덮어쓸 수 없다.
+     */
+    Object.defineProperty(Element.prototype, 'scrollIntoView', {
+      configurable: true,
+      value(this: Element) {
+        scrolled.push(this.textContent?.slice(0, 12) ?? '');
+      },
+    });
+
+    await user.click(screen.getByRole('button', { name: '맨 위로' }));
+
+    expect(scrolled).toEqual(['품목 고르기']);
+  });
+
   /* 품목 마스터의 주인은 ERP 다. 여기서 만들 길을 찾지 않는다. */
   it('목록에 없는 품목은 여기서 만들 수 없다고 말한다', async () => {
     const user = userEvent.setup();
