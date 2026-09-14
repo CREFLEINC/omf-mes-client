@@ -1,3 +1,4 @@
+import { messages } from '@omf-mes/i18n';
 import { useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router';
 
@@ -73,8 +74,8 @@ export const PopScreenNavButton = () => {
   return (
     <div className="pop-screen-nav">
       <PopSelect
-        aria-label="화면 이동"
-        actionLabel="화면 이동"
+        aria-label={messages.popChrome.screenNav}
+        actionLabel={messages.popChrome.screenNav}
         title={reason ?? undefined}
         disabled={reason !== null || access.state === 'loading'}
         value={null}

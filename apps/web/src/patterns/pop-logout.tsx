@@ -1,4 +1,5 @@
 import { Button } from '@crefle/web-ui';
+import { messages } from '@omf-mes/i18n';
 import { useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router';
 
@@ -63,7 +64,7 @@ export const PopLogoutButton = () => {
           void navigate(ENTRY_PATH, { replace: true });
         }}
       >
-        사용자 전환
+        {messages.popChrome.userSwitch}
       </Button>
     </div>
   );
