@@ -1,4 +1,4 @@
-import type { ApiError } from '@omf-mes/api-client';
+import type { ApiError, ErrorItem } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 
 import type { RejectedRecord } from '../../patterns/outbox';
@@ -94,20 +94,39 @@ const serverMessageOf = (error: ApiError): string | null => {
  * 서버가 돌려준 응답 코드.
  *
  * 갈래마다 자리가 달라, 한 갈래만 읽으면 나머지가 조용히 빈다 - 계약 오류 봉투는 validation
- * 으로 접히는데 그 갈래를 안 보아 400 중복이 상태 없이 남았다. 응답이 없는 것은 network 뿐이다.
+ * 으로 접히는데 그 갈래를 안 보아 400 중복이 상태 없이 남았다.
+ *
+ * 없을 수 있다. 응답이 아예 없는 network 말고도, 화면이 스스로 지은 검증 오류는 보내지도
+ * 못한 것이라 실을 상태가 없다.
  */
 const statusOf = (error: ApiError): number | null =>
   error.kind === 'network' ? null : (error.status ?? null);
 
-/** 오류 코드도 갈래마다 자리가 다르다. 봉투 쪽은 첫 항목이 아니라 코드를 가진 첫 항목을 본다. */
-const codeOf = (error: ApiError): string | null => {
+const trimmed = (value: string | undefined): string | null => value?.trim() || null;
+
+/**
+ * 봉투에서 이 거절을 대표하는 항목.
+ *
+ * 코드와 걸린 칸을 «같은 항목»에서 뽑아야 한다. 각각 따로 찾으면 항목이 섞여 올 때 서버가
+ * 한 적 없는 짝이 화면에 선다 - 담당자에게 엉뚱한 칸 이름을 전하게 되고, 그것은 빈 칸보다
+ * 나쁘다. 코드를 가진 첫 항목을 대표로 삼고, 하나도 없으면 첫 항목을 쓴다.
+ */
+const culpritOf = (error: ApiError): ErrorItem | null => {
+  if (error.kind !== 'validation' && error.kind !== 'stateLocked') {
+    return null;
+  }
+
+  return error.errors.find((item) => item.code.trim() !== '') ?? error.errors[0] ?? null;
+};
+
+const codeOf = (error: ApiError, culprit: ErrorItem | null): string | null => {
   switch (error.kind) {
     case 'http':
     case 'conflict':
-      return error.code?.trim() || null;
+      return trimmed(error.code);
     case 'validation':
     case 'stateLocked':
-      return error.errors.find((item) => item.code.trim() !== '')?.code ?? null;
+      return trimmed(culprit?.code);
     case 'network':
       return null;
   }
@@ -118,21 +137,14 @@ const codeOf = (error: ApiError): string | null => {
  *
  * 서버는 칸 하나가 걸리면 field 로 짚고, 여러 칸이 함께 묶인 유일 제약이면 field 를 일부러
  * 비우고 uniqueScope 로 범위만 알린다 - 복합 키에서 한 칸을 짚으면 절반은 엉뚱한 칸을 가리킨다.
+ * 비우는 방식이 키를 빼는 것일 수도 빈 문자열일 수도 있어 둘 다 없는 것으로 본다.
  */
-const scopeOf = (error: ApiError): string | null => {
-  if (error.kind !== 'validation' && error.kind !== 'stateLocked') {
+const scopeOf = (culprit: ErrorItem | null): string | null => {
+  if (culprit === null) {
     return null;
   }
 
-  const named = error.errors.find((item) => (item.field ?? '').trim() !== '');
-
-  if (named?.field !== undefined) {
-    return named.field;
-  }
-
-  const grouped = error.errors.find((item) => (item.uniqueScope ?? []).length > 0);
-
-  return grouped?.uniqueScope?.join(', ') ?? null;
+  return trimmed(culprit.field) ?? (culprit.uniqueScope?.join(', ').trim() || null);
 };
 
 export const detailsOf = (record: RejectedRecord): DetailRow[] => {
@@ -143,8 +155,9 @@ export const detailsOf = (record: RejectedRecord): DetailRow[] => {
    */
   const answered = statusOf(error);
   const status = answered === null || answered === NO_LEADER_STATUS ? d.none : String(answered);
-  const code = codeOf(error) ?? d.none;
-  const scope = scopeOf(error);
+  const culprit = culpritOf(error);
+  const code = codeOf(error, culprit) ?? d.none;
+  const scope = scopeOf(culprit);
   /*
    * 서버가 준 말만 낸다. 갈래별 안내는 우리가 지은 말이라, 이 이름표를 달고 나가면 작업자가
    * 서버가 그렇게 말했다고 담당자에게 전한다. 그 안내는 카드 본문에 이미 있다.
