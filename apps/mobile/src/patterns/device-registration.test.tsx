@@ -8,6 +8,7 @@ import { currentPlantId, forgetPlant, rememberPlant } from './plant';
 const keystore = vi.hoisted(() => ({
   token: null as string | null,
   readFails: false,
+  clearFails: false,
 }));
 
 vi.mock('./device-token', () => ({
@@ -20,6 +21,10 @@ vi.mock('./device-token', () => ({
     return Promise.resolve();
   },
   clearDeviceToken: () => {
+    if (keystore.clearFails) {
+      return Promise.reject(new Error('잠금 저장소 오류'));
+    }
+
     keystore.token = null;
     return Promise.resolve();
   },
@@ -33,6 +38,9 @@ vi.mock('./device-token', () => ({
  */
 const store = vi.hoisted(() => new Map<string, string>());
 
+/** 공장을 잊는 걸음만 걸리는 상황을 만든다. */
+const removes = vi.hoisted(() => ({ fails: false }));
+
 vi.mock('./local-store', () => ({
   readLocal: (key: string) => Promise.resolve(store.get(key) ?? null),
   writeLocal: (key: string, value: string) => {
@@ -40,6 +48,10 @@ vi.mock('./local-store', () => ({
     return Promise.resolve();
   },
   removeLocal: (key: string) => {
+    if (removes.fails) {
+      return Promise.reject(new Error('보관소가 거절했습니다'));
+    }
+
     store.delete(key);
     return Promise.resolve();
   },
@@ -48,6 +60,8 @@ vi.mock('./local-store', () => ({
 afterEach(async () => {
   keystore.token = null;
   keystore.readFails = false;
+  keystore.clearFails = false;
+  removes.fails = false;
   store.clear();
   await forgetPlant();
 });
@@ -185,6 +199,51 @@ describe('단말 등록 상태', () => {
     });
 
     expect(currentPlantId()).toBeNull();
+  });
+
+  /*
+   * 토큰이 사라진 뒤로는 등록된 것이 아니다. 공장을 못 지웠다고 등록된 채로 두면 셸이 앱을
+   * 그대로 세우고 모든 요청이 401 로 되돌아온다.
+   */
+  it('공장을 잊지 못해도 등록된 채로 두지 않는다', async () => {
+    keystore.token = 'tok-2';
+    await rememberPlant(7);
+    const { result } = mount();
+    await waitFor(() => {
+      expect(result.current.status).toBe('registered');
+    });
+
+    removes.fails = true;
+    await act(async () => {
+      await result.current.unregister();
+    });
+
+    expect(result.current.status).toBe('unregistered');
+  });
+
+  /*
+   * 되돌리기가 걸려도 원래 오류를 그대로 올린다. 여기서 보관소 오류로 바뀌면 화면이 잠깐
+   * 끊긴 것을 거절로 읽어, 다시 걸면 되는 작업자에게 새 QR 을 받아 오라고 말한다.
+   *
+   * 되돌리기는 걸음이 둘이라 한쪽만 재면 다른 쪽이 무방비로 남는다.
+   */
+  it.each([
+    ['토큰을 못 지워도', () => (keystore.clearFails = true)],
+    ['공장을 못 잊어도', () => (removes.fails = true)],
+  ])('되돌리기에서 %s 원래 오류를 가리지 않는다', async (_label, breakStep) => {
+    const { result } = mount();
+    await waitFor(() => {
+      expect(result.current.status).toBe('unregistered');
+    });
+
+    const original = new Error('서버에 닿지 못했습니다');
+    breakStep();
+
+    await act(async () => {
+      await expect(result.current.register('tok-4', () => Promise.reject(original))).rejects.toBe(
+        original,
+      );
+    });
   });
 
   it('서버가 받지 않으면 공장도 남기지 않는다', async () => {

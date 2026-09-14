@@ -36,19 +36,19 @@ export const inboundReceipt = {
     back: '스캔으로 되돌리기',
   },
   po: {
-    legend: 'ERP W/O 선택',
-    selectLabel: 'ERP W/O 번호',
-    loading: '미마감 ERP W/O를 불러오는 중입니다',
-    loadFailed: 'ERP W/O를 확인할 수 없습니다. 연결을 확인하세요.',
-    none: '미마감 ERP W/O가 없습니다',
+    legend: '자재 P/O 선택',
+    selectLabel: '자재 P/O 번호',
+    loading: '미마감 자재 P/O를 불러오는 중입니다',
+    loadFailed: '자재 P/O를 확인할 수 없습니다. 연결을 확인하세요.',
+    none: '미마감 자재 P/O가 없습니다',
     /** 번호만으로는 어느 발주 물품인지 확정되지 않는다. 담당자가 고른다. */
-    pickNote: '스캔한 번호만으로는 ERP W/O가 정해지지 않습니다. 담당자가 고릅니다.',
+    pickNote: '스캔한 번호만으로는 자재 P/O가 정해지지 않습니다. 담당자가 고릅니다.',
     /** 번호에서 품목을 찾아 좁혔다. 좁힌 것이 틀릴 수 있어 넓힐 길을 함께 둔다. */
-    narrowedNote: '스캔한 자재의 품목이 있는 ERP W/O만 보입니다.',
-    showAll: '전체 ERP W/O 보기',
-    linesLoading: 'ERP W/O 라인을 불러오는 중입니다',
-    linesLoadFailed: 'ERP W/O 라인을 확인할 수 없습니다',
-    linesNone: '이 ERP W/O에 라인이 없습니다',
+    narrowedNote: '스캔한 자재의 품목이 있는 자재 P/O만 보입니다.',
+    showAll: '전체 자재 P/O 보기',
+    linesLoading: '자재 P/O 라인을 불러오는 중입니다',
+    linesLoadFailed: '자재 P/O 라인을 확인할 수 없습니다',
+    linesNone: '이 자재 P/O에 라인이 없습니다',
     lineLabel: (item: string, ordered: string, uom: string) => `${item} · 발주 ${ordered} ${uom}`,
     /*
      * 품목과 단위는 다른 조회에서 온다. 못 찾았을 때 빈 글자를 끼우면 이름도 단위도 없이
@@ -62,14 +62,14 @@ export const inboundReceipt = {
     lineClosed: '다 받았습니다',
     tolerance: (over: string, under: string) => `허용 +${over} / -${under}`,
     linePicked: '선택됨',
-    clear: 'ERP W/O 선택 지우기',
+    clear: '자재 P/O 선택 지우기',
   },
   exception: {
     /** 발주가 없으면 공급사도 품목도 단위도 승계할 곳이 없어 담당자가 고른다. */
-    legend: 'ERP W/O 없이 도착',
-    open: 'ERP W/O 없이 등록',
-    openNote: 'ERP W/O가 없으면 공급사와 품목과 단위를 직접 고릅니다.',
-    close: 'ERP W/O 고르기로 되돌리기',
+    legend: '자재 P/O 없이 도착',
+    open: '자재 P/O 없이 등록',
+    openNote: '자재 P/O가 없으면 공급사와 품목과 단위를 직접 고릅니다.',
+    close: '자재 P/O 고르기로 되돌리기',
     supplierLabel: '공급사',
     supplierPlaceholder: '공급사를 고르세요',
     supplierLoading: '공급사를 불러오는 중입니다',
@@ -89,7 +89,7 @@ export const inboundReceipt = {
     typeLoadFailed: '예외입하 유형을 불러오지 못했습니다',
     reasonLabel: '예외 사유',
     /** 예정 수량이 없으므로 견줄 것이 없다. 판정하지 않는다는 사실을 말한다. */
-    noVerdict: 'ERP W/O가 없어 예정 수량과 비교하지 않습니다',
+    noVerdict: '자재 P/O가 없어 예정 수량과 비교하지 않습니다',
     /** 공장은 단말 토큰이 싣고 온다. 없으면 지어내지 않고 막는다. */
     noPlant: '이 기기의 공장을 확인할 수 없어 등록할 수 없습니다',
   },
@@ -159,7 +159,7 @@ export const inboundReceipt = {
     underAsk: '더 들어올 물량이 있습니까?',
     /** 임시 입고가 아니다. 평범한 입하 등록이고 발주는 열린 채 남는다. */
     underContinue: '계속 등록',
-    underContinueNote: '분할 납품이면 그대로 등록합니다. ERP W/O는 열린 채 남습니다.',
+    underContinueNote: '분할 납품이면 그대로 등록합니다. 자재 P/O는 열린 채 남습니다.',
     underVariance: '보류로 받고 오류 등록',
     /** 받아 두는 것이 먼저다. 등록하지 않고 떠나면 오류를 붙일 입하 라인이 없다. */
     underVarianceNote: '먼저 보류로 받아 둔 뒤에 오류 내용을 적습니다.',

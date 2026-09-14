@@ -1,4 +1,4 @@
-import type { components } from '@omf-mes/api-client';
+import type { components, TerminalRegistrationStatusCode } from '@omf-mes/api-client';
 
 import { ALL_CLOSED, FLAG_KEYS, type FlagKey } from './flags';
 
@@ -35,6 +35,9 @@ export interface TerminalView {
   plantId: number;
   terminalTypeCode: string;
   statusCode: string;
+  /** P-7: 발급/가동 상태와 별도인 기기의 서버 등록 확인 상태. */
+  registrationStatusCode: TerminalRegistrationStatusCode | null;
+  registrationConfirmedAt: string | null;
   isActive: boolean;
   equipmentId: number | null;
   /** 설비 코드·이름은 짝이다 — 헤더가 「코드 · 이름」으로 그리므로 함께 내려온다. */
@@ -75,12 +78,23 @@ const equipmentLabelOf = (source: Terminal): string | null => {
   return `${code} · ${name}`;
 };
 
-export const toTerminalView = (source: Terminal): TerminalView => ({
+type TerminalWithRegistration = Terminal & Partial<{
+  registrationStatusCode: TerminalRegistrationStatusCode;
+  registrationConfirmedAt: string | null;
+}>;
+
+export const toTerminalView = (source: TerminalWithRegistration): TerminalView => ({
   terminalId: source.terminalId,
   terminalCode: source.terminalCode,
   plantId: source.plantId,
   terminalTypeCode: source.terminalTypeCode,
   statusCode: source.statusCode,
+  registrationStatusCode:
+    source.registrationStatusCode === 'UNREGISTERED' ||
+    source.registrationStatusCode === 'REGISTERED'
+      ? source.registrationStatusCode
+      : null,
+  registrationConfirmedAt: nullable(source.registrationConfirmedAt),
   isActive: source.isActive,
   equipmentId: nullable(source.equipmentId),
   equipmentLabel: equipmentLabelOf(source),

@@ -29,6 +29,7 @@ import {
   UNDER,
   canSubmit,
   isExpiryBeforeManufactured,
+  openLinesFirst,
   packageProblem,
   qtyProblem,
   queuedQtyOf,
@@ -204,7 +205,7 @@ export const InboundReceiptScreen = () => {
   useAdvanceTo(draft.purchaseOrderLine !== null || draft.unordered, qtySection);
 
   /*
-   * 스캔한 번호가 품목을 가리키면 그 품목이 있는 미마감 ERP W/O 만 후보로 낸다. 못 찾거나
+   * 스캔한 번호가 품목을 가리키면 그 품목이 있는 미마감 자재 P/O 만 후보로 낸다. 못 찾거나
    * 후보가 비면 좁히지 않는다 - 양식이 다른 번호도 들어오고, 그때 0건으로 만들면 담당자가
    * 고를 것이 사라진다(화면 스펙 §5-1 · §6).
    */
@@ -648,7 +649,7 @@ export const InboundReceiptScreen = () => {
                   <AlertBanner variant="warning" title={t.po.linesNone} />
                 ) : null}
                 <ul className="receipt__lines">
-                  {(lines.data ?? []).map((line: PurchaseOrderLine) => {
+                  {openLinesFirst(lines.data ?? [], queuedFor).map((line: PurchaseOrderLine) => {
                     /* 표시와 표식이 갈리지 않게 한 번만 센다. */
                     const lineRemaining = remainingQtyOf(line, queuedFor(line.purchaseOrderLineId));
 

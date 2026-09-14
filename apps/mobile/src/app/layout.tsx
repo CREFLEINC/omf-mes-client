@@ -4,7 +4,7 @@ import { useEffect, type ReactNode } from 'react';
 import { Link } from 'react-router';
 
 import { listenBackButton } from '../patterns/back-step';
-import { useOnlineStatus } from '../patterns/online-status';
+import { useServerReachable } from '../patterns/online-status';
 import { ScreenTitleProvider, useCurrentScreenTitle } from '../patterns/screen-title';
 import { useOutbox } from '../patterns/outbox';
 import { useWorkerSession } from '../patterns/worker-session';
@@ -17,7 +17,7 @@ const t = messages.common.connection;
 const shell = messages.common.shell;
 
 const ShellTopbar = () => {
-  const online = useOnlineStatus();
+  const online = useServerReachable();
   const title = useCurrentScreenTitle();
   // 귀속 정보는 상시 표시다 - 누구로 기록되는지 안 보이면 남의 사번으로 쌓인다(D-5).
   const { worker } = useWorkerSession();

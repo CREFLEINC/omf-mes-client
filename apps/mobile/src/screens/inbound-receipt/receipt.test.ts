@@ -6,6 +6,7 @@ import {
   UNDER,
   businessDateOf,
   canSubmit,
+  openLinesFirst,
   isExpiryBeforeManufactured,
   packageProblem,
   qtyProblem,
@@ -356,6 +357,49 @@ describe('등록 본문', () => {
     expect(body.exceptionTypeCode).toBe('URGENT_RECEIPT');
     expect(body.exceptionReason).toBe('발주서 도착 전 긴급 입하');
     expect(body).not.toHaveProperty('approvalRequestId');
+  });
+});
+
+describe('라인 차례', () => {
+  const line = (id: number, ordered: number, received: number) =>
+    poLine({ purchaseOrderLineId: id, orderedQty: ordered, receivedQty: received });
+
+  /*
+   * 후보 목록은 발주 단위라 그 품목의 라인이 다 찬 발주도 선다. 다 받은 줄이 맨 위에 서면
+   * 작업자가 그것부터 고르고 초과 판정을 받는다 - 실기기에서 그 차례로 나왔다.
+   */
+  it('남은 것이 있는 줄을 위로 올린다', () => {
+    const lines = [line(1, 100, 100), line(2, 50, 0), line(3, 20, 20), line(4, 30, 10)];
+
+    expect(openLinesFirst(lines, () => 0).map((each) => each.purchaseOrderLineId)).toEqual([
+      2, 4, 1, 3,
+    ]);
+  });
+
+  /* 같은 무리 안에서는 서버가 준 차례를 지킨다. 흔들면 고르던 자리가 매번 바뀐다. */
+  it('같은 무리 안에서는 받은 차례를 지킨다', () => {
+    const lines = [line(1, 50, 0), line(2, 60, 0), line(3, 70, 0)];
+
+    expect(openLinesFirst(lines, () => 0).map((each) => each.purchaseOrderLineId)).toEqual([
+      1, 2, 3,
+    ]);
+  });
+
+  /* 담아 둔 것까지 빼고 센다. 카드가 보이는 수와 차례를 가르는 수가 다르면 안 된다. */
+  it('담아 둔 수량으로 다 찬 줄은 아래로 내린다', () => {
+    const lines = [line(1, 100, 0), line(2, 50, 0)];
+    const queued = (id: number) => (id === 1 ? 100 : 0);
+
+    expect(openLinesFirst(lines, queued).map((each) => each.purchaseOrderLineId)).toEqual([2, 1]);
+  });
+
+  /* 원본을 흔들지 않는다. 조회가 준 배열을 제자리에서 뒤집으면 캐시가 함께 바뀐다. */
+  it('받은 배열을 제자리에서 바꾸지 않는다', () => {
+    const lines = [line(1, 100, 100), line(2, 50, 0)];
+
+    openLinesFirst(lines, () => 0);
+
+    expect(lines.map((each) => each.purchaseOrderLineId)).toEqual([1, 2]);
   });
 });
 
