@@ -22,8 +22,7 @@ if (!container) {
  * 싣고 나서 정하면 이미 붙잡은 자리는 바뀌지 않는다. 그래서 화면을 이 아래에서 동적으로
  * 싣는다 - 정적 import 는 이 줄보다 먼저 돈다(모바일 진입점이 같은 이유로 같은 모양이다).
  *
- * ⛔ POP 진입점(`pop-main.tsx`)은 이것을 부르지 않는다. 부르지 않으면 기본값인 한국어라
- * 단말 화면은 달라지는 것이 없다.
+ * POP 진입점은 저장된 선택 없이 운영체제 언어만 따른다(`pop-locale.ts`).
  */
 setLocale(startingLocale());
 document.documentElement.lang = activeLocale();

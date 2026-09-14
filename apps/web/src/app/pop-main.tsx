@@ -33,6 +33,8 @@ import './app.css';
  * 근거는 그 파일 머리말에 있다.
  */
 import './pop.css';
+/* ⛔ 화면을 싣는 import 보다 위에 둔다 — 아래 import 들이 문구를 붙잡기 전에 언어를 정한다. */
+import './pop-locale';
 
 import { StrictMode, useEffect, useRef, type ReactNode } from 'react';
 import { createRoot } from 'react-dom/client';
