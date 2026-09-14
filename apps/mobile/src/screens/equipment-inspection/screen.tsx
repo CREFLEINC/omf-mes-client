@@ -25,6 +25,7 @@ import { useOutbox } from '../../patterns/outbox';
 import { useScanField } from '../../patterns/use-scan-field';
 import { useScreenTitle } from '../../patterns/screen-title';
 import { useWorkerSession } from '../../patterns/worker-session';
+import { FailureBanner } from '../../patterns/failure-banner';
 import { useLoadFailure } from '../../patterns/load-failure';
 import {
   DAILY,
@@ -407,7 +408,7 @@ export const EquipmentInspectionScreen = () => {
           {items.isPending ? <p role="status">{t.items.loading}</p> : null}
           {/* 확인하지 못한 것을 등록되지 않은 것으로 말하지 않는다. */}
           {items.isError ? (
-            <AlertBanner variant="error" title={failureText(items.error, t.items.loadFailed)} />
+            <FailureBanner variant="error" title={failureText(items.error, t.items.loadFailed)} />
           ) : null}
           {items.data === undefined ? null : (
             <>

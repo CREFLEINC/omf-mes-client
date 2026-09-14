@@ -16,6 +16,7 @@ import { useScreenTitle } from '../../patterns/screen-title';
 import { useWorkerSession } from '../../patterns/worker-session';
 import { useWorkerId } from '../../patterns/workers';
 import { useLocationByCode, useLocations, type Location } from '../../patterns/locations';
+import { FailureBanner } from '../../patterns/failure-banner';
 import { useLoadFailure } from '../../patterns/load-failure';
 import {
   putawayKeys,
@@ -276,20 +277,28 @@ export const PutawayScreen = () => {
           {worker === null ? <p className="putaway__note">{t.noWorker}</p> : null}
           {workerId.isPending && worker !== null ? <p role="status">{t.worker.loading}</p> : null}
           {workerId.isError ? (
-            <AlertBanner variant="error" title={failureText(workerId.error, t.worker.loadFailed)} />
+            <FailureBanner
+              variant="error"
+              title={failureText(workerId.error, t.worker.loadFailed)}
+            />
           ) : null}
           {/* 비우고 물으면 남의 지시까지 온다. 찾지 못하면 목록을 열지 않는다. */}
           {workerId.isSuccess && workerId.data === null ? (
             <AlertBanner variant="warning" title={t.worker.notFound(worker?.workerNo ?? '')} />
           ) : null}
 
-          {tasks.isPending && workerId.data !== null ? (
+          {/* 지시 조회는 사번이 풀려야 나간다. 사번 조회가 실패했으면 불러오고 있지 않다(#1198). */}
+          {tasks.isPending && workerId.isSuccess && workerId.data !== null ? (
             <p role="status">{t.tasks.loading}</p>
           ) : null}
           {tasks.isError ? (
-            <AlertBanner variant="error" title={failureText(tasks.error, t.tasks.loadFailed)} />
+            <FailureBanner variant="error" title={failureText(tasks.error, t.tasks.loadFailed)} />
           ) : null}
-          {tasks.data !== undefined && tasks.data.length === 0 ? (
+          {/*
+            앞서 받은 0건이 남아 있어도 지금 조회가 실패했으면 없다고 말하지 않는다(#1198 실기 -
+            등록 만료 옆에 「받은 적치 지시가 없습니다」가 떴다). 빈 목록 안내는 성공일 때만.
+          */}
+          {tasks.isSuccess && tasks.data.length === 0 ? (
             <p className="putaway__note">{t.tasks.none}</p>
           ) : null}
           {tasks.data !== undefined && tasks.data.length > 0 ? (
@@ -366,12 +375,12 @@ export const PutawayScreen = () => {
             <h2>{t.location.legend}</h2>
             {locations.isPending ? <p role="status">{t.location.loading}</p> : null}
             {locations.isError ? (
-              <AlertBanner
+              <FailureBanner
                 variant="error"
                 title={failureText(locations.error, t.location.loadFailed)}
               />
             ) : null}
-            {locations.data !== undefined && locations.data.length === 0 ? (
+            {locations.isSuccess && locations.data.length === 0 ? (
               <AlertBanner variant="warning" title={t.location.none} />
             ) : null}
 
@@ -394,7 +403,7 @@ export const PutawayScreen = () => {
                   }
                 />
                 {byCode.isError ? (
-                  <AlertBanner
+                  <FailureBanner
                     variant="error"
                     title={failureText(byCode.error, t.location.loadFailed)}
                   />
@@ -512,7 +521,7 @@ export const PutawayScreen = () => {
               <h2>{t.lot.legend}</h2>
               {lotNo.isPending ? <p role="status">{t.lot.loading}</p> : null}
               {lotNo.isError ? (
-                <AlertBanner variant="error" title={failureText(lotNo.error, t.lot.loadFailed)} />
+                <FailureBanner variant="error" title={failureText(lotNo.error, t.lot.loadFailed)} />
               ) : null}
               <TextField
                 ref={lotField.ref}

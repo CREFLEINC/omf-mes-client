@@ -1,9 +1,10 @@
 import { isUnauthenticated } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useQuery, useQueryClient, type Query, type QueryClient } from '@tanstack/react-query';
-import { useCallback, useEffect, useSyncExternalStore } from 'react';
+import { useCallback, useEffect, useState, useSyncExternalStore } from 'react';
 
 import { useApiClient } from './api-context';
+import { useOnlineStatus } from './online-status';
 import { currentPlantId } from './plant';
 import { ApiRequestError, runRequest, toApiError } from './request';
 
@@ -11,6 +12,15 @@ import { ApiRequestError, runRequest, toApiError } from './request';
 export type DeviceTokenState = 'alive' | 'dead' | 'unknown';
 
 export const deviceTokenKey = ['device-token-state'] as const;
+
+/**
+ * 거절의 까닭을 가리는 토큰 확인을 기다리는 한도.
+ *
+ * 확인이 답하기 전에 문구를 달면 「받아들여지지 않았습니다」가 조회마다 떴다가 만료 한 줄로
+ * 바뀐다(#1198 실기). 그래서 기다리되, 확인까지 막혀 답이 오지 않으면 끝내 아무 말도 없게
+ * 되므로 이만큼 지나면 단정하지 않는 문구로 넘어간다.
+ */
+export const TOKEN_CHECK_PATIENCE_MS = 3_000;
 
 /**
  * 거절이 토큰 탓인지 조회 탓인지 가른다.
@@ -40,6 +50,63 @@ const probeDeviceToken = async (
   }
 };
 
+/**
+ * 화면이 서는 자리에서 단말 토큰이 서버에서 살아 있는지 묻는다.
+ *
+ * 사번 확인은 받아 둔 명단만 보고 통과시킨다. 관리웹에서 QR 을 다시 발급해 토큰이 죽어도
+ * 명단은 그대로라, 작업자는 들어간 뒤에야 모든 조회가 막힌다(#1198). 들어가기 전에 가른다.
+ *
+ * 망이 끊겼으면 묻지 않는다 - 사번 확인은 오프라인에서도 되어야 한다(M-CO-01 §5-7).
+ * 설 때마다 새로 묻고, 이 화면이 선 뒤에 받은 답만 쓴다. 묻는 동안은 모른다고 둔다.
+ *
+ * ⛔ 앞서 보낸 확인을 이어받지 않고 취소한다. 새 QR 로 다시 등록하기 전에 앞 토큰으로 보낸
+ * 확인이 아직 답을 못 받았으면, 그 401 이 멀쩡한 새 단말을 막는다(#1198 독립 검증 재현).
+ * 캐시에 남은 앞 등록의 「죽었다」도 같은 이유로 쓰지 않는다.
+ *
+ * @returns `recheck` - 같은 화면에 머문 채 다시 물을 때 쓴다(교대로 사번을 바꿀 때).
+ */
+export const useDeviceTokenState = (): { state: DeviceTokenState; recheck: () => void } => {
+  const queryClient = useQueryClient();
+  const { client } = useApiClient();
+  const online = useOnlineStatus();
+  const [mountedAt] = useState(() => Date.now());
+
+  const token = useQuery({
+    queryKey: deviceTokenKey,
+    queryFn: () => probeDeviceToken(client),
+    enabled: false,
+  });
+  const { refetch } = token;
+
+  const recheck = useCallback(() => {
+    if (!navigator.onLine) {
+      return;
+    }
+
+    /*
+     * `refetch({ cancelRefetch: true })` 로는 안 된다 - 받아 둔 값이 하나도 없으면 진행 중인
+     * 요청을 취소하지 않고 이어받는다. 먼저 취소하고 새로 묻는다.
+     */
+    void queryClient
+      .cancelQueries({ queryKey: deviceTokenKey })
+      .then(() => refetch())
+      .catch(() => undefined);
+  }, [queryClient, refetch]);
+
+  useEffect(() => {
+    if (online) {
+      recheck();
+    }
+  }, [online, recheck]);
+
+  const answeredHere = token.dataUpdatedAt >= mountedAt;
+
+  return {
+    state: online && !token.isFetching && answeredHere ? (token.data ?? 'unknown') : 'unknown',
+    recheck,
+  };
+};
+
 export interface LoadFailureOptions {
   other?: string;
   caution?: string;
@@ -61,7 +128,11 @@ const isRejectedQuery = (query: Query): boolean =>
  * 401 이 보이면 토큰 확인을 한 번 부른다. 확인은 캐시에 두어 여러 조회가 한꺼번에 거절돼도
  * 한 번만 나간다.
  *
- * @returns `(error, offline, options) => 문구` - `offline` 은 그 자리의 연결 실패 문구다.
+ * ⛔ 토큰이 죽었으면 null 을 준다. 등록 만료는 조회 하나의 실패가 아니라 기기의 상태라 셸이
+ * 화면 위에 한 번만 알린다(`ShellGate`). 조회마다 같은 문장을 달면 한 화면에 여러 번 뜬다(#1198).
+ * 받는 자리는 `FailureBanner` 로 그려 null 이면 배너째 감춘다.
+ *
+ * @returns `(error, offline, options) => 문구 | null` - `offline` 은 그 자리의 연결 실패 문구다.
  *   `other` 를 주면 서버 오류일 때 그 문구를 쓴다(그 자리가 이미 따로 적어 둔 경우).
  *   `caution` 은 연결이 아닌 실패 문구 뒤에 붙인다 - 연결 문구에 섞여 있던 주의를 잃지 않게.
  */
@@ -69,7 +140,7 @@ export const useLoadFailure = (): ((
   error: unknown,
   offline: string,
   options?: LoadFailureOptions,
-) => string) => {
+) => string | null) => {
   const queryClient = useQueryClient();
   const { client } = useApiClient();
 
@@ -105,11 +176,46 @@ export const useLoadFailure = (): ((
   }, [client, queryClient]);
 
   const tokenState: DeviceTokenState = token.data ?? 'unknown';
+  /* 판정이 났는가. 아직 물은 적이 없거나 묻는 중이면 아니다. */
+  const checking = token.isFetching;
+  const settled = token.data !== undefined && !checking;
+  const [patienceOver, setPatienceOver] = useState(false);
+
+  /*
+   * 기다림은 확인을 보낸 때부터 센다. 화면이 선 때부터 세면 연 지 오래 뒤에 거절된 조회는
+   * 기다리지 않고 단정하지 않는 문구를 먼저 단다(#1198 리뷰) - 확인이 나갈 때마다 새로 센다.
+   */
+  useEffect(() => {
+    setPatienceOver(false);
+
+    if (settled) {
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      setPatienceOver(true);
+    }, TOKEN_CHECK_PATIENCE_MS);
+
+    return () => {
+      clearTimeout(timer);
+    };
+  }, [settled, checking]);
 
   return useCallback(
-    (error: unknown, offline: string, options: LoadFailureOptions = {}): string => {
+    (error: unknown, offline: string, options: LoadFailureOptions = {}): string | null => {
       if (error instanceof ApiRequestError && error.apiError.kind === 'network') {
         return offline;
+      }
+
+      const rejected = error instanceof ApiRequestError && isUnauthenticated(error.apiError);
+
+      /* 까닭을 가리는 중이다. 먼저 단정하는 문구를 달았다가 바꾸지 않는다. */
+      if (rejected && !settled && !patienceOver) {
+        return null;
+      }
+
+      if (rejected && tokenState === 'dead') {
+        return null;
       }
 
       /*
@@ -117,18 +223,15 @@ export const useLoadFailure = (): ((
        * 문제가 아니다 - 연결을 보라고 하면 사람이 할 수 없는 조치를 하게 된다(`toApiError` 와
        * 같은 판단).
        */
-      const told =
-        error instanceof ApiRequestError && isUnauthenticated(error.apiError)
-          ? tokenState === 'dead'
-            ? messages.httpError.deviceExpired
-            : tokenState === 'alive'
-              ? messages.httpError.deviceNotAllowed
-              : messages.httpError.deviceRejected
-          : (options.other ?? messages.httpError.loadServer);
+      const told = rejected
+        ? tokenState === 'alive'
+          ? messages.httpError.deviceNotAllowed
+          : messages.httpError.deviceRejected
+        : (options.other ?? messages.httpError.loadServer);
 
       return options.caution === undefined ? told : `${told} ${options.caution}`;
     },
-    [tokenState],
+    [tokenState, settled, patienceOver],
   );
 };
 

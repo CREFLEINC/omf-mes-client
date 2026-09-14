@@ -121,16 +121,23 @@ interface Options {
   holdReasons?: unknown[];
   /** 표시명 조회가 실패한다. 없는 것과 못 받은 것을 가르는 자리다. */
   holdReasonsFail?: boolean;
+  /** 사번 조회가 서버에 닿지 못한다. */
+  workersOffline?: boolean;
 }
 
 const rest = (options: Options, serverPicked: Map<number, number>): StubRoute[] => [
   {
     match: (req) => new URL(req.url).pathname === '/mdm/workers',
-    respond: () =>
-      jsonResponse({
+    respond: () => {
+      if (options.workersOffline === true) {
+        throw new TypeError('Failed to fetch');
+      }
+
+      return jsonResponse({
         items: [{ workerId: 501, workerNo: WORKER_NO, workerName: '홍길동' }],
         page,
-      }),
+      });
+    },
   },
   {
     match: (req) => new URL(req.url).pathname === '/logistics/picking-orders',
@@ -430,6 +437,14 @@ describe('자재 출고·피킹 화면', () => {
     expect(
       await screen.findByText('도착 위치를 확인할 수 없습니다. 연결을 확인하세요.'),
     ).toBeTruthy();
+  });
+
+  /* 지시 조회는 사번이 풀려야 나간다. 실패 옆에 불러오는 중이 남으면 기다리게 된다(#1198). */
+  it('사번 조회가 실패하면 지시를 불러오는 중이라고 하지 않는다', async () => {
+    mount({ workersOffline: true });
+
+    expect(await screen.findByText('사번을 확인할 수 없습니다. 연결을 확인하세요.')).toBeTruthy();
+    expect(screen.queryByText('피킹 지시를 불러오는 중입니다')).toBeNull();
   });
 
   it('집으면 라인 경로로 사번과 멱등키를 실어 보낸다', async () => {

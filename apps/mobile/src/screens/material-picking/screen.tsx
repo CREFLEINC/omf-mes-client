@@ -26,6 +26,7 @@ import { useScanField } from '../../patterns/use-scan-field';
 import { useScreenTitle } from '../../patterns/screen-title';
 import { useWorkerId } from '../../patterns/workers';
 import { useWorkerSession } from '../../patterns/worker-session';
+import { FailureBanner } from '../../patterns/failure-banner';
 import { useLoadFailure } from '../../patterns/load-failure';
 import { PickingOrderList } from './order-list';
 import {
@@ -539,7 +540,7 @@ export const MaterialPickingScreen = () => {
         </h2>
         {detail.isPending ? <p role="status">{t.lines.loading}</p> : null}
         {detail.isError ? (
-          <AlertBanner variant="error" title={failureText(detail.error, t.lines.loadFailed)} />
+          <FailureBanner variant="error" title={failureText(detail.error, t.lines.loadFailed)} />
         ) : null}
         {detail.data !== undefined && lines.length === 0 ? (
           <AlertBanner variant="warning" title={t.lines.none} />
@@ -705,7 +706,7 @@ export const MaterialPickingScreen = () => {
       <section className="picking-out__section">
         <p className="picking-out__note">{t.partialNote}</p>
         {issueTypes.isError ? <AlertBanner variant="error" title={t.issueTypeLoadFailed} /> : null}
-        {issueTypes.data !== undefined && issueTypes.data.length === 0 ? (
+        {issueTypes.isSuccess && issueTypes.data.length === 0 ? (
           <AlertBanner variant="warning" title={t.noIssueType} />
         ) : null}
         {/* 기본값이 잡히면 고를 일이 없다. 고객이 그 값을 지웠을 때만 고르게 연다. */}
