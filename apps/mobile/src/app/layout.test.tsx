@@ -131,6 +131,33 @@ describe('AppLayout', () => {
     expect(screen.getByRole('banner')).toHaveTextContent('작업자 2 · 900029');
   });
 
+  /* 사번 확인 화면은 본문의 확인 박스가 사번을 보여 주므로 앱바에 싣지 않는다. */
+  it('앱바를 한 줄로 두는 화면에서는 사번을 싣지 않고, 떠나면 다시 싣는다', async () => {
+    const user = userEvent.setup();
+    const CompactScreen = () => {
+      useScreenTitle('사번 확인', { compact: true });
+      return <SignedInScreen />;
+    };
+    const { rerender } = render(
+      <Shell>
+        <CompactScreen />
+      </Shell>,
+    );
+
+    await user.click(screen.getByRole('button', { name: '사번 세우기' }));
+
+    expect(screen.getByRole('banner')).toHaveTextContent('사번 확인');
+    expect(screen.getByRole('banner')).not.toHaveTextContent('900029');
+
+    rerender(
+      <Shell>
+        <Screen title="자재 위치 확인" />
+      </Shell>,
+    );
+
+    expect(screen.getByRole('banner')).toHaveTextContent('작업자 2 · 900029');
+  });
+
   /* 담긴 순간 성공으로 보이므로 닿지 않은 건수를 보이지 않으면 알 방법이 사라진다. */
   it('보내지 못한 건수를 상단 바에 보인다', async () => {
     const user = userEvent.setup();

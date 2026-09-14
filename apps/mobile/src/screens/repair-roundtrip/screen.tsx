@@ -25,6 +25,7 @@ import { ScanReplaceDialog } from '../../patterns/scan-replace-dialog';
 import { useScanField } from '../../patterns/use-scan-field';
 import { useScreenTitle } from '../../patterns/screen-title';
 import { useWorkerSession } from '../../patterns/worker-session';
+import { FailureBanner } from '../../patterns/failure-banner';
 import { useLoadFailure } from '../../patterns/load-failure';
 import {
   useDefectRecords,
@@ -268,7 +269,7 @@ export const RepairRoundtripScreen = () => {
     <>
       {lot.isPending && scanned !== null ? <p role="status">{t.scan.loading}</p> : null}
       {lot.isError ? (
-        <AlertBanner variant="error" title={failureText(lot.error, t.scan.loadFailed)} />
+        <FailureBanner variant="error" title={failureText(lot.error, t.scan.loadFailed)} />
       ) : null}
       {lot.isSuccess && lot.data === null ? (
         <AlertBanner variant="warning" title={t.scan.notFound(scanned ?? '')} />
@@ -295,7 +296,7 @@ export const RepairRoundtripScreen = () => {
       {defects.isPending && lotId !== null ? <p role="status">{t.defect.loading}</p> : null}
       {/* 확인하지 못한 것을 불량이 아닌 것으로 말하지 않는다. */}
       {defects.isError ? (
-        <AlertBanner variant="error" title={failureText(defects.error, t.defect.loadFailed)} />
+        <FailureBanner variant="error" title={failureText(defects.error, t.defect.loadFailed)} />
       ) : null}
       {defects.isSuccess && defects.data.length === 0 ? (
         <>
@@ -548,7 +549,9 @@ export const RepairRoundtripScreen = () => {
         <h2>{t.open.legend(allOpen.data?.length ?? 0)}</h2>
         {allOpen.isError ? <AlertBanner variant="error" title={t.open.loadFailed} /> : null}
         {allOpen.data === undefined ? null : allOpen.data.length === 0 ? (
-          <p className="repair__note">{t.open.none}</p>
+          allOpen.isSuccess ? (
+            <p className="repair__note">{t.open.none}</p>
+          ) : null
         ) : (
           <div className="repair__table">
             <Table

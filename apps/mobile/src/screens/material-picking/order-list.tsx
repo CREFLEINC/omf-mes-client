@@ -3,6 +3,7 @@ import { messages } from '@omf-mes/i18n';
 import type { UseQueryResult } from '@tanstack/react-query';
 
 import { displayNameOf, type CodeValue } from '../../patterns/code-values';
+import { FailureBanner } from '../../patterns/failure-banner';
 import { useLoadFailure } from '../../patterns/load-failure';
 import type { PickingOrder } from './picking';
 
@@ -38,16 +39,19 @@ export const PickingOrderList = ({
       <h2>{t.orders.legend}</h2>
       {workerId.isPending && workerNo !== null ? <p role="status">{t.worker.loading}</p> : null}
       {workerId.isError ? (
-        <AlertBanner variant="error" title={failureText(workerId.error, t.worker.loadFailed)} />
+        <FailureBanner variant="error" title={failureText(workerId.error, t.worker.loadFailed)} />
       ) : null}
       {workerNo !== null && workerId.data === null ? (
         <AlertBanner variant="warning" title={t.worker.notFound(workerNo)} />
       ) : null}
-      {orders.isPending && workerId.data !== null ? <p role="status">{t.orders.loading}</p> : null}
-      {orders.isError ? (
-        <AlertBanner variant="error" title={failureText(orders.error, t.orders.loadFailed)} />
+      {/* 지시 조회는 사번이 풀려야 나간다. 사번 조회가 실패했으면 불러오고 있지 않다(#1198). */}
+      {orders.isPending && workerId.isSuccess && workerId.data !== null ? (
+        <p role="status">{t.orders.loading}</p>
       ) : null}
-      {orders.data !== undefined && orders.data.length === 0 ? (
+      {orders.isError ? (
+        <FailureBanner variant="error" title={failureText(orders.error, t.orders.loadFailed)} />
+      ) : null}
+      {orders.isSuccess && orders.data.length === 0 ? (
         <AlertBanner variant="info" title={t.orders.none} />
       ) : null}
       {(orders.data ?? []).map((order) => (

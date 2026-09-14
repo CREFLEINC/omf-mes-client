@@ -14,6 +14,7 @@ import { ScanReplaceDialog } from '../../patterns/scan-replace-dialog';
 import { useScanField } from '../../patterns/use-scan-field';
 import { useScreenTitle } from '../../patterns/screen-title';
 import { useWorkerSession } from '../../patterns/worker-session';
+import { FailureBanner } from '../../patterns/failure-banner';
 import { useLoadFailure } from '../../patterns/load-failure';
 import {
   APPROVAL_REQUEST_STATUS,
@@ -336,7 +337,7 @@ export const IqcSkipRequestScreen = () => {
         {worker === null ? <p>{t.mine.noWorker}</p> : null}
         {worker !== null && mine.isPending ? <p role="status">{t.mine.loading}</p> : null}
         {mine.isError ? (
-          <AlertBanner variant="warning" title={failureText(mine.error, t.mine.loadFailed)} />
+          <FailureBanner variant="warning" title={failureText(mine.error, t.mine.loadFailed)} />
         ) : null}
         {mine.data === undefined || mine.data.length > 0 ? null : <p>{t.mine.empty}</p>}
         {mine.data === undefined ? null : (

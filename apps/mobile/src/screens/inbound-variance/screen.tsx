@@ -21,6 +21,7 @@ import { useItem, useUomCodes } from '../../patterns/masters';
 import { useOutbox } from '../../patterns/outbox';
 import { useScreenTitle } from '../../patterns/screen-title';
 import { useWorkerSession } from '../../patterns/worker-session';
+import { FailureBanner } from '../../patterns/failure-banner';
 import { useLoadFailure } from '../../patterns/load-failure';
 import {
   INBOUND_VARIANCE_REASON,
@@ -202,9 +203,12 @@ export const InboundVarianceScreen = () => {
         {receipts.isPending ? <p role="status">{t.receipt.loading}</p> : null}
         {/* 확인하지 못한 것을 입하가 없는 것으로 말하지 않는다. */}
         {receipts.isError ? (
-          <AlertBanner variant="error" title={failureText(receipts.error, t.receipt.loadFailed)} />
+          <FailureBanner
+            variant="error"
+            title={failureText(receipts.error, t.receipt.loadFailed)}
+          />
         ) : null}
-        {receipts.data !== undefined && receipts.data.length === 0 ? (
+        {receipts.isSuccess && receipts.data.length === 0 ? (
           <p className="variance__note">{t.receipt.none}</p>
         ) : null}
         {receipts.data === undefined ? null : (
@@ -235,7 +239,7 @@ export const InboundVarianceScreen = () => {
             {lines.isError ? (
               <AlertBanner variant="error" title={t.receipt.linesLoadFailed} />
             ) : null}
-            {lines.data !== undefined && lines.data.length === 0 ? (
+            {lines.isSuccess && lines.data.length === 0 ? (
               <AlertBanner variant="warning" title={t.receipt.linesNone} />
             ) : null}
             <ul className="variance__lines">
@@ -298,7 +302,7 @@ export const InboundVarianceScreen = () => {
             <h2>{t.known.legend}</h2>
             {known.isPending ? <p role="status">{t.known.loading}</p> : null}
             {known.isError ? <AlertBanner variant="error" title={t.known.loadFailed} /> : null}
-            {known.data !== undefined && known.data.length === 0 ? (
+            {known.isSuccess && known.data.length === 0 ? (
               <p className="variance__note">{t.known.none}</p>
             ) : null}
             <ul className="variance__known">

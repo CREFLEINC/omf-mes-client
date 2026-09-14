@@ -1,5 +1,5 @@
 import { messages } from '@omf-mes/i18n';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -10,7 +10,7 @@ import {
   type StubRoute,
 } from '../test/api-harness';
 import { useApiClient } from './api-context';
-import { useLoadFailure } from './load-failure';
+import { TOKEN_CHECK_PATIENCE_MS, useLoadFailure } from './load-failure';
 import { forgetPlant, rememberPlant } from './plant';
 import { runRequest } from './request';
 
@@ -84,8 +84,11 @@ describe('조회 실패 문구 고르기', () => {
     });
   });
 
-  /* 재발급·단말 정보 변경으로 토큰이 죽으면 모든 조회가 401 이다. 새 QR 이 필요하다. */
-  it('거절됐고 토큰도 죽었으면 등록 만료를 말한다', async () => {
+  /*
+   * 재발급·단말 정보 변경으로 토큰이 죽으면 모든 조회가 401 이다. 새 QR 이 필요하다는 말은
+   * 셸이 한 번만 한다 - 조회마다 달면 한 화면에 여러 번 뜬다(#1198).
+   */
+  it('거절됐고 토큰도 죽었으면 조회 자리에는 아무 문구도 달지 않는다', async () => {
     const fetch = createStubFetch([
       items(() => jsonResponse(denied, { status: 401 })),
       probe(() => jsonResponse(denied, { status: 401 })),
@@ -94,7 +97,8 @@ describe('조회 실패 문구 고르기', () => {
     const { result } = renderHookWithProviders(useScreen, { fetch });
 
     await waitFor(() => {
-      expect(result.current.text).toBe(messages.httpError.deviceExpired);
+      expect(result.current.items.isError).toBe(true);
+      expect(result.current.text).toBeNull();
     });
   });
 
@@ -121,6 +125,157 @@ describe('조회 실패 문구 고르기', () => {
     await waitFor(() => {
       expect(result.current.text).toBe(messages.httpError.deviceRejected);
     });
+  });
+
+  /*
+   * 실기(#1198) - 토큰 확인이 답하기 전 잠깐 조회마다 「받아들여지지 않았습니다」가 두 줄 떴다가
+   * 만료 한 줄로 바뀌었다. 판정이 나기 전에는 아무것도 달지 않는다.
+   */
+  it('토큰 확인이 답하기 전에는 거절 문구를 달지 않는다', async () => {
+    let answer: ((response: Response) => void) | null = null;
+    const fetch = createStubFetch([
+      items(() => jsonResponse(denied, { status: 401 })),
+      probe(
+        () =>
+          new Promise<Response>((resolve) => {
+            answer = resolve;
+          }),
+      ),
+    ]);
+
+    const { result } = renderHookWithProviders(useScreen, { fetch });
+
+    await waitFor(() => {
+      expect(answer).not.toBeNull();
+    });
+    expect(result.current.items.isError).toBe(true);
+    expect(result.current.text).toBeNull();
+
+    answer!(jsonResponse({ items: [], page }));
+
+    await waitFor(() => {
+      expect(result.current.text).toBe(messages.httpError.deviceNotAllowed);
+    });
+  });
+
+  /*
+   * 기다림은 확인을 보낸 때부터 센다. 화면이 선 때부터 세면, 연 지 오래 뒤에 거절된 조회는
+   * 기다리지 않고 단정하지 않는 문구를 먼저 달았다가 바꾼다(#1198 리뷰).
+   */
+  it('화면이 선 지 오래 뒤에 거절돼도 토큰 확인이 답하기 전에는 문구를 달지 않는다', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+
+    try {
+      let refuse = false;
+      let asked = false;
+      const fetch = createStubFetch([
+        items(() =>
+          refuse ? jsonResponse(denied, { status: 401 }) : jsonResponse({ items: [], page }),
+        ),
+        probe(() => {
+          asked = true;
+          return new Promise<Response>(() => undefined);
+        }),
+      ]);
+
+      const { result } = renderHookWithProviders(useScreen, { fetch });
+
+      await waitFor(() => {
+        expect(result.current.items.isSuccess).toBe(true);
+      });
+      await vi.advanceTimersByTimeAsync(TOKEN_CHECK_PATIENCE_MS + 1_000);
+
+      refuse = true;
+      await result.current.items.refetch();
+
+      await waitFor(() => {
+        expect(asked).toBe(true);
+        expect(result.current.items.isError).toBe(true);
+      });
+      expect(result.current.text).toBeNull();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  /* 오래전에 받은 「산다」로 지금의 거절을 판정하지 않는다. 다시 묻는 동안은 기다린다. */
+  it('앞서 받은 판정이 낡았으면 다시 묻는 동안 문구를 달지 않는다', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+
+    try {
+      let refuse = false;
+      let probes = 0;
+      const fetch = createStubFetch([
+        items(() =>
+          refuse ? jsonResponse(denied, { status: 401 }) : jsonResponse({ items: [], page }),
+        ),
+        /* 앞 판정은 캐시에 직접 넣는다. 다시 묻는 확인은 답하지 않게 붙잡는다. */
+        probe(() => {
+          probes += 1;
+          return new Promise<Response>(() => undefined);
+        }),
+      ]);
+
+      const { result } = renderHookWithProviders(
+        () => {
+          const screen = useScreen();
+          const queryClient = useQueryClient();
+          return { screen, queryClient };
+        },
+        { fetch },
+      );
+
+      await waitFor(() => {
+        expect(result.current.screen.items.isSuccess).toBe(true);
+      });
+      await result.current.queryClient.fetchQuery({
+        queryKey: ['device-token-state'],
+        queryFn: () => Promise.resolve('alive'),
+      });
+      await vi.advanceTimersByTimeAsync(31_000);
+
+      refuse = true;
+      await result.current.screen.items.refetch();
+
+      await waitFor(() => {
+        expect(result.current.screen.items.isError).toBe(true);
+        expect(probes).toBe(1);
+      });
+      expect(result.current.screen.text).toBeNull();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  /* 확인까지 막혀 답이 오지 않으면 끝내 아무 말도 없게 된다. 기다림에 끝을 둔다. */
+  it('토큰 확인이 오래 답하지 않으면 단정하지 않는 문구로 넘어간다', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+
+    try {
+      let asked = false;
+      const fetch = createStubFetch([
+        items(() => jsonResponse(denied, { status: 401 })),
+        probe(() => {
+          asked = true;
+          return new Promise<Response>(() => undefined);
+        }),
+      ]);
+
+      const { result } = renderHookWithProviders(useScreen, { fetch });
+
+      await waitFor(() => {
+        expect(asked).toBe(true);
+      });
+      expect(result.current.text).toBeNull();
+
+      await vi.advanceTimersByTimeAsync(TOKEN_CHECK_PATIENCE_MS);
+
+      await waitFor(() => {
+        expect(result.current.text).toBe(messages.httpError.deviceRejected);
+      });
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   /* 연결 문구에 함께 적혀 있던 주의는 까닭이 달라도 남아야 한다. */
@@ -161,7 +316,8 @@ describe('조회 실패 문구 고르기', () => {
     );
 
     await waitFor(() => {
-      expect(result.current.first.text).toBe(messages.httpError.deviceExpired);
+      expect(result.current.first.items.isError).toBe(true);
+      expect(result.current.first.text).toBeNull();
     });
     expect(probes).toBe(1);
   });
