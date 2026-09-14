@@ -307,6 +307,7 @@ describe('useUpdateWorkOrder', () => {
     await waitFor(() =>
       expect(result.current.mutation.error).toEqual({
         kind: 'conflict',
+        status: 409,
         cause: 'user',
         message: 'Synthetic concurrent assignment',
       }),

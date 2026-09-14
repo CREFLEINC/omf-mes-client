@@ -169,6 +169,93 @@ describe('전송 실패한 기록 화면', () => {
   });
 
   /*
+   * 서버가 상태와 코드를 주었는데 상세가 둘 다 없다고 적던 자리다. 계약 오류 봉투는
+   * validation 으로 접히는데 그 갈래가 상태를 싣지 않았고, 코드를 읽는 자리도 http·conflict
+   * 뿐이었다. 401 만 멀쩡했던 것은 그것이 봉투 모양과 무관하게 먼저 http 로 갈리기 때문이다.
+   *
+   * 봉투 모양은 서버가 갈래마다 다르게 싣는다 - 어느 칸이 걸렸는지가 field 에 오기도 하고
+   * uniqueScope 에 오기도 한다.
+   */
+  it('중복으로 거절되면 상태와 코드와 걸린 범위를 보인다', async () => {
+    seed([
+      record({
+        error: {
+          kind: 'validation',
+          status: 400,
+          errors: [
+            {
+              scope: 'screen',
+              code: 'UNIQUE_VIOLATION',
+              message: '이미 있는 값입니다.',
+              uniqueScope: ['plantId', 'lotNo'],
+            },
+          ],
+        },
+      }),
+    ]);
+
+    render();
+
+    await userEvent.click(await screen.findByRole('button', { name: '상세 보기' }));
+
+    const details = screen.getByRole('group', { name: '상세' });
+
+    expect(valueOf(details, '응답 코드')).toBe('400');
+    expect(valueOf(details, '오류 코드')).toBe('UNIQUE_VIOLATION');
+    expect(valueOf(details, '걸린 칸')).toBe('plantId, lotNo');
+  });
+
+  it('칸을 짚어 거절되면 그 칸 이름을 보인다', async () => {
+    seed([
+      record({
+        error: {
+          kind: 'validation',
+          status: 400,
+          errors: [
+            {
+              scope: 'field',
+              field: 'lines.0.receivedQty',
+              code: 'QTY_EXCEEDS_ORDERED',
+              message: '발주 수량과 허용치를 넘습니다.',
+            },
+          ],
+        },
+      }),
+    ]);
+
+    render();
+
+    await userEvent.click(await screen.findByRole('button', { name: '상세 보기' }));
+
+    const details = screen.getByRole('group', { name: '상세' });
+
+    expect(valueOf(details, '응답 코드')).toBe('400');
+    expect(valueOf(details, '오류 코드')).toBe('QTY_EXCEEDS_ORDERED');
+    expect(valueOf(details, '걸린 칸')).toBe('lines.0.receivedQty');
+  });
+
+  /* 화면이 스스로 만든 검증 오류에는 응답이 없다. 없는 상태를 지어내지 않는다. */
+  it('서버가 아니라 화면이 만든 오류는 상태를 비운다', async () => {
+    seed([
+      record({
+        error: {
+          kind: 'validation',
+          errors: [{ scope: 'screen', code: 'STALE_TOKEN', message: '다시 불러오세요' }],
+        },
+      }),
+    ]);
+
+    render();
+
+    await userEvent.click(await screen.findByRole('button', { name: '상세 보기' }));
+
+    const details = screen.getByRole('group', { name: '상세' });
+
+    expect(valueOf(details, '응답 코드')).toBe('없음');
+    expect(valueOf(details, '오류 코드')).toBe('STALE_TOKEN');
+  });
+
+  /*
    * 서버가 문구 없이 충돌만 돌려주면 정규화가 빈 문자열을 넣는다. 그 빈 값을 그대로 내면
    * 다른 칸은 없음이라 적혀 있는데 이 칸만 비어, 읽는 사람이 잘린 화면으로 읽는다.
    */

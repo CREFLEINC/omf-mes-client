@@ -33,9 +33,14 @@ export type ApiError =
       code?: string;
       message: string;
       currentLotStatusCode?: string;
+      status?: number;
     }
-  | { kind: 'stateLocked'; errors: ErrorItem[] }
-  | { kind: 'validation'; errors: ErrorItem[] }
+  /*
+   * 상태는 선택이다. 이 두 갈래는 서버 응답에서도 오고 화면이 스스로 만들기도 한다 - 저장을
+   * 시작조차 못 한 것처럼 응답이 없는 오류에 상태를 요구하면 지어내야 한다.
+   */
+  | { kind: 'stateLocked'; errors: ErrorItem[]; status?: number }
+  | { kind: 'validation'; errors: ErrorItem[]; status?: number }
   | { kind: 'http'; status: number; code?: string; message?: string; currentLotStatusCode?: string }
   | { kind: 'network' };
 
@@ -106,6 +111,7 @@ export const normalizeApiError = (status: number, body: unknown): ApiError => {
   if (status === 409 && isRecord(body) && isConflictCause(body.conflictCause)) {
     return {
       kind: 'conflict',
+      status,
       cause: body.conflictCause,
       /* 원인과 함께 **코드도 남긴다** — 위 `code` 주석 참고. 화면이 둘 다 보고 갈라야 한다. */
       ...(code === undefined ? {} : { code }),
@@ -165,8 +171,8 @@ export const normalizeApiError = (status: number, body: unknown): ApiError => {
     const errors = body.errors;
     if (errors.length > 0) {
       return errors.some((error) => error.code === 'STATE_LOCKED')
-        ? { kind: 'stateLocked', errors }
-        : { kind: 'validation', errors };
+        ? { kind: 'stateLocked', status, errors }
+        : { kind: 'validation', status, errors };
     }
   }
 

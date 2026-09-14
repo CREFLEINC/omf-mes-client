@@ -23,6 +23,7 @@ export const outboxRejections = {
     request: '요청',
     status: '응답 코드',
     code: '오류 코드',
+    scope: '걸린 칸',
     message: '돌아온 문구',
     key: '요청 번호',
     rejectedAt: '되돌아온 때',
