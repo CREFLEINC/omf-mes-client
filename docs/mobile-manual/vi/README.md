@@ -183,6 +183,6 @@ Những bản ghi **người khác đang đợi** như yêu cầu gấp hay sự
 | Cất hàng               | Việc đưa hàng đã nhận vào vị trí bảo quản đã định                                           |
 | Lấy hàng               | Việc lấy hàng sắp đi ra khỏi vị trí bảo quản và gom lại                                     |
 | Tạm giữ                | Trạng thái chưa kiểm tra chất lượng xong nên chưa dùng được                                 |
-| ERP W/O                | Số đơn đặt mua. Ghi đã quyết mua cái gì, bao nhiêu                                          |
+| P/O vật tư             | Số đơn đặt mua. Ghi đã quyết mua cái gì, bao nhiêu                                          |
 | Dự kiến còn lại        | Số lượng còn phải nhận thêm, bằng số đặt hàng trừ đi số đã nhận đến giờ                     |
 | IQC                    | Kiểm tra đầu vào. Kiểm xem vật tư vào có dùng được không                                    |
