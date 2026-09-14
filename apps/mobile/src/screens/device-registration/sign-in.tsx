@@ -23,7 +23,7 @@ const t = messages.deviceRegistration.signIn;
 const MAX_WORKER_NO_LENGTH = 50;
 
 export const WorkerSignInScreen = () => {
-  useScreenTitle(t.title);
+  useScreenTitle(t.title, { compact: true });
   const navigate = useNavigate();
   const { worker, signIn, signOut } = useWorkerSession();
 
