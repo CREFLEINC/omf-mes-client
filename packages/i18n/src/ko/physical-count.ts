@@ -85,6 +85,8 @@ export const physicalCount = {
      * 드러나야 한다.
      */
     uncounted: '이 라인은 아직 세지 않았습니다',
+    /** 숫자판은 목록 위에 떠 있다. 내려 두어야 가려진 줄이 보인다. */
+    closeKeypad: '숫자판 닫기',
     reason: '차이 사유',
     reasonLabel: (name: string) => `${name} 차이 사유`,
     reasonPlaceholder: '차이 사유를 고르세요',

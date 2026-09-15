@@ -145,6 +145,13 @@ export const PhysicalCountScreen = () => {
     t.lines.name(line.itemCode, line.lotNo === null ? '' : formatMaterialLotNo(line.lotNo));
 
   /*
+   * 숫자판이 지금 적고 있는 줄. 목록 밖에 서므로 자리를 번호가 아니라 줄 자체로 든다 - 다른
+   * 위치로 옮겨 그 번호가 사라지면 숫자판도 함께 닫힌다.
+   */
+  const keypadAt = lines.findIndex((line) => line.inventoryCountLineId === keypadFor);
+  const keypad = keypadAt === -1 ? null : { at: keypadAt, line: lines[keypadAt] as DraftLine };
+
+  /*
    * 입력칸 위에 함께 서는 값들. 서로를 밀어내지 않는다.
    *
    * 앞서 센 값은 칸에 담겨 있어도 따로 세운다 - 칸의 값을 고치고 나면 무엇을 덮어쓰는
@@ -247,7 +254,9 @@ export const PhysicalCountScreen = () => {
   }
 
   return (
-    <div className="physical-count">
+    <div
+      className={keypad === null ? 'physical-count' : 'physical-count physical-count--keypad-open'}
+    >
       <section className="physical-count__section">
         <h2>{t.plan.legend}</h2>
         {counts.isPending ? <p role="status">{t.plan.loading}</p> : null}
@@ -394,24 +403,6 @@ export const PhysicalCountScreen = () => {
                     }}
                     error={problem === null ? undefined : t.lines.problem[problem]}
                   />
-                  {keypadFor !== line.inventoryCountLineId ? null : (
-                    <NumberPad
-                      value={line.qty}
-                      onChange={(value) => {
-                        setLines((current) =>
-                          current.map((each, at2) => {
-                            if (at2 !== index) return each;
-                            const changed = { ...each, qty: value };
-
-                            return count !== null && !needsReason(count, changed)
-                              ? { ...changed, reasonCode: '' }
-                              : changed;
-                          }),
-                        );
-                      }}
-                      allowDecimal
-                    />
-                  )}
                   {/*
                    * 안 센 것과 0 으로 센 것을 화면이 갈라 말한다.
                    *
@@ -467,6 +458,45 @@ export const PhysicalCountScreen = () => {
               {t.submit}
             </Button>
           </section>
+
+          {/*
+            숫자판은 줄 사이에 끼우지 않는다. 끼우면 그 아래 줄들이 화면 밖으로 밀려 적던
+            자리를 잃고, 뒤이어 뜨는 차이 사유가 숫자판 아래에 생겨 어디서 온 칸인지 알 수
+            없다. 기기 키보드처럼 화면 아래에 붙여 목록 위에 띄운다.
+
+            목록 밖에 서므로 어느 줄에 적는 중인지 스스로 말한다.
+          */}
+          {keypad === null ? null : (
+            <div className="physical-count__keypad">
+              <p className="physical-count__keypad-head">{nameOf(keypad.line)}</p>
+              <NumberPad
+                value={keypad.line.qty}
+                onChange={(value) => {
+                  setLines((current) =>
+                    current.map((each, at2) => {
+                      if (at2 !== keypad.at) return each;
+                      const changed = { ...each, qty: value };
+
+                      return count !== null && !needsReason(count, changed)
+                        ? { ...changed, reasonCode: '' }
+                        : changed;
+                    }),
+                  );
+                }}
+                allowDecimal
+              />
+              <Button
+                className="physical-count__wide"
+                variant="outlined"
+                size="xl"
+                onClick={() => {
+                  setKeypadFor(null);
+                }}
+              >
+                {t.lines.closeKeypad}
+              </Button>
+            </div>
+          )}
         </>
       )}
     </div>

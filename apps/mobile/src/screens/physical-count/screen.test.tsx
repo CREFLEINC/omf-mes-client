@@ -347,6 +347,35 @@ describe('실물 카운트 화면', () => {
   });
 
   /*
+   * 숫자판이 줄 사이에 끼면 그 아래 줄들이 화면 밖으로 밀린다. 아홉 줄이 넘는 목록에서 적던
+   * 자리를 잃고, 뒤이어 뜨는 차이 사유가 숫자판 아래에 생겨 어디서 온 칸인지 알 수 없다.
+   */
+  it('숫자판은 줄 목록 밖에 선다', async () => {
+    const user = userEvent.setup();
+    mount();
+    await openLocation(user);
+    await user.click(await screen.findByLabelText(QTY_LABEL));
+
+    const key = await screen.findByRole('button', { name: '7' });
+
+    expect(key.closest('.physical-count__line')).toBeNull();
+  });
+
+  /* 목록 밖에 서면 어느 줄에 적는 중인지 숫자판이 스스로 말해야 한다. */
+  it('숫자판이 지금 적는 줄을 말한다', async () => {
+    const user = userEvent.setup();
+    mount();
+    await openLocation(user);
+    await user.click(await screen.findByLabelText(QTY_LABEL));
+
+    const pad = (await screen.findByRole('button', { name: '7' })).closest(
+      '.physical-count__keypad',
+    );
+
+    expect(pad?.textContent).toContain(formatMaterialLotNo(LOT_NO));
+  });
+
+  /*
    * 창고를 순회하는 일이라 한 번에 끝나지 않는다. 얼마나 남았는지 화면이 말하지 않으면 언제
    * 끝나는지 모른 채 돌게 되고, 다 돌았는지도 스스로 셈해야 한다.
    */
