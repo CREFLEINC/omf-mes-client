@@ -16,7 +16,8 @@ export const runningChange = {
     workOrderMissing: '작업지시를 받지 못해 현재 투입을 불러올 수 없습니다.',
     session: (workSessionId: number) => `세션 ${workSessionId}`,
     sessionNone: '세션 없음',
-    terminal: (terminalId: number) => `단말 ${terminalId}`,
+    /** ⭐ 번호가 뒤에 붙는다 — 「단말# 5」(사용자 지시 2026-09-15). */
+    terminal: (terminalId: number) => `단말# ${terminalId}`,
     terminalUnknown: '단말 확인되지 않음',
     unsynced: (count: number) => `미전송 ${count}건`,
     synced: '전송 완료',

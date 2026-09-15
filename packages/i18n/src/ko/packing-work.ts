@@ -12,7 +12,8 @@ export const packingWork = {
     /* ⚠ 머리줄 표기는 「W/O」로 통일한다(사용자 지시 2026-09-10). */
     workOrderLabel: 'W/O',
     workOrderUnknown: 'W/O 없음',
-    terminalLabel: '단말',
+    /** ⭐ 번호가 뒤에 붙는다 — 「단말# 5」(사용자 지시 2026-09-15). */
+    terminalLabel: '단말#',
     terminalUnknown: '확인되지 않음',
   },
 

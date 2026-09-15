@@ -24,7 +24,8 @@ export const workStart = {
      * 단말 코드를 낸다. 못 받았으면 «모른다»고 적는다.
      */
     terminalUnknown: '단말 확인 전',
-    terminalLabel: (code: string): string => `단말 ${code}`,
+    /** ⭐ 번호가 뒤에 붙는다 — 「단말# 5」(사용자 지시 2026-09-15). */
+    terminalLabel: (code: string): string => `단말# ${code}`,
     /**
      * ⭐ **설비는 타이틀 옆에 선다**(스펙 §4 도면 · 사용자 지시 2026-09-14). 단말은 오른쪽 상태
      * 쪽에 남는다. 설비를 모르거나 매핑이 없으면 자리를 비운다 — 사유는 막힘 띠가 말한다.

@@ -996,7 +996,7 @@ describe('GoodsIssueQrScreen', () => {
     expect(await writes[0]?.json()).toMatchObject({ reissueReasonCode: 'PRINT_FAILURE' });
   });
 
-  it('기본으로 표시된 프린터의 상태를 머리에 보인다 — 목록 첫 줄이 아니다', async () => {
+  it('기본으로 표시된 프린터의 이름을 머리에 보인다 — 목록 첫 줄이 아니다', async () => {
     renderScreen({
       issueCounts: { 1001: 0 },
       printers: [
@@ -1017,7 +1017,9 @@ describe('GoodsIssueQrScreen', () => {
       ],
     });
 
-    expect(await screen.findByText(`${t.printer.label} 대기 중`)).toBeInTheDocument();
+    expect(await screen.findByText(`${t.printer.label} 기본 프린터`)).toBeInTheDocument();
+    /* 사용자 지시 2026-09-15 — 상태 설명을 머리줄에 붙이지 않는다. */
+    expect(screen.queryByText(/대기 중/)).not.toBeInTheDocument();
   });
 
   it('발행 요약을 출력물 종류로 좁혀 묻는다 — 다른 출력물까지 세면 회차가 틀어진다', async () => {
