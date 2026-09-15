@@ -46,6 +46,8 @@ interface Options {
   blind?: boolean;
   /** 첫 줄을 이미 센 것으로 답한다. */
   firstCounted?: boolean;
+  /** 이미 센 첫 줄에 붙어 있는 차이 사유. 서버는 차이가 있는 줄을 사유 없이 받지 않는다. */
+  firstReason?: string;
   /** 이 위치에 실사 라인이 없다고 답한다. */
   emptyLocation?: boolean;
   /**
@@ -153,6 +155,9 @@ const routes = (options: Options = {}): StubRoute[] => [
             ...hideSystemQty,
             counted: options.firstCounted === true,
             countedQty: options.firstCounted === true ? 118 : 0,
+            ...(options.firstReason === undefined
+              ? {}
+              : { varianceReasonCode: options.firstReason }),
           }),
           line({
             ...hideSystemQty,
@@ -331,6 +336,36 @@ describe('실물 카운트 화면', () => {
     expect(body.locationId).toBe(3001);
   });
 
+  /*
+   * 한 위치를 나눠 센다. 아홉 줄이 넘는 위치를 한 번에 다 세지 못하면 같은 위치를 다시 연다.
+   *
+   * 계약은 이 경로를 치환으로 정의한다 - 본문에 없는 기존 라인을 미실사로 되돌린다. 앞서
+   * 센 줄을 빼고 보내면 그 회차가 지워지고, 되돌릴 길이 없어 다시 세러 가야 한다.
+   */
+  it('앞서 센 줄을 손대지 않아도 그 값이 본문에 함께 든다', async () => {
+    const user = userEvent.setup();
+    const seen: Request[] = [];
+    mount({ seen, firstCounted: true, firstReason: 'COUNT_ERROR' });
+    await openLocation(user);
+
+    /* 아직 안 센 둘째 줄에만 적는다 */
+    const fields = await screen.findAllByLabelText(/실물 수량/);
+    await user.type(fields[1] as HTMLInputElement, '40');
+    await user.click(screen.getByRole('button', { name: '이 위치 완료' }));
+
+    await waitFor(() => {
+      expect(seen).toHaveLength(1);
+    });
+
+    const body = (await seen[0]?.json()) as {
+      lines: { inventoryCountLineId: number; countedQty: number }[];
+    };
+
+    expect(body.lines).toHaveLength(2);
+    expect(body.lines.find((each) => each.inventoryCountLineId === 5101)?.countedQty).toBe(118);
+    expect(body.lines.find((each) => each.inventoryCountLineId === 5102)?.countedQty).toBe(40);
+  });
+
   /* 세어 보니 없더라는 유효한 답이다. 0 을 못 적으면 그 사실을 남길 길이 없다. */
   it('0 을 적으면 센 것으로 보낸다', async () => {
     const user = userEvent.setup();
@@ -394,7 +429,8 @@ describe('실물 카운트 화면', () => {
     const seen: Request[] = [];
     mount({ blind: true, firstCounted: true, seen });
     await openLocation(user);
-    await user.type(await screen.findByLabelText(QTY_LABEL), '118');
+    /* 앞서 센 값이 칸에 담겨 있다 - 손대지 않고 그대로 내보낸다. */
+    expect((await screen.findByLabelText(QTY_LABEL)).getAttribute('value')).toBe('118');
     expect(screen.queryByRole('combobox', { name: /차이 사유/ })).toBeNull();
     await user.click(screen.getByRole('button', { name: '이 위치 완료' }));
     await waitFor(() => expect(seen).toHaveLength(1));

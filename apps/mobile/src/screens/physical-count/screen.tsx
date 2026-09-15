@@ -85,8 +85,12 @@ export const PhysicalCountScreen = () => {
     );
 
   /*
-   * 위치의 라인을 화면이 적을 자리로 옮긴다. 수량은 비워 둔다 - 비어 있는 것이 아직 세지
-   * 않았다는 뜻이고, 서버가 이미 센 것으로 보는 줄이라도 이번에 다시 세어야 값이 선다.
+   * 위치의 라인을 화면이 적을 자리로 옮긴다. 아직 안 센 줄만 비워 둔다 - 비어 있는 것이
+   * 아직 세지 않았다는 뜻이다.
+   *
+   * 앞서 센 줄은 그 값을 그대로 담아 둔다. 이 경로는 위치 전체를 치환하므로 본문에 없는
+   * 기존 라인이 미실사로 되돌아간다 - 한 위치를 나눠 세면 앞 회차가 지워지고 다시 세러
+   * 가야 한다. 담아 두면 손대지 않아도 함께 나가고, 고치면 고친 값이 나간다.
    */
   useEffect(() => {
     const rows = planned.data;
@@ -114,8 +118,9 @@ export const PhysicalCountScreen = () => {
         previousQty: row.counted ? row.countedQty : null,
         previousCountedAt: row.counted ? row.countedAt : null,
         previousReasonCode: row.varianceReasonCode ?? null,
-        qty: typed.get(row.inventoryCountLineId)?.qty ?? '',
-        reasonCode: typed.get(row.inventoryCountLineId)?.reasonCode ?? '',
+        qty:
+          typed.get(row.inventoryCountLineId)?.qty ?? (row.counted ? String(row.countedQty) : ''),
+        reasonCode: typed.get(row.inventoryCountLineId)?.reasonCode ?? row.varianceReasonCode ?? '',
       }));
     });
   }, [planned.data]);
@@ -148,33 +153,31 @@ export const PhysicalCountScreen = () => {
     t.lines.name(referenceLabel(itemCode(line.itemId)), lotLabelOf(line));
 
   /*
-   * 입력칸 위에 함께 서는 상태. 셋이 한 자리를 나눠 쓰므로 어느 하나만 선다.
+   * 입력칸 위에 함께 서는 값들. 서로를 밀어내지 않는다.
    *
-   * 차이가 가장 급하다 - 되돌릴 수 없는 조정이 그 수만큼 나가고 사유까지 요구한다. 앞서 센
-   * 값은 덮어쓰기 전에만 뜻이 있고, 안 셌다는 말은 칸이 빈 동안에만 맞다.
+   * 앞서 센 값은 칸에 담겨 있어도 따로 세운다 - 칸의 값을 고치고 나면 무엇을 덮어쓰는
+   * 중인지 알 길이 없어진다. 차이는 그 옆에 붙어 되돌릴 수 없는 조정이 얼마인지 말한다.
    */
   const statusOf = (line: DraftLine) => {
     const diff = diffOf(line);
 
-    if (diff !== null) {
-      return (
-        <strong className="physical-count__diff">
-          {diff > 0 ? t.lines.diffOver(String(diff)) : t.lines.diffShort(String(-diff))}
-        </strong>
-      );
-    }
-
-    if (line.counted) {
-      return (
-        <span className="physical-count__previous">
-          {t.lines.already(String(line.previousQty ?? 0))}
-        </span>
-      );
-    }
-
-    return line.qty.trim() === '' ? (
-      <span className="physical-count__previous">{t.lines.uncounted}</span>
-    ) : null;
+    return (
+      <>
+        {!line.counted ? null : (
+          <span className="physical-count__previous">
+            {t.lines.already(String(line.previousQty ?? 0))}
+          </span>
+        )}
+        {diff === null ? null : (
+          <strong className="physical-count__diff">
+            {diff > 0 ? t.lines.diffOver(String(diff)) : t.lines.diffShort(String(-diff))}
+          </strong>
+        )}
+        {line.counted || line.qty.trim() !== '' ? null : (
+          <span className="physical-count__previous">{t.lines.uncounted}</span>
+        )}
+      </>
+    );
   };
 
   const restart = () => {
