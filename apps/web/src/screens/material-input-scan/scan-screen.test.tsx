@@ -22,6 +22,21 @@ import { MaterialInputScanScreen } from './screen';
 
 const t = messages.materialInputScan;
 
+/**
+ * 담은 자재 목록. 화면에 목록이 여럿이라 이름으로 집는다.
+ *
+ * ⚠ **LOT 번호로 찾을 때는 이 범위 안에서 찾는다.** 같은 화면의 수령 표도 이제 같은 LOT 번호를
+ *   내므로(D9), 화면 전체에서 찾으면 두 자리가 함께 걸린다.
+ */
+const scannedList = (): HTMLElement => screen.getByRole('list', { name: t.scanned.materialsLabel });
+
+/** 담은 목록에 그 LOT 줄이 서 있는가. **마지막 줄을 빼면 목록 자체가 빈 안내로 바뀐다.** */
+const scannedHas = (lotNo: string): boolean => {
+  const list = screen.queryByRole('list', { name: t.scanned.materialsLabel });
+
+  return list !== null && within(list).queryByText(lotNo) !== null;
+};
+
 const ROUTE = `/pop/material-input?workOrderId=${String(WORK_ORDER_ID)}`;
 const RECEIPTS_PATH = '/logistics/shopfloor-receipts';
 const LOTS_PATH = '/trace/lots';
@@ -284,7 +299,7 @@ describe('MaterialInputScanScreen — 스캔', () => {
     await scanCode(user, 'SAMPLE-LOT-0001');
 
     expect(await screen.findByText(t.scan.outcomes.duplicate('SAMPLE-LOT-0001'))).toBeTruthy();
-    expect(screen.getAllByText('SAMPLE-LOT-0001')).toHaveLength(1);
+    expect(within(scannedList()).getAllByText('SAMPLE-LOT-0001')).toHaveLength(1);
   });
 
   /*
@@ -495,13 +510,13 @@ describe('MaterialInputScanScreen — 스캔', () => {
     await user.click(
       screen.getByRole('button', { name: t.scanned.removeMaterial('SAMPLE-LOT-0001') }),
     );
-    expect(screen.queryByText('SAMPLE-LOT-0001')).toBeNull();
+    expect(scannedHas('SAMPLE-LOT-0001')).toBe(false);
 
     releaseSecond();
     await screen.findByText(t.scan.outcomes.material('SAMPLE-LOT-0002'));
 
-    expect(screen.queryByText('SAMPLE-LOT-0001')).toBeNull();
-    expect(screen.getByText('SAMPLE-LOT-0002')).toBeTruthy();
+    expect(scannedHas('SAMPLE-LOT-0001')).toBe(false);
+    expect(scannedHas('SAMPLE-LOT-0002')).toBe(true);
   });
 
   it('빈 값으로는 조회하지 않는다', async () => {
@@ -789,7 +804,7 @@ describe('MaterialInputScanScreen — 자재 상태 표시', () => {
     await scanCode(user, 'SAMPLE-LOT-0001');
     await screen.findByText(t.scan.outcomes.material('SAMPLE-LOT-0001'));
 
-    const item = screen.getByText('SAMPLE-LOT-0001').closest('li');
+    const item = within(scannedList()).getByText('SAMPLE-LOT-0001').closest('li');
     expect(item).not.toBeNull();
     expect(within(item as HTMLElement).getByText(/검사 대기/)).toBeTruthy();
     expect(within(item as HTMLElement).getByText(t.scanned.heldMark)).toBeTruthy();

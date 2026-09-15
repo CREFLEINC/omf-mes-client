@@ -149,6 +149,10 @@ export const ScannedList = ({
                 {/*
                  * 서버가 **통과시키되 기록만 한 것**(스펙 §5-3). 「통과」가 「정상」이 아니다 —
                  * 나중에 계보를 추적할 때 이 구분이 필요하다. 보내기 전에는 비어 있다.
+                 *
+                 * ⛔ **「교차 투입」 표시는 여기 없다.** 근거로 쓰던 값이 정상 투입에도 늘 채워져
+                 *    돌아와 모든 줄에 붙었다 — 구분 표시가 모든 줄에 붙으면 구분이 사라진다.
+                 *    없앤 이유는 `mutations.ts` 의 `RecordedNote` 에 적어 두었다(D8).
                  */}
                 {notes
                   .filter((note) => note.lotId === material.lotId)
@@ -157,11 +161,6 @@ export const ScannedList = ({
                       {note.unlinkedIssue && (
                         <Chip variant="status" size="md" status="info">
                           {t.scanned.unlinkedIssue}
-                        </Chip>
-                      )}
-                      {note.crossProcess && (
-                        <Chip variant="status" size="md" status="info">
-                          {t.scanned.crossProcess}
                         </Chip>
                       )}
                     </span>

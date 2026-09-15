@@ -1,7 +1,7 @@
 import { AlertBanner, Chip } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useId, useState } from 'react';
-import { useSearchParams } from 'react-router';
+import { useNavigate, useSearchParams } from 'react-router';
 
 import { OutboxStallBanner } from '../../patterns/outbox-stall-banner';
 import { soleProcessIdOf, usePopIdentity } from '../../patterns/pop-identity';
@@ -80,6 +80,7 @@ const describeOutcome = (outcome: ScanOutcome): ScanOutcomeView => {
  */
 export const MaterialInputScanScreen = () => {
   const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
   const workOrderId = readWorkOrderId(searchParams);
   /*
    * 단말·공정·사번은 **셸이 아는 것**이라 주소가 아니라 컨텍스트로 온다(`patterns/pop-identity`).
@@ -253,6 +254,19 @@ export const MaterialInputScanScreen = () => {
     outbox.clearResults();
   };
 
+  /**
+   * 투입을 마친 다음 걸음 — **같은 작업지시의 생산 실적 등록**(P-02-04).
+   *
+   * ⛔ **작업지시를 주소로 싣는다.** 실적 화면은 그 값을 주소에서만 읽는다. 싣지 않고 들어가면
+   *    「작업지시를 받지 못해 실적을 등록할 수 없습니다」로 막히고, 잔여수량도 세지 못한다.
+   */
+  const goToProductionResult =
+    workOrderId === null
+      ? null
+      : (): void => {
+          void navigate(`/pop/production-result?workOrderId=${String(workOrderId)}`);
+        };
+
   const outcome = scan.data;
 
   /*
@@ -408,6 +422,7 @@ export const MaterialInputScanScreen = () => {
             rejection={outbox.rejections.at(-1)?.error ?? null}
             closedCount={closedCount}
             onConfirm={closeList}
+            onGoToProductionResult={goToProductionResult}
           />
         </section>
       </div>

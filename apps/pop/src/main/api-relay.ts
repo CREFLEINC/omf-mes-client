@@ -62,6 +62,37 @@ export const relayHeaders = (source: Headers): Headers => {
   return headers;
 };
 
+/** 본문을 실을 수 없는 상태 코드. 여기에 본문을 주면 `Response` 생성이 던진다. */
+const BODYLESS_STATUS = new Set([101, 103, 204, 205, 304]);
+
+/**
+ * 중계한 응답에 **「저장하지 말라」**를 붙인다.
+ *
+ * ⛔ **백엔드 응답을 화면이 다시 쓰면 안 된다.** 화면 주소가 `pop://app` 이고 중계 응답에
+ *    캐시 지시가 없으면 렌더러(Chromium)가 그것을 제 캐시에 두고 다음 조회에 그대로 내준다 —
+ *    **셸을 다시 띄워도 남는다**(디스크 캐시). 실측(WIP-CHAIN-01 D4): 단말·공정 권한을 DB 에서
+ *    고치고 셸을 재기동했는데도 `GET /mdm/terminals/10/processes` 가 옛 값을 돌려줘, 열려야 할
+ *    「생산 라벨 출력」이 사유 없이 잠겼다. 낡은 권한이 굳으면 «막아야 할 것이 열리는» 반대쪽도
+ *    똑같이 일어난다.
+ *
+ * ⭐ **ETag 는 그대로 둔다.** 이 저장소의 낙관적 잠금이 그 값을 `If-Match` 로 되싣는다 —
+ *    떼면 수정이 통째로 막힌다. 끄는 것은 «브라우저가 알아서 재사용하는 것» 한 축뿐이다.
+ *
+ * ⭐ 렌더러 쪽에도 같은 뜻의 장치가 있다(`packages/api-client` 의 `cache: 'no-store'`). 캐시는
+ *    두 층이라 양쪽에 둔다 — 한쪽만 두면 그 층을 지나지 않는 경로에서 다시 굳는다.
+ */
+export const withNoStore = (response: Response): Response => {
+  const headers = new Headers(response.headers);
+
+  headers.set('Cache-Control', 'no-store');
+
+  return new Response(BODYLESS_STATUS.has(response.status) ? null : response.body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers,
+  });
+};
+
 /**
  * 실제로 넘긴다.
  *
@@ -80,10 +111,13 @@ export const relayToApi = async (
   /* 본문 없는 메서드에 빈 본문을 실으면 400 으로 떨어뜨리는 서버가 있다. */
   const hasBody = request.method !== 'GET' && request.method !== 'HEAD';
 
-  return await fetchImpl(`${target}${pathname}${search}`, {
+  const relayed = await fetchImpl(`${target}${pathname}${search}`, {
     method: request.method,
     headers: relayHeaders(request.headers),
     body: hasBody ? await request.arrayBuffer() : undefined,
     redirect: 'manual',
   });
+
+  /* 메서드·상태를 가리지 않는다 — 쓰기 응답도 화면이 다시 쓰면 안 되는 값이다. */
+  return withNoStore(relayed);
 };

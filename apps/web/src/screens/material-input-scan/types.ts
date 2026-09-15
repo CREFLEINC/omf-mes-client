@@ -44,11 +44,24 @@ export const toReceiptLineStatus = (line: {
   return line.varianceQty > 0 ? 'short' : 'matched';
 };
 
-/** 화면이 다루는 수령 라인 한 줄. */
+/**
+ * 화면이 다루는 수령 라인 한 줄.
+ *
+ * ⭐ **사람이 읽는 값(`lotNo`·`itemCode`·`itemName`)을 응답에서 그대로 옮긴다.** 계약이 이 셋을
+ *    「화면이 보이는 값 … 마스터를 다시 부르지 않게 한다」로 두었다(공유계약 C-6). 한때 이 변환이
+ *    셋을 버려서, 화면이 LOT 자리에 **내부 채번**(`26`)을 찍었다 — 라벨의 34자리와 견줄 수 없는
+ *    숫자가 LOT 번호인 척했다(WIP-CHAIN-01 D9).
+ *
+ * ⚠ **계약이 셋 다 선택 필드다.** 없을 수 있다는 뜻이므로 타입도 선택으로 받는다. 없을 때
+ *    **번호로 메우지 않는다** — 표시하는 자리가 「못 받았다」고 말한다(`receipt-table.tsx`).
+ */
 export interface ReceiptLineView {
   shopfloorReceiptLineId: number;
   itemId: number;
   lotId: number;
+  lotNo?: string;
+  itemCode?: string;
+  itemName?: string;
   issuedQty: number;
   receivedQty: number;
   varianceQty: number;
@@ -61,6 +74,9 @@ export const toReceiptLineView = (line: ShopfloorReceiptLineResponse): ReceiptLi
   shopfloorReceiptLineId: line.shopfloorReceiptLineId,
   itemId: line.itemId,
   lotId: line.lotId,
+  lotNo: line.lotNo,
+  itemCode: line.itemCode,
+  itemName: line.itemName,
   issuedQty: line.issuedQty,
   receivedQty: line.receivedQty,
   varianceQty: line.varianceQty,

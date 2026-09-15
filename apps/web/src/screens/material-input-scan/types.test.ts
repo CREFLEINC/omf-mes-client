@@ -49,4 +49,29 @@ describe('toReceiptLineView', () => {
       status: 'short',
     });
   });
+
+  /*
+   * ⭐ **사람이 읽는 값을 버리지 않는다.** 이 변환이 유일한 통로라, 여기서 떨어뜨리면 화면이
+   *    쓸 방법이 없어 내부 번호를 찍게 된다 — 실제로 그랬다(WIP-CHAIN-01 D9).
+   */
+  it('응답이 실어 준 LOT 번호·품목 코드·품목 이름을 함께 옮긴다', () => {
+    const view = toReceiptLineView(receiptLine());
+
+    expect(view).toMatchObject({
+      lotNo: 'SAMPLE-LOT-0001',
+      itemCode: 'SAMPLE-MAT-A',
+      itemName: '예시 자재 A',
+    });
+  });
+
+  /* 계약이 선택 필드로 두었다 — 없으면 없는 대로 옮긴다. 번호로 메우는 일은 여기서 하지 않는다. */
+  it('응답에 없으면 비운 채로 옮긴다 — 번호로 메우지 않는다', () => {
+    const { lotNo: _lotNo, itemCode: _itemCode, itemName: _itemName, ...bare } = receiptLine();
+
+    const view = toReceiptLineView(bare as Parameters<typeof toReceiptLineView>[0]);
+
+    expect(view.lotNo).toBeUndefined();
+    expect(view.itemCode).toBeUndefined();
+    expect(view.itemName).toBeUndefined();
+  });
 });

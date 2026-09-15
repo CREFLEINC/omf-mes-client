@@ -590,6 +590,15 @@ async function main(): Promise<void> {
     };
   });
 
+  /*
+   * 화면이 **어떤 형식을 받아야 찍을 수 있는지** 고르는 근거. 명령형(RAW) 길이 없는 셸에
+   * `tspl` 을 받아 두면 인쇄 단계에서 멎고 라벨을 붙일 수 없다(WIP-CHAIN-01 D6).
+   *
+   * ⭐ 판정은 **인쇄가 실제로 쓰는 것과 같은 값**을 본다 — 같은 `rawPrinter` 가 없으면 없는 것이다.
+   *   플랫폼 이름을 화면이 따로 따지지 않게 해, 조건이 바뀌어도 여기 한 곳만 움직인다.
+   */
+  ipcMain.handle('printers:capabilities', () => ({ raw: rawPrinter !== undefined }));
+
   ipcMain.handle('device-token:get', () => secureStore.get());
   ipcMain.handle('device-token:set', (_e, value: string) => secureStore.set(value));
   ipcMain.handle('cache:get', (_e, key: string) => localDb.getCache(key));

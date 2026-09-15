@@ -1,5 +1,6 @@
 import type { ApiClient, paths } from '@omf-mes/api-client';
 
+import { shellPrintsRaw } from './pop-terminal-printers';
 import { runRequest } from './request';
 
 /**
@@ -54,6 +55,22 @@ export const labelRenditionFormat = (): LabelRenditionFormat =>
   hasShellPrinter() ? 'tspl' : 'png';
 
 /**
+ * **셸에 물어보고 형식을 고른다.** 위 `labelRenditionFormat` 은 「통로가 있는가」만 보는데,
+ * 통로가 있어도 **명령형을 보낼 자리(RAW)가 없는 셸**이 있다 — 그런 셸에 `tspl` 을 주면 인쇄가
+ * 「보낼 프린터를 찾을 수 없다」로 멎고, 라벨을 못 붙여 다음 걸음(스캔·마감)이 통째로 막힌다
+ * (WIP-CHAIN-01 D6 실측 2026-09-15 · macOS 셸).
+ *
+ * ⭐ 서버는 두 형식을 다 그려 준다 — 못 찍는 형식을 굳이 받을 이유가 없다.
+ * ⚠ **부르는 시점이 뜻을 갖는다**(위 `labelRenditionFormat` 과 같다). 상수로 굳혀 두면 통로가
+ *   선 뒤에도 옛 판정이 남는다.
+ */
+export const resolveLabelRenditionFormat = async (): Promise<LabelRenditionFormat> => {
+  if (!hasShellPrinter()) return 'png';
+
+  return (await shellPrintsRaw()) ? 'tspl' : 'png';
+};
+
+/**
  * 배포본에서 지원되지 않는 문서 종류의 그림 요청에 쓰는 사유다.
  */
 export const LABEL_RENDITION_NOT_READY_REASON =
@@ -66,6 +83,28 @@ export class LabelRenditionNotReadyError extends Error {
     this.name = 'LabelRenditionNotReadyError';
   }
 }
+
+/**
+ * 배포 서버가 그림을 그려 주는 문서 종류.
+ *
+ * ⭐ **서버에 있는 것만 적는다.** 없는 종류를 적으면 배포본에서 요청이 나가고, 사용자는 발행
+ * 실패와 구분되지 않는 오류를 본다.
+ * ⭐ `PRODUCTION_LOT_LABEL` 은 서버가 지원한다(실측 2026-09-15 —
+ * `omf-mes-server/src/app/document-issue/document-issue.controller.ts:81-83` 의
+ * `GET /app/document-issues/{documentIssueLogId}/rendition`). 없던 시절의 가정을 남겨 두어
+ * **배포본에서 생산 LOT 마감이 통째로 막혀 있었다**(WIP-CHAIN-01 D1) — 인쇄가 서지 않으면
+ * 라벨 스캔 칸이 열리지 않고, 그 스캔이 `:complete` 를 부르는 유일한 길이다.
+ */
+export const READY_RENDITION_DOCUMENT_TYPES = [
+  'DELIVERY_LABEL',
+  'MATERIAL_LOT_LABEL',
+  'PRODUCTION_LOT_LABEL',
+] as const;
+
+export type ReadyRenditionDocumentType = (typeof READY_RENDITION_DOCUMENT_TYPES)[number];
+
+const isReadyDocumentType = (value: string | undefined): value is ReadyRenditionDocumentType =>
+  READY_RENDITION_DOCUMENT_TYPES.some((each) => each === value);
 
 /**
  * 배포 서버가 지원하는 문서 종류만 명시적으로 통과시킨다.
@@ -82,9 +121,9 @@ export const fetchLabelRendition = async (
    */
   format: LabelRenditionFormat = labelRenditionFormat(),
   /** 배포 서버가 지원하는 문서 종류만 명시적으로 허용한다. */
-  readyDocumentTypeCode?: 'DELIVERY_LABEL' | 'MATERIAL_LOT_LABEL',
+  readyDocumentTypeCode?: ReadyRenditionDocumentType,
 ): Promise<ArrayBuffer> => {
-  if (import.meta.env.MODE !== 'development' && readyDocumentTypeCode !== 'DELIVERY_LABEL' && readyDocumentTypeCode !== 'MATERIAL_LOT_LABEL') {
+  if (import.meta.env.MODE !== 'development' && !isReadyDocumentType(readyDocumentTypeCode)) {
     throw new LabelRenditionNotReadyError();
   }
 

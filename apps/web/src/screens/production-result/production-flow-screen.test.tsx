@@ -191,6 +191,12 @@ const routes = (writes: Request[]): StubRoute[] => [
   },
 ];
 
+/** 서버가 그림을 내주지 못하는 상태. 클라이언트가 막던 시절과 달리 요청은 나가고 500 이 온다. */
+const renditionFailsRoute: StubRoute = {
+  match: (request) => pathOf(request) === '/app/document-issues/44001/rendition',
+  respond: () => jsonResponse({ errors: [{ message: '렌디션 실패' }] }, { status: 500 }),
+};
+
 const renderScreen = (
   writes: Request[],
   extraRoutes: StubRoute[] = [],
@@ -230,16 +236,11 @@ describe('ProductionFlowScreen', () => {
   });
 
   /*
-   * ⛔⛔ **서버에 `GET /app/document-issues/{id}/rendition` 경로가 없다**(`patterns/
-   * pop-label-rendition` 머리말 · 대응표 P1 「미구현 5건」). 라벨 인쇄가 이 경로로 그림을
-   * 받아야 끝나는데, 이제 그 걸음이 항상 막혀 있어 **인쇄가 성공할 수 없고**, 이 화면의
-   * 스캔 칸은 `outputPhase === 'scanReady'`(=인쇄까지 성공)에서만 열린다 — 그 결과 LOT
-   * 마감(스캔)도 함께 막힌다. 이것은 이번 서버 기준선의 파생 영향이며, 그 게이팅을 완화하는
-   * 것은 업무 규칙을 새로 정하는 일이라 임의로 손대지 않는다(추측 금지 · 보고 대상).
-   * **실적 저장 → 발행까지는 그대로 된다**는 성질만 남기고, 그 뒤로는 스캔이 열리지 않는다는
-   * 사실로 다시 잰다.
+   * 저장 → 발행 → 그림 → 인쇄 → 보고가 한 줄로 이어지고, 그 끝에서 스캔 칸이 열린다.
+   * 한때 클라이언트가 생산 LOT 라벨의 그림 요청을 막아 여기서 멎었다(WIP-CHAIN-01 D1) —
+   * 스캔이 열리지 않으면 `:complete` 로 가는 길이 없으므로, 그 이어짐을 여기서 고정한다.
    */
-  it('실적을 한 번 저장한 뒤에만 발행하지만, 그림을 받지 못해 인쇄가 끝나지 않아 스캔이 열리지 않는다', async () => {
+  it('실적을 한 번 저장한 뒤 발행·인쇄까지 이어지고 스캔 칸이 열린다', async () => {
     const writes: Request[] = [];
     const user = userEvent.setup();
     renderScreen(writes);
@@ -266,9 +267,10 @@ describe('ProductionFlowScreen', () => {
       appliedPaths.indexOf('/app/document-issues/44001:report-print'),
     );
 
-    /* 그림을 받지 못해 인쇄가 끝나지 않는다 — 스캔 칸이 열리지 않고 LOT 마감도 나가지 않는다. */
-    expect(screen.getByLabelText(t.flow.scan.label)).toBeDisabled();
-    expect(writes.some((request) => pathOf(request).endsWith(':complete'))).toBe(false);
+    /* 인쇄까지 끝나면 스캔 칸이 열린다 — 여기서부터 LOT 마감으로 갈 수 있다. */
+    await waitFor(() => {
+      expect(screen.getByLabelText(t.flow.scan.label)).toBeEnabled();
+    });
   });
 
   /*
@@ -288,7 +290,7 @@ describe('ProductionFlowScreen', () => {
       value: { rendition: { save } },
     });
     const user = userEvent.setup();
-    renderScreen(writes);
+    renderScreen(writes, [renditionFailsRoute]);
 
     const output = await screen.findByRole('button', { name: t.flow.output.issue });
     await waitFor(() => expect(output).toBeEnabled());
@@ -499,15 +501,12 @@ describe('ProductionFlowScreen', () => {
           page: { page: 1, size: 100, total: 1 },
         }),
     };
-    renderScreen(writes, [legacyIssue]);
+    renderScreen(writes, [legacyIssue, renditionFailsRoute]);
 
     /*
-     * ⛔⛔ **서버에 이 경로가 없다**(`patterns/pop-label-rendition` 머리말 · 대응표 P1
-     * 「미구현 5건」). 서버 적용 뒤 «기존 이력만 재인쇄»하는 이 재개 경로도 같은 그리기
-     * 걸음을 타므로, 이제는 항상 `renderFailed` 로 멈춘다 — 스캔 칸은 열리지 않는다. 그래도
-     * **새 발행 기록을 만들지 않고 기존 이력으로 재인쇄만 시도한다**는(이 시험의 핵심)
-     * 성질은 실적 저장 한 번 · 신규 발행 0회 · 재인쇄 결과 보고 한 번(이번엔 실패로)으로
-     * 그대로 확인된다.
+     * 이 시험의 핵심은 **새 발행 기록을 만들지 않고 기존 이력으로 재인쇄만 시도한다**는 것이다.
+     * 그림을 서버가 내주지 못하게 해 두어(`renditionFailsRoute`) 그 뒤 걸음이 끼어들지 않게
+     * 하고, 실적 저장 한 번 · 신규 발행 0회 · 재인쇄 결과 보고 한 번으로 잰다.
      */
     await waitFor(() => {
       expect(
@@ -526,15 +525,10 @@ describe('ProductionFlowScreen', () => {
   });
 
   /*
-   * ⛔⛔ **서버에 `GET /app/document-issues/{id}/rendition` 경로가 없다**(대응표 P1
-   * 「미구현 5건」). 이 시험이 재려던 것(마감 실패 뒤 스캔 값을 비워 다시 스캔하는 것)은
-   * 스캔 칸이 열려 있어야(`outputPhase === 'scanReady'`, 즉 인쇄까지 성공해야) 일어날 수
-   * 있는데, 그리기 걸음이 항상 막혀 있어 스캔 칸 자체가 결코 열리지 않는다 — 이 시험이
-   * 재려던 갈래에 이제 이를 수 없다. 대신 **스캔이 열리지 않으니 마감 시도 자체가 전혀
-   * 나가지 않는다**는, 지금 실제로 성립하는 사실을 잰다 — 다시 인쇄를 여러 번 눌러도
-   * 마찬가지다.
+   * 인쇄가 끝나면 스캔 칸이 열리고, 라벨 번호를 읽으면 **버튼 없이 곧바로** 마감이 나간다.
+   * 막힘을 걷기 전에는 이 갈래에 이를 수 없었다(WIP-CHAIN-01 D1).
    */
-  it('그림을 받지 못해 스캔이 열리지 않으므로 LOT 마감 시도 자체가 나가지 않는다', async () => {
+  it('인쇄가 끝나면 스캔이 열리고 라벨을 읽는 즉시 LOT 마감이 나간다', async () => {
     const writes: Request[] = [];
     let attempts = 0;
     const completeRoute: StubRoute = {
@@ -557,12 +551,16 @@ describe('ProductionFlowScreen', () => {
     await waitFor(() => expect(output).toBeEnabled());
     await user.click(output);
 
-    const retryPrint = await screen.findByRole('button', { name: t.flow.output.retryPrint });
-    await user.click(retryPrint);
-    await user.click(await screen.findByRole('button', { name: t.flow.output.retryPrint }));
+    const scan = await screen.findByLabelText(t.flow.scan.label);
+    await waitFor(() => expect(scan).toBeEnabled());
+    await user.type(scan, LOT_NO);
 
-    expect(screen.getByLabelText(t.flow.scan.label)).toBeDisabled();
-    expect(attempts).toBe(0);
+    await waitFor(() => {
+      expect(attempts).toBe(1);
+    });
+    /* 마감은 낙관적 잠금 토큰을 싣는다 — 없으면 요청 자체를 보내지 않는다. */
+    const complete = writes.find((request) => pathOf(request).endsWith(':complete'));
+    expect(complete?.headers.get('If-Match')).not.toBeNull();
   });
 
   it('마감 LOT 팝업은 서버 페이지 경계에서 페이지 위·아래를 이동한다', async () => {
@@ -896,13 +894,12 @@ describe('ProductionFlowScreen — 잔여수량 초과', () => {
      * ⚠ 건수는 **흐름이 멎은 뒤에** 센다. `waitFor` 로 1 에 닿는 순간 재면 뒤따라 오는 둘째
      *    요청을 놓친다 — 되돌릴 수 없는 쓰기라 멎은 자리에서 센다(이 파일 맨 앞 시험과 같다).
      *
-     * ⚠ **멎는 자리가 스캔 칸에서 렌디션 실패로 옮겨졌다.** 서버 구현 기준선에서
-     *    `GET /app/document-issues/{id}/rendition` 은 미구현이라 부르지 않는다(대응표 P1) —
-     *    그림을 못 받으니 인쇄가 끝나지 않고, 스캔 칸은 `outputPhase === 'scanReady'`
-     *    에서만 열리므로 영영 열리지 않는다. 이 시험이 재는 것은 **초과를 말하는 것과 저장이
-     *    그대로 나가는 것**이고 그 둘은 인쇄와 무관하다 — 기준점만 옮기고 재는 것은 그대로 둔다.
+     * ⚠ **멎는 자리는 스캔 칸이다.** 인쇄까지 끝나면 스캔이 열리고 거기서 멎는다 — 이 시험이
+     *    재는 것은 **초과를 말하는 것과 저장이 그대로 나가는 것**이고 그 둘은 인쇄와 무관하다.
      */
-    expect(await screen.findByText(t.flow.output.renditionFailed)).toBeVisible();
+    await waitFor(() => {
+      expect(screen.getByLabelText(t.flow.scan.label)).toBeEnabled();
+    });
 
     expect(savedCount(writes)).toBe(1);
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();

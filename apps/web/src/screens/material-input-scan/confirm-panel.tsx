@@ -20,6 +20,13 @@ export interface ConfirmPanelProps {
   /** 닫은 뒤 남길 문구. 닫기 전에는 `null`. */
   closedCount: number | null;
   onConfirm: () => void;
+  /**
+   * 같은 작업지시의 생산 실적 등록으로 간다. 작업지시를 모르면 `null` — 그때는 단추를 두지 않는다.
+   *
+   * ⭐ **닫은 뒤에만 뜬다.** 투입이 끝나야 다음 걸음이고, 닫기 전에 보이면 기록되지 않은 줄을
+   *    남긴 채 화면을 뜨는 길이 생긴다.
+   */
+  onGoToProductionResult: (() => void) | null;
 }
 
 /**
@@ -49,6 +56,7 @@ export const ConfirmPanel = ({
   rejection,
   closedCount,
   onConfirm,
+  onGoToProductionResult,
 }: ConfirmPanelProps) => {
   const reasonId = useId();
 
@@ -133,6 +141,27 @@ export const ConfirmPanel = ({
       {closedCount !== null && (
         <div className="banner-slot">
           <AlertBanner variant="success" title={t.confirm.closed(closedCount)} />
+
+          {/*
+           * ⭐ **다음 걸음을 그 자리에서 연다.** 투입을 마친 작업자가 갈 곳은 같은 작업지시의
+           *    생산 실적 등록인데, 이 화면에는 거기로 가는 길이 없었다 — 머리줄의 [화면 이동]은
+           *    작업지시를 싣지 않아 그 길로 들어가면 「작업지시를 받지 못했다」로 막힌다
+           *    (WIP-CHAIN-01 D10). 작업자는 작업 시작 화면까지 되돌아가야 했다.
+           *
+           * ⛔ **작업지시를 주소로 넘긴다.** 실적 화면은 작업지시를 «주소가 소유한다»고 못 박았고
+           *    (`production-result` · `material-input-scan/screen-params.ts` 와 같은 규율), 화면이
+           *    기억해 두면 단말을 넘겨받은 다음 작업자가 남의 작업지시에 실적을 올린다.
+           */}
+          {onGoToProductionResult !== null && (
+            <Button
+              variant="outlined"
+              size="lg"
+              className="pop-touch-target"
+              onClick={onGoToProductionResult}
+            >
+              {t.confirm.goToProductionResult}
+            </Button>
+          )}
         </div>
       )}
 
