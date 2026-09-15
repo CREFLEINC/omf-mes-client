@@ -5,7 +5,7 @@ export const popMaterialLotLabel: Translated<typeof ko.popMaterialLotLabel> = {
   title: 'Đăng ký LOT vật tư · Phát hành nhãn',
   receipts: {
     paneLabel: 'Dòng nhập hàng',
-    title: 'Dòng nhập hàng (chưa dán nhãn)',
+    title: 'Dòng nhập hàng',
     caption: 'Dòng nhập hàng',
     selectRow: (receiptNo: string, itemName: string, qty: string) =>
       `Chọn nhập hàng ${receiptNo} · mặt hàng ${itemName} · số lượng ${qty}`,

@@ -5563,7 +5563,88 @@
   gap: var(--space-2) var(--space-3);
 }
 
+/*
+ * 발행 여부 필터 — 한 테두리 안의 두 칸(사용자 지시 2026-09-15). 실행 단추와 헷갈리지 않게
+ * 고른 칸은 옅은 바탕·굵은 글자로만 가른다. 칸 사이에 간격을 두지 않는다.
+ */
 .pop-material-lot-filter {
-  display: flex;
-  gap: var(--space-2);
+  display: inline-flex;
+  flex-shrink: 0;
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+
+.pop-material-lot-filter-item {
+  min-height: var(--control-height-md);
+  padding: 0 var(--space-4);
+  border: 0;
+  background: transparent;
+  color: var(--on-surface-variant);
+  font: var(--type-label-lg);
+  font-size: 1rem;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.pop-material-lot-filter-item + .pop-material-lot-filter-item {
+  border-inline-start: 1px solid var(--outline-variant);
+}
+
+.pop-material-lot-filter-item[aria-pressed='true'] {
+  background: var(--surface-container-high);
+  color: var(--on-surface);
+  font-weight: 700;
+}
+
+.pop-material-lot-filter-item:disabled {
+  color: var(--on-surface-muted);
+  cursor: default;
+}
+
+.pop-material-lot-filter-item:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: -2px;
+}
+
+/*
+ * 재인쇄 사유 창 — 크게 연다(사용자 지시 2026-09-15 · #1241). 사유 칸·[선택]·바닥 단추를
+ * P-02-09 재출력 사유(`.pop-reprint-reason`)와 같은 72 로 세우고 [선택]을 넓힌다.
+ */
+.pop-ui .pop-reissue-dialog [class*='title'] {
+  font: var(--type-title-lg);
+}
+
+.pop-ui .pop-reissue-dialog .pop-select {
+  grid-template-columns: minmax(0, 1fr) 12rem;
+}
+
+.pop-ui .pop-reissue-dialog .pop-select__trigger,
+.pop-ui .pop-reissue-dialog .pop-select__value {
+  min-block-size: 72px;
+}
+
+.pop-ui .pop-reissue-dialog .pop-reissue-action {
+  min-block-size: 72px;
+}
+
+/*
+ * 사유 목록 창도 같은 폭·줄 높이로 연다. 공용 부품(`pop-select`)은 그대로 두고, 이 창 안에
+ * 열린 목록만 겨냥한다(목록 창이 재인쇄 창 안에 그려진다).
+ */
+.pop-ui .pop-reissue-dialog .pop-select-dialog {
+  max-width: var(--dialog-max-lg);
+}
+
+/*
+ * DS 단추가 높이를 `height` 로 박아 두어 최소 높이로는 안 커진다 — 높이를 준다.
+ * ⚠ POP 은 `--control-height-*` 를 관리웹 밀도로 다시 잡아 토큰으로는 40 에 머문다 — 값으로 적는다.
+ */
+.pop-ui .pop-reissue-dialog .pop-select-dialog__option {
+  height: 60px;
+}
+
+/* 줄이 60 이 되었으니 한 쪽 높이도 60 × 5 로 다시 잰다 — 두지 않으면 넷째 줄부터 잘린다. */
+.pop-ui .pop-reissue-dialog .pop-select-dialog__list {
+  --pop-select-rows: calc(60px * 5 + var(--space-1) * 4);
 }

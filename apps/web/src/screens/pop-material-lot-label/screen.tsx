@@ -185,17 +185,20 @@ export const PopMaterialLotLabelScreen = () => {
              * 바꾸면 쪽과 고른 줄을 푼다 — 남겨 두면 보이지 않는 줄을 가리킨다. 실행 중에는
              * 잠근다 — 쪽 이동과 같은 까닭이다.
              */}
+            {/*
+             * ⭐ 한 묶음의 전환 필터로 그린다(사용자 지시 2026-09-15) — 따로 선 두 단추는 실행
+             *    단추로 읽혔다. DS 에 해당 부품이 없어 이 화면 전용 모양만 둔다(`pop.css`).
+             */}
             <div
               className="pop-material-lot-filter"
               role="group"
               aria-label={t.receipts.filter.label}
             >
               {ISSUED_VIEWS.map((view) => (
-                <Button
+                <button
                   key={view}
-                  className={popTouchClass('normal')}
-                  variant={issuedView === view ? 'filled' : 'outlined'}
-                  size="xl"
+                  type="button"
+                  className={`pop-material-lot-filter-item ${popTouchClass('normal')}`}
                   aria-pressed={issuedView === view}
                   disabled={issue.step !== null}
                   onClick={() => {
@@ -206,7 +209,7 @@ export const PopMaterialLotLabelScreen = () => {
                   }}
                 >
                   {t.receipts.filter[view]}
-                </Button>
+                </button>
               ))}
             </div>
           </div>
