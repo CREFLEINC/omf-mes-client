@@ -413,7 +413,12 @@ export const MaterialLotScanScreen = () => {
           <ul className="material-lot-scan__list">
             {registered.map((each) => (
               <li key={each.lotNo}>
-                {t.registered.item(formatMaterialLotNo(each.lotNo), String(each.qty))}
+                <dl className="material-lot-scan__fields">
+                  <dt>{t.registered.lotNoLabel}</dt>
+                  <dd>{formatMaterialLotNo(each.lotNo)}</dd>
+                  <dt>{t.registered.qtyLabel}</dt>
+                  <dd>{String(each.qty)}</dd>
+                </dl>
               </li>
             ))}
           </ul>

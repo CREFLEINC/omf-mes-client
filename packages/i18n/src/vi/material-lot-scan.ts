@@ -48,7 +48,8 @@ export const materialLotScan: Translated<typeof ko.materialLotScan> = {
   register: 'Đăng ký dòng này',
   registered: {
     legend: (count: string) => `Đã đăng ký (${count})`,
-    item: (lotNo: string, qty: string) => `${lotNo} · ${qty}`,
+    lotNoLabel: 'Số LOT',
+    qtyLabel: 'Số lượng',
   },
   noWorker: 'Hãy xác nhận mã nhân viên trước',
   noPlant: 'Không đọc được nhà máy của máy này. Hãy đăng ký lại máy.',

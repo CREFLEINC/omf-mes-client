@@ -445,6 +445,27 @@ describe('자재LOT 스캔·등록 화면', () => {
   });
 
   /* 라인 하나에 LOT 은 하나다. 큐에 담긴 것은 서버 목록에 없어 라인이 그대로 남는다. */
+  /*
+   * LOT 번호 자체가 가운데점으로 나뉘어 적힌다. 그 뒤에 또 가운데점으로 수량을 이으면 여섯
+   * 조각이 같은 구분자로 서서 어디까지가 번호인지 알 수 없다.
+   */
+  it('등록한 줄의 번호와 수량에 각각 이름을 붙인다', async () => {
+    const user = userEvent.setup();
+    mount();
+    await pickLine(user);
+
+    await scanAndWait(LOT_NO);
+    await user.click(screen.getByRole('button', { name: '이 라인 등록' }));
+    await screen.findByText(/등록됨 \(1건\)/);
+
+    const fields = document.querySelector('.material-lot-scan__fields');
+
+    expect([...(fields?.querySelectorAll('dt') ?? [])].map((dt) => dt.textContent)).toEqual([
+      'LOT 번호',
+      '수량',
+    ]);
+  });
+
   it('등록한 라인은 다시 고를 수 없다', async () => {
     const user = userEvent.setup();
     mount();
