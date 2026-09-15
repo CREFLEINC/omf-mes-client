@@ -12,8 +12,7 @@ export const popMaterialLotLabel: Translated<typeof ko.popMaterialLotLabel> = {
     deselectRow: (receiptNo: string, itemName: string, qty: string) =>
       `Bỏ chọn nhập hàng ${receiptNo} · mặt hàng ${itemName} · số lượng ${qty}`,
     empty: 'Không có vật tư cần phát hành.',
-    emptyOnThisPage:
-      'Các phiếu nhập hàng ở trang này không có vật tư cần phát hành. Hãy xem trang sau.',
+    emptyOnThisPage: 'Không có vật tư chưa phát hành. Hãy xem vật tư đã phát hành.',
     beyondLast: 'Trang này không có kết quả. Hãy quay lại trang trước.',
     filter: {
       label: 'Trạng thái phát hành',

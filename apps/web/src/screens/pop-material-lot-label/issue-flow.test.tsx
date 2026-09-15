@@ -574,11 +574,10 @@ describe('PopMaterialLotLabelScreen — 등록·인쇄', () => {
       ),
     ).toBeInTheDocument();
 
-    // 등록이 끝났으므로 단추 이름은 「인쇄」다 — 그 단추도, 재인쇄도 막혀 있어야 한다.
+    // 등록이 끝났으므로 단추 이름은 「인쇄」다 — 그 단추가 막혀 있어야 한다.
     await waitFor(() => {
       expect(screen.getByRole('button', { name: '인쇄' })).toBeDisabled();
     });
-    expect(screen.getByRole('button', { name: '재인쇄' })).toBeDisabled();
     /*
      * ⛔ **닫기를 주지 않는다.** 닫으면 결과가 지워져 차단이 함께 풀리는데 서버의 답은 그대로다 —
      * 닫기가 「재시도 단추를 주지 않는다」를 무르는 우회로가 된다.
@@ -609,34 +608,6 @@ describe('PopMaterialLotLabelScreen — 등록·인쇄', () => {
 
     expect(keys[0]).not.toBeNull();
     expect(keys[0]).toBe(keys[1]);
-  });
-
-  /**
-   * ⛔ **다른 본문에 같은 키를 실지 않는다.** 발행이 실패한 줄은 재인쇄 경로가 열리는데, 재인쇄
-   * 본문에는 사유가 붙는다 — 키를 그대로 물려주면 사유 없는 앞선 발행이 되돌아오거나 거절된다.
-   */
-  it('재인쇄는 본문이 달라지므로 새 멱등 키로 나간다', async () => {
-    const { user, sent } = renderFlow({ lotId: LOT_ID, issueFails: true });
-    await chooseLine(user);
-
-    await user.click(screen.getByRole('button', { name: '인쇄' }));
-    expect(await screen.findByText('등록·인쇄를 끝내지 못했습니다.')).toBeInTheDocument();
-
-    await user.click(screen.getByRole('button', { name: '재인쇄' }));
-    const dialog = within(await screen.findByRole('dialog'));
-    await user.click(dialog.getByRole('combobox', { name: '사유' }));
-    await user.click(await screen.findByRole('option', { name: '인쇄 실패' }));
-    await user.click(dialog.getByRole('button', { name: '재인쇄' }));
-
-    await waitFor(() => {
-      expect(sent.filter((entry) => entry.path === '/app/document-issues')).toHaveLength(2);
-    });
-
-    const issues = sent.filter((entry) => entry.path === '/app/document-issues');
-    expect(issues[1]?.body).toMatchObject({ reissueReasonCode: 'SYN_REISSUE_01' });
-    expect(issues[0]?.headers.get('Idempotency-Key')).not.toBe(
-      issues[1]?.headers.get('Idempotency-Key'),
-    );
   });
 
   /** 라벨 값 조회 실패는 이미 등록된 LOT을 새로 만든 것처럼 알리지 않는다. */
@@ -740,20 +711,22 @@ describe('PopMaterialLotLabelScreen — 재인쇄', () => {
     });
   });
 
-  it('발행 완료 목록에서 고른 자재는 인쇄를 잠그고 재인쇄를 연다', async () => {
+  it('발행 완료 목록에서 고른 자재에는 재인쇄 단추 하나만 둔다', async () => {
     const { user } = renderFlow({ lotId: LOT_ID });
     await user.click(await screen.findByRole('button', { name: '발행 완료' }));
     await chooseLine(user);
 
-    expect(await screen.findByRole('button', { name: '인쇄' })).toBeDisabled();
-    expect(screen.getByRole('button', { name: '재인쇄' })).toBeEnabled();
+    expect(await screen.findByRole('button', { name: '재인쇄' })).toBeEnabled();
+    expect(screen.queryByRole('button', { name: '인쇄' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '등록·인쇄' })).not.toBeInTheDocument();
   });
 
-  it('발행한 적이 없으면 재인쇄를 막는다 — 재발행할 회차가 없다', async () => {
-    const { user } = renderFlow();
+  it('미발행 목록에서 고른 자재에는 재인쇄 단추가 없다 — 재발행할 회차가 없다', async () => {
+    const { user } = renderFlow({ lotId: LOT_ID });
     await chooseLine(user);
 
-    expect(screen.getByRole('button', { name: '재인쇄' })).toBeDisabled();
+    expect(await screen.findByRole('button', { name: '인쇄' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '재인쇄' })).not.toBeInTheDocument();
   });
 
   it('사유를 고르기 전에는 보내지 않고, 고른 사유를 본문에 싣는다', async () => {
@@ -761,6 +734,7 @@ describe('PopMaterialLotLabelScreen — 재인쇄', () => {
       lotId: LOT_ID,
       shellPrint: vi.fn(async () => 'C:/syn/label.png'),
     });
+    await user.click(await screen.findByRole('button', { name: '발행 완료' }));
     await chooseLine(user);
 
     await user.click(screen.getByRole('button', { name: '재인쇄' }));
@@ -782,6 +756,7 @@ describe('PopMaterialLotLabelScreen — 재인쇄', () => {
 
   it('⛔ 고를 사유가 없으면 재인쇄를 열지 않고 왜 못 하는지 보인다', async () => {
     const { user } = renderFlow({ lotId: LOT_ID, reissueReasons: [] });
+    await user.click(await screen.findByRole('button', { name: '발행 완료' }));
     await chooseLine(user);
 
     await user.click(screen.getByRole('button', { name: '재인쇄' }));
