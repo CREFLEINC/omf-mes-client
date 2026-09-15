@@ -6,10 +6,11 @@ import { Link } from 'react-router';
 
 import { useBackStep } from '../../patterns/back-step';
 import { useCodeValues } from '../../patterns/code-values';
+import { useLotNos } from '../../patterns/handling-units';
 import { playErrorTone } from '../../patterns/error-tone';
 import { useEquipments } from '../../patterns/equipments';
 import { useLocation } from '../../patterns/locations';
-import { useItemCodes, useItemLabels } from '../../patterns/masters';
+import { useItemCodes } from '../../patterns/masters';
 import { referenceLabel } from '../../patterns/reference';
 import { useOnlineStatus } from '../../patterns/online-status';
 import { useOutbox } from '../../patterns/outbox';
@@ -23,7 +24,6 @@ import {
   hopperStockKey,
   useAlreadyReceived,
   useHopperStock,
-  useLineLotLabels,
   useScannedGoodsIssue,
 } from './queries';
 import {
@@ -84,7 +84,7 @@ export const ShopfloorReceiptScreen = () => {
   const issue = found.data ?? null;
   const received = useAlreadyReceived(issue?.issue.goodsIssueId ?? null);
 
-  const lotLabels = useLineLotLabels(issue?.lines ?? []);
+  const lotNo = useLotNos((issue?.lines ?? []).map((line) => line.lotId));
   const reasons = useCodeValues(VARIANCE_REASON);
   /*
    * 사유는 고객이 늘리는 값이라 현장에서 비어 올 수 있다. 고를 것이 없는데 사유를 요구하면
@@ -161,11 +161,10 @@ export const ShopfloorReceiptScreen = () => {
   const hopperStock = useHopperStock(hopperLocationId);
 
   /* 호퍼 잔량의 품목도 함께 묻는다 - 전표에 없는 품목이 섞여 있어 그 줄만 대리키로 남는다. */
-  const itemLabels = useItemLabels([
+  const itemCode = useItemCodes([
     ...(issue?.lines ?? []).map((line) => line.itemId),
     ...(hopperStock.data ?? []).map((stock) => stock.itemId),
   ]);
-  const itemCode = useItemCodes((issue?.lines ?? []).map((line) => line.itemId));
   const stocks = hopperStock.data ?? [];
   /*
    * 사유는 고객이 늘리는 값이라 화면이 박지 않는다. 서버가 모른다고 답하면 막는다 - 지어낸
@@ -279,7 +278,7 @@ export const ShopfloorReceiptScreen = () => {
 
   /* 라벨에는 품목 코드와 LOT 번호가 찍혀 있다. 대리키를 보이면 실물과 대조할 수 없다. */
   const itemCodeOf = (line: DraftLine): string => referenceLabel(itemCode(line.itemId));
-  const lotNoOf = (line: DraftLine): string => lotLabels.get(line.lotId) ?? String(line.lotId);
+  const lotNoOf = (line: DraftLine): string => referenceLabel(lotNo(line.lotId));
 
   /** 읽어 주는 이름. 줄이 여럿이라 이름만으로 어느 줄인지 갈려야 한다. */
   const nameOf = (line: DraftLine): string => t.lines.name(itemCodeOf(line), lotNoOf(line));
@@ -648,8 +647,7 @@ export const ShopfloorReceiptScreen = () => {
               const key = hopperKeyOf(stock);
               const value = measured[key] ?? '';
               const problem = measureProblemOf(value);
-              const item = itemLabels.get(stock.itemId);
-              const code = item === undefined ? String(stock.itemId) : item.itemCode;
+              const code = referenceLabel(itemCode(stock.itemId));
               /* 같은 품목이 여러 LOT 으로 남으면 품목 코드만으로는 어느 줄인지 알 수 없다. */
               const name = t.hopper.name(code, stock.lotNo ?? '');
 

@@ -337,7 +337,7 @@ describe('적치·입고 완료 화면', () => {
     const pick = await screen.findByRole('button', { name: /PT-2026-0007/ });
 
     await waitFor(() => {
-      expect(pick.textContent).toContain('이름을 불러오지 못했습니다');
+      expect(pick.textContent).toContain('연결되면 표시됩니다');
     });
   });
 

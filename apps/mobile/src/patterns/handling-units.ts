@@ -2,6 +2,7 @@ import type { components } from '@omf-mes/api-client';
 import { useQueries, useQuery, type UseQueryResult } from '@tanstack/react-query';
 
 import { useApiClient } from './api-context';
+import type { ReferenceResolver } from './reference';
 import { runRequest } from './request';
 
 type Client = ReturnType<typeof useApiClient>['client'];
@@ -74,6 +75,58 @@ export const useScannedHandlingUnit = (
   });
 };
 
+/** 두 조회가 같은 열쇠를 써야 한 화면이 둘을 함께 써도 서버를 두 번 부르지 않는다. */
+const lotLabelKey = (lotId: number) => ['handling-unit-lot', lotId] as const;
+
+const fetchLotNo = async (client: Client, lotId: number): Promise<string> => {
+  const data = await runRequest(() =>
+    client.GET('/trace/lots/{lotId}', { params: { path: { lotId } } }),
+  );
+
+  return data.lot.lotNo;
+};
+
+/**
+ * LOT 번호를 상태와 함께 푼다.
+ *
+ * `useLotLabels` 는 받은 것만 담은 지도라, 못 받은 번호와 아직 받는 중인 번호가 똑같이
+ * 빠진다. 부르는 쪽이 그 자리에 대리키를 끼우면 **사람이 읽을 수 없는 숫자가 LOT 번호인
+ * 척한다** - 라벨에 찍힌 34자리와 견줄 수 없는데 견줄 것처럼 보인다.
+ *
+ * 열쇠를 `useLotLabels` 와 같이 두어 한 화면이 둘을 함께 써도 서버를 두 번 부르지 않는다.
+ */
+export const useLotNos = (lots: readonly number[]): ReferenceResolver => {
+  const { client } = useApiClient();
+  const lotIds = [...new Set(lots)];
+
+  const results = useQueries({
+    queries: lotIds.map((lotId) => ({
+      queryKey: lotLabelKey(lotId),
+      queryFn: () => fetchLotNo(client, lotId),
+    })),
+  });
+
+  const byId = new Map(lotIds.map((lotId, index) => [lotId, results[index]] as const));
+
+  return (id) => {
+    if (id === null || id === undefined) {
+      return { kind: 'empty' };
+    }
+
+    const result = byId.get(id);
+
+    if (result === undefined) {
+      return { kind: 'unknown' };
+    }
+
+    if (result.isError) {
+      return { kind: 'failed' };
+    }
+
+    return result.data === undefined ? { kind: 'loading' } : { kind: 'named', label: result.data };
+  };
+};
+
 /**
  * 포장에 든 LOT 의 번호표.
  *
@@ -86,14 +139,8 @@ export const useLotLabels = (lots: number[]): Map<number, string> => {
 
   return useQueries({
     queries: lotIds.map((lotId) => ({
-      queryKey: ['handling-unit-lot', lotId] as const,
-      queryFn: async () => {
-        const data = await runRequest(() =>
-          client.GET('/trace/lots/{lotId}', { params: { path: { lotId } } }),
-        );
-
-        return [lotId, data.lot.lotNo] as const;
-      },
+      queryKey: lotLabelKey(lotId),
+      queryFn: async () => [lotId, await fetchLotNo(client, lotId)] as const,
     })),
     combine: (results) =>
       new Map(

@@ -1269,6 +1269,78 @@ describe('자재 출고·피킹 화면', () => {
     expect(sent.picks).toHaveLength(0);
   });
 
+  /*
+   * 전기된 지시는 「아직 출고할 수 있는 것」에서 서버가 빼는데, 다시 묻지 않으면 「다음 지시」로
+   * 돌아온 목록에 그대로 남는다 — 작업자가 그것을 다시 열고 같은 수량이 한 번 더 나간다
+   * (PICK-ISSUE-01 D1 실기: PK-0003·PK-0004 가 출고 뒤에도 목록에 남았다).
+   */
+  it('출고가 나가면 지시 목록과 상세를 다시 묻는다', async () => {
+    const user = userEvent.setup();
+    const sent = mount({ lines: [line({ pickedQty: 120 })] });
+    await chooseOrder(user);
+
+    const listAsks = () =>
+      sent.asked.filter((each) => each.includes('/logistics/picking-orders?')).length;
+    const detailAsks = () =>
+      sent.asked.filter((each) => each.includes('/logistics/picking-orders/7')).length;
+    const listBefore = listAsks();
+    const detailBefore = detailAsks();
+
+    await user.click(screen.getByRole('button', { name: '출고 확정' }));
+    await screen.findByText('출고를 확정했습니다');
+
+    await waitFor(() => {
+      expect(listAsks()).toBeGreaterThan(listBefore);
+    });
+    expect(detailAsks()).toBeGreaterThan(detailBefore);
+  });
+
+  /* 아직 서버가 보지 못한 출고다. 목록이 달라질 이유가 없고, 끊긴 자리에서 부르면 실패만 쌓인다. */
+  it('출고가 전송 대기에 남으면 목록을 다시 묻지 않는다', async () => {
+    const user = userEvent.setup();
+    const sent = mount({ issue: 'offline', lines: [line({ pickedQty: 120 })] });
+    await chooseOrder(user);
+
+    const listAsks = () =>
+      sent.asked.filter((each) => each.includes('/logistics/picking-orders?')).length;
+    const before = listAsks();
+
+    await user.click(screen.getByRole('button', { name: '출고 확정' }));
+    await screen.findByText('출고를 전송 대기에 넣었습니다');
+
+    expect(listAsks()).toBe(before);
+  });
+
+  /*
+   * 수량 구획 끝에 「이 라인 피킹」이 있고 화면 바닥에는 「출고 확정」 바가 붙어 있다. 머리를
+   * 맞추면 숫자판 높이만큼 밀려 단추가 그 바 아래로 들어가고, 한가운데를 눌러도 바가 받는다
+   * (PICK-ISSUE-01 D3 실기: 두 번 무반응). 꼬리를 맞춰 단추를 바 위로 들인다.
+   */
+  it('LOT 이 맞으면 수량 구획의 꼬리를 화면 안으로 들인다', async () => {
+    const user = userEvent.setup();
+    const pulled: { text: string; block: string | undefined }[] = [];
+
+    Object.defineProperty(Element.prototype, 'scrollIntoView', {
+      configurable: true,
+      value(this: Element, options?: ScrollIntoViewOptions) {
+        pulled.push({ text: this.textContent?.slice(0, 20) ?? '', block: options?.block });
+      },
+    });
+
+    mount();
+    await chooseOrder(user);
+    await user.click(screen.getByRole('radio', { name: /ABC-123/ }));
+    await openManualEntry(user);
+    await user.type(await screen.findByLabelText(/LOT 번호/), LOT_NO);
+    await user.click(await screen.findByRole('button', { name: '넣기' }));
+    await screen.findByText('라인의 LOT 과 같습니다');
+
+    const entry = pulled.find((each) => each.text.includes('출고 수량'));
+
+    expect(entry, '수량 구획을 화면 안으로 들인다').toBeTruthy();
+    expect(entry?.block, '꼬리를 맞춘다').toBe('end');
+  });
+
   it('보낼 출고 유형이 없으면 그 사실을 말한다', async () => {
     const user = userEvent.setup();
     mount({ issueTypes: [], lines: [line({ pickedQty: 120 })] });

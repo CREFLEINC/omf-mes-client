@@ -8,7 +8,7 @@ import { useBackStep } from '../../patterns/back-step';
 import { playErrorTone } from '../../patterns/error-tone';
 import { useLocationByCode, useLocations } from '../../patterns/locations';
 import { useItemCodes } from '../../patterns/masters';
-import { referenceLabel } from '../../patterns/reference';
+import { referenceFromQuery, referenceLabel } from '../../patterns/reference';
 import { useOnlineStatus } from '../../patterns/online-status';
 import { useOutbox } from '../../patterns/outbox';
 import { currentPlantId } from '../../patterns/plant';
@@ -208,11 +208,11 @@ export const ProductReceiptScreen = () => {
     unitScan.focus();
   });
 
+  /* 한 번에 받는 조회라 실패하면 줄 전부가 같은 상태다. 그래도 대리키는 보이지 않는다. */
+  const lotNo = referenceFromQuery(lots, (lot) => lot.lotNo);
+
   const nameOf = (line: DraftLine): string =>
-    t.contents.name(
-      referenceLabel(itemCode(line.itemId)),
-      lots.data?.get(line.lotId)?.lotNo ?? String(line.lotId),
-    );
+    t.contents.name(referenceLabel(itemCode(line.itemId)), referenceLabel(lotNo(line.lotId)));
 
   const restart = () => {
     setScannedUnit(null);

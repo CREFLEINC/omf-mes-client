@@ -242,7 +242,7 @@ describe('품목 코드의 상태', () => {
    * 사람은 품목이 원래 없는 줄로 읽고, 기다리면 채워질 것에 담당자를 부른다. 실제로 적치
    * 화면에서 일곱 줄의 품목이 통째로 사라졌다.
    */
-  it('못 받았으면 못 받았다고 말한다', async () => {
+  it('못 받았으면 연결되면 표시된다고 말한다', async () => {
     const fetch = createStubFetch([
       {
         match: (request) => /^\/mdm\/items\/\d+$/.test(new URL(request.url).pathname),
@@ -257,7 +257,7 @@ describe('품목 코드의 상태', () => {
     await waitFor(() => {
       expect(result.current(31).kind).toBe('failed');
     });
-    expect(referenceLabel(result.current(31))).toBe('이름을 불러오지 못했습니다');
+    expect(referenceLabel(result.current(31))).toBe('연결되면 표시됩니다');
   });
 
   /* 아직 오는 중인 것을 없다고 말하면, 정상 값이 잘못된 값으로 보인다. */

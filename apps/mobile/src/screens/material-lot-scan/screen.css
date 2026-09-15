@@ -46,3 +46,23 @@
 .material-lot-scan__wide {
   width: 100%;
 }
+
+/*
+ * 이름을 위에 얹어 세로로 쌓는다(배치 규범 9의 이탈 조건). LOT 번호가 34자리라 이름 열을
+ * 옆에 두면 값을 밀어내고, 번호가 더 잘게 접혀 자릿수를 셀 수 없다.
+ */
+.material-lot-scan__fields {
+  display: grid;
+  gap: var(--space-1, 4px);
+  margin: 0;
+}
+
+.material-lot-scan__fields dt {
+  color: var(--on-surface-muted, inherit);
+}
+
+.material-lot-scan__fields dd {
+  margin: 0;
+  min-width: 0;
+  font-variant-numeric: tabular-nums;
+}

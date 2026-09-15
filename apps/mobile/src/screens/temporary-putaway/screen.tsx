@@ -272,13 +272,20 @@ export const TemporaryPutawayScreen = () => {
         <h2>{t.task.legend}</h2>
         <Card bordered>
           <Card.Body className="card-body temporary__card">
-            <strong>
-              {t.task.item(
-                referenceLabel(itemCode(task.itemId)),
-                task.putawayTaskNo,
-                `${String(task.taskQty)} ${uomOf(task.uomId)}`,
-              )}
-            </strong>
+            {/*
+              세 값에 이름을 붙여 세로로 세운다. 한 줄에 늘어놓으면 어느 것이 품목이고 어느
+              것이 지시 번호인지 형식을 아는 사람만 읽는다(배치 규범 9).
+            */}
+            <dl className="temporary__task-fields">
+              <dt>{t.task.itemLabel}</dt>
+              <dd>
+                <strong>{referenceLabel(itemCode(task.itemId))}</strong>
+              </dd>
+              <dt>{t.task.taskNoLabel}</dt>
+              <dd>{task.putawayTaskNo}</dd>
+              <dt>{t.task.qtyLabel}</dt>
+              <dd>{`${String(task.taskQty)} ${uomOf(task.uomId)}`}</dd>
+            </dl>
             {/* 어디가 막혀서 여기 왔는지가 대상 정보의 일부다. */}
             <p className="temporary__note">{t.task.origin(codeOf(task.fromLocationId))}</p>
             {task.recommendedLocationId === null || task.recommendedLocationId === undefined ? (
