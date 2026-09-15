@@ -35,7 +35,8 @@ export const materialInputScan = {
      */
     sessionNone: '세션 —',
     /** 어느 단말에서 찍고 있는지. 단말을 모르면 게이팅이 닫히므로 그 사실이 헤더에도 선다. */
-    terminal: (terminalId: number): string => `단말 #${String(terminalId)}`,
+    /** ⭐ 번호가 뒤에 붙는다 — 「단말# 5」(사용자 지시 2026-09-15). */
+    terminal: (terminalId: number): string => `단말# ${String(terminalId)}`,
     /**
      * 단말을 아직 모를 때 — **「단말 —」**.
      *

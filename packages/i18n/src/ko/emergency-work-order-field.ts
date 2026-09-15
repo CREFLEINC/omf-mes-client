@@ -32,7 +32,8 @@ export const emergencyWorkOrderField = {
      * 규칙이 내려오면 그때 세 화면을 함께 고친다.
      */
     terminalUnknown: '단말 —',
-    terminalLabel: (terminalNo: string): string => `단말 ${terminalNo}`,
+    /** ⭐ 번호가 뒤에 붙는다 — 「단말# 5」(사용자 지시 2026-09-15). */
+    terminalLabel: (terminalNo: string): string => `단말# ${terminalNo}`,
 
     /**
      * 연결 표시. ⛔ **브라우저가 말하는 「온라인」이 아니라 «서버에 닿았는가»로 말한다** —

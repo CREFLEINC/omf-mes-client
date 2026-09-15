@@ -39,11 +39,12 @@ export const PopHeader = ({ titleId, terminalNo, isConnected }: PopHeaderProps) 
       </h1>
 
       <p className="pop-context pop-context-right">
-        <span>
+        {/* ⭐ 「단말#」 표기는 라벨(칩)로 보인다 — 다른 POP 머리줄과 같은 모양(사용자 지시 2026-09-15). */}
+        <Chip status={terminalNo === undefined || terminalNo.trim() === '' ? 'warning' : 'info'}>
           {terminalNo === undefined || terminalNo.trim() === ''
             ? t.header.terminalUnknown
             : t.header.terminalLabel(terminalNo)}
-        </span>
+        </Chip>
 
         {isConnected !== undefined && (
           <Chip variant="status" size="md" status={isConnected ? 'success' : 'error'}>
