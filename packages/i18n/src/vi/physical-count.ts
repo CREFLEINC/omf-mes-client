@@ -33,12 +33,14 @@ export const physicalCount: Translated<typeof ko.physicalCount> = {
   lines: {
     legend: 'Số lượng thực tế',
     name: (item: string, lotNo: string) => [item, lotNo].filter((part) => part !== '').join(' · '),
-    qtyLabel: (name: string) => `Số lượng thực tế của ${name}`,
+    qty: 'Nhập số lượng thực tế',
+    qtyLabel: (name: string) => `Nhập số lượng thực tế của ${name}`,
     systemQty: (qty: string) => `Tồn hệ thống ${qty}`,
     diffOver: (qty: string) => `Chênh lệch thừa ${qty}`,
     diffShort: (qty: string) => `Chênh lệch thiếu ${qty}`,
     already: (qty: string) => `Giá trị đã đếm trước ${qty}`,
     uncounted: 'Dòng hàng này chưa đếm',
+    reason: 'Lý do chênh lệch',
     reasonLabel: (name: string) => `Lý do chênh lệch của ${name}`,
     reasonPlaceholder: 'Chọn lý do chênh lệch',
     problem: {

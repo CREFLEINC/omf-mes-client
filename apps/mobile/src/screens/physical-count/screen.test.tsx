@@ -319,6 +319,24 @@ describe('실물 카운트 화면', () => {
   });
 
   /*
+   * 줄 이름은 제목으로 한 번만 선다. 칸 라벨에 또 적으면 한 줄에 같은 34자리가 두 번 서서,
+   * 아홉 줄이 넘는 목록에서 어느 것이 줄 이름이고 어느 것이 칸 이름인지 갈리지 않는다.
+   */
+  it('줄 이름을 눈에 보이는 자리에 한 번만 세운다', async () => {
+    const user = userEvent.setup();
+    mount();
+    await openLocation(user);
+    await screen.findByLabelText(QTY_LABEL);
+
+    const shown = formatMaterialLotNo(LOT_NO);
+    const seen = screen.getAllByText((_, node) => node?.textContent?.includes(shown) === true);
+    /* 조상 요소가 함께 걸리므로 그 글자만 담은 잎만 센다. */
+    const leaves = seen.filter((node) => node.children.length === 0);
+
+    expect(leaves).toHaveLength(1);
+  });
+
+  /*
    * 계약이 품목 코드와 LOT 번호를 라인에 실어 보내는 이유가 여기 있다 - 모바일은 오프라인에서
    * 마스터를 갱신할 수 없다. 이름을 마스터에서 다시 받아 오면 연결이 끊긴 자리에서 줄마다
    * 이름이 통째로 사라지고, 세는 사람이 어느 줄에 적는지 알 수 없게 된다.

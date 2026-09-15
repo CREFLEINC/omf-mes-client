@@ -45,7 +45,13 @@ export const physicalCount = {
      * 잘린 것처럼 읽힌다.
      */
     name: (item: string, lotNo: string) => [item, lotNo].filter((part) => part !== '').join(' · '),
-    qtyLabel: (name: string) => `${name} 실물 수량`,
+    /*
+     * 눈에 보이는 라벨은 짧게 둔다. 줄 이름은 바로 위에 제목으로 서 있어, 라벨에 또 적으면
+     * 한 줄에 같은 이름이 두 번 선다.
+     */
+    qty: '실물 수량 입력',
+    /** 어느 줄의 칸인지는 눈으로 보고, 화면을 읽어 주는 도구는 이 이름으로 가른다. */
+    qtyLabel: (name: string) => `${name} 실물 수량 입력`,
     /** 전산 잔량은 블라인드가 아닐 때만 온다. */
     systemQty: (qty: string) => `전산 잔량 ${qty}`,
     /*
@@ -68,6 +74,7 @@ export const physicalCount = {
      * 드러나야 한다.
      */
     uncounted: '이 라인은 아직 세지 않았습니다',
+    reason: '차이 사유',
     reasonLabel: (name: string) => `${name} 차이 사유`,
     reasonPlaceholder: '차이 사유를 고르세요',
     problem: {

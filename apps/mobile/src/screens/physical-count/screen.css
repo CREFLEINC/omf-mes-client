@@ -44,10 +44,14 @@
   font-variant-numeric: tabular-nums;
 }
 
-/* 되돌릴 수 없는 조정이 이 수만큼 나간다. 값 중에 이것만 굵게 둔다. */
+/*
+ * 되돌릴 수 없는 조정이 이 수만큼 나간다. 값 중에 이것만 굵게 둔다 - 크기는 옆에 선 값들과
+ * 맞춘다. 혼자 커지면 한 줄에 글자 크기가 셋이 되어 어느 것이 중한지가 아니라 배치가
+ * 어긋난 것으로 읽힌다.
+ */
 .physical-count__diff {
-  font: var(--type-title-sm);
-  letter-spacing: var(--type-title-sm-tracking);
+  font: var(--type-label-lg);
+  letter-spacing: var(--type-label-lg-tracking);
   font-variant-numeric: tabular-nums;
 }
 

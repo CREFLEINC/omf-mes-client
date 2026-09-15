@@ -332,7 +332,8 @@ export const PhysicalCountScreen = () => {
                     {statusOf(line)}
                   </div>
                   <TextField
-                    label={t.lines.qtyLabel(nameOf(line))}
+                    label={t.lines.qty}
+                    aria-label={t.lines.qtyLabel(nameOf(line))}
                     size="xl"
                     fullWidth
                     /*
@@ -386,10 +387,11 @@ export const PhysicalCountScreen = () => {
                   {count !== null && needsReason(count, line) ? (
                     <>
                       <label htmlFor={`physical-count-reason-${String(line.inventoryCountLineId)}`}>
-                        {t.lines.reasonLabel(nameOf(line))}
+                        {t.lines.reason}
                       </label>
                       <Select
                         id={`physical-count-reason-${String(line.inventoryCountLineId)}`}
+                        aria-label={t.lines.reasonLabel(nameOf(line))}
                         placeholder={t.lines.reasonPlaceholder}
                         size="xl"
                         value={line.reasonCode === '' ? null : line.reasonCode}
