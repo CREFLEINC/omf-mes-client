@@ -95,6 +95,8 @@ export const deviceRegistration = {
      */
     unregister: {
       open: '기기 등록 해제',
+      /** 등록이 끊긴 기기에서 같은 해제를 부른다. 풀어야 새 QR 로 다시 등록할 수 있다. */
+      reregister: '새 QR로 다시 등록',
       title: '등록을 해제하면 되돌릴 수 없습니다',
       notice: '이 기기를 다시 사용하려면 관리자에게 새 등록 QR 을 받아야 합니다. 진행하시겠습니까?',
       pending: (count: string) => `보내지 못한 기록 ${count}건이 사라집니다`,

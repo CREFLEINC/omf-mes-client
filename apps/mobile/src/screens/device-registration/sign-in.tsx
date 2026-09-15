@@ -218,6 +218,26 @@ export const WorkerSignInScreen = () => {
     );
   }
 
+  /*
+   * 등록이 끊겼으면 사번을 넣어도 들어갈 수 없다. 막힌 입력을 두면 작업자는 키패드를 누르다
+   * 멈추고, 풀 길은 키패드 아래 맨 끝에 밀려 단말 화면에서 보이지 않았다(#1243 실기). 입력을
+   * 걷고 다시 등록하는 길 하나만 만료 문구 바로 아래에 둔다. 누르면 해제 확인 창을 그대로
+   * 거친다 - 보내지 못한 기록이 사라진다는 안내를 건너뛰지 않는다(설계 §5-5).
+   */
+  if (expired) {
+    return (
+      <div className="worker-sign-in">
+        <LocalNetworkNotice />
+
+        <Button variant="filled" size="2xl" onClick={openUnregister}>
+          {t.unregister.reregister}
+        </Button>
+
+        {unregisterDialog}
+      </div>
+    );
+  }
+
   return (
     <div className="worker-sign-in">
       {/* 등록된 기기도 업데이트 뒤에는 이 권한이 없을 수 있다. 사번을 넣기 전에 알린다. */}
@@ -247,20 +267,13 @@ export const WorkerSignInScreen = () => {
       <Button
         variant="filled"
         size="2xl"
-        disabled={entry === '' || directory === null || expired}
+        disabled={entry === '' || directory === null}
         onClick={confirm}
       >
         {t.confirm}
       </Button>
 
       {directory === null ? <AlertBanner variant="warning" title={t.noDirectory} /> : null}
-
-      {/* 막기만 하면 갈 곳이 없다. 새 QR 로 다시 등록하려면 먼저 풀어야 한다. */}
-      {expired ? (
-        <Button variant="text" size="xl" onClick={openUnregister}>
-          {t.unregister.open}
-        </Button>
-      ) : null}
 
       {unregisterDialog}
     </div>

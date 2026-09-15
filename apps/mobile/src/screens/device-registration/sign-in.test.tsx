@@ -252,22 +252,32 @@ describe('등록이 서버에서 끊긴 기기', () => {
     /* 셸이 띄운 것 하나뿐이다. 화면이 또 띄우면 두 번 뜬다(#1198 실기). */
     expect(screen.getAllByText(EXPIRED)).toHaveLength(1);
 
-    await press(user, '900028');
-
-    expect(screen.getByRole('button', { name: '확인' })).toBeDisabled();
+    /* 넣어도 들어갈 수 없는 입력은 두지 않는다(#1243). */
+    expect(screen.queryByRole('group', { name: '사번 입력' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '확인' })).not.toBeInTheDocument();
     expect(screen.queryByText('작업자 1 · 900028')).not.toBeInTheDocument();
   });
 
-  /* 막기만 하면 갈 곳이 없다. 새 QR 로 다시 등록하려면 먼저 풀어야 한다. */
-  it('사번을 넣기 전에도 등록을 풀 수 있다', async () => {
+  /*
+   * 막기만 하면 갈 곳이 없다. 새 QR 로 다시 등록하려면 먼저 풀어야 한다. 그 길이 키패드 아래에
+   * 밀려 단말에서 보이지 않았다(#1243 실기).
+   */
+  it('새 QR 로 다시 등록하는 길은 해제 확인 창을 거쳐 등록을 푼다', async () => {
     await rememberPlant(7);
     const user = userEvent.setup();
     mountGated([probe(() => jsonResponse(denied, { status: 401 }))]);
 
     await screen.findByText(EXPIRED);
-    await user.click(screen.getByRole('button', { name: '기기 등록 해제' }));
+    await user.click(screen.getByRole('button', { name: '새 QR로 다시 등록' }));
 
-    expect(await screen.findByRole('dialog')).toBeInTheDocument();
+    const dialog = within(await screen.findByRole('dialog'));
+    expect(token.cleared).toBe(0);
+
+    await user.click(await dialog.findByRole('button', { name: '등록 해제' }));
+
+    await waitFor(() => {
+      expect(token.cleared).toBe(1);
+    });
   });
 
   it('들어온 뒤에 끊겼으면 교대로 사번을 바꿀 때 막는다', async () => {
@@ -285,10 +295,10 @@ describe('등록이 서버에서 끊긴 기기', () => {
     await signedIn(user);
     dead = true;
     await user.click(screen.getByRole('button', { name: '사번 바꾸기' }));
-    await press(user, '900028');
 
     expect(await screen.findByText(EXPIRED)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: '확인' })).toBeDisabled();
+    expect(screen.queryByRole('button', { name: '확인' })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '새 QR로 다시 등록' })).toBeInTheDocument();
   });
 
   it('토큰이 살아 있으면 지금처럼 들어간다', async () => {

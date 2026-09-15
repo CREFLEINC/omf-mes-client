@@ -67,6 +67,7 @@ export const deviceRegistration: Translated<typeof ko.deviceRegistration> = {
     },
     unregister: {
       open: 'Hủy đăng ký thiết bị',
+      reregister: 'Đăng ký lại bằng mã QR mới',
       title: 'Hủy đăng ký sẽ không thể hoàn tác',
       notice:
         'Để sử dụng lại thiết bị này, cần xin mã QR đăng ký mới từ quản trị viên. Vẫn tiếp tục chứ?',
