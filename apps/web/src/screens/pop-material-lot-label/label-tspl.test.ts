@@ -54,11 +54,11 @@ describe('buildMaterialLotLabel', () => {
    *    잘렸다(실기 HT800 2026-09-15). 시작점만 보던 검사가 이것을 못 잡았다 — «끝점»을 본다.
    *
    * 가로는 프린터가 오른쪽으로 약 2.5 mm 치우쳐 찍어 왼쪽 12점(1.5 mm)·오른쪽 52점(6.5 mm)으로
-   * 당겨 짠다(실기 2026-09-15). 세로도 1 mm 올려 위 24점(3 mm)·아래 40점(5 mm)으로 짠다(사용자 지시).
+   * 당겨 짠다(실기 2026-09-15). 세로도 2 mm 올려 위 16점(2 mm)·아래 48점(6 mm)으로 짠다(사용자 지시).
    */
   it('⛔ 글줄과 QR 이 안전 여백 안에서 끝나고 서로 겹치지 않는다 — 가로는 왼쪽으로 당긴다', () => {
-    const TOP = 24;
-    const BOTTOM = 40;
+    const TOP = 16;
+    const BOTTOM = 48;
     const LEFT = 12;
     const RIGHT = 52;
     const lines = buildMaterialLotLabel(FIELDS).split('\r\n');

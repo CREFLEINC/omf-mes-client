@@ -41,12 +41,12 @@ const LEFT = MARGIN - SHIFT_LEFT;
 const RIGHT = MARGIN + SHIFT_LEFT;
 
 /**
- * 세로는 **1 mm 위로 올려** 짠다 — 위 3 mm · 아래 5 mm(사용자 지시 2026-09-15 · 실기 확인 뒤).
+ * 세로는 **2 mm 위로 올려** 짠다 — 위 2 mm · 아래 6 mm(사용자 지시 2026-09-15 · 실기 두 차례 확인 뒤
+ * 1 mm 씩 올렸다).
  *
- * ⛔ 더 올리지 않는다. 위 3 mm 에 QR 윗변이 붙어 잘렸던 판은 가로가 치우친 채였지만, 위쪽 여유는
- *    이 이상 줄이면 같은 자리가 다시 위험하다.
+ * ⚠ 위 여백이 가장 얇은 자리다. 라벨지·기종이 바뀌어 QR 윗변이 잘리면 이 값부터 본다.
  */
-const SHIFT_UP = dots(1);
+const SHIFT_UP = dots(2);
 const TOP = MARGIN - SHIFT_UP;
 const BOTTOM = MARGIN + SHIFT_UP;
 
