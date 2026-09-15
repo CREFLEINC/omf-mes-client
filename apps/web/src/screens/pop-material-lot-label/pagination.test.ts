@@ -35,7 +35,7 @@ describe('toPageView', () => {
   });
 
   it('보여 줄 쪽이 없으면 자리를 지어내지 않는다', () => {
-    expect(toPageView(meta(1, 20, 0), 0).rangeLabel).toBe('보여 줄 쪽이 없습니다.');
+    expect(toPageView(meta(1, 20, 0), 0).rangeLabel).toBe('');
   });
 
   it('결과는 있는데 이 쪽에 없는 상태를 가려낸다 — 빈 상태의 안내가 갈린다', () => {

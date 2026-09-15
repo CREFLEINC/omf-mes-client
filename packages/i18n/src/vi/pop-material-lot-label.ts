@@ -29,7 +29,7 @@ export const popMaterialLotLabel: Translated<typeof ko.popMaterialLotLabel> = {
     retry: 'Tải lại',
   },
   device: {
-    terminalLabel: 'Máy trạm',
+    terminalLabel: 'Máy trạm#',
     terminalUnknown: 'Chưa xác nhận',
   },
 
@@ -40,7 +40,6 @@ export const popMaterialLotLabel: Translated<typeof ko.popMaterialLotLabel> = {
     none: 'Không có máy in nào dùng được.',
     unknown: 'Không kiểm tra được trạng thái máy in.',
     retry: 'Kiểm tra lại',
-    noStatusMessage: 'Không có mô tả trạng thái.',
   },
   target: {
     paneLabel: 'Đối tượng cấp số',
@@ -75,6 +74,7 @@ export const popMaterialLotLabel: Translated<typeof ko.popMaterialLotLabel> = {
       issueForbidden: 'Máy trạm này không phát hành nhãn được. Hãy in ở máy trạm có máy in nhãn.',
       reportFailedAfterPrint:
         'Nhãn đã ra. Chỉ là chưa lưu được kết quả in lên máy chủ — đừng in lại.',
+      iqcPlanMissing: 'Không có tiêu chuẩn kiểm tra IQC hợp lệ nên không thể đăng ký · in.',
       failed: 'Chưa đăng ký · in xong.',
     },
     reissueDialog: {
@@ -97,6 +97,5 @@ export const popMaterialLotLabel: Translated<typeof ko.popMaterialLotLabel> = {
     prev: '◀ Trước',
     next: 'Sau ▶',
     position: (page: number, totalPages: number) => `Trang ${page} / ${totalPages}`,
-    empty: 'Không có trang để hiển thị.',
   },
 };

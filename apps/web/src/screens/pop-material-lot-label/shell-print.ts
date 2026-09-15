@@ -34,6 +34,8 @@ declare global {
   interface Window {
     /** POP 셸(Electron)이 `contextBridge` 로 심는다. 브라우저에서는 없다. */
     pop?: PopShellApi;
+    /** 셸 진단(Ctrl+Alt+P)이 부르는 견본 인쇄(`sample-print`). POP 진입점이 심는다. */
+    __popPrintSampleLotLabel?: () => Promise<string>;
   }
 }
 

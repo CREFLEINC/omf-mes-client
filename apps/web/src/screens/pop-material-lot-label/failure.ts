@@ -21,6 +21,11 @@ export type IssueFailure =
    * 같은 LOT 의 라벨이 두 장 돌아다닌다 — 그쪽이 더 나쁘다.
    */
   | 'reportFailedAfterPrint'
+  /**
+   * 품목에 쓸 수 있는 IQC 검사기준이 없어 서버가 LOT 등록을 거절했다. 관리웹에서 기준을 세우기
+   * 전에는 다시 눌러도 같은 답이 온다(사용자 지시 2026-09-14 · 실기 확인).
+   */
+  | 'iqcPlanMissing'
   /** 그 밖의 실패 — 값이 틀렸거나(400) 서버가 거부했다. */
   | 'other';
 
@@ -57,6 +62,21 @@ const isForbidden = (error: ApiError): boolean => {
 };
 
 /**
+ * 검사 필요 품목의 입하 라인은 LOT 등록이 IQC 의뢰를 함께 세우는데, 확정·유효한 IQC 검사기준이
+ * 없으면 서버가 `STATE_LOCKED` 로 거절한다.
+ *
+ * ⚠ **문구로 가른다.** 서버가 이 거절에 따로 코드를 주지 않고(`scope: 'screen'` ·
+ *   `STATE_LOCKED` · 문구뿐), 같은 코드가 다른 잠김에도 온다. 서버 문구가 바뀌면 이 판정이
+ *   조용히 「그 밖의 실패」로 돌아간다 — 코드가 생기면 그쪽으로 갈아탄다.
+ * ⛔ 「여러 개입니다」(기준 중복)는 여기 넣지 않는다. 「없다」고 말하면 틀린 안내가 된다.
+ */
+const IQC_PLAN_MISSING_MESSAGE = '유효한 IQC 검사기준이 없습니다';
+
+const isIqcPlanMissing = (error: ApiError): boolean =>
+  error.kind === 'stateLocked' &&
+  error.errors.some((item) => item.message.startsWith(IQC_PLAN_MISSING_MESSAGE));
+
+/**
  * 한 번의 등록·인쇄가 어떤 실패로 끝났는가. 끝까지 갔거나 아직 아무것도 하지 않았으면 `null`.
  */
 export const toIssueFailure = (result: IssueRunResult): IssueFailure | null => {
@@ -72,6 +92,7 @@ export const toIssueFailure = (result: IssueRunResult): IssueFailure | null => {
     return result.hasPrintedLabel ? 'reportFailedAfterPrint' : 'printFailed';
   if (error === null) return 'other';
   if (failedAt === 'register' && isRetryableConflict(error)) return 'registerConflict';
+  if (failedAt === 'register' && isIqcPlanMissing(error)) return 'iqcPlanMissing';
   /*
    * ⚠ **권한 거부는 걸음을 가리지 않는다.** 라벨을 받는 걸음이나 등록에서 나와도 이 단말에
    * 권한이 없다는 뜻은 같다 — 갈래를 발행 걸음으로 좁히면 나머지가 「그 밖의 실패」로 접혀

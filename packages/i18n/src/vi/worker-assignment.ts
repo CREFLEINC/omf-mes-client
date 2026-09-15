@@ -53,7 +53,7 @@ export const workerAssignment: Translated<typeof ko.workerAssignment> = {
     },
   },
   header: {
-    brand: 'OMF MES',
+    brand: 'OMF-MES POP',
     label: 'Máy trạm',
     emptyValue: '—',
     online: common.connection.online,

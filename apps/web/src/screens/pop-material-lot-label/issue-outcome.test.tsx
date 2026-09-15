@@ -31,6 +31,33 @@ describe('IssueOutcome — 인쇄 결과 띠', () => {
     expect(screen.getByText('인쇄했습니다. 1회차')).toBeInTheDocument();
   });
 
+  /** 서버 문구를 그대로 보이지 않고, 기준이 없어 불가하다는 우리 문구로 말한다(사용자 지시 2026-09-14). */
+  it('IQC 검사기준이 없으면 그 사유로 등록·인쇄가 불가하다고 말한다', () => {
+    render(
+      <IssueOutcome
+        result={{
+          lineId: 1,
+          isPrinted: false,
+          failedAt: 'register',
+          hasCreatedLot: false,
+          hasPrintedLabel: false,
+          issue: null,
+          error: {
+            kind: 'stateLocked',
+            errors: [
+              { scope: 'screen', code: 'STATE_LOCKED', message: '유효한 IQC 검사기준이 없습니다.' },
+            ],
+          },
+        }}
+      />,
+    );
+
+    expect(
+      screen.getByText('유효한 IQC 검사기준이 없어 등록·인쇄가 불가합니다.'),
+    ).toBeInTheDocument();
+    expect(screen.queryByText('등록·인쇄를 끝내지 못했습니다.')).not.toBeInTheDocument();
+  });
+
   /**
    * ⛔ **닫는 조작을 두지 않는다.** 스펙 §3·§5 에 이 띠를 닫는 단추가 없고, 닫히면 결과가
    * 지워져 화면의 차단까지 함께 풀린다(§5-2). 다른 자재를 고르면 자연히 사라진다.
