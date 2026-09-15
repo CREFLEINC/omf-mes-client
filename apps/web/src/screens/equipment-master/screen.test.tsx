@@ -1598,7 +1598,6 @@ describe('EquipmentMasterScreen — 설비 목록 탭', () => {
    * ⭐ **되맞춤이 돌 때 «적용된» 유형을 되살려야 한다.** 칩으로 검색어를 거두면 적용된 값이
    * 달라져 효과가 도는데, 그때 유형까지 비우면 사용자가 고르고 조회까지 한 조건이 조용히
    * 사라진다 — 검색어와 같은 규율이 선택칸에도 선다.
-   * ⚠ 유형 값 목록이 미결이라 지금 고를 수 있는 것은 자리표시뿐이다(`omf-mes#145`).
    */
   it('칩으로 검색어를 거둬도 적용된 유형은 칸에 남는다', async () => {
     const user = userEvent.setup();
@@ -1973,6 +1972,10 @@ describe('EquipmentMasterScreen — 설비 등록·수정', () => {
       equipmentForm('create').getByRole('textbox', { name: new RegExp(t.fields.equipmentName) }),
       '새 설비',
     );
+    await user.click(
+      equipmentForm('create').getByRole('combobox', { name: t.fields.equipmentType }),
+    );
+    await user.click(await screen.findByRole('option', { name: '프레스' }));
     await user.click(equipmentForm('create').getByRole('button', { name: messages.common.save }));
 
     await waitFor(() => {
@@ -1985,10 +1988,51 @@ describe('EquipmentMasterScreen — 설비 등록·수정', () => {
     expect(request.headers.get('If-Match')).toBeNull();
     await expect(lastWriteBody(writes)).resolves.toMatchObject({
       equipmentCode: 'EQ-NEW',
+      equipmentTypeCode: 'PRESS',
       plantId: 11,
       // 좌측에서 고른 그룹 아래에 등록하는 것이 정상 경로다 — 다시 고르게 하지 않는다.
       productionLineId: 101,
     });
+  });
+
+  /*
+   * 설비유형은 공통코드(EQUIPMENT_TYPE)에서 받아 고른다. 받았으면 「준비 중」이 남지 않고,
+   * 고르지 않은 채 저장하면 화면이 막는다 — 선택지에 없는 값이 서버로 나가지 않는다.
+   */
+  it('등록 폼의 설비유형은 받아 온 코드값에서 고르고, 고르지 않으면 보내지 않는다', async () => {
+    const user = userEvent.setup();
+    const { writes } = renderScreen();
+
+    const pane = within(await openEquipmentTab(user));
+    await user.click(
+      pane.getAllByRole('button', { name: t.actions.addEquipment })[0] as HTMLElement,
+    );
+    await screen.findByRole('dialog', { name: t.equipmentForm.createTitle });
+
+    expect(equipmentForm('create').queryByText(messages.pendingCode.note)).toBeNull();
+    await user.click(
+      equipmentForm('create').getByRole('combobox', { name: t.fields.equipmentType }),
+    );
+    expect(await screen.findAllByRole('option')).toHaveLength(3);
+    for (const name of ['사출기', '프레스', '온수기']) {
+      expect(screen.getByRole('option', { name })).toBeInTheDocument();
+    }
+    await user.keyboard('{Escape}');
+
+    await user.type(
+      equipmentForm('create').getByRole('textbox', { name: new RegExp(t.fields.equipmentCode) }),
+      'EQ-NEW',
+    );
+    await user.type(
+      equipmentForm('create').getByRole('textbox', { name: new RegExp(t.fields.equipmentName) }),
+      '새 설비',
+    );
+    await user.click(equipmentForm('create').getByRole('button', { name: messages.common.save }));
+
+    expect(
+      await equipmentForm('create').findByText(messages.equipmentMaster.validation.required),
+    ).toBeInTheDocument();
+    expect(writes).toHaveLength(0);
   });
 
   /* 등록 중에는 아직 위치가 없다 — 지어내지 않는다. */

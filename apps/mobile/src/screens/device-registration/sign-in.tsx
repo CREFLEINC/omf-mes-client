@@ -6,6 +6,7 @@ import { useNavigate } from 'react-router';
 
 import { useDeviceRegistration } from '../../patterns/device-registration';
 import { useDeviceTokenState } from '../../patterns/load-failure';
+import { LocalNetworkNotice } from '../../patterns/local-network';
 import { useOutbox } from '../../patterns/outbox';
 import { useScreenTitle } from '../../patterns/screen-title';
 import { useWorkerSession } from '../../patterns/worker-session';
@@ -183,6 +184,8 @@ export const WorkerSignInScreen = () => {
   if (worker !== null) {
     return (
       <div className="worker-sign-in">
+        <LocalNetworkNotice />
+
         {/* 누구로 기록되는지가 이 카드의 요점이라 머리말 자리에 둔다. */}
         <Card bordered aria-label={t.current.label}>
           <Card.Header>{`${worker.workerName} · ${worker.workerNo}`}</Card.Header>
@@ -217,6 +220,9 @@ export const WorkerSignInScreen = () => {
 
   return (
     <div className="worker-sign-in">
+      {/* 등록된 기기도 업데이트 뒤에는 이 권한이 없을 수 있다. 사번을 넣기 전에 알린다. */}
+      <LocalNetworkNotice />
+
       <TextField
         label={t.label}
         value={entry}

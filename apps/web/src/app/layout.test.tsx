@@ -603,7 +603,7 @@ describe('AppLayout', () => {
       .map((link) => link.getAttribute('href'));
 
     expect(within(sidebar).getByText('생산')).toBeInTheDocument();
-    expect(within(sidebar).getByRole('link', { name: 'P/O 수신·조회' })).toHaveAttribute(
+    expect(within(sidebar).getByRole('link', { name: 'ERP W/O 수신·조회' })).toHaveAttribute(
       'href',
       '/production/production-orders',
     );

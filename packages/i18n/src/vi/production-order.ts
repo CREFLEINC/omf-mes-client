@@ -2,16 +2,16 @@ import type { ko } from '../ko';
 import type { Translated } from './translated';
 
 /**
- * W-02-01 P/O 수신·조회. ERP 가 내려 준 생산 P/O 를 **읽기만** 하는 화면이다.
+ * W-02-01 ERP W/O 수신·조회. ERP 가 내려 준 ERP W/O 를 **읽기만** 하는 화면이다.
  *
  * ⚠ **고칠 수 없다는 사실을 문구가 진다.** 화면에 수정 컨트롤이 없으므로, 왜 없는지와 어디서
  * 고치는지를 `values.erpReadOnlyNotice` 가 대신 말한다.
  */
 export const productionOrder: Translated<typeof ko.productionOrder> = {
-  title: 'Nhận · tra cứu P/O',
+  title: 'Nhận · tra cứu ERP W/O',
   breadcrumbRoot: 'Sản xuất',
   fields: {
-    productionOrderNo: 'Số P/O',
+    productionOrderNo: 'Số ERP W/O',
     erpProductionOrderNo: 'Số gốc ERP',
     item: 'Mặt hàng',
     orderedQty: 'Số lượng đặt · đơn vị',
@@ -27,16 +27,16 @@ export const productionOrder: Translated<typeof ko.productionOrder> = {
     remarks: 'Ghi chú',
   },
   panes: {
-    filters: 'Điều kiện tra cứu P/O sản xuất',
-    list: 'Danh sách P/O sản xuất',
-    basic: 'Chi tiết cơ bản P/O sản xuất',
-    plans: 'Chi tiết kế hoạch P/O sản xuất',
-    workOrders: 'Chi tiết triển khai P/O sản xuất',
+    filters: 'Điều kiện tra cứu ERP W/O',
+    list: 'Danh sách ERP W/O',
+    basic: 'Chi tiết cơ bản ERP W/O',
+    plans: 'Chi tiết kế hoạch ERP W/O',
+    workOrders: 'Chi tiết triển khai ERP W/O',
   },
   actions: {
     select: (orderNo: string) => `Chọn ${orderNo}`,
-    expand: (orderNo: string) => `Mở P/O con của ${orderNo}`,
-    collapse: (orderNo: string) => `Thu P/O con của ${orderNo}`,
+    expand: (orderNo: string) => `Mở ERP W/O con của ${orderNo}`,
+    collapse: (orderNo: string) => `Thu ERP W/O con của ${orderNo}`,
     firstPage: 'Về trang đầu',
     prevPage: 'Trước',
     nextPage: 'Sau',
@@ -60,22 +60,22 @@ export const productionOrder: Translated<typeof ko.productionOrder> = {
   },
   basic: {
     heading: 'Thông tin cơ bản',
-    unselectedTitle: 'Hãy chọn P/O sản xuất',
-    unselectedDescription: 'Chọn một P/O sản xuất trong danh sách để xem thông tin cơ bản.',
-    loading: 'Đang tải thông tin cơ bản P/O sản xuất',
+    unselectedTitle: 'Hãy chọn ERP W/O',
+    unselectedDescription: 'Chọn một ERP W/O trong danh sách để xem thông tin cơ bản.',
+    loading: 'Đang tải thông tin cơ bản ERP W/O',
     loadFailedTitle: 'Không tải được thông tin cơ bản',
-    loadFailedDescription: 'Hãy chọn lại P/O sản xuất sau giây lát.',
+    loadFailedDescription: 'Hãy chọn lại ERP W/O sau giây lát.',
   },
   detail: {
     planHeading: 'Kế hoạch',
     workOrderHeading: 'Triển khai (W/O)',
-    unselectedTitle: 'Hãy chọn P/O sản xuất',
-    unselectedDescription: 'Chọn một P/O sản xuất trong danh sách để xem danh sách chi tiết.',
+    unselectedTitle: 'Hãy chọn ERP W/O',
+    unselectedDescription: 'Chọn một ERP W/O trong danh sách để xem danh sách chi tiết.',
     planLoading: 'Đang tải danh sách kế hoạch sản xuất',
     workOrderLoading: 'Đang tải danh sách W/O',
     planLoadFailedTitle: 'Không tải được kế hoạch sản xuất',
     workOrderLoadFailedTitle: 'Không tải được W/O',
-    loadFailedDescription: 'Hãy chọn lại P/O sản xuất sau giây lát.',
+    loadFailedDescription: 'Hãy chọn lại ERP W/O sau giây lát.',
     planEmptyTitle: 'Không có kế hoạch sản xuất nào được nối',
     workOrderEmptyTitle: 'Chưa có W/O nào được triển khai',
     unscheduled: 'Không có lịch kế hoạch',
@@ -94,17 +94,17 @@ export const productionOrder: Translated<typeof ko.productionOrder> = {
     all: 'Tất cả',
     dueRangeError: 'Ngày giao từ không được muộn hơn ngày đến.',
   },
-  loading: 'Đang tải danh sách P/O sản xuất',
-  listLoadFailedTitle: 'Không tải được danh sách P/O sản xuất',
+  loading: 'Đang tải danh sách ERP W/O',
+  listLoadFailedTitle: 'Không tải được danh sách ERP W/O',
   listLoadFailedDescription: 'Hãy áp dụng lại điều kiện tra cứu sau giây lát.',
   empty: {
-    title: 'Không có P/O sản xuất để hiển thị',
+    title: 'Không có ERP W/O để hiển thị',
     description: 'Hãy đổi điều kiện tra cứu rồi xem lại.',
-    beyondTitle: 'Trang này không có P/O sản xuất để hiển thị',
-    beyondDescription: 'Hãy về trang đầu để xem P/O sản xuất.',
+    beyondTitle: 'Trang này không có ERP W/O để hiển thị',
+    beyondDescription: 'Hãy về trang đầu để xem ERP W/O.',
   },
   page: {
-    label: 'Chuyển trang P/O sản xuất',
+    label: 'Chuyển trang ERP W/O',
     range: (start: number, end: number, total: number) =>
       `${String(start)}–${String(end)} / tổng ${String(total)} mục`,
     total: (total: number) => `Tổng ${String(total)} mục`,

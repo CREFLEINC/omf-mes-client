@@ -4,6 +4,7 @@ import { useId, type ReactNode } from 'react';
 
 import { countOutsideBomLines } from './bom-origin';
 import { LineTable } from './line-table';
+import type { LookupSource } from '../../patterns/lookup-display';
 import type { ItemLookupResult, LookupResult } from './lookups';
 import type { MaterialIssueLineDraft, SelectOption } from './types';
 
@@ -13,6 +14,8 @@ export interface LinePaneProps {
   rows: MaterialIssueLineDraft[];
   errors: Record<string, string>;
   itemLookup: ItemLookupResult;
+  /** BOM 유래 줄의 품목 이름 — `LineTable` 이 쓴다 */
+  itemNameSources: ReadonlyMap<string, LookupSource>;
   uomLookup: LookupResult;
   itemOptions: SelectOption[];
   uomOptions: SelectOption[];
@@ -50,6 +53,7 @@ export const LinePane = ({
   rows,
   errors,
   itemLookup,
+  itemNameSources,
   uomLookup,
   itemOptions,
   uomOptions,
@@ -104,6 +108,7 @@ export const LinePane = ({
           rows={rows}
           errors={errors}
           itemLookup={itemLookup}
+          itemNameSources={itemNameSources}
           uomLookup={uomLookup}
           itemOptions={itemOptions}
           uomOptions={uomOptions}

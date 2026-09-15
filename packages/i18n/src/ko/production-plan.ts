@@ -1,7 +1,7 @@
 /**
  * W-04-03 W/O 전개·편성.
  *
- * 받은 생산 P/O 하나를 골라 ① 쓸 BOM·Routing 개정을 점검하고 ② 생산계획 줄을 채운 뒤
+ * 받은 ERP W/O 하나를 골라 ① 쓸 BOM·Routing 개정을 점검하고 ② 생산계획 줄을 채운 뒤
  * ③ 계획을 확정해 공정별 W/O 로 전개한다. 세 단계가 위에서 아래로 한 화면에 서므로 문구도
  * 「지금 어느 단계인가」와 「무엇이 막혔는가」를 말한다.
  *
@@ -13,10 +13,10 @@ export const productionPlan = {
   breadcrumbRoot: '생산',
   breadcrumbGroup: '계획·지시',
 
-  /** 고른 P/O 를 되짚어 주는 머리말. 어느 P/O 를 편성하는 중인지 화면을 떠나지 않고 확인한다. */
+  /** 고른 ERP W/O 를 되짚어 주는 머리말. 어느 ERP W/O 를 편성하는 중인지 화면을 떠나지 않고 확인한다. */
   order: {
-    pane: '선택 생산 P/O',
-    heading: '선택 생산 P/O',
+    pane: '선택 ERP W/O',
+    heading: '선택 ERP W/O',
     due: (dueDate: string): string => ` · 납기 ${dueDate}`,
   },
 
@@ -47,12 +47,12 @@ export const productionPlan = {
     routingNoDefault: 'Routing 기본 Rev 플래그가 없습니다. 사용할 개정을 직접 선택하세요.',
   },
 
-  /** 생산라인은 P/O 의 공장에 딸린다. 공장이 없으면 고를 것도 없으므로 그 사실을 미리 말한다. */
+  /** 생산라인은 ERP W/O 의 공장에 딸린다. 공장이 없으면 고를 것도 없으므로 그 사실을 미리 말한다. */
   lines: {
     loading: '생산라인을 불러오는 중',
     loadFailed: '생산라인을 불러오지 못했습니다.',
     retry: '생산라인 다시 시도',
-    plantMissing: 'P/O에 공장이 없어 생산라인은 미지정으로 저장합니다.',
+    plantMissing: 'ERP W/O에 공장이 없어 생산라인은 미지정으로 저장합니다.',
     parentUnknown: '상위 라인',
     inactiveSuffix: ' · 비활성',
   },
@@ -62,7 +62,7 @@ export const productionPlan = {
     pane: '생산계획 편집',
     heading: '생산계획',
     add: '+ 계획 추가',
-    tableCaption: 'P/O 생산계획 편집 표',
+    tableCaption: 'ERP W/O 생산계획 편집 표',
     empty: '등록된 계획이 없습니다.',
     loading: '생산계획을 불러오는 중',
     loadFailed: '생산계획을 불러오지 못했습니다.',
@@ -98,19 +98,19 @@ export const productionPlan = {
   },
 
   /**
-   * 계획 수량 합계와 P/O 수량의 관계. **네 갈래가 서로 다른 일을 하라고 말한다** —
+   * 계획 수량 합계와 ERP W/O 수량의 관계. **네 갈래가 서로 다른 일을 하라고 말한다** —
    * 고치라(오류) · 더하라(없음) · 정책을 보라(초과) · 계속하라(부족) · 됐다(일치).
    */
   quantitySummary: {
     invalid: '계획 수량 오류를 먼저 수정하세요.',
     empty: '계획을 1건 이상 추가해야 전개할 수 있습니다.',
     over: (amount: string, uomLabel: string): string =>
-      `P/O 수량보다 ${amount} ${uomLabel} 초과합니다.`,
+      `ERP W/O 수량보다 ${amount} ${uomLabel} 초과합니다.`,
     overDescription: '초과 생산 정책을 확인하세요.',
     under: (amount: string, uomLabel: string): string =>
-      `P/O 수량보다 ${amount} ${uomLabel} 부족합니다.`,
+      `ERP W/O 수량보다 ${amount} ${uomLabel} 부족합니다.`,
     underDescription: '나눠 계획하는 중이면 계속 편집하세요.',
-    matched: '계획 수량 합계가 P/O 수량과 일치합니다.',
+    matched: '계획 수량 합계가 ERP W/O 수량과 일치합니다.',
   },
 
   /** 줄마다 붙는 단추. 확정과 전개 결과는 저장이 끝난 줄에만 선다. */
@@ -165,14 +165,14 @@ export const productionPlan = {
     INVALID_SELECTION: '올바른 항목을 선택하세요.',
   },
 
-  /** 화면 전체가 서지 못하는 자리. P/O 없이는 편성할 것이 없다. */
+  /** 화면 전체가 서지 못하는 자리. ERP W/O 없이는 편성할 것이 없다. */
   screen: {
-    unselected: '생산 P/O를 먼저 선택하세요.',
-    openProductionOrders: 'P/O 수신·조회로 이동',
-    loading: '생산 P/O를 불러오는 중',
-    ownerMismatch: '요청한 생산 P/O와 다른 상세가 반환되었습니다.',
-    loadFailed: '생산 P/O를 불러오지 못했습니다.',
-    stale: '최신 생산 P/O를 확인하지 못했습니다.',
+    unselected: 'ERP W/O를 먼저 선택하세요.',
+    openProductionOrders: 'ERP W/O 수신·조회로 이동',
+    loading: 'ERP W/O를 불러오는 중',
+    ownerMismatch: '요청한 ERP W/O와 다른 상세가 반환되었습니다.',
+    loadFailed: 'ERP W/O를 불러오지 못했습니다.',
+    stale: '최신 ERP W/O를 확인하지 못했습니다.',
     retry: '다시 시도',
     keepsEdits: '현재 편집 내용은 유지됩니다.',
     lotNotice: '생산 LOT 크기와 선발행은 W/O 확정·배포 단계에서 입력합니다.',

@@ -35,6 +35,37 @@ describe('키오스크 창 옵션', () => {
   });
 });
 
+describe('개발 모드는 창 모드로 뜬다 — 다른 창과 번갈아 조작해야 한다', () => {
+  const dev = () => createKioskWindowOptions({ preloadPath: '/tmp/preload.cjs', isDev: true });
+
+  it('키오스크로 화면을 덮지 않는다', () => {
+    const o = dev();
+    expect(o.kiosk).toBe(false);
+    expect(o.fullscreen).toBe(false);
+  });
+
+  it('창 테두리가 있어 옮기고 닫을 수 있다', () => {
+    const o = dev();
+    expect(o.frame).toBe(true);
+    expect(o.resizable).toBe(true);
+    expect(o.autoHideMenuBar).toBe(false);
+  });
+
+  it('패널 해상도는 그대로다 — 화면 배치가 실기와 달라지면 확인이 무의미해진다', () => {
+    const o = dev();
+    expect(o.width).toBe(PANEL_WIDTH);
+    expect(o.height).toBe(PANEL_HEIGHT);
+  });
+
+  it('보안 축은 개발 모드에서도 풀리지 않는다 — 창 모양과 같이 열지 않는다', () => {
+    const o = dev();
+    expect(o.webPreferences.contextIsolation).toBe(true);
+    expect(o.webPreferences.nodeIntegration).toBe(false);
+    expect(o.webPreferences.sandbox).toBe(true);
+    expect(o.webPreferences.webSecurity).toBe(true);
+  });
+});
+
 describe('렌더러 보안 축 — 되돌리기 어려운 축이라 잠긴 채여야 한다', () => {
   it('contextIsolation이 켜져 있다', () => {
     expect(options().webPreferences.contextIsolation).toBe(true);

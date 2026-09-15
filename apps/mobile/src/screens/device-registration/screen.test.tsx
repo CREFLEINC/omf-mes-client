@@ -40,11 +40,10 @@ const tokenWith = (payload: unknown): string => {
 };
 
 /*
- * 실서버 토큰의 모양이다. sub 와 함께 terminalCode·plantId 가 실려 온다.
+ * 실서버 토큰의 모양이다. sub 와 함께 terminalCode·plantId 가 실려 온다. 단말 유형은 없다.
  *
- * 단말 상세는 설계가 POP 화면에 둔 경로라 모바일 토큰으로 부르면 401 이고, 그것으로 검증하던
- * 동안 어떤 QR 로도 등록이 끝나지 않았다. 지금은 열린 조회로 토큰을 확인하고 보여 줄 값은
- * 클레임에서 읽는다.
+ * 토큰 확인은 단말 상세로 한다 — 유형을 보려면 거기뿐이다. 서버가 자기 단말 상세를 MOBILE 에도
+ * 열었다(REG-ALL-01 D6). 보여 줄 값은 여전히 클레임에서 읽는다.
  */
 const TERMINAL_ID = 1001;
 const PLANT_ID = 7;
@@ -98,11 +97,28 @@ const workersRoute = (items: { workerNo: string; workerName: string }[], seen: U
   },
 });
 
+const terminalRoute = (terminalTypeCode = 'MOBILE', seen: Request[] = []) => ({
+  match: (request: Request) =>
+    request.method === 'GET' && new URL(request.url).pathname === `/mdm/terminals/${TERMINAL_ID}`,
+  respond: (request: Request) => {
+    seen.push(request);
+    return jsonResponse({
+      terminalId: TERMINAL_ID,
+      terminalCode: 'SYN-TERM-01',
+      plantId: PLANT_ID,
+      terminalTypeCode,
+      statusCode: 'RUNNING',
+      isActive: true,
+    });
+  },
+});
+
 const registrationRoutes = (
   items: { workerNo: string; workerName: string }[],
   seenWorkers: URL[] = [],
   seenConfirmations: Request[] = [],
 ) => [
+  terminalRoute(),
   workersRoute(items, seenWorkers),
   {
     match: (request: Request) =>
@@ -430,7 +446,8 @@ describe('기기 등록 화면', () => {
     renderWithProviders(<DeviceRegistrationScreen camera={camera} />, {
       fetch: createStubFetch([
         {
-          match: (request: Request) => new URL(request.url).pathname === '/mdm/workers',
+          match: (request: Request) =>
+            new URL(request.url).pathname === `/mdm/terminals/${TERMINAL_ID}`,
           respond: () => jsonResponse({ code: 'UNAUTHENTICATED' }, { status: 401 }),
         },
       ]),
@@ -448,6 +465,7 @@ describe('기기 등록 화면', () => {
     const camera = stubCamera();
     renderWithProviders(<DeviceRegistrationScreen camera={camera} />, {
       fetch: createStubFetch([
+        terminalRoute(),
         {
           match: (request: Request) => new URL(request.url).pathname === '/mdm/workers',
           respond: () => {
@@ -462,6 +480,89 @@ describe('기기 등록 화면', () => {
 
     expect(await screen.findByText('연결된 상태에서 등록해야 합니다')).toBeInTheDocument();
     expect(screen.queryByText('등록 코드를 확인할 수 없습니다')).not.toBeInTheDocument();
+    expect(keystore.token).toBeNull();
+  });
+
+  /*
+   * REG-ALL-01 S18 - POP 단말의 코드를 넣자 명부를 받고 서버 확인까지 끝나, POP 단말이 이 기기로
+   * 「등록 완료」가 됐다. POP 화면의 wrong-type 과 같은 자리(보관 전)에서 멈춰야 한다.
+   */
+  it('POP 단말의 등록 코드는 보관하기 전에 거절한다', async () => {
+    const seenWorkers: URL[] = [];
+    const confirmations: Request[] = [];
+    renderWithProviders(<DeviceRegistrationScreen camera={stubCamera()} />, {
+      fetch: createStubFetch([
+        terminalRoute('POP'),
+        ...registrationRoutes([worker], seenWorkers, confirmations).slice(1),
+      ]),
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: '등록 코드 직접 입력' }));
+    fireEvent.change(screen.getByLabelText('등록 코드'), {
+      target: { value: REGISTRATION_TOKEN },
+    });
+    fireEvent.click(screen.getByRole('button', { name: '등록 코드로 등록' }));
+
+    expect(await screen.findByText('모바일 기기용 등록 코드가 아닙니다')).toBeInTheDocument();
+    expect(screen.queryByText('등록되었습니다')).not.toBeInTheDocument();
+    expect(keystore.token).toBeNull();
+    expect(seenWorkers).toHaveLength(0);
+    expect(confirmations).toHaveLength(0);
+    expect(store.has('worker-directory')).toBe(false);
+    expect(currentPlantId()).toBeNull();
+    // 다른 코드를 다시 넣을 수 있게 입력은 열어 둔다.
+    expect(screen.getByRole('button', { name: '등록 코드로 등록' })).toBeEnabled();
+  });
+
+  it('단말 확인은 아직 보관하지 않은 코드로 먼저 묻는다', async () => {
+    const terminalRequests: Request[] = [];
+    const order: string[] = [];
+    renderWithProviders(<DeviceRegistrationScreen camera={stubCamera()} />, {
+      fetch: createStubFetch([
+        {
+          ...terminalRoute('MOBILE', terminalRequests),
+          respond: (request: Request) => {
+            order.push(`terminal:${keystore.token === null ? '보관 전' : '보관 후'}`);
+            return terminalRoute('MOBILE', terminalRequests).respond(request);
+          },
+        },
+        ...registrationRoutes([worker]).slice(1),
+      ]),
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: '등록 코드 직접 입력' }));
+    fireEvent.change(screen.getByLabelText('등록 코드'), {
+      target: { value: REGISTRATION_TOKEN },
+    });
+    fireEvent.click(screen.getByRole('button', { name: '등록 코드로 등록' }));
+
+    expect(await screen.findByText('등록되었습니다')).toBeInTheDocument();
+    expect(order).toEqual(['terminal:보관 전']);
+    expect(terminalRequests[0]?.headers.get('Authorization')).toBe(`Bearer ${REGISTRATION_TOKEN}`);
+    expect(keystore.token).toBe(REGISTRATION_TOKEN);
+  });
+
+  it('단말 확인에서 닿지 못하면 보관하지 않고 연결을 말한다', async () => {
+    renderWithProviders(<DeviceRegistrationScreen camera={stubCamera()} />, {
+      fetch: createStubFetch([
+        {
+          match: (request: Request) =>
+            new URL(request.url).pathname === `/mdm/terminals/${TERMINAL_ID}`,
+          respond: () => {
+            throw new TypeError('Failed to fetch');
+          },
+        },
+      ]),
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: '등록 코드 직접 입력' }));
+    fireEvent.change(screen.getByLabelText('등록 코드'), {
+      target: { value: REGISTRATION_TOKEN },
+    });
+    fireEvent.click(screen.getByRole('button', { name: '등록 코드로 등록' }));
+
+    expect(await screen.findByText('연결된 상태에서 등록해야 합니다')).toBeInTheDocument();
+    expect(screen.queryByText('모바일 기기용 등록 코드가 아닙니다')).not.toBeInTheDocument();
     expect(keystore.token).toBeNull();
   });
 

@@ -56,7 +56,7 @@ describe('ProductionPlanEditorPane', () => {
 
     const pane = screen.getByLabelText('생산계획 편집');
     const heading = within(pane).getByRole('heading', { name: '생산계획' });
-    const table = within(pane).getByRole('table', { name: 'P/O 생산계획 편집 표' });
+    const table = within(pane).getByRole('table', { name: 'ERP W/O 생산계획 편집 표' });
     const quantity = within(table).getByRole('spinbutton', { name: 'PLAN-101 계획수량' });
     const status = within(table).getByText('확정 · 편집 불가');
 
@@ -64,7 +64,7 @@ describe('ProductionPlanEditorPane', () => {
     expect(heading.parentElement).toHaveClass('production-plan-section-heading');
     expect(table).toHaveClass('production-plan-editor-table');
     expect(table.closest('.production-plan-table')).not.toBeNull();
-    expect(within(table).getByText('P/O 생산계획 편집 표')).toHaveClass(
+    expect(within(table).getByText('ERP W/O 생산계획 편집 표')).toHaveClass(
       'production-plan-table-caption',
     );
     expect(quantity.closest('td')).toHaveAttribute('data-align', 'end');
@@ -78,7 +78,7 @@ describe('ProductionPlanEditorPane', () => {
       row({ key: 'plan-102', planNo: 'PLAN-102', draft: { ...row().draft, plannedQty: '40' } }),
     ]);
     expect(screen.getByText('100 / 100 EA')).toBeVisible();
-    expect(screen.getByText('계획 수량 합계가 P/O 수량과 일치합니다.')).toBeVisible();
+    expect(screen.getByText('계획 수량 합계가 ERP W/O 수량과 일치합니다.')).toBeVisible();
   });
   it('행 추가·수량 편집·라인 해제·삭제를 소유자에게 전달한다', async () => {
     const user = userEvent.setup();
@@ -101,11 +101,11 @@ describe('ProductionPlanEditorPane', () => {
   });
   it('미달은 정보, 초과는 경고, 0건은 차단으로 구분한다', () => {
     renderPane([row()]);
-    expectBanner('P/O 수량보다 40 EA 부족합니다.', 'status', 'info');
+    expectBanner('ERP W/O 수량보다 40 EA 부족합니다.', 'status', 'info');
     renderPane([
       row({ key: 'over', planNo: 'PLAN-OVER', draft: { ...row().draft, plannedQty: '120' } }),
     ]);
-    expectBanner('P/O 수량보다 20 EA 초과합니다.', 'alert', 'warning');
+    expectBanner('ERP W/O 수량보다 20 EA 초과합니다.', 'alert', 'warning');
     renderPane([]);
     expectBanner('계획을 1건 이상 추가해야 전개할 수 있습니다.', 'alert', 'error');
   });
