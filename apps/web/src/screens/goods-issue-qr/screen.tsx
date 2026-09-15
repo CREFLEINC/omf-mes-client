@@ -382,7 +382,13 @@ export const GoodsIssueQrScreen = () => {
        * 이 화면만 바닥이 없는 것처럼 떠 있었다.
        */}
       <div className="pop-action-bar pop-giqr-actions">
-        {guard.kind !== 'ready' && <p className="field-note">{guardNote(guard.kind)}</p>}
+        {/*
+         * ⛔ 「발행할 라인을 먼저 고르세요」는 띄우지 않는다(사용자 지시 2026-09-15) — 비활성 단추와
+         *    라인 목록이 이미 말한다. 다른 사유(사번·파렛트·재발행 사유)는 그대로 남긴다.
+         */}
+        {guard.kind !== 'ready' && guard.kind !== 'noSelection' && (
+          <p className="field-note">{guardNote(guard.kind)}</p>
+        )}
         <Button
           variant="filled"
           size="2xl"
@@ -430,12 +436,10 @@ const toPalletQuantities = (contents: readonly HandlingUnitContent[]): PalletQua
 const isForbidden = (error: ApiError | null): boolean =>
   error !== null && error.kind === 'http' && error.status === 403;
 
-const guardNote = (kind: Exclude<IssueGuard['kind'], 'ready'>): string => {
+const guardNote = (kind: Exclude<IssueGuard['kind'], 'ready' | 'noSelection'>): string => {
   switch (kind) {
     case 'noWorker':
       return t.action.disabledNoWorker;
-    case 'noSelection':
-      return t.action.disabledNoSelection;
     case 'palletNeedsOneLine':
       return t.action.disabledPalletNeedsOneLine;
     case 'noPallet':

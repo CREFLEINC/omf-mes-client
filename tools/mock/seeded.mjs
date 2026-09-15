@@ -1006,6 +1006,39 @@ on('GET', '/mdm/terminals/{terminalId}', (params) => {
   };
 });
 
+/*
+ * POP 등록 확인(P-7)과 화면 이동 후보(P-10) — 브라우저로 POP 을 열어 화면을 확인하는 데 필요하다(#1268).
+ * 없으면 등록 적용이 405 로 멈추고, [화면 이동] 이 「확인하지 못했습니다」로 잠긴다.
+ *
+ * ⚠ **화면 후보는 실서버와 다르다.** 실서버는 아직 단말과 무관하게 `P-01-01` 하나로 고정해 두었는데
+ *   (서버 규칙 미정 · 서버팀 요청 전달됨), 목은 설치된 POP 화면 전부를 준다 — 화면을 하나씩 열어
+ *   확인하는 용도다. 서버 규칙이 정해지면 그에 맞춘다.
+ */
+on('POST', '/mdm/terminals/{terminalId}:confirm-registration', (params) => {
+  const terminalId = Number(params.terminalId);
+
+  if (TERMINALS[terminalId] === undefined) {
+    return {
+      status: 401,
+      created: { code: 'TERMINAL_NOT_FOUND', message: '등록된 단말이 아닙니다.' },
+    };
+  }
+
+  return {
+    terminalId,
+    tokenVersion: 3,
+    registrationStatusCode: 'REGISTERED',
+    registrationConfirmedAt: new Date().toISOString(),
+  };
+});
+
+on('GET', '/mdm/terminals/{terminalId}/accessible-screens', () => ({
+  screenCodes: [
+    'P-01-01', 'P-01-02', 'P-02-01', 'P-02-03', 'P-02-04', 'P-02-08', 'P-02-09', 'P-02-10',
+    'P-02-11', 'P-02-12', 'P-02-13', 'P-04-01', 'P-04-03', 'P-04-04', 'P-05-01', 'P-05-02',
+  ],
+}));
+
 on('GET', '/mdm/terminals/{terminalId}/processes', () => ({
   items: [
     {

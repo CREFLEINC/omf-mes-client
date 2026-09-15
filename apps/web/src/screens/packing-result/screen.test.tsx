@@ -219,6 +219,20 @@ const scan = async (
 };
 
 describe('PackingResultScreen', () => {
+  /* ⭐ 출하 대상을 고르기 전에는 맨 위 안내 띠가 서고, 고르면 걷힌다(사용자 지시 2026-09-15). */
+  it('출하 대상을 고르기 전에는 맨 위에 출하 대상 선택 안내가 선다', async () => {
+    const user = userEvent.setup();
+    renderScreen();
+
+    expect(await screen.findByText(t.notes.selectShipment)).toBeInTheDocument();
+
+    await scan(user, t.scan.label.shipment, 'SYN-SH-0501');
+
+    await waitFor(() => {
+      expect(screen.queryByText(t.notes.selectShipment)).not.toBeInTheDocument();
+    });
+  });
+
   it('출하번호 스캔은 정확 일치로 찾고 선택한 출하의 미포장 배분을 이어서 읽는다', async () => {
     const user = userEvent.setup();
     const reads: Request[] = [];

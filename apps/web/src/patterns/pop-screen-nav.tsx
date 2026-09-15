@@ -92,7 +92,8 @@ export const PopScreenNavButton = () => {
         value={null}
         options={candidates.map((candidate) => ({
           value: candidate.path,
-          label: `${candidate.code} ${candidate.name}`,
+          /* ⭐ 화면 코드(`P-01-01`)는 보이지 않고 이름만 보인다(사용자 지시 2026-09-15). */
+          label: candidate.name,
         }))}
         onChange={(path) => {
           if (path === null) return;

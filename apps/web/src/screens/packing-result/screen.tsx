@@ -386,6 +386,12 @@ export const PackingResultScreen = () => {
        * 곧 작업 순서이고, 좌우로 나누면 ①과 ②의 선후가 사라진다.
        */}
       <div className="packing-body">
+        {/* ⭐ 출하 대상을 고르기 전에는 맨 위에 안내 띠를 세운다(사용자 지시 2026-09-15). */}
+        {!isLabelMode && shipmentId === null ? (
+          <div className="banner-slot">
+            <AlertBanner variant="info">{t.notes.selectShipment}</AlertBanner>
+          </div>
+        ) : null}
         {automaticLabelRun !== null && identity.workerNo !== null ? (
           <AutomaticLabels
             run={automaticLabelRun}
@@ -648,7 +654,13 @@ export const PackingResultScreen = () => {
        *    누를 일이 없고, 세워 두면 «지금 무엇을 하는 화면인가»가 흐려진다.
        */}
       <div className="packing-actions">
-        {!isLabelMode && lockReason !== undefined && <p className="packing-lock">{lockReason}</p>}
+        {/*
+         * ⛔ 출하 대상을 안 고른 사유는 하단에 두지 않는다 — 본문 맨 위 안내 띠가 말한다(사용자 지시
+         *    2026-09-15). 다른 잠금 사유(창고·유형·수량 등)는 그대로 하단에 선다.
+         */}
+        {!isLabelMode && lockReason !== undefined && lockReason !== t.locks.shipmentMissing && (
+          <p className="packing-lock">{lockReason}</p>
+        )}
 
         {!isLabelMode && gate.verdict === 'unavailable' && (
           <Button

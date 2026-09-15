@@ -6149,13 +6149,6 @@ dl.filter-bar.approval-inbox-detail-facts {
   color: var(--on-surface-muted);
 }
 
-/* 안내 구획 — 글자만 담는다. 경고가 아니라 상시 사실이라 배너를 쓰지 않는다. */
-.pop-notice {
-  font: var(--type-body-sm);
-  letter-spacing: var(--type-body-sm-tracking);
-  color: var(--on-surface-muted);
-}
-
 /* 입력칸 묶음이 남는 폭을 쓰고 키패드가 자기 폭을 갖는다. */
 .pop-shot-fields {
   display: grid;

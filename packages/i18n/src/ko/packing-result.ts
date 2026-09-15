@@ -23,7 +23,8 @@ export const packingResult = {
     workerUnknown: '사번 미확인',
     terminalUnknown: '단말 미확인',
     /** 연결 상태는 사번과 «다른» 표식으로 낸다 — 하나로 묶으면 색이 무엇을 말하는지 흐려진다. */
-    online: '연결됨',
+    /** 다른 POP 머리줄과 같은 말이다 — 「온라인/오프라인」(사용자 지시 2026-09-15). */
+    online: '온라인',
     offline: '오프라인',
   },
   scan: {
@@ -83,6 +84,8 @@ export const packingResult = {
     parentNone: '(없음)',
   },
   notes: {
+    /** 출하 대상을 아직 고르지 않았다 — 본문 맨 위 안내 띠(사용자 지시 2026-09-15). */
+    selectShipment: '출하 대상을 선택하세요.',
     /** 후보가 없는 것은 고장이 아니다(스펙 §5-2-1). */
     parentEmpty: '이 창고에 담을 상위 포장이 없습니다. 없이 확정할 수 있습니다',
     typeUnavailable: '포장 유형을 받지 못했습니다. 다시 시도해 주세요',

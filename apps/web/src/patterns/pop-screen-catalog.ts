@@ -23,7 +23,11 @@ export interface PopScreen {
   path: string;
   /** 설계가 부르는 화면 코드. 세션 권한 코드와 대조하는 열쇠다. */
   code: string;
-  /** 목록에 보일 이름. 설계 화면명을 쓴다 — 작업자가 화면명으로도 찾기 때문이다(G-34). */
+  /**
+   * 목록에 보일 이름. **들어간 화면의 머리줄 타이틀과 같은 말이다**(사용자 지시 2026-09-15) —
+   * 목록에서 누른 이름과 열린 화면의 이름이 다르면 작업자가 제대로 왔는지 의심한다.
+   * ⚠ 화면 타이틀을 바꾸면 여기도 함께 고친다.
+   */
   name: string;
 }
 
@@ -37,21 +41,21 @@ export interface PopScreen {
  * 진입 화면으로 되돌아가, 작업자에게는 「눌리지 않는 버튼」으로 보인다.
  */
 export const POP_SCREENS: readonly PopScreen[] = [
-  { path: '/pop/material-lot-label', code: 'P-01-01', name: '자재LOT 등록·라벨' },
+  { path: '/pop/material-lot-label', code: 'P-01-01', name: '자재LOT 등록·라벨 발행' },
   { path: '/pop/goods-issue-qr', code: 'P-01-02', name: '출고 QR 발행' },
   { path: '/pop/work-start', code: 'P-02-01', name: '작업 시작' },
-  { path: '/pop/material-input', code: 'P-02-03', name: '자재 투입 스캔' },
+  { path: '/pop/material-input', code: 'P-02-03', name: '자재 투입' },
   { path: '/pop/production-result', code: 'P-02-04', name: '생산 실적 등록' },
   { path: '/pop/packing-work', code: 'P-02-08', name: '포장 작업' },
-  { path: '/pop/packing-label-reprint', code: 'P-02-09', name: '포장 라벨·인식표 재출력' },
-  { path: '/pop/work-hold', code: 'P-02-10', name: '작업 중단(홀드) 등록' },
+  { path: '/pop/packing-label-reprint', code: 'P-02-09', name: '포장 라벨 재출력' },
+  { path: '/pop/work-hold', code: 'P-02-10', name: '작업 중단' },
   { path: '/pop/running-change', code: 'P-02-11', name: '러닝체인지 부품 교체' },
-  { path: '/pop/emergency-work-orders', code: 'P-02-12', name: '긴급 W/O 현장 투입·실적' },
+  { path: '/pop/emergency-work-orders', code: 'P-02-12', name: '긴급 W/O' },
   { path: '/pop/pqc-inspection', code: 'P-02-13', name: 'PQC 제품 검사' },
   { path: '/pop/packing', code: 'P-04-01', name: '출하 실적 등록' },
   { path: '/pop/rework-results', code: 'P-04-03', name: '재작업 실적 등록' },
   { path: '/pop/repack-label-issue', code: 'P-04-04', name: '재구성 신규 라벨 발행' },
-  { path: '/pop/tool-usage', code: 'P-05-01', name: '공구 사용 실적·타발수 입력' },
+  { path: '/pop/tool-usage', code: 'P-05-01', name: '툴 사용실적 입력' },
   { path: '/pop/downtime', code: 'P-05-02', name: '비가동 실적 입력' },
 ];
 
