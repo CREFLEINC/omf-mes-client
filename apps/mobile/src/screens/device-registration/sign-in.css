@@ -57,9 +57,14 @@
   }
 }
 
-/* ⭐ 문구를 상태바에서 조금 더 내린다(사용자 지시 2026-09-15). DS 머리 위 여백 20px → 40px. */
+/*
+ * ⭐ 제목은 위에 두고 본문과 한 덩어리로 읽히게 한다 - 통째로 가운데로 내리지 않는다(사용자
+ * 지시 2026-09-15). 위 여백은 DS 20px 과 앞서 둔 40px 사이, 제목과 본문 사이는 DS 12px 에서
+ * 조금 넓힌다.
+ */
 .worker-sign-in__unregister-dialog header {
-  padding-top: var(--space-8, 40px);
+  padding-top: var(--space-7, 32px);
+  padding-bottom: var(--space-4, 16px);
 }
 
 /*
@@ -78,8 +83,17 @@
   flex: 1 1 auto;
 }
 
+/*
+ * 본문은 판보다 한 단계 연한 바탕의 안내 영역에 담는다. 테두리·그림자·아이콘은 두지 않는다
+ * (사용자 지시 2026-09-15). 색은 DS 표면 단계를 그대로 쓴다.
+ */
 .worker-sign-in__dialog-notice {
-  line-height: 26px;
+  padding: var(--space-4, 16px) 14px;
+  border-radius: var(--radius-md, 12px);
+  background: var(--surface-container-low);
+  /* 16px 이면 안쪽 여백만큼 좁아진 360dp 폭에서 첫 문장의 끝 낱말만 둘째 줄로 떨어졌다(실기). */
+  font-size: 15px;
+  line-height: 24px;
   white-space: pre-line;
   word-break: keep-all;
 }
