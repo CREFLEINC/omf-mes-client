@@ -39,6 +39,8 @@ export interface TransactionLineTableProps {
    */
   scopeWarehouseId: number;
   itemLookup: ReferenceSource;
+  /** 라인에 선 품목의 이름 — 번호마다 상세로 푼 것. 잔액 표와 같은 규율이다(PICK-ISSUE-01 D2). */
+  itemNames: ReadonlyMap<number, ReferenceSource>;
   lotLookup: ReferenceSource;
   warehouseLookup: ReferenceSource;
   locationLookup: ReferenceSource;
@@ -55,6 +57,7 @@ export interface TransactionLineTableProps {
 export const buildLineColumns = ({
   scopeWarehouseId,
   itemLookup,
+  itemNames,
   lotLookup,
   warehouseLookup,
   locationLookup,
@@ -96,7 +99,8 @@ export const buildLineColumns = ({
       key: 'item',
       header: t.history.lines.item,
       width: WIDTH.item,
-      render: (line) => describeReference(toReference(itemLookup, line.itemId)),
+      render: (line) =>
+        describeReference(toReference(itemNames.get(line.itemId) ?? itemLookup, line.itemId)),
     },
     {
       key: 'lot',

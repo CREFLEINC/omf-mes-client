@@ -1,8 +1,8 @@
 import { messages } from '@omf-mes/i18n';
-import { useQuery } from '@tanstack/react-query';
+import { useQueries, useQuery } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
-import { runRequest } from '../../patterns/request';
+import { runRequest, toApiError } from '../../patterns/request';
 import type { LookupEntry, PageMeta } from './types';
 
 /**
@@ -122,6 +122,7 @@ export const lookupKeys = {
   locations: (warehouseId: number | null) =>
     ['stock-status-lookups', 'locations', warehouseId] as const,
   items: ['stock-status-lookups', 'items'] as const,
+  itemDetail: (itemId: number) => ['stock-status-lookups', 'item-detail', itemId] as const,
   lots: (itemId: number | null) => ['stock-status-lookups', 'lots', itemId] as const,
   uoms: ['stock-status-lookups', 'uoms'] as const,
   partners: ['stock-status-lookups', 'partners'] as const,
@@ -233,6 +234,67 @@ export const useItemOptions = (): LookupResult => {
       void query.refetch();
     },
   };
+};
+
+const isNotFound = (error: unknown): boolean => {
+  const apiError = toApiError(error);
+
+  return apiError.kind === 'http' && apiError.status === 404;
+};
+
+/** 이름을 아직 풀지 못한 번호의 자리. 참조 하나가 매 렌더 새로 만들어지지 않게 나눠 쓴다. */
+const LOADING_REFERENCE: ReferenceSource = { entries: EMPTY_ENTRIES, isError: false, isLoading: true };
+
+/**
+ * 표에 선 품목의 이름 — **번호마다 상세로 푼다.**
+ *
+ * ⭐ **선택칸 목록(`useItemOptions`)으로 풀지 않는다.** 그 목록은 한 쪽(계약 기본 50건)만 받는데,
+ * 품목이 많은 고객사에서는 표에 선 품목이 그 쪽에 없다 — 정상 값이 전부 「알 수 없음」이 되어
+ * *값이 잘못됐다*는 뜻으로 뒤집힌다(#47이 금지한 표기 · PICK-ISSUE-01 D2 실기).
+ *
+ * **표에 실제로 선 번호만 부른다** — 한 쪽에 최대 쪽 크기만큼이고 같은 품목은 한 번만 부른다.
+ * 번호마다 따로 판정한다: 없는 품목(404)은 「목록에 없음」이고, 못 받은 것은 「불러오기 실패」다.
+ * 하나가 실패해도 다른 줄의 이름은 그대로 선다.
+ */
+export const useItemNames = (itemIds: readonly number[]): ReadonlyMap<number, ReferenceSource> => {
+  const { client } = useApiClient();
+  const uniqueIds = [...new Set(itemIds)];
+
+  const results = useQueries({
+    queries: uniqueIds.map((itemId) => ({
+      queryKey: lookupKeys.itemDetail(itemId),
+      queryFn: () =>
+        runRequest(() => client.GET('/mdm/items/{itemId}', { params: { path: { itemId } } })),
+    })),
+  });
+
+  return new Map(
+    uniqueIds.map((itemId, index): [number, ReferenceSource] => {
+      const result = results[index];
+
+      if (result === undefined || result.isPending) return [itemId, LOADING_REFERENCE];
+
+      const item = result.data?.item;
+
+      return [
+        itemId,
+        {
+          entries:
+            item === undefined
+              ? EMPTY_ENTRIES
+              : [
+                  {
+                    value: String(itemId),
+                    label: `${item.itemCode} · ${item.itemName}`,
+                    isActive: item.isActive,
+                  },
+                ],
+          isError: result.isError && !isNotFound(result.error),
+          isLoading: false,
+        },
+      ];
+    }),
+  );
 };
 
 /**

@@ -47,6 +47,7 @@ import {
   describeReference,
   lookupNote,
   toReference,
+  useItemNames,
   useItemOptions,
   useLocationOptions,
   useLotOptions,
@@ -333,6 +334,19 @@ export const StockStatusScreen = () => {
   const locations = useLocationOptions(warehouseId);
   const items = useItemOptions();
   /*
+   * 표에 선 품목의 이름은 **번호마다 상세로 푼다.** 선택칸 목록은 한 쪽만 받아, 품목이 많은
+   * 곳에서는 표의 품목 열이 전부 「알 수 없음」이 된다(PICK-ISSUE-01 D2). 잔액 줄과 수불 라인의
+   * 번호를 함께 모아 한 번만 부른다 — 같은 품목이 두 표에 서도 요청은 하나다.
+   */
+  const shownItemIds = useMemo(
+    () => [
+      ...rows.map((row) => row.itemId),
+      ...(transactionDetail.data?.lines ?? []).map((line) => line.itemId),
+    ],
+    [rows, transactionDetail.data],
+  );
+  const itemNames = useItemNames(shownItemIds);
+  /*
    * **LOT 이름을 내는 자리가 있으면 부른다.** 「쓰지 않으면 부르지 않는다」의 뒷면이며,
    * 한쪽만 지키면 부르지 않는 참조의 이름을 「알 수 없음」으로 확정 표시하게 된다.
    * 자리는 둘이다 — LOT별 보기의 LOT 열, 그리고 **보기와 무관한 LOT 조건 칩**.
@@ -571,6 +585,7 @@ export const StockStatusScreen = () => {
         }}
         onToggleSelect={toggleSelectLot}
         itemLookup={items}
+        itemNames={itemNames}
         lotLookup={lots}
         locationLookup={locations}
         uomLookup={uoms}
@@ -702,6 +717,7 @@ export const StockStatusScreen = () => {
         /* **위치 이름을 풀 수 있는 범위**다 — 이 구획을 여는 자리(`historyScope`)가 정한다. */
         scopeWarehouseId={scopeWarehouseId}
         itemLookup={items}
+        itemNames={itemNames}
         lotLookup={lots}
         warehouseLookup={warehouses}
         locationLookup={locations}
