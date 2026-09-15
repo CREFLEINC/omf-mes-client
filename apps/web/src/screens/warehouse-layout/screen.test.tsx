@@ -335,6 +335,21 @@ describe('W-CO-08 창고 배치도 — 도면 보이기', () => {
     /* 주소가 없으면 `<img>` 자체를 그리지 않는다 — 깨진 그림은 사유를 말하지 못한다. */
     expect(screen.queryByRole('img', { name: t.map.imageLabel })).toBeNull();
   });
+
+  /*
+   * ⭐ **표식의 자리는 듣는 사람에게 글로만 전해진다.** 판 부품은 표현 전용이라 사람의 말을
+   * 갖지 않고 숫자만 낸다(`"10% / 20%"`) — 그 말을 화면이 넘기지 않으면 낭독기가 듣는 것은
+   * 숫자뿐이다. 여기서 재는 것은 부품의 기본값이 아니라 **이 화면이 문구를 넘겼는가**다.
+   */
+  it('⭐ 표식의 자리가 화면의 말로 읽힌다 — 숫자만 들리지 않는다', async () => {
+    renderScreen({ layouts: [withDrawing()] });
+
+    await loaded();
+
+    const pin = within(board()).getByRole('button', { name: 'SYN-LOC-07' });
+
+    expect(pin).toHaveAccessibleDescription(t.map.markerPosition(10, 20));
+  });
 });
 
 describe('W-CO-08 창고 배치도 — 도면 올리기', () => {
@@ -479,7 +494,7 @@ describe('W-CO-08 창고 배치도 — 올리는 동안', () => {
      * ⛔ 도는 동안 판에 점을 찍을 수 없다 — 부품의 역할 유무가 아니라 **밖으로 나간 값**을
      * 잰다: 잠긴 판을 눌러도 표식 수가 늘지 않아야 한다.
      */
-    expect(board()).toHaveAttribute('aria-readonly', 'true');
+    expect(board()).toHaveAttribute('aria-disabled', 'true');
 
     const pinsWhileUploading = within(board()).getAllByRole('button').length;
 
@@ -496,7 +511,7 @@ describe('W-CO-08 창고 배치도 — 올리는 동안', () => {
     /* ② 저장하는 중 — 올리기가 끝나도 도면은 아직 바뀌지 않았다. */
     await screen.findByRole('button', { name: t.map.savingDrawingLabel });
     expect(within(busyOverlay()).getByText(t.map.savingDrawingLabel)).toBeInTheDocument();
-    expect(board()).toHaveAttribute('aria-readonly', 'true');
+    expect(board()).toHaveAttribute('aria-disabled', 'true');
 
     const pinsWhileSaving = within(board()).getAllByRole('button').length;
 
@@ -521,7 +536,7 @@ describe('W-CO-08 창고 배치도 — 올리는 동안', () => {
     expect(screen.queryByRole('progressbar')).toBeNull();
     expect(hasBusyOverlay()).toBe(false);
     expect(board()).toBeInTheDocument();
-    expect(board()).not.toHaveAttribute('aria-readonly');
+    expect(board()).not.toHaveAttribute('aria-disabled');
 
     /*
      * ⭐ 양성 대조 — 잠금이 풀리면 «같은 절차»(위치 고르기 → 판 누르기)로 실제 점이 찍힌다.

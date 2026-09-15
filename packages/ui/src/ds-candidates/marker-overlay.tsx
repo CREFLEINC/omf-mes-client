@@ -17,8 +17,10 @@ import './marker-overlay.css';
  * 상대 위치를 가리킨다 — 픽셀로 두면 창을 줄이는 것만으로 점이 전부 어긋난다. 그래서 이
  * 부품은 **픽셀을 밖으로 내보내지 않는다**: 받는 것도 주는 것도 비율뿐이다.
  *
- * ⭐ **마우스만으로 쓰는 판을 만들지 않는다.** 표식 하나하나가 버튼이라 탭으로 옮겨 다닐 수
- * 있고, 화살표로 밀 수 있다. 판 자체도 탭으로 잡히며 그 위에서 놓기를 할 수 있다.
+ * ⭐ **마우스만으로 «옮기는» 판을 만들지 않는다.** 표식 하나하나가 버튼이라 탭으로 옮겨 다닐
+ * 수 있고, 화살표로 밀 수 있다. ⚠ 다만 **놓기는 아직 포인터 전용이다** — 판 자체에는 초점이
+ * 가지 않아(`tabIndex` 없음) 자판만으로 새 점을 찍는 길이 없다. 쓰는 화면이 「고른 위치를
+ * 찍기」 같은 버튼을 따로 두어 그 길을 메운다.
  *
  * ⛔ **그림을 스스로 고르지 않는다.** 어떤 그림을 어디서 받아 오는지는 쓰는 쪽의 일이다 —
  * 이 부품은 넘겨받은 것을 그릴 뿐이다.
@@ -56,6 +58,15 @@ export interface MarkerOverlayProps {
   onSelect?: (id: string) => void;
   /** 표식을 옮겼다 — 옮긴 뒤의 비율 좌표를 준다. */
   onMove?: (id: string, x: number, y: number) => void;
+  /**
+   * 표식 좌표 설명 — 「가로 N%, 세로 N%」. 낭독기 전용. 없으면 숫자만 낸다(`"10% / 20%"`).
+   *
+   * ⭐ **이 부품은 사람의 말을 갖지 않는다.** `packages/ui` 는 표현 전용이라 한국어를 박아 두면
+   * 베트남어 화면이 한국어를 듣게 된다 — 문구는 언제나 쓰는 쪽(i18n)에서 온다.
+   */
+  describePosition?: (xPercent: number, yPercent: number) => string;
+  /** 옮긴 뒤 알림 — 「<label>: 가로 N%, 세로 N%」. 없으면 `"<label>: 10% / 20%"`. */
+  describeMove?: (label: string, xPercent: number, yPercent: number) => string;
 }
 
 const clamp = (value: number): number => Math.min(1, Math.max(0, value));
@@ -74,8 +85,9 @@ const DRAG_THRESHOLD_PX = 3;
 /** 낭독용 백분율. 사람이 듣는 값이라 정수로 줄인다 — 「가로 10.37%」는 아무도 못 센다. */
 const percent = (value: number): number => Math.round(value * 100);
 
-const positionText = (x: number, y: number): string =>
-  `가로 ${String(percent(x))}%, 세로 ${String(percent(y))}%`;
+/** 문구를 받지 못했을 때의 자리 — 언어 중립이라 어느 말로 듣든 틀리지 않는다. */
+const plainPosition = (x: number, y: number): string =>
+  `${String(percent(x))}% / ${String(percent(y))}%`;
 
 interface DragState {
   id: string;
@@ -98,6 +110,8 @@ export const MarkerOverlay = ({
   onPlace,
   onSelect,
   onMove,
+  describePosition,
+  describeMove,
 }: MarkerOverlayProps) => {
   const boardRef = useRef<HTMLDivElement>(null);
   const dragRef = useRef<DragState | null>(null);
@@ -109,7 +123,22 @@ export const MarkerOverlay = ({
    */
   const swallowClickRef = useRef(false);
   const domId = useId();
+  /**
+   * 낭독기에 전할 말.
+   *
+   * ⚠ **같은 말은 다시 읽히지 않는다.** 글이 바뀌어야 `aria-live` 가 울리므로, 가장자리에
+   * 붙은 점을 같은 방향으로 한 번 더 밀면(값이 그대로다) 아무 말도 나지 않는다 — 의도한 것이다.
+   * 자리가 바뀌지 않았는데 같은 말을 되풀이하면 듣는 쪽은 점이 «움직였다»고 여긴다.
+   */
   const [notice, setNotice] = useState('');
+
+  /** 표식 하나의 자리를 말로. 문구를 받지 못했으면 숫자만 낸다. */
+  const positionText = (x: number, y: number): string =>
+    describePosition?.(percent(x), percent(y)) ?? plainPosition(x, y);
+
+  /** 옮긴 결과를 말로. 문구를 받지 못했으면 이름에 숫자를 잇는다. */
+  const moveText = (label: string, x: number, y: number): string =>
+    describeMove?.(label, percent(x), percent(y)) ?? `${label}: ${plainPosition(x, y)}`;
 
   /** 화면 좌표를 판 안의 비율로 옮긴다. **밖으로 나가는 값은 늘 0~1 로 묶는다.** */
   const toRatio = (clientX: number, clientY: number): { x: number; y: number } | null => {
@@ -179,7 +208,7 @@ export const MarkerOverlay = ({
 
     onMove(marker.id, x, y);
     /* 키로 미는 사람은 점이 어디까지 갔는지 볼 수 없다 — 한 번 누를 때마다 자리를 읽어 준다. */
-    setNotice(`${marker.label}: ${positionText(x, y)}`);
+    setNotice(moveText(marker.label, x, y));
   };
 
   const handleMarkerPointerDown = (
@@ -191,6 +220,11 @@ export const MarkerOverlay = ({
     if (readOnly || onMove === undefined) return;
     /* ⛔ 오른쪽·가운데 버튼으로는 끌지 않는다 — 상황 메뉴를 부르려던 손이 점을 옮기게 된다. */
     if (event.pointerType === 'mouse' && event.button !== 0) return;
+    /*
+     * ⛔ **이미 끌고 있으면 새 손가락을 받지 않는다.** 슬롯이 하나뿐이라 두 번째 손가락이
+     * 덮어쓰면 첫 손가락의 pointerup 이 남의 드래그를 끝내고, 첫 드래그는 끝나지 않은 채 남는다.
+     */
+    if (dragRef.current !== null) return;
 
     dragRef.current = {
       id: marker.id,
@@ -207,7 +241,12 @@ export const MarkerOverlay = ({
      */
     const target = event.currentTarget;
 
-    if (typeof target.setPointerCapture === 'function') target.setPointerCapture(event.pointerId);
+    /* 활성 포인터가 아니면 브라우저가 `NotFoundError` 를 던진다 — 붙들기 실패로 드래그를 죽이지 않는다. */
+    try {
+      if (typeof target.setPointerCapture === 'function') target.setPointerCapture(event.pointerId);
+    } catch {
+      /* 붙들지 못했을 뿐이다 — 드래그는 그대로 간다. */
+    }
   };
 
   const handleMarkerPointerMove = (
@@ -241,8 +280,13 @@ export const MarkerOverlay = ({
 
     const target = event.currentTarget;
 
-    if (typeof target.releasePointerCapture === 'function')
-      target.releasePointerCapture(event.pointerId);
+    /* 이미 놓인 포인터를 다시 놓으면 `NotFoundError` 다 — 드래그 종료를 그것으로 막지 않는다. */
+    try {
+      if (typeof target.releasePointerCapture === 'function')
+        target.releasePointerCapture(event.pointerId);
+    } catch {
+      /* 이미 풀려 있다 — 아래에서 드래그를 끝내는 것이 본래 할 일이다. */
+    }
 
     dragRef.current = null;
 
@@ -263,7 +307,7 @@ export const MarkerOverlay = ({
      * ⭐ **드래그 중에는 읽지 않고, 끝에서 마지막 자리만 읽는다.** 이동마다 알리면 낭독기가
      * 한 번의 드래그에 수십 번 끼어들어 정작 결과를 못 듣는다.
      */
-    if (drag.last !== null) setNotice(`${marker.label}: ${positionText(drag.last.x, drag.last.y)}`);
+    if (drag.last !== null) setNotice(moveText(marker.label, drag.last.x, drag.last.y));
   };
 
   const handleMarkerPointerCancel = (event: PointerEvent<HTMLButtonElement>): void => {
@@ -288,8 +332,24 @@ export const MarkerOverlay = ({
          */
         role="group"
         aria-label={imageLabel}
-        /* 잠긴 사실을 접근성 트리에도 드러낸다 — 눌러 보고 나서야 알게 두지 않는다. */
-        aria-readonly={readOnly ? true : undefined}
+        /*
+         * 잠긴 사실을 접근성 트리에도 드러낸다 — 눌러 보고 나서야 알게 두지 않는다.
+         *
+         * ⛔ **`aria-readonly` 가 아니다**(2026-09-15 · #1277). 그 속성은 `group` 에 허용되지
+         * 않아 낭독기가 통째로 버린다 — 「잠겼다」가 아무에게도 닿지 않는다. `group` 이 받는
+         * 것은 `aria-disabled` 다.
+         */
+        aria-disabled={readOnly || undefined}
+        /*
+         * ⭐ **판 위의 새 포인터 동작은 삼킬 click 표를 지운다.** 터치 드래그나 `pointercancel`
+         * 뒤에는 브라우저가 click 을 아예 보내지 않아, 세워 둔 표가 «다음» 판 누름을 대신
+         * 먹는다 — 사용자에게는 「한 번은 그냥 씹히는 판」이 된다. pointerdown 은 언제나 click
+         * 보다 앞서므로 여기서 지우면 묵은 표가 남지 않고, 표식 드래그 직후 판으로 새는
+         * click(앞에 새 pointerdown 이 없다)은 그대로 삼켜진다.
+         */
+        onPointerDownCapture={() => {
+          swallowClickRef.current = false;
+        }}
         onClick={handleBoardClick}
       >
         {src === undefined ? (

@@ -99,6 +99,34 @@ const release = (target: HTMLElement, clientX: number, clientY: number): void =>
   fireEvent.pointerUp(target, { pointerId: 1, pointerType: 'mouse', clientX, clientY });
 };
 
+/** 손가락으로 누른다 — 터치는 `button` 번호를 따지지 않는다. */
+const touchDown = (
+  target: HTMLElement,
+  pointerId: number,
+  clientX: number,
+  clientY: number,
+): void => {
+  fireEvent.pointerDown(target, { pointerId, pointerType: 'touch', button: -1, clientX, clientY });
+};
+
+const touchMove = (
+  target: HTMLElement,
+  pointerId: number,
+  clientX: number,
+  clientY: number,
+): void => {
+  fireEvent.pointerMove(target, { pointerId, pointerType: 'touch', clientX, clientY });
+};
+
+const touchUp = (
+  target: HTMLElement,
+  pointerId: number,
+  clientX: number,
+  clientY: number,
+): void => {
+  fireEvent.pointerUp(target, { pointerId, pointerType: 'touch', clientX, clientY });
+};
+
 describe('MarkerOverlay — 놓기', () => {
   it('⭐ 빈 자리를 누르면 픽셀이 아니라 비율이 나간다', () => {
     const { board, onPlace } = setup();
@@ -223,6 +251,45 @@ describe('MarkerOverlay — 끌어 옮기기', () => {
     expect(onPlace).not.toHaveBeenCalled();
   });
 
+  /*
+   * ⭐ **click 이 오지 않는 드래그가 흔하다.** 터치에서는 브라우저가 드래그 뒤 click 을 아예
+   * 보내지 않고, `pointercancel` 로 빼앗긴 제스처도 그렇다. 그러면 세워 둔 「삼킬 click」 표가
+   * 쓰이지 못한 채 남아 **다음 판 누름**을 대신 먹는다 — 사용자에게는 한 번 씹히는 판이 된다.
+   * 아래 둘은 그 묵은 표가 지워지는지를 잰다.
+   */
+  it('⛔ 터치 드래그 뒤 click 이 없어도 다음 판 누름이 씹히지 않는다', () => {
+    const { board, pin, onPlace } = setup();
+    const marker = pin();
+
+    touchDown(marker, 5, 20, 20);
+    touchMove(marker, 5, 40, 50);
+    touchUp(marker, 5, 40, 50);
+    /* 여기서 click 이 오지 않는다 — 삼킬 표만 남는다. */
+
+    touchDown(board, 6, 100, 50);
+    touchUp(board, 6, 100, 50);
+    fireEvent.click(board, { clientX: 100, clientY: 50 });
+
+    expect(onPlace).toHaveBeenCalledTimes(1);
+    expect(onPlace).toHaveBeenCalledWith(0.5, 0.5);
+  });
+
+  it('⛔ `pointercancel` 로 끝난 드래그도 다음 판 누름을 먹지 않는다', () => {
+    const { board, pin, onPlace } = setup();
+    const marker = pin();
+
+    press(marker, 20, 20);
+    moveTo(marker, 40, 50);
+    fireEvent.pointerCancel(marker, { pointerId: 1, pointerType: 'mouse' });
+
+    press(board, 100, 50);
+    release(board, 100, 50);
+    fireEvent.click(board, { clientX: 100, clientY: 50 });
+
+    expect(onPlace).toHaveBeenCalledTimes(1);
+    expect(onPlace).toHaveBeenCalledWith(0.5, 0.5);
+  });
+
   it('움직이지 않은 누름 뒤의 click 은 그대로 고르기다', () => {
     const { pin, onSelect } = setup();
     const marker = pin();
@@ -254,16 +321,26 @@ describe('MarkerOverlay — 끌어 옮기기', () => {
     const { pin, onMove } = setup();
     const marker = pin();
 
-    fireEvent.pointerDown(marker, {
-      pointerId: 5,
-      pointerType: 'touch',
-      button: -1,
-      clientX: 20,
-      clientY: 20,
-    });
-    fireEvent.pointerMove(marker, { pointerId: 5, pointerType: 'touch', clientX: 40, clientY: 50 });
+    touchDown(marker, 5, 20, 20);
+    touchMove(marker, 5, 40, 50);
 
     expect(onMove).toHaveBeenCalledWith('7', 0.2, 0.5);
+  });
+
+  it('⛔ 이미 끌고 있으면 두 번째 손가락이 드래그를 빼앗지 않는다', () => {
+    const { pin, onMove } = setup();
+    const marker = pin();
+
+    touchDown(marker, 5, 20, 20);
+    /* 두 번째 손가락. 슬롯을 덮으면 첫 손가락의 이동이 「남의 드래그」가 되어 사라진다. */
+    touchDown(marker, 6, 60, 60);
+
+    touchMove(marker, 5, 40, 50);
+    expect(onMove).toHaveBeenCalledWith('7', 0.2, 0.5);
+
+    /* 받아 주지 않은 손가락의 이동은 드래그가 아니다. */
+    touchMove(marker, 6, 100, 80);
+    expect(onMove).toHaveBeenCalledTimes(1);
   });
 
   it('⭐ 제스처를 빼앗기면(`pointercancel`) 드래그가 끝난다 — 유령 이동이 남지 않는다', () => {
@@ -289,10 +366,15 @@ describe('MarkerOverlay — 끌어 옮기기', () => {
 });
 
 describe('MarkerOverlay — 잠긴 판', () => {
+  /*
+   * ⛔ **`aria-readonly` 로 재지 않는다** — `group` 이 받지 않는 속성이라 붙여 두어도 낭독기가
+   * 통째로 버린다. 「잠겼다」가 닿으려면 `group` 에 허용된 `aria-disabled` 여야 한다.
+   */
   it('⭐ 잠긴 사실이 접근성 트리에 드러난다', () => {
     const { board } = setup({ readOnly: true });
 
-    expect(board).toHaveAttribute('aria-readonly', 'true');
+    expect(board).toHaveAttribute('aria-disabled', 'true');
+    expect(board).not.toHaveAttribute('aria-readonly');
   });
 
   it('⛔ 잠긴 동안에는 눌러도 점이 생기지 않고 끌어도 옮겨지지 않는다', () => {
@@ -317,10 +399,10 @@ describe('MarkerOverlay — 잠긴 판', () => {
     expect(onSelect).toHaveBeenCalledWith('7');
   });
 
-  it('잠기지 않은 판에는 `aria-readonly` 가 붙지 않는다', () => {
+  it('잠기지 않은 판에는 `aria-disabled` 가 붙지 않는다', () => {
     const { board } = setup();
 
-    expect(board).not.toHaveAttribute('aria-readonly');
+    expect(board).not.toHaveAttribute('aria-disabled');
   });
 });
 
@@ -332,19 +414,34 @@ describe('MarkerOverlay — 듣는 사람에게 보이는 판', () => {
     expect(screen.queryByRole('application')).toBeNull();
   });
 
-  it('⭐ 표식의 이름은 보이는 말과 같고, 자리는 설명으로 딸린다', () => {
-    const { pin } = setup();
+  /*
+   * ⛔ **부품은 사람의 말을 갖지 않는다.** `packages/ui` 는 표현 전용이라 한국어를 박아 두면
+   * 베트남어 화면이 한국어를 듣는다. 기본값은 언어 중립인 숫자이고, 말은 밖에서 온다.
+   */
+  it('⭐ 표식의 이름은 보이는 말과 같고, 자리는 설명으로 딸린다 — 기본값은 숫자뿐이다', () => {
+    const { pin, live } = setup();
 
     expect(pin()).toHaveAccessibleName('A-01');
-    expect(pin()).toHaveAccessibleDescription('가로 10%, 세로 20%');
-  });
-
-  it('⭐ 화살표로 한 번 밀 때마다 옮긴 자리를 읽어 준다', () => {
-    const { pin, live } = setup();
+    expect(pin()).toHaveAccessibleDescription('10% / 20%');
 
     fireEvent.keyDown(pin(), { key: 'ArrowRight' });
 
-    expect(live).toHaveTextContent('A-01: 가로 11%, 세로 20%');
+    expect(live).toHaveTextContent('A-01: 11% / 20%');
+  });
+
+  it('⭐ 문구는 밖에서 받는다 — 판이 한 나라 말을 품지 않는다', () => {
+    const { pin, live } = setup({
+      describePosition: (xPercent, yPercent) =>
+        `Ngang ${String(xPercent)}%, dọc ${String(yPercent)}%`,
+      describeMove: (label, xPercent, yPercent) =>
+        `${label}: Ngang ${String(xPercent)}%, dọc ${String(yPercent)}%`,
+    });
+
+    expect(pin()).toHaveAccessibleDescription('Ngang 10%, dọc 20%');
+
+    fireEvent.keyDown(pin(), { key: 'ArrowRight' });
+
+    expect(live).toHaveTextContent('A-01: Ngang 11%, dọc 20%');
   });
 
   it('⭐ 드래그는 **끝에서 한 번만** 읽는다 — 이동마다 읽으면 낭독기가 폭주한다', () => {
@@ -360,7 +457,7 @@ describe('MarkerOverlay — 듣는 사람에게 보이는 판', () => {
 
     release(marker, 40, 50);
 
-    expect(live).toHaveTextContent('A-01: 가로 20%, 세로 50%');
+    expect(live).toHaveTextContent('A-01: 20% / 50%');
   });
 
   it('⛔ 임계값 안에서 끝난 누름은 아무 말도 하지 않는다', () => {
