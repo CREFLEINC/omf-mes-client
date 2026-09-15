@@ -177,6 +177,11 @@ const routes = (options: Options = {}): StubRoute[] => [
         return jsonResponse({ items: [], page });
       }
 
+      /* 아직 셀 위치를 모으는 조회다. 위치 축 없이 미실사만 묻는다. */
+      if (new URL(req.url).searchParams.get('uncountedOnly') === 'true') {
+        return jsonResponse({ items: [line({ counted: false })], page });
+      }
+
       /* 블라인드 실사는 어느 줄에도 장부가 오지 않는다. */
       const hideSystemQty = options.blind === true ? { systemQty: undefined } : {};
 
@@ -344,6 +349,20 @@ describe('실물 카운트 화면', () => {
 
     expect(await screen.findByLabelText(QTY_LABEL)).toBeTruthy();
     expect(screen.getByText('전산 잔량 120 EA')).toBeTruthy();
+  });
+
+  /*
+   * 실사를 골라도 어디로 가야 하는지 화면이 말하지 않으면 위치 코드를 아는 사람만 쓸 수 있다.
+   * 대상 위치는 실사 헤더에 없고 라인에 붙어 있으므로, 아직 안 센 라인에서 모아 보인다.
+   */
+  it('아직 셀 위치를 말한다', async () => {
+    const user = userEvent.setup();
+    mount();
+
+    await user.click(await screen.findByRole('combobox', { name: '실사' }));
+    await user.click(await screen.findByRole('option', { name: `${COUNT_NO} · 2026-09-07` }));
+
+    expect(await screen.findByText(new RegExp(`아직 셀 위치.*${LOC_CODE}`))).toBeTruthy();
   });
 
   /*

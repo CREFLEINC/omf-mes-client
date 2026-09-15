@@ -13,7 +13,7 @@ import { useScreenTitle } from '../../patterns/screen-title';
 import { useWorkerSession } from '../../patterns/worker-session';
 import { FailureBanner } from '../../patterns/failure-banner';
 import { useLoadFailure } from '../../patterns/load-failure';
-import { useCountLines, useCountSummary, useOpenCounts } from './queries';
+import { useCountLines, useCountSummary, useOpenCounts, useUncountedLocations } from './queries';
 import {
   COUNT_LABEL,
   canSubmit,
@@ -59,6 +59,7 @@ export const PhysicalCountScreen = () => {
   const planned = useCountLines(countId, at?.locationId ?? null);
   const reasons = useCodeValues(VARIANCE_REASON);
   const summary = useCountSummary(countId);
+  const remaining = useUncountedLocations(countId);
 
   /*
    * 한 위치에 개수로 세는 품목과 무게로 세는 품목이 섞여 선다. 단위가 빠지면 40 이 마흔 개인지
@@ -283,6 +284,15 @@ export const PhysicalCountScreen = () => {
         />
         {/* 장부를 감춘 실사다. 작업자가 장부 수를 보고 그대로 적는 것을 막는다. */}
         {count?.blindCount === true ? <AlertBanner variant="info" title={t.plan.blind} /> : null}
+        {/*
+          대상 위치는 실사 헤더에 없고 라인에 붙어 있다. 말해 주지 않으면 위치 코드를 외우고
+          있는 사람만 이 화면을 쓸 수 있다.
+        */}
+        {remaining.data === undefined || remaining.data.length === 0 ? null : (
+          <p className="physical-count__remaining">
+            {t.plan.remaining(remaining.data.join(' · '))}
+          </p>
+        )}
         {/*
           창고를 순회하는 일이라 한 번에 끝나지 않는다. 얼마나 남았는지를 말하지 않으면 언제
           끝나는지 모른 채 돌게 되고, 다 돌았는지도 스스로 셈해야 한다.

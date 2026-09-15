@@ -128,3 +128,12 @@
   letter-spacing: var(--type-title-sm-tracking);
   font-variant-numeric: tabular-nums;
 }
+
+/* 다음에 갈 곳이다. 위치 코드를 눈으로 찾아 읽으므로 자릿수가 흔들리지 않게 둔다. */
+.physical-count__remaining {
+  margin: 0;
+  font: var(--type-body-lg);
+  letter-spacing: var(--type-body-lg-tracking);
+  overflow-wrap: anywhere;
+  font-variant-numeric: tabular-nums;
+}
