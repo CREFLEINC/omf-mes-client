@@ -1031,12 +1031,12 @@ describe('실물 카운트 화면', () => {
     });
   });
 
-  it('이미 센 줄은 앞서 센 값을 보인다', async () => {
+  it('이미 센 줄은 이전 실사값을 보인다', async () => {
     const user = userEvent.setup();
     mount({ firstCounted: true });
     await openLocation(user);
 
-    expect(await screen.findByText('앞서 센 값 118 EA')).toBeTruthy();
+    expect(await screen.findByText('이전 실사값 118 EA')).toBeTruthy();
   });
 
   /*
@@ -1118,7 +1118,7 @@ describe('실물 카운트 화면', () => {
     otherDevice.counted = true;
     await queryClient.invalidateQueries({ queryKey: ['physical-count-lines'] });
 
-    expect(await screen.findByText('앞서 센 값 37 EA')).toBeTruthy();
+    expect(await screen.findByText('이전 실사값 37 EA')).toBeTruthy();
     expect((screen.getByLabelText(QTY_LABEL) as HTMLInputElement).value).toBe('118');
   });
 
