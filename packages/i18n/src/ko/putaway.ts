@@ -27,7 +27,13 @@ export const putaway = {
     /*
      * 라벨과 눈으로 대조할 값이다. 지시 번호만으로는 무엇을 집는지 알 수 없다. 계약이 목록
      * 줄에 LOT 번호를 싣지 않아 지시 번호를 함께 둔다.
+     *
+     * 세 값에 각각 이름을 붙인다. 값만 늘어놓으면 어느 것이 품목이고 어느 것이 지시 번호인지
+     * 형식을 아는 사람만 읽는다.
      */
+    itemLabel: '품목',
+    taskNoLabel: '지시 번호',
+    qtyLabel: '수량',
     item: (itemCode: string, taskNo: string, qty: string) => `${itemCode} · ${taskNo} · ${qty}`,
     /** 목록에서는 위치 코드를 아직 받지 못했다. 있고 없고만 말한다. */
     hasRule: '권장 위치 있음',

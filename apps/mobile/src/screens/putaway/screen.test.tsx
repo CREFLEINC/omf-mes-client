@@ -262,8 +262,39 @@ describe('적치·입고 완료 화면', () => {
 
     const pick = await screen.findByRole('button', { name: /PT-2026-0007/ });
 
-    expect(pick.querySelector('strong')?.textContent).toContain('PT-2026-0007');
+    expect(pick.querySelector('dl')?.textContent).toContain('PT-2026-0007');
     expect(pick.querySelector('p')?.textContent).toContain('권장 위치');
+  });
+
+  /*
+   * 값만 늘어놓으면 어느 것이 품목이고 어느 것이 지시 번호인지 형식을 아는 사람만 읽는다.
+   * 같은 자리에 셋이 서고 둘은 번호라, 자릿수로 가늠하게 된다.
+   */
+  it('품목과 지시 번호와 수량에 각각 이름을 붙인다', async () => {
+    mount();
+
+    const pick = await screen.findByRole('button', { name: /PT-2026-0007/ });
+    const fields = pick.querySelector('dl');
+
+    expect([...(fields?.querySelectorAll('dt') ?? [])].map((dt) => dt.textContent)).toEqual([
+      '품목',
+      '지시 번호',
+      '수량',
+    ]);
+  });
+
+  /*
+   * 코드만 보이면 무엇을 집는지 알려면 코드를 외우고 있어야 한다. 이름만 보이면 실물 라벨과
+   * 눈으로 대조할 수 없다 - 라벨에 찍히는 것은 코드다. 둘을 함께 보인다.
+   */
+  it('품목을 이름과 코드로 함께 보인다', async () => {
+    mount();
+
+    const pick = await screen.findByRole('button', { name: /PT-2026-0007/ });
+
+    await waitFor(() => {
+      expect(pick.textContent).toContain('수지A(RM-1001)');
+    });
   });
 
   /*

@@ -92,7 +92,10 @@ export const PutawayScreen = () => {
   const byCode = useLocationByCode(task?.warehouseId ?? null, scanned);
   const uoms = useUomCodes(true);
   const itemLabels = useItemLabels((tasks.data ?? []).map((each) => each.itemId));
-  const itemCode = useItemCodes((tasks.data ?? []).map((each) => each.itemId));
+  const itemCode = useItemCodes(
+    (tasks.data ?? []).map((each) => each.itemId),
+    (item) => messages.common.reference.named(item.itemName, item.itemCode),
+  );
   const lotNo = useTaskLotNo(task?.lotId ?? null);
   const rule = usePutawayRule(task?.appliedPutawayRuleId ?? null);
 
@@ -264,12 +267,22 @@ export const PutawayScreen = () => {
     }
   };
 
-  const taskLabel = (each: PutawayTask) =>
-    t.tasks.item(
-      referenceLabel(itemCode(each.itemId)),
-      each.putawayTaskNo,
-      `${String(each.taskQty)} ${uoms.data?.get(each.uomId) ?? ''}`,
-    );
+  /*
+   * 세 값에 이름을 붙여 세로로 세운다. 한 줄에 늘어놓으면 어느 것이 품목이고 어느 것이 지시
+   * 번호인지 형식을 아는 사람만 읽고, 360dp 에서 접히면 그 경계마저 흐려진다.
+   */
+  const TaskFields = ({ each }: { each: PutawayTask }) => (
+    <dl className="putaway__task-fields">
+      <dt>{t.tasks.itemLabel}</dt>
+      <dd>
+        <strong>{referenceLabel(itemCode(each.itemId))}</strong>
+      </dd>
+      <dt>{t.tasks.taskNoLabel}</dt>
+      <dd>{each.putawayTaskNo}</dd>
+      <dt>{t.tasks.qtyLabel}</dt>
+      <dd>{`${String(each.taskQty)} ${uoms.data?.get(each.uomId) ?? ''}`}</dd>
+    </dl>
+  );
 
   return (
     <div className="putaway">
@@ -319,7 +332,7 @@ export const PutawayScreen = () => {
                   }}
                 >
                   <Card.Body className="card-body putaway__task">
-                    <strong>{taskLabel(each)}</strong>
+                    <TaskFields each={each} />
                     {/*
                      * 목록에서는 위치 코드를 아직 받지 못했다. 식별자를 그대로 보이면 사람이
                      * 읽을 수 없는 번호가 권장 위치인 척한다 - 있고 없고만 말한다.
@@ -342,7 +355,7 @@ export const PutawayScreen = () => {
             <h2>{t.tasks.legend}</h2>
             <Card bordered>
               <Card.Body className="card-body putaway__card">
-                <strong>{taskLabel(task)}</strong>
+                <TaskFields each={task} />
                 {lotNo.data === undefined ? null : (
                   /* 34자리를 붙여 쓰면 실물 라벨과 눈으로 대조할 수 없다(공유계약 E-2). */
                   <p className="putaway__scanned">
