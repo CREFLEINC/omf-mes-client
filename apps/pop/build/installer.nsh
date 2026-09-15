@@ -72,7 +72,10 @@
 ; ## 무엇을 하는가
 ;
 ; 1. 앱을 강제로 끈다(`popCloseRunningApp`).
-; 2. 옛 삭제기를 같은 인자로 한 번 부른다. 성공하면 설치기가 지울 것이 남지 않는다.
+; 2. 옛 삭제기를 **임시 폴더로 복사해** 같은 인자로 한 번 부른다. 성공하면 설치기가 지울 것이 남지 않는다.
+;    ⛔ 제자리에서 부르지 않는다 — 옛 삭제기의 앱 검사는 «설치 폴더에서 도는 프로세스»를 전부
+;       끄는데 자기 자신을 빼지 않아, 제자리 실행이면 스스로를 끄고 실패 코드로 끝난다(리뷰 지적 ·
+;       electron-builder 도 같은 이유로 `$PLUGINSDIR` 에 복사해 부른다, `installUtil.nsh`).
 ; 3. 실패하면 **옛 판의 삭제 등록을 걷어** 설치기가 옛 삭제기를 다시 부르지 않게 한다 — 새 판은 같은
 ;    폴더에 덮어 설치된다. 막힌 파일이 정말 쓰기 중이면 그때 NSIS 가 **그 파일 이름**을 댄다.
 ;    결과는 `C:\ProgramData\OMF-MES POP\install.log` 에 남긴다.
@@ -88,14 +91,45 @@
     Push $R4
     Push $R5
     Push $R6
+    Push $R7
+    Push $R8
+    Push $R9
     ReadRegStr $R4 HKLM "${UNINSTALL_REGISTRY_KEY}" UninstallString
     ReadRegStr $R5 HKLM "${INSTALL_REGISTRY_KEY}" InstallLocation
     StrCmp $R4 "" popPrepareDone
 
+    ; `"<삭제기 경로>" <인자>` 에서 경로($R7)와 인자($R9)를 가른다. 따옴표가 없으면 통째로 경로다.
+    StrCpy $R7 $R4
+    StrCpy $R9 ""
+    StrCpy $R8 $R4 1
+    StrCmp $R8 '"' 0 popSplitDone
+    StrCpy $R6 1
+    popSplitLoop:
+      StrCpy $R8 $R4 1 $R6
+      StrCmp $R8 "" popSplitDone
+      StrCmp $R8 '"' popSplitFound
+      IntOp $R6 $R6 + 1
+      Goto popSplitLoop
+    popSplitFound:
+      IntOp $R8 $R6 - 1
+      StrCpy $R7 $R4 $R8 1
+      IntOp $R6 $R6 + 1
+      StrCpy $R9 $R4 "" $R6
+    popSplitDone:
+
+    InitPluginsDir
     ClearErrors
-    ExecWait '$R4 /S /KEEP_APP_DATA --updated _?=$R5' $R6
+    CopyFiles /SILENT /FILESONLY "$R7" "$PLUGINSDIR\pop-old-uninstaller.exe"
+    IfErrors 0 popRunCopy
+      StrCpy $R6 "copy-failed"
+      Goto popPrepareLog
+    popRunCopy:
+    ClearErrors
+    ExecWait '"$PLUGINSDIR\pop-old-uninstaller.exe"$R9 /S /KEEP_APP_DATA --updated _?=$R5' $R6
     IfErrors 0 +2
       StrCpy $R6 "not-launched"
+
+    popPrepareLog:
 
     SetShellVarContext all
     CreateDirectory "$APPDATA\OMF-MES POP"
@@ -118,6 +152,9 @@
     FileClose $0
 
     popPrepareDone:
+    Pop $R9
+    Pop $R8
+    Pop $R7
     Pop $R6
     Pop $R5
     Pop $R4
