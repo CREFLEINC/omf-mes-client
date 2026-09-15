@@ -43,6 +43,15 @@ export const warehouseLayout = {
     placeHint: '왼쪽에서 위치를 고른 뒤 도면을 누르면 그 자리에 찍힙니다.',
     placeNeedsLocation: '먼저 목록에서 찍을 위치를 고르세요.',
     move: '표식을 끌어 옮기거나, 골라서 화살표로 밀 수 있습니다.',
+    /**
+     * ⭐ 눈으로는 자리를 보지만 듣는 사람에게는 이 말이 자리 그 자체다 — 판 부품은 표현
+     * 전용이라 말을 갖지 않으므로 화면이 넘겨 준다.
+     */
+    markerPosition: (xPercent: number, yPercent: number): string =>
+      `가로 ${String(xPercent)}%, 세로 ${String(yPercent)}%`,
+    /** 옮긴 뒤 한 번 읽어 주는 말 — 어느 표식이 어디로 갔는지. */
+    markerMoved: (label: string, xPercent: number, yPercent: number): string =>
+      `${label}: 가로 ${String(xPercent)}%, 세로 ${String(yPercent)}%`,
     remove: '지도에서 빼기',
     removeNeedsMarker: '먼저 지도에서 뺄 표식을 고르세요.',
     save: '배치도 저장',
