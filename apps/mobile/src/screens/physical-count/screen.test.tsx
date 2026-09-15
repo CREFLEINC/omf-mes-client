@@ -261,8 +261,28 @@ const routes = (options: Options = {}): StubRoute[] => [
     },
   },
   ...itemRoutes([
-    { itemId: 2002, itemCode: 'ABC-123', itemName: '하우징', fifoPolicyCode: 'FIFO' },
-    { itemId: 2001, itemCode: 'RM-1001', itemName: '수지A', fifoPolicyCode: 'FEFO' },
+    {
+      itemId: 2002,
+      itemCode: 'ABC-123',
+      itemName: '하우징',
+      fifoPolicyCode: 'FIFO',
+      baseUomId: 1001,
+    },
+    {
+      itemId: 2001,
+      itemCode: 'RM-1001',
+      itemName: '수지A',
+      fifoPolicyCode: 'FEFO',
+      baseUomId: 1001,
+    },
+    /* 계획에 없는 품목. 장부에 없는 물건을 찾았을 때 고르는 자리다. */
+    {
+      itemId: 2003,
+      itemCode: 'ZZZ-999',
+      itemName: '미등록 자재',
+      fifoPolicyCode: 'FIFO',
+      baseUomId: 1001,
+    },
   ]),
   {
     match: (req) => new URL(req.url).pathname === '/mdm/warehouses',
@@ -533,6 +553,43 @@ describe('실물 카운트 화면', () => {
     await user.click(card);
 
     expect(await screen.findByLabelText('위치 스캔')).toBeTruthy();
+  });
+
+  /*
+   * 순회하다 보면 장부에 없는 물건이 나온다. 계획 라인이 없어 적을 자리가 없으면 그 재고는
+   * 실사에서 통째로 빠진다.
+   *
+   * 새 라인의 번호는 서버가 채번한다 - 오프라인에서는 만들 수 없으므로 온라인일 때만 연다.
+   */
+  it('목록에 없는 재고를 더해 함께 보낸다', async () => {
+    const user = userEvent.setup();
+    const seen: Request[] = [];
+    mount({ seen });
+    await openLocation(user);
+
+    await user.click(await screen.findByRole('button', { name: '목록에 없는 재고' }));
+    await user.click(await screen.findByRole('button', { name: /ZZZ-999/ }));
+    await user.type(await screen.findByLabelText(/ZZZ-999 실물 수량 입력/), '7');
+
+    /* 장부에 없던 물건이라 차이가 그대로 남는다 - 왜 여기 있는지가 조정의 근거다. */
+    await user.click(await screen.findByRole('combobox', { name: /ZZZ-999 차이 사유/ }));
+    await user.click(await screen.findByRole('option', { name: '계수 오류' }));
+    await user.click(screen.getByRole('button', { name: '이 위치 완료' }));
+
+    await waitFor(() => {
+      expect(seen).toHaveLength(1);
+    });
+
+    const body = (await seen[0]?.json()) as {
+      lines: { inventoryCountLineId?: number; itemId: number; countedQty: number; uomId: number }[];
+    };
+    const added = body.lines.find((each) => each.itemId === 2003);
+
+    /* 번호가 없는 줄이 신규다. 서버가 그것을 보고 채번한다. */
+    expect(added).toBeDefined();
+    expect(added).not.toHaveProperty('inventoryCountLineId');
+    expect(added?.countedQty).toBe(7);
+    expect(added?.uomId).toBe(1001);
   });
 
   /*

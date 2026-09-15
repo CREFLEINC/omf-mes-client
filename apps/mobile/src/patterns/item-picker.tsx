@@ -2,7 +2,7 @@ import { AlertBanner, Button, Card, SearchInput } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useRef, useState } from 'react';
 
-import { useItemSearch, type ItemOption } from '../../patterns/masters';
+import { useItemSearch, type ItemOption } from './masters';
 
 const t = messages.inboundReceipt.itemPicker;
 

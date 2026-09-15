@@ -25,7 +25,13 @@ export const COUNT_LABEL = messages.physicalCount.record.counted;
  * 안 센 것을 0 으로 보내면 관리웹이 그것을 전량 손실로 잡는다.
  */
 export interface DraftLine {
-  inventoryCountLineId: number;
+  /*
+   * 화면 안에서 줄을 가르는 열쇠. 계획에 없던 재고를 더한 줄은 서버 번호가 없어, 번호로
+   * 가르면 그 줄에 적은 값이 다른 줄로 간다.
+   */
+  key: string;
+  /* 계획 라인의 번호. 계획에 없던 재고를 더한 줄은 없다 - 서버가 채번한다. */
+  inventoryCountLineId: number | null;
   locationId: number;
   itemId: number;
   lotId: number | null;
@@ -186,7 +192,10 @@ export const toCountDraft = (
     businessDate: businessDateOf(now),
     occurredAt,
     lines: countedLines(lines).map((line): InventoryCountLineUpsert => ({
-      inventoryCountLineId: line.inventoryCountLineId,
+      /* 번호가 없으면 신규 행이다 - 계약이 그것으로 계획에 없던 재고를 가른다. */
+      ...(line.inventoryCountLineId === null
+        ? {}
+        : { inventoryCountLineId: line.inventoryCountLineId }),
       locationId: line.locationId,
       itemId: line.itemId,
       lotId: line.lotId,

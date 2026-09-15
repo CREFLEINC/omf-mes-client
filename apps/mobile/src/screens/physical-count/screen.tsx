@@ -5,6 +5,8 @@ import { Link } from 'react-router';
 
 import { formatMaterialLotNo } from '../../patterns/material-lot-no';
 import { useBackStep } from '../../patterns/back-step';
+import { ItemPicker } from '../../patterns/item-picker';
+import { useOnlineStatus } from '../../patterns/online-status';
 import { useCodeValues } from '../../patterns/code-values';
 import { useLocationByCode } from '../../patterns/locations';
 import { uomLabelOf, useUomCodes } from '../../patterns/masters';
@@ -58,7 +60,14 @@ export const PhysicalCountScreen = () => {
   const [scanned, setScanned] = useState<string | null>(null);
   const [lines, setLines] = useState<DraftLine[]>([]);
   /* 단말 키보드는 키가 촘촘하고 올라오면 줄 목록과 완료 단추를 덮는다. */
-  const [keypadFor, setKeypadFor] = useState<number | null>(null);
+  const [keypadFor, setKeypadFor] = useState<string | null>(null);
+  /*
+   * 순회하다 보면 장부에 없는 물건이 나온다. 새 라인의 번호는 서버가 채번하므로 오프라인에서는
+   * 만들 수 없다 - 온라인일 때만 연다.
+   */
+  const [addingItem, setAddingItem] = useState(false);
+  const added = useRef(0);
+  const online = useOnlineStatus();
   const [outcome, setOutcome] = useState<Outcome | null>(null);
   const [saveFailed, setSaveFailed] = useState(false);
   /*
@@ -140,9 +149,10 @@ export const PhysicalCountScreen = () => {
      * 센 사람이 아무 말 없이 처음부터 다시 세게 된다.
      */
     setLines((current) => {
-      const typed = new Map(current.map((line) => [line.inventoryCountLineId, line]));
+      const typed = new Map(current.map((line) => [line.key, line]));
 
-      return rows.map((row) => ({
+      const next = rows.map((row) => ({
+        key: `line-${String(row.inventoryCountLineId)}`,
         inventoryCountLineId: row.inventoryCountLineId,
         locationId: row.locationId,
         itemId: row.itemId,
@@ -157,9 +167,19 @@ export const PhysicalCountScreen = () => {
         previousCountedAt: row.counted ? row.countedAt : null,
         previousReasonCode: row.varianceReasonCode ?? null,
         qty:
-          typed.get(row.inventoryCountLineId)?.qty ?? (row.counted ? String(row.countedQty) : ''),
-        reasonCode: typed.get(row.inventoryCountLineId)?.reasonCode ?? row.varianceReasonCode ?? '',
+          typed.get(`line-${String(row.inventoryCountLineId)}`)?.qty ??
+          (row.counted ? String(row.countedQty) : ''),
+        reasonCode:
+          typed.get(`line-${String(row.inventoryCountLineId)}`)?.reasonCode ??
+          row.varianceReasonCode ??
+          '',
       }));
+
+      /*
+       * 화면에서 더한 줄은 아직 서버에 없어 다시 읽어와도 안 온다. 붙여 두지 않으면 적어 둔
+       * 것이 재조회 한 번에 사라진다.
+       */
+      return [...next, ...current.filter((line) => line.inventoryCountLineId === null)];
     });
   }, [planned.data]);
 
@@ -175,12 +195,15 @@ export const PhysicalCountScreen = () => {
    *
    * 안쪽부터 되돌리도록 조건을 서로 배타로 둔다.
    */
-  useBackStep(countId !== null && scanned !== null, () => {
+  useBackStep(addingItem, () => {
+    setAddingItem(false);
+  });
+  useBackStep(!addingItem && countId !== null && scanned !== null, () => {
     setScanned(null);
     setLines([]);
     setKeypadFor(null);
   });
-  useBackStep(countId !== null && scanned === null, () => {
+  useBackStep(!addingItem && countId !== null && scanned === null, () => {
     setCountId(null);
   });
 
@@ -216,7 +239,7 @@ export const PhysicalCountScreen = () => {
    * 숫자판이 지금 적고 있는 줄. 목록 밖에 서므로 자리를 번호가 아니라 줄 자체로 든다 - 다른
    * 위치로 옮겨 그 번호가 사라지면 숫자판도 함께 닫힌다.
    */
-  const keypadAt = lines.findIndex((line) => line.inventoryCountLineId === keypadFor);
+  const keypadAt = lines.findIndex((line) => line.key === keypadFor);
   const keypad = keypadAt === -1 ? null : { at: keypadAt, line: lines[keypadAt] as DraftLine };
 
   /*
@@ -304,6 +327,47 @@ export const PhysicalCountScreen = () => {
       inFlight.current = false;
     }
   };
+
+  /*
+   * 마스터가 커서 찾는 일에 화면을 통째로 내준다 - 입하에서 무발주 품목을 고르는 자리와
+   * 같은 부품이다.
+   */
+  if (addingItem) {
+    return (
+      <ItemPicker
+        onPick={(picked) => {
+          added.current += 1;
+          setLines((current) => [
+            ...current,
+            {
+              key: `added-${String(added.current)}`,
+              /* 서버가 채번한다. 화면이 지어내면 다른 줄을 덮어쓴다. */
+              inventoryCountLineId: null,
+              locationId: at?.locationId ?? 0,
+              itemId: picked.itemId,
+              /* LOT 은 계획에 없던 재고라 아직 모른다. 계약이 빈 값을 받는다. */
+              lotId: null,
+              uomId: picked.baseUomId,
+              itemCode: picked.itemCode,
+              lotNo: null,
+              /* 장부에 없어 견줄 것이 없다. 차이는 센 값 그대로다. */
+              systemQty: 0,
+              counted: false,
+              previousQty: null,
+              previousCountedAt: null,
+              previousReasonCode: null,
+              qty: '',
+              reasonCode: '',
+            },
+          ]);
+          setAddingItem(false);
+        }}
+        onCancel={() => {
+          setAddingItem(false);
+        }}
+      />
+    );
+  }
 
   if (outcome !== null) {
     return (
@@ -477,7 +541,7 @@ export const PhysicalCountScreen = () => {
               const problem = qtyProblemOf(line);
 
               return (
-                <div key={line.inventoryCountLineId} className="physical-count__line">
+                <div key={line.key} className="physical-count__line">
                   {/*
                     적어야 할 값을 입력칸 위에 둔다. 아래에 두면 칸을 지나쳐 내려다봐야 하고,
                     숫자판이 올라오면 그 자리가 덮여 전산 잔량을 못 본 채 적게 된다.
@@ -502,7 +566,7 @@ export const PhysicalCountScreen = () => {
                      */
                     inputMode="none"
                     onFocus={() => {
-                      setKeypadFor(line.inventoryCountLineId);
+                      setKeypadFor(line.key);
                     }}
                     value={line.qty}
                     onChange={(event) => {
@@ -528,11 +592,9 @@ export const PhysicalCountScreen = () => {
 
                   {count !== null && needsReason(count, line) ? (
                     <>
-                      <label htmlFor={`physical-count-reason-${String(line.inventoryCountLineId)}`}>
-                        {t.lines.reason}
-                      </label>
+                      <label htmlFor={`physical-count-reason-${line.key}`}>{t.lines.reason}</label>
                       <Select
-                        id={`physical-count-reason-${String(line.inventoryCountLineId)}`}
+                        id={`physical-count-reason-${line.key}`}
                         aria-label={t.lines.reasonLabel(nameOf(line))}
                         placeholder={t.lines.reasonPlaceholder}
                         size="xl"
@@ -558,6 +620,28 @@ export const PhysicalCountScreen = () => {
           </section>
 
           <section className="physical-count__section">
+            {/*
+              장부에 없는 물건을 찾았을 때 적을 자리다. 새 라인의 번호는 서버가 채번하므로
+              오프라인에서는 만들 수 없다.
+            */}
+            <Button
+              className="physical-count__wide"
+              variant="outlined"
+              size="xl"
+              disabled={!online}
+              aria-describedby={online ? undefined : 'physical-count-add-reason'}
+              onClick={() => {
+                setAddingItem(true);
+              }}
+            >
+              {t.lines.add}
+            </Button>
+            {/* 규범 4 - 사유는 감추지 않고 그 컨트롤 바로 아래에 붙여 잇는다. */}
+            {online ? null : (
+              <p className="physical-count__reason" id="physical-count-add-reason">
+                {t.lines.addOffline}
+              </p>
+            )}
             {saveFailed ? (
               <AlertBanner variant="error" title={t.saveFailed.title}>
                 {t.saveFailed.description}

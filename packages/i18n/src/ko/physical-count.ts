@@ -96,6 +96,12 @@ export const physicalCount = {
      * 드러나야 한다.
      */
     uncounted: '이 라인은 아직 세지 않았습니다',
+    /*
+     * 장부에 없는 물건을 찾았을 때 적을 자리. 새 라인의 번호는 서버가 채번하므로 오프라인에서는
+     * 만들 수 없다.
+     */
+    add: '목록에 없는 재고',
+    addOffline: '연결되면 더할 수 있습니다',
     reason: '차이 사유',
     reasonLabel: (name: string) => `${name} 차이 사유`,
     reasonPlaceholder: '차이 사유를 고르세요',

@@ -46,6 +46,8 @@ export const physicalCount: Translated<typeof ko.physicalCount> = {
     diffShort: (qty: string, unit: string) => `Chênh lệch thiếu ${[qty, unit].join(' ').trim()}`,
     already: (qty: string, unit: string) => `Giá trị đã đếm trước ${[qty, unit].join(' ').trim()}`,
     uncounted: 'Dòng hàng này chưa đếm',
+    add: 'Tồn kho ngoài danh sách',
+    addOffline: 'Có thể thêm khi có kết nối',
     reason: 'Lý do chênh lệch',
     reasonLabel: (name: string) => `Lý do chênh lệch của ${name}`,
     reasonPlaceholder: 'Chọn lý do chênh lệch',

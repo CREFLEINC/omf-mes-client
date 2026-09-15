@@ -166,3 +166,12 @@
   margin: 0;
   overflow-wrap: anywhere;
 }
+
+/* 규범 4 - 사유가 줄 전체로 퍼지면 줄 전체의 설명으로 읽힌다. */
+.physical-count__reason {
+  max-width: 20rem;
+  margin: 0;
+  font: var(--type-body-sm);
+  letter-spacing: var(--type-body-sm-tracking);
+  color: var(--on-surface-variant, inherit);
+}

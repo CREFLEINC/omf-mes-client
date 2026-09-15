@@ -13,6 +13,7 @@ import {
 } from './count';
 
 const line = (overrides: Partial<DraftLine> = {}): DraftLine => ({
+  key: 'line-5101',
   inventoryCountLineId: 5101,
   locationId: 3001,
   itemId: 2002,

@@ -190,6 +190,8 @@ export const useItemCodes = (
 
 export interface ItemOption extends ItemSummary {
   itemId: number;
+  /* 수량에 붙는 단위. 계획에 없던 재고를 더할 때 화면이 정하지 않고 품목이 정한 것을 쓴다. */
+  baseUomId: number;
 }
 
 /** 한 쪽에 보일 만큼만 받는다. 더 보려면 더 부르고, 좁히려면 찾는 말을 적는다. */
@@ -263,6 +265,7 @@ export const useItemSearch = (term: string): UseInfiniteQueryResult<ItemSearchRe
           itemName: item.itemName,
           fifoPolicyCode: item.fifoPolicyCode,
           storageConditionCode: item.storageConditionCode,
+          baseUomId: item.baseUomId,
         })),
         page: data.page.page,
         total: data.page.total,
