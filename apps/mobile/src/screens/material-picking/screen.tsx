@@ -385,14 +385,18 @@ export const MaterialPickingScreen = () => {
       /*
        * 담긴 뒤에 적는다. 담기지 못한 것을 적으면 나가지도 않은 양이 셈에 들어가 확정이
        * 잠긴다. 담긴 것도 서버로 향하므로 보냈는지로는 가르지 않는다.
+       *
+       * 적지 못해도 넘어간다. 출고는 이미 큐에 들어갔고, 여기서 멈추면 결과를 말하지 못해
+       * 사람은 아무 일도 안 일어난 줄 안다. 기록이 없으면 다시 열었을 때 막지 못할 뿐이고,
+       * 그때는 서버가 되돌린다.
        */
-      setIssuedRecords(
-        await appendIssued({
-          idempotencyKey: draft.idempotencyKey,
-          pickingOrderId: order.pickingOrderId,
-          lines: issuedLinesOf(draft),
-        }),
-      );
+      await appendIssued({
+        idempotencyKey: draft.idempotencyKey,
+        pickingOrderId: order.pickingOrderId,
+        lines: issuedLinesOf(draft),
+      })
+        .then(setIssuedRecords)
+        .catch(() => undefined);
 
       const result = await flush().catch(() => null);
       const mine = (each: { idempotencyKey: string }) =>

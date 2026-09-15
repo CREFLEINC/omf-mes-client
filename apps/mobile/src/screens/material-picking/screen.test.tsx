@@ -1032,6 +1032,23 @@ describe('자재 출고·피킹 화면', () => {
   });
 
   /*
+   * 내보낸 기록을 남기지 못해도 출고는 이미 큐에 들어간 뒤다. 거기서 멈추면 결과를 말하지
+   * 못해 사람은 아무 일도 안 일어난 줄 알고 한 번 더 누른다.
+   */
+  it('내보낸 기록을 저장하지 못해도 결과를 말한다', async () => {
+    const user = userEvent.setup();
+    const sent = mount({ lines: [line({ pickedQty: 120 })] });
+    await chooseOrder(user);
+
+    held.failWrite = 'material-picking-issued';
+
+    await user.click(screen.getByRole('button', { name: '출고 확정' }));
+
+    expect(await screen.findByText('출고를 확정했습니다')).toBeTruthy();
+    expect(sent.issues).toHaveLength(1);
+  });
+
+  /*
    * 단말이 기억하는 것으로는 재시작을 넘지 못한다. 앱을 다시 켜거나 다른 단말로 열면 기억이
    * 비어 있어, 전표 상태로 가르지 않으면 같은 수량이 한 번 더 나간다.
    */
