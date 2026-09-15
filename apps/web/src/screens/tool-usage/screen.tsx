@@ -588,7 +588,13 @@ export const ToolUsageScreen = () => {
              *    (사용자 지시 2026-09-15). 구획 카드 테두리는 두지 않는다.
              */}
             <div className="pop-notice-label" role="note" aria-label={t.notice.sectionLabel}>
-              <AlertBanner variant="info">{t.notice.serverAdds}</AlertBanner>
+              <AlertBanner variant="info">
+                {t.notice.serverAdds.map((line) => (
+                  <span key={line} className="pop-notice-label__line">
+                    {line}
+                  </span>
+                ))}
+              </AlertBanner>
             </div>
           </div>
         </div>

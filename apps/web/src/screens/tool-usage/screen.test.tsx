@@ -1,5 +1,5 @@
 import { messages } from '@omf-mes/i18n';
-import { screen, waitFor } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it } from 'vitest';
 
@@ -123,11 +123,13 @@ const scanTool = async (user: ReturnType<typeof userEvent.setup>, code = TOOL_CO
 /** ⭐ 사용자 지시 2026-09-14 — 도면 머리줄 「W/O · 설비」. 설비는 단말이 준다. */
 describe('ToolUsageScreen — 안내', () => {
   /* ⭐ 누계 안내는 파란 라벨(칩)로 선다 — 구획 카드가 아니다(사용자 지시 2026-09-15). */
-  it('누계 안내를 라벨 한 줄로 보인다', async () => {
+  it('누계 안내를 정보 띠 안에 두 줄로 보인다', async () => {
     renderScreen();
 
     const note = await screen.findByRole('note', { name: t.notice.sectionLabel });
-    expect(note).toHaveTextContent(t.notice.serverAdds);
+    /* ⭐ 두 줄로 나눠 보인다(사용자 지시 2026-09-15). */
+    for (const line of t.notice.serverAdds)
+      expect(within(note).getByText(line)).toBeInTheDocument();
     expect(note.closest('.pop-section')).toBeNull();
   });
 });

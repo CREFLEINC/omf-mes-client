@@ -61,7 +61,7 @@ export const toolUsage: Translated<typeof ko.toolUsage> = {
 
   notice: {
     sectionLabel: 'Hướng dẫn',
-    serverAdds: 'Lũy kế do máy chủ cộng khi lưu — màn hình này chỉ tính trước.',
+    serverAdds: ['Lũy kế do máy chủ cộng khi lưu', 'Màn hình này chỉ tính trước.'],
   },
 
   actions: {
