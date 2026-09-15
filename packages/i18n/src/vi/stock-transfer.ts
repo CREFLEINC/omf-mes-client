@@ -38,7 +38,9 @@ export const stockTransfer: Translated<typeof ko.stockTransfer> = {
       'Vẫn còn tồn kho. Phải có thông tin kho mới chuyển được, hãy báo quản trị viên.',
     mixedWarehouse: 'Không chuyển cùng lúc LOT của các kho khác nhau. Hãy tách theo từng kho.',
     name: (item: string, lotNo: string) => (item === '' ? lotNo : `${item} · ${lotNo}`),
-    onHand: (qty: string) => `Tồn kho ${qty}`,
+    onHand: (qty: string, unit: string) => `Tồn kho ${[qty, unit].join(' ').trim()}`,
+    previousLine: 'Dòng trước',
+    nextLine: 'Dòng sau',
     qtyLabel: (name: string) => `Số lượng xuất đi của ${name}`,
     remove: 'Bỏ ra',
     problem: {
