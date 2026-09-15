@@ -572,6 +572,35 @@ describe('생산창고 입고 화면', () => {
    * 같은 품목이 여러 LOT 으로 남는 것은 호퍼에서 보통이다. 품목 코드만 적으면 줄이 서로
    * 구별되지 않아 어느 줄에 적는지 알 수 없다.
    */
+  /*
+   * 품목을 못 받으면 그 자리에 대리키가 들어가 있었다. 호퍼 줄은 전표에 없는 품목도 서므로
+   * 이 화면에서 특히 잘 드러난다 - 사람이 읽을 수 없는 숫자가 품목 코드인 척한다.
+   */
+  it('호퍼 줄의 품목을 못 받으면 대리키를 보이지 않는다', async () => {
+    const user = userEvent.setup();
+    mount({
+      extra: [
+        {
+          match: (req) => /^\/mdm\/items\/\d+$/.test(new URL(req.url).pathname),
+          respond: () => {
+            throw new TypeError('Failed to fetch');
+          },
+        },
+      ],
+    });
+    await screen.findByLabelText(/출고 QR 스캔/);
+    scan(ISSUE_NO);
+
+    /* 품목을 막았으므로 줄 이름으로 기다릴 수 없다 - 설비 고르는 자리가 설 때까지 기다린다. */
+    await user.click(await screen.findByRole('combobox', { name: '설비' }));
+    await user.click(await screen.findByRole('option', { name: /EQ-01/ }));
+
+    const shown = await screen.findAllByText('이름을 불러오지 못했습니다');
+
+    expect(shown.length).toBeGreaterThan(0);
+    expect(screen.queryByText('100')).toBeNull();
+  });
+
   it('호퍼 줄마다 LOT 번호를 함께 보인다', async () => {
     const user = userEvent.setup();
     mount();

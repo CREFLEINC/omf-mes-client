@@ -10,7 +10,7 @@ import { useLotNos } from '../../patterns/handling-units';
 import { playErrorTone } from '../../patterns/error-tone';
 import { useEquipments } from '../../patterns/equipments';
 import { useLocation } from '../../patterns/locations';
-import { useItemCodes, useItemLabels } from '../../patterns/masters';
+import { useItemCodes } from '../../patterns/masters';
 import { referenceLabel } from '../../patterns/reference';
 import { useOnlineStatus } from '../../patterns/online-status';
 import { useOutbox } from '../../patterns/outbox';
@@ -161,11 +161,10 @@ export const ShopfloorReceiptScreen = () => {
   const hopperStock = useHopperStock(hopperLocationId);
 
   /* 호퍼 잔량의 품목도 함께 묻는다 - 전표에 없는 품목이 섞여 있어 그 줄만 대리키로 남는다. */
-  const itemLabels = useItemLabels([
+  const itemCode = useItemCodes([
     ...(issue?.lines ?? []).map((line) => line.itemId),
     ...(hopperStock.data ?? []).map((stock) => stock.itemId),
   ]);
-  const itemCode = useItemCodes((issue?.lines ?? []).map((line) => line.itemId));
   const stocks = hopperStock.data ?? [];
   /*
    * 사유는 고객이 늘리는 값이라 화면이 박지 않는다. 서버가 모른다고 답하면 막는다 - 지어낸
@@ -648,8 +647,7 @@ export const ShopfloorReceiptScreen = () => {
               const key = hopperKeyOf(stock);
               const value = measured[key] ?? '';
               const problem = measureProblemOf(value);
-              const item = itemLabels.get(stock.itemId);
-              const code = item === undefined ? String(stock.itemId) : item.itemCode;
+              const code = referenceLabel(itemCode(stock.itemId));
               /* 같은 품목이 여러 LOT 으로 남으면 품목 코드만으로는 어느 줄인지 알 수 없다. */
               const name = t.hopper.name(code, stock.lotNo ?? '');
 
