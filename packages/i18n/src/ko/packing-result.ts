@@ -23,7 +23,8 @@ export const packingResult = {
     workerUnknown: '사번 미확인',
     terminalUnknown: '단말 미확인',
     /** 연결 상태는 사번과 «다른» 표식으로 낸다 — 하나로 묶으면 색이 무엇을 말하는지 흐려진다. */
-    online: '연결됨',
+    /** 다른 POP 머리줄과 같은 말이다 — 「온라인/오프라인」(사용자 지시 2026-09-15). */
+    online: '온라인',
     offline: '오프라인',
   },
   scan: {
