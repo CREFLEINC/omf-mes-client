@@ -18,6 +18,8 @@ const line = (overrides: Partial<DraftLine> = {}): DraftLine => ({
   itemId: 2002,
   lotId: 8001,
   uomId: 1001,
+  itemCode: 'ABC-123',
+  lotNo: '0001234500000012002607310001230007',
   systemQty: 120,
   counted: false,
   previousQty: null,

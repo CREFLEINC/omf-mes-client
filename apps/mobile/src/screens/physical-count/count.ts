@@ -29,6 +29,13 @@ export interface DraftLine {
   itemId: number;
   lotId: number | null;
   uomId: number;
+  /*
+   * 서버가 라인에 실어 보내는 표시용 값. 식별자를 사람이 읽는 값으로 바꾸려 마스터를 다시
+   * 부르지 않는다 - 모바일은 오프라인에서 그 마스터를 갱신할 수 없어, 다시 부르면 연결이
+   * 끊긴 자리에서 줄마다 이름이 통째로 사라진다.
+   */
+  itemCode: string;
+  lotNo: string | null;
   /** 장부 수량. 블라인드 실사에서는 서버가 내려보내지 않아 없다. */
   systemQty: number | null;
   /** 서버가 이 줄을 이미 센 것으로 보는가. 화면이 countedQty 의 0 으로 판정하지 않는다. */

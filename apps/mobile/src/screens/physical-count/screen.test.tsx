@@ -50,6 +50,8 @@ interface Options {
   firstReason?: string;
   /** 이 위치에 실사 라인이 없다고 답한다. */
   emptyLocation?: boolean;
+  /** 품목·LOT 마스터 조회가 닿지 않는다 - 현장에서 연결이 끊긴 자리다. */
+  mastersDown?: boolean;
   /**
    * 다음 조회부터 둘째 줄이 이미 센 것으로 바뀐다 - 다른 단말이 그 줄을 센 상황이다.
    *
@@ -91,6 +93,11 @@ const line = (overrides: Record<string, unknown> = {}) => ({
   uomId: 1001,
   counted: false,
   countedAt: '2026-09-07T09:00:00+09:00',
+  /* 서버가 라인에 실어 보내는 표시용 값. 화면은 이것을 읽고 마스터를 다시 부르지 않는다. */
+  itemCode: 'ABC-123',
+  itemName: '하우징',
+  lotNo: LOT_NO,
+  locationCode: LOC_CODE,
   ...overrides,
 });
 
@@ -164,7 +171,10 @@ const routes = (options: Options = {}): StubRoute[] => [
             inventoryCountLineId: 5102,
             lineNo: 2,
             itemId: 2001,
+            itemCode: 'RM-1001',
+            itemName: '수지A',
             lotId: null,
+            lotNo: null,
             systemQty: options.blind === true ? undefined : 40,
             counted: options.otherDevice?.counted === true,
             countedQty: options.otherDevice?.counted === true ? 37 : 0,
@@ -174,6 +184,17 @@ const routes = (options: Options = {}): StubRoute[] => [
       });
     },
   },
+  /* 앞에 세워 마스터 조회를 가로챈다 - 연결이 끊기면 이 두 축이 먼저 닿지 않는다. */
+  ...(options.mastersDown === true
+    ? [
+        {
+          match: (req: Request) =>
+            /\/trace\/lots\/\d+$/.test(new URL(req.url).pathname) ||
+            new URL(req.url).pathname.startsWith('/mdm/items'),
+          respond: () => Promise.reject(new TypeError('Failed to fetch')),
+        },
+      ]
+    : []),
   {
     /* 실사 응답은 LOT 식별자만 준다. 번호는 이 조회에서 온다. */
     match: (req) => /\/trace\/lots\/\d+$/.test(new URL(req.url).pathname),
@@ -295,6 +316,19 @@ describe('실물 카운트 화면', () => {
 
     expect(await screen.findByLabelText(QTY_LABEL)).toBeTruthy();
     expect(screen.getByText('전산 잔량 120')).toBeTruthy();
+  });
+
+  /*
+   * 계약이 품목 코드와 LOT 번호를 라인에 실어 보내는 이유가 여기 있다 - 모바일은 오프라인에서
+   * 마스터를 갱신할 수 없다. 이름을 마스터에서 다시 받아 오면 연결이 끊긴 자리에서 줄마다
+   * 이름이 통째로 사라지고, 세는 사람이 어느 줄에 적는지 알 수 없게 된다.
+   */
+  it('마스터가 닿지 않아도 라인이 실어 온 이름을 보인다', async () => {
+    const user = userEvent.setup();
+    mount({ mastersDown: true });
+    await openLocation(user);
+
+    expect(await screen.findByLabelText(QTY_LABEL)).toBeTruthy();
   });
 
   /*

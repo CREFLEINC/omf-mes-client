@@ -3,12 +3,9 @@ import { messages } from '@omf-mes/i18n';
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router';
 
-import { useLotNos } from '../../patterns/handling-units';
 import { formatMaterialLotNo } from '../../patterns/material-lot-no';
 import { useCodeValues } from '../../patterns/code-values';
 import { useLocationByCode } from '../../patterns/locations';
-import { useItemCodes } from '../../patterns/masters';
-import { referenceLabel } from '../../patterns/reference';
 import { useOutbox } from '../../patterns/outbox';
 import { useScanField } from '../../patterns/use-scan-field';
 import { useScreenTitle } from '../../patterns/screen-title';
@@ -60,8 +57,6 @@ export const PhysicalCountScreen = () => {
   const planned = useCountLines(countId, at?.locationId ?? null);
   const reasons = useCodeValues(VARIANCE_REASON);
 
-  const itemCode = useItemCodes(lines.map((line) => line.itemId));
-
   /*
    * 큐에 담긴 것은 서버 응답에 없다. 읽기 전에는 담긴 것이 없는 것과 구별되지 않아 그 사이에
    * 다시 보내게 되므로, 읽기 전에는 담긴 것으로 세어 막아 둔다.
@@ -112,6 +107,8 @@ export const PhysicalCountScreen = () => {
         itemId: row.itemId,
         lotId: row.lotId ?? null,
         uomId: row.uomId,
+        itemCode: row.itemCode ?? '',
+        lotNo: row.lotNo ?? null,
         /* 블라인드 실사에서는 서버가 장부를 내려보내지 않는다. */
         systemQty: row.systemQty ?? null,
         counted: row.counted,
@@ -132,25 +129,11 @@ export const PhysicalCountScreen = () => {
   });
 
   /*
-   * 실사 응답은 LOT 식별자만 준다. 대리키를 보이면 라벨과 대조할 수 없다 - 라벨에는
-   * LOT 번호가 찍혀 있다. 번호를 아직 못 받았으면 지어내지 않고 품목만 말한다.
-   */
-  const lotNo = useLotNos(
-    lines.map((line) => line.lotId).filter((lotId): lotId is number => lotId !== null),
-  );
-
-  /*
    * 34자리를 붙여 쓰면 실물 라벨과 눈으로 대조할 수 없다. 한 위치에 같은 품목이 아홉 줄까지
    * 서므로 자릿수를 세어 가며 줄을 찾게 된다 - 실사는 그 대조가 일의 전부다.
    */
-  const lotLabelOf = (line: DraftLine): string => {
-    const state = lotNo(line.lotId);
-
-    return state.kind === 'named' ? formatMaterialLotNo(state.label) : referenceLabel(state);
-  };
-
   const nameOf = (line: DraftLine): string =>
-    t.lines.name(referenceLabel(itemCode(line.itemId)), lotLabelOf(line));
+    t.lines.name(line.itemCode, line.lotNo === null ? '' : formatMaterialLotNo(line.lotNo));
 
   /*
    * 입력칸 위에 함께 서는 값들. 서로를 밀어내지 않는다.
