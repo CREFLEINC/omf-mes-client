@@ -554,6 +554,10 @@ export const useInspectionItemDetail = (
  *
  * ⭐ **사용 중지된 단위도 받는다**(`includeInactive`) — 이미 그 단위로 적어 둔 항목이 있으면
  * 선택칸에서 사라져 **값이 없는 것처럼 보인다**(형제 화면이 실제로 겪은 자리다).
+ *
+ * ⛔ **공유 키 `['lookups', *]` 에는 응답 원형만 담는다**(#1240) — 창고·Location, 계측기 마스터,
+ * 수집 채널이 같은 키를 `{ items, page }` 로 읽는다. 모양 바꾸기는 `select` 에서만 한다
+ * (관찰자마다 따로 계산되고 캐시는 원형 그대로 남는다).
  */
 export const useUomOptions = (): UseQueryResult<{ uomId: number; uomName: string }[]> => {
   const { client } = useApiClient();
@@ -561,10 +565,8 @@ export const useUomOptions = (): UseQueryResult<{ uomId: number; uomName: string
   return useQuery({
     queryKey: ['lookups', 'uoms'] as const,
     queryFn: () =>
-      runRequest(() =>
-        client.GET('/mdm/uoms', { params: { query: { includeInactive: true } } }),
-      ).then((response) =>
-        response.items.map((item) => ({ uomId: item.uomId, uomName: item.uomName })),
-      ),
+      runRequest(() => client.GET('/mdm/uoms', { params: { query: { includeInactive: true } } })),
+    select: (response) =>
+      response.items.map((item) => ({ uomId: item.uomId, uomName: item.uomName })),
   });
 };
