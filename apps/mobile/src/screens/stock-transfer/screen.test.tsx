@@ -249,7 +249,7 @@ const scanInto = (label: string, code: string) => {
 
 /** 창고만 고른다. 같은 창고인지 가르는 데는 위치까지 필요하지 않다. */
 const pickWarehouse = async (user: ReturnType<typeof userEvent.setup>, name = '불량창고') => {
-  await user.click(await screen.findByRole('combobox', { name: /도착 창고/ }));
+  await user.click(await screen.findByRole('combobox', { name: /보낼 창고/ }));
   await user.click(await screen.findByRole('option', { name }));
 };
 
@@ -261,7 +261,7 @@ const pickWarehouse = async (user: ReturnType<typeof userEvent.setup>, name = '�
  */
 const pickDestination = async (user: ReturnType<typeof userEvent.setup>, name = '불량창고') => {
   await pickWarehouse(user, name);
-  scanInto('도착 위치 스캔', TO_CODE);
+  scanInto('보낼 위치 스캔', TO_CODE);
   await screen.findByText(`도착 위치 ${TO_CODE}`);
 };
 
@@ -377,6 +377,46 @@ describe('재고 이동 화면', () => {
 
     expect(await screen.findByRole('button', { name: '이동 완료' })).toBeTruthy();
     expect(screen.queryByLabelText('반출 LOT 스캔')).toBeNull();
+  });
+
+  /*
+   * 반출할 때 찍는 것은 「어디로 보낼지」이고, 이어서 할 때 찍는 것은 「물건을 놓은 자리」다.
+   * 한 이름으로 부르면 반출 단계에서 벌써 도착한 것으로 읽힌다.
+   */
+  it('보낼 곳과 도착한 곳을 다른 이름으로 부른다', async () => {
+    const user = userEvent.setup();
+    mount({ unfinished: true });
+
+    /* 반출 단계 - 아직 가지 않았다. */
+    expect(await screen.findByLabelText('보낼 위치 스캔')).toBeTruthy();
+    expect(screen.queryByLabelText('도착 위치 스캔')).toBeNull();
+
+    await user.click(await screen.findByRole('button', { name: '이어서 하기' }));
+
+    /* 도착 단계 - 놓고 찍는다. */
+    expect(await screen.findByLabelText('도착 위치 스캔')).toBeTruthy();
+    expect(screen.queryByLabelText('보낼 위치 스캔')).toBeNull();
+  });
+
+  /*
+   * 지금 할 일 하나만 말한다. 남은 것을 모두 늘어놓으면 무엇부터 해야 하는지가 도리어 묻힌다.
+   */
+  it('다음에 할 일을 하나만 말한다', async () => {
+    const user = userEvent.setup();
+    mount();
+    await screen.findByLabelText('반출 LOT 스캔');
+
+    /* 아무것도 안 한 자리에서는 먼저 할 것만 말한다. */
+    expect(screen.getAllByText(/반출할 LOT/)).toHaveLength(1);
+    expect(screen.queryByText('도착 위치를 스캔하세요')).toBeNull();
+
+    scanInto('반출 LOT 스캔', LOT_NO);
+    await user.type(await screen.findByLabelText(/반출 수량/), '80');
+
+    /* 적고 나면 다음 것을 말한다 - 한 자리에서만. */
+    await waitFor(() => {
+      expect(screen.getAllByText('도착 위치를 스캔하세요')).toHaveLength(1);
+    });
   });
 
   /*

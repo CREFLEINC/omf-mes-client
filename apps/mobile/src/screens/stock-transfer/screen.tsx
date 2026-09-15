@@ -224,6 +224,19 @@ export const StockTransferScreen = () => {
   const keypadAt = lines.findIndex((line) => line.lotId === keypadFor);
   const keypad = keypadAt === -1 ? null : { at: keypadAt, line: lines[keypadAt] as DraftLine };
 
+  /*
+   * 다음에 할 일 하나. 차례는 계약이 정한다 - 반출 스캔이 곧 이동 문서를 만드는 행위라 그
+   * 본문에 도착 위치가 필수다. 그래서 적을 것이 먼저고 보낼 곳이 그다음이다.
+   */
+  const nextStep =
+    worker === null
+      ? t.noWorker
+      : lines.length === 0
+        ? t.noLine
+        : toLocation === null
+          ? t.noDestination
+          : null;
+
   const restart = () => {
     setLines([]);
     setScannedLot(null);
@@ -413,8 +426,10 @@ export const StockTransferScreen = () => {
       )}
 
       <section className="stock-transfer__section">
-        <h2>{t.to.legend}</h2>
-        <label htmlFor="transfer-to-warehouse">{t.to.warehouseLabel}</label>
+        <h2>{shipped === null ? t.to.legend : t.to.arrivedLegend}</h2>
+        <label htmlFor="transfer-to-warehouse">
+          {shipped === null ? t.to.warehouseLabel : t.to.arrivedWarehouseLabel}
+        </label>
         <Select
           id="transfer-to-warehouse"
           placeholder={t.to.warehousePlaceholder}
@@ -431,7 +446,7 @@ export const StockTransferScreen = () => {
         />
         <TextField
           ref={locationField.ref}
-          label={t.to.scanLabel}
+          label={shipped === null ? t.to.scanLabel : t.to.arrivedScanLabel}
           placeholder={t.to.scanPlaceholder}
           size="xl"
           fullWidth
@@ -590,9 +605,11 @@ export const StockTransferScreen = () => {
                 {t.saveFailed.description}
               </AlertBanner>
             ) : null}
-            {worker === null ? <p className="stock-transfer__note">{t.noWorker}</p> : null}
-            {lines.length === 0 ? <p className="stock-transfer__note">{t.noLine}</p> : null}
-            {toLocation === null ? <p className="stock-transfer__note">{t.noDestination}</p> : null}
+            {/*
+              지금 할 일 하나만 말한다. 남은 것을 모두 늘어놓으면 무엇부터 해야 하는지가 도리어
+              묻힌다 - 스캐너를 든 손은 한쪽뿐이다.
+            */}
+            {nextStep === null ? null : <p className="stock-transfer__note">{nextStep}</p>}
             <Button
               className="stock-transfer__wide"
               variant="filled"
