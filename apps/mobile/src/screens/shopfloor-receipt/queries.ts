@@ -107,36 +107,6 @@ export const useScannedGoodsIssue = (code: string | null): UseQueryResult<Scanne
   });
 };
 
-/**
- * 출고 라인이 가리키는 LOT 의 번호표.
- *
- * 라인은 LOT 식별자만 준다. 그 번호를 그대로 보이면 작업자가 실물 라벨과 대조할 수 없다 -
- * 라벨에는 LOT 번호가 찍혀 있지 대리키가 찍혀 있지 않다.
- */
-export const useLineLotLabels = (lines: GoodsIssueLine[]): Map<number, string> => {
-  const { client } = useApiClient();
-  const lotIds = [...new Set(lines.map((line) => line.lotId))];
-
-  return useQueries({
-    queries: lotIds.map((lotId) => ({
-      queryKey: ['shopfloor-receipt-lot', lotId] as const,
-      queryFn: async () => {
-        const data = await runRequest(() =>
-          client.GET('/trace/lots/{lotId}', { params: { path: { lotId } } }),
-        );
-
-        return [lotId, data.lot.lotNo] as const;
-      },
-    })),
-    combine: (results) =>
-      new Map(
-        results
-          .map((result) => result.data)
-          .filter((pair): pair is readonly [number, string] => pair !== undefined),
-      ),
-  });
-};
-
 /** 확인하지 못한 것은 받지 않은 것과 다르다. */
 export type ReceivedCheck = 'received' | 'clear' | 'unknown' | 'checking';
 

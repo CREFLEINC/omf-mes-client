@@ -6,6 +6,7 @@ import { Link } from 'react-router';
 
 import { useBackStep } from '../../patterns/back-step';
 import { useCodeValues } from '../../patterns/code-values';
+import { useLotNos } from '../../patterns/handling-units';
 import { playErrorTone } from '../../patterns/error-tone';
 import { useEquipments } from '../../patterns/equipments';
 import { useLocation } from '../../patterns/locations';
@@ -23,7 +24,6 @@ import {
   hopperStockKey,
   useAlreadyReceived,
   useHopperStock,
-  useLineLotLabels,
   useScannedGoodsIssue,
 } from './queries';
 import {
@@ -84,7 +84,7 @@ export const ShopfloorReceiptScreen = () => {
   const issue = found.data ?? null;
   const received = useAlreadyReceived(issue?.issue.goodsIssueId ?? null);
 
-  const lotLabels = useLineLotLabels(issue?.lines ?? []);
+  const lotNo = useLotNos((issue?.lines ?? []).map((line) => line.lotId));
   const reasons = useCodeValues(VARIANCE_REASON);
   /*
    * 사유는 고객이 늘리는 값이라 현장에서 비어 올 수 있다. 고를 것이 없는데 사유를 요구하면
@@ -279,7 +279,7 @@ export const ShopfloorReceiptScreen = () => {
 
   /* 라벨에는 품목 코드와 LOT 번호가 찍혀 있다. 대리키를 보이면 실물과 대조할 수 없다. */
   const itemCodeOf = (line: DraftLine): string => referenceLabel(itemCode(line.itemId));
-  const lotNoOf = (line: DraftLine): string => lotLabels.get(line.lotId) ?? String(line.lotId);
+  const lotNoOf = (line: DraftLine): string => referenceLabel(lotNo(line.lotId));
 
   /** 읽어 주는 이름. 줄이 여럿이라 이름만으로 어느 줄인지 갈려야 한다. */
   const nameOf = (line: DraftLine): string => t.lines.name(itemCodeOf(line), lotNoOf(line));
