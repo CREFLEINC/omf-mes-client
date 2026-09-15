@@ -6,10 +6,10 @@ import { Link } from 'react-router';
 
 import { useBackStep } from '../../patterns/back-step';
 import { useCodeValues } from '../../patterns/code-values';
+import { useLotNos } from '../../patterns/handling-units';
 import { playErrorTone } from '../../patterns/error-tone';
 import { useEquipments } from '../../patterns/equipments';
 import { useLocation } from '../../patterns/locations';
-import { useLotNos } from '../../patterns/handling-units';
 import { useItemCodes, useItemLabels } from '../../patterns/masters';
 import { referenceLabel } from '../../patterns/reference';
 import { useOnlineStatus } from '../../patterns/online-status';
