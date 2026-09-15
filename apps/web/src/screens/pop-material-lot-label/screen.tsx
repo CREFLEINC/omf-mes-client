@@ -176,42 +176,41 @@ export const PopMaterialLotLabelScreen = () => {
            *
            * ⛔ 오류일 때도 감추지 않는다 — 구획의 이름은 내용의 성패와 무관하다.
            */}
-          <div className="pop-material-lot-pane-head">
-            <h2 className="pop-lot-pane-title">{t.receipts.title}</h2>
-            {/*
-             * ⭐ 발행 여부로 목록을 가른다(사용자 지시 2026-09-15 · #1241). 발행 완료 쪽이 없으면
-             *    인쇄를 마친 자재가 목록에서 빠져 재인쇄할 길이 없었다.
-             *
-             * 바꾸면 쪽과 고른 줄을 푼다 — 남겨 두면 보이지 않는 줄을 가리킨다. 실행 중에는
-             * 잠근다 — 쪽 이동과 같은 까닭이다.
-             */}
-            {/*
-             * ⭐ 한 묶음의 전환 필터로 그린다(사용자 지시 2026-09-15) — 따로 선 두 단추는 실행
-             *    단추로 읽혔다. DS 에 해당 부품이 없어 이 화면 전용 모양만 둔다(`pop.css`).
-             */}
-            <div
-              className="pop-material-lot-filter"
-              role="group"
-              aria-label={t.receipts.filter.label}
-            >
-              {ISSUED_VIEWS.map((view) => (
-                <button
-                  key={view}
-                  type="button"
-                  className={`pop-material-lot-filter-item ${popTouchClass('normal')}`}
-                  aria-pressed={issuedView === view}
-                  disabled={issue.step !== null}
-                  onClick={() => {
-                    if (issuedView === view) return;
-                    setSelectedLineId(null);
-                    setPage(1);
-                    setIssuedView(view);
-                  }}
-                >
-                  {t.receipts.filter[view]}
-                </button>
-              ))}
-            </div>
+          <h2 className="pop-lot-pane-title">{t.receipts.title}</h2>
+          {/*
+           * ⭐ 발행 여부로 목록을 가른다(사용자 지시 2026-09-15 · #1241). 발행 완료 쪽이 없으면
+           *    인쇄를 마친 자재가 목록에서 빠져 재인쇄할 길이 없었다.
+           *
+           * 바꾸면 쪽과 고른 줄을 푼다 — 남겨 두면 보이지 않는 줄을 가리킨다. 실행 중에는
+           * 잠근다 — 쪽 이동과 같은 까닭이다.
+           */}
+          {/*
+           * ⭐ 제목 아래·목록 바로 위에 목록 폭 2분할 탭으로 둔다(사용자 지시 2026-09-15) — 제목
+           *    옆 작은 묶음 단추는 실행 단추로 읽혔다. 모양은 DS 탭(굵은 글자 + 강조색 밑줄)을
+           *    따르되, DS `Tabs` 는 탭마다 내용 영역을 요구해 이 화면 전용 CSS 로 둔다(`pop.css`).
+           */}
+          <div
+            className="pop-material-lot-filter"
+            role="group"
+            aria-label={t.receipts.filter.label}
+          >
+            {ISSUED_VIEWS.map((view) => (
+              <button
+                key={view}
+                type="button"
+                className={`pop-material-lot-filter-item ${popTouchClass('normal')}`}
+                aria-pressed={issuedView === view}
+                disabled={issue.step !== null}
+                onClick={() => {
+                  if (issuedView === view) return;
+                  setSelectedLineId(null);
+                  setPage(1);
+                  setIssuedView(view);
+                }}
+              >
+                {t.receipts.filter[view]}
+              </button>
+            ))}
           </div>
 
           {isListError ? (

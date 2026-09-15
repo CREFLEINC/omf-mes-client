@@ -5552,49 +5552,43 @@
 }
 
 /*
- * P-01-01 입하 목록 머리 — 구획 제목과 발행 여부 필터를 한 줄에 둔다(#1241).
- * 세로 여유가 적은 화면이라 필터에 줄을 따로 내주지 않는다. 좁으면 필터가 아래로 접힌다.
- */
-.pop-material-lot-pane-head {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-2) var(--space-3);
-}
-
-/*
- * 발행 여부 필터 — 한 테두리 안의 두 칸(사용자 지시 2026-09-15). 실행 단추와 헷갈리지 않게
- * 고른 칸은 옅은 바탕·굵은 글자로만 가른다. 칸 사이에 간격을 두지 않는다.
+ * P-01-01 발행 여부 탭 — 제목 아래·목록 바로 위, 목록 폭을 반씩 나눈다(사용자 지시 2026-09-15 ·
+ * #1241). 모양은 DS 탭을 따른다: 고른 탭은 굵은 글자 + 강조색 밑줄, 나머지는 중립 글자색.
+ * 테두리·바탕·둥근 모서리를 두지 않고, 밑선 하나로 아래 목록과 잇는다.
  */
 .pop-material-lot-filter {
-  display: inline-flex;
-  flex-shrink: 0;
-  border: 1px solid var(--outline-variant);
-  border-radius: var(--radius-sm);
-  overflow: hidden;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  /* 구획의 줄 간격만큼 당겨 탭 밑선 바로 아래에서 목록이 시작한다. */
+  margin-block-end: calc(-1 * var(--space-3) + var(--space-2));
+  border-block-end: 1px solid var(--outline-variant);
 }
 
 .pop-material-lot-filter-item {
-  min-height: var(--control-height-md);
-  padding: 0 var(--space-4);
+  position: relative;
+  min-height: 48px;
+  padding: 0 var(--space-3);
   border: 0;
   background: transparent;
   color: var(--on-surface-variant);
-  font: var(--type-label-lg);
-  font-size: 1rem;
+  font: var(--type-title-sm);
   white-space: nowrap;
   cursor: pointer;
 }
 
-.pop-material-lot-filter-item + .pop-material-lot-filter-item {
-  border-inline-start: 1px solid var(--outline-variant);
-}
-
 .pop-material-lot-filter-item[aria-pressed='true'] {
-  background: var(--surface-container-high);
   color: var(--on-surface);
   font-weight: 700;
+}
+
+/* 고른 탭의 밑줄 — 구획 밑선 위에 겹쳐 선다. */
+.pop-material-lot-filter-item[aria-pressed='true']::after {
+  content: '';
+  position: absolute;
+  inset-inline: 0;
+  inset-block-end: -1px;
+  block-size: 3px;
+  background: var(--primary);
 }
 
 .pop-material-lot-filter-item:disabled {
