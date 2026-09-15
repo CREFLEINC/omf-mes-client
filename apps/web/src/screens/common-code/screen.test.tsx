@@ -3354,7 +3354,7 @@ describe('CommonCodeScreen — 부서 등록 (C55)', () => {
 
     await user.click(within(departmentFormPane()).getByRole('button', { name: '부서 추가' }));
     await waitFor(() => {
-      expect(history.search()).not.toBe(before);
+      expect(history.search()).toBe('?tab=org&dep=3009');
     });
 
     history.back();
