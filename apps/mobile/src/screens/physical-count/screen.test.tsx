@@ -355,14 +355,33 @@ describe('실물 카운트 화면', () => {
    * 실사를 골라도 어디로 가야 하는지 화면이 말하지 않으면 위치 코드를 아는 사람만 쓸 수 있다.
    * 대상 위치는 실사 헤더에 없고 라인에 붙어 있으므로, 아직 안 센 라인에서 모아 보인다.
    */
-  it('아직 셀 위치를 말한다', async () => {
+  it('아직 세지 않은 위치를 말한다', async () => {
     const user = userEvent.setup();
     mount();
 
     await user.click(await screen.findByRole('combobox', { name: '실사' }));
     await user.click(await screen.findByRole('option', { name: `${COUNT_NO} · 2026-09-07` }));
 
-    expect(await screen.findByText(new RegExp(`아직 셀 위치.*${LOC_CODE}`))).toBeTruthy();
+    expect(await screen.findByText(new RegExp(`아직 세지 않은 위치.*${LOC_CODE}`))).toBeTruthy();
+  });
+
+  /*
+   * 한 위치를 끝내면 그곳은 목록에서 빠져야 한다. 낡은 목록을 그대로 두면 방금 다 센 선반으로
+   * 다시 보낸다.
+   */
+  it('한 위치를 끝내면 남은 위치를 다시 받는다', async () => {
+    const user = userEvent.setup();
+    const asked: string[] = [];
+    mount({ asked });
+    await openLocation(user);
+
+    await user.type(await screen.findByLabelText(QTY_LABEL), '120');
+    await user.click(screen.getByRole('button', { name: '이 위치 완료' }));
+    await user.click(await screen.findByRole('button', { name: '다음 위치' }));
+
+    await waitFor(() => {
+      expect(asked.filter((url) => url.includes('uncountedOnly=true')).length).toBeGreaterThan(1);
+    });
   });
 
   /*

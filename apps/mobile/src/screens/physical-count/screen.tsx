@@ -189,6 +189,12 @@ export const PhysicalCountScreen = () => {
     setLines([]);
     setOutcome(null);
     setSaveFailed(false);
+    /*
+     * 방금 끝낸 위치는 남은 목록에서 빠지고 진행도 늘어난다. 화면이 서 있는 동안에는 조회가
+     * 저절로 다시 돌지 않아, 낡은 목록이 이미 다 센 선반으로 사람을 다시 보낸다.
+     */
+    void remaining.refetch();
+    void summary.refetch();
     scanField.focus();
   };
 

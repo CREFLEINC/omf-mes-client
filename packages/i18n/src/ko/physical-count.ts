@@ -32,7 +32,7 @@ export const physicalCount = {
      * 대상 위치는 실사 헤더에 없고 라인에 붙어 있다. 말해 주지 않으면 위치 코드를 외우고
      * 있는 사람만 이 화면을 쓸 수 있다.
      */
-    remaining: (codes: string) => `아직 셀 위치 ${codes}`,
+    remaining: (codes: string) => `아직 세지 않은 위치 ${codes}`,
   },
   location: {
     legend: '위치 스캔',
