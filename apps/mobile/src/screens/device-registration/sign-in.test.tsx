@@ -198,6 +198,18 @@ describe('사번 확인 화면', () => {
     ).not.toBeInTheDocument();
   });
 
+  /* 사번 확인 뒤 화면과 같은 단추를 사번 입력 화면에도 둔다(사용자 지시 2026-09-15). */
+  it('사번을 넣기 전에도 기기 등록 해제를 연다', async () => {
+    const user = userEvent.setup();
+    mount();
+
+    await screen.findByRole('group', { name: '사번 입력' });
+    await user.click(screen.getByRole('button', { name: '기기 등록 해제' }));
+
+    expect(await screen.findByRole('dialog')).toBeInTheDocument();
+    expect(token.cleared).toBe(0);
+  });
+
   it('아무것도 안 눌렀으면 확인할 수 없다', async () => {
     mount();
 
@@ -262,13 +274,13 @@ describe('등록이 서버에서 끊긴 기기', () => {
    * 막기만 하면 갈 곳이 없다. 새 QR 로 다시 등록하려면 먼저 풀어야 한다. 그 길이 키패드 아래에
    * 밀려 단말에서 보이지 않았다(#1243 실기).
    */
-  it('새 QR 로 다시 등록하는 길은 해제 확인 창을 거쳐 등록을 푼다', async () => {
+  it('만료된 기기의 기기 등록 해제는 확인 창을 거쳐 등록을 푼다', async () => {
     await rememberPlant(7);
     const user = userEvent.setup();
     mountGated([probe(() => jsonResponse(denied, { status: 401 }))]);
 
     await screen.findByText(EXPIRED);
-    await user.click(screen.getByRole('button', { name: '새 QR로 다시 등록' }));
+    await user.click(screen.getByRole('button', { name: '기기 등록 해제' }));
 
     const dialog = within(await screen.findByRole('dialog'));
     expect(token.cleared).toBe(0);
@@ -298,7 +310,7 @@ describe('등록이 서버에서 끊긴 기기', () => {
 
     expect(await screen.findByText(EXPIRED)).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: '확인' })).not.toBeInTheDocument();
-    expect(screen.getByRole('button', { name: '새 QR로 다시 등록' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '기기 등록 해제' })).toBeInTheDocument();
   });
 
   it('토큰이 살아 있으면 지금처럼 들어간다', async () => {

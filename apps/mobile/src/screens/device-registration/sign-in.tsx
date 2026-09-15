@@ -224,16 +224,18 @@ export const WorkerSignInScreen = () => {
   /*
    * 등록이 끊겼으면 사번을 넣어도 들어갈 수 없다. 막힌 입력을 두면 작업자는 키패드를 누르다
    * 멈추고, 풀 길은 키패드 아래 맨 끝에 밀려 단말 화면에서 보이지 않았다(#1243 실기). 입력을
-   * 걷고 다시 등록하는 길 하나만 만료 문구 바로 아래에 둔다. 누르면 해제 확인 창을 그대로
+   * 걷고 등록을 푸는 단추 하나만 만료 문구 바로 아래에 둔다. 누르면 해제 확인 창을 그대로
    * 거친다 - 보내지 못한 기록이 사라진다는 안내를 건너뛰지 않는다(설계 §5-5).
+   *
+   * ⭐ 단추는 사번 확인 뒤 화면의 「기기 등록 해제」와 이름·모양이 같다(사용자 지시 2026-09-15).
    */
   if (expired) {
     return (
       <div className="worker-sign-in">
         <LocalNetworkNotice />
 
-        <Button variant="filled" size="2xl" onClick={openUnregister}>
-          {t.unregister.reregister}
+        <Button variant="text" size="xl" onClick={openUnregister}>
+          {t.unregister.open}
         </Button>
 
         {unregisterDialog}
@@ -277,6 +279,11 @@ export const WorkerSignInScreen = () => {
       </Button>
 
       {directory === null ? <AlertBanner variant="warning" title={t.noDirectory} /> : null}
+
+      {/* ⭐ 사번을 넣기 전에도 늘 둔다 - 사번 확인 뒤 화면과 같은 단추다(사용자 지시 2026-09-15). */}
+      <Button variant="text" size="xl" onClick={openUnregister}>
+        {t.unregister.open}
+      </Button>
 
       {unregisterDialog}
     </div>
