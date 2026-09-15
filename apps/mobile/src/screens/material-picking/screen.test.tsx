@@ -387,18 +387,25 @@ const chooseOrder = async (user: ReturnType<typeof userEvent.setup>) => {
 };
 
 /** 스캔이 실패했을 때의 길이 손 입력이다. 시험은 그 길로 같은 값을 넣는다. */
+/*
+ * 스캔 칸은 키보드를 꺼 둔 자리라, 손으로 치려면 먼저 열어야 한다. 앞 줄에서 이미 열어
+ * 두었으면 그 단추는 넣기로 서 있어, 직접 입력을 기다리면 5초를 버리고 실패한다.
+ */
+const openManualEntry = async (user: ReturnType<typeof userEvent.setup>) => {
+  /* 한 단추가 두 이름을 갖는다. 먼저 그 단추가 설 때까지 기다린 뒤 닫혀 있을 때만 연다. */
+  const button = await screen.findByRole('button', { name: /직접 입력|넣기/ });
+
+  if (button.textContent?.trim() === '직접 입력') {
+    await user.click(button);
+  }
+};
+
 const pickLine = async (user: ReturnType<typeof userEvent.setup>, qty: string) => {
   await user.click(screen.getByRole('radio', { name: /ABC-123/ }));
-
-  /* 스캔 칸은 키보드를 꺼 둔 자리라, 손으로 치려면 먼저 열어야 한다. */
-  const open = screen.queryByRole('button', { name: '직접 입력' });
-
-  if (open !== null) {
-    await user.click(open);
-  }
+  await openManualEntry(user);
 
   await user.type(await screen.findByLabelText(/LOT 번호/), LOT_NO);
-  await user.click(screen.getByRole('button', { name: '넣기' }));
+  await user.click(await screen.findByRole('button', { name: '넣기' }));
   await screen.findByText('라인의 LOT 과 같습니다');
   await user.type(await screen.findByLabelText(/출고 수량/), qty);
   await user.click(screen.getByRole('button', { name: '이 라인 피킹' }));
@@ -675,9 +682,9 @@ describe('자재 출고·피킹 화면', () => {
     mount();
     await chooseOrder(user);
     await user.click(screen.getByRole('radio', { name: /ABC-123/ }));
-    await user.click(await screen.findByRole('button', { name: '직접 입력' }));
+    await openManualEntry(user);
     await user.type(await screen.findByLabelText(/LOT 번호/), LOT_NO);
-    await user.click(screen.getByRole('button', { name: '넣기' }));
+    await user.click(await screen.findByRole('button', { name: '넣기' }));
     await screen.findByText('라인의 LOT 과 같습니다');
 
     await user.click(await screen.findByRole('button', { name: '5' }));
@@ -834,9 +841,9 @@ describe('자재 출고·피킹 화면', () => {
     window.dispatchEvent(new Event('online'));
 
     await user.click(screen.getByRole('radio', { name: /ABC-124/ }));
-    await user.click(await screen.findByRole('button', { name: '직접 입력' }));
+    await openManualEntry(user);
     await user.type(await screen.findByLabelText(/LOT 번호/), LOT_NO);
-    await user.click(screen.getByRole('button', { name: '넣기' }));
+    await user.click(await screen.findByRole('button', { name: '넣기' }));
     await screen.findByText('라인의 LOT 과 같습니다');
     await user.type(screen.getByLabelText(/출고 수량/), '30');
     await user.click(screen.getByRole('button', { name: '이 라인 피킹' }));
@@ -887,9 +894,9 @@ describe('자재 출고·피킹 화면', () => {
     await chooseOrder(user);
 
     await user.click(screen.getByRole('radio', { name: /ABC-123/ }));
-    await user.click(await screen.findByRole('button', { name: '직접 입력' }));
+    await openManualEntry(user);
     await user.type(await screen.findByLabelText(/LOT 번호/), LOT_NO);
-    await user.click(screen.getByRole('button', { name: '넣기' }));
+    await user.click(await screen.findByRole('button', { name: '넣기' }));
     await screen.findByText('라인의 LOT 과 같습니다');
     await user.type(screen.getByLabelText(/출고 수량/), '50');
 
@@ -916,9 +923,9 @@ describe('자재 출고·피킹 화면', () => {
     await chooseOrder(user);
 
     await user.click(screen.getByRole('radio', { name: /ABC-123/ }));
-    await user.click(await screen.findByRole('button', { name: '직접 입력' }));
+    await openManualEntry(user);
     await user.type(await screen.findByLabelText(/LOT 번호/), LOT_NO);
-    await user.click(screen.getByRole('button', { name: '넣기' }));
+    await user.click(await screen.findByRole('button', { name: '넣기' }));
     await screen.findByText('라인의 LOT 과 같습니다');
     await user.type(screen.getByLabelText(/출고 수량/), '50');
 
@@ -1165,9 +1172,9 @@ describe('자재 출고·피킹 화면', () => {
     await chooseOrder(user);
 
     await user.click(screen.getByRole('radio', { name: /ABC-123/ }));
-    await user.click(await screen.findByRole('button', { name: '직접 입력' }));
+    await openManualEntry(user);
     await user.type(await screen.findByLabelText(/LOT 번호/), LOT_NO);
-    await user.click(screen.getByRole('button', { name: '넣기' }));
+    await user.click(await screen.findByRole('button', { name: '넣기' }));
     await screen.findByText('라인의 LOT 과 같습니다');
     await user.type(screen.getByLabelText(/출고 수량/), '50');
 
@@ -1203,9 +1210,9 @@ describe('자재 출고·피킹 화면', () => {
     await chooseOrder(user);
 
     await user.click(screen.getByRole('radio', { name: /ABC-123/ }));
-    await user.click(await screen.findByRole('button', { name: '직접 입력' }));
+    await openManualEntry(user);
     await user.type(await screen.findByLabelText(/LOT 번호/), LOT_NO);
-    await user.click(screen.getByRole('button', { name: '넣기' }));
+    await user.click(await screen.findByRole('button', { name: '넣기' }));
     await screen.findByText('라인의 LOT 과 같습니다');
     await user.type(screen.getByLabelText(/출고 수량/), '50');
 
