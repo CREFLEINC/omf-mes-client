@@ -7,7 +7,8 @@ import { useAdvanceTo } from '../../patterns/advance-to';
 import { useBackStep } from '../../patterns/back-step';
 import { playErrorTone } from '../../patterns/error-tone';
 import { useLocationByCode, useLocations } from '../../patterns/locations';
-import { useItemLabels } from '../../patterns/masters';
+import { useItemCodes } from '../../patterns/masters';
+import { referenceLabel } from '../../patterns/reference';
 import { useOnlineStatus } from '../../patterns/online-status';
 import { useOutbox } from '../../patterns/outbox';
 import { currentPlantId } from '../../patterns/plant';
@@ -94,7 +95,7 @@ export const ProductReceiptScreen = () => {
   const atLocation = useLocationByCode(warehouseId, scannedLocation);
   const destination = destinationOf(warehouse, atLocation.data ?? null, locations.data ?? []);
 
-  const itemLabels = useItemLabels(lines.map((line) => line.itemId));
+  const itemCode = useItemCodes(lines.map((line) => line.itemId));
   const plantId = currentPlantId();
 
   /*
@@ -209,7 +210,7 @@ export const ProductReceiptScreen = () => {
 
   const nameOf = (line: DraftLine): string =>
     t.contents.name(
-      itemLabels.get(line.itemId)?.itemCode ?? '',
+      referenceLabel(itemCode(line.itemId)),
       lots.data?.get(line.lotId)?.lotNo ?? String(line.lotId),
     );
 

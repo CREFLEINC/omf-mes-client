@@ -21,6 +21,7 @@ import { playErrorTone } from '../../patterns/error-tone';
 import { useLocation } from '../../patterns/locations';
 import { formatMaterialLotNo } from '../../patterns/material-lot-no';
 import { useOutbox } from '../../patterns/outbox';
+import { referenceLabel } from '../../patterns/reference';
 import { toApiError } from '../../patterns/request';
 import { useScanField } from '../../patterns/use-scan-field';
 import { useScreenTitle } from '../../patterns/screen-title';
@@ -272,6 +273,17 @@ export const MaterialPickingScreen = () => {
   useBackStep(orderId !== null && lineId === null, () => {
     setOrderId(null);
   });
+
+  /*
+   * 품목 이름은 지시 응답이 실어 온다 - 되짚어 묻지 않는다. 그래서 여기서 갈리는 것은 받는
+   * 중인가가 아니라 서버가 그 칸을 줬는가다. 둘 다 안 주면 줄 제목이 공백 한 칸이 되어 어느
+   * 줄을 고르는지 알 수 없다.
+   */
+  const lineItemLabel = (line: PickingLine): string => {
+    const label = `${line.itemCode ?? ''} ${line.itemName ?? ''}`.trim();
+
+    return referenceLabel(label === '' ? { kind: 'unknown' } : { kind: 'named', label });
+  };
 
   const chooseLine = (next: PickingLine) => {
     setPickOutcome(null);
@@ -607,7 +619,7 @@ export const MaterialPickingScreen = () => {
               >
                 <span className="picking-out__line">
                   <span className="picking-out__line-head">
-                    <strong>{`${each.itemCode ?? ''} ${each.itemName ?? ''}`}</strong>
+                    <strong>{lineItemLabel(each)}</strong>
                     {each.pickSequenceRank === null ||
                     each.pickSequenceRank === undefined ? null : (
                       <span className="picking-out__line-rank">

@@ -9,7 +9,8 @@ import { useCodeValues } from '../../patterns/code-values';
 import { playErrorTone } from '../../patterns/error-tone';
 import { useEquipments } from '../../patterns/equipments';
 import { useLocation } from '../../patterns/locations';
-import { useItemLabels } from '../../patterns/masters';
+import { useItemCodes, useItemLabels } from '../../patterns/masters';
+import { referenceLabel } from '../../patterns/reference';
 import { useOnlineStatus } from '../../patterns/online-status';
 import { useOutbox } from '../../patterns/outbox';
 import { ScanReplaceDialog } from '../../patterns/scan-replace-dialog';
@@ -164,6 +165,7 @@ export const ShopfloorReceiptScreen = () => {
     ...(issue?.lines ?? []).map((line) => line.itemId),
     ...(hopperStock.data ?? []).map((stock) => stock.itemId),
   ]);
+  const itemCode = useItemCodes((issue?.lines ?? []).map((line) => line.itemId));
   const stocks = hopperStock.data ?? [];
   /*
    * 사유는 고객이 늘리는 값이라 화면이 박지 않는다. 서버가 모른다고 답하면 막는다 - 지어낸
@@ -276,7 +278,7 @@ export const ShopfloorReceiptScreen = () => {
   });
 
   /* 라벨에는 품목 코드와 LOT 번호가 찍혀 있다. 대리키를 보이면 실물과 대조할 수 없다. */
-  const itemCodeOf = (line: DraftLine): string => itemLabels.get(line.itemId)?.itemCode ?? '';
+  const itemCodeOf = (line: DraftLine): string => referenceLabel(itemCode(line.itemId));
   const lotNoOf = (line: DraftLine): string => lotLabels.get(line.lotId) ?? String(line.lotId);
 
   /** 읽어 주는 이름. 줄이 여럿이라 이름만으로 어느 줄인지 갈려야 한다. */

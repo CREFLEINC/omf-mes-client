@@ -8,7 +8,8 @@ import {
   renderHookWithProviders,
   type StubRoute,
 } from '../test/api-harness';
-import { useItem, useItemLabels, useItemSearch } from './masters';
+import { useItem, useItemCodes, useItemLabels, useItemSearch } from './masters';
+import { referenceLabel } from './reference';
 
 const page = { page: 0, size: 20, totalElements: 0, totalPages: 1 };
 
@@ -232,5 +233,60 @@ describe('품목 찾기', () => {
       expect(result.current.data?.items[0]?.itemId).toBe(8999);
     });
     expect(seen[0]?.searchParams.get('q')).toBe('RM-8999');
+  });
+});
+
+describe('품목 코드의 상태', () => {
+  /*
+   * 연결이 끊기면 목록은 캐시에서 뜨는데 품목 이름은 못 받는다. 그 자리를 빈 글자로 적으면
+   * 사람은 품목이 원래 없는 줄로 읽고, 기다리면 채워질 것에 담당자를 부른다. 실제로 적치
+   * 화면에서 일곱 줄의 품목이 통째로 사라졌다.
+   */
+  it('못 받았으면 못 받았다고 말한다', async () => {
+    const fetch = createStubFetch([
+      {
+        match: (request) => /^\/mdm\/items\/\d+$/.test(new URL(request.url).pathname),
+        respond: () => {
+          throw new TypeError('Failed to fetch');
+        },
+      },
+    ]);
+
+    const { result } = renderHookWithProviders(() => useItemCodes([31]), { fetch });
+
+    await waitFor(() => {
+      expect(result.current(31).kind).toBe('failed');
+    });
+    expect(referenceLabel(result.current(31))).toBe('이름을 불러오지 못했습니다');
+  });
+
+  /* 아직 오는 중인 것을 없다고 말하면, 정상 값이 잘못된 값으로 보인다. */
+  it('아직 받는 중이면 받는 중이라고 말한다', () => {
+    const fetch = createStubFetch(masterRoutes(9000, []));
+
+    const { result } = renderHookWithProviders(() => useItemCodes([31]), { fetch });
+
+    expect(result.current(31).kind).toBe('loading');
+    expect(referenceLabel(result.current(31))).toBe('이름 불러오는 중');
+  });
+
+  it('받으면 품목 코드를 말한다', async () => {
+    const fetch = createStubFetch(masterRoutes(9000, []));
+
+    const { result } = renderHookWithProviders(() => useItemCodes([31]), { fetch });
+
+    await waitFor(() => {
+      expect(referenceLabel(result.current(31))).toBe('RM-31');
+    });
+  });
+
+  /* 값이 없는 칸과 못 찾은 칸은 다르다. 빈 칸에 못 찾았다고 적으면 비어 있는 것이 잘못으로 읽힌다. */
+  it('번호가 없으면 빈 값으로 둔다', () => {
+    const fetch = createStubFetch(masterRoutes(9000, []));
+
+    const { result } = renderHookWithProviders(() => useItemCodes([]), { fetch });
+
+    expect(result.current(null).kind).toBe('empty');
+    expect(referenceLabel(result.current(null))).toBe('—');
   });
 });

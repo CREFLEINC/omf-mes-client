@@ -8,7 +8,8 @@ import { useAdvanceTo } from '../../patterns/advance-to';
 import { useBackStep } from '../../patterns/back-step';
 import { playErrorTone } from '../../patterns/error-tone';
 import { displayNameOf, useCodeValues } from '../../patterns/code-values';
-import { useItemLabels, useUomCodes } from '../../patterns/masters';
+import { useItemCodes, useItemLabels, useUomCodes } from '../../patterns/masters';
+import { referenceLabel } from '../../patterns/reference';
 import { formatMaterialLotNo } from '../../patterns/material-lot-no';
 import { useOutbox } from '../../patterns/outbox';
 import { useScanField } from '../../patterns/use-scan-field';
@@ -91,6 +92,7 @@ export const PutawayScreen = () => {
   const byCode = useLocationByCode(task?.warehouseId ?? null, scanned);
   const uoms = useUomCodes(true);
   const itemLabels = useItemLabels((tasks.data ?? []).map((each) => each.itemId));
+  const itemCode = useItemCodes((tasks.data ?? []).map((each) => each.itemId));
   const lotNo = useTaskLotNo(task?.lotId ?? null);
   const rule = usePutawayRule(task?.appliedPutawayRuleId ?? null);
 
@@ -264,7 +266,7 @@ export const PutawayScreen = () => {
 
   const taskLabel = (each: PutawayTask) =>
     t.tasks.item(
-      itemLabels.get(each.itemId)?.itemCode ?? '',
+      referenceLabel(itemCode(each.itemId)),
       each.putawayTaskNo,
       `${String(each.taskQty)} ${uoms.data?.get(each.uomId) ?? ''}`,
     );
