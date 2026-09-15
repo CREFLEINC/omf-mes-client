@@ -149,7 +149,12 @@ export const ShopfloorReceiptScreen = () => {
   const hopperInFlight = useRef(false);
 
   const equipments = useEquipments();
-  const equipment = equipments.data?.find((each) => each.equipmentId === equipmentId) ?? null;
+  /*
+   * 호퍼가 지정되지 않은 설비는 고를 것에서 뺀다. 목록에 세워 두면 골라 본 뒤에야 잴 자리가
+   * 없다는 것을 알게 되고, 작업자는 자기가 잘못 골랐는지 설비가 잘못 등록됐는지 가리지 못한다.
+   */
+  const hopperEquipments = (equipments.data ?? []).filter(hasHopper);
+  const equipment = hopperEquipments.find((each) => each.equipmentId === equipmentId) ?? null;
   const hopperLocationId = hopperLocationOf(equipment);
   const hopper = useLocation(hopperLocationId);
   const hopperStock = useHopperStock(hopperLocationId);
@@ -270,12 +275,12 @@ export const ShopfloorReceiptScreen = () => {
     setHopperKeypadFor(null);
   });
 
-  const nameOf = (line: DraftLine): string => {
-    const item = itemLabels.get(line.itemId);
-    const lotNo = lotLabels.get(line.lotId) ?? String(line.lotId);
+  /* 라벨에는 품목 코드와 LOT 번호가 찍혀 있다. 대리키를 보이면 실물과 대조할 수 없다. */
+  const itemCodeOf = (line: DraftLine): string => itemLabels.get(line.itemId)?.itemCode ?? '';
+  const lotNoOf = (line: DraftLine): string => lotLabels.get(line.lotId) ?? String(line.lotId);
 
-    return t.lines.name(item === undefined ? '' : item.itemCode, lotNo);
-  };
+  /** 읽어 주는 이름. 줄이 여럿이라 이름만으로 어느 줄인지 갈려야 한다. */
+  const nameOf = (line: DraftLine): string => t.lines.name(itemCodeOf(line), lotNoOf(line));
 
   const restart = () => {
     setScanned(null);
@@ -462,8 +467,30 @@ export const ShopfloorReceiptScreen = () => {
 
               return (
                 <div key={line.goodsIssueLineId} className="shopfloor-receipt__line">
+                  {/* 무엇을 받는 줄인지 먼저 세운다. 호퍼 잔량 줄과 같은 차례로 읽힌다. */}
+                  <div className="shopfloor-receipt__stock-head">
+                    <p className="shopfloor-receipt__stock-item">
+                      <span className="shopfloor-receipt__stock-name">{t.itemLabel}</span>{' '}
+                      <strong>{itemCodeOf(line)}</strong>
+                    </p>
+                    <p className="shopfloor-receipt__stock-lot">
+                      <span className="shopfloor-receipt__stock-name">{t.lotLabel}</span>{' '}
+                      {lotNoOf(line)}
+                    </p>
+                  </div>
+                  {/* 견줄 값을 적는 칸보다 먼저 세운다. 모자란 것은 그 옆에 붙어 함께 읽힌다. */}
+                  <div className="shopfloor-receipt__stock-figures">
+                    <span className="shopfloor-receipt__issued">{t.lines.issued(unit)}</span>
+                    {/* 모자란 사실은 고를 사유가 있든 없든 보인다. 숨기면 그냥 덜 받은 것이 된다. */}
+                    {isShort(line) ? (
+                      <span className="shopfloor-receipt__short">
+                        {t.lines.short(String(short))}
+                      </span>
+                    ) : null}
+                  </div>
                   <TextField
-                    label={t.lines.receivedLabel(nameOf(line))}
+                    label={t.lines.received}
+                    aria-label={t.lines.receivedLabel(nameOf(line))}
                     size="xl"
                     fullWidth
                     /*
@@ -507,18 +534,14 @@ export const ShopfloorReceiptScreen = () => {
                       allowDecimal
                     />
                   )}
-                  <p className="shopfloor-receipt__issued">{t.lines.issued(unit)}</p>
-                  {/* 모자란 사실은 고를 사유가 있든 없든 보인다. 숨기면 그냥 덜 받은 것이 된다. */}
-                  {isShort(line) ? (
-                    <p className="shopfloor-receipt__short">{t.lines.short(String(short))}</p>
-                  ) : null}
                   {isShort(line) && hasReasonOptions ? (
                     <>
                       <label htmlFor={`reason-${String(line.goodsIssueLineId)}`}>
-                        {t.lines.reasonLabel(nameOf(line))}
+                        {t.lines.reason}
                       </label>
                       <Select
                         id={`reason-${String(line.goodsIssueLineId)}`}
+                        aria-label={t.lines.reasonLabel(nameOf(line))}
                         placeholder={t.lines.reasonPlaceholder}
                         size="xl"
                         value={line.reasonCode === '' ? null : line.reasonCode}
@@ -579,7 +602,7 @@ export const ShopfloorReceiptScreen = () => {
                     setEquipmentId(Number(value));
                     setMeasured({});
                   }}
-                  options={equipments.data.map((each) => ({
+                  options={hopperEquipments.map((each) => ({
                     value: String(each.equipmentId),
                     label: `${each.equipmentCode} ${each.equipmentName}`,
                   }))}
@@ -587,9 +610,9 @@ export const ShopfloorReceiptScreen = () => {
               </div>
             )}
 
-            {/* 매핑이 없으면 잴 자리가 없다. 지어낸 자리에 적으면 어느 호퍼인지가 사라진다. */}
-            {equipment !== null && !hasHopper(equipment) ? (
-              <AlertBanner variant="warning" title={t.hopper.noHopper} />
+            {/* 고를 것이 하나도 없으면 빈 목록만 남아, 고르는 법을 모르는 것과 구별되지 않는다. */}
+            {equipments.isSuccess && hopperEquipments.length === 0 ? (
+              <AlertBanner variant="warning" title={t.hopper.noHopperEquipment} />
             ) : null}
             {hopper.data === undefined ? null : <p>{t.hopper.at(hopper.data.locationCode)}</p>}
 
@@ -624,17 +647,33 @@ export const ShopfloorReceiptScreen = () => {
                   */}
                   <div className="shopfloor-receipt__stock-head">
                     <p className="shopfloor-receipt__stock-item">
-                      <span className="shopfloor-receipt__stock-name">{t.hopper.itemLabel}</span>{' '}
+                      <span className="shopfloor-receipt__stock-name">{t.itemLabel}</span>{' '}
                       <strong>{code}</strong>
                     </p>
                     {stock.lotNo === null ||
                     stock.lotNo === undefined ||
                     stock.lotNo === '' ? null : (
                       <p className="shopfloor-receipt__stock-lot">
-                        <span className="shopfloor-receipt__stock-name">{t.hopper.lotLabel}</span>{' '}
+                        <span className="shopfloor-receipt__stock-name">{t.lotLabel}</span>{' '}
                         {stock.lotNo}
                       </p>
                     )}
+                  </div>
+                  {/*
+                    견줄 값을 적는 칸보다 먼저 세운다. 아래에 두면 얼마가 적혀 있는지 모른 채
+                    적고 나서야 눈에 들어온다. 차이는 그 옆에 붙어 무엇에서 얼마가 벌어졌는지
+                    한 눈에 읽힌다.
+                  */}
+                  <div className="shopfloor-receipt__stock-figures">
+                    <span className="shopfloor-receipt__issued">
+                      {t.hopper.onHand(String(stock.onHandQty))}
+                    </span>
+                    {/* 부호를 사람이 적게 하면 뒤집어 적는 순간 재고가 반대로 움직인다. */}
+                    {isMeasured(stock, value) ? (
+                      <span className="shopfloor-receipt__short">
+                        {t.hopper.difference(String(adjustmentQtyOf(stock, value)))}
+                      </span>
+                    ) : null}
                   </div>
                   <TextField
                     label={t.hopper.measured}
@@ -663,15 +702,6 @@ export const ShopfloorReceiptScreen = () => {
                       allowDecimal
                     />
                   )}
-                  <p className="shopfloor-receipt__issued">
-                    {t.hopper.onHand(String(stock.onHandQty))}
-                  </p>
-                  {/* 부호를 사람이 적게 하면 뒤집어 적는 순간 재고가 반대로 움직인다. */}
-                  {isMeasured(stock, value) ? (
-                    <p className="shopfloor-receipt__short">
-                      {t.hopper.difference(String(adjustmentQtyOf(stock, value)))}
-                    </p>
-                  ) : null}
                 </div>
               );
             })}

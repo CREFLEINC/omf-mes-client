@@ -45,6 +45,17 @@
   gap: var(--space-1, 4px);
 }
 
+/*
+ * 견줄 값과 벌어진 값을 한 줄에 마주 세운다. 차이를 오른쪽 끝에 붙이면 줄이 열넷이어도
+ * 어느 줄이 얼마나 벌어졌는지 세로로 훑어진다.
+ */
+.shopfloor-receipt__stock-figures {
+  display: flex;
+  gap: var(--space-3, 12px);
+  justify-content: space-between;
+  align-items: baseline;
+}
+
 /* 줄을 훑는 눈이 가장 먼저 잡아야 할 값이다. */
 .shopfloor-receipt__stock-item {
   margin: 0;

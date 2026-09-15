@@ -9,6 +9,12 @@
 export const shopfloorReceipt = {
   title: '생산창고 입고',
   /*
+   * 값만 세우면 34자리 숫자가 무엇인지 알 수 없다. 수량·차이와 같은 꼴로 무엇을 보고 있는지
+   * 먼저 말한다. 라인 수령과 호퍼 잔량이 함께 쓴다.
+   */
+  itemLabel: '품목',
+  lotLabel: 'LOT',
+  /*
    * 통신이 끊기면 출고와 입고가 한 단말로 합쳐진다(결정 17 시나리오 2). 말하지 않으면
    * 작업자는 평소처럼 다른 단말을 기다린다.
    */
@@ -69,7 +75,11 @@ export const shopfloorReceipt = {
   },
   lines: {
     legend: '라인 수령',
-    issued: (qty: string) => `출고 ${qty}`,
+    /** 무엇의 수량인지 적는다. 「출고」만 세우면 수량인지 전표인지 갈리지 않는다. */
+    issued: (qty: string) => `출고 수량 ${qty}`,
+    /** 화면에 보이는 칸 이름. 무엇을 받는 줄인지는 바로 위에 품목과 LOT 으로 서 있다. */
+    received: '수령 수량',
+    /** 읽어 주는 이름. 줄이 여럿이라 이름만으로 어느 줄인지 갈려야 한다. */
     receivedLabel: (item: string) => `${item} 수령 수량`,
     /* 대리키를 보이면 실물 라벨과 대조할 수 없다. 라벨에는 품목 코드와 LOT 번호가 찍혀 있다. */
     name: (item: string, lotNo: string) => (item === '' ? lotNo : `${item} · ${lotNo}`),
@@ -81,6 +91,9 @@ export const shopfloorReceipt = {
       /** 초과는 데이터베이스가 막는다. 화면이 통과시키면 확정이 서버에서 되돌아온다. */
       overIssued: (limit: string) => `출고한 ${limit} 보다 많이 받을 수 없습니다`,
     },
+    /** 화면에 보이는 칸 이름. 어느 줄의 것인지는 바로 위에 품목과 LOT 으로 서 있다. */
+    reason: '차이 사유',
+    /** 읽어 주는 이름. 줄이 여럿이라 이름만으로 어느 줄인지 갈려야 한다. */
     reasonLabel: (item: string) => `${item} 차이 사유`,
     reasonPlaceholder: '사유를 고르세요',
     /** 왜 모자란지를 아는 사람은 물건을 받은 그 자리에 있다. */
@@ -96,22 +109,17 @@ export const shopfloorReceipt = {
     equipmentPlaceholder: '설비를 고르세요',
     loading: '설비를 불러오는 중입니다',
     loadFailed: '설비를 확인할 수 없습니다. 연결을 확인하세요.',
-    /** 매핑이 없으면 잴 자리가 없다. 지어낸 자리에 적으면 어느 호퍼인지가 사라진다. */
-    noHopper: '이 설비에는 호퍼 위치가 지정돼 있지 않습니다',
+    /** 고를 것이 없으면 빈 목록만 남아, 고르는 법을 모르는 것과 구별되지 않는다. */
+    noHopperEquipment: '호퍼가 지정된 설비가 없습니다. 관리자에게 알리세요.',
     /** 설비가 위치를 직접 가리킨다. 고르면 그 자리가 정해진다. */
     at: (code: string) => `호퍼 ${code}`,
     stockLoading: '호퍼에 있는 것을 불러오는 중입니다',
     stockFailed: '호퍼 잔량을 확인할 수 없습니다. 연결을 확인하세요.',
-    empty: '이 호퍼에 장부상 남은 것이 없습니다',
+    empty: '이 호퍼에 전산 잔량이 없습니다',
     /* 같은 품목이 여러 LOT 으로 남는다. 품목 코드만 적으면 어느 줄에 적는지 알 수 없다. */
     name: (item: string, lotNo: string) => (lotNo === '' ? item : `${item} · ${lotNo}`),
-    onHand: (qty: string) => `장부 ${qty}`,
-    /*
-     * 값만 세우면 34자리 숫자가 무엇인지 알 수 없다. 장부·차이와 같은 꼴로 무엇을 보고
-     * 있는지 먼저 말한다.
-     */
-    itemLabel: '품목',
-    lotLabel: 'LOT',
+    /** 사람이 잰 값과 견주라고 세우는 값. 전산에 적혀 있는 수량이다. */
+    onHand: (qty: string) => `전산 잔량 ${qty}`,
     /* 화면에 보이는 칸 이름. 무엇을 재는 칸인지는 바로 위에 품목과 LOT 으로 서 있다. */
     measured: '실측 잔량',
     /** 읽어 주는 이름. 칸이 여럿이라 어느 줄의 것인지 이름만으로 갈려야 한다. */

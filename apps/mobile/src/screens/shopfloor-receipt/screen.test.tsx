@@ -151,8 +151,20 @@ const routes = (options: Options = {}): StubRoute[] => [
             calibrationRequired: false,
             isActive: true,
           },
+          /* 호퍼가 지정되지 않은 설비. 잴 자리가 없어 고를 것에 서면 안 된다. */
+          {
+            equipmentId: 8,
+            plantId: 1,
+            equipmentCode: 'EQ-02',
+            equipmentName: '조립 1호',
+            equipmentTypeCode: 'ASSEMBLY',
+            locationId: null,
+            statusCode: 'IN_SERVICE',
+            calibrationRequired: false,
+            isActive: true,
+          },
         ],
-        page: { ...page, total: 1 },
+        page: { ...page, total: 2 },
       }),
   },
   {
@@ -501,7 +513,7 @@ describe('생산창고 입고 화면', () => {
    * 자재가 라인에 들어오는 이 시점에 사람이 눈으로 잰다. 여기서 적지 않으면 호퍼에 무엇이
    * 얼마나 남았는지가 어디에도 남지 않는다.
    */
-  it('설비를 고르면 그 호퍼의 장부 잔량을 보인다', async () => {
+  it('설비를 고르면 그 호퍼의 전산 잔량을 보인다', async () => {
     const user = userEvent.setup();
     mount();
     await screen.findByLabelText(/출고 QR 스캔/);
@@ -512,7 +524,24 @@ describe('생산창고 입고 화면', () => {
     await user.click(await screen.findByRole('option', { name: /EQ-01/ }));
 
     expect(await screen.findByText(/HOP-01/)).toBeTruthy();
-    expect(await screen.findByText('장부 120')).toBeTruthy();
+    expect(await screen.findByText('전산 잔량 120')).toBeTruthy();
+  });
+
+  /*
+   * 호퍼가 지정되지 않은 설비는 잴 자리가 없다. 목록에 세워 두면 골라 본 뒤에야 알게 되고,
+   * 작업자는 자기가 잘못 골랐는지 설비가 잘못 등록됐는지 가리지 못한다.
+   */
+  it('호퍼가 지정되지 않은 설비는 고를 것에 서지 않는다', async () => {
+    const user = userEvent.setup();
+    mount();
+    await screen.findByLabelText(/출고 QR 스캔/);
+    scan(ISSUE_NO);
+    await receivedField();
+
+    await user.click(await screen.findByRole('combobox', { name: '설비' }));
+
+    expect(await screen.findByRole('option', { name: /EQ-01/ })).toBeTruthy();
+    expect(screen.queryByRole('option', { name: /EQ-02/ })).toBeNull();
   });
 
   /*
@@ -538,16 +567,18 @@ describe('생산창고 입고 화면', () => {
      */
     expect(await screen.findByText('LOT-A')).toBeTruthy();
     expect(await screen.findByText('LOT-B')).toBeTruthy();
-    expect((await screen.findAllByText('RM-1001')).length).toBe(2);
-    expect((await screen.findAllByText('품목')).length).toBe(2);
-    expect((await screen.findAllByText('LOT')).length).toBe(2);
+
+    /* 라인 수령 한 줄과 호퍼 두 줄. 세 줄 모두 같은 꼴로 선다. */
+    expect((await screen.findAllByText('RM-1001')).length).toBe(3);
+    expect((await screen.findAllByText('품목')).length).toBe(3);
+    expect((await screen.findAllByText('LOT')).length).toBe(3);
   });
 
   /*
-   * 기록이 서버에 닿으면 장부가 그만큼 움직인다. 화면이 앞 값을 들고 있으면 곧바로 다시 잰
+   * 기록이 서버에 닿으면 전산 잔량이 그만큼 움직인다. 화면이 앞 값을 들고 있으면 곧바로 다시 잰
    * 사람이 이미 반영된 차이를 또 보낸다 - 100 을 99 로 고친 뒤 다시 99 를 적으면 98 이 된다.
    */
-  it('호퍼 잔량을 기록하면 그 호퍼의 장부를 다시 받는다', async () => {
+  it('호퍼 잔량을 기록하면 그 호퍼의 전산 잔량을 다시 받는다', async () => {
     const user = userEvent.setup();
     let asked = 0;
     mount({
@@ -603,7 +634,7 @@ describe('생산창고 입고 화면', () => {
   });
 
   /*
-   * 잰 값을 품목으로 묶으면 한 칸에 적은 것이 같은 품목의 나머지 줄로 번지고, 줄마다 장부가
+   * 잰 값을 품목으로 묶으면 한 칸에 적은 것이 같은 품목의 나머지 줄로 번지고, 줄마다 전산 잔량이
    * 달라 서로 다른 차이가 만들어진다 - 실기에서 레진 한 칸에 120 을 적으니 일곱 줄이 차고
    * 차이 합계가 +95 로 섰다. 사람이 뜻한 것은 -625 였다.
    */
@@ -628,7 +659,7 @@ describe('생산창고 입고 화면', () => {
    * 사람이 넣는 것은 잰 값이고 뺀 값이 아니다. 차이를 사람에게 계산시키면 부호를 뒤집어 적는
    * 순간 재고가 반대로 움직인다.
    */
-  it('잰 값에서 장부를 빼 증감량으로 보낸다', async () => {
+  it('잰 값에서 전산 잔량을 빼 증감량으로 보낸다', async () => {
     const user = userEvent.setup();
     const seen: Request[] = [];
     mount({
@@ -665,7 +696,7 @@ describe('생산창고 입고 화면', () => {
     };
 
     expect(body.reasonCode).toBe('HOPPER_MEASUREMENT');
-    /* 적은 줄만 간다. 적지 않은 LOT 이 함께 실리면 장부가 그만큼 틀어진다. */
+    /* 적은 줄만 간다. 적지 않은 LOT 이 함께 실리면 전산 잔량이 그만큼 틀어진다. */
     expect(body.lines).toHaveLength(1);
     expect(body.lines[0]).toMatchObject({
       locationId: 55,
