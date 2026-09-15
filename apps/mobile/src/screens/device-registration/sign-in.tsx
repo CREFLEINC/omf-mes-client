@@ -129,6 +129,8 @@ export const WorkerSignInScreen = () => {
         className="worker-sign-in__unregister-dialog"
         /* 되돌릴 수 없다. 스크림을 스쳐 닫히면 물러선 것인지 손이 스친 것인지 갈리지 않는다. */
         closeOnBackdropClick={false}
+        /* ⭐ 닫는 길은 [취소] 하나다 - X 를 두지 않는다(사용자 지시 2026-09-15). */
+        showCloseButton={false}
         onClose={() => {
           setAsking(false);
         }}

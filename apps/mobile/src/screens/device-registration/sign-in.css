@@ -41,12 +41,6 @@
  * 그리는 뼈대다.
  */
 
-/* 제목이 한 줄에 들도록 닫기 단추와의 간격을 줄인다. */
-.worker-sign-in__unregister-dialog header {
-  align-items: center;
-  gap: var(--space-2, 8px);
-}
-
 /*
  * 360dp 단말에서 20px 제목이 마지막 한 글자만 둘째 줄로 떨어졌다. 한 단계 줄이되 본문(16px)보다
  * 크고 굵게 두어 위계는 지킨다. 더 좁은 단말에서 줄이 넘어가도 낱말 가운데서 끊지 않는다.
@@ -56,14 +50,6 @@
   line-height: 26px;
   font-weight: 600;
   word-break: keep-all;
-}
-
-/* 닫기 단추는 보이는 크기를 두고 누르는 자리만 48px 로 넓힌다. 늘린 만큼 바깥으로 물려 자리는 그대로다. */
-.worker-sign-in__unregister-dialog header button {
-  flex: none;
-  width: 48px;
-  height: 48px;
-  margin: -8px -8px -8px 0;
 }
 
 /* 본문이 남은 높이를 받아 단추를 창 아래로 내린다 - 엄지가 닿는 자리다. */

@@ -590,17 +590,17 @@ describe('기기 등록 해제', () => {
     expect(await screen.findByRole('group', { name: '사번 입력' })).toBeInTheDocument();
   });
 
-  /* X·Esc 도 같은 자리로 온다. 이 길이 죽으면 되돌릴 수 없는 확인 창이 영영 안 닫힌다. */
-  it('X 로도 창이 닫힌다', async () => {
+  /* 닫는 길은 [취소] 하나로 둔다(사용자 지시 2026-09-15). X 가 다시 서면 같은 일을 하는 단추가 둘이 된다. */
+  it('창에 X 단추를 두지 않는다', async () => {
     const user = userEvent.setup();
     mount();
     await signedIn(user);
 
     await user.click(screen.getByRole('button', { name: '기기 등록 해제' }));
-    await user.click(await screen.findByRole('button', { name: '닫기' }));
 
-    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
-    expect(token.cleared).toBe(0);
+    const dialog = within(await screen.findByRole('dialog'));
+    expect(dialog.getByRole('button', { name: '취소' })).toBeInTheDocument();
+    expect(dialog.queryByRole('button', { name: '닫기' })).not.toBeInTheDocument();
   });
 
   /*
