@@ -121,8 +121,15 @@ export const useItemLabels = (items: readonly number[]): Map<number, ItemSummary
  * 끊겼을 뿐이고, 돌아오면 저절로 채워진다.
  *
  * 열쇠를 `useItemLabels` 와 같이 두어 한 화면이 둘을 함께 써도 서버를 두 번 부르지 않는다.
+ *
+ * 무엇을 보일지는 부르는 쪽이 고른다. 기본은 코드다 - 실물 라벨에 찍히는 것이 코드라 눈으로
+ * 대조하는 자리가 그것을 쓴다. 목록처럼 무슨 자재인지 먼저 알아야 하는 자리는 이름을 함께
+ * 보인다.
  */
-export const useItemCodes = (items: readonly number[]): ReferenceResolver => {
+export const useItemCodes = (
+  items: readonly number[],
+  format: (item: ItemSummary) => string = (item) => item.itemCode,
+): ReferenceResolver => {
   const { client } = useApiClient();
   const itemIds = [...new Set(items)];
 
@@ -152,7 +159,7 @@ export const useItemCodes = (items: readonly number[]): ReferenceResolver => {
 
     return result.data === undefined
       ? { kind: 'loading' }
-      : { kind: 'named', label: result.data.itemCode };
+      : { kind: 'named', label: format(result.data) };
   };
 };
 

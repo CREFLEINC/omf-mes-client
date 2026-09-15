@@ -54,6 +54,11 @@ export const common = {
   },
   reference: {
     empty: '—',
+    /*
+     * 이름과 코드를 함께 보인다. 코드만으로는 무엇인지 알려면 외우고 있어야 하고, 이름만으로는
+     * 실물 라벨과 눈으로 대조할 수 없다 - 라벨에 찍히는 것은 코드다.
+     */
+    named: (name: string, code: string) => `${name}(${code})`,
     unknown: '알 수 없음',
     loading: '이름 불러오는 중',
     failed: '이름을 불러오지 못했습니다',
