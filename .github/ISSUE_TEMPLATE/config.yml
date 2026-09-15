@@ -7,7 +7,7 @@ contact_links:
     about: 설계팀에 직접 연락하지 않고 요청서를 사용자에게 전달하는 절차를 확인한다.
   - name: 디자인 시스템 컴포넌트 요청
     url: https://github.com/CREFLEINC/design-system-v2-webui/issues/new
-    about: 없는 컴포넌트나 부족한 변형은 디자인 시스템 저장소로. 그쪽도 공개이므로 제품 화면명·고객사명·와이어 캡처를 붙이지 않고 컴포넌트의 언어로만 쓴다.
+    about: 없는 컴포넌트나 부족한 변형은 디자인 시스템 저장소로. 컴포넌트의 언어로 쓴다.
   - name: 클라이언트 개발팀 워크플로
     url: https://github.com/CREFLEINC/omf-mes-client/blob/main/docs/client-dev-workflow/README.md
     about: 업무 선택, 설계 고정, 변동 공지, 검증과 병합 절차를 확인한다.
