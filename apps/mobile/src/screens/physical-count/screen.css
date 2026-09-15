@@ -140,3 +140,29 @@
   overflow-wrap: anywhere;
   font-variant-numeric: tabular-nums;
 }
+
+/* 규범 9 - 값마다 이름을 붙인다. 두 칸으로 세워 이름과 값이 눈으로 짝지어진다. */
+.physical-count__plans {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2, 8px);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.physical-count__plan-fields {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: var(--space-1, 4px) var(--space-3, 12px);
+  margin: 0;
+}
+
+.physical-count__plan-fields dt {
+  color: var(--on-surface-variant, inherit);
+}
+
+.physical-count__plan-fields dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}

@@ -1,4 +1,4 @@
-import { AlertBanner, Button, NumberPad, Progress, Select, TextField } from '@crefle/web-ui';
+import { AlertBanner, Button, Card, NumberPad, Progress, Select, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router';
@@ -7,13 +7,20 @@ import { formatMaterialLotNo } from '../../patterns/material-lot-no';
 import { useCodeValues } from '../../patterns/code-values';
 import { useLocationByCode } from '../../patterns/locations';
 import { uomLabelOf, useUomCodes } from '../../patterns/masters';
+import { referenceFromQuery, referenceLabel, type ReferenceState } from '../../patterns/reference';
 import { useOutbox } from '../../patterns/outbox';
 import { useScanField } from '../../patterns/use-scan-field';
 import { useScreenTitle } from '../../patterns/screen-title';
 import { useWorkerSession } from '../../patterns/worker-session';
 import { FailureBanner } from '../../patterns/failure-banner';
 import { useLoadFailure } from '../../patterns/load-failure';
-import { useCountLines, useCountSummary, useOpenCounts, useUncountedLocations } from './queries';
+import {
+  useCountLines,
+  useCountSummary,
+  useOpenCounts,
+  useUncountedLocations,
+  useWarehouseNames,
+} from './queries';
 import {
   COUNT_LABEL,
   canSubmit,
@@ -24,11 +31,13 @@ import {
   queuedForLocationOf,
   toCountDraft,
   type DraftLine,
+  type InventoryCount,
 } from './count';
 import './screen.css';
 
 const t = messages.physicalCount;
 const VARIANCE_REASON = 'VARIANCE_REASON';
+const INVENTORY_COUNT_TYPE = 'INVENTORY_COUNT_TYPE';
 /*
  * 한 줄에 세우는 위치 수. 창고 하나의 실사는 위치가 수십 곳이라 다 늘어놓으면 화면을 넘겨
  * 위치 스캔 칸이 아래로 밀린다. 순회는 앞에서부터 하므로 뒤쪽 코드는 지금 쓸모가 없다.
@@ -65,6 +74,21 @@ export const PhysicalCountScreen = () => {
   const reasons = useCodeValues(VARIANCE_REASON);
   const summary = useCountSummary(countId);
   const remaining = useUncountedLocations(countId);
+
+  /*
+   * 실사를 고를 때 보는 값들. 못 받은 것과 없는 것을 가른다 - 창고 이름을 못 받았는데 비워
+   * 두면 창고가 없는 실사로 읽힌다.
+   */
+  const warehouses = useWarehouseNames();
+  const warehouseOf = referenceFromQuery(warehouses, (name: string) => name);
+  const countTypes = useCodeValues(INVENTORY_COUNT_TYPE);
+  const typeOf = (code: string): ReferenceState => {
+    if (countTypes.isError) return { kind: 'failed' };
+    if (countTypes.isPending) return { kind: 'loading' };
+    const found = (countTypes.data ?? []).find((value) => value.code === code);
+
+    return found === undefined ? { kind: 'unknown' } : { kind: 'named', label: found.name };
+  };
 
   /*
    * 한 위치에 개수로 세는 품목과 무게로 세는 품목이 섞여 선다. 단위가 빠지면 40 이 마흔 개인지
@@ -150,6 +174,27 @@ export const PhysicalCountScreen = () => {
    */
   const nameOf = (line: DraftLine): string =>
     t.lines.name(line.itemCode, line.lotNo === null ? '' : formatMaterialLotNo(line.lotNo));
+
+  /*
+   * 고를 때 보는 값들. 번호와 날짜만으로는 갈리지 않아 창고와 유형을 함께 세운다.
+   *
+   * 아직 못 받은 이름 자리에는 지어내지 않는다 - 창고를 못 받았는데 비워 두면 창고가 없는
+   * 실사로 읽힌다.
+   */
+  const planFields = (each: InventoryCount) => (
+    <dl className="physical-count__plan-fields">
+      <dt>{t.plan.noLabel}</dt>
+      <dd>
+        <strong>{each.inventoryCountNo}</strong>
+      </dd>
+      <dt>{t.plan.warehouseLabel}</dt>
+      <dd>{referenceLabel(warehouseOf(each.warehouseId))}</dd>
+      <dt>{t.plan.typeLabel}</dt>
+      <dd>{referenceLabel(typeOf(each.countTypeCode))}</dd>
+      <dt>{t.plan.plannedLabel}</dt>
+      <dd>{each.plannedDate}</dd>
+    </dl>
+  );
 
   /*
    * 숫자판이 지금 적고 있는 줄. 목록 밖에 서므로 자리를 번호가 아니라 줄 자체로 든다 - 다른
@@ -277,22 +322,34 @@ export const PhysicalCountScreen = () => {
           <FailureBanner variant="error" title={failureText(counts.error, t.plan.loadFailed)} />
         ) : null}
         {counts.isSuccess && counts.data.length === 0 ? <p>{t.plan.none}</p> : null}
-        <label htmlFor="physical-count-plan">{t.plan.pick}</label>
-        <Select
-          id="physical-count-plan"
-          placeholder={t.plan.pickPlaceholder}
-          size="xl"
-          value={countId === null ? null : String(countId)}
-          onChange={(value) => {
-            setCountId(Number(value));
-            setScanned(null);
-            setLines([]);
-          }}
-          options={(counts.data ?? []).map((each) => ({
-            value: String(each.inventoryCountId),
-            label: t.plan.item(each.inventoryCountNo, each.plannedDate),
-          }))}
-        />
+
+        {/*
+          번호와 날짜만으로는 어느 실사인지 갈리지 않는다 - 같은 날 여러 창고의 실사가 함께
+          선다. 무엇을 고르는지 보고 고르게 한다.
+        */}
+        {count !== null ? (
+          <Card bordered>
+            <Card.Body className="card-body">{planFields(count)}</Card.Body>
+          </Card>
+        ) : (
+          <ul className="physical-count__plans">
+            {(counts.data ?? []).map((each) => (
+              <li key={each.inventoryCountId}>
+                <Card
+                  bordered
+                  interactive
+                  onClick={() => {
+                    setCountId(each.inventoryCountId);
+                    setScanned(null);
+                    setLines([]);
+                  }}
+                >
+                  <Card.Body className="card-body">{planFields(each)}</Card.Body>
+                </Card>
+              </li>
+            ))}
+          </ul>
+        )}
         {/* 장부를 감춘 실사다. 작업자가 장부 수를 보고 그대로 적는 것을 막는다. */}
         {count?.blindCount === true ? <AlertBanner variant="info" title={t.plan.blind} /> : null}
         {/*

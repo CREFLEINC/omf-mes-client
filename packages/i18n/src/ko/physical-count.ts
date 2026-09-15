@@ -17,9 +17,10 @@ export const physicalCount = {
     loading: '진행 중인 실사를 찾는 중입니다',
     loadFailed: '실사 목록을 불러오지 못했습니다. 연결을 확인하세요.',
     none: '진행 중인 실사가 없습니다',
-    pick: '실사',
-    pickPlaceholder: '실사를 고르세요',
-    item: (no: string, date: string) => `${no} · ${date}`,
+    noLabel: '실사 번호',
+    warehouseLabel: '창고',
+    typeLabel: '유형',
+    plannedLabel: '계획일',
     /** 장부를 감추는 실사다. 작업자가 장부 수를 보고 그대로 적는 것을 막는다. */
     blind: '전산 잔량을 감춘 실사입니다. 실물만 세어 적으세요.',
     /*

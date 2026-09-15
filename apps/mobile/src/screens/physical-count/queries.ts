@@ -36,6 +36,27 @@ export const useOpenCounts = (): UseQueryResult<InventoryCount[]> => {
 };
 
 /**
+ * 창고 번호를 이름으로 푼다.
+ *
+ * 진행 중인 실사가 여럿이면 번호와 날짜만으로는 갈리지 않는다 - 같은 날 여러 창고의 실사가
+ * 함께 선다.
+ */
+export const useWarehouseNames = (): UseQueryResult<Map<number, string>> => {
+  const { client } = useApiClient();
+
+  return useQuery({
+    queryKey: ['physical-count-warehouses'] as const,
+    queryFn: async () => {
+      const data = await runRequest(() =>
+        client.GET('/mdm/warehouses', { params: { query: { size: PAGE_SIZE } } }),
+      );
+
+      return new Map(data.items.map((each) => [each.warehouseId, each.warehouseName]));
+    },
+  });
+};
+
+/**
  * 이 위치의 실사 라인.
  *
  * 서버가 센 줄과 안 센 줄을 `counted` 로 갈라 준다. 화면이 수량 0 으로 판정하지 않는다 -

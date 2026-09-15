@@ -264,6 +264,14 @@ const routes = (options: Options = {}): StubRoute[] => [
     { itemId: 2001, itemCode: 'RM-1001', itemName: '수지A', fifoPolicyCode: 'FEFO' },
   ]),
   {
+    match: (req) => new URL(req.url).pathname === '/mdm/warehouses',
+    respond: () =>
+      jsonResponse({
+        items: [{ warehouseId: 1001, warehouseCode: 'WH-1', warehouseName: '1공장 자재창고' }],
+        page,
+      }),
+  },
+  {
     match: (req) => new URL(req.url).pathname === '/mdm/uoms',
     respond: () => jsonResponse({ items: [{ uomId: 1001, uomCode: 'EA' }], page }),
   },
@@ -283,7 +291,17 @@ const routes = (options: Options = {}): StubRoute[] => [
                   displayOrder: 1,
                 },
               ]
-            : [],
+            : new URL(req.url).searchParams.get('codeGroupCode') === 'INVENTORY_COUNT_TYPE'
+              ? [
+                  {
+                    code: 'PERIODIC',
+                    codeName: 'Periodic',
+                    nameKo: '정기',
+                    isActive: true,
+                    displayOrder: 1,
+                  },
+                ]
+              : [],
         page,
       });
     },
@@ -319,9 +337,13 @@ const scanLocation = (code: string) => {
   field.dispatchEvent(new InputEvent('input', { bubbles: true, inputType: 'insertFromPaste' }));
 };
 
+/** 실사는 목록에서 정보를 보고 고른다 - 카드 한 장이 한 실사다. */
+const pickCount = async (user: ReturnType<typeof userEvent.setup>) => {
+  await user.click(await screen.findByRole('button', { name: new RegExp(COUNT_NO) }));
+};
+
 const openLocation = async (user: ReturnType<typeof userEvent.setup>) => {
-  await user.click(await screen.findByRole('combobox', { name: '실사' }));
-  await user.click(await screen.findByRole('option', { name: `${COUNT_NO} · 2026-09-07` }));
+  await pickCount(user);
   scanLocation(LOC_CODE);
   await screen.findByText(`위치 ${LOC_CODE}`);
 };
@@ -337,8 +359,7 @@ describe('실물 카운트 화면', () => {
     const user = userEvent.setup();
     mount();
 
-    await user.click(await screen.findByRole('combobox', { name: '실사' }));
-    await user.click(await screen.findByRole('option', { name: `${COUNT_NO} · 2026-09-07` }));
+    await pickCount(user);
 
     expect(await screen.findByLabelText('위치 스캔')).toBeTruthy();
   });
@@ -351,7 +372,7 @@ describe('실물 카운트 화면', () => {
     const asked: string[] = [];
     mount({ asked });
 
-    await screen.findByRole('combobox', { name: '실사' });
+    await screen.findByRole('button', { name: new RegExp(COUNT_NO) });
 
     expect(asked.some((url) => url.includes('inProgressOnly=true'))).toBe(true);
   });
@@ -385,8 +406,7 @@ describe('실물 카운트 화면', () => {
     const user = userEvent.setup();
     mount();
 
-    await user.click(await screen.findByRole('combobox', { name: '실사' }));
-    await user.click(await screen.findByRole('option', { name: `${COUNT_NO} · 2026-09-07` }));
+    await pickCount(user);
 
     expect(await screen.findByText(new RegExp(`실사 위치.*${LOC_CODE}`))).toBeTruthy();
   });
@@ -399,8 +419,7 @@ describe('실물 카운트 화면', () => {
     const user = userEvent.setup();
     mount({ manyLocations: true });
 
-    await user.click(await screen.findByRole('combobox', { name: '실사' }));
-    await user.click(await screen.findByRole('option', { name: `${COUNT_NO} · 2026-09-07` }));
+    await pickCount(user);
 
     const shown = await screen.findByText(/실사 위치/);
 
@@ -498,6 +517,24 @@ describe('실물 카운트 화면', () => {
   });
 
   /*
+   * 실사 번호와 날짜만으로는 어느 실사인지 갈리지 않는다. 같은 날 여러 창고의 실사가 함께
+   * 서므로, 무엇을 고르는지 보고 고를 수 있어야 한다.
+   */
+  it('실사를 목록에서 정보를 보고 고른다', async () => {
+    const user = userEvent.setup();
+    mount();
+
+    const card = await screen.findByRole('button', { name: new RegExp(COUNT_NO) });
+
+    expect(card.textContent).toContain('1공장 자재창고');
+    expect(card.textContent).toContain('정기');
+
+    await user.click(card);
+
+    expect(await screen.findByLabelText('위치 스캔')).toBeTruthy();
+  });
+
+  /*
    * 계획 라인이 0 인 실사는 진행을 말할 것이 없다. 막대에 0 을 나누게 두면 채움이 어디에
    * 서는지 정해지지 않는다.
    */
@@ -505,8 +542,7 @@ describe('실물 카운트 화면', () => {
     const user = userEvent.setup();
     mount({ emptyPlan: true });
 
-    await user.click(await screen.findByRole('combobox', { name: '실사' }));
-    await user.click(await screen.findByRole('option', { name: `${COUNT_NO} · 2026-09-07` }));
+    await pickCount(user);
     await screen.findByLabelText('위치 스캔');
 
     expect(screen.queryByRole('progressbar', { name: '실사 진행' })).toBeNull();
@@ -520,8 +556,7 @@ describe('실물 카운트 화면', () => {
     const user = userEvent.setup();
     mount();
 
-    await user.click(await screen.findByRole('combobox', { name: '실사' }));
-    await user.click(await screen.findByRole('option', { name: `${COUNT_NO} · 2026-09-07` }));
+    await pickCount(user);
 
     expect(await screen.findByText('진행 38 / 120')).toBeTruthy();
   });
