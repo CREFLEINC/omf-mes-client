@@ -484,17 +484,14 @@ export const PhysicalCountScreen = () => {
                   );
                 }}
                 allowDecimal
-              />
-              <Button
-                className="physical-count__wide"
-                variant="outlined"
-                size="xl"
-                onClick={() => {
+                /*
+                 * 소수점 키 옆 빈 칸이 확인 키 자리다. 닫는 단추를 따로 세우면 숫자판이 한 줄
+                 * 더 길어져 그만큼 목록이 가려진다.
+                 */
+                onConfirm={() => {
                   setKeypadFor(null);
                 }}
-              >
-                {t.lines.closeKeypad}
-              </Button>
+              />
             </div>
           )}
         </>

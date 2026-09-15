@@ -104,6 +104,8 @@
   z-index: 10;
   display: flex;
   flex-direction: column;
+  /* 키를 가운데 모은다. 한쪽으로 몰리면 반대쪽 엄지로는 먼 키에 닿지 않는다. */
+  align-items: center;
   gap: var(--space-2, 8px);
   padding: var(--space-3, 12px);
   background: var(--surface, #fff);
@@ -112,6 +114,7 @@
 
 /* 목록 밖에 서므로 어느 줄에 적는 중인지 스스로 말한다. */
 .physical-count__keypad-head {
+  align-self: stretch;
   margin: 0;
   font: var(--type-title-sm);
   letter-spacing: var(--type-title-sm-tracking);
