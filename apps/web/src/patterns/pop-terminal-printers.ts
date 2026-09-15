@@ -26,6 +26,11 @@ interface PrinterShell {
     printers: { name: string; displayName?: string }[];
     target: string | null;
   }>;
+  /**
+   * 이 셸이 명령형(RAW) 인쇄를 할 수 있는가. **옛 설치본에는 없다** — 없으면 묻지 않은 것으로
+   * 보고 그림으로 간다(아래 `shellPrintsRaw`).
+   */
+  capabilities?: () => Promise<{ raw: boolean }>;
 }
 
 interface ShellCarrier {
@@ -63,4 +68,29 @@ export const terminalPrinters = async (): Promise<Printer[] | null> => {
       target === null ? '이 단말에 등록됨 — 기본 프린터로 나갑니다' : '이 프린터로 나갑니다',
     isDefault: target !== null && name === target,
   }));
+};
+
+/**
+ * 이 셸이 **명령형(RAW) 인쇄를 할 수 있는가.** 형식을 고르는 근거다.
+ *
+ * ⭐ **셸에 묻는다 — 플랫폼을 화면이 따지지 않는다.** 명령형 길이 어디에 있는지는 셸의 사정이고,
+ *    조건이 바뀌면 셸만 움직이면 된다.
+ *
+ * ⛔ **모르면 「없다」로 본다.** 통로가 없거나(브라우저), 이 물음을 모르는 옛 설치본이거나,
+ *    묻다가 실패하면 그림(`png`)으로 간다 — 그림은 어느 길로도 찍히지만, 명령형은 RAW 자리가
+ *    없으면 인쇄가 통째로 멎는다(WIP-CHAIN-01 D6 실측: macOS 셸에서 「보낼 프린터를 찾을 수
+ *    없다」로 멎어 라벨을 붙이지 못했다). 모를 때는 **덜 나간 쪽이 아니라 찍히는 쪽**을 고른다.
+ */
+export const shellPrintsRaw = async (): Promise<boolean> => {
+  const shell = printerShell();
+
+  if (shell?.capabilities === undefined) return false;
+
+  try {
+    const { raw } = await shell.capabilities();
+
+    return raw;
+  } catch {
+    return false;
+  }
 };

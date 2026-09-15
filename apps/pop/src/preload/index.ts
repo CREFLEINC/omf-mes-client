@@ -42,6 +42,15 @@ const api = {
       printers: { name: string; displayName?: string }[];
       target: string | null;
     }> => ipcRenderer.invoke('printers:list'),
+    /**
+     * 이 셸이 **명령형(RAW) 인쇄를 할 수 있는가.**
+     *
+     * ⭐ **형식을 고르는 근거다.** 명령형 라벨(`tspl`)은 대기열의 RAW 자리로 보내야 찍히는데,
+     *    그 길은 지금 Windows 에만 있다. 없는 곳에서 명령형을 받아 두면 셸이 인쇄 단계에서
+     *    「보낼 프린터를 찾을 수 없다」로 멎고, 화면은 라벨을 못 붙여 다음 걸음으로 못 간다
+     *    (WIP-CHAIN-01 D6 실측 2026-09-15 · macOS).
+     */
+    capabilities: (): Promise<{ raw: boolean }> => ipcRenderer.invoke('printers:capabilities'),
   },
   rendition: {
     /**
