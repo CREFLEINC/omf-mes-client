@@ -56,7 +56,10 @@ export const stockTransfer = {
     mixedWarehouse: '서로 다른 창고의 LOT을 한 번에 옮길 수 없습니다. 창고별로 나누세요.',
     /* 대리키를 보이면 실물 라벨과 대조할 수 없다. 라벨에는 품목 코드와 LOT 번호가 찍혀 있다. */
     name: (item: string, lotNo: string) => (item === '' ? lotNo : `${item} · ${lotNo}`),
-    onHand: (qty: string) => `재고 ${qty}`,
+    onHand: (qty: string, unit: string) => `재고 ${[qty, unit].join(' ').trim()}`,
+    /* 여러 LOT 을 차례로 적는다. 숫자판을 닫았다 다시 열지 않고 옆으로 옮긴다. */
+    previousLine: '앞 라인',
+    nextLine: '다음 라인',
     qtyLabel: (name: string) => `${name} 반출 수량`,
     remove: '빼기',
     problem: {
@@ -71,10 +74,17 @@ export const stockTransfer = {
     description: '옮길 수는 있습니다. 보류 사유는 품질에서 풉니다.',
   },
   to: {
-    legend: '도착 스캔',
-    warehouseLabel: '도착 창고',
+    /*
+     * 반출할 때 찍는 것은 어디로 보낼지이고, 이어서 할 때 찍는 것은 물건을 놓은 자리다.
+     * 한 이름으로 부르면 반출 단계에서 벌써 도착한 것으로 읽힌다.
+     */
+    legend: '보낼 곳',
+    arrivedLegend: '도착 스캔',
+    warehouseLabel: '보낼 창고',
+    arrivedWarehouseLabel: '도착 창고',
     warehousePlaceholder: '창고를 고르세요',
-    scanLabel: '도착 위치 스캔',
+    scanLabel: '보낼 위치 스캔',
+    arrivedScanLabel: '도착 위치 스캔',
     scanPlaceholder: '위치 QR을 스캔하세요',
     manualLabel: '직접 입력',
     manualSubmit: '넣기',
