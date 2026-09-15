@@ -465,7 +465,13 @@ export const WarehouseLayoutScreen = () => {
                     /* ⭐ 화면 낭독기에도 전한다 — 「눌렀는데 아무 일도 없다」는 시각만의 문제가 아니다. */
                     <div className="drawing-busy" role="status">
                       <div className="drawing-busy-note">
-                        <Progress indeterminate size="sm" label={busyLabel} />
+                        {/*
+                         * ⛔ **막대에 이름을 주지 않는다.** `role="status"` 안에서 막대의
+                         * 접근 이름(`label`)과 옆 `<span>` 이 같은 말을 실으면 낭독기가 그
+                         * 문구를 두 번 읽는다 — 자리는 하나, 말은 한 번이어야 한다. 막대는
+                         * `aria-hidden` 으로 시각 전용이 되고, `<span>` 하나만 낭독된다.
+                         */}
+                        <Progress indeterminate size="sm" aria-hidden />
                         <span>{busyLabel}</span>
                       </div>
                     </div>

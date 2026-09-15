@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   canSubmit,
   countedLines,
+  diffOf,
   needsReason,
   qtyProblemOf,
   queuedForLocationOf,
@@ -245,5 +246,42 @@ describe('보낼 것', () => {
     const body = draft.body as { lines: { lotId: number | null }[] };
 
     expect(body.lines[0]?.lotId).toBeNull();
+  });
+});
+
+describe('전산 잔량과의 차이', () => {
+  /*
+   * 되돌릴 수 없는 조정이 이 수만큼 나간다. 사유를 요구하면서 얼마인지 말하지 않으면 사람이
+   * 암산해 고르고, 그 암산이 틀리면 원장이 틀어진다.
+   */
+  it('적게 세면 모자란 만큼이 음수로 나온다', () => {
+    expect(diffOf(line({ systemQty: 120, qty: '100' }))).toBe(-20);
+  });
+
+  it('많이 세면 넘는 만큼이 양수로 나온다', () => {
+    expect(diffOf(line({ systemQty: 120, qty: '135' }))).toBe(15);
+  });
+
+  /* 같으면 조정이 나가지 않는다. 0 을 보이면 없는 차이를 있는 것처럼 읽는다. */
+  it('전산과 같으면 차이가 없다', () => {
+    expect(diffOf(line({ systemQty: 120, qty: '120' }))).toBeNull();
+  });
+
+  /* 블라인드는 전산 잔량이 오지 않아 화면이 차이를 모른다. 지어내지 않는다. */
+  it('블라인드 실사는 차이를 말하지 않는다', () => {
+    expect(diffOf(line({ systemQty: null, qty: '100' }))).toBeNull();
+  });
+
+  it('아직 안 셌으면 차이가 없다', () => {
+    expect(diffOf(line({ systemQty: 120, qty: '' }))).toBeNull();
+  });
+
+  /* 숫자가 아닌 것을 빼면 NaN 이 조정 수량으로 나간다. */
+  it('숫자가 아니면 차이를 말하지 않는다', () => {
+    expect(diffOf(line({ systemQty: 120, qty: '열둘' }))).toBeNull();
+  });
+
+  it('소수도 그대로 센다', () => {
+    expect(diffOf(line({ systemQty: 7.5, qty: '7.2' }))).toBeCloseTo(-0.3);
   });
 });
