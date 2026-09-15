@@ -43,6 +43,7 @@
  * .nav-group-count  접혀 있을 때 안에 몇 개가 있는지
  * .nav-group-items  그 묶음의 항목들 — 열렸을 때만 내용이 있다
  * .nav-search-empty 검색에 맞는 화면이 없다는 안내
+ * .sidebar-version 사이드바 맨 아래의 버전 캡션
  * .login-card    그 화면이 세우는 카드의 폭 상한(규범 8)
  * .login-title   카드 머리에 놓는 표제 — 디자인 시스템의 머리 서식을 그대로 물려받는다(규범 8)
  * .login-head    그 카드 머리 — 표제와 언어 칸을 한 줄에 놓는다(규범 8)
@@ -7875,4 +7876,15 @@ dl.filter-bar.approval-inbox-detail-facts {
   padding: var(--space-3);
   color: var(--on-surface-variant);
   font: var(--type-body-sm);
+}
+
+/*
+ * 사이드바 맨 아래의 버전 캡션(#1240). **찾으면 보이되 눈길을 끌지 않는다** — 가장 작은 라벨
+ * 서식에 보조 글자색이다. 여백은 DS 하단 슬롯이 이미 준다.
+ */
+.sidebar-version {
+  margin: 0;
+  color: var(--on-surface-variant);
+  font: var(--type-label-sm);
+  letter-spacing: var(--type-label-sm-tracking);
 }
