@@ -83,7 +83,6 @@ export const goodsIssueQr: Translated<typeof ko.goodsIssueQr> = {
 
   action: {
     issue: 'Phát hành · In',
-    disabledNoSelection: 'Hãy chọn dòng cần phát hành trước.',
     disabledPalletNeedsOneLine: 'Muốn phát hành theo pallet thì chỉ chọn một dòng.',
     disabledNoPallet: 'Hãy chọn pallet cần phát hành.',
     disabledPalletUnsupported: 'Hãy phát hành theo dòng.',

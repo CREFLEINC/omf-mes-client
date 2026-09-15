@@ -403,12 +403,13 @@ describe('GoodsIssueQrScreen', () => {
     expect(screen.queryByRole('checkbox', { name: t.title })).not.toBeInTheDocument();
   });
 
-  it('고른 라인이 없으면 발행·인쇄가 사유와 함께 비활성이다', async () => {
-    renderScreen({ issueCounts: { 1001: 0, 1002: 0 } });
+  /** ⛔ 「발행할 라인을 먼저 고르세요」는 띄우지 않는다(사용자 지시 2026-09-15) — 비활성 단추가 말한다. */
+  it('고른 라인이 없으면 발행·인쇄가 비활성이고 사유 글을 두지 않는다', async () => {
+    const { container } = renderScreen({ issueCounts: { 1001: 0, 1002: 0 } });
 
     await screen.findByText('LOT-SAMPLE-20');
     expect(screen.getByRole('button', { name: t.action.issue })).toBeDisabled();
-    expect(screen.getByText(t.action.disabledNoSelection)).toBeInTheDocument();
+    expect(container.querySelector('.pop-giqr-actions .field-note')).toBeNull();
   });
 
   /**
