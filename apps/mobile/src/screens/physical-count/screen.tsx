@@ -261,10 +261,21 @@ export const PhysicalCountScreen = () => {
       return;
     }
 
-    const node = document.querySelector(`[data-line="${keypadFor}"]`);
+    /*
+     * 적는 칸을 맞춘다 - 라인 전체를 맞추면 제목과 값이 자리를 차지해 정작 칸이 숫자판 아래로
+     * 밀린다. 칸에 준 아래 여백이 숫자판 높이를 비운다.
+     */
+    const node = document.querySelector<HTMLInputElement>(`[data-line="${keypadFor}"] input`);
+
+    if (node === null) {
+      return;
+    }
+
+    /* 옮긴 자리에 커서가 없으면 어디에 적히는지 화면이 말하지 않는다. */
+    node.focus({ preventScroll: true });
 
     /* 이 기능이 없는 환경에서 던지면 화면이 통째로 멈춘다. 스크롤은 있으면 좋은 것이다. */
-    if (node === null || typeof node.scrollIntoView !== 'function') {
+    if (typeof node.scrollIntoView !== 'function') {
       return;
     }
 
@@ -273,7 +284,7 @@ export const PhysicalCountScreen = () => {
       typeof window.matchMedia === 'function' &&
       window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-    node.scrollIntoView({ block: 'center', behavior: reduced ? 'auto' : 'smooth' });
+    node.scrollIntoView({ block: 'end', behavior: reduced ? 'auto' : 'smooth' });
   }, [keypadFor]);
 
   /*

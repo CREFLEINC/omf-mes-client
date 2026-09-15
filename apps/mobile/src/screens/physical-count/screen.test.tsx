@@ -513,6 +513,25 @@ describe('실물 카운트 화면', () => {
    * 숫자판이 화면 아래를 덮는다. 옮긴 줄이 그 아래 가려져 있으면 어느 줄에 적는지 머리글로만
    * 알게 되고, 전산 잔량과 앞서 센 값을 못 본 채 적는다.
    */
+  /*
+   * 옮긴 자리에 커서가 없으면 어디에 적히는지 화면이 말하지 않는다. 숫자판을 누르면 값은
+   * 들어가는데 테두리는 앞 라인에 남아 있어, 잘못 적고도 모른다.
+   */
+  it('앞뒤 라인으로 옮기면 그 칸에 커서가 간다', async () => {
+    const user = userEvent.setup();
+    mount();
+    await openLocation(user);
+
+    const fields = await screen.findAllByLabelText(/실물 수량 입력/);
+    await user.click(fields[0] as HTMLInputElement);
+
+    await user.click(screen.getByRole('button', { name: '다음 라인' }));
+
+    await waitFor(() => {
+      expect(document.activeElement).toBe(fields[1]);
+    });
+  });
+
   it('앞뒤 라인으로 옮기면 그 라인이 보이게 스크롤한다', async () => {
     const user = userEvent.setup();
     const seen: Element[] = [];
@@ -534,8 +553,14 @@ describe('실물 카운트 화면', () => {
       await waitFor(() => {
         expect(seen).not.toHaveLength(0);
       });
-      /* 옮겨 간 라인이어야 한다 - 아무 데나 스크롤하면 적을 자리를 못 찾는다. */
-      expect(seen[seen.length - 1]?.textContent).toContain('RM-1001');
+      /*
+       * 적는 칸을 맞춘다 - 라인 전체를 맞추면 제목과 값이 자리를 차지해 정작 칸이 숫자판
+       * 아래로 밀린다.
+       */
+      const target = seen[seen.length - 1];
+
+      expect(target?.tagName).toBe('INPUT');
+      expect(target?.getAttribute('aria-label')).toContain('RM-1001');
     } finally {
       Element.prototype.scrollIntoView = original;
     }
