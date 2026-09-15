@@ -595,7 +595,7 @@ describe('생산창고 입고 화면', () => {
     await user.click(await screen.findByRole('combobox', { name: '설비' }));
     await user.click(await screen.findByRole('option', { name: /EQ-01/ }));
 
-    const shown = await screen.findAllByText('이름을 불러오지 못했습니다');
+    const shown = await screen.findAllByText('연결되면 표시됩니다');
 
     expect(shown.length).toBeGreaterThan(0);
     expect(screen.queryByText('100')).toBeNull();

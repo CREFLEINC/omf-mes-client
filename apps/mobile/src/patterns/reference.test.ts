@@ -25,10 +25,10 @@ describe('한 번에 받는 조회의 표기', () => {
    * 대리키를 끼우면 사람이 읽을 수 없는 숫자가 값인 척한다 - 라벨에 찍힌 34자리와 견줄 수
    * 없는데 견줄 것처럼 보인다.
    */
-  it('못 받았으면 못 받았다고 말한다', () => {
+  it('못 받았으면 연결되면 표시된다고 말한다', () => {
     const resolve = referenceFromQuery(asQuery<Lot>({ isError: true }), (lot) => lot.lotNo);
 
-    expect(referenceLabel(resolve(8201))).toBe('이름을 불러오지 못했습니다');
+    expect(referenceLabel(resolve(8201))).toBe('연결되면 표시됩니다');
   });
 
   /* 아직 오는 중인 것을 없다고 말하면 정상 값이 잘못된 값으로 보인다. */

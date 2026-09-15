@@ -19,7 +19,13 @@ export type ReferenceResolver = (id: number | null | undefined) => ReferenceStat
 
 const t = messages.common.reference;
 
-/** 상태를 화면에 적을 말로 바꾼다. 화면마다 따로 적으면 같은 상태가 여러 문구로 갈린다. */
+/**
+ * 상태를 화면에 적을 말로 바꾼다. 화면마다 따로 적으면 같은 상태가 여러 문구로 갈린다.
+ *
+ * 못 받은 것은 현장 단말용 문구를 쓴다. 관리웹은 앉아서 보는 화면이라 안 된다는 사실만
+ * 알면 되지만, 현장은 손에 물건을 들고 서서 본다 - 기다리면 될 일인지 담당자를 불러야 할
+ * 일인지가 그 자리에서 갈려야 한다.
+ */
 export const referenceLabel = (state: ReferenceState): string => {
   switch (state.kind) {
     case 'named':
@@ -31,7 +37,7 @@ export const referenceLabel = (state: ReferenceState): string => {
     case 'loading':
       return t.loading;
     case 'failed':
-      return t.failed;
+      return t.failedOffline;
   }
 };
 

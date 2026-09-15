@@ -42,6 +42,7 @@ export const common: Translated<typeof ko.common> = {
     uomUnknown: 'Không có đơn vị',
     loading: 'Đang tải tên',
     failed: 'Không tải được tên',
+    failedOffline: 'Sẽ hiển thị khi có kết nối',
     inactiveSuffix: ' (ngừng dùng)',
   },
   selectDate: 'Chọn ngày',
