@@ -701,6 +701,28 @@ describe('실물 카운트 화면', () => {
    * 라우터 이력에는 이 화면 하나뿐이다. 화면 안 단계를 되돌리지 않으면 실사를 고르고 위치까지
    * 스캔한 사람이 뒤로가기 한 번에 작업 목록까지 나가 처음부터 다시 들어와야 한다.
    */
+  /*
+   * 숫자판이 화면 아래를 덮고 있으면 그것이 가장 안쪽 단계다. 그대로 두고 위치를 되돌리면
+   * 적던 자리를 잃고, 사람은 뒤로가기가 무엇을 닫는지 모른 채 누르게 된다.
+   */
+  it('숫자판이 열려 있으면 뒤로가기가 그것부터 닫는다', async () => {
+    const user = userEvent.setup();
+    mount();
+    await openLocation(user);
+
+    const fields = await screen.findAllByLabelText(/실물 수량 입력/);
+    await user.click(fields[0] as HTMLInputElement);
+    await screen.findByRole('button', { name: '7' });
+
+    expect(runBackStep()).toBe(true);
+
+    /* 숫자판만 닫힌다 - 라인 목록은 그대로 선다. */
+    await waitFor(() => {
+      expect(screen.queryByRole('button', { name: '7' })).toBeNull();
+    });
+    expect(screen.getAllByLabelText(/실물 수량 입력/).length).toBeGreaterThan(0);
+  });
+
   it('뒤로가기는 화면 안 단계를 하나씩 되돌린다', async () => {
     const user = userEvent.setup();
     mount();

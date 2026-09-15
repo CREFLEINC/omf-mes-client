@@ -208,12 +208,16 @@ export const PhysicalCountScreen = () => {
   useBackStep(addingItem, () => {
     setAddingItem(false);
   });
-  useBackStep(!addingItem && countId !== null && scanned !== null, () => {
+  /* 숫자판이 화면 아래를 덮고 있으면 그것이 가장 안쪽이다. 그대로 두고 위치를 되돌리면 적던 자리를 잃는다. */
+  useBackStep(!addingItem && keypadFor !== null, () => {
+    setKeypadFor(null);
+  });
+  useBackStep(!addingItem && keypadFor === null && countId !== null && scanned !== null, () => {
     setScanned(null);
     setLines([]);
     setKeypadFor(null);
   });
-  useBackStep(!addingItem && countId !== null && scanned === null, () => {
+  useBackStep(!addingItem && keypadFor === null && countId !== null && scanned === null, () => {
     setCountId(null);
   });
 
