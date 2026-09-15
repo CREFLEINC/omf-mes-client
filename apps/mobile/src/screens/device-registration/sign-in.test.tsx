@@ -420,7 +420,7 @@ describe('기기 등록 해제', () => {
     await signedIn(user);
 
     await user.click(screen.getByRole('button', { name: '기기 등록 해제' }));
-    await user.click(await screen.findByRole('button', { name: '돌아가기' }));
+    await user.click(await screen.findByRole('button', { name: '취소' }));
 
     expect(token.cleared).toBe(0);
     expect(screen.getByText('작업자 1 · 900028')).toBeInTheDocument();
@@ -615,7 +615,7 @@ describe('기기 등록 해제', () => {
     await user.click(screen.getByRole('button', { name: '기기 등록 해제' }));
 
     const dialog = within(await screen.findByRole('dialog'));
-    for (const name of ['돌아가기', '등록 해제']) {
+    for (const name of ['취소', '등록 해제']) {
       expect(dialog.getByRole('button', { name })).toHaveClass(/_xl_/);
     }
   });

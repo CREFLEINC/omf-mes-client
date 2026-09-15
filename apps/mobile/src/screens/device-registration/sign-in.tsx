@@ -126,6 +126,7 @@ export const WorkerSignInScreen = () => {
 
       <Dialog
         open={asking}
+        className="worker-sign-in__unregister-dialog"
         /* 되돌릴 수 없다. 스크림을 스쳐 닫히면 물러선 것인지 손이 스친 것인지 갈리지 않는다. */
         closeOnBackdropClick={false}
         onClose={() => {
@@ -164,7 +165,7 @@ export const WorkerSignInScreen = () => {
           둔다. 감싸지 않으면 안내와 경고가 서로 붙는다.
         */}
         <div className="worker-sign-in__dialog-body">
-          <p>{t.unregister.notice}</p>
+          <p className="worker-sign-in__dialog-notice">{t.unregister.notice}</p>
           {!loaded ? <p>{t.unregister.counting}</p> : null}
           {/*
             앱바가 둘로 가른 것을 창에서 합치지 않는다. 기다리면 가는 것과 기다려도 가지
