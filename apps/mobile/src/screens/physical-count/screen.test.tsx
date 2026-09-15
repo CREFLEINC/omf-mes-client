@@ -140,6 +140,30 @@ const routes = (options: Options = {}): StubRoute[] => [
       }),
   },
   {
+    /* 진행 요약은 서버가 세어 준다 - 화면이 전체 라인을 받아 세면 페이지네이션과 어긋난다. */
+    match: (req) => /\/inventory\/counts\/\d+$/.test(new URL(req.url).pathname),
+    respond: () =>
+      jsonResponse({
+        inventoryCount: {
+          inventoryCountId: 5001,
+          inventoryCountNo: COUNT_NO,
+          countTypeCode: 'PERIODIC',
+          warehouseId: 1001,
+          plannedDate: '2026-09-07',
+          blindCount: false,
+          statusCode: 'IN_PROGRESS',
+        },
+        summary: {
+          plannedCount: 120,
+          countedCount: 38,
+          uncountedCount: 82,
+          varianceCount: 3,
+          closable: false,
+          closeBlockedReasonCode: 'COUNT_REMAINING',
+        },
+      }),
+  },
+  {
     match: (req) => /\/inventory\/counts\/\d+\/lines/.test(new URL(req.url).pathname),
     respond: (req) => {
       options.asked?.push(req.url);
@@ -320,6 +344,20 @@ describe('실물 카운트 화면', () => {
 
     expect(await screen.findByLabelText(QTY_LABEL)).toBeTruthy();
     expect(screen.getByText('전산 잔량 120 EA')).toBeTruthy();
+  });
+
+  /*
+   * 창고를 순회하는 일이라 한 번에 끝나지 않는다. 얼마나 남았는지 화면이 말하지 않으면 언제
+   * 끝나는지 모른 채 돌게 되고, 다 돌았는지도 스스로 셈해야 한다.
+   */
+  it('고른 실사의 진행을 말한다', async () => {
+    const user = userEvent.setup();
+    mount();
+
+    await user.click(await screen.findByRole('combobox', { name: '실사' }));
+    await user.click(await screen.findByRole('option', { name: `${COUNT_NO} · 2026-09-07` }));
+
+    expect(await screen.findByText('진행 38 / 120')).toBeTruthy();
   });
 
   /*

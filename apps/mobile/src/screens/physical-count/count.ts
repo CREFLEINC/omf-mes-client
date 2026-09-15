@@ -8,6 +8,7 @@ export type InventoryCount = components['schemas']['InventoryCount'];
 export type InventoryCountLine = components['schemas']['InventoryCountLine'];
 export type InventoryCountLineUpsert = components['schemas']['InventoryCountLineUpsert'];
 export type InventoryCountLineReplace = components['schemas']['InventoryCountLineReplace'];
+export type InventoryCountSummary = components['schemas']['InventoryCountSummary'];
 
 /**
  * 담는 경로의 이름.

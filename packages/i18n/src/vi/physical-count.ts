@@ -16,6 +16,8 @@ export const physicalCount: Translated<typeof ko.physicalCount> = {
     pickPlaceholder: 'Hãy chọn đợt kiểm kê',
     item: (no: string, date: string) => `${no} · ${date}`,
     blind: 'Đợt kiểm kê này ẩn số lượng sổ sách. Hãy đếm thực tế rồi ghi.',
+    progress: (counted: string, planned: string) => `Tiến độ ${counted} / ${planned}`,
+    progressLabel: 'Tiến độ kiểm kê',
   },
   location: {
     legend: 'Quét vị trí',

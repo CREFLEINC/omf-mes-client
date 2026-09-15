@@ -69,3 +69,13 @@
 .physical-count__wide {
   width: 100%;
 }
+
+/* 남은 양은 숫자로 먼저 읽고 막대는 그 뒤를 받친다 - 장갑 낀 손으로 훑을 때 숫자가 빠르다. */
+.physical-count__progress {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1, 4px);
+  font: var(--type-body-lg);
+  letter-spacing: var(--type-body-lg-tracking);
+  font-variant-numeric: tabular-nums;
+}

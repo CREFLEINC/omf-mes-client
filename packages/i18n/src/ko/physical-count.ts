@@ -22,6 +22,12 @@ export const physicalCount = {
     item: (no: string, date: string) => `${no} · ${date}`,
     /** 장부를 감추는 실사다. 작업자가 장부 수를 보고 그대로 적는 것을 막는다. */
     blind: '전산 잔량을 감춘 실사입니다. 실물만 세어 적으세요.',
+    /*
+     * 창고를 순회하는 일이라 한 번에 끝나지 않는다. 남은 양을 말하지 않으면 언제 끝나는지
+     * 모른 채 돌게 된다. 센 라인 수는 서버가 세어 준다.
+     */
+    progress: (counted: string, planned: string) => `진행 ${counted} / ${planned}`,
+    progressLabel: '실사 진행',
   },
   location: {
     legend: '위치 스캔',

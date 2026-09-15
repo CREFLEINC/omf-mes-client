@@ -1,4 +1,4 @@
-import { AlertBanner, Button, NumberPad, Select, TextField } from '@crefle/web-ui';
+import { AlertBanner, Button, NumberPad, Progress, Select, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router';
@@ -13,7 +13,7 @@ import { useScreenTitle } from '../../patterns/screen-title';
 import { useWorkerSession } from '../../patterns/worker-session';
 import { FailureBanner } from '../../patterns/failure-banner';
 import { useLoadFailure } from '../../patterns/load-failure';
-import { useCountLines, useOpenCounts } from './queries';
+import { useCountLines, useCountSummary, useOpenCounts } from './queries';
 import {
   COUNT_LABEL,
   canSubmit,
@@ -57,6 +57,7 @@ export const PhysicalCountScreen = () => {
   const at = location.data ?? null;
   const planned = useCountLines(countId, at?.locationId ?? null);
   const reasons = useCodeValues(VARIANCE_REASON);
+  const summary = useCountSummary(countId);
 
   /*
    * 한 위치에 개수로 세는 품목과 무게로 세는 품목이 섞여 선다. 단위가 빠지면 40 이 마흔 개인지
@@ -272,6 +273,29 @@ export const PhysicalCountScreen = () => {
         />
         {/* 장부를 감춘 실사다. 작업자가 장부 수를 보고 그대로 적는 것을 막는다. */}
         {count?.blindCount === true ? <AlertBanner variant="info" title={t.plan.blind} /> : null}
+        {/*
+          창고를 순회하는 일이라 한 번에 끝나지 않는다. 얼마나 남았는지를 말하지 않으면 언제
+          끝나는지 모른 채 돌게 되고, 다 돌았는지도 스스로 셈해야 한다.
+        */}
+        {summary.data === undefined ? null : (
+          <div className="physical-count__progress">
+            <span>
+              {t.plan.progress(
+                String(summary.data.countedCount),
+                String(summary.data.plannedCount),
+              )}
+            </span>
+            <Progress
+              value={summary.data.countedCount}
+              max={summary.data.plannedCount}
+              label={t.plan.progressLabel}
+              valueText={t.plan.progress(
+                String(summary.data.countedCount),
+                String(summary.data.plannedCount),
+              )}
+            />
+          </div>
+        )}
       </section>
 
       {count === null ? null : (

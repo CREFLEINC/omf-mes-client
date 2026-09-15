@@ -2,7 +2,7 @@ import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
 import { runRequest } from '../../patterns/request';
-import type { InventoryCount, InventoryCountLine } from './count';
+import type { InventoryCount, InventoryCountLine, InventoryCountSummary } from './count';
 
 /** 한 위치의 라인은 이 안에 다 든다. */
 const PAGE_SIZE = 200;
@@ -65,6 +65,39 @@ export const useCountLines = (
       );
 
       return data.items;
+    },
+  });
+};
+
+/**
+ * 고른 실사의 진행 요약.
+ *
+ * 서버가 세어 준다 - 화면이 전체 라인을 받아 세면 쪽 나누기와 어긋나고, 창고 하나의 라인이
+ * 수천 건이라 받아 올 수도 없다.
+ */
+export const useCountSummary = (
+  inventoryCountId: number | null,
+): UseQueryResult<InventoryCountSummary> => {
+  const { client } = useApiClient();
+
+  return useQuery({
+    queryKey: ['physical-count-summary', inventoryCountId] as const,
+    enabled: inventoryCountId !== null,
+    /* 한 위치를 끝낼 때마다 달라진다. 낡은 값을 보이면 다 돌았는지를 잘못 말한다. */
+    staleTime: 0,
+    gcTime: 0,
+    queryFn: async () => {
+      if (inventoryCountId === null) {
+        throw new Error('실사를 고르기 전에는 진행을 조회하지 않습니다.');
+      }
+
+      const data = await runRequest(() =>
+        client.GET('/inventory/counts/{inventoryCountId}', {
+          params: { path: { inventoryCountId } },
+        }),
+      );
+
+      return data.summary;
     },
   });
 };
