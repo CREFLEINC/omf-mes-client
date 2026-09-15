@@ -38,9 +38,23 @@ export const hasHopper = (equipment: Equipment): boolean =>
 export interface HopperStock {
   itemId: number;
   lotId?: number | null;
+  /** 실물 라벨에 찍힌 번호. 같은 품목이 여러 LOT 으로 남을 때 줄을 가르는 것이 이것뿐이다. */
+  lotNo?: string | null;
   onHandQty: number;
   uomId: number;
 }
+
+/**
+ * 잰 값을 어느 줄에 붙일 것인가.
+ *
+ * 품목만으로 세면 같은 품목의 LOT 이 둘 이상인 호퍼에서 한 칸에 적은 값이 나머지 줄로 번진다.
+ * 줄마다 장부가 달라 서로 다른 차이가 만들어지고, 적지 않은 LOT 까지 조정으로 나간다 - 실기
+ * 실측 2026-09-14 에 레진 한 칸에 120 을 적으니 일곱 줄이 차고 차이 합계가 +95 로 섰다.
+ *
+ * LOT 을 두지 않는 품목은 그 위치에 한 줄뿐이라 품목만으로도 갈린다.
+ */
+export const hopperKeyOf = (stock: HopperStock): string =>
+  `${String(stock.itemId)}:${String(stock.lotId ?? '')}`;
 
 export type MeasureProblem = 'notNumber' | 'negative';
 
@@ -87,7 +101,7 @@ export const isMeasured = (stock: HopperStock, measured: string): boolean =>
 export const canRecordHopper = (
   locationId: number | null,
   stocks: HopperStock[],
-  measured: Record<number, string>,
+  measured: Record<string, string>,
   hasWorker: boolean,
   reasonKnownMissing = false,
 ): boolean => {
@@ -95,12 +109,12 @@ export const canRecordHopper = (
     return false;
   }
 
-  const written = stocks.filter((stock) => (measured[stock.itemId] ?? '').trim() !== '');
+  const written = stocks.filter((stock) => (measured[hopperKeyOf(stock)] ?? '').trim() !== '');
 
   return (
     written.length > 0 &&
-    written.every((stock) => measureProblemOf(measured[stock.itemId] ?? '') === null) &&
-    written.some((stock) => isMeasured(stock, measured[stock.itemId] ?? ''))
+    written.every((stock) => measureProblemOf(measured[hopperKeyOf(stock)] ?? '') === null) &&
+    written.some((stock) => isMeasured(stock, measured[hopperKeyOf(stock)] ?? ''))
   );
 };
 
@@ -111,18 +125,18 @@ export const isReasonMissing = (loaded: boolean, codes: { code: string }[]): boo
 export const toHopperDraft = (
   locationId: number,
   stocks: HopperStock[],
-  measured: Record<number, string>,
+  measured: Record<string, string>,
   now: Date,
   workerNo: string,
 ): OutboxDraft => {
   const occurredAt = now.toISOString();
   const lines: InventoryAdjustmentLineUpsert[] = stocks
-    .filter((stock) => isMeasured(stock, measured[stock.itemId] ?? ''))
+    .filter((stock) => isMeasured(stock, measured[hopperKeyOf(stock)] ?? ''))
     .map((stock) => ({
       locationId,
       itemId: stock.itemId,
       lotId: stock.lotId ?? null,
-      adjustmentQty: adjustmentQtyOf(stock, measured[stock.itemId] ?? ''),
+      adjustmentQty: adjustmentQtyOf(stock, measured[hopperKeyOf(stock)] ?? ''),
       uomId: stock.uomId,
       reasonCode: HOPPER_MEASUREMENT,
     }));

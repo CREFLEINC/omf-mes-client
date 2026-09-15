@@ -151,8 +151,20 @@ const routes = (options: Options = {}): StubRoute[] => [
             calibrationRequired: false,
             isActive: true,
           },
+          /* 호퍼가 지정되지 않은 설비. 잴 자리가 없어 고를 것에 서면 안 된다. */
+          {
+            equipmentId: 8,
+            plantId: 1,
+            equipmentCode: 'EQ-02',
+            equipmentName: '조립 1호',
+            equipmentTypeCode: 'ASSEMBLY',
+            locationId: null,
+            statusCode: 'IN_SERVICE',
+            calibrationRequired: false,
+            isActive: true,
+          },
         ],
-        page: { ...page, total: 1 },
+        page: { ...page, total: 2 },
       }),
   },
   {
@@ -174,6 +186,10 @@ const routes = (options: Options = {}): StubRoute[] => [
   },
   {
     match: (req) => new URL(req.url).pathname === '/inventory/balances',
+    /*
+     * 같은 품목이 여러 LOT 으로 남은 호퍼를 그린다. 한 줄만 돌려주면 자재를 여러 번 채운
+     * 호퍼를 시험이 재지 못한다 - 현장에서는 그것이 보통이다.
+     */
     respond: () =>
       jsonResponse({
         items: [
@@ -181,11 +197,25 @@ const routes = (options: Options = {}): StubRoute[] => [
             groupBy: 'LOT',
             itemId: 100,
             lotId: 4,
+            lotNo: 'LOT-A',
             onHandQty: 120,
             reservedQty: 0,
             pickedQty: 0,
             blockedQty: 0,
             availableQty: 120,
+            uomId: 9,
+            ownershipTypeCode: 'OWN',
+          },
+          {
+            groupBy: 'LOT',
+            itemId: 100,
+            lotId: 5,
+            lotNo: 'LOT-B',
+            onHandQty: 30,
+            reservedQty: 0,
+            pickedQty: 0,
+            blockedQty: 0,
+            availableQty: 30,
             uomId: 9,
             ownershipTypeCode: 'OWN',
           },
@@ -270,9 +300,7 @@ const routes = (options: Options = {}): StubRoute[] => [
       });
     },
   },
-  ...itemRoutes(
-    [{ itemId: 100, itemCode: 'RM-1001', itemName: '원자재', fifoPolicyCode: 'FEFO' }],
-  ),
+  ...itemRoutes([{ itemId: 100, itemCode: 'RM-1001', itemName: '원자재', fifoPolicyCode: 'FEFO' }]),
   {
     match: (req) => new URL(req.url).pathname === '/mdm/code-values',
     respond: (req) => {
@@ -485,7 +513,7 @@ describe('생산창고 입고 화면', () => {
    * 자재가 라인에 들어오는 이 시점에 사람이 눈으로 잰다. 여기서 적지 않으면 호퍼에 무엇이
    * 얼마나 남았는지가 어디에도 남지 않는다.
    */
-  it('설비를 고르면 그 호퍼의 장부 잔량을 보인다', async () => {
+  it('설비를 고르면 그 호퍼의 전산 잔량을 보인다', async () => {
     const user = userEvent.setup();
     mount();
     await screen.findByLabelText(/출고 QR 스캔/);
@@ -496,14 +524,166 @@ describe('생산창고 입고 화면', () => {
     await user.click(await screen.findByRole('option', { name: /EQ-01/ }));
 
     expect(await screen.findByText(/HOP-01/)).toBeTruthy();
-    expect(await screen.findByText('장부 120')).toBeTruthy();
+    expect(await screen.findByText('전산 잔량 120')).toBeTruthy();
+  });
+
+  /*
+   * 숫자판에 상한을 두면 넘기는 키를 조용히 무시한다 - 눌러도 아무 일이 없어 사람은 기기가
+   * 멎은 줄 안다. 넘겨 적히게 두고 무엇이 잘못됐는지와 어디로 가야 하는지를 말해야 한다.
+   */
+  it('숫자판으로 출고 수량을 넘겨 적으면 까닭과 다음 걸음을 말한다', async () => {
+    const user = userEvent.setup();
+    mount({ issueQty: 12 });
+    await screen.findByLabelText(/출고 QR 스캔/);
+    scan(ISSUE_NO);
+
+    const field = await receivedField();
+    await user.click(field);
+
+    /* 12 를 넘겨 13 을 만든다. 상한이 걸려 있으면 3 이 무시돼 1 만 남는다. */
+    await user.click(await screen.findByRole('button', { name: '1' }));
+    await user.click(screen.getByRole('button', { name: '3' }));
+
+    expect((field as HTMLInputElement).value).toBe('13');
+    expect(await screen.findByText('출고 수량 12 보다 많이 받을 수 없습니다')).toBeTruthy();
+    expect(await screen.findByText('출고 수량보다 많이 받을 수 없습니다')).toBeTruthy();
+    expect(await screen.findByText(/물류 문서 진행현황·취소/)).toBeTruthy();
+    expect(await screen.findByText(/추가 자재 출고 요청/)).toBeTruthy();
+  });
+
+  /*
+   * 호퍼가 지정되지 않은 설비는 잴 자리가 없다. 목록에 세워 두면 골라 본 뒤에야 알게 되고,
+   * 작업자는 자기가 잘못 골랐는지 설비가 잘못 등록됐는지 가리지 못한다.
+   */
+  it('호퍼가 지정되지 않은 설비는 고를 것에 서지 않는다', async () => {
+    const user = userEvent.setup();
+    mount();
+    await screen.findByLabelText(/출고 QR 스캔/);
+    scan(ISSUE_NO);
+    await receivedField();
+
+    await user.click(await screen.findByRole('combobox', { name: '설비' }));
+
+    expect(await screen.findByRole('option', { name: /EQ-01/ })).toBeTruthy();
+    expect(screen.queryByRole('option', { name: /EQ-02/ })).toBeNull();
+  });
+
+  /*
+   * 같은 품목이 여러 LOT 으로 남는 것은 호퍼에서 보통이다. 품목 코드만 적으면 줄이 서로
+   * 구별되지 않아 어느 줄에 적는지 알 수 없다.
+   */
+  it('호퍼 줄마다 LOT 번호를 함께 보인다', async () => {
+    const user = userEvent.setup();
+    mount();
+    await screen.findByLabelText(/출고 QR 스캔/);
+    scan(ISSUE_NO);
+    await receivedField();
+
+    await user.click(await screen.findByRole('combobox', { name: '설비' }));
+    await user.click(await screen.findByRole('option', { name: /EQ-01/ }));
+
+    expect(await screen.findByLabelText('RM-1001 · LOT-A 실측 잔량')).toBeTruthy();
+    expect(await screen.findByLabelText('RM-1001 · LOT-B 실측 잔량')).toBeTruthy();
+
+    /*
+     * 읽어 주는 이름만으로는 눈으로 훑는 사람이 어느 줄인지 알 수 없다. 값만 세워도 34자리
+     * 숫자가 무엇인지 알 수 없어, 무엇을 보고 있는지 함께 적는다.
+     */
+    expect(await screen.findByText('LOT-A')).toBeTruthy();
+    expect(await screen.findByText('LOT-B')).toBeTruthy();
+
+    /* 라인 수령 한 줄과 호퍼 두 줄. 세 줄 모두 같은 꼴로 선다. */
+    expect((await screen.findAllByText('RM-1001')).length).toBe(3);
+    expect((await screen.findAllByText('품목')).length).toBe(3);
+    expect((await screen.findAllByText('LOT')).length).toBe(3);
+  });
+
+  /*
+   * 기록이 서버에 닿으면 전산 잔량이 그만큼 움직인다. 화면이 앞 값을 들고 있으면 곧바로 다시 잰
+   * 사람이 이미 반영된 차이를 또 보낸다 - 100 을 99 로 고친 뒤 다시 99 를 적으면 98 이 된다.
+   */
+  it('호퍼 잔량을 기록하면 그 호퍼의 전산 잔량을 다시 받는다', async () => {
+    const user = userEvent.setup();
+    let asked = 0;
+    mount({
+      extra: [
+        {
+          match: (req) => new URL(req.url).pathname === '/inventory/balances',
+          respond: () => {
+            asked += 1;
+
+            return jsonResponse({
+              items: [
+                {
+                  groupBy: 'LOT',
+                  itemId: 100,
+                  lotId: 4,
+                  lotNo: 'LOT-A',
+                  onHandQty: 120,
+                  reservedQty: 0,
+                  pickedQty: 0,
+                  blockedQty: 0,
+                  availableQty: 120,
+                  uomId: 9,
+                  ownershipTypeCode: 'OWN',
+                },
+              ],
+              page,
+            });
+          },
+        },
+        {
+          match: (req) =>
+            new URL(req.url).pathname === '/inventory/adjustments' && req.method === 'POST',
+          respond: () => jsonResponse({ inventoryAdjustmentId: 1 }, { status: 201 }),
+        },
+      ],
+    });
+    await screen.findByLabelText(/출고 QR 스캔/);
+    scan(ISSUE_NO);
+    await receivedField();
+
+    await user.click(await screen.findByRole('combobox', { name: '설비' }));
+    await user.click(await screen.findByRole('option', { name: /EQ-01/ }));
+    await user.type(await screen.findByLabelText('RM-1001 · LOT-A 실측 잔량'), '100');
+
+    const before = asked;
+
+    await user.click(screen.getByRole('button', { name: '호퍼 잔량 기록' }));
+    expect(await screen.findByText('호퍼 잔량을 기록했습니다')).toBeTruthy();
+
+    await waitFor(() => {
+      expect(asked).toBeGreaterThan(before);
+    });
+  });
+
+  /*
+   * 잰 값을 품목으로 묶으면 한 칸에 적은 것이 같은 품목의 나머지 줄로 번지고, 줄마다 전산 잔량이
+   * 달라 서로 다른 차이가 만들어진다 - 실기에서 레진 한 칸에 120 을 적으니 일곱 줄이 차고
+   * 차이 합계가 +95 로 섰다. 사람이 뜻한 것은 -625 였다.
+   */
+  it('한 LOT 에 적은 값이 같은 품목의 다른 LOT 으로 번지지 않는다', async () => {
+    const user = userEvent.setup();
+    mount();
+    await screen.findByLabelText(/출고 QR 스캔/);
+    scan(ISSUE_NO);
+    await receivedField();
+
+    await user.click(await screen.findByRole('combobox', { name: '설비' }));
+    await user.click(await screen.findByRole('option', { name: /EQ-01/ }));
+
+    await user.type(await screen.findByLabelText('RM-1001 · LOT-A 실측 잔량'), '100');
+
+    expect((screen.getByLabelText('RM-1001 · LOT-B 실측 잔량') as HTMLInputElement).value).toBe('');
+    expect(await screen.findByText('차이 -20')).toBeTruthy();
+    expect(screen.queryByText('차이 70')).toBeNull();
   });
 
   /*
    * 사람이 넣는 것은 잰 값이고 뺀 값이 아니다. 차이를 사람에게 계산시키면 부호를 뒤집어 적는
    * 순간 재고가 반대로 움직인다.
    */
-  it('잰 값에서 장부를 빼 증감량으로 보낸다', async () => {
+  it('잰 값에서 전산 잔량을 빼 증감량으로 보낸다', async () => {
     const user = userEvent.setup();
     const seen: Request[] = [];
     mount({
@@ -524,7 +704,7 @@ describe('생산창고 입고 화면', () => {
 
     await user.click(await screen.findByRole('combobox', { name: '설비' }));
     await user.click(await screen.findByRole('option', { name: /EQ-01/ }));
-    await user.type(await screen.findByLabelText(/RM-1001 실측 잔량/), '100');
+    await user.type(await screen.findByLabelText('RM-1001 · LOT-A 실측 잔량'), '100');
 
     expect(await screen.findByText('차이 -20')).toBeTruthy();
 
@@ -536,12 +716,18 @@ describe('생산창고 입고 화면', () => {
 
     const body = (await seen[0]!.json()) as {
       reasonCode: string;
-      lines: { locationId: number; itemId: number; adjustmentQty: number }[];
+      lines: { locationId: number; itemId: number; lotId: number; adjustmentQty: number }[];
     };
 
     expect(body.reasonCode).toBe('HOPPER_MEASUREMENT');
+    /* 적은 줄만 간다. 적지 않은 LOT 이 함께 실리면 전산 잔량이 그만큼 틀어진다. */
     expect(body.lines).toHaveLength(1);
-    expect(body.lines[0]).toMatchObject({ locationId: 55, itemId: 100, adjustmentQty: -20 });
+    expect(body.lines[0]).toMatchObject({
+      locationId: 55,
+      itemId: 100,
+      lotId: 4,
+      adjustmentQty: -20,
+    });
   });
 
   /* 어디로 들어온 것인가. 없으면 받은 자리가 전표에만 남는다. */
@@ -593,7 +779,7 @@ describe('생산창고 입고 화면', () => {
   });
 
   /* 초과는 데이터베이스가 막는다. 화면이 통과시키면 확정이 서버에서 되돌아온다. */
-  it('출고한 것보다 많이 받지 못한다', async () => {
+  it('출고 수량보다 많이 받지 못한다', async () => {
     const user = userEvent.setup();
     mount();
     await screen.findByLabelText(/출고 QR 스캔/);
@@ -601,7 +787,7 @@ describe('생산창고 입고 화면', () => {
     scan(ISSUE_NO);
     await user.type(await receivedField(), '501');
 
-    expect(await screen.findByText(/출고한 500 보다 많이 받을 수 없습니다/)).toBeTruthy();
+    expect(await screen.findByText(/출고 수량 500 보다 많이 받을 수 없습니다/)).toBeTruthy();
     expect(screen.getByRole('button', { name: '입고 확정' })).toBeDisabled();
   });
 
@@ -614,7 +800,7 @@ describe('생산창고 입고 화면', () => {
     scan(ISSUE_NO);
     await user.type(await receivedField(), '480');
 
-    expect(await screen.findByText('차이 20 모자람')).toBeTruthy();
+    expect(await screen.findByText('차이 20 부족')).toBeTruthy();
     expect(screen.getByRole('button', { name: '입고 확정' })).toBeDisabled();
 
     await user.click(screen.getByRole('combobox', { name: /차이 사유/ }));
@@ -638,7 +824,7 @@ describe('생산창고 입고 화면', () => {
     await user.type(await receivedField(), '480');
 
     /* 모자란 사실은 고를 사유가 있든 없든 보인다. 숨기면 그냥 덜 받은 것이 된다. */
-    expect(await screen.findByText('차이 20 모자람')).toBeTruthy();
+    expect(await screen.findByText('차이 20 부족')).toBeTruthy();
     expect(screen.queryByRole('combobox', { name: /차이 사유/ })).toBeNull();
 
     await waitFor(() => {
@@ -658,7 +844,7 @@ describe('생산창고 입고 화면', () => {
     scan(ISSUE_NO);
     await user.type(await receivedField(), '480');
 
-    expect(await screen.findByText('차이 20 모자람')).toBeTruthy();
+    expect(await screen.findByText('차이 20 부족')).toBeTruthy();
     expect(screen.getByRole('button', { name: '입고 확정' })).toBeDisabled();
   });
 
@@ -671,8 +857,8 @@ describe('생산창고 입고 화면', () => {
     scan(ISSUE_NO);
     await user.type(await receivedField(), '501');
 
-    expect(await screen.findByText(/출고한 500 보다 많이 받을 수 없습니다/)).toBeTruthy();
-    expect(screen.queryByText(/모자람/)).toBeNull();
+    expect(await screen.findByText(/출고 수량 500 보다 많이 받을 수 없습니다/)).toBeTruthy();
+    expect(screen.queryByText(/부족/)).toBeNull();
     expect(screen.queryByRole('combobox', { name: /차이 사유/ })).toBeNull();
   });
 
@@ -687,7 +873,7 @@ describe('생산창고 입고 화면', () => {
     await waitFor(() => {
       expect(screen.getByRole('button', { name: '입고 확정' })).not.toBeDisabled();
     });
-    expect(screen.queryByText('차이 0 모자람')).toBeNull();
+    expect(screen.queryByText('차이 0 부족')).toBeNull();
   });
 
   /*
@@ -891,7 +1077,7 @@ describe('생산창고 입고 화면', () => {
 
     await user.click(await screen.findByRole('combobox', { name: '설비' }));
     await user.click(await screen.findByRole('option', { name: /EQ-01/ }));
-    await user.type(await screen.findByLabelText(/RM-1001 실측 잔량/), '100');
+    await user.type(await screen.findByLabelText('RM-1001 · LOT-A 실측 잔량'), '100');
     await user.click(screen.getByRole('button', { name: '호퍼 잔량 기록' }));
 
     expect(await screen.findByText('호퍼 잔량을 기록했습니다')).toBeTruthy();

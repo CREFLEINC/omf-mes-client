@@ -184,6 +184,10 @@ export const useAlreadyReceived = (goodsIssueId: number | null): ReceivedCheck =
   return query.data === undefined ? 'unknown' : query.data ? 'received' : 'clear';
 };
 
+/** 조회하는 쪽과 다시 받게 하는 쪽이 이 열쇠를 함께 쓴다. 따로 적으면 조용히 어긋난다. */
+export const hopperStockKey = (locationId: number | null) =>
+  ['shopfloor-hopper-stock', locationId] as const;
+
 /**
  * 이 호퍼에 장부가 말하는 잔량.
  *
@@ -194,7 +198,7 @@ export const useHopperStock = (locationId: number | null): UseQueryResult<Hopper
   const { client } = useApiClient();
 
   return useQuery({
-    queryKey: ['shopfloor-hopper-stock', locationId] as const,
+    queryKey: hopperStockKey(locationId),
     enabled: locationId !== null,
     queryFn: async () => {
       if (locationId === null) {
@@ -210,6 +214,8 @@ export const useHopperStock = (locationId: number | null): UseQueryResult<Hopper
       return data.items.map((each) => ({
         itemId: each.itemId,
         lotId: each.lotId,
+        /* 같은 품목이 여러 LOT 으로 남으면 줄을 가르는 것이 이 번호뿐이다. */
+        lotNo: each.lotNo,
         onHandQty: each.onHandQty,
         uomId: each.uomId,
       }));
