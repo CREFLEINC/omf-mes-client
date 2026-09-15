@@ -3326,8 +3326,14 @@ describe('CommonCodeScreen — 부서 등록 (C55)', () => {
     await user.type(screen.getByLabelText('부서명'), '합성 부서 I');
     await user.click(within(departmentFormPane()).getByRole('button', { name: '부서 추가' }));
 
-    await screen.findByDisplayValue('SYN-DEPT-09');
-    expect(history.search()).toBe('?tab=org&dep=3009');
+    /*
+     * 주소가 바뀌기를 기다린다. 화면에 선 SYN-DEPT-09 로는 가를 수 없다 - 방금 사람이 친
+     * 값이라 등록 전 폼에도 이미 있다. 그것을 기다리면 옮겨 가기 전에 통과해, 기계가 밀려
+     * 옮겨 가기가 늦는 회차에만 깨진다.
+     */
+    await waitFor(() => {
+      expect(history.search()).toBe('?tab=org&dep=3009');
+    });
   });
 
   /* 한 조작은 히스토리 한 칸이다 — 나눠 부르면 뒤로가기가 중간 상태로 떨어진다. */
@@ -3347,7 +3353,9 @@ describe('CommonCodeScreen — 부서 등록 (C55)', () => {
     const before = history.search();
 
     await user.click(within(departmentFormPane()).getByRole('button', { name: '부서 추가' }));
-    await screen.findByDisplayValue('SYN-DEPT-09');
+    await waitFor(() => {
+      expect(history.search()).toBe('?tab=org&dep=3009');
+    });
 
     history.back();
     expect(history.search()).toBe(before);
