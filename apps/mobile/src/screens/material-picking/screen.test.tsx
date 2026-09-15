@@ -1,4 +1,4 @@
-import { screen, waitFor } from '@testing-library/react';
+import { cleanup, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useEffect, type ReactNode } from 'react';
 import { MemoryRouter } from 'react-router';
@@ -1004,6 +1004,47 @@ describe('자재 출고·피킹 화면', () => {
 
     expect(await screen.findByText('이 지시에서 내보낼 것이 남아 있지 않습니다.')).toBeTruthy();
     expect(screen.getByRole('button', { name: '출고 확정' }).hasAttribute('disabled')).toBe(true);
+    expect(sent.issues).toHaveLength(1);
+  });
+
+  /*
+   * 다른 화면을 거쳐 돌아오면 이 화면이 다시 선다. 그 기억을 마운트에만 두면 방어가 함께
+   * 꺼져, 작업자가 물건을 다시 집어 들고 나간 뒤에야 서버가 되돌린다 - 실기 실측 2026-09-15
+   * 에 출고까지 끝난 지시에서 출고 확정이 열린 채로 섰고, 눌렀더니 서버가 400 으로 되돌렸다.
+   */
+  it('화면을 떠났다 돌아와도 이미 내보낸 지시는 다시 내보내지 않는다', async () => {
+    const user = userEvent.setup();
+    const first = mount({ lines: [line({ pickedQty: 120 })] });
+    await chooseOrder(user);
+    await user.click(screen.getByRole('button', { name: '출고 확정' }));
+    await screen.findByText('출고를 확정했습니다');
+
+    /* 화면을 아예 떠난다. 다른 작업을 거쳐 돌아오는 것과 같다. */
+    cleanup();
+
+    const second = mount({ lines: [line({ pickedQty: 120 })] });
+    await chooseOrder(user);
+
+    expect(await screen.findByText('이 지시에서 내보낼 것이 남아 있지 않습니다.')).toBeTruthy();
+    expect(screen.getByRole('button', { name: '출고 확정' }).hasAttribute('disabled')).toBe(true);
+    expect(first.issues).toHaveLength(1);
+    expect(second.issues).toHaveLength(0);
+  });
+
+  /*
+   * 내보낸 기록을 남기지 못해도 출고는 이미 큐에 들어간 뒤다. 거기서 멈추면 결과를 말하지
+   * 못해 사람은 아무 일도 안 일어난 줄 알고 한 번 더 누른다.
+   */
+  it('내보낸 기록을 저장하지 못해도 결과를 말한다', async () => {
+    const user = userEvent.setup();
+    const sent = mount({ lines: [line({ pickedQty: 120 })] });
+    await chooseOrder(user);
+
+    held.failWrite = 'material-picking-issued';
+
+    await user.click(screen.getByRole('button', { name: '출고 확정' }));
+
+    expect(await screen.findByText('출고를 확정했습니다')).toBeTruthy();
     expect(sent.issues).toHaveLength(1);
   });
 

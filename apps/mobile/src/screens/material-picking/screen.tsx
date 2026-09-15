@@ -28,6 +28,7 @@ import { useWorkerId } from '../../patterns/workers';
 import { useWorkerSession } from '../../patterns/worker-session';
 import { FailureBanner } from '../../patterns/failure-banner';
 import { useLoadFailure } from '../../patterns/load-failure';
+import { appendIssued, issuedQtyByLine, readIssued, type IssuedRecord } from './issued-record';
 import { PickingOrderList } from './order-list';
 import {
   ISSUE_TYPE,
@@ -115,13 +116,34 @@ export const MaterialPickingScreen = () => {
    */
   const inFlight = useRef(false);
   /*
-   * 이 단말이 이번에 담은 출고. 담는 순간 적고, 되돌아온 것만 빼고 센다.
+   * 이 단말이 담은 출고. 담는 순간 적고, 되돌아온 것만 빼고 센다.
    *
    * 보냈는지로 가르면 셸이 배경으로 보낸 것을 아무도 세지 않아, 큐가 비는 순간 담긴 출고를
    * 세는 방어와 함께 꺼진다 - 같은 수량이 한 번 더 나간다. 담긴 것도 나갈 것이므로 함께 세고,
-   * 되돌아온 것만 되돌린다. 화면이 다시 서면 사라지는 반쪽 방어이며 나머지는 설계에 물었다.
+   * 되돌아온 것만 되돌린다.
+   *
+   * 단말 보관소에 남긴다. 서버는 출고 뒤에도 집은 양을 그대로 내리고 출고를 원천으로 거를
+   * 축도 없어, 이미 내보냈는지를 물을 길이 없다 - 단말이 기억하는 수밖에 없다.
    */
-  const issuedHere = useRef<{ idempotencyKey: string; lines: GoodsIssueLineUpsert[] }[]>([]);
+  const [issuedRecords, setIssuedRecords] = useState<IssuedRecord[]>([]);
+
+  /*
+   * 화면이 다시 서도 남아야 한다. 마운트와 함께 사라지면 지시를 다시 열었을 때 방어가 꺼져,
+   * 물건을 다시 집어 들고 나간 뒤에야 서버가 되돌린다 - 실기 실측 2026-09-15.
+   */
+  useEffect(() => {
+    let dropped = false;
+
+    void readIssued().then((records) => {
+      if (!dropped) {
+        setIssuedRecords(records);
+      }
+    });
+
+    return () => {
+      dropped = true;
+    };
+  }, []);
 
   const scanSection = useRef<HTMLElement | null>(null);
   const qtySection = useRef<HTMLElement | null>(null);
@@ -178,22 +200,9 @@ export const MaterialPickingScreen = () => {
   /* 배경 보내기가 거부당하면 큐에서 빠진다. 화면이 읽지 않으면 사유가 어디에도 보이지 않는다. */
   const returned = rejected.filter((record) => isOfOrder(record.entry, orderId ?? -1));
 
-  const alreadyIssued = new Map<number, number>();
-
-  for (const record of issuedHere.current) {
-    /* 되돌아온 것은 나간 적이 없다. 빼 두면 다시 내보낼 길이 사라진다. */
-    if (rejected.some((each) => each.entry.idempotencyKey === record.idempotencyKey)) {
-      continue;
-    }
-
-    for (const each of record.lines) {
-      const lineId = each.pickingLineId;
-
-      if (lineId !== null && lineId !== undefined) {
-        alreadyIssued.set(lineId, (alreadyIssued.get(lineId) ?? 0) + each.issueQty);
-      }
-    }
-  }
+  const alreadyIssued = issuedQtyByLine(issuedRecords, orderId ?? -1, (key) =>
+    rejected.some((each) => each.entry.idempotencyKey === key),
+  );
 
   /*
    * 셸이 스스로 큐를 비운다. 그때 다시 조회하지 않으면 담긴 것이 셈에서 빠진 자리에 서버가
@@ -376,11 +385,18 @@ export const MaterialPickingScreen = () => {
       /*
        * 담긴 뒤에 적는다. 담기지 못한 것을 적으면 나가지도 않은 양이 셈에 들어가 확정이
        * 잠긴다. 담긴 것도 서버로 향하므로 보냈는지로는 가르지 않는다.
+       *
+       * 적지 못해도 넘어간다. 출고는 이미 큐에 들어갔고, 여기서 멈추면 결과를 말하지 못해
+       * 사람은 아무 일도 안 일어난 줄 안다. 기록이 없으면 다시 열었을 때 막지 못할 뿐이고,
+       * 그때는 서버가 되돌린다.
        */
-      issuedHere.current = [
-        ...issuedHere.current,
-        { idempotencyKey: draft.idempotencyKey, lines: issuedLinesOf(draft) },
-      ];
+      await appendIssued({
+        idempotencyKey: draft.idempotencyKey,
+        pickingOrderId: order.pickingOrderId,
+        lines: issuedLinesOf(draft),
+      })
+        .then(setIssuedRecords)
+        .catch(() => undefined);
 
       const result = await flush().catch(() => null);
       const mine = (each: { idempotencyKey: string }) =>
