@@ -9,11 +9,19 @@ import { createMlkitQrCamera, type QrCamera } from '../../patterns/qr-camera';
 import { readTerminalClaims } from '../../patterns/token-claims';
 import { confirmTerminalRegistration } from './confirm-registration';
 import { fetchWorkerDirectory, saveWorkerDirectory } from './directory';
-import { verifyTerminalToken, type RegisteredTerminal } from './terminal';
+import { MOBILE_TERMINAL_TYPE, verifyTerminalToken, type RegisteredTerminal } from './terminal';
 
 /** QR 촬영과 직접 입력은 같은 토큰 검증·명부 저장·서버 등록 확인을 거친다. */
 export type RegistrationPhase =
-  'offline' | 'preparing' | 'unsupported' | 'denied' | 'scanning' | 'receiving' | 'rejected';
+  | 'offline'
+  | 'preparing'
+  | 'unsupported'
+  | 'denied'
+  | 'scanning'
+  | 'receiving'
+  | 'rejected'
+  /** 서버가 받은 코드지만 모바일 기기용 단말이 아니다(POP 단말 등). */
+  | 'wrong-type';
 
 export interface RegistrationFlow {
   phase: RegistrationPhase;
@@ -69,7 +77,10 @@ export const useRegistrationFlow = ({ camera }: RegistrationFlowOptions = {}): R
     stopCamera();
     setCameraEnabled(false);
     setPhase((current) =>
-      current === 'denied' || current === 'unsupported' || current === 'rejected'
+      current === 'denied' ||
+      current === 'unsupported' ||
+      current === 'rejected' ||
+      current === 'wrong-type'
         ? current
         : 'preparing',
     );
@@ -99,23 +110,35 @@ export const useRegistrationFlow = ({ camera }: RegistrationFlowOptions = {}): R
     setTerminal(null);
     setPhase('receiving');
 
-    void register(value, async () => {
-      if (claims.plantId === null) {
-        throw new Error('토큰에 공장이 없어 등록을 확인할 수 없습니다.');
+    void (async () => {
+      /*
+       * 보관·명부 수신·서버 확인보다 먼저 이 코드가 가리키는 단말을 묻는다. POP 단말의 코드를
+       * 받으면 여기서 멈춘다 — 뒤로 가면 서버가 POP 단말을 이 기기로 등록 완료 처리한다.
+       */
+      const verified = await verifyTerminalToken(client, claims.terminalId, value);
+      if (verified.terminalTypeCode !== MOBILE_TERMINAL_TYPE) {
+        busyRef.current = false;
+        setPhase('wrong-type');
+        return;
       }
 
-      await verifyTerminalToken(client, claims.plantId);
-      // 쓰기 화면이 공장을 읽고, 사번 확인이 로컬 명부를 읽는다.
-      await rememberPlant(claims.plantId);
-      const entries = await fetchWorkerDirectory(client, claims.plantId);
-      await saveWorkerDirectory(entries);
-      await confirmTerminalRegistration(client, claims.terminalId);
-      setTerminal({
-        terminalId: claims.terminalId,
-        terminalCode: claims.terminalCode,
-        plantId: claims.plantId,
+      await register(value, async () => {
+        if (claims.plantId === null) {
+          throw new Error('토큰에 공장이 없어 등록을 확인할 수 없습니다.');
+        }
+
+        // 쓰기 화면이 공장을 읽고, 사번 확인이 로컬 명부를 읽는다.
+        await rememberPlant(claims.plantId);
+        const entries = await fetchWorkerDirectory(client, claims.plantId);
+        await saveWorkerDirectory(entries);
+        await confirmTerminalRegistration(client, claims.terminalId);
+        setTerminal({
+          terminalId: claims.terminalId,
+          terminalCode: claims.terminalCode,
+          plantId: claims.plantId,
+        });
       });
-    }).catch((error: unknown) => {
+    })().catch((error: unknown) => {
       busyRef.current = false;
       setTerminal(null);
       setPhase(toApiError(error).kind === 'network' ? 'offline' : 'rejected');

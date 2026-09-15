@@ -1,9 +1,9 @@
 import { messages } from '@omf-mes/i18n';
-import { useQuery } from '@tanstack/react-query';
+import { useQueries, useQuery } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
-import type { LookupEntry } from '../../patterns/lookup-display';
-import { runRequest } from '../../patterns/request';
+import type { LookupEntry, LookupSource } from '../../patterns/lookup-display';
+import { runRequest, toApiError } from '../../patterns/request';
 import type { PageMeta } from './types';
 
 /**
@@ -69,6 +69,8 @@ export const lookupKeys = {
   locationDetail: (locationId: number) =>
     ['material-issue-request-lookups', 'location-detail', locationId] as const,
   items: ['material-issue-request-lookups', 'items'] as const,
+  itemDetail: (itemId: number) =>
+    ['material-issue-request-lookups', 'item-detail', itemId] as const,
   uoms: ['material-issue-request-lookups', 'uoms'] as const,
 };
 
@@ -210,6 +212,64 @@ export const useItemOptions = (): ItemLookupResult => {
       void query.refetch();
     },
   };
+};
+
+const isNotFound = (error: unknown): boolean => {
+  const apiError = toApiError(error);
+
+  return apiError.kind === 'http' && apiError.status === 404;
+};
+
+/**
+ * BOM 유래 줄의 품목 이름 — 품목 하나씩 상세로 푼다. 품목 ID 문자열마다 이름 풀이 원천 하나를 낸다.
+ *
+ * ⭐ **품목 목록(`useItemOptions`)으로 풀지 않는다.** 소요 응답은 `itemId` 만 주고(문의 047),
+ * 품목 목록은 한 쪽(계약 기본 50건)만 받는다. 품목이 많은 환경에서는 BOM 품목이 첫 쪽에 없어
+ * 이름이 「알 수 없음」으로 선다. 줄에 선 품목만 부르는 상세 조회는 잘리지 않는다.
+ *
+ * 줄마다 따로 판정한다 — 한 품목의 실패가 다른 줄의 이름을 지우지 않는다. 없는 품목(404)은
+ * 실패가 아니라 「알 수 없음」이다.
+ */
+export const useItemNameSources = (
+  itemIds: readonly string[],
+): ReadonlyMap<string, LookupSource> => {
+  const { client } = useApiClient();
+  const uniqueIds = [...new Set(itemIds)].filter((itemId) => itemId !== '');
+
+  const results = useQueries({
+    queries: uniqueIds.map((itemId) => ({
+      queryKey: lookupKeys.itemDetail(Number(itemId)),
+      queryFn: () =>
+        runRequest(() =>
+          client.GET('/mdm/items/{itemId}', { params: { path: { itemId: Number(itemId) } } }),
+        ),
+    })),
+  });
+
+  return new Map(
+    uniqueIds.map((itemId, index): [string, LookupSource] => {
+      const result = results[index];
+      const item = result?.data?.item;
+
+      return [
+        itemId,
+        {
+          entries:
+            item === undefined
+              ? []
+              : [
+                  {
+                    value: itemId,
+                    label: `${item.itemCode} · ${item.itemName}`,
+                    isActive: item.isActive,
+                  },
+                ],
+          isError: result?.isError === true && !isNotFound(result.error),
+          isLoading: result === undefined || result.isPending,
+        },
+      ];
+    }),
+  );
 };
 
 /**

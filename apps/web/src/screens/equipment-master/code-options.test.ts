@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 import type { LookupSource } from '../../patterns/lookup-display';
 import {
   GROUP_TYPE_OPTIONS,
+  codeNote,
   ensureOption,
   groupDeactivateImpact,
   groupTypeLabel,
@@ -39,6 +40,16 @@ describe('그룹유형 선택지', () => {
       messages.equipmentMaster.groupTypes.LINE,
       messages.equipmentMaster.groupTypes.WORK_AREA,
     ]);
+  });
+});
+
+describe('codeNote', () => {
+  it('선택지가 비면 준비 중 안내를 낸다', () => {
+    expect(codeNote([])).toBe(messages.pendingCode.note);
+  });
+
+  it('선택지가 차 있으면 안내를 거둔다', () => {
+    expect(codeNote([{ value: 'PRESS', label: '프레스' }])).toBeUndefined();
   });
 });
 

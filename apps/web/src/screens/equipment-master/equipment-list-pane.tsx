@@ -12,7 +12,7 @@ import {
 import { messages } from '@omf-mes/i18n';
 import { type ReactNode, useEffect, useState } from 'react';
 
-import { type CodeOption, defaultEquipmentFilters, statusLabel } from './code-options';
+import { type CodeOption, codeNote, defaultEquipmentFilters, statusLabel } from './code-options';
 import { SelectField } from './select-field';
 import type { Equipment, EquipmentFilters } from './types';
 
@@ -228,7 +228,8 @@ export const EquipmentListPane = ({
           options={[{ value: '', label: t.equipmentFilters.typeAll }, ...typeOptions]}
           value={draft.equipmentTypeCode}
           onChange={(value) => setDraft((prev) => ({ ...prev, equipmentTypeCode: value }))}
-          note={messages.pendingCode.note}
+          /* 「전체」는 고를 유형이 아니다 — 받아 온 유형 목록으로 판단한다. */
+          note={codeNote(typeOptions)}
         />
         <div className="equipment-master-filter-footer">
           <div className="equipment-master-filter-checks">

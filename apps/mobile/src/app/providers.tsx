@@ -5,6 +5,7 @@ import type { ReactNode } from 'react';
 
 import { ApiClientProvider } from '../patterns/api-context';
 import { DeviceRegistrationProvider } from '../patterns/device-registration';
+import { LocalNetworkProvider } from '../patterns/local-network';
 import { OutboxProvider } from '../patterns/outbox';
 import { WorkerSessionProvider } from '../patterns/worker-session';
 import { createOutboxTransport } from './outbox-transport';
@@ -42,15 +43,17 @@ export const AppProviders = ({ children }: AppProvidersProps) => {
     <QueryClientProvider client={queryClient}>
       <ApiClientProvider client={apiClient}>
         <DeviceRegistrationProvider>
-          <OutboxProvider send={sendOutboxEntry}>
-            <WorkerSessionProvider>
-              <ThemeProvider defaultTheme="system">
-                <ToastProvider label={messages.common.shell.notifications} position="top-center">
-                  {children}
-                </ToastProvider>
-              </ThemeProvider>
-            </WorkerSessionProvider>
-          </OutboxProvider>
+          <LocalNetworkProvider>
+            <OutboxProvider send={sendOutboxEntry}>
+              <WorkerSessionProvider>
+                <ThemeProvider defaultTheme="system">
+                  <ToastProvider label={messages.common.shell.notifications} position="top-center">
+                    {children}
+                  </ToastProvider>
+                </ThemeProvider>
+              </WorkerSessionProvider>
+            </OutboxProvider>
+          </LocalNetworkProvider>
         </DeviceRegistrationProvider>
       </ApiClientProvider>
     </QueryClientProvider>

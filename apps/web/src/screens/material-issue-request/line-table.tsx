@@ -9,7 +9,7 @@ import {
 } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 
-import { lookupDisplayLabel } from '../../patterns/lookup-display';
+import { lookupDisplayLabel, type LookupSource } from '../../patterns/lookup-display';
 import { isOutsideBom } from './bom-origin';
 import type { ItemLookupResult, LookupResult } from './lookups';
 import type { MaterialIssueLineDraft, SelectOption } from './types';
@@ -47,6 +47,11 @@ export interface LineTableProps {
   /** 줄 단위 오류. 열쇠는 `lineFieldId`가 만든다 — 줄이 둘 이상일 때 서로 섞이지 않는다 */
   errors: Record<string, string>;
   itemLookup: ItemLookupResult;
+  /**
+   * BOM 유래 줄의 품목 이름 — 품목 ID 마다 상세로 푼 것(`useItemNameSources`). 목록 한 쪽에
+   * 없는 품목도 이름이 선다. 여기 없는 ID 만 품목 목록으로 푼다.
+   */
+  itemNameSources: ReadonlyMap<string, LookupSource>;
   uomLookup: LookupResult;
   itemOptions: SelectOption[];
   uomOptions: SelectOption[];
@@ -80,6 +85,7 @@ export const LineTable = ({
   rows,
   errors,
   itemLookup,
+  itemNameSources,
   uomLookup,
   itemOptions,
   uomOptions,
@@ -97,7 +103,9 @@ export const LineTable = ({
       render: (row, rowIndex) => (
         <div className="field-cell">
           {row.origin === 'shortage' ? (
-            <span>{lookupDisplayLabel(itemLookup, row.itemId)}</span>
+            <span>
+              {lookupDisplayLabel(itemNameSources.get(row.itemId) ?? itemLookup, row.itemId)}
+            </span>
           ) : (
             <Select
               size="sm"

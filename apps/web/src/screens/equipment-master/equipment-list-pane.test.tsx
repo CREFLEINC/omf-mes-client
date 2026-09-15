@@ -199,11 +199,17 @@ describe('EquipmentListPane', () => {
     expect(onApplyFilters).toHaveBeenCalledWith({ ...applied, calibrationRequired: false });
   });
 
-  /* 값 목록이 확정되지 않았다는 사실을 감추지 않는다. */
-  it('설비유형 조건에 값 목록 준비 중 안내를 붙인다', () => {
-    renderPane();
+  /* 값 목록이 비었다는 사실은 감추지 않되, 차 있으면 거둔다 — 남으면 화면이 거짓말을 한다. */
+  it('설비유형 값 목록이 비면 준비 중 안내를 붙인다', () => {
+    renderPane({ typeOptions: [] });
 
     expect(screen.getByText(messages.pendingCode.note)).toBeInTheDocument();
+  });
+
+  it('설비유형 값 목록이 차 있으면 준비 중 안내를 거둔다', () => {
+    renderPane();
+
+    expect(screen.queryByText(messages.pendingCode.note)).not.toBeInTheDocument();
   });
 
   it('미사용 설비도 표식과 함께 보인다', () => {

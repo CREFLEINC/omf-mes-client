@@ -76,14 +76,9 @@ export const inboundReceipt = {
     supplierLoadFailed: '공급사를 확인할 수 없습니다',
     supplierNone: '고를 공급사가 없습니다',
     itemLabel: '품목',
-    itemPlaceholder: '품목을 고르세요',
-    itemSearchLabel: '품목 찾기',
-    itemSearchPlaceholder: '품목코드나 품목명을 적으세요',
-    itemSearchHint: '마스터가 커서 목록을 다 늘어놓지 않습니다. 찾아서 고르세요.',
-    itemSearchFirst: '위에서 먼저 찾으세요',
-    itemSearchEmpty: '찾은 품목이 없습니다',
-    itemSearchFailed: '품목을 찾지 못했습니다. 연결을 확인하세요.',
-    itemLoadFailed: '품목을 확인할 수 없습니다',
+    itemNone: '고른 품목이 없습니다',
+    itemPick: '품목 찾기',
+    itemChange: '품목 변경하기',
     /** 품목 마스터의 주인은 ERP 다. 이 화면이 품목을 만들 길은 계약에 없다. */
     itemUnregistered: '목록에 없는 품목은 여기서 만들 수 없습니다',
     itemUnregisteredWhy: 'ERP에 품목이 만들어진 뒤에 고를 수 있습니다.',
@@ -98,6 +93,18 @@ export const inboundReceipt = {
     noVerdict: '자재 P/O가 없어 예정 수량과 비교하지 않습니다',
     /** 공장은 단말 토큰이 싣고 온다. 없으면 지어내지 않고 막는다. */
     noPlant: '이 기기의 공장을 확인할 수 없어 등록할 수 없습니다',
+  },
+  /** 품목 마스터가 커서 한 화면에 늘어놓을 수 없다. 찾아서 고르는 자리를 따로 둔다. */
+  itemPicker: {
+    title: '품목 고르기',
+    searchLabel: '품목 검색',
+    searchPlaceholder: '품목코드나 품목명을 적으세요',
+    more: (rest: string) => `더보기 (+${rest})`,
+    loading: '품목을 찾는 중입니다',
+    empty: '찾은 품목이 없습니다',
+    failed: '품목을 찾지 못했습니다. 연결을 확인하세요.',
+    cancel: '고르지 않고 돌아가기',
+    toTop: '맨 위로',
   },
   note: {
     legend: '거래명세서',

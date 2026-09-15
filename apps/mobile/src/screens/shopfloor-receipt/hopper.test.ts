@@ -6,6 +6,7 @@ import {
   adjustmentQtyOf,
   canRecordHopper,
   hasHopper,
+  hopperKeyOf,
   hopperLocationOf,
   isMeasured,
   isReasonMissing,
@@ -83,13 +84,48 @@ describe('실측값', () => {
   });
 });
 
+describe('줄을 가르는 키', () => {
+  /*
+   * 자재를 여러 번 채우면 한 호퍼에 같은 품목이 여러 LOT 으로 남는다. 품목만으로 세면 한
+   * 칸에 적은 값이 나머지 줄로 번지고, 줄마다 장부가 달라 적지 않은 LOT 까지 조정으로 나간다.
+   */
+  it('같은 품목이라도 LOT 이 다르면 다른 줄이다', () => {
+    expect(hopperKeyOf(stock())).not.toBe(hopperKeyOf(stock({ lotId: 5 })));
+  });
+
+  /* LOT 을 두지 않는 품목은 그 위치에 한 줄뿐이라 품목만으로도 갈린다. */
+  it('LOT 이 없는 줄끼리는 품목으로 갈린다', () => {
+    expect(hopperKeyOf(stock({ lotId: null }))).not.toBe(
+      hopperKeyOf(stock({ itemId: 32, lotId: null })),
+    );
+  });
+});
+
 describe('기록 조건', () => {
+  /*
+   * 잰 줄만 간다. 품목으로 세면 같은 품목의 다른 LOT 도 함께 실려, 한 번 잰 값이 그 품목의
+   * LOT 수만큼 조정을 만든다.
+   */
+  it('같은 품목의 다른 LOT 은 적지 않았으면 싣지 않는다', () => {
+    const entry = toHopperDraft(
+      55,
+      [stock(), stock({ lotId: 5, onHandQty: 30 })],
+      { '31:4': '100' },
+      new Date(2026, 8, 10, 9, 12),
+      '100027',
+    );
+    const body = entry.body as InventoryAdjustmentCreate;
+
+    expect(body.lines).toHaveLength(1);
+    expect(body.lines[0]).toMatchObject({ itemId: 31, lotId: 4, adjustmentQty: -20 });
+  });
+
   it('설비를 고르고 한 줄이라도 재야 기록할 수 있다', () => {
-    expect(canRecordHopper(55, [stock()], { 31: '100' }, true)).toBe(true);
+    expect(canRecordHopper(55, [stock()], { '31:4': '100' }, true)).toBe(true);
   });
 
   it('호퍼가 없으면 기록할 수 없다', () => {
-    expect(canRecordHopper(null, [stock()], { 31: '100' }, true)).toBe(false);
+    expect(canRecordHopper(null, [stock()], { '31:4': '100' }, true)).toBe(false);
   });
 
   it('아무것도 재지 않았으면 기록할 수 없다', () => {
@@ -98,7 +134,7 @@ describe('기록 조건', () => {
 
   /* 누가 잰 것인지 없이 기록을 남길 수 없다. */
   it('사번이 없으면 기록할 수 없다', () => {
-    expect(canRecordHopper(55, [stock()], { 31: '100' }, false)).toBe(false);
+    expect(canRecordHopper(55, [stock()], { '31:4': '100' }, false)).toBe(false);
   });
 
   /*
@@ -108,12 +144,12 @@ describe('기록 조건', () => {
   it('잘못 적은 줄이 하나라도 있으면 막는다', () => {
     const two = [stock(), stock({ itemId: 32, onHandQty: 50 })];
 
-    expect(canRecordHopper(55, two, { 31: '100', 32: '열둘' }, true)).toBe(false);
+    expect(canRecordHopper(55, two, { '31:4': '100', '32:4': '열둘' }, true)).toBe(false);
   });
 
   /* 지어낸 값을 실으면 누른 뒤에야 실패를 안다. */
   it('서버가 사유를 모른다고 답하면 막는다', () => {
-    expect(canRecordHopper(55, [stock()], { 31: '100' }, true, true)).toBe(false);
+    expect(canRecordHopper(55, [stock()], { '31:4': '100' }, true, true)).toBe(false);
   });
 });
 
@@ -139,7 +175,7 @@ describe('조정 본문', () => {
     const entry = toHopperDraft(
       55,
       [stock(), stock({ itemId: 32, onHandQty: 50 })],
-      { 31: '100' },
+      { '31:4': '100' },
       NOW,
       '100027',
     );
@@ -164,7 +200,7 @@ describe('조정 본문', () => {
 
   it('단말 로컬 자정 직후의 전송에도 같은 발생시각과 업무일을 고정한다', () => {
     const instant = new Date(2026, 8, 12, 0, 10);
-    const entry = toHopperDraft(55, [stock()], { 31: '121' }, instant, '100027');
+    const entry = toHopperDraft(55, [stock()], { '31:4': '121' }, instant, '100027');
     const body = entry.body as InventoryAdjustmentCreate;
 
     expect(body.businessDate).toBe('2026-09-12');

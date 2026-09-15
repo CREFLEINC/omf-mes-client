@@ -112,10 +112,11 @@ export const defaultEquipmentFilters: EquipmentFilters = {
 };
 
 /**
- * 값 목록이 확정되지 않은 코드의 자리표시자.
- * 값을 지어내지 않는다 — 화면은 이 선택지와 함께 `messages.pendingCode.note` 안내를 보인다.
+ * 선택지가 왜 비어 있는지 밝히는 안내. **차면 거둔다** — 코드값을 받아 고를 수 있는데도
+ * 「준비 중」이라고 남기면 화면이 거짓말을 하고, 사용자는 등록을 못 하는 줄 안다.
  */
-export const PENDING_CODE_VALUE = 'PENDING';
+export const codeNote = (options: readonly CodeOption[]): string | undefined =>
+  options.length === 0 ? messages.pendingCode.note : undefined;
 
 /**
  * 그룹유형 — ✅ 계약이 `LINE`·`WORK_AREA` 둘로 닫았다(코드 사전 2026-09-03 · `EquipmentGroupUpdate.groupTypeCode`).

@@ -296,7 +296,6 @@ const routes = (options: Options = {}): StubRoute[] => [
       { itemId: 2101, itemCode: 'FG-1001', itemName: '완제품A', fifoPolicyCode: 'FEFO' },
       { itemId: 2102, itemCode: 'FG-1002', itemName: '완제품B', fifoPolicyCode: 'FEFO' },
     ],
-    page,
   ),
 ];
 

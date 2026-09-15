@@ -139,3 +139,64 @@
   flex-direction: column;
   gap: var(--space-3, 12px);
 }
+
+.receipt-picker {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3, 12px);
+  padding: var(--space-4, 16px);
+}
+
+.receipt-picker p {
+  margin: 0;
+}
+
+.receipt-picker__note {
+  color: var(--on-surface-muted, inherit);
+}
+
+.receipt-picker__list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2, 8px);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.receipt-picker__item {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1, 4px);
+}
+
+.receipt-picker__back {
+  width: 100%;
+}
+
+.receipt-picker__more {
+  width: 100%;
+}
+
+/* 목록이 길어 맨 끝까지 내려간 손이 처음으로 돌아올 길이 없다. 늘 같은 자리에 둔다. */
+.receipt-picker__to-top {
+  position: fixed;
+  right: calc(var(--space-4, 16px) + var(--safe-area-inset-right, 0px));
+  bottom: calc(var(--space-4, 16px) + var(--safe-area-inset-bottom, 0px));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* 장갑 낀 손이 누른다. 공유계약 D-1 의 최소 터치 크기를 넘긴다. */
+  width: 56px;
+  height: 56px;
+  padding: 0;
+  border: 1px solid var(--outline, #ccc);
+  border-radius: var(--radius-lg, 16px);
+  background: var(--surface, #fff);
+  color: var(--on-surface-muted, inherit);
+}
+
+.receipt-picker__to-top svg {
+  width: 28px;
+  height: 28px;
+}

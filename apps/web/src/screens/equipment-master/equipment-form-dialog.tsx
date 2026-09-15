@@ -3,7 +3,13 @@ import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
 import { useId } from 'react';
 
-import { DISPOSED_STATUS_CODE, type CodeOption, cycleTypeLabel, statusLabel } from './code-options';
+import {
+  DISPOSED_STATUS_CODE,
+  type CodeOption,
+  codeNote,
+  cycleTypeLabel,
+  statusLabel,
+} from './code-options';
 import { FieldLabel } from './field-label';
 import { groupAssignmentNote, hierarchyText, type EquipmentHierarchy } from './hierarchy-text';
 import { SelectField } from './select-field';
@@ -186,7 +192,7 @@ export const EquipmentFormDialog = ({
           options={typeOptions}
           value={values.equipmentTypeCode}
           onChange={(value) => onChange({ equipmentTypeCode: value })}
-          note={messages.pendingCode.note}
+          note={codeNote(typeOptions)}
           error={fieldErrors.equipmentTypeCode}
         />
 

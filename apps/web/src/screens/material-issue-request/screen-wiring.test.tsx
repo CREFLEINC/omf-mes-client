@@ -94,6 +94,21 @@ const routesFor = (
       editability: { editableFields: [], readOnlyFields: [] },
     }),
     get('/mdm/items', { items: itemFixtures, page: pageOf(itemFixtures) }),
+    {
+      match: (request) =>
+        request.method === 'GET' && /^\/mdm\/items\/\d+$/.test(new URL(request.url).pathname),
+      respond: (request) => {
+        const itemId = Number(new URL(request.url).pathname.split('/').at(-1));
+        const item = itemFixtures.find((fixture) => fixture.itemId === itemId);
+
+        return item === undefined
+          ? jsonResponse({ message: '합성 없음' }, { status: 404 })
+          : jsonResponse({
+              item: { ...item, isActive: true },
+              editability: { editableFields: [], readOnlyFields: [] },
+            });
+      },
+    },
     get('/mdm/uoms', { items: uomFixtures, page: pageOf(uomFixtures) }),
     get('/mdm/code-values', {
       items: reasonCodeValueFixtures,
@@ -618,5 +633,94 @@ describe('불러오기 재실행 배선 — 서버 값이 같아도 누름이 �
     });
 
     expect(screen.getByLabelText(t.lineTable.itemLabel(4))).toBeInTheDocument();
+  });
+});
+
+/**
+ * 집중 갈래 — **BOM 유래 줄의 품목 이름.**
+ *
+ * 소요 응답은 `itemId` 만 준다(문의 047). 품목 목록은 한 쪽(계약 기본 50건)만 받으므로 품목이
+ * 많은 환경에서는 BOM 품목이 그 쪽에 없다 — 목록으로만 풀면 소요 줄 품목이 전부 「알 수 없음」
+ * 으로 선다(PLAN-WO-01 D4 실측). 목록이 BOM 품목을 싣지 않은 채로 상세만으로 이름이 서는지 본다.
+ */
+describe('BOM 유래 줄의 품목 이름 — 품목 목록 한 쪽에 없어도 선다', () => {
+  it('품목 목록 첫 쪽에 없는 BOM 품목도 상세로 푼 이름이 서고, 없는 품목만 알 수 없음이다', async () => {
+    const user = userEvent.setup();
+    const listRequest = new Request('http://api.test/mdm/items?includeInactive=true');
+    const missingItemId = shortageFixtures[2]!.itemId;
+    const routes: StubRoute[] = [
+      {
+        match: (request) =>
+          request.method === 'GET' &&
+          new URL(request.url).pathname === `/mdm/items/${String(missingItemId)}`,
+        respond: () => jsonResponse({ message: '합성 없음' }, { status: 404 }),
+      },
+      ...routesFor({ keys: [] }).map((route) =>
+        route.match(listRequest)
+          ? {
+              ...route,
+              respond: () =>
+                jsonResponse({ items: [], page: { page: 1, size: 50, total: 5000 } }),
+            }
+          : route,
+      ),
+    ];
+
+    renderWithProviders(<MaterialIssueRequestScreen />, { fetch: createStubFetch(routes) });
+
+    await selectWorkOrder(user);
+    await loadShortage(user);
+
+    await waitFor(() => {
+      expect(screen.getByText('SAMPLE-ITEM-01 · 합성 품목 가')).toBeInTheDocument();
+    });
+    expect(screen.getByText('SAMPLE-ITEM-02 · 합성 품목 나')).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByText(messages.common.reference.unknown)).toBeInTheDocument();
+    });
+  });
+});
+
+/**
+ * 집중 갈래 — **대상을 바꿔도 도착 위치 자동 채움이 다시 선다.**
+ *
+ * 대상이 바뀌면 화면이 창고·도착 위치를 비운다. 기본 재공 위치가 같은 W/O 로 옮기면 위치·창고
+ * 값이 그대로라 자동 채움이 다시 돌지 않아 칸이 빈 채로 남았다(PLAN-WO-01 W13 실측 — 두 W/O
+ * 모두 같은 WIP). 흔한 형상이다: 한 라인의 W/O 들은 같은 WIP 위치를 쓴다.
+ */
+describe('도착 위치 자동 채움 — 기본 재공 위치가 같은 W/O 로 옮겨도 다시 채운다', () => {
+  it('두 W/O 가 같은 기본 재공 위치를 쓰면 옮긴 뒤에도 그 위치가 선다', async () => {
+    const user = userEvent.setup();
+    const sameWipWorkOrder = {
+      ...SECOND_WORK_ORDER,
+      defaultWipLocationId: WORK_ORDER.defaultWipLocationId,
+    };
+    const workOrderList = new Request('http://api.test/production/work-orders');
+    const routes = routesFor({ keys: [] }).map((route) =>
+      route.match(workOrderList)
+        ? {
+            ...route,
+            respond: () =>
+              jsonResponse({
+                items: [WORK_ORDER, sameWipWorkOrder],
+                page: pageOf([WORK_ORDER, sameWipWorkOrder]),
+              }),
+          }
+        : route,
+    );
+
+    renderWithProviders(<MaterialIssueRequestScreen />, { fetch: createStubFetch(routes) });
+
+    await selectWorkOrder(user);
+
+    await user.click(screen.getByLabelText(t.formFields.workOrder));
+    await user.click(await screen.findByRole('option', { name: SECOND_WORK_ORDER_LABEL }));
+    await settle();
+
+    /* 비움이 먼저 돌았는지와 무관하게, 옮긴 뒤 머무는 상태를 본다 — 기다려서 통과시키지 않는다. */
+    expect(screen.getByLabelText(t.formFields.destinationLocation)).toHaveTextContent(
+      'SAMPLE-LOC-01',
+    );
+    expect(screen.queryByText(t.actionReasons.noDestination)).not.toBeInTheDocument();
   });
 });

@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
 
-import { PENDING_CODE_VALUE } from './code-options';
 import { makeEquipment, makeGroup } from './fixtures';
 import {
   carriedFrom,
@@ -245,7 +244,11 @@ describe('설비 매퍼', () => {
   /* 좌측에서 고른 그룹 아래에 등록하는 것이 정상 경로다 — 사용자가 다시 고르게 하지 않는다. */
   it('신규 폼은 고른 그룹을 소속으로 넣어 둔다', () => {
     expect(emptyEquipmentFormValues('101').productionLineId).toBe('101');
-    expect(emptyEquipmentFormValues('101').equipmentTypeCode).toBe(PENDING_CODE_VALUE);
+  });
+
+  /* 고르지 않은 유형이 서버로 나가면 안 된다 — 비워 두어야 필수 검증이 막는다. */
+  it('신규 폼의 설비유형은 비어 있다', () => {
+    expect(emptyEquipmentFormValues('101').equipmentTypeCode).toBe('');
   });
 
   it('신규 설비에는 계측기 마스터가 정한 값이 아직 없다', () => {

@@ -1,6 +1,5 @@
 import type { components } from '@omf-mes/api-client';
 
-import { PENDING_CODE_VALUE } from './code-options';
 import { isMeasurement } from './inspection-item-validation';
 import type {
   CarriedEquipmentValues,
@@ -118,11 +117,16 @@ export const carriedFrom = (equipment: Equipment): CarriedEquipmentValues => ({
   precisionUomId: equipment.precisionUomId ?? null,
 });
 
-/** 신규 설비 폼의 초기값. 소속 그룹은 좌측에서 고른 그룹이라 화면이 넣어 준다. */
+/**
+ * 신규 설비 폼의 초기값. 소속 그룹은 좌측에서 고른 그룹이라 화면이 넣어 준다.
+ *
+ * ⛔ 설비유형은 비워 둔다 — 선택지에 없는 값을 넣어 두면 칸이 빈 것처럼 보이면서 필수 검증은
+ * 통과해, 사용자가 고르지 않은 값이 서버로 나가 거절된다.
+ */
 export const emptyEquipmentFormValues = (productionLineId: string): EquipmentFormValues => ({
   equipmentCode: '',
   equipmentName: '',
-  equipmentTypeCode: PENDING_CODE_VALUE,
+  equipmentTypeCode: '',
   productionLineId,
   processId: '',
   calibrationRequired: false,

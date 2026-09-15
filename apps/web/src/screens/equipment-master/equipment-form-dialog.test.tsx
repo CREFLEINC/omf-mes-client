@@ -4,7 +4,6 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
-import { PENDING_CODE_VALUE } from './code-options';
 import { EquipmentFormDialog, type EquipmentFormDialogProps } from './equipment-form-dialog';
 import type { EquipmentHierarchy } from './hierarchy-text';
 import type { EquipmentFormValues } from './types';
@@ -14,7 +13,7 @@ const t = messages.equipmentMaster;
 const values: EquipmentFormValues = {
   equipmentCode: 'EQ-01',
   equipmentName: '프레스 1호기',
-  equipmentTypeCode: PENDING_CODE_VALUE,
+  equipmentTypeCode: 'PRESS',
   productionLineId: '101',
   processId: '',
   calibrationRequired: false,
@@ -76,6 +75,24 @@ describe('EquipmentFormDialog', () => {
     expect(screen.getByRole('textbox', { name: /설비명/ })).toHaveAttribute('aria-required');
     expect(screen.getByRole('combobox', { name: t.fields.equipmentType })).toHaveAttribute(
       'aria-required',
+    );
+  });
+
+  /* 코드값을 받았으면 고를 수 있다 — 「준비 중」이 남으면 등록을 못 하는 줄 안다. */
+  it('설비유형 선택지가 차 있으면 준비 중 안내를 거둔다', () => {
+    renderDialog();
+
+    expect(screen.getByRole('combobox', { name: t.fields.equipmentType })).toHaveTextContent(
+      '프레스',
+    );
+    expect(screen.queryByText(messages.pendingCode.note)).not.toBeInTheDocument();
+  });
+
+  it('설비유형 선택지가 비면 준비 중 안내를 붙인다', () => {
+    renderDialog({ typeOptions: [] });
+
+    expect(screen.getByRole('combobox', { name: t.fields.equipmentType })).toHaveAccessibleDescription(
+      messages.pendingCode.note,
     );
   });
 

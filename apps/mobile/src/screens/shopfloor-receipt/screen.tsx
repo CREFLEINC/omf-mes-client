@@ -1,5 +1,6 @@
 import { AlertBanner, Button, Card, NumberPad, Select, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
+import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router';
 
@@ -18,6 +19,7 @@ import { useWorkerSession } from '../../patterns/worker-session';
 import { FailureBanner } from '../../patterns/failure-banner';
 import { useLoadFailure, useQueryErrorOf } from '../../patterns/load-failure';
 import {
+  hopperStockKey,
   useAlreadyReceived,
   useHopperStock,
   useLineLotLabels,
@@ -27,6 +29,7 @@ import {
   INVENTORY_ADJUSTMENT_REASON,
   canRecordHopper,
   hasHopper,
+  hopperKeyOf,
   isReasonMissing,
   hopperLocationOf,
   adjustmentQtyOf,
@@ -64,6 +67,7 @@ export const ShopfloorReceiptScreen = () => {
 
   const { enqueue, flush, isRejected, loaded, pendingOf } = useOutbox();
   const { worker } = useWorkerSession();
+  const queryClient = useQueryClient();
 
   const [scanned, setScanned] = useState<string | null>(null);
   const [lines, setLines] = useState<DraftLine[]>([]);
@@ -109,7 +113,11 @@ export const ShopfloorReceiptScreen = () => {
       received === 'received' || received === 'checking',
       queuedReceipts,
       hasReasonOptions,
-    ) && issue !== null;
+    ) &&
+    issue !== null &&
+    /* 작업지시와 도착 위치를 못 찾은 전표는 수령 전표를 만들 수 없다. 단추를 열지 않는다. */
+    issue.workOrderId !== null &&
+    issue.destinationLocationId !== null;
 
   /* 전표를 열면 그 라인으로 적을 자리를 만든다. 조회가 끝난 뒤라 렌더 중에 하지 않는다. */
   useEffect(() => {
@@ -135,13 +143,18 @@ export const ShopfloorReceiptScreen = () => {
    * 되돌려야 하는데, 둘은 서로를 필요로 하지 않는다.
    */
   const [equipmentId, setEquipmentId] = useState<number | null>(null);
-  const [measured, setMeasured] = useState<Record<number, string>>({});
+  const [measured, setMeasured] = useState<Record<string, string>>({});
   const [hopperOutcome, setHopperOutcome] = useState<Outcome | null>(null);
   const [hopperSaveFailed, setHopperSaveFailed] = useState(false);
   const hopperInFlight = useRef(false);
 
   const equipments = useEquipments();
-  const equipment = equipments.data?.find((each) => each.equipmentId === equipmentId) ?? null;
+  /*
+   * 호퍼가 지정되지 않은 설비는 고를 것에서 뺀다. 목록에 세워 두면 골라 본 뒤에야 잴 자리가
+   * 없다는 것을 알게 되고, 작업자는 자기가 잘못 골랐는지 설비가 잘못 등록됐는지 가리지 못한다.
+   */
+  const hopperEquipments = (equipments.data ?? []).filter(hasHopper);
+  const equipment = hopperEquipments.find((each) => each.equipmentId === equipmentId) ?? null;
   const hopperLocationId = hopperLocationOf(equipment);
   const hopper = useLocation(hopperLocationId);
   const hopperStock = useHopperStock(hopperLocationId);
@@ -182,15 +195,27 @@ export const ShopfloorReceiptScreen = () => {
       const mine = (each: { idempotencyKey: string }) =>
         each.idempotencyKey === entry.idempotencyKey;
 
-      setHopperOutcome(
+      const hopperResult: Outcome =
         (result !== null && result.rejected.some((each) => mine(each.entry))) ||
-          isRejected(entry.idempotencyKey)
+        isRejected(entry.idempotencyKey)
           ? 'rejected'
           : result === null || result.remaining.some(mine)
             ? 'held'
-            : 'sent',
-      );
+            : 'sent';
+
+      setHopperOutcome(hopperResult);
+      /* 다시 받기를 기다리는 사이에 칸이 차 있으면 단추가 열린 채로 눌러도 아무 일이 없다. */
       setMeasured({});
+
+      /*
+       * 서버에 닿았으면 장부가 그만큼 움직였다. 앞 값을 들고 있으면 곧바로 다시 잰 사람이
+       * 이미 반영된 차이를 또 보낸다 - 100 을 99 로 고친 뒤 다시 99 를 적으면 98 이 된다.
+       *
+       * 대기로 남은 것은 아직 서버에 가지 않아 장부가 그대로다.
+       */
+      if (hopperResult === 'sent') {
+        await queryClient.invalidateQueries({ queryKey: hopperStockKey(hopperLocationId) });
+      }
     } finally {
       hopperInFlight.current = false;
     }
@@ -203,10 +228,10 @@ export const ShopfloorReceiptScreen = () => {
   /* 라인이 여럿이라 어느 칸에 들어가는지 보이지 않으면 엉뚱한 줄에 수량이 적힌다(공유계약 D-4). */
   const [keypadFor, setKeypadFor] = useState<number | null>(null);
   /*
-   * 호퍼는 품목 번호로 세고 수령은 라인 번호로 센다. 한 자리에 담으면 두 번호가 겹칠 때
+   * 호퍼는 품목과 LOT 으로 세고 수령은 라인 번호로 센다. 한 자리에 담으면 두 값이 겹칠 때
    * 엉뚱한 구획의 칸에 숫자판이 열린다.
    */
-  const [hopperKeypadFor, setHopperKeypadFor] = useState<number | null>(null);
+  const [hopperKeypadFor, setHopperKeypadFor] = useState<string | null>(null);
 
   const scanField = useScanField({
     applied: scanned,
@@ -250,12 +275,12 @@ export const ShopfloorReceiptScreen = () => {
     setHopperKeypadFor(null);
   });
 
-  const nameOf = (line: DraftLine): string => {
-    const item = itemLabels.get(line.itemId);
-    const lotNo = lotLabels.get(line.lotId) ?? String(line.lotId);
+  /* 라벨에는 품목 코드와 LOT 번호가 찍혀 있다. 대리키를 보이면 실물과 대조할 수 없다. */
+  const itemCodeOf = (line: DraftLine): string => itemLabels.get(line.itemId)?.itemCode ?? '';
+  const lotNoOf = (line: DraftLine): string => lotLabels.get(line.lotId) ?? String(line.lotId);
 
-    return t.lines.name(item === undefined ? '' : item.itemCode, lotNo);
-  };
+  /** 읽어 주는 이름. 줄이 여럿이라 이름만으로 어느 줄인지 갈려야 한다. */
+  const nameOf = (line: DraftLine): string => t.lines.name(itemCodeOf(line), lotNoOf(line));
 
   const restart = () => {
     setScanned(null);
@@ -269,6 +294,11 @@ export const ShopfloorReceiptScreen = () => {
 
   const submit = async () => {
     if (issue === null || worker === null || inFlight.current) {
+      return;
+    }
+
+    /* 두 값이 없으면 수령 전표를 만들 수 없다. 지어내면 다른 작업지시에 재고가 붙는다. */
+    if (issue.workOrderId === null || issue.destinationLocationId === null) {
       return;
     }
 
@@ -373,6 +403,12 @@ export const ShopfloorReceiptScreen = () => {
         {scanned !== null && found.data === null ? (
           <AlertBanner variant="error" title={t.issue.notFound(scanned)} />
         ) : null}
+        {/* 무엇이 없어서 받을 수 없는지 그 자리에서 말한다. 단말 설정과는 무관한 일이다. */}
+        {issue !== null && issue.workOrderId === null ? (
+          <AlertBanner variant="error" title={t.issue.notForShopfloor}>
+            {t.issue.notForShopfloorWhy}
+          </AlertBanner>
+        ) : null}
 
         {issue === null ? null : (
           <Card bordered>
@@ -431,8 +467,30 @@ export const ShopfloorReceiptScreen = () => {
 
               return (
                 <div key={line.goodsIssueLineId} className="shopfloor-receipt__line">
+                  {/* 무엇을 받는 줄인지 먼저 세운다. 호퍼 잔량 줄과 같은 차례로 읽힌다. */}
+                  <div className="shopfloor-receipt__stock-head">
+                    <p className="shopfloor-receipt__stock-item">
+                      <span className="shopfloor-receipt__stock-name">{t.itemLabel}</span>{' '}
+                      <strong>{itemCodeOf(line)}</strong>
+                    </p>
+                    <p className="shopfloor-receipt__stock-lot">
+                      <span className="shopfloor-receipt__stock-name">{t.lotLabel}</span>{' '}
+                      {lotNoOf(line)}
+                    </p>
+                  </div>
+                  {/* 견줄 값을 적는 칸보다 먼저 세운다. 모자란 것은 그 옆에 붙어 함께 읽힌다. */}
+                  <div className="shopfloor-receipt__stock-figures">
+                    <span className="shopfloor-receipt__issued">{t.lines.issued(unit)}</span>
+                    {/* 모자란 사실은 고를 사유가 있든 없든 보인다. 숨기면 그냥 덜 받은 것이 된다. */}
+                    {isShort(line) ? (
+                      <span className="shopfloor-receipt__short">
+                        {t.lines.short(String(short))}
+                      </span>
+                    ) : null}
+                  </div>
                   <TextField
-                    label={t.lines.receivedLabel(nameOf(line))}
+                    label={t.lines.received}
+                    aria-label={t.lines.receivedLabel(nameOf(line))}
                     size="xl"
                     fullWidth
                     /*
@@ -472,22 +530,22 @@ export const ShopfloorReceiptScreen = () => {
                           ),
                         );
                       }}
-                      max={line.issuedQty}
+                      /*
+                       * 상한을 두지 않는다. 숫자판은 상한을 넘기는 키를 조용히 무시하는데,
+                       * 그러면 눌러도 아무 일이 없어 사람은 기기가 멎은 줄 안다. 넘겨 적게
+                       * 두고 무엇이 잘못됐는지와 어디로 가야 하는지를 말한다.
+                       */
                       allowDecimal
                     />
                   )}
-                  <p className="shopfloor-receipt__issued">{t.lines.issued(unit)}</p>
-                  {/* 모자란 사실은 고를 사유가 있든 없든 보인다. 숨기면 그냥 덜 받은 것이 된다. */}
-                  {isShort(line) ? (
-                    <p className="shopfloor-receipt__short">{t.lines.short(String(short))}</p>
-                  ) : null}
                   {isShort(line) && hasReasonOptions ? (
                     <>
                       <label htmlFor={`reason-${String(line.goodsIssueLineId)}`}>
-                        {t.lines.reasonLabel(nameOf(line))}
+                        {t.lines.reason}
                       </label>
                       <Select
                         id={`reason-${String(line.goodsIssueLineId)}`}
+                        aria-label={t.lines.reasonLabel(nameOf(line))}
                         placeholder={t.lines.reasonPlaceholder}
                         size="xl"
                         value={line.reasonCode === '' ? null : line.reasonCode}
@@ -521,6 +579,15 @@ export const ShopfloorReceiptScreen = () => {
             {lines.some((line) => needsReason(line, hasReasonOptions)) ? (
               <p className="shopfloor-receipt__note">{t.lines.reasonRequired}</p>
             ) : null}
+            {/*
+              막힌 사실만 말하면 물건을 손에 든 사람이 어디로 가야 하는지 모른 채 선다. 이
+              화면에는 초과분을 담을 자리가 없어 출고 쪽을 고쳐야 풀린다(설계 §8 미결 1).
+            */}
+            {lines.some((line) => qtyProblemOf(line) === 'overIssued') ? (
+              <AlertBanner variant="warning" title={t.lines.overIssuedTitle}>
+                {t.lines.overIssuedGuide}
+              </AlertBanner>
+            ) : null}
           </section>
 
           {/*
@@ -548,7 +615,7 @@ export const ShopfloorReceiptScreen = () => {
                     setEquipmentId(Number(value));
                     setMeasured({});
                   }}
-                  options={equipments.data.map((each) => ({
+                  options={hopperEquipments.map((each) => ({
                     value: String(each.equipmentId),
                     label: `${each.equipmentCode} ${each.equipmentName}`,
                   }))}
@@ -556,9 +623,9 @@ export const ShopfloorReceiptScreen = () => {
               </div>
             )}
 
-            {/* 매핑이 없으면 잴 자리가 없다. 지어낸 자리에 적으면 어느 호퍼인지가 사라진다. */}
-            {equipment !== null && !hasHopper(equipment) ? (
-              <AlertBanner variant="warning" title={t.hopper.noHopper} />
+            {/* 고를 것이 하나도 없으면 빈 목록만 남아, 고르는 법을 모르는 것과 구별되지 않는다. */}
+            {equipments.isSuccess && hopperEquipments.length === 0 ? (
+              <AlertBanner variant="warning" title={t.hopper.noHopperEquipment} />
             ) : null}
             {hopper.data === undefined ? null : <p>{t.hopper.at(hopper.data.locationCode)}</p>}
 
@@ -576,48 +643,78 @@ export const ShopfloorReceiptScreen = () => {
             ) : null}
 
             {stocks.map((stock) => {
-              const value = measured[stock.itemId] ?? '';
+              const key = hopperKeyOf(stock);
+              const value = measured[key] ?? '';
               const problem = measureProblemOf(value);
               const item = itemLabels.get(stock.itemId);
-              const name = item === undefined ? String(stock.itemId) : item.itemCode;
+              const code = item === undefined ? String(stock.itemId) : item.itemCode;
+              /* 같은 품목이 여러 LOT 으로 남으면 품목 코드만으로는 어느 줄인지 알 수 없다. */
+              const name = t.hopper.name(code, stock.lotNo ?? '');
 
               return (
-                <div key={stock.itemId} className="shopfloor-receipt__line">
+                <div key={key} className="shopfloor-receipt__line">
+                  {/*
+                    무엇을 재는 줄인지 먼저 세운다. 칸 이름 하나에 품목과 34자리 LOT 을 함께
+                    담으면 두 줄로 접히면서 「실측 잔량」이 갈라져, 줄을 훑는 눈이 품목도 칸
+                    이름도 잡지 못한다. 읽어 주는 이름은 그대로 전부를 싣는다.
+                  */}
+                  <div className="shopfloor-receipt__stock-head">
+                    <p className="shopfloor-receipt__stock-item">
+                      <span className="shopfloor-receipt__stock-name">{t.itemLabel}</span>{' '}
+                      <strong>{code}</strong>
+                    </p>
+                    {stock.lotNo === null ||
+                    stock.lotNo === undefined ||
+                    stock.lotNo === '' ? null : (
+                      <p className="shopfloor-receipt__stock-lot">
+                        <span className="shopfloor-receipt__stock-name">{t.lotLabel}</span>{' '}
+                        {stock.lotNo}
+                      </p>
+                    )}
+                  </div>
+                  {/*
+                    견줄 값을 적는 칸보다 먼저 세운다. 아래에 두면 얼마가 적혀 있는지 모른 채
+                    적고 나서야 눈에 들어온다. 차이는 그 옆에 붙어 무엇에서 얼마가 벌어졌는지
+                    한 눈에 읽힌다.
+                  */}
+                  <div className="shopfloor-receipt__stock-figures">
+                    <span className="shopfloor-receipt__issued">
+                      {t.hopper.onHand(String(stock.onHandQty))}
+                    </span>
+                    {/* 부호를 사람이 적게 하면 뒤집어 적는 순간 재고가 반대로 움직인다. */}
+                    {isMeasured(stock, value) ? (
+                      <span className="shopfloor-receipt__short">
+                        {t.hopper.difference(String(adjustmentQtyOf(stock, value)))}
+                      </span>
+                    ) : null}
+                  </div>
                   <TextField
-                    label={t.hopper.measuredLabel(name)}
+                    label={t.hopper.measured}
+                    aria-label={t.hopper.measuredLabel(name)}
                     size="xl"
                     fullWidth
                     inputMode="none"
                     value={value}
                     onChange={(event) => {
                       const next = event.target.value;
-                      setMeasured((current) => ({ ...current, [stock.itemId]: next }));
+                      setMeasured((current) => ({ ...current, [key]: next }));
                     }}
                     onFocus={() => {
-                      setHopperKeypadFor(stock.itemId);
+                      setHopperKeypadFor(key);
                       setKeypadFor(null);
                     }}
                     error={problem === null ? undefined : t.hopper.problem[problem]}
                   />
                   {/* 줄마다 항상 그리면 어느 칸에 들어가는지 보이지 않는다(공유계약 D-4). */}
-                  {hopperKeypadFor !== stock.itemId ? null : (
+                  {hopperKeypadFor !== key ? null : (
                     <NumberPad
                       value={value}
                       onChange={(next) => {
-                        setMeasured((current) => ({ ...current, [stock.itemId]: next }));
+                        setMeasured((current) => ({ ...current, [key]: next }));
                       }}
                       allowDecimal
                     />
                   )}
-                  <p className="shopfloor-receipt__issued">
-                    {t.hopper.onHand(String(stock.onHandQty))}
-                  </p>
-                  {/* 부호를 사람이 적게 하면 뒤집어 적는 순간 재고가 반대로 움직인다. */}
-                  {isMeasured(stock, value) ? (
-                    <p className="shopfloor-receipt__short">
-                      {t.hopper.difference(String(adjustmentQtyOf(stock, value)))}
-                    </p>
-                  ) : null}
                 </div>
               );
             })}

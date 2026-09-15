@@ -6,6 +6,7 @@ import {
   type SelectOption,
   type SelectProps,
 } from '@crefle/web-ui';
+import { messages } from '@omf-mes/i18n';
 import { forwardRef, useMemo, useState } from 'react';
 
 /**
@@ -40,7 +41,7 @@ const accessibleName = ({
     .filter(Boolean)
     .join(' ');
 
-  return labelled || placeholder || '항목';
+  return labelled || placeholder || messages.popChrome.selectDialog.fallbackName;
 };
 
 export interface PopSelectProps extends SelectProps {
@@ -71,7 +72,7 @@ export const PopSelect = forwardRef<HTMLButtonElement, PopSelectProps>(function 
     id,
     className,
     leadingIcon,
-    actionLabel = '선택',
+    actionLabel = messages.popChrome.select,
     size: _legacySize,
     'aria-label': ariaLabel,
     'aria-labelledby': ariaLabelledBy,
@@ -85,7 +86,9 @@ export const PopSelect = forwardRef<HTMLButtonElement, PopSelectProps>(function 
   const [isOpen, setIsOpen] = useState(false);
   const [query, setQuery] = useState('');
   const [page, setPage] = useState(0);
-  const [title, setTitle] = useState('항목 선택');
+  const [title, setTitle] = useState(
+    messages.popChrome.selectDialog.title(messages.popChrome.selectDialog.fallbackName),
+  );
   const flatOptions = useMemo(() => flattenOptions(options), [options]);
   const selectedValue = value === undefined ? uncontrolledValue : value;
   const selected = flatOptions.find((option) => option.value === selectedValue) ?? null;
@@ -150,11 +153,13 @@ export const PopSelect = forwardRef<HTMLButtonElement, PopSelectProps>(function 
           if (event.defaultPrevented) return;
 
           setTitle(
-            `${accessibleName({
-              ariaLabel,
-              labelledBy: ariaLabelledBy,
-              placeholder,
-            })} 선택`,
+            messages.popChrome.selectDialog.title(
+              accessibleName({
+                ariaLabel,
+                labelledBy: ariaLabelledBy,
+                placeholder,
+              }),
+            ),
           );
           setIsOpen(true);
         }}
@@ -195,8 +200,8 @@ export const PopSelect = forwardRef<HTMLButtonElement, PopSelectProps>(function 
                 type="search"
                 size="md"
                 fullWidth
-                aria-label="목록 검색"
-                placeholder="목록에서 검색"
+                aria-label={messages.popChrome.selectDialog.searchLabel}
+                placeholder={messages.popChrome.selectDialog.searchPlaceholder}
                 value={query}
                 onChange={(event) => {
                   setQuery(event.target.value);
@@ -213,14 +218,14 @@ export const PopSelect = forwardRef<HTMLButtonElement, PopSelectProps>(function 
                   setPage(0);
                 }}
               >
-                검색어 지우기
+                {messages.popChrome.selectDialog.clearSearch}
               </Button>
             </div>
           )}
 
           <div className="pop-select-dialog__list" role="listbox" aria-label={title}>
             {visibleOptions.length === 0 ? (
-              <p className="pop-select-dialog__empty">표시할 항목이 없습니다.</p>
+              <p className="pop-select-dialog__empty">{messages.popChrome.selectDialog.empty}</p>
             ) : (
               visibleOptions.map((option) => (
                 <Button
@@ -255,10 +260,10 @@ export const PopSelect = forwardRef<HTMLButtonElement, PopSelectProps>(function 
                   setPage((previous) => Math.max(0, previous - 1));
                 }}
               >
-                페이지 위
+                {messages.popPageNav.pageUp}
               </Button>
               <output aria-live="polite">
-                {currentPage + 1} / {totalPages} · 전체 {filtered.length}건
+                {messages.popChrome.selectDialog.position(currentPage + 1, totalPages, filtered.length)}
               </output>
               <Button
                 type="button"
@@ -269,7 +274,7 @@ export const PopSelect = forwardRef<HTMLButtonElement, PopSelectProps>(function 
                   setPage((previous) => Math.min(totalPages - 1, previous + 1));
                 }}
               >
-                페이지 아래
+                {messages.popPageNav.pageDown}
               </Button>
             </div>
           )}
