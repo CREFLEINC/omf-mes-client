@@ -84,6 +84,7 @@ const LOT_NO = '0001234500000012002607310001230007';
  * 여러 줄 서므로 자릿수를 세어 가며 줄을 찾게 된다.
  */
 const QTY_LABEL = new RegExp(`ABC-123 · ${formatMaterialLotNo(LOT_NO)} 실물 수량`);
+const QTY_REASON = new RegExp(`ABC-123 · ${formatMaterialLotNo(LOT_NO)} 차이 사유`);
 
 const line = (overrides: Record<string, unknown> = {}) => ({
   inventoryCountLineId: 5101,
@@ -506,6 +507,52 @@ describe('실물 카운트 화면', () => {
         '1',
       );
     });
+  });
+
+  /*
+   * 숫자판이 화면 아래를 덮는다. 옮긴 줄이 그 아래 가려져 있으면 어느 줄에 적는지 머리글로만
+   * 알게 되고, 전산 잔량과 앞서 센 값을 못 본 채 적는다.
+   */
+  it('앞뒤 라인으로 옮기면 그 라인이 보이게 스크롤한다', async () => {
+    const user = userEvent.setup();
+    const seen: Element[] = [];
+    const original = Element.prototype.scrollIntoView;
+    Element.prototype.scrollIntoView = function scrollIntoView(this: Element) {
+      seen.push(this);
+    };
+
+    try {
+      mount();
+      await openLocation(user);
+
+      const fields = await screen.findAllByLabelText(/실물 수량 입력/);
+      await user.click(fields[0] as HTMLInputElement);
+      seen.length = 0;
+
+      await user.click(screen.getByRole('button', { name: '다음 라인' }));
+
+      await waitFor(() => {
+        expect(seen).not.toHaveLength(0);
+      });
+      /* 옮겨 간 라인이어야 한다 - 아무 데나 스크롤하면 적을 자리를 못 찾는다. */
+      expect(seen[seen.length - 1]?.textContent).toContain('RM-1001');
+    } finally {
+      Element.prototype.scrollIntoView = original;
+    }
+  });
+
+  /*
+   * 앞서 센 값은 칸에 담겨 보이는데 사유만 감추면 반쪽이다. 어떤 사유로 저장됐는지 모른 채
+   * 그 줄을 다시 보내게 된다.
+   */
+  it('앞서 고른 사유를 그대로 보인다', async () => {
+    const user = userEvent.setup();
+    mount({ firstCounted: true, firstReason: 'COUNT_ERROR' });
+    await openLocation(user);
+
+    const combo = await screen.findByRole('combobox', { name: QTY_REASON });
+
+    expect(combo.textContent).toContain('계수 오류');
   });
 
   /*

@@ -253,6 +253,30 @@ export const PhysicalCountScreen = () => {
   const keypad = keypadAt === -1 ? null : { at: keypadAt, line: lines[keypadAt] as DraftLine };
 
   /*
+   * 숫자판이 화면 아래를 덮는다. 옮긴 줄이 그 아래 가려져 있으면 어느 줄에 적는지 머리글로만
+   * 알게 되고, 전산 잔량과 앞서 센 값을 못 본 채 적는다.
+   */
+  useEffect(() => {
+    if (keypadFor === null) {
+      return;
+    }
+
+    const node = document.querySelector(`[data-line="${keypadFor}"]`);
+
+    /* 이 기능이 없는 환경에서 던지면 화면이 통째로 멈춘다. 스크롤은 있으면 좋은 것이다. */
+    if (node === null || typeof node.scrollIntoView !== 'function') {
+      return;
+    }
+
+    /* 움직임을 줄여 달라는 설정을 존중한다. 그 물음을 못 받는 환경도 있다. */
+    const reduced =
+      typeof window.matchMedia === 'function' &&
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    node.scrollIntoView({ block: 'center', behavior: reduced ? 'auto' : 'smooth' });
+  }, [keypadFor]);
+
+  /*
    * 입력칸 위에 함께 서는 값들. 서로를 밀어내지 않는다.
    *
    * 앞서 센 값은 칸에 담겨 있어도 따로 세운다 - 칸의 값을 고치고 나면 무엇을 덮어쓰는
@@ -551,7 +575,7 @@ export const PhysicalCountScreen = () => {
               const problem = qtyProblemOf(line);
 
               return (
-                <div key={line.key} className="physical-count__line">
+                <div key={line.key} data-line={line.key} className="physical-count__line">
                   {/*
                     적어야 할 값을 입력칸 위에 둔다. 아래에 두면 칸을 지나쳐 내려다봐야 하고,
                     숫자판이 올라오면 그 자리가 덮여 전산 잔량을 못 본 채 적게 된다.
@@ -600,7 +624,11 @@ export const PhysicalCountScreen = () => {
                    * 안 먹은 것처럼 읽히므로, 칸이 빈 동안에만 말한다.
                    */}
 
-                  {count !== null && needsReason(count, line) ? (
+                  {/*
+                    앞서 센 값은 칸에 담겨 보이는데 사유만 감추면 반쪽이다 - 어떤 사유로
+                    저장됐는지 모른 채 그 줄을 다시 보내게 된다.
+                  */}
+                  {count !== null && (needsReason(count, line) || line.reasonCode !== '') ? (
                     <>
                       <label htmlFor={`physical-count-reason-${line.key}`}>{t.lines.reason}</label>
                       <Select
