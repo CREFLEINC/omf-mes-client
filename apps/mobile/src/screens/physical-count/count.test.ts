@@ -153,6 +153,23 @@ describe('실사 차이 사유', () => {
     ).toBe(true);
   });
 
+  /*
+   * 수량을 전산과 같게 고치면 화면이 사유를 지운다. 되돌려 차이가 다시 생기면 고를 자리를
+   * 다시 줘야 한다 - 안 주면 사유 없이 나가고 서버가 전송을 통째로 되돌려 보낸다.
+   */
+  it('사유가 지워진 줄은 차이가 다시 생기면 사유를 묻는다', () => {
+    const kept = line({
+      counted: true,
+      previousQty: 118,
+      previousReasonCode: 'COUNT_ERROR',
+      qty: '118',
+      reasonCode: 'COUNT_ERROR',
+    });
+
+    expect(needsReason(count(), kept)).toBe(false);
+    expect(needsReason(count(), { ...kept, reasonCode: '' })).toBe(true);
+  });
+
   it('블라인드 미보완 라인 무변경 동봉은 원래 계수 시각과 빈 사유를 보존한다', () => {
     const previous = '2026-09-07T00:00:00.000Z';
     const blind = { ...count(), blindCount: true };

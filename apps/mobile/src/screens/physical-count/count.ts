@@ -108,7 +108,14 @@ export const needsReason = (
   if (count.blindCount) return line.counted && line.previousQty !== qty;
   if (line.systemQty === null) return true;
   if (qty === line.systemQty) return false;
-  return !line.counted || line.previousQty !== qty || line.previousReasonCode === null;
+
+  /*
+   * 손대지 않은 줄에 사유가 이미 붙어 있으면 다시 묻지 않는다. 다만 판정은 서버에 무엇이
+   * 있었나가 아니라 지금 보낼 것이 있나로 한다 - 수량을 전산과 같게 고치면 화면이 사유를
+   * 지우는데, 되돌려 차이가 다시 생겨도 서버에 있었다는 사실만 보면 고를 자리를 주지 않는다.
+   * 그러면 사유 없이 나가 서버가 되돌려 보낸다.
+   */
+  return !line.counted || line.previousQty !== qty || line.reasonCode === '';
 };
 
 export const canSubmit = (
