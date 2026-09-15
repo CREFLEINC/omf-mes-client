@@ -49,20 +49,46 @@ describe('buildMaterialLotLabel', () => {
     }
   });
 
-  it('QR 이 오른쪽 여백 안에 끝나고 글줄은 QR 과 겹치지 않는다', () => {
+  /**
+   * ⛔ 3 mm 여백으로 짜면 QR 윗변·오른쪽 끝이 라벨지 가장자리에 붙어, 프린터가 조금만 밀려도
+   *    잘렸다(실기 HT800 2026-09-15). 시작점만 보던 검사가 이것을 못 잡았다 — «끝점»을 본다.
+   *
+   * 가로는 프린터가 오른쪽으로 약 2.5 mm 치우쳐 찍어 왼쪽 12점(1.5 mm)·오른쪽 52점(6.5 mm)으로
+   * 당겨 짠다(실기 2026-09-15). 세로도 2 mm 올려 위 16점(2 mm)·아래 48점(6 mm)으로 짠다(사용자 지시).
+   */
+  it('⛔ 글줄과 QR 이 안전 여백 안에서 끝나고 서로 겹치지 않는다 — 가로는 왼쪽으로 당긴다', () => {
+    const TOP = 16;
+    const BOTTOM = 48;
+    const LEFT = 12;
+    const RIGHT = 52;
     const lines = buildMaterialLotLabel(FIELDS).split('\r\n');
     const qr = lines.find((line) => line.startsWith('QRCODE ')) ?? '';
     const [qrX, qrY] = origin(qr);
+    const firstLine = lines.find((line) => line.startsWith('TEXT ')) ?? '';
+
+    expect(origin(firstLine)[1]).toBe(TOP);
     const cell = Number(/^QRCODE \d+,\d+,M,(\d+),/u.exec(qr)?.[1]);
     /* LOT 37자 → 버전 3(29칸). */
     const side = 29 * cell;
 
-    expect(qrX + side).toBeLessThanOrEqual(WIDTH);
-    expect(qrY + side).toBeLessThanOrEqual(HEIGHT);
+    expect(qrX + side).toBeLessThanOrEqual(WIDTH - RIGHT);
+    expect(qrY).toBeGreaterThanOrEqual(TOP);
+    expect(qrY + side).toBeLessThanOrEqual(HEIGHT - BOTTOM);
 
-    const lotLine = lines.find((line) => line.includes('"LOT ')) ?? '';
+    for (const line of lines.filter((entry) => entry.startsWith('TEXT '))) {
+      const [x, y] = origin(line);
+      const matched = /,"0",0,(\d+),\d+,"(.*)"$/u.exec(line);
+      const point = Number(matched?.[1]);
+      const content = matched?.[2] ?? '';
+      /* 내장 글꼴 어림 — 자폭 point×0.5, 높이 point, 203 dpi. */
+      const right = x + content.length * point * 0.5 * (203 / 72);
+      const bottom = y + point * (203 / 72);
 
-    expect(origin(lotLine)[1]).toBeGreaterThanOrEqual(qrY + side);
+      expect(x).toBe(LEFT);
+      expect(y).toBeGreaterThanOrEqual(TOP);
+      expect(bottom).toBeLessThanOrEqual(HEIGHT - BOTTOM);
+      expect(right).toBeLessThanOrEqual(qrX);
+    }
   });
 
   it('⛔ QR 에는 LOT 번호만 싣는다 — 모바일이 스캔값을 그대로 LOT 번호로 읽는다', () => {

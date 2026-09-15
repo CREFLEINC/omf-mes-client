@@ -81,6 +81,26 @@ describe('toIssueFailure', () => {
     expect(toIssueFailure(resultOf({ failedAt: 'issue', error }))).toBe('other');
   });
 
+  it('등록에서 IQC 검사기준이 없다는 잠김은 그 사유로 말한다', () => {
+    const missing: ApiError = {
+      kind: 'stateLocked',
+      errors: [
+        { scope: 'screen', code: 'STATE_LOCKED', message: '유효한 IQC 검사기준이 없습니다.' },
+      ],
+    };
+    const duplicated: ApiError = {
+      kind: 'stateLocked',
+      errors: [
+        { scope: 'screen', code: 'STATE_LOCKED', message: '유효한 IQC 검사기준이 여러 개입니다.' },
+      ],
+    };
+
+    expect(toIssueFailure(resultOf({ failedAt: 'register', error: missing }))).toBe(
+      'iqcPlanMissing',
+    );
+    expect(toIssueFailure(resultOf({ failedAt: 'register', error: duplicated }))).toBe('other');
+  });
+
   it('갈래를 가릴 오류가 없으면 그 밖의 실패다', () => {
     expect(toIssueFailure(resultOf({ failedAt: 'register', error: null }))).toBe('other');
   });

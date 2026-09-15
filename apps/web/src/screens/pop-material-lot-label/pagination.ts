@@ -45,8 +45,11 @@ export const toPageView = (meta: PageMeta, shown: number): PageView => {
   return {
     page,
     totalPages,
-    // 보이는 것이 없으면 자리를 지어내지 않는다 — 쪽 수가 0이면 「어디에 있는지」가 없다.
-    rangeLabel: totalPages > 0 ? t.position(page, totalPages) : t.empty,
+    /*
+     * 보이는 것이 없으면 자리를 지어내지 않는다 — 쪽 수가 0이면 「어디에 있는지」가 없다.
+     * ⛔ 그 자리에 문구도 세우지 않는다(사용자 지시 2026-09-15) — 빈 목록 안내가 이미 말한다.
+     */
+    rangeLabel: totalPages > 0 ? t.position(page, totalPages) : '',
     canPrev: page > 1,
     canNext: page < totalPages,
     isBeyondLast: meta.total > 0 && page > totalPages,
