@@ -73,6 +73,24 @@ export const qtyProblemOf = (line: DraftLine): QtyProblem | null => {
 export const countedLines = (lines: DraftLine[]): DraftLine[] =>
   lines.filter((line) => line.qty.trim() !== '');
 
+/**
+ * 센 값과 전산 잔량의 차이. 조정이 이 수만큼 나간다.
+ *
+ * 사유를 요구하면서 얼마인지 말하지 않으면 사람이 암산해 고른다. 되돌릴 수 없는 쓰기라
+ * 그 암산이 틀리면 원장이 틀어진다.
+ *
+ * 블라인드 실사는 전산 잔량이 오지 않아 화면이 차이를 모른다 - 그때는 null 이다.
+ */
+export const diffOf = (line: DraftLine): number | null => {
+  if (line.systemQty === null || line.qty.trim() === '' || qtyProblemOf(line) !== null) {
+    return null;
+  }
+
+  const counted = Number(line.qty.trim());
+
+  return counted === line.systemQty ? null : counted - line.systemQty;
+};
+
 /** 장부 차이를 알 수 있는 계수와 기존 블라인드 재계수만 사유를 요구한다. */
 export const needsReason = (
   count: Pick<InventoryCount, 'blindCount'>,

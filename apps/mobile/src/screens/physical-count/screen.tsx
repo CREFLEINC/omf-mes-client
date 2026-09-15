@@ -1,9 +1,10 @@
-import { AlertBanner, Button, Select, TextField } from '@crefle/web-ui';
+import { AlertBanner, Button, NumberPad, Select, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router';
 
 import { useLotNos } from '../../patterns/handling-units';
+import { formatMaterialLotNo } from '../../patterns/material-lot-no';
 import { useCodeValues } from '../../patterns/code-values';
 import { useLocationByCode } from '../../patterns/locations';
 import { useItemCodes } from '../../patterns/masters';
@@ -18,6 +19,7 @@ import { useCountLines, useOpenCounts } from './queries';
 import {
   COUNT_LABEL,
   canSubmit,
+  diffOf,
   needsReason,
   qtyProblemOf,
   queuedForLocationOf,
@@ -41,6 +43,8 @@ export const PhysicalCountScreen = () => {
   const [countId, setCountId] = useState<number | null>(null);
   const [scanned, setScanned] = useState<string | null>(null);
   const [lines, setLines] = useState<DraftLine[]>([]);
+  /* 단말 키보드는 키가 촘촘하고 올라오면 줄 목록과 완료 단추를 덮는다. */
+  const [keypadFor, setKeypadFor] = useState<number | null>(null);
   const [outcome, setOutcome] = useState<Outcome | null>(null);
   const [saveFailed, setSaveFailed] = useState(false);
   /*
@@ -130,8 +134,48 @@ export const PhysicalCountScreen = () => {
     lines.map((line) => line.lotId).filter((lotId): lotId is number => lotId !== null),
   );
 
+  /*
+   * 34자리를 붙여 쓰면 실물 라벨과 눈으로 대조할 수 없다. 한 위치에 같은 품목이 아홉 줄까지
+   * 서므로 자릿수를 세어 가며 줄을 찾게 된다 - 실사는 그 대조가 일의 전부다.
+   */
+  const lotLabelOf = (line: DraftLine): string => {
+    const state = lotNo(line.lotId);
+
+    return state.kind === 'named' ? formatMaterialLotNo(state.label) : referenceLabel(state);
+  };
+
   const nameOf = (line: DraftLine): string =>
-    t.lines.name(referenceLabel(itemCode(line.itemId)), referenceLabel(lotNo(line.lotId)));
+    t.lines.name(referenceLabel(itemCode(line.itemId)), lotLabelOf(line));
+
+  /*
+   * 입력칸 위에 함께 서는 상태. 셋이 한 자리를 나눠 쓰므로 어느 하나만 선다.
+   *
+   * 차이가 가장 급하다 - 되돌릴 수 없는 조정이 그 수만큼 나가고 사유까지 요구한다. 앞서 센
+   * 값은 덮어쓰기 전에만 뜻이 있고, 안 셌다는 말은 칸이 빈 동안에만 맞다.
+   */
+  const statusOf = (line: DraftLine) => {
+    const diff = diffOf(line);
+
+    if (diff !== null) {
+      return (
+        <strong className="physical-count__diff">
+          {diff > 0 ? t.lines.diffOver(String(diff)) : t.lines.diffShort(String(-diff))}
+        </strong>
+      );
+    }
+
+    if (line.counted) {
+      return (
+        <span className="physical-count__previous">
+          {t.lines.already(String(line.previousQty ?? 0))}
+        </span>
+      );
+    }
+
+    return line.qty.trim() === '' ? (
+      <span className="physical-count__previous">{t.lines.uncounted}</span>
+    ) : null;
+  };
 
   const restart = () => {
     setScanned(null);
@@ -288,11 +332,31 @@ export const PhysicalCountScreen = () => {
 
               return (
                 <div key={line.inventoryCountLineId} className="physical-count__line">
+                  {/*
+                    적어야 할 값을 입력칸 위에 둔다. 아래에 두면 칸을 지나쳐 내려다봐야 하고,
+                    숫자판이 올라오면 그 자리가 덮여 전산 잔량을 못 본 채 적게 된다.
+                  */}
+                  <p className="physical-count__head">{nameOf(line)}</p>
+                  <div className="physical-count__figures">
+                    {line.systemQty === null ? null : (
+                      <span className="physical-count__system">
+                        {t.lines.systemQty(String(line.systemQty))}
+                      </span>
+                    )}
+                    {statusOf(line)}
+                  </div>
                   <TextField
                     label={t.lines.qtyLabel(nameOf(line))}
                     size="xl"
                     fullWidth
-                    inputMode="numeric"
+                    /*
+                     * 장갑을 끼고 한 손으로 조작한다. 단말 키보드는 키가 촘촘하고, 올라오면
+                     * 줄 목록과 완료 단추를 덮는다.
+                     */
+                    inputMode="none"
+                    onFocus={() => {
+                      setKeypadFor(line.inventoryCountLineId);
+                    }}
                     value={line.qty}
                     onChange={(event) => {
                       const next = event.target.value;
@@ -308,11 +372,23 @@ export const PhysicalCountScreen = () => {
                     }}
                     error={problem === null ? undefined : t.lines.problem[problem]}
                   />
-                  {/* 블라인드가 아닐 때만 장부가 온다. */}
-                  {line.systemQty === null ? null : (
-                    <p className="physical-count__system">
-                      {t.lines.systemQty(String(line.systemQty))}
-                    </p>
+                  {keypadFor !== line.inventoryCountLineId ? null : (
+                    <NumberPad
+                      value={line.qty}
+                      onChange={(value) => {
+                        setLines((current) =>
+                          current.map((each, at2) => {
+                            if (at2 !== index) return each;
+                            const changed = { ...each, qty: value };
+
+                            return count !== null && !needsReason(count, changed)
+                              ? { ...changed, reasonCode: '' }
+                              : changed;
+                          }),
+                        );
+                      }}
+                      allowDecimal
+                    />
                   )}
                   {/*
                    * 안 센 것과 0 으로 센 것을 화면이 갈라 말한다.
@@ -320,13 +396,7 @@ export const PhysicalCountScreen = () => {
                    * 이 줄은 서버에 저장된 상태다. 지금 적고 있는 값 옆에 그대로 두면 적은 것이
                    * 안 먹은 것처럼 읽히므로, 칸이 빈 동안에만 말한다.
                    */}
-                  {line.counted ? (
-                    <p className="physical-count__previous">
-                      {t.lines.already(String(line.previousQty ?? 0))}
-                    </p>
-                  ) : line.qty.trim() === '' ? (
-                    <p className="physical-count__previous">{t.lines.uncounted}</p>
-                  ) : null}
+
                   {count !== null && needsReason(count, line) ? (
                     <>
                       <label htmlFor={`physical-count-reason-${String(line.inventoryCountLineId)}`}>
