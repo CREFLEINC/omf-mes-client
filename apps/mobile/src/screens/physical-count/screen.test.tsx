@@ -52,6 +52,8 @@ interface Options {
   emptyLocation?: boolean;
   /** 품목·LOT 마스터 조회가 닿지 않는다 - 현장에서 연결이 끊긴 자리다. */
   mastersDown?: boolean;
+  /** 아직 안 센 위치가 아홉 곳이다 - 창고 하나의 실사는 위치가 수십 곳이다. */
+  manyLocations?: boolean;
   /**
    * 다음 조회부터 둘째 줄이 이미 센 것으로 바뀐다 - 다른 단말이 그 줄을 센 상황이다.
    *
@@ -177,8 +179,30 @@ const routes = (options: Options = {}): StubRoute[] => [
         return jsonResponse({ items: [], page });
       }
 
-      /* 아직 셀 위치를 모으는 조회다. 위치 축 없이 미실사만 묻는다. */
+      /* 실사 위치를 모으는 조회다. 위치 축 없이 미실사만 묻는다. */
       if (new URL(req.url).searchParams.get('uncountedOnly') === 'true') {
+        if (options.manyLocations === true) {
+          /* 코드 순이 아닌 차례로 답한다 - 화면이 세우는지 본다. */
+          const codes = [
+            'A-01-05',
+            'A-01-09',
+            'A-01-01',
+            'A-01-07',
+            'A-01-03',
+            'A-01-02',
+            'A-01-08',
+            'A-01-06',
+            'A-01-04',
+          ];
+
+          return jsonResponse({
+            items: codes.map((locationCode, at) =>
+              line({ inventoryCountLineId: 6000 + at, counted: false, locationCode }),
+            ),
+            page,
+          });
+        }
+
         return jsonResponse({ items: [line({ counted: false })], page });
       }
 
@@ -355,14 +379,33 @@ describe('실물 카운트 화면', () => {
    * 실사를 골라도 어디로 가야 하는지 화면이 말하지 않으면 위치 코드를 아는 사람만 쓸 수 있다.
    * 대상 위치는 실사 헤더에 없고 라인에 붙어 있으므로, 아직 안 센 라인에서 모아 보인다.
    */
-  it('아직 세지 않은 위치를 말한다', async () => {
+  it('실사 위치를 말한다', async () => {
     const user = userEvent.setup();
     mount();
 
     await user.click(await screen.findByRole('combobox', { name: '실사' }));
     await user.click(await screen.findByRole('option', { name: `${COUNT_NO} · 2026-09-07` }));
 
-    expect(await screen.findByText(new RegExp(`아직 세지 않은 위치.*${LOC_CODE}`))).toBeTruthy();
+    expect(await screen.findByText(new RegExp(`실사 위치.*${LOC_CODE}`))).toBeTruthy();
+  });
+
+  /*
+   * 창고 하나의 실사는 위치가 수십 곳이다. 다 늘어놓으면 화면을 넘겨 위치 스캔 칸이 아래로
+   * 밀리고, 순회는 앞에서부터 하므로 뒤쪽 코드는 지금 쓸모가 없다.
+   */
+  it('위치가 많으면 앞의 몇 곳과 남은 수를 말한다', async () => {
+    const user = userEvent.setup();
+    mount({ manyLocations: true });
+
+    await user.click(await screen.findByRole('combobox', { name: '실사' }));
+    await user.click(await screen.findByRole('option', { name: `${COUNT_NO} · 2026-09-07` }));
+
+    const shown = await screen.findByText(/실사 위치/);
+
+    expect(shown.textContent).toContain('외 5곳');
+    /* 코드 순으로 세워 창고를 도는 차례와 어긋나지 않게 한다. */
+    expect(shown.textContent).toContain('A-01-01');
+    expect(shown.textContent).not.toContain('A-01-09');
   });
 
   /*

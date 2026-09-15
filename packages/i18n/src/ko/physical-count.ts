@@ -32,7 +32,12 @@ export const physicalCount = {
      * 대상 위치는 실사 헤더에 없고 라인에 붙어 있다. 말해 주지 않으면 위치 코드를 외우고
      * 있는 사람만 이 화면을 쓸 수 있다.
      */
-    remaining: (codes: string) => `아직 세지 않은 위치 ${codes}`,
+    remaining: (codes: string) => `실사 위치 ${codes}`,
+    /*
+     * 창고 하나의 실사는 위치가 수십 곳이다. 다 늘어놓으면 화면을 넘겨 위치 스캔 칸이 아래로
+     * 밀린다. 순회는 앞에서부터 하므로 앞 몇 곳과 남은 수만 말한다.
+     */
+    remainingMore: (codes: string, rest: string) => `실사 위치 ${codes} 외 ${rest}곳`,
   },
   location: {
     legend: '위치 스캔',

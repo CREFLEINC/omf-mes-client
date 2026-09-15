@@ -18,7 +18,8 @@ export const physicalCount: Translated<typeof ko.physicalCount> = {
     blind: 'Đợt kiểm kê này ẩn số lượng sổ sách. Hãy đếm thực tế rồi ghi.',
     progress: (counted: string, planned: string) => `Tiến độ ${counted} / ${planned}`,
     progressLabel: 'Tiến độ kiểm kê',
-    remaining: (codes: string) => `Vị trí chưa đếm ${codes}`,
+    remaining: (codes: string) => `Vị trí kiểm kê ${codes}`,
+    remainingMore: (codes: string, rest: string) => `Vị trí kiểm kê ${codes} và ${rest} nơi khác`,
   },
   location: {
     legend: 'Quét vị trí',

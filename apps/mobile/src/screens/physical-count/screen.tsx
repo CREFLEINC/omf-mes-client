@@ -29,6 +29,11 @@ import './screen.css';
 
 const t = messages.physicalCount;
 const VARIANCE_REASON = 'VARIANCE_REASON';
+/*
+ * 한 줄에 세우는 위치 수. 창고 하나의 실사는 위치가 수십 곳이라 다 늘어놓으면 화면을 넘겨
+ * 위치 스캔 칸이 아래로 밀린다. 순회는 앞에서부터 하므로 뒤쪽 코드는 지금 쓸모가 없다.
+ */
+const SHOWN_LOCATIONS = 4;
 
 type Outcome = 'held' | 'sent' | 'rejected';
 
@@ -296,7 +301,12 @@ export const PhysicalCountScreen = () => {
         */}
         {remaining.data === undefined || remaining.data.length === 0 ? null : (
           <p className="physical-count__remaining">
-            {t.plan.remaining(remaining.data.join(' · '))}
+            {remaining.data.length <= SHOWN_LOCATIONS
+              ? t.plan.remaining(remaining.data.join(' · '))
+              : t.plan.remainingMore(
+                  remaining.data.slice(0, SHOWN_LOCATIONS).join(' · '),
+                  String(remaining.data.length - SHOWN_LOCATIONS),
+                )}
           </p>
         )}
         {/*

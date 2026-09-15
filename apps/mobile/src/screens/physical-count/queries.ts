@@ -70,7 +70,7 @@ export const useCountLines = (
 };
 
 /**
- * 아직 셀 위치.
+ * 이 실사에서 아직 셀 것이 남은 위치.
  *
  * 대상 위치는 실사 헤더에 없고 라인에 붙어 있다. 안 센 라인에서 위치 코드를 모아 말하지
  * 않으면 위치 코드를 외우고 있는 사람만 이 화면을 쓸 수 있다.
@@ -100,13 +100,14 @@ export const useUncountedLocations = (
         }),
       );
 
+      /* 코드 순으로 세운다 - 창고를 도는 차례가 대체로 그 순서다. */
       return [
         ...new Set(
           data.items
             .map((row) => row.locationCode)
             .filter((code): code is string => code !== undefined && code !== ''),
         ),
-      ];
+      ].sort((left, right) => left.localeCompare(right));
     },
   });
 };
