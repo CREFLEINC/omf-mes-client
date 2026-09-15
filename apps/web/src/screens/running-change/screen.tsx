@@ -250,9 +250,10 @@ export const RunningChangeScreen = () => {
               ? t.header.sessionNone
               : t.header.session(session.workSessionId)}
           </span>
-          <span>
+          {/* ⭐ 「단말#」 표기는 라벨(칩)로 보인다 — 다른 POP 머리줄과 같은 모양(사용자 지시 2026-09-15). */}
+          <Chip status={terminalId === null ? 'warning' : 'info'}>
             {terminalId === null ? t.header.terminalUnknown : t.header.terminal(terminalId)}
-          </span>
+          </Chip>
 
           {/*
            * ⭐ **미전송 건수는 필수 요건이다**(공유계약 C-1 #4). 「즉시 성공 표시」를 택한
