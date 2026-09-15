@@ -371,6 +371,11 @@ export const useLabelIssue = ({ workerNo }: IssueRunOptions): IssueRunResultHand
           setStep(null);
           // 목록의 라벨 발행 여부가 바뀌었을 수 있다 — 끝나면 언제나 다시 읽는다.
           await queryClient.invalidateQueries({ queryKey: receiptKeys.lists });
+          /*
+           * ⛔ 라인도 다시 읽는다(#1241). 입하 건을 발행 여부로 거르지 않게 되어 인쇄 뒤에도 건이
+           *    목록에 남는다 — 라인 캐시가 낡으면 방금 찍은 줄이 미발행으로 남고 첫 단추가 열린다.
+           */
+          await queryClient.invalidateQueries({ queryKey: receiptKeys.allLines });
         }
       };
 

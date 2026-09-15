@@ -90,6 +90,11 @@ interface FlowOptions {
   /** 셸 인쇄 통로를 심는다. 없으면 브라우저와 같은 상태다. */
   shellPrint?: (() => Promise<string>) | null;
   reissueReasons?: { code: string; codeName: string }[];
+  /**
+   * 인쇄 결과를 보고한 뒤에는 서버가 그 라인을 발행한 것으로 거른다 — 미발행 라인 질의에 빈
+   * 목록을 답한다. 끄면 발행 전후로 같은 라인을 답한다.
+   */
+  filtersIssuedAfterReport?: boolean;
 }
 
 const renderFlow = (options: FlowOptions = {}) => {
@@ -147,6 +152,12 @@ const renderFlow = (options: FlowOptions = {}) => {
               new URL(request.url).pathname,
             );
             const receiptNo = Number(matched?.[1] ?? 8101) - 8100;
+            const isReported = sent.some((entry) => entry.path.endsWith(':report-print'));
+            const asksUnissued = new URL(request.url).searchParams.get('labelIssued') === 'false';
+
+            if (options.filtersIssuedAfterReport === true && isReported && asksUnissued) {
+              return jsonResponse({ items: [], page: { page: 1, size: 20, total: 0 } });
+            }
 
             return jsonResponse({
               items: [lineOf(receiptNo === 1 ? (lotId ?? createdLotId) : null, receiptNo)],
@@ -711,6 +722,24 @@ describe('PopMaterialLotLabelScreen — 재인쇄', () => {
    * ⭐ 발행 완료 목록(사용자 지시 2026-09-15 · #1241). ⛔ 사유 없는 발행은 2회차부터 서버가
    * 거절하므로 첫 단추를 잠그고 재인쇄만 연다.
    */
+  /**
+   * ⛔ 입하 건은 발행 여부로 거르지 않으므로(#1241) 인쇄 뒤 건은 목록에 남는다. 라인을 다시 읽지
+   * 않으면 방금 찍은 줄이 미발행으로 남고 첫 단추가 열려, 누르면 서버가 사유 없음으로 거절한다.
+   */
+  it('인쇄를 마치면 그 줄이 미발행 목록에서 빠진다', async () => {
+    const { user } = renderFlow({
+      lotId: LOT_ID,
+      shellPrint: vi.fn(async () => 'C:/syn/label.png'),
+      filtersIssuedAfterReport: true,
+    });
+    await chooseLine(user);
+    await user.click(screen.getByRole('button', { name: '인쇄' }));
+
+    await waitFor(() => {
+      expect(screen.queryByRole('button', { name: /SYN-IB-0001/u })).not.toBeInTheDocument();
+    });
+  });
+
   it('발행 완료 목록에서 고른 자재는 인쇄를 잠그고 재인쇄를 연다', async () => {
     const { user } = renderFlow({ lotId: LOT_ID });
     await user.click(await screen.findByRole('button', { name: '발행 완료' }));

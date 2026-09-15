@@ -57,6 +57,8 @@ const RECEIPT_LIST_KEY = ['pop-material-lot-label', 'receipts'] as const;
 
 export const receiptKeys = {
   lists: RECEIPT_LIST_KEY,
+  /** 모든 건·모든 보기의 라인 캐시. 인쇄가 끝나면 줄이 보기를 옮겨 가므로 통째로 다시 읽는다. */
+  allLines: ['pop-material-lot-label', 'receipt-lines'] as const,
   list: (view: IssuedView, query: ReceiptListQuery) => [...RECEIPT_LIST_KEY, view, query] as const,
   /**
    * 라인 캐시는 **고른 건마다 갈린다.** 목록 키와 앞머리를 갈라 두어, 목록만 다시 불러도
