@@ -1,7 +1,7 @@
 import { messages } from '@omf-mes/i18n';
 import { screen, within } from '@testing-library/react';
 import userEvent, { type UserEvent } from '@testing-library/user-event';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { SessionProvider, useSession, type Session } from '../patterns/session';
 import { renderWithProviders } from '../test/api-harness';
@@ -1503,5 +1503,47 @@ describe('AppLayout — 검색 중 손잡이', () => {
     );
 
     expect(groupToggle('기준정보')).toHaveAttribute('aria-expanded', 'true');
+  });
+});
+
+/**
+ * 셸 — **사이드바 맨 아래의 버전 표기**(#1240).
+ *
+ * 값은 릴리스 파이프라인이 넣는 빌드 인자다(`VITE_APP_VERSION`). 시험 실행에는 그 값이 없으므로
+ * 릴리스 모양은 `vi.stubEnv` 로 세운다.
+ */
+describe('AppLayout — 버전 표기', () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it('릴리스 빌드면 태그의 버전을 사이드바 아래에 보인다', () => {
+    vi.stubEnv('VITE_APP_VERSION', 'web-v0.3.8');
+
+    renderLayout('본문 내용', { expandGroups: false });
+
+    expect(screen.getByText(messages.shellNav.version.release('v0.3.8'))).toBeInTheDocument();
+  });
+
+  /** ⛔ 빈칸이나 「알 수 없음」을 세우지 않는다(공유계약 G-9). */
+  it('릴리스 태그가 없는 빌드면 개발 빌드로 말한다', () => {
+    vi.stubEnv('VITE_APP_VERSION', '');
+
+    renderLayout('본문 내용', { expandGroups: false });
+
+    expect(screen.getByText(messages.shellNav.version.dev)).toBeInTheDocument();
+  });
+
+  it('레일에서는 세우지 않고, 펼치면 다시 보인다', async () => {
+    vi.stubEnv('VITE_APP_VERSION', 'web-v0.3.8');
+    const label = messages.shellNav.version.release('v0.3.8');
+
+    const { user } = renderLayout('본문 내용', { expandGroups: false });
+
+    await user.click(screen.getByRole('button', { name: '사이드바 접기' }));
+    expect(screen.queryByText(label)).toBeNull();
+
+    await user.click(screen.getByRole('button', { name: '사이드바 펼치기' }));
+    expect(screen.getByText(label)).toBeInTheDocument();
   });
 });
