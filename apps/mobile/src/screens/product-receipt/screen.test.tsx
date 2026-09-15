@@ -401,7 +401,7 @@ describe('제품 입고·적치 화면', () => {
 
     const label = await screen.findByText(/실물 수량/);
 
-    expect(label.textContent).toContain('이름을 불러오지 못했습니다');
+    expect(label.textContent).toContain('연결되면 표시됩니다');
     expect(label.textContent).not.toContain('8201');
   });
 
