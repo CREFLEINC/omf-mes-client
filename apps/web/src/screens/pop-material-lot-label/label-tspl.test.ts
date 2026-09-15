@@ -52,9 +52,14 @@ describe('buildMaterialLotLabel', () => {
   /**
    * ⛔ 3 mm 여백으로 짜면 QR 윗변·오른쪽 끝이 라벨지 가장자리에 붙어, 프린터가 조금만 밀려도
    *    잘렸다(실기 HT800 2026-09-15). 시작점만 보던 검사가 이것을 못 잡았다 — «끝점»을 본다.
+   *
+   * 가로는 프린터가 오른쪽으로 약 2.5 mm 치우쳐 찍어 왼쪽 12점(1.5 mm)·오른쪽 52점(6.5 mm)으로
+   * 당겨 짠다(실기 2026-09-15).
    */
-  it('⛔ 글줄과 QR 이 사방 4 mm 안전 여백 안에서 끝나고 서로 겹치지 않는다', () => {
+  it('⛔ 글줄과 QR 이 안전 여백 안에서 끝나고 서로 겹치지 않는다 — 가로는 왼쪽으로 당긴다', () => {
     const SAFE = 32;
+    const LEFT = 12;
+    const RIGHT = 52;
     const lines = buildMaterialLotLabel(FIELDS).split('\r\n');
     const qr = lines.find((line) => line.startsWith('QRCODE ')) ?? '';
     const [qrX, qrY] = origin(qr);
@@ -62,7 +67,7 @@ describe('buildMaterialLotLabel', () => {
     /* LOT 37자 → 버전 3(29칸). */
     const side = 29 * cell;
 
-    expect(qrX + side).toBeLessThanOrEqual(WIDTH - SAFE);
+    expect(qrX + side).toBeLessThanOrEqual(WIDTH - RIGHT);
     expect(qrY).toBeGreaterThanOrEqual(SAFE);
     expect(qrY + side).toBeLessThanOrEqual(HEIGHT - SAFE);
 
@@ -75,7 +80,7 @@ describe('buildMaterialLotLabel', () => {
       const right = x + content.length * point * 0.5 * (203 / 72);
       const bottom = y + point * (203 / 72);
 
-      expect(x).toBeGreaterThanOrEqual(SAFE);
+      expect(x).toBe(LEFT);
       expect(y).toBeGreaterThanOrEqual(SAFE);
       expect(bottom).toBeLessThanOrEqual(HEIGHT - SAFE);
       expect(right).toBeLessThanOrEqual(qrX);

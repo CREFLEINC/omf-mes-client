@@ -29,6 +29,17 @@ const HEIGHT = dots(30);
  */
 const MARGIN = dots(4);
 
+/**
+ * 가로 좌표는 **2.5 mm 왼쪽으로 당겨** 짠다 — 왼쪽 1.5 mm · 오른쪽 6.5 mm.
+ *
+ * ⭐ HT800 실기에서 4 mm 로 좌우를 같게 짜니 찍힌 것이 오른쪽으로 치우쳤다 — 왼쪽 약 6.5 mm ·
+ *   오른쪽 약 2 mm(사진 실측 2026-09-15 · 사용자가 「왼쪽으로」를 지시). 당겨 짜야 라벨지
+ *   위에서 좌우가 고르게 선다. 세로는 치우침이 없어 그대로 둔다.
+ */
+const SHIFT_LEFT = dots(2.5);
+const LEFT = MARGIN - SHIFT_LEFT;
+const RIGHT = MARGIN + SHIFT_LEFT;
+
 /** 글줄 높이 — 내장 글꼴은 point 를 203 dpi 로 옮긴 높이로 찍힌다. */
 const lineHeight = (point: number): number => Math.ceil(point * (203 / 72));
 
@@ -121,9 +132,9 @@ export interface MaterialLotLabelFields {
  */
 export const buildMaterialLotLabel = (fields: MaterialLotLabelFields): string => {
   const side = qrSide(fields.lotNo);
-  const qrX = WIDTH - MARGIN - side;
+  const qrX = WIDTH - RIGHT - side;
   const qrY = Math.round((HEIGHT - side) / 2);
-  const column = qrX - MARGIN - dots(2);
+  const column = qrX - LEFT - dots(2);
 
   const qty =
     fields.uomCode === null ? String(fields.qty) : `${String(fields.qty)} ${fields.uomCode}`;
@@ -142,7 +153,7 @@ export const buildMaterialLotLabel = (fields: MaterialLotLabelFields): string =>
 
   let y = MARGIN;
   const drawn = rows.map((row) => {
-    const line = text(MARGIN, y, row.point, row.content, column);
+    const line = text(LEFT, y, row.point, row.content, column);
     y += lineHeight(row.point) + spacing;
 
     return line;
