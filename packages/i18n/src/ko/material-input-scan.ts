@@ -194,7 +194,6 @@ export const materialInputScan = {
     },
     /** 서버가 통과시키되 기록만 한 것 — 스펙 §5-3. 「통과」가 「정상」이 아니다. */
     unlinkedIssue: '출고 미귀속',
-    crossProcess: '교차 투입',
     removeMaterial: (lotNo: string): string => `${lotNo} 빼기`,
     /**
      * 건별 저장(스펙 §5-8) — 줄마다 상태가 갈린다.
@@ -263,6 +262,11 @@ export const materialInputScan = {
      * 기록은 이미 건별로 끝나 있으므로, 이 문구가 말하는 것은 「몇 건으로 닫았는가」다.
      */
     closed: (count: number): string => `${String(count)}건으로 투입을 마쳤습니다.`,
+    /**
+     * 투입을 마친 뒤의 다음 걸음. **화면 이름 그대로 적는다** — 작업자가 머리줄의 [화면 이동]
+     * 목록에서 보던 이름과 같아야 같은 곳임을 안다(`pop-screen-catalog` 의 `P-02-04`).
+     */
+    goToProductionResult: '생산 실적 등록으로',
     failed: '투입을 기록하지 못했습니다.',
   },
 } as const;

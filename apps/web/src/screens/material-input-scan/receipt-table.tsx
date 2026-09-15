@@ -14,6 +14,15 @@ import type { ReceiptLineStatus, ReceiptLineView } from './types';
 const t = messages.materialInputScan;
 
 /**
+ * 못 받은 값을 적는 **공용 어휘**. 화면마다 따로 적으면 같은 상태가 여러 문구로 갈린다.
+ *
+ * 여기서는 `unknown`(「알 수 없음」)을 쓴다 — 줄 자체는 도착했고 그 안에 사람이 읽을 값이 없는
+ * 것이다. 「불러오지 못했습니다」는 **따로 나간 조회가 실패했을 때**의 말인데, 이 값은 같은
+ * 응답에 실려 오므로 나갈 조회가 없다. 있지도 않은 실패를 말하면 작업자가 다시 시도한다.
+ */
+const reference = messages.common.reference;
+
+/**
  * 수령 상태 → 칩의 시맨틱 색.
  *
  * ⚠ **`none`을 `error`로 칠하되 그것이 「막혔다」는 뜻은 아니다.** 부족·미수령은 투입을 막지
@@ -52,9 +61,14 @@ const renderQty = (value: number): ReactNode => String(value);
  * **품목은 코드로 낸다**(스펙 §3의 `MAT-A`). 계약이 번호만 주므로 이름 풀이를 따로 걸고,
  * 풀지 못하면 번호를 그대로 낸다 — 옮기지 못한 것과 값이 없는 것은 다르다.
  *
- * ⚠ LOT은 번호 그대로다. 계약의 수령 라인이 `lotId`만 주고 LOT 번호를 얻으려면 자재LOT을
- * 줄마다 다시 조회해야 하는데, 이 표는 **계획 대비 수령을 견주는 자리**이지 LOT을 특정하는
- * 자리가 아니다 — 특정은 스캔이 한다.
+ * ⭐ **LOT은 응답이 실어 준 번호를 낸다**(`lotNo` — 공유계약 C-6, 「화면이 보이는 값」).
+ *    한때 이 자리에 내부 채번(`26`)을 찍었다. 라벨에 찍힌 34자리와 견줄 수 없는 숫자가 LOT
+ *    번호인 척해, 작업자가 그것을 대조 값으로 읽는다(WIP-CHAIN-01 D9 실측 2026-09-15).
+ *    옛 주석은 「계약이 `lotId`만 준다」고 적어 두었는데 **그 전제가 지금은 틀리다.**
+ *
+ * ⛔ **못 받았을 때 `lotId`로 메우지 않는다.** 저장소 공통 규율이다 — 이름을 못 받은 자리에
+ *    대리키를 끼우면 사람이 읽을 수 없는 숫자가 값인 척한다(`apps/mobile/src/patterns/reference.ts`,
+ *    `handling-units.ts:89-91`). 그럴 때는 공용 어휘로 「알 수 없음」이라 적는다.
  */
 export const ReceiptTable = ({
   lines,
@@ -74,7 +88,12 @@ export const ReceiptTable = ({
       align: 'center',
       render: (row) => describeItem(row.itemId),
     },
-    { key: 'lotId', header: t.table.lot, align: 'center', render: (row) => String(row.lotId) },
+    {
+      key: 'lotId',
+      header: t.table.lot,
+      align: 'center',
+      render: (row) => row.lotNo ?? reference.unknown,
+    },
     {
       key: 'issuedQty',
       header: t.table.issuedQty,

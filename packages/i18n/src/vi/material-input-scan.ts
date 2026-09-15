@@ -78,7 +78,6 @@ export const materialInputScan: Translated<typeof ko.materialInputScan> = {
       notPositive: 'Số lượng đưa vào phải lớn hơn 0.',
     },
     unlinkedIssue: 'Xuất kho chưa gán',
-    crossProcess: 'Đưa vào chéo',
     removeMaterial: (lotNo: string): string => `Bỏ ${lotNo}`,
     saveHint: 'Nhập số lượng rồi nhấn 「Ghi」.',
     keypadLabel: (lotNo: string): string => `Bàn phím số lượng ${lotNo}`,
@@ -113,6 +112,7 @@ export const materialInputScan: Translated<typeof ko.materialInputScan> = {
     },
     retry: 'Kiểm tra lại quyền đưa vào',
     closed: (count: number): string => `Đã hoàn tất đưa vào với ${String(count)} mục.`,
+    goToProductionResult: 'Sang đăng ký kết quả sản xuất',
     failed: 'Không ghi được việc đưa vào.',
   },
 };

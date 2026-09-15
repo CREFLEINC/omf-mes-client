@@ -1,6 +1,7 @@
 import { messages } from '@omf-mes/i18n';
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { useLocation } from 'react-router';
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -120,7 +121,15 @@ interface Sent {
   body: unknown;
 }
 
-/** 계약 응답 한 건. 기록만 되는 것(출고 미귀속·교차 투입)은 인자로 켠다. */
+/**
+ * 계약 응답 한 건. 기록만 되는 것(출고 미귀속)은 인자로 켠다.
+ *
+ * ⭐ **`actualUseProcessId` 를 기본으로 싣는다.** 계약이 그 값을 「화면은 보내지 않는다 —
+ *    **서버가 이 W/O 의 공정으로 채운다**」로 정해 두어 실서버는 **정상 투입에도 늘** 실어 준다.
+ *    한때 이 스텁이 그 자리를 비워 두어, 「값이 있으면 교차 투입」이라는 틀린 판정이 시험을
+ *    통과한 채 배포됐다 — 현장에서는 모든 줄에 「교차 투입」이 붙어 구분이 0 이 됐다
+ *    (WIP-CHAIN-01 D8 실측 2026-09-15). 실서버 전제를 스텁이 갖고 있어야 재발하지 않는다.
+ */
 const consumption = (lotId: number, overrides: Record<string, unknown> = {}) => ({
   materialConsumptionId: 6000 + lotId,
   consumptionNo: `SAMPLE-MC-${String(lotId)}`,
@@ -133,6 +142,7 @@ const consumption = (lotId: number, overrides: Record<string, unknown> = {}) => 
   occurredAt: '2026-08-28T09:00:00+09:00',
   workerId: 1,
   terminalId: 1,
+  actualUseProcessId: 7902,
   statusCode: 'RECORDED',
   ...overrides,
 });
@@ -153,11 +163,19 @@ const renderScreen = (lots: unknown[], postRoute: StubRoute, extra: StubRoute[] 
   renderWithProviders(
     <PopIdentityProvider value={GATED}>
       <MaterialInputScanScreen />
+      <Here />
     </PopIdentityProvider>,
     { fetch, route: ROUTE },
   );
 
   return sent;
+};
+
+/** 지금 어느 주소인지 눈으로 확인할 자리 — 다음 걸음으로 실제로 옮겨 갔는지 잰다(D10). */
+const Here = () => {
+  const { pathname, search } = useLocation();
+
+  return <p>지금: {`${pathname}${search}`}</p>;
 };
 
 /** 담은 자재 목록. 화면에 목록이 여럿이라 이름으로 집는다. */
@@ -285,16 +303,36 @@ describe('투입 확정 — 무엇이 나가는가', () => {
 
 describe('투입 확정 — 결과를 어떻게 말하는가', () => {
   /*
-   * 스펙 §5-3 — 막는 것은 BOM 불일치 하나뿐이고, **출고 미귀속·교차 투입은 통과하되
-   * 기록된다.** 「통과」가 「정상」이 아니라서 화면이 그 구분을 보여야 한다.
+   * 스펙 §5-3 — 막는 것은 BOM 불일치 하나뿐이고, **출고 미귀속은 통과하되 기록된다.**
+   * 「통과」가 「정상」이 아니라서 화면이 그 구분을 보여야 한다.
    */
   it('서버가 기록만 한 것을 표시한다', async () => {
     const user = userEvent.setup();
-    renderScreen([lot()], okRoute([consumption(7301, { actualUseProcessId: 7902 })]));
+    renderScreen([lot()], okRoute([consumption(7301)]));
 
     await prepare(user, [['SAMPLE-LOT-0001', '12']]);
 
-    expect(await screen.findByText(t.scanned.crossProcess)).toBeTruthy();
+    expect(await screen.findByText(t.scanned.unlinkedIssue)).toBeTruthy();
+  });
+
+  /*
+   * ⛔ **실사용 공정이 채워져 와도 그것만으로는 표시가 붙지 않는다.** 계약이 그 값을 「서버가 이
+   *    W/O 의 공정으로 채운다」로 정해 두어 **정상 투입에도 늘** 실려 온다 — 유무로 「교차 투입」을
+   *    세우면 모든 줄에 붙어 구분이 0 이 된다(WIP-CHAIN-01 D8 실측). 되살리려면 서버가 판정
+   *    결과를 내려 줄 때다(`mutations.ts` 의 `RecordedNote` 주석).
+   *
+   * 여기서는 **출고에 귀속된 정상 투입**을 세운다 — 붙을 표시가 하나도 없어야 하는 줄이다.
+   */
+  it('실사용 공정이 채워져 와도 그것만으로는 표시가 붙지 않는다', async () => {
+    const user = userEvent.setup();
+    renderScreen([lot()], okRoute([consumption(7301, { shopfloorReceiptLineId: 7101 })]));
+
+    await prepare(user, [['SAMPLE-LOT-0001', '12']]);
+    await screen.findByText(t.scanned.recordedMark);
+
+    const item = within(scannedList()).getByText('SAMPLE-LOT-0001').closest('li');
+    expect(item).not.toBeNull();
+    expect((item as HTMLElement).querySelector('.scanned-item-notes')?.textContent).toBe('');
   });
 
   /*
@@ -351,7 +389,7 @@ describe('투입 확정 — 결과를 어떻게 말하는가', () => {
     await prepare(user, [['SAMPLE-LOT-0001', '12']]);
     await screen.findByText(t.scanned.recordedMark);
 
-    expect(screen.getByText('SAMPLE-LOT-0001')).toBeTruthy();
+    expect(within(scannedList()).getByText('SAMPLE-LOT-0001')).toBeTruthy();
   });
 
   it('첫 건부터 실패하면 실패로 말한다', async () => {
@@ -469,10 +507,9 @@ describe('투입 확정 — 담은 목록의 표시', () => {
 
     await prepareWithoutRecord(user, 'SAMPLE-LOT-0001', '12');
 
-    const item = screen.getByText('SAMPLE-LOT-0001').closest('li');
+    const item = within(scannedList()).getByText('SAMPLE-LOT-0001').closest('li');
     expect(item).not.toBeNull();
     expect(within(item as HTMLElement).queryByText(t.scanned.unlinkedIssue)).toBeNull();
-    expect(within(item as HTMLElement).queryByText(t.scanned.crossProcess)).toBeNull();
   });
 });
 
@@ -569,6 +606,34 @@ describe('MaterialInputScanScreen — 목록 닫기', () => {
     expect(sent).toHaveLength(1);
     expect(await screen.findByText(t.confirm.closed(1))).toBeTruthy();
     expect(screen.getByText(t.scanned.empty)).toBeTruthy();
+  });
+
+  /*
+   * ⭐ **투입을 마치면 다음 걸음을 그 자리에서 연다.** 작업자의 다음 일은 같은 작업지시의 생산
+   *    실적 등록인데 이 화면에 그리로 가는 길이 없었다 — 머리줄의 [화면 이동]은 작업지시를 싣지
+   *    않아 그 길로 들어가면 「작업지시를 받지 못했다」로 막혔고, 작업 시작 화면까지 되돌아가야
+   *    했다(WIP-CHAIN-01 D10 · 사용자 승인 2026-09-15).
+   *
+   * ⛔ **작업지시를 주소로 싣는다** — 실적 화면은 그 값을 주소에서만 읽는다.
+   */
+  it('닫은 뒤 같은 작업지시의 생산 실적 등록으로 가는 길을 준다', async () => {
+    const user = userEvent.setup();
+    renderScreen([lot()], okRoute([consumption(7301)]));
+
+    await prepare(user, [['SAMPLE-LOT-0001', '12']]);
+    await screen.findByText(t.scanned.recordedMark);
+
+    /* 닫기 전에는 없다 — 기록되지 않은 줄을 남긴 채 화면을 뜨는 길이 되면 안 된다. */
+    expect(screen.queryByRole('button', { name: t.confirm.goToProductionResult })).toBeNull();
+
+    await user.click(screen.getByRole('button', { name: t.confirm.action }));
+    await screen.findByText(t.confirm.closed(1));
+
+    await user.click(screen.getByRole('button', { name: t.confirm.goToProductionResult }));
+
+    expect(
+      screen.getByText(`지금: /pop/production-result?workOrderId=${String(WORK_ORDER_ID)}`),
+    ).toBeInTheDocument();
   });
 
   /*
@@ -931,16 +996,11 @@ describe('MaterialInputScanScreen — 큐가 살아남는가', () => {
 describe('MaterialInputScanScreen — 회차 격리(리뷰 확인)', () => {
   it('닫고 같은 LOT을 다시 담아도 표시가 겹치지 않는다', async () => {
     const user = userEvent.setup();
-    renderScreen(
-      [lot()],
-      okRoute([
-        consumption(7301, { actualUseProcessId: 7902 }),
-        consumption(7301, { actualUseProcessId: 7902 }),
-      ]),
-    );
+    /* 표지는 **줄마다 하나만 서는 표시**면 된다 — 여기서는 「출고 미귀속」을 쓴다. */
+    renderScreen([lot()], okRoute([consumption(7301), consumption(7301)]));
 
     await prepare(user, [['SAMPLE-LOT-0001', '12']]);
-    await screen.findByText(t.scanned.crossProcess);
+    await screen.findByText(t.scanned.unlinkedIssue);
 
     await user.click(screen.getByRole('button', { name: t.confirm.action }));
     await screen.findByText(t.scanned.empty);
@@ -949,7 +1009,7 @@ describe('MaterialInputScanScreen — 회차 격리(리뷰 확인)', () => {
     await prepare(user, [['SAMPLE-LOT-0001', '7']]);
 
     await waitFor(() => {
-      expect(screen.getAllByText(t.scanned.crossProcess)).toHaveLength(1);
+      expect(screen.getAllByText(t.scanned.unlinkedIssue)).toHaveLength(1);
     });
   });
 });

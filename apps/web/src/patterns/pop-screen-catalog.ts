@@ -29,6 +29,15 @@ export interface PopScreen {
    * ⚠ 화면 타이틀을 바꾸면 여기도 함께 고친다.
    */
   name: string;
+  /**
+   * **작업지시를 주소로 받는 화면인가.** [화면 이동]은 이 표기가 있는 화면으로 갈 때만 지금
+   * 주소의 `workOrderId` 를 실어 준다(사용자 승인 2026-09-15 · WIP-CHAIN-01 D10).
+   *
+   * ⛔ **추측으로 넓히지 않는다.** 받지 않는 화면에 인자를 실으면 그 화면이 모르는 값이 주소에
+   *    남고, 뒤에 그 이름을 쓰게 되면 «남이 남긴 값»으로 조회가 선다. 받는 화면이 늘면 그 화면의
+   *    주소 읽기(`screen-params`)와 함께 여기에 적는다.
+   */
+  acceptsWorkOrderId?: true;
 }
 
 /**
@@ -44,8 +53,13 @@ export const POP_SCREENS: readonly PopScreen[] = [
   { path: '/pop/material-lot-label', code: 'P-01-01', name: '자재LOT 등록·라벨 발행' },
   { path: '/pop/goods-issue-qr', code: 'P-01-02', name: '출고 QR 발행' },
   { path: '/pop/work-start', code: 'P-02-01', name: '작업 시작' },
-  { path: '/pop/material-input', code: 'P-02-03', name: '자재 투입' },
-  { path: '/pop/production-result', code: 'P-02-04', name: '생산 실적 등록' },
+  { path: '/pop/material-input', code: 'P-02-03', name: '자재 투입', acceptsWorkOrderId: true },
+  {
+    path: '/pop/production-result',
+    code: 'P-02-04',
+    name: '생산 실적 등록',
+    acceptsWorkOrderId: true,
+  },
   { path: '/pop/packing-work', code: 'P-02-08', name: '포장 작업' },
   { path: '/pop/packing-label-reprint', code: 'P-02-09', name: '포장 라벨 재출력' },
   { path: '/pop/work-hold', code: 'P-02-10', name: '작업 중단' },
