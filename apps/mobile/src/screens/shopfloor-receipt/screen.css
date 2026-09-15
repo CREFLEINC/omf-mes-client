@@ -79,13 +79,11 @@
 }
 
 .shopfloor-receipt__issued {
-  margin: 0;
   font-variant-numeric: tabular-nums;
 }
 
 /* 모자란 것은 사유를 물어야 하는 자리라 눈에 들어와야 한다. */
 .shopfloor-receipt__short {
-  margin: 0;
   font-variant-numeric: tabular-nums;
   color: var(--semantic-warning);
 }
