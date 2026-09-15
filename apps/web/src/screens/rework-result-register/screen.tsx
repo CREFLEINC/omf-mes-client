@@ -186,7 +186,8 @@ export const ReworkResultRegisterScreen = () => {
           <Chip variant="status" size="md" status={isOnline ? 'success' : 'warning'}>
             {isOnline ? messages.common.connection.online : messages.common.connection.offline}
           </Chip>
-          <span>{t.pending(pendingCount)}</span>
+          {/* ⭐ 미전송이 없으면 표시하지 않는다(사용자 지시 2026-09-15) — 「미전송 0건」은 머리줄만 붐빈다. */}
+          {pendingCount > 0 && <span>{t.pending(pendingCount)}</span>}
         </p>
       </header>
 
