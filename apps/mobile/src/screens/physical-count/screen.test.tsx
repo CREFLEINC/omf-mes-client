@@ -669,6 +669,6 @@ describe('실물 카운트 화면', () => {
     held.failWrite = 'outbox';
     await user.click(screen.getByRole('button', { name: '이 위치 완료' }));
 
-    expect(await screen.findByText('센 것을 저장하지 못했습니다')).toBeTruthy();
+    expect(await screen.findByText('실물 수량을 저장하지 못했습니다')).toBeTruthy();
   });
 });

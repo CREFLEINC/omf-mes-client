@@ -88,18 +88,18 @@ export const physicalCount = {
   noWorker: '사번을 먼저 확인하세요',
   /** 단말 보관소가 거절한 경우. 적은 것이 어디에도 없으므로 기록되지 않았다고 말한다. */
   saveFailed: {
-    title: '센 것을 저장하지 못했습니다',
+    title: '실물 수량을 저장하지 못했습니다',
     description: '기록되지 않았습니다. 다시 시도하세요.',
   },
   sent: {
     title: '이 위치를 끝냈습니다',
   },
   held: {
-    title: '센 것을 전송 대기에 넣었습니다',
+    title: '실물 수량을 전송 대기에 넣었습니다',
     description: '연결되면 보냅니다.',
   },
   rejected: {
-    title: '센 것을 전송하지 못했습니다',
+    title: '실물 수량을 전송하지 못했습니다',
     description: '전송 실패한 기록에서 사유를 확인하세요. ',
     action: '전송 실패한 기록 보기',
   },

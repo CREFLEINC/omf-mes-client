@@ -52,18 +52,18 @@ export const physicalCount: Translated<typeof ko.physicalCount> = {
   submit: 'Xong vị trí này',
   noWorker: 'Hãy xác nhận mã nhân viên trước',
   saveFailed: {
-    title: 'Không lưu được số đã đếm',
+    title: 'Không lưu được số lượng thực tế',
     description: 'Chưa được ghi nhận. Hãy thử lại.',
   },
   sent: {
     title: 'Đã xong vị trí này',
   },
   held: {
-    title: 'Đã đưa số đã đếm vào hàng chờ gửi',
+    title: 'Đã đưa số lượng thực tế vào hàng chờ gửi',
     description: 'Sẽ gửi khi có kết nối.',
   },
   rejected: {
-    title: 'Không gửi được số đã đếm',
+    title: 'Không gửi được số lượng thực tế',
     description: 'Hãy xem lý do trong bản ghi gửi thất bại. ',
     action: 'Xem bản ghi gửi thất bại',
   },
