@@ -134,9 +134,15 @@ export const WorkerSignInScreen = () => {
         onClose={() => {
           setAsking(false);
         }}
-        title={t.unregister.title}
+        /*
+         * 제목을 우리 요소로 감싼다. 크기·여백을 창 부품의 header·h2 를 겨냥해 고치면 디자인
+         * 시스템이 그리는 태그를 고르는 것이 되어 화면 규칙 검사에 걸린다(app/design-tokens ·
+         * section-heading). 감싼 요소는 우리 것이라 클래스로 고를 수 있다.
+         */
+        title={<span className="worker-sign-in__dialog-title">{t.unregister.title}</span>}
         footer={
-          <>
+          /* 두 단추를 우리 줄에 담는다 — footer 태그를 고르지 않고 폭·간격을 정하는 자리다. */
+          <div className="worker-sign-in__dialog-actions">
             <Button
               variant="outlined"
               size="xl"
@@ -159,7 +165,7 @@ export const WorkerSignInScreen = () => {
             >
               {t.unregister.confirm}
             </Button>
-          </>
+          </div>
         }
       >
         {/*

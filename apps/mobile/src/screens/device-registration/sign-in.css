@@ -37,8 +37,10 @@
  * 내용이 위에 몰리고 단추가 그 바로 밑에 붙어 아래가 통째로 비었다. 창 구조는 그대로 두고
  * 이 창에서만 제목·본문·단추의 크기와 자리를 고른다.
  *
- * DS 창의 클래스 이름은 빌드마다 바뀌어 요소로 고른다 - header·h2·footer 는 창 부품이 늘
- * 그리는 뼈대다.
+ * ⛔ **창 부품의 header·h2·footer 를 고르지 않는다**(화면 규칙 검사 `app/design-tokens` ·
+ * `app/section-heading`). 디자인 시스템이 그리는 태그를 고르면 그 부품을 쓰는 다른 창까지 닿는다.
+ * DS 의 클래스 이름은 빌드마다 바뀌므로, 겨냥할 자리는 **우리가 넣은 요소**(제목을 감싼 span,
+ * 단추를 담은 줄)와 **태그 이름이 아닌 구조**(판 > 본문 div)로 잡는다.
  */
 
 /*
@@ -60,26 +62,26 @@
 /*
  * ⭐ 제목은 위에 두고 본문과 한 덩어리로 읽히게 한다 - 통째로 가운데로 내리지 않는다(사용자
  * 지시 2026-09-15). 위 여백은 DS 20px 과 앞서 둔 40px 사이, 제목과 본문 사이는 DS 12px 에서
- * 조금 넓힌다.
- */
-.worker-sign-in__unregister-dialog header {
-  padding-top: var(--space-7, 32px);
-  padding-bottom: var(--space-4, 16px);
-}
-
-/*
+ * 조금 넓힌다. 헤더의 DS 여백(위 20 · 아래 12)에 이 바깥 여백을 더해 32 · 16 이 된다.
+ *
  * 360dp 단말에서 20px 제목이 마지막 한 글자만 둘째 줄로 떨어졌다. 한 단계 줄이되 본문(16px)보다
- * 크고 굵게 두어 위계는 지킨다. 더 좁은 단말에서 줄이 넘어가도 낱말 가운데서 끊지 않는다.
+ * 크고 굵게 두어 위계는 지킨다.
  */
-.worker-sign-in__unregister-dialog header h2 {
+.worker-sign-in__dialog-title {
+  display: block;
+  margin-block: var(--space-3, 12px) 4px;
   font-size: 18px;
   line-height: 26px;
   font-weight: 600;
-  word-break: keep-all;
 }
 
-/* 본문이 남은 높이를 받아 단추를 창 아래로 내린다 - 엄지가 닿는 자리다. */
-.worker-sign-in__unregister-dialog header + div {
+/*
+ * 본문이 남은 높이를 받아 단추를 창 아래로 내린다 - 엄지가 닿는 자리다.
+ *
+ * 판의 직계 자식 중 div 는 본문뿐이다(머리와 바닥은 다른 태그다) - 그 태그들을 이름으로 고르지
+ * 않고 구조로 짚는다.
+ */
+.worker-sign-in__unregister-dialog > div > div {
   flex: 1 1 auto;
 }
 
@@ -95,15 +97,19 @@
   font-size: 15px;
   line-height: 24px;
   white-space: pre-line;
-  word-break: keep-all;
 }
 
-/* 두 단추를 같은 폭·높이로 나란히 둔다. 글자는 접지 않고(셸 규칙) 가운데에 선다. */
-.worker-sign-in__unregister-dialog footer {
+/*
+ * 두 단추를 같은 폭·높이로 나란히 둔다. DS 바닥줄은 오른쪽으로 모으므로, 우리 줄이 남은 폭을
+ * 받아야 두 단추가 반씩 나눠 선다(예전에는 단추가 곧 바닥줄의 칸이었다).
+ */
+.worker-sign-in__dialog-actions {
+  display: flex;
+  flex: 1 1 auto;
   gap: var(--space-3, 12px);
 }
 
-.worker-sign-in__unregister-dialog footer > button {
+.worker-sign-in__dialog-actions > button {
   flex: 1 1 0;
   min-width: 0;
 }

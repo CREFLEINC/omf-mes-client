@@ -630,10 +630,14 @@ describe('기기 등록 해제', () => {
   });
 
   /*
-   * 창 배치 규칙(sign-in.css)은 DS 창의 뼈대(판 > header · 본문 div · footer > 단추)에 기댄다.
-   * CSS 는 시험에 안 보여, DS 가 뼈대를 바꾸면 조용히 깨진다 - 뼈대를 여기서 잡는다.
+   * 창 배치 규칙(sign-in.css)이 기대는 자리를 잡는다. CSS 는 시험에 안 보여, 기대는 자리가
+   * 바뀌면 조용히 깨진다.
+   *
+   * ⭐ **DS 가 그리는 태그(header·footer)를 겨냥하지 않는다**(화면 규칙 검사 두 벌). 규칙이
+   * 기대는 것은 ① 우리가 넣은 제목 요소 ② 우리가 넣은 단추 줄과 그 안의 단추 둘 ③ 판의 직계
+   * 자식 중 div 는 본문뿐이라는 구조다 - 셋을 그대로 잡는다.
    */
-  it('창 배치 규칙이 기대는 DS 창의 뼈대가 그대로다', async () => {
+  it('창 배치 규칙이 기대는 자리가 그대로다', async () => {
     const user = userEvent.setup();
     mount();
     await signedIn(user);
@@ -641,9 +645,21 @@ describe('기기 등록 해제', () => {
     await user.click(screen.getByRole('button', { name: '기기 등록 해제' }));
 
     const dialog = await screen.findByRole('dialog');
-    const body = dialog.querySelector(':scope > div > header + div');
-    expect(body?.querySelector('.worker-sign-in__dialog-notice')).not.toBeNull();
-    expect(dialog.querySelectorAll(':scope > div > footer > button')).toHaveLength(2);
+
+    /* ① 제목은 우리 요소가 감싼다 — 크기·여백을 여기에 건다. */
+    expect(dialog.querySelector('.worker-sign-in__dialog-title')?.textContent).toBe(
+      '기기 등록을 해제하시겠습니까?',
+    );
+
+    /* ② 두 단추는 우리 줄 안에 있다 — 폭·간격을 여기에 건다. */
+    expect(
+      dialog.querySelectorAll('.worker-sign-in__dialog-actions > button'),
+    ).toHaveLength(2);
+
+    /* ③ 판의 직계 div 는 본문 하나뿐이다 — 「남은 높이를 받는다」가 이 구조에 기댄다. */
+    const panelDivs = dialog.querySelectorAll(':scope > div > div');
+    expect(panelDivs).toHaveLength(1);
+    expect(panelDivs[0]?.querySelector('.worker-sign-in__dialog-notice')).not.toBeNull();
   });
 
   /*
