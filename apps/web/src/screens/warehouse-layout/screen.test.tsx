@@ -442,7 +442,14 @@ describe('W-CO-08 창고 배치도 — 올리는 동안', () => {
     expect(uploading).toBeDisabled();
     expect(within(busyOverlay()).getByText(t.map.uploadingLabel)).toBeInTheDocument();
     expect(busyOverlay()).toHaveAttribute('role', 'status');
-    expect(screen.getByRole('progressbar', { name: t.map.uploadingLabel })).toBeInTheDocument();
+    /*
+     * ⭐ 가림막 안에서는 글자 하나만 낭독되어야 한다 — 막대는 서 있되(`hidden: true` 로
+     * 찾는다) 이름이 없어(`aria-hidden`) 옆 `<span>` 과 같은 말을 두 번 읽지 않는다.
+     */
+    const progressBar = within(busyOverlay()).getByRole('progressbar', { hidden: true });
+
+    expect(progressBar).toHaveAttribute('aria-hidden', 'true');
+    expect(progressBar).not.toHaveAttribute('aria-label');
     /* ⛔ 도는 동안 판에 점을 찍을 수 없다 — 읽기 전용이면 판이 조작 역할을 내려놓는다. */
     expect(board()).toBeNull();
     expect(screen.getByRole('button', { name: t.map.save })).toBeDisabled();
@@ -534,18 +541,36 @@ describe('W-CO-08 창고 배치도 — 올리는 동안', () => {
 });
 
 describe('W-CO-08 창고 배치도 — 실패가 서는 자리', () => {
-  it('⛔ 413 은 배너로, 400 `file` 은 올리기 자리 문구로 갈린다', async () => {
+  it('⛔ 413·400 `file` 은 올리기 자리 문구로 선다 — 배너는 서지 않는다', async () => {
+    /*
+     * ⚠ **계약·목 모양 그대로**(`tools/mock/seeded.mjs` §POST /app/attachments 413) — `scope:
+     * 'field', field: 'file'` 봉투다. `{message}` 뿐인 옛 스텁은 `kind: 'http'` 로 접혀 배너
+     * 경로를 고정했는데, 실제 모양에서는 `knownFields`(`file`)에 걸려 인라인으로 간다.
+     */
     const tooLarge = renderScreen({
       layouts: [withoutDrawing()],
-      upload: () => jsonResponse({ message: '파일이 너무 큽니다.' }, { status: 413 }),
+      upload: () =>
+        jsonResponse(
+          {
+            errors: [
+              {
+                scope: 'field',
+                field: 'file',
+                code: 'TOO_LARGE',
+                message: '파일이 너무 큽니다(10MB 초과).',
+              },
+            ],
+          },
+          { status: 413 },
+        ),
     });
 
     await loaded();
     await tooLarge.user.upload(fileInput(), pngFile());
 
-    expect(
-      within(await screen.findByRole('alert')).getByText(/파일이 너무 큽니다/),
-    ).toBeInTheDocument();
+    expect(await screen.findByText('파일이 너무 큽니다(10MB 초과).')).toBeInTheDocument();
+    /* 계약 모양은 필드 오류라 배너로 겹쳐 내지 않는다. */
+    expect(screen.queryByRole('alert')).toBeNull();
 
     tooLarge.unmount();
 
