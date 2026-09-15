@@ -6,6 +6,7 @@ import {
   type UseInfiniteQueryResult,
   type UseQueryResult,
 } from '@tanstack/react-query';
+import { messages } from '@omf-mes/i18n';
 
 import { useApiClient } from './api-context';
 import { masterName } from './master-name';
@@ -111,6 +112,30 @@ export const useItemLabels = (items: readonly number[]): Map<number, ItemSummary
         }),
       ),
   });
+};
+
+/**
+ * 단위 코드를 푼다. 못 찾았으면 없다고 말한다.
+ *
+ * 빈 글자를 끼우면 수량 뒤가 그냥 비어, 40 이 마흔 개인지 마흔 킬로그램인지 가릴 수 없다 -
+ * 한 목록에 EA 와 KG 가 섞여 선다.
+ *
+ * 품목과 달리 상태를 여럿으로 가르지 않는다. 이 자리에 들어갈 수 있는 것은 수량 뒤에 붙는
+ * 짧은 말뿐이고, 단위는 목록 한 번으로 받아 실패하면 화면 전체가 같은 상태다.
+ */
+export const uomLabelOf = (
+  uoms: Map<number, string> | undefined,
+  uomId: number | null | undefined,
+): string => {
+  /*
+   * 단위가 없는 것과 못 받은 것은 다르다. 설비 점검의 정성 항목처럼 단위 개념이 아예 없는
+   * 자리에 없다고 적으면, 정상인 항목이 자료가 빠진 것으로 읽힌다.
+   */
+  if (uomId === null || uomId === undefined) {
+    return '';
+  }
+
+  return uoms?.get(uomId) ?? messages.common.reference.uomUnknown;
 };
 
 /**

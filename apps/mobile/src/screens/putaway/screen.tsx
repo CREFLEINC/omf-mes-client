@@ -8,7 +8,7 @@ import { useAdvanceTo } from '../../patterns/advance-to';
 import { useBackStep } from '../../patterns/back-step';
 import { playErrorTone } from '../../patterns/error-tone';
 import { displayNameOf, useCodeValues } from '../../patterns/code-values';
-import { useItemCodes, useItemLabels, useUomCodes } from '../../patterns/masters';
+import { uomLabelOf, useItemCodes, useItemLabels, useUomCodes } from '../../patterns/masters';
 import { referenceLabel } from '../../patterns/reference';
 import { formatMaterialLotNo } from '../../patterns/material-lot-no';
 import { useOutbox } from '../../patterns/outbox';
@@ -91,6 +91,7 @@ export const PutawayScreen = () => {
   const locations = useLocations(task?.warehouseId ?? null);
   const byCode = useLocationByCode(task?.warehouseId ?? null, scanned);
   const uoms = useUomCodes(true);
+  const uomOf = (uomId: number | null | undefined) => uomLabelOf(uoms.data, uomId);
   const itemLabels = useItemLabels((tasks.data ?? []).map((each) => each.itemId));
   const itemCode = useItemCodes(
     (tasks.data ?? []).map((each) => each.itemId),
@@ -225,7 +226,7 @@ export const PutawayScreen = () => {
       key: entry.idempotencyKey,
       lotNo: lotNo.data ?? '',
       locationCode: location.locationCode,
-      qty: `${String(task.taskQty)} ${uoms.data?.get(task.uomId) ?? ''}`,
+      qty: `${String(task.taskQty)} ${uomOf(task.uomId)}`,
     };
 
     try {
@@ -280,7 +281,7 @@ export const PutawayScreen = () => {
       <dt>{t.tasks.taskNoLabel}</dt>
       <dd>{each.putawayTaskNo}</dd>
       <dt>{t.tasks.qtyLabel}</dt>
-      <dd>{`${String(each.taskQty)} ${uoms.data?.get(each.uomId) ?? ''}`}</dd>
+      <dd>{`${String(each.taskQty)} ${uomOf(each.uomId)}`}</dd>
       {extra}
     </dl>
   );

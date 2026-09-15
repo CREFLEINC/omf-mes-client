@@ -39,6 +39,7 @@ export const common: Translated<typeof ko.common> = {
     empty: '—',
     named: (name: string, code: string) => `${name}(${code})`,
     unknown: 'Không rõ',
+    uomUnknown: 'Không có đơn vị',
     loading: 'Đang tải tên',
     failed: 'Không tải được tên',
     inactiveSuffix: ' (ngừng dùng)',

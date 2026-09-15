@@ -285,6 +285,27 @@ describe('적치·입고 완료 화면', () => {
   });
 
   /*
+   * 단위를 못 받으면 수량 뒤가 그냥 비어 40 이 마흔 개인지 마흔 킬로그램인지 가릴 수 없다.
+   * 한 목록에 EA 와 KG 가 섞여 서므로 자릿수로도 가늠하지 못한다.
+   */
+  it('단위를 못 받으면 없다고 말한다', async () => {
+    mount([
+      {
+        match: (req) => new URL(req.url).pathname === '/mdm/uoms',
+        respond: () => {
+          throw new TypeError('Failed to fetch');
+        },
+      },
+    ]);
+
+    const pick = await screen.findByRole('button', { name: /PT-2026-0007/ });
+
+    await waitFor(() => {
+      expect(pick.textContent).toContain('단위 없음');
+    });
+  });
+
+  /*
    * 코드만 보이면 무엇을 집는지 알려면 코드를 외우고 있어야 한다. 이름만 보이면 실물 라벨과
    * 눈으로 대조할 수 없다 - 라벨에 찍히는 것은 코드다. 둘을 함께 보인다.
    */
