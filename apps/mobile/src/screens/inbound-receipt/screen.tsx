@@ -47,7 +47,7 @@ import {
   type ReceiptDraft,
   type SplitMode,
 } from './receipt';
-import { ItemPicker } from './item-picker';
+import { ItemPicker } from '../../patterns/item-picker';
 import './screen.css';
 
 const t = messages.inboundReceipt;

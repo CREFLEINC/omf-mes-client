@@ -12,6 +12,7 @@ import {
   type StubRoute,
 } from '../../test/api-harness';
 import { formatMaterialLotNo } from '../../patterns/material-lot-no';
+import { runBackStep } from '../../patterns/back-step';
 import { itemRoutes } from '../../test/master-routes';
 import { useWorkerSession } from '../../patterns/worker-session';
 import { PhysicalCountScreen } from './screen';
@@ -40,14 +41,24 @@ const page = { page: 1, size: 200, total: 1, totalElements: 1, totalPages: 1 };
 
 const COUNT_NO = 'IC-2026-000031';
 const LOC_CODE = 'A-01-03';
+/** 순회 중에 옮겨 가는 다음 선반. */
+const OTHER_LOC = 'A-01-04';
 
 interface Options {
   /** 장부를 감춘 실사로 답한다 - 서버가 장부 수량을 내려보내지 않는다. */
   blind?: boolean;
   /** 첫 줄을 이미 센 것으로 답한다. */
   firstCounted?: boolean;
+  /** 이미 센 첫 줄에 붙어 있는 차이 사유. 서버는 차이가 있는 줄을 사유 없이 받지 않는다. */
+  firstReason?: string;
   /** 이 위치에 실사 라인이 없다고 답한다. */
   emptyLocation?: boolean;
+  /** 품목·LOT 마스터 조회가 닿지 않는다 - 현장에서 연결이 끊긴 자리다. */
+  mastersDown?: boolean;
+  /** 아직 안 센 위치가 아홉 곳이다 - 창고 하나의 실사는 위치가 수십 곳이다. */
+  manyLocations?: boolean;
+  /** 계획 라인이 0 인 실사로 답한다. */
+  emptyPlan?: boolean;
   /**
    * 다음 조회부터 둘째 줄이 이미 센 것으로 바뀐다 - 다른 단말이 그 줄을 센 상황이다.
    *
@@ -75,6 +86,7 @@ const LOT_NO = '0001234500000012002607310001230007';
  * 여러 줄 서므로 자릿수를 세어 가며 줄을 찾게 된다.
  */
 const QTY_LABEL = new RegExp(`ABC-123 · ${formatMaterialLotNo(LOT_NO)} 실물 수량`);
+const QTY_REASON = new RegExp(`ABC-123 · ${formatMaterialLotNo(LOT_NO)} 차이 사유`);
 
 const line = (overrides: Record<string, unknown> = {}) => ({
   inventoryCountLineId: 5101,
@@ -89,6 +101,11 @@ const line = (overrides: Record<string, unknown> = {}) => ({
   uomId: 1001,
   counted: false,
   countedAt: '2026-09-07T09:00:00+09:00',
+  /* 서버가 라인에 실어 보내는 표시용 값. 화면은 이것을 읽고 마스터를 다시 부르지 않는다. */
+  itemCode: 'ABC-123',
+  itemName: '하우징',
+  lotNo: LOT_NO,
+  locationCode: LOC_CODE,
   ...overrides,
 });
 
@@ -116,18 +133,46 @@ const routes = (options: Options = {}): StubRoute[] => [
   },
   {
     match: (req) => new URL(req.url).pathname === '/mdm/locations',
-    respond: () =>
+    respond: (req) =>
       jsonResponse({
         items: [
           {
-            locationId: 3001,
+            locationId:
+              new URL(req.url).searchParams.get('locationCode') === OTHER_LOC ? 3002 : 3001,
             warehouseId: 1001,
-            locationCode: LOC_CODE,
+            locationCode:
+              new URL(req.url).searchParams.get('locationCode') === OTHER_LOC
+                ? OTHER_LOC
+                : LOC_CODE,
             locationName: 'A구역 01열 03단',
             isActive: true,
           },
         ],
         page,
+      }),
+  },
+  {
+    /* 진행 요약은 서버가 세어 준다 - 화면이 전체 라인을 받아 세면 페이지네이션과 어긋난다. */
+    match: (req) => /\/inventory\/counts\/\d+$/.test(new URL(req.url).pathname),
+    respond: () =>
+      jsonResponse({
+        inventoryCount: {
+          inventoryCountId: 5001,
+          inventoryCountNo: COUNT_NO,
+          countTypeCode: 'PERIODIC',
+          warehouseId: 1001,
+          plannedDate: '2026-09-07',
+          blindCount: false,
+          statusCode: 'IN_PROGRESS',
+        },
+        summary: {
+          plannedCount: options.emptyPlan === true ? 0 : 120,
+          countedCount: options.emptyPlan === true ? 0 : 38,
+          uncountedCount: 82,
+          varianceCount: 3,
+          closable: false,
+          closeBlockedReasonCode: 'COUNT_REMAINING',
+        },
       }),
   },
   {
@@ -144,6 +189,33 @@ const routes = (options: Options = {}): StubRoute[] => [
         return jsonResponse({ items: [], page });
       }
 
+      /* 실사 위치를 모으는 조회다. 위치 축 없이 미실사만 묻는다. */
+      if (new URL(req.url).searchParams.get('uncountedOnly') === 'true') {
+        if (options.manyLocations === true) {
+          /* 코드 순이 아닌 차례로 답한다 - 화면이 세우는지 본다. */
+          const codes = [
+            'A-01-05',
+            'A-01-09',
+            'A-01-01',
+            'A-01-07',
+            'A-01-03',
+            'A-01-02',
+            'A-01-08',
+            'A-01-06',
+            'A-01-04',
+          ];
+
+          return jsonResponse({
+            items: codes.map((locationCode, at) =>
+              line({ inventoryCountLineId: 6000 + at, counted: false, locationCode }),
+            ),
+            page,
+          });
+        }
+
+        return jsonResponse({ items: [line({ counted: false })], page });
+      }
+
       /* 블라인드 실사는 어느 줄에도 장부가 오지 않는다. */
       const hideSystemQty = options.blind === true ? { systemQty: undefined } : {};
 
@@ -153,13 +225,19 @@ const routes = (options: Options = {}): StubRoute[] => [
             ...hideSystemQty,
             counted: options.firstCounted === true,
             countedQty: options.firstCounted === true ? 118 : 0,
+            ...(options.firstReason === undefined
+              ? {}
+              : { varianceReasonCode: options.firstReason }),
           }),
           line({
             ...hideSystemQty,
             inventoryCountLineId: 5102,
             lineNo: 2,
             itemId: 2001,
+            itemCode: 'RM-1001',
+            itemName: '수지A',
             lotId: null,
+            lotNo: null,
             systemQty: options.blind === true ? undefined : 40,
             counted: options.otherDevice?.counted === true,
             countedQty: options.otherDevice?.counted === true ? 37 : 0,
@@ -169,6 +247,17 @@ const routes = (options: Options = {}): StubRoute[] => [
       });
     },
   },
+  /* 앞에 세워 마스터 조회를 가로챈다 - 연결이 끊기면 이 두 축이 먼저 닿지 않는다. */
+  ...(options.mastersDown === true
+    ? [
+        {
+          match: (req: Request) =>
+            /\/trace\/lots\/\d+$/.test(new URL(req.url).pathname) ||
+            new URL(req.url).pathname.startsWith('/mdm/items'),
+          respond: () => Promise.reject(new TypeError('Failed to fetch')),
+        },
+      ]
+    : []),
   {
     /* 실사 응답은 LOT 식별자만 준다. 번호는 이 조회에서 온다. */
     match: (req) => /\/trace\/lots\/\d+$/.test(new URL(req.url).pathname),
@@ -179,9 +268,41 @@ const routes = (options: Options = {}): StubRoute[] => [
     },
   },
   ...itemRoutes([
-    { itemId: 2002, itemCode: 'ABC-123', itemName: '하우징', fifoPolicyCode: 'FIFO' },
-    { itemId: 2001, itemCode: 'RM-1001', itemName: '수지A', fifoPolicyCode: 'FEFO' },
+    {
+      itemId: 2002,
+      itemCode: 'ABC-123',
+      itemName: '하우징',
+      fifoPolicyCode: 'FIFO',
+      baseUomId: 1001,
+    },
+    {
+      itemId: 2001,
+      itemCode: 'RM-1001',
+      itemName: '수지A',
+      fifoPolicyCode: 'FEFO',
+      baseUomId: 1001,
+    },
+    /* 계획에 없는 품목. 장부에 없는 물건을 찾았을 때 고르는 자리다. */
+    {
+      itemId: 2003,
+      itemCode: 'ZZZ-999',
+      itemName: '미등록 자재',
+      fifoPolicyCode: 'FIFO',
+      baseUomId: 1001,
+    },
   ]),
+  {
+    match: (req) => new URL(req.url).pathname === '/mdm/warehouses',
+    respond: () =>
+      jsonResponse({
+        items: [{ warehouseId: 1001, warehouseCode: 'WH-1', warehouseName: '1공장 자재창고' }],
+        page,
+      }),
+  },
+  {
+    match: (req) => new URL(req.url).pathname === '/mdm/uoms',
+    respond: () => jsonResponse({ items: [{ uomId: 1001, uomCode: 'EA' }], page }),
+  },
   {
     match: (req) => new URL(req.url).pathname === '/mdm/code-values',
     respond: (req) => {
@@ -198,7 +319,17 @@ const routes = (options: Options = {}): StubRoute[] => [
                   displayOrder: 1,
                 },
               ]
-            : [],
+            : new URL(req.url).searchParams.get('codeGroupCode') === 'INVENTORY_COUNT_TYPE'
+              ? [
+                  {
+                    code: 'PERIODIC',
+                    codeName: 'Periodic',
+                    nameKo: '정기',
+                    isActive: true,
+                    displayOrder: 1,
+                  },
+                ]
+              : [],
         page,
       });
     },
@@ -234,9 +365,13 @@ const scanLocation = (code: string) => {
   field.dispatchEvent(new InputEvent('input', { bubbles: true, inputType: 'insertFromPaste' }));
 };
 
+/** 실사는 목록에서 정보를 보고 고른다 - 카드 한 장이 한 실사다. */
+const pickCount = async (user: ReturnType<typeof userEvent.setup>) => {
+  await user.click(await screen.findByRole('button', { name: new RegExp(COUNT_NO) }));
+};
+
 const openLocation = async (user: ReturnType<typeof userEvent.setup>) => {
-  await user.click(await screen.findByRole('combobox', { name: '실사' }));
-  await user.click(await screen.findByRole('option', { name: `${COUNT_NO} · 2026-09-07` }));
+  await pickCount(user);
   scanLocation(LOC_CODE);
   await screen.findByText(`위치 ${LOC_CODE}`);
 };
@@ -252,8 +387,7 @@ describe('실물 카운트 화면', () => {
     const user = userEvent.setup();
     mount();
 
-    await user.click(await screen.findByRole('combobox', { name: '실사' }));
-    await user.click(await screen.findByRole('option', { name: `${COUNT_NO} · 2026-09-07` }));
+    await pickCount(user);
 
     expect(await screen.findByLabelText('위치 스캔')).toBeTruthy();
   });
@@ -266,7 +400,7 @@ describe('실물 카운트 화면', () => {
     const asked: string[] = [];
     mount({ asked });
 
-    await screen.findByRole('combobox', { name: '실사' });
+    await screen.findByRole('button', { name: new RegExp(COUNT_NO) });
 
     expect(asked.some((url) => url.includes('inProgressOnly=true'))).toBe(true);
   });
@@ -289,7 +423,456 @@ describe('실물 카운트 화면', () => {
     await openLocation(user);
 
     expect(await screen.findByLabelText(QTY_LABEL)).toBeTruthy();
-    expect(screen.getByText('전산 잔량 120')).toBeTruthy();
+    expect(screen.getByText('전산 잔량 120 EA')).toBeTruthy();
+  });
+
+  /*
+   * 실사를 골라도 어디로 가야 하는지 화면이 말하지 않으면 위치 코드를 아는 사람만 쓸 수 있다.
+   * 대상 위치는 실사 헤더에 없고 라인에 붙어 있으므로, 아직 안 센 라인에서 모아 보인다.
+   */
+  it('실사 위치를 말한다', async () => {
+    const user = userEvent.setup();
+    mount();
+
+    await pickCount(user);
+
+    expect(await screen.findByText(new RegExp(`실사 위치.*${LOC_CODE}`))).toBeTruthy();
+  });
+
+  /*
+   * 창고 하나의 실사는 위치가 수십 곳이다. 다 늘어놓으면 화면을 넘겨 위치 스캔 칸이 아래로
+   * 밀리고, 순회는 앞에서부터 하므로 뒤쪽 코드는 지금 쓸모가 없다.
+   */
+  it('위치가 많으면 앞의 몇 곳과 남은 수를 말한다', async () => {
+    const user = userEvent.setup();
+    mount({ manyLocations: true });
+
+    await pickCount(user);
+
+    const shown = await screen.findByText(/실사 위치/);
+
+    expect(shown.textContent).toContain('외 5곳');
+    /* 코드 순으로 세워 창고를 도는 차례와 어긋나지 않게 한다. */
+    expect(shown.textContent).toContain('A-01-01');
+    expect(shown.textContent).not.toContain('A-01-09');
+  });
+
+  /*
+   * 한 위치를 끝내면 그곳은 목록에서 빠져야 한다. 낡은 목록을 그대로 두면 방금 다 센 선반으로
+   * 다시 보낸다.
+   */
+  it('한 위치를 끝내면 남은 위치를 다시 받는다', async () => {
+    const user = userEvent.setup();
+    const asked: string[] = [];
+    mount({ asked });
+    await openLocation(user);
+
+    await user.type(await screen.findByLabelText(QTY_LABEL), '120');
+    await user.click(screen.getByRole('button', { name: '이 위치 완료' }));
+    await user.click(await screen.findByRole('button', { name: '다음 위치' }));
+
+    await waitFor(() => {
+      expect(asked.filter((url) => url.includes('uncountedOnly=true')).length).toBeGreaterThan(1);
+    });
+  });
+
+  /*
+   * 이 선반을 다 셌는지는 실사 전체 진행과 다른 물음이다. 화면이 든 줄로 바로 셀 수 있고,
+   * 세는 사람이 한 위치를 끝낼 때마다 확인하는 것이 이 값이다.
+   */
+  it('이 위치에서 몇 줄을 셌는지 말한다', async () => {
+    const user = userEvent.setup();
+    mount();
+    await openLocation(user);
+
+    expect(await screen.findByText('진행 0 / 2')).toBeTruthy();
+
+    await user.type(await screen.findByLabelText(QTY_LABEL), '120');
+
+    expect(await screen.findByText('진행 1 / 2')).toBeTruthy();
+  });
+
+  /*
+   * 숫자만 있으면 장갑 낀 손으로 훑을 때 읽고 나눠야 한다. 얼마나 남았는지는 길이로 먼저
+   * 들어온다.
+   */
+  it('이 위치 진행을 막대로도 보인다', async () => {
+    const user = userEvent.setup();
+    mount();
+    await openLocation(user);
+
+    const bar = await screen.findByRole('progressbar', { name: '진행' });
+
+    expect(bar.getAttribute('aria-valuenow')).toBe('0');
+
+    await user.type(await screen.findByLabelText(QTY_LABEL), '120');
+
+    await waitFor(() => {
+      /* 퍼센트가 아니라 센 줄 수다 - 둘 중 하나를 셌다. */
+      expect(screen.getByRole('progressbar', { name: '진행' }).getAttribute('aria-valuenow')).toBe(
+        '1',
+      );
+    });
+  });
+
+  /*
+   * 숫자판이 화면 아래를 덮는다. 옮긴 줄이 그 아래 가려져 있으면 어느 줄에 적는지 머리글로만
+   * 알게 되고, 전산 잔량과 앞서 센 값을 못 본 채 적는다.
+   */
+  /*
+   * 옮긴 자리에 커서가 없으면 어디에 적히는지 화면이 말하지 않는다. 숫자판을 누르면 값은
+   * 들어가는데 테두리는 앞 라인에 남아 있어, 잘못 적고도 모른다.
+   */
+  it('앞뒤 라인으로 옮기면 그 칸에 커서가 간다', async () => {
+    const user = userEvent.setup();
+    mount();
+    await openLocation(user);
+
+    const fields = await screen.findAllByLabelText(/실물 수량 입력/);
+    await user.click(fields[0] as HTMLInputElement);
+
+    await user.click(screen.getByRole('button', { name: '다음 라인' }));
+
+    await waitFor(() => {
+      expect(document.activeElement).toBe(fields[1]);
+    });
+  });
+
+  it('앞뒤 라인으로 옮기면 그 라인이 보이게 스크롤한다', async () => {
+    const user = userEvent.setup();
+    const seen: Element[] = [];
+    const original = Element.prototype.scrollIntoView;
+    Element.prototype.scrollIntoView = function scrollIntoView(this: Element) {
+      seen.push(this);
+    };
+
+    try {
+      mount();
+      await openLocation(user);
+
+      const fields = await screen.findAllByLabelText(/실물 수량 입력/);
+      await user.click(fields[0] as HTMLInputElement);
+      seen.length = 0;
+
+      await user.click(screen.getByRole('button', { name: '다음 라인' }));
+
+      await waitFor(() => {
+        expect(seen).not.toHaveLength(0);
+      });
+      /*
+       * 적는 칸을 맞춘다 - 라인 전체를 맞추면 제목과 값이 자리를 차지해 정작 칸이 숫자판
+       * 아래로 밀린다.
+       */
+      const target = seen[seen.length - 1];
+
+      expect(target?.tagName).toBe('INPUT');
+      expect(target?.getAttribute('aria-label')).toContain('RM-1001');
+    } finally {
+      Element.prototype.scrollIntoView = original;
+    }
+  });
+
+  /*
+   * 앞서 센 값은 칸에 담겨 보이는데 사유만 감추면 반쪽이다. 어떤 사유로 저장됐는지 모른 채
+   * 그 줄을 다시 보내게 된다.
+   */
+  it('앞서 고른 사유를 그대로 보인다', async () => {
+    const user = userEvent.setup();
+    mount({ firstCounted: true, firstReason: 'COUNT_ERROR' });
+    await openLocation(user);
+
+    const combo = await screen.findByRole('combobox', { name: QTY_REASON });
+
+    expect(combo.textContent).toContain('계수 오류');
+  });
+
+  /*
+   * 한 위치에 아홉 줄이 넘게 선다. 한 줄을 적을 때마다 숫자판을 닫고 다음 칸을 눌러 다시
+   * 열면 손이 화면을 두 번 오간다 - 숫자판에서 바로 옮긴다.
+   */
+  it('숫자판에서 앞뒤 줄로 옮긴다', async () => {
+    const user = userEvent.setup();
+    mount();
+    await openLocation(user);
+
+    const fields = await screen.findAllByLabelText(/실물 수량 입력/);
+    await user.click(fields[0] as HTMLInputElement);
+
+    const pad = () => screen.getByRole('button', { name: '7' }).closest('.physical-count__keypad');
+
+    expect(pad()?.textContent).toContain('ABC-123');
+    /* 첫 줄에서는 앞으로 갈 곳이 없다. */
+    expect(screen.getByRole('button', { name: '앞 라인' })).toBeDisabled();
+
+    await user.click(screen.getByRole('button', { name: '다음 라인' }));
+
+    expect(pad()?.textContent).toContain('RM-1001');
+    /* 마지막 줄에서는 뒤로 갈 곳이 없다. */
+    expect(screen.getByRole('button', { name: '다음 라인' })).toBeDisabled();
+
+    await user.click(screen.getByRole('button', { name: '앞 라인' }));
+
+    expect(pad()?.textContent).toContain('ABC-123');
+  });
+
+  /*
+   * 숫자판이 줄 사이에 끼면 그 아래 줄들이 화면 밖으로 밀린다. 아홉 줄이 넘는 목록에서 적던
+   * 자리를 잃고, 뒤이어 뜨는 차이 사유가 숫자판 아래에 생겨 어디서 온 칸인지 알 수 없다.
+   */
+  it('숫자판은 줄 목록 밖에 선다', async () => {
+    const user = userEvent.setup();
+    mount();
+    await openLocation(user);
+    await user.click(await screen.findByLabelText(QTY_LABEL));
+
+    const key = await screen.findByRole('button', { name: '7' });
+
+    expect(key.closest('.physical-count__line')).toBeNull();
+  });
+
+  /* 목록 밖에 서면 어느 줄에 적는 중인지 숫자판이 스스로 말해야 한다. */
+  it('숫자판이 지금 적는 줄을 말한다', async () => {
+    const user = userEvent.setup();
+    mount();
+    await openLocation(user);
+    await user.click(await screen.findByLabelText(QTY_LABEL));
+
+    const pad = (await screen.findByRole('button', { name: '7' })).closest(
+      '.physical-count__keypad',
+    );
+
+    expect(pad?.textContent).toContain(formatMaterialLotNo(LOT_NO));
+  });
+
+  /*
+   * 실사 번호와 날짜만으로는 어느 실사인지 갈리지 않는다. 같은 날 여러 창고의 실사가 함께
+   * 서므로, 무엇을 고르는지 보고 고를 수 있어야 한다.
+   */
+  it('실사를 목록에서 정보를 보고 고른다', async () => {
+    const user = userEvent.setup();
+    mount();
+
+    const card = await screen.findByRole('button', { name: new RegExp(COUNT_NO) });
+
+    expect(card.textContent).toContain('1공장 자재창고');
+    expect(card.textContent).toContain('정기');
+
+    await user.click(card);
+
+    expect(await screen.findByLabelText('위치 스캔')).toBeTruthy();
+  });
+
+  /*
+   * 더한 줄은 그 위치의 것이다. 다른 선반으로 옮겨도 남아 있으면 앞 위치의 번호를 든 채 새
+   * 위치 전송에 실려, 엉뚱한 선반에 없는 재고가 생긴다.
+   */
+  it('위치를 옮기면 앞 위치에서 더한 줄은 따라오지 않는다', async () => {
+    const user = userEvent.setup();
+    mount();
+    await openLocation(user);
+
+    await user.click(await screen.findByRole('button', { name: '목록에 없는 재고' }));
+    await user.click(await screen.findByRole('button', { name: /ZZZ-999/ }));
+    await screen.findByLabelText(/ZZZ-999 실물 수량 입력/);
+
+    /* 다른 선반을 찍는다 - 화면은 라인 목록 상태로 남아 있고 스캔 칸은 그대로 열려 있다. */
+    scanLocation(OTHER_LOC);
+    await screen.findByText(`위치 ${OTHER_LOC}`);
+
+    await waitFor(() => {
+      expect(screen.queryByLabelText(/ZZZ-999 실물 수량 입력/)).toBeNull();
+    });
+  });
+
+  /*
+   * 순회하다 보면 장부에 없는 물건이 나온다. 계획 라인이 없어 적을 자리가 없으면 그 재고는
+   * 실사에서 통째로 빠진다.
+   *
+   * 새 라인의 번호는 서버가 채번한다 - 오프라인에서는 만들 수 없으므로 온라인일 때만 연다.
+   */
+  it('목록에 없는 재고를 더해 함께 보낸다', async () => {
+    const user = userEvent.setup();
+    const seen: Request[] = [];
+    mount({ seen });
+    await openLocation(user);
+
+    /* 설계가 적은 대로 더하기 표시를 앞에 단다. */
+    const add = await screen.findByRole('button', { name: '목록에 없는 재고' });
+    expect(add.textContent).toContain('add');
+
+    await user.click(add);
+    await user.click(await screen.findByRole('button', { name: /ZZZ-999/ }));
+    await user.type(await screen.findByLabelText(/ZZZ-999 실물 수량 입력/), '7');
+
+    /* 장부에 없던 물건이라 차이가 그대로 남는다 - 왜 여기 있는지가 조정의 근거다. */
+    await user.click(await screen.findByRole('combobox', { name: /ZZZ-999 차이 사유/ }));
+    await user.click(await screen.findByRole('option', { name: '계수 오류' }));
+    await user.click(screen.getByRole('button', { name: '이 위치 완료' }));
+
+    await waitFor(() => {
+      expect(seen).toHaveLength(1);
+    });
+
+    const body = (await seen[0]?.json()) as {
+      lines: { inventoryCountLineId?: number; itemId: number; countedQty: number; uomId: number }[];
+    };
+    const added = body.lines.find((each) => each.itemId === 2003);
+
+    /* 번호가 없는 줄이 신규다. 서버가 그것을 보고 채번한다. */
+    expect(added).toBeDefined();
+    expect(added).not.toHaveProperty('inventoryCountLineId');
+    expect(added?.countedQty).toBe(7);
+    expect(added?.uomId).toBe(1001);
+  });
+
+  /*
+   * 라우터 이력에는 이 화면 하나뿐이다. 화면 안 단계를 되돌리지 않으면 실사를 고르고 위치까지
+   * 스캔한 사람이 뒤로가기 한 번에 작업 목록까지 나가 처음부터 다시 들어와야 한다.
+   */
+  /*
+   * 숫자판이 화면 아래를 덮고 있으면 그것이 가장 안쪽 단계다. 그대로 두고 위치를 되돌리면
+   * 적던 자리를 잃고, 사람은 뒤로가기가 무엇을 닫는지 모른 채 누르게 된다.
+   */
+  it('숫자판이 열려 있으면 뒤로가기가 그것부터 닫는다', async () => {
+    const user = userEvent.setup();
+    mount();
+    await openLocation(user);
+
+    const fields = await screen.findAllByLabelText(/실물 수량 입력/);
+    await user.click(fields[0] as HTMLInputElement);
+    await screen.findByRole('button', { name: '7' });
+
+    expect(runBackStep()).toBe(true);
+
+    /* 숫자판만 닫힌다 - 라인 목록은 그대로 선다. */
+    await waitFor(() => {
+      expect(screen.queryByRole('button', { name: '7' })).toBeNull();
+    });
+    expect(screen.getAllByLabelText(/실물 수량 입력/).length).toBeGreaterThan(0);
+  });
+
+  /*
+   * 닫을 때 커서는 그 칸에 남는다. 여는 자리를 포커스에만 걸어 두면 같은 칸을 다시 눌러도
+   * 아무 일이 없어, 사람은 숫자판이 고장 난 줄 안다.
+   */
+  it('뒤로가기로 닫은 칸을 다시 누르면 숫자판이 열린다', async () => {
+    const user = userEvent.setup();
+    mount();
+    await openLocation(user);
+
+    const fields = await screen.findAllByLabelText(/실물 수량 입력/);
+    await user.click(fields[0] as HTMLInputElement);
+    await screen.findByRole('button', { name: '7' });
+
+    runBackStep();
+    await waitFor(() => {
+      expect(screen.queryByRole('button', { name: '7' })).toBeNull();
+    });
+
+    await user.click(fields[0] as HTMLInputElement);
+
+    expect(await screen.findByRole('button', { name: '7' })).toBeTruthy();
+  });
+
+  it('뒤로가기는 화면 안 단계를 하나씩 되돌린다', async () => {
+    const user = userEvent.setup();
+    mount();
+    await openLocation(user);
+
+    /* 위치 → 실사 고르기 차례로 되돌아온다. */
+    expect(runBackStep()).toBe(true);
+    expect(await screen.findByLabelText('위치 스캔')).toBeTruthy();
+
+    expect(runBackStep()).toBe(true);
+    expect(await screen.findByRole('button', { name: new RegExp(COUNT_NO) })).toBeTruthy();
+
+    /* 더 되돌릴 것이 없으면 화면 밖으로 넘긴다. */
+    expect(runBackStep()).toBe(false);
+  });
+
+  /*
+   * 계획 라인이 0 인 실사는 진행을 말할 것이 없다. 막대에 0 을 나누게 두면 채움이 어디에
+   * 서는지 정해지지 않는다.
+   */
+  it('계획 라인이 없으면 진행을 보이지 않는다', async () => {
+    const user = userEvent.setup();
+    mount({ emptyPlan: true });
+
+    await pickCount(user);
+    await screen.findByLabelText('위치 스캔');
+
+    expect(screen.queryByRole('progressbar', { name: '실사 진행' })).toBeNull();
+  });
+
+  /*
+   * 창고를 순회하는 일이라 한 번에 끝나지 않는다. 얼마나 남았는지 화면이 말하지 않으면 언제
+   * 끝나는지 모른 채 돌게 되고, 다 돌았는지도 스스로 셈해야 한다.
+   */
+  it('고른 실사의 진행을 말한다', async () => {
+    const user = userEvent.setup();
+    mount();
+
+    await pickCount(user);
+
+    expect(await screen.findByText('진행 38 / 120')).toBeTruthy();
+  });
+
+  /*
+   * 한 위치에 개수로 세는 품목과 무게로 세는 품목이 섞여 선다. 단위가 빠지면 40 이 마흔 개인지
+   * 마흔 킬로그램인지 가릴 수 없고, 그 판단이 그대로 재고 조정으로 나간다.
+   */
+  it('수량 옆에 단위를 세운다', async () => {
+    const user = userEvent.setup();
+    mount();
+    await openLocation(user);
+
+    expect(await screen.findByText('전산 잔량 120 EA')).toBeTruthy();
+  });
+
+  /*
+   * 블라인드는 장부가 오지 않는다. 자리까지 지우면 장부가 없는 실사와 구별되지 않아, 가려진
+   * 것인지 원래 없는 것인지 줄을 보고 알 수 없다.
+   */
+  it('블라인드는 장부 자리를 가린 채로 남긴다', async () => {
+    const user = userEvent.setup();
+    mount({ blind: true });
+    await openLocation(user);
+
+    await screen.findAllByText(/전산 잔량 ▪▪▪/);
+
+    /* 줄마다 선다 - 한 줄만 가리면 나머지가 장부 없는 줄로 읽힌다. */
+    expect(screen.getAllByText(/전산 잔량 ▪▪▪/)).toHaveLength(2);
+  });
+
+  /*
+   * 줄 이름은 제목으로 한 번만 선다. 칸 라벨에 또 적으면 한 줄에 같은 34자리가 두 번 서서,
+   * 아홉 줄이 넘는 목록에서 어느 것이 줄 이름이고 어느 것이 칸 이름인지 갈리지 않는다.
+   */
+  it('줄 이름을 눈에 보이는 자리에 한 번만 세운다', async () => {
+    const user = userEvent.setup();
+    mount();
+    await openLocation(user);
+    await screen.findByLabelText(QTY_LABEL);
+
+    const shown = formatMaterialLotNo(LOT_NO);
+    const seen = screen.getAllByText((_, node) => node?.textContent?.includes(shown) === true);
+    /* 조상 요소가 함께 걸리므로 그 글자만 담은 잎만 센다. */
+    const leaves = seen.filter((node) => node.children.length === 0);
+
+    expect(leaves).toHaveLength(1);
+  });
+
+  /*
+   * 계약이 품목 코드와 LOT 번호를 라인에 실어 보내는 이유가 여기 있다 - 모바일은 오프라인에서
+   * 마스터를 갱신할 수 없다. 이름을 마스터에서 다시 받아 오면 연결이 끊긴 자리에서 줄마다
+   * 이름이 통째로 사라지고, 세는 사람이 어느 줄에 적는지 알 수 없게 된다.
+   */
+  it('마스터가 닿지 않아도 라인이 실어 온 이름을 보인다', async () => {
+    const user = userEvent.setup();
+    mount({ mastersDown: true });
+    await openLocation(user);
+
+    expect(await screen.findByLabelText(QTY_LABEL)).toBeTruthy();
   });
 
   /*
@@ -329,6 +912,36 @@ describe('실물 카운트 화면', () => {
     expect(body.lines).toHaveLength(1);
     expect(body.lines[0]?.inventoryCountLineId).toBe(5101);
     expect(body.locationId).toBe(3001);
+  });
+
+  /*
+   * 한 위치를 나눠 센다. 아홉 줄이 넘는 위치를 한 번에 다 세지 못하면 같은 위치를 다시 연다.
+   *
+   * 계약은 이 경로를 치환으로 정의한다 - 본문에 없는 기존 라인을 미실사로 되돌린다. 앞서
+   * 센 줄을 빼고 보내면 그 회차가 지워지고, 되돌릴 길이 없어 다시 세러 가야 한다.
+   */
+  it('앞서 센 줄을 손대지 않아도 그 값이 본문에 함께 든다', async () => {
+    const user = userEvent.setup();
+    const seen: Request[] = [];
+    mount({ seen, firstCounted: true, firstReason: 'COUNT_ERROR' });
+    await openLocation(user);
+
+    /* 아직 안 센 둘째 줄에만 적는다 */
+    const fields = await screen.findAllByLabelText(/실물 수량/);
+    await user.type(fields[1] as HTMLInputElement, '40');
+    await user.click(screen.getByRole('button', { name: '이 위치 완료' }));
+
+    await waitFor(() => {
+      expect(seen).toHaveLength(1);
+    });
+
+    const body = (await seen[0]?.json()) as {
+      lines: { inventoryCountLineId: number; countedQty: number }[];
+    };
+
+    expect(body.lines).toHaveLength(2);
+    expect(body.lines.find((each) => each.inventoryCountLineId === 5101)?.countedQty).toBe(118);
+    expect(body.lines.find((each) => each.inventoryCountLineId === 5102)?.countedQty).toBe(40);
   });
 
   /* 세어 보니 없더라는 유효한 답이다. 0 을 못 적으면 그 사실을 남길 길이 없다. */
@@ -394,7 +1007,8 @@ describe('실물 카운트 화면', () => {
     const seen: Request[] = [];
     mount({ blind: true, firstCounted: true, seen });
     await openLocation(user);
-    await user.type(await screen.findByLabelText(QTY_LABEL), '118');
+    /* 앞서 센 값이 칸에 담겨 있다 - 손대지 않고 그대로 내보낸다. */
+    expect((await screen.findByLabelText(QTY_LABEL)).getAttribute('value')).toBe('118');
     expect(screen.queryByRole('combobox', { name: /차이 사유/ })).toBeNull();
     await user.click(screen.getByRole('button', { name: '이 위치 완료' }));
     await waitFor(() => expect(seen).toHaveLength(1));
@@ -445,12 +1059,12 @@ describe('실물 카운트 화면', () => {
     });
   });
 
-  it('이미 센 줄은 앞서 센 값을 보인다', async () => {
+  it('이미 센 줄은 이전 실사값을 보인다', async () => {
     const user = userEvent.setup();
     mount({ firstCounted: true });
     await openLocation(user);
 
-    expect(await screen.findByText('앞서 센 값 118')).toBeTruthy();
+    expect(await screen.findByText('이전 실사값 118 EA')).toBeTruthy();
   });
 
   /*
@@ -464,7 +1078,7 @@ describe('실물 카운트 화면', () => {
 
     await user.type(await screen.findByLabelText(QTY_LABEL), '100');
 
-    expect(await screen.findByText('차이 20 부족')).toBeTruthy();
+    expect(await screen.findByText('차이 20 EA 부족')).toBeTruthy();
   });
 
   it('많이 세면 많다고 말한다', async () => {
@@ -474,7 +1088,7 @@ describe('실물 카운트 화면', () => {
 
     await user.type(await screen.findByLabelText(QTY_LABEL), '135');
 
-    expect(await screen.findByText('차이 15 많음')).toBeTruthy();
+    expect(await screen.findByText('차이 15 EA 많음')).toBeTruthy();
   });
 
   /*
@@ -532,7 +1146,7 @@ describe('실물 카운트 화면', () => {
     otherDevice.counted = true;
     await queryClient.invalidateQueries({ queryKey: ['physical-count-lines'] });
 
-    expect(await screen.findByText('앞서 센 값 37')).toBeTruthy();
+    expect(await screen.findByText('이전 실사값 37 EA')).toBeTruthy();
     expect((screen.getByLabelText(QTY_LABEL) as HTMLInputElement).value).toBe('118');
   });
 
@@ -581,6 +1195,6 @@ describe('실물 카운트 화면', () => {
     held.failWrite = 'outbox';
     await user.click(screen.getByRole('button', { name: '이 위치 완료' }));
 
-    expect(await screen.findByText('센 것을 저장하지 못했습니다')).toBeTruthy();
+    expect(await screen.findByText('실물 수량을 저장하지 못했습니다')).toBeTruthy();
   });
 });

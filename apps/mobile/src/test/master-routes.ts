@@ -6,6 +6,8 @@ export interface StubItem {
   itemName: string;
   fifoPolicyCode: string;
   storageConditionCode?: string | null;
+  /** 수량에 붙는 단위. 계획에 없던 재고를 더할 때 화면이 이 값을 그대로 싣는다. */
+  baseUomId?: number;
 }
 
 const ITEM_PATH = /^\/mdm\/items\/(\d+)$/;

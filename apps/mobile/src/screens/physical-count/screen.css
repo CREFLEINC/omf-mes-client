@@ -11,10 +11,30 @@
   gap: var(--space-3, 12px);
 }
 
+/* 숫자판이 목록 위에 뜬다. 그만큼 아래를 비워 두지 않으면 마지막 줄이 가려진 채 남는다. */
+.physical-count--keypad-open {
+  padding-bottom: 22rem;
+}
+
+/*
+ * 적는 칸을 화면에 들일 때 숫자판 높이만큼 아래를 비운다. 이것이 없으면 칸이 화면 맨 아래에
+ * 맞춰져 숫자판에 그대로 덮인다.
+ */
+.physical-count--keypad-open .physical-count__line input {
+  scroll-margin-block-end: 26rem;
+}
+
+/*
+ * 한 위치에 아홉 줄이 넘게 선다. 경계 없이 이으면 어디까지가 한 줄인지 눈으로 갈리지 않아,
+ * 위 줄의 값을 보고 아래 줄에 적게 된다.
+ */
 .physical-count__line {
   display: flex;
   flex-direction: column;
   gap: var(--space-1, 4px);
+  padding: var(--space-3, 12px);
+  border: 1px solid var(--outline-variant, #d7d7dd);
+  border-radius: var(--radius-md, 8px);
 }
 
 /*
@@ -26,12 +46,14 @@
   overflow-wrap: anywhere;
 }
 
-/* 전산 잔량과 상태를 한 줄에 나란히 둔다. 폭이 모자라면 상태가 아래로 내려간다. */
+/*
+ * 값들을 한 줄에 왼쪽부터 붙여 둔다. 양끝으로 벌리면 화면 폭만큼 떨어져 서로 무슨 관계인지
+ * 읽히지 않는다. 폭이 모자라면 뒤의 값이 아래로 내려간다.
+ */
 .physical-count__figures {
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-2, 8px);
-  justify-content: space-between;
   align-items: baseline;
 }
 
@@ -42,10 +64,14 @@
   font-variant-numeric: tabular-nums;
 }
 
-/* 되돌릴 수 없는 조정이 이 수만큼 나간다. 값 중에 이것만 굵게 둔다. */
+/*
+ * 되돌릴 수 없는 조정이 이 수만큼 나간다. 값 중에 이것만 굵게 둔다 - 크기는 옆에 선 값들과
+ * 맞춘다. 혼자 커지면 한 줄에 글자 크기가 셋이 되어 어느 것이 중한지가 아니라 배치가
+ * 어긋난 것으로 읽힌다.
+ */
 .physical-count__diff {
-  font: var(--type-title-sm);
-  letter-spacing: var(--type-title-sm-tracking);
+  font: var(--type-label-lg);
+  letter-spacing: var(--type-label-lg-tracking);
   font-variant-numeric: tabular-nums;
 }
 
@@ -62,4 +88,105 @@
 /* 핵심 단추는 장갑 낀 손으로 누른다. 폭을 꽉 채워 겨냥하지 않아도 닿게 한다. */
 .physical-count__wide {
   width: 100%;
+}
+
+/* 남은 양은 숫자로 먼저 읽고 막대는 그 뒤를 받친다 - 장갑 낀 손으로 훑을 때 숫자가 빠르다. */
+.physical-count__progress {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1, 4px);
+  font: var(--type-body-lg);
+  letter-spacing: var(--type-body-lg-tracking);
+  font-variant-numeric: tabular-nums;
+}
+
+/*
+ * 숫자판은 기기 키보드처럼 화면 아래에 붙어 목록 위에 뜬다. 줄 사이에 끼우면 그 아래 줄들이
+ * 화면 밖으로 밀려 적던 자리를 잃는다.
+ */
+.physical-count__keypad {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  /* 키를 가운데 모은다. 한쪽으로 몰리면 반대쪽 엄지로는 먼 키에 닿지 않는다. */
+  align-items: center;
+  gap: var(--space-2, 8px);
+  padding: var(--space-3, 12px);
+  background: var(--surface, #fff);
+  border-top: 1px solid var(--outline-variant, #d7d7dd);
+}
+
+/* 목록 밖에 서므로 어느 줄에 적는 중인지 스스로 말한다. */
+.physical-count__keypad-head {
+  align-self: stretch;
+  margin: 0;
+  font: var(--type-title-sm);
+  letter-spacing: var(--type-title-sm-tracking);
+  overflow-wrap: anywhere;
+}
+
+/* 이 선반을 다 셌는가. 목록 머리에서 한눈에 읽히도록 값만 굵게 둔다. */
+.physical-count__here {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1, 4px);
+  margin: 0;
+  font: var(--type-title-sm);
+  letter-spacing: var(--type-title-sm-tracking);
+  font-variant-numeric: tabular-nums;
+}
+
+/* 다음에 갈 곳이다. 위치 코드를 눈으로 찾아 읽으므로 자릿수가 흔들리지 않게 둔다. */
+.physical-count__remaining {
+  margin: 0;
+  font: var(--type-body-lg);
+  letter-spacing: var(--type-body-lg-tracking);
+  overflow-wrap: anywhere;
+  font-variant-numeric: tabular-nums;
+}
+
+/* 규범 9 - 값마다 이름을 붙인다. 두 칸으로 세워 이름과 값이 눈으로 짝지어진다. */
+.physical-count__plans {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2, 8px);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.physical-count__plan-fields {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: var(--space-1, 4px) var(--space-3, 12px);
+  margin: 0;
+}
+
+.physical-count__plan-fields dt {
+  color: var(--on-surface-variant, inherit);
+}
+
+.physical-count__plan-fields dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+/* 규범 4 - 사유가 줄 전체로 퍼지면 줄 전체의 설명으로 읽힌다. */
+.physical-count__reason {
+  max-width: 20rem;
+  margin: 0;
+  font: var(--type-body-sm);
+  letter-spacing: var(--type-body-sm-tracking);
+  color: var(--on-surface-variant, inherit);
+}
+
+/* 숫자판 양옆에 앞뒤 줄로 옮기는 단추를 세운다. 엄지가 닿는 자리에 둔다. */
+.physical-count__keypad-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2, 8px);
 }
