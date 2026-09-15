@@ -630,10 +630,14 @@ describe('기기 등록 해제', () => {
   });
 
   /*
-   * 창 배치 규칙(sign-in.css)은 DS 창의 뼈대(판 > header · 본문 div · footer > 단추)에 기댄다.
-   * CSS 는 시험에 안 보여, DS 가 뼈대를 바꾸면 조용히 깨진다 - 뼈대를 여기서 잡는다.
+   * 창 배치 규칙(sign-in.css)이 기대는 자리를 잡는다. CSS 는 시험에 안 보여, 여기가 어긋나면
+   * 조용히 깨진다 - 제목이 제자리에 안 서거나 단추가 창 아래로 안 내려간다.
+   *
+   * 제목과 단추 줄은 우리 요소로 고른다. DS 가 창을 그릴 때 쓰는 클래스는 빌드마다 바뀌는
+   * 해시라 붙잡을 수 없고, header·h2·footer 라는 태그로 고르면 부품 속에 닿아 겨냥한 적
+   * 없는 다른 창까지 번진다(#1201). 본문만은 판의 자식 중 유일한 div 라 그것으로 집는다.
    */
-  it('창 배치 규칙이 기대는 DS 창의 뼈대가 그대로다', async () => {
+  it('창 배치 규칙이 기대는 자리가 그대로다', async () => {
     const user = userEvent.setup();
     mount();
     await signedIn(user);
@@ -641,9 +645,18 @@ describe('기기 등록 해제', () => {
     await user.click(screen.getByRole('button', { name: '기기 등록 해제' }));
 
     const dialog = await screen.findByRole('dialog');
-    const body = dialog.querySelector(':scope > div > header + div');
-    expect(body?.querySelector('.worker-sign-in__dialog-notice')).not.toBeNull();
-    expect(dialog.querySelectorAll(':scope > div > footer > button')).toHaveLength(2);
+
+    /*
+     * CSS 가 본문을 늘려 단추를 창 아래로 내리는 경로와 같아야 한다. 판의 자식 중 div 가
+     * 본문 하나뿐이라는 것이 그 규칙의 전제다 - 하나 더 생기면 CSS 는 둘 다 늘린다.
+     */
+    const bodies = dialog.querySelectorAll(':scope > div > div');
+    expect(bodies).toHaveLength(1);
+    expect(bodies[0]?.querySelector('.worker-sign-in__dialog-notice')).not.toBeNull();
+
+    /* 제목은 머리말 자리에 서야 한다. 창 안 아무 데나 있으면 여백이 어긋난다. */
+    expect(dialog.querySelector('header .worker-sign-in__dialog-title')).not.toBeNull();
+    expect(dialog.querySelectorAll('.worker-sign-in__dialog-actions > button')).toHaveLength(2);
   });
 
   /*
