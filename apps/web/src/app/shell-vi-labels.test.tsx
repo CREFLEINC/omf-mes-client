@@ -1,7 +1,7 @@
 import { LOCALES, setLocale } from '@omf-mes/i18n';
 import { screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
 import { SessionProvider } from '../patterns/session';
 import { renderWithProviders } from '../test/api-harness';
@@ -99,5 +99,20 @@ describe('셸 뼈대의 이름 — 베트남어', () => {
     expect(
       within(sidebar).queryByRole('button', { name: LOCALES.ko.common.clear }),
     ).not.toBeInTheDocument();
+  });
+});
+
+describe('사이드바 버전 표기 — 베트남어', () => {
+  it('릴리스 태그가 없는 빌드의 표기가 베트남어로 선다', () => {
+    vi.stubEnv('VITE_APP_VERSION', '');
+
+    try {
+      renderShell();
+
+      expect(screen.getByText(viMessages.shellNav.version.dev)).toBeInTheDocument();
+      expect(screen.queryByText(LOCALES.ko.shellNav.version.dev)).not.toBeInTheDocument();
+    } finally {
+      vi.unstubAllEnvs();
+    }
   });
 });

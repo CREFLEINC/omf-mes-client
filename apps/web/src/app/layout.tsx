@@ -14,6 +14,7 @@ import { useHref, useLinkClickHandler, useLocation } from 'react-router';
 import { LocaleSelect } from '../patterns/locale-select';
 import { localizedLabel } from '../patterns/localized-label';
 import { useSession, useSignOut } from '../patterns/session';
+import { readAppVersion } from './app-version';
 import { filterNavGroups, hasNoNavMatch, matchesNavEntry } from './nav-filter';
 import { NavGroup } from './nav-group';
 import { NAV_ENTRIES, NAV_GROUPS, NAV_LEAD } from './nav-tree';
@@ -88,6 +89,17 @@ const NavItem = ({ to, icon, children, className }: NavItemProps) => {
 const findActiveGroupLabel = (pathname: string): string | null =>
   NAV_GROUPS.find((group) => group.items.some((item) => isPathActive(pathname, item.to)))?.label ??
   null;
+
+/** 사이드바 맨 아래의 버전 캡션. 릴리스 태그가 없는 빌드는 「개발 빌드」로 말한다. */
+const AppVersionCaption = () => {
+  const appVersion = readAppVersion();
+
+  return (
+    <p className="sidebar-version">
+      {appVersion.kind === 'release' ? t.version.release(appVersion.version) : t.version.dev}
+    </p>
+  );
+};
 
 interface AppLayoutProps {
   children: ReactNode;
@@ -265,6 +277,16 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
                 clearLabel={messages.common.clear}
               />
             )
+          }
+          footer={
+            /*
+             * 버전 표기(#1240) — **찾으면 보이고 일에는 끼어들지 않는 자리**라 사이드바 맨 아래
+             * 작은 캡션으로 둔다. 문의·장애 보고 때 「지금 어느 릴리스인가」를 확인하는 용도다.
+             *
+             * ⛔ **레일에서는 세우지 않는다.** 72px 에 글자가 들어가지 않아 줄마다 부러진다 —
+             * 확인하려는 사람은 펼친다(검색창과 같은 규율).
+             */
+            isSidebarCollapsed ? undefined : <AppVersionCaption />
           }
         >
           {/*

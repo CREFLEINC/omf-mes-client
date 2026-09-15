@@ -17,4 +17,8 @@ export const shellNav: Translated<typeof ko.shellNav> = {
     /* 항목 수만 싣는다 - 펼쳤는지는 aria-expanded 가 말한다(원문과 같은 규율). */
     name: (label: string, count: number) => `${label} (${String(count)} màn hình)`,
   },
+  version: {
+    release: (version: string) => `Phiên bản ${version}`,
+    dev: 'Bản dựng phát triển',
+  },
 };
