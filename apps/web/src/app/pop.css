@@ -5669,11 +5669,12 @@
  * 출하 실적 등록 — 본문 맨 위 「출하 대상을 선택하세요」 띠는 **제 높이를 지킨다**(#1268 · 사용자 지시
  * 2026-09-15). 본문 겹(`.packing-body`)의 자식은 남는 높이를 나눠 갖고(`min-height: 0`) 넘치면
  * 잘리는데, 띠도 그 규칙을 받아 반쯤 잘렸다(실측). 옆 구획(`.packing-target` 등)과 같은 무게로 푼다.
+ * ⛔ `.packing-body` 로 좁힌다 — 다른 화면 본문 겹의 띠까지 제 높이를 고집하면 세로 예산을 넘친다(리뷰 지적).
  */
 .pop-ui
   > :not(.pop-header):not(.pop-terminal-header):not(.banner-slot):not(dialog):not(
     [class*='action']
-  ):not(.pop-overlay):not(.pop-fixed):not(.pane)
+  ):not(.pop-overlay):not(.pop-fixed):not(.pane).packing-body
   > .banner-slot {
   flex: 0 0 auto;
   min-height: auto;
