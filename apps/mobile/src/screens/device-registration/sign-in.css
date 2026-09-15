@@ -37,8 +37,9 @@
  * 내용이 위에 몰리고 단추가 그 바로 밑에 붙어 아래가 통째로 비었다. 창 구조는 그대로 두고
  * 이 창에서만 제목·본문·단추의 크기와 자리를 고른다.
  *
- * DS 창의 클래스 이름은 빌드마다 바뀌어 요소로 고른다 - header·h2·footer 는 창 부품이 늘
- * 그리는 뼈대다.
+ * DS 창의 클래스 이름은 빌드마다 바뀌는 해시라 붙잡을 수 없다. 그래서 제목과 단추 줄을
+ * 우리 요소로 감싸 그것으로 고른다 - header·h2·footer 로 고르면 부품 속에 닿아, 겨냥한
+ * 적 없는 다른 창까지 번진다(#1201).
  */
 
 /*
@@ -60,26 +61,26 @@
 /*
  * ⭐ 제목은 위에 두고 본문과 한 덩어리로 읽히게 한다 - 통째로 가운데로 내리지 않는다(사용자
  * 지시 2026-09-15). 위 여백은 DS 20px 과 앞서 둔 40px 사이, 제목과 본문 사이는 DS 12px 에서
- * 조금 넓힌다.
+ * 조금 넓힌다. DS 머리말 여백(20px / 12px)에 더해져 32px / 16px 이 된다.
+ *
+ * 360dp 단말에서 20px 제목이 마지막 한 글자만 둘째 줄로 떨어졌다. 한 단계 줄이되 본문(16px)
+ * 보다 크고 굵게 두어 위계는 지킨다.
  */
-.worker-sign-in__unregister-dialog header {
-  padding-top: var(--space-7, 32px);
-  padding-bottom: var(--space-4, 16px);
-}
-
-/*
- * 360dp 단말에서 20px 제목이 마지막 한 글자만 둘째 줄로 떨어졌다. 한 단계 줄이되 본문(16px)보다
- * 크고 굵게 두어 위계는 지킨다. 더 좁은 단말에서 줄이 넘어가도 낱말 가운데서 끊지 않는다.
- */
-.worker-sign-in__unregister-dialog header h2 {
+.worker-sign-in__dialog-title {
+  display: block;
+  padding-top: var(--space-3, 12px);
+  padding-bottom: var(--space-1, 4px);
   font-size: 18px;
   line-height: 26px;
   font-weight: 600;
-  word-break: keep-all;
 }
 
-/* 본문이 남은 높이를 받아 단추를 창 아래로 내린다 - 엄지가 닿는 자리다. */
-.worker-sign-in__unregister-dialog header + div {
+/*
+ * 본문이 남은 높이를 받아 단추를 창 아래로 내린다 - 엄지가 닿는 자리다.
+ *
+ * 판의 자식 중 div 는 본문뿐이라 이것으로 집는다. 머리말과 바닥은 div 가 아니다.
+ */
+.worker-sign-in__unregister-dialog > div > div {
   flex: 1 1 auto;
 }
 
@@ -95,15 +96,16 @@
   font-size: 15px;
   line-height: 24px;
   white-space: pre-line;
-  word-break: keep-all;
 }
 
 /* 두 단추를 같은 폭·높이로 나란히 둔다. 글자는 접지 않고(셸 규칙) 가운데에 선다. */
-.worker-sign-in__unregister-dialog footer {
+.worker-sign-in__dialog-actions {
+  display: flex;
+  flex: 1 1 auto;
   gap: var(--space-3, 12px);
 }
 
-.worker-sign-in__unregister-dialog footer > button {
+.worker-sign-in__dialog-actions > button {
   flex: 1 1 0;
   min-width: 0;
 }

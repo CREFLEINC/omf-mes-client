@@ -134,9 +134,14 @@ export const WorkerSignInScreen = () => {
         onClose={() => {
           setAsking(false);
         }}
-        title={t.unregister.title}
+        /*
+         * 제목과 단추 줄을 우리 요소로 감싼다. 디자인 시스템이 창을 그릴 때 쓰는 클래스는
+         * 빌드마다 바뀌는 해시라 붙잡을 수 없어, 예전에는 header·h2·footer 라는 태그로
+         * 골랐다. 그 방식은 부품 속에 닿아, 겨냥한 적 없는 다른 창까지 번질 수 있다.
+         */
+        title={<span className="worker-sign-in__dialog-title">{t.unregister.title}</span>}
         footer={
-          <>
+          <div className="worker-sign-in__dialog-actions">
             <Button
               variant="outlined"
               size="xl"
@@ -159,7 +164,7 @@ export const WorkerSignInScreen = () => {
             >
               {t.unregister.confirm}
             </Button>
-          </>
+          </div>
         }
       >
         {/*
