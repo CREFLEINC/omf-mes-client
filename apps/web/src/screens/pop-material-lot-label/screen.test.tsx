@@ -399,6 +399,19 @@ describe('PopMaterialLotLabelScreen — 입하 목록', () => {
     expect(screen.queryByText('발행할 자재가 없습니다.')).not.toBeInTheDocument();
   });
 
+  /**
+   * ⚠ 미발행 보기는 입하 건을 발행 여부로 거르지 않아 다 발행한 건도 쪽을 차지한다(#1241). 뒤쪽이
+   * 남았는데 「발행 완료를 보라」고 하면 뒤쪽의 미발행 자재를 놓친다.
+   */
+  it('뒤쪽이 남았으면 비어 있는 쪽에서 다음 쪽을 가리킨다', async () => {
+    renderScreen({ lines: [], page: { page: 1, size: 1, total: 3 } });
+
+    expect(
+      await screen.findByText('이 쪽에는 미발행 자재가 없습니다. 다음 쪽을 확인하세요.'),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/발행 완료 자재를 확인하세요/u)).not.toBeInTheDocument();
+  });
+
   /** 쪽 나눔은 입하 건 단위다 — 목록 줄(자재) 수로 세면 단위가 섞인다. */
   it('지금 자리를 쪽 번호로 보인다 — 줄 수와 어긋나는 건수를 말하지 않는다', async () => {
     renderScreen({ lines: [] });

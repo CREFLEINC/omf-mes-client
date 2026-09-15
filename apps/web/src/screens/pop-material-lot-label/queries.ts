@@ -26,7 +26,8 @@ import {
  * | 발행 완료 보기 | 라벨을 발행한 입하 라인 목록(#1241) |
  *
  * **미부착·발행 조건을 서버가 거른다.** 스펙 §3-6 과 변경 통지 #534 가 목록 원천을
- * `?supplierLotLabelAttached=false&labelIssued=false` 로 정했고 그 질의가 계약에 있다. 화면이 받아서
+ * `?supplierLotLabelAttached=false&labelIssued=false` 로 정했고 그 질의가 계약에 있다(건 목록의 발행
+ * 조건은 #1241 에서 보기별로 바꿨다 — `receiptIssuedQuery`). 화면이 받아서
  * 거르던 우회는 걷었다 — 거르는 쪽이 서버이므로 **한 쪽에 보이는 줄 수가 쪽 크기와 어긋나지
  * 않는다.**
  *

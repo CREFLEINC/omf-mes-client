@@ -34,14 +34,25 @@ const tDevice = messages.popMaterialLotLabel.device;
  * 사전부착 자재를 걸러 내므로 **입하 건은 있는데 보일 자재가 없는** 상태가 정상적으로 생긴다.
  * 그때 「발행할 자재가 없습니다」만 내면 「전체 N건」과 나란히 서서 서로 어긋나 보인다.
  */
-const emptyMessage = (isBeyondLast: boolean, receiptCount: number, view: IssuedView): string => {
+const emptyMessage = (
+  isBeyondLast: boolean,
+  receiptCount: number,
+  view: IssuedView,
+  hasNextPage: boolean,
+): string => {
   if (isBeyondLast) return t.receipts.beyondLast;
 
   if (view === 'issued') {
     return receiptCount > 0 ? t.receipts.issuedEmptyOnThisPage : t.receipts.issuedEmpty;
   }
 
-  return receiptCount > 0 ? t.receipts.emptyOnThisPage : t.receipts.empty;
+  if (receiptCount === 0) return t.receipts.empty;
+
+  /*
+   * ⚠ 미발행 보기는 입하 건을 발행 여부로 거르지 않아(#1241) 다 발행한 건도 쪽을 차지한다. 뒤쪽에
+   *   미발행 자재가 남아 있을 수 있으니 「발행 완료를 보라」는 마지막 쪽에서만 말한다.
+   */
+  return hasNextPage ? t.receipts.emptyOnThisPageMore : t.receipts.emptyOnThisPage;
 };
 
 const ISSUED_VIEWS: readonly IssuedView[] = ['unissued', 'issued'];
@@ -93,8 +104,12 @@ export const PopMaterialLotLabelScreen = () => {
   /*
    * ⛔ **결과는 그 결과를 만든 줄의 것이다.** 다른 자재를 고르면 앞 자재의 실패가 따라오지
    * 않는다 — 그 판정을 여기 한 곳에서 하고, 알림과 단추가 같은 값을 본다.
+   *
+   * ⛔ **고른 줄이 목록에서 빠져도 결과는 남긴다**(#1241). 발행 기록이 생긴 줄은 미발행 목록에서
+   *    곧바로 빠지므로, 줄 대신 **고른 id** 로 가른다 — 줄로 가르면 「라벨이 나오지 않았습니다」가
+   *    소리 없이 사라진다.
    */
-  const isResultOfSelected = issue.result.lineId === selectedRow?.inboundReceiptLineId;
+  const isResultOfSelected = issue.result.lineId !== null && issue.result.lineId === selectedLineId;
   /*
    * 출력 권한이 없는 단말(403)에서는 **재시도 수단을 주지 않는다**(스펙 §5-2). 단말 전체를
    * 미리 막지는 않는다 — 게이트는 서버가 갖고, 화면은 받은 답에만 반응한다(§5-5).
@@ -234,9 +249,8 @@ export const PopMaterialLotLabelScreen = () => {
           ) : (
             <>
               {/*
-               * ⛔ **「무엇이 걸러졌는가」를 문장으로 두지 않는다.** 제목의 「(미부착)」이 그
-               *    일을 한다(스펙 §3 도면). 세로 여유가 119px 뿐인 화면이라 배너 한 줄이
-               *    목록에서 그만큼을 가져간다.
+               * ⛔ **「무엇이 걸러졌는가」를 문장으로 두지 않는다.** 위의 발행 여부 탭이 그 일을
+               *    한다. 세로 여유가 119px 뿐인 화면이라 배너 한 줄이 목록에서 그만큼을 가져간다.
                */}
               <ReceiptList
                 rows={targets.rows}
@@ -254,6 +268,7 @@ export const PopMaterialLotLabelScreen = () => {
                   pageView?.isBeyondLast === true,
                   result?.items.length ?? 0,
                   issuedView,
+                  pageView?.canNext === true,
                 )}
               />
               {pageView === null ? null : (

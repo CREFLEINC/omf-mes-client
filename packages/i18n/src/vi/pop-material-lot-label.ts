@@ -13,6 +13,7 @@ export const popMaterialLotLabel: Translated<typeof ko.popMaterialLotLabel> = {
       `Bỏ chọn nhập hàng ${receiptNo} · mặt hàng ${itemName} · số lượng ${qty}`,
     empty: 'Không có vật tư cần phát hành.',
     emptyOnThisPage: 'Không có vật tư chưa phát hành. Hãy xem vật tư đã phát hành.',
+    emptyOnThisPageMore: 'Trang này không có vật tư chưa phát hành. Hãy xem trang sau.',
     beyondLast: 'Trang này không có kết quả. Hãy quay lại trang trước.',
     filter: {
       label: 'Trạng thái phát hành',
@@ -68,7 +69,7 @@ export const popMaterialLotLabel: Translated<typeof ko.popMaterialLotLabel> = {
         lotNo === '' ? `Đã in. Lượt ${seq}` : `Đã in. Số LOT ${lotNo} · lượt ${seq}`,
       lotCreated: 'LOT vật tư đã được tạo. Đừng đăng ký lại, hãy tiếp tục bằng 「In」.',
       lotCreatedForbidden: 'LOT vật tư đã được tạo. Đừng đăng ký lại — có thể in ở máy trạm khác.',
-      printFailed: 'Nhãn chưa ra. Kiểm tra máy in rồi bấm 「In lại」.',
+      printFailed: 'Nhãn chưa ra. Kiểm tra máy in rồi bấm 「In lại」 ở 「Đã phát hành」.',
       registerConflict: 'Chưa đăng ký xong lúc này. Lát nữa hãy bấm lại 「Đăng ký · In」.',
       issueForbidden: 'Máy trạm này không phát hành nhãn được. Hãy in ở máy trạm có máy in nhãn.',
       reportFailedAfterPrint:

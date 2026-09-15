@@ -5605,10 +5605,6 @@
  * 재인쇄 사유 창 — 크게 연다(사용자 지시 2026-09-15 · #1241). 사유 칸·[선택]·바닥 단추를
  * P-02-09 재출력 사유(`.pop-reprint-reason`)와 같은 72 로 세우고 [선택]을 넓힌다.
  */
-.pop-ui .pop-reissue-dialog [class*='title'] {
-  font: var(--type-title-lg);
-}
-
 .pop-ui .pop-reissue-dialog .pop-select {
   grid-template-columns: minmax(0, 1fr) 12rem;
 }
