@@ -40,6 +40,16 @@ const SHIFT_LEFT = dots(2.5);
 const LEFT = MARGIN - SHIFT_LEFT;
 const RIGHT = MARGIN + SHIFT_LEFT;
 
+/**
+ * 세로는 **1 mm 위로 올려** 짠다 — 위 3 mm · 아래 5 mm(사용자 지시 2026-09-15 · 실기 확인 뒤).
+ *
+ * ⛔ 더 올리지 않는다. 위 3 mm 에 QR 윗변이 붙어 잘렸던 판은 가로가 치우친 채였지만, 위쪽 여유는
+ *    이 이상 줄이면 같은 자리가 다시 위험하다.
+ */
+const SHIFT_UP = dots(1);
+const TOP = MARGIN - SHIFT_UP;
+const BOTTOM = MARGIN + SHIFT_UP;
+
 /** 글줄 높이 — 내장 글꼴은 point 를 203 dpi 로 옮긴 높이로 찍힌다. */
 const lineHeight = (point: number): number => Math.ceil(point * (203 / 72));
 
@@ -133,7 +143,7 @@ export interface MaterialLotLabelFields {
 export const buildMaterialLotLabel = (fields: MaterialLotLabelFields): string => {
   const side = qrSide(fields.lotNo);
   const qrX = WIDTH - RIGHT - side;
-  const qrY = Math.round((HEIGHT - side) / 2);
+  const qrY = Math.round((HEIGHT - side) / 2) - SHIFT_UP;
   const column = qrX - LEFT - dots(2);
 
   const qty =
@@ -149,9 +159,9 @@ export const buildMaterialLotLabel = (fields: MaterialLotLabelFields): string =>
 
   /* 남는 세로 공간을 줄 사이에 고르게 나눈다 — 위아래 여백 안에서 끝난다. */
   const used = rows.reduce((sum, row) => sum + lineHeight(row.point), 0);
-  const spacing = Math.floor((HEIGHT - MARGIN * 2 - used) / (rows.length - 1));
+  const spacing = Math.floor((HEIGHT - TOP - BOTTOM - used) / (rows.length - 1));
 
-  let y = MARGIN;
+  let y = TOP;
   const drawn = rows.map((row) => {
     const line = text(LEFT, y, row.point, row.content, column);
     y += lineHeight(row.point) + spacing;
