@@ -195,6 +195,12 @@ export const PhysicalCountScreen = () => {
 
   const scanField = useScanField({
     onScan: (value) => {
+      /*
+       * 더한 줄은 그 위치의 것이다. 두고 옮기면 앞 위치의 번호를 든 채 새 위치 전송에 실려,
+       * 엉뚱한 선반에 없는 재고가 생긴다.
+       */
+      setLines([]);
+      setKeypadFor(null);
       setScanned(value.trim());
     },
   });
@@ -385,6 +391,12 @@ export const PhysicalCountScreen = () => {
     return (
       <ItemPicker
         onPick={(picked) => {
+          /* 위치가 없으면 어느 선반의 재고인지 정할 수 없다 - 0 으로 두면 엉뚱한 곳에 생긴다. */
+          if (at === null) {
+            setAddingItem(false);
+            return;
+          }
+
           added.current += 1;
           setLines((current) => [
             ...current,
@@ -392,7 +404,7 @@ export const PhysicalCountScreen = () => {
               key: `added-${String(added.current)}`,
               /* 서버가 채번한다. 화면이 지어내면 다른 줄을 덮어쓴다. */
               inventoryCountLineId: null,
-              locationId: at?.locationId ?? 0,
+              locationId: at.locationId,
               itemId: picked.itemId,
               /* LOT 은 계획에 없던 재고라 아직 모른다. 계약이 빈 값을 받는다. */
               lotId: null,

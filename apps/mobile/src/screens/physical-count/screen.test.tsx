@@ -41,6 +41,8 @@ const page = { page: 1, size: 200, total: 1, totalElements: 1, totalPages: 1 };
 
 const COUNT_NO = 'IC-2026-000031';
 const LOC_CODE = 'A-01-03';
+/** 순회 중에 옮겨 가는 다음 선반. */
+const OTHER_LOC = 'A-01-04';
 
 interface Options {
   /** 장부를 감춘 실사로 답한다 - 서버가 장부 수량을 내려보내지 않는다. */
@@ -131,13 +133,17 @@ const routes = (options: Options = {}): StubRoute[] => [
   },
   {
     match: (req) => new URL(req.url).pathname === '/mdm/locations',
-    respond: () =>
+    respond: (req) =>
       jsonResponse({
         items: [
           {
-            locationId: 3001,
+            locationId:
+              new URL(req.url).searchParams.get('locationCode') === OTHER_LOC ? 3002 : 3001,
             warehouseId: 1001,
-            locationCode: LOC_CODE,
+            locationCode:
+              new URL(req.url).searchParams.get('locationCode') === OTHER_LOC
+                ? OTHER_LOC
+                : LOC_CODE,
             locationName: 'A구역 01열 03단',
             isActive: true,
           },
@@ -654,6 +660,28 @@ describe('실물 카운트 화면', () => {
     await user.click(card);
 
     expect(await screen.findByLabelText('위치 스캔')).toBeTruthy();
+  });
+
+  /*
+   * 더한 줄은 그 위치의 것이다. 다른 선반으로 옮겨도 남아 있으면 앞 위치의 번호를 든 채 새
+   * 위치 전송에 실려, 엉뚱한 선반에 없는 재고가 생긴다.
+   */
+  it('위치를 옮기면 앞 위치에서 더한 줄은 따라오지 않는다', async () => {
+    const user = userEvent.setup();
+    mount();
+    await openLocation(user);
+
+    await user.click(await screen.findByRole('button', { name: '목록에 없는 재고' }));
+    await user.click(await screen.findByRole('button', { name: /ZZZ-999/ }));
+    await screen.findByLabelText(/ZZZ-999 실물 수량 입력/);
+
+    /* 다른 선반을 찍는다 - 화면은 라인 목록 상태로 남아 있고 스캔 칸은 그대로 열려 있다. */
+    scanLocation(OTHER_LOC);
+    await screen.findByText(`위치 ${OTHER_LOC}`);
+
+    await waitFor(() => {
+      expect(screen.queryByLabelText(/ZZZ-999 실물 수량 입력/)).toBeNull();
+    });
   });
 
   /*
