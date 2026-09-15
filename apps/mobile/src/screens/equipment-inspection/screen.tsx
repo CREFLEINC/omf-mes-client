@@ -20,7 +20,7 @@ import { useAdvanceTo } from '../../patterns/advance-to';
 import { useBackStep } from '../../patterns/back-step';
 import { useEquipments, type Equipment } from '../../patterns/equipments';
 import { playErrorTone } from '../../patterns/error-tone';
-import { useUomCodes } from '../../patterns/masters';
+import { uomLabelOf, useUomCodes } from '../../patterns/masters';
 import { useOutbox } from '../../patterns/outbox';
 import { useScanField } from '../../patterns/use-scan-field';
 import { useScreenTitle } from '../../patterns/screen-title';
@@ -191,6 +191,7 @@ export const EquipmentInspectionScreen = () => {
   });
   const items = useInspectionItems(selected?.equipmentId ?? null);
   const uoms = useUomCodes(selected !== null);
+  const uomOf = (uomId: number | null | undefined) => uomLabelOf(uoms.data, uomId);
   const today = useTodaysInspection(selected?.equipmentId ?? null, type);
 
   /*
@@ -431,11 +432,7 @@ export const EquipmentInspectionScreen = () => {
                         <ItemCard
                           item={item}
                           entry={entries[item.equipmentInspectionItemId]}
-                          uom={
-                            item.uomId === null || item.uomId === undefined
-                              ? ''
-                              : (uoms.data?.get(item.uomId) ?? '')
-                          }
+                          uom={uomOf(item.uomId)}
                           keypadOpen={keypadFor === item.equipmentInspectionItemId}
                           onFocus={() => {
                             setKeypadFor(item.equipmentInspectionItemId);

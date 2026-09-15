@@ -18,7 +18,7 @@ import { useBackStep } from '../../patterns/back-step';
 import { useCodeValues } from '../../patterns/code-values';
 import { playErrorTone } from '../../patterns/error-tone';
 import { useLocationByCode, useLocations, type Location } from '../../patterns/locations';
-import { useItemCodes, useUomCodes } from '../../patterns/masters';
+import { uomLabelOf, useItemCodes, useUomCodes } from '../../patterns/masters';
 import { referenceLabel } from '../../patterns/reference';
 import { useOutbox } from '../../patterns/outbox';
 import { useScanField } from '../../patterns/use-scan-field';
@@ -117,6 +117,7 @@ export const TemporaryPutawayScreen = () => {
   const byCode = useLocationByCode(task?.warehouseId ?? null, scanned);
   const reasons = useCodeValues(PUTAWAY_TASK_TEMPORARY_REASON);
   const uoms = useUomCodes(true);
+  const uomOf = (uomId: number | null | undefined) => uomLabelOf(uoms.data, uomId);
   const itemCode = useItemCodes(task === null ? [] : [task.itemId]);
 
   /*
@@ -275,7 +276,7 @@ export const TemporaryPutawayScreen = () => {
               {t.task.item(
                 referenceLabel(itemCode(task.itemId)),
                 task.putawayTaskNo,
-                `${String(task.taskQty)} ${uoms.data?.get(task.uomId) ?? ''}`,
+                `${String(task.taskQty)} ${uomOf(task.uomId)}`,
               )}
             </strong>
             {/* 어디가 막혀서 여기 왔는지가 대상 정보의 일부다. */}

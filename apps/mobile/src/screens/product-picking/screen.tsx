@@ -8,7 +8,7 @@ import { LOT_HOLD_REASON, useCodeValues, type CodeValue } from '../../patterns/c
 import { playErrorTone } from '../../patterns/error-tone';
 import { useScannedLot } from '../../patterns/lots';
 import { useIdempotencyKey } from '../../patterns/idempotency';
-import { useCustomerNames, useItem, useUomCodes } from '../../patterns/masters';
+import { uomLabelOf, useCustomerNames, useItem, useUomCodes } from '../../patterns/masters';
 import { useOnlineStatus } from '../../patterns/online-status';
 import { toApiError } from '../../patterns/request';
 import { useScanField } from '../../patterns/use-scan-field';
@@ -134,7 +134,7 @@ const CandidateCard = ({
 }) => {
   const problem = lotProblem(candidate, line, today);
   const remaining = remainingDays(candidate.lot, today);
-  const uom = uoms?.get(candidate.lot.uomId) ?? '';
+  const uom = uomLabelOf(uoms, candidate.lot.uomId);
 
   return (
     <Card bordered>
@@ -219,6 +219,7 @@ export const ProductPickingScreen = () => {
   const itemId = target?.line.itemId ?? null;
   const item = useItem(itemId);
   const uoms = useUomCodes(true);
+  const uomOf = (uomId: number | null | undefined) => uomLabelOf(uoms.data, uomId);
   const customers = useCustomerNames(target !== null);
   const pool = useLotPool(itemId);
   const available = useAvailableByLot(itemId);
@@ -518,7 +519,7 @@ export const ProductPickingScreen = () => {
       : t.scan.notFound(missed);
   };
 
-  const lineUom = uoms.data?.get(target.line.uomId) ?? '';
+  const lineUom = uomOf(target.line.uomId);
   /* 이름을 못 받았으면 식별자를 대신 보이지 않는다. 작업자가 대조할 수 없는 값이다. */
   const customerName = customers.data?.get(target.request.customerId) ?? null;
 

@@ -17,7 +17,7 @@ import { Link } from 'react-router';
 import { useAdvanceTo } from '../../patterns/advance-to';
 import { useBackStep } from '../../patterns/back-step';
 import { useCodeValues } from '../../patterns/code-values';
-import { useItem, useUomCodes } from '../../patterns/masters';
+import { uomLabelOf, useItem, useUomCodes } from '../../patterns/masters';
 import { useOutbox } from '../../patterns/outbox';
 import { useScreenTitle } from '../../patterns/screen-title';
 import { useWorkerSession } from '../../patterns/worker-session';
@@ -94,8 +94,9 @@ export const InboundVarianceScreen = () => {
   const reasons = useCodeValues(INBOUND_VARIANCE_REASON);
   const item = useItem(draft.line?.itemId ?? null);
   const uoms = useUomCodes(true);
+  const uomOf = (uomId: number | null | undefined) => uomLabelOf(uoms.data, uomId);
 
-  const uom = uoms.data?.get(draft.line?.uomId ?? -1) ?? '';
+  const uom = uomOf(draft.line?.uomId);
   const ready = canSubmit(draft, worker !== null);
   const pending = countPending(t.record);
 
@@ -254,11 +255,7 @@ export const InboundVarianceScreen = () => {
                   >
                     <Card.Body className="card-body variance__line">
                       <strong>{t.receipt.lineNo(line.lineNo)}</strong>
-                      <p>
-                        {t.receipt.lineQty(
-                          `${String(line.receivedQty)} ${uoms.data?.get(line.uomId) ?? ''}`,
-                        )}
-                      </p>
+                      <p>{t.receipt.lineQty(`${String(line.receivedQty)} ${uomOf(line.uomId)}`)}</p>
                       {draft.line?.inboundReceiptLineId === line.inboundReceiptLineId ? (
                         <Chip status="success">{t.receipt.linePicked}</Chip>
                       ) : null}
@@ -311,7 +308,7 @@ export const InboundVarianceScreen = () => {
                   {t.known.item(
                     types.data?.find((value) => value.code === each.varianceTypeCode)?.name ??
                       each.varianceTypeCode,
-                    `${String(each.varianceQty)} ${uoms.data?.get(each.uomId) ?? ''}`,
+                    `${String(each.varianceQty)} ${uomOf(each.uomId)}`,
                   )}
                 </li>
               ))}

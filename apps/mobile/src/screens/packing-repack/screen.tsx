@@ -13,7 +13,7 @@ import {
   useScannedHandlingUnit,
   type ScannedHandlingUnit,
 } from '../../patterns/handling-units';
-import { useItemLabels, useUomCodes } from '../../patterns/masters';
+import { uomLabelOf, useItemLabels, useUomCodes } from '../../patterns/masters';
 import { createIdempotencyKey, useOutbox } from '../../patterns/outbox';
 import { useScanField } from '../../patterns/use-scan-field';
 import { useScreenTitle } from '../../patterns/screen-title';
@@ -93,6 +93,7 @@ export const PackingRepackScreen = () => {
 
   const found = useScannedHandlingUnit(scanned);
   const uoms = useUomCodes(sources.length > 0);
+  const uomOf = (uomId: number | null | undefined) => uomLabelOf(uoms.data, uomId);
   /* 내용물은 품목·LOT 식별자만 준다. 그 번호로는 실물 라벨과 대조할 수 없다. */
   const allocations = useShipmentAllocations(sources);
 
@@ -149,8 +150,6 @@ export const PackingRepackScreen = () => {
       drop(last.handlingUnit.handlingUnitId);
     }
   });
-
-  const uomOf = (uomId: number): string => uoms.data?.get(uomId) ?? '';
 
   const nameOf = (content: { itemId: number; lotId: number }): string => {
     const item = itemLabels.get(content.itemId);

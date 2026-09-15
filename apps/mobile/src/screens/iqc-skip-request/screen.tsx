@@ -7,7 +7,7 @@ import { useAdvanceTo } from '../../patterns/advance-to';
 import { useBackStep } from '../../patterns/back-step';
 import { displayNameOf, useCodeValues } from '../../patterns/code-values';
 import { useScannedLot } from '../../patterns/lots';
-import { useItem, useUomCodes } from '../../patterns/masters';
+import { uomLabelOf, useItem, useUomCodes } from '../../patterns/masters';
 import { formatMaterialLotNo } from '../../patterns/material-lot-no';
 import { useOutbox } from '../../patterns/outbox';
 import { ScanReplaceDialog } from '../../patterns/scan-replace-dialog';
@@ -118,6 +118,7 @@ export const IqcSkipRequestScreen = () => {
   const found = lot.data ?? null;
   const item = useItem(found?.itemId ?? null);
   const uoms = useUomCodes(found !== null);
+  const uomOf = (uomId: number | null | undefined) => uomLabelOf(uoms.data, uomId);
   const pending = usePendingRequest(found?.lotId ?? null);
   const mine = useMyRequests(worker?.workerNo ?? null);
   const statuses = useCodeValues(APPROVAL_REQUEST_STATUS);
@@ -274,12 +275,7 @@ export const IqcSkipRequestScreen = () => {
               {item.data === undefined ? null : (
                 <span>{`${item.data.itemCode} ${item.data.itemName}`}</span>
               )}
-              <span>
-                {t.lot.quantity(
-                  String(found.initialQty),
-                  uoms.data?.get(found.uomId) ?? String(found.uomId),
-                )}
-              </span>
+              <span>{t.lot.quantity(String(found.initialQty), uomOf(found.uomId))}</span>
               <Chip status={inspectionPending ? 'info' : 'warning'}>
                 {inspectionPending ? t.lot.pending : t.lot.notPending}
               </Chip>

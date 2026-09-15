@@ -9,7 +9,7 @@ import { useCodeValues } from '../../patterns/code-values';
 import { playErrorTone } from '../../patterns/error-tone';
 import { useIdempotencyKey } from '../../patterns/idempotency';
 import { useScannedLot } from '../../patterns/lots';
-import { useItem, useUomCodes } from '../../patterns/masters';
+import { uomLabelOf, useItem, useUomCodes } from '../../patterns/masters';
 import { useOnlineStatus } from '../../patterns/online-status';
 import { ScanReplaceDialog } from '../../patterns/scan-replace-dialog';
 import { useScanField } from '../../patterns/use-scan-field';
@@ -63,6 +63,7 @@ export const WipHandoverScreen = () => {
   const found = lot.data ?? null;
   const item = useItem(found?.itemId ?? null);
   const uoms = useUomCodes(found !== null);
+  const uomOf = (uomId: number | null | undefined) => uomLabelOf(uoms.data, uomId);
 
   const problem = found === null ? null : lotProblemOf(found);
   const fromWorkOrderId = found === null ? null : fromWorkOrderIdOf(found);
@@ -91,7 +92,7 @@ export const WipHandoverScreen = () => {
   });
 
   const chosen = successors.data?.find((each) => each.workOrderId === toWorkOrderId) ?? null;
-  const uom = uoms.data?.get(found?.uomId ?? -1) ?? '';
+  const uom = uomOf(found?.uomId);
   const ready = canConfirm(found, chosen, qty, worker !== null, completedQty);
 
   /* 넘긴 것은 그대로 두고 다음 LOT 만 비운다. 연속 작업이라 지금까지가 함께 보여야 한다. */

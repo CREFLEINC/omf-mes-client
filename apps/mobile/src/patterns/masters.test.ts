@@ -8,7 +8,7 @@ import {
   renderHookWithProviders,
   type StubRoute,
 } from '../test/api-harness';
-import { useItem, useItemCodes, useItemLabels, useItemSearch } from './masters';
+import { uomLabelOf, useItem, useItemCodes, useItemLabels, useItemSearch } from './masters';
 import { referenceLabel } from './reference';
 
 const page = { page: 0, size: 20, totalElements: 0, totalPages: 1 };
@@ -288,5 +288,31 @@ describe('품목 코드의 상태', () => {
 
     expect(result.current(null).kind).toBe('empty');
     expect(referenceLabel(result.current(null))).toBe('—');
+  });
+});
+
+describe('단위 표기', () => {
+  const uoms = new Map([[1, 'KG']]);
+
+  it('받은 단위는 그대로 보인다', () => {
+    expect(uomLabelOf(uoms, 1)).toBe('KG');
+  });
+
+  /*
+   * 빈 글자를 끼우면 수량 뒤가 그냥 비어, 40 이 마흔 개인지 마흔 킬로그램인지 가릴 수 없다 -
+   * 한 목록에 EA 와 KG 가 섞여 선다.
+   */
+  it('못 받은 단위는 없다고 말한다', () => {
+    expect(uomLabelOf(uoms, 77)).toBe('단위 없음');
+    expect(uomLabelOf(undefined, 1)).toBe('단위 없음');
+  });
+
+  /*
+   * 단위가 없는 것과 못 받은 것은 다르다. 설비 점검의 정성 항목처럼 단위 개념이 아예 없는
+   * 자리에 없다고 적으면, 정상인 항목이 자료가 빠진 것으로 읽힌다.
+   */
+  it('단위 번호가 없는 자리는 비운다', () => {
+    expect(uomLabelOf(uoms, null)).toBe('');
+    expect(uomLabelOf(uoms, undefined)).toBe('');
   });
 });
