@@ -126,8 +126,11 @@ export const WorkerSignInScreen = () => {
 
       <Dialog
         open={asking}
+        className="worker-sign-in__unregister-dialog"
         /* 되돌릴 수 없다. 스크림을 스쳐 닫히면 물러선 것인지 손이 스친 것인지 갈리지 않는다. */
         closeOnBackdropClick={false}
+        /* ⭐ 닫는 길은 [취소] 하나다 - X 를 두지 않는다(사용자 지시 2026-09-15). */
+        showCloseButton={false}
         onClose={() => {
           setAsking(false);
         }}
@@ -164,7 +167,7 @@ export const WorkerSignInScreen = () => {
           둔다. 감싸지 않으면 안내와 경고가 서로 붙는다.
         */}
         <div className="worker-sign-in__dialog-body">
-          <p>{t.unregister.notice}</p>
+          <p className="worker-sign-in__dialog-notice">{t.unregister.notice}</p>
           {!loaded ? <p>{t.unregister.counting}</p> : null}
           {/*
             앱바가 둘로 가른 것을 창에서 합치지 않는다. 기다리면 가는 것과 기다려도 가지
@@ -218,6 +221,28 @@ export const WorkerSignInScreen = () => {
     );
   }
 
+  /*
+   * 등록이 끊겼으면 사번을 넣어도 들어갈 수 없다. 막힌 입력을 두면 작업자는 키패드를 누르다
+   * 멈추고, 풀 길은 키패드 아래 맨 끝에 밀려 단말 화면에서 보이지 않았다(#1243 실기). 입력을
+   * 걷고 등록을 푸는 단추 하나만 만료 문구 바로 아래에 둔다. 누르면 해제 확인 창을 그대로
+   * 거친다 - 보내지 못한 기록이 사라진다는 안내를 건너뛰지 않는다(설계 §5-5).
+   *
+   * ⭐ 단추는 사번 확인 뒤 화면의 「기기 등록 해제」와 이름·모양이 같다(사용자 지시 2026-09-15).
+   */
+  if (expired) {
+    return (
+      <div className="worker-sign-in">
+        <LocalNetworkNotice />
+
+        <Button variant="text" size="xl" onClick={openUnregister}>
+          {t.unregister.open}
+        </Button>
+
+        {unregisterDialog}
+      </div>
+    );
+  }
+
   return (
     <div className="worker-sign-in">
       {/* 등록된 기기도 업데이트 뒤에는 이 권한이 없을 수 있다. 사번을 넣기 전에 알린다. */}
@@ -247,7 +272,7 @@ export const WorkerSignInScreen = () => {
       <Button
         variant="filled"
         size="2xl"
-        disabled={entry === '' || directory === null || expired}
+        disabled={entry === '' || directory === null}
         onClick={confirm}
       >
         {t.confirm}
@@ -255,12 +280,10 @@ export const WorkerSignInScreen = () => {
 
       {directory === null ? <AlertBanner variant="warning" title={t.noDirectory} /> : null}
 
-      {/* 막기만 하면 갈 곳이 없다. 새 QR 로 다시 등록하려면 먼저 풀어야 한다. */}
-      {expired ? (
-        <Button variant="text" size="xl" onClick={openUnregister}>
-          {t.unregister.open}
-        </Button>
-      ) : null}
+      {/* ⭐ 사번을 넣기 전에도 늘 둔다 - 사번 확인 뒤 화면과 같은 단추다(사용자 지시 2026-09-15). */}
+      <Button variant="text" size="xl" onClick={openUnregister}>
+        {t.unregister.open}
+      </Button>
 
       {unregisterDialog}
     </div>
