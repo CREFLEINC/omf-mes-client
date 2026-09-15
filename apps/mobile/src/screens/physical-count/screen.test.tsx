@@ -173,12 +173,10 @@ const routes = (options: Options = {}): StubRoute[] => [
       return jsonResponse({ lot: { lotId, lotNo: LOT_NO } });
     },
   },
-  ...itemRoutes(
-    [
-      { itemId: 2002, itemCode: 'ABC-123', itemName: '하우징', fifoPolicyCode: 'FIFO' },
-      { itemId: 2001, itemCode: 'RM-1001', itemName: '수지A', fifoPolicyCode: 'FEFO' },
-    ],
-  ),
+  ...itemRoutes([
+    { itemId: 2002, itemCode: 'ABC-123', itemName: '하우징', fifoPolicyCode: 'FIFO' },
+    { itemId: 2001, itemCode: 'RM-1001', itemName: '수지A', fifoPolicyCode: 'FEFO' },
+  ]),
   {
     match: (req) => new URL(req.url).pathname === '/mdm/code-values',
     respond: (req) => {
@@ -286,7 +284,7 @@ describe('실물 카운트 화면', () => {
     await openLocation(user);
 
     expect(await screen.findByLabelText(QTY_LABEL)).toBeTruthy();
-    expect(screen.getByText('장부 120')).toBeTruthy();
+    expect(screen.getByText('전산 잔량 120')).toBeTruthy();
   });
 
   /*
@@ -451,13 +449,13 @@ describe('실물 카운트 화면', () => {
   });
 
   /* 장부를 보고 그대로 적는 것을 막는 실사다. 서버가 장부를 안 내려보낸다. */
-  it('장부를 감춘 실사에서는 장부를 보이지 않는다', async () => {
+  it('전산 잔량을 감춘 실사에서는 그 값을 보이지 않는다', async () => {
     const user = userEvent.setup();
     mount({ blind: true });
     await openLocation(user);
 
-    expect(await screen.findByText(/장부 수량을 감춘 실사입니다/)).toBeTruthy();
-    expect(screen.queryByText(/^장부 \d/)).toBeNull();
+    expect(await screen.findByText(/전산 잔량을 감춘 실사입니다/)).toBeTruthy();
+    expect(screen.queryByText(/^전산 잔량 \d/)).toBeNull();
   });
 
   it('한 줄도 적지 않으면 완료할 수 없다', async () => {

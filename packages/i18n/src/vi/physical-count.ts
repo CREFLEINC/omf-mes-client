@@ -34,7 +34,7 @@ export const physicalCount: Translated<typeof ko.physicalCount> = {
     legend: 'Số lượng thực tế',
     name: (item: string, lotNo: string) => [item, lotNo].filter((part) => part !== '').join(' · '),
     qtyLabel: (name: string) => `Số lượng thực tế của ${name}`,
-    systemQty: (qty: string) => `Sổ sách ${qty}`,
+    systemQty: (qty: string) => `Tồn hệ thống ${qty}`,
     already: (qty: string) => `Giá trị trước ${qty}`,
     uncounted: 'Chưa đếm',
     reasonLabel: (name: string) => `Lý do chênh lệch của ${name}`,
