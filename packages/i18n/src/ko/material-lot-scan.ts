@@ -56,7 +56,14 @@ export const materialLotScan = {
   register: '이 라인 등록',
   registered: {
     legend: (count: string) => `등록됨 (${count}건)`,
-    item: (lotNo: string, qty: string) => `${lotNo} · ${qty}`,
+    /*
+     * LOT 번호 자체가 가운데점으로 나뉘어 적힌다. 그 뒤에 또 가운데점으로 수량을 이으면
+     * 여섯 조각이 같은 구분자로 서서 어디까지가 번호인지 알 수 없다(배치 규범 9).
+     *
+     * 번호가 34자리라 이름 열을 옆에 두면 값을 밀어낸다 - 이름을 위에 얹어 세로로 쌓는다.
+     */
+    lotNoLabel: 'LOT 번호',
+    qtyLabel: '수량',
   },
   noWorker: '사번을 먼저 확인하세요',
   /** 단말 토큰이 싣고 온 값이다. 없으면 어느 공장의 LOT 인지 정할 수 없다. */

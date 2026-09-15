@@ -26,8 +26,15 @@ export const temporaryPutaway = {
   task: {
     legend: '대상 지시',
     qty: (qty: string) => `수량 ${qty}`,
-    /** 라벨과 눈으로 대조할 값이다. 지시 번호만으로는 무엇을 집는지 알 수 없다. */
-    item: (itemCode: string, taskNo: string, qty: string) => `${itemCode} · ${taskNo} · ${qty}`,
+    /*
+     * 라벨과 눈으로 대조할 값이다. 지시 번호만으로는 무엇을 집는지 알 수 없다.
+     *
+     * 세 값에 각각 이름을 붙인다. 값만 늘어놓으면 어느 것이 품목이고 어느 것이 지시 번호인지
+     * 형식을 아는 사람만 읽는다(배치 규범 9).
+     */
+    itemLabel: '품목',
+    taskNoLabel: '지시 번호',
+    qtyLabel: '수량',
     /** 어디가 막혀서 여기 왔는지가 대상 정보의 일부다. */
     origin: (code: string) => `원 지시 ${code}`,
     recommended: (code: string) => `권장 위치 ${code}`,

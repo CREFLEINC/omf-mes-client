@@ -182,6 +182,23 @@ describe('임시 위치 적재 화면', () => {
   });
 
   /*
+   * 값만 늘어놓으면 어느 것이 품목이고 어느 것이 지시 번호인지 형식을 아는 사람만 읽는다.
+   * 둘 다 번호라 자릿수로 가늠하게 된다(배치 규범 9).
+   */
+  it('대상 지시의 세 값에 각각 이름을 붙인다', async () => {
+    mount({ task: task() });
+    await screen.findByText(/PT-2026-0007/);
+
+    const fields = document.querySelector('.temporary__task-fields');
+
+    expect([...(fields?.querySelectorAll('dt') ?? [])].map((dt) => dt.textContent)).toEqual([
+      '품목',
+      '지시 번호',
+      '수량',
+    ]);
+  });
+
+  /*
    * 이 화면은 닫히지 않는다 - 임시 상태를 만들고 끝나며 정위치로 옮기는 일이 남는다. 말하지
    * 않으면 작업자는 적치를 끝낸 것으로 안다.
    */

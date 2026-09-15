@@ -17,7 +17,9 @@ export const temporaryPutaway: Translated<typeof ko.temporaryPutaway> = {
   task: {
     legend: 'Lệnh cần làm',
     qty: (qty: string) => `Số lượng ${qty}`,
-    item: (itemCode: string, taskNo: string, qty: string) => `${itemCode} · ${taskNo} · ${qty}`,
+    itemLabel: 'Mặt hàng',
+    taskNoLabel: 'Số lệnh',
+    qtyLabel: 'Số lượng',
     origin: (code: string) => `Lệnh gốc ${code}`,
     recommended: (code: string) => `Vị trí đề xuất ${code}`,
     noRule: 'Không có vị trí đề xuất',
