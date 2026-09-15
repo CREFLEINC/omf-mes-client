@@ -528,6 +528,30 @@ describe('생산창고 입고 화면', () => {
   });
 
   /*
+   * 숫자판에 상한을 두면 넘기는 키를 조용히 무시한다 - 눌러도 아무 일이 없어 사람은 기기가
+   * 멎은 줄 안다. 넘겨 적히게 두고 무엇이 잘못됐는지와 어디로 가야 하는지를 말해야 한다.
+   */
+  it('숫자판으로 출고 수량을 넘겨 적으면 까닭과 다음 걸음을 말한다', async () => {
+    const user = userEvent.setup();
+    mount({ issueQty: 12 });
+    await screen.findByLabelText(/출고 QR 스캔/);
+    scan(ISSUE_NO);
+
+    const field = await receivedField();
+    await user.click(field);
+
+    /* 12 를 넘겨 13 을 만든다. 상한이 걸려 있으면 3 이 무시돼 1 만 남는다. */
+    await user.click(await screen.findByRole('button', { name: '1' }));
+    await user.click(screen.getByRole('button', { name: '3' }));
+
+    expect((field as HTMLInputElement).value).toBe('13');
+    expect(await screen.findByText('출고 수량 12 보다 많이 받을 수 없습니다')).toBeTruthy();
+    expect(await screen.findByText('출고 수량보다 많이 받을 수 없습니다')).toBeTruthy();
+    expect(await screen.findByText(/물류 문서 진행현황·취소/)).toBeTruthy();
+    expect(await screen.findByText(/추가 자재 출고 요청/)).toBeTruthy();
+  });
+
+  /*
    * 호퍼가 지정되지 않은 설비는 잴 자리가 없다. 목록에 세워 두면 골라 본 뒤에야 알게 되고,
    * 작업자는 자기가 잘못 골랐는지 설비가 잘못 등록됐는지 가리지 못한다.
    */
@@ -755,7 +779,7 @@ describe('생산창고 입고 화면', () => {
   });
 
   /* 초과는 데이터베이스가 막는다. 화면이 통과시키면 확정이 서버에서 되돌아온다. */
-  it('출고한 것보다 많이 받지 못한다', async () => {
+  it('출고 수량보다 많이 받지 못한다', async () => {
     const user = userEvent.setup();
     mount();
     await screen.findByLabelText(/출고 QR 스캔/);
@@ -763,7 +787,7 @@ describe('생산창고 입고 화면', () => {
     scan(ISSUE_NO);
     await user.type(await receivedField(), '501');
 
-    expect(await screen.findByText(/출고한 500 보다 많이 받을 수 없습니다/)).toBeTruthy();
+    expect(await screen.findByText(/출고 수량 500 보다 많이 받을 수 없습니다/)).toBeTruthy();
     expect(screen.getByRole('button', { name: '입고 확정' })).toBeDisabled();
   });
 
@@ -776,7 +800,7 @@ describe('생산창고 입고 화면', () => {
     scan(ISSUE_NO);
     await user.type(await receivedField(), '480');
 
-    expect(await screen.findByText('차이 20 모자람')).toBeTruthy();
+    expect(await screen.findByText('차이 20 부족')).toBeTruthy();
     expect(screen.getByRole('button', { name: '입고 확정' })).toBeDisabled();
 
     await user.click(screen.getByRole('combobox', { name: /차이 사유/ }));
@@ -800,7 +824,7 @@ describe('생산창고 입고 화면', () => {
     await user.type(await receivedField(), '480');
 
     /* 모자란 사실은 고를 사유가 있든 없든 보인다. 숨기면 그냥 덜 받은 것이 된다. */
-    expect(await screen.findByText('차이 20 모자람')).toBeTruthy();
+    expect(await screen.findByText('차이 20 부족')).toBeTruthy();
     expect(screen.queryByRole('combobox', { name: /차이 사유/ })).toBeNull();
 
     await waitFor(() => {
@@ -820,7 +844,7 @@ describe('생산창고 입고 화면', () => {
     scan(ISSUE_NO);
     await user.type(await receivedField(), '480');
 
-    expect(await screen.findByText('차이 20 모자람')).toBeTruthy();
+    expect(await screen.findByText('차이 20 부족')).toBeTruthy();
     expect(screen.getByRole('button', { name: '입고 확정' })).toBeDisabled();
   });
 
@@ -833,8 +857,8 @@ describe('생산창고 입고 화면', () => {
     scan(ISSUE_NO);
     await user.type(await receivedField(), '501');
 
-    expect(await screen.findByText(/출고한 500 보다 많이 받을 수 없습니다/)).toBeTruthy();
-    expect(screen.queryByText(/모자람/)).toBeNull();
+    expect(await screen.findByText(/출고 수량 500 보다 많이 받을 수 없습니다/)).toBeTruthy();
+    expect(screen.queryByText(/부족/)).toBeNull();
     expect(screen.queryByRole('combobox', { name: /차이 사유/ })).toBeNull();
   });
 
@@ -849,7 +873,7 @@ describe('생산창고 입고 화면', () => {
     await waitFor(() => {
       expect(screen.getByRole('button', { name: '입고 확정' })).not.toBeDisabled();
     });
-    expect(screen.queryByText('차이 0 모자람')).toBeNull();
+    expect(screen.queryByText('차이 0 부족')).toBeNull();
   });
 
   /*

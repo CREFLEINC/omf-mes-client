@@ -530,7 +530,11 @@ export const ShopfloorReceiptScreen = () => {
                           ),
                         );
                       }}
-                      max={line.issuedQty}
+                      /*
+                       * 상한을 두지 않는다. 숫자판은 상한을 넘기는 키를 조용히 무시하는데,
+                       * 그러면 눌러도 아무 일이 없어 사람은 기기가 멎은 줄 안다. 넘겨 적게
+                       * 두고 무엇이 잘못됐는지와 어디로 가야 하는지를 말한다.
+                       */
                       allowDecimal
                     />
                   )}
@@ -574,6 +578,15 @@ export const ShopfloorReceiptScreen = () => {
             {worker === null ? <p className="shopfloor-receipt__note">{t.noWorker}</p> : null}
             {lines.some((line) => needsReason(line, hasReasonOptions)) ? (
               <p className="shopfloor-receipt__note">{t.lines.reasonRequired}</p>
+            ) : null}
+            {/*
+              막힌 사실만 말하면 물건을 손에 든 사람이 어디로 가야 하는지 모른 채 선다. 이
+              화면에는 초과분을 담을 자리가 없어 출고 쪽을 고쳐야 풀린다(설계 §8 미결 1).
+            */}
+            {lines.some((line) => qtyProblemOf(line) === 'overIssued') ? (
+              <AlertBanner variant="warning" title={t.lines.overIssuedTitle}>
+                {t.lines.overIssuedGuide}
+              </AlertBanner>
             ) : null}
           </section>
 
