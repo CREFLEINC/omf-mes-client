@@ -583,9 +583,12 @@ export const ToolUsageScreen = () => {
             </Card>
 
             {/* ④ 안내 — 누계를 서버가 더한다는 사실을 상시 밝힌다(스펙 §3-2). */}
-            {/* ⭐ 파란 라벨(칩)로 보인다 — 머리줄 「단말#」 라벨과 같은 모양(사용자 지시 2026-09-15). */}
+            {/*
+             * ⭐ 정보 아이콘 + 글, 옅은 파란 바탕의 둥근 상자다 — 다른 POP 안내 띠와 같은 모양
+             *    (사용자 지시 2026-09-15). 구획 카드 테두리는 두지 않는다.
+             */}
             <div className="pop-notice-label" role="note" aria-label={t.notice.sectionLabel}>
-              <Chip status="info">{t.notice.serverAdds}</Chip>
+              <AlertBanner variant="info">{t.notice.serverAdds}</AlertBanner>
             </div>
           </div>
         </div>
