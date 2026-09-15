@@ -50,6 +50,7 @@ import {
   useRefreshPopTerminalOnScreenEntry,
 } from '../patterns/pop-registration';
 import { RegistrationPanel } from '../screens/worker-assignment/registration-panel';
+import { printSampleLotLabel } from '../screens/pop-material-lot-label/sample-print';
 import { currentTerminalToken, readTerminalToken } from '../patterns/pop-terminal-token';
 import { AppProviders } from './providers';
 
@@ -217,4 +218,10 @@ const mount = () => {
  * ⚠ 읽기는 실패해도 던지지 않는다(`patterns/pop-terminal-token`). 셸 밖(브라우저로 여는
  *   개발 확인)에서도 통로가 없을 뿐이므로 그대로 화면을 세운다.
  */
+/*
+ * 셸 진단(Ctrl+Alt+P · 80 × 30)이 부르는 자리 — 견본을 **실제 발행과 같은 서식·통로**로 찍는다
+ * (`sample-print` 머리말). 셸이 `executeJavaScript` 로 부른다.
+ */
+window.__popPrintSampleLotLabel = printSampleLotLabel;
+
 void readTerminalToken().then(mount);

@@ -15,6 +15,7 @@ const FAILURE_MESSAGE: Record<IssueFailure, string> = {
   reportFailedAfterPrint: t.reportFailedAfterPrint,
   issueForbidden: t.issueForbidden,
   registerConflict: t.registerConflict,
+  iqcPlanMissing: t.iqcPlanMissing,
   other: t.failed,
 };
 
