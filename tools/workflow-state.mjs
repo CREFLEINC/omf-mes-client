@@ -314,7 +314,6 @@ export function repositoryPolicyErrors(root) {
     'docs/client-dev-workflow/templates/design-request.md',
     'docs/client-dev-workflow/templates/plan.md',
     '.github/ISSUE_TEMPLATE/config.yml',
-    'tools/check-generated-boundary.mjs',
     'tools/merge-spec.mjs',
     'tools/mock/README.md',
     'tools/mock/resolve-spec.mjs',
@@ -358,8 +357,8 @@ export function repositoryPolicyErrors(root) {
     }
   }
   /*
-   * .client-dev/ 에는 비공개 요청서와 설계 참조 클론이 들어간다. 이 저장소는 공개라
-   * 한 번 올라가면 되돌릴 수 없다(V3 §4 · §6).
+   * .client-dev/ 에는 로컬 상태·요청서·설계 참조 클론이 들어간다. 개인 작업 환경이라
+   * 저장소에 올리지 않는다(V3 §5).
    *
    * .gitignore 로는 모자란다 - 이미 추적 중인 파일에는 듣지 않고, git add -f 는 그냥
    * 지나간다. 무엇이 추적되고 있는지를 직접 본다.

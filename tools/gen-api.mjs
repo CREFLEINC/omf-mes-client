@@ -2,13 +2,12 @@ import { execFileSync } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { GENERATED_TYPES_PATH, checkGeneratedBoundary } from './check-generated-boundary.mjs';
 import { writeMergedSpec } from './merge-spec.mjs';
 import { resolveSpecPaths } from './mock/resolve-spec.mjs';
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const specPaths = resolveSpecPaths();
-const outPath = GENERATED_TYPES_PATH;
+const outPath = path.join(repoRoot, 'packages/api-client/src/generated/api.d.ts');
 const openapiTypescriptCli = path.join(repoRoot, 'node_modules/openapi-typescript/bin/cli.js');
 
 console.log(`타입 생성: 계약 ${specPaths.length}벌`);
@@ -32,9 +31,3 @@ execFileSync(
     stdio: 'inherit',
   },
 );
-
-// 생성 직후 검사한다. package.json 이 아니라 여기서 부르는 이유는
-// `node tools/gen-api.mjs` 를 직접 실행해도 검사를 건너뛸 수 없게 하기 위해서다.
-if (!checkGeneratedBoundary(outPath)) {
-  process.exitCode = 1;
-}

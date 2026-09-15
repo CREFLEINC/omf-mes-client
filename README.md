@@ -24,7 +24,7 @@ tools/
 기존에 저장소가 추적하던 루트 `AGENTS.md`와 `CLAUDE.md`는 V3부터 의도적으로 제거된다. 내용이 폐기된 것은 아니며 다음 위치의 단일 정본으로 통합됐다.
 
 - `AGENTS.md`에 있던 팀 업무 경계, 설계 고정, 이슈·공지 절차
-- `CLAUDE.md`에 있던 프로젝트 구조, 공개 저장소 경계, 브랜치·디자인 시스템 규칙
+- `CLAUDE.md`에 있던 프로젝트 구조, 브랜치·디자인 시스템 규칙
 - `docs/client-dev-workflow/references/`에 나뉘어 있던 설계 참조, 요청, 이슈, 검증, 병합 절차
 - 통합 정본: `docs/client-dev-workflow/multi-agent-team-workflow-v3.md`
 
@@ -186,4 +186,4 @@ cd /opt/services/omf-mes-front
 
 ## 작업 규칙
 
-`main` 직접 push는 차단돼 있다 — 팀 전용 워크트리와 브랜치에서 작업하고 PR로 병합한다. 업무 규칙과 절차의 정본은 `docs/client-dev-workflow/multi-agent-team-workflow-v3.md`다. 루트의 `AGENTS.md`와 `CLAUDE.md`는 부트스트랩으로 만드는 개인별 로컬 파일이며 커밋하지 않는다.
+`main` 직접 push는 차단돼 있다 — 작업 전용 워크트리와 브랜치에서 작업하고 PR로 병합한다. 업무 규칙과 절차의 정본은 `docs/client-dev-workflow/multi-agent-team-workflow-v3.md`다. 루트의 `AGENTS.md`와 `CLAUDE.md`는 부트스트랩으로 만드는 개인별 로컬 파일이며 커밋하지 않는다.

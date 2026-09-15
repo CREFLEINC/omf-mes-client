@@ -144,15 +144,15 @@ test('저장소 정책 검사가 폐기된 하네스를 감지한다', () => {
 });
 
 /*
- * .client-dev/ 에는 비공개 요청서와 설계 참조 클론이 들어간다. 이 저장소는 공개라
- * 한 번 올라가면 되돌릴 수 없다. .gitignore 는 이미 추적 중인 파일을 막지 못한다.
+ * .client-dev/ 에는 로컬 상태·요청서·설계 참조 클론이 들어간다. 개인 작업 환경이라
+ * 저장소에 올리지 않는다. .gitignore 는 이미 추적 중인 파일을 막지 못한다.
  */
 test('.client-dev/ 가 추적되면 잡아낸다', () => {
   const root = mkdtempSync(path.join(tmpdir(), 'workflow-client-dev-'));
   execFileSync('git', ['init', '--quiet'], { cwd: root });
   mkdirSync(path.join(root, '.client-dev/requests'), { recursive: true });
   writeFileSync(path.join(root, '.client-dev/state.json'), '{}\n');
-  writeFileSync(path.join(root, '.client-dev/requests/ask.md'), '비공개 요청서\n');
+  writeFileSync(path.join(root, '.client-dev/requests/ask.md'), '요청서\n');
   execFileSync('git', ['add', '-f', '.client-dev'], { cwd: root });
 
   assert.ok(
