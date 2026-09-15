@@ -6,7 +6,8 @@ import { Link } from 'react-router';
 import { useLotLabels } from '../../patterns/handling-units';
 import { useCodeValues } from '../../patterns/code-values';
 import { useLocationByCode } from '../../patterns/locations';
-import { useItemLabels } from '../../patterns/masters';
+import { useItemCodes } from '../../patterns/masters';
+import { referenceLabel } from '../../patterns/reference';
 import { useOutbox } from '../../patterns/outbox';
 import { useScanField } from '../../patterns/use-scan-field';
 import { useScreenTitle } from '../../patterns/screen-title';
@@ -55,7 +56,7 @@ export const PhysicalCountScreen = () => {
   const planned = useCountLines(countId, at?.locationId ?? null);
   const reasons = useCodeValues(VARIANCE_REASON);
 
-  const itemLabels = useItemLabels(lines.map((line) => line.itemId));
+  const itemCode = useItemCodes(lines.map((line) => line.itemId));
 
   /*
    * 큐에 담긴 것은 서버 응답에 없다. 읽기 전에는 담긴 것이 없는 것과 구별되지 않아 그 사이에
@@ -131,7 +132,7 @@ export const PhysicalCountScreen = () => {
 
   const nameOf = (line: DraftLine): string =>
     t.lines.name(
-      itemLabels.get(line.itemId)?.itemCode ?? '',
+      referenceLabel(itemCode(line.itemId)),
       line.lotId === null ? '' : (lotLabels.get(line.lotId) ?? ''),
     );
 

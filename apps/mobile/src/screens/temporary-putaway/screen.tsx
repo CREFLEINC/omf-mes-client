@@ -18,7 +18,8 @@ import { useBackStep } from '../../patterns/back-step';
 import { useCodeValues } from '../../patterns/code-values';
 import { playErrorTone } from '../../patterns/error-tone';
 import { useLocationByCode, useLocations, type Location } from '../../patterns/locations';
-import { useItemLabels, useUomCodes } from '../../patterns/masters';
+import { useItemCodes, useUomCodes } from '../../patterns/masters';
+import { referenceLabel } from '../../patterns/reference';
 import { useOutbox } from '../../patterns/outbox';
 import { useScanField } from '../../patterns/use-scan-field';
 import { useScreenTitle } from '../../patterns/screen-title';
@@ -116,7 +117,7 @@ export const TemporaryPutawayScreen = () => {
   const byCode = useLocationByCode(task?.warehouseId ?? null, scanned);
   const reasons = useCodeValues(PUTAWAY_TASK_TEMPORARY_REASON);
   const uoms = useUomCodes(true);
-  const itemLabels = useItemLabels(task === null ? [] : [task.itemId]);
+  const itemCode = useItemCodes(task === null ? [] : [task.itemId]);
 
   /*
    * 정위치에 임시 적치를 적으면 옮길 대상 목록에 오르는데 이미 제자리에 있어, 다음 사람이
@@ -272,7 +273,7 @@ export const TemporaryPutawayScreen = () => {
           <Card.Body className="card-body temporary__card">
             <strong>
               {t.task.item(
-                itemLabels.get(task.itemId)?.itemCode ?? '',
+                referenceLabel(itemCode(task.itemId)),
                 task.putawayTaskNo,
                 `${String(task.taskQty)} ${uoms.data?.get(task.uomId) ?? ''}`,
               )}

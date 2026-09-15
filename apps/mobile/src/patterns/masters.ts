@@ -8,6 +8,7 @@ import {
 } from '@tanstack/react-query';
 
 import { useApiClient } from './api-context';
+import type { ReferenceResolver } from './reference';
 import { masterName } from './master-name';
 import { runRequest } from './request';
 
@@ -110,6 +111,49 @@ export const useItemLabels = (items: readonly number[]): Map<number, ItemSummary
         }),
       ),
   });
+};
+
+/**
+ * 품목 코드를 상태와 함께 푼다.
+ *
+ * `useItemLabels` 는 받은 것만 담은 지도라, 못 받은 번호와 아직 받는 중인 번호가 똑같이
+ * 빠진다. 부르는 쪽이 그것을 빈 글자로 적으면 사람은 품목이 원래 없는 줄로 읽는다 - 연결이
+ * 끊겼을 뿐이고, 돌아오면 저절로 채워진다.
+ *
+ * 열쇠를 `useItemLabels` 와 같이 두어 한 화면이 둘을 함께 써도 서버를 두 번 부르지 않는다.
+ */
+export const useItemCodes = (items: readonly number[]): ReferenceResolver => {
+  const { client } = useApiClient();
+  const itemIds = [...new Set(items)];
+
+  const results = useQueries({
+    queries: itemIds.map((itemId) => ({
+      queryKey: masterKeys.item(itemId),
+      queryFn: () => fetchItem(client, itemId),
+    })),
+  });
+
+  const byId = new Map(itemIds.map((itemId, index) => [itemId, results[index]] as const));
+
+  return (id) => {
+    if (id === null || id === undefined) {
+      return { kind: 'empty' };
+    }
+
+    const result = byId.get(id);
+
+    if (result === undefined) {
+      return { kind: 'unknown' };
+    }
+
+    if (result.isError) {
+      return { kind: 'failed' };
+    }
+
+    return result.data === undefined
+      ? { kind: 'loading' }
+      : { kind: 'named', label: result.data.itemCode };
+  };
 };
 
 export interface ItemOption extends ItemSummary {

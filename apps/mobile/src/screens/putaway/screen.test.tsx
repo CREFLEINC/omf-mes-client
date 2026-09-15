@@ -266,6 +266,28 @@ describe('적치·입고 완료 화면', () => {
     expect(pick.querySelector('p')?.textContent).toContain('권장 위치');
   });
 
+  /*
+   * 연결이 끊기면 목록은 캐시에서 뜨는데 품목 이름은 못 받는다. 빈 글자로 적으면 구분자만
+   * 남아, 사람은 품목이 원래 없는 줄로 읽는다 - 실기에서 일곱 줄이 통째로 그렇게 섰다.
+   * 적치는 물건을 들고 자리에 넣는 일이라 무슨 자재인지 모르면 할 수 없다.
+   */
+  it('품목 이름을 못 받으면 그 사실을 말한다', async () => {
+    mount([
+      {
+        match: (request) => /^\/mdm\/items\/\d+$/.test(new URL(request.url).pathname),
+        respond: () => {
+          throw new TypeError('Failed to fetch');
+        },
+      },
+    ]);
+
+    const pick = await screen.findByRole('button', { name: /PT-2026-0007/ });
+
+    await waitFor(() => {
+      expect(pick.textContent).toContain('이름을 불러오지 못했습니다');
+    });
+  });
+
   it('담당자와 적치 대기 상태로 좁혀 묻는다', async () => {
     const seen: URL[] = [];
     mount([
