@@ -54,6 +54,8 @@ interface Options {
   mastersDown?: boolean;
   /** 아직 안 센 위치가 아홉 곳이다 - 창고 하나의 실사는 위치가 수십 곳이다. */
   manyLocations?: boolean;
+  /** 계획 라인이 0 인 실사로 답한다. */
+  emptyPlan?: boolean;
   /**
    * 다음 조회부터 둘째 줄이 이미 센 것으로 바뀐다 - 다른 단말이 그 줄을 센 상황이다.
    *
@@ -156,8 +158,8 @@ const routes = (options: Options = {}): StubRoute[] => [
           statusCode: 'IN_PROGRESS',
         },
         summary: {
-          plannedCount: 120,
-          countedCount: 38,
+          plannedCount: options.emptyPlan === true ? 0 : 120,
+          countedCount: options.emptyPlan === true ? 0 : 38,
           uncountedCount: 82,
           varianceCount: 3,
           closable: false,
@@ -436,11 +438,34 @@ describe('실물 카운트 화면', () => {
     mount();
     await openLocation(user);
 
-    expect(await screen.findByText('이 위치 0 / 2')).toBeTruthy();
+    expect(await screen.findByText('진행 0 / 2')).toBeTruthy();
 
     await user.type(await screen.findByLabelText(QTY_LABEL), '120');
 
-    expect(await screen.findByText('이 위치 1 / 2')).toBeTruthy();
+    expect(await screen.findByText('진행 1 / 2')).toBeTruthy();
+  });
+
+  /*
+   * 숫자만 있으면 장갑 낀 손으로 훑을 때 읽고 나눠야 한다. 얼마나 남았는지는 길이로 먼저
+   * 들어온다.
+   */
+  it('이 위치 진행을 막대로도 보인다', async () => {
+    const user = userEvent.setup();
+    mount();
+    await openLocation(user);
+
+    const bar = await screen.findByRole('progressbar', { name: '진행' });
+
+    expect(bar.getAttribute('aria-valuenow')).toBe('0');
+
+    await user.type(await screen.findByLabelText(QTY_LABEL), '120');
+
+    await waitFor(() => {
+      /* 퍼센트가 아니라 센 줄 수다 - 둘 중 하나를 셌다. */
+      expect(screen.getByRole('progressbar', { name: '진행' }).getAttribute('aria-valuenow')).toBe(
+        '1',
+      );
+    });
   });
 
   /*
@@ -470,6 +495,21 @@ describe('실물 카운트 화면', () => {
     );
 
     expect(pad?.textContent).toContain(formatMaterialLotNo(LOT_NO));
+  });
+
+  /*
+   * 계획 라인이 0 인 실사는 진행을 말할 것이 없다. 막대에 0 을 나누게 두면 채움이 어디에
+   * 서는지 정해지지 않는다.
+   */
+  it('계획 라인이 없으면 진행을 보이지 않는다', async () => {
+    const user = userEvent.setup();
+    mount({ emptyPlan: true });
+
+    await user.click(await screen.findByRole('combobox', { name: '실사' }));
+    await user.click(await screen.findByRole('option', { name: `${COUNT_NO} · 2026-09-07` }));
+    await screen.findByLabelText('위치 스캔');
+
+    expect(screen.queryByRole('progressbar', { name: '실사 진행' })).toBeNull();
   });
 
   /*

@@ -123,6 +123,9 @@
 
 /* 이 선반을 다 셌는가. 목록 머리에서 한눈에 읽히도록 값만 굵게 둔다. */
 .physical-count__here {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1, 4px);
   margin: 0;
   font: var(--type-title-sm);
   letter-spacing: var(--type-title-sm-tracking);

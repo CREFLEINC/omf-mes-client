@@ -313,7 +313,7 @@ export const PhysicalCountScreen = () => {
           창고를 순회하는 일이라 한 번에 끝나지 않는다. 얼마나 남았는지를 말하지 않으면 언제
           끝나는지 모른 채 돌게 되고, 다 돌았는지도 스스로 셈해야 한다.
         */}
-        {summary.data === undefined ? null : (
+        {summary.data === undefined || summary.data.plannedCount === 0 ? null : (
           <div className="physical-count__progress">
             <span>
               {t.plan.progress(
@@ -385,9 +385,18 @@ export const PhysicalCountScreen = () => {
               이 선반을 다 셌는지는 실사 전체 진행과 다른 물음이다. 화면이 든 줄로 바로 세고,
               한 위치를 끝낼 때마다 확인하는 것이 이 값이다.
             */}
-            <p className="physical-count__here">
-              {t.lines.atHere(String(countedLines(lines).length), String(lines.length))}
-            </p>
+            <div className="physical-count__here">
+              <span>
+                {t.lines.atHere(String(countedLines(lines).length), String(lines.length))}
+              </span>
+              {/* 숫자만 있으면 읽고 나눠야 한다. 남은 양은 길이로 먼저 들어온다. */}
+              <Progress
+                value={countedLines(lines).length}
+                max={lines.length}
+                label={t.lines.atHereLabel}
+                valueText={t.lines.atHere(String(countedLines(lines).length), String(lines.length))}
+              />
+            </div>
             {/* 0 과 빈 칸이 다르다는 것을 말한다. 안 밝히면 안 센 것을 0 으로 적는다. */}
             <p className="physical-count__note">{t.lines.zeroHint}</p>
 
