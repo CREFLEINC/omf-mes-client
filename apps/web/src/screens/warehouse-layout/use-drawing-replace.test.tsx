@@ -508,10 +508,28 @@ describe('useDrawingReplace — 올리기와 저장을 잇는다', () => {
     expect(result.current.replace.error).toBeNull();
   });
 
-  it('올리기 실패는 저장으로 넘어가지 않는다 — 413·400 file·403 이 각자 자리로 나뉜다', async () => {
+  it('올리기 실패는 저장으로 넘어가지 않는다 — 413·400 file 은 올리기 자리로, 403 은 배너로 나뉜다', async () => {
+    /*
+     * ⚠ **계약·목 모양 그대로**(`tools/mock/seeded.mjs` §POST /app/attachments 413) — `scope:
+     * 'field', field: 'file'` 봉투다. `{message}` 뿐인 옛 스텁은 `kind: 'http'` 로 접혀 배너
+     * 경로를 고정했는데, 실제 모양에서는 `knownFields`(`file`)에 걸려 인라인으로 간다.
+     */
     const tooLarge = renderReplace({
       layouts: [{ etag: '"7"', drawingAttachmentId: null, markers: [] }],
-      upload: () => jsonResponse({ message: '파일이 너무 큽니다.' }, { status: 413 }),
+      upload: () =>
+        jsonResponse(
+          {
+            errors: [
+              {
+                scope: 'field',
+                field: 'file',
+                code: 'TOO_LARGE',
+                message: '파일이 너무 큽니다(10MB 초과).',
+              },
+            ],
+          },
+          { status: 413 },
+        ),
     });
 
     await loaded(tooLarge.result);
@@ -521,15 +539,11 @@ describe('useDrawingReplace — 올리기와 저장을 잇는다', () => {
     });
 
     await waitFor(() => {
-      expect(tooLarge.result.current.replace.error?.kind).toBe('http');
+      expect(tooLarge.result.current.replace.fileError).toBe('파일이 너무 큽니다(10MB 초과).');
     });
-    expect(tooLarge.result.current.replace.error).toEqual({
-      kind: 'http',
-      status: 413,
-      message: '파일이 너무 큽니다.',
-    });
+    /* 필드 오류로 인라인에 섰으니 배너용 오류는 남지 않는다. */
+    expect(tooLarge.result.current.replace.error).toBeNull();
     expect(tooLarge.result.current.replace.errorStep).toBe('upload');
-    expect(tooLarge.result.current.replace.fileError).toBeNull();
     /* 올리기가 실패했으면 붙일 첨부가 없다 — 저장으로 넘어가지 않는다. */
     expect(tooLarge.result.current.replace.pendingAttachmentId).toBeNull();
     expect(tooLarge.puts).toHaveLength(0);
