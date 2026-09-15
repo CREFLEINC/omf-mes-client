@@ -12,6 +12,7 @@ import {
   type StubRoute,
 } from '../../test/api-harness';
 import { formatMaterialLotNo } from '../../patterns/material-lot-no';
+import { runBackStep } from '../../patterns/back-step';
 import { itemRoutes } from '../../test/master-routes';
 import { useWorkerSession } from '../../patterns/worker-session';
 import { PhysicalCountScreen } from './screen';
@@ -532,6 +533,26 @@ describe('실물 카운트 화면', () => {
     await user.click(card);
 
     expect(await screen.findByLabelText('위치 스캔')).toBeTruthy();
+  });
+
+  /*
+   * 라우터 이력에는 이 화면 하나뿐이다. 화면 안 단계를 되돌리지 않으면 실사를 고르고 위치까지
+   * 스캔한 사람이 뒤로가기 한 번에 작업 목록까지 나가 처음부터 다시 들어와야 한다.
+   */
+  it('뒤로가기는 화면 안 단계를 하나씩 되돌린다', async () => {
+    const user = userEvent.setup();
+    mount();
+    await openLocation(user);
+
+    /* 위치 → 실사 고르기 차례로 되돌아온다. */
+    expect(runBackStep()).toBe(true);
+    expect(await screen.findByLabelText('위치 스캔')).toBeTruthy();
+
+    expect(runBackStep()).toBe(true);
+    expect(await screen.findByRole('button', { name: new RegExp(COUNT_NO) })).toBeTruthy();
+
+    /* 더 되돌릴 것이 없으면 화면 밖으로 넘긴다. */
+    expect(runBackStep()).toBe(false);
   });
 
   /*

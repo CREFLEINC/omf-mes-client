@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router';
 
 import { formatMaterialLotNo } from '../../patterns/material-lot-no';
+import { useBackStep } from '../../patterns/back-step';
 import { useCodeValues } from '../../patterns/code-values';
 import { useLocationByCode } from '../../patterns/locations';
 import { uomLabelOf, useUomCodes } from '../../patterns/masters';
@@ -166,6 +167,21 @@ export const PhysicalCountScreen = () => {
     onScan: (value) => {
       setScanned(value.trim());
     },
+  });
+
+  /*
+   * 뒤로가기는 화면 안 단계를 먼저 되돌린다. 라우터 이력에는 이 화면 하나뿐이라, 두지 않으면
+   * 실사를 고르고 위치까지 스캔한 사람이 한 번에 작업 목록까지 나간다.
+   *
+   * 안쪽부터 되돌리도록 조건을 서로 배타로 둔다.
+   */
+  useBackStep(countId !== null && scanned !== null, () => {
+    setScanned(null);
+    setLines([]);
+    setKeypadFor(null);
+  });
+  useBackStep(countId !== null && scanned === null, () => {
+    setCountId(null);
   });
 
   /*
