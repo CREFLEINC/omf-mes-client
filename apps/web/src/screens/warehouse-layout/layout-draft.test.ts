@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  checkDrawingFile,
+  DRAWING_MAX_BYTES,
   hasMarker,
   isDirty,
   placeMarker,
@@ -144,5 +146,40 @@ describe('toReplaceBody', () => {
     const marker = toReplaceBody([{ locationId: 7, x: 0.1, y: 0.2 }], null).markers[0];
 
     expect(Object.keys(marker ?? {}).sort()).toEqual(['locationId', 'x', 'y']);
+  });
+
+  it('⛔ 점만 있는 초안에서도 도면 id(숫자)를 그대로 싣는다 — 빼면 서버가 도면을 지운다(#1064)', () => {
+    const body = toReplaceBody([{ locationId: 7, x: 0.1, y: 0.2 }], 42);
+
+    expect(body.drawingAttachmentId).toBe(42);
+    expect(body.markers.map((marker) => marker.locationId)).toEqual([7]);
+  });
+
+  it('점만 있는 초안이어도 도면 없음(null)은 도면 칸을 그대로 뺀다', () => {
+    const body = toReplaceBody([{ locationId: 7, x: 0.1, y: 0.2 }], null);
+
+    expect('drawingAttachmentId' in body).toBe(false);
+  });
+});
+
+describe('checkDrawingFile — 올리기 전 사전 검사(최종 판정은 서버)', () => {
+  it('png·jpeg 는 통과한다', () => {
+    expect(checkDrawingFile({ type: 'image/png', size: 100 })).toBe('ok');
+    expect(checkDrawingFile({ type: 'image/jpeg', size: 100 })).toBe('ok');
+  });
+
+  it('⛔ webp·gif·빈 형식은 막는다 — 서버가 PNG·JPEG 만 받는다', () => {
+    expect(checkDrawingFile({ type: 'image/webp', size: 100 })).toBe('type');
+    expect(checkDrawingFile({ type: 'image/gif', size: 100 })).toBe('type');
+    expect(checkDrawingFile({ type: '', size: 100 })).toBe('type');
+  });
+
+  it('상한(10MB)은 통과, 한 바이트라도 넘으면 막는다', () => {
+    expect(checkDrawingFile({ type: 'image/png', size: DRAWING_MAX_BYTES })).toBe('ok');
+    expect(checkDrawingFile({ type: 'image/png', size: DRAWING_MAX_BYTES + 1 })).toBe('size');
+  });
+
+  it('형식·크기 둘 다 어긋나면 형식부터 알린다', () => {
+    expect(checkDrawingFile({ type: 'image/webp', size: DRAWING_MAX_BYTES + 1 })).toBe('type');
   });
 });
