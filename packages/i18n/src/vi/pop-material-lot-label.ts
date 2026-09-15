@@ -89,6 +89,5 @@ export const popMaterialLotLabel: Translated<typeof ko.popMaterialLotLabel> = {
     prev: '◀ Trước',
     next: 'Sau ▶',
     position: (page: number, totalPages: number) => `Trang ${page} / ${totalPages}`,
-    empty: 'Không có trang để hiển thị.',
   },
 };

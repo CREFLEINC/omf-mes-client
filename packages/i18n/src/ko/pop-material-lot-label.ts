@@ -172,6 +172,5 @@ export const popMaterialLotLabel = {
      * 의심하게 된다. 쪽 번호는 어느 단위로 세든 같다.
      */
     position: (page: number, totalPages: number) => `${totalPages}쪽 중 ${page}쪽`,
-    empty: '보여 줄 쪽이 없습니다.',
   },
 } as const;

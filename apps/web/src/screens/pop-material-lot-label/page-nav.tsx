@@ -29,7 +29,7 @@ export interface PageNavProps {
  */
 export const PageNav = ({ view, isLocked, onChange }: PageNavProps) => (
   <nav className="pop-page-nav" aria-label={t.label}>
-    <p className="field-note">{view.rangeLabel}</p>
+    {view.rangeLabel === '' ? null : <p className="field-note">{view.rangeLabel}</p>}
     <Button
       className={popTouchClass('normal')}
       variant="outlined"
