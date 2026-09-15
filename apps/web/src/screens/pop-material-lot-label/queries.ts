@@ -22,10 +22,12 @@ import {
  *
  * | 언제 | 무엇 |
  * | --- | --- |
- * | 첫 진입 | 라벨 미발행 입하 건 목록 |
+ * | 첫 진입 | 라벨 미발행 입하 라인 목록 |
+ * | 발행 완료 보기 | 라벨을 발행한 입하 라인 목록(#1241) |
  *
- * **미부착 조건을 서버가 거른다.** 스펙 §3-6 과 변경 통지 #534 가 목록 원천을
- * `?supplierLotLabelAttached=false&labelIssued=false` 로 정했고 그 질의가 계약에 있다. 화면이 받아서
+ * **미부착·발행 조건을 서버가 거른다.** 스펙 §3-6 과 변경 통지 #534 가 목록 원천을
+ * `?supplierLotLabelAttached=false&labelIssued=false` 로 정했고 그 질의가 계약에 있다(건 목록의 발행
+ * 조건은 #1241 에서 보기별로 바꿨다 — `receiptIssuedQuery`). 화면이 받아서
  * 거르던 우회는 걷었다 — 거르는 쪽이 서버이므로 **한 쪽에 보이는 줄 수가 쪽 크기와 어긋나지
  * 않는다.**
  *
@@ -41,30 +43,62 @@ export interface ReceiptListQuery {
   page?: number;
 }
 
+/**
+ * 목록이 무엇을 담는가 — **미발행 / 발행 완료** 둘 중 하나다.
+ *
+ * ⭐ 발행 완료 목록은 사용자 지시(2026-09-15 · #1241)다. 스펙은 발행한 라인을 목록에서 빼도록
+ *    적었지만, 그러면 인쇄를 마친 자재를 고를 길이 없어 재인쇄 단추가 쓰일 자리가 없었다.
+ *
+ * ⛔ **「전체」를 두지 않는다.** 라인 응답에 발행 여부 칸이 없어 한 목록에 섞으면 줄마다
+ *    무엇인지 말할 수 없다 — 질의 조건으로만 갈린다.
+ */
+export type IssuedView = 'unissued' | 'issued';
+
 const RECEIPT_LIST_KEY = ['pop-material-lot-label', 'receipts'] as const;
 
 export const receiptKeys = {
   lists: RECEIPT_LIST_KEY,
-  list: (query: ReceiptListQuery) => [...RECEIPT_LIST_KEY, query] as const,
+  /** 모든 건·모든 보기의 라인 캐시. 인쇄가 끝나면 줄이 보기를 옮겨 가므로 통째로 다시 읽는다. */
+  allLines: ['pop-material-lot-label', 'receipt-lines'] as const,
+  list: (view: IssuedView, query: ReceiptListQuery) => [...RECEIPT_LIST_KEY, view, query] as const,
   /**
    * 라인 캐시는 **고른 건마다 갈린다.** 목록 키와 앞머리를 갈라 두어, 목록만 다시 불러도
    * 라인까지 함께 무효화되지 않게 한다.
+   *
+   * 보기를 빼고 부르면 그 건의 두 보기를 함께 가리킨다 — 등록 뒤 무효화가 그렇게 쓴다.
    */
-  lines: (inboundReceiptId: number | null) =>
-    ['pop-material-lot-label', 'receipt-lines', inboundReceiptId] as const,
+  lines: (inboundReceiptId: number | null, view?: IssuedView) =>
+    view === undefined
+      ? (['pop-material-lot-label', 'receipt-lines', inboundReceiptId] as const)
+      : (['pop-material-lot-label', 'receipt-lines', inboundReceiptId, view] as const),
 };
+
+/**
+ * 입하 «건» 목록의 발행 조건.
+ *
+ * ⛔ **미발행 보기에서 건을 `labelIssued=false` 로 거르지 않는다**(#1241). 건 목록의 그 조건은
+ *    「발행된 라인이 **하나도 없는** 건」이라, 한 건의 자재 일부만 인쇄하면 **남은 자재까지**
+ *    목록에서 사라졌다. 미발행 라인은 라인 질의가 거른다.
+ *
+ * 발행 완료 보기의 `true` 는 「발행된 라인을 하나 이상 가진 건」이라 그대로 맞다.
+ */
+const receiptIssuedQuery = (view: IssuedView): { labelIssued?: boolean } =>
+  view === 'issued' ? { labelIssued: true } : {};
 
 const fetchReceipts = async (
   client: Client,
+  view: IssuedView,
   query: ReceiptListQuery,
 ): Promise<ReceiptListResult> => {
   const data = await runRequest(() =>
     client.GET('/logistics/inbound-receipts', {
       /*
-       * 실물 라벨이 미부착이면서 아직 라벨을 찍지 않은 건만 받는다.
+       * 실물 라벨이 미부착인 건만 받는다. 발행 조건은 보기가 정한다(`receiptIssuedQuery`).
        * ⛔ 화면이 받아서 거르지 않는다 — 목록이 쪽 단위라 거른 뒤 개수가 쪽 크기와 어긋난다.
        */
-      params: { query: { ...query, supplierLotLabelAttached: false, labelIssued: false } },
+      params: {
+        query: { ...query, supplierLotLabelAttached: false, ...receiptIssuedQuery(view) },
+      },
     }),
   );
 
@@ -77,25 +111,32 @@ const fetchReceipts = async (
  * **조건 없이 곧바로 조회한다.** 화면에 들어오면 무엇을 고를 수 있는지 바로 보여야 한다 —
  * 빈 화면으로 시작하면 조건을 먼저 정해야 하는 줄 안다. 터치 단말에는 조건을 치는 자리가 없다.
  */
-export const useReceipts = (query: ReceiptListQuery): UseQueryResult<ReceiptListResult> => {
+export const useReceipts = (
+  view: IssuedView,
+  query: ReceiptListQuery,
+): UseQueryResult<ReceiptListResult> => {
   const { client } = useApiClient();
 
   return useQuery({
-    queryKey: receiptKeys.list(query),
-    queryFn: () => fetchReceipts(client, query),
+    queryKey: receiptKeys.list(view, query),
+    queryFn: () => fetchReceipts(client, view, query),
   });
 };
 
 /*
- * 라인도 같은 두 조건으로 서버가 거른다 — 발번 단위가 「건」이 아니라 「라인」이므로
+ * 라인도 미부착·발행 두 조건으로 서버가 거른다 — 발번 단위가 「건」이 아니라 「라인」이므로
  * (스펙 §3-6) 목록 줄과 발번 개수를 맞추려면 거르는 자리가 서버여야 한다.
  */
-const fetchReceiptLines = async (client: Client, inboundReceiptId: number): Promise<LineView[]> => {
+const fetchReceiptLines = async (
+  client: Client,
+  inboundReceiptId: number,
+  view: IssuedView,
+): Promise<LineView[]> => {
   const data = await runRequest(() =>
     client.GET('/logistics/inbound-receipts/{inboundReceiptId}/lines', {
       params: {
         path: { inboundReceiptId },
-        query: { supplierLotLabelAttached: false, labelIssued: false },
+        query: { supplierLotLabelAttached: false, labelIssued: view === 'issued' },
       },
     }),
   );
@@ -152,13 +193,13 @@ export interface TargetRowsResult {
  * ⚠ **요청이 쪽마다 1 + N 이다.** 쪽 크기를 작게 두어(POP 목록은 한 화면에 몇 줄뿐이다)
  * 감당한다. 계약이 라인을 함께 내려 주면 1 회로 줄어든다(변경 통지 #534).
  */
-export const useTargetRows = (receipts: ReceiptView[]): TargetRowsResult => {
+export const useTargetRows = (receipts: ReceiptView[], view: IssuedView): TargetRowsResult => {
   const { client } = useApiClient();
 
   const results = useQueries({
     queries: receipts.map((receipt) => ({
-      queryKey: receiptKeys.lines(receipt.inboundReceiptId),
-      queryFn: () => fetchReceiptLines(client, receipt.inboundReceiptId),
+      queryKey: receiptKeys.lines(receipt.inboundReceiptId, view),
+      queryFn: () => fetchReceiptLines(client, receipt.inboundReceiptId, view),
     })),
   });
 

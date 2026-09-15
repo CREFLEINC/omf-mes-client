@@ -5,16 +5,24 @@ export const popMaterialLotLabel: Translated<typeof ko.popMaterialLotLabel> = {
   title: 'Đăng ký LOT vật tư · Phát hành nhãn',
   receipts: {
     paneLabel: 'Dòng nhập hàng',
-    title: 'Dòng nhập hàng (chưa dán nhãn)',
+    title: 'Dòng nhập hàng',
     caption: 'Dòng nhập hàng',
     selectRow: (receiptNo: string, itemName: string, qty: string) =>
       `Chọn nhập hàng ${receiptNo} · mặt hàng ${itemName} · số lượng ${qty}`,
     deselectRow: (receiptNo: string, itemName: string, qty: string) =>
       `Bỏ chọn nhập hàng ${receiptNo} · mặt hàng ${itemName} · số lượng ${qty}`,
     empty: 'Không có vật tư cần phát hành.',
-    emptyOnThisPage:
-      'Các phiếu nhập hàng ở trang này không có vật tư cần phát hành. Hãy xem trang sau.',
+    emptyOnThisPage: 'Không có vật tư chưa phát hành. Hãy xem vật tư đã phát hành.',
+    emptyOnThisPageMore: 'Trang này không có vật tư chưa phát hành. Hãy xem trang sau.',
     beyondLast: 'Trang này không có kết quả. Hãy quay lại trang trước.',
+    filter: {
+      label: 'Trạng thái phát hành',
+      unissued: 'Chưa phát hành',
+      issued: 'Đã phát hành',
+    },
+    issuedEmpty: 'Không có vật tư đã phát hành.',
+    issuedEmptyOnThisPage:
+      'Các phiếu nhập hàng ở trang này không có vật tư đã phát hành. Hãy xem trang sau.',
     loadFailed: 'Không tải được danh sách nhập hàng.',
     unsupported:
       'Máy chủ chưa hỗ trợ danh sách đối tượng phát hành. Khi máy chủ sẵn sàng, có thể chọn vật tư tại màn hình này.',
@@ -61,7 +69,7 @@ export const popMaterialLotLabel: Translated<typeof ko.popMaterialLotLabel> = {
         lotNo === '' ? `Đã in. Lượt ${seq}` : `Đã in. Số LOT ${lotNo} · lượt ${seq}`,
       lotCreated: 'LOT vật tư đã được tạo. Đừng đăng ký lại, hãy tiếp tục bằng 「In」.',
       lotCreatedForbidden: 'LOT vật tư đã được tạo. Đừng đăng ký lại — có thể in ở máy trạm khác.',
-      printFailed: 'Nhãn chưa ra. Kiểm tra máy in rồi bấm 「In lại」.',
+      printFailed: 'Nhãn chưa ra. Kiểm tra máy in rồi bấm 「In lại」 ở 「Đã phát hành」.',
       registerConflict: 'Chưa đăng ký xong lúc này. Lát nữa hãy bấm lại 「Đăng ký · In」.',
       issueForbidden: 'Máy trạm này không phát hành nhãn được. Hãy in ở máy trạm có máy in nhãn.',
       reportFailedAfterPrint:

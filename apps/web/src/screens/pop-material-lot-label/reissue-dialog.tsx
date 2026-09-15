@@ -45,7 +45,12 @@ export const ReissueDialog = ({
     <Dialog
       open
       onClose={onCancel}
-      size="md"
+      /*
+       * ⭐ 창을 키운다(사용자 지시 2026-09-15 · #1241) — 512 폭·40 높이 단추라 단말에서 작았다.
+       *    칸·단추 높이는 P-02-09 재출력 사유와 같은 급(72)으로 맞춘다(`pop.css`).
+       */
+      className="pop-reissue-dialog"
+      size="lg"
       closeOnBackdropClick={false}
       /*
        * ⛔ **X 를 두지 않는다**(사용자 결정 2026-09-08). 나가는 길이 바닥의 「취소」와

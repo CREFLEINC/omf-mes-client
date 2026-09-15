@@ -30,6 +30,10 @@ export interface TargetCardProps {
    * 사유는 바로 아래 결과 알림이 말한다.
    */
   isPrintForbidden: boolean;
+  /**
+   * 발행 완료 목록에서 고른 자재인가(#1241). 보기마다 단추가 하나다 — 아래 단추 줄 주석.
+   */
+  isIssued: boolean;
   onIssue: () => void;
   onReissue: () => void;
 }
@@ -56,6 +60,7 @@ export const TargetCard = ({
   hasWorkerNo,
   runningStep,
   isPrintForbidden,
+  isIssued,
   onIssue,
   onReissue,
 }: TargetCardProps) => {
@@ -106,26 +111,35 @@ export const TargetCard = ({
         )}
       </Card>
 
+      {/*
+       * ⭐ 보기마다 단추가 하나다(사용자 지시 2026-09-15 · #1241) — 미발행은 등록·인쇄(등록된
+       *    라인은 인쇄)만, 발행 완료는 재인쇄만 둔다.
+       *
+       * ⛔ 발행 완료 자재에 첫 단추를 두지 않는다 — 사유 없이 다시 발행하면 서버가 거절한다(2회차부터
+       *    사유 필수). 미발행 자재에 재인쇄를 두지 않는다 — 발행한 적이 없어 재인쇄할 회차가 없다.
+       */}
       <div className="pop-target-actions">
-        <Button
-          className={popTouchClass('critical')}
-          variant="filled"
-          size="xl"
-          disabled={isBlocked}
-          onClick={onIssue}
-        >
-          {isRegistered ? t.actions.printOnly : t.actions.issue}
-        </Button>
-        <Button
-          className={popTouchClass('critical')}
-          variant="outlined"
-          size="xl"
-          /* 발행한 적이 없으면 재인쇄할 회차가 없다 — 사유를 실어 보내도 서버가 받을 것이 없다. */
-          disabled={isBlocked || !isRegistered}
-          onClick={onReissue}
-        >
-          {t.actions.reissue}
-        </Button>
+        {isIssued ? (
+          <Button
+            className={popTouchClass('critical')}
+            variant="outlined"
+            size="xl"
+            disabled={isBlocked}
+            onClick={onReissue}
+          >
+            {t.actions.reissue}
+          </Button>
+        ) : (
+          <Button
+            className={popTouchClass('critical')}
+            variant="filled"
+            size="xl"
+            disabled={isBlocked}
+            onClick={onIssue}
+          >
+            {isRegistered ? t.actions.printOnly : t.actions.issue}
+          </Button>
+        )}
       </div>
 
       {/*
