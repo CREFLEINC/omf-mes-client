@@ -168,6 +168,35 @@ describe('실사 차이 사유', () => {
     expect(body.lines[0]).not.toHaveProperty('varianceReasonCode');
   });
 
+  /*
+   * 위치 전체를 치환하므로 앞서 센 줄도 함께 나간다. 서버는 차이가 있는 줄을 사유 없이
+   * 받지 않으므로, 그 줄에 붙어 있던 사유를 빠뜨리면 손대지도 않은 줄 때문에 전송이 통째로
+   * 되돌아온다.
+   */
+  it('앞서 센 줄을 그대로 동봉할 때 붙어 있던 사유도 함께 담는다', () => {
+    const draft = toCountDraft(
+      count(),
+      3001,
+      [
+        line({
+          counted: true,
+          previousQty: 118,
+          previousCountedAt: '2026-09-07T00:00:00.000Z',
+          previousReasonCode: 'COUNT_ERROR',
+          qty: '118',
+          reasonCode: 'COUNT_ERROR',
+        }),
+      ],
+      new Date('2026-09-07T09:12:00+09:00'),
+      '100028',
+    );
+    const body = draft.body as { lines: { countedAt: string; varianceReasonCode?: string }[] };
+
+    expect(body.lines[0]?.varianceReasonCode).toBe('COUNT_ERROR');
+    /* 손대지 않은 줄이다. 언제 셌나가 전송 시각으로 덮이면 안 된다. */
+    expect(body.lines[0]?.countedAt).toBe('2026-09-07T00:00:00.000Z');
+  });
+
   it('수정 계수는 선택한 사유와 새 계수 시각을 오프라인 본문에 담는다', () => {
     const now = new Date('2026-09-07T09:12:00+09:00');
     const draft = toCountDraft(

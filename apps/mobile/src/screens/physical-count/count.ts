@@ -184,17 +184,24 @@ export const toCountDraft = (
       lotId: line.lotId,
       countedQty: Number(line.qty.trim()),
       uomId: line.uomId,
-      /* 기존 계수를 그대로 동봉할 때는 최초 계수 시각을 보존한다. */
+      /*
+       * 기존 계수를 그대로 동봉할 때는 최초 계수 시각을 보존한다. 위치 전체를 치환하므로
+       * 손대지 않은 줄도 함께 나가는데, 그 줄의 시각까지 지금으로 바꾸면 언제 셌나가 전송
+       * 시각으로 덮인다.
+       */
       countedAt:
         line.counted &&
         line.previousQty === Number(line.qty.trim()) &&
-        line.reasonCode === '' &&
+        line.reasonCode === (line.previousReasonCode ?? '') &&
         line.previousCountedAt !== null
           ? line.previousCountedAt
           : occurredAt,
-      ...(needsReason(count, line) && line.reasonCode !== ''
-        ? { varianceReasonCode: line.reasonCode }
-        : {}),
+      /*
+       * 사유는 고른 것이 있으면 싣는다. 서버가 차이 있는 줄을 사유 없이 받지 않으므로,
+       * 앞서 센 줄에 붙어 있던 사유를 빠뜨리면 손대지도 않은 줄 때문에 전송이 되돌아온다.
+       * 블라인드의 미보완 줄은 사유 자체가 비어 있어 여기서 걸러진다.
+       */
+      ...(line.reasonCode === '' ? {} : { varianceReasonCode: line.reasonCode }),
     })),
   };
 
