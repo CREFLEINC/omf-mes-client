@@ -21,7 +21,7 @@ export const physicalCount = {
     pickPlaceholder: '실사를 고르세요',
     item: (no: string, date: string) => `${no} · ${date}`,
     /** 장부를 감추는 실사다. 작업자가 장부 수를 보고 그대로 적는 것을 막는다. */
-    blind: '장부 수량을 감춘 실사입니다. 실물만 세어 적으세요.',
+    blind: '전산 잔량을 감춘 실사입니다. 실물만 세어 적으세요.',
   },
   location: {
     legend: '위치 스캔',
@@ -34,7 +34,7 @@ export const physicalCount = {
     notFound: (code: string) => `${code} 위치를 찾지 못했습니다`,
     picked: (code: string) => `위치 ${code}`,
     /** 장부에 없는 물건이 나올 수 있다. 그것을 적을 길은 이 슬라이스에 없다. */
-    empty: '이 위치에는 실사 라인이 없습니다. 장부에 없는 물건은 관리웹에서 추가합니다.',
+    empty: '이 위치에는 실사 라인이 없습니다. 전산에 없는 물건은 관리웹에서 추가합니다.',
   },
   lines: {
     legend: '실물 수량',
@@ -47,7 +47,7 @@ export const physicalCount = {
     name: (item: string, lotNo: string) => [item, lotNo].filter((part) => part !== '').join(' · '),
     qtyLabel: (name: string) => `${name} 실물 수량`,
     /** 장부는 블라인드가 아닐 때만 온다. */
-    systemQty: (qty: string) => `장부 ${qty}`,
+    systemQty: (qty: string) => `전산 잔량 ${qty}`,
     /** 덮어쓸 수 있게 두되 이전 값을 보인다 - 무엇을 바꾸는지 모르고 바꾸지 않게. */
     already: (qty: string) => `이전 값 ${qty}`,
     /** 안 센 것과 0 으로 센 것은 다르다. 안 센 라인은 보내지 않는다. */
