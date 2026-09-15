@@ -646,11 +646,16 @@ describe('기기 등록 해제', () => {
 
     const dialog = await screen.findByRole('dialog');
 
-    /* CSS 가 본문을 늘려 단추를 창 아래로 내리는 경로와 같아야 한다. */
-    const body = dialog.querySelector(':scope > div > div');
-    expect(body?.querySelector('.worker-sign-in__dialog-notice')).not.toBeNull();
+    /*
+     * CSS 가 본문을 늘려 단추를 창 아래로 내리는 경로와 같아야 한다. 판의 자식 중 div 가
+     * 본문 하나뿐이라는 것이 그 규칙의 전제다 - 하나 더 생기면 CSS 는 둘 다 늘린다.
+     */
+    const bodies = dialog.querySelectorAll(':scope > div > div');
+    expect(bodies).toHaveLength(1);
+    expect(bodies[0]?.querySelector('.worker-sign-in__dialog-notice')).not.toBeNull();
 
-    expect(dialog.querySelector('.worker-sign-in__dialog-title')).not.toBeNull();
+    /* 제목은 머리말 자리에 서야 한다. 창 안 아무 데나 있으면 여백이 어긋난다. */
+    expect(dialog.querySelector('header .worker-sign-in__dialog-title')).not.toBeNull();
     expect(dialog.querySelectorAll('.worker-sign-in__dialog-actions > button')).toHaveLength(2);
   });
 
