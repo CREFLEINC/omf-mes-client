@@ -9,11 +9,12 @@ import { useBackStep } from '../../patterns/back-step';
 import { playErrorTone } from '../../patterns/error-tone';
 import {
   handlingUnitKeys,
-  useLotLabels,
+  useLotNos,
   useScannedHandlingUnit,
   type ScannedHandlingUnit,
 } from '../../patterns/handling-units';
-import { uomLabelOf, useItemLabels, useUomCodes } from '../../patterns/masters';
+import { uomLabelOf, useItemCodes, useUomCodes } from '../../patterns/masters';
+import { referenceLabel } from '../../patterns/reference';
 import { createIdempotencyKey, useOutbox } from '../../patterns/outbox';
 import { useScanField } from '../../patterns/use-scan-field';
 import { useScreenTitle } from '../../patterns/screen-title';
@@ -113,12 +114,12 @@ export const PackingRepackScreen = () => {
    * 함께 물어야 이력이 대리키를 그대로 보이지 않는다.
    */
   /* 이력의 품목도 함께 묻는다 - 펼친 이력이 대리키만 보이면 무엇을 되돌리는지 알 수 없다. */
-  const itemLabels = useItemLabels([
+  const itemCode = useItemCodes([
     ...sources.flatMap((source) => source.contents.map((content) => content.itemId)),
     ...(history.data ?? []).flatMap((event) => event.lines.map((line) => line.itemId)),
   ]);
 
-  const lotLabels = useLotLabels([
+  const lotNo = useLotNos([
     ...sources.flatMap((source) => source.contents.map((content) => content.lotId)),
     ...(history.data ?? []).flatMap((event) => event.lines.map((line) => line.lotId)),
   ]);
@@ -151,12 +152,8 @@ export const PackingRepackScreen = () => {
     }
   });
 
-  const nameOf = (content: { itemId: number; lotId: number }): string => {
-    const item = itemLabels.get(content.itemId);
-    const lotNo = lotLabels.get(content.lotId) ?? String(content.lotId);
-
-    return t.contents.lot(item === undefined ? '' : item.itemCode, lotNo);
-  };
+  const nameOf = (content: { itemId: number; lotId: number }): string =>
+    t.contents.lot(referenceLabel(itemCode(content.itemId)), referenceLabel(lotNo(content.lotId)));
 
   const label = (content: { itemId: number; lotId: number; qty: number; uomId: number }): string =>
     `${nameOf(content)} · ${String(content.qty)} ${uomOf(content.uomId)}`;
