@@ -1,4 +1,13 @@
-import { AlertBanner, Button, Card, Radio, Select, TextField } from '@crefle/web-ui';
+import {
+  AlertBanner,
+  Button,
+  Card,
+  IconButton,
+  NumberPad,
+  Radio,
+  Select,
+  TextField,
+} from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router';
@@ -9,6 +18,8 @@ import { useItemLabels } from '../../patterns/masters';
 import { formatMaterialLotNo } from '../../patterns/material-lot-no';
 import { useOnlineStatus } from '../../patterns/online-status';
 import { useOutbox } from '../../patterns/outbox';
+import { useBackStep } from '../../patterns/back-step';
+import { uomLabelOf, useUomCodes } from '../../patterns/masters';
 import { useScanField } from '../../patterns/use-scan-field';
 import { useScreenTitle } from '../../patterns/screen-title';
 import { useWorkerSession } from '../../patterns/worker-session';
@@ -69,6 +80,8 @@ export const StockTransferScreen = () => {
   } | null>(null);
   const [outcome, setOutcome] = useState<Outcome | null>(null);
   const [saveFailed, setSaveFailed] = useState(false);
+  /* 단말 키보드는 키가 촘촘하고 올라오면 라인 목록과 기록 단추를 덮는다. */
+  const [keypadFor, setKeypadFor] = useState<number | null>(null);
   /*
    * 보내는 중인가. 상태로 두면 같은 틱에 두 번 누른 것을 막지 못한다 - 다시 그리기 전에
    * 두 번째가 들어와 같은 물건이 두 번 반출된다.
@@ -181,6 +194,36 @@ export const StockTransferScreen = () => {
 
   const nameOf = (line: DraftLine): string =>
     t.from.name(itemLabels.get(line.itemId)?.itemCode ?? '', line.lotNo);
+
+  /*
+   * 뒤로가기는 화면 안 단계를 먼저 되돌린다. 라우터 이력에는 이 화면 하나뿐이라, 두지 않으면
+   * 이어서 하던 이동을 놓치고 작업 목록까지 나간다.
+   *
+   * 안쪽부터 되돌리도록 조건을 서로 배타로 둔다.
+   */
+  useBackStep(shipped !== null, () => {
+    restart();
+  });
+  useBackStep(shipped === null && lines.length > 0, () => {
+    setLines([]);
+    setScannedLot(null);
+    setDuplicate(false);
+    setNoStock(false);
+  });
+
+  /*
+   * 한 창고에 개수로 세는 품목과 무게로 세는 품목이 섞여 있다. 단위가 빠지면 370 이 삼백일흔
+   * 개인지 삼백일흔 킬로그램인지 가릴 수 없고, 그 판단이 그대로 재고 이동으로 나간다.
+   */
+  const uoms = useUomCodes(true);
+  const uomOf = (uomId: number | null | undefined) => uomLabelOf(uoms.data, uomId);
+
+  /*
+   * 숫자판이 지금 적고 있는 줄. 목록 밖에 서므로 자리를 번호가 아니라 줄 자체로 든다 - 줄을
+   * 빼면 숫자판도 함께 닫힌다.
+   */
+  const keypadAt = lines.findIndex((line) => line.lotId === keypadFor);
+  const keypad = keypadAt === -1 ? null : { at: keypadAt, line: lines[keypadAt] as DraftLine };
 
   const restart = () => {
     setLines([]);
@@ -502,7 +545,17 @@ export const StockTransferScreen = () => {
                     label={t.from.qtyLabel(nameOf(line))}
                     size="xl"
                     fullWidth
-                    inputMode="numeric"
+                    /*
+                     * 장갑을 끼고 한 손으로 조작한다. 단말 키보드는 키가 촘촘하고, 올라오면
+                     * 라인 목록과 기록 단추를 덮는다.
+                     */
+                    inputMode="none"
+                    onFocus={() => {
+                      setKeypadFor(line.lotId);
+                    }}
+                    onClick={() => {
+                      setKeypadFor(line.lotId);
+                    }}
                     value={line.qty}
                     onChange={(event) => {
                       const next = event.target.value;
@@ -518,7 +571,9 @@ export const StockTransferScreen = () => {
                           : t.from.problem[problem]
                     }
                   />
-                  <p className="stock-transfer__onhand">{t.from.onHand(limit)}</p>
+                  <p className="stock-transfer__onhand">
+                    {t.from.onHand(limit, uomOf(line.uomId))}
+                  </p>
                   <Button
                     variant="text"
                     size="xl"
@@ -552,6 +607,52 @@ export const StockTransferScreen = () => {
               {t.submitShip}
             </Button>
           </section>
+
+          {/*
+            숫자판은 줄 사이에 끼우지 않는다. 끼우면 그 아래 줄들이 화면 밖으로 밀려 적던
+            자리를 잃는다. 기기 키보드처럼 화면 아래에 붙여 목록 위에 띄운다.
+
+            목록 밖에 서므로 어느 줄에 적는 중인지 스스로 말한다.
+          */}
+          {keypad === null ? null : (
+            <div className="stock-transfer__keypad">
+              <p className="stock-transfer__keypad-head">{nameOf(keypad.line)}</p>
+              <div className="stock-transfer__keypad-row">
+                <IconButton
+                  icon="chevron_left"
+                  size="xl"
+                  aria-label={t.from.previousLine}
+                  disabled={keypad.at === 0}
+                  onClick={() => {
+                    setKeypadFor(lines[keypad.at - 1]?.lotId ?? null);
+                  }}
+                />
+                <NumberPad
+                  value={keypad.line.qty}
+                  onChange={(value) => {
+                    setLines((current) =>
+                      current.map((each, at) =>
+                        at === keypad.at ? { ...each, qty: value } : each,
+                      ),
+                    );
+                  }}
+                  allowDecimal
+                  onConfirm={() => {
+                    setKeypadFor(null);
+                  }}
+                />
+                <IconButton
+                  icon="chevron_right"
+                  size="xl"
+                  aria-label={t.from.nextLine}
+                  disabled={keypad.at === lines.length - 1}
+                  onClick={() => {
+                    setKeypadFor(lines[keypad.at + 1]?.lotId ?? null);
+                  }}
+                />
+              </div>
+            </div>
+          )}
         </>
       )}
     </div>

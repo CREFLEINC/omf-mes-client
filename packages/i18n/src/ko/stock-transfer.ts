@@ -56,7 +56,10 @@ export const stockTransfer = {
     mixedWarehouse: '서로 다른 창고의 LOT을 한 번에 옮길 수 없습니다. 창고별로 나누세요.',
     /* 대리키를 보이면 실물 라벨과 대조할 수 없다. 라벨에는 품목 코드와 LOT 번호가 찍혀 있다. */
     name: (item: string, lotNo: string) => (item === '' ? lotNo : `${item} · ${lotNo}`),
-    onHand: (qty: string) => `재고 ${qty}`,
+    onHand: (qty: string, unit: string) => `재고 ${[qty, unit].join(' ').trim()}`,
+    /* 여러 LOT 을 차례로 적는다. 숫자판을 닫았다 다시 열지 않고 옆으로 옮긴다. */
+    previousLine: '앞 라인',
+    nextLine: '다음 라인',
     qtyLabel: (name: string) => `${name} 반출 수량`,
     remove: '빼기',
     problem: {
