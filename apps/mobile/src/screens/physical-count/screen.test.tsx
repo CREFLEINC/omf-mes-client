@@ -347,6 +347,22 @@ describe('실물 카운트 화면', () => {
   });
 
   /*
+   * 이 선반을 다 셌는지는 실사 전체 진행과 다른 물음이다. 화면이 든 줄로 바로 셀 수 있고,
+   * 세는 사람이 한 위치를 끝낼 때마다 확인하는 것이 이 값이다.
+   */
+  it('이 위치에서 몇 줄을 셌는지 말한다', async () => {
+    const user = userEvent.setup();
+    mount();
+    await openLocation(user);
+
+    expect(await screen.findByText('이 위치 0 / 2')).toBeTruthy();
+
+    await user.type(await screen.findByLabelText(QTY_LABEL), '120');
+
+    expect(await screen.findByText('이 위치 1 / 2')).toBeTruthy();
+  });
+
+  /*
    * 숫자판이 줄 사이에 끼면 그 아래 줄들이 화면 밖으로 밀린다. 아홉 줄이 넘는 목록에서 적던
    * 자리를 잃고, 뒤이어 뜨는 차이 사유가 숫자판 아래에 생겨 어디서 온 칸인지 알 수 없다.
    */

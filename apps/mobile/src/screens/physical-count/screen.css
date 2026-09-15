@@ -120,3 +120,11 @@
   letter-spacing: var(--type-title-sm-tracking);
   overflow-wrap: anywhere;
 }
+
+/* 이 선반을 다 셌는가. 목록 머리에서 한눈에 읽히도록 값만 굵게 둔다. */
+.physical-count__here {
+  margin: 0;
+  font: var(--type-title-sm);
+  letter-spacing: var(--type-title-sm-tracking);
+  font-variant-numeric: tabular-nums;
+}

@@ -92,6 +92,11 @@ export const physicalCount = {
       notNumber: '수량을 숫자로 적으세요',
       negative: '수량은 0보다 작을 수 없습니다',
     },
+    /*
+     * 이 선반을 다 셌는지는 실사 전체 진행과 다른 물음이다. 한 위치를 끝낼 때마다 확인하는
+     * 것이 이 값이라 목록 머리에 둔다.
+     */
+    atHere: (counted: string, total: string) => `이 위치 ${counted} / ${total}`,
     /** 0 은 유효한 답이다. 세어 보니 없더라를 적는 자리다. */
     zeroHint: '실물이 없으면 0 을 적습니다. 비워 두면 아직 세지 않은 것으로 남습니다.',
   },

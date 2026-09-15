@@ -17,6 +17,7 @@ import { useCountLines, useCountSummary, useOpenCounts } from './queries';
 import {
   COUNT_LABEL,
   canSubmit,
+  countedLines,
   diffOf,
   needsReason,
   qtyProblemOf,
@@ -354,6 +355,13 @@ export const PhysicalCountScreen = () => {
         <>
           <section className="physical-count__section">
             <h2>{t.lines.legend}</h2>
+            {/*
+              이 선반을 다 셌는지는 실사 전체 진행과 다른 물음이다. 화면이 든 줄로 바로 세고,
+              한 위치를 끝낼 때마다 확인하는 것이 이 값이다.
+            */}
+            <p className="physical-count__here">
+              {t.lines.atHere(String(countedLines(lines).length), String(lines.length))}
+            </p>
             {/* 0 과 빈 칸이 다르다는 것을 말한다. 안 밝히면 안 센 것을 0 으로 적는다. */}
             <p className="physical-count__note">{t.lines.zeroHint}</p>
 
