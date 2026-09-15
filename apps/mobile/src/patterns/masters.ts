@@ -8,8 +8,8 @@ import {
 } from '@tanstack/react-query';
 
 import { useApiClient } from './api-context';
-import type { ReferenceResolver } from './reference';
 import { masterName } from './master-name';
+import type { ReferenceResolver } from './reference';
 import { runRequest } from './request';
 
 export const masterKeys = {

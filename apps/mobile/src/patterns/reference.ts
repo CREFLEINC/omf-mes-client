@@ -34,21 +34,3 @@ export const referenceLabel = (state: ReferenceState): string => {
       return t.failed;
   }
 };
-
-/**
- * 이미 받아 둔 라벨에서 푼다.
- *
- * 목록 응답이 이름을 실어 오는 자리에 쓴다. 못 찾은 것과 값이 없는 것을 가른다 - 값이 없는
- * 칸에 서버에 없다고 적으면 비어 있는 것이 잘못된 것으로 읽힌다.
- */
-export const referenceFrom = (labels: Map<number, string>): ReferenceResolver => {
-  return (id) => {
-    if (id === null || id === undefined) {
-      return { kind: 'empty' };
-    }
-
-    const label = labels.get(id);
-
-    return label === undefined ? { kind: 'unknown' } : { kind: 'named', label };
-  };
-};
