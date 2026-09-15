@@ -21,7 +21,16 @@ const dots = (millimetres: number): number => Math.round((millimetres / 25.4) * 
 
 const WIDTH = dots(80);
 const HEIGHT = dots(30);
-const MARGIN = dots(3);
+/**
+ * 사방 4 mm 는 비운다.
+ *
+ * ⛔ **3 mm 로 줄이지 않는다.** 3 mm 로 짰을 때 QR 윗변·오른쪽 끝이 라벨지 가장자리에 붙었고,
+ *    프린터가 급지 위치를 조금만 달리 잡아도 잘렸다(실기 HT800 2026-09-15 · 사용자 사진).
+ */
+const MARGIN = dots(4);
+
+/** 글줄 높이 — 내장 글꼴은 point 를 203 dpi 로 옮긴 높이로 찍힌다. */
+const lineHeight = (point: number): number => Math.ceil(point * (203 / 72));
 
 const FONT = '0';
 
@@ -98,26 +107,46 @@ export interface MaterialLotLabelFields {
 }
 
 /**
- * 80 × 30 mm 한 장.
+ * 80 × 30 mm 한 장. 모든 글줄은 QR 왼쪽 칸에 서고, QR 은 오른쪽에 위아래 가운데로 선다.
  *
  * ```
- * MATERIAL LOT  #1                ┌────┐
- * ITEM ES0602-00062               │ QR │
- * QTY 10000 EA                    └────┘
- * LOT ES0602-00062|10000|260914|100330|0001
+ * MATERIAL LOT  #1                          ┌────┐
+ * ITEM ES0602-00062                         │ QR │
+ * QTY 10000 EA                              │    │
+ * LOT ES0602-00062|10000|260914|100330|0001 └────┘
  * RCV IB-0001
  * ```
+ *
+ * ⚠ LOT 줄을 QR 아래 전폭으로 내리지 않는다 — 전폭 줄이 오른쪽 여백까지 닿아 함께 잘렸다.
  */
 export const buildMaterialLotLabel = (fields: MaterialLotLabelFields): string => {
   const side = qrSide(fields.lotNo);
   const qrX = WIDTH - MARGIN - side;
-  const beside = qrX - MARGIN - dots(2);
-  const full = WIDTH - MARGIN * 2;
-  /* QR 아래로 내려 쓰는 줄은 QR 이 끝난 뒤에 선다 — 겹칠 자리를 없앤다. */
-  const below = Math.max(MARGIN + side + dots(1), dots(19));
+  const qrY = Math.round((HEIGHT - side) / 2);
+  const column = qrX - MARGIN - dots(2);
 
   const qty =
     fields.uomCode === null ? String(fields.qty) : `${String(fields.qty)} ${fields.uomCode}`;
+
+  const rows: { point: number; content: string }[] = [
+    { point: 8, content: `MATERIAL LOT  #${String(fields.issueSeq)}` },
+    { point: 10, content: `ITEM ${fields.itemCode}` },
+    { point: 10, content: `QTY ${qty}` },
+    { point: 8, content: `LOT ${fields.lotNo}` },
+    { point: 8, content: `RCV ${fields.inboundReceiptNo}` },
+  ];
+
+  /* 남는 세로 공간을 줄 사이에 고르게 나눈다 — 위아래 여백 안에서 끝난다. */
+  const used = rows.reduce((sum, row) => sum + lineHeight(row.point), 0);
+  const spacing = Math.floor((HEIGHT - MARGIN * 2 - used) / (rows.length - 1));
+
+  let y = MARGIN;
+  const drawn = rows.map((row) => {
+    const line = text(MARGIN, y, row.point, row.content, column);
+    y += lineHeight(row.point) + spacing;
+
+    return line;
+  });
 
   return [
     `SIZE 80 mm,30 mm`,
@@ -125,18 +154,8 @@ export const buildMaterialLotLabel = (fields: MaterialLotLabelFields): string =>
     'DIRECTION 1',
     'REFERENCE 0,0',
     'CLS',
-    text(MARGIN, MARGIN, 9, `MATERIAL LOT  #${String(fields.issueSeq)}`, beside),
-    text(MARGIN, dots(8), 11, `ITEM ${fields.itemCode}`, beside),
-    text(MARGIN, dots(13.5), 11, `QTY ${qty}`, beside),
-    text(MARGIN, below, 9, `LOT ${fields.lotNo}`, full),
-    text(
-      MARGIN,
-      Math.min(below + dots(5), HEIGHT - MARGIN - dots(3)),
-      8,
-      `RCV ${fields.inboundReceiptNo}`,
-      full,
-    ),
-    `QRCODE ${String(qrX)},${String(MARGIN)},M,${String(QR_CELL)},A,0,M2,"${escapeTspl(fields.lotNo)}"`,
+    ...drawn,
+    `QRCODE ${String(qrX)},${String(qrY)},M,${String(QR_CELL)},A,0,M2,"${escapeTspl(fields.lotNo)}"`,
     'PRINT 1,1',
     '',
   ].join('\r\n');
