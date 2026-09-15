@@ -11,6 +11,7 @@ import {
   renderWithProviders,
   type StubRoute,
 } from '../../test/api-harness';
+import { formatMaterialLotNo } from '../../patterns/material-lot-no';
 import { itemRoutes } from '../../test/master-routes';
 import { useWorkerSession } from '../../patterns/worker-session';
 import { PhysicalCountScreen } from './screen';
@@ -69,7 +70,11 @@ interface Options {
 const LOT_NO = '0001234500000012002607310001230007';
 
 /** 수량 칸을 찾는 이름. 품목 코드와 LOT 번호가 함께 선다. */
-const QTY_LABEL = new RegExp(`ABC-123 · ${LOT_NO} 실물 수량`);
+/*
+ * 34자리는 나뉘어 적힌다. 붙여 쓰면 실물 라벨과 눈으로 대조할 수 없고, 한 위치에 같은 품목이
+ * 여러 줄 서므로 자릿수를 세어 가며 줄을 찾게 된다.
+ */
+const QTY_LABEL = new RegExp(`ABC-123 · ${formatMaterialLotNo(LOT_NO)} 실물 수량`);
 
 const line = (overrides: Record<string, unknown> = {}) => ({
   inventoryCountLineId: 5101,
@@ -406,7 +411,7 @@ describe('실물 카운트 화면', () => {
     mount();
     await openLocation(user);
 
-    expect(await screen.findAllByText('아직 세지 않음')).toHaveLength(2);
+    expect(await screen.findAllByText('이 라인은 아직 세지 않았습니다')).toHaveLength(2);
   });
 
   /*
@@ -421,7 +426,7 @@ describe('실물 카운트 화면', () => {
     await user.type(await screen.findByLabelText(QTY_LABEL), '120');
 
     await waitFor(() => {
-      expect(screen.getAllByText('아직 세지 않음')).toHaveLength(1);
+      expect(screen.getAllByText('이 라인은 아직 세지 않았습니다')).toHaveLength(1);
     });
   });
 
@@ -436,16 +441,58 @@ describe('실물 카운트 화면', () => {
     await user.clear(field);
 
     await waitFor(() => {
-      expect(screen.getAllByText('아직 세지 않음')).toHaveLength(2);
+      expect(screen.getAllByText('이 라인은 아직 세지 않았습니다')).toHaveLength(2);
     });
   });
 
-  it('이미 센 줄은 이전 값을 보인다', async () => {
+  it('이미 센 줄은 앞서 센 값을 보인다', async () => {
     const user = userEvent.setup();
     mount({ firstCounted: true });
     await openLocation(user);
 
-    expect(await screen.findByText('이전 값 118')).toBeTruthy();
+    expect(await screen.findByText('앞서 센 값 118')).toBeTruthy();
+  });
+
+  /*
+   * 되돌릴 수 없는 조정이 이 수만큼 나간다. 사유를 요구하면서 얼마인지 말하지 않으면 사람이
+   * 전산 잔량과 적은 값을 보고 암산해 고른다.
+   */
+  it('전산과 다르게 세면 차이를 말한다', async () => {
+    const user = userEvent.setup();
+    mount();
+    await openLocation(user);
+
+    await user.type(await screen.findByLabelText(QTY_LABEL), '100');
+
+    expect(await screen.findByText('차이 20 부족')).toBeTruthy();
+  });
+
+  it('많이 세면 많다고 말한다', async () => {
+    const user = userEvent.setup();
+    mount();
+    await openLocation(user);
+
+    await user.type(await screen.findByLabelText(QTY_LABEL), '135');
+
+    expect(await screen.findByText('차이 15 많음')).toBeTruthy();
+  });
+
+  /*
+   * 장갑을 끼고 한 손으로 조작한다. 단말 키보드는 키가 촘촘하고, 올라오면 줄 목록과 완료
+   * 단추를 덮어 무엇을 적는 줄인지 가려진다. 다른 열한 화면이 화면 숫자판을 쓴다.
+   */
+  it('수량 칸을 누르면 화면 숫자판이 선다', async () => {
+    const user = userEvent.setup();
+    mount();
+    await openLocation(user);
+
+    const field = await screen.findByLabelText(QTY_LABEL);
+
+    expect(field).toHaveAttribute('inputmode', 'none');
+
+    await user.click(field);
+
+    expect(await screen.findByRole('button', { name: '7' })).toBeTruthy();
   });
 
   /* 장부를 보고 그대로 적는 것을 막는 실사다. 서버가 장부를 안 내려보낸다. */
@@ -485,7 +532,7 @@ describe('실물 카운트 화면', () => {
     otherDevice.counted = true;
     await queryClient.invalidateQueries({ queryKey: ['physical-count-lines'] });
 
-    expect(await screen.findByText('이전 값 37')).toBeTruthy();
+    expect(await screen.findByText('앞서 센 값 37')).toBeTruthy();
     expect((screen.getByLabelText(QTY_LABEL) as HTMLInputElement).value).toBe('118');
   });
 

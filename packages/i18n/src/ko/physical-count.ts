@@ -46,12 +46,28 @@ export const physicalCount = {
      */
     name: (item: string, lotNo: string) => [item, lotNo].filter((part) => part !== '').join(' · '),
     qtyLabel: (name: string) => `${name} 실물 수량`,
-    /** 장부는 블라인드가 아닐 때만 온다. */
+    /** 전산 잔량은 블라인드가 아닐 때만 온다. */
     systemQty: (qty: string) => `전산 잔량 ${qty}`,
-    /** 덮어쓸 수 있게 두되 이전 값을 보인다 - 무엇을 바꾸는지 모르고 바꾸지 않게. */
-    already: (qty: string) => `이전 값 ${qty}`,
-    /** 안 센 것과 0 으로 센 것은 다르다. 안 센 라인은 보내지 않는다. */
-    uncounted: '아직 세지 않음',
+    /*
+     * 세어 적은 값과 전산 잔량의 차이. 되돌릴 수 없는 재고 조정이 이 수만큼 나간다 - 사유를
+     * 요구하면서 얼마인지 말하지 않으면 사람이 암산해 고르게 된다.
+     */
+    diffOver: (qty: string) => `차이 ${qty} 많음`,
+    diffShort: (qty: string) => `차이 ${qty} 부족`,
+    /*
+     * 덮어쓸 수 있게 두되 앞서 적은 값을 보인다 - 무엇을 바꾸는지 모르고 바꾸지 않게.
+     *
+     * 무엇의 값인지 적는다. 전산 잔량과 나란히 서면 둘 다 숫자라, 전산 재고인지 내가 앞서
+     * 센 값인지 문구로 갈리지 않으면 알 수 없다.
+     */
+    already: (qty: string) => `앞서 센 값 ${qty}`,
+    /*
+     * 안 센 것과 0 으로 센 것은 다르다. 안 센 라인은 보내지 않는다.
+     *
+     * 무엇을 안 셌는지 적는다. 라인마다 서는 말이라 그 라인의 실물을 가리킨다는 것이
+     * 드러나야 한다.
+     */
+    uncounted: '이 라인은 아직 세지 않았습니다',
     reasonLabel: (name: string) => `${name} 차이 사유`,
     reasonPlaceholder: '차이 사유를 고르세요',
     problem: {
