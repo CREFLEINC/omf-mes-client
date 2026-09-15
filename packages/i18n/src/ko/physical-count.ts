@@ -52,21 +52,26 @@ export const physicalCount = {
     qty: '실물 수량 입력',
     /** 어느 줄의 칸인지는 눈으로 보고, 화면을 읽어 주는 도구는 이 이름으로 가른다. */
     qtyLabel: (name: string) => `${name} 실물 수량 입력`,
-    /** 전산 잔량은 블라인드가 아닐 때만 온다. */
-    systemQty: (qty: string) => `전산 잔량 ${qty}`,
+    /*
+     * 전산 잔량은 블라인드가 아닐 때만 온다. 감춘 실사에서도 자리는 남긴다 - 지우면 장부가
+     * 없는 실사와 구별되지 않아, 가려진 것인지 원래 없는 것인지 줄을 보고 알 수 없다.
+     */
+    systemQty: (qty: string, unit: string) => `전산 잔량 ${[qty, unit].join(' ').trim()}`,
+    /** 감춘 자리. 값이 아니라 가렸다는 사실을 적는다. */
+    masked: '▪▪▪',
     /*
      * 세어 적은 값과 전산 잔량의 차이. 되돌릴 수 없는 재고 조정이 이 수만큼 나간다 - 사유를
      * 요구하면서 얼마인지 말하지 않으면 사람이 암산해 고르게 된다.
      */
-    diffOver: (qty: string) => `차이 ${qty} 많음`,
-    diffShort: (qty: string) => `차이 ${qty} 부족`,
+    diffOver: (qty: string, unit: string) => `차이 ${[qty, unit].join(' ').trim()} 많음`,
+    diffShort: (qty: string, unit: string) => `차이 ${[qty, unit].join(' ').trim()} 부족`,
     /*
      * 덮어쓸 수 있게 두되 앞서 적은 값을 보인다 - 무엇을 바꾸는지 모르고 바꾸지 않게.
      *
      * 무엇의 값인지 적는다. 전산 잔량과 나란히 서면 둘 다 숫자라, 전산 재고인지 내가 앞서
      * 센 값인지 문구로 갈리지 않으면 알 수 없다.
      */
-    already: (qty: string) => `앞서 센 값 ${qty}`,
+    already: (qty: string, unit: string) => `앞서 센 값 ${[qty, unit].join(' ').trim()}`,
     /*
      * 안 센 것과 0 으로 센 것은 다르다. 안 센 라인은 보내지 않는다.
      *

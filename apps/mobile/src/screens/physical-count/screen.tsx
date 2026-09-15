@@ -6,6 +6,7 @@ import { Link } from 'react-router';
 import { formatMaterialLotNo } from '../../patterns/material-lot-no';
 import { useCodeValues } from '../../patterns/code-values';
 import { useLocationByCode } from '../../patterns/locations';
+import { uomLabelOf, useUomCodes } from '../../patterns/masters';
 import { useOutbox } from '../../patterns/outbox';
 import { useScanField } from '../../patterns/use-scan-field';
 import { useScreenTitle } from '../../patterns/screen-title';
@@ -56,6 +57,13 @@ export const PhysicalCountScreen = () => {
   const at = location.data ?? null;
   const planned = useCountLines(countId, at?.locationId ?? null);
   const reasons = useCodeValues(VARIANCE_REASON);
+
+  /*
+   * 한 위치에 개수로 세는 품목과 무게로 세는 품목이 섞여 선다. 단위가 빠지면 40 이 마흔 개인지
+   * 마흔 킬로그램인지 가릴 수 없고, 그 판단이 그대로 재고 조정으로 나간다.
+   */
+  const uoms = useUomCodes(countId !== null);
+  const uomOf = (uomId: number | null | undefined) => uomLabelOf(uoms.data, uomId);
 
   /*
    * 큐에 담긴 것은 서버 응답에 없다. 읽기 전에는 담긴 것이 없는 것과 구별되지 않아 그 사이에
@@ -143,17 +151,20 @@ export const PhysicalCountScreen = () => {
    */
   const statusOf = (line: DraftLine) => {
     const diff = diffOf(line);
+    const unit = uomOf(line.uomId);
 
     return (
       <>
         {!line.counted ? null : (
           <span className="physical-count__previous">
-            {t.lines.already(String(line.previousQty ?? 0))}
+            {t.lines.already(String(line.previousQty ?? 0), unit)}
           </span>
         )}
         {diff === null ? null : (
           <strong className="physical-count__diff">
-            {diff > 0 ? t.lines.diffOver(String(diff)) : t.lines.diffShort(String(-diff))}
+            {diff > 0
+              ? t.lines.diffOver(String(diff), unit)
+              : t.lines.diffShort(String(-diff), unit)}
           </strong>
         )}
         {line.counted || line.qty.trim() !== '' ? null : (
@@ -324,11 +335,11 @@ export const PhysicalCountScreen = () => {
                   */}
                   <p className="physical-count__head">{nameOf(line)}</p>
                   <div className="physical-count__figures">
-                    {line.systemQty === null ? null : (
-                      <span className="physical-count__system">
-                        {t.lines.systemQty(String(line.systemQty))}
-                      </span>
-                    )}
+                    <span className="physical-count__system">
+                      {line.systemQty === null
+                        ? t.lines.systemQty(t.lines.masked, '')
+                        : t.lines.systemQty(String(line.systemQty), uomOf(line.uomId))}
+                    </span>
                     {statusOf(line)}
                   </div>
                   <TextField

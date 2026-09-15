@@ -209,6 +209,10 @@ const routes = (options: Options = {}): StubRoute[] => [
     { itemId: 2001, itemCode: 'RM-1001', itemName: '수지A', fifoPolicyCode: 'FEFO' },
   ]),
   {
+    match: (req) => new URL(req.url).pathname === '/mdm/uoms',
+    respond: () => jsonResponse({ items: [{ uomId: 1001, uomCode: 'EA' }], page }),
+  },
+  {
     match: (req) => new URL(req.url).pathname === '/mdm/code-values',
     respond: (req) => {
       options.asked?.push(req.url);
@@ -315,7 +319,34 @@ describe('실물 카운트 화면', () => {
     await openLocation(user);
 
     expect(await screen.findByLabelText(QTY_LABEL)).toBeTruthy();
-    expect(screen.getByText('전산 잔량 120')).toBeTruthy();
+    expect(screen.getByText('전산 잔량 120 EA')).toBeTruthy();
+  });
+
+  /*
+   * 한 위치에 개수로 세는 품목과 무게로 세는 품목이 섞여 선다. 단위가 빠지면 40 이 마흔 개인지
+   * 마흔 킬로그램인지 가릴 수 없고, 그 판단이 그대로 재고 조정으로 나간다.
+   */
+  it('수량 옆에 단위를 세운다', async () => {
+    const user = userEvent.setup();
+    mount();
+    await openLocation(user);
+
+    expect(await screen.findByText('전산 잔량 120 EA')).toBeTruthy();
+  });
+
+  /*
+   * 블라인드는 장부가 오지 않는다. 자리까지 지우면 장부가 없는 실사와 구별되지 않아, 가려진
+   * 것인지 원래 없는 것인지 줄을 보고 알 수 없다.
+   */
+  it('블라인드는 장부 자리를 가린 채로 남긴다', async () => {
+    const user = userEvent.setup();
+    mount({ blind: true });
+    await openLocation(user);
+
+    await screen.findAllByText(/전산 잔량 ▪▪▪/);
+
+    /* 줄마다 선다 - 한 줄만 가리면 나머지가 장부 없는 줄로 읽힌다. */
+    expect(screen.getAllByText(/전산 잔량 ▪▪▪/)).toHaveLength(2);
   });
 
   /*
@@ -538,7 +569,7 @@ describe('실물 카운트 화면', () => {
     mount({ firstCounted: true });
     await openLocation(user);
 
-    expect(await screen.findByText('앞서 센 값 118')).toBeTruthy();
+    expect(await screen.findByText('앞서 센 값 118 EA')).toBeTruthy();
   });
 
   /*
@@ -552,7 +583,7 @@ describe('실물 카운트 화면', () => {
 
     await user.type(await screen.findByLabelText(QTY_LABEL), '100');
 
-    expect(await screen.findByText('차이 20 부족')).toBeTruthy();
+    expect(await screen.findByText('차이 20 EA 부족')).toBeTruthy();
   });
 
   it('많이 세면 많다고 말한다', async () => {
@@ -562,7 +593,7 @@ describe('실물 카운트 화면', () => {
 
     await user.type(await screen.findByLabelText(QTY_LABEL), '135');
 
-    expect(await screen.findByText('차이 15 많음')).toBeTruthy();
+    expect(await screen.findByText('차이 15 EA 많음')).toBeTruthy();
   });
 
   /*
@@ -620,7 +651,7 @@ describe('실물 카운트 화면', () => {
     otherDevice.counted = true;
     await queryClient.invalidateQueries({ queryKey: ['physical-count-lines'] });
 
-    expect(await screen.findByText('앞서 센 값 37')).toBeTruthy();
+    expect(await screen.findByText('앞서 센 값 37 EA')).toBeTruthy();
     expect((screen.getByLabelText(QTY_LABEL) as HTMLInputElement).value).toBe('118');
   });
 
