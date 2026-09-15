@@ -102,6 +102,9 @@ export const physicalCount = {
      */
     add: '목록에 없는 재고',
     addOffline: '연결되면 더할 수 있습니다',
+    /* 아홉 라인이 넘는 목록을 차례로 적는다. 숫자판을 닫았다 다시 열지 않고 옆으로 옮긴다. */
+    previousLine: '앞 라인',
+    nextLine: '다음 라인',
     reason: '차이 사유',
     reasonLabel: (name: string) => `${name} 차이 사유`,
     reasonPlaceholder: '차이 사유를 고르세요',

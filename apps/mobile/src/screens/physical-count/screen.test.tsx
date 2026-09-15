@@ -509,6 +509,35 @@ describe('실물 카운트 화면', () => {
   });
 
   /*
+   * 한 위치에 아홉 줄이 넘게 선다. 한 줄을 적을 때마다 숫자판을 닫고 다음 칸을 눌러 다시
+   * 열면 손이 화면을 두 번 오간다 - 숫자판에서 바로 옮긴다.
+   */
+  it('숫자판에서 앞뒤 줄로 옮긴다', async () => {
+    const user = userEvent.setup();
+    mount();
+    await openLocation(user);
+
+    const fields = await screen.findAllByLabelText(/실물 수량 입력/);
+    await user.click(fields[0] as HTMLInputElement);
+
+    const pad = () => screen.getByRole('button', { name: '7' }).closest('.physical-count__keypad');
+
+    expect(pad()?.textContent).toContain('ABC-123');
+    /* 첫 줄에서는 앞으로 갈 곳이 없다. */
+    expect(screen.getByRole('button', { name: '앞 라인' })).toBeDisabled();
+
+    await user.click(screen.getByRole('button', { name: '다음 라인' }));
+
+    expect(pad()?.textContent).toContain('RM-1001');
+    /* 마지막 줄에서는 뒤로 갈 곳이 없다. */
+    expect(screen.getByRole('button', { name: '다음 라인' })).toBeDisabled();
+
+    await user.click(screen.getByRole('button', { name: '앞 라인' }));
+
+    expect(pad()?.textContent).toContain('ABC-123');
+  });
+
+  /*
    * 숫자판이 줄 사이에 끼면 그 아래 줄들이 화면 밖으로 밀린다. 아홉 줄이 넘는 목록에서 적던
    * 자리를 잃고, 뒤이어 뜨는 차이 사유가 숫자판 아래에 생겨 어디서 온 칸인지 알 수 없다.
    */
@@ -567,7 +596,11 @@ describe('실물 카운트 화면', () => {
     mount({ seen });
     await openLocation(user);
 
-    await user.click(await screen.findByRole('button', { name: '목록에 없는 재고' }));
+    /* 설계가 적은 대로 더하기 표시를 앞에 단다. */
+    const add = await screen.findByRole('button', { name: '목록에 없는 재고' });
+    expect(add.textContent).toContain('add');
+
+    await user.click(add);
     await user.click(await screen.findByRole('button', { name: /ZZZ-999/ }));
     await user.type(await screen.findByLabelText(/ZZZ-999 실물 수량 입력/), '7');
 

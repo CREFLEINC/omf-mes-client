@@ -48,6 +48,8 @@ export const physicalCount: Translated<typeof ko.physicalCount> = {
     uncounted: 'Dòng hàng này chưa đếm',
     add: 'Tồn kho ngoài danh sách',
     addOffline: 'Có thể thêm khi có kết nối',
+    previousLine: 'Dòng trước',
+    nextLine: 'Dòng sau',
     reason: 'Lý do chênh lệch',
     reasonLabel: (name: string) => `Lý do chênh lệch của ${name}`,
     reasonPlaceholder: 'Chọn lý do chênh lệch',

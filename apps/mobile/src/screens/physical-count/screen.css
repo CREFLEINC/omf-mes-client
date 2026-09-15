@@ -175,3 +175,10 @@
   letter-spacing: var(--type-body-sm-tracking);
   color: var(--on-surface-variant, inherit);
 }
+
+/* 숫자판 양옆에 앞뒤 줄로 옮기는 단추를 세운다. 엄지가 닿는 자리에 둔다. */
+.physical-count__keypad-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2, 8px);
+}

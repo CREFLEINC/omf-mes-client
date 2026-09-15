@@ -1,4 +1,14 @@
-import { AlertBanner, Button, Card, NumberPad, Progress, Select, TextField } from '@crefle/web-ui';
+import {
+  AlertBanner,
+  Button,
+  Card,
+  Icon,
+  IconButton,
+  NumberPad,
+  Progress,
+  Select,
+  TextField,
+} from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router';
@@ -628,6 +638,7 @@ export const PhysicalCountScreen = () => {
               className="physical-count__wide"
               variant="outlined"
               size="xl"
+              leadingIcon={<Icon name="add" size={20} />}
               disabled={!online}
               aria-describedby={online ? undefined : 'physical-count-add-reason'}
               onClick={() => {
@@ -669,29 +680,53 @@ export const PhysicalCountScreen = () => {
           {keypad === null ? null : (
             <div className="physical-count__keypad">
               <p className="physical-count__keypad-head">{nameOf(keypad.line)}</p>
-              <NumberPad
-                value={keypad.line.qty}
-                onChange={(value) => {
-                  setLines((current) =>
-                    current.map((each, at2) => {
-                      if (at2 !== keypad.at) return each;
-                      const changed = { ...each, qty: value };
+              {/*
+                한 줄을 적을 때마다 숫자판을 닫고 다음 칸을 눌러 다시 열면 손이 화면을 두 번
+                오간다. 숫자판 옆에서 바로 옮긴다.
+              */}
+              <div className="physical-count__keypad-row">
+                <IconButton
+                  icon="chevron_left"
+                  size="xl"
+                  aria-label={t.lines.previousLine}
+                  disabled={keypad.at === 0}
+                  onClick={() => {
+                    setKeypadFor(lines[keypad.at - 1]?.key ?? null);
+                  }}
+                />
+                <NumberPad
+                  value={keypad.line.qty}
+                  onChange={(value) => {
+                    setLines((current) =>
+                      current.map((each, at2) => {
+                        if (at2 !== keypad.at) return each;
+                        const changed = { ...each, qty: value };
 
-                      return count !== null && !needsReason(count, changed)
-                        ? { ...changed, reasonCode: '' }
-                        : changed;
-                    }),
-                  );
-                }}
-                allowDecimal
-                /*
-                 * 소수점 키 옆 빈 칸이 확인 키 자리다. 닫는 단추를 따로 세우면 숫자판이 한 줄
-                 * 더 길어져 그만큼 목록이 가려진다.
-                 */
-                onConfirm={() => {
-                  setKeypadFor(null);
-                }}
-              />
+                        return count !== null && !needsReason(count, changed)
+                          ? { ...changed, reasonCode: '' }
+                          : changed;
+                      }),
+                    );
+                  }}
+                  allowDecimal
+                  /*
+                   * 소수점 키 옆 빈 칸이 확인 키 자리다. 닫는 단추를 따로 세우면 숫자판이 한 줄
+                   * 더 길어져 그만큼 목록이 가려진다.
+                   */
+                  onConfirm={() => {
+                    setKeypadFor(null);
+                  }}
+                />
+                <IconButton
+                  icon="chevron_right"
+                  size="xl"
+                  aria-label={t.lines.nextLine}
+                  disabled={keypad.at === lines.length - 1}
+                  onClick={() => {
+                    setKeypadFor(lines[keypad.at + 1]?.key ?? null);
+                  }}
+                />
+              </div>
             </div>
           )}
         </>
