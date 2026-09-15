@@ -386,6 +386,12 @@ export const PackingResultScreen = () => {
        * 곧 작업 순서이고, 좌우로 나누면 ①과 ②의 선후가 사라진다.
        */}
       <div className="packing-body">
+        {/* ⭐ 출하 대상을 고르기 전에는 맨 위에 안내 띠를 세운다(사용자 지시 2026-09-15). */}
+        {!isLabelMode && shipmentId === null ? (
+          <div className="banner-slot">
+            <AlertBanner variant="info">{t.notes.selectShipment}</AlertBanner>
+          </div>
+        ) : null}
         {automaticLabelRun !== null && identity.workerNo !== null ? (
           <AutomaticLabels
             run={automaticLabelRun}

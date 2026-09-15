@@ -583,9 +583,10 @@ export const ToolUsageScreen = () => {
             </Card>
 
             {/* ④ 안내 — 누계를 서버가 더한다는 사실을 상시 밝힌다(스펙 §3-2). */}
-            <Card bordered className="pop-section pop-notice" aria-label={t.notice.sectionLabel}>
-              <Card.Body>{t.notice.serverAdds}</Card.Body>
-            </Card>
+            {/* ⭐ 파란 라벨(칩)로 보인다 — 머리줄 「단말#」 라벨과 같은 모양(사용자 지시 2026-09-15). */}
+            <div className="pop-notice-label" role="note" aria-label={t.notice.sectionLabel}>
+              <Chip status="info">{t.notice.serverAdds}</Chip>
+            </div>
           </div>
         </div>
       </>
