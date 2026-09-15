@@ -34,8 +34,13 @@ export const putaway = {
     itemLabel: '품목',
     taskNoLabel: '지시 번호',
     qtyLabel: '수량',
-    item: (itemCode: string, taskNo: string, qty: string) => `${itemCode} · ${taskNo} · ${qty}`,
-    /** 목록에서는 위치 코드를 아직 받지 못했다. 있고 없고만 말한다. */
+    /*
+     * 목록에서는 위치 코드를 아직 받지 못해 있고 없고만 말한다. 값 이름을 앞에 두면 다른
+     * 세 값과 같은 자리에서 읽혀, 무엇에 대한 있고 없음인지 다시 묻지 않아도 된다.
+     */
+    ruleLabel: '권장 위치',
+    ruleYes: '있음',
+    ruleNo: '없음',
     hasRule: '권장 위치 있음',
     /** 권장이 없는 것과 확인하지 못한 것은 다르다. 앞엣것만 이렇게 적는다. */
     noRule: '권장 위치 없음',

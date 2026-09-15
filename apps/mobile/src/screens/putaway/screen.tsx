@@ -1,7 +1,7 @@
 import { AlertBanner, Button, Card, Chip, Select, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useQueryClient } from '@tanstack/react-query';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Link, useNavigate } from 'react-router';
 
 import { useAdvanceTo } from '../../patterns/advance-to';
@@ -271,7 +271,7 @@ export const PutawayScreen = () => {
    * 세 값에 이름을 붙여 세로로 세운다. 한 줄에 늘어놓으면 어느 것이 품목이고 어느 것이 지시
    * 번호인지 형식을 아는 사람만 읽고, 360dp 에서 접히면 그 경계마저 흐려진다.
    */
-  const TaskFields = ({ each }: { each: PutawayTask }) => (
+  const taskFields = (each: PutawayTask, extra?: ReactNode) => (
     <dl className="putaway__task-fields">
       <dt>{t.tasks.itemLabel}</dt>
       <dd>
@@ -281,7 +281,23 @@ export const PutawayScreen = () => {
       <dd>{each.putawayTaskNo}</dd>
       <dt>{t.tasks.qtyLabel}</dt>
       <dd>{`${String(each.taskQty)} ${uoms.data?.get(each.uomId) ?? ''}`}</dd>
+      {extra}
     </dl>
+  );
+
+  /*
+   * 목록에서는 위치 코드를 아직 받지 못했다. 식별자를 그대로 보이면 사람이 읽을 수 없는
+   * 번호가 권장 위치인 척한다 - 있고 없고만 말한다.
+   */
+  const ruleField = (each: PutawayTask) => (
+    <>
+      <dt>{t.tasks.ruleLabel}</dt>
+      <dd>
+        {each.recommendedLocationId === null || each.recommendedLocationId === undefined
+          ? t.tasks.ruleNo
+          : t.tasks.ruleYes}
+      </dd>
+    </>
   );
 
   return (
@@ -332,17 +348,7 @@ export const PutawayScreen = () => {
                   }}
                 >
                   <Card.Body className="card-body putaway__task">
-                    <TaskFields each={each} />
-                    {/*
-                     * 목록에서는 위치 코드를 아직 받지 못했다. 식별자를 그대로 보이면 사람이
-                     * 읽을 수 없는 번호가 권장 위치인 척한다 - 있고 없고만 말한다.
-                     */}
-                    <p>
-                      {each.recommendedLocationId === null ||
-                      each.recommendedLocationId === undefined
-                        ? t.tasks.noRule
-                        : t.tasks.hasRule}
-                    </p>
+                    {taskFields(each, ruleField(each))}
                   </Card.Body>
                 </Card>
               </li>
@@ -355,7 +361,7 @@ export const PutawayScreen = () => {
             <h2>{t.tasks.legend}</h2>
             <Card bordered>
               <Card.Body className="card-body putaway__card">
-                <TaskFields each={task} />
+                {taskFields(task)}
                 {lotNo.data === undefined ? null : (
                   /* 34자리를 붙여 쓰면 실물 라벨과 눈으로 대조할 수 없다(공유계약 E-2). */
                   <p className="putaway__scanned">

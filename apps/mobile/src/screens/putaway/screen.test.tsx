@@ -148,17 +148,15 @@ const routes = (options: Options = {}): StubRoute[] => [
         page,
       }),
   },
-  ...itemRoutes(
-    [
-      {
-        itemId: 31,
-        itemCode: 'RM-1001',
-        itemName: '수지A',
-        fifoPolicyCode: 'FEFO',
-        storageConditionCode: options.itemStorage,
-      },
-    ],
-  ),
+  ...itemRoutes([
+    {
+      itemId: 31,
+      itemCode: 'RM-1001',
+      itemName: '수지A',
+      fifoPolicyCode: 'FEFO',
+      storageConditionCode: options.itemStorage,
+    },
+  ]),
   {
     match: (req) => new URL(req.url).pathname === '/trace/lots/4',
     respond: () =>
@@ -263,14 +261,16 @@ describe('적치·입고 완료 화면', () => {
     const pick = await screen.findByRole('button', { name: /PT-2026-0007/ });
 
     expect(pick.querySelector('dl')?.textContent).toContain('PT-2026-0007');
-    expect(pick.querySelector('p')?.textContent).toContain('권장 위치');
+    /* 집는 것이 먼저 읽혀야 한다. 넷이 같은 무게로 서면 무엇을 집는지 눈이 먼저 잡지 못한다. */
+    expect(pick.querySelectorAll('strong')).toHaveLength(1);
+    expect(pick.querySelector('strong')?.textContent).toContain('RM-1001');
   });
 
   /*
    * 값만 늘어놓으면 어느 것이 품목이고 어느 것이 지시 번호인지 형식을 아는 사람만 읽는다.
    * 같은 자리에 셋이 서고 둘은 번호라, 자릿수로 가늠하게 된다.
    */
-  it('품목과 지시 번호와 수량에 각각 이름을 붙인다', async () => {
+  it('네 값에 각각 이름을 붙인다', async () => {
     mount();
 
     const pick = await screen.findByRole('button', { name: /PT-2026-0007/ });
@@ -280,6 +280,7 @@ describe('적치·입고 완료 화면', () => {
       '품목',
       '지시 번호',
       '수량',
+      '권장 위치',
     ]);
   });
 
