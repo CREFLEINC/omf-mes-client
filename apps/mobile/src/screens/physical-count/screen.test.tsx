@@ -723,6 +723,29 @@ describe('실물 카운트 화면', () => {
     expect(screen.getAllByLabelText(/실물 수량 입력/).length).toBeGreaterThan(0);
   });
 
+  /*
+   * 닫을 때 커서는 그 칸에 남는다. 여는 자리를 포커스에만 걸어 두면 같은 칸을 다시 눌러도
+   * 아무 일이 없어, 사람은 숫자판이 고장 난 줄 안다.
+   */
+  it('뒤로가기로 닫은 칸을 다시 누르면 숫자판이 열린다', async () => {
+    const user = userEvent.setup();
+    mount();
+    await openLocation(user);
+
+    const fields = await screen.findAllByLabelText(/실물 수량 입력/);
+    await user.click(fields[0] as HTMLInputElement);
+    await screen.findByRole('button', { name: '7' });
+
+    runBackStep();
+    await waitFor(() => {
+      expect(screen.queryByRole('button', { name: '7' })).toBeNull();
+    });
+
+    await user.click(fields[0] as HTMLInputElement);
+
+    expect(await screen.findByRole('button', { name: '7' })).toBeTruthy();
+  });
+
   it('뒤로가기는 화면 안 단계를 하나씩 되돌린다', async () => {
     const user = userEvent.setup();
     mount();

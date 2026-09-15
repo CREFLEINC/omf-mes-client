@@ -617,6 +617,13 @@ export const PhysicalCountScreen = () => {
                     onFocus={() => {
                       setKeypadFor(line.key);
                     }}
+                    /*
+                     * 닫은 뒤에도 커서는 그 칸에 남는다. 여는 자리를 포커스에만 걸어 두면 같은
+                     * 칸을 다시 눌러도 아무 일이 없어, 사람은 숫자판이 고장 난 줄 안다.
+                     */
+                    onClick={() => {
+                      setKeypadFor(line.key);
+                    }}
                     value={line.qty}
                     onChange={(event) => {
                       const next = event.target.value;
