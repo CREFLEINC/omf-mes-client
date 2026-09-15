@@ -228,7 +228,13 @@ export const useLayoutReplace = (
      * 수 MB 를 이유 없이 버리는 일이다. 이 저장이 바꾸는 것은 이 창고의 배치 하나다.
      */
     invalidateKeys: [layoutKeys.layout(warehouseId)],
-    knownFields: ['markers', 'drawingAttachmentId'],
+    /*
+     * ⛔ **대응하는 입력칸이 없다 — 필드 오류도 전부 배너로 올린다**(툴 마스터의 엑셀 올리기와
+     * 같은 판단 · `screens/tool-master/screen.tsx`). 이 저장이 보내는 `markers` 는 판 위의 점이고
+     * `drawingAttachmentId` 는 화면이 싣기만 하는 값이라, 둘 다 「그 칸 옆에 적을」 자리가
+     * 없다. 이름만 알아보고 인라인으로 분류하면 **배너에서 빠진 채 어디에도 보이지 않는다.**
+     */
+    knownFields: [],
     keyLifetime: 'until-applied',
     onSuccess,
   });

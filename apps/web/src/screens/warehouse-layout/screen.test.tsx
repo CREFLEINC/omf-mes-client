@@ -124,6 +124,8 @@ const deferred = (): { promise: Promise<Response>; settle: (response: Response) 
 interface Script {
   /** 배치도 조회가 차례로 돌려줄 값. 모자라면 마지막 것을 되풀이한다. */
   layouts: LayoutSeed[];
+  /** 이 창고의 위치들. 주지 않으면 둘을 준다 — **0건도 실재하는 창고 상태다.** */
+  locations?: typeof LOCATION_ROWS;
   /** 도면 내용 응답. 주지 않으면 PNG 바이트를 돌려준다. */
   content?: () => Response | Promise<Response>;
   upload?: () => Response | Promise<Response>;
@@ -157,7 +159,7 @@ const renderScreen = (script: Script) => {
     },
     {
       match: (request) => request.method === 'GET' && pathOf(request) === LOCATIONS_PATH,
-      respond: () => jsonResponse(listBody(LOCATION_ROWS)),
+      respond: () => jsonResponse(listBody(script.locations ?? LOCATION_ROWS)),
     },
     {
       match: (request) => request.method === 'GET' && pathOf(request) === LAYOUT_PATH,
@@ -231,6 +233,23 @@ const uploadButton = (): HTMLElement => screen.getByRole('button', { name: t.map
 
 const board = (): HTMLElement | null =>
   screen.queryByRole('application', { name: t.map.imageLabel });
+
+/**
+ * 판 위의 가림막.
+ *
+ * ⚠ **문서 전체에서 `status` 를 찾지 않는다** — 위치가 0건인 창고에서는 목록의 빈 상태
+ * 안내(`EmptyState live`)도 `status` 라, 넓게 재면 둘이 잡혀 시험이 「화면이 말하지 않는다」가
+ * 아닌 이유로 깨진다. 재려는 것은 **가림막 안의 말**이니 그 안으로 좁혀 잰다.
+ */
+const busyOverlay = (): HTMLElement => {
+  const overlay = document.querySelector<HTMLElement>('.drawing-busy');
+
+  if (overlay === null) throw new Error('가림막이 서 있지 않습니다.');
+
+  return overlay;
+};
+
+const hasBusyOverlay = (): boolean => document.querySelector('.drawing-busy') !== null;
 
 /**
  * 목록 쪽의 위치 코드 버튼.
@@ -421,7 +440,8 @@ describe('W-CO-08 창고 배치도 — 올리는 동안', () => {
 
     expect(uploading).toHaveAttribute('aria-busy', 'true');
     expect(uploading).toBeDisabled();
-    expect(within(screen.getByRole('status')).getByText(t.map.uploadingLabel)).toBeInTheDocument();
+    expect(within(busyOverlay()).getByText(t.map.uploadingLabel)).toBeInTheDocument();
+    expect(busyOverlay()).toHaveAttribute('role', 'status');
     expect(screen.getByRole('progressbar', { name: t.map.uploadingLabel })).toBeInTheDocument();
     /* ⛔ 도는 동안 판에 점을 찍을 수 없다 — 읽기 전용이면 판이 조작 역할을 내려놓는다. */
     expect(board()).toBeNull();
@@ -435,9 +455,7 @@ describe('W-CO-08 창고 배치도 — 올리는 동안', () => {
 
     /* ② 저장하는 중 — 올리기가 끝나도 도면은 아직 바뀌지 않았다. */
     await screen.findByRole('button', { name: t.map.savingDrawingLabel });
-    expect(
-      within(screen.getByRole('status')).getByText(t.map.savingDrawingLabel),
-    ).toBeInTheDocument();
+    expect(within(busyOverlay()).getByText(t.map.savingDrawingLabel)).toBeInTheDocument();
     expect(board()).toBeNull();
 
     await act(async () => {
@@ -456,7 +474,43 @@ describe('W-CO-08 창고 배치도 — 올리는 동안', () => {
       expect(uploadButton()).toBeEnabled();
     });
     expect(screen.queryByRole('progressbar')).toBeNull();
+    expect(hasBusyOverlay()).toBe(false);
     expect(board()).not.toBeNull();
+  });
+
+  /*
+   * ⚠ **위치가 0건인 창고도 실재한다** — 갓 만든 창고가 그렇다. 그때 목록의 빈 상태 안내가
+   * 제 `status` 를 세우므로, 가림막을 「화면에 하나뿐인 `status`」로 재던 시험은 그 창고에서
+   * 깨진다. 여기서 실제로 그 상태를 렌더해 두 `status` 가 서로를 가리지 않음을 본다.
+   */
+  it('⭐ 위치가 0건인 창고에서도 가림막이 제 단계를 말한다', async () => {
+    const upload = deferred();
+    const { user } = renderScreen({
+      layouts: [withoutDrawing([])],
+      locations: [],
+      upload: () => upload.promise,
+    });
+
+    await loaded();
+    expect(screen.getByText(t.locations.empty)).toBeInTheDocument();
+
+    await user.upload(fileInput(), pngFile());
+
+    await screen.findByRole('button', { name: t.map.uploadingLabel });
+
+    /* 빈 상태 안내까지 `status` 라 문서 전체로는 둘이다 — 가림막 안으로 좁혀야 정해진다. */
+    expect(screen.getAllByRole('status').length).toBeGreaterThan(1);
+    expect(within(busyOverlay()).getByText(t.map.uploadingLabel)).toBeInTheDocument();
+
+    await act(async () => {
+      upload.settle(jsonResponse(attachmentBody(NEW_ATTACHMENT_ID), { status: 201 }));
+      await upload.promise;
+    });
+
+    await waitFor(() => {
+      expect(uploadButton()).toBeEnabled();
+    });
+    expect(hasBusyOverlay()).toBe(false);
   });
 
   it('⭐ 저장이 실패해도 잠금은 풀린다 — 실패한 채로 굳지 않는다', async () => {
@@ -519,9 +573,102 @@ describe('W-CO-08 창고 배치도 — 실패가 서는 자리', () => {
     expect(await screen.findByText('PNG·JPEG만 올릴 수 있습니다.')).toBeInTheDocument();
     /* 파일 칸에 낸 것을 배너로 겹쳐 내지 않는다 — 한 오류가 두 자리에 서면 둘 다 흐려진다. */
     expect(screen.queryByRole('alert')).toBeNull();
+    /*
+     * ⛔ **실패한 채로 굳지 않는다.** 사용자가 할 일은 다른 파일을 고르는 것 하나인데, 잠금이
+     * 풀리지 않으면 그 길이 막힌 채 화면은 사유만 적어 두게 된다.
+     */
+    expect(uploadButton()).toBeEnabled();
+    expect(screen.queryByRole('progressbar')).toBeNull();
+    expect(hasBusyOverlay()).toBe(false);
   });
 
-  it('⛔ 저장 409(그사이 도면이 바뀜)는 「최신 불러오기」와 「저장 다시 시도」를 함께 낸다', async () => {
+  /*
+   * ⛔ **감지 지점.** 사전 검사에 걸린 파일은 요청까지 가지 않아 서버 오류가 저절로 풀리지
+   * 않는다 — 지우지 않으면 **직전 파일의 서버 문구와 방금 고른 파일의 사유가 두 줄로 남아**,
+   * 어느 쪽이 지금 이야기인지 알 수 없게 된다.
+   */
+  it('⛔ 새 파일을 고르면 직전 파일의 서버 오류가 남지 않는다', async () => {
+    const { user } = renderScreen({
+      layouts: [withoutDrawing()],
+      upload: () =>
+        jsonResponse(
+          {
+            errors: [
+              {
+                scope: 'field',
+                field: 'file',
+                code: 'INVALID_IMAGE',
+                message: 'PNG·JPEG만 올릴 수 있습니다.',
+              },
+            ],
+          },
+          { status: 400 },
+        ),
+    });
+
+    await loaded();
+    await user.upload(fileInput(), pngFile());
+
+    expect(await screen.findByText('PNG·JPEG만 올릴 수 있습니다.')).toBeInTheDocument();
+
+    /* ⚠ `accept` 는 고르는 창을 좁힐 뿐 막지 못한다 — 브라우저와 같은 조건으로 재려고 끈다. */
+    const anyFileUser = userEvent.setup({ applyAccept: false });
+
+    await anyFileUser.upload(
+      fileInput(),
+      new File([PNG_BYTES], 'layout.webp', { type: 'image/webp' }),
+    );
+
+    expect(await screen.findByText(t.map.fileTypeRejected)).toBeInTheDocument();
+    expect(screen.queryByText('PNG·JPEG만 올릴 수 있습니다.')).toBeNull();
+  });
+
+  /*
+   * ⛔ **감지 지점.** 점만 고치는 저장에는 `markers`·`drawingAttachmentId` 에 대응하는 입력칸이
+   * 없다 — 그 이름을 인라인 필드로 분류하면 배너에서 빠져 **어디에도 보이지 않는 오류**가 된다.
+   */
+  it('⛔ 점만 고치는 저장의 400 필드 오류도 배너에 선다', async () => {
+    const { user, puts } = renderScreen({
+      layouts: [withDrawing()],
+      puts: [
+        () =>
+          jsonResponse(
+            {
+              errors: [
+                {
+                  scope: 'field',
+                  field: 'drawingAttachmentId',
+                  code: 'NOT_FOUND',
+                  message: '없는 첨부입니다.',
+                },
+              ],
+            },
+            { status: 400 },
+          ),
+      ],
+    });
+
+    await loaded();
+
+    await user.click(locationButton('SYN-LOC-07'));
+    await user.click(screen.getByRole('button', { name: t.map.remove }));
+    await user.click(screen.getByRole('button', { name: t.map.save }));
+
+    await waitFor(() => {
+      expect(puts).toHaveLength(1);
+    });
+
+    expect(
+      within(await screen.findByRole('alert')).getByText('없는 첨부입니다.'),
+    ).toBeInTheDocument();
+  });
+
+  /*
+   * ⛔ **감지 지점.** 409 로 멈춘 시점에 화면은 **재조회가 가져온 남의 새 도면**을 보이고 있다.
+   * 그 상태의 버튼을 「저장 다시 시도」로 두면 사용자는 「아까 실패한 것을 한 번 더」로 읽는데,
+   * 실제로 하는 일은 **보이는 그 도면을 내 도면으로 덮는 것**이다.
+   */
+  it('⛔ 저장 409(그사이 도면이 바뀜)는 「덮는다」고 말하는 버튼과 사유를 낸다', async () => {
     const { user, uploads, puts } = renderScreen({
       layouts: [
         withoutDrawing(),
@@ -550,16 +697,55 @@ describe('W-CO-08 창고 배치도 — 실패가 서는 자리', () => {
       screen.getByRole('button', { name: messages.conflict.reloadAction }),
     ).toBeInTheDocument();
     /* ⭐ 첨부는 이미 올라가 있다 — 다시 올리면 고아 첨부가 하나 더 생긴다. */
-    const retry = screen.getByRole('button', { name: t.map.retrySaveDrawing });
+    const overwrite = screen.getByRole('button', { name: t.map.overwriteDrawing });
 
-    expect(retry).toBeInTheDocument();
+    expect(overwrite).toBeInTheDocument();
+    /* ⛔ 「방금 실패한 저장을 다시」로 읽히는 말이 이 갈래에 남아 있으면 안 된다. */
+    expect(screen.queryByRole('button', { name: t.map.retrySaveDrawing })).toBeNull();
+    /* 무엇을 덮는지 버튼 바로 옆에 적혀 있다. */
+    expect(screen.getByText(t.map.overwriteDrawingNote)).toBeInTheDocument();
     expect(puts).toHaveLength(1);
+
+    await user.click(overwrite);
+
+    expect(await screen.findByText(t.map.drawingReplaced)).toBeInTheDocument();
+    expect(puts).toHaveLength(2);
+    /* ⛔ 두 번째 올리기가 있으면 고아 첨부가 하나 더 생긴 것이다 — 다시 올리지 않는다. */
+    expect(uploads).toHaveLength(1);
+  });
+
+  /*
+   * ⭐ **충돌이 아닌 저장 실패는 덮을 새 도면이 없다** — 화면이 보고 있는 것은 그대로이고
+   * 할 일은 같은 저장을 한 번 더 보내는 것 하나다. 그 갈래의 말은 바뀌지 않는다.
+   */
+  it('⭐ 통신이 끊겨 저장만 실패했으면 「저장 다시 시도」 그대로다', async () => {
+    const { user, uploads, puts } = renderScreen({
+      layouts: [withoutDrawing()],
+      puts: [
+        () => {
+          throw new Error('연결이 끊겼습니다');
+        },
+        () =>
+          layoutResponse({
+            etag: '"8"',
+            drawingAttachmentId: NEW_ATTACHMENT_ID,
+            markers: [{ locationId: 7, x: 0.1, y: 0.2 }],
+          }),
+      ],
+    });
+
+    await loaded();
+    await user.upload(fileInput(), pngFile());
+
+    const retry = await screen.findByRole('button', { name: t.map.retrySaveDrawing });
+
+    expect(screen.queryByRole('button', { name: t.map.overwriteDrawing })).toBeNull();
+    expect(screen.queryByText(t.map.overwriteDrawingNote)).toBeNull();
 
     await user.click(retry);
 
     expect(await screen.findByText(t.map.drawingReplaced)).toBeInTheDocument();
     expect(puts).toHaveLength(2);
-    /* ⛔ 두 번째 올리기가 있으면 고아 첨부가 하나 더 생긴 것이다 — 다시 올리지 않는다. */
     expect(uploads).toHaveLength(1);
   });
 });

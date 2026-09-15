@@ -110,6 +110,8 @@ const deferred = (): { promise: Promise<Response>; settle: (response: Response) 
 interface Script {
   /** 배치도 조회가 차례로 돌려줄 값. 모자라면 마지막 것을 되풀이한다. */
   layouts: LayoutSeed[];
+  /** ⚠ 이 차례(0부터)의 배치도 조회는 500 으로 깨진다 — 409 뒤 재조회 실패를 재는 자리다. */
+  layoutFailsAt?: number;
   /** 올리기 응답. 주지 않으면 첨부 하나를 만들어 준다. */
   upload?: () => Response | Promise<Response>;
   /** 저장 응답 — 부른 차례대로. 모자라면 마지막 것을 되풀이한다. */
@@ -128,11 +130,13 @@ const renderReplace = (script: Script) => {
     {
       match: (request) => request.method === 'GET' && pathOf(request) === LAYOUT_PATH,
       respond: (request) => {
-        const seed = at(script.layouts, layoutGets.length);
+        const index = layoutGets.length;
 
         layoutGets.push(request);
 
-        return layoutResponse(seed);
+        return script.layoutFailsAt === index
+          ? jsonResponse({ message: '서버에 문제가 있습니다.' }, { status: 500 })
+          : layoutResponse(at(script.layouts, index));
       },
     },
     {
@@ -353,6 +357,80 @@ describe('useDrawingReplace — 올리기와 저장을 잇는다', () => {
     expect(result.current.replace.error).toBeNull();
   });
 
+  /*
+   * ⛔ **감지 지점.** `refetch` 는 실패해도 직전 데이터를 그대로 돌려준다 — 그 값을 성공으로
+   * 읽으면 옛 도면 id 가 「바뀌지 않았다」로 통과해, **낡은 잠금 토큰으로 두 번째 저장이 나간다.**
+   */
+  it('⛔ 409 뒤 재조회가 실패하면 다시 보내지 않는다 — 옛 토큰으로는 나가지 않는다', async () => {
+    const { result, puts, layoutGets, onReplaced } = renderReplace({
+      layouts: [
+        { etag: '"7"', drawingAttachmentId: 100, markers: [{ locationId: 7, x: 0.1, y: 0.2 }] },
+      ],
+      /* 409 뒤의 재조회(두 번째 GET)가 깨진다. */
+      layoutFailsAt: 1,
+      puts: [conflictResponse],
+    });
+
+    await loaded(result);
+
+    act(() => {
+      result.current.replace.start(drawingFile());
+    });
+
+    await waitFor(() => {
+      expect(result.current.replace.error?.kind).toBe('conflict');
+    });
+
+    /* 재조회는 실제로 나갔고(그리고 깨졌고), 저장은 그 한 번으로 끝났다. */
+    expect(layoutGets).toHaveLength(2);
+    expect(puts).toHaveLength(1);
+    expect(result.current.replace.errorStep).toBe('save');
+    expect(result.current.replace.pendingAttachmentId).toBe(NEW_ATTACHMENT_ID);
+    expect(result.current.replace.phase).toBe('idle');
+    expect(onReplaced).not.toHaveBeenCalled();
+  });
+
+  /*
+   * ⛔ **감지 지점.** 멱등 키는 보낼 값의 지문으로 정해지므로, 재조회한 점이 앞 시도와 같으면
+   * **같은 키가 다시 나간다** — 서버는 앞 요청의 중복으로 보고 그 409 를 되돌려 주고, 자동
+   * 재시도는 무엇을 해도 실패한다. 409 는 실행 전 거부라 키를 붙들 이유가 없다.
+   */
+  it('⛔ 409 재시도는 점이 그대로여도 새 멱등 키로 나간다', async () => {
+    const sameMarkers = [{ locationId: 7, x: 0.1, y: 0.2 }];
+    const { result, puts, onReplaced } = renderReplace({
+      layouts: [
+        { etag: '"7"', drawingAttachmentId: 100, markers: sameMarkers },
+        /* 남이 도면이 아닌 무언가를 건드려 판 번호만 올랐다 — 점은 그대로다. */
+        { etag: '"9"', drawingAttachmentId: 100, markers: sameMarkers },
+      ],
+      puts: [
+        conflictResponse,
+        () =>
+          layoutResponse({
+            etag: '"10"',
+            drawingAttachmentId: NEW_ATTACHMENT_ID,
+            markers: sameMarkers,
+          }),
+      ],
+    });
+
+    await loaded(result);
+
+    act(() => {
+      result.current.replace.start(drawingFile());
+    });
+
+    await waitFor(() => {
+      expect(onReplaced).toHaveBeenCalledTimes(1);
+    });
+
+    expect(puts).toHaveLength(2);
+    /* 보낸 값은 같다 — 그런데도 키는 달라야 한다. */
+    expect(puts[1]?.body).toEqual(puts[0]?.body);
+    expect(puts[1]?.headers.get(KEY_HEADER)).not.toBe(puts[0]?.headers.get(KEY_HEADER));
+    expect(puts[1]?.headers.get('If-Match')).toBe('"9"');
+  });
+
   it('⛔ 409 인데 도면이 바뀌었으면 멈춘다 — 남이 올린 도면을 덮지 않는다', async () => {
     const { result, puts, onReplaced } = renderReplace({
       layouts: [
@@ -488,6 +566,8 @@ describe('useDrawingReplace — 올리기와 저장을 잇는다', () => {
     expect(badFile.result.current.replace.error).toBeNull();
     expect(badFile.result.current.replace.errorStep).toBe('upload');
     expect(badFile.puts).toHaveLength(0);
+    /* ⛔ 실패한 채로 굳지 않는다 — 단계가 남으면 화면의 버튼과 가림막이 영영 풀리지 않는다. */
+    expect(badFile.result.current.replace.phase).toBe('idle');
 
     const forbidden = renderReplace({
       layouts: [{ etag: '"7"', drawingAttachmentId: null, markers: [] }],

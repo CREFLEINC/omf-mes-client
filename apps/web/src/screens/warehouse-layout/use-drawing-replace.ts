@@ -44,8 +44,16 @@ export type DrawingReplaceStep = 'upload' | 'save';
  * 배치도를 서버에서 다시 읽는다. 화면의 `useLayout(...).refetch` 가 그대로 들어맞는다.
  *
  * ⭐ **결과를 돌려받아야 한다** — 409 뒤에 「도면이 그사이 바뀌었는가」를 그 값으로 판정한다.
+ *
+ * ⛔ **`data` 만으로는 판정할 수 없다.** react-query 의 `refetch` 는 **실패해도 직전 데이터를
+ * 그대로 돌려준다** — 그 값을 성공으로 읽으면 옛 도면 id 가 「바뀌지 않았다」로 통과해, 이미
+ * 낡은 잠금 토큰으로 두 번째 저장이 나간다. 그래서 `isSuccess` 를 함께 받아 **이번 조회가
+ * 실제로 성공했을 때만** 값을 믿는다(`QueryObserverResult` 와 구조가 맞는다).
  */
-export type RefetchLayout = () => Promise<{ data?: LayoutView | undefined }>;
+export type RefetchLayout = () => Promise<{
+  data?: LayoutView | undefined;
+  isSuccess: boolean;
+}>;
 
 export interface DrawingReplaceOptions {
   warehouseId: number | null;
@@ -67,6 +75,15 @@ export interface DrawingReplaceResult {
   errorStep: DrawingReplaceStep | null;
   /** 올리기 자리에 낼 문구(400 `field: file`). 파일을 다시 고르면 풀린다. */
   fileError: string | null;
+  /**
+   * **파일 자리의 서버 오류만 지운다.**
+   *
+   * ⛔ 화면이 새 파일을 고르는 **그 순간** 부른다 — 요청까지 가지 않는 파일(사전 검사에 걸린
+   * 것·확인 창에서 취소한 것)은 `start` 를 부르지 않으므로, 지우지 않으면 **직전 파일의 서버
+   * 문구가 새 파일의 사유와 나란히 두 줄로 남는다.** 사용자는 둘 중 어느 것이 방금 고른 파일의
+   * 이야기인지 알 수 없다.
+   */
+  clearFileError: () => void;
   start: (file: File) => void;
   /** **올리기 없이 저장만** 다시 보낸다. `pendingAttachmentId` 가 있을 때만 뜻이 있다. */
   retrySave: () => void;
@@ -185,13 +202,27 @@ export const useDrawingReplace = (options: DrawingReplaceOptions): DrawingReplac
          * 보고 정할 일이다.
          *
          * ⚠ 재조회 자체가 실패하면 보관소의 토큰도 그대로라 다시 보내도 같은 409 다. 그래서
-         * **옛 값으로는 보내지 않는다** — 들고 온 것이 없으면 충돌 그대로 멈춘다.
+         * **옛 값으로는 보내지 않는다** — `refetch` 는 실패해도 직전 데이터를 돌려주므로
+         * **`isSuccess` 로 이번 조회의 성패를 본다.** 들고 온 것이 없으면 충돌 그대로 멈춘다.
          */
-        const fresh = (await options.refetchLayout()).data;
+        const refetched = await options.refetchLayout();
+        const fresh = refetched.data;
 
-        if (fresh === undefined || fresh.drawingAttachmentId !== input.baselineDrawingId) {
+        if (
+          !refetched.isSuccess ||
+          fresh === undefined ||
+          fresh.drawingAttachmentId !== input.baselineDrawingId
+        ) {
           throw cause;
         }
+
+        /*
+         * ⛔ **새 키로 보낸다.** 409 는 **실행 전 거부**가 확실하므로 앞 키를 붙들 이유가 없는데,
+         * 재조회한 점이 앞 시도와 같으면 지문도 같아 **같은 키가 다시 나간다** — 그러면 서버가
+         * 이 시도를 앞 요청의 중복으로 보고 **앞선 409 를 그대로 되돌려 준다.** 자동 재시도가
+         * 무엇을 해도 실패하는 자리가 된다.
+         */
+        savedKey.current = null;
 
         /* 여기서 또 409 면 그대로 올라간다 — 재시도는 한 번뿐이다. */
         return await putLayout(input, fresh.markers);
@@ -265,6 +296,10 @@ export const useDrawingReplace = (options: DrawingReplaceOptions): DrawingReplac
    * 화면이 부르는 자리들. **매 렌더 새로 만들어진다** — 의존성 배열에 넣지 말고 이벤트
    * 처리기(창고가 바뀔 때의 효과 포함)에서 부른다.
    */
+  const clearFileError = (): void => {
+    upload.clearFieldError('file');
+  };
+
   const start = (file: File): void => {
     const warehouseId = options.warehouseId;
 
@@ -308,6 +343,7 @@ export const useDrawingReplace = (options: DrawingReplaceOptions): DrawingReplac
     errorStep:
       saveError !== null ? 'save' : upload.error !== null || fileError !== null ? 'upload' : null,
     fileError,
+    clearFileError,
     start,
     retrySave,
     reset,

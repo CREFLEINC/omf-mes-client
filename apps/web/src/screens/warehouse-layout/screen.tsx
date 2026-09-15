@@ -128,6 +128,17 @@ export const WarehouseLayoutScreen = () => {
   /** 지금 도는 단계의 말 — 버튼 글자와 가림막이 **같은 값**을 읽어 서로 어긋나지 않는다. */
   const busyLabel = drawing.phase === 'uploading' ? t.map.uploadingLabel : t.map.savingDrawingLabel;
 
+  /**
+   * ⛔ **충돌로 멈춘 뒤의 그 버튼은 「방금 실패한 저장을 다시」가 아니다.** 409 뒤 재조회가
+   * 이미 **남이 올린 새 도면을 화면에 세워 두었으므로**, 그대로 다시 보내면 지금 보이는 그
+   * 도면을 내 도면으로 **덮는다.** 하는 일이 다르니 말도 달라야 한다 — 그러지 않으면 사용자는
+   * 「아까 실패한 것을 한 번 더」로 읽고 남의 작업을 말없이 지운다.
+   *
+   * 충돌이 아닌 저장 실패(통신 끊김·5xx)는 덮을 새 도면이 없다 — 그쪽은 그대로 「다시 시도」다.
+   */
+  const drawingOverwrites =
+    drawing.error?.kind === 'conflict' && drawing.pendingAttachmentId !== null;
+
   const selectWarehouse = (value: string): void => {
     const params = new URLSearchParams();
 
@@ -178,6 +189,9 @@ export const WarehouseLayoutScreen = () => {
    * ⭐ **입력칸을 비운다.** 비우지 않으면 같은 파일을 다시 고를 때 `change` 가 일어나지 않아,
    * 한 번 실패한 뒤 같은 파일로 다시 시도하는 길이 조용히 막힌다.
    * ⛔ **사전 검사에 걸리면 요청을 만들지 않는다** — 형식·크기는 서버까지 가 보지 않아도 안다.
+   * ⛔ **직전 파일의 서버 오류도 함께 지운다** — 사전 검사에 걸리거나 확인 창에서 취소하면
+   * 요청이 나가지 않아 그 문구가 저절로 풀리지 않는다. 남겨 두면 새 파일의 사유와 나란히 두
+   * 줄로 서서, 어느 쪽이 방금 고른 파일의 이야기인지 알 수 없게 된다.
    */
   const pickFile = (file: File | null, input: HTMLInputElement): void => {
     input.value = '';
@@ -185,6 +199,7 @@ export const WarehouseLayoutScreen = () => {
     if (file === null) return;
 
     setFileNote(null);
+    drawing.clearFileError();
 
     const verdict = checkDrawingFile(file);
 
@@ -406,8 +421,12 @@ export const WarehouseLayoutScreen = () => {
                         drawing.retrySave();
                       }}
                     >
-                      {t.map.retrySaveDrawing}
+                      {drawingOverwrites ? t.map.overwriteDrawing : t.map.retrySaveDrawing}
                     </Button>
+                    {/* ⛔ 덮는다는 사실을 버튼 바로 옆에 적는다 — 누르기 전에 읽혀야 한다. */}
+                    {drawingOverwrites && (
+                      <span className="field-note">{t.map.overwriteDrawingNote}</span>
+                    )}
                   </div>
                 )}
               </>

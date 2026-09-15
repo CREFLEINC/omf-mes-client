@@ -72,6 +72,14 @@ export const warehouseLayout: Translated<typeof ko.warehouseLayout> = {
     drawingReplaced: 'Đã thay bản vẽ.',
     /** ⭐ 올리기는 끝났고 저장만 남았다 — 다시 올리면 고아 첨부가 하나 더 생긴다. */
     retrySaveDrawing: 'Thử lưu lại',
+    /**
+     * ⛔ **충돌로 멈춘 뒤의 그 버튼은 「다시 시도」가 아니다.** 재조회가 이미 남이 올린 도면을
+     * 화면에 세워 두었으므로, 그대로 누르면 **지금 보이는 그 도면을 내 도면으로 덮는다** —
+     * 하는 일이 다르니 말도 달라야 한다.
+     */
+    overwriteDrawing: 'Đổi sang bản vẽ của tôi',
+    overwriteDrawingNote:
+      'Bản vẽ người dùng khác tải lên đang hiển thị. Bấm vào thì bản vẽ tôi đã chọn sẽ được lưu thay cho bản vẽ đó.',
     /** ⚠ 도면을 갈면 점은 남지만 사람이 다시 봐야 한다. */
     replaceDrawingTitle: 'Thay bản vẽ?',
     replaceDrawingLead: (markerCount: number): string =>
