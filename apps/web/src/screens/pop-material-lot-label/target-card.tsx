@@ -30,6 +30,11 @@ export interface TargetCardProps {
    * 사유는 바로 아래 결과 알림이 말한다.
    */
   isPrintForbidden: boolean;
+  /**
+   * 발행 완료 목록에서 고른 자재인가(#1241). ⛔ 그때는 첫 단추를 잠근다 — 사유 없이 다시
+   * 발행하면 서버가 거절한다(2회차부터 사유 필수). 재인쇄만 연다.
+   */
+  isIssued: boolean;
   onIssue: () => void;
   onReissue: () => void;
 }
@@ -56,6 +61,7 @@ export const TargetCard = ({
   hasWorkerNo,
   runningStep,
   isPrintForbidden,
+  isIssued,
   onIssue,
   onReissue,
 }: TargetCardProps) => {
@@ -111,7 +117,7 @@ export const TargetCard = ({
           className={popTouchClass('critical')}
           variant="filled"
           size="xl"
-          disabled={isBlocked}
+          disabled={isBlocked || isIssued}
           onClick={onIssue}
         >
           {isRegistered ? t.actions.printOnly : t.actions.issue}

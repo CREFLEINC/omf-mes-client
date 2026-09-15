@@ -18,6 +18,7 @@ import {
   useReceipts,
   useReissueReasons,
   useTargetRows,
+  type IssuedView,
 } from './queries';
 import { ReceiptList } from './receipt-list';
 import { ReissueDialog } from './reissue-dialog';
@@ -33,11 +34,17 @@ const tDevice = messages.popMaterialLotLabel.device;
  * 사전부착 자재를 걸러 내므로 **입하 건은 있는데 보일 자재가 없는** 상태가 정상적으로 생긴다.
  * 그때 「발행할 자재가 없습니다」만 내면 「전체 N건」과 나란히 서서 서로 어긋나 보인다.
  */
-const emptyMessage = (isBeyondLast: boolean, receiptCount: number): string => {
+const emptyMessage = (isBeyondLast: boolean, receiptCount: number, view: IssuedView): string => {
   if (isBeyondLast) return t.receipts.beyondLast;
+
+  if (view === 'issued') {
+    return receiptCount > 0 ? t.receipts.issuedEmptyOnThisPage : t.receipts.issuedEmpty;
+  }
 
   return receiptCount > 0 ? t.receipts.emptyOnThisPage : t.receipts.empty;
 };
+
+const ISSUED_VIEWS: readonly IssuedView[] = ['unissued', 'issued'];
 
 /**
  * `P-01-01` 자재LOT 등록·라벨 발행 (POP).
@@ -50,6 +57,7 @@ const emptyMessage = (isBeyondLast: boolean, receiptCount: number): string => {
  */
 export const PopMaterialLotLabelScreen = () => {
   const [page, setPage] = useState(1);
+  const [issuedView, setIssuedView] = useState<IssuedView>('unissued');
   const [selectedLineId, setSelectedLineId] = useState<number | null>(null);
   const [isReissueOpen, setReissueOpen] = useState(false);
 
@@ -60,8 +68,8 @@ export const PopMaterialLotLabelScreen = () => {
   const { workerNo, terminalId } = usePopIdentity();
 
   // 첫 쪽이면 조건을 싣지 않는다 — 서버 기본값이 1이라 URL에 없는 편이 조건을 정직하게 드러낸다.
-  const receipts = useReceipts(page === 1 ? {} : { page });
-  const targets = useTargetRows(receipts.data?.items ?? []);
+  const receipts = useReceipts(issuedView, page === 1 ? {} : { page });
+  const targets = useTargetRows(receipts.data?.items ?? [], issuedView);
   const printers = usePrinters();
 
   const supplierLookup = useSupplierLookup();
@@ -168,7 +176,40 @@ export const PopMaterialLotLabelScreen = () => {
            *
            * ⛔ 오류일 때도 감추지 않는다 — 구획의 이름은 내용의 성패와 무관하다.
            */}
-          <h2 className="pop-lot-pane-title">{t.receipts.title}</h2>
+          <div className="pop-material-lot-pane-head">
+            <h2 className="pop-lot-pane-title">{t.receipts.title}</h2>
+            {/*
+             * ⭐ 발행 여부로 목록을 가른다(사용자 지시 2026-09-15 · #1241). 발행 완료 쪽이 없으면
+             *    인쇄를 마친 자재가 목록에서 빠져 재인쇄할 길이 없었다.
+             *
+             * 바꾸면 쪽과 고른 줄을 푼다 — 남겨 두면 보이지 않는 줄을 가리킨다. 실행 중에는
+             * 잠근다 — 쪽 이동과 같은 까닭이다.
+             */}
+            <div
+              className="pop-material-lot-filter"
+              role="group"
+              aria-label={t.receipts.filter.label}
+            >
+              {ISSUED_VIEWS.map((view) => (
+                <Button
+                  key={view}
+                  className={popTouchClass('normal')}
+                  variant={issuedView === view ? 'filled' : 'outlined'}
+                  size="xl"
+                  aria-pressed={issuedView === view}
+                  disabled={issue.step !== null}
+                  onClick={() => {
+                    if (issuedView === view) return;
+                    setSelectedLineId(null);
+                    setPage(1);
+                    setIssuedView(view);
+                  }}
+                >
+                  {t.receipts.filter[view]}
+                </Button>
+              ))}
+            </div>
+          </div>
 
           {isListError ? (
             <AlertBanner
@@ -207,7 +248,11 @@ export const PopMaterialLotLabelScreen = () => {
                   // 같은 줄을 다시 누르면 해제한다 — 고른 것을 무를 수단이 없으면 갇힌다.
                   setSelectedLineId((current) => (current === lineId ? null : lineId));
                 }}
-                empty={emptyMessage(pageView?.isBeyondLast === true, result?.items.length ?? 0)}
+                empty={emptyMessage(
+                  pageView?.isBeyondLast === true,
+                  result?.items.length ?? 0,
+                  issuedView,
+                )}
               />
               {pageView === null ? null : (
                 <PageNav
@@ -241,6 +286,7 @@ export const PopMaterialLotLabelScreen = () => {
             hasWorkerNo={workerNo !== null}
             runningStep={issue.step}
             isPrintForbidden={isPrintForbidden}
+            isIssued={issuedView === 'issued'}
             onIssue={() => {
               startIssue(null);
             }}

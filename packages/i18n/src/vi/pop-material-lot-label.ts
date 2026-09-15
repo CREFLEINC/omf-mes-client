@@ -15,6 +15,14 @@ export const popMaterialLotLabel: Translated<typeof ko.popMaterialLotLabel> = {
     emptyOnThisPage:
       'Các phiếu nhập hàng ở trang này không có vật tư cần phát hành. Hãy xem trang sau.',
     beyondLast: 'Trang này không có kết quả. Hãy quay lại trang trước.',
+    filter: {
+      label: 'Trạng thái phát hành',
+      unissued: 'Chưa phát hành',
+      issued: 'Đã phát hành',
+    },
+    issuedEmpty: 'Không có vật tư đã phát hành.',
+    issuedEmptyOnThisPage:
+      'Các phiếu nhập hàng ở trang này không có vật tư đã phát hành. Hãy xem trang sau.',
     loadFailed: 'Không tải được danh sách nhập hàng.',
     unsupported:
       'Máy chủ chưa hỗ trợ danh sách đối tượng phát hành. Khi máy chủ sẵn sàng, có thể chọn vật tư tại màn hình này.',

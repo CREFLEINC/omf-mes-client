@@ -5550,3 +5550,20 @@
 .pop-ui .pop-actions > .tool-usage-block ~ button {
   flex-shrink: 0;
 }
+
+/*
+ * P-01-01 입하 목록 머리 — 구획 제목과 발행 여부 필터를 한 줄에 둔다(#1241).
+ * 세로 여유가 적은 화면이라 필터에 줄을 따로 내주지 않는다. 좁으면 필터가 아래로 접힌다.
+ */
+.pop-material-lot-pane-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2) var(--space-3);
+}
+
+.pop-material-lot-filter {
+  display: flex;
+  gap: var(--space-2);
+}

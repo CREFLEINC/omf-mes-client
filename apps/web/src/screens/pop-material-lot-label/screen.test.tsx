@@ -165,7 +165,7 @@ describe('PopMaterialLotLabelScreen — 배포본 대상 조회', () => {
   it('배포본에서도 미부착·미발행 조건을 서버에 함께 보낸다', async () => {
     vi.stubEnv('MODE', 'production');
     const asked: URL[] = [];
-    renderScreen({ onReceiptRequest: (url) => asked.push(url) });
+    renderScreen({ onLineRequest: (url) => asked.push(url) });
 
     await waitFor(() => expect(asked.length).toBeGreaterThan(0));
     expect(asked[0]?.searchParams.get('supplierLotLabelAttached')).toBe('false');
@@ -175,14 +175,55 @@ describe('PopMaterialLotLabelScreen — 배포본 대상 조회', () => {
 });
 
 describe('PopMaterialLotLabelScreen — 입하 목록', () => {
-  it('라벨을 발행하지 않은 입하 건만 조회한다', async () => {
-    const seen: URL[] = [];
-    renderScreen({ onReceiptRequest: (url) => seen.push(url) });
+  /**
+   * ⛔ **입하 «건»을 미발행으로 거르지 않는다**(#1241). 건 목록의 `labelIssued=false` 는 「발행된
+   * 라인이 하나도 없는 건」이라, 일부 자재만 인쇄한 건의 **남은 자재까지** 목록에서 사라졌다.
+   * 미발행 여부는 라인 질의가 거른다.
+   */
+  it('미발행 보기는 입하 건을 발행 여부로 거르지 않고 라인만 미발행으로 거른다', async () => {
+    const receiptUrls: URL[] = [];
+    const lineUrls: URL[] = [];
+    renderScreen({
+      onReceiptRequest: (url) => receiptUrls.push(url),
+      onLineRequest: (url) => lineUrls.push(url),
+    });
 
     await waitFor(() => {
-      expect(seen.length).toBeGreaterThan(0);
+      expect(lineUrls.length).toBeGreaterThan(0);
     });
-    expect(seen[0]?.searchParams.get('labelIssued')).toBe('false');
+    expect(receiptUrls[0]?.searchParams.has('labelIssued')).toBe(false);
+    expect(lineUrls[0]?.searchParams.get('labelIssued')).toBe('false');
+  });
+
+  /** ⭐ 발행 완료 보기(사용자 지시 2026-09-15 · #1241) — 인쇄를 마친 자재를 다시 고를 길이다. */
+  it('발행 완료를 고르면 건과 라인을 발행 조건으로 다시 부르고 고른 줄과 쪽을 푼다', async () => {
+    const receiptUrls: URL[] = [];
+    const lineUrls: URL[] = [];
+    const { user } = renderScreen({
+      page: { page: 1, size: 1, total: 3 },
+      onReceiptRequest: (url) => receiptUrls.push(url),
+      onLineRequest: (url) => lineUrls.push(url),
+    });
+    const filter = within(await screen.findByRole('group', { name: '발행 여부' }));
+
+    expect(filter.getByRole('button', { name: '미발행' })).toHaveAttribute('aria-pressed', 'true');
+
+    await user.click(await screen.findByRole('button', { name: '다음 ▶' }));
+    await selectFirst(user);
+    await user.click(filter.getByRole('button', { name: '발행 완료' }));
+
+    expect(filter.getByRole('button', { name: '발행 완료' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+    await waitFor(() => {
+      expect(receiptUrls.at(-1)?.searchParams.get('labelIssued')).toBe('true');
+    });
+    expect(receiptUrls.at(-1)?.searchParams.has('page')).toBe(false);
+    await waitFor(() => {
+      expect(lineUrls.at(-1)?.searchParams.get('labelIssued')).toBe('true');
+    });
+    expect(screen.getByText('왼쪽에서 자재를 고르세요.')).toBeInTheDocument();
   });
 
   it('첫 쪽에서는 쪽 조건을 싣지 않는다 — 서버 기본값이 1이다', async () => {
@@ -233,7 +274,7 @@ describe('PopMaterialLotLabelScreen — 입하 목록', () => {
    * 변경 통지 #534). 화면이 한 번 더 거르면 서버가 이미 좁힌 쪽을 다시 깎아 쪽 크기와 어긋난다.
    * 그래서 잣대는 「무엇이 안 보이나」가 아니라 **「무엇을 요청에 싣나」**를 본다.
    */
-  it('사전부착·발행완료를 거를 조건을 두 요청에 모두 싣는다', async () => {
+  it('사전부착을 거를 조건을 두 요청에 모두 싣는다', async () => {
     const receiptUrls: URL[] = [];
     const lineUrls: URL[] = [];
     renderScreen({
@@ -247,7 +288,6 @@ describe('PopMaterialLotLabelScreen — 입하 목록', () => {
 
     for (const url of [receiptUrls[0], lineUrls[0]]) {
       expect(url?.searchParams.get('supplierLotLabelAttached')).toBe('false');
-      expect(url?.searchParams.get('labelIssued')).toBe('false');
     }
   });
 

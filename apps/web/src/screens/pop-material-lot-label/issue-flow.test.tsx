@@ -707,6 +707,19 @@ describe('PopMaterialLotLabelScreen — 이미 등록된 자재', () => {
 });
 
 describe('PopMaterialLotLabelScreen — 재인쇄', () => {
+  /**
+   * ⭐ 발행 완료 목록(사용자 지시 2026-09-15 · #1241). ⛔ 사유 없는 발행은 2회차부터 서버가
+   * 거절하므로 첫 단추를 잠그고 재인쇄만 연다.
+   */
+  it('발행 완료 목록에서 고른 자재는 인쇄를 잠그고 재인쇄를 연다', async () => {
+    const { user } = renderFlow({ lotId: LOT_ID });
+    await user.click(await screen.findByRole('button', { name: '발행 완료' }));
+    await chooseLine(user);
+
+    expect(await screen.findByRole('button', { name: '인쇄' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: '재인쇄' })).toBeEnabled();
+  });
+
   it('발행한 적이 없으면 재인쇄를 막는다 — 재발행할 회차가 없다', async () => {
     const { user } = renderFlow();
     await chooseLine(user);
