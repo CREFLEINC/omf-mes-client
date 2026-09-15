@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-import { screen, waitFor, within } from '@testing-library/react';
+import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -257,7 +257,6 @@ describe('사번 확인 화면', () => {
 describe('등록이 서버에서 끊긴 기기', () => {
   it('토큰이 거절되면 사번 확인을 막고 새 QR 을 받으라고 한다', async () => {
     await rememberPlant(7);
-    const user = userEvent.setup();
     mountGated([probe(() => jsonResponse(denied, { status: 401 }))]);
 
     expect(await screen.findByText(EXPIRED)).toBeInTheDocument();
@@ -613,6 +612,38 @@ describe('기기 등록 해제', () => {
     const dialog = within(await screen.findByRole('dialog'));
     expect(dialog.getByRole('button', { name: '취소' })).toBeInTheDocument();
     expect(dialog.queryByRole('button', { name: '닫기' })).not.toBeInTheDocument();
+  });
+
+  /* X 가 빠져도 Esc(창의 cancel)는 같은 닫기로 온다. 이 길이 죽으면 되돌릴 수 없는 창이 안 닫힌다. */
+  it('Esc 로도 등록을 풀지 않고 창이 닫힌다', async () => {
+    const user = userEvent.setup();
+    mount();
+    await signedIn(user);
+
+    await user.click(screen.getByRole('button', { name: '기기 등록 해제' }));
+    fireEvent(await screen.findByRole('dialog'), new Event('cancel', { cancelable: true }));
+
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    });
+    expect(token.cleared).toBe(0);
+  });
+
+  /*
+   * 창 배치 규칙(sign-in.css)은 DS 창의 뼈대(판 > header · 본문 div · footer > 단추)에 기댄다.
+   * CSS 는 시험에 안 보여, DS 가 뼈대를 바꾸면 조용히 깨진다 - 뼈대를 여기서 잡는다.
+   */
+  it('창 배치 규칙이 기대는 DS 창의 뼈대가 그대로다', async () => {
+    const user = userEvent.setup();
+    mount();
+    await signedIn(user);
+
+    await user.click(screen.getByRole('button', { name: '기기 등록 해제' }));
+
+    const dialog = await screen.findByRole('dialog');
+    const body = dialog.querySelector(':scope > div > header + div');
+    expect(body?.querySelector('.worker-sign-in__dialog-notice')).not.toBeNull();
+    expect(dialog.querySelectorAll(':scope > div > footer > button')).toHaveLength(2);
   });
 
   /*
