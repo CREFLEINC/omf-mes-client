@@ -263,6 +263,28 @@ const DETAILS = [
       typeof body.putawayRule.capacityQty === 'number' &&
       typeof body.editability === 'object',
   ],
+  /* W-CO-08 — 도면·점이 있는 창고. 아래 흐름 블록이 이 창고의 배치도를 갈아 치우므로 여기서 먼저 본다. */
+  [
+    'W-CO-08 배치도 조회(도면·점 있음)',
+    '/mdm/warehouses/1001/layout',
+    (body) =>
+      body.warehouseId === 1001 &&
+      body.drawingAttachmentId === 9701 &&
+      body.markers.length === 2 &&
+      body.markers.every(
+        (marker) => marker.x >= 0 && marker.x <= 1 && marker.y >= 0 && marker.y <= 1,
+      ),
+  ],
+  /* 도면도 점도 없는 창고 — 「빈 배치도」도 조회는 200이어야 화면이 「도면을 올리세요」를 보인다. */
+  [
+    'W-CO-08 빈 배치도 조회',
+    '/mdm/warehouses/1002/layout',
+    (body) =>
+      body.warehouseId === 1002 &&
+      body.drawingAttachmentId === undefined &&
+      Array.isArray(body.markers) &&
+      body.markers.length === 0,
+  ],
 ];
 
 const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -1387,6 +1409,104 @@ for (const [name, path, check] of DETAILS) {
 
   if (!ok) failed += 1;
   console.log(`${ok ? '✔' : '✘'} P-02-13 확정이 토큰을 요구하고, 이름 경로가 번호에 먹히지 않는다`);
+}
+
+{
+  /*
+   * W-CO-08 창고 배치도 — 올리기→저장→충돌→받기→거부 두 가지를 한 번에 밟는다(#1064).
+   *
+   * ⭐ **PNG «흉내»면 충분하다.** 목의 판정은 파일 내용 시그니처(선두 8바이트)만 본다 —
+   *   실제 디코딩 가능한 PNG를 만들 필요가 없다. 시그니처 뒤에는 임의 바이트만 붙인다.
+   */
+  const PNG_SIGNATURE = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+  const pngBytes = Buffer.concat([PNG_SIGNATURE, Buffer.from('seed-smoke 흉내 PNG')]);
+
+  const initialLayout = await fetch(`${BASE}/mdm/warehouses/1001/layout`);
+  const initialLayoutEtag = initialLayout.headers.get('etag');
+  const initialLayoutBody = await initialLayout.json();
+
+  const uploadForm = new FormData();
+  uploadForm.set('targetTypeCode', 'WAREHOUSE');
+  uploadForm.set('targetId', '1001');
+  uploadForm.set('file', new Blob([pngBytes], { type: 'image/png' }), 'seed-smoke-drawing.png');
+  const upload = await fetch(`${BASE}/app/attachments`, {
+    method: 'POST',
+    headers: { 'Idempotency-Key': 'seed-smoke-w-co-08-upload' },
+    body: uploadForm,
+  });
+  const uploaded = await upload.json();
+
+  /* 계획 C-2 — 점은 «서버가 준 점 그대로» 다시 싣는다. 도면만 간다. */
+  const save = await fetch(`${BASE}/mdm/warehouses/1001/layout`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+      'Idempotency-Key': 'seed-smoke-w-co-08-layout-save',
+      'If-Match': initialLayoutEtag ?? '',
+    },
+    body: JSON.stringify({
+      drawingAttachmentId: uploaded.attachmentId,
+      markers: initialLayoutBody.markers,
+    }),
+  });
+  const saved = await save.json();
+
+  /* 방금 쓴 판(v1)을 다시 낸다 — 이미 한 번 갈아 낡았으니 409여야 한다. */
+  const staleSave = await fetch(`${BASE}/mdm/warehouses/1001/layout`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+      'Idempotency-Key': 'seed-smoke-w-co-08-layout-stale',
+      'If-Match': initialLayoutEtag ?? '',
+    },
+    body: JSON.stringify({ drawingAttachmentId: uploaded.attachmentId, markers: [] }),
+  });
+  const staleSaveBody = await staleSave.json();
+
+  const content = await fetch(`${BASE}/app/attachments/${String(uploaded.attachmentId)}/content`);
+  const contentBytes = new Uint8Array(await content.arrayBuffer());
+
+  const gifForm = new FormData();
+  gifForm.set('targetTypeCode', 'WAREHOUSE');
+  gifForm.set('targetId', '1001');
+  gifForm.set('file', new Blob([Buffer.from('GIF89a')], { type: 'image/gif' }), 'x.gif');
+  const gifUpload = await fetch(`${BASE}/app/attachments`, {
+    method: 'POST',
+    headers: { 'Idempotency-Key': 'seed-smoke-w-co-08-upload-gif' },
+    body: gifForm,
+  });
+  const gifUploadBody = await gifUpload.json();
+
+  const bigBytes = Buffer.concat([PNG_SIGNATURE, Buffer.alloc(11 * 1024 * 1024)]);
+  const bigForm = new FormData();
+  bigForm.set('targetTypeCode', 'WAREHOUSE');
+  bigForm.set('targetId', '1001');
+  bigForm.set('file', new Blob([bigBytes], { type: 'image/png' }), 'big.png');
+  const bigUpload = await fetch(`${BASE}/app/attachments`, {
+    method: 'POST',
+    headers: { 'Idempotency-Key': 'seed-smoke-w-co-08-upload-big' },
+    body: bigForm,
+  });
+
+  const ok =
+    initialLayoutEtag !== null &&
+    initialLayoutBody.warehouseId === 1001 &&
+    upload.status === 201 &&
+    uploaded.contentType === 'image/png' &&
+    save.status === 200 &&
+    saved.drawingAttachmentId === uploaded.attachmentId &&
+    save.headers.get('etag') !== initialLayoutEtag &&
+    staleSave.status === 409 &&
+    staleSaveBody.conflictCause === 'user' &&
+    content.ok &&
+    content.headers.get('content-type') === 'image/png' &&
+    contentBytes.length === pngBytes.length &&
+    gifUpload.status === 400 &&
+    gifUploadBody.errors?.[0]?.field === 'file' &&
+    bigUpload.status === 413;
+
+  if (!ok) failed += 1;
+  console.log(`${ok ? '✔' : '✘'} W-CO-08 배치도 올리기·저장·충돌·받기·GIF 거부·용량 초과 흐름`);
 }
 
 console.log(
