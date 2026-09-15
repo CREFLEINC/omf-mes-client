@@ -1,5 +1,5 @@
 import { messages } from '@omf-mes/i18n';
-import { act, screen, waitFor, within } from '@testing-library/react';
+import { act, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -231,8 +231,27 @@ const fileInput = (): HTMLElement => screen.getByLabelText(t.map.upload, { selec
 
 const uploadButton = (): HTMLElement => screen.getByRole('button', { name: t.map.upload });
 
-const board = (): HTMLElement | null =>
-  screen.queryByRole('application', { name: t.map.imageLabel });
+const board = (): HTMLElement => screen.getByRole('group', { name: t.map.imageLabel });
+
+/**
+ * jsdom 은 배치를 계산하지 않는다 — 판의 `getBoundingClientRect` 가 늘 0이라 클릭에서 비율을
+ * 낼 수 없다(`marker-overlay.test.tsx` 와 같은 사정). 판을 실제로 눌러 점이 찍히는지 재는
+ * 시험에서만, 부품 시험과 같은 방식으로 칸을 손으로 세워 준다.
+ */
+const stubBoardRect = (element: HTMLElement): void => {
+  element.getBoundingClientRect = (): DOMRect =>
+    ({
+      left: 0,
+      top: 0,
+      width: 200,
+      height: 100,
+      right: 200,
+      bottom: 100,
+      x: 0,
+      y: 0,
+      toJSON: () => ({}),
+    }) as DOMRect;
+};
 
 /**
  * 판 위의 가림막.
@@ -425,15 +444,21 @@ describe('W-CO-08 창고 배치도 — 올리는 동안', () => {
     const upload = deferred();
     const put = deferred();
     const { user } = renderScreen({
-      layouts: [withoutDrawing()],
+      layouts: [withDrawing()],
       upload: () => upload.promise,
       puts: [() => put.promise],
     });
 
     await loaded();
-    expect(board()).not.toBeNull();
+    expect(board()).toBeInTheDocument();
+    stubBoardRect(board());
+
+    /* 아직 안 찍힌 위치를 미리 골라 둔다 — 고르는 것만으로는 초안이 더러워지지 않는다. */
+    await user.click(locationButton('SYN-LOC-08'));
 
     await user.upload(fileInput(), pngFile());
+    /* 이미 도면이 있으므로(§7 확인 절차) 확인을 거쳐야 올리기가 시작된다. */
+    await user.click(await screen.findByRole('button', { name: t.map.confirm }));
 
     /* ① 올리는 중 — 누른 자리(버튼)와 결과가 설 자리(판)가 같은 말을 한다. */
     const uploading = await screen.findByRole('button', { name: t.map.uploadingLabel });
@@ -450,8 +475,16 @@ describe('W-CO-08 창고 배치도 — 올리는 동안', () => {
 
     expect(progressBar).toHaveAttribute('aria-hidden', 'true');
     expect(progressBar).not.toHaveAttribute('aria-label');
-    /* ⛔ 도는 동안 판에 점을 찍을 수 없다 — 읽기 전용이면 판이 조작 역할을 내려놓는다. */
-    expect(board()).toBeNull();
+    /*
+     * ⛔ 도는 동안 판에 점을 찍을 수 없다 — 부품의 역할 유무가 아니라 **밖으로 나간 값**을
+     * 잰다: 잠긴 판을 눌러도 표식 수가 늘지 않아야 한다.
+     */
+    expect(board()).toHaveAttribute('aria-readonly', 'true');
+
+    const pinsWhileUploading = within(board()).getAllByRole('button').length;
+
+    fireEvent.click(board(), { clientX: 100, clientY: 50 });
+    expect(within(board()).getAllByRole('button')).toHaveLength(pinsWhileUploading);
     expect(screen.getByRole('button', { name: t.map.save })).toBeDisabled();
     expect(screen.getByRole('checkbox', { name: t.locations.includeInactive })).toBeDisabled();
 
@@ -463,7 +496,12 @@ describe('W-CO-08 창고 배치도 — 올리는 동안', () => {
     /* ② 저장하는 중 — 올리기가 끝나도 도면은 아직 바뀌지 않았다. */
     await screen.findByRole('button', { name: t.map.savingDrawingLabel });
     expect(within(busyOverlay()).getByText(t.map.savingDrawingLabel)).toBeInTheDocument();
-    expect(board()).toBeNull();
+    expect(board()).toHaveAttribute('aria-readonly', 'true');
+
+    const pinsWhileSaving = within(board()).getAllByRole('button').length;
+
+    fireEvent.click(board(), { clientX: 100, clientY: 50 });
+    expect(within(board()).getAllByRole('button')).toHaveLength(pinsWhileSaving);
 
     await act(async () => {
       put.settle(
@@ -482,7 +520,20 @@ describe('W-CO-08 창고 배치도 — 올리는 동안', () => {
     });
     expect(screen.queryByRole('progressbar')).toBeNull();
     expect(hasBusyOverlay()).toBe(false);
-    expect(board()).not.toBeNull();
+    expect(board()).toBeInTheDocument();
+    expect(board()).not.toHaveAttribute('aria-readonly');
+
+    /*
+     * ⭐ 양성 대조 — 잠금이 풀리면 «같은 절차»(위치 고르기 → 판 누르기)로 실제 점이 찍힌다.
+     * 이것이 없으면 위 두 「늘지 않는다」가 스텁이 안 먹혀 우연히 통과한 것인지 가릴 수 없다.
+     */
+    stubBoardRect(board());
+    await user.click(locationButton('SYN-LOC-08'));
+
+    const pinsBeforeUnlocked = within(board()).getAllByRole('button').length;
+
+    fireEvent.click(board(), { clientX: 100, clientY: 50 });
+    expect(within(board()).getAllByRole('button')).toHaveLength(pinsBeforeUnlocked + 1);
   });
 
   /*
@@ -533,7 +584,7 @@ describe('W-CO-08 창고 배치도 — 올리는 동안', () => {
       expect(uploadButton()).toBeEnabled();
     });
     expect(screen.queryByRole('progressbar')).toBeNull();
-    expect(board()).not.toBeNull();
+    expect(board()).toBeInTheDocument();
     expect(
       within(screen.getByRole('alert')).getByText(/서버에 문제가 있습니다/),
     ).toBeInTheDocument();
