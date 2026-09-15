@@ -36,6 +36,13 @@ RUN TZ=Asia/Seoul pnpm --filter @omf-mes/web exec vitest run --maxWorkers=4 --te
 ARG VITE_DEFAULT_INITIAL_PASSWORD=
 ENV VITE_DEFAULT_INITIAL_PASSWORD=${VITE_DEFAULT_INITIAL_PASSWORD}
 
+# 관리웹 사이드바에 표기할 릴리스 태그(`web-vX.Y.Z`). 비우면 화면이 「개발 빌드」로 표기한다.
+#
+# ⛔ 자리는 위 선언과 같은 이유로 **시험 «뒤», 빌드 «앞»**이다. 태그마다 값이 바뀌므로 위로
+#    올리면 시험 층의 캐시까지 매 릴리스 무효가 된다.
+ARG VITE_APP_VERSION=
+ENV VITE_APP_VERSION=${VITE_APP_VERSION}
+
 RUN pnpm --filter @omf-mes/web build
 
 FROM nginx:1.28.3-alpine AS runtime

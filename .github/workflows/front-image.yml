@@ -58,9 +58,11 @@ jobs:
           push: true
           tags: ${{ steps.image.outputs.tags }}
           # DEFAULT_INITIAL_PASSWORD secret 이 없으면 빈 값이 가고 화면 코드의 기본값으로 떨어진다 — 의도된 동작이다.
+          # VITE_APP_VERSION 은 푸시된 태그(web-vX.Y.Z — 위 단계가 형식을 검사했다)이고 관리웹 사이드바에 표기된다.
           build-args: |
             VITE_API_BASE_URL=/api
             VITE_DEFAULT_INITIAL_PASSWORD=${{ secrets.DEFAULT_INITIAL_PASSWORD }}
+            VITE_APP_VERSION=${{ github.ref_name }}
           labels: |
             org.opencontainers.image.revision=${{ github.sha }}
             org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
