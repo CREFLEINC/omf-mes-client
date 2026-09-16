@@ -14,11 +14,10 @@ import { Link } from 'react-router';
 
 import { useLocationByCode } from '../../patterns/locations';
 import { useScannedLot } from '../../patterns/lots';
-import { useItemLabels } from '../../patterns/masters';
+import { uomLabelOf, useItemLabels, useUomCodes } from '../../patterns/masters';
 import { useOnlineStatus } from '../../patterns/online-status';
 import { useOutbox } from '../../patterns/outbox';
 import { useBackStep } from '../../patterns/back-step';
-import { uomLabelOf, useUomCodes } from '../../patterns/masters';
 import { useScanField } from '../../patterns/use-scan-field';
 import { useScreenTitle } from '../../patterns/screen-title';
 import { useWorkerSession } from '../../patterns/worker-session';
