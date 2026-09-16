@@ -180,6 +180,16 @@ export const usersRoles: Translated<typeof ko.usersRoles> = {
   permission: {
     editNote:
       'Nhấn vào ô để cấp hoặc thu hồi quyền, rồi lưu. Lần lưu sẽ thay toàn bộ quyền của vai trò này.',
+    /* 표의 열 머리. 권한이 117개라 세로로 세우고, 코드는 화면을 짚어 보는 열쇠라 함께 보인다. */
+    columns: {
+      granted: 'Cấp',
+      name: 'Quyền',
+      code: 'Mã',
+    },
+    tableCaption: (roleLabel: string) => `Quyền chức năng của vai trò ${roleLabel}`,
+    /* 고르기만 하고 저장하지 않는다 - 되돌리는 길은 「취소」다. */
+    selectAll: 'Chọn tất cả',
+    clearAll: 'Bỏ chọn tất cả',
     /*
      * 묶음 이름 - groupCode 는 개체 식별자라 서버가 이름을 주지 않는다.
      * 고정 설계의 권한 목록 생성기가 적어 둔 축 7개를 옮겼고, 모르는 축은 코드를 그대로 낸다.

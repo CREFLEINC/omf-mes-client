@@ -975,6 +975,24 @@ export const UsersRolesScreen = () => {
     );
   };
 
+  /**
+   * 전체 선택·해제 — **고르기만 하고 저장하지 않는다.**
+   *
+   * 권한이 117개라 손으로 켜는 비용이 크다는 사용자 판단이다(#1308). 되돌리는 길은 「취소」이고,
+   * 서버로 나가는 것은 「저장」을 눌렀을 때뿐이라 한 번의 오조작이 바로 반영되지 않는다.
+   *
+   * 고르는 범위는 **지금 표에 선 행 전부**다 — 후보 밖 부여분도 행으로 서 있으므로 함께 켜진다.
+   */
+  const handleSelectAllPermissions = () => {
+    const everyCode = permissionColumns.map((column) => column.code);
+
+    setPermissionState((prev) => (prev === null ? prev : { ...prev, selected: everyCode }));
+  };
+
+  const handleClearAllPermissions = () => {
+    setPermissionState((prev) => (prev === null ? prev : { ...prev, selected: [] }));
+  };
+
   const handleSavePermissions = () => {
     /*
      * 고른 역할이 없으면 격자 자체가 서지 않는다. 그래도 막는 것은, 저장이 `roleId` 를
@@ -1504,6 +1522,8 @@ export const UsersRolesScreen = () => {
         isDirty={isPermissionDirty}
         isSaving={permissionWrite.isSaving}
         onToggle={handleTogglePermission}
+        onSelectAll={handleSelectAllPermissions}
+        onClearAll={handleClearAllPermissions}
         onSave={handleSavePermissions}
         onCancel={handleCancelPermissions}
       />

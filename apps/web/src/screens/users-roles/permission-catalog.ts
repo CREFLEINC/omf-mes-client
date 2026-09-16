@@ -150,6 +150,28 @@ export const toPermissionGroups = (
   return unlisted.columns.length === 0 ? groups : [...groups, unlisted];
 };
 
-/** 묶음을 가로지르는 열 전체. 격자가 한 줄로 그릴 때와 초안을 셀 때 쓴다. */
+/** 묶음을 가로지르는 열 전체. 표가 한 줄씩 그릴 때와 초안을 셀 때 쓴다. */
 export const flattenPermissionColumns = (groups: readonly PermissionGroup[]): PermissionColumn[] =>
   groups.flatMap((group) => group.columns);
+
+/**
+ * 표의 행 하나 — 열 하나에 **자기가 속한 묶음**을 붙인 것.
+ *
+ * ⭐ **표는 세로다.** 권한이 117개라 가로로 세우면 오른쪽 끝 권한을 **눌러서 고를 수가 없다** —
+ * 격자가 자기 가로 스크롤 상자를 갖고, 페인이 화면보다 넓어져 아래 액션 줄까지 화면 밖으로
+ * 밀린다(#1308 · 실사용 보고). 묶음은 `Table` 의 그룹 머리행으로 살리므로 행이 묶음을 들고 다닌다.
+ */
+export interface PermissionRow extends PermissionColumn {
+  groupKey: string;
+  groupLabel: string;
+}
+
+/** 묶음별 열을 표의 행 목록으로 편다. 차례는 묶음 차례 그대로다. */
+export const toPermissionRows = (groups: readonly PermissionGroup[]): PermissionRow[] =>
+  groups.flatMap((group) =>
+    group.columns.map((column) => ({
+      ...column,
+      groupKey: group.key,
+      groupLabel: group.label,
+    })),
+  );

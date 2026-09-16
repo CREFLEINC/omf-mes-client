@@ -1,58 +1,47 @@
-import {
-  Button,
-  EmptyState,
-  MatrixGrid,
-  SkeletonText,
-  type MatrixColumn,
-  type MatrixGroupHeader,
-  type MatrixRow,
-} from '@crefle/web-ui';
+import { Button, Checkbox, EmptyState, SkeletonText, Table, type Column } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { type ReactNode, useId } from 'react';
 
 import { DisabledAction } from './disabled-action';
-import { flattenPermissionColumns, type PermissionGroup } from './permission-catalog';
+import { toPermissionRows, type PermissionGroup, type PermissionRow } from './permission-catalog';
 
 const t = messages.usersRoles;
 
 export interface PermissionGridPaneProps {
-  /** 격자의 유일한 행 라벨. 고른 역할을 가리키는 값이다 */
+  /** 표의 대상. 고른 역할을 가리키는 값이고, 칸의 접근 이름에 들어간다 */
   roleLabel: string;
   groups: PermissionGroup[];
   isLoading: boolean;
-  /** 조회 실패 표시. null이 아니면 격자·빈 상태 대신 이것을 낸다 */
+  /** 조회 실패 표시. null이 아니면 표·빈 상태 대신 이것을 낸다 */
   loadError: ReactNode;
   /** 저장 실패 배너 슬롯 */
   banner: ReactNode;
-  /** 후보 목록에 없는 열이 섰다는 안내 슬롯 */
+  /** 후보 목록에 없는 행이 섰다는 안내 슬롯 */
   unlistedNotice: ReactNode;
   isDirty: boolean;
   isSaving: boolean;
   onToggle: (code: string) => void;
+  onSelectAll: () => void;
+  onClearAll: () => void;
   onSave: () => void;
   onCancel: () => void;
 }
 
 /**
- * 우 칸 아래 — 기능 권한 격자. **부여·회수할 수 있다.**
+ * 우 칸 아래 — 기능 권한 표. **부여·회수할 수 있다.**
  *
- * 종전에는 보기 전용이었다. 막아 둔 사유(권한 목록 미정 · 회신 E-9 대기)는 2026-09-01 사용자
- * 결정으로 풀렸고 — 입도는 **화면 단위**이며 후보 목록은 `GET /app/permissions` 가 준다 —
- * 설계도 그렇게 적는다(W-CO-02 §8 항목 7·8).
+ * ⭐ **세로 표다**(#1308). 처음에는 역할 하나를 행으로 두고 권한을 열로 세운 밀집 격자였는데,
+ * 권한이 117개라 열이 117개가 되어 **오른쪽 끝 권한을 눌러서 고를 수가 없었다** — 격자가 자기
+ * 가로 스크롤 상자를 갖고, 페인이 화면보다 넓어져 아래 「취소·저장」 줄까지 화면 밖으로 밀렸다.
+ * 권한을 행으로 세우고 **표에만 세로 스크롤**을 두어 페인과 액션 줄이 자리를 지키게 한다.
  *
  * **저장은 전체 치환이다.** 칸을 켤 때마다 서버를 부르지 않고 「저장」에서 최종 상태가 한 번에
  * 나간다 — 계약이 개별 부여·회수 경로를 두지 않았다. 같은 화면의 역할 부여와 같은 규약이다.
  *
- * **`onCellClick` 을 넘긴다.** 디자인 시스템은 그 prop 을 받을 때만 셀에 `tabIndex`·`onClick`·
- * `data-clickable` 을 붙인다 — 넘기지 않으면 격자를 키보드로 만질 수 없다. 별도의 `disabled`
- * prop 은 없어, 저장 중에는 **읽는 쪽에서** 조작을 흘린다(포커스를 뺏지 않으려는 것이다).
- *
- * **셀의 접근 이름을 화면이 만들어 넘긴다.** 셀은 내용 없이 상태만 갖는 밀집 격자라 디자인
- * 시스템의 자동 조합에 기댈 수 없다 — `'none'` 은 내부에서 「상태 없음」으로 정규화되고 상태명
- * 표에도 그 항목이 없어(설치본 실측), **부여되지 않은 칸만 이름 없는 빈 칸**이 된다.
- *
- * **`.wide-table` 로 감싸지 않는다.** 이 격자는 자기 가로 스크롤 상자를 갖고 있어 감싸면
- * `min-width: 58rem` 이 걸린다.
+ * ⛔ **디자인 시스템 `Table` 의 `selectable` 선택 열을 쓰지 않는다.** 그 열은 행마다 같은 접근
+ * 이름(`행 선택`)을 붙여, 117행이 전부 「행 선택」으로 읽힌다(설치본 실측). 어느 권한의 칸인지
+ * 보조기술에 닿지 않으므로 **확인칸을 이 화면이 직접 그리고 이름을 만들어 넘긴다.**
+ * 머리글의 전체 선택도 그래서 쓰지 않고, 아래 「전체 선택·전체 해제」 버튼이 그 몫을 한다.
  */
 export const PermissionGridPane = ({
   roleLabel,
@@ -64,42 +53,45 @@ export const PermissionGridPane = ({
   isDirty,
   isSaving,
   onToggle,
+  onSelectAll,
+  onClearAll,
   onSave,
   onCancel,
 }: PermissionGridPaneProps) => {
   const noteId = useId();
 
-  const columns = flattenPermissionColumns(groups);
+  const rows = toPermissionRows(groups);
 
-  const gridColumns: MatrixColumn[] = columns.map((column) => ({
-    key: column.code,
-    label: column.label,
-  }));
-
-  /*
-   * ⚠ **빈 묶음을 싣지 않는다.** 디자인 시스템이 `span` 합과 열 개수가 다르면 개발 경고를
-   * 낸다. 후보 조회가 어떤 축을 0건으로 주는 경우가 실제로 있다.
-   */
-  const groupHeaders: MatrixGroupHeader[] = groups
-    .filter((group) => group.columns.length > 0)
-    .map((group) => ({ label: group.label, span: group.columns.length }));
-
-  const gridRows: MatrixRow[] = [
+  const columns: Column<PermissionRow>[] = [
     {
-      label: roleLabel,
-      cells: columns.map((column) => ({
-        key: column.code,
-        status: column.isGranted ? 'success' : 'none',
-        ariaLabel: `${roleLabel} · ${column.label} · ${
-          column.isGranted ? t.permission.granted : t.permission.notGranted
-        }`,
-      })),
+      key: 'granted',
+      header: t.permission.columns.granted,
+      width: '5rem',
+      align: 'center',
+      render: (row) => (
+        <Checkbox
+          checked={row.isGranted}
+          disabled={isSaving}
+          /*
+           * 확인칸에 보이는 글자를 두지 않는다 — 옆 칸이 이미 권한 이름이라 같은 말이 두 번
+           * 읽힌다. 대신 **어느 역할의 어느 권한인지**를 접근 이름으로 만들어 넘긴다.
+           */
+          aria-label={`${roleLabel} · ${row.label} · ${
+            row.isGranted ? t.permission.granted : t.permission.notGranted
+          }`}
+          onChange={() => {
+            onToggle(row.code);
+          }}
+        />
+      ),
     },
+    { key: 'label', header: t.permission.columns.name, render: (row) => row.label },
+    { key: 'code', header: t.permission.columns.code, width: '9rem', render: (row) => row.code },
   ];
 
-  const gridSlot = (): ReactNode => {
+  const tableSlot = (): ReactNode => {
     /*
-     * 실패를 빈 상태로 내면 「부여된 권한이 없습니다」가 되어 **없는 사실을 단정한다** —
+     * 실패를 빈 상태로 내면 「부여할 수 있는 권한이 없습니다」가 되어 **없는 사실을 단정한다** —
      * 없는 것이 아니라 못 불러온 것이다. 그 상태로 저장하면 전체 회수가 나간다.
      */
     if (loadError !== null && loadError !== undefined) return loadError;
@@ -107,13 +99,12 @@ export const PermissionGridPane = ({
     if (isLoading) {
       return (
         <div role="status" aria-label={t.loading.permissions}>
-          <SkeletonText lines={2} />
+          <SkeletonText lines={3} />
         </div>
       );
     }
 
-    /* 열이 0개면 라벨 칸만 남은 빈 표가 된다 — 격자 대신 빈 상태를 낸다. */
-    if (columns.length === 0) {
+    if (rows.length === 0) {
       return (
         <EmptyState
           size="sm"
@@ -125,22 +116,27 @@ export const PermissionGridPane = ({
       );
     }
 
+    /*
+     * ⭐ **표만 구른다.** 페인 전체가 구르면 아래 액션 줄이 화면 밖으로 밀려, 고른 뒤 저장을
+     * 찾아 다시 끝까지 내려가야 한다. 높이 제한과 스크롤은 `.permission-table-scroll` 이 준다.
+     */
     return (
-      <MatrixGrid
-        size="sm"
-        aria-describedby={noteId}
-        columns={gridColumns}
-        groupHeaders={groupHeaders}
-        rows={gridRows}
-        onCellClick={(_row, column) => {
-          /* 저장 중에는 흘린다 — 보낸 뒤에 바뀐 값은 응답이 덮어써 사실과 어긋난다. */
-          if (isSaving) return;
-
-          onToggle(column.key);
-        }}
-      />
+      <div className="permission-table-scroll">
+        <Table<PermissionRow>
+          aria-describedby={noteId}
+          caption={t.permission.tableCaption(roleLabel)}
+          density="compact"
+          columns={columns}
+          rows={rows}
+          getRowId={(row) => row.code}
+          groupBy={(row) => row.groupKey}
+          renderGroupHeader={(groupKey, groupRows) => groupRows[0]?.groupLabel ?? groupKey}
+        />
+      </div>
     );
   };
+
+  const hasRows = rows.length > 0 && (loadError === null || loadError === undefined) && !isLoading;
 
   return (
     <section className="pane" aria-label={t.panes.permission}>
@@ -148,14 +144,29 @@ export const PermissionGridPane = ({
       {unlistedNotice}
 
       {/*
-       * 조작 안내는 **격자보다 앞에** 둔다. 여러 칸이 함께 보는 안내라 컨트롤 이름이 아니라
+       * 조작 안내는 **표보다 앞에** 둔다. 여러 칸이 함께 보는 안내라 컨트롤 이름이 아니라
        * 무엇에 대한 안내인지로 시작한다(배치 규범 4).
        */}
       <p id={noteId} className="field-note">
         {t.permission.editNote}
       </p>
 
-      {gridSlot()}
+      {/*
+       * 전체 선택·해제는 **표 위**에 둔다. 아래 액션 줄에 섞으면 「저장」과 나란히 서서
+       * 누르는 순간 저장되는 것으로 읽힌다 — 이 둘은 고르기만 하고 저장은 따로다.
+       */}
+      {hasRows && (
+        <div className="permission-bulk-actions">
+          <Button variant="outlined" size="sm" disabled={isSaving} onClick={onSelectAll}>
+            {t.permission.selectAll}
+          </Button>
+          <Button variant="outlined" size="sm" disabled={isSaving} onClick={onClearAll}>
+            {t.permission.clearAll}
+          </Button>
+        </div>
+      )}
+
+      {tableSlot()}
 
       <div className="form-actions">
         <Button variant="outlined" disabled={!isDirty || isSaving} onClick={onCancel}>
