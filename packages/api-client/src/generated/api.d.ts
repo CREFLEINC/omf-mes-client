@@ -21205,7 +21205,7 @@ export interface paths {
          *
          *     인쇄하지 않는다 — 이 호출은 기록만 만든다. 이미지는 별도로 받아 프린터로 보내고 결과를 따로 보고한다. 프린터가 죽어도 기록은 남는다.
          *
-         *     서버 구현 기준: IDENTIFICATION_TAG는 항상 422 STATE_LOCKED, DELIVERY_LABEL은 항상 422 INVALID다. 두 문서 유형은 현재 클라이언트에서 발행 요청하지 않는다(I-27 마감 결정).
+         *     서버 구현 기준: IDENTIFICATION_TAG는 항상 422 STATE_LOCKED다. DELIVERY_LABEL은 SHIP-UNIT-01로 대상이 SHIPPING_UNIT이 되어 마감(CLOSED)된 출하 단위에 발행된다 — 다른 대상 유형은 422 INVALID, 안 닫힌 단위는 422 STATE_LOCKED다. 종전의 「DELIVERY_LABEL은 항상 422」는 대상이 출하 LOT 배분이던 때의 설명이다.
          */
         post: operations["createDocumentIssues"];
         delete?: never;
@@ -30005,7 +30005,7 @@ export interface paths {
          */
         get: {
             parameters: {
-                query: {
+                query?: {
                     shipmentRequestId?: number;
                     customerId?: number;
                     /** @description 출하의 진행 상태 — 미확정(UNCONFIRMED) · 확정(CONFIRMED) · 취소(CANCELLED). ⛔ 시스템 소유다 — 고객이 W-06-06 에서 이 값을 편집하면 안 된다. 확정이 PGI 송신을 부르고 취소가 그것을 되돌린다(W-04-04 §5-1 · W-04-12 §5-2). ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=SHIPMENT_STATUS 로 받는다(공유계약 G-32 · 2026-09-02 등재). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다. */
@@ -30020,9 +30020,11 @@ export interface paths {
                     /**
                      * @description 필수. ⭐ 예외 하나 — hasUnassignedPackedBox=true 를 함께 주면 «선택»이다(P-24). 그 축은 「구성할 것이 남았나」를 묻는 것이라 날짜와 무관하고, 기간을 강제하면 어제 출하한 건의 남은 상자가 창 밖으로 빠져 P-04-05 에서 영영 안 보인다. 기간을 비우면 아직 나가지 않은 출하(shippedAt 없음)도 함께 오며 정렬에서 뒤로 간다
                      *
+                     *     서버 구현 기준: hasUnassignedPackedBox=true가 아니면 필수이고, 빠지면 400 REQUIRED다. 조건부라서 required로 선언하지 못한다(통보 219·P-24).
+                     *
                      *     서버 구현 기준: shippedAt을 출하 창고가 속한 공장의 로컬 날짜로 비교한다(통보 219).
                      */
-                    shipDateFrom: string;
+                    shipDateFrom?: string;
                     /** @description 서버 구현 기준: 끝 날짜를 포함하며 다음 날 공장 자정 미만으로 비교한다(통보 219). */
                     shipDateTo?: string;
                     /** @description 출하 번호 검색. ⛔ 범위는 shipment_no 하나다 — 고객은 customerId 를, LOT 은 lotId 를 쓴다(omf-mes#170 과 같은 처리). 근거: W-04-06 §3 */
