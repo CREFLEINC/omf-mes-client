@@ -10,9 +10,6 @@ import type { PickingOrder } from './picking';
 const t = messages.materialPicking;
 
 export interface PickingOrderListProps {
-  /** 사번을 확인하기 전과 찾지 못한 것을 가려 말하기 위해 함께 받는다. */
-  workerNo: string | null;
-  workerId: UseQueryResult<number | null>;
   orders: UseQueryResult<PickingOrder[]>;
   /* 목록이 현장이 먼저 보고 고르는 자리다. 코드를 그대로 보이면 거기서 영문을 읽는다. */
   pickingTypes: CodeValue[];
@@ -20,34 +17,18 @@ export interface PickingOrderListProps {
 }
 
 /**
- * 내게 배정된 지시를 고르는 자리.
+ * 집을 지시를 고르는 자리.
  *
  * 확인하지 못한 것을 없는 것으로 말하지 않는다 - 조회가 실패한 것과 받은 지시가 없는 것은
  * 현장에서 할 일이 다르다.
  */
-export const PickingOrderList = ({
-  workerNo,
-  workerId,
-  orders,
-  pickingTypes,
-  onChoose,
-}: PickingOrderListProps) => {
+export const PickingOrderList = ({ orders, pickingTypes, onChoose }: PickingOrderListProps) => {
   const failureText = useLoadFailure();
 
   return (
     <section className="picking-out__section">
       <h2>{t.orders.legend}</h2>
-      {workerId.isPending && workerNo !== null ? <p role="status">{t.worker.loading}</p> : null}
-      {workerId.isError ? (
-        <FailureBanner variant="error" title={failureText(workerId.error, t.worker.loadFailed)} />
-      ) : null}
-      {workerNo !== null && workerId.data === null ? (
-        <AlertBanner variant="warning" title={t.worker.notFound(workerNo)} />
-      ) : null}
-      {/* 지시 조회는 사번이 풀려야 나간다. 사번 조회가 실패했으면 불러오고 있지 않다(#1198). */}
-      {orders.isPending && workerId.isSuccess && workerId.data !== null ? (
-        <p role="status">{t.orders.loading}</p>
-      ) : null}
+      {orders.isPending ? <p role="status">{t.orders.loading}</p> : null}
       {orders.isError ? (
         <FailureBanner variant="error" title={failureText(orders.error, t.orders.loadFailed)} />
       ) : null}

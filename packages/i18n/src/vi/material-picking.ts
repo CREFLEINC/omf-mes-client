@@ -8,16 +8,11 @@ export const materialPicking: Translated<typeof ko.materialPicking> = {
     picked: 'Lấy hàng vật tư',
     issued: 'Xuất kho vật tư',
   },
-  worker: {
-    loading: 'Đang xác nhận mã nhân viên',
-    loadFailed: 'Không xác nhận được mã nhân viên. Hãy kiểm tra kết nối.',
-    notFound: (workerNo: string) => `Không tìm thấy người có mã nhân viên ${workerNo}`,
-  },
   orders: {
-    legend: 'Lệnh lấy hàng của tôi',
+    legend: 'Lệnh lấy hàng',
     loading: 'Đang tải lệnh lấy hàng',
     loadFailed: 'Không xác nhận được lệnh lấy hàng. Hãy kiểm tra kết nối.',
-    none: 'Chưa nhận lệnh lấy hàng nào',
+    none: 'Không có lệnh lấy hàng cần lấy',
     closed: 'Lệnh này đã xuất kho xong. Không xuất lại được.',
     change: 'Chọn lệnh khác',
     type: (name: string) => `Loại ${name}`,

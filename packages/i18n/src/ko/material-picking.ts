@@ -11,16 +11,12 @@ export const materialPicking = {
     picked: '자재 피킹',
     issued: '자재 출고',
   },
-  worker: {
-    loading: '사번을 확인하는 중입니다',
-    loadFailed: '사번을 확인할 수 없습니다. 연결을 확인하세요.',
-    notFound: (workerNo: string) => `${workerNo} 사번의 작업자를 찾지 못했습니다`,
-  },
   orders: {
-    legend: '내 피킹 지시',
+    /* 담당자로 좁히지 않는다. 내 것이라 부르면 남의 지시를 집을 때 화면이 거짓을 말한다. */
+    legend: '피킹 지시',
     loading: '피킹 지시를 불러오는 중입니다',
     loadFailed: '피킹 지시를 확인할 수 없습니다. 연결을 확인하세요.',
-    none: '받은 피킹 지시가 없습니다',
+    none: '집을 피킹 지시가 없습니다',
     /** 라인의 집은 양이 출고 뒤에도 그대로라, 막지 않으면 같은 수량이 한 번 더 나간다. */
     closed: '이미 출고가 끝난 지시입니다. 다시 내보낼 수 없습니다.',
     change: '다른 지시 고르기',

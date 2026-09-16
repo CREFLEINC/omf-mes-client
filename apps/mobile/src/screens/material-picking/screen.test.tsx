@@ -49,7 +49,8 @@ vi.mock('../../patterns/local-store', () => ({
   },
 }));
 
-const page = { page: 0, size: 20, totalElements: 1, totalPages: 1 };
+/* 계약의 쪽 정보는 page·size·total 셋이다. 이름이 어긋나면 쪽을 잇는 조회가 끝나지 않는다. */
+const page = { page: 1, size: 20, total: 1 };
 
 const LOT_NO = '0001234500000012002607310001230007';
 
@@ -121,27 +122,35 @@ interface Options {
   holdReasons?: unknown[];
   /** 표시명 조회가 실패한다. 없는 것과 못 받은 것을 가르는 자리다. */
   holdReasonsFail?: boolean;
-  /** 사번 조회가 서버에 닿지 못한다. */
-  workersOffline?: boolean;
+  /** 지시를 이만큼 답한다 - 한 쪽에 담기지 않는 수를 만들어 쪽을 잇는지 재는 자리다. */
+  orderCount?: number;
 }
 
 const rest = (options: Options, serverPicked: Map<number, number>): StubRoute[] => [
   {
-    match: (req) => new URL(req.url).pathname === '/mdm/workers',
-    respond: () => {
-      if (options.workersOffline === true) {
-        throw new TypeError('Failed to fetch');
+    match: (req) => new URL(req.url).pathname === '/logistics/picking-orders',
+    respond: (req) => {
+      const count = options.orderCount;
+
+      if (count === undefined) {
+        return jsonResponse({ items: [options.order ?? order()], page });
       }
 
+      const query = new URL(req.url).searchParams;
+      const at = Number(query.get('page') ?? '1');
+      const size = Number(query.get('size') ?? '100');
+      const all = Array.from({ length: count }, (each, index) =>
+        order({
+          pickingOrderId: 1000 + index,
+          pickingOrderNo: `PK-2026-${String(index + 1).padStart(6, '0')}`,
+        }),
+      );
+
       return jsonResponse({
-        items: [{ workerId: 501, workerNo: WORKER_NO, workerName: '홍길동' }],
-        page,
+        items: all.slice((at - 1) * size, at * size),
+        page: { page: at, size, total: count },
       });
     },
-  },
-  {
-    match: (req) => new URL(req.url).pathname === '/logistics/picking-orders',
-    respond: () => jsonResponse({ items: [options.order ?? order()], page }),
   },
   {
     /* 보낸 피킹을 서버가 기억한다. 기억하지 않으면 다시 조회해도 안 집은 값이 돌아온다. */
@@ -444,14 +453,6 @@ describe('자재 출고·피킹 화면', () => {
     expect(
       await screen.findByText('도착 위치를 확인할 수 없습니다. 연결을 확인하세요.'),
     ).toBeTruthy();
-  });
-
-  /* 지시 조회는 사번이 풀려야 나간다. 실패 옆에 불러오는 중이 남으면 기다리게 된다(#1198). */
-  it('사번 조회가 실패하면 지시를 불러오는 중이라고 하지 않는다', async () => {
-    mount({ workersOffline: true });
-
-    expect(await screen.findByText('사번을 확인할 수 없습니다. 연결을 확인하세요.')).toBeTruthy();
-    expect(screen.queryByText('피킹 지시를 불러오는 중입니다')).toBeNull();
   });
 
   it('집으면 라인 경로로 사번과 멱등키를 실어 보낸다', async () => {
@@ -1081,6 +1082,30 @@ describe('자재 출고·피킹 화면', () => {
   });
 
   /*
+   * 담당자로 좁히면 담당이 빈 지시가 아무에게도 보이지 않고, 다른 공장 사람이 배정된 지시도
+   * 현장에서 사라진다. 공장 밖은 서버가 막으므로 화면이 더 좁힐 까닭이 없다.
+   */
+  it('목록을 담당자로 좁히지 않는다', async () => {
+    const sent = mount();
+    await screen.findByRole('button', { name: /PK-2026-000077/ });
+
+    const url = sent.asked.find((each) => each.includes('/logistics/picking-orders?'));
+
+    expect(url).toBeTruthy();
+    expect(new URL(url!).searchParams.get('assignedWorkerId')).toBeNull();
+  });
+
+  /*
+   * 한 쪽만 받으면 뒤쪽 지시가 통째로 빠지는데, 화면은 그것을 받은 지시가 없다고 말한다 -
+   * 모자랐다는 신호 없이 사실과 반대되는 문장이 작업자에게 간다.
+   */
+  it('한 쪽에 담기지 않는 지시도 끝까지 받는다', async () => {
+    mount({ orderCount: 101 });
+
+    expect(await screen.findByRole('button', { name: /PK-2026-000101/ })).toBeTruthy();
+  });
+
+  /*
    * 셸이 배경으로 담긴 출고를 보내면 큐가 빈다. 보냈는지로 세면 그 순간 담긴 출고를 세는
    * 방어와 함께 꺼져, 다시 열었을 때 같은 수량이 한 번 더 나간다.
    */
@@ -1270,7 +1295,7 @@ describe('자재 출고·피킹 화면', () => {
   });
 
   /*
-   * 전기된 지시는 「아직 출고할 수 있는 것」에서 서버가 빼는데, 다시 묻지 않으면 「다음 지시」로
+   * 전기된 지시는 아직 출고할 수 있는 것에서 서버가 빼는데, 다시 묻지 않으면 다음 지시로
    * 돌아온 목록에 그대로 남는다 — 작업자가 그것을 다시 열고 같은 수량이 한 번 더 나간다
    * (PICK-ISSUE-01 D1 실기: PK-0003·PK-0004 가 출고 뒤에도 목록에 남았다).
    */
@@ -1312,7 +1337,7 @@ describe('자재 출고·피킹 화면', () => {
   });
 
   /*
-   * 수량 구획 끝에 「이 라인 피킹」이 있고 화면 바닥에는 「출고 확정」 바가 붙어 있다. 머리를
+   * 수량 구획 끝에 이 라인 피킹 단추가 있고 화면 바닥에는 출고 확정 바가 붙어 있다. 머리를
    * 맞추면 숫자판 높이만큼 밀려 단추가 그 바 아래로 들어가고, 한가운데를 눌러도 바가 받는다
    * (PICK-ISSUE-01 D3 실기: 두 번 무반응). 꼬리를 맞춰 단추를 바 위로 들인다.
    */

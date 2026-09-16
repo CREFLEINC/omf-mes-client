@@ -10,7 +10,7 @@ import {
 } from './picking';
 
 export const pickingKeys = {
-  orders: (workerId: number | null) => ['picking-orders', workerId] as const,
+  orders: () => ['picking-orders'] as const,
   order: (pickingOrderId: number | null) => ['picking-order', pickingOrderId] as const,
   request: (materialIssueRequestId: number | null) =>
     ['picking-issue-request', materialIssueRequestId] as const,
@@ -19,37 +19,43 @@ export const pickingKeys = {
 /** 피킹 지시의 원천이 자재 출고 요청일 때만 도착 위치가 있다. 출하 요청은 다른 화면 몫이다. */
 export const MATERIAL_ISSUE_REQUEST = 'MATERIAL_ISSUE_REQUEST';
 
+const PAGE_SIZE = 100;
+
 /**
- * 내게 배정된 피킹 지시.
+ * 이 단말이 집을 수 있는 피킹 지시.
  *
- * 담당자를 실어 묻는다. 비우면 남의 지시까지 오는데, 이 셸에는 계정 로그인이 없어 서버가
- * 본인을 풀 근거가 없다 - 사번으로 얻은 작업자 식별자를 화면이 싣는다.
+ * ⛔ 담당자로 좁히지 않는다. 좁히면 담당이 빈 지시가 아무에게도 보이지 않고, 다른 공장 사람이
+ * 배정된 지시도 현장에서 사라진다 - 둘 다 실기에서 만났다. 단말 토큰의 공장 밖은 서버가
+ * 거절하므로 화면이 더 좁힐 까닭이 없다.
  *
  * 아직 출고할 수 있는 것만 받는다. 전기된 지시가 목록에 남으면 작업자가 그것을 다시 열고,
  * 라인의 집은 양이 출고 뒤에도 그대로라 같은 수량이 한 번 더 나간다.
+ *
+ * 쪽을 이어 받는다. 한 쪽만 받으면 뒤쪽 지시가 통째로 빠지는데, 화면은 그것을 받은 지시가
+ * 없다고 말한다 - 모자랐다는 신호 없이 사실과 반대되는 문장이 작업자에게 간다.
  */
-export const useAssignedPickingOrders = (
-  workerId: number | null,
-): UseQueryResult<PickingOrder[]> => {
+export const usePickingOrders = (): UseQueryResult<PickingOrder[]> => {
   const { client } = useApiClient();
 
   return useQuery({
-    queryKey: pickingKeys.orders(workerId),
-    enabled: workerId !== null,
+    queryKey: pickingKeys.orders(),
     queryFn: async () => {
-      if (workerId === null) {
-        throw new Error('사번을 확인하기 전에는 피킹 지시를 조회하지 않습니다.');
+      const orders: PickingOrder[] = [];
+
+      for (let page = 1; ; page += 1) {
+        const data = await runRequest(() =>
+          client.GET('/logistics/picking-orders', {
+            params: { query: { statusCode: OPEN_ORDER_STATUS, page, size: PAGE_SIZE } },
+          }),
+        );
+
+        orders.push(...data.items);
+
+        /* 빈 쪽도 끝으로 본다. 전체 건수만 믿으면 그 값이 틀렸을 때 영원히 돈다. */
+        if (data.items.length === 0 || orders.length >= data.page.total) {
+          return orders;
+        }
       }
-
-      const data = await runRequest(() =>
-        client.GET('/logistics/picking-orders', {
-          params: {
-            query: { assignedWorkerId: workerId, statusCode: OPEN_ORDER_STATUS, size: 100 },
-          },
-        }),
-      );
-
-      return data.items;
     },
   });
 };
