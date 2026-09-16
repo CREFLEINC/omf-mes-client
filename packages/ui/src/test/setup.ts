@@ -3,7 +3,7 @@ import { cleanup, configure } from '@testing-library/react';
 import { afterEach } from 'vitest';
 
 /**
- * 비동기 조회(`findBy*`·`waitFor`)가 기다리는 한도 (#1072).
+ * 비동기 조회(`findBy*`·`waitFor`)가 기다리는 한도.
  *
  * ⛔ **`--testTimeout` 이 이 값을 정하지 않는다** — 그것은 vitest 의 시험 단위 제한이고 Testing
  * Library 는 자기 한도를 쓴다(설정하지 않으면 1000ms). 짝은 `vitest.config.ts` 의 `testTimeout`

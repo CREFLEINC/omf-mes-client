@@ -75,14 +75,19 @@ DS 0.2.0 이 `ImageMarkerBoard` 를 내놓았다. 열 항목으로 대조했고 
   `label` 은 접근 이름으로만 쓴다. 설계 §5 는 도면 위 점 «옆»에 위치 코드(`●A-01 ●A-02`)가
   보이도록 정했으므로, 이 하나로 교체가 막힌다. 더불어 DS 판에는 최소 높이가 없고(#631 의
   26px 경로가 다시 열린다) 그림이 없으면 표식을 아예 그리지 않는다.
-- ⭐ **가져온 것:** 드래그 임계값(3px) · 포인터 캡처와 `pointercancel` · `touch-action: none` ·
-  주 버튼만 끌기 · 드래그 직후 click 억제 · 좌표 낭독(`aria-describedby` + `aria-live`).
-- ⛔ **`role="application"` 을 버렸다.** 판은 언제나 `role="group"` + `aria-label` 이고, 잠기면
-  `aria-readonly="true"` 가 붙는다. `application` 은 낭독기의 탐색 키를 판이 가로채게 만드는데
-  이 판에는 가로챌 키가 없다 — 표식이 버튼이라 평소 조작으로 충분하다.
+- ⭐ **가져온 것:** 드래그 임계값(마우스 3px · 손가락 8px) · 포인터 캡처와 `pointercancel` ·
+  `touch-action: none` · 주 버튼만 끌기 · 드래그 직후 click 억제(500ms 시간창) ·
+  좌표 낭독(`aria-describedby` + `aria-live`).
+- ⛔ **`role="application"` 을 버렸다.** 판은 언제나 `role="group"` + `aria-label` 이다.
+  `application` 은 낭독기의 탐색 키를 판이 가로채게 만드는데 이 판에는 가로챌 키가 없다 —
+  표식이 버튼이라 평소 조작으로 충분하다.
+- ⭐ **잠금은 «설명»으로 전한다.** 판이 잠기면 쓰는 화면이 넘긴 문구(`describeReadOnly`)가
+  `aria-describedby` 로 붙는다. ⛔ `aria-disabled` 는 쓰지 않는다 — 안의 표식까지 「사용 불가」로
+  들리는데 **잠겨도 고르기는 된다.** ⛔ `aria-readonly` 도 쓰지 않는다 — `group` 에 허용되지
+  않아 낭독기가 통째로 버린다.
 - ⚠ **판의 «있고 없음»으로 잠금을 재지 않는다.** 예전에는 잠기면 `application` 역할이 사라져
   화면 시험이 그 사라짐으로 잠금을 쟀다. 이제 판은 늘 서 있으므로 잠금은 **동작**(눌러도 점이
-  생기지 않는다)이나 `aria-readonly` 로 재야 한다.
+  생기지 않는다)이나 판의 접근 설명으로 재야 한다.
 
-DS 쪽 보완 요청은 `.client-dev/requests/2026-09-15-ds-image-marker-board-improvements.md` 로
-전달했다. 회신이 와도 라벨 표시가 들어오기 전에는 교체 판단을 다시 하지 않는다.
+DS 쪽 보완 요청은 **보내지 않았다 — 이 부품을 제품 소유로 확정했다.** 라벨 표시가 막는 한
+교체 판단이 열리지 않으므로, DS 가 스스로 라벨을 그리기 전에는 대조를 다시 하지 않는다.

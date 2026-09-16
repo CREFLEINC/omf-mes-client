@@ -462,6 +462,8 @@ export const WarehouseLayoutScreen = () => {
                     /* ⭐ 낭독 문구는 화면이 준다 — 판 부품은 표현 전용이라 사람의 말을 갖지 않는다. */
                     describePosition={t.map.markerPosition}
                     describeMove={t.map.markerMoved}
+                    /* ⭐ 잠긴 동안 무엇이 막히고 무엇은 되는지 — 눌러 보고 알게 두지 않는다. */
+                    describeReadOnly={t.map.boardLocked}
                   />
 
                   {drawing.isBusy && (

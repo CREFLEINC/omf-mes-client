@@ -48,6 +48,11 @@ export const warehouseLayout: Translated<typeof ko.warehouseLayout> = {
     placeNeedsLocation: 'Hãy chọn vị trí cần đánh dấu trong danh sách trước.',
     move: 'Có thể kéo điểm đánh dấu để di chuyển, hoặc chọn rồi đẩy bằng phím mũi tên.',
     /**
+     * ⭐ 잠긴 판이 **무엇을 막고 무엇은 허락하는지** 듣는 사람에게 전하는 말. 「사용 불가」로
+     * 뭉뚱그리면 고르기까지 막힌 것으로 들린다 — 잠겨도 고르기는 된다.
+     */
+    boardLocked: 'Bây giờ không đánh dấu hay di chuyển điểm được. Vẫn chọn được.',
+    /**
      * ⭐ 눈으로는 자리를 보지만 듣는 사람에게는 이 말이 자리 그 자체다 — 판 부품은 표현
      * 전용이라 말을 갖지 않으므로 화면이 넘겨 준다.
      */
