@@ -3921,10 +3921,14 @@ describe('UsersRolesScreen 기능 권한 격자', () => {
     return rendered;
   };
 
+  /**
+   * 권한 확인칸 — 표가 세로라 **행마다 하나씩**이다(#1308). 차례는 묶음 차례 그대로다.
+   * 이름이 「역할 · 권한 이름 · 상태」라 그 값으로 상태를 읽는다.
+   */
   const gridCells = async (): Promise<HTMLElement[]> => {
-    const grid = await within(permissionPane()).findByRole('grid');
+    await within(permissionPane()).findByRole('table');
 
-    return [...grid.querySelectorAll<HTMLElement>('tbody td')];
+    return within(permissionPane()).getAllByRole('checkbox');
   };
 
   const replaceBodyOf = (requests: RecordedRequest[]): Record<string, unknown> => {
@@ -3936,21 +3940,24 @@ describe('UsersRolesScreen 기능 권한 격자', () => {
   };
 
   /**
-   * ⭐ **열은 후보 목록에서 온다.** 부여분만 보면 아무것도 받지 않은 역할에 열이 하나도 서지
-   * 않아 **권한을 새로 줄 수 없다** — 격자가 보기 전용으로 닫혀 있던 까닭이 그것이었다.
+   * ⭐ **행은 후보 목록에서 온다.** 부여분만 보면 아무것도 받지 않은 역할에 행이 하나도 서지
+   * 않아 **권한을 새로 줄 수 없다** — 표가 보기 전용으로 닫혀 있던 까닭이 그것이었다.
    */
-  it('역할을 고르면 후보와 부여분을 둘 다 조회하고 후보 이름이 열로 나온다', async () => {
+  it('역할을 고르면 후보와 부여분을 둘 다 조회하고 후보 이름이 행으로 나온다', async () => {
     const { requests } = await openRole();
 
-    await within(permissionPane()).findByRole('grid');
+    await within(permissionPane()).findByRole('table');
 
     expect(requestsTo(requests, rolePermissionsPath(5001))).toHaveLength(1);
     expect(requestsTo(requests, '/app/permissions')).toHaveLength(1);
-    expect(
-      within(permissionPane())
-        .getAllByRole('columnheader')
-        .map((header) => header.textContent),
-    ).toEqual(expect.arrayContaining(['합성 권한 하나', '합성 권한 둘', '합성 권한 셋']));
+
+    const rowText = within(permissionPane())
+      .getAllByRole('row')
+      .map((row) => row.textContent ?? '');
+
+    for (const name of ['합성 권한 하나', '합성 권한 둘', '합성 권한 셋']) {
+      expect(rowText.some((line) => line.includes(name))).toBe(true);
+    }
   });
 
   /** 부여되지 않은 칸이 **실제로 선다** — 그 칸이 없으면 권한을 새로 줄 자리가 없다. */
@@ -3964,15 +3971,17 @@ describe('UsersRolesScreen 기능 권한 격자', () => {
     ]);
   });
 
-  it('행은 고른 역할 하나다', async () => {
+  /**
+   * 표가 세로가 되면서 역할은 행이 아니라 **표의 대상**이다. 어느 역할의 표인지가 설명과
+   * 칸 이름에 남아야 한다 — 남지 않으면 역할을 바꿨는지 화면에서 읽을 수 없다.
+   */
+  it('표가 어느 역할의 것인지 말한다', async () => {
     await openRole();
 
-    await within(permissionPane()).findByRole('grid');
+    await within(permissionPane()).findByRole('table');
 
-    const rowHeaders = within(permissionPane()).getAllByRole('rowheader');
-
-    expect(rowHeaders).toHaveLength(1);
-    expect(rowHeaders[0]?.textContent).toBe('SYN-ROLE-01');
+    expect(within(permissionPane()).getByText('SYN-ROLE-01 역할의 기능 권한')).toBeInTheDocument();
+    expect((await gridCells())[0]?.getAttribute('aria-label')).toContain('SYN-ROLE-01');
   });
 
   it('고르기 전에는 페인이 없고 그 역할의 부여분을 조회하지도 않는다', async () => {
@@ -3990,7 +3999,8 @@ describe('UsersRolesScreen 기능 권한 격자', () => {
 
     const cells = await gridCells();
 
-    expect(cells[2]?.hasAttribute('tabindex')).toBe(true);
+    /* 확인칸이라 키보드로 바로 닿는다 — 가로 격자 때는 셀에 tabindex 를 얹어야 했다. */
+    expect(cells[2]).toBeEnabled();
 
     await user.click(cells[2] as HTMLElement);
 
@@ -3999,11 +4009,78 @@ describe('UsersRolesScreen 기능 권한 격자', () => {
     );
   });
 
+  /**
+   * ⭐ **전체 선택·해제는 고르기만 한다**(#1308 · 사용자 지시). 권한이 117개라 손으로 켜는
+   * 비용이 크다. 서버로 나가는 것은 「저장」뿐이라 한 번의 오조작이 바로 반영되지 않는다.
+   */
+  it('전체 선택을 누르면 표의 모든 권한이 켜진다', async () => {
+    const { requests, user } = await openRole([...gridRoutes(), permissionReplaceRoute()]);
+
+    await within(permissionPane()).findByRole('table');
+    await user.click(within(permissionPane()).getByRole('button', { name: '전체 선택' }));
+
+    for (const box of await gridCells()) expect(box).toBeChecked();
+
+    /* 고르기만 한다 — 아직 아무것도 나가지 않았다. */
+    expect(requests.some((request) => request.method === 'PUT')).toBe(false);
+  });
+
+  it('전체 해제를 누르면 표의 모든 권한이 꺼진다', async () => {
+    const { user } = await openRole();
+
+    await within(permissionPane()).findByRole('table');
+    await user.click(within(permissionPane()).getByRole('button', { name: '전체 해제' }));
+
+    for (const box of await gridCells()) expect(box).not.toBeChecked();
+  });
+
+  it('전체 선택 뒤 저장하면 후보 전부가 본문에 실린다', async () => {
+    const { requests, user } = await openRole([...gridRoutes(), permissionReplaceRoute()]);
+
+    await within(permissionPane()).findByRole('table');
+    await user.click(within(permissionPane()).getByRole('button', { name: '전체 선택' }));
+    await user.click(within(permissionPane()).getByRole('button', { name: '저장' }));
+
+    await waitFor(() => {
+      expect(replaceBodyOf(requests)).toEqual({
+        permissionCodes: ['SYN-PERM-01', 'SYN-PERM-02', 'SYN-PERM-03'],
+      });
+    });
+  });
+
+  /** ⛔ 전체 회수도 **명시적으로** 보낸다 — 빈 본문이 곧 「전부 거둔다」다. */
+  it('전체 해제 뒤 저장하면 빈 목록이 실린다', async () => {
+    const { requests, user } = await openRole([...gridRoutes(), permissionReplaceRoute()]);
+
+    await within(permissionPane()).findByRole('table');
+    await user.click(within(permissionPane()).getByRole('button', { name: '전체 해제' }));
+    await user.click(within(permissionPane()).getByRole('button', { name: '저장' }));
+
+    await waitFor(() => {
+      expect(replaceBodyOf(requests)).toEqual({ permissionCodes: [] });
+    });
+  });
+
+  /** 되돌리는 길은 「취소」다 — 전체 해제가 되돌릴 수 없는 조작이 아니어야 한다. */
+  it('전체 해제한 뒤 취소하면 서버 부여분으로 돌아온다', async () => {
+    const { user } = await openRole();
+
+    await within(permissionPane()).findByRole('table');
+    await user.click(within(permissionPane()).getByRole('button', { name: '전체 해제' }));
+    await user.click(within(permissionPane()).getByRole('button', { name: '취소' }));
+
+    expect((await gridCells()).map((box) => box.getAttribute('aria-label'))).toEqual([
+      'SYN-ROLE-01 · 합성 권한 하나 · 부여됨',
+      'SYN-ROLE-01 · 합성 권한 둘 · 부여됨',
+      'SYN-ROLE-01 · 합성 권한 셋 · 부여되지 않음',
+    ]);
+  });
+
   /** ⛔ 고친 것이 없으면 저장이 서지 않는다 — 누를 것이 없는 버튼을 두지 않는다. */
   it('고치기 전에는 저장이 비활성이고 사유가 보인다', async () => {
     await openRole();
 
-    await within(permissionPane()).findByRole('grid');
+    await within(permissionPane()).findByRole('table');
 
     /* ⛔ 사유 문구만 재면 **저장이 눌리게 되는 회귀를 잡지 못한다.** */
     expect(within(permissionPane()).getByRole('button', { name: '저장' })).toBeDisabled();
@@ -4120,9 +4197,7 @@ describe('UsersRolesScreen 기능 권한 격자', () => {
     await user.click(within(roleListPane()).getByRole('button', { name: 'SYN-ROLE-02' }));
 
     await waitFor(() => {
-      expect(within(permissionPane()).getAllByRole('rowheader')[0]?.textContent).toBe(
-        'SYN-ROLE-02',
-      );
+      expect(within(permissionPane()).getByText('SYN-ROLE-02 역할의 기능 권한')).toBeInTheDocument();
     });
 
     /* B 역할은 부여가 0건이다 — A 에서 켠 칸이 따라오지 않는다. */
@@ -4250,14 +4325,14 @@ describe('UsersRolesScreen 기능 권한 격자', () => {
     ).toBeVisible();
   });
 
-  it('조작 안내가 항상 보이고 격자가 그것을 가리킨다', async () => {
+  it('조작 안내가 항상 보이고 표가 그것을 가리킨다', async () => {
     await openRole();
 
-    const grid = await within(permissionPane()).findByRole('grid');
+    const table = await within(permissionPane()).findByRole('table');
     const note = within(permissionPane()).getByText(/칸을 눌러 권한을 주거나 거둔 뒤 저장하세요/);
 
     expect(note).toBeVisible();
-    expect(grid).toHaveAttribute('aria-describedby', note.id);
+    expect(table).toHaveAttribute('aria-describedby', note.id);
   });
 
   /**
@@ -4270,7 +4345,7 @@ describe('UsersRolesScreen 기능 권한 격자', () => {
     expect(
       await within(permissionPane()).findByText('부여할 수 있는 기능 권한이 없습니다'),
     ).toBeInTheDocument();
-    expect(within(permissionPane()).queryByRole('grid')).not.toBeInTheDocument();
+    expect(within(permissionPane()).queryByRole('table')).not.toBeInTheDocument();
     expect(
       within(permissionPane()).getByText(/칸을 눌러 권한을 주거나 거둔 뒤 저장하세요/),
     ).toBeVisible();
@@ -4289,7 +4364,7 @@ describe('UsersRolesScreen 기능 권한 격자', () => {
     expect(
       within(permissionPane()).queryByText('부여할 수 있는 기능 권한이 없습니다'),
     ).not.toBeInTheDocument();
-    expect(within(permissionPane()).queryByRole('grid')).not.toBeInTheDocument();
+    expect(within(permissionPane()).queryByRole('table')).not.toBeInTheDocument();
   });
 
   /**
@@ -4305,7 +4380,7 @@ describe('UsersRolesScreen 기능 권한 격자', () => {
     ]);
 
     expect(await within(permissionPane()).findByRole('alert')).toBeInTheDocument();
-    expect(within(permissionPane()).queryByRole('grid')).not.toBeInTheDocument();
+    expect(within(permissionPane()).queryByRole('table')).not.toBeInTheDocument();
   });
 
   it('권한 조회 실패의 「다시 시도」가 실제로 다시 조회한다', async () => {
@@ -4527,7 +4602,7 @@ describe('UsersRolesScreen 상세를 못 받은 역할의 기능 권한 격자',
   });
 
   /** 다시 시도가 성공하면 이름이 오고 격자가 선다 — 페인을 영영 지우는 것이 아니다. */
-  it('「다시 시도」로 상세가 오면 격자가 선다', async () => {
+  it('「다시 시도」로 상세가 오면 표가 선다', async () => {
     let failDetail = true;
 
     const { requests, user } = renderScreen(
@@ -4552,13 +4627,13 @@ describe('UsersRolesScreen 상세를 못 받은 역할의 기능 권한 격자',
     await waitForRoleList(requests);
     await within(roleFormPane()).findByRole('alert');
 
-    // 선행 단언 — 지금은 격자가 없다. 이것이 없으면 뒤 단언이 무엇을 보는지 알 수 없다.
+    // 선행 단언 — 지금은 표가 없다. 이것이 없으면 뒤 단언이 무엇을 보는지 알 수 없다.
     expect(screen.queryByRole('region', { name: '기능 권한' })).not.toBeInTheDocument();
 
     failDetail = false;
     await user.click(within(roleFormPane()).getByRole('button', { name: '다시 시도' }));
 
-    expect(await within(permissionPane()).findByRole('grid')).toBeInTheDocument();
-    expect(within(permissionPane()).getAllByRole('rowheader')[0]?.textContent).toBe('SYN-ROLE-01');
+    expect(await within(permissionPane()).findByRole('table')).toBeInTheDocument();
+    expect(within(permissionPane()).getByText('SYN-ROLE-01 역할의 기능 권한')).toBeInTheDocument();
   });
 });

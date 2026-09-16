@@ -24,6 +24,8 @@
  *               DS 선택지 목록이 트리거 폭에 갇혀 잘리는 것의 임시 우회 — design-system-v2-webui#62
  * .dialog-scroll 창 본문이 길 때 «본문만» 스크롤시켜 바닥 액션이 화면 밖으로 밀리는 것을 막는다
  *               임시 우회 — design-system-v2-webui#78
+ * .permission-table-scroll  W-CO-02 기능 권한 표만 스크롤(머리줄 고정) — 같은 이유(#1308)
+ * .permission-bulk-actions    전체 선택·해제를 표 «위»에 둔다 — 저장과 나란히 서지 않게
  * .field-label  DS가 라벨을 내장하지 않는 컨트롤(Select 등)에 직접 붙이는 라벨
  * .field-note   필드 아래 보조 안내 텍스트(비활성 사유·선택지 준비 중 등)
  * .field-error  필드 아래 오류 텍스트
@@ -5170,6 +5172,39 @@ dl.filter-bar.approval-inbox-detail-facts {
 .dialog-scroll {
   max-height: 60vh;
   overflow-y: auto;
+}
+
+/**
+ * W-CO-02 기능 권한 표 — **표만 구른다**(#1308).
+ *
+ * 권한이 117개다. 페인 전체가 구르면 아래 「취소·저장」 줄이 화면 밖으로 밀려, 고른 뒤 저장을
+ * 찾아 다시 끝까지 내려가야 한다. 높이를 잘라 표 안에서만 구르게 하고 액션 줄은 자리를 지킨다.
+ *
+ * ⚠ **머리줄을 붙여 둔다.** 117행을 구르는 동안 「부여·권한·코드」가 위로 사라지면 어느 칸을
+ * 누르는지 알 수 없다. 묶음 머리행도 같은 이유로 붙인다 — 지금 어느 도메인을 보고 있는지가
+ * 스크롤 중에 유일한 단서다. DS `Table` 이 고정 머리줄을 갖고 있지 않아 제품에서 얹는다.
+ */
+.permission-table-scroll {
+  max-height: 60vh;
+  overflow: auto;
+}
+
+.permission-table-scroll thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--surface);
+}
+
+/**
+ * 전체 선택·해제 — **표 위에 둔다.** 아래 액션 줄에 섞으면 「저장」과 나란히 서서 누르는
+ * 순간 저장되는 것으로 읽힌다. 이 둘은 고르기만 하고 서버로 나가는 것은 「저장」뿐이다.
+ */
+.permission-bulk-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
 }
 
 /**
