@@ -451,6 +451,23 @@ describe('자재LOT 스캔·등록 화면', () => {
     expect(screen.queryByText(/LOT 이 비어 있는 사전부착 입하 건이 없습니다/)).toBeNull();
   });
 
+  /*
+   * 라인 구획을 후보 목록으로 판정하므로, 못 물어본 건을 고른 자리도 함께 봐야 한다. 걷어
+   * 버리면 조회가 실패했다는 말을 할 자리가 사라지고 화면이 통째로 비어 보인다.
+   */
+  it('라인 조회가 닿지 않는 건을 골라도 구획이 서서 실패를 말한다', async () => {
+    const user = userEvent.setup();
+    mount({ linesUnreachable: true });
+
+    await user.click(await screen.findByRole('combobox', { name: '입하 건' }));
+    await user.click(await screen.findByRole('option', { name: `${RECEIPT_NO} · 2026-09-05` }));
+
+    expect(await screen.findByRole('heading', { name: '입하 라인 고르기' })).toBeTruthy();
+    expect(
+      await screen.findByText('정보를 불러오지 못했습니다. 잠시 뒤 다시 시도하세요.'),
+    ).toBeTruthy();
+  });
+
   /* 채울 라인이 남은 건은 그대로 선다 - 거르기가 후보를 통째로 비우면 일을 못 한다. */
   it('채울 라인이 남은 입하 건은 후보에 선다', async () => {
     const user = userEvent.setup();
