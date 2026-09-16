@@ -6,7 +6,7 @@
  *    서버가 그리기 시작하면 이 파일은 걷힌다.
  *
  * 사양 요지 — 203dpi · 흑백 · 영문/숫자만 · 날짜 `YY-MM-DD HH:mm` · 2D 바코드는 오른쪽.
- * 라벨 둘: 출하용 100×60mm, 표준 LOT 80×30mm.
+ * 라벨 셋: 출하용 100×60mm, 표준 LOT 80×30mm, Location 고정 표지 100×60mm.
  */
 import {
   createCanvas,
@@ -222,37 +222,41 @@ export function renderLotLabel(values) {
   return canvas;
 }
 
-/** Location 고정 표지용 80×30mm 라벨. LOT·수량 문구를 섞지 않는다. */
+/**
+ * Location 고정 표지용 **100×60mm** 라벨(사용자 확정 2026-09-16 · #1312). LOT·수량 문구를 섞지 않는다.
+ *
+ * ⚠ **명령형 짝과 같은 배치여야 한다** — `tools/mock/label-tspl.mjs` 의 `renderLocationTspl` 이다.
+ *   미리보기와 실제 인쇄가 다르면 미리 보는 뜻이 없다(계약 `rendition` — 「미리보기와 인쇄가 같은 경로」).
+ */
 export function renderLocationLabel(values) {
-  const width = mm(80);
-  const height = mm(30);
+  const width = mm(100);
+  const height = mm(60);
   const canvas = createCanvas(width, height);
-  const pad = mm(2);
-  const left = pad + mm(1.5);
-  const matrixSize = mm(14);
-  const matrixX = width - pad - matrixSize;
-  const textWidthAvailable = matrixX - left - mm(2);
+  const pad = mm(3);
+  const left = pad + mm(2);
+  const qrSize = mm(21);
+  const qrX = width - pad - qrSize;
+  const textWidthAvailable = qrX - left - mm(3);
+  const fullWidth = width - left - pad;
 
-  strokeRect(canvas, 0, 0, width, height, 2);
-  drawMatrixPlaceholder(canvas, matrixX, pad + mm(1), matrixSize, values.seed ?? 1);
+  const warehouseText = `WH: ${values.warehouse}`;
+  const issueText = `ISSUE NO.: ${values.issueSeq}`;
+  const issuedText = `ISSUED: ${values.issuedAt}`;
 
-  drawText(canvas, 'LOCATION', left, 16, fitScale('LOCATION', PT.normal, textWidthAvailable));
-  drawText(canvas, values.code, left, 55, fitScale(values.code, 18, textWidthAvailable));
-  drawText(canvas, values.name, left, 108, fitScale(values.name, PT.normal, textWidthAvailable));
+  strokeRect(canvas, 0, 0, width, height, 3);
+  drawMatrixPlaceholder(canvas, qrX, mm(5), qrSize, values.seed ?? 1);
+
   drawText(
     canvas,
-    `WAREHOUSE: ${values.warehouse}`,
+    warehouseText,
     left,
-    153,
-    fitScale(`WAREHOUSE: ${values.warehouse}`, PT.small, width - left - pad),
+    mm(4),
+    fitScale(warehouseText, PT.type, textWidthAvailable),
   );
-  drawText(
-    canvas,
-    `ISSUED: ${values.issuedAt}`,
-    left,
-    194,
-    fitScale(`ISSUED: ${values.issuedAt}`, PT.caption, width - left - pad),
-  );
+  drawText(canvas, values.code, left, mm(13), fitScale(values.code, 28, textWidthAvailable));
+  drawText(canvas, values.name, left, mm(30), fitScale(values.name, PT.strongValue, fullWidth));
+  drawText(canvas, issueText, left, mm(40), fitScale(issueText, PT.normal, fullWidth));
+  drawText(canvas, issuedText, left, mm(48), fitScale(issuedText, PT.small, fullWidth));
 
   return canvas;
 }

@@ -1856,16 +1856,23 @@ const locationValues = (issue) => {
     code: ascii(location?.locationCode, 'SAMPLE-LOCATION'),
     name: ascii(location?.locationName, ascii(location?.locationCode, 'LOCATION')),
     warehouse: ascii(warehouse?.warehouseCode, 'SAMPLE-WAREHOUSE'),
+    /* 회차는 인쇄면에도 찍힌다 — 데이터에만 있으면 현장에서 몇 번째 라벨인지 못 가른다(계약 rendition). */
+    issueSeq: issue.issueSeq ?? 1,
     issuedAt: labelDateTime(issue.issuedAt),
     seed: issue.documentIssueLogId,
   };
 };
 
 /**
- * **100×60 은 출하용 라벨 하나뿐이다.** 나머지는 전부 표준 80×30 이다(사용자 확인 2026-09-08).
+ * **출하 계열은 `DELIVERY_LABEL` 하나뿐이다.** 나머지는 전부 표준 80×30 이다(사용자 확인 2026-09-08).
  *
  * ⛔ **포장 라벨을 여기 넣지 않는다.** 이름이 「출하 계열」처럼 보인다는 이유로 함께 두었더니
  *    포장 라벨·인식표 재출력이 100×60 으로 나왔다 — 화면에서 실측으로 잡힌 결함이다.
+ *
+ * ⚠ **100×60 인 라벨이 하나 더 생겼다** — Location 고정 표지다(사용자 확정 2026-09-16 · #1312).
+ *   그렇다고 이 목록에 넣지 않는다 — 이 목록은 「크기」가 아니라 **「출하용 서식으로 그린다」** 는
+ *   뜻이고, 위치 라벨은 자기 서식이 따로 있다. 위 사고가 난 까닭이 정확히 **크기로 뭉뚱그린 것**이라,
+ *   종류를 하나씩 세는 형태를 지킨다.
  */
 const SHIPPING_TYPES = ['DELIVERY_LABEL'];
 
@@ -1902,6 +1909,8 @@ on('GET', '/app/printers', () => {
           'IDENTIFICATION_TAG',
           'PACKING_LABEL',
           'DELIVERY_LABEL',
+          /* Location 고정 표지(#1312). 빠져 있으면 화면의 프린터 고르는 칸이 빈 목록이 된다. */
+          'LOCATION_LABEL',
         ],
       },
     ],

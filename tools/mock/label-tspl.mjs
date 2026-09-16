@@ -31,6 +31,22 @@ const text = (x, y, point, content) =>
 const dataMatrix = (x, y, size, content) =>
   `DMATRIX ${x},${y},${size},${size},"${escapeTspl(content)}"`;
 
+/**
+ * QR 코드. **칸 크기(cell)로만 크기를 정한다** — TSPL 은 「몇 mm 로 그려라」를 받지 않고
+ * 한 칸을 몇 점으로 찍을지만 받는다. 그래서 목표 크기를 칸 수로 나눠 칸 크기를 고른다.
+ *
+ * ⚠ **칸 수는 내용 길이에 따라 달라진다** — 여기서는 위치 라벨이 싣는 `창고코드/위치코드`
+ *   길이대(~20자)에서 나오는 버전 2(25칸)를 기준으로 잡는다. 정확한 치수는 서버가 그릴 때
+ *   정해지며, 이것은 **자리와 대략의 크기를 같게 두기 위한 대역**이다.
+ */
+const QR_MODULES = 25;
+
+const qrCode = (x, y, targetDots, content) => {
+  const cell = Math.max(1, Math.min(10, Math.round(targetDots / QR_MODULES)));
+
+  return `QRCODE ${x},${y},M,${cell},A,0,"${escapeTspl(content)}"`;
+};
+
 const head = (widthMm, heightMm) => [
   `SIZE ${widthMm} mm,${heightMm} mm`,
   'GAP 2 mm,0 mm',
@@ -69,6 +85,15 @@ function clip(content, point, available) {
 
 /** 구분자가 값에 섞이면 읽는 쪽이 칸을 잘못 센다. */
 const join = (parts) => parts.map((part) => String(part).replace(/\|/g, ' ')).join('|');
+
+/**
+ * 위치 QR 이 싣는 값 — `창고코드/위치코드`(백엔드 전달 2026-09-16 §7).
+ *
+ * ⚠ **읽는 쪽이 「첫 `/`」로 가른다.** 그래서 **창고 코드 안의 `/` 만** 지운다 — 위치 코드는 첫
+ *   구분자 뒤 전부라 안에 `/` 가 있어도 갈리지 않는다. 둘 다 지우면 실제 코드와 다른 값이 찍힌다.
+ */
+const locationQrContent = (warehouseCode, locationCode) =>
+  `${String(warehouseCode).replace(/\//g, '-')}/${String(locationCode)}`;
 
 /**
  * 표준 LOT 라벨 80 × 30 mm — 사양서 §5.4 예시를 **실제 값에 맞게 조정한 배치.**
@@ -136,30 +161,41 @@ export function renderLotTspl(values) {
   ]);
 }
 
-/** Location 고정 표지용 명령형 라벨. */
+/**
+ * Location 고정 표지용 명령형 라벨 **100 × 60 mm 서식**(사용자 확정 2026-09-16 · #1312).
+ *
+ * ⭐ **위치 코드가 가장 크다.** 창고 작업자가 통로에서 눈으로 읽는 값이라 이름·창고보다 앞선다.
+ *
+ * ⭐ **QR 내용은 `창고코드/위치코드` 다** — 위치 코드는 **창고 안에서만 유일**하므로(`uq_location`)
+ *    라벨 혼자 읽혀도 창고가 풀리도록 창고 코드를 함께 싣는다. 읽는 쪽은 **첫 `/`** 를 기준으로 가른다.
+ *
+ * ⛔ **다른 라벨의 `LC1|…` 꼴을 쓰지 않는다** — 그 꼴은 이 저장소 안에서만 통하고, 라벨은 한 번
+ *    붙이면 떼기 어렵다. 스캔하는 쪽의 규격(백엔드 전달 2026-09-16 §7)을 그대로 따른다.
+ */
 export function renderLocationTspl(values) {
-  const pad = dots(2);
-  const left = pad + dots(1.5);
-  const width = dots(80);
-  const height = dots(30);
-  const matrix = dots(14);
-  const matrixX = width - pad - matrix;
-  const available = matrixX - left - dots(2);
+  const pad = dots(3);
+  const left = pad + dots(2);
+  const width = dots(100);
+  const height = dots(60);
+  const qr = dots(21);
+  const qrX = width - pad - qr;
+  const available = qrX - left - dots(3);
+  const fullWidth = width - left - pad;
 
-  const codePoint = fit(values.code, 18, available);
-  const namePoint = fit(values.name, 10, available);
-  const warehouseText = `WAREHOUSE: ${values.warehouse}`;
-  const issuedText = `ISSUED: ${values.issuedAt}`;
+  const codePoint = fit(values.code, 28, available);
+  const namePoint = fit(values.name, 13, fullWidth);
+  const warehouseText = `WH: ${values.warehouse}`;
+  const issueText = `ISSUE NO.: ${values.issueSeq}`;
 
   return finish([
     ...head(MEDIA_WIDTH_MM, MEDIA_HEIGHT_MM),
-    `BOX 0,0,${width - 1},${height - 1},2`,
-    text(left, 14, 10, 'LOCATION'),
-    text(left, 52, codePoint, clip(values.code, codePoint, available)),
-    text(left, 105, namePoint, clip(values.name, namePoint, available)),
-    text(left, 150, 9, clip(warehouseText, 9, width - left - pad)),
-    text(left, 192, 8, clip(issuedText, 8, width - left - pad)),
-    dataMatrix(matrixX, pad + dots(1), matrix, join(['LC1', values.code])),
+    `BOX 0,0,${width - 1},${height - 1},3`,
+    text(left, dots(4), 12, clip(warehouseText, 12, available)),
+    text(left, dots(13), codePoint, clip(values.code, codePoint, available)),
+    text(left, dots(30), namePoint, clip(values.name, namePoint, fullWidth)),
+    text(left, dots(40), 11, clip(issueText, 11, fullWidth)),
+    text(left, dots(48), 9, clip(`ISSUED: ${values.issuedAt}`, 9, fullWidth)),
+    qrCode(qrX, dots(5), qr, locationQrContent(values.warehouse, values.code)),
   ]);
 }
 
