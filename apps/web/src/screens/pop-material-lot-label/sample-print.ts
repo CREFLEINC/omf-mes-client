@@ -1,5 +1,13 @@
+import { renditionShell } from '../../patterns/pop-print';
+
 import { buildMaterialLotLabel } from './label-tspl';
-import { popShell } from './shell-print';
+
+declare global {
+  interface Window {
+    /** 셸 진단(Ctrl+Alt+P)이 부르는 견본 인쇄. POP 진입점이 심는다(`app/pop-main.tsx`). */
+    __popPrintSampleLotLabel?: () => Promise<string>;
+  }
+}
 
 /**
  * 셸 진단(Ctrl+Alt+P · 80 × 30)이 찍는 **견본 자재 LOT 라벨.**
@@ -22,11 +30,11 @@ export const SAMPLE_LOT_LABEL = {
 
 /** 셸이 부른다. 셸 통로가 없으면 던진다 — 부른 쪽이 사유를 상자로 보인다. */
 export const printSampleLotLabel = async (): Promise<string> => {
-  const shell = popShell();
+  const shell = renditionShell();
 
   if (shell === null) throw new Error('셸 인쇄 통로가 없습니다.');
 
-  return shell.rendition.save(
+  return shell.save(
     new TextEncoder().encode(buildMaterialLotLabel(SAMPLE_LOT_LABEL)),
     'lot-sample',
     new Date().toISOString(),

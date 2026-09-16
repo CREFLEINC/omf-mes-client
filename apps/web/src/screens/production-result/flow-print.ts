@@ -5,8 +5,8 @@ import { useApiClient } from '../../patterns/api-context';
 import {
   fetchLabelRendition,
   resolveLabelRenditionFormat,
-  type LabelRenditionFormat,
 } from '../../patterns/pop-label-rendition';
+import { renditionShell } from '../../patterns/pop-print';
 import { runRequest } from '../../patterns/request';
 
 export interface PrintTarget {
@@ -35,27 +35,6 @@ export interface PrintState {
   printed: number;
   reason: string | null;
 }
-
-interface RenditionShell {
-  save: (
-    bytes: Uint8Array,
-    label: string,
-    now: string,
-    format: LabelRenditionFormat | 'pdf',
-  ) => Promise<string>;
-}
-
-interface ShellCarrier {
-  pop?: { rendition?: RenditionShell };
-}
-
-const shellOf = (): RenditionShell | null => {
-  if (typeof window === 'undefined') return null;
-
-  const shell = (window as unknown as ShellCarrier).pop?.rendition;
-
-  return typeof shell?.save === 'function' ? shell : null;
-};
 
 /**
  * 화면이 짠 라벨 명령을 셸에 넘길 바이트로 바꾼다.
@@ -161,7 +140,7 @@ export const useLabelPrintRunner = (workerNo: string | null): LabelPrintRunner =
         return;
       }
 
-      const shell = shellOf();
+      const shell = renditionShell();
       if (shell === null || workerNo === null) {
         setState({ phase: 'shellUnavailable', printed: alreadyPrinted, reason: null });
         return;
@@ -293,6 +272,6 @@ export const useLabelPrintRunner = (workerNo: string | null): LabelPrintRunner =
       pendingSuccessReport.current = null;
       setState(IDLE);
     },
-    isShellAvailable: shellOf() !== null,
+    isShellAvailable: renditionShell() !== null,
   };
 };

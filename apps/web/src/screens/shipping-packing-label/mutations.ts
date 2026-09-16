@@ -12,7 +12,7 @@ import {
 import { runRequest, toApiError } from '../../patterns/request';
 import { DELIVERY_LABEL, type LabelKind } from './codes';
 import { toDocumentIssueBody, toPrintReportBody } from './issue-request';
-import { renditionShell } from './shell-print';
+import { renditionShell } from '../../patterns/pop-print';
 import { toIssueView, type IssueView, type TargetRow } from './types';
 
 type Client = ApiClient['client'];

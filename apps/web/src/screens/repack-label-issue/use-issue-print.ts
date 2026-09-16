@@ -4,7 +4,9 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useApiClient } from '../../patterns/api-context';
 import { fetchLabelRendition } from '../../patterns/pop-label-rendition';
 import { runRequest } from '../../patterns/request';
-import { printFailureReason, renditionShell } from './print';
+import { renditionShell } from '../../patterns/pop-print';
+
+import { printFailureReason } from './print';
 import { labelRenditionFormat } from '../../patterns/pop-label-rendition';
 
 /**

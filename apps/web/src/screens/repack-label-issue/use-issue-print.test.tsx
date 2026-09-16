@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { LABEL_RENDITION_NOT_READY_REASON } from '../../patterns/pop-label-rendition';
 import { createStubFetch, jsonResponse, renderHookWithProviders } from '../../test/api-harness';
 import { DOCUMENT_ISSUE_LOG_ID, HANDLING_UNIT_ID, HANDLING_UNIT_NO, WORKER_NO } from './fixtures';
-import type { RenditionShell } from './print';
+import type { RenditionShell } from '../../patterns/pop-print';
 import { useIssuePrintRunner } from './use-issue-print';
 
 const TARGET = {

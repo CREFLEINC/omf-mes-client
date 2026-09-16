@@ -4,7 +4,9 @@ import { useCallback, useRef, useState } from 'react';
 import { useApiClient } from '../../patterns/api-context';
 import { fetchLabelRendition, labelRenditionFormat } from '../../patterns/pop-label-rendition';
 import { runRequest } from '../../patterns/request';
-import { printAll, renditionShell, type PrintOutcome, type PrintTarget } from './print';
+import { renditionShell } from '../../patterns/pop-print';
+
+import { printAll, type PrintOutcome, type PrintTarget } from './print';
 
 /**
  * 인쇄 절차를 화면에 붙인다 — ③ 세 걸음의 진행 상태와 실행.

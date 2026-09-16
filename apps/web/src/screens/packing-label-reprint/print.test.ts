@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { printAll, renditionShell, type PrintDeps, type PrintTarget } from './print';
+import { printAll, type PrintDeps, type PrintTarget } from './print';
 
 const targets: PrintTarget[] = [
   { documentIssueLogId: 44001, label: 'LOT-0001' },
@@ -106,23 +106,5 @@ describe('printAll — 인쇄 세 걸음', () => {
 
     expect(await printAll([], deps)).toEqual({ ok: true, printed: 0 });
     expect(deps.fetchRendition).not.toHaveBeenCalled();
-  });
-});
-
-describe('renditionShell — 셸 통로', () => {
-  it('셸이 없으면 null 이다 — 지어내지 않는다', () => {
-    expect(renditionShell()).toBeNull();
-  });
-
-  it('셸이 있으면 그 통로를 돌려준다', () => {
-    const save = vi.fn(async () => '/tmp/label.png');
-    Object.defineProperty(window, 'pop', {
-      value: { rendition: { save } },
-      configurable: true,
-    });
-
-    expect(renditionShell()?.save).toBe(save);
-
-    Reflect.deleteProperty(window, 'pop');
   });
 });

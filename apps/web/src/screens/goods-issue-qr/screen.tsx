@@ -25,7 +25,7 @@ import {
   useUomNames,
 } from './lookups';
 import { useDocumentIssueWrite, usePrintFlow } from './mutations';
-import { hasPrintBridge } from './pop-print';
+import { hasPrintBridge } from '../../patterns/pop-print';
 import { printResult, type PrintResult } from './print-result';
 import {
   goodsIssueQrKeys,
