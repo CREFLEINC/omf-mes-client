@@ -83,7 +83,13 @@ export const WorkOrderList = ({
 
         {/* 「전체 보기」는 조회 축 하나를 뺄 뿐이다 — 다른 조건은 그대로다(§5-5). */}
         {!isEquipmentMissing && (
-          <Button type="button" variant="outlined" size="xl" onClick={onToggleScope}>
+          <Button
+            type="button"
+            variant="outlined"
+            size="xl"
+            className="work-start-head-button"
+            onClick={onToggleScope}
+          >
             {isShowingAll ? t.showEquipmentOnly : t.showAll}
           </Button>
         )}
