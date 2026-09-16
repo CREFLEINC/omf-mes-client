@@ -53,6 +53,7 @@ const POP_SCREEN_DIRS = [
   'packing-result',
   'shipping-packing-label',
   'repack-label-issue',
+  'shipping-unit',
   'running-change',
   'work-hold-register',
 ];

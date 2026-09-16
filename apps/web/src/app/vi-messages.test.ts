@@ -127,6 +127,7 @@ const TRANSLATED = [
   'downtimeRegister',
   'emergencyWorkOrderField',
   'goodsIssueQr',
+  'shippingUnit',
   'materialInputScan',
   'packingLabelReprint',
   'packingResult',

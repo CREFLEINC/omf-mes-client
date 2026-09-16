@@ -47,8 +47,14 @@ const SCALE_HEAD = 3;
 const SCALE_VALUE = 4;
 const SCALE_SMALL = 3;
 
-/** 품목 줄 자리. 넘치면 마지막 자리를 안내에 내준다(`patterns/label/fold`). */
-const MAX_ITEM_ROWS = ROWS.item.length;
+/**
+ * 품목 줄 자리. 넘치면 마지막 자리를 안내에 내준다(`patterns/label/fold`).
+ *
+ * ⚠ **화면 미리보기가 같은 수로 접어야 한다** — 다르면 담당이 본 것과 종이로 나온 것이
+ *   달라지고, 라벨은 되돌릴 수 없어 그 어긋남을 나중에야 알게 된다. 그래서 내보낸다.
+ */
+export const DELIVERY_LABEL_ITEM_ROWS = ROWS.item.length;
+const MAX_ITEM_ROWS = DELIVERY_LABEL_ITEM_ROWS;
 
 /** 값이 없을 때 그 자리에 세우는 표식. 빈칸과 구별된다. */
 const UNKNOWN = '-';

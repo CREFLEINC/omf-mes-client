@@ -5873,3 +5873,78 @@
 .pop-ui .production-flow-scan input {
   min-height: 4rem;
 }
+
+/*
+ * P-04-05 출하 단위 구성 — **세로 예산을 넷으로 나눈다**(통합 담당 확정 2026-09-16).
+ *
+ * POP 규격은 「헤더 64 + 본문 616 + 액션바 88 = 768, 슬랙 0」이다. 이 화면의 배분은
+ * ① 72 · ② 72 · ③ 남는 것 · ④ 88 이고 **스크롤은 ③ 하나**다.
+ *
+ * ⛔ **①②④ 를 `pop-fixed` 로 뺀다**(표시에서 단다). 그러지 않으면 「남는 높이를 가져갈
+ *    블록」 규칙이 넷 모두에 걸려 각자 1/4 을 받는다 — 목록이 세 줄로 눌려 상자를 고를 수
+ *    없게 된다. 전례 P-04-02 는 같은 자리에서 **표 높이가 0 으로 깔려 현장에서 라벨을 못
+ *    뽑았다**(#1092).
+ *
+ * ⚠ 픽셀을 그대로 박지 않고 「무엇이 늘어나지 «않는가»」로 적는다 — 창이 768 이 아닐 때
+ *   어긋난다. `pop-fit` 이 배율로 줄이지만 상한이 1 이라 키우지는 않는다.
+ */
+.pop-ui .shipping-unit-entry,
+.pop-ui .shipping-unit-unit {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+/* 고르는 칸이 남는 폭을 갖고 단추는 글자만큼만 선다 — 이 화면의 다른 줄과 같은 규범이다. */
+.pop-ui .shipping-unit-entry > .pop-select,
+.pop-ui .shipping-unit-unit > .pop-select {
+  flex: 1 1 18rem;
+  min-width: 0;
+}
+
+/* 안내는 줄에서 빠져 아래로 내려간다 — 칸 옆에 끼면 줄이 밀려 칸과 단추가 어긋난다. */
+.pop-ui .shipping-unit-entry > .field-note,
+.pop-ui .shipping-unit-unit > .field-note {
+  flex: 1 0 100%;
+  margin: 0;
+}
+
+/*
+ * ③ 이 남는 높이를 가져간다. 목록은 **세 줄이 보일 만큼**을 바닥으로 둔다 — 한 줄만 보이면
+ * 무엇을 뺄지 고를 수가 없다(전례 `.pop-slabel-table` · #1092).
+ */
+.pop-ui .shipping-unit-boxes {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  min-height: 0;
+}
+
+.pop-ui .shipping-unit-boxes > table {
+  min-height: 96px;
+}
+
+/* ④ 품목별 합 — 세 줄 + 「외 n건」이 들어갈 만큼만 선다. */
+.pop-ui .shipping-unit-totals {
+  margin: 0;
+  padding-inline-start: var(--space-4);
+  display: grid;
+  gap: var(--space-1);
+}
+
+/*
+ * ⛔ **액션 줄에 세로 리듬 여백이 붙지 않게 한다.** `.pop-section > * > * + *` 가 쌓는
+ *    덩어리를 띄우는 규칙인데, 단추가 가로로 서는 이 줄에서는 둘째 단추만 아래로 내려앉는다
+ *    (전례 `.pack-work-actions`·`.pop-repack-actions`).
+ */
+.pop-ui .shipping-unit-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.pop-ui .shipping-unit-actions > * + * {
+  margin-top: 0;
+}
