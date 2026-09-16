@@ -60,7 +60,7 @@ export const materialPicking = {
      */
     heldReasonLoading: '보류 사유를 확인하는 중입니다',
     heldReasonFailed: '보류 사유를 확인하지 못했습니다',
-    done: '피킹을 마쳤습니다',
+    done: '피킹 완료',
   },
   scan: {
     legend: 'LOT 스캔',

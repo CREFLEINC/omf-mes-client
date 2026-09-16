@@ -40,7 +40,7 @@ export const materialPicking: Translated<typeof ko.materialPicking> = {
     heldReasonUnknown: (code: string) => `Lý do tạm giữ ${code} (không có tên hiển thị)`,
     heldReasonLoading: 'Đang xác nhận lý do tạm giữ',
     heldReasonFailed: 'Không xác nhận được lý do tạm giữ',
-    done: 'Đã lấy hàng xong',
+    done: 'Lấy hàng xong',
   },
   scan: {
     legend: 'Quét LOT',

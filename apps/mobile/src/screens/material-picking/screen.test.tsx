@@ -491,7 +491,7 @@ describe('자재 출고·피킹 화면', () => {
     await chooseOrder(user);
     await pickLine(user, '200');
 
-    expect(await screen.findByText('피킹을 마쳤습니다')).toBeTruthy();
+    expect(await screen.findByText('피킹 완료')).toBeTruthy();
     expect(screen.getByRole('radio', { name: /ABC-123/ }).hasAttribute('disabled')).toBe(true);
   });
 

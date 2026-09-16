@@ -24,7 +24,7 @@ export const productPicking = {
     line: (no: number) => `${String(no)}번 라인`,
     progress: (allocated: string, picked: string) => `배정 ${allocated} · 피킹 ${picked}`,
     remaining: (qty: string, uom: string) => `남은 배정 ${qty} ${uom}`,
-    complete: '배정만큼 피킹을 마쳤습니다',
+    complete: '배정만큼 피킹 완료',
     inspection: '출하검사 대상',
   },
   target: {

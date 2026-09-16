@@ -18,7 +18,7 @@ export const productPicking: Translated<typeof ko.productPicking> = {
     line: (no: number) => `Dòng ${String(no)}`,
     progress: (allocated: string, picked: string) => `Phân bổ ${allocated} · Đã lấy ${picked}`,
     remaining: (qty: string, uom: string) => `Phân bổ còn lại ${qty} ${uom}`,
-    complete: 'Đã lấy hàng xong theo phân bổ',
+    complete: 'Lấy hàng xong theo phân bổ',
     inspection: 'Thuộc diện kiểm tra xuất hàng',
   },
   target: {
