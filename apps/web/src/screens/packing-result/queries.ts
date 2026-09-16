@@ -13,7 +13,7 @@ import type {
 } from './types';
 
 /**
- * 이 화면의 읽기 — **스캔 둘 · 상위 포장 후보 · 포장 유형 · 진행**.
+ * 이 화면의 읽기 — **스캔 둘 · 포장 유형 · 진행**.
  *
  * ⭐ **두 스캔은 «조회»가 아니라 «액션»이다.** 작업자가 읽힌 순간에만 일어나고 같은 코드를
  * 다시 읽으면 다시 나가야 한다 — 그래서 `useMutation` 이다. 캐시에 앉히면 두 번째 스캔이
@@ -66,8 +66,6 @@ const collectAllPages = async <T>(
 
 export const packingResultKeys = {
   typeOptions: ['packing-result', 'handling-unit-types'] as const,
-  parentsRoot: ['packing-result', 'parents'] as const,
-  parents: (warehouseId: number) => ['packing-result', 'parents', warehouseId] as const,
   progress: (shipmentId: number) => ['packing-result', 'progress', shipmentId] as const,
   uoms: ['packing-result', 'uoms'] as const,
   todayShipments: (businessDate: string) =>
@@ -273,41 +271,6 @@ export const useHandlingUnitTypeOptions = (): TypeOptions => {
     isPending: query.isPending,
     isUnavailable: query.isError || (!query.isPending && options.length === 0),
   };
-};
-
-/**
- * 상위 포장 후보 — **이 출하 창고로 좁힌다**(스펙 §5-2-1).
- *
- * ⛔ **「부모가 없는 것만」으로 좁히지 않는다.** 계층 깊이가 확정이 아니고(미결 4), 이 화면은
- * 매번 새 취급 단위를 만들어 상위를 고르므로 **자기 하위가 존재할 수 없다** — 순환이 구조적으로
- * 불가능하다. ⚠ **후보가 0건이어도 정상이다.**
- */
-export interface ParentCandidates {
-  candidates: HandlingUnit[];
-  isPending: boolean;
-}
-
-export const useParentCandidates = (warehouseId: number | null): ParentCandidates => {
-  const { client } = useApiClient();
-
-  const query = useQuery({
-    queryKey: packingResultKeys.parents(warehouseId ?? 0),
-    enabled: warehouseId !== null,
-    queryFn: async () => {
-      if (warehouseId === null)
-        throw new Error('창고를 모르면 상위 포장 후보를 조회하지 않습니다.');
-
-      const data = await runRequest(() =>
-        client.GET('/inventory/handling-units', {
-          params: { query: { warehouseId, size: OPTION_SIZE } },
-        }),
-      );
-
-      return data.items;
-    },
-  });
-
-  return { candidates: query.data ?? [], isPending: query.isPending };
 };
 
 /**

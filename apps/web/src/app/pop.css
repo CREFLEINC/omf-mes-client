@@ -1054,10 +1054,6 @@
   overflow-y: auto;
 }
 
-.pop-ui .packing-compose-main > .packing-parent {
-  flex: none;
-}
-
 /*
  * ③ 오른쪽 단(키패드 자리) — **기다리는 동안에도 빈 기둥으로 두지 않는다.**
  *
@@ -1097,9 +1093,8 @@
   flex: 0 0 13rem;
 }
 
-/* 이름–칸 짝은 한 줄에 — 설계 §3 의 「유형 [ 카톤 ▾ ]」·「상위 포장 [ (없음) ▾ ]」 꼴이다. */
-.pop-ui .packing-compose-head,
-.pop-ui .packing-parent {
+/* 이름–칸 짝은 한 줄에 — 설계 §3 의 「유형 [ 카톤 ▾ ]」 꼴이다. */
+.pop-ui .packing-compose-head {
   align-items: center;
 }
 
@@ -1114,8 +1109,7 @@
  *    넓어지는 것은 «칸»이지 단추가 아니다 — 단추가 늘어나면 누르는 자리가 줄마다 달라진다.
  */
 .pop-ui.packing-shell .scan-row > :first-child,
-.pop-ui.packing-shell .packing-compose-head > .pop-select,
-.pop-ui.packing-shell .packing-parent > .pop-select {
+.pop-ui.packing-shell .packing-compose-head > .pop-select {
   flex: 1 1 auto;
   min-width: 0;
 }

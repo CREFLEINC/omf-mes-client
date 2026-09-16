@@ -80,14 +80,11 @@ export const packingResult = {
     handlingUnitType: '유형',
     /** 이름은 칸 옆에 있으므로 안내 글은 「무엇을 하라」만 남긴다. */
     typePlaceholder: '고르세요',
-    parentHandlingUnit: '상위 포장',
-    parentNone: '(없음)',
   },
   notes: {
     /** 출하 대상을 아직 고르지 않았다 — 본문 맨 위 안내 띠(사용자 지시 2026-09-15). */
     selectShipment: '출하 대상을 선택하세요.',
     /** 후보가 없는 것은 고장이 아니다(스펙 §5-2-1). */
-    parentEmpty: '이 창고에 담을 상위 포장이 없습니다. 없이 확정할 수 있습니다',
     typeUnavailable: '포장 유형을 받지 못했습니다. 다시 시도해 주세요',
   },
   progress: {

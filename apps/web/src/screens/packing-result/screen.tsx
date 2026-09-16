@@ -26,7 +26,6 @@ import {
   useUomDecimals,
   useLabelScan,
   useLotScan,
-  useParentCandidates,
   useShipmentAllocations,
   useShipmentScan,
   useShipmentSelection,
@@ -38,9 +37,6 @@ import type { MatchedLot, PackedLine, ShipmentEntry, ShipmentLotAllocation } fro
 import { useOnline } from './use-online';
 
 const t = messages.packingResult;
-
-/** 상위 포장을 고르지 않은 상태. `Select` 가 문자열만 다루므로 「없음」에 값을 하나 준다. */
-const NO_PARENT = '';
 
 /**
  * P-04-01 · Packing(P&P) 실적 등록 — **POP 1024×768 터치**.
@@ -58,7 +54,6 @@ const NO_PARENT = '';
 export const PackingResultScreen = () => {
   const titleId = useId();
   const typeLabelId = useId();
-  const parentLabelId = useId();
   const shipmentLabelId = useId();
   const identity = usePackingIdentity();
   const isOnline = useOnline();
@@ -86,7 +81,6 @@ export const PackingResultScreen = () => {
    * (스펙 §3). 확정이 이 포장을 닫는다.
    */
   const [openUnit, setOpenUnit] = useState<OpenHandlingUnit | null>(null);
-  const [parentId, setParentId] = useState<string>(NO_PARENT);
   const [confirmedNo, setConfirmedNo] = useState<string | null>(null);
   const [automaticLabelRun, setAutomaticLabelRun] = useState<AutomaticLabelRun | null>(null);
   const [isLabelMode, setLabelMode] = useState(false);
@@ -101,7 +95,6 @@ export const PackingResultScreen = () => {
   const allowsDecimal = useUomDecimals();
   const shipmentId = entry?.shipmentId ?? label?.shipmentId ?? null;
   const warehouseId = label?.warehouseId ?? null;
-  const parents = useParentCandidates(warehouseId);
   const shipmentAllocations = useShipmentAllocations(shipmentId);
   const progress = toProgress(shipmentAllocations.allocations);
   /*
@@ -139,7 +132,6 @@ export const PackingResultScreen = () => {
       setMatched(null);
       setQty('');
       setMergeNote(null);
-      setParentId(NO_PARENT);
       /* 이 포장은 닫혔다 — 다음 포장은 새로 만든다. */
       setOpenUnit(null);
       setConfirmedNo(handlingUnit.handlingUnitNo);
@@ -176,7 +168,6 @@ export const PackingResultScreen = () => {
     setLines([]);
     setQty('');
     setMergeNote(null);
-    setParentId(NO_PARENT);
     setAutomaticLabelRun(null);
 
     return true;
@@ -275,7 +266,6 @@ export const PackingResultScreen = () => {
     createUnit.mutate(
       {
         handlingUnitTypeCode: typeCode,
-        parentHandlingUnitId: parentId === NO_PARENT ? null : Number(parentId),
         warehouseId,
         workerNo: identity.workerNo,
       },
@@ -553,43 +543,6 @@ export const PackingResultScreen = () => {
                 options={typeOptions.options}
               />
               {typeOptions.isUnavailable && <p className="field-note">{t.notes.typeUnavailable}</p>}
-            </div>
-
-            {/*
-             * ⭐ **상위 포장은 내용물 «앞»에 선다**(사용자 지시 2026-09-10 · 새 도면
-             *   「유형 [값] [선택] · 상위 포장 [값] [선택] · 내용물/수량 목록」). 고르는 칸 둘이
-             *   붙어 있어야 한 덩어리로 읽힌다 — 사이에 목록이 끼면 상위 포장이 목록의 일부처럼
-             *   보이고, 담은 뒤에야 눈에 띈다.
-             */}
-            <div className="packing-parent">
-              <span className="field-label" id={parentLabelId}>
-                {t.fields.parentHandlingUnit}
-              </span>
-              <Select
-                size="xl"
-                aria-labelledby={parentLabelId}
-                placeholder={t.fields.parentNone}
-                value={parentId === NO_PARENT ? null : parentId}
-                onChange={(value) => {
-                  setParentId(value ?? NO_PARENT);
-                }}
-                /*
-                 * ⛔ **후보를 계층으로 거르지 않는다**(§5-2-1). 계층 깊이가 확정이 아니고, 이
-                 * 화면은 매번 새 취급 단위를 만들므로 자기 하위가 존재할 수 없다.
-                 */
-                options={parents.candidates.map((candidate) => ({
-                  value: String(candidate.handlingUnitId),
-                  label: candidate.handlingUnitNo,
-                }))}
-              />
-              {/*
-               * ⛔ **「팔레트에 담으면 지정합니다」를 상시로 두지 않는다**(사용자 지적
-               *   2026-09-10) — 스펙에 없는 문장이고, 고를 것이 있으면 목록이 이미 그 말을
-               *   한다. 후보가 «없을» 때만 왜 못 고르는지 적는다.
-               */}
-              {warehouseId !== null && !parents.isPending && parents.candidates.length === 0 && (
-                <p className="field-note">{t.notes.parentEmpty}</p>
-              )}
             </div>
 
             <ContentsTable

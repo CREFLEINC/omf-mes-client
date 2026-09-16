@@ -61,12 +61,9 @@ export const packingResult: Translated<typeof ko.packingResult> = {
   fields: {
     handlingUnitType: 'Loại',
     typePlaceholder: 'Chọn',
-    parentHandlingUnit: 'Kiện cha',
-    parentNone: '(Không có)',
   },
   notes: {
     selectShipment: 'Hãy chọn đối tượng xuất hàng.',
-    parentEmpty: 'Kho này không có kiện cha để cho vào. Có thể xác nhận mà không cần',
     typeUnavailable: 'Không nhận được loại kiện. Hãy thử lại',
   },
   progress: {

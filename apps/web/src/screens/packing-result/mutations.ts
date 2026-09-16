@@ -58,7 +58,6 @@ type Client = ApiClient['client'];
 /** ① 취급 단위를 만들 때 서버에 보내는 값. 이것이 같으면 «같은 쓰기»다. */
 export interface CreateHandlingUnitBody {
   handlingUnitTypeCode: string;
-  parentHandlingUnitId: number | null;
   /** 배분 응답의 `warehouseId` 를 그대로 보낸다(`omf-mes#330` D). ⛔ 비우지 않는다. */
   warehouseId: number;
 }
@@ -92,11 +91,7 @@ const signatureOf = (parts: readonly (string | number | null)[]): string =>
  * 새 키가 나가면, 앞의 요청이 서버에 닿아 있었을 경우 **내용물 0 인 포장이 한 벌 남는다.**
  */
 export const keptCreateKey = (previous: KeptKey | null, body: CreateHandlingUnitBody): KeptKey => {
-  const signature = signatureOf([
-    body.handlingUnitTypeCode,
-    body.parentHandlingUnitId,
-    body.warehouseId,
-  ]);
+  const signature = signatureOf([body.handlingUnitTypeCode, body.warehouseId]);
 
   return previous !== null && previous.signature === signature
     ? previous
@@ -171,9 +166,6 @@ export const createHandlingUnit = async (
       },
       body: {
         handlingUnitTypeCode: input.handlingUnitTypeCode,
-        ...(input.parentHandlingUnitId === null
-          ? {}
-          : { parentHandlingUnitId: input.parentHandlingUnitId }),
         warehouseId: input.warehouseId,
       },
     }),
@@ -354,8 +346,6 @@ export const usePackingConfirm = ({
       if (shipmentId !== null) {
         void queryClient.invalidateQueries({ queryKey: packingResultKeys.progress(shipmentId) });
       }
-      /* 방금 만든 포장이 다음 포장의 «상위 후보»가 된다 — 창고별 목록을 통째로 무르게 한다. */
-      void queryClient.invalidateQueries({ queryKey: packingResultKeys.parentsRoot });
       onSuccess(handlingUnit);
     },
   });
