@@ -1,5 +1,7 @@
 import type { components } from '@omf-mes/api-client';
 
+import type { ShippingUnitDetail } from '../shipping-unit/types';
+
 import { DELIVERY_LABEL, type LabelKind } from './codes';
 
 type AllocationResponse = components['schemas']['ShipmentLotAllocation'];
@@ -20,7 +22,11 @@ export const toShipmentView = (data: ShipmentResponse): ShipmentView => ({
 });
 
 /**
- * 출하 배분 한 건 — **납품 라벨의 대상**이다(요구서 §3-8).
+ * 출하 배분 한 건 — **포장 라벨이 이것으로 그려지고, 이것에서 취급 단위를 찾는다.**
+ *
+ * ⛔ **더는 납품 라벨의 대상이 아니다**(SHIP-UNIT-01). 주인이 출하 단위로 옮겨가며 서버가
+ *    배분 대상 발행을 422 로 막았다 — 그래서 `oqcPassed` 도 여기서 걷었다. 발행 자격을 가르던
+ *    유일한 사용처가 납품 라벨이었고, 지금 그 자격은 **출하 단위의 마감 여부**다.
  *
  * ⛔ **응답을 통째로 넓히지 않는다.** 배분에는 창고·단위·잔여 수량이 함께 오는데 이 화면이
  * 그리지도 보내지도 않는 값이다 — 자리를 두지 않으면 새어 나갈 경로도 없다.
@@ -31,19 +37,23 @@ export interface AllocationView {
   /**
    * 없을 수 있다 — 계약이 선택으로 둔다.
    *
-   * ⚠ **없을 때 대신 그릴 것이 응답에 없다.** 품목 코드는 배분 응답에 실리지 않는다(계약 확인
-   * 2026-09-02) — 계획 §6-C 로 올린 자리다. 그때까지는 자리표시 문구를 그린다.
+   * ⚠ 없을 때는 자리표시 문구를 그린다. **품목 코드로 대신하지 않는다** — 목록의 「대상」 칸은
+   *   LOT 을 가리키는 자리라, 품목 코드를 넣으면 다른 것을 가리키면서 같은 칸처럼 보인다.
    */
   lotNo: string | null;
+  /**
+   * 품목 코드.
+   *
+   * ⭐ **포장 라벨이 이것을 찍는다**(설계 §8). 품목 «이름»이 아니라 코드다 — 점 글꼴이
+   *    영문·숫자만 갖고, 없는 글자는 채운 상자로 나간다(`patterns/label/bitmap`).
+   */
+  itemCode: string;
+  /** 이 배분이 상자에 담긴 수량. 포장 라벨의 수량 줄이 쓴다. */
+  allocatedQty: number;
+  /** 수량의 단위. **코드는 따로 풀어야 한다** — 배분 응답에는 식별자만 온다. */
+  uomId: number;
   /** 포장하지 않는 출하도 있다(계약 명시) — 그래서 비어 올 수 있다. */
   handlingUnitId: number | null;
-  /**
-   * 출하검사에 합격했는가. **서버가 판정한 값이다** — 화면이 검사 결과를 보고 정하지 않는다.
-   *
-   * ⭐ 검사 대상이 아닌 배분도 참으로 온다(계약 명시) — 「검사를 안 거쳤다」가 「발행하면
-   * 안 된다」가 아니기 때문이다.
-   */
-  oqcPassed: boolean;
 }
 
 /** 응답 한 건을 화면 타입으로 옮기는 **유일한 지점**이다. */
@@ -51,8 +61,10 @@ export const toAllocationView = (data: AllocationResponse): AllocationView => ({
   shipmentLotAllocationId: data.shipmentLotAllocationId,
   lotId: data.lotId,
   lotNo: data.lotNo ?? null,
+  itemCode: data.itemCode,
+  allocatedQty: data.allocatedQty,
+  uomId: data.uomId,
   handlingUnitId: data.handlingUnitId ?? null,
-  oqcPassed: data.oqcPassed,
 });
 
 /**
@@ -83,7 +95,7 @@ export const toHandlingUnitView = (data: HandlingUnitResponse): HandlingUnitView
  */
 export interface TargetRow {
   /**
-   * **목록 줄의 정체성.** 고름·표 행 키가 이 값이다. 납품 라벨은 배분, 포장 라벨은 취급 단위.
+   * **목록 줄의 정체성.** 고름·표 행 키가 이 값이다. 납품 라벨은 출하 단위, 포장 라벨은 취급 단위.
    *
    * ⛔ 서버로 나가는 값이 아니다 — 그것은 `issueTargetId` 다. 둘을 하나로 두었더니 계약이
    * 거부하는 대상 유형으로 조회가 나갔다(실측 2026-09-03).
@@ -92,7 +104,7 @@ export interface TargetRow {
   /**
    * **서버가 아는 대상 식별자** — 회차 조회와 발행 요청에 실리는 값이다.
    *
-   * 대상 유형(`codes.ts`)과 짝이다: 납품 라벨은 `SHIPMENT_LOT_ALLOCATION`, 포장 라벨은
+   * 대상 유형(`codes.ts`)과 짝이다: 납품 라벨은 `SHIPPING_UNIT`, 포장 라벨은
    * `HANDLING_UNIT` 식별자를 사용한다.
    */
   issueTargetId: number;
@@ -100,7 +112,7 @@ export interface TargetRow {
    * 화면에 그리는 대상 이름.
    *
    * ⚠ **클라이언트가 조립하지 않는다**(공유계약 A-10) — 서버가 준 문자열 하나를 그대로 쓴다.
-   * 납품 라벨은 LOT 번호(없으면 품목 코드), 포장 라벨은 취급 단위 번호다.
+   * 납품 라벨은 출하 단위 번호, 포장 라벨은 취급 단위 번호다.
    */
   displayName: string;
   /**
@@ -109,11 +121,11 @@ export interface TargetRow {
    */
   lotId: number | null;
   /**
-   * 발행할 수 있는가. **납품 라벨만 이 값이 거짓이 된다** — 고객에게 나가는 것이라 OQC
-   * 합격 건에만 붙는다(스펙 §5-1). 포장 라벨은 검사와 무관해 언제나 참이다.
+   * 발행할 수 있는가. **납품 라벨만 이 값이 거짓이 된다** — 서버가 **마감된 출하 단위**에만
+   * 발행하고 그 밖은 422 STATE_LOCKED 다. 포장 라벨은 언제나 참이다.
    */
   isIssuable: boolean;
-  /** 상태 칸에 그리는 문자열. 종류마다 뜻이 다르다 — 합격 여부 / 취급 단위 상태. */
+  /** 상태 칸에 그리는 문자열. 종류마다 뜻이 다르다 — 단위 상태 / 취급 단위 상태. */
   statusLabel: string;
 }
 
@@ -138,26 +150,31 @@ export const toIssueSummaryView = (data: DocumentIssueSummaryResponse): IssueSum
   lastPrintOutcome: data.lastPrintOutcome ?? null,
 });
 
+/** 출하 단위가 마감됐는가 — 발행 자격이 이 한 값이다. */
+export const isClosedUnit = (unit: ShippingUnitDetail): boolean => unit.statusCode === 'CLOSED';
+
 /**
- * 배분을 목록 줄로 옮긴다 — **납품 라벨 갈래.**
+ * 출하 단위를 목록 줄로 옮긴다 — **납품 라벨 갈래.**
  *
- * ⛔ **미합격 건을 목록에서 빼지 않는다.** 스펙 §3 의 목록이 검사 대기 건을 「⛔ 발행 불가」로
- * 함께 그린다 — 빼 버리면 사용자는 그 포장이 «어디 갔는지» 알 수 없고, 검사를 기다리는
- * 중인지 애초에 이 출하에 없는지 구분하지 못한다(공유계약 G-9).
+ * ⛔ **구성 중인 단위를 목록에서 빼지 않는다.** 스펙 §3 의 목록이 아직 못 뽑는 대상을
+ * 「⛔ 발행 불가」로 함께 그린다 — 빼 버리면 사용자는 그 단위가 «어디 갔는지» 알 수 없고,
+ * 마감을 기다리는 중인지 애초에 이 출하에 없는지 구분하지 못한다(공유계약 G-9).
+ *
+ * ⛔ **`lotId` 를 비운다.** 한 출하 단위에 여러 LOT 이 섞여 하나로 정할 수 없다 — 포장 라벨과
+ * 같은 이유다(공유계약 A-21). 서버도 이 대상 유형에 `lotId` 를 `null` 로 둔다(전달본 v4 ④).
  */
 export const toDeliveryRow = (
-  allocation: AllocationView,
-  passedLabel: string,
-  waitingLabel: string,
-  unnamedLabel: string,
+  unit: ShippingUnitDetail,
+  closedLabel: string,
+  composingLabel: string,
 ): TargetRow => ({
-  targetId: allocation.shipmentLotAllocationId,
-  issueTargetId: allocation.shipmentLotAllocationId,
-  // 서버가 준 표시 문자열만 쓴다 — 없으면 지어내지 않고 「없음」을 밝힌다(공유계약 G-9).
-  displayName: allocation.lotNo ?? unnamedLabel,
-  lotId: allocation.lotId,
-  isIssuable: allocation.oqcPassed,
-  statusLabel: allocation.oqcPassed ? passedLabel : waitingLabel,
+  targetId: unit.shippingUnitId,
+  issueTargetId: unit.shippingUnitId,
+  // 서버가 준 표시 문자열만 쓴다 — 출하 단위 번호가 곧 납품 라벨 번호다(계약 명시).
+  displayName: unit.shippingUnitNo,
+  lotId: null,
+  isIssuable: isClosedUnit(unit),
+  statusLabel: isClosedUnit(unit) ? closedLabel : composingLabel,
 });
 
 /**

@@ -4,11 +4,13 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useCallback, useRef, useState } from 'react';
 
 import { useApiClient } from '../../patterns/api-context';
+import { renditionShell } from '../../patterns/pop-print';
 import { runRequest, toApiError } from '../../patterns/request';
+
 import { toDocumentIssueBody, toLotCreateBody, toPrintReportBody } from './issue-request';
 import { buildMaterialLotLabel } from './label-tspl';
 import { receiptKeys } from './queries';
-import { popShell } from './shell-print';
+
 import { toIssueView, type IssueView, type TargetRow } from './types';
 
 type Client = ApiClient['client'];
@@ -321,7 +323,7 @@ export const useLabelIssue = ({ workerNo }: IssueRunOptions): IssueRunResultHand
           const bytes = await buildLabel(client, { row, issue, lotId, uomCode });
 
           enter('print');
-          const shell = popShell();
+          const shell = renditionShell();
 
           /*
            * ⛔ **통로가 없는 것을 인쇄 성공으로 보고하지 않는다.** 기록은 이미 남았으므로
@@ -330,7 +332,7 @@ export const useLabelIssue = ({ workerNo }: IssueRunOptions): IssueRunResultHand
           const failureReason =
             shell === null
               ? NO_SHELL_REASON
-              : await shell.rendition
+              : await shell
                   .save(
                     bytes,
                     `lot-${String(issue.documentIssueLogId)}`,

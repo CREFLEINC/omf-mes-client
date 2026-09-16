@@ -7631,13 +7631,6 @@ dl.filter-bar.approval-inbox-detail-facts {
   margin: 0;
 }
 
-.packing-parent {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-3);
-}
-
 .packing-keypad {
   display: grid;
   align-content: start;

@@ -9,6 +9,7 @@ import {
   renderWithProviders,
   type StubRoute,
 } from '../../test/api-harness';
+import { ITEM_SEARCH_MIN_LENGTH } from './lookups';
 import {
   itemFixtures,
   partnerFixtures,
@@ -159,6 +160,150 @@ describe('ShipmentRequestCreateScreen — 단독 생성(완료 조건 C3)', () =
     await user.click(screen.getByRole('button', { name: t.actions.removeLine(2) }));
 
     expect(screen.queryByRole('button', { name: t.actions.removeLine(2) })).not.toBeInTheDocument();
+  });
+});
+
+/**
+ * **품목 검색**(SHIP-FINAL-01 P6).
+ *
+ * ⛔ **첫 쪽만으로는 편성이 통째로 막힌다.** 계약이 코드 오름차순으로 쪽을 나눠 주는데 화면이
+ *    첫 쪽만 옵션으로 실어, 그 너머의 품목은 고를 방법이 **아예 없었다** — 실측에서 시나리오
+ *    제품이 목록에 서지 않아 지시서를 만들 수 없었다. 잘림 안내는 그 사실을 말할 뿐 길을 주지
+ *    않는다.
+ */
+describe('ShipmentRequestCreateScreen — 품목 검색(P6)', () => {
+  /** 첫 쪽 밖의 품목. 검색으로만 닿는다. */
+  const FAR_ITEM = { itemId: 8399, itemCode: 'SAMPLE-ITEM-99', itemName: '합성 먼 품목', isActive: true };
+  const FAR_LABEL = `${FAR_ITEM.itemCode} · ${FAR_ITEM.itemName}`;
+
+  /**
+   * 검색어가 있으면 그 결과를, 없으면 첫 쪽을 준다.
+   *
+   * ⚠ `total` 을 실제 건수보다 크게 두어 **잘림**을 만든다 — 서버가 쪽을 나눴다는 사실이
+   *   화면에 그대로 드러나야 한다.
+   */
+  const itemRoutes = (options: { truncated?: boolean } = {}): StubRoute[] =>
+    baseRoutes().map((route) =>
+      route === undefined
+        ? route
+        : {
+            ...route,
+            respond: (request: Request) => {
+              if (!isGet(request, ITEMS_PATH)) return route.respond(request);
+
+              const term = new URL(request.url).searchParams.get('q');
+              const items = term === null ? itemFixtures : [FAR_ITEM];
+
+              return jsonResponse({
+                items,
+                page: {
+                  page: 1,
+                  size: 50,
+                  total: options.truncated === true ? items.length + 7 : items.length,
+                },
+              });
+            },
+          },
+    );
+
+  const startStandalone = async (user: ReturnType<typeof userEvent.setup>): Promise<void> => {
+    await user.click(await screen.findByRole('button', { name: t.actions.startStandalone }));
+    await screen.findByRole('region', { name: t.panes.lines });
+  };
+
+  it('검색어를 치면 그 결과로 선택지가 바뀐다', async () => {
+    const user = userEvent.setup();
+
+    renderWithProviders(<ShipmentRequestCreateScreen />, {
+      fetch: createStubFetch(itemRoutes()),
+      route: ROUTE,
+    });
+
+    await startStandalone(user);
+    await user.type(screen.getByLabelText(t.lineTable.itemSearchLabel(1)), 'ITEM-99');
+    await user.click(await screen.findByRole('combobox', { name: t.lineTable.itemLabel(1) }));
+
+    expect(await screen.findByRole('option', { name: FAR_LABEL })).toBeInTheDocument();
+    /* 첫 쪽 품목은 이제 후보가 아니다 — 목록이 «바뀌는» 것이지 더해지는 것이 아니다. */
+    expect(
+      screen.queryByRole('option', { name: 'SAMPLE-ITEM-01 · 합성 품목 가' }),
+    ).not.toBeInTheDocument();
+  });
+
+  /* ⛔ 「왜 아무 일도 안 일어나는가」를 밝힌다 — 감추면 고장으로 읽는다(공유계약 G-9). */
+  it('한 글자로는 검색하지 않고 그 사실을 적는다', async () => {
+    const user = userEvent.setup();
+    const seen: string[] = [];
+    const routes = itemRoutes().map((route) => ({
+      ...route,
+      respond: (request: Request) => {
+        if (isGet(request, ITEMS_PATH)) {
+          const term = new URL(request.url).searchParams.get('q');
+
+          if (term !== null) seen.push(term);
+        }
+
+        return route.respond(request);
+      },
+    }));
+
+    renderWithProviders(<ShipmentRequestCreateScreen />, {
+      fetch: createStubFetch(routes),
+      route: ROUTE,
+    });
+
+    await startStandalone(user);
+    await user.type(screen.getByLabelText(t.lineTable.itemSearchLabel(1)), 'S');
+
+    expect(
+      await screen.findByText(t.lineTable.itemSearchTooShort(ITEM_SEARCH_MIN_LENGTH)),
+    ).toBeInTheDocument();
+    expect(seen).toEqual([]);
+  });
+
+  it('검색 결과도 잘렸으면 그 사실을 그대로 적는다', async () => {
+    const user = userEvent.setup();
+
+    renderWithProviders(<ShipmentRequestCreateScreen />, {
+      fetch: createStubFetch(itemRoutes({ truncated: true })),
+      route: ROUTE,
+    });
+
+    await startStandalone(user);
+    await user.type(screen.getByLabelText(t.lineTable.itemSearchLabel(1)), 'ITEM-99');
+
+    expect(await screen.findByText(t.filters.lookupTruncated)).toBeInTheDocument();
+  });
+
+  /*
+   * ⛔ **고른 값이 목록에서 사라지지 않는다.** 검색으로 고른 뒤 검색어를 지우면 선택지는 첫
+   *    쪽으로 돌아가는데, 고른 품목이 첫 쪽에 없으면 «값은 남았는데 화면에는 안 고른 것처럼»
+   *    보인다 — 그대로 저장하면 담당이 보지 못한 품목이 요청에 실린다(사용자 지시 2026-09-17).
+   */
+  it('검색으로 고른 뒤 검색어를 지워도 고른 품목이 남는다', async () => {
+    const user = userEvent.setup();
+
+    renderWithProviders(<ShipmentRequestCreateScreen />, {
+      fetch: createStubFetch(itemRoutes()),
+      route: ROUTE,
+    });
+
+    await startStandalone(user);
+
+    const search = screen.getByLabelText(t.lineTable.itemSearchLabel(1));
+    await user.type(search, 'ITEM-99');
+    await user.click(await screen.findByRole('combobox', { name: t.lineTable.itemLabel(1) }));
+    await user.click(await screen.findByRole('option', { name: FAR_LABEL }));
+
+    await user.clear(search);
+
+    /* 검색어가 사라져 선택지는 첫 쪽으로 돌아간다 — 첫 쪽 품목이 다시 후보다. */
+    await user.click(screen.getByRole('combobox', { name: t.lineTable.itemLabel(1) }));
+    expect(
+      await screen.findByRole('option', { name: 'SAMPLE-ITEM-01 · 합성 품목 가' }),
+    ).toBeInTheDocument();
+    /* ⭐ 그런데도 고른 품목은 목록에 남아 있다 — 첫 쪽에 없는 값인데도. */
+    expect(screen.getByRole('option', { name: FAR_LABEL })).toBeInTheDocument();
   });
 });
 

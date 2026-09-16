@@ -26,13 +26,14 @@ import {
 } from './line-draft';
 import { LoadErrorBanner } from './load-error-banner';
 import {
+  ITEM_SEARCH_DEBOUNCE_MS,
   describeReference,
   lookupNote,
   toReference,
   useAvailableQty,
   useCustomerOptions,
   useFulfillmentPlantOptions,
-  useItemOptions,
+  useItemChoices,
   useShipToPartnerOptions,
   useUomOptions,
   type LookupResult,
@@ -50,6 +51,7 @@ import type {
   SelectOption,
   ShipmentRequestLineDraft,
 } from './types';
+import { useDebounced } from './use-debounced';
 import { hasAllocatableLine, validateHeader, validateLines } from './validation';
 
 const t = messages.shipmentRequestCreate;
@@ -125,11 +127,28 @@ export const ShipmentRequestCreateScreen = () => {
   const customers = useCustomerOptions();
   const fulfillmentPlants = useFulfillmentPlantOptions();
   const shipToPartners = useShipToPartnerOptions();
-  const items = useItemOptions();
   const uoms = useUomOptions();
 
   const [header, setHeader] = useState<HeaderDraft>(EMPTY_HEADER_DRAFT);
   const [lines, setLines] = useState<ShipmentRequestLineDraft[]>([]);
+  /**
+   * 라인별 품목 검색어.
+   *
+   * ⛔ **초안에 넣지 않는다.** 서버로 나가는 값이 아니라 «지금 무엇을 훑는 중인가»다 —
+   *    초안에 두면 본문 조립이 그 값을 보고 지워야 할지 판단하게 된다.
+   */
+  const [itemSearch, setItemSearch] = useState<Record<string, string>>({});
+  /*
+   * ⛔ **타건마다 부르지 않는다.** 이 칸은 라인마다 서므로 다섯 줄을 편성하며 치면 타건 수만큼
+   *    요청이 나간다 — 목록은 하나뿐인데 서버는 그 수만큼 일한다(사용자 지시 2026-09-17).
+   */
+  const itemSearchTerms = Object.values(useDebounced(itemSearch, ITEM_SEARCH_DEBOUNCE_MS));
+
+  const changeItemSearch = (key: string, term: string): void => {
+    setItemSearch((prev) => ({ ...prev, [key]: term }));
+  };
+
+  const items = useItemChoices(itemSearchTerms);
 
   const lineItemIds = lines.map((line) => (line.itemId === '' ? null : Number(line.itemId)));
   const availableQty = useAvailableQty(lineItemIds);
@@ -338,9 +357,11 @@ export const ShipmentRequestCreateScreen = () => {
         onChangeHeader={changeHeader}
         lines={lines}
         lineErrors={lineValidation.errors}
-        itemLookup={items}
+        itemLookup={items.lookup}
+        itemChoiceOf={(row) => items.choiceOf(itemSearch[row.key] ?? '', row.itemId)}
+        itemSearchOf={(row) => itemSearch[row.key] ?? ''}
+        onItemSearch={changeItemSearch}
         uomLookup={uoms}
-        itemOptions={toSelectOptions(items)}
         uomOptions={toSelectOptions(uoms)}
         availableQty={availableQty}
         onPatchLine={patchLine}

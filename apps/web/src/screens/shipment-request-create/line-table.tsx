@@ -16,6 +16,7 @@ import {
   describeReference,
   toReference,
   type AvailableQtyLookup,
+  type ItemChoice,
   type ReferenceSource,
 } from './lookups';
 import type { AssignmentMode, SelectOption, ShipmentRequestLineDraft } from './types';
@@ -62,7 +63,16 @@ export interface LineTableProps {
   errors: Record<string, string>;
   itemLookup: ReferenceSource;
   uomLookup: ReferenceSource;
-  itemOptions: SelectOption[];
+  /**
+   * 이 라인의 품목 선택지 — **검색어에 따라 갈린다**(P6).
+   *
+   * ⚠ 줄마다 다른 목록이라 배열 하나로 넘기지 못한다. 고른 값이 그 목록에 없으면 훅이 그
+   *   한 건을 끼워 준다 — 화면이 선택을 스스로 지우지 않게.
+   */
+  itemChoiceOf: (row: ShipmentRequestLineDraft) => ItemChoice;
+  /** 이 라인의 품목 검색어. 화면이 쥐고 있다 — 초안(`ShipmentRequestLineDraft`)에는 없다. */
+  itemSearchOf: (row: ShipmentRequestLineDraft) => string;
+  onItemSearch: (key: string, term: string) => void;
   uomOptions: SelectOption[];
   availableQty: AvailableQtyLookup;
   isLocked?: boolean;
@@ -89,7 +99,9 @@ export const LineTable = ({
   errors,
   itemLookup,
   uomLookup,
-  itemOptions,
+  itemChoiceOf,
+  itemSearchOf,
+  onItemSearch,
   uomOptions,
   availableQty,
   isLocked = false,
@@ -108,22 +120,46 @@ export const LineTable = ({
     {
       key: 'item',
       header: t.lineTable.item,
-      render: (row, rowIndex) =>
-        isFromOrder ? (
-          describeReference(toReference(itemLookup, Number(row.itemId)))
-        ) : (
-          <Select
-            size="sm"
-            options={itemOptions}
-            value={row.itemId === '' ? null : row.itemId}
-            invalid={errorOf(row, 'itemId') !== undefined}
-            disabled={isLocked}
-            aria-label={t.lineTable.itemLabel(rowIndex + 1)}
-            onChange={(value) => {
-              onPatch(row.key, { itemId: value });
-            }}
-          />
-        ),
+      render: (row, rowIndex) => {
+        if (isFromOrder) return describeReference(toReference(itemLookup, Number(row.itemId)));
+
+        const choice = itemChoiceOf(row);
+
+        /*
+         * ⛔ **검색칸이 선택칸 «위»에 선다.** 목록을 좁히는 것이 고르는 것보다 먼저다 — 아래에
+         *    두면 담당은 좁힐 길이 있는 줄 모르고 잘린 목록을 훑는다.
+         * ⚠ 표 안이라 보이는 라벨을 둘 자리가 없다 — `aria-label` 에 줄번호를 넣는다(배치 규범
+         *   3의 이탈 조건, 같은 칸의 선택칸과 같은 방식).
+         */
+        return (
+          <div className="field-cell">
+            <TextField
+              size="sm"
+              fullWidth
+              value={itemSearchOf(row)}
+              placeholder={t.lineTable.itemSearchPlaceholder}
+              disabled={isLocked}
+              aria-label={t.lineTable.itemSearchLabel(rowIndex + 1)}
+              onChange={(event) => {
+                onItemSearch(row.key, event.target.value);
+              }}
+            />
+            <Select
+              size="sm"
+              options={choice.options}
+              value={row.itemId === '' ? null : row.itemId}
+              invalid={errorOf(row, 'itemId') !== undefined}
+              disabled={isLocked}
+              aria-label={t.lineTable.itemLabel(rowIndex + 1)}
+              onChange={(value) => {
+                onPatch(row.key, { itemId: value });
+              }}
+            />
+            {/* 선택지의 한계를 감추지 않는다 — 잘렸는지, 검색이 아직 안 도는지를 밝힌다. */}
+            {choice.note !== undefined && <span className="field-note">{choice.note}</span>}
+          </div>
+        );
+      },
     },
     {
       key: 'requestedQty',

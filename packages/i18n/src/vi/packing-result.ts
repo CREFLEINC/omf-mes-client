@@ -22,14 +22,12 @@ export const packingResult: Translated<typeof ko.packingResult> = {
   scan: {
     label: {
       shipment: 'Số xuất hàng',
-      deliveryLabel: 'Nhãn giao hàng',
       productionLot: 'LOT sản xuất',
     },
     manualEntry: 'Nhập tay',
     shipmentSelection: 'Đối tượng xuất hàng',
     shipmentListLoading: 'Đang tải danh sách…',
     todayPickedShipments: 'Xuất hàng đã lấy hàng xong hôm nay',
-    deliveryLabelReentry: 'Mở lại nhãn giao hàng đã có',
     lotLocked: 'Hãy chọn đối tượng xuất hàng trước',
   },
   match: {
@@ -37,7 +35,6 @@ export const packingResult: Translated<typeof ko.packingResult> = {
     itemMismatch: (itemCode: string): string => `Mặt hàng của xuất hàng đã chọn là ${itemCode}`,
     notAllocated: 'LOT này chưa được phân bổ cho xuất hàng này',
     unknownReason: 'LOT này không khớp với nhãn giao hàng',
-    labelNotFound: 'Nhãn giao hàng chưa đăng ký',
     shipmentNotFound: 'Không tìm thấy số xuất hàng đã lấy hàng xong',
     openUnitBlocksShipmentChange: 'Hãy hủy kiện đang mở rồi mới quét xuất hàng khác',
     lookupFailed: 'Không tra cứu được. Hãy quét lại',
@@ -61,17 +58,16 @@ export const packingResult: Translated<typeof ko.packingResult> = {
   fields: {
     handlingUnitType: 'Loại',
     typePlaceholder: 'Chọn',
-    parentHandlingUnit: 'Kiện cha',
-    parentNone: '(Không có)',
   },
   notes: {
     selectShipment: 'Hãy chọn đối tượng xuất hàng.',
-    parentEmpty: 'Kho này không có kiện cha để cho vào. Có thể xác nhận mà không cần',
     typeUnavailable: 'Không nhận được loại kiện. Hãy thử lại',
   },
   progress: {
     packed: (count: number): string => `Xuất hàng này có ${String(count)} kiện`,
     unpacked: (qty: number): string => `Chưa đóng gói ${String(qty)}`,
+    unassigned: (count: number): string => `${String(count)} kiện chưa cấu thành`,
+    unassignedUnknown: 'Không xác nhận được số kiện chưa cấu thành',
   },
   oqc: {
     label: 'Trạng thái OQC',
@@ -95,9 +91,6 @@ export const packingResult: Translated<typeof ko.packingResult> = {
   automaticLabels: {
     region: 'Trạng thái in nhãn tự động',
     packingConfirmed: 'Đã xác nhận kiện',
-    oqcPassed: 'Đạt/Không áp dụng',
-    oqcWaiting: 'Chờ kiểm tra',
-    lotUnavailable: 'Không hiện LOT',
     failures: {
       summary: 'Không xác nhận được lịch sử phát hành nên đã dừng in tự động.',
       issue: 'Không tạo được bản ghi phát hành.',
@@ -106,16 +99,11 @@ export const packingResult: Translated<typeof ko.packingResult> = {
       report: 'Không báo được kết quả in lên máy chủ.',
     },
     packingFailure: (reason: string): string => `Nhãn kiện: ${reason}`,
-    deliveryFailure: (reason: string): string => `Nhãn giao hàng: ${reason}`,
-    complete: 'Đã in tự động xong nhãn kiện và nhãn giao hàng có thể phát hành.',
+    complete: 'Đã in xong nhãn kiện.',
     reissueRequired: (count: number): string =>
       `${String(count)} mục đã có bản ghi phát hành nhưng chưa in xong. Hãy vào in lại nhãn, chọn lý do rồi xử lý.`,
-    waiting: (count: number): string =>
-      `${String(count)} nhãn giao hàng chỉ in được sau khi OQC Đạt hoặc Không áp dụng.`,
     retryPackingIssue: 'Phát hành lại nhãn kiện',
     retryPackingRendition: 'Nhận lại hình ảnh nhãn kiện',
-    retryDeliveryIssue: 'Phát hành lại nhãn giao hàng',
-    retryDeliveryRendition: 'Nhận lại hình ảnh nhãn giao hàng',
     openReissue: 'Mở in lại nhãn',
   },
   /*

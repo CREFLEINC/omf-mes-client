@@ -3,7 +3,6 @@ import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { LABEL_RENDITION_NOT_READY_REASON } from '../../patterns/pop-label-rendition';
 import {
   createStubFetch,
   jsonResponse,
@@ -20,6 +19,7 @@ import {
   reissueReason,
   summary,
   shipment,
+  shippingUnit,
 } from './fixtures';
 import { ShippingPackingLabelScreen } from './screen';
 
@@ -33,12 +33,20 @@ const ROUTE_WITHOUT_WORKER = `/pop/shipping-label?shipmentId=${String(SHIPMENT_I
 
 const pathOf = (request: Request): string => new URL(request.url).pathname;
 
-/** 합격 1건 · 미합격 1건. 두 갈래를 한 목록에서 확인한다. */
+/** 포장 둘. 배분은 이제 **포장 라벨 쪽**만 먹인다(납품 라벨의 대상은 출하 단위다). */
 const PASSED = allocation(9401, 9501, 'SYN-LOT-0001', true, 9601);
 const WAITING = allocation(9402, 9502, 'SYN-LOT-0002', false, 9602);
 
+/** 마감 1건 · 구성 중 1건. 납품 라벨의 두 갈래를 한 목록에서 확인한다. */
+const CLOSED_UNIT = shippingUnit(7001, 'SYN-SU-0001', 'CLOSED');
+const OPEN_UNIT = shippingUnit(7002, 'SYN-SU-0002', 'OPEN');
+
 interface Options {
   allocations?: unknown[];
+  /** 출하 단위 상세들. 기본은 마감 1 · 구성 중 1. */
+  units?: { shippingUnitId: number }[];
+  /** 출하 문맥 조회가 실패한다 — 출하번호를 모르면 포장 라벨을 그릴 수 없다. */
+  shipmentFails?: boolean;
   /** 발행 현황. 기본은 「한 번도 안 뽑음」 */
   summaries?: unknown[];
   reasons?: unknown[];
@@ -61,7 +69,40 @@ const routes = (options: Options): StubRoute[] => {
   return [
     {
       match: (request) => /^\/logistics\/shipments\/\d+$/u.test(pathOf(request)),
-      respond: () => jsonResponse(shipment()),
+      respond: () =>
+        options.shipmentFails === true
+          ? jsonResponse({ message: '실패' }, { status: 500 })
+          : jsonResponse(shipment()),
+    },
+    {
+      match: (request) => pathOf(request) === '/logistics/shipping-units',
+      respond: () => {
+        const items = options.units ?? [CLOSED_UNIT, OPEN_UNIT];
+
+        return jsonResponse({ items, page: { page: 1, size: 20, total: items.length } });
+      },
+    },
+    {
+      match: (request) => /^\/logistics\/shipping-units\/\d+$/u.test(pathOf(request)),
+      respond: (request) => {
+        const id = Number(/(\d+)$/u.exec(pathOf(request))?.[1]);
+        const found = (options.units ?? [CLOSED_UNIT, OPEN_UNIT]).find(
+          (unit) => unit.shippingUnitId === id,
+        );
+
+        return found === undefined
+          ? jsonResponse({ message: '없음' }, { status: 404 })
+          : jsonResponse(found);
+      },
+    },
+    /* 포장 라벨의 수량 줄이 단위 «코드»를 쓴다 — 못 풀면 수만 적는다. */
+    {
+      match: (request) => pathOf(request) === '/mdm/uoms',
+      respond: () =>
+        jsonResponse({
+          items: [{ uomId: 9301, uomCode: 'EA', uomName: 'EA', isActive: true }],
+          page: { page: 1, size: 200, total: 1 },
+        }),
     },
     {
       match: (request) => pathOf(request) === '/logistics/shipment-lot-allocations',
@@ -135,14 +176,29 @@ const routes = (options: Options): StubRoute[] => {
         return jsonResponse({}, { status: 200 });
       },
     },
+    /*
+     * ⚠ **요청한 대상을 그대로 되돌려준다.** 서버가 그렇게 답한다 — 한때 이 스텁은 무엇을
+     *   보내든 배분 하나(9401)를 돌려줬고, 화면은 그 `targetId` 로 목록 줄을 못 찾아 **늘 그리기
+     *   전에 멈췄다.** 그래서 「그리기 실패」를 기대하는 시험이 여럿 섰는데, 그것은 제품이 아니라
+     *   스텁의 성질이었다.
+     */
     {
       match: (request) => request.method === 'POST' && pathOf(request) === '/app/document-issues',
-      respond: (request) => {
-        void record(request);
+      respond: async (request) => {
+        await record(request);
 
-        return options.issueFails === true
-          ? jsonResponse({ message: '실패' }, { status: 500 })
-          : jsonResponse({ items: [issueLog(9701, 9401, 'SYN-LOT-0001', 1)] }, { status: 201 });
+        if (options.issueFails === true) return jsonResponse({ message: '실패' }, { status: 500 });
+
+        const body = (await request.clone().json()) as { targets: { targetId: number }[] };
+
+        return jsonResponse(
+          {
+            items: body.targets.map((target, index) =>
+              issueLog(9701 + index, target.targetId, `SYN-ISSUE-${String(target.targetId)}`, 1),
+            ),
+          },
+          { status: 201 },
+        );
       },
     },
     {
@@ -255,24 +311,24 @@ describe('ShippingPackingLabelScreen — 대상 목록', () => {
     expect(select).toBeDisabled();
   });
 
-  it('납품라벨은 미합격 건도 목록에 남기되 고를 수 없게 한다', async () => {
+  it('납품라벨은 구성 중인 단위도 목록에 남기되 고를 수 없게 한다', async () => {
     const user = userEvent.setup();
     renderScreen();
 
     await chooseKind(user, '납품라벨');
 
-    // 빠지지 않는다 — 빠지면 「검사 대기」와 「이 출하에 없다」가 같은 모양이 된다.
-    expect(await screen.findByText('SYN-LOT-0002')).toBeInTheDocument();
+    // 빠지지 않는다 — 빠지면 「구성 중」과 「이 출하에 없다」가 같은 모양이 된다.
+    expect(await screen.findByText('SYN-SU-0002')).toBeInTheDocument();
     expect(screen.getByText(t.targets.status.blocked)).toBeInTheDocument();
 
-    // 미합격 줄(두 번째)을 눌러도 선택으로 남지 않아 발행이 열리지 않는다.
+    // 구성 중인 줄(두 번째)을 눌러도 선택으로 남지 않아 발행이 열리지 않는다.
     await user.click(await rowCheckbox(1));
 
     expect(await screen.findByText(t.actions.needsTarget)).toBeInTheDocument();
     expect(issueButton()).toBeDisabled();
   });
 
-  it('납품라벨은 합격 대상을 고르면 발행 단추가 열린다', async () => {
+  it('납품라벨은 마감된 단위를 고르면 발행 단추가 열린다', async () => {
     const user = userEvent.setup();
     renderScreen();
 
@@ -280,7 +336,33 @@ describe('ShippingPackingLabelScreen — 대상 목록', () => {
     await user.click(await rowCheckbox(0));
 
     await waitFor(() => expect(issueButton()).toBeEnabled());
-    expect(screen.queryByText(t.actions.deliveryLocked)).toBeNull();
+  });
+
+  /*
+   * ⛔ **배분으로 발행하지 않는다**(SHIP-UNIT-01 P5 · 전달본 v4). 서버가 그 대상 유형을
+   *    422 INVALID 로 거부하므로, 옛 대상이 남아 있으면 이 화면의 납품 라벨은 한 장도 나가지
+   *    않는다 — 화면에는 그저 「발행 실패」로만 보인다.
+   */
+  it('납품라벨은 출하 단위를 대상으로 발행한다 — 배분이 아니다', async () => {
+    const user = userEvent.setup();
+    const requests: { request: Request; body: string }[] = [];
+    renderScreen({ requests });
+
+    await chooseKind(user, '납품라벨');
+    await user.click(await rowCheckbox(0));
+    await user.click(issueButton());
+
+    await waitFor(() => {
+      expect(requests.length).toBeGreaterThan(0);
+    });
+
+    const body = JSON.parse(nth(requests, 0).body) as Record<string, unknown>;
+
+    expect(body).toMatchObject({
+      documentTypeCode: 'DELIVERY_LABEL',
+      targets: [{ targetTypeCode: 'SHIPPING_UNIT', targetId: 7001 }],
+    });
+    expect((body.targets as Record<string, unknown>[])[0]).not.toHaveProperty('lotId');
   });
 
   it('종류를 포장라벨로 바꾸면 대상이 취급 단위로 갈린다', async () => {
@@ -297,7 +379,7 @@ describe('ShippingPackingLabelScreen — 대상 목록', () => {
 describe('ShippingPackingLabelScreen — 재발행', () => {
   it('이미 발행된 대상을 고르면 사유 없이 발행하지 못한다', async () => {
     const user = userEvent.setup();
-    renderScreen({ summaries: [summary(9401, 2, '2026-09-02T04:20:00Z')] });
+    renderScreen({ summaries: [summary(7001, 2, '2026-09-02T04:20:00Z')] });
 
     await chooseKind(user, '납품라벨');
     await user.click(await rowCheckbox(0));
@@ -309,7 +391,7 @@ describe('ShippingPackingLabelScreen — 재발행', () => {
 
   it('고를 수 있는 사유가 없으면 왜 재발행할 수 없는지 말한다', async () => {
     const user = userEvent.setup();
-    renderScreen({ summaries: [summary(9401, 1)], reasons: [] });
+    renderScreen({ summaries: [summary(7001, 1)], reasons: [] });
 
     await chooseKind(user, '납품라벨');
     await user.click(await rowCheckbox(0));
@@ -320,8 +402,8 @@ describe('ShippingPackingLabelScreen — 재발행', () => {
   it('최초 발행과 재출력 대상을 섞어 고르면 같은 사유로 보내지 않고 분리하도록 막는다', async () => {
     const user = userEvent.setup();
     renderScreen({
-      allocations: [PASSED, allocation(9402, 9502, 'SYN-LOT-0002', true, 9602)],
-      summaries: [summary(9401, 1)],
+      units: [CLOSED_UNIT, shippingUnit(7002, 'SYN-SU-0002', 'CLOSED')],
+      summaries: [summary(7001, 1)],
     });
 
     await chooseKind(user, '납품라벨');
@@ -373,12 +455,11 @@ describe('ShippingPackingLabelScreen — 발행과 인쇄', () => {
     expect(sent.request.headers.get('Idempotency-Key')).not.toBeNull();
 
     /*
-     * ⛔⛔ **서버에 `GET /app/document-issues/{id}/rendition` 경로가 없다**(대응표 P1
-     * 「미구현 5건」). 발행 직후 이 화면은 곧바로 그리기(render)를 시도하는데, 그 요청이
-     * 이제 나가지 않아 항상 `renderFailed` 로 멈춘다 — 그래도 **발행 자체(위 단언들)는
-     * 그대로 됐다**는 것이 이 시험의 핵심이다.
+     * ⭐ **발행 다음 걸음이 실제로 선다**(SHIP-UNIT-01 P2·P5). POP 이 그리므로 그리기는 서버
+     *    사정을 타지 않는다 — 한때 이 자리가 늘 「그림을 못 받았다」였고, 그 탓에 인쇄·보고까지
+     *    한 번도 닿지 못했다.
      */
-    expect(await screen.findByText(t.outcome.renderFailed)).toBeInTheDocument();
+    expect(await screen.findByText(t.outcome.issued(1))).toBeInTheDocument();
   });
 
   it('발행 단추를 연달아 눌러도 발행은 한 번만 나간다 — 회차는 되돌릴 수 없다', async () => {
@@ -428,9 +509,14 @@ describe('ShippingPackingLabelScreen — 발행과 인쇄', () => {
     expect(keys[1]).toBe(keys[0]);
   });
 
+  /*
+   * ⛔ **값이 모자라면 그리지 않고 멈춘다.** 출하번호를 못 받았는데 그리면 그 칸이 빈 라벨이
+   *    종이로 나가고, 그것은 되돌릴 수 없다 — 기록은 이미 남았으므로 「다시 발행하지 말라」를
+   *    말해야 회차가 또 오르지 않는다.
+   */
   it('발행은 됐는데 그리기가 실패하면 「다시 발행하지 말라」고 말한다 — 회차가 또 오른다', async () => {
     const user = userEvent.setup();
-    renderScreen({ renditionFails: true });
+    renderScreen({ shipmentFails: true });
 
     await chooseKind(user, '포장라벨');
     await user.click(await rowCheckbox(0));
@@ -440,18 +526,16 @@ describe('ShippingPackingLabelScreen — 발행과 인쇄', () => {
   });
 
   /*
-   * ⛔⛔ **서버에 이 경로가 없다**(대응표 P1 「미구현 5건」). 원래 이 시험은 첫 그리기만
-   * 실패한 뒤 «라벨 다시 받기»가 같은 발행 ID로 두 번째 시도를 보내 성공하는 것을 쟀다 —
-   * 이제는 그 요청 자체가 나가지 않아 몇 번을 다시 눌러도 성공할 수 없다. 대신 **재시도가
-   * 새 발행(회차)을 만들지 않는다**는, 이 시험의 핵심 성질은 그대로 지켜지는지를 잰다 —
-   * 몇 번을 눌러도 `/app/document-issues` POST 는 처음 한 번뿐이고, 렌디션 경로로는 실제
-   * 네트워크 요청이 한 번도 나가지 않는다.
+   * ⛔ **다시 그려도 회차는 오르지 않는다.** 그리기는 발행 «밖»이므로, 다시 그리는 것이 새
+   *    기록을 만들면 종이 한 장 때문에 회차가 쌓인다 — 그리고 그 회차는 되돌릴 수 없다.
+   * ⛔ **렌디션 경로로 요청이 한 번도 나가지 않는다.** 서버는 이 화면의 두 종류를 하나도 그려
+   *    주지 않는다(전달본 v4 — 납품 라벨은 422).
    */
-  it('라벨 다시 받기를 여러 번 눌러도 회차를 올리지 않는다 — 네트워크 요청도 나가지 않는다', async () => {
+  it('라벨 다시 그리기를 여러 번 눌러도 회차를 올리지 않는다 — 렌디션 요청도 나가지 않는다', async () => {
     const user = userEvent.setup();
     const requests: { request: Request; body: string }[] = [];
     const renditionAttempts: number[] = [];
-    renderScreen({ requests, renditionAttempts });
+    renderScreen({ requests, renditionAttempts, shipmentFails: true });
 
     await chooseKind(user, '포장라벨');
     await user.click(await rowCheckbox(0));
@@ -471,34 +555,11 @@ describe('ShippingPackingLabelScreen — 발행과 인쇄', () => {
   });
 
   /*
-   * ⛔⛔ **서버에 `GET /app/document-issues/{id}/rendition` 경로가 없다**(대응표 P1
-   * 「미구현 5건」). 미리보기 창은 그림을 받았을 때만 열린다(`screen.tsx` 의 `issue.labels`
-   * 가 그 조건이다) — 그림을 아예 받지 않으니 이 화면에서 「미리보기」 단추는 계속 잠겨
-   * 있고, 그 뒤(인쇄·보고)로는 갈 수조차 없다. 원래 이 시험은 셸이 없을 때 인쇄 «시도»가
-   * 실패로 보고되는 것을 쟀다 — 이제는 그 시도 자체가 없다.
+   * ⭐ **발행하면 미리보기가 열린다**(SHIP-UNIT-01 P2·P5). 한때 이 자리는 「그림을 받지 못해
+   *    잠긴 채로 남는다」였다 — 서버가 이 종류들을 그려 주지 않아서다. 지금은 POP 이 그리므로
+   *    확인하고 인쇄까지 간다.
    */
-  it('그림을 받지 못하면 미리보기가 잠긴 채로 남아 인쇄 보고까지 가지 않는다', async () => {
-    const user = userEvent.setup();
-    const requests: { request: Request; body: string }[] = [];
-    renderScreen({ requests });
-
-    await chooseKind(user, '포장라벨');
-    await user.click(await rowCheckbox(0));
-    await user.click(issueButton());
-
-    expect(await screen.findByText(t.outcome.renderFailed)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: t.actions.preview })).toBeDisabled();
-    /* 발행 하나만 나갔다 — 인쇄 보고는 아예 시도되지 않는다. */
-    expect(requests).toHaveLength(1);
-  });
-
-  /*
-   * ⛔⛔ **서버에 이 경로가 없다**(위와 같음). 원래 이 시험은 셸이 없다는 «구체적 사유»가
-   * 인쇄 실패 문구 옆에 드러나는지를 쟀다 — 이제 멈추는 자리가 셸 판정보다 앞이라 그 사유
-   * 대신 「그림을 받는 걸음이 준비되지 않았다」는 사유가 대신 선다. 같은 원칙(내부 사유를
-   * 삼키지 않는다)이 새 사유에도 지켜지는지를 잰다.
-   */
-  it('그림을 받지 못한 사유가 화면에 그대로 드러난다 — 삼키지 않는다', async () => {
+  it('발행하면 미리보기가 열리고 인쇄까지 갈 수 있다', async () => {
     const user = userEvent.setup();
     renderScreen();
 
@@ -506,15 +567,17 @@ describe('ShippingPackingLabelScreen — 발행과 인쇄', () => {
     await user.click(await rowCheckbox(0));
     await user.click(issueButton());
 
-    expect(await screen.findByText(LABEL_RENDITION_NOT_READY_REASON)).toBeInTheDocument();
+    expect(await screen.findByText(t.outcome.issued(1))).toBeInTheDocument();
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: t.actions.preview })).toBeEnabled(),
+    );
   });
 
   /*
-   * ⛔⛔ **서버에 이 경로가 없다**(위와 같음). 셸이 있어도(빈 사유로 실패하는 셸이라도) 그림을
-   * 받는 걸음에서 이미 멈춰 셸까지 가지 않는다 — 셸의 «어떤» 동작도 이 상황을 바꾸지 못한다는
-   * 것을 잰다.
+   * ⛔ **통로가 없는 것을 인쇄 성공으로 보고하지 않는다**(공유계약 F-6). 기록은 이미 남았으므로
+   *    실패로 보고해야 「나오지 않은 라벨」이 나온 것으로 남지 않는다.
    */
-  it('셸이 있어도(빈 사유로 실패하는 셸이라도) 부르지 않는다', async () => {
+  it('셸이 빈 사유로 실패해도 그 사실을 사유와 함께 보고한다', async () => {
     const user = userEvent.setup();
     const save = vi.fn<() => Promise<string>>().mockRejectedValue(new Error('   '));
     Object.defineProperty(window, 'pop', { configurable: true, value: { rendition: { save } } });
@@ -525,18 +588,25 @@ describe('ShippingPackingLabelScreen — 발행과 인쇄', () => {
     await chooseKind(user, '포장라벨');
     await user.click(await rowCheckbox(0));
     await user.click(issueButton());
+    await user.click(await screen.findByRole('button', { name: t.actions.preview }));
+    await user.click(await screen.findByRole('button', { name: t.preview.print }));
 
-    expect(await screen.findByText(t.outcome.renderFailed)).toBeInTheDocument();
-    expect(save).not.toHaveBeenCalled();
-    expect(requests).toHaveLength(1);
+    await waitFor(() => {
+      expect(save).toHaveBeenCalled();
+    });
+
+    const report = requests.find(({ request }) => /:report-print$/u.test(pathOf(request)));
+
+    expect(report).toBeDefined();
+
+    const body = JSON.parse(report?.body ?? '{}') as Record<string, unknown>;
+
+    expect(body.outcome).toBe('FAILED');
+    /* ⛔ 빈 사유로 보고하면 서버가 422 로 막는다 — 말 없는 실패에도 말을 붙인다. */
+    expect(String(body.failureReason ?? '')).not.toBe('');
   });
 
-  /*
-   * ⛔⛔ **서버에 이 경로가 없다**(위와 같음). 원래 이 시험은 정상 셸이 서버가 그린 바이트를
-   * 그대로 받아 성공으로 보고하는 경로를 쟀다 — 그 경로는 더는 없다. 잘 동작하는 셸을
-   * 두어도 «부르지조차 않는다»는 사실로 다시 잰다.
-   */
-  it('셸이 정상이어도 그림을 받지 못하면 셸에 바이트를 넘기지 않는다', async () => {
+  it('셸이 정상이면 POP 이 그린 바이트를 그대로 넘기고 성공으로 보고한다', async () => {
     const user = userEvent.setup();
     const save = vi.fn<(bytes: Uint8Array) => Promise<string>>().mockResolvedValue('SYN/path');
     Object.defineProperty(window, 'pop', {
@@ -550,15 +620,27 @@ describe('ShippingPackingLabelScreen — 발행과 인쇄', () => {
     await chooseKind(user, '포장라벨');
     await user.click(await rowCheckbox(0));
     await user.click(issueButton());
+    await user.click(await screen.findByRole('button', { name: t.actions.preview }));
+    await user.click(await screen.findByRole('button', { name: t.preview.print }));
 
-    expect(await screen.findByText(t.outcome.renderFailed)).toBeInTheDocument();
-    expect(save).not.toHaveBeenCalled();
-    expect(requests).toHaveLength(1);
+    await waitFor(() => {
+      expect(save).toHaveBeenCalled();
+    });
+
+    /* PNG 매직 바이트 — 셸로 나간 것이 정말 그림이다. */
+    const bytes = save.mock.calls[0]?.[0];
+
+    expect(bytes?.[0]).toBe(137);
+    expect(bytes?.[1]).toBe(80);
+
+    const report = requests.find(({ request }) => /:report-print$/u.test(pathOf(request)));
+
+    expect(JSON.parse(report?.body ?? '{}')).toMatchObject({ outcome: 'SUCCEEDED' });
   });
 });
 
 describe('ShippingPackingLabelScreen — 재진입 복구', () => {
-  it('summary에서 누락된 OQC 통과 납품 라벨의 복구 요청을 보낸다', async () => {
+  it('summary에서 누락된 마감 단위의 납품 라벨 복구 요청을 보낸다', async () => {
     const user = userEvent.setup();
     const requests: { request: Request; body: string }[] = [];
     const save = vi.fn(async () => 'syn://printed');
@@ -576,8 +658,9 @@ describe('ShippingPackingLabelScreen — 재진입 복구', () => {
             summaries: [
               summary(9601, 1, '2026-09-09T01:00:00Z', 'SUCCEEDED'),
               summary(9602, 1, '2026-09-09T01:00:00Z', 'SUCCEEDED'),
-              summary(9401, 0),
-              summary(9402, 0),
+              /* 마감 단위만 후보다 — 구성 중(7002)은 세지 않는다. */
+              summary(7001, 0),
+              summary(7002, 0),
             ],
           }),
         ),

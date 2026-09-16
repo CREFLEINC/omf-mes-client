@@ -124,7 +124,7 @@ export const useLotNames = (lotIds: readonly number[]): LookupSource => {
 /**
  * 도착 위치의 **코드** — 라벨 면에 「TO:」로 찍힌다(ISSUE-QR-01).
  *
- * ⭐ **이름이 아니라 코드다.** 라벨 글꼴이 영문·숫자만 갖고(`label-bitmap.ts`), 현장에서 대조하는
+ * ⭐ **이름이 아니라 코드다.** 라벨 글꼴이 영문·숫자만 갖고(`patterns/label/bitmap.ts`), 현장에서 대조하는
  *    값도 위치 코드(`S220-WIP`)다.
  *
  * ⚠ **도착지가 위치일 때만 푼다.** 계약의 `destinationTypeCode` 는 `LOCATION`·`PARTNER`·

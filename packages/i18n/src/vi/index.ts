@@ -111,6 +111,7 @@ import { shipmentProcessing } from './shipment-processing';
 import { shipmentRequestCreate } from './shipment-request-create';
 import { shipmentSchedule } from './shipment-schedule';
 import { shippingPackingLabel } from './shipping-packing-label';
+import { shippingUnit } from './shipping-unit';
 import { shopfloorReceipt } from './shopfloor-receipt';
 import { shotConversion } from './shot-conversion';
 import { stateLocked } from './state-locked';
@@ -238,6 +239,7 @@ export const vi: Translated<Messages> = {
   shipmentRequestCreate,
   shipmentSchedule,
   shippingPackingLabel,
+  shippingUnit,
   shopfloorReceipt,
   shotConversion,
   stateLocked,

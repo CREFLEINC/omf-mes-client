@@ -69,6 +69,7 @@ export const POP_SCREENS: readonly PopScreen[] = [
   { path: '/pop/packing', code: 'P-04-01', name: '출하 실적 등록' },
   { path: '/pop/rework-results', code: 'P-04-03', name: '재작업 실적 등록' },
   { path: '/pop/repack-label-issue', code: 'P-04-04', name: '재구성 신규 라벨 발행' },
+  { path: '/pop/shipping-units', code: 'P-04-05', name: '출하 단위 구성' },
   { path: '/pop/tool-usage', code: 'P-05-01', name: '툴 사용실적 입력' },
   { path: '/pop/downtime', code: 'P-05-02', name: '비가동 실적 입력' },
 ];

@@ -5,7 +5,7 @@ import { useApiClient } from '../../patterns/api-context';
 import { useMasterWrite, type MasterWriteResult } from '../../patterns/master';
 import { runRequest } from '../../patterns/request';
 import { renderGoodsIssueQrLabel, type GoodsIssueQrLabelFields } from './label-image';
-import { hasPrintBridge, sendToPrinter, type PrintAttempt } from './pop-print';
+import { hasPrintBridge, sendToPrinter, type PrintAttempt } from '../../patterns/pop-print';
 import { goodsIssueQrKeys } from './queries';
 import type { DocumentIssue, DocumentIssueCreate } from './types';
 

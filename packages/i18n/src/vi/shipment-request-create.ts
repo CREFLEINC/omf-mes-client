@@ -59,6 +59,13 @@ export const shipmentRequestCreate: Translated<typeof ko.shipmentRequestCreate> 
   lineTable: {
     item: 'Mặt hàng',
     itemLabel: (rowIndex: number): string => `Mặt hàng dòng ${String(rowIndex)}`,
+    itemSearch: 'Tìm mặt hàng',
+    itemSearchLabel: (rowIndex: number): string => `Tìm mặt hàng dòng ${String(rowIndex)}`,
+    itemSearchPlaceholder: 'Mã hoặc tên mặt hàng',
+    itemSearchTooShort: (min: number): string =>
+      `Nhập từ ${String(min)} ký tự trở lên sẽ tìm kiếm.`,
+    itemSearchLoading: 'Đang tìm mặt hàng…',
+    itemSearchEmpty: 'Không có kết quả. Hãy thử một phần mã hoặc tên.',
     uom: 'Đơn vị',
     uomLabel: (rowIndex: number): string => `Đơn vị dòng ${String(rowIndex)}`,
     requestedQty: 'Số lượng yêu cầu',

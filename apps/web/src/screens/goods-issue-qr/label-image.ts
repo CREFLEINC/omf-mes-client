@@ -4,33 +4,30 @@
  * ⭐ **POP 이 그린다**(설계 결정 8·9 의 2단계 · 사용자 결정 2026-09-16). 서버는 이 유형의
  *    렌디션을 만들지 않으므로 이 화면은 `fetchLabelRendition` 을 부르지 않는다.
  *
- * ⚠ **치수는 자재 LOT 라벨과 같은 자를 쓴다**(203dpi · 서식 80×30mm). 같은 단말의 같은 라벨지에
- *    찍히므로 자가 갈리면 한쪽이 종이를 벗어난다. 근거 수치는 `tools/mock/label-layout.mjs`
- *    (씨앗)와 `apps/pop/src/main/tspl-label.ts`(실물 TSPL)에 같은 값으로 서 있다.
+ * ⚠ **치수는 자를 빌려 쓴다** — 203dpi · 서식 80×30mm 는 `patterns/label/geometry` 가 갖는다.
+ *    같은 단말의 같은 라벨지에 여러 라벨이 찍히므로 자가 갈리면 한쪽이 종이를 벗어난다.
+ *
+ * 이 파일이 갖는 것은 **이 라벨의 서식뿐**이다 — 여백·글줄 자리·문구·배율. 점판·PNG·QR 찍기는
+ * `patterns/label/` 이 갖는다(라벨 종류를 모르는 것들).
  *
  * ⛔ **라벨 면에 한글을 싣지 않는다.** 점 글꼴이 영문·숫자만 갖는다. 이름표는 영문 약어를 쓰고
  *    값은 코드·번호만 싣는다 — 도착 위치도 **이름이 아니라 코드**다(통합 담당 지시 2026-09-16).
  */
 
-import { encodeQr } from '@omf-mes/ui';
-
 import {
   createBitmap,
   drawText,
-  fillRect,
   fitText,
   strokeRect,
   type LabelBitmap,
-} from './label-bitmap';
-import { toPng } from './label-png';
+} from '../../patterns/label/bitmap';
+import { LABEL_HEIGHT, LABEL_WIDTH, mm } from '../../patterns/label/geometry';
+import { toPng } from '../../patterns/label/png';
+import { drawQr } from '../../patterns/label/qr';
 
-/** 203dpi — 현장 라벨 프린터의 해상도. 씨앗·TSPL 과 같은 값이다. */
-const DPI = 203;
-const mm = (value: number): number => Math.round((value / 25.4) * DPI);
-
-/** 서식 크기(사양서 §5.4). 라벨지(대지) 크기와 다른 축이다. */
-const WIDTH = mm(80);
-const HEIGHT = mm(30);
+/** 서식 크기는 **모든 라벨이 같은 자를 쓴다**(`patterns/label/geometry`). */
+const WIDTH = LABEL_WIDTH;
+const HEIGHT = LABEL_HEIGHT;
 const PAD = mm(2);
 const LEFT = PAD + mm(1.5);
 const BORDER = 2;
@@ -61,33 +58,6 @@ export interface GoodsIssueQrLabelFields {
   /** 도착 위치 **코드**. 이름이 아니다. */
   destinationCode: string;
 }
-
-/**
- * QR 격자를 점판에 찍는다.
- *
- * ⛔ **여백(quiet zone)을 직접 둔다.** `encodeQr` 는 격자만 낸다(여백을 넣지 않는다고 못박혀
- *    있다). 여백 없이 찍으면 판독기가 격자의 끝을 찾지 못해 **읽히지 않는 QR** 이 나간다.
- */
-const QUIET_ZONE = 4;
-
-const drawQr = (bitmap: LabelBitmap, payload: string, x: number, y: number, box: number): void => {
-  const matrix = encodeQr(payload);
-  const withQuiet = matrix.size + QUIET_ZONE * 2;
-  /* 칸을 정수 배율로만 키운다 — 소수로 키우면 칸 경계가 흔들려 판독률이 떨어진다. */
-  const cell = Math.max(1, Math.floor(box / withQuiet));
-  const drawn = withQuiet * cell;
-  /* 남는 자리는 가운데로 민다. */
-  const originX = x + Math.floor((box - drawn) / 2) + QUIET_ZONE * cell;
-  const originY = y + Math.floor((box - drawn) / 2) + QUIET_ZONE * cell;
-
-  for (const [row, cells] of matrix.modules.entries()) {
-    for (const [column, isDark] of cells.entries()) {
-      if (!isDark) continue;
-
-      fillRect(bitmap, originX + column * cell, originY + row * cell, cell, cell);
-    }
-  }
-};
 
 /** 라벨 한 장의 점판. PNG 로 바꾸기 전 모습이라 시험이 점 단위로 들여다볼 수 있다. */
 export const drawGoodsIssueQrLabel = (fields: GoodsIssueQrLabelFields): LabelBitmap => {

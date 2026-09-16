@@ -40,7 +40,6 @@ interface Options {
   /** 둘째 스캔의 서버 판정. 화면이 스스로 만들지 않는 값이다. */
   match?: { matched: boolean; reasonCode?: string };
   /** 첫 스캔이 아무것도 못 찾은 상태 */
-  labelNotFound?: boolean;
   /** 출하번호 정확 일치 조회가 아무것도 못 찾은 상태 */
   shipmentNotFound?: boolean;
   /** 단말 게이팅 플래그 */
@@ -53,6 +52,8 @@ interface Options {
   writes?: Request[];
   /** 포장 만들기가 실패하는 갈래 — 담긴 줄은 있는데 포장이 없는 상태를 만든다(#1093). */
   createUnitFails?: boolean;
+  /** 아직 출하 단위에 안 들어간 상자 수. `'error'` 면 그 조회가 실패한다. */
+  unassignedBoxes?: number | 'error';
   reads?: Request[];
 }
 
@@ -79,6 +80,37 @@ const renderScreen = (options: Options = {}) => {
       respond: (request) => {
         options.reads?.push(request.clone());
         const requestedNo = queryOf(request).get('q');
+
+        /*
+         * ⭐ **미구성 상자 수는 «목록»에서만 온다**(계약 명시 — 상세는 세지 않는다). 그 축을
+         *    함께 준 요청이 그것을 묻는 자리다.
+         */
+        if (queryOf(request).has('hasUnassignedPackedBox')) {
+          if (options.unassignedBoxes === 'error') {
+            return jsonResponse({ message: '실패' }, { status: 500 });
+          }
+
+          const count = options.unassignedBoxes ?? 0;
+
+          return jsonResponse({
+            items:
+              count === 0
+                ? []
+                : [
+                    {
+                      shipmentId: 501,
+                      shipmentNo: requestedNo ?? 'SYN-SH-0501',
+                      shipmentRequestId: 1,
+                      warehouseId: 1001,
+                      statusCode: 'CONFIRMED',
+                      expedited: false,
+                      unassignedPackedBoxCount: count,
+                    },
+                  ],
+            page: { page: 1, size: 50, total: count === 0 ? 0 : 1 },
+          });
+        }
+
         const missing =
           queryOf(request).has('q') &&
           (options.shipmentNotFound === true || requestedNo?.includes('없음') === true);
@@ -176,17 +208,7 @@ const renderScreen = (options: Options = {}) => {
         const query = queryOf(request);
         const page = { page: 1, size: 50, total: 1 };
 
-        /* ① 납품라벨 스캔 — 빈 목록이 「없는 라벨」이다(계약이 404 를 내지 않는다). */
-        if (query.has('q')) {
-          const missing =
-            options.labelNotFound === true || query.get('q')?.includes('없음') === true;
-
-          return missing
-            ? jsonResponse({ items: [], page: { ...page, total: 0 } })
-            : jsonResponse({ items: [allocation()], page });
-        }
-
-        /* ② 생산LOT 스캔 — 판정은 서버가 내린다. */
+        /* 생산LOT 스캔 — 판정은 서버가 내린다. */
         if (query.has('lotQ')) {
           const match = options.match ?? { matched: true };
 
@@ -275,11 +297,39 @@ describe('PackingResultScreen', () => {
     expect(await screen.findByText(t.match.shipmentNotFound)).toBeTruthy();
   });
 
+  /*
+   * ⭐ **다음 걸음이 남았는지 여기서 말한다**(SHIP-UNIT-01 §7). 포장을 마친 담당은 이 화면을
+   *    떠나기 전에 「출하 단위에 담을 상자가 남았나」를 알아야 한다 — 모르면 P-04-05 를 아예
+   *    열지 않고, 상자는 구성되지 않은 채 남는다.
+   *
+   * ⛔ **화면이 배분으로 세지 않는다.** 한 상자가 배분 여럿에 걸릴 수 있어 겹쳐 세거나 빠뜨린다 —
+   *    서버가 상자 기준으로 센 값을 그대로 쓴다.
+   */
+  it('아직 출하 단위에 안 들어간 상자 수를 진행에 함께 적는다', async () => {
+    const user = userEvent.setup();
+    renderScreen({ unassignedBoxes: 3 });
+
+    await scan(user, t.scan.label.shipment, 'SYN-SH-0501');
+
+    expect(await screen.findByText(t.progress.unassigned(3))).toBeInTheDocument();
+  });
+
+  /* ⛔ 「없다」와 「모른다」를 같은 모양으로 그리지 않는다(공유계약 G-9). */
+  it('미구성 상자를 세지 못하면 0 이라 하지 않고 모른다고 말한다', async () => {
+    const user = userEvent.setup();
+    renderScreen({ unassignedBoxes: 'error' });
+
+    await scan(user, t.scan.label.shipment, 'SYN-SH-0501');
+
+    expect(await screen.findByText(t.progress.unassignedUnknown)).toBeInTheDocument();
+    expect(screen.queryByText(t.progress.unassigned(0))).not.toBeInTheDocument();
+  });
+
   it('들어오면 두 스캔 칸이 서고 생산LOT 칸은 «잠긴 채» 사유를 말한다', () => {
     renderScreen();
 
     expect(screen.getByRole('heading', { name: t.title })).toBeTruthy();
-    expect(screen.getByLabelText(t.scan.label.deliveryLabel)).toBeTruthy();
+    expect(screen.getByLabelText(t.scan.label.shipment)).toBeTruthy();
     /* 잠긴 사유는 칸 «안»에 선다 — 아래 한 줄로 달면 구획이 그만큼 커진다(§3 예산 88). */
     const lotField = screen.getByLabelText(t.scan.label.productionLot);
 
@@ -287,28 +337,11 @@ describe('PackingResultScreen', () => {
     expect(lotField).toHaveAttribute('placeholder', t.scan.lotLocked);
   });
 
-  it('납품라벨을 읽으면 어느 출하인지 서고 생산LOT 칸이 열린다', async () => {
-    const user = userEvent.setup();
-    renderScreen();
-
-    await scan(user, t.scan.label.deliveryLabel, 'SYN-DL-0455-001');
-
-    expect(await screen.findByText(t.header.shipment(501))).toBeTruthy();
-    await waitFor(() => {
-      expect(screen.getByLabelText(t.scan.label.productionLot)).toHaveProperty('disabled', false);
-    });
-  });
-
-  /*
-   * ⛔ **라벨 모드에서 돌아올 길이 사라지면 현장 단말은 갇힌다**(E-4 — 주 액션을 화면 «안»에
-   * 유지한다). 한때 액션 줄을 통째로 숨겼는데 되돌아가는 단추가 그 안에 있었다. 개발용
-   * 브라우저는 새로고침으로 빠져나오지만 단말에는 주소창이 없다(88단계 2회차 실측 · #1092).
-   */
   it('라벨 모드에 들어가도 돌아오는 단추가 남는다', async () => {
     const user = userEvent.setup();
     renderScreen();
 
-    await scan(user, t.scan.label.deliveryLabel, 'SYN-DL-0455-001');
+    await scan(user, t.scan.label.shipment, 'SYN-SH-0501');
     await waitFor(() => {
       expect(screen.getByRole('button', { name: t.actions.labels })).toBeEnabled();
     });
@@ -327,15 +360,6 @@ describe('PackingResultScreen', () => {
     expect(await screen.findByRole('button', { name: t.actions.confirm })).toBeInTheDocument();
   });
 
-  it('없는 납품라벨은 «빈 목록»으로 오고 화면이 그것을 사유로 말한다', async () => {
-    const user = userEvent.setup();
-    renderScreen({ labelNotFound: true });
-
-    await scan(user, t.scan.label.deliveryLabel, 'SYN-DL-없음');
-
-    expect(await screen.findByText(t.match.labelNotFound)).toBeTruthy();
-  });
-
   it('새 출하번호 조회가 실패하면 이전 출하 문맥을 폐기해 그 출하로 계속 작업하지 못한다', async () => {
     const user = userEvent.setup();
     renderScreen();
@@ -352,26 +376,11 @@ describe('PackingResultScreen', () => {
     expect(screen.getByRole('button', { name: t.actions.confirm })).toBeDisabled();
   });
 
-  it('새 납품라벨 조회가 실패해도 이전 출하 문맥으로 LOT을 담을 수 없다', async () => {
-    const user = userEvent.setup();
-    renderScreen();
-
-    await scan(user, t.scan.label.deliveryLabel, 'SYN-DL-0455-001');
-    await waitFor(() => {
-      expect(screen.getByLabelText(t.scan.label.productionLot)).toBeEnabled();
-    });
-    await scan(user, t.scan.label.deliveryLabel, 'SYN-DL-없음');
-
-    expect(await screen.findByText(t.match.labelNotFound)).toBeInTheDocument();
-    expect(screen.getByLabelText(t.scan.label.productionLot)).toBeDisabled();
-    expect(screen.getByRole('button', { name: t.actions.confirm })).toBeDisabled();
-  });
-
   it('매칭되면 «서버가 준 판정»을 그대로 보이고 수량 패드가 선다', async () => {
     const user = userEvent.setup();
     renderScreen();
 
-    await scan(user, t.scan.label.deliveryLabel, 'SYN-DL-0455-001');
+    await scan(user, t.scan.label.shipment, 'SYN-SH-0501');
     await scan(user, t.scan.label.productionLot, 'SYN-LOT-000123450');
 
     expect(await screen.findByText(t.match.ok)).toBeTruthy();
@@ -382,7 +391,7 @@ describe('PackingResultScreen', () => {
     const user = userEvent.setup();
     renderScreen({ match: { matched: false, reasonCode: 'LABEL_ITEM_MISMATCH' } });
 
-    await scan(user, t.scan.label.deliveryLabel, 'SYN-DL-0455-001');
+    await scan(user, t.scan.label.shipment, 'SYN-SH-0501');
     await scan(user, t.scan.label.productionLot, 'SYN-LOT-다른품목');
 
     expect(await screen.findByText(t.match.itemMismatch('SYN-FG-1001'))).toBeTruthy();
@@ -393,7 +402,7 @@ describe('PackingResultScreen', () => {
     const user = userEvent.setup();
     renderScreen({ match: { matched: false, reasonCode: 'LOT_NOT_ALLOCATED' } });
 
-    await scan(user, t.scan.label.deliveryLabel, 'SYN-DL-0455-001');
+    await scan(user, t.scan.label.shipment, 'SYN-SH-0501');
     await scan(user, t.scan.label.productionLot, 'SYN-LOT-남의것');
 
     expect(await screen.findByText(t.match.notAllocated)).toBeTruthy();
@@ -419,7 +428,7 @@ describe('PackingResultScreen', () => {
     const user = userEvent.setup();
     renderScreen();
 
-    await scan(user, t.scan.label.deliveryLabel, 'SYN-DL-0455-001');
+    await scan(user, t.scan.label.shipment, 'SYN-SH-0501');
 
     expect(await screen.findByText(/미포장/u)).toBeTruthy();
     expect(screen.queryByText(/예상/u)).toBeNull();
@@ -427,11 +436,21 @@ describe('PackingResultScreen', () => {
   });
 });
 
-/** 매칭까지 마친 상태를 만든다 — 담기·확정 시험의 공통 전제다. */
-const scanUntilMatched = async (user: ReturnType<typeof userEvent.setup>): Promise<void> => {
-  await scan(user, t.scan.label.deliveryLabel, 'SYN-DL-0455-001');
+/**
+ * 생산 LOT 을 읽어 매칭까지 간다.
+ *
+ * ⚠ **출하 진입과 갈라 둔다.** 출하를 다시 읽으면 담긴 것이 비워지므로(`applyEntry`), 같은
+ *   LOT 을 두 번 담는 시험은 진입을 한 번만 해야 한다.
+ */
+const matchLot = async (user: ReturnType<typeof userEvent.setup>): Promise<void> => {
   await scan(user, t.scan.label.productionLot, 'SYN-LOT-000123450');
   await screen.findByText(t.match.ok);
+};
+
+/** 매칭까지 마친 상태를 만든다 — 담기·확정 시험의 공통 전제다. */
+const scanUntilMatched = async (user: ReturnType<typeof userEvent.setup>): Promise<void> => {
+  await scan(user, t.scan.label.shipment, 'SYN-SH-0501');
+  await matchLot(user);
 };
 
 /** 키패드로 수량을 치고 담는다. */
@@ -527,7 +546,8 @@ describe('PackingResultScreen — 담기와 확정', () => {
 
     await scanUntilMatched(user);
     await pack(user, '120');
-    await scanUntilMatched(user);
+    /* ⚠ 출하를 다시 읽지 않는다 — 다시 읽으면 담긴 것이 비워져 합칠 것이 사라진다. */
+    await matchLot(user);
     await pack(user, '60');
 
     expect(await screen.findByText(t.qty.merged(120, 60, 180))).toBeTruthy();

@@ -5,13 +5,14 @@ import { toDocumentIssueBody, toPrintReportBody } from './issue-request';
 import type { TargetRow } from './types';
 
 const deliveryRow: TargetRow = {
-  targetId: 9401,
-  /** 납품 라벨은 출하 LOT 배분을 대상으로 발행한다. */
-  issueTargetId: 9401,
-  displayName: 'SYN-LOT-0001',
-  lotId: 9501,
+  targetId: 7001,
+  /** 납품 라벨은 **마감된 출하 단위**를 대상으로 발행한다(SHIP-UNIT-01). */
+  issueTargetId: 7001,
+  displayName: 'SU-20260917-0001',
+  /** ⛔ 한 단위에 여러 LOT 이 섞인다 — 서버도 이 대상 유형에 `lotId` 를 `null` 로 둔다. */
+  lotId: null,
   isIssuable: true,
-  statusLabel: '합격',
+  statusLabel: '마감',
 };
 
 const packingRow: TargetRow = {
@@ -33,9 +34,13 @@ describe('toDocumentIssueBody', () => {
     });
 
     expect(body.documentTypeCode).toBe(DELIVERY_LABEL);
-    expect(body.targets).toEqual([
-      { targetTypeCode: 'SHIPMENT_LOT_ALLOCATION', targetId: 9401, lotId: 9501 },
-    ]);
+    /*
+     * ⛔ **배분으로 되돌리지 않는다.** 서버가 `SHIPMENT_LOT_ALLOCATION` 대상을 **422 INVALID** 로
+     *    거부한다(전달본 v4) — 되돌리면 납품 라벨이 한 장도 나가지 않고, 화면은 그것을 그저
+     *    「발행 실패」로만 보인다.
+     */
+    expect(body.targets).toEqual([{ targetTypeCode: 'SHIPPING_UNIT', targetId: 7001 }]);
+    expect(body.targets[0]).not.toHaveProperty('lotId');
   });
 
   it('포장 라벨은 LOT 을 싣지 않는다 — 한 포장에 여러 LOT 이 섞여 하나로 정할 수 없다', () => {
@@ -84,18 +89,18 @@ describe('toDocumentIssueBody', () => {
     expect(filled.printerName).toBe('SYN-PRN-01');
   });
 
-  it('같은 LOT 이라도 배분이 다르면 납품 라벨 대상도 둘이다', () => {
+  it('출하 단위가 둘이면 납품 라벨 대상도 둘이다', () => {
     const body = toDocumentIssueBody({
       kind: DELIVERY_LABEL,
-      rows: [deliveryRow, { ...deliveryRow, targetId: 9402, issueTargetId: 9402 }],
+      rows: [deliveryRow, { ...deliveryRow, targetId: 7002, issueTargetId: 7002 }],
       printerName: null,
       reissueReasonCode: null,
     });
 
     expect(body.targets).toHaveLength(2);
     expect(body.targets[0]).toMatchObject({
-      targetTypeCode: 'SHIPMENT_LOT_ALLOCATION',
-      targetId: 9401,
+      targetTypeCode: 'SHIPPING_UNIT',
+      targetId: 7001,
     });
   });
 

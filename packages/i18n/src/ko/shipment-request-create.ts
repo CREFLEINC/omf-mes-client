@@ -62,6 +62,20 @@ export const shipmentRequestCreate = {
   lineTable: {
     item: '품목',
     itemLabel: (rowIndex: number): string => `${String(rowIndex)}행 품목`,
+    /**
+     * 라인마다 서는 품목 검색칸.
+     *
+     * ⛔ **첫 쪽만 보이던 목록의 유일한 출구다.** 계약이 쪽을 나눠 주는데(코드 오름차순) 화면이
+     *    첫 쪽만 실어, 그 너머의 품목은 고를 방법이 아예 없었다 — 잘림 안내는 그 사실을 말할
+     *    뿐 길을 주지 않는다.
+     */
+    itemSearch: '품목 검색',
+    itemSearchLabel: (rowIndex: number): string => `${String(rowIndex)}행 품목 검색`,
+    itemSearchPlaceholder: '품목 코드 또는 이름',
+    /** ⛔ 「왜 아무 일도 안 일어나는가」를 밝힌다 — 감추면 고장으로 읽는다(G-9). */
+    itemSearchTooShort: (min: number): string => `${String(min)}자 이상 입력하면 검색합니다.`,
+    itemSearchLoading: '품목을 찾고 있습니다…',
+    itemSearchEmpty: '검색 결과가 없습니다. 코드나 이름의 일부로 다시 찾아보세요.',
     uom: '단위',
     uomLabel: (rowIndex: number): string => `${String(rowIndex)}행 단위`,
     requestedQty: '요청 수량',

@@ -854,7 +854,6 @@
  * 달라(격자·2단) `.pane` 을 그대로 붙이면 그 배치가 무너지므로 **겉모양만** 준다.
  */
 .pop-ui .packing-scan,
-.pop-ui .packing-reentry,
 .pop-ui .packing-compose,
 .pop-ui .packing-progress {
   padding: var(--space-4) var(--space-5);
@@ -863,12 +862,6 @@
   border-radius: var(--radius-md);
 }
 
-.pop-ui .packing-reentry {
-  padding: var(--space-3) var(--space-5);
-  background: var(--surface-container-low);
-  border: 1px solid var(--outline-variant);
-  border-radius: var(--radius-md);
-}
 
 .pop-ui .packing-label-status {
   display: flex;
@@ -927,11 +920,6 @@
     [class*='action']
   ):not(.pop-overlay):not(.pop-fixed):not(.pane)
   > .packing-oqc,
-.pop-ui
-  > :not(.pop-header):not(.pop-terminal-header):not(.banner-slot):not(dialog):not(
-    [class*='action']
-  ):not(.pop-overlay):not(.pop-fixed):not(.pane)
-  > .packing-reentry,
 .pop-ui
   > :not(.pop-header):not(.pop-terminal-header):not(.banner-slot):not(dialog):not(
     [class*='action']
@@ -1054,10 +1042,6 @@
   overflow-y: auto;
 }
 
-.pop-ui .packing-compose-main > .packing-parent {
-  flex: none;
-}
-
 /*
  * ③ 오른쪽 단(키패드 자리) — **기다리는 동안에도 빈 기둥으로 두지 않는다.**
  *
@@ -1097,9 +1081,8 @@
   flex: 0 0 13rem;
 }
 
-/* 이름–칸 짝은 한 줄에 — 설계 §3 의 「유형 [ 카톤 ▾ ]」·「상위 포장 [ (없음) ▾ ]」 꼴이다. */
-.pop-ui .packing-compose-head,
-.pop-ui .packing-parent {
+/* 이름–칸 짝은 한 줄에 — 설계 §3 의 「유형 [ 카톤 ▾ ]」 꼴이다. */
+.pop-ui .packing-compose-head {
   align-items: center;
 }
 
@@ -1114,8 +1097,7 @@
  *    넓어지는 것은 «칸»이지 단추가 아니다 — 단추가 늘어나면 누르는 자리가 줄마다 달라진다.
  */
 .pop-ui.packing-shell .scan-row > :first-child,
-.pop-ui.packing-shell .packing-compose-head > .pop-select,
-.pop-ui.packing-shell .packing-parent > .pop-select {
+.pop-ui.packing-shell .packing-compose-head > .pop-select {
   flex: 1 1 auto;
   min-width: 0;
 }
@@ -1209,19 +1191,6 @@
   min-width: 0;
 }
 
-/*
- * ⭐ **재진입 줄도 다른 줄과 같은 폭을 쓴다**(사용자 지시 2026-09-12). 접히는 구획
- *    (`<details>`) 안에 있어 그 안쪽 폼이 글자만큼만 서 있었다 — 같은 화면의 같은 성격의
- *    줄인데 혼자 짧았다.
- *
- * ⚠ 아래 `.packing-reentry > form` 의 `max-width: 30rem` 은 **이름표가 없던 때** 이 줄을
- *   「평상시 칸이 아니다」로 읽히게 하려고 둔 상한이다(스펙 §3-1). 접어 두는 구획이 된
- *   지금은 여는 행위 자체가 그 뜻을 내므로, 상한만 남아 폭이 혼자 갈렸다.
- */
-.pop-ui.packing-shell .packing-reentry form {
-  inline-size: 100%;
-  max-inline-size: none;
-}
 
 /*
  * ⭐ **[선택]과 [직접 입력]은 같은 폭으로 선다**(사용자 지시 2026-09-12). 줄마다 오른쪽 끝에
@@ -5069,21 +5038,6 @@
 }
 
 /*
- * 기존 납품 라벨 재진입 — **되돌아오는 길이지 평상시 입력이 아니다**(스펙 §3-1).
- * 이름을 보이게 달고 칸을 줄여, 처음 포장하는 사람이 채워야 할 칸으로 읽지 않게 한다.
- */
-.pop-ui .packing-reentry > summary {
-  padding: var(--space-2) 0;
-  color: var(--on-surface-muted);
-  cursor: pointer;
-}
-
-.pop-ui .packing-reentry > form {
-  max-width: 30rem;
-  margin-block-start: var(--space-2);
-}
-
-/*
  * 출하 실적 등록 ③ — 《내용물》은 «머리글 없는 목록»이다(사용자 지적 2026-09-10 ·
  * 같은 성격의 `P-02-08` 도면 `✅ LOT-…0031  ABC-123  100 EA`).
  */
@@ -5207,14 +5161,7 @@
   min-height: 56px;
 }
 
-/*
- * ③ 이 일하는 자리다 — 위 구획들의 여백을 한 단 더 줄여 그만큼을 ③ 에 넘긴다.
- * 상위 포장이 제 줄로 돌아오면서(사용자 지시 2026-09-10) ③ 의 머리가 두 줄이 됐다.
- */
-.pop-ui.packing-shell .packing-reentry {
-  padding-block: var(--space-1);
-}
-
+/* ③ 이 일하는 자리다 — 위 구획의 여백을 한 단 더 줄여 그만큼을 ③ 에 넘긴다. */
 .pop-ui.packing-shell .packing-scan {
   padding-block: var(--space-1);
 }
@@ -5925,4 +5872,79 @@
  */
 .pop-ui .production-flow-scan input {
   min-height: 4rem;
+}
+
+/*
+ * P-04-05 출하 단위 구성 — **세로 예산을 넷으로 나눈다**(통합 담당 확정 2026-09-16).
+ *
+ * POP 규격은 「헤더 64 + 본문 616 + 액션바 88 = 768, 슬랙 0」이다. 이 화면의 배분은
+ * ① 72 · ② 72 · ③ 남는 것 · ④ 88 이고 **스크롤은 ③ 하나**다.
+ *
+ * ⛔ **①②④ 를 `pop-fixed` 로 뺀다**(표시에서 단다). 그러지 않으면 「남는 높이를 가져갈
+ *    블록」 규칙이 넷 모두에 걸려 각자 1/4 을 받는다 — 목록이 세 줄로 눌려 상자를 고를 수
+ *    없게 된다. 전례 P-04-02 는 같은 자리에서 **표 높이가 0 으로 깔려 현장에서 라벨을 못
+ *    뽑았다**(#1092).
+ *
+ * ⚠ 픽셀을 그대로 박지 않고 「무엇이 늘어나지 «않는가»」로 적는다 — 창이 768 이 아닐 때
+ *   어긋난다. `pop-fit` 이 배율로 줄이지만 상한이 1 이라 키우지는 않는다.
+ */
+.pop-ui .shipping-unit-entry,
+.pop-ui .shipping-unit-unit {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+/* 고르는 칸이 남는 폭을 갖고 단추는 글자만큼만 선다 — 이 화면의 다른 줄과 같은 규범이다. */
+.pop-ui .shipping-unit-entry > .pop-select,
+.pop-ui .shipping-unit-unit > .pop-select {
+  flex: 1 1 18rem;
+  min-width: 0;
+}
+
+/* 안내는 줄에서 빠져 아래로 내려간다 — 칸 옆에 끼면 줄이 밀려 칸과 단추가 어긋난다. */
+.pop-ui .shipping-unit-entry > .field-note,
+.pop-ui .shipping-unit-unit > .field-note {
+  flex: 1 0 100%;
+  margin: 0;
+}
+
+/*
+ * ③ 이 남는 높이를 가져간다. 목록은 **세 줄이 보일 만큼**을 바닥으로 둔다 — 한 줄만 보이면
+ * 무엇을 뺄지 고를 수가 없다(전례 `.pop-slabel-table` · #1092).
+ */
+.pop-ui .shipping-unit-boxes {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  min-height: 0;
+}
+
+.pop-ui .shipping-unit-boxes > table {
+  min-height: 96px;
+}
+
+/* ④ 품목별 합 — 세 줄 + 「외 n건」이 들어갈 만큼만 선다. */
+.pop-ui .shipping-unit-totals {
+  margin: 0;
+  padding-inline-start: var(--space-4);
+  display: grid;
+  gap: var(--space-1);
+}
+
+/*
+ * ⛔ **액션 줄에 세로 리듬 여백이 붙지 않게 한다.** `.pop-section > * > * + *` 가 쌓는
+ *    덩어리를 띄우는 규칙인데, 단추가 가로로 서는 이 줄에서는 둘째 단추만 아래로 내려앉는다
+ *    (전례 `.pack-work-actions`·`.pop-repack-actions`).
+ */
+.pop-ui .shipping-unit-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.pop-ui .shipping-unit-actions > * + * {
+  margin-top: 0;
 }

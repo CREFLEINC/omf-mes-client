@@ -23,6 +23,9 @@ const uomLookup = {
   isLoading: false,
 };
 const itemOptions = [{ value: '8301', label: 'SAMPLE-ITEM-01 · 합성 품목 가' }];
+/** 검색어와 무관하게 같은 선택지를 준다 — 검색 «배선»은 화면 시험이 따로 문다. */
+const itemChoiceOf = () => ({ options: itemOptions, note: undefined });
+const noItemSearch = () => '';
 const uomOptions = [{ value: '8401', label: 'SAMPLE-UOM-EA · 개' }];
 
 const noAvailableQty: AvailableQtyLookup = {
@@ -41,7 +44,9 @@ describe('LineTable — 지시서 경유', () => {
         errors={{}}
         itemLookup={itemLookup}
         uomLookup={uomLookup}
-        itemOptions={itemOptions}
+        itemChoiceOf={itemChoiceOf}
+        itemSearchOf={noItemSearch}
+        onItemSearch={vi.fn()}
         uomOptions={uomOptions}
         availableQty={noAvailableQty}
         onPatch={vi.fn()}
@@ -63,7 +68,9 @@ describe('LineTable — 지시서 경유', () => {
         errors={{}}
         itemLookup={itemLookup}
         uomLookup={uomLookup}
-        itemOptions={itemOptions}
+        itemChoiceOf={itemChoiceOf}
+        itemSearchOf={noItemSearch}
+        onItemSearch={vi.fn()}
         uomOptions={uomOptions}
         availableQty={noAvailableQty}
         onPatch={vi.fn()}
@@ -84,7 +91,9 @@ describe('LineTable — 단독 생성', () => {
         errors={{}}
         itemLookup={itemLookup}
         uomLookup={uomLookup}
-        itemOptions={itemOptions}
+        itemChoiceOf={itemChoiceOf}
+        itemSearchOf={noItemSearch}
+        onItemSearch={vi.fn()}
         uomOptions={uomOptions}
         availableQty={noAvailableQty}
         onPatch={vi.fn()}
@@ -104,7 +113,7 @@ describe('LineTable — 단독 생성', () => {
 
     render(
       <LineTable mode="standalone" rows={[row]} errors={{}} itemLookup={itemLookup} uomLookup={uomLookup}
-        itemOptions={itemOptions} uomOptions={uomOptions} availableQty={noAvailableQty} onPatch={onPatch} onRemove={vi.fn()} />,
+        itemChoiceOf={itemChoiceOf} itemSearchOf={noItemSearch} onItemSearch={vi.fn()} uomOptions={uomOptions} availableQty={noAvailableQty} onPatch={onPatch} onRemove={vi.fn()} />,
     );
 
     await user.click(screen.getByLabelText(t.lineTable.uomLabel(1)));
@@ -121,7 +130,9 @@ describe('LineTable — 단독 생성', () => {
         errors={{}}
         itemLookup={itemLookup}
         uomLookup={uomLookup}
-        itemOptions={itemOptions}
+        itemChoiceOf={itemChoiceOf}
+        itemSearchOf={noItemSearch}
+        onItemSearch={vi.fn()}
         uomOptions={uomOptions}
         availableQty={noAvailableQty}
         onPatch={vi.fn()}
@@ -144,7 +155,9 @@ describe('LineTable — 단독 생성', () => {
         errors={{}}
         itemLookup={itemLookup}
         uomLookup={uomLookup}
-        itemOptions={itemOptions}
+        itemChoiceOf={itemChoiceOf}
+        itemSearchOf={noItemSearch}
+        onItemSearch={vi.fn()}
         uomOptions={uomOptions}
         availableQty={noAvailableQty}
         onPatch={onPatch}
@@ -171,7 +184,9 @@ describe('LineTable — 단독 생성', () => {
         errors={{}}
         itemLookup={itemLookup}
         uomLookup={uomLookup}
-        itemOptions={itemOptions}
+        itemChoiceOf={itemChoiceOf}
+        itemSearchOf={noItemSearch}
+        onItemSearch={vi.fn()}
         uomOptions={uomOptions}
         availableQty={availableQty}
         onPatch={vi.fn()}
@@ -194,7 +209,9 @@ describe('LineTable — 단독 생성', () => {
         errors={{ [lineFieldId(row.key, 'customerLotRequirement')]: message }}
         itemLookup={itemLookup}
         uomLookup={uomLookup}
-        itemOptions={itemOptions}
+        itemChoiceOf={itemChoiceOf}
+        itemSearchOf={noItemSearch}
+        onItemSearch={vi.fn()}
         uomOptions={uomOptions}
         availableQty={noAvailableQty}
         onPatch={vi.fn()}

@@ -6,11 +6,12 @@ import {
   labelRenditionFormat,
   LabelRenditionNotReadyError,
   LABEL_RENDITION_NOT_READY_REASON,
+  READY_RENDITION_DOCUMENT_TYPES,
 } from './pop-label-rendition';
 
 /**
- * 준비된 문서 종류만 배포 호출을 허용한다. 자재 라벨은 TSPL을,
- * 납품 라벨은 PNG를 요청하며, 미지정 문서 종류는 기존처럼 네트워크 전에 거부한다.
+ * 준비된 문서 종류만 배포 호출을 허용한다. 자재·생산 LOT 라벨은 TSPL·PNG 둘 다 받을 수 있고,
+ * 미지정 문서 종류는 기존처럼 네트워크 전에 거부한다.
  */
 const clientSpy = () => {
   const get = vi.fn();
@@ -19,13 +20,26 @@ const clientSpy = () => {
 };
 
 describe('fetchLabelRendition — 준비된 문서 종류만 배포 호출', () => {
-  it('지원되는 납품 라벨만 발행 기록의 PNG를 조회한다', async () => {
+  it('준비된 종류의 PNG를 조회한다', async () => {
     const { get, client } = clientSpy();
     const bytes = new Uint8Array([137, 80, 78, 71]).buffer;
     get.mockResolvedValue({ data: bytes, response: new Response(bytes) });
-    await expect(fetchLabelRendition(client, 44101, 'png', 'DELIVERY_LABEL')).resolves.toEqual(bytes);
+    await expect(fetchLabelRendition(client, 44101, 'png', 'MATERIAL_LOT_LABEL')).resolves.toEqual(bytes);
     expect(get).toHaveBeenCalledWith('/app/document-issues/{documentIssueLogId}/rendition',
       expect.objectContaining({ params: { path: { documentIssueLogId: 44101 }, query: { format: 'png' } } }));
+  });
+
+  /*
+   * ⛔ **납품 라벨은 준비 목록에 없다 — 서버가 그리지 않는다**(전달본 v4 · 422). 종전에는
+   *    배분의 `delivery_label_no` 로 서버가 그렸는데 주인이 출하 단위로 옮겨가며 그 코드가
+   *    걷혔다. 적어 두면 배포본에서 요청이 나가고 422 가 돌아와, 사용자는 「발행이 실패했다」로
+   *    읽는다 — 기록은 멀쩡히 남았는데도.
+   *
+   * ⚠ 형이 이미 막고 있어(`ReadyRenditionDocumentType`) 부르는 자리는 컴파일에서 걸린다.
+   *   이 시험은 **목록 자체**를 붙든다 — 형은 목록에서 나오므로 목록이 정본이다.
+   */
+  it('납품 라벨을 준비 목록에 두지 않는다', () => {
+    expect([...READY_RENDITION_DOCUMENT_TYPES]).not.toContain('DELIVERY_LABEL');
   });
   it('배포본 자재 LOT 라벨의 TSPL rendition을 조회한다', async () => {
     const { get, client } = clientSpy();

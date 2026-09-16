@@ -3,6 +3,7 @@ import type { RouteObject } from 'react-router';
 import { DowntimeRegisterScreen } from '../screens/downtime-register/screen';
 import { EmergencyWorkOrderFieldScreen } from '../screens/emergency-work-order-field/screen';
 import { GoodsIssueQrScreen } from '../screens/goods-issue-qr/screen';
+import { ShippingUnitScreen } from '../screens/shipping-unit/screen';
 import { MaterialInputScanScreen } from '../screens/material-input-scan/screen';
 import { PackingLabelReprintScreen } from '../screens/packing-label-reprint/screen';
 import { PackingWorkScreen } from '../screens/packing-work/screen';
@@ -136,6 +137,11 @@ export const popRoutes: RouteObject[] = [
    * 범위 밖이고 집행은 서버의 403 이다.
    */
   { path: '/pop/goods-issue-qr', element: <GoodsIssueQrScreen /> },
+  /*
+   * P-04-05 — 포장이 끝난 상자를 스캔해 **출하 단위**로 묶고, 마감하면 납품 라벨이 나간다
+   * (SHIP-UNIT-01 · 설계 §6). ⚠ 서버 경로가 아직 없어 조회·쓰기는 붙어 있지 않다(P4c).
+   */
+  { path: '/pop/shipping-units', element: <ShippingUnitScreen /> },
   /*
    * P-02-01 — **POP 태스크의 시작점이다.** P-CO-01이 지정한 현재 작업자를 이어받고 이 설비에
    * 배포된 작업지시를 골라 세션을 연다. 작업자가 없을 때만 화면 안 입력을 보조 경로로 제공한다.

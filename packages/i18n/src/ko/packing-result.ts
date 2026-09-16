@@ -30,14 +30,12 @@ export const packingResult = {
   scan: {
     label: {
       shipment: '출하번호',
-      deliveryLabel: '납품라벨',
       productionLot: '생산LOT',
     },
     manualEntry: '직접 입력',
     shipmentSelection: '출하 대상',
     shipmentListLoading: '목록 조회 중…',
     todayPickedShipments: '당일 피킹 완료 출하',
-    deliveryLabelReentry: '기존 납품 라벨 재진입',
     /** 둘째 스캔은 첫째가 끝나야 열린다 — 왜 잠겼는지 적는다. */
     lotLocked: '출하 대상을 먼저 선택하세요',
   },
@@ -47,7 +45,6 @@ export const packingResult = {
     notAllocated: '이 출하에 배분되지 않은 LOT 입니다',
     /** 서버가 사유를 주지 않았을 때. 판정 자체는 「다르다」이므로 막는 것은 같다. */
     unknownReason: '이 납품라벨과 맞지 않는 LOT 입니다',
-    labelNotFound: '등록되지 않은 납품라벨입니다',
     shipmentNotFound: '피킹 완료된 출하번호를 찾지 못했습니다',
     openUnitBlocksShipmentChange: '열린 포장을 먼저 취소한 뒤 다른 출하를 읽으세요',
     lookupFailed: '조회하지 못했습니다. 다시 읽어 주세요',
@@ -80,19 +77,24 @@ export const packingResult = {
     handlingUnitType: '유형',
     /** 이름은 칸 옆에 있으므로 안내 글은 「무엇을 하라」만 남긴다. */
     typePlaceholder: '고르세요',
-    parentHandlingUnit: '상위 포장',
-    parentNone: '(없음)',
   },
   notes: {
     /** 출하 대상을 아직 고르지 않았다 — 본문 맨 위 안내 띠(사용자 지시 2026-09-15). */
     selectShipment: '출하 대상을 선택하세요.',
     /** 후보가 없는 것은 고장이 아니다(스펙 §5-2-1). */
-    parentEmpty: '이 창고에 담을 상위 포장이 없습니다. 없이 확정할 수 있습니다',
     typeUnavailable: '포장 유형을 받지 못했습니다. 다시 시도해 주세요',
   },
   progress: {
     packed: (count: number): string => `이 출하 포장 ${String(count)} 개`,
     unpacked: (qty: number): string => `미포장 ${String(qty)}`,
+    /**
+     * 포장은 끝났는데 아직 출하 단위에 안 들어간 상자 수(SHIP-UNIT-01 §7).
+     *
+     * ⛔ 「모른다」와 「없다」를 같은 모양으로 그리지 않는다(공유계약 G-9) — 0 은 담을 것이
+     *    없다는 뜻이고, 못 받은 것은 아래 `unassignedUnknown` 이 따로 말한다.
+     */
+    unassigned: (count: number): string => `미구성 상자 ${String(count)} 개`,
+    unassignedUnknown: '미구성 상자 수를 확인하지 못했습니다',
   },
   oqc: {
     label: 'OQC 상태',
@@ -120,9 +122,6 @@ export const packingResult = {
   automaticLabels: {
     region: '라벨 자동 출력 상태',
     packingConfirmed: '포장 확정',
-    oqcPassed: '합격/비대상',
-    oqcWaiting: '검사 대기',
-    lotUnavailable: 'LOT 미표시',
     failures: {
       summary: '기존 발행 이력을 확인하지 못해 자동 출력을 중단했습니다.',
       issue: '발행 기록을 만들지 못했습니다.',
@@ -131,16 +130,11 @@ export const packingResult = {
       report: '인쇄 결과를 서버에 보고하지 못했습니다.',
     },
     packingFailure: (reason: string): string => `포장 라벨: ${reason}`,
-    deliveryFailure: (reason: string): string => `납품 라벨: ${reason}`,
-    complete: '포장 라벨과 발행 가능한 납품 라벨의 자동 출력을 마쳤습니다.',
+    complete: '포장 라벨 출력을 마쳤습니다.',
     reissueRequired: (count: number): string =>
       `${String(count)}건은 발행 기록이 있지만 인쇄 완료가 아닙니다. 라벨 재출력에서 사유를 골라 처리하세요.`,
-    waiting: (count: number): string =>
-      `납품 라벨 ${String(count)}건은 OQC 합격 또는 검사 비대상으로 바뀐 뒤 출력할 수 있습니다.`,
     retryPackingIssue: '포장 라벨 발행 다시 시도',
     retryPackingRendition: '포장 라벨 이미지 다시 받기',
-    retryDeliveryIssue: '납품 라벨 발행 다시 시도',
-    retryDeliveryRendition: '납품 라벨 이미지 다시 받기',
     openReissue: '라벨 재출력 열기',
   },
   /**

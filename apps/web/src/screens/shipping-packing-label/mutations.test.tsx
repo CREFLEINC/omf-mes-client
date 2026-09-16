@@ -32,10 +32,13 @@ const command: IssueCommand = {
   reissueReasonCode: null,
 };
 
+/** 그리개 대역 — POP 이 그린 척한다. 이 훅에 다른 그리기 경로는 없다(P5). */
+const drawLabel = (): Uint8Array<ArrayBuffer> => new Uint8Array([137, 80, 78, 71]);
+
 const renderIssue = () => {
   const posts: Request[] = [];
 
-  const result = renderHookWithProviders(() => useLabelIssue({ workerNo: WORKER_NO }), {
+  const result = renderHookWithProviders(() => useLabelIssue({ workerNo: WORKER_NO, drawLabel }), {
     fetch: createStubFetch([
       {
         match: (request) =>
@@ -82,7 +85,7 @@ describe('useLabelIssue — 되돌릴 수 없는 쓰기의 방어선', () => {
 
   it('사번을 모르면 아무것도 부르지 않는다 — 단추 밖의 경로로도 빈 사번이 새지 않는다', async () => {
     const posts: Request[] = [];
-    const { result } = renderHookWithProviders(() => useLabelIssue({ workerNo: null }), {
+    const { result } = renderHookWithProviders(() => useLabelIssue({ workerNo: null, drawLabel }), {
       fetch: createStubFetch([
         {
           match: (request) => request.method === 'POST',

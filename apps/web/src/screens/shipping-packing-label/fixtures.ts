@@ -17,7 +17,7 @@ export const shipment = () => ({
   expedited: false,
 });
 
-/** 출하 배분 한 건 — 납품 라벨의 대상. */
+/** 출하 배분 한 건 — 포장 라벨을 그리는 값이자 취급 단위를 찾는 길. */
 export const allocation = (
   shipmentLotAllocationId: number,
   lotId: number,
@@ -30,6 +30,9 @@ export const allocation = (
   lotId,
   ...(lotNo === null ? {} : { lotNo }),
   ...(handlingUnitId === null ? {} : { handlingUnitId }),
+  itemId: 9601,
+  /* 계약의 필수 값이다 — 빠뜨리면 스텁이 서버보다 너그러워져 화면의 결손을 덮는다. */
+  itemCode: 'F534F50200',
   allocatedQty: 120,
   uomId: 9301,
   oqcPassed,
@@ -49,6 +52,34 @@ export const handlingUnitDetail = (
     statusCode,
   },
   contents: [],
+});
+
+/**
+ * 출하 단위 한 건 — **납품 라벨의 대상이자 그 라벨 값 전부**(SHIP-UNIT-01).
+ *
+ * ⚠ 상세 응답이다. 화면이 목록이 아니라 상세를 받는 이유는 `itemTotals` 가 라벨 본문이어서다.
+ */
+export const shippingUnit = (
+  shippingUnitId: number,
+  shippingUnitNo: string,
+  statusCode: 'OPEN' | 'CLOSED',
+  boxCount = 2,
+) => ({
+  shippingUnitId,
+  shippingUnitNo,
+  shippingUnitTypeCode: 'SYN_SU_TYPE',
+  statusCode,
+  shipmentId: SHIPMENT_ID,
+  shipmentNo: 'SYN-SH-0001',
+  customer: { partnerId: 9701, partnerCode: 'SYN-P-0001', partnerName: 'SYN CUSTOMER' },
+  shipTo: { partnerId: 9702, partnerCode: 'SYN-P-0002', partnerName: 'SYN SHIP TO' },
+  boxCount,
+  versionNo: 1,
+  createdAt: '2026-09-17T09:00:00+09:00',
+  boxes: [],
+  itemTotals: [
+    { itemId: 9601, itemCode: 'F534F50200', itemName: 'SYN COVER', qty: 240, uomId: 9301, uomCode: 'EA' },
+  ],
 });
 
 /** 발행 현황 한 건. `issueCount`가 0보다 크면 그 대상은 재발행이다. */
@@ -73,7 +104,7 @@ export const issueLog = (
 ) => ({
   documentIssueLogId,
   documentTypeCode: 'DELIVERY_LABEL',
-  target: { targetTypeCode: 'LOT', targetId, displayName },
+  target: { targetTypeCode: 'SHIPPING_UNIT', targetId, displayName },
   issueSeq,
   issuedAt: '2026-09-02T04:20:00Z',
   printOutcome: 'PENDING',
