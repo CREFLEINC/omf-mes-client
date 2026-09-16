@@ -403,12 +403,13 @@ describe('GoodsIssueQrScreen', () => {
     expect(screen.queryByRole('checkbox', { name: t.title })).not.toBeInTheDocument();
   });
 
-  it('고른 라인이 없으면 발행·인쇄가 사유와 함께 비활성이다', async () => {
-    renderScreen({ issueCounts: { 1001: 0, 1002: 0 } });
+  /** ⛔ 「발행할 라인을 먼저 고르세요」는 띄우지 않는다(사용자 지시 2026-09-15) — 비활성 단추가 말한다. */
+  it('고른 라인이 없으면 발행·인쇄가 비활성이고 사유 글을 두지 않는다', async () => {
+    const { container } = renderScreen({ issueCounts: { 1001: 0, 1002: 0 } });
 
     await screen.findByText('LOT-SAMPLE-20');
     expect(screen.getByRole('button', { name: t.action.issue })).toBeDisabled();
-    expect(screen.getByText(t.action.disabledNoSelection)).toBeInTheDocument();
+    expect(container.querySelector('.pop-giqr-actions .field-note')).toBeNull();
   });
 
   /**
@@ -996,7 +997,7 @@ describe('GoodsIssueQrScreen', () => {
     expect(await writes[0]?.json()).toMatchObject({ reissueReasonCode: 'PRINT_FAILURE' });
   });
 
-  it('기본으로 표시된 프린터의 상태를 머리에 보인다 — 목록 첫 줄이 아니다', async () => {
+  it('기본으로 표시된 프린터의 이름을 머리에 보인다 — 목록 첫 줄이 아니다', async () => {
     renderScreen({
       issueCounts: { 1001: 0 },
       printers: [
@@ -1017,7 +1018,9 @@ describe('GoodsIssueQrScreen', () => {
       ],
     });
 
-    expect(await screen.findByText(`${t.printer.label} 대기 중`)).toBeInTheDocument();
+    expect(await screen.findByText(`${t.printer.label} 기본 프린터`)).toBeInTheDocument();
+    /* 사용자 지시 2026-09-15 — 상태 설명을 머리줄에 붙이지 않는다. */
+    expect(screen.queryByText(/대기 중/)).not.toBeInTheDocument();
   });
 
   it('발행 요약을 출력물 종류로 좁혀 묻는다 — 다른 출력물까지 세면 회차가 틀어진다', async () => {

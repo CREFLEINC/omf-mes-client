@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { normalizeTarget, relayHeaders, relayToApi, shouldRelay } from './api-relay';
+import { normalizeTarget, relayHeaders, relayToApi, shouldRelay, withNoStore } from './api-relay';
 
 /**
  * **중계가 무엇을 넘기고 무엇을 넘기지 않는가**를 지킨다. 이 판정이 흔들리면 조용히 깨진다 —
@@ -118,5 +118,58 @@ describe('POP API 중계 — 넘기는 방식', () => {
     await expect(
       relayToApi(fetchImpl, TARGET, new Request('pop://app/api/health'), '/api/health', ''),
     ).rejects.toThrow('ECONNREFUSED');
+  });
+
+  /**
+   * ⛔ **중계 응답을 렌더러가 다시 쓰면 안 된다.** 캐시 지시가 없으면 Chromium 이 제 캐시에
+   *    두고 다음 조회에 그대로 내주며, 그것이 **셸을 다시 띄워도 남는다**(디스크 캐시).
+   *    실측(WIP-CHAIN-01 D4): 단말 권한을 고치고 재기동했는데 옛 값이 돌아와 열려야 할 단추가
+   *    사유 없이 잠겼다.
+   */
+  it('중계한 응답에 저장 금지를 붙인다', async () => {
+    const fetchImpl = vi.fn().mockResolvedValue(
+      new Response('{"ok":true}', { status: 200, headers: { 'Content-Type': 'application/json' } }),
+    );
+
+    const relayed = await relayToApi(
+      fetchImpl,
+      TARGET,
+      new Request('pop://app/api/mdm/terminals/10/processes'),
+      '/api/mdm/terminals/10/processes',
+      '',
+    );
+
+    expect(relayed.headers.get('Cache-Control')).toBe('no-store');
+    /* 본문과 상태는 그대로 지난다. */
+    expect(relayed.status).toBe(200);
+    await expect(relayed.text()).resolves.toBe('{"ok":true}');
+  });
+
+  /* ⭐ 낙관적 잠금이 이 값을 `If-Match` 로 되싣는다 — 떼면 수정이 통째로 막힌다. */
+  it('ETag 는 그대로 둔다', () => {
+    const relayed = withNoStore(
+      new Response('{}', { status: 200, headers: { ETag: 'W/"7"', 'Content-Type': 'application/json' } }),
+    );
+
+    expect(relayed.headers.get('ETag')).toBe('W/"7"');
+    expect(relayed.headers.get('Content-Type')).toBe('application/json');
+    expect(relayed.headers.get('Cache-Control')).toBe('no-store');
+  });
+
+  /* 쓰기 응답도 화면이 다시 쓰면 안 되는 값이다 — 메서드·상태를 가리지 않는다. */
+  it('본문 없는 상태 코드도 감싼다', () => {
+    const relayed = withNoStore(new Response(null, { status: 204 }));
+
+    expect(relayed.status).toBe(204);
+    expect(relayed.headers.get('Cache-Control')).toBe('no-store');
+  });
+
+  /* 서버가 제 지시를 보내더라도 렌더러 캐시를 여는 값으로 남겨 두지 않는다. */
+  it('서버가 보낸 캐시 지시를 덮어쓴다', () => {
+    const relayed = withNoStore(
+      new Response('{}', { status: 200, headers: { 'Cache-Control': 'max-age=600' } }),
+    );
+
+    expect(relayed.headers.get('Cache-Control')).toBe('no-store');
   });
 });

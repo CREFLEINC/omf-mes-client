@@ -82,6 +82,7 @@ import { physicalCount } from './physical-count';
 import { poChangeReview } from './po-change-review';
 import { poRegister } from './po-register';
 import { popMaterialLotLabel } from './pop-material-lot-label';
+import { popChrome } from './pop-chrome';
 import { popPageNav } from './pop-page-nav';
 import { pqcInspection } from './pqc-inspection';
 import { productDisposalRequest } from './product-disposal-request';
@@ -207,6 +208,7 @@ export const vi: Translated<Messages> = {
   physicalCount,
   poChangeReview,
   popMaterialLotLabel,
+  popChrome,
   popPageNav,
   poRegister,
   pqcInspection,

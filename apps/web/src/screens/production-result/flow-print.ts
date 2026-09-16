@@ -4,7 +4,7 @@ import { useCallback, useRef, useState } from 'react';
 import { useApiClient } from '../../patterns/api-context';
 import {
   fetchLabelRendition,
-  labelRenditionFormat,
+  resolveLabelRenditionFormat,
   type LabelRenditionFormat,
 } from '../../patterns/pop-label-rendition';
 import { runRequest } from '../../patterns/request';
@@ -76,7 +76,6 @@ export const useLabelPrintRunner = (workerNo: string | null): LabelPrintRunner =
   const reportKeys = useRef(new Map<string, string>());
   const pendingSuccessReport = useRef<PendingSuccessReport | null>(null);
   const isExecuting = useRef(false);
-  const format = labelRenditionFormat();
 
   const executeOnce = useCallback(async (operation: () => Promise<void>): Promise<void> => {
     if (isExecuting.current) return;
@@ -89,8 +88,20 @@ export const useLabelPrintRunner = (workerNo: string | null): LabelPrintRunner =
     }
   }, []);
 
-  const reportKeyFor = useCallback((issueId: number, failed: boolean): string => {
-    const slot = `${String(issueId)}:${failed ? 'FAILED' : 'SUCCEEDED'}`;
+  /**
+   * 이 보고에 실을 멱등 키.
+   *
+   * ⭐ **같은 내용을 다시 보내는 것만 같은 키다.** 서버의 멱등 규칙은 「같은 키 · 다른 본문」을
+   *    409 로 거절한다. 실패 보고는 본문에 사유(`failureReason`)를 싣는데 그 사유가 시도마다
+   *    다를 수 있어, 성공·실패 두 슬롯으로만 가르면 **두 번째 실패 보고가 통째로 거절된다**
+   *    (WIP-CHAIN-01 D6 실측 2026-09-15: 인쇄 실패 → 재시도 → `:report-print` 409).
+   *    사유까지 슬롯에 넣어, 같은 사유의 되풀이는 흡수되고 다른 사유는 새 키로 나간다.
+   *
+   * ⛔ **시도마다 무조건 새 키를 뽑지 않는다.** 그러면 끊긴 자리에서 같은 보고를 다시 보낼 때
+   *    서버가 두 건으로 세어, 멱등키를 둔 뜻이 사라진다.
+   */
+  const reportKeyFor = useCallback((issueId: number, failureReason: string | null): string => {
+    const slot = `${String(issueId)}:${failureReason ?? 'SUCCEEDED'}`;
     const existing = reportKeys.current.get(slot);
     if (existing !== undefined) return existing;
 
@@ -109,7 +120,7 @@ export const useLabelPrintRunner = (workerNo: string | null): LabelPrintRunner =
           params: {
             path: { documentIssueLogId: target.documentIssueLogId },
             header: {
-              'Idempotency-Key': reportKeyFor(target.documentIssueLogId, failureReason !== null),
+              'Idempotency-Key': reportKeyFor(target.documentIssueLogId, failureReason),
               'X-Worker-No': workerNo,
             },
           },
@@ -140,6 +151,15 @@ export const useLabelPrintRunner = (workerNo: string | null): LabelPrintRunner =
       setState({ phase: 'sending', printed: alreadyPrinted, reason: null });
       let printed = alreadyPrinted;
 
+      /*
+       * ⭐ **형식을 한 번 정해 요청과 저장이 같은 값을 쓴다.** 셸에 명령형(RAW) 자리가 없는데
+       * `tspl` 을 받으면 인쇄가 「보낼 프린터를 찾을 수 없다」로 멎고, 라벨을 못 붙여 스캔·마감이
+       * 통째로 막힌다(WIP-CHAIN-01 D6 실측 · macOS 셸). 서버는 두 형식을 다 그려 준다.
+       *
+       * ⚠ 실행 «안»에서 묻는다 — 훅이 설 때 굳혀 두면 통로가 뒤늦게 선 단말에서 옛 판정이 남는다.
+       */
+      const format = await resolveLabelRenditionFormat();
+
       for (const [index, target] of targets.entries()) {
         let failureReason: string | null = null;
         let failurePhase: 'renditionFailed' | 'printFailed' | null = null;
@@ -147,11 +167,18 @@ export const useLabelPrintRunner = (workerNo: string | null): LabelPrintRunner =
 
         try {
           /*
-           * ⛔ **배포본에서는 요청이 만들어지지 않는다**(`patterns/pop-label-rendition` 머리말 —
-           * 실서버에 경로가 없어 개발 모드에서만 부른다). 아래는 원래도 «렌디션 실패» 갈래로
-           * 실패 사유를 실어 보고하던 자리라 그대로 태운다.
+           * ⭐ **생산 LOT 라벨은 배포본에서도 부른다.** 서버가 그림을 그려 준다(실측 2026-09-15).
+           * 종류를 밝히지 않으면 `fetchLabelRendition` 이 「아직 준비되지 않은 종류」로 보고 요청
+           * 전에 막아, 인쇄가 서지 못해 라벨 스캔 칸이 열리지 않는다 — 그러면 LOT 마감으로 가는
+           * 길이 통째로 사라진다(WIP-CHAIN-01 D1).
+           *
            */
-          rendition = await fetchLabelRendition(client, target.documentIssueLogId);
+          rendition = await fetchLabelRendition(
+            client,
+            target.documentIssueLogId,
+            format,
+            'PRODUCTION_LOT_LABEL',
+          );
         } catch (error) {
           failureReason = reasonOf(error);
           failurePhase = 'renditionFailed';
@@ -195,7 +222,7 @@ export const useLabelPrintRunner = (workerNo: string | null): LabelPrintRunner =
       pendingSuccessReport.current = null;
       setState({ phase: 'succeeded', printed, reason: null });
     },
-    [client, format, report, workerNo],
+    [client, report, workerNo],
   );
 
   const run = useCallback(

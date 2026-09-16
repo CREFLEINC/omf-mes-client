@@ -44,6 +44,7 @@ const UOMS = source([[9501, 'SAMPLE-EA']]);
 
 const LOOKUPS = {
   itemLookup: ITEMS,
+  itemNames: new Map<number, ReferenceSource>(),
   lotLookup: LOTS,
   warehouseLookup: WAREHOUSES,
   locationLookup: LOCATIONS,

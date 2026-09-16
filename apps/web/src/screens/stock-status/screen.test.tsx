@@ -147,10 +147,31 @@ const lookupRoutes = (): StubRoute[] => [
   lookupRoute(WAREHOUSES_PATH, warehouseFixtures),
   lookupRoute(LOCATIONS_PATH, locationFixtures),
   lookupRoute(ITEMS_PATH, itemFixtures),
+  itemDetailRoute(),
   lookupRoute(LOTS_PATH, lotFixtures),
   lookupRoute(UOMS_PATH, uomFixtures),
   lookupRoute(PARTNERS_PATH, partnerFixtures),
 ];
+
+/**
+ * 품목 상세. **표에 선 품목의 이름은 번호마다 여기서 푼다**(PICK-ISSUE-01 D2) —
+ * 선택칸 목록은 한 쪽만 받아 품목이 많은 곳에서는 표의 품목이 그 쪽에 없다.
+ *
+ * 기본은 선택칸 목록과 같은 품목만 안다 — 9302 는 여기서도 없어(404) 「알 수 없음」 갈래가
+ * 그대로 남는다.
+ */
+const itemDetailRoute = (items: { itemId: number }[] = itemFixtures): StubRoute => ({
+  match: (request) =>
+    request.method === 'GET' && /^\/mdm\/items\/\d+$/.test(new URL(request.url).pathname),
+  respond: (request) => {
+    const itemId = Number(new URL(request.url).pathname.split('/').at(-1));
+    const item = items.find((each) => each.itemId === itemId);
+
+    return item === undefined
+      ? jsonResponse({ message: '' }, { status: 404 })
+      : jsonResponse({ item, editability: { editableFields: [], readOnlyFields: [] } });
+  },
+});
 
 /** 스텁이 응답할 상세 경로. 목록(`/trace/lots`)과 갈라야 한다. */
 const isLotDetailPath = (pathname: string): boolean => /^\/trace\/lots\/\d+$/.test(pathname);
@@ -319,8 +340,12 @@ const renderScreenHolding = (
     release = resolve;
   });
 
+  /* 이름 참조는 목록과 상세 두 경로로 나간다 — 목록을 붙잡으면 그 아래 상세도 함께 붙잡는다. */
+  const isHeld = (pathname: string): boolean =>
+    hold.some((each) => pathname === each || pathname.startsWith(`${each}/`));
+
   const fetch: StubFetch = async (request) => {
-    if (hold.includes(new URL(request.url).pathname)) await gate;
+    if (isHeld(new URL(request.url).pathname)) await gate;
 
     return stub(request);
   };
@@ -421,6 +446,53 @@ describe('StockStatusScreen — 창고를 고르기 전', () => {
     await screen.findByText(t.empty.notQueriedTitle);
 
     expect(currentLocation()).toBe(ROUTE);
+  });
+});
+
+describe('StockStatusScreen — 품목 이름', () => {
+  /*
+   * 선택칸 목록은 한 쪽(계약 기본 50건)만 받는다. 품목이 많은 고객사에서는 표에 선 품목이 그
+   * 쪽에 없어 품목 열이 전부 「알 수 없음」이 됐다 — 정상 값이 잘못된 값으로 읽힌다
+   * (PICK-ISSUE-01 D2 실기: 위치별 보기에서 A5C1M50101 이 알 수 없음으로 섰다).
+   */
+  it('선택칸 목록에 없는 품목도 표에서는 이름으로 선다', async () => {
+    const beyondFirstPage = {
+      itemId: 9302,
+      itemCode: 'A5C1M50101',
+      itemName: 'PI SENSOR-SG2A241',
+      isActive: true,
+    };
+    const { requests } = renderScreen(
+      [
+        balanceRoute(),
+        lookupRoute(WAREHOUSES_PATH, warehouseFixtures),
+        lookupRoute(LOCATIONS_PATH, locationFixtures),
+        /* 선택칸 목록은 첫 쪽뿐이고 그 안에 9302 가 없다 — 실기와 같은 형상이다. */
+        truncatedLookupRoute(ITEMS_PATH, itemFixtures),
+        itemDetailRoute([...itemFixtures, beyondFirstPage]),
+        lookupRoute(LOTS_PATH, lotFixtures),
+        lookupRoute(UOMS_PATH, uomFixtures),
+        lookupRoute(PARTNERS_PATH, partnerFixtures),
+      ],
+      WITH_WAREHOUSE,
+    );
+
+    expect(await screen.findByText('A5C1M50101 · PI SENSOR-SG2A241')).toBeInTheDocument();
+    /* 표에 선 번호만, 그것도 번호마다 한 번씩 부른다 — 줄마다 부르지도 목록을 훑지도 않는다. */
+    const detailRequests = requests.filter((each) => /^\/mdm\/items\/\d+$/.test(each.url.pathname));
+    const askedIds = new Set(detailRequests.map((each) => each.url.pathname));
+
+    expect(askedIds.size).toBe(3);
+    expect(detailRequests).toHaveLength(askedIds.size);
+  });
+
+  /* 없는 품목은 「알 수 없음」이다 — 못 받은 것과 갈라야 뜻이 뒤집히지 않는다(#47). */
+  it('상세에도 없는 품목은 알 수 없음으로 남는다', async () => {
+    renderScreen([balanceRoute(), ...lookupRoutes()], WITH_WAREHOUSE);
+
+    await screen.findByText(ITEM_LABEL);
+
+    expect(screen.getAllByText(t.values.unknown).length).toBeGreaterThan(0);
   });
 });
 

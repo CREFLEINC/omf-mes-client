@@ -15,6 +15,7 @@
  */
 
 import { common } from './common';
+import { popChrome } from './pop-chrome';
 import { popPageNav } from './pop-page-nav';
 import { conflict } from './conflict';
 import { stateLocked } from './state-locked';
@@ -139,6 +140,7 @@ import { productDisposalRequest } from './product-disposal-request';
 import { productionPlan } from './production-plan';
 
 export const ko = {
+  popChrome,
   popPageNav,
   common,
   conflict,

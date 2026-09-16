@@ -35,6 +35,27 @@ describe('fetchLabelRendition — 준비된 문서 종류만 배포 호출', () 
     expect(get).toHaveBeenCalledWith('/app/document-issues/{documentIssueLogId}/rendition',
       expect.objectContaining({ params: { path: { documentIssueLogId: 44102 }, query: { format: 'tspl' } } }));
   });
+  /*
+   * 서버가 생산 LOT 라벨의 그림을 그려 준다(실측 2026-09-15). 없던 시절의 가정을 남겨 두어
+   * 배포본에서 이 요청이 만들어지지 않았고, 인쇄가 서지 못해 LOT 마감이 통째로 막혔다
+   * (WIP-CHAIN-01 D1). 배포 모드에서 요청이 나가는 것을 여기서 고정한다.
+   */
+  it('배포본 생산 LOT 라벨의 rendition을 조회한다', async () => {
+    const { get, client } = clientSpy();
+    const bytes = new TextEncoder().encode('SIZE 40 mm,30 mm').buffer;
+    get.mockResolvedValue({ data: bytes, response: new Response(bytes) });
+
+    await expect(
+      fetchLabelRendition(client, 44103, 'tspl', 'PRODUCTION_LOT_LABEL'),
+    ).resolves.toEqual(bytes);
+    expect(get).toHaveBeenCalledWith(
+      '/app/document-issues/{documentIssueLogId}/rendition',
+      expect.objectContaining({
+        params: { path: { documentIssueLogId: 44103 }, query: { format: 'tspl' } },
+      }),
+    );
+  });
+
   it('거부한다 — 성공으로 빠지는 길이 없다', async () => {
     const { client } = clientSpy();
 

@@ -1,7 +1,7 @@
 import { AlertBanner } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useQuery } from '@tanstack/react-query';
-import { screen, waitFor } from '@testing-library/react';
+import { act, screen, waitFor } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { MemoryRouter } from 'react-router';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -9,6 +9,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { useApiClient } from '../patterns/api-context';
 import { FailureBanner } from '../patterns/failure-banner';
 import { deviceTokenKey, useLoadFailure } from '../patterns/load-failure';
+import { LocalNetworkProvider, type LocalNetworkAccess } from '../patterns/local-network';
 import { rememberPlant } from '../patterns/plant';
 import { runRequest } from '../patterns/request';
 import {
@@ -17,6 +18,7 @@ import {
   jsonResponse,
   renderWithProviders,
 } from '../test/api-harness';
+import { WorkerSignInScreen } from '../screens/device-registration/sign-in';
 import { ShellGate } from './shell-gate';
 
 const store = vi.hoisted(() => new Map<string, string>());
@@ -195,5 +197,67 @@ describe('등록 만료 알림', () => {
 
     expect(await screen.findByText('작업 화면')).toBeInTheDocument();
     expect(screen.queryByText(messages.httpError.deviceExpired)).not.toBeInTheDocument();
+  });
+});
+
+/*
+ * REG-ALL-01 N15 - targetSdk 37 앱은 로컬 네트워크 권한이 없으면 사내망 서버에 닿지 못하고,
+ * 작업자에게는 2분 뒤 「오프라인」으로만 보였다. 이미 등록된 기기도 업데이트 뒤에는 권한이
+ * 없을 수 있어 등록 여부와 무관하게 관문에서 한 번 묻는다.
+ */
+describe('로컬 네트워크 권한', () => {
+  const localNetwork = messages.deviceRegistration.localNetwork;
+
+  const gateWith = (access: LocalNetworkAccess, children: ReactNode = <p>작업 화면</p>) => {
+    renderWithProviders(
+      <LocalNetworkProvider access={access}>{at('/', children)}</LocalNetworkProvider>,
+      { fetch: createStubFetch([]) },
+    );
+  };
+
+  it('등록 판정 직후 한 번 묻고, 답을 받기 전에는 화면을 세우지 않는다', async () => {
+    keystore.token = 'tok-1';
+    let answer: (value: 'granted' | 'denied') => void = () => undefined;
+    const request = vi.fn(
+      () =>
+        new Promise<'granted' | 'denied'>((resolve) => {
+          answer = resolve;
+        }),
+    );
+
+    gateWith({ request });
+
+    await waitFor(() => expect(request).toHaveBeenCalledTimes(1));
+    expect(screen.getByRole('status')).toHaveTextContent('등록 상태를 확인하는 중입니다');
+    expect(screen.queryByText('작업 화면')).not.toBeInTheDocument();
+
+    act(() => {
+      answer('granted');
+    });
+
+    expect(await screen.findByText('작업 화면')).toBeInTheDocument();
+    expect(request).toHaveBeenCalledTimes(1);
+    expect(screen.queryByText(localNetwork.denied)).not.toBeInTheDocument();
+  });
+
+  it('미등록 기기에서 거절되면 등록 화면에 알리고 등록 경로는 막지 않는다', async () => {
+    gateWith({ request: () => Promise.resolve('denied') });
+
+    expect(await screen.findByText(localNetwork.denied)).toBeInTheDocument();
+    expect(screen.getByText('이 기기는 아직 등록되지 않았습니다')).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: messages.deviceRegistration.code.switch }),
+    ).toBeEnabled();
+  });
+
+  it('등록된 기기에서 거절되면 사번 확인 화면에 알리고 사번 입력은 막지 않는다', async () => {
+    keystore.token = 'tok-1';
+
+    gateWith({ request: () => Promise.resolve('denied') }, <WorkerSignInScreen />);
+
+    expect(await screen.findByText(localNetwork.denied)).toBeInTheDocument();
+    expect(
+      screen.getByRole('group', { name: messages.deviceRegistration.signIn.keypad.label }),
+    ).toBeInTheDocument();
   });
 });

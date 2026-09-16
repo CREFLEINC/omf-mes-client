@@ -2,7 +2,7 @@ import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
 import { runRequest } from '../../patterns/request';
-import type { InventoryCount, InventoryCountLine } from './count';
+import type { InventoryCount, InventoryCountLine, InventoryCountSummary } from './count';
 
 /** 한 위치의 라인은 이 안에 다 든다. */
 const PAGE_SIZE = 200;
@@ -31,6 +31,27 @@ export const useOpenCounts = (): UseQueryResult<InventoryCount[]> => {
       );
 
       return data.items;
+    },
+  });
+};
+
+/**
+ * 창고 번호를 이름으로 푼다.
+ *
+ * 진행 중인 실사가 여럿이면 번호와 날짜만으로는 갈리지 않는다 - 같은 날 여러 창고의 실사가
+ * 함께 선다.
+ */
+export const useWarehouseNames = (): UseQueryResult<Map<number, string>> => {
+  const { client } = useApiClient();
+
+  return useQuery({
+    queryKey: ['physical-count-warehouses'] as const,
+    queryFn: async () => {
+      const data = await runRequest(() =>
+        client.GET('/mdm/warehouses', { params: { query: { size: PAGE_SIZE } } }),
+      );
+
+      return new Map(data.items.map((each) => [each.warehouseId, each.warehouseName]));
     },
   });
 };
@@ -65,6 +86,82 @@ export const useCountLines = (
       );
 
       return data.items;
+    },
+  });
+};
+
+/**
+ * 이 실사에서 아직 셀 것이 남은 위치.
+ *
+ * 대상 위치는 실사 헤더에 없고 라인에 붙어 있다. 안 센 라인에서 위치 코드를 모아 말하지
+ * 않으면 위치 코드를 외우고 있는 사람만 이 화면을 쓸 수 있다.
+ *
+ * 한 쪽만 받는다 - 다 세면 사라지는 목록이라 전부 받을 이유가 없고, 창고 하나의 라인이
+ * 수천 건이라 받아 올 수도 없다.
+ */
+export const useUncountedLocations = (
+  inventoryCountId: number | null,
+): UseQueryResult<string[]> => {
+  const { client } = useApiClient();
+
+  return useQuery({
+    queryKey: ['physical-count-uncounted-locations', inventoryCountId] as const,
+    enabled: inventoryCountId !== null,
+    /* 한 위치를 끝낼 때마다 줄어든다. 낡은 목록은 이미 센 곳으로 다시 보낸다. */
+    staleTime: 0,
+    gcTime: 0,
+    queryFn: async () => {
+      if (inventoryCountId === null) {
+        throw new Error('실사를 고르기 전에는 남은 위치를 조회하지 않습니다.');
+      }
+
+      const data = await runRequest(() =>
+        client.GET('/inventory/counts/{inventoryCountId}/lines', {
+          params: { path: { inventoryCountId }, query: { uncountedOnly: true, size: PAGE_SIZE } },
+        }),
+      );
+
+      /* 코드 순으로 세운다 - 창고를 도는 차례가 대체로 그 순서다. */
+      return [
+        ...new Set(
+          data.items
+            .map((row) => row.locationCode)
+            .filter((code): code is string => code !== undefined && code !== ''),
+        ),
+      ].sort((left, right) => left.localeCompare(right));
+    },
+  });
+};
+
+/**
+ * 고른 실사의 진행 요약.
+ *
+ * 서버가 세어 준다 - 화면이 전체 라인을 받아 세면 쪽 나누기와 어긋나고, 창고 하나의 라인이
+ * 수천 건이라 받아 올 수도 없다.
+ */
+export const useCountSummary = (
+  inventoryCountId: number | null,
+): UseQueryResult<InventoryCountSummary> => {
+  const { client } = useApiClient();
+
+  return useQuery({
+    queryKey: ['physical-count-summary', inventoryCountId] as const,
+    enabled: inventoryCountId !== null,
+    /* 한 위치를 끝낼 때마다 달라진다. 낡은 값을 보이면 다 돌았는지를 잘못 말한다. */
+    staleTime: 0,
+    gcTime: 0,
+    queryFn: async () => {
+      if (inventoryCountId === null) {
+        throw new Error('실사를 고르기 전에는 진행을 조회하지 않습니다.');
+      }
+
+      const data = await runRequest(() =>
+        client.GET('/inventory/counts/{inventoryCountId}', {
+          params: { path: { inventoryCountId } },
+        }),
+      );
+
+      return data.summary;
     },
   });
 };

@@ -11,6 +11,7 @@ import { LoadErrorBanner } from './load-error-banner';
 import {
   isTruncated,
   lookupNote,
+  useItemNameSources,
   useItemOptions,
   useLocationDetail,
   useLocationOptions,
@@ -202,6 +203,10 @@ export const MaterialIssueRequestScreen = () => {
    * 도착 위치 자동 채움 — W/O 의 기본 재공 위치가 속한 창고를 찾아 창고·위치를 함께 세운다.
    * **사용자가 이미 고른 값을 덮지 않는다**(둘 다 비어 있을 때만 채운다). 상세 조회가 실패하면
    * 아무것도 채우지 않는다 — 조용히 첫 창고를 고르면 잘못된 위치가 전표에 실린다.
+   *
+   * ⛔ **대상(`workOrderId`)도 조건에 넣는다.** 위 비움 effect 가 대상이 바뀔 때마다 두 칸을
+   * 비우는데, 기본 재공 위치가 같은 W/O 로 옮기면 위치·창고 값이 그대로라 이 effect 가 다시 돌지
+   * 않아 칸이 빈 채로 남았다(PLAN-WO-01 W13). 선언 순서상 비움 뒤에 돌므로 비운 칸을 다시 채운다.
    */
   const resolvedWarehouseId = locationDetail.warehouseId;
 
@@ -217,12 +222,17 @@ export const MaterialIssueRequestScreen = () => {
           }
         : prev,
     );
-  }, [defaultWipLocationId, resolvedWarehouseId]);
+  }, [workOrderId, defaultWipLocationId, resolvedWarehouseId]);
 
   /** BOM 유래 판정을 한 자리에서 채운다 — 표의 경고와 본문의 FK 가 같은 값을 본다. */
   const resolvedLines = useMemo(
     () => resolveLineOrigins(lines, shortageLines),
     [lines, shortageLines],
+  );
+
+  /* BOM 유래 줄의 품목 이름은 품목 상세로 푼다 — 품목 목록 한 쪽에 없는 품목도 이름이 선다. */
+  const itemNameSources = useItemNameSources(
+    resolvedLines.filter((line) => line.origin === 'shortage').map((line) => line.itemId),
   );
 
   const boundCreated =
@@ -540,6 +550,7 @@ export const MaterialIssueRequestScreen = () => {
               rows={resolvedLines}
               errors={lineErrors}
               itemLookup={items}
+              itemNameSources={itemNameSources}
               uomLookup={uoms}
               itemOptions={toSelectOptions(items)}
               uomOptions={toSelectOptions(uoms)}

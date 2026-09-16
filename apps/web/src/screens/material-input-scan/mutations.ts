@@ -18,17 +18,24 @@ type MaterialConsumption = components['schemas']['MaterialConsumption'];
  * 기록되며, **화면이 그 구분을 보여야 한다** — 나중에 계보를 추적할 때 필요하다.
  *
  * ⛔ **화면이 판정하지 않는다.** 서버가 돌려준 값의 유무를 읽을 뿐이다.
+ *
+ * ⛔ **「교차 투입」 축은 여기에 없다.** 한때 `actualUseProcessId` 의 유무로 세웠는데, 계약이
+ *    그 필드를 「**서버가 이 W/O 의 공정으로 채운다**」고 정해 두어(요청 쪽 설명) 정상 투입에도
+ *    늘 채워져 돌아온다 — 유무로 보면 **모든 줄에 붙어 구분이 0** 이 된다. 실측도 같았다
+ *    (WIP-CHAIN-01 D8, 2026-09-15: 사출·조립 전 건에 표시됨). 값의 유무가 판정의 근거가
+ *    되지 못하므로 축을 세우지 않는다.
+ *
+ * ⭐ 되살리려면 **서버가 판정 결과를 내려 줄 때**다(`isCrossProcess` 같은 값). 화면이
+ *    「자재의 지정 공정 ≠ 실제 투입 공정」을 스스로 비교하려면 BOM 조회가 필요한데, 그것은
+ *    위의 ⛔(화면이 판정하지 않는다)와 어긋난다.
  */
 export interface RecordedNote {
   lotId: number;
-  /** 출고에 귀속되지 않았다 — `shopfloorReceiptLineId`가 비어 있다. */
+  /** 출고에 귀속되지 않았다 — `shopfloorReceiptLineId`가 비어 있다. 계약이 조건부 채움으로 명시한 필드다. */
   unlinkedIssue: boolean;
-  /** 다른 공정용 자재를 썼다 — `actualUseProcessId`가 채워져 있다. */
-  crossProcess: boolean;
 }
 
 export const toRecordedNote = (recorded: MaterialConsumption): RecordedNote => ({
   lotId: recorded.lotId,
   unlinkedIssue: recorded.shopfloorReceiptLineId === undefined,
-  crossProcess: recorded.actualUseProcessId !== undefined,
 });

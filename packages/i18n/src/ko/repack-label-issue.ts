@@ -107,7 +107,8 @@ export const repackLabelIssue = {
     printerNone: '쓸 수 있는 프린터가 없습니다',
     terminalLabel: '단말',
     terminalUnknown: '확인되지 않음',
-    online: '연결됨',
+    /** 다른 POP 머리줄과 같은 말이다 — 「온라인/오프라인」(사용자 지시 2026-09-15). */
+    online: '온라인',
     offline: '오프라인',
   },
 

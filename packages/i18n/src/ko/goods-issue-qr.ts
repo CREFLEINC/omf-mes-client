@@ -17,7 +17,8 @@ export const goodsIssueQr = {
 
   /** 머리줄 오른쪽의 상태 묶음. 다른 POP 화면과 같은 말을 쓴다. */
   device: {
-    terminalLabel: '단말',
+    /** ⭐ 번호가 뒤에 붙는다 — 「단말# 5」(사용자 지시 2026-09-15). */
+    terminalLabel: '단말#',
     terminalUnknown: '확인되지 않음',
   },
 
@@ -127,7 +128,6 @@ export const goodsIssueQr = {
      * ⛔ **조작 이름을 앞에 붙이지 않는다.** 이 문구는 단추 바로 옆 한 줄에 서므로 무엇에
      * 대한 말인지는 «자리»가 말한다. 다른 POP 화면도 앞머리 없이 쓴다(사용자 지시 2026-09-07).
      */
-    disabledNoSelection: '발행할 라인을 먼저 고르세요.',
     disabledPalletNeedsOneLine: '파렛트로 발행하려면 라인을 하나만 고르세요.',
     disabledNoPallet: '발행할 파렛트를 고르세요.',
     /* 대상 칸이 이미 사유를 적고 있다 — 같은 말을 액션바에서 되풀이하지 않는다(#1095). */

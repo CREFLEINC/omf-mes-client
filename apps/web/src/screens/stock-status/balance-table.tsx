@@ -79,6 +79,12 @@ const WIDTH = {
 export interface BalanceColumnDeps {
   view: ViewAxis;
   itemLookup: ReferenceSource;
+  /**
+   * 표에 선 품목의 이름 — 번호마다 상세로 푼 것(`useItemNames`). 선택칸 목록은 한 쪽만 받아
+   * 품목이 많은 곳에서는 정상 값이 「알 수 없음」이 된다(PICK-ISSUE-01 D2). 여기 없는 번호만
+   * 목록으로 푼다.
+   */
+  itemNames: ReadonlyMap<number, ReferenceSource>;
   lotLookup: ReferenceSource;
   locationLookup: ReferenceSource;
   uomLookup: ReferenceSource;
@@ -119,6 +125,7 @@ const QTY_ALIGN = 'end' as const;
 export const buildBalanceColumns = ({
   view,
   itemLookup,
+  itemNames,
   lotLookup,
   locationLookup,
   uomLookup,
@@ -139,7 +146,7 @@ export const buildBalanceColumns = ({
     key: 'itemCode',
     header: t.table.item,
     width: WIDTH.axis,
-    render: (row) => describeReference(toReference(itemLookup, row.itemId)),
+    render: (row) => describeReference(toReference(itemNames.get(row.itemId) ?? itemLookup, row.itemId)),
   };
 
   const lotColumn: Column<BalanceView> = {
@@ -369,12 +376,13 @@ export const BalanceTable = ({
   onToggleSelect,
   onRetryReferences,
   itemLookup,
+  itemNames,
   lotLookup,
   locationLookup,
   uomLookup,
   partnerLookup,
 }: BalanceTableProps) => {
-  const lookups = { itemLookup, lotLookup, locationLookup, uomLookup, partnerLookup };
+  const lookups = { itemLookup, itemNames, lotLookup, locationLookup, uomLookup, partnerLookup };
   const columns = buildBalanceColumns({ view, ...lookups, selectedLotId, onToggleSelect });
   const groupAxis = groupAxisOf(view);
 
@@ -451,7 +459,9 @@ export const BalanceTable = ({
     if (first === undefined) return null;
 
     return groupAxis === 'item'
-      ? t.groupHeader.item(describeReference(toReference(itemLookup, first.itemId)))
+      ? t.groupHeader.item(
+          describeReference(toReference(itemNames.get(first.itemId) ?? itemLookup, first.itemId)),
+        )
       : t.groupHeader.location(describeReference(toReference(locationLookup, first.locationId)));
   };
 

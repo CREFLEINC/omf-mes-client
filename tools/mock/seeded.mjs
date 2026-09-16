@@ -11,6 +11,7 @@
  */
 
 import { spawn } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import { createServer } from 'node:http';
 
 import { toPng } from './label-canvas.mjs';
@@ -385,6 +386,104 @@ on('POST', '/mdm/warehouses/{warehouseId}:deactivate', (params, _query, _body, h
     setWarehouseActive(params, headers, false),
   ),
 );
+
+/*
+ * ── W-CO-08 창고 배치도 ──────────────────────────────────────
+ *
+ * ⚠ **판 번호가 창고 자체와 다른 축이다.** 계약 x-internal-note 가 세 갈래(배치도 자체
+ *   `versionNo` · `mdm.location.version_no` · 부모 창고 ETag)로 갈려 있다고 밝히고, 이
+ *   화면의 저장은 배치도 자체 `WarehouseLayout.versionNo`를 쓴다(§10 코드 수준 설계 —
+ *   `layoutPath()`가 잠금 토큰 출처). 그래서 `warehouseVersions`(창고 자체 판)와 별도로
+ *   `layoutVersions`를 둔다 — 같은 Map을 같이 쓰면 창고 활성화 토글처럼 배치도와 무관한
+ *   쓰기가 배치도의 If-Match를 조용히 낡게 만든다.
+ *
+ * ⭐ 씨앗에 없는 창고(WH-02 등)도 GET은 200이어야 한다 — 도면 없는 창고도 화면이 열려야
+ *   하기 때문이다(계약: 「도면이 없으면 점만 온다」). `resourceEtag`/`bumpVersion`이 이미
+ *   `versions.get(id) ?? 1`로 기본값을 주므로 Map을 창고마다 미리 채우지 않아도 된다.
+ */
+const layoutVersions = new Map();
+const layoutsByWarehouse = new Map(state.warehouseLayouts.map((row) => [row.warehouseId, row]));
+
+const layoutOf = (warehouseId) =>
+  layoutsByWarehouse.get(warehouseId) ?? {
+    warehouseId,
+    drawingAttachmentId: undefined,
+    markers: [],
+  };
+
+on('GET', '/mdm/warehouses/{warehouseId}/layout', (params) => {
+  const warehouseId = Number(params.warehouseId);
+  const warehouse = state.warehouses.find((row) => row.warehouseId === warehouseId);
+  if (warehouse === undefined) return null;
+
+  const layout = layoutOf(warehouseId);
+  return {
+    status: 200,
+    created: {
+      warehouseId,
+      drawingAttachmentId: layout.drawingAttachmentId,
+      markers: layout.markers,
+    },
+    headers: { ETag: resourceEtag('warehouse-layout', warehouseId, layoutVersions) },
+  };
+});
+
+on('PUT', '/mdm/warehouses/{warehouseId}/layout', (params, _query, body, headers) => {
+  const warehouseId = Number(params.warehouseId);
+  const warehouse = state.warehouses.find((row) => row.warehouseId === warehouseId);
+  if (warehouse === undefined) return null;
+
+  return idempotent(`mdm.warehouses:${warehouseId}:layout`, headers, () => {
+    if (!matchesEtag(headers, resourceEtag('warehouse-layout', warehouseId, layoutVersions))) {
+      return conflict();
+    }
+
+    /*
+     * ⛔ **통째 교체다.** `drawingAttachmentId`를 빠뜨리면 도면이 지워진다(계획 C-5·데이터
+     *   손실 — 검증 수준 「중요」의 근거). 여기서 형식을 막아 주지 않는다 — 그 실수를
+     *   재현하는 것은 시험(감지기)의 몫이고, 목은 계약이 준 값을 있는 그대로 저장할 뿐이다.
+     */
+    const drawingAttachmentId = body?.drawingAttachmentId ?? null;
+
+    if (drawingAttachmentId !== null) {
+      const drawing = state.attachments.find((row) => row.attachmentId === drawingAttachmentId);
+      const belongsToThisWarehouse =
+        drawing !== undefined &&
+        drawing.targetTypeCode === 'WAREHOUSE' &&
+        drawing.targetId === warehouseId;
+
+      if (!belongsToThisWarehouse) {
+        return {
+          status: 400,
+          created: {
+            errors: [
+              {
+                scope: 'field',
+                field: 'drawingAttachmentId',
+                code: 'INVALID',
+                message: '이 창고에 올린 도면이 아닙니다.',
+              },
+            ],
+          },
+        };
+      }
+    }
+
+    const layout = {
+      warehouseId,
+      drawingAttachmentId: drawingAttachmentId ?? undefined,
+      markers: body?.markers ?? [],
+    };
+    layoutsByWarehouse.set(warehouseId, layout);
+    bumpVersion(layoutVersions, warehouseId);
+
+    return {
+      status: 200,
+      created: layout,
+      headers: { ETag: resourceEtag('warehouse-layout', warehouseId, layoutVersions) },
+    };
+  });
+});
 
 on('GET', '/mdm/locations', (_p, query) => {
   const q = query.get('q');
@@ -920,6 +1019,39 @@ on('GET', '/mdm/terminals/{terminalId}', (params) => {
     versionNo: 1,
   };
 });
+
+/*
+ * POP 등록 확인(P-7)과 화면 이동 후보(P-10) — 브라우저로 POP 을 열어 화면을 확인하는 데 필요하다(#1268).
+ * 없으면 등록 적용이 405 로 멈추고, [화면 이동] 이 「확인하지 못했습니다」로 잠긴다.
+ *
+ * ⚠ **화면 후보는 실서버와 다르다.** 실서버는 아직 단말과 무관하게 `P-01-01` 하나로 고정해 두었는데
+ *   (서버 규칙 미정 · 서버팀 요청 전달됨), 목은 설치된 POP 화면 전부를 준다 — 화면을 하나씩 열어
+ *   확인하는 용도다. 서버 규칙이 정해지면 그에 맞춘다.
+ */
+on('POST', '/mdm/terminals/{terminalId}:confirm-registration', (params) => {
+  const terminalId = Number(params.terminalId);
+
+  if (TERMINALS[terminalId] === undefined) {
+    return {
+      status: 401,
+      created: { code: 'TERMINAL_NOT_FOUND', message: '등록된 단말이 아닙니다.' },
+    };
+  }
+
+  return {
+    terminalId,
+    tokenVersion: 3,
+    registrationStatusCode: 'REGISTERED',
+    registrationConfirmedAt: new Date().toISOString(),
+  };
+});
+
+on('GET', '/mdm/terminals/{terminalId}/accessible-screens', () => ({
+  screenCodes: [
+    'P-01-01', 'P-01-02', 'P-02-01', 'P-02-03', 'P-02-04', 'P-02-08', 'P-02-09', 'P-02-10',
+    'P-02-11', 'P-02-12', 'P-02-13', 'P-04-01', 'P-04-03', 'P-04-04', 'P-05-01', 'P-05-02',
+  ],
+}));
 
 on('GET', '/mdm/terminals/{terminalId}/processes', () => ({
   items: [
@@ -4253,6 +4385,184 @@ on('POST', '/maintenance/breakdowns/{breakdownId}/attachments', (params, _q, bod
 
 /* ── 공통 ─────────────────────────────────────────────────── */
 
+/*
+ * 첨부(POST/GET /app/attachments · GET .../content) — W-CO-08 §6-2·§6-4·§7·§8·§9-4.
+ *
+ * ⭐ **파일 바이트는 메모리에만 둔다.** 재시작하면 사라진다 — 목은 오래 켜 두는 도구가
+ *   아니고, 디스크에 쓰기 시작하면 정리 책임이 새로 생긴다.
+ * ⛔ **`bytes` 는 계약 스키마 밖이다.** 응답 직전에 `attachmentView()` 로 걷어낸다 —
+ *   다른 자리의 `progress`(withProgress/withoutProgress)·`steps`(withoutSteps)와 같은 결.
+ */
+const attachmentBytes = new Map(state.attachments.map((row) => [row.attachmentId, row.bytes]));
+const attachmentView = ({ bytes: _bytes, ...attachment }) => attachment;
+
+/** PNG·JPEG 판별 — **파일 내용(시그니처)으로 본다.** 확장자·Content-Type 헤더는 속일 수 있다. */
+const PNG_SIGNATURE = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+const JPEG_SIGNATURE = Buffer.from([0xff, 0xd8, 0xff]);
+
+const sniffImageContentType = (bytes) => {
+  if (
+    bytes.length >= PNG_SIGNATURE.length &&
+    bytes.subarray(0, PNG_SIGNATURE.length).equals(PNG_SIGNATURE)
+  ) {
+    return 'image/png';
+  }
+  if (
+    bytes.length >= JPEG_SIGNATURE.length &&
+    bytes.subarray(0, JPEG_SIGNATURE.length).equals(JPEG_SIGNATURE)
+  ) {
+    return 'image/jpeg';
+  }
+  return null;
+};
+
+const MAX_ATTACHMENT_BYTES =
+  10 * 1024 * 1024; /* 10MB — 초과하면 413(계약 §POST /app/attachments). */
+
+/*
+ * ⭐ **올리기 지연 — 로딩 표시를 눈으로 보려는 용도.** 기본은 0(스모크·단위 시험이 느려지지
+ *   않게). `pnpm mock`을 `MOCK_UPLOAD_DELAY_MS=1500`처럼 띄우면 「도면 올리기」 버튼의
+ *   `aria-busy`·가림막을 실제 서버처럼 느린 응답에서 확인할 수 있다.
+ */
+const UPLOAD_DELAY_MS = Number(process.env.MOCK_UPLOAD_DELAY_MS ?? 0);
+const delay = (ms) =>
+  ms > 0 ? new Promise((resolve) => setTimeout(resolve, ms)) : Promise.resolve();
+
+/**
+ * 멀티파트 본문을 편다. Node 내장 Web API(`Response#formData`)로 boundary 를 그대로
+ * 해석한다 — **의존성을 더하지 않는다.**
+ */
+const parseMultipart = async (rawBody, contentType) => {
+  if (contentType === undefined || rawBody === undefined) return null;
+  try {
+    return await new Response(rawBody, { headers: { 'content-type': contentType } }).formData();
+  } catch {
+    return null;
+  }
+};
+
+const fieldError = (field, code, message) => ({
+  status: 400,
+  created: { errors: [{ scope: 'field', field, code, message }] },
+});
+
+/*
+ * ⭐ **같은 멱등 키에 다른 파일이 오면 409.** 공용 `idempotent()` 헬퍼는 «성공은 그대로
+ *   재생, 실패는 기억하지 않는다» 만 하고 본문이 달라졌는지는 보지 않는다(그 헬퍼가 감싸는
+ *   대부분의 쓰기는 JSON 이라 값 비교가 간단하지 않다). 파일은 지문이 바이트라, 여기서는
+ *   그 해시로 «같은 요청 재전송인가»를 직접 판정한다.
+ */
+const uploadIdempotency = new Map();
+const hashOf = (bytes) => createHash('sha256').update(bytes).digest('hex');
+
+on('POST', '/app/attachments', async (_params, _query, _body, headers, rawBody) => {
+  const key = headers['idempotency-key'];
+  if (key === undefined || key.trim() === '') {
+    return {
+      status: 400,
+      created: { code: 'IDEMPOTENCY_KEY_REQUIRED', message: 'Idempotency-Key가 필요합니다.' },
+    };
+  }
+
+  /* 실제 전송처럼 몸통을 다 받은 뒤에 늦춘다 — 화면의 「올리는 중…」 이 실제 지연을 보게 한다. */
+  await delay(UPLOAD_DELAY_MS);
+
+  const form = await parseMultipart(rawBody, headers['content-type']);
+  if (form === null) {
+    return fieldError('file', 'INVALID_BODY', '본문을 해석하지 못했습니다.');
+  }
+
+  const targetTypeCode = form.get('targetTypeCode');
+  if (targetTypeCode !== 'WAREHOUSE' && targetTypeCode !== 'NOTICE') {
+    return fieldError('targetTypeCode', 'INVALID', '알 수 없는 대상 유형입니다.');
+  }
+
+  const targetId = Number(form.get('targetId'));
+  if (!Number.isFinite(targetId)) {
+    return fieldError('targetId', 'REQUIRED', '대상을 확인할 수 없습니다.');
+  }
+
+  /* NOTICE 는 이 목이 아직 공지 상태를 갖지 않아 존재 검사를 하지 않는다(범위 밖 — §범위 밖). */
+  if (
+    targetTypeCode === 'WAREHOUSE' &&
+    state.warehouses.find((row) => row.warehouseId === targetId) === undefined
+  ) {
+    return fieldError('targetId', 'NOT_FOUND', '창고를 찾을 수 없습니다.');
+  }
+
+  const file = form.get('file');
+  if (!(file instanceof File)) {
+    return fieldError('file', 'REQUIRED', '파일이 없습니다.');
+  }
+
+  const bytes = Buffer.from(await file.arrayBuffer());
+
+  if (bytes.length > MAX_ATTACHMENT_BYTES) {
+    return {
+      status: 413,
+      created: {
+        errors: [
+          {
+            scope: 'field',
+            field: 'file',
+            code: 'TOO_LARGE',
+            message: '파일이 너무 큽니다(10MB 초과).',
+          },
+        ],
+      },
+    };
+  }
+
+  const contentType = sniffImageContentType(bytes);
+  if (contentType === null) {
+    return fieldError('file', 'UNSUPPORTED_TYPE', 'PNG 또는 JPEG 파일만 올릴 수 있습니다.');
+  }
+
+  const hash = hashOf(bytes);
+  const remembered = uploadIdempotency.get(key);
+  if (remembered !== undefined) {
+    /* ⛔ 같은 키·다른 파일 — 재시도가 아니라 다른 요청이 키를 재사용한 것이다. */
+    if (remembered.hash !== hash) return conflict();
+    return structuredClone(remembered.result);
+  }
+
+  const attachment = {
+    attachmentId: newId(),
+    targetTypeCode,
+    targetId,
+    fileName: typeof file.name === 'string' && file.name !== '' ? file.name : 'attachment',
+    contentType,
+    byteSize: bytes.length,
+    uploadedAt: new Date().toISOString(),
+    uploadedBy: MOCK_SESSION.userId,
+  };
+  state.attachments.push(attachment);
+  attachmentBytes.set(attachment.attachmentId, bytes);
+
+  const result = { status: 201, created: attachment };
+  uploadIdempotency.set(key, { hash, result: structuredClone(result) });
+  return result;
+});
+
+on('GET', '/app/attachments/{attachmentId}/content', (params) => {
+  const attachmentId = Number(params.attachmentId);
+  const attachment = state.attachments.find((row) => row.attachmentId === attachmentId);
+  const bytes = attachmentBytes.get(attachmentId);
+  if (attachment === undefined || bytes === undefined) return null;
+
+  return { binary: { contentType: attachment.contentType, bytes } };
+});
+
+on('GET', '/app/attachments', (_p, query) =>
+  page(
+    keep(state.attachments, [
+      byText(query, 'targetTypeCode', 'targetTypeCode'),
+      byNum(query, 'targetId', 'targetId'),
+    ]).map(attachmentView),
+    query,
+  ),
+);
+
 const approvalRequestVersions = new Map(
   state.approvalRequests.map((row) => [row.approvalRequestId, 1]),
 );
@@ -4396,18 +4706,33 @@ on('POST', '/app/approval-requests/{approvalRequestId}:reject', (params, _q, bod
 
 /* ── 서버 ─────────────────────────────────────────────────── */
 
+/**
+ * 본문을 읽는다. JSON 해석 결과(`json`)는 그대로 두되 **원시 `Buffer`(`raw`)도 함께 낸다.**
+ *
+ * ⭐ 멀티파트(`POST /app/attachments`)는 JSON 이 아니라 `json`이 늘 `null`이 된다 — 그래도
+ *   파일 바이트는 그대로 남아 있어야 그 라우트가 `new Response(raw, { headers }).formData()`
+ *   로 다시 풀 수 있다.
+ * ⛔ **기존 핸들러 시그니처 `(params, query, body, headers)`는 건드리지 않는다.** 원시
+ *   바이트는 라우트 루프가 다섯째 인자(`rawBody`)로 따로 넘긴다(아래 서버 루프) — 네 개짜리
+ *   핸들러는 다섯째 인자를 그냥 무시하므로 그대로 동작한다. 헤더 객체에 실어 보내는 방법도
+ *   있었지만, `forward()`가 `{ ...request.headers }`로 그 객체를 복제해 업스트림(Prism)
+ *   요청 «헤더»로 그대로 보내므로 그 자리에 Buffer 를 얹으면 멀쩡한 프록시 호출이 깨진다.
+ */
 const readBody = (request) =>
   new Promise((resolve) => {
     const chunks = [];
     request.on('data', (chunk) => chunks.push(chunk));
     request.on('end', () => {
-      const raw = Buffer.concat(chunks).toString('utf-8');
+      const raw = Buffer.concat(chunks);
+      let json = null;
 
       try {
-        resolve(raw === '' ? null : JSON.parse(raw));
+        json = raw.length === 0 ? null : JSON.parse(raw.toString('utf-8'));
       } catch {
-        resolve(null);
+        json = null;
       }
+
+      resolve({ json, raw });
     });
   });
 
@@ -4492,18 +4817,28 @@ const send = (response, status, payload, headers = {}) => {
   response.end(body);
 };
 
-/** 모르는 경로는 Prism 이 계약대로 답한다. 계약 전체를 여기서 다시 구현하지 않는다. */
-const forward = async (request, response, body) => {
+/**
+ * 모르는 경로는 Prism 이 계약대로 답한다. 계약 전체를 여기서 다시 구현하지 않는다.
+ *
+ * ⭐ **JSON 이 아닌 본문(예: 멀티파트)은 원시 그대로 넘긴다.** 종전에는 `JSON.stringify(body)`
+ *   뿐이었다 — `body`(파싱 결과)가 파싱 실패로 `null`이 된 것인지 애초에 본문이 없어 `null`인지
+ *   가리지 않고 그냥 본문 없는 요청으로 넘겼다. 멀티파트를 이 길로 흘려보내는 라우트가
+ *   생기면(예: 고장 첨부 §4090 유사 경로가 늘 때) 파일 바이트가 그대로 Prism 에 닿아야
+ *   한다. `raw.length > 0`인데 `json === null`이면 «JSON 이 아닌 본문»으로 본다.
+ */
+const forward = async (request, response, body, rawBody) => {
   const target = `http://127.0.0.1:${String(FALLBACK_PORT)}${request.url}`;
   const headers = { ...request.headers };
   delete headers.host;
   delete headers['content-length'];
 
+  const isNonJsonBody = body === null && rawBody !== undefined && rawBody.length > 0;
+
   try {
     const upstream = await fetch(target, {
       method: request.method,
       headers,
-      body: body === null ? undefined : JSON.stringify(body),
+      body: isNonJsonBody ? rawBody : body === null ? undefined : JSON.stringify(body),
     });
     const text = await upstream.text();
 
@@ -4530,7 +4865,7 @@ const server = createServer((request, response) => {
     }
 
     const url = new URL(request.url ?? '/', `http://127.0.0.1:${String(PORT)}`);
-    const body = await readBody(request);
+    const { json: body, raw: rawBody } = await readBody(request);
 
     for (const route of routes) {
       if (route.method !== request.method) {
@@ -4544,7 +4879,13 @@ const server = createServer((request, response) => {
       }
 
       const params = Object.fromEntries(route.keys.map((key, at) => [key, matched[at + 1]]));
-      const result = route.handle(params, url.searchParams, body, request.headers);
+      /*
+       * ⭐ **`await` — 핸들러가 Promise 를 낼 수 있다.** 첨부 올리기는 멀티파트를 풀고
+       *   지연(`MOCK_UPLOAD_DELAY_MS`)을 기다려야 해서 async 다. 동기 핸들러가 낸 값을
+       *   `await` 해도 그대로 통과하므로(Promise 가 아니면 즉시 리졸브) 기존 핸들러는
+       *   바뀌지 않는다.
+       */
+      const result = await route.handle(params, url.searchParams, body, request.headers, rawBody);
 
       if (result === null) {
         send(response, 404, { code: 'NOT_FOUND', message: '씨앗에 없는 자원입니다.' });
@@ -4566,7 +4907,7 @@ const server = createServer((request, response) => {
       return;
     }
 
-    await forward(request, response, body);
+    await forward(request, response, body, rawBody);
   })();
 });
 

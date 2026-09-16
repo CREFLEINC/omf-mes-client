@@ -7,7 +7,8 @@ import { useAdvanceTo } from '../../patterns/advance-to';
 import { useBackStep } from '../../patterns/back-step';
 import { playErrorTone } from '../../patterns/error-tone';
 import { useLocationByCode, useLocations } from '../../patterns/locations';
-import { useItemLabels } from '../../patterns/masters';
+import { useItemCodes } from '../../patterns/masters';
+import { referenceFromQuery, referenceLabel } from '../../patterns/reference';
 import { useOnlineStatus } from '../../patterns/online-status';
 import { useOutbox } from '../../patterns/outbox';
 import { currentPlantId } from '../../patterns/plant';
@@ -94,7 +95,7 @@ export const ProductReceiptScreen = () => {
   const atLocation = useLocationByCode(warehouseId, scannedLocation);
   const destination = destinationOf(warehouse, atLocation.data ?? null, locations.data ?? []);
 
-  const itemLabels = useItemLabels(lines.map((line) => line.itemId));
+  const itemCode = useItemCodes(lines.map((line) => line.itemId));
   const plantId = currentPlantId();
 
   /*
@@ -207,11 +208,11 @@ export const ProductReceiptScreen = () => {
     unitScan.focus();
   });
 
+  /* 한 번에 받는 조회라 실패하면 줄 전부가 같은 상태다. 그래도 대리키는 보이지 않는다. */
+  const lotNo = referenceFromQuery(lots, (lot) => lot.lotNo);
+
   const nameOf = (line: DraftLine): string =>
-    t.contents.name(
-      itemLabels.get(line.itemId)?.itemCode ?? '',
-      lots.data?.get(line.lotId)?.lotNo ?? String(line.lotId),
-    );
+    t.contents.name(referenceLabel(itemCode(line.itemId)), referenceLabel(lotNo(line.lotId)));
 
   const restart = () => {
     setScannedUnit(null);

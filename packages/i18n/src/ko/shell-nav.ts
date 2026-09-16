@@ -21,4 +21,10 @@ export const shellNav = {
      */
     name: (label: string, count: number) => `${label} (화면 ${count}개)`,
   },
+  version: {
+    /* 사이드바 맨 아래 작은 캡션. 문의·장애 보고 때 「어느 릴리스인가」를 확인하는 자리다. */
+    release: (version: string) => `버전 ${version}`,
+    /* 릴리스 태그 없이 만든 빌드 - 빈칸이나 「알 수 없음」 대신 무엇인지 말한다. */
+    dev: '개발 빌드',
+  },
 } as const;

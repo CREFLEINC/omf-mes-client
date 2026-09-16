@@ -37,9 +37,12 @@ export const common: Translated<typeof ko.common> = {
   },
   reference: {
     empty: '—',
+    named: (name: string, code: string) => `${name}(${code})`,
     unknown: 'Không rõ',
+    uomUnknown: 'Không có đơn vị',
     loading: 'Đang tải tên',
     failed: 'Không tải được tên',
+    failedOffline: 'Sẽ hiển thị khi có kết nối',
     inactiveSuffix: ' (ngừng dùng)',
   },
   selectDate: 'Chọn ngày',

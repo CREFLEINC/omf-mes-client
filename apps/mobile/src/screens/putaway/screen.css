@@ -81,3 +81,25 @@
   justify-content: flex-start;
   text-align: start;
 }
+
+/*
+ * 이름과 값을 두 열로 세운다. 이름 열은 가장 긴 이름에 맞추고 값 열이 남은 폭을 받는다 -
+ * 값마다 시작점이 달라지면 훑는 눈이 줄마다 자리를 다시 찾는다.
+ */
+.putaway__task-fields {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: var(--space-1, 4px) var(--space-3, 12px);
+  margin: 0;
+  width: 100%;
+  text-align: start;
+}
+
+.putaway__task-fields dt {
+  color: var(--on-surface-muted, inherit);
+}
+
+.putaway__task-fields dd {
+  margin: 0;
+  min-width: 0;
+}

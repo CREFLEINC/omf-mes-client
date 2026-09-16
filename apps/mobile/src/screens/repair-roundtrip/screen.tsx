@@ -18,7 +18,13 @@ import { useBackStep } from '../../patterns/back-step';
 import { playErrorTone } from '../../patterns/error-tone';
 import { useIdempotencyKey } from '../../patterns/idempotency';
 import { useScannedLot } from '../../patterns/lots';
-import { useDefectCodes, useItem, useUomCodes, type DefectCodeLabel } from '../../patterns/masters';
+import {
+  type DefectCodeLabel,
+  uomLabelOf,
+  useDefectCodes,
+  useItem,
+  useUomCodes,
+} from '../../patterns/masters';
 import { useOnlineStatus } from '../../patterns/online-status';
 import { toApiError } from '../../patterns/request';
 import { ScanReplaceDialog } from '../../patterns/scan-replace-dialog';
@@ -61,9 +67,6 @@ const stamp = (iso: string): string => {
 
   return `${pad(at.getMonth() + 1)}-${pad(at.getDate())} ${pad(at.getHours())}:${pad(at.getMinutes())}`;
 };
-
-const uomLabel = (uoms: Map<number, string> | undefined, uomId: number): string =>
-  uoms?.get(uomId) ?? '';
 
 /*
  * 이름표를 아직 못 받은 것을 확인 실패로 말하지 않는다. 둘을 뭉치면 조회가 도는 동안
@@ -282,7 +285,7 @@ export const RepairRoundtripScreen = () => {
       <Card.Body className="card-body repair__card">
         <strong>{lot.data?.lotNo}</strong>
         <p className="repair__note">{item.data?.itemCode ?? ''}</p>
-        <p>{t.defect.qty(String(record.defectQty), uomLabel(uoms.data, record.uomId))}</p>
+        <p>{t.defect.qty(String(record.defectQty), uomLabelOf(uoms.data, record.uomId))}</p>
         {/* 무엇이 잘못됐는지가 수리 대상을 가르는 기준이다. 수량만으로는 고를 수 없다. */}
         {codeLabel(defectCodes, record) === '' ? null : <p>{codeLabel(defectCodes, record)}</p>}
         <p className="repair__note">{t.defect.detectedAt(stamp(record.detectedAt))}</p>
@@ -323,7 +326,7 @@ export const RepairRoundtripScreen = () => {
                     {codeLabel(defectCodes, each) === '' ? null : (
                       <strong>{codeLabel(defectCodes, each)}</strong>
                     )}
-                    <p>{t.defect.qty(String(each.defectQty), uomLabel(uoms.data, each.uomId))}</p>
+                    <p>{t.defect.qty(String(each.defectQty), uomLabelOf(uoms.data, each.uomId))}</p>
                     {each.defectRecordId === defectId ? (
                       <Chip status="success">{t.defect.picked}</Chip>
                     ) : null}
@@ -423,7 +426,7 @@ export const RepairRoundtripScreen = () => {
                 }}
               >
                 <Card.Body className="card-body repair__pick">
-                  <strong>{`${String(each.repairQty)} ${uomLabel(uoms.data, each.uomId)}`}</strong>
+                  <strong>{`${String(each.repairQty)} ${uomLabelOf(uoms.data, each.uomId)}`}</strong>
                   <p>{stamp(each.startedAt)}</p>
                   {each.repairExecutionId === executionId ? (
                     <Chip status="success">{t.open.picked}</Chip>
@@ -440,7 +443,7 @@ export const RepairRoundtripScreen = () => {
           <Card bordered>
             <Card.Body className="card-body repair__card">
               <strong>{lot.data?.lotNo}</strong>
-              <p>{`${String(execution.repairQty)} ${uomLabel(uoms.data, execution.uomId)}`}</p>
+              <p>{`${String(execution.repairQty)} ${uomLabelOf(uoms.data, execution.uomId)}`}</p>
               <p className="repair__note">{t.dispatch.alreadyAt(stamp(execution.startedAt))}</p>
             </Card.Body>
           </Card>
@@ -499,7 +502,7 @@ export const RepairRoundtripScreen = () => {
       key: 'qty',
       header: t.open.columns.qty,
       align: 'end',
-      render: (row) => `${String(row.repairQty)} ${uomLabel(uoms.data, row.uomId)}`,
+      render: (row) => `${String(row.repairQty)} ${uomLabelOf(uoms.data, row.uomId)}`,
     },
     {
       key: 'startedAt',

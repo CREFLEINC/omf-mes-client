@@ -1,4 +1,4 @@
-import { screen, waitFor } from '@testing-library/react';
+import { cleanup, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useEffect, type ReactNode } from 'react';
 import { MemoryRouter } from 'react-router';
@@ -387,18 +387,25 @@ const chooseOrder = async (user: ReturnType<typeof userEvent.setup>) => {
 };
 
 /** 스캔이 실패했을 때의 길이 손 입력이다. 시험은 그 길로 같은 값을 넣는다. */
+/*
+ * 스캔 칸은 키보드를 꺼 둔 자리라, 손으로 치려면 먼저 열어야 한다. 앞 줄에서 이미 열어
+ * 두었으면 그 단추는 넣기로 서 있어, 직접 입력을 기다리면 5초를 버리고 실패한다.
+ */
+const openManualEntry = async (user: ReturnType<typeof userEvent.setup>) => {
+  /* 한 단추가 두 이름을 갖는다. 먼저 그 단추가 설 때까지 기다린 뒤 닫혀 있을 때만 연다. */
+  const button = await screen.findByRole('button', { name: /직접 입력|넣기/ });
+
+  if (button.textContent?.trim() === '직접 입력') {
+    await user.click(button);
+  }
+};
+
 const pickLine = async (user: ReturnType<typeof userEvent.setup>, qty: string) => {
   await user.click(screen.getByRole('radio', { name: /ABC-123/ }));
-
-  /* 스캔 칸은 키보드를 꺼 둔 자리라, 손으로 치려면 먼저 열어야 한다. */
-  const open = screen.queryByRole('button', { name: '직접 입력' });
-
-  if (open !== null) {
-    await user.click(open);
-  }
+  await openManualEntry(user);
 
   await user.type(await screen.findByLabelText(/LOT 번호/), LOT_NO);
-  await user.click(screen.getByRole('button', { name: '넣기' }));
+  await user.click(await screen.findByRole('button', { name: '넣기' }));
   await screen.findByText('라인의 LOT 과 같습니다');
   await user.type(await screen.findByLabelText(/출고 수량/), qty);
   await user.click(screen.getByRole('button', { name: '이 라인 피킹' }));
@@ -675,9 +682,9 @@ describe('자재 출고·피킹 화면', () => {
     mount();
     await chooseOrder(user);
     await user.click(screen.getByRole('radio', { name: /ABC-123/ }));
-    await user.click(await screen.findByRole('button', { name: '직접 입력' }));
+    await openManualEntry(user);
     await user.type(await screen.findByLabelText(/LOT 번호/), LOT_NO);
-    await user.click(screen.getByRole('button', { name: '넣기' }));
+    await user.click(await screen.findByRole('button', { name: '넣기' }));
     await screen.findByText('라인의 LOT 과 같습니다');
 
     await user.click(await screen.findByRole('button', { name: '5' }));
@@ -834,9 +841,9 @@ describe('자재 출고·피킹 화면', () => {
     window.dispatchEvent(new Event('online'));
 
     await user.click(screen.getByRole('radio', { name: /ABC-124/ }));
-    await user.click(await screen.findByRole('button', { name: '직접 입력' }));
+    await openManualEntry(user);
     await user.type(await screen.findByLabelText(/LOT 번호/), LOT_NO);
-    await user.click(screen.getByRole('button', { name: '넣기' }));
+    await user.click(await screen.findByRole('button', { name: '넣기' }));
     await screen.findByText('라인의 LOT 과 같습니다');
     await user.type(screen.getByLabelText(/출고 수량/), '30');
     await user.click(screen.getByRole('button', { name: '이 라인 피킹' }));
@@ -887,9 +894,9 @@ describe('자재 출고·피킹 화면', () => {
     await chooseOrder(user);
 
     await user.click(screen.getByRole('radio', { name: /ABC-123/ }));
-    await user.click(await screen.findByRole('button', { name: '직접 입력' }));
+    await openManualEntry(user);
     await user.type(await screen.findByLabelText(/LOT 번호/), LOT_NO);
-    await user.click(screen.getByRole('button', { name: '넣기' }));
+    await user.click(await screen.findByRole('button', { name: '넣기' }));
     await screen.findByText('라인의 LOT 과 같습니다');
     await user.type(screen.getByLabelText(/출고 수량/), '50');
 
@@ -916,9 +923,9 @@ describe('자재 출고·피킹 화면', () => {
     await chooseOrder(user);
 
     await user.click(screen.getByRole('radio', { name: /ABC-123/ }));
-    await user.click(await screen.findByRole('button', { name: '직접 입력' }));
+    await openManualEntry(user);
     await user.type(await screen.findByLabelText(/LOT 번호/), LOT_NO);
-    await user.click(screen.getByRole('button', { name: '넣기' }));
+    await user.click(await screen.findByRole('button', { name: '넣기' }));
     await screen.findByText('라인의 LOT 과 같습니다');
     await user.type(screen.getByLabelText(/출고 수량/), '50');
 
@@ -997,6 +1004,47 @@ describe('자재 출고·피킹 화면', () => {
 
     expect(await screen.findByText('이 지시에서 내보낼 것이 남아 있지 않습니다.')).toBeTruthy();
     expect(screen.getByRole('button', { name: '출고 확정' }).hasAttribute('disabled')).toBe(true);
+    expect(sent.issues).toHaveLength(1);
+  });
+
+  /*
+   * 다른 화면을 거쳐 돌아오면 이 화면이 다시 선다. 그 기억을 마운트에만 두면 방어가 함께
+   * 꺼져, 작업자가 물건을 다시 집어 들고 나간 뒤에야 서버가 되돌린다 - 실기 실측 2026-09-15
+   * 에 출고까지 끝난 지시에서 출고 확정이 열린 채로 섰고, 눌렀더니 서버가 400 으로 되돌렸다.
+   */
+  it('화면을 떠났다 돌아와도 이미 내보낸 지시는 다시 내보내지 않는다', async () => {
+    const user = userEvent.setup();
+    const first = mount({ lines: [line({ pickedQty: 120 })] });
+    await chooseOrder(user);
+    await user.click(screen.getByRole('button', { name: '출고 확정' }));
+    await screen.findByText('출고를 확정했습니다');
+
+    /* 화면을 아예 떠난다. 다른 작업을 거쳐 돌아오는 것과 같다. */
+    cleanup();
+
+    const second = mount({ lines: [line({ pickedQty: 120 })] });
+    await chooseOrder(user);
+
+    expect(await screen.findByText('이 지시에서 내보낼 것이 남아 있지 않습니다.')).toBeTruthy();
+    expect(screen.getByRole('button', { name: '출고 확정' }).hasAttribute('disabled')).toBe(true);
+    expect(first.issues).toHaveLength(1);
+    expect(second.issues).toHaveLength(0);
+  });
+
+  /*
+   * 내보낸 기록을 남기지 못해도 출고는 이미 큐에 들어간 뒤다. 거기서 멈추면 결과를 말하지
+   * 못해 사람은 아무 일도 안 일어난 줄 알고 한 번 더 누른다.
+   */
+  it('내보낸 기록을 저장하지 못해도 결과를 말한다', async () => {
+    const user = userEvent.setup();
+    const sent = mount({ lines: [line({ pickedQty: 120 })] });
+    await chooseOrder(user);
+
+    held.failWrite = 'material-picking-issued';
+
+    await user.click(screen.getByRole('button', { name: '출고 확정' }));
+
+    expect(await screen.findByText('출고를 확정했습니다')).toBeTruthy();
     expect(sent.issues).toHaveLength(1);
   });
 
@@ -1165,9 +1213,9 @@ describe('자재 출고·피킹 화면', () => {
     await chooseOrder(user);
 
     await user.click(screen.getByRole('radio', { name: /ABC-123/ }));
-    await user.click(await screen.findByRole('button', { name: '직접 입력' }));
+    await openManualEntry(user);
     await user.type(await screen.findByLabelText(/LOT 번호/), LOT_NO);
-    await user.click(screen.getByRole('button', { name: '넣기' }));
+    await user.click(await screen.findByRole('button', { name: '넣기' }));
     await screen.findByText('라인의 LOT 과 같습니다');
     await user.type(screen.getByLabelText(/출고 수량/), '50');
 
@@ -1203,9 +1251,9 @@ describe('자재 출고·피킹 화면', () => {
     await chooseOrder(user);
 
     await user.click(screen.getByRole('radio', { name: /ABC-123/ }));
-    await user.click(await screen.findByRole('button', { name: '직접 입력' }));
+    await openManualEntry(user);
     await user.type(await screen.findByLabelText(/LOT 번호/), LOT_NO);
-    await user.click(screen.getByRole('button', { name: '넣기' }));
+    await user.click(await screen.findByRole('button', { name: '넣기' }));
     await screen.findByText('라인의 LOT 과 같습니다');
     await user.type(screen.getByLabelText(/출고 수량/), '50');
 
@@ -1219,6 +1267,78 @@ describe('자재 출고·피킹 화면', () => {
     ).toBeTruthy();
     expect(screen.queryByText('집었습니다')).toBeNull();
     expect(sent.picks).toHaveLength(0);
+  });
+
+  /*
+   * 전기된 지시는 「아직 출고할 수 있는 것」에서 서버가 빼는데, 다시 묻지 않으면 「다음 지시」로
+   * 돌아온 목록에 그대로 남는다 — 작업자가 그것을 다시 열고 같은 수량이 한 번 더 나간다
+   * (PICK-ISSUE-01 D1 실기: PK-0003·PK-0004 가 출고 뒤에도 목록에 남았다).
+   */
+  it('출고가 나가면 지시 목록과 상세를 다시 묻는다', async () => {
+    const user = userEvent.setup();
+    const sent = mount({ lines: [line({ pickedQty: 120 })] });
+    await chooseOrder(user);
+
+    const listAsks = () =>
+      sent.asked.filter((each) => each.includes('/logistics/picking-orders?')).length;
+    const detailAsks = () =>
+      sent.asked.filter((each) => each.includes('/logistics/picking-orders/7')).length;
+    const listBefore = listAsks();
+    const detailBefore = detailAsks();
+
+    await user.click(screen.getByRole('button', { name: '출고 확정' }));
+    await screen.findByText('출고를 확정했습니다');
+
+    await waitFor(() => {
+      expect(listAsks()).toBeGreaterThan(listBefore);
+    });
+    expect(detailAsks()).toBeGreaterThan(detailBefore);
+  });
+
+  /* 아직 서버가 보지 못한 출고다. 목록이 달라질 이유가 없고, 끊긴 자리에서 부르면 실패만 쌓인다. */
+  it('출고가 전송 대기에 남으면 목록을 다시 묻지 않는다', async () => {
+    const user = userEvent.setup();
+    const sent = mount({ issue: 'offline', lines: [line({ pickedQty: 120 })] });
+    await chooseOrder(user);
+
+    const listAsks = () =>
+      sent.asked.filter((each) => each.includes('/logistics/picking-orders?')).length;
+    const before = listAsks();
+
+    await user.click(screen.getByRole('button', { name: '출고 확정' }));
+    await screen.findByText('출고를 전송 대기에 넣었습니다');
+
+    expect(listAsks()).toBe(before);
+  });
+
+  /*
+   * 수량 구획 끝에 「이 라인 피킹」이 있고 화면 바닥에는 「출고 확정」 바가 붙어 있다. 머리를
+   * 맞추면 숫자판 높이만큼 밀려 단추가 그 바 아래로 들어가고, 한가운데를 눌러도 바가 받는다
+   * (PICK-ISSUE-01 D3 실기: 두 번 무반응). 꼬리를 맞춰 단추를 바 위로 들인다.
+   */
+  it('LOT 이 맞으면 수량 구획의 꼬리를 화면 안으로 들인다', async () => {
+    const user = userEvent.setup();
+    const pulled: { text: string; block: string | undefined }[] = [];
+
+    Object.defineProperty(Element.prototype, 'scrollIntoView', {
+      configurable: true,
+      value(this: Element, options?: ScrollIntoViewOptions) {
+        pulled.push({ text: this.textContent?.slice(0, 20) ?? '', block: options?.block });
+      },
+    });
+
+    mount();
+    await chooseOrder(user);
+    await user.click(screen.getByRole('radio', { name: /ABC-123/ }));
+    await openManualEntry(user);
+    await user.type(await screen.findByLabelText(/LOT 번호/), LOT_NO);
+    await user.click(await screen.findByRole('button', { name: '넣기' }));
+    await screen.findByText('라인의 LOT 과 같습니다');
+
+    const entry = pulled.find((each) => each.text.includes('출고 수량'));
+
+    expect(entry, '수량 구획을 화면 안으로 들인다').toBeTruthy();
+    expect(entry?.block, '꼬리를 맞춘다').toBe('end');
   });
 
   it('보낼 출고 유형이 없으면 그 사실을 말한다', async () => {

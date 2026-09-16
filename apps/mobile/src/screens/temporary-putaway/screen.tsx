@@ -18,7 +18,8 @@ import { useBackStep } from '../../patterns/back-step';
 import { useCodeValues } from '../../patterns/code-values';
 import { playErrorTone } from '../../patterns/error-tone';
 import { useLocationByCode, useLocations, type Location } from '../../patterns/locations';
-import { useItemLabels, useUomCodes } from '../../patterns/masters';
+import { uomLabelOf, useItemCodes, useUomCodes } from '../../patterns/masters';
+import { referenceLabel } from '../../patterns/reference';
 import { useOutbox } from '../../patterns/outbox';
 import { useScanField } from '../../patterns/use-scan-field';
 import { useScreenTitle } from '../../patterns/screen-title';
@@ -116,7 +117,8 @@ export const TemporaryPutawayScreen = () => {
   const byCode = useLocationByCode(task?.warehouseId ?? null, scanned);
   const reasons = useCodeValues(PUTAWAY_TASK_TEMPORARY_REASON);
   const uoms = useUomCodes(true);
-  const itemLabels = useItemLabels(task === null ? [] : [task.itemId]);
+  const uomOf = (uomId: number | null | undefined) => uomLabelOf(uoms.data, uomId);
+  const itemCode = useItemCodes(task === null ? [] : [task.itemId]);
 
   /*
    * 정위치에 임시 적치를 적으면 옮길 대상 목록에 오르는데 이미 제자리에 있어, 다음 사람이
@@ -270,13 +272,20 @@ export const TemporaryPutawayScreen = () => {
         <h2>{t.task.legend}</h2>
         <Card bordered>
           <Card.Body className="card-body temporary__card">
-            <strong>
-              {t.task.item(
-                itemLabels.get(task.itemId)?.itemCode ?? '',
-                task.putawayTaskNo,
-                `${String(task.taskQty)} ${uoms.data?.get(task.uomId) ?? ''}`,
-              )}
-            </strong>
+            {/*
+              세 값에 이름을 붙여 세로로 세운다. 한 줄에 늘어놓으면 어느 것이 품목이고 어느
+              것이 지시 번호인지 형식을 아는 사람만 읽는다(배치 규범 9).
+            */}
+            <dl className="temporary__task-fields">
+              <dt>{t.task.itemLabel}</dt>
+              <dd>
+                <strong>{referenceLabel(itemCode(task.itemId))}</strong>
+              </dd>
+              <dt>{t.task.taskNoLabel}</dt>
+              <dd>{task.putawayTaskNo}</dd>
+              <dt>{t.task.qtyLabel}</dt>
+              <dd>{`${String(task.taskQty)} ${uomOf(task.uomId)}`}</dd>
+            </dl>
             {/* 어디가 막혀서 여기 왔는지가 대상 정보의 일부다. */}
             <p className="temporary__note">{t.task.origin(codeOf(task.fromLocationId))}</p>
             {task.recommendedLocationId === null || task.recommendedLocationId === undefined ? (

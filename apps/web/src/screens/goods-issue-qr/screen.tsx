@@ -240,7 +240,7 @@ export const GoodsIssueQrScreen = () => {
           <PrinterChip
             isLoading={printers.isPending}
             isError={printers.isError}
-            statusMessage={defaultPrinter(printers.data)?.statusMessage ?? null}
+            displayName={defaultPrinter(printers.data)?.displayName ?? null}
             hasPrinter={(printers.data?.length ?? 0) > 0}
           />
           {/*
@@ -382,7 +382,13 @@ export const GoodsIssueQrScreen = () => {
        * 이 화면만 바닥이 없는 것처럼 떠 있었다.
        */}
       <div className="pop-action-bar pop-giqr-actions">
-        {guard.kind !== 'ready' && <p className="field-note">{guardNote(guard.kind)}</p>}
+        {/*
+         * ⛔ 「발행할 라인을 먼저 고르세요」는 띄우지 않는다(사용자 지시 2026-09-15) — 비활성 단추와
+         *    라인 목록이 이미 말한다. 다른 사유(사번·파렛트·재발행 사유)는 그대로 남긴다.
+         */}
+        {guard.kind !== 'ready' && guard.kind !== 'noSelection' && (
+          <p className="field-note">{guardNote(guard.kind)}</p>
+        )}
         <Button
           variant="filled"
           size="2xl"
@@ -430,12 +436,10 @@ const toPalletQuantities = (contents: readonly HandlingUnitContent[]): PalletQua
 const isForbidden = (error: ApiError | null): boolean =>
   error !== null && error.kind === 'http' && error.status === 403;
 
-const guardNote = (kind: Exclude<IssueGuard['kind'], 'ready'>): string => {
+const guardNote = (kind: Exclude<IssueGuard['kind'], 'ready' | 'noSelection'>): string => {
   switch (kind) {
     case 'noWorker':
       return t.action.disabledNoWorker;
-    case 'noSelection':
-      return t.action.disabledNoSelection;
     case 'palletNeedsOneLine':
       return t.action.disabledPalletNeedsOneLine;
     case 'noPallet':
@@ -456,22 +460,22 @@ interface PrinterChipProps {
   isLoading: boolean;
   isError: boolean;
   hasPrinter: boolean;
-  statusMessage: string | null;
+  displayName: string | null;
 }
 
 /**
  * 프린터 상태는 **머리에 상시 보인다**(스펙 §5-5 · K-4) — 인쇄가 안 될 때 사용자가 가장 먼저
  * 보는 자리다.
  *
- * ⚠ **상태값으로 문장을 조립하지 않는다.** 계약이 사람이 읽는 설명을 함께 내려 주므로 그것을
- * 그대로 쓴다 — 화면이 지어 붙이면 서버가 말하는 상태와 어긋난다.
+ * ⭐ **이름만 보인다**(사용자 지시 2026-09-15). 뒤에 붙던 설명(「이 프린터로 나갑니다」 등)은
+ *    머리줄을 길게 만들 뿐이라 뺐다 — 자재 LOT 라벨 머리줄과 같은 표기다.
  */
-const PrinterChip = ({ isLoading, isError, hasPrinter, statusMessage }: PrinterChipProps) => {
+const PrinterChip = ({ isLoading, isError, hasPrinter, displayName }: PrinterChipProps) => {
   if (isLoading) return <Chip status="idle">{t.printer.loading}</Chip>;
   if (isError) return <Chip status="error">{t.printer.failed}</Chip>;
   if (!hasPrinter) return <Chip status="warning">{t.printer.empty}</Chip>;
 
-  return <Chip status="success">{`${t.printer.label} ${statusMessage ?? ''}`.trim()}</Chip>;
+  return <Chip status="success">{`${t.printer.label} ${displayName ?? ''}`.trim()}</Chip>;
 };
 
 interface PrintResultBannerProps {

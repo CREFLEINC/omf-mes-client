@@ -47,6 +47,8 @@ const PARTNERS = source([[9601, 'SAMPLE-PTR-01 · 합성 거래처 가']]);
 
 const LOOKUPS = {
   itemLookup: ITEMS,
+  /* 표에 선 품목은 번호마다 상세로 푼다. 비워 두면 목록(ITEMS)으로 푸는 예전 길을 그대로 잰다. */
+  itemNames: new Map<number, ReferenceSource>(),
   lotLookup: LOTS,
   locationLookup: LOCATIONS,
   uomLookup: UOMS,
@@ -375,6 +377,42 @@ describe('BalanceTable — 참조 값 표기', () => {
 
     // 9302는 참조 목록에 없다.
     expect(table()).toHaveTextContent(t.values.unknown);
+  });
+
+  /*
+   * 선택칸 목록은 한 쪽(계약 기본 50건)만 받는다. 품목이 많은 고객사에서는 표에 선 품목이 그
+   * 쪽에 없어 정상 값이 전부 「알 수 없음」이 됐다(PICK-ISSUE-01 D2 실기 — 위치별 보기의 품목
+   * 열). 번호마다 상세로 푼 이름이 있으면 그것을 쓴다.
+   */
+  it('선택칸 목록에 없어도 번호마다 푼 이름이 있으면 그 이름이 선다', () => {
+    renderTable({
+      view: 'item',
+      itemLookup: source([]),
+      itemNames: new Map<number, ReferenceSource>([
+        [9301, source([[9301, 'A5C1M50101 · PI SENSOR-SG2A241']])],
+        [9302, source([[9302, 'B7D2N60202 · 합성 품목 나']])],
+        [9303, source([[9303, 'C9E3P70303 · 합성 품목 다']])],
+      ]),
+    });
+
+    expect(table()).toHaveTextContent('A5C1M50101 · PI SENSOR-SG2A241');
+    expect(table()).toHaveTextContent('B7D2N60202 · 합성 품목 나');
+    expect(table()).not.toHaveTextContent(t.values.unknown);
+  });
+
+  /* 번호마다 따로 판정한다 — 하나가 실패해도 다른 줄의 이름은 그대로 선다. */
+  it('한 품목을 못 풀어도 다른 줄의 이름은 남는다', () => {
+    renderTable({
+      view: 'item',
+      itemLookup: source([]),
+      itemNames: new Map<number, ReferenceSource>([
+        [9301, source([[9301, 'A5C1M50101 · PI SENSOR-SG2A241']])],
+        [9302, source([], { isError: true })],
+      ]),
+    });
+
+    expect(table()).toHaveTextContent('A5C1M50101 · PI SENSOR-SG2A241');
+    expect(table()).toHaveTextContent(t.values.referenceFailed);
   });
 
   /*

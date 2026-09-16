@@ -5,7 +5,9 @@ import type { ReactNode } from 'react';
 
 import { ApiClientProvider } from '../patterns/api-context';
 import { DeviceRegistrationProvider } from '../patterns/device-registration';
+import { LocalNetworkProvider } from '../patterns/local-network';
 import { OutboxProvider } from '../patterns/outbox';
+import { useRefetchOnRegain } from '../patterns/refetch-on-regain';
 import { WorkerSessionProvider } from '../patterns/worker-session';
 import { createOutboxTransport } from './outbox-transport';
 import { apiClient } from './api';
@@ -37,20 +39,33 @@ interface AppProvidersProps {
 
 const sendOutboxEntry = createOutboxTransport(apiClient);
 
+/*
+ * 끊겼다 붙는 자리는 모든 화면에 있다. 조회 캐시 안에서 한 번 듣고 멈춘 것을 다시 받는다 - 화면마다
+ * 따로 두면 빠뜨린 화면이 값을 들고도 연결을 확인하라고 말한다.
+ */
+const RegainWatch = () => {
+  useRefetchOnRegain();
+
+  return null;
+};
+
 export const AppProviders = ({ children }: AppProvidersProps) => {
   return (
     <QueryClientProvider client={queryClient}>
+      <RegainWatch />
       <ApiClientProvider client={apiClient}>
         <DeviceRegistrationProvider>
-          <OutboxProvider send={sendOutboxEntry}>
-            <WorkerSessionProvider>
-              <ThemeProvider defaultTheme="system">
-                <ToastProvider label={messages.common.shell.notifications} position="top-center">
-                  {children}
-                </ToastProvider>
-              </ThemeProvider>
-            </WorkerSessionProvider>
-          </OutboxProvider>
+          <LocalNetworkProvider>
+            <OutboxProvider send={sendOutboxEntry}>
+              <WorkerSessionProvider>
+                <ThemeProvider defaultTheme="system">
+                  <ToastProvider label={messages.common.shell.notifications} position="top-center">
+                    {children}
+                  </ToastProvider>
+                </ThemeProvider>
+              </WorkerSessionProvider>
+            </OutboxProvider>
+          </LocalNetworkProvider>
         </DeviceRegistrationProvider>
       </ApiClientProvider>
     </QueryClientProvider>

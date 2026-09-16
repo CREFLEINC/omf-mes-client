@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   canSubmit,
   countedLines,
+  diffOf,
   needsReason,
   qtyProblemOf,
   queuedForLocationOf,
@@ -12,11 +13,14 @@ import {
 } from './count';
 
 const line = (overrides: Partial<DraftLine> = {}): DraftLine => ({
+  key: 'line-5101',
   inventoryCountLineId: 5101,
   locationId: 3001,
   itemId: 2002,
   lotId: 8001,
   uomId: 1001,
+  itemCode: 'ABC-123',
+  lotNo: '0001234500000012002607310001230007',
   systemQty: 120,
   counted: false,
   previousQty: null,
@@ -150,6 +154,23 @@ describe('실사 차이 사유', () => {
     ).toBe(true);
   });
 
+  /*
+   * 수량을 전산과 같게 고치면 화면이 사유를 지운다. 되돌려 차이가 다시 생기면 고를 자리를
+   * 다시 줘야 한다 - 안 주면 사유 없이 나가고 서버가 전송을 통째로 되돌려 보낸다.
+   */
+  it('사유가 지워진 줄은 차이가 다시 생기면 사유를 묻는다', () => {
+    const kept = line({
+      counted: true,
+      previousQty: 118,
+      previousReasonCode: 'COUNT_ERROR',
+      qty: '118',
+      reasonCode: 'COUNT_ERROR',
+    });
+
+    expect(needsReason(count(), kept)).toBe(false);
+    expect(needsReason(count(), { ...kept, reasonCode: '' })).toBe(true);
+  });
+
   it('블라인드 미보완 라인 무변경 동봉은 원래 계수 시각과 빈 사유를 보존한다', () => {
     const previous = '2026-09-07T00:00:00.000Z';
     const blind = { ...count(), blindCount: true };
@@ -163,6 +184,35 @@ describe('실사 차이 사유', () => {
     const body = draft.body as { lines: { countedAt: string; varianceReasonCode?: string }[] };
     expect(body.lines[0]?.countedAt).toBe(previous);
     expect(body.lines[0]).not.toHaveProperty('varianceReasonCode');
+  });
+
+  /*
+   * 위치 전체를 치환하므로 앞서 센 줄도 함께 나간다. 서버는 차이가 있는 줄을 사유 없이
+   * 받지 않으므로, 그 줄에 붙어 있던 사유를 빠뜨리면 손대지도 않은 줄 때문에 전송이 통째로
+   * 되돌아온다.
+   */
+  it('앞서 센 줄을 그대로 동봉할 때 붙어 있던 사유도 함께 담는다', () => {
+    const draft = toCountDraft(
+      count(),
+      3001,
+      [
+        line({
+          counted: true,
+          previousQty: 118,
+          previousCountedAt: '2026-09-07T00:00:00.000Z',
+          previousReasonCode: 'COUNT_ERROR',
+          qty: '118',
+          reasonCode: 'COUNT_ERROR',
+        }),
+      ],
+      new Date('2026-09-07T09:12:00+09:00'),
+      '100028',
+    );
+    const body = draft.body as { lines: { countedAt: string; varianceReasonCode?: string }[] };
+
+    expect(body.lines[0]?.varianceReasonCode).toBe('COUNT_ERROR');
+    /* 손대지 않은 줄이다. 언제 셌나가 전송 시각으로 덮이면 안 된다. */
+    expect(body.lines[0]?.countedAt).toBe('2026-09-07T00:00:00.000Z');
   });
 
   it('수정 계수는 선택한 사유와 새 계수 시각을 오프라인 본문에 담는다', () => {
@@ -245,5 +295,42 @@ describe('보낼 것', () => {
     const body = draft.body as { lines: { lotId: number | null }[] };
 
     expect(body.lines[0]?.lotId).toBeNull();
+  });
+});
+
+describe('전산 잔량과의 차이', () => {
+  /*
+   * 되돌릴 수 없는 조정이 이 수만큼 나간다. 사유를 요구하면서 얼마인지 말하지 않으면 사람이
+   * 암산해 고르고, 그 암산이 틀리면 원장이 틀어진다.
+   */
+  it('적게 세면 모자란 만큼이 음수로 나온다', () => {
+    expect(diffOf(line({ systemQty: 120, qty: '100' }))).toBe(-20);
+  });
+
+  it('많이 세면 넘는 만큼이 양수로 나온다', () => {
+    expect(diffOf(line({ systemQty: 120, qty: '135' }))).toBe(15);
+  });
+
+  /* 같으면 조정이 나가지 않는다. 0 을 보이면 없는 차이를 있는 것처럼 읽는다. */
+  it('전산과 같으면 차이가 없다', () => {
+    expect(diffOf(line({ systemQty: 120, qty: '120' }))).toBeNull();
+  });
+
+  /* 블라인드는 전산 잔량이 오지 않아 화면이 차이를 모른다. 지어내지 않는다. */
+  it('블라인드 실사는 차이를 말하지 않는다', () => {
+    expect(diffOf(line({ systemQty: null, qty: '100' }))).toBeNull();
+  });
+
+  it('아직 안 셌으면 차이가 없다', () => {
+    expect(diffOf(line({ systemQty: 120, qty: '' }))).toBeNull();
+  });
+
+  /* 숫자가 아닌 것을 빼면 NaN 이 조정 수량으로 나간다. */
+  it('숫자가 아니면 차이를 말하지 않는다', () => {
+    expect(diffOf(line({ systemQty: 120, qty: '열둘' }))).toBeNull();
+  });
+
+  it('소수도 그대로 센다', () => {
+    expect(diffOf(line({ systemQty: 7.5, qty: '7.2' }))).toBeCloseTo(-0.3);
   });
 });

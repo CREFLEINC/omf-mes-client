@@ -63,6 +63,8 @@ interface Options {
   noDefaultLocation?: boolean;
   /** LOT 이 아직 검사 대기다. */
   pending?: boolean;
+  /** LOT 번호를 받지 못한다 - 연결이 끊긴 자리를 흉내 낸다. */
+  lotFailed?: boolean;
   /** 입고 응답이 적치 지시를 싣지 않는다. */
   noPutawayTask?: boolean;
   /** 적치 완료를 서버가 거절한다 - 입고는 섰고 적치만 되돌아온다. */
@@ -165,8 +167,12 @@ const routes = (options: Options = {}): StubRoute[] => [
   },
   {
     match: (req) => /\/trace\/lots\/\d+$/.test(new URL(req.url).pathname),
-    respond: () =>
-      jsonResponse({
+    respond: () => {
+      if (options.lotFailed === true) {
+        throw new TypeError('Failed to fetch');
+      }
+
+      return jsonResponse({
         lot: {
           lotId: 8201,
           lotNo: LOT_NO,
@@ -182,7 +188,8 @@ const routes = (options: Options = {}): StubRoute[] => [
           statusCode: options.pending === true ? 'INSPECTION_PENDING' : 'NORMAL',
         },
         externalIdentifiers: [],
-      }),
+      });
+    },
   },
   {
     match: (req) => new URL(req.url).pathname === '/mdm/locations',
@@ -296,7 +303,6 @@ const routes = (options: Options = {}): StubRoute[] => [
       { itemId: 2101, itemCode: 'FG-1001', itemName: '완제품A', fifoPolicyCode: 'FEFO' },
       { itemId: 2102, itemCode: 'FG-1002', itemName: '완제품B', fifoPolicyCode: 'FEFO' },
     ],
-    page,
   ),
 ];
 
@@ -382,6 +388,21 @@ describe('제품 입고·적치 화면', () => {
     )) as HTMLInputElement;
 
     expect(field.value).toBe('500');
+  });
+
+  /*
+   * LOT 번호를 못 받으면 그 자리에 대리키가 들어가 있었다. 사람이 읽을 수 없는 숫자가 LOT
+   * 번호인 척해, 라벨에 찍힌 34자리와 견줄 것처럼 보인다.
+   */
+  it('LOT 번호를 못 받으면 대리키를 보이지 않는다', async () => {
+    const user = userEvent.setup();
+    mount({ lotFailed: true });
+    await openUnit(user);
+
+    const label = await screen.findByText(/실물 수량/);
+
+    expect(label.textContent).toContain('연결되면 표시됩니다');
+    expect(label.textContent).not.toContain('8201');
   });
 
   /* 실물이 다르면 실물대로 받는다. 사유를 담을 자리가 계약에 없다. */

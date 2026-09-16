@@ -8,6 +8,13 @@
  * 날짜는 실행 시각을 기준으로 만든다. 박아 두면 다음 날 출하 목록이 비어 화면을 열 수 없다.
  */
 
+/*
+ * ⭐ 창고 배치도(W-CO-08) 씨앗 도면 — 라벨용으로 이미 있는 회색조 PNG 인코더를 빌린다.
+ *   목이 «파일 내용 시그니처로 판정한다»(#1064)는 계약 사실을 검사하려면 값이 아니라
+ *   진짜 PNG 바이트가 있어야 한다.
+ */
+import { createCanvas, fillRect, strokeRect, toPng } from './label-canvas.mjs';
+
 const pad = (value) => String(value).padStart(2, '0');
 
 export const dayOf = (date) =>
@@ -254,6 +261,50 @@ export const createSeed = (now = new Date()) => {
     capacityUomId: 1001,
     isActive: location.isActive ?? true,
   }));
+
+  /*
+   * W-CO-08 창고 배치도 — 도면 한 장(WH-01)과 그 위의 점 둘.
+   *
+   * ⭐ WH-01(1001)을 골랐다 — 활성 위치가 넷(3001·3002·3010·3003)이라 「점을 찍는다」가
+   *   뜻이 있다. WH-02(1002)는 일부러 도면·점 없이 둔다 — 「빈 배치도」도 조회(200)가 서는지
+   *   보는 자리다(씨앗에 행이 없으면 seeded.mjs 의 GET 핸들러가 기본값을 만든다).
+   *
+   * `bytes` 는 계약 스키마 밖의 내부 필드다 — 목의 다른 자리(`progress`·`steps`)처럼
+   * 응답 직전에 걷어낸다(seeded.mjs `attachmentView`).
+   */
+  const warehouseLayoutDrawing = toPng(
+    (() => {
+      const canvas = createCanvas(200, 120);
+      fillRect(canvas, 0, 0, 200, 120, 0xc0);
+      strokeRect(canvas, 0, 0, 200, 120, 2);
+      return canvas;
+    })(),
+  );
+
+  const attachments = [
+    {
+      attachmentId: 9701,
+      targetTypeCode: 'WAREHOUSE',
+      targetId: 1001,
+      fileName: '1공장자재창고-배치도.png',
+      contentType: 'image/png',
+      byteSize: warehouseLayoutDrawing.length,
+      uploadedAt: iso(-2, 10),
+      uploadedBy: 1001,
+      bytes: warehouseLayoutDrawing,
+    },
+  ];
+
+  const warehouseLayouts = [
+    {
+      warehouseId: 1001,
+      drawingAttachmentId: 9701,
+      markers: [
+        { locationId: 3001, x: 0.28, y: 0.32 },
+        { locationId: 3002, x: 0.64, y: 0.6 },
+      ],
+    },
+  ];
 
   /** W-06-14 — 활성·미사용·창고 전체 갈래를 한 화면에서 확인하는 적치 규칙. */
   const putawayRules = [
@@ -2668,6 +2719,8 @@ export const createSeed = (now = new Date()) => {
     items,
     warehouses,
     locations,
+    attachments,
+    warehouseLayouts,
     putawayRules,
     putawayCandidates,
     partners,

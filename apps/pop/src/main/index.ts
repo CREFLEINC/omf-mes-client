@@ -590,6 +590,15 @@ async function main(): Promise<void> {
     };
   });
 
+  /*
+   * 화면이 **어떤 형식을 받아야 찍을 수 있는지** 고르는 근거. 명령형(RAW) 길이 없는 셸에
+   * `tspl` 을 받아 두면 인쇄 단계에서 멎고 라벨을 붙일 수 없다(WIP-CHAIN-01 D6).
+   *
+   * ⭐ 판정은 **인쇄가 실제로 쓰는 것과 같은 값**을 본다 — 같은 `rawPrinter` 가 없으면 없는 것이다.
+   *   플랫폼 이름을 화면이 따로 따지지 않게 해, 조건이 바뀌어도 여기 한 곳만 움직인다.
+   */
+  ipcMain.handle('printers:capabilities', () => ({ raw: rawPrinter !== undefined }));
+
   ipcMain.handle('device-token:get', () => secureStore.get());
   ipcMain.handle('device-token:set', (_e, value: string) => secureStore.set(value));
   ipcMain.handle('cache:get', (_e, key: string) => localDb.getCache(key));
@@ -937,13 +946,43 @@ function registerPrinterDiagnostic(
         title: '라벨 프린터 진단',
         message: '견본 라벨을 찍습니다',
         detail: `보낼 곳: ${process.env.POP_PRINTER_NAME ?? 'OS 기본 프린터'}\n라벨을 그 규격으로 끼운 뒤 골라 주세요.`,
-        buttons: ['표준 LOT 라벨 80 × 30', '출하용 라벨 100 × 60', '취소'],
+        buttons: ['자재 LOT 라벨 80 × 30 (실제 서식)', '출하용 라벨 100 × 60', '취소'],
         cancelId: 2,
       });
 
       const kind = kinds[response];
 
       if (kind === undefined) return;
+
+      /*
+       * ⭐ **80 × 30 은 실제 발행과 같은 길로 찍는다**(사용자 지시 2026-09-15). 서식은 화면의
+       *    `buildMaterialLotLabel`, 보내는 곳은 `rendition:save` — 발행 화면과 같은 두 자리다.
+       *    셸이 짠 견본(`sampleLabel`)은 서식도 프린터 고르는 길도 달라, 견본이 맞아도 실제 라벨은
+       *    어긋날 수 있었다. 화면 쪽 자리는 `screens/pop-material-lot-label/sample-print`.
+       */
+      if (kind === 'lot') {
+        try {
+          const saved: unknown = await parent.webContents.executeJavaScript(
+            'window.__popPrintSampleLotLabel()',
+            true,
+          );
+          await dialog.showMessageBox(parent, {
+            type: 'info',
+            title: '라벨 프린터 진단',
+            message: '프린터로 보냈습니다',
+            detail: `실제 자재 LOT 라벨과 같은 서식·같은 인쇄 경로입니다.\n여백이 좌우·위아래로 고른지, QR 이 스캐너에 읽히는지 확인해 주세요.\n(${String(saved)})`,
+          });
+        } catch (cause) {
+          await dialog.showMessageBox(parent, {
+            type: 'error',
+            title: '라벨 프린터 진단',
+            message: '보내지 못했습니다',
+            detail: reasonOf(cause),
+          });
+        }
+
+        return;
+      }
 
       /* 인쇄 스크립트가 같은 폴더에 앉는다 — 업무 인쇄와 같은 방식이다. */
       const jobDir = join(stagingDir, `diagnostic-${String(Date.now())}`);

@@ -7,8 +7,13 @@ import { runRequest } from '../../patterns/request';
 /**
  * 품목·단위의 **표시명**을 받아 온다.
  *
- * 스펙 §3이 목록과 표를 `MAT-A ... 100 EA`로 그렸는데, 계약의 `Lot`·`ShopfloorReceiptLine`은
- * **번호만 준다**(`itemId` · `uomId`). 현장에서 읽는 화면에 `7201`을 낼 이유가 없다.
+ * 스펙 §3이 목록과 표를 `MAT-A ... 100 EA`로 그렸는데, 계약의 `Lot`은 **번호만 준다**
+ * (`itemId` · `uomId`). 현장에서 읽는 화면에 `7201`을 낼 이유가 없다.
+ *
+ * ⚠ **`ShopfloorReceiptLine` 은 이제 그렇지 않다.** 수령 라인은 `lotNo`·`itemCode`·`itemName` 을
+ *    함께 실어 준다(공유계약 C-6). 그쪽은 **응답이 준 값을 그대로 쓴다**(`types.ts` 의
+ *    `toReceiptLineView`) — 같은 것을 두 번 묻지 않는다. 이 조회가 남아 있는 까닭은 자재LOT
+ *    스캔(`Lot`)과 단위 때문이다.
  *
  * ⚠ **표시와 판정은 다른 문제다**(`lot-status-labels.ts`와 같은 규율). 이 조회는 어느 판단에도
  * 쓰이지 않는다 — 투입 가부는 서버가 정하고(§5-2), 여기서 하는 일은 **읽을 수 있게 하는 것**

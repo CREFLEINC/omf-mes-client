@@ -31,6 +31,12 @@ export const warehouseLayout: Translated<typeof ko.warehouseLayout> = {
     /** 도면이 아직 없다 — 점만 찍을 수는 있다. */
     noDrawing:
       'Chưa có bản vẽ. Không có bản vẽ vẫn đánh dấu vị trí được, và khi tải bản vẽ lên sau thì các điểm đã đánh dấu vẫn giữ nguyên.',
+    /** ⭐ 도면은 첨부로 따로 받는다 — 「없다」와 「아직 못 받았다」를 가른다. */
+    drawingLoading: 'Đang tải bản vẽ.',
+    /** ⚠ 그림만 못 받은 것이다 — 점은 그대로 있다. */
+    drawingLoadFailed:
+      'Không tải được bản vẽ. Các điểm đã đánh dấu vẫn còn nguyên — hãy tải lại hoặc tải bản vẽ mới lên.',
+    drawingRetry: 'Tải lại bản vẽ',
     /** ⭐ 비율이라 도면을 갈아도 어긋나지 않는다. */
     ratioNote:
       'Chỗ của điểm đánh dấu được lưu theo tỷ lệ so với kích thước bản vẽ — thu nhỏ cửa sổ hay thay bản vẽ thì vẫn chỉ đúng chỗ đó.',
@@ -50,14 +56,34 @@ export const warehouseLayout: Translated<typeof ko.warehouseLayout> = {
     loadFailed: 'Không tải được sơ đồ bố trí.',
     lockLoading: 'Đang tải sơ đồ bố trí. Hãy lưu sau giây lát.',
     lockFailed: 'Không tải được sơ đồ bố trí nên không lưu được. Hãy thử lại.',
-    /** ⛔ 도면 교체는 이번에 열지 않는다. */
-    uploadLocked:
-      'Tải bản vẽ lên hiện chưa mở. Khi xác định gắn tệp đính kèm vào loại đối tượng nào thì sẽ mở.',
     upload: 'Tải bản vẽ lên',
+    /** ⛔ 요청 전에 화면이 거른다 — 서버가 받는 것은 PNG·JPEG 뿐이다. */
+    fileTypeRejected: 'Chỉ tải lên được tệp PNG hoặc JPEG. Định dạng khác thì máy chủ không nhận.',
+    fileTooLarge: 'Chỉ tải lên được tệp từ 10MB trở xuống.',
+    /**
+     * ⛔ 저장하지 않은 점 편집이 있으면 올리기를 막는다 — 바로 반영이라 그 점을 함께 보낼지
+     * 버릴지가 사용자 모르게 갈린다.
+     */
+    uploadNeedsCleanDraft:
+      'Có thay đổi điểm đánh dấu chưa lưu. Hãy lưu hoặc hoàn tác thay đổi đó rồi mới tải bản vẽ lên.',
+    /** ⭐ 올리기와 저장은 이어지는 두 호출이다 — 지금 어느 쪽인지 글자로 말한다. */
+    uploadingLabel: 'Đang tải lên…',
+    savingDrawingLabel: 'Đang lưu bản vẽ…',
+    drawingReplaced: 'Đã thay bản vẽ.',
+    /** ⭐ 올리기는 끝났고 저장만 남았다 — 다시 올리면 고아 첨부가 하나 더 생긴다. */
+    retrySaveDrawing: 'Thử lưu lại',
+    /**
+     * ⛔ **충돌로 멈춘 뒤의 그 버튼은 「다시 시도」가 아니다.** 재조회가 이미 남이 올린 도면을
+     * 화면에 세워 두었으므로, 그대로 누르면 **지금 보이는 그 도면을 내 도면으로 덮는다** —
+     * 하는 일이 다르니 말도 달라야 한다.
+     */
+    overwriteDrawing: 'Đổi sang bản vẽ của tôi',
+    overwriteDrawingNote:
+      'Bản vẽ người dùng khác tải lên đang hiển thị. Bấm vào thì bản vẽ tôi đã chọn sẽ được lưu thay cho bản vẽ đó.',
     /** ⚠ 도면을 갈면 점은 남지만 사람이 다시 봐야 한다. */
     replaceDrawingTitle: 'Thay bản vẽ?',
-    replaceDrawingLead:
-      'Các điểm đã đánh dấu được lưu theo tỷ lệ nên ở bản vẽ mới vẫn nằm đúng vị trí tương đối. Dù vậy vẫn cần người kiểm tra lại xem có khớp chỗ thật trên bản vẽ mới hay không.',
+    replaceDrawingLead: (markerCount: number): string =>
+      `${String(markerCount)} điểm đã đánh dấu được lưu theo tỷ lệ nên ở bản vẽ mới vẫn nằm đúng vị trí tương đối. Dù vậy vẫn cần người kiểm tra lại xem có khớp chỗ thật trên bản vẽ mới hay không.`,
     confirm: 'Tiến hành',
     cancel: 'Hủy',
   },

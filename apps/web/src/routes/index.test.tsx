@@ -1514,7 +1514,7 @@ describe('appRouter — W/O 전개·편성의 진입 경로', () => {
 
     await waitFor(() => expect(currentLocation()).toBe('/production/production-plans'));
     expect(screen.getByRole('heading', { level: 1, name: 'W/O 전개·편성' })).toBeVisible();
-    expect(screen.getByText('생산 P/O를 먼저 선택하세요.')).toBeVisible();
+    expect(screen.getByText('ERP W/O를 먼저 선택하세요.')).toBeVisible();
   });
 
   it('화면 주소는 계획 API 컬렉션과 구분한 exact 공개 route다', () => {

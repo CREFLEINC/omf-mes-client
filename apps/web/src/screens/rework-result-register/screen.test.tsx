@@ -220,6 +220,15 @@ const pickWorkOrder = async (user: ReturnType<typeof userEvent.setup>) => {
 };
 
 describe('ReworkResultRegisterScreen — 스펙 §3 의 구획', () => {
+  /* ⭐ 미전송이 없으면 머리줄에 「미전송 0건」을 두지 않는다(사용자 지시 2026-09-15). */
+  it('미전송 건이 없으면 머리줄에 미전송 표시가 없다', async () => {
+    const { user } = renderScreen();
+    await pickWorkOrder(user);
+
+    expect(await screen.findByRole('heading', { name: t.target })).toBeInTheDocument();
+    expect(screen.queryByText(t.pending(0))).not.toBeInTheDocument();
+  });
+
   /*
    * ⭐ 스펙 §3 은 본문을 ① 재작업 대상 · ② 실적 입력 · ③ 결과 LOT · ④ 진행으로 갈랐다.
    *    ③ 이 없으면 「새 LOT 이 생기나」를 화면이 답하지 못한다(§5-4 가 답을 정해 두었다).

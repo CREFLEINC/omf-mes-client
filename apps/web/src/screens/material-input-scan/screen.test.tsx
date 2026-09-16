@@ -122,6 +122,41 @@ describe('MaterialInputScanScreen — 계획 대비 수령', () => {
   });
 
   /*
+   * ⭐ **LOT 열은 라벨에 찍힌 번호를 낸다.** 작업자가 이 표를 보는 까닭은 손에 든 라벨과 견주기
+   *    위해서다 — 내부 채번(`7301`)을 찍으면 라벨에 없는 숫자가 LOT 번호인 척해, 견줄 수 없는
+   *    것을 견주게 만든다(WIP-CHAIN-01 D9 실측 2026-09-15: 「26·24·25」가 섰다).
+   */
+  it('LOT 열에 응답이 준 LOT 번호를 낸다', async () => {
+    renderScreen([listRoute(), detailRoute(7001, receiptLineFixtures)]);
+
+    await waitFor(() => {
+      expect(bodyRows()).toHaveLength(3);
+    });
+
+    const rows = bodyRows();
+    expect(within(rows[0] as HTMLElement).getByText('SAMPLE-LOT-0001')).toBeTruthy();
+    expect(within(rows[1] as HTMLElement).getByText('SAMPLE-LOT-0002')).toBeTruthy();
+  });
+
+  /*
+   * ⛔ **못 받았을 때 내부 번호로 메우지 않는다.** 저장소 공통 규율이다 — 대리키를 끼우면 사람이
+   *    읽을 수 없는 숫자가 값인 척한다. 「알 수 없음」은 공용 어휘를 그대로 쓴다.
+   */
+  it('LOT 번호를 못 받은 줄에 내부 번호를 대신 찍지 않는다', async () => {
+    const { lotNo: _lotNo, ...bare } = receiptLineFixtures[0] as { lotNo?: string };
+
+    renderScreen([listRoute(), detailRoute(7001, [bare])]);
+
+    await waitFor(() => {
+      expect(bodyRows()).toHaveLength(1);
+    });
+
+    const row = bodyRows()[0] as HTMLElement;
+    expect(within(row).getByText(messages.common.reference.unknown)).toBeTruthy();
+    expect(within(row).queryByText('7301')).toBeNull();
+  });
+
+  /*
    * 부족·미수령이 투입을 막지 않는다는 사실을 화면이 «말해야» 한다.
    *
    * ⚠ 한때 [?]를 눌러야 잠깐 뜨는 도움말이었고 시험도 「물어볼 자리가 있는가」를 봤다. 지금은

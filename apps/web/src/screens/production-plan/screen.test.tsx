@@ -48,8 +48,8 @@ describe('ProductionPlanScreen', () => {
         route: `/production/production-plans${raw === null ? '' : `?productionOrderId=${raw}`}`,
       });
 
-      expect(screen.getByText('생산 P/O를 먼저 선택하세요.')).toBeVisible();
-      expect(screen.getByRole('link', { name: 'P/O 수신·조회로 이동' })).toBeVisible();
+      expect(screen.getByText('ERP W/O를 먼저 선택하세요.')).toBeVisible();
+      expect(screen.getByRole('link', { name: 'ERP W/O 수신·조회로 이동' })).toBeVisible();
       expect(requested).toBe(false);
     },
   );
@@ -105,7 +105,7 @@ describe('ProductionPlanScreen', () => {
     });
 
     expect(await screen.findByText('PO-SYN-701')).toBeVisible();
-    const orderSummary = screen.getByLabelText('선택 생산 P/O');
+    const orderSummary = screen.getByLabelText('선택 ERP W/O');
     expect(orderSummary).toHaveClass('production-plan-order-summary');
     expect(orderSummary.parentElement).toHaveClass('production-plan-workspace');
     const add = await screen.findByRole('button', { name: '+ 계획 추가' });
@@ -139,7 +139,7 @@ describe('ProductionPlanScreen', () => {
       [
         '/planning/production-orders/701',
         ['production-orders', 'detail', 701],
-        '최신 생산 P/O',
+        '최신 ERP W/O',
         '다시 시도',
       ],
     ] as const;
@@ -157,7 +157,7 @@ describe('ProductionPlanScreen', () => {
     await act(() =>
       queryClient.invalidateQueries({ queryKey: ['production-orders', 'detail', 701] }),
     );
-    expect(await screen.findByText('요청한 생산 P/O와 다른 상세가 반환되었습니다.')).toBeVisible();
+    expect(await screen.findByText('요청한 ERP W/O와 다른 상세가 반환되었습니다.')).toBeVisible();
     expect(screen.getByText('신규 계획 1')).not.toBeVisible();
     expect(add).toBeDisabled();
     expect(wrongPlanRequested).toBe(false);
@@ -178,7 +178,7 @@ describe('ProductionPlanScreen', () => {
       route: '/production/production-plans?productionOrderId=701',
     });
 
-    expect(await screen.findByText('요청한 생산 P/O와 다른 상세가 반환되었습니다.')).toBeVisible();
+    expect(await screen.findByText('요청한 ERP W/O와 다른 상세가 반환되었습니다.')).toBeVisible();
     expect(screen.queryByLabelText('생산계획 편집')).not.toBeInTheDocument();
     expect(requests).toBe(1);
   });

@@ -17,11 +17,28 @@ export const physicalCount = {
     loading: '진행 중인 실사를 찾는 중입니다',
     loadFailed: '실사 목록을 불러오지 못했습니다. 연결을 확인하세요.',
     none: '진행 중인 실사가 없습니다',
-    pick: '실사',
-    pickPlaceholder: '실사를 고르세요',
-    item: (no: string, date: string) => `${no} · ${date}`,
+    noLabel: '실사 번호',
+    warehouseLabel: '창고',
+    typeLabel: '유형',
+    plannedLabel: '계획일',
     /** 장부를 감추는 실사다. 작업자가 장부 수를 보고 그대로 적는 것을 막는다. */
-    blind: '장부 수량을 감춘 실사입니다. 실물만 세어 적으세요.',
+    blind: '전산 잔량을 감춘 실사입니다. 실물만 세어 적으세요.',
+    /*
+     * 창고를 순회하는 일이라 한 번에 끝나지 않는다. 남은 양을 말하지 않으면 언제 끝나는지
+     * 모른 채 돌게 된다. 센 라인 수는 서버가 세어 준다.
+     */
+    progress: (counted: string, planned: string) => `진행 ${counted} / ${planned}`,
+    progressLabel: '실사 진행',
+    /*
+     * 대상 위치는 실사 헤더에 없고 라인에 붙어 있다. 말해 주지 않으면 위치 코드를 외우고
+     * 있는 사람만 이 화면을 쓸 수 있다.
+     */
+    remaining: (codes: string) => `실사 위치 ${codes}`,
+    /*
+     * 창고 하나의 실사는 위치가 수십 곳이다. 다 늘어놓으면 화면을 넘겨 위치 스캔 칸이 아래로
+     * 밀린다. 순회는 앞에서부터 하므로 앞 몇 곳과 남은 수만 말한다.
+     */
+    remainingMore: (codes: string, rest: string) => `실사 위치 ${codes} 외 ${rest}곳`,
   },
   location: {
     legend: '위치 스캔',
@@ -34,7 +51,7 @@ export const physicalCount = {
     notFound: (code: string) => `${code} 위치를 찾지 못했습니다`,
     picked: (code: string) => `위치 ${code}`,
     /** 장부에 없는 물건이 나올 수 있다. 그것을 적을 길은 이 슬라이스에 없다. */
-    empty: '이 위치에는 실사 라인이 없습니다. 장부에 없는 물건은 관리웹에서 추가합니다.',
+    empty: '이 위치에는 실사 라인이 없습니다. 전산에 없는 물건은 관리웹에서 추가합니다.',
   },
   lines: {
     legend: '실물 수량',
@@ -45,19 +62,62 @@ export const physicalCount = {
      * 잘린 것처럼 읽힌다.
      */
     name: (item: string, lotNo: string) => [item, lotNo].filter((part) => part !== '').join(' · '),
-    qtyLabel: (name: string) => `${name} 실물 수량`,
-    /** 장부는 블라인드가 아닐 때만 온다. */
-    systemQty: (qty: string) => `장부 ${qty}`,
-    /** 덮어쓸 수 있게 두되 이전 값을 보인다 - 무엇을 바꾸는지 모르고 바꾸지 않게. */
-    already: (qty: string) => `이전 값 ${qty}`,
-    /** 안 센 것과 0 으로 센 것은 다르다. 안 센 라인은 보내지 않는다. */
-    uncounted: '아직 세지 않음',
+    /*
+     * 눈에 보이는 라벨은 짧게 둔다. 줄 이름은 바로 위에 제목으로 서 있어, 라벨에 또 적으면
+     * 한 줄에 같은 이름이 두 번 선다.
+     */
+    qty: '실물 수량 입력',
+    /** 어느 줄의 칸인지는 눈으로 보고, 화면을 읽어 주는 도구는 이 이름으로 가른다. */
+    qtyLabel: (name: string) => `${name} 실물 수량 입력`,
+    /*
+     * 전산 잔량은 블라인드가 아닐 때만 온다. 감춘 실사에서도 자리는 남긴다 - 지우면 장부가
+     * 없는 실사와 구별되지 않아, 가려진 것인지 원래 없는 것인지 줄을 보고 알 수 없다.
+     */
+    systemQty: (qty: string, unit: string) => `전산 잔량 ${[qty, unit].join(' ').trim()}`,
+    /** 감춘 자리. 값이 아니라 가렸다는 사실을 적는다. */
+    masked: '▪▪▪',
+    /*
+     * 세어 적은 값과 전산 잔량의 차이. 되돌릴 수 없는 재고 조정이 이 수만큼 나간다 - 사유를
+     * 요구하면서 얼마인지 말하지 않으면 사람이 암산해 고르게 된다.
+     */
+    diffOver: (qty: string, unit: string) => `차이 ${[qty, unit].join(' ').trim()} 많음`,
+    diffShort: (qty: string, unit: string) => `차이 ${[qty, unit].join(' ').trim()} 부족`,
+    /*
+     * 덮어쓸 수 있게 두되 앞서 적은 값을 보인다 - 무엇을 바꾸는지 모르고 바꾸지 않게.
+     *
+     * 무엇의 값인지 적는다. 전산 잔량과 나란히 서면 둘 다 숫자라, 전산 재고인지 앞 회차에
+     * 적어 둔 값인지 문구로 갈리지 않으면 알 수 없다.
+     */
+    already: (qty: string, unit: string) => `이전 실사값 ${[qty, unit].join(' ').trim()}`,
+    /*
+     * 안 센 것과 0 으로 센 것은 다르다. 안 센 라인은 보내지 않는다.
+     *
+     * 무엇을 안 셌는지 적는다. 라인마다 서는 말이라 그 라인의 실물을 가리킨다는 것이
+     * 드러나야 한다.
+     */
+    uncounted: '이 라인은 아직 세지 않았습니다',
+    /*
+     * 장부에 없는 물건을 찾았을 때 적을 자리. 새 라인의 번호는 서버가 채번하므로 오프라인에서는
+     * 만들 수 없다.
+     */
+    add: '목록에 없는 재고',
+    addOffline: '연결되면 더할 수 있습니다',
+    /* 아홉 라인이 넘는 목록을 차례로 적는다. 숫자판을 닫았다 다시 열지 않고 옆으로 옮긴다. */
+    previousLine: '앞 라인',
+    nextLine: '다음 라인',
+    reason: '차이 사유',
     reasonLabel: (name: string) => `${name} 차이 사유`,
     reasonPlaceholder: '차이 사유를 고르세요',
     problem: {
       notNumber: '수량을 숫자로 적으세요',
       negative: '수량은 0보다 작을 수 없습니다',
     },
+    /*
+     * 이 선반을 다 셌는지는 실사 전체 진행과 다른 물음이다. 한 위치를 끝낼 때마다 확인하는
+     * 것이 이 값이라 목록 머리에 둔다.
+     */
+    atHere: (counted: string, total: string) => `진행 ${counted} / ${total}`,
+    atHereLabel: '진행',
     /** 0 은 유효한 답이다. 세어 보니 없더라를 적는 자리다. */
     zeroHint: '실물이 없으면 0 을 적습니다. 비워 두면 아직 세지 않은 것으로 남습니다.',
   },
@@ -65,18 +125,18 @@ export const physicalCount = {
   noWorker: '사번을 먼저 확인하세요',
   /** 단말 보관소가 거절한 경우. 적은 것이 어디에도 없으므로 기록되지 않았다고 말한다. */
   saveFailed: {
-    title: '센 것을 저장하지 못했습니다',
+    title: '실물 수량을 저장하지 못했습니다',
     description: '기록되지 않았습니다. 다시 시도하세요.',
   },
   sent: {
     title: '이 위치를 끝냈습니다',
   },
   held: {
-    title: '센 것을 전송 대기에 넣었습니다',
+    title: '실물 수량을 전송 대기에 넣었습니다',
     description: '연결되면 보냅니다.',
   },
   rejected: {
-    title: '센 것을 전송하지 못했습니다',
+    title: '실물 수량을 전송하지 못했습니다',
     description: '전송 실패한 기록에서 사유를 확인하세요. ',
     action: '전송 실패한 기록 보기',
   },

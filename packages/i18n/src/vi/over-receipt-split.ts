@@ -30,7 +30,7 @@ export const overReceiptSplit: Translated<typeof ko.overReceiptSplit> = {
     registerBoth: 'Đăng ký tách',
     registerNormalOnly: 'Chỉ lưu phần định lượng',
     registerExcessOnly: 'Chỉ lưu phần vượt',
-    createPurchaseOrder: 'Đăng ký ERP W/O mới',
+    createPurchaseOrder: 'Đăng ký P/O vật tư mới',
     discardDraft: 'Bỏ nội dung đã nhập',
     keepEditing: 'Nhập tiếp',
     selectRow: (purchaseOrderNo: string): string => `Chọn ${purchaseOrderNo}`,
@@ -53,7 +53,7 @@ export const overReceiptSplit: Translated<typeof ko.overReceiptSplit> = {
     excessOnlyNeedsExcess:
       'Chỉ lưu phần vượt không có phần vượt nào. Khi có số lượng đến vượt quá hạn mức định lượng thì dùng được nút này.',
     createPurchaseOrderUnavailable:
-      'Đăng ký ERP W/O mới không bắt đầu ở đây. Hãy đăng ký nhập hàng phần vượt trước, rồi tiếp tục ở kết quả đăng ký.',
+      'Đăng ký P/O vật tư mới không bắt đầu ở đây. Hãy đăng ký nhập hàng phần vượt trước, rồi tiếp tục ở kết quả đăng ký.',
   },
   loading: {
     purchaseOrders: 'Đang tải danh sách đơn đặt hàng',
@@ -162,7 +162,7 @@ export const overReceiptSplit: Translated<typeof ko.overReceiptSplit> = {
     status: 'Trạng thái',
     unlabeled: 'Không hiển thị phiếu nào là phần định lượng, phiếu nào là phần vượt.',
     registerPo: (inboundReceiptNo: string): string =>
-      `Đăng ký ERP W/O theo lần nhập hàng ${inboundReceiptNo}`,
+      `Đăng ký P/O vật tư theo lần nhập hàng ${inboundReceiptNo}`,
   },
   dialog: {
     discardTitle: 'Bỏ số lượng đến đã nhập',

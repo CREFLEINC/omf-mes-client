@@ -8,6 +8,7 @@ export type InventoryCount = components['schemas']['InventoryCount'];
 export type InventoryCountLine = components['schemas']['InventoryCountLine'];
 export type InventoryCountLineUpsert = components['schemas']['InventoryCountLineUpsert'];
 export type InventoryCountLineReplace = components['schemas']['InventoryCountLineReplace'];
+export type InventoryCountSummary = components['schemas']['InventoryCountSummary'];
 
 /**
  * 담는 경로의 이름.
@@ -24,11 +25,24 @@ export const COUNT_LABEL = messages.physicalCount.record.counted;
  * 안 센 것을 0 으로 보내면 관리웹이 그것을 전량 손실로 잡는다.
  */
 export interface DraftLine {
-  inventoryCountLineId: number;
+  /*
+   * 화면 안에서 줄을 가르는 열쇠. 계획에 없던 재고를 더한 줄은 서버 번호가 없어, 번호로
+   * 가르면 그 줄에 적은 값이 다른 줄로 간다.
+   */
+  key: string;
+  /* 계획 라인의 번호. 계획에 없던 재고를 더한 줄은 없다 - 서버가 채번한다. */
+  inventoryCountLineId: number | null;
   locationId: number;
   itemId: number;
   lotId: number | null;
   uomId: number;
+  /*
+   * 서버가 라인에 실어 보내는 표시용 값. 식별자를 사람이 읽는 값으로 바꾸려 마스터를 다시
+   * 부르지 않는다 - 모바일은 오프라인에서 그 마스터를 갱신할 수 없어, 다시 부르면 연결이
+   * 끊긴 자리에서 줄마다 이름이 통째로 사라진다.
+   */
+  itemCode: string;
+  lotNo: string | null;
   /** 장부 수량. 블라인드 실사에서는 서버가 내려보내지 않아 없다. */
   systemQty: number | null;
   /** 서버가 이 줄을 이미 센 것으로 보는가. 화면이 countedQty 의 0 으로 판정하지 않는다. */
@@ -73,6 +87,24 @@ export const qtyProblemOf = (line: DraftLine): QtyProblem | null => {
 export const countedLines = (lines: DraftLine[]): DraftLine[] =>
   lines.filter((line) => line.qty.trim() !== '');
 
+/**
+ * 센 값과 전산 잔량의 차이. 조정이 이 수만큼 나간다.
+ *
+ * 사유를 요구하면서 얼마인지 말하지 않으면 사람이 암산해 고른다. 되돌릴 수 없는 쓰기라
+ * 그 암산이 틀리면 원장이 틀어진다.
+ *
+ * 블라인드 실사는 전산 잔량이 오지 않아 화면이 차이를 모른다 - 그때는 null 이다.
+ */
+export const diffOf = (line: DraftLine): number | null => {
+  if (line.systemQty === null || line.qty.trim() === '' || qtyProblemOf(line) !== null) {
+    return null;
+  }
+
+  const counted = Number(line.qty.trim());
+
+  return counted === line.systemQty ? null : counted - line.systemQty;
+};
+
 /** 장부 차이를 알 수 있는 계수와 기존 블라인드 재계수만 사유를 요구한다. */
 export const needsReason = (
   count: Pick<InventoryCount, 'blindCount'>,
@@ -83,7 +115,14 @@ export const needsReason = (
   if (count.blindCount) return line.counted && line.previousQty !== qty;
   if (line.systemQty === null) return true;
   if (qty === line.systemQty) return false;
-  return !line.counted || line.previousQty !== qty || line.previousReasonCode === null;
+
+  /*
+   * 손대지 않은 줄에 사유가 이미 붙어 있으면 다시 묻지 않는다. 다만 판정은 서버에 무엇이
+   * 있었나가 아니라 지금 보낼 것이 있나로 한다 - 수량을 전산과 같게 고치면 화면이 사유를
+   * 지우는데, 되돌려 차이가 다시 생겨도 서버에 있었다는 사실만 보면 고를 자리를 주지 않는다.
+   * 그러면 사유 없이 나가 서버가 되돌려 보낸다.
+   */
+  return !line.counted || line.previousQty !== qty || line.reasonCode === '';
 };
 
 export const canSubmit = (
@@ -153,23 +192,33 @@ export const toCountDraft = (
     businessDate: businessDateOf(now),
     occurredAt,
     lines: countedLines(lines).map((line): InventoryCountLineUpsert => ({
-      inventoryCountLineId: line.inventoryCountLineId,
+      /* 번호가 없으면 신규 행이다 - 계약이 그것으로 계획에 없던 재고를 가른다. */
+      ...(line.inventoryCountLineId === null
+        ? {}
+        : { inventoryCountLineId: line.inventoryCountLineId }),
       locationId: line.locationId,
       itemId: line.itemId,
       lotId: line.lotId,
       countedQty: Number(line.qty.trim()),
       uomId: line.uomId,
-      /* 기존 계수를 그대로 동봉할 때는 최초 계수 시각을 보존한다. */
+      /*
+       * 기존 계수를 그대로 동봉할 때는 최초 계수 시각을 보존한다. 위치 전체를 치환하므로
+       * 손대지 않은 줄도 함께 나가는데, 그 줄의 시각까지 지금으로 바꾸면 언제 셌나가 전송
+       * 시각으로 덮인다.
+       */
       countedAt:
         line.counted &&
         line.previousQty === Number(line.qty.trim()) &&
-        line.reasonCode === '' &&
+        line.reasonCode === (line.previousReasonCode ?? '') &&
         line.previousCountedAt !== null
           ? line.previousCountedAt
           : occurredAt,
-      ...(needsReason(count, line) && line.reasonCode !== ''
-        ? { varianceReasonCode: line.reasonCode }
-        : {}),
+      /*
+       * 사유는 고른 것이 있으면 싣는다. 서버가 차이 있는 줄을 사유 없이 받지 않으므로,
+       * 앞서 센 줄에 붙어 있던 사유를 빠뜨리면 손대지도 않은 줄 때문에 전송이 되돌아온다.
+       * 블라인드의 미보완 줄은 사유 자체가 비어 있어 여기서 걸러진다.
+       */
+      ...(line.reasonCode === '' ? {} : { varianceReasonCode: line.reasonCode }),
     })),
   };
 

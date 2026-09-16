@@ -20,6 +20,7 @@ import { LOT_HOLD_REASON, displayNameOf, useCodeValues } from '../../patterns/co
 import { playErrorTone } from '../../patterns/error-tone';
 import { useLocation } from '../../patterns/locations';
 import { useOutbox } from '../../patterns/outbox';
+import { referenceLabel } from '../../patterns/reference';
 import { toApiError } from '../../patterns/request';
 import { useScanField } from '../../patterns/use-scan-field';
 import { useScreenTitle } from '../../patterns/screen-title';
@@ -27,6 +28,7 @@ import { useWorkerId } from '../../patterns/workers';
 import { useWorkerSession } from '../../patterns/worker-session';
 import { FailureBanner } from '../../patterns/failure-banner';
 import { useLoadFailure } from '../../patterns/load-failure';
+import { appendIssued, issuedQtyByLine, readIssued, type IssuedRecord } from './issued-record';
 import { PickingOrderList } from './order-list';
 import {
   ISSUE_TYPE,
@@ -114,13 +116,34 @@ export const MaterialPickingScreen = () => {
    */
   const inFlight = useRef(false);
   /*
-   * 이 단말이 이번에 담은 출고. 담는 순간 적고, 되돌아온 것만 빼고 센다.
+   * 이 단말이 담은 출고. 담는 순간 적고, 되돌아온 것만 빼고 센다.
    *
    * 보냈는지로 가르면 셸이 배경으로 보낸 것을 아무도 세지 않아, 큐가 비는 순간 담긴 출고를
    * 세는 방어와 함께 꺼진다 - 같은 수량이 한 번 더 나간다. 담긴 것도 나갈 것이므로 함께 세고,
-   * 되돌아온 것만 되돌린다. 화면이 다시 서면 사라지는 반쪽 방어이며 나머지는 설계에 물었다.
+   * 되돌아온 것만 되돌린다.
+   *
+   * 단말 보관소에 남긴다. 서버는 출고 뒤에도 집은 양을 그대로 내리고 출고를 원천으로 거를
+   * 축도 없어, 이미 내보냈는지를 물을 길이 없다 - 단말이 기억하는 수밖에 없다.
    */
-  const issuedHere = useRef<{ idempotencyKey: string; lines: GoodsIssueLineUpsert[] }[]>([]);
+  const [issuedRecords, setIssuedRecords] = useState<IssuedRecord[]>([]);
+
+  /*
+   * 화면이 다시 서도 남아야 한다. 마운트와 함께 사라지면 지시를 다시 열었을 때 방어가 꺼져,
+   * 물건을 다시 집어 들고 나간 뒤에야 서버가 되돌린다 - 실기 실측 2026-09-15.
+   */
+  useEffect(() => {
+    let dropped = false;
+
+    void readIssued().then((records) => {
+      if (!dropped) {
+        setIssuedRecords(records);
+      }
+    });
+
+    return () => {
+      dropped = true;
+    };
+  }, []);
 
   const scanSection = useRef<HTMLElement | null>(null);
   const qtySection = useRef<HTMLElement | null>(null);
@@ -177,22 +200,9 @@ export const MaterialPickingScreen = () => {
   /* 배경 보내기가 거부당하면 큐에서 빠진다. 화면이 읽지 않으면 사유가 어디에도 보이지 않는다. */
   const returned = rejected.filter((record) => isOfOrder(record.entry, orderId ?? -1));
 
-  const alreadyIssued = new Map<number, number>();
-
-  for (const record of issuedHere.current) {
-    /* 되돌아온 것은 나간 적이 없다. 빼 두면 다시 내보낼 길이 사라진다. */
-    if (rejected.some((each) => each.entry.idempotencyKey === record.idempotencyKey)) {
-      continue;
-    }
-
-    for (const each of record.lines) {
-      const lineId = each.pickingLineId;
-
-      if (lineId !== null && lineId !== undefined) {
-        alreadyIssued.set(lineId, (alreadyIssued.get(lineId) ?? 0) + each.issueQty);
-      }
-    }
-  }
+  const alreadyIssued = issuedQtyByLine(issuedRecords, orderId ?? -1, (key) =>
+    rejected.some((each) => each.entry.idempotencyKey === key),
+  );
 
   /*
    * 셸이 스스로 큐를 비운다. 그때 다시 조회하지 않으면 담긴 것이 셈에서 빠진 자리에 서버가
@@ -248,7 +258,13 @@ export const MaterialPickingScreen = () => {
 
   /* 세로 화면이라 채운 구획이 자리를 차지한 채 남으면 다음에 할 일이 접힌 자리에 있다. */
   useAdvanceTo(lineId !== null, scanSection);
-  useAdvanceTo(scanned !== null, qtySection);
+  /*
+   * 수량 구획은 **꼬리를 맞춘다.** 이 구획의 끝에 「이 라인 피킹」이 있고, 화면 바닥에는
+   * 「출고 확정」 바가 붙어 있다 — 머리를 맞추면 숫자판 높이만큼 밀려 단추가 그 바 아래로
+   * 들어가고, 단추 한가운데를 눌러도 바가 받는다(PICK-ISSUE-01 D3). 비워 둘 높이는
+   * `.picking-out__entry` 의 `scroll-margin-block-end` 가 정한다.
+   */
+  useAdvanceTo(scanned !== null, qtySection, 'end');
 
   /*
    * 뒤로가기는 화면 안 단계를 먼저 되돌린다. 라우터 이력에는 이 화면 하나뿐이라, 두지 않으면
@@ -262,6 +278,17 @@ export const MaterialPickingScreen = () => {
   useBackStep(orderId !== null && lineId === null, () => {
     setOrderId(null);
   });
+
+  /*
+   * 품목 이름은 지시 응답이 실어 온다 - 되짚어 묻지 않는다. 그래서 여기서 갈리는 것은 받는
+   * 중인가가 아니라 서버가 그 칸을 줬는가다. 둘 다 안 주면 줄 제목이 공백 한 칸이 되어 어느
+   * 줄을 고르는지 알 수 없다.
+   */
+  const lineItemLabel = (line: PickingLine): string => {
+    const label = `${line.itemCode ?? ''} ${line.itemName ?? ''}`.trim();
+
+    return referenceLabel(label === '' ? { kind: 'unknown' } : { kind: 'named', label });
+  };
 
   const chooseLine = (next: PickingLine) => {
     setPickOutcome(null);
@@ -375,11 +402,18 @@ export const MaterialPickingScreen = () => {
       /*
        * 담긴 뒤에 적는다. 담기지 못한 것을 적으면 나가지도 않은 양이 셈에 들어가 확정이
        * 잠긴다. 담긴 것도 서버로 향하므로 보냈는지로는 가르지 않는다.
+       *
+       * 적지 못해도 넘어간다. 출고는 이미 큐에 들어갔고, 여기서 멈추면 결과를 말하지 못해
+       * 사람은 아무 일도 안 일어난 줄 안다. 기록이 없으면 다시 열었을 때 막지 못할 뿐이고,
+       * 그때는 서버가 되돌린다.
        */
-      issuedHere.current = [
-        ...issuedHere.current,
-        { idempotencyKey: draft.idempotencyKey, lines: issuedLinesOf(draft) },
-      ];
+      await appendIssued({
+        idempotencyKey: draft.idempotencyKey,
+        pickingOrderId: order.pickingOrderId,
+        lines: issuedLinesOf(draft),
+      })
+        .then(setIssuedRecords)
+        .catch(() => undefined);
 
       const result = await flush().catch(() => null);
       const mine = (each: { idempotencyKey: string }) =>
@@ -393,7 +427,24 @@ export const MaterialPickingScreen = () => {
         return;
       }
 
-      setOutcome(result === null || result.remaining.some(mine) ? 'queued' : 'sent');
+      const settled = result === null || result.remaining.some(mine) ? 'queued' : 'sent';
+
+      /*
+       * 나간 뒤에는 목록과 상세를 다시 받는다. 서버가 전기된 지시를 「아직 출고할 수 있는 것」
+       * 에서 빼는데, 다시 묻지 않으면 「다음 지시」로 돌아온 목록에 그 지시가 그대로 남는다 —
+       * 작업자가 그것을 다시 열고 같은 수량이 한 번 더 나갈 수 있다(PICK-ISSUE-01 D1).
+       *
+       * 대기(queued)에서는 부르지 않는다. 아직 서버가 보지 못한 출고라 목록이 달라질 이유가
+       * 없고, 끊긴 자리에서 부르면 실패만 쌓인다.
+       */
+      if (settled === 'sent') {
+        await queryClient.invalidateQueries({ queryKey: pickingKeys.orders(workerId.data ?? null) });
+        await queryClient.invalidateQueries({
+          queryKey: pickingKeys.order(order.pickingOrderId),
+        });
+      }
+
+      setOutcome(settled);
     } finally {
       inFlight.current = false;
       setBusy(false);
@@ -590,7 +641,7 @@ export const MaterialPickingScreen = () => {
               >
                 <span className="picking-out__line">
                   <span className="picking-out__line-head">
-                    <strong>{`${each.itemCode ?? ''} ${each.itemName ?? ''}`}</strong>
+                    <strong>{lineItemLabel(each)}</strong>
                     {each.pickSequenceRank === null ||
                     each.pickSequenceRank === undefined ? null : (
                       <span className="picking-out__line-rank">
@@ -663,7 +714,7 @@ export const MaterialPickingScreen = () => {
             ) : null}
           </section>
 
-          <section className="picking-out__section" ref={qtySection}>
+          <section className="picking-out__section picking-out__entry" ref={qtySection}>
             {/*
              * 장갑을 끼고 한 손으로 조작한다. 운영체제 키보드는 작은 키가 촘촘하고, 올라오면
              * 라인 목록과 확정 단추를 덮는다(설계 §7-1 · 공유계약 G-6).

@@ -88,6 +88,8 @@ export const isDirty = (draft: LayoutDraft, original: LayoutDraft): boolean => {
  *
  * ⛔ **위치 이름을 싣지 않는다** — 마스터가 가진 값이고 여기서 보내면 두 곳에서 갈린다.
  * ⛔ **도면이 없으면 도면 칸을 싣지 않는다** — 비운 것과 「바꾸지 않는다」를 가른다.
+ * ⛔ **통째 교체라 이 값을 빼면 서버가 도면을 지운다(#1064)** — 그래서 필수 인자다. 지금
+ * 도면이 있으면 그 id를, 없으면 `null`을 반드시 명시로 넘긴다. 기본값을 두지 않는다.
  */
 export const toReplaceBody = (
   draft: LayoutDraft,
@@ -100,3 +102,24 @@ export const toReplaceBody = (
   })),
   ...(drawingAttachmentId === null ? {} : { drawingAttachmentId }),
 });
+
+/** 서버가 실제로 받는 형식 — 이 밖은 요청 전에 화면이 막는다. */
+export const DRAWING_MIME_TYPES = ['image/png', 'image/jpeg'] as const;
+
+/**
+ * 서버 상한 10MB — 최종 판정은 서버가 파일 «내용»으로 한다. 여기는 요청 전에 미리 거르는 것뿐.
+ */
+export const DRAWING_MAX_BYTES = 10 * 1024 * 1024;
+
+/**
+ * 도면 올리기 전 사전 검사.
+ *
+ * ⭐ **형식을 크기보다 먼저 본다** — 형식부터 어긋나면 크기까지 잴 필요가 없다.
+ * `File` 이 아니라 `{ type, size }` 로 받는다 — jsdom 없이도 시험할 수 있게.
+ */
+export const checkDrawingFile = (file: { type: string; size: number }): 'ok' | 'type' | 'size' => {
+  if (!DRAWING_MIME_TYPES.includes(file.type as (typeof DRAWING_MIME_TYPES)[number])) return 'type';
+  if (file.size > DRAWING_MAX_BYTES) return 'size';
+
+  return 'ok';
+};

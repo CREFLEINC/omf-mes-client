@@ -4,6 +4,8 @@ import type { Translated } from './translated';
 /** M-01-09 생산창고 입고. 한 출고 전표를 두 번 받지 않게 그 사실을 먼저 말한다. */
 export const shopfloorReceipt: Translated<typeof ko.shopfloorReceipt> = {
   title: 'Nhập kho sản xuất',
+  itemLabel: 'Mặt hàng',
+  lotLabel: 'LOT',
   degraded: {
     title: 'Đang ngoại tuyến',
     description: 'Phần xuất kho cũng xử lý trên máy này. Sẽ gửi một lượt khi có kết nối.',
@@ -22,6 +24,9 @@ export const shopfloorReceipt: Translated<typeof ko.shopfloorReceipt> = {
     notFound: (code: string) => `Không tìm thấy phiếu xuất kho ${code}`,
     loadFailed: 'Không mở được phiếu xuất kho. Hãy kiểm tra kết nối.',
     summary: (no: string, count: number) => `${no} · ${String(count)} dòng`,
+    notForShopfloor: 'Phiếu xuất kho này không thuộc diện nhập kho sản xuất',
+    notForShopfloorWhy:
+      'Ở đây chỉ nhận phiếu xuất để đưa vào sản xuất. Phiếu xuất để trả hàng hoặc hủy bỏ thì không nhận. Hãy kiểm tra lại số phiếu.',
     destination: (code: string) => `Nơi đến ${code}`,
     destinationOffline: 'Không xác nhận được vị trí đến. Hãy kiểm tra kết nối.',
     destinationUnknown:
@@ -43,18 +48,23 @@ export const shopfloorReceipt: Translated<typeof ko.shopfloorReceipt> = {
   },
   lines: {
     legend: 'Nhận theo dòng',
-    issued: (qty: string) => `Xuất kho ${qty}`,
+    issued: (qty: string) => `Số lượng xuất kho ${qty}`,
+    received: 'Số lượng nhận',
     receivedLabel: (item: string) => `Số lượng nhận của ${item}`,
     name: (item: string, lotNo: string) => (item === '' ? lotNo : `${item} · ${lotNo}`),
-    short: (qty: string) => `Thiếu ${qty}`,
+    short: (qty: string) => `Chênh lệch ${qty} thiếu`,
     problem: {
       notNumber: 'Hãy ghi số lượng bằng chữ số',
       negative: 'Số lượng không được nhỏ hơn 0',
-      overIssued: (limit: string) => `Không nhận được nhiều hơn ${limit} đã xuất kho`,
+      overIssued: (limit: string) => `Không nhận được nhiều hơn số lượng xuất kho ${limit}`,
     },
+    reason: 'Lý do chênh lệch',
     reasonLabel: (item: string) => `Lý do chênh lệch của ${item}`,
     reasonPlaceholder: 'Hãy chọn lý do',
     reasonRequired: 'Mặt hàng bị thiếu thì phải chọn lý do',
+    overIssuedTitle: 'Không nhận được nhiều hơn số lượng xuất kho',
+    overIssuedGuide:
+      'Nếu hàng thực tế đến nhiều hơn số lượng xuất kho thì phải đính chính phiếu xuất kho trước. Hãy yêu cầu hủy phiếu xuất kho đó tại màn hình Tiến độ và hủy chứng từ logistics trên web quản trị, hoặc nếu chỉ xử lý riêng phần vượt thì phát hành thêm phiếu xuất bằng Yêu cầu xuất kho vật tư bổ sung.',
   },
   hopper: {
     legend: 'Lượng còn lại trong phễu',
@@ -62,12 +72,14 @@ export const shopfloorReceipt: Translated<typeof ko.shopfloorReceipt> = {
     equipmentPlaceholder: 'Hãy chọn thiết bị',
     loading: 'Đang tải thiết bị',
     loadFailed: 'Không xác nhận được thiết bị. Hãy kiểm tra kết nối.',
-    noHopper: 'Thiết bị này chưa được chỉ định vị trí phễu',
+    noHopperEquipment: 'Không có thiết bị nào được chỉ định phễu. Hãy báo quản trị viên.',
     at: (code: string) => `Phễu ${code}`,
     stockLoading: 'Đang tải thứ đang có trong phễu',
     stockFailed: 'Không xác nhận được lượng còn lại trong phễu. Hãy kiểm tra kết nối.',
-    empty: 'Trên sổ sách phễu này không còn gì',
-    onHand: (qty: string) => `Sổ sách ${qty}`,
+    empty: 'Phễu này không còn lượng tồn trên hệ thống',
+    name: (item: string, lotNo: string) => (lotNo === '' ? item : `${item} · ${lotNo}`),
+    onHand: (qty: string) => `Tồn hệ thống ${qty}`,
+    measured: 'Lượng còn lại đo được',
     measuredLabel: (name: string) => `Lượng còn lại đo được của ${name}`,
     difference: (qty: string) => `Chênh lệch ${qty}`,
     problem: {

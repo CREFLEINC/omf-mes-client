@@ -16,7 +16,7 @@ import { useScreenTitle } from '../../patterns/screen-title';
 import { useWorkerSession } from '../../patterns/worker-session';
 import { FailureBanner } from '../../patterns/failure-banner';
 import { useLoadFailure } from '../../patterns/load-failure';
-import { useFillableLines, useSupplierLotReceipts } from './queries';
+import { useFillableLineIds, useFillableLines, useSupplierLotReceipts } from './queries';
 import {
   LOT_LABEL,
   canRegister,
@@ -68,6 +68,9 @@ export const MaterialLotScanScreen = () => {
   const scanSection = useRef<HTMLElement | null>(null);
 
   const receipts = useSupplierLotReceipts();
+  const fillableIds = useFillableLineIds(
+    (receipts.data ?? []).map((each) => each.inboundReceiptId),
+  );
   const lines = useFillableLines(receiptId);
 
   const itemLabels = useItemLabels((lines.data ?? []).map((each) => each.itemId));
@@ -91,6 +94,21 @@ export const MaterialLotScanScreen = () => {
   const openLines = (lines.data ?? []).filter(
     (each) => !filled.includes(each.inboundReceiptLineId),
   );
+
+  /*
+   * 채울 라인이 하나도 없는 건은 후보에서 뺀다. 두면 고른 뒤에야 채울 것이 없다고 알게
+   * 되고, 그 건이 대부분이라 작업자가 고를 수 있는 것을 찾느라 목록을 훑는다.
+   *
+   * 못 물어본 건은 남긴다 - 조회 실패를 채울 라인이 없는 것으로 읽으면 멀쩡한 건이 조용히
+   * 사라지고, 화면은 고를 것이 없다고만 말한다. 고르면 라인 조회가 그 실패를 말한다.
+   */
+  const openReceipts = (receipts.data ?? []).filter(
+    (each) =>
+      fillableIds.unknown.has(each.inboundReceiptId) ||
+      (fillableIds.byReceipt.get(each.inboundReceiptId) ?? []).some((id) => !filled.includes(id)),
+  );
+  /* 다 받기 전에 거르면 목록이 섰다가 줄어들어, 누르려던 건이 손 아래에서 사라진다. */
+  const receiptsPending = receipts.isPending || fillableIds.isPending;
   const line = openLines.find((each) => each.inboundReceiptLineId === lineId) ?? null;
   const receipt = (receipts.data ?? []).find((each) => each.inboundReceiptId === receiptId) ?? null;
 
@@ -253,14 +271,16 @@ export const MaterialLotScanScreen = () => {
     <div className="material-lot-scan">
       <section className="material-lot-scan__section">
         <h2>{t.receipt.legend}</h2>
-        {receipts.isPending ? <p role="status">{t.receipt.loading}</p> : null}
+        {receiptsPending ? <p role="status">{t.receipt.loading}</p> : null}
         {receipts.isError ? (
           <FailureBanner
             variant="error"
             title={failureText(receipts.error, t.receipt.loadFailed)}
           />
         ) : null}
-        {receipts.isSuccess && receipts.data.length === 0 ? <p>{t.receipt.none}</p> : null}
+        {!receiptsPending && !receipts.isError && openReceipts.length === 0 ? (
+          <p>{t.receipt.none}</p>
+        ) : null}
         <label htmlFor="material-lot-scan-receipt">{t.receipt.pick}</label>
         <Select
           id="material-lot-scan-receipt"
@@ -272,7 +292,7 @@ export const MaterialLotScanScreen = () => {
             setLineId(null);
             setScanned('');
           }}
-          options={(receipts.data ?? []).map((each) => ({
+          options={openReceipts.map((each) => ({
             value: String(each.inboundReceiptId),
             label: t.receipt.item(each.inboundReceiptNo, each.receiptDatetime.slice(0, 10)),
           }))}
@@ -417,7 +437,15 @@ export const MaterialLotScanScreen = () => {
           <h2>{t.registered.legend(String(registered.length))}</h2>
           <ul className="material-lot-scan__list">
             {registered.map((each) => (
-              <li key={each.lotNo}>{t.registered.item(each.lotNo, String(each.qty))}</li>
+              <li key={each.lotNo}>
+                <dl className="material-lot-scan__fields">
+                  <dt>{t.registered.lotNoLabel}</dt>
+                  {/* 저장값에 구분자가 들어 있다 — 끊어 보이지 않고 읽은 그대로 낸다. */}
+                  <dd>{each.lotNo}</dd>
+                  <dt>{t.registered.qtyLabel}</dt>
+                  <dd>{String(each.qty)}</dd>
+                </dl>
+              </li>
             ))}
           </ul>
           {/* 연속 작업이라 마침 단추가 목록 아래로 밀린다. 설계가 이 자리를 하단으로 잡았다. */}

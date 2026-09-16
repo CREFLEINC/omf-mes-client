@@ -29,6 +29,9 @@
  * .field-error  필드 아래 오류 텍스트
  * .link-cell    표의 코드 셀을 누를 수 있게 만드는 텍스트 버튼
  * .tree-toggle  Location 계층의 들여쓰기 + 접기 버튼을 담는 셀 래퍼
+ * .drawing-stage 창고 배치도의 표식 판을 감싸, 그 위에 진행 가림막을 덮을 자리를 만든다
+ * .drawing-busy  도면을 올리는 동안 판을 덮는 가림막 — 결과가 나타날 자리에서 단계를 알린다
+ * .drawing-busy-note  그 가림막 안에 서는 표면 판 — 스크림 위에서도 단계 문구가 읽히게 한다
  * .banner-slot  페인·다이얼로그 안의 배너와 아래 블록 사이 이음매(규범 6)
  *               + DS 배너의 box-sizing 정규화(임시 우회 — design-system-v2-webui#60)
  * .login-shell   셸 밖에 서는 화면의 본문 — 내용을 뷰포트 한가운데 세운다(규범 8)
@@ -43,6 +46,7 @@
  * .nav-group-count  접혀 있을 때 안에 몇 개가 있는지
  * .nav-group-items  그 묶음의 항목들 — 열렸을 때만 내용이 있다
  * .nav-search-empty 검색에 맞는 화면이 없다는 안내
+ * .sidebar-version 사이드바 맨 아래의 버전 캡션
  * .login-card    그 화면이 세우는 카드의 폭 상한(규범 8)
  * .login-title   카드 머리에 놓는 표제 — 디자인 시스템의 머리 서식을 그대로 물려받는다(규범 8)
  * .login-head    그 카드 머리 — 표제와 언어 칸을 한 줄에 놓는다(규범 8)
@@ -5203,6 +5207,64 @@ dl.filter-bar.approval-inbox-detail-facts {
 }
 
 /*
+ * 창고 배치도(W-CO-08)의 표식 판을 감싸는 자리.
+ *
+ * 판 자체(`@omf-mes/ui` 의 MarkerOverlay)는 «그림과 점»만 소유한다 — 그 위에 무엇을 덮을지는
+ * 쓰는 쪽의 일이다. 덮으려면 기준이 되는 상자가 있어야 하므로 여기서 그 기준만 만든다.
+ */
+.drawing-stage {
+  position: relative;
+}
+
+/*
+ * 도면을 올리는 동안 판을 덮는 가림막.
+ *
+ * ⭐ **결과가 나타날 자리에서 알린다.** 버튼도 「올리는 중」을 말하지만(DS Button loading),
+ * 사람이 보고 있는 것은 판이다 — 판이 아무 말도 하지 않으면 옛 도면이 그대로 보여 「눌렀는데
+ * 아무 일도 없다」로 읽힌다.
+ *
+ * ⭐ **덮는 것이 곧 막는 것이다.** 판은 `readOnly` 로도 잠그지만, 가림막이 포인터를 먼저
+ * 받아 내므로 올리는 도중의 클릭이 점으로 남지 않는다.
+ *
+ * 색은 DS 의 스크림 토큰을 그대로 쓴다 — 창의 배경과 같은 어둡기라 「지금은 못 만지는 면」이
+ * 화면 전체에서 같은 뜻으로 읽힌다. 글자는 그 위에 표면 카드를 얹어 대비를 잃지 않게 한다.
+ */
+.drawing-busy {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  background: var(--scrim);
+}
+
+/*
+ * 가림막 안의 말과 진행 표시.
+ *
+ * ⭐ **스크림 위에 글자를 직접 놓지 않는다** — 스크림은 아래 그림을 비치라고 반투명이라, 그
+ * 위의 글자는 도면 그림에 따라 읽히기도 하고 묻히기도 한다. DS 창(Dialog)이 스크림 위에 표면
+ * 판을 세우는 것과 같은 구성을 쓴다. 폭 상한을 두는 것은 판이 넓을 때 문장이 한 줄로 길게
+ * 늘어지는 것을 막기 위해서다.
+ */
+.drawing-busy-note {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+  width: min(20rem, 100%);
+  padding: var(--space-4);
+  border-radius: var(--radius-md);
+  background: var(--surface-container-high);
+  color: var(--on-surface);
+  box-shadow: var(--elevation-2);
+  text-align: center;
+}
+
+/*
  * 달력 그리드의 칸 하나 — 날짜 숫자 · 상태 배지 · 부분 가동 시각이 세로로 쌓인다.
  *
  * 한 칸에 셋을 그냥 두면 인라인으로 이어져 날짜와 상태가 한 줄에 붙는다. 칸마다 높이를
@@ -6082,13 +6144,6 @@ dl.filter-bar.approval-inbox-detail-facts {
 /* 「이 숫자가 언제 것인가」 — 값보다 약하게 읽혀야 한다. */
 .pop-figure-note {
   margin-left: var(--space-3);
-  font: var(--type-body-sm);
-  letter-spacing: var(--type-body-sm-tracking);
-  color: var(--on-surface-muted);
-}
-
-/* 안내 구획 — 글자만 담는다. 경고가 아니라 상시 사실이라 배너를 쓰지 않는다. */
-.pop-notice {
   font: var(--type-body-sm);
   letter-spacing: var(--type-body-sm-tracking);
   color: var(--on-surface-muted);
@@ -7875,4 +7930,15 @@ dl.filter-bar.approval-inbox-detail-facts {
   padding: var(--space-3);
   color: var(--on-surface-variant);
   font: var(--type-body-sm);
+}
+
+/*
+ * 사이드바 맨 아래의 버전 캡션(#1240). **찾으면 보이되 눈길을 끌지 않는다** — 가장 작은 라벨
+ * 서식에 보조 글자색이다. 여백은 DS 하단 슬롯이 이미 준다.
+ */
+.sidebar-version {
+  margin: 0;
+  color: var(--on-surface-variant);
+  font: var(--type-label-sm);
+  letter-spacing: var(--type-label-sm-tracking);
 }

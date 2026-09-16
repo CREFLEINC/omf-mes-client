@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-import { screen, waitFor, within } from '@testing-library/react';
+import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -198,6 +198,18 @@ describe('사번 확인 화면', () => {
     ).not.toBeInTheDocument();
   });
 
+  /* 사번 확인 뒤 화면과 같은 단추를 사번 입력 화면에도 둔다(사용자 지시 2026-09-15). */
+  it('사번을 넣기 전에도 기기 등록 해제를 연다', async () => {
+    const user = userEvent.setup();
+    mount();
+
+    await screen.findByRole('group', { name: '사번 입력' });
+    await user.click(screen.getByRole('button', { name: '기기 등록 해제' }));
+
+    expect(await screen.findByRole('dialog')).toBeInTheDocument();
+    expect(token.cleared).toBe(0);
+  });
+
   it('아무것도 안 눌렀으면 확인할 수 없다', async () => {
     mount();
 
@@ -245,21 +257,23 @@ describe('사번 확인 화면', () => {
 describe('등록이 서버에서 끊긴 기기', () => {
   it('토큰이 거절되면 사번 확인을 막고 새 QR 을 받으라고 한다', async () => {
     await rememberPlant(7);
-    const user = userEvent.setup();
     mountGated([probe(() => jsonResponse(denied, { status: 401 }))]);
 
     expect(await screen.findByText(EXPIRED)).toBeInTheDocument();
     /* 셸이 띄운 것 하나뿐이다. 화면이 또 띄우면 두 번 뜬다(#1198 실기). */
     expect(screen.getAllByText(EXPIRED)).toHaveLength(1);
 
-    await press(user, '900028');
-
-    expect(screen.getByRole('button', { name: '확인' })).toBeDisabled();
+    /* 넣어도 들어갈 수 없는 입력은 두지 않는다(#1243). */
+    expect(screen.queryByRole('group', { name: '사번 입력' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '확인' })).not.toBeInTheDocument();
     expect(screen.queryByText('작업자 1 · 900028')).not.toBeInTheDocument();
   });
 
-  /* 막기만 하면 갈 곳이 없다. 새 QR 로 다시 등록하려면 먼저 풀어야 한다. */
-  it('사번을 넣기 전에도 등록을 풀 수 있다', async () => {
+  /*
+   * 막기만 하면 갈 곳이 없다. 새 QR 로 다시 등록하려면 먼저 풀어야 한다. 그 길이 키패드 아래에
+   * 밀려 단말에서 보이지 않았다(#1243 실기).
+   */
+  it('만료된 기기의 기기 등록 해제는 확인 창을 거쳐 등록을 푼다', async () => {
     await rememberPlant(7);
     const user = userEvent.setup();
     mountGated([probe(() => jsonResponse(denied, { status: 401 }))]);
@@ -267,7 +281,14 @@ describe('등록이 서버에서 끊긴 기기', () => {
     await screen.findByText(EXPIRED);
     await user.click(screen.getByRole('button', { name: '기기 등록 해제' }));
 
-    expect(await screen.findByRole('dialog')).toBeInTheDocument();
+    const dialog = within(await screen.findByRole('dialog'));
+    expect(token.cleared).toBe(0);
+
+    await user.click(await dialog.findByRole('button', { name: '등록 해제' }));
+
+    await waitFor(() => {
+      expect(token.cleared).toBe(1);
+    });
   });
 
   it('들어온 뒤에 끊겼으면 교대로 사번을 바꿀 때 막는다', async () => {
@@ -285,10 +306,10 @@ describe('등록이 서버에서 끊긴 기기', () => {
     await signedIn(user);
     dead = true;
     await user.click(screen.getByRole('button', { name: '사번 바꾸기' }));
-    await press(user, '900028');
 
     expect(await screen.findByText(EXPIRED)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: '확인' })).toBeDisabled();
+    expect(screen.queryByRole('button', { name: '확인' })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '기기 등록 해제' })).toBeInTheDocument();
   });
 
   it('토큰이 살아 있으면 지금처럼 들어간다', async () => {
@@ -410,7 +431,7 @@ describe('기기 등록 해제', () => {
     await signedIn(user);
 
     await user.click(screen.getByRole('button', { name: '기기 등록 해제' }));
-    await user.click(await screen.findByRole('button', { name: '돌아가기' }));
+    await user.click(await screen.findByRole('button', { name: '취소' }));
 
     expect(token.cleared).toBe(0);
     expect(screen.getByText('작업자 1 · 900028')).toBeInTheDocument();
@@ -580,17 +601,60 @@ describe('기기 등록 해제', () => {
     expect(await screen.findByRole('group', { name: '사번 입력' })).toBeInTheDocument();
   });
 
-  /* X·Esc 도 같은 자리로 온다. 이 길이 죽으면 되돌릴 수 없는 확인 창이 영영 안 닫힌다. */
-  it('X 로도 창이 닫힌다', async () => {
+  /* 닫는 길은 [취소] 하나로 둔다(사용자 지시 2026-09-15). X 가 다시 서면 같은 일을 하는 단추가 둘이 된다. */
+  it('창에 X 단추를 두지 않는다', async () => {
     const user = userEvent.setup();
     mount();
     await signedIn(user);
 
     await user.click(screen.getByRole('button', { name: '기기 등록 해제' }));
-    await user.click(await screen.findByRole('button', { name: '닫기' }));
 
-    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    const dialog = within(await screen.findByRole('dialog'));
+    expect(dialog.getByRole('button', { name: '취소' })).toBeInTheDocument();
+    expect(dialog.queryByRole('button', { name: '닫기' })).not.toBeInTheDocument();
+  });
+
+  /* X 가 빠져도 Esc(창의 cancel)는 같은 닫기로 온다. 이 길이 죽으면 되돌릴 수 없는 창이 안 닫힌다. */
+  it('Esc 로도 등록을 풀지 않고 창이 닫힌다', async () => {
+    const user = userEvent.setup();
+    mount();
+    await signedIn(user);
+
+    await user.click(screen.getByRole('button', { name: '기기 등록 해제' }));
+    fireEvent(await screen.findByRole('dialog'), new Event('cancel', { cancelable: true }));
+
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    });
     expect(token.cleared).toBe(0);
+  });
+
+  /*
+   * 창 배치 규칙(sign-in.css)이 기대는 자리를 잡는다. CSS 는 시험에 안 보여, 여기가 어긋나면
+   * 조용히 깨진다 - 제목이 제자리에 안 서거나 단추가 창 아래로 안 내려간다.
+   *
+   * 제목과 단추 줄은 우리 요소로 고른다. 본문만은 판의 자식 중 유일한 div 라 그것으로 집는다.
+   */
+  it('창 배치 규칙이 기대는 자리가 그대로다', async () => {
+    const user = userEvent.setup();
+    mount();
+    await signedIn(user);
+
+    await user.click(screen.getByRole('button', { name: '기기 등록 해제' }));
+
+    const dialog = await screen.findByRole('dialog');
+
+    /*
+     * CSS 가 본문을 늘려 단추를 창 아래로 내리는 경로와 같아야 한다. 판의 자식 중 div 가
+     * 본문 하나뿐이라는 것이 그 규칙의 전제다 - 하나 더 생기면 CSS 는 둘 다 늘린다.
+     */
+    const bodies = dialog.querySelectorAll(':scope > div > div');
+    expect(bodies).toHaveLength(1);
+    expect(bodies[0]?.querySelector('.worker-sign-in__dialog-notice')).not.toBeNull();
+
+    /* 제목은 머리말 자리에 서야 한다. 창 안 아무 데나 있으면 여백이 어긋난다. */
+    expect(dialog.querySelector('header .worker-sign-in__dialog-title')).not.toBeNull();
+    expect(dialog.querySelectorAll('.worker-sign-in__dialog-actions > button')).toHaveLength(2);
   });
 
   /*
@@ -605,7 +669,7 @@ describe('기기 등록 해제', () => {
     await user.click(screen.getByRole('button', { name: '기기 등록 해제' }));
 
     const dialog = within(await screen.findByRole('dialog'));
-    for (const name of ['돌아가기', '등록 해제']) {
+    for (const name of ['취소', '등록 해제']) {
       expect(dialog.getByRole('button', { name })).toHaveClass(/_xl_/);
     }
   });

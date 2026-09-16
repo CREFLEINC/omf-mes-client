@@ -1,8 +1,22 @@
+/*
+ * 바닥에 붙는 「출고 확정」 바(.action-bar)가 본문 위를 덮는다. 그만큼 바닥을 비우지 않으면
+ * 마지막 줄이 바에 가려 읽히지도 눌리지도 않는다.
+ */
 .picking-out {
   display: flex;
   flex-direction: column;
   gap: var(--space-5, 20px);
   padding: var(--space-4, 16px);
+  padding-bottom: 88px;
+}
+
+/*
+ * 수량 구획의 꼬리를 화면에 들일 때 「출고 확정」 바 높이만큼 비워 둔다. 비우지 않으면 구획
+ * 끝의 「이 라인 피킹」이 그 바 아래로 들어가고, 단추 한가운데를 눌러도 바가 받아 아무 일도
+ * 일어나지 않는다(PICK-ISSUE-01 D3 — 실기에서 두 번 무반응).
+ */
+.picking-out__entry {
+  scroll-margin-block-end: 88px;
 }
 
 .picking-out__section {

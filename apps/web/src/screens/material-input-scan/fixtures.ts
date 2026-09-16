@@ -10,12 +10,20 @@ import type { components } from '@omf-mes/api-client';
  * 7200대(품목) · 7300대(LOT) · 7400대(단위).
  */
 
+/**
+ * ⭐ **사람이 읽는 값을 기본으로 싣는다.** 실서버가 `lotNo`·`itemCode`·`itemName` 을 함께 준다
+ *    (실측 2026-09-15 · 공유계약 C-6). 이 자리를 비워 두면 「번호를 그대로 찍는」 화면이 시험을
+ *    통과한다 — 실제로 그렇게 배포됐다(WIP-CHAIN-01 D9). 없는 경우는 그 줄에서만 지운다.
+ */
 const BASE_LINE = {
   shopfloorReceiptLineId: 7101,
   shopfloorReceiptId: 7001,
   goodsIssueLineId: 7601,
   itemId: 7201,
   lotId: 7301,
+  lotNo: 'SAMPLE-LOT-0001',
+  itemCode: 'SAMPLE-MAT-A',
+  itemName: '예시 자재 A',
   issuedQty: 100,
   receivedQty: 100,
   varianceQty: 0,
@@ -55,6 +63,9 @@ export const receiptLineFixtures = [
     shopfloorReceiptLineId: 7102,
     itemId: 7202,
     lotId: 7302,
+    lotNo: 'SAMPLE-LOT-0002',
+    itemCode: 'SAMPLE-MAT-B',
+    itemName: '예시 자재 B',
     issuedQty: 200,
     receivedQty: 180,
     varianceQty: 20,
@@ -64,6 +75,9 @@ export const receiptLineFixtures = [
     shopfloorReceiptLineId: 7103,
     itemId: 7203,
     lotId: 7303,
+    lotNo: 'SAMPLE-LOT-0003',
+    itemCode: 'SAMPLE-MAT-C',
+    itemName: '예시 자재 C',
     issuedQty: 50,
     receivedQty: 0,
     varianceQty: 50,
