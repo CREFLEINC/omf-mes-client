@@ -1907,8 +1907,76 @@ on('GET', '/logistics/inbound-receipts/{inboundReceiptId}/lines', (params, query
 });
 
 /*
+ * 자재 LOT 번호 — `제품코드|수량|날짜|공급사|번호`(설계 통보 277). 서버 규칙을 흉내 낸다.
+ *
+ * 칸 값은 출력 가능한 ASCII 한 글자 이상, 날짜는 실재하는 YYMMDD, 번호는 0001~9999 다.
+ * 대소문자는 바꾸지 않는다 - 서버가 글자 그대로 견준다.
+ */
+const MATERIAL_LOT_SEGMENT = /^[\x20-\x7E]+$/;
+
+const parseMaterialLotNo = (value) => {
+  const parts = String(value ?? '').split('|');
+
+  if (parts.length !== 5) return null;
+
+  const [itemCode, qty, date, supplierCode, serial] = parts;
+  const ymd = /^(\d{2})(\d{2})(\d{2})$/.exec(date);
+  const at = ymd && new Date(Date.UTC(2000 + Number(ymd[1]), Number(ymd[2]) - 1, Number(ymd[3])));
+  const realDate =
+    at !== null && at.getUTCMonth() === Number(ymd[2]) - 1 && at.getUTCDate() === Number(ymd[3]);
+
+  return MATERIAL_LOT_SEGMENT.test(itemCode) &&
+    MATERIAL_LOT_SEGMENT.test(supplierCode) &&
+    /^\d+(\.\d+)?$/.test(qty) &&
+    realDate &&
+    /^\d{4}$/.test(serial) &&
+    serial !== '0000'
+    ? { itemCode, qty, date, supplierCode }
+    : null;
+};
+
+/** 수량 칸 정규형 — 소수 6자리에서 뒤 0 을 떼고, 정수면 소수점을 남기지 않는다. */
+const normalizeLotQty = (qty) => Number(qty).toFixed(6).replace(/0+$/, '').replace(/\.$/, '');
+
+/**
+ * MES 발번. 앞 4칸(제품코드·수량·날짜·공급사)이 같은 LOT 의 번호 최댓값 + 1 이다.
+ *
+ * 수량 칸은 입하 라인 수량, 공급사 칸은 입하의 공급사 거래처코드다. 9999 를 넘으면 `null`
+ * 번호로 돌려 부르는 쪽이 409 를 낸다 - 다시 불러도 풀리지 않는다.
+ */
+const nextMaterialLotNo = (body) => {
+  const item = state.items.find((row) => row.itemId === body?.itemId);
+  const line = state.inboundReceiptLines.find((row) => row.inboundReceiptLineId === body?.sourceId);
+  const receipt = state.inboundReceipts.find(
+    (row) => row.inboundReceiptId === line?.inboundReceiptId,
+  );
+  const supplier = state.partners.find((row) => row.partnerId === receipt?.supplierId);
+  const date = String(body?.businessDate ?? state.today)
+    .replace(/-/g, '')
+    .slice(2);
+  const prefix = `${[
+    item?.itemCode ?? 'UNKNOWN',
+    normalizeLotQty(line?.receivedQty ?? body?.initialQty),
+    date,
+    supplier?.partnerCode ?? 'UNKNOWN',
+  ].join('|')}|`;
+  const serial =
+    state.lots.reduce((max, lot) => {
+      const suffix = String(lot.lotNo).slice(prefix.length);
+      return String(lot.lotNo).startsWith(prefix) && /^\d{4}$/.test(suffix)
+        ? Math.max(max, Number(suffix))
+        : max;
+    }, 0) + 1;
+
+  return serial > 9999 ? null : `${prefix}${String(serial).padStart(4, '0')}`;
+};
+
+/*
  * 자재 LOT 등록. 같은 공장에 같은 번호가 있으면 400 이다 - 409 가 아니다. 스캔값이 곧 번호라
  * 다시 불러도 풀리지 않고 사람이 다른 라벨을 스캔해야 한다.
+ *
+ * 공급사 채번(`SUPPLIER`)은 서버가 형식·제품코드·공급사를 보지 않는다. 목도 보지 않는다 - 그
+ * 대조는 화면(M-01-02)이 해야 하는 일이라, 목이 대신 막으면 화면의 결함을 가린다.
  */
 on('POST', '/trace/lots', (_p, _q, body) => {
   /*
@@ -1916,8 +1984,17 @@ on('POST', '/trace/lots', (_p, _q, body) => {
    *    적었으니, 보내지 않은 번호를 여기서 만들지 않으면 **번호 없는 LOT** 이 선다 —
    *    라벨의 `LOT NO.` 가 빈 채로 찍힌다(실측 2026-09-08 · 자재LOT 등록 화면).
    */
-  const lotNo =
-    body?.numberSourceCode === 'MES' ? `ML-${String(Date.now()).slice(-9)}` : body?.lotNo;
+  const lotNo = body?.numberSourceCode === 'MES' ? nextMaterialLotNo(body) : body?.lotNo;
+
+  if (lotNo === null) {
+    return {
+      status: 409,
+      created: {
+        conflictCause: 'user',
+        message: '같은 제품코드·수량·날짜·공급사로는 번호를 더 매길 수 없습니다.',
+      },
+    };
+  }
 
   if (
     body?.numberSourceCode === 'SUPPLIER' &&
@@ -2048,10 +2125,54 @@ const registerInboundReceipt = (body) => {
   return { inboundReceipt: created, lines };
 };
 
-on('POST', '/logistics/inbound-receipts', (_p, _q, body) => ({
-  created: registerInboundReceipt(body),
-  status: 201,
-}));
+/**
+ * 사전부착 라벨 번호 검사 — 서버의 입하 등록·분리 등록과 같은 네 가지 400 을 같은 칸 경로로 낸다.
+ *
+ * 형식이 틀리면 코드 대조를 하지 않고, 제품코드가 틀리면 공급사를 겹쳐 싣지 않는다. 한 요청 안의
+ * 겹침은 따로 판정해 같은 칸에 함께 올 수 있다. 외부 LOT 직접 입력(부착 아님)은 보지 않는다.
+ */
+const attachedLotErrors = (prefix, part, lotNos) => {
+  const errors = [];
+  const supplier = state.partners.find((row) => row.partnerId === part?.supplierId);
+
+  (part?.lines ?? []).forEach((line, index) => {
+    const attached = line.supplierLotLabelAttached ?? line.supplierLotMissing !== true;
+
+    if (!attached || !line.supplierLotNo) return;
+
+    const field = `${prefix}lines.${String(index)}.supplierLotNo`;
+    const invalid = (message) => errors.push({ scope: 'field', field, code: 'INVALID', message });
+    const segments = parseMaterialLotNo(line.supplierLotNo);
+    const item = state.items.find((row) => row.itemId === line.itemId);
+
+    if (segments === null) {
+      invalid('사전부착 LOT 번호 형식이 올바르지 않습니다.');
+    } else if (item !== undefined && supplier !== undefined) {
+      if (segments.itemCode !== item.itemCode) {
+        invalid('사전부착 LOT 번호의 제품코드가 입하 라인의 품목과 다릅니다.');
+      } else if (segments.supplierCode !== supplier.partnerCode) {
+        invalid('사전부착 LOT 번호의 공급사코드가 입하 공급사와 다릅니다.');
+      }
+    }
+
+    const key = `${String(part?.plantId)}\u0000${line.supplierLotNo}`;
+
+    if (lotNos.has(key)) invalid('한 요청 안에서 겹칩니다.');
+    lotNos.add(key);
+  });
+
+  return errors;
+};
+
+const rejectInvalid = (errors) => ({ status: 400, created: { errors } });
+
+on('POST', '/logistics/inbound-receipts', (_p, _q, body) => {
+  const errors = attachedLotErrors('', body, new Set());
+
+  return errors.length > 0
+    ? rejectInvalid(errors)
+    : { created: registerInboundReceipt(body), status: 201 };
+});
 
 on('POST', '/logistics/inbound-receipts:split', (_p, _q, body) => {
   const mode = body?.mode;
@@ -2089,6 +2210,21 @@ on('POST', '/logistics/inbound-receipts:split', (_p, _q, body) => {
         errors: [],
       },
     };
+  }
+
+  /* 두 파트를 한 요청으로 본다 - 같은 번호가 양쪽에 실리면 뒤쪽 칸에 「겹칩니다」가 선다. */
+  const lotNos = new Set();
+  const lotErrors = [
+    ...(body?.normal === undefined || mode === 'EXCESS_ONLY'
+      ? []
+      : attachedLotErrors('normal.', body.normal, lotNos)),
+    ...(body?.excess === undefined || mode === 'NORMAL_ONLY'
+      ? []
+      : attachedLotErrors('excess.', body.excess, lotNos)),
+  ];
+
+  if (lotErrors.length > 0) {
+    return rejectInvalid(lotErrors);
   }
 
   const created = parts.map(

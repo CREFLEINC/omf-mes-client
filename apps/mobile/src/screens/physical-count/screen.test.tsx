@@ -11,7 +11,6 @@ import {
   renderWithProviders,
   type StubRoute,
 } from '../../test/api-harness';
-import { formatMaterialLotNo } from '../../patterns/material-lot-no';
 import { runBackStep } from '../../patterns/back-step';
 import { itemRoutes } from '../../test/master-routes';
 import { useWorkerSession } from '../../patterns/worker-session';
@@ -78,15 +77,17 @@ interface Options {
 }
 
 /** 라벨에 찍힌 자재 LOT 번호. 화면이 대리키가 아니라 이 값을 보여야 대조할 수 있다. */
-const LOT_NO = '0001234500000012002607310001230007';
+const LOT_NO = 'ABC-123|500|260731|SUP-001|0007';
+/* 번호에 정규식 특수문자(`|`)가 들어 있다 — 라벨 대조용 정규식에서는 막아 둔다. */
+const escaped = (value: string): string => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
 /** 수량 칸을 찾는 이름. 품목 코드와 LOT 번호가 함께 선다. */
 /*
- * 34자리는 나뉘어 적힌다. 붙여 쓰면 실물 라벨과 눈으로 대조할 수 없고, 한 위치에 같은 품목이
- * 여러 줄 서므로 자릿수를 세어 가며 줄을 찾게 된다.
+ * 번호는 읽은 그대로 적힌다. 화면이 다시 끊으면 실물 라벨과 글자가 달라지고, 한 위치에 같은
+ * 품목이 여러 줄 서므로 눈으로 줄을 찾을 수 없게 된다.
  */
-const QTY_LABEL = new RegExp(`ABC-123 · ${formatMaterialLotNo(LOT_NO)} 실물 수량`);
-const QTY_REASON = new RegExp(`ABC-123 · ${formatMaterialLotNo(LOT_NO)} 차이 사유`);
+const QTY_LABEL = new RegExp(`ABC-123 · ${escaped(LOT_NO)} 실물 수량`);
+const QTY_REASON = new RegExp(`ABC-123 · ${escaped(LOT_NO)} 차이 사유`);
 
 const line = (overrides: Record<string, unknown> = {}) => ({
   inventoryCountLineId: 5101,
@@ -641,7 +642,7 @@ describe('실물 카운트 화면', () => {
       '.physical-count__keypad',
     );
 
-    expect(pad?.textContent).toContain(formatMaterialLotNo(LOT_NO));
+    expect(pad?.textContent).toContain(LOT_NO);
   });
 
   /*
@@ -854,7 +855,7 @@ describe('실물 카운트 화면', () => {
     await openLocation(user);
     await screen.findByLabelText(QTY_LABEL);
 
-    const shown = formatMaterialLotNo(LOT_NO);
+    const shown = LOT_NO;
     const seen = screen.getAllByText((_, node) => node?.textContent?.includes(shown) === true);
     /* 조상 요소가 함께 걸리므로 그 글자만 담은 잎만 센다. */
     const leaves = seen.filter((node) => node.children.length === 0);

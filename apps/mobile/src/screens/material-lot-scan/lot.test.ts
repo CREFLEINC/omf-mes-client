@@ -10,9 +10,10 @@ import {
   toLotDraft,
   type InboundReceiptLine,
 } from './lot';
+import type { MaterialLotCodes } from '../../patterns/material-lot-no';
 
-/* 제품코드9 · 수량9 · 날짜6 · 공급사6 · 번호4 = 34자리. */
-const LOT_NO = '123456789' + '000000500' + '260731' + '778899' + '0007';
+const LOT_NO = 'ABC-123|500|260731|SUP-001|0007';
+const CODES: MaterialLotCodes = { itemCode: 'ABC-123' };
 
 const line = (overrides: Partial<InboundReceiptLine> = {}): InboundReceiptLine => ({
   inboundReceiptLineId: 7101,
@@ -46,38 +47,50 @@ describe('채울 수 있는 라인', () => {
 });
 
 describe('스캔값 검사', () => {
-  it('34자리 숫자면 통과한다', () => {
-    expect(scanProblemOf(LOT_NO, [])).toBeNull();
+  it('라인의 품목과 맞는 번호면 통과한다', () => {
+    expect(scanProblemOf(LOT_NO, [], CODES)).toBeNull();
   });
 
-  it('자릿수가 모자라면 막는다', () => {
-    expect(scanProblemOf(LOT_NO.slice(0, 30), [])).toBe('length');
+  it('형식이 아니면 막는다', () => {
+    expect(scanProblemOf('ABC-123|500|260731|SUP-001', [], CODES)).toBe('format');
+    expect(scanProblemOf('1234567890000005002607317788990007', [], CODES)).toBe('format');
   });
 
-  it('숫자가 아닌 글자가 섞이면 막는다', () => {
-    expect(scanProblemOf(`${LOT_NO.slice(0, 33)}A`, [])).toBe('notDigits');
-  });
-
-  /*
-   * 자릿수만 보면 없는 날짜가 통과한다. Date 는 2월 31일을 3월 3일로 굴려 받아, 라벨에
-   * 없는 날짜가 있는 날짜로 조용히 바뀐다.
-   */
+  /* Date 는 2월 31일을 3월 3일로 굴려 받아, 라벨에 없는 날짜가 있는 날짜로 조용히 바뀐다. */
   it('없는 날짜를 막는다', () => {
-    const bad = '123456789' + '000000500' + '260231' + '778899' + '0007';
-
-    expect(scanProblemOf(bad, [])).toBe('badDate');
+    expect(scanProblemOf('ABC-123|500|260231|SUP-001|0007', [], CODES)).toBe('badDate');
   });
 
   /* 오프라인에서 같은 라벨을 두 번 스캔하면 뒤엣것이 서버에서 되돌아온다. */
   it('큐에 담아 둔 번호를 막는다', () => {
-    expect(scanProblemOf(LOT_NO, [LOT_NO])).toBe('duplicate');
+    expect(scanProblemOf(LOT_NO, [LOT_NO], CODES)).toBe('duplicate');
+  });
+
+  /* 이 경로는 서버가 제품코드를 보지 않는다. 화면이 막지 않으면 라인에 남의 LOT 이 붙는다. */
+  it('라인 품목과 제품코드가 다르면 막는다', () => {
+    expect(scanProblemOf('XYZ-999|500|260731|SUP-001|0007', [], CODES)).toBe('otherItem');
+  });
+
+  /* 단말은 거래처코드를 읽을 경로가 없다(#1292). 화면이 막으면 코드를 끝내 몰라 등록이 통째로 막힌다. */
+  it('공급사 칸이 달라도 막지 않는다', () => {
+    expect(scanProblemOf('ABC-123|500|260731|SUP-999|0007', [], CODES)).toBeNull();
+  });
+
+  /* 서버가 글자 그대로 견준다. 화면만 대소문자를 넘기면 화면은 통과, 서버 기록은 어긋난다. */
+  it('대소문자가 다르면 다른 코드다', () => {
+    expect(scanProblemOf('abc-123|500|260731|SUP-001|0007', [], CODES)).toBe('otherItem');
+  });
+
+  it('코드를 모르면 대조는 건너뛴다', () => {
+    expect(scanProblemOf('XYZ-999|500|260731|SUP-999|0007', [], null)).toBeNull();
   });
 });
 
 describe('라벨 수량', () => {
   /* 라인 수량이 아니라 라벨의 최초 납품 스냅샷이다. */
-  it('수량 분절을 읽는다', () => {
+  it('수량 칸을 읽는다', () => {
     expect(labelQtyOf(LOT_NO)).toBe(500);
+    expect(labelQtyOf('ABC-123|12.5|260731|SUP-001|0007')).toBe(12.5);
   });
 
   it('모양이 아니면 읽지 않는다', () => {
@@ -87,27 +100,27 @@ describe('라벨 수량', () => {
 
 describe('등록 가능 여부', () => {
   it('라인을 안 고르면 등록할 수 없다', () => {
-    expect(canRegister(null, LOT_NO, true, 1001, [], [])).toBe(false);
+    expect(canRegister(null, LOT_NO, true, 1001, [], [], CODES)).toBe(false);
   });
 
   it('사번이 없으면 등록할 수 없다', () => {
-    expect(canRegister(line(), LOT_NO, false, 1001, [], [])).toBe(false);
+    expect(canRegister(line(), LOT_NO, false, 1001, [], [], CODES)).toBe(false);
   });
 
   /* 유일성은 공장과 번호의 짝이다. 공장을 모르면 어느 짝인지 정할 수 없다. */
   it('단말 공장을 모르면 등록할 수 없다', () => {
-    expect(canRegister(line(), LOT_NO, true, null, [], [])).toBe(false);
+    expect(canRegister(line(), LOT_NO, true, null, [], [], CODES)).toBe(false);
   });
 
   it('스캔값이 잘못되면 등록할 수 없다', () => {
-    expect(canRegister(line(), '12345', true, 1001, [], [])).toBe(false);
+    expect(canRegister(line(), '12345', true, 1001, [], [], CODES)).toBe(false);
   });
 
   /* 수량 0 인 LOT 은 계약이 받지 않는다. */
   it('라벨 수량이 0 이면 등록할 수 없다', () => {
-    const zero = '123456789' + '000000000' + '260731' + '778899' + '0007';
-
-    expect(canRegister(line(), zero, true, 1001, [], [])).toBe(false);
+    expect(canRegister(line(), 'ABC-123|0|260731|SUP-001|0007', true, 1001, [], [], CODES)).toBe(
+      false,
+    );
   });
 
   /*
@@ -115,11 +128,22 @@ describe('등록 가능 여부', () => {
    * 라인에 LOT 이 둘 생긴다.
    */
   it('이 라인을 이미 큐에 담아 두었으면 등록할 수 없다', () => {
-    expect(canRegister(line(), LOT_NO, true, 1001, [], [7101])).toBe(false);
+    expect(canRegister(line(), LOT_NO, true, 1001, [], [7101], CODES)).toBe(false);
+  });
+
+  /* 이 경로는 서버가 대조하지 않는다. 코드를 모르는 채 보내면 대조 없이 LOT 이 선다. */
+  it('견줄 코드를 모르면 등록할 수 없다', () => {
+    expect(canRegister(line(), LOT_NO, true, 1001, [], [], null)).toBe(false);
+  });
+
+  it('다른 품목의 라벨이면 등록할 수 없다', () => {
+    expect(canRegister(line(), 'XYZ-999|500|260731|SUP-001|0007', true, 1001, [], [], CODES)).toBe(
+      false,
+    );
   });
 
   it('라인과 스캔값이 서면 등록한다', () => {
-    expect(canRegister(line(), LOT_NO, true, 1001, [], [])).toBe(true);
+    expect(canRegister(line(), LOT_NO, true, 1001, [], [], CODES)).toBe(true);
   });
 });
 

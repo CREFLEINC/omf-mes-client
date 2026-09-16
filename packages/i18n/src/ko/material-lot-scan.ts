@@ -38,17 +38,20 @@ export const materialLotScan = {
     scanPlaceholder: '자재 LOT 라벨을 스캔하세요',
     manualLabel: '직접 입력',
     manualSubmit: '넣기',
-    /** 34자리를 붙여 쓰면 실물 라벨과 눈으로 대조할 수 없다. */
-    counter: (length: string, total: string) => `${length}/${total}자리`,
     problem: {
-      length: (length: string, total: string) =>
-        `자재 LOT 번호는 ${total}자리입니다 (현재 ${length}자리)`,
-      notDigits: '숫자만 입력할 수 있습니다',
-      badDate: '라벨의 날짜 자리가 날짜가 아닙니다',
+      format: '자재 LOT 번호 형식이 아닙니다(제품코드|수량|날짜|공급사|번호)',
+      badDate: '라벨의 날짜 칸이 실제 날짜가 아닙니다',
       duplicate: '이미 등록된 LOT 번호입니다',
       /* 라벨의 제품코드가 고른 라인의 품목과 다르다. 그대로 두면 남의 LOT 이 붙는다. */
       otherItem: '이 입하 라인의 품목과 다른 LOT입니다',
     },
+  },
+  /** 라벨과 견줄 품목 코드. 이 경로는 서버가 대조하지 않아 확인하기 전에는 등록하지 않는다. */
+  codes: {
+    loading: '라벨과 대조할 품목 코드를 확인하는 중입니다',
+    loadFailed:
+      '라벨과 대조할 품목 코드를 불러오지 못했습니다. 확인하기 전에는 등록할 수 없습니다.',
+    retry: '다시 시도',
   },
   /* 라벨의 수량은 최초 납품 스냅샷이라 라인 수량과 다를 수 있다. 막지 않는다. */
   qtyDiffers: (labelQty: string, lineQty: string) =>
@@ -57,10 +60,10 @@ export const materialLotScan = {
   registered: {
     legend: (count: string) => `등록됨 (${count}건)`,
     /*
-     * LOT 번호 자체가 가운데점으로 나뉘어 적힌다. 그 뒤에 또 가운데점으로 수량을 이으면
-     * 여섯 조각이 같은 구분자로 서서 어디까지가 번호인지 알 수 없다(배치 규범 9).
+     * LOT 번호 자체가 구분자로 나뉘어 적힌다. 그 뒤에 또 가운데점으로 수량을 이으면 여섯
+     * 조각이 나란히 서서 어디까지가 번호인지 알 수 없다(배치 규범 9).
      *
-     * 번호가 34자리라 이름 열을 옆에 두면 값을 밀어낸다 - 이름을 위에 얹어 세로로 쌓는다.
+     * 번호가 길어 이름 열을 옆에 두면 값을 밀어낸다 - 이름을 위에 얹어 세로로 쌓는다.
      */
     lotNoLabel: 'LOT 번호',
     qtyLabel: '수량',

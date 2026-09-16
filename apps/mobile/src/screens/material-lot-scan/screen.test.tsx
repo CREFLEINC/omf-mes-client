@@ -12,7 +12,6 @@ import {
 } from '../../test/api-harness';
 import { itemRoutes } from '../../test/master-routes';
 import { runBackStep } from '../../patterns/back-step';
-import { formatMaterialLotNo } from '../../patterns/material-lot-no';
 import { useWorkerSession } from '../../patterns/worker-session';
 import { MaterialLotScanScreen } from './screen';
 
@@ -48,12 +47,16 @@ vi.mock('../../patterns/plant', () => ({
 const page = { page: 1, size: 200, total: 1, totalElements: 1, totalPages: 1 };
 
 const RECEIPT_NO = 'IR-2026-000041';
-/* 제품코드9 · 수량9 · 날짜6 · 공급사6 · 번호4 = 34자리. */
-const LOT_NO = '123456789' + '000000500' + '260731' + '778899' + '0007';
+/* 제품코드|수량|날짜|공급사|번호. 라인 #2 의 품목(ABC-123)에 맞춘 라벨이다. */
+const LOT_NO = 'ABC-123|500|260731|SUP-001|0007';
 
 interface Options {
-  /** 라인 품목의 코드를 바꿔 답한다 - 라벨의 제품코드와 견주는 자리를 재려면 아홉 자리여야 한다. */
-  itemCode?: string;
+  /**
+   * 라인 품목의 조회를 바꿔 답한다. `hang` 은 끝나지 않고, `fail` 은 연결이 끊긴 채다 -
+   * 견줄 코드를 확인하기 전에는 막는지 재는 자리다. 부르는 쪽이 이 값을 지우면 연결이
+   * 돌아온 것이라, 다시 시도가 풀리는지도 같은 자리에서 잰다.
+   */
+  lineItem?: 'hang' | 'fail';
   /** 라인 전부가 이미 LOT 을 가진 것으로 답한다. */
   allFilled?: boolean;
   /** 라인 조회가 닿지 않는다 - 채울 것이 없는 것과 모르는 것이 갈리는 자리다. */
@@ -160,11 +163,28 @@ const routes = (options: Options = {}): StubRoute[] => [
         : jsonResponse({ lotId: 8101 }, { status: 201 });
     },
   },
+  /*
+   * 단말 토큰은 단건 거래처 경로를 읽지 못한다(401). 화면이 그 경로에 기대면 여기서 드러난다 -
+   * 200 으로 답해 두면 기대는 것을 모른 채 지나간다.
+   */
+  {
+    match: (req) => new URL(req.url).pathname.startsWith('/mdm/partners'),
+    respond: () => jsonResponse({ message: '권한이 없습니다' }, { status: 401 }),
+  },
+  {
+    /* 견줄 코드는 라인 품목에서 온다. 그 조회가 늦거나 끊긴 자리를 이 스텁이 만든다. */
+    match: (req) =>
+      new URL(req.url).pathname === '/mdm/items/2002' && options.lineItem !== undefined,
+    respond: () =>
+      options.lineItem === 'hang'
+        ? new Promise<Response>(() => undefined)
+        : Promise.reject(new TypeError('Failed to fetch')),
+  },
   ...itemRoutes(
     [
       {
         itemId: 2002,
-        itemCode: options.itemCode ?? 'ABC-123',
+        itemCode: 'ABC-123',
         itemName: '하우징',
         fifoPolicyCode: 'FIFO',
       },
@@ -216,11 +236,20 @@ const scanAndWait = async (value: string) => {
   });
 };
 
-const pickLine = async (user: ReturnType<typeof userEvent.setup>) => {
+/**
+ * 라인을 고른다.
+ *
+ * 품목 조회를 끊어 둔 시험에서는 목록의 품목코드 자리가 빈다. 그래도 고를 수 있어야 그 뒤에
+ * 막는 자리를 잴 수 있어, 그 자리는 이름 대신 라인 번호로 짚는다.
+ */
+const pickLine = async (
+  user: ReturnType<typeof userEvent.setup>,
+  lineName: string | RegExp = '#2 · ABC-123 · 480',
+) => {
   await user.click(await screen.findByRole('combobox', { name: '입하 건' }));
   await user.click(await screen.findByRole('option', { name: `${RECEIPT_NO} · 2026-09-05` }));
   await user.click(await screen.findByRole('combobox', { name: '입하 라인' }));
-  await user.click(await screen.findByRole('option', { name: '#2 · ABC-123 · 480' }));
+  await user.click(await screen.findByRole('option', { name: lineName }));
   await screen.findByText(/라인 #2/);
 };
 
@@ -238,18 +267,48 @@ describe('자재LOT 스캔·등록 화면', () => {
    */
   it('라인의 품목과 다른 라벨은 등록할 수 없다', async () => {
     const user = userEvent.setup();
-    mount({ itemCode: '000123450' });
-    await user.click(await screen.findByRole('combobox', { name: '입하 건' }));
-    await user.click(await screen.findByRole('option', { name: `${RECEIPT_NO} · 2026-09-05` }));
-    await user.click(await screen.findByRole('combobox', { name: '입하 라인' }));
-    await user.click(await screen.findByRole('option', { name: /000123450/ }));
-    await screen.findByText(/라인 #2/);
+    mount();
+    await pickLine(user);
 
-    /* 제품코드9 · 수량9 · 날짜6 · 공급사6 · 번호4. 앞 아홉 자리만 라인 품목과 다르다. */
-    scan('999999999' + '000000480' + '260905' + '000123' + '0007');
+    /* 제품코드 칸만 라인 품목과 다르다. */
+    scan('XYZ-999|480|260905|SUP-001|0007');
 
     expect(await screen.findByText('이 입하 라인의 품목과 다른 LOT입니다')).toBeTruthy();
     expect(screen.getByRole('button', { name: '이 라인 등록' })).toBeDisabled();
+  });
+
+  /* 견줄 코드를 모르는 채 보내면 대조 없이 LOT 이 선다. */
+  it('품목 코드를 확인하기 전에는 등록할 수 없다', async () => {
+    const user = userEvent.setup();
+    mount({ lineItem: 'hang' });
+    await pickLine(user, /^#2 ·/);
+
+    scan(LOT_NO);
+
+    expect(await screen.findByText('라벨과 대조할 품목 코드를 확인하는 중입니다')).toBeTruthy();
+    await screen.findByText(LOT_NO);
+    expect(screen.getByRole('button', { name: '이 라인 등록' })).toBeDisabled();
+  });
+
+  it('품목 코드를 불러오지 못하면 알리고, 다시 시도해 풀리면 등록할 수 있다', async () => {
+    const user = userEvent.setup();
+    const options: Options = { lineItem: 'fail' };
+    mount(options);
+    await pickLine(user, /^#2 ·/);
+
+    scan(LOT_NO);
+
+    expect(await screen.findByText(/라벨과 대조할 품목 코드를 불러오지 못했습니다/)).toBeTruthy();
+    expect(screen.getByRole('button', { name: '이 라인 등록' })).toBeDisabled();
+
+    /* 연결이 돌아왔다. 다시 시도가 풀리는 것은 그 다음이다. */
+    options.lineItem = undefined;
+    await user.click(screen.getByRole('button', { name: '다시 시도' }));
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: '이 라인 등록' })).not.toBeDisabled();
+    });
+    expect(screen.queryByText(/코드를 불러오지 못했습니다/)).toBeNull();
   });
 
   /*
@@ -258,12 +317,8 @@ describe('자재LOT 스캔·등록 화면', () => {
    */
   it('라인의 품목과 같은 라벨은 등록할 수 있다', async () => {
     const user = userEvent.setup();
-    mount({ itemCode: LOT_NO.slice(0, 9) });
-    await user.click(await screen.findByRole('combobox', { name: '입하 건' }));
-    await user.click(await screen.findByRole('option', { name: `${RECEIPT_NO} · 2026-09-05` }));
-    await user.click(await screen.findByRole('combobox', { name: '입하 라인' }));
-    await user.click(await screen.findByRole('option', { name: new RegExp(LOT_NO.slice(0, 9)) }));
-    await screen.findByText(/라인 #2/);
+    mount();
+    await pickLine(user);
 
     scan(LOT_NO);
 
@@ -271,6 +326,22 @@ describe('자재LOT 스캔·등록 화면', () => {
       expect(screen.getByRole('button', { name: '이 라인 등록' })).not.toBeDisabled();
     });
     expect(screen.queryByText('이 입하 라인의 품목과 다른 LOT입니다')).toBeNull();
+  });
+
+  /*
+   * 단말 토큰으로는 단건 거래처 경로가 401 이다. 화면이 그 경로에 기대면 현장에서 등록이
+   * 통째로 막힌다 - 공급사 칸 대조는 서버 몫이라 화면은 그 경로를 부르지 않는다.
+   */
+  it('거래처 조회 없이도 등록할 수 있다 — 단말 정책이 단건 거래처 경로를 401 로 막아도', async () => {
+    const user = userEvent.setup();
+    mount();
+    await pickLine(user);
+
+    scan('ABC-123|500|260731|SUP-999|0007');
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: '이 라인 등록' })).not.toBeDisabled();
+    });
   });
 
   /*
@@ -382,14 +453,15 @@ describe('자재LOT 스캔·등록 화면', () => {
     expect(await screen.findByRole('option', { name: `${RECEIPT_NO} · 2026-09-05` })).toBeTruthy();
   });
 
-  it('34자리가 아니면 등록할 수 없다', async () => {
+  /* 옛 34자리 숫자 번호도 형식 위반이다. 소급 변환하지 않는다. */
+  it('자재 LOT 번호 형식이 아니면 등록할 수 없다', async () => {
     const user = userEvent.setup();
     mount();
     await pickLine(user);
 
-    scan(LOT_NO.slice(0, 30));
+    scan('1234567890000005002607317788990007');
 
-    expect(await screen.findByText(/34자리입니다 \(현재 30자리\)/)).toBeTruthy();
+    expect(await screen.findByText(/자재 LOT 번호 형식이 아닙니다/)).toBeTruthy();
     expect(screen.getByRole('button', { name: '이 라인 등록' })).toBeDisabled();
   });
 
@@ -399,9 +471,9 @@ describe('자재LOT 스캔·등록 화면', () => {
     mount();
     await pickLine(user);
 
-    scan('123456789' + '000000500' + '260231' + '778899' + '0007');
+    scan('ABC-123|500|260231|SUP-001|0007');
 
-    expect(await screen.findByText(/날짜 자리가 날짜가 아닙니다/)).toBeTruthy();
+    expect(await screen.findByText(/날짜 칸이 실제 날짜가 아닙니다/)).toBeTruthy();
   });
 
   /* 라벨 수량은 최초 납품 스냅샷이라 라인 수량과 다를 수 있다. 막지는 않는다. */
@@ -594,7 +666,7 @@ describe('자재LOT 스캔·등록 화면', () => {
 
     await scanAndWait(LOT_NO);
 
-    const other = '123456789' + '000000500' + '260731' + '778899' + '0009';
+    const other = 'ABC-123|500|260731|SUP-001|0009';
     scan(other);
 
     expect(await screen.findByText('다시 스캔했습니다')).toBeTruthy();
@@ -607,12 +679,12 @@ describe('자재LOT 스캔·등록 화면', () => {
     await pickLine(user);
 
     await scanAndWait(LOT_NO);
-    scan('123456789' + '000000500' + '260731' + '778899' + '0009');
+    scan('ABC-123|500|260731|SUP-001|0009');
 
     await user.click(await screen.findByRole('button', { name: '그대로 두기' }));
 
     /* 창이 사라지는 것이 아니라 대상이 안 바뀐 것을 잰다 - 그것이 이 단추가 하는 일이다. */
-    expect(screen.getByText(formatMaterialLotNo(LOT_NO))).toBeTruthy();
+    expect(screen.getByText(LOT_NO)).toBeTruthy();
     expect(screen.getByRole('button', { name: '이 라인 등록' })).not.toBeDisabled();
   });
 
@@ -622,11 +694,11 @@ describe('자재LOT 스캔·등록 화면', () => {
     await pickLine(user);
 
     await scanAndWait(LOT_NO);
-    const other = '123456789' + '000000500' + '260731' + '778899' + '0009';
+    const other = 'ABC-123|500|260731|SUP-001|0009';
     scan(other);
 
     await user.click(await screen.findByRole('button', { name: '새로 읽은 값으로' }));
 
-    expect(await screen.findByText(formatMaterialLotNo(other))).toBeTruthy();
+    expect(await screen.findByText(other)).toBeTruthy();
   });
 });

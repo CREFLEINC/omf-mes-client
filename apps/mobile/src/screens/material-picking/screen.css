@@ -67,7 +67,7 @@
   font-variant-numeric: tabular-nums;
 }
 
-/* 34자리 LOT 은 한 줄에 안 들어간다. 마디가 없는 값이라 어디서든 접히게 둔다. */
+/* LOT 번호는 한 줄에 안 들어갈 수 있다. `|` 뒤에서 먼저 접히고, 칸이 줄보다 길 때만 칸 안에서 접힌다. */
 .picking-out__line-lot {
   align-self: stretch;
   font-family: var(--font-mono, monospace);

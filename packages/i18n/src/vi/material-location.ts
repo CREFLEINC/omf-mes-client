@@ -46,8 +46,8 @@ export const materialLocation: Translated<typeof ko.materialLocation> = {
     title: 'Không tra cứu được',
     retry: 'Thử lại',
   },
-  invalidLength: (read: number, required: number): string =>
-    `LOT vật tư có ${String(required)} ký tự. Đã đọc được ${String(read)} ký tự.`,
+  invalidFormat: (read: string): string =>
+    `Không đúng định dạng số LOT vật tư (mã sản phẩm|số lượng|ngày|nhà cung cấp|số thứ tự). Giá trị đã đọc: ${read}`,
   offline: {
     title: 'Ngoại tuyến nên không tra cứu được',
     description: 'Không có dữ liệu lưu sẵn. Hãy thử lại khi có kết nối.',

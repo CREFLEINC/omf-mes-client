@@ -13,7 +13,6 @@ import { messages } from '@omf-mes/i18n';
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router';
 
-import { formatMaterialLotNo } from '../../patterns/material-lot-no';
 import { useBackStep } from '../../patterns/back-step';
 import { ItemPicker } from '../../patterns/item-picker';
 import { useOnlineStatus } from '../../patterns/online-status';
@@ -228,11 +227,12 @@ export const PhysicalCountScreen = () => {
   });
 
   /*
-   * 34자리를 붙여 쓰면 실물 라벨과 눈으로 대조할 수 없다. 한 위치에 같은 품목이 아홉 줄까지
-   * 서므로 자릿수를 세어 가며 줄을 찾게 된다 - 실사는 그 대조가 일의 전부다.
+   * 번호는 «읽은 그대로» 보인다. 저장값 자체가 구분자로 나뉘어 있어 화면이 다시 끊으면 실물
+   * 라벨과 글자가 달라진다 - 한 위치에 같은 품목이 아홉 줄까지 서므로, 눈으로 줄을 찾는 그
+   * 대조가 실사 일의 전부다.
    */
   const nameOf = (line: DraftLine): string =>
-    t.lines.name(line.itemCode, line.lotNo === null ? '' : formatMaterialLotNo(line.lotNo));
+    t.lines.name(line.itemCode, line.lotNo ?? '');
 
   /*
    * 고를 때 보는 값들. 번호와 날짜만으로는 갈리지 않아 창고와 유형을 함께 세운다.

@@ -17,7 +17,7 @@ import { PopMaterialLotLabelScreen } from './screen';
 const WORKER_NO = '900028';
 const LOT_ID = 9001;
 const ISSUE_LOG_ID = 44001;
-const LOT_NO = '0009999990000005002608270000110001';
+const LOT_NO = 'RM-9999|500|260827|SUP-011|0001';
 
 const receiptOf = (n: number) => ({
   inboundReceiptId: 8100 + n,
@@ -679,14 +679,12 @@ describe('PopMaterialLotLabelScreen — 이미 등록된 자재', () => {
     expect(sentTo(sent, '/trace/lots')).toBeUndefined();
   });
 
-  it('LOT 번호를 뜻의 경계로 끊어 보인다 — 라벨과 눈으로 대조하는 자리다', async () => {
+  /* 칸 사이에 구분자 `|` 가 이미 있다. 다시 끊으면 라벨에 인쇄된 글자와 달라진다. */
+  it('LOT 번호를 원문 그대로 보인다 — 라벨과 눈으로 대조하는 자리다', async () => {
     const { user } = renderFlow({ lotId: LOT_ID });
     await chooseLine(user);
 
-    /* 구분 문자는 가운뎃점이다 — 스펙 §3 이 그렇게 적었다(공백만으로는 자간과 구별되지 않는다). */
-    expect(
-      await screen.findByText('000999999 · 000000500 · 260827 · 000011 · 0001'),
-    ).toBeInTheDocument();
+    expect(await screen.findByText(LOT_NO)).toBeInTheDocument();
   });
 });
 

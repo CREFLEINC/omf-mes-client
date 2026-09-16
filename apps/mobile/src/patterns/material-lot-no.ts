@@ -1,78 +1,39 @@
 /**
- * 자재 LOT 번호의 분절 자릿수 — 제품코드9·수량9·날짜6·공급사6·번호4.
- * 자릿수는 자재 LOT 번호 체계에 종속되므로 다른 번호 체계에 그대로 쓰지 않는다.
- */
-const SEGMENT_LENGTHS = [9, 9, 6, 6, 4];
-
-const SEPARATOR = ' · ';
-
-export const MATERIAL_LOT_NO_LENGTH = SEGMENT_LENGTHS.reduce((sum, length) => sum + length, 0);
-
-/**
- * 이 값이 자재 LOT 번호의 모양인가.
+ * 자재 LOT 번호 — `|` 로 가른 다섯 칸이다(설계 통보 277).
  *
- * 자릿수와 숫자 전용은 저장소 제약이 아니라 화면 책임이다 - 컬럼이 넉넉해 다른 모양도
- * 저장되고, 그러면 분절이 어긋난 채로 남는다.
+ * ```
+ * RM-1001|12.5|260731|SUP-001|0001
+ * 제품코드 |수량|날짜  |공급사 |번호
+ * ```
+ *
+ * 형식은 자재 LOT 번호 체계에만 속한다. 생산 LOT 같은 다른 번호에 그대로 쓰지 않는다.
  */
-export const isMaterialLotNo = (value: string): boolean =>
-  value.length === MATERIAL_LOT_NO_LENGTH && /^\d+$/.test(value);
+const SEPARATOR = '|';
+const SEGMENT_COUNT = 5;
 
-/**
- * 저장은 원문, 표시는 분절 그룹핑한다(공유계약 E-2). 34자리를 붙여 쓰면 작업자가 실물
- * 라벨과 화면을 눈으로 대조할 수 없다. 자릿수가 다른 값은 끊지 않고 그대로 돌려준다 —
- * 임의로 끊으면 라벨과 어긋난 자리에서 잘린 글자가 보인다.
- */
-export const formatMaterialLotNo = (lotNo: string): string => {
-  if (!isMaterialLotNo(lotNo)) {
-    return lotNo;
-  }
+/** 칸 값은 출력 가능한 ASCII 한 글자 이상이다. `|` 는 가를 때 이미 빠진다. */
+const PRINTABLE = /^[\x20-\x7E]+$/;
 
-  let cursor = 0;
+/** 모양만 본다. 공급사가 `12.50` 으로 찍은 라벨은 다시 찍을 수 없다. */
+const QTY = /^\d+(\.\d+)?$/;
 
-  return SEGMENT_LENGTHS.map((length) => {
-    const segment = lotNo.slice(cursor, cursor + length);
-    cursor += length;
-    return segment;
-  }).join(SEPARATOR);
-};
+const SERIAL = /^\d{4}$/;
 
-/** 자재 LOT 번호가 싣고 온 다섯 분절. 자릿수만 확정이고 도출 규칙은 이 계층 밖이다. */
+/** 자재 LOT 번호가 싣고 온 다섯 칸. */
 export interface MaterialLotSegments {
+  /** 품목 마스터의 품목코드 원본. */
   itemCode: string;
-  /** 최초 납품 수량 스냅샷. 라인의 실제 수량과 다를 수 있다. */
+  /** 최초 납품 수량 스냅샷. 라인의 실제 수량과 다를 수 있고 단위는 싣지 않는다. */
   qty: string;
-  /** YYMMDD. */
+  /** YYMMDD. 업무 판단에 쓰지 않는다. */
   date: string;
+  /** 거래처 마스터의 거래처코드 원본. */
   supplier: string;
   serial: string;
 }
 
-/**
- * 번호를 분절로 끊는다.
- *
- * 자릿수가 맞지 않으면 끊지 않는다 - 어긋난 자리에서 끊으면 옆 분절의 숫자가 수량이나
- * 날짜로 읽혀, 라벨에 없는 값이 조용히 기록으로 남는다.
- */
-export const parseMaterialLotNo = (value: string): MaterialLotSegments | null => {
-  if (!isMaterialLotNo(value)) {
-    return null;
-  }
-
-  let cursor = 0;
-  const [itemCode, qty, date, supplier, serial] = SEGMENT_LENGTHS.map((length) => {
-    const segment = value.slice(cursor, cursor + length);
-    cursor += length;
-    return segment;
-  });
-
-  return {
-    itemCode: itemCode ?? '',
-    qty: qty ?? '',
-    date: date ?? '',
-    supplier: supplier ?? '',
-    serial: serial ?? '',
-  };
-};
+/** 형식이 아니다(`format`), 날짜 칸만 없는 날짜다(`badDate`). */
+export type MaterialLotNoProblem = 'format' | 'badDate';
 
 /**
  * 라벨의 YYMMDD 가 실제 날짜인가.
@@ -93,11 +54,80 @@ export const isYymmdd = (value: string): boolean => {
   return at.getUTCFullYear() === year && at.getUTCMonth() === month - 1 && at.getUTCDate() === day;
 };
 
+/** 날짜가 실재하는지만 빼고 모양을 본다. 날짜만 틀린 라벨을 따로 알리려고 나눈다. */
+const shapeOf = (value: string): MaterialLotSegments | null => {
+  const parts = value.split(SEPARATOR);
+
+  if (parts.length !== SEGMENT_COUNT) {
+    return null;
+  }
+
+  const [itemCode = '', qty = '', date = '', supplier = '', serial = ''] = parts;
+
+  if (
+    !PRINTABLE.test(itemCode) ||
+    !PRINTABLE.test(supplier) ||
+    !QTY.test(qty) ||
+    !/^\d{6}$/.test(date) ||
+    !SERIAL.test(serial) ||
+    serial === '0000'
+  ) {
+    return null;
+  }
+
+  return { itemCode, qty, date, supplier, serial };
+};
+
 /**
- * 자재 LOT 번호 앞의 제품코드 아홉 자리.
+ * 이 값이 자재 LOT 번호로 읽히지 않는 이유. 읽히면 `null`.
  *
- * 번호가 고정 양식이라 자리로 떼어낼 수 있다 - 제품코드9 · 수량9 · 날짜6 · 공급사6 · 번호4.
- * 이 값으로 품목을 찾아 ERP W/O 후보를 좁힌다.
+ * ⛔ 대소문자를 바꾸지 않는다. 서버가 코드를 글자 그대로 견주므로, 화면이 바꿔 읽으면 화면은
+ *    통과시키고 서버는 거부한다.
+ *
+ * 길이는 보지 않는다. 앞뒤 공백은 부르는 쪽이 뗀다.
+ */
+export const materialLotNoProblemOf = (value: string): MaterialLotNoProblem | null => {
+  const shape = shapeOf(value);
+
+  if (shape === null) {
+    return 'format';
+  }
+
+  return isYymmdd(shape.date) ? null : 'badDate';
+};
+
+/** 번호를 칸으로 읽는다. 형식이 아니면 끊지 않는다 — 어긋나게 끊은 값이 기록으로 남는다. */
+export const parseMaterialLotNo = (value: string): MaterialLotSegments | null => {
+  const shape = shapeOf(value);
+
+  return shape !== null && isYymmdd(shape.date) ? shape : null;
+};
+
+export const isMaterialLotNo = (value: string): boolean => parseMaterialLotNo(value) !== null;
+
+/** 라벨과 견줄 코드 — 품목코드. */
+export interface MaterialLotCodes {
+  itemCode: string;
+}
+
+export type MaterialLotCodeMismatch = 'otherItem';
+
+/**
+ * 라벨의 제품코드 칸이 견줄 코드와 다른가.
+ *
+ * 그 칸은 품목 마스터 코드 원본이라 글자 그대로 견준다. 화면이 보는 것은 제품코드뿐이다 -
+ * 공급사 칸은 단말이 거래처코드를 읽을 경로가 없어 견주지 않는다(#1292). 입하 등록은 서버가
+ * 공급사까지 대조하고, 자재LOT 스캔 등록은 아무도 대조하지 않는다.
+ */
+export const codeMismatchOf = (
+  segments: MaterialLotSegments,
+  codes: MaterialLotCodes,
+): MaterialLotCodeMismatch | null => (segments.itemCode === codes.itemCode ? null : 'otherItem');
+
+/**
+ * 자재 LOT 번호 첫 칸의 제품코드.
+ *
+ * 품목 마스터 코드 원본이 그대로 실려 있어, 이것으로 품목을 찾아 자재 P/O 후보를 좁힌다.
  */
 export const itemCodeOf = (lotNo: string): string | null =>
-  isMaterialLotNo(lotNo) ? lotNo.slice(0, 9) : null;
+  parseMaterialLotNo(lotNo)?.itemCode ?? null;

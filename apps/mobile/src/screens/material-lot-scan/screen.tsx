@@ -3,8 +3,8 @@ import { messages } from '@omf-mes/i18n';
 import { useRef, useState } from 'react';
 import { Link } from 'react-router';
 
-import { useItemLabels } from '../../patterns/masters';
-import { formatMaterialLotNo } from '../../patterns/material-lot-no';
+import { useItem, useItemLabels } from '../../patterns/masters';
+import type { MaterialLotCodes } from '../../patterns/material-lot-no';
 import { useOutbox } from '../../patterns/outbox';
 import { currentPlantId } from '../../patterns/plant';
 import { useAdvanceTo } from '../../patterns/advance-to';
@@ -19,7 +19,6 @@ import { useLoadFailure } from '../../patterns/load-failure';
 import { useFillableLineIds, useFillableLines, useSupplierLotReceipts } from './queries';
 import {
   LOT_LABEL,
-  LOT_NO_LENGTH,
   canRegister,
   labelQtyOf,
   queuedLineIdsOf,
@@ -112,14 +111,22 @@ export const MaterialLotScanScreen = () => {
   const receiptsPending = receipts.isPending || fillableIds.isPending;
   const line = openLines.find((each) => each.inboundReceiptLineId === lineId) ?? null;
 
+  /*
+   * 라벨과 견줄 품목코드. 이 경로는 서버가 번호를 검사하지 않아 화면이 유일한 방어선이다 -
+   * 코드를 확인하지 못한 동안은 등록을 막는다. 모르는 채 보내면 남의 자재 라벨이 그대로 LOT 이
+   * 된다. 공급사 칸은 단말이 거래처코드를 읽을 경로가 없어 견주지 않는다(#1292).
+   */
+  const lineItem = useItem(line?.itemId ?? null);
+  const codes: MaterialLotCodes | null =
+    lineItem.data === undefined ? null : { itemCode: lineItem.data.itemCode };
+  const codesFailed = codes === null && lineItem.isError;
+
   /* 이 회차에 보낸 번호는 큐에 없다. 다시 스캔하면 서버가 400 으로 되돌린다. */
   const usedLotNos = [...queuedLotNos, ...registered.map((each) => each.lotNo)];
-  const lineItemCode = line === null ? undefined : itemLabels.get(line.itemId)?.itemCode;
-  const problem = scanned.trim() === '' ? null : scanProblemOf(scanned, usedLotNos, lineItemCode);
+  const problem = scanned.trim() === '' ? null : scanProblemOf(scanned, usedLotNos, codes);
   const labelQty = labelQtyOf(scanned);
   const ready =
-    loaded &&
-    canRegister(line, scanned, worker !== null, plantId, usedLotNos, filled, lineItemCode);
+    loaded && canRegister(line, scanned, worker !== null, plantId, usedLotNos, filled, codes);
 
   const scanField = useScanField({
     applied: scanned.trim(),
@@ -128,7 +135,7 @@ export const MaterialLotScanScreen = () => {
       setScanned(taken);
 
       /* 화면을 보고 있지 않을 수 있다. 소리로도 알린다(공유계약 D-2). */
-      if (scanProblemOf(taken, usedLotNos, lineItemCode) !== null) {
+      if (scanProblemOf(taken, usedLotNos, codes) !== null) {
         playErrorTone();
       }
     },
@@ -149,6 +156,10 @@ export const MaterialLotScanScreen = () => {
   useBackStep(lineId === null && receiptId !== null, () => {
     setReceiptId(null);
   });
+
+  const retryCodes = () => {
+    void lineItem.refetch();
+  };
 
   const restart = () => {
     setReceiptId(null);
@@ -322,8 +333,30 @@ export const MaterialLotScanScreen = () => {
             <h2>{t.scan.legend}</h2>
             {/* 라벨과 눈으로 대조할 값이다. 라인 번호만으로는 무엇을 집는지 알 수 없다. */}
             <p>
-              {t.line.pickedLine(String(line.lineNo), lineItemCode ?? '', String(line.receivedQty))}
+              {t.line.pickedLine(
+                String(line.lineNo),
+                lineItem.data?.itemCode ?? '',
+                String(line.receivedQty),
+              )}
             </p>
+            {codes !== null ? null : codesFailed ? (
+              <>
+                <FailureBanner
+                  variant="error"
+                  title={failureText(lineItem.error, t.codes.loadFailed)}
+                />
+                <Button
+                  className="material-lot-scan__wide"
+                  variant="outlined"
+                  size="xl"
+                  onClick={retryCodes}
+                >
+                  {t.codes.retry}
+                </Button>
+              </>
+            ) : (
+              <p role="status">{t.codes.loading}</p>
+            )}
             <TextField
               ref={scanField.ref}
               label={required(t.scan.scanLabel)}
@@ -355,27 +388,15 @@ export const MaterialLotScanScreen = () => {
               </Button>
             )}
 
-            {scanned.trim() === '' ? null : (
-              <p className="material-lot-scan__counter">
-                {t.scan.counter(String(scanned.trim().length), String(LOT_NO_LENGTH))}
-              </p>
-            )}
             {problem === null ? null : (
-              <AlertBanner
-                variant="error"
-                title={
-                  problem === 'length'
-                    ? t.scan.problem.length(String(scanned.trim().length), String(LOT_NO_LENGTH))
-                    : t.scan.problem[problem]
-                }
-              />
+              <AlertBanner variant="error" title={t.scan.problem[problem]} />
             )}
             {/*
              * 읽은 값은 문제가 있을 때도 보인다. 무엇이 잘못됐다는 말만 있고 읽은 값이
              * 없으면, 스캐너가 잘못 읽은 것인지 라벨이 그런 것인지 가릴 수 없다.
              */}
             {scanned.trim() === '' ? null : (
-              <p className="material-lot-scan__scanned">{formatMaterialLotNo(scanned.trim())}</p>
+              <p className="material-lot-scan__scanned">{scanned.trim()}</p>
             )}
             {/* 라벨 수량은 최초 납품 스냅샷이라 라인 수량과 다를 수 있다. 막지 않는다. */}
             {problem === null && labelQty !== null && labelQty !== line.receivedQty ? (
@@ -415,7 +436,8 @@ export const MaterialLotScanScreen = () => {
               <li key={each.lotNo}>
                 <dl className="material-lot-scan__fields">
                   <dt>{t.registered.lotNoLabel}</dt>
-                  <dd>{formatMaterialLotNo(each.lotNo)}</dd>
+                  {/* 저장값에 구분자가 들어 있다 — 끊어 보이지 않고 읽은 그대로 낸다. */}
+                  <dd>{each.lotNo}</dd>
                   <dt>{t.registered.qtyLabel}</dt>
                   <dd>{String(each.qty)}</dd>
                 </dl>
@@ -436,7 +458,7 @@ export const MaterialLotScanScreen = () => {
         </section>
       )}
 
-      <ScanReplaceDialog field={scanField} format={formatMaterialLotNo} />
+      <ScanReplaceDialog field={scanField} />
     </div>
   );
 };

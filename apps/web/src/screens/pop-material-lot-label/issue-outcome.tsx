@@ -3,7 +3,6 @@ import { messages } from '@omf-mes/i18n';
 
 import { toIssueFailure, type IssueFailure } from './failure';
 import type { IssueRunResult } from './mutations';
-import { formatLotNo } from './types';
 
 const t = messages.popMaterialLotLabel.target.outcome;
 
@@ -67,7 +66,7 @@ export const IssueOutcome = ({ result }: IssueOutcomeProps) => {
      */
     <AlertBanner className="pop-material-lot-outcome" variant={variant}>
       {isPrinted && issue !== null
-        ? t.printed(issue.lotNo === null ? '' : formatLotNo(issue.lotNo), issue.issueSeq)
+        ? t.printed(issue.lotNo ?? '', issue.issueSeq)
         : failure === null
           ? t.failed
           : FAILURE_MESSAGE[failure]}

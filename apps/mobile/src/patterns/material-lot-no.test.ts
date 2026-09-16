@@ -1,62 +1,79 @@
 import { describe, expect, it } from 'vitest';
 
 import {
-  MATERIAL_LOT_NO_LENGTH,
-  formatMaterialLotNo,
   isMaterialLotNo,
   isYymmdd,
+  itemCodeOf,
+  materialLotNoProblemOf,
   parseMaterialLotNo,
 } from './material-lot-no';
 
-const SCANNED = '7770001118880002229901015554447777';
+const SCANNED = 'RM-1001|12.5|260731|SUP-001|0001';
 
-describe('자재 LOT 번호 표시', () => {
-  it('분절 자릿수의 합이 34다', () => {
-    expect(MATERIAL_LOT_NO_LENGTH).toBe(34);
-  });
-
-  it('다섯 토막으로 끊어 보인다', () => {
-    expect(formatMaterialLotNo(SCANNED)).toBe('777000111 · 888000222 · 990101 · 555444 · 7777');
-  });
-
-  it('끊은 값을 이어 붙이면 원문이다', () => {
-    expect(formatMaterialLotNo(SCANNED).split(' · ').join('')).toBe(SCANNED);
-  });
-
-  it('자릿수가 다르면 끊지 않고 그대로 둔다', () => {
-    expect(formatMaterialLotNo('SYN-LOT-0001')).toBe('SYN-LOT-0001');
-    expect(formatMaterialLotNo(`${SCANNED}9`)).toBe(`${SCANNED}9`);
-  });
-
-  it('34자리인지 판정한다', () => {
-    expect(isMaterialLotNo(SCANNED)).toBe(true);
-    expect(isMaterialLotNo(SCANNED.slice(1))).toBe(false);
-  });
-});
-
-describe('숫자 전용', () => {
-  /* 자릿수와 숫자 전용은 저장소가 막지 않는다. 화면이 지키지 않으면 분절이 어긋난 채 남는다. */
-  it('숫자가 아닌 글자가 섞이면 자재 LOT 번호로 보지 않는다', () => {
-    expect(isMaterialLotNo('7770001118880002229901015554447777')).toBe(true);
-    expect(isMaterialLotNo('777000111888000222990101555444777A')).toBe(false);
-    expect(isMaterialLotNo('777000111888000222990101555444-777')).toBe(false);
-  });
-});
-
-describe('분절 읽기', () => {
-  it('다섯 분절을 자릿수대로 끊는다', () => {
+describe('자재 LOT 번호 읽기', () => {
+  it('다섯 칸을 구분자대로 읽는다', () => {
     expect(parseMaterialLotNo(SCANNED)).toEqual({
-      itemCode: '777000111',
-      qty: '888000222',
-      date: '990101',
-      supplier: '555444',
-      serial: '7777',
+      itemCode: 'RM-1001',
+      qty: '12.5',
+      date: '260731',
+      supplier: 'SUP-001',
+      serial: '0001',
     });
+    expect(materialLotNoProblemOf(SCANNED)).toBeNull();
   });
 
-  /* 어긋난 자리에서 끊으면 옆 분절의 숫자가 수량이나 날짜로 읽힌다. */
-  it('자릿수가 다르면 끊지 않는다', () => {
-    expect(parseMaterialLotNo(SCANNED.slice(1))).toBeNull();
+  it('제품코드를 첫 칸에서 꺼낸다', () => {
+    expect(itemCodeOf(SCANNED)).toBe('RM-1001');
+    expect(itemCodeOf('RM-1001')).toBeNull();
+  });
+
+  /* 옛 번호는 소급 변환하지 않는다. 스캔 단계에서 새 형식만 받는다. */
+  it('옛 34자리 숫자 번호는 받지 않는다', () => {
+    expect(materialLotNoProblemOf('7770001118880002229901015554447777')).toBe('format');
+    expect(isMaterialLotNo('7770001118880002229901015554447777')).toBe(false);
+  });
+
+  it('칸이 다섯이 아니면 받지 않는다', () => {
+    expect(materialLotNoProblemOf('RM-1001|12.5|260731|SUP-001')).toBe('format');
+    expect(materialLotNoProblemOf(`${SCANNED}|X`)).toBe('format');
+  });
+
+  it('빈 칸이나 출력할 수 없는 글자가 있으면 받지 않는다', () => {
+    expect(materialLotNoProblemOf('|12.5|260731|SUP-001|0001')).toBe('format');
+    expect(materialLotNoProblemOf('RM-1001|12.5|260731||0001')).toBe('format');
+    expect(materialLotNoProblemOf('자재-1001|12.5|260731|SUP-001|0001')).toBe('format');
+    expect(materialLotNoProblemOf('RM-1001\t|12.5|260731|SUP-001|0001')).toBe('format');
+  });
+
+  it('수량 칸은 숫자 모양만 본다', () => {
+    expect(isMaterialLotNo('RM-1001|100|260731|SUP-001|0001')).toBe(true);
+    expect(isMaterialLotNo('RM-1001|12.50|260731|SUP-001|0001')).toBe(true);
+    expect(materialLotNoProblemOf('RM-1001|12.|260731|SUP-001|0001')).toBe('format');
+    expect(materialLotNoProblemOf('RM-1001|-1|260731|SUP-001|0001')).toBe('format');
+    expect(materialLotNoProblemOf('RM-1001|1,000|260731|SUP-001|0001')).toBe('format');
+  });
+
+  it('번호 칸은 0001~9999 네 자리다', () => {
+    expect(isMaterialLotNo('RM-1001|12.5|260731|SUP-001|9999')).toBe(true);
+    expect(materialLotNoProblemOf('RM-1001|12.5|260731|SUP-001|0000')).toBe('format');
+    expect(materialLotNoProblemOf('RM-1001|12.5|260731|SUP-001|001')).toBe('format');
+  });
+
+  it('날짜 칸만 없는 날짜면 따로 알린다', () => {
+    expect(materialLotNoProblemOf('RM-1001|12.5|260231|SUP-001|0001')).toBe('badDate');
+    expect(parseMaterialLotNo('RM-1001|12.5|260231|SUP-001|0001')).toBeNull();
+    expect(materialLotNoProblemOf('RM-1001|12.5|2607A1|SUP-001|0001')).toBe('format');
+  });
+
+  /* 서버가 코드를 글자 그대로 견준다. 화면이 바꿔 읽으면 화면만 통과시킨다. */
+  it('대소문자를 바꾸지 않는다', () => {
+    expect(itemCodeOf('rm-1001|12.5|260731|sup-001|0001')).toBe('rm-1001');
+    expect(parseMaterialLotNo('rm-1001|12.5|260731|sup-001|0001')?.supplier).toBe('sup-001');
+  });
+
+  it('길이로 막지 않는다', () => {
+    const long = `${'A'.repeat(60)}|12.5|260731|${'B'.repeat(30)}|0001`;
+    expect(isMaterialLotNo(long)).toBe(true);
   });
 });
 
