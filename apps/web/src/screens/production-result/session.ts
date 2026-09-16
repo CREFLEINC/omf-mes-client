@@ -80,9 +80,16 @@ export const judgeSessionEnd = (decision: EndDecision): EndVerdict => {
   return decision.hasSession && decision.hasWorkerNo ? 'send' : 'unknown';
 };
 
-/** 끝 시각이 비어 있어야 열린 세션이다(공유계약 G-16). */
+/**
+ * 끝 시각이 비어 있어야 열린 세션이다(공유계약 G-16).
+ *
+ * ⚠ **「비어 있다」가 세 모양으로 온다.** 계약 타입은 칸이 빠진 모양(`undefined`)만 말하지만,
+ *   실제 서버와 목은 **`null` 을 명시해서** 보낸다 — 타입 검사로는 드러나지 않고, `null` 을
+ *   놓치면 **열린 세션이 통째로 걸러져** 닫을 것이 없다고 판정한다(브라우저 실측 2026-09-16).
+ *   `work-hold-register/types.ts` 가 같은 함정을 이미 적어 두었다.
+ */
 const isOpen = (session: WorkSession): boolean =>
-  session.endedAt === undefined || session.endedAt === '';
+  session.endedAt === undefined || session.endedAt === null || session.endedAt === '';
 
 /**
  * 받은 목록에서 **닫을 세션 하나**를 고른다.

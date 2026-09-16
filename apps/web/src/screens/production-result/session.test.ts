@@ -110,6 +110,20 @@ describe('pickOwnOpenSession', () => {
     expect(pickOwnOpenSession([session({ terminalId: 11 })], 10)).toBeNull();
   });
 
+  /*
+   * ⛔ **「비어 있다」가 세 모양으로 온다.** 계약 타입은 칸이 빠진 모양만 말하는데 실제 서버와
+   *    목은 `null` 을 명시해 보낸다 — 놓치면 열린 세션이 통째로 걸러져 «닫을 것이 없다»가 된다.
+   *    타입 검사로는 드러나지 않아 화면이 조용히 멈췄다(브라우저 실측 2026-09-16).
+   */
+  it('끝 시각이 null 이면 열린 세션이다', () => {
+    const picked = pickOwnOpenSession(
+      [session({ workSessionId: 100, endedAt: null as unknown as undefined })],
+      10,
+    );
+
+    expect(picked?.workSessionId).toBe(100);
+  });
+
   it('이미 닫힌 세션은 고르지 않는다', () => {
     const picked = pickOwnOpenSession(
       [session({ workSessionId: 100, endedAt: '2026-09-16T10:00:00+09:00' })],
