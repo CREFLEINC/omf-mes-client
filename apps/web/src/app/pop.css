@@ -5888,16 +5888,23 @@
   flex-direction: column;
 }
 
+/*
+ * ⛔ **줄어들 수는 없다** — `flex: 1 0 auto` 이지 `1 1 auto` 가 아니다(리뷰 지적 ⑤).
+ *
+ *    위 `.pop-ui .pop-section > * { flex: none }` 은 「블록은 제 높이를 지키고, 자리가 모자라면
+ *    구획이 스크롤한다」는 규칙이고, 그 주석에 실측 사고가 적혀 있다 — 재출력 단추가 72 에서
+ *    절반으로 눌려 옆 칸과 겹쳐 보였다. `flex-shrink: 1` 과 `min-height: 0` 을 함께 주면 그
+ *    방어가 **이 화면에서만** 풀려 같은 사고가 돌아온다. 늘어나되 줄지는 않게 둔다.
+ */
 .pop-ui .production-flow-quantity > *,
 .pop-ui .production-flow-scan > * {
-  flex: 1 1 auto;
+  flex: 1 0 auto;
   display: flex;
   flex-direction: column;
-  min-height: 0;
 }
 
 .pop-ui .production-flow-quantity .omf-numeric-keypad {
-  flex: 1 1 auto;
+  flex: 1 0 auto;
   grid-auto-rows: minmax(var(--pop-touch-min, 48px), 1fr);
 }
 

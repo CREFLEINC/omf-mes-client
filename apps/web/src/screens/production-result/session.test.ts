@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest';
 
-import { buildSessionEnd, judgeSessionEnd, pickOwnOpenSession, type EndDecision } from './session';
+import {
+  buildSessionEnd,
+  isRetryableEndFailure,
+  judgeSessionEnd,
+  pickOwnOpenSession,
+  type EndDecision,
+} from './session';
 
 /**
  * 작업 세션 자동 종료의 **판정**만 재는 시험.
@@ -50,12 +56,28 @@ describe('judgeSessionEnd', () => {
    * ⛔ **「모른다」를 「권한이 없다」로 말하지 않는다.** 조회 중·조회 실패·단말 미식별은 판정이
    *    아직 없는 상태다 — 한데 묶으면 권한 있는 단말에 「권한이 없습니다」가 뜬다.
    */
-  it.each(['checking', 'unavailable', 'unidentified'] as const)(
+  it.each(['unavailable', 'unidentified'] as const)(
     '권한 판정이 %s 면 「권한 없음」이 아니라 「못 닫았다」다',
     (gate) => {
       expect(judgeSessionEnd({ ...base, gate })).toBe('unknown');
     },
   );
+
+  /* 아직 판정 중이면 기다린다 — 곧 셋 중 하나로 정해진다. */
+  it('권한을 확인하는 중이면 기다린다', () => {
+    expect(judgeSessionEnd({ ...base, gate: 'checking' })).toBe('wait');
+  });
+
+  /*
+   * ⛔ **단말을 모르면 세션 조회가 «아예 돌지 않는다».** 그때 「곧 온다」로 읽으면 판정이 영원히
+   *    기다림에 갇혀 요청도 배너도 없이 방아쇠만 남는다(리뷰 지적 ①). 권한 축이 먼저 서서
+   *    「못 닫았다」로 떨어져야 한다.
+   */
+  it('단말 미식별이면 세션 조회가 안 돌아도 「못 닫았다」로 떨어진다', () => {
+    expect(
+      judgeSessionEnd({ ...base, gate: 'unidentified', hasSession: false, isSessionPending: true }),
+    ).toBe('unknown');
+  });
 
   /*
    * ⛔ **답을 기다리는 중에는 「없다」로 읽지 않는다.** 잠시 뒤 도착할 세션을 두고 「못 닫았다」가
@@ -104,6 +126,15 @@ describe('pickOwnOpenSession', () => {
     );
 
     expect(picked?.workSessionId).toBe(100);
+  });
+
+  /*
+   * ⛔ **중단해 둔 세션을 닫지 않는다.** 설계가 「진행 중 세션만 종료 대상」으로 좁혔다
+   *    (`P-02-10` §3). 중단은 작업자가 일부러 건 상태인데 끝 시각이 비어 있어 「열린 세션」으로도
+   *    잡힌다 — 상태를 안 보면 그 자리를 말없이 닫는다(리뷰 지적 ④).
+   */
+  it('중단 중인 세션은 고르지 않는다', () => {
+    expect(pickOwnOpenSession([session({ statusCode: 'STOPPED' })], 10)).toBeNull();
   });
 
   it('내 단말의 열린 세션이 없으면 아무것도 고르지 않는다', () => {
@@ -161,5 +192,34 @@ describe('buildSessionEnd', () => {
 
     expect(Object.keys(body)).toEqual(['endedAt']);
     expect(body.endedAt).toBe('2026-09-16T01:00:00.000Z');
+  });
+});
+
+/*
+ * ⛔ **다시 보내도 같은 답이 오는 실패에는 [다시 시도] 를 내지 않는다.** 재시도는 같은 본문·같은
+ *    멱등 키로 같은 요청을 보내므로, 서버가 상태·권한·대상 때문에 거절한 것이면 몇 번을 눌러도
+ *    같다 — 작업자는 될 때까지 누르고 정작 해야 할 일을 하지 않는다(리뷰 지적 ②).
+ */
+describe('isRetryableEndFailure', () => {
+  it('연결이 끊긴 실패는 다시 보낼 값이 있다', () => {
+    expect(isRetryableEndFailure({ kind: 'network' })).toBe(true);
+  });
+
+  it('서버가 잠시 넘어진 것도 다시 보낼 값이 있다', () => {
+    expect(isRetryableEndFailure({ kind: 'http', status: 503 })).toBe(true);
+  });
+
+  it.each([
+    ['상태 잠김', { kind: 'stateLocked' as const, errors: [], status: 400 }],
+    ['충돌', { kind: 'conflict' as const, cause: 'user' as const, message: '', status: 409 }],
+    ['없는 대상', { kind: 'http' as const, status: 404 }],
+    ['권한 거부', { kind: 'http' as const, status: 403 }],
+    ['검증 실패', { kind: 'validation' as const, errors: [], status: 400 }],
+  ])('%s 는 다시 보내도 같다', (_label, error) => {
+    expect(isRetryableEndFailure(error)).toBe(false);
+  });
+
+  it('오류가 없으면 재시도 대상도 아니다', () => {
+    expect(isRetryableEndFailure(null)).toBe(false);
   });
 });

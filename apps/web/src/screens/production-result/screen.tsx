@@ -12,7 +12,13 @@ import { useResultEntry } from './entry-context';
 import { useFlowGates } from './flow-gating';
 import { useDocumentIssue, useLotComplete, useSerialIssue } from './flow-mutations';
 import { useLabelPrintRunner, type PrintTarget } from './flow-print';
-import { buildSessionEnd, judgeSessionEnd, useOpenWorkSession, useWorkSessionEnd } from './session';
+import {
+  buildSessionEnd,
+  isRetryableEndFailure,
+  judgeSessionEnd,
+  useOpenWorkSession,
+  useWorkSessionEnd,
+} from './session';
 import { buildProductionLotLabel } from './label-tspl';
 import {
   defaultPrinter,
@@ -92,6 +98,14 @@ type OutputPhase =
  * 하나를 내보내는 동안의 단계이고, 이쪽은 작업지시를 다 돌린 뒤 한 번 일어나는 일이다.
  */
 type SessionPhase = 'idle' | 'ending' | 'ended' | 'alreadyEnded' | 'failed' | 'denied';
+
+/**
+ * 사람이 [세션 종료 재시도] 를 눌러 세운 방아쇠.
+ *
+ * ⭐ **LOT 번호 자리에 앉지만 LOT 이 아니다.** 이 길로 올 때는 이미 LOT 이 없다 — 담을 번호가
+ *    없어 `null` 을 넣으면 방아쇠가 서지 않는다. 어떤 LOT 번호와도 겹치지 않는 값을 쓴다.
+ */
+const RETRY_ARMED = -1;
 
 const quantityInput = (value: string): string => {
   const cleaned = value.replace(/[^\d.]/gu, '');
@@ -221,8 +235,13 @@ export const ProductionFlowScreen = () => {
    *
    * ⚠ **상태가 아니라 참조다.** 이 값이 바뀌었다고 화면을 다시 그릴 이유가 없고, 렌더 중에
    *   읽히지도 않는다.
+   *
+   * ⭐ **어느 LOT 을 마감해 세웠는지 담는다**(리뷰 지적 ⑥). 참·거짓만 담았을 때는, 마감한 뒤
+   *    «다음 LOT 이 서면» 방아쇠가 내려가지 않고 무기한 남았다 — 한참 뒤 창 포커스 재조회나
+   *    옆 단말의 마감으로 목록이 비는 순간 그때 발동해, 이 단말이 마감하지도 않은 작업의 세션을
+   *    닫는다. 세운 LOT 과 지금 LOT 을 견줄 수 있어야 「마지막이었는가」가 판정된다.
    */
-  const endAfterRefetchRef = useRef(false);
+  const endAfterRefetchRef = useRef<number | null>(null);
   /** 처음 보낸 종료 본문. 재시도가 **같은 값·같은 멱등 키**로 나가게 붙들어 둔다. */
   const sessionEndBodyRef = useRef<ReturnType<typeof buildSessionEnd> | null>(null);
 
@@ -341,7 +360,7 @@ export const ProductionFlowScreen = () => {
        *    선발행 LOT 이 여럿 달릴 수 있어, 다시 읽어 「다음 LOT 이 없다」가 확인된 뒤에
        *    닫는다(아래 자동 종료 effect).
        */
-      endAfterRefetchRef.current = true;
+      endAfterRefetchRef.current = currentLot.data?.lotId ?? null;
       void currentLot.refetch();
     },
   });
@@ -381,8 +400,23 @@ export const ProductionFlowScreen = () => {
   }, [sessionEnd.error]);
 
   useEffect(() => {
+    /*
+     * ⛔ **다음 LOT 이 섰으면 방아쇠를 내린다.** 방금 마감한 것이 마지막이 아니었다는 뜻이다 —
+     *    내리지 않으면 한참 뒤 목록이 비는 다른 사건에 얹혀 발동한다(리뷰 지적 ⑥).
+     */
+    const armedLotId = endAfterRefetchRef.current;
+    if (
+      armedLotId !== null &&
+      !currentLot.isFetching &&
+      currentLot.data !== null &&
+      currentLot.data !== undefined &&
+      currentLot.data.lotId !== armedLotId
+    ) {
+      endAfterRefetchRef.current = null;
+    }
+
     const verdict = judgeSessionEnd({
-      triggered: endAfterRefetchRef.current,
+      triggered: endAfterRefetchRef.current !== null,
       isFetching: currentLot.isFetching,
       hasLot: currentLot.data !== null,
       gate: gates.complete,
@@ -398,7 +432,7 @@ export const ProductionFlowScreen = () => {
      *    끝났거나 실패한 순간에 **요청도 안 나가고 배너도 안 뜬 채** 방아쇠만 사라진다 —
      *    작업자는 닫힌 줄 알고 관리웹은 계속 막힌다(독립 검증 2026-09-16 지적 ②).
      */
-    endAfterRefetchRef.current = false;
+    endAfterRefetchRef.current = null;
 
     if (verdict === 'denied') {
       setSessionPhase('denied');
@@ -432,10 +466,14 @@ export const ProductionFlowScreen = () => {
    *   지시를 열었을 때 그쪽 LOT 이 비는 순간에 엉뚱하게 발동한다.
    */
   useEffect(() => {
-    endAfterRefetchRef.current = false;
+    endAfterRefetchRef.current = null;
     sessionEndBodyRef.current = null;
     setSessionPhase('idle');
-  }, [entry.workOrderId]);
+    /*
+     * ⚠ **사번이 바뀌어도 내린다**(리뷰 지적 ⑥). 앞 작업자가 세운 방아쇠가 남으면, 그 종료가
+     *   **뒤 작업자의 사번**으로 나간다 — 귀속이 어긋난 기록은 되돌릴 수 없다.
+     */
+  }, [entry.workOrderId, entry.workerNo]);
 
   /**
    * 다시 보낸다 — **처음 보낸 것과 같은 본문으로.**
@@ -459,7 +497,7 @@ export const ProductionFlowScreen = () => {
      * 아직 한 번도 못 보낸 경우다 — 세션을 몰라 멈춰 있었다. **방아쇠를 다시 세우고 세션을
      * 다시 읽는다**: 답이 오면 위 효과가 이어서 보낸다.
      */
-    endAfterRefetchRef.current = true;
+    endAfterRefetchRef.current = RETRY_ARMED;
     openSession.refetch();
   };
 
@@ -861,9 +899,12 @@ export const ProductionFlowScreen = () => {
       case 'denied':
         return t.flow.session.denied;
       case 'failed':
-        return sessionEnd.error?.kind === 'network'
-          ? t.flow.session.offline
-          : t.flow.session.failed;
+        if (sessionEnd.error?.kind === 'network') return t.flow.session.offline;
+
+        /* 다시 눌러도 같은 답이 오는 실패는 재시도 대신 «갈 곳»을 말한다(리뷰 지적 ②). */
+        return isRetryableEndFailure(sessionEnd.error)
+          ? t.flow.session.failed
+          : t.flow.session.unrecoverable;
       /*
        * ⛔ **잘 닫힌 것은 말하지 않는다**(사용자 지시 2026-09-16). 닫히는 중·닫힘·이미 닫힘은
        *    작업자가 «할 일이 없는» 상태다 — 그 자리에 이미 「생산할 LOT이 없습니다」가 서 있고,
@@ -1367,7 +1408,7 @@ export const ProductionFlowScreen = () => {
                  *    덜 끝났을 뿐이다. 크기만 한 급 낮춘다(`pop.css`).
                  */}
                 <AlertBanner variant="warning" title={sessionStatusTitle}>
-                  {sessionPhase === 'failed' && (
+                  {sessionPhase === 'failed' && isRetryableEndFailure(sessionEnd.error) && (
                     /* 채운 단추로 낸다(사용자 지시 2026-09-16) — POP 기본 채움이 빨강이다. */
                     <Button onClick={retrySessionEnd} disabled={sessionEnd.isSaving}>
                       {t.flow.session.retry}

@@ -1,9 +1,10 @@
-import type { ApiClient, components } from '@omf-mes/api-client';
+import type { ApiClient, ApiError, components } from '@omf-mes/api-client';
 import { useQuery } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
 import { useMasterWrite, type MasterWriteResult } from '../../patterns/master';
 import { runRequest } from '../../patterns/request';
+import { RUNNING_STATUS_CODE } from '../work-hold-register/types';
 
 /**
  * 이 화면이 **세션을 닫는다** — 마지막 LOT 을 마감해 더 생산할 것이 남지 않았을 때다.
@@ -65,17 +66,24 @@ export const judgeSessionEnd = (decision: EndDecision): EndVerdict => {
   if (!decision.triggered || decision.isFetching || decision.hasLot) return 'wait';
 
   /*
-   * ⚠ **답을 기다리는 중이면 판정하지 않는다.** 아직 안 온 것을 「없다」로 읽으면, 잠시 뒤
-   *   도착할 세션을 두고 「못 닫았다」가 먼저 뜬다.
-   */
-  if (decision.isSessionPending) return 'wait';
-
-  /*
-   * ⛔ **거부만 「권한 없음」이다.** 조회 중·조회 실패·단말 미식별은 «모른다»이지 «없다»가
-   *    아니다 — 한데 묶으면 권한이 있는 단말에 「권한이 없습니다」가 뜬다(독립 검증 지적 ③).
+   * ⛔ **권한부터 본다.** 전에는 세션 조회 대기를 먼저 봤는데, 단말을 모르면 그 조회가 «아예
+   *    돌지 않고» 영원히 대기로 남아(비활성 질의) 판정이 `wait` 에 갇혔다 — 요청도 배너도 없이
+   *    방아쇠만 남는다(리뷰 지적 ①). 권한 축이 먼저 서야 그 갇힘이 생기지 않는다.
+   *
+   * ⛔ **거부만 「권한 없음」이다.** 조회 실패·단말 미식별은 «모른다»이지 «없다»가 아니다 —
+   *    한데 묶으면 권한이 있는 단말에 「권한이 없습니다」가 뜬다.
+   * ⚠ 아직 판정 중(`checking`)이면 기다린다 — 곧 셋 중 하나로 정해진다.
    */
   if (decision.gate === 'denied') return 'denied';
+  if (decision.gate === 'checking') return 'wait';
   if (decision.gate !== 'allowed') return 'unknown';
+
+  /*
+   * ⚠ **답을 기다리는 중이면 판정하지 않는다.** 아직 안 온 것을 「없다」로 읽으면, 잠시 뒤
+   *   도착할 세션을 두고 「못 닫았다」가 먼저 뜬다. ⛔ 여기서 «비활성»을 대기로 세지 않는다 —
+   *   위 ①의 갇힘이 그 혼동에서 나왔다(`useOpenWorkSession` 이 갈라 준다).
+   */
+  if (decision.isSessionPending) return 'wait';
 
   return decision.hasSession && decision.hasWorkerNo ? 'send' : 'unknown';
 };
@@ -92,6 +100,20 @@ const isOpen = (session: WorkSession): boolean =>
   session.endedAt === undefined || session.endedAt === null || session.endedAt === '';
 
 /**
+ * 지금 **돌고 있는가.** 자동 종료의 대상은 이것뿐이다.
+ *
+ * ⛔ **중단(`STOPPED`) 세션을 닫지 않는다.** 설계가 「이번 회차는 «진행 중» 세션만 종료 대상으로
+ *    좁힌다」로 정했다(`P-02-10` §3 · 2026-09-06 게이트). 중단은 작업자가 «일부러» 걸어 둔
+ *    상태이고 끝 시각이 비어 있어 「열린 세션」으로도 잡히므로, 상태를 보지 않으면 그 자리를
+ *    말없이 닫는다 — 되돌릴 수 없다(리뷰 지적 ④).
+ *
+ * ⛔ **「종료가 아니면 진행 중」으로 읽지 않는다.** 모르는 문자열까지 진행 중으로 삼게 된다 —
+ *    `work-hold-register/types.ts` 가 같은 판단을 적어 두었고 값도 그 파일이 고정했다.
+ */
+const isRunning = (session: WorkSession): boolean =>
+  session.statusCode === RUNNING_STATUS_CODE;
+
+/**
  * 받은 목록에서 **닫을 세션 하나**를 고른다.
  *
  * ⛔ **이 단말의 세션만 고른다.** 한 작업지시를 여러 단말이 나눠 돌 수 있고(계약이 막지 않는다 —
@@ -104,6 +126,8 @@ const isOpen = (session: WorkSession): boolean =>
  *
  * ⚠ **닫힌 것도 거른다.** 「열린 것만」으로 물었어도 섞여 오면 이미 닫힌 구간에 종료를 보낸다.
  *
+ * ⛔ **중단 중인 세션도 거른다** — 설계가 «진행 중»만 종료 대상으로 좁혔다(`isRunning`).
+ *
  * ⛔ **시각을 사전순으로 비교하지 않는다.** 오프셋이 섞이면(`+09:00` 과 `Z`) 사전순과 시간순이
  *    갈려 「방금 연 세션」이 아닌 것이 닫힌다.
  */
@@ -111,7 +135,9 @@ export const pickOwnOpenSession = (
   items: readonly WorkSession[],
   terminalId: number,
 ): WorkSession | null => {
-  const mine = items.filter((session) => isOpen(session) && session.terminalId === terminalId);
+  const mine = items.filter(
+    (session) => isOpen(session) && isRunning(session) && session.terminalId === terminalId,
+  );
 
   return (
     [...mine].sort((left, right) => Date.parse(right.startedAt) - Date.parse(left.startedAt))[0] ??
@@ -155,9 +181,11 @@ export const useOpenWorkSession = (
 ): OpenWorkSession => {
   const { client } = useApiClient();
 
+  const isEnabled = workOrderId !== null && terminalId !== null;
+
   const query = useQuery({
     queryKey: workSessionKeys.open(workOrderId ?? 0, terminalId ?? 0),
-    enabled: workOrderId !== null && terminalId !== null,
+    enabled: isEnabled,
     queryFn: () => {
       if (workOrderId === null || terminalId === null) {
         throw new Error('작업지시·단말을 모르면 세션을 조회하지 않습니다.');
@@ -169,8 +197,14 @@ export const useOpenWorkSession = (
 
   return {
     session: query.data ?? null,
-    /* 조회 중이거나 다시 읽는 중이면 아직 답이 아니다. 실패로 «끝난» 것은 답이다 — 「없다」다. */
-    isPending: query.isPending || query.isFetching,
+    /*
+     * 조회 중이거나 다시 읽는 중이면 아직 답이 아니다. 실패로 «끝난» 것은 답이다 — 「없다」다.
+     *
+     * ⛔ **비활성 질의를 「대기」로 세지 않는다.** react-query 는 `enabled: false` 인 질의도
+     *    `isPending` 으로 두는데, 그것은 «곧 온다»가 아니라 «묻지 않는다»다 — 그 둘을 같게
+     *    보면 단말을 모를 때 화면이 영원히 기다린다(리뷰 지적 ①).
+     */
+    isPending: isEnabled && (query.isPending || query.isFetching),
     refetch: () => {
       void query.refetch();
     },
@@ -228,4 +262,22 @@ export const useWorkSessionEnd = ({
     keyLifetime: 'until-applied',
     onSuccess,
   });
+};
+
+/**
+ * 다시 보내면 결과가 달라지는 실패인가.
+ *
+ * ⛔ **아니면 [다시 시도] 를 내지 않는다.** 재시도는 «같은 본문·같은 멱등 키»로 같은 요청을
+ *    보내므로(위 `until-applied`), 서버가 상태·권한·대상 때문에 거절한 것이라면 몇 번을 눌러도
+ *    같은 답이 돌아온다 — 작업자는 될 때까지 누르고, 정작 해야 할 일(작업 중단 화면에서 세션
+ *    상태 확인)은 하지 않는다(리뷰 지적 ②).
+ *
+ * ⚠ 계약이 이 경로에 400·403·404·409 를 둔다. 그중 다시 시도해서 풀리는 것은 **없다** —
+ *   통신이 끊겼거나 서버가 잠시 넘어진 경우(`network` · 5xx)만 다시 보낼 값이 있다.
+ */
+export const isRetryableEndFailure = (error: ApiError | null): boolean => {
+  if (error === null) return false;
+  if (error.kind === 'network') return true;
+
+  return error.kind === 'http' && error.status >= 500;
 };
