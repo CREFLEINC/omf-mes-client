@@ -31,37 +31,3 @@
   width: 100%;
 }
 
-/*
- * 숫자판은 기기 키보드처럼 화면 아래에 붙어 목록 위에 뜬다. 줄 사이에 끼우면 그 아래 줄들이
- * 화면 밖으로 밀려 적던 자리를 잃는다.
- */
-.stock-transfer__keypad {
-  position: fixed;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  z-index: 10;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: var(--space-2, 8px);
-  padding: var(--space-3, 12px);
-  background: var(--surface, #fff);
-  border-top: 1px solid var(--outline-variant, #d7d7dd);
-}
-
-/* 목록 밖에 서므로 어느 줄에 적는 중인지 스스로 말한다. */
-.stock-transfer__keypad-head {
-  align-self: stretch;
-  margin: 0;
-  font: var(--type-title-sm);
-  letter-spacing: var(--type-title-sm-tracking);
-  overflow-wrap: anywhere;
-}
-
-/* 키를 가운데 모으고 양옆에 앞뒤 줄로 옮기는 단추를 세운다. */
-.stock-transfer__keypad-row {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2, 8px);
-}

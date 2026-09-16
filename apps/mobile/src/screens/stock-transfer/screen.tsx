@@ -2,8 +2,6 @@ import {
   AlertBanner,
   Button,
   Card,
-  IconButton,
-  NumberPad,
   Radio,
   Select,
   TextField,
@@ -18,6 +16,7 @@ import { uomLabelOf, useItemLabels, useUomCodes } from '../../patterns/masters';
 import { useOnlineStatus } from '../../patterns/online-status';
 import { useOutbox } from '../../patterns/outbox';
 import { useBackStep } from '../../patterns/back-step';
+import { DockedNumberPad } from '../../patterns/docked-number-pad';
 import { useScanField } from '../../patterns/use-scan-field';
 import { useScreenTitle } from '../../patterns/screen-title';
 import { useWorkerSession } from '../../patterns/worker-session';
@@ -371,7 +370,7 @@ export const StockTransferScreen = () => {
   }
 
   return (
-    <div className="stock-transfer">
+    <div className={keypad === null ? 'stock-transfer' : 'stock-transfer docked-pad-open'}>
       <section className="stock-transfer__section">
         <h2>{t.unfinished.legend}</h2>
         {unfinished.isPending ? <p role="status">{t.unfinished.loading}</p> : null}
@@ -620,50 +619,32 @@ export const StockTransferScreen = () => {
             </Button>
           </section>
 
-          {/*
-            숫자판은 줄 사이에 끼우지 않는다. 끼우면 그 아래 줄들이 화면 밖으로 밀려 적던
-            자리를 잃는다. 기기 키보드처럼 화면 아래에 붙여 목록 위에 띄운다.
-
-            목록 밖에 서므로 어느 줄에 적는 중인지 스스로 말한다.
-          */}
           {keypad === null ? null : (
-            <div className="stock-transfer__keypad">
-              <p className="stock-transfer__keypad-head">{nameOf(keypad.line)}</p>
-              <div className="stock-transfer__keypad-row">
-                <IconButton
-                  icon="chevron_left"
-                  size="xl"
-                  aria-label={t.from.previousLine}
-                  disabled={keypad.at === 0}
-                  onClick={() => {
-                    setKeypadFor(lines[keypad.at - 1]?.lotId ?? null);
-                  }}
-                />
-                <NumberPad
-                  value={keypad.line.qty}
-                  onChange={(value) => {
-                    setLines((current) =>
-                      current.map((each, at) =>
-                        at === keypad.at ? { ...each, qty: value } : each,
-                      ),
-                    );
-                  }}
-                  allowDecimal
-                  onConfirm={() => {
-                    setKeypadFor(null);
-                  }}
-                />
-                <IconButton
-                  icon="chevron_right"
-                  size="xl"
-                  aria-label={t.from.nextLine}
-                  disabled={keypad.at === lines.length - 1}
-                  onClick={() => {
-                    setKeypadFor(lines[keypad.at + 1]?.lotId ?? null);
-                  }}
-                />
-              </div>
-            </div>
+            <DockedNumberPad
+              head={nameOf(keypad.line)}
+              value={keypad.line.qty}
+              onChange={(value) => {
+                setLines((current) =>
+                  current.map((each, at) => (at === keypad.at ? { ...each, qty: value } : each)),
+                );
+              }}
+              onClose={() => {
+                setKeypadFor(null);
+              }}
+              move={{
+                canPrevious: keypad.at > 0,
+                canNext: keypad.at < lines.length - 1,
+                onPrevious: () => {
+                  setKeypadFor(lines[keypad.at - 1]?.lotId ?? null);
+                },
+                onNext: () => {
+                  setKeypadFor(lines[keypad.at + 1]?.lotId ?? null);
+                },
+                previousLabel: t.from.previousLine,
+                nextLabel: t.from.nextLine,
+              }}
+              allowDecimal
+            />
           )}
         </>
       )}
