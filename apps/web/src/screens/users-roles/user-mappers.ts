@@ -85,33 +85,12 @@ export const toAppUserUpdate = (values: UserFormValues): AppUserUpdate => ({
  *
  * 로그인 ID는 **등록에서만** 정할 수 있다.
  *
- * ## ⛔ `password` 는 고정한 계약에 없는 키다 — 이 함수가 이 슬라이스의 유일한 우회 자리다
- *
- * **왜 넘어서는가.** 서버는 2026-09-12부터 이 요청의 선택 파라미터 `password` 를 받는다 —
- * 보내면 그 값이 계정 비밀번호가 되고 강제 변경이 걸리지 않는다. **보내지 않으면 서버가 만드는데,
- * 관리웹에는 그 임시 비밀번호를 볼 경로가 없다** — 즉 보내지 않고 만든 계정은 **아무도 비밀번호를
- * 알 수 없고** 그 사람은 처음부터 로그인할 수 없다. 계약에 맞춰 키를 빼는 선택은 「계약을
- * 지켰다」가 아니라 「쓸 수 없는 계정을 만들었다」가 된다.
- *
- * **왜 계약에 없는가.** 고정한 전달본의 `components['schemas']['AppUserCreate']` 에 그 키가 없다
- * (직접 확인했다 — `packages/api-client/src/generated/api.d.ts` 의 `AppUserCreate:`). 그 파일은
- * `pnpm gen:api` 생성물이라 손으로 고칠 수 없고, 고쳐도 다음 생성에서 지워진다. 서버가 먼저
- * 갔고 전달본이 아직 따라오지 않은 상태다.
- *
- * **어디까지가 우회인가.** 반환형을 `AppUserCreate & { password: string }` 으로 **넓히는 이
- * 한 줄까지다.** 계약이 요구하는 키는 하나도 빼거나 바꾸지 않았고, 다른 함수
- * (`toAppUserUpdate`)는 손대지 않았다 — 수정 본문에는 자리가 없다.
- *
- * ⭐ **호출부에 캐스트를 덧붙이지 마라.** `screen.tsx` 의 `client.POST` 는 손대지 않아도 통과한다 —
- * 초과 속성 검사는 **신선한 객체 리터럴**에만 걸리고, 함수 반환값은 그 대상이 아니다. 「타입이
- * 안 맞을 것 같다」는 짐작으로 `as` 를 넣으면 계약이 따라온 뒤에도 그 캐스트가 남아, 정작 키
- * 이름이나 타입이 어긋날 때 아무도 알아채지 못한다.
- *
- * **언제 걷어내는가.** 전달본이 `password` 를 담아 오는 순간이다. 그때
- * `contract-password-gap.test.ts` 의 타입 감지기가 **스스로 빨개진다** — 그 신호를 보면 여기
- * 반환형의 `& { password: string }` 을 지우고 이 머리말을 함께 지운다.
+ * ⚠ **비밀번호를 반드시 싣는다.** 보내지 않으면 서버가 임시 비밀번호를 만드는데, 관리웹에는
+ *   그것을 볼 경로가 없다 — 아무도 비밀번호를 모르는, 처음부터 로그인할 수 없는 계정이 된다.
+ *   (한때 계약에 이 키가 없어 반환형을 넓히는 우회가 있었고, 전달본 2026-09-17 이 담아 오면서
+ *   그 우회와 유효기간을 재던 감지기를 함께 걷었다.)
  */
-export const toAppUserCreate = (values: UserFormValues): AppUserCreate & { password: string } => ({
+export const toAppUserCreate = (values: UserFormValues): AppUserCreate => ({
   loginId: values.loginId.trim(),
   /*
    * ⛔⛔ **여기만 `.trim()` 이 «없다» — 빠뜨린 것이 아니다.** 위아래 형제 필드

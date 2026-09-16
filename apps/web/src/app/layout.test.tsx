@@ -16,6 +16,12 @@ const sessionFixture = (): Session => ({
   loginId: 'SYN-LOGIN-01',
   userName: SYNTHETIC_USER_NAME,
   scopes: [{ businessUnitId: 8301, plantId: 8401 }],
+  /*
+   * ⚠ **계약이 이 칸을 필수로 바꿨다**(전달본 2026-09-17 · `Session.mustChangePassword`).
+   *   스텁이 서버보다 너그러우면 화면의 결손을 덮으므로 함께 싣는다. 임시 비밀번호로 들어온
+   *   회차가 아니므로 `false` 다 — 아직 이 값으로 갈래를 만드는 제품 코드는 없다.
+   */
+  mustChangePassword: false,
 });
 
 /**
