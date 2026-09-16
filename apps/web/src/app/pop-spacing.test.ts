@@ -91,6 +91,35 @@ describe('POP 구획 눌림', () => {
   it.each(['.omf-numeric-keypad', '.worker-no-notice'])('`%s` 가 눌리지 않는다', (selector) => {
     expect(noShrinkSelectors.some((list) => list.includes(selector))).toBe(true);
   });
+
+  /*
+   * ⛔ **`flex: none` 을 덮는 규칙은 «줄지 않게» 두어야 한다**(리뷰 지적 ⑨).
+   *
+   *    위 감지기는 「`.omf-numeric-keypad` 라는 글자가 `flex: none` 블록에 있는가」만 본다 —
+   *    뒤에서 같은 명시도로 덮어쓰는 규칙이 들어와도 초록이다. 실제로 이 화면이 남는 높이를
+   *    가지려고 `flex` 를 다시 주었고, 한 회차 `1 1 auto` 로 들어가 눌림 방어가 이 화면에서만
+   *    풀렸다. 늘어나는 것은 되지만 **줄어드는 것은 안 된다.**
+   *
+   * ⚠ 축약형의 둘째 값이 `flex-shrink` 다 — `1 0 auto` 는 되고 `1 1 auto` 는 안 된다.
+   */
+  it('생산 실적 화면이 되찾은 flex 는 늘어나되 줄지 않는다', () => {
+    const regrown = rules
+      .split('}')
+      .filter((block) => /production-flow-(quantity|scan)/u.test(block))
+      .filter((block) => /flex:\s*\d/u.test(block));
+
+    expect(regrown.length).toBeGreaterThan(0);
+
+    for (const block of regrown) {
+      const shorthand = /flex:\s*(\d+)\s+(\d+)/u.exec(block);
+
+      expect(shorthand, `flex 축약형이 세 값으로 적혀 있어야 한다: ${block}`).not.toBeNull();
+      expect(shorthand?.[2], `줄어들 수 있게 두면 눌림 방어가 풀린다: ${block}`).toBe('0');
+      expect(/min-height:\s*0/u.test(block), `min-height: 0 은 바닥을 없앤다: ${block}`).toBe(
+        false,
+      );
+    }
+  });
 });
 
 /**

@@ -1290,6 +1290,49 @@ describe('ProductionFlowScreen · 작업 세션 자동 종료', () => {
     expect(writes.some((request) => pathOf(request) === END_PATH)).toBe(false);
   });
 
+  /*
+   * ⛔ **「아직 못 보냈다」에는 빠져나갈 길이 있어야 한다**(재리뷰 지적). 세션을 못 찾아 멈춘
+   *    것은 요청을 «한 번도 보내지 않은» 상태라 오류가 없다 — 그것을 「다시 눌러도 같다」로
+   *    읽으면, 다시 읽으면 풀릴 일에 「종료할 수 없습니다」를 띄우고 길까지 막는다.
+   *    이 자리를 지키는 화면 감지기가 없어 앞 회차에 구멍이 그대로 났다.
+   */
+  it('세션을 못 찾아 못 닫았으면 재시도 단추가 뜬다', async () => {
+    const writes: Request[] = [];
+    const state = { completed: false };
+    /* 이 단말(10)의 세션이 아니다 — 남의 구간이라 닫을 대상이 없다. */
+    const otherTerminalSession: StubRoute = {
+      match: (request) =>
+        request.method === 'GET' && pathOf(request) === '/production/work-sessions',
+      respond: () =>
+        jsonResponse({
+          items: [
+            {
+              workSessionId: WORK_SESSION_ID,
+              workOrderId: WORK_ORDER_ID,
+              sessionNo: 1,
+              terminalId: 99,
+              startedAt: '2026-09-16T09:00:00+09:00',
+              statusCode: 'RUNNING',
+            },
+          ],
+          page: { page: 1, size: 20, total: 1 },
+        }),
+    };
+    const user = userEvent.setup();
+    renderScreen(writes, [
+      otherTerminalSession,
+      completeDrains(state, writes),
+      lotsDrainedAfterComplete(state),
+    ]);
+
+    await completeCurrentLot(user);
+
+    expect(await screen.findByText(t.flow.session.failed)).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: t.flow.session.retry })).toBeInTheDocument();
+    /* 남의 세션을 닫지 않는다 — 요청 자체가 나가지 않았다. */
+    expect(writes.some((request) => pathOf(request).endsWith(':end'))).toBe(false);
+  });
+
   it('작업 완료 권한이 없으면 마감도 세션 종료도 일어나지 않는다', async () => {
     const writes: Request[] = [];
     const deniedGate: StubRoute = {

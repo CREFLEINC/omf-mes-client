@@ -476,6 +476,17 @@ export const ProductionFlowScreen = () => {
   }, [entry.workOrderId, entry.workerNo]);
 
   /**
+   * 다시 시도할 값이 있는가.
+   *
+   * ⛔ **「아직 못 보냈다」와 「보냈는데 거절당했다」를 가른다**(재리뷰 지적). 세션 조회가 실패했거나
+   *    단말·사번을 몰라 멈춘 경우는 요청을 **한 번도 보내지 않았으므로 오류가 없다** — 그때
+   *    `isRetryableEndFailure(null)` 이 `false` 라는 이유로 단추를 접으면, 다시 읽으면 풀릴 일에
+   *    「종료할 수 없습니다」를 띄우고 빠져나갈 길까지 막는다. 순간적인 조회 실패 한 번에 작업자가
+   *    다른 화면까지 걸어가게 된다.
+   */
+  const canRetrySessionEnd = sessionEnd.error === null || isRetryableEndFailure(sessionEnd.error);
+
+  /**
    * 다시 보낸다 — **처음 보낸 것과 같은 본문으로.**
    *
    * ⛔ **끝 시각을 다시 찍지 않는다.** 두 가지가 한꺼번에 어긋난다. ① 멱등 키는 「이 값을 이
@@ -902,9 +913,7 @@ export const ProductionFlowScreen = () => {
         if (sessionEnd.error?.kind === 'network') return t.flow.session.offline;
 
         /* 다시 눌러도 같은 답이 오는 실패는 재시도 대신 «갈 곳»을 말한다(리뷰 지적 ②). */
-        return isRetryableEndFailure(sessionEnd.error)
-          ? t.flow.session.failed
-          : t.flow.session.unrecoverable;
+        return canRetrySessionEnd ? t.flow.session.failed : t.flow.session.unrecoverable;
       /*
        * ⛔ **잘 닫힌 것은 말하지 않는다**(사용자 지시 2026-09-16). 닫히는 중·닫힘·이미 닫힘은
        *    작업자가 «할 일이 없는» 상태다 — 그 자리에 이미 「생산할 LOT이 없습니다」가 서 있고,
@@ -1408,7 +1417,7 @@ export const ProductionFlowScreen = () => {
                  *    덜 끝났을 뿐이다. 크기만 한 급 낮춘다(`pop.css`).
                  */}
                 <AlertBanner variant="warning" title={sessionStatusTitle}>
-                  {sessionPhase === 'failed' && isRetryableEndFailure(sessionEnd.error) && (
+                  {sessionPhase === 'failed' && canRetrySessionEnd && (
                     /* 채운 단추로 낸다(사용자 지시 2026-09-16) — POP 기본 채움이 빨강이다. */
                     <Button onClick={retrySessionEnd} disabled={sessionEnd.isSaving}>
                       {t.flow.session.retry}
