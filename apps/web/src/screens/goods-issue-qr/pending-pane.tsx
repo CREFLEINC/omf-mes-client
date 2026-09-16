@@ -94,9 +94,16 @@ export const PendingPane = ({
   ];
 
   return (
-    <section className="pop-section pop-giqr-pending" aria-label={t.sectionLabel}>
-      <div className="pop-giqr-pending-head">
-        <h2 className="pane-title">{t.sectionLabel}</h2>
+    <section className="pop-section" aria-label={t.sectionLabel}>
+      {/*
+       * ⭐ **`pane-title` 은 감싸는 줄이 지닌다 — 표제가 아니라**(전례 `pop-repack-head`).
+       *
+       * 구획의 붙박이 표제 규칙(`pop.css` 의 `.pop-section > .pane-title:first-child`)은
+       * **구획의 직계 자식**만 겨냥한다. 표제를 줄 안에 감싸 두고 표제에 이름을 달면 그
+       * 규칙이 닿지 않아, 이 구획의 표제만 홀로 안쪽으로 들여쓰고 굴려도 따라오지 않는다.
+       */}
+      <div className="pane-title pop-giqr-pending-head">
+        <h2>{t.sectionLabel}</h2>
         <Button variant="outlined" size="md" className="pop-touch-target" onClick={onRefresh}>
           {t.refresh}
         </Button>
