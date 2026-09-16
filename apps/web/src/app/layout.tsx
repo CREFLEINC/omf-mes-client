@@ -14,10 +14,17 @@ import { useHref, useLinkClickHandler, useLocation } from 'react-router';
 import { LocaleSelect } from '../patterns/locale-select';
 import { localizedLabel } from '../patterns/localized-label';
 import { useSession, useSignOut } from '../patterns/session';
+import { toWebAccess } from '../patterns/web-access';
 import { readAppVersion } from './app-version';
-import { filterNavGroups, hasNoNavMatch, matchesNavEntry } from './nav-filter';
+import {
+  filterNavGroups,
+  filterNavGroupsByAccess,
+  hasNoNavMatch,
+  isNavEntryAllowed,
+  matchesNavEntry,
+} from './nav-filter';
 import { NavGroup } from './nav-group';
-import { NAV_ENTRIES, NAV_GROUPS, NAV_LEAD } from './nav-tree';
+import { NAV_GROUPS, NAV_LEAD } from './nav-tree';
 import { SHELL_BRAND } from './shell-label';
 
 /** 사이드바 **조작** 문구. 화면 이름은 `nav-tree.ts` 가 갖는다. */
@@ -239,8 +246,24 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
   const activeQuery = isSidebarCollapsed ? '' : query;
 
   const isSearching = activeQuery.trim() !== '';
-  const visibleGroups = filterNavGroups(NAV_GROUPS, activeQuery);
-  const isLeadVisible = matchesNavEntry(NAV_LEAD, activeQuery);
+
+  /*
+   * **권한으로 먼저 거르고, 그 결과에서 검색한다.** 순서를 바꾸면 검색 0건이 「못 찾았다」인지
+   * 「볼 수 없다」인지 갈리지 않는다. 판정할 근거가 없으면(세션이 권한 목록을 주지 않으면)
+   * 거르지 않는다 — 계약이 「모른다」와 「없다」를 갈라 두었다.
+   */
+  const access = toWebAccess(session?.permissions);
+  const allowedGroups = filterNavGroupsByAccess(NAV_GROUPS, access);
+  const isLeadAllowed = isNavEntryAllowed(NAV_LEAD, access);
+
+  /* 「검색 결과 없음」의 기준도 **볼 수 있는 것**이다 — 못 보는 항목이 걸렸다고 말할 수 없다. */
+  const allowedEntries = [
+    ...(isLeadAllowed ? [NAV_LEAD] : []),
+    ...allowedGroups.flatMap((group) => group.items),
+  ];
+
+  const visibleGroups = filterNavGroups(allowedGroups, activeQuery);
+  const isLeadVisible = isLeadAllowed && matchesNavEntry(NAV_LEAD, activeQuery);
 
   return (
     <AppShell
@@ -354,7 +377,7 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
            * 맞는 것이 하나도 없을 때. ⛔ **빈 목록을 그대로 두지 않는다** — 사이드바가 통째로
            * 비면 사람은 화면이 깨진 것으로 읽는다.
            */}
-          {hasNoNavMatch(NAV_ENTRIES, activeQuery) ? (
+          {hasNoNavMatch(allowedEntries, activeQuery) ? (
             <p className="nav-search-empty">{t.search.empty}</p>
           ) : null}
         </Sidebar>

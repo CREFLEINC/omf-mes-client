@@ -1547,3 +1547,107 @@ describe('AppLayout — 버전 표기', () => {
     expect(screen.getByText(label)).toBeInTheDocument();
   });
 });
+
+/**
+ * 사이드바를 **로그인한 사람의 기능 권한으로 거른다**(#1293).
+ *
+ * 세션이 권한 코드를 그대로 내려주고(`Session.permissions`), 그 값이 **설계 화면 코드와 1:1**
+ * 이다 — 주소와 코드를 잇는 대응표는 `patterns/web-screen-catalog.ts` 가 갖는다.
+ *
+ * ⚠ 위 감지기들이 쓰는 세션 픽스처에는 `permissions` 가 **없다**(「모른다」). 그래서 차례·경로를
+ * 재는 30여 건은 종전대로 전건을 보고, 거르는 동작은 이 구역이 따로 잰다.
+ */
+describe('셸 — 기능 권한으로 사이드바 거르기', () => {
+  const SignInWithPermissions = ({ permissions }: { permissions?: string[] }) => {
+    const { signIn } = useSession();
+
+    return (
+      <button
+        type="button"
+        onClick={() => {
+          signIn(
+            permissions === undefined ? sessionFixture() : { ...sessionFixture(), permissions },
+          );
+        }}
+      >
+        권한 담기
+      </button>
+    );
+  };
+
+  const renderWithPermissions = async (permissions?: string[]) => {
+    const user = userEvent.setup();
+
+    renderWithProviders(
+      <SessionProvider>
+        <SignInWithPermissions {...(permissions === undefined ? {} : { permissions })} />
+        <AppLayout>본문 내용</AppLayout>
+      </SessionProvider>,
+      { session: null },
+    );
+
+    await user.click(screen.getByRole('button', { name: '권한 담기' }));
+    expandAllNavGroups();
+
+    return { user };
+  };
+
+  /**
+   * 메뉴 항목의 **보이는 이름**. 항목 글자에는 아이콘 리가처가 앞에 붙으므로(`dashboard통합 …`)
+   * 끝으로 견준다 — 리가처까지 적으면 아이콘을 바꿀 때마다 시험이 깨진다.
+   */
+  const hasMenu = (label: string): boolean =>
+    within(navSidebar())
+      .getAllByRole('link')
+      .some((link) => (link.textContent ?? '').endsWith(label));
+
+  it('가진 권한의 화면만 메뉴에 선다', async () => {
+    await renderWithPermissions(['W-CO-02']);
+
+    expect(hasMenu('사용자·역할·권한')).toBe(true);
+    expect(hasMenu('창고·Location')).toBe(false);
+  });
+
+  /** 항목이 하나도 남지 않은 묶음은 제목만 남는다 — 빼야 한다. */
+  it('남은 항목이 없는 묶음은 통째로 빠진다', async () => {
+    await renderWithPermissions(['W-CO-02']);
+
+    expect(within(navSidebar()).queryByText('기준정보')).toBeNull();
+  });
+
+  /**
+   * ⛔ **막으면 되돌릴 수 없는 자리 둘.** 대시보드는 로그인이 착지하는 곳이고, 비밀번호 변경은
+   * 자기 계정 화면이라 막으면 본인이 비밀번호를 바꿀 길이 없다.
+   */
+  it('권한이 하나도 없어도 대시보드와 비밀번호 변경은 남는다', async () => {
+    await renderWithPermissions([]);
+
+    expect(hasMenu('통합 대시보드')).toBe(true);
+    expect(hasMenu('비밀번호 변경')).toBe(true);
+    expect(hasMenu('사용자·역할·권한')).toBe(false);
+  });
+
+  /**
+   * ⚠ **「모른다」를 「없다」로 다루지 않는다.** 계약이 「필드가 없으면 값 목록이 아직 정해지지
+   * 않았다는 뜻」이라고 갈라 두었다 — 같게 다루면 목록을 못 받은 세션이 텅 빈 메뉴를 본다.
+   */
+  it('세션이 권한 목록을 주지 않으면 거르지 않는다', async () => {
+    await renderWithPermissions();
+
+    expect(hasMenu('사용자·역할·권한')).toBe(true);
+    expect(hasMenu('창고·Location')).toBe(true);
+  });
+
+  /**
+   * 검색은 「무엇을 찾는가」이고 권한은 「무엇을 볼 수 있는가」다. 권한으로 먼저 거르지 않으면
+   * **볼 수 없는 항목이 검색으로 되살아난다.**
+   */
+  it('검색해도 볼 수 없는 항목은 나오지 않는다', async () => {
+    const { user } = await renderWithPermissions(['W-CO-02']);
+
+    await user.type(screen.getByRole('searchbox', { name: '화면 검색' }), '창고');
+
+    expect(within(navSidebar()).queryByText('창고·Location')).toBeNull();
+    expect(screen.getByText(messages.shellNav.search.empty)).toBeInTheDocument();
+  });
+});

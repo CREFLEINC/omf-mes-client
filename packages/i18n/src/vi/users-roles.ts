@@ -176,16 +176,40 @@ export const usersRoles: Translated<typeof ko.usersRoles> = {
       roleNameTooLong: 'Tên vai trò không được quá 200 ký tự.',
     },
   },
-  /** 기능 권한 격자 — **보는 것까지만 된다.** 그 사실을 감추지 않고 상시 안내로 밝힌다. */
+  /** 기능 권한 격자 — **부여·회수할 수 있다.** 저장은 이 역할의 권한 전체를 한 번에 바꾼다. */
   permission: {
-    pendingNote:
-      'Quyền chức năng chỉ đổi được ở đây sau khi danh sách quyền được chốt. Hiện chỉ xem được quyền đã cấp cho vai trò này.',
+    editNote:
+      'Nhấn vào ô để cấp hoặc thu hồi quyền, rồi lưu. Lần lưu sẽ thay toàn bộ quyền của vai trò này.',
+    /*
+     * 묶음 이름 - groupCode 는 개체 식별자라 서버가 이름을 주지 않는다.
+     * 고정 설계의 권한 목록 생성기가 적어 둔 축 7개를 옮겼고, 모르는 축은 코드를 그대로 낸다.
+     */
+    groups: {
+      byCode: {
+        '01': 'Vật tư · Kho',
+        '02': 'Thực thi sản xuất',
+        '03': 'Chất lượng',
+        '04': 'Xuất hàng thành phẩm',
+        '05': 'Thiết bị · Khuôn',
+        '06': 'Dữ liệu gốc',
+        CO: 'Dùng chung',
+      } as Record<string, string | undefined>,
+      ungrouped: 'Không thuộc nhóm',
+      unlisted: 'Quyền không có trong danh sách',
+    },
+    unlistedNotice:
+      'Vai trò này còn giữ quyền không có trong danh sách quyền cấp được. Chúng nằm ở nhóm «Quyền không có trong danh sách»; nếu lưu nguyên như vậy, máy chủ có thể từ chối.',
+    lastAdmin: {
+      title: 'Sẽ không còn ai giữ quyền này',
+      description:
+        'Không lưu được vì sẽ không còn ai giữ quyền «Quản lý người dùng · vai trò · quyền». Hãy cấp quyền này cho một vai trò khác trước, rồi thu hồi lại.',
+    },
     /** ⚠ 부여되지 않은 칸의 접근 이름도 **화면이 만든다** — 없으면 빈 칸의 뜻이 닿지 않는다. */
     granted: 'Đã cấp',
     notGranted: 'Chưa cấp',
     empty: {
-      none: 'Vai trò này chưa được cấp quyền chức năng nào',
-      noneDescription: 'Danh sách quyền được chốt thì sẽ cấp được ở đây.',
+      none: 'Không có quyền chức năng nào để cấp',
+      noneDescription: 'Không tải được danh sách quyền hoặc danh sách đang trống. Hãy thử lại sau.',
     },
   },
   assign: {

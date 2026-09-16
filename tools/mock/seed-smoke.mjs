@@ -100,6 +100,14 @@ const ENTRIES = [
   ['W-06-07 재발행 사유', '/mdm/code-values?codeGroupCode=REISSUE_REASON', 5],
   ['W-06-14 적치 규칙', '/logistics/putaway-rules?warehouseId=1001&includeInactive=true', 3],
   ['W-06-14 규칙 없는 품목', '/logistics/putaway-rules/uncovered-items?warehouseId=1001', 1],
+  /*
+   * ⭐ **권한 후보는 «정확히» 117건이어야 한다**(계약 `Permission.groupCode` 2026-09-01 실측).
+   *    격자의 열이 이 목록이라, 하나라도 빠지면 그 화면은 아무에게도 줄 수 없는 권한이 된다.
+   *    최소 117 로 걸어 두면 줄어드는 쪽을 잡는다 — 늘어나는 쪽은 화면이 늘었다는 뜻이다.
+   */
+  ['W-CO-02 권한 후보', '/app/permissions', 117],
+  ['W-CO-02 역할 목록', '/app/roles', 4],
+  ['W-CO-02 역할 부여분', '/app/roles/4/permissions', 15],
 ];
 
 /** 목록이 아닌 상세는 형태로 본다. */
@@ -1511,6 +1519,81 @@ for (const [name, path, check] of DETAILS) {
 
   if (!ok) failed += 1;
   console.log(`${ok ? '✔' : '✘'} W-CO-08 배치도 올리기·저장·충돌·받기·GIF 거부·용량 초과 흐름`);
+}
+
+{
+  /*
+   * W-CO-02 기능 권한 전체 치환 — 정상과 거부 세 갈래를 한 번에 밟는다.
+   *
+   * ⭐ **거부 갈래를 여기서 재는 이유.** 격자는 체크박스를 통째로 보내므로, 「없는 코드」가 몇째
+   *   칸인지와 「마지막 관리자」인지를 서버가 갈라 주지 않으면 화면이 아무 말도 못 한다. 목이
+   *   그 갈래를 실제로 내는지는 화면을 다 만든 뒤가 아니라 지금 재야 한다.
+   *
+   * ⛔ **끝에서 씨앗 상태로 되돌린다.** 이 블록이 역할 4의 부여분을 실제로 갈아 치우므로,
+   *   되돌리지 않으면 뒤에 붙는 검사가 「15건이어야 한다」를 보고 까닭 없이 실패한다.
+   */
+  const SEED_CODES = [
+    'W-02-01',
+    'W-02-02',
+    'W-02-03',
+    'W-02-04',
+    'W-02-10',
+    'W-05-11',
+    'W-05-12',
+    'W-06-01',
+    'W-06-05',
+    'W-06-07',
+    'W-CO-01',
+    'W-CO-02',
+    'W-CO-06',
+    'W-CO-08',
+    'W-CO-10',
+  ];
+
+  const replace = (key, codes) =>
+    fetch(`${BASE}/app/roles/4/permissions`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(key === null ? {} : { 'Idempotency-Key': key }),
+      },
+      body: JSON.stringify({ permissionCodes: codes }),
+    });
+
+  const noKey = await replace(null, ['W-CO-02']);
+  const unknown = await replace('seed-smoke-w-co-02-unknown', ['W-CO-02', 'W-99-99']);
+  const unknownBody = await unknown.json();
+  /* 마지막 관리자 — 이 역할에서 W-CO-02 를 빼면 보유자가 0명이 된다(씨앗 배정 기준). */
+  const lastAdmin = await replace('seed-smoke-w-co-02-last-admin', ['W-06-01']);
+  const lastAdminBody = await lastAdmin.json();
+
+  /* 같은 코드를 두 번 보낸다 — 하나로 접혀야 한다. */
+  const saved = await replace('seed-smoke-w-co-02-save', ['W-CO-02', 'W-01-01', 'W-CO-02']);
+  const savedBody = await saved.json();
+  const reread = await (await fetch(`${BASE}/app/roles/4/permissions`)).json();
+  const session = await (await fetch(`${BASE}/app/sessions/current`)).json();
+
+  const restore = await replace('seed-smoke-w-co-02-restore', SEED_CODES);
+  const restored = await restore.json();
+
+  const ok =
+    noKey.status === 400 &&
+    unknown.status === 400 &&
+    unknownBody.errors?.[0]?.field === 'permissionCodes[1]' &&
+    lastAdmin.status === 400 &&
+    lastAdminBody.errors?.[0]?.code === 'LAST_ADMIN' &&
+    saved.status === 200 &&
+    savedBody.items.length === 2 &&
+    reread.items.map((row) => row.permissionCode).join(',') === 'W-CO-02,W-01-01' &&
+    /* 세션이 역할 부여분을 따라간다 — POP 고정분은 그대로 남아 있어야 한다. */
+    session.permissions.includes('W-01-01') &&
+    !session.permissions.includes('W-06-01') &&
+    session.permissions.includes('P-02-04') &&
+    restore.status === 200 &&
+    restored.items.length === SEED_CODES.length;
+
+  if (!ok) failed += 1;
+  console.log(`${ok ? '✔' : '✘'} W-CO-02 권한 치환·키 없음·없는 코드·마지막 관리자 거부 흐름`);
 }
 
 console.log(

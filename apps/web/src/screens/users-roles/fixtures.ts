@@ -1,6 +1,6 @@
 import type { components } from '@omf-mes/api-client';
 
-import type { AppUser, Role, RolePermission, UserDataScope, UserRole } from './types';
+import type { AppUser, Permission, Role, RolePermission, UserDataScope, UserRole } from './types';
 
 type Department = components['schemas']['Department'];
 type BusinessUnit = components['schemas']['BusinessUnit'];
@@ -134,6 +134,20 @@ export const userRoleFixtures: UserRole[] = [
 export const rolePermissionFixtures: RolePermission[] = [
   { rolePermissionId: 8001, roleId: 5001, permissionCode: 'SYN-PERM-01' },
   { rolePermissionId: 8002, roleId: 5001, permissionCode: 'SYN-PERM-02' },
+];
+
+/**
+ * 부여할 수 있는 **후보** 전부 — 격자의 열을 만드는 목록이다.
+ *
+ * 부여분(`rolePermissionFixtures`)보다 **하나 많다.** 그래야 「부여되지 않은 칸」이 실제로
+ * 서고, 권한을 새로 주는 갈래를 시험이 밟을 수 있다.
+ *
+ * 축도 둘로 갈라 둔다 — 묶음 밴드가 하나뿐이면 묶는 동작을 재지 못한다.
+ */
+export const permissionCatalogFixtures: Permission[] = [
+  { code: 'SYN-PERM-01', name: '합성 권한 하나', groupCode: '01' },
+  { code: 'SYN-PERM-02', name: '합성 권한 둘', groupCode: '01' },
+  { code: 'SYN-PERM-03', name: '합성 권한 셋', groupCode: '06' },
 ];
 
 export const businessUnitFixtures: BusinessUnit[] = [
