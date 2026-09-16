@@ -33,6 +33,10 @@ const PAGE_SIZE = 100;
  *
  * 쪽을 이어 받는다. 한 쪽만 받으면 뒤쪽 지시가 통째로 빠지는데, 화면은 그것을 받은 지시가
  * 없다고 말한다 - 모자랐다는 신호 없이 사실과 반대되는 문장이 작업자에게 간다.
+ *
+ * ⛔ 출하 요청에서 나온 지시는 뺀다. 한 표에 자재 피킹과 제품 출하 피킹이 함께 살고 이 값이
+ * 둘을 가른다. 두면 남의 화면 일감을 여기서 자재 출고로 내보낼 수 있다. 조회에는 그 축이 없어
+ * 받아서 버린다 - 유형 축을 열어 달라는 요청은 따로 올려 두었다.
  */
 export const usePickingOrders = (): UseQueryResult<PickingOrder[]> => {
   const { client } = useApiClient();
@@ -41,6 +45,8 @@ export const usePickingOrders = (): UseQueryResult<PickingOrder[]> => {
     queryKey: pickingKeys.orders(),
     queryFn: async () => {
       const orders: PickingOrder[] = [];
+      /* 쪽 끝은 받은 수로 잰다. 거른 뒤의 수로 재면 버린 만큼 더 돌다가 끝나지 않는다. */
+      let received = 0;
 
       for (let page = 1; ; page += 1) {
         const data = await runRequest(() =>
@@ -49,10 +55,13 @@ export const usePickingOrders = (): UseQueryResult<PickingOrder[]> => {
           }),
         );
 
-        orders.push(...data.items);
+        received += data.items.length;
+        orders.push(
+          ...data.items.filter((each) => each.sourceDocumentTypeCode === MATERIAL_ISSUE_REQUEST),
+        );
 
         /* 빈 쪽도 끝으로 본다. 전체 건수만 믿으면 그 값이 틀렸을 때 영원히 돈다. */
-        if (data.items.length === 0 || orders.length >= data.page.total) {
+        if (data.items.length === 0 || received >= data.page.total) {
           return orders;
         }
       }
