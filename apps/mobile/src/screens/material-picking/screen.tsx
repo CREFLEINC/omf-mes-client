@@ -24,7 +24,6 @@ import { referenceLabel } from '../../patterns/reference';
 import { toApiError } from '../../patterns/request';
 import { useScanField } from '../../patterns/use-scan-field';
 import { useScreenTitle } from '../../patterns/screen-title';
-import { useWorkerId } from '../../patterns/workers';
 import { useWorkerSession } from '../../patterns/worker-session';
 import { FailureBanner } from '../../patterns/failure-banner';
 import { useLoadFailure } from '../../patterns/load-failure';
@@ -57,7 +56,7 @@ import {
 import {
   MATERIAL_ISSUE_REQUEST,
   pickingKeys,
-  useAssignedPickingOrders,
+  usePickingOrders,
   useIssueRequest,
   usePickingOrder,
 } from './queries';
@@ -148,8 +147,7 @@ export const MaterialPickingScreen = () => {
   const scanSection = useRef<HTMLElement | null>(null);
   const qtySection = useRef<HTMLElement | null>(null);
 
-  const workerId = useWorkerId(worker?.workerNo ?? null);
-  const orders = useAssignedPickingOrders(workerId.data ?? null);
+  const orders = usePickingOrders();
   const detail = usePickingOrder(orderId);
   const issueTypes = useCodeValues(ISSUE_TYPE);
   const pickingTypes = useCodeValues(PICKING_TYPE);
@@ -259,8 +257,8 @@ export const MaterialPickingScreen = () => {
   /* 세로 화면이라 채운 구획이 자리를 차지한 채 남으면 다음에 할 일이 접힌 자리에 있다. */
   useAdvanceTo(lineId !== null, scanSection);
   /*
-   * 수량 구획은 **꼬리를 맞춘다.** 이 구획의 끝에 「이 라인 피킹」이 있고, 화면 바닥에는
-   * 「출고 확정」 바가 붙어 있다 — 머리를 맞추면 숫자판 높이만큼 밀려 단추가 그 바 아래로
+   * 수량 구획은 꼬리를 맞춘다. 이 구획의 끝에 이 라인 피킹 단추가 있고, 화면 바닥에는
+   * 출고 확정 바가 붙어 있다 — 머리를 맞추면 숫자판 높이만큼 밀려 단추가 그 바 아래로
    * 들어가고, 단추 한가운데를 눌러도 바가 받는다(PICK-ISSUE-01 D3). 비워 둘 높이는
    * `.picking-out__entry` 의 `scroll-margin-block-end` 가 정한다.
    */
@@ -430,15 +428,15 @@ export const MaterialPickingScreen = () => {
       const settled = result === null || result.remaining.some(mine) ? 'queued' : 'sent';
 
       /*
-       * 나간 뒤에는 목록과 상세를 다시 받는다. 서버가 전기된 지시를 「아직 출고할 수 있는 것」
-       * 에서 빼는데, 다시 묻지 않으면 「다음 지시」로 돌아온 목록에 그 지시가 그대로 남는다 —
+       * 나간 뒤에는 목록과 상세를 다시 받는다. 서버가 전기된 지시를 아직 출고할 수 있는 것
+       * 에서 빼는데, 다시 묻지 않으면 다음 지시로 돌아온 목록에 그 지시가 그대로 남는다 —
        * 작업자가 그것을 다시 열고 같은 수량이 한 번 더 나갈 수 있다(PICK-ISSUE-01 D1).
        *
        * 대기(queued)에서는 부르지 않는다. 아직 서버가 보지 못한 출고라 목록이 달라질 이유가
        * 없고, 끊긴 자리에서 부르면 실패만 쌓인다.
        */
       if (settled === 'sent') {
-        await queryClient.invalidateQueries({ queryKey: pickingKeys.orders(workerId.data ?? null) });
+        await queryClient.invalidateQueries({ queryKey: pickingKeys.orders() });
         await queryClient.invalidateQueries({
           queryKey: pickingKeys.order(order.pickingOrderId),
         });
@@ -477,8 +475,6 @@ export const MaterialPickingScreen = () => {
     return (
       <div className="picking-out">
         <PickingOrderList
-          workerNo={worker?.workerNo ?? null}
-          workerId={workerId}
           orders={orders}
           pickingTypes={pickingTypes.data ?? []}
           onChoose={setOrderId}
