@@ -22,6 +22,10 @@ import {
 export const goodsIssueQrKeys = {
   all: ['goods-issue-qr'] as const,
   issue: (goodsIssueId: number) => ['goods-issue-qr', 'issue', goodsIssueId] as const,
+  /** 출고번호로 찾는 축. 번호와 식별자는 다른 축이라 캐시 칸도 갈라 둔다. */
+  issueByNo: (goodsIssueNo: string) => ['goods-issue-qr', 'issue-by-no', goodsIssueNo] as const,
+  /** 발행 대기 목록의 전표 창. 발행 뒤 이 자리를 무효화해 목록을 다시 받는다. */
+  pendingIssues: ['goods-issue-qr', 'pending-issues'] as const,
   lines: (goodsIssueId: number) => ['goods-issue-qr', 'lines', goodsIssueId] as const,
   /** 발행 요약 전체 — 발행 뒤 이 앞자리로 한 번에 무효화한다. */
   summaries: ['goods-issue-qr', 'summary'] as const,

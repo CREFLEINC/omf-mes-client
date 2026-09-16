@@ -90,6 +90,7 @@ export const materialPicking: Translated<typeof ko.materialPicking> = {
   noWorker: 'Hãy xác nhận mã nhân viên trước',
   sent: {
     title: 'Đã xác nhận xuất kho',
+    issueNo: (goodsIssueNo: string): string => `Số phiếu xuất kho ${goodsIssueNo}`,
   },
   queued: {
     title: 'Đã đưa việc xuất kho vào hàng chờ gửi',

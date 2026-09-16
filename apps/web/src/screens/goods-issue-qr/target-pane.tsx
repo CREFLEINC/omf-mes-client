@@ -68,8 +68,21 @@ export interface TargetPaneProps {
   reasonCode: string;
   onReasonChange: (value: string) => void;
   reasonOptions: LookupSource;
-  /** 미리보기 이미지 주소. 발행 전에는 `null`. */
+  /** 미리보기 이미지 주소. 고른 줄이 없거나 그릴 수 없으면 `null`. */
   previewSrc: string | null;
+  /**
+   * 고른 줄은 있는데 **그리지 못한 까닭**. 그릴 수 있거나 아직 고르지 않았으면 `null`.
+   *
+   * ⛔ 이것을 버리면 「고르고도 안 보이는」 사람이 빈 상태 문구만 보고 발행을 누른다.
+   */
+  previewProblem: string | null;
+  /**
+   * 도착 위치를 읽지 못해 라벨의 도착지를 **비운 채** 내보내는가.
+   *
+   * ⚠ 발행을 막지는 않는다(사용자 결정 2026-09-16 — 서버가 그 조회를 POP 에 열 때까지의 임시).
+   *   막지 않는 대신 **비웠다는 사실을 여기서 말한다.**
+   */
+  destinationMissing: boolean;
 }
 
 export const TargetPane = ({
@@ -96,6 +109,8 @@ export const TargetPane = ({
   onReasonChange,
   reasonOptions,
   previewSrc,
+  previewProblem,
+  destinationMissing,
 }: TargetPaneProps) => {
   const unitLabelId = useId();
   const palletLabelId = useId();
@@ -139,26 +154,17 @@ export const TargetPane = ({
       <Card.Body>
         <h2 className="pane-title">{t.target.sectionLabel}</h2>
 
-        {/* 유형과 그 사유는 **한 줄**이다(사용자 지시 2026-09-07) — 사유가 아래로 내려가면 값과 멀어진다. */}
-        <div className="pop-giqr-unit">
-          <span id={unitLabelId}>{t.target.unitLabel}</span>
-          {/*
-           * ⭐ **항상 활성이다**(스펙 §5-6). 두 값 다 계약 `enum` 에 있고 대상 축도 섰다 —
-           * 비활성 + 사유(G-2)를 적용할 자리가 아니다.
-           */}
-          <RadioGroup
-            name="goods-issue-qr-unit"
-            aria-labelledby={unitLabelId}
-            value={unit}
-            onChange={(value) => {
-              onUnitChange(value as IssueUnit);
-            }}
-          >
-            <Radio value={ISSUE_UNIT.line}>{t.target.unitLine}</Radio>
-            <Radio value={ISSUE_UNIT.pallet}>{t.target.unitPallet}</Radio>
-          </RadioGroup>
-        </div>
-
+        {/*
+         * ⛔ **유형 선택지를 세우지 않는다**(사용자 지시 2026-09-16 · ISSUE-QR-01 D1).
+         *
+         * 파렛트 단위는 **서버가 받지 못한다** — `GET /inventory/handling-units` 에 LOT 축이 없어
+         * 후보 목록 자체가 서지 않는다(#1095 봉쇄). 고를 수 없는 것을 고르게 두면 작업자가
+         * 눌러 보고 막힌 뒤에야 안다. 게다가 「파렛트」는 **제품 출하 포장**으로 읽혀, 자재
+         * 인계 화면에서 다른 업무를 하는 것처럼 보였다(실기 실측).
+         *
+         * ⚠ **파렛트 코드 경로는 지우지 않았다.** 서버가 축을 갖추면 이 구획만 되살리면 된다 —
+         *   지워 두면 그때 규칙을 처음부터 다시 세워야 한다. 지금은 **진입만 막는다.**
+         */}
         <p>{selectedCount === 0 ? t.target.none : t.target.selectedCount(selectedCount)}</p>
 
         {/*
@@ -259,7 +265,7 @@ export const TargetPane = ({
           <span>{t.target.previewLabel}</span>
           <div className="pop-giqr-preview">
             {previewSrc === null ? (
-              <p className="field-note">{t.target.previewEmpty}</p>
+              <p className="field-note">{previewProblem ?? t.target.previewEmpty}</p>
             ) : previewFailed ? (
               <p className="field-note">{t.target.previewFailed}</p>
             ) : (
@@ -273,6 +279,12 @@ export const TargetPane = ({
               />
             )}
           </div>
+
+          {/*
+           * ⚠ **라벨의 도착지가 비었다는 사실을 미리보기 옆에 둔다** — 그림에는 `TO: -` 로만
+           *   보여 왜 비었는지 알 수 없다. 발행하기 직전에 보는 자리다.
+           */}
+          {destinationMissing && <p className="field-note">{t.target.destinationMissing}</p>}
 
           {/*
            * 「왜 전량인데도 찍나」에 답할 근거(스펙 §5-3 · G-5)를 **미리보기 옆에** 둔다

@@ -27,7 +27,7 @@ import { useScreenTitle } from '../../patterns/screen-title';
 import { useWorkerSession } from '../../patterns/worker-session';
 import { FailureBanner } from '../../patterns/failure-banner';
 import { useLoadFailure } from '../../patterns/load-failure';
-import { appendIssued, issuedQtyByLine, readIssued, type IssuedRecord } from './issued-record';
+import { appendIssued, issuedQtyByLine, readIssued, type IssuedRecord, goodsIssueNoOf } from './issued-record';
 import { PickingOrderList } from './order-list';
 import {
   ISSUE_TYPE,
@@ -97,6 +97,16 @@ export const MaterialPickingScreen = () => {
   const [scanned, setScanned] = useState<string | null>(null);
   const [qty, setQty] = useState('');
   const [outcome, setOutcome] = useState<Outcome | null>(null);
+  /**
+   * 서버가 매긴 출고번호.
+   *
+   * ⭐ **작업자가 이 번호를 POP 으로 들고 간다**(ISSUE-QR-01 — P-01-02 에서 이 번호로 전표를
+   *    불러 출고 QR 을 발행한다). 확정 문구가 「출고를 확정했습니다」뿐이면 **방금 만든 전표를
+   *    가리킬 방법이 없어** 작업자가 관리자 웹을 뒤지거나 사람을 불러야 한다.
+   *
+   * ⚠ 큐에 담긴 건은 서버가 아직 번호를 매기지 않았다 — 그때는 없는 것이 맞다(지어내지 않는다).
+   */
+  const [issueNo, setIssueNo] = useState<string | null>(null);
   /* 피킹 한 건의 결과. 거부를 조용히 넘기면 왜 안 집혔는지 알 수 없다. */
   const [pickOutcome, setPickOutcome] = useState<Outcome | null>(null);
   const [issueTypeCode, setIssueTypeCode] = useState<string | null>(null);
@@ -301,6 +311,7 @@ export const MaterialPickingScreen = () => {
     setScanned(null);
     setQty('');
     setOutcome(null);
+    setIssueNo(null);
     setPickOutcome(null);
     setIssueTypeCode(null);
     scanField.focus();
@@ -428,6 +439,12 @@ export const MaterialPickingScreen = () => {
       const settled = result === null || result.remaining.some(mine) ? 'queued' : 'sent';
 
       /*
+       * 큐를 타는 쓰기는 응답이 여기서 끊기면 그 값을 다시 얻을 길이 없어, outbox 가 회차의
+       * 응답을 멱등키로 들고 있다(`patterns/outbox/send.ts` 의 `responses`).
+       */
+      setIssueNo(goodsIssueNoOf(result?.responses.get(draft.idempotencyKey)));
+
+      /*
        * 나간 뒤에는 목록과 상세를 다시 받는다. 서버가 전기된 지시를 아직 출고할 수 있는 것
        * 에서 빼는데, 다시 묻지 않으면 다음 지시로 돌아온 목록에 그 지시가 그대로 남는다 —
        * 작업자가 그것을 다시 열고 같은 수량이 한 번 더 나갈 수 있다(PICK-ISSUE-01 D1).
@@ -452,7 +469,11 @@ export const MaterialPickingScreen = () => {
   if (outcome !== null) {
     return (
       <div className="picking-out">
-        {outcome === 'sent' ? <AlertBanner variant="success" title={t.sent.title} /> : null}
+        {outcome === 'sent' ? (
+          <AlertBanner variant="success" title={t.sent.title}>
+            {issueNo === null ? null : t.sent.issueNo(issueNo)}
+          </AlertBanner>
+        ) : null}
         {outcome === 'queued' ? (
           <AlertBanner variant="warning" title={t.queued.title}>
             {t.queued.description}

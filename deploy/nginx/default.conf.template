@@ -12,6 +12,13 @@ server {
     }
 
     location /api/ {
+        # 화면이 10MB 까지 통과시키는 첨부(W-CO-08 창고 적재 위치 배치도의 도면, W-05-13
+        # 툴/금형/지그 마스터의 엑셀)가 여기를 지난다. nginx 기본값 1MB 로 두면 API 에 닿기도
+        # 전에 이 컨테이너가 HTML 413 을 내고, 화면은 계약 봉투가 아닌 응답을 받아 사유를
+        # 말하지 못한다. API 앞단(omf-mes-server `deploy/proxy/omf-api.conf`)과 같은 값을 둬
+        # 상한 판정을 앱 한 곳에만 맡긴다 — 여기가 더 좁으면 그 판정이 가려진다.
+        client_max_body_size 12m;
+
         proxy_pass ${API_UPSTREAM};
         proxy_http_version 1.1;
         proxy_set_header Host $proxy_host;
