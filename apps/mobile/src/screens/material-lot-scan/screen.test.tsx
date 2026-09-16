@@ -59,6 +59,8 @@ interface Options {
   lineItem?: 'hang' | 'fail';
   /** 라인 전부가 이미 LOT 을 가진 것으로 답한다. */
   allFilled?: boolean;
+  /** 채울 라인이 하나뿐인 건으로 답한다 - 그 하나를 채우면 건이 후보에서 빠진다. */
+  singleLine?: boolean;
   /** 라인 조회가 닿지 않는다 - 채울 것이 없는 것과 모르는 것이 갈리는 자리다. */
   linesUnreachable?: boolean;
   /** 보낸 요청을 모은다. */
@@ -128,9 +130,15 @@ const routes = (options: Options = {}): StubRoute[] => [
         return jsonResponse({ message: '연결할 수 없습니다' }, { status: 503 });
       }
 
+      const first = line({ lotId: options.allFilled === true ? 8001 : null });
+
+      if (options.singleLine === true) {
+        return jsonResponse({ items: [first] });
+      }
+
       return jsonResponse({
         items: [
-          line({ lotId: options.allFilled === true ? 8001 : null }),
+          first,
           line({
             inboundReceiptLineId: 7102,
             lineNo: 3,
@@ -536,6 +544,28 @@ describe('자재LOT 스캔·등록 화면', () => {
       'LOT 번호',
       '수량',
     ]);
+  });
+
+  /*
+   * 마지막 라인을 채우면 그 건이 후보에서 빠져 선택칸이 안내 문구로 돌아간다. 라인 구획이
+   * 그대로 서 있으면 아무것도 고르지 않은 화면이 고른 건을 두고 말하게 된다.
+   */
+  it('고른 건이 후보에서 빠지면 라인 구획을 걷는다', async () => {
+    const user = userEvent.setup();
+    mount({ singleLine: true });
+    await pickLine(user);
+
+    await scanAndWait(LOT_NO);
+    await user.click(screen.getByRole('button', { name: '이 라인 등록' }));
+    await screen.findByText(/등록됨 \(1건\)/);
+
+    await waitFor(() => {
+      expect(screen.queryByRole('combobox', { name: '입하 라인' })).toBeNull();
+    });
+
+    expect(
+      screen.queryByText('이 입하 건에는 LOT 이 비어 있는 사전부착 라인이 없습니다'),
+    ).toBeNull();
   });
 
   it('등록한 라인은 다시 고를 수 없다', async () => {
