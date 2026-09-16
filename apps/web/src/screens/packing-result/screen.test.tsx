@@ -52,6 +52,8 @@ interface Options {
   writes?: Request[];
   /** 포장 만들기가 실패하는 갈래 — 담긴 줄은 있는데 포장이 없는 상태를 만든다(#1093). */
   createUnitFails?: boolean;
+  /** 아직 출하 단위에 안 들어간 상자 수. `'error'` 면 그 조회가 실패한다. */
+  unassignedBoxes?: number | 'error';
   reads?: Request[];
 }
 
@@ -78,6 +80,37 @@ const renderScreen = (options: Options = {}) => {
       respond: (request) => {
         options.reads?.push(request.clone());
         const requestedNo = queryOf(request).get('q');
+
+        /*
+         * ⭐ **미구성 상자 수는 «목록»에서만 온다**(계약 명시 — 상세는 세지 않는다). 그 축을
+         *    함께 준 요청이 그것을 묻는 자리다.
+         */
+        if (queryOf(request).has('hasUnassignedPackedBox')) {
+          if (options.unassignedBoxes === 'error') {
+            return jsonResponse({ message: '실패' }, { status: 500 });
+          }
+
+          const count = options.unassignedBoxes ?? 0;
+
+          return jsonResponse({
+            items:
+              count === 0
+                ? []
+                : [
+                    {
+                      shipmentId: 501,
+                      shipmentNo: requestedNo ?? 'SYN-SH-0501',
+                      shipmentRequestId: 1,
+                      warehouseId: 1001,
+                      statusCode: 'CONFIRMED',
+                      expedited: false,
+                      unassignedPackedBoxCount: count,
+                    },
+                  ],
+            page: { page: 1, size: 50, total: count === 0 ? 0 : 1 },
+          });
+        }
+
         const missing =
           queryOf(request).has('q') &&
           (options.shipmentNotFound === true || requestedNo?.includes('없음') === true);
@@ -262,6 +295,34 @@ describe('PackingResultScreen', () => {
     await scan(user, t.scan.label.shipment, 'SYN-SH-없음');
 
     expect(await screen.findByText(t.match.shipmentNotFound)).toBeTruthy();
+  });
+
+  /*
+   * ⭐ **다음 걸음이 남았는지 여기서 말한다**(SHIP-UNIT-01 §7). 포장을 마친 담당은 이 화면을
+   *    떠나기 전에 「출하 단위에 담을 상자가 남았나」를 알아야 한다 — 모르면 P-04-05 를 아예
+   *    열지 않고, 상자는 구성되지 않은 채 남는다.
+   *
+   * ⛔ **화면이 배분으로 세지 않는다.** 한 상자가 배분 여럿에 걸릴 수 있어 겹쳐 세거나 빠뜨린다 —
+   *    서버가 상자 기준으로 센 값을 그대로 쓴다.
+   */
+  it('아직 출하 단위에 안 들어간 상자 수를 진행에 함께 적는다', async () => {
+    const user = userEvent.setup();
+    renderScreen({ unassignedBoxes: 3 });
+
+    await scan(user, t.scan.label.shipment, 'SYN-SH-0501');
+
+    expect(await screen.findByText(t.progress.unassigned(3))).toBeInTheDocument();
+  });
+
+  /* ⛔ 「없다」와 「모른다」를 같은 모양으로 그리지 않는다(공유계약 G-9). */
+  it('미구성 상자를 세지 못하면 0 이라 하지 않고 모른다고 말한다', async () => {
+    const user = userEvent.setup();
+    renderScreen({ unassignedBoxes: 'error' });
+
+    await scan(user, t.scan.label.shipment, 'SYN-SH-0501');
+
+    expect(await screen.findByText(t.progress.unassignedUnknown)).toBeInTheDocument();
+    expect(screen.queryByText(t.progress.unassigned(0))).not.toBeInTheDocument();
   });
 
   it('들어오면 두 스캔 칸이 서고 생산LOT 칸은 «잠긴 채» 사유를 말한다', () => {

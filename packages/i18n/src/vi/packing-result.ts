@@ -66,6 +66,8 @@ export const packingResult: Translated<typeof ko.packingResult> = {
   progress: {
     packed: (count: number): string => `Xuất hàng này có ${String(count)} kiện`,
     unpacked: (qty: number): string => `Chưa đóng gói ${String(qty)}`,
+    unassigned: (count: number): string => `${String(count)} kiện chưa cấu thành`,
+    unassignedUnknown: 'Không xác nhận được số kiện chưa cấu thành',
   },
   oqc: {
     label: 'Trạng thái OQC',

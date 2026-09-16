@@ -29,6 +29,7 @@ import {
   useShipmentScan,
   useShipmentSelection,
   useTodayShipments,
+  useUnassignedPackedBoxCount,
 } from './queries';
 import { ScanField } from './scan-field';
 import { useTerminalGate } from './terminal-gating';
@@ -96,6 +97,12 @@ export const PackingResultScreen = () => {
   const shipmentAllocations = useShipmentAllocations(shipmentId);
   const progress = toProgress(shipmentAllocations.allocations);
   /*
+   * ⭐ **다음 걸음이 남았는지 여기서 말한다**(SHIP-UNIT-01 §7). 포장을 마친 담당은 이 화면을
+   *    떠나기 전에 「출하 단위에 담을 상자가 남았나」를 알아야 한다 — 모르면 P-04-05 를 아예
+   *    열지 않고, 상자는 구성되지 않은 채 남는다.
+   */
+  const unassignedBoxes = useUnassignedPackedBoxCount(shipmentId, entry?.shipmentNo ?? null);
+  /*
    * ⛔⛔ **`ShipmentLotAllocation.shippingInspectionStatusCode` 는 목표 선택 필드다**.
    * 현행 서버는 다섯 상태값(`NOT_REQUIRED`·`PENDING`·`PASSED`·`REJECTED`·`HELD`)
    * 중 어느 것도 배분 응답에 아직 싣지 않는다.
@@ -104,10 +111,10 @@ export const PackingResultScreen = () => {
    * 되짚으면 실제로는 「대기·불합격·보류」였던 배분이 「합격」처럼 보일 수 있다(추측 금지).
    * 그래서 상태 «문구»는 지어내지 않고 이미 있던 「모른다」 표시(`—`)로 떨어진다.
    *
-   * ⭐ **실제 게이팅은 이 문구가 아니다.** 납품 라벨 자동 발행(`automatic-labels.tsx`)과
-   * 라벨 화면(`shipping-packing-label/types.ts` 의 `isIssuable`)은 이미 `oqcPassed` 를 직접
-   * 쓰고 있고, 그 값은 계약에 그대로 남아 있다 — 이 줄은 «표시»만 잃었다. 서버가 상태값을
-   * 다시 내리면 이 자리만 되돌리면 된다.
+   * ⭐ **이 값이 무엇도 막지 않는다.** 한때 납품 라벨 발행 자격이 `oqcPassed` 였는데, 라벨의
+   * 주인이 출하 단위로 옮겨가며 자격도 **출하 단위의 마감 여부**가 됐다(SHIP-UNIT-01 P5 ·
+   * `shipping-packing-label/types.ts` 의 `toDeliveryRow`). 이 줄은 «표시»만 남았고 그 표시도
+   * 지어내지 않는다 — 서버가 상태값을 다시 내리면 이 자리만 되돌리면 된다.
    */
   const oqcStatuses = shipmentAllocations.allocations.length > 0 ? ['—'] : [];
 
@@ -547,6 +554,15 @@ export const PackingResultScreen = () => {
         <section className="packing-progress" aria-label={t.panes.progress}>
           <span>{t.progress.packed(progress.packedCount)}</span>
           <span>{t.progress.unpacked(progress.unpackedQty)}</span>
+          {/*
+           * ⛔ **수가 0 이어도 감춘다**가 아니라 **0 도 적는다**(공유계약 G-9) — 「없다」를
+           *    보이는 것이 이 줄의 일이다. 못 받았을 때만 다른 말을 한다.
+           */}
+          {unassignedBoxes.isError ? (
+            <span>{t.progress.unassignedUnknown}</span>
+          ) : unassignedBoxes.count === null ? null : (
+            <span>{t.progress.unassigned(unassignedBoxes.count)}</span>
+          )}
         </section>
       </div>
 

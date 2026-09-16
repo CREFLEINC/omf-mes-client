@@ -87,6 +87,14 @@ export const packingResult = {
   progress: {
     packed: (count: number): string => `이 출하 포장 ${String(count)} 개`,
     unpacked: (qty: number): string => `미포장 ${String(qty)}`,
+    /**
+     * 포장은 끝났는데 아직 출하 단위에 안 들어간 상자 수(SHIP-UNIT-01 §7).
+     *
+     * ⛔ 「모른다」와 「없다」를 같은 모양으로 그리지 않는다(공유계약 G-9) — 0 은 담을 것이
+     *    없다는 뜻이고, 못 받은 것은 아래 `unassignedUnknown` 이 따로 말한다.
+     */
+    unassigned: (count: number): string => `미구성 상자 ${String(count)} 개`,
+    unassignedUnknown: '미구성 상자 수를 확인하지 못했습니다',
   },
   oqc: {
     label: 'OQC 상태',

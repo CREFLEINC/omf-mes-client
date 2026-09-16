@@ -67,10 +67,20 @@ const collectAllPages = async <T>(
 export const packingResultKeys = {
   typeOptions: ['packing-result', 'handling-unit-types'] as const,
   progress: (shipmentId: number) => ['packing-result', 'progress', shipmentId] as const,
+  /*
+   * ⭐ **진행 키 «아래»에 둔다.** 포장을 확정하면 이 수도 함께 바뀌는데, 확정 뒤 무효화는
+   *    `progress(shipmentId)` 하나를 지운다(`mutations.ts`) — 접두사가 같으면 그 한 번에 둘 다
+   *    낡은 것으로 표시된다. 따로 두면 방금 담은 상자가 이 수에 며칠이고 안 잡힌다.
+   */
+  unassignedBoxes: (shipmentId: number) =>
+    ['packing-result', 'progress', shipmentId, 'unassigned-boxes'] as const,
   uoms: ['packing-result', 'uoms'] as const,
   todayShipments: (businessDate: string) =>
     ['packing-result', 'today-shipments', businessDate] as const,
 };
+
+/** 번호로 좁힌 목록 한 쪽 — 부분 일치라 같은 번호 조각을 가진 건이 몇 개 따라올 수 있다. */
+const SHIPMENT_SEARCH_SIZE = 50;
 
 const localDate = (now: Date): string => {
   const year = String(now.getFullYear());
@@ -162,6 +172,48 @@ export const useTodayShipments = (): {
   });
 
   return { shipments: query.data ?? [], isPending: query.isPending, isError: query.isError };
+};
+
+/**
+ * 아직 어느 출하 단위에도 들어가지 않은 **포장 완료 상자 수**(SHIP-UNIT-01 P5).
+ *
+ * ⭐ **서버가 센다.** 한 상자가 배분 여럿에 걸릴 수 있어 화면이 배분으로 세면 겹쳐 세거나
+ *    빠뜨린다 — 계약도 상자 기준으로 센다고 못박았다.
+ *
+ * ⛔ **상세로 묻지 않는다.** 계약이 「목록에서만 채운다(상세는 세지 않는다)」고 적었다 —
+ *    상세로 물으면 값이 늘 `undefined` 로 와서 **0 으로 읽힌다.**
+ * ⭐ 그래서 목록을 `hasUnassignedPackedBox=true` 로 묻고 이 출하가 그 안에 있는지 본다 —
+ *    없으면 남은 상자가 **없다**는 뜻이라 0 이다. 그 축을 함께 주면 기간이 선택이 된다(v4).
+ * ⚠ `q` 는 부분 일치다 — 번호가 정확히 같은 것만 다시 골라낸다(`useShipmentScan` 과 같은 이유).
+ *
+ * ⛔ **못 받은 것을 0 으로 떨어뜨리지 않는다.** 0 은 「담을 것이 없다」는 업무 사실이고, 못
+ *    받은 것은 「모른다」다 — 섞으면 담당은 구성할 상자가 없다고 읽고 다음 화면으로 가지 않는다.
+ */
+export const useUnassignedPackedBoxCount = (
+  shipmentId: number | null,
+  shipmentNo: string | null,
+): { count: number | null; isError: boolean } => {
+  const { client } = useApiClient();
+
+  const query = useQuery({
+    queryKey: packingResultKeys.unassignedBoxes(shipmentId ?? 0),
+    enabled: shipmentId !== null && shipmentNo !== null,
+    queryFn: async () => {
+      if (shipmentNo === null) throw new Error('출하번호를 모르면 미구성 상자를 세지 않습니다.');
+
+      const data = await runRequest(() =>
+        client.GET('/logistics/shipments', {
+          params: {
+            query: { hasUnassignedPackedBox: true, q: shipmentNo, page: 1, size: SHIPMENT_SEARCH_SIZE },
+          },
+        }),
+      );
+
+      return data.items.find((item) => item.shipmentNo === shipmentNo)?.unassignedPackedBoxCount ?? 0;
+    },
+  });
+
+  return { count: query.data ?? null, isError: query.isError };
 };
 
 export const useShipmentSelection = (): UseMutationResult<ShipmentEntry, Error, Shipment> => {
