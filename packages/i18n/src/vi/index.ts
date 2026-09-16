@@ -81,6 +81,7 @@ import { pendingCode } from './pending-code';
 import { physicalCount } from './physical-count';
 import { poChangeReview } from './po-change-review';
 import { poRegister } from './po-register';
+import { popLocationLabel } from './pop-location-label';
 import { popMaterialLotLabel } from './pop-material-lot-label';
 import { popChrome } from './pop-chrome';
 import { popPageNav } from './pop-page-nav';
@@ -207,6 +208,7 @@ export const vi: Translated<Messages> = {
   pendingCode,
   physicalCount,
   poChangeReview,
+  popLocationLabel,
   popMaterialLotLabel,
   popChrome,
   popPageNav,

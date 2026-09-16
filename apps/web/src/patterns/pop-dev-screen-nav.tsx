@@ -135,6 +135,11 @@ export const POP_DEV_SCREENS: readonly PopDevScreen[] = [
    * 셸이 채우고, 비어 있을 때만 주소를 본다(`entry-context.ts`).
    */
   { path: '/pop/packing', label: 'P-04-01 출하 실적 등록' },
+  /*
+   * ⚠ 진입값이 없다 — 이 화면이 창고를 고르는 것부터 시작한다. 사번은 셸·`worker-session`
+   * 이 비었을 때만 주소를 본다.
+   */
+  { path: '/pop/location-label', label: 'P-06-01 창고 적재 위치 라벨 발행' },
 ];
 
 /** 진입 화면 — 이 셀렉터가 서 있는 자리라 목록에서 뺀다. 감지기가 이 예외를 안다. */
