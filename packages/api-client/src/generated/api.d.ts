@@ -30018,7 +30018,7 @@ export interface paths {
                     /** @description 미확정만 — W-04-12 기본 */
                     unconfirmedOnly?: boolean;
                     /**
-                     * @description 필수
+                     * @description 필수. ⭐ 예외 하나 — hasUnassignedPackedBox=true 를 함께 주면 «선택»이다(P-24). 그 축은 「구성할 것이 남았나」를 묻는 것이라 날짜와 무관하고, 기간을 강제하면 어제 출하한 건의 남은 상자가 창 밖으로 빠져 P-04-05 에서 영영 안 보인다. 기간을 비우면 아직 나가지 않은 출하(shippedAt 없음)도 함께 오며 정렬에서 뒤로 간다
                      *
                      *     서버 구현 기준: shippedAt을 출하 창고가 속한 공장의 로컬 날짜로 비교한다(통보 219).
                      */

@@ -13,6 +13,11 @@ export const shippingUnit = {
     failed: '출하 목록을 불러오지 못했습니다.',
     empty: '구성할 상자가 남은 출하가 없습니다.',
     boxes: (count: number): string => `미구성 상자 ${String(count)}개`,
+    /*
+     * ⚠ **창을 늘 적는다.** 계약이 기간을 필수로 두어 창 밖에서 아직 구성되지 않은 출하는
+     *   목록에 서지 않는다 — 적지 않으면 담당은 남은 것이 없다고 읽는다.
+     */
+    window: (days: number): string => `최근 ${String(days)}일 출하만 보입니다.`,
   },
 
   unit: {
