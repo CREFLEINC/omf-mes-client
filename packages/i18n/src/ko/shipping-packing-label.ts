@@ -17,8 +17,8 @@ export const shippingPackingLabel = {
     packing: '포장라벨',
     packingNote: '포장하면 바로 발행합니다.',
     delivery: '납품라벨',
-    /** 고객에게 나가는 것이라 불합격품에 붙으면 안 된다. */
-    deliveryNote: '출하검사에 합격한 것만 발행할 수 있습니다.',
+    /** 출하 단위 한 대에 한 장 — 마감해야 붙는다(SHIP-UNIT-01 설계 §4). */
+    deliveryNote: '마감한 출하 단위에만 발행할 수 있습니다.',
   },
   targets: {
     paneLabel: '대상',
@@ -31,16 +31,14 @@ export const shippingPackingLabel = {
       seq: '회차',
     },
     status: {
-      passed: '합격',
+      closed: '마감',
       /** ⚠ 「왜 안 되는지」가 아니라 「어떻게 풀 것인가」를 담는다. */
-      waiting: '검사 대기',
+      composing: '구성 중',
       blocked: '발행 불가',
-      blockedNote: '출하검사 판정이 나면 발행할 수 있습니다.',
+      blockedNote: '출하 단위를 마감하면 발행할 수 있습니다.',
     },
     /** 아직 한 번도 안 뽑은 대상 — 「없음」과 「모름」을 같은 모양으로 그리지 않는다. */
     neverIssued: '—',
-    /** LOT 번호가 없는 배분 — 대신 그릴 값이 응답에 없다. 지어내지 않고 없음을 밝힌다. */
-    unnamed: 'LOT 번호 없음',
     /**
      * ⚠ 발행 현황 조회가 대상 유형 코드를 조건으로 받는데 그 값이 아직 확정되지 않았다.
      * 값이 서버와 다르면 이미 뽑은 것도 「없음」으로 보인다 — 감추지 않고 밝힌다.
@@ -48,11 +46,11 @@ export const shippingPackingLabel = {
     seqNotice: '회차와 최근 인쇄 결과는 서버 발행 이력을 기준으로 표시합니다.',
     /** ⛔ 「없다」와 「아직 고르지 않았다」를 같은 모양으로 그리지 않는다(공유계약 G-9). */
     beforeKind: '라벨 종류를 먼저 고르세요.',
-    empty: '이 출하에는 발행할 대상이 없습니다.',
+    empty: '이 출하에는 아직 출하 단위가 없습니다. 「출하 단위 구성」에서 먼저 만드세요.',
     emptyPacking: '이 출하에는 포장이 없습니다. 포장 실적을 먼저 등록하세요.',
     loadFailed: '대상 목록을 불러오지 못했습니다.',
     retry: '다시 불러오기',
-    selectionLimited: '출하검사에 합격하지 않은 대상은 고를 수 없습니다.',
+    selectionLimited: '마감하지 않은 출하 단위는 고를 수 없습니다.',
     /**
      * 빈 목록의 첫 줄.
      *
@@ -76,7 +74,7 @@ export const shippingPackingLabel = {
     packingLabel: '미발행 포장 라벨',
     deliveryLabel: '발행 가능한 미발행 납품 라벨',
     countUnit: '건',
-    oqcWaiting: (count: number) => `OQC 판정 대기 납품 라벨 ${String(count)}건`,
+    composingUnits: (count: number) => `구성 중인 출하 단위 ${String(count)}건`,
     reissueRequired: (count: number) =>
       `${String(count)}건은 발행 기록이 있지만 인쇄 완료가 아니므로 아래 재출력 흐름에서 처리해야 합니다.`,
     complete: '현재 발행 가능한 누락 라벨이 없습니다.',
@@ -134,12 +132,6 @@ export const shippingPackingLabel = {
     mixedIssueModes: '최초 발행 대상과 재출력 대상은 나누어 선택하세요.',
     /** 사번은 진입점 화면이 단말에 두는 값이다 — 없다는 것은 아직 사번을 대지 않았다는 뜻. */
     needsWorker: '사번을 확인한 뒤에 발행할 수 있습니다.',
-    /*
-     * ⛔ **서버가 항상 거부하는 유형이다**(#1093 ③ · 대응표 P1 「공용 문서 발행」). 눌러도
-     *    요청을 만들지 않으므로 **그 사실을 단추 옆에 적고 단추를 잠근다** — 적지 않으면
-     *    눌리는데 아무 일도 없어 작업자가 계속 누른다.
-     */
-    deliveryLocked: '납품 라벨 발행은 아직 서버가 지원하지 않습니다.',
     finishCurrentIssue: '현재 발행 결과를 확인한 뒤 다음 라벨을 발행하세요.',
     running: {
       issue: '발행 기록을 만들고 있습니다…',

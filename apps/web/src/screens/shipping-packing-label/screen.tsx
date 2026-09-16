@@ -1,14 +1,10 @@
 import { AlertBanner, Button, StatCard } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { popTouchClass } from '../../patterns/pop-touch';
-import {
-  DELIVERY_LABEL,
-  DELIVERY_LABEL_ISSUE_LOCKED,
-  PACKING_LABEL,
-  type LabelKind,
-} from './codes';
+import { DELIVERY_LABEL, PACKING_LABEL, type LabelKind } from './codes';
+import { useDeliveryLabelDrawer } from './delivery-label-drawer';
 import { useShippingLabelEntry } from './entry-context';
 import { HistoryDialog } from './history-dialog';
 import { IssueOutcome } from './issue-outcome';
@@ -23,6 +19,7 @@ import {
   usePrinters,
   useReissueReasons,
   useShipment,
+  useShippingUnits,
 } from './queries';
 import { ReissuePane } from './reissue-pane';
 import { TargetTable } from './target-table';
@@ -34,6 +31,7 @@ import {
   toDeliveryRow,
   toPackingRow,
   toDefaultPrinterName,
+  type IssueView,
   type TargetRow,
 } from './types';
 
@@ -53,10 +51,11 @@ export interface ShipmentLabelPanelProps {
  * (스펙 §3-1) — 늘 띄우면 그 자리만큼 목록이 줄어든다.
  *
  * ⭐ **발행 시점이 갈리는 두 라벨이 한 화면에 있다**(스펙 §5-1). 포장 라벨은 포장 즉시,
- * 납품 라벨은 OQC 합격 후다. 종류를 먼저 고르고 대상 목록이 그에 따라 갈린다.
+ * 납품 라벨은 **출하 단위를 마감한 뒤**다. 종류를 먼저 고르고 대상 목록이 그에 따라 갈린다 —
+ * 포장 라벨은 취급 단위, 납품 라벨은 출하 단위다.
  *
- * ⭐ **화면 순서가 「발행 → 미리보기 → 인쇄」다.** 그리기 경로가 발행 기록 번호를 받으므로
- * 발행 전 미리보기는 이번 계약에 없다(착수 이슈 §6).
+ * ⭐ **화면 순서가 「발행 → 미리보기 → 인쇄」다.** 라벨에 회차가 찍히고 그 회차는 발행 응답이
+ * 주므로, 발행 전 미리보기는 이 화면에 없다(착수 이슈 §6).
  */
 export const ShippingPackingLabelScreen = ({
   shipmentId: shipmentIdOverride,
@@ -91,19 +90,22 @@ export const ShippingPackingLabelScreen = ({
   const allocations = useAllocations(shipmentId);
   const allocationItems = useMemo(() => allocations.data ?? [], [allocations.data]);
   const units = useHandlingUnits(allocationItems, embedded || (kind !== null && !isDelivery(kind)));
+  /*
+   * ⭐ **납품 라벨의 대상은 출하 단위다**(SHIP-UNIT-01). 종전에는 배분이었는데 서버가 그 대상
+   *    유형을 422 INVALID 로 막았다 — 배분으로 두면 이 화면의 납품 라벨은 한 장도 나가지 않는다.
+   */
+  const shippingUnits = useShippingUnits(
+    shipmentId,
+    embedded || (kind !== null && isDelivery(kind)),
+  );
 
   const packingRows = useMemo(() => units.units.map(toPackingRow), [units.units]);
   const deliveryRows = useMemo(
     () =>
-      allocationItems.map((allocation) =>
-        toDeliveryRow(
-          allocation,
-          t.targets.status.passed,
-          t.targets.status.waiting,
-          t.targets.unnamed,
-        ),
+      shippingUnits.units.map((unit) =>
+        toDeliveryRow(unit, t.targets.status.closed, t.targets.status.composing),
       ),
-    [allocationItems],
+    [shippingUnits.units],
   );
 
   /*
@@ -169,10 +171,22 @@ export const ShippingPackingLabelScreen = ({
    *    했는데 `PACKING_LABEL` 이 준비 목록에 없어 **배포본에서 요청이 만들어지기도 전에
    *    막혔다** — 인쇄와 결과 보고까지 한 번도 닿지 못했다.
    */
-  const drawLabel = usePackingLabelDrawer({
+  const drawPackingLabel = usePackingLabelDrawer({
     shipmentNo: shipment.data?.shipmentNo ?? null,
     allocations: allocationItems,
   });
+  /*
+   * ⭐ **납품 라벨도 POP 이 그린다**(전달본 v4). 서버 렌디션이 이 유형을 422 로 막았다 — 포장
+   *    라벨이 「준비 목록에 없어」 종이가 한 장도 안 나오던 그 모양이 납품 라벨에서 되풀이될
+   *    자리였다.
+   */
+  const drawDeliveryLabel = useDeliveryLabelDrawer({ units: shippingUnits.units });
+  /* 종류를 아는 쪽이 각자 가른다 — 여기서 갈래를 또 적으면 판정이 세 곳이 된다. */
+  const drawLabel = useCallback(
+    (labelKind: LabelKind, row: TargetRow, issued: IssueView) =>
+      drawPackingLabel(labelKind, row, issued) ?? drawDeliveryLabel(labelKind, row, issued),
+    [drawDeliveryLabel, drawPackingLabel],
+  );
   const issue = useLabelIssue({ workerNo, drawLabel });
 
   const missingPackingRows = useMemo(
@@ -195,7 +209,7 @@ export const ShippingPackingLabelScreen = ({
       ),
     [deliveryRows, deliverySummaries.data],
   );
-  const oqcWaitingCount = deliveryRows.filter((row) => !row.isIssuable).length;
+  const composingUnitCount = deliveryRows.filter((row) => !row.isIssuable).length;
   const recoveryReissueCount = [
     ...(packingSummaries.data ?? []),
     ...(deliverySummaries.data ?? []),
@@ -206,17 +220,26 @@ export const ShippingPackingLabelScreen = ({
   const effectivePrinterName = printerName ?? toDefaultPrinterName(printerItems);
 
   const isBusy = issue.phase === 'issuing' || issue.phase === 'printing';
-  const isListError = allocations.isError || units.isError || (kind !== null && summaries.isError);
+  const isListError =
+    allocations.isError ||
+    units.isError ||
+    shippingUnits.isError ||
+    (kind !== null && summaries.isError);
   const isListPending =
-    allocations.isPending || units.isPending || (kind !== null && summaries.isPending);
+    allocations.isPending ||
+    units.isPending ||
+    shippingUnits.isPending ||
+    (kind !== null && summaries.isPending);
   const isRecoveryError =
     allocations.isError ||
     units.isError ||
+    shippingUnits.isError ||
     (packingTargetIds.length > 0 && packingSummaries.isError) ||
     (deliveryTargetIds.length > 0 && deliverySummaries.isError);
   const isRecoveryPending =
     allocations.isPending ||
     units.isPending ||
+    shippingUnits.isPending ||
     (packingTargetIds.length > 0 && packingSummaries.isPending) ||
     (deliveryTargetIds.length > 0 && deliverySummaries.isPending);
 
@@ -234,7 +257,7 @@ export const ShippingPackingLabelScreen = ({
     issue.print();
   }, [isRecoveryPrintQueued, issue]);
   /**
-   * 발행할 수 있는가 — **막는 사유가 넷이다.**
+   * 발행할 수 있는가 — **막는 사유를 순서대로 본다.**
    *
    * ⛔ 감추지 않고 **왜 못 하는지** 보인다(공유계약 F-1). 비활성만 두면 사용자는 화면이
    * 고장 난 줄 안다.
@@ -249,25 +272,11 @@ export const ShippingPackingLabelScreen = ({
     if (summaries.isError) return t.actions.historyUnavailable;
     if (hasMixedIssueModes) return t.actions.mixedIssueModes;
     if (isReissue && reissueReasonCode === null) return t.actions.needsReason;
-    /*
-     * ⛔ **`startIssue` 가 조용히 되돌아오던 자리를 여기서 말한다**(#1093 ③). 잠금은 아래
-     *    `startIssue` 가 이미 보고 있었는데 «단추 잠금 판정»에는 없어, 단추가 열린 채 눌리고
-     *    아무 일도 일어나지 않았다 — 확인 창도 성공도 실패도 없는 그 모양이다.
-     *
-     * ⚠ **맨 뒤에 둔다 — 앞으로 옮기지 말 것**(#1093 리뷰에서 한 번 뒤집었다가 되돌렸다).
-     *    `label-kind-radio.tsx` 가 납품라벨 «종류»를 일부러 열어 둔 이유가 그것이다: 대상
-     *    목록·재발행 판정까지는 서버를 부르지 않아 계약 영향 밖이고, **막는 자리는 실제로
-     *    계약을 어기는 이 발행 단추 하나뿐**이다. 이 사유를 앞에 두면 대상 확인·재발행 사유
-     *    안내 같은, 계약과 무관한 화면 구실이 통째로 이 문구에 가린다.
-     */
-    if (DELIVERY_LABEL_ISSUE_LOCKED && kind === DELIVERY_LABEL) return t.actions.deliveryLocked;
-
     return null;
   })();
 
   const startIssue = (): void => {
     if (kind === null || blockedReason !== null) return;
-    if (DELIVERY_LABEL_ISSUE_LOCKED && kind === DELIVERY_LABEL) return;
 
     issue.issue({
       kind,
@@ -278,7 +287,7 @@ export const ShippingPackingLabelScreen = ({
     });
   };
 
-  /* 빈 목록의 «이유»가 셋이다 — 종류를 안 골랐다 / 포장이 없다 / 배분이 없다. */
+  /* 빈 목록의 «이유»가 셋이다 — 종류를 안 골랐다 / 포장이 없다 / 출하 단위가 없다. */
   const emptyMessage =
     kind === null
       ? t.targets.beforeKind
@@ -336,6 +345,7 @@ export const ShippingPackingLabelScreen = ({
                       onClick={() => {
                         void allocations.refetch();
                         units.refetch();
+                        shippingUnits.refetch();
                         void packingSummaries.refetch();
                         void deliverySummaries.refetch();
                       }}
@@ -399,14 +409,12 @@ export const ShippingPackingLabelScreen = ({
                     className={popTouchClass('critical')}
                     size="xl"
                     disabled={
-                      DELIVERY_LABEL_ISSUE_LOCKED ||
                       isRecoveryPending ||
                       missingDeliveryRows.length === 0 ||
                       workerNo === null ||
                       issue.phase !== 'idle'
                     }
                     onClick={() => {
-                      if (DELIVERY_LABEL_ISSUE_LOCKED) return;
                       setRecoveryPrintQueued(true);
                       issue.issue({
                         kind: DELIVERY_LABEL,
@@ -418,8 +426,10 @@ export const ShippingPackingLabelScreen = ({
                   >
                     {t.recovery.deliveryAction}
                   </Button>
-                  {oqcWaitingCount > 0 ? (
-                    <span className="field-note">{t.recovery.oqcWaiting(oqcWaitingCount)}</span>
+                  {composingUnitCount > 0 ? (
+                    <span className="field-note">
+                      {t.recovery.composingUnits(composingUnitCount)}
+                    </span>
                   ) : null}
                   {recoveryReissueCount > 0 ? (
                     <span className="field-note">
@@ -472,6 +482,7 @@ export const ShippingPackingLabelScreen = ({
                     onClick={() => {
                       void allocations.refetch();
                       units.refetch();
+                      shippingUnits.refetch();
                       void summaries.refetch();
                     }}
                   >

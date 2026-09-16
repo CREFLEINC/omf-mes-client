@@ -68,11 +68,10 @@ export const LabelKindRadio = ({ value, onChange, disabled }: LabelKindRadioProp
       <span className="pop-slabel-kind-note">{t.packingNote}</span>
     </Radio>
     {/*
-     * ⚠ **종류는 고를 수 있게 둔다.** 대상 목록·재발행 판정까지는 서버를 부르지 않아
-     * `SHIPMENT_LOT_ALLOCATION` 대상 유형 제거의 영향 밖이다 — 막는 자리는 실제로 계약을
-     * 어기는 «발행» 단추 하나뿐이다(`screen.tsx` 의 `DELIVERY_LABEL_ISSUE_LOCKED`). 여기서
-     * 함께 잠그면 대상 확인·재발행 사유 안내 같은, 계약과 무관한 화면 구실까지 함께
-     * 죽는다.
+     * ⭐ **종류는 늘 고를 수 있다.** 한때 납품 라벨을 서버가 항상 422 로 거부해 «발행» 단추만
+     * 잠가 두었는데(`DELIVERY_LABEL_ISSUE_LOCKED`), 대상이 출하 단위가 되며 그 벽이 사라졌다
+     * (SHIP-UNIT-01 · 전달본 v4). 잠금과 그 문구는 함께 걷었다 — `false` 인 잠금은 그물이
+     * 아니라 거짓말이다.
      */}
     <Radio
       value={DELIVERY_LABEL}

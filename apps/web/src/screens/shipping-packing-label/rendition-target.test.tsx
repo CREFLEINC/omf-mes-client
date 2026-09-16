@@ -5,20 +5,22 @@ import { createStubFetch, jsonResponse, renderHookWithProviders } from '../../te
 import { DELIVERY_LABEL } from './codes';
 import { WORKER_NO, issueLog } from './fixtures';
 import { useLabelIssue, type IssueCommand } from './mutations';
-import type { TargetRow } from './types';
+import type { IssueView, TargetRow } from './types';
 
 /**
- * **그림을 «어느 발행 기록으로» 받는가**(#1083).
+ * **라벨을 «어느 발행 기록으로» 그리는가**(#1083).
  *
- * ⛔ 여러 건을 한 번에 발행하면 기록도 여러 건이고, 그림은 **기록마다 따로** 받아야 한다.
- * 반복문이 바깥 변수를 물면 모든 장이 **같은 한 건의 그림**으로 찍히는데, 종이에 찍힌 번호가
+ * ⛔ 여러 건을 한 번에 발행하면 기록도 여러 건이고, 라벨은 **기록마다 따로** 그려야 한다.
+ * 반복문이 바깥 변수를 물면 모든 장이 **같은 한 건의 회차**로 찍히는데, 종이에 찍힌 번호가
  * 실물과 어긋난 채 현장에 나가므로 화면에서는 성공으로만 보인다.
  *
- * ⭐ **모듈 경계에서 대역을 세운다.** 실제 호출 여부는 모드가 가르고(`pop-label-rendition`),
- * 시험 실행은 「부르지 않는」 쪽이라 네트워크로는 이 배선을 잴 수 없다 — 그 가름과 무관하게
- * 인자만 보려고 여기서만 대역을 쓴다.
+ * ⛔ **그리고 서버 렌디션은 «한 번도» 부르지 않는다**(SHIP-UNIT-01 P5). 이 화면의 두 종류를
+ * 서버는 하나도 그려 주지 않는다 — 포장 라벨은 준비 목록에 없었고(P2 에서 현장의 종이가 한 장도
+ * 안 나오던 원인), 납품 라벨은 전달본 v4 에서 **422** 가 됐다. 대역을 세워 그 부름이 없음을
+ * 여기서 붙든다.
  */
-const received: number[] = [];
+const drawnFor: number[] = [];
+const rendered: number[] = [];
 
 vi.mock('../../patterns/pop-label-rendition', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../../patterns/pop-label-rendition')>();
@@ -26,51 +28,62 @@ vi.mock('../../patterns/pop-label-rendition', async (importOriginal) => {
   return {
     ...actual,
     fetchLabelRendition: vi.fn((_client: unknown, documentIssueLogId: number) => {
-      received.push(documentIssueLogId);
+      rendered.push(documentIssueLogId);
 
       return Promise.resolve(new Uint8Array([1, 2, 3]).buffer);
     }),
   };
 });
 
-const row = (targetId: number, lotId: number, displayName: string): TargetRow => ({
+const row = (targetId: number, displayName: string): TargetRow => ({
   targetId,
-  issueTargetId: lotId,
+  issueTargetId: targetId,
   displayName,
-  lotId,
+  lotId: null,
   isIssuable: true,
-  statusLabel: '합격',
+  statusLabel: '마감',
 });
 
 const command: IssueCommand = {
   kind: DELIVERY_LABEL,
-  rows: [row(9401, 9501, 'SYN-LOT-0001'), row(9402, 9502, 'SYN-LOT-0002')],
+  rows: [row(7001, 'SU-20260917-0001'), row(7002, 'SU-20260917-0002')],
   printerName: null,
   reissueReasonCode: null,
 };
 
-describe('라벨 그림은 발행 기록마다 따로 받는다', () => {
-  it('두 건을 발행하면 각 기록의 번호로 한 번씩 받는다', async () => {
-    received.length = 0;
+/** 그리개 대역 — 어느 기록으로 불렸는지만 적는다. */
+const drawLabel = (_kind: unknown, _row: TargetRow, issue: IssueView): Uint8Array<ArrayBuffer> => {
+  drawnFor.push(issue.documentIssueLogId);
 
-    const { result } = renderHookWithProviders(() => useLabelIssue({ workerNo: WORKER_NO }), {
-      fetch: createStubFetch([
-        {
-          match: (request) =>
-            request.method === 'POST' && new URL(request.url).pathname === '/app/document-issues',
-          respond: () =>
-            jsonResponse(
-              {
-                items: [
-                  issueLog(9701, 9501, 'SYN-LOT-0001', 1),
-                  issueLog(9702, 9502, 'SYN-LOT-0002', 1),
-                ],
-              },
-              { status: 201 },
-            ),
-        },
-      ]),
-    });
+  return new Uint8Array([137, 80, 78, 71]);
+};
+
+describe('라벨은 발행 기록마다 따로 그린다', () => {
+  it('두 건을 발행하면 각 기록으로 한 번씩 그리고, 서버 렌디션은 부르지 않는다', async () => {
+    drawnFor.length = 0;
+    rendered.length = 0;
+
+    const { result } = renderHookWithProviders(
+      () => useLabelIssue({ workerNo: WORKER_NO, drawLabel }),
+      {
+        fetch: createStubFetch([
+          {
+            match: (request) =>
+              request.method === 'POST' && new URL(request.url).pathname === '/app/document-issues',
+            respond: () =>
+              jsonResponse(
+                {
+                  items: [
+                    issueLog(9701, 7001, 'SU-20260917-0001', 1),
+                    issueLog(9702, 7002, 'SU-20260917-0002', 1),
+                  ],
+                },
+                { status: 201 },
+              ),
+          },
+        ]),
+      },
+    );
 
     act(() => {
       result.current.issue(command);
@@ -80,6 +93,7 @@ describe('라벨 그림은 발행 기록마다 따로 받는다', () => {
       expect(result.current.phase).toBe('issued');
     });
 
-    expect(received).toEqual([9701, 9702]);
+    expect(drawnFor).toEqual([9701, 9702]);
+    expect(rendered).toEqual([]);
   });
 });

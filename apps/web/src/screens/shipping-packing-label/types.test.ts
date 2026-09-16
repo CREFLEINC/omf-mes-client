@@ -1,55 +1,66 @@
 import { describe, expect, it } from 'vitest';
 
+import type { ShippingUnitDetail } from '../shipping-unit/types';
+
 import {
   formatIssuedAt,
   needsReissueReason,
   toDefaultPrinterName,
   toDeliveryRow,
   toPackingRow,
-  type AllocationView,
   type IssueSummaryView,
   type PrinterView,
 } from './types';
 
-const view = (
-  shipmentLotAllocationId: number,
-  lotNo: string | null,
-  oqcPassed: boolean,
-): AllocationView => ({
-  shipmentLotAllocationId,
-  lotId: 9501,
-  lotNo,
-  itemCode: 'F534F50200',
-  allocatedQty: 120,
-  uomId: 9301,
-  handlingUnitId: null,
-  oqcPassed,
-});
+const unit = (shippingUnitId: number, shippingUnitNo: string, statusCode: 'OPEN' | 'CLOSED') =>
+  ({
+    shippingUnitId,
+    shippingUnitNo,
+    shippingUnitTypeCode: 'PALLET',
+    statusCode,
+    shipmentId: 501,
+    shipmentNo: 'SYN-SH-0001',
+    customer: { partnerId: 1, partnerCode: '100003', partnerName: 'Synthetic' },
+    shipTo: { partnerId: 2, partnerCode: '901463', partnerName: 'Synthetic To' },
+    boxCount: 2,
+    versionNo: 1,
+    createdAt: '2026-09-17T09:00:00+09:00',
+    boxes: [],
+    itemTotals: [],
+  }) satisfies ShippingUnitDetail;
 
-const PASSED = '합격';
-const WAITING = '검사 대기';
-const UNNAMED = 'LOT 번호 없음';
+const CLOSED = '마감';
+const COMPOSING = '구성 중';
 
 describe('toDeliveryRow', () => {
-  it('출하검사 합격 여부가 그대로 발행 가능 여부다', () => {
-    expect(toDeliveryRow(view(9401, 'SYN-LOT-0001', true), PASSED, WAITING, UNNAMED)).toMatchObject(
+  /*
+   * ⛔ **자격이 「OQC 합격」에서 「마감」으로 바뀌었다**(SHIP-UNIT-01). 서버가 안 닫힌 단위에
+   *    422 STATE_LOCKED 를 낸다 — 옛 판정으로 두면 구성 중인 단위를 고를 수 있고, 발행은 서버에
+   *    가서야 막힌다.
+   */
+  it('마감 여부가 그대로 발행 가능 여부다', () => {
+    expect(toDeliveryRow(unit(7001, 'SU-20260917-0001', 'CLOSED'), CLOSED, COMPOSING)).toMatchObject(
       {
-        targetId: 9401,
-        displayName: 'SYN-LOT-0001',
+        targetId: 7001,
+        issueTargetId: 7001,
+        displayName: 'SU-20260917-0001',
         isIssuable: true,
-        statusLabel: PASSED,
+        statusLabel: CLOSED,
       },
     );
 
-    expect(
-      toDeliveryRow(view(9402, 'SYN-LOT-0002', false), PASSED, WAITING, UNNAMED),
-    ).toMatchObject({ isIssuable: false, statusLabel: WAITING });
+    expect(toDeliveryRow(unit(7002, 'SU-20260917-0002', 'OPEN'), CLOSED, COMPOSING)).toMatchObject({
+      isIssuable: false,
+      statusLabel: COMPOSING,
+    });
   });
 
-  it('LOT 번호가 없으면 지어내지 않고 없다고 그린다', () => {
-    expect(toDeliveryRow(view(9403, null, true), PASSED, WAITING, UNNAMED).displayName).toBe(
-      UNNAMED,
-    );
+  /*
+   * ⛔ **`lotId` 를 비운다.** 한 출하 단위에 여러 LOT 이 섞여 하나로 정하면 계보가 거짓이 된다 —
+   *    서버도 이 대상 유형에 `lotId` 를 `null` 로 둔다(전달본 v4 ④).
+   */
+  it('LOT 을 비운다', () => {
+    expect(toDeliveryRow(unit(7003, 'SU-20260917-0003', 'CLOSED'), CLOSED, COMPOSING).lotId).toBeNull();
   });
 });
 

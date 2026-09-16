@@ -4,6 +4,8 @@ import { useQueries, useQuery, type UseQueryResult } from '@tanstack/react-query
 import { useApiClient } from '../../patterns/api-context';
 import { terminalPrinters } from '../../patterns/pop-terminal-printers';
 import { runRequest } from '../../patterns/request';
+import type { ShippingUnitDetail } from '../shipping-unit/types';
+
 import { REISSUE_REASON_CODE_GROUP, targetTypeCodeOf, type LabelKind } from './codes';
 import {
   toAllocationView,
@@ -21,12 +23,13 @@ import {
 } from './types';
 
 /**
- * 이 화면의 읽기 — **다섯이다.**
+ * 이 화면의 읽기 — **여섯이다.**
  *
  * | 무엇 | 경로 | 언제 |
  * | --- | --- | --- |
  * | 출하 배분 | `GET /logistics/shipment-lot-allocations?shipmentId=` | 진입 즉시 |
  * | 취급 단위 | `GET /inventory/handling-units/{id}` | 포장 라벨을 고를 때 |
+ * | 출하 단위 | `GET /logistics/shipping-units` + 건별 상세 | 납품 라벨을 고를 때 |
  * | 발행 현황 | `GET /app/document-issues/summary` | 대상 목록이 정해질 때마다 |
  * | 프린터 | `GET /app/printers?documentTypeCode=` | 라벨 종류를 고를 때마다 |
  * | 재발행 사유 | `GET /mdm/code-values?codeGroupCode=REISSUE_REASON` | 재발행 구획이 펼쳐질 때 |
@@ -76,6 +79,8 @@ export const labelKeys = {
   shipment: (shipmentId: number | null) => [ROOT, 'shipment', shipmentId] as const,
   allocations: (shipmentId: number | null) => [ROOT, 'allocations', shipmentId] as const,
   handlingUnit: (handlingUnitId: number) => [ROOT, 'handling-unit', handlingUnitId] as const,
+  shippingUnits: (shipmentId: number | null) => [ROOT, 'shipping-units', shipmentId] as const,
+  shippingUnit: (shippingUnitId: number) => [ROOT, 'shipping-unit', shippingUnitId] as const,
   summary: (targetTypeCode: string, documentTypeCode: string, targetIds: readonly number[]) =>
     [ROOT, 'summary', targetTypeCode, documentTypeCode, targetIds] as const,
   printers: (documentTypeCode: string) => [ROOT, 'printers', documentTypeCode] as const,
@@ -203,6 +208,80 @@ export const useHandlingUnits = (
     // 한 건이라도 실패하면 목록이 불완전하다 — 일부만 보이는 것을 「전부」로 내지 않는다.
     isError: results.some((result) => result.isError),
     refetch: () => {
+      for (const result of results) void result.refetch();
+    },
+  };
+};
+
+const fetchShippingUnit = async (
+  client: Client,
+  shippingUnitId: number,
+): Promise<ShippingUnitDetail> =>
+  runRequest(() =>
+    client.GET('/logistics/shipping-units/{shippingUnitId}', {
+      params: { path: { shippingUnitId } },
+    }),
+  );
+
+export interface ShippingUnitsResult {
+  units: ShippingUnitDetail[];
+  isPending: boolean;
+  isError: boolean;
+  refetch: () => void;
+}
+
+/**
+ * 이 출하의 출하 단위 — **납품 라벨의 대상이자 그 라벨의 값 전부다.**
+ *
+ * ⭐ **목록이 아니라 상세까지 받는다.** 목록 응답에는 품목별 합(`itemTotals`)이 없는데, 그것이
+ *    납품 라벨 «본문»이다. 서버는 이 유형을 그려 주지 않으므로(전달본 v4 · 422) POP 이 상세
+ *    값으로 직접 그린다 — 상세가 없으면 **그릴 것이 없다.**
+ *
+ * ⛔ **목록 줄도 상세에서 만든다.** 목록 응답으로 줄을 세우고 상세로 그리면 둘이 어긋날 수
+ *    있다 — 목록에는 선 단위인데 그릴 값이 없는 상태가 그것이다. 한 출처에서 나오면 그 틈이
+ *    생기지 않는다.
+ *
+ * ⚠ **요청이 단위 수만큼이다.** 한 출하의 단위는 파렛트 몇 대 규모라 감당한다 — 취급 단위를
+ *   같은 짜임으로 받는 `useHandlingUnits` 가 앞선 전례고, 그쪽이 수십 건이다.
+ */
+export const useShippingUnits = (
+  shipmentId: number | null,
+  enabled: boolean,
+): ShippingUnitsResult => {
+  const { client } = useApiClient();
+
+  const list = useQuery({
+    queryKey: labelKeys.shippingUnits(shipmentId),
+    enabled: enabled && shipmentId !== null,
+    queryFn: () => {
+      if (shipmentId === null) throw new Error('출하 없이 출하 단위를 조회하지 않습니다.');
+
+      return collectAllPages((page, size) =>
+        runRequest(() =>
+          client.GET('/logistics/shipping-units', {
+            params: { query: { shipmentId, page, size } },
+          }),
+        ),
+      );
+    },
+  });
+
+  const ids = (list.data ?? []).map((unit) => unit.shippingUnitId);
+  const results = useQueries({
+    queries: ids.map((shippingUnitId) => ({
+      queryKey: labelKeys.shippingUnit(shippingUnitId),
+      enabled,
+      queryFn: () => fetchShippingUnit(client, shippingUnitId),
+    })),
+  });
+
+  return {
+    units: results.flatMap((result) => (result.data === undefined ? [] : [result.data])),
+    isPending: enabled && (list.isPending || results.some((result) => result.isPending)),
+    // 한 건이라도 실패하면 목록이 불완전하다 — 일부만 보이는 것을 「전부」로 내지 않는다.
+    isError: list.isError || results.some((result) => result.isError),
+    refetch: () => {
+      void list.refetch();
       for (const result of results) void result.refetch();
     },
   };

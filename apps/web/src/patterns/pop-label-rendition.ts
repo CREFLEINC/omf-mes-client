@@ -7,7 +7,7 @@ import { runRequest } from './request';
  * POP 출력 형식과 배포 가능 문서 종류를 한 곳에서 고른다.
  *
  * Electron 셸이 있으면 RAW 인쇄용 TSPL, 브라우저이면 PNG를 요청한다. 미리보기는
- * 셸에서도 PNG를 명시한다. 자재 LOT 라벨과 납품 라벨은 서버 rendition을 지원한다.
+ * 셸에서도 PNG를 명시한다. 자재·생산 LOT 라벨은 서버 rendition을 지원한다.
  * 다른 문서 종류는 기존 준비 전 오류를 유지해 잘못된 재발행을 막는다.
  *
  * TSPL은 현재 설계 사본의 png/pdf enum보다 앞선 서버 구현 항목이다. 계약 cast는
@@ -89,6 +89,13 @@ export class LabelRenditionNotReadyError extends Error {
  *
  * ⭐ **서버에 있는 것만 적는다.** 없는 종류를 적으면 배포본에서 요청이 나가고, 사용자는 발행
  * 실패와 구분되지 않는 오류를 본다.
+ * ⛔ **`DELIVERY_LABEL` 은 여기 없다 — 서버가 납품 라벨을 그리지 않는다**(전달본 v4 ·
+ * serverCommit `2e9f234b` · 422). 종전에는 배분의 `delivery_label_no` 로 서버가 그렸는데,
+ * 주인이 출하 단위로 옮겨가며 그 코드가 걷혔다(SHIP-UNIT-01). **POP 이 출하 단위 상세의 값으로
+ * 그린다**(`screens/shipping-unit/delivery-label-image`). 적어 두면 요청이 나가고 422 가 돌아와,
+ * 사용자는 「발행이 실패했다」로 읽는다.
+ * ⚠ `LOCATION_LABEL` 도 서버가 그리지만 그것을 부르는 화면이 아직 없어 적지 않는다 — 이 목록은
+ * 「서버가 그릴 수 있는 것」이 아니라 **「이 앱이 실제로 받는 것」**이다.
  * ⭐ `PRODUCTION_LOT_LABEL` 은 서버가 지원한다(실측 2026-09-15 —
  * `omf-mes-server/src/app/document-issue/document-issue.controller.ts:81-83` 의
  * `GET /app/document-issues/{documentIssueLogId}/rendition`). 없던 시절의 가정을 남겨 두어
@@ -96,7 +103,6 @@ export class LabelRenditionNotReadyError extends Error {
  * 라벨 스캔 칸이 열리지 않고, 그 스캔이 `:complete` 를 부르는 유일한 길이다.
  */
 export const READY_RENDITION_DOCUMENT_TYPES = [
-  'DELIVERY_LABEL',
   'MATERIAL_LOT_LABEL',
   'PRODUCTION_LOT_LABEL',
 ] as const;
