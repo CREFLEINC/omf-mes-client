@@ -109,6 +109,11 @@ export const MaterialLotScanScreen = () => {
   );
   /* 다 받기 전에 거르면 목록이 섰다가 줄어들어, 누르려던 건이 손 아래에서 사라진다. */
   const receiptsPending = receipts.isPending || fillableIds.isPending;
+  /*
+   * 마지막 라인을 채우면 고른 건이 후보에서 빠진다. 식별자만 보고 라인 구획을 세우면,
+   * 선택칸은 안내 문구로 돌아간 채 구획만 남아 고르지 않은 건을 두고 말하게 된다.
+   */
+  const chosenReceipt = openReceipts.find((each) => each.inboundReceiptId === receiptId) ?? null;
   const line = openLines.find((each) => each.inboundReceiptLineId === lineId) ?? null;
 
   /*
@@ -295,7 +300,7 @@ export const MaterialLotScanScreen = () => {
         />
       </section>
 
-      {receiptId === null ? null : (
+      {chosenReceipt === null ? null : (
         <section className="material-lot-scan__section" ref={lineSection}>
           <h2>{t.line.legend}</h2>
           {lines.isPending ? <p role="status">{t.line.loading}</p> : null}
