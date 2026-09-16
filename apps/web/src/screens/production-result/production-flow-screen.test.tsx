@@ -269,6 +269,51 @@ describe('ProductionFlowScreen', () => {
   });
 
   /*
+   * ⛔ **라벨 수량은 수량 칸이 아니라 «실제로 올라간 실적»에서 온다**(리뷰 지적 2026-09-16).
+   *    수량 칸은 LOT 이 서면 계획 수량(`initialQty`)으로 미리 채워진다 — 큐에 들어 있던 실적이
+   *    적용되는 경로에서는 작업자가 그 칸을 손대지 않으므로, 칸을 읽으면 **실제 보고 수량이
+   *    아니라 계획 수량이 라벨에 찍힌다.** 종이는 되돌릴 수 없다.
+   *
+   *    그래서 이 시험은 계획 수량(12)과 큐에 든 실적(7)을 **일부러 다르게** 둔다. 두 값이 같으면
+   *    두 경로가 구분되지 않아 결함이 드러나지 않는다.
+   */
+  it('⛔ 대기 실적이 적용되면 계획 수량이 아니라 올라간 실적 수량을 라벨에 적는다', async () => {
+    const writes: Request[] = [];
+    globalThis.localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify([
+        {
+          idempotencyKey: 'queued-result-key',
+          workerNo: '100029',
+          body: {
+            workOrderId: WORK_ORDER_ID,
+            goodQty: 7,
+            uomId: 1,
+            occurredAt: '2026-09-16T09:00:00+09:00',
+            lotAllocations: [{ lotId: LOT_ID, allocatedQty: 7 }],
+          },
+        },
+      ]),
+    );
+    const save = vi.fn().mockResolvedValue('/tmp/lot.prn');
+    Object.defineProperty(window, 'pop', {
+      configurable: true,
+      value: { rendition: { save } },
+    });
+    renderScreen(writes);
+
+    await waitFor(() => {
+      expect(save).toHaveBeenCalledTimes(1);
+    });
+
+    const [bytes] = save.mock.calls[0] as [Uint8Array];
+    const command = new TextDecoder().decode(bytes);
+
+    expect(command).toContain('"QTY 7 EA"');
+    expect(command).not.toContain('"QTY 12 EA"');
+  });
+
+  /*
    * ⛔ **라벨은 화면이 짜고 서버 그림은 받지 않는다**(사용자 지시 2026-09-16 · `label-tspl`).
    *    이 배선이 되돌려지면 100 × 60 mm 좌표로 그려진 판이 다시 나가 80 × 30 mm 라벨지에서
    *    잘린다 — 화면은 「인쇄 완료」로 보이므로 시험이 없으면 되돌림을 아무도 못 잡는다.

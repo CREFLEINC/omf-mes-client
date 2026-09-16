@@ -59,8 +59,12 @@ describe('buildProductionLotLabel', () => {
    * ⛔ 서버가 100 × 60 mm 좌표로 그려 준 라벨이 80 × 30 mm 라벨지 밖으로 나가 잘린 결함
    *    (실기 2026-09-16 · 사용자 확인). 시작점만 보면 못 잡는다 — «끝점»까지 본다.
    */
-  it('⛔ 글줄과 QR 이 안전 여백 안에서 끝나고 서로 겹치지 않는다', () => {
-    const lines = buildProductionLotLabel(FIELDS).split('\r\n');
+  it.each([
+    ['수량을 적을 때(5줄)', FIELDS],
+    /* ⛔ 수량을 빼면 4줄이 되어 줄 간격이 다시 계산된다 — 그 판도 여백 안에서 끝나야 한다. */
+    ['수량을 모를 때(4줄)', { ...FIELDS, qty: null }],
+  ])('⛔ %s 글줄과 QR 이 안전 여백 안에서 끝나고 서로 겹치지 않는다', (_name, fields) => {
+    const lines = buildProductionLotLabel(fields).split('\r\n');
     const qr = lines.find((line) => line.startsWith('QRCODE ')) ?? '';
     const [qrX, qrY] = origin(qr);
     const cell = Number(/^QRCODE \d+,\d+,M,(\d+),/u.exec(qr)?.[1]);
@@ -72,7 +76,7 @@ describe('buildProductionLotLabel', () => {
     expect(qrY).toBeGreaterThanOrEqual(TOP);
     expect(qrY + side).toBeLessThanOrEqual(HEIGHT - BOTTOM);
 
-    for (const line of textLines(buildProductionLotLabel(FIELDS))) {
+    for (const line of textLines(buildProductionLotLabel(fields))) {
       const [x, y] = origin(line);
       const matched = /,"0",0,(\d+),\d+,"(.*)"$/u.exec(line);
       const point = Number(matched?.[1]);

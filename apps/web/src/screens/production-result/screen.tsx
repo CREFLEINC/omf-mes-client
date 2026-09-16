@@ -177,6 +177,21 @@ export const ProductionFlowScreen = () => {
   const [completedPage, setCompletedPage] = useState(1);
   const [appliedLotId, setAppliedLotId] = useState<number | null>(null);
   const [confirmedResultLotId, setConfirmedResultLotId] = useState<number | null>(null);
+  /*
+   * 방금 이 LOT 에 올라간 양품 수량. **라벨에 적을 수량의 출처다.**
+   *
+   * ⛔ **수량 칸(`actualQty`)을 라벨의 출처로 쓰지 않는다.** 그 칸은 LOT 이 서면 «계획 수량»으로
+   *    미리 채워지므로(아래 LOT 전환 effect), 작업자가 고쳐 넣은 실적과 다를 수 있다. 큐를 통해
+   *    올라간 실적은 그 칸을 거치지 않고 적용되기도 한다 — 그때 칸을 읽으면 **계획 수량이 라벨에
+   *    찍힌다.** 라벨은 현장이 그대로 읽는 값이고 종이는 되돌릴 수 없다(리뷰 지적 2026-09-16).
+   *
+   * ⚠ **LOT 을 함께 붙들어 둔다.** 큐에 있던 실적이 LOT 조회보다 «먼저» 적용될 수 있어, LOT
+   *   전환에서 비우는 방식으로는 방금 붙든 값이 지워진다(실측). 지우는 대신 «어느 LOT 의
+   *   수량인지»를 함께 적어 두고, 지금 LOT 의 것일 때만 쓴다.
+   */
+  const [appliedLabelQty, setAppliedLabelQty] = useState<{ lotId: number; qty: number } | null>(
+    null,
+  );
   const [lotPrintTargets, setLotPrintTargets] = useState<PrintTarget[]>([]);
   const [tagPrintTargets, setTagPrintTargets] = useState<PrintTarget[]>([]);
   const [pendingTagIssue, setPendingTagIssue] = useState<DocumentIssueCreate | null>(null);
@@ -236,8 +251,9 @@ export const ProductionFlowScreen = () => {
     lot !== null && (serverAppliedQty !== null || confirmedResultLotId === lot.lotId);
 
   /*
-   * 라벨에 실을 값. **수량은 서버가 센 양품 누계를 먼저 쓴다** — 방금 넣은 값은 아직 반영 전일
-   * 수 있어, 그때만 입력값으로 대신한다. 둘 다 모르면 수량 줄을 뺀다(`label-tspl`).
+   * 라벨에 실을 값. **수량은 서버가 센 양품 누계를 먼저 쓰고**, 아직 반영 전이면 방금 적용된
+   * 실적 수량(`appliedLabelQty`)을 쓴다. 둘 다 모르면 **수량 줄을 뺀다**(`label-tspl`) —
+   * ⛔ 수량 칸으로 되돌아가지 않는다(`appliedLabelQty` 머리말).
    */
   const lotLabelSource: LotLabelSource | null =
     lot === null
@@ -246,7 +262,8 @@ export const ProductionFlowScreen = () => {
           lotNo: lot.lotNo,
           itemCode: item.data?.itemCode ?? workOrder.data?.itemCode,
           workOrderNo: workOrder.data?.workOrderNo,
-          qty: serverAppliedQty ?? parsedQty,
+          qty:
+            serverAppliedQty ?? (appliedLabelQty?.lotId === lot.lotId ? appliedLabelQty.qty : null),
           uomCode: uom.labelOf(lot.uomId ?? workOrder.data?.uomId),
         };
 
@@ -304,10 +321,14 @@ export const ProductionFlowScreen = () => {
   });
 
   const onResultApplied = (outboxEntry: OutboxEntry): void => {
-    const lotId = outboxEntry.body.lotAllocations?.[0]?.lotId;
+    const allocation = outboxEntry.body.lotAllocations?.[0];
+    const lotId = allocation?.lotId;
     if (lotId === undefined) return;
 
     setAppliedLotId(lotId);
+    /* 이 LOT 에 실제로 실린 수량 — 큐에 들어간 본문이 정본이다. */
+    const allocatedQty = allocation?.allocatedQty;
+    setAppliedLabelQty(allocatedQty === undefined ? null : { lotId, qty: allocatedQty });
     setConfirmedResultLotId(lotId);
     setOutputPhase('issuing');
     /*
