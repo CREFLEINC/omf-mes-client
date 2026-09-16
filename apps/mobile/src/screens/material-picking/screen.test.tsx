@@ -116,6 +116,8 @@ interface Options {
   pickingTypes?: unknown[];
   /** 전표 상태를 바꿔 이미 전기된 지시를 만든다. */
   order?: ReturnType<typeof order>;
+  /** 목록을 통째로 갈아 끼운다 - 한 표에 사는 다른 원천을 섞어 보는 자리다. */
+  orders?: ReturnType<typeof order>[];
   /** 도착 위치 조회가 어떻게 끝나는지. 없는 것과 끊긴 것을 갈라 잰다. */
   destination?: 'ok' | 'missing' | 'offline';
   /** 보류 사유의 표시명. 비워 두면 표시명을 못 받은 상황이 된다. */
@@ -133,16 +135,22 @@ const rest = (options: Options, serverPicked: Map<number, number>): StubRoute[] 
       const count = options.orderCount;
 
       if (count === undefined) {
-        return jsonResponse({ items: [options.order ?? order()], page });
+        const items = options.orders ?? [options.order ?? order()];
+
+        return jsonResponse({ items, page: { ...page, total: items.length } });
       }
 
       const query = new URL(req.url).searchParams;
       const at = Number(query.get('page') ?? '1');
       const size = Number(query.get('size') ?? '100');
+      /* 첫 건만 출하 원천으로 둔다 - 거른 수와 받은 수가 갈려야 쪽 끝 판정을 잴 수 있다. */
       const all = Array.from({ length: count }, (each, index) =>
         order({
           pickingOrderId: 1000 + index,
           pickingOrderNo: `PK-2026-${String(index + 1).padStart(6, '0')}`,
+          ...(index === 0
+            ? { pickingTypeCode: 'SHIPMENT', sourceDocumentTypeCode: 'SHIPMENT_REQUEST' }
+            : {}),
         }),
       );
 
@@ -1104,6 +1112,27 @@ describe('자재 출고·피킹 화면', () => {
   });
 
   /*
+   * 한 표에 자재 피킹과 제품 출하 피킹이 함께 산다. 출하 건을 여기서 열면 남의 화면 일감을
+   * 자재 출고로 내보내게 된다 - 상세가 이미 같은 축으로 원천 요청을 묻지 않는다.
+   */
+  it('출하 요청에서 나온 지시는 목록에 세우지 않는다', async () => {
+    mount({
+      orders: [
+        order(),
+        order({
+          pickingOrderId: 8,
+          pickingOrderNo: 'PK-2026-000078',
+          pickingTypeCode: 'SHIPMENT',
+          sourceDocumentTypeCode: 'SHIPMENT_REQUEST',
+        }),
+      ],
+    });
+
+    expect(await screen.findByRole('button', { name: /PK-2026-000077/ })).toBeTruthy();
+    expect(screen.queryByRole('button', { name: /PK-2026-000078/ })).toBeNull();
+  });
+
+  /*
    * 담당자로 좁히면 담당이 빈 지시가 아무에게도 보이지 않고, 다른 공장 사람이 배정된 지시도
    * 현장에서 사라진다. 공장 밖은 서버가 막으므로 화면이 더 좁힐 까닭이 없다.
    */
@@ -1125,6 +1154,21 @@ describe('자재 출고·피킹 화면', () => {
     mount({ orderCount: 101 });
 
     expect(await screen.findByRole('button', { name: /PK-2026-000101/ })).toBeTruthy();
+  });
+
+  /*
+   * 쪽 끝은 받은 수로 잰다. 거른 뒤의 수로 재면 버린 만큼 모자라 보여 없는 쪽을 더 묻는다.
+   * 빈 쪽 방어가 있어 멎기는 하지만, 그 사이 좁은 회선으로 헛걸음이 나간다.
+   */
+  it('거른 만큼 없는 쪽을 더 묻지 않는다', async () => {
+    const sent = mount({ orderCount: 101 });
+    await screen.findByRole('button', { name: /PK-2026-000101/ });
+
+    await waitFor(() => {
+      expect(sent.asked.filter((each) => each.includes('/logistics/picking-orders?'))).toHaveLength(
+        2,
+      );
+    });
   });
 
   /*
