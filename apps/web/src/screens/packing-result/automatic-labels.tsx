@@ -8,6 +8,7 @@ import {
   PACKING_LABEL,
 } from '../shipping-packing-label/codes';
 import { useLabelIssue, type LabelIssueHandle } from '../shipping-packing-label/mutations';
+import { usePackingLabelDrawer } from '../shipping-packing-label/packing-label-drawer';
 import { useIssueSummaries, usePrinters } from '../shipping-packing-label/queries';
 import {
   toAllocationView,
@@ -24,6 +25,13 @@ const t = messages.packingResult.automaticLabels;
 export interface AutomaticLabelRun {
   handlingUnit: OpenHandlingUnit;
   allocations: ShipmentLotAllocation[];
+  /**
+   * 포장 라벨이 찍는 값이다(설계 §8) — 이 화면이 이미 쥐고 있으므로 함께 넘긴다.
+   *
+   * ⛔ **모르면 `null` 이다.** 빈 문자열로 떨어뜨리면 출하 번호 칸이 빈 라벨이 종이로 나가고
+   *    그것은 되돌릴 수 없다. `null` 이면 그리는 자리가 그 사실을 말하며 멈춘다.
+   */
+  shipmentNo: string | null;
 }
 
 interface AutomaticLabelsProps {
@@ -58,7 +66,12 @@ const failureText = (issue: LabelIssueHandle): string | null => {
 
 /** 포장 확정 뒤 포장 라벨과 OQC 통과 납품 라벨을 순서대로 자동 발행·인쇄한다. */
 export const AutomaticLabels = ({ run, workerNo, onOpenManagement }: AutomaticLabelsProps) => {
-  const packing = useLabelIssue({ workerNo });
+  /* 포장 라벨은 POP 이 그린다 — 재발행 화면과 **같은 손**을 쓴다(경로마다 라벨이 갈리지 않게). */
+  const drawLabel = usePackingLabelDrawer({
+    shipmentNo: run.shipmentNo,
+    allocations: run.allocations,
+  });
+  const packing = useLabelIssue({ workerNo, drawLabel });
   const delivery = useLabelIssue({ workerNo });
   const packingPrinters = usePrinters(PACKING_LABEL);
   const deliveryPrinters = usePrinters(DELIVERY_LABEL);

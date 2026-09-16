@@ -80,6 +80,7 @@ export const labelKeys = {
     [ROOT, 'summary', targetTypeCode, documentTypeCode, targetIds] as const,
   printers: (documentTypeCode: string) => [ROOT, 'printers', documentTypeCode] as const,
   reissueReasons: [ROOT, 'reissue-reasons'] as const,
+  uomCodes: [ROOT, 'uom-codes'] as const,
   history: (targetTypeCode: string, targetId: number | null) =>
     [ROOT, 'history', targetTypeCode, targetId] as const,
 };
@@ -375,4 +376,34 @@ export const useIssueHistory = (
       return items.map(toIssueView);
     },
   });
+};
+
+/** 단위 목록을 한 번에 받는다 — 라벨 한 장 때문에 단위마다 묻지 않는다. */
+const UOM_PAGE_SIZE = 200;
+
+/**
+ * 단위 식별자를 **코드**로 푼다 — 포장 라벨의 수량 줄이 쓴다.
+ *
+ * ⛔ **못 풀었을 때 지어내지 않는다.** 늘 `EA` 로 떨어뜨리면 현장이 그 말을 믿는다 — 상자 안이
+ *    박스 단위인데 낱개로 읽히면 수량 대조가 통째로 어긋난다. 못 풀면 `null` 을 주고, 라벨은
+ *    수만 적는다(`packing-label-fields`).
+ *
+ * ⚠ **목록이 한 쪽을 넘으면 그 너머는 못 푼다.** 단위 마스터는 수십 건 규모라 한 쪽으로
+ *   충분하지만, 늘어나면 이 자리가 조용히 모자라진다 — 그때는 쪽을 이어 받아야 한다.
+ */
+export const useUomCodes = (): ((uomId: number) => string | null) => {
+  const { client } = useApiClient();
+
+  const query = useQuery({
+    queryKey: labelKeys.uomCodes,
+    queryFn: async (): Promise<Map<number, string>> => {
+      const data = await runRequest(() =>
+        client.GET('/mdm/uoms', { params: { query: { size: UOM_PAGE_SIZE } } }),
+      );
+
+      return new Map(data.items.map((uom) => [uom.uomId, uom.uomCode]));
+    },
+  });
+
+  return (uomId) => query.data?.get(uomId) ?? null;
 };

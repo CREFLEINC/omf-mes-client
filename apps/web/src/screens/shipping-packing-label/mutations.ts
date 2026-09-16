@@ -9,10 +9,11 @@ import {
   labelRenditionFormat,
   LabelRenditionNotReadyError,
 } from '../../patterns/pop-label-rendition';
+import { renditionShell, type PopRenditionFormat } from '../../patterns/pop-print';
 import { runRequest, toApiError } from '../../patterns/request';
+
 import { DELIVERY_LABEL, type LabelKind } from './codes';
 import { toDocumentIssueBody, toPrintReportBody } from './issue-request';
-import { renditionShell } from '../../patterns/pop-print';
 import { toIssueView, type IssueView, type TargetRow } from './types';
 
 type Client = ApiClient['client'];
@@ -58,6 +59,18 @@ export interface IssuedLabel {
    * 그리고, 그 사이 무언가 달라지면 **본 것과 나온 것이 달라진다.**
    */
   bytes: Uint8Array;
+  /**
+   * 이 바이트의 형식. **인쇄할 때 다시 묻지 않는다.**
+   *
+   * ⛔ 인쇄 시점에 `labelRenditionFormat()` 을 다시 부르면 **받아 온 것과 다른 형식을 말할 수
+   *    있다**(그 사이 셸 통로가 서거나 사라진다). 그러면 PNG 를 `label.tspl` 로, 또는 TSPL 을
+   *    `label.png` 로 저장해 **깨진 라벨이 나오는데 앱은 성공으로 보고한다.** 형식은 바이트가
+   *    정하지 셸 사정이 정하지 않는다(전례 `production-result/flow-print`).
+   *
+   * ⭐ POP 이 스스로 그린 라벨은 언제나 `png` 다 — 명령형(TSPL)은 RAW 자리로만 나가는데 그
+   *    자리는 win32 에서만 선다(WIP-CHAIN-01 D6 실측).
+   */
+  format: PopRenditionFormat;
   /** 미리보기 `<img>` 의 주소. 해제 책임이 이 훅에 있다(놓으면 단말 메모리에 쌓인다). */
   previewUrl: string;
 }
@@ -134,6 +147,15 @@ const createIssues = async (
  * 아래 `issue`·`retryRendition` 의 catch 가 이 타입을 알아보고 「발행 실패」와 다른, 사람이 읽을
  * 사유를 `failureReason` 에 싣는다.
  */
+/**
+ * 준비 목록 판정에 쓸 종류 이름.
+ *
+ * ⚠ 납품 라벨만 목록에 있다(`patterns/pop-label-rendition` 의 `READY_RENDITION_DOCUMENT_TYPES`).
+ *   포장 라벨은 이제 POP 이 스스로 그리므로 **이 경로로 오지 않는다.**
+ */
+const renditionKindOf = (kind: LabelKind | null): 'DELIVERY_LABEL' | undefined =>
+  kind === DELIVERY_LABEL ? 'DELIVERY_LABEL' : undefined;
+
 const fetchRendition = async (
   client: ApiClient['client'],
   documentIssueLogId: number,
@@ -142,7 +164,7 @@ const fetchRendition = async (
   client,
   documentIssueLogId,
   labelRenditionFormat(),
-  kind === DELIVERY_LABEL ? 'DELIVERY_LABEL' : undefined,
+  renditionKindOf(kind),
 ));
 
 /**
@@ -157,10 +179,16 @@ const fetchPreview = async (
   client: ApiClient['client'],
   documentIssueLogId: number,
   printed: Uint8Array,
+  kind: LabelKind | null,
 ): Promise<Uint8Array> => {
   if (labelRenditionFormat() === 'png') return printed;
 
-  return fetchLabelRendition(client, documentIssueLogId, 'png', 'DELIVERY_LABEL')
+  /*
+   * ⛔ **종류를 `'DELIVERY_LABEL'` 로 못박지 않는다.** 한때 그랬는데, 그때는 포장 라벨이
+   *    앞줄(`fetchRendition`)에서 먼저 막혀 드러나지 않았을 뿐이다 — 포장 라벨이 준비 목록에
+   *    들어오는 순간 **포장 라벨의 미리보기가 납품 라벨 종류로 요청된다.**
+   */
+  return fetchLabelRendition(client, documentIssueLogId, 'png', renditionKindOf(kind))
     .then((drawn) => new Uint8Array(drawn))
     .catch(() => printed);
 };
@@ -223,6 +251,19 @@ export interface LabelIssueOptions {
    * 나가고, 거절이 화면이 아니라 서버에서 난다.
    */
   workerNo: string | null;
+  /**
+   * **POP 이 스스로 그리는 라벨.** 바이트를 돌려주면 서버 렌디션을 부르지 않고 그것을 찍는다.
+   * `null` 을 돌려주면 예전처럼 서버가 그린 것을 받는다.
+   *
+   * ⭐ **값을 이 훅이 모으지 않는다.** 무엇을 라벨에 싣는지는 화면이 쥔 자료에 달렸고
+   *    (상자 내용물·출하 번호), 훅이 그것을 알면 라벨 종류마다 훅이 하나씩 는다. 출고 QR 이
+   *    같은 짜임을 쓴다(`goods-issue-qr/mutations` 의 `labelFieldsOf`).
+   *
+   * ⚠ **그리지 못하는 것은 `null` 이 아니라 던지는 쪽이 낫다** — `null` 은 「서버에 맡긴다」는
+   *   뜻이라, 값이 모자란 것을 `null` 로 흘리면 준비 목록에 없는 종류가 서버로 나가 엉뚱한
+   *   사유로 멈춘다.
+   */
+  drawLabel?: (kind: LabelKind, row: TargetRow, issue: IssueView) => Uint8Array<ArrayBuffer> | null;
 }
 
 /**
@@ -245,7 +286,7 @@ const signatureOf = ({ kind, rows, printerName, reissueReasonCode }: IssueComman
  * ⛔ **발행과 인쇄를 한 호출로 묶지 않는다**(스펙 §6). 묶으면 인쇄가 실패했을 때 기록까지
  * 없던 일로 만들고 싶어지는데, 계약에 **발행 취소 경로가 없다** — 기록 전용이다.
  */
-export const useLabelIssue = ({ workerNo }: LabelIssueOptions): LabelIssueHandle => {
+export const useLabelIssue = ({ workerNo, drawLabel }: LabelIssueOptions): LabelIssueHandle => {
   const { client } = useApiClient();
   const queryClient = useQueryClient();
   const [phase, setPhase] = useState<IssuePhase>('idle');
@@ -267,6 +308,8 @@ export const useLabelIssue = ({ workerNo }: LabelIssueOptions): LabelIssueHandle
   const issueKey = useRef<{ signature: string; key: string } | null>(null);
   const issued = useRef<IssueView[]>([]);
   const issuedKind = useRef<LabelKind | null>(null);
+  /* 다시 그릴 때도 같은 값을 실어야 한다 — 발행에 쓴 대상 줄을 들고 있는다. */
+  const issuedRows = useRef<readonly TargetRow[]>([]);
   /* 미리보기 주소는 화면이 놓아도 브라우저가 놓지 않는다 — 이 훅이 끝까지 들고 있다가 푼다. */
   const urls = useRef<string[]>([]);
 
@@ -284,8 +327,56 @@ export const useLabelIssue = ({ workerNo }: LabelIssueOptions): LabelIssueHandle
     setLabels([]);
     issued.current = [];
     issuedKind.current = null;
+    issuedRows.current = [];
     setResult(IDLE_RESULT);
   }, [releaseUrls]);
+
+  /**
+   * 라벨 한 장의 바이트와 미리보기를 만든다 — **POP 이 그리거나, 서버가 그린 것을 받거나.**
+   *
+   * ⚠ 발행 응답의 `targetId` 로 대상 줄을 되찾는다. 줄을 못 찾으면 그리개를 부르지 않고 서버
+   *   경로로 간다 — 값이 모자란 채 라벨을 지어내는 것보다 낫다.
+   */
+  const renderOne = useCallback(
+    async (
+      one: IssueView,
+      kind: LabelKind | null,
+      rows: readonly TargetRow[],
+    ): Promise<IssuedLabel> => {
+      const row = rows.find((each) => each.issueTargetId === one.targetId);
+      const drawn =
+        kind === null || row === undefined ? null : (drawLabel?.(kind, row, one) ?? null);
+
+      /*
+       * ⭐ **POP 이 그렸으면 서버를 부르지 않는다.** 미리보기도 같은 바이트를 쓴다 — 그림이라
+       *    `<img>` 가 그대로 그리고, 두 번 그리면 「본 것과 나온 것」이 갈릴 수 있다.
+       */
+      if (drawn !== null) {
+        const previewUrl = URL.createObjectURL(new Blob([drawn as BlobPart], { type: 'image/png' }));
+        urls.current.push(previewUrl);
+
+        return { issue: one, bytes: drawn, format: 'png', previewUrl };
+      }
+
+      /* ⚠ 받아 온 형식을 **그 자리에서** 적어 둔다 — 인쇄할 때 다시 물으면 갈릴 수 있다. */
+      const format = labelRenditionFormat();
+      const bytes = await fetchRendition(client, one.documentIssueLogId, kind);
+      /*
+       * ⛔ **미리보기는 «그림»으로 따로 받는다**(#1104 리뷰 지적). 인쇄로 나가는 것은 셸이 선
+       *    단말에서 명령형(`tspl`)이고, 그 바이트를 `<img>` 에 넣으면 언제나 「그릴 수
+       *    없습니다」가 뜬다 — **확인해야 할 그 단말에서만** 죽는다.
+       * ⚠ 그림을 못 받아도 인쇄는 막지 않는다 — 종이로 나갈 바이트는 이미 손에 있다.
+       */
+      const previewBytes = await fetchPreview(client, one.documentIssueLogId, bytes, kind);
+      const previewUrl = URL.createObjectURL(
+        new Blob([previewBytes as BlobPart], { type: 'image/png' }),
+      );
+      urls.current.push(previewUrl);
+
+      return { issue: one, bytes, format, previewUrl };
+    },
+    [client, drawLabel],
+  );
 
   const issue = useCallback(
     (command: IssueCommand) => {
@@ -313,6 +404,7 @@ export const useLabelIssue = ({ workerNo }: LabelIssueOptions): LabelIssueHandle
           const issues = await createIssues(client, command, workerNo, issueKey.current.key);
           issued.current = issues;
           issuedKind.current = command.kind;
+          issuedRows.current = command.rows;
 
           at = 'render';
           setStep('render');
@@ -320,19 +412,7 @@ export const useLabelIssue = ({ workerNo }: LabelIssueOptions): LabelIssueHandle
           const rendered: IssuedLabel[] = [];
 
           for (const one of issues) {
-            const bytes = await fetchRendition(client, one.documentIssueLogId, command.kind);
-            /*
-             * ⛔ **미리보기는 «그림»으로 따로 받는다**(#1104 리뷰 지적). 인쇄로 나가는 것은
-             *    셸이 선 단말에서 명령형(`tspl`)이고, 그 바이트를 `<img>` 에 넣으면 언제나
-             *    「그릴 수 없습니다」가 뜬다 — **확인해야 할 그 단말에서만** 죽는다.
-             * ⚠ 그림을 못 받아도 인쇄는 막지 않는다 — 종이로 나갈 바이트는 이미 손에 있다.
-             */
-            const previewBytes = await fetchPreview(client, one.documentIssueLogId, bytes);
-            const previewUrl = URL.createObjectURL(
-              new Blob([previewBytes as BlobPart], { type: 'image/png' }),
-            );
-            urls.current.push(previewUrl);
-            rendered.push({ issue: one, bytes, previewUrl });
+            rendered.push(await renderOne(one, command.kind, command.rows));
           }
 
           setLabels(rendered);
@@ -367,7 +447,7 @@ export const useLabelIssue = ({ workerNo }: LabelIssueOptions): LabelIssueHandle
 
       void execute();
     },
-    [client, queryClient, workerNo],
+    [client, queryClient, renderOne, workerNo],
   );
 
   const retryRendition = useCallback(() => {
@@ -383,14 +463,7 @@ export const useLabelIssue = ({ workerNo }: LabelIssueOptions): LabelIssueHandle
         const rendered: IssuedLabel[] = [];
 
         for (const one of issued.current) {
-          const bytes = await fetchRendition(client, one.documentIssueLogId, issuedKind.current);
-          /* ⛔ 미리보기는 그림으로 따로 받는다 — 위 갈래와 같은 사정이다(#1104). */
-          const previewBytes = await fetchPreview(client, one.documentIssueLogId, bytes);
-          const previewUrl = URL.createObjectURL(
-            new Blob([previewBytes as BlobPart], { type: 'image/png' }),
-          );
-          urls.current.push(previewUrl);
-          rendered.push({ issue: one, bytes, previewUrl });
+          rendered.push(await renderOne(one, issuedKind.current, issuedRows.current));
         }
 
         setLabels(rendered);
@@ -411,7 +484,7 @@ export const useLabelIssue = ({ workerNo }: LabelIssueOptions): LabelIssueHandle
     };
 
     void execute();
-  }, [client, releaseUrls]);
+  }, [releaseUrls, renderOne]);
 
   const print = useCallback(() => {
     if (workerNo === null || labels.length === 0) return;
@@ -442,7 +515,7 @@ export const useLabelIssue = ({ workerNo }: LabelIssueOptions): LabelIssueHandle
                     label.bytes,
                     `label-${String(label.issue.documentIssueLogId)}`,
                     new Date().toISOString(),
-                    labelRenditionFormat(),
+                    label.format,
                   )
                   .then(() => null)
                   .catch((cause: unknown) => toFailureReason(cause));

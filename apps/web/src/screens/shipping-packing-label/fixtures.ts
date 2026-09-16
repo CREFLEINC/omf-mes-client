@@ -30,6 +30,9 @@ export const allocation = (
   lotId,
   ...(lotNo === null ? {} : { lotNo }),
   ...(handlingUnitId === null ? {} : { handlingUnitId }),
+  itemId: 9601,
+  /* 계약의 필수 값이다 — 빠뜨리면 스텁이 서버보다 너그러워져 화면의 결손을 덮는다. */
+  itemCode: 'F534F50200',
   allocatedQty: 120,
   uomId: 9301,
   oqcPassed,

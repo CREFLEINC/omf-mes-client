@@ -31,10 +31,21 @@ export interface AllocationView {
   /**
    * 없을 수 있다 — 계약이 선택으로 둔다.
    *
-   * ⚠ **없을 때 대신 그릴 것이 응답에 없다.** 품목 코드는 배분 응답에 실리지 않는다(계약 확인
-   * 2026-09-02) — 계획 §6-C 로 올린 자리다. 그때까지는 자리표시 문구를 그린다.
+   * ⚠ 없을 때는 자리표시 문구를 그린다. **품목 코드로 대신하지 않는다** — 목록의 「대상」 칸은
+   *   LOT 을 가리키는 자리라, 품목 코드를 넣으면 다른 것을 가리키면서 같은 칸처럼 보인다.
    */
   lotNo: string | null;
+  /**
+   * 품목 코드.
+   *
+   * ⭐ **포장 라벨이 이것을 찍는다**(설계 §8). 품목 «이름»이 아니라 코드다 — 점 글꼴이
+   *    영문·숫자만 갖고, 없는 글자는 채운 상자로 나간다(`patterns/label/bitmap`).
+   */
+  itemCode: string;
+  /** 이 배분이 상자에 담긴 수량. 포장 라벨의 수량 줄이 쓴다. */
+  allocatedQty: number;
+  /** 수량의 단위. **코드는 따로 풀어야 한다** — 배분 응답에는 식별자만 온다. */
+  uomId: number;
   /** 포장하지 않는 출하도 있다(계약 명시) — 그래서 비어 올 수 있다. */
   handlingUnitId: number | null;
   /**
@@ -51,6 +62,9 @@ export const toAllocationView = (data: AllocationResponse): AllocationView => ({
   shipmentLotAllocationId: data.shipmentLotAllocationId,
   lotId: data.lotId,
   lotNo: data.lotNo ?? null,
+  itemCode: data.itemCode,
+  allocatedQty: data.allocatedQty,
+  uomId: data.uomId,
   handlingUnitId: data.handlingUnitId ?? null,
   oqcPassed: data.oqcPassed,
 });

@@ -19,6 +19,9 @@ const view = (
   shipmentLotAllocationId,
   lotId: 9501,
   lotNo,
+  itemCode: 'F534F50200',
+  allocatedQty: 120,
+  uomId: 9301,
   handlingUnitId: null,
   oqcPassed,
 });

@@ -27,6 +27,7 @@ import {
 import { ReissuePane } from './reissue-pane';
 import { TargetTable } from './target-table';
 import { useLabelIssue } from './mutations';
+import { usePackingLabelDrawer } from './packing-label-drawer';
 import {
   isDelivery,
   needsReissueReason,
@@ -163,7 +164,16 @@ export const ShippingPackingLabelScreen = ({
 
   const reissueReasons = useReissueReasons(isReissue);
   const history = useIssueHistory(kind, historyTargetId);
-  const issue = useLabelIssue({ workerNo });
+  /*
+   * ⭐ **포장 라벨은 POP 이 스스로 그린다**(SHIP-UNIT-01 P2). 그전에는 서버 렌디션을 받으려
+   *    했는데 `PACKING_LABEL` 이 준비 목록에 없어 **배포본에서 요청이 만들어지기도 전에
+   *    막혔다** — 인쇄와 결과 보고까지 한 번도 닿지 못했다.
+   */
+  const drawLabel = usePackingLabelDrawer({
+    shipmentNo: shipment.data?.shipmentNo ?? null,
+    allocations: allocationItems,
+  });
+  const issue = useLabelIssue({ workerNo, drawLabel });
 
   const missingPackingRows = useMemo(
     () =>

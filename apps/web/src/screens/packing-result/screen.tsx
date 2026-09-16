@@ -129,7 +129,11 @@ export const PackingResultScreen = () => {
       const packedAllocations = shipmentAllocations.allocations.filter((allocation) =>
         lines.some((line) => line.shipmentLotAllocationId === allocation.shipmentLotAllocationId),
       );
-      setAutomaticLabelRun({ handlingUnit, allocations: packedAllocations });
+      setAutomaticLabelRun({
+        handlingUnit,
+        allocations: packedAllocations,
+        shipmentNo: entry?.shipmentNo ?? null,
+      });
       /* 확정하면 이 포장은 끝났다 — 다음 포장을 위해 담긴 것을 비우되 라벨은 남긴다(같은 출하를 계속 싼다). */
       setLines([]);
       setMatched(null);
