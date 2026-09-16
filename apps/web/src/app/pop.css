@@ -2841,14 +2841,6 @@
 }
 
 /*
- * 「투입 확정」이 잠긴 사유도 같은 사정이다 — 버튼이 구획 폭을 통째로 쓰므로 그 사유도
- * 같은 폭으로 선다. `20rem` 에 갇히면 넓은 구획에서 두 줄로 접힌다(실측).
- */
-.pop-ui .confirm-row > .field-note {
-  max-width: none;
-}
-
-/*
  * 확정 결과 띠는 **버튼과 조금 떨어뜨린다**(사용자 지시 2026-09-10). 줄 간격(8)만으로는
  * 버튼에 붙어 한 덩어리로 읽혀, 「눌렀다」와 「끝났다」가 구분되지 않는다.
  */
@@ -5703,9 +5695,12 @@
  * ⛔ 이름에 `action` 을 넣지 않는다 — `[class*='action']` 을 겨냥한 레이아웃 규칙이 이 파일에
  *   있어, 그 낱말이 들어가면 의도하지 않은 규칙이 함께 걸린다.
  * ⚠ **띠 안의 갈래를 따로 적는다.** 위쪽 「알림 띠 안의 단추는 액션 줄이 아니다」 규칙이
- *   띠 안 단추의 폭 하한을 0 으로 되돌리는데(`[role='alert'] [class*='action'] button`),
- *   그쪽이 더 좁은 겨냥이라 한 줄로는 지지 않는다. 그 규칙은 그대로 두고 **이 단추만**
- *   예외로 적는다 — 되돌리면 띠 안 단추 전부가 8rem 로 부푼다.
+ *   띠 안 단추의 폭 하한을 0 으로 되돌린다(`[role='alert'] [class*='action'] button`).
+ *   그 규칙과 **특정도가 같아(0,3,1) 순서로 이긴다** — ⛔ 이 블록을 그 규칙 «위»로 옮기지
+ *   않는다. 옮기면 폭이 조용히 되돌아간다. 그 규칙 자체는 그대로 둔다 — 겨냥을 넓히면 띠 안
+ *   단추 전부가 8rem 로 부푼다.
+ * ⚠ `[role='status']` 갈래는 지금 대상이 없다(이 띠는 늘 `warning`=`alert`). 띠의 종류가
+ *   바뀌어도 폭이 따라오게 함께 적어 둔다.
  */
 .pop-ui .work-start-head-button,
 .pop-ui [role='alert'] button.work-start-head-button,
@@ -5763,9 +5758,15 @@
  *
  * ⚠ 가운데 정렬(`align-items: center`)로 풀지 않는다 — 문구가 여러 줄인 띠에서는 아이콘이
  *   덩어리 한가운데로 내려가, 어느 줄에 붙은 표식인지 흐려진다. 첫 줄에 맞추는 것이 맞다.
+ * ⛔ **`role` 만으로 겨냥하지 않는다.** `[role='status']`·`[role='alert']` 는 화면이 직접
+ *    붙인 상자에도 붙어 있어(`packing-verdict`·`pop-repack-blocked` 등), 그 안의 첫 요소가
+ *    아이콘이 아니라 **단추나 뼈대 자리**인 곳까지 2px 내려앉는다(리뷰 지적). DS 배너가 실제로
+ *    서는 두 자리만 적는다.
  * ⚠ DS 내부 클래스를 겨냥하지 않는다 — 구조 선택자(`> :first-child`)로 잡는다.
  */
-.pop-ui [role='status'] > :first-child,
-.pop-ui [role='alert'] > :first-child {
+.pop-ui .banner-slot > [role='alert'] > :first-child,
+.pop-ui .banner-slot > [role='status'] > :first-child,
+.pop-ui .scan-outcome > [role='alert'] > :first-child,
+.pop-ui .scan-outcome > [role='status'] > :first-child {
   margin-block-start: 2px;
 }

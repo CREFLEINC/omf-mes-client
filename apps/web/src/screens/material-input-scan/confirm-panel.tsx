@@ -1,10 +1,7 @@
 import { AlertBanner, Button } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 
-
 import { toApiError } from '../../patterns/request';
-
-import { confirmBlockReason } from './block-reason';
 
 import type { TerminalGate } from './terminal-gating';
 
@@ -13,10 +10,15 @@ const t = messages.materialInputScan;
 export interface ConfirmPanelProps {
   /** 기록된 자재가 하나라도 있는가. 닫을 것이 있어야 닫는다. */
   hasRecorded: boolean;
-  /** 아직 기록되지 않은 줄이 남았는가. 남은 채 닫으면 그 줄이 버려진다. */
-  hasPending: boolean;
-  hasWorker: boolean;
   gate: TerminalGate;
+  /**
+   * 확정이 잠긴 사유 한 문장. 잠겼지만 말할 것이 없으면 `undefined`.
+   *
+   * ⛔ **여기서 다시 판정하지 않는다.** 문구는 화면 위쪽 띠가 내고(`screen.tsx`), 잠금은 이
+   *    구획이 건다 — 같은 값을 두 곳에서 «계산»하면 인자가 갈리는 순간 띠와 버튼이 어긋난다.
+   *    판정은 `block-reason.ts` 하나이고, 그 결과를 둘이 «나눠 쓴다».
+   */
+  blockReason: string | undefined;
   /**
    * 잠금 사유를 내는 띠(화면 위쪽)의 문단 id. 잠긴 버튼이 `aria-describedby` 로 그 문단을
    * 가리켜, 포커스를 받지 못하는 버튼의 사유에 스크린리더가 닿는다.
@@ -57,17 +59,14 @@ export interface ConfirmPanelProps {
  */
 export const ConfirmPanel = ({
   hasRecorded,
-  hasPending,
-  hasWorker,
   gate,
+  blockReason,
   reasonId,
   rejection,
   closedCount,
   onConfirm,
   onGoToProductionResult,
 }: ConfirmPanelProps) => {
-  const blockReason = confirmBlockReason({ gate, hasWorker, hasPending });
-
   /*
    * 잠금은 사유 «문구»가 아니라 상태가 정한다 — 담긴 것이 없을 때는 말없이 잠긴 채로 둔다.
    * ⛔ 둘을 한 값으로 묶지 않는다. 묶으면 문구를 지우는 순간 잠금까지 풀린다.
@@ -120,7 +119,12 @@ export const ConfirmPanel = ({
            *    넘겨받은 다음 작업자가 남의 작업지시에 실적을 올린다.
            */}
           {onGoToProductionResult !== null && (
-            <Button variant="filled" size="xl" className="confirm-next-step" onClick={onGoToProductionResult}>
+            <Button
+              variant="filled"
+              size="xl"
+              className="confirm-next-step"
+              onClick={onGoToProductionResult}
+            >
               {t.confirm.goToProductionResult}
             </Button>
           )}
