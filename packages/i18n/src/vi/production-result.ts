@@ -104,7 +104,7 @@ export const productionResult: Translated<typeof ko.productionResult> = {
     },
     session: {
       failed: 'Không kết thúc được phiên làm việc.',
-      retry: 'Thử kết thúc phiên lại',
+      retry: 'Thử lại kết thúc phiên',
       denied:
         'Máy trạm này không có quyền hoàn tất công việc của công đoạn này. Phiên làm việc được giữ mở.',
       offline: 'Mất kết nối nên chưa kết thúc được phiên làm việc. Hãy thử lại sau khi có kết nối.',

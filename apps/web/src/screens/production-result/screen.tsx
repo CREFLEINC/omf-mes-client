@@ -1075,17 +1075,19 @@ export const ProductionFlowScreen = () => {
              * ⚠ 잔여를 모르면 넘었는지도 모른다 — `isOverrun` 이 그때 `false` 라 서지 않는다.
              */}
             {isOverrun && parsedQty !== null && remaining !== null && (
-              <AlertBanner
-                variant="warning"
-                title={
-                  remaining > 0
-                    ? t.overrun.notice(
-                        `${formatQty(parsedQty - remaining)} ${uomLabel}`.trim(),
-                        `${formatQty(remaining)} ${uomLabel}`.trim(),
-                      )
-                    : t.overrun.noticeNoRemaining
-                }
-              />
+              <div className="production-flow-inline-note">
+                <AlertBanner
+                  variant="warning"
+                  title={
+                    remaining > 0
+                      ? t.overrun.notice(
+                          `${formatQty(parsedQty - remaining)} ${uomLabel}`.trim(),
+                          `${formatQty(remaining)} ${uomLabel}`.trim(),
+                        )
+                      : t.overrun.noticeNoRemaining
+                  }
+                />
+              </div>
             )}
             <NumericKeypad
               value={actualQty}
@@ -1358,7 +1360,7 @@ export const ProductionFlowScreen = () => {
              * ⛔ **서버 오류 원문을 싣지 않는다.** 작업자에게는 다음 행동만 말한다.
              */}
             {(sessionPhase === 'failed' || sessionPhase === 'denied') && (
-              <div className="production-flow-session-note">
+              <div className="production-flow-inline-note production-flow-session-note">
                 {/*
                  * ⭐ **노란 띠로 낸다**(사용자 지시 2026-09-16). 빨간 글씨는 «방금 친 값이
                  *    틀렸다»는 말이라 이 자리와 뜻이 다르다 — 값은 멀쩡하고, 뒤에서 하나가
@@ -1366,11 +1368,8 @@ export const ProductionFlowScreen = () => {
                  */}
                 <AlertBanner variant="warning" title={sessionStatusTitle}>
                   {sessionPhase === 'failed' && (
-                    <Button
-                      variant="outlined"
-                      onClick={retrySessionEnd}
-                      disabled={sessionEnd.isSaving}
-                    >
+                    /* 채운 단추로 낸다(사용자 지시 2026-09-16) — POP 기본 채움이 빨강이다. */
+                    <Button onClick={retrySessionEnd} disabled={sessionEnd.isSaving}>
                       {t.flow.session.retry}
                     </Button>
                   )}
