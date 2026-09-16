@@ -5992,3 +5992,16 @@
 .pop-ui > .pop-loclabel-actions > .field-note {
   margin-inline-end: auto;
 }
+
+/*
+ * 발행 이력을 못 물었을 때의 사유와 되물음. **액션바 바로 위**에 둔다 — 잠긴 단추 옆에서
+ * 왜 잠겼는지 읽게 한다(리뷰 지적 · PR #1313).
+ */
+.pop-ui .pop-loclabel-summary-error {
+  display: flex;
+  flex: none;
+  gap: var(--space-3);
+  align-items: center;
+  flex-wrap: wrap;
+  margin-block-start: var(--space-3);
+}

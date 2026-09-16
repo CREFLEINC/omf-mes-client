@@ -1,4 +1,4 @@
-import { AlertBanner, Button, Chip, Table } from '@crefle/web-ui';
+import { AlertBanner, Button, Chip, SkeletonText, Table } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useId, useMemo, useState } from 'react';
 
@@ -11,7 +11,6 @@ import { useLocationLabelWrite, usePrintFlow, type PrintReport } from './mutatio
 import { hasPrintBridge } from './pop-print';
 import { PrinterSelect } from './printer-select';
 import {
-  popLocationLabelKeys,
   useIssueSummary,
   useLocations,
   usePrinters,
@@ -19,7 +18,13 @@ import {
   useWarehouses,
 } from './queries';
 import { ReissueDialog } from './reissue-dialog';
-import { LOCATION_PAGE_SIZE, MAX_TARGETS, TARGET_TYPE_CODE, type DocumentIssue } from './types';
+import {
+  DOCUMENT_TYPE_CODE,
+  LOCATION_PAGE_SIZE,
+  MAX_TARGETS,
+  TARGET_TYPE_CODE,
+  type DocumentIssue,
+} from './types';
 
 const t = messages.popLocationLabel;
 
@@ -78,15 +83,35 @@ export const PopLocationLabelScreen = () => {
     onSuccess: (issued: DocumentIssue[]) => {
       setReissueAsked(false);
       setReasonCode('');
-      void printFlow.mutateAsync(issued).then((result) => {
-        setReports(result.reports);
-      });
+      /*
+       * ⛔ **거절을 받을 곳을 둔다.** 건별 실패는 안에서 값으로 접히지만, 그 바깥(형식 협상)이
+       *    거절하면 결과 구획이 영영 비어 「눌렀는데 아무 일도 없다」가 된다. 발행은 이미
+       *    끝났으므로 **인쇄가 통째로 실패한 것**으로 적는다 — 없던 일로 두지 않는다.
+       */
+      void printFlow
+        .mutateAsync(issued)
+        .then((result) => {
+          setReports(result.reports);
+        })
+        .catch((cause: unknown) => {
+          setReports(
+            issued.map((record) => ({
+              documentIssueLogId: record.documentIssueLogId,
+              targetId: record.target.targetId,
+              attempt: {
+                kind: 'failed' as const,
+                reason: cause instanceof Error ? cause.message : String(cause),
+              },
+              reported: false,
+            })),
+          );
+        });
     },
   });
 
   const issue = (reissueReasonCode: string | null): void => {
     write.write({
-      documentTypeCode: 'LOCATION_LABEL',
+      documentTypeCode: DOCUMENT_TYPE_CODE,
       targets: selectedIds.map((targetId) => ({ targetTypeCode: TARGET_TYPE_CODE, targetId })),
       ...(reissueReasonCode === null ? {} : { reissueReasonCode }),
       ...(printerName === null ? {} : { printerName }),
@@ -96,13 +121,21 @@ export const PopLocationLabelScreen = () => {
   /**
    * 발행을 열 수 있는가. **막는 사유를 하나씩 가른다** — 뭉치면 작업자가 무엇을 고쳐야 할지
    * 모른다(공유계약 G-9).
+   *
+   * ⛔ **「묻는 중」과 「못 물었다」를 한 값으로 뭉치지 않는다.** 앞은 기다리면 풀리고 뒤는
+   *    기다려도 안 풀린다 — 작업자가 할 일이 다르다. 한 값으로 두었더니 조회가 실패했을 때
+   *    **단추가 사유 없이 잠긴 채** 남았다(리뷰 지적 · PR #1313).
    */
-  const guard = ((): 'ready' | 'noWorker' | 'noSelection' | 'tooMany' | 'awaitingSummary' => {
+  type Guard =
+    'ready' | 'noWorker' | 'noSelection' | 'tooMany' | 'summaryLoading' | 'summaryFailed';
+
+  const guard = ((): Guard => {
     if (entry.workerNo === null) return 'noWorker';
     if (selectedIds.length === 0) return 'noSelection';
     if (selectedIds.length > MAX_TARGETS) return 'tooMany';
     /* 회차를 모르는 채 보내면 사유가 빠져 전건이 실패한다 — 요약을 받은 뒤에 연다. */
-    if (summary.isPending || summary.isError) return 'awaitingSummary';
+    if (summary.isError) return 'summaryFailed';
+    if (summary.isPending) return 'summaryLoading';
 
     return 'ready';
   })();
@@ -211,7 +244,15 @@ export const PopLocationLabelScreen = () => {
               {t.location.retry}
             </Button>
           </>
-        ) : locationItems.length === 0 && !locations.isPending ? (
+        ) : locations.isPending ? (
+          /*
+           * ⛔ **빈 표를 그려 두지 않는다.** 불러오는 중과 「한 자리도 없다」가 눈으로 갈리지 않으면,
+           *   작업자는 없는 자리를 찾다가 창고를 다시 고른다.
+           */
+          <div role="status" aria-label={t.location.loading}>
+            <SkeletonText lines={3} />
+          </div>
+        ) : locationItems.length === 0 ? (
           <p className="field-note">{t.location.empty}</p>
         ) : (
           <>
@@ -250,9 +291,30 @@ export const PopLocationLabelScreen = () => {
         }
       />
 
+      {/*
+       * ⛔ **못 물은 것은 조용히 잠그지 않는다.** 이 조회가 실패하면 발행이 막히는데, 사유가
+       *   없으면 작업자는 고른 자리를 앞에 두고 죽은 단추만 누른다 — 다른 세 조회는 모두
+       *   실패 배너와 [다시 시도]를 갖췄고 이 자리만 빠져 있었다(리뷰 지적 · PR #1313).
+       */}
+      {guard === 'summaryFailed' && (
+        <section className="pop-loclabel-summary-error">
+          <AlertBanner variant="error">{t.issue.summaryFailed}</AlertBanner>
+          <Button
+            className={popTouchClass('normal')}
+            variant="outlined"
+            size="xl"
+            onClick={() => void summary.refetch()}
+          >
+            {t.issue.retrySummary}
+          </Button>
+        </section>
+      )}
+
       <div className="pop-action-bar pop-loclabel-actions">
         <p className="field-note">{t.location.selectedCount(selectedIds.length)}</p>
         {guard === 'tooMany' && <p className="field-note">{t.location.tooMany(MAX_TARGETS)}</p>}
+        {/* 「묻는 중」도 말한다 — 잠깐이라도 단추가 잠기는 까닭이 보여야 한다. */}
+        {guard === 'summaryLoading' && <p className="field-note">{t.issue.checkingHistory}</p>}
         <Button
           className={popTouchClass('primary')}
           variant="filled"
@@ -333,5 +395,3 @@ const PrintResult = ({ reports, isPending, locationCodeOf }: PrintResultProps) =
     </section>
   );
 };
-
-export { popLocationLabelKeys };

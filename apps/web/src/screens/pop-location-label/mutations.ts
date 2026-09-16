@@ -10,7 +10,7 @@ import {
 import { runRequest } from '../../patterns/request';
 import { hasPrintBridge, sendToPrinter, type PrintAttempt } from './pop-print';
 import { popLocationLabelKeys } from './queries';
-import { DOCUMENT_TYPE_CODE, type DocumentIssue, type DocumentIssueCreate } from './types';
+import type { DocumentIssue, DocumentIssueCreate } from './types';
 
 /**
  * 발행 · 재발행.

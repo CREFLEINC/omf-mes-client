@@ -27,6 +27,7 @@ export const popLocationLabel = {
     /** 창고를 고르기 전. 목록 자리를 비워 두지 않고 무엇을 더 해야 하는지 적는다. */
     awaitingWarehouse: '창고를 고르면 그 창고의 적재 위치가 나옵니다.',
     empty: '이 창고에는 등록된 적재 위치가 없습니다.',
+    loading: '적재 위치를 불러오는 중',
     loadFailed: '적재 위치를 불러오지 못했습니다. 연결을 확인한 뒤 다시 시도하세요.',
     retry: '다시 시도',
     columnCode: '위치 코드',
@@ -57,6 +58,16 @@ export const popLocationLabel = {
     pending: '발행하는 중',
     /** 고른 것이 없을 때는 단추가 이미 말한다 — 문구를 덧붙이지 않는다. */
     succeeded: (count: number) => `${String(count)}건을 발행했습니다.`,
+    /** 회차를 서버에 묻는 동안. 잠깐이라도 단추가 잠기는 까닭을 말한다. */
+    checkingHistory: '발행 이력을 확인하는 중입니다.',
+    /**
+     * 회차를 못 물었다.
+     *
+     * ⛔ **「기다리세요」로 적지 않는다** — 기다려도 풀리지 않는다. 사용자가 할 수 있는 일을 적는다.
+     */
+    summaryFailed:
+      '발행 이력을 확인하지 못해 발행할 수 없습니다. 연결을 확인한 뒤 다시 시도하세요.',
+    retrySummary: '발행 이력 다시 확인',
   },
 
   reissue: {

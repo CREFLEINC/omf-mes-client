@@ -80,6 +80,8 @@ interface Options {
   renditionCalls?: string[];
   /** 렌디션 조회가 실패하는 경우 — 인쇄 실패로 이어져야 한다 */
   renditionFails?: boolean;
+  /** 발행 이력 요약 조회가 실패하는 경우 — 발행이 막히고 사유가 보여야 한다 */
+  summaryFails?: boolean;
 }
 
 const routes = (options: Options): StubRoute[] => [
@@ -126,6 +128,10 @@ const routes = (options: Options): StubRoute[] => [
   {
     match: (request) => pathOf(request) === '/app/document-issues/summary',
     respond: (request) => {
+      if (options.summaryFails === true) {
+        return jsonResponse({ message: '조회 실패' }, { status: 500 });
+      }
+
       const targetIds = new URL(request.url).searchParams.getAll('targetIds').map(Number);
 
       return jsonResponse({
@@ -399,6 +405,44 @@ describe('P-06-01 창고 적재 위치 라벨 발행', () => {
       expect(reports).toHaveLength(1);
     });
     expect(renditionCalls).toHaveLength(0);
+    expect(save).not.toHaveBeenCalled();
+    await expect(reports[0]?.clone().json()).resolves.toMatchObject({ outcome: 'FAILED' });
+    expect(await screen.findByText(t.print.summary(0, 1))).toBeInTheDocument();
+  });
+
+  it('발행 이력을 못 물으면 사유와 다시 시도를 보이고, 발행을 열지 않는다', async () => {
+    const user = userEvent.setup();
+    renderScreen({ summaryFails: true });
+
+    await chooseWarehouse(user);
+    await chooseLocation(user, 'S230-01');
+
+    /*
+     * ⛔ **조용히 잠그지 않는다.** 사유가 없으면 작업자는 고른 자리를 앞에 두고 죽은 단추만
+     *    누른다 — 기다려도 풀리지 않는 상태다.
+     */
+    expect(await screen.findByText(t.issue.summaryFailed)).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: t.issue.retrySummary })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: t.issue.action })).toBeDisabled();
+  });
+
+  it('렌디션을 받지 못하면 인쇄 실패로 보고한다', async () => {
+    const user = userEvent.setup();
+    const reports: Request[] = [];
+    const save = vi.fn().mockResolvedValue('/tmp/label.tspl');
+    asDevelopmentMode();
+    installPrintBridge(save);
+
+    renderScreen({ reports, renditionFails: true });
+
+    await chooseWarehouse(user);
+    await chooseLocation(user, 'S230-01');
+    await clickIssue(user);
+
+    /* 받지 못한 것도 인쇄 실패다 — 종이는 나오지 않았고 발행 기록은 남아 있다. */
+    await waitFor(() => {
+      expect(reports).toHaveLength(1);
+    });
     expect(save).not.toHaveBeenCalled();
     await expect(reports[0]?.clone().json()).resolves.toMatchObject({ outcome: 'FAILED' });
     expect(await screen.findByText(t.print.summary(0, 1))).toBeInTheDocument();

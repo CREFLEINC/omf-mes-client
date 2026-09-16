@@ -26,6 +26,7 @@ export const popLocationLabel = {
     heading: 'Vị trí',
     awaitingWarehouse: 'Chọn kho để xem các vị trí của kho đó.',
     empty: 'Kho này chưa có vị trí nào.',
+    loading: 'Đang tải danh sách vị trí',
     loadFailed: 'Không tải được danh sách vị trí. Hãy kiểm tra kết nối rồi thử lại.',
     retry: 'Thử lại',
     columnCode: 'Mã vị trí',
@@ -52,6 +53,10 @@ export const popLocationLabel = {
     action: 'Phát hành nhãn',
     pending: 'Đang phát hành',
     succeeded: (count: number) => `Đã phát hành ${String(count)} nhãn.`,
+    checkingHistory: 'Đang kiểm tra lịch sử phát hành.',
+    summaryFailed:
+      'Không kiểm tra được lịch sử phát hành nên không thể phát hành. Hãy kiểm tra kết nối rồi thử lại.',
+    retrySummary: 'Kiểm tra lại lịch sử',
   },
 
   reissue: {
