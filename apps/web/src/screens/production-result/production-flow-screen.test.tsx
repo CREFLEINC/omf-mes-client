@@ -1,6 +1,7 @@
 import { messages } from '@omf-mes/i18n';
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { StrictMode } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { PopIdentityProvider } from '../../patterns/pop-identity';
@@ -217,9 +218,14 @@ const routes = (writes: Request[]): StubRoute[] => [
 const renderScreen = (
   writes: Request[],
   extraRoutes: StubRoute[] = [],
-  options: { workerNo?: string | null; route?: string } = {},
-) =>
-  renderWithProviders(
+  options: { workerNo?: string | null; route?: string; strict?: boolean } = {},
+) => {
+  /*
+   * ⚠ **`StrictMode` 는 선택으로 둔다.** POP 앱은 실제로 `StrictMode` 아래서 돌고
+   *   (`app/pop-main.tsx`), 개발 모드의 이중 실행이 **효과로 쓰기를 내보내는 자리**를 정확히
+   *   때린다. 되돌릴 수 없는 전이를 그렇게 내보내는 곳만 이 길로 잰다.
+   */
+  const tree = (
     <PopIdentityProvider
       value={{
         terminalId: 10,
@@ -229,14 +235,16 @@ const renderScreen = (
       }}
     >
       <ProductionFlowScreen />
-    </PopIdentityProvider>,
-    {
-      route:
-        options.route ??
-        `/pop/production-result?workOrderId=${String(WORK_ORDER_ID)}&workerNo=100029`,
-      fetch: createStubFetch([...extraRoutes, ...routes(writes)]),
-    },
+    </PopIdentityProvider>
   );
+
+  return renderWithProviders(options.strict === true ? <StrictMode>{tree}</StrictMode> : tree, {
+    route:
+      options.route ??
+      `/pop/production-result?workOrderId=${String(WORK_ORDER_ID)}&workerNo=100029`,
+    fetch: createStubFetch([...extraRoutes, ...routes(writes)]),
+  });
+};
 
 describe('ProductionFlowScreen', () => {
   beforeEach(() => {
@@ -1382,5 +1390,129 @@ describe('ProductionFlowScreen · 작업 세션 자동 종료', () => {
     expect(await screen.findByText(t.flow.session.alreadyEnded)).toBeInTheDocument();
     /* 다시 눌러도 풀리지 않는 상태라 재시도를 권하지 않는다. */
     expect(screen.queryByRole('button', { name: t.flow.session.retry })).not.toBeInTheDocument();
+  });
+});
+
+/*
+ * ⭐ **세션 종료가 두 번 나가면 안 된다.** 되돌릴 수 없는 전이라, 방아쇠가 두 번 당겨지면
+ *    서버가 같은 세션을 두 번 닫으려 든다. POP 은 실제로 `StrictMode` 아래서 돌고
+ *    (`app/pop-main.tsx`), 그 이중 실행이 **효과로 쓰기를 내보내는 이 자리**를 정확히 때린다.
+ */
+describe('ProductionFlowScreen · 자동 종료는 한 번만 나간다', () => {
+  beforeEach(() => {
+    globalThis.localStorage.clear();
+    Object.defineProperty(window, 'pop', {
+      configurable: true,
+      value: { rendition: { save: vi.fn().mockResolvedValue('/tmp/lot.prn') } },
+    });
+  });
+
+  afterEach(() => {
+    globalThis.localStorage.clear();
+    Reflect.deleteProperty(window, 'pop');
+  });
+
+  it('StrictMode 이중 실행에도 세션 종료는 한 번만 나간다', async () => {
+    const writes: Request[] = [];
+    const state = { completed: false };
+    const END_PATH = `/production/work-sessions/${String(WORK_SESSION_ID)}:end`;
+    let ends = 0;
+
+    const lotsRoute: StubRoute = {
+      match: (request) => pathOf(request) === '/trace/lots',
+      respond: (request) => {
+        const url = new URL(request.url);
+        if (url.searchParams.get('completed') === 'true') {
+          return jsonResponse({ items: [], page: { page: 1, size: 100, total: 0 } });
+        }
+        if (state.completed) {
+          return jsonResponse({ items: [], page: { page: 1, size: 20, total: 0 } });
+        }
+
+        return jsonResponse({
+          items: [
+            {
+              lotId: LOT_ID,
+              lotNo: LOT_NO,
+              itemId: 101,
+              lotTypeCode: 'PRODUCTION',
+              plantId: 1,
+              initialQty: 12,
+              uomId: 1,
+              sourceTypeCode: 'WORK_ORDER',
+              sourceId: WORK_ORDER_ID,
+              statusCode: 'NORMAL',
+              workOrderSequenceNo: 1,
+              workOrderLotCount: 1,
+              progress: { goodQty: 0, varianceQty: 12 },
+            },
+          ],
+          page: { page: 1, size: 20, total: 1 },
+        });
+      },
+    };
+    const completeRoute: StubRoute = {
+      match: (request) => pathOf(request) === `/trace/lots/${String(LOT_ID)}:complete`,
+      respond: (request) => {
+        writes.push(request.clone());
+        state.completed = true;
+
+        return jsonResponse({
+          lotId: LOT_ID,
+          lotNo: LOT_NO,
+          completedAt: '2026-09-16T10:00:00+09:00',
+        });
+      },
+    };
+    const endRoute: StubRoute = {
+      match: (request) => request.method === 'POST' && pathOf(request) === END_PATH,
+      respond: (request) => {
+        writes.push(request.clone());
+        ends += 1;
+
+        return jsonResponse({
+          workSessionId: WORK_SESSION_ID,
+          workOrderId: WORK_ORDER_ID,
+          sessionNo: 1,
+          terminalId: 10,
+          startedAt: '2026-09-16T09:00:00+09:00',
+          endedAt: '2026-09-16T10:00:00+09:00',
+          statusCode: 'ENDED',
+        });
+      },
+    };
+
+    const user = userEvent.setup();
+    renderScreen(writes, [endRoute, completeRoute, lotsRoute], { strict: true });
+
+    const output = await screen.findByRole('button', { name: t.flow.output.issue });
+    await waitFor(() => expect(output).toBeEnabled());
+    await user.click(output);
+
+    const scan = await screen.findByLabelText(t.flow.scan.label);
+    await waitFor(() => expect(scan).toBeEnabled());
+    await user.type(scan, LOT_NO);
+
+    await screen.findByText(t.flow.session.ended);
+    expect(ends).toBe(1);
+  });
+
+  /*
+   * ⛔ **열어 보기만 해서는 닫히지 않는다.** 이미 다 돌린 작업지시를 열면 「생산할 LOT 이
+   *    없습니다」가 처음부터 떠 있는데, 그 상태만 보고 닫으면 남이 돌리던 세션을 구경하던
+   *    단말이 끊는다. 닫는 근거는 «이 단말이 마지막 LOT 을 마감했다»는 사실이다.
+   */
+  it('LOT 이 처음부터 없는 작업지시를 열기만 하면 세션을 닫지 않는다', async () => {
+    const writes: Request[] = [];
+    const END_PATH = `/production/work-sessions/${String(WORK_SESSION_ID)}:end`;
+    const emptyLots: StubRoute = {
+      match: (request) => pathOf(request) === '/trace/lots',
+      respond: () => jsonResponse({ items: [], page: { page: 1, size: 20, total: 0 } }),
+    };
+
+    renderScreen(writes, [emptyLots]);
+
+    expect(await screen.findByText(t.flow.currentLot.none)).toBeInTheDocument();
+    expect(writes.some((request) => pathOf(request) === END_PATH)).toBe(false);
   });
 });
