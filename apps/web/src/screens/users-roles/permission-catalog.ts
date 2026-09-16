@@ -77,7 +77,12 @@ const groupLabelOf = (groupCode: string): string => {
  * **차례는 후보 목록이 준 차례다.** 묶음도 후보에서 처음 나온 순서로 선다 — 화면이 다시
  * 정렬하면 서버가 뜻한 차례(도메인 순)가 사라지고, 목록이 바뀔 때마다 열 자리가 흔들린다.
  *
- * `granted` 는 **지금 화면이 든 초안**이다(서버 부여분이 아니다) — 켠 칸이 바로 보여야 한다.
+ * `selected` 는 **지금 화면이 든 초안**이다 — 켠 칸이 저장 전에도 바로 보여야 한다.
+ *
+ * `serverGranted` 는 **서버가 준 부여분**이고, 후보 밖 열이 «있는지»를 정하는 것은 이쪽이다.
+ * ⛔ **초안으로 정하지 않는다** — 그러면 후보 밖 칸을 끄는 순간 초안에서 빠져 **열 자체가
+ * 격자에서 사라지고**, 무엇을 껐는지도 모른 채 되돌릴 방법이 「취소」밖에 없게 된다.
+ * 생략하면 초안을 그대로 쓴다(초안과 부여분이 같은 자리에서 부르는 경우).
  *
  * **같은 코드가 후보에 두 번 와도 열은 하나다.**
  *
@@ -85,9 +90,10 @@ const groupLabelOf = (groupCode: string): string => {
  */
 export const toPermissionGroups = (
   candidates: readonly Permission[],
-  granted: readonly string[],
+  selected: readonly string[],
+  serverGranted: readonly string[] = selected,
 ): PermissionGroup[] => {
-  const grantedCodes = new Set(granted);
+  const grantedCodes = new Set(selected);
   const groups: PermissionGroup[] = [];
   const byKey = new Map<string, PermissionGroup>();
   const listed = new Set<string>();
@@ -127,7 +133,7 @@ export const toPermissionGroups = (
     columns: [],
   };
 
-  for (const code of grantedCodes) {
+  for (const code of serverGranted) {
     if (listed.has(code)) continue;
 
     listed.add(code);
@@ -135,7 +141,8 @@ export const toPermissionGroups = (
       /* 후보에 없어 이름을 모른다 — 코드를 그대로 낸다. */
       code,
       label: code,
-      isGranted: true,
+      /* 꺼도 열은 남는다 — 그래야 다시 켤 수 있다. */
+      isGranted: grantedCodes.has(code),
       isUnlisted: true,
     });
   }

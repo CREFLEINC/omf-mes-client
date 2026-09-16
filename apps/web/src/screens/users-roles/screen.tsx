@@ -407,13 +407,24 @@ export const UsersRolesScreen = () => {
     permissionState !== null &&
     !isSamePermissionSelection(permissionState.selected, permissionState.baseline);
 
-  /* 격자는 **초안**을 그린다 — 켠 칸이 저장 전에도 그대로 보여야 한다. */
+  /*
+   * 격자는 **초안**을 그린다 — 켠 칸이 저장 전에도 그대로 보여야 한다.
+   *
+   * 다만 **후보 밖 열이 있는지**는 서버 부여분(`baseline`)이 정한다. 초안으로 정하면 그 칸을
+   * 끄는 순간 열이 통째로 사라져 다시 켤 수 없다.
+   */
   const permissionGroups = toPermissionGroups(
     permissionCatalog.data?.items ?? [],
     permissionSelection,
+    permissionState?.baseline ?? [],
   );
   const permissionColumns = flattenPermissionColumns(permissionGroups);
-  const hasUnlistedPermission = permissionColumns.some((column) => column.isUnlisted);
+  /*
+   * ⛔ **후보를 받은 뒤에만 말한다.** 조회가 실패했거나 아직 오는 중이면 후보가 빈 배열이라
+   * 부여분 전부가 「목록에 없는 권한」으로 잡힌다 — 일시적 통신 실패를 자료 이상으로 오인시킨다.
+   */
+  const hasUnlistedPermission =
+    permissionCatalog.isSuccess && permissionColumns.some((column) => column.isUnlisted);
 
   const [roleFormState, setRoleFormState] = useState<RoleFormState | null>(null);
 
@@ -1488,9 +1499,7 @@ export const UsersRolesScreen = () => {
         }
         banner={<PermissionSaveBanner error={permissionWrite.error} />}
         unlistedNotice={
-          hasUnlistedPermission ? (
-            <p className="field-note">{t.permission.unlistedNotice}</p>
-          ) : null
+          hasUnlistedPermission ? <p className="field-note">{t.permission.unlistedNotice}</p> : null
         }
         isDirty={isPermissionDirty}
         isSaving={permissionWrite.isSaving}

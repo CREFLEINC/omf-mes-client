@@ -1566,9 +1566,7 @@ describe('셸 — 기능 권한으로 사이드바 거르기', () => {
         type="button"
         onClick={() => {
           signIn(
-            permissions === undefined
-              ? sessionFixture()
-              : { ...sessionFixture(), permissions },
+            permissions === undefined ? sessionFixture() : { ...sessionFixture(), permissions },
           );
         }}
       >

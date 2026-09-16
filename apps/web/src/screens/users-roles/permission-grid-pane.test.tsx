@@ -163,7 +163,11 @@ describe('PermissionGridPane 저장', () => {
   it('고친 것이 없으면 저장이 비활성이고 사유가 보인다', () => {
     renderPane({ isDirty: false });
 
-    expect(within(pane()).getByText('저장은 고친 내용이 있을 때 누를 수 있습니다.')).toBeTruthy();
+    /* ⛔ 사유 문구만 재면 **저장이 눌리게 되는 회귀를 잡지 못한다.** 잠긴 것 자체를 못 박는다. */
+    expect(within(pane()).getByRole('button', { name: '저장' })).toBeDisabled();
+    expect(
+      within(pane()).getByText('저장은 고친 내용이 있을 때 누를 수 있습니다.'),
+    ).toBeInTheDocument();
   });
 
   it('고친 것이 있으면 저장을 누를 수 있다', async () => {

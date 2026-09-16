@@ -3929,8 +3929,7 @@ describe('UsersRolesScreen 기능 권한 격자', () => {
 
   const replaceBodyOf = (requests: RecordedRequest[]): Record<string, unknown> => {
     const put = requests.find(
-      (request) =>
-        request.method === 'PUT' && request.url.pathname === rolePermissionsPath(5001),
+      (request) => request.method === 'PUT' && request.url.pathname === rolePermissionsPath(5001),
     );
 
     return JSON.parse(put?.body ?? '{}') as Record<string, unknown>;
@@ -4006,6 +4005,8 @@ describe('UsersRolesScreen 기능 권한 격자', () => {
 
     await within(permissionPane()).findByRole('grid');
 
+    /* ⛔ 사유 문구만 재면 **저장이 눌리게 되는 회귀를 잡지 못한다.** */
+    expect(within(permissionPane()).getByRole('button', { name: '저장' })).toBeDisabled();
     expect(
       within(permissionPane()).getByText('저장은 고친 내용이 있을 때 누를 수 있습니다.'),
     ).toBeVisible();
@@ -4092,6 +4093,81 @@ describe('UsersRolesScreen 기능 권한 격자', () => {
         'SYN-ROLE-01 · 합성 권한 셋 · 부여됨',
       ]);
     });
+  });
+
+  /**
+   * ⛔ **고친 채 다른 역할로 옮기면 체크가 따라가면 안 된다.** 초안은 출처(부여분 응답)가
+   * 바뀔 때만 다시 세우는데, 그 판정이 무너지면 **A 역할에서 켠 칸이 B 역할에 켜진 채로
+   * 보이고 그대로 저장된다.** 같은 화면의 다른 초안 넷이 모두 이 시험을 갖는다.
+   */
+  it('다른 역할을 고르면 초안이 그 역할의 부여분으로 다시 세워진다', async () => {
+    const { user } = await openRole([
+      roleListRoute(),
+      roleDetailRoute(),
+      roleDetailRoute(roleFixtures[1] as Role),
+      rolePermissionsRoute(5001, rolePermissionFixtures),
+      rolePermissionsRoute(5002, []),
+      permissionCatalogRoute(),
+    ]);
+
+    const cells = await gridCells();
+
+    await user.click(cells[2] as HTMLElement);
+
+    /* 선행 단언 — 지금은 고친 상태다. 이것이 없으면 뒤 단언이 무엇을 보는지 알 수 없다. */
+    expect(within(permissionPane()).getByRole('button', { name: '저장' })).toBeEnabled();
+
+    await user.click(within(roleListPane()).getByRole('button', { name: 'SYN-ROLE-02' }));
+
+    await waitFor(() => {
+      expect(within(permissionPane()).getAllByRole('rowheader')[0]?.textContent).toBe(
+        'SYN-ROLE-02',
+      );
+    });
+
+    /* B 역할은 부여가 0건이다 — A 에서 켠 칸이 따라오지 않는다. */
+    expect((await gridCells()).map((cell) => cell.getAttribute('aria-label'))).toEqual([
+      'SYN-ROLE-02 · 합성 권한 하나 · 부여되지 않음',
+      'SYN-ROLE-02 · 합성 권한 둘 · 부여되지 않음',
+      'SYN-ROLE-02 · 합성 권한 셋 · 부여되지 않음',
+    ]);
+    expect(within(permissionPane()).getByRole('button', { name: '저장' })).toBeDisabled();
+  });
+
+  /**
+   * ⛔ **후보 밖 열을 끄면 열이 사라지면 안 된다.** 사라지면 무엇을 껐는지도 모르고, 되돌리려면
+   * 다른 편집까지 버리는 「취소」밖에 남지 않는다. 열이 빠지며 칸 위치가 밀려 오클릭도 난다.
+   */
+  it('후보 밖 부여분을 꺼도 열이 남아 다시 켤 수 있다', async () => {
+    const { user } = await openRole(
+      gridRoutes(rolePermissionFixtures, [
+        { code: 'SYN-PERM-01', name: '합성 권한 하나', groupCode: '01' },
+      ]),
+    );
+
+    const labelsOf = async (): Promise<(string | null)[]> =>
+      (await gridCells()).map((cell) => cell.getAttribute('aria-label'));
+
+    expect(await labelsOf()).toEqual([
+      'SYN-ROLE-01 · 합성 권한 하나 · 부여됨',
+      'SYN-ROLE-01 · SYN-PERM-02 · 부여됨',
+    ]);
+
+    const unlisted = (await gridCells())[1] as HTMLElement;
+
+    await user.click(unlisted);
+
+    expect(await labelsOf()).toEqual([
+      'SYN-ROLE-01 · 합성 권한 하나 · 부여됨',
+      'SYN-ROLE-01 · SYN-PERM-02 · 부여되지 않음',
+    ]);
+
+    await user.click((await gridCells())[1] as HTMLElement);
+
+    expect(await labelsOf()).toEqual([
+      'SYN-ROLE-01 · 합성 권한 하나 · 부여됨',
+      'SYN-ROLE-01 · SYN-PERM-02 · 부여됨',
+    ]);
   });
 
   it('취소하면 고치기 전 상태로 돌아간다', async () => {
