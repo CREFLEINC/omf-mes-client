@@ -2,6 +2,7 @@ import { useQueries, useQuery, type UseQueryResult } from '@tanstack/react-query
 
 import { useApiClient } from '../../patterns/api-context';
 import { runRequest } from '../../patterns/request';
+import { parseScannedCode } from './qr-payload';
 import type { HopperStock } from './hopper';
 import type { GoodsIssue, GoodsIssueLine } from './receipt';
 
@@ -35,12 +36,49 @@ export interface ScannedIssue {
  */
 const SEARCH_SIZE = 200;
 
-const findIssue = async (client: Client, code: string): Promise<ScannedIssue | null> => {
+/**
+ * 스캔값이 가리키는 출고 전표를 찾는다 - **두 축을 가려 쓴다.**
+ *
+ * ⭐ **출고 QR 은 라인을 가리킨다**(ISSUE-QR-01 U1). 계약이 `q` 축 설명에 「⛔ 발행된 출고 QR 은
+ *    라인을 가리키므로 이 축으로는 풀리지 않는다 - `goodsIssueLineId` 를 쓴다」고 못박아 두었다.
+ *    접두어를 못 알아보던 동안은 **P-01-02 가 만든 라벨을 이 화면이 읽지 못했다**(G3).
+ *
+ * ⛔ **파싱됐다고 출고번호 경로를 버리지 않는다.** 라인 축 조회가 0건이면(전표가 지워졌거나 다른
+ *    공장의 것이면) 함께 실린 출고번호로 한 번 더 묻는다 - 사람이 읽을 수 있는 값이 라벨에
+ *    적혀 있는 까닭이 그것이다.
+ */
+const findByLineId = async (client: Client, goodsIssueLineId: number) => {
   const found = await runRequest(() =>
-    client.GET('/logistics/goods-issues', { params: { query: { q: code, size: SEARCH_SIZE } } }),
+    client.GET('/logistics/goods-issues', {
+      params: { query: { goodsIssueLineId, size: SEARCH_SIZE } },
+    }),
   );
 
-  const issue = found.items.find((each) => each.goodsIssueNo === code);
+  return found.items[0];
+};
+
+const findByIssueNo = async (client: Client, goodsIssueNo: string) => {
+  const found = await runRequest(() =>
+    client.GET('/logistics/goods-issues', {
+      params: { query: { q: goodsIssueNo, size: SEARCH_SIZE } },
+    }),
+  );
+
+  return found.items.find((each) => each.goodsIssueNo === goodsIssueNo);
+};
+
+const findIssue = async (client: Client, code: string): Promise<ScannedIssue | null> => {
+  const scanned = parseScannedCode(code);
+
+  const issue =
+    scanned.kind === 'issueLine'
+      ? ((await findByLineId(client, scanned.goodsIssueLineId)) ??
+        (scanned.goodsIssueNo === ''
+          ? undefined
+          : await findByIssueNo(client, scanned.goodsIssueNo)))
+      : scanned.goodsIssueNo === ''
+        ? undefined
+        : await findByIssueNo(client, scanned.goodsIssueNo);
 
   if (issue === undefined) {
     return null;

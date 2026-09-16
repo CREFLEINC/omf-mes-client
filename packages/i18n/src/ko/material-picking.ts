@@ -122,6 +122,8 @@ export const materialPicking = {
   noWorker: '사번을 먼저 확인하세요',
   sent: {
     title: '출고를 확정했습니다',
+    /** 작업자가 이 번호를 POP(P-01-02)으로 들고 가 출고 QR 을 발행한다. */
+    issueNo: (goodsIssueNo: string): string => `출고번호 ${goodsIssueNo}`,
   },
   queued: {
     title: '출고를 전송 대기에 넣었습니다',

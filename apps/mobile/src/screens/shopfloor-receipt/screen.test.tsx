@@ -64,6 +64,13 @@ interface Options {
   pickingSourceTypeCode?: string;
   /** 물어본 주소를 모은다. 응답만 돌려주는 스텁은 부르지 말아야 할 것을 부른 것을 못 잡는다. */
   asked?: string[];
+  /**
+   * 출고 전표 조회의 **질의까지** 담아 둔다.
+   *
+   * ⚠ `asked` 는 경로만 담고 그마저 다른 두 라우트에서만 기록한다 — 축을 가리는 것은 질의라
+   *   그 배열로는 잴 수 없다(그것으로 재려다 **거짓으로 통과하는 단언**을 썼다).
+   */
+  issueQueries?: string[];
   /** 이 시험에서만 필요한 길. 기본 길보다 먼저 본다. */
   extra?: StubRoute[];
 }
@@ -71,8 +78,10 @@ interface Options {
 const routes = (options: Options = {}): StubRoute[] => [
   {
     match: (req) => new URL(req.url).pathname === '/logistics/goods-issues',
-    respond: () =>
-      jsonResponse({
+    respond: (req) => {
+      options.issueQueries?.push(new URL(req.url).search);
+
+      return jsonResponse({
         items: [
           {
             goodsIssueId: 500,
@@ -96,7 +105,8 @@ const routes = (options: Options = {}): StubRoute[] => [
           },
         ],
         page,
-      }),
+      });
+    },
   },
   {
     match: (req) => /\/logistics\/goods-issues\/\d+\/lines$/.test(new URL(req.url).pathname),
@@ -453,6 +463,42 @@ describe('생산창고 입고 화면', () => {
    * 사슬이 한 겹 더 있다. 피킹지시의 원천도 판별자라 자재 출고요청과 출하 지시를 가른다 -
    * 출하 피킹에서 나온 출고를 여기 대면 출하 지시 번호로 자재 출고요청을 묻게 된다.
    */
+  /*
+   * ⭐⭐ **P-01-02 가 만든 출고 QR 을 읽는다**(ISSUE-QR-01 G3 — 고치기 전에는 못 읽었다).
+   *    계약이 `q` 축 설명에 「⛔ 발행된 출고 QR 은 라인을 가리키므로 이 축으로는 풀리지 않는다」
+   *    고 못박아 두었는데 이 화면은 `q` 로만 물었다 — 라벨을 대면 전표가 서지 않았다.
+   */
+  it('출고 QR 을 대면 라인 축으로 전표를 찾는다', async () => {
+    const issueQueries: string[] = [];
+    mount({ issueQueries });
+    await screen.findByLabelText(/출고 QR 스캔/);
+
+    scan(`OMF-GIL|17|${ISSUE_NO}|1`);
+
+    /* 전표가 서면 수령 수량 칸이 그려진다 — 그 사실로 「읽혔다」를 잰다. */
+    expect(await receivedField()).toBeTruthy();
+
+    expect(issueQueries.some((query) => query.includes('goodsIssueLineId=17'))).toBe(true);
+    /* ⛔ 라인 축으로 찾았으면 출고번호 부분검색을 잇지 않는다 — 한 스캔이 축을 둘 타면 안 된다. */
+    expect(issueQueries.some((query) => query.includes('q='))).toBe(false);
+  });
+
+  /*
+   * ⭐ **손으로 친 출고번호 경로는 그대로다.** QR 이 상했을 때 입고할 유일한 길이라 이 갈래가
+   *    사라지면 현장이 막힌다.
+   */
+  it('출고번호를 직접 치면 예전처럼 번호 축으로 찾는다', async () => {
+    const issueQueries: string[] = [];
+    mount({ issueQueries });
+    await screen.findByLabelText(/출고 QR 스캔/);
+
+    scan(ISSUE_NO);
+
+    expect(await receivedField()).toBeTruthy();
+    expect(issueQueries.some((query) => query.includes(`q=${ISSUE_NO}`))).toBe(true);
+    expect(issueQueries.some((query) => query.includes('goodsIssueLineId='))).toBe(false);
+  });
+
   it('출하 피킹에서 나온 출고면 자재 출고요청을 부르지 않는다', async () => {
     const asked: string[] = [];
     mount({ pickingSourceTypeCode: 'SHIPMENT_REQUEST', asked });
