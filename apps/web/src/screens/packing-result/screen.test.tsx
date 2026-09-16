@@ -47,6 +47,8 @@ interface Options {
   canInputResult?: boolean;
   /** 이 단말에 «그 공정 행이 아예 없는» 상태 — 구성되지 않은 공정은 열려 있지 않다 */
   missingProcessRow?: boolean;
+  /** 확정(`:pack`)이 409 로 되돌아오는 상태 — 배너가 무엇을 말하는지 본다 */
+  packConflict?: boolean;
   /** 쓰기 요청을 담아 둔다 — 확정이 세 단계를 도는지 본다 */
   writes?: Request[];
   /** 포장 만들기가 실패하는 갈래 — 담긴 줄은 있는데 포장이 없는 상태를 만든다(#1093). */
@@ -137,7 +139,9 @@ const renderScreen = (options: Options = {}) => {
       respond: (request) => {
         options.writes?.push(request.clone());
 
-        return jsonResponse(handlingUnitBody);
+        return options.packConflict === true
+          ? jsonResponse({ conflictCause: 'user', message: '' }, { status: 409 })
+          : jsonResponse(handlingUnitBody);
       },
     },
     {
@@ -578,5 +582,27 @@ describe('PackingResultScreen — 담기와 확정', () => {
       'PUT /logistics/shipment-lot-allocations/9001',
     ]);
     expect(screen.getByText(t.contents.empty)).toBeTruthy();
+  });
+
+  /*
+   * ⛔ **실패를 정규화 갈래 이름으로 말하지 않는다.** 배너가 `conflict` 를 그대로 찍고 있었다 —
+   * 작업자에게 그 낱말은 아무것도 말해 주지 않는다. 공통 규약 문구로 옮겼는지 여기서 붙든다.
+   */
+  it('확정이 실패하면 갈래 이름이 아니라 «무엇을 할 것인가»를 말한다', async () => {
+    const user = userEvent.setup();
+    renderScreen({ packConflict: true });
+
+    await scanUntilMatched(user);
+    await pack(user, '120');
+
+    await user.click(screen.getByRole('combobox', { name: t.fields.handlingUnitType }));
+    await user.click(await screen.findByRole('option', { name: '카톤' }));
+
+    await user.click(screen.getByRole('button', { name: t.actions.confirm }));
+
+    expect(await screen.findByText(messages.conflict.user)).toBeInTheDocument();
+    expect(screen.queryByText('conflict')).toBeNull();
+    /* 되돌릴 수 없는 쓰기다 — 다시 불러올 편집본이 없으므로 「최신 불러오기」를 내지 않는다. */
+    expect(screen.queryByRole('button', { name: messages.conflict.reloadAction })).toBeNull();
   });
 });
