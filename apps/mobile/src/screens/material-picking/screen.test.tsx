@@ -455,6 +455,30 @@ describe('자재 출고·피킹 화면', () => {
     ).toBeTruthy();
   });
 
+  /*
+   * 설계 §5-8 이 수량 입력의 활성 조건을 LOT 확정으로 두었다. 함께 세우면 차례가 사라지고,
+   * 세로 화면에서 숫자판이 라인 목록을 덮는다.
+   */
+  it('LOT 을 찍기 전에는 수량 칸과 숫자판을 세우지 않는다', async () => {
+    const user = userEvent.setup();
+    mount();
+    await chooseOrder(user);
+
+    await user.click(screen.getByRole('radio', { name: /ABC-123/ }));
+    await screen.findByLabelText(/LOT 번호/);
+
+    expect(screen.queryByLabelText(/출고 수량/)).toBeNull();
+    expect(screen.queryByRole('button', { name: '7' })).toBeNull();
+
+    await openManualEntry(user);
+    await user.type(await screen.findByLabelText(/LOT 번호/), LOT_NO);
+    await user.click(await screen.findByRole('button', { name: '넣기' }));
+    await screen.findByText('라인의 LOT 과 같습니다');
+
+    expect(await screen.findByLabelText(/출고 수량/)).toBeTruthy();
+    expect(await screen.findByRole('button', { name: '7' })).toBeTruthy();
+  });
+
   it('집으면 라인 경로로 사번과 멱등키를 실어 보낸다', async () => {
     const user = userEvent.setup();
     const sent = mount();

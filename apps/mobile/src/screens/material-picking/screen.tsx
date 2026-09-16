@@ -710,39 +710,47 @@ export const MaterialPickingScreen = () => {
             ) : null}
           </section>
 
-          <section className="picking-out__section picking-out__entry" ref={qtySection}>
-            {/*
-             * 장갑을 끼고 한 손으로 조작한다. 운영체제 키보드는 작은 키가 촘촘하고, 올라오면
-             * 라인 목록과 확정 단추를 덮는다(설계 §7-1 · 공유계약 G-6).
-             */}
-            <TextField
-              label={required(t.qty.label)}
-              size="xl"
-              fullWidth
-              inputMode="none"
-              value={qty}
-              onChange={(event) => {
-                setQty(event.target.value);
-              }}
-              error={qtyMessage()}
-            />
-            <NumberPad
-              value={qty}
-              onChange={setQty}
-              max={remainingQtyOf(line, queued)}
-              allowDecimal
-            />
-            {pickSaveFailed ? <AlertBanner variant="error" title={t.saveFailed} /> : null}
-            <Button
-              variant="filled"
-              size="2xl"
-              className="picking-out__wide"
-              disabled={busy || !loaded || !canPick(line, scanned, qty, worker !== null, queued)}
-              onClick={() => void pick()}
-            >
-              {t.pick}
-            </Button>
-          </section>
+          {/*
+            수량 입력의 활성 조건은 LOT 확정이다(설계 §5-8). 라인을 고르자마자 함께 세우면
+            차례가 사라지고, 세로 화면에서 숫자판이 라인 목록을 덮은 채 남는다.
+
+            찍었어도 라인의 LOT 과 다르면 확정이 아니다 - 그 값으로는 집을 수 없다.
+          */}
+          {!matched ? null : (
+            <section className="picking-out__section picking-out__entry" ref={qtySection}>
+              {/*
+               * 장갑을 끼고 한 손으로 조작한다. 운영체제 키보드는 작은 키가 촘촘하고, 올라오면
+               * 라인 목록과 확정 단추를 덮는다(설계 §7-1 · 공유계약 G-6).
+               */}
+              <TextField
+                label={required(t.qty.label)}
+                size="xl"
+                fullWidth
+                inputMode="none"
+                value={qty}
+                onChange={(event) => {
+                  setQty(event.target.value);
+                }}
+                error={qtyMessage()}
+              />
+              <NumberPad
+                value={qty}
+                onChange={setQty}
+                max={remainingQtyOf(line, queued)}
+                allowDecimal
+              />
+              {pickSaveFailed ? <AlertBanner variant="error" title={t.saveFailed} /> : null}
+              <Button
+                variant="filled"
+                size="2xl"
+                className="picking-out__wide"
+                disabled={busy || !loaded || !canPick(line, scanned, qty, worker !== null, queued)}
+                onClick={() => void pick()}
+              >
+                {t.pick}
+              </Button>
+            </section>
+          )}
         </>
       )}
 
