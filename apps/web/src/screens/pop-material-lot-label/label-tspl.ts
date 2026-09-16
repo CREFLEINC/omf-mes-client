@@ -116,19 +116,18 @@ const text = (x: number, y: number, point: number, content: string, available: n
   return `TEXT ${String(x)},${String(y)},"${FONT}",0,${String(size)},${String(size)},"${escapeTspl(clip(content, size, available))}"`;
 };
 
-export interface MaterialLotLabelFields {
-  itemCode: string;
-  lotNo: string;
-  qty: number;
-  /** 단위 코드. 모르면 `null` — 수량만 적는다. */
-  uomCode: string | null;
-  /** 발행 회차. */
-  issueSeq: number;
-  inboundReceiptNo: string;
+/** 왼쪽 칸에 세울 글줄 하나. `point` 는 바라는 크기이고, 칸을 넘치면 줄여 찍는다. */
+export interface LotLabelRow {
+  point: number;
+  content: string;
 }
 
 /**
- * 80 × 30 mm 한 장. 모든 글줄은 QR 왼쪽 칸에 서고, QR 은 오른쪽에 위아래 가운데로 선다.
+ * 80 × 30 mm 한 장 — **여백·QR 자리·글줄 칸은 여기가 정본이다.**
+ *
+ * ⭐ **라벨 종류가 달라도 배치는 같다**(사용자 지시 2026-09-16 — 생산 LOT 라벨을 「테스트 용지
+ *   인쇄와 동일한 본문 배치」로). 위 상수들은 HT800 실기에서 사진을 보며 맞춘 값이라, 종류마다
+ *   따로 베껴 두면 다음에 한쪽만 고쳐져 조용히 갈라진다. 종류가 정하는 것은 **글줄과 QR 내용**뿐이다.
  *
  * ```
  * MATERIAL LOT  #1                          ┌────┐
@@ -138,28 +137,17 @@ export interface MaterialLotLabelFields {
  * RCV IB-0001
  * ```
  *
- * ⚠ LOT 줄을 QR 아래 전폭으로 내리지 않는다 — 전폭 줄이 오른쪽 여백까지 닿아 함께 잘렸다.
+ * ⚠ 글줄을 QR 아래 전폭으로 내리지 않는다 — 전폭 줄이 오른쪽 여백까지 닿아 함께 잘렸다.
  */
-export const buildMaterialLotLabel = (fields: MaterialLotLabelFields): string => {
-  const side = qrSide(fields.lotNo);
+export const buildLotLabel = (rows: readonly LotLabelRow[], qrContent: string): string => {
+  const side = qrSide(qrContent);
   const qrX = WIDTH - RIGHT - side;
   const qrY = Math.round((HEIGHT - side) / 2) - SHIFT_UP;
   const column = qrX - LEFT - dots(2);
 
-  const qty =
-    fields.uomCode === null ? String(fields.qty) : `${String(fields.qty)} ${fields.uomCode}`;
-
-  const rows: { point: number; content: string }[] = [
-    { point: 8, content: `MATERIAL LOT  #${String(fields.issueSeq)}` },
-    { point: 10, content: `ITEM ${fields.itemCode}` },
-    { point: 10, content: `QTY ${qty}` },
-    { point: 8, content: `LOT ${fields.lotNo}` },
-    { point: 8, content: `RCV ${fields.inboundReceiptNo}` },
-  ];
-
   /* 남는 세로 공간을 줄 사이에 고르게 나눈다 — 위아래 여백 안에서 끝난다. */
   const used = rows.reduce((sum, row) => sum + lineHeight(row.point), 0);
-  const spacing = Math.floor((HEIGHT - TOP - BOTTOM - used) / (rows.length - 1));
+  const spacing = Math.floor((HEIGHT - TOP - BOTTOM - used) / Math.max(rows.length - 1, 1));
 
   let y = TOP;
   const drawn = rows.map((row) => {
@@ -176,8 +164,36 @@ export const buildMaterialLotLabel = (fields: MaterialLotLabelFields): string =>
     'REFERENCE 0,0',
     'CLS',
     ...drawn,
-    `QRCODE ${String(qrX)},${String(qrY)},M,${String(QR_CELL)},A,0,M2,"${escapeTspl(fields.lotNo)}"`,
+    `QRCODE ${String(qrX)},${String(qrY)},M,${String(QR_CELL)},A,0,M2,"${escapeTspl(qrContent)}"`,
     'PRINT 1,1',
     '',
   ].join('\r\n');
 };
+
+/** 수량 줄에 적을 말 — 단위를 모르면 숫자만 적는다. */
+export const lotLabelQty = (qty: number, uomCode: string | null): string =>
+  uomCode === null ? String(qty) : `${String(qty)} ${uomCode}`;
+
+export interface MaterialLotLabelFields {
+  itemCode: string;
+  lotNo: string;
+  qty: number;
+  /** 단위 코드. 모르면 `null` — 수량만 적는다. */
+  uomCode: string | null;
+  /** 발행 회차. */
+  issueSeq: number;
+  inboundReceiptNo: string;
+}
+
+/** 자재 LOT 라벨 한 장. 배치는 `buildLotLabel` 이 정하고 여기는 글줄만 고른다. */
+export const buildMaterialLotLabel = (fields: MaterialLotLabelFields): string =>
+  buildLotLabel(
+    [
+      { point: 8, content: `MATERIAL LOT  #${String(fields.issueSeq)}` },
+      { point: 10, content: `ITEM ${fields.itemCode}` },
+      { point: 10, content: `QTY ${lotLabelQty(fields.qty, fields.uomCode)}` },
+      { point: 8, content: `LOT ${fields.lotNo}` },
+      { point: 8, content: `RCV ${fields.inboundReceiptNo}` },
+    ],
+    fields.lotNo,
+  );

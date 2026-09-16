@@ -12,6 +12,7 @@ import { useResultEntry } from './entry-context';
 import { useFlowGates } from './flow-gating';
 import { useDocumentIssue, useLotComplete, useSerialIssue } from './flow-mutations';
 import { useLabelPrintRunner, type PrintTarget } from './flow-print';
+import { buildProductionLotLabel } from './label-tspl';
 import {
   defaultPrinter,
   latestIssue,
@@ -107,6 +108,49 @@ const targetsOf = (
     label: issue.target.displayName,
   }));
 
+/**
+ * 라벨에 실을 값. **LOT 번호는 `lot.lotNo` 에서만 온다** — 마감 스캔이 대조하는 값과 같은
+ * 자리라야 찍은 QR 이 그 스캔을 통과한다(`judgeLotScan`).
+ */
+interface LotLabelSource {
+  lotNo: string;
+  itemCode: string | undefined;
+  workOrderNo: string | undefined;
+  qty: number | null;
+  uomCode: string | null;
+}
+
+/**
+ * 인쇄 대상에 **화면이 직접 짠 라벨 명령을 실어** 보낸다.
+ *
+ * ⭐ **서버 렌디션을 쓰지 않는다**(사용자 지시 2026-09-16 · `label-tspl` 머리말). 서버 판은
+ *   100 × 60 mm 좌표라 현장 80 × 30 mm 라벨지에서 잘려 나왔다. 배치는 단말 진단 인쇄
+ *   (`Ctrl+Alt+P`)·자재 LOT 라벨과 같은 자리를 쓴다.
+ *
+ * ⚠ **현재 LOT 을 모르면 부르지 않는다** — 부르는 세 자리 모두 그 LOT 의 발행 기록을 손에 쥐고
+ *   있다. 그때만 라벨이 있을 수 있다.
+ */
+const lotTargetsOf = (
+  issues: readonly {
+    documentIssueLogId: number;
+    issueSeq: number;
+    target: { displayName: string };
+  }[],
+  source: LotLabelSource,
+): PrintTarget[] =>
+  issues.map((issue) => ({
+    documentIssueLogId: issue.documentIssueLogId,
+    label: issue.target.displayName,
+    command: buildProductionLotLabel({
+      itemCode: source.itemCode ?? '-',
+      lotNo: source.lotNo,
+      qty: source.qty,
+      uomCode: source.uomCode,
+      issueSeq: issue.issueSeq,
+      workOrderNo: source.workOrderNo ?? '-',
+    }),
+  }));
+
 /** P-02-04 생산 실적·인식표·생산 LOT 라벨·스캔 마감을 한 주소와 한 상태 흐름으로 묶는다. */
 export const ProductionFlowScreen = () => {
   const titleId = useId();
@@ -133,6 +177,21 @@ export const ProductionFlowScreen = () => {
   const [completedPage, setCompletedPage] = useState(1);
   const [appliedLotId, setAppliedLotId] = useState<number | null>(null);
   const [confirmedResultLotId, setConfirmedResultLotId] = useState<number | null>(null);
+  /*
+   * 방금 이 LOT 에 올라간 양품 수량. **라벨에 적을 수량의 출처다.**
+   *
+   * ⛔ **수량 칸(`actualQty`)을 라벨의 출처로 쓰지 않는다.** 그 칸은 LOT 이 서면 «계획 수량»으로
+   *    미리 채워지므로(아래 LOT 전환 effect), 작업자가 고쳐 넣은 실적과 다를 수 있다. 큐를 통해
+   *    올라간 실적은 그 칸을 거치지 않고 적용되기도 한다 — 그때 칸을 읽으면 **계획 수량이 라벨에
+   *    찍힌다.** 라벨은 현장이 그대로 읽는 값이고 종이는 되돌릴 수 없다(리뷰 지적 2026-09-16).
+   *
+   * ⚠ **LOT 을 함께 붙들어 둔다.** 큐에 있던 실적이 LOT 조회보다 «먼저» 적용될 수 있어, LOT
+   *   전환에서 비우는 방식으로는 방금 붙든 값이 지워진다(실측). 지우는 대신 «어느 LOT 의
+   *   수량인지»를 함께 적어 두고, 지금 LOT 의 것일 때만 쓴다.
+   */
+  const [appliedLabelQty, setAppliedLabelQty] = useState<{ lotId: number; qty: number } | null>(
+    null,
+  );
   const [lotPrintTargets, setLotPrintTargets] = useState<PrintTarget[]>([]);
   const [tagPrintTargets, setTagPrintTargets] = useState<PrintTarget[]>([]);
   const [pendingTagIssue, setPendingTagIssue] = useState<DocumentIssueCreate | null>(null);
@@ -191,13 +250,32 @@ export const ProductionFlowScreen = () => {
   const hasAppliedResult =
     lot !== null && (serverAppliedQty !== null || confirmedResultLotId === lot.lotId);
 
+  /*
+   * 라벨에 실을 값. **수량은 서버가 센 양품 누계를 먼저 쓰고**, 아직 반영 전이면 방금 적용된
+   * 실적 수량(`appliedLabelQty`)을 쓴다. 둘 다 모르면 **수량 줄을 뺀다**(`label-tspl`) —
+   * ⛔ 수량 칸으로 되돌아가지 않는다(`appliedLabelQty` 머리말).
+   */
+  const lotLabelSource: LotLabelSource | null =
+    lot === null
+      ? null
+      : {
+          lotNo: lot.lotNo,
+          itemCode: item.data?.itemCode ?? workOrder.data?.itemCode,
+          workOrderNo: workOrder.data?.workOrderNo,
+          qty:
+            serverAppliedQty ?? (appliedLabelQty?.lotId === lot.lotId ? appliedLabelQty.qty : null),
+          uomCode: uom.labelOf(lot.uomId ?? workOrder.data?.uomId),
+        };
+
   const lotPrint = useLabelPrintRunner(entry.workerNo);
   const tagPrint = useLabelPrintRunner(entry.workerNo);
 
   const lotIssue = useDocumentIssue({
     workerNo: entry.workerNo ?? '',
     onSuccess: (result) => {
-      const targets = targetsOf(result.items);
+      if (lotLabelSource === null) return;
+
+      const targets = lotTargetsOf(result.items, lotLabelSource);
       setLotPrintTargets(targets);
       setOutputPhase('printing');
       void lotPrint.run(targets);
@@ -243,10 +321,14 @@ export const ProductionFlowScreen = () => {
   });
 
   const onResultApplied = (outboxEntry: OutboxEntry): void => {
-    const lotId = outboxEntry.body.lotAllocations?.[0]?.lotId;
+    const allocation = outboxEntry.body.lotAllocations?.[0];
+    const lotId = allocation?.lotId;
     if (lotId === undefined) return;
 
     setAppliedLotId(lotId);
+    /* 이 LOT 에 실제로 실린 수량 — 큐에 들어간 본문이 정본이다. */
+    const allocatedQty = allocation?.allocatedQty;
+    setAppliedLabelQty(allocatedQty === undefined ? null : { lotId, qty: allocatedQty });
     setConfirmedResultLotId(lotId);
     setOutputPhase('issuing');
     /*
@@ -271,8 +353,8 @@ export const ProductionFlowScreen = () => {
     }
 
     setAppliedLotId(null);
-    if (currentIssue !== null) {
-      const targets = targetsOf([currentIssue]);
+    if (currentIssue !== null && lotLabelSource !== null) {
+      const targets = lotTargetsOf([currentIssue], lotLabelSource);
       setLotPrintTargets(targets);
       setOutputPhase('printing');
       void lotPrint.run(targets);
@@ -568,14 +650,9 @@ export const ProductionFlowScreen = () => {
     const targets =
       lotPrintTargets.length > 0
         ? lotPrintTargets
-        : currentIssue === null
+        : currentIssue === null || lotLabelSource === null
           ? []
-          : [
-              {
-                documentIssueLogId: currentIssue.documentIssueLogId,
-                label: currentIssue.target.displayName,
-              },
-            ];
+          : lotTargetsOf([currentIssue], lotLabelSource);
 
     if (targets.length === 0) return;
     setOutputPhase('printing');

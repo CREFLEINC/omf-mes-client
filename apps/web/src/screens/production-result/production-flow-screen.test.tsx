@@ -192,11 +192,6 @@ const routes = (writes: Request[]): StubRoute[] => [
 ];
 
 /** 서버가 그림을 내주지 못하는 상태. 클라이언트가 막던 시절과 달리 요청은 나가고 500 이 온다. */
-const renditionFailsRoute: StubRoute = {
-  match: (request) => pathOf(request) === '/app/document-issues/44001/rendition',
-  respond: () => jsonResponse({ errors: [{ message: '렌디션 실패' }] }, { status: 500 }),
-};
-
 const renderScreen = (
   writes: Request[],
   extraRoutes: StubRoute[] = [],
@@ -274,31 +269,116 @@ describe('ProductionFlowScreen', () => {
   });
 
   /*
-   * ⛔⛔ **서버에 이 경로가 없다**(위와 같음). 원래 이 시험은 «물리 인쇄까지는 됐는데 성공
-   * 보고만 실패한» 상태(`reportFailed`)에서 재시도가 «종이를 다시 뽑지 않고 보고만» 다시
-   * 보내는 것을 쟀다 — 그림을 받는 걸음이 항상 막혀 있어 물리 인쇄 자체가 없고, 그 상태에
-   * 이를 수 없다. 대신 **다시 눌러도 셸을 다시 부르지 않고(종이가 늘지 않고) 같은 실패
-   * 사유의 보고만 다시 나간다**는, 지금 실제로 일어나는 같은 원칙을 `renditionFailed` 자리
-   * («다시 인쇄» 재시도)에서 잰다 — 재시도의 실패 보고도 같은 멱등 키를 쓴다(둘 다
-   * `outcome: FAILED` 라 슬롯이 같다).
+   * ⛔ **라벨 수량은 수량 칸이 아니라 «실제로 올라간 실적»에서 온다**(리뷰 지적 2026-09-16).
+   *    수량 칸은 LOT 이 서면 계획 수량(`initialQty`)으로 미리 채워진다 — 큐에 들어 있던 실적이
+   *    적용되는 경로에서는 작업자가 그 칸을 손대지 않으므로, 칸을 읽으면 **실제 보고 수량이
+   *    아니라 계획 수량이 라벨에 찍힌다.** 종이는 되돌릴 수 없다.
+   *
+   *    그래서 이 시험은 계획 수량(12)과 큐에 든 실적(7)을 **일부러 다르게** 둔다. 두 값이 같으면
+   *    두 경로가 구분되지 않아 결함이 드러나지 않는다.
    */
-  it('그림을 받지 못하면 다시 눌러도 셸을 부르지 않고 같은 실패 사유로만 다시 보고한다', async () => {
+  it('⛔ 대기 실적이 적용되면 계획 수량이 아니라 올라간 실적 수량을 라벨에 적는다', async () => {
     const writes: Request[] = [];
+    globalThis.localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify([
+        {
+          idempotencyKey: 'queued-result-key',
+          workerNo: '100029',
+          body: {
+            workOrderId: WORK_ORDER_ID,
+            goodQty: 7,
+            uomId: 1,
+            occurredAt: '2026-09-16T09:00:00+09:00',
+            lotAllocations: [{ lotId: LOT_ID, allocatedQty: 7 }],
+          },
+        },
+      ]),
+    );
+    const save = vi.fn().mockResolvedValue('/tmp/lot.prn');
+    Object.defineProperty(window, 'pop', {
+      configurable: true,
+      value: { rendition: { save } },
+    });
+    renderScreen(writes);
+
+    await waitFor(() => {
+      expect(save).toHaveBeenCalledTimes(1);
+    });
+
+    const [bytes] = save.mock.calls[0] as [Uint8Array];
+    const command = new TextDecoder().decode(bytes);
+
+    expect(command).toContain('"QTY 7 EA"');
+    expect(command).not.toContain('"QTY 12 EA"');
+  });
+
+  /*
+   * ⛔ **라벨은 화면이 짜고 서버 그림은 받지 않는다**(사용자 지시 2026-09-16 · `label-tspl`).
+   *    이 배선이 되돌려지면 100 × 60 mm 좌표로 그려진 판이 다시 나가 80 × 30 mm 라벨지에서
+   *    잘린다 — 화면은 「인쇄 완료」로 보이므로 시험이 없으면 되돌림을 아무도 못 잡는다.
+   */
+  it('⛔ 발행하면 서버 그림을 받지 않고 화면이 짠 TSPL 을 그대로 셸에 넘긴다', async () => {
+    const writes: Request[] = [];
+    const renditionCalls: string[] = [];
+    const renditionSpy: StubRoute = {
+      match: (request) => pathOf(request).endsWith('/rendition'),
+      respond: (request) => {
+        renditionCalls.push(pathOf(request));
+
+        return jsonResponse({ errors: [{ message: '부르면 안 되는 경로' }] }, { status: 500 });
+      },
+    };
     const save = vi.fn().mockResolvedValue('/tmp/lot.prn');
     Object.defineProperty(window, 'pop', {
       configurable: true,
       value: { rendition: { save } },
     });
     const user = userEvent.setup();
-    renderScreen(writes, [renditionFailsRoute]);
+    renderScreen(writes, [renditionSpy]);
+
+    const output = await screen.findByRole('button', { name: t.flow.output.issue });
+    await waitFor(() => expect(output).toBeEnabled());
+    await user.click(output);
+
+    await waitFor(() => {
+      expect(save).toHaveBeenCalledTimes(1);
+    });
+    expect(renditionCalls).toEqual([]);
+
+    const [bytes, , , format] = save.mock.calls[0] as [Uint8Array, string, string, string];
+    const command = new TextDecoder().decode(bytes);
+
+    /* ⛔ 바이트가 TSPL 이면 형식도 TSPL 이다 — 셸 사정이 정하지 않는다. */
+    expect(format).toBe('tspl');
+    expect(command.startsWith('SIZE 80 mm,30 mm')).toBe(true);
+    expect(command).toContain(`,M2,"${LOT_NO}"`);
+    expect(command).toContain('"LOT ' + LOT_NO + '"');
+  });
+
+  /*
+   * ⭐ **라벨은 화면이 직접 짠다**(사용자 지시 2026-09-16 · `label-tspl`). 서버에서 그림을 받는
+   * 걸음이 사라져 이 시험의 옛 전제(`renditionFailed`)는 더 일어나지 않는다 — 같은 원칙을
+   * **프린터로 보내다 실패한** 자리에서 잰다. 다시 눌러도 **같은 멱등 키로 같은 실패 사유만**
+   * 다시 보고한다(둘 다 `outcome: FAILED` 라 슬롯이 같다).
+   */
+  it('인쇄에 실패하면 다시 눌러도 같은 실패 사유를 같은 멱등 키로 다시 보고한다', async () => {
+    const writes: Request[] = [];
+    const save = vi.fn().mockRejectedValue(new Error('프린터 없음'));
+    Object.defineProperty(window, 'pop', {
+      configurable: true,
+      value: { rendition: { save } },
+    });
+    const user = userEvent.setup();
+    renderScreen(writes);
 
     const output = await screen.findByRole('button', { name: t.flow.output.issue });
     await waitFor(() => expect(output).toBeEnabled());
     await user.click(output);
 
     const retryPrint = await screen.findByRole('button', { name: t.flow.output.retryPrint });
-    expect(screen.getByText(t.flow.output.renditionFailed)).toBeVisible();
-    expect(save).not.toHaveBeenCalled();
+    expect(screen.getByText(t.flow.output.printFailed)).toBeVisible();
+    expect(save).toHaveBeenCalledTimes(1);
 
     await user.click(retryPrint);
 
@@ -308,7 +388,7 @@ describe('ProductionFlowScreen', () => {
       );
       expect(reports).toHaveLength(2);
     });
-    expect(save).not.toHaveBeenCalled();
+    expect(save).toHaveBeenCalledTimes(2);
     expect(screen.getByLabelText(t.flow.scan.label)).toBeDisabled();
 
     const reports = writes.filter(
@@ -501,19 +581,21 @@ describe('ProductionFlowScreen', () => {
           page: { page: 1, size: 100, total: 1 },
         }),
     };
-    renderScreen(writes, [legacyIssue, renditionFailsRoute]);
+    renderScreen(writes, [legacyIssue]);
 
     /*
-     * 이 시험의 핵심은 **새 발행 기록을 만들지 않고 기존 이력으로 재인쇄만 시도한다**는 것이다.
-     * 그림을 서버가 내주지 못하게 해 두어(`renditionFailsRoute`) 그 뒤 걸음이 끼어들지 않게
-     * 하고, 실적 저장 한 번 · 신규 발행 0회 · 재인쇄 결과 보고 한 번으로 잰다.
+     * 이 시험의 핵심은 **새 발행 기록을 만들지 않고 기존 이력으로 재인쇄만 한다**는 것이다.
+     * 실적 저장 한 번 · 신규 발행 0회 · 재인쇄 결과 보고 한 번으로 잰다.
      */
     await waitFor(() => {
       expect(
         writes.filter((request) => pathOf(request) === '/app/document-issues/44001:report-print'),
       ).toHaveLength(1);
     });
-    expect(screen.getByLabelText(t.flow.scan.label)).toBeDisabled();
+    /* 인쇄까지 끝나면 스캔 칸이 열린다 — 여기서부터 LOT 마감으로 갈 수 있다. */
+    await waitFor(() => {
+      expect(screen.getByLabelText(t.flow.scan.label)).toBeEnabled();
+    });
     expect(
       writes.filter((request) => pathOf(request) === '/production/production-results'),
     ).toHaveLength(1);
