@@ -1,8 +1,10 @@
 import { AlertBanner, Button } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { useId } from 'react';
+
 
 import { toApiError } from '../../patterns/request';
+
+import { confirmBlockReason } from './block-reason';
 
 import type { TerminalGate } from './terminal-gating';
 
@@ -15,6 +17,11 @@ export interface ConfirmPanelProps {
   hasPending: boolean;
   hasWorker: boolean;
   gate: TerminalGate;
+  /**
+   * 잠금 사유를 내는 띠(화면 위쪽)의 문단 id. 잠긴 버튼이 `aria-describedby` 로 그 문단을
+   * 가리켜, 포커스를 받지 못하는 버튼의 사유에 스크린리더가 닿는다.
+   */
+  reasonId: string;
   /** 서버가 거부한 건의 오류. 없으면 `null`. **그 건만** 되돌린다(C-2). */
   rejection: unknown;
   /** 닫은 뒤 남길 문구. 닫기 전에는 `null`. */
@@ -53,47 +60,13 @@ export const ConfirmPanel = ({
   hasPending,
   hasWorker,
   gate,
+  reasonId,
   rejection,
   closedCount,
   onConfirm,
   onGoToProductionResult,
 }: ConfirmPanelProps) => {
-  const reasonId = useId();
-
-  const blockReason = ((): string | undefined => {
-    switch (gate.verdict) {
-      case 'denied':
-        return t.confirm.reasons.denied;
-      case 'unavailable':
-        return t.confirm.reasons.unavailable;
-      case 'unidentified':
-        return t.confirm.reasons.unidentified;
-      case 'checking':
-        return t.confirm.reasons.checking;
-      case 'allowed':
-        break;
-    }
-
-    if (!hasWorker) return t.confirm.reasons.workerMissing;
-
-    /*
-     * ⭐ **기록되지 않은 줄을 남긴 채 닫지 않는다.** 확정은 서버를 부르지 않으므로, 닫는
-     * 순간 그 줄은 아무 데도 남지 않고 사라진다 — 작업자는 다 넣었다고 믿는다.
-     *
-     * 「기록된 것 없음」보다 **앞에 둔다** — 담아 둔 줄이 있으면 작업자가 할 일은 「담아라」가
-     * 아니라 「그것을 기록해라」다. 순서를 뒤집으면 이미 담은 자재를 앞에 두고 담으라는 말을
-     * 읽는다.
-     */
-    if (hasPending) return t.confirm.reasons.qtyMissing;
-
-    /*
-     * ⛔ **아무것도 담지 않은 상태는 말로 설명하지 않는다**(사용자 지시 2026-09-10). 화면을
-     *    열자마자 뜨던 「자재를 하나 이상 기록해야…」는 «아직 아무 일도 하지 않았다」는 사실을
-     *    되풀이할 뿐이고, 그 자리는 스캔을 마친 뒤 정말로 막혔을 때 쓸 자리다. 잠긴 버튼이
-     *    이미 「지금은 아니다」를 말한다.
-     */
-    return undefined;
-  })();
+  const blockReason = confirmBlockReason({ gate, hasWorker, hasPending });
 
   /*
    * 잠금은 사유 «문구»가 아니라 상태가 정한다 — 담긴 것이 없을 때는 말없이 잠긴 채로 둔다.
@@ -105,7 +78,8 @@ export const ConfirmPanel = ({
     <div className="confirm-row">
       {/*
        * 잠긴 버튼은 포커스를 받지 못해 툴팁만으로는 키보드·스크린리더 사용자가 사유에 닿을 수
-       * 없다. 항상 보이는 DOM 텍스트로 렌더해 `aria-describedby`로 잇는다.
+       * 없다. 사유는 화면 위쪽 띠가 항상 보이는 DOM 텍스트로 내고(사용자 지시 2026-09-16),
+       * 여기서는 그 문단을 `aria-describedby`로 잇는다 — 문구가 두 곳에 생기지 않는다.
        */}
       <Button
         variant="filled"
@@ -117,12 +91,6 @@ export const ConfirmPanel = ({
       >
         {t.confirm.action}
       </Button>
-
-      {blockReason !== undefined && (
-        <span id={reasonId} className="field-note">
-          {blockReason}
-        </span>
-      )}
 
       {/* 다시 시도가 뜻이 있는 갈래는 하나뿐이다 — 조회가 실패했을 때. */}
       {gate.verdict === 'unavailable' && (
@@ -143,22 +111,16 @@ export const ConfirmPanel = ({
           <AlertBanner variant="success" title={t.confirm.closed(closedCount)} />
 
           {/*
-           * ⭐ **다음 걸음을 그 자리에서 연다.** 투입을 마친 작업자가 갈 곳은 같은 작업지시의
-           *    생산 실적 등록인데, 이 화면에는 거기로 가는 길이 없었다 — 머리줄의 [화면 이동]은
-           *    작업지시를 싣지 않아 그 길로 들어가면 「작업지시를 받지 못했다」로 막힌다
-           *    (WIP-CHAIN-01 D10). 작업자는 작업 시작 화면까지 되돌아가야 했다.
+           * ⭐ **다음 걸음은 마쳤다는 띠 바로 아래, [ 투입 확정 ]과 같은 모양으로 선다**
+           *    (사용자 지시 2026-09-16). 방금 [ 투입 확정 ]을 누른 손이 그대로 다음을 누르는
+           *    자리라, 크기·폭·채운 면까지 같게 두어 「여기를 누르면 된다」가 바로 읽힌다.
            *
            * ⛔ **작업지시를 주소로 넘긴다.** 실적 화면은 작업지시를 «주소가 소유한다»고 못 박았고
-           *    (`production-result` · `material-input-scan/screen-params.ts` 와 같은 규율), 화면이
-           *    기억해 두면 단말을 넘겨받은 다음 작업자가 남의 작업지시에 실적을 올린다.
+           *    (`production-result` · `screen-params.ts` 와 같은 규율), 화면이 기억해 두면 단말을
+           *    넘겨받은 다음 작업자가 남의 작업지시에 실적을 올린다.
            */}
           {onGoToProductionResult !== null && (
-            <Button
-              variant="outlined"
-              size="lg"
-              className="pop-touch-target"
-              onClick={onGoToProductionResult}
-            >
+            <Button variant="filled" size="xl" className="confirm-next-step" onClick={onGoToProductionResult}>
               {t.confirm.goToProductionResult}
             </Button>
           )}

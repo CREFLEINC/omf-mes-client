@@ -475,10 +475,16 @@ export const WorkStartScreen = () => {
                  *    아무것도 보내지 않는다 — 재개(`RESUME` 적재)는 중단 상태의 사건이고(§5-4)
                  *    이 갈래가 아니다.
                  */
+                /*
+                 * ⭐ **크기는 목록의 [ 전체 보기 ]와 같게 둔다**(`xl` · 사용자 지시 2026-09-16).
+                 *    이 버튼은 띠 안에 있지만 작업자가 실제로 누르는 다음 걸음이라, 같은 화면의
+                 *    다른 조작보다 작으면 눌러야 할 자리로 읽히지 않는다.
+                 */
                 <Button
                   type="button"
                   variant="outlined"
-                  size="sm"
+                  size="xl"
+                  className="work-start-head-button"
                   onClick={() => {
                     if (selected !== null) goToMaterialInput(selected.workOrderId);
                   }}

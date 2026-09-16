@@ -6,6 +6,7 @@ import { useNavigate, useSearchParams } from 'react-router';
 import { OutboxStallBanner } from '../../patterns/outbox-stall-banner';
 import { soleProcessIdOf, usePopIdentity } from '../../patterns/pop-identity';
 
+import { confirmBlockReason } from './block-reason';
 import { ConfirmPanel } from './confirm-panel';
 import { LoadErrorBanner } from './load-error-banner';
 import { useLotStatusLabels } from './lot-status-labels';
@@ -91,6 +92,7 @@ export const MaterialInputScanScreen = () => {
   const processId = soleProcessIdOf(processes);
 
   const titleId = useId();
+  const confirmReasonId = useId();
 
   const receipt = useReceiptLines(workOrderId);
   /* 긴급 W/O 에서 넘어왔으면 그 사실을 머리줄에 남긴다(`P-02-12` §5-1 · #1147). */
@@ -282,6 +284,13 @@ export const MaterialInputScanScreen = () => {
       ? null
       : describeOutcome(outcome);
 
+  /* 띠와 버튼이 같은 값으로 서게, 잠금 사유는 이 한 곳에서 읽는다. */
+  const blockReason = confirmBlockReason({
+    gate,
+    hasWorker: workerNo !== null,
+    hasPending: pendingMaterials.length > 0,
+  });
+
   return (
     /*
      * **표제가 본문의 이름이 된다.** 셸이 있는 화면은 `AppShell`이 본문 이름을 주지만
@@ -335,6 +344,7 @@ export const MaterialInputScanScreen = () => {
               {t.header.offline}
             </Chip>
           )}
+
         </p>
       </header>
 
@@ -350,6 +360,22 @@ export const MaterialInputScanScreen = () => {
           <AlertBanner variant="warning" title={t.title}>
             {t.header.workOrderMissing}
           </AlertBanner>
+        </div>
+      )}
+
+      {/*
+       * ⭐ **투입 확정이 잠긴 사유는 화면 맨 위에서 말한다**(사용자 지시 2026-09-16). 버튼
+       *    아래 잔글씨로 두었더니, 목록이 길어지면 사유가 접힌 화면 밖으로 밀려 「왜 안 눌리는가」를
+       *    작업자가 스스로 찾아야 했다. 아이콘이 붙은 띠는 눈이 먼저 가는 자리다.
+       *
+       * ⛔ **판정을 여기서 다시 쓰지 않는다** — `confirmBlockReason` 한 곳이 정하고 버튼도 같은
+       *    값으로 잠긴다(`confirm-panel`). 두 벌이 되면 띠와 버튼이 갈린다.
+       */}
+      {blockReason !== undefined && (
+        <div className="banner-slot">
+          {/* ⭐ 제목을 두지 않는다(사용자 지시 2026-09-16) — 「투입 확정」을 덧붙이면 사유
+              앞에 한 줄이 더 생기고, 아이콘과 문구만으로 이미 무엇이 막혔는지 읽힌다. */}
+          <AlertBanner variant="warning" title={blockReason} id={confirmReasonId} />
         </div>
       )}
 
@@ -419,6 +445,7 @@ export const MaterialInputScanScreen = () => {
             hasPending={pendingMaterials.length > 0}
             hasWorker={workerNo !== null}
             gate={gate}
+            reasonId={confirmReasonId}
             rejection={outbox.rejections.at(-1)?.error ?? null}
             closedCount={closedCount}
             onConfirm={closeList}
