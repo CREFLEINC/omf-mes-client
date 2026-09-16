@@ -1265,7 +1265,11 @@ describe('ProductionFlowScreen · 작업 세션 자동 종료', () => {
     const body = (await end.json()) as Record<string, unknown>;
     expect(Object.keys(body)).toEqual(['endedAt']);
 
-    expect(await screen.findByText(t.flow.session.ended)).toBeInTheDocument();
+    /*
+     * ⛔ **잘 닫힌 것은 말하지 않는다**(사용자 지시 2026-09-16). 「생산할 LOT이 없습니다」가
+     *    이미 서 있으므로 성공 안내를 얹지 않는다 — 요청이 나갔다는 사실로 잰다.
+     */
+    expect(screen.queryByRole('button', { name: t.flow.session.retry })).not.toBeInTheDocument();
   });
 
   it('생산할 LOT 이 남아 있으면 세션을 닫지 않는다', async () => {
@@ -1284,7 +1288,6 @@ describe('ProductionFlowScreen · 작업 세션 자동 종료', () => {
       expect(writes.some((request) => pathOf(request).endsWith(':complete'))).toBe(true);
     });
     expect(writes.some((request) => pathOf(request) === END_PATH)).toBe(false);
-    expect(screen.queryByText(t.flow.session.ended)).not.toBeInTheDocument();
   });
 
   it('작업 완료 권한이 없으면 마감도 세션 종료도 일어나지 않는다', async () => {
@@ -1362,7 +1365,10 @@ describe('ProductionFlowScreen · 작업 세션 자동 종료', () => {
     expect(ends).toHaveLength(2);
     expect(ends[0]?.headers.get('Idempotency-Key')).toBe(ends[1]?.headers.get('Idempotency-Key'));
 
-    expect(await screen.findByText(t.flow.session.ended)).toBeInTheDocument();
+    /* 닫히고 나면 안내가 사라진다 — 잘 된 것은 말하지 않는다. */
+    await waitFor(() => {
+      expect(screen.queryByRole('button', { name: t.flow.session.retry })).not.toBeInTheDocument();
+    });
   });
 
   it('이미 종료된 세션이면 실패가 아니라 「이미 종료」로 말한다', async () => {
@@ -1387,8 +1393,10 @@ describe('ProductionFlowScreen · 작업 세션 자동 종료', () => {
 
     await completeCurrentLot(user);
 
-    expect(await screen.findByText(t.flow.session.alreadyEnded)).toBeInTheDocument();
-    /* 다시 눌러도 풀리지 않는 상태라 재시도를 권하지 않는다. */
+    await waitFor(() => {
+      expect(writes.some((request) => pathOf(request) === END_PATH)).toBe(true);
+    });
+    /* 이미 닫혀 있으면 원하던 상태가 이미 섰다 — 실패로 말하지 않으므로 재시도도 권하지 않는다. */
     expect(screen.queryByRole('button', { name: t.flow.session.retry })).not.toBeInTheDocument();
   });
 });
@@ -1493,8 +1501,9 @@ describe('ProductionFlowScreen · 자동 종료는 한 번만 나간다', () => 
     await waitFor(() => expect(scan).toBeEnabled());
     await user.type(scan, LOT_NO);
 
-    await screen.findByText(t.flow.session.ended);
-    expect(ends).toBe(1);
+    await waitFor(() => {
+      expect(ends).toBe(1);
+    });
   });
 
   /*

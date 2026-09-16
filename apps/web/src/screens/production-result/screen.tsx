@@ -852,18 +852,20 @@ export const ProductionFlowScreen = () => {
   /** 세션 종료 배너에 낼 한 줄. 연결이 끊긴 실패는 따로 말한다 — 할 일이 다르다. */
   const sessionStatusTitle = (() => {
     switch (sessionPhase) {
-      case 'ending':
-        return t.flow.session.ending;
-      case 'ended':
-        return t.flow.session.ended;
-      case 'alreadyEnded':
-        return t.flow.session.alreadyEnded;
       case 'denied':
         return t.flow.session.denied;
       case 'failed':
         return sessionEnd.error?.kind === 'network'
           ? t.flow.session.offline
           : t.flow.session.failed;
+      /*
+       * ⛔ **잘 닫힌 것은 말하지 않는다**(사용자 지시 2026-09-16). 닫히는 중·닫힘·이미 닫힘은
+       *    작업자가 «할 일이 없는» 상태다 — 그 자리에 이미 「생산할 LOT이 없습니다」가 서 있고,
+       *    안내를 하나 더 얹으면 두 줄이 같은 사건을 두 번 말한다.
+       */
+      case 'ending':
+      case 'ended':
+      case 'alreadyEnded':
       case 'idle':
         return '';
     }
@@ -951,18 +953,16 @@ export const ProductionFlowScreen = () => {
         </div>
       )}
       {/*
-       * 작업 세션 자동 종료의 결과. **LOT 이 없다는 안내 바로 아래**에 선다 — 「더 만들 것이
-       * 없다」와 「그래서 세션을 닫았다」는 한 사건의 앞뒤라 떨어뜨리면 읽히지 않는다.
+       * 작업 세션 자동 종료가 **어긋났을 때만** 선다.
+       *
+       * ⛔ **잘 닫힌 것은 말하지 않는다**(사용자 지시 2026-09-16). 바로 위 「생산할 LOT이
+       *    없습니다」가 이미 그 자리를 지키고 있어, 성공 안내를 얹으면 같은 사건이 두 줄로 겹친다.
        *
        * ⛔ **서버 오류 원문을 싣지 않는다.** 작업자에게는 다음 행동만 말한다.
        */}
-      {sessionPhase !== 'idle' && (
+      {(sessionPhase === 'failed' || sessionPhase === 'denied') && (
         <div className="banner-slot">
-          <AlertBanner
-            /* 닫혔거나 닫는 중이면 알리기만 한다. 못 닫은 것만 사람이 손볼 일이 남는다. */
-            variant={sessionPhase === 'failed' || sessionPhase === 'denied' ? 'warning' : 'info'}
-            title={sessionStatusTitle}
-          >
+          <AlertBanner variant="warning" title={sessionStatusTitle}>
             {sessionPhase === 'failed' && (
               <Button onClick={retrySessionEnd} disabled={sessionEnd.isSaving}>
                 {t.flow.session.retry}

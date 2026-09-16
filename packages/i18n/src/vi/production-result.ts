@@ -103,9 +103,6 @@ export const productionResult: Translated<typeof ko.productionResult> = {
       alreadyCompleted: 'LOT này đã đóng. Đang tải lại trạng thái LOT hiện tại.',
     },
     session: {
-      ending: 'Đang kết thúc phiên làm việc.',
-      ended: 'Đã kết thúc phiên làm việc.',
-      alreadyEnded: 'Phiên làm việc đã được kết thúc trước đó.',
       failed: 'Không kết thúc được phiên làm việc.',
       retry: 'Thử kết thúc phiên lại',
       denied:
