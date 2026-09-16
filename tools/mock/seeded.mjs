@@ -831,20 +831,6 @@ on('GET', '/mdm/partners', (_p, query) =>
   page(keep(state.partners, [byText(query, 'roleTypeCode', 'roleTypeCode')]), query),
 );
 
-/* 자재 LOT 라벨의 공급사 칸과 견줄 거래처코드를 화면이 여기서 받는다. 없으면 Prism 예시가 엉뚱한 코드를 준다. */
-on('GET', '/mdm/partners/{partnerId}', (params) => {
-  const partner = state.partners.find((row) => row.partnerId === Number(params.partnerId));
-
-  return partner === undefined
-    ? {
-        status: 404,
-        created: {
-          errors: [{ scope: 'screen', code: 'NOT_FOUND', message: '없는 거래처입니다.' }],
-        },
-      }
-    : partner;
-});
-
 /* 상태 축을 실제로 건다. 무시하면 폐기한 설비가 고장 보고·점검 목록에 그대로 선다. */
 on('GET', '/mdm/equipments', (_p, query) =>
   page(

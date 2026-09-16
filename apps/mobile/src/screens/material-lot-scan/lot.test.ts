@@ -13,7 +13,7 @@ import {
 import type { MaterialLotCodes } from '../../patterns/material-lot-no';
 
 const LOT_NO = 'ABC-123|500|260731|SUP-001|0007';
-const CODES: MaterialLotCodes = { itemCode: 'ABC-123', supplierCode: 'SUP-001' };
+const CODES: MaterialLotCodes = { itemCode: 'ABC-123' };
 
 const line = (overrides: Partial<InboundReceiptLine> = {}): InboundReceiptLine => ({
   inboundReceiptLineId: 7101,
@@ -47,7 +47,7 @@ describe('채울 수 있는 라인', () => {
 });
 
 describe('스캔값 검사', () => {
-  it('라인의 품목·공급사와 맞는 번호면 통과한다', () => {
+  it('라인의 품목과 맞는 번호면 통과한다', () => {
     expect(scanProblemOf(LOT_NO, [], CODES)).toBeNull();
   });
 
@@ -71,19 +71,14 @@ describe('스캔값 검사', () => {
     expect(scanProblemOf('XYZ-999|500|260731|SUP-001|0007', [], CODES)).toBe('otherItem');
   });
 
-  it('입하 공급사와 공급사 칸이 다르면 막는다', () => {
-    expect(scanProblemOf('ABC-123|500|260731|SUP-999|0007', [], CODES)).toBe('otherSupplier');
-  });
-
-  /* 품목이 다르면 그 라벨은 이미 틀렸다. 공급사까지 겹쳐 알리면 무엇을 고칠지 흐려진다. */
-  it('품목과 공급사가 둘 다 다르면 품목부터 알린다', () => {
-    expect(scanProblemOf('XYZ-999|500|260731|SUP-999|0007', [], CODES)).toBe('otherItem');
+  /* 단말은 거래처코드를 읽을 경로가 없다(#1292). 화면이 막으면 코드를 끝내 몰라 등록이 통째로 막힌다. */
+  it('공급사 칸이 달라도 막지 않는다', () => {
+    expect(scanProblemOf('ABC-123|500|260731|SUP-999|0007', [], CODES)).toBeNull();
   });
 
   /* 서버가 글자 그대로 견준다. 화면만 대소문자를 넘기면 화면은 통과, 서버 기록은 어긋난다. */
   it('대소문자가 다르면 다른 코드다', () => {
     expect(scanProblemOf('abc-123|500|260731|SUP-001|0007', [], CODES)).toBe('otherItem');
-    expect(scanProblemOf('ABC-123|500|260731|sup-001|0007', [], CODES)).toBe('otherSupplier');
   });
 
   it('코드를 모르면 대조는 건너뛴다', () => {
@@ -141,8 +136,8 @@ describe('등록 가능 여부', () => {
     expect(canRegister(line(), LOT_NO, true, 1001, [], [], null)).toBe(false);
   });
 
-  it('다른 공급사의 라벨이면 등록할 수 없다', () => {
-    expect(canRegister(line(), 'ABC-123|500|260731|SUP-999|0007', true, 1001, [], [], CODES)).toBe(
+  it('다른 품목의 라벨이면 등록할 수 없다', () => {
+    expect(canRegister(line(), 'XYZ-999|500|260731|SUP-001|0007', true, 1001, [], [], CODES)).toBe(
       false,
     );
   });

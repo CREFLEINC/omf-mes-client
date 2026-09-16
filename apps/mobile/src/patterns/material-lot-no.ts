@@ -105,30 +105,24 @@ export const parseMaterialLotNo = (value: string): MaterialLotSegments | null =>
 
 export const isMaterialLotNo = (value: string): boolean => parseMaterialLotNo(value) !== null;
 
-/** 라벨과 견줄 코드 — 품목코드와 공급사의 거래처코드. */
+/** 라벨과 견줄 코드 — 품목코드. */
 export interface MaterialLotCodes {
   itemCode: string;
-  supplierCode: string;
 }
 
-export type MaterialLotCodeMismatch = 'otherItem' | 'otherSupplier';
+export type MaterialLotCodeMismatch = 'otherItem';
 
 /**
- * 라벨의 제품코드·공급사 칸이 견줄 코드와 다른가.
+ * 라벨의 제품코드 칸이 견줄 코드와 다른가.
  *
- * 두 칸은 마스터 코드 원본이라 글자 그대로 견준다 — 서버의 입하 등록 대조와 같은 규칙이다.
- * 품목이 다르면 그것만 알린다. 그 라벨은 이미 틀렸고, 겹쳐 알리면 무엇을 고칠지 흐려진다.
+ * 그 칸은 품목 마스터 코드 원본이라 글자 그대로 견준다. 화면이 보는 것은 제품코드뿐이다 -
+ * 공급사 칸은 단말이 거래처코드를 읽을 경로가 없어 견주지 않는다(#1292). 입하 등록은 서버가
+ * 공급사까지 대조하고, 자재LOT 스캔 등록은 아무도 대조하지 않는다.
  */
 export const codeMismatchOf = (
   segments: MaterialLotSegments,
   codes: MaterialLotCodes,
-): MaterialLotCodeMismatch | null => {
-  if (segments.itemCode !== codes.itemCode) {
-    return 'otherItem';
-  }
-
-  return segments.supplier === codes.supplierCode ? null : 'otherSupplier';
-};
+): MaterialLotCodeMismatch | null => (segments.itemCode === codes.itemCode ? null : 'otherItem');
 
 /**
  * 자재 LOT 번호 첫 칸의 제품코드.

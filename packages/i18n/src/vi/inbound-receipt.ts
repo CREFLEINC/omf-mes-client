@@ -31,11 +31,10 @@ export const inboundReceipt: Translated<typeof ko.inboundReceipt> = {
   },
   label: {
     otherItem: 'Mã sản phẩm trên nhãn vừa quét khác mặt hàng của phiếu này',
-    otherSupplier: 'Nhà cung cấp trên nhãn vừa quét khác nhà cung cấp của phiếu này',
     rescan: 'Đây là nhãn của vật tư khác. Hãy quét lại nhãn hoặc chọn lại P/O vật tư.',
-    checking: 'Đang xác nhận mã sản phẩm và nhà cung cấp trên nhãn',
+    checking: 'Đang xác nhận mã sản phẩm trên nhãn',
     unverified:
-      'Không xác nhận được mã sản phẩm và nhà cung cấp trên nhãn. Nếu khác, bản ghi sẽ bị trả lại khi gửi.',
+      'Không xác nhận được mã sản phẩm trên nhãn. Nếu khác, bản ghi sẽ bị trả lại khi gửi.',
   },
   po: {
     legend: 'Chọn P/O vật tư',

@@ -89,8 +89,8 @@ const poLine = (overrides: Record<string, unknown> = {}) => ({
 interface Options {
   lines?: unknown[];
   ordersStatus?: number;
-  /** 공급사 단건 조회가 연결을 잃는다 - 라벨의 공급사를 확인하지 못한 채로 두는 자리다. */
-  partnerFails?: boolean;
+  /** 품목 단건 조회가 연결을 잃는다 - 라벨의 제품코드를 확인하지 못한 채로 두는 자리다. */
+  itemFails?: boolean;
 }
 
 const routes = (options: Options = {}): StubRoute[] => [
@@ -129,22 +129,14 @@ const routes = (options: Options = {}): StubRoute[] => [
       });
     },
   },
+  {
+    match: (req) => new URL(req.url).pathname === '/mdm/items/31' && options.itemFails === true,
+    respond: () => Promise.reject(new TypeError('Failed to fetch')),
+  },
   ...itemRoutes([{ itemId: 31, itemCode: 'ABC-123', itemName: '원자재', fifoPolicyCode: 'FIFO' }]),
   {
     match: (req) => new URL(req.url).pathname === '/mdm/uoms',
     respond: () => jsonResponse({ items: [{ uomId: 9, uomCode: 'EA' }], page }),
-  },
-  {
-    match: (req) => new URL(req.url).pathname === '/mdm/partners/2',
-    respond: () =>
-      options.partnerFails === true
-        ? Promise.reject(new TypeError('Failed to fetch'))
-        : jsonResponse({
-            partnerId: 2,
-            partnerCode: 'SUP-002',
-            partnerName: '합성공급사',
-            isActive: true,
-          }),
   },
   {
     match: (req) => new URL(req.url).pathname === '/mdm/partners',
@@ -520,22 +512,8 @@ describe('입하 등록 화면 — 발주 경로', () => {
     expect(screen.getByRole('button', { name: '입하 등록' })).toBeDisabled();
   });
 
-  it('라벨의 공급사가 발주 공급사와 다르면 등록할 수 없다', async () => {
-    const user = userEvent.setup();
-    mount();
-    await screen.findByLabelText('LOT 번호');
-    await choosePoLine(user, /ABC-123|31/, 'ABC-123|500|260731|SUP-999|0007');
-
-    await user.type(await screen.findByLabelText(/실입하\ 수량/), '500');
-
-    expect(
-      await screen.findByText('스캔한 라벨의 공급사가 이 건의 공급사와 다릅니다'),
-    ).toBeTruthy();
-    expect(screen.getByRole('button', { name: '입하 등록' })).toBeDisabled();
-  });
-
   /* 막는 쪽으로만 기울면 옳은 라벨까지 막혀 현장이 선다. 막는 시험만으로는 그 기울기가 안 보인다. */
-  it('라벨의 제품코드·공급사가 맞으면 등록할 수 있다', async () => {
+  it('라벨의 제품코드가 맞으면 등록할 수 있다', async () => {
     const user = userEvent.setup();
     mount();
     await screen.findByLabelText('LOT 번호');
@@ -550,15 +528,16 @@ describe('입하 등록 화면 — 발주 경로', () => {
   });
 
   /* 입하 등록은 연결 없이도 담겨야 한다. 확인하지 못했다고 막으면 오프라인 입하가 선다. */
-  it('라벨의 공급사를 확인하지 못하면 알리되 막지 않는다', async () => {
+  it('라벨의 제품코드를 확인하지 못하면 알리되 막지 않는다', async () => {
     const user = userEvent.setup();
-    mount([], { partnerFails: true });
+    mount([], { itemFails: true });
     await screen.findByLabelText('LOT 번호');
-    await choosePoLine(user, /ABC-123|31/, 'ABC-123|500|260731|SUP-999|0007');
+    /* 품목을 못 받은 라인은 코드 대신 「품목 정보 없음」으로 선다. 그래도 고를 수 있어야 한다. */
+    await choosePoLine(user, /품목 정보 없음/);
 
     await user.type(await screen.findByLabelText(/실입하\ 수량/), '500');
 
-    expect(await screen.findByText(/라벨의 제품코드·공급사를 확인하지 못했습니다/)).toBeTruthy();
+    expect(await screen.findByText(/라벨의 제품코드를 확인하지 못했습니다/)).toBeTruthy();
     expect(screen.getByRole('button', { name: '입하 등록' })).not.toBeDisabled();
   });
 

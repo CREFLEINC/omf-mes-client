@@ -3,7 +3,7 @@ import { messages } from '@omf-mes/i18n';
 import { useRef, useState } from 'react';
 import { Link } from 'react-router';
 
-import { useItem, useItemLabels, usePartner } from '../../patterns/masters';
+import { useItem, useItemLabels } from '../../patterns/masters';
 import type { MaterialLotCodes } from '../../patterns/material-lot-no';
 import { useOutbox } from '../../patterns/outbox';
 import { currentPlantId } from '../../patterns/plant';
@@ -110,19 +110,16 @@ export const MaterialLotScanScreen = () => {
   /* 다 받기 전에 거르면 목록이 섰다가 줄어들어, 누르려던 건이 손 아래에서 사라진다. */
   const receiptsPending = receipts.isPending || fillableIds.isPending;
   const line = openLines.find((each) => each.inboundReceiptLineId === lineId) ?? null;
-  const receipt = (receipts.data ?? []).find((each) => each.inboundReceiptId === receiptId) ?? null;
 
   /*
-   * 라벨과 견줄 코드. 이 경로는 서버가 번호를 검사하지 않아 화면이 유일한 방어선이다 - 코드를
-   * 확인하지 못한 동안은 등록을 막는다. 모르는 채 보내면 남의 자재 라벨이 그대로 LOT 이 된다.
+   * 라벨과 견줄 품목코드. 이 경로는 서버가 번호를 검사하지 않아 화면이 유일한 방어선이다 -
+   * 코드를 확인하지 못한 동안은 등록을 막는다. 모르는 채 보내면 남의 자재 라벨이 그대로 LOT 이
+   * 된다. 공급사 칸은 단말이 거래처코드를 읽을 경로가 없어 견주지 않는다(#1292).
    */
   const lineItem = useItem(line?.itemId ?? null);
-  const supplier = usePartner(line === null ? null : (receipt?.supplierId ?? null));
   const codes: MaterialLotCodes | null =
-    lineItem.data === undefined || supplier.data === undefined
-      ? null
-      : { itemCode: lineItem.data.itemCode, supplierCode: supplier.data.partnerCode };
-  const codesFailed = codes === null && (lineItem.isError || supplier.isError);
+    lineItem.data === undefined ? null : { itemCode: lineItem.data.itemCode };
+  const codesFailed = codes === null && lineItem.isError;
 
   /* 이 회차에 보낸 번호는 큐에 없다. 다시 스캔하면 서버가 400 으로 되돌린다. */
   const usedLotNos = [...queuedLotNos, ...registered.map((each) => each.lotNo)];
@@ -162,7 +159,6 @@ export const MaterialLotScanScreen = () => {
 
   const retryCodes = () => {
     void lineItem.refetch();
-    void supplier.refetch();
   };
 
   const restart = () => {
@@ -347,7 +343,7 @@ export const MaterialLotScanScreen = () => {
               <>
                 <FailureBanner
                   variant="error"
-                  title={failureText(lineItem.error ?? supplier.error, t.codes.loadFailed)}
+                  title={failureText(lineItem.error, t.codes.loadFailed)}
                 />
                 <Button
                   className="material-lot-scan__wide"

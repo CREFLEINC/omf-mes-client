@@ -39,13 +39,11 @@ export const materialLotScan: Translated<typeof ko.materialLotScan> = {
       badDate: 'Ô ngày trên nhãn không phải là ngày có thật',
       duplicate: 'Số LOT này đã được đăng ký',
       otherItem: 'LOT này khác mặt hàng của dòng nhập hàng',
-      otherSupplier: 'LOT này khác nhà cung cấp của phiếu nhập hàng',
     },
   },
   codes: {
-    loading: 'Đang xác nhận mã mặt hàng và mã nhà cung cấp để đối chiếu với nhãn',
-    loadFailed:
-      'Không tải được mã mặt hàng và mã nhà cung cấp để đối chiếu. Chưa xác nhận thì không đăng ký được.',
+    loading: 'Đang xác nhận mã mặt hàng để đối chiếu với nhãn',
+    loadFailed: 'Không tải được mã mặt hàng để đối chiếu. Chưa xác nhận thì không đăng ký được.',
     retry: 'Thử lại',
   },
   qtyDiffers: (labelQty: string, lineQty: string) =>

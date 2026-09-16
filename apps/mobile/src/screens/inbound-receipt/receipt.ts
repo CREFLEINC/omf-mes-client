@@ -227,10 +227,11 @@ export const hasScannedLabel = (draft: ReceiptDraft): boolean =>
   !draft.supplierLotMissing && draft.supplierLotLabelAttached && draft.supplierLotNo !== '';
 
 /**
- * 스캔한 라벨이 이 건의 품목·공급사와 다른가.
+ * 스캔한 라벨의 제품코드가 이 건의 품목과 다른가.
  *
  * 서버가 등록할 때 같은 대조로 거부한다(400). 담아 둔 뒤에 되돌아오면 한참 뒤 전송 실패로만
- * 보이므로 등록 전에 막는다. 견줄 코드를 모르면 판정하지 않는다.
+ * 보이므로 등록 전에 막는다. 견줄 코드를 모르면 판정하지 않는다. 공급사 칸은 단말이 거래처코드를
+ * 읽을 경로가 없어 서버 대조에 맡긴다(#1292).
  */
 export const labelMismatchOf = (
   draft: ReceiptDraft,

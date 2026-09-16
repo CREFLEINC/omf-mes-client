@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router';
 
 import { isMaterialLotNo } from '../../patterns/material-lot-no';
-import { useItem, useItemLabels, usePartner, useSuppliers, useUomCodes } from '../../patterns/masters';
+import { useItem, useItemLabels, useSuppliers, useUomCodes } from '../../patterns/masters';
 import { useOutbox } from '../../patterns/outbox';
 import { currentPlantId } from '../../patterns/plant';
 import { ScanReplaceDialog } from '../../patterns/scan-replace-dialog';
@@ -270,21 +270,17 @@ export const InboundReceiptScreen = () => {
       ? splitQuantitiesOf(draft.purchaseOrderLine, received, queuedQty)
       : null;
   /*
-   * 스캔한 라벨을 이 건의 품목·공급사와 견준다. 다르면 서버가 거부할 라벨이라 등록 전에 막는다.
+   * 스캔한 라벨의 제품코드를 이 건의 품목과 견준다. 다르면 서버가 거부할 라벨이라 등록 전에
+   * 막는다. 공급사 칸은 서버가 등록할 때 본다.
    *
    * 확인하는 동안은 기다린다. 확인하지 못했으면(연결이 없을 때 등) 막지 않는다 - 입하 등록은
    * 오프라인에서도 담겨야 하고, 서버가 등록할 때 같은 대조를 한다.
    */
   const source = sourceOf(draft);
   const labelChecked = hasScannedLabel(draft) && source !== null;
-  const labelSupplier = usePartner(labelChecked ? (source?.supplierId ?? null) : null);
-  const labelCodes =
-    item.data === undefined || labelSupplier.data === undefined
-      ? null
-      : { itemCode: item.data.itemCode, supplierCode: labelSupplier.data.partnerCode };
+  const labelCodes = item.data === undefined ? null : { itemCode: item.data.itemCode };
   const labelMismatch = labelMismatchOf(draft, labelCodes);
-  const labelUnverified =
-    labelChecked && labelCodes === null && (item.isError || labelSupplier.isError);
+  const labelUnverified = labelChecked && labelCodes === null && item.isError;
   const labelChecking = labelChecked && labelCodes === null && !labelUnverified;
   const labelOk = labelMismatch === null && !labelChecking;
   /*

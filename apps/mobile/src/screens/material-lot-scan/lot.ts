@@ -46,8 +46,8 @@ export const isFillable = (line: InboundReceiptLine): boolean =>
 /**
  * 스캔값 하나를 본다.
  *
- * ⛔ 이 경로(`POST /trace/lots` 공급사 채번)는 서버가 번호의 형식도 제품코드·공급사도 보지
- *    않는다. 화면이 막지 않으면 형식이 틀리거나 남의 자재에 붙은 라벨이 그대로 LOT 이 된다.
+ * ⛔ 이 경로(`POST /trace/lots` 공급사 채번)는 서버가 번호의 형식도 제품코드도 보지 않는다.
+ *    화면이 막지 않으면 형식이 틀리거나 남의 자재에 붙은 라벨이 그대로 LOT 이 된다.
  *
  * 큐 안의 중복만 여기서 본다 - 같은 공장에 이미 있는지는 서버만 안다.
  *
@@ -71,7 +71,7 @@ export const scanProblemOf = (
 
   const segments = parseMaterialLotNo(trimmed);
 
-  /* 다른 품목·공급사의 라벨이면 그 라인에 남의 LOT 이 붙는다. 입하 등록이라면 서버가 막았을 라벨이다. */
+  /* 다른 품목의 라벨이면 그 라인에 남의 LOT 이 붙는다. 입하 등록이라면 서버가 막았을 라벨이다. */
   return codes === null || segments === null ? null : codeMismatchOf(segments, codes);
 };
 
