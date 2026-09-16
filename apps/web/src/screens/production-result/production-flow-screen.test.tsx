@@ -1511,6 +1511,31 @@ describe('ProductionFlowScreen · 자동 종료는 한 번만 나간다', () => 
    *    없습니다」가 처음부터 떠 있는데, 그 상태만 보고 닫으면 남이 돌리던 세션을 구경하던
    *    단말이 끊는다. 닫는 근거는 «이 단말이 마지막 LOT 을 마감했다»는 사실이다.
    */
+  /*
+   * ⛔ **넣을 LOT 이 없으면 수량을 받지 않는다**(사용자 지시 2026-09-16). 실적은 LOT 에 붙는
+   *    값이라 받을 그릇이 없는데, 칸이 열려 있으면 작업자가 수를 쳐 넣고 아무 일도 일어나지
+   *    않는 것을 본다. 「0보다 큰 수량을 입력하세요」도 이 상태에서는 틀린 말이다 — 값이
+   *    잘못된 것이 아니라 넣을 곳이 없다.
+   */
+  it('생산할 LOT 이 없으면 수량 칸과 숫자판이 잠기고 수량 오류를 말하지 않는다', async () => {
+    const writes: Request[] = [];
+    const emptyLots: StubRoute = {
+      match: (request) => pathOf(request) === '/trace/lots',
+      respond: () => jsonResponse({ items: [], page: { page: 1, size: 20, total: 0 } }),
+    };
+
+    renderScreen(writes, [emptyLots]);
+
+    await screen.findByText(t.flow.currentLot.none);
+
+    expect(screen.getByLabelText(t.flow.quantity.actual)).toBeDisabled();
+    expect(screen.queryByText(t.flow.quantity.invalid)).not.toBeInTheDocument();
+    /* 숫자판도 함께 잠긴다 — 칸만 잠그면 키를 눌러 값이 들어간다. */
+    for (const key of ['1', '0']) {
+      expect(screen.getByRole('button', { name: key })).toBeDisabled();
+    }
+  });
+
   it('LOT 이 처음부터 없는 작업지시를 열기만 하면 세션을 닫지 않는다', async () => {
     const writes: Request[] = [];
     const END_PATH = `/production/work-sessions/${String(WORK_SESSION_ID)}:end`;

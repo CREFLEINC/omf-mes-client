@@ -656,7 +656,13 @@ export const ProductionFlowScreen = () => {
       serialItems.every((serial) => summaryBySerialId.has(serial.serialNumberId)));
   const hasTagDocuments =
     isTagTarget !== true || (hasCompleteTagSummary && printedSerials.length === serialItems.length);
+  /*
+   * ⛔ **넣을 LOT 이 없으면 수량 칸도 잠근다**(사용자 지시 2026-09-16). 실적은 «LOT 에» 붙는
+   *    값이라 LOT 이 없으면 받을 그릇이 없다 — 칸이 열려 있으면 작업자가 수를 쳐 넣고 아무
+   *    일도 일어나지 않는 것을 보게 된다. 이 상태에서 할 일은 관리웹 쪽에 있다.
+   */
   const isQuantityLocked =
+    lot === null ||
     outputPhase !== 'idle' ||
     hasAppliedResult ||
     (lot !== null && outbox.isPendingForLot(lot.lotId));
@@ -1049,7 +1055,16 @@ export const ProductionFlowScreen = () => {
               disabled={isQuantityLocked}
               inputMode="decimal"
               trailingIcon={uomLabel}
-              error={parsedQty === null || parsedQty <= 0 ? t.flow.quantity.invalid : undefined}
+              /*
+               * ⛔ **LOT 이 없을 때는 수량을 나무라지 않는다**(사용자 지시 2026-09-16). 「0보다
+               *    큰 수량을 입력하세요」는 «넣을 수 있는데 잘못 넣었다»는 말인데, 그 상태는
+               *    애초에 넣을 곳이 없다 — 위 배너가 이미 진짜 할 일을 말하고 있다.
+               */
+              error={
+                lot !== null && (parsedQty === null || parsedQty <= 0)
+                  ? t.flow.quantity.invalid
+                  : undefined
+              }
               onChange={(event) => setActualQty(quantityInput(event.target.value))}
             />
             {/*
@@ -1343,18 +1358,24 @@ export const ProductionFlowScreen = () => {
              * ⛔ **서버 오류 원문을 싣지 않는다.** 작업자에게는 다음 행동만 말한다.
              */}
             {(sessionPhase === 'failed' || sessionPhase === 'denied') && (
-              <p className="production-flow-session-note">
-                <span className="field-error">{sessionStatusTitle}</span>
-                {sessionPhase === 'failed' && (
-                  <Button
-                    variant="outlined"
-                    onClick={retrySessionEnd}
-                    disabled={sessionEnd.isSaving}
-                  >
-                    {t.flow.session.retry}
-                  </Button>
-                )}
-              </p>
+              <div className="production-flow-session-note">
+                {/*
+                 * ⭐ **노란 띠로 낸다**(사용자 지시 2026-09-16). 빨간 글씨는 «방금 친 값이
+                 *    틀렸다»는 말이라 이 자리와 뜻이 다르다 — 값은 멀쩡하고, 뒤에서 하나가
+                 *    덜 끝났을 뿐이다. 크기만 한 급 낮춘다(`pop.css`).
+                 */}
+                <AlertBanner variant="warning" title={sessionStatusTitle}>
+                  {sessionPhase === 'failed' && (
+                    <Button
+                      variant="outlined"
+                      onClick={retrySessionEnd}
+                      disabled={sessionEnd.isSaving}
+                    >
+                      {t.flow.session.retry}
+                    </Button>
+                  )}
+                </AlertBanner>
+              </div>
             )}
           </Card.Body>
         </Card>

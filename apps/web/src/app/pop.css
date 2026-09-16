@@ -5772,34 +5772,64 @@
 }
 
 /*
- * 작업 세션 자동 종료가 어긋났을 때의 한 줄 — **스캔 구획 바닥**에 선다(사용자 지시 2026-09-16).
+ * 작업 세션 자동 종료가 어긋났을 때의 안내 — **스캔 구획 바닥**에 선다(사용자 지시 2026-09-16).
  *
- * ⭐ **머리의 띠(`banner-slot`)가 아니다.** 띠 자리에 세웠더니 「생산할 LOT이 없습니다」 바로
- *    아래 같은 크기의 줄이 하나 더 붙어, 둘 중 어느 것이 지금 할 일인지 흐려졌다. 세션 닫기는
- *    마감 흐름의 «끝»이라 그 흐름이 끝나는 자리에 눕히고, 글자도 한 급 낮춘다.
+ * ⭐ **자리만 옮기고 «모양»은 노란 띠 그대로 둔다**(사용자 지시). 머리의 띠 자리에 세웠더니
+ *    「생산할 LOT이 없습니다」 바로 아래 같은 크기의 줄이 하나 더 붙어 둘 중 어느 것이 지금 할
+ *    일인지 흐려졌다 — 세션 닫기는 마감 흐름의 «끝»이라 그 흐름이 끝나는 자리에 눕힌다.
  *
- * ⚠ 단추를 글자와 **같은 줄**에 세운다 — 스캔 구획은 세로 예산이 빠듯해(1024×768에서 이미
- *   넘친다) 줄을 하나 더 쓰면 그만큼 아래가 잘린다.
+ * ⛔ **빨간 글씨(`field-error`)로 바꾸지 않는다.** 한 회차 그렇게 냈다가 되돌렸다 — 빨강은
+ *    «방금 친 값이 틀렸다»는 말이라 이 자리와 뜻이 다르다. 값은 멀쩡하고 뒤에서 하나가 덜
+ *    끝났을 뿐이다.
  */
 .pop-ui .production-flow-session-note {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-2);
   margin-top: var(--space-2);
 }
 
-.pop-ui .production-flow-session-note > .field-error {
-  margin-top: 0;
+/*
+ * ⚠ **띠 안의 글자를 한 급 낮춘다.** POP 의 기본 띠(`banner-slot`)는 화면 머리에서 «지금 할
+ *   일»을 말하는 자리라 크게 서는데, 이것은 구획 바닥에 눕는 딸린 안내다 — 같은 크기로 두면
+ *   위의 「생산할 LOT이 없습니다」와 무게가 같아져 둘 중 어느 것이 먼저인지 흐려진다.
+ * ⚠ DS 내부 클래스를 겨냥하지 않는다 — 띠 자체에 걸어 안쪽이 물려받게 한다.
+ */
+.pop-ui .production-flow-session-note > [role='alert'],
+.pop-ui .production-flow-session-note > [role='status'] {
   font-size: var(--pop-label);
+  /*
+   * 단추를 **문구 줄 오른쪽 끝**에 붙인다(사용자 지시 2026-09-16). DS 띠는 제목 아래로 내용을
+   * 쌓는데, 이 자리에서는 아이콘·문구·단추가 한 줄로 서야 스캔 구획의 세로를 덜 먹는다.
+   *
+   * ⚠ 마지막 칸만 오른쪽으로 민다 — 아이콘과 문구의 사이 간격은 DS 가 정한 대로 둔다.
+   */
+}
+
+/*
+ * 단추를 **문구와 같은 줄, 오른쪽 끝**에 세운다(사용자 지시 2026-09-16). DS 띠는 안쪽 내용을
+ * 세로로 쌓는데, 이 자리에서는 한 줄로 서야 스캔 구획의 세로를 덜 먹는다 — 1024×768 에서 이
+ * 구획은 이미 빠듯하다.
+ *
+ * ⚠ DS 내부 클래스(`_content_…`)를 겨냥하지 않는다 — 판이 바뀌면 이름이 달라진다. 구조로
+ *   잡는다: 띠의 «마지막» 칸이 내용 상자이고(앞은 아이콘), 그 안의 마지막이 딸린 자리다.
+ */
+.pop-ui .production-flow-session-note > [role='alert'] > :last-child,
+.pop-ui .production-flow-session-note > [role='status'] > :last-child {
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.pop-ui .production-flow-session-note > [role='alert'] > :last-child > :last-child,
+.pop-ui .production-flow-session-note > [role='status'] > :last-child > :last-child {
+  margin-inline-start: auto;
 }
 
 /*
  * ⛔ **이 단추는 액션 줄의 규격을 물려받지 않는다.** 화면 바닥의 큰 단추(최소 72px)와 달리
- *    딸린 안내에 붙는 곁단추라, 그 규격을 그대로 쓰면 한 줄이 통째로 부풀어 스캔 칸을 민다.
+ *    딸린 안내에 붙는 곁단추라, 그 규격을 그대로 쓰면 띠가 통째로 부풀어 스캔 칸을 민다.
+ *    스캔 구획은 1024×768 에서 이미 세로가 빠듯하다.
  */
-.pop-ui .production-flow-session-note > button {
-  flex: 0 0 auto;
+.pop-ui .production-flow-session-note button {
   min-width: 0;
   min-height: 40px;
   padding-inline: var(--space-3);
