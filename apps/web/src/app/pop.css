@@ -1248,36 +1248,43 @@
 }
 
 /*
- * 유형 구획 — **이름과 사유가 윗줄, 고르는 자리는 그 «아래»**(사용자 지시 2026-09-07).
+ * 대기 목록의 표제 줄 — **표제와 [ 새로 고침 ]의 윗변이 나란히 선다.**
  *
- * 설계 §3 도면도 「유형」 오른쪽에 두 선택지를 세로로 쌓아 두었다. 이름·사유·선택지를 한 줄에
- * 늘어놓으면 누르는 자리가 글자 사이에 끼어 장갑 낀 손이 겨냥하기 어렵다.
- *
- * ⚠ 자리를 **차례**로 잡는다 — 표시의 순서(이름 · 고르는 자리 · 사유)와 화면의 순서가 달라서
- *   다. 순서를 바꾸면 읽어 주는 기계가 사유를 선택지보다 먼저 읽는다.
+ * ⛔ `app.css` 의 `.pop-section > * > * + *`(구획 안 형제 간격 12)가 이 줄의 **둘째 자식인
+ *    단추까지 때린다** — 구획(`.pop-section`)이 이 줄의 부모라 단추가 손자 자리에 놓인다.
+ *    전례가 같은 자리에서 같은 일을 겪었다(`app.css` 의 `.pop-repack-actions` — 「두 버튼의
+ *    윗변이 12 어긋났다」). 세로는 `align-items` 가 잡으므로 형제 간격은 턴다.
  */
-.pop-ui .pop-giqr-unit {
-  display: grid;
-  grid-template-columns: auto 1fr;
+.pop-ui .pop-giqr-pending-head {
+  display: flex;
   align-items: center;
-  gap: var(--space-2) var(--space-4);
+  justify-content: space-between;
+  gap: var(--space-3);
+  flex-wrap: wrap;
 }
 
-.pop-ui .pop-giqr-unit > :first-child {
-  grid-row: 1;
-  grid-column: 1;
+.pop-ui .pop-giqr-pending-head > * + * {
+  margin-top: 0;
 }
 
-.pop-ui .pop-giqr-unit > .field-note {
-  grid-row: 1;
-  grid-column: 2;
-  max-width: none;
+/* 표제는 줄의 글자를 그대로 쓴다 — 제 크기를 다시 정하지 않는다(전례 `pop-repack-head-name`). */
+.pop-ui .pop-giqr-pending-head > h2 {
   margin: 0;
+  font: inherit;
+  letter-spacing: inherit;
 }
 
-.pop-ui .pop-giqr-unit > [role='radiogroup'] {
-  grid-row: 2;
-  grid-column: 1 / -1;
+/*
+ * 전표에서 대기 목록으로 되돌아가는 줄 — **셸이 주는 이음매만 갖는다.**
+ *
+ * 단추 하나를 담은 `<p>` 라 브라우저 기본 여백(위아래 1em)이 붙는데, 위는 셸의
+ * `main > * + *`(20)가 덮어써도 **아래는 남아** 이 줄 밑만 홀로 16 더 벌어진다. 제 여백을
+ * 가질 까닭이 없는 줄이다.
+ *
+ * ⚠ 위 여백은 건드리지 않는다 — 그것을 0 으로 만들면 바로 위 구획에 단추가 달라붙는다.
+ */
+.pop-ui .pop-giqr-back {
+  margin-block-end: 0;
 }
 
 /*
@@ -5769,4 +5776,32 @@
 .pop-ui .scan-outcome > [role='alert'] > :first-child,
 .pop-ui .scan-outcome > [role='status'] > :first-child {
   margin-block-start: 2px;
+}
+
+/*
+ * 자재 출고번호로 전표를 불러오는 줄 — **입력칸과 단추의 아랫선을 맞춘다.**
+ *
+ * ⚠ 칸에는 라벨(「자재 출고번호」)이 한 층 얹혀 있고 단추에는 없다. 그래서 위선을 맞추면
+ *   단추가 라벨과 나란히 서고 칸만 아래로 내려가 **둘이 어긋나 보인다**(사용자 실기 지적
+ *   2026-09-16). 아랫선을 맞추면 눈이 한 줄로 읽는다 — `.scan-row` 가 같은 사정으로 같은
+ *   규범을 쓴다.
+ */
+.pop-ui .issue-lookup {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+/* 칸이 남는 폭을 먹고 단추는 글자만큼만 선다 — 터치 하한은 `.pop-touch-target` 이 지킨다. */
+.pop-ui .issue-lookup > :first-child {
+  flex: 1 1 18rem;
+}
+
+/*
+ * 안내 띠는 줄에서 빠져 **아래로 내려간다.** 조회 결과(못 찾음·실패)가 칸 옆에 끼면 줄이
+ * 밀려 칸과 단추가 다시 어긋난다.
+ */
+.pop-ui .issue-lookup > .banner-slot {
+  flex: 1 0 100%;
 }

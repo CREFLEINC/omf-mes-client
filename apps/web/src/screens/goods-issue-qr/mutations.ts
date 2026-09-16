@@ -3,8 +3,8 @@ import { useMutation, useQueryClient, type UseMutationResult } from '@tanstack/r
 
 import { useApiClient } from '../../patterns/api-context';
 import { useMasterWrite, type MasterWriteResult } from '../../patterns/master';
-import { fetchLabelRendition, labelRenditionFormat } from '../../patterns/pop-label-rendition';
 import { runRequest } from '../../patterns/request';
+import { renderGoodsIssueQrLabel, type GoodsIssueQrLabelFields } from './label-image';
 import { hasPrintBridge, sendToPrinter, type PrintAttempt } from './pop-print';
 import { goodsIssueQrKeys } from './queries';
 import type { DocumentIssue, DocumentIssueCreate } from './types';
@@ -87,6 +87,7 @@ export interface PrintFlowResult {
  */
 export const usePrintFlow = (
   workerNo: string | null,
+  labelFieldsOf: LabelFieldsOf,
 ): UseMutationResult<PrintFlowResult, Error, DocumentIssue[]> => {
   const { client } = useApiClient();
   const queryClient = useQueryClient();
@@ -96,7 +97,7 @@ export const usePrintFlow = (
       const reports: PrintReport[] = [];
 
       for (const record of issued) {
-        const attempt = await printOne(client, record);
+        const attempt = await printOne(record, labelFieldsOf);
         const reported =
           attempt.kind === 'noBridge' || workerNo === null
             ? false
@@ -120,39 +121,51 @@ type Client = ReturnType<typeof useApiClient>['client'];
 const printLabel = (record: DocumentIssue): string =>
   `${record.documentTypeCode}-${String(record.target.targetId)}-${String(record.issueSeq)}`;
 
-const printOne = async (client: Client, record: DocumentIssue): Promise<PrintAttempt> => {
+/**
+ * 이 발행 기록이 가리키는 대상의 라벨 값. 화면이 준다 — 이름 풀이는 화면이 소유한다.
+ *
+ * ⭐ **그릴 수 없는 까닭을 값으로 말한다.** 「아직 이름을 못 받았다」와 「이 대상은 그릴 수 있는
+ *    라벨이 없다」는 작업자가 할 일이 다르다 — 앞은 기다리면 되고 뒤는 기다려도 안 된다.
+ *    한 문장으로 뭉치면 파렛트를 고른 사람이 영영 기다린다.
+ */
+export type LabelFields = GoodsIssueQrLabelFields | { unavailableReason: string };
+
+export type LabelFieldsOf = (record: DocumentIssue) => LabelFields;
+
+const isReady = (value: LabelFields): value is GoodsIssueQrLabelFields =>
+  !('unavailableReason' in value);
+
+const printOne = async (record: DocumentIssue, fieldsOf: LabelFieldsOf): Promise<PrintAttempt> => {
   /*
-   * ⭐ **보낼 곳이 없으면 그림을 받지도 않는다.** 셸 밖(관리웹 브라우저)에서 이 화면을 열면
-   * 인쇄 통로가 없으므로, 받아 봐야 버릴 이미지를 내려받게 된다.
+   * ⭐ **보낼 곳이 없으면 그리지도 않는다.** 셸 밖(관리웹 브라우저)에서 이 화면을 열면 인쇄
+   * 통로가 없으므로, 그려 봐야 버릴 이미지를 만들게 된다.
    */
   if (!hasPrintBridge()) return { kind: 'noBridge' };
 
   /*
-   * ⭐ **셸이 있으면 명령형(TSPL)으로 받는다**(`patterns/pop-label-rendition`).
+   * ⭐ **출고 QR 은 POP 이 스스로 그린다**(설계 결정 8·9 의 2단계 · 사용자 결정 2026-09-16).
+   *    서버는 이 유형의 렌디션을 만들지 않는다 — `GOODS_ISSUE_QR` 은 png·tspl 모두 422 이고
+   *    단말 다운로드 허용 목록에도 없어 요청 자체가 401 로 끊긴다(ISSUE-QR-01 G1).
+   *    **그래서 이 자리는 `fetchLabelRendition` 을 부르지 않는다** — 준비 목록·형식 협상과
+   *    무관하다.
    *
-   * 그림으로 받아 드라이버에 넘기면 글자가 픽셀로 찍혀 **프린터 글꼴로 찍은 다른 라벨과
-   * 다른 물건으로 보이고**(굵기가 죽는다), 라벨지 크기와 그림 크기가 어긋나면 그대로
-   * 잘린다 — 이 화면만 그림 경로에 남아 있어 실기에서 그렇게 나왔다(실측 2026-09-08).
+   * ⚠ **형식은 `png` 고정이다.** 명령형(TSPL)은 RAW 자리로만 나가는데 그 자리는 win32 에서만
+   *    선다(WIP-CHAIN-01 D6 실측) — 가상 큐로 찍는 이번 흐름에서는 그림이라야 한다.
    */
-  const format = labelRenditionFormat();
+  const fields = fieldsOf(record);
+
+  if (!isReady(fields)) return { kind: 'failed', reason: fields.unavailableReason };
 
   let bytes: Uint8Array;
 
   try {
-    /*
-     * ⛔ **배포본에서는 요청이 만들어지지 않는다**(`patterns/pop-label-rendition` 머리말 —
-     * 실서버에 경로가 없어 개발 모드에서만 부른다). 발행 기록은 이미 남았으므로 여기서
-     * 멈춰도 재발행을 유도하지 않는다(아래는 «인쇄 실패»로만 다룬다).
-     */
-    const blob = await fetchLabelRendition(client, record.documentIssueLogId);
-
-    bytes = new Uint8Array(blob);
+    bytes = renderGoodsIssueQrLabel(fields);
   } catch (cause) {
-    /* 그림을 못 받은 것도 인쇄 실패다 — 종이는 나오지 않았고, 기록은 남아 있다. */
+    /* 그리지 못한 것도 인쇄 실패다 — 종이는 나오지 않았고, 발행 기록은 남아 있다. */
     return { kind: 'failed', reason: cause instanceof Error ? cause.message : String(cause) };
   }
 
-  return sendToPrinter(bytes, printLabel(record), format);
+  return sendToPrinter(bytes, printLabel(record), 'png');
 };
 
 /**

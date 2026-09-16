@@ -96,3 +96,19 @@ export const issuedQtyByLine = (
 
   return byLine;
 };
+
+/**
+ * 출고 확정 응답에서 **서버가 매긴 출고번호**만 꺼낸다.
+ *
+ * ⭐ 작업자가 이 번호를 POP(P-01-02)으로 들고 가 출고 QR 을 발행한다(ISSUE-QR-01 C5).
+ *
+ * ⛔ **모양을 믿지 않는다.** 큐를 타는 쓰기라 응답이 없을 수도, 끊긴 자리에서 다른 것이 담길
+ *    수도 있다 — 문자열일 때만 받는다. 없으면 `null` 이고, 화면은 그 줄을 세우지 않는다.
+ */
+export const goodsIssueNoOf = (response: unknown): string | null => {
+  if (typeof response !== 'object' || response === null) return null;
+
+  const value = (response as { goodsIssue?: { goodsIssueNo?: unknown } }).goodsIssue?.goodsIssueNo;
+
+  return typeof value === 'string' && value.trim() !== '' ? value : null;
+};

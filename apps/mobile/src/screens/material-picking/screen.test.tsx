@@ -259,6 +259,9 @@ const respondWith = (behaviour: Behaviour, body: unknown, seen: Request[], reque
     : jsonResponse(body, { status: 201 });
 };
 
+/** 서버가 매기는 출고번호. 작업자가 이 값을 POP 으로 들고 간다(ISSUE-QR-01 C5). */
+const ISSUE_NO = 'GI-20260916-0001';
+
 const PICK_LINE = /\/lines\/(\d+):pick$/;
 
 const SignedIn = ({ children }: { children: ReactNode }) => {
@@ -345,7 +348,29 @@ const mount = (options: Options = {}): Mounted => {
           await waiting;
         }
 
-        return respondWith(current.issue, { goodsIssueId: 900 }, issues, req);
+        /*
+         * ⚠ **계약 모양 그대로 돌려준다** — `GoodsIssueDetailResponse` 는 `{ goodsIssue, lines }`
+         *   다(`api.d.ts:35027`). 전에는 평평한 `{ goodsIssueId: 900 }` 이었는데, 그 모양으로는
+         *   **응답에서 출고번호를 꺼내 쓰는 화면이 시험을 통과한 채 비어 나간다.**
+         */
+        return respondWith(
+          current.issue,
+          {
+            goodsIssue: {
+              goodsIssueId: 900,
+              goodsIssueNo: ISSUE_NO,
+              issueTypeCode: 'PRODUCTION',
+              sourceDocumentTypeCode: 'PICKING_ORDER',
+              sourceDocumentId: 1,
+              sourceWarehouseId: 5,
+              issuedAt: '2026-09-16T09:00:00+09:00',
+              statusCode: 'POSTED',
+            },
+            lines: [],
+          },
+          issues,
+          req,
+        );
       },
     },
     ...rest(options, serverPicked),
@@ -1077,6 +1102,37 @@ describe('자재 출고·피킹 화면', () => {
 
     expect(await screen.findByText('출고를 확정했습니다')).toBeTruthy();
     expect(sent.issues).toHaveLength(1);
+  });
+
+  /*
+   * ⭐ **확정 화면이 출고번호를 보인다**(ISSUE-QR-01 C5). 작업자가 이 번호를 들고 POP(P-01-02)
+   *    으로 가 전표를 불러 출고 QR 을 발행한다 — 번호를 안 보이면 방금 만든 전표를 가리킬
+   *    방법이 없어 관리자 웹을 뒤지거나 사람을 불러야 했다.
+   */
+  it('출고를 확정하면 서버가 매긴 출고번호를 보인다', async () => {
+    const user = userEvent.setup();
+    mount({ lines: [line({ pickedQty: 120 })] });
+    await chooseOrder(user);
+
+    await user.click(screen.getByRole('button', { name: '출고 확정' }));
+
+    await screen.findByText('출고를 확정했습니다');
+    expect(await screen.findByText(`출고번호 ${ISSUE_NO}`)).toBeTruthy();
+  });
+
+  /*
+   * ⛔ **큐에 담긴 건은 번호를 지어내지 않는다.** 서버가 아직 매기지 않았다 — 없는 번호를
+   *    보이면 작업자가 그 번호로 POP 에서 전표를 찾다가 못 찾는다.
+   */
+  it('전송 대기로 담긴 출고에는 출고번호를 보이지 않는다', async () => {
+    const user = userEvent.setup();
+    mount({ lines: [line({ pickedQty: 120 })], issue: 'offline' });
+    await chooseOrder(user);
+
+    await user.click(screen.getByRole('button', { name: '출고 확정' }));
+
+    await screen.findByText('출고를 전송 대기에 넣었습니다');
+    expect(screen.queryByText(new RegExp('출고번호'))).toBeNull();
   });
 
   /*

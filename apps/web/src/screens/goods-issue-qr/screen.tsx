@@ -1,7 +1,9 @@
 import type { ApiError } from '@omf-mes/api-client';
 import { AlertBanner, Button, Chip } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { useEffect, useId, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
+import { useEffect, useId, useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router';
 
 import { useApiClient } from '../../patterns/api-context';
 import { PopWorkerTag } from '../../patterns/pop-worker-tag';
@@ -10,11 +12,23 @@ import { SaveErrorBanner } from '../../patterns/master';
 import { canIssue, issueGuard, type IssueGuard } from './issue-target';
 import { hasIssuedTarget, hasUnknownTarget, rowId, toLineRows } from './line-rows';
 import { LineListPane } from './line-list-pane';
-import { useItemNames, useLotNames, useReissueReasonOptions, useUomNames } from './lookups';
+import { IssueLookupField } from './issue-lookup-field';
+import { toLabelFields, toLabelFieldsForLine } from './label-fields';
+import { PendingPane } from './pending-pane';
+import { usePendingIssueLines } from './pending-list';
+import { renderGoodsIssueQrLabel } from './label-image';
+import {
+  useDestinationCode,
+  useItemNames,
+  useLotNames,
+  useReissueReasonOptions,
+  useUomNames,
+} from './lookups';
 import { useDocumentIssueWrite, usePrintFlow } from './mutations';
 import { hasPrintBridge } from './pop-print';
 import { printResult, type PrintResult } from './print-result';
 import {
+  goodsIssueQrKeys,
   useDocumentIssueSummary,
   useGoodsIssue,
   useGoodsIssueLines,
@@ -61,6 +75,8 @@ export const GoodsIssueQrScreen = () => {
   const { baseUrl } = useApiClient();
 
   const entry = useGoodsIssueQrEntry();
+  const [, setSearchParams] = useSearchParams();
+  const queryClient = useQueryClient();
   const identity = usePopIdentity();
 
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
@@ -115,13 +131,49 @@ export const GoodsIssueQrScreen = () => {
     palletId === null ? [] : [palletId],
   );
 
-  const itemNames = useItemNames();
+  /* 화면에 선 라인의 품목만 묻는다 — 목록 한 쪽에 기대면 없는 품목이 「알 수 없음」이 된다(D2). */
+  /*
+   * QR 발행 대기 목록 — 전표를 고르기 «전»에만 세운다(ISSUE-QR-01 D5). 전표에 들어간 뒤에도
+   * 띄우면 같은 화면에 목록이 둘이 되어 어느 것을 고르는 중인지 흐려진다.
+   */
+  const pending = usePendingIssueLines();
+
+  /*
+   * 이름 풀이는 **대기 목록과 전표 라인을 함께** 먹인다 — 목록이 번호를 찍지 않게 한다.
+   * 같은 번호는 한 번만 묻는다(`useItemNames` 가 중복을 걷는다).
+   */
+  const itemNames = useItemNames([
+    ...lineItems.map((line) => line.itemId),
+    ...pending.lines.map((each) => each.line.itemId),
+  ]);
   const uomNames = useUomNames();
-  const lotNames = useLotNames(lineItems.map((line) => line.lotId));
+  const lotNames = useLotNames([
+    ...lineItems.map((line) => line.lotId),
+    ...pending.lines.map((each) => each.line.lotId),
+  ]);
   const reasonOptions = useReissueReasonOptions();
 
   const printers = usePrinters();
-  const printFlow = usePrintFlow(entry.workerNo);
+  const destination = useDestinationCode(
+    goodsIssue.data?.destinationTypeCode,
+    goodsIssue.data?.destinationId,
+  );
+
+  /*
+   * ⭐ **라벨 값은 발행 직후 그 자리에서 조립한다.** POP 이 그림을 스스로 그리므로(설계 결정
+   *    8·9 의 2단계) 이름 풀이가 그리기 직전에 갖춰져 있어야 한다 — 서버가 그려 줄 때는
+   *    필요 없던 값이다.
+   */
+  const labelFieldsOf = (record: DocumentIssue) =>
+    toLabelFields(record, {
+      issue: goodsIssue.data ?? null,
+      lines: lineItems,
+      itemNames,
+      lotNames,
+      destination,
+    });
+
+  const printFlow = usePrintFlow(entry.workerNo, labelFieldsOf);
 
   /*
    * ⛔ **자리로 읽지 않는다.** 대상을 `targetId` 로 짝지어 찾는다 — 라인 쪽(`toLineRows`)과
@@ -220,10 +272,73 @@ export const GoodsIssueQrScreen = () => {
   };
 
   const firstIssued = issued?.[0] ?? null;
-  const previewSrc =
-    firstIssued === null
-      ? null
-      : `${baseUrl}/app/document-issues/${String(firstIssued.documentIssueLogId)}/rendition?format=png`;
+  /**
+   * 미리보기 — **방금 찍은 그 그림 그대로다.**
+   *
+   * ⛔ **서버 주소를 물리지 않는다.** 전에는 `/rendition?format=png` 를 `<img>` 에 직접 물렸는데,
+   *    서버는 이 유형을 그리지 않으므로(422 · 단말 허용 목록에도 없어 401) 그 자리는 언제나
+   *    깨진 그림이었다. 게다가 그 길로 보이는 것은 **인쇄된 것과 다른 그림**일 수 있다 —
+   *    지금은 인쇄에 넘긴 바이트를 그대로 보여 준다.
+   *
+   * ⚠ 만든 주소는 쓰고 나면 거둔다(아래 `useEffect`) — 두면 회차마다 쌓인다.
+   */
+  /*
+   * ⭐ **고르면 곧바로 보인다**(사용자 지시 2026-09-16 · ISSUE-QR-01 D3). 페이로드가 담는 것은
+   *    발행과 무관하게 이미 정해져 있어, 발행을 눌러야 그림이 뜨던 것은 **확인을 발행 뒤로
+   *    미루는 일**이었다 — 되돌릴 수 없는 쓰기 앞에서 무엇이 찍힐지 볼 수 없었다.
+   *
+   * 발행 뒤에는 **발행본**으로 바꾼다(그 자리가 가리키는 대상이 정해지므로). 라벨 면에 회차를
+   * 싣지 않아 두 그림은 같지만, 「무엇을 보고 있는가」는 다르다.
+   */
+  const previewLine =
+    firstIssued !== null
+      ? (lineItems.find(
+          (line) => line.goodsIssueLineId === firstIssued.target.targetId,
+        ) ?? null)
+      : (rows.find((row) => rowId(row.line) === selectedIds[0])?.line ?? null);
+
+  /**
+   * 미리보기 그림과 **못 그린 까닭**.
+   *
+   * ⛔ **까닭을 버리지 않는다.** 처음엔 못 그리면 `null` 만 돌려줬는데, 그러면 화면이 「발행하면
+   *    보인다」는 빈 상태 문구만 세워 **고르고도 안 보이는 사람에게 아무 말도 하지 못한다**
+   *    (사용자 실기 지적 2026-09-16). 사유는 「어떻게 풀 것인가」를 담아야 한다(공유계약 G-3).
+   */
+  const preview = useMemo((): { src: string | null; problem: string | null } => {
+    if (previewLine === null) return { src: null, problem: null };
+
+    const fields = toLabelFieldsForLine(previewLine, {
+      issue: goodsIssue.data ?? null,
+      itemNames,
+      lotNames,
+      destination,
+    });
+
+    if ('unavailableReason' in fields) return { src: null, problem: fields.unavailableReason };
+
+    /* `Blob` 은 `ArrayBuffer` 를 받는다 — 바이트 배열의 버퍼를 잘라 넘긴다. */
+    const bytes = renderGoodsIssueQrLabel(fields);
+
+    return {
+      src: URL.createObjectURL(
+        new Blob([bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength)], {
+          type: 'image/png',
+        }),
+      ),
+      problem: null,
+    };
+    /* eslint-disable-next-line react-hooks/exhaustive-deps -- 고른 줄과 이름이 갖춰지면 다시 그린다. */
+  }, [previewLine, goodsIssue.data, itemNames.entries.length, lotNames.entries.length, destination]);
+
+  const previewSrc = preview.src;
+
+  useEffect(() => {
+    if (previewSrc === null) return;
+
+    return () => {
+      URL.revokeObjectURL(previewSrc);
+    };
+  }, [previewSrc]);
 
   return (
     <main className="pop-shell pop-ui" aria-labelledby={titleId}>
@@ -258,8 +373,89 @@ export const GoodsIssueQrScreen = () => {
       {entry.goodsIssueId === null && (
         <div className="banner-slot">
           <AlertBanner variant="warning">{t.entry.missingIssue}</AlertBanner>
+          <IssueLookupField
+            onFound={(goodsIssueId) => {
+              /*
+               * ⛔ **주소가 전표를 소유한다.** 화면 상태에 담아 두면 새로 고침·되돌아오기에서
+               *    전표가 사라지고, 같은 단말을 넘겨받은 다음 작업자가 남의 전표를 이어 본다.
+               */
+              setSearchParams(
+                (previous) => {
+                  const next = new URLSearchParams(previous);
+                  next.set('goodsIssueId', String(goodsIssueId));
+
+                  return next;
+                },
+                { replace: true },
+              );
+            }}
+          />
         </div>
       )}
+
+      {/*
+       * ⭐ **전표를 고르기 전에는 대기 목록이 선다**(사용자 요구 2026-09-16 · D5). 자재창고
+       *    담당은 관리자 웹을 쓸 수 없어 「무엇을 찍어야 하는가」를 볼 자리가 없었다 —
+       *    출고번호를 «이미 아는» 사람만 이 화면을 쓸 수 있었다.
+       */}
+      {entry.goodsIssueId === null && (
+        <PendingPane
+          list={pending}
+          itemNames={itemNames}
+          lotNames={lotNames}
+          uomNames={uomNames}
+          onRefresh={() => {
+            void queryClient.invalidateQueries({ queryKey: goodsIssueQrKeys.all });
+          }}
+          onPick={(goodsIssueId, goodsIssueLineId) => {
+            /* 고른 라인을 함께 세운다 — 들어가자마자 미리보기가 보이도록(D3). */
+            setSelectedIds([String(goodsIssueLineId)]);
+            setSearchParams(
+              (previous) => {
+                const next = new URLSearchParams(previous);
+                next.set('goodsIssueId', String(goodsIssueId));
+
+                return next;
+              },
+              { replace: true },
+            );
+          }}
+        />
+      )}
+
+      {/*
+       * ⭐ **전표에서 대기 목록으로 되돌아가는 길**(사용자 결정 2026-09-16 · D5 배치). 두 목록을
+       *    한 화면에 겹치지 않기로 했으므로, 돌아가는 길이 없으면 전표에 들어간 담당은 셸
+       *    [화면 이동]으로 이 화면을 다시 열어야 한다.
+       *
+       * 돌아가며 **목록을 다시 받는다** — 방금 찍은 라인이 대기에서 빠져 있어야 한다.
+       */}
+      {entry.goodsIssueId !== null && (
+        <p className="pop-giqr-back">
+          <Button
+            variant="outlined"
+            size="md"
+            className="pop-touch-target"
+            onClick={() => {
+              setSelectedIds([]);
+              setIssued(null);
+              setSearchParams(
+                (previous) => {
+                  const next = new URLSearchParams(previous);
+                  next.delete('goodsIssueId');
+
+                  return next;
+                },
+                { replace: true },
+              );
+              void queryClient.invalidateQueries({ queryKey: goodsIssueQrKeys.all });
+            }}
+          >
+            {t.pending.back}
+          </Button>
+        </p>
+      )}
+
       {entry.goodsIssueId !== null && entry.workerNo === null && (
         <div className="banner-slot">
           <AlertBanner variant="warning">{t.entry.missingWorker}</AlertBanner>
@@ -298,12 +494,21 @@ export const GoodsIssueQrScreen = () => {
           <AlertBanner variant="success">{t.result.issued(issued.length)}</AlertBanner>
         </div>
       )}
-      <PrintResultBanner
-        isPending={printFlow.isPending}
-        result={printResult(printFlow.data?.reports ?? [])}
-      />
+      {/*
+       * ⭐ **전표를 고르기 전에는 전표 구획을 세우지 않는다**(사용자 지시 2026-09-16 · D9).
+       *    라인 목록·발행 대상·미리보기·발행 단추는 **전표 하나에 매인 것**이라, 전표가 없으면
+       *    빈 표와 잠긴 단추만 남아 그 자리를 차지한다 — 그 자리는 대기 목록이 쓴다.
+       *
+       * ⚠ 머리줄(사번·프린터·단말)과 자재 출고번호 입력 칸은 두 단계 모두 선다.
+       */}
+      {entry.goodsIssueId !== null && (
+        <>
+          <PrintResultBanner
+            isPending={printFlow.isPending}
+            result={printResult(printFlow.data?.reports ?? [])}
+          />
 
-      <div className="pop-panes">
+          <div className="pop-panes">
         <LineListPane
           rows={rows}
           selectedIds={selectedIds}
@@ -373,6 +578,8 @@ export const GoodsIssueQrScreen = () => {
           }}
           reasonOptions={reasonOptions}
           previewSrc={previewSrc}
+          previewProblem={preview.problem}
+          destinationMissing={destination.kind === 'failed'}
         />
       </div>
 
@@ -381,7 +588,7 @@ export const GoodsIssueQrScreen = () => {
        * 을 쓴다: `.pop-actions` 는 단추만 오른쪽으로 미는 줄이라 띠의 높이·경계선을 갖지 않아,
        * 이 화면만 바닥이 없는 것처럼 떠 있었다.
        */}
-      <div className="pop-action-bar pop-giqr-actions">
+          <div className="pop-action-bar pop-giqr-actions">
         {/*
          * ⛔ 「발행할 라인을 먼저 고르세요」는 띄우지 않는다(사용자 지시 2026-09-15) — 비활성 단추와
          *    라인 목록이 이미 말한다. 다른 사유(사번·파렛트·재발행 사유)는 그대로 남긴다.
@@ -389,17 +596,19 @@ export const GoodsIssueQrScreen = () => {
         {guard.kind !== 'ready' && guard.kind !== 'noSelection' && (
           <p className="field-note">{guardNote(guard.kind)}</p>
         )}
-        <Button
-          variant="filled"
-          size="2xl"
-          type="button"
-          disabled={!canIssue(guard)}
-          loading={write.isSaving || printFlow.isPending}
-          onClick={issue}
-        >
-          {t.action.issue}
-        </Button>
-      </div>
+            <Button
+              variant="filled"
+              size="2xl"
+              type="button"
+              disabled={!canIssue(guard)}
+              loading={write.isSaving || printFlow.isPending}
+              onClick={issue}
+            >
+              {t.action.issue}
+            </Button>
+          </div>
+        </>
+      )}
     </main>
   );
 };
