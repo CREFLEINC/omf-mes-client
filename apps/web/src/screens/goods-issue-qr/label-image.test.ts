@@ -1,9 +1,10 @@
 import { encodeQr } from '@omf-mes/ui';
 import { describe, expect, it } from 'vitest';
 
-import { readDot, textDots } from './label-bitmap';
+import { readDot, textDots } from '../../patterns/label/bitmap';
+import { toPng } from '../../patterns/label/png';
+
 import { drawGoodsIssueQrLabel, renderGoodsIssueQrLabel } from './label-image';
-import { toPng } from './label-png';
 import { buildGoodsIssueQrPayload } from './qr-payload';
 
 /**
