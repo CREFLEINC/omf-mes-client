@@ -95,9 +95,6 @@ export const packingResult: Translated<typeof ko.packingResult> = {
   automaticLabels: {
     region: 'Trạng thái in nhãn tự động',
     packingConfirmed: 'Đã xác nhận kiện',
-    oqcPassed: 'Đạt/Không áp dụng',
-    oqcWaiting: 'Chờ kiểm tra',
-    lotUnavailable: 'Không hiện LOT',
     failures: {
       summary: 'Không xác nhận được lịch sử phát hành nên đã dừng in tự động.',
       issue: 'Không tạo được bản ghi phát hành.',
@@ -106,16 +103,11 @@ export const packingResult: Translated<typeof ko.packingResult> = {
       report: 'Không báo được kết quả in lên máy chủ.',
     },
     packingFailure: (reason: string): string => `Nhãn kiện: ${reason}`,
-    deliveryFailure: (reason: string): string => `Nhãn giao hàng: ${reason}`,
-    complete: 'Đã in tự động xong nhãn kiện và nhãn giao hàng có thể phát hành.',
+    complete: 'Đã in xong nhãn kiện.',
     reissueRequired: (count: number): string =>
       `${String(count)} mục đã có bản ghi phát hành nhưng chưa in xong. Hãy vào in lại nhãn, chọn lý do rồi xử lý.`,
-    waiting: (count: number): string =>
-      `${String(count)} nhãn giao hàng chỉ in được sau khi OQC Đạt hoặc Không áp dụng.`,
     retryPackingIssue: 'Phát hành lại nhãn kiện',
     retryPackingRendition: 'Nhận lại hình ảnh nhãn kiện',
-    retryDeliveryIssue: 'Phát hành lại nhãn giao hàng',
-    retryDeliveryRendition: 'Nhận lại hình ảnh nhãn giao hàng',
     openReissue: 'Mở in lại nhãn',
   },
   /*

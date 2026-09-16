@@ -56,7 +56,7 @@ describe('AutomaticLabels', () => {
    * ⛔ **`/rendition` 을 부르지 않는 것이 이 시험의 핵심이다.** 다시 부르기 시작하면 배포본에서
    *    또 같은 자리에 걸린다.
    */
-  it('포장 라벨을 POP 이 그려 셸까지 보내고, 그 뒤 납품 라벨로 이어진다', async () => {
+  it('포장 라벨을 POP 이 그려 셸까지 보내고, 납품 라벨은 내보내지 않는다', async () => {
     const issued: string[] = [];
     /*
      * ⚠ **경로로는 두 종류를 못 가른다** — 스텁이 둘에 같은 발행 번호를 준다. 그래서 «순서»로
@@ -184,11 +184,12 @@ describe('AutomaticLabels', () => {
      */
     expect(events[0]).toBe('save');
 
-    /* 포장 라벨이 끝났으니 납품 라벨로 이어진다. */
-    await waitFor(() => {
-      expect(issued).toContain('DELIVERY_LABEL');
-    });
-    expect(issued[0]).toBe('PACKING_LABEL');
+    /*
+     * ⛔⛔ **납품 라벨은 여기서 나가지 않는다**(사용자 결정 2026-09-16 · SHIP-UNIT-01).
+     *    주인이 배분에서 **출하 단위**로 바뀌었고, 상자 하나를 확정한 시점에는 그 상자가 어느
+     *    출하 단위에 들어갈지 아직 정해지지 않았다 — 발행할 대상 자체가 없다.
+     */
+    expect(issued).toEqual(['PACKING_LABEL']);
   });
 
   it('발행 실패는 포장을 다시 만들지 않고 실패한 라벨 발행만 재시도한다', async () => {

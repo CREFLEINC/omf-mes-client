@@ -120,9 +120,6 @@ export const packingResult = {
   automaticLabels: {
     region: '라벨 자동 출력 상태',
     packingConfirmed: '포장 확정',
-    oqcPassed: '합격/비대상',
-    oqcWaiting: '검사 대기',
-    lotUnavailable: 'LOT 미표시',
     failures: {
       summary: '기존 발행 이력을 확인하지 못해 자동 출력을 중단했습니다.',
       issue: '발행 기록을 만들지 못했습니다.',
@@ -131,16 +128,11 @@ export const packingResult = {
       report: '인쇄 결과를 서버에 보고하지 못했습니다.',
     },
     packingFailure: (reason: string): string => `포장 라벨: ${reason}`,
-    deliveryFailure: (reason: string): string => `납품 라벨: ${reason}`,
-    complete: '포장 라벨과 발행 가능한 납품 라벨의 자동 출력을 마쳤습니다.',
+    complete: '포장 라벨 출력을 마쳤습니다.',
     reissueRequired: (count: number): string =>
       `${String(count)}건은 발행 기록이 있지만 인쇄 완료가 아닙니다. 라벨 재출력에서 사유를 골라 처리하세요.`,
-    waiting: (count: number): string =>
-      `납품 라벨 ${String(count)}건은 OQC 합격 또는 검사 비대상으로 바뀐 뒤 출력할 수 있습니다.`,
     retryPackingIssue: '포장 라벨 발행 다시 시도',
     retryPackingRendition: '포장 라벨 이미지 다시 받기',
-    retryDeliveryIssue: '납품 라벨 발행 다시 시도',
-    retryDeliveryRendition: '납품 라벨 이미지 다시 받기',
     openReissue: '라벨 재출력 열기',
   },
   /**

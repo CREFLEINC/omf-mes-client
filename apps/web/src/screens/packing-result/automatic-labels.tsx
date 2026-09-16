@@ -2,20 +2,11 @@ import { AlertBanner, Button } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useMemo } from 'react';
 
-import {
-  DELIVERY_LABEL,
-  DELIVERY_LABEL_ISSUE_LOCKED,
-  PACKING_LABEL,
-} from '../shipping-packing-label/codes';
+import { PACKING_LABEL } from '../shipping-packing-label/codes';
 import { useLabelIssue, type LabelIssueHandle } from '../shipping-packing-label/mutations';
 import { usePackingLabelDrawer } from '../shipping-packing-label/packing-label-drawer';
 import { useIssueSummaries, usePrinters } from '../shipping-packing-label/queries';
-import {
-  toAllocationView,
-  toDefaultPrinterName,
-  toDeliveryRow,
-  type TargetRow,
-} from '../shipping-packing-label/types';
+import { toDefaultPrinterName, type TargetRow } from '../shipping-packing-label/types';
 
 import type { OpenHandlingUnit } from './mutations';
 import type { ShipmentLotAllocation } from './types';
@@ -24,6 +15,7 @@ const t = messages.packingResult.automaticLabels;
 
 export interface AutomaticLabelRun {
   handlingUnit: OpenHandlingUnit;
+  /** 이 상자에 담긴 것 — **라벨의 수량 줄이 쓴다.** 발행 대상은 상자 하나다. */
   allocations: ShipmentLotAllocation[];
   /**
    * 포장 라벨이 찍는 값이다(설계 §8) — 이 화면이 이미 쥐고 있으므로 함께 넘긴다.
@@ -64,7 +56,21 @@ const failureText = (issue: LabelIssueHandle): string | null => {
   return t.failures.report;
 };
 
-/** 포장 확정 뒤 포장 라벨과 OQC 통과 납품 라벨을 순서대로 자동 발행·인쇄한다. */
+/**
+ * 포장 확정 뒤 **포장 라벨만** 자동 발행·인쇄한다.
+ *
+ * ⭐ **납품 라벨은 여기서 나가지 않는다**(사용자 결정 2026-09-16 · SHIP-UNIT-01).
+ *    납품 라벨의 주인이 출하 LOT 배분에서 **출하 단위**(상자 1개 이상 묶음)로 바뀌었다.
+ *    상자 하나를 확정한 시점에는 그 상자가 어느 출하 단위에 들어갈지 아직 정해지지 않았으므로,
+ *    **여기서 발행할 대상 자체가 없다.** 납품 라벨은 출하 단위를 마감할 때 나간다(P-04-05).
+ *
+ * ⭐ **OQC 대기 배너도 함께 걷었다.** 그 배너는 「합격하지 않아 납품 라벨을 못 찍는 배분이
+ *    몇 건 있다」는 말이었는데, 이 화면이 납품 라벨을 찍지 않으므로 할 말이 아니다. 출하검사는
+ *    출하 처리 관문에서 이미 걸러진다.
+ *
+ * ⛔ **포장 라벨과 납품 라벨을 잇던 게이트도 없앴다.** 「포장 라벨이 인쇄까지 성공해야 납품
+ *    라벨을 시작한다」는 규칙이었는데, 이을 것이 없어졌다.
+ */
 export const AutomaticLabels = ({ run, workerNo, onOpenManagement }: AutomaticLabelsProps) => {
   /* 포장 라벨은 POP 이 그린다 — 재발행 화면과 **같은 손**을 쓴다(경로마다 라벨이 갈리지 않게). */
   const drawLabel = usePackingLabelDrawer({
@@ -72,53 +78,17 @@ export const AutomaticLabels = ({ run, workerNo, onOpenManagement }: AutomaticLa
     allocations: run.allocations,
   });
   const packing = useLabelIssue({ workerNo, drawLabel });
-  const delivery = useLabelIssue({ workerNo });
   const packingPrinters = usePrinters(PACKING_LABEL);
-  const deliveryPrinters = usePrinters(DELIVERY_LABEL);
   const packingRows = useMemo(() => [packingRow(run.handlingUnit)], [run.handlingUnit]);
-  /*
-   * ⛔⛔ **`DELIVERY_LABEL` 발행은 서버가 항상 422 `INVALID` 로 거부한다**(대응표 P1 「공용
-   * 문서 발행」· I-27 마감 결정 · `shipping-packing-label/codes.ts` 의
-   * `DELIVERY_LABEL_ISSUE_LOCKED`). 그 화면의 수동 발행 단추(`screen.tsx`)가 이 플래그를
-   * 보고 요청 자체를 막는 것과 같은 결로, 자동 출력도 대상을 아예 만들지 않는다 — 그러지
-   * 않으면 «저장 실패»만 영원히 반복해 보인다. 서버가 지원을 시작하면 이 잠금만 걷어내면
-   * 포장 확정 뒤 자동 발행이 다시 납품 라벨까지 잇는다.
-   */
-  const deliveryRows = useMemo(
-    () =>
-      DELIVERY_LABEL_ISSUE_LOCKED
-        ? []
-        : run.allocations
-            .filter((allocation) => allocation.oqcPassed)
-            .map((allocation) =>
-              toDeliveryRow(
-                toAllocationView(allocation),
-                t.oqcPassed,
-                t.oqcWaiting,
-                t.lotUnavailable,
-              ),
-            ),
-    [run.allocations],
-  );
   const packingSummaries = useIssueSummaries(
     PACKING_LABEL,
     packingRows.map((row) => row.issueTargetId),
-  );
-  const deliverySummaries = useIssueSummaries(
-    DELIVERY_LABEL,
-    deliveryRows.map((row) => row.issueTargetId),
   );
   const missingPackingRows = packingRows.filter((row) =>
     packingSummaries.data?.some(
       (summary) => summary.targetId === row.issueTargetId && summary.issueCount === 0,
     ),
   );
-  const missingDeliveryRows = deliveryRows.filter((row) =>
-    deliverySummaries.data?.some(
-      (summary) => summary.targetId === row.issueTargetId && summary.issueCount === 0,
-    ),
-  );
-  const waiting = run.allocations.filter((allocation) => !allocation.oqcPassed);
   const packingHistoryComplete =
     packingSummaries.data !== undefined &&
     packingRows.every((row) =>
@@ -129,30 +99,16 @@ export const AutomaticLabels = ({ run, workerNo, onOpenManagement }: AutomaticLa
           summary.lastPrintOutcome === 'SUCCEEDED',
       ),
     );
-  const deliveryHistoryComplete =
-    deliverySummaries.data !== undefined &&
-    deliveryRows.every((row) =>
-      deliverySummaries.data.some(
-        (summary) =>
-          summary.targetId === row.issueTargetId &&
-          summary.issueCount > 0 &&
-          summary.lastPrintOutcome === 'SUCCEEDED',
-      ),
-    );
-  const packingHistoryRecoveryCount = (packingSummaries.data ?? []).filter(
+  const historyRecoveryCount = (packingSummaries.data ?? []).filter(
     (summary) => summary.issueCount > 0 && summary.lastPrintOutcome !== 'SUCCEEDED',
   ).length;
-  const deliveryHistoryRecoveryCount = (deliverySummaries.data ?? []).filter(
-    (summary) => summary.issueCount > 0 && summary.lastPrintOutcome !== 'SUCCEEDED',
-  ).length;
-  const historyRecoveryCount = packingHistoryRecoveryCount + deliveryHistoryRecoveryCount;
 
   useEffect(() => {
     if (
       packingSummaries.isPending ||
       packingSummaries.isError ||
       packingHistoryComplete ||
-      packingHistoryRecoveryCount > 0 ||
+      historyRecoveryCount > 0 ||
       packing.phase !== 'idle' ||
       packing.result.failedAt !== null
     ) {
@@ -166,76 +122,33 @@ export const AutomaticLabels = ({ run, workerNo, onOpenManagement }: AutomaticLa
       reissueReasonCode: null,
     });
   }, [
+    historyRecoveryCount,
     missingPackingRows,
     packing,
-    packingHistoryRecoveryCount,
     packingHistoryComplete,
     packingPrinters.data,
     packingSummaries,
   ]);
 
   useAutomaticPrint(packing);
-  useAutomaticPrint(delivery);
-
-  useEffect(() => {
-    const packingFinished =
-      packingHistoryComplete || (packing.phase === 'printed' && packing.result.failedAt === null);
-    if (!packingFinished || deliverySummaries.isPending || deliverySummaries.isError) return;
-    if (
-      deliveryHistoryComplete ||
-      deliveryHistoryRecoveryCount > 0 ||
-      missingDeliveryRows.length === 0 ||
-      delivery.phase !== 'idle'
-    ) {
-      return;
-    }
-
-    delivery.issue({
-      kind: DELIVERY_LABEL,
-      rows: missingDeliveryRows,
-      printerName: toDefaultPrinterName(deliveryPrinters.data ?? []),
-      reissueReasonCode: null,
-    });
-  }, [
-    delivery,
-    deliveryPrinters.data,
-    deliverySummaries.isError,
-    deliverySummaries.isPending,
-    deliveryHistoryComplete,
-    deliveryHistoryRecoveryCount,
-    missingDeliveryRows,
-    packing.phase,
-    packing.result.failedAt,
-    packingHistoryComplete,
-  ]);
 
   const packingFailure = failureText(packing);
-  const deliveryFailure = failureText(delivery);
-  const packingComplete =
-    packingHistoryComplete || (packing.phase === 'printed' && packing.result.failedAt === null);
-  const deliveryComplete =
-    deliveryRows.length === 0 ||
-    deliveryHistoryComplete ||
-    (delivery.phase === 'printed' && delivery.result.failedAt === null);
-  const isComplete = packingComplete && deliveryComplete && historyRecoveryCount === 0;
-  const isSummaryError = packingSummaries.isError || deliverySummaries.isError;
+  const isComplete =
+    (packingHistoryComplete || (packing.phase === 'printed' && packing.result.failedAt === null)) &&
+    historyRecoveryCount === 0;
 
   return (
     <section className="packing-label-status" aria-label={t.region}>
-      {isSummaryError ? <AlertBanner variant="error">{t.failures.summary}</AlertBanner> : null}
+      {packingSummaries.isError ? (
+        <AlertBanner variant="error">{t.failures.summary}</AlertBanner>
+      ) : null}
       {historyRecoveryCount > 0 ? (
         <AlertBanner variant="warning">{t.reissueRequired(historyRecoveryCount)}</AlertBanner>
       ) : null}
       {packingFailure !== null ? (
         <AlertBanner variant="error">{t.packingFailure(packingFailure)}</AlertBanner>
       ) : null}
-      {deliveryFailure !== null ? (
-        <AlertBanner variant="error">{t.deliveryFailure(deliveryFailure)}</AlertBanner>
-      ) : null}
       {isComplete ? <AlertBanner variant="success">{t.complete}</AlertBanner> : null}
-      {waiting.length > 0 ? (
-        <AlertBanner variant="warning">{t.waiting(waiting.length)}</AlertBanner>
-      ) : null}
       {packing.result.failedAt === 'issue' ? (
         <Button
           type="button"
@@ -258,32 +171,8 @@ export const AutomaticLabels = ({ run, workerNo, onOpenManagement }: AutomaticLa
           {t.retryPackingRendition}
         </Button>
       ) : null}
-      {delivery.result.failedAt === 'issue' ? (
-        <Button
-          type="button"
-          variant="outlined"
-          size="md"
-          onClick={() => {
-            delivery.issue({
-              kind: DELIVERY_LABEL,
-              rows: missingDeliveryRows,
-              printerName: toDefaultPrinterName(deliveryPrinters.data ?? []),
-              reissueReasonCode: null,
-            });
-          }}
-        >
-          {t.retryDeliveryIssue}
-        </Button>
-      ) : null}
-      {delivery.result.failedAt === 'render' ? (
-        <Button type="button" variant="outlined" size="md" onClick={delivery.retryRendition}>
-          {t.retryDeliveryRendition}
-        </Button>
-      ) : null}
       {packing.result.failedAt === 'print' ||
       packing.result.failedAt === 'report' ||
-      delivery.result.failedAt === 'print' ||
-      delivery.result.failedAt === 'report' ||
       historyRecoveryCount > 0 ? (
         <Button type="button" variant="outlined" size="md" onClick={onOpenManagement}>
           {t.openReissue}
