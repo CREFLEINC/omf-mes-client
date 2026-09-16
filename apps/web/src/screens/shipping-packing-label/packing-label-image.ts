@@ -22,6 +22,7 @@ import {
   strokeRect,
   type LabelBitmap,
 } from '../../patterns/label/bitmap';
+import { foldRows } from '../../patterns/label/fold';
 import { LABEL_HEIGHT, LABEL_WIDTH, mm } from '../../patterns/label/geometry';
 import { toPng } from '../../patterns/label/png';
 import { drawQr } from '../../patterns/label/qr';
@@ -89,15 +90,10 @@ export const drawPackingLabel = (fields: PackingLabelFields): LabelBitmap => {
   line(`SH: ${fields.shipmentNo}`, ROWS.shipment, SCALE_SMALL, besideQr);
 
   /*
-   * ⛔ **넘친 줄을 말없이 버리지 않는다.** 상자에 든 것이 라벨에 다 못 실릴 수 있는데, 그
-   *    사실이 보이지 않으면 현장은 **라벨에 적힌 것이 상자의 전부**라고 읽는다. 넘치면
-   *    **마지막 한 줄을 비워** 몇 줄이 더 있는지 수로 말한다.
-   *
-   * ⚠ 마지막 줄 위에 덧그리지 않는다 — 점판은 지우지 않으므로 두 글이 겹쳐 둘 다 못 읽는다.
+   * ⛔ **넘친 줄을 말없이 버리지 않는다** — 셈은 `patterns/label/fold` 가 갖는다(납품 라벨도
+   *    같은 접기를 쓴다. 한때 이 자리에서 마지막 줄에 덧그려 두 글이 겹친 적이 있다).
    */
-  const overflows = fields.contents.length > MAX_CONTENT_ROWS;
-  const shown = fields.contents.slice(0, overflows ? MAX_CONTENT_ROWS - 1 : MAX_CONTENT_ROWS);
-  const hidden = fields.contents.length - shown.length;
+  const { shown, hidden } = foldRows(fields.contents, MAX_CONTENT_ROWS);
 
   for (const [index, content] of shown.entries()) {
     const y = ROWS.content[index];
