@@ -192,11 +192,6 @@ const routes = (writes: Request[]): StubRoute[] => [
 ];
 
 /** 서버가 그림을 내주지 못하는 상태. 클라이언트가 막던 시절과 달리 요청은 나가고 500 이 온다. */
-const renditionFailsRoute: StubRoute = {
-  match: (request) => pathOf(request) === '/app/document-issues/44001/rendition',
-  respond: () => jsonResponse({ errors: [{ message: '렌디션 실패' }] }, { status: 500 }),
-};
-
 const renderScreen = (
   writes: Request[],
   extraRoutes: StubRoute[] = [],
@@ -274,31 +269,28 @@ describe('ProductionFlowScreen', () => {
   });
 
   /*
-   * ⛔⛔ **서버에 이 경로가 없다**(위와 같음). 원래 이 시험은 «물리 인쇄까지는 됐는데 성공
-   * 보고만 실패한» 상태(`reportFailed`)에서 재시도가 «종이를 다시 뽑지 않고 보고만» 다시
-   * 보내는 것을 쟀다 — 그림을 받는 걸음이 항상 막혀 있어 물리 인쇄 자체가 없고, 그 상태에
-   * 이를 수 없다. 대신 **다시 눌러도 셸을 다시 부르지 않고(종이가 늘지 않고) 같은 실패
-   * 사유의 보고만 다시 나간다**는, 지금 실제로 일어나는 같은 원칙을 `renditionFailed` 자리
-   * («다시 인쇄» 재시도)에서 잰다 — 재시도의 실패 보고도 같은 멱등 키를 쓴다(둘 다
-   * `outcome: FAILED` 라 슬롯이 같다).
+   * ⭐ **라벨은 화면이 직접 짠다**(사용자 지시 2026-09-16 · `label-tspl`). 서버에서 그림을 받는
+   * 걸음이 사라져 이 시험의 옛 전제(`renditionFailed`)는 더 일어나지 않는다 — 같은 원칙을
+   * **프린터로 보내다 실패한** 자리에서 잰다. 다시 눌러도 **같은 멱등 키로 같은 실패 사유만**
+   * 다시 보고한다(둘 다 `outcome: FAILED` 라 슬롯이 같다).
    */
-  it('그림을 받지 못하면 다시 눌러도 셸을 부르지 않고 같은 실패 사유로만 다시 보고한다', async () => {
+  it('인쇄에 실패하면 다시 눌러도 같은 실패 사유를 같은 멱등 키로 다시 보고한다', async () => {
     const writes: Request[] = [];
-    const save = vi.fn().mockResolvedValue('/tmp/lot.prn');
+    const save = vi.fn().mockRejectedValue(new Error('프린터 없음'));
     Object.defineProperty(window, 'pop', {
       configurable: true,
       value: { rendition: { save } },
     });
     const user = userEvent.setup();
-    renderScreen(writes, [renditionFailsRoute]);
+    renderScreen(writes);
 
     const output = await screen.findByRole('button', { name: t.flow.output.issue });
     await waitFor(() => expect(output).toBeEnabled());
     await user.click(output);
 
     const retryPrint = await screen.findByRole('button', { name: t.flow.output.retryPrint });
-    expect(screen.getByText(t.flow.output.renditionFailed)).toBeVisible();
-    expect(save).not.toHaveBeenCalled();
+    expect(screen.getByText(t.flow.output.printFailed)).toBeVisible();
+    expect(save).toHaveBeenCalledTimes(1);
 
     await user.click(retryPrint);
 
@@ -308,7 +300,7 @@ describe('ProductionFlowScreen', () => {
       );
       expect(reports).toHaveLength(2);
     });
-    expect(save).not.toHaveBeenCalled();
+    expect(save).toHaveBeenCalledTimes(2);
     expect(screen.getByLabelText(t.flow.scan.label)).toBeDisabled();
 
     const reports = writes.filter(
@@ -501,19 +493,17 @@ describe('ProductionFlowScreen', () => {
           page: { page: 1, size: 100, total: 1 },
         }),
     };
-    renderScreen(writes, [legacyIssue, renditionFailsRoute]);
+    renderScreen(writes, [legacyIssue]);
 
     /*
-     * 이 시험의 핵심은 **새 발행 기록을 만들지 않고 기존 이력으로 재인쇄만 시도한다**는 것이다.
-     * 그림을 서버가 내주지 못하게 해 두어(`renditionFailsRoute`) 그 뒤 걸음이 끼어들지 않게
-     * 하고, 실적 저장 한 번 · 신규 발행 0회 · 재인쇄 결과 보고 한 번으로 잰다.
+     * 이 시험의 핵심은 **새 발행 기록을 만들지 않고 기존 이력으로 재인쇄만 한다**는 것이다.
+     * 실적 저장 한 번 · 신규 발행 0회 · 재인쇄 결과 보고 한 번으로 잰다.
      */
     await waitFor(() => {
       expect(
         writes.filter((request) => pathOf(request) === '/app/document-issues/44001:report-print'),
       ).toHaveLength(1);
     });
-    expect(screen.getByLabelText(t.flow.scan.label)).toBeDisabled();
     expect(
       writes.filter((request) => pathOf(request) === '/production/production-results'),
     ).toHaveLength(1);

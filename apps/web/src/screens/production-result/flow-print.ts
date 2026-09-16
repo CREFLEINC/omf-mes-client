@@ -12,6 +12,13 @@ import { runRequest } from '../../patterns/request';
 export interface PrintTarget {
   documentIssueLogId: number;
   label: string;
+  /**
+   * 화면이 직접 짠 라벨 명령(TSPL). **있으면 서버 렌디션을 부르지 않고 이것을 찍는다.**
+   *
+   * ⭐ 생산 LOT 라벨이 쓴다 — 서버 판은 100 × 60 mm 좌표라 80 × 30 mm 라벨지에서 잘렸다
+   *   (`label-tspl` 머리말 · 사용자 지시 2026-09-16). 인식표는 아직 서버 판 그대로라 비운다.
+   */
+  command?: string;
 }
 
 export type PrintPhase =
@@ -48,6 +55,18 @@ const shellOf = (): RenditionShell | null => {
   const shell = (window as unknown as ShellCarrier).pop?.rendition;
 
   return typeof shell?.save === 'function' ? shell : null;
+};
+
+/**
+ * 화면이 짠 라벨 명령을 셸에 넘길 바이트로 바꾼다.
+ *
+ * ⚠ **TSPL 은 ASCII 다** — 자리에 못 들어갈 글자는 명령을 짜는 쪽에서 이미 걸러 둔다
+ *   (`pop-material-lot-label/label-tspl` 의 `escapeTspl`).
+ */
+const commandBytes = (command: string): ArrayBuffer => {
+  const bytes = new TextEncoder().encode(command);
+
+  return bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer;
 };
 
 const reasonOf = (error: unknown): string =>
@@ -172,13 +191,18 @@ export const useLabelPrintRunner = (workerNo: string | null): LabelPrintRunner =
            * 전에 막아, 인쇄가 서지 못해 라벨 스캔 칸이 열리지 않는다 — 그러면 LOT 마감으로 가는
            * 길이 통째로 사라진다(WIP-CHAIN-01 D1).
            *
+           * ⭐ **화면이 직접 짠 라벨은 이 요청을 건너뛴다**(`PrintTarget.command`). 서버 판은
+           * 100 × 60 mm 좌표라 80 × 30 mm 라벨지에서 잘렸다(실기 2026-09-16 · 사용자 지시).
            */
-          rendition = await fetchLabelRendition(
-            client,
-            target.documentIssueLogId,
-            format,
-            'PRODUCTION_LOT_LABEL',
-          );
+          rendition =
+            target.command === undefined
+              ? await fetchLabelRendition(
+                  client,
+                  target.documentIssueLogId,
+                  format,
+                  'PRODUCTION_LOT_LABEL',
+                )
+              : commandBytes(target.command);
         } catch (error) {
           failureReason = reasonOf(error);
           failurePhase = 'renditionFailed';
