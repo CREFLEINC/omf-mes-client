@@ -417,7 +417,7 @@ const pickLine = async (user: ReturnType<typeof userEvent.setup>, qty: string) =
   await user.click(await screen.findByRole('button', { name: '넣기' }));
   await screen.findByText('라인의 LOT 과 같습니다');
   await user.type(await screen.findByLabelText(/출고 수량/), qty);
-  await user.click(screen.getByRole('button', { name: '이 라인 피킹' }));
+  await user.click(screen.getByRole('button', { name: '피킹 기록' }));
 };
 
 beforeEach(() => {
@@ -461,7 +461,7 @@ describe('자재 출고·피킹 화면', () => {
     await chooseOrder(user);
     await pickLine(user, '50');
 
-    expect(await screen.findByText('집었습니다')).toBeTruthy();
+    expect(await screen.findByText('피킹을 기록했습니다')).toBeTruthy();
     await waitFor(() => {
       expect(sent.picks).toHaveLength(1);
     });
@@ -491,7 +491,7 @@ describe('자재 출고·피킹 화면', () => {
     await chooseOrder(user);
     await pickLine(user, '200');
 
-    expect(await screen.findByText('다 집었습니다')).toBeTruthy();
+    expect(await screen.findByText('피킹을 마쳤습니다')).toBeTruthy();
     expect(screen.getByRole('radio', { name: /ABC-123/ }).hasAttribute('disabled')).toBe(true);
   });
 
@@ -546,7 +546,7 @@ describe('자재 출고·피킹 화면', () => {
     expect(await screen.findByText('피킹을 전송하지 못했습니다')).toBeTruthy();
     expect(await screen.findByText('이 지시에서 전송 실패한 건 1')).toBeTruthy();
     expect(screen.getByRole('link', { name: '전송 실패한 기록 보기' })).toBeTruthy();
-    expect(screen.queryByText('집었습니다')).toBeNull();
+    expect(screen.queryByText('피킹을 기록했습니다')).toBeNull();
   });
 
   /*
@@ -847,7 +847,7 @@ describe('자재 출고·피킹 화면', () => {
     await user.click(await screen.findByRole('button', { name: '넣기' }));
     await screen.findByText('라인의 LOT 과 같습니다');
     await user.type(screen.getByLabelText(/출고 수량/), '30');
-    await user.click(screen.getByRole('button', { name: '이 라인 피킹' }));
+    await user.click(screen.getByRole('button', { name: '피킹 기록' }));
 
     sent.releasePick();
 
@@ -901,14 +901,12 @@ describe('자재 출고·피킹 화면', () => {
     await screen.findByText('라인의 LOT 과 같습니다');
     await user.type(screen.getByLabelText(/출고 수량/), '50');
 
-    expect(screen.getByRole('button', { name: '이 라인 피킹' }).hasAttribute('disabled')).toBe(
-      true,
-    );
+    expect(screen.getByRole('button', { name: '피킹 기록' }).hasAttribute('disabled')).toBe(true);
 
     held.release?.();
 
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: '이 라인 피킹' }).hasAttribute('disabled')).toBe(
+      expect(screen.getByRole('button', { name: '피킹 기록' }).hasAttribute('disabled')).toBe(
         false,
       );
     });
@@ -932,7 +930,7 @@ describe('자재 출고·피킹 화면', () => {
 
     sent.holdNextPick();
 
-    const button = screen.getByRole('button', { name: '이 라인 피킹' });
+    const button = screen.getByRole('button', { name: '피킹 기록' });
 
     await user.click(button);
     await user.click(button);
@@ -940,7 +938,7 @@ describe('자재 출고·피킹 화면', () => {
 
     sent.releasePick();
 
-    await screen.findByText('집었습니다');
+    await screen.findByText('피킹을 기록했습니다');
     expect(sent.picks).toHaveLength(1);
   });
 
@@ -985,7 +983,7 @@ describe('자재 출고·피킹 화면', () => {
     sent.set({ pick: 'ok' });
     await pickLine(user, '50');
 
-    expect(await screen.findByText('집었습니다')).toBeTruthy();
+    expect(await screen.findByText('피킹을 기록했습니다')).toBeTruthy();
     expect(sent.picks.filter((each) => each.url.includes('/lines/41:pick'))).toHaveLength(2);
   });
 
@@ -1166,7 +1164,7 @@ describe('자재 출고·피킹 화면', () => {
     const sent = mount();
     await chooseOrder(user);
     await pickLine(user, '50');
-    await screen.findByText('집었습니다');
+    await screen.findByText('피킹을 기록했습니다');
     await user.click(screen.getByRole('button', { name: '출고 확정' }));
     await screen.findByText('출고를 확정했습니다');
 
@@ -1177,7 +1175,7 @@ describe('자재 출고·피킹 화면', () => {
     });
 
     await pickLine(user, '70');
-    await screen.findByText('집었습니다');
+    await screen.findByText('피킹을 기록했습니다');
     await user.click(screen.getByRole('button', { name: '출고 확정' }));
     await screen.findByText('출고를 확정했습니다');
 
@@ -1244,13 +1242,13 @@ describe('자재 출고·피킹 화면', () => {
     await screen.findByText('라인의 LOT 과 같습니다');
     await user.type(screen.getByLabelText(/출고 수량/), '50');
 
-    const button = screen.getByRole('button', { name: '이 라인 피킹' });
+    const button = screen.getByRole('button', { name: '피킹 기록' });
 
     button.click();
     button.click();
     button.click();
 
-    await screen.findByText('집었습니다');
+    await screen.findByText('피킹을 기록했습니다');
     expect(sent.picks).toHaveLength(1);
   });
 
@@ -1283,14 +1281,14 @@ describe('자재 출고·피킹 화면', () => {
     await user.type(screen.getByLabelText(/출고 수량/), '50');
 
     held.failWrite = 'outbox';
-    await user.click(screen.getByRole('button', { name: '이 라인 피킹' }));
+    await user.click(screen.getByRole('button', { name: '피킹 기록' }));
 
     expect(
       await screen.findByText(
         '이 기기에 저장하지 못했습니다. 저장 공간을 확인하고 다시 시도하세요.',
       ),
     ).toBeTruthy();
-    expect(screen.queryByText('집었습니다')).toBeNull();
+    expect(screen.queryByText('피킹을 기록했습니다')).toBeNull();
     expect(sent.picks).toHaveLength(0);
   });
 

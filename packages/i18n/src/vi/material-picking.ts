@@ -40,7 +40,7 @@ export const materialPicking: Translated<typeof ko.materialPicking> = {
     heldReasonUnknown: (code: string) => `Lý do tạm giữ ${code} (không có tên hiển thị)`,
     heldReasonLoading: 'Đang xác nhận lý do tạm giữ',
     heldReasonFailed: 'Không xác nhận được lý do tạm giữ',
-    done: 'Đã lấy đủ',
+    done: 'Đã lấy hàng xong',
   },
   scan: {
     legend: 'Quét LOT',
@@ -48,7 +48,7 @@ export const materialPicking: Translated<typeof ko.materialPicking> = {
     placeholder: 'Hãy quét nhãn LOT',
     manualLabel: 'Nhập tay',
     manualSubmit: 'Đưa vào',
-    mismatch: (expected: string) => `Đây không phải LOT của dòng này. Hãy lấy ${expected}.`,
+    mismatch: (expected: string) => `Đây không phải LOT của dòng này. Hãy quét ${expected}.`,
     matched: 'Đúng LOT của dòng này',
   },
   qty: {
@@ -59,19 +59,18 @@ export const materialPicking: Translated<typeof ko.materialPicking> = {
       overPlanned: (limit: string) => `Không được vượt phần yêu cầu còn lại ${limit}`,
     },
   },
-  outOfSequence: 'Còn LOT có thứ tự xuất trước sớm hơn. Vẫn lấy được.',
-  pick: 'Lấy hàng dòng này',
-  picked: (qty: string) => `Đã lấy ${qty}`,
+  outOfSequence: 'Còn LOT có thứ tự xuất trước sớm hơn. Vẫn lấy hàng được.',
+  pick: 'Ghi lấy hàng',
   submit: 'Xác nhận xuất kho',
   partialNote:
-    'Lấy ít hơn yêu cầu thì phần thiếu vẫn còn. Vật tư thay thế không xử lý ở màn hình này.',
+    'Lấy hàng ít hơn yêu cầu thì phần thiếu vẫn còn. Vật tư thay thế không xử lý ở màn hình này.',
   issueTypeLabel: 'Loại xuất kho',
   issueTypePlaceholder: 'Hãy chọn loại xuất kho',
   issueTypeNote: 'Không có loại đưa vào sản xuất nên người phụ trách tự chọn.',
   issueTypeLoadFailed: 'Không tải được loại xuất kho',
   noIssueType: 'Không có loại xuất kho nào để chọn. Hãy hỏi quản trị viên.',
   pickOutcome: {
-    sent: { title: 'Đã lấy', description: '' },
+    sent: { title: 'Đã ghi lấy hàng', description: '' },
     queued: {
       title: 'Đã đưa việc lấy hàng vào hàng chờ gửi',
       description: 'Sẽ gửi khi có kết nối. Hiện chưa gửi.',
