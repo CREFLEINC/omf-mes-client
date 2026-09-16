@@ -1776,6 +1776,30 @@ const ascii = (value, fallback) => {
   return text !== '' && /^[\x20-\x7e]+$/.test(text) ? text : fallback;
 };
 
+/**
+ * **ASCII 밖 글자를 지우지 않고 깨진 채로 남긴다** — 위치 라벨의 이름 칸에만 쓴다.
+ *
+ * ⭐ **사용자 확정 2026-09-16(#1312)**: 위치명에 한글·성조 문자가 있어도 **무시하고 그대로 찍는다.
+ *    라벨에서 글자가 깨져 보여도 무방하다.** 그래서 위 `ascii` 처럼 **값을 통째로 바꾸지 않는다** —
+ *    바꾸면 사용자가 지정한 이름이 아닌 다른 값이 라벨에 찍혀, 「깨져 보인다」가 아니라 「거짓을
+ *    말한다」가 된다.
+ *
+ * ⛔ **원문 바이트를 그대로 흘리지는 않는다.** 명령문은 `Buffer.from(…, 'ascii')` 로 나가는데 그
+ *    변환은 글자마다 하위 7비트만 남긴다 — 한글 한 자가 따옴표나 제어 문자로 바뀌면 **명령문
+ *    자체가 깨져** 프린터가 라벨을 못 낸다. 그것은 사용자가 받아들인 「글자가 깨진다」가 아니라
+ *    **인쇄가 안 되는 것**이다. 그래서 칸 수는 지키되 못 그리는 자리만 눈에 보이게 남긴다.
+ *
+ * ⚠ **씨앗의 대역일 뿐이다.** 실제 라벨은 서버가 그린다 — 서버가 이 결정대로 움직이는지는
+ *    `.client-dev/requests/2026-09-16-location-label-pop-screen.md` 요청 6의 회신으로 확인한다.
+ */
+const garbled = (value, fallback) => {
+  const text = String(value ?? '').trim();
+
+  if (text === '') return fallback;
+
+  return [...text].map((character) => (/[\x20-\x7e]/.test(character) ? character : '?')).join('');
+};
+
 const itemOf = (itemId) => state.items.find((row) => row.itemId === itemId);
 const uomOf = (uomId) => state.uoms.find((row) => row.uomId === uomId);
 
@@ -1854,7 +1878,8 @@ const locationValues = (issue) => {
 
   return {
     code: ascii(location?.locationCode, 'SAMPLE-LOCATION'),
-    name: ascii(location?.locationName, ascii(location?.locationCode, 'LOCATION')),
+    /* 이름은 깨진 채로 남긴다 — 대신할 값을 쓰면 사용자가 지은 이름이 아닌 것이 찍힌다(#1312). */
+    name: garbled(location?.locationName, ascii(location?.locationCode, 'LOCATION')),
     warehouse: ascii(warehouse?.warehouseCode, 'SAMPLE-WAREHOUSE'),
     /* 회차는 인쇄면에도 찍힌다 — 데이터에만 있으면 현장에서 몇 번째 라벨인지 못 가른다(계약 rendition). */
     issueSeq: issue.issueSeq ?? 1,
