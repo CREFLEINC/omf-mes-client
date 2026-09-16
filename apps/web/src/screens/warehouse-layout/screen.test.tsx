@@ -1,5 +1,5 @@
 import { messages } from '@omf-mes/i18n';
-import { act, screen, waitFor, within } from '@testing-library/react';
+import { act, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -231,8 +231,30 @@ const fileInput = (): HTMLElement => screen.getByLabelText(t.map.upload, { selec
 
 const uploadButton = (): HTMLElement => screen.getByRole('button', { name: t.map.upload });
 
-const board = (): HTMLElement | null =>
-  screen.queryByRole('application', { name: t.map.imageLabel });
+const board = (): HTMLElement => screen.getByRole('group', { name: t.map.imageLabel });
+
+/**
+ * jsdom 은 배치를 계산하지 않는다 — 판의 `getBoundingClientRect` 가 늘 0이라 클릭에서 비율을
+ * 낼 수 없다(`marker-overlay.test.tsx` 와 같은 사정). 판을 실제로 눌러 점이 찍히는지 재는
+ * 시험에서만, 부품 시험과 같은 방식으로 칸을 손으로 세워 준다.
+ *
+ * ⚠ **판을 원점에 세우지 않는다.** 원점에 두면 화면 좌표에서 판의 `left`·`top` 을 빼는 계산이
+ * 있으나 없으나 같은 값이 나와, 점이 통째로 어긋나는 결함을 시험이 놓친다(부품 시험과 같은 이유).
+ */
+const stubBoardRect = (element: HTMLElement): void => {
+  element.getBoundingClientRect = (): DOMRect =>
+    ({
+      left: 40,
+      top: 30,
+      width: 200,
+      height: 100,
+      right: 240,
+      bottom: 130,
+      x: 40,
+      y: 30,
+      toJSON: () => ({}),
+    }) as DOMRect;
+};
 
 /**
  * 판 위의 가림막.
@@ -315,6 +337,21 @@ describe('W-CO-08 창고 배치도 — 도면 보이기', () => {
     expect(screen.getByRole('button', { name: t.map.drawingRetry })).toBeInTheDocument();
     /* 주소가 없으면 `<img>` 자체를 그리지 않는다 — 깨진 그림은 사유를 말하지 못한다. */
     expect(screen.queryByRole('img', { name: t.map.imageLabel })).toBeNull();
+  });
+
+  /*
+   * ⭐ **표식의 자리는 듣는 사람에게 글로만 전해진다.** 판 부품은 표현 전용이라 사람의 말을
+   * 갖지 않고 숫자만 낸다(`"10% / 20%"`) — 그 말을 화면이 넘기지 않으면 낭독기가 듣는 것은
+   * 숫자뿐이다. 여기서 재는 것은 부품의 기본값이 아니라 **이 화면이 문구를 넘겼는가**다.
+   */
+  it('⭐ 표식의 자리가 화면의 말로 읽힌다 — 숫자만 들리지 않는다', async () => {
+    renderScreen({ layouts: [withDrawing()] });
+
+    await loaded();
+
+    const pin = within(board()).getByRole('button', { name: 'SYN-LOC-07' });
+
+    expect(pin).toHaveAccessibleDescription(t.map.markerPosition(10, 20));
   });
 });
 
@@ -425,15 +462,21 @@ describe('W-CO-08 창고 배치도 — 올리는 동안', () => {
     const upload = deferred();
     const put = deferred();
     const { user } = renderScreen({
-      layouts: [withoutDrawing()],
+      layouts: [withDrawing()],
       upload: () => upload.promise,
       puts: [() => put.promise],
     });
 
     await loaded();
-    expect(board()).not.toBeNull();
+    expect(board()).toBeInTheDocument();
+    stubBoardRect(board());
+
+    /* 아직 안 찍힌 위치를 미리 골라 둔다 — 고르는 것만으로는 초안이 더러워지지 않는다. */
+    await user.click(locationButton('SYN-LOC-08'));
 
     await user.upload(fileInput(), pngFile());
+    /* 이미 도면이 있으므로(§7 확인 절차) 확인을 거쳐야 올리기가 시작된다. */
+    await user.click(await screen.findByRole('button', { name: t.map.confirm }));
 
     /* ① 올리는 중 — 누른 자리(버튼)와 결과가 설 자리(판)가 같은 말을 한다. */
     const uploading = await screen.findByRole('button', { name: t.map.uploadingLabel });
@@ -450,8 +493,19 @@ describe('W-CO-08 창고 배치도 — 올리는 동안', () => {
 
     expect(progressBar).toHaveAttribute('aria-hidden', 'true');
     expect(progressBar).not.toHaveAttribute('aria-label');
-    /* ⛔ 도는 동안 판에 점을 찍을 수 없다 — 읽기 전용이면 판이 조작 역할을 내려놓는다. */
-    expect(board()).toBeNull();
+    /*
+     * ⛔ 도는 동안 판에 점을 찍을 수 없다 — 부품의 역할 유무가 아니라 **밖으로 나간 값**을
+     * 잰다: 잠긴 판을 눌러도 표식 수가 늘지 않아야 한다.
+     *
+     * ⭐ 잠긴 사실은 판의 «설명»으로 듣는 사람에게 닿는다. 부품은 말을 갖지 않으므로 여기서
+     * 재는 것은 **이 화면이 그 문구를 넘겼는가**다.
+     */
+    expect(board()).toHaveAccessibleDescription(t.map.boardLocked);
+
+    const pinsWhileUploading = within(board()).getAllByRole('button').length;
+
+    fireEvent.click(board(), { clientX: 100, clientY: 50 });
+    expect(within(board()).getAllByRole('button')).toHaveLength(pinsWhileUploading);
     expect(screen.getByRole('button', { name: t.map.save })).toBeDisabled();
     expect(screen.getByRole('checkbox', { name: t.locations.includeInactive })).toBeDisabled();
 
@@ -463,7 +517,12 @@ describe('W-CO-08 창고 배치도 — 올리는 동안', () => {
     /* ② 저장하는 중 — 올리기가 끝나도 도면은 아직 바뀌지 않았다. */
     await screen.findByRole('button', { name: t.map.savingDrawingLabel });
     expect(within(busyOverlay()).getByText(t.map.savingDrawingLabel)).toBeInTheDocument();
-    expect(board()).toBeNull();
+    expect(board()).toHaveAccessibleDescription(t.map.boardLocked);
+
+    const pinsWhileSaving = within(board()).getAllByRole('button').length;
+
+    fireEvent.click(board(), { clientX: 100, clientY: 50 });
+    expect(within(board()).getAllByRole('button')).toHaveLength(pinsWhileSaving);
 
     await act(async () => {
       put.settle(
@@ -482,7 +541,28 @@ describe('W-CO-08 창고 배치도 — 올리는 동안', () => {
     });
     expect(screen.queryByRole('progressbar')).toBeNull();
     expect(hasBusyOverlay()).toBe(false);
-    expect(board()).not.toBeNull();
+    expect(board()).toBeInTheDocument();
+    /* 풀리면 설명 자체가 사라진다 — 「잠겼다」가 남아 낭독되면 안 된다. */
+    expect(board()).not.toHaveAccessibleDescription();
+
+    /*
+     * ⭐ 양성 대조 — 잠금이 풀리면 «같은 절차»(위치 고르기 → 판 누르기)로 실제 점이 찍힌다.
+     * 이것이 없으면 위 두 「늘지 않는다」가 스텁이 안 먹혀 우연히 통과한 것인지 가릴 수 없다.
+     */
+    stubBoardRect(board());
+    await user.click(locationButton('SYN-LOC-08'));
+
+    const pinsBeforeUnlocked = within(board()).getAllByRole('button').length;
+
+    fireEvent.click(board(), { clientX: 100, clientY: 50 });
+    expect(within(board()).getAllByRole('button')).toHaveLength(pinsBeforeUnlocked + 1);
+    /*
+     * ⭐ **찍힌 자리까지 잰다.** 개수만 세면 점이 통째로 어긋나도 통과한다 — 판 안에서 잰
+     * 비율이어야 하므로 판의 자리(`left`·`top`)를 빼지 않으면 여기서 값이 달라진다.
+     */
+    expect(within(board()).getByRole('button', { name: 'SYN-LOC-08' })).toHaveAccessibleDescription(
+      t.map.markerPosition(30, 20),
+    );
   });
 
   /*
@@ -533,7 +613,7 @@ describe('W-CO-08 창고 배치도 — 올리는 동안', () => {
       expect(uploadButton()).toBeEnabled();
     });
     expect(screen.queryByRole('progressbar')).toBeNull();
-    expect(board()).not.toBeNull();
+    expect(board()).toBeInTheDocument();
     expect(
       within(screen.getByRole('alert')).getByText(/서버에 문제가 있습니다/),
     ).toBeInTheDocument();
