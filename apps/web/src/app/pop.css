@@ -5875,19 +5875,12 @@
 }
 
 /*
- * 스캔 칸은 **입력 상자째** 늘린다 — 칸을 감싼 자리만 늘리면 테두리 안쪽이 비어, 어디를
- * 눌러야 커서가 서는지 흐려진다. 상자는 라벨과 입력을 세로로 쌓으므로, 그 «마지막» 자리가
- * 남는 높이를 받아 입력이 그만큼 커진다.
+ * 스캔 칸은 **손에 맞는 높이까지만** 키운다(사용자 지시 2026-09-16).
+ *
+ * ⛔ **남는 높이를 다 먹이지 않는다.** 한 회차 그렇게 했다가 칸 하나가 카드를 통째로 채웠다 —
+ *    한 줄을 읽는 칸인데 상자만 커져서, 어디에 글자가 설지 짐작되지 않는다. 늘어나는 몫은
+ *    위쪽 구획(키패드)이 가져간다.
  */
-.pop-ui .production-flow-scan > * > :last-child,
-.pop-ui .production-flow-scan > * > :last-child > :last-child {
-  flex: 1 1 auto;
-  display: flex;
-  flex-direction: column;
-  min-height: 0;
-}
-
 .pop-ui .production-flow-scan input {
-  flex: 1 1 auto;
-  min-height: var(--pop-touch-min, 48px);
+  min-height: 4rem;
 }
