@@ -50,8 +50,16 @@ import {
   type LookupResult,
 } from './lookups';
 import { toPageView } from './pagination';
-import { toPermissionColumns } from './permission-catalog';
+import { flattenPermissionColumns, toPermissionGroups } from './permission-catalog';
+import {
+  isSamePermissionSelection,
+  permissionCatalogOrder,
+  toPermissionDraft,
+  toPermissionsPayload,
+  togglePermissionCode,
+} from './permission-draft';
 import { PermissionGridPane } from './permission-grid-pane';
+import { PermissionSaveBanner } from './permission-save-banner';
 import {
   isSameRoleSelection,
   roleCatalogOrder,
@@ -73,6 +81,7 @@ import {
 import {
   roleDetailPath,
   roleKeys,
+  usePermissionCatalog,
   useRoleDetail,
   useRoleList,
   useRolePermissions,
@@ -110,6 +119,7 @@ type AppUserDetailResponse = components['schemas']['AppUserDetailResponse'];
 type UserRoleListResponse = components['schemas']['UserRoleListResponse'];
 type UserDataScopeListResponse = components['schemas']['UserDataScopeListResponse'];
 type RoleDetailResponse = components['schemas']['RoleDetailResponse'];
+type RolePermissionListResponse = components['schemas']['RolePermissionListResponse'];
 
 const t = messages.usersRoles;
 
@@ -152,6 +162,18 @@ interface RoleAssignState {
   source: UserRoleListResponse;
   baseline: number[];
   selected: number[];
+}
+
+/**
+ * 기능 권한 초안. 역할 부여와 같은 규칙이다 — **출처가 바뀔 때만** 다시 세운다.
+ *
+ * 출처는 **부여분**이다. 후보 목록은 열을 만들 뿐 초안의 값이 아니라, 후보가 갱신돼도
+ * 사용자가 켜 둔 칸이 되돌아가면 안 된다.
+ */
+interface PermissionState {
+  source: RolePermissionListResponse;
+  baseline: string[];
+  selected: string[];
 }
 
 /** 접근범위 초안. 역할 부여와 같은 규칙으로 수명을 다룬다. */
@@ -363,6 +385,35 @@ export const UsersRolesScreen = () => {
 
   const roleDetail = useRoleDetail(selectedRoleId);
   const rolePermissions = useRolePermissions(selectedRoleId);
+  /*
+   * 후보 목록은 **역할과 무관하다** — 고른 역할이 없어도 받아 둔다. 역할을 바꿀 때마다
+   * 다시 받으면 화면 수만큼의 목록이 매번 오간다.
+   */
+  const permissionCatalog = usePermissionCatalog();
+
+  const [permissionState, setPermissionState] = useState<PermissionState | null>(null);
+
+  const permissionSource = rolePermissions.data ?? null;
+
+  if (permissionSource === null) {
+    if (permissionState !== null) setPermissionState(null);
+  } else if (permissionState?.source !== permissionSource) {
+    const seeded = toPermissionDraft(permissionSource.items);
+    setPermissionState({ source: permissionSource, baseline: seeded, selected: seeded });
+  }
+
+  const permissionSelection = permissionState?.selected ?? [];
+  const isPermissionDirty =
+    permissionState !== null &&
+    !isSamePermissionSelection(permissionState.selected, permissionState.baseline);
+
+  /* 격자는 **초안**을 그린다 — 켠 칸이 저장 전에도 그대로 보여야 한다. */
+  const permissionGroups = toPermissionGroups(
+    permissionCatalog.data?.items ?? [],
+    permissionSelection,
+  );
+  const permissionColumns = flattenPermissionColumns(permissionGroups);
+  const hasUnlistedPermission = permissionColumns.some((column) => column.isUnlisted);
 
   const [roleFormState, setRoleFormState] = useState<RoleFormState | null>(null);
 
@@ -705,6 +756,41 @@ export const UsersRolesScreen = () => {
   });
 
   /**
+   * 기능 권한 치환.
+   *
+   * **`etagPath`가 반드시 `null`이다.** 계약에 이 쓰기의 `If-Match` 파라미터 자체가 없다 —
+   * `role_permission`에는 `version_no`가 없어 낙관적 잠금 대상이 아니다(부여·회수 형).
+   * 상세 경로를 넘기면 토큰을 찾지 못해 **요청이 나가지 않고 멈춘다.**
+   *
+   * **무효화는 부여분 키 하나뿐이다.** 역할 행도 잠금 토큰도 이 치환으로 바뀌지 않고,
+   * 상세까지 무효화하면 위 칸에서 편집 중이던 역할 폼이 서버 값으로 되돌아간다.
+   * 후보 목록은 앱 기능 목록이라 이 저장으로 달라지지 않는다.
+   */
+  const permissionWrite = useMasterWrite<readonly string[], RolePermissionListResponse>({
+    request: (selected, headers) =>
+      client.PUT('/app/roles/{roleId}/permissions', {
+        params: {
+          path: { roleId: selectedRoleId ?? 0 },
+          header: { 'Idempotency-Key': headers['Idempotency-Key'] },
+        },
+        body: toPermissionsPayload(selected, permissionCatalogOrder(permissionColumns)),
+      }),
+    etagPath: null,
+    invalidateKeys: [roleKeys.permissions(selectedRoleId ?? 0)],
+    /*
+     * 격자 칸에는 계약의 필드 이름이 붙지 않는다 — 후보 밖 코드의 `permissionCodes[i]` 도
+     * 인라인으로 낼 자리가 없어 전부 배너로 올린다.
+     */
+    knownFields: [],
+    onSuccess: (saved) => {
+      /* **서버 응답이 정본이다.** 보낸 목록을 그대로 두면 서버가 접은 중복을 놓친다. */
+      const next = toPermissionDraft(saved.items);
+      setPermissionState({ source: saved, baseline: next, selected: next });
+      toast.show({ variant: 'success', description: messages.common.saved });
+    },
+  });
+
+  /**
    * 지금 모드의 쓰기. 등록과 수정이 **한 폼 상태**를 쓰므로 저장·오류·진행 표시도
    * 한 곳에서 골라 쓴다 — 두 훅의 상태를 화면에서 합치면 어느 저장의 실패인지 흐려진다.
    */
@@ -766,9 +852,11 @@ export const UsersRolesScreen = () => {
     roleWrite.reset();
     roleCreateWrite.reset();
     roleDeactivateWrite.reset();
+    permissionWrite.reset();
     setIsRoleDeactivateOpen(false);
     setRoleFormState(null);
     setRoleFieldErrors({});
+    setPermissionState(null);
   };
 
   const resetRoleEditingRef = useRef(resetRoleEditing);
@@ -868,6 +956,27 @@ export const UsersRolesScreen = () => {
   const handleCancelRoleAssign = () => {
     roleAssignWrite.reset();
     setRoleAssignState((prev) => (prev === null ? prev : { ...prev, selected: prev.baseline }));
+  };
+
+  const handleTogglePermission = (code: string) => {
+    setPermissionState((prev) =>
+      prev === null ? prev : { ...prev, selected: togglePermissionCode(prev.selected, code) },
+    );
+  };
+
+  const handleSavePermissions = () => {
+    /*
+     * 고른 역할이 없으면 격자 자체가 서지 않는다. 그래도 막는 것은, 저장이 `roleId` 를
+     * 0 으로 보내는 일이 절대 없어야 하기 때문이다.
+     */
+    if (permissionState === null || selectedRoleId === null) return;
+
+    permissionWrite.write(permissionState.selected);
+  };
+
+  const handleCancelPermissions = () => {
+    permissionWrite.reset();
+    setPermissionState((prev) => (prev === null ? prev : { ...prev, selected: prev.baseline }));
   };
 
   const changeDataScopeDrafts = (next: (drafts: DataScopeDraft[]) => DataScopeDraft[]) => {
@@ -1348,23 +1457,46 @@ export const UsersRolesScreen = () => {
      */
     if (selectedRole === undefined && roleDetail.isError) return null;
 
+    /*
+     * **두 조회가 다 있어야 격자가 사실을 말한다.** 부여분이 없으면 켜진 칸을 모르고,
+     * 후보가 없으면 줄 수 있는 칸을 모른다. 어느 한쪽이라도 실패하면 격자를 내지 않는다 —
+     * 반쪽 격자에서 저장하면 못 본 권한이 조용히 회수된다.
+     *
+     * 부여분 실패를 먼저 낸다. 그쪽이 저장의 기준값이라 더 위험하다.
+     */
+    const permissionFailure = rolePermissions.isError
+      ? { error: rolePermissions.error, retry: () => void rolePermissions.refetch() }
+      : permissionCatalog.isError
+        ? { error: permissionCatalog.error, retry: () => void permissionCatalog.refetch() }
+        : null;
+
     return (
       <PermissionGridPane
         roleLabel={selectedRole?.roleCode ?? ''}
-        columns={toPermissionColumns(rolePermissions.data?.items ?? [])}
-        isLoading={rolePermissions.isPending || selectedRole === undefined}
+        groups={permissionGroups}
+        isLoading={
+          rolePermissions.isPending || permissionCatalog.isPending || selectedRole === undefined
+        }
         /*
-         * 실패를 빈 상태로 내면 「부여된 권한이 없습니다」가 되어 **없는 사실을 단정한다.**
-         * 사용자가 할 수 있는 조치가 재시도뿐이라 배너에 그 길을 함께 낸다.
+         * 실패를 빈 상태로 내면 「부여할 수 있는 권한이 없습니다」가 되어 **없는 사실을
+         * 단정한다.** 사용자가 할 수 있는 조치가 재시도뿐이라 배너에 그 길을 함께 낸다.
          */
         loadError={
-          rolePermissions.isError ? (
-            <LoadErrorBanner
-              error={rolePermissions.error}
-              onRetry={() => void rolePermissions.refetch()}
-            />
+          permissionFailure === null ? null : (
+            <LoadErrorBanner error={permissionFailure.error} onRetry={permissionFailure.retry} />
+          )
+        }
+        banner={<PermissionSaveBanner error={permissionWrite.error} />}
+        unlistedNotice={
+          hasUnlistedPermission ? (
+            <p className="field-note">{t.permission.unlistedNotice}</p>
           ) : null
         }
+        isDirty={isPermissionDirty}
+        isSaving={permissionWrite.isSaving}
+        onToggle={handleTogglePermission}
+        onSave={handleSavePermissions}
+        onCancel={handleCancelPermissions}
       />
     );
   };

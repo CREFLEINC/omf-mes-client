@@ -61,6 +61,97 @@ export const createSeed = (now = new Date()) => {
     isActive: true,
   }));
 
+  /*
+   * ⭐ **W-CO-02 사용자·역할·권한** — 개발 서버의 «지금 상태»를 그대로 옮긴 씨앗이다.
+   *
+   * ⚠ **번호가 1..4 다.** 씨앗의 다른 개체는 1001 부터 채번하지만 역할만은 개발 서버가 실제로
+   *   쓰는 번호를 쓴다 — 관리자가 목과 개발 서버를 오가며 같은 주소(`/app/roles/4/permissions`)를
+   *   두드릴 수 있어야 「목에서는 되는데」를 가린다.
+   *
+   * ⛔ **역할 이름을 지어내지 않는다.** 네 개가 개발 서버에 실재하는 전부이고, 여기에 다섯째를
+   *   더하면 격자의 행 수가 실물과 달라져 화면이 맞는지 목으로는 판정할 수 없게 된다.
+   */
+  const roles = [
+    { roleId: 1, roleCode: 'ROLE_WORKER', roleName: '실무자', description: null, isActive: true },
+    {
+      roleId: 2,
+      roleCode: 'ROLE_SITE_MGR',
+      roleName: '현장 관리자',
+      description: null,
+      isActive: true,
+    },
+    {
+      roleId: 3,
+      roleCode: 'ROLE_EXEC_MGR',
+      roleName: '경영 관리자',
+      description: null,
+      isActive: true,
+    },
+    {
+      roleId: 4,
+      roleCode: 'ROLE_SYS_ADMIN',
+      roleName: '시스템 운영자',
+      description: null,
+      isActive: true,
+    },
+  ];
+
+  /*
+   * 계정. 작업자(`workers`)와 «같은 번호»를 쓴다 — 세션의 `userId` 가 1001(홍길동)이라
+   * 번호가 갈리면 「지금 로그인한 사람의 권한」을 셀 근거가 사라진다.
+   */
+  const appUsers = [
+    { appUserId: 1001, loginId: 'hong.gd', userName: '홍길동' },
+    { appUserId: 1002, loginId: 'kim.ys', userName: '김영수' },
+    { appUserId: 1003, loginId: 'lee.sj', userName: '이수진' },
+    { appUserId: 1004, loginId: 'park.jh', userName: '박지훈' },
+  ].map((user) => ({
+    ...user,
+    departmentId: 1001,
+    email: null,
+    statusCode: 'EMPLOYED',
+    isActive: true,
+  }));
+
+  /*
+   * 배정. ⭐ **`LAST_ADMIN` 판정이 이 표를 센다** — 계약이 「역할이 아니라 그 권한을 가진
+   * «사용자 수»」로 세라고 못박았다(W-CO-02 §8-6). 홍길동 한 사람만 시스템 운영자라, 그 역할에서
+   * 관리 권한을 빼면 보유자가 0명이 되어 실제로 400 이 떨어진다 — 그 갈래를 목으로 밟을 수 있다.
+   */
+  const userRoles = [
+    { userRoleId: 1001, appUserId: 1001, roleId: 1 },
+    { userRoleId: 1002, appUserId: 1001, roleId: 4 },
+    { userRoleId: 1003, appUserId: 1002, roleId: 1 },
+    { userRoleId: 1004, appUserId: 1003, roleId: 2 },
+    { userRoleId: 1005, appUserId: 1004, roleId: 3 },
+  ];
+
+  /*
+   * 부여분. ⭐ **시스템 운영자만 15건이고 나머지 셋은 0건** — 개발 서버 실측 그대로다.
+   * 0건인 역할을 남겨 두어야 「부여가 하나도 없는 역할에서 격자가 서는가」를 볼 수 있다.
+   */
+  const rolePermissions = [
+    'W-02-01',
+    'W-02-02',
+    'W-02-03',
+    'W-02-04',
+    'W-02-10',
+    'W-05-11',
+    'W-05-12',
+    'W-06-01',
+    'W-06-05',
+    'W-06-07',
+    'W-CO-01',
+    'W-CO-02',
+    'W-CO-06',
+    'W-CO-08',
+    'W-CO-10',
+  ].map((permissionCode, at) => ({
+    rolePermissionId: 1001 + at,
+    roleId: 4,
+    permissionCode,
+  }));
+
   const plants = [
     {
       plantId: PLANT_ID,
@@ -2715,6 +2806,10 @@ export const createSeed = (now = new Date()) => {
     plants,
     businessUnits,
     workers,
+    roles,
+    appUsers,
+    userRoles,
+    rolePermissions,
     uoms,
     items,
     warehouses,

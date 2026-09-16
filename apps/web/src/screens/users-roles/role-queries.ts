@@ -8,6 +8,7 @@ import type { PageMeta, Role, RoleFilters } from './types';
 
 type RoleDetailResponse = components['schemas']['RoleDetailResponse'];
 type RolePermissionListResponse = components['schemas']['RolePermissionListResponse'];
+type PermissionListResponse = components['schemas']['PermissionListResponse'];
 
 /**
  * 역할의 조회와 캐시 키. 무효화 범위를 한 곳에서 읽을 수 있게 모아 둔다.
@@ -27,11 +28,13 @@ export const roleKeys = {
   all: ['users-roles-roles'] as const,
   list: (filters: RoleFilters, page: number) => ['users-roles-roles', 'list', filters, page] as const,
   detail: (roleId: number) => ['users-roles-roles', 'detail', roleId] as const,
-  /**
-   * 기능 권한 부여분. **이번에 치환을 부르지 않으므로 무효화할 일이 없다** —
-   * 키를 두는 것은 조회를 다른 것과 섞지 않기 위해서다.
-   */
+  /** 이 역할에 부여된 기능 권한. 치환이 성공하면 이 키만 무효화한다. */
   permissions: (roleId: number) => ['users-roles-roles', 'permissions', roleId] as const,
+  /**
+   * 부여할 수 있는 **후보** 전부. 역할과 무관한 앱 기능 목록이라 역할 키 아래 두지 않는다 —
+   * 역할을 바꿔 고를 때마다 다시 받게 된다.
+   */
+  permissionCatalog: ['users-roles-permission-catalog'] as const,
 };
 
 /**
@@ -85,8 +88,8 @@ export const useRoleDetail = (roleId: number | null): UseQueryResult<RoleDetailR
 /**
  * 이 역할에 부여된 기능 권한.
  *
- * **조회만 한다.** 치환(`PUT`)은 권한 목록이 확정되기 전까지 부르지 않는다(계획 결정 5) —
- * 고를 수 있는 값이 하나도 없는 상태에서 최종 상태를 보내면 가진 권한을 지우게 된다.
+ * **이것만으로는 권한을 «줄» 수 없다** — 응답이 「이미 부여된 것」뿐이라 부여가 0건인 역할은
+ * 열이 하나도 서지 않는다. 고를 수 있는 후보는 `usePermissionCatalog` 가 받는다.
  *
  * **쪽 나눔이 없다** — 계약이 `items`만 준다.
  */
@@ -107,5 +110,26 @@ export const useRolePermissions = (
         client.GET('/app/roles/{roleId}/permissions', { params: { path: { roleId } } }),
       );
     },
+  });
+};
+
+/**
+ * 부여할 수 있는 기능 권한 **후보 전부** — 격자의 열을 만드는 목록이다.
+ *
+ * ⭐ **역할을 고르기 전에도 받는다.** 앱 기능 목록이라 역할과 무관하고, 역할을 바꿀 때마다
+ * 다시 받으면 큰 목록이 매번 오간다. 캐시 키에 역할이 들어가지 않는 것도 그래서다.
+ *
+ * ⛔ **쪽을 나누지 않는다** — 계약이 `items` 만 준다. 목록이 화면 수만큼으로 닫혀 있고,
+ * 쪽이 나뉘면 둘째 쪽을 못 받았을 때 격자에서 열이 조용히 사라진다.
+ *
+ * ⛔ **`GET /mdm/code-values` 로 부르지 않는다** — 공통코드가 아니다. 고객이 늘리거나 지울 수
+ * 없는 앱 기능 목록이고, 화면이 늘면 배포로 는다.
+ */
+export const usePermissionCatalog = (): UseQueryResult<PermissionListResponse> => {
+  const { client } = useApiClient();
+
+  return useQuery({
+    queryKey: roleKeys.permissionCatalog,
+    queryFn: () => runRequest(() => client.GET('/app/permissions')),
   });
 };

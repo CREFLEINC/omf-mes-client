@@ -15,6 +15,8 @@ export type Role = components['schemas']['Role'];
 export type UserRole = components['schemas']['UserRole'];
 export type UserDataScope = components['schemas']['UserDataScope'];
 export type RolePermission = components['schemas']['RolePermission'];
+/** 부여할 수 있는 기능 권한 **후보** 하나. 부여분(`RolePermission`)과 다른 개념이다 */
+export type Permission = components['schemas']['Permission'];
 
 /**
  * 선택 목록의 원본 항목. 사용 여부를 함께 들고 있어야

@@ -64,6 +64,12 @@ const conflict = () => ({
   },
 });
 
+/** 계약의 `ErrorResponse` 모양 그대로. 화면은 `field` 로 어느 칸을 가리킬지 정한다(공유계약 G-1). */
+const fieldError = (field, code, message) => ({
+  status: 400,
+  created: { errors: [{ scope: 'field', field, code, message }] },
+});
+
 const matchesEtag = (headers, expected) => headers['if-match'] === expected;
 const bumpVersion = (versions, id) => versions.set(id, (versions.get(id) ?? 1) + 1);
 
@@ -181,6 +187,327 @@ const on = (method, pattern, handle) => {
   routes.push({ method, matcher: new RegExp(`^${source}$`), keys, handle });
 };
 
+/* ── 사용자·역할·권한(W-CO-02) ───────────────────────────── */
+
+/**
+ * 부여할 수 있는 기능 권한 **후보 전부** — 권한 격자의 «열»이다.
+ *
+ * ⭐ **값이 화면 코드와 1:1 이다**(사용자 결정 2026-09-01 · 계약 `Permission.code`). 그래서 이
+ * 표는 설계 저장소의 화면 문서(`design/wiki/screens/**`) 파일 목록에서 파생했다 — 손으로 적으면
+ * 화면이 늘 때 조용히 낡고, 없는 코드를 하나 지어내면 그것을 검사하는 자리가 없어 «아무 효과
+ * 없는 권한»이 된다.
+ *
+ * ⛔ **목이 실행 시점에 설계 저장소를 읽지 않는다.** 목은 설계 클론이 없는 기계에서도 떠야 하고,
+ * 고정 참조가 아닌 체크아웃을 읽으면 어느 날 열이 저절로 달라진다. 파생한 결과를 여기 박아 둔다 —
+ * 화면이 늘면 이 표도 함께 고친다.
+ *
+ * ⚠ **폐지된 `W-06-13` 만 뺐다.** 계약이 「2026-09-01 실측 **117** — 폐지된 W-06-13 제외」라고
+ * 적어 두었고, 화면 문서 118건에서 그 하나를 빼면 정확히 117건이며 묶음별 건수도 실측과 같다
+ * (`01` 26 · `02` 24 · `03` 6 · `04` 18 · `05` 17 · `06` 14 · `CO` 12).
+ * ⛔ **통합·폐지된 POP 화면(`P-02-05` · `P-02-06` · `P-02-07` · `P-04-02`)은 빼지 않는다** —
+ * 빼면 실측 건수와 어긋난다. 계약이 이름을 집어 뺀 것은 `W-06-13` 하나뿐이다.
+ *
+ * ⭐ `groupCode` 는 코드의 가운데 마디다 — 격자를 도메인으로 묶는 축이고, 묶지 않으면 관리자가
+ * 열 117개를 옆으로 끝없이 넘긴다.
+ */
+const APP_PERMISSIONS = [
+  { code: 'M-01-01', name: '입하 등록', groupCode: '01' },
+  { code: 'M-01-02', name: '자재LOT 번호 스캔·등록 (발번)', groupCode: '01' },
+  { code: 'M-01-04', name: '자재 위치 확인', groupCode: '01' },
+  { code: 'M-01-05', name: '적치·입고 완료', groupCode: '01' },
+  { code: 'M-01-06', name: '입하 오류 등록', groupCode: '01' },
+  { code: 'M-01-07', name: '임시 위치 적재', groupCode: '01' },
+  { code: 'M-01-08', name: '자재 출고·피킹', groupCode: '01' },
+  { code: 'M-01-09', name: '생산창고 입고·호퍼 잔량 입력', groupCode: '01' },
+  { code: 'M-01-10', name: '재고이동·불량 반출', groupCode: '01' },
+  { code: 'M-01-11', name: '실물 카운트', groupCode: '01' },
+  { code: 'M-01-12', name: '재생재 등록', groupCode: '01' },
+  { code: 'M-01-13', name: '긴급 IQC 생략 요청', groupCode: '01' },
+  { code: 'P-01-01', name: '자재LOT 등록·라벨 발행', groupCode: '01' },
+  { code: 'P-01-02', name: '출고 QR 발행', groupCode: '01' },
+  { code: 'W-01-01', name: 'IQC 수입검사·판정', groupCode: '01' },
+  { code: 'W-01-02', name: '긴급 IQC 생략 한도승인', groupCode: '01' },
+  { code: 'W-01-03', name: '초과 입하 분리', groupCode: '01' },
+  { code: 'W-01-04', name: '재고실사', groupCode: '01' },
+  { code: 'W-01-05', name: '공급사 반품 처리', groupCode: '01' },
+  { code: 'W-01-06', name: '폐기 요청·기타출고', groupCode: '01' },
+  { code: 'W-01-07', name: '재고 현황·상태 조회(위치별 분포 포함)', groupCode: '01' },
+  { code: 'W-01-09', name: '입하 예정 조회', groupCode: '01' },
+  { code: 'W-01-10', name: '정상품 입하 처리 (입고 확정·Release·G/R 송신)', groupCode: '01' },
+  { code: 'W-01-11', name: '신규 ERP W/O 등록', groupCode: '01' },
+  { code: 'W-01-12', name: '재고조정', groupCode: '01' },
+  { code: 'W-01-13', name: '물류 문서 진행현황·취소', groupCode: '01' },
+  { code: 'M-02-01', name: 'WIP 공정 이동 스캔', groupCode: '02' },
+  { code: 'M-02-02', name: '수리 왕복 투입·반출 스캔', groupCode: '02' },
+  { code: 'P-02-01', name: '작업 시작 (작업지시 선택)', groupCode: '02' },
+  { code: 'P-02-02', name: '작업 전 점검 이력 확인·통제', groupCode: '02' },
+  { code: 'P-02-03', name: '자재 투입 스캔·오투입 검증', groupCode: '02' },
+  { code: 'P-02-04', name: '생산 실적 등록', groupCode: '02' },
+  { code: 'P-02-05', name: '인식표 발행·부착', groupCode: '02' },
+  { code: 'P-02-06', name: '생산LOT 완료 처리', groupCode: '02' },
+  { code: 'P-02-07', name: 'LOT 라벨 출력·부착', groupCode: '02' },
+  { code: 'P-02-08', name: '포장 작업 (LOT 스캔·제품 포장)', groupCode: '02' },
+  { code: 'P-02-09', name: '포장 라벨·인식표 재출력·부착', groupCode: '02' },
+  { code: 'P-02-10', name: '작업 중단(홀드) 등록', groupCode: '02' },
+  { code: 'P-02-11', name: '러닝체인지 부품 교체 등록', groupCode: '02' },
+  { code: 'P-02-12', name: '긴급 W/O 현장 투입·실적', groupCode: '02' },
+  { code: 'P-02-13', name: 'PQC 제품 검사·검사 결과 입력', groupCode: '02' },
+  { code: 'W-02-01', name: 'ERP W/O 수신·조회', groupCode: '02' },
+  { code: 'W-02-02', name: 'W/O 전개·편성', groupCode: '02' },
+  { code: 'W-02-03', name: '4M 자원배정·유효성 점검', groupCode: '02' },
+  { code: 'W-02-04', name: 'W/O 확정·배포·생산LOT 선발행', groupCode: '02' },
+  { code: 'W-02-05', name: 'W/O 마감·ERP 실적 송신', groupCode: '02' },
+  { code: 'W-02-06', name: 'ERP W/O 변경 관리자 확인', groupCode: '02' },
+  { code: 'W-02-07', name: '긴급 W/O 발행', groupCode: '02' },
+  { code: 'W-02-08', name: 'W/O 진행현황 조회(생산 실적 집계 포함)', groupCode: '02' },
+  { code: 'W-02-10', name: '추가 자재 출고 요청(수동)', groupCode: '02' },
+  { code: 'W-03-01', name: 'Lot Status 현황·변경이력 조회', groupCode: '03' },
+  { code: 'W-03-02', name: 'Lot Status 판정·전이 처리', groupCode: '03' },
+  { code: 'W-03-03', name: '의심자재 등록', groupCode: '03' },
+  {
+    code: 'W-03-05',
+    name: '검사실적·검사결과 조회 (불량률·불량코드 분포 집계 포함)',
+    groupCode: '03',
+  },
+  { code: 'W-03-09', name: '특채·한도승인 승인 처리', groupCode: '03' },
+  { code: 'W-03-10', name: '처분 판정 처리(재작업/폐기/정상)', groupCode: '03' },
+  { code: 'M-04-01', name: '제품LOT 피킹 스캔', groupCode: '04' },
+  { code: 'M-04-03', name: '포장 재구성 스캔', groupCode: '04' },
+  { code: 'M-04-04', name: '제품입고·적치', groupCode: '04' },
+  { code: 'P-04-01', name: '출하 실적 등록', groupCode: '04' },
+  { code: 'P-04-02', name: '납품·포장 라벨 출력', groupCode: '04' },
+  { code: 'P-04-03', name: '재작업 실적 등록', groupCode: '04' },
+  { code: 'P-04-04', name: '재구성 신규 라벨 발행', groupCode: '04' },
+  { code: 'W-04-01', name: '출하지시서 Import·작업지시 생성', groupCode: '04' },
+  { code: 'W-04-02', name: '출하 예정 목록', groupCode: '04' },
+  { code: 'W-04-03', name: 'OQC 출하검사 판정', groupCode: '04' },
+  { code: 'W-04-04', name: '출하 처리(상차·실물 출고)', groupCode: '04' },
+  { code: 'W-04-05', name: '긴급 직행 출하 처리', groupCode: '04' },
+  { code: 'W-04-06', name: '반품·클레임 입고 등록', groupCode: '04' },
+  { code: 'W-04-07', name: '재작업/폐기 판정 의뢰', groupCode: '04' },
+  { code: 'W-04-08', name: '완제품 재고·Lot Status 조회', groupCode: '04' },
+  { code: 'W-04-10', name: '제품 폐기 요청', groupCode: '04' },
+  { code: 'W-04-11', name: '재고 재등록', groupCode: '04' },
+  { code: 'W-04-12', name: '출하 확정·취소', groupCode: '04' },
+  { code: 'M-05-01', name: '설비 점검 입력', groupCode: '05' },
+  { code: 'M-05-02', name: '설비 고장 현장 보고', groupCode: '05' },
+  { code: 'P-05-01', name: '툴 사용실적 입력 (타발수)', groupCode: '05' },
+  { code: 'P-05-02', name: '비가동 실적 입력', groupCode: '05' },
+  { code: 'W-05-01', name: '타발수 환산 파라미터 설정', groupCode: '05' },
+  { code: 'W-05-02', name: '툴 보전오더 생성 (PM 도래 조회)', groupCode: '05' },
+  { code: 'W-05-03', name: '툴 PM 실적 등록', groupCode: '05' },
+  { code: 'W-05-04', name: '설비 고장 상세·처리', groupCode: '05' },
+  { code: 'W-05-05', name: '보전 지시 발행', groupCode: '05' },
+  { code: 'W-05-06', name: '보전 실적·예비품 출고 등록', groupCode: '05' },
+  { code: 'W-05-07', name: '수집채널 매핑 관리', groupCode: '05' },
+  { code: 'W-05-08', name: '비가동 집계·조회', groupCode: '05' },
+  { code: 'W-05-09', name: '작업 캘린더(WorkCalendar) 설정', groupCode: '05' },
+  { code: 'W-05-10', name: '계측기 검교정 이력 등록', groupCode: '05' },
+  { code: 'W-05-11', name: '계측기 마스터 관리', groupCode: '05' },
+  { code: 'W-05-12', name: '설비·설비그룹 마스터', groupCode: '05' },
+  { code: 'W-05-13', name: '툴/금형/지그 마스터', groupCode: '05' },
+  { code: 'W-06-01', name: 'Routing(공정) 등록·관리', groupCode: '06' },
+  { code: 'W-06-02', name: '검사기준 등록 (IQC/PQC/OQC)', groupCode: '06' },
+  { code: 'W-06-03', name: '불량·원인코드 2계층 마스터', groupCode: '06' },
+  { code: 'W-06-04', name: '판정유형 코드 마스터', groupCode: '06' },
+  { code: 'W-06-05', name: '수신본 확장속성 편집 (품목·BOM)', groupCode: '06' },
+  { code: 'W-06-06', name: '공통코드·조직·작업자 마스터 (다국어)', groupCode: '06' },
+  { code: 'W-06-07', name: '창고·Location 마스터', groupCode: '06' },
+  { code: 'W-06-08', name: '예비품 마스터', groupCode: '06' },
+  { code: 'W-06-09', name: 'ERP-MES I/F 연계정의 관리', groupCode: '06' },
+  { code: 'W-06-10', name: '연계 동기화 현황·실패 재처리', groupCode: '06' },
+  { code: 'W-06-11', name: '마스터 변경관리 (신규 Rev 발행)', groupCode: '06' },
+  { code: 'W-06-12', name: 'MES', groupCode: '06' },
+  { code: 'W-06-14', name: '적치 규칙 마스터', groupCode: '06' },
+  { code: 'W-06-15', name: '결재선 정의', groupCode: '06' },
+  { code: 'M-CO-01', name: '기기 등록·사번 인증', groupCode: 'CO' },
+  { code: 'P-CO-01', name: '사번 경량 인증', groupCode: 'CO' },
+  { code: 'W-CO-01', name: '계정 로그인', groupCode: 'CO' },
+  { code: 'W-CO-02', name: '사용자·역할·권한 관리', groupCode: 'CO' },
+  { code: 'W-CO-03', name: '알림센터', groupCode: 'CO' },
+  { code: 'W-CO-04', name: '공지·전달 게시/조회', groupCode: 'CO' },
+  { code: 'W-CO-05', name: '통합 대시보드(경영·생산)', groupCode: 'CO' },
+  { code: 'W-CO-06', name: '단말기-공정 매핑 설정', groupCode: 'CO' },
+  { code: 'W-CO-08', name: '창고 적재 위치 배치도', groupCode: 'CO' },
+  { code: 'W-CO-09', name: '결재함(승인 요청 목록)', groupCode: 'CO' },
+  { code: 'W-CO-10', name: '비밀번호 변경', groupCode: 'CO' },
+  { code: 'W-CO-11', name: '알람 수신자 설정', groupCode: 'CO' },
+];
+
+/** 후보에 있는가를 O(1)로 본다 — 격자는 체크박스 117개를 한 번에 보낸다. */
+const permissionCodes = new Set(APP_PERMISSIONS.map((permission) => permission.code));
+
+/** 「사용자·역할·권한 관리」 화면 자신. 이 권한의 보유자가 0명이 되면 되돌릴 사람이 없다. */
+const ADMIN_PERMISSION_CODE = 'W-CO-02';
+
+/* 역할의 판 번호 — 상세가 If-Match 에 실을 토큰을 내야 한다(계약 GET /app/roles/{roleId}). */
+const roleVersions = new Map(state.roles.map((role) => [role.roleId, 1]));
+
+const findRole = (params) =>
+  state.roles.find((role) => role.roleId === Number(params.roleId)) ?? null;
+
+const grantsOf = (roleId) => state.rolePermissions.filter((row) => row.roleId === roleId);
+
+/*
+ * ⛔ **쪽을 나누지 않는다**(계약 §GET /app/permissions). 목록이 화면 수만큼으로 닫혀 있는데
+ *    쪽이 나뉘면, 둘째 쪽을 못 받았을 때 격자에서 열이 조용히 사라진다.
+ */
+on('GET', '/app/permissions', () => ({ items: APP_PERMISSIONS }));
+
+/*
+ * ⭐ **`q` 는 부분 일치·대소문자 불문이다**(2026-09-06 게이트 승인). 역할코드와 역할명 두 축을
+ *    함께 본다 — 관리자는 `sys` 로도 `운영` 으로도 찾는다.
+ */
+on('GET', '/app/roles', (_params, query) => {
+  const needle = (query.get('q') ?? '').trim().toUpperCase();
+  const includeInactive = query.get('includeInactive') === 'true';
+
+  const rows = state.roles.filter(
+    (role) =>
+      (includeInactive || role.isActive) &&
+      (needle === '' ||
+        role.roleCode.toUpperCase().includes(needle) ||
+        role.roleName.toUpperCase().includes(needle)),
+  );
+
+  return page(rows, query);
+});
+
+/*
+ * 상세. ⭐ **ETag 를 낸다** — 계약이 이 응답의 헤더로 낙관적 잠금 토큰을 주라고 못박았고, 목이
+ * 내지 않으면 수정·사용 중지가 If-Match 에 실을 값을 못 구해 화면이 스스로 멈춘다.
+ * ⭐ **참조 건수는 서버가 센다**(공유계약 B-4) — 화면이 세면 화면마다 다르게 구현된다.
+ */
+on('GET', '/app/roles/{roleId}', (params) => {
+  const role = findRole(params);
+
+  if (role === null) return null;
+
+  const assignedUserCount = new Set(
+    state.userRoles.filter((row) => row.roleId === role.roleId).map((row) => row.appUserId),
+  ).size;
+  /* 역할코드를 가리키는 것은 배정(user_role)과 부여(role_permission) 둘이다. */
+  const referenceCount = assignedUserCount + grantsOf(role.roleId).length;
+
+  return {
+    status: 200,
+    created: {
+      role,
+      editability: {
+        codeEditable: referenceCount === 0,
+        reason: referenceCount === 0 ? 'EDITABLE' : 'REFERENCED',
+        referenceCount,
+      },
+      assignedUserCount,
+    },
+    headers: { ETag: resourceEtag('role', role.roleId, roleVersions) },
+  };
+});
+
+on('GET', '/app/roles/{roleId}/permissions', (params) => {
+  const role = findRole(params);
+
+  if (role === null) return null;
+
+  return { items: grantsOf(role.roleId) };
+});
+
+/*
+ * 전체 치환. ⭐ **개별 부여·회수가 아니라 최종 상태를 통째로 받는다**(계약 · 공유계약 B-6) —
+ * 체크박스 화면이 서버와 어긋날 여지를 없앤다.
+ *
+ * ⭐ **상태를 실제로 바꾼다.** Prism 예시로 답하면 저장 뒤 다시 읽었을 때 옛 값이 돌아와,
+ * 화면이 저장에 실패한 것처럼 보인다 — 왕복 확인이 목의 존재 이유다.
+ */
+on('PUT', '/app/roles/{roleId}/permissions', (params, _query, body, headers) =>
+  /*
+   * 멱등 범위를 역할별로 가른다 — 두 역할을 잇달아 저장할 때 같은 키가 섞이면 뒤엣것이
+   * 앞엣것의 응답으로 재생돼 「저장했는데 안 바뀐다」가 된다.
+   */
+  idempotent(`role-permissions-${params.roleId}`, headers, () => {
+    const role = findRole(params);
+
+    if (role === null) return null;
+
+    const codes = body?.permissionCodes;
+
+    if (!Array.isArray(codes)) {
+      return fieldError('permissionCodes', 'REQUIRED', '부여할 권한 코드 목록이 필요합니다.');
+    }
+
+    /*
+     * ⛔ **몇째 값이 틀렸는지 자리를 적어 준다.** 격자는 체크박스를 한 번에 보내므로 「없는
+     *    코드가 있다」만 오면 화면이 어느 칸을 가리켜야 할지 모른다.
+     */
+    const unknownAt = codes.findIndex((code) => !permissionCodes.has(code));
+
+    if (unknownAt !== -1) {
+      return fieldError(
+        `permissionCodes[${String(unknownAt)}]`,
+        'INVALID',
+        `${String(codes[unknownAt])} 은(는) 부여할 수 있는 권한이 아닙니다.`,
+      );
+    }
+
+    /* 같은 칸이 두 번 와도 부여는 한 건이다 — (역할, 권한)이 유일하다. */
+    const next = [...new Set(codes)];
+
+    /*
+     * ⛔ **`LAST_ADMIN` 판정 기준은 «역할»이 아니라 «그 권한을 가진 사용자 수»다**(계약 400
+     *    설명 · W-CO-02 §8-6 · 사용자 결정 2026-09-01). 고객이 새 역할을 만들어 같은 권한을 준
+     *    경우를 역할로 세면 못 센다. 목은 씨앗의 사용자-역할 배정(`state.userRoles`)을 근거로
+     *    «사람»을 센다 — 그래서 실제 서버와 같은 기준이다.
+     * ⚠ 중지된 역할은 빼고 센다 — 중지된 역할은 권한 판정에서 제외되므로(계약 :deactivate)
+     *    그것으로 관리 권한이 지탱된다고 볼 수 없다.
+     */
+    const holders = new Set(
+      state.userRoles
+        .filter((assignment) => {
+          const assigned = state.roles.find((row) => row.roleId === assignment.roleId);
+
+          if (assigned === undefined || !assigned.isActive) return false;
+
+          /* 이 저장이 반영된 «뒤»의 상태로 센다 — 저장하고 나서 후회할 수는 없다. */
+          const after =
+            assigned.roleId === role.roleId
+              ? next
+              : grantsOf(assigned.roleId).map((row) => row.permissionCode);
+
+          return after.includes(ADMIN_PERMISSION_CODE);
+        })
+        .map((assignment) => assignment.appUserId),
+    );
+
+    if (holders.size === 0) {
+      return {
+        status: 400,
+        created: {
+          errors: [
+            {
+              /* 한 칸의 문제가 아니라 저장 전체가 막히는 것이라 배너다(공유계약 G-1). */
+              scope: 'screen',
+              code: 'LAST_ADMIN',
+              message:
+                '이대로 저장하면 「사용자·역할·권한 관리」 권한을 가진 사람이 없어집니다. 다른 사람에게 먼저 권한을 주세요.',
+            },
+          ],
+        },
+      };
+    }
+
+    state.rolePermissions = [
+      ...state.rolePermissions.filter((row) => row.roleId !== role.roleId),
+      ...next.map((permissionCode) => ({
+        rolePermissionId: newId(),
+        roleId: role.roleId,
+        permissionCode,
+      })),
+    ];
+
+    return { items: grantsOf(role.roleId) };
+  }),
+);
+
 /* ── 세션 ─────────────────────────────────────────────────── */
 
 /*
@@ -203,30 +530,64 @@ const MOCK_SESSION = {
   userName: '홍길동',
   departmentId: 1001,
   scopes: [{ businessUnitId: 1001, plantId: 1001 }],
-  roles: ['창고관리자'],
-  /*
-   * ⚠ **POP 화면 코드는 `apps/web/src/patterns/pop-screen-catalog.ts` 와 같은 값이어야 한다.**
-   * 목이 계약 서버가 아니라 여기 한 벌을 더 적는다 — 어긋나면 POP 후보 목록이 조용히 줄어드니
-   * 화면을 붙일 때 두 곳을 함께 고친다.
-   */
-  permissions: [
-    'P-01-01',
-    'P-01-02',
-    'P-02-01',
-    'P-02-03',
-    'P-02-04',
-    'P-02-08',
-    'P-02-09',
-    'P-02-10',
-    'P-02-11',
-    'P-02-12',
-    'P-02-13',
-    'P-04-01',
-    'P-04-03',
-    'P-04-04',
-    'P-05-01',
-    'P-05-02',
-  ],
+};
+
+/**
+ * POP 이 늘 갖고 있어야 하는 화면 코드.
+ *
+ * ⚠ **POP 화면 코드는 `apps/web/src/patterns/pop-screen-catalog.ts` 와 같은 값이어야 한다.**
+ * 목이 계약 서버가 아니라 여기 한 벌을 더 적는다 — 어긋나면 POP 후보 목록이 조용히 줄어드니
+ * 화면을 붙일 때 두 곳을 함께 고친다.
+ *
+ * ⛔ **역할 부여분에서 뽑지 않는다.** 세션 권한의 정본은 이제 「내 역할들이 가진 권한의
+ * 합집합」(아래 `sessionPermissions`)이지만, 씨앗의 역할 넷은 개발 서버 실측을 그대로 옮긴
+ * 것이라 **`P-` 로 시작하는 POP 화면이 한 건도 부여돼 있지 않다.** 합집합만 내리면 POP 후보
+ * 목록이 통째로 비어(`patterns/pop-access.ts` 의 `empty`) 종전까지 열리던 POP 화면이 전부
+ * 눌리지 않게 된다 — 목을 고치다 POP 을 껐다는 뜻이다. 그래서 이 고정분을 «바닥»으로 깔고
+ * 역할 합집합을 그 위에 얹는다. 관리웹(W-CO-02)이 보는 축은 `W-` 쪽이라 두 축이 섞이지
+ * 않는다(W-CO-02 §9-3 「관리웹은 role_permission, POP 은 terminal_process — 축을 섞지
+ * 않는다」). 개발 서버가 POP 화면까지 역할에 부여하기 시작하면 이 바닥을 걷는다.
+ */
+const POP_FIXED_PERMISSIONS = [
+  'P-01-01',
+  'P-01-02',
+  'P-02-01',
+  'P-02-03',
+  'P-02-04',
+  'P-02-08',
+  'P-02-09',
+  'P-02-10',
+  'P-02-11',
+  'P-02-12',
+  'P-02-13',
+  'P-04-01',
+  'P-04-03',
+  'P-04-04',
+  'P-05-01',
+  'P-05-02',
+];
+
+/**
+ * 지금 로그인한 사람에게 배정된 **사용 중인** 역할.
+ *
+ * ⚠ 중지된 역할은 뺀다 — 계약이 「중지된 역할은 권한 판정에서 제외한다(부여 기록은 지우지
+ * 않는다)」고 못박았다(사용자 결정 2026-09-01).
+ */
+const sessionRoles = () => {
+  const assigned = new Set(
+    state.userRoles.filter((row) => row.appUserId === MOCK_SESSION.userId).map((row) => row.roleId),
+  );
+
+  return state.roles.filter((role) => role.isActive && assigned.has(role.roleId));
+};
+
+/** 내 역할들이 가진 권한의 합집합 + POP 고정분. 화면이 역할에서 권한을 다시 계산하지 않는다. */
+const sessionPermissions = () => {
+  const granted = sessionRoles().flatMap((role) =>
+    grantsOf(role.roleId).map((row) => row.permissionCode),
+  );
+
+  return [...new Set([...POP_FIXED_PERMISSIONS, ...granted])];
 };
 
 let signedIn = true;
@@ -236,12 +597,26 @@ const unauthenticated = () => ({
   created: { code: 'UNAUTHENTICATED', message: '로그인이 필요합니다.' },
 });
 
-on('GET', '/app/sessions/current', () => (signedIn ? MOCK_SESSION : unauthenticated()));
+/**
+ * 지금 로그인한 사람의 세션.
+ *
+ * ⭐ **`roles`·`permissions` 를 부여 상태에서 «그때그때» 푼다.** 종전에는 두 값이 글자로 박혀
+ * 있어, W-CO-02 에서 권한을 저장해도 세션은 옛 값을 그대로 돌려주었다 — 관리웹에서 권한을 준
+ * 뒤 「왜 화면이 안 열리지」를 목으로는 재현조차 못 했다. 계약도 서버가 합집합으로 풀어 내리라고
+ * 말한다(`Session.permissions`).
+ */
+const currentSession = () => ({
+  ...MOCK_SESSION,
+  roles: sessionRoles().map((role) => role.roleName),
+  permissions: sessionPermissions(),
+});
+
+on('GET', '/app/sessions/current', () => (signedIn ? currentSession() : unauthenticated()));
 
 on('POST', '/app/sessions', (_params, _query, _body, headers) =>
   idempotent('login', headers, () => {
     signedIn = true;
-    return MOCK_SESSION;
+    return currentSession();
   }),
 );
 
@@ -1034,8 +1409,22 @@ on('POST', '/mdm/terminals/{terminalId}:confirm-registration', (params) => {
 
 on('GET', '/mdm/terminals/{terminalId}/accessible-screens', () => ({
   screenCodes: [
-    'P-01-01', 'P-01-02', 'P-02-01', 'P-02-03', 'P-02-04', 'P-02-08', 'P-02-09', 'P-02-10',
-    'P-02-11', 'P-02-12', 'P-02-13', 'P-04-01', 'P-04-03', 'P-04-04', 'P-05-01', 'P-05-02',
+    'P-01-01',
+    'P-01-02',
+    'P-02-01',
+    'P-02-03',
+    'P-02-04',
+    'P-02-08',
+    'P-02-09',
+    'P-02-10',
+    'P-02-11',
+    'P-02-12',
+    'P-02-13',
+    'P-04-01',
+    'P-04-03',
+    'P-04-04',
+    'P-05-01',
+    'P-05-02',
   ],
 }));
 
@@ -4426,11 +4815,6 @@ const parseMultipart = async (rawBody, contentType) => {
     return null;
   }
 };
-
-const fieldError = (field, code, message) => ({
-  status: 400,
-  created: { errors: [{ scope: 'field', field, code, message }] },
-});
 
 /*
  * ⭐ **같은 멱등 키에 다른 파일이 오면 409.** 공용 `idempotent()` 헬퍼는 «성공은 그대로

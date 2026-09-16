@@ -1,5 +1,6 @@
 import type { NavEntry, NavGroup } from './nav-tree';
 import { localizedLabel } from '../patterns/localized-label';
+import type { WebAccess } from '../patterns/web-access';
 
 /**
  * 사이드바 화면 검색 — **이름으로만 찾는다**(#1079).
@@ -73,3 +74,36 @@ export const hasNoNavMatch = (entries: readonly NavEntry[], query: string): bool
 
   return needle !== '' && !entries.some((entry) => matches(entry, needle));
 };
+
+/**
+ * 로그인한 사람이 갈 수 있는 항목만 남긴 묶음 목록. **맞는 항목이 없는 묶음은 빠진다.**
+ *
+ * ⭐ **검색과 따로 돈다.** 검색은 「지금 무엇을 찾는가」이고 이것은 「무엇을 볼 수 있는가」다 —
+ * 한 함수로 합치면 검색 결과가 0건일 때 그것이 못 찾은 것인지 권한이 없는 것인지 갈리지 않는다.
+ * 읽는 쪽은 **권한으로 먼저 거르고 그 결과에서 검색**한다.
+ *
+ * ⚠ **판정할 근거가 없으면(`unknown`) 거르지 않는다.** 계약이 「필드가 없으면 값 목록이 아직
+ * 정해지지 않았다는 뜻」이라고 갈라 두었다 — 모르는 것을 「없다」로 다루면 목록을 못 받은 세션이
+ * 텅 빈 메뉴를 보고 원인이 가려진다.
+ */
+export const filterNavGroupsByAccess = (
+  groups: readonly NavGroup[],
+  access: WebAccess,
+): readonly NavGroup[] => {
+  if (access.state === 'unknown') return groups;
+
+  return (
+    groups
+      /* ⛔ 필드를 손으로 다시 적지 않는다 — `NavGroup` 에 무언가 늘면 조용히 떨어진다. */
+      .map((group) => ({ ...group, items: group.items.filter((item) => access.allows(item.to)) }))
+      .filter((group) => group.items.length > 0)
+  );
+};
+
+/**
+ * 섹션 밖 항목을 볼 수 있는가.
+ *
+ * ⛔ **묶음과 따로 묻는다** — `filterNavGroupsByAccess` 와 같은 이유다.
+ */
+export const isNavEntryAllowed = (entry: NavEntry, access: WebAccess): boolean =>
+  access.allows(entry.to);
