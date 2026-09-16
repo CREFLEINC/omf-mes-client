@@ -170,28 +170,6 @@ export const useShipmentSelection = (): UseMutationResult<ShipmentEntry, Error, 
   return useMutation({ mutationFn: (shipment: Shipment) => entryOfShipment(client, shipment) });
 };
 
-/** 첫 스캔의 결과. **빈 목록이 「없는 납품라벨」이다** — 계약이 404 를 내지 않는다. */
-export type LabelScanOutcome =
-  { kind: 'found'; allocations: ShipmentLotAllocation[] } | { kind: 'not-found' };
-
-const lookupLabel = async (client: Client, code: string): Promise<LabelScanOutcome> => {
-  const allocations = await collectAllPages((page, size) =>
-    runRequest(() =>
-      client.GET('/logistics/shipment-lot-allocations', {
-        params: { query: { q: code, page, size } },
-      }),
-    ),
-  );
-
-  return allocations.length === 0 ? { kind: 'not-found' } : { kind: 'found', allocations };
-};
-
-/** ① 납품라벨 스캔 — 이 라벨이 어느 출하·어느 품목인지가 여기서 정해진다. */
-export const useLabelScan = (): UseMutationResult<LabelScanOutcome, Error, string> => {
-  const { client } = useApiClient();
-
-  return useMutation({ mutationFn: (code: string) => lookupLabel(client, code) });
-};
 
 /** ② 생산LOT 스캔의 입력 — 출하 축은 **첫 스캔 응답의 `shipmentId`** 를 그대로 쓴다. */
 export interface LotScanInput {

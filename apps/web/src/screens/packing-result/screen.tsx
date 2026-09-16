@@ -24,7 +24,6 @@ import { addLine, lineOf, qtyError, remainingOf, removeLine, toProgress } from '
 import {
   useHandlingUnitTypeOptions,
   useUomDecimals,
-  useLabelScan,
   useLotScan,
   useShipmentAllocations,
   useShipmentScan,
@@ -69,7 +68,7 @@ export const PackingResultScreen = () => {
    * 대조할 수 없다.
    */
   const [labelCode, setLabelCode] = useState<string | null>(null);
-  const [entryError, setEntryError] = useState<'shipment' | 'label' | 'open-unit' | null>(null);
+  const [entryError, setEntryError] = useState<'shipment' | 'open-unit' | null>(null);
   /** ② 마지막 판정. 담은 뒤에도 남겨 둔다 — 방금 읽은 것이 무엇이었는지가 사라지면 안 된다. */
   const [matched, setMatched] = useState<MatchedLot | null>(null);
   const [lines, setLines] = useState<PackedLine[]>([]);
@@ -85,7 +84,6 @@ export const PackingResultScreen = () => {
   const [automaticLabelRun, setAutomaticLabelRun] = useState<AutomaticLabelRun | null>(null);
   const [isLabelMode, setLabelMode] = useState(false);
 
-  const labelScan = useLabelScan();
   const shipmentScan = useShipmentScan();
   const shipmentSelection = useShipmentSelection();
   const todayShipments = useTodayShipments();
@@ -191,42 +189,6 @@ export const PackingResultScreen = () => {
     });
   };
 
-  const scanLabel = (code: string): void => {
-    const isSameEntry = labelCode === code && shipmentId !== null;
-    if (!isSameEntry && !prepareEntryChange()) return;
-
-    setMergeNote(null);
-    setConfirmedNo(null);
-    setLabelCode(code);
-    labelScan.mutate(code, {
-      onSuccess: (outcome) => {
-        if (outcome.kind === 'not-found') {
-          setEntryError('label');
-          setLabel(null);
-
-          return;
-        }
-
-        setEntryError(null);
-        setLabel(outcome.allocations[0] ?? null);
-        const first = outcome.allocations[0];
-        if (first !== undefined) {
-          setEntry({
-            shipmentId: first.shipmentId,
-            /*
-             * ⛔⛔ **`ShipmentLotAllocation.shipmentRequestNo` 가 계약에서 빠졌다**(생성 타입
-             * · 2026-09-11 전달본). 이 자리는 원래도 «모르면 ID 로 대신한다»는 자리였다 —
-             * 이제는 늘 그 자리로 떨어진다(추측 금지 — 지어낼 값이 없다).
-             */
-            shipmentNo: `#${String(first.shipmentId)}`,
-            allocations: outcome.allocations,
-          });
-        }
-        setMatched(null);
-      },
-    });
-  };
-
   const scanLot = (code: string): void => {
     if (shipmentId === null) return;
 
@@ -306,8 +268,7 @@ export const PackingResultScreen = () => {
       return { tone: 'error', text: t.match.openUnitBlocksShipmentChange };
     }
     if (entryError === 'shipment') return { tone: 'error', text: t.match.shipmentNotFound };
-    if (entryError === 'label') return { tone: 'error', text: t.match.labelNotFound };
-    if (labelScan.isError || lotScan.isError) return { tone: 'error', text: t.match.lookupFailed };
+    if (lotScan.isError) return { tone: 'error', text: t.match.lookupFailed };
     if (matched === null) return null;
     if (matched.verdict.matched) return { tone: 'success', text: t.match.ok };
 
@@ -444,7 +405,7 @@ export const PackingResultScreen = () => {
           />
         </section>
 
-        {/* ① 출하 선택 — 정확 일치 스캔 또는 현재 영업일 목록. 납품라벨은 재진입 보조 경로다. */}
+        {/* ① 출하 선택 — 정확 일치 스캔 또는 현재 영업일 목록. */}
         {/* ⛔ 구획에 칸과 «같은 이름»을 달지 않는다 — 이름이 겹치면 무엇을 가리키는지 흐려진다. */}
         <section className="packing-scan">
           <ScanField
@@ -453,7 +414,8 @@ export const PackingResultScreen = () => {
             onScan={scanShipment}
           />
           {/*
-           * 읽은 라벨은 칸 옆에 남는다(설계 §3 도면).
+           * 읽은 «출하번호»가 칸 옆에 남는다(설계 §3 도면). 한때 납품라벨 값이 오는 자리이기도
+           * 했는데 그 진입을 걷어냈다(SHIP-UNIT-01 P3) — 이제는 늘 출하번호다.
            *
            * ⛔ **비었을 때 표식을 그리지 않는다** — 「—」를 두었더니 줄 끝에 뜻 모를 글자가
            *    떠 있었다(사용자 지적 2026-09-07). 자리는 그대로 지킨다 — 읽는 «순간» 칸이
@@ -461,25 +423,6 @@ export const PackingResultScreen = () => {
            */}
           <p className="packing-scanned-code">{labelCode}</p>
         </section>
-
-        {/*
-         * ⛔ **평상시 채우는 칸이 아니다**(스펙 §3-1 — 「납품 라벨은 포장 확정 «뒤» 발행되므로
-         *   최초 포장의 선행 입력으로 요구하지 않는다」). 앞선 판은 출하번호 칸과 같은 크기로
-         *   같은 자리에 세워, 처음 포장할 때도 채워야 하는 칸으로 읽혔다(사용자 지적
-         *   2026-09-10). 이름을 «보이게» 달고 폭을 줄여 **되돌아오는 길**임을 드러낸다.
-         */}
-        <details className="packing-reentry">
-          {/*
-           * 평상시에는 접어 둔다 — 열면 그 자리에 칸이 선다. 세로 예산이 768 로 못박힌 화면이라
-           * (스펙 §3-1) 되돌아오는 길이 늘 한 구획을 차지하면 ③ 포장 구성이 그만큼 줄어든다.
-           */}
-          <summary>{t.scan.deliveryLabelReentry}</summary>
-          <ScanField
-            label={t.scan.label.deliveryLabel}
-            isScanning={labelScan.isPending}
-            onScan={scanLabel}
-          />
-        </details>
 
         {/* ② 생산LOT 스캔 — 판정 문구가 칸 바로 아래 붙는다. 떨어뜨리면 어느 스캔의 답인지 흐려진다. */}
         <section className="packing-scan">

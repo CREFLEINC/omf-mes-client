@@ -30,14 +30,12 @@ export const packingResult = {
   scan: {
     label: {
       shipment: '출하번호',
-      deliveryLabel: '납품라벨',
       productionLot: '생산LOT',
     },
     manualEntry: '직접 입력',
     shipmentSelection: '출하 대상',
     shipmentListLoading: '목록 조회 중…',
     todayPickedShipments: '당일 피킹 완료 출하',
-    deliveryLabelReentry: '기존 납품 라벨 재진입',
     /** 둘째 스캔은 첫째가 끝나야 열린다 — 왜 잠겼는지 적는다. */
     lotLocked: '출하 대상을 먼저 선택하세요',
   },
@@ -47,7 +45,6 @@ export const packingResult = {
     notAllocated: '이 출하에 배분되지 않은 LOT 입니다',
     /** 서버가 사유를 주지 않았을 때. 판정 자체는 「다르다」이므로 막는 것은 같다. */
     unknownReason: '이 납품라벨과 맞지 않는 LOT 입니다',
-    labelNotFound: '등록되지 않은 납품라벨입니다',
     shipmentNotFound: '피킹 완료된 출하번호를 찾지 못했습니다',
     openUnitBlocksShipmentChange: '열린 포장을 먼저 취소한 뒤 다른 출하를 읽으세요',
     lookupFailed: '조회하지 못했습니다. 다시 읽어 주세요',

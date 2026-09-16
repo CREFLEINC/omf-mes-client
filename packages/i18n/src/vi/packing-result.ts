@@ -22,14 +22,12 @@ export const packingResult: Translated<typeof ko.packingResult> = {
   scan: {
     label: {
       shipment: 'Số xuất hàng',
-      deliveryLabel: 'Nhãn giao hàng',
       productionLot: 'LOT sản xuất',
     },
     manualEntry: 'Nhập tay',
     shipmentSelection: 'Đối tượng xuất hàng',
     shipmentListLoading: 'Đang tải danh sách…',
     todayPickedShipments: 'Xuất hàng đã lấy hàng xong hôm nay',
-    deliveryLabelReentry: 'Mở lại nhãn giao hàng đã có',
     lotLocked: 'Hãy chọn đối tượng xuất hàng trước',
   },
   match: {
@@ -37,7 +35,6 @@ export const packingResult: Translated<typeof ko.packingResult> = {
     itemMismatch: (itemCode: string): string => `Mặt hàng của xuất hàng đã chọn là ${itemCode}`,
     notAllocated: 'LOT này chưa được phân bổ cho xuất hàng này',
     unknownReason: 'LOT này không khớp với nhãn giao hàng',
-    labelNotFound: 'Nhãn giao hàng chưa đăng ký',
     shipmentNotFound: 'Không tìm thấy số xuất hàng đã lấy hàng xong',
     openUnitBlocksShipmentChange: 'Hãy hủy kiện đang mở rồi mới quét xuất hàng khác',
     lookupFailed: 'Không tra cứu được. Hãy quét lại',
