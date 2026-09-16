@@ -12,7 +12,7 @@ import { useResultEntry } from './entry-context';
 import { useFlowGates } from './flow-gating';
 import { useDocumentIssue, useLotComplete, useSerialIssue } from './flow-mutations';
 import { useLabelPrintRunner, type PrintTarget } from './flow-print';
-import { buildSessionEnd, useOpenWorkSession, useWorkSessionEnd } from './session';
+import { buildSessionEnd, judgeSessionEnd, useOpenWorkSession, useWorkSessionEnd } from './session';
 import { buildProductionLotLabel } from './label-tspl';
 import {
   defaultPrinter,
@@ -91,7 +91,7 @@ type OutputPhase =
  * 작업 세션 자동 종료의 진행 상태. **출력 흐름(`OutputPhase`)과 다른 축이다** — 저쪽은 LOT
  * 하나를 내보내는 동안의 단계이고, 이쪽은 작업지시를 다 돌린 뒤 한 번 일어나는 일이다.
  */
-type SessionPhase = 'idle' | 'ending' | 'ended' | 'alreadyEnded' | 'failed' | 'blocked';
+type SessionPhase = 'idle' | 'ending' | 'ended' | 'alreadyEnded' | 'failed' | 'denied';
 
 const quantityInput = (value: string): string => {
   const cleaned = value.replace(/[^\d.]/gu, '');
@@ -358,7 +358,7 @@ export const ProductionFlowScreen = () => {
    *    「지우지 말라」로 재확인). 목표 수량을 못 채우고 접거나 교대로 넘길 때는 그 단추를 쓴다.
    *    같은 일을 하는 자리를 둘로 늘리면 어느 쪽이 정본인지 정할 근거가 없다.
    */
-  const openSession = useOpenWorkSession(entry.workOrderId);
+  const openSession = useOpenWorkSession(entry.workOrderId, identity.terminalId);
   const [sessionPhase, setSessionPhase] = useState<SessionPhase>('idle');
 
   const sessionEnd = useWorkSessionEnd({
@@ -381,21 +381,34 @@ export const ProductionFlowScreen = () => {
   }, [sessionEnd.error]);
 
   useEffect(() => {
-    if (!endAfterRefetchRef.current) return;
-    /* 다시 읽는 중에는 판정하지 않는다 — 그 구간에는 옛 값이 그대로 나온다. */
-    if (currentLot.isFetching || currentLot.data !== null) return;
+    const verdict = judgeSessionEnd({
+      triggered: endAfterRefetchRef.current,
+      isFetching: currentLot.isFetching,
+      hasLot: currentLot.data !== null,
+      gate: gates.complete,
+      hasSession: openSession.session !== null,
+      isSessionPending: openSession.isPending,
+      hasWorkerNo: entry.workerNo !== null,
+    });
 
-    endAfterRefetchRef.current = false;
+    if (verdict === 'wait') return;
 
     /*
-     * ⛔ **권한이 없으면 발동하지 않는다.** 이 단말에 작업 완료 권한이 없으면 세션도 닫지
-     *    않는다 — 왜 열린 채인지는 배너가 말한다.
+     * ⛔ **방아쇠는 «판정이 끝난 뒤» 내린다.** 먼저 내리고 조건을 보면, 세션 조회가 아직 안
+     *    끝났거나 실패한 순간에 **요청도 안 나가고 배너도 안 뜬 채** 방아쇠만 사라진다 —
+     *    작업자는 닫힌 줄 알고 관리웹은 계속 막힌다(독립 검증 2026-09-16 지적 ②).
      */
-    if (gates.complete !== 'allowed') {
-      setSessionPhase('blocked');
+    endAfterRefetchRef.current = false;
+
+    if (verdict === 'denied') {
+      setSessionPhase('denied');
       return;
     }
-    if (openSession.session === null || entry.workerNo === null) return;
+    /* 닫아야 하는데 닫을 것을 모른다 — 「못 닫았다」로 말하고 다시 시도할 길을 남긴다. */
+    if (verdict === 'unknown') {
+      setSessionPhase('failed');
+      return;
+    }
 
     const body = buildSessionEnd(new Date());
     sessionEndBodyRef.current = body;
@@ -406,7 +419,23 @@ export const ProductionFlowScreen = () => {
      * 의존성에 넣으면 같은 방아쇠가 여러 번 돈다.
      */
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentLot.isFetching, currentLot.data]);
+  }, [
+    currentLot.isFetching,
+    currentLot.data,
+    openSession.session,
+    openSession.isPending,
+    gates.complete,
+  ]);
+
+  /*
+   * ⚠ **작업지시가 바뀌면 방아쇠를 내린다.** 앞 지시에서 세운 방아쇠가 남아 있으면, 다른
+   *   지시를 열었을 때 그쪽 LOT 이 비는 순간에 엉뚱하게 발동한다.
+   */
+  useEffect(() => {
+    endAfterRefetchRef.current = false;
+    sessionEndBodyRef.current = null;
+    setSessionPhase('idle');
+  }, [entry.workOrderId]);
 
   /**
    * 다시 보낸다 — **처음 보낸 것과 같은 본문으로.**
@@ -417,12 +446,21 @@ export const ProductionFlowScreen = () => {
    *    잡았다). ② 찍어야 할 시각은 «작업이 끝난 때»이지 «다시 눌러 본 때»가 아니다.
    */
   const retrySessionEnd = (): void => {
-    const body = sessionEndBodyRef.current;
-    if (body === null || openSession.session === null || entry.workerNo === null) return;
-
     sessionEnd.reset();
     setSessionPhase('ending');
-    sessionEnd.write(body);
+
+    const body = sessionEndBodyRef.current;
+    if (body !== null && openSession.session !== null && entry.workerNo !== null) {
+      sessionEnd.write(body);
+      return;
+    }
+
+    /*
+     * 아직 한 번도 못 보낸 경우다 — 세션을 몰라 멈춰 있었다. **방아쇠를 다시 세우고 세션을
+     * 다시 읽는다**: 답이 오면 위 효과가 이어서 보낸다.
+     */
+    endAfterRefetchRef.current = true;
+    openSession.refetch();
   };
 
   const onResultApplied = (outboxEntry: OutboxEntry): void => {
@@ -820,8 +858,8 @@ export const ProductionFlowScreen = () => {
         return t.flow.session.ended;
       case 'alreadyEnded':
         return t.flow.session.alreadyEnded;
-      case 'blocked':
-        return t.flow.session.blocked;
+      case 'denied':
+        return t.flow.session.denied;
       case 'failed':
         return sessionEnd.error?.kind === 'network'
           ? t.flow.session.offline
@@ -921,13 +959,8 @@ export const ProductionFlowScreen = () => {
       {sessionPhase !== 'idle' && (
         <div className="banner-slot">
           <AlertBanner
-            variant={
-              sessionPhase === 'ended' || sessionPhase === 'alreadyEnded'
-                ? 'info'
-                : sessionPhase === 'ending'
-                  ? 'info'
-                  : 'warning'
-            }
+            /* 닫혔거나 닫는 중이면 알리기만 한다. 못 닫은 것만 사람이 손볼 일이 남는다. */
+            variant={sessionPhase === 'failed' || sessionPhase === 'denied' ? 'warning' : 'info'}
             title={sessionStatusTitle}
           >
             {sessionPhase === 'failed' && (

@@ -108,7 +108,7 @@ export const productionResult: Translated<typeof ko.productionResult> = {
       alreadyEnded: 'Phiên làm việc đã được kết thúc trước đó.',
       failed: 'Không kết thúc được phiên làm việc.',
       retry: 'Thử kết thúc phiên lại',
-      blocked:
+      denied:
         'Máy trạm này không có quyền hoàn tất công việc của công đoạn này. Phiên làm việc được giữ mở.',
       offline: 'Mất kết nối nên chưa kết thúc được phiên làm việc. Hãy thử lại sau khi có kết nối.',
     },
