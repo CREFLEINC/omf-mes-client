@@ -210,11 +210,18 @@ export const useLabelPrintRunner = (workerNo: string | null): LabelPrintRunner =
 
         if (rendition !== null) {
           try {
+            /*
+             * ⛔ **화면이 짠 라벨은 언제나 `tspl` 이다.** 형식은 바이트가 정하지 셸 사정이
+             *    정하지 않는다 — `format` 을 그대로 넘기면 RAW 자리가 없는 셸에서 TSPL 명령이
+             *    `label.png` 로 저장돼 그림 대지에 얹히고, **깨진 라벨이 나오는데 앱은 성공으로
+             *    보고한다.** 자재 LOT 라벨도 같은 이유로 `'tspl'` 을 고정해 보낸다
+             *    (`pop-material-lot-label/mutations.ts`).
+             */
             await shell.save(
               new Uint8Array(rendition),
               target.label,
               new Date().toISOString(),
-              format,
+              target.command === undefined ? format : 'tspl',
             );
             printed += 1;
           } catch (error) {

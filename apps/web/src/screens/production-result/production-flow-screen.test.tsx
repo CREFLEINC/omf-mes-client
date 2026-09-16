@@ -269,6 +269,49 @@ describe('ProductionFlowScreen', () => {
   });
 
   /*
+   * ⛔ **라벨은 화면이 짜고 서버 그림은 받지 않는다**(사용자 지시 2026-09-16 · `label-tspl`).
+   *    이 배선이 되돌려지면 100 × 60 mm 좌표로 그려진 판이 다시 나가 80 × 30 mm 라벨지에서
+   *    잘린다 — 화면은 「인쇄 완료」로 보이므로 시험이 없으면 되돌림을 아무도 못 잡는다.
+   */
+  it('⛔ 발행하면 서버 그림을 받지 않고 화면이 짠 TSPL 을 그대로 셸에 넘긴다', async () => {
+    const writes: Request[] = [];
+    const renditionCalls: string[] = [];
+    const renditionSpy: StubRoute = {
+      match: (request) => pathOf(request).endsWith('/rendition'),
+      respond: (request) => {
+        renditionCalls.push(pathOf(request));
+
+        return jsonResponse({ errors: [{ message: '부르면 안 되는 경로' }] }, { status: 500 });
+      },
+    };
+    const save = vi.fn().mockResolvedValue('/tmp/lot.prn');
+    Object.defineProperty(window, 'pop', {
+      configurable: true,
+      value: { rendition: { save } },
+    });
+    const user = userEvent.setup();
+    renderScreen(writes, [renditionSpy]);
+
+    const output = await screen.findByRole('button', { name: t.flow.output.issue });
+    await waitFor(() => expect(output).toBeEnabled());
+    await user.click(output);
+
+    await waitFor(() => {
+      expect(save).toHaveBeenCalledTimes(1);
+    });
+    expect(renditionCalls).toEqual([]);
+
+    const [bytes, , , format] = save.mock.calls[0] as [Uint8Array, string, string, string];
+    const command = new TextDecoder().decode(bytes);
+
+    /* ⛔ 바이트가 TSPL 이면 형식도 TSPL 이다 — 셸 사정이 정하지 않는다. */
+    expect(format).toBe('tspl');
+    expect(command.startsWith('SIZE 80 mm,30 mm')).toBe(true);
+    expect(command).toContain(`,M2,"${LOT_NO}"`);
+    expect(command).toContain('"LOT ' + LOT_NO + '"');
+  });
+
+  /*
    * ⭐ **라벨은 화면이 직접 짠다**(사용자 지시 2026-09-16 · `label-tspl`). 서버에서 그림을 받는
    * 걸음이 사라져 이 시험의 옛 전제(`renditionFailed`)는 더 일어나지 않는다 — 같은 원칙을
    * **프린터로 보내다 실패한** 자리에서 잰다. 다시 눌러도 **같은 멱등 키로 같은 실패 사유만**
@@ -503,6 +546,10 @@ describe('ProductionFlowScreen', () => {
       expect(
         writes.filter((request) => pathOf(request) === '/app/document-issues/44001:report-print'),
       ).toHaveLength(1);
+    });
+    /* 인쇄까지 끝나면 스캔 칸이 열린다 — 여기서부터 LOT 마감으로 갈 수 있다. */
+    await waitFor(() => {
+      expect(screen.getByLabelText(t.flow.scan.label)).toBeEnabled();
     });
     expect(
       writes.filter((request) => pathOf(request) === '/production/production-results'),
