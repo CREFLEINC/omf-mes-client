@@ -39,6 +39,9 @@ const unit = (statusCode: ShippingUnitStatus, boxes: ShippingUnitBox[] = []): Sh
   customer: { partnerId: 1, partnerCode: '100003', partnerName: 'Samjin' },
   shipTo: { partnerId: 2, partnerCode: '901463', partnerName: 'Ha Noi' },
   boxCount: boxes.length,
+  createdAt: '2026-09-17T09:00:00+09:00',
+  /* ⚠ 낙관적 잠금 토큰 — 응답 ETag 와 같은 값이고 `:close` 가 `If-Match` 로 받는다. */
+  versionNo: 1,
   boxes,
   itemTotals: [],
 });
