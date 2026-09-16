@@ -95,8 +95,8 @@ export const queueResponse = (
 /**
  * 확정된 1회차. 수량이 합계 제약을 만족한다(480 + 15 + 5 = 500).
  *
- * ⛔ 이 화면은 「작성중」을 만들지 않는다 — 저장 한 번이 곧 확정이다. 그래서 기본 픽스처가
- * 확정본이다.
+ * ⛔ 이 화면은 `DRAFT` 를 만들지 않는다 — 저장 한 번이 곧 확정이다. 그래서 기본 픽스처가
+ * 확정본이다. ⚠ 상태 코드는 **영문**이다(2026-09-02 계약 개정 · `inspection-status.ts`).
  */
 export const confirmedRound: InspectionResultResponse = {
   inspectionResultId: 9101,
@@ -116,7 +116,7 @@ export const confirmedRound: InspectionResultResponse = {
   inspectorId: 4001,
   inspectedAt: '2026-08-30T10:00:00+09:00',
   confirmedAt: '2026-08-30T10:00:00+09:00',
-  statusCode: '확정',
+  statusCode: 'CONFIRMED',
   versionNo: 1,
 };
 

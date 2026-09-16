@@ -2,6 +2,7 @@ import type { ApiClient, components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 
+import { CONFIRMED_STATUS } from './inspection-status';
 import { useApiClient } from '../../patterns/api-context';
 import { useMasterWrite, type MasterWriteResult, type WriteHeaders } from '../../patterns/master';
 import { runRequest, type ApiCallResult } from '../../patterns/request';
@@ -199,7 +200,7 @@ export interface SaveResultVariables {
   heldQty: number;
   uomId: number;
   /**
-   * 고른 종합 판정. **`statusCode='확정'` 이면 서버가 필수로 강제한다.**
+   * 고른 종합 판정. **`statusCode='CONFIRMED'` 이면 서버가 필수로 강제한다.**
    *
    * ⛔ 싣지 않으면 저장 뒤 회차를 다시 부를 때 서버가 «저장 전» 판정을 돌려주고, 초안 되돌림이
    * 사용자가 고른 값을 그것으로 덮는다 — 이 화면은 확정이 한 번이라 **덮인 값 그대로 LOT 이
@@ -221,9 +222,6 @@ export interface SaveResultVariables {
    */
   previousResultId: number | null;
 }
-
-/** 계약이 못박은 두 값 중 이 화면이 쓰는 쪽. **임시 저장을 두지 않는다.** */
-const CONFIRMED_STATUS = '확정';
 
 /**
  * 아직 고르지 않은 판정은 **키 자체를 싣지 않는다** — 빈 문자열은 코드가 아니고, 보내면
