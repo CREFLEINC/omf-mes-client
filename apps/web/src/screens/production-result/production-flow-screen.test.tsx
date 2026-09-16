@@ -19,6 +19,7 @@ const LOT_NO = 'LOT-SYN-0001';
 /** 상세 조회가 내려주는 판 번호. 마감이 `If-Match` 로 되돌려 보내야 하는 값이다(#1005). */
 const LOT_ETAG = '"7"';
 const WORK_ORDER_ID = 701;
+const WORK_SESSION_ID = 8801;
 const pathOf = (request: Request): string => new URL(request.url).pathname;
 
 const routes = (writes: Request[]): StubRoute[] => [
@@ -85,6 +86,27 @@ const routes = (writes: Request[]): StubRoute[] => [
         page: { page: 1, size: 20, total: 1 },
       });
     },
+  },
+  /*
+   * 열린 작업 세션. **자동 종료의 대상이다** — 마지막 LOT 을 마감하면 이 세션을 닫는다.
+   * 이 줄이 없으면 세션 조회가 스텁에 걸리지 않아 다른 시험까지 함께 넘어진다.
+   */
+  {
+    match: (request) => request.method === 'GET' && pathOf(request) === '/production/work-sessions',
+    respond: () =>
+      jsonResponse({
+        items: [
+          {
+            workSessionId: WORK_SESSION_ID,
+            workOrderId: WORK_ORDER_ID,
+            sessionNo: 1,
+            terminalId: 10,
+            startedAt: '2026-09-16T09:00:00+09:00',
+            statusCode: 'RUNNING',
+          },
+        ],
+        page: { page: 1, size: 20, total: 1 },
+      }),
   },
   {
     match: (request) => pathOf(request) === '/quality/inspection-requests',
@@ -1100,5 +1122,265 @@ describe('ProductionFlowScreen — 긴급 표식', () => {
     await within(header()).findByText(/WO-SYN-001/);
 
     expect(within(header()).queryByText(t.flow.header.emergency)).not.toBeInTheDocument();
+  });
+});
+
+/*
+ * ## 작업 세션 자동 종료
+ *
+ * 마지막 LOT 을 마감하면 세션이 닫힌다. 안 닫히면 관리웹의 W/O 마감이 `409
+ * OPEN_SESSION_EXISTS` 로 막혀, 현장은 다 끝냈는데 지시가 영영 열려 있다.
+ *
+ * ⛔ **사람이 누르는 [세션 종료]는 이 화면 것이 아니다** — `P-02-10`(작업 중단) 소관이다.
+ *    여기서 재는 것은 «저절로 닫히는가»뿐이다.
+ */
+describe('ProductionFlowScreen · 작업 세션 자동 종료', () => {
+  const END_PATH = `/production/work-sessions/${String(WORK_SESSION_ID)}:end`;
+
+  beforeEach(() => {
+    globalThis.localStorage.clear();
+    Object.defineProperty(window, 'pop', {
+      configurable: true,
+      value: { rendition: { save: vi.fn().mockResolvedValue('/tmp/lot.prn') } },
+    });
+  });
+
+  afterEach(() => {
+    globalThis.localStorage.clear();
+    Reflect.deleteProperty(window, 'pop');
+  });
+
+  /**
+   * 마감 전에는 LOT 한 건을 주고, **마감이 나간 뒤부터는 빈 목록**을 준다 — 「선발행 LOT 이
+   * 더 없다」가 그 모양이다.
+   */
+  const lotsDrainedAfterComplete = (state: { completed: boolean }): StubRoute => ({
+    match: (request) => pathOf(request) === '/trace/lots',
+    respond: (request) => {
+      const url = new URL(request.url);
+      if (url.searchParams.get('completed') === 'true') {
+        return jsonResponse({ items: [], page: { page: 1, size: 100, total: 0 } });
+      }
+      if (state.completed) {
+        return jsonResponse({ items: [], page: { page: 1, size: 20, total: 0 } });
+      }
+
+      return jsonResponse({
+        items: [
+          {
+            lotId: LOT_ID,
+            lotNo: LOT_NO,
+            itemId: 101,
+            lotTypeCode: 'PRODUCTION',
+            plantId: 1,
+            initialQty: 12,
+            uomId: 1,
+            sourceTypeCode: 'WORK_ORDER',
+            sourceId: WORK_ORDER_ID,
+            statusCode: 'NORMAL',
+            workOrderSequenceNo: 1,
+            workOrderLotCount: 1,
+            progress: { goodQty: 0, varianceQty: 12 },
+          },
+        ],
+        page: { page: 1, size: 20, total: 1 },
+      });
+    },
+  });
+
+  const completeDrains = (state: { completed: boolean }, writes: Request[]): StubRoute => ({
+    match: (request) => pathOf(request) === `/trace/lots/${String(LOT_ID)}:complete`,
+    respond: (request) => {
+      writes.push(request.clone());
+      state.completed = true;
+
+      return jsonResponse({
+        lotId: LOT_ID,
+        lotNo: LOT_NO,
+        completedAt: '2026-09-16T10:00:00+09:00',
+      });
+    },
+  });
+
+  /** 발행 → 인쇄 → 스캔까지 몰고 가 LOT 하나를 마감시킨다. */
+  const completeCurrentLot = async (user: ReturnType<typeof userEvent.setup>): Promise<void> => {
+    const output = await screen.findByRole('button', { name: t.flow.output.issue });
+    await waitFor(() => expect(output).toBeEnabled());
+    await user.click(output);
+
+    const scan = await screen.findByLabelText(t.flow.scan.label);
+    await waitFor(() => expect(scan).toBeEnabled());
+    await user.type(scan, LOT_NO);
+  };
+
+  it('마지막 LOT 을 마감하면 세션 종료가 나간다 — 본문은 끝 시각 하나다', async () => {
+    const writes: Request[] = [];
+    const state = { completed: false };
+    const endRoute: StubRoute = {
+      match: (request) => request.method === 'POST' && pathOf(request) === END_PATH,
+      respond: (request) => {
+        writes.push(request.clone());
+        return jsonResponse({
+          workSessionId: WORK_SESSION_ID,
+          workOrderId: WORK_ORDER_ID,
+          sessionNo: 1,
+          terminalId: 10,
+          startedAt: '2026-09-16T09:00:00+09:00',
+          endedAt: '2026-09-16T10:00:00+09:00',
+          statusCode: 'ENDED',
+        });
+      },
+    };
+    const user = userEvent.setup();
+    renderScreen(writes, [
+      endRoute,
+      completeDrains(state, writes),
+      lotsDrainedAfterComplete(state),
+    ]);
+
+    await completeCurrentLot(user);
+
+    const end = await waitFor(() => {
+      const found = writes.find((request) => pathOf(request) === END_PATH);
+      expect(found).toBeDefined();
+      return found as Request;
+    });
+
+    /* 귀속 사번과 멱등 키는 계약이 «필수»로 둔 헤더다 — 없으면 서버가 거부한다. */
+    expect(end.headers.get('X-Worker-No')).toBe('100029');
+    expect(end.headers.get('Idempotency-Key')).not.toBeNull();
+
+    /*
+     * ⛔ **`stopReasonCode` 를 싣지 않는다** — 계약이 「비우기로 정했다」로 못박은 칸이다
+     *    (A-21 · A-25). 자리가 있다고 채우면 정한 것을 화면이 되돌린다.
+     */
+    const body = (await end.json()) as Record<string, unknown>;
+    expect(Object.keys(body)).toEqual(['endedAt']);
+
+    expect(await screen.findByText(t.flow.session.ended)).toBeInTheDocument();
+  });
+
+  it('생산할 LOT 이 남아 있으면 세션을 닫지 않는다', async () => {
+    const writes: Request[] = [];
+    /* 마감해도 목록이 마르지 않는다 — 이 작업지시에 선발행 LOT 이 더 달려 있는 경우다. */
+    const state = { completed: false };
+    const user = userEvent.setup();
+    renderScreen(writes, [
+      completeDrains({ completed: false }, writes),
+      lotsDrainedAfterComplete(state),
+    ]);
+
+    await completeCurrentLot(user);
+
+    await waitFor(() => {
+      expect(writes.some((request) => pathOf(request).endsWith(':complete'))).toBe(true);
+    });
+    expect(writes.some((request) => pathOf(request) === END_PATH)).toBe(false);
+    expect(screen.queryByText(t.flow.session.ended)).not.toBeInTheDocument();
+  });
+
+  it('작업 완료 권한이 없으면 마감도 세션 종료도 일어나지 않는다', async () => {
+    const writes: Request[] = [];
+    const deniedGate: StubRoute = {
+      match: (request) => pathOf(request) === '/mdm/terminals/10/processes',
+      respond: () =>
+        jsonResponse({
+          items: [
+            { processId: 20, canInputResult: true, canPrintLabel: true, canCompleteWork: false },
+          ],
+        }),
+    };
+    const state = { completed: false };
+    const user = userEvent.setup();
+    renderScreen(writes, [
+      deniedGate,
+      completeDrains(state, writes),
+      lotsDrainedAfterComplete(state),
+    ]);
+
+    const output = await screen.findByRole('button', { name: t.flow.output.issue });
+    await waitFor(() => expect(output).toBeEnabled());
+    await user.click(output);
+
+    /* 권한이 없으면 스캔 칸 자체가 잠긴다 — 마감에 이를 길이 없고, 따라서 세션도 닫히지 않는다. */
+    const scan = await screen.findByLabelText(t.flow.scan.label);
+    await waitFor(() => expect(scan).toBeDisabled());
+    expect(writes.some((request) => pathOf(request) === END_PATH)).toBe(false);
+  });
+
+  it('종료가 실패하면 다시 시도를 내고 같은 멱등 키로 다시 보낸다', async () => {
+    const writes: Request[] = [];
+    const state = { completed: false };
+    let attempts = 0;
+    const endRoute: StubRoute = {
+      match: (request) => request.method === 'POST' && pathOf(request) === END_PATH,
+      respond: (request) => {
+        writes.push(request.clone());
+        attempts += 1;
+        if (attempts === 1) return jsonResponse({ message: '일시 장애' }, { status: 500 });
+
+        return jsonResponse({
+          workSessionId: WORK_SESSION_ID,
+          workOrderId: WORK_ORDER_ID,
+          sessionNo: 1,
+          terminalId: 10,
+          startedAt: '2026-09-16T09:00:00+09:00',
+          endedAt: '2026-09-16T10:00:00+09:00',
+          statusCode: 'ENDED',
+        });
+      },
+    };
+    const user = userEvent.setup();
+    renderScreen(writes, [
+      endRoute,
+      completeDrains(state, writes),
+      lotsDrainedAfterComplete(state),
+    ]);
+
+    await completeCurrentLot(user);
+
+    const retry = await screen.findByRole('button', { name: t.flow.session.retry });
+    await user.click(retry);
+
+    await waitFor(() => {
+      expect(attempts).toBe(2);
+    });
+
+    /*
+     * ⭐ **같은 키로 다시 보낸다.** 앞 시도가 서버에 닿았는지 모르는 채 새 키로 보내면 서버가
+     *    두 요청을 묶어 주지 못해, 되돌릴 수 없는 전이가 두 번 실행될 여지가 생긴다(C-1 #5).
+     */
+    const ends = writes.filter((request) => pathOf(request) === END_PATH);
+    expect(ends).toHaveLength(2);
+    expect(ends[0]?.headers.get('Idempotency-Key')).toBe(ends[1]?.headers.get('Idempotency-Key'));
+
+    expect(await screen.findByText(t.flow.session.ended)).toBeInTheDocument();
+  });
+
+  it('이미 종료된 세션이면 실패가 아니라 「이미 종료」로 말한다', async () => {
+    const writes: Request[] = [];
+    const state = { completed: false };
+    const endRoute: StubRoute = {
+      match: (request) => request.method === 'POST' && pathOf(request) === END_PATH,
+      respond: (request) => {
+        writes.push(request.clone());
+        return jsonResponse(
+          { errors: [{ scope: 'screen', code: 'STATE_LOCKED', message: '이미 종료된 세션' }] },
+          { status: 400 },
+        );
+      },
+    };
+    const user = userEvent.setup();
+    renderScreen(writes, [
+      endRoute,
+      completeDrains(state, writes),
+      lotsDrainedAfterComplete(state),
+    ]);
+
+    await completeCurrentLot(user);
+
+    expect(await screen.findByText(t.flow.session.alreadyEnded)).toBeInTheDocument();
+    /* 다시 눌러도 풀리지 않는 상태라 재시도를 권하지 않는다. */
+    expect(screen.queryByRole('button', { name: t.flow.session.retry })).not.toBeInTheDocument();
   });
 });

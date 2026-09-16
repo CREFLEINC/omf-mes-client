@@ -102,6 +102,16 @@ export const productionResult: Translated<typeof ko.productionResult> = {
       failed: 'Không đóng được LOT. Hãy quét lại cùng nhãn.',
       alreadyCompleted: 'LOT này đã đóng. Đang tải lại trạng thái LOT hiện tại.',
     },
+    session: {
+      ending: 'Đang kết thúc phiên làm việc.',
+      ended: 'Đã kết thúc phiên làm việc.',
+      alreadyEnded: 'Phiên làm việc đã được kết thúc trước đó.',
+      failed: 'Không kết thúc được phiên làm việc.',
+      retry: 'Thử kết thúc phiên lại',
+      blocked:
+        'Máy trạm này không có quyền hoàn tất công việc của công đoạn này. Phiên làm việc được giữ mở.',
+      offline: 'Mất kết nối nên chưa kết thúc được phiên làm việc. Hãy thử lại sau khi có kết nối.',
+    },
     gate: {
       input: 'Máy trạm này không dùng được nhập kết quả sản xuất.',
       print: 'Máy trạm này không dùng được in nhãn.',

@@ -12,6 +12,7 @@ import { useResultEntry } from './entry-context';
 import { useFlowGates } from './flow-gating';
 import { useDocumentIssue, useLotComplete, useSerialIssue } from './flow-mutations';
 import { useLabelPrintRunner, type PrintTarget } from './flow-print';
+import { buildSessionEnd, useOpenWorkSession, useWorkSessionEnd } from './session';
 import { buildProductionLotLabel } from './label-tspl';
 import {
   defaultPrinter,
@@ -85,6 +86,12 @@ type OutputPhase =
   | 'legacyMismatch'
   | 'completing'
   | 'completed';
+
+/**
+ * 작업 세션 자동 종료의 진행 상태. **출력 흐름(`OutputPhase`)과 다른 축이다** — 저쪽은 LOT
+ * 하나를 내보내는 동안의 단계이고, 이쪽은 작업지시를 다 돌린 뒤 한 번 일어나는 일이다.
+ */
+type SessionPhase = 'idle' | 'ending' | 'ended' | 'alreadyEnded' | 'failed' | 'blocked';
 
 const quantityInput = (value: string): string => {
   const cleaned = value.replace(/[^\d.]/gu, '');
@@ -205,6 +212,19 @@ export const ProductionFlowScreen = () => {
   const [pendingSerialQuantity, setPendingSerialQuantity] = useState(0);
   const [pendingTagDocuments, setPendingTagDocuments] = useState<DocumentIssueCreate[]>([]);
   const currentLotIdRef = useRef<number | null>(null);
+  /*
+   * 방금 이 화면이 LOT 을 마감했는가. **자동 세션 종료의 방아쇠다.**
+   *
+   * ⛔ **「지금 LOT 이 없다」만으로 닫지 않는다.** 그 조건만 보면 다른 사람이 이미 다 돌린
+   *    작업지시를 열어 보기만 해도 세션이 닫힌다 — 되돌릴 수 없는 전이다. 닫는 근거는
+   *    «이 단말이 마지막 LOT 을 마감했다»는 사실이라, 마감 성공에서 세우고 한 번 쓰면 내린다.
+   *
+   * ⚠ **상태가 아니라 참조다.** 이 값이 바뀌었다고 화면을 다시 그릴 이유가 없고, 렌더 중에
+   *   읽히지도 않는다.
+   */
+  const endAfterRefetchRef = useRef(false);
+  /** 처음 보낸 종료 본문. 재시도가 **같은 값·같은 멱등 키**로 나가게 붙들어 둔다. */
+  const sessionEndBodyRef = useRef<ReturnType<typeof buildSessionEnd> | null>(null);
 
   const completedLots = useCompletedLots(entry.workOrderId, isCompletedOpen, completedPage);
   const isTagTarget = item.data === undefined ? null : requiresIdentificationTag(item.data);
@@ -316,9 +336,94 @@ export const ProductionFlowScreen = () => {
       setOutputPhase('completed');
       setScanValue('');
       setScanMismatch(false);
+      /*
+       * ⭐ **여기서 세션을 닫지 않는다.** 이 LOT 이 마지막인지는 아직 모른다 — 작업지시 하나에
+       *    선발행 LOT 이 여럿 달릴 수 있어, 다시 읽어 「다음 LOT 이 없다」가 확인된 뒤에
+       *    닫는다(아래 자동 종료 effect).
+       */
+      endAfterRefetchRef.current = true;
       void currentLot.refetch();
     },
   });
+
+  /*
+   * ## 작업 세션 자동 종료
+   *
+   * 마지막 LOT 을 마감하고 나면 그 작업지시에서 더 생산할 것이 없다 — 그런데 세션은 열린 채
+   * 남아, 관리웹의 W/O 마감이 `409 OPEN_SESSION_EXISTS` 로 막힌다. 현장은 그 사실을 볼 수
+   * 없으므로 **닫는 것도 이 화면이 한다.**
+   *
+   * ⛔ **손으로 닫는 단추를 여기 두지 않는다.** [세션 종료] 단추는 `P-02-10`(작업 중단) 화면
+   *    소관이고 이미 서 있다(2026-09-06 게이트 승인 · `omf-mes#79` · 2026-09-11 설계 회신에서
+   *    「지우지 말라」로 재확인). 목표 수량을 못 채우고 접거나 교대로 넘길 때는 그 단추를 쓴다.
+   *    같은 일을 하는 자리를 둘로 늘리면 어느 쪽이 정본인지 정할 근거가 없다.
+   */
+  const openSession = useOpenWorkSession(entry.workOrderId);
+  const [sessionPhase, setSessionPhase] = useState<SessionPhase>('idle');
+
+  const sessionEnd = useWorkSessionEnd({
+    workSessionId: openSession.session?.workSessionId ?? null,
+    workerNo: entry.workerNo ?? '',
+    onSuccess: () => {
+      setSessionPhase('ended');
+      openSession.refetch();
+    },
+  });
+
+  useEffect(() => {
+    if (sessionEnd.error === null) return;
+
+    /*
+     * ⭐ **「이미 닫혀 있다」를 실패로 말하지 않는다.** 원하던 상태가 이미 서 있으므로 작업자가
+     *    할 일이 없다 — 실패로 알리면 될 때까지 다시 누른다.
+     */
+    setSessionPhase(sessionEnd.error.kind === 'stateLocked' ? 'alreadyEnded' : 'failed');
+  }, [sessionEnd.error]);
+
+  useEffect(() => {
+    if (!endAfterRefetchRef.current) return;
+    /* 다시 읽는 중에는 판정하지 않는다 — 그 구간에는 옛 값이 그대로 나온다. */
+    if (currentLot.isFetching || currentLot.data !== null) return;
+
+    endAfterRefetchRef.current = false;
+
+    /*
+     * ⛔ **권한이 없으면 발동하지 않는다.** 이 단말에 작업 완료 권한이 없으면 세션도 닫지
+     *    않는다 — 왜 열린 채인지는 배너가 말한다.
+     */
+    if (gates.complete !== 'allowed') {
+      setSessionPhase('blocked');
+      return;
+    }
+    if (openSession.session === null || entry.workerNo === null) return;
+
+    const body = buildSessionEnd(new Date());
+    sessionEndBodyRef.current = body;
+    setSessionPhase('ending');
+    sessionEnd.write(body);
+    /*
+     * 쓰기 함수와 조회 결과는 렌더마다 달라진다. **LOT 이 비는 그 순간만** 이어서 처리한다 —
+     * 의존성에 넣으면 같은 방아쇠가 여러 번 돈다.
+     */
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentLot.isFetching, currentLot.data]);
+
+  /**
+   * 다시 보낸다 — **처음 보낸 것과 같은 본문으로.**
+   *
+   * ⛔ **끝 시각을 다시 찍지 않는다.** 두 가지가 한꺼번에 어긋난다. ① 멱등 키는 「이 값을 이
+   *    대상에 한 번만」이라는 뜻이라 값이 바뀌면 새 키가 나가고, 그러면 서버가 앞 시도와 묶어
+   *    주지 못해 **되돌릴 수 없는 전이가 두 번 실행될 여지**가 생긴다(C-1 #5 · 실측으로 시험이
+   *    잡았다). ② 찍어야 할 시각은 «작업이 끝난 때»이지 «다시 눌러 본 때»가 아니다.
+   */
+  const retrySessionEnd = (): void => {
+    const body = sessionEndBodyRef.current;
+    if (body === null || openSession.session === null || entry.workerNo === null) return;
+
+    sessionEnd.reset();
+    setSessionPhase('ending');
+    sessionEnd.write(body);
+  };
 
   const onResultApplied = (outboxEntry: OutboxEntry): void => {
     const allocation = outboxEntry.body.lotAllocations?.[0];
@@ -706,6 +811,26 @@ export const ProductionFlowScreen = () => {
     }
   })();
 
+  /** 세션 종료 배너에 낼 한 줄. 연결이 끊긴 실패는 따로 말한다 — 할 일이 다르다. */
+  const sessionStatusTitle = (() => {
+    switch (sessionPhase) {
+      case 'ending':
+        return t.flow.session.ending;
+      case 'ended':
+        return t.flow.session.ended;
+      case 'alreadyEnded':
+        return t.flow.session.alreadyEnded;
+      case 'blocked':
+        return t.flow.session.blocked;
+      case 'failed':
+        return sessionEnd.error?.kind === 'network'
+          ? t.flow.session.offline
+          : t.flow.session.failed;
+      case 'idle':
+        return '';
+    }
+  })();
+
   const uomLabel = uom.labelOf(lot?.uomId ?? workOrder.data?.uomId) ?? '';
   const completedBoundary = completedLotPageBoundary(completedLots.data?.page);
 
@@ -785,6 +910,32 @@ export const ProductionFlowScreen = () => {
       {currentLot.data === null && (
         <div className="banner-slot">
           <AlertBanner variant="info" title={t.flow.currentLot.none} />
+        </div>
+      )}
+      {/*
+       * 작업 세션 자동 종료의 결과. **LOT 이 없다는 안내 바로 아래**에 선다 — 「더 만들 것이
+       * 없다」와 「그래서 세션을 닫았다」는 한 사건의 앞뒤라 떨어뜨리면 읽히지 않는다.
+       *
+       * ⛔ **서버 오류 원문을 싣지 않는다.** 작업자에게는 다음 행동만 말한다.
+       */}
+      {sessionPhase !== 'idle' && (
+        <div className="banner-slot">
+          <AlertBanner
+            variant={
+              sessionPhase === 'ended' || sessionPhase === 'alreadyEnded'
+                ? 'info'
+                : sessionPhase === 'ending'
+                  ? 'info'
+                  : 'warning'
+            }
+            title={sessionStatusTitle}
+          >
+            {sessionPhase === 'failed' && (
+              <Button onClick={retrySessionEnd} disabled={sessionEnd.isSaving}>
+                {t.flow.session.retry}
+              </Button>
+            )}
+          </AlertBanner>
         </div>
       )}
       {pendingPqc.isError && (
