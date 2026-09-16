@@ -13,7 +13,6 @@ export const shippingUnit: Translated<typeof ko.shippingUnit> = {
     failed: 'Không tải được danh sách lô xuất hàng.',
     empty: 'Không còn lô xuất hàng nào có kiện chưa cấu thành.',
     boxes: (count: number): string => `${String(count)} kiện chưa cấu thành`,
-    window: (days: number): string => `Chỉ hiện lô xuất hàng trong ${String(days)} ngày gần đây.`,
   },
 
   unit: {

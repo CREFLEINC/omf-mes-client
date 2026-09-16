@@ -72,7 +72,7 @@ interface Options {
   /** `:add-box` 가 거절할 사유. 없으면 받아들인다. */
   reject?: { code: string; field: string; message?: string };
   /** 관찰용 — 나간 요청을 담는다. */
-  seen?: { path: string; method: string; ifMatch: string | null; body: unknown }[];
+  seen?: { path: string; query: string; method: string; ifMatch: string | null; body: unknown }[];
   /** `:add-box`·상세가 돌려줄 ETag 차례. */
   etags?: string[];
 }
@@ -88,6 +88,7 @@ const renderScreen = (options: Options = {}) => {
   const record = async (request: Request): Promise<void> => {
     options.seen?.push({
       path: pathOf(request),
+      query: new URL(request.url).search,
       method: request.method,
       ifMatch: request.headers.get('If-Match'),
       body: request.body === null ? null : await request.clone().json(),
@@ -97,7 +98,11 @@ const renderScreen = (options: Options = {}) => {
   const routes: StubRoute[] = [
     {
       match: (request) => pathOf(request) === '/logistics/shipments',
-      respond: () => jsonResponse({ items: [SHIPMENT], page: { page: 1, size: 50, total: 1 } }),
+      respond: async (request) => {
+        await record(request);
+
+        return jsonResponse({ items: [SHIPMENT], page: { page: 1, size: 50, total: 1 } });
+      },
     },
     {
       match: (request) => pathOf(request) === '/mdm/code-values',
@@ -251,13 +256,23 @@ describe('P-04-05 출하 단위 구성', () => {
   });
 
   /*
-   * ⚠ **창을 늘 적는다.** 계약이 기간을 필수로 두어 창 밖의 미구성 출하는 목록에 서지 않는다 —
-   *   적지 않으면 담당은 남은 것이 없다고 읽는다.
+   * ⛔ **목록에 기간을 주지 않는다.** 「구성할 것이 남았나」는 날짜와 무관한 물음이라, 창을
+   *    끼우면 어제 출하한 건의 남은 상자가 창 밖으로 빠져 이 화면에서 영영 안 보인다. 기간이
+   *    **선택이 되는 조건이 `hasUnassignedPackedBox`** 이므로 그 축이 사라지면 기간은 다시
+   *    필수다 — 둘을 한 시험에서 함께 붙든다.
    */
-  it('목록이 훑는 창을 함께 적는다', async () => {
-    renderScreen();
+  it('미구성 상자 축만 걸고 기간은 주지 않는다', async () => {
+    const seen: Options['seen'] = [];
+    renderScreen({ seen });
 
-    expect(await screen.findByText(t.entry.window(30))).toBeInTheDocument();
+    await screen.findByRole('combobox', { name: t.entry.label });
+
+    const list = seen.find((call) => call.path === '/logistics/shipments');
+    expect(list).toBeDefined();
+
+    const query = new URLSearchParams(list?.query ?? '');
+    expect(query.get('hasUnassignedPackedBox')).toBe('true');
+    expect([...query.keys()].filter((key) => key.startsWith('shipDate'))).toEqual([]);
   });
 
   /*

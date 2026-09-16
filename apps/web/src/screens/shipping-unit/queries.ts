@@ -96,37 +96,6 @@ export const useShippingUnitDetail = (
 /** 한 번에 받아 둘 출하 수. 구성할 것이 남은 건만 오므로 많지 않다. */
 const SHIPMENT_SIZE = 50;
 
-/**
- * 목록이 훑는 기간.
- *
- * ⚠⚠ **이 창은 우리가 고른 것이 아니다.** 계약이 `shipDateFrom` 을 **필수**로 두었다
- *    (「기간 필수(L-3)」). 「구성할 것이 남았는가」는 날짜와 무관한 물음인데 기간을 반드시
- *    줘야 하므로, **창 밖에서 아직 구성되지 않은 출하는 이 목록에 서지 않는다.**
- *    ⛔ 그 사실을 숨기지 않는다 — 화면이 창을 함께 적는다(전례 ISSUE-QR-01 대기 목록).
- *    서버가 이 축을 선택으로 열면 이 상수와 화면의 안내가 함께 사라진다(통합 담당에 요청).
- *
- * ⚠ 오늘 하루로 좁히지 않는다 — 어제 포장한 상자가 오늘 구성되는 일이 흔하다.
- */
-const SHIPMENT_WINDOW_DAYS = 30;
-
-const pad = (value: number): string => String(value).padStart(2, '0');
-
-/**
- * 창이 시작하는 **날짜**(`YYYY-MM-DD`).
- *
- * ⛔ **`toISOString()` 을 쓰지 않는다.** 계약이 이 축에 `format` 을 **적어 두지 않아** 무엇을
- *    받는지 말하지 않는다 — 같은 오퍼레이션의 다른 화면이 현지 날짜를 보내 동작하므로 그것을
- *    따른다(`packing-result/queries.ts`). ISSUE-QR-01 D6 이 이 자리에서 400 을 맞았다.
- * ⛔ **UTC 로 자르지 않는다.** 한국 시각 오전 9시 이전을 전날로 밀어 창이 하루 어긋난다.
- */
-const windowStart = (now: Date): string => {
-  const from = new Date(now);
-  from.setDate(from.getDate() - SHIPMENT_WINDOW_DAYS);
-
-  return `${String(from.getFullYear())}-${pad(from.getMonth() + 1)}-${pad(from.getDate())}`;
-};
-
-export { SHIPMENT_WINDOW_DAYS };
 
 /**
  * 구성할 것이 남은 출하 — **서버가 걸러 준다.**
@@ -147,13 +116,13 @@ export const useComposableShipments = (): UseQueryResult<ComposableShipment[]> =
     queryFn: async () => {
       const data = await runRequest(() =>
         client.GET('/logistics/shipments', {
-          params: {
-            query: {
-              hasUnassignedPackedBox: true,
-              shipDateFrom: windowStart(new Date()),
-              size: SHIPMENT_SIZE,
-            },
-          },
+          /*
+           * ⛔ **기간을 주지 않는다.** 「구성할 것이 남았나」는 날짜와 무관한 물음이고, 기간을
+           *    강제하면 어제 출하한 건의 남은 상자가 창 밖으로 빠져 이 화면에서 영영 안 보인다.
+           *    ⚠ 그래서 `hasUnassignedPackedBox=true` 일 때만 기간이 선택이다 — 축을 끄면
+           *    기간은 다시 필수다(서버 e2e L-19 가 양방향을 잠근다).
+           */
+          params: { query: { hasUnassignedPackedBox: true, size: SHIPMENT_SIZE } },
         }),
       );
 

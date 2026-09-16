@@ -26,7 +26,6 @@ import {
 import { useDeliveryIssue, type DeliveryIssueOutcome } from './delivery-issue';
 import { useShippingUnitWrites } from './mutations';
 import {
-  SHIPMENT_WINDOW_DAYS,
   useComposableShipments,
   useShippingUnitDetail,
   useShippingUnitTypes,
@@ -303,12 +302,6 @@ export const ShippingUnitScreen = () => {
         ) : (shipments.data ?? []).length === 0 ? (
           <p className="field-note">{t.entry.empty}</p>
         ) : null}
-        {/*
-         * ⚠ **창을 늘 적는다.** 계약이 기간을 필수로 두어(「기간 필수(L-3)」) 창 밖에서 아직
-         *   구성되지 않은 출하는 이 목록에 서지 않는다 — 적지 않으면 담당은 남은 것이 없다고
-         *   읽는다. 서버가 기간을 선택으로 열면 이 줄이 사라진다.
-         */}
-        <p className="field-note">{t.entry.window(SHIPMENT_WINDOW_DAYS)}</p>
       </section>
 
       {/* ② 출하 단위 — 유형을 고르고 새로 만든다. */}
