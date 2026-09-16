@@ -5770,3 +5770,38 @@
 .pop-ui .scan-outcome > [role='status'] > :first-child {
   margin-block-start: 2px;
 }
+
+/*
+ * 작업 세션 자동 종료가 어긋났을 때의 한 줄 — **스캔 구획 바닥**에 선다(사용자 지시 2026-09-16).
+ *
+ * ⭐ **머리의 띠(`banner-slot`)가 아니다.** 띠 자리에 세웠더니 「생산할 LOT이 없습니다」 바로
+ *    아래 같은 크기의 줄이 하나 더 붙어, 둘 중 어느 것이 지금 할 일인지 흐려졌다. 세션 닫기는
+ *    마감 흐름의 «끝»이라 그 흐름이 끝나는 자리에 눕히고, 글자도 한 급 낮춘다.
+ *
+ * ⚠ 단추를 글자와 **같은 줄**에 세운다 — 스캔 구획은 세로 예산이 빠듯해(1024×768에서 이미
+ *   넘친다) 줄을 하나 더 쓰면 그만큼 아래가 잘린다.
+ */
+.pop-ui .production-flow-session-note {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+}
+
+.pop-ui .production-flow-session-note > .field-error {
+  margin-top: 0;
+  font-size: var(--pop-label);
+}
+
+/*
+ * ⛔ **이 단추는 액션 줄의 규격을 물려받지 않는다.** 화면 바닥의 큰 단추(최소 72px)와 달리
+ *    딸린 안내에 붙는 곁단추라, 그 규격을 그대로 쓰면 한 줄이 통째로 부풀어 스캔 칸을 민다.
+ */
+.pop-ui .production-flow-session-note > button {
+  flex: 0 0 auto;
+  min-width: 0;
+  min-height: 40px;
+  padding-inline: var(--space-3);
+  font-size: var(--pop-label);
+}

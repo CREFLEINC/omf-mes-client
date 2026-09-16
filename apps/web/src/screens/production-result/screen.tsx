@@ -952,25 +952,6 @@ export const ProductionFlowScreen = () => {
           <AlertBanner variant="info" title={t.flow.currentLot.none} />
         </div>
       )}
-      {/*
-       * 작업 세션 자동 종료가 **어긋났을 때만** 선다.
-       *
-       * ⛔ **잘 닫힌 것은 말하지 않는다**(사용자 지시 2026-09-16). 바로 위 「생산할 LOT이
-       *    없습니다」가 이미 그 자리를 지키고 있어, 성공 안내를 얹으면 같은 사건이 두 줄로 겹친다.
-       *
-       * ⛔ **서버 오류 원문을 싣지 않는다.** 작업자에게는 다음 행동만 말한다.
-       */}
-      {(sessionPhase === 'failed' || sessionPhase === 'denied') && (
-        <div className="banner-slot">
-          <AlertBanner variant="warning" title={sessionStatusTitle}>
-            {sessionPhase === 'failed' && (
-              <Button onClick={retrySessionEnd} disabled={sessionEnd.isSaving}>
-                {t.flow.session.retry}
-              </Button>
-            )}
-          </AlertBanner>
-        </div>
-      )}
       {pendingPqc.isError && (
         <div className="banner-slot">
           <AlertBanner variant="error" title={t.pqc.loadFailed} />
@@ -1347,6 +1328,33 @@ export const ProductionFlowScreen = () => {
              */}
             {complete.error !== null && !scanMismatch && (
               <p className="field-error">{t.flow.scan.failed}</p>
+            )}
+            {/*
+             * 작업 세션 자동 종료가 **어긋났을 때만** 선다.
+             *
+             * ⭐ **스캔 구획 바닥에 둔다**(사용자 지시 2026-09-16). 머리의 배너 자리에 세웠더니
+             *    「생산할 LOT이 없습니다」 바로 아래 같은 크기의 줄이 하나 더 붙어 둘 중 어느
+             *    것이 지금 할 일인지 흐려졌다. 세션을 닫는 것은 **마감 흐름의 끝**이라 그 흐름이
+             *    끝나는 자리에 선다.
+             *
+             * ⛔ **잘 닫힌 것은 말하지 않는다**(같은 지시). 성공 안내를 얹으면 같은 사건이 두 번
+             *    말해진다.
+             *
+             * ⛔ **서버 오류 원문을 싣지 않는다.** 작업자에게는 다음 행동만 말한다.
+             */}
+            {(sessionPhase === 'failed' || sessionPhase === 'denied') && (
+              <p className="production-flow-session-note">
+                <span className="field-error">{sessionStatusTitle}</span>
+                {sessionPhase === 'failed' && (
+                  <Button
+                    variant="outlined"
+                    onClick={retrySessionEnd}
+                    disabled={sessionEnd.isSaving}
+                  >
+                    {t.flow.session.retry}
+                  </Button>
+                )}
+              </p>
             )}
           </Card.Body>
         </Card>
