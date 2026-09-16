@@ -2,6 +2,7 @@ import { AlertBanner, Button, Chip, NumberPad } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useId, useState } from 'react';
 
+import { SaveErrorBanner } from '../../patterns/master';
 import { PopWorkerTag } from '../../patterns/pop-worker-tag';
 import { PopSelect as Select } from '../../patterns/pop-select';
 import { toApiError } from '../../patterns/request';
@@ -401,14 +402,21 @@ export const PackingResultScreen = () => {
             }}
           />
         ) : null}
-        {(confirmedNo !== null || confirm.isError) && (
+        {confirmedNo !== null ? (
           <div className="banner-slot">
-            {confirmedNo !== null ? (
-              <AlertBanner variant="success">{t.confirmed(confirmedNo)}</AlertBanner>
-            ) : (
-              <AlertBanner variant="error">{String(toApiError(confirm.error).kind)}</AlertBanner>
-            )}
+            <AlertBanner variant="success">{t.confirmed(confirmedNo)}</AlertBanner>
           </div>
+        ) : (
+          /*
+           * ⛔ **정규화 갈래 이름을 그대로 내지 않는다.** 실패를 `conflict`·`stateLocked` 같은
+           *   내부 이름으로 적고 있었다 — 작업자에게 그 낱말은 아무것도 말해 주지 않는다.
+           *   공용 배너가 갈래마다 「무엇이 어긋났고 다음에 무엇을 할 것인가」를 공통 규약
+           *   문구로 옮긴다(`patterns/master/save-error-banner`).
+           *
+           * ⛔ **「최신 불러오기」를 주지 않는다.** 되돌릴 수 없는 쓰기라(§5-6 포장 해체 없음)
+           *   다시 불러올 편집본이 이 화면에 없다 — `onReload` 를 비워 둔다.
+           */
+          <SaveErrorBanner error={confirm.isError ? toApiError(confirm.error) : null} />
         )}
 
         {/*
