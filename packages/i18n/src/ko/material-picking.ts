@@ -16,7 +16,7 @@ export const materialPicking = {
     legend: '피킹 지시',
     loading: '피킹 지시를 불러오는 중입니다',
     loadFailed: '피킹 지시를 확인할 수 없습니다. 연결을 확인하세요.',
-    none: '집을 피킹 지시가 없습니다',
+    none: '피킹할 지시가 없습니다',
     /** 라인의 집은 양이 출고 뒤에도 그대로라, 막지 않으면 같은 수량이 한 번 더 나간다. */
     closed: '이미 출고가 끝난 지시입니다. 다시 내보낼 수 없습니다.',
     change: '다른 지시 고르기',
@@ -60,7 +60,7 @@ export const materialPicking = {
      */
     heldReasonLoading: '보류 사유를 확인하는 중입니다',
     heldReasonFailed: '보류 사유를 확인하지 못했습니다',
-    done: '다 집었습니다',
+    done: '피킹 완료',
   },
   scan: {
     legend: 'LOT 스캔',
@@ -69,7 +69,7 @@ export const materialPicking = {
     manualLabel: '직접 입력',
     manualSubmit: '넣기',
     /** 계획과 다른 LOT 을 집으면 서버도 막는다. 눌러 보고 알게 두지 않는다. */
-    mismatch: (expected: string) => `이 라인의 LOT 이 아닙니다. ${expected} 을(를) 집으세요.`,
+    mismatch: (expected: string) => `이 라인의 LOT 이 아닙니다. ${expected} 을(를) 스캔하세요.`,
     matched: '라인의 LOT 과 같습니다',
   },
   qty: {
@@ -81,12 +81,11 @@ export const materialPicking = {
     },
   },
   /** 선출은 권고다. 강제 옵션은 서버가 갖고 있어 화면이 막지 않는다. */
-  outOfSequence: '선출 순서가 앞선 LOT 이 남아 있습니다. 집을 수는 있습니다.',
-  pick: '이 라인 피킹',
-  picked: (qty: string) => `${qty} 집었습니다`,
+  outOfSequence: '선출 순서가 앞선 LOT 이 남아 있습니다. 피킹할 수는 있습니다.',
+  pick: '피킹 기록',
   submit: '출고 확정',
   /** 모자란 만큼은 부족분으로 남는다. 대체 자재는 이 화면 밖이다. */
-  partialNote: '요청보다 적게 집었으면 부족분은 남습니다. 대체 자재는 이 화면에서 다루지 않습니다.',
+  partialNote: '요청보다 적게 피킹하면 부족분은 남습니다. 대체 자재는 이 화면에서 다루지 않습니다.',
   /*
    * 어느 값이 이 화면의 출고인지 계약이 아직 말하지 않는다. 목록의 첫 값을 조용히 쓰면 틀린
    * 값을 소리 없이 보내는 것과 같아, 사람이 고르게 하고 왜 고르는지를 적는다.
@@ -99,7 +98,7 @@ export const materialPicking = {
   noIssueType: '고를 수 있는 출고 유형이 없습니다. 관리자에게 문의하세요.',
   /* 담긴 것을 끝난 것으로 말하지 않는다. 거부를 조용히 넘기면 왜 안 집혔는지 알 수 없다. */
   pickOutcome: {
-    sent: { title: '집었습니다', description: '' },
+    sent: { title: '피킹을 기록했습니다', description: '' },
     queued: {
       title: '피킹을 전송 대기에 넣었습니다',
       description: '연결되면 보냅니다. 아직 보내지 않았습니다.',

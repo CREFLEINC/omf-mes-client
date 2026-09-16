@@ -430,7 +430,7 @@ describe('제품LOT 피킹 스캔 화면', () => {
     mount([], { held: [EARLY] });
     await chooseTarget(user);
 
-    expect(await screen.findByText('보류 — 집을 수 없습니다')).toBeTruthy();
+    expect(await screen.findByText('보류 — 피킹할 수 없습니다')).toBeTruthy();
   });
 
   /*
@@ -441,7 +441,7 @@ describe('제품LOT 피킹 스캔 화면', () => {
     const user = userEvent.setup();
     mount([], { held: [EARLY] });
     await chooseTarget(user);
-    await screen.findByText('보류 — 집을 수 없습니다');
+    await screen.findByText('보류 — 피킹할 수 없습니다');
 
     await user.click(await screen.findByRole('button', { name: '직접 입력' }));
     await user.type(screen.getByLabelText('제품 LOT 스캔'), EARLY.lotNo);
@@ -460,7 +460,7 @@ describe('제품LOT 피킹 스캔 화면', () => {
     const user = userEvent.setup();
     mount([], { held: [EARLY], reasonsStatus: 500 });
     await chooseTarget(user);
-    await screen.findByText('보류 — 집을 수 없습니다');
+    await screen.findByText('보류 — 피킹할 수 없습니다');
 
     await user.click(await screen.findByRole('button', { name: '직접 입력' }));
     await user.type(screen.getByLabelText('제품 LOT 스캔'), EARLY.lotNo);
@@ -478,7 +478,7 @@ describe('제품LOT 피킹 스캔 화면', () => {
     const user = userEvent.setup();
     mount([], { held: [EARLY], reasonsStatus: 500 });
     await chooseTarget(user);
-    await screen.findByText('보류 — 집을 수 없습니다');
+    await screen.findByText('보류 — 피킹할 수 없습니다');
 
     await user.click(await screen.findByRole('button', { name: '직접 입력' }));
     await user.type(screen.getByLabelText('제품 LOT 스캔'), EARLY.lotNo);
@@ -533,7 +533,7 @@ describe('제품LOT 피킹 스캔 화면', () => {
     const user = userEvent.setup();
     mount([], { held: [EARLY] });
     await chooseTarget(user);
-    await screen.findByText('보류 — 집을 수 없습니다');
+    await screen.findByText('보류 — 피킹할 수 없습니다');
 
     await user.click(await screen.findByRole('button', { name: '직접 입력' }));
     await user.type(screen.getByLabelText('제품 LOT 스캔'), EARLY.lotNo);
@@ -541,7 +541,7 @@ describe('제품LOT 피킹 스캔 화면', () => {
     await screen.findByText(/보류 사유 수입검사 대기/);
 
     expect(screen.queryByRole('button', { name: '피킹 확정' })).toBeNull();
-    expect(screen.queryByText('권장 1순위가 아닙니다 — 집을 수 있습니다')).toBeNull();
+    expect(screen.queryByText('권장 1순위가 아닙니다 — 피킹할 수 있습니다')).toBeNull();
   });
 
   /* 고르지도 않은 LOT 마다 사유를 물으면 후보 수만큼 호출이 나간다. */
@@ -561,7 +561,7 @@ describe('제품LOT 피킹 스캔 화면', () => {
       { held: [EARLY] },
     );
     await chooseTarget(user);
-    await screen.findByText('보류 — 집을 수 없습니다');
+    await screen.findByText('보류 — 피킹할 수 없습니다');
 
     expect(asked).toHaveLength(0);
   });
@@ -616,7 +616,7 @@ describe('제품LOT 피킹 스캔 화면', () => {
     await chooseTarget(user);
 
     expect(await screen.findByText(messages.httpError.loadServer)).toBeTruthy();
-    expect(screen.queryByText('이 품목에 집을 수 있는 LOT이 없습니다')).toBeNull();
+    expect(screen.queryByText('이 품목에 피킹할 수 있는 LOT이 없습니다')).toBeNull();
   });
 
   /* 권장은 순서 제안이지 위치가 아니다. 다른 것을 집어도 물건은 맞다. */
@@ -628,7 +628,7 @@ describe('제품LOT 피킹 스캔 화면', () => {
 
     await pickLot(user, LATE.lotNo);
 
-    expect(await screen.findByText('권장 1순위가 아닙니다 — 집을 수 있습니다')).toBeTruthy();
+    expect(await screen.findByText('권장 1순위가 아닙니다 — 피킹할 수 있습니다')).toBeTruthy();
     expect(screen.queryByLabelText('사유')).toBeNull();
   });
 
@@ -1085,7 +1085,7 @@ describe('제품LOT 피킹 스캔 화면', () => {
     await user.click(screen.getByRole('button', { name: '피킹 확정' }));
 
     expect(
-      await screen.findByText('집을 수 없는 상태로 바뀌었습니다. 목록을 다시 확인하세요.'),
+      await screen.findByText('피킹할 수 없는 상태로 바뀌었습니다. 목록을 다시 확인하세요.'),
     ).toBeTruthy();
     expect(screen.queryByText('피킹을 기록하지 못했습니다. 다시 시도하세요.')).toBeNull();
   });
@@ -1102,7 +1102,7 @@ describe('제품LOT 피킹 스캔 화면', () => {
     await user.click(screen.getByRole('button', { name: '찾기' }));
 
     expect(await screen.findByLabelText(/피킹 수량/)).toBeTruthy();
-    expect(screen.getByText('권장 1순위가 아닙니다 — 집을 수 있습니다')).toBeTruthy();
+    expect(screen.getByText('권장 1순위가 아닙니다 — 피킹할 수 있습니다')).toBeTruthy();
   });
 
   it('이 품목에 없는 번호를 넣으면 찾지 못했다고 말한다', async () => {

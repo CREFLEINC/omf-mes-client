@@ -18,7 +18,7 @@ export const productPicking: Translated<typeof ko.productPicking> = {
     line: (no: number) => `Dòng ${String(no)}`,
     progress: (allocated: string, picked: string) => `Phân bổ ${allocated} · Đã lấy ${picked}`,
     remaining: (qty: string, uom: string) => `Phân bổ còn lại ${qty} ${uom}`,
-    complete: 'Đã lấy đủ theo phân bổ',
+    complete: 'Lấy hàng xong theo phân bổ',
     inspection: 'Thuộc diện kiểm tra xuất hàng',
   },
   target: {
@@ -34,9 +34,9 @@ export const productPicking: Translated<typeof ko.productPicking> = {
     legend: (policy: string) => `LOT gợi ý — ${policy}`,
     fefo: 'Hết hạn sớm trước',
     fifo: 'Sản xuất trước thì ra trước',
-    loading: 'Đang tải các LOT có thể lấy',
+    loading: 'Đang tải các LOT có thể lấy hàng',
     loadFailed: 'Không xác nhận được LOT. Hãy kiểm tra kết nối.',
-    none: 'Mặt hàng này không có LOT nào có thể lấy',
+    none: 'Mặt hàng này không có LOT nào có thể lấy hàng',
     unknownPolicy: 'Không rõ quy tắc xuất trước nên chưa sắp thứ tự',
     unorderedLegend: 'Không sắp được thứ tự',
     recommended: 'Gợi ý số 1',
@@ -49,7 +49,7 @@ export const productPicking: Translated<typeof ko.productPicking> = {
     noExpiry: 'Không có hạn dùng',
   },
   lot: {
-    held: 'Tạm giữ — không lấy được',
+    held: 'Tạm giữ — không lấy hàng được',
     heldReason: (reason: string) => `Lý do tạm giữ ${reason}`,
     heldReasonUnknown: (code: string) => `Lý do tạm giữ ${code} (không có tên hiển thị)`,
     heldRelease: (condition: string) => `Điều kiện gỡ ${condition}`,
@@ -60,7 +60,7 @@ export const productPicking: Translated<typeof ko.productPicking> = {
     shelfLifeShort: (required: number, actual: number) =>
       `Chưa đủ ${String(required)} ngày khách hàng yêu cầu (thực tế ${String(actual)} ngày)`,
     shelfLifeUnknown: 'Không có hạn dùng nên không xét được số ngày còn lại',
-    notRecommended: 'Không phải gợi ý số 1 — vẫn lấy được',
+    notRecommended: 'Không phải gợi ý số 1 — vẫn lấy hàng được',
   },
   scan: {
     legend: 'Quét LOT',
@@ -83,7 +83,7 @@ export const productPicking: Translated<typeof ko.productPicking> = {
   submit: 'Xác nhận lấy hàng',
   done: 'Đã ghi nhận lấy hàng',
   failed: 'Không ghi nhận được việc lấy hàng. Hãy thử lại.',
-  conflict: 'Trạng thái đã đổi thành không lấy được. Hãy xem lại danh sách.',
+  conflict: 'Trạng thái đã đổi thành không lấy hàng được. Hãy xem lại danh sách.',
   noWorker: 'Hãy xác nhận mã nhân viên trước',
   another: 'Lượt lấy hàng tiếp theo',
 };

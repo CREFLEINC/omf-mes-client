@@ -24,7 +24,7 @@ export const productPicking = {
     line: (no: number) => `${String(no)}번 라인`,
     progress: (allocated: string, picked: string) => `배정 ${allocated} · 피킹 ${picked}`,
     remaining: (qty: string, uom: string) => `남은 배정 ${qty} ${uom}`,
-    complete: '배정만큼 다 집었습니다',
+    complete: '배정만큼 피킹 완료',
     inspection: '출하검사 대상',
   },
   target: {
@@ -41,9 +41,9 @@ export const productPicking = {
     legend: (policy: string) => `권장 LOT — ${policy}`,
     fefo: '유효기간 이른 순',
     fifo: '먼저 만든 순',
-    loading: '집을 수 있는 LOT을 불러오는 중입니다',
+    loading: '피킹할 수 있는 LOT을 불러오는 중입니다',
     loadFailed: 'LOT을 확인할 수 없습니다. 연결을 확인하세요.',
-    none: '이 품목에 집을 수 있는 LOT이 없습니다',
+    none: '이 품목에 피킹할 수 있는 LOT이 없습니다',
     /** 정책 값을 모르면 순서를 세우지 않는다. 세운 척하면 엉뚱한 순서를 권장으로 낸다. */
     unknownPolicy: '선출 정책을 알 수 없어 순서를 정하지 않았습니다',
     /** 축의 값이 없는 줄은 섞지 않고 뒤에 따로 둔다. 선택 자체는 막지 않는다. */
@@ -58,7 +58,7 @@ export const productPicking = {
     noExpiry: '유효기간 없음',
   },
   lot: {
-    held: '보류 — 집을 수 없습니다',
+    held: '보류 — 피킹할 수 없습니다',
     /*
      * 막는 것만으로는 무엇을 하면 풀리는지 알 수 없다. 형제 화면은 사유를 보이는데 이 화면만
      * 안 보여, 같은 사람이 두 화면에서 다른 것을 받는다.
@@ -76,7 +76,7 @@ export const productPicking = {
     /** 셀 수 없는 것을 넉넉한 것으로 두지 않는다. 판정의 정본은 서버다. */
     shelfLifeUnknown: '유효기간이 없어 잔여 일수를 판정할 수 없습니다',
     /** 권장은 순서 제안이지 위치가 아니다. 다른 것을 집어도 물건은 맞다. */
-    notRecommended: '권장 1순위가 아닙니다 — 집을 수 있습니다',
+    notRecommended: '권장 1순위가 아닙니다 — 피킹할 수 있습니다',
   },
   scan: {
     legend: 'LOT 스캔',
@@ -102,7 +102,7 @@ export const productPicking = {
   /* 확정 후 되돌리기를 두지 않는다. 예약이 소진된다. */
   done: '피킹을 기록했습니다',
   failed: '피킹을 기록하지 못했습니다. 다시 시도하세요.',
-  conflict: '집을 수 없는 상태로 바뀌었습니다. 목록을 다시 확인하세요.',
+  conflict: '피킹할 수 없는 상태로 바뀌었습니다. 목록을 다시 확인하세요.',
   noWorker: '사번을 먼저 확인하세요',
   another: '다음 피킹',
 } as const;
