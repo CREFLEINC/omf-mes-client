@@ -47,12 +47,7 @@ export const ReissueDialog = ({
     title={t.title}
     footer={
       <>
-        <Button
-          className={popTouchClass('normal')}
-          variant="outlined"
-          size="xl"
-          onClick={onClose}
-        >
+        <Button className={popTouchClass('normal')} variant="outlined" size="xl" onClick={onClose}>
           {t.cancel}
         </Button>
         <Button

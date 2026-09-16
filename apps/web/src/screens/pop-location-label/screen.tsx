@@ -40,7 +40,7 @@ export const PopLocationLabelScreen = () => {
   const [warehouseId, setWarehouseId] = useState<number | null>(null);
   const [page, setPage] = useState(1);
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
-  const [printerName, setPrinterName] = useState<string | null>(null);
+  const [chosenPrinter, setChosenPrinter] = useState<string | null>(null);
   const [reasonCode, setReasonCode] = useState('');
   const [reissueAsked, setReissueAsked] = useState(false);
   const [reports, setReports] = useState<PrintReport[] | null>(null);
@@ -57,6 +57,16 @@ export const PopLocationLabelScreen = () => {
     () => (summary.data ?? []).filter((each) => each.issueCount > 0).length,
     [summary.data],
   );
+
+  /**
+   * 실제로 나갈 프린터 — **고르지 않았으면 단말의 기본 프린터다.**
+   *
+   * ⭐ **서버 기본값에 맡기지 않는다.** 이 화면은 프린터가 붙은 단말에서 도는데, 이름을 비워
+   *    보내면 서버가 고르고 **다른 자리에서 라벨이 나올 수 있다** — 창고 작업자는 손에 라벨이
+   *    없는 채로 선반 앞에 선다. 어느 프린터로 나가는지 칸에도 그대로 보인다.
+   */
+  const printerName =
+    chosenPrinter ?? printers.data?.find((each) => each.isDefault)?.printerName ?? null;
 
   const reasons = useReissueReasons(reissueAsked);
 
@@ -127,7 +137,9 @@ export const PopLocationLabelScreen = () => {
         </div>
       </header>
 
-      {entry.workerNo === null && <AlertBanner variant="warning">{t.entry.missingWorker}</AlertBanner>}
+      {entry.workerNo === null && (
+        <AlertBanner variant="warning">{t.entry.missingWorker}</AlertBanner>
+      )}
 
       {/*
        * ⚠ **통로가 없다는 사실을 미리 말한다.** 브라우저로 이 화면을 열면 발행은 되지만 라벨은
@@ -176,7 +188,7 @@ export const PopLocationLabelScreen = () => {
         <PrinterSelect
           printers={printers.data ?? []}
           value={printerName}
-          onChange={setPrinterName}
+          onChange={setChosenPrinter}
           isLoading={printers.isPending}
           isError={printers.isError}
           onRetry={() => void printers.refetch()}
@@ -229,9 +241,14 @@ export const PopLocationLabelScreen = () => {
         )}
       </section>
 
-      <PrintResult reports={reports} isPending={printFlow.isPending} locationCodeOf={(targetId) =>
-        locationItems.find((each) => each.locationId === targetId)?.locationCode ?? String(targetId)
-      } />
+      <PrintResult
+        reports={reports}
+        isPending={printFlow.isPending}
+        locationCodeOf={(targetId) =>
+          locationItems.find((each) => each.locationId === targetId)?.locationCode ??
+          String(targetId)
+        }
+      />
 
       <div className="pop-action-bar pop-loclabel-actions">
         <p className="field-note">{t.location.selectedCount(selectedIds.length)}</p>
@@ -284,20 +301,22 @@ const PrintResult = ({ reports, isPending, locationCodeOf }: PrintResultProps) =
   if (isPending) return <AlertBanner variant="info">{t.print.pending}</AlertBanner>;
   if (reports === null || reports.length === 0) return null;
 
+  /*
+   * ⛔ **통로가 없는 것은 인쇄 결과가 아니다.** 시도조차 하지 않았으므로 「성공 0 · 실패 0」으로
+   *    셈해 보이면 거짓이 된다. 그 사정은 머리 쪽 안내가 이미 상시로 말하고 있으므로 여기서
+   *    되풀이하지 않는다 — 같은 문장이 화면에 둘이면 어느 쪽이 방금 일인지 갈리지 않는다.
+   */
+  if (reports.every((each) => each.attempt.kind === 'noBridge')) return null;
+
   const printed = reports.filter((each) => each.attempt.kind === 'printed').length;
   const failures = reports.filter((each) => each.attempt.kind === 'failed');
   const unreported = reports.filter((each) => each.attempt.kind !== 'noBridge' && !each.reported);
-  const noBridge = reports.some((each) => each.attempt.kind === 'noBridge');
 
   return (
     <section className="pop-loclabel-print-result" aria-label={t.print.heading}>
-      {noBridge ? (
-        <AlertBanner variant="warning">{t.print.noBridge}</AlertBanner>
-      ) : (
-        <AlertBanner variant={failures.length > 0 ? 'warning' : 'success'}>
-          {t.print.summary(printed, failures.length)}
-        </AlertBanner>
-      )}
+      <AlertBanner variant={failures.length > 0 ? 'warning' : 'success'}>
+        {t.print.summary(printed, failures.length)}
+      </AlertBanner>
 
       {failures.map((each) => (
         <p key={each.documentIssueLogId} className="field-note">
