@@ -30013,6 +30013,8 @@ export interface paths {
                     warehouseId?: number;
                     /** @description 피킹이 끝난 건만 */
                     pickedOnly?: boolean;
+                    /** @description ⭐ 선행 구현(P-24) — 포장이 끝났는데 아직 어느 출하 단위에도 들어가지 않은 상자가 하나라도 있는 출하만. P-04-05 의 출하 선택 목록이 「구성할 것이 남은 출하」를 이 축으로 좁힌다. ⛔ false 는 절을 걸지 않는다(unconfirmedOnly 와 같은 관례) */
+                    hasUnassignedPackedBox?: boolean;
                     /** @description 미확정만 — W-04-12 기본 */
                     unconfirmedOnly?: boolean;
                     /**
@@ -31151,6 +31153,15 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
                 /** @description 권한·단말 게이팅에 막혔다 */
                 403: {
                     headers: {
@@ -31217,6 +31228,15 @@ export interface paths {
                 };
                 /** @description STATE_LOCKED/shippingUnitId = 이미 마감된 단위다 */
                 400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -31296,6 +31316,15 @@ export interface paths {
                 };
                 /** @description STATE_LOCKED/shippingUnitId = 이미 마감 · INVALID/boxes = 상자가 한 개도 없다 · STATE_LOCKED/shipmentId = 취소된 출하 */
                 400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -47437,6 +47466,11 @@ export interface components {
             erpDeliveryNo?: string | null;
             /** @example 값 */
             remarks?: string;
+            /**
+             * @description ⭐ 선행 구현(P-24) — 포장이 끝났는데 아직 어느 출하 단위에도 들어가지 않은 상자 수. 목록에서만 채운다(상세는 세지 않는다). 한 상자가 배분 여럿에 걸릴 수 있어 상자 기준으로 센다
+             * @example 2
+             */
+            unassignedPackedBoxCount?: number;
             /**
              * @description 긴급 직행 출하로 만들어진 건인가(W-04-05).
              * @default false
