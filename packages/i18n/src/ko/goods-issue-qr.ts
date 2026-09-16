@@ -5,14 +5,69 @@
  * 두 말을 섞으면 현장에서 어느 종이를 붙일지 갈리므로 「라벨」이라 부르지 않는다.
  */
 export const goodsIssueQr = {
-  title: '출고 QR 발행',
+  /* ⚠ **「자재 출고」다** — 제품 출하와 구분한다(사용자 지시 2026-09-16 · ISSUE-QR-01 D4). */
+  title: '자재 출고 QR 발행',
 
   entry: {
-    issueLabel: '출고 전표',
+    issueLabel: '자재 출고 전표',
     workerLabel: '사번',
-    /** 전표 없이 들어온 경우. 화면을 그리지 않고 이 안내만 세운다. */
-    missingIssue: '출고 전표를 고른 뒤 이 화면으로 들어오세요.',
+    /**
+     * 전표 없이 들어온 경우.
+     *
+     * ⚠ **이제 여기서 전표를 고를 수 있다**(ISSUE-QR-01 U3). 전에는 「고른 뒤 들어오세요」로
+     *   끝냈는데, POP 머리줄 [화면 이동]은 전표를 싣지 않아 **그 길로 들어온 작업자에게는 갈
+     *   데가 없었다.** 문구가 할 일을 아래 입력 칸이 맡는다.
+     */
+    missingIssue: '자재 출고번호를 입력해 전표를 불러오세요.',
+    /** 출고번호로 전표를 찾는 칸. 스캐너로 읽어도 되고 손으로 쳐도 된다. */
+    lookup: {
+      label: '자재 출고번호',
+      placeholder: '자재 출고번호를 읽거나 입력하세요',
+      action: '전표 불러오기',
+      searching: '전표를 찾는 중',
+      /** 번호가 똑같은 건이 없다. **비슷한 번호를 화면이 대신 고르지 않는다.** */
+      notFound: '그 자재 출고번호의 전표를 찾지 못했습니다. 번호를 확인하세요.',
+      failed: '전표를 조회하지 못했습니다. 연결을 확인한 뒤 다시 시도하세요.',
+    },
     missingWorker: '사번이 확인되지 않아 발행할 수 없습니다. 사번 인증을 먼저 하세요.',
+  },
+
+  /**
+   * QR 발행 대기 목록 — 자재창고 담당이 관리자 웹 없이 쓰는 자리(ISSUE-QR-01 D5).
+   *
+   * ⛔ **「없다」를 완전한 사실로 말하지 않는다.** 서버에 미발행 축이 없어 화면이 최근 창만
+   *    훑는다 — 창을 함께 적지 않으면 담당이 찍어야 할 것을 못 찍고도 다 찍은 줄 안다.
+   */
+  pending: {
+    sectionLabel: 'QR 발행 대기',
+    /** 전표에서 목록으로 돌아가는 길. 돌아가면 목록을 다시 받는다. */
+    back: '대기 목록으로',
+    refresh: '새로 고침',
+    pick: '이 라인 찍기',
+    columnIssueNo: '자재 출고번호',
+    columnLine: '라인',
+    columnItem: '품목',
+    columnLot: 'LOT',
+    columnQty: '수량',
+    columnStatus: '상태',
+    /** 한 번도 찍지 않았다. */
+    statusNotIssued: '미발행',
+    /**
+     * 발행 기록은 있는데 **마지막 인쇄가 실패**했다 — 현장에 라벨이 없다(사용자 결정 2026-09-16).
+     *
+     * ⚠ 회차가 이미 올라가 있어 다시 찍으려면 **재발행 사유**가 필요하다. 그 사실을 전표 화면이
+     *   따로 안내하지만, 목록에서도 「미발행」과 갈라 보여야 담당이 왜 사유를 묻는지 안다.
+     */
+    statusPrintFailed: (issueCount: number): string => `인쇄 실패 · 회차 ${String(issueCount)}`,
+    columnAction: '',
+    window: (days: number, limit: number): string =>
+      `최근 ${String(days)}일 · 최대 ${String(limit)}건의 자재 출고에서 찾습니다.`,
+    loading: '발행 대기를 찾는 중',
+    failed: '발행 대기를 불러오지 못했습니다. 연결을 확인한 뒤 새로 고치세요.',
+    empty: '발행 대기 중인 자재 출고가 없습니다.',
+    allIssued: (count: number): string =>
+      `이 기간의 자재 출고 라인 ${String(count)}건은 이미 찍었습니다.`,
+    truncated: '이 기간에 더 많은 자재 출고가 있습니다. 못 찾은 건은 출고번호로 불러오세요.',
   },
 
   /** 머리줄 오른쪽의 상태 묶음. 다른 POP 화면과 같은 말을 쓴다. */
@@ -33,7 +88,7 @@ export const goodsIssueQr = {
   },
 
   lines: {
-    sectionLabel: '출고 라인',
+    sectionLabel: '자재 출고 라인',
     columnItem: '품목',
     columnLot: 'LOT',
     columnQty: '수량',
@@ -100,9 +155,16 @@ export const goodsIssueQr = {
      */
     seqUnknown: '—',
     previewLabel: '미리보기',
-    previewEmpty: '발행 시 미리보기가 가능합니다.',
+    previewEmpty: '라인을 고르면 미리보기가 보입니다.',
     previewFailed: '미리보기를 불러오지 못했습니다. 인쇄는 그대로 진행할 수 있습니다.',
-    previewAlt: '출고 QR 미리보기',
+    previewAlt: '자재 출고 QR 미리보기',
+    /**
+     * 도착 위치를 못 읽어 라벨의 `TO:` 를 비운 채 내보낸다는 사실.
+     *
+     * ⛔ **조용히 비우지 않는다.** 라벨에 도착지를 싣기로 한 것이 사용자 결정이었으므로, 그것이
+     *    빠진 라벨을 현장에 붙이는 사람은 그 사실을 알고 붙여야 한다.
+     */
+    destinationMissing: '도착 위치를 읽지 못해 라벨의 도착지를 비웠습니다. 발행은 그대로 할 수 있습니다.',
   },
 
   reissue: {
@@ -157,5 +219,5 @@ export const goodsIssueQr = {
   },
 
   /** 「전량 출고에도 예외 없이 항상 발행한다」는 확정 사항을 사용자가 물었을 때의 근거. */
-  alwaysIssueNote: '전량 출고에도 출고 QR 을 발행합니다.',
+  alwaysIssueNote: '전량 출고에도 자재 출고 QR 을 발행합니다.',
 } as const;

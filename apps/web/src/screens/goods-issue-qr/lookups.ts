@@ -21,34 +21,51 @@ const EMPTY_ENTRIES: LookupEntry[] = [];
 const REASON_OPTION_SIZE = 100;
 
 export const goodsIssueQrLookupKeys = {
-  items: ['goods-issue-qr-lookups', 'items'] as const,
+  item: (itemId: number) => ['goods-issue-qr-lookups', 'item', itemId] as const,
   uoms: ['goods-issue-qr-lookups', 'uoms'] as const,
   lot: (lotId: number) => ['goods-issue-qr-lookups', 'lot', lotId] as const,
+  location: (locationId: number) => ['goods-issue-qr-lookups', 'location', locationId] as const,
   reissueReasons: ['goods-issue-qr-lookups', 'reissue-reasons'] as const,
 };
 
 /**
- * 품목 이름 — **미사용 품목까지 받는다.** 지난 전표가 참조하는 품목이 이름 없이 비어 보이면
- * 사용자는 무엇을 찍는지 모른 채 발행하게 된다.
+ * 품목 이름 — **화면에 선 번호마다 하나씩 묻는다.**
+ *
+ * ⛔ **목록을 통째로 받아 거르지 않는다.** 전에는 `GET /mdm/items` 한 쪽을 받아 그 안에서
+ *    찾았는데, 품목은 공장 전체에서 계속 늘어나는 자원이라 **한 쪽에 담기지 않는다.** 담기지
+ *    않은 품목은 조용히 「알 수 없음」이 됐다 — 사용자 실기 실측에서 출고 라인의 품목이 전부
+ *    그렇게 섰다(ISSUE-QR-01 D2). **같은 뿌리의 결함이 이 저장소에서 세 번째다**
+ *    (PLAN-WO-01 D4 · PICK-ISSUE-01 D2 · 이번).
+ *
+ * ⚠ 이 값은 **라벨에도 찍힌다**(`label-fields.ts`) — 화면에서 「알 수 없음」이면 라벨도 서지
+ *   않는다. 그래서 표시용 이상의 무게가 있다.
  */
-export const useItemNames = (): LookupSource => {
+export const useItemNames = (itemIds: readonly number[]): LookupSource => {
   const { client } = useApiClient();
+  const unique = [...new Set(itemIds)].sort((left, right) => left - right);
 
-  const query = useQuery({
-    queryKey: goodsIssueQrLookupKeys.items,
-    queryFn: () =>
-      runRequest(() => client.GET('/mdm/items', { params: { query: { includeInactive: true } } })),
+  const results = useQueries({
+    queries: unique.map((itemId) => ({
+      queryKey: goodsIssueQrLookupKeys.item(itemId),
+      queryFn: () =>
+        runRequest(() => client.GET('/mdm/items/{itemId}', { params: { path: { itemId } } })),
+    })),
   });
 
   return {
-    entries:
-      query.data?.items.map((item) => ({
-        value: String(item.itemId),
-        label: `${item.itemCode} · ${item.itemName}`,
-        isActive: item.isActive,
-      })) ?? EMPTY_ENTRIES,
-    isError: query.isError,
-    isLoading: query.isPending,
+    entries: results.flatMap((result) =>
+      result.data === undefined
+        ? []
+        : [
+            {
+              value: String(result.data.item.itemId),
+              label: `${result.data.item.itemCode} · ${result.data.item.itemName}`,
+              isActive: true,
+            },
+          ],
+    ),
+    isError: results.some((result) => result.isError),
+    isLoading: results.some((result) => result.isPending),
   };
 };
 
@@ -102,6 +119,50 @@ export const useLotNames = (lotIds: readonly number[]): LookupSource => {
     isError: results.some((result) => result.isError),
     isLoading: results.some((result) => result.isPending),
   };
+};
+
+/**
+ * 도착 위치의 **코드** — 라벨 면에 「TO:」로 찍힌다(ISSUE-QR-01).
+ *
+ * ⭐ **이름이 아니라 코드다.** 라벨 글꼴이 영문·숫자만 갖고(`label-bitmap.ts`), 현장에서 대조하는
+ *    값도 위치 코드(`S220-WIP`)다.
+ *
+ * ⚠ **도착지가 위치일 때만 푼다.** 계약의 `destinationTypeCode` 는 `LOCATION`·`PARTNER`·
+ *    `DISPOSAL_SITE` 셋이고 `destinationId` 가 가리키는 표가 그 값에 따라 갈린다. 위치가 아닌
+ *    도착지를 위치 조회로 물으면 남의 번호를 위치로 읽는다.
+ */
+export type DestinationState =
+  /** 도착지가 위치가 아니거나 비어 있다 — **기다려도 코드가 생기지 않는다.** */
+  | { kind: 'none' }
+  | { kind: 'loading' }
+  | { kind: 'failed' }
+  | { kind: 'code'; code: string };
+
+export const useDestinationCode = (
+  destinationTypeCode: string | null | undefined,
+  destinationId: number | null | undefined,
+): DestinationState => {
+  const { client } = useApiClient();
+  const locationId = destinationTypeCode === 'LOCATION' ? (destinationId ?? null) : null;
+
+  const query = useQuery({
+    queryKey: goodsIssueQrLookupKeys.location(locationId ?? 0),
+    queryFn: () =>
+      runRequest(() =>
+        client.GET('/mdm/locations/{locationId}', {
+          params: { path: { locationId: locationId ?? 0 } },
+        }),
+      ),
+    enabled: locationId !== null,
+  });
+
+  if (locationId === null) return { kind: 'none' };
+  if (query.isPending) return { kind: 'loading' };
+  if (query.isError) return { kind: 'failed' };
+
+  const code = query.data?.location.locationCode;
+
+  return code === undefined || code === '' ? { kind: 'failed' } : { kind: 'code', code };
 };
 
 /**

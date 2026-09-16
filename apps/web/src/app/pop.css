@@ -5770,3 +5770,31 @@
 .pop-ui .scan-outcome > [role='status'] > :first-child {
   margin-block-start: 2px;
 }
+
+/*
+ * 자재 출고번호로 전표를 불러오는 줄 — **입력칸과 단추의 아랫선을 맞춘다.**
+ *
+ * ⚠ 칸에는 라벨(「자재 출고번호」)이 한 층 얹혀 있고 단추에는 없다. 그래서 위선을 맞추면
+ *   단추가 라벨과 나란히 서고 칸만 아래로 내려가 **둘이 어긋나 보인다**(사용자 실기 지적
+ *   2026-09-16). 아랫선을 맞추면 눈이 한 줄로 읽는다 — `.scan-row` 가 같은 사정으로 같은
+ *   규범을 쓴다.
+ */
+.pop-ui .issue-lookup {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+/* 칸이 남는 폭을 먹고 단추는 글자만큼만 선다 — 터치 하한은 `.pop-touch-target` 이 지킨다. */
+.pop-ui .issue-lookup > :first-child {
+  flex: 1 1 18rem;
+}
+
+/*
+ * 안내 띠는 줄에서 빠져 **아래로 내려간다.** 조회 결과(못 찾음·실패)가 칸 옆에 끼면 줄이
+ * 밀려 칸과 단추가 다시 어긋난다.
+ */
+.pop-ui .issue-lookup > .banner-slot {
+  flex: 1 0 100%;
+}

@@ -60,8 +60,24 @@ interface Options {
   summaryFails?: boolean;
   /** 인쇄 결과 보고 요청을 담아 둔다 */
   reports?: Request[];
-  /** 서버가 그린 것을 못 주는 경우 */
-  renditionFails?: boolean;
+  /**
+   * 라벨에 실을 이름(LOT 번호)을 못 받는 경우.
+   *
+   * ⚠ 전에는 「서버가 그린 것을 못 주는 경우」였다. 출고 QR 은 이제 **POP 이 스스로 그리므로**
+   *   (설계 결정 8·9 의 2단계) 서버 렌디션이 실패할 자리가 없다 — 대신 **그릴 값을 못 받는
+   *   것**이 같은 자리의 실패가 됐다. 겨냥하는 결과(인쇄 실패로 보고한다)는 그대로다.
+   *
+   * ⚠ 품목 이름 조회를 죽인다. LOT 조회를 죽이면 **감지기가 줄을 찾는 글자**(`LOT-SAMPLE-20`)가
+   *   사라져 고르지 못한다 — 재려는 것과 무관한 데서 걸린다.
+   */
+  labelValuesFail?: boolean;
+  /**
+   * 도착 위치 조회를 성공시킨다.
+   *
+   * ⚠ **기본은 실패다** — 실서버에서 `GET /mdm/locations/{id}` 가 POP 단말 토큰에 **401** 이다
+   *   (실측 2026-09-16). 기본값을 성공으로 두면 현장에서 늘 걸리는 갈래를 한 번도 재지 않는다.
+   */
+  destinationResolves?: boolean;
   /**
    * 렌디션 조회가 실제로 몇 번 나갔는지 담아 둔다. 대응표 P1 「미구현 5건」— 이 경로는 서버에
    * 없어 제품 코드가 부르면 안 된다. 이 배열이 계속 비어 있어야 그 사실이 지켜진 것이다.
@@ -107,6 +123,9 @@ const routes = (options: Options): StubRoute[] => [
           sourceWarehouseId: 1,
           issuedAt: '2026-09-02T00:00:00Z',
           statusCode: 'POSTED',
+          /* 실 데이터와 같게 도착지를 싣는다 — 비워 두면 「위치인데 못 읽는」 갈래를 못 잰다. */
+          destinationTypeCode: 'LOCATION',
+          destinationId: 5,
         },
         lines: LINES,
       }),
@@ -155,12 +174,31 @@ const routes = (options: Options): StubRoute[] => [
     },
   },
   {
-    match: (request) => pathOf(request) === '/mdm/items',
+    /*
+     * 품목 **단건** 조회 — 화면이 라인의 `itemId` 로 하나씩 묻는다(ISSUE-QR-01 D2).
+     * 목록 한 쪽에 기대던 옛 경로는 목록에 없는 품목을 「알 수 없음」으로 만들었다.
+     */
+    match: (request) => /^\/mdm\/items\/\d+$/.test(pathOf(request)),
+    respond: (request) => {
+      if (options.labelValuesFail === true) return jsonResponse({ message: '없다' }, { status: 500 });
+
+      const itemId = Number(pathOf(request).split('/').pop());
+
+      return jsonResponse({
+        item: { itemId, itemCode: 'ITEM-0001', itemName: '샘플 품목', isActive: true },
+        editability: {},
+      });
+    },
+  },
+  {
+    match: (request) => /^\/mdm\/locations\/\d+$/.test(pathOf(request)),
     respond: () =>
-      jsonResponse({
-        items: [{ itemId: 10, itemCode: 'ITEM-0001', itemName: '샘플 품목', isActive: true }],
-        page: { page: 1, size: 50, total: 1 },
-      }),
+      options.destinationResolves === true
+        ? jsonResponse({
+            location: { locationId: 5, locationCode: 'S220-WIP', isActive: true },
+            editability: {},
+          })
+        : jsonResponse({ message: '권한 없음' }, { status: 401 }),
   },
   {
     match: (request) => pathOf(request) === '/mdm/uoms',
@@ -210,12 +248,10 @@ const routes = (options: Options): StubRoute[] => [
     respond: (request) => {
       options.renditionCalls?.push(request.url);
 
-      return options.renditionFails === true
-        ? jsonResponse({ message: '없다' }, { status: 404 })
-        : new Response(new Uint8Array([1, 2, 3]), {
-            status: 200,
-            headers: { 'Content-Type': 'image/png' },
-          });
+      return new Response(new Uint8Array([1, 2, 3]), {
+        status: 200,
+        headers: { 'Content-Type': 'image/png' },
+      });
     },
   },
   {
@@ -308,7 +344,9 @@ const rowFor = (lotNo: string): HTMLElement => {
  * 셸(Electron)의 인쇄 통로를 흉내 낸다. jsdom 에는 이 통로가 없으므로, 통로가 있는 경우와
  * 없는 경우를 **다른 상태로** 검사한다 — 없는 것을 실패로 접으면 두 상황이 한 문구로 뭉친다.
  */
-const installPrintBridge = (save: (bytes: Uint8Array) => Promise<string>): void => {
+const installPrintBridge = (
+  save: (bytes: Uint8Array, label: string, now: string, format: string) => Promise<string>,
+): void => {
   (globalThis as { pop?: unknown }).pop = { rendition: { save } };
 };
 
@@ -345,33 +383,94 @@ describe('GoodsIssueQrScreen — 전표 없이 진입', () => {
   });
 });
 
-describe('GoodsIssueQrScreen — 서버 구현 기준선', () => {
+/**
+ * **발행 단위는 라인 하나뿐이다**(사용자 지시 2026-09-16 · ISSUE-QR-01 D1).
+ *
+ * ⛔ 파렛트 단위는 서버가 후보 목록을 세우지 못하고(#1095 봉쇄) 「파렛트」가 **제품 출하 포장**으로
+ *    읽혀 자재 인계 화면에서 다른 업무처럼 보였다 — 진입을 막았다.
+ *
+ * ⚠ 이 자리에 있던 **파렛트 UI 감지기 10건을 걷었다.** 화면에 그 길이 없으니 그 길로 몰 수 없다.
+ *   **판정 논리는 그대로 덮여 있다** — `issue-target.test.ts` 가 파렛트 가드를 순수 함수로 잰다
+ *   (목록 못 세움·미선택·빈 파렛트·조회 중·재발행 사유). 서버가 축을 갖추면 그 시험들이 먼저
+ *   근거가 된다.
+ */
+describe('GoodsIssueQrScreen — 발행 단위', () => {
   afterEach(() => {
     vi.unstubAllEnvs();
   });
 
-  it('배포본에서는 파렛트 목록을 부르지 않고 사유를 적는다', async () => {
-    vi.stubEnv('MODE', 'production');
+  /*
+   * ⭐ **고르면 곧바로 보인다**(사용자 지시 2026-09-16 · D3). 발행을 눌러야 그림이 뜨던 것은
+   *    **확인을 되돌릴 수 없는 쓰기 뒤로 미루는 일**이었다 — 무엇이 찍힐지 보고 누를 수 있어야
+   *    한다. 페이로드가 담는 값은 발행 전에도 이미 정해져 있다.
+   */
+  it('라인을 고르면 발행 전에도 미리보기가 선다', async () => {
     const user = userEvent.setup();
-    const asked: string[] = [];
-    const watched: StubRoute = {
-      match: (request) => {
-        asked.push(new URL(request.url).pathname);
-
-        return false;
-      },
-      respond: () => jsonResponse({}),
-    };
-    renderWithProviders(<GoodsIssueQrScreen />, {
-      fetch: createStubFetch([watched, ...routes({ issueCounts: { 1001: 0 } })]),
-      route: ENTRY_ROUTE,
-    });
+    renderScreen({ issueCounts: { 1001: 0 } });
 
     await screen.findByText('LOT-SAMPLE-20');
-    await user.click(screen.getByRole('radio', { name: t.target.unitPallet }));
+    expect(screen.queryByAltText(t.target.previewAlt)).not.toBeInTheDocument();
 
-    expect(screen.getByText(t.target.palletUnavailable)).toBeInTheDocument();
-    expect(asked.some((path) => path === '/inventory/handling-units')).toBe(false);
+    await user.click(within(rowFor('LOT-SAMPLE-20')).getByRole('checkbox'));
+
+    const preview = await screen.findByAltText(t.target.previewAlt);
+    /* 우리가 만든 그림이다 — 서버 주소가 아니라 이 앱이 쥔 바이트를 가리킨다. */
+    expect(preview.getAttribute('src')).toMatch(/^blob:/u);
+  });
+
+  /*
+   * ⛔ **고르고도 안 보이면 까닭을 말한다**(사용자 실기 지적 2026-09-16). 빈 상태 문구만 세우면
+   *    「발행하면 보이나 보다」로 읽혀 **되돌릴 수 없는 쓰기를 눌러 보게 된다.**
+   */
+  it('고른 줄을 그리지 못하면 빈 안내가 아니라 까닭을 말한다', async () => {
+    const user = userEvent.setup();
+    renderScreen({ issueCounts: { 1001: 0 }, labelValuesFail: true });
+
+    await screen.findByText('LOT-SAMPLE-20');
+    await user.click(within(rowFor('LOT-SAMPLE-20')).getByRole('checkbox'));
+
+    /* ⚠ 넓게 찾지 않는다 — 품목 열에도 「이름을 불러오지 못했습니다」가 서 있다. */
+    expect(await screen.findByText(/품목 코드·LOT 번호를 불러오지 못했습니다/u)).toBeInTheDocument();
+    expect(screen.queryByText(t.target.previewEmpty)).not.toBeInTheDocument();
+  });
+
+  /*
+   * ⭐ **도착 위치를 못 읽어도 발행을 막지 않는다**(사용자 결정 2026-09-16). 실서버에서 그 조회가
+   *    POP 단말에 401 이라 막으면 현장이 통째로 선다 — 라벨의 도착지를 비우고 나아가되
+   *    **비웠다는 사실을 화면이 말한다.** 조용히 비우면 라벨이 거짓말을 한다.
+   *
+   * ⚠ 서버가 그 조회를 POP 에 열면 이 갈래는 사라진다 — 그때 이 시험이 먼저 걸린다.
+   */
+  it('도착 위치를 못 읽어도 미리보기가 서고 비웠다고 말한다', async () => {
+    const user = userEvent.setup();
+    renderScreen({ issueCounts: { 1001: 0 } });
+
+    await screen.findByText('LOT-SAMPLE-20');
+    await user.click(within(rowFor('LOT-SAMPLE-20')).getByRole('checkbox'));
+
+    expect(await screen.findByAltText(t.target.previewAlt)).toBeInTheDocument();
+    expect(screen.getByText(t.target.destinationMissing)).toBeInTheDocument();
+  });
+
+  it('도착 위치를 읽으면 비웠다고 말하지 않는다', async () => {
+    const user = userEvent.setup();
+    renderScreen({ issueCounts: { 1001: 0 }, destinationResolves: true });
+
+    await screen.findByText('LOT-SAMPLE-20');
+    await user.click(within(rowFor('LOT-SAMPLE-20')).getByRole('checkbox'));
+
+    expect(await screen.findByAltText(t.target.previewAlt)).toBeInTheDocument();
+    expect(screen.queryByText(t.target.destinationMissing)).not.toBeInTheDocument();
+  });
+
+  it('유형 선택지를 세우지 않는다 — 라인 단위로만 발행한다', async () => {
+    renderScreen({ issueCounts: { 1001: 0 } });
+
+    await screen.findByText('LOT-SAMPLE-20');
+
+    expect(screen.queryByRole('radio', { name: t.target.unitPallet })).not.toBeInTheDocument();
+    expect(screen.queryByRole('radio', { name: t.target.unitLine })).not.toBeInTheDocument();
+    expect(screen.queryByText(t.target.palletLabel)).not.toBeInTheDocument();
   });
 });
 
@@ -412,234 +511,14 @@ describe('GoodsIssueQrScreen', () => {
     expect(container.querySelector('.pop-giqr-actions .field-note')).toBeNull();
   });
 
-  /**
-   * ⭐ **파렛트 단위가 열렸다**(설계 회신 2026-09-06 · 공지 `CREFLEINC/omf-mes#507`).
-   * 대상 목록은 라인이 하나로 정해져야 서므로, 그 전에는 고를 수 없는 «사유»를 적는다 —
-   * 「없는 기능」과 「아직 못 고르는 상태」는 다른 말이다.
-   */
-  it('파렛트 단위는 고를 수 있고, 라인이 하나로 정해지기 전에는 사유를 적는다', async () => {
-    const user = userEvent.setup();
-    renderScreen({ issueCounts: { 1001: 0 } });
 
-    await screen.findByText('LOT-SAMPLE-20');
-    const pallet = screen.getByRole('radio', { name: t.target.unitPallet });
-    expect(pallet).toBeEnabled();
 
-    await user.click(pallet);
-    expect(screen.getByText(t.target.palletNeedsOneLine)).toBeInTheDocument();
-  });
 
-  /**
-   * ⛔ **파렛트 발행 본문을 지키는 자리다.** 스펙 §5-2 가 「파렛트는 `lotId` 를 싣지 않는다」로
-   * 못박은 규칙은 계약이 그 칸을 «선택»으로 두어 **타입 검사가 잡지 못한다** — 어기면 발행
-   * 이력이 아무 LOT 하나의 것으로 굳고, 발행은 되돌릴 수 없다.
-   */
-  it('파렛트로 발행하면 취급 단위 대상 하나만 싣고 LOT 은 싣지 않는다', async () => {
-    const user = userEvent.setup();
-    const writes: Request[] = [];
-    const palletRequests: Request[] = [];
-    renderScreen({
-      issueCounts: { 1001: 0, 1002: 0 },
-      palletIssueCounts: { 5001: 0 },
-      pallets: [{ handlingUnitId: 5001, handlingUnitNo: 'HU-SAMPLE-01', lotIds: [20] }],
-      writes,
-      palletRequests,
-    });
 
-    await screen.findByText('LOT-SAMPLE-20');
-    await user.click(within(rowFor('LOT-SAMPLE-20')).getByRole('checkbox'));
-    await user.click(screen.getByRole('radio', { name: t.target.unitPallet }));
 
-    await user.click(await screen.findByRole('combobox', { name: t.target.palletLabel }));
-    await user.click(await screen.findByRole('option', { name: /HU-SAMPLE-01/u }));
 
-    await waitFor(() => {
-      expect(screen.getByRole('button', { name: t.action.issue })).toBeEnabled();
-    });
-    await user.click(screen.getByRole('button', { name: t.action.issue }));
 
-    await waitFor(() => {
-      expect(writes).toHaveLength(1);
-    });
 
-    const body = (await writes[0]!.json()) as {
-      targets: { targetTypeCode: string; targetId: number; lotId?: number }[];
-    };
-
-    expect(body.targets).toEqual([{ targetTypeCode: 'HANDLING_UNIT', targetId: 5001 }]);
-    expect(body.targets[0]).not.toHaveProperty('lotId');
-
-    /* 목록은 고른 라인의 LOT 으로 좁혀 묻는다 — 창고 전체를 세우지 않는다. */
-    const asked = palletRequests.map((request) => new URL(request.url).searchParams.get('lotId'));
-    expect(asked).toContain('20');
-    expect(asked).not.toContain('21');
-  });
-
-  /**
-   * ⭐ **파렛트 회차는 라인 회차와 다른 표에서 온다**(같은 표를 대상 유형으로 가른다).
-   * 요약을 담아 두는 칸이 유형을 잃으면 파렛트가 라인의 발행 횟수를 자기 것으로 읽어
-   * **재발행인데 최초 발행으로 열린다.**
-   */
-  it('이미 발행된 파렛트는 사유 없이 발행되지 않는다 — 라인 회차를 가져다 쓰지 않는다', async () => {
-    const user = userEvent.setup();
-    renderScreen({
-      /* 라인은 최초 발행(0), 파렛트는 재발행(2) — 섞이면 여기서 드러난다. */
-      issueCounts: { 1001: 0, 1002: 0 },
-      palletIssueCounts: { 5001: 2 },
-      pallets: [{ handlingUnitId: 5001, handlingUnitNo: 'HU-SAMPLE-01', lotIds: [20] }],
-    });
-
-    await screen.findByText('LOT-SAMPLE-20');
-    await user.click(within(rowFor('LOT-SAMPLE-20')).getByRole('checkbox'));
-    await user.click(screen.getByRole('radio', { name: t.target.unitPallet }));
-
-    await user.click(await screen.findByRole('combobox', { name: t.target.palletLabel }));
-    await user.click(await screen.findByRole('option', { name: /HU-SAMPLE-01/u }));
-
-    expect(await screen.findByText(t.action.disabledNoReason)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: t.action.issue })).toBeDisabled();
-
-    await user.click(screen.getByRole('combobox', { name: t.reissue.label }));
-    await user.click(await screen.findByRole('option', { name: '인쇄 실패' }));
-
-    await waitFor(() => {
-      expect(screen.getByRole('button', { name: t.action.issue })).toBeEnabled();
-    });
-  });
-
-  /**
-   * ⛔ **담긴 내용이 오기 전에 [발행] 을 열지 않는다.** 빈 파렛트 차단(스펙 §6)이 그 응답으로
-   * 서는데, 오기 전에는 「담긴 것이 없다」와 「아직 모른다」가 화면에서 같아 보인다 — 그 틈에
-   * 누르면 찍을 것이 없는 파렛트로 발행 기록이 남고, 발행은 되돌릴 수 없다.
-   */
-  it('담긴 내용이 오기 전에는 발행 버튼을 열지 않는다', async () => {
-    const user = userEvent.setup();
-    let release = (): void => {};
-    const gate = new Promise<void>((resolve) => {
-      release = resolve;
-    });
-
-    renderScreen({
-      issueCounts: { 1001: 0, 1002: 0 },
-      palletIssueCounts: { 5001: 0 },
-      pallets: [{ handlingUnitId: 5001, handlingUnitNo: 'HU-SAMPLE-01', lotIds: [20] }],
-      palletContentsGate: gate,
-    });
-
-    await screen.findByText('LOT-SAMPLE-20');
-    await user.click(within(rowFor('LOT-SAMPLE-20')).getByRole('checkbox'));
-    await user.click(screen.getByRole('radio', { name: t.target.unitPallet }));
-
-    await user.click(await screen.findByRole('combobox', { name: t.target.palletLabel }));
-    await user.click(await screen.findByRole('option', { name: /HU-SAMPLE-01/u }));
-
-    expect(await screen.findByText(t.action.disabledPalletContentsPending)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: t.action.issue })).toBeDisabled();
-
-    release();
-
-    await waitFor(() => {
-      expect(screen.getByRole('button', { name: t.action.issue })).toBeEnabled();
-    });
-  });
-
-  /**
-   * ⛔ **회차를 «자리»로 읽지 않는다.** 응답에 다른 대상이 섞이거나 차례가 바뀌면 자리로 읽는
-   * 쪽만 어긋나 **재발행인데 사유를 묻지 않고 열린다.** 짝은 `targetId` 가 짓는다.
-   */
-  it('파렛트 회차를 대상 번호로 짝짓는다 — 응답 첫 줄을 자기 것으로 읽지 않는다', async () => {
-    const user = userEvent.setup();
-    renderScreen({
-      issueCounts: { 1001: 0, 1002: 0 },
-      /* 고를 파렛트(5001)는 «둘째» 줄이다. 자리로 읽으면 4999 의 0 회를 가져다 쓴다. */
-      palletIssueCounts: { 4999: 0, 5001: 2 },
-      pallets: [{ handlingUnitId: 5001, handlingUnitNo: 'HU-SAMPLE-01', lotIds: [20] }],
-    });
-
-    await screen.findByText('LOT-SAMPLE-20');
-    await user.click(within(rowFor('LOT-SAMPLE-20')).getByRole('checkbox'));
-    await user.click(screen.getByRole('radio', { name: t.target.unitPallet }));
-
-    await user.click(await screen.findByRole('combobox', { name: t.target.palletLabel }));
-    await user.click(await screen.findByRole('option', { name: /HU-SAMPLE-01/u }));
-
-    expect(await screen.findByText(t.action.disabledNoReason)).toBeInTheDocument();
-  });
-
-  /**
-   * ⛔ **한 쪽에 담기지 않은 목록을 조용히 자르지 않는다.** 고르려던 파렛트가 목록에 없는데
-   * 화면이 아무 말도 하지 않으면 사용자는 남은 것 중에서 고르고, 그 발행은 되돌릴 수 없다.
-   */
-  it('파렛트 목록이 한 쪽에서 잘리면 몇 건 중 몇 건인지 알린다', async () => {
-    const user = userEvent.setup();
-    renderScreen({
-      issueCounts: { 1001: 0, 1002: 0 },
-      pallets: [{ handlingUnitId: 5001, handlingUnitNo: 'HU-SAMPLE-01', lotIds: [20] }],
-      palletTotal: 140,
-    });
-
-    await screen.findByText('LOT-SAMPLE-20');
-    await user.click(within(rowFor('LOT-SAMPLE-20')).getByRole('checkbox'));
-    await user.click(screen.getByRole('radio', { name: t.target.unitPallet }));
-
-    expect(await screen.findByText(t.target.palletTruncated(1, 140))).toBeInTheDocument();
-  });
-
-  it('목록이 다 왔으면 잘렸다고 말하지 않는다', async () => {
-    const user = userEvent.setup();
-    renderScreen({
-      issueCounts: { 1001: 0, 1002: 0 },
-      pallets: [{ handlingUnitId: 5001, handlingUnitNo: 'HU-SAMPLE-01', lotIds: [20] }],
-    });
-
-    await screen.findByText('LOT-SAMPLE-20');
-    await user.click(within(rowFor('LOT-SAMPLE-20')).getByRole('checkbox'));
-    await user.click(screen.getByRole('radio', { name: t.target.unitPallet }));
-
-    await screen.findByRole('combobox', { name: t.target.palletLabel });
-    expect(screen.queryByText(t.target.palletTruncated(1, 1))).not.toBeInTheDocument();
-  });
-
-  /** 설계 §3 도면이 「3라인 · 820 EA」로 그렸다 — 수량 뒤의 단위까지가 한 벌이다. */
-  it('담긴 내용에 단위를 붙여 보인다', async () => {
-    const user = userEvent.setup();
-    renderScreen({
-      issueCounts: { 1001: 0, 1002: 0 },
-      pallets: [{ handlingUnitId: 5001, handlingUnitNo: 'HU-SAMPLE-01', lotIds: [20] }],
-      palletContentCounts: { 5001: 3 },
-    });
-
-    await screen.findByText('LOT-SAMPLE-20');
-    await user.click(within(rowFor('LOT-SAMPLE-20')).getByRole('checkbox'));
-    await user.click(screen.getByRole('radio', { name: t.target.unitPallet }));
-
-    await user.click(await screen.findByRole('combobox', { name: t.target.palletLabel }));
-    await user.click(await screen.findByRole('option', { name: /HU-SAMPLE-01/u }));
-
-    expect(await screen.findByText(t.target.palletContents(3, '300 EA'))).toBeInTheDocument();
-  });
-
-  /** ⛔ 서로 다른 단위를 하나로 더하면 화면이 실재하지 않는 수를 말한다. */
-  it('단위가 섞이면 갈라 적는다', async () => {
-    const user = userEvent.setup();
-    renderScreen({
-      issueCounts: { 1001: 0, 1002: 0 },
-      pallets: [{ handlingUnitId: 5001, handlingUnitNo: 'HU-SAMPLE-01', lotIds: [20] }],
-      palletContentCounts: { 5001: 3 },
-      palletContentUomIds: [30, 30, 31],
-    });
-
-    await screen.findByText('LOT-SAMPLE-20');
-    await user.click(within(rowFor('LOT-SAMPLE-20')).getByRole('checkbox'));
-    await user.click(screen.getByRole('radio', { name: t.target.unitPallet }));
-
-    await user.click(await screen.findByRole('combobox', { name: t.target.palletLabel }));
-    await user.click(await screen.findByRole('option', { name: /HU-SAMPLE-01/u }));
-
-    expect(
-      await screen.findByText(t.target.palletContents(3, '200 EA · 100 KG')),
-    ).toBeInTheDocument();
-  });
 
   it('프린터가 0건이면 빈 상태를 머리에 보인다', async () => {
     renderScreen({ issueCounts: { 1001: 0 } });
@@ -856,6 +735,53 @@ describe('GoodsIssueQrScreen', () => {
    * 된다**는 것과, 그림을 «부르러 가지도 않는다»는 것(완료 조건)을 대신 잰다. 인쇄 실패로
    * 보고되는 나머지 사실은 바로 아래 「그린 것을 못 받으면…」 시험이 잰다.
    */
+  /*
+   * ⭐ **POP 이 스스로 그린 라벨이 셸까지 간다**(설계 결정 8·9 의 2단계). 전에는 여기서 잴 것이
+   *    「부르지 않는다」뿐이었다 — 서버가 그려 주지 않으니 인쇄가 설 수 없었다. 이제는 정상
+   *    경로가 성립하므로 **무엇이 넘어갔는지**를 잰다: PNG 바이트인가 · 형식이 `png` 인가 ·
+   *    파일 이름이 대상과 회차를 담는가 · SUCCEEDED 로 보고하는가.
+   */
+  it('스스로 그린 PNG 를 셸로 넘기고 성공으로 보고한다', async () => {
+    const user = userEvent.setup();
+    const renditionCalls: string[] = [];
+    const reports: Request[] = [];
+    const saved: { bytes: Uint8Array; label: string; format: string }[] = [];
+    installPrintBridge(async (bytes, label, _now, format) => {
+      saved.push({ bytes, label, format });
+
+      return 'C:/labels/sample.png';
+    });
+    renderScreen({ issueCounts: { 1001: 0 }, renditionCalls, reports });
+
+    await screen.findByText('LOT-SAMPLE-20');
+    await user.click(within(rowFor('LOT-SAMPLE-20')).getByRole('checkbox'));
+    await user.click(screen.getByRole('button', { name: t.action.issue }));
+
+    expect(await screen.findByText(t.result.issued(1))).toBeInTheDocument();
+    await waitFor(() => {
+      expect(saved).toHaveLength(1);
+    });
+
+    const sent = saved[0];
+
+    if (sent === undefined) throw new Error('셸로 넘어간 것이 없습니다');
+
+    expect(sent.format).toBe('png');
+    /* 파일 이름이 「무엇을 몇 회차로」를 담는다 — 셸의 파일 목록에서 그것만 보고 가려야 한다. */
+    expect(sent.label).toBe('GOODS_ISSUE_QR-1001-1');
+    /* PNG 머리표. 「무언가 넘어갔다」와 「PNG 가 넘어갔다」는 다르다. */
+    expect([...sent.bytes.subarray(0, 8)]).toEqual([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+
+    /* ⛔ 서버 렌디션은 부르지 않는다 — 이 유형을 서버가 그리지 않는다. */
+    expect(renditionCalls).toHaveLength(0);
+
+    const report = reports[0];
+
+    if (report === undefined) throw new Error('인쇄 보고가 없습니다');
+
+    expect(await report.json()).toMatchObject({ outcome: 'SUCCEEDED' });
+  });
+
   it('발행은 되지만 그림을 받으러 네트워크 요청을 보내지 않는다', async () => {
     const user = userEvent.setup();
     const renditionCalls: string[] = [];
@@ -892,11 +818,11 @@ describe('GoodsIssueQrScreen', () => {
     expect(await report.json()).toMatchObject({ outcome: 'FAILED' });
   });
 
-  it('그린 것을 못 받으면 그것도 인쇄 실패로 보고한다 — 종이는 나오지 않았다', async () => {
+  it('라벨에 실을 값을 못 받으면 그것도 인쇄 실패로 보고한다 — 종이는 나오지 않았다', async () => {
     const user = userEvent.setup();
     const reports: Request[] = [];
     installPrintBridge(() => Promise.resolve('C:/labels/sample.png'));
-    renderScreen({ issueCounts: { 1001: 0 }, reports, renditionFails: true });
+    renderScreen({ issueCounts: { 1001: 0 }, reports, labelValuesFail: true });
 
     await screen.findByText('LOT-SAMPLE-20');
     await user.click(within(rowFor('LOT-SAMPLE-20')).getByRole('checkbox'));
@@ -934,10 +860,10 @@ describe('GoodsIssueQrScreen', () => {
    * 유사(`printedUnreported`)로도, 「아무것도 안 했다」로도 접지 않고 「보고까지 실패했다」로
    * 말하는 지금의 실제 갈래를 잰다.
    */
-  it('그림도 못 받고 보고도 실패하면 성공과 헷갈리지 않게 말한다', async () => {
+  it('그리지도 못하고 보고도 실패하면 성공과 헷갈리지 않게 말한다', async () => {
     const user = userEvent.setup();
     installPrintBridge(() => Promise.resolve('C:/labels/sample.png'));
-    renderScreen({ issueCounts: { 1001: 0 }, reportFails: true });
+    renderScreen({ issueCounts: { 1001: 0 }, reportFails: true, labelValuesFail: true });
 
     await screen.findByText('LOT-SAMPLE-20');
     await user.click(within(rowFor('LOT-SAMPLE-20')).getByRole('checkbox'));

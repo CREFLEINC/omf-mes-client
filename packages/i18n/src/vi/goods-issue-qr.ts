@@ -3,14 +3,46 @@ import type { Translated } from './translated';
 
 /** P-01-02 출고 QR 발행. */
 export const goodsIssueQr: Translated<typeof ko.goodsIssueQr> = {
-  title: 'Phát hành QR xuất kho',
+  title: 'Phát hành QR xuất kho vật tư',
 
   entry: {
-    issueLabel: 'Phiếu xuất kho',
+    issueLabel: 'Phiếu xuất kho vật tư',
     workerLabel: 'Mã nhân viên',
-    missingIssue: 'Hãy chọn phiếu xuất kho rồi vào màn hình này.',
+    missingIssue: 'Hãy nhập số phiếu xuất kho để tải phiếu.',
+    lookup: {
+      label: 'Số phiếu xuất kho vật tư',
+      placeholder: 'Quét hoặc nhập số phiếu xuất kho',
+      action: 'Tải phiếu',
+      searching: 'Đang tìm phiếu',
+      notFound: 'Không tìm thấy phiếu có số đó. Hãy kiểm tra lại số.',
+      failed: 'Không tra được phiếu. Hãy kiểm tra kết nối rồi thử lại.',
+    },
     missingWorker:
       'Chưa xác nhận mã nhân viên nên không phát hành được. Hãy xác nhận mã nhân viên trước.',
+  },
+
+  pending: {
+    sectionLabel: 'Chờ phát hành QR',
+    back: 'Về danh sách chờ',
+    refresh: 'Làm mới',
+    pick: 'In dòng này',
+    columnIssueNo: 'Số phiếu xuất kho vật tư',
+    columnLine: 'Dòng',
+    columnItem: 'Hàng hóa',
+    columnLot: 'LOT',
+    columnQty: 'Số lượng',
+    columnStatus: 'Trạng thái',
+    statusNotIssued: 'Chưa phát hành',
+    statusPrintFailed: (issueCount: number): string => `In lỗi · lần ${String(issueCount)}`,
+    columnAction: '',
+    window: (days: number, limit: number): string =>
+      `Tìm trong ${String(days)} ngày gần đây · tối đa ${String(limit)} phiếu.`,
+    loading: 'Đang tìm các dòng chờ phát hành',
+    failed: 'Không tải được danh sách chờ. Hãy kiểm tra kết nối rồi làm mới.',
+    empty: 'Không có phiếu xuất kho vật tư nào đang chờ phát hành.',
+    allIssued: (count: number): string =>
+      `${String(count)} dòng trong kỳ này đã được phát hành.`,
+    truncated: 'Kỳ này còn nhiều phiếu hơn. Hãy tải phiếu chưa thấy bằng số phiếu.',
   },
 
   device: {
@@ -64,9 +96,11 @@ export const goodsIssueQr: Translated<typeof ko.goodsIssueQr> = {
     seqLabel: 'Lượt',
     seqUnknown: '—',
     previewLabel: 'Xem trước',
-    previewEmpty: 'Xem trước được khi phát hành.',
+    previewEmpty: 'Chọn một dòng để xem trước.',
     previewFailed: 'Không tải được bản xem trước. Vẫn in được bình thường.',
     previewAlt: 'Xem trước QR xuất kho',
+    destinationMissing:
+      'Không đọc được vị trí đến nên đã để trống nơi đến trên nhãn. Vẫn có thể phát hành.',
   },
 
   reissue: {
