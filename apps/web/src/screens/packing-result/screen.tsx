@@ -444,6 +444,8 @@ export const PackingResultScreen = () => {
           <ScanField
             label={t.scan.label.shipment}
             isScanning={shipmentScan.isPending}
+            /* ⭐ 스캐너가 Enter 를 붙이지 않아도 읽는다(사용자 지시 2026-09-17 · 바코드 입력 칸 공통). */
+            autoSubmit
             /*
              * ⭐ 출하가 정해지면 칸 안에 다시 스캔 안내를 적는다(사용자 지시 2026-09-17). 칸이
              *    비어 있으면 출하번호를 한 번 더 넣어야 하는 줄로 읽혔다. 칸은 그대로 둔다 —
@@ -712,27 +714,9 @@ export const PackingResultScreen = () => {
           <p className="packing-lock">{HANDLING_UNIT_CANCEL_NOT_READY_MESSAGE}</p>
         )}
 
-        {/*
-         * ⛔ **읽은 것이 없으면 무를 것도 없다.** 아무것도 읽지 않은 채로 열려 있어, 눌러도
-         *    아무 일이 없는 단추였다(사용자 지적 2026-09-07). 되돌릴 것이 있을 때만 연다.
-         */}
+        {/* ⛔ [다시 스캔]은 두지 않는다 — 불필요하다(사용자 지시 2026-09-17). 담긴 줄은 [빼기]로 뺀다. */}
         {!isLabelMode && (
           <>
-            <Button
-              type="button"
-              variant="outlined"
-              size="xl"
-              className="pop-touch-target"
-              disabled={labelCode === null && matched === null}
-              onClick={() => {
-                /* 「다시 스캔」은 **마지막 스캔을 취소한다** — 담긴 것은 표에서 줄 단위로 뺀다. */
-                setMatched(null);
-                setQty('');
-              }}
-            >
-              {t.actions.rescan}
-            </Button>
-
             <Button
               type="button"
               variant="filled"

@@ -83,7 +83,6 @@ export const packingResult: Translated<typeof ko.packingResult> = {
     },
   },
   actions: {
-    rescan: 'Quét lại',
     confirm: 'Xác nhận kiện',
     confirming: 'Đang xác nhận…',
     retry: 'Thử lại',

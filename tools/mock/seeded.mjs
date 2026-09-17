@@ -3742,6 +3742,20 @@ const touchShippingUnit = (unit) => {
   unit.updatedAt = new Date().toISOString();
 };
 
+/*
+ * 서버 `ShippingUnitQueryService.list` 의 최소판 — 출하·상태로 거른다. P-04-01 라벨 상태·재출력이
+ * 납품 라벨 대상 목록으로 부른다. ⚠ 실서버와 다름: 기간·정렬 축은 넣지 않았다.
+ */
+on('GET', '/logistics/shipping-units', (_p, query) =>
+  page(
+    keep(state.shippingUnits.map(shippingUnitView), [
+      byNum(query, 'shipmentId', 'shipmentId'),
+      byText(query, 'statusCode', 'statusCode'),
+    ]),
+    query,
+  ),
+);
+
 on('GET', '/logistics/shipping-units/{shippingUnitId}', (params) => {
   const unit = findShippingUnit(params);
   return unit === undefined ? notFound('없는 출하 단위입니다.') : shippingUnitOk(unit);

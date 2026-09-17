@@ -352,7 +352,6 @@ describe('PackingResultScreen', () => {
 
     /* ⛔ 포장 조작은 함께 서지 않는다 — 라벨 화면에서 누를 일이 없다. */
     expect(screen.queryByRole('button', { name: t.actions.confirm })).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: t.actions.rescan })).not.toBeInTheDocument();
 
     /* 눌러서 실제로 돌아온다 — 단추가 있는 것과 동작하는 것은 다른 축이다. */
     await user.click(back);

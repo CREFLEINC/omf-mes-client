@@ -253,12 +253,14 @@ describe('ShippingPackingLabelScreen — 진입', () => {
    * ⛔ 대상 목록의 「라벨 종류를 먼저 고르세요」와 **같은 문장을 쓰지 않는다** — 한 화면에
    *    같은 말이 둘 서면 어느 쪽을 고쳐야 하는지 흐려진다.
    */
-  it('라벨 종류를 고르기 전에는 발행이 왜 막혔는지 말한다', async () => {
+  /* ⭐ 막힌 사유 문구는 적지 않고 발행 단추 잠김만 둔다(사용자 지시 2026-09-17). */
+  it('라벨 종류를 고르기 전에는 발행이 잠긴다', async () => {
     renderScreen();
 
-    expect(await screen.findByText(t.actions.needsKind)).toBeInTheDocument();
-    expect(issueButton()).toBeDisabled();
-    expect(t.actions.needsKind).not.toBe(t.targets.beforeKind);
+    await waitFor(() => {
+      expect(issueButton()).toBeDisabled();
+    });
+    expect(screen.queryByText(t.actions.needsKind)).not.toBeInTheDocument();
   });
 
   it('사번을 모르면 발행하지 않는다 — 서버가 거부할 쓰기를 만들지 않는다', async () => {
@@ -324,8 +326,10 @@ describe('ShippingPackingLabelScreen — 대상 목록', () => {
     // 구성 중인 줄(두 번째)을 눌러도 선택으로 남지 않아 발행이 열리지 않는다.
     await user.click(await rowCheckbox(1));
 
-    expect(await screen.findByText(t.actions.needsTarget)).toBeInTheDocument();
-    expect(issueButton()).toBeDisabled();
+    await waitFor(() => {
+      expect(issueButton()).toBeDisabled();
+    });
+    expect(screen.queryByText(t.actions.needsTarget)).not.toBeInTheDocument();
   });
 
   it('납품라벨은 마감된 단위를 고르면 발행 단추가 열린다', async () => {
@@ -435,9 +439,10 @@ describe('ShippingPackingLabelScreen — 발행과 인쇄', () => {
     await user.click(issueButton());
 
     await waitFor(() => {
-      expect(requests).toHaveLength(1);
+      expect(requests.length).toBeGreaterThan(0);
     });
 
+    /* 발행 뒤 곧바로 인쇄 보고가 뒤따르므로(사용자 지시 2026-09-17) 첫 요청이 발행이다. */
     const sent = nth(requests, 0);
     const body = JSON.parse(sent.body) as Record<string, unknown>;
 
@@ -459,7 +464,9 @@ describe('ShippingPackingLabelScreen — 발행과 인쇄', () => {
      *    사정을 타지 않는다 — 한때 이 자리가 늘 「그림을 못 받았다」였고, 그 탓에 인쇄·보고까지
      *    한 번도 닿지 못했다.
      */
-    expect(await screen.findByText(t.outcome.issued(1))).toBeInTheDocument();
+    await waitFor(() => {
+      expect(requests.some((one) => one.request.url.endsWith(':report-print'))).toBe(true);
+    });
   });
 
   it('발행 단추를 연달아 눌러도 발행은 한 번만 나간다 — 회차는 되돌릴 수 없다', async () => {
@@ -482,7 +489,9 @@ describe('ShippingPackingLabelScreen — 발행과 인쇄', () => {
       expect(requests.length).toBeGreaterThan(0);
     });
 
-    expect(requests.filter((one) => one.request.method === 'POST')).toHaveLength(1);
+    expect(
+      requests.filter((one) => new URL(one.request.url).pathname === '/app/document-issues'),
+    ).toHaveLength(1);
   });
 
   it('발행이 실패해 그대로 다시 눌러도 멱등 키가 같다 — 서버가 기록을 두 벌 만들지 않는다', async () => {
@@ -559,7 +568,8 @@ describe('ShippingPackingLabelScreen — 발행과 인쇄', () => {
    *    잠긴 채로 남는다」였다 — 서버가 이 종류들을 그려 주지 않아서다. 지금은 POP 이 그리므로
    *    확인하고 인쇄까지 간다.
    */
-  it('발행하면 미리보기가 열리고 인쇄까지 갈 수 있다', async () => {
+  /* ⭐ 발행 뒤 곧바로 인쇄까지 가고, 미리보기는 그 뒤에도 열린다(사용자 지시 2026-09-17). */
+  it('발행하면 곧바로 인쇄까지 가고 미리보기가 열린다', async () => {
     const user = userEvent.setup();
     renderScreen();
 
@@ -567,7 +577,6 @@ describe('ShippingPackingLabelScreen — 발행과 인쇄', () => {
     await user.click(await rowCheckbox(0));
     await user.click(issueButton());
 
-    expect(await screen.findByText(t.outcome.issued(1))).toBeInTheDocument();
     await waitFor(() =>
       expect(screen.getByRole('button', { name: t.actions.preview })).toBeEnabled(),
     );
@@ -688,7 +697,12 @@ describe('ShippingPackingLabelScreen — 재진입 복구', () => {
 
     await user.click(deliveryAction);
 
-    await waitFor(() => expect(requests.some(({ request }) =>
-      request.method === 'POST' && pathOf(request) === '/app/document-issues')).toBe(true));
+    await waitFor(() =>
+      expect(
+        requests.some(
+          ({ request }) => request.method === 'POST' && pathOf(request) === '/app/document-issues',
+        ),
+      ).toBe(true),
+    );
   });
 });

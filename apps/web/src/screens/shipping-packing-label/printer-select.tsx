@@ -28,6 +28,8 @@ export interface PrinterSelectProps {
   disabled: boolean;
   /** 아직 라벨 종류를 고르지 않았다 — 조회 자체를 하지 않은 상태다. */
   awaitingKind: boolean;
+  /** 고른 프린터의 상태 표식을 그리는가. 기본은 그린다. */
+  showStatus?: boolean;
 }
 
 /**
@@ -52,6 +54,7 @@ export const PrinterSelect = ({
   onRetry,
   disabled,
   awaitingKind,
+  showStatus = true,
 }: PrinterSelectProps) => {
   /*
    * ⭐ **종류를 고르기 전에도 자리를 비우지 않는다** — 칸을 감췄다가 고르는 «순간» 나타나면
@@ -110,11 +113,11 @@ export const PrinterSelect = ({
       />
       {selected === null ? (
         <span className="field-note">{t.unselected}</span>
-      ) : (
+      ) : showStatus ? (
         <Chip status={CHIP_STATUS[selected.status]}>
           {selected.statusMessage ?? t.noStatusMessage}
         </Chip>
-      )}
+      ) : null}
     </div>
   );
 };
