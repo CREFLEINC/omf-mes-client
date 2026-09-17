@@ -6027,3 +6027,32 @@
   flex-wrap: wrap;
   margin-block-start: var(--space-3);
 }
+
+/*
+ * P-04-01 포장 확정 팝업 요약 — **이름 아래에 값을 세운다**(사용자 지시 2026-09-17).
+ * `dl.filter-bar` 는 이름·값 쌍을 가로로 늘어놓아 세 쌍이 두 줄로 어긋나 꺾였다(실측).
+ * 쌍마다 `div` 로 묶어 한 줄에 하나씩 쌓는다.
+ */
+.pop-ui dl.filter-bar.packing-confirm-summary {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-4);
+}
+
+.pop-ui dl.filter-bar.packing-confirm-summary > div > dd {
+  margin: 0;
+}
+
+/*
+ * P-04-01 포장 확정 팝업 — **스크롤이 생기지 않는다**(사용자 지시 2026-09-17).
+ * 요약 세 줄과 안내 한 줄뿐이라 본문을 굴릴 까닭이 없다. DS 는 본문에 `overflow-y: auto` 와
+ * 창 높이 상한(`--dialog-max-h`, dvh 기준)을 건다 — `pop-fit` 배율 아래에서 dvh 셈이 어긋나면
+ * 짧은 본문에도 스크롤이 선다. 이 창에서만 상한과 굴림을 푼다. 전례 `dialog [class*='close']`.
+ */
+.pop-ui dialog.packing-confirm-dialog {
+  --dialog-max-h: none;
+}
+
+.pop-ui dialog.packing-confirm-dialog [class*='_body_'] {
+  overflow: visible;
+}

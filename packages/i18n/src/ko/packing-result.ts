@@ -176,4 +176,16 @@ export const packingResult = {
     unitMissing: '포장을 만들지 못했습니다. 담긴 것을 다시 스캔하세요',
   },
   confirmed: (handlingUnitNo: string): string => `포장 ${handlingUnitNo} 을 확정했습니다`,
+  /** [포장 확정]을 누르면 먼저 되묻는다(사용자 지시 2026-09-17 · 스펙 §6 에는 없는 팝업). */
+  confirmDialog: {
+    title: '포장을 확정할까요?',
+    shipment: '출하번호',
+    type: '포장 유형',
+    contents: '내용물',
+    lotCount: (count: number): string => `LOT ${count}건`,
+    lotCountWithQty: (count: number, qty: string): string => `LOT ${count}건 · 수량 ${qty}`,
+    labelNotice: '확정 시 포장 라벨이 바로 인쇄됩니다.',
+    cancel: '취소',
+    confirm: '확정',
+  },
 } as const;

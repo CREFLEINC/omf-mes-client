@@ -1,4 +1,4 @@
-import { AlertBanner, Button, Chip, NumberPad } from '@crefle/web-ui';
+import { AlertBanner, Button, Chip, Dialog, NumberPad } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useId, useState } from 'react';
 
@@ -84,6 +84,7 @@ export const PackingResultScreen = () => {
   const [confirmedNo, setConfirmedNo] = useState<string | null>(null);
   const [automaticLabelRun, setAutomaticLabelRun] = useState<AutomaticLabelRun | null>(null);
   const [isLabelMode, setLabelMode] = useState(false);
+  const [isConfirmOpen, setConfirmOpen] = useState(false);
 
   const shipmentScan = useShipmentScan();
   const shipmentSelection = useShipmentSelection();
@@ -687,7 +688,37 @@ export const PackingResultScreen = () => {
               variant="filled"
               size="2xl"
               disabled={lockReason !== undefined || confirm.isPending}
+              /*
+               * ⭐ **누르면 바로 확정하지 않고 먼저 되묻는다**(사용자 지시 2026-09-17). 확정하면
+               *    포장 라벨이 곧장 종이로 나가 되돌릴 수 없다. 스펙 §6 에는 없는 팝업이다.
+               */
+              onClick={() => setConfirmOpen(true)}
+            >
+              {confirm.isPending ? t.actions.confirming : t.actions.confirm}
+            </Button>
+          </>
+        )}
+      </div>
+
+      <Dialog
+        open={isConfirmOpen}
+        onClose={() => setConfirmOpen(false)}
+        title={t.confirmDialog.title}
+        /* ⭐ 스크롤 없이 한 번에 보인다(사용자 지시 2026-09-17) — pop.css `.packing-confirm-dialog`. */
+        className="packing-confirm-dialog"
+        /* ⛔ 바닥의 [취소]와 같은 일을 하므로 X 를 두지 않는다 — 나가는 길은 하나다. */
+        showCloseButton={false}
+        /* ⛔ 팝업 바깥을 눌러 닫히지 않는다(사용자 지시 2026-09-10 · #1005) — 터치 단말의 오조작. */
+        closeOnBackdropClick={false}
+        footer={
+          <>
+            <Button variant="outlined" onClick={() => setConfirmOpen(false)}>
+              {t.confirmDialog.cancel}
+            </Button>
+            <Button
+              disabled={lockReason !== undefined || confirm.isPending}
               onClick={() => {
+                setConfirmOpen(false);
                 if (
                   lockReason !== undefined ||
                   warehouseId === null ||
@@ -701,11 +732,39 @@ export const PackingResultScreen = () => {
                 confirm.mutate({ handlingUnit: openUnit, lines, workerNo: identity.workerNo });
               }}
             >
-              {confirm.isPending ? t.actions.confirming : t.actions.confirm}
+              {t.confirmDialog.confirm}
             </Button>
           </>
-        )}
-      </div>
+        }
+      >
+        {/* ⭐ 이름 아래에 값을 세운다 — 한 줄에 셋을 늘어놓지 않는다(사용자 지시 2026-09-17). */}
+        <dl className="filter-bar packing-confirm-summary">
+          <div>
+            <dt>{t.confirmDialog.shipment}</dt>
+            <dd>{entry?.shipmentNo ?? labelCode ?? '—'}</dd>
+          </div>
+          <div>
+            <dt>{t.confirmDialog.type}</dt>
+            <dd>
+              {typeOptions.options.find((option) => option.value === handlingUnitTypeCode)?.label ??
+                '—'}
+            </dd>
+          </div>
+          <div>
+            <dt>{t.confirmDialog.contents}</dt>
+            <dd>
+              {/* 단위가 섞이면 수량을 더하지 않는다 — 다른 단위의 합은 뜻이 없다. */}
+              {new Set(lines.map((line) => line.uomId)).size === 1
+                ? t.confirmDialog.lotCountWithQty(
+                    lines.length,
+                    String(lines.reduce((sum, line) => sum + line.qty, 0)),
+                  )
+                : t.confirmDialog.lotCount(lines.length)}
+            </dd>
+          </div>
+        </dl>
+        <p>{t.confirmDialog.labelNotice}</p>
+      </Dialog>
     </main>
   );
 };

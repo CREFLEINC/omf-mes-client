@@ -126,4 +126,15 @@ export const packingResult: Translated<typeof ko.packingResult> = {
     unitMissing: 'Không tạo được kiện. Hãy quét lại hàng bên trong',
   },
   confirmed: (handlingUnitNo: string): string => `Đã xác nhận kiện ${handlingUnitNo}`,
+  confirmDialog: {
+    title: 'Xác nhận kiện này?',
+    shipment: 'Số xuất hàng',
+    type: 'Loại kiện',
+    contents: 'Nội dung',
+    lotCount: (count: number): string => `${count} LOT`,
+    lotCountWithQty: (count: number, qty: string): string => `${count} LOT · SL ${qty}`,
+    labelNotice: 'Sau khi xác nhận, nhãn kiện sẽ được in ngay.',
+    cancel: 'Hủy',
+    confirm: 'Xác nhận',
+  },
 };

@@ -593,7 +593,21 @@ describe('PackingResultScreen — 담기와 확정', () => {
     await user.click(screen.getByRole('combobox', { name: t.fields.handlingUnitType }));
     await user.click(await screen.findByRole('option', { name: '카톤' }));
 
+    /* ⭐ 누르면 먼저 되묻는다(사용자 지시 2026-09-17) — [취소]하면 확정 요청이 나가지 않는다. */
     await user.click(screen.getByRole('button', { name: t.actions.confirm }));
+    const dialog = await screen.findByRole('dialog', { name: t.confirmDialog.title });
+    expect(within(dialog).getByText('카톤')).toBeInTheDocument();
+    expect(within(dialog).getByText(t.confirmDialog.labelNotice)).toBeInTheDocument();
+    await user.click(within(dialog).getByRole('button', { name: t.confirmDialog.cancel }));
+    expect(writes.map(pathOf)).not.toContain('/inventory/handling-units/4001:pack');
+
+    await user.click(screen.getByRole('button', { name: t.actions.confirm }));
+    await user.click(
+      within(await screen.findByRole('dialog', { name: t.confirmDialog.title })).getByRole(
+        'button',
+        { name: t.confirmDialog.confirm },
+      ),
+    );
 
     expect(await screen.findByText(t.confirmed('SYN-CTN-0091'))).toBeTruthy();
     expect(writes.map((request) => `${request.method} ${pathOf(request)}`)).toEqual([
@@ -619,6 +633,12 @@ describe('PackingResultScreen — 담기와 확정', () => {
     await user.click(await screen.findByRole('option', { name: '카톤' }));
 
     await user.click(screen.getByRole('button', { name: t.actions.confirm }));
+    await user.click(
+      within(await screen.findByRole('dialog', { name: t.confirmDialog.title })).getByRole(
+        'button',
+        { name: t.confirmDialog.confirm },
+      ),
+    );
 
     expect(await screen.findByText(messages.conflict.user)).toBeInTheDocument();
     expect(screen.queryByText('conflict')).toBeNull();
