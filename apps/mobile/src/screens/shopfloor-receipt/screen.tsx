@@ -364,11 +364,7 @@ export const ShopfloorReceiptScreen = () => {
 
   if (outcome !== null) {
     return (
-      <div className={
-        linePad === null && hopperPad === null
-          ? 'shopfloor-receipt'
-          : 'shopfloor-receipt docked-pad-open'
-      }>
+      <div className="shopfloor-receipt">
         {outcome === 'sent' ? <AlertBanner variant="success" title={t.sent.title} /> : null}
         {outcome === 'held' ? (
           <AlertBanner variant="warning" title={t.held.title}>
@@ -389,7 +385,13 @@ export const ShopfloorReceiptScreen = () => {
   }
 
   return (
-    <div className="shopfloor-receipt">
+    <div
+      className={
+        linePad === null && hopperPad === null
+          ? 'shopfloor-receipt'
+          : 'shopfloor-receipt docked-pad-open'
+      }
+    >
       {/* 통신이 끊기면 출고분도 이 기기에서 처리한다. 말하지 않으면 다른 기기를 기다린다. */}
       {online ? null : (
         <AlertBanner variant="warning" title={t.degraded.title}>

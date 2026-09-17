@@ -556,6 +556,22 @@ describe('생산창고 입고 화면', () => {
   });
 
   /*
+   * 숫자판은 내용 위에 뜬다. 바깥 요소에 `docked-pad-open` 이 붙어야 그만큼 아래가 비어,
+   * 적는 칸이 판 위로 올라온다. 안 붙으면 칸이 판에 통째로 덮여 무엇을 치는지 안 보인다
+   * (실기 2026-09-17 - 두 칸 모두 덮여 있었다).
+   */
+  it('숫자판이 서면 아래를 비울 표시를 붙인다', async () => {
+    const user = userEvent.setup();
+    const { container } = mount();
+    await screen.findByLabelText(/출고 QR 스캔/);
+    scan(ISSUE_NO);
+
+    await user.click(await receivedField());
+
+    expect(container.querySelector('.docked-pad-open')).not.toBeNull();
+  });
+
+  /*
    * 이 화면에는 적는 묶음이 둘이다 - 전표에서 온 투입 라인과 눈으로 재는 호퍼 잔량. 이전·다음이
    * 묶음을 넘어가면 전표 수량을 적던 사람이 호퍼 잔량 칸에 이어 적게 되고, 적힌 값이 어느
    * 장부로 가는지가 갈린다.
