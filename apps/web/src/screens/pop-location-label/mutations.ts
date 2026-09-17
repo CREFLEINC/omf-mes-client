@@ -10,7 +10,7 @@ import {
 import { runRequest } from '../../patterns/request';
 import { hasPrintBridge, sendToPrinter, type PrintAttempt } from '../../patterns/pop-print';
 import { popLocationLabelKeys } from './queries';
-import type { DocumentIssue, DocumentIssueCreate } from './types';
+import { DOCUMENT_TYPE_CODE, type DocumentIssue, type DocumentIssueCreate } from './types';
 
 /**
  * 발행 · 재발행.
@@ -140,21 +140,14 @@ const printLabel = (record: DocumentIssue): string =>
   `${record.documentTypeCode}-${String(record.target.targetId)}-${String(record.issueSeq)}`;
 
 /**
- * ⚠ **`LOCATION_LABEL` 은 아직 준비 목록에 없다**(`patterns/pop-label-rendition.ts` 의
- *   `READY_RENDITION_DOCUMENT_TYPES`). 그 목록의 규율이 「**서버에 있는 것만 적는다**」이고,
- *   이 종류의 서버 구현은 2026-09-16 현재 「구현 예정」이다 — 배포 뒤 태그와 함께 알려 준다고 했다.
+ * ⭐ **라벨은 서버가 그린다**(공유계약 K-5 · 출력물 요구서 §4). 단말마다 라벨이 달라지지 않게 하려는
+ *    조항이고, 서식이 바뀔 때 **창고 단말을 다시 설치하지 않아도 되는** 실리도 함께 있다 — POP 은
+ *    Electron 설치본이라 재배포가 무겁다.
  *
- * ⭐ **그래서 목록에 미리 넣지 않는다.** 넣으면 배포본에서 없는 경로로 요청이 나가고, 사용자는
- *    발행 실패와 구분되지 않는 오류를 본다. 지금 상태에서 배포본은 `LabelRenditionNotReadyError`
- *    로 **네트워크 요청 전에** 멎고, 그 사유가 「발행 기록은 정상적으로 남았습니다」라고 말한다 —
- *    사실 그대로다.
- *
- * ⭐ **개발 모드(목 서버)에서는 그대로 돈다** — `fetchLabelRendition` 이 개발 모드에서 이 문을
- *    열어 둔다. 그래서 서버를 기다리지 않고 만들고 확인할 수 있다.
- *
- * ⛔ **서버가 배포되면 고칠 자리는 그 목록 한 줄이다.** 여기에 우회를 만들지 않는다 — 준비됐다고
- *    **타입을 속여 넘기지 않는다.** 속여도 `fetchLabelRendition` 은 목록을 런타임으로 다시 보므로
- *    동작은 같고, 남는 것은 「준비됐다」고 말하는 거짓말뿐이다. 그래서 준비 종류를 **주지 않는다.**
+ * ⭐ **준비 목록에 이 종류를 넘긴다**(`READY_RENDITION_DOCUMENT_TYPES`). 목록의 규율은 「서버에
+ *    있는 것만 적는다」이고, 이 종류는 **서버가 그린다**(확인 2026-09-17 · #1318). 넘기지 않으면
+ *    배포본에서 `LabelRenditionNotReadyError` 로 **네트워크 요청 전에** 멎어, 서버가 그릴 준비를
+ *    마쳤는데도 라벨이 한 장도 나오지 않는다.
  */
 const printOne = async (
   client: Client,
@@ -170,7 +163,12 @@ const printOne = async (
   let bytes: ArrayBuffer;
 
   try {
-    bytes = await fetchLabelRendition(client, record.documentIssueLogId, format);
+    bytes = await fetchLabelRendition(
+      client,
+      record.documentIssueLogId,
+      format,
+      DOCUMENT_TYPE_CODE,
+    );
   } catch (cause) {
     /* 받지 못한 것도 인쇄 실패다 — 종이는 나오지 않았고, 발행 기록은 남아 있다. */
     return { kind: 'failed', reason: cause instanceof Error ? cause.message : String(cause) };
