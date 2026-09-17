@@ -508,7 +508,11 @@ describe('자재 출고·피킹 화면', () => {
     await user.click(await screen.findByRole('button', { name: '넣기' }));
     await screen.findByText('라인의 LOT 과 같습니다');
 
+    /* 칸은 LOT 을 확정해야 서고, 숫자판은 그 칸을 눌러야 선다. */
     expect(await screen.findByLabelText(/출고 수량/)).toBeTruthy();
+    expect(screen.queryByRole('button', { name: '7' })).toBeNull();
+
+    await user.click(screen.getByLabelText(/출고 수량/));
     expect(await screen.findByRole('button', { name: '7' })).toBeTruthy();
   });
 
@@ -745,6 +749,7 @@ describe('자재 출고·피킹 화면', () => {
     await user.click(await screen.findByRole('button', { name: '넣기' }));
     await screen.findByText('라인의 LOT 과 같습니다');
 
+    await user.click(await screen.findByLabelText(/출고 수량/));
     await user.click(await screen.findByRole('button', { name: '5' }));
     await user.click(screen.getByRole('button', { name: '0' }));
 

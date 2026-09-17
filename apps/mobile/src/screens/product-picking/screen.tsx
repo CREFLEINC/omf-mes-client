@@ -1,9 +1,10 @@
 import { useQueryClient, type UseQueryResult } from '@tanstack/react-query';
-import { AlertBanner, Button, Card, Chip, NumberPad, TextField } from '@crefle/web-ui';
+import { AlertBanner, Button, Card, Chip, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useMemo, useRef, useState } from 'react';
 
 import { useBackStep } from '../../patterns/back-step';
+import { DockedNumberPad } from '../../patterns/docked-number-pad';
 import { LOT_HOLD_REASON, useCodeValues, type CodeValue } from '../../patterns/code-values';
 import { playErrorTone } from '../../patterns/error-tone';
 import { useScannedLot } from '../../patterns/lots';
@@ -193,6 +194,8 @@ export const ProductPickingScreen = () => {
   const [chosen, setChosen] = useState<{ requestId: number; lineId: number } | null>(null);
   const [lotId, setLotId] = useState<number | null>(null);
   const [qty, setQty] = useState('');
+  /* 숫자판은 칸을 눌렀을 때만 선다. 늘 띄우면 권장 LOT 목록과 확정 단추를 덮는다. */
+  const [keypadOpen, setKeypadOpen] = useState(false);
   const [missed, setMissed] = useState<string | null>(null);
   const [done, setDone] = useState(false);
   const [listView, setListView] = useState(false);
@@ -524,7 +527,7 @@ export const ProductPickingScreen = () => {
   const customerName = customers.data?.get(target.request.customerId) ?? null;
 
   return (
-    <div className="picking">
+    <div className={keypadOpen ? 'picking docked-pad-open' : 'picking'}>
       <section className="picking__section">
         <h2>{t.target.legend}</h2>
         <Card bordered>
@@ -667,14 +670,10 @@ export const ProductPickingScreen = () => {
             onChange={(event) => {
               setQty(event.target.value);
             }}
+            onFocus={() => {
+              setKeypadOpen(true);
+            }}
             error={qtyMessage()}
-          />
-          <NumberPad
-            value={qty}
-            onChange={setQty}
-            /* 남은 배정이 음수로 오면 상한이 음수가 된다. 서버 값이 그럴 수 있다. */
-            max={Math.max(0, Math.min(selected.availableQty, remainingAllocated(target.line)))}
-            allowDecimal
           />
           {worker === null ? <p className="picking__note">{t.noWorker}</p> : null}
           {pick.error === null || pick.error === undefined ? null : isConflict(
@@ -695,6 +694,20 @@ export const ProductPickingScreen = () => {
             {t.submit}
           </Button>
         </section>
+      )}
+
+      {!keypadOpen || selected === null || lotProblem(selected, target.line, today) !== null ? null : (
+        <DockedNumberPad
+          head={t.qty.label}
+          value={qty}
+          onChange={setQty}
+          onClose={() => {
+            setKeypadOpen(false);
+          }}
+          /* 남은 배정이 음수로 오면 상한이 음수가 된다. 서버 값이 그럴 수 있다. */
+          max={Math.max(0, Math.min(selected.availableQty, remainingAllocated(target.line)))}
+          allowDecimal
+        />
       )}
     </div>
   );

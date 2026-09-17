@@ -3,7 +3,6 @@ import {
   Button,
   Card,
   Chip,
-  NumberPad,
   Radio,
   RadioGroup,
   Select,
@@ -15,6 +14,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router';
 
 import { useAdvanceTo } from '../../patterns/advance-to';
+import { DockedNumberPad } from '../../patterns/docked-number-pad';
 import { useBackStep } from '../../patterns/back-step';
 import { LOT_HOLD_REASON, displayNameOf, useCodeValues } from '../../patterns/code-values';
 import { playErrorTone } from '../../patterns/error-tone';
@@ -96,6 +96,8 @@ export const MaterialPickingScreen = () => {
   const [lineId, setLineId] = useState<number | null>(null);
   const [scanned, setScanned] = useState<string | null>(null);
   const [qty, setQty] = useState('');
+  /* 숫자판은 칸을 눌렀을 때만 선다. 늘 띄우면 라인 목록과 기록 단추를 덮는다. */
+  const [keypadOpen, setKeypadOpen] = useState(false);
   const [outcome, setOutcome] = useState<Outcome | null>(null);
   /**
    * 서버가 매긴 출고번호.
@@ -524,7 +526,7 @@ export const MaterialPickingScreen = () => {
   };
 
   return (
-    <div className="picking-out">
+    <div className={keypadOpen ? 'picking-out docked-pad-open' : 'picking-out'}>
       <section className="picking-out__section">
         <h2>{t.orders.legend}</h2>
         <Card bordered>
@@ -752,13 +754,10 @@ export const MaterialPickingScreen = () => {
                 onChange={(event) => {
                   setQty(event.target.value);
                 }}
+                onFocus={() => {
+                  setKeypadOpen(true);
+                }}
                 error={qtyMessage()}
-              />
-              <NumberPad
-                value={qty}
-                onChange={setQty}
-                max={remainingQtyOf(line, queued)}
-                allowDecimal
               />
               {pickSaveFailed ? <AlertBanner variant="error" title={t.saveFailed} /> : null}
               <Button
@@ -826,6 +825,19 @@ export const MaterialPickingScreen = () => {
           {t.submit}
         </Button>
       </div>
+
+      {!keypadOpen || line === null || !matched ? null : (
+        <DockedNumberPad
+          head={t.qty.label}
+          value={qty}
+          onChange={setQty}
+          onClose={() => {
+            setKeypadOpen(false);
+          }}
+          max={remainingQtyOf(line, queued)}
+          allowDecimal
+        />
+      )}
     </div>
   );
 };

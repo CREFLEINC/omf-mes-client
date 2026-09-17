@@ -4,7 +4,6 @@ import {
   Card,
   Chip,
   Dialog,
-  NumberPad,
   Radio,
   RadioGroup,
   Select,
@@ -15,6 +14,7 @@ import { useRef, useState } from 'react';
 import { Link } from 'react-router';
 
 import { useAdvanceTo } from '../../patterns/advance-to';
+import { DockedNumberPad } from '../../patterns/docked-number-pad';
 import { useBackStep } from '../../patterns/back-step';
 import { useCodeValues } from '../../patterns/code-values';
 import { uomLabelOf, useItem, useUomCodes } from '../../patterns/masters';
@@ -62,6 +62,8 @@ export const InboundVarianceScreen = () => {
   const [search, setSearch] = useState('');
   const [receipt, setReceipt] = useState<InboundReceipt | null>(null);
   const [draft, setDraft] = useState<VarianceDraft>(emptyDraft);
+  /* 숫자판은 칸을 눌렀을 때만 선다. 늘 띄우면 사유 선택과 등록 단추를 덮는다. */
+  const [keypadOpen, setKeypadOpen] = useState(false);
   const [asking, setAsking] = useState(false);
   const [outcome, setOutcome] = useState<Outcome | null>(null);
   const [saveFailed, setSaveFailed] = useState(false);
@@ -186,7 +188,7 @@ export const InboundVarianceScreen = () => {
   }
 
   return (
-    <div className="variance">
+    <div className={keypadOpen ? 'variance docked-pad-open' : 'variance'}>
       <section className="variance__section">
         <h2>{t.receipt.legend}</h2>
         <TextField
@@ -348,19 +350,15 @@ export const InboundVarianceScreen = () => {
               onChange={(event) => {
                 patch({ varianceQty: event.target.value });
               }}
+              onFocus={() => {
+                setKeypadOpen(true);
+              }}
               error={qtyMessage()}
             />
             {/* 방향은 유형이 말한다. 사람에게는 얼마인지만 묻는다. */}
             <p className="variance__note">{t.form.qtyNote}</p>
             {/* 예정 수량이 이 화면에 오지 않아 차이와 견주지 못한다. 감추지 않는다. */}
             <p className="variance__note">{t.form.noExpectedQty}</p>
-            <NumberPad
-              value={draft.varianceQty}
-              onChange={(value) => {
-                patch({ varianceQty: value });
-              }}
-              allowDecimal
-            />
 
             <div className="variance__field">
               <label htmlFor="variance-reason">{t.form.reasonLabel}</label>
@@ -432,6 +430,20 @@ export const InboundVarianceScreen = () => {
       >
         {t.confirm.body}
       </Dialog>
+
+      {!keypadOpen ? null : (
+        <DockedNumberPad
+          head={t.form.qtyLabel}
+          value={draft.varianceQty}
+          onChange={(value) => {
+            patch({ varianceQty: value });
+          }}
+          onClose={() => {
+            setKeypadOpen(false);
+          }}
+          allowDecimal
+        />
+      )}
     </div>
   );
 };
