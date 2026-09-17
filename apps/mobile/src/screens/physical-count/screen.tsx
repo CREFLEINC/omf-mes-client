@@ -3,8 +3,6 @@ import {
   Button,
   Card,
   Icon,
-  IconButton,
-  NumberPad,
   Progress,
   Select,
   TextField,
@@ -14,6 +12,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router';
 
 import { useBackStep } from '../../patterns/back-step';
+import { DockedNumberPad } from '../../patterns/docked-number-pad';
 import { ItemPicker } from '../../patterns/item-picker';
 import { useOnlineStatus } from '../../patterns/online-status';
 import { useCodeValues } from '../../patterns/code-values';
@@ -57,6 +56,9 @@ const INVENTORY_COUNT_TYPE = 'INVENTORY_COUNT_TYPE';
 const SHOWN_LOCATIONS = 4;
 
 type Outcome = 'held' | 'sent' | 'rejected';
+
+/* 숫자판이 옮겨 갈 칸을 찾는 이름. 담는 쪽과 찾는 쪽이 이 함수 하나를 함께 쓴다. */
+const qtyFieldId = (key: string): string => `physical-count-qty-${key}`;
 
 export const PhysicalCountScreen = () => {
   useScreenTitle(t.title);
@@ -227,7 +229,7 @@ export const PhysicalCountScreen = () => {
   });
 
   /*
-   * 번호는 «읽은 그대로» 보인다. 저장값 자체가 구분자로 나뉘어 있어 화면이 다시 끊으면 실물
+   * 번호는 읽은 그대로 보인다. 저장값 자체가 구분자로 나뉘어 있어 화면이 다시 끊으면 실물
    * 라벨과 글자가 달라진다 - 한 위치에 같은 품목이 아홉 줄까지 서므로, 눈으로 줄을 찾는 그
    * 대조가 실사 일의 전부다.
    */
@@ -262,40 +264,6 @@ export const PhysicalCountScreen = () => {
   const keypadAt = lines.findIndex((line) => line.key === keypadFor);
   const keypad = keypadAt === -1 ? null : { at: keypadAt, line: lines[keypadAt] as DraftLine };
 
-  /*
-   * 숫자판이 화면 아래를 덮는다. 옮긴 줄이 그 아래 가려져 있으면 어느 줄에 적는지 머리글로만
-   * 알게 되고, 전산 잔량과 앞서 센 값을 못 본 채 적는다.
-   */
-  useEffect(() => {
-    if (keypadFor === null) {
-      return;
-    }
-
-    /*
-     * 적는 칸을 맞춘다 - 라인 전체를 맞추면 제목과 값이 자리를 차지해 정작 칸이 숫자판 아래로
-     * 밀린다. 칸에 준 아래 여백이 숫자판 높이를 비운다.
-     */
-    const node = document.querySelector<HTMLInputElement>(`[data-line="${keypadFor}"] input`);
-
-    if (node === null) {
-      return;
-    }
-
-    /* 옮긴 자리에 커서가 없으면 어디에 적히는지 화면이 말하지 않는다. */
-    node.focus({ preventScroll: true });
-
-    /* 이 기능이 없는 환경에서 던지면 화면이 통째로 멈춘다. 스크롤은 있으면 좋은 것이다. */
-    if (typeof node.scrollIntoView !== 'function') {
-      return;
-    }
-
-    /* 움직임을 줄여 달라는 설정을 존중한다. 그 물음을 못 받는 환경도 있다. */
-    const reduced =
-      typeof window.matchMedia === 'function' &&
-      window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-
-    node.scrollIntoView({ block: 'end', behavior: reduced ? 'auto' : 'smooth' });
-  }, [keypadFor]);
 
   /*
    * 입력칸 위에 함께 서는 값들. 서로를 밀어내지 않는다.
@@ -454,7 +422,7 @@ export const PhysicalCountScreen = () => {
 
   return (
     <div
-      className={keypad === null ? 'physical-count' : 'physical-count physical-count--keypad-open'}
+      className={keypad === null ? 'physical-count' : 'physical-count docked-pad-open'}
     >
       <section className="physical-count__section">
         <h2>{t.plan.legend}</h2>
@@ -602,7 +570,7 @@ export const PhysicalCountScreen = () => {
               const problem = qtyProblemOf(line);
 
               return (
-                <div key={line.key} data-line={line.key} className="physical-count__line">
+                <div key={line.key} className="physical-count__line">
                   {/*
                     적어야 할 값을 입력칸 위에 둔다. 아래에 두면 칸을 지나쳐 내려다봐야 하고,
                     숫자판이 올라오면 그 자리가 덮여 전산 잔량을 못 본 채 적게 된다.
@@ -617,6 +585,7 @@ export const PhysicalCountScreen = () => {
                     {statusOf(line)}
                   </div>
                   <TextField
+                    id={qtyFieldId(line.key)}
                     label={t.lines.qty}
                     aria-label={t.lines.qtyLabel(nameOf(line))}
                     size="xl"
@@ -732,64 +701,40 @@ export const PhysicalCountScreen = () => {
             </Button>
           </section>
 
-          {/*
-            숫자판은 줄 사이에 끼우지 않는다. 끼우면 그 아래 줄들이 화면 밖으로 밀려 적던
-            자리를 잃고, 뒤이어 뜨는 차이 사유가 숫자판 아래에 생겨 어디서 온 칸인지 알 수
-            없다. 기기 키보드처럼 화면 아래에 붙여 목록 위에 띄운다.
-
-            목록 밖에 서므로 어느 줄에 적는 중인지 스스로 말한다.
-          */}
           {keypad === null ? null : (
-            <div className="physical-count__keypad">
-              <p className="physical-count__keypad-head">{nameOf(keypad.line)}</p>
-              {/*
-                한 줄을 적을 때마다 숫자판을 닫고 다음 칸을 눌러 다시 열면 손이 화면을 두 번
-                오간다. 숫자판 옆에서 바로 옮긴다.
-              */}
-              <div className="physical-count__keypad-row">
-                <IconButton
-                  icon="chevron_left"
-                  size="xl"
-                  aria-label={t.lines.previousLine}
-                  disabled={keypad.at === 0}
-                  onClick={() => {
-                    setKeypadFor(lines[keypad.at - 1]?.key ?? null);
-                  }}
-                />
-                <NumberPad
-                  value={keypad.line.qty}
-                  onChange={(value) => {
-                    setLines((current) =>
-                      current.map((each, at2) => {
-                        if (at2 !== keypad.at) return each;
-                        const changed = { ...each, qty: value };
+            <DockedNumberPad
+              head={nameOf(keypad.line)}
+              fieldId={qtyFieldId(keypad.line.key)}
+              value={keypad.line.qty}
+              onChange={(value) => {
+                setLines((current) =>
+                  current.map((each, at2) => {
+                    if (at2 !== keypad.at) return each;
+                    const changed = { ...each, qty: value };
 
-                        return count !== null && !needsReason(count, changed)
-                          ? { ...changed, reasonCode: '' }
-                          : changed;
-                      }),
-                    );
-                  }}
-                  allowDecimal
-                  /*
-                   * 소수점 키 옆 빈 칸이 확인 키 자리다. 닫는 단추를 따로 세우면 숫자판이 한 줄
-                   * 더 길어져 그만큼 목록이 가려진다.
-                   */
-                  onConfirm={() => {
-                    setKeypadFor(null);
-                  }}
-                />
-                <IconButton
-                  icon="chevron_right"
-                  size="xl"
-                  aria-label={t.lines.nextLine}
-                  disabled={keypad.at === lines.length - 1}
-                  onClick={() => {
-                    setKeypadFor(lines[keypad.at + 1]?.key ?? null);
-                  }}
-                />
-              </div>
-            </div>
+                    return count !== null && !needsReason(count, changed)
+                      ? { ...changed, reasonCode: '' }
+                      : changed;
+                  }),
+                );
+              }}
+              onClose={() => {
+                setKeypadFor(null);
+              }}
+              move={{
+                canPrevious: keypad.at > 0,
+                canNext: keypad.at < lines.length - 1,
+                onPrevious: () => {
+                  setKeypadFor(lines[keypad.at - 1]?.key ?? null);
+                },
+                onNext: () => {
+                  setKeypadFor(lines[keypad.at + 1]?.key ?? null);
+                },
+                previousLabel: t.lines.previousLine,
+                nextLabel: t.lines.nextLine,
+              }}
+              allowDecimal
+            />
           )}
         </>
       )}

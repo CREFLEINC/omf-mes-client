@@ -1,9 +1,10 @@
-import { AlertBanner, Button, Card, NumberPad, Select, TextArea, TextField } from '@crefle/web-ui';
+import { AlertBanner, Button, Card, Select, TextArea, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useRef, useState } from 'react';
 import { Link } from 'react-router';
 
 import { useLocations } from '../../patterns/locations';
+import { DockedNumberPad } from '../../patterns/docked-number-pad';
 import { useUomCodes } from '../../patterns/masters';
 import { useOutbox } from '../../patterns/outbox';
 import { ScanReplaceDialog } from '../../patterns/scan-replace-dialog';
@@ -40,6 +41,8 @@ export const RecycleEntryScreen = () => {
   const { worker } = useWorkerSession();
 
   const [draft, setDraft] = useState<RecycleDraft>(emptyDraft);
+  /* 숫자판은 칸을 눌렀을 때만 선다. 늘 띄우면 비고 칸과 등록 단추를 덮는다. */
+  const [keypadOpen, setKeypadOpen] = useState(false);
   const [searching, setSearching] = useState<string | null>(null);
   const [outcome, setOutcome] = useState<Outcome | null>(null);
   const [lotNo, setLotNo] = useState<string | null>(null);
@@ -195,8 +198,14 @@ export const RecycleEntryScreen = () => {
     );
   }
 
+  /*
+   * 칸을 담은 구획이 사라지면 판도 함께 진다. 열린 채로 두면 다음 회차에 판이 계속 mount 라
+   * 기기 자판 내리기와 칸 끌어올리기가 다시 돌지 않는다.
+   */
+  const padOpen = keypadOpen && item !== null;
+
   return (
-    <div className="recycle">
+    <div className={padOpen ? 'recycle docked-pad-open' : 'recycle'}>
       <section className="recycle__section">
         <h2>{t.item.legend}</h2>
         <TextField
@@ -316,14 +325,10 @@ export const RecycleEntryScreen = () => {
               onChange={(event) => {
                 patch({ quantity: event.target.value });
               }}
-              error={qtyMessage()}
-            />
-            <NumberPad
-              value={draft.quantity}
-              onChange={(value) => {
-                patch({ quantity: value });
+              onFocus={() => {
+                setKeypadOpen(true);
               }}
-              allowDecimal
+              error={qtyMessage()}
             />
             <TextArea
               label={t.qty.remarks}
@@ -359,6 +364,20 @@ export const RecycleEntryScreen = () => {
       )}
 
       <ScanReplaceDialog field={scanField} />
+
+      {!padOpen ? null : (
+        <DockedNumberPad
+          head={t.qty.label}
+          value={draft.quantity}
+          onChange={(value) => {
+            patch({ quantity: value });
+          }}
+          onClose={() => {
+            setKeypadOpen(false);
+          }}
+          allowDecimal
+        />
+      )}
     </div>
   );
 };

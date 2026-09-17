@@ -19,6 +19,7 @@ import { useCallback } from 'react';
 import { PACKING_LABEL, type LabelKind } from './codes';
 import { toPackingLabelFields, type PackingLabelAllocation } from './packing-label-fields';
 import { renderPackingLabel } from './packing-label-image';
+import { buildPackingLabel } from './packing-label-tspl';
 import { useUomCodes } from './queries';
 import type { IssueView, TargetRow } from './types';
 
@@ -50,6 +51,41 @@ export const usePackingLabelDrawer = (input: PackingLabelDrawerInput): PackingLa
       return renderPackingLabel(
         toPackingLabelFields({
           /* 포장 라벨의 대상 식별자가 곧 취급 단위다(`types.ts` 의 `toPackingRow`). */
+          handlingUnitId: row.issueTargetId,
+          handlingUnitNo: row.displayName,
+          shipmentNo,
+          issueSeq: issue.issueSeq,
+          allocations,
+          uomCodeOf,
+        }),
+      );
+    },
+    [allocations, shipmentNo, uomCodeOf],
+  );
+};
+
+/**
+ * 포장 라벨의 **인쇄용 TSPL 명령** — 그림과 같은 값으로 짠다(사용자 지시 2026-09-17).
+ *
+ * ⭐ 그림은 미리보기에만 쓰고 종이는 이 명령으로 나간다 — 그림 인쇄가 80 × 30 mm 라벨지와
+ *   크기가 어긋났다(`packing-label-tspl` 머리말). 두 자리(P-04-01·P-04-02)가 함께 쓴다.
+ */
+export const usePackingLabelCommand = (
+  input: PackingLabelDrawerInput,
+): ((kind: LabelKind, row: TargetRow, issue: IssueView) => string | null) => {
+  const uomCodeOf = useUomCodes();
+  const { shipmentNo, allocations } = input;
+
+  return useCallback(
+    (kind, row, issue) => {
+      if (kind !== PACKING_LABEL) return null;
+
+      if (shipmentNo === null) {
+        throw new Error('출하 번호를 아직 받지 못해 포장 라벨을 그릴 수 없습니다.');
+      }
+
+      return buildPackingLabel(
+        toPackingLabelFields({
           handlingUnitId: row.issueTargetId,
           handlingUnitNo: row.displayName,
           shipmentNo,

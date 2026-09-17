@@ -51,8 +51,9 @@ describe('납품 라벨 — 점판', () => {
     const expected = encodeQr(FIELDS.shippingUnitNo).modules.flat().filter(Boolean).length;
 
     let dark = 0;
+    /* QR 은 오른쪽 안전 여백(6.5 mm) 안쪽 위에 선다 — 종이와 같은 자리다. */
     for (let y = 3; y < 125; y += 1) {
-      for (let x = 520; x < bitmap.width - 3; x += 1) {
+      for (let x = 491; x < bitmap.width - 3; x += 1) {
         if (readDot(bitmap, x, y)) dark += 1;
       }
     }
@@ -76,7 +77,10 @@ describe('납품 라벨 — 점판', () => {
     ['납품처 코드', { shipTo: { partnerCode: '000000', partnerName: 'Ha Noi DC' } }],
     ['납품처 명', { shipTo: { partnerCode: '901463', partnerName: 'Da Nang DC' } }],
     ['품목 코드', { itemTotals: [{ itemCode: 'X1', itemName: 'COVER', quantity: '480 EA' }] }],
-    ['품목 수량', { itemTotals: [{ itemCode: 'F534F50200', itemName: 'COVER', quantity: '1 EA' }] }],
+    [
+      '품목 수량',
+      { itemTotals: [{ itemCode: 'F534F50200', itemName: 'COVER', quantity: '1 EA' }] },
+    ],
   ])('%s 가 달라지면 라벨도 달라진다', (_what, patch) => {
     const changed = drawDeliveryLabel({ ...FIELDS, ...patch } as DeliveryLabelFields);
 
@@ -124,7 +128,11 @@ describe('납품 라벨 — 점판', () => {
 });
 
 describe('납품 라벨 — 값 옮기기', () => {
-  const partner = (code: string, name: string) => ({ partnerId: 1, partnerCode: code, partnerName: name });
+  const partner = (code: string, name: string) => ({
+    partnerId: 1,
+    partnerCode: code,
+    partnerName: name,
+  });
 
   const detail = (patch: Partial<ShippingUnitDetail> = {}): ShippingUnitDetail => ({
     shippingUnitId: 7001,
@@ -189,9 +197,7 @@ describe('납품 라벨 — 값 옮기기', () => {
   it('단위를 못 받았으면 수만 적는다', () => {
     const fields = toDeliveryLabelFields(
       detail({
-        itemTotals: [
-          { itemId: 11, itemCode: 'A', itemName: 'B', qty: 480, uomId: 1, uomCode: '' },
-        ],
+        itemTotals: [{ itemId: 11, itemCode: 'A', itemName: 'B', qty: 480, uomId: 1, uomCode: '' }],
       }),
       1,
     );

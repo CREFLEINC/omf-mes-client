@@ -135,6 +135,9 @@ export const inboundReceipt = {
     remaining: (qty: string, uom: string) => `남은 예정 ${qty} ${uom}`,
     received: '실입하 수량',
     packageCount: '포장 수',
+    /* 두 칸을 오간다. 숫자판을 닫았다 다시 열지 않고 옆으로 옮긴다. */
+    previousField: '앞 칸',
+    nextField: '다음 칸',
     manufactured: '제조일',
     expiry: '유효기한',
     empty: '실입하 수량을 적으세요',

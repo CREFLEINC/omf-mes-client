@@ -3,7 +3,7 @@ import type { Translated } from './translated';
 
 /** P-04-01 Packing(P&P) 실적 등록 — POP. */
 export const packingResult: Translated<typeof ko.packingResult> = {
-  title: 'Đăng ký kết quả xuất hàng',
+  title: 'Đóng gói xuất hàng',
   panes: {
     scan: 'Quét',
     packing: 'Cấu thành kiện',

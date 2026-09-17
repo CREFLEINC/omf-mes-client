@@ -1,10 +1,11 @@
-import { AlertBanner, Button, Card, NumberPad, Select, TextField } from '@crefle/web-ui';
+import { AlertBanner, Button, Card, Select, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router';
 
 import { useBackStep } from '../../patterns/back-step';
+import { DockedNumberPad } from '../../patterns/docked-number-pad';
 import { useCodeValues } from '../../patterns/code-values';
 import { useLotNos } from '../../patterns/handling-units';
 import { playErrorTone } from '../../patterns/error-tone';
@@ -59,6 +60,12 @@ type Outcome = 'held' | 'sent' | 'rejected';
 
 /** 차이 사유의 값 목록. 식별자는 환경마다 달라 코드 그룹 이름으로 받는다. */
 const VARIANCE_REASON = 'VARIANCE_REASON';
+
+/* 숫자판이 옮겨 갈 칸을 찾는 이름. 담는 쪽과 찾는 쪽이 이 함수들을 함께 쓴다. */
+const receivedFieldId = (goodsIssueLineId: number): string =>
+  `shopfloor-received-${goodsIssueLineId}`;
+
+const measuredFieldId = (key: string): string => `shopfloor-measured-${key}`;
 
 export const ShopfloorReceiptScreen = () => {
   useScreenTitle(t.title);
@@ -283,6 +290,17 @@ export const ShopfloorReceiptScreen = () => {
   /** 읽어 주는 이름. 줄이 여럿이라 이름만으로 어느 줄인지 갈려야 한다. */
   const nameOf = (line: DraftLine): string => t.lines.name(itemCodeOf(line), lotNoOf(line));
 
+  /*
+   * 숫자판이 지금 적는 자리. 투입 라인과 호퍼는 다른 일이라 서로 넘어가지 않는다 - 한쪽을
+   * 열면 다른 쪽은 닫힌다.
+   */
+  const lineAt = lines.findIndex((line) => line.goodsIssueLineId === keypadFor);
+  const linePad = lineAt === -1 ? null : { at: lineAt, line: lines[lineAt] as DraftLine };
+  const hopperAt = stocks.findIndex((stock) => hopperKeyOf(stock) === hopperKeypadFor);
+  const hopperStockAt = stocks[hopperAt];
+  const hopperPad =
+    hopperAt === -1 || hopperStockAt === undefined ? null : { at: hopperAt, stock: hopperStockAt };
+
   const restart = () => {
     setScanned(null);
     setLines([]);
@@ -370,7 +388,13 @@ export const ShopfloorReceiptScreen = () => {
   }
 
   return (
-    <div className="shopfloor-receipt">
+    <div
+      className={
+        linePad === null && hopperPad === null
+          ? 'shopfloor-receipt'
+          : 'shopfloor-receipt docked-pad-open'
+      }
+    >
       {/* 통신이 끊기면 출고분도 이 기기에서 처리한다. 말하지 않으면 다른 기기를 기다린다. */}
       {online ? null : (
         <AlertBanner variant="warning" title={t.degraded.title}>
@@ -490,6 +514,7 @@ export const ShopfloorReceiptScreen = () => {
                     ) : null}
                   </div>
                   <TextField
+                    id={receivedFieldId(line.goodsIssueLineId)}
                     label={t.lines.received}
                     aria-label={t.lines.receivedLabel(nameOf(line))}
                     size="xl"
@@ -521,24 +546,6 @@ export const ShopfloorReceiptScreen = () => {
                     }
                   />
 
-                  {keypadFor !== line.goodsIssueLineId ? null : (
-                    <NumberPad
-                      value={line.receivedQty}
-                      onChange={(value) => {
-                        setLines((current) =>
-                          current.map((each, at) =>
-                            at === index ? { ...each, receivedQty: value } : each,
-                          ),
-                        );
-                      }}
-                      /*
-                       * 상한을 두지 않는다. 숫자판은 상한을 넘기는 키를 조용히 무시하는데,
-                       * 그러면 눌러도 아무 일이 없어 사람은 기기가 멎은 줄 안다. 넘겨 적게
-                       * 두고 무엇이 잘못됐는지와 어디로 가야 하는지를 말한다.
-                       */
-                      allowDecimal
-                    />
-                  )}
                   {isShort(line) && hasReasonOptions ? (
                     <>
                       <label htmlFor={`reason-${String(line.goodsIssueLineId)}`}>
@@ -689,6 +696,7 @@ export const ShopfloorReceiptScreen = () => {
                     ) : null}
                   </div>
                   <TextField
+                    id={measuredFieldId(key)}
                     label={t.hopper.measured}
                     aria-label={t.hopper.measuredLabel(name)}
                     size="xl"
@@ -705,16 +713,6 @@ export const ShopfloorReceiptScreen = () => {
                     }}
                     error={problem === null ? undefined : t.hopper.problem[problem]}
                   />
-                  {/* 줄마다 항상 그리면 어느 칸에 들어가는지 보이지 않는다(공유계약 D-4). */}
-                  {hopperKeypadFor !== key ? null : (
-                    <NumberPad
-                      value={value}
-                      onChange={(next) => {
-                        setMeasured((current) => ({ ...current, [key]: next }));
-                      }}
-                      allowDecimal
-                    />
-                  )}
                 </div>
               );
             })}
@@ -761,6 +759,71 @@ export const ShopfloorReceiptScreen = () => {
       )}
 
       <ScanReplaceDialog field={scanField} />
+
+      {linePad === null ? null : (
+        <DockedNumberPad
+          head={t.lines.receivedLabel(nameOf(linePad.line))}
+          fieldId={receivedFieldId(linePad.line.goodsIssueLineId)}
+          value={linePad.line.receivedQty}
+          onChange={(value) => {
+            setLines((current) =>
+              current.map((each, at) =>
+                at === linePad.at ? { ...each, receivedQty: value } : each,
+              ),
+            );
+          }}
+          onClose={() => {
+            setKeypadFor(null);
+          }}
+          move={{
+            canPrevious: linePad.at > 0,
+            canNext: linePad.at < lines.length - 1,
+            onPrevious: () => {
+              setKeypadFor(lines[linePad.at - 1]?.goodsIssueLineId ?? null);
+            },
+            onNext: () => {
+              setKeypadFor(lines[linePad.at + 1]?.goodsIssueLineId ?? null);
+            },
+            previousLabel: t.lines.previousLine,
+            nextLabel: t.lines.nextLine,
+          }}
+          allowDecimal
+        />
+      )}
+
+      {hopperPad === null ? null : (
+        <DockedNumberPad
+          head={t.hopper.measuredLabel(
+            t.hopper.name(
+              referenceLabel(itemCode(hopperPad.stock.itemId)),
+              hopperPad.stock.lotNo ?? '',
+            ),
+          )}
+          fieldId={measuredFieldId(hopperKeyOf(hopperPad.stock))}
+          value={measured[hopperKeyOf(hopperPad.stock)] ?? ''}
+          onChange={(next) => {
+            setMeasured((current) => ({ ...current, [hopperKeyOf(hopperPad.stock)]: next }));
+          }}
+          onClose={() => {
+            setHopperKeypadFor(null);
+          }}
+          move={{
+            canPrevious: hopperPad.at > 0,
+            canNext: hopperPad.at < stocks.length - 1,
+            onPrevious: () => {
+              const previous = stocks[hopperPad.at - 1];
+              setHopperKeypadFor(previous === undefined ? null : hopperKeyOf(previous));
+            },
+            onNext: () => {
+              const next = stocks[hopperPad.at + 1];
+              setHopperKeypadFor(next === undefined ? null : hopperKeyOf(next));
+            },
+            previousLabel: t.hopper.previousHopper,
+            nextLabel: t.hopper.nextHopper,
+          }}
+          allowDecimal
+        />
+      )}
     </div>
   );
 };

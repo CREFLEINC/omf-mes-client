@@ -45,6 +45,15 @@ export interface RenditionShell {
     now: string,
     format: PopRenditionFormat,
   ) => Promise<string>;
+  /**
+   * 인쇄 없이 파일로만 남긴다. **옛 설치본에는 없다** — 부르는 쪽이 있는지 보고 쓴다.
+   */
+  keep?: (
+    bytes: Uint8Array,
+    label: string,
+    now: string,
+    format: PopRenditionFormat,
+  ) => Promise<string>;
 }
 
 /** 셸이 `contextBridge` 로 심는 것 중 **출력물에 관한 부분**. 브라우저에는 없다. */
@@ -117,4 +126,21 @@ export const sendToPrinter = async (
   } catch (cause) {
     return { kind: 'failed', reason: reasonOf(cause) };
   }
+};
+
+/**
+ * 인쇄 없이 단말에 파일로만 남긴다. **던지지 않는다** — 확인용 사본이라 실패가 인쇄를 막으면 안 된다.
+ *
+ * ⚠ 셸이 없거나 옛 설치본(`keep` 없음)이면 아무것도 하지 않는다.
+ */
+export const keepOnDevice = async (
+  bytes: Uint8Array,
+  label: string,
+  format: PopRenditionFormat,
+): Promise<void> => {
+  const shell = renditionShell();
+
+  if (shell?.keep === undefined) return;
+
+  await shell.keep(bytes, label, new Date().toISOString(), format).catch(() => undefined);
 };

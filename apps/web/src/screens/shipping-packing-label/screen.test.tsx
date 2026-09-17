@@ -617,7 +617,9 @@ describe('ShippingPackingLabelScreen — 발행과 인쇄', () => {
 
   it('셸이 정상이면 POP 이 그린 바이트를 그대로 넘기고 성공으로 보고한다', async () => {
     const user = userEvent.setup();
-    const save = vi.fn<(bytes: Uint8Array) => Promise<string>>().mockResolvedValue('SYN/path');
+    const save = vi
+      .fn<(bytes: Uint8Array, label: string, now: string, format: string) => Promise<string>>()
+      .mockResolvedValue('SYN/path');
     Object.defineProperty(window, 'pop', {
       configurable: true,
       value: { rendition: { save } },
@@ -636,11 +638,11 @@ describe('ShippingPackingLabelScreen — 발행과 인쇄', () => {
       expect(save).toHaveBeenCalled();
     });
 
-    /* PNG 매직 바이트 — 셸로 나간 것이 정말 그림이다. */
-    const bytes = save.mock.calls[0]?.[0];
+    /* ⭐ 포장 라벨 종이는 80 × 30 mm TSPL 로 나간다 — 그림은 크기가 어긋났다(2026-09-17). */
+    const [bytes, , , format] = save.mock.calls[0] ?? [];
 
-    expect(bytes?.[0]).toBe(137);
-    expect(bytes?.[1]).toBe(80);
+    expect(format).toBe('tspl');
+    expect(new TextDecoder().decode(bytes)).toMatch(/^SIZE 80 mm,30 mm\r\n/u);
 
     const report = requests.find(({ request }) => /:report-print$/u.test(pathOf(request)));
 

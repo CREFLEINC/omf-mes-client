@@ -9,7 +9,7 @@ export const shippingPackingLabel: Translated<typeof ko.shippingPackingLabel> = 
     context: (shipmentNo: string) => `Xuất hàng ${shipmentNo}`,
     loading: 'Đang xác nhận thông tin xuất hàng.',
     loadFailed: 'Không xác nhận được thông tin xuất hàng.',
-    missing: 'Hãy chọn đối tượng xuất hàng ở màn hình đăng ký kết quả xuất hàng trước.',
+    missing: 'Hãy chọn đối tượng xuất hàng ở màn hình đóng gói xuất hàng trước.',
   },
   kind: {
     legend: 'Loại nhãn',

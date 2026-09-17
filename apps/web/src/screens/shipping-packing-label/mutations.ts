@@ -69,6 +69,13 @@ export interface IssuedLabel {
    *    라벨이 나오는데 앱은 성공으로 보고했다**(전례 `production-result/flow-print`).
    */
   format: 'png';
+  /**
+   * 인쇄에 쓸 TSPL 명령. **있으면 `bytes` 대신 이것을 `tspl` 로 찍는다.** 없으면 `null`.
+   *
+   * ⭐ 포장 라벨이 쓴다 — 그림은 드라이버 대지를 거치며 80 × 30 mm 라벨지와 크기가 어긋났다
+   *   (사용자 지시 2026-09-17 · `packing-label-tspl` 머리말). 미리보기는 그대로 `bytes` 다.
+   */
+  command: string | null;
   /** 미리보기 `<img>` 의 주소. 해제 책임이 이 훅에 있다(놓으면 단말 메모리에 쌓인다). */
   previewUrl: string;
 }
@@ -141,7 +148,9 @@ const createIssues = async (
  * (`packing-label-drawer` · `delivery-label-drawer`) — 빈 칸이 찍힌 종이는 되돌릴 수 없어서다.
  * 그 실패는 서버 거부가 아니므로 `toApiError` 가 사람이 읽는 말로 옮긴다.
  */
-const stepFailureOf = (cause: unknown): { failureReason: string | null; error: ApiError | null } => ({
+const stepFailureOf = (
+  cause: unknown,
+): { failureReason: string | null; error: ApiError | null } => ({
   failureReason: null,
   error: toApiError(cause),
 });
@@ -204,6 +213,13 @@ export interface LabelIssueOptions {
    *    그 자리에서 멈춰야 담당이 무엇이 없는지 안다.
    */
   drawLabel: (kind: LabelKind, row: TargetRow, issue: IssueView) => Uint8Array<ArrayBuffer> | null;
+  /**
+   * 인쇄용 TSPL 명령을 짠다. 이 종류를 짜지 않으면 `null` — 그러면 그림을 찍는다.
+   *
+   * ⛔ **형식은 바이트가 정한다.** 명령이 있으면 언제나 `tspl` 로 보낸다(전례
+   *    `production-result/flow-print`).
+   */
+  drawCommand?: (kind: LabelKind, row: TargetRow, issue: IssueView) => string | null;
 }
 
 /**
@@ -226,7 +242,11 @@ const signatureOf = ({ kind, rows, printerName, reissueReasonCode }: IssueComman
  * ⛔ **발행과 인쇄를 한 호출로 묶지 않는다**(스펙 §6). 묶으면 인쇄가 실패했을 때 기록까지
  * 없던 일로 만들고 싶어지는데, 계약에 **발행 취소 경로가 없다** — 기록 전용이다.
  */
-export const useLabelIssue = ({ workerNo, drawLabel }: LabelIssueOptions): LabelIssueHandle => {
+export const useLabelIssue = ({
+  workerNo,
+  drawLabel,
+  drawCommand,
+}: LabelIssueOptions): LabelIssueHandle => {
   const { client } = useApiClient();
   const queryClient = useQueryClient();
   const [phase, setPhase] = useState<IssuePhase>('idle');
@@ -299,9 +319,12 @@ export const useLabelIssue = ({ workerNo, drawLabel }: LabelIssueOptions): Label
       const previewUrl = URL.createObjectURL(new Blob([drawn as BlobPart], { type: 'image/png' }));
       urls.current.push(previewUrl);
 
-      return { issue: one, bytes: drawn, format: 'png', previewUrl };
+      /* 그리기와 같은 자리에서 짠다 — 값이 모자라면 여기서 멈춰 「그리기 실패」로 남는다. */
+      const command = drawCommand?.(kind, row, one) ?? null;
+
+      return { issue: one, bytes: drawn, format: 'png', command, previewUrl };
     },
-    [drawLabel],
+    [drawCommand, drawLabel],
   );
 
   const issue = useCallback(
@@ -435,15 +458,28 @@ export const useLabelIssue = ({ workerNo, drawLabel }: LabelIssueOptions): Label
            * ⛔ **통로가 없는 것을 인쇄 성공으로 보고하지 않는다.** 기록은 이미 남았으므로
            * 실패로 보고해야 「나오지 않은 라벨」이 나온 것으로 남지 않는다(공유계약 F-6).
            */
+          const name = `label-${String(label.issue.documentIssueLogId)}`;
+          const now = new Date().toISOString();
+
+          /*
+           * ⭐ **TSPL 로 찍는 라벨은 그림도 단말에 남긴다**(사용자 지시 2026-09-17). 셸은 보낸
+           *    바이트만 저장하므로, 그대로 두면 `.tspl` 명령만 남아 사람이 열어 볼 수 없다.
+           *
+           * ⛔ **그림 저장 실패가 인쇄를 막지 않는다.** 종이가 본업이고 그림은 확인용이다.
+           */
+          if (shell !== null && label.command !== null && shell.keep !== undefined) {
+            await shell.keep(label.bytes, name, now, label.format).catch(() => undefined);
+          }
+
           const failureReason =
             shell === null
               ? NO_SHELL_REASON
               : await shell
                   .save(
-                    label.bytes,
-                    `label-${String(label.issue.documentIssueLogId)}`,
-                    new Date().toISOString(),
-                    label.format,
+                    label.command === null ? label.bytes : new TextEncoder().encode(label.command),
+                    name,
+                    now,
+                    label.command === null ? label.format : 'tspl',
                   )
                   .then(() => null)
                   .catch((cause: unknown) => toFailureReason(cause));

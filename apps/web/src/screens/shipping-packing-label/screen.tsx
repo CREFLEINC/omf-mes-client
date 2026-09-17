@@ -24,7 +24,7 @@ import {
 import { ReissuePane } from './reissue-pane';
 import { TargetTable } from './target-table';
 import { useLabelIssue } from './mutations';
-import { usePackingLabelDrawer } from './packing-label-drawer';
+import { usePackingLabelCommand, usePackingLabelDrawer } from './packing-label-drawer';
 import {
   isDelivery,
   needsReissueReason,
@@ -187,7 +187,12 @@ export const ShippingPackingLabelScreen = ({
       drawPackingLabel(labelKind, row, issued) ?? drawDeliveryLabel(labelKind, row, issued),
     [drawDeliveryLabel, drawPackingLabel],
   );
-  const issue = useLabelIssue({ workerNo, drawLabel });
+  /* 포장 라벨은 종이를 80 × 30 mm TSPL 로 찍는다 — 납품 라벨은 아직 그림 그대로다. */
+  const drawCommand = usePackingLabelCommand({
+    shipmentNo: shipment.data?.shipmentNo ?? null,
+    allocations: allocationItems,
+  });
+  const issue = useLabelIssue({ workerNo, drawLabel, drawCommand });
 
   const missingPackingRows = useMemo(
     () =>

@@ -1513,7 +1513,7 @@ describe('AppLayout — 검색 중 손잡이', () => {
 });
 
 /**
- * 셸 — **사이드바 맨 아래의 버전 표기**(#1240).
+ * 셸 — **탑바 시스템 이름 옆의 버전 뱃지**(#1320 · 본디 #1240 이 사이드바에 두었다).
  *
  * 값은 릴리스 파이프라인이 넣는 빌드 인자다(`VITE_APP_VERSION`). 시험 실행에는 그 값이 없으므로
  * 릴리스 모양은 `vi.stubEnv` 로 세운다.
@@ -1523,12 +1523,17 @@ describe('AppLayout — 버전 표기', () => {
     vi.unstubAllEnvs();
   });
 
-  it('릴리스 빌드면 태그의 버전을 사이드바 아래에 보인다', () => {
+  /**
+   * ⛔ **보이는 글자에 「버전」을 붙이지 않는다** — 이름 옆이라 자리가 좁고 `v0.3.8` 은 그대로 읽힌다.
+   *    다만 **읽어 주는 이름에는 붙는다**: 숫자만 들으면 무엇의 값인지 모른다.
+   */
+  it('릴리스 빌드면 태그의 버전을 뱃지로 보이고, 읽어 주는 이름에 무엇인지 적는다', () => {
     vi.stubEnv('VITE_APP_VERSION', 'web-v0.3.8');
 
     renderLayout('본문 내용', { expandGroups: false });
 
-    expect(screen.getByText(messages.shellNav.version.release('v0.3.8'))).toBeInTheDocument();
+    const badge = screen.getByLabelText(messages.shellNav.version.release('v0.3.8'));
+    expect(badge).toHaveTextContent('v0.3.8');
   });
 
   /** ⛔ 빈칸이나 「알 수 없음」을 세우지 않는다(공유계약 G-9). */
@@ -1540,17 +1545,31 @@ describe('AppLayout — 버전 표기', () => {
     expect(screen.getByText(messages.shellNav.version.dev)).toBeInTheDocument();
   });
 
-  it('레일에서는 세우지 않고, 펼치면 다시 보인다', async () => {
+  /**
+   * ⭐ **이 시험이 옮긴 이유 그 자체다.** 사이드바 맨 아래에 있던 동안에는 접으면 사라져,
+   *    확인하려는 사람이 펼쳐야 했다. 탑바는 접힘과 무관하게 선다.
+   */
+  /** ⛔ 뱃지는 **시스템 이름과 같은 줄**에 있어야 한다 — 떨어져 있으면 무엇의 버전인지 흐려진다. */
+  it('뱃지가 시스템 이름과 한 줄에 선다', () => {
+    vi.stubEnv('VITE_APP_VERSION', 'web-v0.3.8');
+
+    renderLayout('본문 내용', { expandGroups: false });
+
+    const badge = screen.getByLabelText(messages.shellNav.version.release('v0.3.8'));
+    const brandLine = badge.closest('.topbar-brand');
+
+    expect(brandLine).not.toBeNull();
+    expect(brandLine?.textContent).toContain('v0.3.8');
+  });
+
+  it('사이드바를 접어도 버전이 그대로 보인다', async () => {
     vi.stubEnv('VITE_APP_VERSION', 'web-v0.3.8');
     const label = messages.shellNav.version.release('v0.3.8');
 
     const { user } = renderLayout('본문 내용', { expandGroups: false });
 
     await user.click(screen.getByRole('button', { name: '사이드바 접기' }));
-    expect(screen.queryByText(label)).toBeNull();
-
-    await user.click(screen.getByRole('button', { name: '사이드바 펼치기' }));
-    expect(screen.getByText(label)).toBeInTheDocument();
+    expect(screen.getByLabelText(label)).toBeInTheDocument();
   });
 });
 

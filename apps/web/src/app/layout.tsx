@@ -97,14 +97,32 @@ const findActiveGroupLabel = (pathname: string): string | null =>
   NAV_GROUPS.find((group) => group.items.some((item) => isPathActive(pathname, item.to)))?.label ??
   null;
 
-/** 사이드바 맨 아래의 버전 캡션. 릴리스 태그가 없는 빌드는 「개발 빌드」로 말한다. */
-const AppVersionCaption = () => {
+/**
+ * 시스템 이름 옆의 **버전 뱃지**. 릴리스 태그가 없는 빌드는 「개발 빌드」로 말한다.
+ *
+ * ⭐ **사이드바 맨 아래에서 여기로 옮겼다**(#1320 · 본디 #1240). 그 자리는 「찾으면 보이고 일에는
+ *    끼어들지 않는」 자리였는데 **사이드바를 접으면 사라졌다**(레일 72px). 문의·장애 보고 때
+ *    「지금 어느 릴리스인가」를 확인하는 값이라, 접은 사람이 펼쳐야 보이는 것은 목적에 어긋난다.
+ *    탑바는 접힘과 무관하게 늘 선다.
+ *
+ * ⛔ **DS `Chip` 을 쓰지 않는다.** 칩은 **상태**의 어휘다(연결·프린터·판정) — 버전은 상태가
+ *    아니라 맥락 값이라, 칩으로 두면 색이 무슨 뜻인지 묻게 된다. `patterns/pop-worker-tag.tsx`
+ *    가 사번을 두고 같은 판단을 했다.
+ *
+ * ⛔ **보이는 글자에 「버전」을 붙이지 않는다.** 이름 바로 옆이라 자리가 좁고, `v0.3.10` 은 그
+ *    자체로 읽힌다. 다만 **읽어 주는 이름에는 붙인다** — 숫자만 들으면 무엇의 값인지 모른다.
+ */
+const AppVersionBadge = () => {
   const appVersion = readAppVersion();
 
+  if (appVersion.kind === 'dev') {
+    return <span className="topbar-version">{t.version.dev}</span>;
+  }
+
   return (
-    <p className="sidebar-version">
-      {appVersion.kind === 'release' ? t.version.release(appVersion.version) : t.version.dev}
-    </p>
+    <span className="topbar-version" aria-label={t.version.release(appVersion.version)}>
+      {appVersion.version}
+    </span>
   );
 };
 
@@ -273,7 +291,12 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
       onCollapsedChange={setIsSidebarCollapsed}
       topbar={
         <Topbar
-          brand={<strong>{localizedLabel(SHELL_BRAND)}</strong>}
+          brand={
+            <span className="topbar-brand">
+              <strong>{localizedLabel(SHELL_BRAND)}</strong>
+              <AppVersionBadge />
+            </span>
+          }
           actions={session === null ? undefined : <SessionActions userName={session.userName} />}
         />
       }
@@ -301,16 +324,11 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
               />
             )
           }
-          footer={
-            /*
-             * 버전 표기(#1240) — **찾으면 보이고 일에는 끼어들지 않는 자리**라 사이드바 맨 아래
-             * 작은 캡션으로 둔다. 문의·장애 보고 때 「지금 어느 릴리스인가」를 확인하는 용도다.
-             *
-             * ⛔ **레일에서는 세우지 않는다.** 72px 에 글자가 들어가지 않아 줄마다 부러진다 —
-             * 확인하려는 사람은 펼친다(검색창과 같은 규율).
-             */
-            isSidebarCollapsed ? undefined : <AppVersionCaption />
-          }
+          /*
+           * ⛔ **버전은 여기 두지 않는다**(#1320 — 본디 #1240 이 이 자리에 두었다). 탑바의 시스템
+           * 이름 옆으로 옮겼다 — 이 자리는 **접으면 사라져서**(레일 72px) 확인하려는 사람이 펼쳐야
+           * 했다. 같은 값을 두 자리에 두지도 않는다: 둘이면 어느 쪽을 믿는지 묻게 된다.
+           */
         >
           {/*
            * ⚠ **`.sidebar-lead` 는 서식이 아니라 배치를 지키는 자리다.** 섹션 밖 직계 항목은

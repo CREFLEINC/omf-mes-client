@@ -201,22 +201,8 @@ const installPrintBridge = (save: (...args: unknown[]) => Promise<string>) => {
   (globalThis as { pop?: unknown }).pop = { rendition: { save } };
 };
 
-/**
- * 서버가 이 종류를 그려 주는 상태로 둔다.
- *
- * ⭐ **`LOCATION_LABEL` 은 아직 준비 목록에 없다**(`patterns/pop-label-rendition.ts` — 「서버에
- *    있는 것만 적는다」). 그 문은 **개발 모드에서만** 열려 있어, 지금 이 화면이 실제로 도는 자리는
- *    목 서버를 띄운 개발 모드다. 인쇄까지 가는 갈래를 재려면 그 모드를 세워야 한다.
- *
- * ⚠ **배포본의 갈래는 따로 잰다**(맨 아래 시험) — 서버가 서기 전까지 그쪽이 현재의 사실이다.
- */
-const asDevelopmentMode = () => {
-  vi.stubEnv('MODE', 'development');
-};
-
 afterEach(() => {
   delete (globalThis as { pop?: unknown }).pop;
-  vi.unstubAllEnvs();
   vi.restoreAllMocks();
 });
 
@@ -256,7 +242,6 @@ describe('P-06-01 창고 적재 위치 라벨 발행', () => {
     const reports: Request[] = [];
     const renditionCalls: string[] = [];
     const save = vi.fn().mockResolvedValue('/tmp/label.tspl');
-    asDevelopmentMode();
     installPrintBridge(save);
 
     renderScreen({ writes, reports, renditionCalls });
@@ -326,7 +311,6 @@ describe('P-06-01 창고 적재 위치 라벨 발행', () => {
       .fn()
       .mockRejectedValueOnce(new Error('프린터를 찾을 수 없습니다'))
       .mockResolvedValue('/tmp/label.tspl');
-    asDevelopmentMode();
     installPrintBridge(save);
 
     renderScreen({ reports });
@@ -378,13 +362,17 @@ describe('P-06-01 창고 적재 위치 라벨 발행', () => {
     expect(await screen.findByText(t.print.noBridge)).toBeInTheDocument();
   });
 
-  it('배포본에서는 서버가 아직 이 라벨을 그리지 못해, 발행만 되고 인쇄는 실패로 남는다', async () => {
+  it('배포본에서도 서버가 그린 라벨을 받아 찍는다', async () => {
     const user = userEvent.setup();
     const writes: Request[] = [];
     const reports: Request[] = [];
     const renditionCalls: string[] = [];
     const save = vi.fn().mockResolvedValue('/tmp/label.tspl');
-    /* 개발 모드를 세우지 않는다 — 지금 배포본의 사실이 이것이다. */
+    /*
+     * ⭐ **이 시험들은 배포본과 같은 모드에서 돈다.** 종류가 준비 목록에서 빠지면
+     *    `LabelRenditionNotReadyError` 로 **네트워크 요청 전에** 멎어, 서버가 그릴 준비를
+     *    마쳤는데도 라벨이 한 장도 나오지 않는다(#1318). 그 회귀를 여기서 잡는다.
+     */
     installPrintBridge(save);
 
     renderScreen({ writes, reports, renditionCalls });
@@ -397,17 +385,15 @@ describe('P-06-01 창고 적재 위치 라벨 발행', () => {
       expect(writes).toHaveLength(1);
     });
 
-    /*
-     * ⛔ **네트워크 요청 전에 멎는다.** 없는 경로로 요청이 나가면 사용자는 발행 실패와 구분되지
-     *    않는 오류를 본다 — 발행은 성공했는데도 그렇다.
-     */
+    await waitFor(() => {
+      expect(save).toHaveBeenCalledTimes(1);
+    });
+    expect(renditionCalls).toHaveLength(1);
     await waitFor(() => {
       expect(reports).toHaveLength(1);
     });
-    expect(renditionCalls).toHaveLength(0);
-    expect(save).not.toHaveBeenCalled();
-    await expect(reports[0]?.clone().json()).resolves.toMatchObject({ outcome: 'FAILED' });
-    expect(await screen.findByText(t.print.summary(0, 1))).toBeInTheDocument();
+    await expect(reports[0]?.clone().json()).resolves.toEqual({ outcome: 'SUCCEEDED' });
+    expect(await screen.findByText(t.print.summary(1, 0))).toBeInTheDocument();
   });
 
   it('발행 이력을 못 물으면 사유와 다시 시도를 보이고, 발행을 열지 않는다', async () => {
@@ -430,7 +416,6 @@ describe('P-06-01 창고 적재 위치 라벨 발행', () => {
     const user = userEvent.setup();
     const reports: Request[] = [];
     const save = vi.fn().mockResolvedValue('/tmp/label.tspl');
-    asDevelopmentMode();
     installPrintBridge(save);
 
     renderScreen({ reports, renditionFails: true });

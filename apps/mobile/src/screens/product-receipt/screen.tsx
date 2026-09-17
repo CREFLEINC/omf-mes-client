@@ -1,10 +1,11 @@
-import { AlertBanner, Button, Chip, NumberPad, Select, TextField } from '@crefle/web-ui';
+import { AlertBanner, Button, Chip, Select, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router';
 
 import { useAdvanceTo } from '../../patterns/advance-to';
 import { useBackStep } from '../../patterns/back-step';
+import { DockedNumberPad } from '../../patterns/docked-number-pad';
 import { playErrorTone } from '../../patterns/error-tone';
 import { useLocationByCode, useLocations } from '../../patterns/locations';
 import { useItemCodes } from '../../patterns/masters';
@@ -52,6 +53,9 @@ const t = messages.productReceipt;
 const required = messages.common.required;
 
 type Outcome = 'held' | 'sent' | 'receivedOnly' | 'putawayRejected' | 'rejected';
+
+/* 숫자판이 옮겨 갈 칸을 찾는 이름. 담는 쪽과 찾는 쪽이 이 함수 하나를 함께 쓴다. */
+const qtyFieldId = (key: number): string => `product-receipt-qty-${key}`;
 
 export const ProductReceiptScreen = () => {
   useScreenTitle(t.title);
@@ -211,6 +215,13 @@ export const ProductReceiptScreen = () => {
   /* 한 번에 받는 조회라 실패하면 줄 전부가 같은 상태다. 그래도 대리키는 보이지 않는다. */
   const lotNo = referenceFromQuery(lots, (lot) => lot.lotNo);
 
+  /*
+   * 숫자판이 지금 적는 줄. 목록 밖에 서므로 자리를 번호가 아니라 줄 자체로 든다 - 줄을
+   * 빼면 숫자판도 함께 닫힌다.
+   */
+  const keypadAt = lines.findIndex((line) => line.handlingUnitContentId === keypadFor);
+  const keypad = keypadAt === -1 ? null : { at: keypadAt, line: lines[keypadAt] as DraftLine };
+
   const nameOf = (line: DraftLine): string =>
     t.contents.name(referenceLabel(itemCode(line.itemId)), referenceLabel(lotNo(line.lotId)));
 
@@ -348,7 +359,7 @@ export const ProductReceiptScreen = () => {
   }
 
   return (
-    <div className="product-receipt">
+    <div className={keypad === null ? 'product-receipt' : 'product-receipt docked-pad-open'}>
       <section className="product-receipt__section">
         <h2>{t.warehouse.legend}</h2>
         {warehouses.isPending ? <p role="status">{t.warehouse.loading}</p> : null}
@@ -437,6 +448,7 @@ export const ProductReceiptScreen = () => {
               return (
                 <div key={line.handlingUnitContentId} className="product-receipt__line">
                   <TextField
+                    id={qtyFieldId(line.handlingUnitContentId)}
                     label={required(t.contents.qtyLabel(nameOf(line)))}
                     size="xl"
                     fullWidth
@@ -457,17 +469,6 @@ export const ProductReceiptScreen = () => {
                     }}
                     error={problem === null ? undefined : t.contents.problem[problem]}
                   />
-                  {keypadFor !== line.handlingUnitContentId ? null : (
-                    <NumberPad
-                      value={line.qty}
-                      onChange={(next) => {
-                        setLines((current) =>
-                          current.map((each, at) => (at === index ? { ...each, qty: next } : each)),
-                        );
-                      }}
-                      allowDecimal
-                    />
-                  )}
                   <p className="product-receipt__expected">
                     {t.contents.expected(String(line.expectedQty))}
                   </p>
@@ -583,6 +584,34 @@ export const ProductReceiptScreen = () => {
               </Button>
             </div>
           </section>
+          {keypad === null ? null : (
+            <DockedNumberPad
+              head={t.contents.qtyLabel(nameOf(keypad.line))}
+              fieldId={qtyFieldId(keypad.line.handlingUnitContentId)}
+              value={keypad.line.qty}
+              onChange={(next) => {
+                setLines((current) =>
+                  current.map((each, at) => (at === keypad.at ? { ...each, qty: next } : each)),
+                );
+              }}
+              onClose={() => {
+                setKeypadFor(null);
+              }}
+              move={{
+                canPrevious: keypad.at > 0,
+                canNext: keypad.at < lines.length - 1,
+                onPrevious: () => {
+                  setKeypadFor(lines[keypad.at - 1]?.handlingUnitContentId ?? null);
+                },
+                onNext: () => {
+                  setKeypadFor(lines[keypad.at + 1]?.handlingUnitContentId ?? null);
+                },
+                previousLabel: t.contents.previousLine,
+                nextLabel: t.contents.nextLine,
+              }}
+              allowDecimal
+            />
+          )}
         </>
       )}
     </div>
