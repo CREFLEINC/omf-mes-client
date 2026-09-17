@@ -97,13 +97,16 @@ export const DockedNumberPad = ({
    * 적는 칸이 화면 아래에 있으면 숫자판이 그 위에 서면서 칸을 덮는다. 무엇을 치는지 보이지
    * 않으므로 칸을 숫자판 위로 끌어올린다. 비울 자리는 `docked-pad-open` 이 만든다.
    *
+   * `nearest` 로는 못 푼다 - 덮인 칸도 창 안에는 있어 이미 보인다고 보고 그냥 둔다. `end` 로
+   * 맞춰야 `scroll-margin-block-end` 만큼 아래를 비워 판 위로 올라온다(실기 2026-09-17).
+   *
    * 머리줄이 바뀌면 다시 끌어올린다 - 이전·다음으로 옮긴 줄도 덮일 수 있다.
    */
   useEffect(() => {
     const active = document.activeElement;
 
     if (active instanceof HTMLElement && typeof active.scrollIntoView === 'function') {
-      active.scrollIntoView({ block: 'nearest' });
+      active.scrollIntoView({ block: 'end' });
     }
   }, [head]);
 

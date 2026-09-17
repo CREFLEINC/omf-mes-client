@@ -127,7 +127,7 @@ describe('화면 아래 숫자판', () => {
       </>,
     );
 
-    expect(scrollIntoView).toHaveBeenCalled();
+    expect(scrollIntoView).toHaveBeenCalledWith({ block: 'end' });
   });
   /*
    * 비고처럼 자판이 필요한 칸을 치다가 숫자칸을 누르면, 포커스가 옮겨 가도 기기 자판이
