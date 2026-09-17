@@ -124,6 +124,7 @@ import { shellHome } from './shell-home';
 import { shellNav } from './shell-nav';
 import { wipHandover } from './wip-handover';
 import { workerAssignment } from './worker-assignment';
+import { popLocationLabel } from './pop-location-label';
 import { popMaterialLotLabel } from './pop-material-lot-label';
 import { reworkResultRegister } from './rework-result-register';
 import { packingLabelReprint } from './packing-label-reprint';
@@ -248,6 +249,7 @@ export const ko = {
   shellNav,
   wipHandover,
   workerAssignment,
+  popLocationLabel,
   popMaterialLotLabel,
   workStart,
   workPrecheckGate,

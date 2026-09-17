@@ -7,6 +7,7 @@ import { ShippingUnitScreen } from '../screens/shipping-unit/screen';
 import { MaterialInputScanScreen } from '../screens/material-input-scan/screen';
 import { PackingLabelReprintScreen } from '../screens/packing-label-reprint/screen';
 import { PackingWorkScreen } from '../screens/packing-work/screen';
+import { PopLocationLabelScreen } from '../screens/pop-location-label/screen';
 import { PopMaterialLotLabelScreen } from '../screens/pop-material-lot-label/screen';
 import { PqcInspectionScreen } from '../screens/pqc-inspection/screen';
 import { RepackLabelIssueScreen } from '../screens/repack-label-issue/screen';
@@ -233,4 +234,19 @@ export const popRoutes: RouteObject[] = [
    * 앞 화면이 무엇을 실어 주지 않아도 서고, 그래서 독립 진입이다(스펙 §1 「범위」).
    */
   { path: '/pop/packing', element: <PackingResultScreen /> },
+  /*
+   * P-06-01 — 창고 적재 위치 QR 라벨 발행. 창고 작업자가 랙·셀에 붙일 **고정 표지**를 만든다.
+   *
+   * ⭐ **설계보다 앞선 화면이다**(`docs/decisions.md` 결정 16). 고정 설계 `W-06-07` §3은
+   * 「물리 인쇄는 개발 범위 밖 · POP 인쇄 화면은 신설하지 않는다」였고, 사용자 지시로 진행한다.
+   * 화면 코드도 클라이언트가 부여했다 — 도메인 06(기준정보연계)에 POP 화면이 없어 번호 체계를
+   * 그대로 이었다. 설계팀이 다른 코드를 주면 `pop-screen-catalog.ts` 한 줄과 목 권한 세 자리를
+   * 바꾼다.
+   *
+   * ⚠ **진입에 질의 문자열이 없다** — 이 화면이 창고를 고르는 것부터 시작한다.
+   *
+   * ⛔ **사이드바에 올리지 않는다.** 관리웹 `W-06-07` 이 같은 발행 경로로 라벨 이미지를 만드는
+   * 자리를 이미 갖고 있고, 이쪽은 프린터가 붙은 단말에서 찍는 자리다.
+   */
+  { path: '/pop/location-label', element: <PopLocationLabelScreen /> },
 ];

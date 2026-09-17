@@ -313,6 +313,8 @@ const APP_PERMISSIONS = [
   { code: 'W-06-05', name: '수신본 확장속성 편집 (품목·BOM)', groupCode: '06' },
   { code: 'W-06-06', name: '공통코드·조직·작업자 마스터 (다국어)', groupCode: '06' },
   { code: 'W-06-07', name: '창고·Location 마스터', groupCode: '06' },
+  /* ⭐ 설계보다 앞서 만든 화면이다 — 화면 코드도 클라이언트가 부여했다(결정 16 · #1312). */
+  { code: 'P-06-01', name: '창고 적재 위치 라벨 발행', groupCode: '06' },
   { code: 'W-06-08', name: '예비품 마스터', groupCode: '06' },
   { code: 'W-06-09', name: 'ERP-MES I/F 연계정의 관리', groupCode: '06' },
   { code: 'W-06-10', name: '연계 동기화 현황·실패 재처리', groupCode: '06' },
@@ -565,6 +567,7 @@ const POP_FIXED_PERMISSIONS = [
   'P-04-04',
   'P-05-01',
   'P-05-02',
+  'P-06-01',
 ];
 
 /**
@@ -1425,6 +1428,7 @@ on('GET', '/mdm/terminals/{terminalId}/accessible-screens', () => ({
     'P-04-04',
     'P-05-01',
     'P-05-02',
+    'P-06-01',
   ],
 }));
 
@@ -1776,6 +1780,30 @@ const ascii = (value, fallback) => {
   return text !== '' && /^[\x20-\x7e]+$/.test(text) ? text : fallback;
 };
 
+/**
+ * **ASCII 밖 글자를 지우지 않고 깨진 채로 남긴다** — 위치 라벨의 이름 칸에만 쓴다.
+ *
+ * ⭐ **사용자 확정 2026-09-16(#1312)**: 위치명에 한글·성조 문자가 있어도 **무시하고 그대로 찍는다.
+ *    라벨에서 글자가 깨져 보여도 무방하다.** 그래서 위 `ascii` 처럼 **값을 통째로 바꾸지 않는다** —
+ *    바꾸면 사용자가 지정한 이름이 아닌 다른 값이 라벨에 찍혀, 「깨져 보인다」가 아니라 「거짓을
+ *    말한다」가 된다.
+ *
+ * ⛔ **원문 바이트를 그대로 흘리지는 않는다.** 명령문은 `Buffer.from(…, 'ascii')` 로 나가는데 그
+ *    변환은 글자마다 하위 7비트만 남긴다 — 한글 한 자가 따옴표나 제어 문자로 바뀌면 **명령문
+ *    자체가 깨져** 프린터가 라벨을 못 낸다. 그것은 사용자가 받아들인 「글자가 깨진다」가 아니라
+ *    **인쇄가 안 되는 것**이다. 그래서 칸 수는 지키되 못 그리는 자리만 눈에 보이게 남긴다.
+ *
+ * ⚠ **씨앗의 대역일 뿐이다.** 실제 라벨은 서버가 그린다 — 서버가 이 결정대로 움직이는지는
+ *    `.client-dev/requests/2026-09-16-location-label-pop-screen.md` 요청 6의 회신으로 확인한다.
+ */
+const garbled = (value, fallback) => {
+  const text = String(value ?? '').trim();
+
+  if (text === '') return fallback;
+
+  return [...text].map((character) => (/[\x20-\x7e]/.test(character) ? character : '?')).join('');
+};
+
 const itemOf = (itemId) => state.items.find((row) => row.itemId === itemId);
 const uomOf = (uomId) => state.uoms.find((row) => row.uomId === uomId);
 
@@ -1854,18 +1882,26 @@ const locationValues = (issue) => {
 
   return {
     code: ascii(location?.locationCode, 'SAMPLE-LOCATION'),
-    name: ascii(location?.locationName, ascii(location?.locationCode, 'LOCATION')),
+    /* 이름은 깨진 채로 남긴다 — 대신할 값을 쓰면 사용자가 지은 이름이 아닌 것이 찍힌다(#1312). */
+    name: garbled(location?.locationName, ascii(location?.locationCode, 'LOCATION')),
     warehouse: ascii(warehouse?.warehouseCode, 'SAMPLE-WAREHOUSE'),
+    /* 회차는 인쇄면에도 찍힌다 — 데이터에만 있으면 현장에서 몇 번째 라벨인지 못 가른다(계약 rendition). */
+    issueSeq: issue.issueSeq ?? 1,
     issuedAt: labelDateTime(issue.issuedAt),
     seed: issue.documentIssueLogId,
   };
 };
 
 /**
- * **100×60 은 출하용 라벨 하나뿐이다.** 나머지는 전부 표준 80×30 이다(사용자 확인 2026-09-08).
+ * **출하 계열은 `DELIVERY_LABEL` 하나뿐이다.** 나머지는 전부 표준 80×30 이다(사용자 확인 2026-09-08).
  *
  * ⛔ **포장 라벨을 여기 넣지 않는다.** 이름이 「출하 계열」처럼 보인다는 이유로 함께 두었더니
  *    포장 라벨·인식표 재출력이 100×60 으로 나왔다 — 화면에서 실측으로 잡힌 결함이다.
+ *
+ * ⚠ **100×60 인 라벨이 하나 더 생겼다** — Location 고정 표지다(사용자 확정 2026-09-16 · #1312).
+ *   그렇다고 이 목록에 넣지 않는다 — 이 목록은 「크기」가 아니라 **「출하용 서식으로 그린다」** 는
+ *   뜻이고, 위치 라벨은 자기 서식이 따로 있다. 위 사고가 난 까닭이 정확히 **크기로 뭉뚱그린 것**이라,
+ *   종류를 하나씩 세는 형태를 지킨다.
  */
 const SHIPPING_TYPES = ['DELIVERY_LABEL'];
 
@@ -1902,6 +1938,8 @@ on('GET', '/app/printers', () => {
           'IDENTIFICATION_TAG',
           'PACKING_LABEL',
           'DELIVERY_LABEL',
+          /* Location 고정 표지(#1312). 빠져 있으면 화면의 프린터 고르는 칸이 빈 목록이 된다. */
+          'LOCATION_LABEL',
         ],
       },
     ],

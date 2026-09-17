@@ -72,6 +72,11 @@ export const POP_SCREENS: readonly PopScreen[] = [
   { path: '/pop/shipping-units', code: 'P-04-05', name: '출하 단위 구성' },
   { path: '/pop/tool-usage', code: 'P-05-01', name: '툴 사용실적 입력' },
   { path: '/pop/downtime', code: 'P-05-02', name: '비가동 실적 입력' },
+  /*
+   * ⭐ **설계보다 앞선 화면이다**(`docs/decisions.md` 결정 16) — 화면 코드도 클라이언트가
+   *    부여했다. 도메인 06(기준정보연계)에 POP 화면이 없어 번호 체계를 그대로 이었다.
+   */
+  { path: '/pop/location-label', code: 'P-06-01', name: '창고 적재 위치 라벨 발행' },
 ];
 
 /** 진입 화면. 목록에서 빠지는 것이 정상이라는 사실을 감지기가 이 값으로 확인한다. */
