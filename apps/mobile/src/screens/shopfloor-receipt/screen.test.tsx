@@ -556,6 +556,35 @@ describe('생산창고 입고 화면', () => {
   });
 
   /*
+   * 이 화면에는 적는 묶음이 둘이다 - 전표에서 온 투입 라인과 눈으로 재는 호퍼 잔량. 이전·다음이
+   * 묶음을 넘어가면 전표 수량을 적던 사람이 호퍼 잔량 칸에 이어 적게 되고, 적힌 값이 어느
+   * 장부로 가는지가 갈린다.
+   */
+  it('이전·다음은 투입 라인과 호퍼 사이를 넘어가지 않는다', async () => {
+    const user = userEvent.setup();
+    mount();
+    await screen.findByLabelText(/출고 QR 스캔/);
+    scan(ISSUE_NO);
+
+    /* 호퍼 줄이 선 뒤에 잰다 - 줄이 없으면 넘어갈 곳도 없어 넘어가는지가 드러나지 않는다. */
+    await user.click(await screen.findByRole('combobox', { name: '설비' }));
+    await user.click(await screen.findByRole('option', { name: /EQ-01/ }));
+    await screen.findByRole('textbox', { name: /LOT-B 실측 잔량/ });
+
+    await user.click(await receivedField());
+    expect(await screen.findByRole('button', { name: '앞 라인' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: '다음 라인' })).toBeDisabled();
+
+    await user.click(await screen.findByRole('textbox', { name: /LOT-A 실측 잔량/ }));
+    expect(await screen.findByRole('button', { name: '앞 호퍼' })).toBeDisabled();
+    expect(screen.queryByRole('button', { name: '앞 라인' })).toBeNull();
+
+    await user.click(screen.getByRole('button', { name: '다음 호퍼' }));
+    expect(await screen.findByText(/LOT-B 실측 잔량/)).toBeTruthy();
+    expect(screen.getByRole('button', { name: '다음 호퍼' })).toBeDisabled();
+  });
+
+  /*
    * 자재가 라인에 들어오는 이 시점에 사람이 눈으로 잰다. 여기서 적지 않으면 호퍼에 무엇이
    * 얼마나 남았는지가 어디에도 남지 않는다.
    */
