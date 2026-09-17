@@ -123,12 +123,7 @@ export const WorkOrderList = ({
         </div>
       )}
 
-      {!canSelect && (
-        <div className="banner-slot">
-          <AlertBanner variant="info">{messages.workStart.worker.required}</AlertBanner>
-        </div>
-      )}
-
+      {/* ⭐ 사번 미확인 안내는 화면 맨 위 공용 띠가 말한다(사용자 지시 2026-09-17). 카드 잠금은 그대로. */}
       {isError ? (
         <div className="banner-slot">
           {/*

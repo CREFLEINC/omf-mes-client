@@ -4,6 +4,7 @@ import { NumericKeypad } from '@omf-mes/ui';
 import { useId, useRef, useState, type FormEvent } from 'react';
 
 import { usePopIdentity } from '../../patterns/pop-identity';
+import { PopWorkerMissingBanner } from '../../patterns/pop-worker-missing-banner';
 import { toApiError } from '../../patterns/request';
 import { conversionState } from './conversion';
 import { ErrorBanner } from './error-banner';
@@ -308,6 +309,8 @@ export const ToolUsageScreen = () => {
       </header>
 
       <>
+        {/* ⭐ 사번 미확인은 모든 POP 화면이 같은 맨 위 띠로 말한다(사용자 지시 2026-09-17). */}
+        <PopWorkerMissingBanner workerNo={entry.workerNo} />
         {lookup.isError && (
           <ErrorBanner
             error={toApiError(lookup.error)}

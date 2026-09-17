@@ -311,6 +311,18 @@ describe('PqcInspectionScreen — 대상을 받는 방식', () => {
    * ⭐ **샘플은 «비율(%)»이다.** 「30 이 개인가 %인가」를 묻던 미결(§8 #5)이 2026-09-02 에
    * 닫혔다 — 계약이 「샘플 비율(%)이 정본」으로 못박았다. 화면은 그 답을 단위와 함께 낸다(A-8).
    */
+  it('사번을 모르면 맨 위 공용 띠로 말하고 확정이 잠긴다', async () => {
+    renderScreen(undefined, undefined, undefined, undefined, undefined, undefined, null);
+
+    expect(await screen.findByText(messages.popChrome.workerMissing)).toBeInTheDocument();
+    expect(
+      screen.queryByText(
+        '사번이 확인되지 않아 검사 결과를 저장할 수 없습니다. 작업자 지정을 먼저 마치세요.',
+      ),
+    ).not.toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: t.result.confirm })).toBeDisabled();
+  });
+
   it('샘플을 비율로 보인다', async () => {
     renderScreen();
 

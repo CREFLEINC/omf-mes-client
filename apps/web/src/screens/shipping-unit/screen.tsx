@@ -1,14 +1,17 @@
-import { AlertBanner, Button, Table, type Column } from '@crefle/web-ui';
+import { AlertBanner, Button, Chip, EmptyState, Table, type Column } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { usePopIdentity } from '../../patterns/pop-identity';
+import { PopWorkerMissingBanner } from '../../patterns/pop-worker-missing-banner';
+import { PopWorkerTag } from '../../patterns/pop-worker-tag';
 /*
  * ⛔ **DS 드롭다운을 직접 쓰지 않는다**(공유계약 G-34 · `routes/pop-common-rules.test.ts` 가
  *    지킨다). 장갑 낀 손에는 좁은 목록보다 큰 버튼이 선 팝업이 낫다.
  */
 import { PopSelect as Select } from '../../patterns/pop-select';
 import { ScanField } from '../packing-result/scan-field';
+import { useOnline } from '../packing-result/use-online';
 import { DELIVERY_LABEL } from '../shipping-packing-label/codes';
 import { usePrinters } from '../shipping-packing-label/queries';
 import { toDefaultPrinterName } from '../shipping-packing-label/types';
@@ -19,17 +22,14 @@ import {
   canCreateUnit,
   canScanBox,
   isClosed,
-  previewRows,
   type ComposeBusy,
   type ComposeState,
 } from './compose-state';
 import { useDeliveryIssue, type DeliveryIssueOutcome } from './delivery-issue';
+import { toDeliveryLabelFields } from './delivery-label-fields';
+import { renderDeliveryLabel } from './delivery-label-image';
 import { useShippingUnitWrites } from './mutations';
-import {
-  useComposableShipments,
-  useShippingUnitDetail,
-  useShippingUnitTypes,
-} from './queries';
+import { useComposableShipments, useShippingUnitDetail, useShippingUnitTypes } from './queries';
 import type { AddBoxRejection, ShippingUnitBox } from './types';
 
 const t = messages.shippingUnit;
@@ -87,12 +87,17 @@ const issueText = (outcome: DeliveryIssueOutcome): string => {
  */
 export const ShippingUnitScreen = () => {
   const identity = usePopIdentity();
+  const isOnline = useOnline();
   const [shipmentId, setShipmentId] = useState<number | null>(null);
   const [typeCode, setTypeCode] = useState<string | null>(null);
   const [shippingUnitId, setShippingUnitId] = useState<number | null>(null);
   const [busy, setBusy] = useState<ComposeBusy>('idle');
   const [notice, setNotice] = useState<string | null>(null);
-  const [isConfirmOpen, setConfirmOpen] = useState(false);
+  /**
+   * 포장 라벨 스캔 결과 — 맨 위 띠가 아니라 **스캔 칸 바로 아래**에 선다(사용자 지시 2026-09-17).
+   * 등록은 초록 체크, 거절은 붉은 띠다. 어느 스캔의 답인지 칸에서 떨어지면 흐려진다.
+   */
+  const [scanResult, setScanResult] = useState<{ ok: boolean; text: string } | null>(null);
   const [outcome, setOutcome] = useState<DeliveryIssueOutcome | null>(null);
   /**
    * 마지막 쓰기가 준 판 번호.
@@ -114,7 +119,32 @@ export const ShippingUnitScreen = () => {
     () => ({ ...INITIAL_STATE, shipmentId, typeCode, busy, unit }),
     [busy, shipmentId, typeCode, unit],
   );
-  const preview = previewRows(unit);
+  /*
+   * ⭐ **미리보기는 인쇄될 라벨 그림 그대로다**(사용자 지시 2026-09-17). 전에는 품목별 합을 글자
+   *    목록으로 적어 라벨처럼 보이지 않았다. 마감 때 인쇄에 넘기는 같은 그리기(`renderDeliveryLabel`)를
+   *    쓴다 — 다른 그림을 보여 주면 담당이 본 것과 종이가 달라진다.
+   *
+   * ⚠ 발행 회차는 마감·발행 전에는 없다 — 첫 발행인 1 로 그린다. 재발행이면 종이의 회차만 다르다.
+   */
+  const previewSrc = useMemo((): string | null => {
+    if (unit === null || unit.boxCount === 0) return null;
+
+    const bytes = renderDeliveryLabel(toDeliveryLabelFields(unit, 1));
+
+    return URL.createObjectURL(
+      new Blob([bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength)], {
+        type: 'image/png',
+      }),
+    );
+  }, [unit]);
+
+  useEffect(() => {
+    if (previewSrc === null) return;
+
+    return () => {
+      URL.revokeObjectURL(previewSrc);
+    };
+  }, [previewSrc]);
   const currentEtag = etag ?? detail.data?.etag ?? null;
 
   /* ⛔ 한 번에 하나만 나간다 — 장갑 낀 손이 빠르게 두 번 누르면 같은 렌더에서 두 번 들어온다. */
@@ -137,6 +167,7 @@ export const ShippingUnitScreen = () => {
 
     void run('creating', async () => {
       setNotice(null);
+      setScanResult(null);
       setOutcome(null);
       try {
         const created = await writes.createUnit(shipmentId, typeCode);
@@ -153,17 +184,18 @@ export const ShippingUnitScreen = () => {
 
     void run('adding', async () => {
       setNotice(null);
+      setScanResult(null);
       const result = await writes.addBox(shippingUnitId, handlingUnitNo);
 
       if (result.kind === 'rejected') {
-        setNotice(rejectionText(result.rejection));
+        setScanResult({ ok: false, text: rejectionText(result.rejection) });
 
         return;
       }
 
       setEtag(result.snapshot.etag);
       await detail.refetch();
-      setNotice(t.scan.added(handlingUnitNo.trim()));
+      setScanResult({ ok: true, text: t.scan.added(handlingUnitNo.trim()) });
     });
   };
 
@@ -185,7 +217,6 @@ export const ShippingUnitScreen = () => {
   const onClose = (): void => {
     if (shippingUnitId === null || currentEtag === null) return;
 
-    setConfirmOpen(false);
     void run('closing', async () => {
       setNotice(null);
       try {
@@ -208,12 +239,29 @@ export const ShippingUnitScreen = () => {
     });
   };
 
+  /*
+   * ⭐ 머리글·값 모두 가운데 정렬, 상자 번호 열은 넓게·내용물 열은 좁게(사용자 지시 2026-09-17).
+   */
   const boxColumns: Column<ShippingUnitBox>[] = [
-    { key: 'seq', header: t.boxes.columnSeq, align: 'center', render: (row) => String(row.seq) },
-    { key: 'no', header: t.boxes.columnNo, render: (row) => row.handlingUnitNo },
+    {
+      key: 'seq',
+      header: t.boxes.columnSeq,
+      align: 'center',
+      width: '10%',
+      render: (row) => String(row.seq),
+    },
+    {
+      key: 'no',
+      header: t.boxes.columnNo,
+      align: 'center',
+      width: '35%',
+      render: (row) => row.handlingUnitNo,
+    },
     {
       key: 'contents',
       header: t.boxes.columnContents,
+      align: 'center',
+      width: '35%',
       render: (row) =>
         row.contents
           .map((content) =>
@@ -229,6 +277,7 @@ export const ShippingUnitScreen = () => {
       key: 'remove',
       header: t.boxes.columnAction,
       align: 'center',
+      width: '20%',
       render: (row) => (
         <Button
           variant="outlined"
@@ -252,9 +301,24 @@ export const ShippingUnitScreen = () => {
           {t.title}
         </h1>
         {unit !== null && (
-          <p className="pop-context">{`${unit.shippingUnitNo} · ${t.unit.status[unit.statusCode]}`}</p>
+          /* ⭐ 번호만 적는다 — 「구성 중/마감」 상태 표시는 두지 않는다(사용자 지시 2026-09-17). */
+          <p className="pop-context">{unit.shippingUnitNo}</p>
         )}
+        {/*
+         * ⭐ **POP 공통 헤더를 따른다**(사용자 지시 2026-09-17 · 공유계약 D-5·G-34) — 현재 작업자
+         *    사번과 온라인/오프라인. [화면 이동]·[사용자 전환]은 셸이 모든 POP 화면 머리줄에
+         *    세운다. 전용 화면 스펙이 설계 고정 커밋에 없어 형제 화면 P-04-01 머리줄과 같게 둔다.
+         */}
+        <div className="pop-context-right">
+          <PopWorkerTag workerNo={identity.workerNo} />
+          <Chip variant="status" size="md" status={isOnline ? 'success' : 'error'}>
+            {isOnline ? t.header.online : t.header.offline}
+          </Chip>
+        </div>
       </header>
+
+      {/* ⭐ 사번 미확인은 모든 POP 화면이 같은 맨 위 띠로 말한다(사용자 지시 2026-09-17). */}
+      <PopWorkerMissingBanner workerNo={identity.workerNo} />
 
       {notice !== null && (
         <div className="banner-slot">
@@ -273,7 +337,14 @@ export const ShippingUnitScreen = () => {
       )}
 
       {/* ① 출하 선택 — 서버가 「미구성 PACKED 상자가 있는 출하」만 걸러 준다(설계 §5-1). */}
-      <section className="pop-section pop-fixed shipping-unit-entry" aria-label={t.entry.label}>
+      {/*
+       * ⭐ **본문은 상자 다섯이다**(사용자 지시 2026-09-17) — 출하 · 유형 · 포장 라벨 · 등록된 상자 ·
+       *    납품 라벨 미리보기. 각 상자가 테두리를 갖고 위에서 아래로 작업 순서대로 선다.
+       */}
+      <section
+        className="pop-section pop-fixed shipping-unit-box shipping-unit-entry"
+        aria-label={t.entry.label}
+      >
         <span className="field-label" id="shipping-unit-entry-label">
           {t.entry.label}
         </span>
@@ -284,6 +355,7 @@ export const ShippingUnitScreen = () => {
           value={shipmentId === null ? null : String(shipmentId)}
           onChange={(value) => {
             setNotice(null);
+            setScanResult(null);
             setOutcome(null);
             /* 출하를 바꾸면 만들던 단위는 그 출하의 것이 아니다 — 함께 비운다. */
             setShipmentId(value === null ? null : Number(value));
@@ -299,13 +371,14 @@ export const ShippingUnitScreen = () => {
           <p className="field-note">{t.entry.failed}</p>
         ) : shipments.isPending ? (
           <p className="field-note">{t.entry.loading}</p>
-        ) : (shipments.data ?? []).length === 0 ? (
-          <p className="field-note">{t.entry.empty}</p>
-        ) : null}
+        ) : /* ⛔ 「구성할 상자가 남은 출하가 없습니다」는 두지 않는다(사용자 지시 2026-09-17). */ null}
       </section>
 
-      {/* ② 출하 단위 — 유형을 고르고 새로 만든다. */}
-      <section className="pop-section pop-fixed shipping-unit-unit" aria-label={t.unit.label}>
+      {/* ② 유형 — 유형을 고르고 새 출하 단위를 만든다. */}
+      <section
+        className="pop-section pop-fixed shipping-unit-box shipping-unit-unit"
+        aria-label={t.unit.label}
+      >
         <span className="field-label" id="shipping-unit-type-label">
           {t.unit.typeLabel}
         </span>
@@ -326,55 +399,71 @@ export const ShippingUnitScreen = () => {
         >
           {busy === 'creating' ? t.unit.creating : t.unit.create}
         </Button>
-        {unit === null && <p className="field-note">{t.unit.none}</p>}
+        {/* ⛔ 「아직 만들지 않았습니다…」 안내는 두지 않는다(사용자 지시 2026-09-17). */}
       </section>
 
-      {/* ③ 상자 스캔과 등록된 목록 — **스크롤은 여기 하나**다. */}
-      <section className="pop-section shipping-unit-boxes" aria-label={t.boxes.sectionLabel}>
+      {/* ③ 포장 라벨 스캔 */}
+      {/* ⛔ 구획에 칸과 «같은 이름»을 달지 않는다 — 이름이 겹치면 무엇을 가리키는지 흐려진다. */}
+      <section className="pop-section pop-fixed shipping-unit-box shipping-unit-scan">
         <ScanField
           label={t.scan.label}
           isScanning={busy === 'adding'}
+          /* ⭐ 스캐너가 Enter 를 붙이지 않아도 읽는다(사용자 지시 2026-09-17 · P-04-01 생산LOT 과 같다). */
+          autoSubmit
           lockReason={canScanBox(state) ? undefined : t.scan.locked}
           onScan={onScan}
         />
-        <h2 className="pane-title">{t.boxes.sectionLabel}</h2>
-        {(unit?.boxes.length ?? 0) === 0 ? (
-          <p className="field-note">{t.boxes.empty}</p>
-        ) : (
-          <Table
-            density="compact"
-            getRowId={(row: ShippingUnitBox) => String(row.handlingUnitId)}
-            columns={boxColumns}
-            rows={unit?.boxes ?? []}
-          />
+        {scanResult !== null && (
+          <div className="shipping-unit-verdict" role="status">
+            <AlertBanner variant={scanResult.ok ? 'success' : 'error'}>
+              {scanResult.text}
+            </AlertBanner>
+          </div>
         )}
       </section>
 
-      {/* ④ 납품 라벨 미리보기 — 품목별 합. **라벨 본문과 같은 값·같은 접기**다. */}
-      <section
-        className="pop-section pop-fixed shipping-unit-preview"
-        aria-label={t.preview.sectionLabel}
-      >
-        <h2 className="pane-title">{t.preview.sectionLabel}</h2>
-        {preview.shown.length === 0 ? (
-          <p className="field-note">{t.preview.empty}</p>
-        ) : (
-          <ul className="shipping-unit-totals">
-            {/* ⚠ 묶음 키가 (품목, 단위)다 — 같은 품목이라도 단위가 다르면 두 줄이다. */}
-            {preview.shown.map((total) => (
-              <li key={`${String(total.itemId)}-${String(total.uomId)}`}>
-                {t.preview.item(
-                  total.itemCode,
-                  total.itemName,
-                  `${total.qty.toLocaleString('ko-KR')} ${total.uomCode}`,
-                )}
-              </li>
-            ))}
-            {preview.hidden > 0 && <li>{t.preview.more(preview.hidden)}</li>}
-          </ul>
-        )}
-        {unit !== null && <p className="field-note">{t.preview.boxCount(unit.boxCount)}</p>}
-      </section>
+      {/*
+       * ⭐ **등록된 상자와 미리보기는 한 줄에 나란히 선다**(사용자 지적 2026-09-17 · 잘림). 위아래로
+       *    쌓았더니 창 높이가 모자라 목록이 표 머리줄만 남기고 잘리고 마감 단추가 화면 밖으로 밀렸다.
+       *    이 줄이 남는 높이를 갖고, 두 상자는 넘치면 제 안에서 굴린다.
+       */}
+      <div className="shipping-unit-lower">
+        {/* ④ 등록된 상자 — **스크롤은 여기 하나**다. */}
+        <section
+          className="pop-section shipping-unit-box shipping-unit-boxes"
+          aria-label={t.boxes.sectionLabel}
+        >
+          <h2 className="pane-title">{t.boxes.sectionLabel}</h2>
+          {(unit?.boxes.length ?? 0) === 0 ? (
+            /* ⭐ 가운데에 선다 — P-04-01 포장 구성의 빈 목록과 같은 부품(사용자 지시 2026-09-17). */
+            <EmptyState size="sm" className="shipping-unit-empty" title={t.boxes.empty} />
+          ) : (
+            <Table
+              density="compact"
+              getRowId={(row: ShippingUnitBox) => String(row.handlingUnitId)}
+              columns={boxColumns}
+              rows={unit?.boxes ?? []}
+            />
+          )}
+        </section>
+
+        {/* ⑤ 납품 라벨 미리보기 — 인쇄될 그림 그대로. */}
+        <section
+          className="pop-section shipping-unit-box shipping-unit-preview"
+          aria-label={t.preview.sectionLabel}
+        >
+          <h2 className="pane-title">{t.preview.sectionLabel}</h2>
+          {previewSrc === null ? (
+            <EmptyState size="sm" className="shipping-unit-empty" title={t.preview.empty} />
+          ) : (
+            <img
+              className="shipping-unit-preview-image"
+              src={previewSrc}
+              alt={t.preview.sectionLabel}
+            />
+          )}
+        </section>
+      </div>
 
       <div className="pop-action-bar shipping-unit-actions">
         <Button
@@ -382,9 +471,8 @@ export const ShippingUnitScreen = () => {
           size="xl"
           className="pop-touch-target"
           disabled={!canClose(state) || identity.workerNo === null}
-          onClick={() => {
-            setConfirmOpen(true);
-          }}
+          /* ⭐ 누르면 바로 마감하고 납품 라벨을 출력한다 — 되묻는 단계는 두지 않는다(사용자 지시 2026-09-17). */
+          onClick={onClose}
         >
           {busy === 'closing' ? t.close.closing : t.close.action}
         </Button>
@@ -398,34 +486,15 @@ export const ShippingUnitScreen = () => {
               setShippingUnitId(null);
               setEtag(null);
               setNotice(null);
+              setScanResult(null);
               setOutcome(null);
             }}
           >
             {t.next}
           </Button>
         )}
-        {!canClose(state) && !isClosed(state) && <p className="field-note">{t.close.needsBox}</p>}
+        {/* ⛔ 「상자를 하나 이상 등록해야…」 같은 하단 안내는 두지 않는다(사용자 지시 2026-09-17). */}
       </div>
-
-      {/* ⛔ 되돌릴 수 없다 — 확인창이 그 사실을 먼저 말한다(설계 §5-4). */}
-      {isConfirmOpen && (
-        <div className="banner-slot" role="alertdialog" aria-label={t.close.confirmTitle}>
-          <AlertBanner variant="warning">{t.close.confirmBody}</AlertBanner>
-          <Button variant="filled" size="xl" className="pop-touch-target" onClick={onClose}>
-            {t.close.confirmAction}
-          </Button>
-          <Button
-            variant="outlined"
-            size="xl"
-            className="pop-touch-target"
-            onClick={() => {
-              setConfirmOpen(false);
-            }}
-          >
-            {t.close.cancel}
-          </Button>
-        </div>
-      )}
     </main>
   );
 };

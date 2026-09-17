@@ -454,7 +454,7 @@ describe('P-06-01 창고 적재 위치 라벨 발행', () => {
       fetch: createStubFetch(routes({})),
     });
 
-    expect(await screen.findByText(t.entry.missingWorker)).toBeInTheDocument();
+    expect(await screen.findByText(messages.popChrome.workerMissing)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: t.issue.action })).toBeDisabled();
   });
 });

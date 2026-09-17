@@ -84,6 +84,5 @@ export const reworkResultRegister: Translated<typeof ko.reworkResultRegister> = 
   gateChecking: 'Đang kiểm tra chức năng máy trạm.',
   gateDenied: 'Máy trạm này không nhập kết quả được.',
   gateUnavailable: 'Không kiểm tra được chức năng máy trạm nên không lưu được.',
-  workerMissing: 'Chưa xác nhận mã nhân viên của công nhân nên không lưu được.',
   pending: (count: number) => `Chờ gửi ${count} mục`,
 };

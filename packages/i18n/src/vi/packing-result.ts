@@ -29,12 +29,12 @@ export const packingResult: Translated<typeof ko.packingResult> = {
     shipmentListLoading: 'Đang tải danh sách…',
     todayPickedShipments: 'Xuất hàng đã lấy hàng xong hôm nay',
     lotLocked: 'Hãy chọn đối tượng xuất hàng trước',
-    shipmentChosen: 'Nếu là đối tượng xuất hàng khác, hãy quét lại số xuất hàng',
+    shipmentChosen: 'Đã chọn · Nếu là đối tượng xuất hàng khác, hãy quét lại số xuất hàng',
   },
   match: {
-    ok: 'Khớp — LOT đã phân bổ cho xuất hàng này',
+    ok: (lotNo: string): string => `${lotNo} là LOT thuộc lô xuất hàng đã chọn.`,
     itemMismatch: (itemCode: string): string => `Mặt hàng của xuất hàng đã chọn là ${itemCode}`,
-    notAllocated: 'LOT này chưa được phân bổ cho xuất hàng này',
+    notAllocated: 'Số LOT sản xuất không thuộc lô xuất hàng đã chọn.',
     unknownReason: 'LOT này không khớp với nhãn giao hàng',
     shipmentNotFound: 'Không tìm thấy số xuất hàng đã lấy hàng xong',
     openUnitBlocksShipmentChange: 'Hãy hủy kiện đang mở rồi mới quét xuất hàng khác',
@@ -43,25 +43,27 @@ export const packingResult: Translated<typeof ko.packingResult> = {
   contents: {
     total: (packed: number, allocated: number): string =>
       `Tổng ${String(packed)} / ${String(allocated)}`,
-    empty: 'Chưa có gì bên trong',
+    empty: 'Chưa có cấu hình đóng gói nào được thêm.',
     remove: 'Bỏ',
   },
   qty: {
     label: 'Số lượng',
     entryLabel: 'Số lượng cho vào',
     entryEmpty: '—',
+    keypad: 'Bàn phím số lượng',
+    backspace: 'Xóa một ký tự',
+    clear: 'Xóa',
+    decimal: 'Dấu thập phân',
+    submit: 'Xác nhận',
     room: (room: number): string => `Còn ${String(room)}`,
     overRemaining: (remaining: number): string => `Không được vượt số phân bổ ${String(remaining)}`,
     notPositive: 'Số lượng phải lớn hơn 0',
-    merged: (before: number, added: number, after: number): string =>
-      `${String(before)} cộng thêm ${String(added)} thành ${String(after)}`,
   },
   fields: {
     handlingUnitType: 'Loại',
-    typePlaceholder: 'Chọn',
+    typePlaceholder: 'Hãy chọn loại',
   },
   notes: {
-    selectShipment: 'Hãy chọn đối tượng xuất hàng.',
     typeUnavailable: 'Không nhận được loại kiện. Hãy thử lại',
   },
   progress: {
@@ -100,7 +102,8 @@ export const packingResult: Translated<typeof ko.packingResult> = {
       report: 'Không báo được kết quả in lên máy chủ.',
     },
     packingFailure: (reason: string): string => `Nhãn kiện: ${reason}`,
-    complete: 'Đã in xong nhãn kiện.',
+    complete: (handlingUnitNo: string): string =>
+      `Đã in nhãn đóng gói - đã xác nhận kiện ${handlingUnitNo}.`,
     reissueRequired: (count: number): string =>
       `${String(count)} mục đã có bản ghi phát hành nhưng chưa in xong. Hãy vào in lại nhãn, chọn lý do rồi xử lý.`,
     retryPackingIssue: 'Phát hành lại nhãn kiện',
@@ -119,7 +122,7 @@ export const packingResult: Translated<typeof ko.packingResult> = {
     gateDenied: 'Máy trạm·công đoạn này không có quyền nhập kết quả',
     gateUnavailable: 'Không kiểm tra được quyền của máy trạm',
     gateUnidentified: 'Chưa xác nhận được máy trạm·công đoạn',
-    workerMissing: 'Chưa xác nhận mã nhân viên',
+    workerMissing: 'Chưa xác nhận mã nhân viên. Hãy xác thực mã nhân viên trước.',
     shipmentMissing: 'Hãy chọn đối tượng xuất hàng trước',
     warehouseMissing: 'Phiếu xuất hàng không có kho nên không xác nhận được',
     unitOpening: 'Đang tạo kiện',

@@ -5,6 +5,7 @@ import { useSearchParams } from 'react-router';
 
 import { OutboxStallBanner } from '../../patterns/outbox-stall-banner';
 import { soleProcessIdOf, usePopIdentity } from '../../patterns/pop-identity';
+import { PopWorkerMissingBanner } from '../../patterns/pop-worker-missing-banner';
 
 import { CurrentInputs } from './current-inputs';
 import { CurrentLot } from './current-lot';
@@ -272,6 +273,9 @@ export const RunningChangeScreen = () => {
 
       {/* ⭐ 「밀리는 중」과 「멈춤」은 다르다 — 건수만으로는 그 차이가 보이지 않는다. */}
       {outbox.isStalled && <OutboxStallBanner onRetry={outbox.retryNow} />}
+
+      {/* ⭐ 사번 미확인은 모든 POP 화면이 같은 맨 위 띠로 말한다(사용자 지시 2026-09-17). */}
+      <PopWorkerMissingBanner workerNo={workerNo} />
 
       {/*
        * 작업지시가 없으면 **조회가 나가지 않는다.** 그 사실을 배너로 먼저 말한다 — 빈 목록만

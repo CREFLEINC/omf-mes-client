@@ -21,8 +21,10 @@ export interface ReprintPaneProps {
   reasonRequired: boolean;
   /** 서버가 사유 칸에 준 오류 */
   reasonServerError: string | null;
-  /** 재출력 자체가 막힌 사유(권한·사번·단말). `null` 이면 막히지 않았다 */
+  /** 재출력 자체가 막힌 사유(권한·단말). `null` 이면 막히지 않았다 */
   blockedReason: string | null;
+  /** 사번이 없어 잠겼다 — 사유 문구는 화면 맨 위 공용 띠가 말하므로 여기서는 잠그기만 한다 */
+  workerMissing: boolean;
   isSubmitting: boolean;
   onSubmit: () => void;
 }
@@ -52,6 +54,7 @@ export const ReprintPane = ({
   reasonRequired,
   reasonServerError,
   blockedReason,
+  workerMissing,
   isSubmitting,
   onSubmit,
 }: ReprintPaneProps) => {
@@ -60,7 +63,8 @@ export const ReprintPane = ({
 
   const hasSelection = selectedRowIds.length > 0;
   const reasonMissing = reasonRequired && reasonCode === '';
-  const canSubmit = blockedReason === null && hasSelection && !reasonMissing && !isSubmitting;
+  const canSubmit =
+    blockedReason === null && !workerMissing && hasSelection && !reasonMissing && !isSubmitting;
 
   const reasonNote = ((): string | null => {
     if (reasonServerError !== null) return reasonServerError;

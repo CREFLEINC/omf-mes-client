@@ -211,7 +211,14 @@ describe('P-02-01 작업 시작 — 사번', () => {
     const { user } = renderScreen();
 
     const card = await screen.findByRole('button', { name: selectName(WORK_ORDER.workOrderNo) });
-    expect(screen.getByText(t.worker.required)).toBeInTheDocument();
+    // 사유는 맨 위 공용 띠 하나로만 말한다(사용자 지시 2026-09-17).
+    expect(screen.getByText(messages.popChrome.workerMissing)).toBeInTheDocument();
+    expect(
+      screen.queryByText('작업지시 선택: 먼저 사번을 입력하고 확인하세요.'),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByText('작업 시작: 먼저 사번을 입력하고 확인하세요.'),
+    ).not.toBeInTheDocument();
 
     await user.click(card);
 
@@ -671,7 +678,6 @@ describe('P-02-01 작업 시작 — 선택 확인의 긴급 표식', () => {
   });
 });
 
-
 /**
  * #1148 — **누른 뒤에 아무 일도 없는 자리를 없앤다.**
  *
@@ -709,9 +715,7 @@ describe('P-02-01 작업 시작 — 누르면 반드시 무언가 말한다(#114
 
     expect(await screen.findByText(t.blocked.alreadyOpen)).toBeInTheDocument();
 
-    await rendered.user.click(
-      screen.getByRole('button', { name: t.blocked.continueToSession }),
-    );
+    await rendered.user.click(screen.getByRole('button', { name: t.blocked.continueToSession }));
 
     expect(screen.getByTestId('location')).toHaveTextContent(
       `/pop/material-input?workOrderId=${String(WORK_ORDER.workOrderId)}`,

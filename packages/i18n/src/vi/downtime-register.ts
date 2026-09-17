@@ -95,7 +95,6 @@ export const downtimeRegister: Translated<typeof ko.downtimeRegister> = {
     reasonsEmpty: 'Chưa có lý do dừng máy nào được đăng ký. Hãy nhờ quản trị viên đăng ký lý do.',
     overlapWarning: (rangeLabel: string): string =>
       `Trùng với ${rangeLabel}. Vẫn sẽ được lưu như vậy.`,
-    workerMissing: 'Không xác nhận được mã nhân viên nên không lưu được kết quả.',
     equipmentMissing:
       'Máy trạm này chưa được gán thiết bị. Hãy nhờ quản trị viên gán thiết bị cho máy trạm.',
     gateDenied: 'Máy trạm này không nhập được kết quả.',

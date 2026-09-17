@@ -116,14 +116,14 @@ const stubFetch: StubFetch = async (request) => {
   throw new Error(`스텁에 없는 요청입니다: ${url.pathname}`);
 };
 
-const renderScreen = () => {
+const renderScreen = (workerNo: string | null = '100027') => {
   const rendered = renderWithProviders(
     <PopIdentityProvider
       value={{
         terminalId: TERMINAL_ID,
         processes: [{ processId: PROCESS_ID }],
         equipment: null,
-        workerNo: '100027',
+        workerNo,
       }}
     >
       <ReworkResultRegisterScreen />
@@ -220,6 +220,17 @@ const pickWorkOrder = async (user: ReturnType<typeof userEvent.setup>) => {
 };
 
 describe('ReworkResultRegisterScreen — 스펙 §3 의 구획', () => {
+  it('사번을 모르면 맨 위 공용 띠로 말하고 액션바에는 옛 문구가 없다', async () => {
+    const { user } = renderScreen(null);
+    await pickWorkOrder(user);
+
+    expect(await screen.findByText(messages.popChrome.workerMissing)).toBeInTheDocument();
+    expect(
+      screen.queryByText('작업자 사번이 확인되지 않아 저장할 수 없습니다.'),
+    ).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: t.save })).toBeDisabled();
+  });
+
   /* ⭐ 미전송이 없으면 머리줄에 「미전송 0건」을 두지 않는다(사용자 지시 2026-09-15). */
   it('미전송 건이 없으면 머리줄에 미전송 표시가 없다', async () => {
     const { user } = renderScreen();

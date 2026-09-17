@@ -862,7 +862,6 @@
   border-radius: var(--radius-md);
 }
 
-
 .pop-ui .packing-label-status {
   display: flex;
   flex-wrap: wrap;
@@ -1190,7 +1189,6 @@
   flex: 1 1 auto;
   min-width: 0;
 }
-
 
 /*
  * ⭐ **[선택]과 [직접 입력]은 같은 폭으로 선다**(사용자 지시 2026-09-12). 줄마다 오른쪽 끝에
@@ -6029,6 +6027,199 @@
 }
 
 /*
+ * P-04-01 생산LOT 판정 띠 — 아이콘과 글자를 같은 줄에 세운다(사용자 지적 2026-09-17).
+ *
+ * 판정 띠는 `.banner-slot` 이 아니라 `.packing-verdict` 안에 서서, 그 묶음을 겨냥한 첫 줄 높이
+ * 규칙(「안내 배너의 아이콘·글자 줄맞춤」)이 걸리지 않았다. 같은 값 셋을 이 자리에도 건다.
+ */
+.pop-ui .packing-verdict > * > :first-child {
+  margin-block-start: 2px;
+}
+
+.pop-ui .packing-verdict > * > :last-child > * {
+  line-height: 24px;
+}
+
+.pop-ui .packing-verdict > * > :last-child > :last-child {
+  font-size: var(--pop-label);
+}
+
+/*
+ * P-04-01 포장 구성 — **키패드는 사번 입력 화면(P-CO-01)과 같은 모양이다**(사용자 지시 2026-09-17).
+ *
+ * 키패드 단은 화면 폭을 따라 넓어지고(반응형), 키와 [확인]은 그 단 폭을 채운다. 높이는 사번
+ * 키패드와 같은 72(`.worker-no-keypad` · `.worker-no-submit`). 담을 수량 줄도 단 폭으로 펴서
+ * 「담을 수량 N」은 왼쪽, 「남은 N」은 오른쪽 끝에 선다.
+ *
+ * ⚠ 세로가 모자라면 키가 함께 낮아진다(아래 「키는 단 높이를 나눠 갖는다」).
+ */
+.pop-ui .packing-compose {
+  grid-template-columns: minmax(0, 1fr) minmax(18rem, 40%);
+}
+
+.pop-ui .packing-compose > .packing-keypad {
+  align-items: stretch;
+  justify-content: flex-start;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/*
+ * ⚠ **키는 단 높이를 «나눠» 갖는다 — 72 는 상한이다**(사용자 지적 2026-09-17 두 차례). 맨 위에 판정·
+ *   오류 띠가 서거나 창이 낮으면 ③ 구획이 줄어드는데, 키 높이를 못박거나 하한(40)을 두었더니 단 밖으로
+ *   넘쳐 [확인]이 잘렸다(스크롤 막대도 숨긴 화면이라 굴릴 줄 모른다). 키 네 줄은 남는 높이를 똑같이
+ *   나누고 [확인]은 늘 단 안에 선다. 넓은 창에서 끝없이 커지지 않게 묶음 높이를 72×5 + 간격으로 묶는다.
+ */
+.pop-ui .packing-keypad-group {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-height: 0;
+  max-block-size: calc(72px * 5 + var(--space-2) * 4);
+}
+
+.pop-ui .packing-keypad-group > .packing-keypad-pad {
+  flex: 4 1 0;
+  min-height: 0;
+  /* ⚠ 하한 32 — 0 까지 눌리게 두었더니 위에 오류 띠가 선 순간 키 글자가 서로 겹쳤다(실측). */
+  grid-auto-rows: minmax(32px, 1fr);
+}
+
+.pop-ui .packing-keypad-pad > button {
+  height: auto;
+  min-height: 0;
+}
+
+.pop-ui .packing-keypad-group > .packing-keypad-submit {
+  flex: 1 1 0;
+  width: 100%;
+  height: auto;
+  min-height: 32px;
+}
+
+/*
+ * P-04-01 — **스크롤 막대를 그리지 않는다**(사용자 지시 2026-09-17). POP 공통 「굴릴 수 있는
+ * 구획은 막대를 보인다」(2026-09-10)의 이 화면 예외다. 굴리는 동작은 그대로 남는다.
+ */
+.pop-ui.packing-shell,
+.pop-ui.packing-shell * {
+  scrollbar-width: none;
+}
+
+.pop-ui.packing-shell::-webkit-scrollbar,
+.pop-ui.packing-shell ::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+}
+
+/*
+ * P-04-05 본문 — **상자 다섯**(사용자 지시 2026-09-17): 출하 · 유형 · 포장 라벨 · 등록된 상자 ·
+ * 납품 라벨 미리보기. 면·테두리는 P-04-01 포장 구성 상자(`.packing-compose`)와 같다.
+ */
+.pop-ui .shipping-unit-box {
+  padding: var(--space-4) var(--space-5);
+  background: var(--surface-container-low);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-md);
+}
+
+.pop-ui .shipping-unit-box > .pane-title {
+  margin: 0 0 var(--space-3);
+}
+
+/*
+ * P-04-05 줄 모양 — **P-04-01 출하 실적 등록의 줄과 같게 선다**(사용자 지시 2026-09-17 본문 상자).
+ * 이름은 칸 왼쪽 한 줄(줄바꿈 없음·같은 폭), 칸이 남는 폭, 단추는 같은 폭, 칸과 단추 높이 56.
+ */
+.pop-ui .shipping-unit-entry,
+.pop-ui .shipping-unit-unit,
+.pop-ui .shipping-unit-scan {
+  padding-block: var(--space-2);
+}
+
+.pop-ui .shipping-unit-entry > .field-label,
+.pop-ui .shipping-unit-unit > .field-label,
+.pop-ui.shipping-unit-shell .scan-row > .field-label {
+  flex: 0 0 4.5rem;
+  margin: 0;
+  white-space: nowrap;
+}
+
+.pop-ui.shipping-unit-shell .scan-row {
+  align-items: center;
+}
+
+.pop-ui.shipping-unit-shell .scan-row > .field-label + * {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.pop-ui.shipping-unit-shell .pop-select__value,
+.pop-ui.shipping-unit-shell .scan-row > .field-label + * > div,
+.pop-ui.shipping-unit-shell .scan-row > button,
+.pop-ui.shipping-unit-shell .shipping-unit-unit > button {
+  min-block-size: 56px;
+}
+
+.pop-ui.shipping-unit-shell .scan-row > button,
+.pop-ui.shipping-unit-shell .pop-select__trigger,
+.pop-ui.shipping-unit-shell .shipping-unit-unit > button {
+  min-inline-size: 7rem;
+}
+
+/*
+ * ⛔ 가로로 서는 줄에 세로 리듬 여백이 붙지 않게 한다 — `.pop-section > * + *` 가 칸에 윗여백
+ *    16 을 주어 이름보다 칸이 내려앉았다(실측). 전례 `.shipping-unit-actions > * + *`.
+ */
+.pop-ui .shipping-unit-entry > * + *,
+.pop-ui .shipping-unit-unit > * + * {
+  margin-top: 0;
+}
+
+/*
+ * POP 팝업 — **화면 가운데에 세운다**(사용자 지적 2026-09-17 · 출하 선택 팝업이 위에 붙었다).
+ *
+ * ⚠ 원인은 `pop-fit` 의 배율(`html { zoom }`)이다. 창이 1024×768 보다 작으면 배율이 1 아래로
+ *   걸리는데, DS 는 창을 `margin: auto` 로 가운데 두어 배율 아래에서 여백 셈이 어긋나 창이
+ *   위쪽(실측 top 7 · 창 높이 467)에 붙었다. 위치를 절반 지점 + 제 크기 절반만큼 되돌리기로
+ *   바꾸면 배율과 무관하게 가운데다(실측 중심 514,233.5 · 창 1028×467).
+ *
+ * ⛔ **`transform` 으로 되돌리지 않는다 — `translate` 속성을 쓴다.** DS 의 여는 동작이
+ *    `transform: translateY(8px → 0)` 을 움직여, 그 동안 이 규칙의 `transform` 을 덮었다가
+ *    끝나는 순간 돌려놓았다 — 창이 오른쪽 아래에 떴다가 가운데로 튀었다(사용자 지적
+ *    2026-09-17). `translate` 는 `transform` 과 따로 합쳐져 여는 동작과 부딪치지 않는다.
+ *
+ * ⚠ 서랍형(좌·우 붙음) 팝업은 POP 에 없다 — 생기면 그 창은 이 규칙에서 빼야 한다.
+ */
+.pop-ui dialog[open] {
+  inset: 50% auto auto 50%;
+  margin: 0;
+  translate: -50% -50%;
+}
+
+/*
+ * P-04-05 등록된 상자 — 비었을 때 안내가 상자 가운데에 선다(사용자 지시 2026-09-17).
+ *
+ * ⚠ 표제 아래 남는 높이의 가운데에 두었더니 표제만큼 아래로 치우쳐 «아래 줄»로 보였다(사용자
+ *   지적 두 차례). 상자 «전체»의 가운데에 겹쳐 세운다 — 표제는 제자리, 안내는 상자 한가운데.
+ */
+.pop-ui .shipping-unit-boxes,
+.pop-ui .shipping-unit-preview {
+  position: relative;
+}
+
+.pop-ui .shipping-unit-boxes > .shipping-unit-empty,
+.pop-ui .shipping-unit-preview > .shipping-unit-empty {
+  position: absolute;
+  inset: 0;
+  justify-content: center;
+  margin: 0;
+  padding: 0;
+  pointer-events: none;
+}
+
+/*
  * P-04-01 포장 확정 팝업 요약 — **이름 아래에 값을 세운다**(사용자 지시 2026-09-17).
  * `dl.filter-bar` 는 이름·값 쌍을 가로로 늘어놓아 세 쌍이 두 줄로 어긋나 꺾였다(실측).
  * 쌍마다 `div` 로 묶어 한 줄에 하나씩 쌓는다.
@@ -6044,6 +6235,15 @@
 }
 
 /*
+ * P-04-05 — **[새 출하 단위]는 옆 [선택]과 같은 높이·같은 선에 선다**(사용자 지적 2026-09-17).
+ * `.pop-section > * > * + *` 의 윗여백 12 가 고르는 칸 안의 [선택]에까지 걸려 [선택]만 아래로
+ * 내려앉았다(실측 — 칸 윗변보다 12 낮음). 이 화면에서는 그 여백을 걷는다.
+ */
+.pop-ui.shipping-unit-shell .pop-select > .pop-select__trigger {
+  margin-top: 0;
+}
+
+/*
  * P-04-01 포장 확정 팝업 — **스크롤이 생기지 않는다**(사용자 지시 2026-09-17).
  * 요약 세 줄과 안내 한 줄뿐이라 본문을 굴릴 까닭이 없다. DS 는 본문에 `overflow-y: auto` 와
  * 창 높이 상한(`--dialog-max-h`, dvh 기준)을 건다 — `pop-fit` 배율 아래에서 dvh 셈이 어긋나면
@@ -6055,4 +6255,73 @@
 
 .pop-ui dialog.packing-confirm-dialog [class*='_body_'] {
   overflow: visible;
+}
+
+/*
+ * P-04-05 칸 이름(출하 · 유형 · 포장 라벨) — **이름 자리 안에서 가운데에 선다**(사용자 지시
+ * 2026-09-17). 세로 가운데는 줄이 이미 맞추고, 가로는 같은 폭(4.5rem) 자리의 가운데로 모은다.
+ */
+.pop-ui .shipping-unit-entry > .field-label,
+.pop-ui .shipping-unit-unit > .field-label,
+.pop-ui.shipping-unit-shell .scan-row > .field-label {
+  text-align: center;
+}
+
+/*
+ * ⛔ 위 빈 안내 겨냥을 `:last-child:not(table)` 로 두었더니 DS 표의 겉 상자(div)까지 걸려 표가
+ *    상자 위에 겹쳐 머리줄이 표제에 가려 잘렸다(사용자 지적 2026-09-17). 빈 안내 전용 이름으로 좁혔다.
+ */
+
+/*
+ * P-04-05 포장 라벨 스캔 결과 — 칸 바로 아래 제 줄. 아이콘·글자 첫 줄 맞춤은 P-04-01 판정 띠와 같은 값이다.
+ */
+.pop-ui .shipping-unit-verdict {
+  margin-top: var(--space-2);
+}
+
+.pop-ui .shipping-unit-verdict > * > :first-child {
+  margin-block-start: 2px;
+}
+
+.pop-ui .shipping-unit-verdict > * > :last-child > * {
+  line-height: 24px;
+}
+
+.pop-ui .shipping-unit-verdict > * > :last-child > :last-child {
+  font-size: var(--pop-label);
+}
+
+/*
+ * P-04-05 아래 줄 — **등록된 상자(왼쪽)와 납품 라벨 미리보기(오른쪽)가 나란히** 남는 높이를 나눠
+ * 갖는다(사용자 지적 2026-09-17 · 반응형·잘림). 창이 낮아도 마감 단추가 화면 안에 남고, 두 상자는
+ * 넘치면 제 안에서 굴린다. 미리보기 폭은 창 폭을 따라 줄고 늘어난다.
+ */
+.pop-ui .shipping-unit-lower {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(16rem, 36%);
+  gap: var(--space-3);
+  min-height: 0;
+}
+
+.pop-ui .shipping-unit-lower > .shipping-unit-box {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow-y: auto;
+  margin: 0;
+}
+
+.pop-ui .shipping-unit-lower > .shipping-unit-box > * + * {
+  margin-top: 0;
+}
+
+/* 라벨은 늘리지 않는다 — 확대하면 실제 인쇄면과 달라 보인다(전례 `.pop-giqr-preview-image`). */
+.pop-ui .shipping-unit-preview-image {
+  /* 표제 아래 남는 높이 안에 통째로 들어간다 — 상자보다 크면 아래가 잘려 굴려야 보였다(실측). */
+  flex: 1 1 0;
+  display: block;
+  inline-size: 100%;
+  min-height: 0;
+  object-fit: contain;
+  image-rendering: pixelated;
 }

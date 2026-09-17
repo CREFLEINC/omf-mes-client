@@ -627,6 +627,20 @@ describe('ToolUsageScreen — 저장', () => {
     expect(screen.getByRole('button', { name: t.actions.save })).toBeDisabled();
     expect(screen.getByText(t.actionReasons.noEntry)).toBeInTheDocument();
   });
+
+  /* ⭐ 사번 미확인은 모든 POP 화면이 같은 맨 위 띠로 말한다(사용자 지시 2026-09-17). */
+  it('사번이 없으면 맨 위에 공용 사번 미확인 띠가 선다', async () => {
+    renderScreen({}, '/pop/tool-usage?workOrderId=1001');
+
+    expect(await screen.findByText(messages.popChrome.workerMissing)).toBeInTheDocument();
+  });
+
+  it('사번이 있으면 사번 미확인 띠가 없다', async () => {
+    renderScreen();
+
+    await screen.findByLabelText(t.scan.inputLabel);
+    expect(screen.queryByText(messages.popChrome.workerMissing)).not.toBeInTheDocument();
+  });
 });
 
 describe('ToolUsageScreen — 환산', () => {

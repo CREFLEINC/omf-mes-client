@@ -8,6 +8,7 @@ import { useSearchParams } from 'react-router';
 import { useApiClient } from '../../patterns/api-context';
 import { PopWorkerTag } from '../../patterns/pop-worker-tag';
 import { usePopIdentity } from '../../patterns/pop-identity';
+import { PopWorkerMissingBanner } from '../../patterns/pop-worker-missing-banner';
 import { SaveErrorBanner } from '../../patterns/master';
 import { canIssue, issueGuard, type IssueGuard } from './issue-target';
 import { hasIssuedTarget, hasUnknownTarget, rowId, toLineRows } from './line-rows';
@@ -292,9 +293,7 @@ export const GoodsIssueQrScreen = () => {
    */
   const previewLine =
     firstIssued !== null
-      ? (lineItems.find(
-          (line) => line.goodsIssueLineId === firstIssued.target.targetId,
-        ) ?? null)
+      ? (lineItems.find((line) => line.goodsIssueLineId === firstIssued.target.targetId) ?? null)
       : (rows.find((row) => rowId(row.line) === selectedIds[0])?.line ?? null);
 
   /**
@@ -328,7 +327,13 @@ export const GoodsIssueQrScreen = () => {
       problem: null,
     };
     /* eslint-disable-next-line react-hooks/exhaustive-deps -- 고른 줄과 이름이 갖춰지면 다시 그린다. */
-  }, [previewLine, goodsIssue.data, itemNames.entries.length, lotNames.entries.length, destination]);
+  }, [
+    previewLine,
+    goodsIssue.data,
+    itemNames.entries.length,
+    lotNames.entries.length,
+    destination,
+  ]);
 
   const previewSrc = preview.src;
 
@@ -369,6 +374,9 @@ export const GoodsIssueQrScreen = () => {
           </Chip>
         </div>
       </header>
+
+      {/* ⭐ 사번 미확인은 모든 POP 화면이 같은 맨 위 띠로 말한다(사용자 지시 2026-09-17). */}
+      <PopWorkerMissingBanner workerNo={entry.workerNo} />
 
       {entry.goodsIssueId === null && (
         <div className="banner-slot">
@@ -456,12 +464,6 @@ export const GoodsIssueQrScreen = () => {
         </p>
       )}
 
-      {entry.goodsIssueId !== null && entry.workerNo === null && (
-        <div className="banner-slot">
-          <AlertBanner variant="warning">{t.entry.missingWorker}</AlertBanner>
-        </div>
-      )}
-
       {/*
        * 403 만 화면의 말로 바꿔 낸다(스펙 §6 · F-7) — 공용 배너의 일반 문구는 「권한이 없습니다」
        * 까지이고, 여기서 필요한 것은 **어느 단말에서 다시 하면 되는가**다. 대상 선택은 그대로
@@ -509,93 +511,94 @@ export const GoodsIssueQrScreen = () => {
           />
 
           <div className="pop-panes">
-        <LineListPane
-          rows={rows}
-          selectedIds={selectedIds}
-          onSelectionChange={(ids) => {
-            setSelectedIds(ids);
-            /* 좁히는 LOT 이 바뀌면 앞서 고른 파렛트는 이 라인의 것이 아니다. */
-            setPalletId(null);
-            /* 대상이 바뀌면 앞 거부는 이 발행의 것이 아니다 — 물음도 함께 내린다. */
-            setReasonAsked(false);
-            write.clearFieldError('reissueReasonCode');
-          }}
-          itemNames={itemNames}
-          lotNames={lotNames}
-          uomNames={uomNames}
-          /*
-           * ⛔ **부르지도 않은 조회를 「불러오는 중」으로 그리지 않는다**(#1093 ②).
-           *    react-query 는 꺼 둔 조회(`enabled: false`)를 계속 `pending` 으로 둔다 —
-           *    그대로 쓰면 전표 없이 들어왔을 때 뼈대가 **영영 걷히지 않는다.** 위 배너는
-           *    「전표를 고른 뒤 들어오세요」라고 옳게 말하는데 옆은 로딩이라, 작업자는
-           *    화면이 곧 뜰 줄 알고 기다린다. 아래 파렛트 줄이 같은 일을 이미 하고 있다.
-           */
-          isLoading={lines.isPending && entry.goodsIssueId !== null}
-          isError={lines.isError}
-        />
-        <TargetPane
-          selectedCount={selectedIds.length}
-          unit={unit}
-          onUnitChange={(next) => {
-            setUnit(next);
-            /* 유형이 바뀌면 앞 유형의 대상은 이 발행의 것이 아니다. */
-            setPalletId(null);
-            setReasonAsked(false);
-            write.clearFieldError('reissueReasonCode');
-          }}
-          pallets={palletItems}
-          palletsPending={pallets.isPending && palletSelectable}
-          palletsFailed={pallets.isError}
-          palletsUnavailable={isPalletListUnsupported()}
-          palletsTruncated={palletsTruncated}
-          palletTotal={pallets.data?.total ?? 0}
-          palletSelectable={palletSelectable}
-          palletId={palletId}
-          onPalletChange={(handlingUnitId) => {
-            setPalletId(handlingUnitId);
-            setReasonAsked(false);
-            write.clearFieldError('reissueReasonCode');
-          }}
-          palletContents={
-            palletContents.data === undefined
-              ? null
-              : {
-                  lineCount: palletContents.data.length,
-                  quantities: toPalletQuantities(palletContents.data),
-                }
-          }
-          uomNames={uomNames}
-          issuedSeq={firstIssued?.issueSeq ?? null}
-          showReason={showReason}
-          needsReason={needsReason}
-          hasUnknownStatus={hasUnknownStatus}
-          reasonServerError={reasonServerError}
-          reasonCode={reasonCode}
-          onReasonChange={(code) => {
-            setReasonCode(code);
-            /* 고친 값 옆에 옛 거부를 남기지 않는다 — 저장소의 다른 화면들과 같은 처리다. */
-            write.clearFieldError('reissueReasonCode');
-          }}
-          reasonOptions={reasonOptions}
-          previewSrc={previewSrc}
-          previewProblem={preview.problem}
-          destinationMissing={destination.kind === 'failed'}
-        />
-      </div>
+            <LineListPane
+              rows={rows}
+              selectedIds={selectedIds}
+              onSelectionChange={(ids) => {
+                setSelectedIds(ids);
+                /* 좁히는 LOT 이 바뀌면 앞서 고른 파렛트는 이 라인의 것이 아니다. */
+                setPalletId(null);
+                /* 대상이 바뀌면 앞 거부는 이 발행의 것이 아니다 — 물음도 함께 내린다. */
+                setReasonAsked(false);
+                write.clearFieldError('reissueReasonCode');
+              }}
+              itemNames={itemNames}
+              lotNames={lotNames}
+              uomNames={uomNames}
+              /*
+               * ⛔ **부르지도 않은 조회를 「불러오는 중」으로 그리지 않는다**(#1093 ②).
+               *    react-query 는 꺼 둔 조회(`enabled: false`)를 계속 `pending` 으로 둔다 —
+               *    그대로 쓰면 전표 없이 들어왔을 때 뼈대가 **영영 걷히지 않는다.** 위 배너는
+               *    「전표를 고른 뒤 들어오세요」라고 옳게 말하는데 옆은 로딩이라, 작업자는
+               *    화면이 곧 뜰 줄 알고 기다린다. 아래 파렛트 줄이 같은 일을 이미 하고 있다.
+               */
+              isLoading={lines.isPending && entry.goodsIssueId !== null}
+              isError={lines.isError}
+            />
+            <TargetPane
+              selectedCount={selectedIds.length}
+              unit={unit}
+              onUnitChange={(next) => {
+                setUnit(next);
+                /* 유형이 바뀌면 앞 유형의 대상은 이 발행의 것이 아니다. */
+                setPalletId(null);
+                setReasonAsked(false);
+                write.clearFieldError('reissueReasonCode');
+              }}
+              pallets={palletItems}
+              palletsPending={pallets.isPending && palletSelectable}
+              palletsFailed={pallets.isError}
+              palletsUnavailable={isPalletListUnsupported()}
+              palletsTruncated={palletsTruncated}
+              palletTotal={pallets.data?.total ?? 0}
+              palletSelectable={palletSelectable}
+              palletId={palletId}
+              onPalletChange={(handlingUnitId) => {
+                setPalletId(handlingUnitId);
+                setReasonAsked(false);
+                write.clearFieldError('reissueReasonCode');
+              }}
+              palletContents={
+                palletContents.data === undefined
+                  ? null
+                  : {
+                      lineCount: palletContents.data.length,
+                      quantities: toPalletQuantities(palletContents.data),
+                    }
+              }
+              uomNames={uomNames}
+              issuedSeq={firstIssued?.issueSeq ?? null}
+              showReason={showReason}
+              needsReason={needsReason}
+              hasUnknownStatus={hasUnknownStatus}
+              reasonServerError={reasonServerError}
+              reasonCode={reasonCode}
+              onReasonChange={(code) => {
+                setReasonCode(code);
+                /* 고친 값 옆에 옛 거부를 남기지 않는다 — 저장소의 다른 화면들과 같은 처리다. */
+                write.clearFieldError('reissueReasonCode');
+              }}
+              reasonOptions={reasonOptions}
+              previewSrc={previewSrc}
+              previewProblem={preview.problem}
+              destinationMissing={destination.kind === 'failed'}
+            />
+          </div>
 
-      {/*
-       * 액션바 — **화면 바닥의 띠**(설계 §3 · 88). 다른 POP 화면과 같은 이름(`pop-action-bar`)
-       * 을 쓴다: `.pop-actions` 는 단추만 오른쪽으로 미는 줄이라 띠의 높이·경계선을 갖지 않아,
-       * 이 화면만 바닥이 없는 것처럼 떠 있었다.
-       */}
+          {/*
+           * 액션바 — **화면 바닥의 띠**(설계 §3 · 88). 다른 POP 화면과 같은 이름(`pop-action-bar`)
+           * 을 쓴다: `.pop-actions` 는 단추만 오른쪽으로 미는 줄이라 띠의 높이·경계선을 갖지 않아,
+           * 이 화면만 바닥이 없는 것처럼 떠 있었다.
+           */}
           <div className="pop-action-bar pop-giqr-actions">
-        {/*
-         * ⛔ 「발행할 라인을 먼저 고르세요」는 띄우지 않는다(사용자 지시 2026-09-15) — 비활성 단추와
-         *    라인 목록이 이미 말한다. 다른 사유(사번·파렛트·재발행 사유)는 그대로 남긴다.
-         */}
-        {guard.kind !== 'ready' && guard.kind !== 'noSelection' && (
-          <p className="field-note">{guardNote(guard.kind)}</p>
-        )}
+            {/*
+             * ⛔ 「발행할 라인을 먼저 고르세요」는 띄우지 않는다(사용자 지시 2026-09-15) — 비활성 단추와
+             *    라인 목록이 이미 말한다. 다른 사유(파렛트·재발행 사유)는 그대로 남긴다.
+             * ⭐ 사번 사유는 여기 적지 않는다 — 맨 위 공용 띠가 말한다(사용자 지시 2026-09-17).
+             */}
+            {guard.kind !== 'ready' &&
+              guard.kind !== 'noSelection' &&
+              guard.kind !== 'noWorker' && <p className="field-note">{guardNote(guard.kind)}</p>}
             <Button
               variant="filled"
               size="2xl"
@@ -645,10 +648,10 @@ const toPalletQuantities = (contents: readonly HandlingUnitContent[]): PalletQua
 const isForbidden = (error: ApiError | null): boolean =>
   error !== null && error.kind === 'http' && error.status === 403;
 
-const guardNote = (kind: Exclude<IssueGuard['kind'], 'ready' | 'noSelection'>): string => {
+const guardNote = (
+  kind: Exclude<IssueGuard['kind'], 'ready' | 'noSelection' | 'noWorker'>,
+): string => {
   switch (kind) {
-    case 'noWorker':
-      return t.action.disabledNoWorker;
     case 'palletNeedsOneLine':
       return t.action.disabledPalletNeedsOneLine;
     case 'noPallet':

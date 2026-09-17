@@ -420,7 +420,7 @@ describe('러닝체인지 화면 — 단말 게이팅', () => {
     expect(screen.getByText(t.header.terminalUnknown)).toBeInTheDocument();
   });
 
-  it('사번을 모르면 사유를 말하고 막는다', async () => {
+  it('사번을 모르면 맨 위 공용 띠로 말하고 막는다', async () => {
     renderScreen(
       {},
       {
@@ -431,7 +431,12 @@ describe('러닝체인지 화면 — 단말 게이팅', () => {
       },
     );
 
-    expect(await screen.findByText(t.disabled.workerMissing)).toBeInTheDocument();
+    expect(await screen.findByText(messages.popChrome.workerMissing)).toBeInTheDocument();
+    expect(
+      screen.queryByText(
+        '사번이 확인되지 않아 교체를 등록할 수 없습니다. 사번 인증을 먼저 하세요.',
+      ),
+    ).not.toBeInTheDocument();
     expect(submitButton()).toBeDisabled();
   });
 });

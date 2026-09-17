@@ -17,8 +17,6 @@ export const goodsIssueQr: Translated<typeof ko.goodsIssueQr> = {
       notFound: 'Không tìm thấy phiếu có số đó. Hãy kiểm tra lại số.',
       failed: 'Không tra được phiếu. Hãy kiểm tra kết nối rồi thử lại.',
     },
-    missingWorker:
-      'Chưa xác nhận mã nhân viên nên không phát hành được. Hãy xác nhận mã nhân viên trước.',
   },
 
   pending: {
@@ -40,8 +38,7 @@ export const goodsIssueQr: Translated<typeof ko.goodsIssueQr> = {
     loading: 'Đang tìm các dòng chờ phát hành',
     failed: 'Không tải được danh sách chờ. Hãy kiểm tra kết nối rồi làm mới.',
     empty: 'Không có phiếu xuất kho vật tư nào đang chờ phát hành.',
-    allIssued: (count: number): string =>
-      `${String(count)} dòng trong kỳ này đã được phát hành.`,
+    allIssued: (count: number): string => `${String(count)} dòng trong kỳ này đã được phát hành.`,
     truncated: 'Kỳ này còn nhiều phiếu hơn. Hãy tải phiếu chưa thấy bằng số phiếu.',
   },
 
@@ -123,7 +120,6 @@ export const goodsIssueQr: Translated<typeof ko.goodsIssueQr> = {
     disabledPalletContentsPending: 'Đang kiểm tra hàng trên pallet. Lát nữa mới phát hành được.',
     disabledEmptyPallet: 'Pallet đã chọn không có hàng. Hãy chọn pallet khác.',
     disabledNoReason: 'Hãy chọn lý do phát hành lại.',
-    disabledNoWorker: 'Chưa xác nhận mã nhân viên.',
   },
 
   result: {

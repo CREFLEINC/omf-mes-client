@@ -120,8 +120,6 @@ export const runningChange: Translated<typeof ko.runningChange> = {
     denied: 'Máy trạm này không đưa vật tư vào được. Hãy hỏi người phụ trách.',
     unavailable: 'Không kiểm tra được quyền thay thế. Lát nữa hãy thử lại.',
     unidentified: 'Chưa xác nhận máy trạm nên không đăng ký thay thế được.',
-    workerMissing:
-      'Chưa xác nhận mã nhân viên nên không đăng ký thay thế được. Hãy xác nhận mã nhân viên trước.',
     workOrderMissing: 'Không có lệnh sản xuất nên không đăng ký thay thế được.',
     partMissing: 'Phải quét LOT linh kiện mới rồi mới đăng ký được.',
     targetMissing: 'Phải chọn đối tượng thay thế rồi mới đăng ký được.',

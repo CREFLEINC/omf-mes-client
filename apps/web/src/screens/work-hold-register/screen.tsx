@@ -3,6 +3,7 @@ import { messages } from '@omf-mes/i18n';
 import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useId, useRef, useState } from 'react';
 
+import { PopWorkerMissingBanner } from '../../patterns/pop-worker-missing-banner';
 import { PopWorkerTag } from '../../patterns/pop-worker-tag';
 
 import { resolveActions } from './actions';
@@ -200,6 +201,9 @@ export const WorkHoldRegisterScreen = () => {
         </p>
       </header>
 
+      {/* ⭐ 사번 미확인은 모든 POP 화면이 같은 맨 위 띠로 말한다(사용자 지시 2026-09-17). */}
+      <PopWorkerMissingBanner workerNo={workerNo} />
+
       {/*
        * 작업지시가 없으면 **조회가 나가지 않는다.** 그 사실을 배너로 먼저 말한다 — 빈 화면만
        * 으로는 「세션이 없다」와 「무엇을 볼지 정해지지 않았다」가 같은 모양이 된다.
@@ -320,8 +324,8 @@ export const WorkHoldRegisterScreen = () => {
        * 화면에서 사라져, 눌러 본 뒤에야 안다(스펙 §6 — 「이미 중단 상태면 재개만 활성」).
        */}
       <div className="pop-actions">
-        {/* 사번을 모르면 서버가 거부한다(D-5) — 큐에 담긴 뒤의 거부는 작업자가 떠난 뒤에 온다. */}
-        {workerNo === null && <p className="field-note">{t.form.workerRequired}</p>}
+        {/* 사번을 모르면 서버가 거부한다(D-5) — 큐에 담긴 뒤의 거부는 작업자가 떠난 뒤에 온다.
+            그 사유는 맨 위 공용 띠가 말하고 여기서는 버튼만 잠근다. */}
         <Button
           variant="outlined"
           size="2xl"

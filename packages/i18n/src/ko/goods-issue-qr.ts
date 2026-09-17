@@ -29,7 +29,6 @@ export const goodsIssueQr = {
       notFound: '그 자재 출고번호의 전표를 찾지 못했습니다. 번호를 확인하세요.',
       failed: '전표를 조회하지 못했습니다. 연결을 확인한 뒤 다시 시도하세요.',
     },
-    missingWorker: '사번이 확인되지 않아 발행할 수 없습니다. 사번 인증을 먼저 하세요.',
   },
 
   /**
@@ -164,7 +163,8 @@ export const goodsIssueQr = {
      * ⛔ **조용히 비우지 않는다.** 라벨에 도착지를 싣기로 한 것이 사용자 결정이었으므로, 그것이
      *    빠진 라벨을 현장에 붙이는 사람은 그 사실을 알고 붙여야 한다.
      */
-    destinationMissing: '도착 위치를 읽지 못해 라벨의 도착지를 비웠습니다. 발행은 그대로 할 수 있습니다.',
+    destinationMissing:
+      '도착 위치를 읽지 못해 라벨의 도착지를 비웠습니다. 발행은 그대로 할 수 있습니다.',
   },
 
   reissue: {
@@ -199,7 +199,6 @@ export const goodsIssueQr = {
     /** 빈 파렛트에는 찍을 것이 없다(스펙 §6). */
     disabledEmptyPallet: '고른 파렛트에 담긴 것이 없습니다. 다른 파렛트를 고르세요.',
     disabledNoReason: '재발행 사유를 고르세요.',
-    disabledNoWorker: '사번이 확인되지 않았습니다.',
   },
 
   result: {

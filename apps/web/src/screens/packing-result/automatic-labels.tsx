@@ -30,6 +30,8 @@ interface AutomaticLabelsProps {
   run: AutomaticLabelRun;
   workerNo: string;
   onOpenManagement: () => void;
+  /** 라벨 출력이 끝났는지 — 화면이 따로 세우던 확정 띠를 이때 거둔다(사용자 지시 2026-09-17). */
+  onCompleteChange?: (isComplete: boolean) => void;
 }
 
 const packingRow = (handlingUnit: OpenHandlingUnit): TargetRow => ({
@@ -71,7 +73,12 @@ const failureText = (issue: LabelIssueHandle): string | null => {
  * ⛔ **포장 라벨과 납품 라벨을 잇던 게이트도 없앴다.** 「포장 라벨이 인쇄까지 성공해야 납품
  *    라벨을 시작한다」는 규칙이었는데, 이을 것이 없어졌다.
  */
-export const AutomaticLabels = ({ run, workerNo, onOpenManagement }: AutomaticLabelsProps) => {
+export const AutomaticLabels = ({
+  run,
+  workerNo,
+  onOpenManagement,
+  onCompleteChange,
+}: AutomaticLabelsProps) => {
   /* 포장 라벨은 POP 이 그린다 — 재발행 화면과 **같은 손**을 쓴다(경로마다 라벨이 갈리지 않게). */
   const drawLabel = usePackingLabelDrawer({
     shipmentNo: run.shipmentNo,
@@ -137,6 +144,10 @@ export const AutomaticLabels = ({ run, workerNo, onOpenManagement }: AutomaticLa
     (packingHistoryComplete || (packing.phase === 'printed' && packing.result.failedAt === null)) &&
     historyRecoveryCount === 0;
 
+  useEffect(() => {
+    onCompleteChange?.(isComplete);
+  }, [isComplete, onCompleteChange]);
+
   return (
     <section className="packing-label-status" aria-label={t.region}>
       {packingSummaries.isError ? (
@@ -148,7 +159,10 @@ export const AutomaticLabels = ({ run, workerNo, onOpenManagement }: AutomaticLa
       {packingFailure !== null ? (
         <AlertBanner variant="error">{t.packingFailure(packingFailure)}</AlertBanner>
       ) : null}
-      {isComplete ? <AlertBanner variant="success">{t.complete}</AlertBanner> : null}
+      {/* ⭐ 확정과 라벨 출력을 한 띠로 말한다(사용자 지시 2026-09-17) — 화면의 확정 띠는 이때 서지 않는다. */}
+      {isComplete ? (
+        <AlertBanner variant="success">{t.complete(run.handlingUnit.handlingUnitNo)}</AlertBanner>
+      ) : null}
       {packing.result.failedAt === 'issue' ? (
         <Button
           type="button"

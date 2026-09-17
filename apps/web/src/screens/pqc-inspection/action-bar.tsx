@@ -26,6 +26,11 @@ export interface ActionBarProps {
   isConfirmed: boolean;
   /** 확정이 막혔다면 **무엇이** 막혔는지. 풀렸으면 `null` */
   blockedReason: string | null;
+  /**
+   * 사번이 없어 확정이 잠겼다. 사유 문구는 화면 맨 위 공용 띠가 말하므로(사용자 지시
+   * 2026-09-17) 여기서는 버튼만 잠근다.
+   */
+  workerMissing: boolean;
   /** 저장이 막혔다면 그 사유. 막는 것은 수량이 아닌 값이 남아 있을 때뿐이다 */
   saveBlockedReason: string | null;
   /** 마지막 저장이 성공했는가. 눌렀는데 아무 일도 없어 보이지 않게 한 줄로 알린다 */
@@ -43,6 +48,7 @@ export interface ActionBarProps {
 export const ActionBar = ({
   isConfirmed,
   blockedReason,
+  workerMissing,
   saveBlockedReason,
   isSaved,
   isJustConfirmed,
@@ -134,7 +140,7 @@ export const ActionBar = ({
       variant="filled"
       size="xl"
       className={popTouchClass('destructive')}
-      disabled={blockedReason !== null}
+      disabled={blockedReason !== null || workerMissing}
       onClick={onConfirm}
     >
       {t.confirm}

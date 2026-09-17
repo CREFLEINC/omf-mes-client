@@ -264,14 +264,17 @@ describe('P-02-09 포장 라벨·인식표 재출력', () => {
     expect(await screen.findByText(t.entry.missingHandlingUnit)).toBeInTheDocument();
   });
 
-  it('사번이 없으면 재출력할 수 없다고 말한다', async () => {
+  it('사번이 없으면 맨 위 공용 띠로 말하고 옛 문구는 내지 않는다', async () => {
     /* ⚠ 사번은 주소보다 셸·세션이 먼저다 — 셋 다 없을 때를 잰다(2026-09-08). */
     renderScreen({}, `/pop/packing-label-reprint?handlingUnitId=${String(HANDLING_UNIT_ID)}`, {
       ...IDENTIFIED,
       workerNo: null,
     });
 
-    expect(await screen.findByText(t.entry.missingWorker)).toBeInTheDocument();
+    expect(await screen.findByText(messages.popChrome.workerMissing)).toBeInTheDocument();
+    expect(
+      screen.queryByText('사번이 확인되지 않아 재출력할 수 없습니다. 사번 인증을 먼저 하세요.'),
+    ).not.toBeInTheDocument();
   });
 
   it('단말에 출력 권한이 없으면 사유를 말한다', async () => {

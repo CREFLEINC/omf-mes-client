@@ -4,6 +4,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useId, useRef, useState } from 'react';
 
 import { usePopIdentity } from '../../patterns/pop-identity';
+import { PopWorkerMissingBanner } from '../../patterns/pop-worker-missing-banner';
 import { addLine, findScannedLot, judgeQuantity, toPackingLine } from './contents';
 import { usePackingEntry } from './entry-context';
 import { PackErrorBanner } from './error-banner';
@@ -495,7 +496,11 @@ export const PackingWorkScreen = () => {
         </div>
       </header>
 
-      {entryBlockedReason !== null && (
+      {/* ⭐ 사번 미확인은 모든 POP 화면이 같은 맨 위 띠로 말한다(사용자 지시 2026-09-17). */}
+      <PopWorkerMissingBanner workerNo={workerNo} />
+
+      {/* 사번 사유는 위 공용 띠가 말하므로 여기서 거른다 — 잠금은 그대로다. */}
+      {entryBlockedReason !== null && entryBlockedReason !== t.entry.missingWorker && (
         <div className="banner-slot">
           <AlertBanner variant="warning">{entryBlockedReason}</AlertBanner>
         </div>

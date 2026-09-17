@@ -133,6 +133,5 @@ export const reworkResultRegister = {
   gateChecking: '단말 기능을 확인하고 있습니다.',
   gateDenied: '이 단말에서는 실적을 입력할 수 없습니다.',
   gateUnavailable: '단말 기능을 확인할 수 없어 저장할 수 없습니다.',
-  workerMissing: '작업자 사번이 확인되지 않아 저장할 수 없습니다.',
   pending: (count: number) => `미전송 ${count}건`,
 } as const;

@@ -176,7 +176,6 @@ export const runningChange = {
     denied: '이 단말에서는 자재를 투입할 수 없습니다. 담당자에게 문의하세요.',
     unavailable: '교체 권한을 확인할 수 없습니다. 잠시 후 다시 시도하세요.',
     unidentified: '단말이 확인되지 않아 교체를 등록할 수 없습니다.',
-    workerMissing: '사번이 확인되지 않아 교체를 등록할 수 없습니다. 사번 인증을 먼저 하세요.',
     workOrderMissing: '작업지시가 없어 교체를 등록할 수 없습니다.',
     partMissing: '신규 부품 LOT 을 읽어야 등록할 수 있습니다.',
     targetMissing: '교체 대상을 골라야 등록할 수 있습니다.',

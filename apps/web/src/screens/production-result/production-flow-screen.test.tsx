@@ -265,6 +265,22 @@ describe('ProductionFlowScreen', () => {
    * 한때 클라이언트가 생산 LOT 라벨의 그림 요청을 막아 여기서 멎었다(WIP-CHAIN-01 D1) —
    * 스캔이 열리지 않으면 `:complete` 로 가는 길이 없으므로, 그 이어짐을 여기서 고정한다.
    */
+  it('사번이 없으면 맨 위 공용 띠로 알린다', async () => {
+    renderScreen([], [], {
+      workerNo: null,
+      route: `/pop/production-result?workOrderId=${String(WORK_ORDER_ID)}`,
+    });
+
+    expect(await screen.findByText(messages.popChrome.workerMissing)).toBeInTheDocument();
+  });
+
+  it('사번이 있으면 사번 미확인 띠를 세우지 않는다', async () => {
+    renderScreen([]);
+
+    expect(await screen.findByRole('button', { name: t.flow.output.issue })).toBeInTheDocument();
+    expect(screen.queryByText(messages.popChrome.workerMissing)).not.toBeInTheDocument();
+  });
+
   it('실적을 한 번 저장한 뒤 발행·인쇄까지 이어지고 스캔 칸이 열린다', async () => {
     const writes: Request[] = [];
     const user = userEvent.setup();

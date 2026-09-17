@@ -9,6 +9,7 @@ import { PopSelect as Select } from '../../patterns/pop-select';
 import { useApiClient } from '../../patterns/api-context';
 import { soleProcessIdOf, usePopIdentity } from '../../patterns/pop-identity';
 import { PopPageNav, pageBoundaryOf } from '../../patterns/pop-page-nav';
+import { PopWorkerMissingBanner } from '../../patterns/pop-worker-missing-banner';
 import { popTouchClass } from '../../patterns/pop-touch';
 import { drainReworkResults, enqueueReworkResult, pendingReworkResultCount } from './outbox';
 import {
@@ -104,9 +105,7 @@ export const ReworkResultRegisterScreen = () => {
         ? t.gateUnavailable
         : !gate.allowed
           ? t.gateDenied
-          : identity.workerNo === null
-            ? t.workerMissing
-            : null;
+          : null;
   const canSave =
     selected !== null &&
     source.isSuccess &&
@@ -114,6 +113,8 @@ export const ReworkResultRegisterScreen = () => {
     progress.remaining > 0 &&
     (verdict === 'partial' || verdict === 'complete') &&
     gateReason === null &&
+    /* 사번이 없어 막힌 사유는 화면 맨 위 공용 띠가 말한다(사용자 지시 2026-09-17). */
+    identity.workerNo !== null &&
     !queued;
   const save = () => {
     if (!canSave || selected === null || identity.workerNo === null) return;
@@ -190,6 +191,9 @@ export const ReworkResultRegisterScreen = () => {
           {pendingCount > 0 && <span>{t.pending(pendingCount)}</span>}
         </p>
       </header>
+
+      {/* ⭐ 사번 미확인은 모든 POP 화면이 같은 맨 위 띠로 말한다(사용자 지시 2026-09-17). */}
+      <PopWorkerMissingBanner workerNo={identity.workerNo} />
 
       {/*
        * ⭐ **본문은 세로 네 구획이다** — 스펙 §3 이 ① 재작업 대상 120 · ② 실적 입력 280 ·

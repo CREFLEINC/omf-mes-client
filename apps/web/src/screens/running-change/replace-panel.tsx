@@ -134,6 +134,8 @@ const describeBlock = (reason: BlockReason): string | null => {
     case 'allowed':
     /* 수량은 칸 옆이 말한다 — 여기서 되풀이하지 않는다. */
     case 'qtyInvalid':
+    /* 사번은 화면 맨 위 공용 띠가 말한다(사용자 지시 2026-09-17) — 여기서 되풀이하지 않는다. */
+    case 'workerMissing':
       return null;
     case 'checking':
       return t.disabled.checking;
@@ -143,8 +145,6 @@ const describeBlock = (reason: BlockReason): string | null => {
       return t.disabled.unavailable;
     case 'unidentified':
       return t.disabled.unidentified;
-    case 'workerMissing':
-      return t.disabled.workerMissing;
     case 'workOrderMissing':
       return t.disabled.workOrderMissing;
     case 'partMissing':
@@ -195,7 +195,15 @@ export const ReplacePanel = ({
 
   const qtyProblem = toQtyProblem({ qty, part, selectedTargetId });
   const blocked = toBlockReason({ gate, hasWorkOrder, hasWorker, part, selectedTargetId, qty });
-  const blockText = describeBlock(blocked);
+  /*
+   * 사번 사유는 맨 위 띠가 말하므로, 버튼 옆은 그 다음 사유(부품·대상)를 그대로 말한다.
+   * 잠금(`blocked`)은 바꾸지 않는다.
+   */
+  const blockText = describeBlock(
+    blocked === 'workerMissing'
+      ? toBlockReason({ gate, hasWorkOrder, hasWorker: true, part, selectedTargetId, qty })
+      : blocked,
+  );
 
   return (
     <>

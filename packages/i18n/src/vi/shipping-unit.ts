@@ -6,12 +6,16 @@ import type { Translated } from './translated';
 export const shippingUnit: Translated<typeof ko.shippingUnit> = {
   title: 'Cấu thành đơn vị giao hàng',
 
+  header: {
+    online: 'Trực tuyến',
+    offline: 'Ngoại tuyến',
+  },
+
   entry: {
     label: 'Lô xuất hàng',
     placeholder: 'Hãy chọn lô xuất hàng',
     loading: 'Đang tải lô xuất hàng…',
     failed: 'Không tải được danh sách lô xuất hàng.',
-    empty: 'Không còn lô xuất hàng nào có kiện chưa cấu thành.',
     boxes: (count: number): string => `${String(count)} kiện chưa cấu thành`,
   },
 
@@ -21,8 +25,6 @@ export const shippingUnit: Translated<typeof ko.shippingUnit> = {
     typePlaceholder: 'Hãy chọn loại',
     create: 'Đơn vị mới',
     creating: 'Đang tạo…',
-    none: 'Chưa tạo. Hãy chọn loại rồi bấm [Đơn vị mới].',
-    status: { OPEN: 'Đang cấu thành', CLOSED: 'Đã chốt' },
     failed: 'Không tạo được đơn vị giao hàng.',
   },
 
@@ -48,7 +50,7 @@ export const shippingUnit: Translated<typeof ko.shippingUnit> = {
 
   boxes: {
     sectionLabel: 'Kiện đã đăng ký',
-    empty: 'Chưa đăng ký kiện nào.',
+    empty: 'Không có kiện đã đăng ký',
     columnSeq: '#',
     columnNo: 'Số kiện',
     columnContents: 'Nội dung',
@@ -62,21 +64,12 @@ export const shippingUnit: Translated<typeof ko.shippingUnit> = {
 
   preview: {
     sectionLabel: 'Xem trước nhãn giao hàng',
-    empty: 'Đăng ký kiện thì tổng theo mặt hàng sẽ hiện ra.',
-    item: (itemCode: string, itemName: string, qty: string): string =>
-      `${itemCode} ${itemName} ${qty}`,
-    more: (count: number): string => `và ${String(count)} mục khác`,
-    boxCount: (count: number): string => `${String(count)} kiện`,
+    empty: 'Hãy đăng ký kiện trước',
   },
 
   close: {
-    action: 'Chốt và in nhãn giao hàng',
+    action: 'In nhãn giao hàng sau khi chốt',
     closing: 'Đang chốt…',
-    confirmTitle: 'Chốt đơn vị giao hàng này?',
-    confirmBody: 'Đã chốt thì không hoàn tác được. Không thêm hay bỏ kiện được nữa.',
-    confirmAction: 'Chốt',
-    cancel: 'Hủy',
-    needsBox: 'Phải đăng ký ít nhất một kiện mới chốt được.',
     failed: 'Không chốt được.',
     issued: (seq: number): string => `Đã phát hành 1 nhãn giao hàng · lần ${String(seq)}`,
     printed: 'In thành công',

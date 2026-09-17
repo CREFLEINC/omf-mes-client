@@ -101,11 +101,6 @@ export const popMaterialLotLabel = {
        */
       printOnly: '인쇄',
       reissue: '재인쇄',
-      /**
-       * ⛔ 감추지 않고 **왜 못 하는지** 보인다(공유계약 F-1). 사번은 진입점 화면이 단말에
-       * 두는 값이라, 없다는 것은 「아직 사번을 대지 않았다」는 뜻이다.
-       */
-      workerRequired: '사번을 확인한 뒤에 등록·인쇄할 수 있습니다.',
       running: {
         register: 'LOT 을 등록하고 있습니다…',
         issue: '발행 기록을 만들고 있습니다…',

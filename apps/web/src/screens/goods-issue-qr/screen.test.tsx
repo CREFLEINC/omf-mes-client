@@ -180,7 +180,8 @@ const routes = (options: Options): StubRoute[] => [
      */
     match: (request) => /^\/mdm\/items\/\d+$/.test(pathOf(request)),
     respond: (request) => {
-      if (options.labelValuesFail === true) return jsonResponse({ message: '없다' }, { status: 500 });
+      if (options.labelValuesFail === true)
+        return jsonResponse({ message: '없다' }, { status: 500 });
 
       const itemId = Number(pathOf(request).split('/').pop());
 
@@ -430,7 +431,9 @@ describe('GoodsIssueQrScreen — 발행 단위', () => {
     await user.click(within(rowFor('LOT-SAMPLE-20')).getByRole('checkbox'));
 
     /* ⚠ 넓게 찾지 않는다 — 품목 열에도 「이름을 불러오지 못했습니다」가 서 있다. */
-    expect(await screen.findByText(/품목 코드·LOT 번호를 불러오지 못했습니다/u)).toBeInTheDocument();
+    expect(
+      await screen.findByText(/품목 코드·LOT 번호를 불러오지 못했습니다/u),
+    ).toBeInTheDocument();
     expect(screen.queryByText(t.target.previewEmpty)).not.toBeInTheDocument();
   });
 
@@ -510,15 +513,6 @@ describe('GoodsIssueQrScreen', () => {
     expect(screen.getByRole('button', { name: t.action.issue })).toBeDisabled();
     expect(container.querySelector('.pop-giqr-actions .field-note')).toBeNull();
   });
-
-
-
-
-
-
-
-
-
 
   it('프린터가 0건이면 빈 상태를 머리에 보인다', async () => {
     renderScreen({ issueCounts: { 1001: 0 } });
@@ -770,7 +764,9 @@ describe('GoodsIssueQrScreen', () => {
     /* 파일 이름이 「무엇을 몇 회차로」를 담는다 — 셸의 파일 목록에서 그것만 보고 가려야 한다. */
     expect(sent.label).toBe('GOODS_ISSUE_QR-1001-1');
     /* PNG 머리표. 「무언가 넘어갔다」와 「PNG 가 넘어갔다」는 다르다. */
-    expect([...sent.bytes.subarray(0, 8)]).toEqual([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+    expect([...sent.bytes.subarray(0, 8)]).toEqual([
+      0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a,
+    ]);
 
     /* ⛔ 서버 렌디션은 부르지 않는다 — 이 유형을 서버가 그리지 않는다. */
     expect(renditionCalls).toHaveLength(0);
@@ -1017,8 +1013,12 @@ describe('GoodsIssueQrScreen', () => {
       route: '/pop/goods-issue-qr?goodsIssueId=900',
     });
 
-    expect(await screen.findByText(t.entry.missingWorker)).toBeInTheDocument();
+    // 사유는 맨 위 공용 띠 하나로만 말한다(사용자 지시 2026-09-17).
+    expect(await screen.findByText(messages.popChrome.workerMissing)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: t.action.issue })).toBeDisabled();
-    expect(screen.getByText(t.action.disabledNoWorker)).toBeInTheDocument();
+    expect(
+      screen.queryByText('사번이 확인되지 않아 발행할 수 없습니다. 사번 인증을 먼저 하세요.'),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByText('사번이 확인되지 않았습니다.')).not.toBeInTheDocument();
   });
 });
