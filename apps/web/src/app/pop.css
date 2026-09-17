@@ -5363,6 +5363,14 @@
   zoom: var(--pop-reg-scale, 1);
 }
 
+/* ⭐ 표제 줄 — [네트워크 재연결]이 오른쪽 끝에 선다(사용자 지시 2026-09-17 · #1330). */
+.pop-registration__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
 /*
  * 표제 — **업무 화면 머리줄과 같은 글자다**(`.pop-title` 이 쓰는 `title-lg`). 이 패널만
  * 28px 로 서 있었는데, 단말을 켜면 이 화면 다음에 바로 업무 화면이 오므로 두 표제가 다른

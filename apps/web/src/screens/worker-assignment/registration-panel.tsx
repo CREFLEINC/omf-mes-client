@@ -108,26 +108,27 @@ export const RegistrationPanel = () => {
 
   const { phase, failure, failureSource, pendingCount, terminal } = registration;
   const busy = phase === 'verifying' || phase === 'preparing';
+  /* ⭐ 연결 확인이 먼저인 동안은 토큰 입력·확인을 잠근다(사용자 지시 2026-09-17 · #1330). */
+  const offline = failure === 'offline';
   const scale = usePanelScale();
 
   return (
     <div className="pop-registration" style={{ '--pop-reg-scale': scale } as CSSProperties}>
       <Card className="pop-registration__card">
-        <h1 className="pop-registration__title">{t.title}</h1>
+        {/* ⭐ [네트워크 재연결]은 표제와 같은 줄 오른쪽에 둔다(사용자 지시 2026-09-17 · #1330). */}
+        <div className="pop-registration__head">
+          <h1 className="pop-registration__title">{t.title}</h1>
+          {offline ? (
+            <Button onClick={() => void registration.reconnect()} disabled={busy}>
+              {t.reconnect}
+            </Button>
+          ) : null}
+        </div>
 
         {failure !== null ? (
           <AlertBanner variant="error">
             {failureMessage(failure, pendingCount, failureSource)}
           </AlertBanner>
-        ) : null}
-
-        {/* ⭐ 연결 끊김 안내에는 다시 시도할 입구를 둔다(사용자 지시 2026-09-17 · #1330). */}
-        {failure === 'offline' ? (
-          <div className="pop-registration__actions">
-            <Button onClick={() => void registration.reconnect()} disabled={busy}>
-              {t.reconnect}
-            </Button>
-          </div>
         ) : null}
 
         {phase === 'verified' && terminal !== null ? (
@@ -176,16 +177,16 @@ export const RegistrationPanel = () => {
               placeholder={t.tokenPlaceholder}
               value={token}
               onChange={(event) => setToken(event.target.value)}
-              disabled={busy}
+              disabled={busy || offline}
             />
             <div className="pop-registration__actions">
               <Button
                 onClick={() => void registration.verify(token)}
-                disabled={busy || token.trim() === ''}
+                disabled={busy || offline || token.trim() === ''}
               >
                 {phase === 'verifying' ? t.verifying : t.verify}
               </Button>
-              <Button variant="outlined" onClick={() => setToken('')} disabled={busy}>
+              <Button variant="outlined" onClick={() => setToken('')} disabled={busy || offline}>
                 {t.clear}
               </Button>
             </div>

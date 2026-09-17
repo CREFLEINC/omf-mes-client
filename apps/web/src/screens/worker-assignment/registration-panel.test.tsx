@@ -140,6 +140,10 @@ describe('RegistrationPanel — 네트워크 재연결', () => {
 
     expect(screen.getByText(t.failure.offline)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: t.reconnect })).toBeEnabled();
+    /* 연결 확인이 먼저인 동안은 토큰 입력·확인을 잠근다(사용자 지시 2026-09-17). */
+    expect(screen.getByLabelText(t.tokenLabel)).toBeDisabled();
+    expect(screen.getByRole('button', { name: t.verify })).toBeDisabled();
+    expect(screen.getByRole('button', { name: t.clear })).toBeDisabled();
 
     online.mockReturnValue(true);
 
