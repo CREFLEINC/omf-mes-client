@@ -4,7 +4,10 @@ import { useEffect, useMemo } from 'react';
 
 import { PACKING_LABEL } from '../shipping-packing-label/codes';
 import { useLabelIssue, type LabelIssueHandle } from '../shipping-packing-label/mutations';
-import { usePackingLabelDrawer } from '../shipping-packing-label/packing-label-drawer';
+import {
+  usePackingLabelCommand,
+  usePackingLabelDrawer,
+} from '../shipping-packing-label/packing-label-drawer';
 import { useIssueSummaries, usePrinters } from '../shipping-packing-label/queries';
 import { toDefaultPrinterName, type TargetRow } from '../shipping-packing-label/types';
 
@@ -77,7 +80,12 @@ export const AutomaticLabels = ({ run, workerNo, onOpenManagement }: AutomaticLa
     shipmentNo: run.shipmentNo,
     allocations: run.allocations,
   });
-  const packing = useLabelIssue({ workerNo, drawLabel });
+  /* 종이는 80 × 30 mm TSPL 로 나간다(사용자 지시 2026-09-17) — 그림은 크기가 어긋났다. */
+  const drawCommand = usePackingLabelCommand({
+    shipmentNo: run.shipmentNo,
+    allocations: run.allocations,
+  });
+  const packing = useLabelIssue({ workerNo, drawLabel, drawCommand });
   const packingPrinters = usePrinters(PACKING_LABEL);
   const packingRows = useMemo(() => [packingRow(run.handlingUnit)], [run.handlingUnit]);
   const packingSummaries = useIssueSummaries(

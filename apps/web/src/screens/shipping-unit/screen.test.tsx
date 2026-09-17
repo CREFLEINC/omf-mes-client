@@ -29,7 +29,11 @@ const pathOf = (request: Request): string => new URL(request.url).pathname;
 
 const SHIPMENT = { shipmentId: 501, shipmentNo: 'SH-20260917-0003', unassignedPackedBoxCount: 4 };
 
-const partner = (code: string, name: string) => ({ partnerId: 1, partnerCode: code, partnerName: name });
+const partner = (code: string, name: string) => ({
+  partnerId: 1,
+  partnerCode: code,
+  partnerName: name,
+});
 
 const content = (itemCode: string, lotNo: string) => ({
   itemId: 11,
@@ -333,7 +337,9 @@ describe('P-04-05 출하 단위 구성', () => {
     });
     await user.type(screen.getByLabelText(t.scan.label), 'HU-1{Enter}');
 
-    expect(await screen.findByText(t.rejection.spoken('아직 모르는 규칙입니다'))).toBeInTheDocument();
+    expect(
+      await screen.findByText(t.rejection.spoken('아직 모르는 규칙입니다')),
+    ).toBeInTheDocument();
   });
 
   /*
@@ -415,7 +421,11 @@ describe('P-04-05 출하 단위 구성', () => {
     const user = userEvent.setup();
     const seen: Options['seen'] = [];
     const save = vi.fn(async () => 'syn://printed');
-    Object.defineProperty(window, 'pop', { configurable: true, value: { rendition: { save } } });
+    const keep = vi.fn(async () => 'SYN/kept');
+    Object.defineProperty(window, 'pop', {
+      configurable: true,
+      value: { rendition: { save, keep } },
+    });
 
     renderScreen({
       seen,
@@ -442,15 +452,29 @@ describe('P-04-05 출하 단위 구성', () => {
       targets: [{ targetTypeCode: 'SHIPPING_UNIT', targetId: 9001 }],
     });
 
-    /* POP 이 그린 것은 언제나 그림이다 — PNG 머리 여덟 바이트로 확인한다. */
+    /*
+     * ⭐ 종이는 80 × 30 mm TSPL 로 나간다 — 점판을 BITMAP 으로 통째 싣는다(사용자 지시 2026-09-17).
+     *    그림(PNG)은 인쇄 없이 단말에 따로 남긴다.
+     */
     const [bytes, , , format] = save.mock.calls[0] as unknown as [
       Uint8Array,
       string,
       string,
       string,
     ];
-    expect(format).toBe('png');
-    expect([...bytes.subarray(0, 8)]).toEqual([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+    expect(format).toBe('tspl');
+    const command = Array.from(bytes, (byte) => String.fromCharCode(byte)).join('');
+    expect(command.startsWith('SIZE 80 mm,30 mm\r\n')).toBe(true);
+    expect(command).toContain('BITMAP 0,0,80,240,0,');
+
+    const [kept, , , keptFormat] = keep.mock.calls[0] as unknown as [
+      Uint8Array,
+      string,
+      string,
+      string,
+    ];
+    expect(keptFormat).toBe('png');
+    expect([...kept.subarray(0, 8)]).toEqual([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
 
     /* ⛔ 종이가 나왔으면 그 사실을 서버에 보고한다 — 보고가 없으면 회차가 PENDING 으로 남는다. */
     await waitFor(() => {
