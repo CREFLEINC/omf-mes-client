@@ -51,6 +51,8 @@ export const shopfloorReceipt: Translated<typeof ko.shopfloorReceipt> = {
     issued: (qty: string) => `Số lượng xuất kho ${qty}`,
     received: 'Số lượng nhận',
     receivedLabel: (item: string) => `Số lượng nhận của ${item}`,
+    previousLine: 'Dòng trước',
+    nextLine: 'Dòng sau',
     name: (item: string, lotNo: string) => (item === '' ? lotNo : `${item} · ${lotNo}`),
     short: (qty: string) => `Chênh lệch ${qty} thiếu`,
     problem: {
@@ -81,6 +83,8 @@ export const shopfloorReceipt: Translated<typeof ko.shopfloorReceipt> = {
     onHand: (qty: string) => `Tồn hệ thống ${qty}`,
     measured: 'Lượng còn lại đo được',
     measuredLabel: (name: string) => `Lượng còn lại đo được của ${name}`,
+    previousHopper: 'Phễu trước',
+    nextHopper: 'Phễu sau',
     difference: (qty: string) => `Chênh lệch ${qty}`,
     problem: {
       notNumber: 'Chỉ nhập được chữ số',

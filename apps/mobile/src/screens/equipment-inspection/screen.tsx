@@ -3,7 +3,6 @@ import {
   Button,
   Card,
   Chip,
-  NumberPad,
   Progress,
   RadioGroup,
   Radio,
@@ -18,6 +17,7 @@ import { Link } from 'react-router';
 
 import { useAdvanceTo } from '../../patterns/advance-to';
 import { useBackStep } from '../../patterns/back-step';
+import { DockedNumberPad } from '../../patterns/docked-number-pad';
 import { useEquipments, type Equipment } from '../../patterns/equipments';
 import { playErrorTone } from '../../patterns/error-tone';
 import { uomLabelOf, useUomCodes } from '../../patterns/masters';
@@ -63,14 +63,12 @@ const ItemCard = ({
   item,
   entry,
   uom,
-  keypadOpen,
   onFocus,
   onChange,
 }: {
   item: InspectionItem;
   entry: Entry | undefined;
   uom: string;
-  keypadOpen: boolean;
   onFocus: () => void;
   onChange: (next: Entry) => void;
 }) => {
@@ -111,16 +109,6 @@ const ItemCard = ({
                 onChange({ ...entry, measured: event.target.value });
               }}
             />
-            {/* 키패드는 지금 적는 줄 아래에만 선다(공유계약 D-4). */}
-            {keypadOpen ? (
-              <NumberPad
-                value={entry?.measured ?? ''}
-                onChange={(next) => {
-                  onChange({ ...entry, measured: next });
-                }}
-                allowDecimal
-              />
-            ) : null}
           </>
         ) : (
           <>
@@ -218,6 +206,17 @@ export const EquipmentInspectionScreen = () => {
       : null;
 
   const ofType = itemsOfType(items.data?.effective ?? [], type);
+  /*
+   * 숫자판이 지금 적는 항목. 측정 항목만 오간다 - 기준이 없는 항목은 적을 칸 자체가 없어
+   * 넘어가면 빈 숫자판이 선다.
+   */
+  const measurables = ofType.filter((item) => hasRange(item));
+  const keypadAt = measurables.findIndex(
+    (item) => item.equipmentInspectionItemId === keypadFor,
+  );
+  const keypad =
+    keypadAt === -1 ? null : { at: keypadAt, item: measurables[keypadAt] as InspectionItem };
+
   const counts = tally(ofType, entries);
   const remaining = missingRequired(ofType, entries);
   const submission = {
@@ -310,7 +309,7 @@ export const EquipmentInspectionScreen = () => {
 
   if (outcome !== null) {
     return (
-      <div className="inspection">
+      <div className={keypad === null ? 'inspection' : 'inspection docked-pad-open'}>
         {outcome === 'sent' ? <AlertBanner variant="success" title={t.sent.title} /> : null}
         {outcome === 'queued' ? (
           <AlertBanner variant="warning" title={t.queued.title}>
@@ -433,7 +432,6 @@ export const EquipmentInspectionScreen = () => {
                           item={item}
                           entry={entries[item.equipmentInspectionItemId]}
                           uom={uomOf(item.uomId)}
-                          keypadOpen={keypadFor === item.equipmentInspectionItemId}
                           onFocus={() => {
                             setKeypadFor(item.equipmentInspectionItemId);
                           }}
@@ -495,6 +493,37 @@ export const EquipmentInspectionScreen = () => {
             </Button>
           </div>
         </section>
+      )}
+      {keypad === null ? null : (
+        <DockedNumberPad
+          head={t.items.measuredOf(keypad.item.itemName)}
+          value={entries[keypad.item.equipmentInspectionItemId]?.measured ?? ''}
+          onChange={(next) => {
+            setEntries((current) => ({
+              ...current,
+              [keypad.item.equipmentInspectionItemId]: {
+                ...current[keypad.item.equipmentInspectionItemId],
+                measured: next,
+              },
+            }));
+          }}
+          onClose={() => {
+            setKeypadFor(null);
+          }}
+          move={{
+            canPrevious: keypad.at > 0,
+            canNext: keypad.at < measurables.length - 1,
+            onPrevious: () => {
+              setKeypadFor(measurables[keypad.at - 1]?.equipmentInspectionItemId ?? null);
+            },
+            onNext: () => {
+              setKeypadFor(measurables[keypad.at + 1]?.equipmentInspectionItemId ?? null);
+            },
+            previousLabel: t.items.previousItem,
+            nextLabel: t.items.nextItem,
+          }}
+          allowDecimal
+        />
       )}
     </div>
   );
