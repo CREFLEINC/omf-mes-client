@@ -1,4 +1,5 @@
 import { IconButton, NumberPad } from '@crefle/web-ui';
+import { useEffect, useRef } from 'react';
 
 import './docked-number-pad.css';
 
@@ -53,36 +54,78 @@ export const DockedNumberPad = ({
   allowDecimal,
   max,
   maxLength,
-}: DockedNumberPadProps) => (
-  <div className="docked-pad">
-    <p className="docked-pad__head">{head}</p>
-    <div className="docked-pad__row">
-      {move === undefined ? null : (
-        <IconButton
-          icon="chevron_left"
-          size="xl"
-          aria-label={move.previousLabel}
-          disabled={!move.canPrevious}
-          onClick={move.onPrevious}
+}: DockedNumberPadProps) => {
+  const padRef = useRef<HTMLDivElement | null>(null);
+
+  /*
+   * 숫자판 바깥을 누르면 닫는다. 확인 키를 못 찾은 사람은 화면을 눌러 닫으려 하는데, 그대로
+   * 두면 아래 절반이 덮인 채 남는다.
+   *
+   * 누름의 시작에서 닫는다 - 누름이 끝난 뒤에 닫으면 그 아래 있던 것이 눌리지 않는다.
+   */
+  useEffect(() => {
+    const onDown = (event: PointerEvent) => {
+      const target = event.target;
+
+      if (target instanceof Node && padRef.current?.contains(target) === true) {
+        return;
+      }
+
+      onClose();
+    };
+
+    document.addEventListener('pointerdown', onDown);
+
+    return () => {
+      document.removeEventListener('pointerdown', onDown);
+    };
+  }, [onClose]);
+
+  /*
+   * 적는 칸이 화면 아래에 있으면 숫자판이 그 위에 서면서 칸을 덮는다. 무엇을 치는지 보이지
+   * 않으므로 칸을 숫자판 위로 끌어올린다. 비울 자리는 `docked-pad-open` 이 만든다.
+   *
+   * 머리줄이 바뀌면 다시 끌어올린다 - 이전·다음으로 옮긴 줄도 덮일 수 있다.
+   */
+  useEffect(() => {
+    const active = document.activeElement;
+
+    if (active instanceof HTMLElement && typeof active.scrollIntoView === 'function') {
+      active.scrollIntoView({ block: 'nearest' });
+    }
+  }, [head]);
+
+  return (
+    <div className="docked-pad" ref={padRef}>
+      <p className="docked-pad__head">{head}</p>
+      <div className="docked-pad__row">
+        {move === undefined ? null : (
+          <IconButton
+            icon="chevron_left"
+            size="xl"
+            aria-label={move.previousLabel}
+            disabled={!move.canPrevious}
+            onClick={move.onPrevious}
+          />
+        )}
+        <NumberPad
+          value={value}
+          onChange={onChange}
+          onConfirm={onClose}
+          allowDecimal={allowDecimal}
+          max={max}
+          maxLength={maxLength}
         />
-      )}
-      <NumberPad
-        value={value}
-        onChange={onChange}
-        onConfirm={onClose}
-        allowDecimal={allowDecimal}
-        max={max}
-        maxLength={maxLength}
-      />
-      {move === undefined ? null : (
-        <IconButton
-          icon="chevron_right"
-          size="xl"
-          aria-label={move.nextLabel}
-          disabled={!move.canNext}
-          onClick={move.onNext}
-        />
-      )}
+        {move === undefined ? null : (
+          <IconButton
+            icon="chevron_right"
+            size="xl"
+            aria-label={move.nextLabel}
+            disabled={!move.canNext}
+            onClick={move.onNext}
+          />
+        )}
+      </div>
     </div>
-  </div>
-);
+  );
+};

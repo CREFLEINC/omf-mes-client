@@ -74,4 +74,55 @@ describe('화면 아래 숫자판', () => {
 
     expect(container.querySelector('.docked-pad')).not.toBeNull();
   });
+  /*
+   * 숫자판 바깥을 누르면 닫는다. 확인 키를 못 찾은 사람이 화면을 눌러 닫으려 하는데,
+   * 그대로 두면 아래 절반이 계속 덮인 채 남는다.
+   */
+  it('숫자판 바깥을 누르면 닫는다', async () => {
+    const user = userEvent.setup();
+    const onClose = vi.fn();
+    render(
+      <>
+        <button type="button">바깥</button>
+        <DockedNumberPad head="수량" value="" onChange={vi.fn()} onClose={onClose} />
+      </>,
+    );
+
+    await user.click(screen.getByRole('button', { name: '바깥' }));
+
+    expect(onClose).toHaveBeenCalled();
+  });
+
+  it('숫자판 안을 누르면 닫지 않는다', async () => {
+    const user = userEvent.setup();
+    const onClose = vi.fn();
+    render(<DockedNumberPad head="수량" value="" onChange={vi.fn()} onClose={onClose} />);
+
+    await user.click(screen.getByRole('button', { name: '7' }));
+
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
+  /*
+   * 적는 칸이 화면 아래에 있으면 숫자판이 그 위에 서면서 칸을 덮는다. 무엇을 치는지 보이지
+   * 않으므로 칸을 숫자판 위로 끌어올린다.
+   */
+  it('적는 칸을 숫자판 위로 끌어올린다', () => {
+    const scrollIntoView = vi.fn();
+    const { rerender } = render(<input aria-label="수량칸" />);
+
+    const field = screen.getByLabelText('수량칸');
+    field.scrollIntoView = scrollIntoView;
+    field.focus();
+
+    /* 칸을 누른 뒤에 숫자판이 선다. 그 차례 그대로 만든다. */
+    rerender(
+      <>
+        <input aria-label="수량칸" />
+        <DockedNumberPad head="수량" value="" onChange={vi.fn()} onClose={vi.fn()} />
+      </>,
+    );
+
+    expect(scrollIntoView).toHaveBeenCalled();
+  });
 });

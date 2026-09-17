@@ -35,8 +35,13 @@
   gap: var(--space-2, 8px);
 }
 
-/* 숫자판이 내용 위에 뜬다. 그만큼 아래를 비워 두지 않으면 마지막 줄이 가려진 채 남는다. */
-.docked-pad-open {
+/*
+ * 숫자판이 내용 위에 뜬다. 그만큼 아래를 비워 두지 않으면 마지막 줄이 가려진 채 남는다.
+ *
+ * 클래스를 겹쳐 적어 무게를 올린다. 화면마다 자기 CSS 에 바깥 여백을 두는데, 그 파일이
+ * 이 파일보다 뒤에 실려 같은 무게면 화면 쪽이 이긴다.
+ */
+.docked-pad-open.docked-pad-open {
   padding-bottom: 22rem;
 }
 
@@ -44,6 +49,6 @@
  * 적는 칸을 화면에 들일 때 숫자판 높이만큼 아래를 비운다. 이것이 없으면 칸이 화면 맨 아래에
  * 맞춰져 숫자판에 그대로 덮인다.
  */
-.docked-pad-open input {
+.docked-pad-open.docked-pad-open input {
   scroll-margin-block-end: 26rem;
 }
