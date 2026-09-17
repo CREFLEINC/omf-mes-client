@@ -181,8 +181,10 @@
 /* 목록이 길어 맨 끝까지 내려간 손이 처음으로 돌아올 길이 없다. 늘 같은 자리에 둔다. */
 .receipt-picker__to-top {
   position: fixed;
-  right: calc(var(--space-4, 16px) + var(--safe-area-inset-right, 0px));
-  bottom: calc(var(--space-4, 16px) + var(--safe-area-inset-bottom, 0px));
+  right: calc(var(--space-4, 16px) + var(--safe-area-inset-right, env(safe-area-inset-right, 0px)));
+  bottom: calc(
+    var(--space-4, 16px) + var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px))
+  );
   display: flex;
   align-items: center;
   justify-content: center;
