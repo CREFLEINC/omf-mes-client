@@ -3,6 +3,7 @@ import { useMutation, useQuery, type UseMutationResult } from '@tanstack/react-q
 
 import { useApiClient } from '../../patterns/api-context';
 import { runRequest } from '../../patterns/request';
+import { remainingOf } from './packing-draft';
 
 import type {
   HandlingUnit,
@@ -238,7 +239,9 @@ export interface LotScanInput {
 const lookupLot = async (client: Client, input: LotScanInput): Promise<MatchedLot> => {
   const data = await runRequest(() =>
     client.GET('/logistics/shipment-lot-allocations', {
-      params: { query: { shipmentId: input.shipmentId, lotQ: input.code } },
+      params: {
+        query: { shipmentId: input.shipmentId, lotQ: input.code, page: 1, size: OPTION_SIZE },
+      },
     }),
   );
 
@@ -248,8 +251,40 @@ const lookupLot = async (client: Client, input: LotScanInput): Promise<MatchedLo
    * 담기까지 간다 — 「모르는 것」을 「통과」로 처리하지 않는다(공유계약 F-6).
    */
   const verdict = data.match ?? { matched: false };
+  const items = data.items ?? [];
 
-  return { allocation: (data.items ?? [])[0], verdict };
+  /* 다르다는 판정의 문구(품목 불일치)는 출하의 품목을 말하므로 출하 배분 하나를 그대로 넘긴다. */
+  if (!verdict.matched) return { allocation: items[0], verdict };
+
+  /*
+   * ⛔ **첫 줄을 스캔한 LOT 으로 읽지 않는다.** 서버는 `lotQ` 로 목록을 거르지 않고 판정만
+   * 싣는다 — `items` 는 이 출하의 배분 전건이다(계약 `lotQ` 설명). 첫 줄을 쓰면 다른 LOT 의
+   * 잔여가 뜨고 그 LOT 이 상자에 담긴다(실서버 실측 2026-09-17). 서버 판정과 같은 기준
+   * (LOT 번호 정확 일치)으로 고르고, 같은 LOT 이 여러 배분에 걸리면 잔여가 남은 줄을 먼저 쓴다.
+   */
+  const pick = (candidates: readonly ShipmentLotAllocation[]) => {
+    const same = candidates.filter((allocation) => allocation.lotNo === input.code);
+
+    return same.find((allocation) => remainingOf(allocation) > 0) ?? same[0];
+  };
+  const onFirstPage = pick(items);
+
+  if (
+    (onFirstPage !== undefined && remainingOf(onFirstPage) > 0) ||
+    items.length >= data.page.total
+  ) {
+    return { allocation: onFirstPage, verdict };
+  }
+
+  const all = await collectAllPages((page, size) =>
+    runRequest(() =>
+      client.GET('/logistics/shipment-lot-allocations', {
+        params: { query: { shipmentId: input.shipmentId, page, size } },
+      }),
+    ),
+  );
+
+  return { allocation: pick(all), verdict };
 };
 
 export const useLotScan = (): UseMutationResult<MatchedLot, Error, LotScanInput> => {
