@@ -989,6 +989,7 @@ export const InboundReceiptScreen = () => {
               <div className="receipt__keypad-group">
                 <div className="receipt__qty-field">
                   <TextField
+                    id="receipt-received-qty"
                     label={required(t.qty.received)}
                     inputMode="none"
                     size="xl"
@@ -1007,6 +1008,7 @@ export const InboundReceiptScreen = () => {
 
                 <div className="receipt__qty-field">
                   <TextField
+                    id="receipt-package-count"
                     label={t.qty.packageCount}
                     inputMode="none"
                     size="xl"
@@ -1275,6 +1277,7 @@ export const InboundReceiptScreen = () => {
       {keypadFor === null ? null : (
         <DockedNumberPad
           head={keypadFor === 'received' ? t.qty.received : t.qty.packageCount}
+          fieldId={keypadFor === 'received' ? 'receipt-received-qty' : 'receipt-package-count'}
           value={keypadFor === 'received' ? draft.receivedQty : draft.packageCount}
           onChange={(value) => {
             patch(keypadFor === 'received' ? { receivedQty: value } : { packageCount: value });

@@ -753,6 +753,22 @@ describe('입하 등록 화면 — 발주 경로', () => {
     expect(screen.getByText(/먼저 보류로 받아 둔 뒤에/)).toBeTruthy();
   });
 
+  /*
+   * 이동 단추로 옮기면 그 칸으로 포커스가 따라가야 한다. 머리줄만 바꾸면 앞 칸이 판 위에 선
+   * 채 남고 적는 칸은 판에 덮여, 사람은 다음 칸을 적는 줄 알면서 앞 칸을 본다.
+   */
+  it('다음 칸으로 옮기면 포커스도 그 칸으로 간다', async () => {
+    const user = userEvent.setup();
+    mount();
+    await screen.findByLabelText('LOT 번호');
+    await choosePoLine(user);
+
+    await user.click(await screen.findByLabelText(/실입하\ 수량/));
+    await user.click(screen.getByRole('button', { name: '다음 칸' }));
+
+    expect(document.activeElement).toBe(screen.getByLabelText('포장 수'));
+  });
+
   it('부족인데 고르지 않으면 등록할 수 없다', async () => {
     const user = userEvent.setup();
     mount();

@@ -32,6 +32,11 @@ export interface DockedNumberPadMove {
 export interface DockedNumberPadProps {
   /** 무엇을 적는 중인지. 칸이 하나인 화면에서도 비우지 않는다. */
   head: string;
+  /**
+   * 지금 적는 칸의 `id`. 적을 칸이 여럿이면 넘긴다 - 이동 단추를 누른 뒤 포커스는 칸이 아니라
+   * 바탕에 있어, 누가 대상인지 화면을 뒤져서는 알 수 없다.
+   */
+  fieldId?: string;
   value: string;
   onChange: (value: string) => void;
   /** 숫자판을 닫는다. 소수점 키 옆 빈 칸이 이 자리다 — 닫는 단추를 따로 세우지 않는다. */
@@ -48,6 +53,7 @@ export interface DockedNumberPadProps {
 
 export const DockedNumberPad = ({
   head,
+  fieldId,
   value,
   onChange,
   onClose,
@@ -100,15 +106,22 @@ export const DockedNumberPad = ({
    * `nearest` 로는 못 푼다 - 덮인 칸도 창 안에는 있어 이미 보인다고 보고 그냥 둔다. `end` 로
    * 맞춰야 `scroll-margin-block-end` 만큼 아래를 비워 판 위로 올라온다(실기 2026-09-17).
    *
-   * 머리줄이 바뀌면 다시 끌어올린다 - 이전·다음으로 옮긴 줄도 덮일 수 있다.
+   * 옮겨 간 칸에는 포커스를 함께 옮긴다. 이동 단추를 누른 뒤 포커스는 바탕에 있어, 그대로
+   * 두면 앞 칸이 판 위에 선 채 남고 적는 칸은 덮인다.
    */
   useEffect(() => {
-    const active = document.activeElement;
+    const target = fieldId === undefined ? null : document.getElementById(fieldId);
 
-    if (active instanceof HTMLElement && typeof active.scrollIntoView === 'function') {
-      active.scrollIntoView({ block: 'end' });
+    if (target !== null) {
+      target.focus();
     }
-  }, [head]);
+
+    const shown = target ?? document.activeElement;
+
+    if (shown instanceof HTMLElement && typeof shown.scrollIntoView === 'function') {
+      shown.scrollIntoView({ block: 'end' });
+    }
+  }, [head, fieldId]);
 
   return (
     <div className="docked-pad" ref={padRef}>

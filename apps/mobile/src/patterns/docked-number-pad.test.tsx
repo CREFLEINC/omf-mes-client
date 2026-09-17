@@ -130,6 +130,40 @@ describe('화면 아래 숫자판', () => {
     expect(scrollIntoView).toHaveBeenCalledWith({ block: 'end' });
   });
   /*
+   * 이전·다음으로 옮기면 머리줄만 바뀌고 화면은 그대로였다. 앞 칸이 판 위에 선 채 남고 옮겨
+   * 간 칸은 판에 덮여, 사람은 다음 칸을 적는 줄 알면서 앞 칸을 보고 있었다(실기 2026-09-17).
+   *
+   * 옮겨 갈 칸을 이름으로 받아 그 칸을 화면에 들인다. 누가 눌렀는지로는 찾을 수 없다 - 단추를
+   * 누른 뒤 포커스는 칸이 아니라 바탕에 있다.
+   */
+  it('다른 칸으로 옮기면 그 칸을 화면에 들인다', () => {
+    const scrollIntoView = vi.fn();
+    const pad = (fieldId: string, head: string) => (
+      <>
+        <input aria-label="첫 칸" id="q1" inputMode="none" />
+        <input aria-label="둘째 칸" id="q2" inputMode="none" />
+        <DockedNumberPad
+          head={head}
+          fieldId={fieldId}
+          value=""
+          onChange={vi.fn()}
+          onClose={vi.fn()}
+          move={MOVE}
+        />
+      </>
+    );
+    const { rerender } = render(pad('q1', '첫 칸'));
+
+    const second = screen.getByLabelText('둘째 칸');
+    second.scrollIntoView = scrollIntoView;
+
+    rerender(pad('q2', '둘째 칸'));
+
+    expect(document.activeElement).toBe(second);
+    expect(scrollIntoView).toHaveBeenCalledWith({ block: 'end' });
+  });
+
+  /*
    * 비고처럼 자판이 필요한 칸을 치다가 숫자칸을 누르면, 포커스가 옮겨 가도 기기 자판이
    * 내려가지 않는다. 앱 숫자판이 그 위에 서서 둘이 겹친다(실기 2026-09-17).
    *
