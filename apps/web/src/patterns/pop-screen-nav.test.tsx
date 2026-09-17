@@ -56,7 +56,7 @@ describe('PopScreenNavButton — G-34 화면 이동', () => {
     expect(screen.getByRole('option', { name: '비가동 실적 입력' })).toBeInTheDocument();
     /* ⭐ 화면 코드는 목록에 보이지 않는다(사용자 지시 2026-09-15). */
     expect(screen.queryByText(/P-\d{2}-\d{2}/u)).not.toBeInTheDocument();
-    expect(screen.queryByRole('option', { name: '출하 실적 등록' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('option', { name: '출하 포장' })).not.toBeInTheDocument();
 
     await user.click(screen.getByRole('option', { name: '비가동 실적 입력' }));
 
