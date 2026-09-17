@@ -82,6 +82,12 @@ export const useScanField = ({ onScan, scanner, applied }: UseScanFieldOptions):
     setPending(null);
   }, [pending]);
 
+  /*
+   * 되돌림을 잠시 멈춘다. 손 입력을 끝낼 때 포커스를 한 번 빼야 자판이 내려가는데, 그
+   * 순간 handleBlur 가 다시 잡으면 뺀 것이 되지 않는다.
+   */
+  const restoreSuspended = useRef(false);
+
   const dismissPending = useCallback(() => {
     setPending(null);
   }, []);
@@ -121,7 +127,45 @@ export const useScanField = ({ onScan, scanner, applied }: UseScanFieldOptions):
     }
 
     setManual(false);
-    setKeyboard(false);
+
+    /*
+     * 안드로이드는 이미 올라온 자판을 inputMode 변경만으로 내리지 않는다. 포커스가 빠져야
+     * 내려간다. 그대로 두면 손 입력을 끝낸 뒤에도 자판이 남아, 이어서 수량칸을 누르면 앱
+     * 숫자판과 겹쳐 화면 아래 절반을 먹는다(실기 2026-09-17).
+     *
+     * 빼고 곧바로 되돌린다. 되돌림을 한 틱만 멈추지 않으면 handleBlur 가 그 자리에서 다시
+     * 잡아 자판이 내려갈 틈이 없다. inputMode 가 none 이면 되돌려도 자판은 올라오지 않는다.
+     */
+    const field = fieldRef.current;
+
+    if (field === null) {
+      setKeyboard(false);
+    } else {
+      restoreSuspended.current = true;
+      field.blur();
+      setKeyboard(false);
+      requestAnimationFrame(() => {
+        restoreSuspended.current = false;
+
+        /*
+         * 사람이 글자를 넣는 자리로 옮겨 갔으면 그대로 둔다. 빼앗아 오면 수량을 치려고 누른
+         * 사람의 글자가 스캔 칸으로 가 사라진다.
+         *
+         * 단추가 쥐고 있으면 되돌린다 - 넘기기 단추를 누른 직후가 그렇고, 그대로 두면 이어서
+         * 읽는 스캔이 단추로 가 사라진다.
+         */
+        const active = document.activeElement;
+        const typing =
+          active instanceof HTMLInputElement ||
+          active instanceof HTMLTextAreaElement ||
+          active instanceof HTMLSelectElement ||
+          (active instanceof HTMLElement && active.isContentEditable);
+
+        if (!typing && active !== field) {
+          field.focus();
+        }
+      });
+    }
 
     if (value !== '') {
       take(value);
@@ -133,7 +177,7 @@ export const useScanField = ({ onScan, scanner, applied }: UseScanFieldOptions):
    * 다른 컨트롤로 옮겨 간 포커스는 그대로 둔다.
    */
   const handleBlur = useCallback((event: FocusEvent) => {
-    if (document.hidden || event.relatedTarget !== null) {
+    if (document.hidden || event.relatedTarget !== null || restoreSuspended.current) {
       return;
     }
     queueMicrotask(() => {

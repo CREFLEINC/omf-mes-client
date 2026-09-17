@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { StrictMode } from 'react';
 import { describe, expect, it, vi } from 'vitest';
@@ -346,5 +346,68 @@ describe('스캔 필드 결선', () => {
 
     expect(onScan).toHaveBeenCalledTimes(1);
     expect(onScan).toHaveBeenCalledWith('SYN-LOT-0002');
+  });
+  /*
+   * 안드로이드는 이미 올라온 자판을 inputMode 변경만으로 내리지 않는다. 포커스가 빠져야
+   * 내려간다. 그대로 두면 손 입력을 끝낸 뒤에도 자판이 남아, 이어서 수량칸을 누르면 앱
+   * 숫자판과 겹쳐 화면 아래 절반을 먹는다.
+   *
+   * 자판 자체는 화면 안에서 볼 수 없으므로 포커스가 한 번 빠졌다 돌아오는지로 잰다.
+   */
+  it('손 입력을 끝내면 포커스를 한 번 빼서 자판을 내린다', async () => {
+    const user = userEvent.setup();
+    render(<Probe onScan={vi.fn()} />);
+
+    const field = screen.getByLabelText('스캔');
+    await user.click(screen.getByRole('button', { name: '직접 입력' }));
+    await user.type(field, 'ABC');
+
+    const 흐름: string[] = [];
+    field.addEventListener('blur', () => 흐름.push('빠짐'));
+    field.addEventListener('focus', () => 흐름.push('돌아옴'));
+
+    /*
+     * 기기에서는 넘기기 단추를 눌러도 포커스가 칸에 남는다. 그 조건을 그대로 만들려고
+     * 포커스를 옮기지 않는 방식으로 부른다 - user.click 은 단추로 포커스를 옮겨 버려,
+     * 훅이 빼지 않아도 빠진 것처럼 보인다.
+     */
+    fireEvent.click(screen.getByRole('button', { name: '찾기' }));
+
+    await waitFor(() => {
+      expect(흐름).toContain('빠짐');
+    });
+    await waitFor(() => {
+      expect(field).toHaveFocus();
+    });
+    expect(field).toHaveAttribute('inputmode', 'none');
+  });
+  /*
+   * 안드로이드는 이미 올라온 자판을 inputMode 변경만으로 내리지 않는다. 포커스가 빠져야
+   * 내려간다. 그대로 두면 손 입력을 끝낸 뒤에도 자판이 남아, 이어서 수량칸을 누르면 앱
+   * 숫자판과 겹쳐 화면 아래 절반을 먹는다.
+   *
+   * 자판 자체는 화면 안에서 볼 수 없으므로 포커스가 한 번 빠졌다 돌아오는지로 잰다.
+   */
+  it('손 입력을 끝내면 포커스를 한 번 빼서 자판을 내린다', async () => {
+    const user = userEvent.setup();
+    render(<Probe onScan={vi.fn()} />);
+
+    const field = screen.getByLabelText('스캔');
+    const 흐름: string[] = [];
+    field.addEventListener('blur', () => 흐름.push('빠짐'));
+    field.addEventListener('focus', () => 흐름.push('돌아옴'));
+
+    await user.click(screen.getByRole('button', { name: '직접 입력' }));
+    흐름.length = 0;
+    await user.type(field, 'ABC');
+    await user.click(screen.getByRole('button', { name: '찾기' }));
+
+    await waitFor(() => {
+      expect(흐름).toContain('빠짐');
+    });
+    await waitFor(() => {
+      expect(field).toHaveFocus();
+    });
+    expect(field).toHaveAttribute('inputmode', 'none');
   });
 });
