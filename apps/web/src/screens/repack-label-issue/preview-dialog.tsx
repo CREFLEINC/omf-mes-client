@@ -1,11 +1,20 @@
 import { Button, Dialog } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 
 const t = messages.repackLabelIssue.preview;
 
 export interface PreviewDialogProps {
   open: boolean;
+  /**
+   * `preview` 는 발행된 라벨을 보여 주는 창, `reason` 은 그림 없이 재발행 사유만 고르는 창이다
+   * ([발번·인쇄]에서 사유가 필요할 때 · 사용자 지시 2026-09-17).
+   */
+  mode: 'preview' | 'reason';
+  /** 재발행 사유 칸. 두 창 모두 사유를 고른 뒤 [인쇄]가 열린다(사용자 지시 2026-09-17). */
+  reasonField: ReactNode;
+  /** 사유를 골랐는가 — 안 골랐으면 [인쇄]를 잠근다. */
+  canPrint: boolean;
   /** 서버가 그린 라벨. 아직 못 받았으면 `null` */
   imageUrl: string | null;
   isPrinting: boolean;
@@ -18,13 +27,17 @@ export interface PreviewDialogProps {
  *
  * ⚠ **발행 «뒤에» 선다.** 그리기 경로가 발행 기록 번호를 받으므로 발행 전 미리보기는 계약에
  * 없다(착수 이슈 §6). 그래서 이 창이 열렸다는 것은 **이미 회차가 하나 올랐다**는 뜻이고,
- * 닫아도 그 기록은 남는다 — 그 사실을 창 안에서 말한다.
+ * [닫기]는 창만 닫고 아무것도 보내지 않는다. 새 기록은 [인쇄]가 사유와 함께 재발행할 때만 생긴다
+ * (「닫아도 발행 기록은 남습니다」 문구는 오해를 불러 뺐다 · 사용자 지시 2026-09-17).
  *
  * ⛔ **화면이 라벨을 다시 그리지 않는다.** 받은 바이트를 그대로 걸고, 인쇄도 같은 바이트를
  * 보낸다 — 두 번 받으면 서버가 두 번 그리고, 그 사이 값이 달라지면 본 것과 나온 것이 갈린다.
  */
 export const PreviewDialog = ({
   open,
+  mode,
+  reasonField,
+  canPrint,
   imageUrl,
   isPrinting,
   onPrint,
@@ -45,8 +58,9 @@ export const PreviewDialog = ({
     <Dialog
       open={open}
       onClose={onClose}
-      title={t.title}
+      title={mode === 'reason' ? t.reasonTitle : t.title}
       size="lg"
+      className="pop-repack-preview-dialog"
       /*
        * ⛔ **팝업 바깥을 눌러 닫히지 않는다**(사용자 지시 2026-09-10 · #1005). 터치 단말에서
        *    팝업은 화면 대부분을 덮어 손이 스치기 쉽고, 스크림 클릭이 닫기로 이어지면
@@ -65,14 +79,14 @@ export const PreviewDialog = ({
             size="lg"
             onClick={onPrint}
             loading={isPrinting}
-            disabled={imageUrl === null}
+            disabled={!canPrint}
           >
             {t.print}
           </Button>
         </>
       }
     >
-      {imageUrl === null && <p className="pop-empty-note">{t.loading}</p>}
+      {mode === 'preview' && imageUrl === null && <p className="pop-empty-note">{t.loading}</p>}
       {imageUrl !== null && isBroken && <p className="pop-repack-error">{t.notDrawable}</p>}
       {/*
         ⛔ **`hidden` 으로 감추지 않는다.** 이 이미지의 `display: block` 이 `[hidden]` 의
@@ -89,7 +103,7 @@ export const PreviewDialog = ({
           }}
         />
       )}
-      <p className="pop-repack-preview-note">{t.closeNote}</p>
+      {reasonField}
     </Dialog>
   );
 };

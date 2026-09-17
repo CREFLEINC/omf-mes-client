@@ -35,6 +35,9 @@ export const pqcInspection: Translated<typeof ko.pqcInspection> = {
   pad: {
     title: 'Bàn phím số',
     keypadLabel: 'Bàn phím số lượng',
+    extraKeysLabel: 'Dấu và dấu thập phân',
+    negative: 'Số âm',
+    positive: 'Số dương',
     decimal: 'Dấu thập phân',
     backspace: 'Xóa một ký tự',
     clear: 'Xóa hết',

@@ -15,7 +15,7 @@ export const popLocationLabel = {
 
   warehouse: {
     label: 'Kho',
-    placeholder: 'Chọn kho',
+    placeholder: 'Hãy chọn kho',
     loadFailed: 'Không tải được danh sách kho. Hãy kiểm tra kết nối rồi thử lại.',
     none: 'Không có kho nào dùng được. Hãy đăng ký kho trước.',
     retry: 'Thử lại',
@@ -23,7 +23,7 @@ export const popLocationLabel = {
 
   location: {
     heading: 'Vị trí',
-    awaitingWarehouse: 'Chọn kho để xem các vị trí của kho đó.',
+    awaitingWarehouse: 'Hãy chọn kho trước.',
     empty: 'Kho này chưa có vị trí nào.',
     loading: 'Đang tải danh sách vị trí',
     loadFailed: 'Không tải được danh sách vị trí. Hãy kiểm tra kết nối rồi thử lại.',
@@ -34,7 +34,9 @@ export const popLocationLabel = {
     notIssued: 'Lần đầu',
     issuedCount: (count: number) => `${String(count)} lượt`,
     inactive: 'Ngừng dùng',
-    selectedCount: (count: number) => `Đã chọn ${String(count)} vị trí`,
+    pick: 'Chọn',
+    selectAll: 'Chọn tất cả',
+    clearSelection: 'Bỏ chọn',
     tooMany: (max: number) =>
       `Mỗi lần chỉ phát hành được ${String(max)} vị trí. Hãy chia thành nhiều lần.`,
   },

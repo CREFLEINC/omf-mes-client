@@ -1,3 +1,4 @@
+import { Button } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { NumericKeypad } from '@omf-mes/ui';
 
@@ -13,7 +14,27 @@ export interface KeypadPanelProps {
   onChange: (next: string) => void;
   /** 확정된 회차에서는 패드도 누르지 않는다(#1146 ③). */
   isLocked: boolean;
+  /**
+   * 부호(−·+)와 소수점을 받는가 — **측정치 칸일 때만 켠다**(사용자 지시 2026-09-17). 측정치는
+   * 규격 중심에서 벗어난 음수·소수가 들어오고, 수량은 0 이상의 정수다.
+   */
+  allowSignAndDecimal: boolean;
 }
+
+/** 음수로 바꾼다. 이미 음수면 그대로 둔다. */
+export const toNegative = (value: string): string => (value.startsWith('-') ? value : `-${value}`);
+
+/** 양수로 바꾼다 — 앞의 `-` 를 뗀다. */
+export const toPositive = (value: string): string =>
+  value.startsWith('-') ? value.slice(1) : value;
+
+/** 소수점을 붙인다. 이미 있으면 그대로다. 정수 자리가 비었으면 `0` 을 채운다. */
+export const withDecimalPoint = (value: string): string => {
+  if (value.includes('.')) return value;
+  if (value === '' || value === '-') return `${value}0.`;
+
+  return `${value}.`;
+};
 
 /**
  * 숫자 키패드 구획 — **우단 《결과 입력》 옆에 상시로 선다**(설계 2차 공지 `a6a87e1` ·
@@ -30,28 +51,79 @@ export interface KeypadPanelProps {
  * ⛔ **고른 칸이 없으면 누를 수 없다.** 어디로 들어갈지 모르는 숫자를 받으면 사용자는 자기가
  *    무엇을 쳤는지 모른다.
  */
-export const KeypadPanel = ({ label, value, onChange, isLocked }: KeypadPanelProps) => (
-  <section className="pane pqc-keypad" aria-label={t.keypadLabel}>
-    <h2 className="pane-title">{t.title}</h2>
+export const KeypadPanel = ({
+  label,
+  value,
+  onChange,
+  isLocked,
+  allowSignAndDecimal,
+}: KeypadPanelProps) => {
+  const disabled = isLocked || label === null;
+  const signDisabled = disabled || !allowSignAndDecimal;
 
-    {/* 어느 칸을 치고 있는지 늘 보인다 — 패드가 칸에서 떨어져 있어 눈이 되짚을 자리가 필요하다. */}
-    <p className="pqc-pad-target">{label ?? t.noTarget}</p>
-    {/*
-     * ⛔ **빈 값에 줄표를 세우지 않는다**(사용자 지시 2026-09-10). 칸을 고르기만 하고 아직
-     *    아무것도 안 눌렀을 때 「—」가 서면 그것이 값처럼 읽힌다 — 빈 자리 그대로 둔다.
-     *    줄 높이는 CSS 가 잡고 있어(`min-block-size`) 첫 숫자에 화면이 튀지 않는다.
-     */}
-    <p className="pqc-pad-value">{value}</p>
+  return (
+    <section className="pane pqc-keypad" aria-label={t.keypadLabel}>
+      <h2 className="pane-title">{t.title}</h2>
 
-    <NumericKeypad
-      value={value}
-      dropLeadingZero
-      onChange={onChange}
-      disabled={isLocked || label === null}
-      keySize={POP_TOUCH_SIZE}
-      label={t.keypadLabel}
-      backspaceLabel={t.backspace}
-      clearLabel={t.clear}
-    />
-  </section>
-);
+      {/* 어느 칸을 치고 있는지 늘 보인다 — 패드가 칸에서 떨어져 있어 눈이 되짚을 자리가 필요하다. */}
+      <p className="pqc-pad-target">{label ?? t.noTarget}</p>
+      {/*
+       * ⛔ **빈 값에 줄표를 세우지 않는다**(사용자 지시 2026-09-10). 칸을 고르기만 하고 아직
+       *    아무것도 안 눌렀을 때 「—」가 서면 그것이 값처럼 읽힌다 — 빈 자리 그대로 둔다.
+       *    줄 높이는 CSS 가 잡고 있어(`min-block-size`) 첫 숫자에 화면이 튀지 않는다.
+       */}
+      <p className="pqc-pad-value">{value}</p>
+
+      <NumericKeypad
+        value={value}
+        dropLeadingZero
+        onChange={onChange}
+        disabled={disabled}
+        keySize={POP_TOUCH_SIZE}
+        label={t.keypadLabel}
+        backspaceLabel={t.backspace}
+        clearLabel={t.clear}
+      />
+
+      {/*
+       * ⭐ **부호·소수점 줄** — 측정치 칸일 때만 켜진다(사용자 지시 2026-09-17). 줄은 늘 세워 두어
+       *    칸을 옮길 때 키 배치가 흔들리지 않게 한다. 공용 키패드는 건드리지 않고 이 구획이 붙인다.
+       */}
+      <div className="pqc-pad-extra" role="group" aria-label={t.extraKeysLabel}>
+        <Button
+          type="button"
+          variant="outlined"
+          size={POP_TOUCH_SIZE}
+          className="pqc-pad-sign"
+          aria-label={t.negative}
+          disabled={signDisabled || value.startsWith('-')}
+          onClick={() => onChange(toNegative(value))}
+        >
+          −
+        </Button>
+        <Button
+          type="button"
+          variant="outlined"
+          size={POP_TOUCH_SIZE}
+          className="pqc-pad-sign"
+          aria-label={t.positive}
+          disabled={signDisabled || !value.startsWith('-')}
+          onClick={() => onChange(toPositive(value))}
+        >
+          +
+        </Button>
+        <Button
+          type="button"
+          variant="outlined"
+          size={POP_TOUCH_SIZE}
+          className="pqc-pad-decimal"
+          aria-label={t.decimal}
+          disabled={signDisabled || value.includes('.')}
+          onClick={() => onChange(withDecimalPoint(value))}
+        >
+          .
+        </Button>
+      </div>
+    </section>
+  );
+};

@@ -1,4 +1,4 @@
-import { AlertBanner, Chip, Table, type Column } from '@crefle/web-ui';
+import { AlertBanner, Table, type Column } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 
 import { PopPageNav, pageBoundaryOf, type PageMetaLike } from '../../patterns/pop-page-nav';
@@ -84,12 +84,8 @@ export const WorkOrderList = ({
               onSelect(isSelected ? null : row);
             }}
           >
-            <span>
-              <Chip status="error" size="md">
-                {t.emergencyBadge}
-              </Chip>{' '}
-              {row.workOrderNo}
-            </span>
+            {/* ⛔ 「긴급」 표식을 달지 않는다 — 화면 이름이 이미 긴급 W/O 다(사용자 지시 2026-09-17). */}
+            <span>{row.workOrderNo}</span>
           </button>
         );
       },

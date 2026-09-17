@@ -49,12 +49,6 @@ const t = messages.packingWork;
  * ⭐ **확정이 「언제 일어난 일인가」를 싣는다**(C-8) — `businessDate`·`occurredAt`. 큐에 밀린
  * 확정이 자정을 넘겨 전송돼도 원장이 두 건으로 적재되지 않는다.
  */
-/**
- * 스펙 §3 도면이 유형 자리에 채워 둔 값(「▾ 박스」). 코드 사전 `CD-HANDLING-UNIT-TYPE` 의
- * `BOX` 다 — 서버 목록에 없으면 채우지 않는다.
- */
-const DEFAULT_UNIT_TYPE_CODE = 'BOX';
-
 export const PackingWorkScreen = () => {
   const titleId = useId();
   const entry = usePackingEntry();
@@ -104,27 +98,10 @@ export const PackingWorkScreen = () => {
   );
 
   /*
-   * ⭐ **유형은 「박스」로 채워 둔다**(스펙 §3 도면 「유형 [ ▾ 박스 ]」 · 사용자 지시
-   *   2026-09-10). 이 화면의 주 흐름이 박스 만들기이고(§8-3), 매번 같은 값을 손으로 고르게
-   *   하면 담기 직전에 「유형을 고르십시오」로 되돌아온다.
-   *
-   * ⛔ **값을 지어내지 않는다.** 목록은 고객이 늘리는 공통코드라(`registry` · G-31) 서버가
-   *   준 목록에 `BOX` 가 있을 때만 채운다. 없으면 비워 두고 사용자가 고른다.
-   * ⛔ **고른 뒤에는 덮지 않는다** — 비어 있을 때만 채운다.
+   * ⛔ **유형을 미리 채우지 않는다**(사용자 지시 2026-09-17). 이전에는 목록에 `BOX` 가 있으면
+   *   「박스」로 채워 두었으나(2026-09-10 지시), 작업자가 고르지 않은 유형으로 포장 단위가
+   *   만들어질 수 있어 늘 직접 고르게 한다.
    */
-  useEffect(() => {
-    if (draft.handlingUnitTypeCode !== null) return;
-
-    const box = (unitTypes.data ?? []).find((value) => value.code === DEFAULT_UNIT_TYPE_CODE);
-
-    if (box === undefined) return;
-
-    setDraft((current) =>
-      current.handlingUnitTypeCode === null
-        ? { ...current, handlingUnitTypeCode: box.code }
-        : current,
-    );
-  }, [unitTypes.data, draft.handlingUnitTypeCode]);
 
   const workerNo = entry.workerNo;
 
@@ -201,17 +178,20 @@ export const PackingWorkScreen = () => {
     setScanError(null);
   };
 
-  const scan = (code: string): void => {
+  /** 대상을 잡았는가를 돌려준다 — 잡았을 때만 스캔 칸이 수량 칸으로 포커스를 넘긴다. */
+  const scan = (code: string): boolean => {
     const found = findScannedLot(lots.data ?? [], code);
 
     if (found === null) {
       setSelectedLot(null);
       setScanError(t.scan.unknownLot);
 
-      return;
+      return false;
     }
 
     selectLot(found);
+
+    return true;
   };
 
   /*
@@ -346,8 +326,8 @@ export const PackingWorkScreen = () => {
     if (entryBlockedReason !== null) return entryBlockedReason;
     /*
      * ⛔ **유형 미선택·내용물 없음은 말로 적지 않는다.** 둘 다 **바로 위 화면이 이미 말하고
-     * 있다** — 유형 칸이 비어 있고(누르면 그 칸이 사유를 낸다) 내용물 표가 「내용물이 비어
-     * 있습니다」라고 적혀 있다. 액션바에서 되풀이하면 늘 떠 있는 문장이 되고, 정작 읽어야
+     * 있다** — 유형 칸이 비어 있고(누르면 그 칸이 사유를 낸다) 내용물 표가 「내용물이
+     * 없습니다」라고 적혀 있다. 액션바에서 되풀이하면 늘 떠 있는 문장이 되고, 정작 읽어야
      * 할 사유(확정 마침·진입 인자)의 무게를 깎는다(사용자 지적 2026-09-07).
      *
      * ⚠ **막는 것은 그대로다** — 스펙 §6 이 「포장 유형 미선택 · 내용물 0 → 확정 비활성」로
