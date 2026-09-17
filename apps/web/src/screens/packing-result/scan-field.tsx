@@ -12,6 +12,8 @@ export interface ScanFieldProps {
   isScanning: boolean;
   /** 아직 읽을 차례가 아닌가. 잠기면 그 사유를 함께 낸다 — 감추지 않는다. */
   lockReason?: string;
+  /** 잠기지 않았을 때 빈 칸 안에 흐리게 적을 안내. 잠긴 사유가 있으면 그쪽이 먼저다. */
+  hint?: string;
   onScan: (code: string) => void;
 }
 
@@ -25,7 +27,7 @@ export interface ScanFieldProps {
  * ⚠ 이 화면은 칸이 **둘**이다(납품라벨·생산LOT). 부품 하나를 두 번 세우되 **포커스는 각자
  * 자기 칸으로** 돌아간다 — 한 칸이 두 스캔을 받으면 어느 것을 읽는 중인지 사라진다.
  */
-export const ScanField = ({ label, isScanning, lockReason, onScan }: ScanFieldProps) => {
+export const ScanField = ({ label, isScanning, lockReason, hint, onScan }: ScanFieldProps) => {
   const [value, setValue] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
   const locked = lockReason !== undefined;
@@ -94,7 +96,7 @@ export const ScanField = ({ label, isScanning, lockReason, onScan }: ScanFieldPr
            *    구획이 한 줄 커지고(§3 이 이 구획에 88 만 준다), 무엇 때문에 못 치는지가 칸에서
            *    떨어져 선다. 잠긴 칸은 어차피 비어 있으므로 그 자리가 비어 있을 이유가 없다.
            */
-          placeholder={lockReason}
+          placeholder={lockReason ?? hint}
           onChange={(event) => {
             setValue(event.target.value);
           }}

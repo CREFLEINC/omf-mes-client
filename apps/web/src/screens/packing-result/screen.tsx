@@ -418,6 +418,12 @@ export const PackingResultScreen = () => {
           <ScanField
             label={t.scan.label.shipment}
             isScanning={shipmentScan.isPending}
+            /*
+             * ⭐ 출하가 정해지면 칸 안에 「선택 완료」를 적는다(사용자 지시 2026-09-17). 칸이
+             *    비어 있으면 출하번호를 한 번 더 넣어야 하는 줄로 읽혔다. 칸은 그대로 둔다 —
+             *    다른 출하를 스캔으로 고르는 길이다.
+             */
+            hint={shipmentId === null ? undefined : t.scan.shipmentChosen}
             onScan={scanShipment}
           />
           {/*

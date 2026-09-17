@@ -38,6 +38,8 @@ export const packingResult = {
     todayPickedShipments: '당일 피킹 완료 출하',
     /** 둘째 스캔은 첫째가 끝나야 열린다 — 왜 잠겼는지 적는다. */
     lotLocked: '출하 대상을 먼저 선택하세요',
+    /** 출하가 이미 정해졌다 — 빈 출하번호 칸을 또 채워야 하는 줄로 읽히지 않게 칸 안에 적는다(사용자 지시 2026-09-17). */
+    shipmentChosen: '선택 완료 · 다른 출하는 스캔',
   },
   match: {
     ok: '매칭 — 이 출하에 배분된 LOT 입니다',
