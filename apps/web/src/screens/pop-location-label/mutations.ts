@@ -8,7 +8,7 @@ import {
   resolveLabelRenditionFormat,
 } from '../../patterns/pop-label-rendition';
 import { runRequest } from '../../patterns/request';
-import { hasPrintBridge, sendToPrinter, type PrintAttempt } from './pop-print';
+import { hasPrintBridge, sendToPrinter, type PrintAttempt } from '../../patterns/pop-print';
 import { popLocationLabelKeys } from './queries';
 import type { DocumentIssue, DocumentIssueCreate } from './types';
 

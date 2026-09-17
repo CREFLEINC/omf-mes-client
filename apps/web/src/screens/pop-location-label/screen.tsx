@@ -8,7 +8,7 @@ import { popTouchClass } from '../../patterns/pop-touch';
 import { PopWorkerTag } from '../../patterns/pop-worker-tag';
 import { usePopLocationLabelEntry } from './entry-context';
 import { useLocationLabelWrite, usePrintFlow, type PrintReport } from './mutations';
-import { hasPrintBridge } from './pop-print';
+import { hasPrintBridge } from '../../patterns/pop-print';
 import { PrinterSelect } from './printer-select';
 import {
   useIssueSummary,
