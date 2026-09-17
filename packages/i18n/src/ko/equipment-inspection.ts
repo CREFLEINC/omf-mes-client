@@ -44,6 +44,10 @@ export const equipmentInspection = {
     /** 기준이 비어 있으면 자동 판정이 서지 않는다. 감추지 않고 육안으로 넘긴다. */
     noRange: '기준이 없습니다 — 육안으로 판정하세요',
     measured: '측정값',
+    /* 측정 항목을 차례로 적는다. 숫자판을 닫았다 다시 열지 않고 옆으로 옮긴다. */
+    previousItem: '앞 항목',
+    nextItem: '다음 항목',
+    measuredOf: (name: string) => `${name} 측정값`,
     ok: '합격',
     ng: 'NG',
     remarks: '항목 비고',

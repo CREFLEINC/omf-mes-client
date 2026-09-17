@@ -81,6 +81,9 @@ export const shopfloorReceipt = {
     received: '수령 수량',
     /** 읽어 주는 이름. 줄이 여럿이라 이름만으로 어느 줄인지 갈려야 한다. */
     receivedLabel: (item: string) => `${item} 수령 수량`,
+    /* 투입 라인을 차례로 적는다. 호퍼와는 다른 일이라 그쪽으로 넘어가지 않는다. */
+    previousLine: '앞 라인',
+    nextLine: '다음 라인',
     /* 대리키를 보이면 실물 라벨과 대조할 수 없다. 라벨에는 품목 코드와 LOT 번호가 찍혀 있다. */
     name: (item: string, lotNo: string) => (item === '' ? lotNo : `${item} · ${lotNo}`),
     /** 부호를 사람에게 묻지 않는다. 모자란 것만 차이로 부른다. */
@@ -132,6 +135,9 @@ export const shopfloorReceipt = {
     measured: '실측 잔량',
     /** 읽어 주는 이름. 칸이 여럿이라 어느 줄의 것인지 이름만으로 갈려야 한다. */
     measuredLabel: (name: string) => `${name} 실측 잔량`,
+    /* 호퍼를 차례로 잰다. 투입 라인과는 다른 일이라 그쪽으로 넘어가지 않는다. */
+    previousHopper: '앞 호퍼',
+    nextHopper: '다음 호퍼',
     /** 부호를 사람이 적게 하면 뒤집어 적는 순간 재고가 반대로 움직인다. 화면이 뺀다. */
     difference: (qty: string) => `차이 ${qty}`,
     problem: {

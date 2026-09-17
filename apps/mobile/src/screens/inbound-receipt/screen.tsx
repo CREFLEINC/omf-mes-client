@@ -1,4 +1,4 @@
-import { AlertBanner, Button, Card, Chip, NumberPad, Select, TextField } from '@crefle/web-ui';
+import { AlertBanner, Button, Card, Chip, Select, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
@@ -15,6 +15,7 @@ import { useWorkerSession } from '../../patterns/worker-session';
 import { useCodeValues } from '../../patterns/code-values';
 import { useAdvanceTo } from '../../patterns/advance-to';
 import { useBackStep } from '../../patterns/back-step';
+import { DockedNumberPad } from '../../patterns/docked-number-pad';
 import { playErrorTone } from '../../patterns/error-tone';
 import { FailureBanner } from '../../patterns/failure-banner';
 import { useLoadFailure } from '../../patterns/load-failure';
@@ -487,7 +488,7 @@ export const InboundReceiptScreen = () => {
   }
 
   return (
-    <div className="receipt">
+    <div className={keypadFor === null ? 'receipt' : 'receipt docked-pad-open'}>
       <section className="receipt__section">
         <h2>{t.scan.legend}</h2>
         <TextField
@@ -985,16 +986,10 @@ export const InboundReceiptScreen = () => {
                * (공유계약 D-4). 어느 칸에 들어가는지는 자리로 보인다. 늘 띄워 두면 그것이
                * 흐려지고, 칸마다 하나씩 두면 큰 판이 둘이 되어 아래 칸을 화면 밖으로 민다.
                */}
-              <div
-                className="receipt__keypad-group"
-                onBlur={(event) => {
-                  if (!event.currentTarget.contains(event.relatedTarget)) {
-                    setKeypadFor(null);
-                  }
-                }}
-              >
+              <div className="receipt__keypad-group">
                 <div className="receipt__qty-field">
                   <TextField
+                    id="receipt-received-qty"
                     label={required(t.qty.received)}
                     inputMode="none"
                     size="xl"
@@ -1008,20 +1003,11 @@ export const InboundReceiptScreen = () => {
                     }}
                     error={qtyMessage()}
                   />
-
-                  {keypadFor !== 'received' ? null : (
-                    <NumberPad
-                      value={draft.receivedQty}
-                      onChange={(value) => {
-                        patch({ receivedQty: value });
-                      }}
-                      allowDecimal
-                    />
-                  )}
                 </div>
 
                 <div className="receipt__qty-field">
                   <TextField
+                    id="receipt-package-count"
                     label={t.qty.packageCount}
                     inputMode="none"
                     size="xl"
@@ -1039,15 +1025,6 @@ export const InboundReceiptScreen = () => {
                         : t.qty.packageNotPositive
                     }
                   />
-
-                  {keypadFor !== 'package' ? null : (
-                    <NumberPad
-                      value={draft.packageCount}
-                      onChange={(value) => {
-                        patch({ packageCount: value });
-                      }}
-                    />
-                  )}
                 </div>
               </div>
 
@@ -1294,6 +1271,34 @@ export const InboundReceiptScreen = () => {
       )}
 
       <ScanReplaceDialog field={scanField} />
+
+      {keypadFor === null ? null : (
+        <DockedNumberPad
+          head={keypadFor === 'received' ? t.qty.received : t.qty.packageCount}
+          fieldId={keypadFor === 'received' ? 'receipt-received-qty' : 'receipt-package-count'}
+          value={keypadFor === 'received' ? draft.receivedQty : draft.packageCount}
+          onChange={(value) => {
+            patch(keypadFor === 'received' ? { receivedQty: value } : { packageCount: value });
+          }}
+          onClose={() => {
+            setKeypadFor(null);
+          }}
+          move={{
+            canPrevious: keypadFor === 'package',
+            canNext: keypadFor === 'received',
+            onPrevious: () => {
+              setKeypadFor('received');
+            },
+            onNext: () => {
+              setKeypadFor('package');
+            },
+            previousLabel: t.qty.previousField,
+            nextLabel: t.qty.nextField,
+          }}
+          /* 포장 수는 개수라 소수점 키를 두지 않는다. */
+          allowDecimal={keypadFor === 'received'}
+        />
+      )}
     </div>
   );
 };

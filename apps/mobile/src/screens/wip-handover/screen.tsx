@@ -1,9 +1,10 @@
-import { AlertBanner, Button, Card, Chip, NumberPad, Select, TextField } from '@crefle/web-ui';
+import { AlertBanner, Button, Card, Chip, Select, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router';
 
 import { useAdvanceTo } from '../../patterns/advance-to';
+import { DockedNumberPad } from '../../patterns/docked-number-pad';
 import { useBackStep } from '../../patterns/back-step';
 import { useCodeValues } from '../../patterns/code-values';
 import { playErrorTone } from '../../patterns/error-tone';
@@ -54,6 +55,8 @@ export const WipHandoverScreen = () => {
   const [scanned, setScanned] = useState<string | null>(null);
   const [toWorkOrderId, setToWorkOrderId] = useState<number | null>(null);
   const [qty, setQty] = useState('');
+  /* 숫자판은 칸을 눌렀을 때만 선다. 늘 띄우면 다음 공정 선택과 확정 단추를 덮는다. */
+  const [keypadOpen, setKeypadOpen] = useState(false);
   const [handed, setHanded] = useState<Handed[]>([]);
   const [scanSeq, setScanSeq] = useState(0);
   const nextSection = useRef<HTMLElement | null>(null);
@@ -208,8 +211,14 @@ export const WipHandoverScreen = () => {
       : t.qty.problem[trouble];
   };
 
+  /*
+   * 칸을 담은 구획이 사라지면 판도 함께 진다. 열린 채로 두면 다음 회차에 판이 계속 mount 라
+   * 기기 자판 내리기와 칸 끌어올리기가 다시 돌지 않는다.
+   */
+  const padOpen = keypadOpen && found !== null && problem === null;
+
   return (
-    <div className="handover">
+    <div className={padOpen ? 'handover docked-pad-open' : 'handover'}>
       {/* 하다가 끊긴 것은 다르다. 적은 것을 그대로 두고 저장만 막는다. */}
       {online ? null : <AlertBanner variant="warning" title={t.offline.duringWork} />}
 
@@ -317,9 +326,11 @@ export const WipHandoverScreen = () => {
               onChange={(event) => {
                 setQty(event.target.value);
               }}
+              onFocus={() => {
+                setKeypadOpen(true);
+              }}
               error={qtyMessage()}
             />
-            <NumberPad value={qty} onChange={setQty} max={completedQty ?? undefined} allowDecimal />
           </section>
 
           <section className="handover__section">
@@ -377,6 +388,19 @@ export const WipHandoverScreen = () => {
       </div>
 
       <ScanReplaceDialog field={scanField} />
+
+      {!padOpen ? null : (
+        <DockedNumberPad
+          head={t.qty.label}
+          value={qty}
+          onChange={setQty}
+          onClose={() => {
+            setKeypadOpen(false);
+          }}
+          max={completedQty ?? undefined}
+          allowDecimal
+        />
+      )}
     </div>
   );
 };

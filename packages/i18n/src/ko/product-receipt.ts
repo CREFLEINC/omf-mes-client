@@ -38,6 +38,9 @@ export const productReceipt = {
     loadFailed: '담긴 물건을 불러오지 못했습니다. 연결을 확인하세요.',
     name: (item: string, lotNo: string) => (item === '' ? lotNo : `${item} · ${lotNo}`),
     qtyLabel: (name: string) => `${name} 실물 수량`,
+    /* 구성 줄을 차례로 적는다. 숫자판을 닫았다 다시 열지 않고 옆으로 옮긴다. */
+    previousLine: '앞 라인',
+    nextLine: '다음 라인',
     expected: (qty: string) => `인식표 수량 ${qty}`,
     manufactured: (at: string) => `제조 ${at}`,
     expiry: (date: string) => `유효기간 ${date}`,

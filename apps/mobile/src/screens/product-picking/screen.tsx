@@ -1,9 +1,10 @@
 import { useQueryClient, type UseQueryResult } from '@tanstack/react-query';
-import { AlertBanner, Button, Card, Chip, NumberPad, TextField } from '@crefle/web-ui';
+import { AlertBanner, Button, Card, Chip, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useMemo, useRef, useState } from 'react';
 
 import { useBackStep } from '../../patterns/back-step';
+import { DockedNumberPad } from '../../patterns/docked-number-pad';
 import { LOT_HOLD_REASON, useCodeValues, type CodeValue } from '../../patterns/code-values';
 import { playErrorTone } from '../../patterns/error-tone';
 import { useScannedLot } from '../../patterns/lots';
@@ -193,6 +194,8 @@ export const ProductPickingScreen = () => {
   const [chosen, setChosen] = useState<{ requestId: number; lineId: number } | null>(null);
   const [lotId, setLotId] = useState<number | null>(null);
   const [qty, setQty] = useState('');
+  /* 숫자판은 칸을 눌렀을 때만 선다. 늘 띄우면 권장 LOT 목록과 확정 단추를 덮는다. */
+  const [keypadOpen, setKeypadOpen] = useState(false);
   const [missed, setMissed] = useState<string | null>(null);
   const [done, setDone] = useState(false);
   const [listView, setListView] = useState(false);
@@ -523,8 +526,15 @@ export const ProductPickingScreen = () => {
   /* 이름을 못 받았으면 식별자를 대신 보이지 않는다. 작업자가 대조할 수 없는 값이다. */
   const customerName = customers.data?.get(target.request.customerId) ?? null;
 
+  /*
+   * 여백 표시와 판이 같은 조건을 쓴다. 갈라 적으면 판만 지고 여백이 남아 화면 아래가 빈 채로
+   * 굳는다 - 바깥을 눌러 닫는 처리도 판과 함께 사라져 되돌릴 길이 없다.
+   */
+  const padOpen =
+    keypadOpen && selected !== null && lotProblem(selected, target.line, today) === null;
+
   return (
-    <div className="picking">
+    <div className={padOpen ? 'picking docked-pad-open' : 'picking'}>
       <section className="picking__section">
         <h2>{t.target.legend}</h2>
         <Card bordered>
@@ -667,14 +677,10 @@ export const ProductPickingScreen = () => {
             onChange={(event) => {
               setQty(event.target.value);
             }}
+            onFocus={() => {
+              setKeypadOpen(true);
+            }}
             error={qtyMessage()}
-          />
-          <NumberPad
-            value={qty}
-            onChange={setQty}
-            /* 남은 배정이 음수로 오면 상한이 음수가 된다. 서버 값이 그럴 수 있다. */
-            max={Math.max(0, Math.min(selected.availableQty, remainingAllocated(target.line)))}
-            allowDecimal
           />
           {worker === null ? <p className="picking__note">{t.noWorker}</p> : null}
           {pick.error === null || pick.error === undefined ? null : isConflict(
@@ -695,6 +701,20 @@ export const ProductPickingScreen = () => {
             {t.submit}
           </Button>
         </section>
+      )}
+
+      {!padOpen ? null : (
+        <DockedNumberPad
+          head={t.qty.label}
+          value={qty}
+          onChange={setQty}
+          onClose={() => {
+            setKeypadOpen(false);
+          }}
+          /* 남은 배정이 음수로 오면 상한이 음수가 된다. 서버 값이 그럴 수 있다. */
+          max={Math.max(0, Math.min(selected.availableQty, remainingAllocated(target.line)))}
+          allowDecimal
+        />
       )}
     </div>
   );

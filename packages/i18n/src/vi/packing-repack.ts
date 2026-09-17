@@ -44,6 +44,8 @@ export const packingRepack: Translated<typeof ko.packingRepack> = {
     legend: 'Thành phần mới',
     pooled: (qty: string) => `Tổng của kiện gốc ${qty}`,
     qtyLabel: (lotNo: string) => `Số lượng ${lotNo}`,
+    previousLine: 'Dòng trước',
+    nextLine: 'Dòng sau',
     lot: (item: string, lotNo: string) => (item === '' ? lotNo : `${item} · ${lotNo}`),
     merged: (before: string, added: string, after: string) =>
       `${before} cộng thêm ${added} thành ${after}`,

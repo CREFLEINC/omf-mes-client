@@ -3,7 +3,6 @@ import {
   Button,
   Card,
   Chip,
-  NumberPad,
   Table,
   Tabs,
   TextField,
@@ -14,6 +13,7 @@ import type { UseQueryResult } from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
 
 import { useAdvanceTo } from '../../patterns/advance-to';
+import { DockedNumberPad } from '../../patterns/docked-number-pad';
 import { useBackStep } from '../../patterns/back-step';
 import { playErrorTone } from '../../patterns/error-tone';
 import { useIdempotencyKey } from '../../patterns/idempotency';
@@ -99,6 +99,8 @@ export const RepairRoundtripScreen = () => {
   const [defectId, setDefectId] = useState<number | null>(null);
   const [executionId, setExecutionId] = useState<number | null>(null);
   const [qty, setQty] = useState('');
+  /* 숫자판은 칸을 눌렀을 때만 선다. 늘 띄우면 불량 목록과 확정 단추를 덮는다. */
+  const [keypadOpen, setKeypadOpen] = useState(false);
   const [typing, setTyping] = useState(false);
   const [result, setResult] = useState<RepairResult | null>(null);
   const [done, setDone] = useState<string | null>(null);
@@ -355,16 +357,10 @@ export const RepairRoundtripScreen = () => {
                   setTyping(true);
                   setQty(event.target.value);
                 }}
-                error={qtyMessage()}
-              />
-              <NumberPad
-                value={qty}
-                onChange={(next) => {
-                  setTyping(true);
-                  setQty(next);
+                onFocus={() => {
+                  setKeypadOpen(true);
                 }}
-                max={defect.defectQty}
-                allowDecimal
+                error={qtyMessage()}
               />
             </section>
           ) : (
@@ -511,8 +507,14 @@ export const RepairRoundtripScreen = () => {
     },
   ];
 
+  /*
+   * 여백 표시와 판이 같은 조건을 쓴다. 갈라 적으면 판만 지고 여백이 남아 화면 아래가 빈 채로
+   * 굳는다 - 바깥을 눌러 닫는 처리도 판과 함께 사라져 되돌릴 길이 없다.
+   */
+  const padOpen = keypadOpen && defect !== null && alreadyOpen === null;
+
   return (
-    <div className="repair">
+    <div className={padOpen ? 'repair docked-pad-open' : 'repair'}>
       {/* 하다가 끊긴 것은 다르다. 스캔한 것을 그대로 두고 저장만 막는다. */}
       {online ? null : <AlertBanner variant="warning" title={t.offline.duringWork} />}
       {/*
@@ -569,6 +571,22 @@ export const RepairRoundtripScreen = () => {
       </section>
 
       <ScanReplaceDialog field={scanField} />
+
+      {!padOpen ? null : (
+        <DockedNumberPad
+          head={t.qty.label}
+          value={qty}
+          onChange={(next) => {
+            setTyping(true);
+            setQty(next);
+          }}
+          onClose={() => {
+            setKeypadOpen(false);
+          }}
+          max={defect.defectQty}
+          allowDecimal
+        />
+      )}
     </div>
   );
 };

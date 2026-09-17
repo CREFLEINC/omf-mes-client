@@ -110,6 +110,8 @@ export const inboundReceipt: Translated<typeof ko.inboundReceipt> = {
     remaining: (qty: string, uom: string) => `Dự kiến còn lại ${qty} ${uom}`,
     received: 'Số lượng thực nhận',
     packageCount: 'Số kiện',
+    previousField: 'Ô trước',
+    nextField: 'Ô sau',
     manufactured: 'Ngày sản xuất',
     expiry: 'Hạn dùng',
     empty: 'Hãy ghi số lượng thực nhận',

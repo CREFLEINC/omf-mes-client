@@ -670,6 +670,25 @@ describe('제품 입고·적치 화면', () => {
     expect(await screen.findByDisplayValue('5008')).toBeTruthy();
   });
 
+  /*
+   * 옮긴 자리에 커서가 없으면 어디에 적히는지 화면이 말하지 않는다. 숫자판을 누르면 값은
+   * 들어가는데 테두리는 앞 줄에 남아 있어, 잘못 적고도 모른다.
+   */
+  it('다음 라인으로 옮기면 포커스도 그 칸으로 간다', async () => {
+    const user = userEvent.setup();
+    mount({ twoItems: true });
+    await openUnit(user);
+
+    const fields = await screen.findAllByLabelText(/실물 수량/);
+    await user.click(fields[0] as HTMLInputElement);
+
+    await user.click(screen.getByRole('button', { name: '다음 라인' }));
+
+    await waitFor(() => {
+      expect(document.activeElement).toBe(fields[1]);
+    });
+  });
+
   /* 기기를 허리에 매단 채 읽는다. 화면에만 적으면 통과한 줄 알고 다음 동작으로 넘어간다. */
   it('인식표를 찾지 못한 것을 소리로도 알린다', async () => {
     const user = userEvent.setup();

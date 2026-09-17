@@ -713,4 +713,33 @@ describe('포장 재구성 화면', () => {
     expect(screen.getByText('원 포장 합 180 EA')).toBeTruthy();
     expect(screen.getByText('원 포장 합 40 EA')).toBeTruthy();
   });
+
+  /*
+   * 옮긴 자리에 커서가 없으면 어디에 적히는지 화면이 말하지 않는다. 숫자판을 누르면 값은
+   * 들어가는데 테두리는 앞 줄에 남아 있어, 잘못 적고도 모른다.
+   */
+  it('다음 라인으로 옮기면 포커스도 그 칸으로 간다', async () => {
+    const user = userEvent.setup();
+    mount({
+      contents: {
+        10: [
+          content({ handlingUnitContentId: 1, itemId: 100, lotId: 1000, qty: 180 }),
+          content({ handlingUnitContentId: 2, itemId: 101, lotId: 1000, qty: 40 }),
+        ],
+      },
+    });
+    await screen.findByLabelText(/포장 스캔/);
+
+    scan(CARTON);
+
+    const first = await screen.findByLabelText(/FG-1001 · FLOT-2026-01000 수량/);
+    const second = screen.getByLabelText(/FG-2002 · FLOT-2026-01000 수량/);
+    await user.click(first);
+
+    await user.click(screen.getByRole('button', { name: '다음 라인' }));
+
+    await waitFor(() => {
+      expect(document.activeElement).toBe(second);
+    });
+  });
 });
