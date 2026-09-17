@@ -15,6 +15,13 @@
   align-items: center;
   gap: var(--space-2, 8px);
   padding: var(--space-3, 12px);
+  /*
+   * 홈·뒤로가기 버튼이 화면 안에 있는 단말에서는 그 띠가 화면 맨 아래를 차지한다. 비우지
+   * 않으면 맨 아랫줄 키가 그 아래로 들어가 눌리지 않는다.
+   */
+  padding-bottom: calc(
+    var(--space-3, 12px) + var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px))
+  );
   background: var(--surface, #fff);
   border-top: 1px solid var(--outline-variant, #d7d7dd);
 }
