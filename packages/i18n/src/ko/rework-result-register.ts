@@ -123,7 +123,8 @@ export const reworkResultRegister = {
   lotHint: '결과는 원 LOT에 남으며 새 LOT을 만들지 않습니다.',
   defectCode: '불량 코드',
   defectCodePlaceholder: '선택할 수 없음',
-  defectCodeReason: '불량 코드 저장 기준이 확정되기 전까지 선택할 수 없습니다.',
+  /** 불량 코드 라벨 옆 안내(사용자 지시 2026-09-17). */
+  defectCodeReason: '불량이 있을 시 불량 코드를 입력하세요.',
   reset: '다시 입력',
   save: '실적 저장',
   queued: '실적을 저장했습니다.',

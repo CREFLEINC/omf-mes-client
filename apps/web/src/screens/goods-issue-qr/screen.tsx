@@ -6,6 +6,7 @@ import { useEffect, useId, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router';
 
 import { useApiClient } from '../../patterns/api-context';
+import { lookupDisplayLabel } from '../../patterns/lookup-display';
 import { PopWorkerTag } from '../../patterns/pop-worker-tag';
 import { usePopIdentity } from '../../patterns/pop-identity';
 import { PopWorkerMissingBanner } from '../../patterns/pop-worker-missing-banner';
@@ -273,6 +274,24 @@ export const GoodsIssueQrScreen = () => {
   };
 
   const firstIssued = issued?.[0] ?? null;
+  /*
+   * 고른 라인마다 발행 대상 한 줄 — 회차는 방금 발행했으면 그 회차, 아니면 발행 현황의 최근 회차.
+   */
+  const selectedLines = rows
+    .filter((row) => selectedIds.includes(rowId(row.line)))
+    .map((row) => {
+      const record = issued?.find((one) => one.target.targetId === row.line.goodsIssueLineId);
+
+      return {
+        key: rowId(row.line),
+        lineNo: row.line.lineNo,
+        lotLabel: lookupDisplayLabel(lotNames, row.line.lotId),
+        seq:
+          record?.issueSeq ??
+          summary.data?.find((one) => one.targetId === row.line.goodsIssueLineId)?.lastIssueSeq ??
+          null,
+      };
+    });
   /**
    * 미리보기 — **방금 찍은 그 그림 그대로다.**
    *
@@ -346,7 +365,7 @@ export const GoodsIssueQrScreen = () => {
   }, [previewSrc]);
 
   return (
-    <main className="pop-shell pop-ui" aria-labelledby={titleId}>
+    <main className="pop-shell pop-ui pop-giqr-shell" aria-labelledby={titleId}>
       <header className="pop-header">
         <h1 id={titleId} className="pop-title">
           {t.title}
@@ -379,7 +398,7 @@ export const GoodsIssueQrScreen = () => {
       <PopWorkerMissingBanner workerNo={entry.workerNo} />
 
       {entry.goodsIssueId === null && (
-        <div className="banner-slot">
+        <div className="banner-slot pop-giqr-lookup">
           <AlertBanner variant="warning">{t.entry.missingIssue}</AlertBanner>
           <IssueLookupField
             onFound={(goodsIssueId) => {
@@ -438,31 +457,7 @@ export const GoodsIssueQrScreen = () => {
        *
        * 돌아가며 **목록을 다시 받는다** — 방금 찍은 라인이 대기에서 빠져 있어야 한다.
        */}
-      {entry.goodsIssueId !== null && (
-        <p className="pop-giqr-back">
-          <Button
-            variant="outlined"
-            size="md"
-            className="pop-touch-target"
-            onClick={() => {
-              setSelectedIds([]);
-              setIssued(null);
-              setSearchParams(
-                (previous) => {
-                  const next = new URLSearchParams(previous);
-                  next.delete('goodsIssueId');
-
-                  return next;
-                },
-                { replace: true },
-              );
-              void queryClient.invalidateQueries({ queryKey: goodsIssueQrKeys.all });
-            }}
-          >
-            {t.pending.back}
-          </Button>
-        </p>
-      )}
+      {/* ⭐ [← 대기 목록으로]는 「자재 출고 라인」 표제 줄 왼쪽에 선다(사용자 지시 2026-09-17). */}
 
       {/*
        * 403 만 화면의 말로 바꿔 낸다(스펙 §6 · F-7) — 공용 배너의 일반 문구는 「권한이 없습니다」
@@ -512,6 +507,30 @@ export const GoodsIssueQrScreen = () => {
 
           <div className="pop-panes">
             <LineListPane
+              headerStart={
+                <Button
+                  variant="outlined"
+                  size="md"
+                  className="pop-touch-target pop-giqr-back"
+                  onClick={() => {
+                    setSelectedIds([]);
+                    setIssued(null);
+                    setSearchParams(
+                      (previous) => {
+                        const next = new URLSearchParams(previous);
+                        next.delete('goodsIssueId');
+
+                        return next;
+                      },
+                      { replace: true },
+                    );
+                    void queryClient.invalidateQueries({ queryKey: goodsIssueQrKeys.all });
+                  }}
+                >
+                  <span aria-hidden="true">← </span>
+                  {t.pending.back}
+                </Button>
+              }
               rows={rows}
               selectedIds={selectedIds}
               onSelectionChange={(ids) => {
@@ -537,6 +556,7 @@ export const GoodsIssueQrScreen = () => {
             />
             <TargetPane
               selectedCount={selectedIds.length}
+              selectedLines={selectedLines}
               unit={unit}
               onUnitChange={(next) => {
                 setUnit(next);

@@ -34,7 +34,7 @@ export const downtimeRegister: Translated<typeof ko.downtimeRegister> = {
     time: 'Giờ',
     now: 'Bây giờ',
     stillOngoing: 'Vẫn đang diễn ra',
-    duration: (value: string): string => `Thời lượng ${value}`,
+    duration: (value: string): string => `Thời gian bắt đầu~kết thúc ${value}`,
     durationEmpty: common.reference.empty,
   },
   reason: {
@@ -42,7 +42,7 @@ export const downtimeRegister: Translated<typeof ko.downtimeRegister> = {
     detail: 'Lý do dừng máy',
     detailPlaceholder: 'Chọn lý do',
     remarks: 'Ghi chú',
-    remarksPlaceholder: 'Ghi những gì mã lý do không diễn tả được',
+    remarksPlaceholder: 'Nhập nội dung cần thiết ngoài mã lý do',
   },
   breakdown: {
     title: 'Sự cố liên kết',
@@ -68,8 +68,9 @@ export const downtimeRegister: Translated<typeof ko.downtimeRegister> = {
     retry: 'Thử lại',
     columns: {
       interval: 'Khoảng',
-      duration: 'Thời lượng',
+      duration: 'Thời gian bắt đầu~kết thúc',
       reason: 'Lý do',
+      remarks: 'Ghi chú',
     },
     localOnly: 'Chỉ phần nhập từ máy trạm này',
     localOnlyDescription: 'Chưa phản ánh phần nhập từ máy trạm khác và Web quản trị.',

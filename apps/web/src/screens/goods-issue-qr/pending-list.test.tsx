@@ -84,11 +84,14 @@ const routes = (options: Options): StubRoute[] => {
       },
     },
     {
-      match: (request) => /\/logistics\/goods-issues\/\d+\/lines$/.test(new URL(request.url).pathname),
+      match: (request) =>
+        /\/logistics\/goods-issues\/\d+\/lines$/.test(new URL(request.url).pathname),
       respond: (request) => {
         const goodsIssueId = Number(new URL(request.url).pathname.split('/').at(-2));
 
-        return jsonResponse({ items: [lineOf(goodsIssueId, goodsIssueId - 900, goodsIssueId - 880)] });
+        return jsonResponse({
+          items: [lineOf(goodsIssueId, goodsIssueId - 900, goodsIssueId - 880)],
+        });
       },
     },
     {
@@ -187,8 +190,7 @@ const routes = (options: Options): StubRoute[] => {
  * ⚠ 화면에는 전표 라인 표도 함께 서 있어(전표를 고르기 전에는 비어 있다) 범위를 좁히지 않으면
  *   **그 빈 표의 줄을 읽는다** — 처음에 그렇게 짜서 걸렸다.
  */
-const pendingPane = (): HTMLElement =>
-  screen.getByRole('region', { name: t.pending.sectionLabel });
+const pendingPane = (): HTMLElement => screen.getByRole('region', { name: t.pending.sectionLabel });
 
 const render = (options: Options = {}) =>
   renderWithProviders(<GoodsIssueQrScreen />, {
@@ -367,8 +369,12 @@ describe('QR 발행 대기 목록', () => {
     await waitFor(() => {
       expect(screen.queryByText(t.pending.sectionLabel)).toBeNull();
     });
-    /* 「1개 라인」이 선 것이 곧 그 라인이 선택된 것이다 — 체크박스는 전체선택까지 켜져 여럿이다. */
-    expect(await screen.findByText(t.target.selectedCount(1))).toBeTruthy();
+    /* 고른 그 라인 하나만 [선택]이 눌린 상태로 선다. */
+    await waitFor(() => {
+      expect(
+        screen.getAllByRole('button', { name: messages.goodsIssueQr.lines.pick, pressed: true }),
+      ).toHaveLength(1);
+    });
   });
 
   /*

@@ -76,11 +76,10 @@ export const runningChange = {
   },
 
   /**
-   * 설비를 멈추지 않는다는 것과 W/O 가 나뉘지 않는다는 것 — 둘 다 스펙 §3 도면이
+   * W/O 가 나뉘지 않는다는 것 — 스펙 §3 도면이
    * 화면에 상시 세워 둔 안내다.
    */
   notices: {
-    equipmentKeepsRunning: '설비를 멈추지 않습니다.',
     noWorkOrderSplit: 'W/O 는 나뉘지 않습니다. 생산LOT 만 BOM 스냅샷별로 갈립니다.',
   },
 
@@ -149,6 +148,8 @@ export const runningChange = {
     reasonFailed: '교체 사유를 불러오지 못했습니다. 사유 없이 등록됩니다.',
     reasonLoading: '교체 사유를 불러오는 중입니다.',
     submit: '교체 등록',
+    /** 수량 칸 오른쪽 단추(사용자 지시 2026-09-17). 교체 등록과 같은 일을 한다. */
+    qtySubmit: '투입',
     recorded: '교체를 담았습니다. 서버에 전송되면 미전송 건수가 줄어듭니다.',
     rejected: '서버가 이 교체를 받지 않았습니다.',
   },
@@ -159,15 +160,10 @@ export const runningChange = {
    * 단말에는 자판이 없다. 칸만 두면 값을 넣을 방법이 없다.
    */
   pad: {
-    title: '투입 수량',
     keypadLabel: '수량 키패드',
     backspace: '한 자 지움',
     clear: '지움',
     decimal: '소수점',
-    confirm: '확인',
-    cancel: '취소',
-    /** 아직 아무것도 안 눌렀다 — 빈 칸을 말없이 두면 「0 이 들어갔나」로 읽힌다. */
-    empty: '—',
   },
 
   /** 등록이 막힌 사유. 「확인할 수 없다」와 「권한이 없다」를 다르게 말한다. */
@@ -176,8 +172,6 @@ export const runningChange = {
     denied: '이 단말에서는 자재를 투입할 수 없습니다. 담당자에게 문의하세요.',
     unavailable: '교체 권한을 확인할 수 없습니다. 잠시 후 다시 시도하세요.',
     unidentified: '단말이 확인되지 않아 교체를 등록할 수 없습니다.',
-    workOrderMissing: '작업지시가 없어 교체를 등록할 수 없습니다.',
-    partMissing: '신규 부품 LOT 을 읽어야 등록할 수 있습니다.',
     targetMissing: '교체 대상을 골라야 등록할 수 있습니다.',
   },
 

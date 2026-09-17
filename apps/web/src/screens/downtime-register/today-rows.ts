@@ -21,6 +21,8 @@ export interface TodayRow {
   /** 서버가 낸 길이. 아직 안 나갔으면 `null`이고, 그때는 화면이 구간에서 잰다. */
   durationMinutes: number | null;
   reasonLabel: string;
+  /** 메모(사용자 지시 2026-09-17 — 오늘 목록에 메모 열). 없으면 `null`. */
+  remarks: string | null;
 }
 
 /**
@@ -49,6 +51,7 @@ export const fromDowntimeView = (downtime: DowntimeView, names: ReasonNames): To
   endedAt: downtime.endedAt,
   durationMinutes: downtime.durationMinutes,
   reasonLabel: toReasonLabel(downtime.reasonCode, downtime.reasonName, names),
+  remarks: downtime.remarks,
 });
 
 export const fromAccepted = (downtime: Downtime, names: ReasonNames): TodayRow =>
@@ -68,6 +71,7 @@ export const fromPending = (
    */
   durationMinutes: null,
   reasonLabel: toReasonLabel(body.reasonCode, null, names),
+  remarks: body.remarks ?? null,
 });
 
 /** 같은 날에 시작한 것만. 날짜 글자는 지역 시각 기준(`yyyy-mm-dd`)이다. */

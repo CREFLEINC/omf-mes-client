@@ -1,4 +1,4 @@
-import { AlertBanner, Button, Card, Skeleton } from '@crefle/web-ui';
+import { Button, Card, Skeleton } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 
 import { elapsedMinutes, toDateTimeLabel, toDurationLabel } from './formatting';
@@ -67,15 +67,8 @@ export const SessionPanel = ({
     );
   }
 
-  if (session === null) {
-    return (
-      <div className="banner-slot">
-        <AlertBanner variant="warning" title={t.session.sectionLabel}>
-          {t.session.none}
-        </AlertBanner>
-      </div>
-    );
-  }
+  /* ⭐ 세션이 없다는 띠는 화면 맨 위(`screen.tsx`)가 말한다(사용자 지시 2026-09-17). */
+  if (session === null) return null;
 
   const startedLabel = toDateTimeLabel(session.startedAt) ?? session.startedAt;
   const minutes = elapsedMinutes(session.startedAt, now);

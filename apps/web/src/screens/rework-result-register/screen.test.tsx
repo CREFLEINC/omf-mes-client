@@ -113,6 +113,13 @@ const stubFetch: StubFetch = async (request) => {
     });
   }
 
+  if (url.pathname === '/quality/defect-codes') {
+    return jsonResponse({
+      items: [{ defectCodeId: 31, defectCode: 'D-SCR', defectName: '스크래치' }],
+      page: { page: 1, size: 100, total: 1 },
+    });
+  }
+
   throw new Error(`스텁에 없는 요청입니다: ${url.pathname}`);
 };
 
@@ -447,7 +454,7 @@ describe('ReworkResultRegisterScreen — 스펙 §3 의 구획', () => {
 
     const field = await screen.findByLabelText(t.defectCode);
 
-    expect(field).toBeDisabled();
+    expect(field).toBeInTheDocument();
   });
 
   /*
@@ -518,6 +525,33 @@ describe('ReworkResultRegisterScreen — 스펙 §3 의 구획', () => {
    * ⛔ **어느 칸에 넣을지 모르면 누를 것이 없다.** 고르지 않았는데 키가 살아 있으면 그 숫자가
    *    어디로 갔는지 알 수 없다.
    */
+  /* ⭐ 키보드로도 친다(사용자 지시 2026-09-17) — 숫자만 남고, 개 단위에는 소수점이 들어가지 않는다. */
+  it('키보드로 친 수량이 칸에 들어간다', async () => {
+    const { user } = renderScreen();
+    await pickWorkOrder(user);
+
+    await user.type(await screen.findByLabelText(t.quantities.goodQty), '01a2.5');
+
+    expect(screen.getByLabelText(t.quantities.goodQty)).toHaveValue('125');
+  });
+
+  /* ⭐ 불량이 있으면 불량 코드가 필수다(스펙 §5-3 · 사용자 지시 2026-09-17). */
+  it('불량이 있으면 불량 코드를 골라야 저장이 열린다', async () => {
+    const { user } = renderScreen();
+    await pickWorkOrder(user);
+
+    await user.type(await screen.findByLabelText(t.quantities.defectQty), '3');
+
+    expect(screen.getByRole('button', { name: t.save })).toBeDisabled();
+
+    await user.click(screen.getByLabelText(t.defectCode));
+    await user.click(await screen.findByRole('option', { name: /D-SCR/ }));
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: t.save })).toBeEnabled();
+    });
+  });
+
   it('칸을 고르기 전에는 키가 눌리지 않는다', async () => {
     const { user } = renderScreen();
     await pickWorkOrder(user);

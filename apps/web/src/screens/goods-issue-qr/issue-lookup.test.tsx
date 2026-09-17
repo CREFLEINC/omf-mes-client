@@ -82,7 +82,9 @@ describe('출고번호로 전표 불러오기', () => {
    */
   it('비슷한 번호만 있으면 고르지 않고 못 찾았다고 말한다', async () => {
     const user = userEvent.setup();
-    const found = render(listRoute([issue(7002, `${ISSUE_NO}-9`), issue(7003, 'GI-20260916-0002')]));
+    const found = render(
+      listRoute([issue(7002, `${ISSUE_NO}-9`), issue(7003, 'GI-20260916-0002')]),
+    );
 
     await user.type(screen.getByLabelText(t.label), `${ISSUE_NO}{Enter}`);
 

@@ -187,6 +187,13 @@ export const PackingLabelReprintScreen = () => {
         </div>
       </header>
 
+      {/* ⭐ 포장 단위를 못 받았다는 말은 본문 맨 위 띠(아이콘+문구)로 선다(사용자 지시 2026-09-17). */}
+      {entry.handlingUnitId === null && (
+        <div className="banner-slot">
+          <AlertBanner variant="warning">{t.entry.missingHandlingUnit}</AlertBanner>
+        </div>
+      )}
+
       {/* ⭐ 사번 미확인은 모든 POP 화면이 같은 맨 위 띠로 말한다(사용자 지시 2026-09-17). */}
       <PopWorkerMissingBanner workerNo={workerNo} />
 
@@ -275,6 +282,7 @@ export const PackingLabelReprintScreen = () => {
             reasonRequired={needsReason(selected)}
             reasonServerError={reissue.fieldErrors.reissueReasonCode ?? null}
             blockedReason={blockedReason}
+            showBlockedReason={entry.handlingUnitId !== null}
             workerMissing={workerNo === null}
             isSubmitting={reissue.isSaving || printRunner.state.phase === 'sending'}
             onSubmit={submit}

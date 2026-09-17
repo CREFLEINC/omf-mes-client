@@ -74,7 +74,7 @@ export const reworkResultRegister: Translated<typeof ko.reworkResultRegister> = 
   lotHint: 'Kết quả vẫn ở LOT gốc, không tạo LOT mới.',
   defectCode: 'Mã lỗi',
   defectCodePlaceholder: 'Không chọn được',
-  defectCodeReason: 'Chỉ chọn được sau khi tiêu chuẩn lưu mã lỗi được xác nhận.',
+  defectCodeReason: 'Nếu có lỗi, hãy nhập mã lỗi.',
   reset: 'Nhập lại',
   save: 'Lưu kết quả',
   queued: 'Đã lưu kết quả.',

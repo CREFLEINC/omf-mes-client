@@ -210,9 +210,8 @@ export const WorkHoldRegisterScreen = () => {
        */}
       {workOrderId === null && (
         <div className="banner-slot">
-          <AlertBanner variant="warning" title={t.title}>
-            {t.entry.missingWorkOrder}
-          </AlertBanner>
+          {/* ⭐ 제목(「작업 중단」) 없이 문구만 선다(사용자 지시 2026-09-17). */}
+          <AlertBanner variant="warning">{t.entry.missingWorkOrder}</AlertBanner>
         </div>
       )}
 
@@ -259,6 +258,24 @@ export const WorkHoldRegisterScreen = () => {
           onRetry={outbox.clearRejection}
         />
       )}
+
+      {/*
+       * ⭐ **「현재 세션 없음」은 다른 안내 띠와 같이 본문 맨 위 전체 폭에 선다**(사용자 지시
+       *    2026-09-17). 왼쪽 단 안에 두었더니 이력만 아래로 밀려 오른쪽 [중단 등록]과 머리가
+       *    어긋났다. 조회 실패·조회 중에는 「없다」가 아니므로 세우지 않는다.
+       * ⭐ 작업지시를 못 받았으면 세우지 않는다 — 세션은 작업지시를 고른 뒤의 이야기라 위
+       *    「작업지시를 고르라」는 띠 하나만 남긴다(사용자 지시 2026-09-17).
+       */}
+      {workOrderId !== null &&
+        !session.isError &&
+        !session.isPending &&
+        session.session === null && (
+          <div className="banner-slot">
+            <AlertBanner variant="warning" title={t.session.sectionLabel}>
+              {t.session.none}
+            </AlertBanner>
+          </div>
+        )}
 
       <div className="pop-panes">
         <div className="pop-hold-column">

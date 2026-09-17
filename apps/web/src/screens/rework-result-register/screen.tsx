@@ -1,4 +1,4 @@
-import { AlertBanner, Button, Card, Progress, Table, TextField } from '@crefle/web-ui';
+import { AlertBanner, Button, Card, Icon, Progress, Table, TextField } from '@crefle/web-ui';
 import { Chip } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { NumericKeypad } from '@omf-mes/ui';
@@ -15,6 +15,7 @@ import { drainReworkResults, enqueueReworkResult, pendingReworkResultCount } fro
 import {
   useDispositionDecisions,
   useResultGate,
+  useReworkDefectCodes,
   useReworkSource,
   useReworkSourceLot,
   useReworkWorkOrders,
@@ -23,9 +24,11 @@ import {
   EMPTY_QUANTITIES,
   quantityTotal,
   quantityVerdict,
+  readQuantity,
   reworkDispositionProgress,
   decidedOnText,
   toProductionResult,
+  toTypedQuantity,
   type QuantityDrafts,
   type QuantityKey,
 } from './result';
@@ -51,6 +54,9 @@ export const ReworkResultRegisterScreen = () => {
    */
   const [activeKey, setActiveKey] = useState<QuantityKey | null>(null);
   const [drafts, setDrafts] = useState<QuantityDrafts>(EMPTY_QUANTITIES);
+  /* 고른 불량 코드(`defectCodeId` 문자열). 비어 있으면 `null`. */
+  const [defectCode, setDefectCode] = useState<string | null>(null);
+  const defectCodes = useReworkDefectCodes();
   const [queued, setQueued] = useState(false);
   const [queueError, setQueueError] = useState(false);
   const [rejected, setRejected] = useState(false);
@@ -106,12 +112,15 @@ export const ReworkResultRegisterScreen = () => {
         : !gate.allowed
           ? t.gateDenied
           : null;
+  const defectCodeMissing = readQuantity(drafts.defectQty) > 0 && defectCode === null;
   const canSave =
     selected !== null &&
     source.isSuccess &&
     dispositions.isSuccess &&
     progress.remaining > 0 &&
     (verdict === 'partial' || verdict === 'complete') &&
+    /* ⭐ 불량이 있으면 불량 코드가 필수다(스펙 §5-3 · 사용자 지시 2026-09-17). */
+    !defectCodeMissing &&
     gateReason === null &&
     /* 사번이 없어 막힌 사유는 화면 맨 위 공용 띠가 말한다(사용자 지시 2026-09-17). */
     identity.workerNo !== null &&
@@ -161,6 +170,7 @@ export const ReworkResultRegisterScreen = () => {
 
   const reset = () => {
     setDrafts(EMPTY_QUANTITIES);
+    setDefectCode(null);
     setQueued(false);
     setQueueError(false);
     setRejected(false);
@@ -237,6 +247,8 @@ export const ReworkResultRegisterScreen = () => {
                     key: 'workOrder',
                     header: t.columns.workOrder,
                     align: 'center',
+                    /* ⭐ 열 폭: 작업지시는 줄이고 품목·수량을 넓힌다(사용자 지시 2026-09-17). */
+                    width: '40%',
                     render: (row) => (
                       <button
                         type="button"
@@ -252,14 +264,22 @@ export const ReworkResultRegisterScreen = () => {
                     key: 'item',
                     header: t.columns.item,
                     align: 'center',
+                    width: '35%',
                     render: (row) => row.itemCode ?? `#${row.itemId}`,
                   },
                   {
                     key: 'quantity',
                     header: t.columns.quantity,
                     align: 'center',
-                    width: '140px',
-                    render: (row) => row.orderQty,
+                    width: '25%',
+                    /* ⭐ 수량에 단위를 붙인다(사용자 지시 2026-09-17). 이름을 모르면 숫자만 둔다. */
+                    render: (row) => {
+                      const uomLabel = uom.labelOf(row.uomId);
+
+                      return uomLabel === null
+                        ? String(row.orderQty)
+                        : `${String(row.orderQty)} ${uomLabel}`;
+                    },
                   },
                 ]}
               />
@@ -394,6 +414,16 @@ export const ReworkResultRegisterScreen = () => {
                */}
               <h2 className="pane-title">{t.quantities.title}</h2>
 
+              {/*
+               * ⭐ **스펙 §3 ②가 이 안내를 구획 «안»에 둔다** — 「재작업 후 다시 불량이면
+               *    「불량」입니다」. §7 이 안내를 `AlertBanner`(info)로 지정하므로 보조
+               *    문구(`field-note`)가 아니라 배너로 세운다. ⛔ 결과 LOT 이야기는 여기서
+               *    빼고 ③ 구획이 맡는다 — 스펙이 그 둘을 다른 구획으로 갈랐다.
+               * ⭐ **구획 제목 바로 아래, 네 칸 위에 선다**(사용자 지시 2026-09-17). 칸 아래에
+               *    두었더니 다 넣은 «뒤»에 읽히고 바로 밑 불량 코드의 설명처럼 보였다.
+               */}
+              <AlertBanner variant="info">{t.reworkHint}</AlertBanner>
+
               <div className="rework-result-input">
                 <div className="rework-result-fields">
                   {/*
@@ -413,22 +443,27 @@ export const ReworkResultRegisterScreen = () => {
                         label={t.quantities[key]}
                         value={drafts[key]}
                         inputMode="decimal"
-                        readOnly
                         fullWidth
                         /*
                          * 단위를 칸 «안» 오른쪽에 붙인다 — 전례 `P-02-04` 의 「양품수량 [ 120 ] EA」.
                          * ⛔ 이름을 못 받으면 아무것도 붙이지 않는다(숫자 식별자를 내지 않는다).
                          */
                         trailingIcon={uom.labelOf(selected.uomId) ?? undefined}
-                        /*
-                         * 칸을 누르면 키패드 창이 열린다 — 칸 자체는 읽기 전용이라 단말의
-                         * 운영체제 키보드가 뜨지 않는다(POP 은 그것을 쓸 수 없다).
-                         *
-                         * ⛔ **`onFocus` 로 열지 않는다.** 창을 닫으면 포커스가 이 칸으로
-                         *    돌아오는데, 그때 `onFocus` 가 다시 열어 **닫히지 않는다**
-                         *    (실측 — 확인·취소 어느 쪽을 눌러도 창이 그대로였다. 사용자 지적).
-                         */
+                        /* 칸을 누르면 오른쪽 키패드의 대상이 이 칸이 된다. */
                         onClick={() => openKeypad(key)}
+                        /*
+                         * ⭐ **키보드로도 친다**(사용자 지시 2026-09-17). 칸을 잠그지 않고, 친 값은
+                         *    키패드와 같은 규칙으로 거른다 — 숫자만, 소수점은 단위가 허락할 때 하나만.
+                         *    포커스가 오면 키패드의 대상도 이 칸이 된다(팝업이 아니라 다시 열릴 창이 없다).
+                         */
+                        onFocus={() => openKeypad(key)}
+                        onChange={(event) => {
+                          const value = toTypedQuantity(
+                            event.target.value,
+                            uom.decimalScaleOf(selected.uomId) > 0,
+                          );
+                          setDrafts((current) => ({ ...current, [key]: value }));
+                        }}
                         onKeyDown={(event) => {
                           if (event.key === 'Enter' || event.key === ' ') {
                             event.preventDefault();
@@ -487,6 +522,8 @@ export const ReworkResultRegisterScreen = () => {
                   decimalLabel={t.quantities.decimalKey}
                   keySize="2xl"
                   backspaceLabel={t.quantities.backspace}
+                  /* 한 자 지움은 지움 키 모양으로 — 생산 포장 키패드와 같다(사용자 지시 2026-09-17). */
+                  backspaceGlyph={<Icon name="backspace" size={24} />}
                   clearLabel={t.quantities.clearGlyph}
                   onChange={(value) => {
                     if (activeKey === null) return;
@@ -495,14 +532,6 @@ export const ReworkResultRegisterScreen = () => {
                   }}
                 />
               </div>
-
-              {/*
-               * ⭐ **스펙 §3 ②가 이 안내를 구획 «안»에 둔다** — 「재작업 후 다시 불량이면
-               *    「불량」입니다」. §7 이 안내를 `AlertBanner`(info)로 지정하므로 보조
-               *    문구(`field-note`)가 아니라 배너로 세운다. ⛔ 결과 LOT 이야기는 여기서
-               *    빼고 ③ 구획이 맡는다 — 스펙이 그 둘을 다른 구획으로 갈랐다.
-               */}
-              <AlertBanner variant="info">{t.reworkHint}</AlertBanner>
 
               {/*
                * ⛔ **라벨을 칸에 «이어» 둔다.** 앞선 판은 맨 `<label>` 이라 칸과 연결이
@@ -524,9 +553,14 @@ export const ReworkResultRegisterScreen = () => {
               <Select
                 id={defectCodeId}
                 size="xl"
-                options={[]}
+                options={(defectCodes.data?.items ?? []).map((code) => ({
+                  value: String(code.defectCodeId),
+                  label: `${code.defectCode} ${code.defectName}`,
+                }))}
+                value={defectCode}
+                onChange={setDefectCode}
                 placeholder={t.defectCodePlaceholder}
-                disabled
+                disabled={(defectCodes.data?.items ?? []).length === 0}
               />
             </Card.Body>
           </Card>

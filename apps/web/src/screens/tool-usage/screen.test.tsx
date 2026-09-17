@@ -120,6 +120,12 @@ const scanTool = async (user: ReturnType<typeof userEvent.setup>, code = TOOL_CO
   await user.type(screen.getByLabelText(t.scan.inputLabel), `${code}{Enter}`);
 };
 
+/* ⭐ [확인]으로 숫자를 확정해야 [실적 저장]이 열린다(사용자 지시 2026-09-17). 이미 확정했으면 그대로 둔다. */
+const confirmShot = async (user: ReturnType<typeof userEvent.setup>) => {
+  const confirm = await screen.findByRole('button', { name: t.actions.confirm });
+  if (!(confirm as HTMLButtonElement).disabled) await user.click(confirm);
+};
+
 /** ⭐ 사용자 지시 2026-09-14 — 도면 머리줄 「W/O · 설비」. 설비는 단말이 준다. */
 describe('ToolUsageScreen — 안내', () => {
   /* ⭐ 누계 안내는 파란 라벨(칩)로 선다 — 구획 카드가 아니다(사용자 지시 2026-09-15). */
@@ -234,19 +240,15 @@ describe('ToolUsageScreen — 툴 스캔', () => {
     expect(screen.queryByText(TOOL_CODE)).not.toBeInTheDocument();
   });
 
-  it('「툴 다시 고르기」는 찍은 코드와 고른 툴을 함께 버린다 — 툴을 바꾸는 유일한 길이다', async () => {
+  /* ⛔ [툴 다시 고르기]를 두지 않는다(사용자 지시 2026-09-17) — 다른 툴은 다시 스캔하거나 [직접 입력]으로 바꾼다. */
+  it('고른 툴 줄에 「툴 다시 고르기」가 없다', async () => {
     const user = userEvent.setup();
     renderScreen();
 
     await scanTool(user);
-    await user.type(await screen.findByLabelText(t.shot.inputLabel), '1250');
-    await user.click(screen.getByRole('button', { name: t.scan.clear }));
 
-    expect(screen.queryByText(TOOL_CODE)).not.toBeInTheDocument();
-    expect(screen.getByLabelText(t.scan.inputLabel)).toHaveValue('');
-    expect(screen.getByRole('button', { name: t.actions.save })).toBeDisabled();
-    /* 스캔 칸이 비어 스스로 「금형 QR 을 읽혀주세요」라고 말한다 — 액션바가 되풀이하지 않는다. */
-    expect(screen.queryByText(t.actionReasons.noShot)).not.toBeInTheDocument();
+    expect(await screen.findByText(TOOL_CODE)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '툴 다시 고르기' })).not.toBeInTheDocument();
   });
 
   it('「다시 입력」은 친 값만 지우고 고른 툴은 남긴다 — 오타 하나에 재스캔시키지 않는다', async () => {
@@ -334,6 +336,7 @@ describe('ToolUsageScreen — 누계 구획', () => {
     expect(
       await screen.findByText(`-2,300 ${t.shot.unit}${t.cumulative.overSuffix}`),
     ).toBeInTheDocument();
+    await confirmShot(user);
     expect(screen.getByRole('button', { name: t.actions.save })).toBeEnabled();
   });
 });
@@ -375,9 +378,18 @@ describe('ToolUsageScreen — 키패드', () => {
    * 일어나지 않아 「눌리는데 안 되는 키」가 된다(사용자 지적). 작업실적 등록·인식표 발행과
    * 같은 부품을 써서 POP 안에서 같게 동작한다.
    */
+  /* ⭐ 순서는 금형 QR → 수량이다(사용자 지시 2026-09-17). */
+  it('금형을 읽기 전에는 타발수 칸과 키패드가 잠겨 있다', async () => {
+    renderScreen();
+
+    expect(await screen.findByLabelText(t.shot.inputLabel)).toBeDisabled();
+    expect(screen.getByRole('button', { name: '7' })).toBeDisabled();
+  });
+
   it('타발수가 비면 지움 키 둘이 잠기고, 값이 들어오면 열린다', async () => {
     const user = userEvent.setup();
     renderScreen();
+    await scanTool(user);
 
     const clearKey = () => screen.getByRole('button', { name: t.shot.clearGlyph });
     const backspaceKey = () => screen.getByRole('button', { name: t.shot.backspace });
@@ -415,6 +427,7 @@ describe('ToolUsageScreen — 저장', () => {
 
     await scanTool(user);
     await user.type(await screen.findByLabelText(t.shot.inputLabel), '1250');
+    await confirmShot(user);
     await user.click(screen.getByRole('button', { name: t.actions.save }));
 
     await waitFor(() => {
@@ -439,6 +452,7 @@ describe('ToolUsageScreen — 저장', () => {
 
     await scanTool(user);
     await user.type(await screen.findByLabelText(t.shot.inputLabel), '1250');
+    await confirmShot(user);
     await user.click(screen.getByRole('button', { name: t.actions.save }));
 
     await waitFor(() => {
@@ -456,12 +470,14 @@ describe('ToolUsageScreen — 저장', () => {
 
     await scanTool(user);
     await user.type(await screen.findByLabelText(t.shot.inputLabel), '1250');
+    await confirmShot(user);
     await user.click(screen.getByRole('button', { name: t.actions.save }));
 
     await waitFor(() => {
       expect(writes).toHaveLength(1);
     });
 
+    await confirmShot(user);
     await user.click(screen.getByRole('button', { name: t.actions.save }));
 
     await waitFor(() => {
@@ -479,6 +495,7 @@ describe('ToolUsageScreen — 저장', () => {
 
     await scanTool(user);
     await user.type(await screen.findByLabelText(t.shot.inputLabel), '1250');
+    await confirmShot(user);
     await user.click(screen.getByRole('button', { name: t.actions.save }));
 
     expect(await screen.findByText(t.save.successTitle)).toBeInTheDocument();
@@ -487,23 +504,20 @@ describe('ToolUsageScreen — 저장', () => {
     });
   });
 
-  it('저장 뒤 ③ 누계가 «서버가 더한 값»으로 바뀐다 — 배너와 표가 다른 말을 하면 안 된다', async () => {
+  /* ⭐ 저장되면 금형 QR 칸과 고른 금형 안내를 비운다(사용자 지시 2026-09-17) — 다음 실적은 QR 부터다. */
+  it('저장 뒤 금형 QR 칸과 고른 금형 안내가 비워진다', async () => {
     const user = userEvent.setup();
     renderScreen();
 
     await scanTool(user);
     await user.type(await screen.findByLabelText(t.shot.inputLabel), '1250');
+    await confirmShot(user);
     await user.click(screen.getByRole('button', { name: t.actions.save }));
 
     expect(await screen.findByText(t.save.successTitle)).toBeInTheDocument();
-
-    /* 조회 응답은 0 을 그대로 돌려주지만, 서버가 방금 알려 준 누계가 더 새롭다. */
-    const rows = [...document.querySelectorAll('.pop-figures > div')].map(
-      (row) => row.textContent ?? '',
-    );
-    const currentRow = rows.find((row) => row.startsWith(t.cumulative.current));
-
-    expect(currentRow).toContain('413,550');
+    expect(screen.getByLabelText(t.scan.inputLabel)).toHaveValue('');
+    expect(screen.queryByText(TOOL_CODE)).not.toBeInTheDocument();
+    expect(screen.getByLabelText(t.shot.inputLabel)).toBeDisabled();
   });
 
   it('단말 권한에 막히면 그 사정을 말하고 다시 시도를 권하지 않는다', async () => {
@@ -512,6 +526,7 @@ describe('ToolUsageScreen — 저장', () => {
 
     await scanTool(user);
     await user.type(await screen.findByLabelText(t.shot.inputLabel), '1250');
+    await confirmShot(user);
     await user.click(screen.getByRole('button', { name: t.actions.save }));
 
     expect(await screen.findByText(t.save.forbidden)).toBeInTheDocument();
@@ -524,6 +539,7 @@ describe('ToolUsageScreen — 저장', () => {
 
     await scanTool(user);
     await user.type(await screen.findByLabelText(t.shot.inputLabel), '1250');
+    await confirmShot(user);
     await user.click(screen.getByRole('button', { name: t.actions.save }));
 
     expect(await screen.findByText('이미 마감된 작업지시입니다')).toBeInTheDocument();
@@ -545,6 +561,7 @@ describe('ToolUsageScreen — 저장', () => {
     await scanTool(user);
     const field = await screen.findByLabelText(t.shot.inputLabel);
     await user.type(field, '1250');
+    await confirmShot(user);
     await user.click(screen.getByRole('button', { name: t.actions.save }));
 
     expect(await screen.findByText('타발수가 너무 큽니다')).toBeInTheDocument();
@@ -565,6 +582,7 @@ describe('ToolUsageScreen — 저장', () => {
 
     await scanTool(user);
     await user.type(await screen.findByLabelText(t.shot.inputLabel), '1250');
+    await confirmShot(user);
     await user.click(screen.getByRole('button', { name: t.actions.save }));
 
     expect(await screen.findByText(t.save.rejected)).toBeInTheDocument();
@@ -578,6 +596,7 @@ describe('ToolUsageScreen — 저장', () => {
 
     await scanTool(user);
     await user.type(await screen.findByLabelText(t.shot.inputLabel), '1250');
+    await confirmShot(user);
     await user.click(screen.getByRole('button', { name: t.actions.save }));
 
     expect(await screen.findByText('값이 범위를 벗어났습니다')).toBeInTheDocument();
@@ -590,6 +609,7 @@ describe('ToolUsageScreen — 저장', () => {
 
     await scanTool(user);
     await user.type(await screen.findByLabelText(t.shot.inputLabel), '1250');
+    await confirmShot(user);
     await user.click(screen.getByRole('button', { name: t.actions.save }));
 
     expect(await screen.findByText(t.save.rejected)).toBeInTheDocument();
@@ -606,6 +626,7 @@ describe('ToolUsageScreen — 저장', () => {
 
     await scanTool(user);
     await user.type(await screen.findByLabelText(t.shot.inputLabel), '1250');
+    await confirmShot(user);
     await user.click(screen.getByRole('button', { name: t.actions.save }));
     expect(await screen.findByText('이미 마감된 작업지시입니다')).toBeInTheDocument();
 
@@ -659,6 +680,7 @@ describe('ToolUsageScreen — 환산', () => {
     await scanTool(user);
     await user.click(await screen.findByRole('switch', { name: t.shot.convertedLabel }));
     await user.type(await screen.findByLabelText(t.shot.baseQtyLabel), '500');
+    await confirmShot(user);
     await user.click(screen.getByRole('button', { name: t.actions.save }));
 
     await waitFor(() => {

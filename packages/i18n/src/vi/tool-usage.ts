@@ -17,12 +17,11 @@ export const toolUsage: Translated<typeof ko.toolUsage> = {
     sectionLabel: 'Quét công cụ',
     inputLabel: 'QR khuôn',
     placeholder: 'Hãy quét QR khuôn',
-    manualEntry: 'Nhập tay mã',
+    manualEntry: 'Nhập tay',
     manualHint: 'Nhập mã khuôn rồi bấm Enter.',
     cavity: 'Khoang khuôn',
     notFound: 'Không có công cụ với mã này. Hãy kiểm tra lại mã.',
     disposed: 'Công cụ đã thanh lý. Hãy quét công cụ khác.',
-    clear: 'Chọn lại công cụ',
   },
 
   shot: {
@@ -38,7 +37,7 @@ export const toolUsage: Translated<typeof ko.toolUsage> = {
     convertedExpression: (baseQty: string, ratio: string, shots: string) =>
       `Số lượng ${baseQty} × ${ratio} = ${shots} nhát`,
     roundedNote: 'Kết quả quy đổi được làm tròn đến số nguyên gần nhất rồi gửi.',
-    conversionUnavailable: 'Chưa thiết lập tỷ lệ quy đổi. Hãy nhập tay.',
+    conversionUnavailable: 'Chưa thiết lập tỷ lệ quy đổi.',
     conversionLoading: 'Đang tải tỷ lệ quy đổi.',
     conversionOff: 'Phạm vi này được thiết lập không dùng quy đổi. Hãy nhập tay.',
   },
@@ -61,25 +60,25 @@ export const toolUsage: Translated<typeof ko.toolUsage> = {
 
   notice: {
     sectionLabel: 'Hướng dẫn',
-    serverAdds: ['Lũy kế do máy chủ cộng khi lưu', 'Màn hình này chỉ tính trước.'],
+    serverAdds: ['Lũy kế do máy chủ tính khi lưu.'],
   },
 
   actions: {
     save: 'Lưu kết quả',
+    confirm: 'Xác nhận',
     reset: 'Nhập lại',
   },
 
   actionReasons: {
-    saving: 'Lưu kết quả — đang lưu.',
-    noShot: 'Lưu kết quả — hãy nhập số nhát dập từ 1 trở lên.',
+    saving: 'Đang lưu.',
+    noShot: 'Hãy nhập số nhát dập từ 1 trở lên.',
     noEntry:
-      'Lưu kết quả — cần có lệnh sản xuất và mã nhân viên mới lưu được. Hãy vào từ màn hình Bắt đầu sản xuất.',
-    offline: 'Lưu kết quả — mất kết nối nên không lưu được. Khi có kết nối lại, hãy lưu lại.',
+      'Cần có lệnh sản xuất và mã nhân viên mới lưu được. Hãy vào từ màn hình Bắt đầu sản xuất.',
+    offline: 'Mất kết nối nên không lưu được. Khi có kết nối lại, hãy lưu lại.',
   },
 
   save: {
-    successTitle: 'Đã lưu kết quả',
-    successBody: 'Lũy kế đã được cập nhật.',
+    successTitle: 'Đã lưu kết quả.',
     failTitle: 'Không lưu được kết quả',
     rejected:
       'Không lưu được do giá trị gửi đi hoặc quy tắc nghiệp vụ. Hãy kiểm tra giá trị rồi lưu lại.',

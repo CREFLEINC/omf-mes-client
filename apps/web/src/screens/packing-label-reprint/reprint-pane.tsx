@@ -23,6 +23,11 @@ export interface ReprintPaneProps {
   reasonServerError: string | null;
   /** 재출력 자체가 막힌 사유(권한·단말). `null` 이면 막히지 않았다 */
   blockedReason: string | null;
+  /**
+   * 막힌 사유를 버튼 옆에 적을지 — 맨 위 띠가 이미 말하면 끈다(사용자 지시 2026-09-17).
+   * `false` 는 포장 단위를 못 받은 경우뿐이라 사유 선택도 함께 막는다.
+   */
+  showBlockedReason?: boolean;
   /** 사번이 없어 잠겼다 — 사유 문구는 화면 맨 위 공용 띠가 말하므로 여기서는 잠그기만 한다 */
   workerMissing: boolean;
   isSubmitting: boolean;
@@ -54,6 +59,7 @@ export const ReprintPane = ({
   reasonRequired,
   reasonServerError,
   blockedReason,
+  showBlockedReason = true,
   workerMissing,
   isSubmitting,
   onSubmit,
@@ -192,7 +198,8 @@ export const ReprintPane = ({
           value={reasonCode === '' ? null : reasonCode}
           onChange={onReasonChange}
           placeholder={t.reason.placeholder}
-          disabled={reasons.length === 0}
+          /* ⭐ 포장 단위를 못 받았으면 고를 것이 없다 — 막는다(사용자 지시 2026-09-17). */
+          disabled={reasons.length === 0 || !showBlockedReason}
           aria-describedby={reasonNote === null ? undefined : noteId}
         />
         {reasonNote !== null && (
@@ -215,7 +222,7 @@ export const ReprintPane = ({
        * ⛔ **「대상을 고르세요」를 두지 않는다**(사용자 지시). 설계에 없는 문구였다 — 이 문서에
        *    「고르세요 · 선택하세요」가 0 건이다. 무엇을 고르는 자리인지는 바로 위 목록이 말한다.
        */}
-      {blockedReason !== null && <p className="field-error">{blockedReason}</p>}
+      {blockedReason !== null && showBlockedReason && <p className="field-error">{blockedReason}</p>}
     </>
   );
 };

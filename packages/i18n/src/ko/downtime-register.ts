@@ -67,7 +67,8 @@ export const downtimeRegister = {
      *    (사용자 지적 2026-09-07). 값 없음은 이 저장소의 공용 표기 「—」로 적는다.
      * ⛔ 「0분」으로 채우지 않는다 — 없는 값과 0을 같은 모양으로 만들지 않는다(G-9).
      */
-    duration: (value: string): string => `길이 ${value}`,
+    /** 사용자 지시 2026-09-17 — 「길이」를 「시작~종료 시간」으로. */
+    duration: (value: string): string => `시작~종료 시간 ${value}`,
     durationEmpty: common.reference.empty,
   },
   reason: {
@@ -76,7 +77,7 @@ export const downtimeRegister = {
     detail: '비가동 사유',
     detailPlaceholder: '사유 선택',
     remarks: '메모',
-    remarksPlaceholder: '사유 코드로 담기지 않는 사연을 적습니다',
+    remarksPlaceholder: '사유 코드 외의 필요 내용을 입력하세요',
   },
   breakdown: {
     title: '연결된 고장',
@@ -135,8 +136,10 @@ export const downtimeRegister = {
     /* ④ 목록의 열 이름 — 스펙 §7 이 이 자리를 `Table` 로 지정했다. */
     columns: {
       interval: '구간',
-      duration: '길이',
+      /** 사용자 지시 2026-09-17. */
+      duration: '시작~종료 시간',
       reason: '사유',
+      remarks: '메모',
     },
     /** 오프라인 집계의 범위를 이름으로 말한다(스펙 §6-2 · §9-3). */
     localOnly: '내 단말 입력분만',

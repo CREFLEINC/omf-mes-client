@@ -9,6 +9,7 @@ import {
   Table,
 } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
+import type { ReactNode } from 'react';
 
 import { lookupDisplayLabel, type LookupSource } from '../../patterns/lookup-display';
 import { rowId, type IssueStatus, type LineRow } from './line-rows';
@@ -40,6 +41,8 @@ export interface LineListPaneProps {
   uomNames: LookupSource;
   isLoading: boolean;
   isError: boolean;
+  /** 표제 줄 왼쪽에 세울 조작(대기 목록으로 돌아가기). */
+  headerStart?: ReactNode;
 }
 
 /**
@@ -74,6 +77,7 @@ export const LineListPane = ({
   uomNames,
   isLoading,
   isError,
+  headerStart,
 }: LineListPaneProps) => {
   const allIds = rows.map((row) => rowId(row.line));
   const isAllSelected = allIds.length > 0 && selectedIds.length === allIds.length;
@@ -129,11 +133,43 @@ export const LineListPane = ({
         </Chip>
       ),
     },
+    {
+      /*
+       * ⭐ **체크 칸 대신 행 오른쪽 [선택]으로 고른다**(사용자 지시 2026-09-17). 장갑 낀 손에는
+       *    작은 체크 칸보다 단추가 낫다. 누를 때마다 고르기·풀기가 바뀌고, 고른 줄은 채운 단추다.
+       */
+      key: 'pick',
+      header: '',
+      width: '160px',
+      align: 'center',
+      render: (row) => {
+        const id = rowId(row.line);
+        const isSelected = selectedIds.includes(id);
+
+        return (
+          <Button
+            type="button"
+            variant={isSelected ? 'filled' : 'outlined'}
+            size="2xl"
+            className="pop-touch-target pop-giqr-pick"
+            aria-pressed={isSelected}
+            onClick={() => {
+              onSelectionChange(
+                isSelected ? selectedIds.filter((one) => one !== id) : [...selectedIds, id],
+              );
+            }}
+          >
+            {t.lines.pick}
+          </Button>
+        );
+      },
+    },
   ];
 
   return (
     <Card bordered className="pop-section pop-giqr-lines-pane" aria-label={t.lines.sectionLabel}>
       <Card.Body>
+        {headerStart}
         <h2 className="pane-title">{t.lines.sectionLabel}</h2>
 
         {isLoading ? (
@@ -148,10 +184,7 @@ export const LineListPane = ({
              */
             className="pop-giqr-lines"
             density="compact"
-            selectable
             getRowId={(row: LineRow) => rowId(row.line)}
-            selectedIds={selectedIds}
-            onSelectionChange={onSelectionChange}
             empty={
               isError ? (
                 <EmptyState size="sm" live title={t.lines.failed} />

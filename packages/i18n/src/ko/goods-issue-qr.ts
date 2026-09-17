@@ -42,7 +42,7 @@ export const goodsIssueQr = {
     /** 전표에서 목록으로 돌아가는 길. 돌아가면 목록을 다시 받는다. */
     back: '대기 목록으로',
     refresh: '새로 고침',
-    pick: '이 라인 찍기',
+    pick: '선택',
     columnIssueNo: '자재 출고번호',
     columnLine: '라인',
     columnItem: '품목',
@@ -60,7 +60,7 @@ export const goodsIssueQr = {
     statusPrintFailed: (issueCount: number): string => `인쇄 실패 · 회차 ${String(issueCount)}`,
     columnAction: '',
     window: (days: number, limit: number): string =>
-      `최근 ${String(days)}일 · 최대 ${String(limit)}건의 자재 출고에서 찾습니다.`,
+      `최근 ${String(days)}일 · 최대 ${String(limit)}건의 QR을 조회합니다`,
     loading: '발행 대기를 찾는 중',
     failed: '발행 대기를 불러오지 못했습니다. 연결을 확인한 뒤 새로 고치세요.',
     empty: '발행 대기 중인 자재 출고가 없습니다.',
@@ -93,6 +93,8 @@ export const goodsIssueQr = {
     columnQty: '수량',
     columnStatus: '발행',
     selectAll: '전체 선택',
+    /** 행 오른쪽 고르기 단추(사용자 지시 2026-09-17 — 체크 칸 대신). */
+    pick: '선택',
     clearSelection: '선택 해제',
     empty: '이 전표에 출고 라인이 없습니다.',
     loading: '출고 라인을 불러오는 중입니다.',
@@ -146,6 +148,8 @@ export const goodsIssueQr = {
      */
     none: '—',
     seqLabel: '회차',
+    /** 고른 라인 한 줄 — 발행되는 QR 한 장이다(사용자 지시 2026-09-17). */
+    lineLabel: (lineNo: number): string => `라인 ${String(lineNo)}`,
     /**
      * 발행 전에는 회차를 모른다 — 서버가 매긴다.
      *
@@ -154,7 +158,7 @@ export const goodsIssueQr = {
      */
     seqUnknown: '—',
     previewLabel: '미리보기',
-    previewEmpty: '라인을 고르면 미리보기가 보입니다.',
+    previewEmpty: '라인을 선택하세요',
     previewFailed: '미리보기를 불러오지 못했습니다. 인쇄는 그대로 진행할 수 있습니다.',
     previewAlt: '자재 출고 QR 미리보기',
     /**
