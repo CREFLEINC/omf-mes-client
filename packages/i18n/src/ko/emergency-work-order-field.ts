@@ -66,8 +66,6 @@ export const emergencyWorkOrderField = {
       /** 품목 아래에 쌓는 둘째 줄에서 시각 앞에 붙는 말. */
       releasedAt: '발행',
     },
-    /** 긴급임을 줄에서 바로 알아보게 하는 표식. */
-    emergencyBadge: '긴급',
     select: '선택',
     /** 고른 줄을 다시 누르면 해제한다 — 정본 목록이 그렇게 동작한다. */
     deselect: '선택 해제',

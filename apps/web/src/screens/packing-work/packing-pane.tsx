@@ -5,6 +5,7 @@ import type { RefObject } from 'react';
 import { PopSelect as Select } from '../../patterns/pop-select';
 import { popTouchClass } from '../../patterns/pop-touch';
 import { isMixedLot, totalQty } from './contents';
+import { InlineError } from './inline-error';
 import type { CodeLabels } from './queries';
 import type { CodeValue, HandlingUnit, PackingDraft } from './types';
 
@@ -159,9 +160,9 @@ export const PackingPane = ({
        *    붙는다. `title` 도 남겨 둔다: 마우스를 쓰는 자리에서는 그쪽이 더 빠르다.
        */}
       {locked && <p className="field-note">{t.unit.lockedReason}</p>}
-      {typeError !== null && <p className="field-error">{typeError}</p>}
-      {unitTypesFailed && <p className="field-error">{t.unit.typeLoadFailed}</p>}
-      {parentsFailed && <p className="field-error">{t.unit.parentLoadFailed}</p>}
+      {typeError !== null && <InlineError>{typeError}</InlineError>}
+      {unitTypesFailed && <InlineError>{t.unit.typeLoadFailed}</InlineError>}
+      {parentsFailed && <InlineError>{t.unit.parentLoadFailed}</InlineError>}
 
       <h3 className="pane-title">{t.contents.sectionLabel}</h3>
       {/*

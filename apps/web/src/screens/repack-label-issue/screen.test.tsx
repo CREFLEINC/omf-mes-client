@@ -68,6 +68,15 @@ const submitButton = (): HTMLElement => screen.getByRole('button', { name: t.iss
 const reasonSelect = (): HTMLElement =>
   screen.getByRole('combobox', { name: new RegExp(t.issue.reasonLabel) });
 
+/** 창 안 [인쇄] — 사유를 고른 뒤 발행·인쇄한다(사용자 지시 2026-09-17). */
+const dialogPrintButton = (): HTMLElement => screen.getByRole('button', { name: t.preview.print });
+
+/** [발번·인쇄]로 사유 창을 연다 — 사유가 필요한 발행은 창에서 사유를 고른다. */
+const openReasonDialog = async (): Promise<void> => {
+  await clickWhenEnabled(submitButton);
+  await screen.findByText(t.preview.reasonTitle);
+};
+
 const clickWhenEnabled = async (find: () => HTMLElement): Promise<void> => {
   await waitFor(() => {
     expect(find()).toBeEnabled();
@@ -710,10 +719,11 @@ describe('RepackLabelIssueScreen — 발행 조건', () => {
     expect(screen.getByText(t.issue.remainderNumberNote)).toBeInTheDocument();
 
     await userEvent.click(remainderCheckbox);
-    expect(submitButton()).toBeDisabled();
+    await openReasonDialog();
+    expect(issueWrites).toHaveLength(0);
     await userEvent.click(reasonSelect());
     await userEvent.click(await screen.findByRole('option', { name: REASON_NAME }));
-    await clickWhenEnabled(submitButton);
+    await clickWhenEnabled(dialogPrintButton);
 
     await waitFor(() => {
       expect(issueWrites).toHaveLength(1);
@@ -769,10 +779,10 @@ describe('RepackLabelIssueScreen — 발행 조건', () => {
 
     expect(await screen.findByText(t.issue.reissue(1))).toBeInTheDocument();
 
-    await userEvent.click(submitButton());
+    await openReasonDialog();
 
     expect(issueWrites).toHaveLength(0);
-    expect(submitButton()).toBeDisabled();
+    expect(dialogPrintButton()).toBeDisabled();
   });
 
   it('사유를 고르면 그 값이 실려 나간다', async () => {
@@ -780,10 +790,11 @@ describe('RepackLabelIssueScreen — 발행 조건', () => {
     await renderSelectedScreen({ issueCount: 1, issueWrites });
 
     await screen.findByText(t.issue.reissue(1));
+    await openReasonDialog();
     await userEvent.click(reasonSelect());
     await userEvent.click(await screen.findByRole('option', { name: REASON_NAME }));
 
-    await clickWhenEnabled(submitButton);
+    await clickWhenEnabled(dialogPrintButton);
 
     await waitFor(() => {
       expect(issueWrites).toHaveLength(1);
@@ -809,6 +820,7 @@ describe('RepackLabelIssueScreen — 발행 조건', () => {
       reasonPages: [defaultReasons, [nextReason]],
     });
 
+    await openReasonDialog();
     await userEvent.click(reasonSelect());
     expect(await screen.findByRole('option', { name: nextReason.codeName })).toBeInTheDocument();
     expect(reasonRequests).toHaveLength(2);
@@ -1126,9 +1138,10 @@ describe('RepackLabelIssueScreen — 발행 실패', () => {
     const issueWrites: Request[] = [];
     await renderSelectedScreen({ issueCount: 1, issueStatus: 500, issueWrites });
 
+    await openReasonDialog();
     await userEvent.click(reasonSelect());
     await userEvent.click(await screen.findByRole('option', { name: REASON_NAME }));
-    await clickWhenEnabled(submitButton);
+    await clickWhenEnabled(dialogPrintButton);
     expect(await screen.findByText(t.error.issueTitle)).toBeInTheDocument();
     await userEvent.click(screen.getByRole('button', { name: messages.common.retry }));
 
@@ -1160,11 +1173,14 @@ describe('RepackLabelIssueScreen — 발행 실패', () => {
     });
 
     await screen.findByText(t.issue.reissue(1));
+    await openReasonDialog();
     await userEvent.click(reasonSelect());
     await userEvent.click(await screen.findByRole('option', { name: REASON_NAME }));
-    await clickWhenEnabled(submitButton);
+    await clickWhenEnabled(dialogPrintButton);
 
+    /* 창이 다시 열려 사유 칸 아래에 선다. */
     expect(await screen.findByText('재발행 사유가 필요합니다.')).toBeInTheDocument();
+    expect(screen.getByText(t.preview.reasonTitle)).toBeInTheDocument();
   });
 
   /* 요약을 모르면 최초·재발행을 가를 수 없다 — 쓰지 않고 같은 조회를 다시 할 길을 둔다. */

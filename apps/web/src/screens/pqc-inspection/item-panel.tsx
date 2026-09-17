@@ -43,6 +43,8 @@ export interface ItemPanelProps {
   drafts: MeasurementDrafts;
   /** 측정값을 고쳤다. ⛔ 판정 선택과 **가른다** — 자동 판정을 다시 계산할지가 여기서 갈린다 */
   onValueChange: (key: string, value: string) => void;
+  /** 숫자 측정치 칸을 눌렀다 — 화면이 키패드를 그 칸에 잇는다(설계 §3-1 「좌단 측정값도 이 패드로」). */
+  onValuePick: (key: string, label: string) => void;
   /** 사람이 판정을 골랐다(같은 값을 다시 누르면 해제라 빈 문자열이 온다) */
   onJudgmentChange: (key: string, judgment: string) => void;
   /** 항목 판정 선택지 — **두 값이다**(합격·불합격). 종합 판정과 그룹이 다르다 */
@@ -58,6 +60,8 @@ export interface ItemPanelProps {
    * 막혀 서버는 안전했지만, 검사자는 **다시 채워 넣고 저장됐다고 믿는다.**
    */
   isLocked: boolean;
+  /** 항목이 비었을 때 문구를 감춘다 — 대상을 못 불러온 갈래에서는 「항목 없음」이 사실이 아니다. */
+  hideEmptyNote?: boolean;
 }
 
 export const ItemPanel = ({
@@ -66,11 +70,13 @@ export const ItemPanel = ({
   rows,
   drafts,
   onValueChange,
+  onValuePick,
   onJudgmentChange,
   judgmentOptions,
   uomCodeOf,
   isLoading,
   isLocked,
+  hideEmptyNote = false,
 }: ItemPanelProps) => (
   <section className="pane pqc-item-panel" aria-label={t.heading}>
     <h2 className="field-label">{t.heading}</h2>
@@ -103,7 +109,7 @@ export const ItemPanel = ({
 
     <div className="pop-inspect-scroll">
       {rows.length === 0 ? (
-        <p className="field-note">{isLoading ? t.loading : t.noItems}</p>
+        !hideEmptyNote && <p className="field-note">{isLoading ? t.loading : t.noItems}</p>
       ) : (
         <ol className="pop-item-list">
           {rows.map((row) => (
@@ -112,6 +118,7 @@ export const ItemPanel = ({
               row={row}
               draft={drafts[row.key] ?? EMPTY_MEASUREMENT_DRAFT}
               onValueChange={onValueChange}
+              onValuePick={onValuePick}
               onJudgmentChange={onJudgmentChange}
               judgmentOptions={judgmentOptions}
               uomCodeOf={uomCodeOf}
@@ -129,6 +136,8 @@ interface ItemRowProps {
   draft: MeasurementDraft;
   /** 측정값을 고쳤다. ⛔ 판정 선택과 **가른다** — 자동 판정을 다시 계산할지가 여기서 갈린다 */
   onValueChange: (key: string, value: string) => void;
+  /** 숫자 측정치 칸을 눌렀다 — 화면이 키패드를 그 칸에 잇는다(설계 §3-1 「좌단 측정값도 이 패드로」). */
+  onValuePick: (key: string, label: string) => void;
   /** 사람이 판정을 골랐다(같은 값을 다시 누르면 해제라 빈 문자열이 온다) */
   onJudgmentChange: (key: string, judgment: string) => void;
   judgmentOptions: CodeOption[];
@@ -141,6 +150,7 @@ const ItemRow = ({
   row,
   draft,
   onValueChange,
+  onValuePick,
   onJudgmentChange,
   judgmentOptions,
   uomCodeOf,
@@ -204,6 +214,22 @@ const ItemRow = ({
 
             error={isValueInvalid(row, draft) ? t.valueInvalid : undefined}
             disabled={isLocked}
+            /*
+             * ⭐ **숫자 측정치는 키패드로 넣는다**(사용자 지시 2026-09-17). 현장 POP 은 키오스크라
+             *    운영체제 키보드가 뜨지 않아, 칸만 있고 넣을 길이 없었다. 누른 그때만 잇는다 —
+             *    포커스로 이으면 되돌아온 포커스가 다시 잇는다(결과 입력 칸과 같은 이유).
+             */
+            onClick={
+              row.dataTypeCode === DATA_TYPES.numeric
+                ? () =>
+                    onValuePick(
+                      row.key,
+                      row.sampleCount > 1
+                        ? `${row.itemName} ${t.sampleOf(row.sampleNo, row.sampleCount)} ${t.columns.value}`
+                        : `${row.itemName} ${t.columns.value}`,
+                    )
+                : undefined
+            }
             onChange={(event) => onValueChange(row.key, event.target.value)}
           />
         )}

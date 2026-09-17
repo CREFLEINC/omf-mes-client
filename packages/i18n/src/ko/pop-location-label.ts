@@ -15,7 +15,7 @@ export const popLocationLabel = {
 
   warehouse: {
     label: '창고',
-    placeholder: '창고를 고르세요',
+    placeholder: '창고를 선택해 주세요',
     loadFailed: '창고 목록을 불러오지 못했습니다. 연결을 확인한 뒤 다시 시도하세요.',
     /** 쓰는 창고가 하나도 없다. 마스터가 비어 있다는 뜻이라 이 화면에서 할 수 있는 일이 없다. */
     none: '쓸 수 있는 창고가 없습니다. 창고 마스터를 먼저 등록하세요.',
@@ -25,7 +25,7 @@ export const popLocationLabel = {
   location: {
     heading: '적재 위치',
     /** 창고를 고르기 전. 목록 자리를 비워 두지 않고 무엇을 더 해야 하는지 적는다. */
-    awaitingWarehouse: '창고를 고르면 그 창고의 적재 위치가 나옵니다.',
+    awaitingWarehouse: '창고를 먼저 선택해주세요.',
     empty: '이 창고에는 등록된 적재 위치가 없습니다.',
     loading: '적재 위치를 불러오는 중',
     loadFailed: '적재 위치를 불러오지 못했습니다. 연결을 확인한 뒤 다시 시도하세요.',
@@ -38,7 +38,10 @@ export const popLocationLabel = {
     issuedCount: (count: number) => `${String(count)}회`,
     /** 사용 중지된 위치도 찍는다 — 선반은 그 자리에 그대로 있다. */
     inactive: '사용 중지',
-    selectedCount: (count: number) => `${String(count)}곳 선택`,
+    /** 줄 오른쪽 [선택]과 목록 머리의 전체 선택(사용자 지시 2026-09-17). */
+    pick: '선택',
+    selectAll: '전체 선택',
+    clearSelection: '선택 해제',
     /** 계약이 한 번에 받는 상한. 넘으면 전건이 실패하므로 미리 막는다. */
     tooMany: (max: number) => `한 번에 ${String(max)}곳까지 발행할 수 있습니다. 나눠서 찍으세요.`,
   },

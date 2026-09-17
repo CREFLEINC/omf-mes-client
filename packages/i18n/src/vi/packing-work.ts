@@ -32,9 +32,11 @@ export const packingWork: Translated<typeof ko.packingWork> = {
   scan: {
     sectionLabel: 'Quét',
     label: 'Quét LOT / thẻ nhận diện',
+    scanPlaceholder: 'Hãy quét LOT hoặc thẻ nhận diện',
     submit: 'Cho vào',
     manualEntry: 'Nhập tay',
     quantityLabel: 'Số lượng',
+    quantityPlaceholder: 'Hãy nhập số lượng',
     keypadLabel: 'Bàn phím số lượng',
     keypadBackspace: 'Xóa một ký tự',
     keypadClear: 'Xóa hết',

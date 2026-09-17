@@ -4299,14 +4299,6 @@
   font-size: var(--pop-label);
 }
 
-.pop-ui .pqc-totals__note--ok {
-  color: var(--semantic-success-text);
-}
-
-.pop-ui .pqc-totals__note--warn {
-  color: var(--semantic-warning);
-}
-
 /*
  * 적용 생산구간의 날짜·시각 두 칸 — **자리가 나면 나란히, 좁으면 위아래로**(사용자 지시
  * 2026-09-10). 브라우저의 날짜 칸은 「2026. 09. 10.」에 달력 아이콘까지 얹혀 9rem 아래로
@@ -5993,8 +5985,8 @@
 }
 
 /*
- * 인쇄 결과는 **액션바 바로 위**다. 방금 누른 단추 옆에서 결과를 읽게 한다 — 화면 꼭대기에
- * 두면 선반 앞에서 고개를 들었다 내렸다 해야 한다.
+ * 인쇄 결과는 **화면 맨 위 띠 자리**다(사용자 지시 2026-09-17 — 앞서는 액션바 바로 위였다).
+ * `pop-fixed` 로 제 높이만 쓴다.
  */
 .pop-ui .pop-loclabel-print-result {
   display: flex;
@@ -6026,4 +6018,619 @@
   align-items: center;
   flex-wrap: wrap;
   margin-block-start: var(--space-3);
+}
+
+/*
+ * 작업 시작의 [전체 보기]·띠 안의 [이어서 하기] — 자재 투입(P-02-03)의 [직접 입력]과 같은
+ * 높이로 세운다(사용자 지시 2026-09-17, 실측 72). 그 단추 높이가 바뀌면 여기도 함께 바꾼다.
+ * ⚠ 띠 안의 갈래를 따로 적는 까닭은 위 폭 하한(`min-width: 9rem`) 블록과 같다.
+ */
+.pop-ui .work-start-head-button,
+.pop-ui [role='alert'] button.work-start-head-button,
+.pop-ui [role='status'] button.work-start-head-button {
+  min-block-size: 72px;
+}
+
+/*
+ * 생산 포장의 「내용물이 없습니다.」 — 구획 폭의 가운데에 세운다(사용자 지시 2026-09-17).
+ * `field-note` 의 폭 상한(704)이 걸려 글자가 왼쪽 704 안에서만 가운데로 섰다(실측).
+ */
+.pop-ui .pack-work-content-empty {
+  max-width: none;
+}
+
+/*
+ * 생산 포장 수량 키패드 — 장갑 낀 손으로 누를 크기로 키운다(사용자 지시 2026-09-17 · 2회차).
+ *
+ * - 키 높이 52 · 간격 9 는 가로세로 같게 · 숫자 20px semibold · 한 자 지움·0·지움도 같은 칸이다.
+ * - 폭은 «화면 폭에 따라» 선다(사용자 선택 2026-09-17): 수량 입력칸 폭만큼, 단 360 아래로는
+ *   줄지 않는다. 1024×768 단말에서는 입력칸이 242 라 360(키 114)으로, 넓은 화면에서는 입력칸 폭까지.
+ * - 수량 칸과 붙여 한 덩어리로 읽히게 위 여백 8.
+ * - [지움](전체 지움)도 다른 키와 같은 흰 글자다(사용자 지시 2026-09-17 · 빨강을 걷었다).
+ * ⚠ 공용 `NumericKeypad`·DS `Button` 은 건드리지 않는다 — 이 화면 클래스로만 겨냥한다.
+ * ⚠ **높이는 52 로 멈춘다.** 1024×768 에서 좌단 세로가 이미 넘쳐 《포장 대상》 표가 구획 아래에
+ *   걸려 있다(실측). 56 이면 표가 29 더 내려가고 52 면 13 에 그친다.
+ * ⚠ 1024×768 의 좌단 폭은 398 이라 360 이 거의 다 찬다 — 폭을 더 키우지 않는다.
+ */
+.pop-ui .pack-work-scan .pack-work-keypad {
+  /* 입력칸 폭 = 줄 폭 − [담기](9rem) − 줄 간격(12). 좌단 폭(100%)은 넘지 않는다. */
+  max-width: 100%;
+  inline-size: max(360px, calc(100% - 9rem - var(--space-3)));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 9px;
+}
+
+.pop-ui .pack-work-scan .pack-work-add-row + .pack-work-keypad {
+  margin-block-start: var(--space-2);
+}
+
+.pop-ui .pack-work-scan .pack-work-keypad > button {
+  inline-size: 100%;
+  block-size: 52px;
+  min-block-size: 52px;
+  padding: 0;
+  justify-content: center;
+  align-items: center;
+  font-size: 20px;
+  font-weight: 600;
+}
+
+.pop-ui .pack-work-scan .pack-work-keypad > .omf-numeric-keypad__clear:not(:disabled) {
+  /* ⭐ [지움]도 다른 키와 같은 흰 글자다(사용자 지시 2026-09-17 · 빨강을 걷었다). */
+  color: var(--on-surface);
+}
+
+/*
+ * 생산 포장 《포장 단위》의 유형·상위 포장 — 좌단 스캔·수량 칸과 같은 모양으로 세운다(사용자 지시
+ * 2026-09-17). 라벨은 칸 «위»(DS 입력칸 라벨과 같은 글꼴·색 · 칸과 4 간격), 값 칸과 [선택] 사이 12,
+ * 두 줄 사이 16 — 좌단 실측값이다.
+ */
+.pop-ui .pack-work-unit-fields {
+  gap: var(--space-4);
+}
+
+.pop-ui .pack-work-unit-fields .pack-work-field {
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-1);
+}
+
+.pop-ui .pack-work-unit-fields .pack-work-field-label {
+  font: var(--type-label-sm);
+  /* POP 은 입력칸 라벨을 `--pop-label`(14)로 올려 둔다 — 토큰만 쓰면 12 에 머문다(실측). */
+  font-size: var(--pop-label);
+  letter-spacing: var(--type-label-sm-tracking);
+  color: var(--on-surface-variant);
+}
+
+/* ⚠ 구획의 세로 리듬 규칙(`* + *` 12)이 둘째 줄에 얹혀 간격이 28 이 됐다(실측) — 격자 간격만 쓴다. */
+.pop-ui .pack-work-unit-fields > * + * {
+  margin-block-start: 0;
+}
+
+.pop-ui .pack-work-unit-fields .pop-select {
+  column-gap: var(--space-3);
+}
+
+/*
+ * PQC 제품 검사 — 입력칸을 다른 POP 화면(생산 포장 스캔·수량 칸)과 같은 크기로 세운다
+ * (사용자 지시 2026-09-17). 칸 72 · 고르는 칸의 값 상자와 [선택] 72 · [선택] 폭 9rem.
+ *
+ * ⚠ POP 은 `--control-height-*` 를 40 으로 모아 두어 `xl` 을 넘겨도 40 에 머문다(실측) — 값으로 적는다.
+ * ⚠ DS 겉 이름의 해시는 판마다 달라 부분 일치로 겨냥한다(위 `.pqc-qty-split` 과 같은 방식).
+ */
+.pop-ui .pqc-item-panel [class*='inputWrap'],
+.pop-ui .pqc-result-panel [class*='inputWrap'] {
+  min-block-size: 72px;
+}
+
+.pop-ui .pqc-verdict .pop-select {
+  grid-template-columns: minmax(0, 1fr) 9rem;
+  column-gap: var(--space-3);
+}
+
+.pop-ui .pqc-verdict .pop-select__value,
+.pop-ui .pqc-verdict .pop-select [role='combobox'] {
+  min-block-size: 72px;
+}
+
+/*
+ * PQC 적용 생산구간 — 「시작 · 종료」 제목 줄 → 안내 문구 → 입력칸(사용자 지시 2026-09-17).
+ *
+ * 칸 묶음(`.field-cell`)을 풀어(`display: contents`) 제목·입력칸·오류를 격자 칸으로 직접 놓는다.
+ * ⚠ 좁으면(단말 1024×768 에서 이 구획은 247) 두 칸으로 가르지 않는다 — 날짜 칸이 118 로
+ *   잘린다(실측 2026-09-10). 그때는 문구가 맨 위, 시작·종료가 위아래로 쌓인다.
+ */
+.pop-ui .pqc-coverage-group {
+  container-type: inline-size;
+}
+
+.pop-ui .pqc-coverage {
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-1) var(--space-3);
+}
+
+.pop-ui .pqc-coverage > .field-cell {
+  display: contents;
+}
+
+.pop-ui .pqc-coverage > *,
+.pop-ui .pqc-coverage > .field-cell > * {
+  margin: 0;
+}
+
+.pop-ui .pqc-coverage > .pqc-coverage-note {
+  order: -1;
+  margin-block-end: var(--space-2);
+}
+
+@container (min-width: 33rem) {
+  .pop-ui .pqc-coverage {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .pop-ui .pqc-coverage > .pqc-coverage-note {
+    order: 0;
+    grid-row: 2;
+    grid-column: 1 / -1;
+  }
+
+  .pop-ui .pqc-coverage > .field-cell:first-child > .field-label {
+    grid-row: 1;
+    grid-column: 1;
+  }
+
+  .pop-ui .pqc-coverage > .field-cell:last-child > .field-label {
+    grid-row: 1;
+    grid-column: 2;
+  }
+
+  .pop-ui .pqc-coverage > .field-cell:first-child > :not(.field-label) {
+    grid-column: 1;
+  }
+
+  .pop-ui .pqc-coverage > .field-cell:last-child > :not(.field-label) {
+    grid-column: 2;
+  }
+
+  .pop-ui .pqc-coverage > .field-cell > .pqc-coverage-parts {
+    grid-row: 3;
+  }
+}
+
+/*
+ * PQC 결과 입력 — 다 보이는데 스크롤이 서지 않게 한다(사용자 지시 2026-09-17).
+ * 입력칸을 72 로 올린 뒤 내용이 구획보다 7 넘쳤다(실측 909 / 902). 구획은 이미 `gap` 16 으로
+ * 덩어리를 띄우는데 위 리듬 규칙이 8 을 한 번 더 얹고 있어, 그 겹친 몫만 턴다.
+ */
+.pop-ui .pqc-result-panel > * + * {
+  margin-block-start: 0;
+}
+
+/*
+ * PQC 숫자 키패드의 부호·소수점 줄(− · + · .) — 위 키패드와 같은 3열·같은 키 크기로 선다
+ * (사용자 지시 2026-09-17). 측정치 칸일 때만 켜지고, 줄은 늘 서 있어 키 배치가 흔들리지 않는다.
+ */
+.pop-ui .pqc-keypad .pqc-pad-extra {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-2);
+}
+
+.pop-ui .pqc-keypad .pqc-pad-extra > button {
+  min-inline-size: 0;
+  min-block-size: 4rem;
+  padding-inline: 0;
+  margin: 0;
+}
+
+/* PQC 항목 판정 [합격]·[불합격] — 옆 측정치 칸(72)과 같은 높이로 선다(사용자 지시 2026-09-17). */
+.pop-ui .pqc-item-panel .pqc-judgment-buttons > button {
+  min-block-size: 72px;
+}
+
+/*
+ * 「판정」 제목 줄을 옆 「측정치」 라벨 줄(16 + 간격 4)과 같은 높이로 맞춘다 — 제목 줄이 24 라
+ * 버튼이 칸보다 8 아래에 섰다(실측 543 · 551).
+ */
+.pop-ui .pqc-item-panel .form-grid > .field-cell > .field-label {
+  line-height: 16px;
+  margin-block-end: var(--space-1);
+}
+
+/*
+ * PQC 키패드의 [−]·[+] — 숫자 키와 갈라 한눈에 읽히게 한다(사용자 지시 2026-09-17).
+ * 버튼 크기·자리·동작은 그대로다. 색은 DS 토큰만 쓴다:
+ * 켜짐 = 빨간 계열 바탕(`--primary-container`) + 그 위 글자(`--on-primary-container`) · 기호 28/800
+ * 꺼짐 = DS 비활성 글자(`--state-disabled-text`), 바탕 없음.
+ */
+.pop-ui .pqc-keypad .pqc-pad-extra > .pqc-pad-sign {
+  font-size: 28px;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.pop-ui .pqc-keypad .pqc-pad-extra > .pqc-pad-sign:not(:disabled) {
+  background: var(--primary-container);
+  color: var(--on-primary-container);
+}
+
+.pop-ui .pqc-keypad .pqc-pad-extra > .pqc-pad-sign:disabled {
+  color: var(--state-disabled-text);
+}
+
+/* PQC 키패드의 [.] — 켜졌을 때 숫자 키와 같은 흰 글자로 선다(사용자 지시 2026-09-17). */
+.pop-ui .pqc-keypad .pqc-pad-extra > .pqc-pad-decimal:not(:disabled) {
+  color: var(--on-surface);
+}
+
+/*
+ * P-04-04 발행 대기 줄 오른쪽 [선택](사용자 지시 2026-09-17). 높이는 출고 QR 발행의 행 [선택]과
+ * 같다. ⚠ 폭은 6rem — ①이 ②와 한 줄을 나눠 쓰게 되어 1024×768 에서 표 폭이 593 뿐이다(실측).
+ */
+.pop-ui .pop-repack-pick {
+  inline-size: 6rem;
+  min-block-size: 56px;
+  padding-inline: var(--space-3);
+}
+
+/*
+ * P-04-04 — ① 발행 대기와 ② 대상 포장을 «한 줄에 나란히» 세운다(사용자 지시 2026-09-17).
+ * 고르는 것이 한 포장이라, 고른 목록과 그 포장의 내용이 옆에 서야 눈이 오가지 않는다.
+ * ③ 라벨 발행은 그 아래 한 줄을 다 쓴다. 남는 높이는 여전히 윗줄(①②)이 받는다(E-4).
+ */
+.pop-ui > .pop-repack-panes {
+  display: grid;
+  /*
+   * ⚠ 1024×768 에서 윗줄이 ③ 내용 높이에 눌려 표가 한 줄만 보였고, 6열 표가 60% 폭에서 잘렸다
+   *   (실측). ①이 더 넓게(2:1) 선다. 높이는 ③ 라벨 발행이 더 받는다(2:3 · 사용자 지시 2026-09-17).
+   */
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+  grid-template-rows: minmax(0, 2fr) minmax(0, 3fr);
+}
+
+.pop-ui .pop-repack-panes > .pop-repack-pending {
+  grid-column: 1;
+  grid-row: 1;
+  min-height: 0;
+}
+
+.pop-ui .pop-repack-panes > .pop-repack-numbering {
+  grid-column: 2;
+  grid-row: 1;
+  min-height: 0;
+}
+
+.pop-ui .pop-repack-panes > .pop-repack-issue {
+  grid-column: 1 / -1;
+  grid-row: 2;
+}
+
+/* ①의 원 포장 칸은 좁으면 접힌다 — 합병 번호 둘(«…58+…59»)이 한 줄을 고집하면 표가 카드를 넘는다(실측 766 / 593). */
+.pop-ui .pop-repack-pending .pop-row-select > span {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+/* P-04-04 「인쇄 대상」 제목 옆 「하나 이상 선택」 라벨(사용자 지시 2026-09-17) — 제목과 한 줄에 선다. */
+.pop-ui .pop-repack-targets > .pop-repack-targets-legend {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+/*
+ * P-04-04 인쇄 대상 · 프린터 — 한 줄에 나란히 선다(사용자 지시 2026-09-17). 좁아 두 칸이
+ * 20rem 을 못 받으면 위아래로 접는다.
+ */
+.pop-ui .pop-repack-target-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(20rem, 1fr));
+  align-items: start;
+  gap: var(--space-4);
+  margin-block-end: var(--space-4);
+}
+
+/* 두 칸은 각자 테두리 상자로 선다 — 한 줄에 놓여도 서로 다른 고르기임이 보이게(사용자 지시 2026-09-17). */
+.pop-ui .pop-repack-target-row > * {
+  box-sizing: border-box;
+  align-self: stretch;
+  margin: 0;
+  padding: var(--space-4);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-md);
+}
+
+/* fieldset 제목은 기본이 테두리 «위»에 걸친다 — 프린터 상자처럼 상자 안 첫 줄에 들인다. */
+.pop-ui .pop-repack-target-row > .pop-repack-targets > .pop-repack-targets-legend {
+  float: left;
+  inline-size: 100%;
+  padding: 0;
+  margin-block-end: var(--space-2);
+}
+
+.pop-ui .pop-repack-target-row > .pop-repack-targets > .pop-repack-targets-legend + * {
+  clear: both;
+}
+
+/* 프린터 상자의 제목도 「인쇄 대상」과 같은 글자(16 · 600)로 선다 — 나란한 두 상자의 제목이 같은 무게다. */
+.pop-ui .pop-repack-target-row > .pop-repack-field > label {
+  font-size: 16px;
+  font-weight: 600;
+}
+
+/*
+ * P-04-04 잔량 라벨 재출력 — 체크 항목과 「기존 번호 유지…」 라벨이 한 줄에 선다(사용자 지시 2026-09-17).
+ * 좁으면 라벨이 다음 줄로 접힌다.
+ */
+.pop-ui .pop-repack-remainder {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+}
+
+.pop-ui .pop-repack-remainder > .pop-repack-remainder-note {
+  margin: 0;
+}
+
+/*
+ * P-04-04 프린터 칸 — 상자 폭을 다 쓰고 다른 POP 고르는 칸과 같은 높이(72)로 선다(사용자 지시 2026-09-17).
+ * [선택]은 9rem · 값 칸과 12 간격(생산 포장 유형 칸과 같다).
+ */
+.pop-ui .pop-repack-target-row > .pop-repack-field {
+  align-items: stretch;
+}
+
+.pop-ui .pop-repack-target-row > .pop-repack-field > .pop-repack-select {
+  inline-size: 100%;
+  min-width: 0;
+}
+
+.pop-ui .pop-repack-target-row .pop-select {
+  grid-template-columns: minmax(0, 1fr) 9rem;
+  column-gap: var(--space-3);
+}
+
+.pop-ui .pop-repack-target-row .pop-select__value,
+.pop-ui .pop-repack-target-row .pop-select [role='combobox'] {
+  min-block-size: 72px;
+}
+
+/*
+ * P-04-04 라벨 미리보기 · 재인쇄 사유 창 — 「라벨 확인 → 사유 선택 → 안내 → 인쇄」가 한눈에 이어지게
+ * 다듬는다(사용자 지시 2026-09-17). 기능·색 체계·라벨 그림은 그대로이고 크기·간격·대비만 만진다.
+ */
+
+/* 본문 요소 사이 세로 간격을 16 하나로 맞춘다. */
+.pop-ui .pop-repack-preview-dialog [class*='body'] {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.pop-ui .pop-repack-preview-dialog [class*='body'] > * {
+  margin: 0;
+}
+
+/*
+ * 라벨 그림 — 창을 압도하지 않게 높이 상한을 두고 가운데 선다. 비율은 브라우저가 지키고
+ * (`width: auto`), 점 글꼴·QR 이 뭉개지지 않게 확대·축소 보간을 끈다.
+ */
+.pop-ui .pop-repack-preview-dialog .pop-repack-preview-image {
+  inline-size: auto;
+  max-inline-size: 100%;
+  max-block-size: 220px;
+  margin-inline: auto;
+  image-rendering: pixelated;
+}
+
+/* 사유 칸 — 이름은 칸 바로 위(4), 값 칸이 창 폭을 쓰고 값 칸·[선택]은 56 · [선택] 9rem · 간격 12. */
+.pop-ui .pop-repack-preview-dialog .pop-repack-reason {
+  gap: var(--space-1);
+  align-items: stretch;
+}
+
+.pop-ui .pop-repack-preview-dialog .pop-repack-reason > label {
+  font-size: var(--pop-label);
+  font-weight: 600;
+  color: var(--on-surface);
+}
+
+.pop-ui .pop-repack-preview-dialog .pop-repack-reason > .pop-repack-select {
+  inline-size: 100%;
+  min-width: 0;
+}
+
+.pop-ui .pop-repack-preview-dialog .pop-select {
+  grid-template-columns: minmax(0, 1fr) 9rem;
+  column-gap: var(--space-3);
+}
+
+.pop-ui .pop-repack-preview-dialog .pop-select__value,
+.pop-ui .pop-repack-preview-dialog .pop-select [role='combobox'] {
+  min-block-size: 56px;
+  color: var(--on-surface);
+}
+
+
+/* 하단 [닫기]·[인쇄] — 같은 크기(56 · 최소 8rem), 간격 12. [인쇄]는 기존 filled 가 주 조작이다. */
+.pop-ui .pop-repack-preview-dialog [class*='footer'] {
+  gap: var(--space-3);
+}
+
+.pop-ui .pop-repack-preview-dialog [class*='footer'] > button {
+  min-block-size: 56px;
+  min-inline-size: 8rem;
+}
+
+/* 사유 칸 이름 아래 「재인쇄 시 사유 입력은 필수입니다.」 — 아래 안내 문구와 같은 보조 글자다. */
+.pop-ui .pop-repack-preview-dialog .pop-repack-reason > .pop-repack-reason-note {
+  margin: 0 0 var(--space-1);
+  color: var(--on-surface-variant);
+  font-size: var(--pop-label);
+}
+
+
+/*
+ * P-06-01 창고 적재 위치 라벨 발행 — 「창고 → 적재 위치 → 프린터 → 발행」이 위에서 아래로 읽히게
+ * 정돈한다(사용자 지시 2026-09-17). 기능·데이터·색 체계는 그대로이고 배치·크기·간격만 만진다.
+ *
+ * ⚠ 윗줄이 셸의 「본문 자식은 남는 높이를 나눠 갖는다」 규칙을 받아 472 로 늘고, 칸이 그 바닥에
+ *   붙어 화면 가운데에 떠 보였다(실측). 윗줄은 제 높이만 쓰고, 남는 높이는 목록이 받는다.
+ */
+.pop-ui > .pop-loclabel-top {
+  display: grid;
+  flex: none;
+  grid-template-columns: minmax(0, 2fr) minmax(18rem, 1fr);
+  align-items: stretch;
+  gap: var(--space-4);
+}
+
+/* 입력칸·[선택]은 56 · [선택] 9rem · 간격 12 — 장갑 터치 높이. */
+.pop-ui .pop-loclabel-top .pop-select {
+  grid-template-columns: minmax(0, 1fr) 9rem;
+  column-gap: var(--space-3);
+}
+
+.pop-ui .pop-loclabel-top .pop-select__value,
+.pop-ui .pop-loclabel-top .pop-select [role='combobox'] {
+  min-block-size: 56px;
+}
+
+.pop-ui .pop-loclabel-top .field-label {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--on-surface);
+}
+
+.pop-ui .pop-loclabel-warehouse > .field-note {
+  margin: 0;
+}
+
+/* 프린터는 출력 장치 설정이다 — 테두리 상자로 창고·목록과 갈라 선다. */
+.pop-ui .pop-loclabel-top > .pop-loclabel-printer {
+  box-sizing: border-box;
+  min-width: 0;
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-md);
+}
+
+/* 프린터 장치 상태(`patterns/pop-printer-status`) — 점 + 글자. 점 색은 기존 상태 토큰이다. 모든 POP 프린터 칸이 같이 쓴다. */
+.pop-ui .pop-printer-status {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--pop-label);
+  color: var(--on-surface-variant);
+}
+
+.pop-ui .pop-printer-status[data-status='success'] > [aria-hidden] {
+  color: var(--semantic-success);
+}
+
+.pop-ui .pop-printer-status[data-status='warning'] > [aria-hidden] {
+  color: var(--semantic-warning);
+}
+
+.pop-ui .pop-printer-status[data-status='error'] > [aria-hidden] {
+  color: var(--semantic-error);
+}
+
+/* 적재 위치 — 이 화면의 본문. 테두리 상자에 제목을 달고 남는 높이를 받는다. */
+.pop-ui > .pop-loclabel-list {
+  box-sizing: border-box;
+  padding: var(--space-4);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-md);
+}
+
+.pop-ui > .pop-loclabel-list > * {
+  margin: 0;
+}
+
+/* 창고를 고르기 전 — 무엇을 먼저 해야 하는지 상자 위쪽에 적는다. */
+.pop-ui > .pop-loclabel-list > .pop-loclabel-empty {
+  /* 상자 위쪽 «가운데»에 선다(사용자 지시 2026-09-17). */
+  max-width: none;
+  text-align: center;
+  font-size: 16px;
+}
+
+/* 줄을 눌러 고르는 표 — 한 줄 56 으로 장갑 터치 높이를 준다. */
+.pop-ui > .pop-loclabel-list tbody td {
+  box-sizing: border-box;
+  block-size: 56px;
+}
+
+/* 하단 [라벨 발행] — 장갑 터치 높이. 고른 수 문구는 뺐다(사용자 지시 2026-09-17). */
+.pop-ui > .pop-loclabel-actions > button {
+  /* 다른 POP 화면 하단 주 버튼과 같은 128×72(실측 · 사용자 지시 2026-09-17). */
+  min-block-size: 72px;
+  min-inline-size: 8rem;
+}
+
+/* 프린터 상자는 좁다 — [선택]을 6rem 으로 줄여 이름 칸을 지킨다(1024×768 에서 이름이 잘렸다 · 실측). */
+.pop-ui .pop-loclabel-top > .pop-loclabel-printer .pop-select {
+  grid-template-columns: minmax(0, 1fr) 6rem;
+}
+
+/* 창고도 프린터처럼 테두리 상자로 선다(사용자 지시 2026-09-17). 두 상자는 같은 높이다. */
+.pop-ui .pop-loclabel-top > .pop-loclabel-warehouse {
+  box-sizing: border-box;
+  min-width: 0;
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-md);
+}
+
+/*
+ * 적재 위치 머리 — 제목 왼쪽, [전체 선택] 오른쪽 끝. 줄 오른쪽 [선택]과 같은 세로줄에 선다.
+ * ⚠ 구획 제목의 아래 여백이 남으면 단추와 한 줄에 서지 않는다 — 머리 줄이 간격을 갖는다.
+ */
+.pop-ui .pop-loclabel-list-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  min-block-size: 56px;
+}
+
+.pop-ui .pop-loclabel-list-head > .pane-title {
+  margin: 0;
+}
+
+/* [전체 선택]·줄 [선택] — 같은 크기(폭 8.5rem · 높이 48). 줄 높이 56 안에 들어간다. */
+.pop-ui .pop-loclabel-select-all,
+.pop-ui .pop-loclabel-pick {
+  inline-size: 8.5rem;
+  min-block-size: 48px;
+  padding-inline: var(--space-3);
+}
+
+/* 가운데 정렬 — DS 표머리를 왼쪽으로 세우는 POP 규칙보다 이 표를 좁혀 이긴다. */
+.pop-ui > .pop-loclabel-list th,
+.pop-ui > .pop-loclabel-list td {
+  text-align: center;
+}
+
+
+/*
+ * P-06-01 상자 셋(창고 · 프린터 · 적재 위치) — 다른 POP 화면의 구획 카드(DS `Card` low · bordered)와
+ * 같은 바탕·모서리로 선다(사용자 지시 2026-09-17). 높이·여백은 그대로다.
+ */
+.pop-ui .pop-loclabel-top > .pop-loclabel-warehouse,
+.pop-ui .pop-loclabel-top > .pop-loclabel-printer,
+.pop-ui > .pop-loclabel-list {
+  background: var(--surface-container-low);
+  border-radius: var(--radius-lg);
+}
+
+/*
+ * 줄 [선택]은 [전체 선택]과 같은 세로줄에 선다 — 칸 오른쪽 끝에 붙인다(사용자 지시 2026-09-17).
+ * 칸 오른쪽 여백(16)과 가운데 정렬 탓에 16 안쪽으로 들어가 있었다(실측 1867 · 1883).
+ */
+.pop-ui > .pop-loclabel-list td:has(> .pop-loclabel-pick) {
+  text-align: end;
+  padding-inline-end: 0;
 }

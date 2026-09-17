@@ -21,9 +21,9 @@ export interface PendingPaneProps {
 /**
  * ① 발행 대기 — **재구성 사건 목록이다**(스펙 §3 ① 도면 · 사용자 지적 2026-09-11).
  *
- * ⛔ **[ 선택 ] 단추 열을 두지 않는다.** 도면에 그 열이 없고, POP 목록의 정본은 「줄을 눌러
- *    고른다」다(`P-02-01`·`P-02-12`가 같은 형태다). 단추 열을 두면 장갑 낀 손이 겨냥할 자리가
- *    줄 전체가 아니라 오른쪽 끝 한 칸으로 좁아진다.
+ * ⭐ **줄 오른쪽에 [ 선택 ] 단추를 둔다**(사용자 지시 2026-09-17). 줄을 눌러 고르는 길은 그대로
+ *    두고, 무엇을 누르면 고르는지가 눈에 보이게 단추를 더한다. 고르는 것은 여전히 한 포장이다 —
+ *    다른 줄의 [ 선택 ]을 누르면 앞 선택이 바뀐다.
  */
 export const PendingPane = ({
   rows,
@@ -46,7 +46,7 @@ export const PendingPane = ({
        *   자리를 통째로 먹어(실측 751px) 나머지 넷이 오른쪽 끝에 몰려 붙는다. 합병은 번호
        *   둘이 이어 붙으므로 첫 열이 가장 넓되, 혼자 절반을 넘기지는 않는다.
        */
-      width: '34%',
+      width: '30%',
       /*
        * ⭐ **조작은 첫 칸의 단추 하나가 갖는다**(POP 목록 정본 · `P-02-12` 와 같은 형태).
        *    칸마다 단추를 두면 한 줄에 탭 정지가 여럿 생기고 읽어 주는 이름도 여럿이 된다.
@@ -92,7 +92,7 @@ export const PendingPane = ({
       key: 'repackType',
       header: t.typeColumn,
       align: 'center',
-      width: '12%',
+      width: '10%',
       /*
        * ⛔ **포장 유형(박스·팔레트)이 아니다.** 도면의 이 열은 «재구성» 유형(분할·합병)이고,
        *    한때 포장 유형 코드(`BOX`)가 그대로 서 있었다 — 다른 축의 값이었다.
@@ -103,7 +103,7 @@ export const PendingPane = ({
       key: 'newCount',
       header: t.newColumn,
       align: 'center',
-      width: '12%',
+      width: '10%',
       render: (row) => t.newCount(row.newCount),
     },
     {
@@ -111,7 +111,7 @@ export const PendingPane = ({
       header: t.remainderColumn,
       align: 'center',
       /* 잔량은 포장 번호 한 개가 통째로 들어간다 — 접히지 않을 만큼 준다. */
-      width: '24%',
+      width: '20%',
       /* 분할은 원 번호가 잔량으로 남고, 합병은 남지 않는다 — 둘을 가르는 칸이다. */
       render: (row) => row.remainderNo ?? t.noRemainder,
     },
@@ -121,6 +121,30 @@ export const PendingPane = ({
       align: 'center',
       width: '18%',
       render: (row) => localDateTimeText(row.occurredAt, t.unknown),
+    },
+    {
+      key: 'pick',
+      header: '',
+      align: 'center',
+      width: '12%',
+      /* 고른 줄은 채운 단추다 — 줄 강조와 함께 «지금 이것»이 두 번 보인다. */
+      render: (row) => {
+        const selected = row.handlingUnitId === selectedId;
+
+        return (
+          <Button
+            type="button"
+            variant={selected ? 'filled' : 'outlined'}
+            size="2xl"
+            className="pop-touch-target pop-repack-pick"
+            disabled={disabled}
+            aria-pressed={selected}
+            onClick={() => onSelect(row.handlingUnitId)}
+          >
+            {t.pick}
+          </Button>
+        );
+      },
     },
   ];
 

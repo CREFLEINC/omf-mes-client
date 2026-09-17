@@ -81,6 +81,9 @@ export const pqcInspection = {
   pad: {
     title: '숫자 키패드',
     keypadLabel: '수량 키패드',
+    extraKeysLabel: '부호·소수점',
+    negative: '음수',
+    positive: '양수',
     decimal: '소수점',
     backspace: '한 자 지움',
     clear: '지움',

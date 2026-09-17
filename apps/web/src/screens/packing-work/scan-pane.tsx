@@ -1,19 +1,25 @@
-import { Button, TextField } from '@crefle/web-ui';
+import { Button, Icon, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { NumericKeypad } from '@omf-mes/ui';
-import { useEffect, useRef, useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type ChangeEvent, type FormEvent } from 'react';
 
 import { popTouchClass } from '../../patterns/pop-touch';
+import { InlineError } from './inline-error';
 
 const t = messages.packingWork;
+
+/** 스캐너는 글자를 이 간격보다 빠르게 붙여 보낸다. 사람 손은 이보다 느리다(전례 P-02-06 `scan-field`). */
+const SCAN_KEY_GAP_MS = 50;
+/** 마지막 글자 뒤 이만큼 조용하면 스캔이 끝난 것으로 본다. */
+const SCAN_IDLE_MS = 150;
 
 export interface ScanPaneProps {
   /** 지금 담을 대상으로 잡힌 LOT 번호. 목록에서 골랐거나 스캔으로 잡혔다. */
   selectedLotNo: string | null;
   quantity: string;
   onQuantityChange: (value: string) => void;
-  /** 스캔·직접 입력으로 들어온 코드. 대상 잡기는 화면이 한다. */
-  onScan: (code: string) => void;
+  /** 스캔·직접 입력으로 들어온 코드. 대상 잡기는 화면이 하고, 잡았으면 `true` 를 돌려준다. */
+  onScan: (code: string) => boolean;
   onAdd: () => void;
   /** 담기가 막혀 있는가 — **잠그는 축**이다. 무엇을 말할지는 아래 `blockedNote` 가 따로 정한다 */
   isBlocked: boolean;
@@ -82,6 +88,19 @@ export const ScanPane = ({
 }: ScanPaneProps) => {
   const [code, setCode] = useState('');
   const scanRef = useRef<HTMLInputElement>(null);
+  const quantityRef = useRef<HTMLInputElement>(null);
+  const lastInputAt = useRef(0);
+  /** 지금 칸의 글자가 전부 스캐너 속도로 들어왔는가. 한 글자라도 느리면 손 입력으로 본다. */
+  const isBurst = useRef(true);
+  const idleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const cancelIdle = (): void => {
+    if (idleTimer.current !== null) clearTimeout(idleTimer.current);
+    idleTimer.current = null;
+  };
+
+  /* 칸이 사라지면 걸어 둔 자동 제출도 거둔다. */
+  useEffect(() => cancelIdle, []);
 
   /*
    * 담기가 끝나면 스캔 칸으로 포커스를 되돌린다. 처음 렌더에서도 한 번 걸리므로 화면에
@@ -91,20 +110,57 @@ export const ScanPane = ({
     scanRef.current?.focus();
   }, [addedCount]);
 
+  const submitCode = (raw: string): void => {
+    cancelIdle();
+
+    const text = raw.trim();
+    if (text === '') return;
+
+    /* **보내기 전에 비운다.** 뒤에 비우면 그사이 읽힌 다음 코드가 앞 코드에 이어 붙는다. */
+    setCode('');
+
+    /*
+     * ⭐ **대상을 잡으면 수량 칸으로 넘어간다**(사용자 지시 2026-09-17). 못 잡으면 스캔 칸에
+     *    남아 다시 읽게 한다.
+     */
+    if (onScan(text)) quantityRef.current?.focus();
+    else scanRef.current?.focus();
+  };
+
   const submitScan = (event: FormEvent<HTMLFormElement>): void => {
     /*
      * ⛔ 기본 제출을 막는다. `<form>` 은 기본이 GET 제출이라 Enter 한 번에 읽은 코드가 질의
      * 문자열로 올라가고 화면이 통째로 다시 뜬다 — 담아 둔 내용물이 그 자리에서 사라진다.
      */
     event.preventDefault();
+    submitCode(code);
+  };
 
-    const text = code.trim();
-    if (text === '') return;
+  /* 최신 판을 부른다 — 타이머가 잡아 둔 옛 렌더의 대상 목록으로 판정하지 않게 한다. */
+  const submitCodeRef = useRef(submitCode);
+  submitCodeRef.current = submitCode;
 
-    /* **보내기 전에 비운다.** 뒤에 비우면 그사이 읽힌 다음 코드가 앞 코드에 이어 붙는다. */
-    setCode('');
-    onScan(text);
-    scanRef.current?.focus();
+  /*
+   * ⭐ **Enter 없이도 스캔을 받는다**(사용자 지시 2026-09-17 · 전례 P-02-06). 스캐너 속도로
+   *    들어온 글자는 잠깐 조용해지면 바로 제출한다. 손으로 치는 속도면 Enter 를 기다린다.
+   */
+  const changeCode = (event: ChangeEvent<HTMLInputElement>): void => {
+    const next = event.target.value;
+    const now = performance.now();
+
+    if (code === '') isBurst.current = true;
+    else if (next.length < code.length || now - lastInputAt.current > SCAN_KEY_GAP_MS) {
+      isBurst.current = false;
+    }
+    lastInputAt.current = now;
+    setCode(next);
+
+    cancelIdle();
+    if (isBurst.current && next.length > 1) {
+      idleTimer.current = setTimeout(() => {
+        submitCodeRef.current(next);
+      }, SCAN_IDLE_MS);
+    }
   };
 
   return (
@@ -115,6 +171,7 @@ export const ScanPane = ({
             size="xl"
             ref={scanRef}
             label={t.scan.label}
+            placeholder={t.scan.scanPlaceholder}
             value={code}
             fullWidth
             autoComplete="off"
@@ -122,9 +179,7 @@ export const ScanPane = ({
              * ⛔ **담는 중에도 칸을 잠그지 않는다.** 잠그면 그 순간 포커스가 칸을 떠나고,
              * 되돌려 놓기 전에 읽힌 코드가 사라진다 — 스캐너는 사람이 기다려 주지 않는다.
              */
-            onChange={(event) => {
-              setCode(event.target.value);
-            }}
+            onChange={changeCode}
           />
           {/*
            * ⛔ **이 버튼은 «제출»이 아니라 «칸으로 옮기는» 버튼이다.**
@@ -154,13 +209,15 @@ export const ScanPane = ({
           둘뿐이고, 이 화면은 좌단 세로가 모자라 «포장 대상» 목록이 화면 밖으로 밀려 있었다
           (실측 164px). 버튼 이름이 이미 그 일을 말한다.
         */}
-        {scanError !== null && <p className="field-error">{scanError}</p>}
+        {scanError !== null && <InlineError>{scanError}</InlineError>}
       </form>
 
       <div className="pack-work-add-row">
         <TextField
           size="xl"
+          ref={quantityRef}
           label={t.scan.quantityLabel}
+          placeholder={t.scan.quantityPlaceholder}
           value={quantity}
           autoComplete="off"
           /*
@@ -204,10 +261,12 @@ export const ScanPane = ({
         allowDecimal={allowsDecimal}
         decimalLabel={t.scan.keypadDecimal}
         backspaceLabel={t.scan.keypadBackspace}
+        /* 「←」만으로는 한 자 지움인지 읽히지 않는다 — 지움 키 모양을 쓴다(사용자 지시 2026-09-17). */
+        backspaceGlyph={<Icon name="backspace" size={24} />}
         clearLabel={t.scan.keypadClear}
       />
 
-      {quantityError !== null && <p className="field-error">{quantityError}</p>}
+      {quantityError !== null && <InlineError>{quantityError}</InlineError>}
       {/* ⛔ 유형 미선택은 여기서 말하지 않는다 — 누르면 고칠 칸(오른쪽 「유형」)이 말한다. */}
       {blockedNote !== null && <p className="field-note">{blockedNote}</p>}
     </>

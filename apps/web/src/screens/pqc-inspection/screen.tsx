@@ -1,4 +1,4 @@
-import { Chip } from '@crefle/web-ui';
+import { Button, Chip } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useId, useRef, useState } from 'react';
@@ -7,6 +7,7 @@ import { useSearchParams } from 'react-router';
 import { SaveErrorBanner } from '../../patterns/master';
 import { OutboxStallBanner } from '../../patterns/outbox-stall-banner';
 import { usePopIdentity } from '../../patterns/pop-identity';
+import { popTouchClass } from '../../patterns/pop-touch';
 import { toApiError } from '../../patterns/request';
 import { useWorkerSession } from '../../patterns/worker-session';
 
@@ -132,10 +133,12 @@ export const PqcInspectionScreen = () => {
    * 「지금 어느 칸을 치는가」를 **화면이 들고 있어야** 좌단 측정값과 우단 수량이 패드 하나를
    * 나눠 쓸 수 있다(D-4 「포커스된 필드에 연동되는 입력 버퍼」). 구획이 각자 들면 패드가 둘이 된다.
    */
-  const [padField, setPadField] = useState<{
-    key: keyof QuantityDraft | 'inspected';
-    label: string;
-  } | null>(null);
+  const [padField, setPadField] = useState<
+    | { key: keyof QuantityDraft | 'inspected'; label: string }
+    /* 좌단 측정치 한 줄 — `rowKey` 가 그 줄이다(사용자 지시 2026-09-17). */
+    | { key: 'measurement'; rowKey: string; label: string }
+    | null
+  >(null);
 
   const [remarks, setRemarks] = useState('');
   /** 초안을 지울지 가르는 자리 — 「효과가 다시 돌았다」와 「대상이 바뀌었다」는 다르다. */
@@ -444,6 +447,93 @@ export const PqcInspectionScreen = () => {
   };
 
   /**
+   * 세 구획(검사 항목 · 결과 입력 · 숫자 키패드). **대상을 못 불러온 갈래에서도 잠근 채 세운다**
+   * (사용자 지시 2026-09-17) — 빈 상자만 서면 어떤 화면인지·무엇을 넣을 자리인지 읽히지 않았다.
+   * 그 갈래는 기준 유무를 모르므로 `planVersionId` 를 `undefined` 로 넘겨 항목표 갈래로 세운다.
+   */
+  const renderInspect = (
+    isLocked: boolean,
+    planVersionId: number | null | undefined,
+    uomId: number | null,
+  ) => (
+    <div className="pop-inspect">
+      {/*
+       * ⭐ **갈래가 둘이다**(§5-2 · 통지 #589). 검사 기준이 없으면 항목표 대신 판정 선택과
+       * 자유 입력만 보인다 — 기준 미등록은 현장에서 실제로 일어나고, 그때 검사를 막으면
+       * 제품이 멈춘다. 어느 갈래인지는 **의뢰에 기준이 실려 있는가**로 갈린다.
+       */}
+      {planVersionId === null ? (
+        <FreeInputPanel remarks={remarks} onRemarksChange={setRemarks} isLocked={isLocked} />
+      ) : (
+        <ItemPanel
+          uomCodeOf={(uomId) =>
+            uomId === null ? null : (uoms.data?.find((uom) => uom.uomId === uomId)?.uomCode ?? null)
+          }
+          inspectionPlanVersionId={planVersionId ?? 0}
+          planVersion={planVersion.data ?? null}
+          rows={rows}
+          drafts={drafts}
+          onValueChange={changeMeasurementValue}
+          onValuePick={(rowKey, label) => setPadField({ key: 'measurement', rowKey, label })}
+          onJudgmentChange={changeMeasurementJudgment}
+          judgmentOptions={itemJudgmentOptions}
+          isLoading={itemSpecs.isLoading}
+          isLocked={isLocked}
+          hideEmptyNote={planVersionId === undefined}
+        />
+      )}
+
+      <ResultPanel
+        inspectedDraft={inspectedDraft}
+        onInspectedChange={changeInspected}
+        inspectedQty={inspectedQty}
+        uomCode={uoms.data?.find((uom) => uom.uomId === uomId)?.uomCode ?? null}
+        draft={draft}
+        onChange={changeDraft}
+        fieldErrors={outbox.rejection?.fieldErrors ?? EMPTY_FIELD_ERRORS}
+        errorBanner={<SaveErrorBanner error={outbox.rejection?.error ?? null} />}
+        showErrors={showErrors}
+        coverage={coverage}
+        onCoverageChange={setCoverage}
+        judgmentOptions={overallOptions}
+        judgment={judgment}
+        onJudgmentChange={setJudgment}
+        disposition={disposition}
+        onDispositionChange={setDisposition}
+        padField={padField?.key === 'measurement' ? null : padField}
+        onPadFieldChange={setPadField}
+        isLocked={isLocked}
+      />
+
+      {/*
+       * ⭐ **셋째 칸 — 숫자 키패드**(설계 2차 공지 §3-1). 좌단 측정값과 우단 수량이
+       *    이 패드 하나를 나눠 쓴다.
+       */}
+      <KeypadPanel
+        label={padField?.label ?? null}
+        value={
+          padField === null
+            ? ''
+            : padField.key === 'measurement'
+              ? (drafts[padField.rowKey]?.value ?? '')
+              : padField.key === 'inspected'
+                ? inspectedDraft
+                : draft[padField.key]
+        }
+        onChange={(next) => {
+          if (padField === null) return;
+
+          if (padField.key === 'measurement') changeMeasurementValue(padField.rowKey, next);
+          else if (padField.key === 'inspected') changeInspected(next);
+          else changeDraft({ ...draft, [padField.key]: next });
+        }}
+        isLocked={isLocked}
+        allowSignAndDecimal={padField?.key === 'measurement'}
+      />
+    </div>
+  );
+
+  /**
    * 대상이 없거나 못 불러왔다. **네 갈래를 가른다** — 인자 없음 · 실패 · 부르는 중 · 상세.
    *
    * ⛔ 실패를 「인자 없음」으로 접지 않는다. 접으면 진입이 잘못된 것처럼 보여 검사자가
@@ -458,6 +548,7 @@ export const PqcInspectionScreen = () => {
         onRetry={outbox.retryNow}
       >
         <p className="field-note">{t.detail.nothingSelected}</p>
+        <PqcLockedBody>{renderInspect(true, undefined, null)}</PqcLockedBody>
       </PqcFrame>
     );
   }
@@ -474,6 +565,7 @@ export const PqcInspectionScreen = () => {
           error={toApiError(detail.error)}
           onRetry={() => void detail.refetch()}
         />
+        <PqcLockedBody>{renderInspect(true, undefined, null)}</PqcLockedBody>
       </PqcFrame>
     );
   }
@@ -501,77 +593,7 @@ export const PqcInspectionScreen = () => {
       isStalled={outbox.isStalled}
       onRetry={outbox.retryNow}
     >
-      <div className="pop-inspect">
-        {/*
-         * ⭐ **갈래가 둘이다**(§5-2 · 통지 #589). 검사 기준이 없으면 항목표 대신 판정 선택과
-         * 자유 입력만 보인다 — 기준 미등록은 현장에서 실제로 일어나고, 그때 검사를 막으면
-         * 제품이 멈춘다. 어느 갈래인지는 **의뢰에 기준이 실려 있는가**로 갈린다.
-         */}
-        {planVersionId === null ? (
-          <FreeInputPanel remarks={remarks} onRemarksChange={setRemarks} isLocked={isConfirmed} />
-        ) : (
-          <ItemPanel
-            uomCodeOf={(uomId) =>
-              uomId === null
-                ? null
-                : (uoms.data?.find((uom) => uom.uomId === uomId)?.uomCode ?? null)
-            }
-            inspectionPlanVersionId={planVersionId}
-            planVersion={planVersion.data ?? null}
-            rows={rows}
-            drafts={drafts}
-            onValueChange={changeMeasurementValue}
-            onJudgmentChange={changeMeasurementJudgment}
-            judgmentOptions={itemJudgmentOptions}
-            isLoading={itemSpecs.isLoading}
-            isLocked={isConfirmed}
-          />
-        )}
-
-        <ResultPanel
-          inspectedDraft={inspectedDraft}
-          onInspectedChange={changeInspected}
-          inspectedQty={inspectedQty}
-          uomCode={uoms.data?.find((uom) => uom.uomId === detail.data.uomId)?.uomCode ?? null}
-          draft={draft}
-          onChange={changeDraft}
-          fieldErrors={outbox.rejection?.fieldErrors ?? EMPTY_FIELD_ERRORS}
-          errorBanner={<SaveErrorBanner error={outbox.rejection?.error ?? null} />}
-          showErrors={showErrors}
-          coverage={coverage}
-          onCoverageChange={setCoverage}
-          judgmentOptions={overallOptions}
-          judgment={judgment}
-          onJudgmentChange={setJudgment}
-          disposition={disposition}
-          onDispositionChange={setDisposition}
-          padField={padField}
-          onPadFieldChange={setPadField}
-          isLocked={isConfirmed}
-        />
-
-        {/*
-         * ⭐ **셋째 칸 — 숫자 키패드**(설계 2차 공지 §3-1). 좌단 측정값과 우단 수량이
-         *    이 패드 하나를 나눠 쓴다.
-         */}
-        <KeypadPanel
-          label={padField?.label ?? null}
-          value={
-            padField === null
-              ? ''
-              : padField.key === 'inspected'
-                ? inspectedDraft
-                : draft[padField.key]
-          }
-          onChange={(next) => {
-            if (padField === null) return;
-
-            if (padField.key === 'inspected') changeInspected(next);
-            else changeDraft({ ...draft, [padField.key]: next });
-          }}
-          isLocked={isConfirmed}
-        />
-      </div>
+      {renderInspect(isConfirmed, planVersionId, detail.data.uomId)}
 
       <ActionBar
         isConfirmed={isConfirmed}
@@ -614,6 +636,37 @@ const storedValueKey = (row: MeasurementRow): string => {
  */
 /** 거부가 없을 때 넘길 빈 목록. 렌더마다 새로 만들면 아래 구획이 매번 다시 그려진다. */
 const EMPTY_FIELD_ERRORS: Record<string, string> = {};
+
+/**
+ * 대상을 못 불러왔을 때도 서는 **화면 뼈대**(사용자 지시 2026-09-17) — 잠긴 세 구획과 잠긴 하단
+ * 버튼. 의뢰가 없으니 담을 곳이 없어 전부 잠근다.
+ */
+const PqcLockedBody = ({ children }: { children: React.ReactNode }) => (
+  <>
+    {children}
+    <div className="pop-action-bar">
+      <div className="pop-action-note" />
+      <Button
+        type="button"
+        variant="outlined"
+        size="xl"
+        className={popTouchClass('primary')}
+        disabled
+      >
+        {t.result.save}
+      </Button>
+      <Button
+        type="button"
+        variant="filled"
+        size="xl"
+        className={popTouchClass('destructive')}
+        disabled
+      >
+        {t.result.confirm}
+      </Button>
+    </div>
+  </>
+);
 
 const PqcFrame = ({
   children,

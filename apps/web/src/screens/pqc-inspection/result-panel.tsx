@@ -1,4 +1,4 @@
-import { Radio, RadioGroup, TextField } from '@crefle/web-ui';
+import { Chip, Radio, RadioGroup, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 
 import { useId, useState, type ReactElement, type ReactNode } from 'react';
@@ -331,19 +331,22 @@ export const ResultPanel = ({
             : unknownValue}
         </span>
         {totalsNote !== null && (
-          <span
-            className={
-              totals.kind === 'counted' && totals.matches
-                ? 'pqc-totals__note pqc-totals__note--ok'
-                : 'pqc-totals__note pqc-totals__note--warn'
+          /*
+           * ⭐ 모자람·넘침은 노란 상태 라벨로 선다(사용자 지시 2026-09-17). 맞으면 초록 라벨이다.
+           * 기호는 색이 못 가는 곳까지 간다 — 흑백 단말·색각 이상에서도 갈래가 보인다.
+           */
+          <Chip
+            className="pqc-totals__note"
+            status={totals.kind === 'counted' && totals.matches ? 'success' : 'warning'}
+            size="md"
+            leadingIcon={
+              <span aria-hidden="true">
+                {totals.kind === 'counted' && totals.matches ? '✓' : '⚠'}
+              </span>
             }
           >
-            {/* 기호는 색이 못 가는 곳까지 간다 — 흑백 단말·색각 이상에서도 갈래가 보인다. */}
-            <span aria-hidden="true">
-              {totals.kind === 'counted' && totals.matches ? '✓' : '⚠'}
-            </span>{' '}
             {totalsNote}
-          </span>
+          </Chip>
         )}
       </p>
 
@@ -414,6 +417,11 @@ export const ResultPanel = ({
             {tDisposition.heading}
           </p>
           {/*
+           * 순서가 뒤집힌다는 사실을 화면이 먼저 말한다 — 안 말하면 고른 값이 확정인 줄 안다.
+           * ⭐ 제목 바로 아래, 고르기 «전»에 읽히게 둔다(사용자 지시 2026-09-17).
+           */}
+          <p className="field-note">{tDisposition.note}</p>
+          {/*
            * ⭐ **두 처분을 한 줄에 나란히 둔다**(사용자 지시 2026-09-10). 「재작업 가능」과
            *    「폐기」는 둘 중 하나를 고르는 짝이라, 위아래로 쌓으면 눈이 두 번 내려가며
            *    견준다. 좁아지면 격자가 알아서 한 줄씩으로 접힌다.
@@ -429,8 +437,6 @@ export const ResultPanel = ({
             <Radio value="REWORK">{tDisposition.rework}</Radio>
             <Radio value="SCRAP">{tDisposition.scrap}</Radio>
           </RadioGroup>
-          {/* 순서가 뒤집힌다는 사실을 화면이 먼저 말한다 — 안 말하면 고른 값이 확정인 줄 안다. */}
-          <p className="field-note">{tDisposition.note}</p>
         </div>
       </div>
 
@@ -448,19 +454,26 @@ export const ResultPanel = ({
        *   칸이 118px 이 되고, 브라우저의 날짜 칸이 「2026. (」로 잘려 무슨 날인지 읽히지
        *   않는다(실측 2026-09-10). 세로로 쌓아 한 칸이 폭을 다 쓰게 둔다.
        */}
-      <div className="pqc-coverage">
-        {coverageBound(tCoverage.from, coverage.from, (value) =>
-          onCoverageChange({ ...coverage, from: value }),
-        )}
-        {/* ⛔ 조용히 뒤집어 고치지 않는다 — 무엇을 넣었는지 사용자가 알아야 고칠 수 있다. */}
-        {coverageBound(
-          tCoverage.to,
-          coverage.to,
-          (value) => onCoverageChange({ ...coverage, to: value }),
-          isCoverageOutOfOrder(coverage) ? tCoverage.invalidOrder : undefined,
-        )}
+      {/*
+       * ⭐ 시작·종료 칸과 안내 문구를 한 묶음으로 세운다(사용자 지시 2026-09-17) — 넓으면
+       *    「시작 · 종료」 제목 줄 → 안내 문구 → 입력칸 차례다. 칸 자리는 `pop.css` 가 정한다.
+       *    좁은 단말에서는 시작·종료가 위아래로 쌓이므로 문구가 묶음 맨 위로 간다.
+       */}
+      <div className="pqc-coverage-group">
+        <div className="pqc-coverage">
+          {coverageBound(tCoverage.from, coverage.from, (value) =>
+            onCoverageChange({ ...coverage, from: value }),
+          )}
+          <p className="field-note pqc-coverage-note">{tCoverage.note}</p>
+          {/* ⛔ 조용히 뒤집어 고치지 않는다 — 무엇을 넣었는지 사용자가 알아야 고칠 수 있다. */}
+          {coverageBound(
+            tCoverage.to,
+            coverage.to,
+            (value) => onCoverageChange({ ...coverage, to: value }),
+            isCoverageOutOfOrder(coverage) ? tCoverage.invalidOrder : undefined,
+          )}
+        </div>
       </div>
-      <p className="field-note">{tCoverage.note}</p>
     </section>
   );
 };
