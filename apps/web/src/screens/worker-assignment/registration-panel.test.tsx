@@ -129,10 +129,12 @@ describe('RegistrationPanel — 네트워크 재연결', () => {
   const setOnline = (value: boolean) => vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(value);
 
   it('연결 끊김 안내가 뜨면 버튼이 보이고, 다른 실패에는 보이지 않는다', async () => {
-    const online = setOnline(false);
+    const online = setOnline(true);
     const registration = openPanel();
 
     expect(screen.queryByRole('button', { name: t.reconnect })).toBeNull();
+
+    online.mockReturnValue(false);
 
     await act(async () => {
       await registration.current.verify(tokenFor(2002));
@@ -192,5 +194,43 @@ describe('RegistrationPanel — 네트워크 재연결', () => {
 
     expect(screen.getByText(t.failure.offline)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: t.reconnect })).toBeEnabled();
+  });
+
+  it('끊겨 있으면 토큰을 넣기 전부터 입력을 잠그고, 연결이 돌아와 누르면 연다', async () => {
+    const online = setOnline(false);
+
+    openPanel();
+
+    expect(await screen.findByText(t.failure.offline)).toBeInTheDocument();
+    expect(screen.getByLabelText(t.tokenLabel)).toBeDisabled();
+    expect(screen.getByRole('button', { name: t.reconnect })).toBeEnabled();
+
+    fireEvent.click(screen.getByRole('button', { name: t.reconnect }));
+    expect(screen.getByLabelText(t.tokenLabel)).toBeDisabled();
+
+    online.mockReturnValue(true);
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: t.reconnect }));
+    });
+
+    expect(screen.queryByText(t.failure.offline)).toBeNull();
+    expect(screen.getByLabelText(t.tokenLabel)).toBeEnabled();
+    expect(screen.queryByRole('button', { name: t.reconnect })).toBeNull();
+  });
+
+  it('입력을 기다리는 중에 연결이 끊기면 그 자리에서 잠근다', async () => {
+    const online = setOnline(true);
+
+    openPanel();
+    expect(screen.getByLabelText(t.tokenLabel)).toBeEnabled();
+
+    online.mockReturnValue(false);
+    act(() => {
+      globalThis.dispatchEvent(new Event('offline'));
+    });
+
+    expect(screen.getByText(t.failure.offline)).toBeInTheDocument();
+    expect(screen.getByLabelText(t.tokenLabel)).toBeDisabled();
   });
 });

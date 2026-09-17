@@ -508,12 +508,39 @@ export const PopRegistrationProvider = ({ children }: { children: ReactNode }) =
   }, [prepare, state.terminal]);
 
   const reconnect = useCallback(async () => {
+    if (state.failure !== 'offline') return;
+
     const attempt = lastAttempt.current;
 
-    if (state.failure !== 'offline' || attempt === null) return;
+    /* 아직 아무것도 확인해 보지 않았다 — 연결만 다시 보고, 돌아왔으면 입력을 연다. */
+    if (attempt === null) {
+      if (navigator.onLine) setState(INITIAL);
+
+      return;
+    }
 
     await verify(attempt.token, attempt.source);
   }, [state.failure, verify]);
+
+  /**
+   * ⭐ **끊겨 있으면 입력 전에 먼저 알린다**(사용자 지시 2026-09-17 · #1330). [등록 확인]을
+   *    눌러야 알게 하면 토큰을 붙여넣고 나서야 막힌다 — 끊긴 동안은 입력 자체를 잠근다.
+   *
+   * ⚠ 입력을 기다리는 상태에서만 건다. 확인·준비 중이거나 이미 등록된 뒤에는 끼어들지 않는다.
+   * ⚠ 연결이 돌아와도 스스로 풀지 않는다 — 사람이 [네트워크 재연결]로 다시 확인한다.
+   */
+  useEffect(() => {
+    const markOffline = (): void =>
+      setState((prev) =>
+        prev.phase === 'unregistered' ? { ...INITIAL, failure: 'offline' }
+          : prev,
+      );
+
+    if (!navigator.onLine) markOffline();
+    globalThis.addEventListener('offline', markOffline);
+
+    return () => globalThis.removeEventListener('offline', markOffline);
+  }, []);
 
   /**
    * 등록 정보를 바꾸러 간다(P-CO-01 §5-1 「재등록」).
