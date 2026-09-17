@@ -4,6 +4,10 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { DockedNumberPad } from './docked-number-pad';
 
+const keyboard = vi.hoisted(() => ({ hide: vi.fn(() => Promise.resolve()) }));
+
+vi.mock('@capacitor/keyboard', () => ({ Keyboard: keyboard }));
+
 const MOVE = {
   canPrevious: true,
   canNext: true,
@@ -124,5 +128,17 @@ describe('화면 아래 숫자판', () => {
     );
 
     expect(scrollIntoView).toHaveBeenCalled();
+  });
+  /*
+   * 비고처럼 자판이 필요한 칸을 치다가 숫자칸을 누르면, 포커스가 옮겨 가도 기기 자판이
+   * 내려가지 않는다. 앱 숫자판이 그 위에 서서 둘이 겹친다(실기 2026-09-17).
+   *
+   * 칸의 설정으로는 내릴 수 없어 단말에 직접 내리라고 이른다.
+   */
+  it('서면 기기 자판을 내린다', () => {
+    keyboard.hide.mockClear();
+    render(<DockedNumberPad head="수량" value="" onChange={vi.fn()} onClose={vi.fn()} />);
+
+    expect(keyboard.hide).toHaveBeenCalled();
   });
 });

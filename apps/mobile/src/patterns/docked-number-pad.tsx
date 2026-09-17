@@ -1,3 +1,4 @@
+import { Keyboard } from '@capacitor/keyboard';
 import { IconButton, NumberPad } from '@crefle/web-ui';
 import { useEffect, useRef } from 'react';
 
@@ -80,6 +81,17 @@ export const DockedNumberPad = ({
       document.removeEventListener('pointerdown', onDown);
     };
   }, [onClose]);
+
+  /*
+   * 기기 자판을 내린다. 비고처럼 자판이 필요한 칸을 치다가 숫자칸을 누르면 포커스가 옮겨
+   * 가도 자판이 남아, 앱 숫자판이 그 위에 서서 둘이 겹친다(실기 2026-09-17).
+   *
+   * 칸의 설정으로는 내릴 수 없다 - 이미 올라온 자판은 그 값을 보지 않는다. 단말에 직접
+   * 내리라고 이른다. 웹으로 열었을 때는 통로가 없으므로 조용히 지나간다.
+   */
+  useEffect(() => {
+    void Keyboard.hide().catch(() => undefined);
+  }, []);
 
   /*
    * 적는 칸이 화면 아래에 있으면 숫자판이 그 위에 서면서 칸을 덮는다. 무엇을 치는지 보이지
