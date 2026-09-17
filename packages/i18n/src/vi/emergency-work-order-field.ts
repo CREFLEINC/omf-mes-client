@@ -22,7 +22,6 @@ export const emergencyWorkOrderField: Translated<typeof ko.emergencyWorkOrderFie
       quantity: 'Số lượng',
       releasedAt: 'Phát hành',
     },
-    emergencyBadge: 'Khẩn',
     select: 'Chọn',
     deselect: 'Bỏ chọn',
 

@@ -1,4 +1,4 @@
-import { AlertBanner, Button, Chip } from '@crefle/web-ui';
+import { AlertBanner, Button } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { Link } from 'react-router';
 
@@ -33,21 +33,13 @@ export const DetailPane = ({ workOrder, uomLabel }: DetailPaneProps) => {
   return (
     <section className="pane" aria-label={workOrder === null ? t.title : workOrder.workOrderNo}>
       <h2>
-        {workOrder === null ? (
-          t.title
-        ) : (
-          /*
-           * ⭐ **번호가 먼저, 표식이 뒤다** — 스펙 §3 도면이 이 자리를 `《WO-…E-002》 🚨 긴급`
-           *    으로 적었다. 목록에서는 «긴급인지»를 먼저 훑고, 상세에서는 «어느 지시인지»를
-           *    손에 든 지시서와 맞추므로 앞에 서는 것이 다르다(도면도 그렇게 갈라 그렸다).
-           */
-          <>
-            {workOrder.workOrderNo}{' '}
-            <Chip status="error" size="md">
-              {messages.emergencyWorkOrderField.list.emergencyBadge}
-            </Chip>
-          </>
-        )}
+        {workOrder === null
+          ? t.title
+          : /*
+             * ⛔ **「긴급」 표식을 달지 않는다**(사용자 지시 2026-09-17). 화면 이름이 이미 「긴급 W/O」라
+             *    모든 줄에 같은 표식이 붙어 아무것도 가르지 못했다.
+             */
+            workOrder.workOrderNo}
       </h2>
 
       {workOrder === null ? (

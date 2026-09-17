@@ -16,6 +16,7 @@ export const repackLabelIssue: Translated<typeof ko.repackLabelIssue> = {
   pending: {
     sectionLabel: 'Chờ phát hành',
     caption: 'Kiện mới chưa phát hành nhãn',
+    pick: 'Chọn',
     sourceColumn: 'Kiện gốc',
     typeColumn: 'Loại',
     newColumn: 'Kiện mới',
@@ -95,7 +96,7 @@ export const repackLabelIssue: Translated<typeof ko.repackLabelIssue> = {
      * 잔량 줄의 안내 — **한 줄이 둘을 다 말한다**(사용자 지시 2026-09-11). 번호를 새로
      * 매기지 않는다는 것과, 다시 뽑을 까닭이 수량 변경뿐이라는 것이다.
      */
-    remainderNumberNote: 'Giữ nguyên số cũ, chỉ in lại khi số lượng đã thay đổi.',
+    remainderNumberNote: 'Giữ số cũ · chỉ in lại khi đổi số lượng',
     remainderFailed: 'Không xác nhận được đối tượng in lại nhãn phần còn lại.',
     targetRequired: 'Hãy chọn ít nhất một nhãn để in.',
     reissue: (issueCount: number): string =>
@@ -105,11 +106,12 @@ export const repackLabelIssue: Translated<typeof ko.repackLabelIssue> = {
     lastIssuedAt: 'Phát hành gần nhất',
     lastPrintFailed: 'Lần in gần nhất ghi là thất bại. Nếu nhãn chưa ra, hãy phát hành lại.',
 
-    reasonLabel: 'Lý do phát hành lại',
+    reasonLabel: 'Lý do in lại',
+    reasonRequiredNote: 'Khi in lại bắt buộc phải nhập lý do.',
     reasonPlaceholder: 'Chọn lý do',
     reasonRequired: 'Đây là phát hành lại nên cần lý do.',
-    reasonsFailed: 'Không tải được danh sách lý do phát hành lại.',
-    reasonsEmpty: 'Không có lý do phát hành lại nào để chọn.',
+    reasonsFailed: 'Không tải được danh sách lý do in lại.',
+    reasonsEmpty: 'Không có lý do in lại nào để chọn.',
 
     printerLabel: 'Máy in',
     printerPlaceholder: 'Chọn máy in',
@@ -124,13 +126,13 @@ export const repackLabelIssue: Translated<typeof ko.repackLabelIssue> = {
 
   preview: {
     title: 'Xem trước nhãn',
+    reasonTitle: 'Chọn lý do in lại',
     alt: 'Hình ảnh nhãn đã phát hành',
     loading: 'Đang nhận nhãn.',
     failed: 'Không nhận được hình ảnh nhãn.',
     notDrawable: 'Không hiện được nhãn đã nhận lên màn hình. Vẫn in được bình thường.',
     print: 'In',
     close: 'Đóng',
-    closeNote: 'Đóng lại thì bản ghi phát hành vẫn còn. Có thể in lại sau.',
   },
 
   history: {

@@ -14,6 +14,7 @@ import { issueBody } from './issue-body';
 import { useDocumentIssue } from './mutations';
 import { PendingPane } from './pending-pane';
 import { PreviewDialog } from './preview-dialog';
+import { ReasonField } from './reason-field';
 import {
   useContentRows,
   useHandlingUnit,
@@ -71,6 +72,19 @@ export const RepackLabelIssueScreen = () => {
   const [lastIssueBody, setLastIssueBody] = useState<DocumentIssueCreate | null>(null);
   /** 한 배치의 앞 라벨이 실패해 재발행해도 뒤 라벨 순서를 잃지 않는다. */
   const queueAfterRetry = useRef<IssuePrintTarget[]>([]);
+  /**
+   * 이번 그림 받기가 [발번·인쇄]에서 시작됐는가 — 그렇다면 미리보기 창 없이 바로 찍는다
+   * (사용자 지시 2026-09-17). 창은 [미리보기]를 눌렀을 때만 연다.
+   */
+  const printDirectly = useRef(false);
+  /**
+   * 열린 인쇄 창. `preview` 는 [미리보기]로 연 발행된 라벨 창, `reason` 은 [발번·인쇄]에서 사유가
+   * 필요할 때 여는 사유 창이다. 둘 다 창 안에서 재발행 사유를 고르고 [인쇄]로 발행·인쇄한다
+   * (사용자 지시 2026-09-17). `ids` 는 [인쇄]가 발행할 포장이다.
+   */
+  const [dialog, setDialog] = useState<{ mode: 'preview' | 'reason'; ids: number[] } | null>(null);
+  /** 마지막으로 사유와 함께 보낸 포장 — 서버가 사유를 지목해 돌려주면 그 창을 다시 연다. */
+  const lastReasonIds = useRef<number[]>([]);
 
   const pending = usePendingRepackRows();
   const handlingUnit = useHandlingUnit(selectedHandlingUnitId);
@@ -101,9 +115,20 @@ export const RepackLabelIssueScreen = () => {
 
       setPrintQueue([...rest, ...queueAfterRetry.current]);
       queueAfterRetry.current = [];
-      if (first !== undefined) void printRunner.begin(first);
+      setDialog(null);
+      if (first !== undefined) {
+        printDirectly.current = true;
+        void printRunner.begin(first);
+      }
     },
   });
+
+  /* [발번·인쇄]로 받은 그림은 창을 띄우지 않고 곧장 인쇄로 넘긴다. */
+  useEffect(() => {
+    if (printRunner.state.phase !== 'preview' || !printDirectly.current) return;
+
+    void printRunner.print();
+  }, [printRunner]);
 
   /* 여러 대상을 한 트랜잭션으로 발행한 뒤에는 각 렌디션을 한 장씩 확인·인쇄한다. */
   useEffect(() => {
@@ -113,6 +138,7 @@ export const RepackLabelIssueScreen = () => {
     if (next === undefined) return;
 
     setPrintQueue(rest);
+    printDirectly.current = true;
     void printRunner.begin(next);
   }, [printQueue, printRunner]);
 
@@ -140,22 +166,43 @@ export const RepackLabelIssueScreen = () => {
     return null;
   })();
 
-  const submit = (): void => {
-    if (entry.workerNo === null || selectedIds.length === 0) return;
-    if (reasonRequired && reasonCode === '') return;
+  const sendIssue = (handlingUnitIds: readonly number[], withReason: boolean): void => {
+    if (entry.workerNo === null || handlingUnitIds.length === 0) return;
+    if (withReason && reasonCode === '') return;
 
     printRunner.reset();
     setPrintQueue([]);
     queueAfterRetry.current = [];
+    /* 사유 없이 보냈어도 서버가 「사유 필요」로 거절할 수 있다(발행 현황이 낡았을 때) — 대상을 기억한다. */
+    lastReasonIds.current = [...handlingUnitIds];
+    setDialog(null);
     const body = issueBody({
-      handlingUnitIds: selectedIds,
+      handlingUnitIds,
       printerName,
       reasonCode,
-      reasonRequired,
+      reasonRequired: withReason,
     });
     setLastIssueBody(body);
     issue.write(body);
   };
+
+  /* [발번·인쇄] — 사유가 필요하면 사유 창을 먼저 연다. 아니면 곧장 발행·인쇄한다. */
+  const submit = (): void => {
+    if (reasonRequired) {
+      setDialog({ mode: 'reason', ids: selectedIds });
+      return;
+    }
+
+    sendIssue(selectedIds, false);
+  };
+
+  /* 서버가 사유를 지목해 돌려줬다 — 사유 칸이 있는 창을 다시 열어 그 자리에서 고치게 한다. */
+  const reasonServerError = issue.fieldErrors.reissueReasonCode ?? null;
+  useEffect(() => {
+    if (reasonServerError === null || lastReasonIds.current.length === 0) return;
+
+    setDialog((current) => current ?? { mode: 'reason', ids: lastReasonIds.current });
+  }, [reasonServerError]);
 
   const retryFailedPrint = (): void => {
     const target = printRunner.state.target;
@@ -180,6 +227,7 @@ export const RepackLabelIssueScreen = () => {
     setIncludeNewLabel(true);
     setSelectedRemainderIds([]);
     setReasonCode('');
+    setDialog(null);
     setPrintQueue([]);
     setLastIssueBody(null);
     queueAfterRetry.current = [];
@@ -212,11 +260,16 @@ export const RepackLabelIssueScreen = () => {
             label: latestIssue.target.displayName,
           });
 
-    if (target !== null) void printRunner.begin(target);
+    if (target === null) return;
+
+    printDirectly.current = false;
+    /* 미리보기가 뜬다는 것은 이미 발행한 라벨이라는 뜻이다 — [인쇄]는 사유를 받아 재발행한다. */
+    setDialog({ mode: 'preview', ids: [target.targetId] });
+    void printRunner.begin(target);
   };
 
   const canPreview = isOnline && (latestIssue !== null || printRunner.state.target !== null);
-  const isBlocked = blockedReason !== null || isSubmitting || (reasonRequired && reasonCode === '');
+  const isBlocked = blockedReason !== null || isSubmitting;
 
   return (
     <main className="pop-shell pop-ui" aria-labelledby={titleId}>
@@ -246,7 +299,18 @@ export const RepackLabelIssueScreen = () => {
             variant="error"
             title={t.preview.failed}
             action={
-              <Button variant="outlined" size="sm" onClick={openPreview}>
+              /*
+               * ⚠ 같은 발행 기록의 그림을 «다시 받는다». [미리보기]로 부르면 창이 떠 [인쇄]가
+               *   재발행을 하나 더 만든다 — 바로 인쇄 중이던 흐름이면 바로 인쇄로 이어 간다.
+               */
+              <Button
+                variant="outlined"
+                size="sm"
+                onClick={() => {
+                  const target = printRunner.state.target;
+                  if (target !== null) void printRunner.begin(target);
+                }}
+              >
                 {messages.common.retry}
               </Button>
             }
@@ -313,9 +377,8 @@ export const RepackLabelIssueScreen = () => {
 
       {phase === 'succeeded' && printQueue.length === 0 && (
         <div className="banner-slot">
-          <AlertBanner variant="success" title={t.print.issued}>
-            {t.print.succeeded}
-          </AlertBanner>
+          {/* 인쇄까지 끝났으면 그 한 줄만 말한다(사용자 지시 2026-09-17). */}
+          <AlertBanner variant="success" title={t.print.succeeded} />
         </div>
       )}
 
@@ -393,17 +456,12 @@ export const RepackLabelIssueScreen = () => {
             selectedRemainderIds={selectedRemainderIds}
             onRemainderChange={toggleRemainder}
             remainderFailed={remainder.isError}
+            targetRequired={blockedReason === t.issue.targetRequired}
             standing={standing}
             standingFailed={standingQuery.isError}
             onStandingRetry={() => {
               void standingQuery.refetch();
             }}
-            reasons={reasons.data ?? []}
-            reasonsFailed={reasons.isError}
-            reasonCode={reasonCode}
-            onReasonChange={setReasonCode}
-            reasonRequired={reasonRequired}
-            reasonServerError={issue.fieldErrors.reissueReasonCode ?? null}
             printers={printerList}
             printersFailed={printers.isError}
             printerName={printerName}
@@ -425,16 +483,19 @@ export const RepackLabelIssueScreen = () => {
          *
          * ⚠ 잠그는 것과 말하는 것은 다른 축이다 — [발번·인쇄]는 그대로 잠긴다.
          */}
-        {blockedReason !== null && blockedReason !== t.entry.missingHandlingUnit && (
-          <p className="pop-repack-blocked" role="status">
-            {blockedReason}
-            {gate.verdict === 'unavailable' && (
-              <Button variant="outlined" size="sm" onClick={gate.retry}>
-                {t.issue.gateRetry}
-              </Button>
-            )}
-          </p>
-        )}
+        {/* 인쇄 대상 미선택은 인쇄 대상 칸이 말한다(사용자 지시 2026-09-17). */}
+        {blockedReason !== null &&
+          blockedReason !== t.entry.missingHandlingUnit &&
+          blockedReason !== t.issue.targetRequired && (
+            <p className="pop-repack-blocked" role="status">
+              {blockedReason}
+              {gate.verdict === 'unavailable' && (
+                <Button variant="outlined" size="sm" onClick={gate.retry}>
+                  {t.issue.gateRetry}
+                </Button>
+              )}
+            </p>
+          )}
 
         {canPreview ? (
           <Button variant="outlined" onClick={openPreview}>
@@ -454,13 +515,27 @@ export const RepackLabelIssueScreen = () => {
       </div>
 
       <PreviewDialog
-        open={phase === 'preview' || phase === 'printing'}
+        open={dialog !== null && (dialog.mode === 'reason' || phase !== 'renditionFailed')}
+        mode={dialog?.mode ?? 'preview'}
+        reasonField={
+          <ReasonField
+            reasons={reasons.data ?? []}
+            reasonsFailed={reasons.isError}
+            reasonCode={reasonCode}
+            onReasonChange={setReasonCode}
+            serverError={reasonServerError}
+          />
+        }
+        canPrint={reasonCode !== '' && !isSubmitting}
         imageUrl={printRunner.state.imageUrl}
-        isPrinting={phase === 'printing'}
+        isPrinting={isSubmitting}
         onPrint={() => {
-          void printRunner.print();
+          if (dialog !== null) sendIssue(dialog.ids, true);
         }}
-        onClose={printRunner.dismiss}
+        onClose={() => {
+          if (dialog?.mode === 'preview') printRunner.dismiss();
+          setDialog(null);
+        }}
       />
     </main>
   );

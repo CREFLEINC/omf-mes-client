@@ -65,11 +65,6 @@ interface Options {
   lotsFail?: boolean;
   /** 포장 유형 조회가 실패한다 */
   unitTypesFail?: boolean;
-  /**
-   * 목록에 기본값(`BOX`)이 없다 — 고객이 코드를 갈아 두면 생기는 상태다. 그때는 화면이
-   * 유형을 채우지 못하므로 「고르지 않은 채 담기」 갈래가 그대로 남는다.
-   */
-  unitTypesWithoutBox?: boolean;
   /** 품목 조회가 실패한다 */
   itemFails?: boolean;
   /** **확정**(`:pack`) 요청을 담아 둔다. */
@@ -106,9 +101,10 @@ const routes = (options: Options): StubRoute[] => [
         return jsonResponse({ message: '조회 실패' }, { status: 500 });
       }
 
-      const items = options.unitTypesWithoutBox === true ? [] : unitTypes;
-
-      return jsonResponse({ items, page: { page: 1, size: 200, total: items.length } });
+      return jsonResponse({
+        items: unitTypes,
+        page: { page: 1, size: 200, total: unitTypes.length },
+      });
     },
   },
   {
@@ -486,14 +482,13 @@ describe('P-02-08 포장 작업', () => {
   });
 
   /**
-   * ⚠ **기본값이 없을 때의 갈래다.** 화면은 목록에 `BOX` 가 있으면 유형을 채워 두므로(스펙 §3
-   * 도면), 고르지 않은 채로 담기를 누르는 상태는 **목록에 그 값이 없을 때** 생긴다 — 코드는
-   * 고객이 늘리고 갈 수 있다(G-31).
+   * ⚠ **목록에 `BOX` 가 있어도 유형을 미리 채우지 않는다**(사용자 지시 2026-09-17) — 고르지 않은
+   * 채로 담기를 누르면 유형 칸이 사유를 말해야 한다.
    */
   it('유형을 고르기 전에 담기를 누르면 유형 칸이 사유를 말한다', async () => {
     const user = userEvent.setup();
 
-    renderScreen({ unitTypesWithoutBox: true });
+    renderScreen();
 
     await user.click(
       await scanPane().findByRole('button', { name: `${LOT_A_NO} ${t.lotList.select}` }),
@@ -764,6 +759,54 @@ describe('P-02-08 포장 작업', () => {
     expect(await unitPane().findByText(LOT_A_NO)).toBeInTheDocument();
   });
 
+  /* ⭐ 대상을 잡으면 수량 칸으로 넘어가고, 못 잡으면 스캔 칸에 남는다(사용자 지시 2026-09-17). */
+  it('스캔으로 대상을 잡으면 커서가 수량 칸으로 간다', async () => {
+    const user = userEvent.setup();
+
+    renderScreen();
+
+    expect(await screen.findByText(LOT_A_NO)).toBeInTheDocument();
+
+    await user.type(screen.getByLabelText(t.scan.label), 'LOT-SAMPLE-9999{enter}');
+    expect(screen.getByLabelText(t.scan.label)).toHaveFocus();
+
+    await user.type(screen.getByLabelText(t.scan.label), `${LOT_A_NO}{enter}`);
+    expect(screen.getByLabelText(t.scan.quantityLabel)).toHaveFocus();
+  });
+
+  /* ⭐ 스캐너가 Enter 를 붙이지 않아도 읽힌다 — 손으로 치는 속도면 Enter 를 기다린다. */
+  it('스캐너 속도로 들어온 코드는 Enter 없이 대상을 잡는다', async () => {
+    const user = userEvent.setup();
+
+    renderScreen();
+
+    expect(await screen.findByText(LOT_A_NO)).toBeInTheDocument();
+
+    await user.type(screen.getByLabelText(t.scan.label), LOT_A_NO);
+
+    await waitFor(() => {
+      expect(screen.getByLabelText(t.scan.quantityLabel)).toHaveFocus();
+    });
+    expect(screen.getByLabelText(t.scan.label)).toHaveValue('');
+  });
+
+  it('손으로 치는 속도의 입력은 Enter 전까지 제출하지 않는다', async () => {
+    const user = userEvent.setup();
+    let clock = 0;
+    const now = vi.spyOn(performance, 'now').mockImplementation(() => (clock += 200));
+
+    renderScreen();
+
+    expect(await screen.findByText(LOT_A_NO)).toBeInTheDocument();
+
+    await user.type(screen.getByLabelText(t.scan.label), LOT_A_NO);
+    await new Promise((resolve) => setTimeout(resolve, 300));
+
+    expect(screen.getByLabelText(t.scan.label)).toHaveValue(LOT_A_NO);
+    expect(screen.getByLabelText(t.scan.label)).toHaveFocus();
+    now.mockRestore();
+  });
+
   it('수량이 비었거나 0 이하면 담지 않고 사유를 가른다', async () => {
     const user = userEvent.setup();
 
@@ -800,7 +843,7 @@ describe('P-02-08 포장 작업', () => {
 
   /*
    * 스펙 §6 —「포장 유형 미선택 · 내용물 0 → 확정 비활성」. **막는 것과 말하는 것은 다른
-   * 축이다** — 둘 다 화면이 이미 말하고 있어(빈 유형 칸 · 「내용물이 비어 있습니다」)
+   * 축이다** — 둘 다 화면이 이미 말하고 있어(빈 유형 칸 · 「내용물이 없습니다」)
    * 액션바가 되풀이하지 않는다(사용자 지적).
    */
   it('담은 것이 없으면 확정이 막힌다 — 사유를 액션바가 되풀이하지 않는다', async () => {

@@ -1,22 +1,12 @@
 import { AlertBanner, Button, Chip } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 
+import { PopPrinterStatus } from '../../patterns/pop-printer-status';
 import { PopSelect as Select } from '../../patterns/pop-select';
 import { popTouchClass } from '../../patterns/pop-touch';
 import type { Printer } from './types';
 
 const t = messages.popLocationLabel.printer;
-
-/**
- * 상태 값을 **색으로만** 옮긴다. 문구는 서버가 준 `statusMessage` 를 그대로 쓴다 — 화면이
- * `status` 로 한국어를 지어내면 서버가 값을 늘렸을 때 화면만 모르는 문구가 생긴다.
- */
-const CHIP_STATUS: Record<string, 'success' | 'warning' | 'error'> = {
-  READY: 'success',
-  BUSY: 'warning',
-  OFFLINE: 'error',
-  ERROR: 'error',
-};
 
 export interface PrinterSelectProps {
   printers: Printer[];
@@ -90,9 +80,10 @@ export const PrinterSelect = ({
       {selected === null ? (
         <span className="field-note">{t.unselected}</span>
       ) : (
-        <Chip status={CHIP_STATUS[selected.status] ?? 'warning'}>
-          {selected.statusMessage ?? t.noStatusMessage}
-        </Chip>
+        <PopPrinterStatus
+          status={selected.status}
+          text={selected.statusMessage ?? t.noStatusMessage}
+        />
       )}
     </div>
   );

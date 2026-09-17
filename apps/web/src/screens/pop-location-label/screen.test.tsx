@@ -215,7 +215,7 @@ const chooseLocation = async (user: ReturnType<typeof userEvent.setup>, location
   const row = (await screen.findByText(locationCode)).closest('tr');
   if (row === null) throw new Error(`${locationCode} 줄을 찾지 못했습니다.`);
 
-  await user.click(within(row).getByRole('checkbox'));
+  await user.click(within(row).getByRole('button', { name: t.location.pick }));
 };
 
 /**

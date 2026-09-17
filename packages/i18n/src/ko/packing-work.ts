@@ -41,9 +41,11 @@ export const packingWork = {
   scan: {
     sectionLabel: '스캔',
     label: 'LOT / 인식표 스캔',
+    scanPlaceholder: 'LOT이나 인식표를 스캔해주세요',
     submit: '담기',
     manualEntry: '직접 입력',
     quantityLabel: '수량',
+    quantityPlaceholder: '수량을 입력하세요',
     /*
      * 화면 내장 숫자 키패드(D-4). ⛔ **운영체제 키보드에 기대지 않는다** — 현장 POP 은
      * 키오스크로 잠겨 있어 키보드가 뜨지 않고, 그러면 이 칸에 입력 수단이 아예 없다.
@@ -63,7 +65,7 @@ export const packingWork = {
     typeLabel: '유형',
     /** 「담기」를 눌렀는데 유형이 비어 있을 때 이 칸에 붙는다 — 고칠 곳에서 말한다. */
     typeRequired: '포장 유형을 고르세요.',
-    typePlaceholder: '고르세요',
+    typePlaceholder: '유형을 선택하세요',
     typeLoadFailed: '포장 유형 목록을 불러오지 못했습니다.',
     parentLabel: '상위 포장',
     parentNone: '(없음)',
@@ -95,7 +97,7 @@ export const packingWork = {
     /** 담긴 줄 하나를 읽어 주는 이름 — 값마다 무엇인지 붙인다. */
     lineLabel: (lotNo: string, itemCode: string, qty: string) =>
       `LOT ${lotNo} · 품목 ${itemCode} · 수량 ${qty}`,
-    empty: '내용물이 비어 있습니다.',
+    empty: '내용물이 없습니다.',
     totalLabel: '합계',
     mixedTitle: '한 포장에 여러 LOT 이 섞였습니다',
   },

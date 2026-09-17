@@ -23,6 +23,8 @@ export const repackLabelIssue = {
      *
      * ⛔ 신규 포장 «번호»를 이 표에 두지 않는다. 번호는 아래 ② 발번 구획이 보인다.
      */
+    /** 줄 오른쪽 [선택] 단추. 줄을 누르는 길과 같은 일을 한다. */
+    pick: '선택',
     sourceColumn: '원 포장',
     typeColumn: '유형',
     newColumn: '새 포장',
@@ -151,7 +153,7 @@ export const repackLabelIssue = {
      * 잔량 줄의 안내 — **한 줄이 둘을 다 말한다**(사용자 지시 2026-09-11). 번호를 새로
      * 매기지 않는다는 것과, 다시 뽑을 까닭이 수량 변경뿐이라는 것이다.
      */
-    remainderNumberNote: '기존 번호를 그대로 사용하며, 수량이 변경된 경우에만 다시 출력합니다.',
+    remainderNumberNote: '기존 번호 유지 · 수량 변경 시에만 재출력',
     remainderFailed: '잔량 라벨 재출력 대상을 확인하지 못했습니다.',
     targetRequired: '인쇄할 라벨을 하나 이상 선택하세요.',
     /** 회차는 서버가 매긴다. 화면은 「이번이 몇 번째가 될 것인가」를 세지 않는다. */
@@ -164,11 +166,13 @@ export const repackLabelIssue = {
     lastPrintFailed:
       '마지막 인쇄가 실패로 기록돼 있습니다. 라벨이 나오지 않았다면 다시 발행하세요.',
 
-    reasonLabel: '재발행 사유',
+    reasonLabel: '재인쇄 사유',
+    /** 사유 칸 이름 바로 아래 안내(사용자 지시 2026-09-17). */
+    reasonRequiredNote: '재인쇄 시 사유 입력은 필수입니다.',
     reasonPlaceholder: '사유를 고르세요',
     reasonRequired: '재발행이라 사유가 필요합니다.',
-    reasonsFailed: '재발행 사유 목록을 불러오지 못했습니다.',
-    reasonsEmpty: '고를 수 있는 재발행 사유가 없습니다.',
+    reasonsFailed: '재인쇄 사유 목록을 불러오지 못했습니다.',
+    reasonsEmpty: '고를 수 있는 재인쇄 사유가 없습니다.',
 
     printerLabel: '프린터',
     printerPlaceholder: '프린터를 고르세요',
@@ -188,6 +192,8 @@ export const repackLabelIssue = {
   /** 미리보기 — 서버가 그린 라벨을 그대로 보인다(결정 18 · K-5). */
   preview: {
     title: '라벨 미리보기',
+    /** [발번·인쇄]에서 사유가 필요할 때 여는 창의 제목. */
+    reasonTitle: '재인쇄 사유 선택',
     alt: '발행된 라벨 이미지',
     loading: '라벨을 받는 중입니다.',
     failed: '라벨 이미지를 받지 못했습니다.',
@@ -195,8 +201,6 @@ export const repackLabelIssue = {
     notDrawable: '받은 라벨을 화면에 그릴 수 없습니다. 인쇄는 그대로 할 수 있습니다.',
     print: '인쇄',
     close: '닫기',
-    /** 창을 닫아도 발행은 남는다 — 감추지 않고 말한다. */
-    closeNote: '닫아도 발행 기록은 남습니다. 인쇄는 나중에 다시 할 수 있습니다.',
   },
 
   /** 발행 이력 — 회차별로 쌓인다(K-1). */
@@ -217,7 +221,7 @@ export const repackLabelIssue = {
   /** 인쇄 절차 — 발행과 갈라져 있다(K-4). */
   print: {
     issued: '발행됐습니다',
-    succeeded: '라벨이 인쇄됐습니다.',
+    succeeded: '라벨이 인쇄되었습니다.',
     failedTitle: '인쇄하지 못했습니다',
     /** 인쇄 실패는 새 회차와 PRINT_FAILURE 사유로 재발행한다(K-7). */
     failedBody: '발행 기록은 남았습니다. 프린터를 확인하고 실패 사유로 재발행하세요.',
