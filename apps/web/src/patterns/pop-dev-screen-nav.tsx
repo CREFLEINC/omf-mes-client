@@ -94,7 +94,7 @@ export const POP_DEV_SCREENS: readonly PopDevScreen[] = [
   { path: '/pop/downtime', label: 'P-05-02 비가동 등록' },
   {
     path: '/pop/packing-work',
-    label: 'P-02-08 포장 작업',
+    label: 'P-02-08 생산 포장',
     /* 씨앗에서 완료 LOT 이 달려 있는 작업지시다 — 다른 번호면 포장 대상이 비어 뜬다. */
     query: '?workOrderId=11001',
   },
@@ -136,7 +136,7 @@ export const POP_DEV_SCREENS: readonly PopDevScreen[] = [
    * ⚠ 진입값이 없다 — 이 화면은 납품라벨 스캔으로 스스로 출하를 정한다. 단말·공정·사번은
    * 셸이 채우고, 비어 있을 때만 주소를 본다(`entry-context.ts`).
    */
-  { path: '/pop/packing', label: 'P-04-01 출하 실적 등록' },
+  { path: '/pop/packing', label: 'P-04-01 출하 포장' },
   /*
    * ⚠ 진입값이 없다 — 이 화면이 창고를 고르는 것부터 시작한다. 사번은 셸·`worker-session`
    * 이 비었을 때만 주소를 본다.

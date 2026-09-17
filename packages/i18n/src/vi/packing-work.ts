@@ -3,7 +3,7 @@ import type { Translated } from './translated';
 
 /** P-02-08 포장 작업(LOT 스캔·제품 포장) — POP. */
 export const packingWork: Translated<typeof ko.packingWork> = {
-  title: 'Đóng gói',
+  title: 'Đóng gói sản xuất',
 
   device: {
     /* ⚠ 머리줄 표기는 「W/O」로 통일한다(사용자 지시 2026-09-10). */
