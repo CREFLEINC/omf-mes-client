@@ -357,11 +357,27 @@ describe('P-04-05 출하 단위 구성', () => {
     await waitFor(() => {
       expect(screen.getByLabelText(t.scan.label)).toBeEnabled();
     });
-    await user.type(screen.getByLabelText(t.scan.label), 'HU-1');
+    await user.type(screen.getByLabelText(t.scan.label), 'HU-2026-000070');
 
     await waitFor(() => {
       expect(seen.some((call) => call.path.endsWith(':add-box'))).toBe(true);
     });
+  });
+
+  /* ⚠ 스캐너가 끊긴 짧은 조각은 Enter 없이 제출하지 않는다(리뷰 M4 · 6자 미만). */
+  it('짧은 조각은 스캐너 속도로 들어와도 Enter 없이 등록하지 않는다', async () => {
+    const user = userEvent.setup();
+    const seen: Options['seen'] = [];
+    renderScreen({ seen });
+
+    await openUnit(user);
+    await waitFor(() => {
+      expect(screen.getByLabelText(t.scan.label)).toBeEnabled();
+    });
+    await user.type(screen.getByLabelText(t.scan.label), 'HU-1');
+    await new Promise((resolve) => setTimeout(resolve, 400));
+
+    expect(seen.some((call) => call.path.endsWith(':add-box'))).toBe(false);
   });
 
   it('모르는 사유는 서버가 준 말을 그대로 보인다', async () => {

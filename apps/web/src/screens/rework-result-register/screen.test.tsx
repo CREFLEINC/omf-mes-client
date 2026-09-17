@@ -552,6 +552,41 @@ describe('ReworkResultRegisterScreen — 스펙 §3 의 구획', () => {
     });
   });
 
+  /* ⚠ 불량 코드를 못 받으면 필수로 막지 않는다 — 저장이 영영 열리지 않게 되기 때문이다(리뷰 M1). */
+  it('불량 코드를 불러오지 못하면 사정을 말하고 코드 없이도 저장이 열린다', async () => {
+    const user = userEvent.setup();
+    renderWithProviders(
+      <PopIdentityProvider
+        value={{
+          terminalId: TERMINAL_ID,
+          processes: [{ processId: PROCESS_ID }],
+          equipment: null,
+          workerNo: '100027',
+        }}
+      >
+        <ReworkResultRegisterScreen />
+      </PopIdentityProvider>,
+      {
+        fetch: async (request) => {
+          if (new URL(request.url).pathname === '/quality/defect-codes') {
+            return jsonResponse({ title: 'down' }, { status: 500 });
+          }
+
+          return stubFetch(request);
+        },
+        route: '/pop/rework-results',
+      },
+    );
+    await pickWorkOrder(user);
+
+    expect(await screen.findByText(t.defectCodeLoadFailed)).toBeInTheDocument();
+    await user.type(await screen.findByLabelText(t.quantities.defectQty), '3');
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: t.save })).toBeEnabled();
+    });
+  });
+
   it('칸을 고르기 전에는 키가 눌리지 않는다', async () => {
     const { user } = renderScreen();
     await pickWorkOrder(user);

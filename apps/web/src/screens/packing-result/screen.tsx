@@ -370,6 +370,8 @@ export const PackingResultScreen = () => {
         {!isLabelMode && <PopWorkerMissingBanner workerNo={identity.workerNo} />}
         {automaticLabelRun !== null && identity.workerNo !== null ? (
           <AutomaticLabels
+            /* 포장마다 새로 선다(리뷰 M3) — 같은 출하의 두 번째 포장이 첫 포장의 «출력함» 상태를 물려받지 않게. */
+            key={automaticLabelRun.handlingUnit.handlingUnitId}
             run={automaticLabelRun}
             workerNo={identity.workerNo}
             onOpenManagement={() => {

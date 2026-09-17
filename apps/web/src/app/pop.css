@@ -6818,6 +6818,9 @@
   inset: 50% auto auto 50%;
   margin: 0;
   translate: -50% -50%;
+  /* ⚠ 화면보다 긴 창의 위쪽이 가운데 정렬에 잘리지 않게 높이를 화면 안으로 묶는다(리뷰). */
+  max-block-size: calc(100% - 2 * var(--space-4));
+  overflow-y: auto;
 }
 
 /*

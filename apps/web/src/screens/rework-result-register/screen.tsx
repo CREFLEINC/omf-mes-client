@@ -79,6 +79,8 @@ export const ReworkResultRegisterScreen = () => {
   const remaining = Math.max(0, progress.remaining - total);
   useEffect(() => {
     setDrafts(EMPTY_QUANTITIES);
+    /* 다른 작업지시로 옮기면 고른 불량 코드도 버린다(리뷰) — 앞 W/O 의 코드로 필수 검사를 넘지 않게. */
+    setDefectCode(null);
     setQueued(false);
     setQueueError(false);
     setRejected(false);
@@ -112,7 +114,15 @@ export const ReworkResultRegisterScreen = () => {
         : !gate.allowed
           ? t.gateDenied
           : null;
-  const defectCodeMissing = readQuantity(drafts.defectQty) > 0 && defectCode === null;
+  /*
+   * ⚠ **고를 목록이 없으면 필수로 막지 않는다**(리뷰 M1). 조회 실패·0건에 막으면 저장이 영영
+   *    열리지 않는다 — 고른 코드는 아직 서버로 가지도 않는다. 칸 옆이 그 사정을 말하고 다시 부른다.
+   */
+  const defectCodeOptions = defectCodes.data?.items ?? [];
+  const defectCodesUnavailable =
+    defectCodes.isError || (defectCodes.isSuccess && defectCodeOptions.length === 0);
+  const defectCodeMissing =
+    readQuantity(drafts.defectQty) > 0 && defectCode === null && !defectCodesUnavailable;
   const canSave =
     selected !== null &&
     source.isSuccess &&
@@ -547,20 +557,31 @@ export const ReworkResultRegisterScreen = () => {
                 <label className="field-label" htmlFor={defectCodeId}>
                   {t.defectCode}
                 </label>
-                <p className="field-note">{t.defectCodeReason}</p>
+                <p className="field-note">
+                  {defectCodes.isError
+                    ? t.defectCodeLoadFailed
+                    : defectCodes.isSuccess && defectCodeOptions.length === 0
+                      ? t.defectCodeEmpty
+                      : t.defectCodeReason}
+                </p>
+                {defectCodes.isError && (
+                  <Button variant="outlined" size="sm" onClick={() => void defectCodes.refetch()}>
+                    {t.defectCodeRetry}
+                  </Button>
+                )}
               </div>
               {/* ⚠ 크기를 넘긴다 — 안 넘기면 DS 기본(40)에 POP 규칙이 트리거만 늘려 칸이 넘친다. */}
               <Select
                 id={defectCodeId}
                 size="xl"
-                options={(defectCodes.data?.items ?? []).map((code) => ({
+                options={defectCodeOptions.map((code) => ({
                   value: String(code.defectCodeId),
                   label: `${code.defectCode} ${code.defectName}`,
                 }))}
                 value={defectCode}
                 onChange={setDefectCode}
                 placeholder={t.defectCodePlaceholder}
-                disabled={(defectCodes.data?.items ?? []).length === 0}
+                disabled={defectCodeOptions.length === 0}
               />
             </Card.Body>
           </Card>

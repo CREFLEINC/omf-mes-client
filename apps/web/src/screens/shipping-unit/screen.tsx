@@ -1,6 +1,6 @@
 import { AlertBanner, Button, Chip, EmptyState, Table, type Column } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { usePopIdentity } from '../../patterns/pop-identity';
 import { PopWorkerMissingBanner } from '../../patterns/pop-worker-missing-banner';
@@ -126,41 +126,54 @@ export const ShippingUnitScreen = () => {
    *
    * ⚠ 발행 회차는 마감·발행 전에는 없다 — 첫 발행인 1 로 그린다. 재발행이면 종이의 회차만 다르다.
    */
-  const previewSrc = useMemo((): string | null => {
-    if (unit === null || unit.boxCount === 0) return null;
-
-    const bytes = renderDeliveryLabel(toDeliveryLabelFields(unit, 1));
-
-    return URL.createObjectURL(
-      new Blob([bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength)], {
-        type: 'image/png',
-      }),
-    );
-  }, [unit]);
+  /*
+   * ⚠ **그림 주소는 effect 안에서 만들고 같은 effect 가 해제한다**(리뷰 M2). 렌더 중에 만들면
+   *    StrictMode 의 «실행→정리→재실행»에서 쓰던 주소가 해제돼 빈 그림이 선다. 그리기가 실패해도
+   *    화면 전체를 멈추지 않고 미리보기만 비운다.
+   */
+  const [previewSrc, setPreviewSrc] = useState<string | null>(null);
 
   useEffect(() => {
-    if (previewSrc === null) return;
+    if (unit === null || unit.boxCount === 0) {
+      setPreviewSrc(null);
+      return;
+    }
+
+    let src: string;
+    try {
+      const bytes = renderDeliveryLabel(toDeliveryLabelFields(unit, 1));
+      src = URL.createObjectURL(
+        new Blob([bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength)], {
+          type: 'image/png',
+        }),
+      );
+    } catch {
+      setPreviewSrc(null);
+      return;
+    }
+    setPreviewSrc(src);
 
     return () => {
-      URL.revokeObjectURL(previewSrc);
+      URL.revokeObjectURL(src);
     };
-  }, [previewSrc]);
+  }, [unit]);
   const currentEtag = etag ?? detail.data?.etag ?? null;
 
   /* ⛔ 한 번에 하나만 나간다 — 장갑 낀 손이 빠르게 두 번 누르면 같은 렌더에서 두 번 들어온다. */
-  const run = useCallback(
-    async (kind: ComposeBusy, work: () => Promise<void>): Promise<void> => {
-      if (busy !== 'idle') return;
+  /* ⚠ 렌더 시점 `busy` 가 아니라 ref 로 막는다(리뷰) — 같은 렌더 안의 연타는 둘 다 'idle' 을 읽었다. */
+  const runningRef = useRef(false);
+  const run = useCallback(async (kind: ComposeBusy, work: () => Promise<void>): Promise<void> => {
+    if (runningRef.current) return;
 
-      setBusy(kind);
-      try {
-        await work();
-      } finally {
-        setBusy('idle');
-      }
-    },
-    [busy],
-  );
+    runningRef.current = true;
+    setBusy(kind);
+    try {
+      await work();
+    } finally {
+      runningRef.current = false;
+      setBusy('idle');
+    }
+  }, []);
 
   const onCreate = (): void => {
     if (shipmentId === null || typeCode === null) return;

@@ -10,6 +10,11 @@ const t = messages.packingResult;
 const SCAN_KEY_GAP_MS = 50;
 /** 마지막 글자 뒤 이만큼 조용하면 스캔이 끝난 것으로 본다. */
 const SCAN_IDLE_MS = 150;
+/**
+ * Enter 없이 자동 제출할 최소 글자 수(리뷰 M4). 스캐너가 끊긴 조각·롤오버 두세 글자가 제출되어
+ * 담던 줄을 흔들지 않게 한다. 출하번호·생산LOT 번호는 이보다 길다. 짧은 값은 Enter 로 낸다.
+ */
+const SCAN_AUTO_MIN_LENGTH = 6;
 
 export interface ScanFieldProps {
   label: string;
@@ -110,7 +115,7 @@ export const ScanField = ({
     setValue(next);
 
     cancelIdle();
-    if (autoSubmit && isBurst.current && next.length > 1) {
+    if (autoSubmit && isBurst.current && next.trim().length >= SCAN_AUTO_MIN_LENGTH) {
       idleTimer.current = setTimeout(() => {
         submitCodeRef.current(next);
       }, SCAN_IDLE_MS);

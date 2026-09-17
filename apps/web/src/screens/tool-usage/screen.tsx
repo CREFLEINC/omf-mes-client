@@ -244,6 +244,8 @@ export const ToolUsageScreen = () => {
 
   const applyCode = (raw: string): void => {
     cancelScanIdle();
+    /* 다른 툴을 읽으면 앞 툴에 확정한 숫자를 풀어 둔다(리뷰) — 새 툴 실적으로 저장되지 않게. */
+    setShotConfirmed(false);
     setSubmittedCode(raw.trim());
     setSaved(null);
     occurredAtRef.current = null;

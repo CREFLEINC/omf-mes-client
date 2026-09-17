@@ -251,6 +251,25 @@ describe('ToolUsageScreen — 툴 스캔', () => {
     expect(screen.queryByRole('button', { name: '툴 다시 고르기' })).not.toBeInTheDocument();
   });
 
+  /* ⚠ 다른 툴을 읽으면 앞 툴에 확정한 숫자가 풀린다(리뷰) — 새 툴 실적으로 저장되지 않게. */
+  it('확인 뒤 다른 툴을 읽으면 확정이 풀려 저장이 잠긴다', async () => {
+    const user = userEvent.setup();
+    renderScreen();
+
+    await scanTool(user);
+    await user.type(await screen.findByLabelText(t.shot.inputLabel), '1250');
+    await confirmShot(user);
+    expect(screen.getByRole('button', { name: t.actions.save })).toBeEnabled();
+
+    const scan = screen.getByLabelText(t.scan.inputLabel);
+    await user.clear(scan);
+    await scanTool(user);
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: t.actions.save })).toBeDisabled();
+    });
+  });
+
   it('「다시 입력」은 친 값만 지우고 고른 툴은 남긴다 — 오타 하나에 재스캔시키지 않는다', async () => {
     const user = userEvent.setup();
     renderScreen();
