@@ -164,6 +164,34 @@ describe('화면 아래 숫자판', () => {
   });
 
   /*
+   * 비울 자리를 눈금 하나로 못 박으면 판이 그보다 높은 화면에서 칸이 덮인다 - 머리줄이 길어
+   * 두 줄로 접히면 판이 높아진다(실기 2026-09-17 포장 재구성). 선 판의 높이를 재어 알린다.
+   */
+  it('선 높이를 재어 알린다', () => {
+    const { container } = render(
+      <DockedNumberPad head="수량" value="" onChange={vi.fn()} onClose={vi.fn()} />,
+    );
+
+    const pad = container.querySelector('.docked-pad') as HTMLElement;
+
+    expect(pad).not.toBeNull();
+    expect(document.documentElement.style.getPropertyValue('--docked-pad-height')).toBe(
+      `${String(pad.offsetHeight)}px`,
+    );
+  });
+
+  /* 판이 지면 그 자리를 비워야 한다 - 남겨 두면 화면 아래가 늘 빈 채로 선다. */
+  it('지면 알린 높이를 거둔다', () => {
+    const { unmount } = render(
+      <DockedNumberPad head="수량" value="" onChange={vi.fn()} onClose={vi.fn()} />,
+    );
+
+    unmount();
+
+    expect(document.documentElement.style.getPropertyValue('--docked-pad-height')).toBe('');
+  });
+
+  /*
    * 비고처럼 자판이 필요한 칸을 치다가 숫자칸을 누르면, 포커스가 옮겨 가도 기기 자판이
    * 내려가지 않는다. 앱 숫자판이 그 위에 서서 둘이 겹친다(실기 2026-09-17).
    *

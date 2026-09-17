@@ -44,6 +44,12 @@ const PLATFORM_VARIABLES = new Set([
   '--safe-area-inset-left',
 ]);
 
+/*
+ * 디자인 시스템이 아니라 앱이 실행 중에 재어 넣는 값이다. 숫자판이 선 높이를 알려야 그만큼
+ * 아래를 비울 수 있는데, 그 높이는 머리줄 길이에 따라 달라져 CSS 에 적어 둘 수 없다.
+ */
+const MEASURED_VARIABLES = new Set(['--docked-pad-height']);
+
 /**
  * 없는 토큰은 조용히 대체값으로 떨어진다.
  *
@@ -57,7 +63,11 @@ describe('디자인 토큰', () => {
 
     for (const css of filesUnder(SRC, '.css')) {
       for (const match of readFileSync(css, 'utf-8').matchAll(/var\((--[a-z0-9-]+)/g)) {
-        if (!declared.has(match[1]!) && !PLATFORM_VARIABLES.has(match[1]!)) {
+        if (
+          !declared.has(match[1]!) &&
+          !PLATFORM_VARIABLES.has(match[1]!) &&
+          !MEASURED_VARIABLES.has(match[1]!)
+        ) {
           offenders.push(`${css.slice(SRC.length + 1)} :: ${match[1]!}`);
         }
       }

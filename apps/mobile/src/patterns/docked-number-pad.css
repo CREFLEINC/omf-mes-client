@@ -42,13 +42,16 @@
  * 이 파일보다 뒤에 실려 같은 무게면 화면 쪽이 이긴다.
  */
 .docked-pad-open.docked-pad-open {
-  padding-bottom: 22rem;
+  padding-bottom: calc(var(--docked-pad-height, 22rem) + 4rem);
 }
 
 /*
  * 적는 칸을 화면에 들일 때 숫자판 높이만큼 아래를 비운다. 이것이 없으면 칸이 화면 맨 아래에
  * 맞춰져 숫자판에 그대로 덮인다.
+ *
+ * 판이 스스로 잰 높이를 쓴다. 눈금 하나로 못 박으면 머리줄이 두 줄로 접힌 화면에서 모자라
+ * 칸 아랫부분이 가린다. 한 줄 만큼을 더해 칸과 판이 맞닿지 않게 한다.
  */
 .docked-pad-open.docked-pad-open input {
-  scroll-margin-block-end: 26rem;
+  scroll-margin-block-end: calc(var(--docked-pad-height, 26rem) + 1rem);
 }

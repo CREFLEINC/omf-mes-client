@@ -65,6 +65,30 @@ export const DockedNumberPad = ({
   const padRef = useRef<HTMLDivElement | null>(null);
 
   /*
+   * 선 높이를 알린다. 비울 자리를 눈금 하나로 못 박으면 판이 그보다 높은 화면에서 칸이 덮인다 -
+   * 머리줄이 길어 두 줄로 접히면 판이 높아진다(실기 2026-09-17 포장 재구성).
+   *
+   * 머리줄이 바뀌면 다시 잰다. 칸을 화면에 들이는 아래 효과보다 먼저 두어야 그 효과가 새 높이로
+   * 맞춘다 - 효과는 적힌 차례대로 돈다.
+   */
+  useEffect(() => {
+    const pad = padRef.current;
+
+    if (pad === null) {
+      return;
+    }
+
+    document.documentElement.style.setProperty('--docked-pad-height', `${String(pad.offsetHeight)}px`);
+  }, [head]);
+
+  useEffect(
+    () => () => {
+      document.documentElement.style.removeProperty('--docked-pad-height');
+    },
+    [],
+  );
+
+  /*
    * 숫자판 바깥을 누르면 닫는다. 확인 키를 못 찾은 사람은 화면을 눌러 닫으려 하는데, 그대로
    * 두면 아래 절반이 덮인 채 남는다.
    *
