@@ -358,6 +358,8 @@ export const PopRegistrationProvider = ({ children }: { children: ReactNode }) =
    * 마지막으로 확인을 시도한 토큰과 출처(#1330). 재연결은 이 값으로 다시 묻는다.
    *
    * ⚠ 입력란 값으로 대신하지 않는다 — 보관 토큰은 입력란에 없고, [지우기] 뒤에는 비어 있다.
+   * ⛔ **연결이 없어 막힌 시도만 남긴다.** 끝난 시도까지 남기면 재등록하러 들어온 뒤 연결이
+   *    끊겼을 때 재연결이 사람이 넣지도 않은 옛 토큰으로 다시 확인한다.
    */
   const lastAttempt = useRef<{ token: string; source: FailureSource } | null>(null);
 
@@ -414,7 +416,7 @@ export const PopRegistrationProvider = ({ children }: { children: ReactNode }) =
       const trimmed = token.trim();
       const terminalId = readTerminalIdFromToken(trimmed);
 
-      lastAttempt.current = { token: trimmed, source };
+      lastAttempt.current = null;
       setApproved(null);
 
       if (terminalId === null) {
@@ -425,6 +427,7 @@ export const PopRegistrationProvider = ({ children }: { children: ReactNode }) =
       }
 
       if (!navigator.onLine) {
+        lastAttempt.current = { token: trimmed, source };
         setState({ ...INITIAL, failure: 'offline', failureSource: source });
 
         return;

@@ -233,4 +233,30 @@ describe('RegistrationPanel — 네트워크 재연결', () => {
     expect(screen.getByText(t.failure.offline)).toBeInTheDocument();
     expect(screen.getByLabelText(t.tokenLabel)).toBeDisabled();
   });
+
+  it('끝난 시도의 토큰은 재연결이 다시 쓰지 않는다', async () => {
+    const online = setOnline(true);
+    const registration = openPanel();
+
+    await act(async () => {
+      await registration.current.verify(tokenFor(2002));
+    });
+    await waitFor(() => {
+      expect(screen.getByText(t.failure.rejected)).toBeInTheDocument();
+    });
+
+    online.mockReturnValue(false);
+    act(() => {
+      globalThis.dispatchEvent(new Event('offline'));
+    });
+    online.mockReturnValue(true);
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: t.reconnect }));
+    });
+
+    /* 옛 토큰으로 다시 물었다면 거절 문구가 돌아온다 — 입력만 열려야 한다. */
+    expect(screen.queryByText(t.failure.rejected)).toBeNull();
+    expect(screen.getByLabelText(t.tokenLabel)).toBeEnabled();
+  });
 });
