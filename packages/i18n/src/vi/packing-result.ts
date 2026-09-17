@@ -29,7 +29,7 @@ export const packingResult: Translated<typeof ko.packingResult> = {
     shipmentListLoading: 'Đang tải danh sách…',
     todayPickedShipments: 'Xuất hàng đã lấy hàng xong hôm nay',
     lotLocked: 'Hãy chọn đối tượng xuất hàng trước',
-    shipmentChosen: 'Đã chọn · Quét để đổi lô xuất hàng khác',
+    shipmentChosen: 'Nếu là đối tượng xuất hàng khác, hãy quét lại số xuất hàng',
   },
   match: {
     ok: 'Khớp — LOT đã phân bổ cho xuất hàng này',
