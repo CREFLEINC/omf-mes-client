@@ -201,6 +201,20 @@ describe('설비 점검 입력 화면', () => {
     expect(screen.getByText('기준 12 ~ 15 MPa')).toBeInTheDocument();
   });
 
+  /*
+   * 숫자판은 내용 위에 뜬다. 바깥 요소에 `docked-pad-open` 이 붙어야 그만큼 아래가 비어,
+   * 적는 칸이 판 위로 올라온다. 안 붙으면 칸이 판에 덮여 무엇을 치는지 안 보인다.
+   */
+  it('숫자판이 서면 아래를 비울 표시를 붙인다', async () => {
+    const user = userEvent.setup();
+    const { container } = mount();
+
+    await selectEquipment();
+    await user.click(screen.getByLabelText(/측정값/));
+
+    expect(container.querySelector('.docked-pad-open')).not.toBeNull();
+  });
+
   /* 부여가 바뀌어도 다시 받기 전까지는 받아 둔 것으로 점검한다. */
   it('항목을 언제 받은 것인지 보인다', async () => {
     mount();

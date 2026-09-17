@@ -309,7 +309,7 @@ export const EquipmentInspectionScreen = () => {
 
   if (outcome !== null) {
     return (
-      <div className={keypad === null ? 'inspection' : 'inspection docked-pad-open'}>
+      <div className="inspection">
         {outcome === 'sent' ? <AlertBanner variant="success" title={t.sent.title} /> : null}
         {outcome === 'queued' ? (
           <AlertBanner variant="warning" title={t.queued.title}>
@@ -330,7 +330,7 @@ export const EquipmentInspectionScreen = () => {
   }
 
   return (
-    <div className="inspection">
+    <div className={keypad === null ? 'inspection' : 'inspection docked-pad-open'}>
       {/* 못 보낸 점검은 서버에 없어 작업 통제가 점검을 안 한 것으로 읽는다. 상시 보인다. */}
       {unsent === 0 ? null : <AlertBanner variant="warning" title={t.unsent(unsent)} />}
 
