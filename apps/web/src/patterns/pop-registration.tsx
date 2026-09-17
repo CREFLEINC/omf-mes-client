@@ -151,6 +151,11 @@ export interface PopRegistration extends RegistrationState {
   apply: () => Promise<void>;
   /** 준비만 다시 시도한다 — 토큰은 그대로다. */
   retryPrepare: () => Promise<void>;
+  /**
+   * 연결이 없어 막힌(`offline`) 확인을 **같은 토큰·같은 출처로** 다시 시도한다(#1330).
+   * 여전히 끊겨 있으면 같은 안내가 남는다.
+   */
+  reconnect: () => Promise<void>;
   /** 등록 정보를 바꾸러 간다. 후보·검증 결과를 버리고 입력 상태로 되돌린다. */
   restart: () => void;
   /**
@@ -349,6 +354,13 @@ export const PopRegistrationProvider = ({ children }: { children: ReactNode }) =
    */
   const refreshSeq = useRef(0);
 
+  /**
+   * 마지막으로 확인을 시도한 토큰과 출처(#1330). 재연결은 이 값으로 다시 묻는다.
+   *
+   * ⚠ 입력란 값으로 대신하지 않는다 — 보관 토큰은 입력란에 없고, [지우기] 뒤에는 비어 있다.
+   */
+  const lastAttempt = useRef<{ token: string; source: FailureSource } | null>(null);
+
   const prepare = useCallback(
     async (terminal: VerifiedTerminal) => {
       refreshSeq.current += 1;
@@ -402,6 +414,7 @@ export const PopRegistrationProvider = ({ children }: { children: ReactNode }) =
       const trimmed = token.trim();
       const terminalId = readTerminalIdFromToken(trimmed);
 
+      lastAttempt.current = { token: trimmed, source };
       setApproved(null);
 
       if (terminalId === null) {
@@ -494,6 +507,14 @@ export const PopRegistrationProvider = ({ children }: { children: ReactNode }) =
     await prepare(state.terminal);
   }, [prepare, state.terminal]);
 
+  const reconnect = useCallback(async () => {
+    const attempt = lastAttempt.current;
+
+    if (state.failure !== 'offline' || attempt === null) return;
+
+    await verify(attempt.token, attempt.source);
+  }, [state.failure, verify]);
+
   /**
    * 등록 정보를 바꾸러 간다(P-CO-01 §5-1 「재등록」).
    *
@@ -546,8 +567,8 @@ export const PopRegistrationProvider = ({ children }: { children: ReactNode }) =
   }, [client, state.phase, state.terminal?.terminalId]);
 
   const value = useMemo<PopRegistration>(
-    () => ({ ...state, verify, apply, retryPrepare, restart, refresh }),
-    [apply, refresh, restart, retryPrepare, state, verify],
+    () => ({ ...state, verify, apply, retryPrepare, reconnect, restart, refresh }),
+    [apply, reconnect, refresh, restart, retryPrepare, state, verify],
   );
 
   return (

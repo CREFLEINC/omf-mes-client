@@ -46,6 +46,8 @@ export const workerAssignment = {
     prepareFailedTitle: '단말 등록 확인 또는 업무 준비에 실패했습니다',
     prepareFailedBody: '보관된 코드는 유지됩니다. 연결과 단말 권한을 확인하고 다시 시도하세요.',
     retryPrepare: '준비 재시도',
+    /** 연결 끊김 안내(`failure.offline`)가 떠 있을 때만 보인다(#1330). */
+    reconnect: '네트워크 재연결',
     /**
      * 켤 때 스스로 확인한 **보관 토큰**이 걸러졌을 때의 말(#1137).
      *

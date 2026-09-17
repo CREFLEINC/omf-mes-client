@@ -26,6 +26,7 @@ export const workerAssignment: Translated<typeof ko.workerAssignment> = {
     prepareFailedBody:
       'Mã đã lưu vẫn được giữ. Hãy kiểm tra kết nối và quyền máy trạm rồi thử lại.',
     retryPrepare: 'Chuẩn bị lại',
+    reconnect: 'Kết nối lại mạng',
     storedFailure: {
       malformed:
         'Token lưu trên máy trạm này không hợp lệ nên đã bị xóa. Hãy dán token nhận từ Web quản trị.',

@@ -121,6 +121,15 @@ export const RegistrationPanel = () => {
           </AlertBanner>
         ) : null}
 
+        {/* ⭐ 연결 끊김 안내에는 다시 시도할 입구를 둔다(사용자 지시 2026-09-17 · #1330). */}
+        {failure === 'offline' ? (
+          <div className="pop-registration__actions">
+            <Button onClick={() => void registration.reconnect()} disabled={busy}>
+              {t.reconnect}
+            </Button>
+          </div>
+        ) : null}
+
         {phase === 'verified' && terminal !== null ? (
           <>
             <p className="pop-registration__guide">{t.confirmTitle}</p>
