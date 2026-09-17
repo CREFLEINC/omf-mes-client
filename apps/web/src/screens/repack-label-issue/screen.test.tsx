@@ -1183,6 +1183,30 @@ describe('RepackLabelIssueScreen — 발행 실패', () => {
     expect(screen.getByText(t.preview.reasonTitle)).toBeInTheDocument();
   });
 
+  /* 발행 현황이 낡아 사유 없이 보낸 발행이 「사유 필요」로 거절되면, 사유 창이 떠 그 말이 보여야 한다. */
+  it('사유 없이 보낸 발행이 사유를 지목한 422 를 받으면 사유 창이 열린다', async () => {
+    await renderSelectedScreen({
+      issueCount: 0,
+      issueStatus: 422,
+      issueErrorBody: {
+        errors: [
+          {
+            scope: 'field',
+            field: 'reissueReasonCode',
+            code: 'REQUIRED',
+            message: '재발행 사유가 필요합니다.',
+          },
+        ],
+      },
+    });
+
+    await screen.findByText(HANDLING_UNIT_NO);
+    await clickWhenEnabled(submitButton);
+
+    expect(await screen.findByText(t.preview.reasonTitle)).toBeVisible();
+    expect(screen.getByText('재발행 사유가 필요합니다.')).toBeVisible();
+  });
+
   /* 요약을 모르면 최초·재발행을 가를 수 없다 — 쓰지 않고 같은 조회를 다시 할 길을 둔다. */
   it('현황 조회 실패는 발행을 막고 다시 조회할 수 있다', async () => {
     const issueWrites: Request[] = [];

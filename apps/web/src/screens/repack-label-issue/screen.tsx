@@ -173,7 +173,8 @@ export const RepackLabelIssueScreen = () => {
     printRunner.reset();
     setPrintQueue([]);
     queueAfterRetry.current = [];
-    lastReasonIds.current = withReason ? [...handlingUnitIds] : [];
+    /* 사유 없이 보냈어도 서버가 「사유 필요」로 거절할 수 있다(발행 현황이 낡았을 때) — 대상을 기억한다. */
+    lastReasonIds.current = [...handlingUnitIds];
     setDialog(null);
     const body = issueBody({
       handlingUnitIds,
@@ -298,7 +299,18 @@ export const RepackLabelIssueScreen = () => {
             variant="error"
             title={t.preview.failed}
             action={
-              <Button variant="outlined" size="sm" onClick={openPreview}>
+              /*
+               * ⚠ 같은 발행 기록의 그림을 «다시 받는다». [미리보기]로 부르면 창이 떠 [인쇄]가
+               *   재발행을 하나 더 만든다 — 바로 인쇄 중이던 흐름이면 바로 인쇄로 이어 간다.
+               */
+              <Button
+                variant="outlined"
+                size="sm"
+                onClick={() => {
+                  const target = printRunner.state.target;
+                  if (target !== null) void printRunner.begin(target);
+                }}
+              >
                 {messages.common.retry}
               </Button>
             }
