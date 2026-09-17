@@ -48,7 +48,8 @@
  * .nav-group-count  접혀 있을 때 안에 몇 개가 있는지
  * .nav-group-items  그 묶음의 항목들 — 열렸을 때만 내용이 있다
  * .nav-search-empty 검색에 맞는 화면이 없다는 안내
- * .sidebar-version 사이드바 맨 아래의 버전 캡션
+ * .topbar-brand   탑바의 시스템 이름 줄 — 이름과 버전 뱃지를 한 줄에 놓는다
+ * .topbar-version 그 줄의 버전 뱃지
  * .login-card    그 화면이 세우는 카드의 폭 상한(규범 8)
  * .login-title   카드 머리에 놓는 표제 — 디자인 시스템의 머리 서식을 그대로 물려받는다(규범 8)
  * .login-head    그 카드 머리 — 표제와 언어 칸을 한 줄에 놓는다(규범 8)
@@ -7964,9 +7965,34 @@ dl.filter-bar.approval-inbox-detail-facts {
  * 사이드바 맨 아래의 버전 캡션(#1240). **찾으면 보이되 눈길을 끌지 않는다** — 가장 작은 라벨
  * 서식에 보조 글자색이다. 여백은 DS 하단 슬롯이 이미 준다.
  */
-.sidebar-version {
-  margin: 0;
+/*
+ * 탑바의 시스템 이름 줄 — 이름과 버전 뱃지를 한 줄에 놓는다(#1320).
+ *
+ * ⚠ **뱃지가 이름을 밀어내지 않게 한다.** 이름이 길어지는 로케일에서도 뱃지는 제 크기를 지키고
+ *   줄이 넘치면 뱃지 쪽이 먼저 줄어든다 — 이름이 잘리면 무슨 시스템인지 읽을 수 없다.
+ */
+.topbar-brand {
+  display: inline-flex;
+  gap: var(--space-2);
+  align-items: baseline;
+  min-width: 0;
+}
+
+/*
+ * 버전 뱃지 — **상태가 아니라 맥락 값**이라 색으로 말하지 않는다(그래서 DS `Chip` 이 아니다).
+ * 테두리와 옅은 바탕으로 이름과만 구분하고, 글자는 이름보다 한 단 작다.
+ */
+.topbar-version {
+  flex: 0 1 auto;
+  min-width: 0;
+  padding: 0 var(--space-2);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-full, 999px);
   color: var(--on-surface-variant);
+  background: var(--surface-container-low);
   font: var(--type-label-sm);
   letter-spacing: var(--type-label-sm-tracking);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
