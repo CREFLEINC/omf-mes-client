@@ -61,6 +61,12 @@ type Outcome = 'held' | 'sent' | 'rejected';
 /** 차이 사유의 값 목록. 식별자는 환경마다 달라 코드 그룹 이름으로 받는다. */
 const VARIANCE_REASON = 'VARIANCE_REASON';
 
+/* 숫자판이 옮겨 갈 칸을 찾는 이름. 담는 쪽과 찾는 쪽이 이 함수들을 함께 쓴다. */
+const receivedFieldId = (goodsIssueLineId: number): string =>
+  `shopfloor-received-${goodsIssueLineId}`;
+
+const measuredFieldId = (key: string): string => `shopfloor-measured-${key}`;
+
 export const ShopfloorReceiptScreen = () => {
   useScreenTitle(t.title);
   const failureText = useLoadFailure();
@@ -511,6 +517,7 @@ export const ShopfloorReceiptScreen = () => {
                     ) : null}
                   </div>
                   <TextField
+                    id={receivedFieldId(line.goodsIssueLineId)}
                     label={t.lines.received}
                     aria-label={t.lines.receivedLabel(nameOf(line))}
                     size="xl"
@@ -692,6 +699,7 @@ export const ShopfloorReceiptScreen = () => {
                     ) : null}
                   </div>
                   <TextField
+                    id={measuredFieldId(key)}
                     label={t.hopper.measured}
                     aria-label={t.hopper.measuredLabel(name)}
                     size="xl"
@@ -758,6 +766,7 @@ export const ShopfloorReceiptScreen = () => {
       {linePad === null ? null : (
         <DockedNumberPad
           head={t.lines.receivedLabel(nameOf(linePad.line))}
+          fieldId={receivedFieldId(linePad.line.goodsIssueLineId)}
           value={linePad.line.receivedQty}
           onChange={(value) => {
             setLines((current) =>
@@ -793,6 +802,7 @@ export const ShopfloorReceiptScreen = () => {
               hopperPad.stock.lotNo ?? '',
             ),
           )}
+          fieldId={measuredFieldId(hopperKeyOf(hopperPad.stock))}
           value={measured[hopperKeyOf(hopperPad.stock)] ?? ''}
           onChange={(next) => {
             setMeasured((current) => ({ ...current, [hopperKeyOf(hopperPad.stock)]: next }));

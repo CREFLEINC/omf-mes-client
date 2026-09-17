@@ -54,6 +54,9 @@ const required = messages.common.required;
 
 type Outcome = 'held' | 'sent' | 'receivedOnly' | 'putawayRejected' | 'rejected';
 
+/* 숫자판이 옮겨 갈 칸을 찾는 이름. 담는 쪽과 찾는 쪽이 이 함수 하나를 함께 쓴다. */
+const qtyFieldId = (key: number): string => `product-receipt-qty-${key}`;
+
 export const ProductReceiptScreen = () => {
   useScreenTitle(t.title);
   const failureText = useLoadFailure();
@@ -445,6 +448,7 @@ export const ProductReceiptScreen = () => {
               return (
                 <div key={line.handlingUnitContentId} className="product-receipt__line">
                   <TextField
+                    id={qtyFieldId(line.handlingUnitContentId)}
                     label={required(t.contents.qtyLabel(nameOf(line)))}
                     size="xl"
                     fullWidth
@@ -583,6 +587,7 @@ export const ProductReceiptScreen = () => {
           {keypad === null ? null : (
             <DockedNumberPad
               head={t.contents.qtyLabel(nameOf(keypad.line))}
+              fieldId={qtyFieldId(keypad.line.handlingUnitContentId)}
               value={keypad.line.qty}
               onChange={(next) => {
                 setLines((current) =>

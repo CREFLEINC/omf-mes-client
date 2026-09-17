@@ -601,6 +601,32 @@ describe('생산창고 입고 화면', () => {
   });
 
   /*
+   * 옮긴 자리에 커서가 없으면 어디에 적히는지 화면이 말하지 않는다. 숫자판을 누르면 값은
+   * 들어가는데 테두리는 앞 호퍼에 남아 있어, 잘못 적고도 모른다.
+   *
+   * 투입 라인이 아니라 호퍼로 잰다 - 전표에 출고 라인이 하나뿐이라 다음 라인은 잠겨 있다.
+   */
+  it('다음 호퍼로 옮기면 포커스도 그 칸으로 간다', async () => {
+    const user = userEvent.setup();
+    mount();
+    await screen.findByLabelText(/출고 QR 스캔/);
+    scan(ISSUE_NO);
+
+    await user.click(await screen.findByRole('combobox', { name: '설비' }));
+    await user.click(await screen.findByRole('option', { name: /EQ-01/ }));
+
+    const first = await screen.findByRole('textbox', { name: /LOT-A 실측 잔량/ });
+    const second = screen.getByRole('textbox', { name: /LOT-B 실측 잔량/ });
+    await user.click(first);
+
+    await user.click(screen.getByRole('button', { name: '다음 호퍼' }));
+
+    await waitFor(() => {
+      expect(document.activeElement).toBe(second);
+    });
+  });
+
+  /*
    * 자재가 라인에 들어오는 이 시점에 사람이 눈으로 잰다. 여기서 적지 않으면 호퍼에 무엇이
    * 얼마나 남았는지가 어디에도 남지 않는다.
    */

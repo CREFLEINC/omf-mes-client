@@ -38,6 +38,7 @@ vi.mock('../../patterns/local-store', () => ({
 const page = { page: 1, size: 20, total: 1, totalElements: 1, totalPages: 1 };
 
 const LOT_NO = 'MLOT-2026-0001';
+const OTHER_LOT_NO = 'MLOT-2026-0002';
 const TO_CODE = 'R-01-02';
 
 interface Options {
@@ -102,12 +103,15 @@ const routes = (options: Options = {}): StubRoute[] => [
   },
   {
     match: (req) => new URL(req.url).pathname === '/trace/lots',
-    respond: () =>
-      jsonResponse({
+    respond: (req) => {
+      /* 물어본 번호로 답한다. 한 번호만 답하면 둘째 스캔이 같은 LOT 이 되어 줄이 하나로 남는다. */
+      const lotNo = new URL(req.url).searchParams.get('lotNo') ?? LOT_NO;
+
+      return jsonResponse({
         items: [
           {
-            lotId: 8001,
-            lotNo: LOT_NO,
+            lotId: lotNo === OTHER_LOT_NO ? 8002 : 8001,
+            lotNo,
             itemId: 2002,
             lotTypeCode: 'MATERIAL',
             plantId: 1001,
@@ -118,7 +122,8 @@ const routes = (options: Options = {}): StubRoute[] => [
           },
         ],
         page,
-      }),
+      });
+    },
   },
   {
     match: (req) => new URL(req.url).pathname === '/inventory/balances',
@@ -440,6 +445,29 @@ describe('재고 이동 화면', () => {
 
     /* 목록 밖에 선다 - 줄 사이에 끼면 그 아래 줄이 화면 밖으로 밀린다. */
     expect(key.closest('.stock-transfer__line')).toBeNull();
+  });
+
+  /*
+   * 옮긴 자리에 커서가 없으면 어디에 적히는지 화면이 말하지 않는다. 숫자판을 누르면 값은
+   * 들어가는데 테두리는 앞 라인에 남아 있어, 잘못 적고도 모른다.
+   */
+  it('다음 라인으로 옮기면 포커스도 그 칸으로 간다', async () => {
+    const user = userEvent.setup();
+    mount();
+    await screen.findByLabelText('반출 LOT 스캔');
+
+    scanInto('반출 LOT 스캔', LOT_NO);
+    const first = await screen.findByLabelText(new RegExp(`${LOT_NO} 반출 수량`));
+    scanInto('반출 LOT 스캔', OTHER_LOT_NO);
+    const second = await screen.findByLabelText(new RegExp(`${OTHER_LOT_NO} 반출 수량`));
+
+    await user.click(first);
+
+    await user.click(screen.getByRole('button', { name: '다음 라인' }));
+
+    await waitFor(() => {
+      expect(document.activeElement).toBe(second);
+    });
   });
 
   /*

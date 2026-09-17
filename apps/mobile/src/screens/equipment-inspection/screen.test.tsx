@@ -215,6 +215,32 @@ describe('설비 점검 입력 화면', () => {
     expect(container.querySelector('.docked-pad-open')).not.toBeNull();
   });
 
+  /*
+   * 옮긴 자리에 커서가 없으면 어디에 적히는지 화면이 말하지 않는다. 숫자판을 누르면 값은
+   * 들어가는데 테두리는 앞 항목에 남아 있어, 잘못 적고도 모른다.
+   */
+  it('다음 항목으로 옮기면 포커스도 그 칸으로 간다', async () => {
+    const user = userEvent.setup();
+    const another = {
+      ...measured,
+      equipmentInspectionItemId: 3,
+      itemCode: 'CHK-03',
+      itemName: '윤활유 온도',
+      sequenceNo: 3,
+    };
+    mount([], { items: [measured, another] });
+    await selectEquipment();
+
+    const fields = screen.getAllByLabelText(/측정값/);
+    await user.click(fields[0] as HTMLInputElement);
+
+    await user.click(screen.getByRole('button', { name: '다음 항목' }));
+
+    await waitFor(() => {
+      expect(document.activeElement).toBe(fields[1]);
+    });
+  });
+
   /* 부여가 바뀌어도 다시 받기 전까지는 받아 둔 것으로 점검한다. */
   it('항목을 언제 받은 것인지 보인다', async () => {
     mount();

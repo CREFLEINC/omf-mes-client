@@ -54,6 +54,9 @@ const TYPES: { value: TransferType; label: string }[] = [
   { value: DEFECT_RETURN, label: t.type.defect },
 ];
 
+/* 숫자판이 옮겨 갈 칸을 찾는 이름. 담는 쪽과 찾는 쪽이 이 함수 하나를 함께 쓴다. */
+const qtyFieldId = (key: number): string => `stock-transfer-qty-${key}`;
+
 export const StockTransferScreen = () => {
   useScreenTitle(t.title);
   const failureText = useLoadFailure();
@@ -551,6 +554,7 @@ export const StockTransferScreen = () => {
               return (
                 <div key={line.lotId} className="stock-transfer__line">
                   <TextField
+                    id={qtyFieldId(line.lotId)}
                     label={t.from.qtyLabel(nameOf(line))}
                     size="xl"
                     fullWidth
@@ -622,6 +626,7 @@ export const StockTransferScreen = () => {
           {keypad === null ? null : (
             <DockedNumberPad
               head={nameOf(keypad.line)}
+              fieldId={qtyFieldId(keypad.line.lotId)}
               value={keypad.line.qty}
               onChange={(value) => {
                 setLines((current) =>

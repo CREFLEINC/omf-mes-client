@@ -63,6 +63,9 @@ const TYPES: { value: RepackType; label: string }[] = [
   { value: RECONFIGURE, label: t.type.reconfigure },
 ];
 
+/* 숫자판이 옮겨 갈 칸을 찾는 이름. 담는 쪽과 찾는 쪽이 이 함수 하나를 함께 쓴다. */
+const qtyFieldId = (key: string): string => `packing-repack-qty-${key}`;
+
 export const PackingRepackScreen = () => {
   useScreenTitle(t.title);
   const failureText = useLoadFailure();
@@ -464,6 +467,7 @@ export const PackingRepackScreen = () => {
               return (
                 <div key={contentKey(line)} className="repack__line">
                   <TextField
+                    id={qtyFieldId(contentKey(line))}
                     label={required(t.contents.qtyLabel(nameOf(line)))}
                     size="xl"
                     fullWidth
@@ -590,6 +594,7 @@ export const PackingRepackScreen = () => {
           {keypad === null ? null : (
             <DockedNumberPad
               head={t.contents.qtyLabel(nameOf(keypad.line))}
+              fieldId={qtyFieldId(contentKey(keypad.line))}
               value={keypad.line.qty}
               onChange={(next) => {
                 setLines((current) =>

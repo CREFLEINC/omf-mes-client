@@ -112,15 +112,24 @@ export const DockedNumberPad = ({
   useEffect(() => {
     const target = fieldId === undefined ? null : document.getElementById(fieldId);
 
+    /* 맞추는 일은 아래에서 한 번에 한다. 여기서 함께 움직이면 두 번 튄다. */
     if (target !== null) {
-      target.focus();
+      target.focus({ preventScroll: true });
     }
 
     const shown = target ?? document.activeElement;
 
-    if (shown instanceof HTMLElement && typeof shown.scrollIntoView === 'function') {
-      shown.scrollIntoView({ block: 'end' });
+    /* 이 기능이 없는 환경에서 던지면 화면이 통째로 멈춘다. 맞추기는 있으면 좋은 것이다. */
+    if (!(shown instanceof HTMLElement) || typeof shown.scrollIntoView !== 'function') {
+      return;
     }
+
+    /* 움직임을 줄여 달라는 설정을 존중한다. 그 물음을 못 받는 환경도 있다. */
+    const reduced =
+      typeof window.matchMedia === 'function' &&
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    shown.scrollIntoView({ block: 'end', behavior: reduced ? 'auto' : 'smooth' });
   }, [head, fieldId]);
 
   return (

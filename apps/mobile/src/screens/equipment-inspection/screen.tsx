@@ -59,6 +59,9 @@ const receivedLabel = (iso: string): string => {
   return `${pad(at.getMonth() + 1)}-${pad(at.getDate())} ${pad(at.getHours())}:${pad(at.getMinutes())}`;
 };
 
+/* 숫자판이 옮겨 갈 칸을 찾는 이름. 담는 쪽과 찾는 쪽이 이 함수 하나를 함께 쓴다. */
+const qtyFieldId = (key: number): string => `inspection-measured-${key}`;
+
 const ItemCard = ({
   item,
   entry,
@@ -95,6 +98,7 @@ const ItemCard = ({
               {t.items.range(String(item.lowerLimit), String(item.upperLimit), uom)}
             </p>
             <TextField
+              id={qtyFieldId(item.equipmentInspectionItemId)}
               label={required(t.items.measured)}
               /*
                * 장갑을 끼고 한 손으로 조작한다. 기기 키보드는 키가 촘촘하고, 올라오면 항목
@@ -497,6 +501,7 @@ export const EquipmentInspectionScreen = () => {
       {keypad === null ? null : (
         <DockedNumberPad
           head={t.items.measuredOf(keypad.item.itemName)}
+          fieldId={qtyFieldId(keypad.item.equipmentInspectionItemId)}
           value={entries[keypad.item.equipmentInspectionItemId]?.measured ?? ''}
           onChange={(next) => {
             setEntries((current) => ({

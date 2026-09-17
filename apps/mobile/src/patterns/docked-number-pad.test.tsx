@@ -127,7 +127,7 @@ describe('화면 아래 숫자판', () => {
       </>,
     );
 
-    expect(scrollIntoView).toHaveBeenCalledWith({ block: 'end' });
+    expect(scrollIntoView).toHaveBeenCalledWith({ block: 'end', behavior: 'smooth' });
   });
   /*
    * 이전·다음으로 옮기면 머리줄만 바뀌고 화면은 그대로였다. 앞 칸이 판 위에 선 채 남고 옮겨
@@ -160,7 +160,7 @@ describe('화면 아래 숫자판', () => {
     rerender(pad('q2', '둘째 칸'));
 
     expect(document.activeElement).toBe(second);
-    expect(scrollIntoView).toHaveBeenCalledWith({ block: 'end' });
+    expect(scrollIntoView).toHaveBeenCalledWith({ block: 'end', behavior: 'smooth' });
   });
 
   /*
