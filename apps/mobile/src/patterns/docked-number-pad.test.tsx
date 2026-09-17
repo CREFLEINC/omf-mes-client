@@ -19,9 +19,7 @@ const MOVE = {
 
 describe('화면 아래 숫자판', () => {
   it('무엇을 적는 중인지 머리줄로 말한다', () => {
-    render(
-      <DockedNumberPad head="A-01 · 나사" value="" onChange={vi.fn()} onClose={vi.fn()} />,
-    );
+    render(<DockedNumberPad head="A-01 · 나사" value="" onChange={vi.fn()} onClose={vi.fn()} />);
 
     expect(screen.getByText('A-01 · 나사')).toBeInTheDocument();
   });
@@ -168,16 +166,16 @@ describe('화면 아래 숫자판', () => {
    * 두 줄로 접히면 판이 높아진다(실기 2026-09-17 포장 재구성). 선 판의 높이를 재어 알린다.
    */
   it('선 높이를 재어 알린다', () => {
-    const { container } = render(
-      <DockedNumberPad head="수량" value="" onChange={vi.fn()} onClose={vi.fn()} />,
-    );
+    /* jsdom 은 높이를 늘 0 으로 답한다. 그대로 재면 무엇을 심든 통과해 감지기가 죽는다. */
+    const height = vi.spyOn(HTMLElement.prototype, 'offsetHeight', 'get').mockReturnValue(437);
 
-    const pad = container.querySelector('.docked-pad') as HTMLElement;
+    try {
+      render(<DockedNumberPad head="수량" value="" onChange={vi.fn()} onClose={vi.fn()} />);
 
-    expect(pad).not.toBeNull();
-    expect(document.documentElement.style.getPropertyValue('--docked-pad-height')).toBe(
-      `${String(pad.offsetHeight)}px`,
-    );
+      expect(document.documentElement.style.getPropertyValue('--docked-pad-height')).toBe('437px');
+    } finally {
+      height.mockRestore();
+    }
   });
 
   /* 판이 지면 그 자리를 비워야 한다 - 남겨 두면 화면 아래가 늘 빈 채로 선다. */

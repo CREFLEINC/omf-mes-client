@@ -27,7 +27,13 @@ import { useScreenTitle } from '../../patterns/screen-title';
 import { useWorkerSession } from '../../patterns/worker-session';
 import { FailureBanner } from '../../patterns/failure-banner';
 import { useLoadFailure } from '../../patterns/load-failure';
-import { appendIssued, issuedQtyByLine, readIssued, type IssuedRecord, goodsIssueNoOf } from './issued-record';
+import {
+  appendIssued,
+  issuedQtyByLine,
+  readIssued,
+  type IssuedRecord,
+  goodsIssueNoOf,
+} from './issued-record';
 import { PickingOrderList } from './order-list';
 import {
   ISSUE_TYPE,
@@ -509,6 +515,12 @@ export const MaterialPickingScreen = () => {
   const problem = line === null ? null : lineProblemOf(line, queued);
   const matched = line !== null && scanned !== null && isScannedLotOf(line, scanned);
 
+  /*
+   * 여백 표시와 판이 같은 조건을 쓴다. 갈라 적으면 판만 지고 여백이 남아 화면 아래가 빈 채로
+   * 굳는다 - 바깥을 눌러 닫는 처리도 판과 함께 사라져 되돌릴 길이 없다.
+   */
+  const padOpen = keypadOpen && line !== null && matched;
+
   const qtyMessage = (): string | undefined => {
     if (line === null || qty.trim() === '') {
       return undefined;
@@ -526,7 +538,7 @@ export const MaterialPickingScreen = () => {
   };
 
   return (
-    <div className={keypadOpen ? 'picking-out docked-pad-open' : 'picking-out'}>
+    <div className={padOpen ? 'picking-out docked-pad-open' : 'picking-out'}>
       <section className="picking-out__section">
         <h2>{t.orders.legend}</h2>
         <Card bordered>
@@ -826,7 +838,7 @@ export const MaterialPickingScreen = () => {
         </Button>
       </div>
 
-      {!keypadOpen || line === null || !matched ? null : (
+      {!padOpen ? null : (
         <DockedNumberPad
           head={t.qty.label}
           value={qty}

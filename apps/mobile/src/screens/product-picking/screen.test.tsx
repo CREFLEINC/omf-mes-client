@@ -544,6 +544,37 @@ describe('제품LOT 피킹 스캔 화면', () => {
     expect(screen.queryByText('권장 1순위가 아닙니다 — 피킹할 수 있습니다')).toBeNull();
   });
 
+  /*
+   * 판이 지면 아래를 비우는 표시도 함께 걷혀야 한다. 남으면 화면 아래가 빈 채로 굳고, 그
+   * 빈자리를 되돌릴 길이 없다 - 바깥을 눌러 닫는 처리는 판과 함께 사라진다.
+   */
+  it('보류된 LOT 을 찍으면 숫자판과 아래 여백이 함께 걷힌다', async () => {
+    const user = userEvent.setup();
+    mount([], { held: [LATE] });
+    await chooseTarget(user);
+    await screen.findByText('FG-0311');
+
+    await pickLot(user, EARLY.lotNo);
+    await user.click(await screen.findByLabelText(/피킹 수량/));
+
+    expect(await screen.findByRole('button', { name: '7' })).toBeTruthy();
+    expect(document.querySelector('.docked-pad-open')).not.toBeNull();
+
+    /* 스캐너로 읽는다. 단추를 누르면 그 누름이 먼저 판을 닫아 이 자리를 재지 못한다. */
+    const field = screen.getByLabelText('제품 LOT 스캔') as HTMLInputElement;
+    field.focus();
+    Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set?.call(
+      field,
+      LATE.lotNo,
+    );
+    field.dispatchEvent(new InputEvent('input', { bubbles: true, inputType: 'insertFromPaste' }));
+
+    await waitFor(() => {
+      expect(screen.queryByRole('button', { name: '7' })).toBeNull();
+    });
+    expect(document.querySelector('.docked-pad-open')).toBeNull();
+  });
+
   /* 고르지도 않은 LOT 마다 사유를 물으면 후보 수만큼 호출이 나간다. */
   it('고르기 전에는 보류 사유를 묻지 않는다', async () => {
     const user = userEvent.setup();

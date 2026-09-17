@@ -215,9 +215,7 @@ export const EquipmentInspectionScreen = () => {
    * 넘어가면 빈 숫자판이 선다.
    */
   const measurables = ofType.filter((item) => hasRange(item));
-  const keypadAt = measurables.findIndex(
-    (item) => item.equipmentInspectionItemId === keypadFor,
-  );
+  const keypadAt = measurables.findIndex((item) => item.equipmentInspectionItemId === keypadFor);
   const keypad =
     keypadAt === -1 ? null : { at: keypadAt, item: measurables[keypadAt] as InspectionItem };
 

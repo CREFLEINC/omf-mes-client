@@ -526,8 +526,15 @@ export const ProductPickingScreen = () => {
   /* 이름을 못 받았으면 식별자를 대신 보이지 않는다. 작업자가 대조할 수 없는 값이다. */
   const customerName = customers.data?.get(target.request.customerId) ?? null;
 
+  /*
+   * 여백 표시와 판이 같은 조건을 쓴다. 갈라 적으면 판만 지고 여백이 남아 화면 아래가 빈 채로
+   * 굳는다 - 바깥을 눌러 닫는 처리도 판과 함께 사라져 되돌릴 길이 없다.
+   */
+  const padOpen =
+    keypadOpen && selected !== null && lotProblem(selected, target.line, today) === null;
+
   return (
-    <div className={keypadOpen ? 'picking docked-pad-open' : 'picking'}>
+    <div className={padOpen ? 'picking docked-pad-open' : 'picking'}>
       <section className="picking__section">
         <h2>{t.target.legend}</h2>
         <Card bordered>
@@ -696,7 +703,7 @@ export const ProductPickingScreen = () => {
         </section>
       )}
 
-      {!keypadOpen || selected === null || lotProblem(selected, target.line, today) !== null ? null : (
+      {!padOpen ? null : (
         <DockedNumberPad
           head={t.qty.label}
           value={qty}

@@ -187,8 +187,14 @@ export const InboundVarianceScreen = () => {
     );
   }
 
+  /*
+   * 칸을 담은 구획이 사라지면 판도 함께 진다. 열린 채로 두면 다음 회차에 판이 계속 mount 라
+   * 기기 자판 내리기와 칸 끌어올리기가 다시 돌지 않는다.
+   */
+  const padOpen = keypadOpen && draft.line !== null;
+
   return (
-    <div className={keypadOpen ? 'variance docked-pad-open' : 'variance'}>
+    <div className={padOpen ? 'variance docked-pad-open' : 'variance'}>
       <section className="variance__section">
         <h2>{t.receipt.legend}</h2>
         <TextField
@@ -431,7 +437,7 @@ export const InboundVarianceScreen = () => {
         {t.confirm.body}
       </Dialog>
 
-      {!keypadOpen ? null : (
+      {!padOpen ? null : (
         <DockedNumberPad
           head={t.form.qtyLabel}
           value={draft.varianceQty}

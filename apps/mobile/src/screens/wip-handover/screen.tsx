@@ -211,8 +211,14 @@ export const WipHandoverScreen = () => {
       : t.qty.problem[trouble];
   };
 
+  /*
+   * 칸을 담은 구획이 사라지면 판도 함께 진다. 열린 채로 두면 다음 회차에 판이 계속 mount 라
+   * 기기 자판 내리기와 칸 끌어올리기가 다시 돌지 않는다.
+   */
+  const padOpen = keypadOpen && found !== null && problem === null;
+
   return (
-    <div className={keypadOpen ? 'handover docked-pad-open' : 'handover'}>
+    <div className={padOpen ? 'handover docked-pad-open' : 'handover'}>
       {/* 하다가 끊긴 것은 다르다. 적은 것을 그대로 두고 저장만 막는다. */}
       {online ? null : <AlertBanner variant="warning" title={t.offline.duringWork} />}
 
@@ -383,7 +389,7 @@ export const WipHandoverScreen = () => {
 
       <ScanReplaceDialog field={scanField} />
 
-      {!keypadOpen ? null : (
+      {!padOpen ? null : (
         <DockedNumberPad
           head={t.qty.label}
           value={qty}

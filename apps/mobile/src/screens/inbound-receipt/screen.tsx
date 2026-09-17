@@ -1003,7 +1003,6 @@ export const InboundReceiptScreen = () => {
                     }}
                     error={qtyMessage()}
                   />
-
                 </div>
 
                 <div className="receipt__qty-field">
@@ -1026,7 +1025,6 @@ export const InboundReceiptScreen = () => {
                         : t.qty.packageNotPositive
                     }
                   />
-
                 </div>
               </div>
 

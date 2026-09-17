@@ -507,8 +507,14 @@ export const RepairRoundtripScreen = () => {
     },
   ];
 
+  /*
+   * 여백 표시와 판이 같은 조건을 쓴다. 갈라 적으면 판만 지고 여백이 남아 화면 아래가 빈 채로
+   * 굳는다 - 바깥을 눌러 닫는 처리도 판과 함께 사라져 되돌릴 길이 없다.
+   */
+  const padOpen = keypadOpen && defect !== null && alreadyOpen === null;
+
   return (
-    <div className={keypadOpen ? 'repair docked-pad-open' : 'repair'}>
+    <div className={padOpen ? 'repair docked-pad-open' : 'repair'}>
       {/* 하다가 끊긴 것은 다르다. 스캔한 것을 그대로 두고 저장만 막는다. */}
       {online ? null : <AlertBanner variant="warning" title={t.offline.duringWork} />}
       {/*
@@ -566,7 +572,7 @@ export const RepairRoundtripScreen = () => {
 
       <ScanReplaceDialog field={scanField} />
 
-      {!keypadOpen || defect === null || alreadyOpen !== null ? null : (
+      {!padOpen ? null : (
         <DockedNumberPad
           head={t.qty.label}
           value={qty}

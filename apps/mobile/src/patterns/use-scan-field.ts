@@ -144,7 +144,11 @@ export const useScanField = ({ onScan, scanner, applied }: UseScanFieldOptions):
       restoreSuspended.current = true;
       field.blur();
       setKeyboard(false);
-      requestAnimationFrame(() => {
+      /*
+       * 다음 틀이 아니라 다음 차례에 되돌린다. 화면이 가려지면 틀이 멎어 잠금이 안 풀리고,
+       * 그동안 blur 처리가 전부 물러서 스캔 칸이 포커스를 되찾지 못한다.
+       */
+      window.setTimeout(() => {
         restoreSuspended.current = false;
 
         /*
@@ -164,7 +168,7 @@ export const useScanField = ({ onScan, scanner, applied }: UseScanFieldOptions):
         if (!typing && active !== field) {
           field.focus();
         }
-      });
+      }, 0);
     }
 
     if (value !== '') {

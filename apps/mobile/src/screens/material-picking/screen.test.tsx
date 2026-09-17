@@ -516,6 +516,39 @@ describe('자재 출고·피킹 화면', () => {
     expect(await screen.findByRole('button', { name: '7' })).toBeTruthy();
   });
 
+  /*
+   * 판이 지면 표시도 함께 걷혀야 한다. 남으면 화면 아래가 빈 채로 굳고, 그 빈자리를 되돌릴
+   * 길이 없다 - 바깥을 눌러 닫는 처리는 판과 함께 사라진다.
+   */
+  it('라인과 다른 LOT 을 찍으면 숫자판과 아래 여백이 함께 걷힌다', async () => {
+    const user = userEvent.setup();
+    mount();
+    await chooseOrder(user);
+
+    await user.click(screen.getByRole('radio', { name: /ABC-123/ }));
+    await openManualEntry(user);
+    await user.type(await screen.findByLabelText(/LOT 번호/), LOT_NO);
+    await user.click(await screen.findByRole('button', { name: '넣기' }));
+    await user.click(await screen.findByLabelText(/출고 수량/));
+
+    expect(await screen.findByRole('button', { name: '7' })).toBeTruthy();
+    expect(document.querySelector('.docked-pad-open')).not.toBeNull();
+
+    /* 스캐너로 읽는다. 단추를 누르면 그 누름이 먼저 판을 닫아 이 자리를 재지 못한다. */
+    const field = screen.getByLabelText(/LOT 번호/) as HTMLInputElement;
+    field.focus();
+    Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set?.call(
+      field,
+      '0001234500000012002607310001230099',
+    );
+    field.dispatchEvent(new InputEvent('input', { bubbles: true, inputType: 'insertFromPaste' }));
+
+    await waitFor(() => {
+      expect(screen.queryByRole('button', { name: '7' })).toBeNull();
+    });
+    expect(document.querySelector('.docked-pad-open')).toBeNull();
+  });
+
   it('집으면 라인 경로로 사번과 멱등키를 실어 보낸다', async () => {
     const user = userEvent.setup();
     const sent = mount();

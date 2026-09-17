@@ -1,4 +1,4 @@
-import { AlertBanner, Button, Card, NumberPad, Select, TextField } from '@crefle/web-ui';
+import { AlertBanner, Button, Card, Select, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
@@ -299,10 +299,7 @@ export const ShopfloorReceiptScreen = () => {
   const hopperAt = stocks.findIndex((stock) => hopperKeyOf(stock) === hopperKeypadFor);
   const hopperStockAt = stocks[hopperAt];
   const hopperPad =
-    hopperAt === -1 || hopperStockAt === undefined
-      ? null
-      : { at: hopperAt, stock: hopperStockAt };
-
+    hopperAt === -1 || hopperStockAt === undefined ? null : { at: hopperAt, stock: hopperStockAt };
 
   const restart = () => {
     setScanned(null);
