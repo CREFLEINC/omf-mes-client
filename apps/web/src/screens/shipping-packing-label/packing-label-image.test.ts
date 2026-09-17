@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { readDot } from '../../patterns/label/bitmap';
 
 import { toPackingLabelContents, toPackingLabelFields } from './packing-label-fields';
-import { drawPackingLabel, type PackingLabelFields } from './packing-label-image';
+import { drawPackingLabel, packingLabelRows, type PackingLabelFields } from './packing-label-image';
 
 /**
  * 포장 라벨을 **POP 이 스스로 그린다.** 서버가 그려 주지 않으므로 틀려도 서버 쪽에서 걸릴
@@ -45,10 +45,13 @@ describe('포장 라벨 — 점판', () => {
     const bitmap = drawPackingLabel(FIELDS);
     const expected = encodeQr(FIELDS.handlingUnitNo).modules.flat().filter(Boolean).length;
 
-    /* QR 은 오른쪽 위 구획에 선다 — 그 안의 검은 칸 수가 격자와 맞아야 한다. */
+    /*
+     * QR 은 종이(TSPL)와 같은 자리 — 오른쪽 여백 안, 세로 가운데에서 위로 당긴 곳에 선다
+     * (`layoutLotLabel`). 글줄은 QR 왼쪽 변에서 잘리므로 이 구획에는 QR 만 있다.
+     */
     let dark = 0;
-    for (let y = 3; y < 110; y += 1) {
-      for (let x = 520; x < bitmap.width - 3; x += 1) {
+    for (let y = 3; y < bitmap.height - 3; y += 1) {
+      for (let x = 487; x < bitmap.width - 3; x += 1) {
         if (readDot(bitmap, x, y)) dark += 1;
       }
     }
@@ -98,23 +101,26 @@ describe('포장 라벨 — 점판', () => {
     }));
 
     const bitmap = drawPackingLabel({ ...FIELDS, contents: many });
-    const three = drawPackingLabel({ ...FIELDS, contents: many.slice(0, 3) });
+    const two = drawPackingLabel({ ...FIELDS, contents: many.slice(0, 2) });
 
-    /* 세 줄이 다 찬 판과 달라야 한다 — 마지막 줄이 안내로 바뀌었기 때문이다. */
-    expect(bitmap.dots).not.toEqual(three.dots);
+    /* 두 줄이 다 찬 판과 달라야 한다 — 마지막 줄이 안내로 바뀌었기 때문이다(종이와 같은 두 줄). */
+    expect(bitmap.dots).not.toEqual(two.dots);
     expect(dotCount(bitmap)).toBeGreaterThan(0);
   });
 
-  it('내용물이 딱 세 줄이면 안내를 넣지 않는다', () => {
-    const three = Array.from({ length: 3 }, (_, index) => ({
+  it('내용물이 딱 두 줄이면 안내를 넣지 않는다', () => {
+    const two = Array.from({ length: 2 }, (_, index) => ({
       itemCode: `ITEM-${String(index)}`,
       lotNo: `LOT-${String(index)}`,
       quantity: '10 EA',
     }));
-    const four = [...three, { itemCode: 'ITEM-3', lotNo: 'LOT-3', quantity: '10 EA' }];
+    const three = [...two, { itemCode: 'ITEM-2', lotNo: 'LOT-2', quantity: '10 EA' }];
 
-    expect(drawPackingLabel({ ...FIELDS, contents: four }).dots).not.toEqual(
-      drawPackingLabel({ ...FIELDS, contents: three }).dots,
+    expect(packingLabelRows({ ...FIELDS, contents: two }).map((row) => row.content)).not.toContain(
+      '+1 MORE ITEMS',
+    );
+    expect(drawPackingLabel({ ...FIELDS, contents: three }).dots).not.toEqual(
+      drawPackingLabel({ ...FIELDS, contents: two }).dots,
     );
   });
 

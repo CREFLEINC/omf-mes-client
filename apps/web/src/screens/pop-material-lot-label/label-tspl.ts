@@ -110,11 +110,28 @@ const clip = (content: string, point: number, available: number): string => {
   return content.length <= room ? content : `${content.slice(0, Math.max(room - 1, 1))}~`;
 };
 
-const text = (x: number, y: number, point: number, content: string, available: number): string => {
+/** 자리를 잡은 글줄 하나 — `point` 는 칸에 맞춰 줄인 뒤의 크기, `content` 는 자른 뒤의 글이다. */
+export interface LotLabelText {
+  x: number;
+  y: number;
+  point: number;
+  content: string;
+}
+
+const placeText = (
+  x: number,
+  y: number,
+  point: number,
+  content: string,
+  available: number,
+): LotLabelText => {
   const size = fit(content, point, available);
 
-  return `TEXT ${String(x)},${String(y)},"${FONT}",0,${String(size)},${String(size)},"${escapeTspl(clip(content, size, available))}"`;
+  return { x, y, point: size, content: clip(content, size, available) };
 };
+
+const text = ({ x, y, point, content }: LotLabelText): string =>
+  `TEXT ${String(x)},${String(y)},"${FONT}",0,${String(point)},${String(point)},"${escapeTspl(content)}"`;
 
 /** 왼쪽 칸에 세울 글줄 하나. `point` 는 바라는 크기이고, 칸을 넘치면 줄여 찍는다. */
 export interface LotLabelRow {
@@ -139,7 +156,20 @@ export interface LotLabelRow {
  *
  * ⚠ 글줄을 QR 아래 전폭으로 내리지 않는다 — 전폭 줄이 오른쪽 여백까지 닿아 함께 잘렸다.
  */
-export const buildLotLabel = (rows: readonly LotLabelRow[], qrContent: string): string => {
+export interface LotLabelLayout {
+  width: number;
+  height: number;
+  texts: LotLabelText[];
+  qr: { x: number; y: number; side: number; cell: number; content: string };
+}
+
+/**
+ * 80 × 30 mm 한 장의 **자리** — TSPL 명령과 저장용 그림이 같은 자리를 쓴다.
+ *
+ * ⭐ 명령(`buildLotLabel`)과 그림(포장 라벨 `packing-label-image`)이 자리를 따로 셈하면
+ *   「종이와 그림」이 갈린다(사용자 지시 2026-09-17 — 그림도 종이와 같은 배치로).
+ */
+export const layoutLotLabel = (rows: readonly LotLabelRow[], qrContent: string): LotLabelLayout => {
   const side = qrSide(qrContent);
   const qrX = WIDTH - RIGHT - side;
   const qrY = Math.round((HEIGHT - side) / 2) - SHIFT_UP;
@@ -150,12 +180,23 @@ export const buildLotLabel = (rows: readonly LotLabelRow[], qrContent: string): 
   const spacing = Math.floor((HEIGHT - TOP - BOTTOM - used) / Math.max(rows.length - 1, 1));
 
   let y = TOP;
-  const drawn = rows.map((row) => {
-    const line = text(LEFT, y, row.point, row.content, column);
+  const texts = rows.map((row) => {
+    const line = placeText(LEFT, y, row.point, row.content, column);
     y += lineHeight(row.point) + spacing;
 
     return line;
   });
+
+  return {
+    width: WIDTH,
+    height: HEIGHT,
+    texts,
+    qr: { x: qrX, y: qrY, side, cell: QR_CELL, content: qrContent },
+  };
+};
+
+export const buildLotLabel = (rows: readonly LotLabelRow[], qrContent: string): string => {
+  const { texts, qr } = layoutLotLabel(rows, qrContent);
 
   return [
     `SIZE 80 mm,30 mm`,
@@ -163,8 +204,8 @@ export const buildLotLabel = (rows: readonly LotLabelRow[], qrContent: string): 
     'DIRECTION 1',
     'REFERENCE 0,0',
     'CLS',
-    ...drawn,
-    `QRCODE ${String(qrX)},${String(qrY)},M,${String(QR_CELL)},A,0,M2,"${escapeTspl(qrContent)}"`,
+    ...texts.map(text),
+    `QRCODE ${String(qr.x)},${String(qr.y)},M,${String(qr.cell)},A,0,M2,"${escapeTspl(qr.content)}"`,
     'PRINT 1,1',
     '',
   ].join('\r\n');

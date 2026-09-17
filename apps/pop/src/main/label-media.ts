@@ -83,8 +83,56 @@ const separator = (media: LabelMedia): string => {
  * ⚠ **`CLS` 앞에 얹는다.** TSPL 은 `CLS` 에서 그리기 버퍼를 비우므로, 설정은 그 «전»에 서야
  *   그 장에 적용된다.
  */
+/**
+ * 명령을 줄로 가른다 — **`BITMAP` 자료는 적힌 길이만큼 통째로 한 줄에 둔다.**
+ *
+ * ⛔ 그림째 보내는 라벨(납품 라벨 · 사용자 지시 2026-09-17)은 `BITMAP` 뒤에 바이너리가 붙고,
+ *    그 안에 줄바꿈 바이트가 섞인다. 줄바꿈으로만 가르면 자료가 쪼개져 `\r\n` 으로 다시
+ *    이어 붙을 때 바이트가 늘어 그림이 밀린다.
+ *
+ * ⚠ 다른 줄은 `split(/\r?\n/)` 과 같은 결과를 낸다(끝의 줄바꿈 뒤 빈 줄까지).
+ */
+export const splitLabelCommands = (commands: string): string[] => {
+  const lines: string[] = [];
+  let cursor = 0;
+
+  for (;;) {
+    const bitmap = /^BITMAP\s+\d+\s*,\s*\d+\s*,\s*(\d+)\s*,\s*(\d+)\s*,\s*\d+\s*,/iu.exec(
+      commands.slice(cursor, cursor + 64),
+    );
+
+    if (bitmap !== null) {
+      const end = Math.min(
+        commands.length,
+        cursor + bitmap[0].length + Number(bitmap[1]) * Number(bitmap[2]),
+      );
+      lines.push(commands.slice(cursor, end));
+
+      if (commands.startsWith('\r\n', end)) cursor = end + 2;
+      else if (commands.startsWith('\n', end)) cursor = end + 1;
+      else {
+        cursor = end;
+        if (cursor >= commands.length) return lines;
+        continue;
+      }
+
+      continue;
+    }
+
+    const newline = commands.indexOf('\n', cursor);
+
+    if (newline === -1) {
+      lines.push(commands.slice(cursor));
+      return lines;
+    }
+
+    lines.push(commands.slice(cursor, newline).replace(/\r$/u, ''));
+    cursor = newline + 1;
+  }
+};
+
 export const applyLabelMedia = (commands: string, media: LabelMedia): string => {
-  const lines = commands.split(/\r?\n/);
+  const lines = splitLabelCommands(commands);
 
   const body = lines.filter((line) => {
     const head = line.trim().toUpperCase();

@@ -67,8 +67,17 @@ const api = {
       label: string,
       now: string,
       format: 'png' | 'pdf' | 'tspl',
-    ): Promise<string> =>
-      ipcRenderer.invoke('rendition:save', bytes, label, now, format),
+    ): Promise<string> => ipcRenderer.invoke('rendition:save', bytes, label, now, format),
+    /**
+     * 인쇄하지 않고 **파일로만** 남긴다 — TSPL 로 찍은 라벨의 그림을 함께 두는 자리다.
+     * 경로·형식 검사는 `save` 와 같다.
+     */
+    keep: (
+      bytes: Uint8Array,
+      label: string,
+      now: string,
+      format: 'png' | 'pdf' | 'tspl',
+    ): Promise<string> => ipcRenderer.invoke('rendition:keep', bytes, label, now, format),
   },
 };
 
