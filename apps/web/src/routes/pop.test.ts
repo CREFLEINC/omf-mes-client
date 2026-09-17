@@ -72,6 +72,10 @@ describe('POP 라우트 분리', () => {
     expect(paths).not.toContain('/pop/shipping-label');
   });
 
+  it('P-04-05 출하 단위 구성 주소가 서 있다', () => {
+    expect(popRoutes.map(({ path }) => path)).toContain('/pop/shipping-units');
+  });
+
   it('P-02-08 포장 작업 주소가 서 있다', () => {
     expect(popRoutes.map(({ path }) => path)).toContain('/pop/packing-work');
   });

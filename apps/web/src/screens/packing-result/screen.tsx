@@ -24,13 +24,12 @@ import { addLine, lineOf, qtyError, remainingOf, removeLine, toProgress } from '
 import {
   useHandlingUnitTypeOptions,
   useUomDecimals,
-  useLabelScan,
   useLotScan,
-  useParentCandidates,
   useShipmentAllocations,
   useShipmentScan,
   useShipmentSelection,
   useTodayShipments,
+  useUnassignedPackedBoxCount,
 } from './queries';
 import { ScanField } from './scan-field';
 import { useTerminalGate } from './terminal-gating';
@@ -38,9 +37,6 @@ import type { MatchedLot, PackedLine, ShipmentEntry, ShipmentLotAllocation } fro
 import { useOnline } from './use-online';
 
 const t = messages.packingResult;
-
-/** 상위 포장을 고르지 않은 상태. `Select` 가 문자열만 다루므로 「없음」에 값을 하나 준다. */
-const NO_PARENT = '';
 
 /**
  * P-04-01 · Packing(P&P) 실적 등록 — **POP 1024×768 터치**.
@@ -58,7 +54,6 @@ const NO_PARENT = '';
 export const PackingResultScreen = () => {
   const titleId = useId();
   const typeLabelId = useId();
-  const parentLabelId = useId();
   const shipmentLabelId = useId();
   const identity = usePackingIdentity();
   const isOnline = useOnline();
@@ -74,7 +69,7 @@ export const PackingResultScreen = () => {
    * 대조할 수 없다.
    */
   const [labelCode, setLabelCode] = useState<string | null>(null);
-  const [entryError, setEntryError] = useState<'shipment' | 'label' | 'open-unit' | null>(null);
+  const [entryError, setEntryError] = useState<'shipment' | 'open-unit' | null>(null);
   /** ② 마지막 판정. 담은 뒤에도 남겨 둔다 — 방금 읽은 것이 무엇이었는지가 사라지면 안 된다. */
   const [matched, setMatched] = useState<MatchedLot | null>(null);
   const [lines, setLines] = useState<PackedLine[]>([]);
@@ -86,12 +81,10 @@ export const PackingResultScreen = () => {
    * (스펙 §3). 확정이 이 포장을 닫는다.
    */
   const [openUnit, setOpenUnit] = useState<OpenHandlingUnit | null>(null);
-  const [parentId, setParentId] = useState<string>(NO_PARENT);
   const [confirmedNo, setConfirmedNo] = useState<string | null>(null);
   const [automaticLabelRun, setAutomaticLabelRun] = useState<AutomaticLabelRun | null>(null);
   const [isLabelMode, setLabelMode] = useState(false);
 
-  const labelScan = useLabelScan();
   const shipmentScan = useShipmentScan();
   const shipmentSelection = useShipmentSelection();
   const todayShipments = useTodayShipments();
@@ -101,9 +94,14 @@ export const PackingResultScreen = () => {
   const allowsDecimal = useUomDecimals();
   const shipmentId = entry?.shipmentId ?? label?.shipmentId ?? null;
   const warehouseId = label?.warehouseId ?? null;
-  const parents = useParentCandidates(warehouseId);
   const shipmentAllocations = useShipmentAllocations(shipmentId);
   const progress = toProgress(shipmentAllocations.allocations);
+  /*
+   * ⭐ **다음 걸음이 남았는지 여기서 말한다**(SHIP-UNIT-01 §7). 포장을 마친 담당은 이 화면을
+   *    떠나기 전에 「출하 단위에 담을 상자가 남았나」를 알아야 한다 — 모르면 P-04-05 를 아예
+   *    열지 않고, 상자는 구성되지 않은 채 남는다.
+   */
+  const unassignedBoxes = useUnassignedPackedBoxCount(shipmentId, entry?.shipmentNo ?? null);
   /*
    * ⛔⛔ **`ShipmentLotAllocation.shippingInspectionStatusCode` 는 목표 선택 필드다**.
    * 현행 서버는 다섯 상태값(`NOT_REQUIRED`·`PENDING`·`PASSED`·`REJECTED`·`HELD`)
@@ -113,10 +111,10 @@ export const PackingResultScreen = () => {
    * 되짚으면 실제로는 「대기·불합격·보류」였던 배분이 「합격」처럼 보일 수 있다(추측 금지).
    * 그래서 상태 «문구»는 지어내지 않고 이미 있던 「모른다」 표시(`—`)로 떨어진다.
    *
-   * ⭐ **실제 게이팅은 이 문구가 아니다.** 납품 라벨 자동 발행(`automatic-labels.tsx`)과
-   * 라벨 화면(`shipping-packing-label/types.ts` 의 `isIssuable`)은 이미 `oqcPassed` 를 직접
-   * 쓰고 있고, 그 값은 계약에 그대로 남아 있다 — 이 줄은 «표시»만 잃었다. 서버가 상태값을
-   * 다시 내리면 이 자리만 되돌리면 된다.
+   * ⭐ **이 값이 무엇도 막지 않는다.** 한때 납품 라벨 발행 자격이 `oqcPassed` 였는데, 라벨의
+   * 주인이 출하 단위로 옮겨가며 자격도 **출하 단위의 마감 여부**가 됐다(SHIP-UNIT-01 P5 ·
+   * `shipping-packing-label/types.ts` 의 `toDeliveryRow`). 이 줄은 «표시»만 남았고 그 표시도
+   * 지어내지 않는다 — 서버가 상태값을 다시 내리면 이 자리만 되돌리면 된다.
    */
   const oqcStatuses = shipmentAllocations.allocations.length > 0 ? ['—'] : [];
 
@@ -129,13 +127,16 @@ export const PackingResultScreen = () => {
       const packedAllocations = shipmentAllocations.allocations.filter((allocation) =>
         lines.some((line) => line.shipmentLotAllocationId === allocation.shipmentLotAllocationId),
       );
-      setAutomaticLabelRun({ handlingUnit, allocations: packedAllocations });
+      setAutomaticLabelRun({
+        handlingUnit,
+        allocations: packedAllocations,
+        shipmentNo: entry?.shipmentNo ?? null,
+      });
       /* 확정하면 이 포장은 끝났다 — 다음 포장을 위해 담긴 것을 비우되 라벨은 남긴다(같은 출하를 계속 싼다). */
       setLines([]);
       setMatched(null);
       setQty('');
       setMergeNote(null);
-      setParentId(NO_PARENT);
       /* 이 포장은 닫혔다 — 다음 포장은 새로 만든다. */
       setOpenUnit(null);
       setConfirmedNo(handlingUnit.handlingUnitNo);
@@ -172,7 +173,6 @@ export const PackingResultScreen = () => {
     setLines([]);
     setQty('');
     setMergeNote(null);
-    setParentId(NO_PARENT);
     setAutomaticLabelRun(null);
 
     return true;
@@ -192,42 +192,6 @@ export const PackingResultScreen = () => {
         }
 
         applyEntry(outcome);
-      },
-    });
-  };
-
-  const scanLabel = (code: string): void => {
-    const isSameEntry = labelCode === code && shipmentId !== null;
-    if (!isSameEntry && !prepareEntryChange()) return;
-
-    setMergeNote(null);
-    setConfirmedNo(null);
-    setLabelCode(code);
-    labelScan.mutate(code, {
-      onSuccess: (outcome) => {
-        if (outcome.kind === 'not-found') {
-          setEntryError('label');
-          setLabel(null);
-
-          return;
-        }
-
-        setEntryError(null);
-        setLabel(outcome.allocations[0] ?? null);
-        const first = outcome.allocations[0];
-        if (first !== undefined) {
-          setEntry({
-            shipmentId: first.shipmentId,
-            /*
-             * ⛔⛔ **`ShipmentLotAllocation.shipmentRequestNo` 가 계약에서 빠졌다**(생성 타입
-             * · 2026-09-11 전달본). 이 자리는 원래도 «모르면 ID 로 대신한다»는 자리였다 —
-             * 이제는 늘 그 자리로 떨어진다(추측 금지 — 지어낼 값이 없다).
-             */
-            shipmentNo: `#${String(first.shipmentId)}`,
-            allocations: outcome.allocations,
-          });
-        }
-        setMatched(null);
       },
     });
   };
@@ -271,7 +235,6 @@ export const PackingResultScreen = () => {
     createUnit.mutate(
       {
         handlingUnitTypeCode: typeCode,
-        parentHandlingUnitId: parentId === NO_PARENT ? null : Number(parentId),
         warehouseId,
         workerNo: identity.workerNo,
       },
@@ -312,8 +275,7 @@ export const PackingResultScreen = () => {
       return { tone: 'error', text: t.match.openUnitBlocksShipmentChange };
     }
     if (entryError === 'shipment') return { tone: 'error', text: t.match.shipmentNotFound };
-    if (entryError === 'label') return { tone: 'error', text: t.match.labelNotFound };
-    if (labelScan.isError || lotScan.isError) return { tone: 'error', text: t.match.lookupFailed };
+    if (lotScan.isError) return { tone: 'error', text: t.match.lookupFailed };
     if (matched === null) return null;
     if (matched.verdict.matched) return { tone: 'success', text: t.match.ok };
 
@@ -450,7 +412,7 @@ export const PackingResultScreen = () => {
           />
         </section>
 
-        {/* ① 출하 선택 — 정확 일치 스캔 또는 현재 영업일 목록. 납품라벨은 재진입 보조 경로다. */}
+        {/* ① 출하 선택 — 정확 일치 스캔 또는 현재 영업일 목록. */}
         {/* ⛔ 구획에 칸과 «같은 이름»을 달지 않는다 — 이름이 겹치면 무엇을 가리키는지 흐려진다. */}
         <section className="packing-scan">
           <ScanField
@@ -459,7 +421,8 @@ export const PackingResultScreen = () => {
             onScan={scanShipment}
           />
           {/*
-           * 읽은 라벨은 칸 옆에 남는다(설계 §3 도면).
+           * 읽은 «출하번호»가 칸 옆에 남는다(설계 §3 도면). 한때 납품라벨 값이 오는 자리이기도
+           * 했는데 그 진입을 걷어냈다(SHIP-UNIT-01 P3) — 이제는 늘 출하번호다.
            *
            * ⛔ **비었을 때 표식을 그리지 않는다** — 「—」를 두었더니 줄 끝에 뜻 모를 글자가
            *    떠 있었다(사용자 지적 2026-09-07). 자리는 그대로 지킨다 — 읽는 «순간» 칸이
@@ -467,25 +430,6 @@ export const PackingResultScreen = () => {
            */}
           <p className="packing-scanned-code">{labelCode}</p>
         </section>
-
-        {/*
-         * ⛔ **평상시 채우는 칸이 아니다**(스펙 §3-1 — 「납품 라벨은 포장 확정 «뒤» 발행되므로
-         *   최초 포장의 선행 입력으로 요구하지 않는다」). 앞선 판은 출하번호 칸과 같은 크기로
-         *   같은 자리에 세워, 처음 포장할 때도 채워야 하는 칸으로 읽혔다(사용자 지적
-         *   2026-09-10). 이름을 «보이게» 달고 폭을 줄여 **되돌아오는 길**임을 드러낸다.
-         */}
-        <details className="packing-reentry">
-          {/*
-           * 평상시에는 접어 둔다 — 열면 그 자리에 칸이 선다. 세로 예산이 768 로 못박힌 화면이라
-           * (스펙 §3-1) 되돌아오는 길이 늘 한 구획을 차지하면 ③ 포장 구성이 그만큼 줄어든다.
-           */}
-          <summary>{t.scan.deliveryLabelReentry}</summary>
-          <ScanField
-            label={t.scan.label.deliveryLabel}
-            isScanning={labelScan.isPending}
-            onScan={scanLabel}
-          />
-        </details>
 
         {/* ② 생산LOT 스캔 — 판정 문구가 칸 바로 아래 붙는다. 떨어뜨리면 어느 스캔의 답인지 흐려진다. */}
         <section className="packing-scan">
@@ -551,43 +495,6 @@ export const PackingResultScreen = () => {
               {typeOptions.isUnavailable && <p className="field-note">{t.notes.typeUnavailable}</p>}
             </div>
 
-            {/*
-             * ⭐ **상위 포장은 내용물 «앞»에 선다**(사용자 지시 2026-09-10 · 새 도면
-             *   「유형 [값] [선택] · 상위 포장 [값] [선택] · 내용물/수량 목록」). 고르는 칸 둘이
-             *   붙어 있어야 한 덩어리로 읽힌다 — 사이에 목록이 끼면 상위 포장이 목록의 일부처럼
-             *   보이고, 담은 뒤에야 눈에 띈다.
-             */}
-            <div className="packing-parent">
-              <span className="field-label" id={parentLabelId}>
-                {t.fields.parentHandlingUnit}
-              </span>
-              <Select
-                size="xl"
-                aria-labelledby={parentLabelId}
-                placeholder={t.fields.parentNone}
-                value={parentId === NO_PARENT ? null : parentId}
-                onChange={(value) => {
-                  setParentId(value ?? NO_PARENT);
-                }}
-                /*
-                 * ⛔ **후보를 계층으로 거르지 않는다**(§5-2-1). 계층 깊이가 확정이 아니고, 이
-                 * 화면은 매번 새 취급 단위를 만들므로 자기 하위가 존재할 수 없다.
-                 */
-                options={parents.candidates.map((candidate) => ({
-                  value: String(candidate.handlingUnitId),
-                  label: candidate.handlingUnitNo,
-                }))}
-              />
-              {/*
-               * ⛔ **「팔레트에 담으면 지정합니다」를 상시로 두지 않는다**(사용자 지적
-               *   2026-09-10) — 스펙에 없는 문장이고, 고를 것이 있으면 목록이 이미 그 말을
-               *   한다. 후보가 «없을» 때만 왜 못 고르는지 적는다.
-               */}
-              {warehouseId !== null && !parents.isPending && parents.candidates.length === 0 && (
-                <p className="field-note">{t.notes.parentEmpty}</p>
-              )}
-            </div>
-
             <ContentsTable
               lines={lines}
               onRemove={(allocationId) => {
@@ -647,6 +554,15 @@ export const PackingResultScreen = () => {
         <section className="packing-progress" aria-label={t.panes.progress}>
           <span>{t.progress.packed(progress.packedCount)}</span>
           <span>{t.progress.unpacked(progress.unpackedQty)}</span>
+          {/*
+           * ⛔ **수가 0 이어도 감춘다**가 아니라 **0 도 적는다**(공유계약 G-9) — 「없다」를
+           *    보이는 것이 이 줄의 일이다. 못 받았을 때만 다른 말을 한다.
+           */}
+          {unassignedBoxes.isError ? (
+            <span>{t.progress.unassignedUnknown}</span>
+          ) : unassignedBoxes.count === null ? null : (
+            <span>{t.progress.unassigned(unassignedBoxes.count)}</span>
+          )}
         </section>
       </div>
 

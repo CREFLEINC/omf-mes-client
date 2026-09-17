@@ -13,7 +13,7 @@ import type {
 } from './types';
 
 /**
- * 이 화면의 읽기 — **스캔 둘 · 상위 포장 후보 · 포장 유형 · 진행**.
+ * 이 화면의 읽기 — **스캔 둘 · 포장 유형 · 진행**.
  *
  * ⭐ **두 스캔은 «조회»가 아니라 «액션»이다.** 작업자가 읽힌 순간에만 일어나고 같은 코드를
  * 다시 읽으면 다시 나가야 한다 — 그래서 `useMutation` 이다. 캐시에 앉히면 두 번째 스캔이
@@ -66,13 +66,21 @@ const collectAllPages = async <T>(
 
 export const packingResultKeys = {
   typeOptions: ['packing-result', 'handling-unit-types'] as const,
-  parentsRoot: ['packing-result', 'parents'] as const,
-  parents: (warehouseId: number) => ['packing-result', 'parents', warehouseId] as const,
   progress: (shipmentId: number) => ['packing-result', 'progress', shipmentId] as const,
+  /*
+   * ⭐ **진행 키 «아래»에 둔다.** 포장을 확정하면 이 수도 함께 바뀌는데, 확정 뒤 무효화는
+   *    `progress(shipmentId)` 하나를 지운다(`mutations.ts`) — 접두사가 같으면 그 한 번에 둘 다
+   *    낡은 것으로 표시된다. 따로 두면 방금 담은 상자가 이 수에 며칠이고 안 잡힌다.
+   */
+  unassignedBoxes: (shipmentId: number) =>
+    ['packing-result', 'progress', shipmentId, 'unassigned-boxes'] as const,
   uoms: ['packing-result', 'uoms'] as const,
   todayShipments: (businessDate: string) =>
     ['packing-result', 'today-shipments', businessDate] as const,
 };
+
+/** 번호로 좁힌 목록 한 쪽 — 부분 일치라 같은 번호 조각을 가진 건이 몇 개 따라올 수 있다. */
+const SHIPMENT_SEARCH_SIZE = 50;
 
 const localDate = (now: Date): string => {
   const year = String(now.getFullYear());
@@ -166,34 +174,54 @@ export const useTodayShipments = (): {
   return { shipments: query.data ?? [], isPending: query.isPending, isError: query.isError };
 };
 
+/**
+ * 아직 어느 출하 단위에도 들어가지 않은 **포장 완료 상자 수**(SHIP-UNIT-01 P5).
+ *
+ * ⭐ **서버가 센다.** 한 상자가 배분 여럿에 걸릴 수 있어 화면이 배분으로 세면 겹쳐 세거나
+ *    빠뜨린다 — 계약도 상자 기준으로 센다고 못박았다.
+ *
+ * ⛔ **상세로 묻지 않는다.** 계약이 「목록에서만 채운다(상세는 세지 않는다)」고 적었다 —
+ *    상세로 물으면 값이 늘 `undefined` 로 와서 **0 으로 읽힌다.**
+ * ⭐ 그래서 목록을 `hasUnassignedPackedBox=true` 로 묻고 이 출하가 그 안에 있는지 본다 —
+ *    없으면 남은 상자가 **없다**는 뜻이라 0 이다. 그 축을 함께 주면 기간이 선택이 된다(v4).
+ * ⚠ `q` 는 부분 일치다 — 번호가 정확히 같은 것만 다시 골라낸다(`useShipmentScan` 과 같은 이유).
+ *
+ * ⛔ **못 받은 것을 0 으로 떨어뜨리지 않는다.** 0 은 「담을 것이 없다」는 업무 사실이고, 못
+ *    받은 것은 「모른다」다 — 섞으면 담당은 구성할 상자가 없다고 읽고 다음 화면으로 가지 않는다.
+ */
+export const useUnassignedPackedBoxCount = (
+  shipmentId: number | null,
+  shipmentNo: string | null,
+): { count: number | null; isError: boolean } => {
+  const { client } = useApiClient();
+
+  const query = useQuery({
+    queryKey: packingResultKeys.unassignedBoxes(shipmentId ?? 0),
+    enabled: shipmentId !== null && shipmentNo !== null,
+    queryFn: async () => {
+      if (shipmentNo === null) throw new Error('출하번호를 모르면 미구성 상자를 세지 않습니다.');
+
+      const data = await runRequest(() =>
+        client.GET('/logistics/shipments', {
+          params: {
+            query: { hasUnassignedPackedBox: true, q: shipmentNo, page: 1, size: SHIPMENT_SEARCH_SIZE },
+          },
+        }),
+      );
+
+      return data.items.find((item) => item.shipmentNo === shipmentNo)?.unassignedPackedBoxCount ?? 0;
+    },
+  });
+
+  return { count: query.data ?? null, isError: query.isError };
+};
+
 export const useShipmentSelection = (): UseMutationResult<ShipmentEntry, Error, Shipment> => {
   const { client } = useApiClient();
 
   return useMutation({ mutationFn: (shipment: Shipment) => entryOfShipment(client, shipment) });
 };
 
-/** 첫 스캔의 결과. **빈 목록이 「없는 납품라벨」이다** — 계약이 404 를 내지 않는다. */
-export type LabelScanOutcome =
-  { kind: 'found'; allocations: ShipmentLotAllocation[] } | { kind: 'not-found' };
-
-const lookupLabel = async (client: Client, code: string): Promise<LabelScanOutcome> => {
-  const allocations = await collectAllPages((page, size) =>
-    runRequest(() =>
-      client.GET('/logistics/shipment-lot-allocations', {
-        params: { query: { q: code, page, size } },
-      }),
-    ),
-  );
-
-  return allocations.length === 0 ? { kind: 'not-found' } : { kind: 'found', allocations };
-};
-
-/** ① 납품라벨 스캔 — 이 라벨이 어느 출하·어느 품목인지가 여기서 정해진다. */
-export const useLabelScan = (): UseMutationResult<LabelScanOutcome, Error, string> => {
-  const { client } = useApiClient();
-
-  return useMutation({ mutationFn: (code: string) => lookupLabel(client, code) });
-};
 
 /** ② 생산LOT 스캔의 입력 — 출하 축은 **첫 스캔 응답의 `shipmentId`** 를 그대로 쓴다. */
 export interface LotScanInput {
@@ -273,41 +301,6 @@ export const useHandlingUnitTypeOptions = (): TypeOptions => {
     isPending: query.isPending,
     isUnavailable: query.isError || (!query.isPending && options.length === 0),
   };
-};
-
-/**
- * 상위 포장 후보 — **이 출하 창고로 좁힌다**(스펙 §5-2-1).
- *
- * ⛔ **「부모가 없는 것만」으로 좁히지 않는다.** 계층 깊이가 확정이 아니고(미결 4), 이 화면은
- * 매번 새 취급 단위를 만들어 상위를 고르므로 **자기 하위가 존재할 수 없다** — 순환이 구조적으로
- * 불가능하다. ⚠ **후보가 0건이어도 정상이다.**
- */
-export interface ParentCandidates {
-  candidates: HandlingUnit[];
-  isPending: boolean;
-}
-
-export const useParentCandidates = (warehouseId: number | null): ParentCandidates => {
-  const { client } = useApiClient();
-
-  const query = useQuery({
-    queryKey: packingResultKeys.parents(warehouseId ?? 0),
-    enabled: warehouseId !== null,
-    queryFn: async () => {
-      if (warehouseId === null)
-        throw new Error('창고를 모르면 상위 포장 후보를 조회하지 않습니다.');
-
-      const data = await runRequest(() =>
-        client.GET('/inventory/handling-units', {
-          params: { query: { warehouseId, size: OPTION_SIZE } },
-        }),
-      );
-
-      return data.items;
-    },
-  });
-
-  return { candidates: query.data ?? [], isPending: query.isPending };
 };
 
 /**

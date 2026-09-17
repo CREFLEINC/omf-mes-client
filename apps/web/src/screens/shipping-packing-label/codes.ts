@@ -12,7 +12,11 @@ import type { components } from '@omf-mes/api-client';
  */
 
 /**
- * 납품 라벨 — **고객에게 나가는 것**이라 OQC 합격 건에만 붙는다(스펙 §5-1).
+ * 납품 라벨 — **마감된 출하 단위 하나에 한 장**이 붙는다(SHIP-UNIT-01 설계 §4).
+ *
+ * ⛔ **종전에는 「OQC 합격 배분」이 대상이었다.** 출하 단위가 생기며 주인이 옮겨갔고, 서버는
+ *    배분 대상 발행을 **422 INVALID** 로 막는다(전달본 v4 · `2e9f234b`). 옛 대상으로 두면
+ *    이 화면의 납품 라벨은 **한 장도 나가지 않는다.**
  *
  * ⭐ 2026-09-02 에 `enum` 9종으로 닫혔다. 그전까지 이 화면은 「대상 유형으로 가른다」였는데
  * (②안) **프린터 필터가 서지 않아** 뒤집혔다 — 거를 값이 하나면 창고 포장 프린터가
@@ -31,8 +35,15 @@ export const DELIVERY_LABEL_ISSUE_LOCKED = false;
 
 export type LabelKind = (typeof LABEL_KINDS)[number];
 
-/** 납품 라벨은 출하 LOT 배분 한 건을 대상으로 발행·조회한다. */
-export const DELIVERY_TARGET_TYPE_CODE = 'SHIPMENT_LOT_ALLOCATION';
+/**
+ * 납품 라벨은 **출하 단위** 한 건을 대상으로 발행·조회한다.
+ *
+ * ⛔ **`SHIPMENT_LOT_ALLOCATION` 으로 되돌리지 않는다.** 서버가 그 대상 유형을 422 INVALID 로
+ *    거부한다 — 되돌리면 발행이 통째로 막히고, 화면은 그것을 「발행 실패」로만 보인다.
+ * ⚠ **자격은 마감(`CLOSED`)이다.** 안 닫힌 단위로 부르면 422 STATE_LOCKED 다 — 그래서 목록이
+ *   구성 중인 단위를 「발행 불가」로 함께 그린다(`types.ts` 의 `toDeliveryRow`).
+ */
+export const DELIVERY_TARGET_TYPE_CODE = 'SHIPPING_UNIT';
 
 /** 포장 라벨의 대상은 취급 단위(`inventory.handling_unit`)다. */
 export const PACKING_TARGET_TYPE_CODE = 'HANDLING_UNIT';

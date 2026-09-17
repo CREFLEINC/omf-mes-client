@@ -24,9 +24,9 @@ const sourceFiles = (directory: string): string[] =>
   });
 
 describe('POP 공개 라우트 공통 규칙', () => {
-  it('통합 뒤 고정 설계 범위의 공개 화면 18개를 모두 점검한다', () => {
-    /* 18번째는 P-06-01 — 설계보다 앞서 만든 화면이다(`docs/decisions.md` 결정 16). */
-    expect(popRoutes).toHaveLength(18);
+  it('통합 뒤 고정 설계 범위의 공개 화면 19개를 모두 점검한다', () => {
+    /* ⚠ 화면이 늘면 이 수도 함께 고친다 — P-04-05 출하 단위 구성으로 18, P-06-01 창고 적재 위치 라벨(설계보다 앞선 화면, `docs/decisions.md` 결정 16)로 19 가 됐다. */
+    expect(popRoutes).toHaveLength(19);
   });
 
   it('모든 공개 화면의 루트가 관리웹 기본 밀도 겹을 쓴다', () => {

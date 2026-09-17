@@ -1,6 +1,7 @@
 import { Stepper, type StepperItem } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 
+import { CONFIRMED_STATUS } from './inspection-status';
 import { formatDateTime, orderedRounds, type InspectionResultRound } from './types';
 
 /**
@@ -27,8 +28,6 @@ import { formatDateTime, orderedRounds, type InspectionResultRound } from './typ
 
 const t = messages.oqcInspection.history;
 
-const CONFIRMED = '확정';
-
 export interface RoundHistoryProps {
   rounds: InspectionResultRound[];
   /**
@@ -53,7 +52,7 @@ const toStep = (round: InspectionResultRound, currentResultId: number | null): S
   /* 판정 코드 그대로. 비어 온 회차는 지어내지 않고 「없음」이라고 말한다. */
   label: round.overallJudgmentCode.trim() === '' ? t.noJudgment : round.overallJudgmentCode,
   status:
-    round.statusCode === CONFIRMED
+    round.statusCode === CONFIRMED_STATUS
       ? 'complete'
       : round.inspectionResultId === currentResultId
         ? 'current'

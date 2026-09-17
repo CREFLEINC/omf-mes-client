@@ -34,7 +34,7 @@ import {
   readyPrinter,
 } from './fixtures';
 import { localDateTimeText } from './formatting';
-import type { RenditionShell } from './print';
+import type { RenditionShell } from '../../patterns/pop-print';
 import { RepackLabelIssueScreen } from './screen';
 import type { CodeValue, HandlingUnit } from './types';
 

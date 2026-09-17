@@ -9,6 +9,7 @@ import {
   describeReference,
   toReference,
   type AvailableQtyLookup,
+  type ItemChoice,
   type ReferenceSource,
 } from './lookups';
 import { SelectField } from './select-field';
@@ -50,8 +51,10 @@ export interface AssignmentFormPaneProps {
   lines: ShipmentRequestLineDraft[];
   lineErrors: Record<string, string>;
   itemLookup: ReferenceSource;
+  itemChoiceOf: (row: ShipmentRequestLineDraft) => ItemChoice;
+  itemSearchOf: (row: ShipmentRequestLineDraft) => string;
+  onItemSearch: (key: string, term: string) => void;
   uomLookup: ReferenceSource;
-  itemOptions: SelectOption[];
   uomOptions: SelectOption[];
   availableQty: AvailableQtyLookup;
   onPatchLine: (key: string, patch: Partial<Omit<ShipmentRequestLineDraft, 'key'>>) => void;
@@ -99,8 +102,10 @@ export const AssignmentFormPane = ({
   lines,
   lineErrors,
   itemLookup,
+  itemChoiceOf,
+  itemSearchOf,
+  onItemSearch,
   uomLookup,
-  itemOptions,
   uomOptions,
   availableQty,
   onPatchLine,
@@ -221,8 +226,10 @@ export const AssignmentFormPane = ({
           rows={lines}
           errors={lineErrors}
           itemLookup={itemLookup}
+          itemChoiceOf={itemChoiceOf}
+          itemSearchOf={itemSearchOf}
+          onItemSearch={onItemSearch}
           uomLookup={uomLookup}
-          itemOptions={itemOptions}
           uomOptions={uomOptions}
           availableQty={availableQty}
           isLocked={isLocked}

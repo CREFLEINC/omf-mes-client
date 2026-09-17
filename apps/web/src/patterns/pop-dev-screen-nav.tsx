@@ -121,6 +121,8 @@ export const POP_DEV_SCREENS: readonly PopDevScreen[] = [
     label: 'P-01-02 출고 QR 발행',
     query: '?goodsIssueId=16401',
   },
+  /* ⚠ 서버 경로가 아직 없어 목록이 비어 뜬다 — 배치만 볼 수 있다(SHIP-UNIT-01 P4b). */
+  { path: '/pop/shipping-units', label: 'P-04-05 출하 단위 구성' },
   /*
    * ⚠ 이 화면도 진입 컨텍스트를 주소로 받는다(`?workOrderId=`) — 작업지시 선택이 셸에 서기
    * 전까지의 임시 경로다. 사번은 셸·`worker-session` 이 비었을 때만 주소를 본다.

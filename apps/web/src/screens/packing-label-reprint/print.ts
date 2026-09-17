@@ -26,34 +26,11 @@ import {
  * (`patterns/pop-label-rendition` 머리말 · 사용자 지시 2026-09-08).
  */
 
-/**
- * POP 셸이 렌더러에 여는 통로 중 이 화면이 쓰는 부분.
- *
- * ⚠ **관리웹(브라우저)에는 이 통로가 없다.** 없는 것이 오류는 아니고 「여기서는 프린터로 보낼
- * 수 없다」는 사실이라, 화면은 그 사유를 말하고 발행까지만 진행한다.
+/*
+ * ③-2 의 통로(`window.pop.rendition`)는 `patterns/pop-print` 가 갖는다 — 화면마다 선언하던
+ * 것을 한 곳으로 모았다. 관리웹(브라우저)에는 그 통로가 없고, 없는 것은 오류가 아니라
+ * 「여기서는 프린터로 보낼 수 없다」는 사실이다.
  */
-export interface RenditionShell {
-  save: (
-    bytes: Uint8Array,
-    label: string,
-    now: string,
-    format: LabelRenditionFormat | 'pdf',
-  ) => Promise<string>;
-}
-
-interface ShellCarrier {
-  pop?: { rendition?: RenditionShell };
-}
-
-/** 셸 통로를 집는다. 없으면 `null` — 지어내지 않는다. */
-export const renditionShell = (): RenditionShell | null => {
-  if (typeof window === 'undefined') return null;
-
-  const carrier = window as unknown as ShellCarrier;
-  const shell = carrier.pop?.rendition;
-
-  return typeof shell?.save === 'function' ? shell : null;
-};
 
 /** 한 장을 인쇄하는 데 필요한 것. 시험이 각 걸음을 따로 대체할 수 있도록 주입으로 받는다. */
 export interface PrintDeps {

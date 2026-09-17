@@ -3,7 +3,6 @@ import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { LABEL_RENDITION_NOT_READY_REASON } from '../../patterns/pop-label-rendition';
 import { createStubFetch, jsonResponse, renderWithProviders } from '../../test/api-harness';
 import {
   allocation,
@@ -13,6 +12,7 @@ import {
   reissueReason,
   summary,
   shipment,
+  shippingUnit,
   SHIPMENT_ID,
   WORKER_NO,
 } from './fixtures';
@@ -30,9 +30,14 @@ import { ShippingPackingLabelScreen } from './screen';
  */
 
 const ALLOCATION_PASSED = 9401;
-/** 납품 라벨 발행과 회차 조회는 출하 LOT 배분 식별자로 나간다. */
-const DELIVERY_TARGET_PASSED = ALLOCATION_PASSED;
 const ALLOCATION_WAITING = 9402;
+/**
+ * 납품 라벨 발행과 회차 조회는 **출하 단위** 식별자로 나간다(SHIP-UNIT-01).
+ *
+ * ⛔ 종전에는 배분이었다 — 서버가 그 대상 유형을 422 INVALID 로 막았다(전달본 v4).
+ */
+const CLOSED_UNIT_ID = 7001;
+const OPEN_UNIT_ID = 7002;
 const HANDLING_UNIT_ID = 9501;
 const ISSUE_LOG_ID = 9601;
 
@@ -49,7 +54,7 @@ interface FlowOptions {
   /** 이 대상들은 이미 발행된 적이 있다 — 재출력 구획이 서는 조건이다. */
   issued?: Record<number, number>;
   /** 셸 인쇄 통로. 없으면 브라우저와 같은 상태다(오류가 아니라 「프린터가 없다」). */
-  shellPrint?: (() => Promise<string>) | null;
+  shellPrint?: ((bytes: Uint8Array) => Promise<string>) | null;
   /** 진입 주소에 출하를 싣지 않는다 — 골라서 들어오는 화면임을 무는 갈래. */
   withoutShipment?: boolean;
 }
@@ -100,6 +105,38 @@ const renderFlow = (options: FlowOptions = {}) => {
         respond: () => jsonResponse(handlingUnitDetail(HANDLING_UNIT_ID, 'SYN-HU-0001')),
       },
       {
+        match: (request) => new URL(request.url).pathname === '/logistics/shipping-units',
+        respond: () =>
+          jsonResponse({
+            items: [
+              shippingUnit(CLOSED_UNIT_ID, 'SYN-SU-0001', 'CLOSED'),
+              shippingUnit(OPEN_UNIT_ID, 'SYN-SU-0002', 'OPEN'),
+            ],
+            page: { page: 1, size: 20, total: 2 },
+          }),
+      },
+      {
+        match: (request) =>
+          /\/logistics\/shipping-units\/\d+$/u.test(new URL(request.url).pathname),
+        respond: (request) => {
+          const id = Number(/(\d+)$/u.exec(new URL(request.url).pathname)?.[1]);
+
+          return jsonResponse(
+            id === OPEN_UNIT_ID
+              ? shippingUnit(OPEN_UNIT_ID, 'SYN-SU-0002', 'OPEN')
+              : shippingUnit(CLOSED_UNIT_ID, 'SYN-SU-0001', 'CLOSED'),
+          );
+        },
+      },
+      {
+        match: (request) => new URL(request.url).pathname === '/mdm/uoms',
+        respond: () =>
+          jsonResponse({
+            items: [{ uomId: 9301, uomCode: 'EA', uomName: 'EA', isActive: true }],
+            page: { page: 1, size: 200, total: 1 },
+          }),
+      },
+      {
         match: (request) => new URL(request.url).pathname === '/app/document-issues/summary',
         respond: (request) => {
           /*
@@ -131,11 +168,15 @@ const renderFlow = (options: FlowOptions = {}) => {
       {
         match: (request) =>
           request.method === 'POST' && new URL(request.url).pathname === '/app/document-issues',
-        respond: (request) => {
-          void record(request);
+        /* ⚠ 서버처럼 **요청한 대상을 그대로** 돌려준다 — 그러지 않으면 화면이 그릴 줄을 못 찾는다. */
+        respond: async (request) => {
+          const body = (await request.clone().json()) as { targets: { targetId: number }[] };
+          await record(request);
 
           return jsonResponse({
-            items: [issueLog(ISSUE_LOG_ID, ALLOCATION_PASSED, 'SYN-LOT-0001', 1)],
+            items: body.targets.map((target, index) =>
+              issueLog(ISSUE_LOG_ID + index, target.targetId, `SYN-ISSUE-${String(target.targetId)}`, 1),
+            ),
           });
         },
       },
@@ -143,10 +184,10 @@ const renderFlow = (options: FlowOptions = {}) => {
         match: (request) => new URL(request.url).pathname.endsWith('/rendition'),
         respond: (request) => {
           /*
-           * ⛔⛔ **서버에 이 경로가 없다**(대응표 P1 「미구현 5건」). 제품 코드가 부르면 안
-           * 된다 — 그래도 응답을 준비해 두는 것은, 회귀로 다시 부르게 되면 이 200 이 조용히
-           * 성공 경로를 열어 아래 시험들의 「부르지 않는다」 단언이 실패로 드러나게 하려는
-           * 것이다.
+           * ⛔⛔ **서버는 이 화면의 두 종류를 하나도 그려 주지 않는다**(포장 라벨은 준비 목록에
+           * 없었고, 납품 라벨은 전달본 v4 에서 422 다). 제품 코드가 부르면 안 된다 — 그래도
+           * 응답을 준비해 두는 것은, 회귀로 다시 부르게 되면 이 200 이 조용히 성공 경로를 열어
+           * 아래 시험들의 「부르지 않는다」 단언이 실패로 드러나게 하려는 것이다.
            */
           void record(request);
 
@@ -196,16 +237,16 @@ describe('진입', () => {
     renderFlow();
 
     await screen.findByRole('radio', { name: /포장라벨/u });
-    expect(screen.queryByText('SYN-LOT-0001')).not.toBeInTheDocument();
+    expect(screen.queryByText('SYN-SU-0001')).not.toBeInTheDocument();
   });
 });
 
 describe('대상 고르기', () => {
-  it('출하검사에 합격하지 않은 대상은 골라도 선택으로 남지 않는다', async () => {
+  it('마감하지 않은 출하 단위는 골라도 선택으로 남지 않는다', async () => {
     const { user } = renderFlow();
 
     await user.click(await screen.findByRole('radio', { name: /납품라벨/u }));
-    await screen.findByText('SYN-LOT-0002');
+    await screen.findByText('SYN-SU-0002');
 
     const boxes = screen.getAllByRole('checkbox');
     /* 첫 칸은 전체 선택이라 건너뛴다 — 줄 상자는 그 뒤에 온다. */
@@ -224,12 +265,8 @@ describe('대상 고르기', () => {
 
 describe('발행 → 미리보기 → 인쇄', () => {
   /*
-   * ⛔⛔ **여기서부터는 포장라벨로 부른다.** `DELIVERY_LABEL`(납품라벨) 발행은 서버가 항상
-   * 422 `INVALID` 로 거부하고, 대상 유형 `SHIPMENT_LOT_ALLOCATION` 도 계약 enum에서 아예
-   * 빠졌다(대응표 P1 「공용 문서 발행」· I-27 마감 결정 · `codes.ts` 의
-   * `DELIVERY_LABEL_ISSUE_LOCKED`) — 그래서 발행(«쓰기»)까지 실제로 이어가는 시험은 계약이
-   * 살아 있는 포장라벨로 진행한다. 종류 선택 자체(«대상 고르기» 위 describe)는 납품라벨로도
-   * 여전히 살아 있다 — 막힌 자리는 발행 단추뿐이다.
+   * ⭐ **두 종류 모두 발행까지 간다**(SHIP-UNIT-01). 한때 납품 라벨은 서버가 항상 422 로
+   *    거부해 발행 시험을 포장 라벨로만 세웠는데, 대상이 출하 단위가 되며 그 벽이 사라졌다.
    */
   it('발행은 인쇄를 부르지 않는다 — 기록과 종이는 따로 간다', async () => {
     const { user, sent } = renderFlow();
@@ -254,14 +291,11 @@ describe('발행 → 미리보기 → 인쇄', () => {
   });
 
   /*
-   * ⛔⛔ **서버에 `GET /app/document-issues/{id}/rendition` 경로가 없다**(`patterns/
-   * pop-label-rendition` 머리말 · 대응표 P1 「미구현 5건」). 원래 이 시험은 셸이 없을 때
-   * 인쇄 «시도»가 실패로 보고되는 것을 쟀다 — 이제는 그림을 받는 걸음이 셸을 보기도 «전»에
-   * 막혀 있어 미리보기 단추 자체가 켜지지 않고(`issue.labels` 가 결코 채워지지 않는다),
-   * 인쇄 결과 보고까지도 가지 않는다. 셸 유무와 무관하게 같은 사유로 멈추고, 그 사유가
-   * 「준비 중」임이 동적 문구(`failureReason`)로 드러나는지를 잰다.
+   * ⛔ **통로가 없는 것을 인쇄 성공으로 보고하지 않는다**(공유계약 F-6). 라벨은 POP 이 이미
+   *    그렸으므로 미리보기까지는 열리고, 막히는 자리는 셸 하나다 — 기록은 남았고 종이만 안
+   *    나왔다는 사실을 그대로 보고해야 「나오지 않은 라벨」이 나온 것으로 남지 않는다.
    */
-  it('그림을 받지 못하면 미리보기·인쇄로 가지 못한다 — 셸이 없어도 같은 이유다', async () => {
+  it('셸이 없으면 미리보기는 열리되 인쇄를 실패로 보고한다', async () => {
     const { user, sent } = renderFlow({ shellPrint: null });
 
     await user.click(await screen.findByRole('radio', { name: /포장라벨/u }));
@@ -271,19 +305,22 @@ describe('발행 → 미리보기 → 인쇄', () => {
       screen.getByRole('button', { name: messages.shippingPackingLabel.actions.issue }),
     );
 
-    expect(
-      await screen.findByText(messages.shippingPackingLabel.outcome.renderFailed),
-    ).toBeInTheDocument();
-    expect(await screen.findByText(LABEL_RENDITION_NOT_READY_REASON)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: '미리보기' })).toBeDisabled();
-    expect(sentTo(sent, ':report-print')).toBeUndefined();
+    const preview = await screen.findByRole('button', { name: '미리보기' });
+    await waitFor(() => {
+      expect(preview).toBeEnabled();
+    });
+
+    await user.click(preview);
+    await user.click(
+      await screen.findByRole('button', { name: messages.shippingPackingLabel.preview.print }),
+    );
+
+    await waitFor(() => {
+      expect(sentTo(sent, ':report-print')?.body).toMatchObject({ outcome: 'FAILED' });
+    });
   });
 
-  /*
-   * ⛔⛔ **서버에 이 경로가 없다**(위와 같음). 셸이 있어도 `render` 걸음에서 이미 막혀 셸까지
-   * 넘어가지 않는다 — 「셸이 있어도 소용없다」는 사실 자체를 잰다.
-   */
-  it('셸이 있어도 그림을 받지 못해 셸을 부르지 않는다', async () => {
+  it('셸이 있으면 POP 이 그린 바이트를 셸로 넘긴다 — 렌디션은 부르지 않는다', async () => {
     const save = vi.fn(async () => 'syn://printed');
     const { user, sent } = renderFlow({ shellPrint: save });
 
@@ -294,18 +331,32 @@ describe('발행 → 미리보기 → 인쇄', () => {
       screen.getByRole('button', { name: messages.shippingPackingLabel.actions.issue }),
     );
 
-    expect(
-      await screen.findByText(messages.shippingPackingLabel.outcome.renderFailed),
-    ).toBeInTheDocument();
-    expect(save).not.toHaveBeenCalled();
-    expect(sentTo(sent, ':report-print')).toBeUndefined();
+    await user.click(await screen.findByRole('button', { name: '미리보기' }));
+    await user.click(
+      await screen.findByRole('button', { name: messages.shippingPackingLabel.preview.print }),
+    );
+
+    await waitFor(() => {
+      expect(save).toHaveBeenCalled();
+    });
+
+    expect(sentTo(sent, '/rendition')).toBeUndefined();
+    await waitFor(() => {
+      expect(sentTo(sent, ':report-print')?.body).toMatchObject({ outcome: 'SUCCEEDED' });
+    });
   });
 
-  it('납품라벨은 배분과 LOT을 대상으로 발행하고 PNG를 조회한다', async () => {
-    const { user, sent } = renderFlow();
+  /*
+   * ⛔ **배분으로 발행하지 않는다**(전달본 v4 — 422 INVALID). 되돌리면 납품 라벨이 한 장도
+   *    나가지 않고, 화면에는 그저 「발행 실패」로만 보인다.
+   * ⛔ **그리고 렌디션도 부르지 않는다** — 서버가 납품 라벨을 그려 주지 않는다(422).
+   */
+  it('납품라벨은 출하 단위를 대상으로 발행하고 POP 이 그려 셸로 넘긴다', async () => {
+    const save = vi.fn<(bytes: Uint8Array) => Promise<string>>().mockResolvedValue('syn://printed');
+    const { user, sent } = renderFlow({ shellPrint: save });
 
     await user.click(await screen.findByRole('radio', { name: /납품라벨/u }));
-    await screen.findByText('SYN-LOT-0001');
+    await screen.findByText('SYN-SU-0001');
     await user.click(screen.getAllByRole('checkbox')[1] as HTMLElement);
     await user.click(
       screen.getByRole('button', { name: messages.shippingPackingLabel.actions.issue }),
@@ -314,19 +365,41 @@ describe('발행 → 미리보기 → 인쇄', () => {
     await waitFor(() => {
       expect(sentTo(sent, '/app/document-issues')?.body).toMatchObject({
         documentTypeCode: 'DELIVERY_LABEL',
-        targets: [{ targetTypeCode: 'SHIPMENT_LOT_ALLOCATION', targetId: 9401, lotId: 9801 }],
+        targets: [{ targetTypeCode: 'SHIPPING_UNIT', targetId: CLOSED_UNIT_ID }],
       });
-      expect(sentTo(sent, '/rendition')).toBeDefined();
+    });
+
+    /*
+     * ⛔ **그려서 종이까지 가는지 본다.** 발행 본문만 보면, 그리기가 통째로 비어도 시험은
+     *    통과한다 — 현장에서는 기록만 쌓이고 라벨이 한 장도 안 나오는 그 모양이다(P2 전례).
+     */
+    await user.click(await screen.findByRole('button', { name: '미리보기' }));
+    await user.click(
+      await screen.findByRole('button', { name: messages.shippingPackingLabel.preview.print }),
+    );
+
+    await waitFor(() => {
+      expect(save).toHaveBeenCalled();
+    });
+
+    /* PNG 매직 바이트 — 셸로 나간 것이 정말 납품 라벨 그림이다. */
+    const bytes = save.mock.calls[0]?.[0];
+
+    expect(bytes?.[0]).toBe(137);
+    expect(bytes?.[1]).toBe(80);
+    expect(sentTo(sent, '/rendition')).toBeUndefined();
+    await waitFor(() => {
+      expect(sentTo(sent, ':report-print')?.body).toMatchObject({ outcome: 'SUCCEEDED' });
     });
   });
 });
 
 describe('재발행', () => {
   it('이미 발행된 대상을 고르면 사유를 받기 전까지 발행이 막힌다', async () => {
-    const { user, sent } = renderFlow({ issued: { [DELIVERY_TARGET_PASSED]: 1 } });
+    const { user, sent } = renderFlow({ issued: { [CLOSED_UNIT_ID]: 1 } });
 
     await user.click(await screen.findByRole('radio', { name: /납품라벨/u }));
-    await screen.findByText('SYN-LOT-0001');
+    await screen.findByText('SYN-SU-0001');
     await user.click(screen.getAllByRole('checkbox')[1] as HTMLElement);
 
     expect(await screen.findByText('재발행 사유를 고르면 발행할 수 있습니다.')).toBeInTheDocument();
@@ -345,7 +418,7 @@ describe('사번', () => {
     const { user, sent } = renderFlow({ withoutWorker: true });
 
     await user.click(await screen.findByRole('radio', { name: /납품라벨/u }));
-    await screen.findByText('SYN-LOT-0001');
+    await screen.findByText('SYN-SU-0001');
     await user.click(screen.getAllByRole('checkbox')[1] as HTMLElement);
     await user.click(
       screen.getByRole('button', { name: messages.shippingPackingLabel.actions.issue }),

@@ -129,6 +129,7 @@ import { popMaterialLotLabel } from './pop-material-lot-label';
 import { reworkResultRegister } from './rework-result-register';
 import { packingLabelReprint } from './packing-label-reprint';
 import { shippingPackingLabel } from './shipping-packing-label';
+import { shippingUnit } from './shipping-unit';
 import { repackLabelIssue } from './repack-label-issue';
 import { runningChange } from './running-change';
 import { workHoldRegister } from './work-hold-register';
@@ -255,6 +256,7 @@ export const ko = {
   reworkResultRegister,
   packingLabelReprint,
   shippingPackingLabel,
+  shippingUnit,
   repackLabelIssue,
   runningChange,
   workHoldRegister,

@@ -4,6 +4,8 @@ import { useQueries, useQuery, type UseQueryResult } from '@tanstack/react-query
 import { useApiClient } from '../../patterns/api-context';
 import { terminalPrinters } from '../../patterns/pop-terminal-printers';
 import { runRequest } from '../../patterns/request';
+import type { ShippingUnitDetail } from '../shipping-unit/types';
+
 import { REISSUE_REASON_CODE_GROUP, targetTypeCodeOf, type LabelKind } from './codes';
 import {
   toAllocationView,
@@ -21,12 +23,13 @@ import {
 } from './types';
 
 /**
- * 이 화면의 읽기 — **다섯이다.**
+ * 이 화면의 읽기 — **여섯이다.**
  *
  * | 무엇 | 경로 | 언제 |
  * | --- | --- | --- |
  * | 출하 배분 | `GET /logistics/shipment-lot-allocations?shipmentId=` | 진입 즉시 |
  * | 취급 단위 | `GET /inventory/handling-units/{id}` | 포장 라벨을 고를 때 |
+ * | 출하 단위 | `GET /logistics/shipping-units` + 건별 상세 | 납품 라벨을 고를 때 |
  * | 발행 현황 | `GET /app/document-issues/summary` | 대상 목록이 정해질 때마다 |
  * | 프린터 | `GET /app/printers?documentTypeCode=` | 라벨 종류를 고를 때마다 |
  * | 재발행 사유 | `GET /mdm/code-values?codeGroupCode=REISSUE_REASON` | 재발행 구획이 펼쳐질 때 |
@@ -76,10 +79,13 @@ export const labelKeys = {
   shipment: (shipmentId: number | null) => [ROOT, 'shipment', shipmentId] as const,
   allocations: (shipmentId: number | null) => [ROOT, 'allocations', shipmentId] as const,
   handlingUnit: (handlingUnitId: number) => [ROOT, 'handling-unit', handlingUnitId] as const,
+  shippingUnits: (shipmentId: number | null) => [ROOT, 'shipping-units', shipmentId] as const,
+  shippingUnit: (shippingUnitId: number) => [ROOT, 'shipping-unit', shippingUnitId] as const,
   summary: (targetTypeCode: string, documentTypeCode: string, targetIds: readonly number[]) =>
     [ROOT, 'summary', targetTypeCode, documentTypeCode, targetIds] as const,
   printers: (documentTypeCode: string) => [ROOT, 'printers', documentTypeCode] as const,
   reissueReasons: [ROOT, 'reissue-reasons'] as const,
+  uomCodes: [ROOT, 'uom-codes'] as const,
   history: (targetTypeCode: string, targetId: number | null) =>
     [ROOT, 'history', targetTypeCode, targetId] as const,
 };
@@ -202,6 +208,80 @@ export const useHandlingUnits = (
     // 한 건이라도 실패하면 목록이 불완전하다 — 일부만 보이는 것을 「전부」로 내지 않는다.
     isError: results.some((result) => result.isError),
     refetch: () => {
+      for (const result of results) void result.refetch();
+    },
+  };
+};
+
+const fetchShippingUnit = async (
+  client: Client,
+  shippingUnitId: number,
+): Promise<ShippingUnitDetail> =>
+  runRequest(() =>
+    client.GET('/logistics/shipping-units/{shippingUnitId}', {
+      params: { path: { shippingUnitId } },
+    }),
+  );
+
+export interface ShippingUnitsResult {
+  units: ShippingUnitDetail[];
+  isPending: boolean;
+  isError: boolean;
+  refetch: () => void;
+}
+
+/**
+ * 이 출하의 출하 단위 — **납품 라벨의 대상이자 그 라벨의 값 전부다.**
+ *
+ * ⭐ **목록이 아니라 상세까지 받는다.** 목록 응답에는 품목별 합(`itemTotals`)이 없는데, 그것이
+ *    납품 라벨 «본문»이다. 서버는 이 유형을 그려 주지 않으므로(전달본 v4 · 422) POP 이 상세
+ *    값으로 직접 그린다 — 상세가 없으면 **그릴 것이 없다.**
+ *
+ * ⛔ **목록 줄도 상세에서 만든다.** 목록 응답으로 줄을 세우고 상세로 그리면 둘이 어긋날 수
+ *    있다 — 목록에는 선 단위인데 그릴 값이 없는 상태가 그것이다. 한 출처에서 나오면 그 틈이
+ *    생기지 않는다.
+ *
+ * ⚠ **요청이 단위 수만큼이다.** 한 출하의 단위는 파렛트 몇 대 규모라 감당한다 — 취급 단위를
+ *   같은 짜임으로 받는 `useHandlingUnits` 가 앞선 전례고, 그쪽이 수십 건이다.
+ */
+export const useShippingUnits = (
+  shipmentId: number | null,
+  enabled: boolean,
+): ShippingUnitsResult => {
+  const { client } = useApiClient();
+
+  const list = useQuery({
+    queryKey: labelKeys.shippingUnits(shipmentId),
+    enabled: enabled && shipmentId !== null,
+    queryFn: () => {
+      if (shipmentId === null) throw new Error('출하 없이 출하 단위를 조회하지 않습니다.');
+
+      return collectAllPages((page, size) =>
+        runRequest(() =>
+          client.GET('/logistics/shipping-units', {
+            params: { query: { shipmentId, page, size } },
+          }),
+        ),
+      );
+    },
+  });
+
+  const ids = (list.data ?? []).map((unit) => unit.shippingUnitId);
+  const results = useQueries({
+    queries: ids.map((shippingUnitId) => ({
+      queryKey: labelKeys.shippingUnit(shippingUnitId),
+      enabled,
+      queryFn: () => fetchShippingUnit(client, shippingUnitId),
+    })),
+  });
+
+  return {
+    units: results.flatMap((result) => (result.data === undefined ? [] : [result.data])),
+    isPending: enabled && (list.isPending || results.some((result) => result.isPending)),
+    // 한 건이라도 실패하면 목록이 불완전하다 — 일부만 보이는 것을 「전부」로 내지 않는다.
+    isError: list.isError || results.some((result) => result.isError),
+    refetch: () => {
+      void list.refetch();
       for (const result of results) void result.refetch();
     },
   };
@@ -375,4 +455,34 @@ export const useIssueHistory = (
       return items.map(toIssueView);
     },
   });
+};
+
+/** 단위 목록을 한 번에 받는다 — 라벨 한 장 때문에 단위마다 묻지 않는다. */
+const UOM_PAGE_SIZE = 200;
+
+/**
+ * 단위 식별자를 **코드**로 푼다 — 포장 라벨의 수량 줄이 쓴다.
+ *
+ * ⛔ **못 풀었을 때 지어내지 않는다.** 늘 `EA` 로 떨어뜨리면 현장이 그 말을 믿는다 — 상자 안이
+ *    박스 단위인데 낱개로 읽히면 수량 대조가 통째로 어긋난다. 못 풀면 `null` 을 주고, 라벨은
+ *    수만 적는다(`packing-label-fields`).
+ *
+ * ⚠ **목록이 한 쪽을 넘으면 그 너머는 못 푼다.** 단위 마스터는 수십 건 규모라 한 쪽으로
+ *   충분하지만, 늘어나면 이 자리가 조용히 모자라진다 — 그때는 쪽을 이어 받아야 한다.
+ */
+export const useUomCodes = (): ((uomId: number) => string | null) => {
+  const { client } = useApiClient();
+
+  const query = useQuery({
+    queryKey: labelKeys.uomCodes,
+    queryFn: async (): Promise<Map<number, string>> => {
+      const data = await runRequest(() =>
+        client.GET('/mdm/uoms', { params: { query: { size: UOM_PAGE_SIZE } } }),
+      );
+
+      return new Map(data.items.map((uom) => [uom.uomId, uom.uomCode]));
+    },
+  });
+
+  return (uomId) => query.data?.get(uomId) ?? null;
 };

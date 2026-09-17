@@ -37,6 +37,7 @@ const POP_SCREENS = [
   'repack-label-issue',
   'rework-result-register',
   'running-change',
+  'shipping-unit',
   'tool-usage',
   'work-hold-register',
   'work-start',

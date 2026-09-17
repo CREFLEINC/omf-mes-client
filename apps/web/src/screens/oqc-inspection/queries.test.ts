@@ -33,8 +33,14 @@ const VARIABLES: SaveResultVariables = {
  * 그래서 몸통 만드는 자리를 직접 부른다.
  */
 describe('toResultCreateBody', () => {
+  /*
+   * ⛔ **한국어 「확정」이 아니다.** 2026-09-02 계약 개정이 이 자리의 한국어 enum 을 걷어 냈고,
+   *    서버는 코드 그룹 `INSPECTION_RESULT_STATUS`(`DRAFT`·`CONFIRMED`)로 검증한다. 옛 값을
+   *    보내면 **400 INVALID 로 저장 자체가 막힌다**(SHIP-FINAL-01 D1 실측 2026-09-17).
+   * ⛔ 문자열을 이 자리에 다시 적지 않는다 — 상수를 부르면 상수를 고쳐도 시험이 안 문다.
+   */
   it('언제나 확정으로 보낸다 — 이 화면에는 임시 저장이 없다', () => {
-    expect(toResultCreateBody(VARIABLES).statusCode).toBe('확정');
+    expect(toResultCreateBody(VARIABLES).statusCode).toBe('CONFIRMED');
   });
 
   it('고른 판정을 싣는다', () => {
@@ -129,7 +135,7 @@ describe('useSaveInspectionResult — 확정 배선(V1)', () => {
     expect(request?.headers.get('Idempotency-Key')).toBeTruthy();
     /* ⛔ 빈 If-Match 는 계약 위반이라 서버가 400 으로 되돌린다 — 헤더 자체를 만들지 않는다. */
     expect(request?.headers.has('If-Match')).toBe(false);
-    await expect(request?.clone().json()).resolves.toMatchObject({ statusCode: '확정' });
+    await expect(request?.clone().json()).resolves.toMatchObject({ statusCode: 'CONFIRMED' });
   });
 });
 

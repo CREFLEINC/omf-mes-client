@@ -3,6 +3,7 @@ import type { ApiError } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useId, useState, type FormEvent, type ReactElement } from 'react';
 
+import { CONFIRMED_STATUS } from './inspection-status';
 import { SaveErrorBanner } from '../../patterns/master';
 
 import { isKnownCode, labelOfCode, type CodeOption } from './code-options';
@@ -46,8 +47,6 @@ import type { InspectionResultRound } from './types';
 
 const t = messages.oqcInspection.result;
 const unknownValue = messages.oqcInspection.queue.emptyValue;
-
-const CONFIRMED = '확정';
 
 export interface ResultFormPaneProps {
   /** 지금 다루는 회차. 아직 아무도 판정하지 않았거나 재검사 중이면 `null` */
@@ -124,7 +123,7 @@ export const ResultFormPane = ({
    * 서지 않는다. 그러면 그 회차를 끝낼 길이 화면 어디에도 없다.
    */
   const isLocked = round !== null;
-  const isConfirmed = round?.statusCode === CONFIRMED;
+  const isConfirmed = round?.statusCode === CONFIRMED_STATUS;
   const errors = validateQuantities(draft);
   const totals = toTotals(draft, inspectedQty);
   const preview = toTransitionPreview(draft, judgment, inspectedQty);

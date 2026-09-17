@@ -15,7 +15,7 @@
  *    문턱값을 잡을 일이 없다.
  */
 
-import type { LabelBitmap } from './label-bitmap';
+import type { LabelBitmap } from './bitmap';
 
 const CRC_TABLE = ((): Uint32Array => {
   const table = new Uint32Array(256);

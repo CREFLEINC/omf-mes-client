@@ -64,7 +64,6 @@ const createInput = (
   overrides: Partial<CreateHandlingUnitInput> = {},
 ): CreateHandlingUnitInput => ({
   handlingUnitTypeCode: 'CARTON',
-  parentHandlingUnitId: null,
   warehouseId: 1001,
   workerNo: '3391',
   idempotencyKey: 'SYN-KEY-CREATE',
@@ -155,24 +154,20 @@ describe('createHandlingUnit', () => {
     expect(calls).toHaveLength(1);
   });
 
-  it('취급 단위 생성 본문에 창고를 «반드시» 싣는다 — 비우면 포장이 어디 있는지 사라진다', async () => {
-    const { calls, client } = harness();
-
-    await createHandlingUnit(client.client, createInput({ parentHandlingUnitId: 4000 }));
-
-    expect(calls[0]?.body).toEqual({
-      handlingUnitTypeCode: 'CARTON',
-      parentHandlingUnitId: 4000,
-      warehouseId: 1001,
-    });
-  });
-
-  it('상위 포장을 고르지 않으면 그 칸을 «보내지 않는다» — 비어 있음과 없음은 다르다', async () => {
+  /*
+   * ⛔ **본문을 «정확히» 대조한다.** 「창고가 들어 있다」로만 물으면 화면이 조용히 칸을 하나
+   *    더 실어도 지나간다 — 서버가 받아 주는 칸이라 오류도 안 난다. 상위 포장 칸을 걷어낸 뒤
+   *    (SHIP-UNIT-01 P3) 이 자리가 그 사실을 지키는 그물이다.
+   */
+  it('취급 단위 생성 본문은 유형과 창고 «둘뿐»이다 — 창고를 비우면 포장이 어디 있는지 사라진다', async () => {
     const { calls, client } = harness();
 
     await createHandlingUnit(client.client, createInput());
 
-    expect(calls[0]?.body).not.toHaveProperty('parentHandlingUnitId');
+    expect(calls[0]?.body).toEqual({
+      handlingUnitTypeCode: 'CARTON',
+      warehouseId: 1001,
+    });
   });
 });
 
@@ -327,7 +322,6 @@ describe('멱등 키 — 재전송에도 갈리지 않는다', () => {
   it('취급 단위 생성도 다시 눌러 같은 키로 나간다 — 되돌릴 수 없는 빈 포장이 두 벌 생기지 않는다', () => {
     const variables = {
       handlingUnitTypeCode: 'CARTON',
-      parentHandlingUnitId: null,
       warehouseId: 1001,
     };
     const first = keptCreateKey(null, variables);
@@ -352,7 +346,6 @@ describe('멱등 키의 수명 — 서버에 «닿으면» 버린다', () => {
     const { calls, fetch: stub } = harness();
     const variables = {
       handlingUnitTypeCode: 'CARTON',
-      parentHandlingUnitId: null,
       warehouseId: 1001,
       workerNo: '3391',
     };

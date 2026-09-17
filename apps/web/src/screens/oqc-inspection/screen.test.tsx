@@ -85,7 +85,7 @@ const appendedRound = (body: SaveBody, existing: number): InspectionResultRespon
   rejectedQty: body.rejectedQty,
   heldQty: body.heldQty,
   overallJudgmentCode: body.overallJudgmentCode ?? '',
-  statusCode: '확정',
+  statusCode: 'CONFIRMED',
   ...(body.previousResultId === undefined ? {} : { previousResultId: body.previousResultId }),
 });
 
@@ -195,6 +195,43 @@ const pressSaveInDialog = async (user: ReturnType<typeof userEvent.setup>) => {
   );
 };
 
+/*
+ * ⛔ **서버가 거부한 사유를 삼키지 않는다**(SHIP-FINAL-01 D1).
+ *
+ * D1 실측에서 저장이 400 으로 막혔는데 「화면은 조용히 폼 그대로였다」는 보고가 있었다. 여기서
+ * 두 봉투 모양(표준 `{errors:[…]}` · 실측이 인용한 **낱개** 항목) 모두로 재현해 보니 **사유는
+ * 뜬다** — 낱개는 정규화가 봉투로 인정하지 않아 `kind:'http'` 로 떨어지지만, 그때도 배너가
+ * 서버 문구를 함께 낸다. 그래서 「안 보였다」는 다른 까닭(확인 창 뒤·스크롤 밖)일 가능성이
+ * 크다. 조용히 지나가는 일이 다시 생기지 않도록 이 자리를 그물로 남긴다.
+ */
+describe('OqcInspectionScreen — 저장이 거부될 때', () => {
+  it('서버가 짚어 준 사유가 화면에 그대로 뜬다', async () => {
+    const user = userEvent.setup();
+    renderScreen({
+      route: `/?ir=${String(waitingRequest.inspectionRequestId)}`,
+      save: () =>
+        jsonResponse(
+          {
+            scope: 'field',
+            code: 'INVALID',
+            message: 'INSPECTION_RESULT_STATUS 에 없거나 사용 중지된 코드입니다.',
+            field: 'statusCode',
+          },
+          { status: 400 },
+        ),
+    });
+
+    await screen.findByLabelText(t.result.fields.accepted);
+    await fillJudgment(user);
+    await user.click(screen.getByRole('button', { name: t.result.save }));
+    await pressSaveInDialog(user);
+
+    expect(
+      await screen.findByText('INSPECTION_RESULT_STATUS 에 없거나 사용 중지된 코드입니다.'),
+    ).toBeInTheDocument();
+  });
+});
+
 describe('OqcInspectionScreen — 확정 배선(V1)', () => {
   it('5xx 뒤 같은 값으로 다시 누르면 같은 멱등 키가 나간다', async () => {
     const user = userEvent.setup();
@@ -228,7 +265,8 @@ describe('OqcInspectionScreen — 확정 배선(V1)', () => {
     /* ⛔ 계약이 선택으로 둔 헤더다 — 빈 값을 채워 보내면 서버가 400 으로 되돌린다. */
     expect(saves[0]?.headers.has('If-Match')).toBe(false);
     await expect(saves[1]?.clone().json()).resolves.toMatchObject({
-      statusCode: '확정',
+      /* ⛔ 영문이다 — 옛 한국어 값은 서버가 400 INVALID 로 막는다(D1 · `inspection-status.ts`). */
+      statusCode: 'CONFIRMED',
       overallJudgmentCode: 'ACCEPTED',
       inspectionRequestId: waitingRequest.inspectionRequestId,
       acceptedQty: 480,
