@@ -293,7 +293,7 @@ export const ProductReceiptScreen = () => {
       }
 
       const putawayDrafts = taskIds.map((taskId) =>
-        toPutawayDraft(taskId, destination, now, worker.workerNo),
+        toPutawayDraft(taskId, destination, verdict, confirmedNoRule, now, worker.workerNo),
       );
 
       for (const putawayDraft of putawayDrafts) {
