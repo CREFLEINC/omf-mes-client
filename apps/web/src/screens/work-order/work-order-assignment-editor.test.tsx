@@ -18,6 +18,7 @@ const mocks = vi.hoisted(() => ({
   lines: vi.fn(),
   equipments: vi.fn(),
   workers: vi.fn(),
+  worker: vi.fn(),
   molds: vi.fn(),
   shifts: vi.fn(),
   locations: vi.fn(),
@@ -36,6 +37,7 @@ vi.mock('./resource-queries', () => ({
 }));
 vi.mock('./people-tool-queries', () => ({
   useWorkOrderWorkers: mocks.workers,
+  useWorkOrderWorker: mocks.worker,
   useWorkOrderMolds: mocks.molds,
 }));
 
@@ -89,6 +91,7 @@ beforeEach(() => {
   mocks.workers.mockReturnValue(
     resources([{ workerId: 201, workerNo: 'W-1', workerName: '홍길동', isActive: true }]),
   );
+  mocks.worker.mockReturnValue(query(undefined));
   mocks.molds.mockReturnValue(
     resources([{ moldId: 401, moldCode: 'M-1', moldName: 'A금형', isActive: true }]),
   );
@@ -106,9 +109,9 @@ beforeEach(() => {
   );
   mocks.locations.mockReturnValue({
     items: [
-      { locationId: 601, warehouseId: 34, locationCode: 'WIP', locationName: 'WIP 위치', isActive: true },
-      { locationId: 602, warehouseId: 34, locationCode: 'FG', locationName: '완제품 위치', isActive: true },
-      { locationId: 603, warehouseId: 34, locationCode: 'SCRAP', locationName: '스크랩 위치', isActive: true },
+      { locationId: 601, warehouseId: 34, warehouseCode: 'S210', warehouseName: '제품창고', locationCode: 'WIP', locationName: 'WIP 위치', isActive: true },
+      { locationId: 602, warehouseId: 34, warehouseCode: 'S210', warehouseName: '제품창고', locationCode: 'FG', locationName: '완제품 위치', isActive: true },
+      { locationId: 603, warehouseId: 34, warehouseCode: 'S210', warehouseName: '제품창고', locationCode: 'SCRAP', locationName: '스크랩 위치', isActive: true },
     ],
     truncated: false,
     isPending: false,
@@ -385,4 +388,37 @@ it('ignores a conflict reload that completes after its owner was replaced', asyn
 
   expect(refetch).toHaveBeenCalledTimes(1);
   expect(onPriorityChange).not.toHaveBeenCalled();
+});
+
+it('shows the warehouse on every default location option', async () => {
+  const user = userEvent.setup();
+  render(<Harness />);
+  expect(
+    screen.getByRole('combobox', { name: t.resourcePane.fields.defaultWipLocation }),
+  ).toHaveTextContent('[S210 제품창고] WIP · WIP 위치');
+  await user.click(screen.getByRole('combobox', { name: t.resourcePane.fields.defaultFgLocation }));
+  expect(screen.getByRole('option', { name: '[S210 제품창고] FG · 완제품 위치' })).toBeInTheDocument();
+});
+
+it('searches workers by the typed term and keeps a saved worker that is off the page', async () => {
+  const user = userEvent.setup();
+  mocks.workers.mockReturnValue(
+    resources([{ workerId: 202, workerNo: 'W-2', workerName: '김철수', isActive: true }], true),
+  );
+  mocks.worker.mockImplementation((workerId: number | null) =>
+    query(
+      workerId === 201
+        ? { workerId: 201, plantId: 501, workerNo: 'W-1', workerName: '홍길동', isActive: true }
+        : undefined,
+    ),
+  );
+  render(<Harness />);
+  expect(mocks.worker).toHaveBeenLastCalledWith(201);
+  expect(screen.getByRole('combobox', { name: t.resourcePane.fields.worker })).toHaveTextContent(
+    'W-1 · 홍길동',
+  );
+  expect(screen.getByText(t.editor.lookup.workerTruncated)).toBeInTheDocument();
+
+  await user.type(screen.getByLabelText(t.resourcePane.workerSearch.label), '김');
+  await waitFor(() => expect(mocks.workers).toHaveBeenLastCalledWith(501, 1, '김'));
 });

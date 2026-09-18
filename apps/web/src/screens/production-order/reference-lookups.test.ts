@@ -124,7 +124,7 @@ describe('production-order reference lookups', () => {
       truncated: false,
     });
     expect(result.current.uoms).toMatchObject({
-      entries: [{ value: '8101', label: 'SYN-EA · Synthetic Each' }],
+      entries: [{ value: '8101', label: 'SYN-EA' }],
       isLoading: false,
       isError: false,
       truncated: true,

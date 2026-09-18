@@ -11,6 +11,7 @@ import {
 } from '../../test/api-harness';
 import {
   useWorkOrderMolds,
+  useWorkOrderWorker,
   useWorkOrderWorkers,
   workOrderPeopleToolKeys,
 } from './people-tool-queries';
@@ -62,15 +63,18 @@ const getRoute = (pathname: string, body: unknown, status = 200): StubRoute => (
 });
 
 describe('workOrderPeopleToolKeys', () => {
-  it('separates mold and worker data by resource, plant, and page', () => {
+  it('separates mold and worker data by resource, plant, page, and search term', () => {
     expect(workOrderPeopleToolKeys.molds(501, 1)).not.toEqual(
       workOrderPeopleToolKeys.molds(501, 2),
     );
-    expect(workOrderPeopleToolKeys.workers(501, 1)).not.toEqual(
-      workOrderPeopleToolKeys.workers(502, 1),
+    expect(workOrderPeopleToolKeys.workers(501, 1, '')).not.toEqual(
+      workOrderPeopleToolKeys.workers(502, 1, ''),
+    );
+    expect(workOrderPeopleToolKeys.workers(501, 1, '')).not.toEqual(
+      workOrderPeopleToolKeys.workers(501, 1, 'kim'),
     );
     expect(workOrderPeopleToolKeys.molds(501, 1)).not.toEqual(
-      workOrderPeopleToolKeys.workers(501, 1),
+      workOrderPeopleToolKeys.workers(501, 1, ''),
     );
   });
 });
@@ -144,6 +148,7 @@ describe('work-order people and tool queries', () => {
       ['plantId', '501'],
       ['includeInactive', 'true'],
       ['page', '3'],
+      ['size', '200'],
     ]);
     expect(result.current.data).toEqual({
       items: [
@@ -153,6 +158,42 @@ describe('work-order people and tool queries', () => {
       page: { page: 3, size: 20, total: 2 },
       truncated: false,
     });
+  });
+
+  it('searches workers by number or name with the contract q parameter', async () => {
+    const { fetch, requests } = recordingFetch([
+      getRoute(WORKERS_PATH, { items: [worker(651)], page: { page: 1, size: 200, total: 1 } }),
+    ]);
+    const { result } = renderHookWithProviders(() => useWorkOrderWorkers(501, 1, 'kim'), {
+      fetch,
+    });
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+
+    expect(Array.from(requests[0]?.url.searchParams.entries() ?? [])).toEqual([
+      ['plantId', '501'],
+      ['q', 'kim'],
+      ['includeInactive', 'true'],
+      ['page', '1'],
+      ['size', '200'],
+    ]);
+    expect(result.current.data?.items).toEqual([{ ...worker(651), departmentId: null }]);
+  });
+
+  it('loads a single saved worker by id and stays idle without one', async () => {
+    const { fetch, requests } = recordingFetch([
+      getRoute(`${WORKERS_PATH}/777`, { worker: worker(777) }),
+    ]);
+    const { result } = renderHookWithProviders(
+      () => ({ none: useWorkOrderWorker(null), saved: useWorkOrderWorker(777) }),
+      { fetch },
+    );
+
+    await waitFor(() => expect(result.current.saved.isSuccess).toBe(true));
+
+    expect(result.current.none.fetchStatus).toBe('idle');
+    expect(requests).toHaveLength(1);
+    expect(result.current.saved.data).toEqual({ ...worker(777), departmentId: null });
   });
 
   it('keeps a mold HTTP error separate from successful worker data', async () => {
