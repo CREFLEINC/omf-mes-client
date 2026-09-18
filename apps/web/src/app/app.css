@@ -5122,6 +5122,51 @@ dl.filter-bar.approval-inbox-detail-facts {
   gap: var(--space-3);
 }
 
+/*
+ * 상세 폼 정돈 2차(omf-all-around#17) — 이 화면 안에서만. 공용 규칙(.form-grid·.form-actions·.banner-slot)은 그대로다.
+ * 선택 목록 잘림 안내는 조건·문구·경고 유형을 그대로 두고 크기만 줄인다 — 폼보다 먼저 읽히지 않게.
+ */
+.warehouse-location-lookup-notice {
+  margin-bottom: var(--space-4);
+}
+
+.warehouse-location-lookup-notice > [role] {
+  padding: var(--space-2) var(--space-3);
+  font: var(--type-body-sm);
+  letter-spacing: var(--type-body-sm-tracking);
+}
+
+.warehouse-location-lookup-notice > [role] > :first-child {
+  font-size: 18px;
+}
+
+/* 세로 간격을 한 단계 좁힌다(16px → 12px). 가로 간격은 그대로 둔다. */
+.warehouse-location-form .form-grid {
+  row-gap: var(--space-3);
+}
+
+/*
+ * 바닥글을 한 줄로 — 위에 구분선, 변경 이력 사유는 단추 옆(아래로 떨어지면 폼 칸의 안내처럼 읽혔다).
+ * 사유 글이 길어 좁은 폭에서는 단추 아래로 접힌다.
+ */
+.warehouse-location-form-actions {
+  align-items: center;
+  margin-top: var(--space-4);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--outline-variant);
+}
+
+.warehouse-location-form-actions .form-actions-secondary {
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.warehouse-location-form-actions .form-actions-secondary .field-note {
+  margin-top: 0;
+}
+
 .warehouse-location-label-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));

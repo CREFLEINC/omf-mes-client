@@ -77,7 +77,7 @@ export const warehouseLocation: Translated<typeof ko.warehouseLocation> = {
     partner: 'Đối tác',
     isDefect: 'Kho hàng lỗi',
 
-    isActive: 'Sử dụng',
+    isActive: 'Trạng thái sử dụng',
     warehouse: 'Kho',
     parentLocation: 'Vị trí cấp trên',
     locationCode: 'Mã vị trí',

@@ -120,7 +120,7 @@ export const WarehouseFormPane = ({
   const historyNoteId = useId();
 
   return (
-    <section aria-label={t.tabs.warehouse}>
+    <section className="warehouse-location-form" aria-label={t.tabs.warehouse}>
       {banner}
 
       <div className="form-grid">
@@ -230,7 +230,7 @@ export const WarehouseFormPane = ({
         </div>
       </div>
 
-      <div className="form-actions">
+      <div className="form-actions warehouse-location-form-actions">
         {/*
          * 사유가 붙은 보조 액션은 줄 왼쪽에, 주 액션(취소·저장)은 오른쪽에 남긴다.
          * variant는 outlined여야 한다 — text는 비활성일 때 흐린 글자만 남아 버튼으로 읽히지 않는다.

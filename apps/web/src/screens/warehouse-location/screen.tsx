@@ -659,7 +659,7 @@ export const WarehouseLocationScreen = () => {
   const lookupNotice = (() => {
     if (lookups.isError) {
       return (
-        <div className="banner-slot">
+        <div className="banner-slot warehouse-location-lookup-notice">
           <AlertBanner variant="warning">{t.optionsLoadFailed}</AlertBanner>
         </div>
       );
@@ -667,7 +667,7 @@ export const WarehouseLocationScreen = () => {
 
     if (lookups.truncated) {
       return (
-        <div className="banner-slot">
+        <div className="banner-slot warehouse-location-lookup-notice">
           <AlertBanner variant="warning">{t.optionsTruncated}</AlertBanner>
         </div>
       );

@@ -42,14 +42,14 @@ const renderPane = (overrides: Partial<Parameters<typeof WarehouseFormPane>[0]> 
 const FIELD_LABELS = [
   '공장',
   '사업부',
-  '창고코드',
+  '창고 코드',
   '창고명',
-  '창고유형',
-  '관리수준',
-  '외부창고',
-  '불량창고',
+  '창고 유형',
+  '관리 수준',
+  '외부 창고',
+  '불량 창고',
   '거래처',
-  '사용',
+  '사용 상태',
 ];
 
 describe('WarehouseFormPane', () => {
@@ -75,14 +75,14 @@ describe('WarehouseFormPane', () => {
     expect(
       screen.getByText('이미 사용 중인 코드입니다. 다른 코드를 입력하세요.'),
     ).toBeInTheDocument();
-    expect(screen.getByText('외부창고이면 거래처를 지정해야 합니다.')).toBeInTheDocument();
+    expect(screen.getByText('외부 창고이면 거래처를 지정해야 합니다.')).toBeInTheDocument();
   });
 
   it('codeLockReason을 주입하면 창고코드가 비활성이고 사유가 화면 텍스트로 보인다', () => {
     const reason = '이미 3건에서 사용 중이라 코드를 바꿀 수 없습니다.';
     renderPane({ codeLockReason: reason });
 
-    expect(screen.getByLabelText('창고코드')).toBeDisabled();
+    expect(screen.getByLabelText('창고 코드')).toBeDisabled();
     expect(screen.getByText(reason)).toBeInTheDocument();
   });
 
@@ -152,7 +152,7 @@ describe('WarehouseFormPane', () => {
     renderPane({ isActive: false });
 
     expect(screen.queryByRole('button', { name: '사용 중지' })).not.toBeInTheDocument();
-    expect(screen.getByLabelText('사용')).toHaveTextContent('미사용');
+    expect(screen.getByLabelText('사용 상태')).toHaveTextContent('미사용');
   });
 
   it('신규 등록 폼에는 사용 중지가 없다 — 아직 만들어지지 않은 창고다', () => {
@@ -176,8 +176,8 @@ describe('WarehouseFormPane', () => {
   it('외부창고·불량창고 토글은 칸 위 라벨로 이름을 갖는다', () => {
     renderPane();
 
-    expect(screen.getByRole('switch', { name: '외부창고' })).toBeInTheDocument();
-    expect(screen.getByRole('switch', { name: '불량창고' })).toBeInTheDocument();
+    expect(screen.getByRole('switch', { name: '외부 창고' })).toBeInTheDocument();
+    expect(screen.getByRole('switch', { name: '불량 창고' })).toBeInTheDocument();
   });
 
   it('사용 상태는 칩으로, 사용 중지는 단추로 따로 보인다', () => {

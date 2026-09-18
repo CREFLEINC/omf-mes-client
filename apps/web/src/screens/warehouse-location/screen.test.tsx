@@ -223,7 +223,7 @@ describe('WarehouseLocationScreen — 창고 목록 조회', () => {
     // 미사용 포함·창고 유형은 즉시 적용되고, 검색어는 조회를 눌러 적용한다(omf-all-around#17).
     await user.click(screen.getByRole('checkbox', { name: '미사용 포함' }));
     await user.type(screen.getByLabelText('창고 검색'), 'WH-0');
-    await user.click(screen.getByRole('combobox', { name: '창고유형' }));
+    await user.click(screen.getByRole('combobox', { name: '창고 유형' }));
     await user.click(screen.getByRole('option', { name: '자재창고' }));
     await user.click(screen.getByRole('button', { name: '조회' }));
 
@@ -241,7 +241,7 @@ describe('WarehouseLocationScreen — 창고 목록 조회', () => {
     const { requests, user } = renderScreen([warehouseListRoute(), ...lookupRoutes()]);
     await screen.findByRole('button', { name: 'WH-01' });
 
-    await user.click(screen.getByRole('combobox', { name: '창고유형' }));
+    await user.click(screen.getByRole('combobox', { name: '창고 유형' }));
     await user.click(screen.getByRole('option', { name: '자재창고' }));
 
     await waitFor(() => {
@@ -255,7 +255,7 @@ describe('WarehouseLocationScreen — 창고 목록 조회', () => {
     const { requests, user } = renderScreen([warehouseListRoute(), ...lookupRoutes()]);
     await screen.findByRole('button', { name: 'WH-01' });
 
-    await user.click(screen.getByRole('combobox', { name: '창고유형' }));
+    await user.click(screen.getByRole('combobox', { name: '창고 유형' }));
     await user.click(screen.getByRole('option', { name: '자재창고' }));
     await user.click(screen.getByRole('checkbox', { name: '미사용 포함' }));
 
@@ -264,7 +264,7 @@ describe('WarehouseLocationScreen — 창고 목록 조회', () => {
       expect(last?.url.searchParams.get('includeInactive')).toBe('true');
       expect(last?.url.searchParams.get('warehouseTypeCode')).toBe('MATERIAL');
     });
-    expect(screen.getByRole('combobox', { name: '창고유형' })).toHaveTextContent('자재창고');
+    expect(screen.getByRole('combobox', { name: '창고 유형' })).toHaveTextContent('자재창고');
   });
 
   it('검색어를 입력하던 중 유형·미사용 포함을 바꿔도 입력한 검색어가 남는다', async () => {
@@ -272,7 +272,7 @@ describe('WarehouseLocationScreen — 창고 목록 조회', () => {
     await screen.findByRole('button', { name: 'WH-01' });
 
     await user.type(screen.getByLabelText('창고 검색'), 'WH-0');
-    await user.click(screen.getByRole('combobox', { name: '창고유형' }));
+    await user.click(screen.getByRole('combobox', { name: '창고 유형' }));
     await user.click(screen.getByRole('option', { name: '자재창고' }));
     await user.click(screen.getByRole('checkbox', { name: '미사용 포함' }));
 
@@ -350,7 +350,7 @@ describe('WarehouseLocationScreen — 창고 상세 조회', () => {
     await user.click(await screen.findByRole('button', { name: 'WH-02' }));
 
     expect(await screen.findByLabelText('창고명')).toHaveValue('1공장 제품창고');
-    expect(screen.getByLabelText('창고코드')).toHaveValue('WH-02');
+    expect(screen.getByLabelText('창고 코드')).toHaveValue('WH-02');
     expect(requests.some((request) => request.url.pathname === '/mdm/warehouses/1002')).toBe(true);
   });
 
@@ -378,7 +378,7 @@ describe('WarehouseLocationScreen — 창고 상세 조회', () => {
       '?wh=1001',
     );
 
-    const code = await screen.findByLabelText('창고코드');
+    const code = await screen.findByLabelText('창고 코드');
     expect(code).toBeDisabled();
     expect(
       screen.getByText('이미 3건에서 사용 중이라 코드를 바꿀 수 없습니다.'),
@@ -391,7 +391,7 @@ describe('WarehouseLocationScreen — 창고 상세 조회', () => {
       '?wh=1001',
     );
 
-    expect(await screen.findByLabelText('창고코드')).not.toBeDisabled();
+    expect(await screen.findByLabelText('창고 코드')).not.toBeDisabled();
   });
 
   it('상세 조회에 실패하면 폼 대신 오류 배너가 나온다', async () => {
@@ -653,7 +653,7 @@ describe('WarehouseLocationScreen — Location 계층 조회', () => {
 
     expect(addRoot).toBeDisabled();
     expect(addRoot).toHaveAccessibleDescription(
-      '관리수준이 창고이면 Location을 등록하지 않습니다.',
+      '관리 수준이 창고이면 Location을 등록하지 않습니다.',
     );
   });
 
@@ -675,7 +675,7 @@ describe('WarehouseLocationScreen — Location 계층 조회', () => {
 
     expect(addChild).toBeDisabled();
     expect(addChild).toHaveAccessibleDescription(
-      '현재 관리수준에서 더 하위 Location을 추가할 수 없습니다.',
+      '현재 관리 수준에서 더 하위 Location을 추가할 수 없습니다.',
     );
   });
 
@@ -784,12 +784,12 @@ describe('WarehouseLocationScreen — 창고 수정 저장', () => {
     );
 
     await screen.findByLabelText('창고명');
-    await user.click(screen.getByRole('combobox', { name: '관리수준' }));
+    await user.click(screen.getByRole('combobox', { name: '관리 수준' }));
     await user.click(screen.getByRole('option', { name: '랙' }));
     await user.click(screen.getByRole('button', { name: '저장' }));
 
     expect(
-      screen.getByText('기존 Location 계층보다 낮은 관리수준으로 변경할 수 없습니다.'),
+      screen.getByText('기존 Location 계층보다 낮은 관리 수준으로 변경할 수 없습니다.'),
     ).toBeVisible();
     expect(writeRequests(requests, 'PUT')).toHaveLength(0);
   });
@@ -1013,11 +1013,11 @@ const fillCreateForm = async (user: ReturnType<typeof userEvent.setup>): Promise
   await user.click(screen.getByRole('option', { name: '1공장' }));
   await user.click(within(form).getByRole('combobox', { name: '사업부' }));
   await user.click(screen.getByRole('option', { name: '생산본부' }));
-  await user.type(within(form).getByLabelText('창고코드'), 'WH-09');
+  await user.type(within(form).getByLabelText('창고 코드'), 'WH-09');
   await user.type(within(form).getByLabelText('창고명'), '신규 창고');
-  await user.click(within(form).getByRole('combobox', { name: '창고유형' }));
+  await user.click(within(form).getByRole('combobox', { name: '창고 유형' }));
   await user.click(screen.getByRole('option', { name: '자재창고' }));
-  await user.click(within(form).getByRole('combobox', { name: '관리수준' }));
+  await user.click(within(form).getByRole('combobox', { name: '관리 수준' }));
   await user.click(screen.getByRole('option', { name: '셀' }));
 };
 
@@ -1027,7 +1027,7 @@ describe('WarehouseLocationScreen — 창고 신규 등록', () => {
 
     await user.click(await screen.findByRole('button', { name: '창고 추가' }));
 
-    expect(screen.getByLabelText('창고코드')).toHaveValue('');
+    expect(screen.getByLabelText('창고 코드')).toHaveValue('');
     expect(screen.getByLabelText('창고명')).toHaveValue('');
     expect(screen.getByRole('combobox', { name: '공장' })).not.toBeDisabled();
     expect(screen.queryByRole('button', { name: '사용 중지' })).not.toBeInTheDocument();
@@ -1038,7 +1038,7 @@ describe('WarehouseLocationScreen — 창고 신규 등록', () => {
 
     await user.click(await screen.findByRole('button', { name: '창고 추가' }));
 
-    expect(screen.getByLabelText('창고코드')).toHaveValue('');
+    expect(screen.getByLabelText('창고 코드')).toHaveValue('');
   });
 
   it('신규 등록에서 공장을 비우면 요청을 보내지 않고 인라인 오류를 낸다', async () => {
@@ -1047,8 +1047,8 @@ describe('WarehouseLocationScreen — 창고 신규 등록', () => {
       '?mode=create',
     );
 
-    await screen.findByLabelText('창고코드');
-    await user.type(screen.getByLabelText('창고코드'), 'WH-09');
+    await screen.findByLabelText('창고 코드');
+    await user.type(screen.getByLabelText('창고 코드'), 'WH-09');
     await user.click(screen.getByRole('button', { name: '저장' }));
 
     expect(screen.getAllByText('필수 입력 항목입니다.').length).toBeGreaterThan(0);
@@ -1061,7 +1061,7 @@ describe('WarehouseLocationScreen — 창고 신규 등록', () => {
       '?mode=create',
     );
 
-    await screen.findByLabelText('창고코드');
+    await screen.findByLabelText('창고 코드');
     await fillCreateForm(user);
     await user.click(screen.getByRole('button', { name: '저장' }));
 
@@ -1084,7 +1084,7 @@ describe('WarehouseLocationScreen — 창고 신규 등록', () => {
       '?mode=create',
     );
 
-    await screen.findByLabelText('창고코드');
+    await screen.findByLabelText('창고 코드');
     await fillCreateForm(user);
     await user.click(screen.getByRole('button', { name: '저장' }));
 
@@ -1127,7 +1127,7 @@ describe('WarehouseLocationScreen — 창고 신규 등록', () => {
       '?mode=create',
     );
 
-    await screen.findByLabelText('창고코드');
+    await screen.findByLabelText('창고 코드');
     await fillCreateForm(user);
     await user.click(screen.getByRole('button', { name: '저장' }));
 
@@ -1142,7 +1142,7 @@ describe('WarehouseLocationScreen — 창고 신규 등록', () => {
       '?mode=create',
     );
 
-    await screen.findByLabelText('창고코드');
+    await screen.findByLabelText('창고 코드');
     await fillCreateForm(user);
     await user.click(screen.getByRole('button', { name: '저장' }));
 
@@ -1346,7 +1346,7 @@ describe('WarehouseLocationScreen — Location 등록·수정', () => {
     await user.click(within(dialog).getByRole('button', { name: '저장' }));
 
     expect(
-      within(dialog).getByText('현재 창고 관리수준에서 허용하는 계층 깊이를 넘었습니다.'),
+      within(dialog).getByText('현재 창고 관리 수준에서 허용하는 계층 깊이를 넘었습니다.'),
     ).toBeVisible();
     expect(requests.some((request) => request.method === 'PUT')).toBe(false);
   });
@@ -1366,7 +1366,7 @@ describe('WarehouseLocationScreen — Location 등록·수정', () => {
     await user.click(within(dialog).getByRole('button', { name: '저장' }));
 
     expect(
-      within(dialog).getByText('현재 창고 관리수준에서 허용하는 계층 깊이를 넘었습니다.'),
+      within(dialog).getByText('현재 창고 관리 수준에서 허용하는 계층 깊이를 넘었습니다.'),
     ).toBeVisible();
     expect(requests.some((request) => request.method === 'PUT')).toBe(false);
   });
