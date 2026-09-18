@@ -146,6 +146,14 @@ const TRANSLATED = [
   'workPrecheckGate',
   'workStart',
   'workerAssignment',
+  /*
+   * 공용 부품의 문구 — **화면이 아니라 패턴이 갖는다**(`apps/web/src/patterns/`).
+   *
+   * ⚠ **위 「POP 현장 화면 22개」에 더하지 않는다.** 그 줄이 세는 것은 화면 수이고, 이것은
+   *   여러 화면이 함께 쓰는 부품이라 그 축에 들어가지 않는다 — 더하면 화면 수가 소리 없이
+   *   틀린다. 부품이 늘면 이 묶음에 한 줄을 더한다.
+   */
+  'itemPicker',
 ] as const satisfies readonly (keyof Messages)[];
 
 const HANGUL = /[가-힣]/;
