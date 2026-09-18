@@ -821,10 +821,16 @@ export const WarehouseLocationScreen = () => {
     selectedLocationRow !== undefined &&
     selectedLocationRow.depth < maxLocationDepth &&
     locationHierarchy.data !== undefined;
+  /*
+   * 표시 문구만 고른다 — 활성 조건(canAddChildLocation)은 그대로다. 관리 수준이 창고면 무엇을
+   * 골라도 추가할 수 없으므로 「1개 선택」을 안내하지 않고 최상위와 같은 이유를 보인다(omf-all-around#17).
+   */
   const addChildDisabledReason =
-    selectedLocationIds.length !== 1
-      ? t.actionReasons.addChildNeedsSingleSelection
-      : t.actionReasons.locationDepthLimitReached;
+    maxLocationDepth < 0
+      ? t.actionReasons.locationsDisabledByManagementLevel
+      : selectedLocationIds.length !== 1
+        ? t.actionReasons.addChildNeedsSingleSelection
+        : t.actionReasons.locationDepthLimitReached;
 
   const parentOptions = allLocationRows
     .filter(

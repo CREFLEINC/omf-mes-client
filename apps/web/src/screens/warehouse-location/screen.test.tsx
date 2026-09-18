@@ -649,12 +649,15 @@ describe('WarehouseLocationScreen — Location 계층 조회', () => {
     );
 
     const panel = await openLocationTab(user);
-    const addRoot = within(panel).getByRole('button', { name: '최상위 추가' });
+    const addRoot = within(panel).getByRole('button', { name: '최상위 Location 추가' });
 
+    const reason = '이 창고는 관리 수준이 「창고」라 Location을 따로 관리하지 않습니다.';
     expect(addRoot).toBeDisabled();
-    expect(addRoot).toHaveAccessibleDescription(
-      '관리 수준이 창고이면 Location을 등록하지 않습니다.',
-    );
+    expect(addRoot).toHaveAccessibleDescription(reason);
+    // 하위 추가도 같은 이유로 막힌다 — 「1개 선택」을 안내하지 않고 같은 사유를 가리킨다(omf-all-around#17).
+    const addChild = within(panel).getByRole('button', { name: '하위 Location 추가' });
+    expect(addChild).toBeDisabled();
+    expect(addChild).toHaveAccessibleDescription(reason);
   });
 
   it('관리수준의 최하위에 도달한 Location에는 하위 추가를 막는다', async () => {
@@ -671,11 +674,11 @@ describe('WarehouseLocationScreen — Location 계층 조회', () => {
 
     const panel = await openLocationTab(user);
     await user.click(within(panel).getAllByRole('checkbox')[2]!);
-    const addChild = within(panel).getByRole('button', { name: '하위 추가' });
+    const addChild = within(panel).getByRole('button', { name: '하위 Location 추가' });
 
     expect(addChild).toBeDisabled();
     expect(addChild).toHaveAccessibleDescription(
-      '현재 관리 수준에서 더 하위 Location을 추가할 수 없습니다.',
+      '선택한 Location 아래에는 관리 수준상 더 추가할 수 없습니다.',
     );
   });
 
@@ -721,11 +724,11 @@ describe('WarehouseLocationScreen — Location 계층 조회', () => {
     );
 
     const panel = await openLocationTab(user);
-    await user.click(within(panel).getByRole('button', { name: '최상위 추가' }));
+    await user.click(within(panel).getByRole('button', { name: '최상위 Location 추가' }));
 
     const dialog = screen.getByRole('dialog');
     expect(within(dialog).getByText('WH-01 · 1공장 자재창고')).toBeInTheDocument();
-    expect(within(dialog).getByLabelText('위치코드')).toBeInTheDocument();
+    expect(within(dialog).getByLabelText('위치 코드')).toBeInTheDocument();
   });
 
   it('행의 코드를 누르면 그 값이 채워진 수정 다이얼로그가 열린다', async () => {
@@ -738,7 +741,7 @@ describe('WarehouseLocationScreen — Location 계층 조회', () => {
     await user.click(within(panel).getByRole('button', { name: 'A-01-01-01' }));
 
     const dialog = screen.getByRole('dialog');
-    expect(within(dialog).getByLabelText('위치코드')).toHaveValue('A-01-01-01');
+    expect(within(dialog).getByLabelText('위치 코드')).toHaveValue('A-01-01-01');
     expect(within(dialog).getByLabelText('수용량')).toHaveValue('500');
   });
 });
@@ -1390,10 +1393,10 @@ describe('WarehouseLocationScreen — Location 등록·수정', () => {
     const panel = await openLocationTab(user);
     // 하위 추가는 선택이 정확히 1건일 때만 열린다.
     await user.click(within(panel).getAllByRole('checkbox')[1]!);
-    await user.click(within(panel).getByRole('button', { name: '하위 추가' }));
+    await user.click(within(panel).getByRole('button', { name: '하위 Location 추가' }));
 
     const dialog = screen.getByRole('dialog');
-    await user.type(within(dialog).getByLabelText('위치코드'), 'A-01-09');
+    await user.type(within(dialog).getByLabelText('위치 코드'), 'A-01-09');
     await user.type(within(dialog).getByLabelText('위치명'), 'A구역 09열');
     await selectLocationType(user, dialog);
     await user.click(within(dialog).getByRole('button', { name: '저장' }));
@@ -1423,12 +1426,12 @@ describe('WarehouseLocationScreen — Location 등록·수정', () => {
     );
 
     const panel = await openLocationTab(user);
-    await user.click(within(panel).getByRole('button', { name: '최상위 추가' }));
+    await user.click(within(panel).getByRole('button', { name: '최상위 Location 추가' }));
 
     const dialog = screen.getByRole('dialog');
     expect(within(dialog).getByText('없음 (최상위)')).toBeInTheDocument();
 
-    await user.type(within(dialog).getByLabelText('위치코드'), 'C-01');
+    await user.type(within(dialog).getByLabelText('위치 코드'), 'C-01');
     await user.type(within(dialog).getByLabelText('위치명'), 'C구역');
     await selectLocationType(user, dialog);
     await user.click(within(dialog).getByRole('button', { name: '저장' }));
@@ -1445,7 +1448,7 @@ describe('WarehouseLocationScreen — Location 등록·수정', () => {
     const { requests, user } = renderScreen(locationWriteRoutes(), '?wh=1001');
 
     const panel = await openLocationTab(user);
-    await user.click(within(panel).getByRole('button', { name: '최상위 추가' }));
+    await user.click(within(panel).getByRole('button', { name: '최상위 Location 추가' }));
 
     const dialog = screen.getByRole('dialog');
     await user.type(within(dialog).getByLabelText('수용량'), '10');
@@ -1477,7 +1480,7 @@ describe('WarehouseLocationScreen — Location 등록·수정', () => {
     await user.click(within(panel).getByRole('button', { name: 'A-01-01' }));
 
     const dialog = screen.getByRole('dialog');
-    expect(await within(dialog).findByLabelText('위치코드')).toBeDisabled();
+    expect(await within(dialog).findByLabelText('위치 코드')).toBeDisabled();
     expect(
       within(dialog).getByText('이미 2건에서 사용 중이라 코드를 바꿀 수 없습니다.'),
     ).toBeInTheDocument();
@@ -1574,10 +1577,10 @@ describe('WarehouseLocationScreen — Location 등록·수정', () => {
     );
 
     const panel = await openLocationTab(user);
-    await user.click(within(panel).getByRole('button', { name: '최상위 추가' }));
+    await user.click(within(panel).getByRole('button', { name: '최상위 Location 추가' }));
 
     const dialog = screen.getByRole('dialog');
-    await user.type(within(dialog).getByLabelText('위치코드'), 'A-01');
+    await user.type(within(dialog).getByLabelText('위치 코드'), 'A-01');
     await user.type(within(dialog).getByLabelText('위치명'), '겹치는 구역');
     await selectLocationType(user, dialog);
     await user.click(within(dialog).getByRole('button', { name: '저장' }));
@@ -1614,7 +1617,7 @@ describe('WarehouseLocationScreen — Location 등록·수정', () => {
     const panel = await openLocationTab(user);
     await user.click(within(panel).getByRole('button', { name: 'A-01-01' }));
     const editDialog = screen.getByRole('dialog');
-    await within(editDialog).findByLabelText('위치코드');
+    await within(editDialog).findByLabelText('위치 코드');
     await user.click(within(editDialog).getByRole('button', { name: '사용 중지' }));
     const confirmDialog = screen.getByRole('dialog', { name: '사용 중지할까요?' });
     await user.click(within(confirmDialog).getByRole('button', { name: '사용 중지' }));

@@ -50,7 +50,7 @@ export interface SelectFieldProps {
   note?: string;
   /** 값이 비었을 때 선택칸 안에 보일 안내. 값·검증에는 영향이 없다. */
   placeholder?: string;
-  /** 라벨 옆 안내 칩(info). note와 달리 칸 아래가 아니라 라벨 줄에 둔다. */
+  /** 라벨 옆 도움말. note와 달리 칸 아래가 아니라 라벨 줄에 둔다. */
   labelHint?: string;
   /** 선택칸 오른쪽 같은 줄에 붙일 요소. 선택칸은 남은 폭을 채운다. */
   trailing?: ReactNode;
@@ -89,11 +89,11 @@ export const SelectField = ({
           <label htmlFor={id}>{label}</label>
           {required && <span aria-hidden="true"> *</span>}
         </span>
-        {/* Lot Status 전이 화면 「최근 전이 기간」과 같은 라벨 옆 안내 칩 — 문구는 자르지 않는다. */}
+        {/* 라벨 옆 도움말 — 문구는 자르지 않는다. */}
         {labelHint && (
-          <Chip id={hintId} size="sm" status="info">
+          <span id={hintId} className="field-note warehouse-location-inline-note">
             {labelHint}
-          </Chip>
+          </span>
         )}
       </span>
       <div className="warehouse-location-field-row">
@@ -145,26 +145,30 @@ export const WarehouseFormPane = ({
       {banner}
 
       <div className="form-grid">
-        <SelectField
-          label={t.fields.plant}
-          options={lookups.plants}
-          value={values.plantId}
-          onChange={(value) => onChange({ plantId: value })}
-          disabled={mode === 'edit'}
-          labelHint={mode === 'edit' ? t.actionReasons.plantFixedAfterCreate : undefined}
-          /*
-           * 사용 상태는 공장 선택칸 오른쪽 같은 줄에 값 표기(칩)로 둔다(사용자 결정 2026-09-18 ·
-           * omf-all-around#17). 상태를 바꾸는 단추는 바닥글에 있다.
-           */
-          trailing={
-            <div className="warehouse-location-inline-field">
-              <span id={activeLabelId}>{t.fields.isActive}</span>
+        {/*
+         * 공장과 사용 상태를 한 칸 안에 나란히 둔다 — 둘 다 「라벨 위 · 값 아래」(사용자 결정 2026-09-18 ·
+         * omf-all-around#17). 사용 상태는 값 표기(칩)이고, 상태를 바꾸는 단추는 바닥글에 있다.
+         */}
+        <div className="warehouse-location-plant-row">
+          <SelectField
+            label={t.fields.plant}
+            options={lookups.plants}
+            value={values.plantId}
+            onChange={(value) => onChange({ plantId: value })}
+            disabled={mode === 'edit'}
+            labelHint={mode === 'edit' ? t.actionReasons.plantFixedAfterCreate : undefined}
+          />
+          <div className="field-cell">
+            <span className="field-label" id={activeLabelId}>
+              {t.fields.isActive}
+            </span>
+            <div className="warehouse-location-status">
               <Chip aria-labelledby={activeLabelId} status={isActive ? 'success' : 'idle'}>
                 {isActive ? t.values.active : t.values.inactive}
               </Chip>
             </div>
-          }
-        />
+          </div>
+        </div>
 
         <SelectField
           label={t.fields.businessUnit}
@@ -262,10 +266,10 @@ export const WarehouseFormPane = ({
           <Button variant="outlined" disabled aria-describedby={historyNoteId}>
             {t.actions.changeHistory}
           </Button>
-          {/* 공장 안내와 같은 안내 칩 — 버튼의 설명(aria-describedby)으로 계속 잇는다. */}
-          <Chip id={historyNoteId} size="sm" status="info">
+          {/* 버튼 옆 도움말 — 버튼의 설명(aria-describedby)으로 계속 잇는다. */}
+          <span id={historyNoteId} className="field-note warehouse-location-inline-note">
             {t.actionReasons.changeHistoryUnavailable}
-          </Chip>
+          </span>
         </div>
         <Button variant="outlined" disabled={!isDirty} onClick={onCancel}>
           {messages.common.cancel}

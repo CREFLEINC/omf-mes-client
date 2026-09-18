@@ -71,6 +71,8 @@ export const LocationPane = ({
   const addRootNoteId = useId();
   const addChildNoteId = useId();
   const labelNoteId = useId();
+  /** 두 등록 단추가 같은 이유로 막혔으면(관리 수준이 창고) 사유 칩을 하나만 두고 둘 다 그것을 가리킨다. */
+  const childSharesRootReason = !canAddRoot && addChildDisabledReason === addRootDisabledReason;
 
   /**
    * DS에 Tree 컴포넌트가 없어 Table + 들여쓰기 + 접기 버튼의 조합으로 계층을 만든다.
@@ -134,7 +136,8 @@ export const LocationPane = ({
         size="sm"
         live
         title={t.empty.locationNoneTitle}
-        description={t.empty.locationNoneDescription}
+        /* 등록할 수 없는 창고에서 「추가해 주세요」라고 하지 않는다 — 단추 옆 사유와 같은 문장을 쓴다. */
+        description={canAddRoot ? t.empty.locationNoneDescription : addRootDisabledReason}
       />
     ) : (
       <EmptyState
@@ -158,23 +161,29 @@ export const LocationPane = ({
     }
 
     return (
-      <Table
-        density="compact"
-        columns={columns}
-        rows={rows}
-        getRowId={(row) => String(row.location.locationId)}
-        selectable
-        selectedIds={selectedIds}
-        onSelectionChange={onSelectionChange}
-        empty={emptySlot}
-      />
+      <div className="warehouse-location-location-table">
+        <Table
+          density="compact"
+          columns={columns}
+          rows={rows}
+          getRowId={(row) => String(row.location.locationId)}
+          selectable
+          selectedIds={selectedIds}
+          onSelectionChange={onSelectionChange}
+          empty={emptySlot}
+        />
+      </div>
     );
   };
 
   return (
     <section aria-label={t.tabs.location}>
       {actionBanner}
-      <div className="filter-bar">
+      {/*
+       * 역할별로 묶는다(omf-all-around#17) — 검색(왼쪽) · 등록(오른쪽 끝) · 선택한 Location 작업(구분선 아래).
+       * 비활성 사유는 해당 단추 묶음 바로 아래 도움말로 붙인다. 두 등록 단추의 사유가 같으면 한 번만 보인다.
+       */}
+      <div className="filter-bar warehouse-location-location-toolbar">
         <SearchInput
           label={t.filters.locationSearchLabel}
           placeholder={t.filters.locationSearchPlaceholder}
@@ -183,38 +192,42 @@ export const LocationPane = ({
           onClear={() => onFilterTextChange('')}
           clearLabel={messages.common.clear}
         />
-        <div className="field-cell field-cell-unlabeled">
-          <Button
-            variant="outlined"
-            disabled={!canAddRoot}
-            aria-describedby={canAddRoot ? undefined : addRootNoteId}
-            onClick={onAddRoot}
-          >
-            {t.actions.addRootLocation}
-          </Button>
+        <div className="field-cell-unlabeled warehouse-location-location-create">
+          <div className="filter-actions">
+            <Button
+              variant="outlined"
+              disabled={!canAddRoot}
+              aria-describedby={canAddRoot ? undefined : addRootNoteId}
+              onClick={onAddRoot}
+            >
+              {t.actions.addRootLocation}
+            </Button>
+            <Button
+              variant="outlined"
+              disabled={!canAddChild}
+              aria-describedby={
+                canAddChild ? undefined : childSharesRootReason ? addRootNoteId : addChildNoteId
+              }
+              onClick={onAddChild}
+            >
+              {t.actions.addChildLocation}
+            </Button>
+          </div>
           {!canAddRoot && (
-            <span id={addRootNoteId} className="field-note">
+            <span id={addRootNoteId} className="field-note warehouse-location-inline-note">
               {addRootDisabledReason}
             </span>
           )}
-        </div>
-        <div className="field-cell field-cell-unlabeled">
-          <Button
-            variant="outlined"
-            disabled={!canAddChild}
-            aria-describedby={canAddChild ? undefined : addChildNoteId}
-            onClick={onAddChild}
-          >
-            {t.actions.addChildLocation}
-          </Button>
-          {!canAddChild && (
-            <span id={addChildNoteId} className="field-note">
+          {!canAddChild && !childSharesRootReason && (
+            <span id={addChildNoteId} className="field-note warehouse-location-inline-note">
               {addChildDisabledReason}
             </span>
           )}
         </div>
+      </div>
+
+      <div className="warehouse-location-location-selection">
         <Button
-          className="field-cell-unlabeled"
           variant="outlined"
           disabled={selectedIds.length === 0 || isGeneratingLabels}
           loading={isGeneratingLabels}
@@ -224,7 +237,7 @@ export const LocationPane = ({
           {t.actions.generateLabel}
         </Button>
         {selectedIds.length === 0 && (
-          <span id={labelNoteId} className="field-note field-cell-unlabeled">
+          <span id={labelNoteId} className="field-note warehouse-location-inline-note">
             {t.actionReasons.generateLabelNeedsSelection}
           </span>
         )}

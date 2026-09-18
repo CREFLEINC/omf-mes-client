@@ -5142,8 +5142,8 @@ dl.filter-bar.approval-inbox-detail-facts {
 }
 
 /*
- * 라벨 줄 — 라벨(+필수 표시)과 안내 칩을 한 줄에, 세로 가운데로. 줄 높이를 라벨 층(16px)에 묶어
- * 칩이 있어도 옆 칸과 입력 상자 위치가 같다(선례: `.lot-status-transition-period-label`). 칩은 자르지 않는다.
+ * 라벨 줄 — 라벨(+필수 표시)과 도움말을 한 줄에, 세로 가운데로. 줄 높이를 라벨 층(16px)에 묶어
+ * 도움말이 있어도 옆 칸과 입력 상자 위치가 같다(선례: `.lot-status-transition-period-label`). 문구는 자르지 않는다.
  */
 .warehouse-location-field-label {
   display: flex;
@@ -5154,6 +5154,27 @@ dl.filter-bar.approval-inbox-detail-facts {
 
 .warehouse-location-field-label > * {
   flex: none;
+}
+
+/* 라벨·단추 옆 도움말 — .field-note 글자 그대로, 옆에 붙이므로 위 여백과 폭 제한만 푼다. */
+.warehouse-location-inline-note {
+  max-width: none;
+  margin-top: 0;
+}
+
+/* 공장 칸 안의 두 칸 — 공장(남은 폭) · 사용 상태(내용 폭). 라벨 줄과 값 줄이 각각 같은 높이에 선다. */
+.warehouse-location-plant-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--space-4);
+  min-width: 0;
+}
+
+/* 사용 상태 값 줄 — 입력칸 높이에 맞춰 칩을 세로 가운데에 둔다. 라벨과 칩의 왼쪽 끝이 같다. */
+.warehouse-location-status {
+  display: flex;
+  align-items: center;
+  min-height: var(--control-height-md);
 }
 
 /* 선택칸 + 오른쪽 부속(토글 묶음) 한 줄 — 선택칸이 남은 폭을 채우고, 부속은 세로 가운데. */
@@ -5209,6 +5230,45 @@ dl.filter-bar.approval-inbox-detail-facts {
   gap: var(--space-2);
 }
 
+
+/*
+ * Location 탭 윗부분(omf-all-around#17) — 검색은 왼쪽, 등록 단추 묶음은 오른쪽 끝(검색 옆에 붙어
+ * 검색 동작처럼 읽히지 않게), 비활성 사유 도움말은 그 묶음 바로 아래 오른쪽 정렬.
+ */
+.warehouse-location-location-create {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: var(--space-2);
+  margin-left: auto;
+}
+
+/* 선택한 Location 대상 작업 줄 — 얇은 구분선 아래, 단추 + 사유 도움말. 카드를 나누지 않는다. */
+.warehouse-location-location-selection {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--outline-variant);
+}
+
+/* 빈 표 — 머리는 그대로 두고, 빈 안내 칸의 위아래 여백만 줄인다(데이터가 있을 때는 영향 없음). */
+.warehouse-location-location-table tbody td[colspan] {
+  padding-block: var(--space-4);
+}
+
+/* 머리와 상태 칸은 한 줄로 — 긴 위치명이 폭을 먹어도 「사용 상태」가 두 줄로 접히지 않게. */
+.warehouse-location-location-table th,
+.warehouse-location-location-table td:last-child {
+  white-space: nowrap;
+}
+
+/* 긴 위치 코드가 접히면 왼쪽 정렬을 유지한다(계층 들여쓰기와 같은 기준선). */
+.warehouse-location-location-table .link-cell {
+  text-align: start;
+}
 
 .warehouse-location-label-grid {
   display: grid;

@@ -33,7 +33,7 @@ const renderPane = (overrides: Partial<Parameters<typeof LocationPane>[0]> = {})
       addRootDisabledReason="Location을 추가할 수 없습니다."
       onAddRoot={onAddRoot}
       canAddChild={false}
-      addChildDisabledReason="하위 추가는 Location을 하나만 선택했을 때 쓸 수 있습니다."
+      addChildDisabledReason="하위 Location을 추가하려면 상위 Location을 1개 선택해 주세요."
       onAddChild={onAddChild}
       onEdit={onEdit}
       onGenerateLabels={onGenerateLabels}
@@ -114,8 +114,8 @@ describe('LocationPane', () => {
   it('선택이 없으면 하위 추가가 비활성이고 사유가 보인다', () => {
     renderPane({ selectedIds: [] });
 
-    const reason = '하위 추가는 Location을 하나만 선택했을 때 쓸 수 있습니다.';
-    const button = screen.getByRole('button', { name: '하위 추가' });
+    const reason = '하위 Location을 추가하려면 상위 Location을 1개 선택해 주세요.';
+    const button = screen.getByRole('button', { name: '하위 Location 추가' });
 
     expect(button).toBeDisabled();
     expect(screen.getByText(reason)).toBeInTheDocument();
@@ -126,14 +126,14 @@ describe('LocationPane', () => {
   it('선택이 2건 이상이면 하위 추가가 비활성이다', () => {
     renderPane({ selectedIds: ['2001', '2004'] });
 
-    expect(screen.getByRole('button', { name: '하위 추가' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: '하위 Location 추가' })).toBeDisabled();
   });
 
   it('선택이 정확히 1건이면 하위 추가를 눌러 onAddChild를 부른다', async () => {
     const user = userEvent.setup();
     const { onAddChild } = renderPane({ selectedIds: ['2001'], canAddChild: true });
 
-    const addChild = screen.getByRole('button', { name: '하위 추가' });
+    const addChild = screen.getByRole('button', { name: '하위 Location 추가' });
     expect(addChild).not.toBeDisabled();
 
     await user.click(addChild);
@@ -143,7 +143,7 @@ describe('LocationPane', () => {
   it('선택이 없으면 라벨 이미지 생성이 비활성이고 사유가 보인다', () => {
     renderPane();
 
-    const reason = '라벨 이미지를 만들 Location을 하나 이상 선택하세요.';
+    const reason = 'Location을 하나 이상 선택해 주세요.';
     const button = screen.getByRole('button', { name: '라벨 이미지 생성' });
 
     expect(button).toBeDisabled();
@@ -165,7 +165,7 @@ describe('LocationPane', () => {
     const user = userEvent.setup();
     const { onAddRoot } = renderPane();
 
-    await user.click(screen.getByRole('button', { name: '최상위 추가' }));
+    await user.click(screen.getByRole('button', { name: '최상위 Location 추가' }));
 
     expect(onAddRoot).toHaveBeenCalledTimes(1);
   });
@@ -208,6 +208,38 @@ describe('LocationPane', () => {
   it('loadError가 있어도 추가 액션 줄은 남는다', () => {
     renderPane({ rows: [], loadError: <AlertBanner variant="error" title="실패" /> });
 
-    expect(screen.getByRole('button', { name: '최상위 추가' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '최상위 Location 추가' })).toBeInTheDocument();
+  });
+
+  /* Location 탭 정돈(omf-all-around#17 4차) — 문구·배치만, 활성 조건은 그대로. */
+  it('등록할 수 있으면 빈 상태가 최상위 Location 추가를 안내한다', () => {
+    renderPane({ rows: [] });
+
+    expect(screen.getByText('최상위 Location을 추가해 주세요.')).toBeInTheDocument();
+  });
+
+  it('등록할 수 없는 창고의 빈 상태는 추가를 권하지 않고 사유를 보인다', () => {
+    const reason = '이 창고는 관리 수준이 「창고」라 Location을 따로 관리하지 않습니다.';
+    renderPane({ rows: [], canAddRoot: false, addRootDisabledReason: reason });
+
+    expect(screen.queryByText('최상위 Location을 추가해 주세요.')).not.toBeInTheDocument();
+    expect(screen.getAllByText(reason).length).toBeGreaterThan(0);
+  });
+
+  it('두 등록 단추가 같은 이유로 막히면 사유를 한 번만 보이고 둘 다 그것을 가리킨다', () => {
+    const reason = '이 창고는 관리 수준이 「창고」라 Location을 따로 관리하지 않습니다.';
+    renderPane({
+      canAddRoot: false,
+      addRootDisabledReason: reason,
+      addChildDisabledReason: reason,
+    });
+
+    expect(screen.getAllByText(reason)).toHaveLength(1);
+    expect(
+      screen.getByRole('button', { name: '최상위 Location 추가' }),
+    ).toHaveAccessibleDescription(reason);
+    expect(screen.getByRole('button', { name: '하위 Location 추가' })).toHaveAccessibleDescription(
+      reason,
+    );
   });
 });
