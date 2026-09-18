@@ -73,7 +73,10 @@ export const iqcInspection: Translated<typeof ko.iqcInspection> = {
     },
     sum: 'Tổng',
     remaining: 'Còn lại',
+    progressTitle: 'Tình trạng nhập',
+    progressLabel: 'Tổng đã nhập so với số lượng kiểm tra',
     matched: 'Khớp với số lượng kiểm tra.',
+    remainingNote: (remaining: string): string => `Số lượng kiểm tra còn lại ${remaining}.`,
     over: (over: string): string => `Nhiều hơn số lượng kiểm tra ${over}. Hãy giảm số lượng.`,
     quantityInvalid: 'Hãy nhập số từ 0 trở lên. Tối đa sáu chữ số thập phân.',
     save: 'Lưu tạm',
@@ -89,7 +92,8 @@ export const iqcInspection: Translated<typeof ko.iqcInspection> = {
 
     confirm: 'Xác nhận đánh giá',
     confirming: 'Đang xác nhận',
-    confirmNote: 'Khi xác nhận đánh giá, trạng thái LOT sẽ thay đổi và không thể hoàn tác.',
+    confirmNote: 'Khi xác nhận đánh giá, trạng thái LOT sẽ thay đổi, sau đó không thể hoàn tác.',
+    submitTitle: 'Lưu và xác nhận',
     confirmBlockedByTotals: 'Tổng đã nhập phải bằng số lượng kiểm tra mới xác nhận được.',
     confirmBlockedByJudgment: 'Phải chọn đánh giá tổng hợp mới xác nhận được.',
     confirmBlockedByConfirmed: 'Lượt này đã được xác nhận.',
@@ -97,7 +101,8 @@ export const iqcInspection: Translated<typeof ko.iqcInspection> = {
     confirmSucceeded: 'Đã xác nhận đánh giá.',
 
     partialReceipt: 'Cho phép nhập kho một phần',
-    partialReceiptPending: 'Hiện chưa sử dụng được.',
+    partialTitle: 'Nhập kho một phần',
+    partialReceiptPending: 'Chức năng cho phép nhập kho một phần sẽ được cập nhật.',
 
     reinspect: 'Thêm lượt kiểm tra lại',
     reinspectCancel: 'Thôi kiểm tra lại',

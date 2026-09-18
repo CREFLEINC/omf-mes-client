@@ -82,16 +82,18 @@ const columns: Column<MeasurementRow>[] = [
     width: '160px',
     render: (row) => (
       <>
-        {row.displayNo}. {row.itemName}
-        {/* 필수 여부는 DS 상태 칩(중립)으로 — 새 배지 모양을 만들지 않는다. */}
+        {/*
+         * 필수 여부는 항목명 «앞»의 DS 상태 칩(중립)으로 — 새 배지 모양을 만들지 않는다.
+         * 필수가 아니면 칩 자리를 비우지 않고 항목명만 선다.
+         */}
         {row.required && (
-          <>
-            {' '}
+          <span className="iqc-inspection-required">
             <Chip variant="status" size="sm" status="idle">
               {t.requiredMark}
             </Chip>
-          </>
+          </span>
         )}
+        {row.displayNo}. {row.itemName}
       </>
     ),
   },

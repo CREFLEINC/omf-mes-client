@@ -8763,7 +8763,8 @@ dl.filter-bar.approval-inbox-detail-facts {
 }
 
 /* 대기 목록 제목 — 화면에서는 감추고 표의 접근 이름(caption)으로만 남긴다. */
-.iqc-inspection-table-caption {
+.iqc-inspection-table-caption,
+.iqc-inspection-visually-hidden {
   position: absolute;
   width: 1px;
   height: 1px;
@@ -8847,84 +8848,125 @@ dl.filter-bar.approval-inbox-detail-facts {
   font-weight: 600;
 }
 
-/* 검사 결과 수량 — 검사수량(기준값)과 합격·불합격·보류 세 칸을 한 줄에. 칸은 숫자에 맞는 폭까지만. */
+/* 검사 결과 수량 — 기준값(검사수량)은 따로, 합격·불합격·보류 세 칸은 한 줄에 같은 폭으로. */
+.iqc-inspection-qty-base {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.iqc-inspection-qty-base > dd {
+  font-weight: 600;
+}
+
 .iqc-inspection-qty {
   display: grid;
-  grid-template-columns: max-content repeat(3, minmax(7rem, 11rem));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   align-items: start;
   gap: var(--space-4);
 }
 
-.iqc-inspection-qty-base {
-  display: grid;
-  gap: var(--space-1);
-  padding-inline-end: var(--space-3);
+.iqc-inspection-qty input {
+  text-align: center;
 }
 
-/* 검사수량 값을 옆 입력칸의 글줄 높이에 맞춘다. */
-.iqc-inspection-qty-base > dd {
+/* 입력 현황 — 「합계 / 검사수량」(왼쪽)·잔여(오른쪽 끝), 그 아래 막대와 한 줄 안내. */
+.iqc-inspection-progress {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.iqc-inspection-progress-row {
   display: flex;
-  align-items: center;
-  min-height: var(--control-height-md);
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: var(--space-2) var(--space-4);
+}
+
+.iqc-inspection-progress-sum {
   font-weight: 600;
 }
 
-.iqc-inspection-qty-summary {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: var(--space-2) var(--space-5);
+/*
+ * 판정 — 종합 판정 아래 구분선, 그 아래 왼쪽 좁은 칸(부분 입고)·오른쪽 넓은 칸(저장 및 확정)과
+ * 가운데 얇은 세로 구분선. 카드가 좁으면(칸 폭 기준) 위·아래로 쌓인다.
+ */
+.iqc-inspection-action-area {
+  container-type: inline-size;
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--outline-variant);
 }
 
-.iqc-inspection-qty-summary > dl {
-  display: flex;
-  gap: var(--space-5);
-}
-
-.iqc-inspection-qty-summary > dl > div {
-  display: flex;
-  align-items: baseline;
-  gap: var(--space-2);
-}
-
-/* 판정 — 왼쪽 종합 판정, 오른쪽 임시 저장·판정 확정(막힌 사유는 단추 바로 아래). */
-.iqc-inspection-judgment {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: var(--space-4);
-}
-
-.iqc-inspection-actions {
+.iqc-inspection-partial,
+.iqc-inspection-submit {
   display: grid;
-  justify-items: end;
+  align-content: start;
   gap: var(--space-2);
-  margin-left: auto;
-  margin-top: var(--field-label-layer);
+  min-width: 0;
 }
 
-.iqc-inspection-actions > .form-actions {
+.iqc-inspection-submit {
+  margin-top: var(--space-4);
+}
+
+@container (min-width: 36rem) {
+  .iqc-inspection-action-grid:has(> .iqc-inspection-partial) {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
+  }
+
+  .iqc-inspection-action-grid > .iqc-inspection-partial {
+    padding-inline-end: var(--space-4);
+    border-inline-end: 1px solid var(--outline-variant);
+  }
+
+  .iqc-inspection-action-grid > .iqc-inspection-partial + .iqc-inspection-submit {
+    margin-top: 0;
+    padding-inline-start: var(--space-4);
+  }
+}
+
+.iqc-inspection-action-grid > .iqc-inspection-submit:only-child {
   margin-top: 0;
 }
 
-.iqc-inspection-actions > .field-note {
-  text-align: right;
-}
-
-/* 확정 경고 — 되돌릴 수 없다는 경고라 흐린 보조 글이 아니라 경고색으로, 단추 쪽(오른쪽)에 둔다. */
-.iqc-inspection-confirm-warning {
-  color: var(--semantic-warning);
-  font: var(--type-body-sm);
-  letter-spacing: var(--type-body-sm-tracking);
-  text-align: right;
-}
-
-/* 부분 입고 — 기능(비활성 단추)과 상태(사용할 수 없음)를 한 줄에. */
-.iqc-inspection-partial {
+.iqc-inspection-partial-row {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  justify-content: flex-end;
-  gap: var(--space-2);
+  gap: var(--space-2) var(--space-3);
+}
+
+.iqc-inspection-submit > .form-actions {
+  justify-content: flex-start;
+  align-items: center;
+  margin-top: 0;
+}
+
+/* 확정 막힌 이유 — 정보 아이콘 + 보조 글자. 둘째 줄은 아이콘 뒤 글자 시작선에 맞춘다. */
+.iqc-inspection-blocked {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-1);
+}
+
+/* 아이콘(16px)을 첫 글줄 가운데에 — 글줄 높이와의 차이만큼 내린다. */
+.iqc-inspection-blocked > :first-child {
+  margin-block-start: calc((1lh - 16px) / 2);
+}
+
+/* 확정 경고 띠 — DS 경고 띠를 낮게, 칸 폭을 채운다. 표식은 글줄과 같은 높이(terminal-map-notice 와 같은 풀이). */
+.iqc-inspection-confirm-banner {
+  box-sizing: border-box;
+  padding: var(--space-2) var(--space-3);
+}
+
+.iqc-inspection-confirm-banner > :first-child {
+  margin-block-start: 0;
+}
+
+/* 항목별 측정치 — 「필수」 칩은 항목명 앞, 첫 줄 글자와 같은 높이에. */
+.iqc-inspection-required {
+  display: inline-block;
+  margin-inline-end: var(--space-2);
+  vertical-align: middle;
 }
