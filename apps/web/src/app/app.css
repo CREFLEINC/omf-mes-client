@@ -8762,6 +8762,15 @@ dl.filter-bar.approval-inbox-detail-facts {
   white-space: nowrap;
 }
 
+/*
+ * ⛔ 아래 감춘 글자(절대 위치)의 기준 상자를 이 화면 안에 둔다. 기준이 앱 셸까지 올라가면 그 글자가
+ * 본문(main)의 스크롤 영역 밖으로 빠져 문서 전체가 길어지고, 스크롤하면 사이드바가 따라 올라가 끊겨
+ * 보이며 카드 아래에 빈 공간이 생긴다(실측: 감춘 표 제목의 아래끝 = 문서 높이).
+ */
+.two-pane.iqc-inspection-panes {
+  position: relative;
+}
+
 /* 대기 목록 제목 — 화면에서는 감추고 표의 접근 이름(caption)으로만 남긴다. */
 .iqc-inspection-table-caption,
 .iqc-inspection-visually-hidden {
