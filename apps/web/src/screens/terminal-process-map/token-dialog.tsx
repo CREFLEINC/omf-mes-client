@@ -13,9 +13,17 @@ export interface TokenDialogProps {
   onClose: () => void;
 }
 
+/**
+ * 복사 결과 — 실패를 원인별로 가른다. 사용자가 할 수 있는 다음 행동이 다르기 때문이다.
+ * - `unavailable` 보안 연결이 아닌 주소라 브라우저가 클립보드를 아예 내주지 않는다 → QR 로 전달
+ * - `denied` 브라우저가 권한을 거부했다 → 권한 확인
+ * - `failed` 그 밖의 실패 → 다시 시도하거나 QR 로 전달
+ */
+type CopyResult = 'copied' | 'unavailable' | 'denied' | 'failed';
+
 /** 발급한 실제 JWT를 QR 또는 클립보드로 기기에 전달한다. 원문을 화면에 렌더링하지 않는다. */
 export const TokenDialog = ({ token, terminalCode, onClose }: TokenDialogProps) => {
-  const [copyResult, setCopyResult] = useState<'copied' | 'failed' | null>(null);
+  const [copyResult, setCopyResult] = useState<CopyResult | null>(null);
 
   useEffect(() => {
     setCopyResult(null);
@@ -23,11 +31,21 @@ export const TokenDialog = ({ token, terminalCode, onClose }: TokenDialogProps) 
 
   const copyCode = async () => {
     if (token === null) return;
+    /*
+     * ⚠ 보안 연결이 아닌 주소(평문 HTTP)에서는 브라우저가 `navigator.clipboard` 자체를 내주지 않는다.
+     * 권한 문제가 아니므로 권한 안내를 쓰지 않는다. 원문을 화면에 그리는 우회 복사는 하지 않는다.
+     */
+    if (window.isSecureContext === false || typeof navigator.clipboard?.writeText !== 'function') {
+      setCopyResult('unavailable');
+      return;
+    }
     try {
       await navigator.clipboard.writeText(token.token);
       setCopyResult('copied');
-    } catch {
-      setCopyResult('failed');
+    } catch (error) {
+      setCopyResult(
+        error instanceof DOMException && error.name === 'NotAllowedError' ? 'denied' : 'failed',
+      );
     }
   };
 
@@ -48,7 +66,13 @@ export const TokenDialog = ({ token, terminalCode, onClose }: TokenDialogProps) 
             {t.token.copy}
           </Button>
           {copyResult === 'copied' ? <p role="status">{t.token.copied}</p> : null}
+          {copyResult === 'unavailable' ? (
+            <AlertBanner variant="warning">{t.token.copyUnavailable}</AlertBanner>
+          ) : null}
           {copyResult === 'failed' ? (
+            <AlertBanner variant="error">{t.token.copyError}</AlertBanner>
+          ) : null}
+          {copyResult === 'denied' ? (
             <AlertBanner variant="error">{t.token.copyFailed}</AlertBanner>
           ) : null}
           <p className="field-note">{t.token.textOmitted}</p>

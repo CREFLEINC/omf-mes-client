@@ -93,12 +93,16 @@ export const terminalProcessMap = {
     copy: '등록 코드 복사',
     copied: '등록 코드를 복사했습니다.',
     copyFailed: '복사하지 못했습니다. 브라우저의 클립보드 권한을 확인하세요.',
+    copyUnavailable:
+      '이 주소에서는 브라우저가 복사를 막아 등록 코드를 복사할 수 없습니다. 기기에서 QR을 스캔해 등록하세요.',
+    copyError: '복사하지 못했습니다. 다시 시도하거나 기기에서 QR을 스캔해 등록하세요.',
     issuedAt: '발급 시각',
     expiresAt: '만료',
     noExpiry: '만료 없음',
     close: '닫기',
     failed: '등록 토큰을 발급하지 못했습니다. 다시 시도해 주세요.',
-    textOmitted: '등록 코드는 화면에 표시하지 않습니다. QR을 스캔하거나 복사해 기기에 붙여넣으세요.',
+    textOmitted:
+      '등록 코드는 화면에 표시하지 않습니다. QR을 스캔하거나 복사해 기기에 붙여넣으세요.',
   },
 
   grid: {

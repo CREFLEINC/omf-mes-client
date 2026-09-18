@@ -100,6 +100,9 @@ export const terminalProcessMap: Translated<typeof ko.terminalProcessMap> = {
     copy: 'Sao chép mã đăng ký',
     copied: 'Đã sao chép mã đăng ký.',
     copyFailed: 'Không sao chép được. Hãy kiểm tra quyền bảng nhớ tạm của trình duyệt.',
+    copyUnavailable:
+      'Trình duyệt chặn sao chép trên địa chỉ này nên không thể sao chép mã đăng ký. Hãy quét mã QR trên máy để đăng ký.',
+    copyError: 'Không sao chép được. Hãy thử lại hoặc quét mã QR trên máy để đăng ký.',
     issuedAt: 'Thời điểm phát hành',
     expiresAt: 'Hết hạn',
     noExpiry: 'Không hết hạn',
