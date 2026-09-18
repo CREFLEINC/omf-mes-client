@@ -6003,6 +6003,51 @@ dl.filter-bar.approval-inbox-detail-facts {
   margin-block-start: calc(var(--space-1) / 2);
 }
 
+/*
+ * 공정별 기능 구성 표(매트릭스) — 기능 칸은 머리 이름이 읽히는 만큼만 선다(칸을 늘리지 않는다).
+ * 공정 칸 · 기능 여덟 칸 · 관리 칸을 얇은 세로선 두 개로만 가른다(엑셀처럼 칸마다 긋지 않는다).
+ */
+.wide-table.terminal-map-matrix table {
+  /* 표는 내용 폭만큼만 선다 — 넓은 화면에서 기능 칸이 늘어나 머리와 확인칸 사이가 멀어지지 않게. */
+  width: auto;
+  min-width: 0;
+}
+
+.terminal-map-matrix th:first-child,
+.terminal-map-matrix td:first-child {
+  /* 긴 공정명은 칸을 넓히지 않고 줄을 바꾼다. */
+  min-width: 12rem;
+  max-width: 18rem;
+  border-right: 1px solid var(--outline-variant);
+}
+
+.terminal-map-matrix th:last-child,
+.terminal-map-matrix td:last-child {
+  border-left: 1px solid var(--outline-variant);
+}
+
+/* 공정명이 먼저 읽히고, 「전체 선택」은 그 행을 다루는 보조 조작으로 한 단계 낮춘다. */
+.terminal-map-matrix .stacked-cell {
+  gap: var(--space-2);
+}
+
+.terminal-map-matrix .stacked-cell > span:first-child {
+  font-weight: 600;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.terminal-map-matrix .stacked-cell > label {
+  font: var(--type-body-sm);
+  letter-spacing: var(--type-body-sm-tracking);
+  color: var(--on-surface-variant);
+}
+
+/* 기능 칸 — 상자 둘레까지 눌리게 누름 영역을 넓힌다(DS 확인칸의 label 이 그대로 받는다). */
+.terminal-map-matrix td:not(:first-child):not(:last-child) > label {
+  padding: var(--space-2);
+}
+
 /* 칸 안의 공정명·「모두 열기」 묶음도 가운데에 세운다. */
 .terminal-map-grid-table .stacked-cell {
   align-items: center;

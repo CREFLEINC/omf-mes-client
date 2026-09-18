@@ -69,7 +69,7 @@ export const ProcessGrid = ({
     })),
     {
       key: 'remove',
-      header: t.grid.remove,
+      header: t.grid.manage,
       render: (row) => (
         <Button
           variant="text"
@@ -87,7 +87,7 @@ export const ProcessGrid = ({
   ];
 
   return (
-    <div className="wide-table">
+    <div className="wide-table terminal-map-matrix">
       <Table
         columns={columns}
         rows={rows}

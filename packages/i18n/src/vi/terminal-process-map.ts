@@ -111,10 +111,11 @@ export const terminalProcessMap: Translated<typeof ko.terminalProcessMap> = {
 
   grid: {
     process: 'Công đoạn',
-    openAll: 'Mở tất cả',
+    openAll: 'Chọn tất cả',
     add: 'Thêm công đoạn',
     addPlaceholder: 'Chọn công đoạn cần thêm',
-    remove: 'Bỏ',
+    manage: 'Quản lý',
+    remove: 'Loại trừ',
     /** ⭐ 빠진 공정은 지워진다 — 이 사실을 흐리면 사용자가 한 줄씩 저장되는 줄 안다. */
     replaceNote:
       'Khi lưu, cấu hình của máy quét này sẽ theo đúng danh sách hiện tại. Công đoạn bỏ khỏi danh sách sẽ bị loại khỏi máy quét này.',
