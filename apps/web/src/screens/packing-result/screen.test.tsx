@@ -621,8 +621,9 @@ describe('PackingResultScreen — 담기와 확정', () => {
     };
 
     await confirmOnce();
-    expect(await screen.findByRole('alert')).toBeInTheDocument();
-    expect(screen.queryByText(new RegExp(UNIT_MISSING_TEXT, 'u'))).toBeNull();
+    expect(await screen.findByText(messages.httpError.forbidden)).toBeInTheDocument();
+    /* 서버 원문은 보이지 않는다 — 공통 문구만 낸다. */
+    expect(screen.queryByText(/만들지 못했습니다/u)).toBeNull();
     expect(writes.map(pathOf)).not.toContain('/inventory/handling-units/4001:pack');
 
     const before = writes.length;

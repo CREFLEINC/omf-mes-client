@@ -1,4 +1,5 @@
 import { AlertBanner, Button, Chip, Dialog } from '@crefle/web-ui';
+import type { ApiError } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { NumericKeypad } from '@omf-mes/ui';
 import { useId, useState } from 'react';
@@ -62,6 +63,15 @@ const HIDDEN_LOCK_REASONS: ReadonlySet<string> = new Set([
   t.locks.unitOpening,
   t.locks.gateChecking,
 ]);
+
+/**
+ * 확정 때 포장 만들기가 실패한 것을 안내 자리에 올릴 모양 — **서버 원문을 떼고 상태 코드만 남긴다**
+ * (사용자 지시 2026-09-18 · omf-all-around#5). 공용 배너가 상태 코드의 공통 문구를 낸다.
+ */
+const withoutServerText = (error: ApiError): ApiError =>
+  error.kind !== 'network' && error.status !== undefined
+    ? { kind: 'http', status: error.status }
+    : error;
 
 export const PackingResultScreen = () => {
   const titleId = useId();
@@ -408,7 +418,7 @@ export const PackingResultScreen = () => {
               confirm.isError
                 ? toApiError(confirm.error)
                 : unitCreateError !== null
-                  ? toApiError(unitCreateError)
+                  ? withoutServerText(toApiError(unitCreateError))
                   : null
             }
           />
