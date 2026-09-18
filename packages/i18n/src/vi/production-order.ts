@@ -49,7 +49,7 @@ export const productionOrder: Translated<typeof ko.productionOrder> = {
     erpSyncHint: 'Có thể xem kết quả đồng bộ ở tình trạng liên kết.',
     searchPlaceholder: 'Số ERP W/O',
     workOrderProgressHelp:
-      'W/O đã tạo / dự kiến — số W/O đã tạo từ ERP W/O này / số W/O sẽ có khi triển khai hết kế hoạch sản xuất. 0 / 0 nghĩa là chưa có kế hoạch sản xuất.',
+      'W/O đã tạo / dự kiến — số W/O hiện đã tạo / tổng số W/O sẽ được tạo theo kế hoạch sản xuất. 0 / 0 là trạng thái chưa có kế hoạch sản xuất.',
     missingErpOrderNo: 'Không có số gốc ERP',
     missingItemLabel: 'Không có tên hiển thị mặt hàng',
     missingDueDate: 'Không có ngày giao',
@@ -64,8 +64,6 @@ export const productionOrder: Translated<typeof ko.productionOrder> = {
   },
   basic: {
     heading: 'Thông tin cơ bản',
-    unselectedTitle: 'Hãy chọn ERP W/O',
-    unselectedDescription: 'Chọn một ERP W/O trong danh sách để xem thông tin cơ bản.',
     loading: 'Đang tải thông tin cơ bản ERP W/O',
     loadFailedTitle: 'Không tải được thông tin cơ bản',
     loadFailedDescription: 'Hãy chọn lại ERP W/O sau giây lát.',

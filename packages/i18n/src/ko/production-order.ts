@@ -40,7 +40,7 @@ export const productionOrder = {
     erpSyncHint: '동기화 결과는 연계 현황에서 확인할 수 있습니다.',
     searchPlaceholder: 'ERP W/O 번호',
     workOrderProgressHelp:
-      'W/O 생성/예정 — 이 ERP W/O로 생성된 W/O 수 / 생산계획을 모두 전개하면 생길 W/O 수입니다. 0 / 0은 생산계획이 아직 없다는 뜻입니다.',
+      'W/O 생성/예정 — 현재 생성된 W/O 수 / 생산계획 기준으로 생성될 전체 W/O 수입니다. 0 / 0은 생산계획이 없는 상태입니다.',
     missingErpOrderNo: 'ERP 원번호 없음',
     missingItemLabel: '품목 표시명 없음',
     missingDueDate: '납기일 없음',
@@ -55,8 +55,6 @@ export const productionOrder = {
   },
   basic: {
     heading: '기본 정보',
-    unselectedTitle: 'ERP W/O를 선택하세요',
-    unselectedDescription: '목록에서 ERP W/O를 선택하면 기본 정보를 확인할 수 있습니다.',
     loading: 'ERP W/O 기본 정보 불러오는 중',
     loadFailedTitle: '기본 정보를 불러오지 못했습니다',
     loadFailedDescription: '잠시 후 ERP W/O를 다시 선택해 주세요.',

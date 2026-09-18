@@ -60,7 +60,9 @@ describe('ProductionOrderBasicPane', () => {
   it('미선택, 선택 loading, detail error를 data와 구분한다', () => {
     const props = baseProps();
     const { rerender } = render(<ProductionOrderBasicPane {...props} isSelected={false} />);
-    expect(screen.getByText(t.basic.unselectedTitle)).toBeInTheDocument();
+    /* 선택 전에는 생산계획·전개된 W/O 구획과 같은 모양 — 제목과 한 줄 안내. */
+    expect(screen.getByRole('heading', { name: t.basic.heading })).toBeInTheDocument();
+    expect(screen.getByText(t.detail.unselectedNote)).toBeInTheDocument();
     expect(screen.queryByText('SYN-PO-701')).not.toBeInTheDocument();
 
     rerender(<ProductionOrderBasicPane {...props} detailState={{ kind: 'LOADING' }} />);

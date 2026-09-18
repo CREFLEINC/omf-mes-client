@@ -1,4 +1,4 @@
-import { AlertBanner, Card, EmptyState, SkeletonText } from '@crefle/web-ui';
+import { AlertBanner, Card, SkeletonText } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
 
@@ -60,11 +60,8 @@ export const ProductionOrderBasicPane = ({
         className="pane production-order-pane production-order-basic-pane"
         aria-label={t.panes.basic}
       >
-        <EmptyState
-          size="sm"
-          title={t.basic.unselectedTitle}
-          description={t.basic.unselectedDescription}
-        />
+        <h2>{t.basic.heading}</h2>
+        <p className="production-order-pane-description">{t.detail.unselectedNote}</p>
       </section>
     );
   }
