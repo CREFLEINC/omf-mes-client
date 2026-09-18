@@ -331,10 +331,7 @@ describe('입하 등록 화면', () => {
       scan(SCANNED);
 
       await screen.findByText('자재 P/O 선택');
-      /*
-       * 스크롤은 구획이 그려진 뒤 효과에서 부른다. 글자가 보이는 순간 바로 재면 효과가 돌기
-       * 전일 수 있다 - 기계가 밀릴 때만 그 틈이 벌어져 전체 실행에서만 떨어졌다.
-       */
+      /* 스크롤은 구획이 그려진 뒤 효과에서 부른다. 글자가 보이는 순간 바로 재면 그 전일 수 있다. */
       await waitFor(() => {
         expect(pulled.some((text) => text.startsWith('자재 P/O 선택'))).toBe(true);
       });
@@ -1479,9 +1476,11 @@ describe('입하 등록 화면 — 발주 없이 도착', () => {
     await screen.findByRole('button', { name: '더보기 (+70)' });
 
     /*
-     * jsdom 은 구르지 않는다. 무엇을 화면 안으로 들이라 했는지로 잰다 - 같은 파일의 다른
-     * 시험이 이미 이 자리를 원형에 심어 두어 인스턴스에 덮어쓸 수 없다.
+     * jsdom 은 구르지 않는다. 무엇을 화면 안으로 들이라 했는지로 잰다 - 어느 요소에 부를지를
+     * 재려는 것이라 미리 집어 둘 수 없어 원형에 심는다.
      */
+    const original = Object.getOwnPropertyDescriptor(Element.prototype, 'scrollIntoView');
+
     Object.defineProperty(Element.prototype, 'scrollIntoView', {
       configurable: true,
       value(this: Element) {
@@ -1489,9 +1488,17 @@ describe('입하 등록 화면 — 발주 없이 도착', () => {
       },
     });
 
-    await user.click(screen.getByRole('button', { name: '맨 위로' }));
+    try {
+      await user.click(screen.getByRole('button', { name: '맨 위로' }));
 
-    expect(scrolled).toEqual(['품목 고르기']);
+      expect(scrolled).toEqual(['품목 고르기']);
+    } finally {
+      if (original === undefined) {
+        delete (Element.prototype as { scrollIntoView?: unknown }).scrollIntoView;
+      } else {
+        Object.defineProperty(Element.prototype, 'scrollIntoView', original);
+      }
+    }
   });
 
   /* 품목 마스터의 주인은 ERP 다. 여기서 만들 길을 찾지 않는다. */

@@ -1523,14 +1523,12 @@ describe('자재 출고·피킹 화면', () => {
       await screen.findByText('라인의 LOT 과 같습니다');
 
       /* 스크롤은 구획이 그려진 뒤 효과에서 부른다. 글자가 보이는 순간 바로 재면 그 전일 수 있다. */
-      await waitFor(() => {
-        expect(
-          pulled.find((each) => each.text.includes('출고 수량')),
-          '수량 구획을 화면 안으로 들인다',
-        ).toBeTruthy();
-      });
+      const entry = await waitFor(() => {
+        const hit = pulled.find((each) => each.text.includes('출고 수량'));
 
-      const entry = pulled.find((each) => each.text.includes('출고 수량'));
+        expect(hit, '수량 구획을 화면 안으로 들인다').toBeTruthy();
+        return hit;
+      });
 
       expect(entry?.block, '꼬리를 맞춘다').toBe('end');
     } finally {
