@@ -1472,18 +1472,6 @@
  * 하고, 장갑 낀 손이 누르는 자리라 넓을수록 잘 눌린다 — 위 칸들의 폭 제한(28rem)도 받지
  * 않는다.
  */
-/*
- * 수량 키패드 창의 값 줄 — **지금 무엇을 누르고 있는지**를 크게 보인다(전례 PQC 제품 검사).
- * 창이 뜨면 뒤의 칸이 가려지므로, 값이 어디에 쌓이는지 창 «안»에서 보여야 한다.
- */
-.pop-rc-pad-value {
-  margin: 0 0 var(--space-4);
-  min-block-size: 40px;
-  font: 700 30px/40px var(--font-sans);
-  text-align: end;
-  font-variant-numeric: tabular-nums;
-}
-
 .pop-ui .pop-rc-submit {
   justify-items: stretch;
 }
@@ -5622,6 +5610,20 @@
   margin-block-end: 0;
 }
 
+/*
+ * P-02-11 포장 작업 — 칸 아래 인라인 오류는 **위 칸과, 그리고 서로에게서 떨어진다.**
+ *
+ * ⛔ 위 `.pop-notice-label > * { margin-block-end: 0 }` 은 안내 «하나»가 홀로 설 때의 규칙이다.
+ *    이 화면은 오류 띠가 셋까지 잇따라 서므로 그 규칙만 받으면 띠들이 서로에게도 위 칸에도
+ *    **붙어** 선다 — 무엇이 무엇에 대한 말인지 갈리지 않는다.
+ * ⚠ 클래스는 `#1333` 이 세웠는데 정의가 함께 오지 않았다(2026-09-18 실측 — 감지기가 잡았다).
+ *   원 저자의 의도가 CSS 에 남아 있지 않아, 부품 주석이 말하는 「칸 아래」에 맞는 **가장 작은
+ *   규칙**으로 되살린다.
+ */
+.pop-ui .pack-work-inline-error {
+  margin-block-start: var(--space-2);
+}
+
 /* 한 줄씩 제 줄에 선다 — 좁아서 접히는 것이 아니라 뜻 단위로 나눈 두 줄이다(사용자 지시 2026-09-15). */
 .pop-ui .pop-notice-label__line {
   display: block;
@@ -6360,6 +6362,17 @@
   display: flex;
   align-items: center;
   gap: var(--space-3);
+}
+
+/*
+ * P-04-04 「인쇄 대상」 제목 옆 「하나 이상 선택」 표식 — **줄어들지 않는다.**
+ *
+ * ⛔ 위 제목 줄이 `flex` 라 표식이 기본값(`flex: 0 1 auto`)으로 «줄어든다» — 제목이 길어지는
+ *    베트남어에서 그 말이 먼저 눌려 잘린다. 고를 것이 남았다는 사실은 잘리면 뜻을 잃는다.
+ * ⚠ 클래스는 `#1333` 이 세웠는데 정의가 함께 오지 않았다(2026-09-18 실측).
+ */
+.pop-ui .pop-repack-target-required {
+  flex: 0 0 auto;
 }
 
 /*
