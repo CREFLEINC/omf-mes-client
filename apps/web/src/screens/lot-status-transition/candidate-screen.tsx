@@ -23,7 +23,10 @@ import {
 } from '../../patterns/lookup-display';
 import { runRequest } from '../../patterns/request';
 import { useLotStatusOptions } from '../lot-status-history/options';
-import { useItemReferenceOptions } from '../lot-status-history/reference-options';
+import {
+  useItemNameSources,
+  useItemReferenceOptions,
+} from '../lot-status-history/reference-options';
 import {
   defaultTransitionPeriod,
   toTransitionPeriodBounds,
@@ -175,6 +178,9 @@ export const LotStatusTransitionCandidateScreen = () => {
     [queryClient],
   );
   const items = useItemReferenceOptions();
+  const itemNames = useItemNameSources(
+    candidates.data?.items.map((candidate) => candidate.itemId) ?? [],
+  );
   const statuses = useLotStatusOptions();
   const periodId = useId();
   const periodError = validateTransitionPeriod(draft);
@@ -194,7 +200,12 @@ export const LotStatusTransitionCandidateScreen = () => {
   const itemOptions = selectableLookupOptions(itemSource, draft.itemId);
   const statusOptions =
     statuses.data?.items.map((item) => ({ value: item.code, label: item.label })) ?? [];
-  const itemLabel = (itemId: number): string => lookupDisplayLabelWithInactive(itemSource, itemId);
+  /* 이름은 보이는 행의 품목 상세로 푼다 — 품목 목록은 첫 쪽만 받아 그 밖 품목이 「알 수 없음」이 된다(#1336). */
+  const itemLabel = (itemId: number): string =>
+    lookupDisplayLabelWithInactive(
+      itemNames.get(itemId) ?? { entries: [], isError: false, isLoading: true },
+      itemId,
+    );
   const statusLabel = (code: string): string =>
     statusOptions.find((option) => option.value === code)?.label ?? t.statusUnknown(code);
   const changePage = (next: number): void => {
