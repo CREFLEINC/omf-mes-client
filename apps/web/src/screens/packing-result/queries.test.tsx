@@ -2,7 +2,12 @@ import { act, waitFor } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
 import { createStubFetch, jsonResponse, renderHookWithProviders } from '../../test/api-harness';
-import { useLotScan, useShipmentAllocations, useShipmentScan, useTodayShipments } from './queries';
+import {
+  useLotScan,
+  useShipmentAllocations,
+  useShipmentSelection,
+  useTodayShipments,
+} from './queries';
 
 const allocation = (id: number) => ({
   shipmentLotAllocationId: id,
@@ -52,44 +57,10 @@ describe('packing-result queries — 완전 조회', () => {
     });
   });
 
-  it('출하번호 스캔 뒤 미포장 배분도 page.total까지 모두 읽는다', async () => {
+  it('출하대상을 고르면 미포장 배분을 page.total까지 모두 읽는다', async () => {
     const allocationPages: number[] = [];
-    const shipmentRequests: URL[] = [];
-    const { result } = renderHookWithProviders(useShipmentScan, {
+    const { result } = renderHookWithProviders(useShipmentSelection, {
       fetch: createStubFetch([
-        {
-          match: (request) => new URL(request.url).pathname === '/logistics/shipments',
-          respond: (request) => {
-            shipmentRequests.push(new URL(request.url));
-
-            return jsonResponse({
-              /*
-               * ⭐ `q`는 부분 일치일 수 있다(원본의 `shipmentNo` 정확 일치 파라미터가 서버
-               * 구현 기준에는 없다) — 비슷한 번호를 하나 섞어 정확히 같은 번호만 골라내는지
-               * 함께 본다.
-               */
-              items: [
-                {
-                  shipmentId: 500,
-                  shipmentNo: 'SYN-SH-501-B',
-                  shipmentRequestId: 700,
-                  warehouseId: 1001,
-                  statusCode: 'PICKED',
-                  expedited: false,
-                },
-                {
-                  shipmentId: 501,
-                  shipmentNo: 'SYN-SH-501',
-                  shipmentRequestId: 701,
-                  warehouseId: 1001,
-                  statusCode: 'PICKED',
-                  expedited: false,
-                },
-              ],
-              page: { page: 1, size: 50, total: 2 },
-            });
-          },
-        },
         {
           match: (request) =>
             new URL(request.url).pathname === '/logistics/shipment-lot-allocations',
@@ -107,21 +78,27 @@ describe('packing-result queries — 완전 조회', () => {
     });
 
     await act(async () => {
-      result.current.mutate('SYN-SH-501');
+      result.current.mutate({
+        shipmentId: 501,
+        shipmentNo: 'SYN-SH-501',
+        shipmentRequestId: 701,
+        warehouseId: 1001,
+        statusCode: 'PICKED',
+        expedited: false,
+      });
     });
     await waitFor(() => {
       expect(result.current.data?.allocations).toHaveLength(2);
     });
     expect(allocationPages).toEqual([1, 2]);
-    /* 정확히 같은 번호(SYN-SH-501)만 골랐다 — 부분 일치(SYN-SH-501-B)로 엉뚱한 출하를 집지 않는다. */
     expect(result.current.data?.shipmentId).toBe(501);
 
-    /* ⭐ 통보 219 — 이 호출도 이제 shipDateFrom 없이는 400이라 첫 호출부터 실어 보낸다. */
-    const [sent] = shipmentRequests;
-    expect(sent?.searchParams.has('shipDateFrom')).toBe(true);
-    expect(sent?.searchParams.get('q')).toBe('SYN-SH-501');
-    /* ⛔ 서버 구현 기준에 없는 파라미터를 보내지 않는다 — 원본 계약의 shipmentNo는 없어졌다. */
-    expect(sent?.searchParams.has('shipmentNo')).toBe(false);
+    /*
+     * ⛔ **출하를 다시 조회하지 않는다**(#1351). 고른 것이 이미 목록의 한 행이라 같은 값을
+     *    서버에 한 번 더 물을 이유가 없다 — 물으면 목록과 다른 필터로 나가던 옛 스캔 조회가
+     *    되살아난다.
+     */
+    expect(allocationPages).not.toContain(0);
   });
 
   it('출하 진행 배분은 page.total까지 모두 읽는다', async () => {

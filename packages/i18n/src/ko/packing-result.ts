@@ -35,7 +35,10 @@ export const packingResult = {
   },
   scan: {
     label: {
-      shipment: '출하번호',
+      /*
+       * ⛔ **출하번호 칸이 사라졌다**(#1351) — 이 이름도 함께 걷었다. 출하는 위 `shipmentSelection`
+       *    줄에서 고르고, 찍는 것도 그 팝업이 받는다.
+       */
       productionLot: '생산LOT',
     },
     manualEntry: '직접 입력',
@@ -44,8 +47,6 @@ export const packingResult = {
     todayPickedShipments: '당일 피킹 완료 출하',
     /** 둘째 스캔은 첫째가 끝나야 열린다 — 왜 잠겼는지 적는다. */
     lotLocked: '출하대상을 먼저 선택하세요',
-    /** 출하가 이미 정해졌다 — 빈 출하번호 칸을 또 채워야 하는 줄로 읽히지 않게 칸 안에 적는다(사용자 지시 2026-09-17). */
-    shipmentChosen: '선택 완료 · 다른 출하대상일 시 출하번호를 다시 스캔해주세요',
   },
   match: {
     /** 읽은 LOT 번호를 앞에 세운다 — 칸 옆 번호 표시를 걷었다(사용자 지시 2026-09-17). */
@@ -54,7 +55,6 @@ export const packingResult = {
     notAllocated: '생산LOT 번호는 선택한 출하에 포함되지 않은 LOT입니다.',
     /** 서버가 사유를 주지 않았을 때. 판정 자체는 「다르다」이므로 막는 것은 같다. */
     unknownReason: '이 납품라벨과 맞지 않는 LOT 입니다',
-    shipmentNotFound: '피킹 완료된 출하번호를 찾지 못했습니다',
     openUnitBlocksShipmentChange: '열린 포장을 먼저 취소한 뒤 다른 출하를 읽으세요',
     lookupFailed: '조회하지 못했습니다. 다시 읽어 주세요',
   },

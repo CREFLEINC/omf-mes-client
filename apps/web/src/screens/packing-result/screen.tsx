@@ -23,13 +23,12 @@ import {
   usePackingConfirm,
   type OpenHandlingUnit,
 } from './mutations';
-import { addLine, lineOf, qtyError, remainingOf, removeLine, toProgress } from './packing-draft';
+import { addLine, lineOf, qtyError, remainingOf, removeLine } from './packing-draft';
 import {
   useHandlingUnitTypeOptions,
   useUomDecimals,
   useLotScan,
   useShipmentAllocations,
-  useShipmentScan,
   useShipmentSelection,
   useTodayShipments,
   useUnassignedPackedBoxCount,
@@ -91,7 +90,12 @@ export const PackingResultScreen = () => {
    * 대조할 수 없다.
    */
   const [labelCode, setLabelCode] = useState<string | null>(null);
-  const [entryError, setEntryError] = useState<'shipment' | 'open-unit' | null>(null);
+  /*
+   * ⛔ **「출하번호를 찾지 못했다」 갈래가 없다**(#1351). 그 갈래는 «목록 밖» 번호를 찍을 수
+   *    있을 때만 생기는데, 스캔이 출하대상 목록 안으로 들어와 못 찾는 값은 목록이 「표시할
+   *    항목이 없습니다」로 이미 말한다.
+   */
+  const [entryError, setEntryError] = useState<'open-unit' | null>(null);
   /** ② 마지막 판정. 담은 뒤에도 남겨 둔다 — 방금 읽은 것이 무엇이었는지가 사라지면 안 된다. */
   const [matched, setMatched] = useState<MatchedLot | null>(null);
   const [lines, setLines] = useState<PackedLine[]>([]);
@@ -108,7 +112,6 @@ export const PackingResultScreen = () => {
   const [isLabelMode, setLabelMode] = useState(false);
   const [isConfirmOpen, setConfirmOpen] = useState(false);
 
-  const shipmentScan = useShipmentScan();
   const shipmentSelection = useShipmentSelection();
   const todayShipments = useTodayShipments();
   const lotScan = useLotScan();
@@ -118,29 +121,12 @@ export const PackingResultScreen = () => {
   const shipmentId = entry?.shipmentId ?? label?.shipmentId ?? null;
   const warehouseId = label?.warehouseId ?? null;
   const shipmentAllocations = useShipmentAllocations(shipmentId);
-  const progress = toProgress(shipmentAllocations.allocations);
   /*
    * ⭐ **다음 걸음이 남았는지 여기서 말한다**(SHIP-UNIT-01 §7). 포장을 마친 담당은 이 화면을
    *    떠나기 전에 「출하 단위에 담을 상자가 남았나」를 알아야 한다 — 모르면 P-04-05 를 아예
    *    열지 않고, 상자는 구성되지 않은 채 남는다.
    */
   const unassignedBoxes = useUnassignedPackedBoxCount(shipmentId, entry?.shipmentNo ?? null);
-  /*
-   * ⛔⛔ **`ShipmentLotAllocation.shippingInspectionStatusCode` 는 목표 선택 필드다**.
-   * 현행 서버는 다섯 상태값(`NOT_REQUIRED`·`PENDING`·`PASSED`·`REJECTED`·`HELD`)
-   * 중 어느 것도 배분 응답에 아직 싣지 않는다.
-   * 남은 것은 `oqcPassed`(불리언)뿐인데, 계약이 「검사 대상이 아닌 배분도 true 로 내린다」고
-   * 못박아 **`NOT_REQUIRED` 와 `PASSED` 를 한 값으로 묶는다** — 그 값으로 다섯 상태 중 하나를
-   * 되짚으면 실제로는 「대기·불합격·보류」였던 배분이 「합격」처럼 보일 수 있다(추측 금지).
-   * 그래서 상태 «문구»는 지어내지 않고 이미 있던 「모른다」 표시(`—`)로 떨어진다.
-   *
-   * ⭐ **이 값이 무엇도 막지 않는다.** 한때 납품 라벨 발행 자격이 `oqcPassed` 였는데, 라벨의
-   * 주인이 출하 단위로 옮겨가며 자격도 **출하 단위의 마감 여부**가 됐다(SHIP-UNIT-01 P5 ·
-   * `shipping-packing-label/types.ts` 의 `toDeliveryRow`). 이 줄은 «표시»만 남았고 그 표시도
-   * 지어내지 않는다 — 서버가 상태값을 다시 내리면 이 자리만 되돌리면 된다.
-   */
-  const oqcStatuses = shipmentAllocations.allocations.length > 0 ? ['—'] : [];
-
   const createUnit = useHandlingUnitCreate();
   const cancelUnit = useHandlingUnitCancel();
   /*
@@ -207,21 +193,22 @@ export const PackingResultScreen = () => {
     return true;
   };
 
-  const scanShipment = (shipmentNo: string): void => {
-    const isSameEntry = entry?.shipmentNo === shipmentNo;
-    if (!isSameEntry && !prepareEntryChange()) return;
+  /**
+   * 출하대상에서 한 건을 골랐다 — **목록에서 누르든 찍어서 골라지든 같은 길이다**(#1351).
+   *
+   * ⚠ **이미 고른 것을 다시 고르면 아무것도 버리지 않는다.** `prepareEntryChange` 는 담긴 줄과
+   *   수량을 비우므로, 같은 출하를 한 번 더 찍었을 때 그것이 돌면 **담던 것이 사라진다.**
+   */
+  const chooseShipment = (shipmentId_: string): void => {
+    const selected = todayShipments.shipments.find(
+      (shipment) => String(shipment.shipmentId) === shipmentId_,
+    );
+    if (selected === undefined) return;
+    if (entry?.shipmentId === selected.shipmentId) return;
+    if (!prepareEntryChange()) return;
 
     setConfirmedNo(null);
-    shipmentScan.mutate(shipmentNo, {
-      onSuccess: (outcome) => {
-        if (outcome === null) {
-          setEntryError('shipment');
-          return;
-        }
-
-        applyEntry(outcome);
-      },
-    });
+    shipmentSelection.mutate(selected, { onSuccess: applyEntry });
   };
 
   const scanLot = (code: string): void => {
@@ -300,7 +287,6 @@ export const PackingResultScreen = () => {
     if (entryError === 'open-unit') {
       return { tone: 'error', text: t.match.openUnitBlocksShipmentChange };
     }
-    if (entryError === 'shipment') return { tone: 'error', text: t.match.shipmentNotFound };
     if (lotScan.isError) return { tone: 'error', text: t.match.lookupFailed };
     if (matched === null) return null;
     if (matched.verdict.matched) {
@@ -448,14 +434,20 @@ export const PackingResultScreen = () => {
             }
             /* ⭐ 사번이 없으면 출하대상부터 못 고른다(사용자 지시 2026-09-17). */
             disabled={!hasWorkerNo || todayShipments.isError || shipmentSelection.isPending}
+            /*
+             * ⭐ **찍어서도 고른다**(사용자 지시 2026-09-18 · #1351). 종전에는 아래에 「출하번호」
+             *    칸이 따로 서서 스캔을 받았는데, **그 번호를 포장대로 들고 오는 종이가 없어**
+             *    작업자가 채울 수 없는 칸이었다(`docs/decisions.md` 18). 스캔을 없애지 않고
+             *    자리를 이 줄로 옮긴다 — 「어느 출하인가」를 묻는 자리가 하나가 된다.
+             *
+             * ⛔ **후보를 새로 가져오지 않는다.** 찍은 값은 이미 받아 둔 이 목록 안에서만
+             *    걸러진다 — 서버를 다시 부르면 목록과 어긋나는 두 번째 조회가 생긴다.
+             */
+            scannable
             value={entry === null ? null : String(entry.shipmentId)}
             onChange={(value) => {
-              const selected = todayShipments.shipments.find(
-                (shipment) => String(shipment.shipmentId) === value,
-              );
-              if (selected === undefined) return;
-              if (!prepareEntryChange()) return;
-              shipmentSelection.mutate(selected, { onSuccess: applyEntry });
+              if (value === null) return;
+              chooseShipment(value);
             }}
             options={todayShipments.shipments.map((shipment) => ({
               value: String(shipment.shipmentId),
@@ -464,32 +456,19 @@ export const PackingResultScreen = () => {
           />
         </section>
 
-        {/* ① 출하 선택 — 정확 일치 스캔 또는 현재 영업일 목록. */}
-        {/* ⛔ 구획에 칸과 «같은 이름»을 달지 않는다 — 이름이 겹치면 무엇을 가리키는지 흐려진다. */}
-        <section className="packing-scan">
-          <ScanField
-            label={t.scan.label.shipment}
-            isScanning={shipmentScan.isPending}
-            /* ⭐ 스캐너가 Enter 를 붙이지 않아도 읽는다(사용자 지시 2026-09-17 · 바코드 입력 칸 공통). */
-            autoSubmit
-            /*
-             * ⭐ 출하가 정해지면 칸 안에 다시 스캔 안내를 적는다(사용자 지시 2026-09-17). 칸이
-             *    비어 있으면 출하번호를 한 번 더 넣어야 하는 줄로 읽혔다. 칸은 그대로 둔다 —
-             *    다른 출하를 스캔으로 고르는 길이다.
-             */
-            lockReason={hasWorkerNo ? undefined : ''}
-            hint={shipmentId === null ? undefined : t.scan.shipmentChosen}
-            onScan={scanShipment}
-          />
-          {/*
-           * ⭐ **읽은 출하번호를 칸 옆에 적지 않는다**(사용자 지시 2026-09-17). 출하 대상 줄에
-           *    같은 번호가 이미 있고, 칸 안의 안내가 정해졌음을 말한다. 설계 §3 도면은
-           *    칸 옆에 번호를 그렸지만 사용자가 비교 후 뺐다.
-           *
-           * 빈 자리는 남긴다 — ② 생산LOT 줄과 칸 폭이 같아야 두 줄이 같은 짜임으로 읽힌다.
-           */}
-          <p className="packing-scanned-code" />
-        </section>
+        {/*
+         * ⛔ **「출하번호」 스캔 칸을 따로 두지 않는다**(사용자 지시 2026-09-18 · #1351).
+         *
+         * 설계 §3 도면의 ① 은 **납품라벨**(`DL-…`)을 읽는 칸이었는데, 납품 라벨의 주인이
+         * **출하 단위로 옮겨가**(SHIP-UNIT-01 · P-04-05) 이 화면은 그것을 더 이상 내지 않는다.
+         * 남은 구현은 출하번호 정확 일치 조회였고, **그 번호를 포장대로 들고 오는 물건이 없어**
+         * 작업자가 채울 수 없는 칸이 서 있었다. 두 칸이 나란히 있어 「출하번호를 따로 알아내야
+         * 한다」로 읽혔다.
+         *
+         * ⭐ **스캔은 없애지 않고 위 출하대상 줄로 옮겼다**(`scannable`). 되돌릴 때 함께 돌아오는
+         *    것은 칸 하나가 아니라 **조회 하나**다 — `queries.ts` 의 `useShipmentScan` 이 그것이고,
+         *    그 조회가 목록과 다른 필터로 나가던 것이 이 변경의 근거다(`docs/decisions.md` 18).
+         */}
 
         {/* ② 생산LOT 스캔 — 판정 문구가 칸 바로 아래 붙는다. 떨어뜨리면 어느 스캔의 답인지 흐려진다. */}
         <section className="packing-scan">
@@ -556,6 +535,73 @@ export const PackingResultScreen = () => {
               {typeOptions.isUnavailable && <p className="field-note">{t.notes.typeUnavailable}</p>}
             </div>
 
+            {/*
+             * 수량 키패드는 ③ 안에서 «유형 아래»에 선다. 스펙 그림에 키패드 자리가 따로 없는데
+             * D-4 는 화면 내장 키패드를 요구한다 — 세로 예산이 슬랙 0 이라 새 구획을 본문에 붙일
+             * 수 없어 이 구획의 «왼쪽 단»을 입력 도구 자리로 쓴다.
+             *
+             * ⛔ **읽기 전에는 이 칸을 세우지 않는다**(사용자 지적 2026-09-10). 앞선 판은 빈 칸을
+             *   두고 「생산LOT 을 읽으면 수량을 칠 수 있습니다」로 채웠는데, 스펙에 없는 문장이다.
+             *
+             * ⚠ 서고 사라지는 것은 이 칸뿐이다 — **오른쪽 담긴 목록은 그대로 있는다**(#1351).
+             */}
+            {packable === undefined ? null : (
+              <div className="packing-keypad">
+                {/*
+                 * ⭐ **친 값을 여기서 보인다.** DS 키패드는 키만 그리고 버퍼를 보이지 않는다 —
+                 * 누른 숫자가 어디로 갔는지 보이지 않으면 작업자가 오입력을 눈치채지 못한다.
+                 * 남은 수량을 옆에 붙여 「얼마까지 칠 수 있는가」를 같은 눈길에 둔다.
+                 */}
+                <p className="packing-qty-readout">
+                  <span className="packing-qty-caption">{t.qty.entryLabel}</span>
+                  <span className="packing-qty-value">{qty === '' ? t.qty.entryEmpty : qty}</span>
+                  <span className="packing-qty-room">{t.qty.room(qtyRoom)}</span>
+                </p>
+                {/*
+                 * ⭐ **사번 입력 화면(P-CO-01)과 같은 키패드다**(사용자 지시 2026-09-17) — 같은 부품
+                 *    (`NumericKeypad`)·같은 키 배열(← 0 지움)·같은 72 높이, 아래에 폭 전체 [확인].
+                 *    DS `NumberPad` 는 POP 이 높이를 40 으로 눌러 두어 작고 배열도 달랐다.
+                 *
+                 * 묶음에 수량 이름을 달아 두어 «키패드와 확인이 한 조작»으로 읽힌다.
+                 */}
+                <div className="packing-keypad-group" role="group" aria-label={t.qty.label}>
+                  <NumericKeypad
+                    value={qty}
+                    onChange={setQty}
+                    dropLeadingZero
+                    allowDecimal={allowsDecimal(packable.uomId)}
+                    decimalLabel={t.qty.decimal}
+                    className="packing-keypad-pad"
+                    label={t.qty.keypad}
+                    backspaceLabel={t.qty.backspace}
+                    clearLabel={t.qty.clear}
+                    keySize="2xl"
+                  />
+                  <Button
+                    type="button"
+                    variant="filled"
+                    size="2xl"
+                    className="packing-keypad-submit"
+                    disabled={qty === '' || qtyIssue !== undefined}
+                    onClick={addToPacking}
+                  >
+                    {t.qty.submit}
+                  </Button>
+                </div>
+                {/* ⛔ 수량 오류 문구(0 초과·배분 한도)는 적지 않는다 — [확인] 잠김만 둔다(사용자 지시 2026-09-17). */}
+              </div>
+            )}
+          </div>
+
+          {/*
+           * ⭐ **담긴 목록은 오른쪽 단에 «늘» 선다**(사용자 지시 2026-09-18 · #1351).
+           *
+           * 종전에는 목록이 왼쪽 단에 있고 오른쪽이 키패드 자리였는데, 키패드는 LOT 을 읽어야
+           * 서고 안 서면 CSS 가 목록을 가로 전체로 늘렸다 — **LOT 을 읽을 때마다 목록의 폭과
+           * 줄바꿈이 널뛰었다.** 담은 것이 늘 같은 자리에 같은 폭으로 쌓이는 쪽이 낫다. 바뀌는
+           * 것은 입력 도구(유형·키패드)뿐이고, 그것을 왼쪽 단이 받는다.
+           */}
+          <div className="packing-compose-list">
             <ContentsTable
               lines={lines}
               onRemove={(allocationId) => {
@@ -563,80 +609,29 @@ export const PackingResultScreen = () => {
               }}
             />
           </div>
-
-          {/*
-           * 수량 키패드는 ③ 안에서 «옆»에 선다. 스펙 그림에 키패드 자리가 따로 없는데 D-4 는
-           * 화면 내장 키패드를 요구한다 — 세로 예산이 슬랙 0 이라 새 구획을 아래에 붙일 수 없어
-           * 이 구획의 남는 «가로»를 쓴다.
-           *
-           * ⛔ **읽기 전에는 이 칸을 세우지 않는다**(사용자 지적 2026-09-10). 앞선 판은 빈 칸을
-           *   두고 「생산LOT 을 읽으면 수량을 칠 수 있습니다」로 채웠는데, 스펙에 없는 문장인
-           *   데다 그 자리가 늘 ③ 의 가로 절반을 차지해 담긴 줄이 그만큼 좁아졌다.
-           */}
-          {packable === undefined ? null : (
-            <div className="packing-keypad">
-              {/*
-               * ⭐ **친 값을 여기서 보인다.** DS 키패드는 키만 그리고 버퍼를 보이지 않는다 —
-               * 누른 숫자가 어디로 갔는지 보이지 않으면 작업자가 오입력을 눈치채지 못한다.
-               * 남은 수량을 옆에 붙여 「얼마까지 칠 수 있는가」를 같은 눈길에 둔다.
-               */}
-              <p className="packing-qty-readout">
-                <span className="packing-qty-caption">{t.qty.entryLabel}</span>
-                <span className="packing-qty-value">{qty === '' ? t.qty.entryEmpty : qty}</span>
-                <span className="packing-qty-room">{t.qty.room(qtyRoom)}</span>
-              </p>
-              {/*
-               * ⭐ **사번 입력 화면(P-CO-01)과 같은 키패드다**(사용자 지시 2026-09-17) — 같은 부품
-               *    (`NumericKeypad`)·같은 키 배열(← 0 지움)·같은 72 높이, 아래에 폭 전체 [확인].
-               *    DS `NumberPad` 는 POP 이 높이를 40 으로 눌러 두어 작고 배열도 달랐다.
-               *
-               * 묶음에 수량 이름을 달아 두어 «키패드와 확인이 한 조작»으로 읽힌다.
-               */}
-              <div className="packing-keypad-group" role="group" aria-label={t.qty.label}>
-                <NumericKeypad
-                  value={qty}
-                  onChange={setQty}
-                  dropLeadingZero
-                  allowDecimal={allowsDecimal(packable.uomId)}
-                  decimalLabel={t.qty.decimal}
-                  className="packing-keypad-pad"
-                  label={t.qty.keypad}
-                  backspaceLabel={t.qty.backspace}
-                  clearLabel={t.qty.clear}
-                  keySize="2xl"
-                />
-                <Button
-                  type="button"
-                  variant="filled"
-                  size="2xl"
-                  className="packing-keypad-submit"
-                  disabled={qty === '' || qtyIssue !== undefined}
-                  onClick={addToPacking}
-                >
-                  {t.qty.submit}
-                </Button>
-              </div>
-              {/* ⛔ 수량 오류 문구(0 초과·배분 한도)는 적지 않는다 — [확인] 잠김만 둔다(사용자 지시 2026-09-17). */}
-            </div>
-          )}
         </section>
 
         {/*
-         * ⭐ **OQC 상태는 제 줄이고 늘 선다**(스펙 §3 도면 · 사용자 지적 2026-09-10). ④ 진행
-         *   줄에 끼워 두었더니 「포장 N 개 · 미포장 N」과 한 덩어리로 읽혔는데, 이 값은 진행
-         *   수치가 아니라 **납품 라벨을 낼 수 있는가를 가르는 게이트**다(§7). 값이 있을 때만 세우면
-         *   출하를 고르기 전에는 줄 자체가 없어, 납품 라벨이 무엇에 걸려 있는지 볼 자리가
-         *   사라진다. ⛔ 값이 없을 때 문장으로 채우지 않는다 — 자리만 지킨다.
+         * ⛔ **OQC 상태 줄을 두지 않는다**(사용자 지시 2026-09-18 · #1351). 종전 주석은 「스펙
+         *    §3 도면」을 근거로 적었는데 **고정 설계 `P-04-01` 문서에 `OQC` 라는 말이 한 번도
+         *    나오지 않는다** — §3 도면의 본문은 ①②③④ 넷뿐이다. 걷는 것이 설계로 돌아가는 쪽이다.
+         *
+         * ⚠ 값 자체도 `—` 밖에 못 찍었다 — 서버가 다섯 상태값을 배분 응답에 싣지 않고, 남은
+         *   `oqcPassed` 는 「비대상」과 「합격」을 한 값으로 묶는다(추측 금지). 라벨 발행 자격도
+         *   **출하 단위의 마감 여부**로 옮겨가(SHIP-UNIT-01 P5) 이 값은 아무것도 막지 않았다.
          */}
-        <section className="packing-oqc" aria-label={t.oqc.label}>
-          <span className="field-label">{t.oqc.label}</span>
-          <span>{oqcStatuses.join(' · ')}</span>
-        </section>
 
-        {/* ④ 진행 — ⛔ 「예상 N」이 없어 분모가 없다. 진행 막대를 그리지 않는다(§3-3). */}
+        {/*
+         * ④ 진행 — ⛔ 「예상 N」이 없어 분모가 없다. 진행 막대를 그리지 않는다(§3-3).
+         *
+         * ⛔ **「이 출하 포장 N 개」·「미포장 N」을 적지 않는다**(사용자 지시 2026-09-18 · #1351).
+         *    §3 도면 ④ 가 그린 두 수치이고, 걷는 것이 설계 이탈이라 `docs/decisions.md` 18 에 남겼다.
+         *
+         * ⭐ **「미구성 상자」는 남는다**(SHIP-UNIT-01 §7). 포장을 마친 담당이 이 화면을 떠나기
+         *    전에 「출하 단위에 담을 상자가 남았나」를 아는 **유일한 자리**다 — 모르면 P-04-05 를
+         *    아예 열지 않고 상자는 구성되지 않은 채 남는다.
+         */}
         <section className="packing-progress" aria-label={t.panes.progress}>
-          <span>{t.progress.packed(progress.packedCount)}</span>
-          <span>{t.progress.unpacked(progress.unpackedQty)}</span>
           {/*
            * ⛔ **수가 0 이어도 감춘다**가 아니라 **0 도 적는다**(공유계약 G-9) — 「없다」를
            *    보이는 것이 이 줄의 일이다. 못 받았을 때만 다른 말을 한다.

@@ -41,7 +41,6 @@ interface Options {
   match?: { matched: boolean; reasonCode?: string };
   /** 첫 스캔이 아무것도 못 찾은 상태 */
   /** 출하번호 정확 일치 조회가 아무것도 못 찾은 상태 */
-  shipmentNotFound?: boolean;
   /** 셸이 넘기는 사번. 생략하면 '3391' */
   workerNo?: string | null;
   /** 단말 게이팅 플래그 */
@@ -120,24 +119,31 @@ const renderScreen = (options: Options = {}) => {
           });
         }
 
-        const missing =
-          queryOf(request).has('q') &&
-          (options.shipmentNotFound === true || requestedNo?.includes('없음') === true);
-
+        /*
+         * ⭐ **출하대상 목록이다**(#1351). 종전에는 번호로 좁힌 스캔 조회가 따로 있어 `q` 갈래를
+         *    두었는데, 그 조회를 걷고 **고를 수 있는 것을 이 목록 하나로** 정했다. 두 건을 내려
+         *    전환(다른 출하 고르기) 시험이 설 자리를 만든다.
+         */
         return jsonResponse({
-          items: missing
-            ? []
-            : [
-                {
-                  shipmentId: requestedNo === 'SYN-SH-0502' ? 502 : 501,
-                  shipmentNo: requestedNo ?? 'SYN-SH-0501',
-                  shipmentRequestId: 1,
-                  warehouseId: 1001,
-                  statusCode: 'CONFIRMED',
-                  expedited: false,
-                },
-              ],
-          page: { page: 1, size: 50, total: 1 },
+          items: [
+            {
+              shipmentId: 501,
+              shipmentNo: 'SYN-SH-0501',
+              shipmentRequestId: 1,
+              warehouseId: 1001,
+              statusCode: 'CONFIRMED',
+              expedited: false,
+            },
+            {
+              shipmentId: 502,
+              shipmentNo: 'SYN-SH-0502',
+              shipmentRequestId: 2,
+              warehouseId: 1001,
+              statusCode: 'CONFIRMED',
+              expedited: false,
+            },
+          ],
+          page: { page: 1, size: 50, total: 2 },
         });
       },
     },
@@ -263,54 +269,86 @@ const scan = async (
   await user.type(screen.getByLabelText(label), `${code}{Enter}`);
 };
 
+/** 출하대상 팝업을 연다 — 고르는 두 길(누르기·찍기)이 여기서 갈린다. */
+const openShipmentDialog = async (user: ReturnType<typeof userEvent.setup>): Promise<void> => {
+  await user.click(screen.getByRole('combobox', { name: t.scan.shipmentSelection }));
+};
+
+/** 출하대상 팝업에서 한 건을 «눌러» 고른다. */
+const chooseShipment = async (
+  user: ReturnType<typeof userEvent.setup>,
+  shipmentNo = 'SYN-SH-0501',
+): Promise<void> => {
+  await openShipmentDialog(user);
+  await user.click(await screen.findByRole('option', { name: shipmentNo }));
+};
+
 describe('PackingResultScreen', () => {
   /* ⭐ 사번이 없으면 출하대상부터 못 고르고, 맨 위 경고 띠가 사유를 말한다(사용자 지시 2026-09-17). */
   it('사번이 없으면 출하대상 선택과 스캔 칸이 잠기고 맨 위에 사번 경고가 선다', async () => {
     renderScreen({ workerNo: null });
 
     expect(await screen.findByText(messages.popChrome.workerMissing)).toBeInTheDocument();
-    expect(screen.getByLabelText(t.scan.label.shipment)).toBeDisabled();
     expect(screen.getByLabelText(t.scan.label.productionLot)).toBeDisabled();
     expect(screen.getByRole('combobox', { name: t.scan.shipmentSelection })).toBeDisabled();
     expect(screen.getByRole('combobox', { name: t.fields.handlingUnitType })).toBeDisabled();
   });
 
-  it('출하번호 스캔은 정확 일치로 찾고 선택한 출하의 미포장 배분을 이어서 읽는다', async () => {
+  it('출하대상을 고르면 그 출하의 미포장 배분을 이어서 읽는다', async () => {
     const user = userEvent.setup();
     const reads: Request[] = [];
     renderScreen({ reads });
 
-    await scan(user, t.scan.label.shipment, 'SYN-SH-0501');
+    await chooseShipment(user);
 
     await waitFor(() => {
       expect(screen.getByLabelText(t.scan.label.productionLot)).toBeEnabled();
     });
-    /*
-     * ⚠ **`shipmentNo` 는 이제 보내지 않는다**(통보 219 · `queries.ts` 머리말) — 정확 일치
-     * 스캔도 검색용 `q` 로 나가고, 응답에서 정확히 같은 번호만 다시 골라낸다.
-     */
-    const shipmentRequest = reads.find(
-      (request) => pathOf(request) === '/logistics/shipments' && queryOf(request).has('q'),
-    );
+
     const allocationRequest = reads.find(
       (request) =>
         pathOf(request) === '/logistics/shipment-lot-allocations' &&
         queryOf(request).get('unpackedOnly') === 'true',
     );
 
-    expect(queryOf(shipmentRequest as Request).get('q')).toBe('SYN-SH-0501');
-    expect(queryOf(shipmentRequest as Request).get('pickedOnly')).toBe('true');
-    expect(queryOf(shipmentRequest as Request).has('shipDateFrom')).toBe(true);
     expect(queryOf(allocationRequest as Request).get('shipmentId')).toBe('501');
+
+    /*
+     * ⛔ **고른 출하를 «다시» 조회하지 않는다**(#1351). 종전에는 번호로 좁힌 두 번째 조회가
+     *    있었고, 그것이 목록과 다른 기간 필터로 나가 「목록엔 없는데 찍으면 잡히는 출하」를
+     *    만들었다. 목록 조회(`pickedOnly` + 기간)만 남는다.
+     */
+    const byNumber = reads.filter(
+      (request) =>
+        pathOf(request) === '/logistics/shipments' &&
+        queryOf(request).has('q') &&
+        !queryOf(request).has('hasUnassignedPackedBox'),
+    );
+
+    expect(byNumber).toHaveLength(0);
   });
 
-  it('피킹 완료된 출하번호를 찾지 못하면 출하 조회 사유로 말한다', async () => {
+  /*
+   * ⭐ **찍어서도 고른다**(#1351). 스캐너가 쏜 값이 후보 하나와 정확히 같아지면 팝업이 스스로
+   *    닫히고 그 출하가 골라진다 — 찍고 나서 또 눌러야 하면 스캔으로 얻는 것이 없다.
+   */
+  it('출하대상 팝업에 출하번호를 찍으면 스스로 골라진다', async () => {
     const user = userEvent.setup();
-    renderScreen({ shipmentNotFound: true });
+    renderScreen();
 
-    await scan(user, t.scan.label.shipment, 'SYN-SH-없음');
+    await openShipmentDialog(user);
+    await user.type(
+      await screen.findByLabelText(messages.popChrome.selectDialog.scanLabel),
+      'SYN-SH-0502',
+    );
 
-    expect(await screen.findByText(t.match.shipmentNotFound)).toBeTruthy();
+    await waitFor(() => {
+      expect(screen.getByText(t.header.shipment(502))).toBeInTheDocument();
+    });
+    /* 팝업이 닫혔다 — 고른 뒤에도 열려 있으면 다음 걸음(생산LOT)이 가려진다. */
+    expect(
+      screen.queryByLabelText(messages.popChrome.selectDialog.scanLabel),
+    ).not.toBeInTheDocument();
   });
 
   /*
@@ -325,7 +363,7 @@ describe('PackingResultScreen', () => {
     const user = userEvent.setup();
     renderScreen({ unassignedBoxes: 3 });
 
-    await scan(user, t.scan.label.shipment, 'SYN-SH-0501');
+    await chooseShipment(user);
 
     expect(await screen.findByText(t.progress.unassigned(3))).toBeInTheDocument();
   });
@@ -335,17 +373,17 @@ describe('PackingResultScreen', () => {
     const user = userEvent.setup();
     renderScreen({ unassignedBoxes: 'error' });
 
-    await scan(user, t.scan.label.shipment, 'SYN-SH-0501');
+    await chooseShipment(user);
 
     expect(await screen.findByText(t.progress.unassignedUnknown)).toBeInTheDocument();
     expect(screen.queryByText(t.progress.unassigned(0))).not.toBeInTheDocument();
   });
 
-  it('들어오면 두 스캔 칸이 서고 생산LOT 칸은 «잠긴 채» 사유를 말한다', () => {
+  it('들어오면 출하대상 줄이 서고 생산LOT 칸은 «잠긴 채» 사유를 말한다', () => {
     renderScreen();
 
     expect(screen.getByRole('heading', { name: t.title })).toBeTruthy();
-    expect(screen.getByLabelText(t.scan.label.shipment)).toBeTruthy();
+    expect(screen.getByRole('combobox', { name: t.scan.shipmentSelection })).toBeTruthy();
     /* 잠긴 사유는 칸 «안»에 선다 — 아래 한 줄로 달면 구획이 그만큼 커진다(§3 예산 88). */
     const lotField = screen.getByLabelText(t.scan.label.productionLot);
 
@@ -353,11 +391,39 @@ describe('PackingResultScreen', () => {
     expect(lotField).toHaveAttribute('placeholder', t.scan.lotLocked);
   });
 
+  /*
+   * ⛔ **스캔 칸은 «하나»다**(사용자 지시 2026-09-18 · #1351). 설계 §3 도면은 둘을 그렸지만 ①
+   *    칸이 읽던 납품 라벨이 출하 단위로 옮겨가(P-04-05) 이 화면에서는 읽을 물건이 사라졌다 —
+   *    남은 출하번호는 포장대로 들고 오는 종이가 없어 «채울 수 없는 칸»이었다.
+   */
+  it('출하번호를 따로 받는 칸을 두지 않는다', () => {
+    renderScreen();
+
+    expect(screen.queryByLabelText('출하번호')).not.toBeInTheDocument();
+  });
+
+  /*
+   * ⛔ **OQC 상태 줄을 두지 않는다**(#1351). 고정 설계 문서에 그 말이 한 번도 나오지 않고, 값도
+   *    `—` 밖에 못 찍었다 — 서버가 다섯 상태값을 배분 응답에 싣지 않는다.
+   * ⛔ **④ 의 「포장 N 개」·「미포장 N」도 적지 않는다.** 「미구성 상자」만 남는다.
+   */
+  it('OQC 상태 줄과 포장·미포장 수치를 그리지 않는다', async () => {
+    const user = userEvent.setup();
+    renderScreen({ unassignedBoxes: 2 });
+
+    await chooseShipment(user);
+    await screen.findByText(t.progress.unassigned(2));
+
+    expect(screen.queryByText(/OQC/u)).not.toBeInTheDocument();
+    expect(screen.queryByText(/미포장/u)).not.toBeInTheDocument();
+    expect(screen.queryByText(/이 출하 포장/u)).not.toBeInTheDocument();
+  });
+
   it('라벨 모드에 들어가도 돌아오는 단추가 남는다', async () => {
     const user = userEvent.setup();
     renderScreen();
 
-    await scan(user, t.scan.label.shipment, 'SYN-SH-0501');
+    await chooseShipment(user);
     await waitFor(() => {
       expect(screen.getByRole('button', { name: t.actions.labels })).toBeEnabled();
     });
@@ -375,27 +441,28 @@ describe('PackingResultScreen', () => {
     expect(await screen.findByRole('button', { name: t.actions.confirm })).toBeInTheDocument();
   });
 
-  it('새 출하번호 조회가 실패하면 이전 출하 문맥을 폐기해 그 출하로 계속 작업하지 못한다', async () => {
+  /*
+   * ⭐ **다른 출하로 갈아타면 이전 출하 문맥을 버린다.** 남겨 두면 화면에 보이는 출하와 쓰기
+   *    대상이 달라진다 — 담긴 줄이 엉뚱한 출하로 확정될 수 있다.
+   */
+  it('다른 출하대상을 고르면 이전 출하 문맥을 폐기한다', async () => {
     const user = userEvent.setup();
     renderScreen();
 
-    await scan(user, t.scan.label.shipment, 'SYN-SH-0501');
-    await waitFor(() => {
-      expect(screen.getByLabelText(t.scan.label.productionLot)).toBeEnabled();
-    });
-    await scan(user, t.scan.label.shipment, 'SYN-SH-없음');
+    await chooseShipment(user);
+    await screen.findByText(t.header.shipment(501));
 
-    expect(await screen.findByText(t.match.shipmentNotFound)).toBeInTheDocument();
-    expect(screen.getByLabelText(t.scan.label.productionLot)).toBeDisabled();
+    await chooseShipment(user, 'SYN-SH-0502');
+
+    expect(await screen.findByText(t.header.shipment(502))).toBeInTheDocument();
     expect(screen.queryByText(t.header.shipment(501))).not.toBeInTheDocument();
-    expect(screen.getByRole('button', { name: t.actions.confirm })).toBeDisabled();
   });
 
   it('매칭되면 «서버가 준 판정»을 그대로 보이고 수량 패드가 선다', async () => {
     const user = userEvent.setup();
     renderScreen();
 
-    await scan(user, t.scan.label.shipment, 'SYN-SH-0501');
+    await chooseShipment(user);
     await scan(user, t.scan.label.productionLot, 'SYN-LOT-000123450');
 
     expect(await screen.findByText(t.match.ok('SYN-LOT-000123450'))).toBeTruthy();
@@ -407,7 +474,7 @@ describe('PackingResultScreen', () => {
     const user = userEvent.setup();
     renderScreen();
 
-    await scan(user, t.scan.label.shipment, 'SYN-SH-0501');
+    await chooseShipment(user);
     await waitFor(() => {
       expect(screen.getByLabelText(t.scan.label.productionLot)).toBeEnabled();
     });
@@ -420,7 +487,7 @@ describe('PackingResultScreen', () => {
     const user = userEvent.setup();
     renderScreen({ match: { matched: false, reasonCode: 'LABEL_ITEM_MISMATCH' } });
 
-    await scan(user, t.scan.label.shipment, 'SYN-SH-0501');
+    await chooseShipment(user);
     await scan(user, t.scan.label.productionLot, 'SYN-LOT-다른품목');
 
     expect(await screen.findByText(t.match.itemMismatch('SYN-FG-1001'))).toBeTruthy();
@@ -431,7 +498,7 @@ describe('PackingResultScreen', () => {
     const user = userEvent.setup();
     renderScreen({ match: { matched: false, reasonCode: 'LOT_NOT_ALLOCATED' } });
 
-    await scan(user, t.scan.label.shipment, 'SYN-SH-0501');
+    await chooseShipment(user);
     await scan(user, t.scan.label.productionLot, 'SYN-LOT-남의것');
 
     expect(await screen.findByText(t.match.notAllocated)).toBeTruthy();
@@ -455,11 +522,11 @@ describe('PackingResultScreen', () => {
 
   it('진행에 «예상 포장 수»와 진행 막대를 그리지 않는다 — 낼 근거가 없다', async () => {
     const user = userEvent.setup();
-    renderScreen();
+    renderScreen({ unassignedBoxes: 1 });
 
-    await scan(user, t.scan.label.shipment, 'SYN-SH-0501');
+    await chooseShipment(user);
 
-    expect(await screen.findByText(/미포장/u)).toBeTruthy();
+    expect(await screen.findByText(t.progress.unassigned(1))).toBeTruthy();
     expect(screen.queryByText(/예상/u)).toBeNull();
     expect(screen.queryByRole('progressbar')).toBeNull();
   });
@@ -478,7 +545,7 @@ const matchLot = async (user: ReturnType<typeof userEvent.setup>): Promise<void>
 
 /** 매칭까지 마친 상태를 만든다 — 담기·확정 시험의 공통 전제다. */
 const scanUntilMatched = async (user: ReturnType<typeof userEvent.setup>): Promise<void> => {
-  await scan(user, t.scan.label.shipment, 'SYN-SH-0501');
+  await chooseShipment(user);
   await matchLot(user);
 };
 
@@ -513,13 +580,18 @@ describe('PackingResultScreen — 담기와 확정', () => {
     await user.click(await screen.findByRole('option', { name: '카톤' }));
     await screen.findByText('SYN-CTN-0091');
 
+    /*
+     * ⚠ **전환이 막혔음을 «요청»으로도 잰다.** 문구만 보면 화면이 말은 막아 놓고 조회는 이미
+     *   보낸 경우를 놓친다 — 고른 출하의 배분을 받아 오면 담던 줄이 그 출하로 섞인다.
+     */
     const sentToOtherShipment = () =>
       reads.some(
         (request) =>
-          pathOf(request) === '/logistics/shipments' && queryOf(request).get('q') === 'SYN-SH-0502',
+          pathOf(request) === '/logistics/shipment-lot-allocations' &&
+          queryOf(request).get('shipmentId') === '502',
       );
 
-    await scan(user, t.scan.label.shipment, 'SYN-SH-0502');
+    await chooseShipment(user, 'SYN-SH-0502');
     expect(await screen.findByText(t.match.openUnitBlocksShipmentChange)).toBeInTheDocument();
     expect(sentToOtherShipment()).toBe(false);
 
@@ -530,7 +602,7 @@ describe('PackingResultScreen — 담기와 확정', () => {
     expect(screen.getByText('SYN-CTN-0091')).toBeInTheDocument();
 
     /* 취소가 되지 않았으니 다른 출하 전환도 여전히 막혀 있다. */
-    await scan(user, t.scan.label.shipment, 'SYN-SH-0502');
+    await chooseShipment(user, 'SYN-SH-0502');
     expect(await screen.findByText(t.match.openUnitBlocksShipmentChange)).toBeInTheDocument();
     expect(sentToOtherShipment()).toBe(false);
   });

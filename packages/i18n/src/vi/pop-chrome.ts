@@ -13,6 +13,8 @@ export const popChrome: Translated<typeof ko.popChrome> = {
     title: (name: string): string => `Chọn ${name}`,
     searchLabel: 'Tìm trong danh sách',
     searchPlaceholder: 'Tìm trong danh sách',
+    scanLabel: 'Quét hoặc tìm trong danh sách',
+    scanPlaceholder: 'Quét hoặc tìm trong danh sách',
     clearSearch: 'Xóa',
     empty: 'Không có mục nào để hiển thị.',
     position: (page: number, totalPages: number, count: number): string =>
