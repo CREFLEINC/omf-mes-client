@@ -30,7 +30,13 @@ import {
   type GridDraft,
 } from './grid-draft';
 import { LoadErrorBanner } from './load-error-banner';
-import { lookupNote, useEquipmentOptions, usePlantOptions, useProcessOptions } from './lookups';
+import {
+  lookupNote,
+  useEquipmentOptions,
+  usePlantOptions,
+  useProcessOptions,
+  useTerminalCodeNames,
+} from './lookups';
 import { PageNav } from './page-nav';
 import { toPageView } from './pagination';
 import { ProcessGrid } from './process-grid';
@@ -57,7 +63,13 @@ import {
 } from './terminal-draft';
 import { TerminalForm } from './terminal-form';
 import { TokenDialog } from './token-dialog';
-import { formatMoment, statusTextOf, type SelectOption, type TerminalView, type TokenView } from './types';
+import {
+  formatMoment,
+  statusTextOf,
+  type SelectOption,
+  type TerminalView,
+  type TokenView,
+} from './types';
 
 const t = messages.terminalProcessMap;
 
@@ -104,6 +116,7 @@ export const TerminalProcessMapScreen = () => {
   const plants = usePlantOptions();
   const equipments = useEquipmentOptions();
   const processes = useProcessOptions();
+  const codeNames = useTerminalCodeNames();
 
   const terminals = useTerminals(filters);
   const detail = useTerminalDetail(selectedId);
@@ -220,6 +233,29 @@ export const TerminalProcessMapScreen = () => {
     setGrid(addProcess(grid, processId, entry?.label ?? value));
   };
 
+  /*
+   * 운영 상태 — 등록을 확인하기 전에는 가동으로 보이지 않게 한다(statusTextOf).
+   * 미등록은 「등록 상태」 열이 이미 말하므로 여기서는 같은 말을 되풀이하지 않고 비워 둔다.
+   */
+  const operatingStatusOf = (terminal: TerminalView): string => {
+    const text = statusTextOf(terminal, {
+      unregistered: t.list.notAvailable,
+      unknown: t.list.registrationUnknown,
+    });
+
+    return terminal.registrationStatusCode === 'REGISTERED' ? codeNames.status(text) : text;
+  };
+
+  const registrationChip = (terminal: TerminalView) => (
+    <Chip size="sm" status={terminal.registrationStatusCode === 'REGISTERED' ? 'success' : 'idle'}>
+      {terminal.registrationStatusCode === 'REGISTERED'
+        ? t.list.registrationComplete
+        : terminal.registrationStatusCode === 'UNREGISTERED'
+          ? t.list.registrationPending
+          : t.list.registrationUnknown}
+    </Chip>
+  );
+
   const toOptions = (entries: { value: string; label: string }[]): SelectOption[] =>
     entries.map((entry) => ({ value: entry.value, label: entry.label }));
 
@@ -231,6 +267,7 @@ export const TerminalProcessMapScreen = () => {
         <Button
           variant="text"
           size="sm"
+          aria-current={row.terminalId === selectedId ? 'true' : undefined}
           onClick={() => {
             selectTerminal(row.terminalId);
           }}
@@ -239,28 +276,9 @@ export const TerminalProcessMapScreen = () => {
         </Button>
       ),
     },
-    { key: 'type', header: t.list.type, render: (row) => row.terminalTypeCode },
-    {
-      key: 'status',
-      header: t.list.status,
-      render: (row) => statusTextOf(row, {
-        unregistered: t.list.registrationPending,
-        unknown: t.list.registrationUnknown,
-      }),
-    },
-    {
-      key: 'registration',
-      header: t.list.registration,
-      render: (row) => (
-        <Chip size="sm" status={row.registrationStatusCode === 'REGISTERED' ? 'success' : 'idle'}>
-          {row.registrationStatusCode === 'REGISTERED'
-            ? t.list.registrationComplete
-            : row.registrationStatusCode === 'UNREGISTERED'
-              ? t.list.registrationPending
-              : t.list.registrationUnknown}
-        </Chip>
-      ),
-    },
+    { key: 'type', header: t.list.type, render: (row) => codeNames.type(row.terminalTypeCode) },
+    { key: 'status', header: t.list.status, render: (row) => operatingStatusOf(row) },
+    { key: 'registration', header: t.list.registration, render: (row) => registrationChip(row) },
     {
       key: 'equipment',
       header: t.list.equipment,
@@ -268,7 +286,7 @@ export const TerminalProcessMapScreen = () => {
     },
     {
       key: 'active',
-      header: t.list.active,
+      header: t.list.activeHeader,
       render: (row) => (
         <Chip size="sm" status={row.isActive ? 'success' : 'idle'}>
           {row.isActive ? t.list.active : t.list.inactive}
@@ -297,6 +315,7 @@ export const TerminalProcessMapScreen = () => {
       {savedNotice !== null && (
         <div className="banner-slot">
           <AlertBanner
+            className="terminal-map-notice"
             variant="success"
             onDismiss={() => {
               setSavedNotice(null);
@@ -308,10 +327,10 @@ export const TerminalProcessMapScreen = () => {
         </div>
       )}
 
-      <div className="two-pane">
+      <div className="two-pane terminal-map-panes">
         <section className="pane" aria-label={t.panes.list}>
           <h2>{t.panes.list}</h2>
-          <div className="filter-bar">
+          <div className="filter-bar terminal-map-filter">
             <div className="field-cell">
               <span className="field-label">{t.filters.search}</span>
               <SearchInput
@@ -336,7 +355,7 @@ export const TerminalProcessMapScreen = () => {
                 {t.filters.includeInactive}
               </Checkbox>
             </div>
-            <div className="form-actions">
+            <div className="form-actions terminal-map-filter-actions">
               <Button
                 variant="outlined"
                 onClick={() => {
@@ -359,7 +378,7 @@ export const TerminalProcessMapScreen = () => {
           ) : terminals.isPending ? (
             <Skeleton variant="rect" height="12rem" />
           ) : (
-            <div className="wide-table">
+            <div className="wide-table terminal-map-list">
               <Table
                 columns={listColumns}
                 rows={rows}
@@ -394,54 +413,67 @@ export const TerminalProcessMapScreen = () => {
             ) : (
               <>
                 <SaveErrorBanner error={deactivate.error} />
-                <dl className="token-meta">
-                  <dt>{t.terminal.code}</dt>
-                  <dd>{selected.terminalCode}</dd>
-                  <dt>{t.terminal.type}</dt>
-                  <dd>{selected.terminalTypeCode}</dd>
-                  <dt>{t.list.status}</dt>
-                  <dd>{statusTextOf(selected, {
-                    unregistered: t.terminal.registrationPending,
-                    unknown: t.terminal.registrationUnknown,
-                  })}</dd>
-                  <dt>{t.terminal.registration}</dt>
-                  <dd>
-                    {selected.registrationStatusCode === 'REGISTERED'
-                      ? t.terminal.registrationComplete
-                      : selected.registrationStatusCode === 'UNREGISTERED'
-                        ? t.terminal.registrationPending
-                        : t.terminal.registrationUnknown}
-                    {selected.registrationConfirmedAt === null
-                      ? null
-                      : ` · ${formatMoment(selected.registrationConfirmedAt)}`}
-                  </dd>
-                  <dt>{t.terminal.equipment}</dt>
-                  <dd>{selected.equipmentLabel ?? t.terminal.equipmentNone}</dd>
+                {/* ⚠ 누르기 전에 말한다 — 누른 뒤에는 이미 이전 기기가 끊겨 있다. 카드 제목 바로 아래, 격자와 같은 시작선. */}
+                <AlertBanner
+                  className="terminal-map-notice terminal-map-reissue-warning"
+                  variant="warning"
+                >
+                  {t.token.reissueWarning}
+                </AlertBanner>
+                {/* 항목명 위·값 아래의 3열 격자 — 순서는 그대로(코드 · 유형 · 운영 상태 · 등록 상태 · 설비). */}
+                <dl className="terminal-map-info">
+                  <div className="terminal-map-info-field">
+                    <dt className="field-label">{t.terminal.code}</dt>
+                    <dd className="terminal-map-info-key">{selected.terminalCode}</dd>
+                  </div>
+                  <div className="terminal-map-info-field">
+                    <dt className="field-label">{t.terminal.type}</dt>
+                    <dd>{codeNames.type(selected.terminalTypeCode)}</dd>
+                  </div>
+                  <div className="terminal-map-info-field">
+                    <dt className="field-label">{t.terminal.status}</dt>
+                    <dd>{operatingStatusOf(selected)}</dd>
+                  </div>
+                  <div className="terminal-map-info-field">
+                    <dt className="field-label">{t.terminal.registration}</dt>
+                    <dd>
+                      {registrationChip(selected)}
+                      {selected.registrationConfirmedAt === null
+                        ? null
+                        : ` ${formatMoment(selected.registrationConfirmedAt)}`}
+                    </dd>
+                  </div>
+                  <div className="terminal-map-info-field">
+                    <dt className="field-label">{t.terminal.equipment}</dt>
+                    <dd>{selected.equipmentLabel ?? t.terminal.equipmentNone}</dd>
+                  </div>
                 </dl>
                 <SaveErrorBanner error={issueToken.error} />
-                {/* ⚠ 누르기 전에 말한다 — 누른 뒤에는 이미 이전 기기가 끊겨 있다. */}
-                <AlertBanner variant="warning">{t.token.reissueWarning}</AlertBanner>
-                <div className="form-actions">
-                  <Button
-                    variant="outlined"
-                    disabled={!selected.isActive || deactivate.isSaving}
-                    onClick={() => {
-                      setDeactivating(true);
-                    }}
-                  >
-                    {t.terminal.deactivate}
-                  </Button>
-                  <Button variant="outlined" onClick={openEdit}>
-                    {t.terminal.edit}
-                  </Button>
-                  <Button
-                    disabled={issueToken.isSaving}
-                    onClick={() => {
-                      issueToken.write({});
-                    }}
-                  >
-                    {t.token.issue}
-                  </Button>
+                {/* 하단 조작 줄 — 얇은 구분선 아래 하나의 바닥글. */}
+                <div className="terminal-map-info-footer">
+                  <div className="form-actions">
+                    <Button
+                      className="form-actions-secondary"
+                      variant="outlined"
+                      disabled={!selected.isActive || deactivate.isSaving}
+                      onClick={() => {
+                        setDeactivating(true);
+                      }}
+                    >
+                      {t.terminal.deactivate}
+                    </Button>
+                    <Button variant="outlined" onClick={openEdit}>
+                      {t.terminal.edit}
+                    </Button>
+                    <Button
+                      disabled={issueToken.isSaving}
+                      onClick={() => {
+                        issueToken.write({});
+                      }}
+                    >
+                      {t.token.issue}
+                    </Button>
+                  </div>
                 </div>
               </>
             )
@@ -455,6 +487,7 @@ export const TerminalProcessMapScreen = () => {
               fieldErrors={formMode === 'create' ? create.fieldErrors : update.fieldErrors}
               plants={plants}
               equipments={equipments}
+              codeNames={codeNames}
               onChange={(patch) => {
                 setTerminalDraft((prev) => ({ ...prev, ...patch }));
               }}
@@ -472,19 +505,14 @@ export const TerminalProcessMapScreen = () => {
        * 좁은 단에 넣으면 열 이름이 두 줄로 접히고 체크 상자가 서로 붙는다 — 오조작을 막으려고
        * 만든 화면이 오조작을 부르게 된다.
        */}
-      <section className="pane" aria-label={t.panes.grid}>
+      <section className="pane terminal-map-grid-pane" aria-label={t.panes.grid}>
         <h2>{t.panes.grid}</h2>
-        {/* ⭐ 여기서 여는 것이 무엇인지 먼저 말한다 — 보안 경계로 오해하면 잘못 잠근다. */}
+        {/* ⭐ 이 구획이 무엇을 정하는지 먼저 말한다. */}
         <p className="pane-lead">{t.grid.purpose}</p>
-        {/* ⭐ 빠진 공정이 지워진다는 사실을 저장 버튼이 아니라 표 옆에 둔다. */}
-        <p className="pane-lead">{t.grid.replaceNote}</p>
 
         {selectedId === null ? (
-          <EmptyState
-            size="sm"
-            title={t.grid.selectTerminalTitle}
-            description={t.grid.selectTerminal}
-          />
+          /* 선택 안내는 단말 정보 구획이 크게 한 번 말한다 — 여기서는 한 줄로 줄인다. */
+          <p className="pane-lead terminal-map-unselected">{t.grid.unselectedNote}</p>
         ) : processRows.isError ? (
           <LoadErrorBanner
             error={processRows.error}
@@ -510,6 +538,7 @@ export const TerminalProcessMapScreen = () => {
                 error={gridNotice ?? undefined}
                 placeholder={t.grid.addPlaceholder}
                 wide
+                className="terminal-map-add-field"
                 onChange={addRow}
               />
             </div>
@@ -518,19 +547,21 @@ export const TerminalProcessMapScreen = () => {
               /* ⭐ 0건이 정상인 단말이 있다 — 오류처럼 그리지 않는다. */
               <EmptyState size="sm" title={t.grid.emptyTitle} description={t.grid.empty} />
             ) : (
-              <ProcessGrid
-                rows={grid}
-                disabled={replace.isSaving}
-                onToggle={(processId, key: FlagKey) => {
-                  setGrid(toggleFlag(grid, processId, key));
-                }}
-                onToggleRow={(processId, open) => {
-                  setGrid(setRow(grid, processId, open));
-                }}
-                onRemove={(processId) => {
-                  setGrid(removeProcess(grid, processId));
-                }}
-              />
+              <div className="terminal-map-grid-table">
+                <ProcessGrid
+                  rows={grid}
+                  disabled={replace.isSaving}
+                  onToggle={(processId, key: FlagKey) => {
+                    setGrid(toggleFlag(grid, processId, key));
+                  }}
+                  onToggleRow={(processId, open) => {
+                    setGrid(setRow(grid, processId, open));
+                  }}
+                  onRemove={(processId) => {
+                    setGrid(removeProcess(grid, processId));
+                  }}
+                />
+              </div>
             )}
 
             <div className="form-actions">
@@ -575,6 +606,7 @@ export const TerminalProcessMapScreen = () => {
         }}
         title={t.terminal.deactivateTitle}
         closeOnBackdropClick={false}
+        showCloseButton={false}
         footer={
           <>
             <Button
