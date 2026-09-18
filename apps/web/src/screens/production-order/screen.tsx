@@ -1,8 +1,9 @@
-import { AlertBanner, Breadcrumb, PageHeader } from '@crefle/web-ui';
+import { AlertBanner, Breadcrumb, Button, PageHeader } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useMemo, useState } from 'react';
-import { Link, useSearchParams } from 'react-router';
+import { Link, useNavigate, useSearchParams } from 'react-router';
 
+import { useProductionOrderCodeNames } from './code-names';
 import { useProductionOrderPlans, useProductionOrderWorkOrders } from './detail-queries';
 import {
   DEFAULT_PRODUCTION_ORDER_FILTERS,
@@ -34,6 +35,7 @@ const EMPTY_FACTS: ProductionOrderFact[] = [];
 
 export const ProductionOrderScreen = () => {
   const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
   const filters = useMemo(() => readFilters(searchParams), [searchParams]);
   const page = readPage(searchParams);
   const selectedId = readSelectedProductionOrderId(searchParams);
@@ -45,6 +47,7 @@ export const ProductionOrderScreen = () => {
   const businessUnits = useBusinessUnitReferenceLookup();
   const plants = usePlantReferenceLookup();
   const uoms = useUomReferenceLookup();
+  const codeNames = useProductionOrderCodeNames();
   const facts = list.data?.items ?? EMPTY_FACTS;
   const itemIds = useMemo(() => {
     const ids = facts.map((order) => order.itemId);
@@ -101,7 +104,6 @@ export const ProductionOrderScreen = () => {
           businessUnitNote={lookupNote(businessUnits)}
           plantNote={lookupNote(plants)}
           itemNote={itemNames.isLoading ? t.values.itemLoading : undefined}
-          statusNote={t.values.statusOptionsPending}
           onSearch={(next) => setSearchParams(toSearchParams(next, 1))}
           onReset={() => setSearchParams(toSearchParams(DEFAULT_PRODUCTION_ORDER_FILTERS, 1))}
         />
@@ -117,6 +119,7 @@ export const ProductionOrderScreen = () => {
           isLoading={list.isPending}
           page={pageView}
           selectedProductionOrderId={selectedId}
+          statusNameOf={codeNames.productionOrderStatus}
           onSelect={(id) => setSearchParams(toSelectionSearchParams(searchParams, id))}
           onToggleExpanded={(id) => {
             setCollapsedIds((current) => {
@@ -138,11 +141,20 @@ export const ProductionOrderScreen = () => {
           businessUnits={businessUnits}
           plants={plants}
           uoms={uoms}
+          statusNameOf={codeNames.productionOrderStatus}
           action={
             selectedId === null ? undefined : (
-              <Link to={`/production/production-plans?productionOrderId=${String(selectedId)}`}>
+              /* 「초기화」와 같은 DS 테두리 단추. 누르면 W/O 전개·편성 화면으로 이동만 한다. */
+              <Button
+                variant="outlined"
+                onClick={() => {
+                  void navigate(
+                    `/production/production-plans?productionOrderId=${String(selectedId)}`,
+                  );
+                }}
+              >
                 {t.actions.productionPlan}
-              </Link>
+              </Button>
             )
           }
         />
@@ -151,16 +163,20 @@ export const ProductionOrderScreen = () => {
           isSelected={isSelected}
           state={toDetailListState(plans)}
           uoms={uoms}
+          codeNames={codeNames}
         />
         <ProductionOrderDetailListPane
           kind="workOrders"
           isSelected={isSelected}
           state={toDetailListState(workOrders)}
           uoms={uoms}
+          codeNames={codeNames}
         />
       </div>
-      <AlertBanner variant="info">
-        {t.values.erpReadOnlyNotice}{' '}
+      <AlertBanner className="production-order-erp-notice" variant="info">
+        {t.values.erpReadOnlyNotice}
+        <br />
+        {t.values.erpSyncHint}{' '}
         <Link to="/master-data/integration-sync">{t.actions.integrationSync}</Link>
       </AlertBanner>
     </>

@@ -24,7 +24,6 @@ const ready = (overrides: Partial<ConfirmLockInput> = {}): ConfirmLockInput => (
   workerNo: '3391',
   shipmentId: 9001,
   warehouseId: 7001,
-  hasOpenUnit: true,
   isOpeningUnit: false,
   handlingUnitTypeCode: 'CARTON',
   lines: [line],
@@ -32,14 +31,13 @@ const ready = (overrides: Partial<ConfirmLockInput> = {}): ConfirmLockInput => (
 });
 
 describe('confirmLockReason', () => {
-  /** ⛔ 「만드는 중」과 「만들지 못했다」는 작업자가 할 일이 다르다(#1093). */
-  it('포장이 아직 열리지 않았으면 만드는 중인지 실패인지 갈라 말한다', () => {
-    expect(confirmLockReason(ready({ hasOpenUnit: false, isOpeningUnit: true }))).toBe(
-      t.locks.unitOpening,
-    );
-    expect(confirmLockReason(ready({ hasOpenUnit: false, isOpeningUnit: false }))).toBe(
-      t.locks.unitMissing,
-    );
+  /*
+   * ⭐ 포장이 없다는 이유로는 잠그지 않는다 — 확정이 그 자리에서 만든다(사용자 지시 2026-09-18 ·
+   *    omf-all-around#5). 만드는 «중»에만 잠근다(두 번 만들지 않기 위해서다).
+   */
+  it('포장을 만드는 중에만 잠그고, 포장이 없다는 이유로는 잠그지 않는다', () => {
+    expect(confirmLockReason(ready({ isOpeningUnit: true }))).toBe(t.locks.unitOpening);
+    expect(confirmLockReason(ready({ isOpeningUnit: false }))).toBeUndefined();
   });
 
   /**

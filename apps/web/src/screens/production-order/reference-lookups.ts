@@ -105,7 +105,8 @@ export const useUomReferenceLookup = (): ReferenceLookupResult => {
 
   return toLookupResult(query, (uom) => ({
     value: String(uom.uomId),
-    label: `${uom.uomCode} · ${uom.uomName}`,
+    /* 수량 옆에 붙는 단위다 — 「100 EA · 개」처럼 단위가 두 번 읽히지 않게 코드만 보인다. */
+    label: uom.uomCode,
   }));
 };
 

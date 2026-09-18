@@ -2,6 +2,7 @@ import { messages } from '@omf-mes/i18n';
 import { render, screen, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
+import type { ProductionOrderCodeNames } from './code-names';
 import type { ProductionOrderPlanFact, ProductionOrderWorkOrderFact } from './detail-queries';
 import { ProductionOrderDetailListPane } from './production-order-detail-list-pane';
 import type { ReferenceSource } from './reference-lookups';
@@ -12,6 +13,17 @@ const uoms: ReferenceSource = {
   isLoading: false,
   isError: false,
   truncated: false,
+};
+/* 코드값 → 공통코드 표시명. 이름이 없는 코드는 그대로 보인다. */
+const codeName =
+  (names: Record<string, string>) =>
+  (code: string): string =>
+    names[code] ?? code;
+const codeNames: ProductionOrderCodeNames = {
+  productionOrderStatus: codeName({}),
+  productionPlanStatus: codeName({ 'SYN-DRAFT': '합성 작성중' }),
+  workOrderStatus: codeName({ 'SYN-RELEASED': '합성 배포' }),
+  workOrderType: codeName({ 'SYN-NORMAL': '합성 일반' }),
 };
 const plan = (id: number, overrides: Partial<ProductionOrderPlanFact> = {}) => ({
   productionPlanId: id,
@@ -52,9 +64,12 @@ describe('ProductionOrderDetailListPane', () => {
         isSelected={false}
         state={{ kind: 'DATA', items: [plan(501)] }}
         uoms={uoms}
+        codeNames={codeNames}
       />,
     );
-    expect(screen.getByText(t.detail.unselectedTitle)).toBeInTheDocument();
+    /* 선택 전에는 제목과 한 줄 안내만 둔다 — 큰 안내는 기본 정보 구획 하나가 말한다. */
+    expect(screen.getByRole('heading', { name: t.detail.planHeading })).toBeInTheDocument();
+    expect(screen.getByText(t.detail.unselectedNote)).toBeInTheDocument();
     expect(screen.queryByText('SYN-PLAN-501')).not.toBeInTheDocument();
 
     rerender(
@@ -63,6 +78,7 @@ describe('ProductionOrderDetailListPane', () => {
         isSelected
         state={{ kind: 'LOADING' }}
         uoms={uoms}
+        codeNames={codeNames}
       />,
     );
     expect(screen.getByRole('status', { name: t.detail.planLoading })).toBeInTheDocument();
@@ -73,6 +89,7 @@ describe('ProductionOrderDetailListPane', () => {
         isSelected
         state={{ kind: 'ERROR' }}
         uoms={uoms}
+        codeNames={codeNames}
       />,
     );
     expect(screen.getByRole('alert')).toHaveTextContent(t.detail.planLoadFailedTitle);
@@ -83,6 +100,7 @@ describe('ProductionOrderDetailListPane', () => {
         isSelected
         state={{ kind: 'DATA', items: [] }}
         uoms={uoms}
+        codeNames={codeNames}
       />,
     );
     expect(screen.getByText(t.detail.planEmptyTitle)).toBeInTheDocument();
@@ -98,6 +116,7 @@ describe('ProductionOrderDetailListPane', () => {
           items: [plan(502), plan(501, { plannedQty: 0, statusCode: 'SYN-READY' })],
         }}
         uoms={uoms}
+        codeNames={codeNames}
       />,
     );
 
@@ -107,7 +126,7 @@ describe('ProductionOrderDetailListPane', () => {
     expect(within(table).getByText(t.detail.planHeading)).toHaveClass(
       'production-order-table-caption',
     );
-    expect(screen.getByText('SYN-DRAFT').closest('td')).toHaveAttribute('data-align', 'center');
+    expect(screen.getByText('합성 작성중').closest('td')).toHaveAttribute('data-align', 'center');
     expect(rowText()).toEqual([
       expect.stringContaining('SYN-PLAN-502'),
       expect.stringContaining('SYN-PLAN-501'),
@@ -127,6 +146,7 @@ describe('ProductionOrderDetailListPane', () => {
         isSelected
         state={{ kind: 'LOADING' }}
         uoms={uoms}
+        codeNames={codeNames}
       />,
     );
     expect(screen.getByRole('status', { name: t.detail.workOrderLoading })).toBeInTheDocument();
@@ -137,6 +157,7 @@ describe('ProductionOrderDetailListPane', () => {
         isSelected
         state={{ kind: 'ERROR' }}
         uoms={uoms}
+        codeNames={codeNames}
       />,
     );
     expect(screen.getByRole('alert')).toHaveTextContent(t.detail.workOrderLoadFailedTitle);
@@ -147,6 +168,7 @@ describe('ProductionOrderDetailListPane', () => {
         isSelected
         state={{ kind: 'DATA', items: [] }}
         uoms={uoms}
+        codeNames={codeNames}
       />,
     );
     expect(screen.getByText(t.detail.workOrderEmptyTitle)).toBeInTheDocument();
@@ -160,10 +182,13 @@ describe('ProductionOrderDetailListPane', () => {
           items: [workOrder(602), workOrder(601, { plannedStartAt: null, plannedEndAt: null })],
         }}
         uoms={uoms}
+        codeNames={codeNames}
       />,
     );
     expect(rowText()[0]).toContain('SYN-WO-602');
-    expect(rowText()[0]).toContain('SYN-NORMAL');
+    expect(rowText()[0]).toContain('합성 일반');
+    expect(rowText()[0]).toContain('합성 배포');
+    expect(rowText()[0]).not.toContain('SYN-NORMAL');
     expect(rowText()[0]).toContain('2026-08-25T10:00:00+09:00 ~ 2026-08-25T11:00:00+09:00');
     expect(rowText()[1]).toContain('SYN-WO-601');
     expect(rowText()[1]).toContain(t.detail.unscheduled);
