@@ -4,6 +4,7 @@ import { useEffect, type ReactNode } from 'react';
 import { Link } from 'react-router';
 
 import { listenBackButton } from '../patterns/back-step';
+import { keepListboxesInSafeArea } from '../patterns/listbox-safe-area';
 import { useServerReachable } from '../patterns/online-status';
 import {
   ScreenTitleProvider,
@@ -73,6 +74,8 @@ const ShellTopbar = () => {
 export const AppLayout = ({ children }: AppLayoutProps) => {
   /* 단말의 뒤로가기를 화면 안 단계가 먼저 받는다. 없으면 이력으로 넘어간다. */
   useEffect(() => listenBackButton(), []);
+  /* 드롭다운 목록은 셸 밖에 그려져 시스템 바 여백을 못 받는다. 바 안쪽으로 다시 놓는다. */
+  useEffect(() => keepListboxesInSafeArea(), []);
 
   return (
     <ScreenTitleProvider>
