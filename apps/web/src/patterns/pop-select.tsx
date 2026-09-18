@@ -7,7 +7,7 @@ import {
   type SelectProps,
 } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { forwardRef, useMemo, useState } from 'react';
+import { forwardRef, useEffect, useMemo, useRef, useState } from 'react';
 
 /**
  * 한 쪽에 놓는 항목 수.
@@ -51,7 +51,32 @@ export interface PopSelectProps extends SelectProps {
   size?: SelectProps['size'];
   /** 닫힌 상태에서 팝업을 여는 버튼 문구. */
   actionLabel?: string;
+  /**
+   * 팝업에서 **스캐너로 골라도 되는 목록인가**(#1351).
+   *
+   * ⭐ 켜면 셋이 달라진다 — ⓐ 검색 줄을 **짧은 목록에서도** 세운다(감추면 찍을 자리가 없다)
+   *    ⓑ 팝업이 열릴 때 그 칸에 **초점**을 준다(스캐너는 초점이 있는 칸에 글자를 쏜다)
+   *    ⓒ 값이 **후보 하나와 정확히 같아지면 스스로 고르고 닫는다**.
+   *
+   * ⛔ **후보를 새로 가져오지는 않는다.** 이 부품의 계약(위 머리말)이 그대로다 — 스캔은
+   *    「목록 안에서 빨리 찾는 수단」이지 목록 밖으로 나가는 문이 아니다. P-04-01 이 겪은 것이
+   *    그 반대였다: 목록과 스캔이 **같은 조회에 다른 필터**로 나가 「목록엔 없는데 찍으면 잡히는
+   *    출하」가 생겼다(`docs/decisions.md` 18).
+   *
+   * ⚠ **기본은 꺼짐이다** — 이 부품은 POP 화면 열여덟 곳이 함께 쓴다.
+   */
+  scannable?: boolean;
 }
+
+/**
+ * 마지막 글자 뒤 이만큼 조용하면 스캔이 끝난 것으로 본다 —
+ * `screens/packing-result/scan-field` 와 같은 값이다.
+ *
+ * ⛔ **곧바로 대조하지 않는 이유가 있다.** 스캐너는 글자를 하나씩 붙여 보내므로 `SH-10` 을
+ *    쏘는 도중 `SH-1` 이 잠깐 만들어진다 — 그 값이 다른 후보와 정확히 같으면 **엉뚱한 출하를
+ *    고르고 팝업이 닫힌다.** 멎은 뒤에 재면 중간값은 결코 확정되지 않는다.
+ */
+const SCAN_IDLE_MS = 150;
 
 /**
  * POP 선택 목록의 단일 표현(G-34).
@@ -73,6 +98,7 @@ export const PopSelect = forwardRef<HTMLButtonElement, PopSelectProps>(function 
     className,
     leadingIcon,
     actionLabel = messages.popChrome.select,
+    scannable = false,
     size: _legacySize,
     'aria-label': ariaLabel,
     'aria-labelledby': ariaLabelledBy,
@@ -113,15 +139,89 @@ export const PopSelect = forwardRef<HTMLButtonElement, PopSelectProps>(function 
    *   보면 검색도 쪽 이동도 없이 «첫 다섯만» 보이고 나머지는 고를 길이 사라진다.
    */
   const isShortList = flatOptions.length <= PAGE_SIZE;
+  /*
+   * ⭐ **스캔 목록은 짧아도 검색 줄을 세운다** — 감추면 찍어 넣을 칸이 없다.
+   *
+   * ⛔ **쪽 이동은 함께 켜지 «않는다»**(리뷰 지적). 한때 `isShortList` 자체에 `&& !scannable` 을
+   *    붙였는데, 그 값이 검색 줄과 쪽 이동 줄 **둘 다**를 통제한다 — 후보가 둘뿐인 목록에
+   *    양쪽 다 눌리지 않는 [페이지 위]·[페이지 아래]가 함께 섰다(실측). 위 규율이 지우려던
+   *    바로 그 모양이라, 두 자리를 가르고 이름도 뜻대로 붙인다.
+   */
+  const showSearch = !isShortList || scannable;
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const currentPage = Math.min(page, totalPages - 1);
   const visibleOptions = filtered.slice(currentPage * PAGE_SIZE, (currentPage + 1) * PAGE_SIZE);
+  const searchRef = useRef<HTMLInputElement>(null);
 
   const close = () => {
     setIsOpen(false);
     setQuery('');
     setPage(0);
   };
+
+  /** 후보 하나를 골라 닫는다 — 목록 단추와 스캔이 같은 길을 쓴다. */
+  const choose = (option: SelectOption): void => {
+    if (value === undefined) setUncontrolledValue(option.value);
+    onChange?.(option.value);
+    close();
+  };
+
+  /*
+   * ⭐ **스캔 칸에 초점을 준다.** 스캐너는 초점이 있는 칸에 글자를 쏘므로, 열어 놓고 초점이
+   *    없으면 찍어도 아무 데도 들어가지 않는다. 터치 단말에서는 이 초점이 화면 자판도 함께
+   *    띄운다 — 손으로 칠 때의 「직접 입력」이 이 한 동작에 들어 있다.
+   */
+  useEffect(() => {
+    if (!scannable || !isOpen) return;
+
+    searchRef.current?.focus();
+  }, [scannable, isOpen]);
+
+  /*
+   * 타이머 «안»에서 읽을 최신값.
+   *
+   * ⛔ **후보와 `choose` 를 의존성에 넣지 않는다**(리뷰 지적). `flatOptions` 는 부르는 쪽이
+   *    `options` 를 인라인 배열로 만들면 **매 렌더 새 값**이고(`screen.tsx` 가 그렇다),
+   *    `choose` 도 렌더마다 새로 만들어진다 — 의존성에 넣으면 타이머가 **렌더마다 다시 서서**
+   *    아래 「멎은 뒤에 잰다」가 무너진다. 렌더가 `SCAN_IDLE_MS` 보다 잦아지면 자동 선택이
+   *    영영 뜨지 않는다.
+   * ⭐ ref 로 넘기면 타이머는 **검색어가 바뀔 때만** 다시 서고, 터질 때는 늘 최신 후보를 본다.
+   */
+  const latest = useRef({ flatOptions, choose });
+  latest.current = { flatOptions, choose };
+
+  /*
+   * ⭐ **값이 후보 하나와 «정확히» 같아지면 스스로 고른다.** 찍고 나서 또 눌러야 하면 스캔으로
+   *    얻는 것이 없다.
+   *
+   * ⛔ **부분 일치로 좁혀진 하나는 고르지 않는다.** 손으로 몇 글자만 쳐도 후보가 하나로 줄 수
+   *    있는데, 그때 스스로 고르면 **고를 생각이 없던 것이 골라진다.** 손으로 치는 사람은
+   *    목록에서 눌러 고른다.
+   *
+   * ⚠ 멎은 뒤에 잰다 — 위 `SCAN_IDLE_MS` 머리말.
+   */
+  useEffect(() => {
+    if (!scannable || !isOpen || normalizedQuery === '') return;
+
+    const timer = setTimeout(() => {
+      const exact = latest.current.flatOptions.filter(
+        (option) =>
+          option.label.trim().toLocaleLowerCase('ko-KR') === normalizedQuery ||
+          option.value.trim().toLocaleLowerCase('ko-KR') === normalizedQuery,
+      );
+
+      /* 같은 이름이 둘이면 어느 것인지 화면이 정하지 않는다 — 목록에서 고르게 둔다. */
+      if (exact.length !== 1) return;
+      const [only] = exact;
+      if (only === undefined || only.disabled === true) return;
+
+      latest.current.choose(only);
+    }, SCAN_IDLE_MS);
+
+    return () => {
+      clearTimeout(timer);
+    };
+  }, [scannable, isOpen, normalizedQuery]);
 
   return (
     <div className="pop-select">
@@ -194,14 +294,23 @@ export const PopSelect = forwardRef<HTMLButtonElement, PopSelectProps>(function 
            */
           closeOnBackdropClick={false}
         >
-          {!isShortList && (
+          {showSearch && (
             <div className="pop-select-dialog__search">
               <TextField
+                ref={searchRef}
                 type="search"
                 size="md"
                 fullWidth
-                aria-label={messages.popChrome.selectDialog.searchLabel}
-                placeholder={messages.popChrome.selectDialog.searchPlaceholder}
+                aria-label={
+                  scannable
+                    ? messages.popChrome.selectDialog.scanLabel
+                    : messages.popChrome.selectDialog.searchLabel
+                }
+                placeholder={
+                  scannable
+                    ? messages.popChrome.selectDialog.scanPlaceholder
+                    : messages.popChrome.selectDialog.searchPlaceholder
+                }
                 value={query}
                 onChange={(event) => {
                   setQuery(event.target.value);
@@ -238,9 +347,7 @@ export const PopSelect = forwardRef<HTMLButtonElement, PopSelectProps>(function 
                   disabled={option.disabled}
                   aria-selected={option.value === selectedValue}
                   onClick={() => {
-                    if (value === undefined) setUncontrolledValue(option.value);
-                    onChange?.(option.value);
-                    close();
+                    choose(option);
                   }}
                 >
                   {option.label}
@@ -263,7 +370,11 @@ export const PopSelect = forwardRef<HTMLButtonElement, PopSelectProps>(function 
                 {messages.popPageNav.pageUp}
               </Button>
               <output aria-live="polite">
-                {messages.popChrome.selectDialog.position(currentPage + 1, totalPages, filtered.length)}
+                {messages.popChrome.selectDialog.position(
+                  currentPage + 1,
+                  totalPages,
+                  filtered.length,
+                )}
               </output>
               <Button
                 type="button"

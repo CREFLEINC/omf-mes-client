@@ -109,40 +109,20 @@ const entryOfShipment = async (client: Client, shipment: Shipment): Promise<Ship
   allocations: await unpackedAllocations(client, shipment.shipmentId),
 });
 
-/**
- * 출하번호 정확 일치 스캔.
+/*
+ * ⛔ **출하번호 정확 일치 «조회»를 두지 않는다**(사용자 지시 2026-09-18 · #1351). 화면의 스캔이
+ *    출하대상 목록 안으로 들어가(`PopSelect` 의 `scannable`) 서버를 다시 부를 일이 없어졌다.
  *
- * ⚠ **원본 계약과 달라졌다.** 원본은 `shipmentNo` 정확 일치 파라미터를 따로 두고 「그 조회는
- * 기간을 생략할 수 있다」고 적었지만, 서버 구현 기준(v0.1.2)은 그 파라미터 자체가 없다 — 남은
- * 것은 검색용 `q`뿐이고 `shipDateFrom`은 이 오퍼레이션의 다른 호출과 똑같이 필수다(통보 219).
- * 그래서 이 스캔도 「오늘 영업일」로 좁힌다 — `useTodayShipments`가 이미 쓰는 같은 기본 기간을
- * 그대로 물려받은 것이지 새로 지어낸 값이 아니다. `q`가 부분 일치일 수 있어 응답에서 정확히
- * 같은 출하번호만 다시 골라낸다 — 그러지 않으면 부분 일치로 엉뚱한 출하를 집을 수 있다.
+ * ⚠ **걷어낸 진짜 이유는 「두 번째 조회」였다.** 이 훅은 아래 `useTodayShipments` 와 같은
+ *   오퍼레이션을 부르면서 **`shipDateTo` 만 빼고** 나갔다 — 그래서 「목록엔 없는데 찍으면 잡히는
+ *   출하」가 생겼고, 「목록에 없으면 직접 입력한다」는 성립하지 않았다. 고를 수 있는 것은 목록
+ *   하나로 정의한다(`docs/decisions.md` 18).
+ *
+ * ⚠ **되살릴 자리가 생길 수 있다.** 원본 계약에는 `shipmentNo` 정확 일치 파라미터가 있었고
+ *   「그 조회는 기간을 생략할 수 있다」고 적혀 있었는데 서버 구현 기준(v0.1.2)에서 사라졌다
+ *   (통보 219). 그것이 돌아오면 **고를 수 «없는» 출하의 사유**(피킹 미완·기간 밖·없는 번호)를
+ *   말하는 데 쓴다 — 고르는 길을 하나 더 내는 데가 아니다.
  */
-export const useShipmentScan = (): UseMutationResult<ShipmentEntry | null, Error, string> => {
-  const { client } = useApiClient();
-
-  return useMutation({
-    mutationFn: async (shipmentNo: string) => {
-      const data = await runRequest(() =>
-        client.GET('/logistics/shipments', {
-          params: {
-            query: {
-              pickedOnly: true,
-              q: shipmentNo,
-              shipDateFrom: localDate(new Date()),
-              page: 1,
-              size: 50,
-            },
-          },
-        }),
-      );
-      const shipment = data.items.find((item) => item.shipmentNo === shipmentNo);
-
-      return shipment === undefined ? null : entryOfShipment(client, shipment);
-    },
-  });
-};
 
 /** 현재 영업일 피킹 완료 출하. 선택 팝업의 검색은 PopSelect가 로컬에서만 수행한다. */
 export const useTodayShipments = (): {
@@ -185,7 +165,8 @@ export const useTodayShipments = (): {
  *    상세로 물으면 값이 늘 `undefined` 로 와서 **0 으로 읽힌다.**
  * ⭐ 그래서 목록을 `hasUnassignedPackedBox=true` 로 묻고 이 출하가 그 안에 있는지 본다 —
  *    없으면 남은 상자가 **없다**는 뜻이라 0 이다. 그 축을 함께 주면 기간이 선택이 된다(v4).
- * ⚠ `q` 는 부분 일치다 — 번호가 정확히 같은 것만 다시 골라낸다(`useShipmentScan` 과 같은 이유).
+ * ⚠ `q` 는 부분 일치다 — 번호가 정확히 같은 것만 다시 골라낸다. 그러지 않으면 번호 조각이
+ *   같은 다른 출하의 상자 수를 이 출하의 것으로 읽는다.
  *
  * ⛔ **못 받은 것을 0 으로 떨어뜨리지 않는다.** 0 은 「담을 것이 없다」는 업무 사실이고, 못
  *    받은 것은 「모른다」다 — 섞으면 담당은 구성할 상자가 없다고 읽고 다음 화면으로 가지 않는다.
@@ -205,12 +186,19 @@ export const useUnassignedPackedBoxCount = (
       const data = await runRequest(() =>
         client.GET('/logistics/shipments', {
           params: {
-            query: { hasUnassignedPackedBox: true, q: shipmentNo, page: 1, size: SHIPMENT_SEARCH_SIZE },
+            query: {
+              hasUnassignedPackedBox: true,
+              q: shipmentNo,
+              page: 1,
+              size: SHIPMENT_SEARCH_SIZE,
+            },
           },
         }),
       );
 
-      return data.items.find((item) => item.shipmentNo === shipmentNo)?.unassignedPackedBoxCount ?? 0;
+      return (
+        data.items.find((item) => item.shipmentNo === shipmentNo)?.unassignedPackedBoxCount ?? 0
+      );
     },
   });
 
@@ -222,7 +210,6 @@ export const useShipmentSelection = (): UseMutationResult<ShipmentEntry, Error, 
 
   return useMutation({ mutationFn: (shipment: Shipment) => entryOfShipment(client, shipment) });
 };
-
 
 /** ② 생산LOT 스캔의 입력 — 출하 축은 **첫 스캔 응답의 `shipmentId`** 를 그대로 쓴다. */
 export interface LotScanInput {

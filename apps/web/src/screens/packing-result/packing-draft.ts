@@ -106,31 +106,14 @@ export const packedTotal = (lines: readonly PackedLine[]): number =>
 export const remainingTotal = (lines: readonly PackedLine[]): number =>
   lines.reduce((sum, line) => sum + line.remaining, 0);
 
-/**
- * 이 출하의 진행 — 포장 개수와 미포장 수량(스펙 §3 ④).
+/*
+ * ⛔ **이 출하의 진행(포장 개수·미포장 수량)을 세지 않는다**(사용자 지시 2026-09-18 · #1351).
+ *    스펙 §3 ④ 가 그린 두 수치이고 `toProgress` 가 여기서 세었는데, 화면이 그 줄을 걷으며
+ *    유일한 소비자가 사라졌다. 남은 ④ 의 「미구성 상자」는 서버가 세어 내려 준다
+ *    (`Shipment.unassignedPackedBoxCount`) — 화면이 파생하지 않는다.
  *
- * ⛔ **「예상 포장 수」를 내지 않는다.** 포장당 수량 기준이 마스터에 없어 서버도 파생하지
- * 못한다(§3-3). 분모가 없으므로 진행 막대도 그리지 않는다.
+ * ⚠ 되돌릴 때 함께 돌아오는 것은 **셈 하나가 아니라 줄 하나**다 — `docs/decisions.md` 18.
  */
-export interface ShipmentProgress {
-  packedCount: number;
-  unpackedQty: number;
-}
-
-export const toProgress = (allocations: readonly ShipmentLotAllocation[]): ShipmentProgress => {
-  const handlingUnitIds = new Set<number>();
-
-  for (const allocation of allocations) {
-    const handlingUnitId = allocation.handlingUnitId;
-    if (handlingUnitId !== undefined && handlingUnitId !== null)
-      handlingUnitIds.add(handlingUnitId);
-  }
-
-  return {
-    packedCount: handlingUnitIds.size,
-    unpackedQty: allocations.reduce((sum, allocation) => sum + remainingOf(allocation), 0),
-  };
-};
 
 /** 스캔값 정리 — 앞뒤 공백만 턴다. ⛔ 대소문자를 건드리지 않는다(서버 규칙을 화면이 정하지 않는다). */
 export const normalizeScanCode = (raw: string): string | null => {

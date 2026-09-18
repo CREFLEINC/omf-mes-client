@@ -23,6 +23,14 @@ export const popChrome = {
     title: (name: string): string => `${name} 선택`,
     searchLabel: '목록 검색',
     searchPlaceholder: '목록에서 검색',
+    /**
+     * 스캐너로도 고를 수 있는 목록(`scannable`)에서 같은 칸이 쓰는 말.
+     *
+     * ⭐ **찍는 것과 치는 것을 한 칸이 받는다** — 칸이 둘이면 작업자가 어디에 찍어야 하는지
+     *    고르게 된다. 찍은 값이 후보 하나와 정확히 같아지면 스스로 골라 닫힌다.
+     */
+    scanLabel: '스캔 또는 목록 검색',
+    scanPlaceholder: '스캔하거나 목록에서 검색',
     clearSearch: '검색어 지우기',
     empty: '표시할 항목이 없습니다.',
     position: (page: number, totalPages: number, count: number): string =>

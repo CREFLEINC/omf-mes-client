@@ -918,11 +918,6 @@
   > :not(.pop-header):not(.pop-terminal-header):not(.banner-slot):not(dialog):not(
     [class*='action']
   ):not(.pop-overlay):not(.pop-fixed):not(.pane)
-  > .packing-oqc,
-.pop-ui
-  > :not(.pop-header):not(.pop-terminal-header):not(.banner-slot):not(dialog):not(
-    [class*='action']
-  ):not(.pop-overlay):not(.pop-fixed):not(.pane)
   > .packing-progress {
   flex: 0 0 auto;
   min-height: auto;
@@ -993,33 +988,12 @@
 }
 
 /*
- * ⭐ **읽은 값이 없으면 자리도 차지하지 않는다**(사용자 지시 2026-09-12). 폭을 갖지 않는
- *    빈 상자라도 flex 항목이라 줄의 간격 한 칸(16px)을 먹었다 — 그만큼 읽는 칸이 짧아져
- *    바로 위 출하 대상 줄과 오른쪽 끝이 어긋났다.
- */
-.pop-ui .packing-scan > .packing-scanned-code:empty {
-  display: none;
-}
-
-/*
  * ⭐ **판정이 없으면 줄도 서지 않는다**(사용자 지시 2026-09-12). 위에서 이미 빈 자리를
  *    48px 로 잡아 두는 것을 걷어냈지만(min-height: 0), 빈 상자도 `1 0 100%` 라 제 줄을
  *    차지해 구획 사이 간격 한 칸이 그대로 남았다 — 읽기 전 ② 아래가 넓어 보이던 자리다.
  */
 .pop-ui .packing-scan > .packing-verdict:empty {
   display: none;
-}
-
-.pop-ui .packing-scanned-code {
-  margin: 0;
-  /*
-   * ⛔ **자리를 미리 잡아 두지 않는다.** 비워 두었더니 아직 읽지 않은 상자 오른쪽이 통째로
-   *    빈 구멍으로 보였다(사용자 지적 2026-09-07). 없으면 읽는 칸이 상자 폭을 다 가져간다.
-   */
-  white-space: nowrap;
-  font: 600 20px/28px var(--font-sans);
-  font-variant-numeric: tabular-nums;
-  color: var(--on-surface);
 }
 
 /*
@@ -1035,7 +1009,21 @@
   gap: var(--space-3);
 }
 
-.pop-ui .packing-compose-main > .packing-contents {
+/*
+ * ③ 오른쪽 단 — **담긴 목록 자리**(#1351). 종전에는 이 목록이 왼쪽 단에 있고 오른쪽이 키패드
+ * 자리였는데, 키패드가 서고 사라질 때마다 목록의 폭이 널뛰었다. 두 단의 역할을 맞바꿔 목록을
+ * 붙박이로 둔다 — 담은 것은 늘 같은 자리에 같은 폭으로 쌓인다.
+ */
+/*
+ * ⚠ **`display` 를 여기서 정하지 않는다.** P-04-01 셸 규칙(`.packing-shell` 쪽)이 이 단을 격자로
+ *   세우므로, 여기서 `flex` 를 주면 곧바로 덮여 **어느 쪽이 서는지 읽는 사람이 헷갈린다**.
+ *   이 규칙은 높이 눌림만 막는다.
+ */
+.pop-ui .packing-compose-list {
+  min-height: 0;
+}
+
+.pop-ui .packing-compose-list > .packing-contents {
   flex: 0 1 auto;
   min-height: 0;
   overflow-y: auto;
@@ -1068,16 +1056,6 @@
 .pop-ui .packing-compose-head {
   padding-block-end: var(--space-3);
   border-block-end: 1px solid var(--outline-variant);
-}
-
-/*
- * ⭐ **값이 있으면 두 상자가 같은 폭을 쓴다.** 값 길이대로 자리를 잡으면 ①·② 의 읽는 칸이
- * 서로 다른 길이가 되어 두 줄이 어긋나 보인다(실측 — `SH-2026-0455` 와 `FLOT-2026-0311`.
- * 사용자 지적 2026-09-07). 값이 «있을 때만» 같은 자리를 쓰므로, 읽기 전의 빈 구멍은 생기지
- * 않는다.
- */
-.pop-ui .packing-scanned-code:not(:empty) {
-  flex: 0 0 13rem;
 }
 
 /* 이름–칸 짝은 한 줄에 — 설계 §3 의 「유형 [ 카톤 ▾ ]」 꼴이다. */
@@ -5100,24 +5078,8 @@
 
 /* 값 한 줄짜리 구획은 더 얕게 — 상자가 값보다 커 보이지 않게 한다. */
 .pop-ui .packing-target,
-.pop-ui.packing-shell .packing-oqc,
 .pop-ui.packing-shell .packing-progress {
   padding-block: var(--space-1);
-}
-
-/*
- * OQC 상태 — **표시가 아니라 게이트다**(스펙 §7). 진행 수치와 같은 줄에 두면 「포장 N 개」와
- * 한 덩어리로 읽혀, 납품 라벨이 왜 안 나오는지를 여기서 찾지 못한다.
- */
-.pop-ui .packing-oqc {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-3);
-  padding-inline: var(--space-5);
-  border: 1px solid var(--outline-variant);
-  border-radius: var(--radius-md);
-  background: var(--surface-container-low);
 }
 
 .pop-ui.packing-shell .scan-row > :first-child > div,
@@ -5138,10 +5100,11 @@
   min-height: 7rem;
 }
 
-/* 키패드가 서지 않는 동안 ③ 은 가로를 통째로 쓴다 — 빈 기둥으로 목록을 좁히지 않는다. */
-.pop-ui .packing-compose:not(:has(> .packing-keypad)) {
-  grid-template-columns: minmax(0, 1fr);
-}
+/*
+ * ⛔ **키패드가 없다고 단을 하나로 접지 않는다**(#1351). 접으면 담긴 목록의 폭이 LOT 을 읽을
+ *    때마다 바뀐다 — 그 흔들림을 없애려고 목록을 오른쪽 «붙박이» 단으로 옮긴 것이다. 왼쪽 단은
+ *    키패드가 없는 동안 유형 줄만 세운 채 자리를 지킨다.
+ */
 
 /*
  * 출하 실적 등록 — **고르는 칸도 읽는 칸과 같은 높이로 선다**(사용자 지시 2026-09-10).
@@ -6509,7 +6472,6 @@
   color: var(--on-surface);
 }
 
-
 /* 하단 [닫기]·[인쇄] — 같은 크기(56 · 최소 8rem), 간격 12. [인쇄]는 기존 filled 가 주 조작이다. */
 .pop-ui .pop-repack-preview-dialog [class*='footer'] {
   gap: var(--space-3);
@@ -6526,7 +6488,6 @@
   color: var(--on-surface-variant);
   font-size: var(--pop-label);
 }
-
 
 /*
  * P-06-01 창고 적재 위치 라벨 발행 — 「창고 → 적재 위치 → 프린터 → 발행」이 위에서 아래로 읽히게
@@ -6671,7 +6632,6 @@
   text-align: center;
 }
 
-
 /*
  * P-06-01 상자 셋(창고 · 프린터 · 적재 위치) — 다른 POP 화면의 구획 카드(DS `Card` low · bordered)와
  * 같은 바탕·모서리로 선다(사용자 지시 2026-09-17). 높이·여백은 그대로다.
@@ -6719,11 +6679,12 @@
  *
  * ⚠ 세로가 모자라면 키가 함께 낮아진다(아래 「키는 단 높이를 나눠 갖는다」).
  */
+/* ⭐ **왼쪽이 입력 도구(유형·키패드), 오른쪽이 담긴 목록**이다(#1351 — 종전과 좌우가 바뀌었다). */
 .pop-ui .packing-compose {
-  grid-template-columns: minmax(0, 1fr) minmax(18rem, 40%);
+  grid-template-columns: minmax(18rem, 40%) minmax(0, 1fr);
 }
 
-.pop-ui .packing-compose > .packing-keypad {
+.pop-ui .packing-compose-main > .packing-keypad {
   align-items: stretch;
   justify-content: flex-start;
   min-height: 0;
@@ -7007,7 +6968,14 @@
   min-height: 0;
 }
 
-.pop-ui.packing-shell .packing-compose-main > .packing-contents {
+/* 목록 단은 머리줄이 없다 — 한 줄이 남는 높이를 통째로 갖는다. */
+.pop-ui.packing-shell .packing-compose-list {
+  display: grid;
+  grid-template-rows: minmax(0, 1fr);
+  min-height: 0;
+}
+
+.pop-ui.packing-shell .packing-compose-list > .packing-contents {
   display: flex;
   flex-direction: column;
   min-height: 0;
