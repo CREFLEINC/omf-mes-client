@@ -19,6 +19,7 @@ import { useLotStatusOptions } from '../lot-status-history/options';
 import type { LotStatusCandidate } from './candidate-screen';
 import { CreateHoldExecution } from './create-hold-execution';
 import { ReleaseHoldExecution } from './release-hold-execution';
+import { formatPlantDateTime } from '../../patterns/plant-time';
 
 type Transition = components['schemas']['LotStatusTransition'];
 type LotHold = components['schemas']['LotHold'];
@@ -31,8 +32,7 @@ export const lotHoldDetailPath = (lotHoldId: number): `/quality/lot-holds/${numb
 const transitionKey = (value: Transition): string =>
   `${value.actionCode}:${value.targetLotStatusCode}`;
 const formatDateTime = (value: string): string => {
-  const match = /^(\d{4}-\d{2}-\d{2})T(\d{2}:\d{2})/.exec(value);
-  return match === null ? value : `${match[1]} ${match[2]}`;
+  return formatPlantDateTime(value) ?? value;
 };
 
 const PreparationPane = ({ children }: PropsWithChildren) => (

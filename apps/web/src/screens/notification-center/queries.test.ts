@@ -94,7 +94,7 @@ describe('useNotificationList', () => {
       expect(result.current.isSuccess).toBe(true);
     });
 
-    expect(result.current.data?.items[0]?.occurredAtText).toBe('08-17 14:05');
+    expect(result.current.data?.items[0]?.occurredAtText).toBe('08-17 12:05');
     /* 쪽 메타는 서버가 정본이다 — 화면이 지어내지 않는다. */
     expect(result.current.data?.page.size).toBe(50);
   });

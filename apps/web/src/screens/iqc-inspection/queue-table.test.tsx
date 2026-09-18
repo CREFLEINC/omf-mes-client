@@ -76,10 +76,11 @@ describe('QueueTable', () => {
     ).toBeInTheDocument();
   });
 
-  it('의뢰 일시를 연·월·일 시·분으로 낸다 — 실행 환경 시간대로 옮기지 않는다', () => {
+  it('의뢰 일시를 공장 시각(UTC+7)의 연·월·일 시·분으로 낸다 — 실행 환경 시간대와 무관하다', () => {
     renderTable();
 
-    expect(screen.getByText('2026-08-18 09:15')).toBeInTheDocument();
+    /* 픽스처 `2026-08-18T09:15:00+09:00` 은 공장 시각 07:15 다(omf-all-around#20). */
+    expect(screen.getByText('2026-08-18 07:15')).toBeInTheDocument();
   });
 
   it('결과가 없으면 받은 빈 상태를 그 자리에 그린다', () => {

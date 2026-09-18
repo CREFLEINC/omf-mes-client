@@ -35,41 +35,49 @@ const expandToggle = (): HTMLElement =>
  * 지나므로 두 조항 어느 쪽도 재지 못한다 — 함수를 직접 부르는 단위 감지기를 따로 둔다
  * (전례 6화면이 예외 없이 갖는 형태).
  */
-describe('formatDateTime — 조항 ⓐ 실행 환경 시간대로 옮기지 않는다', () => {
+describe('formatDateTime — 조항 ⓐ 공장 시각(UTC+7)으로 낸다 — 실행 환경 시간대와 무관하다', () => {
   afterEach(() => {
     vi.restoreAllMocks();
   });
 
   /**
-   * **고정 시각만으로는 잴 수 없다.** 기계 시간대가 `Asia/Seoul`이면 픽스처의 `+09:00`과
-   * 변환 결과가 같아 원리상 구분되지 않는다 — 시간대 자체를 갈아 끼워 **세 시간대에서
-   * 결과가 흔들리지 않음**을 잰다.
+   * 보는 사람의 시간대가 어디든 **공장 시각(Asia/Ho_Chi_Minh)** 으로 낸다(omf-all-around#20).
+   * 실행 환경의 시간대를 갈아 끼워 **세 시간대에서 결과가 흔들리지 않음**을 잰다.
    */
   it.each([
     ['UTC+09:00 (동쪽)', -540],
     ['UTC-05:00 (서쪽)', 300],
     ['UTC±00:00 (본초)', 0],
-  ])('%s 에서도 실려 온 시각을 그대로 낸다', (_label, offsetMinutes) => {
+  ])('%s 에서도 같은 공장 시각을 낸다', (_label, offsetMinutes) => {
     vi.spyOn(Date.prototype, 'getTimezoneOffset').mockReturnValue(offsetMinutes);
 
-    expect(formatDateTime('2026-08-06T09:14:00+09:00')).toBe('2026-08-06 09:14');
+    expect(formatDateTime('2026-08-06T09:14:00+09:00')).toBe('2026-08-06 07:14');
   });
 
-  /**
-   * **`+00:00` 경계** — 벽시계 숫자가 같고 offset만 다른 두 값은 서로 다른 순간이지만,
-   * 서버가 적어 보낸 벽시계 표기는 같다. 옮기는 구현은 여기서 두 값을 갈라 놓는다.
-   */
-  it('벽시계가 같고 offset만 다르면 표기도 같다', () => {
+  /** 같은 순간을 서로 다른 offset으로 적어 보내도 공장 시각은 하나다. */
+  it('같은 순간이면 offset이 달라도 표기가 같다', () => {
     const seoul = formatDateTime('2026-08-06T09:14:00+09:00');
-    const utc = formatDateTime('2026-08-06T09:14:00+00:00');
+    const utc = formatDateTime('2026-08-06T00:14:00+00:00');
 
-    expect(seoul).toBe('2026-08-06 09:14');
-    expect(utc).toBe('2026-08-06 09:14');
+    expect(seoul).toBe('2026-08-06 07:14');
+    expect(utc).toBe('2026-08-06 07:14');
     expect(seoul).toBe(utc);
   });
 
-  it('벽시계 숫자가 다르면 표기도 다르다', () => {
-    expect(formatDateTime('2026-08-06T18:14:00+00:00')).toBe('2026-08-06 18:14');
+  /**
+   * **`+00:00` 경계** — 벽시계 숫자가 같고 offset만 다른 두 값은 서로 다른 순간이다.
+   * 글자를 자르는 구현은 여기서 두 값을 같게 내 버린다.
+   */
+  it('벽시계가 같아도 순간이 다르면 표기도 다르다', () => {
+    const seoul = formatDateTime('2026-08-06T09:14:00+09:00');
+    const utc = formatDateTime('2026-08-06T09:14:00+00:00');
+
+    expect(utc).toBe('2026-08-06 16:14');
+    expect(utc).not.toBe(seoul);
+  });
+
+  it('공장 시각으로 자정을 넘으면 날짜도 넘어간다', () => {
+    expect(formatDateTime('2026-08-06T18:14:00+00:00')).toBe('2026-08-07 01:14');
   });
 });
 
@@ -197,7 +205,8 @@ describe('UncoveredItemsPane — 펼침', () => {
 
     await user.click(expandToggle());
 
-    expect(await screen.findByText('2026-08-06 09:14')).toBeInTheDocument();
+    /* 픽스처 `2026-08-06T09:14:00+09:00` 은 공장 시각(UTC+7) 07:14 다(omf-all-around#20). */
+    expect(await screen.findByText('2026-08-06 07:14')).toBeInTheDocument();
   });
 
   /** 잘림을 감추면 사용자가 앞쪽 일부를 전부로 읽는다. */

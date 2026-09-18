@@ -22,13 +22,13 @@ import {
   type ChangedField,
   type ChangeNotification,
 } from './types';
+import { formatPlantDateTime } from '../../patterns/plant-time';
 
 const t = messages.poChangeReview;
 
-/** 「2026-08-05T09:12:00+09:00」 → 「2026-08-05 09:12」 — 분까지만. 초는 판단에 쓰이지 않는다. */
+/** 「2026-08-05T09:12:00+09:00」 → 「2026-08-05 07:12」(공장 시각 · `patterns/plant-time`) — 분까지만. 초는 판단에 쓰이지 않는다. */
 const dateTimeText = (value: string): string => {
-  const match = /^(\d{4}-\d{2}-\d{2})T(\d{2}:\d{2})/.exec(value);
-  return match === null ? value : `${match[1]} ${match[2]}`;
+  return formatPlantDateTime(value) ?? value;
 };
 
 /* ── ① 변경 알림 목록 ───────────────────────────────────────────────────── */

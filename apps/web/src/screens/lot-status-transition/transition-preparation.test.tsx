@@ -198,15 +198,15 @@ const renderPreparation = (
 const chooseHold = async (
   user: ReturnType<typeof userEvent.setup>,
   reasonCode: string,
-  heldAt: string,
+  /** 화면에 보이는 보류 시각 — 공장 시각(UTC+7) `YYYY-MM-DD HH:mm` (omf-all-around#20) */
+  visibleHeldAt: string,
 ): Promise<void> => {
-  const visibleHeldAt = `${heldAt.slice(0, 10)} ${heldAt.slice(11, 16)}`;
   await screen.findAllByText(reasonCode);
   const row = screen.getAllByRole('row').find((candidate) => {
     const text = candidate.textContent ?? '';
     return text.includes(reasonCode) && text.includes(visibleHeldAt);
   });
-  if (row === undefined) throw new Error(`보류 ${reasonCode} / ${heldAt}의 행이 없습니다.`);
+  if (row === undefined) throw new Error(`보류 ${reasonCode} / ${visibleHeldAt}의 행이 없습니다.`);
   await user.click(within(row).getByRole('button', { name: /^선택(?:됨)?$/ }));
 };
 const chooseTransition = async (
@@ -607,10 +607,10 @@ describe('Lot Status 전이 준비', () => {
     expect(within(list).getByText('QUALITY_B')).toBeVisible();
     expect(within(list).getAllByRole('button', { name: '선택' })).toHaveLength(2);
     expect(urls.filter((url) => url.pathname.includes('/quality/lot-holds/'))).toHaveLength(0);
-    await chooseHold(user, 'QUALITY_A', '2026-08-25T08:00:00+09:00');
+    await chooseHold(user, 'QUALITY_A', '2026-08-25 06:00');
     await screen.findByText('보류 해제 준비가 완료되었습니다.');
     await fillRelease(user);
-    await chooseHold(user, 'QUALITY_B', '2026-08-25T08:00:00+09:00');
+    await chooseHold(user, 'QUALITY_B', '2026-08-25 06:00');
     expect(await screen.findByText('보류 해제 준비가 완료되었습니다.')).toBeVisible();
     expect(screen.getByRole('radio', { name: '전량 해제' })).toBeChecked();
     expect(screen.queryByLabelText('해제 수량')).toBeNull();
@@ -638,16 +638,17 @@ describe('Lot Status 전이 준비', () => {
     await chooseTransition(user, '정상');
     const list = await screen.findByRole('region', { name: '열린 보류 목록' });
     expect(within(list).getAllByText('SAME_REASON')).toHaveLength(3);
+    /* 보류 시각은 공장 시각(UTC+7)으로 보인다 — omf-all-around#20 */
+    expect(within(list).getByText('2026-08-25 06:00')).toBeVisible();
+    expect(within(list).getByText('2026-08-25 07:00')).toBeVisible();
     expect(within(list).getByText('2026-08-25 08:00')).toBeVisible();
-    expect(within(list).getByText('2026-08-25 09:00')).toBeVisible();
-    expect(within(list).getByText('2026-08-25 10:00')).toBeVisible();
     const holdRequests = urls.filter((url) => url.pathname === HOLDS);
     expect(holdRequests).toHaveLength(2);
     expect(holdRequests[0]?.searchParams.has('page')).toBe(false);
     expect(holdRequests[0]?.searchParams.get('size')).toBe('50');
     expect(holdRequests[1]?.searchParams.get('page')).toBe('2');
     expect(screen.queryByText('보류 해제 준비가 완료되었습니다.')).toBeNull();
-    await chooseHold(user, 'SAME_REASON', '2026-08-25T10:00:00+09:00');
+    await chooseHold(user, 'SAME_REASON', '2026-08-25 08:00');
     await screen.findByText('보류 해제 준비가 완료되었습니다.');
 
     await chooseTransition(user, '불량');

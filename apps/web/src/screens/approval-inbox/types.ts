@@ -1,5 +1,6 @@
 import type { components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
+import { formatPlantDateTime } from '../../patterns/plant-time';
 
 /**
  * W-CO-09 화면 슬라이스의 계약 타입과 화면 타입.
@@ -118,17 +119,14 @@ export const readableName = (value: string, whenMissing: string): string =>
 export const toReasonLines = (reason: string): string[] =>
   reason.trim() === '' ? [t.values.emptyReason] : reason.split(/\r?\n/);
 
-/** 계약의 date-time 문자열에서 표기용 조각을 뽑는다. */
-const RFC3339_PATTERN = /^(\d{4}-\d{2}-\d{2})T(\d{2}:\d{2})/;
-
 /**
  * 상신 일시 표기(`2026-08-06 09:12`).
  *
  * **시각까지 낸다.** 계약이 이 값을 `date-time`으로 두었고, 결재함에서는 같은 날 올라온
  * 요청들의 앞뒤가 곧 결재 차례를 읽는 단서다 — 날짜만 내면 그 순서가 사라진다.
  *
- * **실행 환경 시간대로 옮기지 않는다.** 문자열에 실려 온 offset은 상신이 일어난 곳의 시각이고,
- * 보는 사람의 시간대로 옮기면 같은 요청이 사람마다 다른 시각에 올라온 것으로 보인다.
+ * **공장 시각으로 보인다**(`patterns/plant-time` · omf-all-around#20). 보는 사람(실행 환경)의
+ * 시간대로 옮기지 않는다 — 서버가 UTC 로 보내므로 글자만 자르면 7시간 이르게 찍힌다.
  *
  * **형식이 아니면 원문을 그대로 낸다.** 서버가 보낸 값을 화면이 삼키지 않는다 —
  * 「—」로 바꾸면 값이 없는 것과 못 알아본 것이 구분되지 않는다.
@@ -137,11 +135,7 @@ const RFC3339_PATTERN = /^(\d{4}-\d{2}-\d{2})T(\d{2}:\d{2})/;
  * 이 화면이 소유한다 — 다른 화면 슬라이스의 같은 이름 함수를 참조하지 않는다.
  */
 export const formatDateTime = (value: string): string => {
-  const matched = RFC3339_PATTERN.exec(value);
-
-  if (matched === null) return value;
-
-  return `${matched[1] ?? ''} ${matched[2] ?? ''}`;
+  return formatPlantDateTime(value) ?? value;
 };
 
 /**

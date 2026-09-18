@@ -62,7 +62,8 @@ describe('PoChangeReviewScreen', () => {
     expect(screen.getByText('4000 EA')).toBeInTheDocument();
     expect(screen.getByText(t.diff.decrease('1000'))).toBeInTheDocument();
     expect(screen.getByText(t.diff.same)).toBeInTheDocument();
-    expect(screen.getByText(t.diff.receivedAt('2026-08-05 09:12'))).toBeInTheDocument();
+    /* 수신 시각은 공장 시각(UTC+7)으로 보인다 — omf-all-around#20 */
+    expect(screen.getByText(t.diff.receivedAt('2026-08-05 07:12'))).toBeInTheDocument();
   });
 
   /* 못 받은 것과 열거 밖(빈 배열)을 가른다 — 둘 다 지어내지 않고 사실을 적는다(G-9). */

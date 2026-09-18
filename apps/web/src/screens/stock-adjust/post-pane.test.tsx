@@ -273,7 +273,7 @@ describe('PostPane — 잠금과 사유', () => {
  * ⭐ **전기 결과** — 화면이 받은 200이 근거다(C35).
  */
 describe('PostPane — 전기 결과', () => {
-  it('전기 시각과 전기 뒤 상태를 서버가 준 그대로 낸다', () => {
+  it('전기 시각은 공장 시각(UTC+7)으로, 전기 뒤 상태는 서버가 준 그대로 낸다', () => {
     renderPane({
       posting: readPosting({
         adjustedAt: '2026-08-18T14:05:00+09:00',
@@ -282,7 +282,7 @@ describe('PostPane — 전기 결과', () => {
     });
 
     expect(within(pane()).getByText(t.post.postedTitle('SAMPLE-IA-9301'))).toBeVisible();
-    expect(within(pane()).getByText('2026-08-18 14:05')).toBeVisible();
+    expect(within(pane()).getByText('2026-08-18 12:05')).toBeVisible();
     expect(within(pane()).getByText('SAMPLE_IA_STATUS_B')).toBeVisible();
   });
 

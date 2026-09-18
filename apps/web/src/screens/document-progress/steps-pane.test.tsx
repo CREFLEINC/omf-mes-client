@@ -78,10 +78,14 @@ describe('buildStepColumns — 열 구성과 폭', () => {
 });
 
 describe('formatStepAt', () => {
-  /* 시간대를 옮기지 않는다 — 옮기면 같은 문서가 보는 사람마다 다른 시각으로 보인다. */
-  it('날짜와 분까지만 남기고 시간대를 옮기지 않는다', () => {
-    expect(formatStepAt('2026-08-06T09:14:00+09:00')).toBe('2026-08-06 09:14');
-    expect(formatStepAt('2026-08-06T09:14:00Z')).toBe('2026-08-06 09:14');
+  /*
+   * 공장 시각(UTC+7)으로 낸다 — 같은 순간은 보는 사람의 시간대와 무관하게 한 값으로 보인다
+   * (omf-all-around#20).
+   */
+  it('날짜와 분까지만 남기고 공장 시각으로 낸다 — 같은 순간이면 offset이 달라도 같다', () => {
+    expect(formatStepAt('2026-08-06T09:14:00+09:00')).toBe('2026-08-06 07:14');
+    expect(formatStepAt('2026-08-06T00:14:00Z')).toBe('2026-08-06 07:14');
+    expect(formatStepAt('2026-08-06T09:14:00Z')).toBe('2026-08-06 16:14');
   });
 
   /* 형식이 아니면 **원문 그대로** 낸다 — 화면이 서버가 보낸 값을 삼키지 않는다. */
@@ -200,14 +204,15 @@ describe('StepsPane', () => {
    */
   it('단계 코드가 같아도 시각이 다르면 다른 행으로 본다', () => {
     const early = progressStep({ occurredAt: '2026-08-06T09:00:00+09:00' });
+    /* +09:00 18:00 은 공장 시각(UTC+7) 16:00 으로 보인다. */
     const late = progressStep({ occurredAt: '2026-08-06T18:00:00+09:00' });
 
     const { rerender } = render(<StepsPane steps={[early, late]} />);
-    const before = screen.getByRole('row', { name: /18:00/ });
+    const before = screen.getByRole('row', { name: /16:00/ });
 
     rerender(<StepsPane steps={[late]} />);
 
     expect(within(screen.getByRole('table')).getAllByRole('row')).toHaveLength(2);
-    expect(screen.getByRole('row', { name: /18:00/ })).toBe(before);
+    expect(screen.getByRole('row', { name: /16:00/ })).toBe(before);
   });
 });

@@ -33,6 +33,7 @@ import {
 } from './queries';
 import { SelectField } from './select-field';
 import type { DraftError, NotificationEvent, Option, PreviewResult, RecipientDraft } from './types';
+import { formatPlantDateTime } from '../../patterns/plant-time';
 
 const t = messages.alarmRecipientSettings;
 const EMPTY_RECIPIENTS: RecipientDraft[] = [];
@@ -41,7 +42,8 @@ const TYPE_OPTIONS: Option[] = [
   { value: 'USER', label: t.values.user },
 ];
 
-const formatResolvedAt = (value: string): string => value.replace('T', ' ').slice(0, 16);
+const formatResolvedAt = (value: string): string =>
+  formatPlantDateTime(value) ?? value.replace('T', ' ').slice(0, 16);
 
 export const AlarmRecipientSettingsScreen = () => {
   const [searchParams, setSearchParams] = useSearchParams();

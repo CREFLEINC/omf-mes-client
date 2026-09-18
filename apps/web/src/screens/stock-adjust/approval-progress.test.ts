@@ -90,7 +90,7 @@ describe('readPosting', () => {
       readPosting({ adjustedAt: '2026-08-18T14:05:00+09:00', statusCode: 'SAMPLE_IA_STATUS_B' }),
     ).toEqual({
       kind: 'posted',
-      at: { kind: 'known', text: '2026-08-18 14:05' },
+      at: { kind: 'known', text: '2026-08-18 12:05' },
       statusCode: 'SAMPLE_IA_STATUS_B',
     });
   });
@@ -222,7 +222,7 @@ describe('toStepProgressViews', () => {
     const [view] = toStepProgressViews([approvalStep()], REJECTION_DECISION_CODES);
 
     expect(view?.waitingText).toBeNull();
-    expect(view?.decisionAtText).toBe('2026-08-18 15:02');
+    expect(view?.decisionAtText).toBe('2026-08-18 13:02');
   });
 });
 
@@ -244,7 +244,7 @@ describe('toRequestProgressView', () => {
     expect(view.approvalTypeCode).toBe('INVENTORY_ADJUSTMENT');
     expect(view.statusCode).toBe('SAMPLE_AP_STATUS_A');
     expect(view.requesterLabel).toBe('합성 상신자 가');
-    expect(view.requestedAtText).toBe('2026-08-18 14:35');
+    expect(view.requestedAtText).toBe('2026-08-18 12:35');
   });
 
   /**

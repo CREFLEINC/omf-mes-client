@@ -1,5 +1,6 @@
 import type { components, paths } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
+import { formatPlantDateTime } from '../../patterns/plant-time';
 
 /**
  * ⭐ 이 화면은 계약 두 벌을 부른다 — 조회는 **제품출하(04)**, 판정 저장은 **품질(03)**이다.
@@ -35,11 +36,7 @@ export type DispositionDecisionHistoryResponse =
 
 const quantityFormat = new Intl.NumberFormat('ko-KR', { maximumFractionDigits: 6 });
 
-/**
- * RFC 3339의 날짜·시각 앞부분. **날짜와 시각을 잇는 글자는 대문자 `T`가 정본이지만 소문자도
- * 허용된다** — 대문자만 받으면 소문자를 쓰는 서버의 값이 원문 그대로 화면에 샌다.
- */
-const DATE_TIME_PATTERN = /^(\d{4}-\d{2}-\d{2})T(\d{2}:\d{2})/i;
+/** 날짜만 있는 값의 앞부분(`YYYY-MM-DD`) — 날짜는 시간대를 적용하지 않는다(하루 밀림 방지). */
 const DATE_PATTERN = /^(\d{4}-\d{2}-\d{2})/;
 
 export const formatQty = (value: number | undefined): string =>
@@ -48,17 +45,13 @@ export const formatQty = (value: number | undefined): string =>
     : quantityFormat.format(value);
 
 /**
- * 시각을 «분»까지만 보인다. 문자열을 자르는 이유는 `Date`로 파싱하면 실행 환경의 시간대가
- * 값을 옮기기 때문이다 — 서버가 준 벽시계 시각을 그대로 보여야 판정 이력이 자리마다 달라지지 않는다.
+ * 시각을 «분»까지만 보인다.
  *
- * ⚠ **뒤집으면 이런 가정이 깔린다: 서버가 보내는 오프셋이 사용자가 읽을 오프셋과 같다.**
- * 오프셋을 옮기지 않고 버리므로, 서버가 `Z`로 보내면 화면은 UTC 벽시계를 보인다.
- * 계약의 예시가 전부 현장 오프셋(`+09:00`)이라 지금은 성립하지만, 서버가 `Z`로 바꾸면
- * 이 함수부터 고쳐야 한다.
+ * **공장 시각으로 보인다**(`patterns/plant-time` · omf-all-around#20). 보는 사람(실행 환경)의
+ * 시간대로 옮기지 않는다 — 서버가 UTC 로 보내므로 글자만 자르면 7시간 이르게 찍힌다.
  */
 export const formatDateTime = (value: string): string => {
-  const matched = DATE_TIME_PATTERN.exec(value);
-  return matched === null ? value : `${matched[1] ?? ''} ${matched[2] ?? ''}`;
+  return formatPlantDateTime(value) ?? value;
 };
 
 export const formatDate = (value: string): string => {

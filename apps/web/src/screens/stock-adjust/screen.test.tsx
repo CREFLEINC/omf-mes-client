@@ -2753,7 +2753,7 @@ describe('StockAdjustScreen — 등록 성공', () => {
     await user.click(within(pane).getByRole('button', { name: t.actions.togglePost }));
 
     expect(within(pane).queryByText(t.post.postedTitle('SAMPLE-IA-9301'))).not.toBeInTheDocument();
-    expect(within(pane).queryByText('2026-08-18 09:12')).not.toBeInTheDocument();
+    expect(within(pane).queryByText('2026-08-18 07:12')).not.toBeInTheDocument();
     /* 전기할 수 있는 상태 그대로다 — 두 칸과 버튼이 선다. */
     expect(within(pane).getByRole('button', { name: t.actions.post })).toBeEnabled();
   });
@@ -4716,7 +4716,7 @@ describe('StockAdjustScreen — 전기 확인 창', () => {
  * ⭐ **전기 성공**(C35) — 화면이 받은 200이 근거다.
  */
 describe('StockAdjustScreen — 전기 성공', () => {
-  it('전기했다고 말하고 전기 시각과 상태를 서버가 준 그대로 낸다', async () => {
+  it('전기했다고 말하고 전기 시각은 공장 시각(UTC+7)으로, 상태는 서버가 준 그대로 낸다', async () => {
     withReasonCodes();
 
     const { user } = renderScreen(postRoutes());
@@ -4726,7 +4726,7 @@ describe('StockAdjustScreen — 전기 성공', () => {
     await postAdjustment(user);
 
     expect(await screen.findByText(t.post.postedTitle('SAMPLE-IA-9301'))).toBeVisible();
-    expect(within(postPane()).getByText('2026-08-18 14:05')).toBeVisible();
+    expect(within(postPane()).getByText('2026-08-18 12:05')).toBeVisible();
     expect(within(postPane()).getByText('SAMPLE_IA_STATUS_B')).toBeVisible();
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   });
@@ -5402,7 +5402,7 @@ describe('StockAdjustScreen — 전기의 매임', () => {
     /* ⭐ 앞 전표의 전기가 이 전표 위에 서지 않는다. */
     expect(within(pane).queryByText(t.post.postedTitle('SAMPLE-IA-9302'))).not.toBeInTheDocument();
     expect(within(pane).queryByText(t.post.postedTitle('SAMPLE-IA-9301'))).not.toBeInTheDocument();
-    expect(within(pane).queryByText('2026-08-18 14:05')).not.toBeInTheDocument();
+    expect(within(pane).queryByText('2026-08-18 12:05')).not.toBeInTheDocument();
     /* 새 전표는 **전기할 수 있는 상태**로 선다 — 칠 칸과 누를 버튼이 있다. */
     expect(within(pane).getByLabelText(t.post.businessDate)).toHaveValue(localToday());
     expect(within(pane).getByRole('button', { name: t.actions.post })).toBeEnabled();
@@ -6045,7 +6045,7 @@ describe('StockAdjustScreen — 이력 목록의 줄', () => {
     });
 
     expect(historyCells(0)[4]).toBe(t.historyTable.notPosted);
-    expect(historyCells(1)[4]).toBe('2026-08-18 14:05');
+    expect(historyCells(1)[4]).toBe('2026-08-18 12:05');
   });
 
   /** ⛔ C42 — 이력 탭 어디에도 승인·반려 조작이 없다(양성 앵커 뒤에 잰다). */

@@ -61,12 +61,16 @@ describe('firstLineOf', () => {
 
 describe('formatDateTime', () => {
   it('시각까지 낸다 — 날짜만 내면 같은 날 요청들의 앞뒤가 사라진다', () => {
-    expect(formatDateTime('2026-08-06T14:20:00+09:00')).toBe('2026-08-06 14:20');
-    expect(formatDateTime('2026-08-06T09:05:00+09:00')).toBe('2026-08-06 09:05');
+    expect(formatDateTime('2026-08-06T14:20:00+09:00')).toBe('2026-08-06 12:20');
+    expect(formatDateTime('2026-08-06T09:05:00+09:00')).toBe('2026-08-06 07:05');
   });
 
-  it('실행 환경 시간대로 옮기지 않는다 — 실려 온 벽시계 시각 그대로다', () => {
-    expect(formatDateTime('2026-08-06T23:50:00-05:00')).toBe('2026-08-06 23:50');
+  /* 공장 시각(UTC+7)으로 낸다 — 보는 사람의 실행 환경 시간대와 무관하다(omf-all-around#20). */
+  it('같은 순간이면 offset이 달라도 같은 공장 시각이다 — 순간이 다르면 표기도 다르다', () => {
+    expect(formatDateTime('2026-08-06T23:50:00-05:00')).toBe('2026-08-07 11:50');
+    expect(formatDateTime('2026-08-07T04:50:00Z')).toBe('2026-08-07 11:50');
+    expect(formatDateTime('2026-08-07T11:50:00+07:00')).toBe('2026-08-07 11:50');
+    expect(formatDateTime('2026-08-06T23:50:00+09:00')).toBe('2026-08-06 21:50');
   });
 
   it('초와 offset은 표기하지 않는다', () => {
@@ -88,7 +92,7 @@ describe('toRequestRow', () => {
       approvalRequestNo: 'SYNTH-REQ-001',
       approvalTypeCode: 'GOODS_ISSUE_DISPOSAL',
       requesterName: '합성 상신자1',
-      requestedAtText: '2026-08-06 14:20',
+      requestedAtText: '2026-08-06 12:20',
       statusCode: 'SAMPLE-STATUS-A',
       reasonFirstLine: '첫 줄 사유',
     });
@@ -97,7 +101,7 @@ describe('toRequestRow', () => {
   it('상신 일시가 시각까지 담긴다 — 날짜만 담으면 여기서 멈춘다', () => {
     const row = toRequestRow(baseRequest);
 
-    expect(row.requestedAtText).toBe('2026-08-06 14:20');
+    expect(row.requestedAtText).toBe('2026-08-06 12:20');
     expect(row.requestedAtText).not.toBe('2026-08-06');
   });
 
@@ -190,7 +194,7 @@ describe('toRequestDetailView', () => {
       approvalRequestNo: 'SYNTH-REQ-001',
       approvalTypeCode: 'GOODS_ISSUE_DISPOSAL',
       requesterName: '합성 상신자1',
-      requestedAtText: '2026-08-06 14:20',
+      requestedAtText: '2026-08-06 12:20',
       statusCode: 'SAMPLE-STATUS-A',
       reasonLines: ['첫 줄 사유', '둘째 줄은 더 길게 적힌 설명이다'],
     });

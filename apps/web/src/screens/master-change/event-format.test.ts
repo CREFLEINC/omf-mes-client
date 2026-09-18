@@ -3,26 +3,35 @@ import { describe, expect, it } from 'vitest';
 import { formatDateTime, formatValue } from './event-format';
 
 describe('formatDateTime', () => {
-  it('날짜와 분까지 낸다', () => {
-    expect(formatDateTime('2026-08-04T09:12:00+09:00')).toBe('2026-08-04 09:12');
+  it('날짜와 분까지 공장 시각(UTC+7)으로 낸다', () => {
+    expect(formatDateTime('2026-08-04T09:12:00+09:00')).toBe('2026-08-04 07:12');
   });
 
   /*
-   * 서버가 적어 보낸 벽시계 시각이 현장이 쓰는 시각이다. 실행 환경 시간대로 옮기면
-   * 같은 자료가 보는 사람마다 다른 시각으로 보인다.
+   * 현장이 쓰는 시각은 공장 시각(베트남, UTC+7)이다(omf-all-around#20). 보는 사람(실행 환경)의
+   * 시간대로 옮기면 같은 자료가 사람마다 다른 시각으로 보이고, 글자만 자르면 서버가 보낸 offset 에
+   * 따라 같은 순간이 다르게 찍힌다.
    */
-  it('실행 환경 시간대로 옮기지 않는다 — 시간대가 다르면 결과도 다르다', () => {
+  it('같은 순간이면 offset 이 달라도 같은 공장 시각이다 — 보는 사람의 시간대와 상관없다', () => {
     const seoul = formatDateTime('2026-08-04T09:12:00+09:00');
-    const utc = formatDateTime('2026-08-04T09:12:00+00:00');
+    const utc = formatDateTime('2026-08-04T00:12:00Z');
+    const plant = formatDateTime('2026-08-04T07:12:00+07:00');
 
-    expect(seoul).toBe('2026-08-04 09:12');
-    expect(utc).toBe('2026-08-04 09:12');
-    // 두 입력은 서로 다른 순간이지만 벽시계 표기는 서버가 적은 그대로다.
-    expect(seoul).toBe(utc);
+    expect(seoul).toBe('2026-08-04 07:12');
+    expect(utc).toBe(seoul);
+    expect(plant).toBe(seoul);
   });
 
-  it('시간대가 달라도 벽시계 숫자가 다르면 결과도 다르다', () => {
-    expect(formatDateTime('2026-08-04T18:12:00+00:00')).toBe('2026-08-04 18:12');
+  it('글자가 같아도 다른 순간이면 결과도 다르다', () => {
+    // 09:12+09:00 과 09:12+00:00 은 9시간 떨어진 서로 다른 순간이다.
+    expect(formatDateTime('2026-08-04T09:12:00+00:00')).toBe('2026-08-04 16:12');
+    expect(formatDateTime('2026-08-04T09:12:00+00:00')).not.toBe(
+      formatDateTime('2026-08-04T09:12:00+09:00'),
+    );
+  });
+
+  it('공장 시각으로 자정을 넘기면 날짜도 바뀐다', () => {
+    expect(formatDateTime('2026-08-04T18:12:00+00:00')).toBe('2026-08-05 01:12');
   });
 
   it('값이 없거나 형식이 아니면 null이다 — 호출부가 「—」로 바꾼다', () => {

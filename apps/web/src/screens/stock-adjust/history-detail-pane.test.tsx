@@ -175,7 +175,7 @@ describe('HistoryDetailPane — 제목줄', () => {
   it('전기 시각이 있으면 그 시각을, 없으면 「전기 전」을 낸다', () => {
     const { rerender } = renderPane();
 
-    expect(summaryValue(t.historySummary.adjustedAt)).toBe('2026-08-18 14:05');
+    expect(summaryValue(t.historySummary.adjustedAt)).toBe('2026-08-18 12:05');
 
     rerender(
       <HistoryDetailPane

@@ -358,7 +358,7 @@ describe('첫 진입', () => {
     expect(table.getByText('INVENTORY_ADJUSTMENT')).toBeInTheDocument();
     expect(table.getAllByText('합성 상신자1').length).toBe(2);
     /* 상신 일시는 **시각까지** 보인다 — 날짜만 그리면 여기서 멈춘다. */
-    expect(table.getByText('2026-08-06 14:20')).toBeInTheDocument();
+    expect(table.getByText('2026-08-06 12:20')).toBeInTheDocument();
     /* 사유는 첫 줄만 온다 — 전문이 새면 여기서 드러난다. */
     expect(screen.queryByText(SECOND_LINE_OF_MULTILINE_REASON)).not.toBeInTheDocument();
   });
@@ -1210,13 +1210,13 @@ describe('고른 요청 — 순차 판정은 서버 값이다', () => {
     expect(screen.queryByText(t.progress.myTurn)).not.toBeInTheDocument();
   });
 
-  it('결재 결과·시각·의견을 응답 값 그대로 낸다', async () => {
+  it('결재 결과·의견은 응답 값 그대로, 시각은 공장 시각으로 낸다', async () => {
     await renderDetail(contradictoryMyTurnDetail, '?rq=9001');
 
     const progress = screen.getByRole('group', { name: t.panes.progress });
 
     expect(within(progress).getByText('APPROVED')).toBeVisible();
-    expect(within(progress).getByText('2026-08-06 15:02')).toBeVisible();
+    expect(within(progress).getByText('2026-08-06 13:02')).toBeVisible();
     expect(within(progress).getByText('합성 결재 의견 하나')).toBeVisible();
   });
 

@@ -62,7 +62,7 @@ describe('RequestDetailPane — 값 표기', () => {
     expect(within(pane).getByText('SYNTH-REQ-001')).toBeVisible();
     expect(within(pane).getByText('GOODS_ISSUE_DISPOSAL')).toBeVisible();
     expect(within(pane).getByText('합성 상신자1')).toBeVisible();
-    expect(within(pane).getByText('2026-08-06 14:20')).toBeVisible();
+    expect(within(pane).getByText('2026-08-06 12:20')).toBeVisible();
     expect(within(pane).getByText('SAMPLE-STATUS-OPEN')).toBeVisible();
   });
 

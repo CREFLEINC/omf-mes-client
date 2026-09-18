@@ -165,8 +165,8 @@ describe('HistoryTable — 행 표기', () => {
     renderTable();
 
     expect(cellsOf(0)[4]).toBe(t.historyTable.notPosted);
-    expect(cellsOf(1)[4]).toBe('2026-08-18 14:05');
-    expect(cellsOf(2)[4]).toBe('2026-08-17 09:30');
+    expect(cellsOf(1)[4]).toBe('2026-08-18 12:05');
+    expect(cellsOf(2)[4]).toBe('2026-08-17 07:30');
   });
 
   it('상태가 같아도 전기 시각이 갈리면 표기가 갈린다 — 상태 코드로 판정하지 않는다', () => {

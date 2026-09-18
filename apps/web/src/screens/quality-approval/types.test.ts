@@ -57,7 +57,7 @@ it('상세 표시값은 사유의 원문 offset과 중복·빈 줄·CRLF를 보�
     approvalRequestNo: 'SYNTH-REQ-031',
     approvalTypeCode: 'IQC_SKIP',
     requesterName: '합성 사용자',
-    requestedAtText: '2026-08-22 09:30',
+    requestedAtText: '2026-08-22 07:30' /* 공장 시각(UTC+7) — omf-all-around#20 */,
     statusCode: 'SYNTH-PENDING',
     reasonLines: [
       { sourceOffset: 0, text: '' },

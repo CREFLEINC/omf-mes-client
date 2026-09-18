@@ -34,10 +34,12 @@ describe('EventTable — 목록 표시', () => {
     expect(within(table).getAllByRole('row')).toHaveLength(auditEventFixtures.length + 1);
   });
 
-  it('발생 시각이 서버가 적어 보낸 벽시계 그대로 나온다', () => {
+  it('발생 시각이 공장 시각(UTC+7)으로 나온다', () => {
     renderTable();
 
-    expect(screen.getByText('2026-08-04 09:12')).toBeInTheDocument();
+    // 픽스처 2026-08-04T09:12:00+09:00 은 공장 시각 07:12 다(omf-all-around#20).
+
+    expect(screen.getByText('2026-08-04 07:12')).toBeInTheDocument();
   });
 
   it('대상 종류·대상·사건 종류·수행자가 받은 그대로 나온다', () => {
@@ -92,7 +94,7 @@ describe('EventTable — 바뀐 항목과 변경 내용', () => {
   it('행마다 「보기」가 있고 접근 이름이 어느 건인지 밝힌다', async () => {
     const { onOpenDiff, user } = renderTable();
 
-    await user.click(screen.getByRole('button', { name: '2026-08-04 09:12 변경 내용 보기' }));
+    await user.click(screen.getByRole('button', { name: '2026-08-04 07:12 변경 내용 보기' }));
 
     expect(onOpenDiff).toHaveBeenCalledWith(9001);
   });

@@ -47,10 +47,10 @@ describe('MessageDetailDialog — 항목', () => {
 
     expect(fieldValue('방향')).toBe('INBOUND');
     expect(fieldValue('대상')).toBe('SAMPLE_TARGET · 9101');
-    expect(fieldValue('전송')).toBe('2026-08-04 09:13');
-    expect(fieldValue('완료')).toBe('2026-08-04 09:15');
-    expect(fieldValue('처리 중')).toBe('sync-worker-01 (2026-08-04 11:20)');
-    expect(fieldValue('다음 시도')).toBe('2026-08-04 09:20');
+    expect(fieldValue('전송')).toBe('2026-08-04 07:13');
+    expect(fieldValue('완료')).toBe('2026-08-04 07:15');
+    expect(fieldValue('처리 중')).toBe('sync-worker-01 (2026-08-04 09:20)');
+    expect(fieldValue('다음 시도')).toBe('2026-08-04 07:20');
   });
 
   it('null인 값은 빈 칸이 아니라 「—」로 나온다', () => {

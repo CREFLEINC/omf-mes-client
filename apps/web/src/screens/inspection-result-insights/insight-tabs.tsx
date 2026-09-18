@@ -16,14 +16,14 @@ import type { InspectionInsightFilters } from './filters';
 import { useDefectDistribution, type DefectDistribution } from './queries';
 import type { DistributionGroup } from './request-queries';
 import { TrendPanels } from './trend-panels';
+import { formatPlantDateTime } from '../../patterns/plant-time';
 
 const t = messages.inspectionResultInsights.tabs;
 type Node = DefectDistribution['nodes'][number];
 type View = 'trend' | 'distribution';
 const EMPTY = '—';
 const dateTime = (value: string): string => {
-  const match = /^(\d{4}-\d{2}-\d{2})T(\d{2}:\d{2})/.exec(value);
-  return match === null ? value : `${match[1]} ${match[2]}`;
+  return formatPlantDateTime(value) ?? value;
 };
 const GROUP_OPTIONS = [
   { value: 'defectCode', label: t.groups.defectCode },

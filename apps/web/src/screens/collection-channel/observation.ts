@@ -1,6 +1,7 @@
 import { messages } from '@omf-mes/i18n';
 
 import type { CollectionChannelObservation } from './types';
+import { formatPlantDateTime } from '../../patterns/plant-time';
 
 const t = messages.collectionChannel.importLog;
 
@@ -81,13 +82,11 @@ export const failedLine = (outcome: ImportOutcome): string =>
 export const orNotRecorded = (value: string | null | undefined): string =>
   value === null || value === undefined || value === '' ? t.notRecorded : value;
 
-const RFC3339_PATTERN = /^(\d{4}-\d{2}-\d{2})T(\d{2}:\d{2})/;
-
 /**
  * 받은 시각 표기(`2026-08-22 09:40`).
  *
- * ⛔ **실행 환경 시간대로 옮기지 않는다.** 문자열에 실려 온 offset은 **그 설비가 있는 곳의
- * 시각**이고, 보는 사람의 시간대로 옮기면 같은 신호가 사람마다 다른 시각으로 보인다.
+ * **공장 시각으로 보인다**(`patterns/plant-time` · omf-all-around#20). 보는 사람(실행 환경)의
+ * 시간대로 옮기지 않는다 — 서버가 UTC 로 보내므로 글자만 자르면 7시간 이르게 찍힌다.
  *
  * ⛔ **형식이 아니면 원문을 그대로 낸다** — 「—」로 바꾸면 값이 없는 것과 못 알아본 것이
  * 구분되지 않는다(공유계약 G-9).
@@ -95,9 +94,5 @@ const RFC3339_PATTERN = /^(\d{4}-\d{2}-\d{2})T(\d{2}:\d{2})/;
  * 이 화면이 소유한다 — 다른 화면 슬라이스의 같은 이름 함수를 참조하지 않는다.
  */
 export const formatObservedAt = (value: string): string => {
-  const matched = RFC3339_PATTERN.exec(value);
-
-  if (matched === null) return value;
-
-  return `${matched[1] ?? ''} ${matched[2] ?? ''}`;
+  return formatPlantDateTime(value) ?? value;
 };

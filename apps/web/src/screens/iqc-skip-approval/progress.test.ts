@@ -157,11 +157,11 @@ describe('toStepProgressViews — 단계가 나르는 값', () => {
     expect(views.map((view) => view.stepNo)).toEqual([3, 7]);
   });
 
-  it('결재 결과 코드·시각·의견을 응답 값 그대로 나른다', () => {
+  it('결재 결과 코드·의견은 응답 값 그대로, 시각은 공장 시각으로 나른다', () => {
     const [view] = toStepProgressViews(contradictoryDetail.steps, NO_REJECTION_CODES);
 
     expect(view?.decisionCode).toBe(SAMPLE_DECISION_CODE_A);
-    expect(view?.decisionAtText).toBe('2026-08-06 15:02');
+    expect(view?.decisionAtText).toBe('2026-08-06 13:02');
     expect(view?.decisionComment).toBe('합성 결재 의견 하나');
   });
 

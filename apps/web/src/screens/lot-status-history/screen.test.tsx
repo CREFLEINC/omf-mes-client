@@ -378,7 +378,8 @@ describe('Lot Status 화면 shell', () => {
     expect(screen.getByText('SAMPLE_UNKNOWN (목록 미확정)')).toBeVisible();
     expect(screen.getByText('SAMPLE-ITEM-01 · 합성 품목 (미사용)')).toBeVisible();
     expect(screen.getByText('권한 범위 밖 2건이 제외되었습니다.')).toBeVisible();
-    expect(screen.getByText('기준 시각 2026-08-21 13:00')).toBeVisible();
+    // 표시 시각은 공장 시각(UTC+7) — +09:00 13:00 은 공장 11:00 이다(omf-all-around#20).
+    expect(screen.getByText('기준 시각 2026-08-21 11:00')).toBeVisible();
     const table = screen.getByRole('table', { name: '현재 LOT 상태' });
     expect(within(table).getAllByRole('columnheader')).toHaveLength(6);
     expect(within(table).getByText('0')).toBeVisible();
@@ -470,8 +471,9 @@ describe('Lot Status 화면 shell', () => {
         .map((header) => header.textContent),
     ).toEqual(['일시', 'LOT', '전이/사건', '행위자', '사유']);
     const rows = within(table).getAllByRole('row');
-    expect(rows[1]).toHaveTextContent('2026-08-20 09:00SAMPLE-LOT-001보류 등록');
-    expect(rows[2]).toHaveTextContent('2026-08-21 10:00SAMPLE-LOT-001보류 해제');
+    // 일시는 공장 시각(UTC+7)이다(omf-all-around#20).
+    expect(rows[1]).toHaveTextContent('2026-08-20 07:00SAMPLE-LOT-001보류 등록');
+    expect(rows[2]).toHaveTextContent('2026-08-21 08:00SAMPLE-LOT-001보류 해제');
     expect(within(table).getByText('보류 등록')).toBeVisible();
     expect(within(table).getByText('보류 해제')).toBeVisible();
     expect(within(table).getByText('사건 응답 이름')).toBeVisible();
@@ -651,7 +653,7 @@ describe('Lot Status 화면 shell', () => {
   });
 
   it.each([
-    ['/quality/lot-statuses', 'LOT 목록을 불러오는 중', '기준 시각 2026-08-21 13:00'],
+    ['/quality/lot-statuses', 'LOT 목록을 불러오는 중', '기준 시각 2026-08-21 11:00'],
     ['/quality/lot-status-summary', '현재 상태 요약을 불러오는 중', 'SAMPLE-LOT-001'],
   ])('한쪽만 로딩 중이어도 %s 상태를 독립 표시한다', async (pendingPath, label, success) => {
     const resolvedFetch = fetchFor();
@@ -885,7 +887,8 @@ describe('Lot Status 화면 shell', () => {
     expect(within(dialog).getByText('SAMPLE-LOT-001')).toBeVisible();
     expect(within(dialog).getByText('120')).toBeVisible();
     expect(within(dialog).getByText('2027-08-20')).toBeVisible();
-    expect(within(dialog).getByText('2026-08-20 08:30')).toBeVisible();
+    // 제조 일시는 공장 시각(UTC+7) — +09:00 08:30 은 06:30 이다(omf-all-around#20).
+    expect(within(dialog).getByText('2026-08-20 06:30')).toBeVisible();
     expect(within(dialog).getByRole('button', { name: '판정·전이 처리' })).toBeDisabled();
     expect(within(dialog).queryByRole('link')).not.toBeInTheDocument();
     expect(within(dialog).getByText(/W-03-03 화면에서 진행/)).toBeVisible();

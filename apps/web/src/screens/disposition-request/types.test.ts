@@ -79,7 +79,8 @@ describe('toDecisionRow', () => {
   it('판정 일시를 분까지 자르고 결재 여부를 든다', () => {
     const row = toDecisionRow(decisionFixture({ approvalRequestId: 501 }));
 
-    expect(row.decidedAtText).toBe('2026-09-02 14:20');
+    // 공장 시각(UTC+7) 표시 — +09:00 14:20 은 공장 12:20 이다(omf-all-around#20).
+    expect(row.decidedAtText).toBe('2026-09-02 12:20');
     expect(row.hasApproval).toBe(true);
     expect(row.qtyText).toBe('240');
   });

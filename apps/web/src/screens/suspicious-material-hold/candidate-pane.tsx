@@ -32,6 +32,7 @@ import {
   type SelectedLotSnapshot,
   type SuspiciousMaterialFilters,
 } from './candidate-model';
+import { formatPlantDateTime } from '../../patterns/plant-time';
 
 type Lot = components['schemas']['LotQualityStatus'];
 const t = messages.suspiciousMaterialHold.candidate;
@@ -62,8 +63,7 @@ const sameSelection = (left: SelectedLotSnapshot[], right: SelectedLotSnapshot[]
   JSON.stringify(left) === JSON.stringify(right);
 const formatDateTime = (value: string | undefined): string => {
   if (value === undefined) return t.values.transitionNone;
-  const match = /^(\d{4}-\d{2}-\d{2})T(\d{2}:\d{2})/.exec(value);
-  return match === null ? value : `${match[1]} ${match[2]}`;
+  return formatPlantDateTime(value) ?? value;
 };
 
 export const SuspiciousMaterialCandidatePane = ({

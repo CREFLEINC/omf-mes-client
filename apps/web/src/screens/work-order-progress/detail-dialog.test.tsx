@@ -79,10 +79,11 @@ describe('DetailDialog', () => {
       expect(within(dialog()).getByText(label).closest('.field-cell')).toHaveTextContent(blank);
     });
 
-    it('있으면 날짜와 시각만 보인다', () => {
+    /* 공장 시각(베트남, UTC+7)으로 옮겨 보인다(omf-all-around#20). */
+    it('있으면 공장 시각의 날짜와 시각만 보인다', () => {
       renderDialog({ workOrder: workOrder({ plannedEndAt: '2026-08-04T18:00:00+09:00' }) });
 
-      expect(within(dialog()).getByText('2026-08-04 18:00')).toBeInTheDocument();
+      expect(within(dialog()).getByText('2026-08-04 16:00')).toBeInTheDocument();
     });
   });
 

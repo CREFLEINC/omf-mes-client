@@ -150,7 +150,8 @@ describe('검사 결과 상세 Dialog', () => {
     expect(summary).not.toHaveTextContent('외 0건');
     expect(summary).toHaveTextContent('검교정 만료 · 예정일 2026-07-28');
     expect(countOnlySummary).toHaveTextContent('일부 예시: 외 15건');
-    expect(within(dialog).getByText('기준 2026-08-31 11:30')).toBeInTheDocument();
+    // 기준 시각은 공장 시각(UTC+7) — +09:00 11:30 은 공장 09:30 이다(omf-all-around#20).
+    expect(within(dialog).getByText('기준 2026-08-31 09:30')).toBeInTheDocument();
     expect(within(dialog).queryByText('901')).not.toBeInTheDocument();
 
     await queryClient.refetchQueries({
@@ -158,7 +159,7 @@ describe('검사 결과 상세 Dialog', () => {
     });
     expect(await within(dialog).findByText('측정 요약을 불러오지 못했습니다.')).toBeInTheDocument();
     expect(within(dialog).queryByText('합성 치수')).not.toBeInTheDocument();
-    expect(within(dialog).queryByText('기준 2026-08-31 11:30')).not.toBeInTheDocument();
+    expect(within(dialog).queryByText('기준 2026-08-31 09:30')).not.toBeInTheDocument();
 
     await userEvent.click(within(dialog).getByRole('button', { name: '측정치 전체 보기' }));
     expect(onViewMeasurements).toHaveBeenCalledWith(701);

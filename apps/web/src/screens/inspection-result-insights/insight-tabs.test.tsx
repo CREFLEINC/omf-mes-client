@@ -63,7 +63,8 @@ describe('검사 추이·불량 분포', () => {
         .getAllByRole('cell')
         .map((cell) => cell.textContent),
     ).toEqual(['2026-08-01', '10', '1', '10%']);
-    expect(screen.getByText('기준 2026-08-31 10:30')).toBeInTheDocument();
+    // 기준 시각은 공장 시각(UTC+7) — +09:00 10:30 은 공장 08:30 이다(omf-all-around#20).
+    expect(screen.getByText('기준 2026-08-31 08:30')).toBeInTheDocument();
     expect(calls).toHaveLength(1);
     expect(calls[0]?.searchParams.get('finalRoundOnly')).toBe('true');
 
@@ -72,7 +73,7 @@ describe('검사 추이·불량 분포', () => {
       expect(screen.getByText('불량률 추이를 불러오지 못했습니다.')).toBeInTheDocument(),
     );
     expect(screen.queryByRole('img', { name: /2026-08-02/ })).not.toBeInTheDocument();
-    expect(screen.queryByText('기준 2026-08-31 10:30')).not.toBeInTheDocument();
+    expect(screen.queryByText('기준 2026-08-31 08:30')).not.toBeInTheDocument();
   });
 
   it('전체 선택은 IQC·PQC·OQC 추이를 독립 요청과 패널로 분리한다', async () => {
@@ -202,7 +203,8 @@ describe('검사 추이·불량 분포', () => {
     expect(within(table).getByText('분포 데이터가 없습니다')).toBeInTheDocument();
     expect(screen.getByText(/목록·요약·추이와 다른 모집단/)).toBeInTheDocument();
     expect(screen.getByText(/현재 담기지 않는 불량 원천/)).toBeInTheDocument();
-    expect(screen.getByText('기준 2026-08-31 10:31')).toBeInTheDocument();
+    // 공장 시각(UTC+7) — +09:00 10:31 은 08:31 이다(omf-all-around#20).
+    expect(screen.getByText('기준 2026-08-31 08:31')).toBeInTheDocument();
     expect(calls).toHaveLength(1);
     expect(Object.fromEntries(calls[0]?.searchParams ?? [])).toEqual({
       groupBy: 'defectCode',

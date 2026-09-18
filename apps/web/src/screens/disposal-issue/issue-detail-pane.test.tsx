@@ -44,7 +44,7 @@ describe('IssueDetailPane — 값 표기', () => {
     renderPane();
 
     expect(screen.getByText('GI-2026-950001')).toBeInTheDocument();
-    expect(screen.getByText('2026-08-08 14:20')).toBeInTheDocument();
+    expect(screen.getByText('2026-08-08 12:20')).toBeInTheDocument();
     expect(screen.getByText(WAREHOUSE_LABEL)).toBeInTheDocument();
   });
 

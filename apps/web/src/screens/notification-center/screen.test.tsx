@@ -457,7 +457,7 @@ describe('NotificationCenterScreen — 목록', () => {
     await waitForCards();
 
     expect(screen.getByText(EVENT_NAME_01)).toBeInTheDocument();
-    expect(screen.getByText('08-17 14:05')).toBeInTheDocument();
+    expect(screen.getByText('08-17 12:05')).toBeInTheDocument();
     expect(screen.getByText('합성 알림 문구 가입니다.')).toBeInTheDocument();
     expect(screen.getByText(t.card.read)).toBeInTheDocument();
     expect(screen.getAllByText(t.card.unread)).toHaveLength(2);

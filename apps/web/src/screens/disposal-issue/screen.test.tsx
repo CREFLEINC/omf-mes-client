@@ -2570,7 +2570,7 @@ describe('DisposalIssueScreen — 고른 품의의 상세 조회', () => {
     const pane = historyDetailPane();
 
     expect(within(pane).getByText('GI-2026-950001')).toBeInTheDocument();
-    expect(within(pane).getByText('2026-08-08 14:20')).toBeInTheDocument();
+    expect(within(pane).getByText('2026-08-08 12:20')).toBeInTheDocument();
     expect(within(pane).getByText(WAREHOUSE_LABEL)).toBeInTheDocument();
     expect(within(pane).getByText(ITEM_LABEL)).toBeInTheDocument();
     expect(within(pane).getByText(t.values.posted)).toBeInTheDocument();
@@ -4273,7 +4273,7 @@ describe('DisposalIssueScreen — 열린 창이 갱신에 닫히지 않는다', 
      * (검증 t4 문제 4). 갱신이 **실제로 화면에 닿은 뒤** 창을 본다.
      */
     await waitFor(() => {
-      expect(within(linesPane()).getByText('2026-08-06 09:12')).toBeInTheDocument();
+      expect(within(linesPane()).getByText('2026-08-06 07:12')).toBeInTheDocument();
     });
 
     expect(screen.getByRole('dialog')).toBeInTheDocument();

@@ -87,8 +87,8 @@ describe('GrTable — 행 표기', () => {
 
     expect(screen.getByText('GR-2026-900001')).toBeInTheDocument();
     /* 9001·9002가 같은 일시라 두 칸이 나온다 — 표기가 도는지를 보는 것이 이 단언이다. */
-    expect(screen.getAllByText('2026-08-06 09:12')).toHaveLength(2);
-    expect(screen.getByText('2026-08-07 10:05')).toBeInTheDocument();
+    expect(screen.getAllByText('2026-08-06 07:12')).toHaveLength(2);
+    expect(screen.getByText('2026-08-07 08:05')).toBeInTheDocument();
   });
 
   /** 짝 방향 단언 — 이름이 실제로 보이고, 그 자리에 번호가 없다(`omf-mes#44`). */

@@ -154,7 +154,7 @@ describe('단계 보조 값', () => {
       REJECTION_DECISION_CODES,
     );
 
-    expect(view?.decisionAtText).toBe('2026-08-06 15:02');
+    expect(view?.decisionAtText).toBe('2026-08-06 13:02');
   });
 
   it('결재 시각·의견이 오지 않으면 자리를 만들지 않는다', () => {

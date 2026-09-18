@@ -4,11 +4,11 @@ import { messages } from '@omf-mes/i18n';
 import type { InspectionInsightFilters } from './filters';
 import { toInspectionTypePopulations } from './inspection-type-populations';
 import { useInspectionSummary, type InspectionSummary } from './queries';
+import { formatPlantDateTime } from '../../patterns/plant-time';
 
 const t = messages.inspectionResultInsights.summary;
 const dateTime = (value: string): string => {
-  const match = /^(\d{4}-\d{2}-\d{2})T(\d{2}:\d{2})/.exec(value);
-  return match === null ? value : `${match[1]} ${match[2]}`;
+  return formatPlantDateTime(value) ?? value;
 };
 const number = (value: number): string => new Intl.NumberFormat('ko-KR').format(value);
 
