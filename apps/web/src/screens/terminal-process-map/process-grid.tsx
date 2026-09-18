@@ -32,26 +32,24 @@ export const ProcessGrid = ({
   onRemove,
 }: ProcessGridProps) => {
   const columns: Column<ProcessRowView>[] = [
+    /* 한 행의 여덟 기능을 함께 켜고 끄는 칸 — 공정 칸 앞에 따로 둔다. 글자 없이 확인칸만. */
     {
-      key: 'process',
-      header: t.grid.process,
+      key: 'openAll',
+      header: t.grid.openAll,
+      align: 'center',
       render: (row) => (
-        <span className="stacked-cell">
-          <span>{row.processName}</span>
-          <Checkbox
-            checked={isRowOpen(row)}
-            disabled={disabled}
-            /* 줄마다 같은 이름이면 낭독기가 여덟 개의 「모두 열기」를 가르지 못한다. */
-            aria-label={`${row.processName} ${t.grid.openAll}`}
-            onChange={(event) => {
-              onToggleRow(row.processId, event.target.checked);
-            }}
-          >
-            {t.grid.openAll}
-          </Checkbox>
-        </span>
+        <Checkbox
+          checked={isRowOpen(row)}
+          disabled={disabled}
+          /* 줄마다 같은 이름이면 낭독기가 여러 개의 「전체 선택」을 가르지 못한다. */
+          aria-label={`${row.processName} ${t.grid.openAll}`}
+          onChange={(event) => {
+            onToggleRow(row.processId, event.target.checked);
+          }}
+        />
       ),
     },
+    { key: 'process', header: t.grid.process, render: (row) => row.processName },
     ...FLAG_KEYS.map((key): Column<ProcessRowView> => ({
       key,
       header: flagLabel(key),

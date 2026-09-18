@@ -6004,21 +6004,41 @@ dl.filter-bar.approval-inbox-detail-facts {
 }
 
 /*
- * 공정별 기능 구성 표(매트릭스) — 표는 카드 폭을 다 쓰고, 남는 폭은 기능 여덟 칸이 똑같이 나눈다
- * (고정 배치: 공정 칸·관리 칸만 폭을 정하고 나머지는 균등). 좁은 폭에서는 최소 폭 아래로 줄지 않고
- * 표 안에서만 가로로 넘긴다. 공정 칸 · 기능 칸 · 관리 칸은 얇은 세로선 두 개로만 가른다.
+ * 공정별 기능 구성 표(매트릭스) — 열: 전체 선택 | 공정 | 기능 여덟 칸 | 관리.
+ * 표는 카드 폭을 다 쓰고, 남는 폭은 기능 여덟 칸이 똑같이 나눈다(고정 배치: 전체 선택·공정·관리 칸만
+ * 폭을 정하고 나머지는 균등). 좁은 폭에서는 최소 폭 아래로 줄지 않고 표 안에서만 가로로 넘긴다.
+ * 세로선은 공정|기능, 기능|관리 두 개뿐 — 전체 선택은 그 공정 행 자체를 다루는 조작이라 공정 칸과
+ * 한 덩어리로 읽히게 선을 긋지 않는다.
  */
 .wide-table.terminal-map-matrix table {
   width: 100%;
-  min-width: 58.5rem;
+  min-width: 57.5rem;
   table-layout: fixed;
+}
+
+/* 열이 열한 개라 칸 좌우 여백을 한 단계 줄여(12px → 8px) 1280 폭 카드 안에 들어오게 한다. */
+.terminal-map-matrix table th,
+.terminal-map-matrix table td {
+  padding-inline: var(--space-2);
 }
 
 .terminal-map-matrix th:first-child,
 .terminal-map-matrix td:first-child {
-  /* 긴 공정명은 칸을 넓히지 않고 줄을 바꾼다. */
-  width: 13rem;
+  /* 머리 「전체 선택」이 한 줄로 읽히는 최소 폭. */
+  width: 3.5rem;
+}
+
+.terminal-map-matrix th:nth-child(2),
+.terminal-map-matrix td:nth-child(2) {
+  width: 12rem;
   border-right: 1px solid var(--outline-variant);
+}
+
+/* 공정명이 행의 이름이다 — 굵게, 긴 이름은 칸을 넓히지 않고 줄을 바꾼다. */
+.terminal-map-matrix td:nth-child(2) {
+  font-weight: 600;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 
 .terminal-map-matrix th:last-child,
@@ -6027,31 +6047,9 @@ dl.filter-bar.approval-inbox-detail-facts {
   border-left: 1px solid var(--outline-variant);
 }
 
-/* 공정명이 먼저 읽히고, 「전체 선택」은 그 행을 다루는 보조 조작으로 한 단계 낮춘다. */
-.terminal-map-matrix .stacked-cell {
-  gap: var(--space-2);
-}
-
-.terminal-map-matrix .stacked-cell > span:first-child {
-  font-weight: 600;
-  white-space: normal;
-  overflow-wrap: anywhere;
-}
-
-.terminal-map-matrix .stacked-cell > label {
-  font: var(--type-body-sm);
-  letter-spacing: var(--type-body-sm-tracking);
-  color: var(--on-surface-variant);
-}
-
-/* 기능 칸 — 상자 둘레까지 눌리게 누름 영역을 넓힌다(DS 확인칸의 label 이 그대로 받는다). */
-.terminal-map-matrix td:not(:first-child):not(:last-child) > label {
+/* 전체 선택·기능 칸 — 상자 둘레까지 눌리게 누름 영역을 넓힌다(DS 확인칸의 label 이 그대로 받는다). */
+.terminal-map-matrix td:not(:nth-child(2)):not(:last-child) > label {
   padding: var(--space-2);
-}
-
-/* 칸 안의 공정명·「모두 열기」 묶음도 가운데에 세운다. */
-.terminal-map-grid-table .stacked-cell {
-  align-items: center;
 }
 
 /*
