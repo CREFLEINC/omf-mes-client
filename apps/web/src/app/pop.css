@@ -6017,6 +6017,26 @@
   margin-block-start: var(--space-6);
 }
 
+/*
+ * 재발행 창의 배너 — **아이콘과 글자 첫 줄을 한 행에 세운다**(사용자 지시 2026-09-18).
+ * 창 안의 배너는 `.banner-slot` 밖이라 그쪽 정렬 규칙이 닿지 않는다. 값은 같은 셋을 쓴다
+ * (첫 줄 24 · 20px 아이콘 오프셋 2 · 본문 `--pop-label`).
+ */
+.pop-ui .pop-loclabel-reissue-dialog [role='status'] > :first-child,
+.pop-ui .pop-loclabel-reissue-dialog [role='alert'] > :first-child {
+  margin-block-start: 2px;
+}
+
+.pop-ui .pop-loclabel-reissue-dialog [role='status'] > :last-child > *,
+.pop-ui .pop-loclabel-reissue-dialog [role='alert'] > :last-child > * {
+  line-height: 24px;
+}
+
+.pop-ui .pop-loclabel-reissue-dialog [role='status'] > :last-child > :last-child,
+.pop-ui .pop-loclabel-reissue-dialog [role='alert'] > :last-child > :last-child {
+  font-size: var(--pop-label);
+}
+
 /* 고른 수와 막힌 사유는 단추 왼쪽에 선다 — 단추를 누르기 전에 눈이 지나는 자리다. */
 .pop-ui > .pop-loclabel-actions > .field-note {
   margin-inline-end: auto;
