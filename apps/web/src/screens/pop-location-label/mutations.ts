@@ -3,14 +3,11 @@ import { useMutation, useQueryClient, type UseMutationResult } from '@tanstack/r
 
 import { useApiClient } from '../../patterns/api-context';
 import { useMasterWrite, type MasterWriteResult } from '../../patterns/master';
-import {
-  fetchLabelRendition,
-  resolveLabelRenditionFormat,
-} from '../../patterns/pop-label-rendition';
 import { runRequest } from '../../patterns/request';
 import { hasPrintBridge, sendToPrinter, type PrintAttempt } from '../../patterns/pop-print';
+import { buildLocationLabel, type LocationLabelFields } from './label-tspl';
 import { popLocationLabelKeys } from './queries';
-import { DOCUMENT_TYPE_CODE, type DocumentIssue, type DocumentIssueCreate } from './types';
+import { type DocumentIssue, type DocumentIssueCreate } from './types';
 
 /**
  * 발행 · 재발행.
@@ -94,6 +91,8 @@ export interface PrintFlowResult {
  */
 export const usePrintFlow = (
   workerNo: string | null,
+  /** 발행 기록의 위치를 라벨 값으로 푼다. 모르면 `null` — 그 건은 인쇄 실패로 남는다. */
+  fieldsOf: (record: DocumentIssue) => LocationLabelFields | null,
 ): UseMutationResult<PrintFlowResult, Error, DocumentIssue[]> => {
   const { client } = useApiClient();
   const queryClient = useQueryClient();
@@ -102,14 +101,8 @@ export const usePrintFlow = (
     mutationFn: async (issued: DocumentIssue[]): Promise<PrintFlowResult> => {
       const reports: PrintReport[] = [];
 
-      /*
-       * ⭐ **형식은 한 번만 고른다.** 셸에 「RAW 를 찍을 수 있는가」를 묻는 값이라 건마다 답이
-       *    달라지지 않고, 건마다 물으면 수십 건에서 그만큼 왕복이 는다.
-       */
-      const format = await resolveLabelRenditionFormat();
-
       for (const record of issued) {
-        const attempt = await printOne(client, record, format);
+        const attempt = await printOne(record, fieldsOf(record));
         const reported =
           attempt.kind === 'noBridge' || workerNo === null
             ? false
@@ -133,48 +126,33 @@ export const usePrintFlow = (
 };
 
 type Client = ReturnType<typeof useApiClient>['client'];
-type LabelFormat = Awaited<ReturnType<typeof resolveLabelRenditionFormat>>;
 
 /** 라벨 파일에 붙는 이름 — 무엇을 몇 회차로 찍은 것인지 셸의 파일 이름에서 알아볼 수 있게 한다. */
 const printLabel = (record: DocumentIssue): string =>
   `${record.documentTypeCode}-${String(record.target.targetId)}-${String(record.issueSeq)}`;
 
 /**
- * ⭐ **라벨은 서버가 그린다**(공유계약 K-5 · 출력물 요구서 §4). 단말마다 라벨이 달라지지 않게 하려는
- *    조항이고, 서식이 바뀔 때 **창고 단말을 다시 설치하지 않아도 되는** 실리도 함께 있다 — POP 은
- *    Electron 설치본이라 재배포가 무겁다.
+ * ⭐ **라벨은 POP 이 80 × 30 mm 로 짠다**(사용자 지시 2026-09-18 · #1344 · `label-tspl` 머리말).
+ *    서버 렌디션은 100 × 60 mm 좌표라 현장 라벨지에 맞지 않았다 — 그래서 렌디션을 부르지 않는다.
  *
- * ⭐ **준비 목록에 이 종류를 넘긴다**(`READY_RENDITION_DOCUMENT_TYPES`). 목록의 규율은 「서버에
- *    있는 것만 적는다」이고, 이 종류는 **서버가 그린다**(확인 2026-09-17 · #1318). 넘기지 않으면
- *    배포본에서 `LabelRenditionNotReadyError` 로 **네트워크 요청 전에** 멎어, 서버가 그릴 준비를
- *    마쳤는데도 라벨이 한 장도 나오지 않는다.
+ * ⛔ **형식은 언제나 `tspl` 이다.** 형식은 바이트가 정하지 셸 사정이 정하지 않는다 — 셸이 고른
+ *    형식을 넘기면 RAW 자리가 없는 셸에서 TSPL 이 그림으로 저장돼 깨진 라벨이 나오는데 성공으로
+ *    보고된다(자재·생산 LOT 라벨과 같은 규칙).
  */
 const printOne = async (
-  client: Client,
   record: DocumentIssue,
-  format: LabelFormat,
+  fields: LocationLabelFields | null,
 ): Promise<PrintAttempt> => {
-  /*
-   * ⭐ **보낼 곳이 없으면 받지도 않는다.** 셸 밖에서 이 화면을 열면 인쇄 통로가 없으므로,
-   *    받아 봐야 버릴 바이트를 서버에서 당기게 된다.
-   */
   if (!hasPrintBridge()) return { kind: 'noBridge' };
 
-  let bytes: ArrayBuffer;
+  /* 값을 모르면 짜지 못한다 — 종이는 나오지 않았고, 발행 기록은 남아 있다. */
+  if (fields === null) return { kind: 'failed', reason: '위치 정보를 찾지 못했습니다' };
 
-  try {
-    bytes = await fetchLabelRendition(
-      client,
-      record.documentIssueLogId,
-      format,
-      DOCUMENT_TYPE_CODE,
-    );
-  } catch (cause) {
-    /* 받지 못한 것도 인쇄 실패다 — 종이는 나오지 않았고, 발행 기록은 남아 있다. */
-    return { kind: 'failed', reason: cause instanceof Error ? cause.message : String(cause) };
-  }
-
-  return sendToPrinter(new Uint8Array(bytes), printLabel(record), format);
+  return sendToPrinter(
+    new TextEncoder().encode(buildLocationLabel(fields)),
+    printLabel(record),
+    'tspl',
+  );
 };
 
 /**
