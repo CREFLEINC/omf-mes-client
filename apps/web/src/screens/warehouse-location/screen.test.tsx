@@ -220,7 +220,7 @@ describe('WarehouseLocationScreen — 창고 목록 조회', () => {
     const { requests, user } = renderScreen([warehouseListRoute(), ...lookupRoutes()]);
     await screen.findByRole('button', { name: 'WH-01' });
 
-    // 미사용 포함은 해제 축이라 즉시 적용되고, 나머지는 조회를 눌러 모아서 적용한다.
+    // 미사용 포함·창고 유형은 즉시 적용되고, 검색어는 조회를 눌러 적용한다(omf-all-around#17).
     await user.click(screen.getByRole('checkbox', { name: '미사용 포함' }));
     await user.type(screen.getByLabelText('창고 검색'), 'WH-0');
     await user.click(screen.getByRole('combobox', { name: '창고유형' }));
@@ -231,6 +231,63 @@ describe('WarehouseLocationScreen — 창고 목록 조회', () => {
     expect(last?.url.searchParams.get('q')).toBe('WH-0');
     expect(last?.url.searchParams.get('warehouseTypeCode')).toBe('MATERIAL');
     expect(last?.url.searchParams.get('includeInactive')).toBe('true');
+  });
+
+  /*
+   * omf-all-around#17 — 창고 유형 필터가 안 먹는다(실화면 재현 2026-09-18). 유형을 고르기만 하면
+   * 요청이 나가지 않았고, [조회] 전에 「미사용 포함」을 누르면 고른 유형이 지워진 채 조회됐다.
+   */
+  it('창고 유형은 고르는 즉시 적용된다 — [조회] 없이 warehouseTypeCode 가 실린다', async () => {
+    const { requests, user } = renderScreen([warehouseListRoute(), ...lookupRoutes()]);
+    await screen.findByRole('button', { name: 'WH-01' });
+
+    await user.click(screen.getByRole('combobox', { name: '창고유형' }));
+    await user.click(screen.getByRole('option', { name: '자재창고' }));
+
+    await waitFor(() => {
+      expect(listRequests(requests).at(-1)?.url.searchParams.get('warehouseTypeCode')).toBe(
+        'MATERIAL',
+      );
+    });
+  });
+
+  it('유형을 고른 뒤 「미사용 포함」을 눌러도 고른 유형이 남는다', async () => {
+    const { requests, user } = renderScreen([warehouseListRoute(), ...lookupRoutes()]);
+    await screen.findByRole('button', { name: 'WH-01' });
+
+    await user.click(screen.getByRole('combobox', { name: '창고유형' }));
+    await user.click(screen.getByRole('option', { name: '자재창고' }));
+    await user.click(screen.getByRole('checkbox', { name: '미사용 포함' }));
+
+    await waitFor(() => {
+      const last = listRequests(requests).at(-1);
+      expect(last?.url.searchParams.get('includeInactive')).toBe('true');
+      expect(last?.url.searchParams.get('warehouseTypeCode')).toBe('MATERIAL');
+    });
+    expect(screen.getByRole('combobox', { name: '창고유형' })).toHaveTextContent('자재창고');
+  });
+
+  it('검색어를 입력하던 중 유형·미사용 포함을 바꿔도 입력한 검색어가 남는다', async () => {
+    const { requests, user } = renderScreen([warehouseListRoute(), ...lookupRoutes()]);
+    await screen.findByRole('button', { name: 'WH-01' });
+
+    await user.type(screen.getByLabelText('창고 검색'), 'WH-0');
+    await user.click(screen.getByRole('combobox', { name: '창고유형' }));
+    await user.click(screen.getByRole('option', { name: '자재창고' }));
+    await user.click(screen.getByRole('checkbox', { name: '미사용 포함' }));
+
+    expect(screen.getByLabelText('창고 검색')).toHaveValue('WH-0');
+    /* 검색어는 [조회]·Enter 로만 적용된다 — 아직 요청에 실리지 않는다. */
+    expect(listRequests(requests).at(-1)?.url.searchParams.get('q')).toBeNull();
+
+    await user.click(screen.getByRole('button', { name: '조회' }));
+
+    await waitFor(() => {
+      const last = listRequests(requests).at(-1);
+      expect(last?.url.searchParams.get('q')).toBe('WH-0');
+      expect(last?.url.searchParams.get('warehouseTypeCode')).toBe('MATERIAL');
+      expect(last?.url.searchParams.get('includeInactive')).toBe('true');
+    });
   });
 
   it('조회 조건은 URL에 남는다 — 새로고침·공유가 같은 결과를 낸다', async () => {
