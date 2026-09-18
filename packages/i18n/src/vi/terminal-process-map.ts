@@ -123,9 +123,7 @@ export const terminalProcessMap: Translated<typeof ko.terminalProcessMap> = {
       'Máy quét này không mở công đoạn nào. Máy quét chỉ dùng cho kho thì 0 dòng là bình thường — không phải lỗi.',
     /** ⭐ `quyền` 을 쓰지 않는다 — 보안 경계가 아니라 오조작을 막는 기능 구성이다. */
     purpose:
-      'Chọn các chức năng được dùng theo từng công đoạn trên máy quét này. Chức năng không được chọn sẽ không dùng được trên máy quét này.',
-    securityNote:
-      'Thiết lập này để tránh thao tác nhầm. Việc truy cập của máy quét được quản lý bằng token đăng ký.',
+      'Thiết lập theo từng công đoạn các chức năng được dùng trên máy quét này. Chức năng không được chọn sẽ không dùng được ở công đoạn đó.',
     save: 'Lưu cấu hình',
     saved: 'Đã lưu cấu hình chức năng.',
     saving: 'Đang lưu.',
@@ -134,7 +132,7 @@ export const terminalProcessMap: Translated<typeof ko.terminalProcessMap> = {
     selectTerminalTitle: 'Vui lòng chọn máy quét',
     selectTerminal:
       'Chọn máy quét trong danh sách để xem thông tin máy quét và cấu hình chức năng theo công đoạn.',
-    unselectedNote: 'Sẽ hiển thị khi chọn máy quét.',
+    unselectedNote: 'Vui lòng chọn máy quét cần thiết lập.',
     loadFailed: 'Không tải được cấu hình chức năng.',
     processLookupFailed: 'Không tải được danh sách công đoạn nên hiện chưa thêm được.',
     lockLoading: 'Đang tải cấu hình máy quét. Lát nữa hãy lưu.',

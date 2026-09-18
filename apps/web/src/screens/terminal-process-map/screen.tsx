@@ -329,7 +329,7 @@ export const TerminalProcessMapScreen = () => {
       <div className="two-pane terminal-map-panes">
         <section className="pane" aria-label={t.panes.list}>
           <h2>{t.panes.list}</h2>
-          <div className="filter-bar">
+          <div className="filter-bar terminal-map-filter">
             <div className="field-cell">
               <span className="field-label">{t.filters.search}</span>
               <SearchInput
@@ -354,7 +354,7 @@ export const TerminalProcessMapScreen = () => {
                 {t.filters.includeInactive}
               </Checkbox>
             </div>
-            <div className="form-actions">
+            <div className="form-actions terminal-map-filter-actions">
               <Button
                 variant="outlined"
                 onClick={() => {
@@ -485,13 +485,12 @@ export const TerminalProcessMapScreen = () => {
        */}
       <section className="pane" aria-label={t.panes.grid}>
         <h2>{t.panes.grid}</h2>
-        {/* ⭐ 이 구획이 무엇을 정하는지 먼저 말한다. 보안 경계로 오해하지 않게 한 줄을 덧붙인다. */}
+        {/* ⭐ 이 구획이 무엇을 정하는지 먼저 말한다. */}
         <p className="pane-lead">{t.grid.purpose}</p>
-        <p className="pane-lead terminal-map-subnote">{t.grid.securityNote}</p>
 
         {selectedId === null ? (
           /* 선택 안내는 단말 정보 구획이 크게 한 번 말한다 — 여기서는 한 줄로 줄인다. */
-          <p className="pane-lead">{t.grid.unselectedNote}</p>
+          <p className="pane-lead terminal-map-unselected">{t.grid.unselectedNote}</p>
         ) : processRows.isError ? (
           <LoadErrorBanner
             error={processRows.error}

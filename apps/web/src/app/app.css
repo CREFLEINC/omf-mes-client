@@ -5969,6 +5969,22 @@ dl.filter-bar.approval-inbox-detail-facts {
   text-align: center;
 }
 
+/* 단말 목록 조회 조건 — 초기화는 그 줄의 오른쪽 끝(줄이 바뀌어도 그 줄의 끝)에 선다. */
+.terminal-map-filter > .terminal-map-filter-actions {
+  margin-left: auto;
+}
+
+/* 쪽 이동 — 「1–1 / 전체 1건」 글자와 이전·다음 단추의 세로 가운데를 맞춘다. */
+.form-actions.terminal-map-pagenav {
+  align-items: center;
+}
+
+/* 공통 .field-note·문단의 위아래 여백이 가운데 맞춤을 어긋나게 한다 — 이 줄에서만 뺀다. */
+.terminal-map-pagenav > .field-note {
+  margin-top: 0;
+  margin-bottom: 0;
+}
+
 /* 칸 안의 공정명·「모두 열기」 묶음도 가운데에 세운다. */
 .terminal-map-grid-table .stacked-cell {
   align-items: center;
@@ -5985,9 +6001,9 @@ dl.filter-bar.approval-inbox-detail-facts {
   overflow-wrap: anywhere;
 }
 
-/* 보조 안내 한 줄 — 본 안내 바로 밑에 붙는다. */
-.pane-lead.terminal-map-subnote {
-  margin-top: var(--space-1);
+/* 선택 전 안내 — 구획 설명과 한 줄을 띄운다. */
+.pane-lead.terminal-map-unselected {
+  margin-top: var(--space-5);
 }
 
 /* 공정별 기능 구성 표 — 열이 많아 좁은 폭에서는 표 안에서만 가로로 넘긴다(마지막 「빼기」 열이 잘리지 않게). */
