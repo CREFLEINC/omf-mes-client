@@ -6032,6 +6032,15 @@
   line-height: 24px;
 }
 
+.pop-ui .pop-loclabel-reissue-dialog .pop-select {
+  align-items: stretch;
+}
+
+/* [선택] 은 입력란과 같은 높이로 선다(사용자 지시 2026-09-18) — 공용 최소 높이 56 을 푼다. */
+.pop-ui .pop-loclabel-reissue-dialog .pop-select__trigger {
+  min-block-size: 0;
+}
+
 .pop-ui .pop-loclabel-reissue-dialog [role='status'] > :last-child > :last-child,
 .pop-ui .pop-loclabel-reissue-dialog [role='alert'] > :last-child > :last-child {
   font-size: var(--pop-label);

@@ -80,12 +80,12 @@ export const popLocationLabel = {
     notice: (count: number) =>
       `선택한 항목 중 ${String(count)}곳은 이미 라벨이 발행되었습니다. 다시 발행할 사유를 선택해 주세요.`,
     reason: '재발행 사유',
-    reasonPlaceholder: '사유를 고르세요',
+    reasonPlaceholder: '사유를 선택하세요',
     reasonLoadFailed: '재발행 사유를 불러오지 못했습니다.',
     confirm: '재발행',
     cancel: '취소',
     /** 사유를 못 받으면 발행 자체를 열지 않는다 — 보내 봐야 서버가 거절한다. */
-    required: '재발행 사유를 골라야 발행할 수 있습니다.',
+    required: '재발행 사유는 필수입니다.',
   },
 
   print: {

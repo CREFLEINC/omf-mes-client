@@ -69,7 +69,7 @@ export const popLocationLabel = {
     reasonLoadFailed: 'Không tải được lý do phát hành lại.',
     confirm: 'Phát hành lại',
     cancel: 'Hủy',
-    required: 'Phải chọn lý do phát hành lại mới phát hành được.',
+    required: 'Bắt buộc phải có lý do phát hành lại.',
   },
 
   print: {
