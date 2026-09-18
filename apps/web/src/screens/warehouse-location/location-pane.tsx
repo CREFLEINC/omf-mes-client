@@ -78,10 +78,9 @@ export const LocationPane = ({
       key: 'locationCode',
       header: t.fields.locationCode,
       /*
-       * 세 열 모두 머리·값 가운데(사용자 결정 2026-09-18 · omf-all-around#17). 계층은 없애지 않는다 —
-       * [펼치기 단추 + 코드] 묶음을 가운데에 두고, 깊이는 묶음 안의 들여쓰기로 남긴다.
+       * 위치 코드만 머리·값 왼쪽(사용자 결정 2026-09-18 · omf-all-around#17) — 가운데로 두면 행마다 따로
+       * 가운데에 서서 깊이 들여쓰기가 상쇄돼 상하위가 읽히지 않았다. 위치명·사용 상태는 가운데.
        */
-      align: 'center',
       render: (row) => {
         const isExpanded = expandedIds.has(row.location.locationId);
 

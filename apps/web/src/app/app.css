@@ -5278,14 +5278,7 @@ dl.filter-bar.approval-inbox-detail-facts {
   margin-left: auto;
 }
 
-/*
- * 위치 코드 칸 — [펼치기 단추 + 코드] 묶음을 가운데에 둔다. 깊이 들여쓰기(padding-left)는 묶음 안에
- * 남아 상하위가 보인다. 긴 코드가 접혀도 코드 글자는 묶음 안에서 왼쪽 기준을 지킨다.
- */
-.warehouse-location-location-table .tree-toggle {
-  justify-content: center;
-}
-
+/* 긴 위치 코드가 접혀도 왼쪽 기준을 지킨다(계층 들여쓰기와 같은 기준선). */
 .warehouse-location-location-table .link-cell {
   text-align: start;
 }
