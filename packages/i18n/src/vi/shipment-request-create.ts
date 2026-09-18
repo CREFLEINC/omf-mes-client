@@ -86,9 +86,6 @@ export const shipmentRequestCreate: Translated<typeof ko.shipmentRequestCreate> 
     customerRequired: 'Hãy chọn khách hàng.',
     shipToPartnerRequired: 'Hãy chọn nơi giao hàng.',
     requestedShipDateRequired: 'Hãy nhập ngày yêu cầu xuất hàng.',
-    itemRequired: 'Hãy chọn mặt hàng.',
-    uomRequired: 'Hãy chọn đơn vị.',
-    requestedQtyRequired: 'Hãy nhập số lượng yêu cầu.',
     requestedQtyNotPositive: 'Số lượng yêu cầu phải lớn hơn 0.',
     qtyNotNumber: 'Hãy nhập bằng số.',
     allocatedQtyNegative: 'Số lượng phân bổ phải từ 0 trở lên.',
@@ -101,6 +98,7 @@ export const shipmentRequestCreate: Translated<typeof ko.shipmentRequestCreate> 
     noTarget: 'Hãy chọn phiếu chỉ thị trước hoặc bắt đầu tạo độc lập.',
     noAllocatedLine: 'Không có dòng nào có số lượng phân bổ từ 1 trở lên.',
     lineInvalid: 'Hãy kiểm tra phần nhập của các dòng.',
+    lineIncomplete: 'Hãy điền mặt hàng, đơn vị và số lượng yêu cầu của dòng.',
     headerIncomplete: 'Hãy nhập các mục bắt buộc.',
     importFileNotSupported:
       'Chưa dùng được chức năng nhập phiếu chỉ thị vì định dạng tệp chưa được chốt. Khi định dạng được quyết định thì nút này sẽ dùng được.',

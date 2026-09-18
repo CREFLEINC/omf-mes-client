@@ -89,9 +89,6 @@ export const shipmentRequestCreate = {
     customerRequired: '고객을 선택하세요.',
     shipToPartnerRequired: '납품처를 선택하세요.',
     requestedShipDateRequired: '출하요청일을 입력하세요.',
-    itemRequired: '품목을 선택하세요.',
-    uomRequired: '단위를 선택하세요.',
-    requestedQtyRequired: '요청 수량을 입력하세요.',
     requestedQtyNotPositive: '요청 수량은 0보다 커야 합니다.',
     qtyNotNumber: '숫자로 입력하세요.',
     allocatedQtyNegative: '배정 수량은 0 이상이어야 합니다.',
@@ -104,6 +101,12 @@ export const shipmentRequestCreate = {
     noTarget: '먼저 지시서를 고르거나 단독 생성을 시작하세요.',
     noAllocatedLine: '배정 수량이 1 이상인 라인이 하나도 없습니다.',
     lineInvalid: '라인 입력을 확인하세요.',
+    /*
+     * ⛔ **아직 안 채운 칸은 줄마다 붉게 적지 않는다**(사용자 지시 2026-09-18) — 라인을 막 추가한
+     *    사람에게 경고가 먼저 서면 아무것도 안 했는데 잘못한 것처럼 읽힌다. 대신 막는 사유를
+     *    편성 단추 옆에 한 번 적는다.
+     */
+    lineIncomplete: '라인의 품목·단위·요청 수량을 채우세요.',
     headerIncomplete: '필수 항목을 입력하세요.',
     importFileNotSupported:
       '지시서 가져오기는 파일 형식이 아직 확정되지 않아 사용할 수 없습니다. 형식이 정해지면 이 버튼을 쓸 수 있습니다.',

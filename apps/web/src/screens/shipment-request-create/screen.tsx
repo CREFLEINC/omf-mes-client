@@ -234,6 +234,12 @@ export const ShipmentRequestCreateScreen = () => {
     }
     if (!hasAllocatableLine(lines)) return t.actionReasons.noAllocatedLine;
     if (Object.keys(lineValidation.errors).length > 0) return t.actionReasons.lineInvalid;
+    /*
+     * ⛔ **아직 안 채운 칸도 편성을 막는다** — 막는 것과 «줄마다 붉게 적는 것»은 다른 일이다
+     *    (사용자 지시 2026-09-18). 여기서 말하지 않으면 단추가 열린 채 눌리고, 본문 조립이
+     *    `null` 을 내어 **아무 일도 일어나지 않는다.**
+     */
+    if (lineValidation.isIncomplete) return t.actionReasons.lineIncomplete;
     if (Object.keys(headerLocalErrors).length > 0) return t.actionReasons.headerIncomplete;
 
     return null;

@@ -229,6 +229,47 @@ describe('ShipmentRequestCreateScreen — 단독 생성(완료 조건 C3)', () =
    *    선택칸으로는 감당할 수 없었다 — 첫 쪽 밖의 품목은 고를 방법이 아예 없었다.
    * ⭐ **기준 단위도 함께 채운다** — 서버가 준 `baseUomId` 다. 담당이 줄마다 단위를 고르지 않는다.
    */
+  /*
+   * ⛔ **빈 줄에 경고가 먼저 서지 않는다**(사용자 지시 2026-09-18). 라인을 막 추가한 사람에게
+   *    붉은 문구가 두 개 먼저 뜨면, 아무것도 안 했는데 잘못한 것처럼 읽힌다.
+   * ⭐ **그래도 편성은 막힌다** — 막는 것과 「줄마다 붉게 적는 것」은 다른 일이다. 사유는 편성
+   *    단추 옆에 한 번 선다.
+   */
+  it('아직 안 채운 줄에 붉은 문구를 띄우지 않되 편성은 막는다', async () => {
+    const user = userEvent.setup();
+
+    renderWithProviders(<ShipmentRequestCreateScreen />, {
+      fetch: createStubFetch(baseRoutes()),
+      route: ROUTE,
+    });
+
+    await user.click(await screen.findByRole('button', { name: t.actions.startStandalone }));
+    await screen.findByRole('region', { name: t.panes.lines });
+
+    expect(screen.queryByText('품목을 선택하세요.')).not.toBeInTheDocument();
+    expect(screen.queryByText('요청 수량을 입력하세요.')).not.toBeInTheDocument();
+
+    expect(screen.getByRole('button', { name: t.actions.submit })).toBeDisabled();
+  });
+
+  /*
+   * ⛔ **친 값이 잘못된 것은 그대로 짚는다.** 「아직 안 쳤다」와 「잘못 쳤다」는 다른 사실이고,
+   *    뒤엣것까지 감추면 사용자는 왜 막혔는지 알 길이 없다.
+   */
+  it('잘못 친 값은 그 자리에서 짚는다', async () => {
+    const user = userEvent.setup();
+
+    renderWithProviders(<ShipmentRequestCreateScreen />, {
+      fetch: createStubFetch(baseRoutes()),
+      route: ROUTE,
+    });
+
+    await user.click(await screen.findByRole('button', { name: t.actions.startStandalone }));
+    await user.type(screen.getByLabelText(t.lineTable.requestedQtyLabel(1)), '0');
+
+    expect(await screen.findByText(t.errors.requestedQtyNotPositive)).toBeInTheDocument();
+  });
+
   it('팝업에서 여러 품목을 고르면 그만큼 라인이 붙고 기준 단위가 채워진다', async () => {
     const user = userEvent.setup();
 

@@ -8150,3 +8150,44 @@ dl.filter-bar.approval-inbox-detail-facts {
   overflow: hidden;
   text-overflow: ellipsis;
 }
+
+/*
+ * 품목 선택 대화상자(`patterns/item-picker`) — **세로 리듬을 여기서 준다.**
+ *
+ * ⛔ 종전에는 조회 줄에 `filter-row` 를 적어 두었는데 **그 클래스는 이 저장소 어디에도 정의가
+ *    없다**(2026-09-18 실측). 그래서 유형·검색어·찾기와 표·쪽 이동이 맨 블록으로 쌓여 **간격이
+ *    0** 이었다 — 값을 고칠 대상이 아예 없었다.
+ * ⚠ 이름을 부품 전용으로 바꿨다. `filter-row` 는 「어딘가에 있을 법한」 일반 이름이라, 없는데도
+ *   있는 줄 알고 지나치기 쉽다.
+ */
+.item-picker-dialog > * + * {
+  margin-block-start: var(--space-4);
+}
+
+/* 조회 줄 — 유형·검색어는 늘어나고 「찾기」는 제 크기를 지킨다. 좁으면 아래로 접는다. */
+.item-picker-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--space-3);
+}
+
+.item-picker-controls > .field-cell {
+  flex: 1 1 14rem;
+  min-width: 0;
+}
+
+.item-picker-controls > button {
+  flex: 0 0 auto;
+}
+
+/* 쪽 이동 — 「1–20 / 전체 37건」은 왼쪽, 단추 둘은 오른쪽 끝으로 민다. */
+.item-picker-pager {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.item-picker-pager > .field-note {
+  margin-inline-end: auto;
+}

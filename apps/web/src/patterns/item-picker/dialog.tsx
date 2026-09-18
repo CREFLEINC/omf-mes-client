@@ -163,9 +163,16 @@ export const ItemPickerDialog = ({
   return (
     <Dialog
       open
+      /*
+       * ⭐ **넓은 프리셋으로 연다.** 결과 표가 다섯 열(선택·코드·이름·유형·가용)이라 기본 폭에서는
+       *    오른쪽이 잘려 나갔다(실측 2026-09-18). 폭을 손으로 적지 않고 DS 프리셋을 쓴다 —
+       *    손으로 적으면 DS 가 폭 규격을 바꿀 때 이 창만 어긋난다.
+       */
+      size="lg"
       closeOnBackdropClick={false}
       title={t.title}
       onClose={onClose}
+      className="item-picker-dialog"
       footer={
         <>
           <span className="field-note">
@@ -186,7 +193,7 @@ export const ItemPickerDialog = ({
         </>
       }
     >
-      <div className="filter-row">
+      <div className="item-picker-controls">
         <div className="field-cell">
           <label className="field-label" htmlFor={typeId}>
             {t.typeLabel}
@@ -259,7 +266,7 @@ export const ItemPickerDialog = ({
       />
 
       {total > 0 && (
-        <div className="filter-row">
+        <div className="item-picker-pager">
           <span className="field-note">{t.page.range(from, to, total)}</span>
           <Button
             variant="outlined"

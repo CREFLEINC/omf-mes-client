@@ -71,20 +71,43 @@ export const readQty = (raw: string): QtyRead => {
 };
 
 export interface LineValidation {
+  /**
+   * 칸 아래에 **그리는** 오류 — 사용자가 «친» 값이 잘못됐을 때만 든다.
+   *
+   * ⛔ **아직 안 채운 칸은 여기 들어오지 않는다**(사용자 지시 2026-09-18). 라인을 막 추가한
+   *    사람에게 붉은 문구가 먼저 서면, 아무것도 안 했는데 잘못한 것처럼 읽힌다.
+   */
   errors: Record<string, string>;
+  /**
+   * 아직 채워지지 않은 칸이 있는가 — **편성은 그대로 막는다.**
+   *
+   * ⭐ 막는 것과 «줄마다 붉게 적는 것»은 다른 일이다. 막는 사유는 편성 단추 옆에 한 번만 선다
+   *    (`screen.tsx` 의 `submitBlockReason`) — 그 자리가 이미 「무엇을 해야 열리는가」를 말한다.
+   */
+  isIncomplete: boolean;
 }
 
-/** 요청 수량 오류(단독 생성 줄만) — 지시서 경유 줄은 읽기 전용이라 판정할 것이 없다. */
+/**
+ * 요청 수량 오류(단독 생성 줄만) — 지시서 경유 줄은 읽기 전용이라 판정할 것이 없다.
+ *
+ * ⛔ **비었을 때는 오류가 아니다** — 아직 안 친 것이지 잘못 친 것이 아니다. 비어 있으면
+ *    `isIncomplete` 가 편성을 막고, 그 사유는 단추 옆에 한 번 선다.
+ */
 const requestedQtyError = (line: ShipmentRequestLineDraft): string | null => {
   if (line.salesOrderLineId !== null) return null;
 
   const read = readQty(line.requestedQty);
 
-  if (read.kind === 'empty') return t.errors.requestedQtyRequired;
+  if (read.kind === 'empty') return null;
   if (read.kind === 'invalid') return t.errors.qtyNotNumber;
 
   return read.value <= 0 ? t.errors.requestedQtyNotPositive : null;
 };
+
+/** 아직 안 채운 칸이 있는 줄인가. 단독 생성 줄만 본다 — 지시서 경유 줄은 지시서가 채운다. */
+const isIncompleteLine = (line: ShipmentRequestLineDraft): boolean =>
+  line.salesOrderLineId === null &&
+  (line.itemId === '' || line.uomId === '' || readQty(line.requestedQty).kind === 'empty');
 
 /** 배정 수량 오류(둘 다 모드) — 비었으면 0으로 보아 오류가 아니다(그 줄은 제외된다). */
 const allocatedQtyError = (line: ShipmentRequestLineDraft): string | null => {
@@ -108,9 +131,6 @@ export const validateLines = (lines: readonly ShipmentRequestLineDraft[]): LineV
 
   for (const line of lines) {
     if (line.salesOrderLineId === null) {
-      if (line.itemId === '') errors[lineFieldId(line.key, 'itemId')] = t.errors.itemRequired;
-      if (line.uomId === '') errors[lineFieldId(line.key, 'uomId')] = t.errors.uomRequired;
-
       const requestedError = requestedQtyError(line);
 
       if (requestedError !== null) errors[lineFieldId(line.key, 'requestedQty')] = requestedError;
@@ -119,10 +139,9 @@ export const validateLines = (lines: readonly ShipmentRequestLineDraft[]): LineV
     const allocatedError = allocatedQtyError(line);
 
     if (allocatedError !== null) errors[lineFieldId(line.key, 'allocatedQty')] = allocatedError;
-
   }
 
-  return { errors };
+  return { errors, isIncomplete: lines.some(isIncompleteLine) };
 };
 
 /** 보낼 줄이 하나라도 남는가 — 배정 수량이 1 이상인 줄이 있어야 한다(계약 설명 · C4 인접 규칙). */
