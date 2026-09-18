@@ -212,7 +212,10 @@ describe('Lot Status 전이 후보', () => {
     expect(screen.getByRole('region', { name: '전이 대상 LOT' })).toBeVisible();
     expect(screen.getByRole('heading', { level: 2, name: '전이 대상 LOT' })).toBeVisible();
     expect(screen.getByRole('table', { name: '전이 대상 LOT' })).toBeVisible();
-    expect(screen.getByText('총 2건 · 1 / 2쪽')).toBeVisible();
+    /* 건수는 「조회 결과」 머리 옆, 쪽 위치는 쪽 이동 옆에 선다(UI 정돈 2026-09-18). */
+    expect(screen.getByRole('heading', { level: 3, name: '조회 결과' })).toBeVisible();
+    expect(screen.getByText('총 2건')).toBeVisible();
+    expect(screen.getByText('1 / 2쪽')).toBeVisible();
   });
 
   it('같은 필터라도 지역 시간대 오프셋이 다르면 후보 캐시 키를 분리한다', () => {

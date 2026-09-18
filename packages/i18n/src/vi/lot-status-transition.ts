@@ -10,6 +10,8 @@ import type { Translated } from './translated';
  */
 export const lotStatusTransition: Translated<typeof ko.lotStatusTransition> = {
   title: 'Xử lý đánh giá · chuyển đổi Lot Status',
+  description:
+    'Tìm và chọn LOT để xem trạng thái chất lượng hiện tại, rồi đổi trạng thái bằng cách đăng ký hoặc gỡ tạm giữ.',
   breadcrumbRoot: 'Quản lý chất lượng',
   historyNotice: 'Lịch sử chuyển đổi không được lưu thành lịch sử riêng',
   historyLink: 'Xem lịch sử thay đổi Lot Status',
@@ -30,6 +32,7 @@ export const lotStatusTransition: Translated<typeof ko.lotStatusTransition> = {
     filters: {
       period: 'Khoảng thời gian chuyển đổi gần nhất',
       lotNo: 'Số LOT',
+      lotNoPlaceholder: 'Hãy nhập số LOT',
       item: 'Vật tư',
       status: 'Trạng thái chất lượng',
       all: 'Tất cả',
@@ -53,8 +56,10 @@ export const lotStatusTransition: Translated<typeof ko.lotStatusTransition> = {
     failed: 'Không tải được LOT ứng viên.',
     retry: 'Thử lại',
     empty: 'Không có LOT nào khớp điều kiện.',
-    summary: (total: string, page: number, totalPages: number): string =>
-      `Tổng ${total} mục · trang ${String(page)} / ${String(totalPages)}`,
+    resultTitle: 'Kết quả tra cứu',
+    resultCount: (total: string): string => `Tổng ${total} mục`,
+    pageStatus: (page: number, totalPages: number): string =>
+      `Trang ${String(page)} / ${String(totalPages)}`,
     pagination: 'Chuyển trang LOT ứng viên',
     previous: 'Trang trước',
     next: 'Trang sau',

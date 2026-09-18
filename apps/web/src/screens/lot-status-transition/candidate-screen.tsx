@@ -244,7 +244,20 @@ export const LotStatusTransitionCandidateScreen = () => {
         </button>
       ),
     },
-    { key: 'item', header: t.fields.item, render: (row) => itemLabel(row.itemId) },
+    {
+      key: 'item',
+      header: t.fields.item,
+      /* 긴 품목명이 수량 열을 밀지 않게 한 줄로 자르고, 전체 이름은 title 로 남긴다. */
+      render: (row) => {
+        const label = itemLabel(row.itemId);
+
+        return (
+          <span className="lot-status-transition-item" title={label}>
+            {label}
+          </span>
+        );
+      },
+    },
     {
       key: 'status',
       header: t.fields.status,
@@ -287,10 +300,18 @@ export const LotStatusTransitionCandidateScreen = () => {
               value={[draft.from === '' ? null : draft.from, draft.to === '' ? null : draft.to]}
               onChange={([from, to]) => setDraft((current) => ({ ...current, from, to }))}
             />
+            {/* 기간의 기준(최근 전이 일자)은 기간 칸 바로 아래에 둔다 — 떨어져 있으면 무엇의 설명인지 흐려진다. */}
+            <span
+              className={periodError === null ? 'field-note' : 'field-error'}
+              role={periodError === null ? undefined : 'alert'}
+            >
+              {periodErrorMessage ?? t.filters.note}
+            </span>
           </div>
           <SearchInput
             disabled={confirmationPinned}
             label={t.filters.lotNo}
+            placeholder={t.filters.lotNoPlaceholder}
             value={draft.q}
             onChange={(event) => setDraft((current) => ({ ...current, q: event.target.value }))}
             onSearch={apply}
@@ -310,22 +331,23 @@ export const LotStatusTransitionCandidateScreen = () => {
             value={draft.lotStatusCode}
             onChange={(lotStatusCode) => setDraft((current) => ({ ...current, lotStatusCode }))}
           />
-          <div className="lot-status-transition-filter-footer">
-            <span
-              className={periodError === null ? 'field-note' : 'field-error'}
-              role={periodError === null ? undefined : 'alert'}
-            >
-              {periodErrorMessage ?? t.filters.note}
-            </span>
-            <div className="form-actions lot-status-transition-filter-actions">
-              <Button variant="outlined" disabled={confirmationPinned} onClick={reset}>
-                {t.filters.reset}
-              </Button>
-              <Button disabled={confirmationPinned || periodError !== null} onClick={apply}>
-                {t.filters.search}
-              </Button>
-            </div>
+          <div className="form-actions lot-status-transition-filter-actions">
+            <Button variant="outlined" disabled={confirmationPinned} onClick={reset}>
+              {t.filters.reset}
+            </Button>
+            <Button disabled={confirmationPinned || periodError !== null} onClick={apply}>
+              {t.filters.search}
+            </Button>
           </div>
+        </div>
+        {/* 조건과 결과를 한 카드 안에서 가른다 — 선 하나와 작은 머리, 건수는 그 옆. */}
+        <div className="lot-status-transition-result-head">
+          <h3 className="lot-status-transition-result-title">{t.resultTitle}</h3>
+          {candidates.data !== undefined && !candidates.isError && (
+            <span className="field-note">
+              {t.resultCount(new Intl.NumberFormat('ko-KR').format(meta?.total ?? 0))}
+            </span>
+          )}
         </div>
         {candidates.isError ? (
           <AlertBanner
@@ -354,13 +376,7 @@ export const LotStatusTransitionCandidateScreen = () => {
               />
             </div>
             <div className="lot-status-transition-list-footer">
-              <p className="field-note">
-                {t.summary(
-                  new Intl.NumberFormat('ko-KR').format(meta?.total ?? 0),
-                  page,
-                  totalPages,
-                )}
-              </p>
+              <p className="field-note">{t.pageStatus(page, totalPages)}</p>
               <nav className="form-actions" aria-label={t.pagination}>
                 <Button
                   variant="outlined"
