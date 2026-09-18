@@ -49,8 +49,8 @@ export const RequestDetailPane = ({ detail }: RequestDetailPaneProps) => {
         detail.inspectionPlanVersionId === null
           ? t.noPlanVersion
           : String(detail.inspectionPlanVersionId),
-      /* 버전 숫자만 보이면 왜 중요한지 알 수 없다. 고정된다는 사실을 그 값 바로 아래에서 말한다. */
-      note: t.planVersionNote,
+      /* 버전 숫자만 보이면 왜 중요한지 알 수 없다. 고정된다는 사실을 항목명 오른쪽 같은 줄에서 말한다. */
+      hint: t.planVersionNote,
     },
     /* 값만 따로 두면 무슨 시각인지 모른다 — 필드(`requestedAt`) 이름을 붙인다. */
     { key: 'at', label: t.fields.requestedAt, value: formatDateTime(detail.requestedAt) },
@@ -62,11 +62,15 @@ export const RequestDetailPane = ({ detail }: RequestDetailPaneProps) => {
       <dl className="iqc-inspection-facts">
         {items.map((item) => (
           <div className="iqc-inspection-fact" key={item.key}>
-            <dt className="field-label">{item.label}</dt>
+            <dt className="field-label">
+              {item.label}
+              {item.hint !== undefined && (
+                <span className="iqc-inspection-label-hint">{item.hint}</span>
+              )}
+            </dt>
             <dd className={item.emphasized === true ? 'iqc-inspection-fact-key' : undefined}>
               {item.value}
             </dd>
-            {item.note !== undefined && <dd className="field-note">{item.note}</dd>}
           </div>
         ))}
       </dl>

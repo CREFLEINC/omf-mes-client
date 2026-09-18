@@ -169,8 +169,8 @@ export const ResultFormPane = ({
   };
 
   /**
-   * 합계 상태를 한 문장으로. **모자란 양·넘긴 양을 숫자로 말한다** — 「맞지 않습니다」만
-   * 내면 사용자가 세 칸을 다시 더해 봐야 한다.
+   * 합계 상태를 한 문장으로 — 일치와 **넘긴 양**만 말한다. 모자랄 때는 바로 옆 「잔여」가
+   * 이미 그 양을 보이므로 문장을 되풀이하지 않는다. 넘긴 양은 숫자로 말한다.
    *
    * ⛔ **셀 수 없으면 아무 말도 하지 않는다.** 한 칸이라도 수량이 아니면 합계는 알 수 없는
    * 것이고, 그때 「일치합니다」든 「모자랍니다」든 내면 **거짓을 말하는 것**이다. 무엇을
@@ -182,7 +182,7 @@ export const ResultFormPane = ({
       : totals.matches
         ? t.matched
         : totals.remaining > 0n
-          ? t.short(formatMicro(totals.remaining))
+          ? null
           : t.over(formatMicro(-totals.remaining));
 
   const field = (key: keyof QuantityDraft, label: string, invalid: boolean): ReactElement => (
@@ -203,14 +203,12 @@ export const ResultFormPane = ({
       <section className="iqc-inspection-section">
         <div className="iqc-inspection-section-head">
           <h3>{t.sectionTitle}</h3>
-          {/* 회차 상태 — 「아직 임시 저장된 결과가 없다」는 이 구획(저장될 회차)에 대한 말이다. */}
-          <p className="field-note">
-            {isReinspecting
-              ? t.reinspectRound
-              : round === null
-                ? t.notStarted
-                : t.round(round.inspectionRound)}
-          </p>
+          {/* 회차 상태 — 회차가 아직 없으면 아무것도 보이지 않는다(막힌 이유는 판정 단추 아래가 말한다). */}
+          {isReinspecting ? (
+            <p className="field-note">{t.reinspectRound}</p>
+          ) : round !== null ? (
+            <p className="field-note">{t.round(round.inspectionRound)}</p>
+          ) : null}
         </div>
 
         {/*
@@ -374,7 +372,7 @@ export const ResultFormPane = ({
              * 상태(사용할 수 없음)를 한 줄에 둔다.
              */}
             <div className="iqc-inspection-partial">
-              <Button type="button" variant="text" size="md" disabled>
+              <Button type="button" variant="outlined" size="md" disabled>
                 {t.partialReceipt}
               </Button>
               <p className="field-note">{t.partialReceiptPending}</p>

@@ -75,6 +75,11 @@ const columns: Column<MeasurementRow>[] = [
   {
     key: 'item',
     header: t.columns.item,
+    /*
+     * 항목명 + 「필수」 칩이 서는 폭. 다섯 열 모두 폭을 주어 표가 카드보다 넓을 때 남는 폭을
+     * 폭 비율대로 나눠 갖게 한다(항목 열이 혼자 받지 않게). 긴 항목명은 칸 안에서 줄을 바꾼다.
+     */
+    width: '160px',
     render: (row) => (
       <>
         {row.displayNo}. {row.itemName}
@@ -99,7 +104,7 @@ const columns: Column<MeasurementRow>[] = [
   {
     key: 'sample',
     header: t.columns.sample,
-    width: '72px',
+    width: '96px',
     align: 'end',
     render: (row) => t.sampleOf(row.sampleNo, row.sampleCount),
   },
@@ -125,7 +130,7 @@ const columns: Column<MeasurementRow>[] = [
   {
     key: 'judgment',
     header: t.columns.judgment,
-    width: '72px',
+    width: '96px',
     render: (row) => row.measured?.judgmentCode ?? t.notMeasured,
   },
 ];

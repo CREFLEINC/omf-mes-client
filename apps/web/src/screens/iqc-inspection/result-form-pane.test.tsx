@@ -64,10 +64,11 @@ describe('ResultFormPane', () => {
     expect(screen.getByText(t.round(1))).toBeInTheDocument();
   });
 
-  it('아직 회차가 없으면 시작 전임을 말한다', () => {
+  it('아직 회차가 없으면 회차 표시를 내지 않고, 확정은 임시 저장부터라고 단추 곁에서 말한다', () => {
     renderPane(EMPTY_QUANTITY_DRAFT, null);
 
-    expect(screen.getByText(t.notStarted)).toBeInTheDocument();
+    expect(screen.queryByText(t.round(1))).not.toBeInTheDocument();
+    expect(screen.getByText(t.confirmBlockedByUnsaved)).toBeInTheDocument();
   });
 
   it('세 칸을 손으로 넣는다 — 자동 계산을 만들지 않는다', async () => {
@@ -84,10 +85,13 @@ describe('ResultFormPane', () => {
     expect(screen.getByText(t.matched)).toBeInTheDocument();
   });
 
-  it('모자라면 얼마나 모자란지 숫자로 말한다 — 사용자가 다시 세지 않게', () => {
+  it('모자라면 안내 문장 없이 합계·잔여 숫자로 보인다 — 잔여가 모자란 양이다', () => {
     renderPane({ accepted: '400', rejected: '0', held: '0' });
 
-    expect(screen.getByText(t.short('100'))).toBeInTheDocument();
+    expect(screen.getByText('400 / 500')).toBeInTheDocument();
+    expect(screen.getByText('100')).toBeInTheDocument();
+    expect(screen.queryByText(t.matched)).not.toBeInTheDocument();
+    expect(screen.queryByText(t.over('100'))).not.toBeInTheDocument();
   });
 
   it('넘기면 얼마나 넘겼는지 말한다 — 0으로 깎아 감추지 않는다', () => {

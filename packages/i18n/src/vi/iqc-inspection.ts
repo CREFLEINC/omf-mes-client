@@ -62,7 +62,6 @@ export const iqcInspection: Translated<typeof ko.iqcInspection> = {
     sectionTitle: 'Số lượng kết quả kiểm tra',
     judgmentSectionTitle: 'Đánh giá',
     round: (round: number): string => `Lượt ${round}`,
-    notStarted: 'Chưa có kết quả kiểm tra nào được lưu tạm.',
     loading: 'Đang tải kết quả kiểm tra.',
     confirmed:
       'Lượt này đã xác nhận nên không sửa được. Muốn kiểm tra lại thì thêm một lượt kiểm tra lại.',
@@ -75,7 +74,6 @@ export const iqcInspection: Translated<typeof ko.iqcInspection> = {
     sum: 'Tổng',
     remaining: 'Còn lại',
     matched: 'Khớp với số lượng kiểm tra.',
-    short: (remaining: string): string => `Hãy nhập thêm ${remaining} số lượng kết quả kiểm tra.`,
     over: (over: string): string => `Nhiều hơn số lượng kiểm tra ${over}. Hãy giảm số lượng.`,
     quantityInvalid: 'Hãy nhập số từ 0 trở lên. Tối đa sáu chữ số thập phân.',
     save: 'Lưu tạm',
@@ -95,7 +93,7 @@ export const iqcInspection: Translated<typeof ko.iqcInspection> = {
     confirmBlockedByTotals: 'Tổng đã nhập phải bằng số lượng kiểm tra mới xác nhận được.',
     confirmBlockedByJudgment: 'Phải chọn đánh giá tổng hợp mới xác nhận được.',
     confirmBlockedByConfirmed: 'Lượt này đã được xác nhận.',
-    confirmBlockedByUnsaved: 'Lưu tạm xong mới xác nhận đánh giá được.',
+    confirmBlockedByUnsaved: 'Sau khi lưu tạm mới có thể xác nhận đánh giá.',
     confirmSucceeded: 'Đã xác nhận đánh giá.',
 
     partialReceipt: 'Cho phép nhập kho một phần',

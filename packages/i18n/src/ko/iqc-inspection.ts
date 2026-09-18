@@ -119,8 +119,6 @@ export const iqcInspection = {
     /** 종합 판정·임시 저장·판정 확정 구획의 제목. */
     judgmentSectionTitle: '판정',
     round: (round: number): string => `${round}회차`,
-    /** 회차가 하나도 없다 — 임시 저장된 검사 결과(회차)가 아직 없는 의뢰다. */
-    notStarted: '아직 임시 저장된 검사 결과가 없습니다.',
     loading: '검사 결과를 불러오는 중입니다.',
     /**
      * 이 회차는 이미 확정됐다. ⛔ **고칠 수 있는 것처럼 보이지 않게 한다** — 이전 회차는
@@ -137,8 +135,6 @@ export const iqcInspection = {
     sum: '합계',
     remaining: '잔여',
     matched: '검사수량과 일치합니다.',
-    /** 모자란다. 얼마나 모자란지 함께 말한다 — 사용자가 다시 세지 않게. */
-    short: (remaining: string): string => `검사 결과 수량을 ${remaining}만큼 더 입력해 주세요.`,
     /** 넘겼다. 0으로 깎아 감추지 않는다. */
     over: (over: string): string => `검사수량보다 ${over}만큼 많습니다. 수량을 줄여 주세요.`,
     quantityInvalid: '0 이상의 숫자로 입력해 주세요. 소수점은 여섯 자리까지 됩니다.',
@@ -187,7 +183,7 @@ export const iqcInspection = {
      * ⛔ 회차가 아직 없다. 확정은 회차 하나를 지목하는 쓰기라 지목할 것이 없으면 보낼 수
      * 없다 — 「오류가 났습니다」가 아니라 «먼저 할 일»을 말한다.
      */
-    confirmBlockedByUnsaved: '임시 저장 후 판정을 확정할 수 있습니다.',
+    confirmBlockedByUnsaved: '임시 저장 후 판정 확정이 가능합니다.',
     /*
      * 확정이 끝났다. 저장은 「저장했습니다」를 내는데 확정만 아무 말이 없으면, 되돌릴 수
      * 없는 쓰기를 하고도 사용자는 그것이 됐는지 확인할 문장을 못 찾는다.

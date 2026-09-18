@@ -204,9 +204,9 @@ describe('IqcInspectionScreen', () => {
     let calls = 0;
     const { sent } = renderScreen('/', () => {
       calls += 1;
-      return jsonResponse(calls === 1
-        ? queueResponse([], pageOf(0))
-        : queueResponse([waitingRequest], pageOf(1)));
+      return jsonResponse(
+        calls === 1 ? queueResponse([], pageOf(0)) : queueResponse([waitingRequest], pageOf(1)),
+      );
     });
 
     expect(await screen.findByText(t.queue.empty)).toBeInTheDocument();
@@ -328,7 +328,7 @@ describe('IqcInspectionScreen', () => {
   it('회차가 없는 의뢰끼리 옮겨도 앞 의뢰에 친 수량이 남지 않는다', async () => {
     renderScreen('/?ir=1001', () => jsonResponse(queueResponse()), []);
 
-    await screen.findByText(t.result.notStarted);
+    await screen.findByText(t.result.confirmBlockedByUnsaved);
     await userEvent.type(screen.getByLabelText(t.result.fields.accepted), '123');
     expect(screen.getByLabelText(t.result.fields.accepted)).toHaveValue('123');
 
@@ -340,7 +340,7 @@ describe('IqcInspectionScreen', () => {
   it('회차가 없으면 저장이 새로 만든다', async () => {
     const { writes } = renderScreen('/?ir=1002', () => jsonResponse(queueResponse()), []);
 
-    await screen.findByText(t.result.notStarted);
+    await screen.findByText(t.result.confirmBlockedByUnsaved);
     await userEvent.type(screen.getByLabelText(t.result.fields.accepted), '500');
     await userEvent.click(screen.getByRole('button', { name: t.result.save }));
 
@@ -355,7 +355,7 @@ describe('IqcInspectionScreen', () => {
   it('검사자와 단말을 보내지 않는다 — 서버가 인증 주체에서 채운다', async () => {
     const { writes } = renderScreen('/?ir=1002', () => jsonResponse(queueResponse()), []);
 
-    await screen.findByText(t.result.notStarted);
+    await screen.findByText(t.result.confirmBlockedByUnsaved);
     await userEvent.click(screen.getByRole('button', { name: t.result.save }));
 
     await waitFor(() => expect(writes).toHaveLength(1));
@@ -548,7 +548,7 @@ describe('IqcInspectionScreen', () => {
   it('아직 고르지 않은 판정은 키 자체를 싣지 않는다 — 빈 문자열은 코드가 아니다', async () => {
     const { writes } = renderScreen('/?ir=1002', () => jsonResponse(queueResponse()), []);
 
-    await screen.findByText(t.result.notStarted);
+    await screen.findByText(t.result.confirmBlockedByUnsaved);
     await userEvent.click(screen.getByRole('button', { name: t.result.save }));
     await waitFor(() => expect(writes).toHaveLength(1));
 
@@ -615,7 +615,7 @@ describe('IqcInspectionScreen — 재검사 회차', () => {
   it('평소 저장은 앞 회차 키를 싣지 않는다', async () => {
     const { writes } = renderScreen('/?ir=1002', () => jsonResponse(queueResponse()), []);
 
-    await screen.findByText(t.result.notStarted);
+    await screen.findByText(t.result.confirmBlockedByUnsaved);
     await userEvent.click(screen.getByRole('button', { name: t.result.save }));
     await waitFor(() => expect(writes).toHaveLength(1));
 
