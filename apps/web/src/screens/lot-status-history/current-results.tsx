@@ -14,6 +14,7 @@ import { toLotStatusSort, toTableSort } from './current-sort';
 import type { LotFilters, LotStatusSort } from './filters';
 import type { FilterOption } from './lot-filter-bar';
 import { useLotStatusList, useLotStatusSummary } from './queries';
+import { useItemNameSources } from './reference-options';
 import { lotStatusRowKey, type LotStatusRow } from './types';
 
 const t = messages.lotStatusHistory;
@@ -38,9 +39,6 @@ interface CurrentResultsProps {
   filters: LotFilters;
   page: number;
   statusOptions: readonly FilterOption[];
-  itemOptions: readonly FilterOption[];
-  isItemPending: boolean;
-  isItemError: boolean;
   onSortChange: (sort: LotStatusSort) => void;
   onPageChange: (page: number) => void;
   onSelectLot: (lotId: number) => void;
@@ -50,15 +48,13 @@ export const CurrentResults = ({
   filters,
   page,
   statusOptions,
-  itemOptions,
-  isItemPending,
-  isItemError,
   onSortChange,
   onPageChange,
   onSelectLot,
 }: CurrentResultsProps) => {
   const list = useLotStatusList(filters, page);
   const summary = useLotStatusSummary(filters);
+  const itemNames = useItemNameSources(list.data?.rows.map((row) => row.itemId) ?? []);
 
   if (filters.lotType === '') {
     return (
@@ -78,13 +74,14 @@ export const CurrentResults = ({
     );
   }
 
-  const itemLabel = (itemId: number): string =>
-    knownLabel(itemOptions, String(itemId)) ??
-    (isItemPending
-      ? t.current.itemLabel.loading
-      : isItemError
-        ? t.current.itemLabel.failed
-        : t.current.itemLabel.unknown);
+  const itemLabel = (itemId: number): string => {
+    const source = itemNames.get(itemId);
+    const item = source?.entries[0];
+
+    if (item !== undefined) return item.isActive ? item.label : t.values.inactive(item.label);
+    if (source === undefined || source.isLoading) return t.current.itemLabel.loading;
+    return source.isError ? t.current.itemLabel.failed : t.current.itemLabel.unknown;
+  };
   const columns: Column<LotStatusRow>[] = [
     {
       key: 'lotNo',

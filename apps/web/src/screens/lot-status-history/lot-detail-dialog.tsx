@@ -3,9 +3,9 @@ import { messages } from '@omf-mes/i18n';
 
 import { lookupDisplayLabelWithInactive, type LookupSource } from '../../patterns/lookup-display';
 import type { FilterOption } from './lot-filter-bar';
-import type { ReferenceOption } from './reference-options';
 import { LotHoldDocuments } from './lot-hold-documents';
 import { useLotDetail } from './queries';
+import { useItemNameSources } from './reference-options';
 
 const t = messages.lotStatusHistory;
 const EMPTY = '—';
@@ -21,7 +21,6 @@ const labelOf = (options: readonly FilterOption[], value: string): string =>
 
 interface LotDetailDialogProps {
   lotId: number;
-  itemSource: LookupSource<ReferenceOption>;
   lotTypeOptions: readonly FilterOption[];
   statusOptions: readonly FilterOption[];
   onClose: () => void;
@@ -29,12 +28,18 @@ interface LotDetailDialogProps {
 
 export const LotDetailDialog = ({
   lotId,
-  itemSource,
   lotTypeOptions,
   statusOptions,
   onClose,
 }: LotDetailDialogProps) => {
   const detail = useLotDetail(lotId);
+  const itemId = detail.data?.itemId;
+  const itemNames = useItemNameSources(itemId === undefined ? [] : [itemId]);
+  const itemSource: LookupSource = (itemId === undefined ? undefined : itemNames.get(itemId)) ?? {
+    entries: [],
+    isError: false,
+    isLoading: true,
+  };
   const retry = (
     <Button
       variant="outlined"
