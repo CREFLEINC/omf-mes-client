@@ -47,6 +47,7 @@ const baseProps = (): ProductionOrderListPaneProps => ({
   isLoading: false,
   page: toPageView({ page: 3, size: 20, total: 100 }, 20),
   selectedProductionOrderId: 17,
+  statusNameOf: (code) => code,
   onSelect: vi.fn(),
   onToggleExpanded: vi.fn(),
   onChangePage: vi.fn(),
