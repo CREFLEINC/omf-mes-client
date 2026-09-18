@@ -50,7 +50,20 @@ describe('DataScopeFormDialog', () => {
   it('확인이 아직 저장이 아니라는 사실을 밝힌다', () => {
     renderDialog();
 
-    expect(screen.getByText(/확인을 눌러도 아직 저장되지 않습니다/)).toBeInTheDocument();
+    expect(
+      screen.getByText('확인하면 표에 반영됩니다. 변경사항을 적용하려면 「저장」을 눌러주세요.'),
+    ).toBeInTheDocument();
+  });
+
+  /** 사용자 지시(2026-09-18) — 오른쪽 위 X 없이 「취소」로 닫는다. */
+  it('닫기 아이콘이 없고 취소로 닫는다', async () => {
+    const { props, user } = renderDialog();
+
+    expect(screen.queryByRole('button', { name: '닫기' })).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: '취소' }));
+
+    expect(props.onClose).toHaveBeenCalledTimes(1);
   });
 
   it('두 축 모두 「(전체)」를 고를 수 있다', () => {
@@ -63,13 +76,11 @@ describe('DataScopeFormDialog', () => {
    * 계약의 `ck_user_data_scope_target`이 두 축 중 하나 이상을 요구한다.
    * **목 서버가 막지 않으므로** 화면이 막지 않으면 아무도 이 결함을 보지 못한다.
    */
-  it('두 축이 모두 비면 확인이 비활성이고 사유가 보인다', () => {
+  it('두 축이 모두 비면 확인이 비활성이다 — 사유 문구는 내지 않는다(사용자 지시 2026-09-18)', () => {
     renderDialog();
 
     expect(confirmButton()).toBeDisabled();
-    expect(
-      screen.getByText('확인은 사업부와 공장 중 적어도 하나를 고른 뒤에 누를 수 있습니다.'),
-    ).toBeInTheDocument();
+    expect(screen.queryByText(/적어도 하나를 고른 뒤에/)).not.toBeInTheDocument();
   });
 
   it('한 축만 골라도 확인을 누를 수 있다', async () => {

@@ -57,6 +57,17 @@ const renderPane = (overrides: Partial<UserListPaneProps> = {}) => {
 const table = (): HTMLElement => screen.getByRole('table');
 
 describe('UserListPane 표', () => {
+  /** 목록이 길어져도 찾을 수 있게 구획 표제 옆에 둔다 — 목록 아래에는 더 없다. */
+  it('사용자 추가가 구획 표제 옆에 선다', () => {
+    renderPane();
+
+    const heading = screen.getByRole('heading', { name: '사용자' });
+
+    expect(heading.parentElement).toContainElement(
+      screen.getByRole('button', { name: '사용자 추가' }),
+    );
+  });
+
   it('열이 넷이다 — 로그인 ID · 이름 · 부서 · 상태', () => {
     renderPane();
 
@@ -64,7 +75,7 @@ describe('UserListPane 표', () => {
       within(table())
         .getAllByRole('columnheader')
         .map((cell) => cell.textContent),
-    ).toEqual(['로그인 ID', '이름', '부서', '상태']);
+    ).toEqual(['로그인 ID', '이름', '부서', '재직 상태']);
   });
 
   it('응답 건수만큼 행을 그린다', () => {
@@ -141,7 +152,7 @@ describe('UserListPane 조건 줄', () => {
   it('상태를 선택하고 조회하면 상태 조건을 적용한다', async () => {
     const { onApplyFilters, user } = renderPane();
 
-    await user.click(screen.getByLabelText('상태'));
+    await user.click(screen.getByLabelText('재직 상태'));
     await user.click(screen.getByRole('option', { name: '휴직' }));
     await user.click(screen.getByRole('button', { name: '조회' }));
 
@@ -198,7 +209,7 @@ describe('UserListPane 조건 줄', () => {
 
     expect(screen.getByText('검색어: syn')).toBeInTheDocument();
     expect(screen.getByText('부서: SYN-DEPT-01 · 합성 부서 A')).toBeInTheDocument();
-    expect(screen.getByText('상태: 재직')).toBeInTheDocument();
+    expect(screen.getByText('재직 상태: 재직')).toBeInTheDocument();
     /*
      * 「미사용 포함」은 확인칸 라벨과 칩 문구 둘 다에 쓰인다 —
      * 칩이 실제로 섰는지는 칩마다 다른 제거 버튼 이름으로 가린다.

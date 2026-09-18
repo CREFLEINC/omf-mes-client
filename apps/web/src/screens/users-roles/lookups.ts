@@ -164,7 +164,8 @@ export const useRoleOptions = (enabled: boolean): LookupResult => {
     entries:
       data?.items.map((item) => ({
         value: String(item.roleId),
-        label: `${item.roleCode} · ${item.roleName}`,
+        label: item.roleName,
+        code: item.roleCode,
         isActive: item.isActive,
       })) ?? EMPTY_ENTRIES,
     truncated: data !== undefined && isTruncated(data.page, data.items.length),

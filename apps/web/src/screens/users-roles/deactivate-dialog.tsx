@@ -21,6 +21,11 @@ export interface DeactivateDialogProps {
   isSaving: boolean;
   /** 저장 실패 배너 슬롯. 창을 닫지 않고 이유를 보여야 다시 시도할 수 있다. */
   banner: ReactNode;
+  /**
+   * 오른쪽 위 X 를 둘지. 기본은 둔다. 사용자 사용 중지는 두지 않는다(사용자 지시 2026-09-18) —
+   * 그때도 「취소」와 Esc 로 닫힌다. 역할 쪽은 이 지시 밖이라 기본값 그대로다.
+   */
+  showCloseButton?: boolean;
 }
 
 /**
@@ -44,6 +49,7 @@ export const DeactivateDialog = ({
   onConfirm,
   isSaving,
   banner,
+  showCloseButton = true,
 }: DeactivateDialogProps) => (
   <Dialog
     open={open}
@@ -51,6 +57,7 @@ export const DeactivateDialog = ({
     size="sm"
     title={title}
     closeOnBackdropClick={false}
+    showCloseButton={showCloseButton}
     footer={
       <>
         <Button variant="outlined" onClick={onClose}>

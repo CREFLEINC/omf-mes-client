@@ -32,24 +32,22 @@ export const usersRoles = {
     goFirstPage: '첫 쪽으로',
     addUser: '사용자 추가',
     addRole: '역할 추가',
+    resetPassword: '비밀번호 초기화',
   },
   /** 비활성 사유는 배치 규범 4의 문형을 따른다 — 그 컨트롤의 이름으로 시작한다. */
   actionReasons: {
-    statusLookupLoading: '상태 목록을 불러오는 동안에는 상태를 고를 수 없습니다.',
+    statusLookupLoading: '재직 상태 목록을 불러오는 동안에는 재직 상태를 고를 수 없습니다.',
     statusLookupFailed:
-      '상태 목록을 불러오지 못했습니다. 다른 정보는 저장할 수 있으며 기존 상태는 유지됩니다.',
-    statusLookupEmpty: '등록된 사용자 상태가 없어 상태를 고를 수 없습니다.',
+      '재직 상태 목록을 불러오지 못했습니다. 다른 정보는 저장할 수 있으며 기존 재직 상태는 유지됩니다.',
+    statusLookupEmpty: '등록된 재직 상태가 없어 재직 상태를 고를 수 없습니다.',
     /*
      * 계약의 수정 요청 본문에 로그인 ID가 아예 없다 — 「언젠가 풀린다」가 아니라
      * 보낼 자리가 없다는 뜻이다. 그 사실을 그대로 밝힌다.
      */
-    loginIdLocked:
-      '로그인 ID는 등록할 때만 정할 수 있고 이후에는 바꿀 수 없습니다. 변경이 필요하면 담당자에게 문의하세요.',
-    deactivateAlreadyDone: '사용 중지는 이미 미사용인 사용자에게 다시 할 수 없습니다.',
+    loginIdLocked: '로그인 ID는 변경 불가합니다.',
     deactivateRoleAlreadyDone: '사용 중지는 이미 미사용인 역할에 다시 할 수 없습니다.',
     /* 주 액션의 이름이 모드마다 달라 사유도 갈린다 — 규범 4는 컨트롤 이름으로 시작하라고 정한다. */
-    saveNoChanges: '저장은 고친 내용이 있을 때 누를 수 있습니다.',
-    addNoInput: '사용자 추가는 입력한 내용이 있을 때 누를 수 있습니다.',
+    saveNoChanges: '저장은 변경된 내용이 있을 때 누를 수 있습니다.',
     addRoleNoInput: '역할 추가는 입력한 내용이 있을 때 누를 수 있습니다.',
     /*
      * 계약이 두 축 중 하나 이상을 요구한다. **목 서버가 막지 않으므로** 화면이 저장 전에 막는다 —
@@ -71,9 +69,9 @@ export const usersRoles = {
    * 두 뜻을 섞으면 화면이 지어낸다.
    */
   dialog: {
-    deactivateUserTitle: '이 사용자를 사용 중지할까요?',
+    deactivateUserTitle: '사용을 중지할까요?',
     deactivateUserDescription:
-      '사용 중지하면 이 사용자는 시스템을 쓸 수 없게 되고 이미 쌓인 자료는 그대로 남습니다. 되돌리는 경로가 없습니다.',
+      '사용을 중지하면 이 사용자는 시스템을 사용할 수 없게 되며 되돌릴 수 없습니다.',
     deactivateRoleTitle: '이 역할을 사용 중지할까요?',
     /*
      * 역할과 사용자는 **중지했을 때 일어나는 일이 다르다.** 사용자 문구를 그대로 쓰면
@@ -82,6 +80,21 @@ export const usersRoles = {
      */
     deactivateRoleDescription:
       '사용 중지하면 이 역할을 새로 부여할 수 없고 이 역할로 열려 있던 권한이 사라집니다. 이미 쌓인 자료는 그대로 남습니다. 되돌리는 경로가 없습니다.',
+    /*
+     * 비밀번호 초기화(W-CO-02 §8-2). 서버가 임시 비밀번호를 만들어 **그 응답에서 한 번만** 준다 —
+     * 창을 닫으면 다시 볼 길이 없고, 다시 받으려면 새로 초기화해야 한다. 그 사실을 누르기 전과
+     * 받은 뒤 두 번 말한다.
+     */
+    resetPasswordTitle: '비밀번호를 초기화할까요?',
+    resetPasswordDescription: '초기화 시 새 임시 비밀번호가 1번만 표시됩니다.',
+    resetPasswordConfirm: '초기화',
+    temporaryPasswordTitle: '임시 비밀번호',
+    temporaryPasswordLead:
+      '비밀번호는 이번에만 확인할 수 있습니다. 창을 닫기 전에 사용자에게 전달해 주세요.',
+    temporaryPasswordLabel: '임시 비밀번호',
+    temporaryPasswordCopy: '임시 비밀번호 복사',
+    temporaryPasswordCopied: '임시 비밀번호를 복사했습니다.',
+    temporaryPasswordCopyFailed: '복사하지 못했습니다. 브라우저의 클립보드 권한을 확인하세요.',
   },
   /*
    * 선택 목록이 잘리거나 실패했다는 사실을 감추지 않는다 —
@@ -103,14 +116,18 @@ export const usersRoles = {
     department: '부서',
     /* 선택지에 빈 값을 두어 고른 부서를 다시 「전체」로 되돌릴 수 있게 한다. */
     departmentAll: '전체 부서',
-    status: '상태',
-    statusAll: '전체 상태',
+    /*
+     * `status_code`는 **인사 상태**(재직·휴직·퇴사)다. 로그인 가부(`is_active` — 「사용 중지」·
+     * 「미사용 포함」·「(미사용)」)와 다른 축이라 「상태」 한 낱말로 두지 않는다(설계 §4-A).
+     */
+    status: '재직 상태',
+    statusAll: '전체 재직 상태',
     chipKeyword: (value: string): string => `검색어: ${value}`,
     chipRemoveKeyword: '검색어 조건 제거',
     chipDepartment: (label: string): string => `부서: ${label}`,
     chipRemoveDepartment: '부서 조건 제거',
-    chipStatus: (label: string): string => `상태: ${label}`,
-    chipRemoveStatus: '상태 조건 제거',
+    chipStatus: (label: string): string => `재직 상태: ${label}`,
+    chipRemoveStatus: '재직 상태 조건 제거',
     chipRemoveIncludeInactive: '미사용 포함 조건 제거',
     roleSearchLabel: '역할 검색',
     roleSearchPlaceholder: '역할 코드 또는 역할명',
@@ -158,28 +175,12 @@ export const usersRoles = {
       loginId: '로그인 ID',
       userName: '이름',
       department: '부서',
-      email: '전자우편',
-      status: '상태',
+      /* 설계(W-CO-02 §4-A)의 라벨이 「이메일」이다 — 관리웹에서 「전자우편」은 이 화면에만 있었다. */
+      email: '이메일',
+      status: '재직 상태',
       initialPassword: '초기 비밀번호',
     },
     statusDefault: '기본값(재직)',
-    /**
-     * 신규 사용자 등록 폼의 초기 비밀번호 칸 도움말. **최소 길이를 주입받는다** — 문구에
-     * 숫자를 손으로 적으면 상수를 바꿀 때 문구만 옛 값으로 남는다(`password-change.ts`의
-     * `notice(minLength)`·`validation.tooShort(minLength)`와 같은 규율).
-     *
-     * ⚠ **`password-change.ts` 머리 주석과 반대로 읽히지만 같은 규율의 다른 면이다.** 그
-     * 파일은 조합 규칙(대문자·숫자·특수문자)의 이름을 화면에 세우지 말라고 금지한다 —
-     * 그 화면에는 그런 규칙이 **없어서**다. 그런데 **이 칸에는 그 규칙이 실제로 있다**
-     * (숫자와 알파벳을 함께 넣어 최소 길이 이상). 「없는 규칙을 짓지 않는다」와 「있는 규칙을
-     * 감추지 않는다」는 같은 규율의 양면이다 — 그래서 여기서는 조합 규칙을 이름으로 말한다.
-     * 감추면 사용자는 통과할 줄 알았던 값에서 예고 없는 거부를 만난다.
-     *
-     * ⛔ **특수문자가 금지라고 읽히게 쓰지 않는다.** 「숫자와 알파벳을 함께」는 최소 조건이지
-     * 상한이 아니다 — 특수문자를 넣어도 된다.
-     */
-    initialPasswordNotice: (minLength: number): string =>
-      `숫자와 알파벳을 함께 넣어 ${String(minLength)}자 이상으로 정하세요. 등록한 뒤에는 사용자가 「비밀번호 변경」에서 직접 바꿀 수 있습니다.`,
     /* 부서를 고르지 않은 상태. 계약이 널을 허용하므로 비우는 것이 정상 값이다. */
     departmentNone: '지정하지 않음',
     empty: {
@@ -187,7 +188,8 @@ export const usersRoles = {
       noneDescription: '「사용자 추가」로 첫 사용자를 등록하세요.',
       noMatchTitle: '조건에 맞는 사용자가 없습니다',
       noMatchDescription: '조건을 줄이거나 초기화한 뒤 다시 조회하세요.',
-      notSelected: '좌측에서 사용자를 고르면 여기에 그 사용자의 정보가 보입니다',
+      /* 마침표 없음 — 사용자가 적은 그대로(2026-09-18). 역할 탭 안내(`role.empty.notSelected`)와 다른 키다. */
+      notSelected: '왼쪽 목록에서 사용자를 선택하세요',
     },
     validation: {
       required: '필수 입력 항목입니다.',
@@ -195,9 +197,9 @@ export const usersRoles = {
       userNameBlank: '이름은 공백만으로 지정할 수 없습니다.',
       loginIdTooLong: '로그인 ID는 100자를 넘을 수 없습니다.',
       userNameTooLong: '이름은 200자를 넘을 수 없습니다.',
-      emailTooLong: '전자우편은 200자를 넘을 수 없습니다.',
+      emailTooLong: '이메일은 200자를 넘을 수 없습니다.',
       /* 계약이 「형식 검증은 화면 책임 — DB 제약 없음」이라고 명시한 유일한 칸이다. */
-      emailFormat: '전자우편 형식이 아닙니다. 「이름@도메인」 형태로 입력하세요.',
+      emailFormat: '이메일 형식이 아닙니다. 「이름@도메인」 형태로 입력하세요.',
       /**
        * 초기 비밀번호가 규칙(숫자와 알파벳을 함께, 최소 길이 이상)을 어겼다. **빈 값은 이
        * 키를 쓰지 않는다** — 그 갈래는 이미 있는 `required`를 그대로 쓴다.
@@ -224,7 +226,7 @@ export const usersRoles = {
       noneDescription: '「역할 추가」로 첫 역할을 등록하세요.',
       noMatchTitle: '조건에 맞는 역할이 없습니다',
       noMatchDescription: '조건을 줄이거나 초기화한 뒤 다시 조회하세요.',
-      notSelected: '좌측에서 역할을 고르면 여기에 그 역할의 정보가 보입니다',
+      notSelected: '왼쪽 목록에서 역할을 선택하세요.',
     },
     validation: {
       required: '필수 입력 항목입니다.',
@@ -353,14 +355,16 @@ export const usersRoles = {
       /* 「수정」이 여러 줄에 있으면 어느 줄을 고치는 것인지 알 수 없다. */
       editRow: (label: string): string => `${label} 범위 수정`,
       removeRow: (label: string): string => `${label} 범위 삭제`,
+      /* 아이콘 버튼에 마우스를 올렸을 때의 짧은 이름. 접근 이름은 위 두 문장이 맡는다. */
+      editTooltip: '수정',
+      removeTooltip: '삭제',
       confirm: '확인',
     },
     dialog: {
       addTitle: '접근범위 추가',
       editTitle: '접근범위 수정',
       /* 확인이 저장이라고 오해하면 창을 닫고 화면을 떠난다. */
-      notSavedNotice:
-        '확인을 눌러도 아직 저장되지 않습니다. 표에만 반영되고 「저장」을 눌러야 서버로 갑니다.',
+      notSavedNotice: '확인하면 표에 반영됩니다. 변경사항을 적용하려면 「저장」을 눌러주세요.',
     },
     empty: {
       none: '지정된 접근범위가 없습니다',
