@@ -78,7 +78,15 @@ const columns: Column<MeasurementRow>[] = [
     render: (row) => (
       <>
         {row.displayNo}. {row.itemName}
-        {row.required && <span className="field-note"> {t.requiredMark}</span>}
+        {/* 필수 여부는 DS 상태 칩(중립)으로 — 새 배지 모양을 만들지 않는다. */}
+        {row.required && (
+          <>
+            {' '}
+            <Chip variant="status" size="sm" status="idle">
+              {t.requiredMark}
+            </Chip>
+          </>
+        )}
       </>
     ),
   },
@@ -123,7 +131,9 @@ const columns: Column<MeasurementRow>[] = [
 ];
 
 export const MeasurementGrid = ({ rows, isLoading }: MeasurementGridProps) => (
-  <section aria-label={t.heading}>
+  <section className="iqc-inspection-section" aria-label={t.heading}>
+    {/* 다른 구획처럼 왼쪽 제목으로 선다 — 표 제목(caption)은 화면에서 감추고 접근 이름으로 남긴다. */}
+    <h3>{t.caption}</h3>
     {/*
      * ⛔ 경고일 뿐 차단이 아니다. 무효화 정책이 미결이라(스펙 §8-6) 화면이 값을 빼거나
      * 확정을 막지 않는다 — 무엇을 다시 볼지만 알린다.
@@ -137,7 +147,7 @@ export const MeasurementGrid = ({ rows, isLoading }: MeasurementGridProps) => (
     )}
 
     <Table
-      caption={t.caption}
+      caption={<span className="iqc-inspection-table-caption">{t.caption}</span>}
       density="compact"
       columns={columns}
       rows={rows}

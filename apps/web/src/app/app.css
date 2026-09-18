@@ -8764,3 +8764,151 @@ dl.filter-bar.approval-inbox-detail-facts {
   white-space: nowrap;
   border: 0;
 }
+
+/*
+ * 검사 상세/판정 카드 — 한 카드 안을 구획(기본 정보 · 검사 결과 수량 · 판정 · 이전 회차 · 항목별 측정치)으로
+ * 가른다. 카드를 쪼개지 않고 구획 제목·간격·얇은 구분선으로만 가른다.
+ */
+.iqc-inspection-panes .iqc-inspection-section {
+  display: grid;
+  gap: var(--space-3);
+  padding-block: var(--space-5);
+  border-top: 1px solid var(--outline-variant);
+}
+
+.iqc-inspection-panes > .pane > .iqc-inspection-section:first-child {
+  padding-top: 0;
+  border-top: 0;
+}
+
+.iqc-inspection-panes > .pane > .iqc-inspection-section:last-child {
+  padding-bottom: 0;
+}
+
+.iqc-inspection-panes .iqc-inspection-section h3 {
+  margin: 0;
+  color: var(--on-surface);
+  font: var(--type-title-sm);
+  letter-spacing: var(--type-title-sm-tracking);
+}
+
+.iqc-inspection-panes .iqc-inspection-section p,
+.iqc-inspection-panes .iqc-inspection-section dl,
+.iqc-inspection-panes .iqc-inspection-section dd {
+  margin: 0;
+}
+
+/* 구획 제목 옆의 상태(회차) — 제목과 같은 줄. */
+.iqc-inspection-section-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-3);
+}
+
+/* 기본 정보 — 항목명(위)·값(아래)의 격자. 넓으면 한 줄에 여럿, 좁으면 줄을 바꾼다. */
+.iqc-inspection-facts {
+  display: grid;
+  /* 가장 긴 값(의뢰번호)이 한 줄로 서는 폭. */
+  grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr));
+  gap: var(--space-4) var(--space-5);
+}
+
+.iqc-inspection-fact {
+  display: grid;
+  align-content: start;
+  gap: var(--space-1);
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+/* 도움말이 붙은 항목(검사기준 버전)은 두 칸을 써서 도움말이 한 줄로 읽히게 한다. */
+.iqc-inspection-fact:has(> .field-note) {
+  grid-column: span 2;
+}
+
+.iqc-inspection-fact-key {
+  font-weight: 600;
+}
+
+/* 검사 결과 수량 — 검사수량(기준값)과 합격·불합격·보류 세 칸을 한 줄에. 칸은 숫자에 맞는 폭까지만. */
+.iqc-inspection-qty {
+  display: grid;
+  grid-template-columns: max-content repeat(3, minmax(7rem, 11rem));
+  align-items: start;
+  gap: var(--space-4);
+}
+
+.iqc-inspection-qty-base {
+  display: grid;
+  gap: var(--space-1);
+  padding-inline-end: var(--space-3);
+}
+
+/* 검사수량 값을 옆 입력칸의 글줄 높이에 맞춘다. */
+.iqc-inspection-qty-base > dd {
+  display: flex;
+  align-items: center;
+  min-height: var(--control-height-md);
+  font-weight: 600;
+}
+
+.iqc-inspection-qty-summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-2) var(--space-5);
+}
+
+.iqc-inspection-qty-summary > dl {
+  display: flex;
+  gap: var(--space-5);
+}
+
+.iqc-inspection-qty-summary > dl > div {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+}
+
+/* 판정 — 왼쪽 종합 판정, 오른쪽 임시 저장·판정 확정(막힌 사유는 단추 바로 아래). */
+.iqc-inspection-judgment {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+
+.iqc-inspection-actions {
+  display: grid;
+  justify-items: end;
+  gap: var(--space-2);
+  margin-left: auto;
+  margin-top: var(--field-label-layer);
+}
+
+.iqc-inspection-actions > .form-actions {
+  margin-top: 0;
+}
+
+.iqc-inspection-actions > .field-note {
+  text-align: right;
+}
+
+/* 확정 경고 — 되돌릴 수 없다는 경고라 흐린 보조 글이 아니라 경고색으로, 단추 쪽(오른쪽)에 둔다. */
+.iqc-inspection-confirm-warning {
+  color: var(--semantic-warning);
+  font: var(--type-body-sm);
+  letter-spacing: var(--type-body-sm-tracking);
+  text-align: right;
+}
+
+/* 부분 입고 — 기능(비활성 단추)과 상태(사용할 수 없음)를 한 줄에. */
+.iqc-inspection-partial {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-2);
+}

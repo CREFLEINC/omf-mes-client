@@ -66,10 +66,11 @@ export const RoundHistory = ({ rounds }: RoundHistoryProps) => {
   if (rounds.length === 0) return null;
 
   return (
-    <section>
+    <section className="iqc-inspection-section">
       <h3>{t.heading}</h3>
       <Table
-        caption={t.caption}
+        /* 구획 제목(「이전 회차」)이 이미 보인다 — 표 제목은 접근 이름으로만 남긴다. */
+        caption={<span className="iqc-inspection-table-caption">{t.caption}</span>}
         density="compact"
         columns={COLUMNS}
         rows={rounds}

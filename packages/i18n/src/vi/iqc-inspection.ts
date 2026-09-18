@@ -41,6 +41,7 @@ export const iqcInspection: Translated<typeof ko.iqcInspection> = {
 
   detail: {
     heading: 'Đối tượng',
+    sectionTitle: 'Thông tin kiểm tra cơ bản',
     nothingSelected: 'Hãy chọn yêu cầu cần kiểm tra ở danh sách bên trái.',
     loading: 'Đang tải yêu cầu.',
     fields: {
@@ -50,15 +51,18 @@ export const iqcInspection: Translated<typeof ko.iqcInspection> = {
       lotId: 'LOT liên quan',
       itemId: 'Mặt hàng',
       targetQty: 'Số lượng kiểm tra',
+      requestedAt: 'Thời điểm yêu cầu',
     },
-    planVersionNote: 'Được cố định theo phiên bản tiêu chuẩn tại thời điểm kiểm tra.',
+    planVersionNote: 'Cố định theo phiên bản tiêu chuẩn tại thời điểm yêu cầu.',
     noPlanVersion: 'Không có tiêu chuẩn',
   },
 
   result: {
     heading: 'Đánh giá số lượng',
+    sectionTitle: 'Số lượng kết quả kiểm tra',
+    judgmentSectionTitle: 'Đánh giá',
     round: (round: number): string => `Lượt ${round}`,
-    notStarted: 'Chưa có kết quả kiểm tra nào được nhập.',
+    notStarted: 'Chưa có kết quả kiểm tra nào được lưu tạm.',
     loading: 'Đang tải kết quả kiểm tra.',
     confirmed:
       'Lượt này đã xác nhận nên không sửa được. Muốn kiểm tra lại thì thêm một lượt kiểm tra lại.',
@@ -71,9 +75,9 @@ export const iqcInspection: Translated<typeof ko.iqcInspection> = {
     sum: 'Tổng',
     remaining: 'Còn lại',
     matched: 'Khớp với số lượng kiểm tra.',
-    short: (remaining: string): string => `Thiếu ${remaining} so với số lượng kiểm tra.`,
-    over: (over: string): string => `Nhiều hơn số lượng kiểm tra ${over}.`,
-    quantityInvalid: 'Số lượng phải từ 0 trở lên và tối đa sáu chữ số thập phân.',
+    short: (remaining: string): string => `Hãy nhập thêm ${remaining} số lượng kết quả kiểm tra.`,
+    over: (over: string): string => `Nhiều hơn số lượng kiểm tra ${over}. Hãy giảm số lượng.`,
+    quantityInvalid: 'Hãy nhập số từ 0 trở lên. Tối đa sáu chữ số thập phân.',
     save: 'Lưu tạm',
     saving: 'Đang lưu',
     saved: 'Đã lưu.',
@@ -87,17 +91,15 @@ export const iqcInspection: Translated<typeof ko.iqcInspection> = {
 
     confirm: 'Xác nhận đánh giá',
     confirming: 'Đang xác nhận',
-    confirmNote: 'Xác nhận rồi thì trạng thái LOT thay đổi và không hoàn tác được.',
-    confirmBlockedByTotals:
-      'Xác nhận đánh giá — tổng số lượng phải khớp với số lượng kiểm tra mới xác nhận được.',
-    confirmBlockedByJudgment: 'Xác nhận đánh giá — phải chọn đánh giá tổng hợp mới xác nhận được.',
-    confirmBlockedByConfirmed: 'Xác nhận đánh giá — lượt này đã được xác nhận.',
-    confirmBlockedByUnsaved: 'Xác nhận đánh giá — phải lưu tạm trước mới xác nhận được.',
+    confirmNote: 'Khi xác nhận đánh giá, trạng thái LOT sẽ thay đổi và không thể hoàn tác.',
+    confirmBlockedByTotals: 'Tổng đã nhập phải bằng số lượng kiểm tra mới xác nhận được.',
+    confirmBlockedByJudgment: 'Phải chọn đánh giá tổng hợp mới xác nhận được.',
+    confirmBlockedByConfirmed: 'Lượt này đã được xác nhận.',
+    confirmBlockedByUnsaved: 'Lưu tạm xong mới xác nhận đánh giá được.',
     confirmSucceeded: 'Đã xác nhận đánh giá.',
 
     partialReceipt: 'Cho phép nhập kho một phần',
-    partialReceiptPending:
-      'Cho phép nhập kho một phần — việc có cho phép hay không còn đang bàn nên chưa dùng được.',
+    partialReceiptPending: 'Hiện chưa sử dụng được.',
 
     reinspect: 'Thêm lượt kiểm tra lại',
     reinspectCancel: 'Thôi kiểm tra lại',

@@ -78,8 +78,10 @@ export const iqcInspection = {
   /** 우측 창 — 고른 의뢰의 상세(스펙 §4-A 여섯 항목). */
   detail: {
     heading: '대상',
+    /** 상세 카드 첫 구획의 제목 — 참고 정보(읽기 전용)임을 입력 구획과 가른다. */
+    sectionTitle: '검사 기본 정보',
     /** 아무것도 고르지 않았다. 무엇을 해야 하는지 말한다. */
-    nothingSelected: '왼쪽 목록에서 검사할 의뢰를 고르세요.',
+    nothingSelected: '왼쪽 목록에서 검사할 의뢰를 선택해 주세요.',
     loading: '의뢰를 불러오는 중입니다.',
     fields: {
       inspectionRequestNo: '의뢰번호',
@@ -93,9 +95,14 @@ export const iqcInspection = {
       lotId: '대상 LOT',
       itemId: '품목',
       targetQty: '검사수량',
+      /** 의뢰가 만들어진 시각(`requestedAt`) — 목록 열 「의뢰 일시」와 같은 값이다. */
+      requestedAt: '의뢰 일시',
     },
-    /** 기준 버전이 고정된다는 사실을 화면이 말한다 — 숫자만 보이면 왜 중요한지 알 수 없다. */
-    planVersionNote: '검사 시점의 기준 버전으로 고정됩니다.',
+    /**
+     * 기준 버전이 고정된다는 사실을 화면이 말한다 — 숫자만 보이면 왜 중요한지 알 수 없다.
+     * 버전은 서버가 의뢰를 만들 때(입하·LOT 등록) 그날 유효한 확정 기준으로 정해 넣는다.
+     */
+    planVersionNote: '의뢰 시점의 기준 버전으로 고정됩니다.',
     /**
      * client#589 — 기준이 등록되지 않은 상태에서도 검사를 진행할 수 있어 이 칸이 빌 수 있다.
      * **없는 값과 모르는 값은 다른 모양이어야 한다**(공유계약 G-9) — 그래서 일반 빈 값
@@ -107,9 +114,13 @@ export const iqcInspection = {
   /** 우측 창 — 수량 판정. 합계 제약이 이 구획을 지배한다. */
   result: {
     heading: '수량 판정',
+    /** 수량 입력 구획의 제목. */
+    sectionTitle: '검사 결과 수량',
+    /** 종합 판정·임시 저장·판정 확정 구획의 제목. */
+    judgmentSectionTitle: '판정',
     round: (round: number): string => `${round}회차`,
-    /** 회차가 하나도 없다 — 아직 아무도 손대지 않은 의뢰다. */
-    notStarted: '아직 입력된 검사 결과가 없습니다.',
+    /** 회차가 하나도 없다 — 임시 저장된 검사 결과(회차)가 아직 없는 의뢰다. */
+    notStarted: '아직 임시 저장된 검사 결과가 없습니다.',
     loading: '검사 결과를 불러오는 중입니다.',
     /**
      * 이 회차는 이미 확정됐다. ⛔ **고칠 수 있는 것처럼 보이지 않게 한다** — 이전 회차는
@@ -127,10 +138,10 @@ export const iqcInspection = {
     remaining: '잔여',
     matched: '검사수량과 일치합니다.',
     /** 모자란다. 얼마나 모자란지 함께 말한다 — 사용자가 다시 세지 않게. */
-    short: (remaining: string): string => `검사수량보다 ${remaining} 모자랍니다.`,
+    short: (remaining: string): string => `검사 결과 수량을 ${remaining}만큼 더 입력해 주세요.`,
     /** 넘겼다. 0으로 깎아 감추지 않는다. */
-    over: (over: string): string => `검사수량보다 ${over} 많습니다.`,
-    quantityInvalid: '수량은 0 이상, 소수점 여섯 자리까지 넣을 수 있습니다.',
+    over: (over: string): string => `검사수량보다 ${over}만큼 많습니다. 수량을 줄여 주세요.`,
+    quantityInvalid: '0 이상의 숫자로 입력해 주세요. 소수점은 여섯 자리까지 됩니다.',
     /**
      * 임시 저장. ⭐ **합계가 맞지 않아도 눌린다** — 판정을 확정하는 것이 아니라 하던 일을
      * 남기는 것이고, 계약도 「작성중」은 합계 제약을 걸지 않는다(스펙 §6).
@@ -146,7 +157,7 @@ export const iqcInspection = {
 
     /** 종합 판정. ⛔ 값 목록을 화면에 고정하지 않는다 — 공통코드 조회로 채운다. */
     judgment: '종합 판정',
-    judgmentPlaceholder: '판정을 고르세요',
+    judgmentPlaceholder: '판정을 선택해 주세요',
     /**
      * 코드값 시드가 아직 안 들어가 목록이 빌 수 있다. ⛔ **감추지 않고 사유를 밝힌다**
      * (공유계약 G-2) — 감추면 그 자리가 왜 없는지 사용자가 알 수 없다.
@@ -164,16 +175,19 @@ export const iqcInspection = {
      * ⛔ **되돌릴 수 없다.** 확정하는 순간 LOT 상태가 전이하고 보류 해제가 기록된다 —
      * 누르기 전에 그 사실을 알린다.
      */
-    confirmNote: '확정하면 LOT 상태가 바뀌고 되돌릴 수 없습니다.',
-    /** 비활성 사유 — 무엇이 막혔는지와 어떻게 푸는지를 함께 말한다(공유계약 G-23). */
-    confirmBlockedByTotals: '판정 확정 — 수량 합계가 검사수량과 맞아야 확정할 수 있습니다.',
-    confirmBlockedByJudgment: '판정 확정 — 종합 판정을 골라야 확정할 수 있습니다.',
-    confirmBlockedByConfirmed: '판정 확정 — 이미 확정된 회차입니다.',
+    confirmNote: '판정을 확정하면 LOT 상태가 변경되며 되돌릴 수 없습니다.',
+    /**
+     * 비활성 사유 — 무엇이 막혔는지와 어떻게 푸는지를 함께 말한다(공유계약 G-23).
+     * 단추 바로 아래에 붙으므로 단추 이름을 되풀이하지 않는다.
+     */
+    confirmBlockedByTotals: '입력 합계가 검사수량과 같아야 확정할 수 있습니다.',
+    confirmBlockedByJudgment: '종합 판정을 선택해야 확정할 수 있습니다.',
+    confirmBlockedByConfirmed: '이미 확정된 회차입니다.',
     /*
      * ⛔ 회차가 아직 없다. 확정은 회차 하나를 지목하는 쓰기라 지목할 것이 없으면 보낼 수
      * 없다 — 「오류가 났습니다」가 아니라 «먼저 할 일»을 말한다.
      */
-    confirmBlockedByUnsaved: '판정 확정 — 먼저 임시 저장을 해야 확정할 수 있습니다.',
+    confirmBlockedByUnsaved: '임시 저장 후 판정을 확정할 수 있습니다.',
     /*
      * 확정이 끝났다. 저장은 「저장했습니다」를 내는데 확정만 아무 말이 없으면, 되돌릴 수
      * 없는 쓰기를 하고도 사용자는 그것이 됐는지 확인할 문장을 못 찾는다.
@@ -192,7 +206,8 @@ export const iqcInspection = {
      * 정해지지 않았다.
      */
     partialReceipt: '부분 입고 허용',
-    partialReceiptPending: '부분 입고 허용 — 허용 여부가 협의 중이라 아직 쓸 수 없습니다.',
+    /** 「부분 입고 허용」 단추 바로 옆에 붙는 상태 — 기능 이름을 되풀이하지 않는다. */
+    partialReceiptPending: '현재 사용할 수 없습니다.',
 
     /*
      * 재검사 — ⭐ 앞 회차를 고치는 것이 «아니라» 새 회차를 쌓는 일이라는 사실을 문면이
