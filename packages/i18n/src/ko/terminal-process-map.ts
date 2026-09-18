@@ -48,17 +48,16 @@ export const terminalProcessMap = {
     edit: '단말 수정',
     code: '단말 코드',
     /** ⛔ 등록 뒤에는 못 바꾼다 — 키다. */
-    codeLocked: '등록한 뒤에는 바꿀 수 없습니다. 키로 쓰입니다.',
+    codeLocked: '단말 코드는 등록 후 변경할 수 없습니다.',
     plant: '공장',
     type: '유형',
     status: '운영 상태',
     registration: '등록 상태',
     equipment: '설치 설비',
     equipmentNone: '설비 미지정',
-    /** POP 이 「이 설비」를 전제로 도는 화면들이 이 값을 쓴다. */
-    equipmentNote: 'POP 화면이 「이 설비」를 전제로 도는 자리에서 이 값을 씁니다.',
-    codeListPending: '단말 유형 코드를 적으세요.',
-    statusHelp: 'RUNNING 또는 STOPPED를 적으세요.',
+    /** POP 이 「이 설비」를 전제로 도는 화면들이 이 값을 쓴다 — 라벨 옆 한 줄 안내. 유형과 상관없이 늘 보인다. */
+    equipmentHint: 'POP 유형일 시 지정해 주세요',
+    plantPlaceholder: '공장을 지정하세요',
     /** 설치 위치는 창고를 먼저 골라야 조회되는 자원이라 이 화면에서 열지 않는다. */
     locationOmitted: '설치 위치는 창고를 먼저 골라야 조회할 수 있어 이 화면에서 다루지 않습니다.',
     save: '저장',

@@ -487,6 +487,7 @@ export const TerminalProcessMapScreen = () => {
               fieldErrors={formMode === 'create' ? create.fieldErrors : update.fieldErrors}
               plants={plants}
               equipments={equipments}
+              codeNames={codeNames}
               onChange={(patch) => {
                 setTerminalDraft((prev) => ({ ...prev, ...patch }));
               }}

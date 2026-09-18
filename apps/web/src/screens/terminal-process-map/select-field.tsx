@@ -26,6 +26,8 @@ export interface SelectFieldProps {
    * 고장 난 것으로 읽는다(배치 규범 4).
    */
   disabled?: boolean;
+  /** 라벨 오른쪽 같은 줄의 짧은 안내. */
+  hint?: string;
 }
 
 /**
@@ -51,6 +53,7 @@ export const SelectField = ({
   placeholder,
   wide = false,
   disabled = false,
+  hint,
 }: SelectFieldProps) => {
   const id = useId();
   const noteId = `${id}-note`;
@@ -60,7 +63,7 @@ export const SelectField = ({
 
   return (
     <div className={wide ? 'field-cell wide-select' : 'field-cell'}>
-      <FieldLabel htmlFor={id} label={label} />
+      <FieldLabel htmlFor={id} label={label} hint={hint} />
       <Select
         id={id}
         options={options}

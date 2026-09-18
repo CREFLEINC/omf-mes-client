@@ -6,7 +6,12 @@ import { useId } from 'react';
 import { SaveErrorBanner } from '../../patterns/master';
 import { FieldLabel } from './field-label';
 import { LoadErrorBanner } from './load-error-banner';
-import { lookupNote, type LookupResult } from './lookups';
+import {
+  codeSelectOptions,
+  lookupNote,
+  type LookupResult,
+  type TerminalCodeNames,
+} from './lookups';
 import { SelectField } from './select-field';
 import type { TerminalDraft, TerminalErrors } from './terminal-draft';
 import type { SelectOption } from './types';
@@ -23,6 +28,8 @@ export interface TerminalFormProps {
   fieldErrors: Record<string, string>;
   plants: LookupResult;
   equipments: LookupResult;
+  /** 단말 유형·운영 상태 선택지 — 공통코드(TERMINAL_TYPE·TERMINAL_STATUS). 저장값은 코드 그대로다. */
+  codeNames: TerminalCodeNames;
   onChange: (patch: Partial<TerminalDraft>) => void;
   onSubmit: () => void;
   onCancel: () => void;
@@ -48,26 +55,27 @@ export const TerminalForm = ({
   fieldErrors,
   plants,
   equipments,
+  codeNames,
   onChange,
   onSubmit,
   onCancel,
 }: TerminalFormProps) => {
   const baseId = useId();
   const codeId = `${baseId}-code`;
-  const typeId = `${baseId}-type`;
-  const statusId = `${baseId}-status`;
 
   return (
     <>
+      {/* 다루지 않는 칸이 있다는 사실을 감추지 않는다 — 카드 제목 바로 아래 한 줄. */}
+      <p className="field-label terminal-map-form-lead">{t.terminal.locationOmitted}</p>
       <SaveErrorBanner error={saveError} />
       {plants.isError ? <LoadErrorBanner error={plants.error} onRetry={plants.refetch} /> : null}
       {equipments.isError ? (
         <LoadErrorBanner error={equipments.error} onRetry={equipments.refetch} />
       ) : null}
 
-      <div className="form-grid">
+      <div className="form-grid terminal-map-form">
         <div className="field-cell">
-          <FieldLabel htmlFor={codeId} label={t.terminal.code} />
+          <FieldLabel htmlFor={codeId} label={t.terminal.code} hint={t.terminal.codeLocked} />
           <TextField
             id={codeId}
             value={draft.terminalCode}
@@ -77,8 +85,6 @@ export const TerminalForm = ({
               onChange({ terminalCode: event.target.value });
             }}
           />
-          {/* 잠근 이유를 잠근 칸 옆에 둔다 — 등록할 때는 아직 잠기지 않았으니 내지 않는다. */}
-          {!isNew && <span className="field-note">{t.terminal.codeLocked}</span>}
         </div>
 
         <SelectField
@@ -87,39 +93,36 @@ export const TerminalForm = ({
           value={draft.plant}
           note={lookupNote(plants, t.terminal.plantLookupFailed)}
           error={errors.plant ?? fieldErrors.plantId}
-          placeholder={t.terminal.selectPlaceholder}
+          placeholder={t.terminal.plantPlaceholder}
           wide
           onChange={(value) => {
             onChange({ plant: value });
           }}
         />
 
-        <div className="field-cell">
-          <FieldLabel htmlFor={typeId} label={t.terminal.type} />
-          <TextField
-            id={typeId}
-            value={draft.terminalTypeCode}
-            error={errors.terminalTypeCode ?? fieldErrors.terminalTypeCode}
-            helperText={t.terminal.codeListPending}
-            onChange={(event) => {
-              onChange({ terminalTypeCode: event.target.value });
-            }}
-          />
-        </div>
+        {/* 코드를 외워 적지 않게 공통코드 이름으로 고른다 — 저장값은 코드 그대로다. */}
+        <SelectField
+          label={t.terminal.type}
+          options={codeSelectOptions(codeNames.typeLookup, draft.terminalTypeCode)}
+          value={draft.terminalTypeCode}
+          error={errors.terminalTypeCode ?? fieldErrors.terminalTypeCode}
+          placeholder={t.terminal.selectPlaceholder}
+          onChange={(value) => {
+            onChange({ terminalTypeCode: value });
+          }}
+        />
 
         {!isNew ? (
-          <div className="field-cell">
-            <FieldLabel htmlFor={statusId} label={t.terminal.status} />
-            <TextField
-              id={statusId}
-              value={draft.statusCode}
-              error={errors.statusCode ?? fieldErrors.statusCode}
-              helperText={t.terminal.statusHelp}
-              onChange={(event) => {
-                onChange({ statusCode: event.target.value });
-              }}
-            />
-          </div>
+          <SelectField
+            label={t.terminal.status}
+            options={codeSelectOptions(codeNames.statusLookup, draft.statusCode)}
+            value={draft.statusCode}
+            error={errors.statusCode ?? fieldErrors.statusCode}
+            placeholder={t.terminal.selectPlaceholder}
+            onChange={(value) => {
+              onChange({ statusCode: value });
+            }}
+          />
         ) : null}
 
         <SelectField
@@ -129,9 +132,8 @@ export const TerminalForm = ({
             ...toOptions(equipments.entries),
           ]}
           value={draft.equipment}
-          note={
-            lookupNote(equipments, t.terminal.equipmentLookupFailed) ?? t.terminal.equipmentNote
-          }
+          note={lookupNote(equipments, t.terminal.equipmentLookupFailed)}
+          hint={t.terminal.equipmentHint}
           error={fieldErrors.equipmentId}
           placeholder={t.terminal.equipmentNone}
           wide
@@ -141,10 +143,7 @@ export const TerminalForm = ({
         />
       </div>
 
-      {/* 다루지 않는 칸이 있다는 사실을 감추지 않는다 — 선택 항목이라 없어도 단말이 선다. */}
-      <p className="field-note">{t.terminal.locationOmitted}</p>
-
-      <div className="form-actions">
+      <div className="form-actions terminal-map-form-actions">
         {isSaving && <p className="field-note form-actions-secondary">{t.terminal.saving}</p>}
         <Button variant="outlined" disabled={isSaving} onClick={onCancel}>
           {t.terminal.cancel}

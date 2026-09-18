@@ -4,7 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useApiClient } from '../../patterns/api-context';
 import { masterName } from '../../patterns/master-name';
 import { runRequest } from '../../patterns/request';
-import type { LookupEntry, PageMeta } from './types';
+import type { LookupEntry, PageMeta, SelectOption } from './types';
 
 /**
  * 이 화면이 푸는 참조 셋 — 공장 · 설비 · 공정.
@@ -121,7 +121,20 @@ export const useProcessOptions = (): LookupResult => {
 };
 
 const CODE_PAGE_SIZE = 100;
-const EMPTY_NAMES = new Map<string, string>();
+
+interface CodeEntry {
+  value: string;
+  label: string;
+  isActive: boolean;
+}
+
+const EMPTY_CODES: CodeEntry[] = [];
+
+export interface CodeLookup {
+  /** 코드 → 표시명. 못 찾으면 코드를 그대로 돌려준다. */
+  nameOf: (code: string) => string;
+  entries: readonly CodeEntry[];
+}
 
 /**
  * 단말 유형·운영 상태 코드 → 공통코드 표시명(TERMINAL_TYPE · TERMINAL_STATUS).
@@ -129,7 +142,7 @@ const EMPTY_NAMES = new Map<string, string>();
  * 화면이 이름을 박지 않는다 — 값 목록의 정본은 공통코드다. 사용 중지 코드로 만든 단말도
  * 남아 있으므로 사용 중지 코드까지 받는다. 이름을 못 찾으면 코드를 그대로 돌려준다.
  */
-const useCodeNameOf = (groupCode: string): ((code: string) => string) => {
+const useCodeLookup = (groupCode: string): CodeLookup => {
   const { client } = useApiClient();
   const query = useQuery({
     queryKey: ['terminal-process-map', 'code-names', groupCode] as const,
@@ -142,20 +155,53 @@ const useCodeNameOf = (groupCode: string): ((code: string) => string) => {
         }),
       );
 
-      return new Map(data.items.map((value) => [value.code, masterName(value, value.codeName)]));
+      return [...data.items]
+        .sort((left, right) => left.displayOrder - right.displayOrder)
+        .map((value) => ({
+          value: value.code,
+          label: masterName(value, value.codeName),
+          isActive: value.isActive,
+        }));
     },
   });
-  const names = query.data ?? EMPTY_NAMES;
+  const entries = query.data ?? EMPTY_CODES;
 
-  return (code) => names.get(code) ?? code;
+  return {
+    nameOf: (code) => entries.find((entry) => entry.value === code)?.label ?? code,
+    entries,
+  };
+};
+
+/**
+ * 폼 선택지 — 사용 중인 코드만 고를 수 있다(공통 selectableLookupOptions 와 같은 관례).
+ * ⭐ **지금 값은 반드시 선택지에 남긴다** — 사용 중지 코드면 「(미사용)」을 붙이고, 목록을 못
+ * 불러왔거나 이름이 없으면 코드 그대로 둔다. 그래야 현재 값이 사라지거나 저장이 막히지 않는다.
+ */
+export const codeSelectOptions = (lookup: CodeLookup, selected: string): SelectOption[] => {
+  const options = lookup.entries
+    .filter((entry) => entry.isActive || entry.value === selected)
+    .map((entry) => ({
+      value: entry.value,
+      label: entry.isActive
+        ? entry.label
+        : `${entry.label}${messages.common.reference.inactiveSuffix}`,
+    }));
+
+  return selected === '' || options.some((option) => option.value === selected)
+    ? options
+    : [...options, { value: selected, label: selected }];
 };
 
 export interface TerminalCodeNames {
   type: (code: string) => string;
   status: (code: string) => string;
+  typeLookup: CodeLookup;
+  statusLookup: CodeLookup;
 }
 
-export const useTerminalCodeNames = (): TerminalCodeNames => ({
-  type: useCodeNameOf('TERMINAL_TYPE'),
-  status: useCodeNameOf('TERMINAL_STATUS'),
-});
+export const useTerminalCodeNames = (): TerminalCodeNames => {
+  const typeLookup = useCodeLookup('TERMINAL_TYPE');
+  const statusLookup = useCodeLookup('TERMINAL_STATUS');
+
+  return { type: typeLookup.nameOf, status: statusLookup.nameOf, typeLookup, statusLookup };
+};
