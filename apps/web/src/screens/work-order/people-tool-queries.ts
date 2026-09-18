@@ -40,9 +40,13 @@ export const workOrderPeopleToolKeys = {
   all: ['work-order-people-tools'] as const,
   molds: (plantId: number | null, page: number) =>
     ['work-order-people-tools', 'molds', plantId, page] as const,
-  workers: (plantId: number | null, page: number) =>
-    ['work-order-people-tools', 'workers', plantId, page] as const,
+  workers: (plantId: number | null, page: number, term: string) =>
+    ['work-order-people-tools', 'workers', plantId, page, term] as const,
+  worker: (workerId: number | null) => ['work-order-people-tools', 'worker', workerId] as const,
 };
+
+/** 계약 최대 쪽 크기. 넘는 작업자는 사번·성명 검색(`q`)으로 찾는다. */
+export const WORKER_PAGE_SIZE = 200;
 
 export const toWorkOrderMoldFact = (mold: Mold): WorkOrderMoldFact => ({
   moldId: mold.moldId,
@@ -101,14 +105,19 @@ export const useWorkOrderMolds = (
   });
 };
 
+/**
+ * 담당 작업자 선택지. 공장 작업자는 수백 명이라 한 쪽에 다 오지 않는다 —
+ * 검색어가 있으면 계약의 `q`(사번·성명)로 다시 묻는다.
+ */
 export const useWorkOrderWorkers = (
   plantId: number | null,
   page: number,
+  term = '',
 ): UseQueryResult<WorkOrderPeopleToolList<WorkOrderWorkerFact>> => {
   const { client } = useApiClient();
 
   return useQuery({
-    queryKey: workOrderPeopleToolKeys.workers(plantId, page),
+    queryKey: workOrderPeopleToolKeys.workers(plantId, page, term),
     enabled: plantId !== null,
     queryFn: async () => {
       if (plantId === null) {
@@ -118,11 +127,42 @@ export const useWorkOrderWorkers = (
       return toPeopleToolList(
         await runRequest(() =>
           client.GET('/mdm/workers', {
-            params: { query: { plantId, includeInactive: true, page } },
+            params: {
+              query: {
+                plantId,
+                ...(term === '' ? {} : { q: term }),
+                includeInactive: true,
+                page,
+                size: WORKER_PAGE_SIZE,
+              },
+            },
           }),
         ),
         toWorkOrderWorkerFact,
       );
+    },
+  });
+};
+
+/** 저장된 담당 작업자가 선택지 쪽에 없을 때 그 한 명의 이름을 푼다. */
+export const useWorkOrderWorker = (
+  workerId: number | null,
+): UseQueryResult<WorkOrderWorkerFact> => {
+  const { client } = useApiClient();
+
+  return useQuery({
+    queryKey: workOrderPeopleToolKeys.worker(workerId),
+    enabled: workerId !== null,
+    queryFn: async () => {
+      if (workerId === null) {
+        throw new Error('A worker is required to load the worker.');
+      }
+
+      const detail = await runRequest(() =>
+        client.GET('/mdm/workers/{workerId}', { params: { path: { workerId } } }),
+      );
+
+      return toWorkOrderWorkerFact(detail.worker);
     },
   });
 };

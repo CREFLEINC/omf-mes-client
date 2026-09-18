@@ -47,6 +47,9 @@ export interface WorkOrderShiftFact {
 export interface WorkOrderLocationFact {
   locationId: number;
   warehouseId: number;
+  /** 창고를 함께 보여야 WIP·완제품 위치를 가를 수 있다. 창고 목록에 없으면 `null`. */
+  warehouseCode: string | null;
+  warehouseName: string | null;
   locationCode: string;
   locationName: string;
   isActive: boolean;
@@ -113,9 +116,14 @@ export const toWorkOrderShiftFact = (shift: Shift): WorkOrderShiftFact => ({
   isActive: shift.isActive,
 });
 
-const toWorkOrderLocationFact = (location: Location): WorkOrderLocationFact => ({
+const toWorkOrderLocationFact = (
+  location: Location,
+  warehouse: Warehouse | undefined,
+): WorkOrderLocationFact => ({
   locationId: location.locationId,
   warehouseId: location.warehouseId,
+  warehouseCode: warehouse?.warehouseCode ?? null,
+  warehouseName: warehouse?.warehouseName ?? null,
   locationCode: location.locationCode,
   locationName: location.locationName,
   isActive: location.isActive,
@@ -246,7 +254,15 @@ export const useWorkOrderLocations = (): WorkOrderLocationLookup => {
   });
 
   return {
-    items: locations.flatMap((query) => query.data?.items.map(toWorkOrderLocationFact) ?? []),
+    items: locations.flatMap(
+      (query) =>
+        query.data?.items.map((location) =>
+          toWorkOrderLocationFact(
+            location,
+            warehouses.data?.items.find((warehouse) => warehouse.warehouseId === location.warehouseId),
+          ),
+        ) ?? [],
+    ),
     truncated:
       (warehouses.data !== undefined && warehouses.data.page.total > warehouses.data.items.length) ||
       locations.some(
