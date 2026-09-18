@@ -245,16 +245,35 @@ const routes = (options: Options = {}): StubRoute[] => [
   },
   {
     match: (req) => /\/logistics\/putaway-tasks\/\d+:complete$/.test(new URL(req.url).pathname),
-    respond: (req) => {
+    respond: async (req) => {
       options.seen?.push(req.clone());
 
       /* 고쳐야 풀리는 거절이다. 다시 보내도 같은 답이 온다. */
-      return options.putawayRejected === true
-        ? jsonResponse(
-            { code: 'STATE_LOCKED', message: '완료할 수 없는 지시입니다.', errors: [] },
-            { status: 400 },
-          )
-        : jsonResponse({ putawayTaskId: 7701, statusCode: 'COMPLETED' });
+      if (options.putawayRejected === true) {
+        return jsonResponse(
+          { code: 'STATE_LOCKED', message: '완료할 수 없는 지시입니다.', errors: [] },
+          { status: 400 },
+        );
+      }
+
+      /*
+       * 계약대로 답한다 - 정해진 위치가 없는 품목은 확인 표시가 있어야 받는다. 본문과 상관없이
+       * 받아 주면 확인값을 빠뜨려도 시험이 통과한다.
+       */
+      const body = (await req.clone().json()) as { confirmedNoRule?: boolean };
+
+      if (options.noRule === true && body.confirmedNoRule !== true) {
+        return jsonResponse(
+          {
+            code: 'INVALID',
+            message: '권장 위치가 없는 품목은 확인이 필요합니다.',
+            errors: [{ field: 'confirmedNoRule', reason: 'REQUIRED' }],
+          },
+          { status: 400 },
+        );
+      }
+
+      return jsonResponse({ putawayTaskId: 7701, statusCode: 'COMPLETED' });
     },
   },
   {
@@ -634,6 +653,29 @@ describe('제품 입고·적치 화면', () => {
     await user.click(screen.getByRole('button', { name: '여기 적치합니다' }));
 
     await readyToSubmit();
+  });
+
+  /*
+   * 확인은 단추를 푸는 데서 끝나지 않는다. 서버가 그 확인을 받아야 적치가 선다 - 빠뜨리면 입고는
+   * 서고 적치만 되돌아와, 물건이 어디 있는지가 남지 않는다.
+   */
+  it('정해진 위치가 없어 확인하고 입고하면 적치까지 선다', async () => {
+    const user = userEvent.setup();
+    const seen: Request[] = [];
+    mount({ noRule: true, seen });
+    await openUnit(user);
+    await pickLocation(user);
+    await user.click(await screen.findByRole('button', { name: '여기 적치합니다' }));
+    await readyToSubmit();
+
+    await user.click(screen.getByRole('button', { name: '입고·적치 완료' }));
+
+    expect(await screen.findByText('입고하고 적치했습니다')).toBeTruthy();
+
+    const putaway = seen.find((each) => new URL(each.url).pathname.endsWith(':complete'));
+    const body = (await putaway?.json()) as { confirmedNoRule?: boolean };
+
+    expect(body.confirmedNoRule).toBe(true);
   });
 
   /* 이 화면이 재고를 세우는 지점이다. 두 번 서면 같은 제품이 두 벌이 된다. */
