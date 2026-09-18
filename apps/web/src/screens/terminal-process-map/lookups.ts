@@ -2,6 +2,7 @@ import { messages } from '@omf-mes/i18n';
 import { useQuery } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
+import { masterName } from '../../patterns/master-name';
 import { runRequest } from '../../patterns/request';
 import type { LookupEntry, PageMeta } from './types';
 
@@ -118,3 +119,43 @@ export const useProcessOptions = (): LookupResult => {
     },
   };
 };
+
+const CODE_PAGE_SIZE = 100;
+const EMPTY_NAMES = new Map<string, string>();
+
+/**
+ * 단말 유형·운영 상태 코드 → 공통코드 표시명(TERMINAL_TYPE · TERMINAL_STATUS).
+ *
+ * 화면이 이름을 박지 않는다 — 값 목록의 정본은 공통코드다. 사용 중지 코드로 만든 단말도
+ * 남아 있으므로 사용 중지 코드까지 받는다. 이름을 못 찾으면 코드를 그대로 돌려준다.
+ */
+const useCodeNameOf = (groupCode: string): ((code: string) => string) => {
+  const { client } = useApiClient();
+  const query = useQuery({
+    queryKey: ['terminal-process-map', 'code-names', groupCode] as const,
+    queryFn: async () => {
+      const data = await runRequest(() =>
+        client.GET('/mdm/code-values', {
+          params: {
+            query: { codeGroupCode: groupCode, includeInactive: true, size: CODE_PAGE_SIZE },
+          },
+        }),
+      );
+
+      return new Map(data.items.map((value) => [value.code, masterName(value, value.codeName)]));
+    },
+  });
+  const names = query.data ?? EMPTY_NAMES;
+
+  return (code) => names.get(code) ?? code;
+};
+
+export interface TerminalCodeNames {
+  type: (code: string) => string;
+  status: (code: string) => string;
+}
+
+export const useTerminalCodeNames = (): TerminalCodeNames => ({
+  type: useCodeNameOf('TERMINAL_TYPE'),
+  status: useCodeNameOf('TERMINAL_STATUS'),
+});

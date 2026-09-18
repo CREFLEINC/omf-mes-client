@@ -12,27 +12,28 @@ export const terminalProcessMap = {
   panes: {
     list: '단말 목록',
     terminal: '단말 정보',
-    grid: '기능 구성',
+    grid: '공정별 기능 구성',
   },
 
   filters: {
     search: '단말 코드 검색',
-    searchPlaceholder: '코드 일부를 적으세요',
-    includeInactive: '중지된 단말도 보기',
+    searchPlaceholder: '단말 코드를 입력하세요',
+    includeInactive: '중지 단말 포함',
     apply: '조회',
-    clear: '조건 지우기',
+    clear: '초기화',
   },
 
   list: {
     code: '단말 코드',
     type: '유형',
-    status: '상태',
+    status: '운영 상태',
     registration: '등록 상태',
     registrationPending: '미등록',
     registrationComplete: '등록 완료',
     registrationUnknown: '확인 전',
     equipment: '설비',
     active: '사용',
+    activeHeader: '사용 여부',
     inactive: '중지',
     notAvailable: '—',
     emptyTitle: '단말이 없습니다',
@@ -52,9 +53,6 @@ export const terminalProcessMap = {
     type: '유형',
     status: '운영 상태',
     registration: '등록 상태',
-    registrationPending: '미등록',
-    registrationComplete: '등록 완료',
-    registrationUnknown: '확인 전',
     equipment: '설치 설비',
     equipmentNone: '설비에 붙이지 않음',
     /** POP 이 「이 설비」를 전제로 도는 화면들이 이 값을 쓴다. */
@@ -110,25 +108,30 @@ export const terminalProcessMap = {
     /** 여덟 칸을 하나씩 누르지 않게 한 줄을 통째로 여닫는다. */
     openAll: '모두 열기',
     add: '공정 추가',
-    addPlaceholder: '더할 공정을 고르세요',
+    addPlaceholder: '추가할 공정을 선택하세요',
     remove: '빼기',
     /** ⭐ 빠진 공정은 지워진다 — 그 사실을 표 옆에 적는다. */
     replaceNote:
-      '저장하면 이 표가 그대로 이 단말의 구성이 됩니다 — 표에서 뺀 공정은 지워집니다. 공정을 하나씩 저장하는 것이 아닙니다.',
+      '저장하면 현재 목록 기준으로 이 단말의 구성이 바뀝니다. 목록에서 뺀 공정은 이 단말에서 제외됩니다.',
     /** ⭐ 0건이 정상인 단말이 있다. */
     emptyTitle: '공정 행이 없습니다',
     empty:
       '이 단말에는 열어 둔 공정이 없습니다. 창고 전용 단말은 0건이 정상입니다 — 오류가 아닙니다.',
     /** ⭐ 보안이 아니라 오조작 방지다. */
     purpose:
-      '여기서 여는 것은 오조작을 막기 위한 기능 구성입니다. 보안 경계는 단말 토큰 하나뿐입니다.',
+      '이 단말에서 공정별로 사용할 기능을 정합니다. 체크하지 않은 기능은 이 단말에서 사용할 수 없습니다.',
+    /** ⭐ 보안이 아니라 오조작 방지다 — 접속 자체는 등록 토큰이 막는다. */
+    securityNote:
+      '이 설정은 작업 실수를 막기 위한 것입니다. 단말의 접속 자체는 등록 토큰으로 관리합니다.',
     save: '구성 저장',
     saved: '기능 구성을 저장했습니다.',
     saving: '저장하는 중입니다.',
     reset: '되돌리기',
     duplicate: '이미 표에 있는 공정입니다.',
-    selectTerminalTitle: '단말을 고르세요',
-    selectTerminal: '왼쪽에서 단말을 고르면 그 단말의 기능 구성이 보입니다.',
+    selectTerminalTitle: '단말을 선택해 주세요',
+    selectTerminal:
+      '단말 목록에서 단말을 선택하면 단말 정보와 공정별 기능 구성을 확인할 수 있습니다.',
+    unselectedNote: '단말을 선택하면 표시됩니다.',
     loadFailed: '기능 구성을 불러오지 못했습니다.',
     processLookupFailed: '공정 목록을 불러오지 못해 지금은 더할 수 없습니다.',
     lockLoading: '단말 구성을 불러오는 중입니다. 잠시 뒤 저장하세요.',

@@ -19,27 +19,28 @@ export const terminalProcessMap: Translated<typeof ko.terminalProcessMap> = {
   panes: {
     list: 'Danh sách máy quét',
     terminal: 'Thông tin máy quét',
-    grid: 'Cấu hình chức năng',
+    grid: 'Cấu hình chức năng theo công đoạn',
   },
 
   filters: {
     search: 'Tìm mã máy quét',
-    searchPlaceholder: 'Hãy nhập một phần mã',
-    includeInactive: 'Xem cả máy quét đã ngừng',
+    searchPlaceholder: 'Nhập mã máy quét',
+    includeInactive: 'Gồm máy quét đã ngừng',
     apply: 'Tra cứu',
-    clear: 'Xóa điều kiện',
+    clear: 'Đặt lại',
   },
 
   list: {
     code: 'Mã máy quét',
     type: 'Loại',
-    status: 'Trạng thái',
+    status: 'Trạng thái vận hành',
     registration: 'Trạng thái đăng ký',
     registrationPending: 'Chưa đăng ký',
     registrationComplete: 'Đã đăng ký',
     registrationUnknown: 'Chưa xác nhận',
     equipment: 'Thiết bị',
     active: 'Dùng',
+    activeHeader: 'Sử dụng',
     inactive: 'Ngừng',
     notAvailable: '—',
     emptyTitle: 'Không có máy quét',
@@ -59,9 +60,6 @@ export const terminalProcessMap: Translated<typeof ko.terminalProcessMap> = {
     type: 'Loại',
     status: 'Trạng thái vận hành',
     registration: 'Trạng thái đăng ký',
-    registrationPending: 'Chưa đăng ký',
-    registrationComplete: 'Đã đăng ký',
-    registrationUnknown: 'Chưa xác nhận',
     equipment: 'Thiết bị lắp đặt',
     equipmentNone: 'Không gắn vào thiết bị nào',
     equipmentNote: 'Màn hình POP dùng giá trị này ở chỗ lấy «thiết bị này» làm tiền đề.',
@@ -115,24 +113,28 @@ export const terminalProcessMap: Translated<typeof ko.terminalProcessMap> = {
     process: 'Công đoạn',
     openAll: 'Mở tất cả',
     add: 'Thêm công đoạn',
-    addPlaceholder: 'Hãy chọn công đoạn cần thêm',
+    addPlaceholder: 'Chọn công đoạn cần thêm',
     remove: 'Bỏ',
     /** ⭐ 빠진 공정은 지워진다 — 이 사실을 흐리면 사용자가 한 줄씩 저장되는 줄 안다. */
     replaceNote:
-      'Lưu thì bảng này thành đúng cấu hình của máy quét đó — công đoạn bỏ khỏi bảng sẽ bị xóa. Không phải lưu từng công đoạn một.',
+      'Khi lưu, cấu hình của máy quét này sẽ theo đúng danh sách hiện tại. Công đoạn bỏ khỏi danh sách sẽ bị loại khỏi máy quét này.',
     emptyTitle: 'Không có dòng công đoạn',
     empty:
       'Máy quét này không mở công đoạn nào. Máy quét chỉ dùng cho kho thì 0 dòng là bình thường — không phải lỗi.',
     /** ⭐ `quyền` 을 쓰지 않는다 — 보안 경계가 아니라 오조작을 막는 기능 구성이다. */
     purpose:
-      'Cái mở ở đây là cấu hình chức năng để chặn thao tác nhầm. Ranh giới bảo mật chỉ có mỗi token máy quét.',
+      'Chọn các chức năng được dùng theo từng công đoạn trên máy quét này. Chức năng không được chọn sẽ không dùng được trên máy quét này.',
+    securityNote:
+      'Thiết lập này để tránh thao tác nhầm. Việc truy cập của máy quét được quản lý bằng token đăng ký.',
     save: 'Lưu cấu hình',
     saved: 'Đã lưu cấu hình chức năng.',
     saving: 'Đang lưu.',
     reset: 'Khôi phục',
     duplicate: 'Công đoạn này đã có trong bảng.',
-    selectTerminalTitle: 'Hãy chọn một máy quét',
-    selectTerminal: 'Chọn máy quét ở bên trái thì sẽ thấy cấu hình chức năng của máy quét đó.',
+    selectTerminalTitle: 'Vui lòng chọn máy quét',
+    selectTerminal:
+      'Chọn máy quét trong danh sách để xem thông tin máy quét và cấu hình chức năng theo công đoạn.',
+    unselectedNote: 'Sẽ hiển thị khi chọn máy quét.',
     loadFailed: 'Không tải được cấu hình chức năng.',
     processLookupFailed: 'Không tải được danh sách công đoạn nên hiện chưa thêm được.',
     lockLoading: 'Đang tải cấu hình máy quét. Lát nữa hãy lưu.',
