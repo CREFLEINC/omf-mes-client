@@ -6004,6 +6004,36 @@ dl.filter-bar.approval-inbox-detail-facts {
 }
 
 /*
+ * 두 칸 배치(1281px 이상)에서 단말 목록·오른쪽 카드 높이를 맞춘다 — 공용 .two-pane 은 그대로 둔다.
+ * 늘어난 공간은 빈 칸(::after)이 받아 본문과 바닥글 사이에 두고, 바닥글(쪽 이동·조작 줄·폼 단추)은 카드 맨 아래에 붙는다.
+ */
+@media (min-width: 1281px) {
+  .two-pane.terminal-map-panes {
+    align-items: stretch;
+  }
+
+  /* 기본 높이 = 단말 수정 폼이 오류 없이 서는 높이(1920·1440 실측 435px). 고르기·수정 전환에 카드 높이가 흔들리지 않는다. */
+  .terminal-map-panes > .pane {
+    display: flex;
+    flex-direction: column;
+    min-height: 27.1875rem;
+    box-sizing: border-box;
+  }
+
+  .terminal-map-panes > .pane::after {
+    content: '';
+    flex: 1 0 0;
+    order: 1;
+  }
+
+  .terminal-map-panes
+    > .pane
+    > :is(.terminal-map-pagenav, .terminal-map-info-footer, .terminal-map-form-actions) {
+    order: 2;
+  }
+}
+
+/*
  * 공정별 기능 구성 표(매트릭스) — 열: 전체 선택 | 공정 | 기능 여덟 칸 | 관리.
  * 표는 카드 폭을 다 쓰고, 남는 폭은 기능 여덟 칸이 똑같이 나눈다(고정 배치: 전체 선택·공정·관리 칸만
  * 폭을 정하고 나머지는 균등). 좁은 폭에서는 최소 폭 아래로 줄지 않고 표 안에서만 가로로 넘긴다.

@@ -58,6 +58,7 @@ export const terminalProcessMap = {
     /** POP 이 「이 설비」를 전제로 도는 화면들이 이 값을 쓴다 — 라벨 옆 한 줄 안내. 유형과 상관없이 늘 보인다. */
     equipmentHint: 'POP 유형일 시 지정해 주세요',
     plantPlaceholder: '공장을 지정하세요',
+    typePlaceholder: '유형을 지정하세요',
     /** 설치 위치는 창고를 먼저 골라야 조회되는 자원이라 이 화면에서 열지 않는다. */
     locationOmitted: '설치 위치를 설정하려면 먼저 창고를 선택해 주세요.',
     save: '저장',

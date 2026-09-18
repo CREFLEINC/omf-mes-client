@@ -108,7 +108,7 @@ export const TerminalForm = ({
           options={codeSelectOptions(codeNames.typeLookup, draft.terminalTypeCode)}
           value={draft.terminalTypeCode}
           error={errors.terminalTypeCode ?? fieldErrors.terminalTypeCode}
-          placeholder={t.terminal.selectPlaceholder}
+          placeholder={t.terminal.typePlaceholder}
           onChange={(value) => {
             onChange({ terminalTypeCode: value });
           }}

@@ -64,6 +64,7 @@ export const terminalProcessMap: Translated<typeof ko.terminalProcessMap> = {
     equipmentNone: 'Chưa chỉ định thiết bị',
     equipmentHint: 'Hãy chỉ định nếu là loại POP',
     plantPlaceholder: 'Hãy chỉ định nhà máy',
+    typePlaceholder: 'Hãy chỉ định loại',
     locationOmitted: 'Để thiết lập vị trí lắp đặt, hãy chọn kho trước.',
     save: 'Lưu',
     saving: 'Đang lưu.',
