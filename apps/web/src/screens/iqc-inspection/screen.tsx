@@ -39,6 +39,7 @@ import { RequestDetailPane } from './request-detail-pane';
 import { ResultFormPane } from './result-form-pane';
 import { RoundHistory } from './round-history';
 import { latestRound, previousRounds } from './types';
+import { useUomLookup } from './uom-lookup';
 
 /**
  * W-01-01 IQC 수입검사·판정 — **이 회차는 좌측 검사 대기 큐 하나다.**
@@ -204,6 +205,19 @@ export const IqcInspectionScreen = () => {
     setDraft(draftOf(roundId === null ? null : { acceptedQty, rejectedQty, heldQty }));
   }, [selectedId, roundId, acceptedQty, rejectedQty, heldQty, storedJudgment]);
 
+  /*
+   * 마지막 저장 상태와 견줘 바뀐 것이 있는가 — 없으면 [임시 저장]을 끈다. 견주는 것은 세 수량 칸과
+   * 종합 판정이다. 회차가 없거나 재검사 회차를 쓰는 중이면 기준은 빈 초기 상태다.
+   * ⛔ 저장 요청 본문·계산·검증·확정 조건과는 무관하다 — 단추를 켜고 끄는 데만 쓴다.
+   */
+  const savedDraft = isReinspectingNow ? EMPTY_QUANTITY_DRAFT : draftOf(round);
+  const savedJudgment = isReinspectingNow ? '' : storedJudgment;
+  const hasChanges =
+    draft.accepted !== savedDraft.accepted ||
+    draft.rejected !== savedDraft.rejected ||
+    draft.held !== savedDraft.held ||
+    judgment !== savedJudgment;
+
   const rows = queue.data?.rows ?? [];
   const pageView = toPageView(queue.data?.page ?? { page, size: 0, total: 0 }, rows.length);
 
@@ -263,6 +277,9 @@ export const IqcInspectionScreen = () => {
   );
 
   const inspectedQty = round?.inspectedQty ?? detail.data?.targetQty ?? 0;
+  /* 수량 옆 단위 코드(표시 전용). 회차는 의뢰의 단위로 저장되므로(저장 요청의 `uomId`) 의뢰 단위 하나를 쓴다. */
+  const uoms = useUomLookup();
+  const uomCode = uoms.codeOf(detail.data?.uomId);
 
   /*
    * 이력에 실을 회차. 평소에는 최신을 뺀 나머지이고, **재검사 중에는 최신도 함께 싣는다** —
@@ -330,7 +347,11 @@ export const IqcInspectionScreen = () => {
    */
   const detailContent =
     selectedId === null ? (
-      <p className="field-note">{t.detail.nothingSelected}</p>
+      /* 고르기 전 — 고른 뒤 첫 구획과 같은 제목 아래 한 줄 안내(단말기-공정 매핑의 빈 상태와 같은 모양). */
+      <section className="iqc-inspection-section">
+        <h3>{t.detail.sectionTitle}</h3>
+        <p className="field-note">{t.detail.nothingSelected}</p>
+      </section>
     ) : detail.isError ? (
       <QueueLoadErrorBanner
         error={toApiError(detail.error)}
@@ -340,7 +361,7 @@ export const IqcInspectionScreen = () => {
       <p className="field-note">{t.detail.loading}</p>
     ) : (
       <>
-        <RequestDetailPane detail={detail.data} />
+        <RequestDetailPane detail={detail.data} uomCode={uomCode} />
         {rounds.isPending ? (
           <p className="field-note">{t.result.loading}</p>
         ) : (
@@ -351,6 +372,8 @@ export const IqcInspectionScreen = () => {
              */
             round={isReinspectingNow ? null : round}
             inspectedQty={inspectedQty}
+            uomCode={uomCode}
+            hasChanges={hasChanges}
             draft={draft}
             onChange={changeDraft}
             onSave={() => {
@@ -392,7 +415,7 @@ export const IqcInspectionScreen = () => {
         )}
 
         {/* ⛔ 읽기 전용이다 — 앞 회차는 정정하지 않고 새 회차를 쌓는다(§5-3). */}
-        <RoundHistory rounds={historyRounds} />
+        <RoundHistory rounds={historyRounds} uomCode={uomCode} />
 
         {/*
          * ⚠ **`isPending` 이 아니라 `isLoading` 이다.** 측정치 조회는 회차가 없을 때
@@ -419,7 +442,7 @@ export const IqcInspectionScreen = () => {
         }
       />
 
-      <div className="two-pane">
+      <div className="two-pane iqc-inspection-panes">
         <section className="pane" aria-label={t.queue.heading}>
           <QueueFilterBar
             appliedFilters={filters}

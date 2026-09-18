@@ -14,13 +14,13 @@ describe('RoundHistory', () => {
    * 것을 설명하느라 길어진다 — 이력은 쌓였을 때만 볼 것이다.
    */
   it('이전 회차가 없으면 아무것도 그리지 않는다', () => {
-    const { container } = render(<RoundHistory rounds={[]} />);
+    const { container } = render(<RoundHistory rounds={[]} uomCode={null} />);
 
     expect(container).toBeEmptyDOMElement();
   });
 
   it('회차와 판정을 읽기 값으로 보인다', () => {
-    render(<RoundHistory rounds={[toInspectionResultRound(confirmedRound)]} />);
+    render(<RoundHistory rounds={[toInspectionResultRound(confirmedRound)]} uomCode={null} />);
 
     expect(screen.getByText(t.heading)).toBeInTheDocument();
     expect(screen.getByText(confirmedRound.overallJudgmentCode ?? '')).toBeInTheDocument();
@@ -34,7 +34,7 @@ describe('RoundHistory', () => {
    * 앞 회차는 고치지 않고 새 회차를 쌓는다(§5-3).
    */
   it('누를 것을 두지 않는다 — 읽기 전용이다', () => {
-    render(<RoundHistory rounds={[toInspectionResultRound(confirmedRound)]} />);
+    render(<RoundHistory rounds={[toInspectionResultRound(confirmedRound)]} uomCode={null} />);
 
     expect(screen.queryAllByRole('button')).toHaveLength(0);
     expect(screen.queryAllByRole('textbox')).toHaveLength(0);
@@ -42,8 +42,14 @@ describe('RoundHistory', () => {
 
   /* 확정되지 않은 채 넘어간 회차도 이력에 남는다 — 빈칸으로 두면 못 불러온 것과 같아 보인다. */
   it('확정되지 않은 회차의 시각을 빈칸으로 두지 않는다', () => {
-    render(<RoundHistory rounds={[toInspectionResultRound(draftRound)]} />);
+    render(<RoundHistory rounds={[toInspectionResultRound(draftRound)]} uomCode={null} />);
 
     expect(screen.getByText(t.notConfirmed)).toBeInTheDocument();
+  });
+
+  it('수량 칸에 단위 코드를 붙인다', () => {
+    render(<RoundHistory rounds={[toInspectionResultRound(confirmedRound)]} uomCode="EA" />);
+
+    expect(screen.getByText(`${String(confirmedRound.acceptedQty)} EA`)).toBeInTheDocument();
   });
 });

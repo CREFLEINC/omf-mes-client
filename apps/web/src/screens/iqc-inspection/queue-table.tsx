@@ -38,11 +38,13 @@ const columnsOf = (
   {
     key: 'inspectionRequestNo',
     header: t.columns.inspectionRequestNo,
+    /* 번호가 잘리지 않고 한 줄로 보이는 최소 폭(글자 136px + 좌우 여백 24px). */
+    width: '160px',
     /* 코드 칸이 곧 「이 줄을 연다」다 — 저장소의 목록 창들과 같은 관용구. */
     render: (row) => (
       <button
         type="button"
-        className="link-cell"
+        className="link-cell iqc-inspection-request-no"
         aria-current={row.inspectionRequestId === selectedId ? 'true' : undefined}
         aria-label={t.openRow(row.inspectionRequestNo)}
         onClick={() => onSelect(row.inspectionRequestId)}
@@ -56,7 +58,12 @@ const columnsOf = (
     header: t.columns.lotId,
     width: '88px',
     /* 없는 것이 정상이다(작업지시 대상 검사 등). 빈 칸으로 두면 못 불러온 것과 구분되지 않는다. */
-    render: (row) => (row.lotId === null ? t.emptyValue : String(row.lotId)),
+    /* 긴 번호는 좁은 칸 안에서 줄을 바꾼다 — 옆 칸으로 넘치거나 잘리지 않게. */
+    render: (row) => (
+      <span className="iqc-inspection-lot">
+        {row.lotId === null ? t.emptyValue : String(row.lotId)}
+      </span>
+    ),
   },
   {
     key: 'statusCode',
@@ -75,17 +82,22 @@ const columnsOf = (
   {
     key: 'requestedAt',
     header: t.columns.requestedAt,
-    width: '124px',
+    /* 날짜·시각이 한 줄로 보이는 최소 폭(글자 118.6px + 좌우 여백 24px). 표가 더 넓으면 남는 폭은 네 열이 폭 비율대로 나눈다. */
+    width: '144px',
     sortable: true,
     /* 정렬은 원문(RFC3339)으로 한다 — 표기용 문자열로 정렬하면 형식이 아닌 값이 섞일 때 어긋난다. */
     sortAccessor: (row) => row.requestedAt,
-    render: (row) => formatDateTime(row.requestedAt),
+    /* 날짜·시각은 한 줄로 온전히 보인다. */
+    render: (row) => (
+      <span className="iqc-inspection-requested-at">{formatDateTime(row.requestedAt)}</span>
+    ),
   },
 ];
 
 export const QueueTable = ({ rows, selectedId, onSelect, empty }: QueueTableProps) => (
   <Table
-    caption={t.caption}
+    /* 제목은 화면에서 감추고 표의 접근 이름으로만 남긴다. */
+    caption={<span className="iqc-inspection-table-caption">{t.caption}</span>}
     density="compact"
     columns={columnsOf(selectedId, onSelect)}
     rows={rows}

@@ -90,6 +90,14 @@ const renderScreen = (
           new URL(request.url).pathname.endsWith('/measurements') && request.method === 'GET',
         respond: () => jsonResponse(measurementsResponse(measurements)),
       },
+      /* 단위 목록 — 수량 옆 단위 코드(표시 전용). 요청 크기를 시험이 본다. */
+      {
+        match: (request) => new URL(request.url).pathname === '/mdm/uoms',
+        respond: (request) => {
+          sent.push(new URL(request.url));
+          return jsonResponse({ items: [], page: { page: 1, size: 200, total: 0 } });
+        },
+      },
       /* 검사기준 버전의 항목 규격 — 그리드의 줄 수를 정한다. */
       {
         match: (request) => new URL(request.url).pathname.endsWith('/items'),
@@ -160,6 +168,11 @@ const queueCalls = (sent: URL[]) =>
 const lastQuery = (sent: URL[]) => queueCalls(sent).at(-1)?.searchParams;
 const openButton = (no: string) => screen.getByRole('button', { name: t.queue.openRow(no) });
 
+/** [임시 저장]은 마지막 저장 상태와 달라진 것이 있을 때만 켜진다 — 누르기 전에 한 칸을 바꾼다. */
+const editQuantity = async (): Promise<void> => {
+  await userEvent.type(screen.getByLabelText(t.result.fields.held), '1');
+};
+
 describe('IqcInspectionScreen', () => {
   it('검사 대기 큐를 그린다', async () => {
     renderScreen();
@@ -204,9 +217,9 @@ describe('IqcInspectionScreen', () => {
     let calls = 0;
     const { sent } = renderScreen('/', () => {
       calls += 1;
-      return jsonResponse(calls === 1
-        ? queueResponse([], pageOf(0))
-        : queueResponse([waitingRequest], pageOf(1)));
+      return jsonResponse(
+        calls === 1 ? queueResponse([], pageOf(0)) : queueResponse([waitingRequest], pageOf(1)),
+      );
     });
 
     expect(await screen.findByText(t.queue.empty)).toBeInTheDocument();
@@ -328,7 +341,7 @@ describe('IqcInspectionScreen', () => {
   it('회차가 없는 의뢰끼리 옮겨도 앞 의뢰에 친 수량이 남지 않는다', async () => {
     renderScreen('/?ir=1001', () => jsonResponse(queueResponse()), []);
 
-    await screen.findByText(t.result.notStarted);
+    await screen.findByText(t.result.confirmBlockedByUnsaved);
     await userEvent.type(screen.getByLabelText(t.result.fields.accepted), '123');
     expect(screen.getByLabelText(t.result.fields.accepted)).toHaveValue('123');
 
@@ -340,7 +353,7 @@ describe('IqcInspectionScreen', () => {
   it('회차가 없으면 저장이 새로 만든다', async () => {
     const { writes } = renderScreen('/?ir=1002', () => jsonResponse(queueResponse()), []);
 
-    await screen.findByText(t.result.notStarted);
+    await screen.findByText(t.result.confirmBlockedByUnsaved);
     await userEvent.type(screen.getByLabelText(t.result.fields.accepted), '500');
     await userEvent.click(screen.getByRole('button', { name: t.result.save }));
 
@@ -355,7 +368,8 @@ describe('IqcInspectionScreen', () => {
   it('검사자와 단말을 보내지 않는다 — 서버가 인증 주체에서 채운다', async () => {
     const { writes } = renderScreen('/?ir=1002', () => jsonResponse(queueResponse()), []);
 
-    await screen.findByText(t.result.notStarted);
+    await screen.findByText(t.result.confirmBlockedByUnsaved);
+    await editQuantity();
     await userEvent.click(screen.getByRole('button', { name: t.result.save }));
 
     await waitFor(() => expect(writes).toHaveLength(1));
@@ -370,6 +384,7 @@ describe('IqcInspectionScreen', () => {
     const { writes } = renderScreen('/?ir=1001');
 
     await screen.findByText(t.result.round(1));
+    await editQuantity();
     await userEvent.click(screen.getByRole('button', { name: t.result.save }));
 
     await waitFor(() => expect(writes).toHaveLength(1));
@@ -385,6 +400,7 @@ describe('IqcInspectionScreen', () => {
 
     await screen.findByText(t.result.round(1));
     const before = queueCalls(sent).length;
+    await editQuantity();
     await userEvent.click(screen.getByRole('button', { name: t.result.save }));
 
     await waitFor(() => expect(writes).toHaveLength(1));
@@ -399,6 +415,7 @@ describe('IqcInspectionScreen', () => {
     renderScreen('/?ir=1001');
 
     await screen.findByText(t.result.round(1));
+    await editQuantity();
     await userEvent.click(screen.getByRole('button', { name: t.result.save }));
     await screen.findByText(t.result.saved);
 
@@ -445,7 +462,8 @@ describe('IqcInspectionScreen', () => {
     expect(
       await screen.findByText(messages.iqcInspection.measurements.calibrationWarningTitle),
     ).toBeInTheDocument();
-    /* 저장 단추가 그대로 선다 — 알리기만 하고 차단하지 않는다. */
+    /* 입력하면 저장 단추가 켜진다 — 경고는 알리기만 하고 차단하지 않는다. */
+    await editQuantity();
     expect(screen.getByRole('button', { name: t.result.save })).toBeEnabled();
   });
 
@@ -548,7 +566,8 @@ describe('IqcInspectionScreen', () => {
   it('아직 고르지 않은 판정은 키 자체를 싣지 않는다 — 빈 문자열은 코드가 아니다', async () => {
     const { writes } = renderScreen('/?ir=1002', () => jsonResponse(queueResponse()), []);
 
-    await screen.findByText(t.result.notStarted);
+    await screen.findByText(t.result.confirmBlockedByUnsaved);
+    await editQuantity();
     await userEvent.click(screen.getByRole('button', { name: t.result.save }));
     await waitFor(() => expect(writes).toHaveLength(1));
 
@@ -600,6 +619,7 @@ describe('IqcInspectionScreen — 재검사 회차', () => {
 
     await screen.findByText(t.result.round(1));
     await userEvent.click(screen.getByRole('button', { name: t.result.reinspect }));
+    await editQuantity();
     await userEvent.click(screen.getByRole('button', { name: t.result.save }));
 
     await waitFor(() => expect(writes).toHaveLength(1));
@@ -615,7 +635,8 @@ describe('IqcInspectionScreen — 재검사 회차', () => {
   it('평소 저장은 앞 회차 키를 싣지 않는다', async () => {
     const { writes } = renderScreen('/?ir=1002', () => jsonResponse(queueResponse()), []);
 
-    await screen.findByText(t.result.notStarted);
+    await screen.findByText(t.result.confirmBlockedByUnsaved);
+    await editQuantity();
     await userEvent.click(screen.getByRole('button', { name: t.result.save }));
     await waitFor(() => expect(writes).toHaveLength(1));
 
@@ -736,11 +757,13 @@ describe('IqcInspectionScreen — 재검사 저장 뒤', () => {
 
     await screen.findByText(t.result.round(1));
     await userEvent.click(screen.getByRole('button', { name: t.result.reinspect }));
+    await editQuantity();
     await userEvent.click(screen.getByRole('button', { name: t.result.save }));
 
     /* 저장이 끝나면 화면은 새로 생긴 2회차를 그린다 — 재검사 모드가 풀린 자리다. */
     await screen.findByText(t.result.round(2));
 
+    await editQuantity();
     await userEvent.click(screen.getByRole('button', { name: t.result.save }));
     await waitFor(() => expect(writes).toHaveLength(2));
 
@@ -787,5 +810,76 @@ describe('IqcInspectionScreen — 재검사 저장 뒤', () => {
 
     await waitFor(() => expect(screen.getByText(t.result.round(1))).toBeInTheDocument());
     expect(screen.queryByText(t.result.reinspectRound)).not.toBeInTheDocument();
+  });
+});
+
+describe('IqcInspectionScreen — 임시 저장 단추', () => {
+  it('바뀐 것이 없으면 꺼져 있다가, 입력하면 켜지고, 저장 뒤 다시 꺼진다', async () => {
+    const saved = { ...draftRound, heldQty: 51, versionNo: 8 };
+    const { writes } = renderScreen(
+      '/?ir=1001',
+      () => jsonResponse(queueResponse()),
+      [draftRound],
+      [],
+      itemSpecsResponse(),
+      [saved],
+    );
+
+    await screen.findByText(t.result.round(1));
+    const save = screen.getByRole('button', { name: t.result.save });
+    expect(save).toBeDisabled();
+
+    await editQuantity();
+    expect(save).toBeEnabled();
+
+    await userEvent.click(save);
+    await waitFor(() => expect(writes).toHaveLength(1));
+    await waitFor(() => expect(screen.getByRole('button', { name: t.result.save })).toBeDisabled());
+  });
+
+  it('회차가 없는 의뢰는 빈 칸이 기준이다 — 넣었다 지우면 다시 꺼진다', async () => {
+    renderScreen('/?ir=1002', () => jsonResponse(queueResponse()), []);
+
+    await screen.findByText(t.result.confirmBlockedByUnsaved);
+    const save = screen.getByRole('button', { name: t.result.save });
+    expect(save).toBeDisabled();
+
+    await userEvent.type(screen.getByLabelText(t.result.fields.accepted), '3');
+    expect(save).toBeEnabled();
+
+    await userEvent.clear(screen.getByLabelText(t.result.fields.accepted));
+    expect(save).toBeDisabled();
+  });
+});
+
+describe('IqcInspectionScreen — 수량 칸 앞자리 0', () => {
+  it('치는 동안 앞자리 0 을 정리하고, 저장 값은 같은 수다', async () => {
+    const { writes } = renderScreen('/?ir=1002', () => jsonResponse(queueResponse()), []);
+
+    await screen.findByText(t.result.confirmBlockedByUnsaved);
+    const accepted = screen.getByLabelText(t.result.fields.accepted);
+    await userEvent.type(accepted, '0007');
+    expect(accepted).toHaveValue('7');
+
+    const held = screen.getByLabelText(t.result.fields.held);
+    await userEvent.type(held, '00.5');
+    expect(held).toHaveValue('0.5');
+
+    await userEvent.click(screen.getByRole('button', { name: t.result.save }));
+    await waitFor(() => expect(writes).toHaveLength(1));
+    expect(await bodyOf(writes[0] as Request)).toMatchObject({ acceptedQty: 7, heldQty: 0.5 });
+  });
+});
+
+describe('IqcInspectionScreen — 단위 조회', () => {
+  it('단위 목록을 계약 최대 크기(200)로 한 번에 부른다 — 기본 크기(50)면 뒤쪽 단위가 잘린다', async () => {
+    const { sent } = renderScreen('/?ir=1001');
+
+    await screen.findByText(t.result.round(1));
+    await waitFor(() => expect(sent.some((url) => url.pathname === '/mdm/uoms')).toBe(true));
+
+    const call = sent.find((url) => url.pathname === '/mdm/uoms');
+    expect(call?.searchParams.get('size')).toBe('200');
+    expect(call?.searchParams.get('includeInactive')).toBe('true');
   });
 });

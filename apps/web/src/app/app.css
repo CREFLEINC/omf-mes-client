@@ -8945,3 +8945,272 @@ dl.filter-bar.approval-inbox-detail-facts {
 .item-picker-pager > button:first-child {
   margin-inline-start: auto;
 }
+
+/*
+ * W-01-01 IQC 수입검사 판정 — 이 화면의 모든 표(대기 목록·검사 항목·회차 이력)는 머리줄과 모든 열을
+ * 가운데로. DS 의 열별 정렬([data-align])보다 앞선다(단말기-공정 매핑·ERP W/O 와 같은 풀이).
+ */
+.iqc-inspection-panes thead th,
+.iqc-inspection-panes thead th[data-align],
+.iqc-inspection-panes td,
+.iqc-inspection-panes td[data-align] {
+  text-align: center;
+}
+
+/* 칸 안의 보조 글(필수 표시 등)도 가운데 — 공용 .field-note 는 폭 제한 상자라 상자째 가운데로 옮긴다. */
+.iqc-inspection-panes td .field-note {
+  margin-inline: auto;
+}
+
+/*
+ * 두 칸 배치(1281px 이상)에서 대기 목록을 넓히고 상세 카드를 줄인다 — 공용 .two-pane(2fr : 3fr)은 그대로 둔다.
+ * 1280px 이하는 공용 규칙대로 위아래로 쌓인다.
+ */
+@media (min-width: 1281px) {
+  .two-pane.iqc-inspection-panes {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+}
+
+/* 조회 조건 — 조회·초기화 묶음은 그 줄의 오른쪽 끝(줄이 바뀌어도 그 줄의 끝)에 선다. */
+.iqc-inspection-panes .iqc-inspection-filter-actions {
+  margin-left: auto;
+}
+
+/* 대기 목록 — 의뢰번호·의뢰 일시는 한 줄, 자재 LOT 은 좁은 칸 안에서 줄을 바꾼다. */
+.iqc-inspection-panes .iqc-inspection-request-no {
+  white-space: nowrap;
+}
+
+.iqc-inspection-panes .iqc-inspection-lot {
+  overflow-wrap: anywhere;
+}
+
+.iqc-inspection-panes .iqc-inspection-requested-at {
+  white-space: nowrap;
+}
+
+/*
+ * ⛔ 아래 감춘 글자(절대 위치)의 기준 상자를 이 화면 안에 둔다. 기준이 앱 셸까지 올라가면 그 글자가
+ * 본문(main)의 스크롤 영역 밖으로 빠져 문서 전체가 길어지고, 스크롤하면 사이드바가 따라 올라가 끊겨
+ * 보이며 카드 아래에 빈 공간이 생긴다(실측: 감춘 표 제목의 아래끝 = 문서 높이).
+ */
+.two-pane.iqc-inspection-panes {
+  position: relative;
+}
+
+/* 대기 목록 제목 — 화면에서는 감추고 표의 접근 이름(caption)으로만 남긴다. */
+.iqc-inspection-table-caption,
+.iqc-inspection-visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/*
+ * 검사 상세/판정 카드 — 한 카드 안을 구획(기본 정보 · 검사 결과 수량 · 판정 · 이전 회차 · 항목별 측정치)으로
+ * 가른다. 카드를 쪼개지 않고 구획 제목·간격·얇은 구분선으로만 가른다.
+ */
+.iqc-inspection-panes .iqc-inspection-section {
+  display: grid;
+  gap: var(--space-3);
+  padding-block: var(--space-5);
+  border-top: 1px solid var(--outline-variant);
+}
+
+.iqc-inspection-panes > .pane > .iqc-inspection-section:first-child {
+  padding-top: 0;
+  border-top: 0;
+}
+
+.iqc-inspection-panes > .pane > .iqc-inspection-section:last-child {
+  padding-bottom: 0;
+}
+
+.iqc-inspection-panes .iqc-inspection-section h3 {
+  margin: 0;
+  color: var(--on-surface);
+  font: var(--type-title-sm);
+  letter-spacing: var(--type-title-sm-tracking);
+}
+
+.iqc-inspection-panes .iqc-inspection-section p,
+.iqc-inspection-panes .iqc-inspection-section dl,
+.iqc-inspection-panes .iqc-inspection-section dd {
+  margin: 0;
+}
+
+/* 구획 제목 옆의 상태(회차) — 제목과 같은 줄. */
+.iqc-inspection-section-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-3);
+}
+
+/* 기본 정보 — 항목명(위)·값(아래)의 격자. 넓으면 한 줄에 여럿, 좁으면 줄을 바꾼다. */
+.iqc-inspection-facts {
+  display: grid;
+  /* 가장 긴 값(의뢰번호)이 한 줄로 서는 폭. */
+  grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr));
+  gap: var(--space-4) var(--space-5);
+}
+
+.iqc-inspection-fact {
+  display: grid;
+  align-content: start;
+  gap: var(--space-1);
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+/* 안내가 붙은 항목(검사기준 버전)은 두 칸을 써서 항목명·안내가 한 줄로 읽히게 한다. */
+.iqc-inspection-fact:has(.iqc-inspection-label-hint) {
+  grid-column: span 2;
+}
+
+/* 항목명 오른쪽 같은 줄의 짧은 안내 — 단말기-공정 매핑 폼의 라벨 옆 안내와 같은 모양(보조색). */
+.iqc-inspection-label-hint {
+  margin-left: var(--space-2);
+  color: var(--on-surface-muted);
+}
+
+.iqc-inspection-fact-key {
+  font-weight: 600;
+}
+
+/* 검사 결과 수량 — 기준값(검사수량)은 따로, 합격·불합격·보류 세 칸은 한 줄에 같은 폭으로. */
+.iqc-inspection-qty-base {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.iqc-inspection-qty-base > dd {
+  font-weight: 600;
+}
+
+.iqc-inspection-qty {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-items: start;
+  gap: var(--space-4);
+}
+
+.iqc-inspection-qty input {
+  text-align: center;
+}
+
+/* 입력 현황 — 「합계 / 검사수량」(왼쪽)·잔여(오른쪽 끝), 그 아래 막대와 한 줄 안내. */
+.iqc-inspection-progress {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.iqc-inspection-progress-row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: var(--space-2) var(--space-4);
+}
+
+.iqc-inspection-progress-sum {
+  font-weight: 600;
+}
+
+/*
+ * 판정 — 종합 판정 아래 구분선, 그 아래 왼쪽 좁은 칸(부분 입고)·오른쪽 넓은 칸(저장 및 확정)과
+ * 가운데 얇은 세로 구분선. 카드가 좁으면(칸 폭 기준) 위·아래로 쌓인다.
+ */
+.iqc-inspection-action-area {
+  container-type: inline-size;
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--outline-variant);
+}
+
+.iqc-inspection-partial,
+.iqc-inspection-submit {
+  display: grid;
+  align-content: start;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.iqc-inspection-submit {
+  margin-top: var(--space-4);
+}
+
+@container (min-width: 36rem) {
+  .iqc-inspection-action-grid:has(> .iqc-inspection-partial) {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
+  }
+
+  .iqc-inspection-action-grid > .iqc-inspection-partial {
+    padding-inline-end: var(--space-4);
+    border-inline-end: 1px solid var(--outline-variant);
+  }
+
+  .iqc-inspection-action-grid > .iqc-inspection-partial + .iqc-inspection-submit {
+    margin-top: 0;
+    padding-inline-start: var(--space-4);
+  }
+}
+
+.iqc-inspection-action-grid > .iqc-inspection-submit:only-child {
+  margin-top: 0;
+}
+
+.iqc-inspection-partial-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+}
+
+.iqc-inspection-submit > .form-actions {
+  justify-content: flex-start;
+  align-items: center;
+  margin-top: 0;
+}
+
+/*
+ * 저장 및 확정 칸의 두 띠(확정 막힌 이유 = 정보, 확정 경고 = 경고) — DS 띠를 같은 높이·여백으로 낮게,
+ * 칸 폭을 채운다. 표식은 글줄과 같은 높이(terminal-map-notice 와 같은 풀이).
+ */
+.iqc-inspection-submit-banner {
+  box-sizing: border-box;
+  padding: var(--space-2) var(--space-3);
+}
+
+.iqc-inspection-submit-banner > :first-child {
+  margin-block-start: 0;
+}
+
+/* 항목별 측정치 — 「필수」 칩은 항목명 앞, 첫 줄 글자와 같은 높이에. */
+.iqc-inspection-required {
+  display: inline-block;
+  margin-inline-end: var(--space-2);
+  vertical-align: middle;
+}
+
+/* 합격·불합격·보류 칸 옆 단위 코드 — 입력 상자의 세로 가운데에 맞춘다(라벨 층만큼 내리고 상자 높이 안에서 가운데). */
+.iqc-inspection-qty-field {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  column-gap: var(--space-2);
+}
+
+.iqc-inspection-qty-unit {
+  display: flex;
+  align-items: center;
+  height: var(--control-height-md);
+  margin-top: var(--field-label-layer);
+  color: var(--on-surface-variant);
+}

@@ -27,7 +27,9 @@ const renderPane = (
     <ResultFormPane
       round={round}
       inspectedQty={inspectedQty}
+      uomCode={null}
       draft={draft}
+      hasChanges
       onChange={onChange}
       onSave={onSave}
       isSaving={false}
@@ -57,6 +59,10 @@ const saveButton = () => screen.getByRole('button', { name: t.save });
 /** 이미 만들어진 작성중 회차. 확정 갈래는 회차가 «있어야» 성립한다. */
 const savedRound = toInspectionResultRound(draftRound);
 
+/** 입력 현황의 「합계 / 검사수량」 — 「합계」는 화면에서 감추고 읽기용으로만 둔다. */
+const sumText = (): string | null | undefined =>
+  document.querySelector('.iqc-inspection-progress-sum')?.textContent;
+
 describe('ResultFormPane', () => {
   it('회차를 밝힌다', () => {
     renderPane();
@@ -64,10 +70,11 @@ describe('ResultFormPane', () => {
     expect(screen.getByText(t.round(1))).toBeInTheDocument();
   });
 
-  it('아직 회차가 없으면 시작 전임을 말한다', () => {
+  it('아직 회차가 없으면 회차 표시를 내지 않고, 확정은 임시 저장부터라고 단추 곁에서 말한다', () => {
     renderPane(EMPTY_QUANTITY_DRAFT, null);
 
-    expect(screen.getByText(t.notStarted)).toBeInTheDocument();
+    expect(screen.queryByText(t.round(1))).not.toBeInTheDocument();
+    expect(screen.getByText(t.confirmBlockedByUnsaved)).toBeInTheDocument();
   });
 
   it('세 칸을 손으로 넣는다 — 자동 계산을 만들지 않는다', async () => {
@@ -84,10 +91,14 @@ describe('ResultFormPane', () => {
     expect(screen.getByText(t.matched)).toBeInTheDocument();
   });
 
-  it('모자라면 얼마나 모자란지 숫자로 말한다 — 사용자가 다시 세지 않게', () => {
+  it('모자라면 안내 문장 없이 「합계 / 검사수량」·잔여·막대로 보인다', () => {
     renderPane({ accepted: '400', rejected: '0', held: '0' });
 
-    expect(screen.getByText(t.short('100'))).toBeInTheDocument();
+    expect(sumText()).toBe(`${t.sum} 400 / 500`);
+    expect(screen.getByText(`${t.remaining} 100`)).toBeInTheDocument();
+    expect(screen.getByRole('progressbar')).toHaveAttribute('aria-valuenow', '80');
+    expect(screen.queryByText(t.matched)).not.toBeInTheDocument();
+    expect(screen.queryByText(t.over('100'))).not.toBeInTheDocument();
   });
 
   it('넘기면 얼마나 넘겼는지 말한다 — 0으로 깎아 감추지 않는다', () => {
@@ -130,7 +141,10 @@ describe('ResultFormPane', () => {
   it('셀 수 없으면 합계·잔여도 숫자로 내지 않는다 — 0으로 읽은 합은 그 숫자가 거짓이다', () => {
     renderPane({ accepted: 'abc', rejected: '500', held: '' });
 
-    expect(screen.getAllByText(messages.iqcInspection.queue.emptyValue)).toHaveLength(2);
+    const empty = messages.iqcInspection.queue.emptyValue;
+    expect(sumText()).toBe(`${t.sum} ${empty}`);
+    expect(screen.getByText(`${t.remaining} ${empty}`)).toBeInTheDocument();
+    expect(screen.getByRole('progressbar')).toHaveAttribute('aria-valuenow', '0');
   });
 
   it('확정된 회차는 고칠 수 있는 것처럼 보이지 않는다 — 이전 회차는 정정하지 않는다', () => {
@@ -392,5 +406,23 @@ describe('ResultFormPane — 미결과 결과 문면', () => {
     renderPane(EMPTY_QUANTITY_DRAFT, toInspectionResultRound(confirmedRound));
 
     expect(screen.queryByText(t.confirmSucceeded)).not.toBeInTheDocument();
+  });
+
+  it('단위 코드를 알면 검사수량·입력 현황·칸 옆에 붙인다 — 입력값에는 넣지 않는다', () => {
+    renderPane({ accepted: '400', rejected: '', held: '' }, undefined, 500, { uomCode: 'EA' });
+
+    expect(screen.getByText('500 EA')).toBeInTheDocument();
+    expect(sumText()).toBe(`${t.sum} 400 / 500 EA`);
+    expect(screen.getByText(`${t.remaining} 100 EA`)).toBeInTheDocument();
+    expect(screen.getAllByText('EA')).toHaveLength(3);
+    expect(screen.getByLabelText(t.fields.accepted)).toHaveValue('400');
+  });
+
+  it('바뀐 것이 없으면 [임시 저장]을 끈다 — 확정 조건과는 따로다', () => {
+    renderPane({ accepted: '480', rejected: '15', held: '5' }, undefined, 500, {
+      hasChanges: false,
+    });
+
+    expect(saveButton()).toBeDisabled();
   });
 });

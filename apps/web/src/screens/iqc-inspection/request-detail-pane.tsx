@@ -1,6 +1,7 @@
 import { messages } from '@omf-mes/i18n';
 
 import { formatDateTime, type InspectionRequestDetail } from './types';
+import { withUom } from './uom-lookup';
 
 /**
  * 고른 의뢰의 상세 — **스펙 §4-A 의 여섯 항목이다.**
@@ -21,19 +22,33 @@ const empty = messages.iqcInspection.queue.emptyValue;
 
 export interface RequestDetailPaneProps {
   detail: InspectionRequestDetail;
+  /** 수량 옆에 붙일 단위 코드. 모르면 `null` — 숫자만 둔다 */
+  uomCode: string | null;
 }
 
-export const RequestDetailPane = ({ detail }: RequestDetailPaneProps) => {
+export const RequestDetailPane = ({ detail, uomCode }: RequestDetailPaneProps) => {
+  /* 식별에 쓰이는 넷(의뢰번호·품목·대상 LOT·검사수량)은 값을 조금 굵게 — 먼저 눈에 들어오게. */
   const items = [
-    { key: 'no', label: t.fields.inspectionRequestNo, value: detail.inspectionRequestNo },
+    {
+      key: 'no',
+      label: t.fields.inspectionRequestNo,
+      value: detail.inspectionRequestNo,
+      emphasized: true,
+    },
     { key: 'type', label: t.fields.inspectionTypeCode, value: detail.inspectionTypeCode },
-    { key: 'item', label: t.fields.itemId, value: String(detail.itemId) },
+    { key: 'item', label: t.fields.itemId, value: String(detail.itemId), emphasized: true },
     {
       key: 'lot',
       label: t.fields.lotId,
       value: detail.lotId === null ? empty : String(detail.lotId),
+      emphasized: true,
     },
-    { key: 'qty', label: t.fields.targetQty, value: String(detail.targetQty) },
+    {
+      key: 'qty',
+      label: t.fields.targetQty,
+      value: withUom(String(detail.targetQty), uomCode),
+      emphasized: true,
+    },
     {
       key: 'plan',
       label: t.fields.inspectionPlanVersionId,
@@ -42,24 +57,31 @@ export const RequestDetailPane = ({ detail }: RequestDetailPaneProps) => {
         detail.inspectionPlanVersionId === null
           ? t.noPlanVersion
           : String(detail.inspectionPlanVersionId),
+      /* 버전 숫자만 보이면 왜 중요한지 알 수 없다. 고정된다는 사실을 항목명 오른쪽 같은 줄에서 말한다. */
+      hint: t.planVersionNote,
     },
+    /* 값만 따로 두면 무슨 시각인지 모른다 — 필드(`requestedAt`) 이름을 붙인다. */
+    { key: 'at', label: t.fields.requestedAt, value: formatDateTime(detail.requestedAt) },
   ];
 
   return (
-    <section aria-label={t.heading}>
-      <dl className="filter-bar">
+    <section className="iqc-inspection-section" aria-label={t.heading}>
+      <h3>{t.sectionTitle}</h3>
+      <dl className="iqc-inspection-facts">
         {items.map((item) => (
-          <div className="field-cell" key={item.key}>
-            <dt className="field-label">{item.label}</dt>
-            <dd>{item.value}</dd>
+          <div className="iqc-inspection-fact" key={item.key}>
+            <dt className="field-label">
+              {item.label}
+              {item.hint !== undefined && (
+                <span className="iqc-inspection-label-hint">{item.hint}</span>
+              )}
+            </dt>
+            <dd className={item.emphasized === true ? 'iqc-inspection-fact-key' : undefined}>
+              {item.value}
+            </dd>
           </div>
         ))}
       </dl>
-
-      {/* 버전 숫자만 보이면 왜 중요한지 알 수 없다. 고정된다는 사실을 화면이 말한다. */}
-      <p className="field-note">{t.planVersionNote}</p>
-
-      <p className="field-note">{formatDateTime(detail.requestedAt)}</p>
     </section>
   );
 };

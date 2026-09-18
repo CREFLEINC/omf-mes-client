@@ -30,7 +30,7 @@ export const PageNav = ({ view, onChange }: PageNavProps) => (
     <p className="field-note form-actions-secondary">{view.rangeLabel}</p>
     <Button
       variant="outlined"
-      size="sm"
+      size="md"
       disabled={!view.canPrev}
       onClick={() => {
         onChange(view.page - 1);
@@ -40,7 +40,7 @@ export const PageNav = ({ view, onChange }: PageNavProps) => (
     </Button>
     <Button
       variant="outlined"
-      size="sm"
+      size="md"
       disabled={!view.canNext}
       onClick={() => {
         onChange(view.page + 1);

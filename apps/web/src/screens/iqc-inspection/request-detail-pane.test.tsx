@@ -11,7 +11,9 @@ const t = messages.iqcInspection.detail;
 
 describe('RequestDetailPane', () => {
   it('스펙이 정한 여섯 항목을 보인다', () => {
-    renderWithProviders(<RequestDetailPane detail={toInspectionRequestDetail(waitingRequest)} />);
+    renderWithProviders(
+      <RequestDetailPane detail={toInspectionRequestDetail(waitingRequest)} uomCode={null} />,
+    );
 
     for (const label of Object.values(t.fields)) {
       expect(screen.getByText(label)).toBeInTheDocument();
@@ -19,21 +21,25 @@ describe('RequestDetailPane', () => {
   });
 
   it('검사기준 버전을 감추지 않는다 — 검사 시점에 고정되는 값이다', () => {
-    renderWithProviders(<RequestDetailPane detail={toInspectionRequestDetail(waitingRequest)} />);
+    renderWithProviders(
+      <RequestDetailPane detail={toInspectionRequestDetail(waitingRequest)} uomCode={null} />,
+    );
 
     expect(screen.getByText(t.fields.inspectionPlanVersionId)).toBeInTheDocument();
     expect(screen.getByText(String(waitingRequest.inspectionPlanVersionId))).toBeInTheDocument();
   });
 
   it('버전이 고정된다는 사실을 함께 말한다 — 숫자만 보이면 왜 중요한지 알 수 없다', () => {
-    renderWithProviders(<RequestDetailPane detail={toInspectionRequestDetail(waitingRequest)} />);
+    renderWithProviders(
+      <RequestDetailPane detail={toInspectionRequestDetail(waitingRequest)} uomCode={null} />,
+    );
 
     expect(screen.getByText(t.planVersionNote)).toBeInTheDocument();
   });
 
   it('자재 LOT 이 없으면 빈 칸이 아니라 없음 표시를 낸다', () => {
     renderWithProviders(
-      <RequestDetailPane detail={toInspectionRequestDetail(requestWithoutLot)} />,
+      <RequestDetailPane detail={toInspectionRequestDetail(requestWithoutLot)} uomCode={null} />,
     );
 
     expect(screen.getByText(messages.iqcInspection.queue.emptyValue)).toBeInTheDocument();
@@ -45,10 +51,27 @@ describe('RequestDetailPane', () => {
    */
   it('검사기준 버전이 없으면 일반 빈 값과 다른 「기준 없음」을 낸다', () => {
     renderWithProviders(
-      <RequestDetailPane detail={toInspectionRequestDetail(requestWithoutPlanVersion)} />,
+      <RequestDetailPane
+        detail={toInspectionRequestDetail(requestWithoutPlanVersion)}
+        uomCode={null}
+      />,
     );
 
     expect(screen.getByText(t.noPlanVersion)).toBeInTheDocument();
     expect(screen.queryByText(messages.iqcInspection.queue.emptyValue)).not.toBeInTheDocument();
+  });
+
+  it('검사수량 옆에 단위 코드를 붙이고, 모르면 숫자만 둔다', () => {
+    const { unmount } = renderWithProviders(
+      <RequestDetailPane detail={toInspectionRequestDetail(waitingRequest)} uomCode="EA" />,
+    );
+
+    expect(screen.getByText(`${String(waitingRequest.targetQty)} EA`)).toBeInTheDocument();
+    unmount();
+
+    renderWithProviders(
+      <RequestDetailPane detail={toInspectionRequestDetail(waitingRequest)} uomCode={null} />,
+    );
+    expect(screen.getByText(String(waitingRequest.targetQty))).toBeInTheDocument();
   });
 });

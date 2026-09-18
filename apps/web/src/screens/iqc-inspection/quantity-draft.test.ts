@@ -2,11 +2,13 @@ import { describe, expect, it } from 'vitest';
 
 import {
   canConfirm,
+  dropLeadingZeros,
   EMPTY_QUANTITY_DRAFT,
   formatMicro,
   fromServerQty,
   hasQuantityError,
   toMicro,
+  toSendableNumber,
   toTotals,
   validateQuantities,
 } from './quantity-draft';
@@ -156,5 +158,37 @@ describe('fromServerQty', () => {
 
   it('음수는 부호를 뒤집지 않는다 — abs 로 정상값처럼 만들면 자료의 이상함이 사라진다', () => {
     expect(fromServerQty(-5)).toBe(0n);
+  });
+});
+
+describe('dropLeadingZeros — 수량 칸 앞자리 0 정리', () => {
+  it('정수부의 군더더기 0 만 턴다', () => {
+    expect(dropLeadingZeros('0000')).toBe('0');
+    expect(dropLeadingZeros('007')).toBe('7');
+    expect(dropLeadingZeros('00.5')).toBe('0.5');
+    expect(dropLeadingZeros('0.5')).toBe('0.5');
+    expect(dropLeadingZeros('10')).toBe('10');
+    expect(dropLeadingZeros('')).toBe('');
+  });
+
+  it('수량이 아닌 값은 손대지 않는다 — 기존 검증이 그대로 잡는다', () => {
+    expect(dropLeadingZeros('-007')).toBe('-007');
+    expect(dropLeadingZeros('abc')).toBe('abc');
+    expect(
+      validateQuantities({ accepted: dropLeadingZeros('-007'), rejected: '', held: '' }).accepted,
+    ).toBe(true);
+    expect(
+      validateQuantities({ accepted: dropLeadingZeros('0.1234567'), rejected: '', held: '' })
+        .accepted,
+    ).toBe(true);
+  });
+
+  it('정리 전후 수치가 같다 — 저장 값과 합계가 바뀌지 않는다', () => {
+    for (const raw of ['0000', '007', '00.5', '000.250']) {
+      expect(toSendableNumber(dropLeadingZeros(raw))).toBe(toSendableNumber(raw));
+      expect(toTotals({ accepted: dropLeadingZeros(raw), rejected: '', held: '' }, 10)).toEqual(
+        toTotals({ accepted: raw, rejected: '', held: '' }, 10),
+      );
+    }
   });
 });

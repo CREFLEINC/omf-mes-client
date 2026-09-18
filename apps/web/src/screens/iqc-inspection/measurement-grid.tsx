@@ -75,10 +75,25 @@ const columns: Column<MeasurementRow>[] = [
   {
     key: 'item',
     header: t.columns.item,
+    /*
+     * 항목명 + 「필수」 칩이 서는 폭. 다섯 열 모두 폭을 주어 표가 카드보다 넓을 때 남는 폭을
+     * 폭 비율대로 나눠 갖게 한다(항목 열이 혼자 받지 않게). 긴 항목명은 칸 안에서 줄을 바꾼다.
+     */
+    width: '160px',
     render: (row) => (
       <>
+        {/*
+         * 필수 여부는 항목명 «앞»의 DS 상태 칩(중립)으로 — 새 배지 모양을 만들지 않는다.
+         * 필수가 아니면 칩 자리를 비우지 않고 항목명만 선다.
+         */}
+        {row.required && (
+          <span className="iqc-inspection-required">
+            <Chip variant="status" size="sm" status="idle">
+              {t.requiredMark}
+            </Chip>
+          </span>
+        )}
         {row.displayNo}. {row.itemName}
-        {row.required && <span className="field-note"> {t.requiredMark}</span>}
       </>
     ),
   },
@@ -91,7 +106,7 @@ const columns: Column<MeasurementRow>[] = [
   {
     key: 'sample',
     header: t.columns.sample,
-    width: '72px',
+    width: '96px',
     align: 'end',
     render: (row) => t.sampleOf(row.sampleNo, row.sampleCount),
   },
@@ -117,13 +132,15 @@ const columns: Column<MeasurementRow>[] = [
   {
     key: 'judgment',
     header: t.columns.judgment,
-    width: '72px',
+    width: '96px',
     render: (row) => row.measured?.judgmentCode ?? t.notMeasured,
   },
 ];
 
 export const MeasurementGrid = ({ rows, isLoading }: MeasurementGridProps) => (
-  <section aria-label={t.heading}>
+  <section className="iqc-inspection-section" aria-label={t.heading}>
+    {/* 다른 구획처럼 왼쪽 제목으로 선다 — 표 제목(caption)은 화면에서 감추고 접근 이름으로 남긴다. */}
+    <h3>{t.caption}</h3>
     {/*
      * ⛔ 경고일 뿐 차단이 아니다. 무효화 정책이 미결이라(스펙 §8-6) 화면이 값을 빼거나
      * 확정을 막지 않는다 — 무엇을 다시 볼지만 알린다.
@@ -137,7 +154,7 @@ export const MeasurementGrid = ({ rows, isLoading }: MeasurementGridProps) => (
     )}
 
     <Table
-      caption={t.caption}
+      caption={<span className="iqc-inspection-table-caption">{t.caption}</span>}
       density="compact"
       columns={columns}
       rows={rows}

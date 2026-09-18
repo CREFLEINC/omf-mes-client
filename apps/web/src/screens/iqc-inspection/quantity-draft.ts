@@ -79,6 +79,15 @@ export const formatMicro = (micro: bigint): string => {
 };
 
 /** 세 칸의 편집 상태. **전부 문자열이다** — 치는 동안에는 아직 수량이 아니다. */
+/**
+ * 수량 칸에 친 글자의 앞자리 0 을 정리한다 — `0000` → `0`, `007` → `7`, `00.5` → `0.5`.
+ *
+ * ⛔ **수량 칸에서만 쓴다**(POP 키패드와 같은 규칙 — 번호·사번 같은 «글자» 칸에는 쓰지 않는다).
+ * 정수부의 군더더기 0 만 털고 `0.5` 의 0 은 남긴다. 빈 칸은 빈 칸이다. 음수·숫자 아닌 값은
+ * 손대지 않아 기존 검증(`validateQuantities`)이 그대로 잡는다. 수치는 같아서 합계·저장 값은 같다.
+ */
+export const dropLeadingZeros = (raw: string): string => raw.replace(/^0+(?=\d)/u, '');
+
 export interface QuantityDraft {
   accepted: string;
   rejected: string;
