@@ -561,8 +561,6 @@ export const TerminalProcessMapScreen = () => {
               </div>
             )}
 
-            {/* ⭐ 뺀 공정이 이 단말에서 제외된다는 사실을 저장 단추 바로 위에서 말한다. */}
-            <p className="pane-lead terminal-map-save-note">{t.grid.replaceNote}</p>
             <div className="form-actions">
               {replace.isSaving && (
                 <p className="field-note form-actions-secondary">{t.grid.saving}</p>

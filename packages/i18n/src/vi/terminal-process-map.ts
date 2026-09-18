@@ -116,9 +116,6 @@ export const terminalProcessMap: Translated<typeof ko.terminalProcessMap> = {
     addPlaceholder: 'Chọn công đoạn cần thêm',
     manage: 'Quản lý',
     remove: 'Loại trừ',
-    /** ⭐ 빠진 공정은 지워진다 — 이 사실을 흐리면 사용자가 한 줄씩 저장되는 줄 안다. */
-    replaceNote:
-      'Khi lưu, cấu hình công đoạn sẽ được thay đổi theo danh sách hiện tại. Công đoạn đã loại trừ khỏi danh sách cũng sẽ bị loại khỏi máy quét này.',
     emptyTitle: 'Chưa có công đoạn nào được thiết lập',
     empty: 'Để dùng máy quét này cho công việc sản xuất, hãy thêm công đoạn ở phía trên.',
     /** ⭐ `quyền` 을 쓰지 않는다 — 보안 경계가 아니라 오조작을 막는 기능 구성이다. */

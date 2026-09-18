@@ -88,8 +88,8 @@ describe('TerminalProcessMapScreen 표시', () => {
     expect(screen.getAllByText(t.grid.selectTerminalTitle)).toHaveLength(1);
     expect(screen.getByText(t.grid.unselectedNote)).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: t.panes.grid })).toBeInTheDocument();
-    /* 저장 안내는 저장 단추가 있을 때만 그 위에 선다. */
-    expect(screen.queryByText(t.grid.replaceNote)).not.toBeInTheDocument();
+    /* 저장 결과 안내는 구획 설명 한 곳에만 있다 — 선택 전·후 같은 설명이다. */
+    expect(screen.getAllByText(t.grid.purpose)).toHaveLength(1);
   });
 
   it('유형·운영 상태를 공통코드 이름으로 보이고, 미등록 단말의 운영 상태는 되풀이하지 않는다', async () => {
@@ -110,17 +110,14 @@ describe('TerminalProcessMapScreen 표시', () => {
     expect(within(table).queryByText('SYN-TYPE')).not.toBeInTheDocument();
   });
 
-  it('고른 단말은 목록에서 aria-current 로 표시되고, 저장 안내는 저장 단추 위에 선다', async () => {
+  it('고른 단말은 목록에서 aria-current 로 표시되고, 저장 안내는 설명에만 한 번 나온다', async () => {
     renderScreen('/system/terminal-process-map?terminal=701');
 
     const current = await screen.findByRole('button', { name: 'SYN-TERM-01' });
     expect(current).toHaveAttribute('aria-current', 'true');
     expect(screen.getByRole('button', { name: 'SYN-TERM-02' })).not.toHaveAttribute('aria-current');
 
-    const note = await screen.findByText(t.grid.replaceNote);
-    expect(note.nextElementSibling).toHaveClass('form-actions');
-    expect(
-      within(note.nextElementSibling as HTMLElement).getByRole('button', { name: t.grid.save }),
-    ).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: t.grid.save })).toBeInTheDocument();
+    expect(screen.getAllByText(t.grid.purpose)).toHaveLength(1);
   });
 });

@@ -6129,11 +6129,6 @@ dl.filter-bar.approval-inbox-detail-facts {
   overflow-x: auto;
 }
 
-/* 저장 단추 바로 위의 안내 — 행동 직전에 읽힌다. */
-.pane-lead.terminal-map-save-note {
-  margin-top: var(--space-3);
-}
-
 /*
  * 공지 본문 — 사람이 친 줄바꿈을 살린다. 살리지 않으면 문단이 한 덩어리로 붙어
  * 「8월 20일 09:00~12:00」 같은 줄이 앞 문장 꼬리에 매달린다.
