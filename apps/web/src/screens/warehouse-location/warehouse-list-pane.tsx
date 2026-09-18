@@ -52,29 +52,30 @@ export const WarehouseListPane = ({
 }: WarehouseListPaneProps) => {
   const typeSelectId = useId();
 
-  // 트리거 모델: 편집은 모아서 적용, 해제는 즉시.
-  // 편집 중인 값은 draft에만 있고 조건 칩에는 미러하지 않는다.
-  const [draft, setDraft] = useState<WarehouseFilters>(appliedFilters);
-  const {
-    q: appliedQ,
-    warehouseTypeCode: appliedWarehouseTypeCode,
-    includeInactive: appliedIncludeInactive,
-  } = appliedFilters;
+  /*
+   * 트리거 모델: **검색어만** 모아서 적용([조회]·Enter), 창고 유형·미사용 포함은 바꾸는 즉시 적용.
+   *
+   * ⛔ 유형을 draft 에 두면 안 된다(omf-all-around#17 · 실화면 재현 2026-09-18). 유형을 고르기만
+   *    하면 요청이 나가지 않아 「필터가 안 먹는다」로 보였고, [조회] 전에 「미사용 포함」을 누르면
+   *    draft 가 적용값으로 덮여 고른 유형이 지워진 채 조회됐다.
+   * ⛔ 입력 중인 검색어는 적용된 검색어가 바뀔 때만 맞춘다 — 즉시 적용 축(유형·미사용)을 바꿀
+   *    때 입력하던 검색어가 지워지지 않게 한다. 조건 칩에는 미러하지 않는다.
+   */
+  const [draftQ, setDraftQ] = useState(appliedFilters.q);
+  const appliedQ = appliedFilters.q;
 
   useEffect(() => {
-    setDraft({
-      q: appliedQ,
-      warehouseTypeCode: appliedWarehouseTypeCode,
-      includeInactive: appliedIncludeInactive,
-    });
-  }, [appliedQ, appliedWarehouseTypeCode, appliedIncludeInactive]);
+    setDraftQ(appliedQ);
+  }, [appliedQ]);
 
-  const applyDraft = () => onApplyFilters(draft);
+  const applyDraft = () => onApplyFilters({ ...appliedFilters, q: draftQ });
 
   const columns: Column<Warehouse>[] = [
     {
       key: 'warehouseCode',
-      header: t.fields.code,
+      header: t.fields.warehouseCode,
+      /* 창고명만 왼쪽, 나머지 열은 머리·값 모두 가운데(사용자 지시 2026-09-18 · omf-all-around#17). */
+      align: 'center',
       render: (row) => (
         <button
           type="button"
@@ -86,16 +87,24 @@ export const WarehouseListPane = ({
         </button>
       ),
     },
-    { key: 'warehouseName', header: t.fields.name },
+    /* 「명칭」이 무엇의 이름인지 머리에서 바로 읽히게 한다(omf-all-around#17). */
+    { key: 'warehouseName', header: t.fields.warehouseName },
     {
       key: 'warehouseTypeCode',
       header: t.fields.warehouseType,
+      align: 'center',
       render: (row) => codeLabel(row.warehouseTypeCode, warehouseTypeOptions),
     },
     {
       key: 'isActive',
       header: t.fields.isActive,
-      render: (row) => (row.isActive ? t.values.active : t.values.inactive),
+      align: 'center',
+      /* 상태는 기존 칩으로 — 사용 중 success · 미사용 idle(W-CO 단말 공정 매핑과 같은 규칙). */
+      render: (row) => (
+        <Chip size="sm" status={row.isActive ? 'success' : 'idle'}>
+          {row.isActive ? t.values.active : t.values.inactive}
+        </Chip>
+      ),
     },
   ];
 
@@ -151,9 +160,9 @@ export const WarehouseListPane = ({
         <SearchInput
           label={t.filters.searchLabel}
           placeholder={t.filters.searchPlaceholder}
-          value={draft.q}
-          onChange={(event) => setDraft((prev) => ({ ...prev, q: event.target.value }))}
-          onSearch={(value) => onApplyFilters({ ...draft, q: value })}
+          value={draftQ}
+          onChange={(event) => setDraftQ(event.target.value)}
+          onSearch={(value) => onApplyFilters({ ...appliedFilters, q: value })}
           clearLabel={messages.common.clear}
         />
         <div className="field-cell">
@@ -163,11 +172,11 @@ export const WarehouseListPane = ({
           <Select
             id={typeSelectId}
             options={[{ value: '', label: t.filters.typeAll }, ...warehouseTypeOptions]}
-            value={draft.warehouseTypeCode}
-            onChange={(value) => setDraft((prev) => ({ ...prev, warehouseTypeCode: value }))}
+            value={appliedFilters.warehouseTypeCode}
+            onChange={(value) => onApplyFilters({ ...appliedFilters, warehouseTypeCode: value })}
           />
         </div>
-        {/* 해제 축이라 변경 즉시 적용한다. */}
+        {/* 해제 축이라 변경 즉시 적용한다(유형과 같다). */}
         <div className="field-cell field-cell-unlabeled">
           <Checkbox
             checked={appliedFilters.includeInactive}
@@ -178,49 +187,54 @@ export const WarehouseListPane = ({
             {messages.common.includeInactive}
           </Checkbox>
         </div>
-        <Button className="field-cell-unlabeled" onClick={applyDraft}>
-          {messages.common.search}
-        </Button>
-        <Button
-          className="field-cell-unlabeled"
-          variant="outlined"
-          onClick={() => onApplyFilters(defaultWarehouseFilters)}
-        >
-          {messages.common.reset}
-        </Button>
+        {/*
+         * 조회·초기화는 한 묶음으로 줄 오른쪽 끝에 붙인다(사용자 지시 2026-09-18 · omf-all-around#17).
+         * 묶음이라 좁아져 줄이 넘쳐도 둘이 함께 다음 줄 오른쪽으로 간다(규범 2-1).
+         */}
+        <div className="filter-actions field-cell-unlabeled warehouse-location-filter-actions">
+          <Button onClick={applyDraft}>{messages.common.search}</Button>
+          <Button variant="outlined" onClick={() => onApplyFilters(defaultWarehouseFilters)}>
+            {messages.common.reset}
+          </Button>
+        </div>
       </div>
 
-      <div className="filter-bar">
-        {appliedFilters.q !== '' && (
-          <Chip
-            variant="status"
-            removeLabel={t.filters.chipRemoveKeyword}
-            onRemove={() => onApplyFilters({ ...appliedFilters, q: '' })}
-          >
-            {t.filters.chipKeyword(appliedFilters.q)}
-          </Chip>
-        )}
-        {appliedFilters.warehouseTypeCode !== '' && (
-          <Chip
-            variant="status"
-            removeLabel={t.filters.chipRemoveType}
-            onRemove={() => onApplyFilters({ ...appliedFilters, warehouseTypeCode: '' })}
-          >
-            {t.filters.chipType(codeLabel(appliedFilters.warehouseTypeCode, warehouseTypeOptions))}
-          </Chip>
-        )}
-        {appliedFilters.includeInactive && (
-          <Chip
-            variant="status"
-            removeLabel={t.filters.chipRemoveIncludeInactive}
-            onRemove={() => onApplyFilters({ ...appliedFilters, includeInactive: false })}
-          >
-            {messages.common.includeInactive}
-          </Chip>
-        )}
-      </div>
+      {/* 걸린 조건이 없으면 칩 줄을 그리지 않는다 — 빈 줄이 조건과 표 사이를 벌렸다. */}
+      {hasAnyFilter(appliedFilters) && (
+        <div className="filter-bar">
+          {appliedFilters.q !== '' && (
+            <Chip
+              variant="status"
+              removeLabel={t.filters.chipRemoveKeyword}
+              onRemove={() => onApplyFilters({ ...appliedFilters, q: '' })}
+            >
+              {t.filters.chipKeyword(appliedFilters.q)}
+            </Chip>
+          )}
+          {appliedFilters.warehouseTypeCode !== '' && (
+            <Chip
+              variant="status"
+              removeLabel={t.filters.chipRemoveType}
+              onRemove={() => onApplyFilters({ ...appliedFilters, warehouseTypeCode: '' })}
+            >
+              {t.filters.chipType(
+                codeLabel(appliedFilters.warehouseTypeCode, warehouseTypeOptions),
+              )}
+            </Chip>
+          )}
+          {appliedFilters.includeInactive && (
+            <Chip
+              variant="status"
+              removeLabel={t.filters.chipRemoveIncludeInactive}
+              onRemove={() => onApplyFilters({ ...appliedFilters, includeInactive: false })}
+            >
+              {messages.common.includeInactive}
+            </Chip>
+          )}
+        </div>
+      )}
 
-      {listSlot()}
+      <div className="warehouse-location-list-table">{listSlot()}</div>
     </section>
   );
 };

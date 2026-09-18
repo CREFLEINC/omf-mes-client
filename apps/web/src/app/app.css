@@ -5069,6 +5069,234 @@ dl.filter-bar.approval-inbox-detail-facts {
   gap: var(--space-2);
 }
 
+/*
+ * 창고·Location — 목록을 조금 넓혀(2:3 → 9:11) 코드·유형·상태 열이 줄바꿈되지 않게 한다
+ * (omf-all-around#17). 상세는 2열 폼이라 이 폭에서도 칸이 좁아지지 않는다. 접힘 기준(1280px)은
+ * 공용 `.two-pane` 그대로다.
+ */
+.two-pane.warehouse-location-layout {
+  grid-template-columns: minmax(26rem, 9fr) minmax(0, 11fr);
+}
+
+/* 공용 `.two-pane` 의 접힘(1280px 이하 한 칸)을 그대로 따른다 — 위 규칙이 덮지 않게 다시 적는다. */
+@media (max-width: 1280px) {
+  .two-pane.warehouse-location-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* 조회·초기화 묶음은 필터 줄 오른쪽 끝 — 줄이 넘쳐 다음 줄로 가도 오른쪽에 붙는다. */
+.warehouse-location-filter-actions {
+  margin-left: auto;
+}
+
+/* 코드·유형·상태는 한 줄로 — 줄을 바꾸는 것은 긴 창고명뿐이다. */
+.warehouse-location-list-table td:nth-child(1),
+.warehouse-location-list-table td:nth-child(3),
+.warehouse-location-list-table td:nth-child(4),
+.warehouse-location-list-table th {
+  white-space: nowrap;
+}
+
+/*
+ * 고른 창고의 행 — 왼쪽 막대 + 옅은 중립 배경. 붉은 바탕을 깔지 않는다(사용자 지시 2026-09-18).
+ * 선례: `.production-order-list-table`(막대), `.lot-status-transition-table`.
+ */
+.warehouse-location-list-table tbody tr:has(.link-cell[aria-current='true']) > td {
+  background: var(--state-hover-neutral);
+}
+
+.warehouse-location-list-table tbody tr:has(.link-cell[aria-current='true']) > td:first-child {
+  box-shadow: inset 3px 0 0 var(--primary);
+}
+
+.warehouse-location-list-table .link-cell[aria-current='true'] {
+  font-weight: 600;
+}
+
+/*
+ * 상세 폼 정돈 2차(omf-all-around#17) — 이 화면 안에서만. 공용 규칙(.form-grid·.form-actions·.banner-slot)은 그대로다.
+ * 선택 목록 잘림 안내는 조건·문구·경고 유형을 그대로 두고 크기만 줄인다 — 폼보다 먼저 읽히지 않게.
+ */
+.warehouse-location-lookup-notice {
+  margin-bottom: var(--space-4);
+}
+
+.warehouse-location-lookup-notice > [role] {
+  padding: var(--space-2) var(--space-3);
+  font: var(--type-body-sm);
+  letter-spacing: var(--type-body-sm-tracking);
+}
+
+/*
+ * 아이콘과 글자의 세로 가운데를 맞춘다(한 줄·두 줄 모두). DS 배너는 아이콘을 위에서 4px 내려 놓아
+ * (margin-top: --space-1) 20px 글줄보다 아이콘 중심이 4px 아래로 처진다 — DS 쪽 원인이라 여기서만 덮는다.
+ */
+.warehouse-location-lookup-notice > [role] {
+  align-items: center;
+}
+
+.warehouse-location-lookup-notice > [role] > :first-child {
+  margin-top: 0;
+  font-size: 18px;
+}
+
+/*
+ * 라벨 줄 — 라벨(+필수 표시)과 도움말을 한 줄에, 세로 가운데로. 줄 높이를 라벨 층(16px)에 묶어
+ * 도움말이 있어도 옆 칸과 입력 상자 위치가 같다(선례: `.lot-status-transition-period-label`). 문구는 자르지 않는다.
+ */
+.warehouse-location-field-label {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  height: 16px;
+}
+
+.warehouse-location-field-label > * {
+  flex: none;
+}
+
+/* 라벨·단추 옆 도움말 — .field-note 글자 그대로, 옆에 붙이므로 위 여백과 폭 제한만 푼다. */
+.warehouse-location-inline-note {
+  max-width: none;
+  margin-top: 0;
+}
+
+/* 공장 칸 안의 두 칸 — 공장(남은 폭) · 사용 상태(내용 폭). 라벨 줄과 값 줄이 각각 같은 높이에 선다. */
+.warehouse-location-plant-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--space-4);
+  min-width: 0;
+}
+
+/* 사용 상태 값 줄 — 입력칸 높이에 맞춰 칩을 세로 가운데에 둔다. 라벨과 칩의 왼쪽 끝이 같다. */
+.warehouse-location-status {
+  display: flex;
+  align-items: center;
+  min-height: var(--control-height-md);
+}
+
+/* 선택칸 + 오른쪽 부속(토글 묶음) 한 줄 — 선택칸이 남은 폭을 채우고, 부속은 세로 가운데. */
+.warehouse-location-field-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  min-width: 0;
+}
+
+.warehouse-location-field-row > :first-child {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+/* 선택칸 옆 묶음(토글·사용 상태) — 라벨 글자 + 토글/칩. 줄바꿈하지 않는다(좁은 폭에서는 선택칸이 줄어든다). */
+.warehouse-location-inline-field {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: var(--space-2);
+  white-space: nowrap;
+  font: var(--type-label-lg);
+  letter-spacing: var(--type-label-lg-tracking);
+  color: var(--on-surface-variant);
+}
+
+/* 세로 간격을 한 단계 좁힌다(16px → 12px). 가로 간격은 그대로 둔다. */
+.warehouse-location-form .form-grid {
+  row-gap: var(--space-3);
+}
+
+/*
+ * 바닥글을 한 줄로 — 위에 구분선, 변경 이력 사유는 단추 옆(아래로 떨어지면 폼 칸의 안내처럼 읽혔다).
+ * 사유 글이 길어 좁은 폭에서는 단추 아래로 접힌다.
+ */
+.warehouse-location-form-actions {
+  align-items: center;
+  margin-top: var(--space-4);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--outline-variant);
+}
+
+/* 사용 중지(상태 액션)와 변경 이력(조회 액션) 사이를 조금 더 띄운다. */
+.warehouse-location-status-action {
+  margin-right: var(--space-2);
+}
+
+.warehouse-location-form-actions .form-actions-secondary {
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+
+/*
+ * Location 탭 윗부분(omf-all-around#17) — 검색은 왼쪽, 등록 단추 묶음은 오른쪽 끝(검색 옆에 붙어
+ * 검색 동작처럼 읽히지 않게), 비활성 사유 도움말은 그 묶음 바로 아래 오른쪽 정렬.
+ */
+.warehouse-location-location-create {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: var(--space-2);
+  margin-left: auto;
+}
+
+/* 선택한 Location 대상 작업 줄 — 얇은 구분선 아래, 사유 도움말은 왼쪽 끝 · 단추는 오른쪽 끝. 카드를 나누지 않는다. */
+.warehouse-location-location-selection {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--outline-variant);
+}
+
+/* 빈 표 — 머리는 그대로 두고, 빈 안내 칸의 위아래 여백만 줄인다(데이터가 있을 때는 영향 없음). */
+.warehouse-location-location-table tbody td[colspan] {
+  padding-block: var(--space-4);
+}
+
+/* 머리와 상태 칸은 한 줄로 — 긴 위치명이 폭을 먹어도 「사용 상태」가 두 줄로 접히지 않게. */
+.warehouse-location-location-table th,
+.warehouse-location-location-table td:last-child {
+  white-space: nowrap;
+}
+
+/*
+ * 선택 열 — 머리 체크박스도 본문처럼 가운데로. DS 는 선택 칸을 가운데로 두지만(.selectCell) 머리의
+ * `thead th { text-align: left }` 가 더 구체적이라 머리만 왼쪽으로 밀린다(DS 쪽 원인 · 이 화면에서만 덮는다).
+ */
+.warehouse-location-location-table thead th:first-child {
+  text-align: center;
+}
+
+/* 단추는 도움말이 있든 없든 줄 오른쪽 끝. */
+.warehouse-location-location-selection > :last-child {
+  margin-left: auto;
+}
+
+/*
+ * 위치 코드 머리 — 값 칸은 [펼치기 단추 자리 32px + 간격 --space-2] 뒤에서 코드 글자가 시작한다.
+ * 머리 글자를 그만큼 밀어 depth 0 코드 글자와 왼쪽 끝을 맞춘다(단추는 그 여백 자리에 선다).
+ * 32px 은 location-pane 의 단추 자리(IconButton sm·빈칸) 폭, 12px(--space-3)은 compact 표의 칸 여백.
+ */
+.warehouse-location-location-table thead th:nth-child(2) {
+  padding-left: calc(var(--space-3) + 32px + var(--space-2));
+}
+
+/* 펼치기 단추 자리는 줄지 않는다 — 긴 코드가 폭을 먹으면 32px 빈칸이 눌려 깊이 들여쓰기가 어긋났다. */
+.warehouse-location-location-table .tree-toggle > :first-child {
+  flex: none;
+}
+
+/* 긴 위치 코드가 접혀도 왼쪽 기준을 지킨다(계층 들여쓰기와 같은 기준선). */
+.warehouse-location-location-table .link-cell {
+  text-align: start;
+}
+
 .warehouse-location-label-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));

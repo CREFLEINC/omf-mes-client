@@ -14,22 +14,18 @@ export const warehouseLocation: Translated<typeof ko.warehouseLocation> = {
   },
   actions: {
     addWarehouse: 'Thêm kho',
-    addRootLocation: 'Thêm cấp trên cùng',
-    addChildLocation: 'Thêm cấp dưới',
+    addRootLocation: 'Thêm Location cấp trên cùng',
+    addChildLocation: 'Thêm Location cấp dưới',
     generateLabel: 'Tạo ảnh nhãn',
     changeHistory: 'Lịch sử thay đổi',
     activate: 'Dùng lại',
   },
   actionReasons: {
-    addChildNeedsSingleSelection: 'Thêm cấp dưới chỉ dùng được khi chọn đúng một Location.',
-    locationsDisabledByManagementLevel: 'Mức quản lý là kho thì không đăng ký Location.',
-    locationDepthLimitReached: 'Ở mức quản lý hiện tại không thêm được Location cấp dưới nữa.',
     locationHierarchyUnavailable: 'Tải xong phân cấp Location rồi mới thêm được.',
-    generateLabelNeedsSelection: 'Hãy chọn ít nhất một Location để tạo ảnh nhãn.',
-    changeHistoryUnavailable:
-      'Lịch sử thay đổi hiện chưa xem được. Khi chức năng tra cứu sẵn sàng thì có thể dùng nút này.',
-    plantFixedAfterCreate:
-      'Sau khi đăng ký thì không đổi được nhà máy. Nếu là nhà máy khác thì hãy đăng ký kho mới.',
+    generateLabelNeedsSelection: 'Hãy chọn ít nhất một Location.',
+    changeHistoryUnavailable: 'Hiện chưa cung cấp lịch sử thay đổi.',
+    managementLevelWarehouseNoLocation: 'Không chỉ định Location.',
+    plantFixedAfterCreate: 'Không thể đổi nhà máy sau khi đăng ký.',
     warehouseFixedInLocation: 'Cố định theo kho đã chọn ở bên trái.',
   },
   loading: {
@@ -42,7 +38,7 @@ export const warehouseLocation: Translated<typeof ko.warehouseLocation> = {
   listTruncated: (shown: number, total: number): string =>
     `Hiển thị ${shown} trong tổng số ${total}. Hãy thu hẹp điều kiện rồi tra cứu.`,
   optionsTruncated:
-    'Chỉ hiển thị một phần danh sách chọn. Không thấy giá trị cần tìm thì hãy báo người phụ trách.',
+    'Có thể chỉ hiển thị một phần các mục có thể chọn. Nếu không thấy mục cần tìm, hãy liên hệ người phụ trách.',
   optionsLoadFailed: 'Không tải được danh sách chọn. Chỉ hiển thị giá trị đang lưu.',
   empty: {
     warehouseNoneTitle: 'Chưa đăng ký kho nào',
@@ -50,10 +46,11 @@ export const warehouseLocation: Translated<typeof ko.warehouseLocation> = {
     warehouseNoMatchTitle: 'Không có kết quả khớp điều kiện',
     warehouseNoMatchDescription: 'Hãy giảm bớt hoặc đặt lại điều kiện rồi tra cứu lại.',
     locationNoneTitle: 'Chưa đăng ký Location',
-    locationNoneDescription: 'Hãy đăng ký Location đầu tiên bằng «Thêm cấp trên cùng».',
+    locationNoneDescription: 'Hãy thêm Location cấp trên cùng.',
     locationNoMatchTitle: 'Không có Location khớp điều kiện',
     locationNoMatchDescription: 'Xóa từ khóa thì thấy lại toàn bộ phân cấp.',
-    warehouseNotSelected: 'Hãy chọn kho ở bên trái trước',
+    warehouseNotSelectedTitle: 'Thông tin kho',
+    warehouseNotSelectedDescription: 'Hãy chọn kho trước',
   },
   filters: {
     searchLabel: 'Tìm kho',
@@ -78,7 +75,7 @@ export const warehouseLocation: Translated<typeof ko.warehouseLocation> = {
     partner: 'Đối tác',
     isDefect: 'Kho hàng lỗi',
 
-    isActive: 'Sử dụng',
+    isActive: 'Trạng thái sử dụng',
     warehouse: 'Kho',
     parentLocation: 'Vị trí cấp trên',
     locationCode: 'Mã vị trí',
@@ -90,8 +87,9 @@ export const warehouseLocation: Translated<typeof ko.warehouseLocation> = {
     allowMixedLot: 'Cho phép xếp lẫn LOT',
     capacityQty: 'Sức chứa',
     capacityUom: 'Đơn vị sức chứa',
-    code: 'Mã',
-    name: 'Tên',
+  },
+  placeholders: {
+    partner: 'Hãy chọn đối tác',
   },
   values: {
     active: 'Đang dùng',

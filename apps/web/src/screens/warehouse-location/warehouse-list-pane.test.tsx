@@ -102,7 +102,7 @@ describe('WarehouseListPane', () => {
     };
     const { onApplyFilters } = renderPane({ appliedFilters: applied });
 
-    await user.click(screen.getByRole('button', { name: '창고유형 조건 제거' }));
+    await user.click(screen.getByRole('button', { name: '창고 유형 조건 제거' }));
 
     expect(onApplyFilters).toHaveBeenCalledWith({ ...applied, warehouseTypeCode: '' });
   });
@@ -167,5 +167,22 @@ describe('WarehouseListPane', () => {
 
     expect(screen.getByLabelText('창고 검색')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: '조회' })).toBeInTheDocument();
+  });
+
+  /* 화면 정돈(omf-all-around#17). */
+  it('머리글은 창고 코드·창고명이고, 사용 여부는 칩으로 보인다', () => {
+    renderPane();
+
+    expect(screen.getByRole('columnheader', { name: '창고 코드' })).toBeInTheDocument();
+    expect(screen.getByRole('columnheader', { name: '창고명' })).toBeInTheDocument();
+    expect(screen.queryByRole('columnheader', { name: '명칭' })).not.toBeInTheDocument();
+    expect(screen.getAllByText('사용 중').length).toBeGreaterThan(0);
+  });
+
+  it('걸린 조건이 없으면 조건 칩 줄을 그리지 않는다', () => {
+    renderPane();
+
+    expect(screen.queryByRole('button', { name: /조건 제거/u })).not.toBeInTheDocument();
+    expect(document.querySelectorAll('.filter-bar')).toHaveLength(1);
   });
 });
