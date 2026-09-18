@@ -51,7 +51,8 @@ export const warehouseLocation: Translated<typeof ko.warehouseLocation> = {
     locationNoneDescription: 'Hãy đăng ký Location đầu tiên bằng «Thêm cấp trên cùng».',
     locationNoMatchTitle: 'Không có Location khớp điều kiện',
     locationNoMatchDescription: 'Xóa từ khóa thì thấy lại toàn bộ phân cấp.',
-    warehouseNotSelected: 'Hãy chọn kho ở bên trái trước',
+    warehouseNotSelectedTitle: 'Thông tin kho',
+    warehouseNotSelectedDescription: 'Hãy chọn kho trước',
   },
   filters: {
     searchLabel: 'Tìm kho',

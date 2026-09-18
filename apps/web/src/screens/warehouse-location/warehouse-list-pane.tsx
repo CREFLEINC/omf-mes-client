@@ -74,6 +74,8 @@ export const WarehouseListPane = ({
     {
       key: 'warehouseCode',
       header: t.fields.warehouseCode,
+      /* 창고명만 왼쪽, 나머지 열은 머리·값 모두 가운데(사용자 지시 2026-09-18 · omf-all-around#17). */
+      align: 'center',
       render: (row) => (
         <button
           type="button"
@@ -90,11 +92,13 @@ export const WarehouseListPane = ({
     {
       key: 'warehouseTypeCode',
       header: t.fields.warehouseType,
+      align: 'center',
       render: (row) => codeLabel(row.warehouseTypeCode, warehouseTypeOptions),
     },
     {
       key: 'isActive',
       header: t.fields.isActive,
+      align: 'center',
       /* 상태는 기존 칩으로 — 사용 중 success · 미사용 idle(W-CO 단말 공정 매핑과 같은 규칙). */
       render: (row) => (
         <Chip size="sm" status={row.isActive ? 'success' : 'idle'}>
@@ -183,16 +187,16 @@ export const WarehouseListPane = ({
             {messages.common.includeInactive}
           </Checkbox>
         </div>
-        <Button className="field-cell-unlabeled" onClick={applyDraft}>
-          {messages.common.search}
-        </Button>
-        <Button
-          className="field-cell-unlabeled"
-          variant="outlined"
-          onClick={() => onApplyFilters(defaultWarehouseFilters)}
-        >
-          {messages.common.reset}
-        </Button>
+        {/*
+         * 조회·초기화는 한 묶음으로 줄 오른쪽 끝에 붙인다(사용자 지시 2026-09-18 · omf-all-around#17).
+         * 묶음이라 좁아져 줄이 넘쳐도 둘이 함께 다음 줄 오른쪽으로 간다(규범 2-1).
+         */}
+        <div className="filter-actions field-cell-unlabeled warehouse-location-filter-actions">
+          <Button onClick={applyDraft}>{messages.common.search}</Button>
+          <Button variant="outlined" onClick={() => onApplyFilters(defaultWarehouseFilters)}>
+            {messages.common.reset}
+          </Button>
+        </div>
       </div>
 
       {/* 걸린 조건이 없으면 칩 줄을 그리지 않는다 — 빈 줄이 조건과 표 사이를 벌렸다. */}

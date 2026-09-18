@@ -115,7 +115,11 @@ export const LocationPane = ({
     {
       key: 'isActive',
       header: t.fields.isActive,
-      /* 창고 목록과 같은 상태 칩(omf-all-around#17). */
+      /*
+       * 창고 목록과 같은 상태 칩, 가운데 정렬(omf-all-around#17). 위치코드 열은 계층 들여쓰기가
+       * 뜻을 가지므로 왼쪽에 둔다 — 가운데로 모으면 상하위 관계가 읽히지 않는다.
+       */
+      align: 'center',
       render: (row) => (
         <Chip size="sm" status={row.location.isActive ? 'success' : 'idle'}>
           {row.location.isActive ? t.values.active : t.values.inactive}

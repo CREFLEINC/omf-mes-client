@@ -320,7 +320,8 @@ describe('WarehouseLocationScreen — 창고 목록 조회', () => {
     renderScreen([warehouseListRoute()]);
     await screen.findByRole('button', { name: 'WH-01' });
 
-    expect(screen.getByText('좌측에서 창고를 먼저 고르세요')).toBeInTheDocument();
+    expect(screen.getByText('창고 정보')).toBeInTheDocument();
+    expect(screen.getByText('창고를 먼저 선택하세요')).toBeInTheDocument();
   });
 
   it('목록의 코드를 누르면 URL의 wh가 바뀐다', async () => {

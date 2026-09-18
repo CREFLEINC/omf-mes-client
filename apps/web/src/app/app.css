@@ -5085,6 +5085,11 @@ dl.filter-bar.approval-inbox-detail-facts {
   }
 }
 
+/* 조회·초기화 묶음은 필터 줄 오른쪽 끝 — 줄이 넘쳐 다음 줄로 가도 오른쪽에 붙는다. */
+.warehouse-location-filter-actions {
+  margin-left: auto;
+}
+
 /* 코드·유형·상태는 한 줄로 — 줄을 바꾸는 것은 긴 창고명뿐이다. */
 .warehouse-location-list-table td:nth-child(1),
 .warehouse-location-list-table td:nth-child(3),

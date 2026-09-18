@@ -45,7 +45,9 @@ export const warehouseLocation = {
     locationNoneDescription: '「최상위 추가」로 첫 Location을 등록하세요.',
     locationNoMatchTitle: '조건에 맞는 Location이 없습니다',
     locationNoMatchDescription: '검색어를 지우면 전체 계층이 보입니다.',
-    warehouseNotSelected: '좌측에서 창고를 먼저 고르세요',
+    /* 창고를 고르기 전 오른쪽 자리 — 제목 + 안내(사용자 지시 2026-09-18 · omf-all-around#17). */
+    warehouseNotSelectedTitle: '창고 정보',
+    warehouseNotSelectedDescription: '창고를 먼저 선택하세요',
   },
   filters: {
     searchLabel: '창고 검색',

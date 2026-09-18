@@ -920,7 +920,11 @@ export const WarehouseLocationScreen = () => {
     if (selectedWarehouseId === null) {
       return (
         <div className="pane">
-          <EmptyState size="sm" title={t.empty.warehouseNotSelected} />
+          <EmptyState
+            size="sm"
+            title={t.empty.warehouseNotSelectedTitle}
+            description={t.empty.warehouseNotSelectedDescription}
+          />
         </div>
       );
     }
