@@ -10,16 +10,12 @@ import type { AssignmentMode, ShipmentRequestLineDraft } from './types';
  * | 머리 필수(고객·납품처·출하요청일) | `validateHeader` — 단독 생성만. 지시서 경유는 지시서가 이미 채운다 |
  * | 라인 형식(품목·단위 필수 · 요청 수량 형식 — 단독 생성만) | `validateLines` |
  * | **배정 수량 ≥ 0 · ≤ 요청 수량**(둘 다 모드) | `validateLines` — 서버가 거절할 것을 화면이 앞당긴다 |
- * | 잔여 유효기간 ≥ 0(선택 입력) | `validateLines` |
  * | 가용 부족 | **막지 않는다** — `shortage-banner.tsx`가 경고만 낸다(C5) |
  *
  * 이 화면이 소유한다 — 다른 화면 슬라이스의 같은 이름 파일을 참조하지 않는다.
  */
 
 const t = messages.shipmentRequestCreate;
-
-/** 고정 설계의 `customer_lot_requirement varchar(200)`와 같은 화면 입력 상한. */
-export const CUSTOMER_LOT_REQUIREMENT_MAX_LENGTH = 200;
 
 export const HEADER_FORM_FIELDS: readonly string[] = [
   'fulfillmentPlantId',
@@ -28,13 +24,7 @@ export const HEADER_FORM_FIELDS: readonly string[] = [
   'requestedShipDate',
 ];
 
-export type LineFieldName =
-  | 'itemId'
-  | 'uomId'
-  | 'requestedQty'
-  | 'allocatedQty'
-  | 'customerLotRequirement'
-  | 'minimumRemainingShelfLifeDays';
+export type LineFieldName = 'itemId' | 'uomId' | 'requestedQty' | 'allocatedQty';
 
 /** 줄 단위 오류의 열쇠. 줄 키가 앞에 온다 — 잘못 친 줄이 둘일 때 서로 섞이지 않는다. */
 export const lineFieldId = (key: string, field: LineFieldName): string => `${key}.${field}`;
@@ -81,20 +71,43 @@ export const readQty = (raw: string): QtyRead => {
 };
 
 export interface LineValidation {
+  /**
+   * 칸 아래에 **그리는** 오류 — 사용자가 «친» 값이 잘못됐을 때만 든다.
+   *
+   * ⛔ **아직 안 채운 칸은 여기 들어오지 않는다**(사용자 지시 2026-09-18). 라인을 막 추가한
+   *    사람에게 붉은 문구가 먼저 서면, 아무것도 안 했는데 잘못한 것처럼 읽힌다.
+   */
   errors: Record<string, string>;
+  /**
+   * 아직 채워지지 않은 칸이 있는가 — **편성은 그대로 막는다.**
+   *
+   * ⭐ 막는 것과 «줄마다 붉게 적는 것»은 다른 일이다. 막는 사유는 편성 단추 옆에 한 번만 선다
+   *    (`screen.tsx` 의 `submitBlockReason`) — 그 자리가 이미 「무엇을 해야 열리는가」를 말한다.
+   */
+  isIncomplete: boolean;
 }
 
-/** 요청 수량 오류(단독 생성 줄만) — 지시서 경유 줄은 읽기 전용이라 판정할 것이 없다. */
+/**
+ * 요청 수량 오류(단독 생성 줄만) — 지시서 경유 줄은 읽기 전용이라 판정할 것이 없다.
+ *
+ * ⛔ **비었을 때는 오류가 아니다** — 아직 안 친 것이지 잘못 친 것이 아니다. 비어 있으면
+ *    `isIncomplete` 가 편성을 막고, 그 사유는 단추 옆에 한 번 선다.
+ */
 const requestedQtyError = (line: ShipmentRequestLineDraft): string | null => {
   if (line.salesOrderLineId !== null) return null;
 
   const read = readQty(line.requestedQty);
 
-  if (read.kind === 'empty') return t.errors.requestedQtyRequired;
+  if (read.kind === 'empty') return null;
   if (read.kind === 'invalid') return t.errors.qtyNotNumber;
 
   return read.value <= 0 ? t.errors.requestedQtyNotPositive : null;
 };
+
+/** 아직 안 채운 칸이 있는 줄인가. 단독 생성 줄만 본다 — 지시서 경유 줄은 지시서가 채운다. */
+const isIncompleteLine = (line: ShipmentRequestLineDraft): boolean =>
+  line.salesOrderLineId === null &&
+  (line.itemId === '' || line.uomId === '' || readQty(line.requestedQty).kind === 'empty');
 
 /** 배정 수량 오류(둘 다 모드) — 비었으면 0으로 보아 오류가 아니다(그 줄은 제외된다). */
 const allocatedQtyError = (line: ShipmentRequestLineDraft): string | null => {
@@ -113,24 +126,11 @@ const allocatedQtyError = (line: ShipmentRequestLineDraft): string | null => {
   return null;
 };
 
-/** 잔여 유효기간 오류 — 선택 입력이라 비었으면 오류가 아니다. */
-const shelfLifeError = (raw: string): string | null => {
-  const read = readQty(raw);
-
-  if (read.kind === 'empty') return null;
-  if (read.kind === 'invalid') return t.errors.qtyNotNumber;
-
-  return read.value < 0 ? t.errors.shelfLifeNegative : null;
-};
-
 export const validateLines = (lines: readonly ShipmentRequestLineDraft[]): LineValidation => {
   const errors: Record<string, string> = {};
 
   for (const line of lines) {
     if (line.salesOrderLineId === null) {
-      if (line.itemId === '') errors[lineFieldId(line.key, 'itemId')] = t.errors.itemRequired;
-      if (line.uomId === '') errors[lineFieldId(line.key, 'uomId')] = t.errors.uomRequired;
-
       const requestedError = requestedQtyError(line);
 
       if (requestedError !== null) errors[lineFieldId(line.key, 'requestedQty')] = requestedError;
@@ -139,20 +139,9 @@ export const validateLines = (lines: readonly ShipmentRequestLineDraft[]): LineV
     const allocatedError = allocatedQtyError(line);
 
     if (allocatedError !== null) errors[lineFieldId(line.key, 'allocatedQty')] = allocatedError;
-
-    if (line.customerLotRequirement.length > CUSTOMER_LOT_REQUIREMENT_MAX_LENGTH) {
-      errors[lineFieldId(line.key, 'customerLotRequirement')] =
-        t.errors.customerLotRequirementTooLong(CUSTOMER_LOT_REQUIREMENT_MAX_LENGTH);
-    }
-
-    const shelfError = shelfLifeError(line.minimumRemainingShelfLifeDays);
-
-    if (shelfError !== null) {
-      errors[lineFieldId(line.key, 'minimumRemainingShelfLifeDays')] = shelfError;
-    }
   }
 
-  return { errors };
+  return { errors, isIncomplete: lines.some(isIncompleteLine) };
 };
 
 /** 보낼 줄이 하나라도 남는가 — 배정 수량이 1 이상인 줄이 있어야 한다(계약 설명 · C4 인접 규칙). */

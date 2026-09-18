@@ -42,9 +42,7 @@ export const lineDraftsFromSalesOrder = (
       requestedQty: String(remaining),
       allocatedQty: String(remaining),
       uomId: String(line.uomId),
-      customerLotRequirement: '',
       shippingInspectionRequired: false,
-      minimumRemainingShelfLifeDays: '',
     }));
 
 /** 단독 생성의 빈 줄. **값을 지어내지 않는다** — 사용자가 고르지 않은 품목이 전표에 실리면 안 된다. */
@@ -55,14 +53,30 @@ export const emptyLineDraft = (): ShipmentRequestLineDraft => ({
   requestedQty: '',
   allocatedQty: '',
   uomId: '',
-  customerLotRequirement: '',
   shippingInspectionRequired: false,
-  minimumRemainingShelfLifeDays: '',
 });
 
 export const addLineDraft = (
   lines: readonly ShipmentRequestLineDraft[],
 ): ShipmentRequestLineDraft[] => [...lines, emptyLineDraft()];
+
+/**
+ * 고른 품목으로 줄을 만든다 — **품목 선택 팝업이 부른다.**
+ *
+ * ⭐ **기준 단위를 함께 채운다.** 품목 조회가 `baseUomId` 를 주므로 담당이 줄마다 단위를 고르지
+ *    않아도 된다 — 서버가 준 값이라 지어내는 것이 아니다.
+ * ⚠ **선택칸은 그대로 둔다.** 서버는 라인의 단위가 품목 기준 단위와 «같은지» 보지 않고 그 단위가
+ *   있는지만 본다 — 기준과 다른 단위로 내보내는 것을 서버가 허용하므로, 화면이 그 길을 막지
+ *   않는다(2026-09-18 통합 실측).
+ */
+export const lineDraftFromItem = (
+  itemId: number,
+  baseUomId: number,
+): ShipmentRequestLineDraft => ({
+  ...emptyLineDraft(),
+  itemId: String(itemId),
+  uomId: String(baseUomId),
+});
 
 /** 그 줄을 뺀 새 목록. 남은 줄의 키가 그대로라 표의 행이 자리를 옮기지 않는다. */
 export const removeLineDraft = (

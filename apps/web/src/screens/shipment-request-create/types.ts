@@ -103,9 +103,7 @@ export interface ShipmentRequestLineDraft {
   requestedQty: string;
   allocatedQty: string;
   uomId: string;
-  customerLotRequirement: string;
   shippingInspectionRequired: boolean;
-  minimumRemainingShelfLifeDays: string;
 }
 
 /** 방금 만든 편성 — 결과 안내 구획이 그리는 것 전부다. */
