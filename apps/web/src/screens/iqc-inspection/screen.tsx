@@ -419,7 +419,7 @@ export const IqcInspectionScreen = () => {
         }
       />
 
-      <div className="two-pane">
+      <div className="two-pane iqc-inspection-panes">
         <section className="pane" aria-label={t.queue.heading}>
           <QueueFilterBar
             appliedFilters={filters}

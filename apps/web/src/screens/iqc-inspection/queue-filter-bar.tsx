@@ -104,12 +104,15 @@ export const QueueFilterBar = ({ appliedFilters, onSearch, onReset }: QueueFilte
         value={draft.keyword}
         onChange={(event) => setDraft({ ...draft, keyword: event.target.value })}
       />
-      <Button type="submit" variant="filled" size="sm">
-        {t.apply}
-      </Button>
-      <Button type="button" variant="outlined" size="sm" onClick={reset}>
-        {t.reset}
-      </Button>
+      {/* 조회·초기화는 한 덩어리로 그 줄의 오른쪽 끝에 선다(줄이 바뀌어도 그 줄의 끝). */}
+      <div className="filter-actions field-cell-unlabeled iqc-inspection-filter-actions">
+        <Button type="submit" variant="filled">
+          {t.apply}
+        </Button>
+        <Button type="button" variant="outlined" onClick={reset}>
+          {t.reset}
+        </Button>
+      </div>
     </form>
   );
 };

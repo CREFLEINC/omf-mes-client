@@ -8717,3 +8717,33 @@ dl.filter-bar.approval-inbox-detail-facts {
 .item-picker-pager > button:first-child {
   margin-inline-start: auto;
 }
+
+/*
+ * W-01-01 IQC 수입검사 판정 — 이 화면의 모든 표(대기 목록·검사 항목·회차 이력)는 머리줄과 모든 열을
+ * 가운데로. DS 의 열별 정렬([data-align])보다 앞선다(단말기-공정 매핑·ERP W/O 와 같은 풀이).
+ */
+.iqc-inspection-panes thead th,
+.iqc-inspection-panes thead th[data-align],
+.iqc-inspection-panes td,
+.iqc-inspection-panes td[data-align] {
+  text-align: center;
+}
+
+/* 칸 안의 보조 글(필수 표시 등)도 가운데 — 공용 .field-note 는 폭 제한 상자라 상자째 가운데로 옮긴다. */
+.iqc-inspection-panes td .field-note {
+  margin-inline: auto;
+}
+
+/* 조회 조건 — 조회·초기화 묶음은 그 줄의 오른쪽 끝(줄이 바뀌어도 그 줄의 끝)에 선다. */
+.iqc-inspection-panes .iqc-inspection-filter-actions {
+  margin-left: auto;
+}
+
+/* 대기 목록 — 자재 LOT 은 좁은 칸 안에서 줄을 바꾸고, 의뢰 일시는 한 줄로 둔다. */
+.iqc-inspection-panes .iqc-inspection-lot {
+  overflow-wrap: anywhere;
+}
+
+.iqc-inspection-panes .iqc-inspection-requested-at {
+  white-space: nowrap;
+}

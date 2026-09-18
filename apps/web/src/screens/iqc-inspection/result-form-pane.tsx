@@ -299,7 +299,7 @@ export const ResultFormPane = ({
 
       {isConfirmed && (
         <div className="form-actions">
-          <Button type="button" variant="outlined" size="sm" onClick={onStartReinspection}>
+          <Button type="button" variant="outlined" size="md" onClick={onStartReinspection}>
             {t.reinspect}
           </Button>
         </div>
@@ -318,20 +318,20 @@ export const ResultFormPane = ({
               <Button
                 type="button"
                 variant="text"
-                size="sm"
+                size="md"
                 disabled={isSaving || isConfirming}
                 onClick={onCancelReinspection}
               >
                 {t.reinspectCancel}
               </Button>
             )}
-            <Button type="submit" variant="outlined" size="sm" disabled={isSaving || isConfirming}>
+            <Button type="submit" variant="outlined" size="md" disabled={isSaving || isConfirming}>
               {isSaving ? t.saving : t.save}
             </Button>
             <Button
               type="button"
               variant="filled"
-              size="sm"
+              size="md"
               disabled={confirmBlockedReason !== null || isSaving || isConfirming}
               onClick={onConfirm}
             >
@@ -356,7 +356,7 @@ export const ResultFormPane = ({
            */}
           <div className="form-actions">
             <p className="field-note form-actions-secondary">{t.partialReceiptPending}</p>
-            <Button type="button" variant="text" size="sm" disabled>
+            <Button type="button" variant="text" size="md" disabled>
               {t.partialReceipt}
             </Button>
           </div>
