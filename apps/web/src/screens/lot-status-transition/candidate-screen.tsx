@@ -342,12 +342,13 @@ export const LotStatusTransitionCandidateScreen = () => {
               <label className="field-label" htmlFor={periodId}>
                 {t.filters.period}
               </label>
-              {/* 칩은 칸 폭을 키우지 않는다 — 날짜 입력 폭 안에서 말줄임하고 전체 문구는 title 에 둔다. */}
-              <Chip size="sm" status="info" title={t.filters.note}>
-                <span className="lot-status-transition-period-chip-text">{t.filters.note}</span>
+              {/* 칩 문구는 자르지 않는다 — 칩 줄이 날짜 입력보다 길면 칸이 그 폭을 갖고 입력이 따라 늘어난다. */}
+              <Chip size="sm" status="info">
+                {t.filters.note}
               </Chip>
             </div>
             <DatePicker
+              className="lot-status-transition-period-input"
               id={periodId}
               mode="range"
               disabled={confirmationPinned}

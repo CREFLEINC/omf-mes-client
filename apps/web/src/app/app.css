@@ -1866,31 +1866,16 @@ main > * + * {
 }
 
 /*
- * 라벨 줄은 칸 폭 계산에서 빠진다(width 0 + min-width 100%) — 칸 폭은 날짜 입력이 정한다.
- * 칩이 그보다 길면 칩 안 글자를 말줄임한다(전체 문구는 title). 칩이 칸을 넓히면 옆 칸과의
- * 간격만 벌어진다(사용자 지시 2026-09-18).
+ * 칩 문구는 자르지 않는다(사용자 지시 2026-09-18). 칩 줄이 날짜 입력보다 길면 칸이 칩 줄 폭을
+ * 갖고, 날짜 입력(트리거)이 그 칸을 채운다 — 입력 오른쪽에 빈 틈이 생겨 칸 간격이 벌어지지 않게.
  */
-.lot-status-transition-period-label {
-  width: 0;
-  min-width: 100%;
-}
-
-.lot-status-transition-period-label > .field-label {
+.lot-status-transition-period-label > .field-label,
+.lot-status-transition-period-label > span {
   flex: none;
 }
 
-.lot-status-transition-period-label > span {
-  flex: 0 1 auto;
-  min-width: 0;
-  max-width: 100%;
-  overflow: hidden;
-}
-
-.lot-status-transition-period-chip-text {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+.lot-status-transition-period-input {
+  width: 100%;
 }
 
 /*
