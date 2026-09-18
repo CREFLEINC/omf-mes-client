@@ -89,11 +89,10 @@ const equipmentLabelOf = (source: Terminal): string | null => {
   return `${code} · ${name}`;
 };
 
-type TerminalWithRegistration = Terminal &
-  Partial<{
-    registrationStatusCode: TerminalRegistrationStatusCode;
-    registrationConfirmedAt: string | null;
-  }>;
+type TerminalWithRegistration = Terminal & Partial<{
+  registrationStatusCode: TerminalRegistrationStatusCode;
+  registrationConfirmedAt: string | null;
+}>;
 
 export const toTerminalView = (source: TerminalWithRegistration): TerminalView => ({
   terminalId: source.terminalId,

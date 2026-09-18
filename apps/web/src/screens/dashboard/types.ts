@@ -93,7 +93,6 @@ export interface DashboardView {
  *
  * 모양이 다르면 `null`이다 — 알아볼 수 없는 값을 그럴듯하게 잘라 내면 틀린 시각이 조용히 선다.
  */
-
 export const formatAsOf = (value: string | null | undefined): string | null => {
   if (value === null || value === undefined) return null;
 

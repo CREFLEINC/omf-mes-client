@@ -66,8 +66,6 @@ export const toInspectionQueueResult = (response: {
   page: response.page,
 });
 
-/** 계약의 `date-time` 문자열에서 표기용 조각을 뽑는다. */
-
 /**
  * 의뢰 일시 표기(`2026-08-18 09:15`).
  *
