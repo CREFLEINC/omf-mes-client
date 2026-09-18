@@ -2,9 +2,7 @@ import { Button, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { type ReactNode, useId } from 'react';
 
-import { DisabledAction } from './disabled-action';
 import { FieldLabel } from './field-label';
-import { INITIAL_PASSWORD_MIN_LENGTH } from './initial-password';
 import { SelectField } from './select-field';
 import type { SelectOption, UserFormValues } from './types';
 
@@ -25,31 +23,48 @@ export interface UserFormPaneProps {
   statusOptions: SelectOption[];
   /** null이면 상태를 고를 수 있다. 값이 있으면 조회 상태에 따른 비활성 사유다. */
   statusDisabledReason: string | null;
-  /** null이면 사용 중지를 누를 수 있다. 값이 있으면 그것이 비활성 사유다. */
-  deactivateDisabledReason: string | null;
+  /** 참이면 사용 중지를 누를 수 없다(이미 미사용). 사유 문구는 내지 않는다 — 아래 액션 줄 주석. */
+  isDeactivateDisabled: boolean;
   isDirty: boolean;
   isSaving: boolean;
   onSave: () => void;
   onCancel: () => void;
   onDeactivate: () => void;
+  /** 비밀번호 초기화 확인 창을 연다. 수정 모드에서만 쓴다. */
+  onResetPassword: () => void;
 }
 
 /** 라벨과 값 한 쌍. **폼 컨트롤이 아니다** — 잠긴 입력칸은 「언젠가 열린다」는 뜻이 된다. */
-const ValueField = ({ label, value, note }: { label: string; value: string; note: string }) => {
+const ValueField = ({
+  label,
+  value,
+  note,
+  className,
+}: {
+  label: string;
+  value: string;
+  note: string;
+  className: string;
+}) => {
   const labelId = useId();
   const noteId = useId();
 
   return (
-    <div className="field-cell">
-      <span className="field-label" id={labelId}>
-        {label}
+    <div className={`field-cell ${className}`}>
+      {/*
+       * 안내는 입력칸 아래가 아니라 **라벨 오른쪽의 작은 보조 라벨**이다(사용자 지시 2026-09-18) —
+       * 칸 아래에 두면 이 칸만 높아져 옆 칸들과 줄이 어긋난다. 값과의 연결(`aria-describedby`)은 그대로다.
+       */}
+      <span className="field-label readonly-label-row">
+        <span id={labelId}>{label}</span>
+        <span id={noteId} className="readonly-label-note">
+          {note}
+        </span>
       </span>
-      <p aria-labelledby={labelId} aria-describedby={noteId}>
+      {/* 입력칸이 아님을 읽기 쉬운 채로 보인다 — 흐린 비활성 입력칸으로 그리면 값이 잘 안 읽힌다. */}
+      <p className="readonly-value" aria-labelledby={labelId} aria-describedby={noteId}>
         {value}
       </p>
-      <span id={noteId} className="field-note">
-        {note}
-      </span>
     </div>
   );
 };
@@ -80,12 +95,13 @@ export const UserFormPane = ({
   departmentOptions,
   statusOptions,
   statusDisabledReason,
-  deactivateDisabledReason,
+  isDeactivateDisabled,
   isDirty,
   isSaving,
   onSave,
   onCancel,
   onDeactivate,
+  onResetPassword,
 }: UserFormPaneProps) => {
   const loginIdId = useId();
   /*
@@ -98,16 +114,23 @@ export const UserFormPane = ({
   const saveLabel = mode === 'create' ? t.actions.addUser : messages.common.save;
 
   return (
-    <section className="pane" aria-label={t.panes.userForm}>
+    <section className="pane users-roles-pane users-roles-user-pane" aria-label={t.panes.userForm}>
+      <h2 className="pane-title">{t.panes.userForm}</h2>
       {banner}
 
-      <div className="form-grid">
+      <div
+        className={
+          mode === 'create'
+            ? 'form-grid users-roles-user-form urf-create'
+            : 'form-grid users-roles-user-form'
+        }
+      >
         {mode === 'create' ? (
           /*
            * 필수 표시는 디자인 시스템 내장 라벨에 끼울 자리가 없어 라벨을 직접 붙인다(배치 규범 3).
            * 검증이 필수로 막는 칸에 표시가 없으면 저장을 눌러야 필수임을 알게 된다.
            */
-          <div className="field-cell">
+          <div className="field-cell urf-login">
             <FieldLabel htmlFor={loginIdId} label={t.user.fields.loginId} required />
             <TextField
               id={loginIdId}
@@ -130,6 +153,7 @@ export const UserFormPane = ({
           </div>
         ) : (
           <ValueField
+            className="urf-login"
             label={t.user.fields.loginId}
             value={values.loginId}
             note={t.actionReasons.loginIdLocked}
@@ -150,17 +174,8 @@ export const UserFormPane = ({
          * `TextField`의 `label` prop은 문자열이라 표시를 끼울 자리가 없고, 문자열에 `*`를 붙이면
          * **접근성 이름이 「이름 *」이 되어 라벨 조회가 깨진다**(`field-label.tsx`).
          *
-         * 규칙 안내는 **이 칸의 `helperText`**다. 오류가 서면 디자인 시스템이 **그 자리를 오류로
-         * 갈아끼우므로**(`TextFieldProps`의 `helperText` — 「error나 … 있으면 대체됨」) 규칙과
-         * 오류가 같은 줄을 쓰고, 칸 높이가 오류 유무로 흔들리지 않는다. 안내를 따로 두면 규칙과
-         * 「규칙을 어겼다」가 한 칸 아래 나란히 서서 어느 쪽이 지금 상태인지 읽히지 않는다.
-         * 선례와 그 근거는 `password-change/screen.tsx`의 새 비밀번호 칸에 있다.
-         *
-         * ⛔ **`.field-note`를 직접 붙이지 않는다.** 배치 규범 4의 이탈 조건이 텍스트 입력에 대해
-         * 「디자인 시스템이 이 처리를 내장하고 있으므로 직접 만들지 말고 그대로 쓴다」고 정했다
-         * (그 조항이 이름으로 든 prop은 `disabledReason`이지만, `helperText`도 같은 자리에 서고
-         * `error`에 같은 방식으로 대체되므로 같은 처리다). 직접 붙이면 오류가 설 때 안내가 걷히지
-         * 않아 두 문장이 겹친다.
+         * 규칙 안내 도움말은 두지 않는다(사용자 지시 2026-09-18) — 규칙(숫자와 알파벳을 함께,
+         * 최소 길이)은 입력하는 동안 어기면 서는 **오류 문구**(`initialPasswordWeak`)가 알린다.
          *
          * ⛔ **`.form-grid-full`을 쓰지 않는다.** 그것은 줄 전체가 필요한 표·배너의 처리이고,
          * 이 칸은 다른 입력칸과 같은 한 칸이다.
@@ -170,7 +185,7 @@ export const UserFormPane = ({
          * 대신 규칙 위반을 즉시 문장으로 말해 눈으로 확인할 필요를 줄인다.
          */}
         {mode === 'create' ? (
-          <div className="field-cell">
+          <div className="field-cell urf-password">
             <FieldLabel htmlFor={passwordId} label={t.user.fields.initialPassword} required />
             <TextField
               id={passwordId}
@@ -182,14 +197,13 @@ export const UserFormPane = ({
               autoComplete="new-password"
               value={values.password}
               onChange={(event) => onChange({ password: event.target.value })}
-              helperText={t.user.initialPasswordNotice(INITIAL_PASSWORD_MIN_LENGTH)}
               error={fieldErrors.password}
               aria-required
             />
           </div>
         ) : null}
 
-        <div className="field-cell">
+        <div className="field-cell urf-name">
           <FieldLabel htmlFor={userNameId} label={t.user.fields.userName} required />
           <TextField
             id={userNameId}
@@ -205,6 +219,7 @@ export const UserFormPane = ({
          * 계약이 널을 허용하므로 선택지에 빈 값을 두어 다시 비울 수 있게 한다.
          */}
         <SelectField
+          className="urf-dept"
           label={t.user.fields.department}
           wide
           options={departmentOptions}
@@ -214,7 +229,7 @@ export const UserFormPane = ({
         />
 
         {/* 계약이 널을 허용한다 — 비우는 것이 정상 값이라 필수 표시를 붙이지 않는다. */}
-        <div className="field-cell">
+        <div className="field-cell urf-email">
           <FieldLabel htmlFor={emailId} label={t.user.fields.email} />
           <TextField
             id={emailId}
@@ -225,6 +240,7 @@ export const UserFormPane = ({
         </div>
 
         <SelectField
+          className="urf-status"
           label={t.user.fields.status}
           options={statusOptions}
           value={values.statusCode}
@@ -238,23 +254,29 @@ export const UserFormPane = ({
 
       <div className="form-actions">
         {/*
-         * 등록 폼에는 사용 중지 자리를 두지 않는다 — 아직 없는 자원이라
-         * 「언젠가 풀린다」가 아니라 애초에 해당하지 않는 액션이다.
+         * 계정 관리 묶음 — 비밀번호 초기화·사용 중지. 폼의 「취소·저장」과 같은 줄 양 끝에 두되
+         * 한 덩어리로 묶어 왼쪽에 모은다: 이 둘은 폼 값을 저장하지 않고 **바로 서버에 나가는
+         * 계정 작업**이라, 폼 저장과 한 무리로 읽히면 안 된다. 등록 폼에는 두지 않는다 — 아직
+         * 없는 사용자라 초기화할 비밀번호도, 중지할 계정도 없다.
+         *
+         * 비밀번호 초기화(설계 §5-1 「기본 정보 폼 · 항상」)는 사용 여부와 무관하게 누를 수 있어
+         * 비활성 사유가 없다. 두 버튼 모두 외곽선 버튼이다(사용자 지시 2026-09-18) — 디자인 시스템에
+         * 위험 동작 전용 버튼이 없다. 더 무거운 사용 중지(로그인 차단)는 확인 창이 되돌릴 수 없음을 밝힌다.
          */}
-        {mode === 'edit' &&
-          (deactivateDisabledReason === null ? (
-            <div className="field-cell form-actions-secondary">
-              <Button variant="outlined" onClick={onDeactivate}>
-                {messages.common.deactivate}
-              </Button>
-            </div>
-          ) : (
-            <DisabledAction
-              label={messages.common.deactivate}
-              reason={deactivateDisabledReason}
-              className="form-actions-secondary"
-            />
-          ))}
+        {mode === 'edit' && (
+          <div className="users-roles-account-actions form-actions-secondary">
+            <Button variant="outlined" onClick={onResetPassword}>
+              {t.actions.resetPassword}
+            </Button>
+            {/*
+             * 이미 미사용이면 비활성이다. 사유 문구(「…이미 미사용인 사용자에게…」)는 내지 않는다 —
+             * 규범 4(비활성 사유 상시 표시)의 예외, 사용자 지시 2026-09-18.
+             */}
+            <Button variant="outlined" disabled={isDeactivateDisabled} onClick={onDeactivate}>
+              {messages.common.deactivate}
+            </Button>
+          </div>
+        )}
 
         {/*
          * 등록에서 「취소」는 **폼을 닫는 것**이라 고친 것이 없어도 눌러야 한다.
@@ -265,21 +287,12 @@ export const UserFormPane = ({
         </Button>
 
         {/*
-         * 고친 것이 없으면 주 액션을 **비활성 + 사유**로 둔다(배치 규범 4) —
-         * 사유가 없으면 사용자는 버튼이 왜 안 눌리는지 알 방법이 없다.
-         * 저장 중에는 진행 표시가 그 자리를 대신하므로 사유를 내지 않는다.
+         * 규범 4(비활성 사유 상시 표시)의 예외 — 사용자 지시 2026-09-18: 이 화면의 「저장」·
+         * 「사용자 추가」 사유 문구를 내지 않는다. 고친 것이 없으면 비활성인 조건은 그대로다.
          */}
-        {isDirty || isSaving ? (
-          <Button disabled={isSaving} loading={isSaving} onClick={onSave}>
-            {saveLabel}
-          </Button>
-        ) : (
-          <DisabledAction
-            variant="filled"
-            label={saveLabel}
-            reason={mode === 'create' ? t.actionReasons.addNoInput : t.actionReasons.saveNoChanges}
-          />
-        )}
+        <Button disabled={!isDirty || isSaving} loading={isSaving} onClick={onSave}>
+          {saveLabel}
+        </Button>
       </div>
     </section>
   );

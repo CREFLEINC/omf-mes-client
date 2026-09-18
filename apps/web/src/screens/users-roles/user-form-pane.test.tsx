@@ -2,9 +2,6 @@ import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
-import { messages } from '@omf-mes/i18n';
-
-import { INITIAL_PASSWORD_MIN_LENGTH } from './initial-password';
 import { UserFormPane, type UserFormPaneProps } from './user-form-pane';
 import type { UserFormValues } from './types';
 
@@ -32,6 +29,7 @@ const renderPane = (overrides: Partial<UserFormPaneProps> = {}) => {
   const onSave = vi.fn<() => void>();
   const onCancel = vi.fn<() => void>();
   const onDeactivate = vi.fn<() => void>();
+  const onResetPassword = vi.fn<() => void>();
   const props: UserFormPaneProps = {
     mode: 'edit',
     values,
@@ -41,18 +39,19 @@ const renderPane = (overrides: Partial<UserFormPaneProps> = {}) => {
     departmentOptions,
     statusOptions,
     statusDisabledReason: null,
-    deactivateDisabledReason: null,
+    isDeactivateDisabled: false,
     isDirty: true,
     isSaving: false,
     onSave,
     onCancel,
     onDeactivate,
+    onResetPassword,
     ...overrides,
   };
 
   render(<UserFormPane {...props} />);
 
-  return { onChange, onSave, onCancel, onDeactivate, user: userEvent.setup() };
+  return { onChange, onSave, onCancel, onDeactivate, onResetPassword, user: userEvent.setup() };
 };
 
 const pane = (): HTMLElement => screen.getByRole('region', { name: '사용자 정보' });
@@ -110,16 +109,15 @@ describe('UserFormPane 초기 비밀번호', () => {
     expect(passwordBox()).toHaveAttribute('aria-required', 'true');
   });
 
-  it('규칙 안내가 칸에 이어져 있다', () => {
+  /** 사용자 지시(2026-09-18) — 규칙 도움말을 두지 않는다. 규칙은 어겼을 때 오류 문구가 알린다. */
+  it('규칙 도움말이 없다', () => {
     renderPane({ mode: 'create', values: { ...values, loginId: '' } });
 
-    expect(describedTextOf(passwordBox())).toBe(
-      messages.usersRoles.user.initialPasswordNotice(INITIAL_PASSWORD_MIN_LENGTH),
-    );
+    expect(describedTextOf(passwordBox())).toBe('');
+    expect(within(pane()).queryByText(/숫자와 알파벳을 함께 넣어/)).not.toBeInTheDocument();
   });
 
-  /** 디자인 시스템이 `error`가 있으면 `helperText` 자리를 갈아끼운다(`TextFieldProps`). */
-  it('오류가 서면 안내를 덮는다', () => {
+  it('규칙을 어기면 오류 문구가 칸에 이어진다 — 규칙을 알 수 있는 자리다', () => {
     const errorText = '초기 비밀번호는 숫자와 알파벳을 함께 넣어 8자 이상이어야 합니다.';
 
     renderPane({
@@ -129,11 +127,6 @@ describe('UserFormPane 초기 비밀번호', () => {
     });
 
     expect(describedTextOf(passwordBox())).toBe(errorText);
-    expect(
-      within(pane()).queryByText(
-        messages.usersRoles.user.initialPasswordNotice(INITIAL_PASSWORD_MIN_LENGTH),
-      ),
-    ).not.toBeInTheDocument();
   });
 
   it('타이핑하면 상위에 알린다', async () => {
@@ -157,10 +150,15 @@ describe('UserFormPane 로그인 ID', () => {
     expect(within(pane()).getByText('SYN-LOGIN-01')).toBeInTheDocument();
   });
 
-  it('수정에서는 값 아래에 잠금 사유가 보인다', () => {
+  /** 칸 아래가 아니라 라벨 옆 보조 라벨이다 — 값과의 연결(`aria-describedby`)은 유지한다. */
+  it('수정에서는 라벨 옆에 잠금 안내가 보이고 값에 이어져 있다', () => {
     renderPane({ mode: 'edit' });
 
-    expect(within(pane()).getByText(/로그인 ID는 등록할 때만 정할 수 있고/)).toBeInTheDocument();
+    const note = within(pane()).getByText('로그인 ID는 변경 불가합니다.');
+    const value = within(pane()).getByText('SYN-LOGIN-01');
+
+    expect(note).toHaveClass('readonly-label-note');
+    expect(value.getAttribute('aria-describedby')).toBe(note.id);
   });
 
   it('등록에서만 입력칸이다', async () => {
@@ -176,7 +174,7 @@ describe('UserFormPane 로그인 ID', () => {
   it('등록에는 잠금 사유가 없다 — 아직 정할 수 있는 값이다', () => {
     renderPane({ mode: 'create', values: { ...values, loginId: '' } });
 
-    expect(within(pane()).queryByText(/로그인 ID는 등록할 때만/)).not.toBeInTheDocument();
+    expect(within(pane()).queryByText(/로그인 ID는 변경 불가합니다/)).not.toBeInTheDocument();
   });
 });
 
@@ -184,7 +182,7 @@ describe('UserFormPane 상태', () => {
   it('상태 목록에서 값을 고르면 상위에 알린다', async () => {
     const { onChange, user } = renderPane();
 
-    await user.click(within(pane()).getByLabelText('상태'));
+    await user.click(within(pane()).getByLabelText('재직 상태'));
     await user.click(screen.getByRole('option', { name: '휴직' }));
 
     expect(onChange).toHaveBeenCalledWith({ statusCode: 'SYN-STATUS-B' });
@@ -193,13 +191,13 @@ describe('UserFormPane 상태', () => {
   it('등록에서 상태를 비우면 재직 기본값 안내를 보인다', () => {
     renderPane({ mode: 'create', values: { ...values, loginId: '', statusCode: '' } });
 
-    expect(within(pane()).getByLabelText('상태')).toHaveTextContent('기본값(재직)');
+    expect(within(pane()).getByLabelText('재직 상태')).toHaveTextContent('기본값(재직)');
   });
 
   it('상태 목록 조회 실패 때만 선택을 막고 사유를 보인다', () => {
     renderPane({ statusOptions: [], statusDisabledReason: '상태 목록을 불러오지 못했습니다.' });
 
-    expect(within(pane()).getByLabelText('상태')).toBeDisabled();
+    expect(within(pane()).getByLabelText('재직 상태')).toBeDisabled();
     expect(within(pane()).getByText('상태 목록을 불러오지 못했습니다.')).toBeInTheDocument();
   });
 });
@@ -211,7 +209,7 @@ describe('UserFormPane 입력', () => {
     await user.type(within(pane()).getByRole('textbox', { name: '이름' }), '가');
     expect(onChange).toHaveBeenCalledWith({ userName: '가' });
 
-    await user.type(within(pane()).getByRole('textbox', { name: '전자우편' }), 'a');
+    await user.type(within(pane()).getByRole('textbox', { name: '이메일' }), 'a');
     expect(onChange).toHaveBeenCalledWith({ email: 'a' });
   });
 
@@ -252,27 +250,22 @@ describe('UserFormPane 입력', () => {
 
 describe('UserFormPane 액션', () => {
   /** 사유가 없으면 사용자는 버튼이 왜 안 눌리는지 알 방법이 없다(배치 규범 4). */
-  it('고친 것이 없으면 저장이 비활성이고 사유가 보인다', () => {
+  /** 사용자 지시(2026-09-18)로 이 화면의 저장 사유 문구는 내지 않는다 — 비활성만으로 알린다. */
+  it('고친 것이 없으면 저장이 비활성이고 사유 문구는 내지 않는다', () => {
     renderPane({ isDirty: false });
 
     const save = within(pane()).getByRole('button', { name: '저장' });
 
     expect(save).toBeDisabled();
-
-    const describedBy = save.getAttribute('aria-describedby');
-
-    expect(describedBy).not.toBeNull();
-    expect(document.getElementById(describedBy as string)?.textContent).toBe(
-      '저장은 고친 내용이 있을 때 누를 수 있습니다.',
-    );
+    expect(within(pane()).queryByText(/저장은 변경된 내용이 있을 때/)).not.toBeInTheDocument();
   });
 
-  it('등록의 사유는 그 액션의 이름으로 시작한다', () => {
+  /** 사용자 지시(2026-09-18) — 비활성 조건은 그대로, 사유 문구는 내지 않는다. */
+  it('등록에서 입력이 없으면 사용자 추가가 비활성이고 사유 문구는 내지 않는다', () => {
     renderPane({ mode: 'create', isDirty: false, values: { ...values, loginId: '' } });
 
-    expect(
-      within(pane()).getByText('사용자 추가는 입력한 내용이 있을 때 누를 수 있습니다.'),
-    ).toBeInTheDocument();
+    expect(within(pane()).getByRole('button', { name: '사용자 추가' })).toBeDisabled();
+    expect(within(pane()).queryByText(/입력한 내용이 있을 때/)).not.toBeInTheDocument();
   });
 
   /** 등록에서 「취소」는 폼을 닫는 것이라 고친 것이 없어도 눌러야 한다. */
@@ -316,15 +309,48 @@ describe('UserFormPane 액션', () => {
     expect(onDeactivate).toHaveBeenCalledTimes(1);
   });
 
-  it('이미 미사용이면 사용 중지가 비활성이고 사유가 보인다', () => {
-    renderPane({
-      deactivateDisabledReason: '사용 중지는 이미 미사용인 사용자에게 다시 할 수 없습니다.',
-    });
+  /** 사용자 지시(2026-09-18) — 비활성은 그대로, 사유 문구는 내지 않는다. */
+  it('이미 미사용이면 사용 중지가 비활성이고 사유 문구는 내지 않는다', () => {
+    renderPane({ isDeactivateDisabled: true });
 
     expect(within(pane()).getByRole('button', { name: '사용 중지' })).toBeDisabled();
+    expect(within(pane()).queryByText(/이미 미사용인 사용자/)).not.toBeInTheDocument();
+  });
+
+  /** 설계 §5-1 — 기본 정보 폼 · 「항상」. 아직 없는 사용자에게는 초기화할 비밀번호가 없다. */
+  it('등록에는 비밀번호 초기화가 없다', () => {
+    renderPane({ mode: 'create', values: { ...values, loginId: '' } });
+
     expect(
-      within(pane()).getByText('사용 중지는 이미 미사용인 사용자에게 다시 할 수 없습니다.'),
-    ).toBeInTheDocument();
+      within(pane()).queryByRole('button', { name: '비밀번호 초기화' }),
+    ).not.toBeInTheDocument();
+  });
+
+  it('수정에는 비밀번호 초기화가 있고 누르면 상위에 알린다', async () => {
+    const { onResetPassword, user } = renderPane({ mode: 'edit' });
+
+    await user.click(within(pane()).getByRole('button', { name: '비밀번호 초기화' }));
+
+    expect(onResetPassword).toHaveBeenCalledTimes(1);
+  });
+
+  /** 폼 값을 저장하지 않고 바로 나가는 계정 작업이라 「취소·저장」과 한 무리로 읽히면 안 된다. */
+  it('비밀번호 초기화·사용 중지는 취소·저장과 다른 묶음이다', () => {
+    renderPane({ mode: 'edit' });
+
+    const reset = within(pane()).getByRole('button', { name: '비밀번호 초기화' });
+    const group = reset.closest('.users-roles-account-actions') as HTMLElement;
+
+    expect(group).not.toBeNull();
+    expect(within(group).getByRole('button', { name: '사용 중지' })).toBeInTheDocument();
+    expect(within(group).queryByRole('button', { name: '저장' })).not.toBeInTheDocument();
+    expect(within(group).queryByRole('button', { name: '취소' })).not.toBeInTheDocument();
+  });
+
+  it('미사용 사용자에게도 비밀번호 초기화는 누를 수 있다', () => {
+    renderPane({ isDeactivateDisabled: true });
+
+    expect(within(pane()).getByRole('button', { name: '비밀번호 초기화' })).toBeEnabled();
   });
 
   it('저장과 취소를 누르면 상위에 알린다', async () => {

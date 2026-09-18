@@ -31,14 +31,35 @@ describe('DeactivateDialog', () => {
   it('제목이 어느 자원을 중지하는지 밝힌다', () => {
     renderDialog();
 
-    expect(screen.getByRole('dialog', { name: '이 사용자를 사용 중지할까요?' })).toBeInTheDocument();
+    expect(screen.getByRole('dialog', { name: '사용을 중지할까요?' })).toBeInTheDocument();
+  });
+
+  it('닫기 아이콘은 기본으로 서고, 끄면 없어진다 — 사용자 쪽만 끈다(사용자 지시 2026-09-18)', () => {
+    const { unmount } = render(
+      <DeactivateDialog
+        open
+        title={t.deactivateRoleTitle}
+        description={t.deactivateRoleDescription}
+        onClose={vi.fn()}
+        onConfirm={vi.fn()}
+        isSaving={false}
+        banner={null}
+      />,
+    );
+
+    expect(screen.getByRole('button', { name: '닫기' })).toBeInTheDocument();
+    unmount();
+
+    renderDialog({ showCloseButton: false });
+
+    expect(screen.queryByRole('button', { name: '닫기' })).not.toBeInTheDocument();
   });
 
   /** 계약에 되살리는 오퍼레이션이 없고 수정 본문에도 사용 여부가 없다. */
   it('본문이 되돌릴 수 없다는 사실을 밝힌다', () => {
     renderDialog();
 
-    expect(screen.getByText(/되돌리는 경로가 없습니다/)).toBeInTheDocument();
+    expect(screen.getByText(/되돌릴 수 없습니다/)).toBeInTheDocument();
   });
 
   /**
@@ -48,7 +69,7 @@ describe('DeactivateDialog', () => {
   it('본문이 어느 자원을 중지하는지에 따라 달라진다', () => {
     renderDialog();
 
-    expect(screen.getByText(/이 사용자는 시스템을 쓸 수 없게 되고/)).toBeInTheDocument();
+    expect(screen.getByText(/이 사용자는 시스템을 사용할 수 없게 되며/)).toBeInTheDocument();
     expect(screen.queryByText(/이 역할로 열려 있던 권한이 사라집니다/)).not.toBeInTheDocument();
   });
 
@@ -60,7 +81,7 @@ describe('DeactivateDialog', () => {
 
     expect(screen.getByRole('dialog', { name: '이 역할을 사용 중지할까요?' })).toBeInTheDocument();
     expect(screen.getByText(/이 역할로 열려 있던 권한이 사라집니다/)).toBeInTheDocument();
-    expect(screen.queryByText(/이 사용자는 시스템을 쓸 수 없게 되고/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/이 사용자는 시스템을 사용할 수 없게 되며/)).not.toBeInTheDocument();
   });
 
   /**

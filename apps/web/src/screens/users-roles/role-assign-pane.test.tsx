@@ -6,9 +6,15 @@ import type { RoleChoice } from './role-assign-draft';
 import { RoleAssignPane, type RoleAssignPaneProps } from './role-assign-pane';
 
 const CHOICES: RoleChoice[] = [
-  { roleId: 5001, label: 'SYN-ROLE-01 · 합성 역할 A', isSelected: true, isLocked: false },
-  { roleId: 5002, label: 'SYN-ROLE-02 · 합성 역할 B', isSelected: false, isLocked: false },
-  { roleId: 5003, label: 'SYN-ROLE-03 · 합성 역할 C (미사용)', isSelected: true, isLocked: true },
+  { roleId: 5001, label: '합성 역할 A', code: 'SYN-ROLE-01', isSelected: true, isLocked: false },
+  { roleId: 5002, label: '합성 역할 B', code: 'SYN-ROLE-02', isSelected: false, isLocked: false },
+  {
+    roleId: 5003,
+    label: '합성 역할 C (미사용)',
+    code: 'SYN-ROLE-03',
+    isSelected: true,
+    isLocked: true,
+  },
 ];
 
 const renderPane = (overrides: Partial<RoleAssignPaneProps> = {}) => {
@@ -34,12 +40,28 @@ const renderPane = (overrides: Partial<RoleAssignPaneProps> = {}) => {
 const checkbox = (name: string): HTMLElement => screen.getByRole('checkbox', { name });
 
 describe('RoleAssignPane', () => {
+  it('구획 표제가 「역할 부여」다', () => {
+    renderPane();
+
+    expect(screen.getByRole('heading', { name: '역할 부여' })).toBeInTheDocument();
+  });
+
+  /** 이름이 먼저 읽히고, 코드는 지우지 않고 곁에 따로 둔다 — 코드 값 자체는 바꾸지 않는다. */
+  it('역할명을 앞세우고 역할 코드는 따로 작게 보인다', () => {
+    renderPane();
+
+    const code = screen.getByText('SYN-ROLE-01');
+
+    expect(code).toHaveClass('role-choice-code');
+    expect(screen.getByText('합성 역할 A')).toHaveClass('role-choice-name');
+  });
+
   it('역할마다 확인칸 하나가 서고 부여된 것이 체크돼 있다', () => {
     renderPane();
 
     expect(screen.getAllByRole('checkbox')).toHaveLength(3);
-    expect(checkbox('SYN-ROLE-01 · 합성 역할 A')).toBeChecked();
-    expect(checkbox('SYN-ROLE-02 · 합성 역할 B')).not.toBeChecked();
+    expect(checkbox('합성 역할 A SYN-ROLE-01')).toBeChecked();
+    expect(checkbox('합성 역할 B SYN-ROLE-02')).not.toBeChecked();
   });
 
   /**
@@ -56,7 +78,7 @@ describe('RoleAssignPane', () => {
   it('확인칸을 누르면 그 역할 번호가 올라간다', async () => {
     const { props, user } = renderPane();
 
-    await user.click(checkbox('SYN-ROLE-02 · 합성 역할 B'));
+    await user.click(checkbox('합성 역할 B SYN-ROLE-02'));
 
     expect(props.onToggle).toHaveBeenCalledWith(5002);
   });
@@ -68,14 +90,14 @@ describe('RoleAssignPane', () => {
   it('사용 중인 역할은 이미 부여돼 있어도 비활성이 아니다', () => {
     renderPane();
 
-    expect(checkbox('SYN-ROLE-01 · 합성 역할 A')).toBeEnabled();
-    expect(checkbox('SYN-ROLE-02 · 합성 역할 B')).toBeEnabled();
+    expect(checkbox('합성 역할 A SYN-ROLE-01')).toBeEnabled();
+    expect(checkbox('합성 역할 B SYN-ROLE-02')).toBeEnabled();
   });
 
   it('잠긴 확인칸은 미사용 역할 하나뿐이고 사유가 보이며 이어져 있다', () => {
     renderPane();
 
-    const locked = checkbox('SYN-ROLE-03 · 합성 역할 C (미사용)');
+    const locked = checkbox('합성 역할 C (미사용) SYN-ROLE-03');
 
     expect(locked).toBeDisabled();
     expect(screen.getAllByRole('checkbox').filter((box) => box.hasAttribute('disabled'))).toEqual([
@@ -115,13 +137,14 @@ describe('RoleAssignPane', () => {
     expect(screen.queryAllByRole('checkbox')).toHaveLength(0);
   });
 
-  it('고친 것이 없으면 저장이 비활성이고 사유가 보인다', () => {
+  /** 사용자 지시(2026-09-18)로 이 화면의 저장 사유 문구는 내지 않는다 — 비활성만으로 알린다. */
+  it('고친 것이 없으면 저장이 비활성이고 사유 문구는 내지 않는다', () => {
     renderPane();
 
     const save = screen.getByRole('button', { name: '저장' });
 
     expect(save).toBeDisabled();
-    expect(screen.getByText(/저장은 고친 내용이 있을 때/)).toBeInTheDocument();
+    expect(screen.queryByText(/저장은 변경된 내용이 있을 때/)).not.toBeInTheDocument();
   });
 
   it('고친 것이 있으면 저장과 취소를 누를 수 있다', async () => {

@@ -158,7 +158,7 @@ describe('RoleFormPane 액션', () => {
     renderPane();
 
     expect(screen.getByRole('button', { name: '저장' })).toBeDisabled();
-    expect(screen.getByText('저장은 고친 내용이 있을 때 누를 수 있습니다.')).toBeInTheDocument();
+    expect(screen.getByText('저장은 변경된 내용이 있을 때 누를 수 있습니다.')).toBeInTheDocument();
   });
 
   it('고친 것이 있으면 저장을 누를 수 있다', async () => {

@@ -37,20 +37,20 @@ export const usersRoles: Translated<typeof ko.usersRoles> = {
     goFirstPage: 'Về trang đầu',
     addUser: 'Thêm người dùng',
     addRole: 'Thêm vai trò',
+    resetPassword: 'Đặt lại mật khẩu',
   },
   /** 비활성 사유는 **그 컨트롤의 이름으로 시작한다**(배치 규범 4). 옮긴 말에서도 앞머리를 지킨다. */
   actionReasons: {
-    statusLookupLoading: 'Trong lúc tải danh sách trạng thái thì chưa chọn được trạng thái.',
+    statusLookupLoading:
+      'Trong lúc tải danh sách tình trạng làm việc thì chưa chọn được tình trạng làm việc.',
     statusLookupFailed:
-      'Không tải được danh sách trạng thái. Thông tin khác vẫn lưu được và trạng thái cũ được giữ nguyên.',
-    statusLookupEmpty: 'Chưa đăng ký trạng thái người dùng nào nên không chọn được trạng thái.',
+      'Không tải được danh sách tình trạng làm việc. Thông tin khác vẫn lưu được và tình trạng làm việc cũ được giữ nguyên.',
+    statusLookupEmpty:
+      'Chưa đăng ký tình trạng làm việc nào nên không chọn được tình trạng làm việc.',
     /** ⚠ 「언젠가 풀린다」가 아니라 **보낼 자리가 없다**는 뜻이다 — 그 사실 그대로 옮긴다. */
-    loginIdLocked:
-      'Tên đăng nhập chỉ đặt được lúc đăng ký, sau đó không đổi được. Cần đổi thì hãy hỏi người phụ trách.',
-    deactivateAlreadyDone: 'Ngừng sử dụng không làm lại được với người dùng đã ngừng dùng.',
+    loginIdLocked: 'Tên đăng nhập không thể thay đổi.',
     deactivateRoleAlreadyDone: 'Ngừng sử dụng không làm lại được với vai trò đã ngừng dùng.',
     saveNoChanges: 'Lưu chỉ bấm được khi có nội dung đã sửa.',
-    addNoInput: 'Thêm người dùng chỉ bấm được khi đã nhập nội dung.',
     addRoleNoInput: 'Thêm vai trò chỉ bấm được khi đã nhập nội dung.',
     dataScopeTargetRequired:
       'Xác nhận chỉ bấm được sau khi chọn ít nhất một trong đơn vị kinh doanh và nhà máy.',
@@ -60,13 +60,25 @@ export const usersRoles: Translated<typeof ko.usersRoles> = {
   },
   /** ⛔ 참조 건수·배정 건수를 내지 않는다 — 화면이 낼 수 있는 건수가 그 뜻이 아니다. */
   dialog: {
-    deactivateUserTitle: 'Ngừng sử dụng người dùng này chứ?',
+    deactivateUserTitle: 'Ngừng sử dụng chứ?',
     deactivateUserDescription:
-      'Ngừng sử dụng thì người dùng này không dùng được hệ thống nữa và dữ liệu đã tích lũy vẫn còn nguyên. Không có đường hoàn lại.',
+      'Ngừng sử dụng thì người dùng này không dùng được hệ thống nữa và không thể hoàn lại.',
     deactivateRoleTitle: 'Ngừng sử dụng vai trò này chứ?',
     /** ⚠ 사용자 문구를 그대로 쓰지 않는다 — 중지했을 때 일어나는 일이 서로 다르다. */
     deactivateRoleDescription:
       'Ngừng sử dụng thì không gán mới vai trò này được nữa và quyền đang mở bằng vai trò này sẽ mất. Dữ liệu đã tích lũy vẫn còn nguyên. Không có đường hoàn lại.',
+    /** ⚠ 임시 비밀번호는 **한 번만** 보인다 — 누르기 전과 받은 뒤 두 번 말한다. */
+    resetPasswordTitle: 'Đặt lại mật khẩu chứ?',
+    resetPasswordDescription: 'Khi đặt lại, mật khẩu tạm thời mới chỉ hiện 1 lần.',
+    resetPasswordConfirm: 'Đặt lại',
+    temporaryPasswordTitle: 'Mật khẩu tạm thời',
+    temporaryPasswordLead:
+      'Mật khẩu chỉ xem được lần này. Hãy chuyển cho người dùng trước khi đóng cửa sổ.',
+    temporaryPasswordLabel: 'Mật khẩu tạm thời',
+    temporaryPasswordCopy: 'Sao chép mật khẩu tạm thời',
+    temporaryPasswordCopied: 'Đã sao chép mật khẩu tạm thời.',
+    temporaryPasswordCopyFailed:
+      'Không sao chép được. Hãy kiểm tra quyền bảng nhớ tạm của trình duyệt.',
   },
   optionsTruncated:
     'Danh sách lựa chọn chỉ hiện một phần. Không thấy giá trị cần tìm thì hãy báo người phụ trách.',
@@ -82,14 +94,15 @@ export const usersRoles: Translated<typeof ko.usersRoles> = {
     userSearchPlaceholder: 'Tên đăng nhập hoặc tên',
     department: 'Phòng ban',
     departmentAll: 'Tất cả phòng ban',
-    status: 'Trạng thái',
-    statusAll: 'Tất cả trạng thái',
+    /** ⚠ 인사 상태다 — 사용 여부(ngừng dùng)와 다른 축이라 가려 부른다. */
+    status: 'Tình trạng làm việc',
+    statusAll: 'Tất cả tình trạng làm việc',
     chipKeyword: (value: string): string => `Từ khóa: ${value}`,
     chipRemoveKeyword: 'Bỏ điều kiện từ khóa',
     chipDepartment: (label: string): string => `Phòng ban: ${label}`,
     chipRemoveDepartment: 'Bỏ điều kiện phòng ban',
-    chipStatus: (label: string): string => `Trạng thái: ${label}`,
-    chipRemoveStatus: 'Bỏ điều kiện trạng thái',
+    chipStatus: (label: string): string => `Tình trạng làm việc: ${label}`,
+    chipRemoveStatus: 'Bỏ điều kiện tình trạng làm việc',
     chipRemoveIncludeInactive: 'Bỏ điều kiện gồm cả mục ngừng dùng',
     roleSearchLabel: 'Tìm vai trò',
     roleSearchPlaceholder: 'Mã vai trò hoặc tên vai trò',
@@ -121,17 +134,10 @@ export const usersRoles: Translated<typeof ko.usersRoles> = {
       userName: 'Tên',
       department: 'Phòng ban',
       email: 'Thư điện tử',
-      status: 'Trạng thái',
+      status: 'Tình trạng làm việc',
       initialPassword: 'Mật khẩu ban đầu',
     },
     statusDefault: 'Mặc định (đang làm việc)',
-    /**
-     * ⚠ 조합 규칙을 이름으로 옮긴다 — ko 쪽 `initialPasswordNotice` 머리 주석 참고: 이
-     * 화면에는 그 규칙이 실제로 있어(`password-change.ts`와 반대) 감추지 않는다. 특수문자가
-     * 금지로 읽히지 않게, 「함께 넣어」가 최소 조건이지 상한이 아니라는 것도 그대로 옮긴다.
-     */
-    initialPasswordNotice: (minLength: number): string =>
-      `Hãy đặt tối thiểu ${String(minLength)} ký tự, gồm cả chữ cái và chữ số. Sau khi đăng ký, người dùng có thể tự đổi ở «Đổi mật khẩu».`,
     /** 부서를 고르지 않은 상태. 계약이 널을 허용하므로 **비우는 것이 정상 값이다.** */
     departmentNone: 'Không chỉ định',
     empty: {
@@ -139,7 +145,7 @@ export const usersRoles: Translated<typeof ko.usersRoles> = {
       noneDescription: 'Hãy đăng ký người dùng đầu tiên bằng «Thêm người dùng».',
       noMatchTitle: 'Không có người dùng khớp điều kiện',
       noMatchDescription: 'Hãy bớt điều kiện hoặc đặt lại rồi tra cứu lại.',
-      notSelected: 'Chọn người dùng ở bên trái thì thông tin của người đó hiện ở đây',
+      notSelected: 'Hãy chọn người dùng trong danh sách bên trái',
     },
     validation: {
       required: 'Đây là mục bắt buộc.',
@@ -166,7 +172,7 @@ export const usersRoles: Translated<typeof ko.usersRoles> = {
       noneDescription: 'Hãy đăng ký vai trò đầu tiên bằng «Thêm vai trò».',
       noMatchTitle: 'Không có vai trò khớp điều kiện',
       noMatchDescription: 'Hãy bớt điều kiện hoặc đặt lại rồi tra cứu lại.',
-      notSelected: 'Chọn vai trò ở bên trái thì thông tin của vai trò đó hiện ở đây',
+      notSelected: 'Hãy chọn vai trò trong danh sách bên trái.',
     },
     validation: {
       required: 'Đây là mục bắt buộc.',
@@ -246,14 +252,15 @@ export const usersRoles: Translated<typeof ko.usersRoles> = {
       add: 'Thêm phạm vi',
       editRow: (label: string): string => `Sửa phạm vi ${label}`,
       removeRow: (label: string): string => `Xóa phạm vi ${label}`,
+      editTooltip: 'Sửa',
+      removeTooltip: 'Xóa',
       confirm: 'Xác nhận',
     },
     dialog: {
       addTitle: 'Thêm phạm vi truy cập',
       editTitle: 'Sửa phạm vi truy cập',
       /** ⚠ 확인이 저장이라고 오해하면 창을 닫고 화면을 떠난다. */
-      notSavedNotice:
-        'Bấm xác nhận vẫn chưa lưu. Chỉ phản ánh vào bảng, phải bấm «Lưu» thì mới gửi lên máy chủ.',
+      notSavedNotice: 'Xác nhận thì phản ánh vào bảng. Để áp dụng thay đổi, hãy bấm «Lưu».',
     },
     empty: {
       none: 'Chưa chỉ định phạm vi truy cập nào',

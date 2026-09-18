@@ -60,14 +60,22 @@ export const DataScopeFormDialog = ({
       onClose={onClose}
       size="md"
       title={isNew ? t.scope.dialog.addTitle : t.scope.dialog.editTitle}
+      /* 오른쪽 위 X 를 두지 않는다(사용자 지시 2026-09-18) — 닫기는 「취소」와 Esc 로 한다. */
+      showCloseButton={false}
       footer={
         <>
           <Button variant="outlined" onClick={onClose}>
             {messages.common.cancel}
           </Button>
 
-          {blockReason === null ? (
+          {/*
+           * 「사업부·공장 중 하나 이상」 사유는 내지 않는다 — 규범 4(비활성 사유 상시 표시)의 예외,
+           * 사용자 지시 2026-09-18. 비활성 조건은 그대로다. 겹침 사유는 무엇이 겹치는지 알려야
+           * 고칠 수 있어 남긴다.
+           */}
+          {blockReason === null || blockReason === 'targetRequired' ? (
             <Button
+              disabled={blockReason !== null}
               onClick={() => {
                 onConfirm(values);
               }}

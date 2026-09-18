@@ -205,7 +205,7 @@ describe('PermissionGridPane 저장', () => {
     /* ⛔ 사유 문구만 재면 **저장이 눌리게 되는 회귀를 잡지 못한다.** 잠긴 것 자체를 못 박는다. */
     expect(within(pane()).getByRole('button', { name: '저장' })).toBeDisabled();
     expect(
-      within(pane()).getByText('저장은 고친 내용이 있을 때 누를 수 있습니다.'),
+      within(pane()).getByText('저장은 변경된 내용이 있을 때 누를 수 있습니다.'),
     ).toBeInTheDocument();
   });
 
