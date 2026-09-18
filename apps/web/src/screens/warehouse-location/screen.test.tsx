@@ -2,6 +2,7 @@ import { onlineManager } from '@tanstack/react-query';
 import { messages } from '@omf-mes/i18n';
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { useLocation, useNavigationType } from 'react-router';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import {
@@ -637,8 +638,9 @@ describe('WarehouseLocationScreen — Location 계층 조회', () => {
     expect(within(panel).getAllByRole('button', { name: '하위 접기' })).toHaveLength(2);
   });
 
-  it('관리수준이 WAREHOUSE이면 Location 추가를 막고 사유를 연결한다', async () => {
-    const { user } = renderScreen(
+  /* 관리 수준 「창고」는 Location을 두지 않는다 — 탭 자체를 잠근다(사용자 결정 2026-09-18 · omf-all-around#17). */
+  it('저장된 관리 수준이 WAREHOUSE이면 Location 탭이 잠긴다', async () => {
+    renderScreen(
       [
         warehouseListRoute(),
         warehouseDetailRoute(warehouseFixtures[1]!),
@@ -648,16 +650,56 @@ describe('WarehouseLocationScreen — Location 계층 조회', () => {
       '?wh=1002',
     );
 
-    const panel = await openLocationTab(user);
-    const addRoot = within(panel).getByRole('button', { name: '최상위 Location 추가' });
+    await screen.findByLabelText('창고명');
+    expect(screen.getByRole('tab', { name: 'Location' })).toHaveAttribute('aria-disabled', 'true');
+    expect(screen.getByText('Location을 지정하지 않습니다.')).toBeInTheDocument();
+  });
 
-    const reason = '이 창고는 관리 수준이 「창고」라 Location을 따로 관리하지 않습니다.';
-    expect(addRoot).toBeDisabled();
-    expect(addRoot).toHaveAccessibleDescription(reason);
-    // 하위 추가도 같은 이유로 막힌다 — 「1개 선택」을 안내하지 않고 같은 사유를 가리킨다(omf-all-around#17).
-    const addChild = within(panel).getByRole('button', { name: '하위 Location 추가' });
-    expect(addChild).toBeDisabled();
-    expect(addChild).toHaveAccessibleDescription(reason);
+  it('잠긴 창고를 tab=location 주소로 열면 창고 정보 탭을 보이고 주소를 바꾼다(replace)', async () => {
+    const { fetch } = createRecordingFetch([
+      warehouseListRoute(),
+      warehouseDetailRoute(warehouseFixtures[1]!),
+      locationListRoute(),
+      ...lookupRoutes(),
+    ]);
+    let search = '';
+    let historyAction = '';
+    const Probe = () => {
+      const location = useLocation();
+      search = location.search;
+      historyAction = useNavigationType();
+      return null;
+    };
+    renderWithProviders(
+      <>
+        <WarehouseLocationScreen />
+        <Probe />
+      </>,
+      { fetch, route: `${ROUTE}?wh=1002&tab=location` },
+    );
+
+    await screen.findByLabelText('창고명');
+    expect(screen.getByRole('tab', { name: '창고 정보' })).toHaveAttribute('aria-selected', 'true');
+    await waitFor(() => expect(new URLSearchParams(search).get('tab')).toBeNull());
+    expect(new URLSearchParams(search).get('wh')).toBe('1002');
+    expect(historyAction).toBe('REPLACE');
+  });
+
+  it('관리 수준이 WAREHOUSE가 아니면 Location 탭을 열 수 있고 안내가 없다', async () => {
+    const { user } = renderScreen(
+      [
+        warehouseListRoute(),
+        warehouseDetailRoute(warehouseFixtures[0]!),
+        locationListRoute(),
+        ...lookupRoutes(),
+      ],
+      '?wh=1001',
+    );
+
+    await screen.findByLabelText('창고명');
+    expect(screen.queryByText('Location을 지정하지 않습니다.')).not.toBeInTheDocument();
+    await user.click(screen.getByRole('tab', { name: 'Location' }));
+    expect(screen.getByRole('tab', { name: 'Location' })).toHaveAttribute('aria-selected', 'true');
   });
 
   it('관리수준의 최하위에 도달한 Location에는 하위 추가를 막는다', async () => {

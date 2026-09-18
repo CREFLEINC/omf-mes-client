@@ -218,28 +218,11 @@ describe('LocationPane', () => {
     expect(screen.getByText('최상위 Location을 추가해 주세요.')).toBeInTheDocument();
   });
 
-  it('등록할 수 없는 창고의 빈 상태는 추가를 권하지 않고 사유를 보인다', () => {
-    const reason = '이 창고는 관리 수준이 「창고」라 Location을 따로 관리하지 않습니다.';
+  it('최상위 추가가 막혀 있으면 빈 상태가 추가를 권하지 않고 사유를 보인다', () => {
+    const reason = 'Location 계층을 불러온 뒤 추가할 수 있습니다.';
     renderPane({ rows: [], canAddRoot: false, addRootDisabledReason: reason });
 
     expect(screen.queryByText('최상위 Location을 추가해 주세요.')).not.toBeInTheDocument();
     expect(screen.getAllByText(reason).length).toBeGreaterThan(0);
-  });
-
-  it('두 등록 단추가 같은 이유로 막히면 사유를 한 번만 보이고 둘 다 그것을 가리킨다', () => {
-    const reason = '이 창고는 관리 수준이 「창고」라 Location을 따로 관리하지 않습니다.';
-    renderPane({
-      canAddRoot: false,
-      addRootDisabledReason: reason,
-      addChildDisabledReason: reason,
-    });
-
-    expect(screen.getAllByText(reason)).toHaveLength(1);
-    expect(
-      screen.getByRole('button', { name: '최상위 Location 추가' }),
-    ).toHaveAccessibleDescription(reason);
-    expect(screen.getByRole('button', { name: '하위 Location 추가' })).toHaveAccessibleDescription(
-      reason,
-    );
   });
 });

@@ -194,6 +194,15 @@ describe('WarehouseFormPane', () => {
     ).not.toBeNull();
   });
 
+  it('관리 수준이 창고일 때만 라벨 옆에 Location 안내가 보인다(폼의 현재 값 기준)', () => {
+    const hint = 'Location을 지정하지 않습니다.';
+    renderPane({ values: { ...warehouseFormInitialValues, managementLevelCode: 'WAREHOUSE' } });
+    expect(screen.getByLabelText('관리 수준')).toHaveAccessibleDescription(hint);
+
+    renderPane({ values: { ...warehouseFormInitialValues, managementLevelCode: 'CELL' } });
+    expect(screen.getAllByText(hint)).toHaveLength(1);
+  });
+
   it('거래처가 비어 있으면 선택칸에 안내 문구가 보인다', () => {
     renderPane({ values: { ...warehouseFormInitialValues, partnerId: '' } });
 

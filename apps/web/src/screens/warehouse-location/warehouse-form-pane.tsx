@@ -221,6 +221,12 @@ export const WarehouseFormPane = ({
           value={values.managementLevelCode}
           onChange={(value) => onChange({ managementLevelCode: value })}
           error={fieldErrors.managementLevelCode}
+          /* 폼의 현재 값 기준 — 「창고」를 고르는 순간 Location을 두지 않는다는 것을 알린다(omf-all-around#17). */
+          labelHint={
+            values.managementLevelCode === 'WAREHOUSE'
+              ? t.actionReasons.managementLevelWarehouseNoLocation
+              : undefined
+          }
           trailing={
             <div className="warehouse-location-inline-field">
               <span id={defectLabelId}>{t.fields.isDefect}</span>

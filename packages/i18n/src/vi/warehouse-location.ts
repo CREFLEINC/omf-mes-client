@@ -22,12 +22,11 @@ export const warehouseLocation: Translated<typeof ko.warehouseLocation> = {
   },
   actionReasons: {
     addChildNeedsSingleSelection: 'Để thêm Location cấp dưới, hãy chọn 1 Location cấp trên.',
-    locationsDisabledByManagementLevel:
-      'Kho này có mức quản lý «Kho» nên không quản lý Location riêng.',
     locationDepthLimitReached: 'Theo mức quản lý, không thể thêm dưới Location đã chọn nữa.',
     locationHierarchyUnavailable: 'Tải xong phân cấp Location rồi mới thêm được.',
     generateLabelNeedsSelection: 'Hãy chọn ít nhất một Location.',
     changeHistoryUnavailable: 'Hiện chưa cung cấp lịch sử thay đổi.',
+    managementLevelWarehouseNoLocation: 'Không chỉ định Location.',
     plantFixedAfterCreate: 'Không thể đổi nhà máy sau khi đăng ký.',
     warehouseFixedInLocation: 'Cố định theo kho đã chọn ở bên trái.',
   },

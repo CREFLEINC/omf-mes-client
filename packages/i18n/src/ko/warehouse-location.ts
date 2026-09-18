@@ -15,13 +15,12 @@ export const warehouseLocation = {
   },
   actionReasons: {
     addChildNeedsSingleSelection: '하위 Location을 추가하려면 상위 Location을 1개 선택해 주세요.',
-    locationsDisabledByManagementLevel:
-      '이 창고는 관리 수준이 「창고」라 Location을 따로 관리하지 않습니다.',
     locationDepthLimitReached: '선택한 Location 아래에는 관리 수준상 더 추가할 수 없습니다.',
     locationHierarchyUnavailable: 'Location 계층을 불러온 뒤 추가할 수 있습니다.',
     generateLabelNeedsSelection: 'Location을 하나 이상 선택해 주세요.',
     /* 개발 진행 상황이 아니라 지금 되는지만 말한다(omf-all-around#17). */
     changeHistoryUnavailable: '변경 이력은 현재 제공되지 않습니다.',
+    managementLevelWarehouseNoLocation: 'Location을 지정하지 않습니다.',
     plantFixedAfterCreate: '공장은 등록 후 변경할 수 없습니다.',
     warehouseFixedInLocation: '좌측에서 선택한 창고로 고정됩니다.',
   },

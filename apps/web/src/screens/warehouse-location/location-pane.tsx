@@ -71,8 +71,6 @@ export const LocationPane = ({
   const addRootNoteId = useId();
   const addChildNoteId = useId();
   const labelNoteId = useId();
-  /** 두 등록 단추가 같은 이유로 막혔으면(관리 수준이 창고) 사유 칩을 하나만 두고 둘 다 그것을 가리킨다. */
-  const childSharesRootReason = !canAddRoot && addChildDisabledReason === addRootDisabledReason;
 
   /**
    * DS에 Tree 컴포넌트가 없어 Table + 들여쓰기 + 접기 버튼의 조합으로 계층을 만든다.
@@ -181,7 +179,7 @@ export const LocationPane = ({
       {actionBanner}
       {/*
        * 역할별로 묶는다(omf-all-around#17) — 검색(왼쪽) · 등록(오른쪽 끝) · 선택한 Location 작업(구분선 아래).
-       * 비활성 사유는 해당 단추 묶음 바로 아래 도움말로 붙인다. 두 등록 단추의 사유가 같으면 한 번만 보인다.
+       * 비활성 사유는 해당 단추 묶음 바로 아래 도움말로 붙인다.
        */}
       <div className="filter-bar warehouse-location-location-toolbar">
         <SearchInput
@@ -205,9 +203,7 @@ export const LocationPane = ({
             <Button
               variant="outlined"
               disabled={!canAddChild}
-              aria-describedby={
-                canAddChild ? undefined : childSharesRootReason ? addRootNoteId : addChildNoteId
-              }
+              aria-describedby={canAddChild ? undefined : addChildNoteId}
               onClick={onAddChild}
             >
               {t.actions.addChildLocation}
@@ -218,7 +214,7 @@ export const LocationPane = ({
               {addRootDisabledReason}
             </span>
           )}
-          {!canAddChild && !childSharesRootReason && (
+          {!canAddChild && (
             <span id={addChildNoteId} className="field-note warehouse-location-inline-note">
               {addChildDisabledReason}
             </span>

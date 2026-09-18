@@ -11,7 +11,7 @@ import {
 import type { ApiError, components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useMutation } from '@tanstack/react-query';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router';
 
 import { useApiClient } from '../../patterns/api-context';
@@ -186,7 +186,7 @@ export const WarehouseLocationScreen = () => {
   const toast = useToast();
   const { client, baseUrl, etags } = useApiClient();
 
-  const activeTab = searchParams.get('tab') === 'location' ? 'location' : 'warehouse';
+  const requestedTab = searchParams.get('tab') === 'location' ? 'location' : 'warehouse';
 
   const filters = useMemo<WarehouseFilters>(
     () => ({
@@ -493,6 +493,22 @@ export const WarehouseLocationScreen = () => {
   });
 
   const selectedWarehouse = detail.data?.warehouse ?? null;
+
+  /*
+   * 저장된 관리 수준이 「창고」면 Location 탭을 잠근다(사용자 결정 2026-09-18 · omf-all-around#17).
+   * 이 수준은 Location을 두지 않으므로(LOCATION_MAX_DEPTH = -1) 탭 안의 추가가 늘 막히고 목록이 늘 비었다.
+   * 폼에서 값을 바꾸기만 해서는 풀리지 않는다 — 저장 후 다시 받은 상세가 기준이다.
+   */
+  const locationTabLocked = selectedWarehouse?.managementLevelCode === 'WAREHOUSE';
+  const activeTab = locationTabLocked ? 'warehouse' : requestedTab;
+
+  /* 잠긴 창고를 tab=location 주소로 열면 주소도 창고 정보 탭으로 맞춘다 — 기록을 쌓지 않게 replace. */
+  useEffect(() => {
+    if (!locationTabLocked || searchParams.get('tab') !== 'location') return;
+    const next = new URLSearchParams(searchParams);
+    next.delete('tab');
+    setSearchParams(next, { replace: true });
+  }, [locationTabLocked, searchParams, setSearchParams]);
 
   /** 서버가 돌려준 현재 계층에서 하위를 가진 노드를 기본으로 펼친다. */
   const expandableIds = useMemo(() => {
@@ -821,16 +837,10 @@ export const WarehouseLocationScreen = () => {
     selectedLocationRow !== undefined &&
     selectedLocationRow.depth < maxLocationDepth &&
     locationHierarchy.data !== undefined;
-  /*
-   * 표시 문구만 고른다 — 활성 조건(canAddChildLocation)은 그대로다. 관리 수준이 창고면 무엇을
-   * 골라도 추가할 수 없으므로 「1개 선택」을 안내하지 않고 최상위와 같은 이유를 보인다(omf-all-around#17).
-   */
   const addChildDisabledReason =
-    maxLocationDepth < 0
-      ? t.actionReasons.locationsDisabledByManagementLevel
-      : selectedLocationIds.length !== 1
-        ? t.actionReasons.addChildNeedsSingleSelection
-        : t.actionReasons.locationDepthLimitReached;
+    selectedLocationIds.length !== 1
+      ? t.actionReasons.addChildNeedsSingleSelection
+      : t.actionReasons.locationDepthLimitReached;
 
   const parentOptions = allLocationRows
     .filter(
@@ -972,6 +982,7 @@ export const WarehouseLocationScreen = () => {
             {
               value: 'location',
               label: t.tabs.location,
+              disabled: locationTabLocked,
               content: (
                 <LocationPane
                   rows={locationRows}
@@ -994,11 +1005,7 @@ export const WarehouseLocationScreen = () => {
                     setSelectedLocationIds([]);
                   }}
                   canAddRoot={canAddRootLocation}
-                  addRootDisabledReason={
-                    maxLocationDepth < 0
-                      ? t.actionReasons.locationsDisabledByManagementLevel
-                      : t.actionReasons.locationHierarchyUnavailable
-                  }
+                  addRootDisabledReason={t.actionReasons.locationHierarchyUnavailable}
                   onAddRoot={() => openCreateLocation(null)}
                   canAddChild={canAddChildLocation}
                   addChildDisabledReason={addChildDisabledReason}
