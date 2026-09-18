@@ -205,6 +205,19 @@ export const IqcInspectionScreen = () => {
     setDraft(draftOf(roundId === null ? null : { acceptedQty, rejectedQty, heldQty }));
   }, [selectedId, roundId, acceptedQty, rejectedQty, heldQty, storedJudgment]);
 
+  /*
+   * 마지막 저장 상태와 견줘 바뀐 것이 있는가 — 없으면 [임시 저장]을 끈다. 견주는 것은 세 수량 칸과
+   * 종합 판정이다. 회차가 없거나 재검사 회차를 쓰는 중이면 기준은 빈 초기 상태다.
+   * ⛔ 저장 요청 본문·계산·검증·확정 조건과는 무관하다 — 단추를 켜고 끄는 데만 쓴다.
+   */
+  const savedDraft = isReinspectingNow ? EMPTY_QUANTITY_DRAFT : draftOf(round);
+  const savedJudgment = isReinspectingNow ? '' : storedJudgment;
+  const hasChanges =
+    draft.accepted !== savedDraft.accepted ||
+    draft.rejected !== savedDraft.rejected ||
+    draft.held !== savedDraft.held ||
+    judgment !== savedJudgment;
+
   const rows = queue.data?.rows ?? [];
   const pageView = toPageView(queue.data?.page ?? { page, size: 0, total: 0 }, rows.length);
 
@@ -334,7 +347,11 @@ export const IqcInspectionScreen = () => {
    */
   const detailContent =
     selectedId === null ? (
-      <p className="field-note">{t.detail.nothingSelected}</p>
+      /* 고르기 전 — 고른 뒤 첫 구획과 같은 제목 아래 한 줄 안내(단말기-공정 매핑의 빈 상태와 같은 모양). */
+      <section className="iqc-inspection-section">
+        <h3>{t.detail.sectionTitle}</h3>
+        <p className="field-note">{t.detail.nothingSelected}</p>
+      </section>
     ) : detail.isError ? (
       <QueueLoadErrorBanner
         error={toApiError(detail.error)}
@@ -356,6 +373,7 @@ export const IqcInspectionScreen = () => {
             round={isReinspectingNow ? null : round}
             inspectedQty={inspectedQty}
             uomCode={uomCode}
+            hasChanges={hasChanges}
             draft={draft}
             onChange={changeDraft}
             onSave={() => {

@@ -60,6 +60,8 @@ export interface ResultFormPaneProps {
   /** 수량 옆에 붙일 단위 코드(표시 전용). 모르면 `null` — 숫자만 둔다 */
   uomCode: string | null;
   draft: QuantityDraft;
+  /** 마지막 저장 상태와 달라진 것이 있는가(세 수량 칸·종합 판정). 없으면 [임시 저장]을 끈다 */
+  hasChanges: boolean;
   onChange: (draft: QuantityDraft) => void;
   onSave: () => void;
   isSaving: boolean;
@@ -108,6 +110,7 @@ export const ResultFormPane = ({
   inspectedQty,
   uomCode,
   draft,
+  hasChanges,
   onChange,
   onSave,
   isSaving,
@@ -378,11 +381,12 @@ export const ResultFormPane = ({
                         {t.reinspectCancel}
                       </Button>
                     )}
+                    {/* 바뀐 것이 없으면 끈다 — 입력하면 켜지고 저장 뒤 다시 꺼진다. */}
                     <Button
                       type="submit"
                       variant="outlined"
                       size="md"
-                      disabled={isSaving || isConfirming}
+                      disabled={!hasChanges || isSaving || isConfirming}
                     >
                       {isSaving ? t.saving : t.save}
                     </Button>

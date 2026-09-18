@@ -29,6 +29,7 @@ const renderPane = (
       inspectedQty={inspectedQty}
       uomCode={null}
       draft={draft}
+      hasChanges
       onChange={onChange}
       onSave={onSave}
       isSaving={false}
@@ -415,5 +416,13 @@ describe('ResultFormPane — 미결과 결과 문면', () => {
     expect(screen.getByText(`${t.remaining} 100 EA`)).toBeInTheDocument();
     expect(screen.getAllByText('EA')).toHaveLength(3);
     expect(screen.getByLabelText(t.fields.accepted)).toHaveValue('400');
+  });
+
+  it('바뀐 것이 없으면 [임시 저장]을 끈다 — 확정 조건과는 따로다', () => {
+    renderPane({ accepted: '480', rejected: '15', held: '5' }, undefined, 500, {
+      hasChanges: false,
+    });
+
+    expect(saveButton()).toBeDisabled();
   });
 });

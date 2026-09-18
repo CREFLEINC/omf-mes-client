@@ -81,7 +81,7 @@ export const iqcInspection = {
     /** 상세 카드 첫 구획의 제목 — 참고 정보(읽기 전용)임을 입력 구획과 가른다. */
     sectionTitle: '검사 기본 정보',
     /** 아무것도 고르지 않았다. 무엇을 해야 하는지 말한다. */
-    nothingSelected: '왼쪽 목록에서 검사할 의뢰를 선택해 주세요.',
+    nothingSelected: '왼쪽 목록에서 검사할 의뢰를 선택하세요.',
     loading: '의뢰를 불러오는 중입니다.',
     fields: {
       inspectionRequestNo: '의뢰번호',

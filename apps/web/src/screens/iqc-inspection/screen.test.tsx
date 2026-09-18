@@ -160,6 +160,11 @@ const queueCalls = (sent: URL[]) =>
 const lastQuery = (sent: URL[]) => queueCalls(sent).at(-1)?.searchParams;
 const openButton = (no: string) => screen.getByRole('button', { name: t.queue.openRow(no) });
 
+/** [임시 저장]은 마지막 저장 상태와 달라진 것이 있을 때만 켜진다 — 누르기 전에 한 칸을 바꾼다. */
+const editQuantity = async (): Promise<void> => {
+  await userEvent.type(screen.getByLabelText(t.result.fields.held), '1');
+};
+
 describe('IqcInspectionScreen', () => {
   it('검사 대기 큐를 그린다', async () => {
     renderScreen();
@@ -356,6 +361,7 @@ describe('IqcInspectionScreen', () => {
     const { writes } = renderScreen('/?ir=1002', () => jsonResponse(queueResponse()), []);
 
     await screen.findByText(t.result.confirmBlockedByUnsaved);
+    await editQuantity();
     await userEvent.click(screen.getByRole('button', { name: t.result.save }));
 
     await waitFor(() => expect(writes).toHaveLength(1));
@@ -370,6 +376,7 @@ describe('IqcInspectionScreen', () => {
     const { writes } = renderScreen('/?ir=1001');
 
     await screen.findByText(t.result.round(1));
+    await editQuantity();
     await userEvent.click(screen.getByRole('button', { name: t.result.save }));
 
     await waitFor(() => expect(writes).toHaveLength(1));
@@ -385,6 +392,7 @@ describe('IqcInspectionScreen', () => {
 
     await screen.findByText(t.result.round(1));
     const before = queueCalls(sent).length;
+    await editQuantity();
     await userEvent.click(screen.getByRole('button', { name: t.result.save }));
 
     await waitFor(() => expect(writes).toHaveLength(1));
@@ -399,6 +407,7 @@ describe('IqcInspectionScreen', () => {
     renderScreen('/?ir=1001');
 
     await screen.findByText(t.result.round(1));
+    await editQuantity();
     await userEvent.click(screen.getByRole('button', { name: t.result.save }));
     await screen.findByText(t.result.saved);
 
@@ -445,7 +454,8 @@ describe('IqcInspectionScreen', () => {
     expect(
       await screen.findByText(messages.iqcInspection.measurements.calibrationWarningTitle),
     ).toBeInTheDocument();
-    /* 저장 단추가 그대로 선다 — 알리기만 하고 차단하지 않는다. */
+    /* 입력하면 저장 단추가 켜진다 — 경고는 알리기만 하고 차단하지 않는다. */
+    await editQuantity();
     expect(screen.getByRole('button', { name: t.result.save })).toBeEnabled();
   });
 
@@ -549,6 +559,7 @@ describe('IqcInspectionScreen', () => {
     const { writes } = renderScreen('/?ir=1002', () => jsonResponse(queueResponse()), []);
 
     await screen.findByText(t.result.confirmBlockedByUnsaved);
+    await editQuantity();
     await userEvent.click(screen.getByRole('button', { name: t.result.save }));
     await waitFor(() => expect(writes).toHaveLength(1));
 
@@ -600,6 +611,7 @@ describe('IqcInspectionScreen — 재검사 회차', () => {
 
     await screen.findByText(t.result.round(1));
     await userEvent.click(screen.getByRole('button', { name: t.result.reinspect }));
+    await editQuantity();
     await userEvent.click(screen.getByRole('button', { name: t.result.save }));
 
     await waitFor(() => expect(writes).toHaveLength(1));
@@ -616,6 +628,7 @@ describe('IqcInspectionScreen — 재검사 회차', () => {
     const { writes } = renderScreen('/?ir=1002', () => jsonResponse(queueResponse()), []);
 
     await screen.findByText(t.result.confirmBlockedByUnsaved);
+    await editQuantity();
     await userEvent.click(screen.getByRole('button', { name: t.result.save }));
     await waitFor(() => expect(writes).toHaveLength(1));
 
@@ -736,11 +749,13 @@ describe('IqcInspectionScreen — 재검사 저장 뒤', () => {
 
     await screen.findByText(t.result.round(1));
     await userEvent.click(screen.getByRole('button', { name: t.result.reinspect }));
+    await editQuantity();
     await userEvent.click(screen.getByRole('button', { name: t.result.save }));
 
     /* 저장이 끝나면 화면은 새로 생긴 2회차를 그린다 — 재검사 모드가 풀린 자리다. */
     await screen.findByText(t.result.round(2));
 
+    await editQuantity();
     await userEvent.click(screen.getByRole('button', { name: t.result.save }));
     await waitFor(() => expect(writes).toHaveLength(2));
 
@@ -787,5 +802,44 @@ describe('IqcInspectionScreen — 재검사 저장 뒤', () => {
 
     await waitFor(() => expect(screen.getByText(t.result.round(1))).toBeInTheDocument());
     expect(screen.queryByText(t.result.reinspectRound)).not.toBeInTheDocument();
+  });
+});
+
+describe('IqcInspectionScreen — 임시 저장 단추', () => {
+  it('바뀐 것이 없으면 꺼져 있다가, 입력하면 켜지고, 저장 뒤 다시 꺼진다', async () => {
+    const saved = { ...draftRound, heldQty: 51, versionNo: 8 };
+    const { writes } = renderScreen(
+      '/?ir=1001',
+      () => jsonResponse(queueResponse()),
+      [draftRound],
+      [],
+      itemSpecsResponse(),
+      [saved],
+    );
+
+    await screen.findByText(t.result.round(1));
+    const save = screen.getByRole('button', { name: t.result.save });
+    expect(save).toBeDisabled();
+
+    await editQuantity();
+    expect(save).toBeEnabled();
+
+    await userEvent.click(save);
+    await waitFor(() => expect(writes).toHaveLength(1));
+    await waitFor(() => expect(screen.getByRole('button', { name: t.result.save })).toBeDisabled());
+  });
+
+  it('회차가 없는 의뢰는 빈 칸이 기준이다 — 넣었다 지우면 다시 꺼진다', async () => {
+    renderScreen('/?ir=1002', () => jsonResponse(queueResponse()), []);
+
+    await screen.findByText(t.result.confirmBlockedByUnsaved);
+    const save = screen.getByRole('button', { name: t.result.save });
+    expect(save).toBeDisabled();
+
+    await userEvent.type(screen.getByLabelText(t.result.fields.accepted), '3');
+    expect(save).toBeEnabled();
+
+    await userEvent.clear(screen.getByLabelText(t.result.fields.accepted));
+    expect(save).toBeDisabled();
   });
 });
