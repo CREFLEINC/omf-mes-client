@@ -118,23 +118,22 @@ export const terminalProcessMap: Translated<typeof ko.terminalProcessMap> = {
     remove: 'Loại trừ',
     /** ⭐ 빠진 공정은 지워진다 — 이 사실을 흐리면 사용자가 한 줄씩 저장되는 줄 안다. */
     replaceNote:
-      'Khi lưu, cấu hình của máy quét này sẽ theo đúng danh sách hiện tại. Công đoạn bỏ khỏi danh sách sẽ bị loại khỏi máy quét này.',
-    emptyTitle: 'Không có dòng công đoạn',
-    empty:
-      'Máy quét này không mở công đoạn nào. Máy quét chỉ dùng cho kho thì 0 dòng là bình thường — không phải lỗi.',
+      'Khi lưu, cấu hình công đoạn sẽ được thay đổi theo danh sách hiện tại. Công đoạn đã loại trừ khỏi danh sách cũng sẽ bị loại khỏi máy quét này.',
+    emptyTitle: 'Chưa có công đoạn nào được thiết lập',
+    empty: 'Để dùng máy quét này cho công việc sản xuất, hãy thêm công đoạn ở phía trên.',
     /** ⭐ `quyền` 을 쓰지 않는다 — 보안 경계가 아니라 오조작을 막는 기능 구성이다. */
     purpose: 'Thiết lập theo từng công đoạn các chức năng được dùng trên máy quét này.',
     save: 'Lưu cấu hình',
     saved: 'Đã lưu cấu hình chức năng.',
     saving: 'Đang lưu.',
-    reset: 'Khôi phục',
-    duplicate: 'Công đoạn này đã có trong bảng.',
+    reset: 'Hủy thay đổi',
+    duplicate: 'Công đoạn này đã được thêm.',
     selectTerminalTitle: 'Vui lòng chọn máy quét',
     selectTerminal:
       'Chọn máy quét trong danh sách bên trái để xem thông tin chi tiết và chức năng theo công đoạn.',
     unselectedNote: 'Chọn máy quét để thiết lập chức năng theo công đoạn.',
     loadFailed: 'Không tải được cấu hình chức năng.',
-    processLookupFailed: 'Không tải được danh sách công đoạn nên hiện chưa thêm được.',
+    processLookupFailed: 'Không tải được danh sách công đoạn nên hiện chưa thể thêm công đoạn.',
     lockLoading: 'Đang tải cấu hình máy quét. Lát nữa hãy lưu.',
     lockFailed: 'Không tải được cấu hình máy quét nên không lưu được. Hãy thử lại.',
   },
