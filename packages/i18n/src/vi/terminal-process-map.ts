@@ -71,9 +71,9 @@ export const terminalProcessMap: Translated<typeof ko.terminalProcessMap> = {
     cancel: 'Hủy',
     deactivate: 'Ngừng sử dụng',
     deactivated: 'Đã ngừng máy quét. Bản ghi vẫn còn.',
-    deactivateTitle: 'Ngừng máy quét này chứ?',
+    deactivateTitle: 'Ngừng sử dụng máy quét chứ?',
     /** ⭐ `xóa` 를 쓰지 않는다 — 끄는 것이지 지우는 것이 아니다. */
-    deactivateLead: 'Không xóa mà tắt đi — bản ghi máy quét đó để lại vẫn còn được tham chiếu.',
+    deactivateLead: 'Bản ghi máy quét để lại vẫn được giữ để tham chiếu.',
     deactivateConfirm: 'Ngừng',
     requiredCode: 'Hãy nhập mã máy quét.',
     requiredPlant: 'Hãy chọn nhà máy.',

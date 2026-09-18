@@ -606,6 +606,7 @@ export const TerminalProcessMapScreen = () => {
         }}
         title={t.terminal.deactivateTitle}
         closeOnBackdropClick={false}
+        showCloseButton={false}
         footer={
           <>
             <Button
