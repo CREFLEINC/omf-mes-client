@@ -186,6 +186,55 @@ describe('LineTable — 단독 생성', () => {
   });
 
   /*
+   * ⛔ **단위는 줄마다 «한 번»만 선다**(사용자 지시 2026-09-18). 종전에는 요청·배정 수량 아래에
+   *    보조 문구로 단위를 또 달았고, 그 한 줄이 입력칸을 밀어 올려 줄마다 높이가 달라 보였다.
+   * ⭐ 게다가 `shipment_request_line` 의 단위 칸은 `uom_id` **하나**라 요청과 배정이 다른 단위를
+   *    쓸 수 있는 구조가 아니다 — 수량마다 단위를 적는 것은 **없는 차이를 있는 것처럼** 보이게 한다.
+   */
+  it('단위를 줄마다 한 번만 보인다 — 수량 칸 아래에 다시 적지 않는다', () => {
+    render(
+      <LineTable
+        mode="standalone"
+        rows={[{ ...emptyLineDraft(), itemId: '8301', uomId: '8401', requestedQty: '10' }]}
+        errors={{}}
+        itemNames={itemNames}
+        uomLookup={uomLookup}
+        onPickItem={vi.fn()}
+        uomOptions={uomOptions}
+        availableQty={noAvailableQty}
+        onPatch={vi.fn()}
+        onRemove={vi.fn()}
+      />,
+    );
+
+    expect(screen.getAllByText('SAMPLE-UOM-EA · 개')).toHaveLength(1);
+  });
+
+  /* 지시서 경유도 같다 — 두 모드가 같은 모양이어야 한 열을 두 뜻으로 읽지 않는다. */
+  it('지시서 경유에서도 단위를 한 번만 보인다', () => {
+    const orderRows = lineDraftsFromSalesOrder(
+      toSalesOrderDetailView(salesOrderDetailFixture).lines,
+    );
+
+    render(
+      <LineTable
+        mode="fromOrder"
+        rows={orderRows}
+        errors={{}}
+        itemNames={itemNames}
+        uomLookup={uomLookup}
+        onPickItem={vi.fn()}
+        uomOptions={uomOptions}
+        availableQty={noAvailableQty}
+        onPatch={vi.fn()}
+        onRemove={vi.fn()}
+      />,
+    );
+
+    expect(screen.getAllByText('SAMPLE-UOM-EA · 개')).toHaveLength(orderRows.length);
+  });
+
+  /*
    * ⛔ **걷은 두 열이 되살아나지 않는다**(사용자 결정 2026-09-18). 표시만 없앤 것이 아니라
    *    입력 자리를 없앴다 — 남아 있으면 사용자가 채운 값이 본문에 실리지 않고 조용히 사라진다.
    */

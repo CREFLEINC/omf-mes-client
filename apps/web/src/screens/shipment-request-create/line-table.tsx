@@ -110,6 +110,15 @@ export const LineTable = ({
   const errorOf = (row: ShipmentRequestLineDraft, field: LineFieldName): string | undefined =>
     errors[lineFieldId(row.key, field)];
 
+  /**
+   * 그 줄의 단위 이름 — **단위 열이 쓰는 유일한 자리**다.
+   *
+   * ⛔ **수량 칸에 다시 적지 않는다**(사용자 지시 2026-09-18). 종전에는 요청·배정 수량 아래에
+   *    보조 문구로 단위를 달았는데, 그 한 줄이 입력칸을 밀어 올려 **줄마다 높이가 달라 보였다.**
+   *    게다가 `shipment_request_line` 의 단위 칸은 `uom_id` **하나**이고 요청·배정·출하 수량
+   *    셋이 그것을 함께 쓴다 — 계약 본문도 라인당 `uomId` 하나다. 수량마다 단위를 다시 적는 것은
+   *    **구조상 있을 수 없는 차이**를 있는 것처럼 보이게 하는 중복이었다.
+   */
   const uomNameOf = (row: ShipmentRequestLineDraft): string =>
     row.uomId === '' ? '' : describeReference(toReference(uomLookup, Number(row.uomId)));
 
@@ -155,10 +164,7 @@ export const LineTable = ({
       width: WIDTH.requestedQty,
       render: (row, rowIndex) =>
         isFromOrder ? (
-          <div className="field-cell">
-            <span>{row.requestedQty}</span>
-            <span className="field-note">{uomNameOf(row)}</span>
-          </div>
+          row.requestedQty
         ) : (
           <TextField
             size="sm"
@@ -168,7 +174,6 @@ export const LineTable = ({
             value={row.requestedQty}
             disabled={isLocked}
             error={errorOf(row, 'requestedQty')}
-            helperText={uomNameOf(row) === '' ? undefined : uomNameOf(row)}
             onChange={(event) => {
               onPatch(row.key, { requestedQty: event.target.value });
             }}
@@ -219,7 +224,6 @@ export const LineTable = ({
             value={row.allocatedQty}
             disabled={isLocked}
             error={errorOf(row, 'allocatedQty')}
-            helperText={uomNameOf(row) === '' ? undefined : uomNameOf(row)}
             onChange={(event) => {
               onPatch(row.key, { allocatedQty: event.target.value });
             }}
