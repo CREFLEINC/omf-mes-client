@@ -55,9 +55,24 @@ export const PrinterSelect = ({
 
   /*
    * 없다는 경고는 화면 맨 위 띠 자리가 말한다(사용자 지시 2026-09-18 · omf-all-around#11) —
-   * 여기서 또 말하면 같은 문장이 두 번 선다. 칸도 그리지 않아 빈 테두리 상자가 남지 않는다.
+   * 여기서 또 말하면 같은 문장이 두 번 선다. 칸은 원래대로 두고(라벨 + 고를 것이 없는 선택칸),
+   * 「고르지 않으면 서버 기본 프린터로」 안내는 싣지 않는다 — 프린터가 없을 때는 사실이 아니다.
    */
-  if (printers.length === 0) return null;
+  if (printers.length === 0) {
+    return (
+      <div className="pop-loclabel-printer">
+        <span className="field-label">{t.label}</span>
+        <Select
+          aria-label={t.label}
+          size="xl"
+          value={null}
+          disabled
+          options={[]}
+          onChange={onChange}
+        />
+      </div>
+    );
+  }
 
   const selected = printers.find((printer) => printer.printerName === value) ?? null;
 

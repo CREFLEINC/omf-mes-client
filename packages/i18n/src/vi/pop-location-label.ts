@@ -46,7 +46,7 @@ export const popLocationLabel = {
     label: 'Máy in',
     unknown: 'Không kiểm tra được danh sách máy in',
     retry: 'Thử lại',
-    none: 'Máy này chưa đăng ký máy in. Bản ghi phát hành vẫn lưu nhưng nhãn sẽ không in ra.',
+    none: 'Máy này chưa đăng ký máy in. Bản ghi phát hành vẫn lưu nhưng không thể in nhãn.',
     unselected: 'Không chọn thì sẽ dùng máy in mặc định của máy chủ.',
     noStatusMessage: 'Không rõ trạng thái',
   },
