@@ -8739,11 +8739,28 @@ dl.filter-bar.approval-inbox-detail-facts {
   margin-left: auto;
 }
 
-/* 대기 목록 — 자재 LOT 은 좁은 칸 안에서 줄을 바꾸고, 의뢰 일시는 한 줄로 둔다. */
+/* 대기 목록 — 의뢰번호·의뢰 일시는 한 줄, 자재 LOT 은 좁은 칸 안에서 줄을 바꾼다. */
+.iqc-inspection-panes .iqc-inspection-request-no {
+  white-space: nowrap;
+}
+
 .iqc-inspection-panes .iqc-inspection-lot {
   overflow-wrap: anywhere;
 }
 
 .iqc-inspection-panes .iqc-inspection-requested-at {
   white-space: nowrap;
+}
+
+/* 대기 목록 제목 — 화면에서는 감추고 표의 접근 이름(caption)으로만 남긴다. */
+.iqc-inspection-table-caption {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
 }

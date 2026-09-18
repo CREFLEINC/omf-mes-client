@@ -52,9 +52,9 @@ export const iqcInspection = {
    */
   filters: {
     item: '품목',
-    itemPlaceholder: '품목 번호',
+    itemPlaceholder: '품목 번호로 검색',
     supplier: '공급사',
-    supplierPlaceholder: '공급사 번호',
+    supplierPlaceholder: '공급사 번호로 검색',
     keyword: '의뢰번호',
     keywordPlaceholder: '의뢰번호로 검색',
     apply: '조회',
