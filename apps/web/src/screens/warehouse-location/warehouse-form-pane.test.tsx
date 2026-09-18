@@ -188,7 +188,10 @@ describe('WarehouseFormPane', () => {
     renderPane();
 
     expect(screen.getByText('사용 중')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: '사용 중지' })).toBeInTheDocument();
+    // 상태를 바꾸는 단추는 폼 칸이 아니라 바닥글에 있다(omf-all-around#17 3차).
+    expect(
+      screen.getByRole('button', { name: '사용 중지' }).closest('.form-actions'),
+    ).not.toBeNull();
   });
 
   it('거래처가 비어 있으면 선택칸에 안내 문구가 보인다', () => {

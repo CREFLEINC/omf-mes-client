@@ -5114,14 +5114,6 @@ dl.filter-bar.approval-inbox-detail-facts {
   font-weight: 600;
 }
 
-/* 상세의 사용 상태 — 상태(칩)와 액션(단추)을 한 줄에 둔다. */
-.warehouse-location-status {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-3);
-}
-
 /*
  * 상세 폼 정돈 2차(omf-all-around#17) — 이 화면 안에서만. 공용 규칙(.form-grid·.form-actions·.banner-slot)은 그대로다.
  * 선택 목록 잘림 안내는 조건·문구·경고 유형을 그대로 두고 크기만 줄인다 — 폼보다 먼저 읽히지 않게.
@@ -5164,17 +5156,29 @@ dl.filter-bar.approval-inbox-detail-facts {
   flex: none;
 }
 
-/* 토글 칸 — 라벨 오른쪽에 토글, 한 줄 세로 가운데. 칸 높이는 다른 입력칸과 같다. */
-.warehouse-location-form .form-grid .warehouse-location-switch-cell {
-  flex-direction: row;
+/* 선택칸 + 오른쪽 부속(토글 묶음) 한 줄 — 선택칸이 남은 폭을 채우고, 부속은 세로 가운데. */
+.warehouse-location-field-row {
+  display: flex;
   align-items: center;
-  justify-content: flex-start;
-  gap: var(--space-3);
-  min-height: var(--control-height-md);
+  gap: var(--space-4);
+  min-width: 0;
 }
 
-.warehouse-location-switch-cell > .field-label {
-  margin-bottom: 0;
+.warehouse-location-field-row > :first-child {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+/* 선택칸 옆 묶음(토글·사용 상태) — 라벨 글자 + 토글/칩. 줄바꿈하지 않는다(좁은 폭에서는 선택칸이 줄어든다). */
+.warehouse-location-inline-field {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: var(--space-2);
+  white-space: nowrap;
+  font: var(--type-label-lg);
+  letter-spacing: var(--type-label-lg-tracking);
+  color: var(--on-surface-variant);
 }
 
 /* 세로 간격을 한 단계 좁힌다(16px → 12px). 가로 간격은 그대로 둔다. */
@@ -5191,6 +5195,11 @@ dl.filter-bar.approval-inbox-detail-facts {
   margin-top: var(--space-4);
   padding-top: var(--space-4);
   border-top: 1px solid var(--outline-variant);
+}
+
+/* 사용 중지(상태 액션)와 변경 이력(조회 액션) 사이를 조금 더 띄운다. */
+.warehouse-location-status-action {
+  margin-right: var(--space-2);
 }
 
 .warehouse-location-form-actions .form-actions-secondary {
