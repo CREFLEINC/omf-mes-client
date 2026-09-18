@@ -5243,11 +5243,10 @@ dl.filter-bar.approval-inbox-detail-facts {
   margin-left: auto;
 }
 
-/* 선택한 Location 대상 작업 줄 — 얇은 구분선 아래, 오른쪽 끝에 사유 도움말 + 단추. 카드를 나누지 않는다. */
+/* 선택한 Location 대상 작업 줄 — 얇은 구분선 아래, 사유 도움말은 왼쪽 끝 · 단추는 오른쪽 끝. 카드를 나누지 않는다. */
 .warehouse-location-location-selection {
   display: flex;
   flex-wrap: wrap;
-  justify-content: flex-end;
   align-items: center;
   gap: var(--space-2);
   margin-bottom: var(--space-3);
@@ -5274,7 +5273,19 @@ dl.filter-bar.approval-inbox-detail-facts {
   text-align: center;
 }
 
-/* 긴 위치 코드가 접히면 왼쪽 정렬을 유지한다(계층 들여쓰기와 같은 기준선). */
+/* 단추는 도움말이 있든 없든 줄 오른쪽 끝. */
+.warehouse-location-location-selection > :last-child {
+  margin-left: auto;
+}
+
+/*
+ * 위치 코드 칸 — [펼치기 단추 + 코드] 묶음을 가운데에 둔다. 깊이 들여쓰기(padding-left)는 묶음 안에
+ * 남아 상하위가 보인다. 긴 코드가 접혀도 코드 글자는 묶음 안에서 왼쪽 기준을 지킨다.
+ */
+.warehouse-location-location-table .tree-toggle {
+  justify-content: center;
+}
+
 .warehouse-location-location-table .link-cell {
   text-align: start;
 }

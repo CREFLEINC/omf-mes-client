@@ -77,6 +77,11 @@ export const LocationPane = ({
     {
       key: 'locationCode',
       header: t.fields.locationCode,
+      /*
+       * 세 열 모두 머리·값 가운데(사용자 결정 2026-09-18 · omf-all-around#17). 계층은 없애지 않는다 —
+       * [펼치기 단추 + 코드] 묶음을 가운데에 두고, 깊이는 묶음 안의 들여쓰기로 남긴다.
+       */
+      align: 'center',
       render: (row) => {
         const isExpanded = expandedIds.has(row.location.locationId);
 
@@ -107,15 +112,13 @@ export const LocationPane = ({
     {
       key: 'locationName',
       header: t.fields.locationName,
+      align: 'center',
       render: (row) => row.location.locationName,
     },
     {
       key: 'isActive',
       header: t.fields.isActive,
-      /*
-       * 창고 목록과 같은 상태 칩, 가운데 정렬(omf-all-around#17). 위치코드 열은 계층 들여쓰기가
-       * 뜻을 가지므로 왼쪽에 둔다 — 가운데로 모으면 상하위 관계가 읽히지 않는다.
-       */
+      /* 창고 목록과 같은 상태 칩(omf-all-around#17). */
       align: 'center',
       render: (row) => (
         <Chip size="sm" status={row.location.isActive ? 'success' : 'idle'}>
@@ -210,7 +213,7 @@ export const LocationPane = ({
         </div>
       </div>
 
-      {/* 선택한 Location 대상 작업 — 줄 오른쪽 끝, 도움말은 단추 왼쪽에 붙여 한 묶음(사용자 지시 2026-09-18). */}
+      {/* 선택한 Location 대상 작업 — 도움말은 줄 왼쪽 끝, 단추는 오른쪽 끝(사용자 지시 2026-09-18). */}
       <div className="warehouse-location-location-selection">
         {selectedIds.length === 0 && (
           <span id={labelNoteId} className="field-note warehouse-location-inline-note">
