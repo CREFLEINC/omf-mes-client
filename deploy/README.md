@@ -76,7 +76,7 @@ chmod +x install-deploy.sh
 5. `docker compose up -d` 실행
 6. 외부 공개 주소의 `/healthz` 응답 확인
 
-이미 설치된 환경에서 다시 실행하면 기존 값을 기본값으로 보여준다. 기존 설정은 새 설정 적용 전에 `.previous` 파일로 한 번 백업한다. 이미지 pull에 실패하면 현재 설정을 바꾸지 않는다. 설치 스크립트는 레지스트리 인증 정보를 입력받거나 파일에 저장하지 않는다.
+이미 설치된 환경에서 다시 실행하면 기존 값을 기본값으로 보여준다(두 번째부터는 아래 「업그레이드」를 본다). 기존 설정은 새 설정 적용 전에 `.previous` 파일로 한 번 백업한다. 이미지 pull에 실패하면 현재 설정을 바꾸지 않는다. 설치 스크립트는 레지스트리 인증 정보를 입력받거나 파일에 저장하지 않는다.
 
 관리웹의 API 요청은 같은 출처의 `/api`로 나가고 컨테이너가 입력한 `API_UPSTREAM`으로 전달한다. 따라서 브라우저에 백엔드 주소를 노출하거나 CORS를 별도로 열 필요가 없다.
 
@@ -91,6 +91,40 @@ chmod +x install-deploy.sh
   --api-upstream <백엔드-원점> \
   --image-repository <레지스트리/저장소>
 ```
+
+## 업그레이드
+
+두 번째 배포부터는 **바꿀 값만** 주면 된다. 나머지는 스크립트가 그 서버의 `.env`에서 읽는다(`load_existing_defaults`가 `FRONT_BIND_IP`·`FRONT_PORT`·`API_UPSTREAM`·`IMAGE_REPOSITORY`·`IMAGE_TAG`를 채운다).
+
+```bash
+cd /opt/services/omf-mes-front
+./install-deploy.sh --non-interactive --version web-vX.Y.Z
+```
+
+### 이미지와 함께 오는 것 / 오지 않는 것
+
+|                                           | 새 버전을 올리면    | 왜                                                                                                              |
+| ----------------------------------------- | ------------------- | --------------------------------------------------------------------------------------------------------------- |
+| 화면(정적 파일)                           | 갱신된다            | 이미지 안에 있다                                                                                                |
+| nginx 설정(`nginx/default.conf.template`) | 갱신된다            | 이미지에 굽는다(`Dockerfile`) — **서버에서 고칠 파일이 아니다.** 설정을 바꾸려면 저장소에서 고쳐 새 버전을 낸다 |
+| `compose.yaml`                            | 갱신된다            | 스크립트가 실행할 때마다 다시 쓴다                                                                              |
+| **`install-deploy.sh` 자체**              | **갱신되지 않는다** | 서버 사본은 복사한 시점의 것이다                                                                                |
+
+⛔ **스크립트가 바뀐 릴리스에서는 스크립트부터 다시 복사한다.** 컨테이너 구성이 달라지는 변경(포트 매핑 형식·새 환경변수·헬스체크 방식)이 여기 해당하고, 옛 스크립트로 실행하면 새 구성이 반영되지 않은 채 「배포 완료」가 뜬다.
+
+```bash
+# 해시가 같으면 그대로 쓰고, 다르면 복사한다
+shasum -a 256 deploy/install-deploy.sh                       # 개발 PC(저장소 루트)
+ssh <서버> 'sha256sum /opt/services/omf-mes-front/install-deploy.sh'
+
+script=/opt/services/omf-mes-front/install-deploy.sh
+cat deploy/install-deploy.sh | ssh <서버> "cat > $script && chmod +x $script"
+```
+
+### 안전장치
+
+- 이미지 pull에 실패하면 **현재 설정을 바꾸지 않는다** — 받지 못한 버전으로 갈아타다 멈추는 일은 없다.
+- 기존 `.env`와 `compose.yaml`은 새 설정을 쓰기 전에 `.previous`로 한 번 백업한다.
 
 ## 설치 후 확인
 
