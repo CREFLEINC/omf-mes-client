@@ -311,11 +311,18 @@ export const toReceiptDraft = (
 export const toPutawayDraft = (
   putawayTaskId: number,
   destination: Location,
+  verdict: LocationVerdict,
+  confirmedNoRule: boolean,
   now: Date,
   workerNo: string,
 ): OutboxDraft => {
   const body: PutawayTaskComplete = {
     actualLocationId: destination.locationId,
+    /*
+     * 권장 위치가 없는 품목은 이 확인이 있어야 서버가 적치를 받는다. 계약이 권장 위치가 없을
+     * 때만 참을 보내라고 정한다.
+     */
+    confirmedNoRule: verdict === NO_RULE && confirmedNoRule,
     businessDate: businessDateOf(now),
     occurredAt: now.toISOString(),
   };
