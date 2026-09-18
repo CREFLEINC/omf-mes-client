@@ -1,7 +1,7 @@
-import { AlertBanner, Breadcrumb, PageHeader } from '@crefle/web-ui';
+import { AlertBanner, Breadcrumb, Button, PageHeader } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useMemo, useState } from 'react';
-import { Link, useSearchParams } from 'react-router';
+import { Link, useNavigate, useSearchParams } from 'react-router';
 
 import { useProductionOrderCodeNames } from './code-names';
 import { useProductionOrderPlans, useProductionOrderWorkOrders } from './detail-queries';
@@ -35,6 +35,7 @@ const EMPTY_FACTS: ProductionOrderFact[] = [];
 
 export const ProductionOrderScreen = () => {
   const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
   const filters = useMemo(() => readFilters(searchParams), [searchParams]);
   const page = readPage(searchParams);
   const selectedId = readSelectedProductionOrderId(searchParams);
@@ -143,12 +144,17 @@ export const ProductionOrderScreen = () => {
           statusNameOf={codeNames.productionOrderStatus}
           action={
             selectedId === null ? undefined : (
-              <Link
-                className="production-order-plan-link"
-                to={`/production/production-plans?productionOrderId=${String(selectedId)}`}
+              /* 「초기화」와 같은 DS 테두리 단추. 누르면 W/O 전개·편성 화면으로 이동만 한다. */
+              <Button
+                variant="outlined"
+                onClick={() => {
+                  void navigate(
+                    `/production/production-plans?productionOrderId=${String(selectedId)}`,
+                  );
+                }}
               >
                 {t.actions.productionPlan}
-              </Link>
+              </Button>
             )
           }
         />

@@ -55,6 +55,9 @@ export const productionOrder = {
   },
   basic: {
     heading: '기본 정보',
+    workOrderProgressHelp: 'W/O 생성/예정 설명',
+    workOrderProgressTooltip:
+      '생성된 W/O 수 / 생성 예정 W/O 수입니다. 0 / 0은 생산계획이 없음을 의미합니다.',
     loading: 'ERP W/O 기본 정보 불러오는 중',
     loadFailedTitle: '기본 정보를 불러오지 못했습니다',
     loadFailedDescription: '잠시 후 ERP W/O를 다시 선택해 주세요.',

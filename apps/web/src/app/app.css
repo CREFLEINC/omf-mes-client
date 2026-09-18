@@ -614,6 +614,11 @@ main > * + * {
   grid-column: 1 / -1;
 }
 
+/* 기본 정보 박스 — DS Card.Body 는 머리 없이 쓰면 위 여백이 0 이다. 아래·좌우와 같은 여백을 준다. */
+.production-order-detail-body {
+  padding-top: var(--space-5);
+}
+
 .production-order-detail-fields {
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
@@ -623,6 +628,8 @@ main > * + * {
 
 .production-order-detail-field {
   display: grid;
+  /* 품목·비고가 두 줄이 되어도 항목명은 행 위쪽에 맞춰 선다 — 값이 가운데로 떠 보이지 않는다. */
+  align-content: start;
   gap: var(--space-1);
   min-width: 0;
 }
@@ -636,9 +643,30 @@ main > * + * {
   overflow-wrap: anywhere;
 }
 
-/* 기본 정보 — 항목명은 흐리게, 값은 조금 굵게 두어 「항목명 → 값」이 한눈에 갈린다. */
+/*
+ * 기본 정보 — 항목명은 공통 라벨 색(on-surface-variant)을 그대로 두고, 값의 무게로 위계를 준다.
+ * 선택 직후 읽는 값(primary)은 조금 굵게, 참조 정보(secondary)는 보통 굵기, 비고(note)는 보조 설명 색.
+ */
 .production-order-detail-field > dt {
-  color: var(--on-surface-muted);
+  margin-bottom: 0;
+}
+
+.production-order-detail-field[data-tier='secondary'] > dd {
+  font-weight: 400;
+}
+
+.production-order-detail-field[data-tier='note'] > dd {
+  color: var(--on-surface-variant);
+  font: var(--type-body-sm);
+  letter-spacing: var(--type-body-sm-tracking);
+}
+
+/* W/O 생성/예정 옆 도움말 단추 — 값 줄 높이를 늘리지 않게 붙인다. */
+.production-order-detail-with-help {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  margin-block: calc(var(--space-2) * -1);
 }
 
 /* 구획 제목 아래 한 줄 — 이 구획이 선택한 ERP W/O 와 어떤 관계인지 말한다. */
@@ -672,28 +700,6 @@ main > * + * {
   margin: 0;
 }
 
-/* 다음 업무(W/O 전개·편성)로 넘어가는 이동 — 본문 링크가 아니라 행동으로 읽히게 한다. 이동만 한다. */
-.production-order-plan-link {
-  display: inline-flex;
-  align-items: center;
-  min-height: var(--control-height-sm);
-  padding: 0 var(--space-4);
-  border: 1px solid var(--outline);
-  border-radius: var(--radius-full);
-  color: var(--primary);
-  font: var(--type-label-lg);
-  text-decoration: none;
-}
-
-.production-order-plan-link:hover {
-  background: var(--primary-container);
-}
-
-.production-order-plan-link:focus-visible {
-  outline: 2px solid var(--primary);
-  outline-offset: 2px;
-}
-
 .production-order-table {
   min-width: 0;
   overflow-x: auto;
@@ -714,10 +720,16 @@ main > * + * {
   }
 }
 
-/* ERP W/O 목록 — 머리줄과 모든 열을 가운데로. DS 의 열별 정렬([data-align])보다 앞선다. */
+/* ERP W/O 목록·생산계획·전개된 W/O — 머리줄과 모든 열을 가운데로. DS 의 열별 정렬([data-align])보다 앞선다. */
 .production-order-list-table thead th,
 .production-order-list-table thead th[data-align],
-.production-order-list-table td {
+.production-order-list-table td,
+.production-order-plan-table thead th,
+.production-order-plan-table thead th[data-align],
+.production-order-plan-table td,
+.production-order-work-order-table thead th,
+.production-order-work-order-table thead th[data-align],
+.production-order-work-order-table td {
   text-align: center;
 }
 
@@ -743,6 +755,13 @@ main > * + * {
   clip: rect(0 0 0 0);
   white-space: nowrap;
   border: 0;
+}
+
+/* 기본 정보 5열이 좁아지면 프로젝트 공통 폭(1100px)에서 3열로 줄인다. 960·640 은 기존 규칙. */
+@media (max-width: 1100px) {
+  .production-order-detail-fields {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
 }
 
 @media (max-width: 960px) {

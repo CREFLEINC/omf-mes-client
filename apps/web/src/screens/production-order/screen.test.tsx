@@ -1,6 +1,7 @@
 import { messages } from '@omf-mes/i18n';
 import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { useLocation } from 'react-router';
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -169,6 +170,12 @@ const normalRoutes: StubRoute[] = [
   },
 ];
 
+/* 지금 주소를 그린다 — W/O 전개·편성 단추가 이동만 하는지 본다. */
+const LocationProbe = () => {
+  const location = useLocation();
+  return <output data-testid="location">{`${location.pathname}${location.search}`}</output>;
+};
+
 const recordingFetch = (routes: StubRoute[]): { fetch: StubFetch; requests: URL[] } => {
   const requests: URL[] = [];
   const stub = createStubFetch(routes);
@@ -184,10 +191,16 @@ const recordingFetch = (routes: StubRoute[]): { fetch: StubFetch; requests: URL[
 describe('ProductionOrderScreen', () => {
   it('URL 목록 조건을 조회하고 선택 뒤에만 exact 기본·계획·W/O를 연결한다', async () => {
     const { fetch, requests } = recordingFetch(normalRoutes);
-    renderWithProviders(<ProductionOrderScreen />, {
-      fetch,
-      route: '/?businessUnit=2101&page=2',
-    });
+    renderWithProviders(
+      <>
+        <ProductionOrderScreen />
+        <LocationProbe />
+      </>,
+      {
+        fetch,
+        route: '/?businessUnit=2101&page=2',
+      },
+    );
     const user = userEvent.setup();
     const select = await screen.findByRole('button', { name: t.actions.select('SYN-PO-701') });
     const listRequest = requests.find((url) => url.pathname === '/planning/production-orders');
@@ -195,7 +208,9 @@ describe('ProductionOrderScreen', () => {
     expect(listRequest?.searchParams.get('includeChildren')).toBe('true');
     expect(listRequest?.searchParams.get('page')).toBe('2');
     expect(requests.some((url) => url.pathname === '/planning/production-orders/701')).toBe(false);
-    expect(screen.queryByRole('link', { name: t.actions.productionPlan })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: t.actions.productionPlan }),
+    ).not.toBeInTheDocument();
     /* 상태는 코드가 아니라 공통코드 표시명으로 — 사용 중지 코드까지 받는다. */
     expect(await screen.findByText('합성 수신')).toBeInTheDocument();
     const codeGroups = requests
@@ -236,13 +251,14 @@ describe('ProductionOrderScreen', () => {
       'href',
       '/master-data/integration-sync',
     );
-    expect(screen.getByRole('link', { name: t.actions.productionPlan })).toHaveAttribute(
-      'href',
-      '/production/production-plans?productionOrderId=701',
-    );
     expect(screen.getByRole('heading', { name: t.panes.filters })).toBeInTheDocument();
     expect(screen.getByLabelText(t.panes.basic).parentElement).toHaveClass(
       'production-order-detail-grid',
+    );
+    /* 「초기화」와 같은 DS 테두리 단추 — 누르면 선택한 ERP W/O 로 W/O 전개·편성 화면에 이동만 한다. */
+    await user.click(screen.getByRole('button', { name: t.actions.productionPlan }));
+    expect(screen.getByTestId('location')).toHaveTextContent(
+      '/production/production-plans?productionOrderId=701',
     );
   });
 

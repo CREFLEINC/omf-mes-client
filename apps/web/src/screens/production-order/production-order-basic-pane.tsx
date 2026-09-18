@@ -1,4 +1,4 @@
-import { AlertBanner, Card, SkeletonText } from '@crefle/web-ui';
+import { AlertBanner, Card, Chip, IconButton, SkeletonText, Tooltip } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
 
@@ -23,10 +23,17 @@ export interface ProductionOrderBasicPaneProps {
   action?: ReactNode;
 }
 
+/**
+ * 값의 무게 — 선택 직후 먼저 읽는 것(번호·품목·수량·납기·상태)과 참조 정보, 보조 설명(비고)을 가른다.
+ * 데이터를 숨기거나 접지 않는다 — 글자 무게만 다르다.
+ */
+type DetailTier = 'primary' | 'secondary' | 'note';
+
 interface DetailField {
   key: string;
   label: string;
   value: ReactNode;
+  tier: DetailTier;
 }
 
 const describeItem = (item: ProductionOrderItemName | null, itemId: number): string => {
@@ -94,40 +101,80 @@ export const ProductionOrderBasicPane = ({
 
   const { data } = detailState;
   const unit = describeReference(resolveReference(uoms, data.uomId));
+  /* 1행은 선택 직후 확인하는 값, 2행은 진행 집계·참조·비고 — 5열 × 2행 구조는 그대로다. */
   const fields: DetailField[] = [
-    { key: 'productionOrderNo', label: t.fields.productionOrderNo, value: data.productionOrderNo },
+    {
+      key: 'productionOrderNo',
+      label: t.fields.productionOrderNo,
+      value: data.productionOrderNo,
+      tier: 'primary',
+    },
+    {
+      key: 'item',
+      label: t.fields.item,
+      value: describeItem(itemName, data.itemId),
+      tier: 'primary',
+    },
+    {
+      key: 'orderedQty',
+      label: t.fields.orderedQty,
+      value: `${String(data.orderQty)} ${unit}`,
+      tier: 'primary',
+    },
+    {
+      key: 'dueDate',
+      label: t.fields.dueDate,
+      value: displayOr(data.dueDate, t.values.missingDueDate),
+      tier: 'primary',
+    },
+    {
+      key: 'statusCode',
+      label: t.fields.statusCode,
+      /* 목록과 같은 상태 표식을 쓴다. */
+      value: (
+        <Chip variant="status" status="idle" size="sm">
+          {statusNameOf(data.statusCode)}
+        </Chip>
+      ),
+      tier: 'primary',
+    },
+    {
+      key: 'workOrderProgress',
+      label: t.fields.workOrderProgress,
+      /* 두 숫자의 뜻은 도움말로 말한다 — 진행률로 읽히지 않게 막대나 백분율로 바꾸지 않는다. */
+      value: (
+        <span className="production-order-detail-with-help">
+          {workOrderProgress(data.expandedWorkOrderCount, data.plannedWorkOrderCount)}
+          <Tooltip content={t.basic.workOrderProgressTooltip} placement="right">
+            <IconButton size="sm" icon="help" aria-label={t.basic.workOrderProgressHelp} />
+          </Tooltip>
+        </span>
+      ),
+      tier: 'secondary',
+    },
     {
       key: 'erpOrderNo',
       label: t.fields.erpProductionOrderNo,
       value: displayOr(data.erpOrderNo, t.values.missingErpOrderNo),
+      tier: 'secondary',
     },
     {
       key: 'businessUnit',
       label: t.fields.businessUnit,
       value: describeReference(resolveReference(businessUnits, data.businessUnitId)),
+      tier: 'secondary',
     },
     {
       key: 'plant',
       label: t.fields.plant,
       value: describeReference(resolveReference(plants, data.plantId)),
-    },
-    { key: 'item', label: t.fields.item, value: describeItem(itemName, data.itemId) },
-    { key: 'orderedQty', label: t.fields.orderedQty, value: `${String(data.orderQty)} ${unit}` },
-    {
-      key: 'dueDate',
-      label: t.fields.dueDate,
-      value: displayOr(data.dueDate, t.values.missingDueDate),
-    },
-    { key: 'statusCode', label: t.fields.statusCode, value: statusNameOf(data.statusCode) },
-    {
-      key: 'workOrderProgress',
-      label: t.fields.workOrderProgress,
-      value: workOrderProgress(data.expandedWorkOrderCount, data.plannedWorkOrderCount),
+      tier: 'secondary',
     },
     {
       key: 'remarks',
       label: t.fields.remarks,
       value: displayOr(data.remarks, t.values.missingRemarks),
+      tier: 'note',
     },
   ];
 
@@ -141,10 +188,10 @@ export const ProductionOrderBasicPane = ({
         {action}
       </div>
       <Card bordered>
-        <Card.Body>
+        <Card.Body className="production-order-detail-body">
           <dl className="production-order-detail-fields">
             {fields.map((field) => (
-              <div className="production-order-detail-field" key={field.key}>
+              <div className="production-order-detail-field" data-tier={field.tier} key={field.key}>
                 <dt className="field-label">{field.label}</dt>
                 <dd>{field.value}</dd>
               </div>

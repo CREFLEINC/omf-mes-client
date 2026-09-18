@@ -64,6 +64,9 @@ export const productionOrder: Translated<typeof ko.productionOrder> = {
   },
   basic: {
     heading: 'Thông tin cơ bản',
+    workOrderProgressHelp: 'Giải thích W/O đã tạo / dự kiến',
+    workOrderProgressTooltip:
+      'Số W/O đã tạo / số W/O dự kiến tạo. 0 / 0 nghĩa là chưa có kế hoạch sản xuất.',
     loading: 'Đang tải thông tin cơ bản ERP W/O',
     loadFailedTitle: 'Không tải được thông tin cơ bản',
     loadFailedDescription: 'Hãy chọn lại ERP W/O sau giây lát.',
