@@ -3,7 +3,6 @@ import { messages } from '@omf-mes/i18n';
 import { useMemo } from 'react';
 import { useSearchParams } from 'react-router';
 
-import type { LookupSource } from '../../patterns/lookup-display';
 import {
   EMPTY_HISTORY_FILTERS,
   EMPTY_LOT_FILTERS,
@@ -90,11 +89,6 @@ const LotMode = ({
   const lotStatuses = useLotStatusOptions();
   const warehouses = useWarehouseReferenceOptions();
   const items = useItemReferenceOptions();
-  const itemSource: LookupSource<ReferenceOption> = {
-    entries: items.data?.entries ?? [],
-    isLoading: items.isPending,
-    isError: items.isError,
-  };
 
   const lotTypeBlockReason = lotTypes.isPending
     ? t.lotFilter.reasons.lotTypeLoading
@@ -133,9 +127,6 @@ const LotMode = ({
         filters={filters}
         page={page}
         statusOptions={toCodeOptions(lotStatuses.data?.items)}
-        itemOptions={toReferenceOptions(items.data?.entries)}
-        isItemPending={items.isPending}
-        isItemError={items.isError}
         onSortChange={onSortChange}
         onPageChange={onPageChange}
         onSelectLot={onSelectLot}
@@ -143,7 +134,6 @@ const LotMode = ({
       {selectedLotId !== null && (
         <LotDetailDialog
           lotId={selectedLotId}
-          itemSource={itemSource}
           lotTypeOptions={toCodeOptions(lotTypes.data?.items)}
           statusOptions={toCodeOptions(lotStatuses.data?.items)}
           onClose={() => onSelectLot(null)}
