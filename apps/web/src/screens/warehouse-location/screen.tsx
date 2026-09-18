@@ -1059,7 +1059,7 @@ export const WarehouseLocationScreen = () => {
         </AlertBanner>
       )}
 
-      <div className="two-pane">
+      <div className="two-pane warehouse-location-layout">
         <WarehouseListPane
           items={warehouses}
           isLoading={warehouseList.isPending}

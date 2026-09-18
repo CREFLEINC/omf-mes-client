@@ -73,7 +73,7 @@ export const WarehouseListPane = ({
   const columns: Column<Warehouse>[] = [
     {
       key: 'warehouseCode',
-      header: t.fields.code,
+      header: t.fields.warehouseCode,
       render: (row) => (
         <button
           type="button"
@@ -85,7 +85,8 @@ export const WarehouseListPane = ({
         </button>
       ),
     },
-    { key: 'warehouseName', header: t.fields.name },
+    /* 「명칭」이 무엇의 이름인지 머리에서 바로 읽히게 한다(omf-all-around#17). */
+    { key: 'warehouseName', header: t.fields.warehouseName },
     {
       key: 'warehouseTypeCode',
       header: t.fields.warehouseType,
@@ -94,7 +95,12 @@ export const WarehouseListPane = ({
     {
       key: 'isActive',
       header: t.fields.isActive,
-      render: (row) => (row.isActive ? t.values.active : t.values.inactive),
+      /* 상태는 기존 칩으로 — 사용 중 success · 미사용 idle(W-CO 단말 공정 매핑과 같은 규칙). */
+      render: (row) => (
+        <Chip size="sm" status={row.isActive ? 'success' : 'idle'}>
+          {row.isActive ? t.values.active : t.values.inactive}
+        </Chip>
+      ),
     },
   ];
 
@@ -189,37 +195,42 @@ export const WarehouseListPane = ({
         </Button>
       </div>
 
-      <div className="filter-bar">
-        {appliedFilters.q !== '' && (
-          <Chip
-            variant="status"
-            removeLabel={t.filters.chipRemoveKeyword}
-            onRemove={() => onApplyFilters({ ...appliedFilters, q: '' })}
-          >
-            {t.filters.chipKeyword(appliedFilters.q)}
-          </Chip>
-        )}
-        {appliedFilters.warehouseTypeCode !== '' && (
-          <Chip
-            variant="status"
-            removeLabel={t.filters.chipRemoveType}
-            onRemove={() => onApplyFilters({ ...appliedFilters, warehouseTypeCode: '' })}
-          >
-            {t.filters.chipType(codeLabel(appliedFilters.warehouseTypeCode, warehouseTypeOptions))}
-          </Chip>
-        )}
-        {appliedFilters.includeInactive && (
-          <Chip
-            variant="status"
-            removeLabel={t.filters.chipRemoveIncludeInactive}
-            onRemove={() => onApplyFilters({ ...appliedFilters, includeInactive: false })}
-          >
-            {messages.common.includeInactive}
-          </Chip>
-        )}
-      </div>
+      {/* 걸린 조건이 없으면 칩 줄을 그리지 않는다 — 빈 줄이 조건과 표 사이를 벌렸다. */}
+      {hasAnyFilter(appliedFilters) && (
+        <div className="filter-bar">
+          {appliedFilters.q !== '' && (
+            <Chip
+              variant="status"
+              removeLabel={t.filters.chipRemoveKeyword}
+              onRemove={() => onApplyFilters({ ...appliedFilters, q: '' })}
+            >
+              {t.filters.chipKeyword(appliedFilters.q)}
+            </Chip>
+          )}
+          {appliedFilters.warehouseTypeCode !== '' && (
+            <Chip
+              variant="status"
+              removeLabel={t.filters.chipRemoveType}
+              onRemove={() => onApplyFilters({ ...appliedFilters, warehouseTypeCode: '' })}
+            >
+              {t.filters.chipType(
+                codeLabel(appliedFilters.warehouseTypeCode, warehouseTypeOptions),
+              )}
+            </Chip>
+          )}
+          {appliedFilters.includeInactive && (
+            <Chip
+              variant="status"
+              removeLabel={t.filters.chipRemoveIncludeInactive}
+              onRemove={() => onApplyFilters({ ...appliedFilters, includeInactive: false })}
+            >
+              {messages.common.includeInactive}
+            </Chip>
+          )}
+        </div>
+      )}
 
-      {listSlot()}
+      <div className="warehouse-location-list-table">{listSlot()}</div>
     </section>
   );
 };

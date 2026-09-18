@@ -451,7 +451,7 @@ describe('WarehouseLocationScreen — 창고 상세 조회', () => {
 
     expect(
       await screen.findByText(
-        '선택 목록이 일부만 표시됩니다. 찾는 값이 없으면 담당자에게 알려 주세요.',
+        '선택할 수 있는 항목이 일부만 표시될 수 있습니다. 찾는 항목이 없으면 담당자에게 문의해 주세요.',
       ),
     ).toBeInTheDocument();
   });

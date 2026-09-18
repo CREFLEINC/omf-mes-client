@@ -19,10 +19,9 @@ export const warehouseLocation = {
     locationDepthLimitReached: '현재 관리수준에서 더 하위 Location을 추가할 수 없습니다.',
     locationHierarchyUnavailable: 'Location 계층을 불러온 뒤 추가할 수 있습니다.',
     generateLabelNeedsSelection: '라벨 이미지를 만들 Location을 하나 이상 선택하세요.',
-    changeHistoryUnavailable:
-      '변경 이력은 아직 볼 수 없습니다. 조회 기능이 준비되면 이 버튼을 쓸 수 있습니다.',
-    plantFixedAfterCreate:
-      '등록 후에는 공장을 바꿀 수 없습니다. 다른 공장이면 창고를 새로 등록하세요.',
+    /* 개발 진행 상황이 아니라 지금 되는지만 말한다(omf-all-around#17). */
+    changeHistoryUnavailable: '변경 이력은 현재 제공되지 않습니다.',
+    plantFixedAfterCreate: '공장은 등록 후 변경할 수 없습니다.',
     warehouseFixedInLocation: '좌측에서 선택한 창고로 고정됩니다.',
   },
   loading: {
@@ -34,7 +33,8 @@ export const warehouseLocation = {
   /** 서버가 목록을 잘라 내려보냈을 때. 잘림을 감추지 않고 조건을 좁힐 방법을 함께 알린다. */
   listTruncated: (shown: number, total: number): string =>
     `전체 ${total}건 중 ${shown}건을 표시합니다. 조건을 좁혀 조회하세요.`,
-  optionsTruncated: '선택 목록이 일부만 표시됩니다. 찾는 값이 없으면 담당자에게 알려 주세요.',
+  optionsTruncated:
+    '선택할 수 있는 항목이 일부만 표시될 수 있습니다. 찾는 항목이 없으면 담당자에게 문의해 주세요.',
   optionsLoadFailed: '선택 목록을 불러오지 못했습니다. 지금 저장된 값만 표시됩니다.',
   empty: {
     warehouseNoneTitle: '아직 등록된 창고가 없습니다',
@@ -82,8 +82,10 @@ export const warehouseLocation = {
     allowMixedLot: 'LOT 혼적 허용',
     capacityQty: '수용량',
     capacityUom: '수용량 단위',
-    code: '코드',
-    name: '명칭',
+  },
+  /** 값이 비었을 때 선택칸 안에 보이는 안내 — 값·검증과 무관하다. */
+  placeholders: {
+    partner: '거래처를 선택하세요',
   },
   values: {
     active: '사용 중',

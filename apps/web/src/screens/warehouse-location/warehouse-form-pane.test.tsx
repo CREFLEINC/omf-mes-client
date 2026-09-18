@@ -90,11 +90,7 @@ describe('WarehouseFormPane', () => {
     renderPane({ mode: 'edit' });
 
     expect(screen.getByLabelText('공장')).toBeDisabled();
-    expect(
-      screen.getByText(
-        '등록 후에는 공장을 바꿀 수 없습니다. 다른 공장이면 창고를 새로 등록하세요.',
-      ),
-    ).toBeInTheDocument();
+    expect(screen.getByText('공장은 등록 후 변경할 수 없습니다.')).toBeInTheDocument();
   });
 
   it('신규 등록 모드에서는 공장을 고를 수 있다', () => {
@@ -134,8 +130,7 @@ describe('WarehouseFormPane', () => {
   it('변경 이력은 비활성이고 그 사유가 화면 텍스트로 보인다', () => {
     renderPane();
 
-    const reason =
-      '변경 이력은 아직 볼 수 없습니다. 조회 기능이 준비되면 이 버튼을 쓸 수 있습니다.';
+    const reason = '변경 이력은 현재 제공되지 않습니다.';
     const button = screen.getByRole('button', { name: '변경 이력' });
 
     expect(button).toBeDisabled();
@@ -175,5 +170,26 @@ describe('WarehouseFormPane', () => {
     expect(onChange).toHaveBeenCalledWith({
       warehouseName: `${warehouseFormInitialValues.warehouseName}가`,
     });
+  });
+
+  /* 화면 정돈(omf-all-around#17) — 라벨 위·컨트롤 아래, 상태 칩과 액션 단추를 가른다. */
+  it('외부창고·불량창고 토글은 칸 위 라벨로 이름을 갖는다', () => {
+    renderPane();
+
+    expect(screen.getByRole('switch', { name: '외부창고' })).toBeInTheDocument();
+    expect(screen.getByRole('switch', { name: '불량창고' })).toBeInTheDocument();
+  });
+
+  it('사용 상태는 칩으로, 사용 중지는 단추로 따로 보인다', () => {
+    renderPane();
+
+    expect(screen.getByText('사용 중')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '사용 중지' })).toBeInTheDocument();
+  });
+
+  it('거래처가 비어 있으면 선택칸에 안내 문구가 보인다', () => {
+    renderPane({ values: { ...warehouseFormInitialValues, partnerId: '' } });
+
+    expect(screen.getByText('거래처를 선택하세요')).toBeInTheDocument();
   });
 });

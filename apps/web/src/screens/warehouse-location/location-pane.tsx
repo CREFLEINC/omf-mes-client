@@ -1,5 +1,6 @@
 import {
   Button,
+  Chip,
   type Column,
   EmptyState,
   IconButton,
@@ -114,7 +115,12 @@ export const LocationPane = ({
     {
       key: 'isActive',
       header: t.fields.isActive,
-      render: (row) => (row.location.isActive ? t.values.active : t.values.inactive),
+      /* 창고 목록과 같은 상태 칩(omf-all-around#17). */
+      render: (row) => (
+        <Chip size="sm" status={row.location.isActive ? 'success' : 'idle'}>
+          {row.location.isActive ? t.values.active : t.values.inactive}
+        </Chip>
+      ),
     },
   ];
 

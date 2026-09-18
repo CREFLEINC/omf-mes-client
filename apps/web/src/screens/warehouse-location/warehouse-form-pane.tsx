@@ -1,4 +1,4 @@
-import { Button, Select, Switch, TextField } from '@crefle/web-ui';
+import { Button, Chip, Select, Switch, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
 import { useId } from 'react';
@@ -48,6 +48,8 @@ export interface SelectFieldProps {
   disabled?: boolean;
   error?: string;
   note?: string;
+  /** 값이 비었을 때 선택칸 안에 보일 안내. 값·검증에는 영향이 없다. */
+  placeholder?: string;
 }
 
 export const SelectField = ({
@@ -59,6 +61,7 @@ export const SelectField = ({
   disabled = false,
   error,
   note,
+  placeholder,
 }: SelectFieldProps) => {
   const id = useId();
   const describedById = `${id}-note`;
@@ -81,6 +84,7 @@ export const SelectField = ({
         value={value}
         onChange={onChange}
         disabled={disabled}
+        placeholder={placeholder}
         invalid={Boolean(error)}
         aria-required={required || undefined}
         aria-describedby={description ? describedById : undefined}
@@ -111,6 +115,8 @@ export const WarehouseFormPane = ({
   onActivate,
 }: WarehouseFormPaneProps) => {
   const activeLabelId = useId();
+  const externalLabelId = useId();
+  const defectLabelId = useId();
   const historyNoteId = useId();
 
   return (
@@ -166,17 +172,31 @@ export const WarehouseFormPane = ({
           error={fieldErrors.managementLevelCode}
         />
 
-        <Switch
-          label={t.fields.isExternal}
-          checked={values.isExternal}
-          onChange={(event) => onChange({ isExternal: event.target.checked })}
-        />
+        {/*
+         * 토글도 다른 칸처럼 「라벨 위 · 컨트롤 아래」로 둔다(omf-all-around#17) — 토글 옆 글자로
+         * 두면 이 줄만 모양이 달라 폼 정렬이 깨져 보였다. 켬/끔 글자는 붙이지 않는다.
+         */}
+        <div className="field-cell">
+          <span className="field-label" id={externalLabelId}>
+            {t.fields.isExternal}
+          </span>
+          <Switch
+            aria-labelledby={externalLabelId}
+            checked={values.isExternal}
+            onChange={(event) => onChange({ isExternal: event.target.checked })}
+          />
+        </div>
 
-        <Switch
-          label={t.fields.isDefect}
-          checked={values.isDefect}
-          onChange={(event) => onChange({ isDefect: event.target.checked })}
-        />
+        <div className="field-cell">
+          <span className="field-label" id={defectLabelId}>
+            {t.fields.isDefect}
+          </span>
+          <Switch
+            aria-labelledby={defectLabelId}
+            checked={values.isDefect}
+            onChange={(event) => onChange({ isDefect: event.target.checked })}
+          />
+        </div>
 
         <SelectField
           label={t.fields.partner}
@@ -185,20 +205,28 @@ export const WarehouseFormPane = ({
           value={values.partnerId}
           onChange={(value) => onChange({ partnerId: value })}
           error={fieldErrors.partnerId}
+          placeholder={t.placeholders.partner}
         />
 
-        {/* 값을 보여 주기만 하면 되는 자리는 폼 컨트롤을 잠그지 말고 값 표기로 낸다. */}
-        <div>
+        {/*
+         * 값을 보여 주기만 하면 되는 자리는 폼 컨트롤을 잠그지 말고 값 표기로 낸다.
+         * 상태(칩)와 상태를 바꾸는 액션(단추)을 한 줄에 나란히 두어 역할을 가른다(omf-all-around#17).
+         */}
+        <div className="field-cell">
           <span className="field-label" id={activeLabelId}>
             {t.fields.isActive}
           </span>
-          <p aria-labelledby={activeLabelId}>{isActive ? t.values.active : t.values.inactive}</p>
-          {/* 아직 등록되지 않은 창고에는 사용 중지할 대상이 없다. */}
-          {mode === 'edit' && (
-            <Button variant="outlined" onClick={isActive ? onDeactivate : onActivate}>
-              {isActive ? messages.common.deactivate : t.actions.activate}
-            </Button>
-          )}
+          <div className="warehouse-location-status">
+            <Chip aria-labelledby={activeLabelId} status={isActive ? 'success' : 'idle'}>
+              {isActive ? t.values.active : t.values.inactive}
+            </Chip>
+            {/* 아직 등록되지 않은 창고에는 사용 중지할 대상이 없다. */}
+            {mode === 'edit' && (
+              <Button variant="outlined" onClick={isActive ? onDeactivate : onActivate}>
+                {isActive ? messages.common.deactivate : t.actions.activate}
+              </Button>
+            )}
+          </div>
         </div>
       </div>
 
