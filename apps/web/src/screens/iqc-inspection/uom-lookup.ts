@@ -14,6 +14,12 @@ import { runRequest } from '../../patterns/request';
  *
  * 이 화면이 소유한다 — 다른 화면 슬라이스의 같은 이름 부품을 참조하지 않는다.
  */
+/**
+ * 한 번에 받는 단위 수 — 계약 최대(200). 빼면 서버 기본(50)만 와서 뒤쪽 단위가 잘린다.
+ * 이보다 많으면 찾지 못한 단위는 생략한다(추가 쪽은 부르지 않는다).
+ */
+export const UOM_PAGE_SIZE = 200;
+
 export interface UomLookup {
   /** 코드를 모르면 `null` — 붙일 것이 없다는 뜻이다. */
   codeOf: (uomId: number | undefined) => string | null;
@@ -26,7 +32,9 @@ export const useUomLookup = (): UomLookup => {
     queryKey: ['iqc-inspection', 'uoms'] as const,
     queryFn: async () => {
       const data = await runRequest(() =>
-        client.GET('/mdm/uoms', { params: { query: { includeInactive: true } } }),
+        client.GET('/mdm/uoms', {
+          params: { query: { includeInactive: true, size: UOM_PAGE_SIZE } },
+        }),
       );
 
       return new Map(data.items.map((uom) => [uom.uomId, uom.uomCode]));

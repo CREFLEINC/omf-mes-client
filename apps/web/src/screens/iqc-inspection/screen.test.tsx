@@ -90,6 +90,14 @@ const renderScreen = (
           new URL(request.url).pathname.endsWith('/measurements') && request.method === 'GET',
         respond: () => jsonResponse(measurementsResponse(measurements)),
       },
+      /* 단위 목록 — 수량 옆 단위 코드(표시 전용). 요청 크기를 시험이 본다. */
+      {
+        match: (request) => new URL(request.url).pathname === '/mdm/uoms',
+        respond: (request) => {
+          sent.push(new URL(request.url));
+          return jsonResponse({ items: [], page: { page: 1, size: 200, total: 0 } });
+        },
+      },
       /* 검사기준 버전의 항목 규격 — 그리드의 줄 수를 정한다. */
       {
         match: (request) => new URL(request.url).pathname.endsWith('/items'),
@@ -860,5 +868,18 @@ describe('IqcInspectionScreen — 수량 칸 앞자리 0', () => {
     await userEvent.click(screen.getByRole('button', { name: t.result.save }));
     await waitFor(() => expect(writes).toHaveLength(1));
     expect(await bodyOf(writes[0] as Request)).toMatchObject({ acceptedQty: 7, heldQty: 0.5 });
+  });
+});
+
+describe('IqcInspectionScreen — 단위 조회', () => {
+  it('단위 목록을 계약 최대 크기(200)로 한 번에 부른다 — 기본 크기(50)면 뒤쪽 단위가 잘린다', async () => {
+    const { sent } = renderScreen('/?ir=1001');
+
+    await screen.findByText(t.result.round(1));
+    await waitFor(() => expect(sent.some((url) => url.pathname === '/mdm/uoms')).toBe(true));
+
+    const call = sent.find((url) => url.pathname === '/mdm/uoms');
+    expect(call?.searchParams.get('size')).toBe('200');
+    expect(call?.searchParams.get('includeInactive')).toBe('true');
   });
 });
