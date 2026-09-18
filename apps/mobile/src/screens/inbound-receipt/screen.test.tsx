@@ -316,6 +316,7 @@ describe('입하 등록 화면', () => {
    */
   it('LOT 을 받으면 다음 구획을 화면 안으로 들인다', async () => {
     const pulled: string[] = [];
+    const original = Object.getOwnPropertyDescriptor(Element.prototype, 'scrollIntoView');
 
     Object.defineProperty(Element.prototype, 'scrollIntoView', {
       configurable: true,
@@ -324,12 +325,27 @@ describe('입하 등록 화면', () => {
       },
     });
 
-    mount();
-    await screen.findByLabelText('LOT 번호');
-    scan(SCANNED);
+    try {
+      mount();
+      await screen.findByLabelText('LOT 번호');
+      scan(SCANNED);
 
-    await screen.findByText('자재 P/O 선택');
-    expect(pulled.some((text) => text.startsWith('자재 P/O 선택'))).toBe(true);
+      await screen.findByText('자재 P/O 선택');
+      /*
+       * 스크롤은 구획이 그려진 뒤 효과에서 부른다. 글자가 보이는 순간 바로 재면 효과가 돌기
+       * 전일 수 있다 - 기계가 밀릴 때만 그 틈이 벌어져 전체 실행에서만 떨어졌다.
+       */
+      await waitFor(() => {
+        expect(pulled.some((text) => text.startsWith('자재 P/O 선택'))).toBe(true);
+      });
+    } finally {
+      /* jsdom 에는 이 함수가 없다. 남겨 두면 뒤에 도는 시험이 다른 환경에서 돈다. */
+      if (original === undefined) {
+        delete (Element.prototype as { scrollIntoView?: unknown }).scrollIntoView;
+      } else {
+        Object.defineProperty(Element.prototype, 'scrollIntoView', original);
+      }
+    }
   });
 
   /* 스캔 오류는 소리로도 알린다. 장갑 낀 손은 단말을 허리에 매달고 화면을 안 본다. */
@@ -532,7 +548,7 @@ describe('입하 등록 화면 — 발주 경로', () => {
     const user = userEvent.setup();
     mount([], { itemFails: true });
     await screen.findByLabelText('LOT 번호');
-    /* 품목을 못 받은 라인은 코드 대신 「품목 정보 없음」으로 선다. 그래도 고를 수 있어야 한다. */
+    /* 품목을 못 받은 라인은 코드 대신 "품목 정보 없음" 으로 선다. 그래도 고를 수 있어야 한다. */
     await choosePoLine(user, /품목 정보 없음/);
 
     await user.type(await screen.findByLabelText(/실입하\ 수량/), '500');
