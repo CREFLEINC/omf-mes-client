@@ -5,7 +5,7 @@ import { useApiClient } from '../../patterns/api-context';
 import { useMasterWrite, type MasterWriteResult } from '../../patterns/master';
 import { runRequest } from '../../patterns/request';
 import { hasPrintBridge, sendToPrinter, type PrintAttempt } from '../../patterns/pop-print';
-import { buildLocationLabel, type LocationLabelFields } from './label-tspl';
+import { buildLocationLabelBytes, type LocationLabelFields } from './label-tspl';
 import { popLocationLabelKeys } from './queries';
 import { type DocumentIssue, type DocumentIssueCreate } from './types';
 
@@ -147,11 +147,7 @@ const printOne = async (
   /* 값을 모르면 짜지 못한다 — 종이는 나오지 않았고, 발행 기록은 남아 있다. */
   if (fields === null) return { kind: 'failed', reason: '위치 정보를 찾지 못했습니다' };
 
-  return sendToPrinter(
-    new TextEncoder().encode(buildLocationLabel(fields)),
-    printLabel(record),
-    'tspl',
-  );
+  return sendToPrinter(buildLocationLabelBytes(fields), printLabel(record), 'tspl');
 };
 
 /**
