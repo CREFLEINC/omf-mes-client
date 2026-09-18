@@ -5278,6 +5278,20 @@ dl.filter-bar.approval-inbox-detail-facts {
   margin-left: auto;
 }
 
+/*
+ * 위치 코드 머리 — 값 칸은 [펼치기 단추 자리 32px + 간격 --space-2] 뒤에서 코드 글자가 시작한다.
+ * 머리 글자를 그만큼 밀어 depth 0 코드 글자와 왼쪽 끝을 맞춘다(단추는 그 여백 자리에 선다).
+ * 32px 은 location-pane 의 단추 자리(IconButton sm·빈칸) 폭, 12px(--space-3)은 compact 표의 칸 여백.
+ */
+.warehouse-location-location-table thead th:nth-child(2) {
+  padding-left: calc(var(--space-3) + 32px + var(--space-2));
+}
+
+/* 펼치기 단추 자리는 줄지 않는다 — 긴 코드가 폭을 먹으면 32px 빈칸이 눌려 깊이 들여쓰기가 어긋났다. */
+.warehouse-location-location-table .tree-toggle > :first-child {
+  flex: none;
+}
+
 /* 긴 위치 코드가 접혀도 왼쪽 기준을 지킨다(계층 들여쓰기와 같은 기준선). */
 .warehouse-location-location-table .link-cell {
   text-align: start;
