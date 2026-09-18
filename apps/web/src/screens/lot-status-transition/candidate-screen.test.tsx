@@ -79,6 +79,23 @@ const lookupRoutes: StubRoute[] = [
         page: { page: 1, size: 50, total: 1 },
       }),
   },
+  /* 품목 이름은 보이는 행의 품목 상세로 푼다(#1336) — 목록 첫 쪽에 없는 품목(802)도 상세는 답한다. */
+  {
+    match: (request) => /^\/mdm\/items\/\d+$/.test(new URL(request.url).pathname),
+    respond: (request) => {
+      const itemId = Number(new URL(request.url).pathname.split('/').at(-1));
+      const names: Record<number, [string, string]> = {
+        801: ['SYN-ITEM-A', '합성 자재'],
+        802: ['SYN-ITEM-51', '합성 51번째 자재'],
+      };
+      const name = names[itemId];
+      return name === undefined
+        ? jsonResponse({ message: '합성 없음' }, { status: 404 })
+        : jsonResponse({
+            item: { itemId, itemCode: name[0], itemName: name[1], isActive: true },
+          });
+    },
+  },
   /* 보류 사유는 공통코드 `LOT_HOLD_REASON` 선택지 — 그룹으로 나눠 답한다(앞선 라우트가 이긴다). */
   {
     match: (request) => {
@@ -273,9 +290,19 @@ describe('Lot Status 전이 후보', () => {
     expect(await screen.findByRole('radio', { name: 'DEFECTIVE' })).not.toBeChecked();
   });
 
-  it('후보가 품목 목록보다 먼저 오면 내부 id 대신 로딩 상태를 보인다', async () => {
+  it('품목 목록 첫 쪽에 없는 품목도 이름을 보인다 (#1336)', async () => {
+    renderScreen([listRoute(page([{ ...lot, itemId: 802 }]))]);
+
+    const row = (await screen.findByRole('button', { name: 'SYN-LOT-ALPHA 선택' })).closest('tr');
+    if (row === null) throw new Error('후보 행이 없습니다.');
+
+    expect(await within(row).findByText('SYN-ITEM-51 · 합성 51번째 자재')).toBeVisible();
+    expect(within(row).queryByText('알 수 없음')).not.toBeInTheDocument();
+  });
+
+  it('후보가 품목 이름보다 먼저 오면 내부 id 대신 로딩 상태를 보인다', async () => {
     renderScreen([listRoute()], (request) =>
-      new URL(request.url).pathname === '/mdm/items'
+      /^\/mdm\/items\/\d+$/.test(new URL(request.url).pathname)
         ? new Promise<Response>(() => undefined)
         : undefined,
     );
