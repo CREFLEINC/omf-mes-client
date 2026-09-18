@@ -368,7 +368,7 @@ describe('보낼 것', () => {
     expect((draft.body as { confirmedNoRule?: boolean }).confirmedNoRule).toBe(false);
   });
 
-  /* 권장이 있는 건에까지 참을 실으면 확인한 적 없는 통과가 기록으로 남는다. */
+  /* 계약이 권장 위치가 없을 때만 참을 보내라고 정한다. */
   it('권장 위치와 맞으면 확인 표시가 남아 있어도 싣지 않는다', () => {
     const draft = toPutawayDraft(7701, location(), MATCHED, true, now, '100028');
 

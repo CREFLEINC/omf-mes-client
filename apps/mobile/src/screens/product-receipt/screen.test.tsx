@@ -670,12 +670,17 @@ describe('제품 입고·적치 화면', () => {
 
     await user.click(screen.getByRole('button', { name: '입고·적치 완료' }));
 
-    expect(await screen.findByText('입고하고 적치했습니다')).toBeTruthy();
+    /* 본문을 먼저 잰다. 결과 문구부터 기다리면 결함이 있을 때 시간 초과로만 떨어져 까닭이 안 보인다. */
+    const putaway = await waitFor(() => {
+      const found = seen.find((each) => new URL(each.url).pathname.endsWith(':complete'));
 
-    const putaway = seen.find((each) => new URL(each.url).pathname.endsWith(':complete'));
-    const body = (await putaway?.json()) as { confirmedNoRule?: boolean };
+      expect(found).toBeTruthy();
+      return found;
+    });
+    const body = (await putaway?.clone().json()) as { confirmedNoRule?: boolean };
 
     expect(body.confirmedNoRule).toBe(true);
+    expect(await screen.findByText('입고하고 적치했습니다')).toBeTruthy();
   });
 
   /* 이 화면이 재고를 세우는 지점이다. 두 번 서면 같은 제품이 두 벌이 된다. */

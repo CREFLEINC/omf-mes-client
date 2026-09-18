@@ -319,8 +319,8 @@ export const toPutawayDraft = (
   const body: PutawayTaskComplete = {
     actualLocationId: destination.locationId,
     /*
-     * 권장 위치가 없는 품목은 이 확인이 있어야 서버가 적치를 받는다. 권장이 있는 건에까지 참을
-     * 실으면 확인한 적 없는 통과가 기록으로 남는다.
+     * 권장 위치가 없는 품목은 이 확인이 있어야 서버가 적치를 받는다. 계약이 권장 위치가 없을
+     * 때만 참을 보내라고 정한다.
      */
     confirmedNoRule: verdict === NO_RULE && confirmedNoRule,
     businessDate: businessDateOf(now),
