@@ -429,6 +429,45 @@ describe('P-06-01 창고 적재 위치 라벨 발행', () => {
     expect(await screen.findByText(t.print.summary(1, 0))).toBeInTheDocument();
   });
 
+  /* 세 번째 열은 「상태」 — 모든 줄에 사용 여부를 적는다(사용자 지시 2026-09-18 · omf-all-around#11). */
+  it('상태 열에 사용·미사용을 모든 줄에 적는다', async () => {
+    const user = userEvent.setup();
+    renderScreen();
+
+    await chooseWarehouse(user);
+
+    expect(await screen.findByRole('columnheader', { name: '상태' })).toBeInTheDocument();
+    expect(screen.queryByRole('columnheader', { name: '발행' })).not.toBeInTheDocument();
+
+    const stateOf = (locationCode: string): string | undefined => {
+      const row = screen.getByText(locationCode).closest('tr');
+      return row?.querySelectorAll('td')[2]?.textContent ?? undefined;
+    };
+
+    expect(stateOf('S230-01')).toBe('사용');
+    expect(stateOf('S230-02')).toBe('사용');
+    expect(stateOf('S230-03')).toBe('미사용');
+  });
+
+  /* 찍을 프린터가 없다는 경고는 맨 위 띠 자리에 선다(사용자 지시 2026-09-18 · omf-all-around#11). */
+  it('프린터가 없으면 경고를 맨 위 띠 자리에 한 번만 세우고, 프린터 칸은 그대로 둔다', async () => {
+    renderScreen({ printers: [] });
+
+    const warning = await screen.findByText(
+      '이 단말에 등록된 프린터가 없습니다. 발행 기록은 남지만 라벨 출력은 불가합니다.',
+    );
+
+    expect(screen.getAllByText(messages.popLocationLabel.printer.none)).toHaveLength(1);
+    expect(warning.closest('.pop-loclabel-top')).toBeNull();
+
+    /* 칸은 원래대로 — 라벨과 고를 것이 없는 선택칸만, 안에 경고는 없다. */
+    const card = document.querySelector('.pop-loclabel-printer');
+
+    expect(card).not.toBeNull();
+    expect(card?.textContent).toContain(messages.popLocationLabel.printer.label);
+    expect(card?.textContent).not.toContain(messages.popLocationLabel.printer.none);
+  });
+
   it('사번이 없으면 발행을 열지 않는다', async () => {
     renderWithProviders(<PopLocationLabelScreen />, {
       route: '/pop/location-label',

@@ -31,12 +31,15 @@ export const popLocationLabel = {
     retry: '다시 시도',
     columnCode: '위치 코드',
     columnName: '위치명',
-    columnIssued: '발행',
+    /** 사용 여부 열(사용자 지시 2026-09-18 · omf-all-around#11 — 「발행」에서 바꿈). */
+    columnState: '상태',
     /** 아직 한 번도 안 찍은 자리. 「0회」보다 「처음」이 현장에서 빨리 읽힌다. */
     notIssued: '처음',
     issuedCount: (count: number) => `${String(count)}회`,
+    /** 모든 줄에 사용 여부를 적는다(사용자 문구 그대로 · omf-all-around#11 — 「사용」 / 「미사용」). */
+    active: '사용',
     /** 사용 중지된 위치도 찍는다 — 선반은 그 자리에 그대로 있다. */
-    inactive: '사용 중지',
+    inactive: '미사용',
     /** 줄 오른쪽 [선택]과 목록 머리의 전체 선택(사용자 지시 2026-09-17). */
     pick: '선택',
     selectAll: '전체 선택',
@@ -50,7 +53,7 @@ export const popLocationLabel = {
     unknown: '프린터 목록을 확인하지 못했습니다',
     retry: '다시 시도',
     /** 프린터가 없어도 발행은 막지 않는다 — 기록과 인쇄는 다른 걸음이다. */
-    none: '이 단말에 등록된 프린터가 없습니다. 발행 기록은 남지만 라벨은 나오지 않습니다.',
+    none: '이 단말에 등록된 프린터가 없습니다. 발행 기록은 남지만 라벨 출력은 불가합니다.',
     unselected: '고르지 않으면 서버 기본 프린터로 나갑니다.',
     noStatusMessage: '상태를 알 수 없음',
   },

@@ -207,6 +207,18 @@ export const PopLocationLabelScreen = () => {
        */}
       {!hasPrintBridge() && <AlertBanner variant="info">{t.print.noBridge}</AlertBanner>}
 
+      {/*
+       * ⭐ **찍을 프린터가 없다는 경고도 맨 위 띠 자리에 선다**(사용자 지시 2026-09-18 ·
+       *    omf-all-around#11). 프린터 칸 안에 두면 창고 옆 작은 상자라 눈에 띄지 않았다.
+       *    프린터가 있을 때의 고르기는 그대로 오른쪽 칸이 한다(`PrinterSelect`).
+       */}
+      {!printers.isPending && !printers.isError && (printers.data ?? []).length === 0 && (
+        /* 사번 미확인 띠(`PopWorkerMissingBanner`)와 같은 자리·같은 감싸기 — 띠가 제 높이만 쓴다. */
+        <div className="banner-slot">
+          <AlertBanner variant="warning">{t.printer.none}</AlertBanner>
+        </div>
+      )}
+
       {/* 인쇄 결과는 화면 맨 위 띠 자리에 선다(사용자 지시 2026-09-17). */}
       <PrintResult
         reports={reports}
@@ -329,10 +341,15 @@ export const PopLocationLabelScreen = () => {
                 { key: 'locationName', header: t.location.columnName, align: 'center' },
                 {
                   key: 'state',
-                  header: t.location.columnIssued,
+                  header: t.location.columnState,
                   align: 'center',
+                  /* 모든 줄에 사용 여부를 적는다 — 사용은 초록(success), 미사용은 빨강(error)(omf-all-around#11). */
                   render: (row) =>
-                    row.isActive ? null : <Chip status="warning">{t.location.inactive}</Chip>,
+                    row.isActive ? (
+                      <Chip status="success">{t.location.active}</Chip>
+                    ) : (
+                      <Chip status="error">{t.location.inactive}</Chip>
+                    ),
                 },
                 {
                   key: 'pick',
