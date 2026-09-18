@@ -843,3 +843,22 @@ describe('IqcInspectionScreen — 임시 저장 단추', () => {
     expect(save).toBeDisabled();
   });
 });
+
+describe('IqcInspectionScreen — 수량 칸 앞자리 0', () => {
+  it('치는 동안 앞자리 0 을 정리하고, 저장 값은 같은 수다', async () => {
+    const { writes } = renderScreen('/?ir=1002', () => jsonResponse(queueResponse()), []);
+
+    await screen.findByText(t.result.confirmBlockedByUnsaved);
+    const accepted = screen.getByLabelText(t.result.fields.accepted);
+    await userEvent.type(accepted, '0007');
+    expect(accepted).toHaveValue('7');
+
+    const held = screen.getByLabelText(t.result.fields.held);
+    await userEvent.type(held, '00.5');
+    expect(held).toHaveValue('0.5');
+
+    await userEvent.click(screen.getByRole('button', { name: t.result.save }));
+    await waitFor(() => expect(writes).toHaveLength(1));
+    expect(await bodyOf(writes[0] as Request)).toMatchObject({ acceptedQty: 7, heldQty: 0.5 });
+  });
+});

@@ -10,6 +10,7 @@ import { FieldLabel } from './field-label';
 
 import {
   canConfirm,
+  dropLeadingZeros,
   formatMicro,
   fromServerQty,
   hasQuantityError,
@@ -226,7 +227,7 @@ export const ResultFormPane = ({
         disabled={isConfirmed || isSaving}
         /* 서버가 짚어 준 것을 먼저 낸다 — 그쪽이 이 값에 대해 더 아는 쪽이다. */
         error={serverErrorOf(key) ?? (showErrors && invalid ? t.quantityInvalid : undefined)}
-        onChange={(event) => onChange({ ...draft, [key]: event.target.value })}
+        onChange={(event) => onChange({ ...draft, [key]: dropLeadingZeros(event.target.value) })}
       />
       {uomCode !== null && <span className="iqc-inspection-qty-unit">{uomCode}</span>}
     </div>
