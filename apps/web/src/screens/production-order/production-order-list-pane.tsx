@@ -2,6 +2,7 @@ import { Chip, type Column, EmptyState, IconButton, SkeletonText, Table } from '
 import { messages } from '@omf-mes/i18n';
 
 import { PageNav } from './page-nav';
+import type { CodeNameOf } from './code-names';
 import type { PageView } from './pagination';
 import type { ProductionOrderRow } from './types';
 
@@ -14,6 +15,7 @@ export interface ProductionOrderListPaneProps {
   isLoading: boolean;
   page: PageView;
   selectedProductionOrderId: number | null;
+  statusNameOf: CodeNameOf;
   onSelect: (productionOrderId: number) => void;
   onToggleExpanded: (productionOrderId: number) => void;
   onChangePage: (page: number) => void;
@@ -24,6 +26,7 @@ export const ProductionOrderListPane = ({
   isLoading,
   page,
   selectedProductionOrderId,
+  statusNameOf,
   onSelect,
   onToggleExpanded,
   onChangePage,
@@ -97,7 +100,7 @@ export const ProductionOrderListPane = ({
       header: t.fields.statusCode,
       render: (row) => (
         <Chip variant="status" status="idle" size="sm">
-          {row.statusCode}
+          {statusNameOf(row.statusCode)}
         </Chip>
       ),
     },
@@ -134,6 +137,7 @@ export const ProductionOrderListPane = ({
           }
         />
       </div>
+      <p className="field-note production-order-list-note">{t.values.workOrderProgressHelp}</p>
       <PageNav view={page} onChange={onChangePage} />
     </section>
   );

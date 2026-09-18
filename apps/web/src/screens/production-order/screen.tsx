@@ -3,6 +3,7 @@ import { messages } from '@omf-mes/i18n';
 import { useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router';
 
+import { useProductionOrderCodeNames } from './code-names';
 import { useProductionOrderPlans, useProductionOrderWorkOrders } from './detail-queries';
 import {
   DEFAULT_PRODUCTION_ORDER_FILTERS,
@@ -45,6 +46,7 @@ export const ProductionOrderScreen = () => {
   const businessUnits = useBusinessUnitReferenceLookup();
   const plants = usePlantReferenceLookup();
   const uoms = useUomReferenceLookup();
+  const codeNames = useProductionOrderCodeNames();
   const facts = list.data?.items ?? EMPTY_FACTS;
   const itemIds = useMemo(() => {
     const ids = facts.map((order) => order.itemId);
@@ -116,6 +118,7 @@ export const ProductionOrderScreen = () => {
           isLoading={list.isPending}
           page={pageView}
           selectedProductionOrderId={selectedId}
+          statusNameOf={codeNames.productionOrderStatus}
           onSelect={(id) => setSearchParams(toSelectionSearchParams(searchParams, id))}
           onToggleExpanded={(id) => {
             setCollapsedIds((current) => {
@@ -137,9 +140,13 @@ export const ProductionOrderScreen = () => {
           businessUnits={businessUnits}
           plants={plants}
           uoms={uoms}
+          statusNameOf={codeNames.productionOrderStatus}
           action={
             selectedId === null ? undefined : (
-              <Link to={`/production/production-plans?productionOrderId=${String(selectedId)}`}>
+              <Link
+                className="production-order-plan-link"
+                to={`/production/production-plans?productionOrderId=${String(selectedId)}`}
+              >
                 {t.actions.productionPlan}
               </Link>
             )
@@ -150,16 +157,20 @@ export const ProductionOrderScreen = () => {
           isSelected={isSelected}
           state={toDetailListState(plans)}
           uoms={uoms}
+          codeNames={codeNames}
         />
         <ProductionOrderDetailListPane
           kind="workOrders"
           isSelected={isSelected}
           state={toDetailListState(workOrders)}
           uoms={uoms}
+          codeNames={codeNames}
         />
       </div>
       <AlertBanner className="production-order-erp-notice" variant="info">
-        {t.values.erpReadOnlyNotice}{' '}
+        {t.values.erpReadOnlyNotice}
+        <br />
+        {t.values.erpSyncHint}{' '}
         <Link to="/master-data/integration-sync">{t.actions.integrationSync}</Link>
       </AlertBanner>
     </>

@@ -125,6 +125,7 @@ export const ProductionOrderFilterBar = ({
       <SearchInput
         fullWidth
         label={t.fields.q}
+        placeholder={t.values.searchPlaceholder}
         value={draft.q}
         onChange={(event) => update('q', event.target.value)}
         onSearch={search}

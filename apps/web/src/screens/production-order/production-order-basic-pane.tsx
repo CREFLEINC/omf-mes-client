@@ -2,6 +2,7 @@ import { AlertBanner, Card, EmptyState, SkeletonText } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
 
+import type { CodeNameOf } from './code-names';
 import type { ProductionOrderItemName } from './item-lookups';
 import { describeReference, resolveReference, type ReferenceSource } from './reference-lookups';
 import type { ProductionOrderFact } from './types';
@@ -18,6 +19,7 @@ export interface ProductionOrderBasicPaneProps {
   businessUnits: ReferenceSource;
   plants: ReferenceSource;
   uoms: ReferenceSource;
+  statusNameOf: CodeNameOf;
   action?: ReactNode;
 }
 
@@ -49,6 +51,7 @@ export const ProductionOrderBasicPane = ({
   businessUnits,
   plants,
   uoms,
+  statusNameOf,
   action,
 }: ProductionOrderBasicPaneProps) => {
   if (!isSelected) {
@@ -118,7 +121,7 @@ export const ProductionOrderBasicPane = ({
       label: t.fields.dueDate,
       value: displayOr(data.dueDate, t.values.missingDueDate),
     },
-    { key: 'statusCode', label: t.fields.statusCode, value: data.statusCode },
+    { key: 'statusCode', label: t.fields.statusCode, value: statusNameOf(data.statusCode) },
     {
       key: 'workOrderProgress',
       label: t.fields.workOrderProgress,

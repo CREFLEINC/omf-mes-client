@@ -48,6 +48,7 @@ const baseProps = (): ProductionOrderBasicPaneProps => ({
   businessUnits: reference('2101', 'SYN-BU-01 · Synthetic unit'),
   plants: reference('3101', 'SYN-PLANT-01 · Synthetic plant'),
   uoms: reference('8101', 'SYN-EA · Synthetic each'),
+  statusNameOf: (code) => (code === 'SYN-RELEASED' ? '합성 상태' : code),
 });
 const valueFor = (label: string): HTMLElement => {
   const value = screen.getByText(label, { selector: 'dt' }).parentElement?.querySelector('dd');
@@ -88,7 +89,7 @@ describe('ProductionOrderBasicPane', () => {
       [t.fields.item, 'SYN-ITEM-01 · Synthetic item'],
       [t.fields.orderedQty, '12.5 SYN-EA · Synthetic each'],
       [t.fields.dueDate, '2026-08-31'],
-      [t.fields.statusCode, 'SYN-RELEASED'],
+      [t.fields.statusCode, '합성 상태'],
       [t.fields.workOrderProgress, '3 / 5'],
       [t.fields.remarks, 'Synthetic note'],
     ] as const;

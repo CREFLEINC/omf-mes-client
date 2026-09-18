@@ -31,7 +31,25 @@ const order = {
   expandedWorkOrderCount: 1,
   plannedWorkOrderCount: 1,
 };
+/* 공통코드 표시명 — 그룹별로 받는다. 이름이 없는 코드는 화면이 코드를 그대로 보인다. */
+const codeValueNames: Record<string, { code: string; codeName: string }[]> = {
+  PRODUCTION_ORDER_STATUS: [{ code: 'SYN-READY', codeName: '합성 수신' }],
+};
+
 const references: StubRoute[] = [
+  {
+    match: (request) => exact(request, '/mdm/code-values'),
+    respond: (request) => {
+      const group = new URL(request.url).searchParams.get('codeGroupCode') ?? '';
+      const items = (codeValueNames[group] ?? []).map((value, index) => ({
+        ...value,
+        codeValueId: index + 1,
+        displayOrder: index + 1,
+        isActive: true,
+      }));
+      return jsonResponse(page(items));
+    },
+  },
   {
     match: (request) => exact(request, '/mdm/business-units'),
     respond: () =>
@@ -178,6 +196,27 @@ describe('ProductionOrderScreen', () => {
     expect(listRequest?.searchParams.get('page')).toBe('2');
     expect(requests.some((url) => url.pathname === '/planning/production-orders/701')).toBe(false);
     expect(screen.queryByRole('link', { name: t.actions.productionPlan })).not.toBeInTheDocument();
+    /* 상태는 코드가 아니라 공통코드 표시명으로 — 사용 중지 코드까지 받는다. */
+    expect(await screen.findByText('합성 수신')).toBeInTheDocument();
+    const codeGroups = requests
+      .filter((url) => url.pathname === '/mdm/code-values')
+      .map((url) => [
+        url.searchParams.get('codeGroupCode'),
+        url.searchParams.get('includeInactive'),
+      ]);
+    expect(codeGroups).toEqual(
+      expect.arrayContaining([
+        ['PRODUCTION_ORDER_STATUS', 'true'],
+        ['PRODUCTION_PLAN_STATUS', 'true'],
+        ['WORK_ORDER_STATUS', 'true'],
+        ['WORK_ORDER_TYPE', 'true'],
+      ]),
+    );
+    /* 검색은 서버가 ERP W/O 번호(production_order_no)만 본다 — 안내도 그것만 말한다. */
+    expect(screen.getByLabelText(t.fields.q)).toHaveAttribute(
+      'placeholder',
+      t.values.searchPlaceholder,
+    );
 
     await user.click(select);
     expect(await screen.findByText('SYN-PLAN-501')).toBeInTheDocument();
