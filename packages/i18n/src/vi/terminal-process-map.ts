@@ -122,7 +122,8 @@ export const terminalProcessMap: Translated<typeof ko.terminalProcessMap> = {
     emptyTitle: 'Chưa có công đoạn nào được thiết lập',
     empty: 'Để dùng máy quét này cho công việc sản xuất, hãy thêm công đoạn ở phía trên.',
     /** ⭐ `quyền` 을 쓰지 않는다 — 보안 경계가 아니라 오조작을 막는 기능 구성이다. */
-    purpose: 'Thiết lập theo từng công đoạn các chức năng được dùng trên máy quét này.',
+    purpose:
+      'Thiết lập theo từng công đoạn các chức năng được dùng trên máy quét này. Khi lưu, cấu hình công đoạn sẽ được thay đổi theo danh sách hiện tại. Công đoạn đã loại trừ khỏi danh sách cũng sẽ bị loại khỏi máy quét này.',
     save: 'Lưu cấu hình',
     saved: 'Đã lưu cấu hình chức năng.',
     saving: 'Đang lưu.',
