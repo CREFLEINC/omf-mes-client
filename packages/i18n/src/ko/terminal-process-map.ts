@@ -59,7 +59,7 @@ export const terminalProcessMap = {
     equipmentHint: 'POP 유형일 시 지정해 주세요',
     plantPlaceholder: '공장을 지정하세요',
     /** 설치 위치는 창고를 먼저 골라야 조회되는 자원이라 이 화면에서 열지 않는다. */
-    locationOmitted: '설치 위치는 창고를 먼저 골라야 조회할 수 있어 이 화면에서 다루지 않습니다.',
+    locationOmitted: '설치 위치를 설정하려면 먼저 창고를 선택해 주세요.',
     save: '저장',
     saving: '저장하는 중입니다.',
     saved: '단말 정보를 저장했습니다.',
