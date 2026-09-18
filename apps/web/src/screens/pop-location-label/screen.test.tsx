@@ -429,6 +429,26 @@ describe('P-06-01 창고 적재 위치 라벨 발행', () => {
     expect(await screen.findByText(t.print.summary(1, 0))).toBeInTheDocument();
   });
 
+  /* 세 번째 열은 「상태」 — 모든 줄에 사용 여부를 적는다(사용자 지시 2026-09-18 · omf-all-around#11). */
+  it('상태 열에 사용중·미사용을 모든 줄에 적는다', async () => {
+    const user = userEvent.setup();
+    renderScreen();
+
+    await chooseWarehouse(user);
+
+    expect(await screen.findByRole('columnheader', { name: '상태' })).toBeInTheDocument();
+    expect(screen.queryByRole('columnheader', { name: '발행' })).not.toBeInTheDocument();
+
+    const stateOf = (locationCode: string): string | undefined => {
+      const row = screen.getByText(locationCode).closest('tr');
+      return row?.querySelectorAll('td')[2]?.textContent ?? undefined;
+    };
+
+    expect(stateOf('S230-01')).toBe('사용중');
+    expect(stateOf('S230-02')).toBe('사용중');
+    expect(stateOf('S230-03')).toBe('미사용');
+  });
+
   it('사번이 없으면 발행을 열지 않는다', async () => {
     renderWithProviders(<PopLocationLabelScreen />, {
       route: '/pop/location-label',

@@ -329,10 +329,15 @@ export const PopLocationLabelScreen = () => {
                 { key: 'locationName', header: t.location.columnName, align: 'center' },
                 {
                   key: 'state',
-                  header: t.location.columnIssued,
+                  header: t.location.columnState,
                   align: 'center',
+                  /* 모든 줄에 사용 여부를 적는다 — 사용중은 눈에 덜 띄게, 미사용만 경고 톤(omf-all-around#11). */
                   render: (row) =>
-                    row.isActive ? null : <Chip status="warning">{t.location.inactive}</Chip>,
+                    row.isActive ? (
+                      <Chip status="idle">{t.location.active}</Chip>
+                    ) : (
+                      <Chip status="warning">{t.location.inactive}</Chip>
+                    ),
                 },
                 {
                   key: 'pick',
