@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import { layoutLotLabel } from '../pop-material-lot-label/label-tspl';
 import { buildLocationLabel } from './label-tspl';
 
 const fields = {
@@ -35,18 +36,24 @@ describe('창고 적재 위치 라벨 80 × 30 mm', () => {
     const qr = /^QRCODE (\d+),(\d+),M,(\d+),/mu.exec(command);
 
     expect(qr).not.toBeNull();
-    expect(Number(qr?.[1])).toBeLessThan(WIDTH);
     expect(Number(qr?.[2])).toBeGreaterThanOrEqual(0);
+
+    /* QR 은 끝점까지 본다 — 잘림은 오른쪽·아래 끝에서 났다. */
+    const { qr: box } = layoutLotLabel([], fields.locationCode);
+
+    expect(box.x).toBe(Number(qr?.[1]));
+    expect(box.x + box.side).toBeLessThanOrEqual(WIDTH);
+    expect(box.y + box.side).toBeLessThanOrEqual(HEIGHT);
   });
 
   it('QR 에는 위치 코드만 싣는다', () => {
     expect(buildLocationLabel(fields)).toMatch(/^QRCODE [^\r\n]*,"S230-A-01-02"\r$/mu);
   });
 
-  it('위치명이 한글이면 그 줄을 뺀다 — 내장 글꼴이 찍지 못한다', () => {
+  it('위치명이 한글이어도 줄을 지키고, 못 그리는 글자만 ? 로 찍는다(결정 17)', () => {
     const command = buildLocationLabel({ ...fields, locationName: '자재 랙 1단' });
 
-    expect(command).not.toContain('?');
-    expect(command.match(/^TEXT /gmu)).toHaveLength(3);
+    expect(command.match(/^TEXT /gmu)).toHaveLength(4);
+    expect(command).toContain('"?? ? 1?"');
   });
 });

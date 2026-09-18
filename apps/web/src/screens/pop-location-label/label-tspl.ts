@@ -13,8 +13,8 @@ import { buildLotLabel, type LotLabelRow } from '../pop-material-lot-label/label
  * ⛔ **QR 에는 위치 코드만 싣는다.** 모바일 적치·이동 화면이 스캔 값을 그대로 위치 코드 조회에
  *    넣는다 — 창고를 덧붙이면 조회가 0건이 된다(서버 판과 같은 규칙).
  *
- * ⚠ **위치명이 ASCII 가 아니면 그 줄을 뺀다.** 내장 글꼴은 한글을 찍지 못해 `???` 만 남는다 —
- *   코드 줄로 식별이 된다.
+ * ⚠ **위치명이 ASCII 밖이어도 줄을 빼지 않는다** — 못 그리는 글자만 `?` 로 찍힌다(`docs/decisions.md`
+ *   결정 17 · 사용자 확정 2026-09-16). 칸 수를 지키고 못 그린 자리를 눈에 보이게 남긴다.
  */
 export interface LocationLabelFields {
   warehouseCode: string;
@@ -23,8 +23,6 @@ export interface LocationLabelFields {
   /** 발행 회차. */
   issueSeq: number;
 }
-
-const isPrintable = (value: string): boolean => /^[\x20-\x7e]+$/u.test(value);
 
 /**
  * 위치 라벨 한 장.
@@ -41,7 +39,7 @@ export const buildLocationLabel = (fields: LocationLabelFields): string => {
     { point: 8, content: `WH ${fields.warehouseCode}` },
     /* 현장이 선반 앞에서 읽는 줄이라 가장 크게 찍는다. */
     { point: 16, content: fields.locationCode },
-    ...(isPrintable(fields.locationName) ? [{ point: 8, content: fields.locationName }] : []),
+    { point: 8, content: fields.locationName },
     { point: 8, content: `ISSUE NO. ${String(fields.issueSeq)}` },
   ];
 

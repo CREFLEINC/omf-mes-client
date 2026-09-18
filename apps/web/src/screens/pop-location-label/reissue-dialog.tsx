@@ -43,7 +43,7 @@ export const ReissueDialog = ({
   <Dialog
     open
     onClose={onClose}
-    /* ⭐ 크게 띄우고 X 는 두지 않는다 — 닫기는 [취소] 하나다(사용자 지시 2026-09-18). */
+    /* ⭐ 크게 띄우고 X 는 두지 않는다(사용자 지시 2026-09-18). Esc·바깥 누르기는 그대로 닫는다. */
     className="pop-loclabel-reissue-dialog"
     size="lg"
     showCloseButton={false}
