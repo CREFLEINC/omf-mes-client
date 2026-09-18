@@ -51,3 +51,4 @@
 
 ```bash
 cd /opt/services/omf-mes-front && ./install-deploy.sh --non-interactive --version web-vX.Y.Z
+```
