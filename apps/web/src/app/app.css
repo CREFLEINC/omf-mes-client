@@ -6052,6 +6052,37 @@ dl.filter-bar.approval-inbox-detail-facts {
   padding: var(--space-2);
 }
 
+/* 이 화면 선택칸의 오류·안내 묶음 — 평소에는 없는 것처럼(자식이 원래 자리에 선다). */
+.terminal-map-field-messages {
+  display: contents;
+}
+
+/*
+ * 「공정 추가」 — 오류·안내를 선택칸 오른쪽 같은 줄에, 세로 가운데를 맞춰 둔다. 문구가 없으면 자리도 없다.
+ * 오류 색·aria-describedby 연결은 SelectField 그대로다.
+ */
+.field-cell.terminal-map-add-field {
+  display: grid;
+  grid-template-columns: minmax(13rem, max-content) minmax(0, 1fr);
+  column-gap: var(--space-3);
+  align-items: center;
+}
+
+.terminal-map-add-field > .field-label {
+  grid-column: 1 / -1;
+}
+
+.terminal-map-add-field > .terminal-map-field-messages {
+  display: block;
+  grid-column: 2;
+  grid-row: 2;
+}
+
+.terminal-map-add-field > .terminal-map-field-messages > * {
+  margin-top: 0;
+  max-width: none;
+}
+
 /* 단말 등록·수정 폼 — 카드 제목 바로 아래 설치 위치 정보 띠. 재발급 경고 띠와 같은 폭·여백, 아래 필드와 --space-4. */
 .terminal-map-form-notice {
   margin-bottom: var(--space-4);

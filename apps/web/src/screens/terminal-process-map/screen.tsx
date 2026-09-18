@@ -538,6 +538,7 @@ export const TerminalProcessMapScreen = () => {
                 error={gridNotice ?? undefined}
                 placeholder={t.grid.addPlaceholder}
                 wide
+                className="terminal-map-add-field"
                 onChange={addRow}
               />
             </div>

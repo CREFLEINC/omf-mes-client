@@ -28,6 +28,8 @@ export interface SelectFieldProps {
   disabled?: boolean;
   /** 라벨 오른쪽 같은 줄의 짧은 안내. */
   hint?: string;
+  /** 칸 배치를 바꿀 이 화면 전용 클래스(예: 오류를 선택칸 오른쪽에 두는 자리). */
+  className?: string;
 }
 
 /**
@@ -54,6 +56,7 @@ export const SelectField = ({
   wide = false,
   disabled = false,
   hint,
+  className,
 }: SelectFieldProps) => {
   const id = useId();
   const noteId = `${id}-note`;
@@ -62,7 +65,11 @@ export const SelectField = ({
   const hasEmptyOption = options.some((option) => option.value === '');
 
   return (
-    <div className={wide ? 'field-cell wide-select' : 'field-cell'}>
+    <div
+      className={['field-cell', wide ? 'wide-select' : null, className ?? null]
+        .filter((name) => name !== null)
+        .join(' ')}
+    >
       <FieldLabel htmlFor={id} label={label} hint={hint} />
       <Select
         id={id}
@@ -78,15 +85,20 @@ export const SelectField = ({
             .join(' ') || undefined
         }
       />
-      {error !== undefined && (
-        <span id={errorId} className="field-error">
-          {error}
-        </span>
-      )}
-      {note !== undefined && (
-        <span id={noteId} className="field-note">
-          {note}
-        </span>
+      {/* 오류·안내 묶음 — 평소에는 자리를 바꾸지 않고(display: contents), 배치 클래스가 있으면 한 칸으로 움직인다. */}
+      {(error !== undefined || note !== undefined) && (
+        <div className="terminal-map-field-messages">
+          {error !== undefined && (
+            <span id={errorId} className="field-error">
+              {error}
+            </span>
+          )}
+          {note !== undefined && (
+            <span id={noteId} className="field-note">
+              {note}
+            </span>
+          )}
+        </div>
       )}
     </div>
   );
