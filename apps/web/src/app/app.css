@@ -5959,6 +5959,21 @@ dl.filter-bar.approval-inbox-detail-facts {
   min-width: 0;
 }
 
+/* 단말 목록·공정별 기능 구성 표 — 머리줄과 모든 열을 가운데로. DS 의 열별 정렬([data-align])보다 앞선다. */
+.terminal-map-list thead th,
+.terminal-map-list thead th[data-align],
+.terminal-map-list td,
+.terminal-map-grid-table thead th,
+.terminal-map-grid-table thead th[data-align],
+.terminal-map-grid-table td {
+  text-align: center;
+}
+
+/* 칸 안의 공정명·「모두 열기」 묶음도 가운데에 세운다. */
+.terminal-map-grid-table .stacked-cell {
+  align-items: center;
+}
+
 /* 단말 정보 — 이름 칸은 흐리게, 식별 값(단말 코드)만 굵게. 표식과 글자가 한 줄에 서게 가운데로 맞춘다. */
 .token-meta.terminal-map-info {
   align-items: center;
