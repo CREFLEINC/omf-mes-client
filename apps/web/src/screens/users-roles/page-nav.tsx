@@ -21,6 +21,9 @@ export interface PageNavProps {
  *
  * 배치는 이미 있는 「하단 액션 줄」을 그대로 쓴다. 새 클래스를 만들지 않는다.
  *
+ * 버튼은 이 화면의 다른 버튼과 같은 기본 크기다 — 작은 크기(`sm`)는 눈에 띄게 작아 보였다
+ * (사용자 요청 2026-09-18).
+ *
  * 이 화면 슬라이스가 소유한다 — 다른 화면 슬라이스의 같은 이름 부품을 참조하지 않는다.
  */
 export const PageNav = ({ view, onChange, label = t.pageNav.label }: PageNavProps) => (
@@ -28,7 +31,6 @@ export const PageNav = ({ view, onChange, label = t.pageNav.label }: PageNavProp
     <p className="field-note form-actions-secondary">{view.rangeLabel}</p>
     <Button
       variant="outlined"
-      size="sm"
       disabled={!view.canPrev}
       onClick={() => {
         onChange(view.page - 1);
@@ -38,7 +40,6 @@ export const PageNav = ({ view, onChange, label = t.pageNav.label }: PageNavProp
     </Button>
     <Button
       variant="outlined"
-      size="sm"
       disabled={!view.canNext}
       onClick={() => {
         onChange(view.page + 1);

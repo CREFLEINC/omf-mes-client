@@ -9,7 +9,6 @@ import {
   remainingOf,
   remainingTotal,
   removeLine,
-  toProgress,
 } from './packing-draft';
 import type { PackedLine, ShipmentLotAllocation } from './types';
 
@@ -131,28 +130,6 @@ describe('removeLine · 합계', () => {
 
     expect(packedTotal(lines)).toBe(180);
     expect(remainingTotal(lines)).toBe(240);
-  });
-});
-
-describe('toProgress', () => {
-  it('포장 개수는 «서로 다른» 포장 식별자의 수다', () => {
-    const progress = toProgress([
-      allocation({ shipmentLotAllocationId: 1, handlingUnitId: 4001, packedQty: 180 }),
-      allocation({ shipmentLotAllocationId: 2, handlingUnitId: 4001, packedQty: 180 }),
-      allocation({ shipmentLotAllocationId: 3, handlingUnitId: 4002, packedQty: 180 }),
-    ]);
-
-    expect(progress.packedCount).toBe(2);
-  });
-
-  it('포장에 담기지 않은 배분은 세지 않고, 미포장 수량은 잔여의 합이다', () => {
-    const progress = toProgress([
-      allocation({ shipmentLotAllocationId: 1, handlingUnitId: null, packedQty: 60 }),
-      allocation({ shipmentLotAllocationId: 2, handlingUnitId: 4001, packedQty: 180 }),
-    ]);
-
-    expect(progress.packedCount).toBe(1);
-    expect(progress.unpackedQty).toBe(120);
   });
 });
 

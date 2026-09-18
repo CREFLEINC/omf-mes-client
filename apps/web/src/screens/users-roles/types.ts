@@ -26,6 +26,11 @@ export interface LookupEntry {
   value: string;
   label: string;
   isActive: boolean;
+  /**
+   * 사람이 읽는 이름과 따로 보일 내부 코드. 이름을 앞세우고 코드를 작게 곁들이는 자리(역할 부여)만
+   * 채운다 — 채우지 않은 목록은 `label` 에 코드와 이름을 함께 담는다.
+   */
+  code?: string;
 }
 
 export interface SelectOption {

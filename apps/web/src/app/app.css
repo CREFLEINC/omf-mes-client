@@ -5579,6 +5579,215 @@ dl.filter-bar.approval-inbox-detail-facts {
   background: var(--surface);
 }
 
+/*
+ * W-CO-02 사용자 탭 — 목록(네 열)과 상세(세 구획)가 페이지 폭을 끝까지 채운다. 카드에 최대 폭을
+ * 걸면 오른쪽이 비어 남는다(사용자 확인 2026-09-18). 카드 안이 휑한 문제는 폭에 따라 열 수가
+ * 바뀌는 안쪽 격자(아래 폼·역할 목록)로 푼다. 목록 하한 24rem 은 네 열과 조회 줄이 접히지 않는 폭이다.
+ */
+.two-pane.users-roles-layout {
+  grid-template-columns: minmax(24rem, 5fr) minmax(0, 8fr);
+}
+
+@media (max-width: 1280px) {
+  .two-pane.users-roles-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+/*
+ * 검색창이 첫 줄의 남는 폭을 다 쓰고 「미사용 포함」이 그 옆에 선다. 둘째 줄에 부서·재직 상태와
+ * 그것을 적용하는 조회·초기화가 한 묶음으로 선다.
+ */
+.users-roles-filter {
+  display: grid;
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+}
+
+.users-roles-filter > .filter-bar {
+  margin-bottom: 0;
+}
+
+/* 1행 — 검색창이 남는 폭을 다 쓴다. */
+.users-roles-filter > .filter-bar:first-child > :first-child {
+  flex: 1 1 12rem;
+}
+
+/* 2행 — 조회·초기화를 줄 오른쪽 끝(사용자 추가와 같은 끝선)으로. 줄이 바뀌어도 오른쪽에 붙는다. */
+.users-roles-filter .filter-actions {
+  margin-left: auto;
+}
+
+/*
+ * 고른 사용자 줄 — DS `Table` 이 행 선택 표시를 주지 않아 안쪽 버튼의 `aria-current` 로 줄을
+ * 짚는다. 채운 색(`--primary-container`)은 목록에서 너무 강해 옅은 상태 배경 + 줄 앞 막대 +
+ * 굵은 로그인 ID 로 짚는다 — 막대가 있어 배경이 옅어도 선택이 흐려지지 않는다.
+ */
+.users-roles-list tbody tr:has(.link-cell[aria-current='true']) {
+  background: var(--state-hover);
+}
+
+.users-roles-list tbody tr:has(.link-cell[aria-current='true']) > td:first-child {
+  box-shadow: inset 3px 0 var(--primary);
+}
+
+.users-roles-list .link-cell[aria-current='true'] {
+  color: inherit;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+/* 읽기 전용 칸의 라벨 줄 — 라벨 오른쪽에 「바꿀 수 없다」는 보조 라벨을 작게 붙인다. */
+.readonly-label-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  column-gap: var(--space-2);
+}
+
+/* 라벨과 같은 글자 크기 — 크면 이 칸의 라벨 줄만 높아져 옆 칸과 입력칸 윗선이 어긋난다. */
+.readonly-label-note {
+  color: var(--on-surface-variant);
+  font: var(--type-label-sm);
+  letter-spacing: var(--type-label-sm-tracking);
+  white-space: nowrap;
+  opacity: 0.8;
+}
+
+/* 입력칸이 아닌 값 — 옅은 바탕으로 «고칠 수 없는 칸»임을 보이되 글자는 흐리게 두지 않는다. */
+.readonly-value {
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  align-self: stretch;
+  min-height: var(--control-height-md);
+  margin: 0;
+  padding: 0 var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--surface-container);
+  color: var(--on-surface);
+}
+
+/*
+ * 사용자 정보 폼 — 카드 안쪽 폭(컨테이너 질의, 전례 `pop.css`)으로 열 수를 정한다.
+ * 넓으면(40rem 이상) 수정은 3열 3:4:5 — 1행 로그인 ID · 이름 · 부서, 2행 이메일(두 칸) · 재직 상태.
+ * **부서와 재직 상태가 같은 열**이라 폭과 끝선이 맞고 빈 칸이 없다(사용자 요청 2026-09-18).
+ * 등록은 칸이 여섯이라 균등 3열(로그인 ID · 초기 비밀번호 · 이름 / 부서 · 이메일 · 재직 상태)로
+ * 두 선택칸 폭을 맞춘다. 좁으면 1열 — 모든 칸이 같은 폭이다. 필드 순서는 DOM 순서 그대로다.
+ * 열 하한: 로그인 ID 13rem(라벨 옆 「변경 불가」 안내가 한 줄에 드는 폭), 이름 11rem, 부서 13rem.
+ */
+.users-roles-user-pane {
+  container-type: inline-size;
+}
+
+.form-grid.users-roles-user-form {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+@container (min-width: 40rem) {
+  .form-grid.users-roles-user-form {
+    grid-template-columns: minmax(13rem, 3fr) minmax(11rem, 4fr) minmax(13rem, 5fr);
+  }
+
+  .users-roles-user-form > .urf-email {
+    grid-column: span 2;
+  }
+
+  .form-grid.users-roles-user-form.urf-create {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .users-roles-user-form.urf-create > .urf-email {
+    grid-column: auto;
+  }
+}
+
+/*
+ * 사용자 정보의 액션 줄 — 폼 칸과 선으로 가르고, 왼쪽 계정 관리 묶음(비밀번호 초기화·사용 중지)과
+ * 오른쪽 폼 묶음(취소·저장)이 양 끝에 선다. 묶음 안은 촘촘히, 묶음 사이는 줄 폭만큼 떨어진다.
+ */
+.users-roles-pane > .form-actions:has(.users-roles-account-actions),
+.users-roles-select-hint {
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--outline-variant);
+}
+
+/* 고르기 전 안내 — 사용자 정보 카드의 표제 아래 구분선 다음 한 줄. */
+.users-roles-select-hint {
+  margin: 0;
+  color: var(--on-surface-variant);
+}
+
+.users-roles-account-actions {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+}
+
+/* 역할 부여 — 넓으면 여러 열, 좁으면 한 열. 카드 없는 단순 목록 그대로다. */
+.users-roles-role-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(16rem, 100%), 1fr));
+  gap: var(--space-2) var(--space-5);
+}
+
+/* 오른쪽 세 구획의 액션 줄 — 공통 간격(space-5)이면 저장 줄이 내용에서 떨어져 보인다. */
+.users-roles-pane > .form-actions {
+  margin-top: var(--space-4);
+}
+
+/* 표제와 그 옆 버튼의 가운데를 맞춘다 — 공통 `.pane-heading-row` 는 위 끝을 맞춰 표제가 떠 보인다. */
+.users-roles-heading {
+  align-items: center;
+}
+
+/* 줄 액션 아이콘 둘 사이 간격 — 붙어 있으면 수정·삭제를 잘못 누르기 쉽다. */
+.users-roles-row-actions {
+  display: inline-flex;
+  gap: var(--space-2);
+}
+
+/*
+ * 임시 비밀번호 창 본문 — 배너·값 목록·복사 버튼 사이를 같은 간격으로 띄운다. 배너와 목록은 창
+ * 폭을 쓰고, 버튼은 제 폭만 쓴다.
+ */
+.temp-password-body {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-4);
+}
+
+.temp-password-body > * {
+  margin: 0;
+}
+
+.temp-password-body > :not(button) {
+  align-self: stretch;
+}
+
+/*
+ * 값이 길면 창 안에서 줄바꿈한다 — 넘쳐 창 밖으로 나가지 않게. 공통 `.token-meta` 의 위아래
+ * 여백은 본문 간격(gap)과 겹쳐 간격이 커지므로 뺀다.
+ */
+.token-meta.temp-password-facts {
+  grid-template-columns: max-content minmax(0, 1fr);
+  margin: 0;
+}
+
+.temp-password-facts dd {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+/* 역할명이 먼저 읽히고 코드는 곁에 작게 — 운영자가 짚어 볼 값이라 지우지 않는다. */
+.role-choice-code {
+  margin-left: var(--space-2);
+  color: var(--on-surface-variant);
+  font: var(--type-body-sm);
+  letter-spacing: var(--type-body-sm-tracking);
+}
+
 /**
  * 전체 선택·해제 — **표 위에 둔다.** 아래 액션 줄에 섞으면 「저장」과 나란히 서서 누르는
  * 순간 저장되는 것으로 읽힌다. 이 둘은 고르기만 하고 서버로 나가는 것은 「저장」뿐이다.
@@ -7689,11 +7898,6 @@ dl.filter-bar.approval-inbox-detail-facts {
   margin: 0 auto;
 }
 
-.pop-repack-preview-note {
-  margin: var(--space-3) 0 0;
-  color: var(--on-surface-muted);
-}
-
 /* 막힌 사유 — ⛔ 툴팁에만 두면 터치 패널에서 읽히지 않는다(독립 검증 실측). */
 .pop-repack-blocked {
   display: flex;
@@ -8654,4 +8858,90 @@ dl.filter-bar.approval-inbox-detail-facts {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+/*
+ * 품목 선택 대화상자(`patterns/item-picker`).
+ *
+ * ⛔ **`.item-picker-dialog` 의 자식에 규칙을 걸지 않는다.** 그 클래스는 `<dialog>` 에 붙고
+ *    그 아래는 디자인 시스템의 패널 하나뿐이다 — 내 내용은 패널 «안»의 본문에 들어간다. 종전에
+ *    `.item-picker-dialog > * + *` 로 세로 간격을 주었는데 **맞는 자식이 없어 아무 일도 하지
+ *    않았다**(실측 2026-09-18 · 조회 줄과 표가 붙어 보이던 원인). 그래서 내 것을 담는 래퍼를
+ *    두고 거기에 건다 — DS 내부 클래스 이름은 해시라 붙잡을 것이 못 된다.
+ *
+ * ⭐ **창 크기를 처음부터 고정한다**(사용자 지시 2026-09-18). 빈 상태로 작게 떴다가 결과 20건이
+ *    오면 자라는 모양이었다 — 검색을 되풀이하면 창이 눈앞에서 커졌다 줄었다 한다.
+ * ⚠ **높이는 손으로 세운다.** DS `DialogProps` 에 `size`(max-width) 프리셋만 있고 높이 프리셋은
+ *   없다. 한 쪽(20건)이 들어갈 만큼을 바닥으로 잡되, 작은 화면에서 창이 화면을 넘지 않도록
+ *   `min()` 으로 상한을 함께 둔다.
+ */
+.item-picker-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  block-size: min(62vh, 32rem);
+}
+
+/*
+ * 결과 표만 스크롤한다 — 조회 줄과 쪽 이동 줄은 늘 같은 자리에 남는다.
+ *
+ * ⚠ `min-block-size: 0` 이 없으면 플렉스 자식이 내용보다 작아지지 못해 **스크롤이 생기지 않고**
+ *   창이 늘어난다(플렉스 기본값 `min-height: auto`).
+ * ⭐ 오류 띠가 뜨고 사라질 때 창 높이는 그대로고 이 칸만 줄었다 는다 — 빈 자리를 늘 비워 두는
+ *    쪽보다 낫다. 늘 비워 두면 오류가 없는 평소에 빈 띠 자리가 계속 보인다.
+ */
+.item-picker-results {
+  flex: 1 1 auto;
+  min-block-size: 0;
+  overflow-y: auto;
+}
+
+/*
+ * 조회 줄 — **검색어가 남는 폭을 갖는다.** 유형은 짧은 선택칸이라 제 크기만 차지하고,
+ * 「찾기」도 제 크기를 지킨다. 좁으면 아래로 접는다.
+ */
+.item-picker-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--space-3);
+}
+
+/*
+ * ⛔ **칸 안의 입력 요소가 칸을 채운다.** `.field-cell` 은 `align-items: flex-start` 라 자식이
+ *    제 내용 폭만 갖는다 — 칸만 늘고 입력칸은 왼쪽에 작게 붙어, 오른쪽에 빈 자리가 크게 남는다
+ *    (실측 2026-09-18: 검색어 칸 406px 에 입력 요소 172px). 사용자가 「정렬이 안 됐다」고 본
+ *    그 모양이다. 선례는 `.field-cell.lot-status-transition-status-filter` 다.
+ */
+.item-picker-controls > .field-cell {
+  align-items: stretch;
+}
+
+.item-picker-controls > .field-cell:first-child {
+  flex: 0 0 12rem;
+}
+
+.item-picker-controls > .field-cell {
+  flex: 1 1 16rem;
+  min-width: 0;
+}
+
+.item-picker-controls > button {
+  flex: 0 0 auto;
+}
+
+/* 쪽 이동 — 「1–20 / 전체 37건」은 왼쪽, 단추 둘은 오른쪽 끝으로 민다. */
+.item-picker-pager {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.item-picker-pager > .field-note {
+  margin-inline-end: auto;
+}
+
+/* 건수 글이 없을 때도 단추는 오른쪽 끝에 남는다 — 줄이 좌우로 흔들리지 않는다. */
+.item-picker-pager > button:first-child {
+  margin-inline-start: auto;
 }

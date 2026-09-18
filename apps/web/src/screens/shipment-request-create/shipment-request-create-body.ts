@@ -1,4 +1,4 @@
-import { CUSTOMER_LOT_REQUIREMENT_MAX_LENGTH, readQty } from './validation';
+import { readQty } from './validation';
 import type {
   AssignmentMode,
   ShipmentRequestCreate,
@@ -47,19 +47,13 @@ const toLine = (line: ShipmentRequestLineDraft): ShipmentRequestLineCreate | nul
   if (requested.kind !== 'qty' || requested.value <= 0) return null;
   if (allocated.value > requested.value) return null;
 
-  const shelfLife = readQty(line.minimumRemainingShelfLifeDays);
-
   return {
     ...(line.salesOrderLineId === null ? {} : { salesOrderLineId: line.salesOrderLineId }),
     itemId,
     requestedQty: requested.value,
     allocatedQty: allocated.value,
     uomId,
-    ...(line.customerLotRequirement.trim() === ''
-      ? {}
-      : { customerLotRequirement: line.customerLotRequirement.trim() }),
     shippingInspectionRequired: line.shippingInspectionRequired,
-    ...(shelfLife.kind === 'qty' ? { minimumRemainingShelfLifeDays: shelfLife.value } : {}),
   };
 };
 
@@ -87,13 +81,6 @@ export const toShipmentRequestCreateBody = (
   const requestedShipDate = input.requestedShipDate.trim();
 
   if (customerId === null || shipToPartnerId === null || fulfillmentPlantId === null || requestedShipDate === '') return null;
-  if (
-    input.lines.some(
-      (line) => line.customerLotRequirement.length > CUSTOMER_LOT_REQUIREMENT_MAX_LENGTH,
-    )
-  ) {
-    return null;
-  }
 
   const lines: ShipmentRequestLineCreate[] = [];
 

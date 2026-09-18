@@ -91,6 +91,21 @@ const usedClassNames = (): Set<string> => {
         if (!name.endsWith('-')) used.add(name);
       }
     }
+
+    /*
+     * ⭐ **삼항으로 고르는 `className` 도 센다**(실측 2026-09-18). `className={cond ? 'pop-a' :
+     *    'pop-b'}` 형태는 위 셋에 걸리지 않아, **멀쩡히 쓰이는 클래스 둘이 「소비자 없는 CSS」로
+     *    잡혔다** — 감지기가 거꾸로 틀린 자리다(배열 형태를 더한 2026-09-11 과 같은 종류).
+     *    그대로 두면 다음 사람이 그 CSS 를 «죽은 것»으로 읽고 지운다 — 화면이 조용히 깨진다.
+     *
+     * ⚠ **중괄호 안에 중괄호가 없는 것만** 본다(`[^{}]`). 템플릿 문자열(`${}`)은 위에서 이미
+     *   세고, 여기서 욕심내 넓히면 파일 전체를 훑는 것과 다를 바 없어진다.
+     */
+    for (const [, block] of source.matchAll(/className=\{([^{}]*)\}/gu)) {
+      for (const [name] of (block ?? '').matchAll(/(?:pop|pack-work)-[a-z][a-z-]*/gu)) {
+        if (!name.endsWith('-')) used.add(name);
+      }
+    }
   }
 
   return used;

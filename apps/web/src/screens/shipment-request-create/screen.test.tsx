@@ -9,7 +9,6 @@ import {
   renderWithProviders,
   type StubRoute,
 } from '../../test/api-harness';
-import { ITEM_SEARCH_MIN_LENGTH } from './lookups';
 import {
   itemFixtures,
   partnerFixtures,
@@ -27,6 +26,13 @@ const PARTNERS_PATH = '/mdm/partners';
 const ITEMS_PATH = '/mdm/items';
 const UOMS_PATH = '/mdm/uoms';
 const BALANCES_PATH = '/inventory/balances';
+const CODE_VALUES_PATH = '/mdm/code-values';
+
+/** 품목 유형 선택지 — 화면이 값 목록을 갖지 않는다(공유계약 G-32). 서버가 준 것을 그대로 쓴다. */
+const itemTypeFixtures = [
+  { code: 'FINISHED', codeName: '제품' },
+  { code: 'RAW_MATERIAL', codeName: '원자재' },
+];
 
 const ROUTE = '/shipment/shipment-request-create';
 
@@ -54,7 +60,36 @@ const baseRoutes = (): StubRoute[] => [
   },
   {
     match: (request) => isGet(request, ITEMS_PATH),
-    respond: () => jsonResponse(listBody(itemFixtures)),
+    respond: (request) => {
+      const term = new URL(request.url).searchParams.get('q');
+
+      /* 검색어가 있을 때만 결과를 준다 — 서버처럼 «거른» 것을 돌려준다. */
+      return jsonResponse(
+        listBody(
+          term === null
+            ? itemFixtures
+            : itemFixtures.filter(
+                (item) => item.itemCode.includes(term) || item.itemName.includes(term),
+              ),
+        ),
+      );
+    },
+  },
+  /* 품목 이름은 번호 하나씩 푼다 — 목록 첫 쪽에 기대지 않는다. 상세는 봉투로 온다. */
+  {
+    match: (request) => request.method === 'GET' && /^\/mdm\/items\/\d+$/u.test(new URL(request.url).pathname),
+    respond: (request) => {
+      const itemId = Number(new URL(request.url).pathname.split('/').at(-1));
+      const found = itemFixtures.find((item) => item.itemId === itemId);
+
+      return found === undefined
+        ? jsonResponse({ message: '없는 품목' }, { status: 404 })
+        : jsonResponse({ item: found, editability: {} });
+    },
+  },
+  {
+    match: (request) => isGet(request, CODE_VALUES_PATH),
+    respond: () => jsonResponse(listBody(itemTypeFixtures)),
   },
   {
     match: (request) => isGet(request, UOMS_PATH),
@@ -69,6 +104,31 @@ const baseRoutes = (): StubRoute[] => [
     },
   },
 ];
+
+const tp = messages.itemPicker;
+
+/**
+ * 품목 선택 팝업에서 품목을 고른다.
+ *
+ * ⚠ **「찾기」를 눌러야 결과가 선다** — 검색어를 치는 것만으로는 조회가 나가지 않는다. 그것이
+ *   이 창의 규칙이고, 도우미가 그 규칙을 건너뛰면 시험이 규칙을 못 본다.
+ */
+const pickItems = async (
+  user: ReturnType<typeof userEvent.setup>,
+  term: string,
+  codes: readonly string[],
+): Promise<void> => {
+  const dialog = within(await screen.findByRole('dialog'));
+
+  await user.type(dialog.getByLabelText(tp.keywordLabel), term);
+  await user.click(dialog.getByRole('button', { name: tp.search }));
+
+  for (const code of codes) {
+    await user.click(await dialog.findByRole('checkbox', { name: code }));
+  }
+
+  await user.click(dialog.getByRole('button', { name: new RegExp(`${tp.add}|${tp.replace}`, 'u') }));
+};
 
 describe('ShipmentRequestCreateScreen — 좌측 목록(완료 조건 C1)', () => {
   it('목록을 불러와 표에 낸다', async () => {
@@ -152,7 +212,9 @@ describe('ShipmentRequestCreateScreen — 단독 생성(완료 조건 C3)', () =
     expect(within(headerPane).getByRole('combobox', { name: /고객/ })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: t.actions.removeLine(1) })).toBeDisabled();
 
+    /* ⭐ 「라인 추가」가 곧바로 줄을 붙이지 않는다 — 팝업에서 품목을 골라야 줄이 생긴다. */
     await user.click(screen.getByRole('button', { name: t.actions.addLine }));
+    await pickItems(user, 'SAMPLE-ITEM-02', ['SAMPLE-ITEM-02']);
 
     expect(screen.getByRole('button', { name: t.actions.removeLine(1) })).toBeEnabled();
     expect(screen.getByRole('button', { name: t.actions.removeLine(2) })).toBeEnabled();
@@ -161,149 +223,103 @@ describe('ShipmentRequestCreateScreen — 단독 생성(완료 조건 C3)', () =
 
     expect(screen.queryByRole('button', { name: t.actions.removeLine(2) })).not.toBeInTheDocument();
   });
-});
 
-/**
- * **품목 검색**(SHIP-FINAL-01 P6).
- *
- * ⛔ **첫 쪽만으로는 편성이 통째로 막힌다.** 계약이 코드 오름차순으로 쪽을 나눠 주는데 화면이
- *    첫 쪽만 옵션으로 실어, 그 너머의 품목은 고를 방법이 **아예 없었다** — 실측에서 시나리오
- *    제품이 목록에 서지 않아 지시서를 만들 수 없었다. 잘림 안내는 그 사실을 말할 뿐 길을 주지
- *    않는다.
- */
-describe('ShipmentRequestCreateScreen — 품목 검색(P6)', () => {
-  /** 첫 쪽 밖의 품목. 검색으로만 닿는다. */
-  const FAR_ITEM = { itemId: 8399, itemCode: 'SAMPLE-ITEM-99', itemName: '합성 먼 품목', isActive: true };
-  const FAR_LABEL = `${FAR_ITEM.itemCode} · ${FAR_ITEM.itemName}`;
-
-  /**
-   * 검색어가 있으면 그 결과를, 없으면 첫 쪽을 준다.
-   *
-   * ⚠ `total` 을 실제 건수보다 크게 두어 **잘림**을 만든다 — 서버가 쪽을 나눴다는 사실이
-   *   화면에 그대로 드러나야 한다.
+  /*
+   * ⭐ **팝업이 라인을 만든다**(사용자 결정 2026-09-18). 품목 마스터가 9,269건이라 표 안
+   *    선택칸으로는 감당할 수 없었다 — 첫 쪽 밖의 품목은 고를 방법이 아예 없었다.
+   * ⭐ **기준 단위도 함께 채운다** — 서버가 준 `baseUomId` 다. 담당이 줄마다 단위를 고르지 않는다.
    */
-  const itemRoutes = (options: { truncated?: boolean } = {}): StubRoute[] =>
-    baseRoutes().map((route) =>
-      route === undefined
-        ? route
-        : {
-            ...route,
-            respond: (request: Request) => {
-              if (!isGet(request, ITEMS_PATH)) return route.respond(request);
+  /*
+   * ⛔ **빈 줄에 경고가 먼저 서지 않는다**(사용자 지시 2026-09-18). 라인을 막 추가한 사람에게
+   *    붉은 문구가 두 개 먼저 뜨면, 아무것도 안 했는데 잘못한 것처럼 읽힌다.
+   * ⭐ **그래도 편성은 막힌다** — 막는 것과 「줄마다 붉게 적는 것」은 다른 일이다. 사유는 편성
+   *    단추 옆에 한 번 선다.
+   */
+  it('아직 안 채운 줄에 붉은 문구를 띄우지 않되 편성은 막는다', async () => {
+    const user = userEvent.setup();
 
-              const term = new URL(request.url).searchParams.get('q');
-              const items = term === null ? itemFixtures : [FAR_ITEM];
+    renderWithProviders(<ShipmentRequestCreateScreen />, {
+      fetch: createStubFetch(baseRoutes()),
+      route: ROUTE,
+    });
 
-              return jsonResponse({
-                items,
-                page: {
-                  page: 1,
-                  size: 50,
-                  total: options.truncated === true ? items.length + 7 : items.length,
-                },
-              });
-            },
-          },
-    );
-
-  const startStandalone = async (user: ReturnType<typeof userEvent.setup>): Promise<void> => {
     await user.click(await screen.findByRole('button', { name: t.actions.startStandalone }));
     await screen.findByRole('region', { name: t.panes.lines });
-  };
 
-  it('검색어를 치면 그 결과로 선택지가 바뀐다', async () => {
-    const user = userEvent.setup();
+    expect(screen.queryByText('품목을 선택하세요.')).not.toBeInTheDocument();
+    expect(screen.queryByText('요청 수량을 입력하세요.')).not.toBeInTheDocument();
 
-    renderWithProviders(<ShipmentRequestCreateScreen />, {
-      fetch: createStubFetch(itemRoutes()),
-      route: ROUTE,
-    });
-
-    await startStandalone(user);
-    await user.type(screen.getByLabelText(t.lineTable.itemSearchLabel(1)), 'ITEM-99');
-    await user.click(await screen.findByRole('combobox', { name: t.lineTable.itemLabel(1) }));
-
-    expect(await screen.findByRole('option', { name: FAR_LABEL })).toBeInTheDocument();
-    /* 첫 쪽 품목은 이제 후보가 아니다 — 목록이 «바뀌는» 것이지 더해지는 것이 아니다. */
-    expect(
-      screen.queryByRole('option', { name: 'SAMPLE-ITEM-01 · 합성 품목 가' }),
-    ).not.toBeInTheDocument();
-  });
-
-  /* ⛔ 「왜 아무 일도 안 일어나는가」를 밝힌다 — 감추면 고장으로 읽는다(공유계약 G-9). */
-  it('한 글자로는 검색하지 않고 그 사실을 적는다', async () => {
-    const user = userEvent.setup();
-    const seen: string[] = [];
-    const routes = itemRoutes().map((route) => ({
-      ...route,
-      respond: (request: Request) => {
-        if (isGet(request, ITEMS_PATH)) {
-          const term = new URL(request.url).searchParams.get('q');
-
-          if (term !== null) seen.push(term);
-        }
-
-        return route.respond(request);
-      },
-    }));
-
-    renderWithProviders(<ShipmentRequestCreateScreen />, {
-      fetch: createStubFetch(routes),
-      route: ROUTE,
-    });
-
-    await startStandalone(user);
-    await user.type(screen.getByLabelText(t.lineTable.itemSearchLabel(1)), 'S');
-
-    expect(
-      await screen.findByText(t.lineTable.itemSearchTooShort(ITEM_SEARCH_MIN_LENGTH)),
-    ).toBeInTheDocument();
-    expect(seen).toEqual([]);
-  });
-
-  it('검색 결과도 잘렸으면 그 사실을 그대로 적는다', async () => {
-    const user = userEvent.setup();
-
-    renderWithProviders(<ShipmentRequestCreateScreen />, {
-      fetch: createStubFetch(itemRoutes({ truncated: true })),
-      route: ROUTE,
-    });
-
-    await startStandalone(user);
-    await user.type(screen.getByLabelText(t.lineTable.itemSearchLabel(1)), 'ITEM-99');
-
-    expect(await screen.findByText(t.filters.lookupTruncated)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: t.actions.submit })).toBeDisabled();
   });
 
   /*
-   * ⛔ **고른 값이 목록에서 사라지지 않는다.** 검색으로 고른 뒤 검색어를 지우면 선택지는 첫
-   *    쪽으로 돌아가는데, 고른 품목이 첫 쪽에 없으면 «값은 남았는데 화면에는 안 고른 것처럼»
-   *    보인다 — 그대로 저장하면 담당이 보지 못한 품목이 요청에 실린다(사용자 지시 2026-09-17).
+   * ⛔ **친 값이 잘못된 것은 그대로 짚는다.** 「아직 안 쳤다」와 「잘못 쳤다」는 다른 사실이고,
+   *    뒤엣것까지 감추면 사용자는 왜 막혔는지 알 길이 없다.
    */
-  it('검색으로 고른 뒤 검색어를 지워도 고른 품목이 남는다', async () => {
+  it('잘못 친 값은 그 자리에서 짚는다', async () => {
     const user = userEvent.setup();
 
     renderWithProviders(<ShipmentRequestCreateScreen />, {
-      fetch: createStubFetch(itemRoutes()),
+      fetch: createStubFetch(baseRoutes()),
       route: ROUTE,
     });
 
-    await startStandalone(user);
+    await user.click(await screen.findByRole('button', { name: t.actions.startStandalone }));
+    await user.type(screen.getByLabelText(t.lineTable.requestedQtyLabel(1)), '0');
 
-    const search = screen.getByLabelText(t.lineTable.itemSearchLabel(1));
-    await user.type(search, 'ITEM-99');
-    await user.click(await screen.findByRole('combobox', { name: t.lineTable.itemLabel(1) }));
-    await user.click(await screen.findByRole('option', { name: FAR_LABEL }));
+    expect(await screen.findByText(t.errors.requestedQtyNotPositive)).toBeInTheDocument();
+  });
 
-    await user.clear(search);
+  it('팝업에서 여러 품목을 고르면 그만큼 라인이 붙고 기준 단위가 채워진다', async () => {
+    const user = userEvent.setup();
 
-    /* 검색어가 사라져 선택지는 첫 쪽으로 돌아간다 — 첫 쪽 품목이 다시 후보다. */
-    await user.click(screen.getByRole('combobox', { name: t.lineTable.itemLabel(1) }));
+    renderWithProviders(<ShipmentRequestCreateScreen />, {
+      fetch: createStubFetch(baseRoutes()),
+      route: ROUTE,
+    });
+
+    await user.click(await screen.findByRole('button', { name: t.actions.startStandalone }));
+    await user.click(screen.getByRole('button', { name: t.actions.addLine }));
+    await pickItems(user, 'SAMPLE-ITEM', ['SAMPLE-ITEM-01', 'SAMPLE-ITEM-02']);
+
+    /* 빈 줄 하나 + 고른 둘 = 셋. */
+    expect(await screen.findByRole('button', { name: t.actions.removeLine(3) })).toBeInTheDocument();
     expect(
-      await screen.findByRole('option', { name: 'SAMPLE-ITEM-01 · 합성 품목 가' }),
-    ).toBeInTheDocument();
-    /* ⭐ 그런데도 고른 품목은 목록에 남아 있다 — 첫 쪽에 없는 값인데도. */
-    expect(screen.getByRole('option', { name: FAR_LABEL })).toBeInTheDocument();
+      await screen.findByRole('button', { name: t.lineTable.itemLabel(2) }),
+    ).toHaveTextContent('SAMPLE-ITEM-01 · 합성 품목 가');
+    expect(screen.getAllByRole('combobox', { name: t.lineTable.uomLabel(2) })[0]).toHaveTextContent(
+      /개/u,
+    );
+  });
+
+  /*
+   * ⭐ **품목 셀을 눌러도 같은 팝업이 열린다** — 잘못 고른 줄을 지우고 다시 만들지 않아도 된다.
+   *    이때는 «바꾸기»라 하나만 고른다.
+   */
+  it('품목 셀을 누르면 그 줄의 품목을 바꾼다', async () => {
+    const user = userEvent.setup();
+
+    renderWithProviders(<ShipmentRequestCreateScreen />, {
+      fetch: createStubFetch(baseRoutes()),
+      route: ROUTE,
+    });
+
+    await user.click(await screen.findByRole('button', { name: t.actions.startStandalone }));
+    await user.click(screen.getByRole('button', { name: t.lineTable.itemLabel(1) }));
+    await pickItems(user, 'SAMPLE-ITEM-01', ['SAMPLE-ITEM-01']);
+
+    expect(await screen.findByRole('button', { name: t.lineTable.itemLabel(1) })).toHaveTextContent(
+      'SAMPLE-ITEM-01 · 합성 품목 가',
+    );
+
+    await user.click(screen.getByRole('button', { name: t.lineTable.itemLabel(1) }));
+    await pickItems(user, 'SAMPLE-ITEM-02', ['SAMPLE-ITEM-02']);
+
+    /* 줄이 늘지 않는다 — 바꾼 것이지 더한 것이 아니다. */
+    expect(screen.queryByRole('button', { name: t.actions.removeLine(2) })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: t.lineTable.itemLabel(1) })).toHaveTextContent(
+      'SAMPLE-ITEM-02 · 합성 품목 나',
+    );
   });
 });
 
@@ -318,8 +334,8 @@ describe('ShipmentRequestCreateScreen — 배정 수량 검증(완료 조건 C4)
 
     await user.click(await screen.findByRole('button', { name: t.actions.startStandalone }));
 
-    await user.click(screen.getByLabelText(t.lineTable.itemLabel(1)));
-    await user.click(await screen.findByRole('option', { name: 'SAMPLE-ITEM-01 · 합성 품목 가' }));
+    await user.click(screen.getByRole('button', { name: t.lineTable.itemLabel(1) }));
+    await pickItems(user, 'SAMPLE-ITEM-01', ['SAMPLE-ITEM-01']);
 
     const requestedInput = screen.getByLabelText(t.lineTable.requestedQtyLabel(1));
 
@@ -334,37 +350,6 @@ describe('ShipmentRequestCreateScreen — 배정 수량 검증(완료 조건 C4)
   });
 });
 
-describe('ShipmentRequestCreateScreen — 고객 LOT 요구 길이 검증', () => {
-  it('200자를 넘으면 인라인 오류를 보이고 편성을 막는다', async () => {
-    const user = userEvent.setup();
-
-    renderWithProviders(<ShipmentRequestCreateScreen />, {
-      fetch: createStubFetch(baseRoutes()),
-      route: ROUTE,
-    });
-
-    await user.click(
-      await screen.findByRole('button', { name: t.table.selectRow('SAMPLE-SO-0001') }),
-    );
-
-    /*
-     * 지시서를 고르면 라인이 서버에서 온다 — 클릭이 돌아온 시점에 아직 없다. 동기 조회로
-     * 집으면 기계가 밀릴 때만 못 찾아, 화면은 멀쩡한데 시험이 간헐로 깨진다.
-     */
-    const lotInput = await screen.findByLabelText(t.lineTable.customerLotRequirementLabel(1));
-    const submitButton = screen.getByRole('button', { name: t.actions.submit });
-
-    await user.type(lotInput, '가'.repeat(201));
-
-    expect(
-      await screen.findByText(t.errors.customerLotRequirementTooLong(200)),
-    ).toBeInTheDocument();
-    expect(submitButton).toBeDisabled();
-    expect(
-      document.getElementById(submitButton.getAttribute('aria-describedby') ?? ''),
-    ).toHaveTextContent(t.actionReasons.lineInvalid);
-  });
-});
 
 describe('ShipmentRequestCreateScreen — 지시서 가져오기(완료 조건 C7)', () => {
   it('항상 비활성이고 사유가 붙어 있다', async () => {

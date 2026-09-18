@@ -62,20 +62,8 @@ export const shipmentRequestCreate = {
   lineTable: {
     item: '품목',
     itemLabel: (rowIndex: number): string => `${String(rowIndex)}행 품목`,
-    /**
-     * 라인마다 서는 품목 검색칸.
-     *
-     * ⛔ **첫 쪽만 보이던 목록의 유일한 출구다.** 계약이 쪽을 나눠 주는데(코드 오름차순) 화면이
-     *    첫 쪽만 실어, 그 너머의 품목은 고를 방법이 아예 없었다 — 잘림 안내는 그 사실을 말할
-     *    뿐 길을 주지 않는다.
-     */
-    itemSearch: '품목 검색',
-    itemSearchLabel: (rowIndex: number): string => `${String(rowIndex)}행 품목 검색`,
-    itemSearchPlaceholder: '품목 코드 또는 이름',
-    /** ⛔ 「왜 아무 일도 안 일어나는가」를 밝힌다 — 감추면 고장으로 읽는다(G-9). */
-    itemSearchTooShort: (min: number): string => `${String(min)}자 이상 입력하면 검색합니다.`,
-    itemSearchLoading: '품목을 찾고 있습니다…',
-    itemSearchEmpty: '검색 결과가 없습니다. 코드나 이름의 일부로 다시 찾아보세요.',
+    /** 아직 고르지 않은 줄 — 누르면 팝업이 열린다는 것을 그 자리가 말한다. */
+    itemUnpicked: '품목 고르기',
     uom: '단위',
     uomLabel: (rowIndex: number): string => `${String(rowIndex)}행 단위`,
     requestedQty: '요청 수량',
@@ -85,12 +73,6 @@ export const shipmentRequestCreate = {
     allocatedQtyLabel: (rowIndex: number): string => `${String(rowIndex)}행 배정 수량`,
     inspection: '검사',
     inspectionLabel: (rowIndex: number): string => `${String(rowIndex)}행 출하검사 대상`,
-    customerLotRequirement: '고객 LOT 요구',
-    customerLotRequirementLabel: (rowIndex: number): string =>
-      `${String(rowIndex)}행 고객 LOT 요구`,
-    minimumRemainingShelfLifeDays: '잔여 유효기간(일)',
-    minimumRemainingShelfLifeDaysLabel: (rowIndex: number): string =>
-      `${String(rowIndex)}행 잔여 유효기간`,
     rowActions: '행 조작',
   },
   values: {
@@ -107,17 +89,11 @@ export const shipmentRequestCreate = {
     customerRequired: '고객을 선택하세요.',
     shipToPartnerRequired: '납품처를 선택하세요.',
     requestedShipDateRequired: '출하요청일을 입력하세요.',
-    itemRequired: '품목을 선택하세요.',
-    uomRequired: '단위를 선택하세요.',
-    requestedQtyRequired: '요청 수량을 입력하세요.',
     requestedQtyNotPositive: '요청 수량은 0보다 커야 합니다.',
     qtyNotNumber: '숫자로 입력하세요.',
     allocatedQtyNegative: '배정 수량은 0 이상이어야 합니다.',
     allocatedQtyOverRequested: (requestedQty: number): string =>
       `배정 수량은 요청 수량(${String(requestedQty)}) 을 넘을 수 없습니다.`,
-    customerLotRequirementTooLong: (maxLength: number): string =>
-      `고객 LOT 요구는 ${String(maxLength)}자를 넘을 수 없습니다.`,
-    shelfLifeNegative: '잔여 유효기간은 0일 이상이어야 합니다.',
   },
   actionReasons: {
     saving: '전송 중입니다.',
@@ -125,6 +101,12 @@ export const shipmentRequestCreate = {
     noTarget: '먼저 지시서를 고르거나 단독 생성을 시작하세요.',
     noAllocatedLine: '배정 수량이 1 이상인 라인이 하나도 없습니다.',
     lineInvalid: '라인 입력을 확인하세요.',
+    /*
+     * ⛔ **아직 안 채운 칸은 줄마다 붉게 적지 않는다**(사용자 지시 2026-09-18) — 라인을 막 추가한
+     *    사람에게 경고가 먼저 서면 아무것도 안 했는데 잘못한 것처럼 읽힌다. 대신 막는 사유를
+     *    편성 단추 옆에 한 번 적는다.
+     */
+    lineIncomplete: '라인의 품목·단위·요청 수량을 채우세요.',
     headerIncomplete: '필수 항목을 입력하세요.',
     importFileNotSupported:
       '지시서 가져오기는 파일 형식이 아직 확정되지 않아 사용할 수 없습니다. 형식이 정해지면 이 버튼을 쓸 수 있습니다.',

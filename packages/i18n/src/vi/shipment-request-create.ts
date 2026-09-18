@@ -59,13 +59,7 @@ export const shipmentRequestCreate: Translated<typeof ko.shipmentRequestCreate> 
   lineTable: {
     item: 'Mặt hàng',
     itemLabel: (rowIndex: number): string => `Mặt hàng dòng ${String(rowIndex)}`,
-    itemSearch: 'Tìm mặt hàng',
-    itemSearchLabel: (rowIndex: number): string => `Tìm mặt hàng dòng ${String(rowIndex)}`,
-    itemSearchPlaceholder: 'Mã hoặc tên mặt hàng',
-    itemSearchTooShort: (min: number): string =>
-      `Nhập từ ${String(min)} ký tự trở lên sẽ tìm kiếm.`,
-    itemSearchLoading: 'Đang tìm mặt hàng…',
-    itemSearchEmpty: 'Không có kết quả. Hãy thử một phần mã hoặc tên.',
+    itemUnpicked: 'Chọn mặt hàng',
     uom: 'Đơn vị',
     uomLabel: (rowIndex: number): string => `Đơn vị dòng ${String(rowIndex)}`,
     requestedQty: 'Số lượng yêu cầu',
@@ -76,12 +70,6 @@ export const shipmentRequestCreate: Translated<typeof ko.shipmentRequestCreate> 
     inspection: 'Kiểm tra',
     inspectionLabel: (rowIndex: number): string =>
       `Thuộc diện kiểm tra xuất hàng dòng ${String(rowIndex)}`,
-    customerLotRequirement: 'Yêu cầu LOT của khách hàng',
-    customerLotRequirementLabel: (rowIndex: number): string =>
-      `Yêu cầu LOT của khách hàng dòng ${String(rowIndex)}`,
-    minimumRemainingShelfLifeDays: 'Hạn sử dụng còn lại (ngày)',
-    minimumRemainingShelfLifeDaysLabel: (rowIndex: number): string =>
-      `Hạn sử dụng còn lại dòng ${String(rowIndex)}`,
     rowActions: 'Thao tác dòng',
   },
   values: {
@@ -98,17 +86,11 @@ export const shipmentRequestCreate: Translated<typeof ko.shipmentRequestCreate> 
     customerRequired: 'Hãy chọn khách hàng.',
     shipToPartnerRequired: 'Hãy chọn nơi giao hàng.',
     requestedShipDateRequired: 'Hãy nhập ngày yêu cầu xuất hàng.',
-    itemRequired: 'Hãy chọn mặt hàng.',
-    uomRequired: 'Hãy chọn đơn vị.',
-    requestedQtyRequired: 'Hãy nhập số lượng yêu cầu.',
     requestedQtyNotPositive: 'Số lượng yêu cầu phải lớn hơn 0.',
     qtyNotNumber: 'Hãy nhập bằng số.',
     allocatedQtyNegative: 'Số lượng phân bổ phải từ 0 trở lên.',
     allocatedQtyOverRequested: (requestedQty: number): string =>
       `Số lượng phân bổ không được vượt quá số lượng yêu cầu (${String(requestedQty)}).`,
-    customerLotRequirementTooLong: (maxLength: number): string =>
-      `Yêu cầu LOT của khách hàng không được vượt quá ${String(maxLength)} ký tự.`,
-    shelfLifeNegative: 'Hạn sử dụng còn lại phải từ 0 ngày trở lên.',
   },
   actionReasons: {
     saving: 'Đang gửi.',
@@ -116,6 +98,7 @@ export const shipmentRequestCreate: Translated<typeof ko.shipmentRequestCreate> 
     noTarget: 'Hãy chọn phiếu chỉ thị trước hoặc bắt đầu tạo độc lập.',
     noAllocatedLine: 'Không có dòng nào có số lượng phân bổ từ 1 trở lên.',
     lineInvalid: 'Hãy kiểm tra phần nhập của các dòng.',
+    lineIncomplete: 'Hãy điền mặt hàng, đơn vị và số lượng yêu cầu của dòng.',
     headerIncomplete: 'Hãy nhập các mục bắt buộc.',
     importFileNotSupported:
       'Chưa dùng được chức năng nhập phiếu chỉ thị vì định dạng tệp chưa được chốt. Khi định dạng được quyết định thì nút này sẽ dùng được.',

@@ -110,9 +110,29 @@ export const partnerFixtures = [
   { partnerId: 8212, partnerCode: 'SAMPLE-SHIP-02', partnerName: '합성 납품처 나', isActive: true },
 ];
 
+/**
+ * 품목 — **선택 팝업의 결과이자 라인 이름 풀이의 원천**이다.
+ *
+ * ⚠ `itemTypeCode`·`baseUomId` 는 계약의 필수 값이다. 빠뜨리면 스텁이 서버보다 너그러워져,
+ *   팝업이 라인에 채우는 기준 단위가 비어도 시험이 통과한다.
+ */
 export const itemFixtures = [
-  { itemId: 8301, itemCode: 'SAMPLE-ITEM-01', itemName: '합성 품목 가', isActive: true },
-  { itemId: 8302, itemCode: 'SAMPLE-ITEM-02', itemName: '합성 품목 나', isActive: true },
+  {
+    itemId: 8301,
+    itemCode: 'SAMPLE-ITEM-01',
+    itemName: '합성 품목 가',
+    itemTypeCode: 'FINISHED',
+    baseUomId: 8401,
+    isActive: true,
+  },
+  {
+    itemId: 8302,
+    itemCode: 'SAMPLE-ITEM-02',
+    itemName: '합성 품목 나',
+    itemTypeCode: 'FINISHED',
+    baseUomId: 8401,
+    isActive: true,
+  },
 ];
 
 export const uomFixtures = [

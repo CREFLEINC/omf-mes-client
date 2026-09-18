@@ -2,7 +2,6 @@ import { Button, Checkbox, EmptyState, SkeletonText } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { type ReactNode, useId } from 'react';
 
-import { DisabledAction } from './disabled-action';
 import type { RoleChoice } from './role-assign-draft';
 
 const t = messages.usersRoles;
@@ -77,7 +76,7 @@ export const RoleAssignPane = ({
     }
 
     return (
-      <div className="check-group">
+      <div className="check-group users-roles-role-list">
         {choices.map((choice) => (
           <Checkbox
             key={choice.roleId}
@@ -89,7 +88,14 @@ export const RoleAssignPane = ({
               onToggle(choice.roleId);
             }}
           >
-            {choice.label}
+            {/* 이름을 앞세우고 코드는 작게 곁들인다 — 코드는 운영자가 짚어 볼 값이라 지우지 않는다. */}
+            <span className="role-choice-name">{choice.label}</span>
+            {choice.code !== '' && (
+              <>
+                {/* 접근 이름에서 이름과 코드가 붙어 읽히지 않게 사이를 띄운다. */}{' '}
+                <span className="role-choice-code">{choice.code}</span>
+              </>
+            )}
           </Checkbox>
         ))}
       </div>
@@ -97,7 +103,8 @@ export const RoleAssignPane = ({
   };
 
   return (
-    <section className="pane" aria-label={t.panes.roleAssign}>
+    <section className="pane users-roles-pane" aria-label={t.panes.roleAssign}>
+      <h2 className="pane-title">{t.panes.roleAssign}</h2>
       {banner}
       {optionsNotice}
 
@@ -118,21 +125,10 @@ export const RoleAssignPane = ({
           {messages.common.cancel}
         </Button>
 
-        {/*
-         * 고친 것이 없으면 주 액션을 **비활성 + 사유**로 둔다(배치 규범 4).
-         * 저장 중에는 진행 표시가 그 자리를 대신하므로 사유를 내지 않는다.
-         */}
-        {isDirty || isSaving ? (
-          <Button disabled={isSaving} loading={isSaving} onClick={onSave}>
-            {messages.common.save}
-          </Button>
-        ) : (
-          <DisabledAction
-            variant="filled"
-            label={messages.common.save}
-            reason={t.actionReasons.saveNoChanges}
-          />
-        )}
+        {/* 규범 4(비활성 사유 상시 표시)의 예외 — 사용자 지시 2026-09-18: 이 화면의 저장 사유 문구를 내지 않는다. */}
+        <Button disabled={!isDirty || isSaving} loading={isSaving} onClick={onSave}>
+          {messages.common.save}
+        </Button>
       </div>
     </section>
   );

@@ -12,20 +12,19 @@ import { lineFieldId } from './validation';
 
 const t = messages.shipmentRequestCreate;
 
-const itemLookup = {
-  entries: [{ value: '8301', label: 'SAMPLE-ITEM-01 · 합성 품목 가', isActive: true }],
-  isError: false,
-  isLoading: false,
+/** 품목 이름은 번호 하나씩 푼다 — 목록 첫 쪽에 기대지 않는다(`useItemNames`). */
+const itemNames = {
+  of: (itemId: number | null) =>
+    itemId === null
+      ? ({ kind: 'unknown' } as const)
+      : ({ kind: 'named', label: 'SAMPLE-ITEM-01 · 합성 품목 가' } as const),
 };
 const uomLookup = {
   entries: [{ value: '8401', label: 'SAMPLE-UOM-EA · 개', isActive: true }],
   isError: false,
   isLoading: false,
 };
-const itemOptions = [{ value: '8301', label: 'SAMPLE-ITEM-01 · 합성 품목 가' }];
-/** 검색어와 무관하게 같은 선택지를 준다 — 검색 «배선»은 화면 시험이 따로 문다. */
-const itemChoiceOf = () => ({ options: itemOptions, note: undefined });
-const noItemSearch = () => '';
+
 const uomOptions = [{ value: '8401', label: 'SAMPLE-UOM-EA · 개' }];
 
 const noAvailableQty: AvailableQtyLookup = {
@@ -42,11 +41,9 @@ describe('LineTable — 지시서 경유', () => {
         mode="fromOrder"
         rows={rows}
         errors={{}}
-        itemLookup={itemLookup}
+        itemNames={itemNames}
         uomLookup={uomLookup}
-        itemChoiceOf={itemChoiceOf}
-        itemSearchOf={noItemSearch}
-        onItemSearch={vi.fn()}
+        onPickItem={vi.fn()}
         uomOptions={uomOptions}
         availableQty={noAvailableQty}
         onPatch={vi.fn()}
@@ -66,11 +63,9 @@ describe('LineTable — 지시서 경유', () => {
         mode="fromOrder"
         rows={rows}
         errors={{}}
-        itemLookup={itemLookup}
+        itemNames={itemNames}
         uomLookup={uomLookup}
-        itemChoiceOf={itemChoiceOf}
-        itemSearchOf={noItemSearch}
-        onItemSearch={vi.fn()}
+        onPickItem={vi.fn()}
         uomOptions={uomOptions}
         availableQty={noAvailableQty}
         onPatch={vi.fn()}
@@ -89,11 +84,9 @@ describe('LineTable — 단독 생성', () => {
         mode="standalone"
         rows={[emptyLineDraft()]}
         errors={{}}
-        itemLookup={itemLookup}
+        itemNames={itemNames}
         uomLookup={uomLookup}
-        itemChoiceOf={itemChoiceOf}
-        itemSearchOf={noItemSearch}
-        onItemSearch={vi.fn()}
+        onPickItem={vi.fn()}
         uomOptions={uomOptions}
         availableQty={noAvailableQty}
         onPatch={vi.fn()}
@@ -112,8 +105,8 @@ describe('LineTable — 단독 생성', () => {
     const row = emptyLineDraft();
 
     render(
-      <LineTable mode="standalone" rows={[row]} errors={{}} itemLookup={itemLookup} uomLookup={uomLookup}
-        itemChoiceOf={itemChoiceOf} itemSearchOf={noItemSearch} onItemSearch={vi.fn()} uomOptions={uomOptions} availableQty={noAvailableQty} onPatch={onPatch} onRemove={vi.fn()} />,
+      <LineTable mode="standalone" rows={[row]} errors={{}} itemNames={itemNames} uomLookup={uomLookup}
+        onPickItem={vi.fn()} uomOptions={uomOptions} availableQty={noAvailableQty} onPatch={onPatch} onRemove={vi.fn()} />,
     );
 
     await user.click(screen.getByLabelText(t.lineTable.uomLabel(1)));
@@ -128,11 +121,9 @@ describe('LineTable — 단독 생성', () => {
         mode="standalone"
         rows={[emptyLineDraft()]}
         errors={{}}
-        itemLookup={itemLookup}
+        itemNames={itemNames}
         uomLookup={uomLookup}
-        itemChoiceOf={itemChoiceOf}
-        itemSearchOf={noItemSearch}
-        onItemSearch={vi.fn()}
+        onPickItem={vi.fn()}
         uomOptions={uomOptions}
         availableQty={noAvailableQty}
         onPatch={vi.fn()}
@@ -153,11 +144,9 @@ describe('LineTable — 단독 생성', () => {
         mode="standalone"
         rows={[row!]}
         errors={{}}
-        itemLookup={itemLookup}
+        itemNames={itemNames}
         uomLookup={uomLookup}
-        itemChoiceOf={itemChoiceOf}
-        itemSearchOf={noItemSearch}
-        onItemSearch={vi.fn()}
+        onPickItem={vi.fn()}
         uomOptions={uomOptions}
         availableQty={noAvailableQty}
         onPatch={onPatch}
@@ -182,11 +171,9 @@ describe('LineTable — 단독 생성', () => {
         mode="standalone"
         rows={[row]}
         errors={{}}
-        itemLookup={itemLookup}
+        itemNames={itemNames}
         uomLookup={uomLookup}
-        itemChoiceOf={itemChoiceOf}
-        itemSearchOf={noItemSearch}
-        onItemSearch={vi.fn()}
+        onPickItem={vi.fn()}
         uomOptions={uomOptions}
         availableQty={availableQty}
         onPatch={vi.fn()}
@@ -198,20 +185,21 @@ describe('LineTable — 단독 생성', () => {
     expect(screen.getAllByText(t.shortage.title).length).toBeGreaterThan(0);
   });
 
-  it('고객 LOT 요구 길이 오류를 입력칸에 연결한다', () => {
-    const row = { ...emptyLineDraft(), customerLotRequirement: '가'.repeat(201) };
-    const message = t.errors.customerLotRequirementTooLong(200);
-
+  /*
+   * ⛔ **단위는 줄마다 «한 번»만 선다**(사용자 지시 2026-09-18). 종전에는 요청·배정 수량 아래에
+   *    보조 문구로 단위를 또 달았고, 그 한 줄이 입력칸을 밀어 올려 줄마다 높이가 달라 보였다.
+   * ⭐ 게다가 `shipment_request_line` 의 단위 칸은 `uom_id` **하나**라 요청과 배정이 다른 단위를
+   *    쓸 수 있는 구조가 아니다 — 수량마다 단위를 적는 것은 **없는 차이를 있는 것처럼** 보이게 한다.
+   */
+  it('단위를 줄마다 한 번만 보인다 — 수량 칸 아래에 다시 적지 않는다', () => {
     render(
       <LineTable
         mode="standalone"
-        rows={[row]}
-        errors={{ [lineFieldId(row.key, 'customerLotRequirement')]: message }}
-        itemLookup={itemLookup}
+        rows={[{ ...emptyLineDraft(), itemId: '8301', uomId: '8401', requestedQty: '10' }]}
+        errors={{}}
+        itemNames={itemNames}
         uomLookup={uomLookup}
-        itemChoiceOf={itemChoiceOf}
-        itemSearchOf={noItemSearch}
-        onItemSearch={vi.fn()}
+        onPickItem={vi.fn()}
         uomOptions={uomOptions}
         availableQty={noAvailableQty}
         onPatch={vi.fn()}
@@ -219,10 +207,55 @@ describe('LineTable — 단독 생성', () => {
       />,
     );
 
-    expect(screen.getByLabelText(t.lineTable.customerLotRequirementLabel(1))).toHaveAttribute(
-      'aria-invalid',
-      'true',
+    expect(screen.getAllByText('SAMPLE-UOM-EA · 개')).toHaveLength(1);
+  });
+
+  /* 지시서 경유도 같다 — 두 모드가 같은 모양이어야 한 열을 두 뜻으로 읽지 않는다. */
+  it('지시서 경유에서도 단위를 한 번만 보인다', () => {
+    const orderRows = lineDraftsFromSalesOrder(
+      toSalesOrderDetailView(salesOrderDetailFixture).lines,
     );
-    expect(screen.getByText(message)).toBeInTheDocument();
+
+    render(
+      <LineTable
+        mode="fromOrder"
+        rows={orderRows}
+        errors={{}}
+        itemNames={itemNames}
+        uomLookup={uomLookup}
+        onPickItem={vi.fn()}
+        uomOptions={uomOptions}
+        availableQty={noAvailableQty}
+        onPatch={vi.fn()}
+        onRemove={vi.fn()}
+      />,
+    );
+
+    expect(screen.getAllByText('SAMPLE-UOM-EA · 개')).toHaveLength(orderRows.length);
+  });
+
+  /*
+   * ⛔ **걷은 두 열이 되살아나지 않는다**(사용자 결정 2026-09-18). 표시만 없앤 것이 아니라
+   *    입력 자리를 없앴다 — 남아 있으면 사용자가 채운 값이 본문에 실리지 않고 조용히 사라진다.
+   */
+  it('고객 LOT 요구·잔여 유효기간 칸이 서지 않는다', () => {
+    render(
+      <LineTable
+        mode="standalone"
+        rows={[emptyLineDraft()]}
+        errors={{}}
+        itemNames={itemNames}
+        uomLookup={uomLookup}
+        onPickItem={vi.fn()}
+        uomOptions={uomOptions}
+        availableQty={noAvailableQty}
+        onPatch={vi.fn()}
+        onRemove={vi.fn()}
+      />,
+    );
+
+    expect(screen.queryByRole('columnheader', { name: '고객 LOT 요구' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('columnheader', { name: /잔여 유효기간/u })).not.toBeInTheDocument();
+    expect(screen.queryByRole('textbox', { name: /고객 LOT/u })).not.toBeInTheDocument();
   });
 });

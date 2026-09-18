@@ -3,7 +3,6 @@ import { describe, expect, it } from 'vitest';
 import { emptyLineDraft } from './line-draft';
 import { toShipmentRequestCreateBody } from './shipment-request-create-body';
 import type { ShipmentRequestLineDraft } from './types';
-import { CUSTOMER_LOT_REQUIREMENT_MAX_LENGTH } from './validation';
 
 const line = (patch: Partial<ShipmentRequestLineDraft>): ShipmentRequestLineDraft => ({
   ...emptyLineDraft(),
@@ -119,7 +118,12 @@ describe('toShipmentRequestCreateBody', () => {
     expect(body).toBeNull();
   });
 
-  it('선택 필드(고객 LOT 요구·잔여 유효기간)는 비면 키를 싣지 않는다', () => {
+  /*
+   * ⛔ **걷은 두 칸이 본문에 되살아나지 않는다**(사용자 결정 2026-09-18). 계약이 둘 다 선택으로
+   *    두어 키가 빠져도 서버는 받는다 — 그래서 실수로 되살려도 서버가 알려 주지 않는다.
+   *    여기가 그 자리를 붙드는 유일한 그물이다.
+   */
+  it('걷은 두 칸을 본문에 싣지 않는다', () => {
     const body = toShipmentRequestCreateBody({
       ...baseInput,
       mode: 'standalone',
@@ -130,32 +134,11 @@ describe('toShipmentRequestCreateBody', () => {
           requestedQty: '10',
           allocatedQty: '10',
           uomId: '8401',
-          customerLotRequirement: '',
-          minimumRemainingShelfLifeDays: '',
         }),
       ],
     });
 
     expect(body?.lines[0]).not.toHaveProperty('customerLotRequirement');
     expect(body?.lines[0]).not.toHaveProperty('minimumRemainingShelfLifeDays');
-  });
-
-  it('고객 LOT 요구가 200자를 넘으면 요청 본문을 만들지 않는다', () => {
-    const body = toShipmentRequestCreateBody({
-      ...baseInput,
-      mode: 'standalone',
-      salesOrderId: null,
-      lines: [
-        line({
-          itemId: '8301',
-          requestedQty: '10',
-          allocatedQty: '10',
-          uomId: '8401',
-          customerLotRequirement: '가'.repeat(CUSTOMER_LOT_REQUIREMENT_MAX_LENGTH + 1),
-        }),
-      ],
-    });
-
-    expect(body).toBeNull();
   });
 });

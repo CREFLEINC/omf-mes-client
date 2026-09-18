@@ -1,9 +1,16 @@
-import { Button, type Column, EmptyState, IconButton, SkeletonText, Table } from '@crefle/web-ui';
+import {
+  Button,
+  type Column,
+  EmptyState,
+  IconButton,
+  SkeletonText,
+  Table,
+  Tooltip,
+} from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
 
 import type { DataScopeDraft } from './data-scope-draft';
-import { DisabledAction } from './disabled-action';
 import type { LookupEntry } from './types';
 
 const t = messages.usersRoles;
@@ -54,7 +61,8 @@ const axisLabel = (entries: LookupEntry[], value: string): string => {
  *
  * **쪽 이동을 두지 않는다** — 계약의 접근범위 목록에 쪽 나눔이 없다(`items`만 온다).
  *
- * 표는 `.wide-table`로 감싼다 — 두 축이 「코드 · 이름」이라 좁은 칸에서 낱말 단위로 쪼개진다.
+ * 표는 `.wide-table`(최소 58rem)로 감싸지 않는다 — 열이 셋뿐이라 그 하한이 카드 폭(52rem)을 넘겨
+ * 편집 열이 가로 스크롤 밖으로 밀린다. 긴 「코드 · 이름」은 셀 안에서 줄바꿈한다.
  */
 export const DataScopePane = ({
   drafts,
@@ -80,44 +88,53 @@ export const DataScopePane = ({
     );
 
   /*
-   * 지정 폭의 합은 **296px**(200+96)이라 `.wide-table`의 최소 폭(58rem = 928px) 안에 들어간다 —
-   * 사업부만 폭을 지정하지 않고 남는 폭을 흡수한다(계획 결정 17).
+   * 열 비율 — 사업부·공장은 같은 무게(각 40%), 편집은 아이콘 둘이 여유 있게 드는 20%
+   * (사용자 요청 2026-09-18). 사용자 목록 표와 같은 규칙으로 가운데 정렬한다.
    */
   const columns: Column<DataScopeDraft>[] = [
     {
       key: 'businessUnitId',
+      align: 'center',
       header: t.scope.fields.businessUnit,
+      width: '40%',
       render: (row) => axisLabel(businessUnitEntries, row.businessUnitId),
     },
     {
       key: 'plantId',
+      align: 'center',
       header: t.scope.fields.plant,
-      width: '200px',
+      width: '40%',
       render: (row) => axisLabel(plantEntries, row.plantId),
     },
     {
       key: 'edit',
+      align: 'center',
       header: t.scope.fields.edit,
-      width: '96px',
+      width: '20%',
       render: (row) => (
-        <>
-          <IconButton
-            icon="edit"
-            size="sm"
-            aria-label={t.scope.actions.editRow(rowLabel(row))}
-            onClick={() => {
-              onEdit(row.draftId);
-            }}
-          />
-          <IconButton
-            icon="delete"
-            size="sm"
-            aria-label={t.scope.actions.removeRow(rowLabel(row))}
-            onClick={() => {
-              onRemove(row.draftId);
-            }}
-          />
-        </>
+        /* 마우스를 올리면 짧은 이름을 보인다 — 공통 `Tooltip` 을 쓰고 표 액션 자체는 바꾸지 않는다. */
+        <span className="users-roles-row-actions">
+          <Tooltip content={t.scope.actions.editTooltip}>
+            <IconButton
+              icon="edit"
+              size="sm"
+              aria-label={t.scope.actions.editRow(rowLabel(row))}
+              onClick={() => {
+                onEdit(row.draftId);
+              }}
+            />
+          </Tooltip>
+          <Tooltip content={t.scope.actions.removeTooltip}>
+            <IconButton
+              icon="delete"
+              size="sm"
+              aria-label={t.scope.actions.removeRow(rowLabel(row))}
+              onClick={() => {
+                onRemove(row.draftId);
+              }}
+            />
+          </Tooltip>
+        </span>
       ),
     },
   ];
@@ -138,7 +155,7 @@ export const DataScopePane = ({
     }
 
     return (
-      <div className="wide-table">
+      <div>
         <Table
           density="compact"
           columns={columns}
@@ -158,17 +175,16 @@ export const DataScopePane = ({
   };
 
   return (
-    <section className="pane" aria-label={t.panes.dataScope}>
+    <section className="pane users-roles-pane" aria-label={t.panes.dataScope}>
+      {/* 추가는 이 구획의 표에 줄을 더하는 일이라 구획 표제 오른쪽에 둔다. */}
+      <div className="pane-heading-row users-roles-heading">
+        <h2 className="pane-title">{t.panes.dataScope}</h2>
+        <Button variant="outlined" onClick={onAdd}>
+          {t.scope.actions.add}
+        </Button>
+      </div>
       {banner}
       {optionsNotice}
-
-      <div className="filter-bar">
-        <div className="field-cell">
-          <Button variant="outlined" onClick={onAdd}>
-            {t.scope.actions.add}
-          </Button>
-        </div>
-      </div>
 
       {listSlot()}
 
@@ -177,18 +193,10 @@ export const DataScopePane = ({
           {messages.common.cancel}
         </Button>
 
-        {/* 고친 것이 없으면 주 액션을 **비활성 + 사유**로 둔다(배치 규범 4). */}
-        {isDirty || isSaving ? (
-          <Button disabled={isSaving} loading={isSaving} onClick={onSave}>
-            {messages.common.save}
-          </Button>
-        ) : (
-          <DisabledAction
-            variant="filled"
-            label={messages.common.save}
-            reason={t.actionReasons.saveNoChanges}
-          />
-        )}
+        {/* 규범 4(비활성 사유 상시 표시)의 예외 — 사용자 지시 2026-09-18: 이 화면의 저장 사유 문구를 내지 않는다. */}
+        <Button disabled={!isDirty || isSaving} loading={isSaving} onClick={onSave}>
+          {messages.common.save}
+        </Button>
       </div>
     </section>
   );

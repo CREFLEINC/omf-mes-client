@@ -3,7 +3,6 @@ import { describe, expect, it } from 'vitest';
 import { emptyLineDraft } from './line-draft';
 import type { ShipmentRequestLineDraft } from './types';
 import {
-  CUSTOMER_LOT_REQUIREMENT_MAX_LENGTH,
   hasAllocatableLine,
   lineFieldId,
   readQty,
@@ -73,20 +72,41 @@ describe('validateHeader', () => {
 });
 
 describe('validateLines', () => {
-  it('단독 생성 줄은 품목·단위가 필수다', () => {
+  /*
+   * ⛔ **아직 안 채운 칸은 «오류»가 아니라 «미완»이다**(사용자 지시 2026-09-18). 줄마다 붉게
+   *    적지 않는다 — 라인을 막 추가한 사람에게 경고가 먼저 서면 아무것도 안 했는데 잘못한
+   *    것처럼 읽힌다.
+   * ⭐ **그래도 편성은 막는다.** 둘을 한 시험에서 함께 붙든다 — 갈라 두면 「안 적는다」만 남기고
+   *    막는 것을 잃어도 시험이 통과한다. 그러면 단추가 열린 채 눌리고 아무 일도 안 일어난다.
+   */
+  it('단독 생성 줄의 빈 품목·단위는 붉게 적지 않되 편성을 막는다', () => {
     const target = line({ salesOrderLineId: null, itemId: '', uomId: '' });
-    const { errors } = validateLines([target]);
+    const { errors, isIncomplete } = validateLines([target]);
 
-    expect(errors[lineFieldId(target.key, 'itemId')]).toBeDefined();
-    expect(errors[lineFieldId(target.key, 'uomId')]).toBeDefined();
+    expect(errors[lineFieldId(target.key, 'itemId')]).toBeUndefined();
+    expect(errors[lineFieldId(target.key, 'uomId')]).toBeUndefined();
+    expect(isIncomplete).toBe(true);
   });
 
   it('지시서 경유 줄은 품목·단위를 판정하지 않는다 — 읽기 전용이다', () => {
     const target = line({ salesOrderLineId: 1, itemId: '', uomId: '' });
-    const { errors } = validateLines([target]);
+    const { errors, isIncomplete } = validateLines([target]);
 
     expect(errors[lineFieldId(target.key, 'itemId')]).toBeUndefined();
     expect(errors[lineFieldId(target.key, 'uomId')]).toBeUndefined();
+    expect(isIncomplete).toBe(false);
+  });
+
+  /* 다 채운 줄은 막지 않는다 — 「늘 막는다」로 굳어도 위 시험은 통과한다. */
+  it('다 채운 단독 생성 줄은 막지 않는다', () => {
+    const target = line({
+      salesOrderLineId: null,
+      itemId: '8301',
+      uomId: '8401',
+      requestedQty: '10',
+    });
+
+    expect(validateLines([target]).isIncomplete).toBe(false);
   });
 
   it('배정 수량이 요청 수량을 넘으면 오류다(완료 조건 C4)', () => {
@@ -117,29 +137,7 @@ describe('validateLines', () => {
     expect(errors[lineFieldId(target.key, 'allocatedQty')]).toBeUndefined();
   });
 
-  it('잔여 유효기간이 음수면 오류다', () => {
-    const target = line({ salesOrderLineId: 1, minimumRemainingShelfLifeDays: '-1' });
-    const { errors } = validateLines([target]);
 
-    expect(errors[lineFieldId(target.key, 'minimumRemainingShelfLifeDays')]).toBeDefined();
-  });
-
-  it('고객 LOT 요구는 200자까지 허용하고 그보다 길면 오류다', () => {
-    const allowed = line({
-      salesOrderLineId: 1,
-      customerLotRequirement: '가'.repeat(CUSTOMER_LOT_REQUIREMENT_MAX_LENGTH),
-    });
-    const tooLong = line({
-      salesOrderLineId: 1,
-      customerLotRequirement: '가'.repeat(CUSTOMER_LOT_REQUIREMENT_MAX_LENGTH + 1),
-    });
-
-    const allowedErrors = validateLines([allowed]).errors;
-    const tooLongErrors = validateLines([tooLong]).errors;
-
-    expect(allowedErrors[lineFieldId(allowed.key, 'customerLotRequirement')]).toBeUndefined();
-    expect(tooLongErrors[lineFieldId(tooLong.key, 'customerLotRequirement')]).toBeDefined();
-  });
 
   it('지시서 경유 줄은 요청 수량을 판정하지 않는다 — 읽기 전용이다', () => {
     const target = line({ salesOrderLineId: 1, requestedQty: 'not-a-number' });
