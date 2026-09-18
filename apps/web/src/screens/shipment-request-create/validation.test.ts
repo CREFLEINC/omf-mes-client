@@ -3,7 +3,6 @@ import { describe, expect, it } from 'vitest';
 import { emptyLineDraft } from './line-draft';
 import type { ShipmentRequestLineDraft } from './types';
 import {
-  CUSTOMER_LOT_REQUIREMENT_MAX_LENGTH,
   hasAllocatableLine,
   lineFieldId,
   readQty,
@@ -117,29 +116,7 @@ describe('validateLines', () => {
     expect(errors[lineFieldId(target.key, 'allocatedQty')]).toBeUndefined();
   });
 
-  it('잔여 유효기간이 음수면 오류다', () => {
-    const target = line({ salesOrderLineId: 1, minimumRemainingShelfLifeDays: '-1' });
-    const { errors } = validateLines([target]);
 
-    expect(errors[lineFieldId(target.key, 'minimumRemainingShelfLifeDays')]).toBeDefined();
-  });
-
-  it('고객 LOT 요구는 200자까지 허용하고 그보다 길면 오류다', () => {
-    const allowed = line({
-      salesOrderLineId: 1,
-      customerLotRequirement: '가'.repeat(CUSTOMER_LOT_REQUIREMENT_MAX_LENGTH),
-    });
-    const tooLong = line({
-      salesOrderLineId: 1,
-      customerLotRequirement: '가'.repeat(CUSTOMER_LOT_REQUIREMENT_MAX_LENGTH + 1),
-    });
-
-    const allowedErrors = validateLines([allowed]).errors;
-    const tooLongErrors = validateLines([tooLong]).errors;
-
-    expect(allowedErrors[lineFieldId(allowed.key, 'customerLotRequirement')]).toBeUndefined();
-    expect(tooLongErrors[lineFieldId(tooLong.key, 'customerLotRequirement')]).toBeDefined();
-  });
 
   it('지시서 경유 줄은 요청 수량을 판정하지 않는다 — 읽기 전용이다', () => {
     const target = line({ salesOrderLineId: 1, requestedQty: 'not-a-number' });

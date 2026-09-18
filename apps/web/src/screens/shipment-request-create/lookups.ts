@@ -1,11 +1,10 @@
 import type { ApiClient } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useQueries, useQuery } from '@tanstack/react-query';
-import { useEffect, useRef } from 'react';
 
 import { useApiClient } from '../../patterns/api-context';
 import { runRequest } from '../../patterns/request';
-import type { LookupEntry, PageMeta, SelectOption } from './types';
+import type { LookupEntry, PageMeta } from './types';
 
 /**
  * 내부 번호(FK)로 이어진 값을 이름으로 푸는 선택 목록 넷 — 고객·납품처·품목·단위.
@@ -66,9 +65,6 @@ export const describeReference = (state: ReferenceState): string => {
 
 const EMPTY_ENTRIES: LookupEntry[] = [];
 
-const toSelectOptions = (entries: readonly LookupEntry[]): SelectOption[] =>
-  entries.map((entry) => ({ value: entry.value, label: entry.label }));
-
 const isTruncated = (page: PageMeta, shown: number): boolean => page.total > shown;
 
 export const lookupNote = (lookup: LookupResult): string | undefined => {
@@ -82,8 +78,7 @@ export const lookupKeys = {
   customers: ['shipment-request-create-lookups', 'customers'] as const,
   shipToPartners: ['shipment-request-create-lookups', 'ship-to-partners'] as const,
   fulfillmentPlants: ['shipment-request-create-lookups', 'fulfillment-plants'] as const,
-  items: ['shipment-request-create-lookups', 'items'] as const,
-  itemSearch: (term: string) => ['shipment-request-create-lookups', 'item-search', term] as const,
+  itemName: (itemId: number) => ['shipment-request-create-lookups', 'item-name', itemId] as const,
   uoms: ['shipment-request-create-lookups', 'uoms'] as const,
 };
 
@@ -171,170 +166,57 @@ export const useFulfillmentPlantOptions = (): LookupResult => {
   };
 };
 
-/** 품목 — 라인 표의 품목 선택칸(단독 생성)과 이름 표시(지시서 경유) 둘 다 쓴다. */
-export const useItemOptions = (): LookupResult => {
-  const { client } = useApiClient();
+/**
+ * 라인 품목의 **이름** — 「코드 · 이름」으로 그린다.
+ *
+ * ⛔ **목록 첫 쪽으로 풀지 않는다.** 종전에는 `GET /mdm/items` 첫 쪽(50건)을 받아 그 안에서
+ *    이름을 찾았다 — 그 너머의 품목을 실은 지시서를 열면 **품목 칸이 「알 수 없음」**이 됐고,
+ *    라인 편성이 팝업으로 바뀌면서 품목 칸이 그 라인을 가리키는 **유일한 자리**가 되어 그
+ *    구멍이 그대로 드러난다.
+ * ⭐ 그래서 **번호로 하나씩 푼다**(`GET /mdm/items/{itemId}`). 가용 수량이 이미 같은 짜임으로
+ *    품목마다 부르고 있어 요청 수가 늘지 않는다.
+ *
+ * **중복 품목은 한 번만 묻는다** — 두 라인이 같은 품목이면 요청도 하나다.
+ */
+export interface ItemNameLookup {
+  of: (itemId: number | null) => ReferenceState;
+}
 
-  const query = useQuery({
-    queryKey: lookupKeys.items,
-    queryFn: () =>
-      runRequest(() => client.GET('/mdm/items', { params: { query: { includeInactive: true } } })),
-  });
+const fetchItemName = async (client: Client, itemId: number): Promise<string> => {
+  const data = await runRequest(() =>
+    client.GET('/mdm/items/{itemId}', { params: { path: { itemId } } }),
+  );
 
-  const data = query.data;
-
-  return {
-    entries:
-      data?.items.map((item) => ({
-        value: String(item.itemId),
-        label: `${item.itemCode} · ${item.itemName}`,
-        isActive: item.isActive,
-      })) ?? EMPTY_ENTRIES,
-    truncated: data !== undefined && isTruncated(data.page, data.items.length),
-    isError: query.isError,
-    isLoading: query.isPending,
-    refetch: () => {
-      void query.refetch();
-    },
-  };
+  /* 상세는 봉투로 온다 — 편집 가능 여부(`editability`)는 이 화면이 쓰지 않는다. */
+  return `${data.item.itemCode} · ${data.item.itemName}`;
 };
 
-/**
- * 품목 검색이 도는 최소 글자 수.
- *
- * ⚠ 한 글자로 부르면 첫 쪽과 거의 같은 목록이 돌아오는데 요청만 라인 수만큼 나간다 — 걸러 줄
- *   것이 없는 검색은 하지 않는다. 그 사실은 화면이 안내로 밝힌다(감추지 않는다).
- */
-export const ITEM_SEARCH_MIN_LENGTH = 2;
-
-/**
- * 타건이 멎고 이만큼 지나야 조회한다(사용자 지시 2026-09-17).
- *
- * ⚠ 값 하나가 두 자리에 서면 시험과 제품이 다른 수를 믿는다 — 여기 한 곳에만 둔다.
- */
-export const ITEM_SEARCH_DEBOUNCE_MS = 300;
-
-const isSearchable = (term: string): boolean => term.trim().length >= ITEM_SEARCH_MIN_LENGTH;
-
-const toItemEntries = (
-  data: { items: { itemId: number; itemCode: string; itemName: string; isActive: boolean }[] } | undefined,
-): LookupEntry[] =>
-  data?.items.map((item) => ({
-    value: String(item.itemId),
-    label: `${item.itemCode} · ${item.itemName}`,
-    isActive: item.isActive,
-  })) ?? EMPTY_ENTRIES;
-
-/** 한 라인의 품목 칸이 지금 무엇을 보이는가. */
-export interface ItemChoice {
-  options: SelectOption[];
-  /** 선택지의 한계·상태를 밝히는 보조 문구. 없으면 `undefined`. */
-  note: string | undefined;
-}
-
-export interface ItemChoices {
-  /** 첫 쪽 목록 — 이름 풀이(`toReference`)가 쓰는 자리는 그대로다. */
-  lookup: LookupResult;
-  /** 그 검색어에서 이 라인이 보일 선택지. 고른 값은 어떤 경우에도 목록에서 사라지지 않는다. */
-  choiceOf: (term: string, selectedValue: string) => ItemChoice;
-}
-
-/**
- * 품목 선택지 — **첫 쪽 + 라인별 검색**(SHIP-FINAL-01 P6).
- *
- * ⛔ **첫 쪽만으로는 편성이 통째로 막힌다.** 계약이 쪽을 나눠 주는데(코드 오름차순 50건) 화면이
- *    첫 쪽만 옵션으로 실어, 그 너머의 품목은 **고를 방법이 아예 없었다** — 잘림 안내는 그
- *    사실을 말할 뿐 길을 주지 않는다. 계약의 `q`(코드·명 부분 일치)로 다시 물어 길을 낸다.
- *
- * ⭐ **검색어가 같으면 한 번만 부른다.** 라인마다 칸이 서므로 같은 코드를 여러 줄에 치는 일이
- *    흔하다 — 유일하게 만들지 않으면 같은 요청이 줄 수만큼 나간다(`useAvailableQty` 와 같은 짜임).
- *
- * ⛔ **한 번 본 품목을 잊지 않는다.** 검색으로 고른 뒤 검색어를 지우면 옵션은 첫 쪽으로 돌아가는데,
- *    고른 품목이 첫 쪽에 없으면 «값은 남았는데 화면에는 안 고른 것처럼» 보인다 — 그대로 저장하면
- *    담당이 보지 못한 품목이 요청에 실린다. 그래서 본 것을 기억해 두었다가 그 한 건을 목록에 끼운다.
- */
-export const useItemChoices = (terms: readonly string[]): ItemChoices => {
+export const useItemNames = (itemIds: readonly (number | null)[]): ItemNameLookup => {
   const { client } = useApiClient();
-  const lookup = useItemOptions();
 
-  const uniqueTerms = [...new Set(terms.map((term) => term.trim()).filter(isSearchable))];
+  const uniqueIds = [...new Set(itemIds.filter((id): id is number => id !== null))];
 
   const results = useQueries({
-    queries: uniqueTerms.map((term) => ({
-      queryKey: lookupKeys.itemSearch(term),
-      queryFn: () =>
-        runRequest(() =>
-          client.GET('/mdm/items', { params: { query: { q: term, includeInactive: true } } }),
-        ),
+    queries: uniqueIds.map((itemId) => ({
+      queryKey: lookupKeys.itemName(itemId),
+      queryFn: () => fetchItemName(client, itemId),
     })),
   });
 
-  /*
-   * ⚠ **렌더 중에 쓰지 않는다.** 캐시라 결과가 같아도, 렌더 중 쓰기는 같은 렌더에서 두 번
-   *   불릴 때 순서를 가정하게 만든다 — 고름은 목록이 그려진 «뒤»에 일어나므로 효과로 충분하다.
-   */
-  const remembered = useRef(new Map<string, LookupEntry>());
+  return {
+    of: (itemId) => {
+      if (itemId === null) return { kind: 'unknown' };
 
-  useEffect(() => {
-    for (const entry of [...lookup.entries, ...results.flatMap((result) => toItemEntries(result.data))]) {
-      remembered.current.set(entry.value, entry);
-    }
-  });
+      const index = uniqueIds.indexOf(itemId);
+      const result = index === -1 ? undefined : results[index];
 
-  const choiceOf = (term: string, selectedValue: string): ItemChoice => {
-    const trimmed = term.trim();
-    const index = uniqueTerms.indexOf(trimmed);
-    const result = isSearchable(trimmed) && index !== -1 ? results[index] : undefined;
+      if (result === undefined || result.isPending) return { kind: 'loading' };
+      if (result.isError) return { kind: 'failed' };
+      if (result.data === undefined) return { kind: 'loading' };
 
-    const found: ItemChoice = ((): ItemChoice => {
-      if (result === undefined) {
-        /*
-         * 아직 이 검색어로 묻지 않았다. 까닭이 둘이고 **둘을 가른다** —
-         * ① 너무 짧아 영영 안 묻는다 ② 길이는 됐는데 타건이 멎기를 기다리는 중이다.
-         *
-         * ⛔ **둘을 합쳐 「2자 이상 입력하세요」로 두지 않는다.** 일곱 자를 친 담당에게 그 말은
-         *    거짓이고, 거짓을 본 사람은 더 칠 곳이 없어 화면이 고장 났다고 읽는다.
-         *    (이 결함은 최소 글자 수를 1 로 바꾸는 되돌림에서 드러났다.)
-         */
-        return {
-          options: toSelectOptions(lookup.entries),
-          note:
-            trimmed === ''
-              ? lookupNote(lookup)
-              : isSearchable(trimmed)
-                ? t.lineTable.itemSearchLoading
-                : t.lineTable.itemSearchTooShort(ITEM_SEARCH_MIN_LENGTH),
-        };
-      }
-
-      if (result.isError) return { options: [], note: t.filters.lookupFailed };
-      if (result.data === undefined) return { options: [], note: t.lineTable.itemSearchLoading };
-
-      const entries = toItemEntries(result.data);
-
-      return {
-        options: toSelectOptions(entries),
-        note:
-          entries.length === 0
-            ? t.lineTable.itemSearchEmpty
-            : isTruncated(result.data.page, entries.length)
-              ? t.filters.lookupTruncated
-              : undefined,
-      };
-    })();
-
-    if (selectedValue === '' || found.options.some((option) => option.value === selectedValue)) {
-      return found;
-    }
-
-    const kept = remembered.current.get(selectedValue);
-
-    return kept === undefined
-      ? found
-      : { ...found, options: [{ value: kept.value, label: kept.label }, ...found.options] };
+      return { kind: 'named', label: result.data };
+    },
   };
-
-  return { lookup, choiceOf };
 };
 
 /** 단위 — 라인 표의 단위 이름과(둘 다 모드) 지시서 라인 승계 값의 이름 풀이가 쓴다. */

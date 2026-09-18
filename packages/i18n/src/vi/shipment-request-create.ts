@@ -59,13 +59,7 @@ export const shipmentRequestCreate: Translated<typeof ko.shipmentRequestCreate> 
   lineTable: {
     item: 'Mặt hàng',
     itemLabel: (rowIndex: number): string => `Mặt hàng dòng ${String(rowIndex)}`,
-    itemSearch: 'Tìm mặt hàng',
-    itemSearchLabel: (rowIndex: number): string => `Tìm mặt hàng dòng ${String(rowIndex)}`,
-    itemSearchPlaceholder: 'Mã hoặc tên mặt hàng',
-    itemSearchTooShort: (min: number): string =>
-      `Nhập từ ${String(min)} ký tự trở lên sẽ tìm kiếm.`,
-    itemSearchLoading: 'Đang tìm mặt hàng…',
-    itemSearchEmpty: 'Không có kết quả. Hãy thử một phần mã hoặc tên.',
+    itemUnpicked: 'Chọn mặt hàng',
     uom: 'Đơn vị',
     uomLabel: (rowIndex: number): string => `Đơn vị dòng ${String(rowIndex)}`,
     requestedQty: 'Số lượng yêu cầu',
@@ -76,12 +70,6 @@ export const shipmentRequestCreate: Translated<typeof ko.shipmentRequestCreate> 
     inspection: 'Kiểm tra',
     inspectionLabel: (rowIndex: number): string =>
       `Thuộc diện kiểm tra xuất hàng dòng ${String(rowIndex)}`,
-    customerLotRequirement: 'Yêu cầu LOT của khách hàng',
-    customerLotRequirementLabel: (rowIndex: number): string =>
-      `Yêu cầu LOT của khách hàng dòng ${String(rowIndex)}`,
-    minimumRemainingShelfLifeDays: 'Hạn sử dụng còn lại (ngày)',
-    minimumRemainingShelfLifeDaysLabel: (rowIndex: number): string =>
-      `Hạn sử dụng còn lại dòng ${String(rowIndex)}`,
     rowActions: 'Thao tác dòng',
   },
   values: {
@@ -106,9 +94,6 @@ export const shipmentRequestCreate: Translated<typeof ko.shipmentRequestCreate> 
     allocatedQtyNegative: 'Số lượng phân bổ phải từ 0 trở lên.',
     allocatedQtyOverRequested: (requestedQty: number): string =>
       `Số lượng phân bổ không được vượt quá số lượng yêu cầu (${String(requestedQty)}).`,
-    customerLotRequirementTooLong: (maxLength: number): string =>
-      `Yêu cầu LOT của khách hàng không được vượt quá ${String(maxLength)} ký tự.`,
-    shelfLifeNegative: 'Hạn sử dụng còn lại phải từ 0 ngày trở lên.',
   },
   actionReasons: {
     saving: 'Đang gửi.',

@@ -10,16 +10,12 @@ import type { AssignmentMode, ShipmentRequestLineDraft } from './types';
  * | 머리 필수(고객·납품처·출하요청일) | `validateHeader` — 단독 생성만. 지시서 경유는 지시서가 이미 채운다 |
  * | 라인 형식(품목·단위 필수 · 요청 수량 형식 — 단독 생성만) | `validateLines` |
  * | **배정 수량 ≥ 0 · ≤ 요청 수량**(둘 다 모드) | `validateLines` — 서버가 거절할 것을 화면이 앞당긴다 |
- * | 잔여 유효기간 ≥ 0(선택 입력) | `validateLines` |
  * | 가용 부족 | **막지 않는다** — `shortage-banner.tsx`가 경고만 낸다(C5) |
  *
  * 이 화면이 소유한다 — 다른 화면 슬라이스의 같은 이름 파일을 참조하지 않는다.
  */
 
 const t = messages.shipmentRequestCreate;
-
-/** 고정 설계의 `customer_lot_requirement varchar(200)`와 같은 화면 입력 상한. */
-export const CUSTOMER_LOT_REQUIREMENT_MAX_LENGTH = 200;
 
 export const HEADER_FORM_FIELDS: readonly string[] = [
   'fulfillmentPlantId',
@@ -28,13 +24,7 @@ export const HEADER_FORM_FIELDS: readonly string[] = [
   'requestedShipDate',
 ];
 
-export type LineFieldName =
-  | 'itemId'
-  | 'uomId'
-  | 'requestedQty'
-  | 'allocatedQty'
-  | 'customerLotRequirement'
-  | 'minimumRemainingShelfLifeDays';
+export type LineFieldName = 'itemId' | 'uomId' | 'requestedQty' | 'allocatedQty';
 
 /** 줄 단위 오류의 열쇠. 줄 키가 앞에 온다 — 잘못 친 줄이 둘일 때 서로 섞이지 않는다. */
 export const lineFieldId = (key: string, field: LineFieldName): string => `${key}.${field}`;
@@ -113,16 +103,6 @@ const allocatedQtyError = (line: ShipmentRequestLineDraft): string | null => {
   return null;
 };
 
-/** 잔여 유효기간 오류 — 선택 입력이라 비었으면 오류가 아니다. */
-const shelfLifeError = (raw: string): string | null => {
-  const read = readQty(raw);
-
-  if (read.kind === 'empty') return null;
-  if (read.kind === 'invalid') return t.errors.qtyNotNumber;
-
-  return read.value < 0 ? t.errors.shelfLifeNegative : null;
-};
-
 export const validateLines = (lines: readonly ShipmentRequestLineDraft[]): LineValidation => {
   const errors: Record<string, string> = {};
 
@@ -140,16 +120,6 @@ export const validateLines = (lines: readonly ShipmentRequestLineDraft[]): LineV
 
     if (allocatedError !== null) errors[lineFieldId(line.key, 'allocatedQty')] = allocatedError;
 
-    if (line.customerLotRequirement.length > CUSTOMER_LOT_REQUIREMENT_MAX_LENGTH) {
-      errors[lineFieldId(line.key, 'customerLotRequirement')] =
-        t.errors.customerLotRequirementTooLong(CUSTOMER_LOT_REQUIREMENT_MAX_LENGTH);
-    }
-
-    const shelfError = shelfLifeError(line.minimumRemainingShelfLifeDays);
-
-    if (shelfError !== null) {
-      errors[lineFieldId(line.key, 'minimumRemainingShelfLifeDays')] = shelfError;
-    }
   }
 
   return { errors };

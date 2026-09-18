@@ -3,6 +3,7 @@ import { messages } from '@omf-mes/i18n';
 import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import { useSearchParams } from 'react-router';
 
+import { ItemPickerDialog, type ItemRow } from '../../patterns/item-picker';
 import { SaveErrorBanner } from '../../patterns/master';
 import { AssignmentFormPane } from './assignment-form-pane';
 import { EmptyFormPlaceholder } from './empty-form-placeholder';
@@ -18,22 +19,21 @@ import {
   type SourceFilters,
 } from './filters';
 import {
-  addLineDraft,
   emptyLineDraft,
   lineDraftsFromSalesOrder,
+  lineDraftFromItem,
   patchLineDraft,
   removeLineDraft,
 } from './line-draft';
 import { LoadErrorBanner } from './load-error-banner';
 import {
-  ITEM_SEARCH_DEBOUNCE_MS,
   describeReference,
   lookupNote,
   toReference,
   useAvailableQty,
   useCustomerOptions,
   useFulfillmentPlantOptions,
-  useItemChoices,
+  useItemNames,
   useShipToPartnerOptions,
   useUomOptions,
   type LookupResult,
@@ -51,10 +51,19 @@ import type {
   SelectOption,
   ShipmentRequestLineDraft,
 } from './types';
-import { useDebounced } from './use-debounced';
 import { hasAllocatableLine, validateHeader, validateLines } from './validation';
 
 const t = messages.shipmentRequestCreate;
+
+/**
+ * 품목 선택 팝업이 처음 세우는 유형 — **제품**.
+ *
+ * ⛔ **값 «목록»이 아니라 업무 결정 하나다.** 선택지는 코드 그룹(`ITEM_TYPE`)에서 받고(공유계약
+ *    G-32), 화면이 아는 것은 「기본으로 무엇을 보일까」 하나다. 근거는 도메인 04 의 이름
+ *    「제품출하」와 설계 `W-04-01` §5-5(가용 = 완제품 창고의 가용 잔액).
+ * ⚠ 이 코드가 그 환경의 코드 그룹에 없으면 팝업은 「전체」로 떨어진다 — 길을 막지 않는다.
+ */
+const SHIPPABLE_ITEM_TYPE_CODE = 'FINISHED';
 
 /** 참조가 매 렌더 새로 만들어지면 이 값을 의존성에 둔 계산이 멈추지 않는다. */
 const EMPTY_ROWS: SalesOrderView[] = [];
@@ -132,23 +141,18 @@ export const ShipmentRequestCreateScreen = () => {
   const [header, setHeader] = useState<HeaderDraft>(EMPTY_HEADER_DRAFT);
   const [lines, setLines] = useState<ShipmentRequestLineDraft[]>([]);
   /**
-   * 라인별 품목 검색어.
+   * 품목 선택 팝업이 열려 있는가 — **여는 자리가 둘이다.**
    *
-   * ⛔ **초안에 넣지 않는다.** 서버로 나가는 값이 아니라 «지금 무엇을 훑는 중인가»다 —
-   *    초안에 두면 본문 조립이 그 값을 보고 지워야 할지 판단하게 된다.
+   * - `{ kind: 'add' }` 「라인 추가」에서 열었다. 고른 품목마다 줄이 붙는다(여러 개).
+   * - `{ kind: 'replace', key }` 그 줄의 품목 셀에서 열었다. 하나만 고르고 그 줄을 바꾼다.
+   *
+   * ⛔ **줄 초안에 넣지 않는다.** 서버로 나가는 값이 아니라 「지금 무엇을 고르는 중인가」다.
    */
-  const [itemSearch, setItemSearch] = useState<Record<string, string>>({});
-  /*
-   * ⛔ **타건마다 부르지 않는다.** 이 칸은 라인마다 서므로 다섯 줄을 편성하며 치면 타건 수만큼
-   *    요청이 나간다 — 목록은 하나뿐인데 서버는 그 수만큼 일한다(사용자 지시 2026-09-17).
-   */
-  const itemSearchTerms = Object.values(useDebounced(itemSearch, ITEM_SEARCH_DEBOUNCE_MS));
+  const [picker, setPicker] = useState<{ kind: 'add' } | { kind: 'replace'; key: string } | null>(
+    null,
+  );
 
-  const changeItemSearch = (key: string, term: string): void => {
-    setItemSearch((prev) => ({ ...prev, [key]: term }));
-  };
-
-  const items = useItemChoices(itemSearchTerms);
+  const items = useItemNames(lines.map((line) => (line.itemId === '' ? null : Number(line.itemId))));
 
   const lineItemIds = lines.map((line) => (line.itemId === '' ? null : Number(line.itemId)));
   const availableQty = useAvailableQty(lineItemIds);
@@ -249,8 +253,44 @@ export const ShipmentRequestCreateScreen = () => {
     setLines((prev) => removeLineDraft(prev, key));
   };
 
+  /*
+   * ⭐ **「라인 추가」가 팝업을 연다**(사용자 결정 2026-09-18). 빈 줄을 먼저 만들고 그 안에서
+   *    품목을 고르던 종전 방식은, 품목 마스터 9,269건을 표 안 선택칸에 담을 수 없어 무너졌다.
+   */
   const addLine = (): void => {
-    setLines((prev) => addLineDraft(prev));
+    setPicker({ kind: 'add' });
+  };
+
+  /** 고른 품목들을 줄로 만든다 — 여는 자리에 따라 붙이거나 바꾼다. */
+  const applyPickedItems = (chosen: readonly ItemRow[]): void => {
+    const target = picker;
+
+    setPicker(null);
+    if (target === null || chosen.length === 0) return;
+
+    if (target.kind === 'add') {
+      setLines((prev) => [
+        ...prev,
+        ...chosen.map((item) => lineDraftFromItem(item.itemId, item.baseUomId)),
+      ]);
+
+      return;
+    }
+
+    /*
+     * ⚠ **바꿀 때 단위도 함께 바꾼다.** 품목이 달라지면 앞 품목의 기준 단위가 남을 이유가 없다 —
+     *   남기면 담당이 고치지 않는 한 엉뚱한 단위로 나간다.
+     */
+    const [first] = chosen;
+
+    if (first === undefined) return;
+
+    setLines((prev) =>
+      patchLineDraft(prev, target.key, {
+        itemId: String(first.itemId),
+        uomId: String(first.baseUomId),
+      }),
+    );
   };
 
   /** 확인 창 없이 곧바로 보낸다 — 전송 중 잠금과 성공 후 잠금 두 겹이 연타를 막는다(계획서). */
@@ -357,10 +397,10 @@ export const ShipmentRequestCreateScreen = () => {
         onChangeHeader={changeHeader}
         lines={lines}
         lineErrors={lineValidation.errors}
-        itemLookup={items.lookup}
-        itemChoiceOf={(row) => items.choiceOf(itemSearch[row.key] ?? '', row.itemId)}
-        itemSearchOf={(row) => itemSearch[row.key] ?? ''}
-        onItemSearch={changeItemSearch}
+        itemNames={items}
+        onPickItem={(key) => {
+          setPicker({ kind: 'replace', key });
+        }}
         uomLookup={uoms}
         uomOptions={toSelectOptions(uoms)}
         availableQty={availableQty}
@@ -447,6 +487,28 @@ export const ShipmentRequestCreateScreen = () => {
 
         <div className="pane-stack">{rightColumn()}</div>
       </div>
+
+      {/*
+       * ⭐ **품목 선택은 팝업이다**(사용자 결정 2026-09-18). 품목 마스터가 9,269건이라 표 안
+       *    선택칸으로 감당할 수 없다 — 같은 문제를 만난 `W-06-05` 도 대화상자 안 검색으로 풀었다.
+       * ⭐ **기본 유형이 「제품」이다.** 도메인 04 의 이름이 「제품출하」이고 설계 `W-04-01` §5-5 가
+       *    가용 수량을 「완제품 창고의 가용 잔액」·「`W-04-08` 완제품 재고 조회와 같은 원천」으로
+       *    적었다. 자재는 출하가 아니라 출고로 나간다.
+       * ⛔ **서버는 품목 유형을 제한하지 않는다** — 화면이 유일한 관문이다. 기본을 좁히지 않으면
+       *    원자재·부자재가 결과에 섞인다. 「전체」와 다른 유형은 유상사급처럼 자재가 나가는
+       *    예외를 위해 열어 둔다.
+       */}
+      {picker !== null && (
+        <ItemPickerDialog
+          multiple={picker.kind === 'add'}
+          defaultItemTypeCode={SHIPPABLE_ITEM_TYPE_CODE}
+          addedItemIds={lines.flatMap((line) => (line.itemId === '' ? [] : [Number(line.itemId)]))}
+          onClose={() => {
+            setPicker(null);
+          }}
+          onConfirm={applyPickedItems}
+        />
+      )}
     </>
   );
 };
