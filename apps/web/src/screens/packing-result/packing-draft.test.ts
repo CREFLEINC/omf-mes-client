@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   addLine,
+  nextHandlingUnitTypeCode,
   normalizeScanCode,
   packedTotal,
   qtyError,
@@ -140,5 +141,24 @@ describe('normalizeScanCode', () => {
 
   it('빈 스캔은 보내지 않는다', () => {
     expect(normalizeScanCode('   ')).toBeNull();
+  });
+});
+
+describe('nextHandlingUnitTypeCode', () => {
+  it('아직 안 골랐으면 첫 값을 채운다', () => {
+    expect(nextHandlingUnitTypeCode('', 'PALLET')).toBe('PALLET');
+  });
+
+  /*
+   * ⛔ **고른 값을 덮지 않는다.** 목록이 다시 와도(재조회·코드 그룹 변경) 담당이 고른 유형은
+   *    그대로다 — 덮으면 소리 없이 되돌아간다.
+   */
+  it('이미 고른 값은 첫 값이 달라도 덮지 않는다', () => {
+    expect(nextHandlingUnitTypeCode('CARTON', 'PALLET')).toBe('CARTON');
+  });
+
+  /* ⛔ 목록이 없으면 그대로 둔다 — 빈 값이라야 「유형을 고르세요」 잠금이 제 할 일을 한다. */
+  it('목록이 아직 없으면 채우지 않는다', () => {
+    expect(nextHandlingUnitTypeCode('', undefined)).toBe('');
   });
 });

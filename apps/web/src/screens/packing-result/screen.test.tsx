@@ -61,6 +61,8 @@ interface Options {
   rejectLot?: string;
   /** 아직 출하 단위에 안 들어간 상자 수. `'error'` 면 그 조회가 실패한다. */
   unassignedBoxes?: number | 'error';
+  /** 포장 유형 선택지. **서버가 준 순서 그대로** 내려간다. */
+  typeCodes?: { code: string; codeName: string }[];
   reads?: Request[];
 }
 
@@ -159,11 +161,18 @@ const renderScreen = (options: Options = {}) => {
     },
     {
       match: (request) => pathOf(request) === '/mdm/code-values',
-      respond: () =>
-        jsonResponse({
-          items: [{ codeValueId: 1, codeGroupId: 9, code: 'CARTON', codeName: '카톤' }],
-          page: { page: 1, size: 50, total: 1 },
-        }),
+      respond: () => {
+        /*
+         * ⚠ **서버가 준 순서 그대로 돌려준다.** 화면이 다시 정렬하지 않는 것이 규율이라, 목이
+         *   정렬해 주면 그 규율을 시험이 못 본다.
+         */
+        const items = options.typeCodes ?? [{ code: 'CARTON', codeName: '카톤' }];
+
+        return jsonResponse({
+          items: items.map((item, index) => ({ codeValueId: index + 1, codeGroupId: 9, ...item })),
+          page: { page: 1, size: 50, total: items.length },
+        });
+      },
     },
     {
       match: (request) =>
@@ -283,6 +292,17 @@ const chooseShipment = async (
   await user.click(await screen.findByRole('option', { name: shipmentNo }));
 };
 
+/**
+ * 유형 선택칸에 **보이는** 값.
+ *
+ * ⚠ **`combobox` 노드의 글을 보지 않는다.** `size="xl"` 트리거는 고른 값을 그 노드 «밖»에
+ *   그린다 — 그 노드만 보면 자리표시 글만 읽혀 기능이 되는데도 시험이 문다(실측 2026-09-18).
+ * ⚠ **선택지 목록 안의 같은 글자는 세지 않는다.** 목록에도 같은 이름이 있어, 걸러 내지 않으면
+ *   「보인다」가 「목록에 있다」와 구별되지 않는다.
+ */
+const shownTypeValue = (label: string): HTMLElement[] =>
+  screen.queryAllByText(label).filter((element) => element.closest('[role="listbox"]') === null);
+
 describe('PackingResultScreen', () => {
   /* ⭐ 사번이 없으면 출하대상부터 못 고르고, 맨 위 경고 띠가 사유를 말한다(사용자 지시 2026-09-17). */
   it('사번이 없으면 출하대상 선택과 스캔 칸이 잠기고 맨 위에 사번 경고가 선다', async () => {
@@ -377,6 +397,70 @@ describe('PackingResultScreen', () => {
 
     expect(await screen.findByText(t.progress.unassignedUnknown)).toBeInTheDocument();
     expect(screen.queryByText(t.progress.unassigned(0))).not.toBeInTheDocument();
+  });
+
+  /*
+   * ⭐ **열리면 첫 유형이 이미 골라져 있다**(사용자 지시 2026-09-18). 종전에는 빈 칸으로 떠서
+   *    매번 고르게 했다.
+   * ⛔ **「첫 번째」는 서버가 준 순서 그대로다** — 화면이 다시 정렬하지 않는다. 이 코드 그룹은
+   *    고객 관리형이라 값도 순서도 고객이 정한다. 그래서 목이 **사전순과 어긋나는** 순서를
+   *    준다 — 화면이 몰래 정렬하면 이 시험이 문다.
+   * ⚠ 목록이 «도착한 뒤»에 채워지므로 기다린다 — 첫 렌더에서 곧바로 읽으면 빈 칸을 본다.
+   */
+  it('유형 목록이 오면 첫 값이 이미 골라져 있다', async () => {
+    renderScreen({
+      typeCodes: [
+        { code: 'PALLET', codeName: '팔레트' },
+        { code: 'CARTON', codeName: '카톤' },
+      ],
+    });
+
+    await waitFor(() => {
+      expect(shownTypeValue('팔레트').length).toBeGreaterThan(0);
+    });
+  });
+
+  /*
+   * ⛔ **고른 값을 덮지 않는다.** 재조회나 포커스 복귀로 목록이 다시 와도 이미 고른 값이 있으면
+   *    손대지 않는다 — 덮으면 담당이 고른 유형이 소리 없이 되돌아간다.
+   */
+  it('사용자가 고른 유형을 뒤이은 조작이 덮지 않는다', async () => {
+    const user = userEvent.setup();
+    renderScreen({
+      typeCodes: [
+        { code: 'CARTON', codeName: '카톤' },
+        { code: 'PALLET', codeName: '팔레트' },
+      ],
+    });
+
+    const select = await screen.findByRole('combobox', { name: t.fields.handlingUnitType });
+
+    await waitFor(() => {
+      expect(shownTypeValue('카톤').length).toBeGreaterThan(0);
+    });
+
+    await user.click(select);
+    await user.click(await screen.findByRole('option', { name: '팔레트' }));
+
+    expect(shownTypeValue('팔레트').length).toBeGreaterThan(0);
+
+    await chooseShipment(user);
+
+    /* 출하를 고른 뒤에도 고른 유형이 그대로다 — 목록이 다시 와도 덮지 않는다. */
+    await waitFor(() => {
+      expect(shownTypeValue('팔레트').length).toBeGreaterThan(0);
+    });
+    expect(shownTypeValue('카톤')).toHaveLength(0);
+  });
+
+  /*
+   * ⛔ **`noType` 잠금을 지우지 않았다.** 코드 그룹이 비었거나 조회가 실패하면 여전히 빈 값이다 —
+   *    평소에 안 보일 뿐 그 자리는 살아 있어야 한다.
+   */
+  it('유형 목록이 비면 채우지 못하고 그 사실을 말한다', async () => {
+    renderScreen({ typeCodes: [] });
+
+    expect(await screen.findByText(t.notes.typeUnavailable)).toBeInTheDocument();
   });
 
   it('들어오면 출하대상 줄이 서고 생산LOT 칸은 «잠긴 채» 사유를 말한다', () => {

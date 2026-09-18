@@ -45,7 +45,7 @@ describe('validateWarehouse', () => {
   it('외부창고를 켜면 거래처가 필수다', () => {
     const errors = validateWarehouse({ ...filled, isExternal: true, partnerId: '' }, 'edit');
 
-    expect(errors.partnerId).toBe('외부창고이면 거래처를 지정해야 합니다.');
+    expect(errors.partnerId).toBe('외부 창고이면 거래처를 지정해야 합니다.');
   });
 
   it('외부창고가 꺼져 있으면 거래처가 없어도 통과한다', () => {

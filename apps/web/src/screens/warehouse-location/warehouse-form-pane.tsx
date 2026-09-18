@@ -1,4 +1,4 @@
-import { Button, Select, Switch, TextField } from '@crefle/web-ui';
+import { Button, Chip, Select, Switch, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
 import { useId } from 'react';
@@ -48,6 +48,12 @@ export interface SelectFieldProps {
   disabled?: boolean;
   error?: string;
   note?: string;
+  /** 값이 비었을 때 선택칸 안에 보일 안내. 값·검증에는 영향이 없다. */
+  placeholder?: string;
+  /** 라벨 옆 도움말. note와 달리 칸 아래가 아니라 라벨 줄에 둔다. */
+  labelHint?: string;
+  /** 선택칸 오른쪽 같은 줄에 붙일 요소. 선택칸은 남은 폭을 채운다. */
+  trailing?: ReactNode;
 }
 
 export const SelectField = ({
@@ -59,10 +65,17 @@ export const SelectField = ({
   disabled = false,
   error,
   note,
+  placeholder,
+  labelHint,
+  trailing,
 }: SelectFieldProps) => {
   const id = useId();
   const describedById = `${id}-note`;
+  const hintId = `${id}-hint`;
   const description = error ?? note;
+  const describedBy =
+    [labelHint ? hintId : null, description ? describedById : null].filter(Boolean).join(' ') ||
+    undefined;
 
   return (
     <div className="field-cell">
@@ -71,20 +84,32 @@ export const SelectField = ({
        * 밖에 두면 .field-label이 블록 서식이라 별도 줄로 떨어지고,
        * 안에 넣으면 접근성 이름이 「이름 *」이 되어 라벨 조회가 깨진다.
        */}
-      <span className="field-label">
-        <label htmlFor={id}>{label}</label>
-        {required && <span aria-hidden="true"> *</span>}
+      <span className="field-label warehouse-location-field-label">
+        <span>
+          <label htmlFor={id}>{label}</label>
+          {required && <span aria-hidden="true"> *</span>}
+        </span>
+        {/* 라벨 옆 도움말 — 문구는 자르지 않는다. */}
+        {labelHint && (
+          <span id={hintId} className="field-note warehouse-location-inline-note">
+            {labelHint}
+          </span>
+        )}
       </span>
-      <Select
-        id={id}
-        options={options}
-        value={value}
-        onChange={onChange}
-        disabled={disabled}
-        invalid={Boolean(error)}
-        aria-required={required || undefined}
-        aria-describedby={description ? describedById : undefined}
-      />
+      <div className="warehouse-location-field-row">
+        <Select
+          id={id}
+          options={options}
+          value={value}
+          onChange={onChange}
+          disabled={disabled}
+          placeholder={placeholder}
+          invalid={Boolean(error)}
+          aria-required={required || undefined}
+          aria-describedby={describedBy}
+        />
+        {trailing}
+      </div>
       {description && (
         <span id={describedById} className={error ? 'field-error' : 'field-note'}>
           {description}
@@ -111,21 +136,39 @@ export const WarehouseFormPane = ({
   onActivate,
 }: WarehouseFormPaneProps) => {
   const activeLabelId = useId();
+  const externalLabelId = useId();
+  const defectLabelId = useId();
   const historyNoteId = useId();
 
   return (
-    <section aria-label={t.tabs.warehouse}>
+    <section className="warehouse-location-form" aria-label={t.tabs.warehouse}>
       {banner}
 
       <div className="form-grid">
-        <SelectField
-          label={t.fields.plant}
-          options={lookups.plants}
-          value={values.plantId}
-          onChange={(value) => onChange({ plantId: value })}
-          disabled={mode === 'edit'}
-          note={mode === 'edit' ? t.actionReasons.plantFixedAfterCreate : undefined}
-        />
+        {/*
+         * 공장과 사용 상태를 한 칸 안에 나란히 둔다 — 둘 다 「라벨 위 · 값 아래」(사용자 결정 2026-09-18 ·
+         * omf-all-around#17). 사용 상태는 값 표기(칩)이고, 상태를 바꾸는 단추는 바닥글에 있다.
+         */}
+        <div className="warehouse-location-plant-row">
+          <SelectField
+            label={t.fields.plant}
+            options={lookups.plants}
+            value={values.plantId}
+            onChange={(value) => onChange({ plantId: value })}
+            disabled={mode === 'edit'}
+            labelHint={mode === 'edit' ? t.actionReasons.plantFixedAfterCreate : undefined}
+          />
+          <div className="field-cell">
+            <span className="field-label" id={activeLabelId}>
+              {t.fields.isActive}
+            </span>
+            <div className="warehouse-location-status">
+              <Chip aria-labelledby={activeLabelId} status={isActive ? 'success' : 'idle'}>
+                {isActive ? t.values.active : t.values.inactive}
+              </Chip>
+            </div>
+          </div>
+        </div>
 
         <SelectField
           label={t.fields.businessUnit}
@@ -156,6 +199,20 @@ export const WarehouseFormPane = ({
           value={values.warehouseTypeCode}
           onChange={(value) => onChange({ warehouseTypeCode: value })}
           error={fieldErrors.warehouseTypeCode}
+          /*
+           * 외부 창고·불량 창고 토글은 유형·수준 선택칸 오른쪽 같은 줄에 둔다(사용자 결정 2026-09-18 ·
+           * omf-all-around#17). 토글만 따로 쓰던 줄을 없앤다. 켬/끔 글자는 붙이지 않는다.
+           */
+          trailing={
+            <div className="warehouse-location-inline-field">
+              <span id={externalLabelId}>{t.fields.isExternal}</span>
+              <Switch
+                aria-labelledby={externalLabelId}
+                checked={values.isExternal}
+                onChange={(event) => onChange({ isExternal: event.target.checked })}
+              />
+            </div>
+          }
         />
 
         <SelectField
@@ -164,18 +221,22 @@ export const WarehouseFormPane = ({
           value={values.managementLevelCode}
           onChange={(value) => onChange({ managementLevelCode: value })}
           error={fieldErrors.managementLevelCode}
-        />
-
-        <Switch
-          label={t.fields.isExternal}
-          checked={values.isExternal}
-          onChange={(event) => onChange({ isExternal: event.target.checked })}
-        />
-
-        <Switch
-          label={t.fields.isDefect}
-          checked={values.isDefect}
-          onChange={(event) => onChange({ isDefect: event.target.checked })}
+          /* 폼의 현재 값 기준 — 「창고」를 고르는 순간 Location을 두지 않는다는 것을 알린다(omf-all-around#17). */
+          labelHint={
+            values.managementLevelCode === 'WAREHOUSE'
+              ? t.actionReasons.managementLevelWarehouseNoLocation
+              : undefined
+          }
+          trailing={
+            <div className="warehouse-location-inline-field">
+              <span id={defectLabelId}>{t.fields.isDefect}</span>
+              <Switch
+                aria-labelledby={defectLabelId}
+                checked={values.isDefect}
+                onChange={(event) => onChange({ isDefect: event.target.checked })}
+              />
+            </div>
+          }
         />
 
         <SelectField
@@ -185,33 +246,34 @@ export const WarehouseFormPane = ({
           value={values.partnerId}
           onChange={(value) => onChange({ partnerId: value })}
           error={fieldErrors.partnerId}
+          placeholder={t.placeholders.partner}
         />
-
-        {/* 값을 보여 주기만 하면 되는 자리는 폼 컨트롤을 잠그지 말고 값 표기로 낸다. */}
-        <div>
-          <span className="field-label" id={activeLabelId}>
-            {t.fields.isActive}
-          </span>
-          <p aria-labelledby={activeLabelId}>{isActive ? t.values.active : t.values.inactive}</p>
-          {/* 아직 등록되지 않은 창고에는 사용 중지할 대상이 없다. */}
-          {mode === 'edit' && (
-            <Button variant="outlined" onClick={isActive ? onDeactivate : onActivate}>
-              {isActive ? messages.common.deactivate : t.actions.activate}
-            </Button>
-          )}
-        </div>
       </div>
 
-      <div className="form-actions">
+      <div className="form-actions warehouse-location-form-actions">
         {/*
          * 사유가 붙은 보조 액션은 줄 왼쪽에, 주 액션(취소·저장)은 오른쪽에 남긴다.
          * variant는 outlined여야 한다 — text는 비활성일 때 흐린 글자만 남아 버튼으로 읽히지 않는다.
          */}
         <div className="field-cell form-actions-secondary">
+          {/*
+           * 상태를 바꾸는 액션은 바닥글 왼쪽 맨 앞 — 오른쪽의 폼 저장 액션(취소·저장)과 가른다
+           * (사용자 지시 2026-09-18 · omf-all-around#17). 아직 등록되지 않은 창고에는 사용 중지할 대상이 없다.
+           */}
+          {mode === 'edit' && (
+            <Button
+              className="warehouse-location-status-action"
+              variant="outlined"
+              onClick={isActive ? onDeactivate : onActivate}
+            >
+              {isActive ? messages.common.deactivate : t.actions.activate}
+            </Button>
+          )}
           <Button variant="outlined" disabled aria-describedby={historyNoteId}>
             {t.actions.changeHistory}
           </Button>
-          <span id={historyNoteId} className="field-note">
+          {/* 버튼 옆 도움말 — 버튼의 설명(aria-describedby)으로 계속 잇는다. */}
+          <span id={historyNoteId} className="field-note warehouse-location-inline-note">
             {t.actionReasons.changeHistoryUnavailable}
           </span>
         </div>

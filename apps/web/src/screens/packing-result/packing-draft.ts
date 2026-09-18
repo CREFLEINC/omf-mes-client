@@ -121,3 +121,19 @@ export const normalizeScanCode = (raw: string): string | null => {
 
   return trimmed === '' ? null : trimmed;
 };
+
+/**
+ * 유형 선택칸에 세울 값 — **아직 아무것도 고르지 않았을 때만 첫 값을 채운다**
+ * (사용자 지시 2026-09-18).
+ *
+ * ⛔ **고른 값을 덮지 않는다.** 목록이 다시 오면(재조회·코드 그룹 변경) 이 판정이 다시 도는데,
+ *    그때 덮으면 담당이 고른 유형이 **소리 없이 되돌아간다.**
+ * ⛔ **목록이 아직 없으면 그대로 둔다** — 마운트 시점에는 목록이 없다. 빈 값으로 남아야
+ *    `confirm-lock` 의 「유형을 고르세요」가 제 할 일을 한다.
+ * ⚠ 화면에서는 이 판정이 화면 밖으로 드러나지 않는다(목록이 바뀌는 길이 조작에 없다) —
+ *   그래서 규칙을 여기로 꺼내 직접 붙든다.
+ */
+export const nextHandlingUnitTypeCode = (
+  current: string,
+  firstOptionCode: string | undefined,
+): string => (current !== '' || firstOptionCode === undefined ? current : firstOptionCode);

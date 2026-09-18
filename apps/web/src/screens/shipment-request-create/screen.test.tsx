@@ -183,15 +183,23 @@ describe('ShipmentRequestCreateScreen — 지시서 경유(완료 조건 C2)', (
     );
 
     const headerPane = await screen.findByRole('region', { name: t.panes.header });
-    const linesPane = screen.getByRole('region', { name: t.panes.lines });
+    const linesPane = await screen.findByRole('region', { name: t.panes.lines });
 
     /* 고객·납품처는 값 표기다 — 선택칸이 아니다. */
     expect(within(headerPane).getByText('SAMPLE-CUST-01 · 합성 고객 가')).toBeInTheDocument();
     expect(within(headerPane).getByText('SAMPLE-SHIP-01 · 합성 납품처 가')).toBeInTheDocument();
     expect(within(headerPane).queryByRole('combobox', { name: /고객/ })).not.toBeInTheDocument();
 
-    /* 라인 8602(잔여 0)는 빠지고 8601(잔여 80)만 남는다. */
-    expect(within(linesPane).getByText('SAMPLE-ITEM-01 · 합성 품목 가')).toBeInTheDocument();
+    /*
+     * 라인 8602(잔여 0)는 빠지고 8601(잔여 80)만 남는다.
+     *
+     * ⛔ **아래 두 줄의 순서를 바꾸거나 `findBy`를 `getBy`로 되돌리지 않는다.** 머리와 라인은
+     * 서로 다른 부품이고(`screen.tsx` 대 `assignment-form-pane.tsx`) 채워지는 시점도 다르다 —
+     * 머리만 기다리고 라인을 동기로 조회하면, 아직 비어 있는 라인을 보고 **부정 단언이 헛되이
+     * 통과**하고 긍정 단언만 깨진다. 실제로 그 모양으로 `web-v0.3.12` 이미지 빌드가 CI 에서만
+     * 멈췄다(로컬은 초록). 먼저 나타날 것을 기다린 뒤에 없어야 할 것을 본다.
+     */
+    expect(await within(linesPane).findByText('SAMPLE-ITEM-01 · 합성 품목 가')).toBeInTheDocument();
     expect(within(linesPane).queryByText('SAMPLE-ITEM-02 · 합성 품목 나')).not.toBeInTheDocument();
   });
 });

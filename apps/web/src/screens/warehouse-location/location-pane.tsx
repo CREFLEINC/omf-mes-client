@@ -1,5 +1,6 @@
 import {
   Button,
+  Chip,
   type Column,
   EmptyState,
   IconButton,
@@ -28,7 +29,6 @@ export interface LocationPaneProps {
   addRootDisabledReason: string;
   onAddRoot: () => void;
   canAddChild: boolean;
-  addChildDisabledReason: string;
   onAddChild: () => void;
   onEdit: (location: Location) => void;
   onGenerateLabels: () => void;
@@ -59,7 +59,6 @@ export const LocationPane = ({
   addRootDisabledReason,
   onAddRoot,
   canAddChild,
-  addChildDisabledReason,
   onAddChild,
   onEdit,
   onGenerateLabels,
@@ -68,7 +67,6 @@ export const LocationPane = ({
   loadError,
 }: LocationPaneProps) => {
   const addRootNoteId = useId();
-  const addChildNoteId = useId();
   const labelNoteId = useId();
 
   /**
@@ -79,6 +77,10 @@ export const LocationPane = ({
     {
       key: 'locationCode',
       header: t.fields.locationCode,
+      /*
+       * 위치 코드만 머리·값 왼쪽(사용자 결정 2026-09-18 · omf-all-around#17) — 가운데로 두면 행마다 따로
+       * 가운데에 서서 깊이 들여쓰기가 상쇄돼 상하위가 읽히지 않았다. 위치명·사용 상태는 가운데.
+       */
       render: (row) => {
         const isExpanded = expandedIds.has(row.location.locationId);
 
@@ -109,12 +111,19 @@ export const LocationPane = ({
     {
       key: 'locationName',
       header: t.fields.locationName,
+      align: 'center',
       render: (row) => row.location.locationName,
     },
     {
       key: 'isActive',
       header: t.fields.isActive,
-      render: (row) => (row.location.isActive ? t.values.active : t.values.inactive),
+      /* 창고 목록과 같은 상태 칩(omf-all-around#17). */
+      align: 'center',
+      render: (row) => (
+        <Chip size="sm" status={row.location.isActive ? 'success' : 'idle'}>
+          {row.location.isActive ? t.values.active : t.values.inactive}
+        </Chip>
+      ),
     },
   ];
 
@@ -124,7 +133,8 @@ export const LocationPane = ({
         size="sm"
         live
         title={t.empty.locationNoneTitle}
-        description={t.empty.locationNoneDescription}
+        /* 등록할 수 없는 창고에서 「추가해 주세요」라고 하지 않는다 — 단추 옆 사유와 같은 문장을 쓴다. */
+        description={canAddRoot ? t.empty.locationNoneDescription : addRootDisabledReason}
       />
     ) : (
       <EmptyState
@@ -148,23 +158,30 @@ export const LocationPane = ({
     }
 
     return (
-      <Table
-        density="compact"
-        columns={columns}
-        rows={rows}
-        getRowId={(row) => String(row.location.locationId)}
-        selectable
-        selectedIds={selectedIds}
-        onSelectionChange={onSelectionChange}
-        empty={emptySlot}
-      />
+      <div className="warehouse-location-location-table">
+        <Table
+          density="compact"
+          columns={columns}
+          rows={rows}
+          getRowId={(row) => String(row.location.locationId)}
+          selectable
+          selectedIds={selectedIds}
+          onSelectionChange={onSelectionChange}
+          empty={emptySlot}
+        />
+      </div>
     );
   };
 
   return (
     <section aria-label={t.tabs.location}>
       {actionBanner}
-      <div className="filter-bar">
+      {/*
+       * 역할별로 묶는다(omf-all-around#17) — 검색(왼쪽) · 등록(오른쪽 끝) · 선택한 Location 작업(구분선 아래).
+       * 최상위 추가의 비활성 사유만 묶음 바로 아래 도움말로 붙인다. 하위 추가는 사유 없이 비활성만 둔다
+       * (사용자 지시 2026-09-18) — 활성 조건은 그대로다.
+       */}
+      <div className="filter-bar warehouse-location-location-toolbar">
         <SearchInput
           label={t.filters.locationSearchLabel}
           placeholder={t.filters.locationSearchPlaceholder}
@@ -173,38 +190,36 @@ export const LocationPane = ({
           onClear={() => onFilterTextChange('')}
           clearLabel={messages.common.clear}
         />
-        <div className="field-cell field-cell-unlabeled">
-          <Button
-            variant="outlined"
-            disabled={!canAddRoot}
-            aria-describedby={canAddRoot ? undefined : addRootNoteId}
-            onClick={onAddRoot}
-          >
-            {t.actions.addRootLocation}
-          </Button>
+        <div className="field-cell-unlabeled warehouse-location-location-create">
+          <div className="filter-actions">
+            <Button
+              variant="outlined"
+              disabled={!canAddRoot}
+              aria-describedby={canAddRoot ? undefined : addRootNoteId}
+              onClick={onAddRoot}
+            >
+              {t.actions.addRootLocation}
+            </Button>
+            <Button variant="outlined" disabled={!canAddChild} onClick={onAddChild}>
+              {t.actions.addChildLocation}
+            </Button>
+          </div>
           {!canAddRoot && (
-            <span id={addRootNoteId} className="field-note">
+            <span id={addRootNoteId} className="field-note warehouse-location-inline-note">
               {addRootDisabledReason}
             </span>
           )}
         </div>
-        <div className="field-cell field-cell-unlabeled">
-          <Button
-            variant="outlined"
-            disabled={!canAddChild}
-            aria-describedby={canAddChild ? undefined : addChildNoteId}
-            onClick={onAddChild}
-          >
-            {t.actions.addChildLocation}
-          </Button>
-          {!canAddChild && (
-            <span id={addChildNoteId} className="field-note">
-              {addChildDisabledReason}
-            </span>
-          )}
-        </div>
+      </div>
+
+      {/* 선택한 Location 대상 작업 — 도움말은 줄 왼쪽 끝, 단추는 오른쪽 끝(사용자 지시 2026-09-18). */}
+      <div className="warehouse-location-location-selection">
+        {selectedIds.length === 0 && (
+          <span id={labelNoteId} className="field-note warehouse-location-inline-note">
+            {t.actionReasons.generateLabelNeedsSelection}
+          </span>
+        )}
         <Button
-          className="field-cell-unlabeled"
           variant="outlined"
           disabled={selectedIds.length === 0 || isGeneratingLabels}
           loading={isGeneratingLabels}
@@ -213,11 +228,6 @@ export const LocationPane = ({
         >
           {t.actions.generateLabel}
         </Button>
-        {selectedIds.length === 0 && (
-          <span id={labelNoteId} className="field-note field-cell-unlabeled">
-            {t.actionReasons.generateLabelNeedsSelection}
-          </span>
-        )}
       </div>
 
       {listSlot()}

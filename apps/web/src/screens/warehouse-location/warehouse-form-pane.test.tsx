@@ -42,14 +42,14 @@ const renderPane = (overrides: Partial<Parameters<typeof WarehouseFormPane>[0]> 
 const FIELD_LABELS = [
   '공장',
   '사업부',
-  '창고코드',
+  '창고 코드',
   '창고명',
-  '창고유형',
-  '관리수준',
-  '외부창고',
-  '불량창고',
+  '창고 유형',
+  '관리 수준',
+  '외부 창고',
+  '불량 창고',
   '거래처',
-  '사용',
+  '사용 상태',
 ];
 
 describe('WarehouseFormPane', () => {
@@ -75,32 +75,32 @@ describe('WarehouseFormPane', () => {
     expect(
       screen.getByText('이미 사용 중인 코드입니다. 다른 코드를 입력하세요.'),
     ).toBeInTheDocument();
-    expect(screen.getByText('외부창고이면 거래처를 지정해야 합니다.')).toBeInTheDocument();
+    expect(screen.getByText('외부 창고이면 거래처를 지정해야 합니다.')).toBeInTheDocument();
   });
 
   it('codeLockReason을 주입하면 창고코드가 비활성이고 사유가 화면 텍스트로 보인다', () => {
     const reason = '이미 3건에서 사용 중이라 코드를 바꿀 수 없습니다.';
     renderPane({ codeLockReason: reason });
 
-    expect(screen.getByLabelText('창고코드')).toBeDisabled();
+    expect(screen.getByLabelText('창고 코드')).toBeDisabled();
     expect(screen.getByText(reason)).toBeInTheDocument();
   });
 
   it('신규 등록 모드가 아니면 공장을 바꿀 수 없고 사유가 보인다', () => {
     renderPane({ mode: 'edit' });
 
+    const reason = '공장은 등록 후 변경할 수 없습니다.';
     expect(screen.getByLabelText('공장')).toBeDisabled();
-    expect(
-      screen.getByText(
-        '등록 후에는 공장을 바꿀 수 없습니다. 다른 공장이면 창고를 새로 등록하세요.',
-      ),
-    ).toBeInTheDocument();
+    expect(screen.getByLabelText('공장')).toHaveAccessibleDescription(reason);
+    // 안내는 칸 아래가 아니라 라벨 줄에 둔다(omf-all-around#17 3차).
+    expect(screen.getByText(reason).closest('.field-label')).not.toBeNull();
   });
 
-  it('신규 등록 모드에서는 공장을 고를 수 있다', () => {
+  it('신규 등록 모드에서는 공장을 고를 수 있고 고정 안내가 없다', () => {
     renderPane({ mode: 'create' });
 
     expect(screen.getByLabelText('공장')).not.toBeDisabled();
+    expect(screen.queryByText('공장은 등록 후 변경할 수 없습니다.')).not.toBeInTheDocument();
   });
 
   it('배너 슬롯에 넘긴 노드를 상단에 렌더한다', () => {
@@ -134,8 +134,7 @@ describe('WarehouseFormPane', () => {
   it('변경 이력은 비활성이고 그 사유가 화면 텍스트로 보인다', () => {
     renderPane();
 
-    const reason =
-      '변경 이력은 아직 볼 수 없습니다. 조회 기능이 준비되면 이 버튼을 쓸 수 있습니다.';
+    const reason = '변경 이력은 현재 제공되지 않습니다.';
     const button = screen.getByRole('button', { name: '변경 이력' });
 
     expect(button).toBeDisabled();
@@ -157,7 +156,7 @@ describe('WarehouseFormPane', () => {
     renderPane({ isActive: false });
 
     expect(screen.queryByRole('button', { name: '사용 중지' })).not.toBeInTheDocument();
-    expect(screen.getByLabelText('사용')).toHaveTextContent('미사용');
+    expect(screen.getByLabelText('사용 상태')).toHaveTextContent('미사용');
   });
 
   it('신규 등록 폼에는 사용 중지가 없다 — 아직 만들어지지 않은 창고다', () => {
@@ -175,5 +174,38 @@ describe('WarehouseFormPane', () => {
     expect(onChange).toHaveBeenCalledWith({
       warehouseName: `${warehouseFormInitialValues.warehouseName}가`,
     });
+  });
+
+  /* 화면 정돈(omf-all-around#17) — 라벨 위·컨트롤 아래, 상태 칩과 액션 단추를 가른다. */
+  it('외부창고·불량창고 토글은 칸 위 라벨로 이름을 갖는다', () => {
+    renderPane();
+
+    expect(screen.getByRole('switch', { name: '외부 창고' })).toBeInTheDocument();
+    expect(screen.getByRole('switch', { name: '불량 창고' })).toBeInTheDocument();
+  });
+
+  it('사용 상태는 칩으로, 사용 중지는 단추로 따로 보인다', () => {
+    renderPane();
+
+    expect(screen.getByText('사용 중')).toBeInTheDocument();
+    // 상태를 바꾸는 단추는 폼 칸이 아니라 바닥글에 있다(omf-all-around#17 3차).
+    expect(
+      screen.getByRole('button', { name: '사용 중지' }).closest('.form-actions'),
+    ).not.toBeNull();
+  });
+
+  it('관리 수준이 창고일 때만 라벨 옆에 Location 안내가 보인다(폼의 현재 값 기준)', () => {
+    const hint = 'Location을 지정하지 않습니다.';
+    renderPane({ values: { ...warehouseFormInitialValues, managementLevelCode: 'WAREHOUSE' } });
+    expect(screen.getByLabelText('관리 수준')).toHaveAccessibleDescription(hint);
+
+    renderPane({ values: { ...warehouseFormInitialValues, managementLevelCode: 'CELL' } });
+    expect(screen.getAllByText(hint)).toHaveLength(1);
+  });
+
+  it('거래처가 비어 있으면 선택칸에 안내 문구가 보인다', () => {
+    renderPane({ values: { ...warehouseFormInitialValues, partnerId: '' } });
+
+    expect(screen.getByText('거래처를 선택하세요')).toBeInTheDocument();
   });
 });
