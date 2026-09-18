@@ -6004,6 +6004,8 @@ dl.filter-bar.approval-inbox-detail-facts {
 /* 선택 전 안내 — 구획 설명과 한 줄을 띄운다. */
 .pane-lead.terminal-map-unselected {
   margin-top: var(--space-5);
+  /* 구획의 마지막 줄 — 문단 기본 아래 여백을 빼 카드가 내용만큼만 선다. */
+  margin-bottom: 0;
 }
 
 /* 공정별 기능 구성 표 — 열이 많아 좁은 폭에서는 표 안에서만 가로로 넘긴다(마지막 「빼기」 열이 잘리지 않게). */
