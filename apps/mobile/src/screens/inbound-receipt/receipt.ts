@@ -442,8 +442,29 @@ export const toSplitOutboxDraft = (
     quantities.normal,
     line.purchaseOrderLineId,
   );
+  const excessPart = splitPart(
+    draft,
+    itemId,
+    uomId,
+    plantId,
+    supplierId,
+    occurredAt,
+    quantities.excess,
+    null,
+  );
+  /*
+   * 초과분은 라벨 «미부착»으로 보낸다(omf-all-around#21 · 사용자 결정 2026-09-18). 스캔한 사전부착
+   * LOT 은 정량분만 쓴다 — 두 파트가 같은 부착 LOT 을 실으면 서버가 「한 요청 안에서 겹칩니다」로
+   * 거부해 사전부착 라벨이면 분리 등록이 늘 400 이었다. 공급사 LOT 번호는 추적용으로 남기고
+   * `supplierLotMissing` 은 그대로라 대체 사유가 필요 없다. 초과분 LOT 처리의 최종 설계는
+   * omf-all-around#23 대기 — 그때 다시 본다.
+   */
   const excess = {
-    ...splitPart(draft, itemId, uomId, plantId, supplierId, occurredAt, quantities.excess, null),
+    ...excessPart,
+    lines: excessPart.lines.map((excessLine) => ({
+      ...excessLine,
+      supplierLotLabelAttached: false,
+    })),
     exceptionTypeCode: exceptionTypeCode.trim(),
     exceptionReason: exceptionReason.trim(),
   };

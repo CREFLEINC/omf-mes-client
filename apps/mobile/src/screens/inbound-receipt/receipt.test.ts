@@ -464,6 +464,67 @@ describe('초과 입하 분리 본문', () => {
     expect(body.excess.exceptionReason).toBe('허용치 초과');
   });
 
+  /*
+   * omf-all-around#21 — 두 파트가 같은 사전부착 LOT 을 실으면 서버가 「한 요청 안에서 겹칩니다」로
+   * 거부해 사전부착 라벨이면 분리 등록이 늘 400 이었다. 초과분만 미부착으로 보낸다.
+   */
+  it('BOTH에서 사전부착 LOT은 정량분만 부착이고 초과분은 미부착이다', () => {
+    const body = toSplitOutboxDraft(
+      draft({ receivedQty: '511' }),
+      31,
+      9,
+      1,
+      2,
+      NOW,
+      '900028',
+      'BOTH',
+      'OVER_DELIVERY',
+      '허용치 초과',
+    ).body as {
+      normal: { lines: Record<string, unknown>[] };
+      excess: { lines: Record<string, unknown>[] };
+    };
+    const [normalLine] = body.normal.lines;
+    const [excessLine] = body.excess.lines;
+
+    expect(normalLine?.supplierLotLabelAttached).toBe(true);
+    expect(excessLine?.supplierLotLabelAttached).toBe(false);
+    // 공급사 LOT 번호는 추적용으로 두 파트 모두 남고, 대체 사유가 필요 없는 상태 그대로다.
+    expect(excessLine?.supplierLotNo).toBe(normalLine?.supplierLotNo);
+    expect(excessLine?.supplierLotMissing).toBe(false);
+    expect(excessLine?.substituteLotReasonCode).toBeNull();
+  });
+
+  it('EXCESS_ONLY도 초과분을 미부착으로 보내고, NORMAL_ONLY는 부착 그대로다', () => {
+    const excessOnly = toSplitOutboxDraft(
+      draft({ receivedQty: '511' }),
+      31,
+      9,
+      1,
+      2,
+      NOW,
+      '900028',
+      'EXCESS_ONLY',
+      'OVER_DELIVERY',
+      '허용치 초과',
+    ).body as { excess: { lines: Record<string, unknown>[] } };
+    const normalOnly = toSplitOutboxDraft(
+      draft({ receivedQty: '511' }),
+      31,
+      9,
+      1,
+      2,
+      NOW,
+      '900028',
+      'NORMAL_ONLY',
+      '',
+      '',
+    ).body as { normal: { lines: Record<string, unknown>[] } };
+
+    expect(excessOnly.excess.lines[0]?.supplierLotLabelAttached).toBe(false);
+    expect(normalOnly.normal.lines[0]?.supplierLotLabelAttached).toBe(true);
+  });
+
   it('선택한 모드에 없는 part는 요청에 싣지 않는다', () => {
     const normalOnly = toSplitOutboxDraft(
       draft({ receivedQty: '511' }),
