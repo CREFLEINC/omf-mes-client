@@ -1,5 +1,6 @@
 import type { components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
+import { formatPlantDateTime } from '../../patterns/plant-time';
 
 type ProductionResult = components['schemas']['ProductionResult'];
 export type ProductionResultCorrect = components['schemas']['ProductionResultCorrect'];
@@ -105,9 +106,6 @@ export const toProductionResultCorrect = (
   };
 };
 
-const RFC3339_MINUTE = /^(\d{4}-\d{2}-\d{2})T(\d{2}:\d{2})/;
-
 export const formatProductionResultAt = (value: string): string => {
-  const matched = RFC3339_MINUTE.exec(value);
-  return matched === null ? value : `${matched[1] ?? ''} ${matched[2] ?? ''}`;
+  return formatPlantDateTime(value) ?? value;
 };

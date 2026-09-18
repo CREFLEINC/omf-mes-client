@@ -12,14 +12,14 @@ import { useEffect, useState } from 'react';
 
 import { useLotActorOptions, useLotHolds } from './queries';
 import type { LotHoldView } from './types';
+import { formatPlantDateTime } from '../../patterns/plant-time';
 
 const t = messages.lotStatusHistory;
 const EMPTY = '—';
 
 const formatDateTime = (value: string | null): string => {
   if (value === null) return EMPTY;
-  const match = /^(\d{4}-\d{2}-\d{2})T(\d{2}:\d{2})/.exec(value);
-  return match === null ? value : `${match[1]} ${match[2]}`;
+  return formatPlantDateTime(value) ?? value;
 };
 
 export const LotHoldDocuments = ({ lotId }: { lotId: number }) => {

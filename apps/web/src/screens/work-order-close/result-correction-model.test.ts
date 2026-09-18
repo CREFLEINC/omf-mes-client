@@ -60,6 +60,8 @@ describe('생산실적 정정 본문', () => {
   });
 });
 
-it('서버가 보낸 벽시계 시각을 시간대 변환 없이 표시한다', () => {
-  expect(formatProductionResultAt(original.occurredAt)).toBe('2026-08-31 14:20');
+/* 발생 시각은 공장 시각(베트남, UTC+7)으로 보인다(omf-all-around#20). */
+it('서버가 보낸 시각을 같은 순간의 공장 시각으로 표시한다', () => {
+  expect(formatProductionResultAt(original.occurredAt)).toBe('2026-08-31 12:20');
+  expect(formatProductionResultAt('2026-08-31T05:20:00Z')).toBe('2026-08-31 12:20');
 });

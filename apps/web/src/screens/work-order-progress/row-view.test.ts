@@ -133,9 +133,10 @@ describe('toWorkOrderRow', () => {
   });
 
   describe('계획 종료', () => {
-    it('날짜와 시각만 보인다', () => {
+    /* 공장 시각(베트남, UTC+7)으로 옮겨 보인다(omf-all-around#20). */
+    it('공장 시각의 날짜와 시각만 보인다', () => {
       expect(rowOf({ plannedEndAt: '2026-08-04T18:00:00+09:00' }).plannedEndAtText).toBe(
-        '2026-08-04 18:00',
+        '2026-08-04 16:00',
       );
     });
 

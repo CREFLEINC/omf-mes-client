@@ -2,6 +2,7 @@ import { messages } from '@omf-mes/i18n';
 
 import { type DelayState, resolveDelay } from './delay';
 import type { WorkOrder } from './types';
+import { formatPlantDateTime } from '../../patterns/plant-time';
 
 /**
  * 목록 한 줄에 그릴 값.
@@ -52,14 +53,11 @@ const qtyText = (value: number | undefined): string =>
 const rateText = (value: number | undefined): string =>
   value === undefined || !Number.isFinite(value) ? t.blank : RATE_FORMAT.format(value);
 
-const DATE_TIME_PATTERN = /^(\d{4}-\d{2}-\d{2})T(\d{2}:\d{2})/i;
-
 /** 계약이 주는 시각 문자열에서 사람이 읽는 부분만 꺼낸다. 못 읽으면 받은 대로 보인다. */
 const dateTimeText = (value: string | undefined): string => {
   if (value === undefined || value === '') return t.blank;
 
-  const match = DATE_TIME_PATTERN.exec(value);
-  return match === null ? value : `${match[1]} ${match[2]}`;
+  return formatPlantDateTime(value) ?? value;
 };
 
 /**

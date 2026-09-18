@@ -89,7 +89,8 @@ describe('의심자재 후보 pane', () => {
     ).toBe('선택|LOT 번호|품목|위치|보유 수량·단위|Lot Status·최근 전이');
     expect(screen.getByRole('heading', { level: 2, name: '의심자재 후보' })).toBeVisible();
     expect(screen.getByRole('table', { name: '의심자재 후보' })).toBeVisible();
-    expect(screen.getAllByText('2026-08-25 09:00')).toHaveLength(3);
+    // 최근 전이 시각은 공장 시각(UTC+7)으로 보인다 — omf-all-around#20
+    expect(screen.getAllByText('2026-08-25 07:00')).toHaveLength(3);
     await user.click(screen.getByRole('checkbox', { name: 'SYN-LOT-701 선택' }));
     await user.click(screen.getByRole('checkbox', { name: 'SYN-LOT-702 선택' }));
     expect(screen.getByText('2건 선택')).toBeVisible();

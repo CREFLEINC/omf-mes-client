@@ -6,14 +6,14 @@ import type { FilterOption } from './lot-filter-bar';
 import { LotHoldDocuments } from './lot-hold-documents';
 import { useLotDetail } from './queries';
 import { useItemNameSources } from './reference-options';
+import { formatPlantDateTime } from '../../patterns/plant-time';
 
 const t = messages.lotStatusHistory;
 const EMPTY = '—';
 
 const formatDateTime = (value: string | null): string => {
   if (value === null) return EMPTY;
-  const match = /^(\d{4}-\d{2}-\d{2})T(\d{2}:\d{2})/.exec(value);
-  return match === null ? value : `${match[1]} ${match[2]}`;
+  return formatPlantDateTime(value) ?? value;
 };
 
 const labelOf = (options: readonly FilterOption[], value: string): string =>

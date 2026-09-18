@@ -2,6 +2,7 @@ import type { components, paths } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 
 import { stageOf, type Stage } from './codes';
+import { formatPlantDateTime } from '../../patterns/plant-time';
 
 /**
  * W-04-07 화면 슬라이스의 계약.
@@ -29,8 +30,7 @@ export type DecisionListResponse =
 
 const quantityFormat = new Intl.NumberFormat('ko-KR', { maximumFractionDigits: 6 });
 
-/** RFC 3339 앞부분만 자른다 — `Date`로 파싱하면 실행 환경 시간대가 서버 벽시계를 옮긴다. */
-const DATE_TIME_PATTERN = /^(\d{4}-\d{2}-\d{2})T(\d{2}:\d{2})/i;
+/** 날짜만 있는 값의 앞부분(`YYYY-MM-DD`) — 날짜는 시간대를 적용하지 않는다(하루 밀림 방지). */
 const DATE_PATTERN = /^(\d{4}-\d{2}-\d{2})/;
 
 export const formatQty = (value: number | null | undefined): string =>
@@ -39,8 +39,7 @@ export const formatQty = (value: number | null | undefined): string =>
     : quantityFormat.format(value);
 
 export const formatDateTime = (value: string): string => {
-  const matched = DATE_TIME_PATTERN.exec(value);
-  return matched === null ? value : `${matched[1] ?? ''} ${matched[2] ?? ''}`;
+  return formatPlantDateTime(value) ?? value;
 };
 
 export const formatDate = (value: string | null | undefined): string => {

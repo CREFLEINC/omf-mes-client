@@ -89,20 +89,31 @@ describe('formatQty', () => {
 });
 
 describe('formatDateTime', () => {
-  it('분까지만 보이고 시간대를 옮기지 않는다', () => {
-    expect(formatDateTime('2026-08-12T14:20:35+09:00')).toBe('2026-08-12 14:20');
+  // 표시는 공장 시각(베트남, UTC+7) 기준이다(omf-all-around#20).
+  it('분까지만 보이고 공장 시각(UTC+7)으로 옮긴다', () => {
+    expect(formatDateTime('2026-08-12T14:20:35+09:00')).toBe('2026-08-12 12:20');
   });
 
   it('형태가 다르면 원문을 그대로 둔다', () => {
     expect(formatDateTime('알 수 없음')).toBe('알 수 없음');
   });
 
-  it('RFC 3339가 허용하는 소문자 구분자도 받는다 — 원문이 그대로 새지 않는다', () => {
-    expect(formatDateTime('2026-08-12t14:20:35+09:00')).toBe('2026-08-12 14:20');
+  it('소문자 구분자(t)는 형태가 다른 값으로 보고 원문을 그대로 둔다', () => {
+    expect(formatDateTime('2026-08-12t14:20:35+09:00')).toBe('2026-08-12t14:20:35+09:00');
   });
 
-  it('오프셋을 옮기지 않고 벽시계 시각을 그대로 보인다', () => {
-    expect(formatDateTime('2026-08-12T05:20:00Z')).toBe('2026-08-12 05:20');
+  it('같은 순간이면 오프셋이 달라도 같은 공장 시각을 보인다', () => {
+    expect(formatDateTime('2026-08-12T05:20:00Z')).toBe('2026-08-12 12:20');
+    expect(formatDateTime('2026-08-12T14:20:00+09:00')).toBe('2026-08-12 12:20');
+    expect(formatDateTime('2026-08-12T12:20:00+07:00')).toBe('2026-08-12 12:20');
+  });
+
+  it('다른 순간은 다른 공장 시각으로 보인다', () => {
+    expect(formatDateTime('2026-08-12T14:20:00Z')).toBe('2026-08-12 21:20');
+  });
+
+  it('공장 시각으로 자정을 넘으면 날짜도 바뀐다', () => {
+    expect(formatDateTime('2026-08-12T18:30:00Z')).toBe('2026-08-13 01:30');
   });
 
   it('날짜만 필요한 자리는 날짜만 낸다', () => {
@@ -167,7 +178,7 @@ describe('toDecisionRow', () => {
       decisionQtyText: '200',
       uomId: 7001,
       reason: '표면만 손상돼 재작업으로 회복된다',
-      decidedAtText: '2026-08-12 14:20',
+      decidedAtText: '2026-08-12 12:20',
       decidedBy: 4001,
     });
   });

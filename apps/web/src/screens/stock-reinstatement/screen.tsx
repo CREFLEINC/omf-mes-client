@@ -50,6 +50,7 @@ import {
   type DecisionView,
   type SelectOption,
 } from './types';
+import { formatPlantDateTime } from '../../patterns/plant-time';
 
 const t = messages.stockReinstatement;
 const PAGE_SIZE = 50;
@@ -101,7 +102,8 @@ const positiveInteger = (value: string | null): number | null => {
 };
 
 const warehouseLabel = (code: string, name: string): string => `${code} · ${name}`;
-const formatDateTime = (value: string): string => value.replace('T', ' ').slice(0, 16);
+const formatDateTime = (value: string): string =>
+  formatPlantDateTime(value) ?? value.replace('T', ' ').slice(0, 16);
 
 interface SelectFieldProps {
   label: string;

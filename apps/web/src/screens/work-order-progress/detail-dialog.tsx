@@ -2,6 +2,7 @@ import { AlertBanner, Dialog } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 
 import type { WorkOrder } from './types';
+import { formatPlantDateTime } from '../../patterns/plant-time';
 
 export interface DetailDialogProps {
   /** 고른 W/O. 고르지 않았으면 `null` — 창이 열리지 않는다. */
@@ -19,13 +20,10 @@ export interface DetailDialogProps {
 const t = messages.workOrderProgress.detail;
 const blank = messages.workOrderProgress.list.blank;
 
-const DATE_TIME_PATTERN = /^(\d{4}-\d{2}-\d{2})T(\d{2}:\d{2})/i;
-
 const dateTimeText = (value: string | undefined): string => {
   if (value === undefined || value === '') return blank;
 
-  const match = DATE_TIME_PATTERN.exec(value);
-  return match === null ? value : `${match[1]} ${match[2]}`;
+  return formatPlantDateTime(value) ?? value;
 };
 
 const textOr = (value: string | undefined): string =>

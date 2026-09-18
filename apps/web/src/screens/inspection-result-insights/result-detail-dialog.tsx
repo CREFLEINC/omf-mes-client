@@ -9,14 +9,14 @@ import {
   type MeasurementItemSummary,
 } from './queries';
 import type { ResultLabels } from './result-overview';
+import { formatPlantDateTime } from '../../patterns/plant-time';
 
 const t = messages.inspectionResultInsights.detail;
 const EMPTY = t.unknown;
 /* 기준 미등록은 「없는 값」이다 — 「모르는 값」(EMPTY)과 같은 모양으로 그리지 않는다(공유계약 G-9 · client#589). */
 const NO_PLAN_VERSION = t.noPlanVersion;
 const dateTime = (value: string): string => {
-  const match = /^(\d{4}-\d{2}-\d{2})T(\d{2}:\d{2})/.exec(value);
-  return match === null ? value : `${match[1]} ${match[2]}`;
+  return formatPlantDateTime(value) ?? value;
 };
 const count = (value: number | undefined): string => String(value ?? 0);
 const remainingOutOfSpecCount = (item: MeasurementItemSummary): number => {

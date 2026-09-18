@@ -1,19 +1,17 @@
 import { messages } from '@omf-mes/i18n';
 
 import type { WorkOrder } from './types';
+import { formatPlantDateTime } from '../../patterns/plant-time';
 
 const t = messages.emergencyWorkOrderField.detail;
 
 const QTY_FORMAT = new Intl.NumberFormat('ko-KR');
 
-const DATE_TIME_PATTERN = /^(\d{4}-\d{2}-\d{2})T(\d{2}:\d{2})/i;
-
 /**
- * 계약이 주는 시각 문자열에서 **글자 그대로** 날짜와 시각을 꺼낸다.
+ * 계약이 주는 시각 문자열에서 날짜와 시각(분까지)을 꺼낸다.
  *
- * ⛔ **`Date` 로 바꿔 다시 찍지 않는다.** 그러면 표시가 브라우저 시간대에 따라 흔들려,
- * 같은 W/O 가 단말마다 다른 발행 시각으로 보인다. 계약이 오프셋을 담아 보내므로 그 값을
- * 그대로 읽는 것이 옳다.
+ * **공장 시각으로 보인다**(`patterns/plant-time` · omf-all-around#20). 보는 사람(실행 환경)의
+ * 시간대로 옮기지 않는다 — 서버가 UTC 로 보내므로 글자만 자르면 7시간 이르게 찍힌다.
  */
 export const dateTimeText = (value: string | null | undefined): string => {
   /*
@@ -22,8 +20,7 @@ export const dateTimeText = (value: string | null | undefined): string => {
    */
   if (value === undefined || value === null || value === '') return t.unknown;
 
-  const match = DATE_TIME_PATTERN.exec(value);
-  return match === null ? value : `${match[1]} ${match[2]}`;
+  return formatPlantDateTime(value) ?? value;
 };
 
 /** 수량. 안 온 값을 0으로 떨어뜨리지 않는다. */

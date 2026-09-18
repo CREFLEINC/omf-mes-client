@@ -16,13 +16,13 @@ import {
   useMeasurementSummary,
   type InspectionMeasurement,
 } from './queries';
+import { formatPlantDateTime } from '../../patterns/plant-time';
 
 type CalibrationFilter = '' | 'only' | 'exclude';
 const t = messages.inspectionResultInsights.measurement;
 const EMPTY = t.unknown;
 const dateTime = (value: string): string => {
-  const match = /^(\d{4}-\d{2}-\d{2})T(\d{2}:\d{2})/.exec(value);
-  return match === null ? value : `${match[1]} ${match[2]}`;
+  return formatPlantDateTime(value) ?? value;
 };
 const measuredValue = (row: InspectionMeasurement): string => {
   if (row.numericValue !== undefined) return String(row.numericValue);

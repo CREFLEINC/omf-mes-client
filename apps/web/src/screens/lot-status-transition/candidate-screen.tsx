@@ -33,6 +33,7 @@ import {
   validateTransitionPeriod,
 } from './period';
 import { LotStatusTransitionPreparation } from './transition-preparation';
+import { formatPlantDateTime } from '../../patterns/plant-time';
 
 type LotStatusCandidateQuery = NonNullable<
   NonNullable<paths['/quality/lot-statuses']['get']>['parameters']['query']
@@ -137,8 +138,7 @@ const quantity = (value: number | undefined): string =>
   value === undefined ? emptyValue : new Intl.NumberFormat('ko-KR').format(value);
 const formatDateTime = (value: string | undefined): string => {
   if (value === undefined) return emptyValue;
-  const match = /^(\d{4}-\d{2}-\d{2})T(\d{2}:\d{2})/.exec(value);
-  return match === null ? value : `${match[1]} ${match[2]}`;
+  return formatPlantDateTime(value) ?? value;
 };
 
 interface FilterSelectProps {

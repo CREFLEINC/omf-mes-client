@@ -2,24 +2,22 @@ import { AlertBanner } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 
 import type { ExistingRequestView } from './types';
+import { formatPlantDateTime } from '../../patterns/plant-time';
 
 const t = messages.materialIssueRequest;
 
 /**
- * 서버가 준 시각 글자를 사람이 읽는 꼴로 다듬는다 — `2026-09-01T14:00:00+09:00` → `2026-09-01 14:00`.
+ * 서버가 준 시각을 사람이 읽는 꼴로 다듬는다 — `2026-09-01T14:00:00+09:00` → `2026-09-01 12:00`.
  *
- * ⛔ **다시 계산하지 않는다.** `Date` 로 파싱해 되찍으면 브라우저 시간대에 따라 **다른 순간으로
- * 보인다** — 서버가 이미 offset 을 붙여 보낸 값이라 그 자리의 시각이 정본이다. 여기서는 글자를
- * 자르기만 한다.
+ * **공장 시각으로 보인다**(`patterns/plant-time` · omf-all-around#20). 보는 사람(실행 환경)의
+ * 시간대로 옮기지 않는다 — 서버가 UTC 로 보내므로 글자만 자르면 7시간 이르게 찍힌다.
  *
  * 꼴이 다르면 **건드리지 않고 그대로 보인다** — 못 알아본 값을 잘라 내면 없는 시각을 지어낸다.
  */
 export const formatRequiredAt = (value: string | null): string => {
   if (value === null) return t.values.empty;
 
-  const match = /^(\d{4}-\d{2}-\d{2})T(\d{2}:\d{2})/.exec(value);
-
-  return match === null ? value : `${match[1]} ${match[2]}`;
+  return formatPlantDateTime(value) ?? value;
 };
 
 export interface ExistingRequestBannerProps {

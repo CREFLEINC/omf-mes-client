@@ -12,12 +12,12 @@ import { messages } from '@omf-mes/i18n';
 import type { InspectionInsightFilters } from './filters';
 import { toInspectionTypePopulations } from './inspection-type-populations';
 import { useDefectRateTrend, type DefectRateTrend } from './queries';
+import { formatPlantDateTime } from '../../patterns/plant-time';
 
 const t = messages.inspectionResultInsights.trend;
 type TrendPoint = DefectRateTrend['points'][number];
 const dateTime = (value: string): string => {
-  const match = /^(\d{4}-\d{2}-\d{2})T(\d{2}:\d{2})/.exec(value);
-  return match === null ? value : `${match[1]} ${match[2]}`;
+  return formatPlantDateTime(value) ?? value;
 };
 const TREND_COLUMNS: Column<TrendPoint>[] = [
   { key: 'bucket', header: t.columns.bucket },

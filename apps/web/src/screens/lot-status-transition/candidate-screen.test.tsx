@@ -275,6 +275,7 @@ describe('Lot Status 전이 후보', () => {
         .getAllByRole('term')
         .map((node) => node.textContent),
     ).toEqual(['Lot Status', '보유 수량', '보류 수량', '가용 수량', '최근 전이', '최근 사유']);
+    /* 최근 전이는 공장 시각(UTC+7)으로 보인다 — omf-all-around#20 */
     expect([
       valueOf(current, 'Lot Status'),
       valueOf(current, '보유 수량'),
@@ -282,7 +283,7 @@ describe('Lot Status 전이 후보', () => {
       valueOf(current, '가용 수량'),
       valueOf(current, '최근 전이'),
       valueOf(current, '최근 사유'),
-    ]).toEqual(['정상', '25', '5', '20', '2026-08-21 12:34', 'SYN-REASON-A']);
+    ]).toEqual(['정상', '25', '5', '20', '2026-08-21 10:34', 'SYN-REASON-A']);
     expect(select).toHaveAttribute('aria-current', 'true');
     expect(screen.queryByText('987654')).toBeNull();
     await user.click(await screen.findByRole('radio', { name: 'DEFECTIVE' }));

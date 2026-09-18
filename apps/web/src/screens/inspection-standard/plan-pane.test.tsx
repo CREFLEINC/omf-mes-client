@@ -54,9 +54,13 @@ describe('PlanPane — 표시', () => {
 
   /* 승인자 이름을 만들지 않는다 — 계약이 주는 것은 사용자 번호다. */
   it('승인된 기준은 승인 시각만 낸다', () => {
-    renderPane({ plan: inspectionPlanFixtures[2]!, values: planToFormValues(inspectionPlanFixtures[2]!) });
+    renderPane({
+      plan: inspectionPlanFixtures[2]!,
+      values: planToFormValues(inspectionPlanFixtures[2]!),
+    });
 
-    expect(screen.getByText('승인됨 · 2026-08-04 09:12')).toBeInTheDocument();
+    // 승인 시각은 공장 시각(UTC+7) — +09:00 09:12 는 07:12 다(omf-all-around#20).
+    expect(screen.getByText('승인됨 · 2026-08-04 07:12')).toBeInTheDocument();
     expect(screen.queryByText(/4001/)).not.toBeInTheDocument();
   });
 
@@ -67,7 +71,10 @@ describe('PlanPane — 표시', () => {
   });
 
   it('사용 여부를 값 표기로 낸다', () => {
-    renderPane({ plan: inspectionPlanFixtures[2]!, values: planToFormValues(inspectionPlanFixtures[2]!) });
+    renderPane({
+      plan: inspectionPlanFixtures[2]!,
+      values: planToFormValues(inspectionPlanFixtures[2]!),
+    });
 
     expect(screen.getByText('미사용')).toBeInTheDocument();
   });

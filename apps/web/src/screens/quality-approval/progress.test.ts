@@ -65,7 +65,7 @@ describe('toApprovalProgressView', () => {
           approverName: t.values.unknownApprover,
           decisionCode:
             'SYNTH-UNKNOWN' as never /* 계약 밖 판정 — 지어내지 않고 그대로 두는지 잰다 */,
-          decisionAtText: '2026-08-22 15:02',
+          decisionAtText: '2026-08-22 13:02' /* 공장 시각(UTC+7) — omf-all-around#20 */,
           decisionComment: '합성 결재 의견',
           isCurrent: true,
           isMine: false,

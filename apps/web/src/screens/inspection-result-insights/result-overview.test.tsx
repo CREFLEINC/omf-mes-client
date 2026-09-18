@@ -119,7 +119,8 @@ describe('검사 결과 요약·목록', () => {
     for (const label of ['검사건수', '검사수량', '합격수량', '불합격수량', '불량률']) {
       expect(within(cards).getByText(label)).toBeInTheDocument();
     }
-    expect(screen.getByText('기준 2026-08-31 09:30')).toBeInTheDocument();
+    // 기준 시각은 공장 시각(UTC+7) — +09:00 09:30 은 공장 07:30 이다(omf-all-around#20).
+    expect(screen.getByText('기준 2026-08-31 07:30')).toBeInTheDocument();
     expect(screen.getByText('최종 회차만 집계합니다.')).toBeInTheDocument();
     expect(
       screen.getByText(/검교정 만료 장비 측정 건수 2건이 기본 집계에 포함/),

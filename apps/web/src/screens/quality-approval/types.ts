@@ -1,5 +1,6 @@
 import type { components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
+import { formatPlantDateTime } from '../../patterns/plant-time';
 
 export type ApprovalRequest = components['schemas']['ApprovalRequest'];
 export type ApprovalRequestDetail = components['schemas']['ApprovalRequestDetail'];
@@ -51,8 +52,7 @@ export interface RequestDetailView {
 }
 
 export const formatDateTime = (value: string): string => {
-  const matched = /^(\d{4}-\d{2}-\d{2})T(\d{2}:\d{2})/.exec(value);
-  return matched === null ? value : `${matched[1] ?? ''} ${matched[2] ?? ''}`;
+  return formatPlantDateTime(value) ?? value;
 };
 
 const toSourceLines = (source: string) =>

@@ -107,8 +107,9 @@ describe('isSamePlanValues', () => {
 });
 
 describe('formatApprovedAt', () => {
-  it('날짜와 분까지만 낸다', () => {
-    expect(formatApprovedAt('2026-08-04T09:12:00+09:00')).toBe('2026-08-04 09:12');
+  /* 공장 시각(베트남, UTC+7)으로 보인다(omf-all-around#20). */
+  it('날짜와 분까지만 공장 시각으로 낸다', () => {
+    expect(formatApprovedAt('2026-08-04T09:12:00+09:00')).toBe('2026-08-04 07:12');
   });
 
   it('값이 없으면 null이다', () => {

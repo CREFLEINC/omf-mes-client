@@ -15,6 +15,7 @@ import { useInspectionResults, type InspectionResult } from './queries';
 import { toInspectionResultTreeRows, type InspectionResultTreeRow } from './reinspection-chain';
 import { toInspectionListQuery } from './request-queries';
 import { SummaryPanels } from './summary-panels';
+import { formatPlantDateTime } from '../../patterns/plant-time';
 
 const t = messages.inspectionResultInsights.overview;
 const EMPTY = t.unknown;
@@ -24,8 +25,7 @@ const TYPE_LABELS = new Map<string, string>(
 );
 
 const dateTime = (value: string): string => {
-  const match = /^(\d{4}-\d{2}-\d{2})T(\d{2}:\d{2})/.exec(value);
-  return match === null ? value : `${match[1]} ${match[2]}`;
+  return formatPlantDateTime(value) ?? value;
 };
 const number = (value: number): string => new Intl.NumberFormat('ko-KR').format(value);
 
