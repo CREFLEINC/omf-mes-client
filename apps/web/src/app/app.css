@@ -6004,25 +6004,26 @@ dl.filter-bar.approval-inbox-detail-facts {
 }
 
 /*
- * 공정별 기능 구성 표(매트릭스) — 기능 칸은 머리 이름이 읽히는 만큼만 선다(칸을 늘리지 않는다).
- * 공정 칸 · 기능 여덟 칸 · 관리 칸을 얇은 세로선 두 개로만 가른다(엑셀처럼 칸마다 긋지 않는다).
+ * 공정별 기능 구성 표(매트릭스) — 표는 카드 폭을 다 쓰고, 남는 폭은 기능 여덟 칸이 똑같이 나눈다
+ * (고정 배치: 공정 칸·관리 칸만 폭을 정하고 나머지는 균등). 좁은 폭에서는 최소 폭 아래로 줄지 않고
+ * 표 안에서만 가로로 넘긴다. 공정 칸 · 기능 칸 · 관리 칸은 얇은 세로선 두 개로만 가른다.
  */
 .wide-table.terminal-map-matrix table {
-  /* 표는 내용 폭만큼만 선다 — 넓은 화면에서 기능 칸이 늘어나 머리와 확인칸 사이가 멀어지지 않게. */
-  width: auto;
-  min-width: 0;
+  width: 100%;
+  min-width: 58.5rem;
+  table-layout: fixed;
 }
 
 .terminal-map-matrix th:first-child,
 .terminal-map-matrix td:first-child {
   /* 긴 공정명은 칸을 넓히지 않고 줄을 바꾼다. */
-  min-width: 12rem;
-  max-width: 18rem;
+  width: 13rem;
   border-right: 1px solid var(--outline-variant);
 }
 
 .terminal-map-matrix th:last-child,
 .terminal-map-matrix td:last-child {
+  width: 3rem;
   border-left: 1px solid var(--outline-variant);
 }
 
@@ -6094,8 +6095,7 @@ dl.filter-bar.approval-inbox-detail-facts {
 }
 
 /*
- * 하단 조작 줄 — 얇은 구분선 아래 하나의 바닥글로 묶는다. 재발급 경고는 내용 폭만큼만, 오른쪽의
- * 「등록 토큰 발급」 바로 위에 서서 그 단추의 이야기로 읽힌다. 사용 중지는 왼쪽 끝(보조 액션 자리).
+ * 제목 → 재발급 경고(내용 폭, 같은 시작선) → 정보 격자 → 구분선 → 조작 줄. 사용 중지는 왼쪽 끝(보조 액션 자리).
  */
 .terminal-map-info-footer {
   display: grid;
@@ -6105,15 +6105,24 @@ dl.filter-bar.approval-inbox-detail-facts {
   border-top: 1px solid var(--outline-variant);
 }
 
-.terminal-map-info-footer > .terminal-map-notice {
-  justify-self: end;
+.terminal-map-reissue-warning {
   width: fit-content;
   max-width: 100%;
   padding: var(--space-2) var(--space-3);
 }
 
+/* 제목 → 재발급 경고 → 정보 격자. 경고와 격자 사이는 구획 안 블록 간격(--space-4). */
+.terminal-map-reissue-warning + .terminal-map-info {
+  margin-top: var(--space-4);
+}
+
 .terminal-map-info-footer > .form-actions {
   margin-top: 0;
+}
+
+/* 기능 구성 구획의 설명 — 공통 .pane-lead 의 글줄 폭 제한(44rem)을 이 구획에서만 풀어 카드 폭을 쓴다. */
+.terminal-map-grid-pane > .pane-lead {
+  max-width: none;
 }
 
 /* 선택 전 안내 — 구획 설명과 한 줄을 띄운다. */

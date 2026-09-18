@@ -413,6 +413,13 @@ export const TerminalProcessMapScreen = () => {
             ) : (
               <>
                 <SaveErrorBanner error={deactivate.error} />
+                {/* ⚠ 누르기 전에 말한다 — 누른 뒤에는 이미 이전 기기가 끊겨 있다. 카드 제목 바로 아래, 격자와 같은 시작선. */}
+                <AlertBanner
+                  className="terminal-map-notice terminal-map-reissue-warning"
+                  variant="warning"
+                >
+                  {t.token.reissueWarning}
+                </AlertBanner>
                 {/* 항목명 위·값 아래의 3열 격자 — 순서는 그대로(코드 · 유형 · 운영 상태 · 등록 상태 · 설비). */}
                 <dl className="terminal-map-info">
                   <div className="terminal-map-info-field">
@@ -442,14 +449,8 @@ export const TerminalProcessMapScreen = () => {
                   </div>
                 </dl>
                 <SaveErrorBanner error={issueToken.error} />
-                {/*
-                 * 하단 조작 줄 — 재발급 경고는 「등록 토큰 발급」 바로 위 오른쪽에 붙여 그 단추의 이야기로 읽히게 한다.
-                 * ⚠ 누르기 전에 말한다 — 누른 뒤에는 이미 이전 기기가 끊겨 있다.
-                 */}
+                {/* 하단 조작 줄 — 얇은 구분선 아래 하나의 바닥글. */}
                 <div className="terminal-map-info-footer">
-                  <AlertBanner className="terminal-map-notice" variant="warning">
-                    {t.token.reissueWarning}
-                  </AlertBanner>
                   <div className="form-actions">
                     <Button
                       className="form-actions-secondary"
