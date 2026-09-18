@@ -1,6 +1,6 @@
 import { AlertBanner, Button, Chip, SkeletonText, Table } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { useId, useMemo, useState } from 'react';
+import { useEffect, useId, useMemo, useRef, useState } from 'react';
 
 import { PopPageNav, pageBoundaryOf } from '../../patterns/pop-page-nav';
 import { PopSelect as Select } from '../../patterns/pop-select';
@@ -25,6 +25,7 @@ import {
   MAX_TARGETS,
   TARGET_TYPE_CODE,
   type DocumentIssue,
+  type Location,
 } from './types';
 
 const t = messages.popLocationLabel;
@@ -76,7 +77,29 @@ export const PopLocationLabelScreen = () => {
 
   const reasons = useReissueReasons(reissueAsked);
 
-  const printFlow = usePrintFlow(entry.workerNo);
+  /**
+   * 본 적 있는 위치 — **라벨 값은 고를 때 본 줄에서 읽는다.** 고른 자리는 여러 쪽에 걸칠 수 있어
+   * 지금 쪽의 목록만으로는 앞 쪽에서 고른 위치를 풀지 못한다.
+   */
+  const seenLocations = useRef(new Map<number, Location>());
+
+  useEffect(() => {
+    for (const each of locationItems) seenLocations.current.set(each.locationId, each);
+  }, [locationItems]);
+
+  const printFlow = usePrintFlow(entry.workerNo, (record) => {
+    const location = seenLocations.current.get(record.target.targetId);
+    const warehouse = warehouses.data?.find((each) => each.warehouseId === location?.warehouseId);
+
+    if (location === undefined || warehouse === undefined) return null;
+
+    return {
+      warehouseCode: warehouse.warehouseCode,
+      locationCode: location.locationCode,
+      locationName: location.locationName,
+      issueSeq: record.issueSeq,
+    };
+  });
 
   const write = useLocationLabelWrite({
     /* 사번이 없으면 아래 `guard` 가 발행을 열지 않는다 — 여기 오는 값은 확보된 것이다. */
@@ -85,7 +108,7 @@ export const PopLocationLabelScreen = () => {
       setReissueAsked(false);
       setReasonCode('');
       /*
-       * ⛔ **거절을 받을 곳을 둔다.** 건별 실패는 안에서 값으로 접히지만, 그 바깥(형식 협상)이
+       * ⛔ **거절을 받을 곳을 둔다.** 건별 실패는 안에서 값으로 접히지만, 그 바깥이
        *    거절하면 결과 구획이 영영 비어 「눌렀는데 아무 일도 없다」가 된다. 발행은 이미
        *    끝났으므로 **인쇄가 통째로 실패한 것**으로 적는다 — 없던 일로 두지 않는다.
        */

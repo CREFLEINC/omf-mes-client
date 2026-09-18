@@ -63,13 +63,12 @@ export const popLocationLabel = {
   reissue: {
     title: 'Phát hành lại',
     notice: (count: number) =>
-      `Trong số đã chọn có ${String(count)} vị trí đã in nhãn. Hãy chọn lý do phát hành lại.`,
+      `Trong các mục đã chọn có ${String(count)} vị trí đã được phát hành nhãn. Vui lòng chọn lý do phát hành lại.`,
     reason: 'Lý do phát hành lại',
-    reasonPlaceholder: 'Chọn lý do',
+    reasonPlaceholder: 'Chọn lý do. Lý do phát hành lại là bắt buộc.',
     reasonLoadFailed: 'Không tải được lý do phát hành lại.',
     confirm: 'Phát hành lại',
     cancel: 'Hủy',
-    required: 'Phải chọn lý do phát hành lại mới phát hành được.',
   },
 
   print: {
