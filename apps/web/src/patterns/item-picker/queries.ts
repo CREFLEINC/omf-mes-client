@@ -10,7 +10,7 @@ import { runRequest } from '../request';
  * | 무엇 | 경로 | 언제 |
  * | --- | --- | --- |
  * | 유형 선택지 | `GET /mdm/code-values?codeGroupCode=ITEM_TYPE` | 창이 열릴 때 한 번 |
- * | 품목 검색 | `GET /mdm/items?q=&itemTypeCode=&page=&size=` | 「찾기」를 누를 때마다 |
+ * | 품목 검색 | `GET /mdm/items?q=&itemTypeCode=&page=&size=` | 창이 열릴 때 · 「찾기」·쪽 이동마다 |
  * | 가용 재고 | `GET /inventory/balances?itemId=&groupBy=ITEM` | 검색 결과 품목마다 |
  *
  * ⛔ **신설 오퍼레이션이 없다.** 셋 다 이미 있는 것이다.
@@ -81,10 +81,16 @@ export interface ItemSearchResult {
 }
 
 /**
- * 품목 검색 — **「찾기」를 눌러야 나간다.**
+ * 품목 검색 — **「찾기」를 눌러야 좁혀진다.**
  *
- * ⛔ **검색어가 비면 조회하지 않는다.** 빈 검색어로 받은 앞 N 건은 고를 만한 후보가 아니고,
- *    전 품목을 받는 것은 화면에도 서버에도 뜻이 없다(`W-06-05` 의 `ItemPicker` 가 같은 규칙).
+ * ⭐ **검색어가 비면 «고른 유형의 전체»를 보인다**(사용자 지시 2026-09-18).
+ *    ⛔ 종전에는 「검색어가 비면 조회하지 않는다」였다. 그 규칙은 `W-06-05` 인라인 픽커에서
+ *    가져온 것이고 근거는 「빈 검색어로 받은 앞 N 건은 고를 만한 후보가 아니다」였는데,
+ *    **이 대화상자에는 그 근거가 맞지 않는다** — 그쪽은 결과가 «선택칸 하나»라 앞 N 건 말고는
+ *    닿을 길이 없었지만, 이 창은 **쪽 나누기 + 전체 건수 + 이전·다음**을 갖춰 전체를 훑을 길이
+ *    실제로 있다. 그 규칙을 그대로 두면 창을 열자마자 **막다른 빈 화면**이라 무엇을 고를 수
+ *    있는지 아예 보이지 않는다.
+ *    ⚠ `W-06-05` 쪽 규칙은 그대로다 — 그쪽은 근거가 아직 살아 있다.
  * ⛔ **`includeInactive` 를 주지 않는다.** 중지된 품목은 새로 편성할 대상이 아니다 — 종전
  *    인라인 검색이 그것을 켜 두어 중지된 품목까지 후보에 올렸다(2026-09-18 정정).
  * ⚠ 유형은 **한 번에 하나**만 실린다(계약 `itemTypeCode?: string`). 「전체」면 싣지 않는다.
@@ -99,13 +105,13 @@ export const useItemSearch = (
 
   return useQuery({
     queryKey: itemPickerKeys.search(trimmed, itemTypeCode, page),
-    enabled: trimmed !== '',
     queryFn: async () => {
       const data = await runRequest(() =>
         client.GET('/mdm/items', {
           params: {
             query: {
-              q: trimmed,
+              /* 빈 검색어는 축을 아예 싣지 않는다 — 빈 문자열을 검색어로 보내지 않는다. */
+              ...(trimmed === '' ? {} : { q: trimmed }),
               ...(itemTypeCode === '' ? {} : { itemTypeCode }),
               page,
               size: ITEM_PAGE_SIZE,

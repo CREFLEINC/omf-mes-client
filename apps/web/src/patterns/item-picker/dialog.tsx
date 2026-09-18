@@ -29,10 +29,12 @@ const t = messages.itemPicker;
  *    아예 없다 — 잘림 안내는 그 사실을 말할 뿐 길을 주지 않는다. 같은 문제를 만난 `W-06-05`
  *    (품목 확장속성)도 대화상자 안 검색으로 풀었다.
  *
- * 그 화면의 인라인 픽커와 **규칙 둘을 나눠 쓴다.**
- * 1. **검색어가 비면 조회하지 않는다** — 빈 검색어로 받은 앞 N 건은 고를 만한 후보가 아니다.
- * 2. **「찾기」로만 조회한다** — 글자마다 요청을 보내지 않는다. 검색칸의 엔터는 창을 확인하지
- *    않고 검색만 한다.
+ * 그 화면의 인라인 픽커와 **규칙 하나를 나눠 쓴다** — **「찾기」로만 조회한다.** 글자마다 요청을
+ * 보내지 않고, 검색칸의 엔터는 창을 확인하지 않고 검색만 한다.
+ *
+ * ⭐ **검색어가 비면 고른 유형의 전체를 보인다**(사용자 지시 2026-09-18). 그쪽이 쓰는 「검색어가
+ * 비면 조회하지 않는다」는 **이 창에는 맞지 않는다** — 자세한 까닭은 `queries.ts` 의
+ * `useItemSearch` 머리말에 적었다.
  *
  * ⚠ **형태는 다르다.** 그쪽은 폼 «안»의 인라인 필드 묶음이고 이것은 대화상자 + 체크박스 표다.
  *   그래서 그 컴포넌트를 옮겨 오지 않고 여기에 새로 세웠다 — 옮기면 그 화면의 조작까지 바뀐다.
@@ -226,6 +228,7 @@ export const ItemPickerDialog = ({
             </label>
             <TextField
               id={keywordId}
+              fullWidth
               value={keyword}
               placeholder={t.keywordPlaceholder}
               onChange={(event) => {
@@ -264,15 +267,7 @@ export const ItemPickerDialog = ({
             columns={columns}
             rows={rows}
             getRowId={(row) => String(row.itemId)}
-            empty={
-              submitted === ''
-                ? t.beforeSearch
-                : search.isPending
-                  ? t.searching
-                  : search.isError
-                    ? ''
-                    : t.noResult
-            }
+            empty={search.isPending ? t.searching : search.isError ? '' : t.noResult}
           />
         </div>
 

@@ -72,8 +72,10 @@ describe('품목 선택 대화상자가 쓰는 클래스', () => {
  *   보이는지는 실기 확인의 몫이다.
  */
 describe('품목 선택 대화상자의 크기', () => {
+  /** 선택자 하나의 선언 묶음. `>` 같은 결합자가 든 선택자도 그대로 받는다. */
   const ruleOf = (selector: string): string => {
-    const found = new RegExp(`\\.${selector}\\s*\\{([^}]*)\\}`, 'u').exec(CSS);
+    const escaped = selector.replace(/[.*+?^${}()|[\]\\]/gu, '\\$&');
+    const found = new RegExp(`\\.${escaped}\\s*\\{([^}]*)\\}`, 'u').exec(CSS);
 
     return found?.[1] ?? '';
   };
@@ -92,6 +94,15 @@ describe('품목 선택 대화상자의 크기', () => {
    *    `min-block-size: 0` 이 없으면 플렉스 자식이 내용보다 작아지지 못해 스크롤이 생기지 않고
    *    창이 늘어난다.
    */
+  /*
+   * ⛔ **칸 안의 입력 요소가 칸을 채운다.** `.field-cell` 은 `align-items: flex-start` 라 자식이
+   *    제 내용 폭만 갖는다 — 칸만 늘고 입력은 왼쪽에 작게 붙어 오른쪽에 빈 자리가 크게 남는다
+   *    (실측 2026-09-18: 검색어 칸 406px 에 입력 요소 172px).
+   */
+  it('조회 줄의 입력 요소가 칸을 채운다', () => {
+    expect(ruleOf('item-picker-controls > .field-cell')).toMatch(/align-items:\s*stretch/u);
+  });
+
   it('결과 표만 그 안에서 스크롤한다', () => {
     const rule = ruleOf('item-picker-results');
 

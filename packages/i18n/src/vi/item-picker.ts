@@ -23,7 +23,6 @@ export const itemPicker: Translated<typeof ko.itemPicker> = {
     availableQty: 'Khả dụng',
   },
 
-  beforeSearch: 'Hãy nhập từ khóa rồi bấm «Tìm».',
   noResult: 'Không có kết quả. Hãy thử một phần mã hoặc tên.',
   searchFailed: 'Không tìm được mặt hàng.',
   searching: 'Đang tìm…',

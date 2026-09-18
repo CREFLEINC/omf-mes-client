@@ -8198,6 +8198,16 @@ dl.filter-bar.approval-inbox-detail-facts {
   gap: var(--space-3);
 }
 
+/*
+ * ⛔ **칸 안의 입력 요소가 칸을 채운다.** `.field-cell` 은 `align-items: flex-start` 라 자식이
+ *    제 내용 폭만 갖는다 — 칸만 늘고 입력칸은 왼쪽에 작게 붙어, 오른쪽에 빈 자리가 크게 남는다
+ *    (실측 2026-09-18: 검색어 칸 406px 에 입력 요소 172px). 사용자가 「정렬이 안 됐다」고 본
+ *    그 모양이다. 선례는 `.field-cell.lot-status-transition-status-filter` 다.
+ */
+.item-picker-controls > .field-cell {
+  align-items: stretch;
+}
+
 .item-picker-controls > .field-cell:first-child {
   flex: 0 0 12rem;
 }

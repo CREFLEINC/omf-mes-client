@@ -3,7 +3,12 @@ import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
-import { createStubFetch, jsonResponse, renderWithProviders, type StubRoute } from '../../test/api-harness';
+import {
+  createStubFetch,
+  jsonResponse,
+  renderWithProviders,
+  type StubRoute,
+} from '../../test/api-harness';
 
 import { ItemPickerDialog } from './dialog';
 import { ITEM_PAGE_SIZE } from './queries';
@@ -34,7 +39,10 @@ const item = (itemId: number, itemCode: string, itemName: string) => ({
   isActive: true,
 });
 
-const ITEMS = [item(8301, 'SYN-ITEM-01', '합성 품목 가'), item(8302, 'SYN-ITEM-02', '합성 품목 나')];
+const ITEMS = [
+  item(8301, 'SYN-ITEM-01', '합성 품목 가'),
+  item(8302, 'SYN-ITEM-02', '합성 품목 나'),
+];
 
 interface Options {
   /** 나간 품목 조회를 담아 둔다 — 무엇을 «안» 보내는지가 이 창의 핵심이다. */
@@ -79,7 +87,10 @@ const routes = (options: Options = {}): StubRoute[] => [
   },
 ];
 
-const renderDialog = (props: Partial<Parameters<typeof ItemPickerDialog>[0]> = {}, options: Options = {}) =>
+const renderDialog = (
+  props: Partial<Parameters<typeof ItemPickerDialog>[0]> = {},
+  options: Options = {},
+) =>
   renderWithProviders(
     <ItemPickerDialog
       multiple
@@ -94,30 +105,42 @@ const dialog = () => within(screen.getByRole('dialog'));
 
 describe('ItemPickerDialog — 조회를 언제 보내는가', () => {
   /*
-   * ⛔ **검색어가 비면 조회하지 않는다.** 빈 검색어로 받은 앞 N 건은 고를 만한 후보가 아니고,
-   *    전 품목을 받는 것은 화면에도 서버에도 뜻이 없다.
+   * ⭐ **열자마자 고른 유형의 전체가 보인다**(사용자 지시 2026-09-18).
+   *
+   * ⛔ 종전에는 「검색어가 비면 조회하지 않는다」였다 — `W-06-05` 인라인 픽커에서 가져온
+   *    규칙이고 근거는 「빈 검색어로 받은 앞 N 건은 고를 만한 후보가 아니다」였는데, **이 창에는
+   *    그 근거가 맞지 않는다.** 그쪽은 결과가 선택칸 하나라 앞 N 건 말고는 닿을 길이 없었지만,
+   *    이 창은 쪽 나누기와 전체 건수로 전체를 훑을 길이 있다. 그 규칙을 두면 창을 열자마자
+   *    **막다른 빈 화면**이라 무엇을 고를 수 있는지 아예 보이지 않는다.
+   * ⚠ 빈 검색어를 «문자열로» 보내지도 않는다 — 축을 아예 싣지 않는다.
    */
-  it('검색어가 비면 부르지 않고 그 사실을 적는다', async () => {
+  it('열자마자 고른 유형의 첫 쪽을 보이되 검색어 축은 싣지 않는다', async () => {
     const searches: URL[] = [];
     renderDialog({}, { searches });
 
-    expect(await screen.findByText(t.beforeSearch)).toBeInTheDocument();
-    expect(searches).toEqual([]);
+    expect(await dialog().findByRole('checkbox', { name: 'SYN-ITEM-01' })).toBeInTheDocument();
+    expect(searches).toHaveLength(1);
+    expect(searches[0]?.searchParams.has('q')).toBe(false);
   });
 
   /* ⛔ **글자마다 요청하지 않는다** — 「찾기」를 눌러야 나간다. */
-  it('치는 동안에는 부르지 않고 「찾기」에서 한 번 나간다', async () => {
+  it('치는 동안에는 부르지 않고 「찾기」에서 한 번 더 나간다', async () => {
     const user = userEvent.setup();
     const searches: URL[] = [];
     renderDialog({}, { searches });
 
+    /* 창이 열리며 한 번 나간다 — 그 뒤로 타건은 요청을 만들지 않는다. */
+    await waitFor(() => {
+      expect(searches).toHaveLength(1);
+    });
+
     await user.type(dialog().getByLabelText(t.keywordLabel), 'SYN');
-    expect(searches).toEqual([]);
+    expect(searches).toHaveLength(1);
 
     await user.click(dialog().getByRole('button', { name: t.search }));
 
     await waitFor(() => {
-      expect(searches).toHaveLength(1);
+      expect(searches).toHaveLength(2);
     });
   });
 
@@ -135,10 +158,10 @@ describe('ItemPickerDialog — 조회를 언제 보내는가', () => {
     await user.click(dialog().getByRole('button', { name: t.search }));
 
     await waitFor(() => {
-      expect(searches).toHaveLength(1);
+      expect(searches).toHaveLength(2);
     });
 
-    const sent = searches[0];
+    const sent = searches.at(-1);
 
     expect(sent?.searchParams.get('includeInactive')).toBeNull();
     expect(sent?.searchParams.get('itemTypeCode')).toBe('FINISHED');
@@ -155,10 +178,10 @@ describe('ItemPickerDialog — 조회를 언제 보내는가', () => {
     await user.click(dialog().getByRole('button', { name: t.search }));
 
     await waitFor(() => {
-      expect(searches).toHaveLength(1);
+      expect(searches).toHaveLength(2);
     });
 
-    expect(searches[0]?.searchParams.has('itemTypeCode')).toBe(false);
+    expect(searches.at(-1)?.searchParams.has('itemTypeCode')).toBe(false);
   });
 });
 
@@ -189,7 +212,7 @@ describe('ItemPickerDialog — 유형 선택지', () => {
     await user.click(dialog().getByRole('button', { name: t.search }));
 
     await waitFor(() => {
-      expect(searches).toHaveLength(1);
+      expect(searches.length).toBeGreaterThan(1);
     });
   });
 });
