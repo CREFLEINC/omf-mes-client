@@ -2,7 +2,7 @@ import { AlertBanner, Button, Chip, Dialog } from '@crefle/web-ui';
 import type { ApiError } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { NumericKeypad } from '@omf-mes/ui';
-import { useId, useState } from 'react';
+import { useEffect, useId, useState } from 'react';
 
 import { SaveErrorBanner } from '../../patterns/master';
 import { PopWorkerMissingBanner } from '../../patterns/pop-worker-missing-banner';
@@ -23,7 +23,14 @@ import {
   usePackingConfirm,
   type OpenHandlingUnit,
 } from './mutations';
-import { addLine, lineOf, qtyError, remainingOf, removeLine } from './packing-draft';
+import {
+  addLine,
+  lineOf,
+  nextHandlingUnitTypeCode,
+  qtyError,
+  remainingOf,
+  removeLine,
+} from './packing-draft';
 import {
   useHandlingUnitTypeOptions,
   useUomDecimals,
@@ -121,6 +128,27 @@ export const PackingResultScreen = () => {
   const todayShipments = useTodayShipments();
   const lotScan = useLotScan();
   const typeOptions = useHandlingUnitTypeOptions();
+  /**
+   * 열리면 **첫 유형이 이미 골라져 있다**(사용자 지시 2026-09-18).
+   *
+   * ⛔ **마운트 때는 채우지 못한다** — 그때는 목록이 아직 없다. 목록이 «도착한 뒤»에 채운다.
+   * ⛔ **고른 값을 덮지 않는다.** 재조회나 포커스 복귀로 목록이 다시 와도 이미 고른 값이 있으면
+   *    손대지 않는다 — 규칙은 `nextHandlingUnitTypeCode` 가 갖고 그 시험이 직접 붙든다. 갱신
+   *    함수로 넘겨 같은 렌더에서 두 번 불려도 고른 값이 밀리지 않게 한다.
+   * ⛔ **화면이 다시 정렬하지 않는다.** 「첫 번째」는 **서버가 준 순서 그대로**다 — 이 코드
+   *    그룹은 고객 관리형(`is_system_owned=false`)이라 값도 순서도 고객이 정한다.
+   * ⚠ **`noType` 잠금은 그대로 둔다**(`confirm-lock.ts`). 코드 그룹이 비었거나 조회가 실패하면
+   *   여전히 빈 값이라 그 자리가 살아 있어야 한다 — 평소에 안 보일 뿐이다.
+   * ⭐ 확정 뒤 초기화는 이 값을 건드리지 않으므로 고른 유형이 그대로 남는다. 혹 누가 비우더라도
+   *    이 자리가 다시 첫 값을 세운다.
+   */
+  const firstTypeCode = typeOptions.options[0]?.value;
+
+  useEffect(() => {
+    if (firstTypeCode === undefined) return;
+
+    setHandlingUnitTypeCode((prev) => nextHandlingUnitTypeCode(prev, firstTypeCode));
+  }, [firstTypeCode]);
   /* 소수점 키는 **담을 LOT 의 단위**가 정한다 — 개수로 세는 자재에는 그리지 않는다. */
   const allowsDecimal = useUomDecimals();
   const shipmentId = entry?.shipmentId ?? label?.shipmentId ?? null;
