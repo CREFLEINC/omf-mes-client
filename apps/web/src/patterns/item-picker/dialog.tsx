@@ -1,4 +1,13 @@
-import { AlertBanner, Button, Checkbox, Dialog, Select, Table, TextField, type Column } from '@crefle/web-ui';
+import {
+  AlertBanner,
+  Button,
+  Checkbox,
+  Dialog,
+  Select,
+  Table,
+  TextField,
+  type Column,
+} from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useId, useState } from 'react';
 
@@ -172,7 +181,6 @@ export const ItemPickerDialog = ({
       closeOnBackdropClick={false}
       title={t.title}
       onClose={onClose}
-      className="item-picker-dialog"
       footer={
         <>
           <span className="field-note">
@@ -193,81 +201,88 @@ export const ItemPickerDialog = ({
         </>
       }
     >
-      <div className="item-picker-controls">
-        <div className="field-cell">
-          <label className="field-label" htmlFor={typeId}>
-            {t.typeLabel}
-          </label>
-          <Select
-            id={typeId}
-            options={typeOptions}
-            value={itemTypeCode === '' ? null : itemTypeCode}
-            placeholder={t.typeAll}
-            onChange={(value) => {
-              setItemTypeCode(value);
-              /* 조건이 바뀌면 쪽 번호는 뜻을 잃는다 — 2쪽에 머물면 빈 쪽을 본다. */
-              setPage(1);
-            }}
+      <div className="item-picker-body">
+        <div className="item-picker-controls">
+          <div className="field-cell">
+            <label className="field-label" htmlFor={typeId}>
+              {t.typeLabel}
+            </label>
+            <Select
+              id={typeId}
+              options={typeOptions}
+              value={itemTypeCode === '' ? null : itemTypeCode}
+              placeholder={t.typeAll}
+              onChange={(value) => {
+                setItemTypeCode(value);
+                /* 조건이 바뀌면 쪽 번호는 뜻을 잃는다 — 2쪽에 머물면 빈 쪽을 본다. */
+                setPage(1);
+              }}
+            />
+          </div>
+
+          <div className="field-cell">
+            <label className="field-label" htmlFor={keywordId}>
+              {t.keywordLabel}
+            </label>
+            <TextField
+              id={keywordId}
+              value={keyword}
+              placeholder={t.keywordPlaceholder}
+              onChange={(event) => {
+                setKeyword(event.target.value);
+              }}
+              /* 검색칸의 엔터가 창을 통째로 확인하는 것을 막고 검색만 한다. */
+              onKeyDown={(event) => {
+                if (event.key !== 'Enter') return;
+
+                event.preventDefault();
+                submit();
+              }}
+            />
+          </div>
+
+          <Button variant="outlined" onClick={submit}>
+            {t.search}
+          </Button>
+        </div>
+
+        {/* 유형을 못 받아도 길을 막지 않는다 — 「전체」로는 찾을 수 있다(공유계약 G-9). */}
+        {types.isError && (
+          <div className="banner-slot">
+            <AlertBanner variant="warning">{t.typeFailed}</AlertBanner>
+          </div>
+        )}
+
+        {search.isError && (
+          <div className="banner-slot">
+            <AlertBanner variant="warning">{t.searchFailed}</AlertBanner>
+          </div>
+        )}
+
+        <div className="item-picker-results">
+          <Table
+            columns={columns}
+            rows={rows}
+            getRowId={(row) => String(row.itemId)}
+            empty={
+              submitted === ''
+                ? t.beforeSearch
+                : search.isPending
+                  ? t.searching
+                  : search.isError
+                    ? ''
+                    : t.noResult
+            }
           />
         </div>
 
-        <div className="field-cell">
-          <label className="field-label" htmlFor={keywordId}>
-            {t.keywordLabel}
-          </label>
-          <TextField
-            id={keywordId}
-            value={keyword}
-            placeholder={t.keywordPlaceholder}
-            onChange={(event) => {
-              setKeyword(event.target.value);
-            }}
-            /* 검색칸의 엔터가 창을 통째로 확인하는 것을 막고 검색만 한다. */
-            onKeyDown={(event) => {
-              if (event.key !== 'Enter') return;
-
-              event.preventDefault();
-              submit();
-            }}
-          />
-        </div>
-
-        <Button variant="outlined" onClick={submit}>
-          {t.search}
-        </Button>
-      </div>
-
-      {/* 유형을 못 받아도 길을 막지 않는다 — 「전체」로는 찾을 수 있다(공유계약 G-9). */}
-      {types.isError && (
-        <div className="banner-slot">
-          <AlertBanner variant="warning">{t.typeFailed}</AlertBanner>
-        </div>
-      )}
-
-      {search.isError && (
-        <div className="banner-slot">
-          <AlertBanner variant="warning">{t.searchFailed}</AlertBanner>
-        </div>
-      )}
-
-      <Table
-        columns={columns}
-        rows={rows}
-        getRowId={(row) => String(row.itemId)}
-        empty={
-          submitted === ''
-            ? t.beforeSearch
-            : search.isPending
-              ? t.searching
-              : search.isError
-                ? ''
-                : t.noResult
-        }
-      />
-
-      {total > 0 && (
+        {/*
+         * ⛔ **쪽 이동 줄은 늘 선다.** 결과가 있을 때만 그리면 검색할 때마다 표의 아래 경계가
+         *    움직인다 — 창 크기를 고정한 뜻이 반감된다. 건수 글만 있을 때 없고, 단추는 못 쓸 때
+         *    잠긴다.
+         */}
         <div className="item-picker-pager">
-          <span className="field-note">{t.page.range(from, to, total)}</span>
+          {total > 0 && <span className="field-note">{t.page.range(from, to, total)}</span>}
           <Button
             variant="outlined"
             disabled={page <= 1}
@@ -287,7 +302,7 @@ export const ItemPickerDialog = ({
             {t.page.next}
           </Button>
         </div>
-      )}
+      </div>
     </Dialog>
   );
 };

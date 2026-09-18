@@ -62,3 +62,40 @@ describe('품목 선택 대화상자가 쓰는 클래스', () => {
     expect(missing).toEqual([]);
   });
 });
+
+/**
+ * ⭐ **창 크기를 처음부터 고정한다**(사용자 지시 2026-09-18) — 빈 상태로 작게 떴다가 결과가
+ *    오면 자라는 모양이었다. 검색을 되풀이하면 창이 눈앞에서 커졌다 줄었다 한다.
+ *
+ * ⚠ **jsdom 은 배치를 재지 못한다.** 실제 높이가 고정됐는지는 여기서 잴 수 없어 **선언이 있는지**를
+ *   붙든다 — 요구를 담고 있는 것이 그 선언이고, 그것이 지워지면 요구가 사라진다. 실제로 그렇게
+ *   보이는지는 실기 확인의 몫이다.
+ */
+describe('품목 선택 대화상자의 크기', () => {
+  const ruleOf = (selector: string): string => {
+    const found = new RegExp(`\\.${selector}\\s*\\{([^}]*)\\}`, 'u').exec(CSS);
+
+    return found?.[1] ?? '';
+  };
+
+  it('본문 높이를 고정한다 — 결과 수에 따라 창이 커졌다 줄었다 하지 않는다', () => {
+    expect(ruleOf('item-picker-body')).toMatch(/\bblock-size:/u);
+  });
+
+  /* 상한이 없으면 작은 화면에서 창이 화면을 넘는다 — 바닥과 상한을 함께 둔다. */
+  it('작은 화면에서 화면을 넘지 않게 상한을 함께 둔다', () => {
+    expect(ruleOf('item-picker-body')).toMatch(/min\(/u);
+  });
+
+  /*
+   * ⛔ **넘치는 것은 결과 표»만«이다.** 조회 줄과 쪽 이동 줄은 늘 같은 자리에 남아야 한다 —
+   *    `min-block-size: 0` 이 없으면 플렉스 자식이 내용보다 작아지지 못해 스크롤이 생기지 않고
+   *    창이 늘어난다.
+   */
+  it('결과 표만 그 안에서 스크롤한다', () => {
+    const rule = ruleOf('item-picker-results');
+
+    expect(rule).toMatch(/overflow-y:\s*auto/u);
+    expect(rule).toMatch(/min-block-size:\s*0/u);
+  });
+});
