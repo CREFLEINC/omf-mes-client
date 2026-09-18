@@ -16,6 +16,9 @@
  *   글자가 찍힌다. 품번·LOT·수량만으로 식별이 된다.
  */
 
+import type { LabelBitmap } from '../../patterns/label/bitmap';
+import { tsplBitmapCommand } from '../../patterns/label/tspl-bitmap';
+
 /** 203 dpi 를 그대로 나눈 점 수. */
 const dots = (millimetres: number): number => Math.round((millimetres / 25.4) * 203);
 
@@ -209,6 +212,121 @@ export const buildLotLabel = (rows: readonly LotLabelRow[], qrContent: string): 
     'PRINT 1,1',
     '',
   ].join('\r\n');
+};
+
+/** 글 한 줄을 `fontPx` 높이로 그린 점판. 그릴 수 없으면 `null` — 그 줄은 TEXT(`?`)로 남는다. */
+export type LotLabelRasterizer = (
+  text: string,
+  fontPx: number,
+) => (LabelBitmap & { rise?: number }) | null;
+
+export interface LotLabelBytesOptions {
+  /**
+   * 주면 **ASCII 밖 글자가 든 줄만** 이것으로 그려 `BITMAP` 으로 보낸다. 없으면 모든 줄이 TEXT 다.
+   *
+   * ⭐ 기본은 끔이다 — 자재·생산 LOT 라벨은 결정 17(못 그리는 글자는 `?`)을 그대로 따른다.
+   *    이것을 켜는 것은 창고 적재 위치 라벨뿐이다(사용자 지시 2026-09-18 · omf-all-around#9).
+   */
+  rasterizeNonAscii?: LotLabelRasterizer;
+}
+
+const NON_ASCII = /[^\x20-\x7e]/u;
+
+const encodeAscii = (value: string): Uint8Array =>
+  Uint8Array.from(value, (char) => char.charCodeAt(0));
+
+/**
+ * 글줄 하나를 칸 폭(`available`) 안에 드는 그림으로 — 내장 글꼴과 같은 높이(point → 203dpi)에서
+ * 시작해 7pt 까지 줄이고, 그래도 넘치면 뒤를 잘라 `~` 를 남긴다(TEXT 줄의 `clip` 과 같은 규약).
+ *
+ * ⛔ **칸을 넘기지 않는다** — 넘치면 QR·오른쪽 여백 위로 찍힌다.
+ */
+const rasterizeInColumn = (
+  rasterize: LotLabelRasterizer,
+  content: string,
+  point: number,
+  available: number,
+): (LabelBitmap & { rise?: number }) | null => {
+  for (let size = point; size >= MIN_POINT; size -= 1) {
+    const drawn = rasterize(content, lineHeight(size));
+
+    if (drawn === null) return null;
+    if (drawn.width <= available) return drawn;
+  }
+
+  for (let length = content.length - 1; length > 0; length -= 1) {
+    const drawn = rasterize(`${content.slice(0, length)}~`, lineHeight(MIN_POINT));
+
+    if (drawn === null) return null;
+    if (drawn.width <= available) return drawn;
+  }
+
+  return null;
+};
+
+/**
+ * 80 × 30 mm 한 장을 **바이트로** 짠다 — `rasterizeNonAscii` 가 없거나 모든 줄이 ASCII 면
+ * `buildLotLabel` 을 인코딩한 것과 **바이트까지 같다.**
+ *
+ * ⭐ 그림으로 바뀌는 것은 ASCII 밖 글자가 든 **그 줄만**이다. 여백·줄 자리·QR·TEXT 줄은
+ *    `layoutLotLabel` 그대로다. 셸은 `BITMAP` 자료를 적힌 길이로 건너뛰고 바이트를 그대로
+ *    보낸다(`apps/pop/src/main/label-media.ts` · 파일은 `latin1` 로 읽고 쓴다) — 셸은 고치지 않는다.
+ *
+ * ⚠ `BITMAP` 흑백(비트 0 = 검은 점)은 HT800 실기에서 아직 확인 전이다(`patterns/label/tspl-bitmap`).
+ */
+export const buildLotLabelBytes = (
+  rows: readonly LotLabelRow[],
+  qrContent: string,
+  options: LotLabelBytesOptions = {},
+): Uint8Array => {
+  const rasterize = options.rasterizeNonAscii;
+
+  if (rasterize === undefined) return encodeAscii(buildLotLabel(rows, qrContent));
+
+  const { texts, qr } = layoutLotLabel(rows, qrContent);
+  /* 글줄 칸의 폭 — `layoutLotLabel` 의 `column` 과 같은 식이다. */
+  const available = qr.x - LEFT - dots(2);
+  const parts: Uint8Array[] = [
+    encodeAscii(
+      ['SIZE 80 mm,30 mm', 'GAP 2 mm,0 mm', 'DIRECTION 1', 'REFERENCE 0,0', 'CLS', ''].join('\r\n'),
+    ),
+  ];
+
+  texts.forEach((line, index) => {
+    /* 그림은 «자르기 전» 글로 그린다 — TEXT 용 자르기는 내장 글꼴 폭 어림이라 한글에 맞지 않는다. */
+    const original = rows[index]?.content ?? line.content;
+    const drawn = NON_ASCII.test(original)
+      ? rasterizeInColumn(rasterize, original, rows[index]?.point ?? line.point, available)
+      : null;
+
+    parts.push(
+      drawn === null
+        ? encodeAscii(`${text(line)}\r\n`)
+        : /* 판 위에 둔 여백(`rise`)만큼 올려 찍어 글자 윗변은 TEXT 줄과 같은 자리에 둔다. */
+          tsplBitmapCommand(drawn, line.x, Math.max(0, line.y - (drawn.rise ?? 0))),
+    );
+    if (drawn !== null) parts.push(encodeAscii('\r\n'));
+  });
+
+  parts.push(
+    encodeAscii(
+      [
+        `QRCODE ${String(qr.x)},${String(qr.y)},M,${String(qr.cell)},A,0,M2,"${escapeTspl(qr.content)}"`,
+        'PRINT 1,1',
+        '',
+      ].join('\r\n'),
+    ),
+  );
+
+  const bytes = new Uint8Array(parts.reduce((sum, part) => sum + part.length, 0));
+  let offset = 0;
+
+  for (const part of parts) {
+    bytes.set(part, offset);
+    offset += part.length;
+  }
+
+  return bytes;
 };
 
 /** 수량 줄에 적을 말 — 단위를 모르면 숫자만 적는다. */

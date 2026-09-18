@@ -30,10 +30,11 @@ export const popLocationLabel = {
     retry: 'Thử lại',
     columnCode: 'Mã vị trí',
     columnName: 'Tên vị trí',
-    columnIssued: 'Phát hành',
+    columnState: 'Trạng thái',
     notIssued: 'Lần đầu',
     issuedCount: (count: number) => `${String(count)} lượt`,
-    inactive: 'Ngừng dùng',
+    active: 'Sử dụng',
+    inactive: 'Không sử dụng',
     pick: 'Chọn',
     selectAll: 'Chọn tất cả',
     clearSelection: 'Bỏ chọn',
@@ -45,7 +46,7 @@ export const popLocationLabel = {
     label: 'Máy in',
     unknown: 'Không kiểm tra được danh sách máy in',
     retry: 'Thử lại',
-    none: 'Máy này chưa đăng ký máy in. Bản ghi phát hành vẫn lưu nhưng nhãn sẽ không in ra.',
+    none: 'Máy này chưa đăng ký máy in. Bản ghi phát hành vẫn lưu nhưng không thể in nhãn.',
     unselected: 'Không chọn thì sẽ dùng máy in mặc định của máy chủ.',
     noStatusMessage: 'Không rõ trạng thái',
   },
@@ -63,13 +64,12 @@ export const popLocationLabel = {
   reissue: {
     title: 'Phát hành lại',
     notice: (count: number) =>
-      `Trong số đã chọn có ${String(count)} vị trí đã in nhãn. Hãy chọn lý do phát hành lại.`,
+      `Trong các mục đã chọn có ${String(count)} vị trí đã được phát hành nhãn. Vui lòng chọn lý do phát hành lại.`,
     reason: 'Lý do phát hành lại',
-    reasonPlaceholder: 'Chọn lý do',
+    reasonPlaceholder: 'Chọn lý do. Lý do phát hành lại là bắt buộc.',
     reasonLoadFailed: 'Không tải được lý do phát hành lại.',
     confirm: 'Phát hành lại',
     cancel: 'Hủy',
-    required: 'Phải chọn lý do phát hành lại mới phát hành được.',
   },
 
   print: {

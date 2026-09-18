@@ -43,7 +43,10 @@ export const ReissueDialog = ({
   <Dialog
     open
     onClose={onClose}
-    size="sm"
+    /* ⭐ 크게 띄우고 X 는 두지 않는다(사용자 지시 2026-09-18). Esc·바깥 누르기는 그대로 닫는다. */
+    className="pop-loclabel-reissue-dialog"
+    size="lg"
+    showCloseButton={false}
     title={t.title}
     footer={
       <>
@@ -80,7 +83,6 @@ export const ReissueDialog = ({
           }))}
           onChange={onChange}
         />
-        {value === '' && <span className="field-note">{t.required}</span>}
       </div>
     )}
   </Dialog>

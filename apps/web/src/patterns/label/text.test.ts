@@ -6,6 +6,7 @@ import {
   drawLabelText,
   fitLabelText,
   hasTextCanvas,
+  headroomOf,
   measureLabelText,
   rasterizeText,
   toDots,
@@ -29,8 +30,7 @@ import {
 /** 불투명한 화소 하나. 색은 뜻이 없다 — 알파만 신호다. */
 const pixel = (alpha: number, red = 0): number[] => [red, 0, 0, alpha];
 
-const rgba = (rows: number[][][]): Uint8ClampedArray =>
-  new Uint8ClampedArray(rows.flat().flat());
+const rgba = (rows: number[][][]): Uint8ClampedArray => new Uint8ClampedArray(rows.flat().flat());
 
 interface FakeCall {
   font: string;
@@ -294,5 +294,24 @@ describe('Canvas 경로 — 배선', () => {
     drawLabelText(bitmap, '', 0, 0, 3);
 
     expect(bitmap.dots.filter(Boolean)).toHaveLength(0);
+  });
+});
+
+/* 윗변 위로 넘치는 한글 획을 담을 여백(omf-all-around#9 · HT800 실기에서 윗획이 깎였다). */
+describe('headroomOf', () => {
+  it('글꼴 값과 잉크 값 중 큰 쪽을 올림하고 1점을 더한다', () => {
+    expect(
+      headroomOf({ width: 10, actualBoundingBoxAscent: 1.24, fontBoundingBoxAscent: 3.75 }),
+    ).toBe(5);
+    expect(
+      headroomOf({ width: 10, actualBoundingBoxAscent: 6.1, fontBoundingBoxAscent: 3.75 }),
+    ).toBe(8);
+  });
+
+  it('값이 없거나 음수면(획이 윗변 아래) 1점만 둔다', () => {
+    expect(headroomOf({ width: 10 })).toBe(1);
+    expect(
+      headroomOf({ width: 10, actualBoundingBoxAscent: -0.6, fontBoundingBoxAscent: -1 }),
+    ).toBe(1);
   });
 });

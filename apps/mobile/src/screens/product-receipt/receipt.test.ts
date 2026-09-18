@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   MATCHED,
+  NO_RULE,
   canSubmit,
   destinationOf,
   differsFromExpected,
@@ -344,11 +345,34 @@ describe('보낼 것', () => {
   });
 
   it('적치 완료는 실제 위치를 싣는다', () => {
-    const draft = toPutawayDraft(7701, location(), now, '100028');
+    const draft = toPutawayDraft(7701, location(), MATCHED, false, now, '100028');
     const body = draft.body as { actualLocationId: number };
 
     expect(draft.path).toBe('/logistics/putaway-tasks/7701:complete');
     expect(body.actualLocationId).toBe(3101);
+  });
+
+  /*
+   * 권장 위치가 없는 품목은 작업자가 확인했다는 표시가 있어야 서버가 적치를 받는다. 싣지 않으면
+   * 입고는 서고 적치만 되돌아와, 물건이 어디 있는지가 남지 않는다.
+   */
+  it('권장 위치가 없는 품목을 확인했으면 그 확인을 싣는다', () => {
+    const draft = toPutawayDraft(7701, location(), NO_RULE, true, now, '100028');
+
+    expect((draft.body as { confirmedNoRule?: boolean }).confirmedNoRule).toBe(true);
+  });
+
+  it('확인하지 않았으면 싣지 않는다', () => {
+    const draft = toPutawayDraft(7701, location(), NO_RULE, false, now, '100028');
+
+    expect((draft.body as { confirmedNoRule?: boolean }).confirmedNoRule).toBe(false);
+  });
+
+  /* 계약이 권장 위치가 없을 때만 참을 보내라고 정한다. */
+  it('권장 위치와 맞으면 확인 표시가 남아 있어도 싣지 않는다', () => {
+    const draft = toPutawayDraft(7701, location(), MATCHED, true, now, '100028');
+
+    expect((draft.body as { confirmedNoRule?: boolean }).confirmedNoRule).toBe(false);
   });
 });
 
