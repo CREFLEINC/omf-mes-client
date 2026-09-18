@@ -29,7 +29,7 @@ export const lotStatusTransition = {
       item: '자재',
       status: '품질 상태',
       all: '전체',
-      note: '최근 전이 일자를 기준으로 대상 LOT을 조회합니다.',
+      note: '최근 전이일을 기준으로 LOT을 조회합니다.',
       periodMissing: '조회 시작일과 종료일을 모두 선택하세요.',
       periodInvalid: '조회 기간에 올바른 날짜를 입력하세요.',
       periodReversed: '조회 시작일은 종료일보다 늦을 수 없습니다.',

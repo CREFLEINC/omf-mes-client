@@ -36,7 +36,7 @@ export const lotStatusTransition: Translated<typeof ko.lotStatusTransition> = {
       item: 'Vật tư',
       status: 'Trạng thái chất lượng',
       all: 'Tất cả',
-      note: 'Tra cứu LOT mục tiêu theo ngày chuyển đổi gần nhất.',
+      note: 'Tra cứu LOT theo ngày chuyển đổi gần nhất.',
       periodMissing: 'Hãy chọn cả ngày bắt đầu và ngày kết thúc tra cứu.',
       periodInvalid: 'Hãy nhập ngày hợp lệ cho khoảng thời gian tra cứu.',
       periodReversed: 'Ngày bắt đầu tra cứu không được muộn hơn ngày kết thúc.',
