@@ -157,6 +157,35 @@ describe('창고 적재 위치 라벨 — 한글 줄을 그림으로 (omf-all-ar
     }
   });
 
+  it('판 위 여백(rise)만큼 올려 찍어 글자 윗변은 TEXT 줄과 같은 자리다 — 윗획이 깎이지 않게', () => {
+    const rise = 5;
+    const withRise: LotLabelRasterizer = (text, fontPx) => {
+      const drawn = fakeRaster(text, fontPx);
+
+      return drawn === null ? null : { ...drawn, rise };
+    };
+    const nameLine = buildLocationLabel(KOREAN)
+      .split('\r\n')
+      .find((line) => line.includes('"A?? 01? 01?"'));
+    const [, y] = /^TEXT \d+,(\d+),/u.exec(nameLine ?? '') ?? [];
+    const [decoded] = decodeBitmaps(buildLocationLabelBytes(KOREAN, withRise));
+
+    expect(decoded?.y).toBe(Number(y) - rise);
+
+    /* 올려 찍어도 위 줄(위치 코드) 아래 끝과 아래 줄(ISSUE NO.) 윗변을 넘지 않는다. */
+    const lines = buildLocationLabel(KOREAN).split('\r\n');
+    const code = /^TEXT \d+,(\d+),"0",0,(\d+),/u.exec(
+      lines.find((line) => line.includes('"S230-A-01-02"')) ?? '',
+    );
+    const issue = /^TEXT \d+,(\d+),/u.exec(lines.find((line) => line.includes('ISSUE NO.')) ?? '');
+    const codeBottom = Number(code?.[1]) + Math.ceil(Number(code?.[2]) * (203 / 72));
+
+    expect(decoded?.y).toBeGreaterThanOrEqual(codeBottom);
+    expect((decoded?.y ?? 0) + (decoded?.bitmap.height ?? 0)).toBeLessThanOrEqual(
+      Number(issue?.[1]),
+    );
+  });
+
   it('그림은 글줄 칸을 넘지 않는다 — 넓으면 크기를 줄이고 그래도 넘치면 뒤를 자른다', () => {
     const long = {
       ...fields,

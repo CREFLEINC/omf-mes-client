@@ -215,7 +215,10 @@ export const buildLotLabel = (rows: readonly LotLabelRow[], qrContent: string): 
 };
 
 /** 글 한 줄을 `fontPx` 높이로 그린 점판. 그릴 수 없으면 `null` — 그 줄은 TEXT(`?`)로 남는다. */
-export type LotLabelRasterizer = (text: string, fontPx: number) => LabelBitmap | null;
+export type LotLabelRasterizer = (
+  text: string,
+  fontPx: number,
+) => (LabelBitmap & { rise?: number }) | null;
 
 export interface LotLabelBytesOptions {
   /**
@@ -243,7 +246,7 @@ const rasterizeInColumn = (
   content: string,
   point: number,
   available: number,
-): LabelBitmap | null => {
+): (LabelBitmap & { rise?: number }) | null => {
   for (let size = point; size >= MIN_POINT; size -= 1) {
     const drawn = rasterize(content, lineHeight(size));
 
@@ -297,7 +300,10 @@ export const buildLotLabelBytes = (
       : null;
 
     parts.push(
-      drawn === null ? encodeAscii(`${text(line)}\r\n`) : tsplBitmapCommand(drawn, line.x, line.y),
+      drawn === null
+        ? encodeAscii(`${text(line)}\r\n`)
+        : /* 판 위에 둔 여백(`rise`)만큼 올려 찍어 글자 윗변은 TEXT 줄과 같은 자리에 둔다. */
+          tsplBitmapCommand(drawn, line.x, Math.max(0, line.y - (drawn.rise ?? 0))),
     );
     if (drawn !== null) parts.push(encodeAscii('\r\n'));
   });

@@ -68,8 +68,9 @@ const HANGUL_FONT_FAMILY =
 /** 이 단말이 한글을 진짜 글자로 그리는가 — 글꼴이 없으면 네모가 그려진다(`canDrawGlyph`). */
 const canDrawHangul = (): boolean => canDrawGlyph('가', HANGUL_FONT_FAMILY);
 
+/* 윗변 위로 넘치는 한글 획을 담는다(`headroom`) — 끄면 윗획이 깎였다(HT800 실기 2026-09-18). */
 const rasterizeHangul: LotLabelRasterizer = (text, fontPx) =>
-  rasterizeTextWithFont(text, fontPx, HANGUL_FONT_FAMILY);
+  rasterizeTextWithFont(text, fontPx, HANGUL_FONT_FAMILY, true);
 
 /**
  * 인쇄할 바이트 — ASCII 만 있으면 `buildLocationLabel` 과 바이트까지 같다.
