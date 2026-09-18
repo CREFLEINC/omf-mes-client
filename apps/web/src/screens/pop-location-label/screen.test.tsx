@@ -430,7 +430,7 @@ describe('P-06-01 창고 적재 위치 라벨 발행', () => {
   });
 
   /* 세 번째 열은 「상태」 — 모든 줄에 사용 여부를 적는다(사용자 지시 2026-09-18 · omf-all-around#11). */
-  it('상태 열에 사용중·미사용을 모든 줄에 적는다', async () => {
+  it('상태 열에 사용·미사용을 모든 줄에 적는다', async () => {
     const user = userEvent.setup();
     renderScreen();
 
@@ -444,9 +444,20 @@ describe('P-06-01 창고 적재 위치 라벨 발행', () => {
       return row?.querySelectorAll('td')[2]?.textContent ?? undefined;
     };
 
-    expect(stateOf('S230-01')).toBe('사용중');
-    expect(stateOf('S230-02')).toBe('사용중');
+    expect(stateOf('S230-01')).toBe('사용');
+    expect(stateOf('S230-02')).toBe('사용');
     expect(stateOf('S230-03')).toBe('미사용');
+  });
+
+  /* 찍을 프린터가 없다는 경고는 맨 위 띠 자리에 선다(사용자 지시 2026-09-18 · omf-all-around#11). */
+  it('프린터가 없으면 경고를 맨 위 띠 자리에 한 번만 세우고, 프린터 칸은 그리지 않는다', async () => {
+    renderScreen({ printers: [] });
+
+    const warning = await screen.findByText(messages.popLocationLabel.printer.none);
+
+    expect(screen.getAllByText(messages.popLocationLabel.printer.none)).toHaveLength(1);
+    expect(warning.closest('.pop-loclabel-top')).toBeNull();
+    expect(document.querySelector('.pop-loclabel-printer')).toBeNull();
   });
 
   it('사번이 없으면 발행을 열지 않는다', async () => {

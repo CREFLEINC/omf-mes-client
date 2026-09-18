@@ -36,8 +36,8 @@ export const popLocationLabel = {
     /** 아직 한 번도 안 찍은 자리. 「0회」보다 「처음」이 현장에서 빨리 읽힌다. */
     notIssued: '처음',
     issuedCount: (count: number) => `${String(count)}회`,
-    /** 모든 줄에 사용 여부를 적는다(사용자 문구 그대로 · omf-all-around#11). */
-    active: '사용중',
+    /** 모든 줄에 사용 여부를 적는다(사용자 문구 그대로 · omf-all-around#11 — 「사용」 / 「미사용」). */
+    active: '사용',
     /** 사용 중지된 위치도 찍는다 — 선반은 그 자리에 그대로 있다. */
     inactive: '미사용',
     /** 줄 오른쪽 [선택]과 목록 머리의 전체 선택(사용자 지시 2026-09-17). */
