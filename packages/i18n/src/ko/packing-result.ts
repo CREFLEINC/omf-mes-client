@@ -39,16 +39,19 @@ export const packingResult = {
       productionLot: '생산LOT',
     },
     manualEntry: '직접 입력',
-    shipmentSelection: '출하 대상',
+    shipmentSelection: '출하대상',
     shipmentListLoading: '목록 조회 중…',
     todayPickedShipments: '당일 피킹 완료 출하',
     /** 둘째 스캔은 첫째가 끝나야 열린다 — 왜 잠겼는지 적는다. */
-    lotLocked: '출하 대상을 먼저 선택하세요',
+    lotLocked: '출하대상을 먼저 선택하세요',
+    /** 출하가 이미 정해졌다 — 빈 출하번호 칸을 또 채워야 하는 줄로 읽히지 않게 칸 안에 적는다(사용자 지시 2026-09-17). */
+    shipmentChosen: '선택 완료 · 다른 출하대상일 시 출하번호를 다시 스캔해주세요',
   },
   match: {
-    ok: '매칭 — 이 출하에 배분된 LOT 입니다',
+    /** 읽은 LOT 번호를 앞에 세운다 — 칸 옆 번호 표시를 걷었다(사용자 지시 2026-09-17). */
+    ok: (lotNo: string): string => `${lotNo}는 선택한 출하에 포함된 LOT입니다.`,
     itemMismatch: (itemCode: string): string => `선택한 출하의 대상 품목은 ${itemCode} 입니다`,
-    notAllocated: '이 출하에 배분되지 않은 LOT 입니다',
+    notAllocated: '생산LOT 번호는 선택한 출하에 포함되지 않은 LOT입니다.',
     /** 서버가 사유를 주지 않았을 때. 판정 자체는 「다르다」이므로 막는 것은 같다. */
     unknownReason: '이 납품라벨과 맞지 않는 LOT 입니다',
     shipmentNotFound: '피킹 완료된 출하번호를 찾지 못했습니다',
@@ -58,7 +61,7 @@ export const packingResult = {
   contents: {
     total: (packed: number, allocated: number): string =>
       `합계 ${String(packed)} / ${String(allocated)}`,
-    empty: '담긴 것이 없습니다',
+    empty: '추가된 포장 구성이 없습니다.',
     remove: '빼기',
   },
   qty: {
@@ -72,21 +75,23 @@ export const packingResult = {
     entryLabel: '담을 수량',
     /** 아직 아무것도 치지 않았다. 0 으로 적으면 「0 을 담는다」로 읽힌다. */
     entryEmpty: '—',
+    /** 키패드 문구는 사번 입력 화면(P-CO-01)과 같다(사용자 지시 2026-09-17). */
+    keypad: '수량 숫자 키패드',
+    backspace: '한 자 지움',
+    clear: '지움',
+    decimal: '소수점',
+    submit: '확인',
     room: (room: number): string => `남은 ${String(room)}`,
     /** 잔여를 넘겼을 때. 넘긴 값이 아니라 **한도**를 말한다 — 작업자가 고칠 목표가 그것이다. */
     overRemaining: (remaining: number): string => `배분 ${String(remaining)} 을 넘을 수 없습니다`,
     notPositive: '수량은 0보다 커야 합니다',
-    merged: (before: number, added: number, after: number): string =>
-      `기존 ${String(before)} 에 ${String(added)} 을 더해 ${String(after)} 이 됩니다`,
   },
   fields: {
     handlingUnitType: '유형',
     /** 이름은 칸 옆에 있으므로 안내 글은 「무엇을 하라」만 남긴다. */
-    typePlaceholder: '고르세요',
+    typePlaceholder: '유형을 선택하세요',
   },
   notes: {
-    /** 출하 대상을 아직 고르지 않았다 — 본문 맨 위 안내 띠(사용자 지시 2026-09-15). */
-    selectShipment: '출하 대상을 선택하세요.',
     /** 후보가 없는 것은 고장이 아니다(스펙 §5-2-1). */
     typeUnavailable: '포장 유형을 받지 못했습니다. 다시 시도해 주세요',
   },
@@ -113,11 +118,6 @@ export const packingResult = {
     },
   },
   actions: {
-    /**
-     * 마지막 스캔 입력을 무른다. **스펙 §6 액션표의 이름 그대로다**(「다시 스캔」) —
-     * 2026-09-07 에 「다시 읽기」로 바꿨던 것을 되돌린다(사용자 지적 2026-09-10).
-     */
-    rescan: '다시 스캔',
     confirm: '포장 확정',
     confirming: '확정 중…',
     retry: '다시 시도',
@@ -136,7 +136,9 @@ export const packingResult = {
       report: '인쇄 결과를 서버에 보고하지 못했습니다.',
     },
     packingFailure: (reason: string): string => `포장 라벨: ${reason}`,
-    complete: '포장 라벨 출력을 마쳤습니다.',
+    /** 확정 띠와 합친 한 줄이다(사용자 지시 2026-09-17). */
+    complete: (handlingUnitNo: string): string =>
+      `포장 라벨 출력 - 포장 ${handlingUnitNo}을 확정했습니다.`,
     reissueRequired: (count: number): string =>
       `${String(count)}건은 발행 기록이 있지만 인쇄 완료가 아닙니다. 라벨 재출력에서 사유를 골라 처리하세요.`,
     retryPackingIssue: '포장 라벨 발행 다시 시도',
@@ -158,13 +160,14 @@ export const packingResult = {
     gateDenied: '이 단말·공정에는 실적 입력 권한이 없습니다',
     gateUnavailable: '단말 권한을 확인할 수 없습니다',
     gateUnidentified: '단말·공정이 확인되지 않았습니다',
-    workerMissing: '사번이 확인되지 않았습니다',
+    /** 화면에는 공용 띠(`popChrome.workerMissing`)가 말한다 — 같은 문구를 둔다(사용자 지시 2026-09-17). */
+    workerMissing: '사번이 확인되지 않았습니다. 사번 인증을 먼저 진행해주세요.',
     /*
      * ⛔ **아직 고르지 않은 것을 «없다»고 말하지 않는다**(#1093 리뷰). 창고는 출하 전표에서
      *    오므로, 출하를 고르기 전에는 언제나 비어 있다 — 그때 「전표에 창고가 없다」고 말하면
      *    고른 적도 없는 전표를 탓는 말이 된다. 두 상태를 갈라 말한다.
      */
-    shipmentMissing: '출하 대상을 먼저 선택하세요',
+    shipmentMissing: '출하대상을 먼저 선택하세요',
     /*
      * ⛔ **눌러도 아무 일이 없던 자리다**(#1093). 확정은 창고를 본문에 실어야 하는데 그 값이
      *    없으면 처리기가 조용히 되돌아왔다 — 단추는 열려 있고 화면은 아무 말도 하지 않았다.
@@ -177,7 +180,18 @@ export const packingResult = {
      *    되돌아왔는데 단추는 열려 있었다 — 「모르는 것」과 「막힌 것」을 갈라 말한다.
      */
     unitOpening: '포장을 만드는 중입니다',
-    unitMissing: '포장을 만들지 못했습니다. 담긴 것을 다시 스캔하세요',
   },
   confirmed: (handlingUnitNo: string): string => `포장 ${handlingUnitNo} 을 확정했습니다`,
+  /** [포장 확정]을 누르면 먼저 되묻는다(사용자 지시 2026-09-17 · 스펙 §6 에는 없는 팝업). */
+  confirmDialog: {
+    title: '포장을 확정할까요?',
+    shipment: '출하번호',
+    type: '포장 유형',
+    contents: '내용물',
+    lotCount: (count: number): string => `LOT ${count}건`,
+    lotCountWithQty: (count: number, qty: string): string => `LOT ${count}건 · 수량 ${qty}`,
+    labelNotice: '확정 시 포장 라벨이 바로 인쇄됩니다.',
+    cancel: '취소',
+    confirm: '확정',
+  },
 } as const;

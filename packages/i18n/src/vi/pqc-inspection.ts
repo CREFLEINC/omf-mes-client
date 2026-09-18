@@ -35,6 +35,9 @@ export const pqcInspection: Translated<typeof ko.pqcInspection> = {
   pad: {
     title: 'Bàn phím số',
     keypadLabel: 'Bàn phím số lượng',
+    extraKeysLabel: 'Dấu và dấu thập phân',
+    negative: 'Số âm',
+    positive: 'Số dương',
     decimal: 'Dấu thập phân',
     backspace: 'Xóa một ký tự',
     clear: 'Xóa hết',
@@ -60,8 +63,6 @@ export const pqcInspection: Translated<typeof ko.pqcInspection> = {
     save: 'Lưu tạm',
     saved: 'Đã lưu.',
     saveBlockedByInvalid: 'Hãy sửa ô số lượng rồi mới lưu được.',
-    saveBlockedByWorker:
-      'Chưa xác nhận được mã nhân viên nên không lưu được kết quả kiểm tra. Hãy chỉ định công nhân trước.',
     judgment: 'Đánh giá tổng hợp',
     judgmentPlaceholder: 'Hãy chọn đánh giá',
     judgmentUnavailable: 'Đang chuẩn bị danh sách đánh giá',

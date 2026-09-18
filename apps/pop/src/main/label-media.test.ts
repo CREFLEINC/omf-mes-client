@@ -201,3 +201,18 @@ it('라벨 덩이마다 대지 선언을 다시 세운다', () => {
     expect(lines.slice(0, index).at(-1)).toBe('REFERENCE 0,0');
   });
 });
+
+/*
+ * ⛔ 그림째 보내는 라벨(납품 라벨)은 `BITMAP` 뒤에 바이너리가 붙는다. 그 안의 줄바꿈 바이트로
+ *    자료를 쪼개면 다시 이을 때 바이트가 늘어 그림이 밀린다(2026-09-17).
+ */
+it('BITMAP 자료 안의 줄바꿈 바이트를 건드리지 않는다', () => {
+  const payload = '\n\r\nÿ\r';
+  const label = ['SIZE 80 mm,30 mm', 'CLS', `BITMAP 0,0,5,1,0,${payload}`, 'PRINT 1,1', ''].join(
+    '\r\n',
+  );
+
+  const applied = applyLabelMedia(label, readLabelMedia());
+
+  expect(applied).toContain(`BITMAP 0,0,5,1,0,${payload}\r\nPRINT 1,1\r\n`);
+});

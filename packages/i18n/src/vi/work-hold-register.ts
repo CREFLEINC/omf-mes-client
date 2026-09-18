@@ -45,8 +45,6 @@ export const workHoldRegister: Translated<typeof ko.workHoldRegister> = {
       'Mất kết nối nên đang hiện danh sách lý do đã nhận trước đó. Có thể không phải mới nhất.',
     /** ⭐ 비고는 작업지시 중단 본문이 받는다 — 적은 것이 실제로 저장된다. */
     remarksLabel: 'Ghi chú',
-    workerRequired:
-      'Chưa xác nhận được mã nhân viên nên không đăng ký được. Hãy xác nhận mã nhân viên trước.',
     stopAction: 'Đăng ký tạm dừng',
     resumeAction: 'Tiếp tục',
     alreadyStopped: 'Phiên này đã tạm dừng. Có thể tiếp tục.',

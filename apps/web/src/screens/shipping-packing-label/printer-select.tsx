@@ -1,22 +1,12 @@
 import { AlertBanner, Button, Chip } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 
+import { PopPrinterStatus } from '../../patterns/pop-printer-status';
 import { PopSelect as Select } from '../../patterns/pop-select';
 import { popTouchClass } from '../../patterns/pop-touch';
-import type { PrinterStatus, PrinterView } from './types';
+import type { PrinterView } from './types';
 
 const t = messages.shippingPackingLabel.printer;
-
-/**
- * 상태 값을 **색으로만** 옮긴다. 문구는 서버가 준 `statusMessage` 를 그대로 쓴다 — 화면이
- * `status` 로 한국어를 지어내면 서버가 값을 늘렸을 때 화면만 모르는 문구가 생긴다.
- */
-const CHIP_STATUS: Record<PrinterStatus, 'success' | 'warning' | 'error'> = {
-  READY: 'success',
-  BUSY: 'warning',
-  OFFLINE: 'error',
-  ERROR: 'error',
-};
 
 export interface PrinterSelectProps {
   printers: PrinterView[];
@@ -28,6 +18,8 @@ export interface PrinterSelectProps {
   disabled: boolean;
   /** 아직 라벨 종류를 고르지 않았다 — 조회 자체를 하지 않은 상태다. */
   awaitingKind: boolean;
+  /** 고른 프린터의 상태 표식을 그리는가. 기본은 그린다. */
+  showStatus?: boolean;
 }
 
 /**
@@ -52,6 +44,7 @@ export const PrinterSelect = ({
   onRetry,
   disabled,
   awaitingKind,
+  showStatus = true,
 }: PrinterSelectProps) => {
   /*
    * ⭐ **종류를 고르기 전에도 자리를 비우지 않는다** — 칸을 감췄다가 고르는 «순간» 나타나면
@@ -110,11 +103,12 @@ export const PrinterSelect = ({
       />
       {selected === null ? (
         <span className="field-note">{t.unselected}</span>
-      ) : (
-        <Chip status={CHIP_STATUS[selected.status]}>
-          {selected.statusMessage ?? t.noStatusMessage}
-        </Chip>
-      )}
+      ) : showStatus ? (
+        <PopPrinterStatus
+          status={selected.status}
+          text={selected.statusMessage ?? t.noStatusMessage}
+        />
+      ) : null}
     </div>
   );
 };

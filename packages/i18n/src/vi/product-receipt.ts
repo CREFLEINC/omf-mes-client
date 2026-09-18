@@ -34,6 +34,8 @@ export const productReceipt: Translated<typeof ko.productReceipt> = {
     loadFailed: 'Không tải được hàng bên trong. Hãy kiểm tra kết nối.',
     name: (item: string, lotNo: string) => (item === '' ? lotNo : `${item} · ${lotNo}`),
     qtyLabel: (name: string) => `Số lượng thực tế của ${name}`,
+    previousLine: 'Dòng trước',
+    nextLine: 'Dòng sau',
     expected: (qty: string) => `Số lượng trên thẻ nhận diện ${qty}`,
     manufactured: (at: string) => `Ngày sản xuất ${at}`,
     expiry: (date: string) => `Hạn dùng ${date}`,

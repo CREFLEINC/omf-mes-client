@@ -20,11 +20,11 @@ import { createIdempotencyKey } from '@omf-mes/api-client';
 import { useCallback } from 'react';
 
 import { useApiClient } from '../../patterns/api-context';
-import { sendToPrinter, type PrintAttempt } from '../../patterns/pop-print';
+import { keepOnDevice, sendToPrinter, type PrintAttempt } from '../../patterns/pop-print';
 import { runRequest } from '../../patterns/request';
 
 import { toDeliveryLabelFields } from './delivery-label-fields';
-import { renderDeliveryLabel } from './delivery-label-image';
+import { buildDeliveryLabelTspl, renderDeliveryLabel } from './delivery-label-image';
 import type { ShippingUnitDetail } from './types';
 
 const DOCUMENT_TYPE_CODE = 'DELIVERY_LABEL';
@@ -93,10 +93,14 @@ export const useDeliveryIssue = (workerNo: string | null) => {
       /*
        * ⭐ **POP 이 그린다.** 서버는 이 유형의 렌디션을 만들지 않는다 — 준비된 종류 목록에 없어
        *    요청 자체가 막힌다(포장 라벨이 그 자리에서 종이가 안 나오던 까닭과 같다).
-       * ⚠ 형식은 `png` 다 — 명령형(TSPL)은 RAW 자리로만 나가는데 그 자리는 win32 에서만 선다.
+       * ⭐ **종이는 TSPL 로 나간다**(사용자 지시 2026-09-17). 그림 인쇄는 80 × 30 mm 에 맞지 않고
+       *    뒤집혔다. 이름(한글)을 살리려고 점판을 `BITMAP` 으로 통째 보낸다.
+       * ⭐ **그림은 단말에 따로 남긴다** — 저장 실패가 인쇄를 막지 않는다.
        */
-      const bytes = renderDeliveryLabel(toDeliveryLabelFields(unit, issueSeq));
-      const attempt = await sendToPrinter(bytes, `delivery-${String(documentIssueLogId)}`, 'png');
+      const fields = toDeliveryLabelFields(unit, issueSeq);
+      const name = `delivery-${String(documentIssueLogId)}`;
+      await keepOnDevice(renderDeliveryLabel(fields), name, 'png');
+      const attempt = await sendToPrinter(buildDeliveryLabelTspl(fields), name, 'tspl');
 
       /*
        * ⛔ **보고가 실패해도 종이가 나온 사실을 뒤집지 않는다.** 보고는 되풀이할 수 있지만

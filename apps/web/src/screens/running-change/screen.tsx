@@ -5,6 +5,7 @@ import { useSearchParams } from 'react-router';
 
 import { OutboxStallBanner } from '../../patterns/outbox-stall-banner';
 import { soleProcessIdOf, usePopIdentity } from '../../patterns/pop-identity';
+import { PopWorkerMissingBanner } from '../../patterns/pop-worker-missing-banner';
 
 import { CurrentInputs } from './current-inputs';
 import { CurrentLot } from './current-lot';
@@ -273,6 +274,9 @@ export const RunningChangeScreen = () => {
       {/* ⭐ 「밀리는 중」과 「멈춤」은 다르다 — 건수만으로는 그 차이가 보이지 않는다. */}
       {outbox.isStalled && <OutboxStallBanner onRetry={outbox.retryNow} />}
 
+      {/* ⭐ 사번 미확인은 모든 POP 화면이 같은 맨 위 띠로 말한다(사용자 지시 2026-09-17). */}
+      <PopWorkerMissingBanner workerNo={workerNo} />
+
       {/*
        * 작업지시가 없으면 **조회가 나가지 않는다.** 그 사실을 배너로 먼저 말한다 — 빈 목록만
        * 으로는 「투입이 없다」와 「무엇을 볼지 정해지지 않았다」가 같은 모양이 된다.
@@ -316,20 +320,24 @@ export const RunningChangeScreen = () => {
             />
           </section>
 
-          {/* 스펙 §3 이 좌단에 상시 세워 둔 안내. 교체가 무엇을 «하지 않는지»를 말한다. */}
           {/*
-           * ⚠ **경고로 세운다**(설계 §3 도면의 `⚠` · 공유계약 G-1 · 사용자 지적 2026-09-11).
-           *    러닝체인지는 설비를 세우지 «않고» 부품만 바꾸는 작업이다 — 이 사실을 놓치면
-           *    작업자가 설비를 멈춰야 한다고 여기고 라인을 세운다. 회색 잔글씨로는 그 무게가
-           *    전해지지 않는다.
+           * ⛔ 「설비를 멈추지 않습니다」 띠를 두지 않는다(사용자 지시 2026-09-17). 스펙 §3 도면이
+           *    좌단에 상시 세운 안내였지만 사용자가 걷었다.
            */}
-          <div className="banner-slot">
-            <AlertBanner variant="warning" title={t.notices.equipmentKeepsRunning} />
-          </div>
         </section>
 
         <section className="pane scan-pane" aria-label={t.panes.replace}>
           <h2 className="pane-title">{t.panes.replace}</h2>
+
+          {/*
+           * W/O 가 나뉘지 않는다는 안내 — 스펙 §3 은 등록 버튼 위에 세웠다.
+           * ⭐ **구획 맨 위로 올린다**(사용자 지시 2026-09-17). 수량 칸 옆 [투입]이 생기며 누르는
+           *    자리가 안내보다 위로 올라가, 누른 «뒤»에야 보이는 자리가 됐다 — 작업을 시작하기
+           *    전에 읽히도록 스캔 칸 위에 선다.
+           */}
+          <div className="banner-slot pop-rc-split-notice">
+            <AlertBanner variant="info">{t.notices.noWorkOrderSplit}</AlertBanner>
+          </div>
 
           {/* 스캔 결과는 부품이 자기 자리에 세운다 — 자매 화면 `P-02-03` 과 같은 구조다. */}
           <ScanField isScanning={scan.isPending} onScan={handleScan} outcome={outcomeView} />

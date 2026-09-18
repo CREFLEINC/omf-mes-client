@@ -1,10 +1,11 @@
 import { AlertBanner, Button, Chip, SkeletonText, Table } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { useId, useMemo, useState } from 'react';
+import { useEffect, useId, useMemo, useRef, useState } from 'react';
 
 import { PopPageNav, pageBoundaryOf } from '../../patterns/pop-page-nav';
 import { PopSelect as Select } from '../../patterns/pop-select';
 import { popTouchClass } from '../../patterns/pop-touch';
+import { PopWorkerMissingBanner } from '../../patterns/pop-worker-missing-banner';
 import { PopWorkerTag } from '../../patterns/pop-worker-tag';
 import { usePopLocationLabelEntry } from './entry-context';
 import { useLocationLabelWrite, usePrintFlow, type PrintReport } from './mutations';
@@ -24,6 +25,7 @@ import {
   MAX_TARGETS,
   TARGET_TYPE_CODE,
   type DocumentIssue,
+  type Location,
 } from './types';
 
 const t = messages.popLocationLabel;
@@ -75,7 +77,29 @@ export const PopLocationLabelScreen = () => {
 
   const reasons = useReissueReasons(reissueAsked);
 
-  const printFlow = usePrintFlow(entry.workerNo);
+  /**
+   * 본 적 있는 위치 — **라벨 값은 고를 때 본 줄에서 읽는다.** 고른 자리는 여러 쪽에 걸칠 수 있어
+   * 지금 쪽의 목록만으로는 앞 쪽에서 고른 위치를 풀지 못한다.
+   */
+  const seenLocations = useRef(new Map<number, Location>());
+
+  useEffect(() => {
+    for (const each of locationItems) seenLocations.current.set(each.locationId, each);
+  }, [locationItems]);
+
+  const printFlow = usePrintFlow(entry.workerNo, (record) => {
+    const location = seenLocations.current.get(record.target.targetId);
+    const warehouse = warehouses.data?.find((each) => each.warehouseId === location?.warehouseId);
+
+    if (location === undefined || warehouse === undefined) return null;
+
+    return {
+      warehouseCode: warehouse.warehouseCode,
+      locationCode: location.locationCode,
+      locationName: location.locationName,
+      issueSeq: record.issueSeq,
+    };
+  });
 
   const write = useLocationLabelWrite({
     /* 사번이 없으면 아래 `guard` 가 발행을 열지 않는다 — 여기 오는 값은 확보된 것이다. */
@@ -84,7 +108,7 @@ export const PopLocationLabelScreen = () => {
       setReissueAsked(false);
       setReasonCode('');
       /*
-       * ⛔ **거절을 받을 곳을 둔다.** 건별 실패는 안에서 값으로 접히지만, 그 바깥(형식 협상)이
+       * ⛔ **거절을 받을 곳을 둔다.** 건별 실패는 안에서 값으로 접히지만, 그 바깥이
        *    거절하면 결과 구획이 영영 비어 「눌렀는데 아무 일도 없다」가 된다. 발행은 이미
        *    끝났으므로 **인쇄가 통째로 실패한 것**으로 적는다 — 없던 일로 두지 않는다.
        */
@@ -159,6 +183,10 @@ export const PopLocationLabelScreen = () => {
     total: locations.data?.total ?? 0,
   });
 
+  const isPageAllSelected =
+    locationItems.length > 0 &&
+    locationItems.every((each) => selectedIds.includes(each.locationId));
+
   return (
     <main className="pop-shell pop-ui" aria-labelledby={titleId}>
       <header className="pop-header">
@@ -170,9 +198,8 @@ export const PopLocationLabelScreen = () => {
         </div>
       </header>
 
-      {entry.workerNo === null && (
-        <AlertBanner variant="warning">{t.entry.missingWorker}</AlertBanner>
-      )}
+      {/* ⭐ 사번 미확인은 모든 POP 화면이 같은 맨 위 띠로 말한다(사용자 지시 2026-09-17). */}
+      <PopWorkerMissingBanner workerNo={entry.workerNo} />
 
       {/*
        * ⚠ **통로가 없다는 사실을 미리 말한다.** 브라우저로 이 화면을 열면 발행은 되지만 라벨은
@@ -180,7 +207,30 @@ export const PopLocationLabelScreen = () => {
        */}
       {!hasPrintBridge() && <AlertBanner variant="info">{t.print.noBridge}</AlertBanner>}
 
-      <div className="pop-loclabel-top">
+      {/*
+       * ⭐ **찍을 프린터가 없다는 경고도 맨 위 띠 자리에 선다**(사용자 지시 2026-09-18 ·
+       *    omf-all-around#11). 프린터 칸 안에 두면 창고 옆 작은 상자라 눈에 띄지 않았다.
+       *    프린터가 있을 때의 고르기는 그대로 오른쪽 칸이 한다(`PrinterSelect`).
+       */}
+      {!printers.isPending && !printers.isError && (printers.data ?? []).length === 0 && (
+        /* 사번 미확인 띠(`PopWorkerMissingBanner`)와 같은 자리·같은 감싸기 — 띠가 제 높이만 쓴다. */
+        <div className="banner-slot">
+          <AlertBanner variant="warning">{t.printer.none}</AlertBanner>
+        </div>
+      )}
+
+      {/* 인쇄 결과는 화면 맨 위 띠 자리에 선다(사용자 지시 2026-09-17). */}
+      <PrintResult
+        reports={reports}
+        isPending={printFlow.isPending}
+        locationCodeOf={(targetId) =>
+          locationItems.find((each) => each.locationId === targetId)?.locationCode ??
+          String(targetId)
+        }
+      />
+
+      {/* `pop-fixed` — 윗줄은 제 높이만 쓴다. 남는 높이는 적재 위치 목록이 받는다(사용자 지시 2026-09-17). */}
+      <div className="pop-loclabel-top pop-fixed">
         <div className="pop-loclabel-warehouse">
           <span className="field-label">{t.warehouse.label}</span>
           {warehouses.isError ? (
@@ -230,8 +280,31 @@ export const PopLocationLabelScreen = () => {
       </div>
 
       <section className="pop-loclabel-list" aria-label={t.location.heading}>
+        <div className="pop-loclabel-list-head">
+          <h2 className="pane-title">{t.location.heading}</h2>
+          {/* 이 쪽의 적재 위치를 한 번에 고르거나 푼다(사용자 지시 2026-09-17). */}
+          {warehouseId !== null && locationItems.length > 0 && (
+            <Button
+              type="button"
+              variant="outlined"
+              size="xl"
+              className="pop-loclabel-select-all"
+              onClick={() => {
+                const pageIds = locationItems.map((each) => each.locationId);
+                setSelectedIds((current) =>
+                  isPageAllSelected
+                    ? current.filter((id) => !pageIds.includes(id))
+                    : [...new Set([...current, ...pageIds])],
+                );
+                setReports(null);
+              }}
+            >
+              {isPageAllSelected ? t.location.clearSelection : t.location.selectAll}
+            </Button>
+          )}
+        </div>
         {warehouseId === null ? (
-          <p className="field-note">{t.location.awaitingWarehouse}</p>
+          <p className="field-note pop-loclabel-empty">{t.location.awaitingWarehouse}</p>
         ) : locations.isError ? (
           <>
             <AlertBanner variant="error">{t.location.loadFailed}</AlertBanner>
@@ -257,22 +330,55 @@ export const PopLocationLabelScreen = () => {
         ) : (
           <>
             <Table
-              selectable
-              /* 화면 안에서는 숫자가 진실이고, 표의 선택 축은 문자열이다 — 경계에서만 옮긴다. */
-              selectedIds={selectedIds.map(String)}
-              onSelectionChange={(ids) => {
-                setSelectedIds(ids.map(Number));
-                setReports(null);
-              }}
+              /*
+               * ⭐ **체크 칸 대신 줄 오른쪽 [선택]으로 고른다**(사용자 지시 2026-09-17). 장갑 낀 손에는
+               *    작은 체크 칸보다 단추가 낫다. 누를 때마다 고르기·풀기가 바뀌고, 고른 줄은 채운 단추다.
+               *    모든 열은 머리·값 모두 가운데 정렬이다.
+               */
               getRowId={(row) => String(row.locationId)}
               columns={[
-                { key: 'locationCode', header: t.location.columnCode },
-                { key: 'locationName', header: t.location.columnName },
+                { key: 'locationCode', header: t.location.columnCode, align: 'center' },
+                { key: 'locationName', header: t.location.columnName, align: 'center' },
                 {
                   key: 'state',
-                  header: t.location.columnIssued,
+                  header: t.location.columnState,
+                  align: 'center',
+                  /* 모든 줄에 사용 여부를 적는다 — 사용은 초록(success), 미사용은 빨강(error)(omf-all-around#11). */
                   render: (row) =>
-                    row.isActive ? null : <Chip status="warning">{t.location.inactive}</Chip>,
+                    row.isActive ? (
+                      <Chip status="success">{t.location.active}</Chip>
+                    ) : (
+                      <Chip status="error">{t.location.inactive}</Chip>
+                    ),
+                },
+                {
+                  key: 'pick',
+                  header: '',
+                  align: 'center',
+                  width: '10rem',
+                  render: (row) => {
+                    const isSelected = selectedIds.includes(row.locationId);
+
+                    return (
+                      <Button
+                        type="button"
+                        variant={isSelected ? 'filled' : 'outlined'}
+                        size="xl"
+                        className="pop-loclabel-pick"
+                        aria-pressed={isSelected}
+                        onClick={() => {
+                          setSelectedIds((current) =>
+                            isSelected
+                              ? current.filter((id) => id !== row.locationId)
+                              : [...current, row.locationId],
+                          );
+                          setReports(null);
+                        }}
+                      >
+                        {t.location.pick}
+                      </Button>
+                    );
+                  },
                 },
               ]}
               rows={locationItems}
@@ -281,15 +387,6 @@ export const PopLocationLabelScreen = () => {
           </>
         )}
       </section>
-
-      <PrintResult
-        reports={reports}
-        isPending={printFlow.isPending}
-        locationCodeOf={(targetId) =>
-          locationItems.find((each) => each.locationId === targetId)?.locationCode ??
-          String(targetId)
-        }
-      />
 
       {/*
        * ⛔ **못 물은 것은 조용히 잠그지 않는다.** 이 조회가 실패하면 발행이 막히는데, 사유가
@@ -311,7 +408,6 @@ export const PopLocationLabelScreen = () => {
       )}
 
       <div className="pop-action-bar pop-loclabel-actions">
-        <p className="field-note">{t.location.selectedCount(selectedIds.length)}</p>
         {guard === 'tooMany' && <p className="field-note">{t.location.tooMany(MAX_TARGETS)}</p>}
         {/* 「묻는 중」도 말한다 — 잠깐이라도 단추가 잠기는 까닭이 보여야 한다. */}
         {guard === 'summaryLoading' && <p className="field-note">{t.issue.checkingHistory}</p>}
@@ -360,7 +456,13 @@ interface PrintResultProps {
  *    어느 자리가 안 나왔는지 모르면 작업자는 선반 앞에서 라벨을 세어 봐야 한다.
  */
 const PrintResult = ({ reports, isPending, locationCodeOf }: PrintResultProps) => {
-  if (isPending) return <AlertBanner variant="info">{t.print.pending}</AlertBanner>;
+  if (isPending) {
+    return (
+      <section className="pop-loclabel-print-result pop-fixed" aria-label={t.print.heading}>
+        <AlertBanner variant="info">{t.print.pending}</AlertBanner>
+      </section>
+    );
+  }
   if (reports === null || reports.length === 0) return null;
 
   /*
@@ -375,7 +477,7 @@ const PrintResult = ({ reports, isPending, locationCodeOf }: PrintResultProps) =
   const unreported = reports.filter((each) => each.attempt.kind !== 'noBridge' && !each.reported);
 
   return (
-    <section className="pop-loclabel-print-result" aria-label={t.print.heading}>
+    <section className="pop-loclabel-print-result pop-fixed" aria-label={t.print.heading}>
       <AlertBanner variant={failures.length > 0 ? 'warning' : 'success'}>
         {t.print.summary(printed, failures.length)}
       </AlertBanner>

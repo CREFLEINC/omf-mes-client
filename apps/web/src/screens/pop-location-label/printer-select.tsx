@@ -1,22 +1,12 @@
-import { AlertBanner, Button, Chip } from '@crefle/web-ui';
+import { Button, Chip } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 
+import { PopPrinterStatus } from '../../patterns/pop-printer-status';
 import { PopSelect as Select } from '../../patterns/pop-select';
 import { popTouchClass } from '../../patterns/pop-touch';
 import type { Printer } from './types';
 
 const t = messages.popLocationLabel.printer;
-
-/**
- * 상태 값을 **색으로만** 옮긴다. 문구는 서버가 준 `statusMessage` 를 그대로 쓴다 — 화면이
- * `status` 로 한국어를 지어내면 서버가 값을 늘렸을 때 화면만 모르는 문구가 생긴다.
- */
-const CHIP_STATUS: Record<string, 'success' | 'warning' | 'error'> = {
-  READY: 'success',
-  BUSY: 'warning',
-  OFFLINE: 'error',
-  ERROR: 'error',
-};
 
 export interface PrinterSelectProps {
   printers: Printer[];
@@ -63,10 +53,23 @@ export const PrinterSelect = ({
   /* 조회 중에는 아무것도 단정하지 않는다 — 「없음」으로 잠깐 보이면 그 사이 오해가 생긴다. */
   if (isLoading) return null;
 
+  /*
+   * 없다는 경고는 화면 맨 위 띠 자리가 말한다(사용자 지시 2026-09-18 · omf-all-around#11) —
+   * 여기서 또 말하면 같은 문장이 두 번 선다. 칸은 원래대로 두고(라벨 + 고를 것이 없는 선택칸),
+   * 「고르지 않으면 서버 기본 프린터로」 안내는 싣지 않는다 — 프린터가 없을 때는 사실이 아니다.
+   */
   if (printers.length === 0) {
     return (
       <div className="pop-loclabel-printer">
-        <AlertBanner variant="warning">{t.none}</AlertBanner>
+        <span className="field-label">{t.label}</span>
+        <Select
+          aria-label={t.label}
+          size="xl"
+          value={null}
+          disabled
+          options={[]}
+          onChange={onChange}
+        />
       </div>
     );
   }
@@ -90,9 +93,10 @@ export const PrinterSelect = ({
       {selected === null ? (
         <span className="field-note">{t.unselected}</span>
       ) : (
-        <Chip status={CHIP_STATUS[selected.status] ?? 'warning'}>
-          {selected.statusMessage ?? t.noStatusMessage}
-        </Chip>
+        <PopPrinterStatus
+          status={selected.status}
+          text={selected.statusMessage ?? t.noStatusMessage}
+        />
       )}
     </div>
   );

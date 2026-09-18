@@ -599,7 +599,7 @@ describe('실물 카운트 화면', () => {
     const fields = await screen.findAllByLabelText(/실물 수량 입력/);
     await user.click(fields[0] as HTMLInputElement);
 
-    const pad = () => screen.getByRole('button', { name: '7' }).closest('.physical-count__keypad');
+    const pad = () => screen.getByRole('button', { name: '7' }).closest('.docked-pad');
 
     expect(pad()?.textContent).toContain('ABC-123');
     /* 첫 줄에서는 앞으로 갈 곳이 없다. */
@@ -639,7 +639,7 @@ describe('실물 카운트 화면', () => {
     await user.click(await screen.findByLabelText(QTY_LABEL));
 
     const pad = (await screen.findByRole('button', { name: '7' })).closest(
-      '.physical-count__keypad',
+      '.docked-pad',
     );
 
     expect(pad?.textContent).toContain(LOT_NO);

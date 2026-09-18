@@ -244,6 +244,19 @@ describe('PqcInspectionScreen — 대상을 받는 방식', () => {
     expect(await screen.findByText(t.detail.nothingSelected)).toBeInTheDocument();
   });
 
+  /* ⭐ 대상이 없어도 화면 뼈대(세 구획·하단 버튼)는 잠긴 채 선다(사용자 지시 2026-09-17). */
+  it('대상이 없어도 세 구획과 잠긴 하단 버튼을 보인다', async () => {
+    renderScreen('/');
+
+    expect(await screen.findByText(t.detail.nothingSelected)).toBeInTheDocument();
+    expect(screen.getByRole('region', { name: t.measurements.heading })).toBeInTheDocument();
+    expect(screen.getByRole('region', { name: t.result.heading })).toBeInTheDocument();
+    expect(screen.getByRole('region', { name: t.pad.keypadLabel })).toBeInTheDocument();
+    expect(screen.queryByText(t.measurements.noItems)).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: t.result.save })).toBeDisabled();
+    expect(screen.getByRole('button', { name: t.result.confirm })).toBeDisabled();
+  });
+
   /*
    * ⚠ 검사 시점의 기준 버전이 고정된다 — 감추면 어느 기준으로 잰 값인지 알 수 없다.
    * §3 도면이 이 값을 **좌측 구획 머리**에 「기준 IP-ABC-123 v2」 형태로 둔다.
@@ -311,6 +324,18 @@ describe('PqcInspectionScreen — 대상을 받는 방식', () => {
    * ⭐ **샘플은 «비율(%)»이다.** 「30 이 개인가 %인가」를 묻던 미결(§8 #5)이 2026-09-02 에
    * 닫혔다 — 계약이 「샘플 비율(%)이 정본」으로 못박았다. 화면은 그 답을 단위와 함께 낸다(A-8).
    */
+  it('사번을 모르면 맨 위 공용 띠로 말하고 확정이 잠긴다', async () => {
+    renderScreen(undefined, undefined, undefined, undefined, undefined, undefined, null);
+
+    expect(await screen.findByText(messages.popChrome.workerMissing)).toBeInTheDocument();
+    expect(
+      screen.queryByText(
+        '사번이 확인되지 않아 검사 결과를 저장할 수 없습니다. 작업자 지정을 먼저 마치세요.',
+      ),
+    ).not.toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: t.result.confirm })).toBeDisabled();
+  });
+
   it('샘플을 비율로 보인다', async () => {
     renderScreen();
 
@@ -479,8 +504,8 @@ describe('PqcInspectionScreen — 검사 항목 구획', () => {
 
 describe('PqcInspectionScreen — 숫자 키패드', () => {
   /*
-   * ⚠ **키패드에 소수점 키가 없다**(설계 §3 도면 · 사용자 지시 2026-09-10) — 패드는 숫자만
-   *   넣는다. 손으로 치는 길은 그대로라 소수는 자판으로 들어온다.
+   * ⚠ **수량 칸에는 소수점·부호가 없다**(설계 §3 도면 · 사용자 지시 2026-09-10). 부호·소수점 줄은
+   *   측정치 칸일 때만 켜진다(사용자 지시 2026-09-17) — 공용 키패드 안에는 여전히 소수점 키가 없다.
    */
   it('직접 입력과 화면 키패드가 같은 수량 초안을 고친다', async () => {
     renderScreen();
@@ -500,6 +525,41 @@ describe('PqcInspectionScreen — 숫자 키패드', () => {
     await userEvent.click(within(keypad).getByRole('button', { name: '5' }));
 
     expect(rejected).toHaveValue('15');
+
+    const extra = screen.getByRole('group', { name: t.pad.extraKeysLabel });
+    expect(within(extra).getByRole('button', { name: t.pad.decimal })).toBeDisabled();
+    expect(within(extra).getByRole('button', { name: t.pad.negative })).toBeDisabled();
+  });
+
+  /* ⭐ 숫자 측정치도 이 패드로 넣는다 — 키오스크 단말에는 운영체제 키보드가 없다(사용자 지시 2026-09-17). */
+  it('측정치 칸을 누르면 패드가 그 칸에 들어가고 부호·소수점을 받는다', async () => {
+    renderScreen();
+
+    /* 숫자형 항목의 칸만 패드에 잇는다 — 문자형 항목은 숫자 패드로 넣을 수 없다. */
+    const values = await screen.findAllByLabelText(t.measurements.columns.value);
+    let value: HTMLElement | undefined;
+    for (const candidate of values) {
+      await userEvent.click(candidate);
+      if (screen.queryByText(t.pad.noTarget) === null) {
+        value = candidate;
+        break;
+      }
+    }
+    if (value === undefined) throw new Error('숫자형 측정치 칸이 없다');
+
+    const keypad = screen.getByRole('group', { name: t.pad.keypadLabel });
+    const extra = screen.getByRole('group', { name: t.pad.extraKeysLabel });
+
+    await userEvent.click(within(extra).getByRole('button', { name: t.pad.negative }));
+    await userEvent.click(within(keypad).getByRole('button', { name: '1' }));
+    await userEvent.click(within(extra).getByRole('button', { name: t.pad.decimal }));
+    await userEvent.click(within(keypad).getByRole('button', { name: '5' }));
+
+    expect(value).toHaveValue('-1.5');
+    expect(within(extra).getByRole('button', { name: t.pad.decimal })).toBeDisabled();
+
+    await userEvent.click(within(extra).getByRole('button', { name: t.pad.positive }));
+    expect(value).toHaveValue('1.5');
   });
 });
 

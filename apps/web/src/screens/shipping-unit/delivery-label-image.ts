@@ -13,17 +13,34 @@
  *   (고정폭 ↔ 비례폭) 한쪽 기준으로 잡으면 다른 단말에서 글이 옆 칸으로 흘러넘친다.
  *
  * ⚠ 자는 다른 라벨과 같다(`patterns/label/geometry` — 203dpi · 80×30mm).
+ *
+ * ⭐ **종이는 이 점판을 TSPL `BITMAP` 으로 통째 보낸다**(사용자 지시 2026-09-17 ·
+ *    `patterns/label/tspl-bitmap`). 그림 인쇄 경로는 드라이버 대지를 거쳐 크기가 틀어지고
+ *    뒤집혔고, 내장 글꼴은 이름(한글)을 못 찍는다. 그래서 자리는 자재·생산 LOT 라벨이 실기에서
+ *    맞춘 **안전 여백**(왼 1.5 · 오 6.5 · 위 2 · 아래 6 mm) 안에 둔다.
  */
 
-import { createBitmap, drawText, fitText, strokeRect, type LabelBitmap } from '../../patterns/label/bitmap';
+import {
+  createBitmap,
+  drawText,
+  fitText,
+  strokeRect,
+  type LabelBitmap,
+} from '../../patterns/label/bitmap';
 import { foldRows } from '../../patterns/label/fold';
 import { LABEL_HEIGHT, LABEL_WIDTH, mm } from '../../patterns/label/geometry';
 import { toPng } from '../../patterns/label/png';
 import { drawQr } from '../../patterns/label/qr';
+import { toTsplBitmap } from '../../patterns/label/tspl-bitmap';
 import { drawLabelText, fitLabelText } from '../../patterns/label/text';
 
-const PAD = mm(2);
-const LEFT = PAD + mm(1.5);
+/*
+ * 안전 여백 — `pop-material-lot-label/label-tspl` 의 LEFT·RIGHT·TOP·BOTTOM 과 같은 값이다.
+ * ⛔ HT800 이 오른쪽·아래로 치우쳐 찍어 맞춘 값이라 늘리거나 줄이지 않는다.
+ */
+const LEFT = mm(1.5);
+const RIGHT = mm(6.5);
+const TOP = mm(2);
 const BORDER = 2;
 
 /** QR 이 차지하는 한 변. 다른 POP 라벨과 같다. */
@@ -36,11 +53,12 @@ const QR_BOX = mm(12);
  *   21 이라 9 가 남는다. 줄을 더 늘리려면 서식 높이부터 다시 봐야 한다.
  */
 const ROWS = {
-  head: 8,
-  unit: 36,
-  customer: 72,
-  shipTo: 100,
-  item: [128, 156, 184],
+  head: TOP,
+  unit: TOP + 26,
+  customer: TOP + 60,
+  shipTo: TOP + 84,
+  /* 마지막 줄 아랫변이 189 — 아래 여백(6 mm, 192 부터) 안에서 끝난다. */
+  item: [TOP + 108, TOP + 130, TOP + 152],
 } as const;
 
 const SCALE_HEAD = 3;
@@ -86,18 +104,22 @@ export interface DeliveryLabelFields {
 }
 
 /** 라벨 한 장의 점판. PNG 로 바꾸기 전 모습이라 시험이 점 단위로 들여다볼 수 있다. */
-export const drawDeliveryLabel = (fields: DeliveryLabelFields): LabelBitmap => {
+export const drawDeliveryLabel = (
+  fields: DeliveryLabelFields,
+  { outline = true }: { outline?: boolean } = {},
+): LabelBitmap => {
   const bitmap = createBitmap(LABEL_WIDTH, LABEL_HEIGHT);
 
-  strokeRect(bitmap, 0, 0, LABEL_WIDTH, LABEL_HEIGHT, BORDER);
+  /* 라벨지 가장자리 — 그림에서 여백을 눈으로 재라고 둔다. ⛔ 종이(TSPL)에는 싣지 않는다. */
+  if (outline) strokeRect(bitmap, 0, 0, LABEL_WIDTH, LABEL_HEIGHT, BORDER);
 
-  const qrX = LABEL_WIDTH - PAD - QR_BOX;
-  const qrY = PAD + mm(1);
+  const qrX = LABEL_WIDTH - RIGHT - QR_BOX;
+  const qrY = TOP;
   /* ⭐ QR 은 **출하 단위 번호 원문**이다 — 역추적이 이 값에서 시작한다(설계 §2). */
   drawQr(bitmap, fields.shippingUnitNo, qrX, qrY, QR_BOX);
 
   const besideQr = qrX - LEFT - mm(2);
-  const fullWidth = LABEL_WIDTH - LEFT - PAD;
+  const fullWidth = LABEL_WIDTH - LEFT - RIGHT;
 
   /** 코드·번호 줄 — **점 글꼴**이 찍는다. 또렷하고 시험이 점 단위로 되읽을 수 있다. */
   const codeLine = (text: string, y: number, scale: number, available: number): void => {
@@ -155,9 +177,13 @@ export const drawDeliveryLabel = (fields: DeliveryLabelFields): LabelBitmap => {
   return bitmap;
 };
 
-/** 라벨 한 장의 PNG 바이트. 셸 `rendition.save` 가 받는 것이 이것이다. */
+/** 라벨 한 장의 PNG 바이트. 미리보기와 단말 저장(`rendition.keep`)이 쓴다. */
 export const renderDeliveryLabel = (fields: DeliveryLabelFields): Uint8Array<ArrayBuffer> =>
   toPng(drawDeliveryLabel(fields));
+
+/** 라벨 한 장의 TSPL 바이트 — 종이는 이것으로 나간다. 테두리는 싣지 않는다. */
+export const buildDeliveryLabelTspl = (fields: DeliveryLabelFields): Uint8Array<ArrayBuffer> =>
+  toTsplBitmap(drawDeliveryLabel(fields, { outline: false }));
 
 /** 값이 없을 때 쓰는 표식 — 화면이 같은 말을 쓰도록 내보낸다. */
 export { UNKNOWN as DELIVERY_LABEL_UNKNOWN };

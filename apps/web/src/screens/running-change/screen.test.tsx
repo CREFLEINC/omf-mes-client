@@ -261,18 +261,14 @@ const fillReplacement = async (user: ReturnType<typeof userEvent.setup>): Promis
   await user.click(await screen.findByRole('option', { name: /ITEM-SAMPLE/ }));
 
   /*
-   * 수량은 **키패드로** 넣는다(공유계약 D-4) — 칸을 누르면 창이 뜨고, 거기서 눌러 [ 확인 ]으로
-   * 넘긴다. 단말에는 자판이 없어 이것이 현장에서 실제로 가능한 유일한 경로다.
+   * 수량은 **키패드로** 넣는다(공유계약 D-4) — 수량 칸 아래에 늘 서 있는 키패드를 누르면 값이
+   * 칸에 곧바로 들어간다. 단말에는 자판이 없어 이것이 현장에서 실제로 가능한 유일한 경로다.
    */
-  await user.click(screen.getByRole('textbox', { name: t.replace.qtyLabel }));
-
-  const pad = await screen.findByRole('dialog');
+  const pad = screen.getByRole('group', { name: t.pad.keypadLabel });
 
   for (const digit of ['1', '2', '0']) {
     await user.click(within(pad).getByRole('button', { name: digit }));
   }
-
-  await user.click(within(pad).getByRole('button', { name: t.pad.confirm }));
 };
 
 beforeEach(() => {
@@ -342,40 +338,18 @@ describe('러닝체인지 화면 — 읽기', () => {
  * 넣을 방법이 없다.
  */
 describe('러닝체인지 화면 — 수량 키패드', () => {
-  it('수량 칸을 누르면 키패드가 뜨고, 취소하면 닫힌 채로 있다', async () => {
+  it('키패드가 화면에 늘 서 있고, 누른 값이 수량 칸에 곧바로 들어간다', async () => {
     const user = userEvent.setup();
     renderScreen();
 
-    await user.click(await screen.findByRole('textbox', { name: t.replace.qtyLabel }));
+    const qty = await screen.findByRole('textbox', { name: t.replace.qtyLabel });
+    /* ⭐ 칸을 누르지 않아도 키패드가 있다 — 팝업을 걷었다(사용자 지시 2026-09-17). */
+    const pad = screen.getByRole('group', { name: t.pad.keypadLabel });
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
 
-    const pad = await screen.findByRole('dialog');
-    await user.click(within(pad).getByRole('button', { name: t.pad.cancel }));
-
-    await waitFor(() => {
-      expect(screen.getByRole('dialog', { hidden: true })).not.toBeVisible();
-    });
-
-    /*
-     * ⛔ **포커스가 창을 열지 않는다.** 창이 닫히면 포커스가 수량 칸으로 돌아오는데, 그
-     *    포커스를 열림 신호로 삼았더니 [ 취소 ]·[ 확인 ]이 창을 다시 띄워 **닫을 수 없는
-     *    창**이 됐다(사용자 지적 2026-09-07). 여기서 그 신호를 그대로 재현한다.
-     */
-    fireEvent.focus(screen.getByRole('textbox', { name: t.replace.qtyLabel }));
-
-    expect(screen.getByRole('dialog', { hidden: true })).not.toBeVisible();
-  });
-
-  it('키패드로 넣은 값이 수량 칸에 들어간다', async () => {
-    const user = userEvent.setup();
-    renderScreen();
-
-    await user.click(await screen.findByRole('textbox', { name: t.replace.qtyLabel }));
-
-    const pad = await screen.findByRole('dialog');
     await user.click(within(pad).getByRole('button', { name: '7' }));
-    await user.click(within(pad).getByRole('button', { name: t.pad.confirm }));
 
-    expect(screen.getByRole('textbox', { name: t.replace.qtyLabel })).toHaveValue('7');
+    expect(qty).toHaveValue('7');
   });
 });
 
@@ -420,7 +394,7 @@ describe('러닝체인지 화면 — 단말 게이팅', () => {
     expect(screen.getByText(t.header.terminalUnknown)).toBeInTheDocument();
   });
 
-  it('사번을 모르면 사유를 말하고 막는다', async () => {
+  it('사번을 모르면 맨 위 공용 띠로 말하고 막는다', async () => {
     renderScreen(
       {},
       {
@@ -431,7 +405,12 @@ describe('러닝체인지 화면 — 단말 게이팅', () => {
       },
     );
 
-    expect(await screen.findByText(t.disabled.workerMissing)).toBeInTheDocument();
+    expect(await screen.findByText(messages.popChrome.workerMissing)).toBeInTheDocument();
+    expect(
+      screen.queryByText(
+        '사번이 확인되지 않아 교체를 등록할 수 없습니다. 사번 인증을 먼저 하세요.',
+      ),
+    ).not.toBeInTheDocument();
     expect(submitButton()).toBeDisabled();
   });
 });

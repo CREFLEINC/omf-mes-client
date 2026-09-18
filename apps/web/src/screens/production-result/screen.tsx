@@ -7,6 +7,7 @@ import { useEffect, useId, useRef, useState } from 'react';
 import { OutboxStallBanner } from '../../patterns/outbox-stall-banner';
 import { soleProcessIdOf, usePopIdentity } from '../../patterns/pop-identity';
 import { PopSelect as Select } from '../../patterns/pop-select';
+import { PopWorkerMissingBanner } from '../../patterns/pop-worker-missing-banner';
 import { PopWorkerTag } from '../../patterns/pop-worker-tag';
 import { useResultEntry } from './entry-context';
 import { useFlowGates } from './flow-gating';
@@ -976,6 +977,9 @@ export const ProductionFlowScreen = () => {
       </header>
 
       {outbox.isStalled && <OutboxStallBanner onRetry={outbox.retryNow} />}
+
+      {/* ⭐ 사번 미확인은 모든 POP 화면이 같은 맨 위 띠로 말한다(사용자 지시 2026-09-17). */}
+      <PopWorkerMissingBanner workerNo={entry.workerNo} />
 
       {/*
        * ⛔ **작업지시 없이 들어온 화면을 말없이 비워 두지 않는다**(#1151). 공통 [화면 이동]은

@@ -94,8 +94,9 @@ export class LabelRenditionNotReadyError extends Error {
  * 주인이 출하 단위로 옮겨가며 그 코드가 걷혔다(SHIP-UNIT-01). **POP 이 출하 단위 상세의 값으로
  * 그린다**(`screens/shipping-unit/delivery-label-image`). 적어 두면 요청이 나가고 422 가 돌아와,
  * 사용자는 「발행이 실패했다」로 읽는다.
- * ⚠ `LOCATION_LABEL` 도 서버가 그리지만 그것을 부르는 화면이 아직 없어 적지 않는다 — 이 목록은
- * 「서버가 그릴 수 있는 것」이 아니라 **「이 앱이 실제로 받는 것」**이다.
+ * ⭐ `LOCATION_LABEL` 은 서버가 그리고, **그것을 부르는 화면이 섰다**(`P-06-01` · #1312 · 서버
+ * 구현 확인 2026-09-17). 화면이 없던 동안 적지 않았던 것이고, 이 목록은 「서버가 그릴 수 있는
+ * 것」이 아니라 **「이 앱이 실제로 받는 것」**이라 그 구분이 그대로 유효하다.
  * ⭐ `PRODUCTION_LOT_LABEL` 은 서버가 지원한다(실측 2026-09-15 —
  * `omf-mes-server/src/app/document-issue/document-issue.controller.ts:81-83` 의
  * `GET /app/document-issues/{documentIssueLogId}/rendition`). 없던 시절의 가정을 남겨 두어
@@ -105,6 +106,7 @@ export class LabelRenditionNotReadyError extends Error {
 export const READY_RENDITION_DOCUMENT_TYPES = [
   'MATERIAL_LOT_LABEL',
   'PRODUCTION_LOT_LABEL',
+  'LOCATION_LABEL',
 ] as const;
 
 export type ReadyRenditionDocumentType = (typeof READY_RENDITION_DOCUMENT_TYPES)[number];

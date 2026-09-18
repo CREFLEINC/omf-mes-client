@@ -29,7 +29,11 @@ const pathOf = (request: Request): string => new URL(request.url).pathname;
 
 const SHIPMENT = { shipmentId: 501, shipmentNo: 'SH-20260917-0003', unassignedPackedBoxCount: 4 };
 
-const partner = (code: string, name: string) => ({ partnerId: 1, partnerCode: code, partnerName: name });
+const partner = (code: string, name: string) => ({
+  partnerId: 1,
+  partnerCode: code,
+  partnerName: name,
+});
 
 const content = (itemCode: string, lotNo: string) => ({
   itemId: 11,
@@ -75,6 +79,8 @@ interface Options {
   seen?: { path: string; query: string; method: string; ifMatch: string | null; body: unknown }[];
   /** `:add-box`·상세가 돌려줄 ETag 차례. */
   etags?: string[];
+  /** 셸 문맥의 사번. 주지 않으면 `IDENTITY` 의 것. */
+  workerNo?: string | null;
 }
 
 const renderScreen = (options: Options = {}) => {
@@ -214,7 +220,11 @@ const renderScreen = (options: Options = {}) => {
   ];
 
   return renderWithProviders(
-    <PopIdentityProvider value={IDENTITY}>
+    <PopIdentityProvider
+      value={
+        options.workerNo === undefined ? IDENTITY : { ...IDENTITY, workerNo: options.workerNo }
+      }
+    >
       <ShippingUnitScreen />
     </PopIdentityProvider>,
     { fetch: createStubFetch(routes), route: ROUTE },
@@ -287,6 +297,20 @@ describe('P-04-05 출하 단위 구성', () => {
     expect(field).toHaveAttribute('placeholder', t.scan.locked);
   });
 
+  /* ⭐ 사번 미확인은 모든 POP 화면이 같은 맨 위 띠로 말한다(사용자 지시 2026-09-17). */
+  it('사번이 없으면 맨 위에 공용 사번 미확인 띠가 선다', async () => {
+    renderScreen({ workerNo: null });
+
+    expect(await screen.findByText(messages.popChrome.workerMissing)).toBeInTheDocument();
+  });
+
+  it('사번이 있으면 사번 미확인 띠가 없다', async () => {
+    renderScreen();
+
+    await screen.findByRole('combobox', { name: t.entry.label });
+    expect(screen.queryByText(messages.popChrome.workerMissing)).not.toBeInTheDocument();
+  });
+
   it('단위를 만들면 스캔 칸이 열린다', async () => {
     const user = userEvent.setup();
     renderScreen();
@@ -323,6 +347,39 @@ describe('P-04-05 출하 단위 구성', () => {
     expect(await screen.findByText(text)).toBeInTheDocument();
   });
 
+  /* ⭐ 스캐너가 Enter 를 붙이지 않아도 포장 라벨이 읽힌다(사용자 지시 2026-09-17). */
+  it('포장 라벨은 Enter 없이 스캐너 속도로 들어오면 등록한다', async () => {
+    const user = userEvent.setup();
+    const seen: Options['seen'] = [];
+    renderScreen({ seen });
+
+    await openUnit(user);
+    await waitFor(() => {
+      expect(screen.getByLabelText(t.scan.label)).toBeEnabled();
+    });
+    await user.type(screen.getByLabelText(t.scan.label), 'HU-2026-000070');
+
+    await waitFor(() => {
+      expect(seen.some((call) => call.path.endsWith(':add-box'))).toBe(true);
+    });
+  });
+
+  /* ⚠ 스캐너가 끊긴 짧은 조각은 Enter 없이 제출하지 않는다(리뷰 M4 · 6자 미만). */
+  it('짧은 조각은 스캐너 속도로 들어와도 Enter 없이 등록하지 않는다', async () => {
+    const user = userEvent.setup();
+    const seen: Options['seen'] = [];
+    renderScreen({ seen });
+
+    await openUnit(user);
+    await waitFor(() => {
+      expect(screen.getByLabelText(t.scan.label)).toBeEnabled();
+    });
+    await user.type(screen.getByLabelText(t.scan.label), 'HU-1');
+    await new Promise((resolve) => setTimeout(resolve, 400));
+
+    expect(seen.some((call) => call.path.endsWith(':add-box'))).toBe(false);
+  });
+
   it('모르는 사유는 서버가 준 말을 그대로 보인다', async () => {
     const user = userEvent.setup();
     renderScreen({ reject: { code: 'NEW_RULE', field: 'x', message: '아직 모르는 규칙입니다' } });
@@ -333,14 +390,16 @@ describe('P-04-05 출하 단위 구성', () => {
     });
     await user.type(screen.getByLabelText(t.scan.label), 'HU-1{Enter}');
 
-    expect(await screen.findByText(t.rejection.spoken('아직 모르는 규칙입니다'))).toBeInTheDocument();
+    expect(
+      await screen.findByText(t.rejection.spoken('아직 모르는 규칙입니다')),
+    ).toBeInTheDocument();
   });
 
   /*
    * ⛔⛔ **상자가 없으면 마감하지 않는다**(설계 §4-6 — 서버가 400). 화면이 먼저 막아, 되돌릴
    *    수 없는 조작을 눌렀다가 거절당하는 일을 없앤다.
    */
-  it('상자가 하나도 없으면 마감이 잠기고 사유를 말한다', async () => {
+  it('상자가 하나도 없으면 마감이 잠긴다', async () => {
     const user = userEvent.setup();
     renderScreen();
 
@@ -349,13 +408,14 @@ describe('P-04-05 출하 단위 구성', () => {
     await waitFor(() => {
       expect(screen.getByRole('button', { name: t.close.action })).toBeDisabled();
     });
-    expect(screen.getByText(t.close.needsBox)).toBeInTheDocument();
   });
 
   /* ⛔ 되돌릴 수 없다 — 확인창이 그 사실을 «먼저» 말한다. */
-  it('마감을 누르면 되돌릴 수 없다는 말이 먼저 선다', async () => {
+  /* ⭐ 되묻지 않고 바로 마감한다(사용자 지시 2026-09-17). */
+  it('마감을 누르면 되묻지 않고 바로 마감 요청이 나간다', async () => {
     const user = userEvent.setup();
-    renderScreen({ details: [unit({ boxes: [box(7001, 'HU-1', 1)], boxCount: 1 })] });
+    const seen: Options['seen'] = [];
+    renderScreen({ seen, details: [unit({ boxes: [box(7001, 'HU-1', 1)], boxCount: 1 })] });
 
     await openUnit(user);
     await waitFor(() => {
@@ -363,7 +423,9 @@ describe('P-04-05 출하 단위 구성', () => {
     });
     await user.click(screen.getByRole('button', { name: t.close.action }));
 
-    expect(await screen.findByText(t.close.confirmBody)).toBeInTheDocument();
+    await waitFor(() => {
+      expect(seen.some((call) => call.path.endsWith(':close'))).toBe(true);
+    });
   });
 
   /*
@@ -395,7 +457,6 @@ describe('P-04-05 출하 단위 구성', () => {
       expect(screen.getByRole('button', { name: t.close.action })).toBeEnabled();
     });
     await user.click(screen.getByRole('button', { name: t.close.action }));
-    await user.click(await screen.findByRole('button', { name: t.close.confirmAction }));
 
     await waitFor(() => {
       expect(seen.some((call) => call.path.endsWith(':close'))).toBe(true);
@@ -415,7 +476,11 @@ describe('P-04-05 출하 단위 구성', () => {
     const user = userEvent.setup();
     const seen: Options['seen'] = [];
     const save = vi.fn(async () => 'syn://printed');
-    Object.defineProperty(window, 'pop', { configurable: true, value: { rendition: { save } } });
+    const keep = vi.fn(async () => 'SYN/kept');
+    Object.defineProperty(window, 'pop', {
+      configurable: true,
+      value: { rendition: { save, keep } },
+    });
 
     renderScreen({
       seen,
@@ -430,7 +495,6 @@ describe('P-04-05 출하 단위 구성', () => {
       expect(screen.getByRole('button', { name: t.close.action })).toBeEnabled();
     });
     await user.click(screen.getByRole('button', { name: t.close.action }));
-    await user.click(await screen.findByRole('button', { name: t.close.confirmAction }));
 
     await waitFor(() => {
       expect(save).toHaveBeenCalled();
@@ -442,15 +506,29 @@ describe('P-04-05 출하 단위 구성', () => {
       targets: [{ targetTypeCode: 'SHIPPING_UNIT', targetId: 9001 }],
     });
 
-    /* POP 이 그린 것은 언제나 그림이다 — PNG 머리 여덟 바이트로 확인한다. */
+    /*
+     * ⭐ 종이는 80 × 30 mm TSPL 로 나간다 — 점판을 BITMAP 으로 통째 싣는다(사용자 지시 2026-09-17).
+     *    그림(PNG)은 인쇄 없이 단말에 따로 남긴다.
+     */
     const [bytes, , , format] = save.mock.calls[0] as unknown as [
       Uint8Array,
       string,
       string,
       string,
     ];
-    expect(format).toBe('png');
-    expect([...bytes.subarray(0, 8)]).toEqual([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+    expect(format).toBe('tspl');
+    const command = Array.from(bytes, (byte) => String.fromCharCode(byte)).join('');
+    expect(command.startsWith('SIZE 80 mm,30 mm\r\n')).toBe(true);
+    expect(command).toContain('BITMAP 0,0,80,240,0,');
+
+    const [kept, , , keptFormat] = keep.mock.calls[0] as unknown as [
+      Uint8Array,
+      string,
+      string,
+      string,
+    ];
+    expect(keptFormat).toBe('png');
+    expect([...kept.subarray(0, 8)]).toEqual([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
 
     /* ⛔ 종이가 나왔으면 그 사실을 서버에 보고한다 — 보고가 없으면 회차가 PENDING 으로 남는다. */
     await waitFor(() => {

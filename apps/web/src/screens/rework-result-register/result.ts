@@ -18,6 +18,18 @@ export const readQuantity = (value: string): number => {
   return Number.isFinite(parsed) && parsed >= 0 ? parsed : 0;
 };
 
+/**
+ * 키보드로 친 수량을 키패드와 같은 규칙으로 거른다(사용자 지시 2026-09-17).
+ * 숫자만 남기고, 소수점은 단위가 허락할 때 첫 하나만 둔다. 앞자리 0 은 턴다(`011` → `11`).
+ */
+export const toTypedQuantity = (value: string, allowDecimal: boolean): string => {
+  const digits = value.replace(allowDecimal ? /[^\d.]/gu : /\D/gu, '');
+  const [whole = '', ...rest] = digits.split('.');
+  const joined = rest.length === 0 ? whole : `${whole}.${rest.join('')}`;
+
+  return joined.replace(/^0+(?=\d)/u, '');
+};
+
 export const quantityTotal = (drafts: QuantityDrafts): number =>
   Object.values(drafts).reduce((sum, value) => sum + readQuantity(value), 0);
 

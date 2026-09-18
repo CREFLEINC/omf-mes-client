@@ -26,8 +26,6 @@ export interface ConfirmLockInput {
   shipmentId: number | null;
   /** 확정 본문이 실어야 하는 창고. 출하 전표에서 온다. */
   warehouseId: number | null;
-  /** 담을 포장이 서버에 열려 있는가. 담긴 줄보다 «늦게» 선다. */
-  hasOpenUnit: boolean;
   /** 그 포장을 지금 만드는 중인가. 「모르는 것」과 「막힌 것」을 가른다. */
   isOpeningUnit: boolean;
   handlingUnitTypeCode: string;
@@ -62,10 +60,14 @@ export const confirmLockReason = (input: ConfirmLockInput): string | undefined =
   if (input.handlingUnitTypeCode === '') return t.locks.noType;
   if (input.lines.length === 0) return t.locks.noContents;
   /*
-   * ⛔ **담긴 줄이 있다고 포장이 열린 것은 아니다**(#1093). 담는 것은 화면이 즉시 하고 포장은
-   *    서버가 만들어 준다 — 그 사이와 실패했을 때 확정이 조용히 되돌아왔다.
+   * ⭐ **포장이 아직 없어도 확정을 막지 않는다**(사용자 지시 2026-09-18 · omf-all-around#5).
+   *    담는 동안 만든 포장이 실패하면 「포장을 만들지 못했습니다」로 잠갔는데, 담긴 것이 있는데
+   *    확정을 못 하게 되고 그 문구가 LOT 거부 안내와 겹쳐 보였다. 이제 확정이 포장이 없으면
+   *    그 자리에서 만들고 담는다(`screen.tsx` 확정 처리) — 실패는 확정 실패 안내 자리에 뜬다.
+   *    ⛔ 되돌려 이 잠금을 되살리지 않는다.
+   *    만드는 «중»에만 잠근다 — 두 번 만들지 않기 위해서다(문구는 하단에 적지 않는다).
    */
-  if (!input.hasOpenUnit) return input.isOpeningUnit ? t.locks.unitOpening : t.locks.unitMissing;
+  if (input.isOpeningUnit) return t.locks.unitOpening;
 
   return undefined;
 };

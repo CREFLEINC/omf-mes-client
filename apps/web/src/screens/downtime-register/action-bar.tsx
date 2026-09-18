@@ -77,8 +77,9 @@ export const resolveSaveBlock = ({
 
 export const describeSaveBlock = (block: SaveBlock): string | null => {
   switch (block) {
+    /* ⭐ 사번 미확인은 모든 POP 화면이 같은 문구로 말한다(사용자 지시 2026-09-17). */
     case 'worker-missing':
-      return t.errors.workerMissing;
+      return messages.popChrome.workerMissing;
     case 'equipment-missing':
       return t.errors.equipmentMissing;
     case 'gate-denied':

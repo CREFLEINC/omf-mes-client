@@ -624,6 +624,22 @@ async function main(): Promise<void> {
   // ⛔ **형식은 서버가 정한다** — `rendition?format=png|pdf`(라벨은 이미지, 성적서는 문서).
   //    셸은 받은 것을 그대로 쓰고 확장자만 맞춘다. 내용을 다시 만들지 않는다(설계 결정 18 —
   //    클라이언트가 레이아웃을 그리면 단말마다 출력물이 달라진다).
+  // 인쇄 없이 **파일로만** 남긴다(사용자 지시 2026-09-17). 종이는 TSPL 로 나가는 라벨의
+  // 그림을 단말에 함께 남겨, 무엇이 찍혔어야 하는지 사람이 열어 볼 수 있게 한다.
+  //
+  // ⛔ 경로는 `rendition:save` 와 같이 메인이 정한다. 형식·내용 검사도 같은 `printer.print` 를 탄다.
+  ipcMain.handle(
+    'rendition:keep',
+    async (_e, bytes: Uint8Array, label: string, now: string, format: unknown) => {
+      if (!isRenditionFormat(format)) throw new UnknownFormatError(format);
+
+      const filePath = join(renditionDir, toRenditionFileName(label, now, format));
+      await printer.print({ bytes, label, format }, { kind: 'file', filePath });
+
+      return filePath;
+    },
+  );
+
   ipcMain.handle(
     'rendition:save',
     async (_e, bytes: Uint8Array, label: string, now: string, format: unknown) => {

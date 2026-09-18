@@ -1,17 +1,37 @@
 import { Button, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { useEffect, useRef, useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type ChangeEvent, type FormEvent } from 'react';
 
 import { normalizeScanCode } from './packing-draft';
 
 const t = messages.packingResult;
 
+/** 스캐너는 글자를 이 간격보다 빠르게 붙여 보낸다. 사람 손은 이보다 느리다. */
+const SCAN_KEY_GAP_MS = 50;
+/** 마지막 글자 뒤 이만큼 조용하면 스캔이 끝난 것으로 본다. */
+const SCAN_IDLE_MS = 150;
+/**
+ * Enter 없이 자동 제출할 최소 글자 수(리뷰 M4). 스캐너가 끊긴 조각·롤오버 두세 글자가 제출되어
+ * 담던 줄을 흔들지 않게 한다. 출하번호·생산LOT 번호는 이보다 길다. 짧은 값은 Enter 로 낸다.
+ */
+const SCAN_AUTO_MIN_LENGTH = 6;
+
 export interface ScanFieldProps {
   label: string;
   /** 조회가 나가는 중인가. 그동안 같은 코드가 두 번 나가지 않게 잠근다. */
   isScanning: boolean;
-  /** 아직 읽을 차례가 아닌가. 잠기면 그 사유를 함께 낸다 — 감추지 않는다. */
+  /**
+   * 아직 읽을 차례가 아닌가. 잠기면 그 사유를 칸 안에 낸다. 빈 문자열이면 문구 없이 잠근다 —
+   * 사유를 화면의 다른 자리(사번 미확인 띠)가 이미 말할 때다.
+   */
   lockReason?: string;
+  /** 잠기지 않았을 때 빈 칸 안에 흐리게 적을 안내. 잠긴 사유가 있으면 그쪽이 먼저다. */
+  hint?: string;
+  /**
+   * Enter 없이도 스캔을 받는가. 스캐너가 Enter 를 붙이지 않게 설정돼 있어도 읽힌다
+   * (사용자 지시 2026-09-17 — 생산LOT QR). 손으로 치는 속도로 들어온 글자는 여전히 Enter 를 기다린다.
+   */
+  autoSubmit?: boolean;
   onScan: (code: string) => void;
 }
 
@@ -25,10 +45,29 @@ export interface ScanFieldProps {
  * ⚠ 이 화면은 칸이 **둘**이다(납품라벨·생산LOT). 부품 하나를 두 번 세우되 **포커스는 각자
  * 자기 칸으로** 돌아간다 — 한 칸이 두 스캔을 받으면 어느 것을 읽는 중인지 사라진다.
  */
-export const ScanField = ({ label, isScanning, lockReason, onScan }: ScanFieldProps) => {
+export const ScanField = ({
+  label,
+  isScanning,
+  lockReason,
+  hint,
+  autoSubmit = false,
+  onScan,
+}: ScanFieldProps) => {
   const [value, setValue] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
   const locked = lockReason !== undefined;
+  const lastInputAt = useRef(0);
+  /** 지금 칸의 글자가 전부 스캐너 속도로 들어왔는가. 한 글자라도 느리면 손 입력으로 본다. */
+  const isBurst = useRef(true);
+  const idleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const cancelIdle = (): void => {
+    if (idleTimer.current !== null) clearTimeout(idleTimer.current);
+    idleTimer.current = null;
+  };
+
+  /* 칸이 사라지면 걸어 둔 자동 제출도 거둔다. */
+  useEffect(() => cancelIdle, []);
 
   /*
    * 조회가 끝나면 포커스를 되돌린다. ⚠ **잠긴 칸으로는 옮기지 않는다** — 읽을 차례가 아닌
@@ -38,14 +77,13 @@ export const ScanField = ({ label, isScanning, lockReason, onScan }: ScanFieldPr
     if (!isScanning && !locked) inputRef.current?.focus();
   }, [isScanning, locked]);
 
-  const submit = (event: FormEvent<HTMLFormElement>): void => {
-    /* ⛔ 기본 제출을 막는다 — `<form>`의 기본 GET 제출은 읽은 코드를 주소로 올리고 화면을 새로 띄운다. */
-    event.preventDefault();
+  const submitCode = (raw: string): void => {
+    cancelIdle();
 
     /* ⚠ 제출 단추가 없어진 지금 이 줄이 유일한 방어다 — 겹친 조회가 나가는 것을 막는다. */
     if (isScanning || locked) return;
 
-    const code = normalizeScanCode(value);
+    const code = normalizeScanCode(raw);
     if (code === null) return;
 
     /* **보내기 전에 비운다** — 조회가 끝난 뒤 비우면 그사이 읽힌 코드가 앞 코드 뒤에 이어 붙는다. */
@@ -53,6 +91,35 @@ export const ScanField = ({ label, isScanning, lockReason, onScan }: ScanFieldPr
     onScan(code);
 
     inputRef.current?.focus();
+  };
+
+  const submit = (event: FormEvent<HTMLFormElement>): void => {
+    /* ⛔ 기본 제출을 막는다 — `<form>`의 기본 GET 제출은 읽은 코드를 주소로 올리고 화면을 새로 띄운다. */
+    event.preventDefault();
+    submitCode(value);
+  };
+
+  /* 최신 판을 부른다 — 타이머가 잡아 둔 옛 렌더의 잠금·조회 상태로 제출하지 않게 한다. */
+  const submitCodeRef = useRef(submitCode);
+  submitCodeRef.current = submitCode;
+
+  const change = (event: ChangeEvent<HTMLInputElement>): void => {
+    const next = event.target.value;
+    const now = performance.now();
+
+    if (value === '') isBurst.current = true;
+    else if (next.length < value.length || now - lastInputAt.current > SCAN_KEY_GAP_MS) {
+      isBurst.current = false;
+    }
+    lastInputAt.current = now;
+    setValue(next);
+
+    cancelIdle();
+    if (autoSubmit && isBurst.current && next.trim().length >= SCAN_AUTO_MIN_LENGTH) {
+      idleTimer.current = setTimeout(() => {
+        submitCodeRef.current(next);
+      }, SCAN_IDLE_MS);
+    }
   };
 
   return (
@@ -94,10 +161,8 @@ export const ScanField = ({ label, isScanning, lockReason, onScan }: ScanFieldPr
            *    구획이 한 줄 커지고(§3 이 이 구획에 88 만 준다), 무엇 때문에 못 치는지가 칸에서
            *    떨어져 선다. 잠긴 칸은 어차피 비어 있으므로 그 자리가 비어 있을 이유가 없다.
            */
-          placeholder={lockReason}
-          onChange={(event) => {
-            setValue(event.target.value);
-          }}
+          placeholder={lockReason ?? hint}
+          onChange={change}
         />
         {/*
          * 스캔 실패의 대체 경로(공유계약 D-3). **칸으로 포커스를 옮기는 것이 전부다** — 코드는

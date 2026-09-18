@@ -422,7 +422,8 @@ describe('PopMaterialLotLabelScreen — 입하 목록', () => {
   it('입하 목록 조회에 실패하면 사유와 다시 시도 경로를 함께 보인다', async () => {
     renderScreen({ receiptsFail: true });
 
-    expect(await screen.findByRole('alert')).toHaveTextContent('입하 목록을 불러오지 못했습니다.');
+    // 사번 미확인 띠도 alert 라 문구로 찾는다 — 이 묶음에는 사번 공급자가 없다.
+    expect(await screen.findByText('입하 목록을 불러오지 못했습니다.')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: '다시 불러오기' })).toBeInTheDocument();
   });
 
@@ -430,7 +431,8 @@ describe('PopMaterialLotLabelScreen — 입하 목록', () => {
   it('품목 조회에 실패해도 목록을 반쪽으로 내지 않는다', async () => {
     renderScreen({ linesFail: true });
 
-    expect(await screen.findByRole('alert')).toHaveTextContent('입하 목록을 불러오지 못했습니다.');
+    // 사번 미확인 띠도 alert 라 문구로 찾는다 — 이 묶음에는 사번 공급자가 없다.
+    expect(await screen.findByText('입하 목록을 불러오지 못했습니다.')).toBeInTheDocument();
     expect(screen.queryByRole('table')).not.toBeInTheDocument();
   });
 
@@ -496,18 +498,16 @@ describe('PopMaterialLotLabelScreen — 채번 대상', () => {
    * 이 화면 묶음에는 **사번 공급자가 없다** — 셸이 채우는 값이라 기본이 「모름」이다.
    * 쓰기가 그 헤더를 요구하므로 감추지 않고 비활성 + 사유로 둔다(공유계약 F-1·F-6).
    */
-  it('사번을 모르면 등록·인쇄를 감추지 않고 비활성으로 두며 사유를 밝힌다', async () => {
+  it('사번을 모르면 등록·인쇄를 감추지 않고 비활성으로 두며 사유를 맨 위 띠로 밝힌다', async () => {
     const { user } = renderScreen();
 
     await selectFirst(user);
     const target = screen.getByLabelText('채번 대상');
 
     expect(await within(target).findByRole('button', { name: '등록·인쇄' })).toBeDisabled();
-    /*
-     * 구획 폭을 그대로 쓴다 — `.field-note`의 20rem 제한에 갇히면 가로 여유가 남는데도
-     * 두 줄로 접힌다(실기에서 드러났다).
-     */
-    expect(within(target).getByText(/사번을 확인한 뒤에/u)).toHaveClass('pop-wide-note');
+    // 사유는 화면 맨 위 공용 띠 하나로만 말한다(사용자 지시 2026-09-17).
+    expect(screen.getByText(messages.popChrome.workerMissing)).toBeInTheDocument();
+    expect(within(target).queryByText(/사번을 확인한 뒤에/u)).not.toBeInTheDocument();
   });
 
   /** 되돌릴 수 없는 조작이라 터치 등급이 높다. */

@@ -30,6 +30,8 @@ export interface PalletQuantity {
 
 export interface TargetPaneProps {
   selectedCount: number;
+  /** 고른 라인마다 한 줄 — 발행되는 QR 한 장씩이다. 회차는 그 라인의 최근 회차. */
+  selectedLines: readonly { key: string; lineNo: number; lotLabel: string; seq: number | null }[];
   unit: IssueUnit;
   onUnitChange: (unit: IssueUnit) => void;
   /** 파렛트 대상 후보. 고른 라인이 하나로 정해졌을 때만 채워진다. */
@@ -87,6 +89,7 @@ export interface TargetPaneProps {
 
 export const TargetPane = ({
   selectedCount,
+  selectedLines,
   unit,
   onUnitChange,
   pallets,
@@ -150,7 +153,7 @@ export const TargetPane = ({
             : t.reissue.serverAsked;
 
   return (
-    <Card bordered className="pop-section" aria-label={t.target.sectionLabel}>
+    <Card bordered className="pop-section pop-giqr-target-pane" aria-label={t.target.sectionLabel}>
       <Card.Body>
         <h2 className="pane-title">{t.target.sectionLabel}</h2>
 
@@ -165,7 +168,25 @@ export const TargetPane = ({
          * ⚠ **파렛트 코드 경로는 지우지 않았다.** 서버가 축을 갖추면 이 구획만 되살리면 된다 —
          *   지워 두면 그때 규칙을 처음부터 다시 세워야 한다. 지금은 **진입만 막는다.**
          */}
-        <p>{selectedCount === 0 ? t.target.none : t.target.selectedCount(selectedCount)}</p>
+        {/*
+         * ⭐ **무엇이 몇 장 나가는지를 라인·LOT·회차로 적는다**(사용자 지시 2026-09-17). 「2개 라인」만
+         *    적으면 어떤 LOT 이 나가는지 알 수 없었다. 고르기 전에는 전처럼 「—」 한 줄이다.
+         */}
+        {selectedLines.length === 0 ? (
+          <p>{selectedCount === 0 ? t.target.none : t.target.selectedCount(selectedCount)}</p>
+        ) : (
+          <ul className="pop-giqr-target-lines">
+            {selectedLines.map((line) => (
+              <li key={line.key}>
+                <span className="pop-giqr-target-line-no">{t.target.lineLabel(line.lineNo)}</span>
+                <span className="pop-giqr-target-lot">{line.lotLabel}</span>
+                <span className="pop-giqr-target-seq">{`${t.target.seqLabel} ${
+                  line.seq === null ? t.target.seqUnknown : String(line.seq)
+                }`}</span>
+              </li>
+            ))}
+          </ul>
+        )}
 
         {/*
          * 파렛트 대상 — **라인이 하나로 정해져야 목록이 선다**(스펙 §5-2). 여러 줄을 고른
@@ -213,7 +234,9 @@ export const TargetPane = ({
           </div>
         )}
 
-        <p>{`${t.target.seqLabel} ${issuedSeq === null ? t.target.seqUnknown : String(issuedSeq)}`}</p>
+        {selectedLines.length === 0 && (
+          <p>{`${t.target.seqLabel} ${issuedSeq === null ? t.target.seqUnknown : String(issuedSeq)}`}</p>
+        )}
 
         {/*
          * 재발행 사유 — **고른 라인 중 이미 발행된 것이 있을 때만 선다.** 최초 발행에 사유를

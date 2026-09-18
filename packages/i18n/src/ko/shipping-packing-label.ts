@@ -24,7 +24,7 @@ export const shippingPackingLabel = {
     paneLabel: '대상',
     columns: {
       /** 줄 번호. 서버 값이 아니라 **보이는 차례**다 — 대상을 말로 가리킬 때 쓴다. */
-      no: 'No.',
+      no: 'NO',
       target: '대상',
       status: '상태',
       lastIssued: '최근 발행',

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { buildMaterialLotLabel, escapeTspl } from './label-tspl';
+import { buildLotLabel, buildLotLabelBytes, buildMaterialLotLabel, escapeTspl } from './label-tspl';
 
 /** 합성값이다 — 실 운영 값을 쓰지 않는다(공개 저장소 경계). */
 const FIELDS = {
@@ -114,5 +114,20 @@ describe('buildMaterialLotLabel', () => {
 describe('escapeTspl', () => {
   it('⛔ 따옴표·역슬래시가 명령을 가르지 못하게 하고 찍을 수 없는 글자는 ? 로 바꾼다', () => {
     expect(escapeTspl('A"B\\C한')).toBe('A\\"B\\\\C?');
+  });
+});
+
+/* 한글 줄 그림은 위치 라벨만 켠다(omf-all-around#9) — 자재·생산 LOT 은 결정 17 그대로다. */
+describe('buildLotLabelBytes — 기본은 그림을 끈다', () => {
+  it('선택 인자가 없으면 buildLotLabel 을 인코딩한 것과 바이트까지 같다(한글은 ?)', () => {
+    const rows = [
+      { point: 8, content: 'MATERIAL LOT  #1' },
+      { point: 10, content: 'ITEM 자재품번' },
+    ];
+
+    expect(Array.from(buildLotLabelBytes(rows, 'SYN-LOT'))).toEqual(
+      Array.from(new TextEncoder().encode(buildLotLabel(rows, 'SYN-LOT'))),
+    );
+    expect(buildMaterialLotLabel(FIELDS)).not.toContain('BITMAP');
   });
 });

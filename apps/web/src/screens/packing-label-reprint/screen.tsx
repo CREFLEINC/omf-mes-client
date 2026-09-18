@@ -3,6 +3,7 @@ import { messages } from '@omf-mes/i18n';
 import { useId, useMemo, useState } from 'react';
 
 import { soleProcessIdOf, usePopIdentity } from '../../patterns/pop-identity';
+import { PopWorkerMissingBanner } from '../../patterns/pop-worker-missing-banner';
 import { isServerBaselineBuild } from '../../patterns/pop-server-baseline';
 import { useReprintEntry } from './entry-context';
 import { ErrorBanner } from './error-banner';
@@ -146,7 +147,6 @@ export const PackingLabelReprintScreen = () => {
 
   const blockedReason = ((): string | null => {
     if (entry.handlingUnitId === null) return t.entry.missingHandlingUnit;
-    if (workerNo === null) return t.entry.missingWorker;
     if (gate.verdict !== 'allowed') return t.gate[gate.verdict];
 
     return null;
@@ -186,6 +186,16 @@ export const PackingLabelReprintScreen = () => {
           </Chip>
         </div>
       </header>
+
+      {/* ⭐ 포장 단위를 못 받았다는 말은 본문 맨 위 띠(아이콘+문구)로 선다(사용자 지시 2026-09-17). */}
+      {entry.handlingUnitId === null && (
+        <div className="banner-slot">
+          <AlertBanner variant="warning">{t.entry.missingHandlingUnit}</AlertBanner>
+        </div>
+      )}
+
+      {/* ⭐ 사번 미확인은 모든 POP 화면이 같은 맨 위 띠로 말한다(사용자 지시 2026-09-17). */}
+      <PopWorkerMissingBanner workerNo={workerNo} />
 
       {handlingUnit.isError && (
         <div className="banner-slot">
@@ -272,6 +282,8 @@ export const PackingLabelReprintScreen = () => {
             reasonRequired={needsReason(selected)}
             reasonServerError={reissue.fieldErrors.reissueReasonCode ?? null}
             blockedReason={blockedReason}
+            showBlockedReason={entry.handlingUnitId !== null}
+            workerMissing={workerNo === null}
             isSubmitting={reissue.isSaving || printRunner.state.phase === 'sending'}
             onSubmit={submit}
           />

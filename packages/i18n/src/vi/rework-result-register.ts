@@ -74,7 +74,10 @@ export const reworkResultRegister: Translated<typeof ko.reworkResultRegister> = 
   lotHint: 'Kết quả vẫn ở LOT gốc, không tạo LOT mới.',
   defectCode: 'Mã lỗi',
   defectCodePlaceholder: 'Không chọn được',
-  defectCodeReason: 'Chỉ chọn được sau khi tiêu chuẩn lưu mã lỗi được xác nhận.',
+  defectCodeReason: 'Nếu có lỗi, hãy nhập mã lỗi.',
+  defectCodeLoadFailed: 'Không tải được mã lỗi. Vẫn có thể lưu mà không cần mã.',
+  defectCodeEmpty: 'Chưa có mã lỗi nào được đăng ký. Vẫn có thể lưu mà không cần mã.',
+  defectCodeRetry: 'Tải lại',
   reset: 'Nhập lại',
   save: 'Lưu kết quả',
   queued: 'Đã lưu kết quả.',
@@ -84,6 +87,5 @@ export const reworkResultRegister: Translated<typeof ko.reworkResultRegister> = 
   gateChecking: 'Đang kiểm tra chức năng máy trạm.',
   gateDenied: 'Máy trạm này không nhập kết quả được.',
   gateUnavailable: 'Không kiểm tra được chức năng máy trạm nên không lưu được.',
-  workerMissing: 'Chưa xác nhận mã nhân viên của công nhân nên không lưu được.',
   pending: (count: number) => `Chờ gửi ${count} mục`,
 };

@@ -81,6 +81,9 @@ export const pqcInspection = {
   pad: {
     title: '숫자 키패드',
     keypadLabel: '수량 키패드',
+    extraKeysLabel: '부호·소수점',
+    negative: '음수',
+    positive: '양수',
     decimal: '소수점',
     backspace: '한 자 지움',
     clear: '지움',
@@ -123,7 +126,6 @@ export const pqcInspection = {
     save: '임시 저장',
     saved: '저장했습니다.',
     saveBlockedByInvalid: '수량 칸을 고친 뒤 저장할 수 있습니다.',
-    saveBlockedByWorker: '사번이 확인되지 않아 검사 결과를 저장할 수 없습니다. 작업자 지정을 먼저 마치세요.',
 
     judgment: '종합 판정',
     judgmentPlaceholder: '판정을 고르세요',

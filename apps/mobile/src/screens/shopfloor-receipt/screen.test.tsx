@@ -556,6 +556,77 @@ describe('생산창고 입고 화면', () => {
   });
 
   /*
+   * 숫자판은 내용 위에 뜬다. 바깥 요소에 `docked-pad-open` 이 붙어야 그만큼 아래가 비어,
+   * 적는 칸이 판 위로 올라온다. 안 붙으면 칸이 판에 통째로 덮여 무엇을 치는지 안 보인다
+   * (실기 2026-09-17 - 두 칸 모두 덮여 있었다).
+   */
+  it('숫자판이 서면 아래를 비울 표시를 붙인다', async () => {
+    const user = userEvent.setup();
+    const { container } = mount();
+    await screen.findByLabelText(/출고 QR 스캔/);
+    scan(ISSUE_NO);
+
+    await user.click(await receivedField());
+
+    expect(container.querySelector('.docked-pad-open')).not.toBeNull();
+  });
+
+  /*
+   * 이 화면에는 적는 묶음이 둘이다 - 전표에서 온 투입 라인과 눈으로 재는 호퍼 잔량. 이전·다음이
+   * 묶음을 넘어가면 전표 수량을 적던 사람이 호퍼 잔량 칸에 이어 적게 되고, 적힌 값이 어느
+   * 장부로 가는지가 갈린다.
+   */
+  it('이전·다음은 투입 라인과 호퍼 사이를 넘어가지 않는다', async () => {
+    const user = userEvent.setup();
+    mount();
+    await screen.findByLabelText(/출고 QR 스캔/);
+    scan(ISSUE_NO);
+
+    /* 호퍼 줄이 선 뒤에 잰다 - 줄이 없으면 넘어갈 곳도 없어 넘어가는지가 드러나지 않는다. */
+    await user.click(await screen.findByRole('combobox', { name: '설비' }));
+    await user.click(await screen.findByRole('option', { name: /EQ-01/ }));
+    await screen.findByRole('textbox', { name: /LOT-B 실측 잔량/ });
+
+    await user.click(await receivedField());
+    expect(await screen.findByRole('button', { name: '앞 라인' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: '다음 라인' })).toBeDisabled();
+
+    await user.click(await screen.findByRole('textbox', { name: /LOT-A 실측 잔량/ }));
+    expect(await screen.findByRole('button', { name: '앞 호퍼' })).toBeDisabled();
+    expect(screen.queryByRole('button', { name: '앞 라인' })).toBeNull();
+
+    await user.click(screen.getByRole('button', { name: '다음 호퍼' }));
+    expect(await screen.findByText(/LOT-B 실측 잔량/)).toBeTruthy();
+    expect(screen.getByRole('button', { name: '다음 호퍼' })).toBeDisabled();
+  });
+
+  /*
+   * 옮긴 자리에 커서가 없으면 어디에 적히는지 화면이 말하지 않는다. 숫자판을 누르면 값은
+   * 들어가는데 테두리는 앞 호퍼에 남아 있어, 잘못 적고도 모른다.
+   *
+   * 투입 라인이 아니라 호퍼로 잰다 - 전표에 출고 라인이 하나뿐이라 다음 라인은 잠겨 있다.
+   */
+  it('다음 호퍼로 옮기면 포커스도 그 칸으로 간다', async () => {
+    const user = userEvent.setup();
+    mount();
+    await screen.findByLabelText(/출고 QR 스캔/);
+    scan(ISSUE_NO);
+
+    await user.click(await screen.findByRole('combobox', { name: '설비' }));
+    await user.click(await screen.findByRole('option', { name: /EQ-01/ }));
+
+    const first = await screen.findByRole('textbox', { name: /LOT-A 실측 잔량/ });
+    const second = screen.getByRole('textbox', { name: /LOT-B 실측 잔량/ });
+    await user.click(first);
+
+    await user.click(screen.getByRole('button', { name: '다음 호퍼' }));
+
+    await waitFor(() => {
+      expect(document.activeElement).toBe(second);
+    });
+  });
+
+  /*
    * 자재가 라인에 들어오는 이 시점에 사람이 눈으로 잰다. 여기서 적지 않으면 호퍼에 무엇이
    * 얼마나 남았는지가 어디에도 남지 않는다.
    */

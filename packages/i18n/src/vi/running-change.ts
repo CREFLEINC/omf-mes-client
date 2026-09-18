@@ -56,7 +56,6 @@ export const runningChange: Translated<typeof ko.runningChange> = {
   },
 
   notices: {
-    equipmentKeepsRunning: 'Không dừng thiết bị.',
     noWorkOrderSplit: 'W/O không bị tách. Chỉ LOT sản xuất được tách theo từng bản chụp BOM.',
   },
 
@@ -100,19 +99,16 @@ export const runningChange: Translated<typeof ko.runningChange> = {
     reasonFailed: 'Không tải được lý do thay thế. Sẽ đăng ký không kèm lý do.',
     reasonLoading: 'Đang tải lý do thay thế.',
     submit: 'Đăng ký thay thế',
+    qtySubmit: 'Đưa vào',
     recorded: 'Đã ghi nhận thay thế. Khi gửi lên máy chủ, số chờ gửi sẽ giảm.',
     rejected: 'Máy chủ không nhận lần thay thế này.',
   },
 
   pad: {
-    title: 'Số lượng đưa vào',
     keypadLabel: 'Bàn phím số lượng',
     backspace: 'Xóa một ký tự',
     clear: 'Xóa',
     decimal: 'Dấu thập phân',
-    confirm: 'Xác nhận',
-    cancel: 'Hủy',
-    empty: '—',
   },
 
   disabled: {
@@ -120,10 +116,6 @@ export const runningChange: Translated<typeof ko.runningChange> = {
     denied: 'Máy trạm này không đưa vật tư vào được. Hãy hỏi người phụ trách.',
     unavailable: 'Không kiểm tra được quyền thay thế. Lát nữa hãy thử lại.',
     unidentified: 'Chưa xác nhận máy trạm nên không đăng ký thay thế được.',
-    workerMissing:
-      'Chưa xác nhận mã nhân viên nên không đăng ký thay thế được. Hãy xác nhận mã nhân viên trước.',
-    workOrderMissing: 'Không có lệnh sản xuất nên không đăng ký thay thế được.',
-    partMissing: 'Phải quét LOT linh kiện mới rồi mới đăng ký được.',
     targetMissing: 'Phải chọn đối tượng thay thế rồi mới đăng ký được.',
   },
 

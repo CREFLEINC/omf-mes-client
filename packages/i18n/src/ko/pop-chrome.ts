@@ -8,6 +8,11 @@ export const popChrome = {
   screenNav: '화면 이동',
   /** 머리줄의 사번 놓기 단추. */
   userSwitch: '사용자 전환',
+  /**
+   * 사번을 확인하지 못했을 때 맨 위 경고 띠(`patterns/pop-worker-missing-banner`). 모든 POP 화면이
+   * 같은 말을 쓴다(사용자 지시 2026-09-17).
+   */
+  workerMissing: '사번이 확인되지 않았습니다. 사번 인증을 먼저 진행해주세요.',
   /** 선택 단추가 따로 이름을 받지 않았을 때의 기본 이름. */
   select: '선택',
 

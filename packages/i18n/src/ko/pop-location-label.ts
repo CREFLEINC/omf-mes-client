@@ -10,12 +10,11 @@ export const popLocationLabel = {
 
   entry: {
     workerLabel: '사번',
-    missingWorker: '사번이 확인되지 않아 발행할 수 없습니다. 사번 인증을 먼저 하세요.',
   },
 
   warehouse: {
     label: '창고',
-    placeholder: '창고를 고르세요',
+    placeholder: '창고를 선택해 주세요',
     loadFailed: '창고 목록을 불러오지 못했습니다. 연결을 확인한 뒤 다시 시도하세요.',
     /** 쓰는 창고가 하나도 없다. 마스터가 비어 있다는 뜻이라 이 화면에서 할 수 있는 일이 없다. */
     none: '쓸 수 있는 창고가 없습니다. 창고 마스터를 먼저 등록하세요.',
@@ -25,20 +24,26 @@ export const popLocationLabel = {
   location: {
     heading: '적재 위치',
     /** 창고를 고르기 전. 목록 자리를 비워 두지 않고 무엇을 더 해야 하는지 적는다. */
-    awaitingWarehouse: '창고를 고르면 그 창고의 적재 위치가 나옵니다.',
+    awaitingWarehouse: '창고를 먼저 선택해주세요.',
     empty: '이 창고에는 등록된 적재 위치가 없습니다.',
     loading: '적재 위치를 불러오는 중',
     loadFailed: '적재 위치를 불러오지 못했습니다. 연결을 확인한 뒤 다시 시도하세요.',
     retry: '다시 시도',
     columnCode: '위치 코드',
     columnName: '위치명',
-    columnIssued: '발행',
+    /** 사용 여부 열(사용자 지시 2026-09-18 · omf-all-around#11 — 「발행」에서 바꿈). */
+    columnState: '상태',
     /** 아직 한 번도 안 찍은 자리. 「0회」보다 「처음」이 현장에서 빨리 읽힌다. */
     notIssued: '처음',
     issuedCount: (count: number) => `${String(count)}회`,
+    /** 모든 줄에 사용 여부를 적는다(사용자 문구 그대로 · omf-all-around#11 — 「사용」 / 「미사용」). */
+    active: '사용',
     /** 사용 중지된 위치도 찍는다 — 선반은 그 자리에 그대로 있다. */
-    inactive: '사용 중지',
-    selectedCount: (count: number) => `${String(count)}곳 선택`,
+    inactive: '미사용',
+    /** 줄 오른쪽 [선택]과 목록 머리의 전체 선택(사용자 지시 2026-09-17). */
+    pick: '선택',
+    selectAll: '전체 선택',
+    clearSelection: '선택 해제',
     /** 계약이 한 번에 받는 상한. 넘으면 전건이 실패하므로 미리 막는다. */
     tooMany: (max: number) => `한 번에 ${String(max)}곳까지 발행할 수 있습니다. 나눠서 찍으세요.`,
   },
@@ -48,7 +53,7 @@ export const popLocationLabel = {
     unknown: '프린터 목록을 확인하지 못했습니다',
     retry: '다시 시도',
     /** 프린터가 없어도 발행은 막지 않는다 — 기록과 인쇄는 다른 걸음이다. */
-    none: '이 단말에 등록된 프린터가 없습니다. 발행 기록은 남지만 라벨은 나오지 않습니다.',
+    none: '이 단말에 등록된 프린터가 없습니다. 발행 기록은 남지만 라벨 출력은 불가합니다.',
     unselected: '고르지 않으면 서버 기본 프린터로 나갑니다.',
     noStatusMessage: '상태를 알 수 없음',
   },
@@ -71,19 +76,18 @@ export const popLocationLabel = {
   },
 
   reissue: {
-    title: '다시 발행',
+    title: '재발행',
     /**
      * 이미 찍은 자리가 섞여 있다. **회차는 서버가 센다** — 화면은 물어서 알 뿐이다.
      */
     notice: (count: number) =>
-      `고른 곳 가운데 ${String(count)}곳은 이미 라벨을 찍었습니다. 다시 찍는 사유를 고르세요.`,
+      `선택한 항목 중 ${String(count)}곳은 이미 라벨이 발행되었습니다. 다시 발행할 사유를 선택해 주세요.`,
     reason: '재발행 사유',
-    reasonPlaceholder: '사유를 고르세요',
+    /** 필수 안내를 칸 안에 함께 적는다(사용자 지시 2026-09-18) — 칸 아래 줄은 두지 않는다. */
+    reasonPlaceholder: '사유를 선택하세요. 재발행 사유는 필수입니다.',
     reasonLoadFailed: '재발행 사유를 불러오지 못했습니다.',
-    confirm: '다시 발행',
+    confirm: '재발행',
     cancel: '취소',
-    /** 사유를 못 받으면 발행 자체를 열지 않는다 — 보내 봐야 서버가 거절한다. */
-    required: '재발행 사유를 골라야 발행할 수 있습니다.',
   },
 
   print: {

@@ -66,8 +66,10 @@ export const LotListPane = ({ lots, selectedLotId, uomCodeOf, onSelect }: LotLis
        * 「500 EA」가 한 줄로 서고 자릿수가 세로로 맞을 만큼 준다(사용자 지시 2026-09-10).
        * 남는 폭은 번호 열이 가져간다 — 번호는 줄여도 말줄임으로 읽히지만 수량은 접히면
        * 두 값처럼 읽힌다.
+       *
+       * ⭐ 번호 열을 줄이고 이 열을 넓힌다(사용자 지시 2026-09-17) — 140px 에서 표 폭의 45% 로.
        */
-      width: '140px',
+      width: '45%',
       /* 스펙 §3 이 이 자리를 「잔여 380 EA」로 그린다 — 수는 단위와 함께 읽힌다. */
       render: (lot) => {
         const uomCode = uomCodeOf(lot.uomId);

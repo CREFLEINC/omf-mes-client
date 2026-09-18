@@ -112,7 +112,7 @@ export const NotificationList = ({
 
   return (
     <Table
-      className="po-change-review-table"
+      className="po-change-review-table po-change-review-list"
       caption={<span className="po-change-review-table-caption">{t.panes.list}</span>}
       density="compact"
       columns={columns}

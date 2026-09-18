@@ -4,6 +4,7 @@ import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router';
 
 import { soleProcessIdOf, usePopIdentity } from '../../patterns/pop-identity';
+import { PopWorkerMissingBanner } from '../../patterns/pop-worker-missing-banner';
 import { PrecheckGate } from '../work-precheck-gate/gate';
 import { setWorkerSession, useWorkerSession } from '../../patterns/worker-session';
 import { ActionBar } from './action-bar';
@@ -255,7 +256,10 @@ export const WorkStartScreen = () => {
    * 시작·재개를 막는 사유. **순서가 뜻이다** — 단말이 못 하는 일이면 사번을 아무리 잘 넣어도
    * 열리지 않으므로 그 사실을 먼저 말한다.
    */
-  const block = ((): { code: 'notSelected' | 'alreadyOpen' | 'other'; text: string } | null => {
+  const block = ((): {
+    code: 'notSelected' | 'alreadyOpen' | 'workerMissing' | 'other';
+    text: string;
+  } | null => {
     /*
      * ⚠ **사유를 «코드»와 함께 낸다.** 배너를 세울지는 「아무것도 안 골랐다」인지로 갈리는데,
      *   그것을 번역 문구가 같은지로 판정하면 다른 사유가 같은 문장을 쓰게 되는 날 그 배너까지
@@ -279,7 +283,8 @@ export const WorkStartScreen = () => {
     if (gate.verdict === 'denied') return other(t.blocked.denied);
     /* ⛔ 오프라인은 큐가 아니라 거부다 — 사유와 다음 행동을 함께 보인다. */
     if (!isOnline) return other(t.blocked.offline);
-    if (confirmedNo === null) return other(t.blocked.workerMissing);
+    /* ⭐ 사번 사유는 이 띠에 적지 않는다 — 맨 위 공용 띠가 말한다(사용자 지시 2026-09-17). 잠금은 그대로. */
+    if (confirmedNo === null) return { code: 'workerMissing', text: '' };
     if (selected === null) return { code: 'notSelected', text: t.blocked.notSelected };
 
     if (openSession.isError) return other(t.resume.sessionLookupFailed);
@@ -443,6 +448,9 @@ export const WorkStartScreen = () => {
         isConnected={connectionVerdict}
       />
 
+      {/* ⭐ 사번 미확인은 모든 POP 화면이 같은 맨 위 띠로 말한다(사용자 지시 2026-09-17). */}
+      <PopWorkerMissingBanner workerNo={confirmedNo} />
+
       {/*
        * 막힘 사유 — **머리줄 바로 아래**에 선다.
        *
@@ -459,7 +467,7 @@ export const WorkStartScreen = () => {
        *    ② 목록이 긴 화면에서 사유가 화면 맨 아래에 있어, 「왜 안 눌리지」 하고 버튼을 먼저
        *    보게 된다. 머리줄 아래는 이 셸이 「지금 이 화면에 걸린 것」을 말해 온 자리다.
        */}
-      {block !== null && block.code !== 'notSelected' && (
+      {block !== null && block.code !== 'notSelected' && block.code !== 'workerMissing' && (
         <div className="banner-slot">
           {/*
            * ⭐ **[ 다시 확인 ]은 띠의 조작 칸에 선다**(사용자 지시 2026-09-11 · POP 공통).

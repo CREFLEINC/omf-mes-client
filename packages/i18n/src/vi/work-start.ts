@@ -43,7 +43,6 @@ export const workStart: Translated<typeof ko.workStart> = {
     inactive: 'Mã nhân viên này không còn làm việc.',
     lookupFailed: 'Không xác nhận được mã nhân viên. Hãy thử lại.',
     retry: 'Thử lại',
-    required: 'Chọn lệnh sản xuất: hãy nhập và xác nhận mã nhân viên trước.',
   },
 
   list: {
@@ -125,7 +124,6 @@ export const workStart: Translated<typeof ko.workStart> = {
 
     offline: 'Mất kết nối nên không bắt đầu được. Khi kết nối lại, danh sách sẽ tự tải lại.',
 
-    workerMissing: 'Bắt đầu sản xuất: hãy nhập và xác nhận mã nhân viên trước.',
     notSelected: 'Bắt đầu sản xuất: hãy chọn lệnh sản xuất trước.',
 
     alreadyOpen: 'Lệnh sản xuất này đang có công việc đang làm. Hãy làm tiếp công việc đó.',

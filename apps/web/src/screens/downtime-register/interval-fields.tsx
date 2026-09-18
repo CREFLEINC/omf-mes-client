@@ -159,8 +159,9 @@ export const IntervalFields = ({ draft, errors, onChange }: IntervalFieldsProps)
            *    ⛔ 되돌리려면 사용자에게 묻는다 — 스펙 값과 다른 것은 알고 한 것이다.
            */}
           <Button
-            variant="tonal"
+            variant="outlined"
             size="xl"
+            className="downtime-now"
             onClick={() => {
               onChange({ ...draft, startedAt: toTimeFieldDraft(new Date()) });
             }}
@@ -204,8 +205,9 @@ export const IntervalFields = ({ draft, errors, onChange }: IntervalFieldsProps)
             }}
           />
           <Button
-            variant="tonal"
+            variant="outlined"
             size="xl"
+            className="downtime-now"
             disabled={draft.stillOngoing}
             onClick={() => {
               onChange({ ...draft, endedAt: toTimeFieldDraft(new Date()) });

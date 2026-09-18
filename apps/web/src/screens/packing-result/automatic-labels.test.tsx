@@ -167,16 +167,16 @@ describe('AutomaticLabels', () => {
       expect(save).toHaveBeenCalled();
     });
 
-    /* POP 이 그린 것은 언제나 그림이다 — 명령형(TSPL)은 win32 의 RAW 자리로만 나간다. */
+    /* ⭐ 종이는 80 × 30 mm TSPL 로 나간다 — 그림은 라벨지와 크기가 어긋났다(사용자 지시 2026-09-17). */
     const [bytes, , , format] = save.mock.calls[0] as unknown as [
       Uint8Array,
       string,
       string,
       string,
     ];
-    expect(format).toBe('png');
-    /* PNG 머리 여덟 바이트 — 「무언가 보냈다」가 아니라 그림을 보냈는지를 묻는다. */
-    expect([...bytes.subarray(0, 8)]).toEqual([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+    expect(format).toBe('tspl');
+    /* 「무언가 보냈다」가 아니라 80 × 30 mm 대지를 선언한 명령을 보냈는지를 묻는다. */
+    expect(new TextDecoder().decode(bytes)).toMatch(/^SIZE 80 mm,30 mm\r\n/u);
 
     /*
      * ⛔⛔ **포장 라벨이 서버 렌디션보다 먼저 종이로 나갔다.** 포장 라벨이 그 경로를 다시
@@ -316,7 +316,7 @@ describe('AutomaticLabels', () => {
       );
 
       expect(await screen.findByText(t.reissueRequired(1))).toBeInTheDocument();
-      expect(screen.queryByText(t.complete)).not.toBeInTheDocument();
+      expect(screen.queryByText(/포장 라벨 출력 -/u)).not.toBeInTheDocument();
       expect(screen.getByRole('button', { name: t.openReissue })).toBeEnabled();
       expect(issued).toHaveLength(0);
     },

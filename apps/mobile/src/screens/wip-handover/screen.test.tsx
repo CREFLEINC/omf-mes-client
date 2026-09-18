@@ -295,6 +295,10 @@ describe('WIP 공정 이동 화면', () => {
     await user.click(await screen.findByRole('combobox', { name: '인계할 공정' }));
     await user.click(await screen.findByRole('option', { name: '조립 2호 (WO-2026-0027) · 배포' }));
 
+    /* 숫자판은 칸을 눌렀을 때만 선다. 늘 띄우면 다음 공정 선택과 확정 단추를 덮는다. */
+    expect(screen.queryByRole('button', { name: '5' })).toBeNull();
+
+    await user.click(screen.getByLabelText(/인계 수량/));
     await user.click(await screen.findByRole('button', { name: '5' }));
     await user.click(screen.getByRole('button', { name: '0' }));
 

@@ -17,15 +17,13 @@ export const goodsIssueQr: Translated<typeof ko.goodsIssueQr> = {
       notFound: 'Không tìm thấy phiếu có số đó. Hãy kiểm tra lại số.',
       failed: 'Không tra được phiếu. Hãy kiểm tra kết nối rồi thử lại.',
     },
-    missingWorker:
-      'Chưa xác nhận mã nhân viên nên không phát hành được. Hãy xác nhận mã nhân viên trước.',
   },
 
   pending: {
     sectionLabel: 'Chờ phát hành QR',
     back: 'Về danh sách chờ',
     refresh: 'Làm mới',
-    pick: 'In dòng này',
+    pick: 'Chọn',
     columnIssueNo: 'Số phiếu xuất kho vật tư',
     columnLine: 'Dòng',
     columnItem: 'Hàng hóa',
@@ -36,12 +34,11 @@ export const goodsIssueQr: Translated<typeof ko.goodsIssueQr> = {
     statusPrintFailed: (issueCount: number): string => `In lỗi · lần ${String(issueCount)}`,
     columnAction: '',
     window: (days: number, limit: number): string =>
-      `Tìm trong ${String(days)} ngày gần đây · tối đa ${String(limit)} phiếu.`,
+      `Tra cứu QR trong ${String(days)} ngày gần đây · tối đa ${String(limit)} phiếu`,
     loading: 'Đang tìm các dòng chờ phát hành',
     failed: 'Không tải được danh sách chờ. Hãy kiểm tra kết nối rồi làm mới.',
     empty: 'Không có phiếu xuất kho vật tư nào đang chờ phát hành.',
-    allIssued: (count: number): string =>
-      `${String(count)} dòng trong kỳ này đã được phát hành.`,
+    allIssued: (count: number): string => `${String(count)} dòng trong kỳ này đã được phát hành.`,
     truncated: 'Kỳ này còn nhiều phiếu hơn. Hãy tải phiếu chưa thấy bằng số phiếu.',
   },
 
@@ -65,6 +62,7 @@ export const goodsIssueQr: Translated<typeof ko.goodsIssueQr> = {
     columnQty: 'Số lượng',
     columnStatus: 'Phát hành',
     selectAll: 'Chọn tất cả',
+    pick: 'Chọn',
     clearSelection: 'Bỏ chọn',
     empty: 'Phiếu này không có dòng xuất kho.',
     loading: 'Đang tải dòng xuất kho.',
@@ -94,9 +92,10 @@ export const goodsIssueQr: Translated<typeof ko.goodsIssueQr> = {
     selectedCount: (count: number) => `${String(count)} dòng`,
     none: '—',
     seqLabel: 'Lượt',
+    lineLabel: (lineNo: number): string => `Dòng ${String(lineNo)}`,
     seqUnknown: '—',
     previewLabel: 'Xem trước',
-    previewEmpty: 'Chọn một dòng để xem trước.',
+    previewEmpty: 'Hãy chọn dòng',
     previewFailed: 'Không tải được bản xem trước. Vẫn in được bình thường.',
     previewAlt: 'Xem trước QR xuất kho',
     destinationMissing:
@@ -123,7 +122,6 @@ export const goodsIssueQr: Translated<typeof ko.goodsIssueQr> = {
     disabledPalletContentsPending: 'Đang kiểm tra hàng trên pallet. Lát nữa mới phát hành được.',
     disabledEmptyPallet: 'Pallet đã chọn không có hàng. Hãy chọn pallet khác.',
     disabledNoReason: 'Hãy chọn lý do phát hành lại.',
-    disabledNoWorker: 'Chưa xác nhận mã nhân viên.',
   },
 
   result: {

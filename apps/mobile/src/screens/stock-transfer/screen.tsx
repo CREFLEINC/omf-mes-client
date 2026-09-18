@@ -1,13 +1,4 @@
-import {
-  AlertBanner,
-  Button,
-  Card,
-  IconButton,
-  NumberPad,
-  Radio,
-  Select,
-  TextField,
-} from '@crefle/web-ui';
+import { AlertBanner, Button, Card, Radio, Select, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router';
@@ -18,6 +9,7 @@ import { uomLabelOf, useItemLabels, useUomCodes } from '../../patterns/masters';
 import { useOnlineStatus } from '../../patterns/online-status';
 import { useOutbox } from '../../patterns/outbox';
 import { useBackStep } from '../../patterns/back-step';
+import { DockedNumberPad } from '../../patterns/docked-number-pad';
 import { useScanField } from '../../patterns/use-scan-field';
 import { useScreenTitle } from '../../patterns/screen-title';
 import { useWorkerSession } from '../../patterns/worker-session';
@@ -54,6 +46,9 @@ const TYPES: { value: TransferType; label: string }[] = [
   { value: NORMAL, label: t.type.normal },
   { value: DEFECT_RETURN, label: t.type.defect },
 ];
+
+/* 숫자판이 옮겨 갈 칸을 찾는 이름. 담는 쪽과 찾는 쪽이 이 함수 하나를 함께 쓴다. */
+const qtyFieldId = (key: number): string => `stock-transfer-qty-${key}`;
 
 export const StockTransferScreen = () => {
   useScreenTitle(t.title);
@@ -371,7 +366,7 @@ export const StockTransferScreen = () => {
   }
 
   return (
-    <div className="stock-transfer">
+    <div className={keypad === null ? 'stock-transfer' : 'stock-transfer docked-pad-open'}>
       <section className="stock-transfer__section">
         <h2>{t.unfinished.legend}</h2>
         {unfinished.isPending ? <p role="status">{t.unfinished.loading}</p> : null}
@@ -552,6 +547,7 @@ export const StockTransferScreen = () => {
               return (
                 <div key={line.lotId} className="stock-transfer__line">
                   <TextField
+                    id={qtyFieldId(line.lotId)}
                     label={t.from.qtyLabel(nameOf(line))}
                     size="xl"
                     fullWidth
@@ -620,50 +616,33 @@ export const StockTransferScreen = () => {
             </Button>
           </section>
 
-          {/*
-            숫자판은 줄 사이에 끼우지 않는다. 끼우면 그 아래 줄들이 화면 밖으로 밀려 적던
-            자리를 잃는다. 기기 키보드처럼 화면 아래에 붙여 목록 위에 띄운다.
-
-            목록 밖에 서므로 어느 줄에 적는 중인지 스스로 말한다.
-          */}
           {keypad === null ? null : (
-            <div className="stock-transfer__keypad">
-              <p className="stock-transfer__keypad-head">{nameOf(keypad.line)}</p>
-              <div className="stock-transfer__keypad-row">
-                <IconButton
-                  icon="chevron_left"
-                  size="xl"
-                  aria-label={t.from.previousLine}
-                  disabled={keypad.at === 0}
-                  onClick={() => {
-                    setKeypadFor(lines[keypad.at - 1]?.lotId ?? null);
-                  }}
-                />
-                <NumberPad
-                  value={keypad.line.qty}
-                  onChange={(value) => {
-                    setLines((current) =>
-                      current.map((each, at) =>
-                        at === keypad.at ? { ...each, qty: value } : each,
-                      ),
-                    );
-                  }}
-                  allowDecimal
-                  onConfirm={() => {
-                    setKeypadFor(null);
-                  }}
-                />
-                <IconButton
-                  icon="chevron_right"
-                  size="xl"
-                  aria-label={t.from.nextLine}
-                  disabled={keypad.at === lines.length - 1}
-                  onClick={() => {
-                    setKeypadFor(lines[keypad.at + 1]?.lotId ?? null);
-                  }}
-                />
-              </div>
-            </div>
+            <DockedNumberPad
+              head={nameOf(keypad.line)}
+              fieldId={qtyFieldId(keypad.line.lotId)}
+              value={keypad.line.qty}
+              onChange={(value) => {
+                setLines((current) =>
+                  current.map((each, at) => (at === keypad.at ? { ...each, qty: value } : each)),
+                );
+              }}
+              onClose={() => {
+                setKeypadFor(null);
+              }}
+              move={{
+                canPrevious: keypad.at > 0,
+                canNext: keypad.at < lines.length - 1,
+                onPrevious: () => {
+                  setKeypadFor(lines[keypad.at - 1]?.lotId ?? null);
+                },
+                onNext: () => {
+                  setKeypadFor(lines[keypad.at + 1]?.lotId ?? null);
+                },
+                previousLabel: t.from.previousLine,
+                nextLabel: t.from.nextLine,
+              }}
+              allowDecimal
+            />
           )}
         </>
       )}

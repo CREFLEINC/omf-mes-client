@@ -245,6 +245,32 @@ describe('수리 왕복 스캔 화면', () => {
     expect(screen.getByRole('button', { name: '투입 등록' }).hasAttribute('disabled')).toBe(true);
   });
 
+  /*
+   * 판이 지면 아래를 비우는 표시도 함께 걷혀야 한다. 남으면 화면 아래가 빈 채로 굳고, 그
+   * 빈자리를 되돌릴 길이 없다 - 바깥을 눌러 닫는 처리는 판과 함께 사라진다.
+   */
+  it('다시 읽어 고른 불량이 풀리면 숫자판과 아래 여백이 함께 걷힌다', async () => {
+    const user = userEvent.setup();
+    mount();
+
+    await screen.findByLabelText(/불량 LOT 스캔/);
+    scan(SCANNED);
+    await screen.findByText('불량 40 EA');
+
+    await user.click(screen.getByLabelText(/수리 수량/));
+
+    expect(await screen.findByRole('button', { name: '7' })).toBeTruthy();
+    expect(document.querySelector('.docked-pad-open')).not.toBeNull();
+
+    /* 스캐너로 읽는다. 단추를 누르면 그 누름이 먼저 판을 닫아 이 자리를 재지 못한다. */
+    scan(SCANNED);
+
+    await waitFor(() => {
+      expect(screen.queryByRole('button', { name: '7' })).toBeNull();
+    });
+    expect(document.querySelector('.docked-pad-open')).toBeNull();
+  });
+
   /* 사번은 인증이 아니라 귀속이다. 없으면 서버가 요청 자체를 받지 않는다. */
   it('투입은 사번과 멱등키를 실어 보낸다', async () => {
     const user = userEvent.setup();

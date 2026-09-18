@@ -472,7 +472,7 @@ describe('DowntimeRegisterScreen — 저장', () => {
     typeInterval(['2026-08-11', '14:20'], ['2026-08-11', '15:07']);
     await chooseReason();
 
-    expect(screen.getByText(t.errors.workerMissing)).toBeTruthy();
+    expect(screen.getAllByText(messages.popChrome.workerMissing)).toHaveLength(1);
     expect(screen.getByRole('button', { name: t.actions.save })).toBeDisabled();
     expect(postedBodies(requests)).toHaveLength(0);
   });

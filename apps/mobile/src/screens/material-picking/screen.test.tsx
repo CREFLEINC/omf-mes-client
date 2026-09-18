@@ -508,8 +508,45 @@ describe('자재 출고·피킹 화면', () => {
     await user.click(await screen.findByRole('button', { name: '넣기' }));
     await screen.findByText('라인의 LOT 과 같습니다');
 
+    /* 칸은 LOT 을 확정해야 서고, 숫자판은 그 칸을 눌러야 선다. */
     expect(await screen.findByLabelText(/출고 수량/)).toBeTruthy();
+    expect(screen.queryByRole('button', { name: '7' })).toBeNull();
+
+    await user.click(screen.getByLabelText(/출고 수량/));
     expect(await screen.findByRole('button', { name: '7' })).toBeTruthy();
+  });
+
+  /*
+   * 판이 지면 표시도 함께 걷혀야 한다. 남으면 화면 아래가 빈 채로 굳고, 그 빈자리를 되돌릴
+   * 길이 없다 - 바깥을 눌러 닫는 처리는 판과 함께 사라진다.
+   */
+  it('라인과 다른 LOT 을 찍으면 숫자판과 아래 여백이 함께 걷힌다', async () => {
+    const user = userEvent.setup();
+    mount();
+    await chooseOrder(user);
+
+    await user.click(screen.getByRole('radio', { name: /ABC-123/ }));
+    await openManualEntry(user);
+    await user.type(await screen.findByLabelText(/LOT 번호/), LOT_NO);
+    await user.click(await screen.findByRole('button', { name: '넣기' }));
+    await user.click(await screen.findByLabelText(/출고 수량/));
+
+    expect(await screen.findByRole('button', { name: '7' })).toBeTruthy();
+    expect(document.querySelector('.docked-pad-open')).not.toBeNull();
+
+    /* 스캐너로 읽는다. 단추를 누르면 그 누름이 먼저 판을 닫아 이 자리를 재지 못한다. */
+    const field = screen.getByLabelText(/LOT 번호/) as HTMLInputElement;
+    field.focus();
+    Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set?.call(
+      field,
+      '0001234500000012002607310001230099',
+    );
+    field.dispatchEvent(new InputEvent('input', { bubbles: true, inputType: 'insertFromPaste' }));
+
+    await waitFor(() => {
+      expect(screen.queryByRole('button', { name: '7' })).toBeNull();
+    });
+    expect(document.querySelector('.docked-pad-open')).toBeNull();
   });
 
   it('집으면 라인 경로로 사번과 멱등키를 실어 보낸다', async () => {
@@ -745,6 +782,7 @@ describe('자재 출고·피킹 화면', () => {
     await user.click(await screen.findByRole('button', { name: '넣기' }));
     await screen.findByText('라인의 LOT 과 같습니다');
 
+    await user.click(await screen.findByLabelText(/출고 수량/));
     await user.click(await screen.findByRole('button', { name: '5' }));
     await user.click(screen.getByRole('button', { name: '0' }));
 
@@ -1466,6 +1504,7 @@ describe('자재 출고·피킹 화면', () => {
   it('LOT 이 맞으면 수량 구획의 꼬리를 화면 안으로 들인다', async () => {
     const user = userEvent.setup();
     const pulled: { text: string; block: string | undefined }[] = [];
+    const original = Object.getOwnPropertyDescriptor(Element.prototype, 'scrollIntoView');
 
     Object.defineProperty(Element.prototype, 'scrollIntoView', {
       configurable: true,
@@ -1474,18 +1513,32 @@ describe('자재 출고·피킹 화면', () => {
       },
     });
 
-    mount();
-    await chooseOrder(user);
-    await user.click(screen.getByRole('radio', { name: /ABC-123/ }));
-    await openManualEntry(user);
-    await user.type(await screen.findByLabelText(/LOT 번호/), LOT_NO);
-    await user.click(await screen.findByRole('button', { name: '넣기' }));
-    await screen.findByText('라인의 LOT 과 같습니다');
+    try {
+      mount();
+      await chooseOrder(user);
+      await user.click(screen.getByRole('radio', { name: /ABC-123/ }));
+      await openManualEntry(user);
+      await user.type(await screen.findByLabelText(/LOT 번호/), LOT_NO);
+      await user.click(await screen.findByRole('button', { name: '넣기' }));
+      await screen.findByText('라인의 LOT 과 같습니다');
 
-    const entry = pulled.find((each) => each.text.includes('출고 수량'));
+      /* 스크롤은 구획이 그려진 뒤 효과에서 부른다. 글자가 보이는 순간 바로 재면 그 전일 수 있다. */
+      const entry = await waitFor(() => {
+        const hit = pulled.find((each) => each.text.includes('출고 수량'));
 
-    expect(entry, '수량 구획을 화면 안으로 들인다').toBeTruthy();
-    expect(entry?.block, '꼬리를 맞춘다').toBe('end');
+        expect(hit, '수량 구획을 화면 안으로 들인다').toBeTruthy();
+        return hit;
+      });
+
+      expect(entry?.block, '꼬리를 맞춘다').toBe('end');
+    } finally {
+      /* jsdom 에는 이 함수가 없다. 남겨 두면 뒤에 도는 시험이 다른 환경에서 돈다. */
+      if (original === undefined) {
+        delete (Element.prototype as { scrollIntoView?: unknown }).scrollIntoView;
+      } else {
+        Object.defineProperty(Element.prototype, 'scrollIntoView', original);
+      }
+    }
   });
 
   it('보낼 출고 유형이 없으면 그 사실을 말한다', async () => {

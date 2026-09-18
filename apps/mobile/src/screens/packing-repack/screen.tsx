@@ -1,4 +1,4 @@
-import { AlertBanner, Button, Card, NumberPad, Radio, TextField } from '@crefle/web-ui';
+import { AlertBanner, Button, Card, Radio, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
@@ -6,6 +6,7 @@ import { Link } from 'react-router';
 
 import { useAdvanceTo } from '../../patterns/advance-to';
 import { useBackStep } from '../../patterns/back-step';
+import { DockedNumberPad } from '../../patterns/docked-number-pad';
 import { playErrorTone } from '../../patterns/error-tone';
 import {
   handlingUnitKeys,
@@ -61,6 +62,9 @@ const TYPES: { value: RepackType; label: string }[] = [
   { value: SPLIT, label: t.type.split },
   { value: RECONFIGURE, label: t.type.reconfigure },
 ];
+
+/* 숫자판이 옮겨 갈 칸을 찾는 이름. 담는 쪽과 찾는 쪽이 이 함수 하나를 함께 쓴다. */
+const qtyFieldId = (key: string): string => `packing-repack-qty-${key}`;
 
 export const PackingRepackScreen = () => {
   useScreenTitle(t.title);
@@ -199,6 +203,22 @@ export const PackingRepackScreen = () => {
     });
   }, [found.data]);
 
+  /*
+   * 숫자판이 지금 적는 줄. 목록 밖에 서므로 자리를 번호가 아니라 줄 자체로 든다 - 줄을
+   * 빼면 숫자판도 함께 닫힌다. 상한은 줄마다 다르므로 함께 든다.
+   */
+  const keypadAt = lines.findIndex((line) => contentKey(line) === keypadFor);
+  const keypad =
+    keypadAt === -1
+      ? null
+      : {
+          at: keypadAt,
+          line: lines[keypadAt] as DraftLine,
+          max: pooled.find(
+            (content) => contentKey(content) === contentKey(lines[keypadAt] as DraftLine),
+          )?.qty,
+        };
+
   const scanField = useScanField({
     onScan: (value) => {
       setDuplicate(false);
@@ -333,7 +353,7 @@ export const PackingRepackScreen = () => {
   }
 
   return (
-    <div className="repack">
+    <div className={keypad === null ? 'repack' : 'repack docked-pad-open'}>
       <section className="repack__section">
         <h2>{t.source.legend}</h2>
         <TextField
@@ -447,6 +467,7 @@ export const PackingRepackScreen = () => {
               return (
                 <div key={contentKey(line)} className="repack__line">
                   <TextField
+                    id={qtyFieldId(contentKey(line))}
                     label={required(t.contents.qtyLabel(nameOf(line)))}
                     size="xl"
                     fullWidth
@@ -473,18 +494,6 @@ export const PackingRepackScreen = () => {
                           : t.contents.problem[problem]
                     }
                   />
-                  {keypadFor !== contentKey(line) ? null : (
-                    <NumberPad
-                      value={line.qty}
-                      onChange={(next) => {
-                        setLines((current) =>
-                          current.map((each, at) => (at === index ? { ...each, qty: next } : each)),
-                        );
-                      }}
-                      max={pool?.qty}
-                      allowDecimal
-                    />
-                  )}
                   <p className="repack__pooled">{t.contents.pooled(limit)}</p>
                 </div>
               );
@@ -582,6 +591,35 @@ export const PackingRepackScreen = () => {
               </Button>
             </div>
           </section>
+          {keypad === null ? null : (
+            <DockedNumberPad
+              head={t.contents.qtyLabel(nameOf(keypad.line))}
+              fieldId={qtyFieldId(contentKey(keypad.line))}
+              value={keypad.line.qty}
+              onChange={(next) => {
+                setLines((current) =>
+                  current.map((each, at) => (at === keypad.at ? { ...each, qty: next } : each)),
+                );
+              }}
+              onClose={() => {
+                setKeypadFor(null);
+              }}
+              move={{
+                canPrevious: keypad.at > 0,
+                canNext: keypad.at < lines.length - 1,
+                onPrevious: () => {
+                  setKeypadFor(contentKey(lines[keypad.at - 1] as DraftLine));
+                },
+                onNext: () => {
+                  setKeypadFor(contentKey(lines[keypad.at + 1] as DraftLine));
+                },
+                previousLabel: t.contents.previousLine,
+                nextLabel: t.contents.nextLine,
+              }}
+              max={keypad.max}
+              allowDecimal
+            />
+          )}
         </>
       )}
     </div>

@@ -134,6 +134,7 @@ describe('today-rows', () => {
         endedAt: null,
         durationMinutes: null,
         reasonLabel: '',
+        remarks: null,
       },
       {
         key: 'b',
@@ -141,6 +142,7 @@ describe('today-rows', () => {
         endedAt: null,
         durationMinutes: null,
         reasonLabel: '',
+        remarks: null,
       },
       {
         key: 'c',
@@ -148,6 +150,7 @@ describe('today-rows', () => {
         endedAt: null,
         durationMinutes: null,
         reasonLabel: '',
+        remarks: null,
       },
     ];
 

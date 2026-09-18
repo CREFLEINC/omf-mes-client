@@ -9,8 +9,6 @@ export const packingLabelReprint: Translated<typeof ko.packingLabelReprint> = {
     handlingUnitLabel: 'Kiện',
     workerLabel: 'Mã nhân viên',
     missingHandlingUnit: 'Không nhận được kiện nên không tải được đối tượng in lại.',
-    missingWorker:
-      'Chưa xác nhận mã nhân viên nên không in lại được. Hãy xác nhận mã nhân viên trước.',
   },
 
   gate: {

@@ -1,0 +1,204 @@
+import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { describe, expect, it, vi } from 'vitest';
+
+import { DockedNumberPad } from './docked-number-pad';
+
+const keyboard = vi.hoisted(() => ({ hide: vi.fn(() => Promise.resolve()) }));
+
+vi.mock('@capacitor/keyboard', () => ({ Keyboard: keyboard }));
+
+const MOVE = {
+  canPrevious: true,
+  canNext: true,
+  onPrevious: vi.fn(),
+  onNext: vi.fn(),
+  previousLabel: '앞 라인',
+  nextLabel: '다음 라인',
+};
+
+describe('화면 아래 숫자판', () => {
+  it('무엇을 적는 중인지 머리줄로 말한다', () => {
+    render(<DockedNumberPad head="A-01 · 나사" value="" onChange={vi.fn()} onClose={vi.fn()} />);
+
+    expect(screen.getByText('A-01 · 나사')).toBeInTheDocument();
+  });
+
+  it('적을 칸이 하나면 이동 단추를 그리지 않는다', () => {
+    render(<DockedNumberPad head="수량" value="" onChange={vi.fn()} onClose={vi.fn()} />);
+
+    expect(screen.queryByRole('button', { name: '앞 라인' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '다음 라인' })).not.toBeInTheDocument();
+  });
+
+  it('적을 칸이 여럿이면 이동 단추를 그린다', () => {
+    render(
+      <DockedNumberPad head="수량" value="" onChange={vi.fn()} onClose={vi.fn()} move={MOVE} />,
+    );
+
+    expect(screen.getByRole('button', { name: '앞 라인' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '다음 라인' })).toBeInTheDocument();
+  });
+
+  it('갈 곳이 없는 쪽은 눌리지 않는다', () => {
+    render(
+      <DockedNumberPad
+        head="수량"
+        value=""
+        onChange={vi.fn()}
+        onClose={vi.fn()}
+        move={{ ...MOVE, canPrevious: false }}
+      />,
+    );
+
+    expect(screen.getByRole('button', { name: '앞 라인' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: '다음 라인' })).toBeEnabled();
+  });
+
+  it('닫는 길이 있다', async () => {
+    const user = userEvent.setup();
+    const onClose = vi.fn();
+    render(<DockedNumberPad head="수량" value="7" onChange={vi.fn()} onClose={onClose} />);
+
+    await user.click(screen.getByRole('button', { name: '확인' }));
+
+    expect(onClose).toHaveBeenCalled();
+  });
+
+  /*
+   * 줄 안에 끼우면 아래 줄이 화면 밖으로 밀린다. 붙박이로 서는지는 자리를 정하는 클래스로
+   * 잰다 — 계산된 위치는 jsdom 이 내주지 않는다.
+   */
+  it('화면 아래에 붙박이로 선다', () => {
+    const { container } = render(
+      <DockedNumberPad head="수량" value="" onChange={vi.fn()} onClose={vi.fn()} />,
+    );
+
+    expect(container.querySelector('.docked-pad')).not.toBeNull();
+  });
+  /*
+   * 숫자판 바깥을 누르면 닫는다. 확인 키를 못 찾은 사람이 화면을 눌러 닫으려 하는데,
+   * 그대로 두면 아래 절반이 계속 덮인 채 남는다.
+   */
+  it('숫자판 바깥을 누르면 닫는다', async () => {
+    const user = userEvent.setup();
+    const onClose = vi.fn();
+    render(
+      <>
+        <button type="button">바깥</button>
+        <DockedNumberPad head="수량" value="" onChange={vi.fn()} onClose={onClose} />
+      </>,
+    );
+
+    await user.click(screen.getByRole('button', { name: '바깥' }));
+
+    expect(onClose).toHaveBeenCalled();
+  });
+
+  it('숫자판 안을 누르면 닫지 않는다', async () => {
+    const user = userEvent.setup();
+    const onClose = vi.fn();
+    render(<DockedNumberPad head="수량" value="" onChange={vi.fn()} onClose={onClose} />);
+
+    await user.click(screen.getByRole('button', { name: '7' }));
+
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
+  /*
+   * 적는 칸이 화면 아래에 있으면 숫자판이 그 위에 서면서 칸을 덮는다. 무엇을 치는지 보이지
+   * 않으므로 칸을 숫자판 위로 끌어올린다.
+   */
+  it('적는 칸을 숫자판 위로 끌어올린다', () => {
+    const scrollIntoView = vi.fn();
+    const { rerender } = render(<input aria-label="수량칸" />);
+
+    const field = screen.getByLabelText('수량칸');
+    field.scrollIntoView = scrollIntoView;
+    field.focus();
+
+    /* 칸을 누른 뒤에 숫자판이 선다. 그 차례 그대로 만든다. */
+    rerender(
+      <>
+        <input aria-label="수량칸" />
+        <DockedNumberPad head="수량" value="" onChange={vi.fn()} onClose={vi.fn()} />
+      </>,
+    );
+
+    expect(scrollIntoView).toHaveBeenCalledWith({ block: 'end', behavior: 'smooth' });
+  });
+  /*
+   * 이전·다음으로 옮기면 머리줄만 바뀌고 화면은 그대로였다. 앞 칸이 판 위에 선 채 남고 옮겨
+   * 간 칸은 판에 덮여, 사람은 다음 칸을 적는 줄 알면서 앞 칸을 보고 있었다(실기 2026-09-17).
+   *
+   * 옮겨 갈 칸을 이름으로 받아 그 칸을 화면에 들인다. 누가 눌렀는지로는 찾을 수 없다 - 단추를
+   * 누른 뒤 포커스는 칸이 아니라 바탕에 있다.
+   */
+  it('다른 칸으로 옮기면 그 칸을 화면에 들인다', () => {
+    const scrollIntoView = vi.fn();
+    const pad = (fieldId: string, head: string) => (
+      <>
+        <input aria-label="첫 칸" id="q1" inputMode="none" />
+        <input aria-label="둘째 칸" id="q2" inputMode="none" />
+        <DockedNumberPad
+          head={head}
+          fieldId={fieldId}
+          value=""
+          onChange={vi.fn()}
+          onClose={vi.fn()}
+          move={MOVE}
+        />
+      </>
+    );
+    const { rerender } = render(pad('q1', '첫 칸'));
+
+    const second = screen.getByLabelText('둘째 칸');
+    second.scrollIntoView = scrollIntoView;
+
+    rerender(pad('q2', '둘째 칸'));
+
+    expect(document.activeElement).toBe(second);
+    expect(scrollIntoView).toHaveBeenCalledWith({ block: 'end', behavior: 'smooth' });
+  });
+
+  /*
+   * 비울 자리를 눈금 하나로 못 박으면 판이 그보다 높은 화면에서 칸이 덮인다 - 머리줄이 길어
+   * 두 줄로 접히면 판이 높아진다(실기 2026-09-17 포장 재구성). 선 판의 높이를 재어 알린다.
+   */
+  it('선 높이를 재어 알린다', () => {
+    /* jsdom 은 높이를 늘 0 으로 답한다. 그대로 재면 무엇을 심든 통과해 감지기가 죽는다. */
+    const height = vi.spyOn(HTMLElement.prototype, 'offsetHeight', 'get').mockReturnValue(437);
+
+    try {
+      render(<DockedNumberPad head="수량" value="" onChange={vi.fn()} onClose={vi.fn()} />);
+
+      expect(document.documentElement.style.getPropertyValue('--docked-pad-height')).toBe('437px');
+    } finally {
+      height.mockRestore();
+    }
+  });
+
+  /* 판이 지면 그 자리를 비워야 한다 - 남겨 두면 화면 아래가 늘 빈 채로 선다. */
+  it('지면 알린 높이를 거둔다', () => {
+    const { unmount } = render(
+      <DockedNumberPad head="수량" value="" onChange={vi.fn()} onClose={vi.fn()} />,
+    );
+
+    unmount();
+
+    expect(document.documentElement.style.getPropertyValue('--docked-pad-height')).toBe('');
+  });
+
+  /*
+   * 비고처럼 자판이 필요한 칸을 치다가 숫자칸을 누르면, 포커스가 옮겨 가도 기기 자판이
+   * 내려가지 않는다. 앱 숫자판이 그 위에 서서 둘이 겹친다(실기 2026-09-17).
+   *
+   * 칸의 설정으로는 내릴 수 없어 단말에 직접 내리라고 이른다.
+   */
+  it('서면 기기 자판을 내린다', () => {
+    keyboard.hide.mockClear();
+    render(<DockedNumberPad head="수량" value="" onChange={vi.fn()} onClose={vi.fn()} />);
+
+    expect(keyboard.hide).toHaveBeenCalled();
+  });
+});

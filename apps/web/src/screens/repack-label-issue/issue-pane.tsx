@@ -1,9 +1,10 @@
-import { AlertBanner, Button, Checkbox } from '@crefle/web-ui';
+import { AlertBanner, Button, Checkbox, Chip, Icon } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useId } from 'react';
 
+import { PopPrinterStatus } from '../../patterns/pop-printer-status';
 import { PopSelect as Select } from '../../patterns/pop-select';
-import type { CodeValue, IssueStanding, Printer, RemainderCandidate } from './types';
+import type { IssueStanding, Printer, RemainderCandidate } from './types';
 
 const t = messages.repackLabelIssue.issue;
 
@@ -15,18 +16,14 @@ export interface IssuePaneProps {
   selectedRemainderIds: readonly number[];
   onRemainderChange: (handlingUnitId: number, checked: boolean) => void;
   remainderFailed: boolean;
+  /** 인쇄할 라벨을 하나도 고르지 않았는가 — 그 사유를 인쇄 대상 안에서 말한다. */
+  targetRequired: boolean;
 
   standing: IssueStanding;
   standingFailed: boolean;
   onStandingRetry: () => void;
 
-  reasons: readonly CodeValue[];
-  reasonsFailed: boolean;
-  reasonCode: string;
-  onReasonChange: (value: string) => void;
-  reasonRequired: boolean;
   /** 서버가 사유 칸을 지목해 되돌린 말(422). 배너가 아니라 이 칸 아래에 선다 */
-  reasonServerError: string | null;
 
   printers: readonly Printer[];
   printersFailed: boolean;
@@ -53,64 +50,104 @@ export const IssuePane = ({
   selectedRemainderIds,
   onRemainderChange,
   remainderFailed,
+  targetRequired,
   standing,
   standingFailed,
   onStandingRetry,
-  reasons,
-  reasonsFailed,
-  reasonCode,
-  onReasonChange,
-  reasonRequired,
-  reasonServerError,
   printers,
   printersFailed,
   printerName,
   onPrinterChange,
 }: IssuePaneProps) => {
-  const reasonId = useId();
   const printerId = useId();
-  const reasonErrorId = useId();
 
-  const reasonOptions = reasons.map((reason) => ({
-    value: reason.code,
-    label: reason.codeName,
-  }));
-
+  const selectedPrinter = printers.find((printer) => printer.printerName === printerName) ?? null;
   const printerOptions = printers.map((printer) => ({
     value: printer.printerName,
-    label: `${printer.displayName} · ${printer.statusMessage ?? printer.status}`,
+    label: printer.displayName,
   }));
-
-  /* 사유가 필요한데 아직 고르지 않았다 — 화면이 먼저 막는다(스펙 §6). */
-  const reasonMissing = reasonRequired && reasonCode === '';
 
   return (
     <>
-      <fieldset className="pop-repack-targets">
-        <legend>{t.targetsLabel}</legend>
-        <Checkbox
-          checked={selectedHandlingUnitNo !== null && includeNewLabel}
-          disabled={selectedHandlingUnitNo === null}
-          onChange={(event) => onIncludeNewLabelChange(event.target.checked)}
-        >
-          {selectedHandlingUnitNo === null ? t.newLabelWaiting : t.newLabel(selectedHandlingUnitNo)}
-        </Checkbox>
+      {/*
+       * ⭐ **인쇄 대상과 프린터를 한 줄에 나란히 둔다**(사용자 지시 2026-09-17). 무엇을 어디로 찍는지를
+       *    한 줄에서 함께 고른다. 좁으면 격자가 위아래로 접는다(`pop.css`).
+       */}
+      <div className="pop-repack-target-row">
+        <fieldset className="pop-repack-targets">
+          <legend className="pop-repack-targets-legend">
+            {t.targetsLabel}
+            {/*
+             * ⭐ **고를 자리에서 말한다**(사용자 지시 2026-09-17) — 「인쇄 대상」 제목 옆에 선다.
+             *    아래 액션 줄에 두면 고칠 칸과 말하는 자리가 갈린다.
+             */}
+            {targetRequired && (
+              <Chip
+                className="pop-repack-target-required"
+                status="warning"
+                size="md"
+                leadingIcon={<Icon name="info" size={18} />}
+              >
+                {t.targetRequired}
+              </Chip>
+            )}
+          </legend>
+          <Checkbox
+            checked={selectedHandlingUnitNo !== null && includeNewLabel}
+            disabled={selectedHandlingUnitNo === null}
+            onChange={(event) => onIncludeNewLabelChange(event.target.checked)}
+          >
+            {selectedHandlingUnitNo === null
+              ? t.newLabelWaiting
+              : t.newLabel(selectedHandlingUnitNo)}
+          </Checkbox>
 
-        {remainderCandidates.map(({ handlingUnit, standing: remainderStanding }) => (
-          <div className="pop-repack-remainder" key={handlingUnit.handlingUnitId}>
-            <Checkbox
-              checked={selectedRemainderIds.includes(handlingUnit.handlingUnitId)}
-              onChange={(event) =>
-                onRemainderChange(handlingUnit.handlingUnitId, event.target.checked)
-              }
-            >
-              {t.remainderLabel(handlingUnit.handlingUnitNo, remainderStanding.issueCount ?? 0)}
-            </Checkbox>
-            <p className="pop-repack-note">{t.remainderNumberNote}</p>
-          </div>
-        ))}
-        {remainderFailed && <p className="pop-repack-note">{t.remainderFailed}</p>}
-      </fieldset>
+          {remainderCandidates.map(({ handlingUnit, standing: remainderStanding }) => (
+            <div className="pop-repack-remainder" key={handlingUnit.handlingUnitId}>
+              <Checkbox
+                checked={selectedRemainderIds.includes(handlingUnit.handlingUnitId)}
+                onChange={(event) =>
+                  onRemainderChange(handlingUnit.handlingUnitId, event.target.checked)
+                }
+              >
+                {t.remainderLabel(handlingUnit.handlingUnitNo, remainderStanding.issueCount ?? 0)}
+              </Checkbox>
+              {/* 잔량 라벨의 성질은 그 항목 «옆» 라벨로 짧게 말한다(사용자 지시 2026-09-17). */}
+              <Chip
+                className="pop-repack-remainder-note"
+                status="info"
+                size="md"
+                leadingIcon={<Icon name="info" size={18} />}
+              >
+                {t.remainderNumberNote}
+              </Chip>
+            </div>
+          ))}
+          {remainderFailed && <p className="pop-repack-note">{t.remainderFailed}</p>}
+        </fieldset>
+        <div className="pop-repack-field">
+          <label htmlFor={printerId}>{t.printerLabel}</label>
+          <Select
+            id={printerId}
+            options={printerOptions}
+            value={printerName === '' ? null : printerName}
+            onChange={onPrinterChange}
+            placeholder={t.printerPlaceholder}
+            className="pop-repack-select"
+            disabled={printers.length === 0}
+          />
+          {selectedPrinter !== null && (
+            <PopPrinterStatus
+              status={selectedPrinter.status}
+              text={selectedPrinter.statusMessage ?? selectedPrinter.status}
+            />
+          )}
+          {printersFailed && <p className="pop-repack-note">{t.printersFailed}</p>}
+          {!printersFailed && printers.length === 0 && (
+            <p className="pop-repack-note">{t.printersEmpty}</p>
+          )}
+        </div>
+      </div>
 
       {/*
         ⚠ **몇 회차인가는 구획 «표제 옆»에 선다**(사용자 지시 2026-09-07) — 이 구획이 무엇을
@@ -136,66 +173,6 @@ export const IssuePane = ({
           <AlertBanner variant="warning" title={t.lastPrintFailed} />
         </div>
       )}
-
-      {/*
-        ⭐ **사유가 필요 없으면 칸도 없다**(설계 §3-1 「③은 재출력 체크가 없으면 한 줄로
-        접는다」 · 사용자 지적 2026-09-11).
-        
-        ⚠ 앞 판은 「감추면 갑자기 나타나 무엇이 바뀐 줄 모른다」는 이유로 비활성 칸을 남겨
-        두었고 근거를 G-2 로 적었는데, **G-2 는 그런 규칙이 아니다**(미확정 코드에 enum 을
-        두지 않는다는 계약 규율이다). 이 화면의 세로 예산은 슬랙 0 이라(§3-1) 쓰지 않는 칸
-        하나가 아래 구획을 밀어낸다 — 최초 발행에서는 접는다.
-        
-        ⛔ 갑자기 나타나는 것 자체는 문제가 아니다. 사유 칸은 **잔량 재출력을 체크한 그
-        순간** 서고, 그 체크가 곧 「왜 필요해졌는가」를 말한다.
-      */}
-      {reasonRequired && (
-        <div className="pop-repack-field">
-          <label htmlFor={reasonId}>
-            {t.reasonLabel}
-            {reasonRequired && <span aria-hidden="true"> *</span>}
-          </label>
-          <Select
-            id={reasonId}
-            options={reasonOptions}
-            value={reasonCode === '' ? null : reasonCode}
-            onChange={onReasonChange}
-            placeholder={t.reasonPlaceholder}
-            className="pop-repack-select"
-            disabled={!reasonRequired || reasons.length === 0}
-            invalid={reasonMissing || reasonServerError !== null}
-            aria-describedby={reasonServerError === null ? undefined : reasonErrorId}
-          />
-          {reasonsFailed && <p className="pop-repack-note">{t.reasonsFailed}</p>}
-          {!reasonsFailed && reasons.length === 0 && (
-            <p className="pop-repack-note">{t.reasonsEmpty}</p>
-          )}
-          {/* ⚠ 오류는 도움말과 **다른 색**이어야 한다 — 같으면 사용자가 안내로 읽고 지나친다. */}
-          {reasonMissing && <p className="pop-repack-error">{t.reasonRequired}</p>}
-          {reasonServerError !== null && (
-            <p className="pop-repack-error" id={reasonErrorId} role="alert">
-              {reasonServerError}
-            </p>
-          )}
-        </div>
-      )}
-
-      <div className="pop-repack-field">
-        <label htmlFor={printerId}>{t.printerLabel}</label>
-        <Select
-          id={printerId}
-          options={printerOptions}
-          value={printerName === '' ? null : printerName}
-          onChange={onPrinterChange}
-          placeholder={t.printerPlaceholder}
-          className="pop-repack-select"
-          disabled={printers.length === 0}
-        />
-        {printersFailed && <p className="pop-repack-note">{t.printersFailed}</p>}
-        {!printersFailed && printers.length === 0 && (
-          <p className="pop-repack-note">{t.printersEmpty}</p>
-        )}
-      </div>
     </>
   );
 };
