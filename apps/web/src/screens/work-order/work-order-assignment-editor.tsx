@@ -17,7 +17,12 @@ import {
   toOwnedResourceLookup,
 } from './editor-support';
 import { useUpdateWorkOrder } from './mutations';
-import { useWorkOrderMolds, useWorkOrderWorkers } from './people-tool-queries';
+import {
+  useWorkOrderMolds,
+  useWorkOrderWorker,
+  useWorkOrderWorkers,
+  type WorkOrderWorkerFact,
+} from './people-tool-queries';
 import { useWorkOrderDetail, useWorkOrderValidation, type WorkOrderFact } from './queries';
 import {
   useWorkOrderEquipments,
@@ -26,12 +31,14 @@ import {
   useWorkOrderShifts,
 } from './resource-queries';
 import { workOrderDraftEquals, workOrderFieldErrorMessage } from './screen-model';
+import { useDebounced } from './use-debounced';
 import { WorkOrderAssignmentActions } from './work-order-assignment-actions';
 import { WorkOrderPlanFieldsPane } from './work-order-plan-fields-pane';
 import { WorkOrderResourcePane, type WorkOrderResourceOption } from './work-order-resource-pane';
 import { WorkOrderValidationPane } from './work-order-validation-pane';
 
 const t = messages.workOrder.editor;
+const WORKER_SEARCH_DEBOUNCE_MS = 300;
 const idOrNull = (value: string): number | null =>
   /^[1-9]\d*$/.test(value) && Number.isSafeInteger(Number(value)) ? Number(value) : null;
 const options = (lookup: LookupSource, current: string): WorkOrderResourceOption[] =>
@@ -71,7 +78,29 @@ export const WorkOrderAssignmentEditorSession = ({
   const lineId = idOrNull(effectiveDraft.productionLineId);
   const lines = useWorkOrderProductionLines(plantId, 1);
   const equipments = useWorkOrderEquipments(plantId, lineId, 1);
-  const workers = useWorkOrderWorkers(plantId, 1);
+  const [workerSearch, setWorkerSearch] = useState('');
+  const workerTerm = useDebounced(workerSearch.trim(), WORKER_SEARCH_DEBOUNCE_MS);
+  const workers = useWorkOrderWorkers(plantId, 1, workerTerm);
+  /*
+   * ⛔ 고른 작업자가 지금 쪽(첫 쪽·검색 결과)에 없어도 이름이 사라지면 안 된다 — 한 번 본
+   *    작업자를 기억하고, 처음부터 못 본 저장값은 그 한 명만 따로 묻는다.
+   */
+  const seenWorkers = useRef(new Map<number, WorkOrderWorkerFact>());
+  useEffect(() => {
+    for (const worker of workers.data?.items ?? []) seenWorkers.current.set(worker.workerId, worker);
+  });
+  const selectedWorkerId = idOrNull(effectiveDraft.responsibleWorkerId);
+  const listedWorker =
+    selectedWorkerId === null
+      ? undefined
+      : (workers.data?.items.find((worker) => worker.workerId === selectedWorkerId) ??
+        seenWorkers.current.get(selectedWorkerId));
+  const selectedWorker = useWorkOrderWorker(
+    selectedWorkerId !== null && workers.data !== undefined && listedWorker === undefined
+      ? selectedWorkerId
+      : null,
+  );
+  const keptWorker = listedWorker ?? selectedWorker.data;
   const molds = useWorkOrderMolds(plantId, 1);
   const shifts = useWorkOrderShifts(plantId, 1);
   const locations = useWorkOrderLocations();
@@ -114,6 +143,15 @@ export const WorkOrderAssignmentEditorSession = ({
           : truncated
             ? t.lookup.truncated
             : undefined;
+  const workerNote = (): string | undefined => {
+    if (workerTerm === '') {
+      const note = lookupNote(workerSource, workers.data?.truncated);
+      return note === t.lookup.truncated ? t.lookup.workerTruncated : note;
+    }
+    if (workerSource.isError || workerSource.isLoading) return lookupNote(workerSource, false);
+    if (workers.data?.items.length === 0) return t.lookup.searchEmpty;
+    return workers.data?.truncated === true ? t.lookup.searchTruncated : undefined;
+  };
   const lineSource = toOwnedResourceLookup(
     { items: lines.data?.items ?? [], plantId, isPending: lines.isPending, isError: lines.isError },
     (item) => entry(item.productionLineId, item.lineCode, item.lineName, item.isActive),
@@ -127,9 +165,15 @@ export const WorkOrderAssignmentEditorSession = ({
     },
     (item) => entry(item.equipmentId, item.equipmentCode, item.equipmentName, item.isActive),
   );
+  const workerItems = workers.data?.items ?? [];
   const workerSource = toOwnedResourceLookup(
     {
-      items: workers.data?.items ?? [],
+      items:
+        keptWorker === undefined ||
+        keptWorker.plantId !== plantId ||
+        workerItems.some((worker) => worker.workerId === keptWorker.workerId)
+          ? workerItems
+          : [keptWorker, ...workerItems],
       plantId,
       isPending: workers.isPending,
       isError: workers.isError,
@@ -156,9 +200,13 @@ export const WorkOrderAssignmentEditorSession = ({
       ),
   );
   const locationSource: LookupSource = {
-    entries: locations.items.map((item) =>
-      entry(item.locationId, item.locationCode, item.locationName, item.isActive),
-    ),
+    entries: locations.items.map((item) => ({
+      ...entry(item.locationId, item.locationCode, item.locationName, item.isActive),
+      label:
+        item.warehouseCode === null
+          ? `${item.locationCode} · ${item.locationName}`
+          : `[${item.warehouseCode} ${item.warehouseName ?? ''}] ${item.locationCode} · ${item.locationName}`,
+    })),
     isLoading: locations.isPending,
     isError: locations.isError,
   };
@@ -205,10 +253,12 @@ export const WorkOrderAssignmentEditorSession = ({
           defaultFgLocationOptions={options(locationSource, effectiveDraft.defaultFgLocationId)}
           defaultScrapLocationOptions={options(locationSource, effectiveDraft.defaultScrapLocationId)}
           fieldErrors={fieldErrors}
+          responsibleWorkerSearch={workerSearch}
+          onResponsibleWorkerSearch={setWorkerSearch}
           fieldNotes={{
             productionLineId: lookupNote(lineSource, lines.data?.truncated),
             plannedEquipmentId: lookupNote(equipmentSource, equipments.data?.truncated),
-            responsibleWorkerId: lookupNote(workerSource, workers.data?.truncated),
+            responsibleWorkerId: workerNote(),
             plannedMoldId: lookupNote(moldSource, molds.data?.truncated),
             plannedShiftId: lookupNote(shiftSource, shifts.data?.truncated),
             defaultWipLocationId: lookupNote(locationSource, locations.truncated),

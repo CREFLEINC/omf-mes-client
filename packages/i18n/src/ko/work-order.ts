@@ -17,6 +17,9 @@ export const workOrder = {
       failed: '선택 목록을 불러오지 못했습니다.',
       truncated: '선택 목록의 첫 페이지만 표시합니다.',
       noPlant: 'P/O에 공장이 없어 선택 목록을 불러올 수 없습니다.',
+      workerTruncated: '작업자 일부만 표시합니다. 사번·성명으로 검색하세요.',
+      searchEmpty: '검색 결과가 없습니다.',
+      searchTruncated: '검색 결과 일부만 표시합니다. 검색어를 더 입력하세요.',
     },
   },
   screen: {
@@ -126,6 +129,7 @@ export const workOrder = {
       defaultFgLocation: '기본 완제품 위치',
       defaultScrapLocation: '기본 스크랩 위치',
     },
+    workerSearch: { label: '담당 작업자 검색', placeholder: '사번·성명 검색' },
     materialInfo: '자재 배정은 이 화면에서 변경하지 않습니다.',
     empty: {
       notSelectedTitle: '자원을 배정할 작업지시를 선택하세요.',
