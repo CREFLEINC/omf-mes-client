@@ -148,17 +148,25 @@ export const blit = (target: LabelBitmap, source: LabelBitmap, x: number, y: num
   }
 };
 
-/** 글 한 줄을 시스템 글꼴로 그려 점판으로 낸다. Canvas 가 없으면 `null`. */
-export const rasterizeText = (text: string, scale: number): LabelBitmap | null => {
+/**
+ * 글 한 줄을 **글꼴 크기(px)·글꼴 목록을 정해** 그려 점판으로 낸다. Canvas 가 없으면 `null`.
+ *
+ * ⭐ 배율이 아니라 px 로 받는 자리다 — TSPL 글줄(point)을 같은 높이의 그림으로 바꿀 때 쓴다
+ *    (`pop-location-label` · omf-all-around#9). 점 글꼴 배율을 쓰는 곳은 아래 `rasterizeText` 다.
+ */
+export const rasterizeTextWithFont = (
+  text: string,
+  fontPx: number,
+  family: string,
+): LabelBitmap | null => {
   if (text === '') return createBitmap(0, 0);
 
-  const size = fontSizeOf(scale);
-  const height = Math.ceil(size * RASTER_HEIGHT_RATIO);
+  const height = Math.ceil(fontPx * RASTER_HEIGHT_RATIO);
   const probe = openCanvas(1, height);
 
   if (probe === null) return null;
 
-  probe.context.font = `${String(size)}px ${FONT_FAMILY}`;
+  probe.context.font = `${String(fontPx)}px ${family}`;
   const width = Math.ceil(probe.context.measureText(text).width);
 
   if (width <= 0) return createBitmap(0, 0);
@@ -168,13 +176,40 @@ export const rasterizeText = (text: string, scale: number): LabelBitmap | null =
   if (canvas === null) return null;
 
   canvas.context.clearRect(0, 0, width, height);
-  canvas.context.font = `${String(size)}px ${FONT_FAMILY}`;
+  canvas.context.font = `${String(fontPx)}px ${family}`;
   /* ⚠ `y` 를 **윗변**으로 다룬다 — 점 글꼴의 `drawText` 와 같은 약속이다(기준선이 아니다). */
   canvas.context.textBaseline = 'top';
   canvas.context.fillStyle = '#000';
   canvas.context.fillText(text, 0, 0);
 
   return toDots(canvas.context.getImageData(0, 0, width, height).data, width, height);
+};
+
+/** 글 한 줄을 시스템 글꼴로 그려 점판으로 낸다. Canvas 가 없으면 `null`. */
+export const rasterizeText = (text: string, scale: number): LabelBitmap | null =>
+  rasterizeTextWithFont(text, fontSizeOf(scale), FONT_FAMILY);
+
+/** 없는 글자를 그리면 나오는 모양의 기준 — 어느 글꼴에도 없을 비문자(U+FFFF). */
+const MISSING_GLYPH = String.fromCharCode(0xffff);
+
+/**
+ * 이 글꼴 목록이 `probe` 글자를 **진짜 글자로** 그리는가.
+ *
+ * ⭐ 글꼴이 없으면 브라우저는 오류 없이 네모(없는 글자 모양)를 그린다. 그래서 `probe` 와
+ *    비문자를 같은 크기로 그려 **점판이 같으면 없는 것**으로 본다. Canvas 가 없으면 `false`.
+ */
+export const canDrawGlyph = (probe: string, family: string, fontPx = 24): boolean => {
+  const drawn = rasterizeTextWithFont(probe, fontPx, family);
+  const missing = rasterizeTextWithFont(MISSING_GLYPH, fontPx, family);
+
+  if (drawn === null || missing === null) return false;
+  if (!drawn.dots.some(Boolean)) return false;
+
+  return (
+    drawn.width !== missing.width ||
+    drawn.height !== missing.height ||
+    drawn.dots.some((dot, index) => dot !== missing.dots[index])
+  );
 };
 
 /**
