@@ -342,8 +342,9 @@ export const LotStatusTransitionCandidateScreen = () => {
               <label className="field-label" htmlFor={periodId}>
                 {t.filters.period}
               </label>
-              <Chip size="sm" status="info">
-                {t.filters.note}
+              {/* 칩은 칸 폭을 키우지 않는다 — 날짜 입력 폭 안에서 말줄임하고 전체 문구는 title 에 둔다. */}
+              <Chip size="sm" status="info" title={t.filters.note}>
+                <span className="lot-status-transition-period-chip-text">{t.filters.note}</span>
               </Chip>
             </div>
             <DatePicker
@@ -386,7 +387,7 @@ export const LotStatusTransitionCandidateScreen = () => {
             onChange={(lotStatusCode) => setDraft((current) => ({ ...current, lotStatusCode }))}
           />
           {/* 조회·초기화는 조건과 같은 줄 끝에 한 덩어리로 붙인다(규범 2-1) — 좁아지면 함께 넘어간다. */}
-          <div className="filter-actions field-cell-unlabeled">
+          <div className="filter-actions field-cell-unlabeled lot-status-transition-filter-actions">
             <Button variant="outlined" disabled={confirmationPinned} onClick={reset}>
               {t.filters.reset}
             </Button>

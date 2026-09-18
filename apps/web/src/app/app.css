@@ -1865,8 +1865,40 @@ main > * + * {
   margin-bottom: var(--space-1);
 }
 
-.lot-status-transition-period-label > span {
+/*
+ * 라벨 줄은 칸 폭 계산에서 빠진다(width 0 + min-width 100%) — 칸 폭은 날짜 입력이 정한다.
+ * 칩이 그보다 길면 칩 안 글자를 말줄임한다(전체 문구는 title). 칩이 칸을 넓히면 옆 칸과의
+ * 간격만 벌어진다(사용자 지시 2026-09-18).
+ */
+.lot-status-transition-period-label {
+  width: 0;
+  min-width: 100%;
+}
+
+.lot-status-transition-period-label > .field-label {
   flex: none;
+}
+
+.lot-status-transition-period-label > span {
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+}
+
+.lot-status-transition-period-chip-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/*
+ * 조회·초기화 묶음은 줄의 오른쪽 끝에 선다 — 한 줄에 다 들어가지 않아 다음 줄로 넘어갈 때
+ * 왼쪽 끝에 혼자 떨어지지 않게 한다(사용자 지시 2026-09-18).
+ */
+.filter-bar.lot-status-transition-filter > .lot-status-transition-filter-actions {
+  margin-left: auto;
 }
 
 .lot-status-transition-period-label > .field-label {
