@@ -2,6 +2,7 @@ import { Table, type Column } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 
 import { formatDateTime, type InspectionResultRound } from './types';
+import { withUom } from './uom-lookup';
 
 /**
  * 이전 회차 — **읽기 전용 표.**
@@ -22,7 +23,8 @@ import { formatDateTime, type InspectionResultRound } from './types';
 
 const t = messages.iqcInspection.history;
 
-const COLUMNS: Column<InspectionResultRound>[] = [
+/** 수량 칸에는 단위 코드를 붙인다(모르면 숫자만). */
+const columnsOf = (uomCode: string | null): Column<InspectionResultRound>[] => [
   {
     key: 'inspectionRound',
     header: t.columns.round,
@@ -37,17 +39,17 @@ const COLUMNS: Column<InspectionResultRound>[] = [
   {
     key: 'acceptedQty',
     header: t.columns.accepted,
-    render: (row) => String(row.acceptedQty),
+    render: (row) => withUom(String(row.acceptedQty), uomCode),
   },
   {
     key: 'rejectedQty',
     header: t.columns.rejected,
-    render: (row) => String(row.rejectedQty),
+    render: (row) => withUom(String(row.rejectedQty), uomCode),
   },
   {
     key: 'heldQty',
     header: t.columns.held,
-    render: (row) => String(row.heldQty),
+    render: (row) => withUom(String(row.heldQty), uomCode),
   },
   {
     key: 'confirmedAt',
@@ -60,9 +62,11 @@ const COLUMNS: Column<InspectionResultRound>[] = [
 
 export interface RoundHistoryProps {
   rounds: InspectionResultRound[];
+  /** 수량 옆에 붙일 단위 코드. 모르면 `null` */
+  uomCode: string | null;
 }
 
-export const RoundHistory = ({ rounds }: RoundHistoryProps) => {
+export const RoundHistory = ({ rounds, uomCode }: RoundHistoryProps) => {
   if (rounds.length === 0) return null;
 
   return (
@@ -72,7 +76,7 @@ export const RoundHistory = ({ rounds }: RoundHistoryProps) => {
         /* 구획 제목(「이전 회차」)이 이미 보인다 — 표 제목은 접근 이름으로만 남긴다. */
         caption={<span className="iqc-inspection-table-caption">{t.caption}</span>}
         density="compact"
-        columns={COLUMNS}
+        columns={columnsOf(uomCode)}
         rows={rounds}
         getRowId={(row) => String(row.inspectionResultId)}
       />

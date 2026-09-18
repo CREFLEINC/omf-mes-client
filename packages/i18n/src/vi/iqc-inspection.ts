@@ -76,7 +76,6 @@ export const iqcInspection: Translated<typeof ko.iqcInspection> = {
     progressTitle: 'Tình trạng nhập',
     progressLabel: 'Tổng đã nhập so với số lượng kiểm tra',
     matched: 'Khớp với số lượng kiểm tra.',
-    remainingNote: (remaining: string): string => `Số lượng kiểm tra còn lại ${remaining}.`,
     over: (over: string): string => `Nhiều hơn số lượng kiểm tra ${over}. Hãy giảm số lượng.`,
     quantityInvalid: 'Hãy nhập số từ 0 trở lên. Tối đa sáu chữ số thập phân.',
     save: 'Lưu tạm',

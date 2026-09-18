@@ -1,6 +1,7 @@
 import { messages } from '@omf-mes/i18n';
 
 import { formatDateTime, type InspectionRequestDetail } from './types';
+import { withUom } from './uom-lookup';
 
 /**
  * 고른 의뢰의 상세 — **스펙 §4-A 의 여섯 항목이다.**
@@ -21,9 +22,11 @@ const empty = messages.iqcInspection.queue.emptyValue;
 
 export interface RequestDetailPaneProps {
   detail: InspectionRequestDetail;
+  /** 수량 옆에 붙일 단위 코드. 모르면 `null` — 숫자만 둔다 */
+  uomCode: string | null;
 }
 
-export const RequestDetailPane = ({ detail }: RequestDetailPaneProps) => {
+export const RequestDetailPane = ({ detail, uomCode }: RequestDetailPaneProps) => {
   /* 식별에 쓰이는 넷(의뢰번호·품목·대상 LOT·검사수량)은 값을 조금 굵게 — 먼저 눈에 들어오게. */
   const items = [
     {
@@ -40,7 +43,12 @@ export const RequestDetailPane = ({ detail }: RequestDetailPaneProps) => {
       value: detail.lotId === null ? empty : String(detail.lotId),
       emphasized: true,
     },
-    { key: 'qty', label: t.fields.targetQty, value: String(detail.targetQty), emphasized: true },
+    {
+      key: 'qty',
+      label: t.fields.targetQty,
+      value: withUom(String(detail.targetQty), uomCode),
+      emphasized: true,
+    },
     {
       key: 'plan',
       label: t.fields.inspectionPlanVersionId,

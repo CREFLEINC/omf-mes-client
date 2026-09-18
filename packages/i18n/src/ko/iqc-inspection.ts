@@ -139,11 +139,6 @@ export const iqcInspection = {
     /** 진행 막대의 접근 이름. */
     progressLabel: '검사수량 대비 입력 합계',
     matched: '검사수량과 일치합니다.',
-    /**
-     * 합계가 모자랄 때 막대 아래 한 줄. ⚠ 단위 이름을 붙이지 않는다 — 이 화면은 단위 식별자만
-     * 갖고 이름을 모른다. 숫자 뒤 조사가 발음에 따라 갈리지 않게 「검사수량이 N 남아 있습니다」로 쓴다.
-     */
-    remainingNote: (remaining: string): string => `검사수량이 ${remaining} 남아 있습니다.`,
     /** 넘겼다. 0으로 깎아 감추지 않는다. */
     over: (over: string): string => `검사수량보다 ${over}만큼 많습니다. 수량을 줄여 주세요.`,
     quantityInvalid: '0 이상의 숫자로 입력해 주세요. 소수점은 여섯 자리까지 됩니다.',

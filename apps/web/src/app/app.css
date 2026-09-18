@@ -8942,25 +8942,16 @@ dl.filter-bar.approval-inbox-detail-facts {
   margin-top: 0;
 }
 
-/* 확정 막힌 이유 — 정보 아이콘 + 보조 글자. 둘째 줄은 아이콘 뒤 글자 시작선에 맞춘다. */
-.iqc-inspection-blocked {
-  display: flex;
-  align-items: flex-start;
-  gap: var(--space-1);
-}
-
-/* 아이콘(16px)을 첫 글줄 가운데에 — 글줄 높이와의 차이만큼 내린다. */
-.iqc-inspection-blocked > :first-child {
-  margin-block-start: calc((1lh - 16px) / 2);
-}
-
-/* 확정 경고 띠 — DS 경고 띠를 낮게, 칸 폭을 채운다. 표식은 글줄과 같은 높이(terminal-map-notice 와 같은 풀이). */
-.iqc-inspection-confirm-banner {
+/*
+ * 저장 및 확정 칸의 두 띠(확정 막힌 이유 = 정보, 확정 경고 = 경고) — DS 띠를 같은 높이·여백으로 낮게,
+ * 칸 폭을 채운다. 표식은 글줄과 같은 높이(terminal-map-notice 와 같은 풀이).
+ */
+.iqc-inspection-submit-banner {
   box-sizing: border-box;
   padding: var(--space-2) var(--space-3);
 }
 
-.iqc-inspection-confirm-banner > :first-child {
+.iqc-inspection-submit-banner > :first-child {
   margin-block-start: 0;
 }
 
@@ -8969,4 +8960,20 @@ dl.filter-bar.approval-inbox-detail-facts {
   display: inline-block;
   margin-inline-end: var(--space-2);
   vertical-align: middle;
+}
+
+/* 합격·불합격·보류 칸 옆 단위 코드 — 입력 상자의 세로 가운데에 맞춘다(라벨 층만큼 내리고 상자 높이 안에서 가운데). */
+.iqc-inspection-qty-field {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  column-gap: var(--space-2);
+}
+
+.iqc-inspection-qty-unit {
+  display: flex;
+  align-items: center;
+  height: var(--control-height-md);
+  margin-top: var(--field-label-layer);
+  color: var(--on-surface-variant);
 }

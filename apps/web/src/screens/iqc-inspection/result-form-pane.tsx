@@ -1,4 +1,4 @@
-import { AlertBanner, Button, Icon, Progress, Select, TextField } from '@crefle/web-ui';
+import { AlertBanner, Button, Progress, Select, TextField } from '@crefle/web-ui';
 import type { ApiError } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useId, useState, type FormEvent, type ReactElement } from 'react';
@@ -18,6 +18,7 @@ import {
   type QuantityDraft,
 } from './quantity-draft';
 import type { InspectionResultRound } from './types';
+import { withUom } from './uom-lookup';
 
 /**
  * 수량 판정 구획 — **합계 제약이 이 구획을 지배한다.**
@@ -56,6 +57,8 @@ export interface ResultFormPaneProps {
   round: InspectionResultRound | null;
   /** 검사수량 — 회차가 있으면 그 값, 없으면 의뢰의 입하 등록 수량이다(§4-B 「자동」) */
   inspectedQty: number;
+  /** 수량 옆에 붙일 단위 코드(표시 전용). 모르면 `null` — 숫자만 둔다 */
+  uomCode: string | null;
   draft: QuantityDraft;
   onChange: (draft: QuantityDraft) => void;
   onSave: () => void;
@@ -103,6 +106,7 @@ const FIELD_OF: Record<string, keyof QuantityDraft> = {
 export const ResultFormPane = ({
   round,
   inspectedQty,
+  uomCode,
   draft,
   onChange,
   onSave,
@@ -170,7 +174,8 @@ export const ResultFormPane = ({
   };
 
   /**
-   * 입력 현황 줄 아래 한 문장 — 모자라면 남은 양, 맞으면 일치, 넘기면 넘긴 양을 숫자로 말한다.
+   * 입력 현황 줄 아래 한 문장 — 맞으면 일치, 넘기면 넘긴 양을 숫자로 말한다. 모자랄 때는 바로 위
+   * 「잔여」와 막대가 이미 보이므로 문장을 두지 않는다.
    *
    * ⛔ **셀 수 없으면 아무 말도 하지 않는다.** 한 칸이라도 수량이 아니면 합계는 알 수 없는
    * 것이고, 그때 「일치합니다」든 「남아 있습니다」든 내면 **거짓을 말하는 것**이다. 무엇을
@@ -182,8 +187,8 @@ export const ResultFormPane = ({
       : totals.matches
         ? t.matched
         : totals.remaining > 0n
-          ? t.remainingNote(formatMicro(totals.remaining))
-          : t.over(formatMicro(-totals.remaining));
+          ? null
+          : t.over(withUom(formatMicro(-totals.remaining), uomCode));
 
   /**
    * 진행 막대 — **보이기 위한 값일 뿐이다**(합계·잔여 계산은 위 `toTotals` 그대로).
@@ -202,20 +207,26 @@ export const ResultFormPane = ({
               tone: 'primary' as const,
             };
   const sumText = totals.kind === 'counted' ? formatMicro(totals.sum) : unknownValue;
-  const remainingText = totals.kind === 'counted' ? formatMicro(totals.remaining) : unknownValue;
+  const inspectedText = withUom(String(inspectedQty), uomCode);
+  const remainingText =
+    totals.kind === 'counted' ? withUom(formatMicro(totals.remaining), uomCode) : unknownValue;
 
   const field = (key: keyof QuantityDraft, label: string, invalid: boolean): ReactElement => (
-    <TextField
-      label={label}
-      inputMode="decimal"
-      /* 「0」은 흐린 안내 글자일 뿐 값이 아니다 — 빈 칸은 저장 때 0 으로 보내던 그대로다. */
-      placeholder="0"
-      value={draft[key]}
-      disabled={isConfirmed || isSaving}
-      /* 서버가 짚어 준 것을 먼저 낸다 — 그쪽이 이 값에 대해 더 아는 쪽이다. */
-      error={serverErrorOf(key) ?? (showErrors && invalid ? t.quantityInvalid : undefined)}
-      onChange={(event) => onChange({ ...draft, [key]: event.target.value })}
-    />
+    /* 단위 코드는 칸 바로 옆 글자로 — 입력값 자체에는 넣지 않는다. 모르면 붙이지 않는다. */
+    <div className="iqc-inspection-qty-field">
+      <TextField
+        label={label}
+        inputMode="decimal"
+        /* 「0」은 흐린 안내 글자일 뿐 값이 아니다 — 빈 칸은 저장 때 0 으로 보내던 그대로다. */
+        placeholder="0"
+        value={draft[key]}
+        disabled={isConfirmed || isSaving}
+        /* 서버가 짚어 준 것을 먼저 낸다 — 그쪽이 이 값에 대해 더 아는 쪽이다. */
+        error={serverErrorOf(key) ?? (showErrors && invalid ? t.quantityInvalid : undefined)}
+        onChange={(event) => onChange({ ...draft, [key]: event.target.value })}
+      />
+      {uomCode !== null && <span className="iqc-inspection-qty-unit">{uomCode}</span>}
+    </div>
   );
 
   return (
@@ -250,7 +261,7 @@ export const ResultFormPane = ({
         {/* 기준값(검사수량)은 입력 줄 밖에 따로 — 세 칸은 이 값을 나눈 결과다. */}
         <dl className="iqc-inspection-qty-base">
           <dt className="field-label">{t.fields.inspectedQty}</dt>
-          <dd>{String(inspectedQty)}</dd>
+          <dd>{inspectedText}</dd>
         </dl>
 
         <div className="iqc-inspection-qty">
@@ -268,7 +279,7 @@ export const ResultFormPane = ({
           <div className="iqc-inspection-progress-row">
             <span className="iqc-inspection-progress-sum">
               <span className="iqc-inspection-visually-hidden">{t.sum} </span>
-              {totals.kind === 'counted' ? `${sumText} / ${String(inspectedQty)}` : sumText}
+              {totals.kind === 'counted' ? `${sumText} / ${inspectedText}` : sumText}
             </span>
             <span>
               {t.remaining} {remainingText}
@@ -278,7 +289,7 @@ export const ResultFormPane = ({
             value={progress.value}
             tone={progress.tone}
             label={t.progressLabel}
-            valueText={`${sumText} / ${String(inspectedQty)}`}
+            valueText={`${sumText} / ${inspectedText}`}
           />
           {totalsNote !== null && <p className="field-note">{totalsNote}</p>}
         </div>
@@ -390,18 +401,17 @@ export const ResultFormPane = ({
                       <p className="field-note">{t.saveBlockedByInvalid}</p>
                     )}
                   </div>
-                  {/* 막혔으면 «무엇이» 막혔는지 단추 바로 아래에서 밝힌다(공유계약 G-23). */}
+                  {/* 막혔으면 «무엇이» 막혔는지 단추 바로 아래 정보 띠로 밝힌다(공유계약 G-23). */}
                   {confirmBlockedReason !== null && (
-                    <p className="field-note iqc-inspection-blocked">
-                      <Icon name="info" size={16} />
-                      <span>{confirmBlockedReason}</span>
-                    </p>
+                    <AlertBanner className="iqc-inspection-submit-banner" variant="info">
+                      {confirmBlockedReason}
+                    </AlertBanner>
                   )}
                   {/*
                    * ⛔ **확정은 되돌릴 수 없다** — 누르기 전에 그 사실을 알린다. 이 순간 LOT 상태가
                    * 전이하고 보류 해제가 기록된다. 흐린 보조 글이 아니라 DS 경고 띠로 둔다.
                    */}
-                  <AlertBanner className="iqc-inspection-confirm-banner" variant="warning">
+                  <AlertBanner className="iqc-inspection-submit-banner" variant="warning">
                     {t.confirmNote}
                   </AlertBanner>
                 </>

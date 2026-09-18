@@ -27,6 +27,7 @@ const renderPane = (
     <ResultFormPane
       round={round}
       inspectedQty={inspectedQty}
+      uomCode={null}
       draft={draft}
       onChange={onChange}
       onSave={onSave}
@@ -89,12 +90,11 @@ describe('ResultFormPane', () => {
     expect(screen.getByText(t.matched)).toBeInTheDocument();
   });
 
-  it('모자라면 「합계 / 검사수량」·잔여와 남은 양을 말한다 — 사용자가 다시 세지 않게', () => {
+  it('모자라면 안내 문장 없이 「합계 / 검사수량」·잔여·막대로 보인다', () => {
     renderPane({ accepted: '400', rejected: '0', held: '0' });
 
     expect(sumText()).toBe(`${t.sum} 400 / 500`);
     expect(screen.getByText(`${t.remaining} 100`)).toBeInTheDocument();
-    expect(screen.getByText(t.remainingNote('100'))).toBeInTheDocument();
     expect(screen.getByRole('progressbar')).toHaveAttribute('aria-valuenow', '80');
     expect(screen.queryByText(t.matched)).not.toBeInTheDocument();
     expect(screen.queryByText(t.over('100'))).not.toBeInTheDocument();
@@ -405,5 +405,15 @@ describe('ResultFormPane — 미결과 결과 문면', () => {
     renderPane(EMPTY_QUANTITY_DRAFT, toInspectionResultRound(confirmedRound));
 
     expect(screen.queryByText(t.confirmSucceeded)).not.toBeInTheDocument();
+  });
+
+  it('단위 코드를 알면 검사수량·입력 현황·칸 옆에 붙인다 — 입력값에는 넣지 않는다', () => {
+    renderPane({ accepted: '400', rejected: '', held: '' }, undefined, 500, { uomCode: 'EA' });
+
+    expect(screen.getByText('500 EA')).toBeInTheDocument();
+    expect(sumText()).toBe(`${t.sum} 400 / 500 EA`);
+    expect(screen.getByText(`${t.remaining} 100 EA`)).toBeInTheDocument();
+    expect(screen.getAllByText('EA')).toHaveLength(3);
+    expect(screen.getByLabelText(t.fields.accepted)).toHaveValue('400');
   });
 });
