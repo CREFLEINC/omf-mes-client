@@ -67,13 +67,19 @@ export const TokenDialog = ({ token, terminalCode, onClose }: TokenDialogProps) 
           </Button>
           {copyResult === 'copied' ? <p role="status">{t.token.copied}</p> : null}
           {copyResult === 'unavailable' ? (
-            <AlertBanner variant="warning">{t.token.copyUnavailable}</AlertBanner>
+            <AlertBanner className="terminal-map-notice" variant="warning">
+              {t.token.copyUnavailable}
+            </AlertBanner>
           ) : null}
           {copyResult === 'failed' ? (
-            <AlertBanner variant="error">{t.token.copyError}</AlertBanner>
+            <AlertBanner className="terminal-map-notice" variant="error">
+              {t.token.copyError}
+            </AlertBanner>
           ) : null}
           {copyResult === 'denied' ? (
-            <AlertBanner variant="error">{t.token.copyFailed}</AlertBanner>
+            <AlertBanner className="terminal-map-notice" variant="error">
+              {t.token.copyFailed}
+            </AlertBanner>
           ) : null}
           <p className="field-note">{t.token.textOmitted}</p>
           <dl className="token-meta">
@@ -82,7 +88,9 @@ export const TokenDialog = ({ token, terminalCode, onClose }: TokenDialogProps) 
             <dt>{t.token.expiresAt}</dt>
             <dd>{token.expiresAt === null ? t.token.noExpiry : formatMoment(token.expiresAt)}</dd>
           </dl>
-          <AlertBanner variant="warning">{t.token.reissueWarning}</AlertBanner>
+          <AlertBanner className="terminal-map-notice" variant="warning">
+            {t.token.reissueWarning}
+          </AlertBanner>
         </>
       )}
     </Dialog>

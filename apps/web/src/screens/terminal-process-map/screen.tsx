@@ -315,6 +315,7 @@ export const TerminalProcessMapScreen = () => {
       {savedNotice !== null && (
         <div className="banner-slot">
           <AlertBanner
+            className="terminal-map-notice"
             variant="success"
             onDismiss={() => {
               setSavedNotice(null);
@@ -431,7 +432,9 @@ export const TerminalProcessMapScreen = () => {
                 </dl>
                 <SaveErrorBanner error={issueToken.error} />
                 {/* ⚠ 누르기 전에 말한다 — 누른 뒤에는 이미 이전 기기가 끊겨 있다. */}
-                <AlertBanner variant="warning">{t.token.reissueWarning}</AlertBanner>
+                <AlertBanner className="terminal-map-notice" variant="warning">
+                  {t.token.reissueWarning}
+                </AlertBanner>
                 <div className="form-actions">
                   <Button
                     variant="outlined"
@@ -483,7 +486,7 @@ export const TerminalProcessMapScreen = () => {
        * 좁은 단에 넣으면 열 이름이 두 줄로 접히고 체크 상자가 서로 붙는다 — 오조작을 막으려고
        * 만든 화면이 오조작을 부르게 된다.
        */}
-      <section className="pane" aria-label={t.panes.grid}>
+      <section className="pane terminal-map-grid-pane" aria-label={t.panes.grid}>
         <h2>{t.panes.grid}</h2>
         {/* ⭐ 이 구획이 무엇을 정하는지 먼저 말한다. */}
         <p className="pane-lead">{t.grid.purpose}</p>

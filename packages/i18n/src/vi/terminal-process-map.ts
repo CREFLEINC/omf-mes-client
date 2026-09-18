@@ -93,7 +93,7 @@ export const terminalProcessMap: Translated<typeof ko.terminalProcessMap> = {
     title: 'Token đăng ký máy quét',
     lead: 'Quét mã QR hoặc dán mã đăng ký trên máy. Trạng thái sẽ hoàn tất sau khi máy xác nhận với máy chủ và nhận danh sách nhân viên.',
     reissueWarning:
-      'Phát hành lại thì mọi máy đã đăng ký trước đó đều bị ngắt. Những máy đó phải đăng ký lại.',
+      'Khi phát hành lại, kết nối của mọi máy đã đăng ký sẽ bị hủy. Sau đó phải đăng ký lại các máy.',
     imageLabel: 'Hình mã dùng để đăng ký máy quét',
     copy: 'Sao chép mã đăng ký',
     copied: 'Đã sao chép mã đăng ký.',
