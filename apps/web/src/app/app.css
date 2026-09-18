@@ -786,7 +786,13 @@ main > * + * {
 
 /* P/O 변경 관리자 확인 — 목록과 판단 흐름을 데스크톱에서 함께 보이게 유지한다. */
 .two-pane.po-change-review-layout {
-  grid-template-columns: minmax(20rem, 2fr) minmax(0, 3fr);
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+}
+
+/* 목록의 P/O 번호와 확인 배지는 접거나 자르지 않는다. */
+.po-change-review-list .link-cell,
+.po-change-review-list td:last-child {
+  white-space: nowrap;
 }
 
 .po-change-review-pane {
@@ -824,7 +830,7 @@ main > * + * {
   border: 0;
 }
 
-@media (max-width: 960px) {
+@media (max-width: 1200px) {
   .two-pane.po-change-review-layout {
     grid-template-columns: 1fr;
   }
