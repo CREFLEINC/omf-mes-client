@@ -13,7 +13,7 @@ export const lotStatusTransition: Translated<typeof ko.lotStatusTransition> = {
   description:
     'Tìm và chọn LOT để xem trạng thái chất lượng hiện tại, rồi đổi trạng thái bằng cách đăng ký hoặc gỡ tạm giữ.',
   breadcrumbRoot: 'Quản lý chất lượng',
-  historyNotice: 'Lịch sử chuyển đổi không được lưu thành lịch sử riêng',
+  historyNotice: 'Lịch sử chuyển đổi không được lưu thành một lịch sử riêng',
   historyLink: 'Xem lịch sử thay đổi Lot Status',
   reason: {
     holdLabel: 'Lý do tạm giữ',

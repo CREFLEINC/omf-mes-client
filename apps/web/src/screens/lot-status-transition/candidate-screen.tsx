@@ -108,6 +108,28 @@ const useCandidates = (
   });
 };
 
+/*
+ * 표의 수량 옆 단위 코드 — 표시용 조회다(`500 EA`). 단위는 수가 적지만 기본 쪽 크기에 잘리지
+ * 않게 쪽 크기를 준다. 조회·선택·전이와 캐시 키를 섞지 않는다 — 전이 뒤 무효화가 이것까지
+ * 다시 부르지 않게 한다.
+ */
+const UOM_PAGE_SIZE = 200;
+
+const useUomCodes = (): ReadonlyMap<number, string> => {
+  const { client } = useApiClient();
+  const query = useQuery({
+    queryKey: ['lot-status-transition:uoms'],
+    queryFn: () =>
+      runRequest(() =>
+        client.GET('/mdm/uoms', {
+          params: { query: { includeInactive: true, size: UOM_PAGE_SIZE } },
+        }),
+      ),
+  });
+
+  return new Map((query.data?.items ?? []).map((uom) => [uom.uomId, uom.uomCode]));
+};
+
 const rowKey = (row: LotStatusCandidate): string =>
   `${row.lotId}:${row.warehouseId ?? '-'}:${row.locationId ?? '-'}`;
 const emptyValue = '—';
@@ -178,6 +200,15 @@ export const LotStatusTransitionCandidateScreen = () => {
     [queryClient],
   );
   const items = useItemReferenceOptions();
+  const uomCodes = useUomCodes();
+  /* 단위를 못 풀면 수량만 낸다 — 「알 수 없음」 같은 말을 새로 만들지 않는다. */
+  const quantityWithUnit = (value: number | undefined, uomId: number | undefined): string => {
+    const code = uomId === undefined ? undefined : uomCodes.get(uomId);
+
+    return value === undefined || code === undefined
+      ? quantity(value)
+      : `${quantity(value)} ${code}`;
+  };
   const itemNames = useItemNameSources(
     candidates.data?.items.map((candidate) => candidate.itemId) ?? [],
   );
@@ -226,9 +257,11 @@ export const LotStatusTransitionCandidateScreen = () => {
     changePage(1);
   };
   const columns: Column<LotStatusCandidate>[] = [
+    /* 표는 머리와 모든 열을 가운데로 맞춘다(사용자 지시 2026-09-18). */
     {
       key: 'lotNo',
       header: t.fields.lotNo,
+      align: 'center',
       render: (row) => (
         <button
           type="button"
@@ -247,6 +280,7 @@ export const LotStatusTransitionCandidateScreen = () => {
     {
       key: 'item',
       header: t.fields.item,
+      align: 'center',
       /* 긴 품목명이 수량 열을 밀지 않게 한 줄로 자르고, 전체 이름은 title 로 남긴다. */
       render: (row) => {
         const label = itemLabel(row.itemId);
@@ -261,19 +295,20 @@ export const LotStatusTransitionCandidateScreen = () => {
     {
       key: 'status',
       header: t.fields.status,
+      align: 'center',
       render: (row) => <Chip variant="status">{statusLabel(row.lotStatusCode)}</Chip>,
     },
     {
       key: 'onHand',
       header: t.fields.onHand,
-      align: 'end',
-      render: (row) => row.onHandQty ?? emptyValue,
+      align: 'center',
+      render: (row) => quantityWithUnit(row.onHandQty, row.uomId),
     },
     {
       key: 'held',
       header: t.fields.held,
-      align: 'end',
-      render: (row) => row.heldQty ?? emptyValue,
+      align: 'center',
+      render: (row) => quantityWithUnit(row.heldQty, row.uomId),
     },
   ];
   const meta = candidates.data?.page;
@@ -290,9 +325,18 @@ export const LotStatusTransitionCandidateScreen = () => {
         </h2>
         <div className="filter-bar lot-status-transition-filter">
           <div className="field-cell lot-status-transition-period">
-            <label className="field-label" htmlFor={periodId}>
-              {t.filters.period}
-            </label>
+            {/*
+             * 기간의 기준(최근 전이일)은 라벨 옆에 라벨 형식(칩)으로 둔다(사용자 지시 2026-09-18).
+             * 품질 상태 배지(기본 idle)와 헷갈리지 않게 info 톤을 쓴다 — 표시 전용이라 누를 수 없다.
+             */}
+            <div className="lot-status-transition-period-label">
+              <label className="field-label" htmlFor={periodId}>
+                {t.filters.period}
+              </label>
+              <Chip size="sm" status="info">
+                {t.filters.note}
+              </Chip>
+            </div>
             <DatePicker
               id={periodId}
               mode="range"
@@ -300,13 +344,12 @@ export const LotStatusTransitionCandidateScreen = () => {
               value={[draft.from === '' ? null : draft.from, draft.to === '' ? null : draft.to]}
               onChange={([from, to]) => setDraft((current) => ({ ...current, from, to }))}
             />
-            {/* 기간의 기준(최근 전이 일자)은 기간 칸 바로 아래에 둔다 — 떨어져 있으면 무엇의 설명인지 흐려진다. */}
-            <span
-              className={periodError === null ? 'field-note' : 'field-error'}
-              role={periodError === null ? undefined : 'alert'}
-            >
-              {periodErrorMessage ?? t.filters.note}
-            </span>
+            {/* 기간 오류는 칸 바로 아래 — 도움말이 라벨 옆으로 옮겨도 오류 자리는 그대로다. */}
+            {periodErrorMessage !== null && (
+              <span className="field-error" role="alert">
+                {periodErrorMessage}
+              </span>
+            )}
           </div>
           <SearchInput
             disabled={confirmationPinned}

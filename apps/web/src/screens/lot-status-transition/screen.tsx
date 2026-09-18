@@ -25,7 +25,7 @@ export const LotStatusTransitionScreen = () => {
           />
         }
         actions={
-          <Button variant="outlined" size="sm" onClick={() => void navigate('/quality/lot-status')}>
+          <Button variant="outlined" onClick={() => void navigate('/quality/lot-status')}>
             {t.historyLink}
           </Button>
         }

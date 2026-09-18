@@ -1834,10 +1834,30 @@ main > * + * {
   grid-column: span 2;
 }
 
-.lot-status-transition-period > .field-note,
 .lot-status-transition-period > .field-error {
   max-width: none;
   margin: 0;
+}
+
+/*
+ * 라벨 옆 기준 칩 — 라벨과 한 줄에 세운다. 줄 높이를 라벨 줄(16px)로 고정해 칩(24px)이 줄을
+ * 키우지 않게 한다 — 키우면 기간 칸만 옆 칸들보다 아래로 밀린다. 칩은 그 줄 가운데에 걸친다.
+ */
+.lot-status-transition-period-label {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  height: 16px;
+  min-width: 0;
+  margin-bottom: var(--space-1);
+}
+
+.lot-status-transition-period-label > span {
+  flex: none;
+}
+
+.lot-status-transition-period-label > .field-label {
+  margin-bottom: 0;
 }
 
 /* 조회·초기화는 조건 바로 아래 오른쪽 — 설명 줄이 사이에 끼지 않게 조건과 붙여 둔다. */
@@ -1891,6 +1911,7 @@ main > * + * {
 .lot-status-transition-item {
   display: block;
   max-width: 28rem;
+  margin-inline: auto;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
