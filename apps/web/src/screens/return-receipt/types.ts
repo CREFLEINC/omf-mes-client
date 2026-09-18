@@ -1,4 +1,5 @@
 import type { components } from '@omf-mes/api-client';
+import { toPlantDateTimeParts } from '../../patterns/plant-time';
 
 /**
  * W-04-06 화면 슬라이스의 계약.
@@ -22,9 +23,15 @@ export type LocationResponse = components['schemas']['Location'];
 export const formatQty = (value: number | null | undefined): string =>
   value === null || value === undefined ? '' : String(value);
 
-/** ISO 일시의 날짜 부분. 서버가 offset 을 실어 보내므로 앞 10자가 그 지역의 날짜다. */
+/**
+ * 일시(`shippedAt`)의 날짜 부분 — **공장 시각의 날짜**다(`patterns/plant-time` · omf-all-around#20).
+ * 서버가 UTC 로 보내므로 앞 10자를 자르면 공장 시각 00:00~06:59 의 건이 전날로 보인다.
+ * 공장 시각으로 읽지 못하는 값은 기존처럼 앞 10자를 낸다.
+ */
 export const formatDate = (value: string | null | undefined): string =>
-  value === null || value === undefined || value === '' ? '' : value.slice(0, 10);
+  value === null || value === undefined || value === ''
+    ? ''
+    : (toPlantDateTimeParts(value)?.date ?? value.slice(0, 10));
 
 export interface ShipmentLotSummary {
   lotId: number;

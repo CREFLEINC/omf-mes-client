@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { lotFixture, shipmentFixture } from './fixtures';
-import { toLotLineSource, toReturnLineSources, toShipmentRow } from './types';
+import { formatDate, toLotLineSource, toReturnLineSources, toShipmentRow } from './types';
 
 describe('toShipmentRow', () => {
   it('라인이 오면 품목 요약과 배분 LOT 을 든다', () => {
@@ -62,5 +62,17 @@ describe('toReturnLineSources — 배분 한 줄이 반품 라인 한 줄이다'
       uomId: 7001,
       shippedQty: null,
     });
+  });
+});
+
+/* 출하 일시(date-time)의 날짜는 공장 시각(UTC+7)의 날짜다 — omf-all-around#20. */
+describe('formatDate', () => {
+  it('UTC 로 온 일시가 공장 시각으로 자정을 넘기면 다음날 날짜다', () => {
+    expect(formatDate('2026-09-17T18:30:00Z')).toBe('2026-09-18');
+  });
+
+  it('공장 시각으로 읽지 못하는 값은 앞 10자를, 빈 값은 빈 칸을 낸다', () => {
+    expect(formatDate('2026-09-17')).toBe('2026-09-17');
+    expect(formatDate(null)).toBe('');
   });
 });
