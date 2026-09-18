@@ -36,10 +36,7 @@ export type DispositionDecisionHistoryResponse =
 
 const quantityFormat = new Intl.NumberFormat('ko-KR', { maximumFractionDigits: 6 });
 
-/**
- * RFC 3339의 날짜·시각 앞부분. **날짜와 시각을 잇는 글자는 대문자 `T`가 정본이지만 소문자도
- * 허용된다** — 대문자만 받으면 소문자를 쓰는 서버의 값이 원문 그대로 화면에 샌다.
- */
+/** 날짜만 있는 값의 앞부분(`YYYY-MM-DD`) — 날짜는 시간대를 적용하지 않는다(하루 밀림 방지). */
 const DATE_PATTERN = /^(\d{4}-\d{2}-\d{2})/;
 
 export const formatQty = (value: number | undefined): string =>
