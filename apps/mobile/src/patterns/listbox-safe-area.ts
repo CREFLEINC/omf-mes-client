@@ -93,6 +93,8 @@ const adjust = (listbox: HTMLElement) => {
   listbox.style.top = `${currentTop + placement.top - listRect.top}px`;
 
   if (placement.maxHeight !== null) {
+    // DS 목록은 content-box 에 위아래 여백이 있다. 테두리 상자로 재야 공간을 넘지 않는다.
+    listbox.style.boxSizing = 'border-box';
     listbox.style.maxHeight = `${placement.maxHeight}px`;
   }
 };

@@ -34,6 +34,7 @@ describe('placeListbox', () => {
 
 describe('keepListboxesInSafeArea', () => {
   let release: () => void;
+  let triggerTop = 400;
 
   beforeEach(() => {
     release = keepListboxesInSafeArea();
@@ -45,7 +46,7 @@ describe('keepListboxesInSafeArea', () => {
       }
 
       if (this.getAttribute('role') === 'combobox') {
-        return DOMRect.fromRect({ x: 0, y: 400, width: 200, height: 48 });
+        return DOMRect.fromRect({ x: 0, y: triggerTop, width: 200, height: 48 });
       }
 
       if (this.getAttribute('role') === 'listbox') {
@@ -58,16 +59,17 @@ describe('keepListboxesInSafeArea', () => {
   });
 
   afterEach(() => {
+    triggerTop = 400;
     release();
     vi.restoreAllMocks();
   });
 
-  it('창 높이로는 아래에 열릴 목록을 내비게이션 바 위로 올린다', async () => {
-    const options = Array.from({ length: 20 }, (_, index) => ({
-      value: `v${index}`,
-      label: `항목 ${index}`,
-    }));
+  const options = Array.from({ length: 20 }, (_, index) => ({
+    value: `v${index}`,
+    label: `항목 ${index}`,
+  }));
 
+  it('창 높이로는 아래에 열릴 목록을 내비게이션 바 위로 올린다', async () => {
     render(
       <div className="mobile-shell" style={{ paddingBottom: '48px' }}>
         <Select aria-label="위치" options={options} />
@@ -81,5 +83,24 @@ describe('keepListboxesInSafeArea', () => {
     // DS 는 448(트리거 바로 아래)에 두었다. 바 위 720 까지 288 이 안 들어가 위로 옮긴다.
     expect(listbox.style.top).toBe('112px');
     expect(listbox.style.maxHeight).toBe('');
+  });
+
+  it('위아래 모두 모자라면 넓은 쪽 공간에 테두리까지 맞춰 줄인다', async () => {
+    triggerTop = 200;
+
+    render(
+      <div className="mobile-shell" style={{ paddingTop: '120px', paddingBottom: '300px' }}>
+        <Select aria-label="위치" options={options} />
+      </div>,
+    );
+
+    fireEvent.click(screen.getByRole('combobox', { name: '위치' }));
+    const listbox = await screen.findByRole('listbox');
+    await Promise.resolve();
+
+    // 아래 468-248=220, 위 200-120=80. 아래로 열고 여백까지 220 안에 넣는다.
+    expect(listbox.style.top).toBe('248px');
+    expect(listbox.style.maxHeight).toBe('220px');
+    expect(listbox.style.boxSizing).toBe('border-box');
   });
 });
