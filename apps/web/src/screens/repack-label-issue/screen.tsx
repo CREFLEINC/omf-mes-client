@@ -3,6 +3,7 @@ import { messages } from '@omf-mes/i18n';
 import { useEffect, useId, useRef, useState } from 'react';
 
 import { soleProcessIdOf, usePopIdentity } from '../../patterns/pop-identity';
+import { PopWorkerMissingBanner } from '../../patterns/pop-worker-missing-banner';
 import { PopWorkerTag } from '../../patterns/pop-worker-tag';
 import { useIsOnline } from './connection';
 import { useRepackLabelEntry } from './entry-context';
@@ -285,6 +286,9 @@ export const RepackLabelIssueScreen = () => {
         </div>
       </header>
 
+      {/* ⭐ 사번 미확인은 모든 POP 화면이 같은 맨 위 띠로 말한다(사용자 지시 2026-09-17). */}
+      <PopWorkerMissingBanner workerNo={entry.workerNo} />
+
       {issue.error !== null && lastIssueBody !== null && (
         <ErrorBanner
           error={issue.error}
@@ -483,9 +487,11 @@ export const RepackLabelIssueScreen = () => {
          *
          * ⚠ 잠그는 것과 말하는 것은 다른 축이다 — [발번·인쇄]는 그대로 잠긴다.
          */}
+        {/* 사번 미확인은 맨 위 공용 띠가 말한다 — 여기서 되풀이하지 않는다(사용자 지시 2026-09-17). */}
         {/* 인쇄 대상 미선택은 인쇄 대상 칸이 말한다(사용자 지시 2026-09-17). */}
         {blockedReason !== null &&
           blockedReason !== t.entry.missingHandlingUnit &&
+          blockedReason !== t.entry.missingWorker &&
           blockedReason !== t.issue.targetRequired && (
             <p className="pop-repack-blocked" role="status">
               {blockedReason}

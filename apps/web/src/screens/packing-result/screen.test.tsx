@@ -42,6 +42,8 @@ interface Options {
   /** 첫 스캔이 아무것도 못 찾은 상태 */
   /** 출하번호 정확 일치 조회가 아무것도 못 찾은 상태 */
   shipmentNotFound?: boolean;
+  /** 셸이 넘기는 사번. 생략하면 '3391' */
+  workerNo?: string | null;
   /** 단말 게이팅 플래그 */
   canInputResult?: boolean;
   /** 이 단말에 «그 공정 행이 아예 없는» 상태 — 구성되지 않은 공정은 열려 있지 않다 */
@@ -226,7 +228,7 @@ const renderScreen = (options: Options = {}) => {
         terminalId: 101,
         processes: [{ processId: 301 }],
         equipment: null,
-        workerNo: '3391',
+        workerNo: options.workerNo === undefined ? '3391' : options.workerNo,
       }}
     >
       <PackingResultScreen />
@@ -245,18 +247,15 @@ const scan = async (
 };
 
 describe('PackingResultScreen', () => {
-  /* ⭐ 출하 대상을 고르기 전에는 맨 위 안내 띠가 서고, 고르면 걷힌다(사용자 지시 2026-09-15). */
-  it('출하 대상을 고르기 전에는 맨 위에 출하 대상 선택 안내가 선다', async () => {
-    const user = userEvent.setup();
-    renderScreen();
+  /* ⭐ 사번이 없으면 출하대상부터 못 고르고, 맨 위 경고 띠가 사유를 말한다(사용자 지시 2026-09-17). */
+  it('사번이 없으면 출하대상 선택과 스캔 칸이 잠기고 맨 위에 사번 경고가 선다', async () => {
+    renderScreen({ workerNo: null });
 
-    expect(await screen.findByText(t.notes.selectShipment)).toBeInTheDocument();
-
-    await scan(user, t.scan.label.shipment, 'SYN-SH-0501');
-
-    await waitFor(() => {
-      expect(screen.queryByText(t.notes.selectShipment)).not.toBeInTheDocument();
-    });
+    expect(await screen.findByText(messages.popChrome.workerMissing)).toBeInTheDocument();
+    expect(screen.getByLabelText(t.scan.label.shipment)).toBeDisabled();
+    expect(screen.getByLabelText(t.scan.label.productionLot)).toBeDisabled();
+    expect(screen.getByRole('combobox', { name: t.scan.shipmentSelection })).toBeDisabled();
+    expect(screen.getByRole('combobox', { name: t.fields.handlingUnitType })).toBeDisabled();
   });
 
   it('출하번호 스캔은 정확 일치로 찾고 선택한 출하의 미포장 배분을 이어서 읽는다', async () => {
@@ -353,7 +352,6 @@ describe('PackingResultScreen', () => {
 
     /* ⛔ 포장 조작은 함께 서지 않는다 — 라벨 화면에서 누를 일이 없다. */
     expect(screen.queryByRole('button', { name: t.actions.confirm })).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: t.actions.rescan })).not.toBeInTheDocument();
 
     /* 눌러서 실제로 돌아온다 — 단추가 있는 것과 동작하는 것은 다른 축이다. */
     await user.click(back);
@@ -383,8 +381,22 @@ describe('PackingResultScreen', () => {
     await scan(user, t.scan.label.shipment, 'SYN-SH-0501');
     await scan(user, t.scan.label.productionLot, 'SYN-LOT-000123450');
 
-    expect(await screen.findByText(t.match.ok)).toBeTruthy();
+    expect(await screen.findByText(t.match.ok('SYN-LOT-000123450'))).toBeTruthy();
     expect(screen.getByLabelText(t.qty.label)).toBeTruthy();
+  });
+
+  /* ⭐ 스캐너가 Enter 를 붙이지 않아도 생산LOT 이 읽힌다(사용자 지시 2026-09-17). */
+  it('생산LOT 은 Enter 없이 스캐너 속도로 들어오면 읽는다', async () => {
+    const user = userEvent.setup();
+    renderScreen();
+
+    await scan(user, t.scan.label.shipment, 'SYN-SH-0501');
+    await waitFor(() => {
+      expect(screen.getByLabelText(t.scan.label.productionLot)).toBeEnabled();
+    });
+    await user.type(screen.getByLabelText(t.scan.label.productionLot), 'SYN-LOT-000123450');
+
+    expect(await screen.findByText(t.match.ok('SYN-LOT-000123450'))).toBeTruthy();
   });
 
   it('⛔ 품목이 다르면 «계약이 준 품목 코드»로 막는다 — 화면이 대응표를 갖지 않는다', async () => {
@@ -444,7 +456,7 @@ describe('PackingResultScreen', () => {
  */
 const matchLot = async (user: ReturnType<typeof userEvent.setup>): Promise<void> => {
   await scan(user, t.scan.label.productionLot, 'SYN-LOT-000123450');
-  await screen.findByText(t.match.ok);
+  await screen.findByText(t.match.ok('SYN-LOT-000123450'));
 };
 
 /** 매칭까지 마친 상태를 만든다 — 담기·확정 시험의 공통 전제다. */
@@ -540,7 +552,8 @@ describe('PackingResultScreen — 담기와 확정', () => {
     expect(screen.getByText('12')).toBeTruthy();
   });
 
-  it('같은 LOT 을 다시 담으면 «합쳤다고 말한다» — 조용히 합치면 중복 스캔을 못 알아챈다', async () => {
+  /* ⭐ 합친 사실은 문장이 아니라 담긴 줄의 수량으로 보인다(사용자 지시 2026-09-17). */
+  it('같은 LOT 을 다시 담으면 한 줄로 합쳐 수량이 늘어난다', async () => {
     const user = userEvent.setup();
     renderScreen();
 
@@ -550,10 +563,11 @@ describe('PackingResultScreen — 담기와 확정', () => {
     await matchLot(user);
     await pack(user, '60');
 
-    expect(await screen.findByText(t.qty.merged(120, 60, 180))).toBeTruthy();
+    expect(await screen.findByText(t.contents.total(180, 180))).toBeTruthy();
   });
 
-  it('⛔ 잔여를 넘기면 한도를 말하고 담기를 잠근다', async () => {
+  /* ⭐ 한도 문구는 적지 않고 [확인]만 잠근다(사용자 지시 2026-09-17). */
+  it('⛔ 잔여를 넘기면 담기를 잠근다', async () => {
     const user = userEvent.setup();
     renderScreen();
 
@@ -564,7 +578,8 @@ describe('PackingResultScreen — 담기와 확정', () => {
       await user.click(within(pad).getByRole('button', { name: digit }));
     }
 
-    expect(await screen.findByText(t.qty.overRemaining(180))).toBeTruthy();
+    expect(within(pad).getByRole('button', { name: t.qty.submit })).toBeDisabled();
+    expect(screen.queryByText(t.qty.overRemaining(180))).not.toBeInTheDocument();
   });
 
   it('⭐ 담는 동안 «포장 번호»가 선다 — 번호는 서버가 매기므로 먼저 만들어 받아 온다', async () => {
@@ -593,7 +608,21 @@ describe('PackingResultScreen — 담기와 확정', () => {
     await user.click(screen.getByRole('combobox', { name: t.fields.handlingUnitType }));
     await user.click(await screen.findByRole('option', { name: '카톤' }));
 
+    /* ⭐ 누르면 먼저 되묻는다(사용자 지시 2026-09-17) — [취소]하면 확정 요청이 나가지 않는다. */
     await user.click(screen.getByRole('button', { name: t.actions.confirm }));
+    const dialog = await screen.findByRole('dialog', { name: t.confirmDialog.title });
+    expect(within(dialog).getByText('카톤')).toBeInTheDocument();
+    expect(within(dialog).getByText(t.confirmDialog.labelNotice)).toBeInTheDocument();
+    await user.click(within(dialog).getByRole('button', { name: t.confirmDialog.cancel }));
+    expect(writes.map(pathOf)).not.toContain('/inventory/handling-units/4001:pack');
+
+    await user.click(screen.getByRole('button', { name: t.actions.confirm }));
+    await user.click(
+      within(await screen.findByRole('dialog', { name: t.confirmDialog.title })).getByRole(
+        'button',
+        { name: t.confirmDialog.confirm },
+      ),
+    );
 
     expect(await screen.findByText(t.confirmed('SYN-CTN-0091'))).toBeTruthy();
     expect(writes.map((request) => `${request.method} ${pathOf(request)}`)).toEqual([
@@ -619,6 +648,12 @@ describe('PackingResultScreen — 담기와 확정', () => {
     await user.click(await screen.findByRole('option', { name: '카톤' }));
 
     await user.click(screen.getByRole('button', { name: t.actions.confirm }));
+    await user.click(
+      within(await screen.findByRole('dialog', { name: t.confirmDialog.title })).getByRole(
+        'button',
+        { name: t.confirmDialog.confirm },
+      ),
+    );
 
     expect(await screen.findByText(messages.conflict.user)).toBeInTheDocument();
     expect(screen.queryByText('conflict')).toBeNull();

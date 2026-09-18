@@ -1,8 +1,10 @@
-import { AlertBanner, Button, Chip, TextField } from '@crefle/web-ui';
+import { AlertBanner, Button, Chip, Icon, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { useId, useState } from 'react';
+import { NumericKeypad } from '@omf-mes/ui';
+import { useId } from 'react';
 
 import { PopSelect as Select } from '../../patterns/pop-select';
+import { popTouchClass } from '../../patterns/pop-touch';
 import { toLookupDisplayState, type LookupSource } from '../../patterns/lookup-display';
 import { validateQty, type QtyDraft, type QtyProblem } from './input-qty';
 import type { ReferenceLabels } from './reference-labels';
@@ -10,7 +12,7 @@ import type { ScannedPart } from './scan';
 import type { GateVerdict } from './terminal-gating';
 import type { CurrentInputView } from './types';
 
-import { QuantityPad } from './quantity-pad';
+import { stripLeadingZeros } from './quantity-pad';
 
 const t = messages.runningChange;
 
@@ -134,6 +136,12 @@ const describeBlock = (reason: BlockReason): string | null => {
     case 'allowed':
     /* 수량은 칸 옆이 말한다 — 여기서 되풀이하지 않는다. */
     case 'qtyInvalid':
+    /* 사번은 화면 맨 위 공용 띠가 말한다(사용자 지시 2026-09-17) — 여기서 되풀이하지 않는다. */
+    case 'workerMissing':
+    /* 작업지시 없음은 화면 맨 위 띠가 말한다 — 버튼 옆 문구는 지운다(사용자 지시 2026-09-17). */
+    case 'workOrderMissing':
+    /* 신규 부품 LOT 미스캔 문구도 지운다 — 스캔 칸이 바로 위에 있다(사용자 지시 2026-09-17). */
+    case 'partMissing':
       return null;
     case 'checking':
       return t.disabled.checking;
@@ -143,12 +151,6 @@ const describeBlock = (reason: BlockReason): string | null => {
       return t.disabled.unavailable;
     case 'unidentified':
       return t.disabled.unidentified;
-    case 'workerMissing':
-      return t.disabled.workerMissing;
-    case 'workOrderMissing':
-      return t.disabled.workOrderMissing;
-    case 'partMissing':
-      return t.disabled.partMissing;
     case 'targetMissing':
       return t.disabled.targetMissing;
   }
@@ -187,15 +189,17 @@ export const ReplacePanel = ({
 }: ReplacePanelProps) => {
   const reasonId = useId();
   const targetId = useId();
-  /*
-   * ⭐ **수량은 화면 내장 키패드로 받는다**(공유계약 D-4). 단말에는 자판이 없다 — 칸을 누르면
-   *    그때 키패드가 뜬다(사용자 결정 2026-09-07 · 전례 PQC 제품 검사).
-   */
-  const [isPadOpen, setPadOpen] = useState(false);
-
   const qtyProblem = toQtyProblem({ qty, part, selectedTargetId });
   const blocked = toBlockReason({ gate, hasWorkOrder, hasWorker, part, selectedTargetId, qty });
-  const blockText = describeBlock(blocked);
+  /*
+   * 사번 사유는 맨 위 띠가 말하므로, 버튼 옆은 그 다음 사유(부품·대상)를 그대로 말한다.
+   * 잠금(`blocked`)은 바꾸지 않는다.
+   */
+  const blockText = describeBlock(
+    blocked === 'workerMissing'
+      ? toBlockReason({ gate, hasWorkOrder, hasWorker: true, part, selectedTargetId, qty })
+      : blocked,
+  );
 
   return (
     <>
@@ -249,7 +253,7 @@ export const ReplacePanel = ({
       </div>
 
       {/* 수량도 같은 칸 규격으로 감싼다 — 감싸지 않으면 위 칸과 사이가 다르게 벌어진다. */}
-      <div className="pop-rc-field">
+      <div className="pop-rc-field pop-rc-qty-row">
         <TextField
           size="xl"
           label={t.replace.qtyLabel}
@@ -259,21 +263,49 @@ export const ReplacePanel = ({
           fullWidth
           error={qtyProblem === null ? undefined : t.replace.qtyProblems[qtyProblem]}
           /*
-           * 칸을 «누르면» 키패드가 뜬다. ⛔ 칸을 잠그지 않는다 — 자판이 달린 자리(개발·검수)
-           * 에서 그대로 칠 수 있어야 한다.
-           *
-           * ⛔ **포커스로 열지 않는다.** 창이 닫히면 포커스가 이 칸으로 돌아오는데, 그것을
-           *    열림 신호로 삼으면 [ 취소 ]·[ 확인 ]을 누르는 순간 창이 다시 뜬다 — 닫을 수
-           *    없는 창이 된다(실측 · 사용자 지적 2026-09-07).
+           * ⛔ **칸을 직접 치게 두지 않는다**(전례 `P-02-08` 생산 포장). 포커스가 가면 단말의
+           *    운영체제 키보드가 화면을 덮는다 — 값은 바로 아래 키패드가 넣는다.
            */
-          onClick={() => {
-            setPadOpen(true);
-          }}
+          readOnly
           onChange={(event) => {
             onQtyChange(event.target.value);
           }}
         />
+        {/*
+         * ⭐ **수량 칸 오른쪽에 [투입]이 선다**(사용자 지시 2026-09-17 · 전례 `P-02-08` [담기]).
+         *    이 화면에서 투입을 남기는 호출은 교체 등록 하나뿐이라, 같은 잠금·같은 처리로 선다.
+         */}
+        <Button
+          variant="filled"
+          size="xl"
+          className={`${popTouchClass('critical')} pop-rc-qty-submit`}
+          disabled={blocked !== null}
+          onClick={onSubmit}
+        >
+          {t.replace.qtySubmit}
+        </Button>
       </div>
+
+      {/*
+       * ⭐ **키패드는 수량 칸 바로 아래에 늘 선다**(사용자 지시 2026-09-17 · 전례 `P-02-08` 생산
+       *    포장). 칸을 눌러야 뜨는 팝업(2026-09-07 결정)을 걷었다 — 누른 값이 칸에 곧바로 들어간다.
+       *    넘치는 세로는 구획이 스크롤한다.
+       */}
+      <NumericKeypad
+        className="pop-rc-keypad"
+        label={t.pad.keypadLabel}
+        value={qty}
+        dropLeadingZero
+        onChange={(next) => {
+          onQtyChange(stripLeadingZeros(next));
+        }}
+        /* 소수점 키는 **읽은 부품의 단위**가 정한다 — 개수로 세는 자재에는 그리지 않는다. */
+        allowDecimal={labels.allowsDecimal(part?.uomId ?? null)}
+        decimalLabel={t.pad.decimal}
+        backspaceLabel={t.pad.backspace}
+        backspaceGlyph={<Icon name="backspace" size={24} />}
+        clearLabel={t.pad.clear}
+      />
 
       <div className="pop-rc-field">
         <label htmlFor={reasonId}>{t.replace.reasonLabel}</label>
@@ -296,11 +328,6 @@ export const ReplacePanel = ({
         {!reasonsPending && reasonsFailed && <p className="field-note">{t.replace.reasonFailed}</p>}
       </div>
 
-      {/* W/O 가 나뉘지 않는다는 안내 — 스펙 §3 이 등록 버튼 위에 세워 둔 자리다. */}
-      <div className="banner-slot">
-        <AlertBanner variant="info">{t.notices.noWorkOrderSplit}</AlertBanner>
-      </div>
-
       {rejection !== null && (
         <div className="banner-slot">
           <AlertBanner variant="error" title={t.replace.rejected}>
@@ -309,19 +336,6 @@ export const ReplacePanel = ({
         </div>
       )}
 
-      <QuantityPad
-        open={isPadOpen}
-        value={qty}
-        /* 소수점 키는 **읽은 부품의 단위**가 정한다 — 개수로 세는 자재에는 그리지 않는다. */
-        allowDecimal={labels.allowsDecimal(part?.uomId ?? null)}
-        onCommit={(next) => {
-          onQtyChange(next);
-          setPadOpen(false);
-        }}
-        onClose={() => {
-          setPadOpen(false);
-        }}
-      />
 
       <div className="pop-rc-submit">
         <Button

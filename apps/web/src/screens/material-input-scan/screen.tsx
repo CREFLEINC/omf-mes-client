@@ -5,6 +5,7 @@ import { useNavigate, useSearchParams } from 'react-router';
 
 import { OutboxStallBanner } from '../../patterns/outbox-stall-banner';
 import { soleProcessIdOf, usePopIdentity } from '../../patterns/pop-identity';
+import { PopWorkerMissingBanner } from '../../patterns/pop-worker-missing-banner';
 
 import { confirmBlockReason } from './block-reason';
 import { ConfirmPanel } from './confirm-panel';
@@ -350,6 +351,9 @@ export const MaterialInputScanScreen = () => {
       {/* ⭐ 「밀리는 중」과 「멈춤」은 다르다 — 건수만으로는 그 차이가 보이지 않는다. */}
       {outbox.isStalled && <OutboxStallBanner onRetry={outbox.retryNow} />}
 
+      {/* ⭐ 사번 미확인은 모든 POP 화면이 같은 맨 위 띠로 말한다(사용자 지시 2026-09-17). */}
+      <PopWorkerMissingBanner workerNo={workerNo} />
+
       {/*
        * 작업지시가 없으면 **조회가 나가지 않는다.** 그 사실을 배너로 먼저 말한다 — 표의 빈
        * 상태만으로는 「받은 자재가 없다」와 「무엇을 볼지 정해지지 않았다」가 같은 모양이 된다.
@@ -370,7 +374,8 @@ export const MaterialInputScanScreen = () => {
        * ⛔ **판정을 여기서 다시 쓰지 않는다** — `confirmBlockReason` 한 곳이 정하고 버튼도 같은
        *    값으로 잠긴다(`confirm-panel`). 두 벌이 되면 띠와 버튼이 갈린다.
        */}
-      {blockReason !== undefined && (
+      {/* ⭐ 사번 사유는 이 띠에서 거른다 — 위 공용 띠가 말한다(사용자 지시 2026-09-17). 잠금은 그대로. */}
+      {blockReason !== undefined && blockReason !== t.confirm.reasons.workerMissing && (
         <div className="banner-slot">
           {/* ⭐ 제목을 두지 않는다(사용자 지시 2026-09-16) — 「투입 확정」을 덧붙이면 사유
               앞에 한 줄이 더 생기고, 아이콘과 문구만으로 이미 무엇이 막혔는지 읽힌다. */}

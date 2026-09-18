@@ -4,6 +4,7 @@ import { useState } from 'react';
 
 import { toLookupDisplayState } from '../../patterns/lookup-display';
 import { usePopIdentity } from '../../patterns/pop-identity';
+import { PopWorkerMissingBanner } from '../../patterns/pop-worker-missing-banner';
 import { popTouchClass } from '../../patterns/pop-touch';
 import { toIssueFailure } from './failure';
 import { IssueOutcome } from './issue-outcome';
@@ -180,6 +181,9 @@ export const PopMaterialLotLabelScreen = () => {
           </Chip>
         </div>
       </header>
+
+      {/* ⭐ 사번 미확인은 모든 POP 화면이 같은 맨 위 띠로 말한다(사용자 지시 2026-09-17). */}
+      <PopWorkerMissingBanner workerNo={workerNo} />
 
       <div className="pop-lot-panes">
         <section className="pane pop-lot-pane" aria-label={t.receipts.paneLabel}>

@@ -574,13 +574,16 @@ describe('P-02-10 작업 중단 등록', () => {
     });
 
     /* ⛔ 사번이 없으면 서버가 거부한다 — 누르고 나서가 아니라 누르기 전에 막는다. */
-    it('사번을 모르면 두 버튼이 막히고 이유를 말한다', async () => {
+    it('사번을 모르면 두 버튼이 막히고 이유는 맨 위 공용 띠가 말한다', async () => {
       renderScreen(
         [sessionsRoute([workSession()]), eventsRoute([])],
         `/pop/work-hold?workOrderId=${String(WORK_ORDER_ID)}`,
       );
 
-      expect(await screen.findByText(t.form.workerRequired)).toBeInTheDocument();
+      expect(await screen.findByText(messages.popChrome.workerMissing)).toBeInTheDocument();
+      expect(
+        screen.queryByText('사번이 확인되지 않아 등록할 수 없습니다. 사번 인증을 먼저 하세요.'),
+      ).not.toBeInTheDocument();
       expect(screen.getByRole('button', { name: t.form.stopAction })).toBeDisabled();
       expect(screen.getByRole('button', { name: t.form.resumeAction })).toBeDisabled();
     });

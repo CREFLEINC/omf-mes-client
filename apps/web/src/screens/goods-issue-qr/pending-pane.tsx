@@ -49,7 +49,12 @@ export const PendingPane = ({
 
   const columns: Column<PendingLine>[] = [
     { key: 'goodsIssueNo', header: t.columnIssueNo, render: (row) => row.goodsIssueNo },
-    { key: 'lineNo', header: t.columnLine, align: 'center', render: (row) => String(row.line.lineNo) },
+    {
+      key: 'lineNo',
+      header: t.columnLine,
+      align: 'center',
+      render: (row) => String(row.line.lineNo),
+    },
     { key: 'item', header: t.columnItem, render: (row) => label(itemNames, row.line.itemId) },
     { key: 'lot', header: t.columnLot, render: (row) => label(lotNames, row.line.lotId) },
     {
@@ -78,6 +83,8 @@ export const PendingPane = ({
       key: 'pick',
       header: t.columnAction,
       align: 'center',
+      /* ⭐ 단추 폭만큼만 잡아 남는 폭을 다른 열에 나눠 준다(사용자 지시 2026-09-17). */
+      width: '9rem',
       render: (row) => (
         <Button
           variant="outlined"
@@ -94,7 +101,7 @@ export const PendingPane = ({
   ];
 
   return (
-    <section className="pop-section" aria-label={t.sectionLabel}>
+    <section className="pop-section pop-giqr-pending-pane" aria-label={t.sectionLabel}>
       {/*
        * ⭐ **`pane-title` 은 감싸는 줄이 지닌다 — 표제가 아니라**(전례 `pop-repack-head`).
        *

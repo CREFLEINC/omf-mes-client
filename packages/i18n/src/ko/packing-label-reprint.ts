@@ -12,7 +12,6 @@ export const packingLabelReprint = {
     handlingUnitLabel: '포장',
     workerLabel: '사번',
     missingHandlingUnit: '포장 단위를 받지 못해 재출력 대상을 불러올 수 없습니다.',
-    missingWorker: '사번이 확인되지 않아 재출력할 수 없습니다. 사번 인증을 먼저 하세요.',
   },
 
   /** 단말 기능 구성 판정. 「확인할 수 없다」와 「권한이 없다」를 다르게 말한다. */

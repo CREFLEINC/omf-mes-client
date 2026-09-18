@@ -1,9 +1,11 @@
-import { AlertBanner, Button, Card, Chip, Progress, Switch, TextField } from '@crefle/web-ui';
+import { AlertBanner, Button, Card, Chip, Icon, Progress, Switch, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { NumericKeypad } from '@omf-mes/ui';
-import { useId, useRef, useState, type FormEvent } from 'react';
+import { useEffect, useId, useRef, useState, type FormEvent } from 'react';
 
 import { usePopIdentity } from '../../patterns/pop-identity';
+import { PopWorkerMissingBanner } from '../../patterns/pop-worker-missing-banner';
+import { popTouchClass } from '../../patterns/pop-touch';
 import { toApiError } from '../../patterns/request';
 import { conversionState } from './conversion';
 import { ErrorBanner } from './error-banner';
@@ -94,6 +96,8 @@ export const ToolUsageScreen = () => {
   const shotInputId = useId();
 
   const entry = usePopEntry();
+  /* ⭐ 작업지시가 없으면 입력란·키패드를 잠근다(사용자 지시 2026-09-17) — 넣어도 저장할 곳이 없다. */
+  const inputLocked = entry.workOrderId === null;
   /* ⭐ 도면 머리줄 「W/O · 설비」의 설비는 단말이 준다(`PopIdentity.equipment` · 사용자 지시 2026-09-14). */
   const { equipment } = usePopIdentity();
   const headerContext = [
@@ -129,6 +133,8 @@ export const ToolUsageScreen = () => {
   const isDisposed = tool !== null && tool.statusCode === DISPOSED_STATUS_CODE;
   /** 폐기된 툴은 고른 것으로 치지 않는다 — 스캔 자체를 거부한다(스펙 §6-1). */
   const usableTool = isDisposed ? null : tool;
+  /* ⭐ 순서는 금형 QR → 수량이다(사용자 지시 2026-09-17). 금형을 못 읽었으면 수량 칸·키패드·환산을 잠근다. */
+  const shotLocked = inputLocked || usableTool === null;
 
   const enabledPolicy = useOperationPolicy('SHOT_CONVERSION_ENABLED');
   const ratioPolicy = useOperationPolicy('SHOT_CONVERSION_RATIO');
@@ -145,6 +151,10 @@ export const ToolUsageScreen = () => {
     onSuccess: (usage: ToolUsage) => {
       occurredAtRef.current = null;
       setDraft(emptyUsageDraft);
+      setShotConfirmed(false);
+      /* ⭐ 저장되면 금형 QR 칸과 고른 금형 안내도 비운다(사용자 지시 2026-09-17) — 다음 실적은 QR 부터다. */
+      setCodeInput('');
+      setSubmittedCode('');
       setSaved({
         cumulativeShotCount: usage.cumulativeShotCount,
         cumulativeAsOf: usage.cumulativeAsOf,
@@ -152,8 +162,15 @@ export const ToolUsageScreen = () => {
     },
   });
 
+  /**
+   * ⭐ **[확인]은 숫자만 확정한다**(사용자 지시 2026-09-17) — 저장하지 않는다. 확정한 뒤에야
+   *    [실적 저장]이 열리고, 값을 다시 바꾸면 확정이 풀린다.
+   */
+  const [shotConfirmed, setShotConfirmed] = useState(false);
+
   const changeDraft = (patch: Partial<UsageDraft>): void => {
     setDraft((prev) => ({ ...prev, ...patch }));
+    setShotConfirmed(false);
     /* 값이 바뀌면 다른 쓰기다 — 붙들고 있던 발생 시각과 앞 시도의 진술을 함께 버린다. */
     occurredAtRef.current = null;
     setSaved(null);
@@ -169,7 +186,8 @@ export const ToolUsageScreen = () => {
   };
 
   const blockReason = saveDisabledReason(guard);
-  const isSaveOpen = canSave(guard);
+  const isSaveOpen = canSave(guard) && shotConfirmed;
+  const canConfirmShot = !shotLocked && increment !== null && !shotConfirmed;
 
   /**
    * 지금 화면이 아는 서버 누계. **저장 응답이 조회 응답보다 새롭다.**
@@ -224,12 +242,53 @@ export const ToolUsageScreen = () => {
           }),
         );
 
-  const submitCode = (event: FormEvent<HTMLFormElement>): void => {
-    event.preventDefault();
-    setSubmittedCode(codeInput.trim());
+  const applyCode = (raw: string): void => {
+    cancelScanIdle();
+    /* 다른 툴을 읽으면 앞 툴에 확정한 숫자를 풀어 둔다(리뷰) — 새 툴 실적으로 저장되지 않게. */
+    setShotConfirmed(false);
+    setSubmittedCode(raw.trim());
     setSaved(null);
     occurredAtRef.current = null;
     write.reset();
+  };
+
+  const submitCode = (event: FormEvent<HTMLFormElement>): void => {
+    event.preventDefault();
+    applyCode(codeInput);
+  };
+
+  /*
+   * ⭐ **바코드를 읽으면 Enter 없이 바로 조회한다**(사용자 지시 2026-09-17 · 전례 출하 포장 스캔 칸).
+   *    스캐너는 글자를 50ms 보다 빠르게 붙여 보내고, 마지막 글자 뒤 150ms 조용하면 끝난 것으로 본다.
+   *    한 글자라도 느리게 들어오면 손 입력으로 보고 Enter 를 기다린다.
+   */
+  const lastScanKeyAt = useRef(0);
+  const isScanBurst = useRef(true);
+  const scanIdleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const cancelScanIdle = (): void => {
+    if (scanIdleTimer.current !== null) clearTimeout(scanIdleTimer.current);
+    scanIdleTimer.current = null;
+  };
+  useEffect(() => cancelScanIdle, []);
+  /* 타이머가 옛 렌더의 함수를 부르지 않게 최신 판을 쥔다. */
+  const applyCodeRef = useRef(applyCode);
+  applyCodeRef.current = applyCode;
+
+  const changeCodeInput = (next: string): void => {
+    const now = performance.now();
+    if (codeInput === '') isScanBurst.current = true;
+    else if (next.length < codeInput.length || now - lastScanKeyAt.current > 50) {
+      isScanBurst.current = false;
+    }
+    lastScanKeyAt.current = now;
+    setCodeInput(next);
+
+    cancelScanIdle();
+    if (isScanBurst.current && next.trim().length > 1) {
+      scanIdleTimer.current = setTimeout(() => {
+        applyCodeRef.current(next);
+      }, 150);
+    }
   };
 
   /**
@@ -240,6 +299,7 @@ export const ToolUsageScreen = () => {
    */
   const resetDraft = (): void => {
     setDraft(emptyUsageDraft);
+    setShotConfirmed(false);
     occurredAtRef.current = null;
     setSaved(null);
     write.reset();
@@ -287,7 +347,7 @@ export const ToolUsageScreen = () => {
   };
 
   return (
-    <main className="pop-shell pop-ui" aria-labelledby={titleId}>
+    <main className="pop-shell pop-ui tool-usage-screen" aria-labelledby={titleId}>
       <header className="pop-header">
         <h1 id={titleId} className="pop-title">
           {t.title}
@@ -308,6 +368,18 @@ export const ToolUsageScreen = () => {
       </header>
 
       <>
+        {/*
+         * ⭐ 저장이 막힌 사유는 본문 맨 위 띠(아이콘+문구)로 선다(사용자 지시 2026-09-17).
+         *    액션바 왼쪽 잔글씨로 두던 자리를 옮겼다.
+         */}
+        {/* ⛔ 「타발수를 1 이상 기입하세요」는 띠로 세우지 않는다(사용자 지시 2026-09-17). 칸이 바로 보인다. */}
+        {blockReason !== undefined && blockReason !== t.actionReasons.noShot && (
+          <div className="banner-slot">
+            <AlertBanner variant="warning">{blockReason}</AlertBanner>
+          </div>
+        )}
+        {/* ⭐ 사번 미확인은 모든 POP 화면이 같은 맨 위 띠로 말한다(사용자 지시 2026-09-17). */}
+        <PopWorkerMissingBanner workerNo={entry.workerNo} />
         {lookup.isError && (
           <ErrorBanner
             error={toApiError(lookup.error)}
@@ -319,11 +391,8 @@ export const ToolUsageScreen = () => {
 
         {saved !== null && (
           <div className="banner-slot">
-            <AlertBanner variant="success" title={t.save.successTitle}>
-              {saved.cumulativeShotCount === undefined
-                ? t.save.successBody
-                : `${t.cumulative.current} ${formatShots(saved.cumulativeShotCount)} ${t.shot.unit}`}
-            </AlertBanner>
+            {/* ⭐ 한 줄만 말한다(사용자 지시 2026-09-17) — 누계는 오른쪽 수치 구획이 이미 보인다. */}
+            <AlertBanner variant="success">{t.save.successTitle}</AlertBanner>
           </div>
         )}
 
@@ -338,9 +407,10 @@ export const ToolUsageScreen = () => {
                 size="xl"
                 fullWidth
                 autoFocus
+                disabled={inputLocked}
                 value={codeInput}
                 onChange={(event) => {
-                  setCodeInput(event.target.value);
+                  changeCodeInput(event.target.value);
                 }}
               />
               {/*
@@ -348,7 +418,15 @@ export const ToolUsageScreen = () => {
                * 그대로 제출된다 — 손으로 칠 때도 같은 길이다. 버튼을 두면 장갑 낀 손이 스캔
                * 뒤에 한 번 더 눌러야 한다.
                */}
-              <Button type="button" size="2xl" variant="tonal" onClick={startManualEntry}>
+              {/* ⭐ [직접 입력]은 다른 POP 화면(자재 투입 등)과 같은 모양이다(사용자 지시 2026-09-17). */}
+              <Button
+                type="button"
+                variant="outlined"
+                size="xl"
+                className={popTouchClass('normal')}
+                disabled={inputLocked}
+                onClick={startManualEntry}
+              >
                 {t.scan.manualEntry}
               </Button>
             </form>
@@ -367,14 +445,19 @@ export const ToolUsageScreen = () => {
             {isDisposed && <p className="field-error">{t.scan.disposed}</p>}
 
             {usableTool !== null && (
-              <p className="pop-tool">
-                <strong>{usableTool.moldCode}</strong>
-                <span>{usableTool.moldName}</span>
-                <span>{`${t.scan.cavity} ${String(usableTool.cavityCount)}`}</span>
-                <Button variant="text" size="sm" onClick={clearTool}>
-                  {t.scan.clear}
-                </Button>
-              </p>
+              /*
+               * ⭐ 고른 툴은 초록 안내 띠(성공 · 체크 아이콘 + 글)로 선다(사용자 지시 2026-09-17).
+               * ⛔ [툴 다시 고르기]를 두지 않는다(사용자 지시 2026-09-17) — 다른 툴은 다시 스캔하면 된다.
+               */
+              <div className="banner-slot pop-tool-picked">
+                <AlertBanner variant="success">
+                  <span className="pop-tool">
+                    <strong>{usableTool.moldCode}</strong>
+                    <span>{usableTool.moldName}</span>
+                    <span>{`${t.scan.cavity} ${String(usableTool.cavityCount)}`}</span>
+                  </span>
+                </AlertBanner>
+              </div>
             )}
           </Card.Body>
         </Card>
@@ -410,6 +493,7 @@ export const ToolUsageScreen = () => {
                     size="xl"
                     fullWidth
                     inputMode="numeric"
+                    disabled={shotLocked}
                     readOnly={isConverted}
                     value={
                       isConverted
@@ -426,10 +510,26 @@ export const ToolUsageScreen = () => {
                     }}
                   />
 
+                  {/*
+                   * ⭐ **타발수 칸 오른쪽에 [확인]이 선다**(사용자 지시 2026-09-17 · 러닝체인지 [투입]과
+                   *    같은 자리·크기). ⛔ 저장하지 않는다 — 친 숫자를 확정만 하고, 저장은 [실적 저장]이다.
+                   */}
+                  <Button
+                    variant="filled"
+                    size="xl"
+                    className={`${popTouchClass('critical')} tool-usage-confirm`}
+                    disabled={!canConfirmShot}
+                    onClick={() => {
+                      setShotConfirmed(true);
+                    }}
+                  >
+                    {t.actions.confirm}
+                  </Button>
+
                   <Switch
                     label={t.shot.convertedLabel}
                     checked={isConverted}
-                    disabled={conversion.kind !== 'ready'}
+                    disabled={shotLocked || conversion.kind !== 'ready'}
                     onChange={(event) => {
                       changeDraft({
                         method: event.target.checked
@@ -457,6 +557,7 @@ export const ToolUsageScreen = () => {
                         label={t.shot.baseQtyLabel}
                         size="xl"
                         inputMode="decimal"
+                        disabled={shotLocked}
                         value={draft.baseQty}
                         error={write.fieldErrors.conversionBaseQty}
                         onChange={(event) => {
@@ -485,6 +586,7 @@ export const ToolUsageScreen = () => {
                  */}
                 <NumericKeypad
                   className="tool-usage-pad"
+                  disabled={shotLocked}
                   label={t.shot.keypadLabel}
                   value={isConverted ? draft.baseQty : draft.shotCount}
                   dropLeadingZero
@@ -495,6 +597,8 @@ export const ToolUsageScreen = () => {
                   allowDecimal={isConverted}
                   decimalLabel={t.shot.decimalKey}
                   backspaceLabel={t.shot.backspace}
+                  /* 한 자 지움은 지움 키 모양으로 — 생산 포장 키패드와 같다(사용자 지시 2026-09-17). */
+                  backspaceGlyph={<Icon name="backspace" size={24} />}
                   clearLabel={t.shot.clearGlyph}
                   onChange={(value) => {
                     changeDraft(isConverted ? { baseQty: value } : { shotCount: value });
@@ -601,12 +705,6 @@ export const ToolUsageScreen = () => {
       </>
 
       <div className="pop-actions">
-        {/*
-         * ⚠ **막는 사유를 버튼 «아래»에 두지 않는다.** 공용 규칙이 액션 줄의 `.field-note` 를
-         * 한 줄 통째로 쓰게 해(`flex-basis: 100%`) 액션바가 88 에서 123 으로 늘어난다 —
-         * 세로 예산이 0 인 화면이라 그만큼이 본문에서 빠진다(실측). 같은 줄 왼쪽에 세운다.
-         */}
-        {blockReason !== undefined && <p className="field-note tool-usage-block">{blockReason}</p>}
         <Button variant="outlined" size="2xl" disabled={!hasInput(draft)} onClick={resetDraft}>
           {t.actions.reset}
         </Button>

@@ -1,3 +1,4 @@
+import { messages } from '@omf-mes/i18n';
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -320,9 +321,17 @@ const renderFlow = (options: FlowOptions = {}) => {
             void record(request);
 
             return options.renderFails === true
-              ? jsonResponse({ errors: [{ scope: 'screen', code: 'ITEM_FAILED', message: '품목 조회 실패' }] }, { status: 503 })
+              ? jsonResponse(
+                  { errors: [{ scope: 'screen', code: 'ITEM_FAILED', message: '품목 조회 실패' }] },
+                  { status: 503 },
+                )
               : jsonResponse({
-                  item: { itemId: 8601, itemCode: 'SYN-ITEM-01', itemName: '합성 품목 가', isActive: true },
+                  item: {
+                    itemId: 8601,
+                    itemCode: 'SYN-ITEM-01',
+                    itemName: '합성 품목 가',
+                    isActive: true,
+                  },
                   editability: {},
                 });
           },
@@ -370,7 +379,11 @@ describe('PopMaterialLotLabelScreen — 등록·인쇄', () => {
     await chooseLine(user);
 
     expect(screen.getByRole('button', { name: '등록·인쇄' })).toBeDisabled();
-    expect(screen.getByText('사번을 확인한 뒤에 등록·인쇄할 수 있습니다.')).toBeInTheDocument();
+    // 사유는 화면 맨 위 공용 띠 하나로만 말한다(사용자 지시 2026-09-17).
+    expect(screen.getByText(messages.popChrome.workerMissing)).toBeInTheDocument();
+    expect(
+      screen.queryByText('사번을 확인한 뒤에 등록·인쇄할 수 있습니다.'),
+    ).not.toBeInTheDocument();
   });
 
   it('등록 → 발행 → 품목 조회 → 인쇄 → 보고를 순서대로 부르고 사번을 싣는다', async () => {
@@ -381,7 +394,9 @@ describe('PopMaterialLotLabelScreen — 등록·인쇄', () => {
     await user.click(screen.getByRole('button', { name: '등록·인쇄' }));
 
     await waitFor(() => {
-      expect(sentTo(sent, `/app/document-issues/${String(ISSUE_LOG_ID)}:report-print`)).toBeDefined();
+      expect(
+        sentTo(sent, `/app/document-issues/${String(ISSUE_LOG_ID)}:report-print`),
+      ).toBeDefined();
     });
     expect(sent.map((entry) => entry.path)).toEqual([
       '/trace/lots',
@@ -652,13 +667,13 @@ describe('PopMaterialLotLabelScreen — 등록·인쇄', () => {
     await chooseLine(user);
     await user.click(screen.getByRole('button', { name: '인쇄' }));
 
-    expect(await screen.findByText(
-      '라벨은 나왔습니다. 인쇄 결과만 서버에 남기지 못했습니다 — 다시 찍지 마세요.',
-    )).toBeInTheDocument();
-    expect(shellPrint).toHaveBeenCalledTimes(1);
     expect(
-      sentTo(sent, `/app/document-issues/${String(ISSUE_LOG_ID)}:report-print`),
-    ).toBeDefined();
+      await screen.findByText(
+        '라벨은 나왔습니다. 인쇄 결과만 서버에 남기지 못했습니다 — 다시 찍지 마세요.',
+      ),
+    ).toBeInTheDocument();
+    expect(shellPrint).toHaveBeenCalledTimes(1);
+    expect(sentTo(sent, `/app/document-issues/${String(ISSUE_LOG_ID)}:report-print`)).toBeDefined();
   });
 });
 

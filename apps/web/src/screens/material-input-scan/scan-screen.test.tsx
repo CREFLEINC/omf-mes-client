@@ -629,6 +629,15 @@ describe('MaterialInputScanScreen — 단말 게이팅', () => {
     expect(screen.getByText(t.confirm.reasons.unidentified)).toBeTruthy();
   });
 
+  it('사번이 없으면 막고 맨 위 공용 띠로만 말한다', async () => {
+    renderScreen([lotsRoute([lot()]), gateRoute(true)], { ...GATED, workerNo: null });
+
+    expect(await screen.findByText(messages.popChrome.workerMissing)).toBeTruthy();
+    await waitFor(() => expect(screen.queryByText(t.confirm.reasons.checking)).toBeNull());
+    expect(screen.getByRole('button', { name: t.confirm.action })).toHaveProperty('disabled', true);
+    expect(screen.queryByText(t.confirm.reasons.workerMissing)).toBeNull();
+  });
+
   it('권한이 닫혀 있으면 막고 관리자를 가리킨다', async () => {
     const user = userEvent.setup();
     renderScreen([lotsRoute([lot()]), gateRoute(false)], GATED);

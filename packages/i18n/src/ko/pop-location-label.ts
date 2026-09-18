@@ -10,7 +10,6 @@ export const popLocationLabel = {
 
   entry: {
     workerLabel: '사번',
-    missingWorker: '사번이 확인되지 않아 발행할 수 없습니다. 사번 인증을 먼저 하세요.',
   },
 
   warehouse: {

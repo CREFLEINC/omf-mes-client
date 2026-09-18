@@ -5,6 +5,7 @@ import type { Translated } from './translated';
 export const popChrome: Translated<typeof ko.popChrome> = {
   screenNav: 'Chuyển màn hình',
   userSwitch: 'Đổi người dùng',
+  workerMissing: 'Chưa xác nhận mã nhân viên. Hãy xác thực mã nhân viên trước.',
   select: 'Chọn',
 
   selectDialog: {

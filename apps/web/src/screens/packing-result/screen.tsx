@@ -1,8 +1,10 @@
-import { AlertBanner, Button, Chip, NumberPad } from '@crefle/web-ui';
+import { AlertBanner, Button, Chip, Dialog } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
+import { NumericKeypad } from '@omf-mes/ui';
 import { useId, useState } from 'react';
 
 import { SaveErrorBanner } from '../../patterns/master';
+import { PopWorkerMissingBanner } from '../../patterns/pop-worker-missing-banner';
 import { PopWorkerTag } from '../../patterns/pop-worker-tag';
 import { PopSelect as Select } from '../../patterns/pop-select';
 import { toApiError } from '../../patterns/request';
@@ -10,7 +12,7 @@ import { ShippingPackingLabelScreen } from '../shipping-packing-label/screen';
 
 import { AutomaticLabels, type AutomaticLabelRun } from './automatic-labels';
 import { confirmLockReason } from './confirm-lock';
-import { ContentsTable, segmentLotNo } from './contents-table';
+import { ContentsTable } from './contents-table';
 import { soleProcessIdOf } from '../../patterns/pop-identity';
 import { usePackingIdentity } from './entry-context';
 import {
@@ -51,6 +53,16 @@ const t = messages.packingResult;
  * 당분간은 주소로도 받는다(`entry-context`) — 어느 쪽에서도 오지 않으면 화면은 「단말이
  * 확인되지 않았습니다」로 막힌 채 뜬다. 모르는 것을 통과로 처리하지 않는다.
  */
+/** 하단에 적지 않는 «안내» 사유 — 확정 잠금 판정에는 그대로 쓰인다. */
+const HIDDEN_LOCK_REASONS: ReadonlySet<string> = new Set([
+  t.locks.shipmentMissing,
+  t.locks.workerMissing,
+  t.locks.noType,
+  t.locks.noContents,
+  t.locks.unitOpening,
+  t.locks.gateChecking,
+]);
+
 export const PackingResultScreen = () => {
   const titleId = useId();
   const typeLabelId = useId();
@@ -74,7 +86,6 @@ export const PackingResultScreen = () => {
   const [matched, setMatched] = useState<MatchedLot | null>(null);
   const [lines, setLines] = useState<PackedLine[]>([]);
   const [qty, setQty] = useState('');
-  const [mergeNote, setMergeNote] = useState<string | null>(null);
   const [handlingUnitTypeCode, setHandlingUnitTypeCode] = useState('');
   /**
    * 담는 동안 열려 있는 포장. **번호는 서버가 매기므로 먼저 만들어야 ③ 구획에 설 수 있다**
@@ -83,7 +94,9 @@ export const PackingResultScreen = () => {
   const [openUnit, setOpenUnit] = useState<OpenHandlingUnit | null>(null);
   const [confirmedNo, setConfirmedNo] = useState<string | null>(null);
   const [automaticLabelRun, setAutomaticLabelRun] = useState<AutomaticLabelRun | null>(null);
+  const [isLabelComplete, setLabelComplete] = useState(false);
   const [isLabelMode, setLabelMode] = useState(false);
+  const [isConfirmOpen, setConfirmOpen] = useState(false);
 
   const shipmentScan = useShipmentScan();
   const shipmentSelection = useShipmentSelection();
@@ -127,6 +140,7 @@ export const PackingResultScreen = () => {
       const packedAllocations = shipmentAllocations.allocations.filter((allocation) =>
         lines.some((line) => line.shipmentLotAllocationId === allocation.shipmentLotAllocationId),
       );
+      setLabelComplete(false);
       setAutomaticLabelRun({
         handlingUnit,
         allocations: packedAllocations,
@@ -136,7 +150,6 @@ export const PackingResultScreen = () => {
       setLines([]);
       setMatched(null);
       setQty('');
-      setMergeNote(null);
       /* 이 포장은 닫혔다 — 다음 포장은 새로 만든다. */
       setOpenUnit(null);
       setConfirmedNo(handlingUnit.handlingUnitNo);
@@ -172,7 +185,6 @@ export const PackingResultScreen = () => {
     setMatched(null);
     setLines([]);
     setQty('');
-    setMergeNote(null);
     setAutomaticLabelRun(null);
 
     return true;
@@ -182,7 +194,6 @@ export const PackingResultScreen = () => {
     const isSameEntry = entry?.shipmentNo === shipmentNo;
     if (!isSameEntry && !prepareEntryChange()) return;
 
-    setMergeNote(null);
     setConfirmedNo(null);
     shipmentScan.mutate(shipmentNo, {
       onSuccess: (outcome) => {
@@ -199,7 +210,6 @@ export const PackingResultScreen = () => {
   const scanLot = (code: string): void => {
     if (shipmentId === null) return;
 
-    setMergeNote(null);
     setConfirmedNo(null);
     lotScan.mutate(
       { shipmentId, code },
@@ -250,13 +260,13 @@ export const PackingResultScreen = () => {
     setLines(outcome.lines);
     ensureOpenUnit(outcome.lines, handlingUnitTypeCode);
     setQty('');
-    /* ⛔ **조용히 합치지 않는다** — 합친 사실을 말하지 않으면 중복 스캔을 알아채지 못한다(§5-3). */
-    setMergeNote(
-      outcome.merged === undefined
-        ? null
-        : t.qty.merged(outcome.merged.before, outcome.merged.added, outcome.merged.after),
-    );
+    /*
+     * ⭐ 합친 사실을 문장으로 적지 않는다 — 「기존 N 에 M 을 더해 K 이 됩니다」를 걷었다(사용자 지시
+     *    2026-09-17). 합친 수량은 담긴 줄의 수량이 바로 보여 준다. ⚠ 스펙 §7 「변경 전후 표시」와 다르다.
+     */
   };
+
+  const hasWorkerNo = identity.workerNo !== null && identity.workerNo.trim() !== '';
 
   const lockReason = confirmLockReason({
     isOnline,
@@ -277,7 +287,9 @@ export const PackingResultScreen = () => {
     if (entryError === 'shipment') return { tone: 'error', text: t.match.shipmentNotFound };
     if (lotScan.isError) return { tone: 'error', text: t.match.lookupFailed };
     if (matched === null) return null;
-    if (matched.verdict.matched) return { tone: 'success', text: t.match.ok };
+    if (matched.verdict.matched) {
+      return { tone: 'success', text: t.match.ok(matched.allocation?.lotNo ?? '') };
+    }
 
     switch (matched.verdict.reasonCode) {
       case 'LABEL_ITEM_MISMATCH':
@@ -349,25 +361,32 @@ export const PackingResultScreen = () => {
        * 곧 작업 순서이고, 좌우로 나누면 ①과 ②의 선후가 사라진다.
        */}
       <div className="packing-body">
-        {/* ⭐ 출하 대상을 고르기 전에는 맨 위에 안내 띠를 세운다(사용자 지시 2026-09-15). */}
-        {!isLabelMode && shipmentId === null ? (
-          <div className="banner-slot">
-            <AlertBanner variant="info">{t.notes.selectShipment}</AlertBanner>
-          </div>
-        ) : null}
+        {/*
+         * ⭐ 사번을 확인하지 못했으면 맨 위에 아이콘 띠로 알린다(사용자 지시 2026-09-17). 하단
+         *    잠금 사유 줄에서는 뺀다 — 같은 말을 두 번 하지 않는다.
+         *
+         * ⛔ 「출하대상을 선택하세요」 띠는 세우지 않는다(사용자 지시 2026-09-17 — 09-15 판을 걷음).
+         */}
+        {!isLabelMode && <PopWorkerMissingBanner workerNo={identity.workerNo} />}
         {automaticLabelRun !== null && identity.workerNo !== null ? (
           <AutomaticLabels
+            /* 포장마다 새로 선다(리뷰 M3) — 같은 출하의 두 번째 포장이 첫 포장의 «출력함» 상태를 물려받지 않게. */
+            key={automaticLabelRun.handlingUnit.handlingUnitId}
             run={automaticLabelRun}
             workerNo={identity.workerNo}
             onOpenManagement={() => {
               setLabelMode(true);
             }}
+            onCompleteChange={setLabelComplete}
           />
         ) : null}
         {confirmedNo !== null ? (
-          <div className="banner-slot">
-            <AlertBanner variant="success">{t.confirmed(confirmedNo)}</AlertBanner>
-          </div>
+          /* ⭐ 자동 라벨 띠가 서면 확정 사실은 그 띠 한 줄이 함께 말한다(사용자 지시 2026-09-17). */
+          automaticLabelRun !== null && identity.workerNo !== null && isLabelComplete ? null : (
+            <div className="banner-slot">
+              <AlertBanner variant="success">{t.confirmed(confirmedNo)}</AlertBanner>
+            </div>
+          )
         ) : (
           /*
            * ⛔ **정규화 갈래 이름을 그대로 내지 않는다.** 실패를 `conflict`·`stateLocked` 같은
@@ -392,10 +411,19 @@ export const PackingResultScreen = () => {
           </span>
           <Select
             aria-labelledby={shipmentLabelId}
+            /*
+             * ⭐ 사번이 없으면 칸 안 문구 없이 비활성으로만 둔다 — 사유는 맨 위 띠가 말한다(사용자
+             *    지시 2026-09-17). 아래 스캔 칸·유형도 같다.
+             */
             placeholder={
-              todayShipments.isPending ? t.scan.shipmentListLoading : t.scan.todayPickedShipments
+              !hasWorkerNo
+                ? ''
+                : todayShipments.isPending
+                  ? t.scan.shipmentListLoading
+                  : t.scan.todayPickedShipments
             }
-            disabled={todayShipments.isError || shipmentSelection.isPending}
+            /* ⭐ 사번이 없으면 출하대상부터 못 고른다(사용자 지시 2026-09-17). */
+            disabled={!hasWorkerNo || todayShipments.isError || shipmentSelection.isPending}
             value={entry === null ? null : String(entry.shipmentId)}
             onChange={(value) => {
               const selected = todayShipments.shipments.find(
@@ -418,17 +446,25 @@ export const PackingResultScreen = () => {
           <ScanField
             label={t.scan.label.shipment}
             isScanning={shipmentScan.isPending}
+            /* ⭐ 스캐너가 Enter 를 붙이지 않아도 읽는다(사용자 지시 2026-09-17 · 바코드 입력 칸 공통). */
+            autoSubmit
+            /*
+             * ⭐ 출하가 정해지면 칸 안에 다시 스캔 안내를 적는다(사용자 지시 2026-09-17). 칸이
+             *    비어 있으면 출하번호를 한 번 더 넣어야 하는 줄로 읽혔다. 칸은 그대로 둔다 —
+             *    다른 출하를 스캔으로 고르는 길이다.
+             */
+            lockReason={hasWorkerNo ? undefined : ''}
+            hint={shipmentId === null ? undefined : t.scan.shipmentChosen}
             onScan={scanShipment}
           />
           {/*
-           * 읽은 «출하번호»가 칸 옆에 남는다(설계 §3 도면). 한때 납품라벨 값이 오는 자리이기도
-           * 했는데 그 진입을 걷어냈다(SHIP-UNIT-01 P3) — 이제는 늘 출하번호다.
+           * ⭐ **읽은 출하번호를 칸 옆에 적지 않는다**(사용자 지시 2026-09-17). 출하 대상 줄에
+           *    같은 번호가 이미 있고, 칸 안의 안내가 정해졌음을 말한다. 설계 §3 도면은
+           *    칸 옆에 번호를 그렸지만 사용자가 비교 후 뺐다.
            *
-           * ⛔ **비었을 때 표식을 그리지 않는다** — 「—」를 두었더니 줄 끝에 뜻 모를 글자가
-           *    떠 있었다(사용자 지적 2026-09-07). 자리는 그대로 지킨다 — 읽는 «순간» 칸이
-           *    좁아지면 다음 스캔을 받을 자리가 흔들린다.
+           * 빈 자리는 남긴다 — ② 생산LOT 줄과 칸 폭이 같아야 두 줄이 같은 짜임으로 읽힌다.
            */}
-          <p className="packing-scanned-code">{labelCode}</p>
+          <p className="packing-scanned-code" />
         </section>
 
         {/* ② 생산LOT 스캔 — 판정 문구가 칸 바로 아래 붙는다. 떨어뜨리면 어느 스캔의 답인지 흐려진다. */}
@@ -436,14 +472,14 @@ export const PackingResultScreen = () => {
           <ScanField
             label={t.scan.label.productionLot}
             isScanning={lotScan.isPending}
-            lockReason={shipmentId === null ? t.scan.lotLocked : undefined}
+            autoSubmit
+            lockReason={!hasWorkerNo ? '' : shipmentId === null ? t.scan.lotLocked : undefined}
             onScan={scanLot}
           />
           {/*
-           * 읽은 생산LOT 도 칸 옆에 남는다(설계 §3 도면 — 34자리를 «분절»해 그렸다). ① 과 같은
-           * 자리·같은 폭이라 두 상자가 같은 짜임으로 읽힌다.
+           * ⭐ 읽은 생산LOT 을 칸 옆에 적지 않는다 — 판정 띠가 번호와 함께 말한다(사용자 지시
+           *    2026-09-17). 설계 §3 도면은 칸 옆에 번호를 그렸지만 사용자가 비교 후 뺐다.
            */}
-          <p className="packing-scanned-code">{segmentLotNo(matched?.allocation?.lotNo ?? '')}</p>
           {/*
            * 판정은 **배너**로 낸다(스펙 §7 DS 매핑 · G-1). 장갑을 낀 작업자가 스캐너에서 눈을
            * 떼는 순간이라 한 줄 글자로는 「맞다·다르다」가 눈에 걸리지 않는다.
@@ -483,7 +519,8 @@ export const PackingResultScreen = () => {
               <Select
                 size="xl"
                 aria-labelledby={typeLabelId}
-                placeholder={t.fields.typePlaceholder}
+                placeholder={hasWorkerNo ? t.fields.typePlaceholder : ''}
+                disabled={!hasWorkerNo}
                 value={handlingUnitTypeCode === '' ? null : handlingUnitTypeCode}
                 onChange={(value) => {
                   const nextType = value ?? '';
@@ -499,7 +536,6 @@ export const PackingResultScreen = () => {
               lines={lines}
               onRemove={(allocationId) => {
                 setLines(removeLine(lines, allocationId));
-                setMergeNote(null);
               }}
             />
           </div>
@@ -525,15 +561,38 @@ export const PackingResultScreen = () => {
                 <span className="packing-qty-value">{qty === '' ? t.qty.entryEmpty : qty}</span>
                 <span className="packing-qty-room">{t.qty.room(qtyRoom)}</span>
               </p>
-              <NumberPad
-                aria-label={t.qty.label}
-                value={qty}
-                allowDecimal={allowsDecimal(packable.uomId)}
-                onChange={setQty}
-                onConfirm={addToPacking}
-              />
-              {qty !== '' && qtyIssue !== undefined && <p className="field-note">{qtyIssue}</p>}
-              {mergeNote !== null && <p className="field-note">{mergeNote}</p>}
+              {/*
+               * ⭐ **사번 입력 화면(P-CO-01)과 같은 키패드다**(사용자 지시 2026-09-17) — 같은 부품
+               *    (`NumericKeypad`)·같은 키 배열(← 0 지움)·같은 72 높이, 아래에 폭 전체 [확인].
+               *    DS `NumberPad` 는 POP 이 높이를 40 으로 눌러 두어 작고 배열도 달랐다.
+               *
+               * 묶음에 수량 이름을 달아 두어 «키패드와 확인이 한 조작»으로 읽힌다.
+               */}
+              <div className="packing-keypad-group" role="group" aria-label={t.qty.label}>
+                <NumericKeypad
+                  value={qty}
+                  onChange={setQty}
+                  dropLeadingZero
+                  allowDecimal={allowsDecimal(packable.uomId)}
+                  decimalLabel={t.qty.decimal}
+                  className="packing-keypad-pad"
+                  label={t.qty.keypad}
+                  backspaceLabel={t.qty.backspace}
+                  clearLabel={t.qty.clear}
+                  keySize="2xl"
+                />
+                <Button
+                  type="button"
+                  variant="filled"
+                  size="2xl"
+                  className="packing-keypad-submit"
+                  disabled={qty === '' || qtyIssue !== undefined}
+                  onClick={addToPacking}
+                >
+                  {t.qty.submit}
+                </Button>
+              </div>
+              {/* ⛔ 수량 오류 문구(0 초과·배분 한도)는 적지 않는다 — [확인] 잠김만 둔다(사용자 지시 2026-09-17). */}
             </div>
           )}
         </section>
@@ -579,10 +638,12 @@ export const PackingResultScreen = () => {
        */}
       <div className="packing-actions">
         {/*
-         * ⛔ 출하 대상을 안 고른 사유는 하단에 두지 않는다 — 본문 맨 위 안내 띠가 말한다(사용자 지시
-         *    2026-09-15). 다른 잠금 사유(창고·유형·수량 등)는 그대로 하단에 선다.
+         * ⭐ **다음 할 일을 안내하는 사유는 하단에 적지 않는다**(사용자 지시 2026-09-15·09-17) —
+         *    출하대상·유형·담기·포장 만드는 중·권한 확인 중. 칸과 단추 상태가 이미 드러낸다. 사번
+         *    미확인은 맨 위 경고 띠가 말한다. 막힌 «오류»(연결 끊김·권한 없음·창고 없음·포장 생성
+         *    실패)만 남긴다 — 이것까지 지우면 단추가 왜 잠겼는지 알 길이 없다.
          */}
-        {!isLabelMode && lockReason !== undefined && lockReason !== t.locks.shipmentMissing && (
+        {!isLabelMode && lockReason !== undefined && !HIDDEN_LOCK_REASONS.has(lockReason) && (
           <p className="packing-lock">{lockReason}</p>
         )}
 
@@ -655,34 +716,45 @@ export const PackingResultScreen = () => {
           <p className="packing-lock">{HANDLING_UNIT_CANCEL_NOT_READY_MESSAGE}</p>
         )}
 
-        {/*
-         * ⛔ **읽은 것이 없으면 무를 것도 없다.** 아무것도 읽지 않은 채로 열려 있어, 눌러도
-         *    아무 일이 없는 단추였다(사용자 지적 2026-09-07). 되돌릴 것이 있을 때만 연다.
-         */}
+        {/* ⛔ [다시 스캔]은 두지 않는다 — 불필요하다(사용자 지시 2026-09-17). 담긴 줄은 [빼기]로 뺀다. */}
         {!isLabelMode && (
           <>
-            <Button
-              type="button"
-              variant="outlined"
-              size="xl"
-              className="pop-touch-target"
-              disabled={labelCode === null && matched === null}
-              onClick={() => {
-                /* 「다시 스캔」은 **마지막 스캔을 취소한다** — 담긴 것은 표에서 줄 단위로 뺀다. */
-                setMatched(null);
-                setQty('');
-                setMergeNote(null);
-              }}
-            >
-              {t.actions.rescan}
-            </Button>
-
             <Button
               type="button"
               variant="filled"
               size="2xl"
               disabled={lockReason !== undefined || confirm.isPending}
+              /*
+               * ⭐ **누르면 바로 확정하지 않고 먼저 되묻는다**(사용자 지시 2026-09-17). 확정하면
+               *    포장 라벨이 곧장 종이로 나가 되돌릴 수 없다. 스펙 §6 에는 없는 팝업이다.
+               */
+              onClick={() => setConfirmOpen(true)}
+            >
+              {confirm.isPending ? t.actions.confirming : t.actions.confirm}
+            </Button>
+          </>
+        )}
+      </div>
+
+      <Dialog
+        open={isConfirmOpen}
+        onClose={() => setConfirmOpen(false)}
+        title={t.confirmDialog.title}
+        /* ⭐ 스크롤 없이 한 번에 보인다(사용자 지시 2026-09-17) — pop.css `.packing-confirm-dialog`. */
+        className="packing-confirm-dialog"
+        /* ⛔ 바닥의 [취소]와 같은 일을 하므로 X 를 두지 않는다 — 나가는 길은 하나다. */
+        showCloseButton={false}
+        /* ⛔ 팝업 바깥을 눌러 닫히지 않는다(사용자 지시 2026-09-10 · #1005) — 터치 단말의 오조작. */
+        closeOnBackdropClick={false}
+        footer={
+          <>
+            <Button variant="outlined" onClick={() => setConfirmOpen(false)}>
+              {t.confirmDialog.cancel}
+            </Button>
+            <Button
+              disabled={lockReason !== undefined || confirm.isPending}
               onClick={() => {
+                setConfirmOpen(false);
                 if (
                   lockReason !== undefined ||
                   warehouseId === null ||
@@ -696,11 +768,39 @@ export const PackingResultScreen = () => {
                 confirm.mutate({ handlingUnit: openUnit, lines, workerNo: identity.workerNo });
               }}
             >
-              {confirm.isPending ? t.actions.confirming : t.actions.confirm}
+              {t.confirmDialog.confirm}
             </Button>
           </>
-        )}
-      </div>
+        }
+      >
+        {/* ⭐ 이름 아래에 값을 세운다 — 한 줄에 셋을 늘어놓지 않는다(사용자 지시 2026-09-17). */}
+        <dl className="filter-bar packing-confirm-summary">
+          <div>
+            <dt>{t.confirmDialog.shipment}</dt>
+            <dd>{entry?.shipmentNo ?? labelCode ?? '—'}</dd>
+          </div>
+          <div>
+            <dt>{t.confirmDialog.type}</dt>
+            <dd>
+              {typeOptions.options.find((option) => option.value === handlingUnitTypeCode)?.label ??
+                '—'}
+            </dd>
+          </div>
+          <div>
+            <dt>{t.confirmDialog.contents}</dt>
+            <dd>
+              {/* 단위가 섞이면 수량을 더하지 않는다 — 다른 단위의 합은 뜻이 없다. */}
+              {new Set(lines.map((line) => line.uomId)).size === 1
+                ? t.confirmDialog.lotCountWithQty(
+                    lines.length,
+                    String(lines.reduce((sum, line) => sum + line.qty, 0)),
+                  )
+                : t.confirmDialog.lotCount(lines.length)}
+            </dd>
+          </div>
+        </dl>
+        <p>{t.confirmDialog.labelNotice}</p>
+      </Dialog>
     </main>
   );
 };

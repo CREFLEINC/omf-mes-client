@@ -15,13 +15,15 @@ const TODAY_COLUMNS: Column<TodayRow>[] = [
     key: 'interval',
     header: t.today.columns.interval,
     align: 'center',
+    /* ⭐ 열 폭: 구간·길이·사유를 줄이고 메모를 넓힌다(사용자 지시 2026-09-17). */
+    width: '22%',
     render: (row) => toRangeLabel(row.startedAt, row.endedAt),
   },
   {
     key: 'duration',
     header: t.today.columns.duration,
     align: 'center',
-    width: '120px',
+    width: '10%',
     /*
      * 끝나지 않은 줄에는 길이 대신 「진행 중」이 선다 — 서버가 그 값을 내지 않고(끝나지
      * 않았다), 화면이 지어내면 아직 늘고 있는 구간이 끝난 것처럼 보인다.
@@ -37,7 +39,17 @@ const TODAY_COLUMNS: Column<TodayRow>[] = [
     key: 'reason',
     header: t.today.columns.reason,
     align: 'center',
+    width: '20%',
     render: (row) => row.reasonLabel,
+  },
+  /* ⭐ 메모 열(사용자 지시 2026-09-17). 적지 않았으면 비워 둔다. */
+  {
+    key: 'remarks',
+    header: t.today.columns.remarks,
+    /* ⭐ 메모는 헤더·데이터 모두 왼쪽 정렬(사용자 지시 2026-09-17) — 긴 글이라 가운데면 읽기 어렵다. */
+    align: 'start',
+    width: '48%',
+    render: (row) => row.remarks ?? '',
   },
 ];
 

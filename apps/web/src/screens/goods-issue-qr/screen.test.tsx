@@ -180,7 +180,8 @@ const routes = (options: Options): StubRoute[] => [
      */
     match: (request) => /^\/mdm\/items\/\d+$/.test(pathOf(request)),
     respond: (request) => {
-      if (options.labelValuesFail === true) return jsonResponse({ message: '없다' }, { status: 500 });
+      if (options.labelValuesFail === true)
+        return jsonResponse({ message: '없다' }, { status: 500 });
 
       const itemId = Number(pathOf(request).split('/').pop());
 
@@ -332,8 +333,12 @@ const renderScreen = (options: Options = {}) =>
   });
 
 const rowFor = (lotNo: string): HTMLElement => {
-  const cell = screen.getByText(lotNo);
-  const row = cell.closest('tr');
+  /* 발행 대상 목록에도 같은 LOT 이 적힌다 — 표의 줄에서 찾는다. */
+  const row =
+    screen
+      .getAllByText(lotNo)
+      .map((cell) => cell.closest('tr'))
+      .find((tr) => tr !== null) ?? null;
 
   if (row === null) throw new Error(`행을 찾지 못했습니다: ${lotNo}`);
 
@@ -411,7 +416,7 @@ describe('GoodsIssueQrScreen — 발행 단위', () => {
     await screen.findByText('LOT-SAMPLE-20');
     expect(screen.queryByAltText(t.target.previewAlt)).not.toBeInTheDocument();
 
-    await user.click(within(rowFor('LOT-SAMPLE-20')).getByRole('checkbox'));
+    await user.click(within(rowFor('LOT-SAMPLE-20')).getByRole('button', { name: t.lines.pick }));
 
     const preview = await screen.findByAltText(t.target.previewAlt);
     /* 우리가 만든 그림이다 — 서버 주소가 아니라 이 앱이 쥔 바이트를 가리킨다. */
@@ -427,10 +432,12 @@ describe('GoodsIssueQrScreen — 발행 단위', () => {
     renderScreen({ issueCounts: { 1001: 0 }, labelValuesFail: true });
 
     await screen.findByText('LOT-SAMPLE-20');
-    await user.click(within(rowFor('LOT-SAMPLE-20')).getByRole('checkbox'));
+    await user.click(within(rowFor('LOT-SAMPLE-20')).getByRole('button', { name: t.lines.pick }));
 
     /* ⚠ 넓게 찾지 않는다 — 품목 열에도 「이름을 불러오지 못했습니다」가 서 있다. */
-    expect(await screen.findByText(/품목 코드·LOT 번호를 불러오지 못했습니다/u)).toBeInTheDocument();
+    expect(
+      await screen.findByText(/품목 코드·LOT 번호를 불러오지 못했습니다/u),
+    ).toBeInTheDocument();
     expect(screen.queryByText(t.target.previewEmpty)).not.toBeInTheDocument();
   });
 
@@ -446,7 +453,7 @@ describe('GoodsIssueQrScreen — 발행 단위', () => {
     renderScreen({ issueCounts: { 1001: 0 } });
 
     await screen.findByText('LOT-SAMPLE-20');
-    await user.click(within(rowFor('LOT-SAMPLE-20')).getByRole('checkbox'));
+    await user.click(within(rowFor('LOT-SAMPLE-20')).getByRole('button', { name: t.lines.pick }));
 
     expect(await screen.findByAltText(t.target.previewAlt)).toBeInTheDocument();
     expect(screen.getByText(t.target.destinationMissing)).toBeInTheDocument();
@@ -457,7 +464,7 @@ describe('GoodsIssueQrScreen — 발행 단위', () => {
     renderScreen({ issueCounts: { 1001: 0 }, destinationResolves: true });
 
     await screen.findByText('LOT-SAMPLE-20');
-    await user.click(within(rowFor('LOT-SAMPLE-20')).getByRole('checkbox'));
+    await user.click(within(rowFor('LOT-SAMPLE-20')).getByRole('button', { name: t.lines.pick }));
 
     expect(await screen.findByAltText(t.target.previewAlt)).toBeInTheDocument();
     expect(screen.queryByText(t.target.destinationMissing)).not.toBeInTheDocument();
@@ -511,15 +518,6 @@ describe('GoodsIssueQrScreen', () => {
     expect(container.querySelector('.pop-giqr-actions .field-note')).toBeNull();
   });
 
-
-
-
-
-
-
-
-
-
   it('프린터가 0건이면 빈 상태를 머리에 보인다', async () => {
     renderScreen({ issueCounts: { 1001: 0 } });
 
@@ -531,7 +529,7 @@ describe('GoodsIssueQrScreen', () => {
     renderScreen({ issueCounts: { 1001: 0, 1002: 2 } });
 
     await screen.findByText('LOT-SAMPLE-21');
-    await user.click(within(rowFor('LOT-SAMPLE-21')).getByRole('checkbox'));
+    await user.click(within(rowFor('LOT-SAMPLE-21')).getByRole('button', { name: t.lines.pick }));
 
     expect(await screen.findByText(t.action.disabledNoReason)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: t.action.issue })).toBeDisabled();
@@ -549,7 +547,7 @@ describe('GoodsIssueQrScreen', () => {
     renderScreen({ issueCounts: { 1001: 0, 1002: 0 } });
 
     await screen.findByText('LOT-SAMPLE-20');
-    await user.click(within(rowFor('LOT-SAMPLE-20')).getByRole('checkbox'));
+    await user.click(within(rowFor('LOT-SAMPLE-20')).getByRole('button', { name: t.lines.pick }));
 
     /* 사유가 필요 없으면 칸 자체가 서지 않는다 — 「필요 없다」는 말도 내지 않는다. */
     await waitFor(() => {
@@ -564,7 +562,7 @@ describe('GoodsIssueQrScreen', () => {
     renderScreen({ issueCounts: { 1001: 0, 1002: 0 }, writes });
 
     await screen.findByText('LOT-SAMPLE-20');
-    await user.click(within(rowFor('LOT-SAMPLE-20')).getByRole('checkbox'));
+    await user.click(within(rowFor('LOT-SAMPLE-20')).getByRole('button', { name: t.lines.pick }));
     await user.click(screen.getByRole('button', { name: t.action.issue }));
 
     await waitFor(() => {
@@ -597,7 +595,7 @@ describe('GoodsIssueQrScreen', () => {
     renderScreen({ issueCounts: { 1001: 0 } });
 
     await screen.findByText('LOT-SAMPLE-20');
-    await user.click(within(rowFor('LOT-SAMPLE-20')).getByRole('checkbox'));
+    await user.click(within(rowFor('LOT-SAMPLE-20')).getByRole('button', { name: t.lines.pick }));
     await user.click(screen.getByRole('button', { name: t.action.issue }));
 
     expect(await screen.findByText(t.result.issued(1))).toBeInTheDocument();
@@ -609,12 +607,14 @@ describe('GoodsIssueQrScreen', () => {
     renderScreen({ issueCounts: { 1001: 0 }, issueStatus: 403 });
 
     await screen.findByText('LOT-SAMPLE-20');
-    const checkbox = within(rowFor('LOT-SAMPLE-20')).getByRole('checkbox');
-    await user.click(checkbox);
+    const pickButton = within(rowFor('LOT-SAMPLE-20')).getByRole('button', { name: t.lines.pick });
+    await user.click(pickButton);
     await user.click(screen.getByRole('button', { name: t.action.issue }));
 
     expect(await screen.findByText(t.errors.forbidden)).toBeInTheDocument();
-    expect(within(rowFor('LOT-SAMPLE-20')).getByRole('checkbox')).toBeChecked();
+    expect(
+      within(rowFor('LOT-SAMPLE-20')).getByRole('button', { name: t.lines.pick }),
+    ).toHaveAttribute('aria-pressed', 'true');
   });
 
   /*
@@ -642,7 +642,7 @@ describe('GoodsIssueQrScreen', () => {
     });
 
     await screen.findByText('LOT-SAMPLE-20');
-    await user.click(within(rowFor('LOT-SAMPLE-20')).getByRole('checkbox'));
+    await user.click(within(rowFor('LOT-SAMPLE-20')).getByRole('button', { name: t.lines.pick }));
     await user.click(screen.getByRole('button', { name: t.action.issue }));
 
     /* ⛔ 배너가 아니라 **그 칸 안에** 서야 한다 — 고칠 자리를 짚어 주는 것이 이 문구의 일이다. */
@@ -679,7 +679,7 @@ describe('GoodsIssueQrScreen', () => {
     renderScreen({ summaryFails: true, writes });
 
     await screen.findByText('LOT-SAMPLE-20');
-    await user.click(within(rowFor('LOT-SAMPLE-20')).getByRole('checkbox'));
+    await user.click(within(rowFor('LOT-SAMPLE-20')).getByRole('button', { name: t.lines.pick }));
 
     /* 자리는 섰다 — 그러나 「필수」가 아니라 「모른다」로 말한다 */
     expect(screen.getByText(t.reissue.unknownStatus)).toBeInTheDocument();
@@ -708,13 +708,13 @@ describe('GoodsIssueQrScreen', () => {
     await screen.findByText('LOT-SAMPLE-21');
 
     /* 요약에 없는 라인 — 현황을 모른다. 사유 칸이 서고 값을 고를 수 있다 */
-    await user.click(within(rowFor('LOT-SAMPLE-21')).getByRole('checkbox'));
+    await user.click(within(rowFor('LOT-SAMPLE-21')).getByRole('button', { name: t.lines.pick }));
     await user.click(screen.getByRole('combobox', { name: t.reissue.label }));
     await user.click(await screen.findByRole('option', { name: '인쇄 실패' }));
 
     /* 미발행으로 읽힌 라인으로 갈아탄다 — 사유 칸이 접힌다 */
-    await user.click(within(rowFor('LOT-SAMPLE-21')).getByRole('checkbox'));
-    await user.click(within(rowFor('LOT-SAMPLE-20')).getByRole('checkbox'));
+    await user.click(within(rowFor('LOT-SAMPLE-21')).getByRole('button', { name: t.lines.pick }));
+    await user.click(within(rowFor('LOT-SAMPLE-20')).getByRole('button', { name: t.lines.pick }));
 
     expect(screen.queryByRole('combobox', { name: t.reissue.label })).not.toBeInTheDocument();
 
@@ -754,7 +754,7 @@ describe('GoodsIssueQrScreen', () => {
     renderScreen({ issueCounts: { 1001: 0 }, renditionCalls, reports });
 
     await screen.findByText('LOT-SAMPLE-20');
-    await user.click(within(rowFor('LOT-SAMPLE-20')).getByRole('checkbox'));
+    await user.click(within(rowFor('LOT-SAMPLE-20')).getByRole('button', { name: t.lines.pick }));
     await user.click(screen.getByRole('button', { name: t.action.issue }));
 
     expect(await screen.findByText(t.result.issued(1))).toBeInTheDocument();
@@ -770,7 +770,9 @@ describe('GoodsIssueQrScreen', () => {
     /* 파일 이름이 「무엇을 몇 회차로」를 담는다 — 셸의 파일 목록에서 그것만 보고 가려야 한다. */
     expect(sent.label).toBe('GOODS_ISSUE_QR-1001-1');
     /* PNG 머리표. 「무언가 넘어갔다」와 「PNG 가 넘어갔다」는 다르다. */
-    expect([...sent.bytes.subarray(0, 8)]).toEqual([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+    expect([...sent.bytes.subarray(0, 8)]).toEqual([
+      0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a,
+    ]);
 
     /* ⛔ 서버 렌디션은 부르지 않는다 — 이 유형을 서버가 그리지 않는다. */
     expect(renditionCalls).toHaveLength(0);
@@ -789,7 +791,7 @@ describe('GoodsIssueQrScreen', () => {
     renderScreen({ issueCounts: { 1001: 0 }, renditionCalls });
 
     await screen.findByText('LOT-SAMPLE-20');
-    await user.click(within(rowFor('LOT-SAMPLE-20')).getByRole('checkbox'));
+    await user.click(within(rowFor('LOT-SAMPLE-20')).getByRole('button', { name: t.lines.pick }));
     await user.click(screen.getByRole('button', { name: t.action.issue }));
 
     /* ⛔ 인쇄 성공은 띠로 말하지 않는다 — 발행 띠 하나면 된다(2026-09-09). */
@@ -804,7 +806,7 @@ describe('GoodsIssueQrScreen', () => {
     renderScreen({ issueCounts: { 1001: 0 }, reports });
 
     await screen.findByText('LOT-SAMPLE-20');
-    await user.click(within(rowFor('LOT-SAMPLE-20')).getByRole('checkbox'));
+    await user.click(within(rowFor('LOT-SAMPLE-20')).getByRole('button', { name: t.lines.pick }));
     await user.click(screen.getByRole('button', { name: t.action.issue }));
 
     expect(await screen.findByText(t.result.printFailed)).toBeInTheDocument();
@@ -825,7 +827,7 @@ describe('GoodsIssueQrScreen', () => {
     renderScreen({ issueCounts: { 1001: 0 }, reports, labelValuesFail: true });
 
     await screen.findByText('LOT-SAMPLE-20');
-    await user.click(within(rowFor('LOT-SAMPLE-20')).getByRole('checkbox'));
+    await user.click(within(rowFor('LOT-SAMPLE-20')).getByRole('button', { name: t.lines.pick }));
     await user.click(screen.getByRole('button', { name: t.action.issue }));
 
     expect(await screen.findByText(t.result.printFailed)).toBeInTheDocument();
@@ -843,7 +845,7 @@ describe('GoodsIssueQrScreen', () => {
     renderScreen({ issueCounts: { 1001: 0 }, reports });
 
     await screen.findByText('LOT-SAMPLE-20');
-    await user.click(within(rowFor('LOT-SAMPLE-20')).getByRole('checkbox'));
+    await user.click(within(rowFor('LOT-SAMPLE-20')).getByRole('button', { name: t.lines.pick }));
     await user.click(screen.getByRole('button', { name: t.action.issue }));
 
     expect(await screen.findByText(t.result.issued(1))).toBeInTheDocument();
@@ -866,7 +868,7 @@ describe('GoodsIssueQrScreen', () => {
     renderScreen({ issueCounts: { 1001: 0 }, reportFails: true, labelValuesFail: true });
 
     await screen.findByText('LOT-SAMPLE-20');
-    await user.click(within(rowFor('LOT-SAMPLE-20')).getByRole('checkbox'));
+    await user.click(within(rowFor('LOT-SAMPLE-20')).getByRole('button', { name: t.lines.pick }));
     await user.click(screen.getByRole('button', { name: t.action.issue }));
 
     expect(await screen.findByText(t.result.reportFailed)).toBeInTheDocument();
@@ -880,7 +882,7 @@ describe('GoodsIssueQrScreen', () => {
     renderScreen({ issueCounts: { 1001: 0 }, reports });
 
     await screen.findByText('LOT-SAMPLE-20');
-    await user.click(within(rowFor('LOT-SAMPLE-20')).getByRole('checkbox'));
+    await user.click(within(rowFor('LOT-SAMPLE-20')).getByRole('button', { name: t.lines.pick }));
     await user.click(screen.getByRole('button', { name: t.action.issue }));
 
     await waitFor(() => {
@@ -897,8 +899,15 @@ describe('GoodsIssueQrScreen', () => {
     await screen.findByText('LOT-SAMPLE-20');
     await user.click(screen.getByRole('button', { name: t.lines.selectAll }));
 
-    expect(await screen.findByText(t.target.selectedCount(LINES.length))).toBeInTheDocument();
-    expect(within(rowFor('LOT-SAMPLE-21')).getByRole('checkbox')).toBeChecked();
+    /* ⭐ 발행 대상은 고른 라인마다 한 줄이다(사용자 지시 2026-09-17). */
+    await waitFor(() => {
+      expect(screen.getAllByRole('button', { name: t.lines.pick, pressed: true })).toHaveLength(
+        LINES.length,
+      );
+    });
+    expect(
+      within(rowFor('LOT-SAMPLE-21')).getByRole('button', { name: t.lines.pick }),
+    ).toHaveAttribute('aria-pressed', 'true');
 
     await user.click(screen.getByRole('button', { name: t.lines.clearSelection }));
 
@@ -911,7 +920,7 @@ describe('GoodsIssueQrScreen', () => {
     renderScreen({ issueCounts: { 1001: 0, 1002: 2 }, writes });
 
     await screen.findByText('LOT-SAMPLE-21');
-    await user.click(within(rowFor('LOT-SAMPLE-21')).getByRole('checkbox'));
+    await user.click(within(rowFor('LOT-SAMPLE-21')).getByRole('button', { name: t.lines.pick }));
     await user.click(screen.getByRole('combobox', { name: t.reissue.label }));
     await user.click(await screen.findByRole('option', { name: '인쇄 실패' }));
     await user.click(screen.getByRole('button', { name: t.action.issue }));
@@ -978,7 +987,7 @@ describe('GoodsIssueQrScreen', () => {
     renderScreen({ issueCounts: { 1001: 0 } });
 
     await screen.findByText('LOT-SAMPLE-20');
-    await user.click(within(rowFor('LOT-SAMPLE-20')).getByRole('checkbox'));
+    await user.click(within(rowFor('LOT-SAMPLE-20')).getByRole('button', { name: t.lines.pick }));
     await user.click(screen.getByRole('button', { name: t.action.issue }));
 
     const preview = await screen.findByAltText(t.target.previewAlt);
@@ -1017,8 +1026,12 @@ describe('GoodsIssueQrScreen', () => {
       route: '/pop/goods-issue-qr?goodsIssueId=900',
     });
 
-    expect(await screen.findByText(t.entry.missingWorker)).toBeInTheDocument();
+    // 사유는 맨 위 공용 띠 하나로만 말한다(사용자 지시 2026-09-17).
+    expect(await screen.findByText(messages.popChrome.workerMissing)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: t.action.issue })).toBeDisabled();
-    expect(screen.getByText(t.action.disabledNoWorker)).toBeInTheDocument();
+    expect(
+      screen.queryByText('사번이 확인되지 않아 발행할 수 없습니다. 사번 인증을 먼저 하세요.'),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByText('사번이 확인되지 않았습니다.')).not.toBeInTheDocument();
   });
 });

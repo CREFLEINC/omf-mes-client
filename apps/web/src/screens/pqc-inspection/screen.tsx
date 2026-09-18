@@ -8,6 +8,7 @@ import { SaveErrorBanner } from '../../patterns/master';
 import { OutboxStallBanner } from '../../patterns/outbox-stall-banner';
 import { usePopIdentity } from '../../patterns/pop-identity';
 import { popTouchClass } from '../../patterns/pop-touch';
+import { PopWorkerMissingBanner } from '../../patterns/pop-worker-missing-banner';
 import { toApiError } from '../../patterns/request';
 import { useWorkerSession } from '../../patterns/worker-session';
 
@@ -379,12 +380,14 @@ export const PqcInspectionScreen = () => {
    * 남기는 것이고, 계약도 「작성중」에는 합계 제약을 걸지 않는다. **막는 것은 보낼 수 없는
    * 값이 남아 있을 때뿐이다.**
    */
+  /*
+   * 사번이 없어 막힌 것은 화면 맨 위 공용 띠가 말한다(사용자 지시 2026-09-17).
+   * 저장 경로는 `saveResult` 가 막는다.
+   */
   const saveBlockedReason =
-    workerNo === null
-      ? t.result.saveBlockedByWorker
-      : showErrors && (hasQuantityError(validateQuantities(draft)) || hasValueError(rows, drafts))
-        ? t.result.saveBlockedByInvalid
-        : null;
+    showErrors && (hasQuantityError(validateQuantities(draft)) || hasValueError(rows, drafts))
+      ? t.result.saveBlockedByInvalid
+      : null;
 
   /**
    * 결과를 저장한다 — **임시 저장과 검사 확정이 같은 경로**이고 상태값으로 갈린다(§3-7).
@@ -546,6 +549,7 @@ export const PqcInspectionScreen = () => {
         isOnline={outbox.isOnline}
         isStalled={outbox.isStalled}
         onRetry={outbox.retryNow}
+        workerNo={workerNo}
       >
         <p className="field-note">{t.detail.nothingSelected}</p>
         <PqcLockedBody>{renderInspect(true, undefined, null)}</PqcLockedBody>
@@ -560,6 +564,7 @@ export const PqcInspectionScreen = () => {
         isOnline={outbox.isOnline}
         isStalled={outbox.isStalled}
         onRetry={outbox.retryNow}
+        workerNo={workerNo}
       >
         <QueueLoadErrorBanner
           error={toApiError(detail.error)}
@@ -577,6 +582,7 @@ export const PqcInspectionScreen = () => {
         isOnline={outbox.isOnline}
         isStalled={outbox.isStalled}
         onRetry={outbox.retryNow}
+        workerNo={workerNo}
       >
         <p className="field-note">{t.detail.loading}</p>
       </PqcFrame>
@@ -592,12 +598,14 @@ export const PqcInspectionScreen = () => {
       isOnline={outbox.isOnline}
       isStalled={outbox.isStalled}
       onRetry={outbox.retryNow}
+      workerNo={workerNo}
     >
       {renderInspect(isConfirmed, planVersionId, detail.data.uomId)}
 
       <ActionBar
         isConfirmed={isConfirmed}
-        blockedReason={workerNo === null ? t.result.saveBlockedByWorker : confirmBlockedReason}
+        blockedReason={confirmBlockedReason}
+        workerMissing={workerNo === null}
         saveBlockedReason={saveBlockedReason}
         isSaved={isSaved}
         isJustConfirmed={isJustConfirmed}
@@ -675,6 +683,7 @@ const PqcFrame = ({
   isOnline,
   isStalled,
   onRetry,
+  workerNo,
 }: {
   children: React.ReactNode;
   target?: React.ReactNode;
@@ -682,6 +691,7 @@ const PqcFrame = ({
   isOnline: boolean;
   isStalled: boolean;
   onRetry: () => void;
+  workerNo: string | null;
 }) => {
   const titleId = useId();
 
@@ -717,6 +727,8 @@ const PqcFrame = ({
       </header>
       {/* ⭐ 「밀리는 중」과 「멈춤」은 다르다 — 건수만으로는 그 차이가 보이지 않는다. */}
       {isStalled && <OutboxStallBanner onRetry={onRetry} />}
+      {/* ⭐ 사번 미확인은 모든 POP 화면이 같은 맨 위 띠로 말한다(사용자 지시 2026-09-17). */}
+      <PopWorkerMissingBanner workerNo={workerNo} />
       {children}
     </main>
   );

@@ -1710,7 +1710,37 @@ on('GET', '/app/document-issues', (_params, query) => {
 
 on('POST', '/app/document-issues', (_params, _query, body, headers) =>
   idempotent('app.document-issues:create', headers, () => {
+    /*
+     * 납품 라벨의 대상은 출하 단위다 — 서버 `document-issue-create-rules.ts` DELIVERY_LABEL:
+     * 마감(CLOSED)된 단위만 발행하고, 아니면 422 STATE_LOCKED(`targets[i].targetId`).
+     */
+    const lockedAt = (body?.targets ?? []).findIndex(
+      (target) =>
+        target.targetTypeCode === 'SHIPPING_UNIT' &&
+        state.shippingUnits.find((row) => row.shippingUnitId === target.targetId)?.statusCode !==
+          'CLOSED',
+    );
+    if (lockedAt >= 0) {
+      return {
+        status: 422,
+        created: {
+          errors: [
+            {
+              scope: 'field',
+              field: `targets[${String(lockedAt)}].targetId`,
+              code: 'STATE_LOCKED',
+              message: '마감된 출하 단위만 납품 라벨을 발행할 수 있습니다.',
+            },
+          ],
+        },
+      };
+    }
+
     const items = (body?.targets ?? []).map((target) => {
+      const shippingUnit =
+        target.targetTypeCode === 'SHIPPING_UNIT'
+          ? state.shippingUnits.find((row) => row.shippingUnitId === target.targetId)
+          : undefined;
       const lot = state.lots.find((row) => row.lotId === (target.lotId ?? target.targetId));
       const location = state.locations.find((row) => row.locationId === target.targetId);
       const issueSeq =
@@ -1725,9 +1755,10 @@ on('POST', '/app/document-issues', (_params, _query, body, headers) =>
         documentTypeCode: body.documentTypeCode,
         targetTypeCode: target.targetTypeCode,
         targetId: target.targetId,
-        lotId: target.lotId,
+        /* 출하 단위는 LOT 이 여럿이라 null 이다(서버 U-18). */
+        lotId: shippingUnit === undefined ? target.lotId : null,
         /* 계약의 DocumentIssue 가 LOT 번호를 함께 낸다 — 화면의 결과 띠가 이 값을 읽는다. */
-        lotNo: lot?.lotNo ?? null,
+        lotNo: shippingUnit === undefined ? (lot?.lotNo ?? null) : null,
         issueSeq,
         reissueReasonCode: issueSeq > 1 ? body.reissueReasonCode : null,
         issuedBy: 1001,
@@ -1742,7 +1773,12 @@ on('POST', '/app/document-issues', (_params, _query, body, headers) =>
         target: {
           targetTypeCode: target.targetTypeCode,
           targetId: target.targetId,
-          displayName: location?.locationCode ?? lot?.lotNo ?? String(target.targetId),
+          displayName:
+            shippingUnit?.shippingUnitNo ??
+            location?.locationCode ??
+            lot?.lotNo ??
+            String(target.targetId),
+          ...(shippingUnit === undefined ? {} : { screenId: 'P-04-05' }),
         },
       };
     });
@@ -3387,6 +3423,37 @@ on('POST', '/logistics/goods-receipts', (_p, _q, body) => {
 
 const shipmentEtag = (shipment) => `W/"${String(shipment.versionNo ?? 1)}"`;
 
+/* ── 출하 단위 (P-04-05 · SHIP-UNIT-01) 가 보는 상자 저장소 ─────── */
+
+/** 출하 단위 행과 상자 연결. 연결은 상자 하나가 한 단위에만 든다(서버 PK 가 handling_unit_id). */
+state.shippingUnits = [];
+state.shippingUnitBoxes = [];
+
+/** 상자의 배분 — 상자를 출하에 잇는 근거(서버 `shipment_lot_allocation.handling_unit_id`). */
+const boxAllocationsOf = (handlingUnitId) =>
+  state.shipments.flatMap((shipment) =>
+    (shipment.lines ?? [])
+      .flatMap((line) => line.allocations ?? [])
+      .filter((allocation) => allocation.handlingUnitId === handlingUnitId)
+      .map((allocation) => ({ ...allocation, shipmentId: shipment.shipmentId })),
+  );
+
+/** 서버 `unassignedPackedBoxCounts` — PACKED 이고 어느 단위에도 안 든 상자를 중복 없이 센다. */
+const unassignedPackedBoxCountOf = (shipment) => {
+  const ids = new Set(
+    (shipment.lines ?? [])
+      .flatMap((line) => line.allocations ?? [])
+      .map((allocation) => allocation.handlingUnitId)
+      .filter((id) => id !== undefined && id !== null),
+  );
+
+  return [...ids].filter(
+    (id) =>
+      state.handlingUnits.find((unit) => unit.handlingUnitId === id)?.statusCode === 'PACKED' &&
+      !state.shippingUnitBoxes.some((link) => link.handlingUnitId === id),
+  ).length;
+};
+
 on('GET', '/logistics/shipments', (_p, query) => {
   const shipmentNo = query.get('shipmentNo');
   const shipmentRequestId = num(query, 'shipmentRequestId');
@@ -3414,7 +3481,10 @@ on('GET', '/logistics/shipments', (_p, query) => {
       (row) => to === null || (row.shippedAt ?? '').slice(0, 10) <= to,
       (row) => lotId === null || allocationsOf(row).some((each) => each.lotId === lotId),
       (row) => q === null || q === '' || row.shipmentNo.toUpperCase().includes(q.toUpperCase()),
-    ]),
+      /* 서버 `UNASSIGNED_PACKED_BOX_SQL` — `true` 일 때만 절을 건다. */
+      (row) =>
+        bool(query, 'hasUnassignedPackedBox') !== true || unassignedPackedBoxCountOf(row) > 0,
+    ]).map((row) => ({ ...row, unassignedPackedBoxCount: unassignedPackedBoxCountOf(row) })),
     query,
   );
 });
@@ -3550,6 +3620,268 @@ on('GET', '/logistics/shipments/{shipmentId}', (params) => {
   return shipment === undefined
     ? null
     : { created: shipment, status: 200, headers: { ETag: shipmentEtag(shipment) } };
+});
+
+/*
+ * 출하 단위 — 서버 `src/logistics/shipping-unit/` 를 옮겨 적은 최소 구현.
+ *
+ * ⭐ ETag 는 서버 `setEtag` 처럼 따옴표 없는 `version_no` 다. 생성 1 · 넣기/빼기/마감마다 +1.
+ * ⚠ 실서버와 다름: 단말 공장 범위 · X-Worker-No 요구(401) · 취소된 출하 · 포장 실적 없음 ·
+ *   다른 출하 거절 · 목록 질의(GET 목록)를 두지 않았다 — 화면 흐름 확인용 최소 범위(2026-09-17 지시).
+ */
+const shippingUnitEtag = (unit) => String(unit.versionNo);
+
+/** 서버 `parseIfMatch` — `5` · `"5"` · `W/"5"` 를 받는다. */
+const ifMatchVersionOf = (headers) => {
+  const match = /^(?:"(\d+)"|(\d+))$/.exec((headers['if-match'] ?? '').trim().replace(/^W\//i, ''));
+  return match === null ? null : Number(match[1] ?? match[2]);
+};
+
+/** 서버 오류 필터가 NotFoundException 을 바꾼 봉투. */
+const notFound = (message) => ({
+  status: 404,
+  created: { errors: [{ scope: 'screen', code: 'NOT_FOUND', message }] },
+});
+
+const partnerRefOf = (partnerId) => {
+  const partner = state.partners.find((row) => row.partnerId === partnerId);
+  return {
+    partnerId,
+    partnerCode: partner?.partnerCode ?? '',
+    partnerName: partner?.partnerName ?? '',
+  };
+};
+
+const shippingUnitView = (unit) => {
+  const shipment = state.shipments.find((row) => row.shipmentId === unit.shipmentId);
+  const request = state.shipmentRequests.find(
+    (row) => row.shipmentRequestId === shipment?.shipmentRequestId,
+  );
+
+  return {
+    shippingUnitId: unit.shippingUnitId,
+    shippingUnitNo: unit.shippingUnitNo,
+    shippingUnitTypeCode: unit.shippingUnitTypeCode,
+    statusCode: unit.statusCode,
+    shipmentId: unit.shipmentId,
+    shipmentNo: shipment?.shipmentNo ?? '',
+    customer: partnerRefOf(request?.customerId),
+    /* ⚠ 실서버와 다름: 씨앗 출하요청에 납품처가 없어 고객으로 메운다. */
+    shipTo: partnerRefOf(request?.shipToPartnerId ?? request?.customerId),
+    boxCount: state.shippingUnitBoxes.filter((link) => link.shippingUnitId === unit.shippingUnitId)
+      .length,
+    ...(unit.closedAt === null ? {} : { closedAt: unit.closedAt }),
+    createdAt: unit.createdAt,
+    versionNo: unit.versionNo,
+  };
+};
+
+/** 서버 `ShippingUnitQueryService.get` — 상자는 seq 순, 합계는 (품목, 단위) 묶음·품목 코드 순. */
+const shippingUnitDetail = (unit) => {
+  const boxes = state.shippingUnitBoxes
+    .filter((link) => link.shippingUnitId === unit.shippingUnitId)
+    .sort((left, right) => left.seq - right.seq)
+    .map((link) => ({
+      handlingUnitId: link.handlingUnitId,
+      handlingUnitNo:
+        state.handlingUnits.find((row) => row.handlingUnitId === link.handlingUnitId)
+          ?.handlingUnitNo ?? '',
+      seq: link.seq,
+      contents: state.handlingUnitContents
+        .filter((content) => content.handlingUnitId === link.handlingUnitId)
+        .map((content) => {
+          const item = itemOf(content.itemId);
+          return {
+            itemId: content.itemId,
+            itemCode: item?.itemCode ?? '',
+            itemName: item?.itemName ?? '',
+            lotId: content.lotId,
+            lotNo: state.lots.find((row) => row.lotId === content.lotId)?.lotNo ?? '',
+            qty: Number(content.qty),
+            uomId: content.uomId,
+            uomCode: uomOf(content.uomId)?.uomCode ?? '',
+          };
+        }),
+    }));
+  const totals = new Map();
+  for (const content of boxes.flatMap((box) => box.contents)) {
+    const key = `${String(content.itemId)}:${String(content.uomId)}`;
+    const found = totals.get(key);
+    if (found === undefined) {
+      const { lotId: _lotId, lotNo: _lotNo, ...total } = content;
+      totals.set(key, total);
+    } else {
+      found.qty += content.qty;
+    }
+  }
+
+  return {
+    ...shippingUnitView(unit),
+    boxes,
+    itemTotals: [...totals.values()].sort((left, right) =>
+      left.itemCode.localeCompare(right.itemCode),
+    ),
+  };
+};
+
+const shippingUnitOk = (unit, status = 200) => ({
+  status,
+  created: shippingUnitDetail(unit),
+  headers: { ETag: shippingUnitEtag(unit) },
+});
+
+const findShippingUnit = (params) =>
+  state.shippingUnits.find((row) => row.shippingUnitId === Number(params.shippingUnitId));
+
+/** 서버 `assertOpen`. */
+const shippingUnitClosed = () =>
+  fieldError('shippingUnitId', 'STATE_LOCKED', '이미 마감된 출하 단위입니다.');
+
+const touchShippingUnit = (unit) => {
+  unit.versionNo += 1;
+  unit.updatedAt = new Date().toISOString();
+};
+
+/*
+ * 서버 `ShippingUnitQueryService.list` 의 최소판 — 출하·상태로 거른다. P-04-01 라벨 상태·재출력이
+ * 납품 라벨 대상 목록으로 부른다. ⚠ 실서버와 다름: 기간·정렬 축은 넣지 않았다.
+ */
+on('GET', '/logistics/shipping-units', (_p, query) =>
+  page(
+    keep(state.shippingUnits.map(shippingUnitView), [
+      byNum(query, 'shipmentId', 'shipmentId'),
+      byText(query, 'statusCode', 'statusCode'),
+    ]),
+    query,
+  ),
+);
+
+on('GET', '/logistics/shipping-units/{shippingUnitId}', (params) => {
+  const unit = findShippingUnit(params);
+  return unit === undefined ? notFound('없는 출하 단위입니다.') : shippingUnitOk(unit);
+});
+
+/* 서버 `ShippingUnitService.create` — 201 + ETag. 번호는 SU-{UTC 오늘}-{SEQ4}. */
+on('POST', '/logistics/shipping-units', (_p, _q, body, headers) =>
+  idempotent('logistics.shipping-units:create', headers, () => {
+    const shipment = state.shipments.find((row) => row.shipmentId === body?.shipmentId);
+    if (shipment === undefined) return notFound('없는 출하입니다.');
+
+    const typeCodes = (state.codeValues.SHIPPING_UNIT_TYPE ?? []).map(([code]) => code);
+    if (!typeCodes.includes(body?.shippingUnitTypeCode)) {
+      return fieldError('shippingUnitTypeCode', 'INVALID', '없는 출하 단위 유형입니다.');
+    }
+
+    const day = new Date().toISOString().slice(0, 10).replaceAll('-', '');
+    const now = new Date().toISOString();
+    const unit = {
+      shippingUnitId: newId(),
+      shippingUnitNo: `SU-${day}-${String(state.shippingUnits.length + 1).padStart(4, '0')}`,
+      shipmentId: shipment.shipmentId,
+      shippingUnitTypeCode: body.shippingUnitTypeCode,
+      statusCode: 'OPEN',
+      closedAt: null,
+      createdAt: now,
+      updatedAt: now,
+      versionNo: 1,
+    };
+    state.shippingUnits.push(unit);
+
+    return shippingUnitOk(unit, 201);
+  }),
+);
+
+/*
+ * 서버 `ShippingUnitBoxService.addBox` — 200. 같은 단위에 같은 상자는 그대로 200(버전 안 오름).
+ * 거절: 마감된 단위 · 없는 상자(404) · 포장 안 됨 · 이미 다른 단위.
+ * ⚠ 실서버와 다름: 포장 실적 없음(INVALID)·다른 출하(PAIR)·취소된 출하 갈래는 두지 않았다.
+ */
+on('POST', '/logistics/shipping-units/{shippingUnitId}:add-box', (params, _q, body, headers) => {
+  const unit = findShippingUnit(params);
+  if (unit === undefined) return notFound('없는 출하 단위입니다.');
+
+  return idempotent(`logistics.shipping-units:${params.shippingUnitId}:add-box`, headers, () => {
+    if (unit.statusCode !== 'OPEN') return shippingUnitClosed();
+
+    const box = state.handlingUnits.find((row) => row.handlingUnitNo === body?.handlingUnitNo);
+    if (box === undefined) return notFound('없는 상자입니다.');
+    if (box.statusCode !== 'PACKED') {
+      return fieldError('handlingUnitNo', 'STATE_LOCKED', '포장 확정되지 않은 상자입니다.');
+    }
+
+    const link = state.shippingUnitBoxes.find((row) => row.handlingUnitId === box.handlingUnitId);
+    if (link?.shippingUnitId === unit.shippingUnitId) return shippingUnitOk(unit);
+    if (link !== undefined) {
+      return fieldError('handlingUnitNo', 'UNIQUE_VIOLATION', '이미 다른 출하 단위에 구성된 상자입니다.');
+    }
+
+    const last = Math.max(
+      0,
+      ...state.shippingUnitBoxes
+        .filter((row) => row.shippingUnitId === unit.shippingUnitId)
+        .map((row) => row.seq),
+    );
+    state.shippingUnitBoxes.push({
+      shippingUnitId: unit.shippingUnitId,
+      handlingUnitId: box.handlingUnitId,
+      /* 빼기 뒤 재부여하지 않는다 — 마지막 번호에서 이어 붙인다. */
+      seq: last + 1,
+    });
+    touchShippingUnit(unit);
+
+    return shippingUnitOk(unit);
+  });
+});
+
+/* 서버 `removeBox` — 204 가 아니라 200 + 상세. 멱등 래핑 없음(서버도 없다). */
+on('DELETE', '/logistics/shipping-units/{shippingUnitId}/boxes/{handlingUnitId}', (params) => {
+  const unit = findShippingUnit(params);
+  if (unit === undefined) return notFound('없는 출하 단위입니다.');
+  if (unit.statusCode !== 'OPEN') return shippingUnitClosed();
+
+  const index = state.shippingUnitBoxes.findIndex(
+    (row) =>
+      row.shippingUnitId === unit.shippingUnitId &&
+      row.handlingUnitId === Number(params.handlingUnitId),
+  );
+  if (index < 0) return notFound('그 출하 단위에 없는 상자입니다.');
+
+  state.shippingUnitBoxes.splice(index, 1);
+  touchShippingUnit(unit);
+
+  return shippingUnitOk(unit);
+});
+
+/* 서버 `close` — If-Match 필수 · 낡은 판 409(ConflictResponse) · 상자 0 은 400. 편도. */
+on('POST', '/logistics/shipping-units/{shippingUnitId}:close', (params, _q, _body, headers) => {
+  const unit = findShippingUnit(params);
+  if (unit === undefined) return notFound('없는 출하 단위입니다.');
+
+  return idempotent(`logistics.shipping-units:${params.shippingUnitId}:close`, headers, () => {
+    const expected = ifMatchVersionOf(headers);
+    /* ⚠ 실서버와 다름: 서버는 계약 가드가 먼저 400 을 낸다 — 봉투 세부는 옮기지 않았다. */
+    if (expected === null) return fieldError('If-Match', 'REQUIRED', 'If-Match 가 필요합니다.');
+    if (unit.statusCode !== 'OPEN') return shippingUnitClosed();
+    if (unit.versionNo !== expected) {
+      return {
+        status: 409,
+        created: {
+          conflictCause: 'user',
+          message: '다른 사용자가 먼저 수정했습니다.',
+          currentVersion: String(unit.versionNo),
+        },
+      };
+    }
+    if (!state.shippingUnitBoxes.some((row) => row.shippingUnitId === unit.shippingUnitId)) {
+      return fieldError('boxes', 'INVALID', '상자가 한 개도 없는 출하 단위는 마감할 수 없습니다.');
+    }
+
+    unit.statusCode = 'CLOSED';
+    unit.closedAt = new Date().toISOString();
+    touchShippingUnit(unit);
+
+    return shippingUnitOk(unit);
+  });
 });
 
 /* ── 생산 ─────────────────────────────────────────────────── */

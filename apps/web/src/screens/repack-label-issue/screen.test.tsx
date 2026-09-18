@@ -1088,7 +1088,8 @@ describe('RepackLabelIssueScreen — 막힌 사유를 말한다', () => {
     );
 
     await selectPending();
-    expect(await screen.findByText(t.entry.missingWorker)).toBeInTheDocument();
+    expect(await screen.findByText(messages.popChrome.workerMissing)).toBeInTheDocument();
+    expect(screen.queryByText(t.entry.missingWorker)).not.toBeInTheDocument();
   });
 
   /* 「확인할 수 없다」와 「권한이 없다」는 다른 말이고, 앞의 것에만 다시 물을 길을 준다(G-3). */

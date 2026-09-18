@@ -6,6 +6,7 @@ import { useSearchParams } from 'react-router';
 
 import { OutboxStallBanner } from '../../patterns/outbox-stall-banner';
 import { soleProcessIdOf, usePopIdentity } from '../../patterns/pop-identity';
+import { PopWorkerMissingBanner } from '../../patterns/pop-worker-missing-banner';
 
 import { ActionBar, describeSaveBlock, resolveSaveBlock } from './action-bar';
 import { toRangeLabel } from './formatting';
@@ -309,7 +310,7 @@ export const DowntimeRegisterScreen = () => {
 
   return (
     /* 표제가 본문의 이름이 된다 — 셸이 없어 줄 사람이 이 화면뿐이다. */
-    <main className="pop-shell pop-ui" aria-labelledby={titleId}>
+    <main className="pop-shell pop-ui downtime-screen" aria-labelledby={titleId}>
       <header className="pop-header">
         <h1 id={titleId} className="pop-title">
           {t.title}
@@ -347,6 +348,9 @@ export const DowntimeRegisterScreen = () => {
       {/* ⭐ 「밀리는 중」과 「멈춤」은 다르다 — 건수만으로는 그 차이가 보이지 않는다. */}
       {outbox.isStalled && <OutboxStallBanner onRetry={outbox.retryNow} />}
 
+      {/* ⭐ 사번 미확인은 모든 POP 화면이 같은 맨 위 띠로 말한다(사용자 지시 2026-09-17). */}
+      <PopWorkerMissingBanner workerNo={workerNo} />
+
       {/*
        * **저장이 막힌 사유는 머리에서 한 번 말한다.**
        *
@@ -361,8 +365,10 @@ export const DowntimeRegisterScreen = () => {
        *
        * ⛔ **제목을 달지 않는다.** 제목이 붙으면 아이콘이 제목 줄에 서고 정작 읽어야 할 문장이
        *    다음 줄로 내려간다 — 아이콘과 문장은 같은 줄에 선다(사용자 지시 2026-09-12).
+       *
+       * ⚠ 사번 갈래는 위의 공용 띠가 말한다 — 여기서 한 번 더 세우지 않는다(사용자 지시 2026-09-17).
        */}
-      {saveBlockReason !== null && (
+      {saveBlockReason !== null && block !== 'worker-missing' && (
         <div className="banner-slot">
           <AlertBanner variant="warning">{saveBlockReason}</AlertBanner>
         </div>

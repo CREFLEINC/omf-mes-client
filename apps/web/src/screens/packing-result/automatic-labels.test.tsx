@@ -316,7 +316,7 @@ describe('AutomaticLabels', () => {
       );
 
       expect(await screen.findByText(t.reissueRequired(1))).toBeInTheDocument();
-      expect(screen.queryByText(t.complete)).not.toBeInTheDocument();
+      expect(screen.queryByText(/포장 라벨 출력 -/u)).not.toBeInTheDocument();
       expect(screen.getByRole('button', { name: t.openReissue })).toBeEnabled();
       expect(issued).toHaveLength(0);
     },

@@ -825,6 +825,14 @@ export const createSeed = (now = new Date()) => {
       ['CART', '대차'],
       ['PALLET', '팔레트'],
     ],
+    /*
+     * 출하 단위 유형(P-04-05 · SHIP-UNIT-01). 서버 초기 씨앗(`prisma/seed.ts`)과 같은 둘이다 —
+     * 고객이 늘리는 코드라 화면은 값을 적어 두지 않는다.
+     */
+    SHIPPING_UNIT_TYPE: [
+      ['PALLET', '팔레트'],
+      ['BUNDLE', '번들'],
+    ],
     SUBSTITUTE_LOT_REASON: [
       ['NO_LABEL', '라벨 미부착'],
       ['LABEL_DAMAGED', '라벨 훼손'],
@@ -2047,6 +2055,35 @@ export const createSeed = (now = new Date()) => {
             }),
           ],
         },
+        /*
+         * 출하 단위 구성(P-04-05)용 — 포장이 끝나(PACKED) 아직 어느 출하 단위에도 안 들어간
+         * 상자 셋(13011~13013). 배분이 상자를 이 출하에 잇는다(서버와 같은 근거). 전량 담긴
+         * 배분이라 P-04-01 의 잔여에는 영향이 없다.
+         */
+        {
+          shipmentLineId: 14012,
+          lineNo: 2,
+          shipmentRequestLineId: 9801,
+          itemId: 2003,
+          shippedQty: 90,
+          uomId: 1001,
+          allocations: [
+            [14023, 13011, 8201, 'FLOT-2026-0311', 40],
+            [14024, 13012, 8201, 'FLOT-2026-0311', 30],
+            [14025, 13013, 8202, 'FLOT-2026-0305', 20],
+          ].map(([shipmentLotAllocationId, handlingUnitId, lotId, lotNo, qty]) =>
+            shipmentAllocation({
+              shipmentLotAllocationId,
+              shipmentId: 14001,
+              shipmentLineId: 14012,
+              lotId,
+              lotNo,
+              allocatedQty: qty,
+              packedQty: qty,
+              handlingUnitId,
+            }),
+          ),
+        },
       ],
       versionNo: 1,
     },
@@ -2319,6 +2356,20 @@ export const createSeed = (now = new Date()) => {
       locationId: 3004,
       statusCode: 'ACTIVE',
     },
+    /* P-04-05 출하 단위 구성용 — 출하 14001 에 배분된 포장 확정 상자 셋. */
+    ...[
+      [13011, 'HU-2026-000070'],
+      [13012, 'HU-2026-000071'],
+      [13013, 'HU-2026-000072'],
+    ].map(([handlingUnitId, handlingUnitNo]) => ({
+      handlingUnitId,
+      handlingUnitNo,
+      handlingUnitTypeCode: 'BOX',
+      parentHandlingUnitId: null,
+      warehouseId: 1002,
+      locationId: 3004,
+      statusCode: 'PACKED',
+    })),
   ];
 
   /* 두 포장에 같은 LOT 이 들어 있다 — 합병에서 합쳐지는 갈래를 이것으로 시험한다. */
@@ -2354,6 +2405,31 @@ export const createSeed = (now = new Date()) => {
       itemId: 2003,
       lotId: 8201,
       qty: 120,
+      uomId: 1001,
+    },
+    /* P-04-05 상자 13011~13013 의 내용물 — 배분 수량과 같다. */
+    {
+      handlingUnitContentId: 13111,
+      handlingUnitId: 13011,
+      itemId: 2003,
+      lotId: 8201,
+      qty: 40,
+      uomId: 1001,
+    },
+    {
+      handlingUnitContentId: 13112,
+      handlingUnitId: 13012,
+      itemId: 2003,
+      lotId: 8201,
+      qty: 30,
+      uomId: 1001,
+    },
+    {
+      handlingUnitContentId: 13113,
+      handlingUnitId: 13013,
+      itemId: 2003,
+      lotId: 8202,
+      qty: 20,
       uomId: 1001,
     },
   ];

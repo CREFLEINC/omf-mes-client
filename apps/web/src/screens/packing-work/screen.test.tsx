@@ -318,16 +318,17 @@ describe('P-02-08 포장 작업', () => {
     expect(screen.getAllByText(t.entry.missingWorkOrder)).toHaveLength(1);
   });
 
-  it('사번이 없으면 포장을 시작할 수 없다고 말한다', async () => {
+  it('사번이 없으면 맨 위 공용 띠로만 말한다', async () => {
     /* ⚠ 사번은 주소보다 셸·세션이 먼저다 — 셋 다 없을 때를 잰다(2026-09-08). */
     renderScreen({}, `/pop/packing-work?workOrderId=${String(WORK_ORDER_ID)}`, {
       ...IDENTIFIED,
       workerNo: null,
     });
 
-    expect(await screen.findByText(t.entry.missingWorker)).toBeInTheDocument();
-    /* ⛔ 같은 사실을 한 번만 말한다 — 위 시험과 같은 사유. */
-    expect(screen.getAllByText(t.entry.missingWorker)).toHaveLength(1);
+    expect(await screen.findByText(messages.popChrome.workerMissing)).toBeInTheDocument();
+    /* ⛔ 같은 사실을 한 번만 말한다 — 화면 고유 사번 문구는 어디에도 서지 않는다(사용자 지시 2026-09-17). */
+    expect(screen.getAllByText(messages.popChrome.workerMissing)).toHaveLength(1);
+    expect(screen.queryByText(t.entry.missingWorker)).not.toBeInTheDocument();
   });
 
   it('대상 목록이 실패하면 배너로 말한다', async () => {

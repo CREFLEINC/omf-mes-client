@@ -123,7 +123,12 @@ export const reworkResultRegister = {
   lotHint: '결과는 원 LOT에 남으며 새 LOT을 만들지 않습니다.',
   defectCode: '불량 코드',
   defectCodePlaceholder: '선택할 수 없음',
-  defectCodeReason: '불량 코드 저장 기준이 확정되기 전까지 선택할 수 없습니다.',
+  /** 불량 코드 라벨 옆 안내(사용자 지시 2026-09-17). */
+  defectCodeReason: '불량이 있을 시 불량 코드를 입력하세요.',
+  /** 목록을 못 받았거나 비었을 때 — 저장은 막지 않는다(리뷰 M1). */
+  defectCodeLoadFailed: '불량 코드를 불러오지 못했습니다. 코드 없이도 저장할 수 있습니다.',
+  defectCodeEmpty: '등록된 불량 코드가 없습니다. 코드 없이도 저장할 수 있습니다.',
+  defectCodeRetry: '다시 불러오기',
   reset: '다시 입력',
   save: '실적 저장',
   queued: '실적을 저장했습니다.',
@@ -133,6 +138,5 @@ export const reworkResultRegister = {
   gateChecking: '단말 기능을 확인하고 있습니다.',
   gateDenied: '이 단말에서는 실적을 입력할 수 없습니다.',
   gateUnavailable: '단말 기능을 확인할 수 없어 저장할 수 없습니다.',
-  workerMissing: '작업자 사번이 확인되지 않아 저장할 수 없습니다.',
   pending: (count: number) => `미전송 ${count}건`,
 } as const;

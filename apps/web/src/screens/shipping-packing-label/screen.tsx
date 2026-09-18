@@ -280,6 +280,18 @@ export const ShippingPackingLabelScreen = ({
     return null;
   })();
 
+  /*
+   * ⭐ **[발행·인쇄]는 발행이 끝나면 곧바로 인쇄한다**(사용자 지적 2026-09-17 · 결함). 발행 뒤
+   *    `issued` 에서 멈춰 [미리보기] → [인쇄]를 한 번 더 눌러야 종이가 나왔다 — 단추 이름과 달랐다.
+   *    포장 확정 뒤 자동 출력(`packing-result/automatic-labels`)과 같은 규칙이다. 인쇄는 성공·실패
+   *    모두 `printed` 로 끝나므로 다시 걸리지 않는다.
+   */
+  const { phase: issuePhase, labels: issuedLabels, print: printIssued } = issue;
+
+  useEffect(() => {
+    if (issuePhase === 'issued' && issuedLabels.length > 0) printIssued();
+  }, [issuePhase, issuedLabels, printIssued]);
+
   const startIssue = (): void => {
     if (kind === null || blockedReason !== null) return;
 
@@ -299,6 +311,40 @@ export const ShippingPackingLabelScreen = ({
       : isDelivery(kind)
         ? t.targets.empty
         : t.targets.emptyPacking;
+
+  const actionButtons = (
+    <>
+      {/* 막힌 이유를 단추 옆에 둔다 — 비활성만 두면 화면이 고장 난 줄 안다. */}
+      {/* ⛔ 「발행할 대상을 고르세요」는 적지 않는다 — 단추 잠김만 둔다(사용자 지시 2026-09-17). */}
+      {/* ⛔ 「라벨 종류를 고르면 발행할 수 있습니다」도 적지 않는다(사용자 지시 2026-09-17). */}
+      {blockedReason === null ||
+      blockedReason === t.actions.needsTarget ||
+      blockedReason === t.actions.needsKind ? null : (
+        <p className="field-note">{blockedReason}</p>
+      )}
+      <Button
+        className={popTouchClass('normal')}
+        variant="outlined"
+        size="2xl"
+        disabled={issue.labels.length === 0 || isBusy}
+        title={issue.labels.length === 0 ? t.actions.previewPending : undefined}
+        onClick={() => {
+          setPreviewOpen(true);
+        }}
+      >
+        {t.actions.preview}
+      </Button>
+      <Button
+        className={popTouchClass('critical')}
+        size="2xl"
+        disabled={blockedReason !== null || isBusy}
+        loading={issue.phase === 'issuing'}
+        onClick={startIssue}
+      >
+        {t.actions.issue}
+      </Button>
+    </>
+  );
 
   return (
     /*
@@ -336,141 +382,147 @@ export const ShippingPackingLabelScreen = ({
         <AlertBanner variant="warning">{t.shipment.missing}</AlertBanner>
       ) : (
         <>
-          {embedded ? (
-            <section className="pane pop-fixed pop-slabel-recovery" aria-label={t.recovery.title}>
-              <h2 className="pane-title">{t.recovery.title}</h2>
-              {isRecoveryError ? (
-                <AlertBanner
-                  variant="error"
-                  action={
+          {/*
+           * ⭐ 감싼 모드에서는 「누락 라벨 이어서 출력」과 「라벨 종류」가 한 줄에 나란히 선다 — 세로를
+           *    한 상자만큼 아껴 대상 목록이 잘리지 않게 한다(사용자 지시 2026-09-17).
+           */}
+          <div className={embedded ? 'pop-fixed pop-slabel-top-row' : 'pop-slabel-top-stack'}>
+            {embedded ? (
+              <section className="pane pop-fixed pop-slabel-recovery" aria-label={t.recovery.title}>
+                <h2 className="pane-title">{t.recovery.title}</h2>
+                {isRecoveryError ? (
+                  <AlertBanner
+                    variant="error"
+                    action={
+                      <Button
+                        className={popTouchClass('normal')}
+                        variant="outlined"
+                        size="xl"
+                        onClick={() => {
+                          void allocations.refetch();
+                          units.refetch();
+                          shippingUnits.refetch();
+                          void packingSummaries.refetch();
+                          void deliverySummaries.refetch();
+                        }}
+                      >
+                        {t.targets.retry}
+                      </Button>
+                    }
+                  >
+                    {t.recovery.loadFailed}
+                  </AlertBanner>
+                ) : (
+                  <div className="pop-slabel-recovery-actions">
+                    {/*
+                     * ⭐ **건수는 카드로 세운다**(시안 ①). 「미발행 포장 라벨 0건」을 한 문장으로
+                     *    두면 수가 글자 사이에 묻혀, 눌러야 할 단추가 둘 중 어느 쪽인지 한눈에
+                     *    갈리지 않았다. DS `StatCard` 가 이름·수·설명을 이미 갈라 세운다.
+                     *
+                     * ⚠ **수가 0 이어도 감추지 않는다** — 「없다」를 보이는 것이 이 구획의 일이다
+                     *   (공유계약 G-9).
+                     *
+                     * ⛔ **상태 점(`status`)을 달지 않는다.** 그 점의 라벨이 카드 이름과 함께
+                     *    읽혀 읽는 기계에 같은 말이 두 번 들린다 — 수가 이미 상태를 말한다.
+                     */}
+                    <StatCard
+                      className="pop-slabel-recovery-card"
+                      bordered
+                      label={t.recovery.packingLabel}
+                      value={String(missingPackingRows.length)}
+                      unit={t.recovery.countUnit}
+                    />
                     <Button
                       className={popTouchClass('normal')}
                       variant="outlined"
                       size="xl"
+                      disabled={
+                        isRecoveryPending ||
+                        missingPackingRows.length === 0 ||
+                        workerNo === null ||
+                        issue.phase !== 'idle'
+                      }
                       onClick={() => {
-                        void allocations.refetch();
-                        units.refetch();
-                        shippingUnits.refetch();
-                        void packingSummaries.refetch();
-                        void deliverySummaries.refetch();
+                        setRecoveryPrintQueued(true);
+                        issue.issue({
+                          kind: PACKING_LABEL,
+                          rows: missingPackingRows,
+                          printerName: toDefaultPrinterName(packingPrinters.data ?? []),
+                          reissueReasonCode: null,
+                        });
                       }}
                     >
-                      {t.targets.retry}
+                      {t.recovery.packingAction}
                     </Button>
-                  }
-                >
-                  {t.recovery.loadFailed}
-                </AlertBanner>
-              ) : (
-                <div className="pop-slabel-recovery-actions">
-                  {/*
-                   * ⭐ **건수는 카드로 세운다**(시안 ①). 「미발행 포장 라벨 0건」을 한 문장으로
-                   *    두면 수가 글자 사이에 묻혀, 눌러야 할 단추가 둘 중 어느 쪽인지 한눈에
-                   *    갈리지 않았다. DS `StatCard` 가 이름·수·설명을 이미 갈라 세운다.
-                   *
-                   * ⚠ **수가 0 이어도 감추지 않는다** — 「없다」를 보이는 것이 이 구획의 일이다
-                   *   (공유계약 G-9).
-                   *
-                   * ⛔ **상태 점(`status`)을 달지 않는다.** 그 점의 라벨이 카드 이름과 함께
-                   *    읽혀 읽는 기계에 같은 말이 두 번 들린다 — 수가 이미 상태를 말한다.
-                   */}
-                  <StatCard
-                    className="pop-slabel-recovery-card"
-                    bordered
-                    label={t.recovery.packingLabel}
-                    value={String(missingPackingRows.length)}
-                    unit={t.recovery.countUnit}
-                  />
-                  <Button
-                    className={popTouchClass('normal')}
-                    variant="outlined"
-                    size="xl"
-                    disabled={
-                      isRecoveryPending ||
-                      missingPackingRows.length === 0 ||
-                      workerNo === null ||
-                      issue.phase !== 'idle'
-                    }
-                    onClick={() => {
-                      setRecoveryPrintQueued(true);
-                      issue.issue({
-                        kind: PACKING_LABEL,
-                        rows: missingPackingRows,
-                        printerName: toDefaultPrinterName(packingPrinters.data ?? []),
-                        reissueReasonCode: null,
-                      });
-                    }}
-                  >
-                    {t.recovery.packingAction}
-                  </Button>
-                  <StatCard
-                    className="pop-slabel-recovery-card"
-                    bordered
-                    label={t.recovery.deliveryLabel}
-                    value={String(missingDeliveryRows.length)}
-                    unit={t.recovery.countUnit}
-                  />
-                  <Button
-                    className={popTouchClass('critical')}
-                    size="xl"
-                    disabled={
-                      isRecoveryPending ||
-                      missingDeliveryRows.length === 0 ||
-                      workerNo === null ||
-                      issue.phase !== 'idle'
-                    }
-                    onClick={() => {
-                      setRecoveryPrintQueued(true);
-                      issue.issue({
-                        kind: DELIVERY_LABEL,
-                        rows: missingDeliveryRows,
-                        printerName: toDefaultPrinterName(deliveryPrinters.data ?? []),
-                        reissueReasonCode: null,
-                      });
-                    }}
-                  >
-                    {t.recovery.deliveryAction}
-                  </Button>
-                  {composingUnitCount > 0 ? (
-                    <span className="field-note">
-                      {t.recovery.composingUnits(composingUnitCount)}
-                    </span>
-                  ) : null}
-                  {recoveryReissueCount > 0 ? (
-                    <span className="field-note">
-                      {t.recovery.reissueRequired(recoveryReissueCount)}
-                    </span>
-                  ) : null}
-                  {!isRecoveryPending &&
-                  missingPackingRows.length === 0 &&
-                  missingDeliveryRows.length === 0 &&
-                  recoveryReissueCount === 0 ? (
-                    <span className="field-note">{t.recovery.complete}</span>
-                  ) : null}
-                </div>
-              )}
-            </section>
-          ) : null}
+                    <StatCard
+                      className="pop-slabel-recovery-card"
+                      bordered
+                      label={t.recovery.deliveryLabel}
+                      value={String(missingDeliveryRows.length)}
+                      unit={t.recovery.countUnit}
+                    />
+                    <Button
+                      className={popTouchClass('critical')}
+                      size="xl"
+                      disabled={
+                        isRecoveryPending ||
+                        missingDeliveryRows.length === 0 ||
+                        workerNo === null ||
+                        issue.phase !== 'idle'
+                      }
+                      onClick={() => {
+                        setRecoveryPrintQueued(true);
+                        issue.issue({
+                          kind: DELIVERY_LABEL,
+                          rows: missingDeliveryRows,
+                          printerName: toDefaultPrinterName(deliveryPrinters.data ?? []),
+                          reissueReasonCode: null,
+                        });
+                      }}
+                    >
+                      {t.recovery.deliveryAction}
+                    </Button>
+                    {composingUnitCount > 0 ? (
+                      <span className="field-note">
+                        {t.recovery.composingUnits(composingUnitCount)}
+                      </span>
+                    ) : null}
+                    {recoveryReissueCount > 0 ? (
+                      <span className="field-note">
+                        {t.recovery.reissueRequired(recoveryReissueCount)}
+                      </span>
+                    ) : null}
+                    {!isRecoveryPending &&
+                    missingPackingRows.length === 0 &&
+                    missingDeliveryRows.length === 0 &&
+                    recoveryReissueCount === 0 ? (
+                      <span className="field-note">{t.recovery.complete}</span>
+                    ) : null}
+                  </div>
+                )}
+              </section>
+            ) : null}
 
-          {/*
-           * ⭐ **네 구획을 각각 상자로 세운다**(설계 §3 도면의 ①②③④). 테두리 없이 늘어놓으면
-           * 어디서 한 묶음이 끝나는지가 크기로만 갈려, 세로가 빌 때 화면이 통째로 흩어져 보인다.
-           */}
-          <section className="pane pop-fixed pop-slabel-kind" aria-label={t.kind.legend}>
-            <h2 className="pane-title">{t.kind.legend}</h2>
-            <LabelKindRadio
-              value={kind}
-              onChange={(next) => {
-                setKind(next);
-                // 종류가 바뀌면 대상이 통째로 달라진다 — 고른 것을 들고 가면 남의 대상이 된다.
-                setSelectedIds([]);
-                setReissueReasonCode(null);
-                setPrinterName(null);
-                issue.reset();
-              }}
-              disabled={isBusy}
-            />
-          </section>
+            {/*
+             * ⭐ **네 구획을 각각 상자로 세운다**(설계 §3 도면의 ①②③④). 테두리 없이 늘어놓으면
+             * 어디서 한 묶음이 끝나는지가 크기로만 갈려, 세로가 빌 때 화면이 통째로 흩어져 보인다.
+             */}
+            <section className="pane pop-fixed pop-slabel-kind" aria-label={t.kind.legend}>
+              <h2 className="pane-title">{t.kind.legend}</h2>
+              <LabelKindRadio
+                value={kind}
+                onChange={(next) => {
+                  setKind(next);
+                  // 종류가 바뀌면 대상이 통째로 달라진다 — 고른 것을 들고 가면 남의 대상이 된다.
+                  setSelectedIds([]);
+                  setReissueReasonCode(null);
+                  setPrinterName(null);
+                  issue.reset();
+                }}
+                disabled={isBusy}
+              />
+            </section>
+          </div>
 
           <section className="pane pop-slabel-targets" aria-label={t.targets.paneLabel}>
             {/* 구획 이름은 왼쪽이다 — 표 가운데 caption 으로 두면 다른 POP 화면과 자리가 다르다. */}
@@ -548,6 +600,10 @@ export const ShippingPackingLabelScreen = ({
              * 자리는 늘 세우고, 종류를 고르기 전이면 잠가 둔다 — 감췄다 세우면 그 순간
              * 아래가 밀려 화면이 출렁이고, 무엇을 더 해야 열리는지도 보이지 않는다.
              */}
+            {/*
+             * ⭐ 감싼 모드에서는 [미리보기]·[발행·인쇄]가 프린터 칸 오른쪽 같은 줄에 선다 — 프린터 칸은
+             *    좁힌다(사용자 지시 2026-09-17).
+             */}
             <div className="pop-slabel-printer-row">
               <PrinterSelect
                 printers={printerItems}
@@ -559,6 +615,8 @@ export const ShippingPackingLabelScreen = ({
                  * 사용자가 설치 문제로 오해한다(공유계약 G-9 · 실측 2026-09-03).
                  */
                 awaitingKind={kind === null}
+                /* ⭐ 「대기 중」 같은 프린터 상태 표식은 이 화면에 그리지 않는다(사용자 지시 2026-09-17). */
+                showStatus={false}
                 isLoading={printers.isPending}
                 isError={printers.isError}
                 onRetry={() => {
@@ -566,6 +624,7 @@ export const ShippingPackingLabelScreen = ({
                 }}
                 disabled={isBusy}
               />
+              {embedded ? actionButtons : null}
             </div>
           </section>
 
@@ -589,31 +648,8 @@ export const ShippingPackingLabelScreen = ({
             onRetryRendition={issue.retryRendition}
           />
 
-          <div className="pop-slabel-actions">
-            {/* 막힌 이유를 단추 옆에 둔다 — 비활성만 두면 화면이 고장 난 줄 안다. */}
-            {blockedReason === null ? null : <p className="field-note">{blockedReason}</p>}
-            <Button
-              className={popTouchClass('normal')}
-              variant="outlined"
-              size="2xl"
-              disabled={issue.labels.length === 0 || isBusy}
-              title={issue.labels.length === 0 ? t.actions.previewPending : undefined}
-              onClick={() => {
-                setPreviewOpen(true);
-              }}
-            >
-              {t.actions.preview}
-            </Button>
-            <Button
-              className={popTouchClass('critical')}
-              size="2xl"
-              disabled={blockedReason !== null || isBusy}
-              loading={issue.phase === 'issuing'}
-              onClick={startIssue}
-            >
-              {t.actions.issue}
-            </Button>
-          </div>
+          {/* 감싼 모드에서는 단추가 프린터 줄 오른쪽에 선다 — 아래 줄에는 두지 않는다. */}
+          {embedded ? null : <div className="pop-slabel-actions">{actionButtons}</div>}
 
           {/* 지금 무엇을 하는 중인지 — 걸음마다 다음에 할 일이 다르므로 뭉뚱그리지 않는다. */}
           {issue.step === null ? null : (

@@ -55,7 +55,6 @@ export const popMaterialLotLabel: Translated<typeof ko.popMaterialLotLabel> = {
       issue: 'Đăng ký · In',
       printOnly: 'In',
       reissue: 'In lại',
-      workerRequired: 'Xác nhận mã nhân viên rồi mới đăng ký · in được.',
       running: {
         register: 'Đang đăng ký LOT…',
         issue: 'Đang tạo bản ghi phát hành…',

@@ -11,7 +11,6 @@ export const popLocationLabel = {
 
   entry: {
     workerLabel: 'Mã nhân viên',
-    missingWorker: 'Chưa xác nhận mã nhân viên nên không thể phát hành. Hãy xác thực trước.',
   },
 
   warehouse: {

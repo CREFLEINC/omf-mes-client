@@ -175,7 +175,12 @@ const renderFlow = (options: FlowOptions = {}) => {
 
           return jsonResponse({
             items: body.targets.map((target, index) =>
-              issueLog(ISSUE_LOG_ID + index, target.targetId, `SYN-ISSUE-${String(target.targetId)}`, 1),
+              issueLog(
+                ISSUE_LOG_ID + index,
+                target.targetId,
+                `SYN-ISSUE-${String(target.targetId)}`,
+                1,
+              ),
             ),
           });
         },
@@ -259,7 +264,11 @@ describe('대상 고르기', () => {
      * ⛔ 고를 수 없는 대상이 선택으로 남으면 발행 본문에 실려 **전건 실패**가 된다 —
      * 「하나라도 실패하면 전건 실패」라 고를 수 있었던 대상까지 함께 못 나간다.
      */
-    expect(await screen.findByText('발행할 대상을 고르세요.')).toBeInTheDocument();
+    /* ⭐ 「발행할 대상을 고르세요」 문구는 적지 않는다 — 발행 단추 잠김으로 본다(사용자 지시 2026-09-17). */
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: '발행·인쇄' })).toBeDisabled();
+    });
+    expect(screen.queryByText('발행할 대상을 고르세요.')).not.toBeInTheDocument();
   });
 });
 
@@ -268,7 +277,8 @@ describe('발행 → 미리보기 → 인쇄', () => {
    * ⭐ **두 종류 모두 발행까지 간다**(SHIP-UNIT-01). 한때 납품 라벨은 서버가 항상 422 로
    *    거부해 발행 시험을 포장 라벨로만 세웠는데, 대상이 출하 단위가 되며 그 벽이 사라졌다.
    */
-  it('발행은 인쇄를 부르지 않는다 — 기록과 종이는 따로 간다', async () => {
+  /* ⭐ [발행·인쇄]는 발행 뒤 곧바로 인쇄까지 간다(사용자 지적 2026-09-17 — 전에는 발행에서 멈췄다). */
+  it('발행·인쇄는 발행한 뒤 곧바로 인쇄하고 결과를 보고한다', async () => {
     const { user, sent } = renderFlow();
 
     await user.click(await screen.findByRole('radio', { name: /포장라벨/u }));
@@ -286,8 +296,9 @@ describe('발행 → 미리보기 → 인쇄', () => {
       documentTypeCode: 'PACKING_LABEL',
       targets: [{ targetId: HANDLING_UNIT_ID }],
     });
-    /* ⛔ 인쇄 결과 보고가 여기서 나가면 「나오지 않은 라벨」이 나온 것으로 남는다. */
-    expect(sentTo(sent, ':report-print')).toBeUndefined();
+    await waitFor(() => {
+      expect(sentTo(sent, ':report-print')).toBeDefined();
+    });
   });
 
   /*

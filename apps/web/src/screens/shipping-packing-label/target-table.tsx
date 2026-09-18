@@ -57,13 +57,15 @@ export const TargetTable = ({
       key: 'no',
       header: t.columns.no,
       align: 'center',
-      width: '72px',
+      width: '10%',
       render: (_row, rowIndex) => String(rowIndex + 1),
     },
     {
       key: 'target',
       header: t.columns.target,
       align: 'center',
+      /* ⭐ 대상 열은 좁히고 No.·상태·최근 발행·회차는 넓힌다 — 비율로 둬 창 폭을 따른다(사용자 지시 2026-09-17). */
+      width: '28%',
       render: (row) => row.displayName,
     },
     /*
@@ -77,7 +79,7 @@ export const TargetTable = ({
       key: 'status',
       header: t.columns.status,
       align: 'center',
-      width: '160px',
+      width: '18%',
       render: (row) =>
         row.isIssuable ? (
           <Chip status="success">{row.statusLabel}</Chip>
@@ -93,7 +95,7 @@ export const TargetTable = ({
       key: 'lastIssued',
       header: t.columns.lastIssued,
       align: 'center',
-      width: '150px',
+      width: '22%',
       render: (row) => {
         const summary = summaryOf(summaries, row.issueTargetId);
 
@@ -106,7 +108,7 @@ export const TargetTable = ({
       key: 'seq',
       header: t.columns.seq,
       align: 'center',
-      width: '140px',
+      width: '14%',
       render: (row) => {
         const summary = summaryOf(summaries, row.issueTargetId);
 

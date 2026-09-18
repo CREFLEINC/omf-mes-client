@@ -5,6 +5,7 @@ import { useId, useMemo, useState } from 'react';
 import { PopPageNav, pageBoundaryOf } from '../../patterns/pop-page-nav';
 import { PopSelect as Select } from '../../patterns/pop-select';
 import { popTouchClass } from '../../patterns/pop-touch';
+import { PopWorkerMissingBanner } from '../../patterns/pop-worker-missing-banner';
 import { PopWorkerTag } from '../../patterns/pop-worker-tag';
 import { usePopLocationLabelEntry } from './entry-context';
 import { useLocationLabelWrite, usePrintFlow, type PrintReport } from './mutations';
@@ -174,9 +175,8 @@ export const PopLocationLabelScreen = () => {
         </div>
       </header>
 
-      {entry.workerNo === null && (
-        <AlertBanner variant="warning">{t.entry.missingWorker}</AlertBanner>
-      )}
+      {/* ⭐ 사번 미확인은 모든 POP 화면이 같은 맨 위 띠로 말한다(사용자 지시 2026-09-17). */}
+      <PopWorkerMissingBanner workerNo={entry.workerNo} />
 
       {/*
        * ⚠ **통로가 없다는 사실을 미리 말한다.** 브라우저로 이 화면을 열면 발행은 되지만 라벨은

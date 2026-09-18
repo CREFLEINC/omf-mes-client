@@ -11,6 +11,22 @@ export const reworkResultKeys = {
   sourceLot: (id: number) => ['rework-result-register', 'source-lot', id] as const,
   gate: (terminalId: number, processId: number) =>
     ['rework-result-register', 'gate', terminalId, processId] as const,
+  defectCodes: ['rework-result-register', 'defect-codes'] as const,
+};
+
+/**
+ * 불량 코드 후보 — 불량 > 0 이면 하나를 골라야 한다(스펙 §5-3 · 사용자 지시 2026-09-17).
+ *
+ * ⚠ **고른 값은 아직 서버로 가지 않는다.** 실적 저장 요청(`ProductionResultCreate`)에 불량 코드
+ *   칸이 없다 — 화면에서만 필수로 막는다(사용자 선택 2026-09-17). 서버가 칸을 열면 실어 보낸다.
+ */
+export const useReworkDefectCodes = () => {
+  const { client } = useApiClient();
+  return useQuery({
+    queryKey: reworkResultKeys.defectCodes,
+    queryFn: () =>
+      runRequest(() => client.GET('/quality/defect-codes', { params: { query: { size: 100 } } })),
+  });
 };
 
 export const useReworkWorkOrders = (page = 1) => {
