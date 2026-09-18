@@ -83,7 +83,6 @@ export const ReissueDialog = ({
           }))}
           onChange={onChange}
         />
-        {value === '' && <span className="field-note">{t.required}</span>}
       </div>
     )}
   </Dialog>
