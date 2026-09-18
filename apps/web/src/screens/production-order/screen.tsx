@@ -101,7 +101,6 @@ export const ProductionOrderScreen = () => {
           businessUnitNote={lookupNote(businessUnits)}
           plantNote={lookupNote(plants)}
           itemNote={itemNames.isLoading ? t.values.itemLoading : undefined}
-          statusNote={t.values.statusOptionsPending}
           onSearch={(next) => setSearchParams(toSearchParams(next, 1))}
           onReset={() => setSearchParams(toSearchParams(DEFAULT_PRODUCTION_ORDER_FILTERS, 1))}
         />
@@ -159,7 +158,7 @@ export const ProductionOrderScreen = () => {
           uoms={uoms}
         />
       </div>
-      <AlertBanner variant="info">
+      <AlertBanner className="production-order-erp-notice" variant="info">
         {t.values.erpReadOnlyNotice}{' '}
         <Link to="/master-data/integration-sync">{t.actions.integrationSync}</Link>
       </AlertBanner>

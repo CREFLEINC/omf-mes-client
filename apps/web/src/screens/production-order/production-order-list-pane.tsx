@@ -116,7 +116,7 @@ export const ProductionOrderListPane = ({
   return (
     <section className="pane production-order-pane" aria-label={t.panes.list}>
       <h2>{t.panes.list}</h2>
-      <div className="wide-table production-order-table">
+      <div className="wide-table production-order-table production-order-list-table">
         <Table
           caption={<span className="production-order-table-caption">{t.panes.list}</span>}
           density="compact"

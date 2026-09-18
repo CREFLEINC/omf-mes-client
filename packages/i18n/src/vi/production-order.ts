@@ -45,7 +45,6 @@ export const productionOrder: Translated<typeof ko.productionOrder> = {
   },
   values: {
     erpReadOnlyNotice: 'Đây là bản nhận từ ERP. Hãy sửa ở ERP rồi đồng bộ lại.',
-    statusOptionsPending: 'Giá trị trạng thái chưa được chốt nên không chọn trực tiếp được.',
     missingErpOrderNo: 'Không có số gốc ERP',
     missingItemLabel: 'Không có tên hiển thị mặt hàng',
     missingDueDate: 'Không có ngày giao',

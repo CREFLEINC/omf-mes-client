@@ -48,7 +48,6 @@ export interface ProductionOrderFilterBarProps {
   businessUnitNote?: string;
   plantNote?: string;
   itemNote?: string;
-  statusNote?: string;
   onSearch: (filters: ProductionOrderFilters) => void;
   onReset: () => void;
 }
@@ -62,7 +61,6 @@ export const ProductionOrderFilterBar = ({
   businessUnitNote,
   plantNote,
   itemNote,
-  statusNote,
   onSearch,
   onReset,
 }: ProductionOrderFilterBarProps) => {
@@ -122,7 +120,6 @@ export const ProductionOrderFilterBar = ({
         label={t.fields.status}
         options={statusOptions.map((value) => ({ value, label: value }))}
         value={draft.status}
-        note={statusNote}
         onChange={(value) => update('status', value)}
       />
       <SearchInput

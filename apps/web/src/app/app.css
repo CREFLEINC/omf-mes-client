@@ -647,6 +647,25 @@ main > * + * {
   min-width: 64rem;
 }
 
+/* ERP W/O 목록 — 머리줄과 모든 열을 가운데로. DS 의 열별 정렬([data-align])보다 앞선다. */
+.production-order-list-table thead th,
+.production-order-list-table thead th[data-align],
+.production-order-list-table td {
+  text-align: center;
+}
+
+.production-order-list-table .tree-toggle {
+  justify-content: center;
+}
+
+/*
+ * ERP 수신본 안내 띠 — 표식을 글자 줄에 맞춘다. DS 는 표식을 제목 줄에 맞추려 위 여백 4px 을
+ * 주는데, 제목 없이 설명 한 줄만 내는 이 띠에서는 그 여백이 어긋남이 된다.
+ */
+.production-order-erp-notice > [class*='icon'] {
+  margin-block-start: 0;
+}
+
 .production-order-table-caption {
   position: absolute;
   width: 1px;
