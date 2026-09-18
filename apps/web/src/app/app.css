@@ -7184,11 +7184,6 @@ dl.filter-bar.approval-inbox-detail-facts {
   margin: 0 auto;
 }
 
-.pop-repack-preview-note {
-  margin: var(--space-3) 0 0;
-  color: var(--on-surface-muted);
-}
-
 /* 막힌 사유 — ⛔ 툴팁에만 두면 터치 패널에서 읽히지 않는다(독립 검증 실측). */
 .pop-repack-blocked {
   display: flex;
