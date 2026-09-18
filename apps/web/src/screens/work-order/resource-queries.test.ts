@@ -148,7 +148,10 @@ describe('work-order resource queries', () => {
         .filter((request) => request.url.pathname === LOCATIONS_PATH)
         .map((request) => request.url.searchParams.get('warehouseId')),
     ).toEqual(['34', '35']);
-    expect(result.current.items).toEqual([location(601, 34), location(602, 35)]);
+    expect(result.current.items).toEqual([
+      { ...location(601, 34), warehouseCode: 'SYN-WH-34', warehouseName: 'Synthetic warehouse 34' },
+      { ...location(602, 35), warehouseCode: 'SYN-WH-35', warehouseName: 'Synthetic warehouse 35' },
+    ]);
     expect(result.current.truncated).toBe(false);
   });
 

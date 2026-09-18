@@ -180,7 +180,6 @@ export const packingResult = {
      *    되돌아왔는데 단추는 열려 있었다 — 「모르는 것」과 「막힌 것」을 갈라 말한다.
      */
     unitOpening: '포장을 만드는 중입니다',
-    unitMissing: '포장을 만들지 못했습니다. 담긴 것을 다시 스캔하세요',
   },
   confirmed: (handlingUnitNo: string): string => `포장 ${handlingUnitNo} 을 확정했습니다`,
   /** [포장 확정]을 누르면 먼저 되묻는다(사용자 지시 2026-09-17 · 스펙 §6 에는 없는 팝업). */

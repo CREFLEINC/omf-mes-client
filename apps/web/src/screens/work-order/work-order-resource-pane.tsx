@@ -1,4 +1,4 @@
-import { AlertBanner, Card, EmptyState, Select, type SelectItems } from '@crefle/web-ui';
+import { AlertBanner, Card, EmptyState, Select, TextField, type SelectItems } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useId } from 'react';
 
@@ -37,9 +37,17 @@ export interface WorkOrderResourcePaneProps {
   defaultScrapLocationOptions: WorkOrderResourceOption[];
   fieldErrors: Partial<Record<ResourceField, string>>;
   fieldNotes: Partial<Record<ResourceField, string>>;
+  /** 작업자는 한 쪽에 다 오지 않아 검색칸으로 좁힌다. 없으면 검색칸을 두지 않는다. */
+  responsibleWorkerSearch?: string;
+  onResponsibleWorkerSearch?: (term: string) => void;
   disabled?: boolean;
   disabledReason?: string;
   onChange: (patch: Partial<Pick<WorkOrderAssignmentDraft, ResourceField>>) => void;
+}
+
+interface ResourceSearch {
+  value: string;
+  onChange: (term: string) => void;
 }
 
 interface ResourceSelectProps {
@@ -51,6 +59,7 @@ interface ResourceSelectProps {
   note: string | undefined;
   disabled: boolean;
   disabledReason: string | undefined;
+  search?: ResourceSearch;
   onChange: (patch: Partial<Pick<WorkOrderAssignmentDraft, ResourceField>>) => void;
 }
 
@@ -63,6 +72,7 @@ const ResourceSelect = ({
   note,
   disabled,
   disabledReason,
+  search,
   onChange,
 }: ResourceSelectProps) => {
   const id = useId();
@@ -78,6 +88,19 @@ const ResourceSelect = ({
       <label className="field-label" htmlFor={id}>
         {label}
       </label>
+      {/* 검색칸은 선택칸 위에 둔다 — 좁히는 것이 고르는 것보다 먼저다. */}
+      {search !== undefined && (
+        <TextField
+          fullWidth
+          value={search.value}
+          placeholder={t.workerSearch.placeholder}
+          disabled={disabled}
+          aria-label={t.workerSearch.label}
+          onChange={(event) => {
+            search.onChange(event.target.value);
+          }}
+        />
+      )}
       <Select
         id={id}
         options={availableOptions}
@@ -112,6 +135,8 @@ export const WorkOrderResourcePane = ({
   defaultScrapLocationOptions,
   fieldErrors,
   fieldNotes,
+  responsibleWorkerSearch,
+  onResponsibleWorkerSearch,
   disabled = false,
   disabledReason,
   onChange,
@@ -126,7 +151,12 @@ export const WorkOrderResourcePane = ({
     );
   }
 
-  const select = (field: ResourceField, label: string, options: WorkOrderResourceOption[]) => (
+  const select = (
+    field: ResourceField,
+    label: string,
+    options: WorkOrderResourceOption[],
+    search?: ResourceSearch,
+  ) => (
     <ResourceSelect
       field={field}
       label={label}
@@ -136,9 +166,14 @@ export const WorkOrderResourcePane = ({
       note={fieldNotes[field]}
       disabled={disabled}
       disabledReason={disabledReason}
+      search={search}
       onChange={onChange}
     />
   );
+  const workerSearch =
+    responsibleWorkerSearch === undefined || onResponsibleWorkerSearch === undefined
+      ? undefined
+      : { value: responsibleWorkerSearch, onChange: onResponsibleWorkerSearch };
 
   return (
     <section className="pane work-order-resource-pane" aria-label={t.pane}>
@@ -159,7 +194,7 @@ export const WorkOrderResourcePane = ({
             <h3>{t.cards.man}</h3>
           </Card.Header>
           <Card.Body>
-            {select('responsibleWorkerId', t.fields.worker, responsibleWorkerOptions)}
+            {select('responsibleWorkerId', t.fields.worker, responsibleWorkerOptions, workerSearch)}
             {select('plannedShiftId', t.fields.shift, plannedShiftOptions)}
           </Card.Body>
         </Card>

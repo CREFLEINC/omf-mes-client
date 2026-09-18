@@ -54,6 +54,12 @@ interface Options {
   writes?: Request[];
   /** 포장 만들기가 실패하는 갈래 — 담긴 줄은 있는데 포장이 없는 상태를 만든다(#1093). */
   createUnitFails?: boolean;
+  /** 포장 만들기가 «앞의 N 번만» 실패한다 — 담는 동안 실패하고 확정 때 성공하는 갈래. */
+  createUnitFailures?: number;
+  /** 포장 만들기 실패의 상태 코드. 생략하면 500. */
+  createUnitFailStatus?: number;
+  /** 이 LOT 번호의 스캔만 서버가 「배분에 없다」고 판정한다. */
+  rejectLot?: string;
   /** 아직 출하 단위에 안 들어간 상자 수. `'error'` 면 그 조회가 실패한다. */
   unassignedBoxes?: number | 'error';
   reads?: Request[];
@@ -70,6 +76,7 @@ const handlingUnitBody = {
 };
 
 const renderScreen = (options: Options = {}) => {
+  let createUnitCalls = 0;
   const routes: StubRoute[] = [
     {
       /*
@@ -163,8 +170,15 @@ const renderScreen = (options: Options = {}) => {
       respond: (request) => {
         options.writes?.push(request.clone());
 
-        return options.createUnitFails === true
-          ? jsonResponse({ message: '만들지 못했습니다' }, { status: 500 })
+        createUnitCalls += 1;
+        const fails =
+          options.createUnitFails === true || createUnitCalls <= (options.createUnitFailures ?? 0);
+
+        return fails
+          ? jsonResponse(
+              { message: '만들지 못했습니다' },
+              { status: options.createUnitFailStatus ?? 500 },
+            )
           : jsonResponse(handlingUnitBody, { status: 201, headers: { ETag: '"7"' } });
       },
     },
@@ -212,7 +226,10 @@ const renderScreen = (options: Options = {}) => {
 
         /* 생산LOT 스캔 — 판정은 서버가 내린다. */
         if (query.has('lotQ')) {
-          const match = options.match ?? { matched: true };
+          const match =
+            options.rejectLot !== undefined && query.get('lotQ') === options.rejectLot
+              ? { matched: false, reasonCode: 'LOT_NOT_ALLOCATED' }
+              : (options.match ?? { matched: true });
 
           return jsonResponse({ items: match.matched ? [allocation()] : [], page, match });
         }
@@ -518,24 +535,120 @@ describe('PackingResultScreen — 담기와 확정', () => {
     expect(sentToOtherShipment()).toBe(false);
   });
 
-  /**
-   * ⛔ **포장이 없으면 확정 단추를 잠근다**(#1093 · 사용자 지시 「눌러도 안 되면 비활성」).
-   *
-   * 담는 것은 화면이 즉시 하고 포장은 서버가 만들어 준다. 만들기가 실패하면 담긴 줄은 있는데
-   * 포장이 없는 상태로 남는데, 그때 확정 처리기는 조용히 되돌아온다 — 단추가 열려 있으면
-   * 작업자는 계속 누르고 아무 말도 듣지 못한다.
+  /*
+   * ⭐ **포장이 없어도 담긴 것이 있으면 확정할 수 있다**(사용자 지시 2026-09-18 · omf-all-around#5).
+   *    예전에는 담는 동안의 포장 만들기가 실패하면 「포장을 만들지 못했습니다. 담긴 것을 다시
+   *    스캔하세요」로 확정을 잠갔다(#1093). 이제 그 문구를 띄우지 않고, 확정이 그 자리에서
+   *    포장을 만들고 담는다. ⛔ 이 시험을 예전 잠금으로 되돌리지 않는다.
    */
-  it('포장 만들기가 실패하면 확정이 잠기고 그 사실을 말한다', async () => {
+  const UNIT_MISSING_TEXT = '포장을 만들지 못했습니다';
+
+  it('담는 동안 포장 만들기가 실패해도 확정은 열려 있고, 하단 「포장을 만들지 못했습니다」를 띄우지 않는다', async () => {
     const user = userEvent.setup();
-    renderScreen({ createUnitFails: true });
+    const writes: Request[] = [];
+    renderScreen({ createUnitFails: true, writes });
 
     await scanUntilMatched(user);
     await pack(user, '60');
     await user.click(screen.getByRole('combobox', { name: t.fields.handlingUnitType }));
     await user.click(await screen.findByRole('option', { name: '카톤' }));
 
-    expect(await screen.findByText(t.locks.unitMissing)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: t.actions.confirm })).toBeDisabled();
+    await waitFor(() => {
+      expect(writes.map(pathOf)).toContain('/inventory/handling-units');
+    });
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: t.actions.confirm })).toBeEnabled();
+    });
+    expect(screen.queryByText(new RegExp(UNIT_MISSING_TEXT, 'u'))).toBeNull();
+  });
+
+  it('포장이 없으면 확정이 그 자리에서 만들고 담는다 — 생성 재시도는 같은 멱등 키다', async () => {
+    const user = userEvent.setup();
+    const writes: Request[] = [];
+    renderScreen({ createUnitFailures: 1, writes });
+
+    await scanUntilMatched(user);
+    await pack(user, '60');
+    await user.click(screen.getByRole('combobox', { name: t.fields.handlingUnitType }));
+    await user.click(await screen.findByRole('option', { name: '카톤' }));
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: t.actions.confirm })).toBeEnabled();
+    });
+
+    await user.click(screen.getByRole('button', { name: t.actions.confirm }));
+    await user.click(
+      within(await screen.findByRole('dialog', { name: t.confirmDialog.title })).getByRole(
+        'button',
+        { name: t.confirmDialog.confirm },
+      ),
+    );
+
+    expect(await screen.findByText(t.confirmed('SYN-CTN-0091'))).toBeTruthy();
+    expect(writes.map((request) => `${request.method} ${pathOf(request)}`)).toEqual([
+      'POST /inventory/handling-units',
+      'POST /inventory/handling-units',
+      'POST /inventory/handling-units/4001:pack',
+      'PUT /logistics/shipment-lot-allocations/9001',
+    ]);
+    const createKeys = writes
+      .filter((request) => pathOf(request) === '/inventory/handling-units')
+      .map((request) => request.headers.get('Idempotency-Key'));
+    expect(createKeys[0]).toBeTruthy();
+    expect(createKeys[1]).toBe(createKeys[0]);
+  });
+
+  it('확정 때 포장 만들기가 403 이면 확정 실패 자리에 안내하고, 다시 누를 수 있다', async () => {
+    const user = userEvent.setup();
+    const writes: Request[] = [];
+    renderScreen({ createUnitFails: true, createUnitFailStatus: 403, writes });
+
+    await scanUntilMatched(user);
+    await pack(user, '60');
+    await user.click(screen.getByRole('combobox', { name: t.fields.handlingUnitType }));
+    await user.click(await screen.findByRole('option', { name: '카톤' }));
+
+    const confirmOnce = async (): Promise<void> => {
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: t.actions.confirm })).toBeEnabled();
+      });
+      await user.click(screen.getByRole('button', { name: t.actions.confirm }));
+      await user.click(
+        within(await screen.findByRole('dialog', { name: t.confirmDialog.title })).getByRole(
+          'button',
+          { name: t.confirmDialog.confirm },
+        ),
+      );
+    };
+
+    await confirmOnce();
+    expect(await screen.findByText(messages.httpError.forbidden)).toBeInTheDocument();
+    /* 서버 원문은 보이지 않는다 — 공통 문구만 낸다. */
+    expect(screen.queryByText(/만들지 못했습니다/u)).toBeNull();
+    expect(writes.map(pathOf)).not.toContain('/inventory/handling-units/4001:pack');
+
+    const before = writes.length;
+    await confirmOnce();
+    await waitFor(() => {
+      expect(writes.length).toBeGreaterThan(before);
+    });
+    expect(pathOf(writes[writes.length - 1] as Request)).toBe('/inventory/handling-units');
+  });
+
+  it('배분에 없는 LOT 을 읽어도 이미 담은 것은 확정할 수 있고, 안내는 LOT 칸 아래 한 줄뿐이다', async () => {
+    const user = userEvent.setup();
+    renderScreen({ createUnitFails: true, rejectLot: 'SYN-LOT-남의것' });
+
+    await scanUntilMatched(user);
+    await pack(user, '60');
+    await user.click(screen.getByRole('combobox', { name: t.fields.handlingUnitType }));
+    await user.click(await screen.findByRole('option', { name: '카톤' }));
+    await scan(user, t.scan.label.productionLot, 'SYN-LOT-남의것');
+
+    expect(await screen.findByText(t.match.notAllocated)).toBeTruthy();
+    expect(screen.queryByText(new RegExp(UNIT_MISSING_TEXT, 'u'))).toBeNull();
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: t.actions.confirm })).toBeEnabled();
+    });
   });
 
   it('키패드로 친 수량이 화면에 보인다 — 누른 값이 어디로 갔는지 보이지 않으면 오입력을 못 알아챈다', async () => {

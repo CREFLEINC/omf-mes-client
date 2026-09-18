@@ -125,7 +125,6 @@ export const packingResult: Translated<typeof ko.packingResult> = {
     shipmentMissing: 'Hãy chọn đối tượng xuất hàng trước',
     warehouseMissing: 'Phiếu xuất hàng không có kho nên không xác nhận được',
     unitOpening: 'Đang tạo kiện',
-    unitMissing: 'Không tạo được kiện. Hãy quét lại hàng bên trong',
   },
   confirmed: (handlingUnitNo: string): string => `Đã xác nhận kiện ${handlingUnitNo}`,
   confirmDialog: {
