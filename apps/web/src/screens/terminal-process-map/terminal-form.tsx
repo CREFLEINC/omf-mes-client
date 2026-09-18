@@ -1,4 +1,4 @@
-import { Button, TextField } from '@crefle/web-ui';
+import { AlertBanner, Button, TextField } from '@crefle/web-ui';
 import type { ApiError } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useId } from 'react';
@@ -65,8 +65,10 @@ export const TerminalForm = ({
 
   return (
     <>
-      {/* 다루지 않는 칸이 있다는 사실을 감추지 않는다 — 카드 제목 바로 아래 한 줄. */}
-      <p className="field-label terminal-map-form-lead">{t.terminal.locationOmitted}</p>
+      {/* 다루지 않는 칸이 있다는 사실을 감추지 않는다 — 카드 제목 바로 아래 정보 띠(내용 폭). */}
+      <AlertBanner className="terminal-map-notice terminal-map-form-notice" variant="info">
+        {t.terminal.locationOmitted}
+      </AlertBanner>
       <SaveErrorBanner error={saveError} />
       {plants.isError ? <LoadErrorBanner error={plants.error} onRetry={plants.refetch} /> : null}
       {equipments.isError ? (

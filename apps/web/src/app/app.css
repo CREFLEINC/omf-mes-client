@@ -6052,9 +6052,9 @@ dl.filter-bar.approval-inbox-detail-facts {
   padding: var(--space-2);
 }
 
-/* 단말 등록·수정 폼 — 카드 제목 바로 아래의 한 줄(설치 위치 안내). 필드 라벨과 같은 모양(.field-label)이다. */
-.field-label.terminal-map-form-lead {
-  margin: 0 0 var(--space-3);
+/* 단말 등록·수정 폼 — 카드 제목 바로 아래 설치 위치 정보 띠. 재발급 경고 띠와 같은 폭·여백, 아래 필드와 --space-4. */
+.terminal-map-form-notice {
+  margin-bottom: var(--space-4);
 }
 
 /* 라벨 오른쪽 같은 줄의 짧은 안내(설치 설비) — 라벨보다 한 단계 흐린 보조 글자. */
@@ -6127,7 +6127,8 @@ dl.filter-bar.approval-inbox-detail-facts {
   border-top: 1px solid var(--outline-variant);
 }
 
-.terminal-map-reissue-warning {
+.terminal-map-reissue-warning,
+.terminal-map-form-notice {
   width: fit-content;
   max-width: 100%;
   padding: var(--space-2) var(--space-3);
