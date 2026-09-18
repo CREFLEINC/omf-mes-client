@@ -614,6 +614,11 @@ main > * + * {
   grid-column: 1 / -1;
 }
 
+/* 기본 정보 박스 — DS Card.Body 는 머리 없이 쓰면 위 여백이 0 이다. 아래·좌우와 같은 여백을 준다. */
+.production-order-detail-body {
+  padding-top: var(--space-5);
+}
+
 .production-order-detail-fields {
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
@@ -623,6 +628,8 @@ main > * + * {
 
 .production-order-detail-field {
   display: grid;
+  /* 품목·비고가 두 줄이 되어도 항목명은 행 위쪽에 맞춰 선다 — 값이 가운데로 떠 보이지 않는다. */
+  align-content: start;
   gap: var(--space-1);
   min-width: 0;
 }
@@ -631,7 +638,66 @@ main > * + * {
   margin: 0;
   color: var(--on-surface);
   font: var(--type-body-lg);
+  font-weight: 500;
   letter-spacing: var(--type-body-lg-tracking);
+  overflow-wrap: anywhere;
+}
+
+/*
+ * 기본 정보 — 항목명은 공통 라벨 색(on-surface-variant)을 그대로 두고, 값의 무게로 위계를 준다.
+ * 선택 직후 읽는 값(primary)은 조금 굵게, 참조 정보(secondary)는 보통 굵기, 비고(note)는 보조 설명 색.
+ */
+.production-order-detail-field > dt {
+  margin-bottom: 0;
+}
+
+.production-order-detail-field[data-tier='secondary'] > dd {
+  font-weight: 400;
+}
+
+.production-order-detail-field[data-tier='note'] > dd {
+  color: var(--on-surface-variant);
+  font: var(--type-body-sm);
+  letter-spacing: var(--type-body-sm-tracking);
+}
+
+/* W/O 생성/예정 옆 도움말 단추 — 값 줄 높이를 늘리지 않게 붙인다. */
+.production-order-detail-with-help {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  margin-block: calc(var(--space-2) * -1);
+}
+
+/* 구획 제목 아래 한 줄 — 이 구획이 선택한 ERP W/O 와 어떤 관계인지 말한다. */
+.production-order-pane-description {
+  margin: calc(var(--space-2) * -1) 0 0;
+  color: var(--on-surface-muted);
+  font: var(--type-body-sm);
+  letter-spacing: var(--type-body-sm-tracking);
+}
+
+/* ERP W/O 목록 — 지금 고른 행을 행 전체로 드러낸다. */
+.production-order-list-table tbody tr:has(.link-cell[aria-current='true']) > td {
+  background: var(--primary-container);
+}
+
+.production-order-list-table tbody tr:has(.link-cell[aria-current='true']) > td:first-child {
+  box-shadow: inset 3px 0 0 var(--primary);
+}
+
+/* 번호·수량·날짜·표식은 접지 않는다 — 품목명과 ERP 원번호만 줄을 바꾼다. */
+.production-order-list-table td:nth-child(1),
+.production-order-list-table td:nth-child(4),
+.production-order-list-table td:nth-child(5),
+.production-order-list-table td:nth-child(6),
+.production-order-list-table td:nth-child(7) {
+  white-space: nowrap;
+}
+
+.field-note.production-order-list-note {
+  max-width: none;
+  margin: 0;
 }
 
 .production-order-table {
@@ -644,7 +710,39 @@ main > * + * {
 }
 
 .wide-table.production-order-work-order-table table {
-  min-width: 64rem;
+  min-width: 40rem;
+}
+
+/* 생산계획·전개된 W/O 표가 반폭에서는 열이 가려진다 — 넓은 화면에서만 나란히, 그 아래로는 위아래로 둔다. */
+@media (max-width: 1599px) {
+  .production-order-detail-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* ERP W/O 목록·생산계획·전개된 W/O — 머리줄과 모든 열을 가운데로. DS 의 열별 정렬([data-align])보다 앞선다. */
+.production-order-list-table thead th,
+.production-order-list-table thead th[data-align],
+.production-order-list-table td,
+.production-order-plan-table thead th,
+.production-order-plan-table thead th[data-align],
+.production-order-plan-table td,
+.production-order-work-order-table thead th,
+.production-order-work-order-table thead th[data-align],
+.production-order-work-order-table td {
+  text-align: center;
+}
+
+.production-order-list-table .tree-toggle {
+  justify-content: center;
+}
+
+/*
+ * ERP 수신본 안내 띠 — 표식을 글자 줄에 맞춘다. DS 는 표식을 제목 줄에 맞추려 위 여백 4px 을
+ * 주는데, 제목 없이 설명 한 줄만 내는 이 띠에서는 그 여백이 어긋남이 된다.
+ */
+.production-order-erp-notice > [class*='icon'] {
+  margin-block-start: 0;
 }
 
 .production-order-table-caption {
@@ -657,6 +755,13 @@ main > * + * {
   clip: rect(0 0 0 0);
   white-space: nowrap;
   border: 0;
+}
+
+/* 기본 정보 5열이 좁아지면 프로젝트 공통 폭(1100px)에서 3열로 줄인다. 960·640 은 기존 규칙. */
+@media (max-width: 1100px) {
+  .production-order-detail-fields {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
 }
 
 @media (max-width: 960px) {
@@ -681,7 +786,13 @@ main > * + * {
 
 /* P/O 변경 관리자 확인 — 목록과 판단 흐름을 데스크톱에서 함께 보이게 유지한다. */
 .two-pane.po-change-review-layout {
-  grid-template-columns: minmax(20rem, 2fr) minmax(0, 3fr);
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+}
+
+/* 목록의 P/O 번호와 확인 배지는 접거나 자르지 않는다. */
+.po-change-review-list .link-cell,
+.po-change-review-list td:last-child {
+  white-space: nowrap;
 }
 
 .po-change-review-pane {
@@ -719,7 +830,7 @@ main > * + * {
   border: 0;
 }
 
-@media (max-width: 960px) {
+@media (max-width: 1200px) {
   .two-pane.po-change-review-layout {
     grid-template-columns: 1fr;
   }
@@ -1782,38 +1893,21 @@ main > * + * {
   min-width: 0;
 }
 
-.lot-status-transition-notice-row {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: center;
-  gap: var(--space-4);
+.lot-status-transition-notice {
   min-width: 0;
+  margin: var(--space-2) 0 0;
 }
 
-.lot-status-transition-notice-row > .banner-slot {
-  min-width: 0;
-  margin-bottom: 0;
-}
-
-.lot-status-transition-history-link {
-  display: inline-flex;
+/*
+ * 한 줄 안내라 아이콘을 글자 줄 가운데에 맞춘다. 공용 배너는 제목 줄 기준으로 아이콘을 내려
+ * 두어, 제목 없이 본문 한 줄만 쓰면 아이콘이 글자보다 아래로 처진다. 이 화면 안에서만 바로잡는다.
+ */
+.lot-status-transition-notice > [role='alert'] {
   align-items: center;
-  min-height: 2.5rem;
-  padding: 0 var(--space-3);
-  border-radius: var(--radius-full);
-  color: var(--primary-text);
-  font: var(--type-label-lg);
-  letter-spacing: var(--type-label-lg-tracking);
-  text-decoration: none;
-  white-space: nowrap;
 }
 
-.lot-status-transition-history-link:hover {
-  background: var(--state-hover-neutral);
-}
-
-.lot-status-transition-history-link:focus-visible {
-  box-shadow: var(--focus-ring);
+.lot-status-transition-notice > [role='alert'] > [aria-hidden='true'] {
+  margin-top: 0;
 }
 
 .lot-status-transition-pane {
@@ -1831,48 +1925,138 @@ main > * + * {
   letter-spacing: var(--type-title-lg-tracking);
 }
 
+/*
+ * 조회 조건은 공용 필터 바(규범 2·2-1)를 그대로 쓴다 — 칸마다 제 내용 폭을 갖고 왼쪽부터 쌓이며,
+ * 좁아지면 줄을 넘긴다. 예전에는 4칸을 카드 폭에 균등하게 늘려 값보다 칸이 훨씬 넓었다
+ * (사용자 지시 2026-09-18). 칸 폭은 아래 칸별 규칙이 정한다.
+ */
 .filter-bar.lot-status-transition-filter {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
-  gap: var(--space-4);
   margin-bottom: 0;
 }
 
-.lot-status-transition-filter > *,
-.lot-status-transition-filter .field-cell {
-  min-width: 0;
-}
-
-.lot-status-transition-filter .field-cell {
+/* 기간 — 날짜 범위(YYYY-MM-DD ~ YYYY-MM-DD)의 내용 폭. 라벨 줄이 더 길면 그 폭에 맞춰 입력이 늘어난다. */
+.lot-status-transition-period {
   align-items: stretch;
 }
 
-.lot-status-transition-period {
-  grid-column: span 2;
+/*
+ * 자재 — 선택값이 「코드 · 품목명」이라 길다. 최소 폭은 규범 3-2(.wide-select 13rem)를 따르고,
+ * 긴 품목명이 줄 전체를 차지하지 않게 상한을 둔다(20rem — 10자리 코드와 품목명 앞부분이 보이는 폭).
+ * 넘치는 이름은 트리거가 말줄임으로 자른다.
+ */
+.field-cell.lot-status-transition-item-filter {
+  max-width: 20rem;
 }
 
-.lot-status-transition-filter-footer,
+/*
+ * 품질 상태 — 값이 짧다(정상·불량·검사 대기·폐기). 규범 3-2와 같은 식으로 가장 긴 값 「검사 대기」
+ * 5자를 담는 트리거 폭을 도출한다: 16 + 80(16px × 5) + 12 + 20 + 16 = 144px = 9rem.
+ * 이보다 좁으면 「전체」가 골라진 상태에서 목록을 열 때 「검사 대기」가 잘린다.
+ */
+.field-cell.lot-status-transition-status-filter {
+  align-items: stretch;
+  min-width: 9rem;
+}
+
+.lot-status-transition-period > .field-error {
+  max-width: none;
+  margin: 0;
+}
+
+/*
+ * 라벨 옆 기준 칩 — 라벨과 한 줄에 세운다. 줄 높이를 라벨 줄(16px)로 고정해 칩(24px)이 줄을
+ * 키우지 않게 한다 — 키우면 기간 칸만 옆 칸들보다 아래로 밀린다. 칩은 그 줄 가운데에 걸친다.
+ */
+.lot-status-transition-period-label {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  height: 16px;
+  min-width: 0;
+  margin-bottom: var(--space-1);
+}
+
+/*
+ * 칩 문구는 자르지 않는다(사용자 지시 2026-09-18). 칩 줄이 날짜 입력보다 길면 칸이 칩 줄 폭을
+ * 갖고, 날짜 입력(트리거)이 그 칸을 채운다 — 입력 오른쪽에 빈 틈이 생겨 칸 간격이 벌어지지 않게.
+ */
+.lot-status-transition-period-label > .field-label,
+.lot-status-transition-period-label > span {
+  flex: none;
+}
+
+.lot-status-transition-period-input {
+  width: 100%;
+}
+
+/*
+ * 조회·초기화 묶음은 줄의 오른쪽 끝에 선다 — 한 줄에 다 들어가지 않아 다음 줄로 넘어갈 때
+ * 왼쪽 끝에 혼자 떨어지지 않게 한다(사용자 지시 2026-09-18).
+ */
+.filter-bar.lot-status-transition-filter > .lot-status-transition-filter-actions {
+  margin-left: auto;
+}
+
+.lot-status-transition-period-label > .field-label {
+  margin-bottom: 0;
+}
+
+/* 조건과 결과의 경계 — 카드를 쪼개지 않고 선 하나와 작은 머리로 가른다. */
+.lot-status-transition-result-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-2) var(--space-3);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--outline-variant);
+}
+
+.lot-status-transition-result-title {
+  margin: 0;
+  color: var(--on-surface);
+  font: var(--type-title-sm);
+  letter-spacing: var(--type-title-sm-tracking);
+}
+
+.lot-status-transition-result-head > .field-note {
+  max-width: none;
+  margin: 0;
+}
+
 .lot-status-transition-list-footer {
   display: flex;
-  grid-column: 1 / -1;
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: var(--space-3);
 }
 
-.lot-status-transition-filter-footer > .field-note,
-.lot-status-transition-filter-footer > .field-error,
 .lot-status-transition-list-footer > .field-note {
-  flex: 1 1 20rem;
   max-width: none;
   margin: 0;
 }
 
-.lot-status-transition-filter-actions,
 .lot-status-transition-list-footer > .form-actions {
   justify-content: flex-end;
   margin: 0 0 0 auto;
+}
+
+/* 긴 품목명이 수량 열을 밀지 않는다 — 한 줄로 자르고 전체 이름은 title 로 남긴다. */
+.lot-status-transition-item {
+  display: block;
+  max-width: 28rem;
+  margin-inline: auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/*
+ * 고른 LOT 의 행을 왼쪽 막대로 표시해, 아래 구획이 어느 행의 것인지 표에서도 보이게 한다.
+ * 배경을 칠하지 않는 이유: 품질 상태 배지와 같은 바탕이 되어 배지가 묻힌다.
+ */
+.lot-status-transition-table tr:has(.link-cell[aria-current='true']) > td:first-child {
+  box-shadow: inset 3px 0 0 var(--primary);
 }
 
 .lot-status-transition-table {
@@ -1990,16 +2174,6 @@ main > * + * {
   text-decoration: none;
 }
 
-@media (min-width: 1100px) {
-  .filter-bar.lot-status-transition-filter {
-    grid-template-columns: minmax(24rem, 30rem) repeat(3, minmax(9.5rem, 1fr));
-  }
-
-  .lot-status-transition-period {
-    grid-column: auto;
-  }
-}
-
 @media (min-width: 1440px) {
   .lot-status-transition-detail-grid {
     grid-template-columns: minmax(24rem, 4fr) minmax(32rem, 5fr);
@@ -2007,31 +2181,11 @@ main > * + * {
 }
 
 @media (max-width: 720px) {
-  .lot-status-transition-notice-row {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .lot-status-transition-history-link {
-    justify-self: end;
-  }
-
-  .lot-status-transition-period {
-    grid-column: auto;
-  }
-
-  .lot-status-transition-filter-footer,
   .lot-status-transition-list-footer {
     align-items: stretch;
     flex-direction: column;
   }
 
-  .lot-status-transition-filter-footer > .field-note,
-  .lot-status-transition-filter-footer > .field-error,
-  .lot-status-transition-list-footer > .field-note {
-    flex: initial;
-  }
-
-  .lot-status-transition-filter-actions,
   .lot-status-transition-list-footer > .form-actions {
     align-self: flex-end;
     margin-left: 0;

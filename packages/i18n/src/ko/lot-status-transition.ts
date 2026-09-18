@@ -1,7 +1,10 @@
 export const lotStatusTransition = {
   title: 'Lot Status 판정·전이 처리',
+  /** 제목 아래 한 줄 — 이 화면에서 하는 일의 순서(찾기 → 확인 → 보류 등록·해제). */
+  description:
+    'LOT을 찾아 선택하면 현재 품질 상태를 확인하고, 보류 등록·해제로 상태를 바꿀 수 있습니다.',
   breadcrumbRoot: '품질관리',
-  historyNotice: '전이 이력은 별도 이력으로 저장되지 않는다',
+  historyNotice: '전이 이력은 별도의 이력으로 저장되지 않습니다',
   historyLink: 'Lot Status 변경 이력 보기',
   /** 등록·해제 사유는 공통코드 선택지다(§5-4 · G-31). 없으면 지어내지 않고 잠근다(G-2). */
   reason: {
@@ -22,10 +25,11 @@ export const lotStatusTransition = {
     filters: {
       period: '최근 전이 기간',
       lotNo: 'LOT 번호',
+      lotNoPlaceholder: 'LOT 번호를 입력하세요',
       item: '자재',
       status: '품질 상태',
       all: '전체',
-      note: '최근 전이 일자를 기준으로 대상 LOT을 조회합니다.',
+      note: '최근 전이일을 기준으로 LOT을 조회합니다.',
       periodMissing: '조회 시작일과 종료일을 모두 선택하세요.',
       periodInvalid: '조회 기간에 올바른 날짜를 입력하세요.',
       periodReversed: '조회 시작일은 종료일보다 늦을 수 없습니다.',
@@ -47,8 +51,11 @@ export const lotStatusTransition = {
     failed: 'LOT 후보를 불러오지 못했습니다.',
     retry: '다시 시도',
     empty: '조건에 맞는 LOT이 없습니다.',
-    summary: (total: string, page: number, totalPages: number): string =>
-      `총 ${total}건 · ${String(page)} / ${String(totalPages)}쪽`,
+    /** 조건과 결과를 가르는 작은 머리 — 건수는 이 옆에, 쪽 위치는 아래 쪽 이동 옆에 선다. */
+    resultTitle: '조회 결과',
+    resultCount: (total: string): string => `총 ${total}건`,
+    pageStatus: (page: number, totalPages: number): string =>
+      `${String(page)} / ${String(totalPages)}쪽`,
     pagination: 'LOT 후보 쪽 이동',
     previous: '이전 쪽',
     next: '다음 쪽',

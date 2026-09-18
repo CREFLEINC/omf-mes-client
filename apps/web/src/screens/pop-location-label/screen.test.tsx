@@ -264,11 +264,14 @@ describe('P-06-01 창고 적재 위치 라벨 발행', () => {
       printerName: 'label-a',
     });
 
-    /* 발행 기록 1건 = 렌디션 1번 = 인쇄 1번 = 보고 1번. */
+    /*
+     * 발행 기록 1건 = 인쇄 1번 = 보고 1번. ⭐ 서버 렌디션은 부르지 않는다 — 100 × 60 mm 좌표라
+     * 80 × 30 mm 라벨지에 맞지 않아 POP 이 직접 짠다(#1344).
+     */
     await waitFor(() => {
       expect(save).toHaveBeenCalledTimes(1);
     });
-    expect(renditionCalls).toHaveLength(1);
+    expect(renditionCalls).toHaveLength(0);
     await waitFor(() => {
       expect(reports).toHaveLength(1);
     });
@@ -362,38 +365,32 @@ describe('P-06-01 창고 적재 위치 라벨 발행', () => {
     expect(await screen.findByText(t.print.noBridge)).toBeInTheDocument();
   });
 
-  it('배포본에서도 서버가 그린 라벨을 받아 찍는다', async () => {
+  it('80 × 30 mm TSPL 을 tspl 형식으로 보내고, QR 에는 위치 코드만 싣는다', async () => {
     const user = userEvent.setup();
-    const writes: Request[] = [];
-    const reports: Request[] = [];
-    const renditionCalls: string[] = [];
     const save = vi.fn().mockResolvedValue('/tmp/label.tspl');
-    /*
-     * ⭐ **이 시험들은 배포본과 같은 모드에서 돈다.** 종류가 준비 목록에서 빠지면
-     *    `LabelRenditionNotReadyError` 로 **네트워크 요청 전에** 멎어, 서버가 그릴 준비를
-     *    마쳤는데도 라벨이 한 장도 나오지 않는다(#1318). 그 회귀를 여기서 잡는다.
-     */
     installPrintBridge(save);
 
-    renderScreen({ writes, reports, renditionCalls });
+    renderScreen({});
 
     await chooseWarehouse(user);
-    await chooseLocation(user, 'S230-01');
+    await chooseLocation(user, 'S230-02');
     await clickIssue(user);
-
-    await waitFor(() => {
-      expect(writes).toHaveLength(1);
-    });
 
     await waitFor(() => {
       expect(save).toHaveBeenCalledTimes(1);
     });
-    expect(renditionCalls).toHaveLength(1);
-    await waitFor(() => {
-      expect(reports).toHaveLength(1);
-    });
-    await expect(reports[0]?.clone().json()).resolves.toEqual({ outcome: 'SUCCEEDED' });
-    expect(await screen.findByText(t.print.summary(1, 0))).toBeInTheDocument();
+
+    const [bytes, , , format] = save.mock.calls[0] as [Uint8Array, string, string, string];
+    const command = new TextDecoder().decode(bytes);
+
+    /* ⛔ 형식은 바이트가 정한다 — 셸이 고른 형식을 따라가면 TSPL 이 그림으로 저장된다. */
+    expect(format).toBe('tspl');
+    expect(command).toContain('SIZE 80 mm,30 mm');
+    expect(command).toContain('"WH S230"');
+    expect(command).toContain('"S230-02"');
+    expect(command).toContain('"S230-02 NAME"');
+    expect(command).toContain('"ISSUE NO. 1"');
+    expect(command).toMatch(/QRCODE [^\r\n]*,"S230-02"\r\n/u);
   });
 
   it('발행 이력을 못 물으면 사유와 다시 시도를 보이고, 발행을 열지 않는다', async () => {
@@ -412,7 +409,7 @@ describe('P-06-01 창고 적재 위치 라벨 발행', () => {
     expect(screen.getByRole('button', { name: t.issue.action })).toBeDisabled();
   });
 
-  it('렌디션을 받지 못하면 인쇄 실패로 보고한다', async () => {
+  it('서버 렌디션이 실패해도 라벨은 찍힌다 — 렌디션을 부르지 않는다', async () => {
     const user = userEvent.setup();
     const reports: Request[] = [];
     const save = vi.fn().mockResolvedValue('/tmp/label.tspl');
@@ -424,13 +421,51 @@ describe('P-06-01 창고 적재 위치 라벨 발행', () => {
     await chooseLocation(user, 'S230-01');
     await clickIssue(user);
 
-    /* 받지 못한 것도 인쇄 실패다 — 종이는 나오지 않았고 발행 기록은 남아 있다. */
     await waitFor(() => {
       expect(reports).toHaveLength(1);
     });
-    expect(save).not.toHaveBeenCalled();
-    await expect(reports[0]?.clone().json()).resolves.toMatchObject({ outcome: 'FAILED' });
-    expect(await screen.findByText(t.print.summary(0, 1))).toBeInTheDocument();
+    expect(save).toHaveBeenCalledTimes(1);
+    await expect(reports[0]?.clone().json()).resolves.toEqual({ outcome: 'SUCCEEDED' });
+    expect(await screen.findByText(t.print.summary(1, 0))).toBeInTheDocument();
+  });
+
+  /* 세 번째 열은 「상태」 — 모든 줄에 사용 여부를 적는다(사용자 지시 2026-09-18 · omf-all-around#11). */
+  it('상태 열에 사용·미사용을 모든 줄에 적는다', async () => {
+    const user = userEvent.setup();
+    renderScreen();
+
+    await chooseWarehouse(user);
+
+    expect(await screen.findByRole('columnheader', { name: '상태' })).toBeInTheDocument();
+    expect(screen.queryByRole('columnheader', { name: '발행' })).not.toBeInTheDocument();
+
+    const stateOf = (locationCode: string): string | undefined => {
+      const row = screen.getByText(locationCode).closest('tr');
+      return row?.querySelectorAll('td')[2]?.textContent ?? undefined;
+    };
+
+    expect(stateOf('S230-01')).toBe('사용');
+    expect(stateOf('S230-02')).toBe('사용');
+    expect(stateOf('S230-03')).toBe('미사용');
+  });
+
+  /* 찍을 프린터가 없다는 경고는 맨 위 띠 자리에 선다(사용자 지시 2026-09-18 · omf-all-around#11). */
+  it('프린터가 없으면 경고를 맨 위 띠 자리에 한 번만 세우고, 프린터 칸은 그대로 둔다', async () => {
+    renderScreen({ printers: [] });
+
+    const warning = await screen.findByText(
+      '이 단말에 등록된 프린터가 없습니다. 발행 기록은 남지만 라벨 출력은 불가합니다.',
+    );
+
+    expect(screen.getAllByText(messages.popLocationLabel.printer.none)).toHaveLength(1);
+    expect(warning.closest('.pop-loclabel-top')).toBeNull();
+
+    /* 칸은 원래대로 — 라벨과 고를 것이 없는 선택칸만, 안에 경고는 없다. */
+    const card = document.querySelector('.pop-loclabel-printer');
+
+    expect(card).not.toBeNull();
+    expect(card?.textContent).toContain(messages.popLocationLabel.printer.label);
+    expect(card?.textContent).not.toContain(messages.popLocationLabel.printer.none);
   });
 
   it('사번이 없으면 발행을 열지 않는다', async () => {

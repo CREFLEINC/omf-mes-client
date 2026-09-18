@@ -47,6 +47,27 @@ const codeRoute = (typeState: LotTypeState = 'ready'): StubRoute =>
     );
   });
 
+const ITEM_DETAIL_PATH = /^\/mdm\/items\/(\d+)$/;
+
+/** 품목 상세 — 이름은 보이는 행의 품목만 이것으로 푼다(#1336). 목록에 없는 품목도 상세는 답한다. */
+const itemDetails: Record<number, { itemCode: string; itemName: string; isActive: boolean }> = {
+  103: { itemCode: 'SAMPLE-ITEM-01', itemName: '합성 품목', isActive: false },
+  104: { itemCode: 'SAMPLE-ITEM-51', itemName: '합성 51번째 품목', isActive: true },
+};
+
+const itemDetailRoute = (itemStatus = 200): StubRoute => ({
+  match: (request) =>
+    request.method === 'GET' && ITEM_DETAIL_PATH.test(new URL(request.url).pathname),
+  respond: (request) => {
+    if (itemStatus !== 200) return jsonResponse({ message: '합성 오류' }, { status: itemStatus });
+    const itemId = Number(ITEM_DETAIL_PATH.exec(new URL(request.url).pathname)?.[1]);
+    const item = itemDetails[itemId];
+    return item === undefined
+      ? jsonResponse({ message: '합성 없음' }, { status: 404 })
+      : jsonResponse({ item: { itemId, ...item } });
+  },
+});
+
 const referenceRoutes = (itemStatus = 200): StubRoute[] => [
   route('/mdm/warehouses', () =>
     jsonResponse(
@@ -69,6 +90,7 @@ const referenceRoutes = (itemStatus = 200): StubRoute[] => [
       { status: itemStatus },
     ),
   ),
+  itemDetailRoute(itemStatus),
   route('/mdm/locations', () =>
     jsonResponse(
       list([
@@ -666,7 +688,28 @@ describe('Lot Status 화면 shell', () => {
     },
   );
 
-  it('품목 목록 로딩 중에도 내부 ID 대신 로딩 상태를 표시한다', async () => {
+  it('품목 목록 첫 쪽에 없는 품목도 이름을 보인다 — 보이는 행의 품목만 한 번씩 상세로 푼다 (#1336)', async () => {
+    const { urls } = renderScreen(
+      '/quality/lot-status?lotType=SAMPLE_MATERIAL',
+      'ready',
+      qualityRoutes(200, 200, [
+        { ...statusRow, lotId: 401, lotNo: 'SAMPLE-LOT-001', itemId: 104 },
+        { ...statusRow, lotId: 402, lotNo: 'SAMPLE-LOT-002', itemId: 104 },
+        { ...statusRow, lotId: 403, lotNo: 'SAMPLE-LOT-003', itemId: 103 },
+      ]),
+    );
+
+    const table = await screen.findByRole('table', { name: '현재 LOT 상태' });
+    expect(await within(table).findAllByText('SAMPLE-ITEM-51 · 합성 51번째 품목')).toHaveLength(2);
+    expect(within(table).queryByText('알 수 없음')).not.toBeInTheDocument();
+    const detailCalls = urls
+      .map(({ pathname }) => pathname)
+      .filter((pathname) => ITEM_DETAIL_PATH.test(pathname))
+      .sort();
+    expect(detailCalls).toEqual(['/mdm/items/103', '/mdm/items/104']);
+  });
+
+  it('품목 이름 로딩 중에도 내부 ID 대신 로딩 상태를 표시한다', async () => {
     const resolvedFetch = fetchFor(
       'ready',
       qualityRoutes(200, 200, [{ ...statusRow, itemId: 999 }]),
@@ -674,7 +717,7 @@ describe('Lot Status 화면 shell', () => {
     renderWithProviders(<LotStatusHistoryScreen />, {
       route: '/quality/lot-status?lotType=SAMPLE_MATERIAL',
       fetch: async (request) =>
-        new URL(request.url).pathname === '/mdm/items'
+        ITEM_DETAIL_PATH.test(new URL(request.url).pathname)
           ? new Promise<Response>(() => undefined)
           : resolvedFetch(request),
     });
@@ -876,12 +919,12 @@ describe('Lot Status 화면 shell', () => {
     expect(within(dialog).getAllByText('—')).toHaveLength(2);
   });
 
-  it('상세가 품목 목록보다 먼저 오면 알 수 없음 대신 로딩 상태를 보인다', async () => {
+  it('상세가 품목 이름보다 먼저 오면 알 수 없음 대신 로딩 상태를 보인다', async () => {
     const resolvedFetch = fetchFor('ready', detailRoutes());
     renderWithProviders(<LotStatusHistoryScreen />, {
       route: '/quality/lot-status?lot=401',
       fetch: async (request) =>
-        new URL(request.url).pathname === '/mdm/items'
+        ITEM_DETAIL_PATH.test(new URL(request.url).pathname)
           ? new Promise<Response>(() => undefined)
           : resolvedFetch(request),
     });

@@ -40,8 +40,16 @@ const RASTER_HEIGHT_RATIO = 1.4;
  */
 const FONT_FAMILY = 'sans-serif';
 
+/** `measureText` 가 내는 값 중 여기서 쓰는 것. 옛 구현에는 높이 값이 없을 수 있다. */
+interface TextMetricsLike {
+  width: number;
+  actualBoundingBoxAscent?: number;
+  actualBoundingBoxDescent?: number;
+  fontBoundingBoxAscent?: number;
+}
+
 interface TextContext {
-  measureText: (text: string) => { width: number };
+  measureText: (text: string) => TextMetricsLike;
   fillText: (text: string, x: number, y: number) => void;
   getImageData: (x: number, y: number, width: number, height: number) => { data: Uint8ClampedArray };
   clearRect: (x: number, y: number, width: number, height: number) => void;
@@ -148,33 +156,96 @@ export const blit = (target: LabelBitmap, source: LabelBitmap, x: number, y: num
   }
 };
 
-/** 글 한 줄을 시스템 글꼴로 그려 점판으로 낸다. Canvas 가 없으면 `null`. */
-export const rasterizeText = (text: string, scale: number): LabelBitmap | null => {
-  if (text === '') return createBitmap(0, 0);
+/**
+ * 글 한 줄을 **글꼴 크기(px)·글꼴 목록을 정해** 그려 점판으로 낸다. Canvas 가 없으면 `null`.
+ *
+ * ⭐ 배율이 아니라 px 로 받는 자리다 — TSPL 글줄(point)을 같은 높이의 그림으로 바꿀 때 쓴다
+ *    (`pop-location-label` · omf-all-around#9). 점 글꼴 배율을 쓰는 곳은 아래 `rasterizeText` 다.
+ */
+/** 글 윗변 위로 둔 여백만큼 아래로 내려 그린 점판 — `rise` 가 그 여백(점)이다. */
+export type LabelTextRaster = LabelBitmap & { rise: number };
 
-  const size = fontSizeOf(scale);
-  const height = Math.ceil(size * RASTER_HEIGHT_RATIO);
-  const probe = openCanvas(1, height);
+/**
+ * 글 윗변(`textBaseline = 'top'`) 위로 **획이 넘치는 만큼**의 여백(점).
+ *
+ * ⭐ 한글 글꼴은 획이 윗변보다 위로 올라간다 — 윗변을 점판 0 행에 두면 그 획이 판 밖이라
+ *    **윗부분이 평평하게 깎였다**(HT800 실기 2026-09-18 · omf-all-around#9. Chromium 실측:
+ *    「A구역」 잉크가 윗변 위 1.24px · 글꼴 전체로는 3.75px). 글꼴 값(`fontBoundingBoxAscent`)과
+ *    실제 잉크 값 중 큰 쪽에 1점을 더한다 — 단말마다 글꼴이 달라 한쪽만 믿지 않는다.
+ */
+export const headroomOf = (metrics: TextMetricsLike): number =>
+  Math.ceil(Math.max(0, metrics.actualBoundingBoxAscent ?? 0, metrics.fontBoundingBoxAscent ?? 0)) +
+  1;
+
+export const rasterizeTextWithFont = (
+  text: string,
+  fontPx: number,
+  family: string,
+  /** 켜면 윗변 위로 넘치는 획을 담을 여백을 판 위에 둔다(`rise`). 끄면 예전과 같다. */
+  headroom = false,
+): LabelTextRaster | null => {
+  if (text === '') return { ...createBitmap(0, 0), rise: 0 };
+
+  const probe = openCanvas(1, Math.ceil(fontPx * RASTER_HEIGHT_RATIO));
 
   if (probe === null) return null;
 
-  probe.context.font = `${String(size)}px ${FONT_FAMILY}`;
-  const width = Math.ceil(probe.context.measureText(text).width);
+  probe.context.font = `${String(fontPx)}px ${family}`;
+  /* ⚠ 여백을 재는 기준도 그리는 기준과 같은 윗변이어야 한다. */
+  probe.context.textBaseline = 'top';
+  const metrics = probe.context.measureText(text);
+  const width = Math.ceil(metrics.width);
+  const rise = headroom ? headroomOf(metrics) : 0;
+  const height =
+    rise +
+    Math.ceil(
+      Math.max(
+        fontPx * RASTER_HEIGHT_RATIO,
+        headroom ? (metrics.actualBoundingBoxDescent ?? 0) + 1 : 0,
+      ),
+    );
 
-  if (width <= 0) return createBitmap(0, 0);
+  if (width <= 0) return { ...createBitmap(0, 0), rise: 0 };
 
   const canvas = openCanvas(width, height);
 
   if (canvas === null) return null;
 
   canvas.context.clearRect(0, 0, width, height);
-  canvas.context.font = `${String(size)}px ${FONT_FAMILY}`;
+  canvas.context.font = `${String(fontPx)}px ${family}`;
   /* ⚠ `y` 를 **윗변**으로 다룬다 — 점 글꼴의 `drawText` 와 같은 약속이다(기준선이 아니다). */
   canvas.context.textBaseline = 'top';
   canvas.context.fillStyle = '#000';
-  canvas.context.fillText(text, 0, 0);
+  canvas.context.fillText(text, 0, rise);
 
-  return toDots(canvas.context.getImageData(0, 0, width, height).data, width, height);
+  return { ...toDots(canvas.context.getImageData(0, 0, width, height).data, width, height), rise };
+};
+
+/** 글 한 줄을 시스템 글꼴로 그려 점판으로 낸다. Canvas 가 없으면 `null`. */
+export const rasterizeText = (text: string, scale: number): LabelBitmap | null =>
+  rasterizeTextWithFont(text, fontSizeOf(scale), FONT_FAMILY);
+
+/** 없는 글자를 그리면 나오는 모양의 기준 — 어느 글꼴에도 없을 비문자(U+FFFF). */
+const MISSING_GLYPH = String.fromCharCode(0xffff);
+
+/**
+ * 이 글꼴 목록이 `probe` 글자를 **진짜 글자로** 그리는가.
+ *
+ * ⭐ 글꼴이 없으면 브라우저는 오류 없이 네모(없는 글자 모양)를 그린다. 그래서 `probe` 와
+ *    비문자를 같은 크기로 그려 **점판이 같으면 없는 것**으로 본다. Canvas 가 없으면 `false`.
+ */
+export const canDrawGlyph = (probe: string, family: string, fontPx = 24): boolean => {
+  const drawn = rasterizeTextWithFont(probe, fontPx, family);
+  const missing = rasterizeTextWithFont(MISSING_GLYPH, fontPx, family);
+
+  if (drawn === null || missing === null) return false;
+  if (!drawn.dots.some(Boolean)) return false;
+
+  return (
+    drawn.width !== missing.width ||
+    drawn.height !== missing.height ||
+    drawn.dots.some((dot, index) => dot !== missing.dots[index])
+  );
 };
 
 /**

@@ -27,13 +27,20 @@ const t = messages.packingResult;
  * ⛔ **끊는 자리를 화면이 지어내지 않는다.** 그룹 길이는 계약이 정한 자릿수 구성에서 오고,
  * 그 구성이 걸리는 것은 **34자리 형식 하나**다. 형식이 다른 값을 같은 규칙으로 끊으면 없는
  * 경계를 있는 것처럼 보여 대조를 오히려 방해한다 — 그때는 **원문을 그대로 낸다.**
+ *
+ * ⛔ **길이만 보고 판정하지 않는다**(#1335). E-2 는 「분절 자릿수는 자재 로트 번호 체계에
+ * 종속 — 다른 번호 체계에 그대로 쓰지 않는다」고 적고, 그 체계는 MLOT #16 의 «34자리·전부
+ * 숫자»다. 서버 생산 LOT(`M`+공장6+날짜8+순번6+난수13)도 34자라 길이만 보면 자재 규칙으로
+ * 엉뚱하게 끊긴다 — 그래서 «전부 숫자인 34자리»일 때만 끊는다.
  */
 const LOT_GROUPS = [9, 9, 6, 6, 4] as const;
 
 const GROUPED_LENGTH = LOT_GROUPS.reduce((sum, size) => sum + size, 0);
 
+const GROUPED_SHAPE = new RegExp(`^\\d{${String(GROUPED_LENGTH)}}$`);
+
 export const segmentLotNo = (lotNo: string): string => {
-  if (lotNo.length !== GROUPED_LENGTH) return lotNo;
+  if (!GROUPED_SHAPE.test(lotNo)) return lotNo;
 
   const parts: string[] = [];
   let cursor = 0;

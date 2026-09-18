@@ -1,6 +1,6 @@
 import { AlertBanner, Button, Chip, SkeletonText, Table } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { useId, useMemo, useState } from 'react';
+import { useEffect, useId, useMemo, useRef, useState } from 'react';
 
 import { PopPageNav, pageBoundaryOf } from '../../patterns/pop-page-nav';
 import { PopSelect as Select } from '../../patterns/pop-select';
@@ -25,6 +25,7 @@ import {
   MAX_TARGETS,
   TARGET_TYPE_CODE,
   type DocumentIssue,
+  type Location,
 } from './types';
 
 const t = messages.popLocationLabel;
@@ -76,7 +77,29 @@ export const PopLocationLabelScreen = () => {
 
   const reasons = useReissueReasons(reissueAsked);
 
-  const printFlow = usePrintFlow(entry.workerNo);
+  /**
+   * 본 적 있는 위치 — **라벨 값은 고를 때 본 줄에서 읽는다.** 고른 자리는 여러 쪽에 걸칠 수 있어
+   * 지금 쪽의 목록만으로는 앞 쪽에서 고른 위치를 풀지 못한다.
+   */
+  const seenLocations = useRef(new Map<number, Location>());
+
+  useEffect(() => {
+    for (const each of locationItems) seenLocations.current.set(each.locationId, each);
+  }, [locationItems]);
+
+  const printFlow = usePrintFlow(entry.workerNo, (record) => {
+    const location = seenLocations.current.get(record.target.targetId);
+    const warehouse = warehouses.data?.find((each) => each.warehouseId === location?.warehouseId);
+
+    if (location === undefined || warehouse === undefined) return null;
+
+    return {
+      warehouseCode: warehouse.warehouseCode,
+      locationCode: location.locationCode,
+      locationName: location.locationName,
+      issueSeq: record.issueSeq,
+    };
+  });
 
   const write = useLocationLabelWrite({
     /* 사번이 없으면 아래 `guard` 가 발행을 열지 않는다 — 여기 오는 값은 확보된 것이다. */
@@ -85,7 +108,7 @@ export const PopLocationLabelScreen = () => {
       setReissueAsked(false);
       setReasonCode('');
       /*
-       * ⛔ **거절을 받을 곳을 둔다.** 건별 실패는 안에서 값으로 접히지만, 그 바깥(형식 협상)이
+       * ⛔ **거절을 받을 곳을 둔다.** 건별 실패는 안에서 값으로 접히지만, 그 바깥이
        *    거절하면 결과 구획이 영영 비어 「눌렀는데 아무 일도 없다」가 된다. 발행은 이미
        *    끝났으므로 **인쇄가 통째로 실패한 것**으로 적는다 — 없던 일로 두지 않는다.
        */
@@ -183,6 +206,18 @@ export const PopLocationLabelScreen = () => {
        *   나오지 않는다 — 찍고 나서야 알면 작업자는 프린터를 의심하며 헛걸음한다.
        */}
       {!hasPrintBridge() && <AlertBanner variant="info">{t.print.noBridge}</AlertBanner>}
+
+      {/*
+       * ⭐ **찍을 프린터가 없다는 경고도 맨 위 띠 자리에 선다**(사용자 지시 2026-09-18 ·
+       *    omf-all-around#11). 프린터 칸 안에 두면 창고 옆 작은 상자라 눈에 띄지 않았다.
+       *    프린터가 있을 때의 고르기는 그대로 오른쪽 칸이 한다(`PrinterSelect`).
+       */}
+      {!printers.isPending && !printers.isError && (printers.data ?? []).length === 0 && (
+        /* 사번 미확인 띠(`PopWorkerMissingBanner`)와 같은 자리·같은 감싸기 — 띠가 제 높이만 쓴다. */
+        <div className="banner-slot">
+          <AlertBanner variant="warning">{t.printer.none}</AlertBanner>
+        </div>
+      )}
 
       {/* 인쇄 결과는 화면 맨 위 띠 자리에 선다(사용자 지시 2026-09-17). */}
       <PrintResult
@@ -306,10 +341,15 @@ export const PopLocationLabelScreen = () => {
                 { key: 'locationName', header: t.location.columnName, align: 'center' },
                 {
                   key: 'state',
-                  header: t.location.columnIssued,
+                  header: t.location.columnState,
                   align: 'center',
+                  /* 모든 줄에 사용 여부를 적는다 — 사용은 초록(success), 미사용은 빨강(error)(omf-all-around#11). */
                   render: (row) =>
-                    row.isActive ? null : <Chip status="warning">{t.location.inactive}</Chip>,
+                    row.isActive ? (
+                      <Chip status="success">{t.location.active}</Chip>
+                    ) : (
+                      <Chip status="error">{t.location.inactive}</Chip>
+                    ),
                 },
                 {
                   key: 'pick',
