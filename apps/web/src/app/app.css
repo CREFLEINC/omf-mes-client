@@ -5351,6 +5351,215 @@ dl.filter-bar.approval-inbox-detail-facts {
   background: var(--surface);
 }
 
+/*
+ * W-CO-02 사용자 탭 — 목록(네 열)과 상세(세 구획)가 페이지 폭을 끝까지 채운다. 카드에 최대 폭을
+ * 걸면 오른쪽이 비어 남는다(사용자 확인 2026-09-18). 카드 안이 휑한 문제는 폭에 따라 열 수가
+ * 바뀌는 안쪽 격자(아래 폼·역할 목록)로 푼다. 목록 하한 24rem 은 네 열과 조회 줄이 접히지 않는 폭이다.
+ */
+.two-pane.users-roles-layout {
+  grid-template-columns: minmax(24rem, 5fr) minmax(0, 8fr);
+}
+
+@media (max-width: 1280px) {
+  .two-pane.users-roles-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+/*
+ * 검색창이 첫 줄의 남는 폭을 다 쓰고 「미사용 포함」이 그 옆에 선다. 둘째 줄에 부서·재직 상태와
+ * 그것을 적용하는 조회·초기화가 한 묶음으로 선다.
+ */
+.users-roles-filter {
+  display: grid;
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+}
+
+.users-roles-filter > .filter-bar {
+  margin-bottom: 0;
+}
+
+/* 1행 — 검색창이 남는 폭을 다 쓴다. */
+.users-roles-filter > .filter-bar:first-child > :first-child {
+  flex: 1 1 12rem;
+}
+
+/* 2행 — 조회·초기화를 줄 오른쪽 끝(사용자 추가와 같은 끝선)으로. 줄이 바뀌어도 오른쪽에 붙는다. */
+.users-roles-filter .filter-actions {
+  margin-left: auto;
+}
+
+/*
+ * 고른 사용자 줄 — DS `Table` 이 행 선택 표시를 주지 않아 안쪽 버튼의 `aria-current` 로 줄을
+ * 짚는다. 채운 색(`--primary-container`)은 목록에서 너무 강해 옅은 상태 배경 + 줄 앞 막대 +
+ * 굵은 로그인 ID 로 짚는다 — 막대가 있어 배경이 옅어도 선택이 흐려지지 않는다.
+ */
+.users-roles-list tbody tr:has(.link-cell[aria-current='true']) {
+  background: var(--state-hover);
+}
+
+.users-roles-list tbody tr:has(.link-cell[aria-current='true']) > td:first-child {
+  box-shadow: inset 3px 0 var(--primary);
+}
+
+.users-roles-list .link-cell[aria-current='true'] {
+  color: inherit;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+/* 읽기 전용 칸의 라벨 줄 — 라벨 오른쪽에 「바꿀 수 없다」는 보조 라벨을 작게 붙인다. */
+.readonly-label-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  column-gap: var(--space-2);
+}
+
+/* 라벨과 같은 글자 크기 — 크면 이 칸의 라벨 줄만 높아져 옆 칸과 입력칸 윗선이 어긋난다. */
+.readonly-label-note {
+  color: var(--on-surface-variant);
+  font: var(--type-label-sm);
+  letter-spacing: var(--type-label-sm-tracking);
+  white-space: nowrap;
+  opacity: 0.8;
+}
+
+/* 입력칸이 아닌 값 — 옅은 바탕으로 «고칠 수 없는 칸»임을 보이되 글자는 흐리게 두지 않는다. */
+.readonly-value {
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  align-self: stretch;
+  min-height: var(--control-height-md);
+  margin: 0;
+  padding: 0 var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--surface-container);
+  color: var(--on-surface);
+}
+
+/*
+ * 사용자 정보 폼 — 카드 안쪽 폭(컨테이너 질의, 전례 `pop.css`)으로 열 수를 정한다.
+ * 넓으면(40rem 이상) 수정은 3열 3:4:5 — 1행 로그인 ID · 이름 · 부서, 2행 이메일(두 칸) · 재직 상태.
+ * **부서와 재직 상태가 같은 열**이라 폭과 끝선이 맞고 빈 칸이 없다(사용자 요청 2026-09-18).
+ * 등록은 칸이 여섯이라 균등 3열(로그인 ID · 초기 비밀번호 · 이름 / 부서 · 이메일 · 재직 상태)로
+ * 두 선택칸 폭을 맞춘다. 좁으면 1열 — 모든 칸이 같은 폭이다. 필드 순서는 DOM 순서 그대로다.
+ * 열 하한: 로그인 ID 13rem(라벨 옆 「변경 불가」 안내가 한 줄에 드는 폭), 이름 11rem, 부서 13rem.
+ */
+.users-roles-user-pane {
+  container-type: inline-size;
+}
+
+.form-grid.users-roles-user-form {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+@container (min-width: 40rem) {
+  .form-grid.users-roles-user-form {
+    grid-template-columns: minmax(13rem, 3fr) minmax(11rem, 4fr) minmax(13rem, 5fr);
+  }
+
+  .users-roles-user-form > .urf-email {
+    grid-column: span 2;
+  }
+
+  .form-grid.users-roles-user-form.urf-create {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .users-roles-user-form.urf-create > .urf-email {
+    grid-column: auto;
+  }
+}
+
+/*
+ * 사용자 정보의 액션 줄 — 폼 칸과 선으로 가르고, 왼쪽 계정 관리 묶음(비밀번호 초기화·사용 중지)과
+ * 오른쪽 폼 묶음(취소·저장)이 양 끝에 선다. 묶음 안은 촘촘히, 묶음 사이는 줄 폭만큼 떨어진다.
+ */
+.users-roles-pane > .form-actions:has(.users-roles-account-actions),
+.users-roles-select-hint {
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--outline-variant);
+}
+
+/* 고르기 전 안내 — 사용자 정보 카드의 표제 아래 구분선 다음 한 줄. */
+.users-roles-select-hint {
+  margin: 0;
+  color: var(--on-surface-variant);
+}
+
+.users-roles-account-actions {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+}
+
+/* 역할 부여 — 넓으면 여러 열, 좁으면 한 열. 카드 없는 단순 목록 그대로다. */
+.users-roles-role-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(16rem, 100%), 1fr));
+  gap: var(--space-2) var(--space-5);
+}
+
+/* 오른쪽 세 구획의 액션 줄 — 공통 간격(space-5)이면 저장 줄이 내용에서 떨어져 보인다. */
+.users-roles-pane > .form-actions {
+  margin-top: var(--space-4);
+}
+
+/* 표제와 그 옆 버튼의 가운데를 맞춘다 — 공통 `.pane-heading-row` 는 위 끝을 맞춰 표제가 떠 보인다. */
+.users-roles-heading {
+  align-items: center;
+}
+
+/* 줄 액션 아이콘 둘 사이 간격 — 붙어 있으면 수정·삭제를 잘못 누르기 쉽다. */
+.users-roles-row-actions {
+  display: inline-flex;
+  gap: var(--space-2);
+}
+
+/*
+ * 임시 비밀번호 창 본문 — 배너·값 목록·복사 버튼 사이를 같은 간격으로 띄운다. 배너와 목록은 창
+ * 폭을 쓰고, 버튼은 제 폭만 쓴다.
+ */
+.temp-password-body {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-4);
+}
+
+.temp-password-body > * {
+  margin: 0;
+}
+
+.temp-password-body > :not(button) {
+  align-self: stretch;
+}
+
+/*
+ * 값이 길면 창 안에서 줄바꿈한다 — 넘쳐 창 밖으로 나가지 않게. 공통 `.token-meta` 의 위아래
+ * 여백은 본문 간격(gap)과 겹쳐 간격이 커지므로 뺀다.
+ */
+.token-meta.temp-password-facts {
+  grid-template-columns: max-content minmax(0, 1fr);
+  margin: 0;
+}
+
+.temp-password-facts dd {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+/* 역할명이 먼저 읽히고 코드는 곁에 작게 — 운영자가 짚어 볼 값이라 지우지 않는다. */
+.role-choice-code {
+  margin-left: var(--space-2);
+  color: var(--on-surface-variant);
+  font: var(--type-body-sm);
+  letter-spacing: var(--type-body-sm-tracking);
+}
+
 /**
  * 전체 선택·해제 — **표 위에 둔다.** 아래 액션 줄에 섞으면 「저장」과 나란히 서서 누르는
  * 순간 저장되는 것으로 읽힌다. 이 둘은 고르기만 하고 서버로 나가는 것은 「저장」뿐이다.

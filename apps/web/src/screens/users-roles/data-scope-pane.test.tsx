@@ -48,6 +48,23 @@ const renderPane = (overrides: Partial<DataScopePaneProps> = {}) => {
 const rows = (): HTMLElement[] => within(screen.getByRole('table')).getAllByRole('row').slice(1);
 
 describe('DataScopePane', () => {
+  it('줄 수정·삭제 아이콘에 마우스를 올리면 「수정」「삭제」가 보인다', async () => {
+    const { user } = renderPane();
+
+    await user.hover(screen.getAllByRole('button', { name: /범위 수정$/ })[0] as HTMLElement);
+    expect(await screen.findByText('수정')).toBeInTheDocument();
+  });
+
+  it('구획 표제 옆에 범위 추가가 선다', () => {
+    renderPane();
+
+    const heading = screen.getByRole('heading', { name: '데이터 접근범위' });
+
+    expect(heading.parentElement).toContainElement(
+      screen.getByRole('button', { name: '범위 추가' }),
+    );
+  });
+
   it('줄마다 사업부와 공장이 보인다', () => {
     renderPane();
 
@@ -137,11 +154,12 @@ describe('DataScopePane', () => {
     expect(screen.queryByRole('table')).not.toBeInTheDocument();
   });
 
-  it('고친 것이 없으면 저장이 비활성이고 사유가 보인다', () => {
+  /** 사용자 지시(2026-09-18)로 이 화면의 저장 사유 문구는 내지 않는다 — 비활성만으로 알린다. */
+  it('고친 것이 없으면 저장이 비활성이고 사유 문구는 내지 않는다', () => {
     renderPane();
 
     expect(screen.getByRole('button', { name: '저장' })).toBeDisabled();
-    expect(screen.getByText(/저장은 고친 내용이 있을 때/)).toBeInTheDocument();
+    expect(screen.queryByText(/저장은 변경된 내용이 있을 때/)).not.toBeInTheDocument();
   });
 
   it('고친 것이 있으면 저장과 취소를 누를 수 있다', async () => {

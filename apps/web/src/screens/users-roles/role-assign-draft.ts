@@ -25,8 +25,10 @@ export interface RolesPayload {
 /** 확인칸 하나가 아는 것. 화면은 이 목록만 보고 그린다. */
 export interface RoleChoice {
   roleId: number;
-  /** 「역할코드 · 역할명」. 미사용이면 표식이 붙는다 */
+  /** 역할명. 미사용이면 표식이 붙는다 */
   label: string;
+  /** 역할 코드 — 운영자가 짚어 볼 수 있게 이름 곁에 작게 보인다. 값은 서버가 준 그대로다 */
+  code: string;
   isSelected: boolean;
   /**
    * 새로 켜고 끌 수 없다. **미사용 역할에만 붙는다** —
@@ -86,6 +88,7 @@ export const toRoleChoices = (
       return {
         roleId,
         label: entry.isActive ? entry.label : `${entry.label}${t.values.inactiveSuffix}`,
+        code: entry.code ?? '',
         isSelected: chosen.has(roleId),
         isLocked: !entry.isActive,
       };

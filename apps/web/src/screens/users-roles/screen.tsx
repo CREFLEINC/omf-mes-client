@@ -60,6 +60,7 @@ import {
 } from './permission-draft';
 import { PermissionGridPane } from './permission-grid-pane';
 import { PermissionSaveBanner } from './permission-save-banner';
+import { ResetPasswordDialog, TemporaryPasswordDialog } from './reset-password-dialog';
 import {
   isSameRoleSelection,
   roleCatalogOrder,
@@ -118,6 +119,7 @@ import type {
 type AppUserDetailResponse = components['schemas']['AppUserDetailResponse'];
 type UserRoleListResponse = components['schemas']['UserRoleListResponse'];
 type UserDataScopeListResponse = components['schemas']['UserDataScopeListResponse'];
+type AppUserPasswordReset = components['schemas']['AppUserPasswordReset'];
 type RoleDetailResponse = components['schemas']['RoleDetailResponse'];
 type RolePermissionListResponse = components['schemas']['RolePermissionListResponse'];
 
@@ -315,6 +317,18 @@ export const UsersRolesScreen = () => {
   })();
 
   const [isDeactivateOpen, setIsDeactivateOpen] = useState(false);
+  const [isResetPasswordOpen, setIsResetPasswordOpen] = useState(false);
+  /**
+   * 초기화 응답으로 받은 임시 비밀번호와 그 대상. 서버가 **이 응답에서 한 번만** 주므로 창을 닫을
+   * 때 비운다.
+   *
+   * ⛔ 선택 수명 규칙(`resetUserEditing`)이 이 값을 비우지 않는다 — 응답이 대상 전환 뒤에 와도
+   * 비우면 그 값을 영영 잃는다. 대신 누구의 값인지를 로그인 ID로 함께 보인다.
+   */
+  const [issuedPassword, setIssuedPassword] = useState<{
+    loginId: string;
+    temporaryPassword: string;
+  } | null>(null);
 
   /* ── 역할 부여 ─────────────────────────────────────────────────────────── */
 
@@ -619,6 +633,40 @@ export const UsersRolesScreen = () => {
   });
 
   /**
+   * 비밀번호 초기화 — **본문도 잠금 토큰도 없다.** 계약이 멱등 키만 요구한다.
+   *
+   * 서버는 자격증명 행만 고치고 사용자 행은 건드리지 않는다 — 그래서 **아무것도 무효화하지
+   * 않는다.** 상세를 무효화하면 바로 위 폼에서 편집 중이던 값이 서버 값으로 되돌아간다.
+   *
+   * 멱등 키는 기본 수명(`per-attempt`)이다 — 본문이 빈 액션이라 `until-applied`를 쓰면 거부된
+   * 뒤 다시 눌러도 같은 거부가 돌아온다(`use-master-write.ts`). 통신이 끊겨 다시 누르면 새 값이
+   * 나가지만, 받지 못한 앞의 값이 무효가 될 뿐 잃는 것이 없다(단말 등록 코드 발급과 같은 판단).
+   *
+   * 대상의 로그인 ID는 **보낼 때** 잡는다 — 처리기가 보낼 때의 렌더를 보므로 응답이 늦어도
+   * 그 시도의 대상과 짝이 맞는다.
+   */
+  const resetPasswordLoginId = userDetail.data?.appUser.loginId ?? '';
+  const userResetPasswordWrite = useMasterWrite<void, AppUserPasswordReset>({
+    request: (_variables, headers) =>
+      client.POST('/app/users/{appUserId}:reset-password', {
+        params: {
+          path: { appUserId: selectedAppUserId ?? 0 },
+          header: { 'Idempotency-Key': headers['Idempotency-Key'] },
+        },
+      }),
+    etagPath: null,
+    invalidateKeys: [],
+    knownFields: [],
+    onSuccess: (reset) => {
+      setIsResetPasswordOpen(false);
+      setIssuedPassword({
+        loginId: resetPasswordLoginId,
+        temporaryPassword: reset.temporaryPassword,
+      });
+    },
+  });
+
+  /**
    * 역할 부여 치환.
    *
    * **`etagPath`가 반드시 `null`이다.** 계약에 이 쓰기의 `If-Match` 파라미터 자체가 없다 —
@@ -817,9 +865,11 @@ export const UsersRolesScreen = () => {
     userWrite.reset();
     userCreateWrite.reset();
     userDeactivateWrite.reset();
+    userResetPasswordWrite.reset();
     roleAssignWrite.reset();
     dataScopeWrite.reset();
     setIsDeactivateOpen(false);
+    setIsResetPasswordOpen(false);
     setFormState(null);
     setUserFieldErrors({});
     setRoleAssignState(null);
@@ -1160,20 +1210,26 @@ export const UsersRolesScreen = () => {
           departmentOptions={userDepartmentOptions}
           statusOptions={userStatusSelectOptions}
           statusDisabledReason={statusDisabledReason}
-          deactivateDisabledReason={null}
+          isDeactivateDisabled={false}
           isDirty={isUserDirty}
           isSaving={userCreateWrite.isSaving}
           onSave={handleSaveUser}
           onCancel={closeUserCreateForm}
           onDeactivate={() => undefined}
+          onResetPassword={() => undefined}
         />
       );
     }
 
+    /*
+     * 고르기 전 — 사용자 정보 카드와 같은 모양(표제 + 구분선)으로 한 번만 안내한다. 역할 부여·
+     * 데이터 접근범위 카드는 여기서 서지 않는다(`renderRoleAssignPane` 등).
+     */
     if (selectedAppUserId === null) {
       return (
-        <section className="pane" aria-label={t.panes.userForm}>
-          <EmptyState size="sm" title={t.user.empty.notSelected} />
+        <section className="pane users-roles-pane" aria-label={t.panes.userForm}>
+          <h2 className="pane-title">{t.panes.userForm}</h2>
+          <p className="users-roles-select-hint">{t.user.empty.notSelected}</p>
         </section>
       );
     }
@@ -1207,9 +1263,7 @@ export const UsersRolesScreen = () => {
         departmentOptions={userDepartmentOptions}
         statusOptions={userStatusSelectOptions}
         statusDisabledReason={statusDisabledReason}
-        deactivateDisabledReason={
-          userDetail.data.appUser.isActive === false ? t.actionReasons.deactivateAlreadyDone : null
-        }
+        isDeactivateDisabled={userDetail.data.appUser.isActive === false}
         isDirty={isUserDirty}
         isSaving={userWrite.isSaving}
         onSave={handleSaveUser}
@@ -1222,6 +1276,10 @@ export const UsersRolesScreen = () => {
         onDeactivate={() => {
           userDeactivateWrite.reset();
           setIsDeactivateOpen(true);
+        }}
+        onResetPassword={() => {
+          userResetPasswordWrite.reset();
+          setIsResetPasswordOpen(true);
         }}
       />
     );
@@ -1327,7 +1385,7 @@ export const UsersRolesScreen = () => {
       <LoadErrorBanner error={userList.error} onRetry={() => void userList.refetch()} />
     </section>
   ) : (
-    <div className="two-pane">
+    <div className="two-pane users-roles-layout">
       <UserListPane
         users={users}
         isLoading={userList.isPending}
@@ -1609,6 +1667,7 @@ export const UsersRolesScreen = () => {
           open
           title={t.dialog.deactivateUserTitle}
           description={t.dialog.deactivateUserDescription}
+          showCloseButton={false}
           onClose={() => {
             setIsDeactivateOpen(false);
             userDeactivateWrite.reset();
@@ -1624,6 +1683,26 @@ export const UsersRolesScreen = () => {
           banner={<SaveErrorBanner error={userDeactivateWrite.error} onReload={reloadUserDetail} />}
         />
       )}
+
+      {/* 비밀번호 초기화 확인. 사용 중지 창과 같은 규칙 — 열 때만 붙이고, 실패해도 닫지 않는다. */}
+      {isResetPasswordOpen && selectedAppUserId !== null && (
+        <ResetPasswordDialog
+          open
+          onClose={() => {
+            setIsResetPasswordOpen(false);
+            userResetPasswordWrite.reset();
+          }}
+          onConfirm={() => {
+            if (selectedAppUserId === null) return;
+
+            userResetPasswordWrite.write(undefined);
+          }}
+          isSaving={userResetPasswordWrite.isSaving}
+          banner={<SaveErrorBanner error={userResetPasswordWrite.error} />}
+        />
+      )}
+
+      <TemporaryPasswordDialog issued={issuedPassword} onClose={() => setIssuedPassword(null)} />
 
       {/*
        * 역할 사용 중지 창. **같은 창을 쓰고 제목과 본문만 다르다** —
