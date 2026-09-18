@@ -61,7 +61,7 @@ export const terminalProcessMap: Translated<typeof ko.terminalProcessMap> = {
     status: 'Trạng thái vận hành',
     registration: 'Trạng thái đăng ký',
     equipment: 'Thiết bị lắp đặt',
-    equipmentNone: 'Không gắn vào thiết bị nào',
+    equipmentNone: 'Chưa chỉ định thiết bị',
     equipmentNote: 'Màn hình POP dùng giá trị này ở chỗ lấy «thiết bị này» làm tiền đề.',
     codeListPending: 'Nhập mã loại máy quét.',
     statusHelp: 'Nhập RUNNING hoặc STOPPED.',

@@ -54,7 +54,7 @@ export const terminalProcessMap = {
     status: '운영 상태',
     registration: '등록 상태',
     equipment: '설치 설비',
-    equipmentNone: '설비에 붙이지 않음',
+    equipmentNone: '설비 미지정',
     /** POP 이 「이 설비」를 전제로 도는 화면들이 이 값을 쓴다. */
     equipmentNote: 'POP 화면이 「이 설비」를 전제로 도는 자리에서 이 값을 씁니다.',
     codeListPending: '단말 유형 코드를 적으세요.',

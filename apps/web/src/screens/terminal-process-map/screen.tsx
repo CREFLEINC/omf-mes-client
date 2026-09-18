@@ -413,49 +413,66 @@ export const TerminalProcessMapScreen = () => {
             ) : (
               <>
                 <SaveErrorBanner error={deactivate.error} />
-                <dl className="token-meta terminal-map-info">
-                  <dt>{t.terminal.code}</dt>
-                  <dd className="terminal-map-info-key">{selected.terminalCode}</dd>
-                  <dt>{t.terminal.type}</dt>
-                  <dd>{codeNames.type(selected.terminalTypeCode)}</dd>
-                  <dt>{t.terminal.status}</dt>
-                  <dd>{operatingStatusOf(selected)}</dd>
-                  <dt>{t.terminal.registration}</dt>
-                  <dd>
-                    {registrationChip(selected)}
-                    {selected.registrationConfirmedAt === null
-                      ? null
-                      : ` ${formatMoment(selected.registrationConfirmedAt)}`}
-                  </dd>
-                  <dt>{t.terminal.equipment}</dt>
-                  <dd>{selected.equipmentLabel ?? t.terminal.equipmentNone}</dd>
+                {/* 항목명 위·값 아래의 3열 격자 — 순서는 그대로(코드 · 유형 · 운영 상태 · 등록 상태 · 설비). */}
+                <dl className="terminal-map-info">
+                  <div className="terminal-map-info-field">
+                    <dt className="field-label">{t.terminal.code}</dt>
+                    <dd className="terminal-map-info-key">{selected.terminalCode}</dd>
+                  </div>
+                  <div className="terminal-map-info-field">
+                    <dt className="field-label">{t.terminal.type}</dt>
+                    <dd>{codeNames.type(selected.terminalTypeCode)}</dd>
+                  </div>
+                  <div className="terminal-map-info-field">
+                    <dt className="field-label">{t.terminal.status}</dt>
+                    <dd>{operatingStatusOf(selected)}</dd>
+                  </div>
+                  <div className="terminal-map-info-field">
+                    <dt className="field-label">{t.terminal.registration}</dt>
+                    <dd>
+                      {registrationChip(selected)}
+                      {selected.registrationConfirmedAt === null
+                        ? null
+                        : ` ${formatMoment(selected.registrationConfirmedAt)}`}
+                    </dd>
+                  </div>
+                  <div className="terminal-map-info-field">
+                    <dt className="field-label">{t.terminal.equipment}</dt>
+                    <dd>{selected.equipmentLabel ?? t.terminal.equipmentNone}</dd>
+                  </div>
                 </dl>
                 <SaveErrorBanner error={issueToken.error} />
-                {/* ⚠ 누르기 전에 말한다 — 누른 뒤에는 이미 이전 기기가 끊겨 있다. */}
-                <AlertBanner className="terminal-map-notice" variant="warning">
-                  {t.token.reissueWarning}
-                </AlertBanner>
-                <div className="form-actions">
-                  <Button
-                    variant="outlined"
-                    disabled={!selected.isActive || deactivate.isSaving}
-                    onClick={() => {
-                      setDeactivating(true);
-                    }}
-                  >
-                    {t.terminal.deactivate}
-                  </Button>
-                  <Button variant="outlined" onClick={openEdit}>
-                    {t.terminal.edit}
-                  </Button>
-                  <Button
-                    disabled={issueToken.isSaving}
-                    onClick={() => {
-                      issueToken.write({});
-                    }}
-                  >
-                    {t.token.issue}
-                  </Button>
+                {/*
+                 * 하단 조작 줄 — 재발급 경고는 「등록 토큰 발급」 바로 위 오른쪽에 붙여 그 단추의 이야기로 읽히게 한다.
+                 * ⚠ 누르기 전에 말한다 — 누른 뒤에는 이미 이전 기기가 끊겨 있다.
+                 */}
+                <div className="terminal-map-info-footer">
+                  <AlertBanner className="terminal-map-notice" variant="warning">
+                    {t.token.reissueWarning}
+                  </AlertBanner>
+                  <div className="form-actions">
+                    <Button
+                      className="form-actions-secondary"
+                      variant="outlined"
+                      disabled={!selected.isActive || deactivate.isSaving}
+                      onClick={() => {
+                        setDeactivating(true);
+                      }}
+                    >
+                      {t.terminal.deactivate}
+                    </Button>
+                    <Button variant="outlined" onClick={openEdit}>
+                      {t.terminal.edit}
+                    </Button>
+                    <Button
+                      disabled={issueToken.isSaving}
+                      onClick={() => {
+                        issueToken.write({});
+                      }}
+                    >
+                      {t.token.issue}
+                    </Button>
+                  </div>
                 </div>
               </>
             )

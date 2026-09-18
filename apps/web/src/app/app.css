@@ -6053,15 +6053,67 @@ dl.filter-bar.approval-inbox-detail-facts {
   align-items: center;
 }
 
-/* 단말 정보 — 이름 칸은 흐리게, 식별 값(단말 코드)만 굵게. 표식과 글자가 한 줄에 서게 가운데로 맞춘다. */
-.token-meta.terminal-map-info {
-  align-items: center;
-  row-gap: var(--space-2);
+/*
+ * 단말 정보 — 항목명(작게·보조색) 위, 값 아래의 3열 격자. 넓은 카드의 오른쪽을 비워 두지 않는다.
+ * 식별 값(단말 코드)만 조금 굵게 — 제목처럼 보이지 않을 만큼.
+ */
+.terminal-map-info {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-4) var(--space-5);
+  margin: var(--space-2) 0 0;
 }
 
-.terminal-map-info dd.terminal-map-info-key {
-  font-weight: 600;
+.terminal-map-info-field {
+  display: grid;
+  align-content: start;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.terminal-map-info-field > dt {
+  margin-bottom: 0;
+}
+
+.terminal-map-info-field > dd {
+  margin: 0;
+  color: var(--on-surface);
+  font: var(--type-body-lg);
+  letter-spacing: var(--type-body-lg-tracking);
   overflow-wrap: anywhere;
+}
+
+.terminal-map-info-field > dd.terminal-map-info-key {
+  font-weight: 500;
+}
+
+@media (max-width: 640px) {
+  .terminal-map-info {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/*
+ * 하단 조작 줄 — 얇은 구분선 아래 하나의 바닥글로 묶는다. 재발급 경고는 내용 폭만큼만, 오른쪽의
+ * 「등록 토큰 발급」 바로 위에 서서 그 단추의 이야기로 읽힌다. 사용 중지는 왼쪽 끝(보조 액션 자리).
+ */
+.terminal-map-info-footer {
+  display: grid;
+  gap: var(--space-3);
+  margin-top: var(--space-4);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--outline-variant);
+}
+
+.terminal-map-info-footer > .terminal-map-notice {
+  justify-self: end;
+  width: fit-content;
+  max-width: 100%;
+  padding: var(--space-2) var(--space-3);
+}
+
+.terminal-map-info-footer > .form-actions {
+  margin-top: 0;
 }
 
 /* 선택 전 안내 — 구획 설명과 한 줄을 띄운다. */
