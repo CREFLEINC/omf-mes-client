@@ -1014,10 +1014,13 @@
  * 자리였는데, 키패드가 서고 사라질 때마다 목록의 폭이 널뛰었다. 두 단의 역할을 맞바꿔 목록을
  * 붙박이로 둔다 — 담은 것은 늘 같은 자리에 같은 폭으로 쌓인다.
  */
+/*
+ * ⚠ **`display` 를 여기서 정하지 않는다.** P-04-01 셸 규칙(`.packing-shell` 쪽)이 이 단을 격자로
+ *   세우므로, 여기서 `flex` 를 주면 곧바로 덮여 **어느 쪽이 서는지 읽는 사람이 헷갈린다**.
+ *   이 규칙은 높이 눌림만 막는다.
+ */
 .pop-ui .packing-compose-list {
-  display: flex;
   min-height: 0;
-  flex-direction: column;
 }
 
 .pop-ui .packing-compose-list > .packing-contents {
@@ -6946,8 +6949,7 @@
  * 비는 곳이 한 군데는 생긴다. 그 자리를 스캔할수록 줄이 채워지는 목록으로 둔다: 빈 안내는 목록
  * 자리 가운데, 합계는 구획 바닥에 선다.
  */
-.pop-ui.packing-shell .packing-compose-main,
-.pop-ui.packing-shell .packing-compose-list {
+.pop-ui.packing-shell .packing-compose-main {
   display: grid;
   grid-template-rows: auto minmax(0, 1fr);
   min-height: 0;
@@ -6955,7 +6957,9 @@
 
 /* 목록 단은 머리줄이 없다 — 한 줄이 남는 높이를 통째로 갖는다. */
 .pop-ui.packing-shell .packing-compose-list {
+  display: grid;
   grid-template-rows: minmax(0, 1fr);
+  min-height: 0;
 }
 
 .pop-ui.packing-shell .packing-compose-list > .packing-contents {

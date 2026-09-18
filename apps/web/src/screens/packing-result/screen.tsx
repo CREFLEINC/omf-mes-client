@@ -43,9 +43,14 @@ const t = messages.packingResult;
 /**
  * P-04-01 · Packing(P&P) 실적 등록 — **POP 1024×768 터치**.
  *
- * ⭐ **매칭 스캔 화면이다.** 두 개를 읽어 **같은 것인지 서버에 묻는다** — 납품라벨이 어느
- * 출하인지 정하고(①), 그 출하에 이 생산LOT 이 배분돼 있는지 판정받는다(②).
+ * ⭐ **매칭 화면이다.** 출하를 «고르고»(①), 그 출하에 이 생산LOT 이 배분돼 있는지 **서버에
+ * 묻는다**(②).
  * ⛔ **화면이 판정하지 않는다**(공유계약 C-6) — 배분 목록을 받아 비교하면 캐시 상태에서 틀린다.
+ *
+ * ⚠ **읽는 칸은 «하나»다**(#1351). 설계 §3 도면은 ① 을 납품라벨(`DL-…`) 스캔 칸으로 그렸지만,
+ *   납품 라벨의 주인이 **출하 단위로 옮겨가**(SHIP-UNIT-01 · P-04-05) 이 화면은 그것을 더 이상
+ *   내지 않는다. ① 은 출하대상 «선택 줄»이 되었고, 찍어서 고르는 길은 그 팝업이 받는다
+ *   (`patterns/pop-select` 의 `scannable`). 이탈은 `docs/decisions.md` 18 에 있다.
  *
  * ⛔ **온라인 전용이다.** 판정이 서버에 있으므로 끊긴 상태에서는 확정을 막는다(§6).
  *
@@ -83,13 +88,13 @@ export const PackingResultScreen = () => {
   /** ① 이 라벨이 정한 출하. 둘째 스캔의 질의 축이며 **첫 스캔 응답에서 그대로 온다**. */
   const [label, setLabel] = useState<ShipmentLotAllocation | null>(null);
   const [entry, setEntry] = useState<ShipmentEntry | null>(null);
-  /**
-   * 읽은 납품라벨 «코드» 그대로. 설계 §3 도면이 ① 상자 오른쪽에 `DL-2026-0455-001` 을 세워
-   * 두었다 — 칸은 읽고 나면 스스로 비우므로, 남겨 두지 않으면 **무엇을 읽었는지 확인할 길이
-   * 없다.** ② 의 판정이 「이 납품라벨의 LOT 이 맞다」인데 그 납품라벨이 안 보이면 판정을
-   * 대조할 수 없다.
+  /*
+   * ⛔ **읽은 코드를 따로 담아 두지 않는다**(#1351). 종전의 `labelCode` 는 설계 §3 도면이 ① 상자
+   *    오른쪽에 세운 납품라벨 번호(`DL-…`)를 위한 자리였는데, 그 라벨이 이 화면을 떠난 뒤로는
+   *    `applyEntry` 가 **`entry` 와 «함께»** 세우는 값이라 `entry` 없이 남는 일이 없었다 —
+   *    확정 팝업의 `entry?.shipmentNo ?? labelCode` 가운데 갈래는 **닿을 수 없었다**(리뷰 지적).
+   *    고른 출하의 번호는 `entry.shipmentNo` 하나로 충분하고, 출하대상 줄이 그것을 늘 보인다.
    */
-  const [labelCode, setLabelCode] = useState<string | null>(null);
   /*
    * ⛔ **「출하번호를 찾지 못했다」 갈래가 없다**(#1351). 그 갈래는 «목록 밖» 번호를 찍을 수
    *    있을 때만 생기는데, 스캔이 출하대상 목록 안으로 들어와 못 찾는 값은 목록이 「표시할
@@ -162,7 +167,6 @@ export const PackingResultScreen = () => {
   const applyEntry = (next: ShipmentEntry): void => {
     setEntry(next);
     setLabel(next.allocations[0] ?? null);
-    setLabelCode(next.shipmentNo);
     setEntryError(null);
     setMatched(null);
     setLines([]);
@@ -183,7 +187,6 @@ export const PackingResultScreen = () => {
 
     setEntry(null);
     setLabel(null);
-    setLabelCode(null);
     setEntryError(null);
     setMatched(null);
     setLines([]);
@@ -196,8 +199,12 @@ export const PackingResultScreen = () => {
   /**
    * 출하대상에서 한 건을 골랐다 — **목록에서 누르든 찍어서 골라지든 같은 길이다**(#1351).
    *
-   * ⚠ **이미 고른 것을 다시 고르면 아무것도 버리지 않는다.** `prepareEntryChange` 는 담긴 줄과
+   * ⚠ **이미 고른 것을 다시 고르면 아무것도 하지 않는다.** `prepareEntryChange` 는 담긴 줄과
    *   수량을 비우므로, 같은 출하를 한 번 더 찍었을 때 그것이 돌면 **담던 것이 사라진다.**
+   *
+   * ⛔ **그래서 「다시 골라 배분을 새로 읽는」 길은 없다**(리뷰 지적 · 종전 스캔은 같은 번호에도
+   *    조회를 다시 냈다). 담던 것을 지키는 쪽을 택했다 — 배분은 포장을 확정할 때 무효화로
+   *    다시 읽힌다(`mutations.ts`). 새로 읽어야 하면 다른 출하를 거쳐 돌아온다.
    */
   const chooseShipment = (shipmentId_: string): void => {
     const selected = todayShipments.shipments.find(
@@ -819,7 +826,7 @@ export const PackingResultScreen = () => {
         <dl className="filter-bar packing-confirm-summary">
           <div>
             <dt>{t.confirmDialog.shipment}</dt>
-            <dd>{entry?.shipmentNo ?? labelCode ?? '—'}</dd>
+            <dd>{entry?.shipmentNo ?? '—'}</dd>
           </div>
           <div>
             <dt>{t.confirmDialog.type}</dt>

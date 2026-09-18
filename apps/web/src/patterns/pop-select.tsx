@@ -138,8 +138,16 @@ export const PopSelect = forwardRef<HTMLButtonElement, PopSelectProps>(function 
    *   (`flattenOptions`), 묶음 셋에 항목 예순이 든 목록도 `length` 가 3 이다. 그것을 짧다고
    *   보면 검색도 쪽 이동도 없이 «첫 다섯만» 보이고 나머지는 고를 길이 사라진다.
    */
-  /* ⚠ 스캔 목록은 짧아도 검색 줄을 세운다 — 감추면 찍어 넣을 칸이 없다. */
-  const isShortList = flatOptions.length <= PAGE_SIZE && !scannable;
+  const isShortList = flatOptions.length <= PAGE_SIZE;
+  /*
+   * ⭐ **스캔 목록은 짧아도 검색 줄을 세운다** — 감추면 찍어 넣을 칸이 없다.
+   *
+   * ⛔ **쪽 이동은 함께 켜지 «않는다»**(리뷰 지적). 한때 `isShortList` 자체에 `&& !scannable` 을
+   *    붙였는데, 그 값이 검색 줄과 쪽 이동 줄 **둘 다**를 통제한다 — 후보가 둘뿐인 목록에
+   *    양쪽 다 눌리지 않는 [페이지 위]·[페이지 아래]가 함께 섰다(실측). 위 규율이 지우려던
+   *    바로 그 모양이라, 두 자리를 가르고 이름도 뜻대로 붙인다.
+   */
+  const showSearch = !isShortList || scannable;
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const currentPage = Math.min(page, totalPages - 1);
   const visibleOptions = filtered.slice(currentPage * PAGE_SIZE, (currentPage + 1) * PAGE_SIZE);
@@ -170,6 +178,19 @@ export const PopSelect = forwardRef<HTMLButtonElement, PopSelectProps>(function 
   }, [scannable, isOpen]);
 
   /*
+   * 타이머 «안»에서 읽을 최신값.
+   *
+   * ⛔ **후보와 `choose` 를 의존성에 넣지 않는다**(리뷰 지적). `flatOptions` 는 부르는 쪽이
+   *    `options` 를 인라인 배열로 만들면 **매 렌더 새 값**이고(`screen.tsx` 가 그렇다),
+   *    `choose` 도 렌더마다 새로 만들어진다 — 의존성에 넣으면 타이머가 **렌더마다 다시 서서**
+   *    아래 「멎은 뒤에 잰다」가 무너진다. 렌더가 `SCAN_IDLE_MS` 보다 잦아지면 자동 선택이
+   *    영영 뜨지 않는다.
+   * ⭐ ref 로 넘기면 타이머는 **검색어가 바뀔 때만** 다시 서고, 터질 때는 늘 최신 후보를 본다.
+   */
+  const latest = useRef({ flatOptions, choose });
+  latest.current = { flatOptions, choose };
+
+  /*
    * ⭐ **값이 후보 하나와 «정확히» 같아지면 스스로 고른다.** 찍고 나서 또 눌러야 하면 스캔으로
    *    얻는 것이 없다.
    *
@@ -183,7 +204,7 @@ export const PopSelect = forwardRef<HTMLButtonElement, PopSelectProps>(function 
     if (!scannable || !isOpen || normalizedQuery === '') return;
 
     const timer = setTimeout(() => {
-      const exact = flatOptions.filter(
+      const exact = latest.current.flatOptions.filter(
         (option) =>
           option.label.trim().toLocaleLowerCase('ko-KR') === normalizedQuery ||
           option.value.trim().toLocaleLowerCase('ko-KR') === normalizedQuery,
@@ -194,17 +215,13 @@ export const PopSelect = forwardRef<HTMLButtonElement, PopSelectProps>(function 
       const [only] = exact;
       if (only === undefined || only.disabled === true) return;
 
-      choose(only);
+      latest.current.choose(only);
     }, SCAN_IDLE_MS);
 
     return () => {
       clearTimeout(timer);
     };
-    /*
-     * ⚠ `choose` 는 매 렌더 새로 만들어져 의존성에 넣으면 타이머가 매번 다시 선다 — 그러면
-     *   「멎은 뒤에 잰다」가 성립하지 않는다. 값이 바뀔 때만 다시 건다.
-     */
-  }, [scannable, isOpen, normalizedQuery, flatOptions]);
+  }, [scannable, isOpen, normalizedQuery]);
 
   return (
     <div className="pop-select">
@@ -277,7 +294,7 @@ export const PopSelect = forwardRef<HTMLButtonElement, PopSelectProps>(function 
            */
           closeOnBackdropClick={false}
         >
-          {!isShortList && (
+          {showSearch && (
             <div className="pop-select-dialog__search">
               <TextField
                 ref={searchRef}

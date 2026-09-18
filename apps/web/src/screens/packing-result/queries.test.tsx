@@ -59,8 +59,18 @@ describe('packing-result queries — 완전 조회', () => {
 
   it('출하대상을 고르면 미포장 배분을 page.total까지 모두 읽는다', async () => {
     const allocationPages: number[] = [];
+    const shipmentRequests: URL[] = [];
     const { result } = renderHookWithProviders(useShipmentSelection, {
       fetch: createStubFetch([
+        {
+          /* 불리면 안 되는 경로 — 불리는지 보려고 둔다(아래 단언). */
+          match: (request) => new URL(request.url).pathname === '/logistics/shipments',
+          respond: (request) => {
+            shipmentRequests.push(new URL(request.url));
+
+            return jsonResponse({ items: [], page: { page: 1, size: 50, total: 0 } });
+          },
+        },
         {
           match: (request) =>
             new URL(request.url).pathname === '/logistics/shipment-lot-allocations',
@@ -97,8 +107,11 @@ describe('packing-result queries — 완전 조회', () => {
      * ⛔ **출하를 다시 조회하지 않는다**(#1351). 고른 것이 이미 목록의 한 행이라 같은 값을
      *    서버에 한 번 더 물을 이유가 없다 — 물으면 목록과 다른 필터로 나가던 옛 스캔 조회가
      *    되살아난다.
+     *
+     * ⚠ 한때 이 자리가 `expect(allocationPages).not.toContain(0)` 이었다 — 쪽 번호는 늘 1 이상이라
+     *   **실패할 수 없는 단언**이었고, 주석이 말하는 것을 재지 못했다(리뷰 지적).
      */
-    expect(allocationPages).not.toContain(0);
+    expect(shipmentRequests).toHaveLength(0);
   });
 
   it('출하 진행 배분은 page.total까지 모두 읽는다', async () => {
