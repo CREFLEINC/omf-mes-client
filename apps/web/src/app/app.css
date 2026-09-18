@@ -5136,8 +5136,45 @@ dl.filter-bar.approval-inbox-detail-facts {
   letter-spacing: var(--type-body-sm-tracking);
 }
 
+/*
+ * 아이콘과 글자의 세로 가운데를 맞춘다(한 줄·두 줄 모두). DS 배너는 아이콘을 위에서 4px 내려 놓아
+ * (margin-top: --space-1) 20px 글줄보다 아이콘 중심이 4px 아래로 처진다 — DS 쪽 원인이라 여기서만 덮는다.
+ */
+.warehouse-location-lookup-notice > [role] {
+  align-items: center;
+}
+
 .warehouse-location-lookup-notice > [role] > :first-child {
+  margin-top: 0;
   font-size: 18px;
+}
+
+/*
+ * 라벨 줄 — 라벨(+필수 표시)과 안내 칩을 한 줄에, 세로 가운데로. 줄 높이를 라벨 층(16px)에 묶어
+ * 칩이 있어도 옆 칸과 입력 상자 위치가 같다(선례: `.lot-status-transition-period-label`). 칩은 자르지 않는다.
+ */
+.warehouse-location-field-label {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  height: 16px;
+}
+
+.warehouse-location-field-label > * {
+  flex: none;
+}
+
+/* 토글 칸 — 라벨 오른쪽에 토글, 한 줄 세로 가운데. 칸 높이는 다른 입력칸과 같다. */
+.warehouse-location-form .form-grid .warehouse-location-switch-cell {
+  flex-direction: row;
+  align-items: center;
+  justify-content: flex-start;
+  gap: var(--space-3);
+  min-height: var(--control-height-md);
+}
+
+.warehouse-location-switch-cell > .field-label {
+  margin-bottom: 0;
 }
 
 /* 세로 간격을 한 단계 좁힌다(16px → 12px). 가로 간격은 그대로 둔다. */
@@ -5163,9 +5200,6 @@ dl.filter-bar.approval-inbox-detail-facts {
   gap: var(--space-2);
 }
 
-.warehouse-location-form-actions .form-actions-secondary .field-note {
-  margin-top: 0;
-}
 
 .warehouse-location-label-grid {
   display: grid;

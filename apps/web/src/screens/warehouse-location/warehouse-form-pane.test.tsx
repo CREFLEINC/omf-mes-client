@@ -89,14 +89,18 @@ describe('WarehouseFormPane', () => {
   it('신규 등록 모드가 아니면 공장을 바꿀 수 없고 사유가 보인다', () => {
     renderPane({ mode: 'edit' });
 
+    const reason = '공장은 등록 후 변경할 수 없습니다.';
     expect(screen.getByLabelText('공장')).toBeDisabled();
-    expect(screen.getByText('공장은 등록 후 변경할 수 없습니다.')).toBeInTheDocument();
+    expect(screen.getByLabelText('공장')).toHaveAccessibleDescription(reason);
+    // 안내는 칸 아래가 아니라 라벨 줄에 둔다(omf-all-around#17 3차).
+    expect(screen.getByText(reason).closest('.field-label')).not.toBeNull();
   });
 
-  it('신규 등록 모드에서는 공장을 고를 수 있다', () => {
+  it('신규 등록 모드에서는 공장을 고를 수 있고 고정 안내가 없다', () => {
     renderPane({ mode: 'create' });
 
     expect(screen.getByLabelText('공장')).not.toBeDisabled();
+    expect(screen.queryByText('공장은 등록 후 변경할 수 없습니다.')).not.toBeInTheDocument();
   });
 
   it('배너 슬롯에 넘긴 노드를 상단에 렌더한다', () => {

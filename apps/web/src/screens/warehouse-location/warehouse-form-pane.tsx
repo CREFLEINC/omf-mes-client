@@ -50,6 +50,8 @@ export interface SelectFieldProps {
   note?: string;
   /** 값이 비었을 때 선택칸 안에 보일 안내. 값·검증에는 영향이 없다. */
   placeholder?: string;
+  /** 라벨 옆 안내 칩(info). note와 달리 칸 아래가 아니라 라벨 줄에 둔다. */
+  labelHint?: string;
 }
 
 export const SelectField = ({
@@ -62,10 +64,15 @@ export const SelectField = ({
   error,
   note,
   placeholder,
+  labelHint,
 }: SelectFieldProps) => {
   const id = useId();
   const describedById = `${id}-note`;
+  const hintId = `${id}-hint`;
   const description = error ?? note;
+  const describedBy =
+    [labelHint ? hintId : null, description ? describedById : null].filter(Boolean).join(' ') ||
+    undefined;
 
   return (
     <div className="field-cell">
@@ -74,9 +81,17 @@ export const SelectField = ({
        * 밖에 두면 .field-label이 블록 서식이라 별도 줄로 떨어지고,
        * 안에 넣으면 접근성 이름이 「이름 *」이 되어 라벨 조회가 깨진다.
        */}
-      <span className="field-label">
-        <label htmlFor={id}>{label}</label>
-        {required && <span aria-hidden="true"> *</span>}
+      <span className="field-label warehouse-location-field-label">
+        <span>
+          <label htmlFor={id}>{label}</label>
+          {required && <span aria-hidden="true"> *</span>}
+        </span>
+        {/* Lot Status 전이 화면 「최근 전이 기간」과 같은 라벨 옆 안내 칩 — 문구는 자르지 않는다. */}
+        {labelHint && (
+          <Chip id={hintId} size="sm" status="info">
+            {labelHint}
+          </Chip>
+        )}
       </span>
       <Select
         id={id}
@@ -87,7 +102,7 @@ export const SelectField = ({
         placeholder={placeholder}
         invalid={Boolean(error)}
         aria-required={required || undefined}
-        aria-describedby={description ? describedById : undefined}
+        aria-describedby={describedBy}
       />
       {description && (
         <span id={describedById} className={error ? 'field-error' : 'field-note'}>
@@ -130,7 +145,7 @@ export const WarehouseFormPane = ({
           value={values.plantId}
           onChange={(value) => onChange({ plantId: value })}
           disabled={mode === 'edit'}
-          note={mode === 'edit' ? t.actionReasons.plantFixedAfterCreate : undefined}
+          labelHint={mode === 'edit' ? t.actionReasons.plantFixedAfterCreate : undefined}
         />
 
         <SelectField
@@ -173,10 +188,10 @@ export const WarehouseFormPane = ({
         />
 
         {/*
-         * 토글도 다른 칸처럼 「라벨 위 · 컨트롤 아래」로 둔다(omf-all-around#17) — 토글 옆 글자로
-         * 두면 이 줄만 모양이 달라 폼 정렬이 깨져 보였다. 켬/끔 글자는 붙이지 않는다.
+         * 토글은 라벨 바로 오른쪽에 한 줄로 두고 세로 가운데를 맞춘다(사용자 지시 2026-09-18 ·
+         * omf-all-around#17). 칸 자리·순서는 그대로다. 켬/끔 글자는 붙이지 않는다.
          */}
-        <div className="field-cell">
+        <div className="field-cell warehouse-location-switch-cell">
           <span className="field-label" id={externalLabelId}>
             {t.fields.isExternal}
           </span>
@@ -187,7 +202,7 @@ export const WarehouseFormPane = ({
           />
         </div>
 
-        <div className="field-cell">
+        <div className="field-cell warehouse-location-switch-cell">
           <span className="field-label" id={defectLabelId}>
             {t.fields.isDefect}
           </span>
@@ -239,9 +254,10 @@ export const WarehouseFormPane = ({
           <Button variant="outlined" disabled aria-describedby={historyNoteId}>
             {t.actions.changeHistory}
           </Button>
-          <span id={historyNoteId} className="field-note">
+          {/* 공장 안내와 같은 안내 칩 — 버튼의 설명(aria-describedby)으로 계속 잇는다. */}
+          <Chip id={historyNoteId} size="sm" status="info">
             {t.actionReasons.changeHistoryUnavailable}
-          </span>
+          </Chip>
         </div>
         <Button variant="outlined" disabled={!isDirty} onClick={onCancel}>
           {messages.common.cancel}
