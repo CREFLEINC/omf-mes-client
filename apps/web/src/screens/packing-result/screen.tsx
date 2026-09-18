@@ -1,4 +1,5 @@
 import { AlertBanner, Button, Chip, Dialog } from '@crefle/web-ui';
+import type { ApiError } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { NumericKeypad } from '@omf-mes/ui';
 import { useId, useState } from 'react';
@@ -62,6 +63,15 @@ const HIDDEN_LOCK_REASONS: ReadonlySet<string> = new Set([
   t.locks.unitOpening,
   t.locks.gateChecking,
 ]);
+
+/**
+ * 확정 때 포장 만들기가 실패한 것을 안내 자리에 올릴 모양 — **서버 원문을 떼고 상태 코드만 남긴다**
+ * (사용자 지시 2026-09-18 · omf-all-around#5). 공용 배너가 상태 코드의 공통 문구를 낸다.
+ */
+const withoutServerText = (error: ApiError): ApiError =>
+  error.kind !== 'network' && error.status !== undefined
+    ? { kind: 'http', status: error.status }
+    : error;
 
 export const PackingResultScreen = () => {
   const titleId = useId();
@@ -133,6 +143,12 @@ export const PackingResultScreen = () => {
 
   const createUnit = useHandlingUnitCreate();
   const cancelUnit = useHandlingUnitCancel();
+  /*
+   * 확정이 그 자리에서 포장을 만들다 실패한 것 — 확정 실패와 같은 안내 자리에 올린다
+   * (사용자 지시 2026-09-18 · omf-all-around#5). 담는 동안의 자동 생성 실패는 여기 두지 않는다 —
+   * 누르지도 않은 확정의 실패처럼 보이기 때문이다.
+   */
+  const [unitCreateError, setUnitCreateError] = useState<Error | null>(null);
 
   const confirm = usePackingConfirm({
     shipmentId,
@@ -152,6 +168,7 @@ export const PackingResultScreen = () => {
       setQty('');
       /* 이 포장은 닫혔다 — 다음 포장은 새로 만든다. */
       setOpenUnit(null);
+      setUnitCreateError(null);
       setConfirmedNo(handlingUnit.handlingUnitNo);
     },
   });
@@ -274,7 +291,6 @@ export const PackingResultScreen = () => {
     workerNo: identity.workerNo,
     shipmentId,
     warehouseId,
-    hasOpenUnit: openUnit !== null,
     isOpeningUnit: createUnit.isPending,
     handlingUnitTypeCode,
     lines,
@@ -397,7 +413,15 @@ export const PackingResultScreen = () => {
            * ⛔ **「최신 불러오기」를 주지 않는다.** 되돌릴 수 없는 쓰기라(§5-6 포장 해체 없음)
            *   다시 불러올 편집본이 이 화면에 없다 — `onReload` 를 비워 둔다.
            */
-          <SaveErrorBanner error={confirm.isError ? toApiError(confirm.error) : null} />
+          <SaveErrorBanner
+            error={
+              confirm.isError
+                ? toApiError(confirm.error)
+                : unitCreateError !== null
+                  ? withoutServerText(toApiError(unitCreateError))
+                  : null
+            }
+          />
         )}
 
         {/*
@@ -763,9 +787,32 @@ export const PackingResultScreen = () => {
                   return;
                 }
 
-                if (openUnit === null) return;
+                const workerNo = identity.workerNo;
 
-                confirm.mutate({ handlingUnit: openUnit, lines, workerNo: identity.workerNo });
+                /*
+                 * ⭐ **포장이 아직 없으면 여기서 만들고 이어서 담는다**(사용자 지시 2026-09-18 ·
+                 *    omf-all-around#5). 담는 동안의 자동 생성이 실패해도 담긴 것이 있으면 확정할 수
+                 *    있어야 한다. ⛔ 포장이 없다고 조용히 되돌아오지 않는다.
+                 *    생성은 담는 동안과 «같은» 훅을 쓴다 — 보낼 값이 그대로면 앞 시도의 멱등 키를
+                 *    다시 써서, 앞 요청이 서버에 닿아 있었더라도 빈 포장이 두 벌 생기지 않는다.
+                 */
+                if (openUnit !== null) {
+                  confirm.mutate({ handlingUnit: openUnit, lines, workerNo });
+                  return;
+                }
+
+                confirm.reset();
+                setUnitCreateError(null);
+                createUnit.mutate(
+                  { handlingUnitTypeCode, warehouseId, workerNo },
+                  {
+                    onSuccess: (handlingUnit) => {
+                      setOpenUnit(handlingUnit);
+                      confirm.mutate({ handlingUnit, lines, workerNo });
+                    },
+                    onError: setUnitCreateError,
+                  },
+                );
               }}
             >
               {t.confirmDialog.confirm}

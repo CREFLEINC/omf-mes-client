@@ -31,6 +31,9 @@ export const workOrder: Translated<typeof ko.workOrder> = {
       failed: 'Không tải được danh sách lựa chọn.',
       truncated: 'Chỉ hiển thị trang đầu của danh sách lựa chọn.',
       noPlant: 'P/O không có nhà máy nên không tải được danh sách lựa chọn.',
+      workerTruncated: 'Chỉ hiển thị một phần công nhân. Hãy tìm theo mã hoặc tên công nhân.',
+      searchEmpty: 'Không có kết quả tìm kiếm.',
+      searchTruncated: 'Chỉ hiển thị một phần kết quả. Hãy nhập thêm từ khóa.',
     },
   },
   screen: {
@@ -141,6 +144,7 @@ export const workOrder: Translated<typeof ko.workOrder> = {
       defaultFgLocation: 'Vị trí thành phẩm mặc định',
       defaultScrapLocation: 'Vị trí phế liệu mặc định',
     },
+    workerSearch: { label: 'Tìm người phụ trách', placeholder: 'Tìm theo mã hoặc tên công nhân' },
     materialInfo: 'Phân bổ vật tư không thay đổi ở màn hình này.',
     empty: {
       notSelectedTitle: 'Hãy chọn lệnh sản xuất để phân bổ nguồn lực.',
