@@ -43,7 +43,9 @@ export const ReissueDialog = ({
   <Dialog
     open
     onClose={onClose}
-    size="sm"
+    /* ⭐ 크게 띄우고 X 는 두지 않는다 — 닫기는 [취소] 하나다(사용자 지시 2026-09-18). */
+    size="lg"
+    showCloseButton={false}
     title={t.title}
     footer={
       <>
