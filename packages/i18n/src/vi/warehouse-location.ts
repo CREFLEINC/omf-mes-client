@@ -21,8 +21,6 @@ export const warehouseLocation: Translated<typeof ko.warehouseLocation> = {
     activate: 'Dùng lại',
   },
   actionReasons: {
-    addChildNeedsSingleSelection: 'Để thêm Location cấp dưới, hãy chọn 1 Location cấp trên.',
-    locationDepthLimitReached: 'Theo mức quản lý, không thể thêm dưới Location đã chọn nữa.',
     locationHierarchyUnavailable: 'Tải xong phân cấp Location rồi mới thêm được.',
     generateLabelNeedsSelection: 'Hãy chọn ít nhất một Location.',
     changeHistoryUnavailable: 'Hiện chưa cung cấp lịch sử thay đổi.',

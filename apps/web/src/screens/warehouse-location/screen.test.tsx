@@ -718,10 +718,9 @@ describe('WarehouseLocationScreen — Location 계층 조회', () => {
     await user.click(within(panel).getAllByRole('checkbox')[2]!);
     const addChild = within(panel).getByRole('button', { name: '하위 Location 추가' });
 
+    // 활성 조건(깊이 한도)은 그대로이고, 사유 문구는 내지 않는다(omf-all-around#17).
     expect(addChild).toBeDisabled();
-    expect(addChild).toHaveAccessibleDescription(
-      '선택한 Location 아래에는 관리 수준상 더 추가할 수 없습니다.',
-    );
+    expect(addChild).not.toHaveAttribute('aria-describedby');
   });
 
   it('접기 버튼이 실제로 동작한다', async () => {

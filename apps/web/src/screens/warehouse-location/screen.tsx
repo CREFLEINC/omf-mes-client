@@ -837,10 +837,6 @@ export const WarehouseLocationScreen = () => {
     selectedLocationRow !== undefined &&
     selectedLocationRow.depth < maxLocationDepth &&
     locationHierarchy.data !== undefined;
-  const addChildDisabledReason =
-    selectedLocationIds.length !== 1
-      ? t.actionReasons.addChildNeedsSingleSelection
-      : t.actionReasons.locationDepthLimitReached;
 
   const parentOptions = allLocationRows
     .filter(
@@ -1008,7 +1004,6 @@ export const WarehouseLocationScreen = () => {
                   addRootDisabledReason={t.actionReasons.locationHierarchyUnavailable}
                   onAddRoot={() => openCreateLocation(null)}
                   canAddChild={canAddChildLocation}
-                  addChildDisabledReason={addChildDisabledReason}
                   onAddChild={() => openCreateLocation(selectedLocationId)}
                   onEdit={handleEditLocation}
                   onGenerateLabels={() =>

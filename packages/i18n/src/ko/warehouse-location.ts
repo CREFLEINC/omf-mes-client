@@ -14,8 +14,6 @@ export const warehouseLocation = {
     activate: '다시 사용',
   },
   actionReasons: {
-    addChildNeedsSingleSelection: '하위 Location을 추가하려면 상위 Location을 1개 선택해 주세요.',
-    locationDepthLimitReached: '선택한 Location 아래에는 관리 수준상 더 추가할 수 없습니다.',
     locationHierarchyUnavailable: 'Location 계층을 불러온 뒤 추가할 수 있습니다.',
     generateLabelNeedsSelection: 'Location을 하나 이상 선택해 주세요.',
     /* 개발 진행 상황이 아니라 지금 되는지만 말한다(omf-all-around#17). */

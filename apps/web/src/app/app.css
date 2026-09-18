@@ -5243,10 +5243,11 @@ dl.filter-bar.approval-inbox-detail-facts {
   margin-left: auto;
 }
 
-/* 선택한 Location 대상 작업 줄 — 얇은 구분선 아래, 단추 + 사유 도움말. 카드를 나누지 않는다. */
+/* 선택한 Location 대상 작업 줄 — 얇은 구분선 아래, 오른쪽 끝에 사유 도움말 + 단추. 카드를 나누지 않는다. */
 .warehouse-location-location-selection {
   display: flex;
   flex-wrap: wrap;
+  justify-content: flex-end;
   align-items: center;
   gap: var(--space-2);
   margin-bottom: var(--space-3);
@@ -5263,6 +5264,14 @@ dl.filter-bar.approval-inbox-detail-facts {
 .warehouse-location-location-table th,
 .warehouse-location-location-table td:last-child {
   white-space: nowrap;
+}
+
+/*
+ * 선택 열 — 머리 체크박스도 본문처럼 가운데로. DS 는 선택 칸을 가운데로 두지만(.selectCell) 머리의
+ * `thead th { text-align: left }` 가 더 구체적이라 머리만 왼쪽으로 밀린다(DS 쪽 원인 · 이 화면에서만 덮는다).
+ */
+.warehouse-location-location-table thead th:first-child {
+  text-align: center;
 }
 
 /* 긴 위치 코드가 접히면 왼쪽 정렬을 유지한다(계층 들여쓰기와 같은 기준선). */

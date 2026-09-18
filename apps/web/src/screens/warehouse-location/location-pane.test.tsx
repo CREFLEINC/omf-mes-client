@@ -33,7 +33,6 @@ const renderPane = (overrides: Partial<Parameters<typeof LocationPane>[0]> = {})
       addRootDisabledReason="Location을 추가할 수 없습니다."
       onAddRoot={onAddRoot}
       canAddChild={false}
-      addChildDisabledReason="하위 Location을 추가하려면 상위 Location을 1개 선택해 주세요."
       onAddChild={onAddChild}
       onEdit={onEdit}
       onGenerateLabels={onGenerateLabels}
@@ -111,16 +110,14 @@ describe('LocationPane', () => {
     expect(onEdit).toHaveBeenCalledWith(expect.objectContaining({ locationId: 2002 }));
   });
 
-  it('선택이 없으면 하위 추가가 비활성이고 사유가 보인다', () => {
+  // 하위 추가는 사유 문구 없이 비활성만 둔다(사용자 지시 2026-09-18 · omf-all-around#17).
+  it('선택이 없으면 하위 추가가 비활성이고 사유 문구는 없다', () => {
     renderPane({ selectedIds: [] });
 
-    const reason = '하위 Location을 추가하려면 상위 Location을 1개 선택해 주세요.';
     const button = screen.getByRole('button', { name: '하위 Location 추가' });
 
     expect(button).toBeDisabled();
-    expect(screen.getByText(reason)).toBeInTheDocument();
-    // 화면에 보이는 것과 그 버튼의 설명인 것은 별개 조건이다. 배치를 바꿔도 연결이 끊기면 안 된다.
-    expect(button).toHaveAccessibleDescription(reason);
+    expect(button).not.toHaveAttribute('aria-describedby');
   });
 
   it('선택이 2건 이상이면 하위 추가가 비활성이다', () => {
