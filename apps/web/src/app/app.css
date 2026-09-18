@@ -1814,24 +1814,37 @@ main > * + * {
   letter-spacing: var(--type-title-lg-tracking);
 }
 
+/*
+ * 조회 조건은 공용 필터 바(규범 2·2-1)를 그대로 쓴다 — 칸마다 제 내용 폭을 갖고 왼쪽부터 쌓이며,
+ * 좁아지면 줄을 넘긴다. 예전에는 4칸을 카드 폭에 균등하게 늘려 값보다 칸이 훨씬 넓었다
+ * (사용자 지시 2026-09-18). 칸 폭은 아래 칸별 규칙이 정한다.
+ */
 .filter-bar.lot-status-transition-filter {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
-  gap: var(--space-4);
   margin-bottom: 0;
 }
 
-.lot-status-transition-filter > *,
-.lot-status-transition-filter .field-cell {
-  min-width: 0;
-}
-
-.lot-status-transition-filter .field-cell {
+/* 기간 — 날짜 범위(YYYY-MM-DD ~ YYYY-MM-DD)의 내용 폭. 라벨 줄이 더 길면 그 폭에 맞춰 입력이 늘어난다. */
+.lot-status-transition-period {
   align-items: stretch;
 }
 
-.lot-status-transition-period {
-  grid-column: span 2;
+/*
+ * 자재 — 선택값이 「코드 · 품목명」이라 길다. 최소 폭은 규범 3-2(.wide-select 13rem)를 따르고,
+ * 긴 품목명이 줄 전체를 차지하지 않게 상한을 둔다(20rem — 10자리 코드와 품목명 앞부분이 보이는 폭).
+ * 넘치는 이름은 트리거가 말줄임으로 자른다.
+ */
+.field-cell.lot-status-transition-item-filter {
+  max-width: 20rem;
+}
+
+/*
+ * 품질 상태 — 값이 짧다(정상·불량·검사 대기·폐기). 규범 3-2와 같은 식으로 가장 긴 값 「검사 대기」
+ * 5자를 담는 트리거 폭을 도출한다: 16 + 80(16px × 5) + 12 + 20 + 16 = 144px = 9rem.
+ * 이보다 좁으면 「전체」가 골라진 상태에서 목록을 열 때 「검사 대기」가 잘린다.
+ */
+.field-cell.lot-status-transition-status-filter {
+  align-items: stretch;
+  min-width: 9rem;
 }
 
 .lot-status-transition-period > .field-error {
@@ -1858,13 +1871,6 @@ main > * + * {
 
 .lot-status-transition-period-label > .field-label {
   margin-bottom: 0;
-}
-
-/* 조회·초기화는 조건 바로 아래 오른쪽 — 설명 줄이 사이에 끼지 않게 조건과 붙여 둔다. */
-.filter-bar.lot-status-transition-filter > .lot-status-transition-filter-actions {
-  grid-column: 1 / -1;
-  justify-content: flex-end;
-  margin: 0;
 }
 
 /* 조건과 결과의 경계 — 카드를 쪼개지 않고 선 하나와 작은 머리로 가른다. */
@@ -2040,16 +2046,6 @@ main > * + * {
   text-decoration: none;
 }
 
-@media (min-width: 1100px) {
-  .filter-bar.lot-status-transition-filter {
-    grid-template-columns: minmax(24rem, 30rem) repeat(3, minmax(9.5rem, 1fr));
-  }
-
-  .lot-status-transition-period {
-    grid-column: auto;
-  }
-}
-
 @media (min-width: 1440px) {
   .lot-status-transition-detail-grid {
     grid-template-columns: minmax(24rem, 4fr) minmax(32rem, 5fr);
@@ -2057,10 +2053,6 @@ main > * + * {
 }
 
 @media (max-width: 720px) {
-  .lot-status-transition-period {
-    grid-column: auto;
-  }
-
   .lot-status-transition-list-footer {
     align-items: stretch;
     flex-direction: column;

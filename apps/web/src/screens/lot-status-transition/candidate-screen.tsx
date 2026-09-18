@@ -142,6 +142,8 @@ const formatDateTime = (value: string | undefined): string => {
 };
 
 interface FilterSelectProps {
+  /** 칸의 폭 규칙 — 값 길이가 다른 두 선택칸(자재·품질 상태)이 서로 다른 폭을 갖게 한다. */
+  cellClassName: string;
   disabled: boolean;
   label: string;
   options: { value: string; label: string }[];
@@ -149,10 +151,17 @@ interface FilterSelectProps {
   onChange: (value: string) => void;
 }
 
-const FilterSelect = ({ disabled, label, options, value, onChange }: FilterSelectProps) => {
+const FilterSelect = ({
+  cellClassName,
+  disabled,
+  label,
+  options,
+  value,
+  onChange,
+}: FilterSelectProps) => {
   const id = useId();
   return (
-    <div className="field-cell wide-select">
+    <div className={`field-cell ${cellClassName}`}>
       <label className="field-label" htmlFor={id}>
         {label}
       </label>
@@ -361,6 +370,7 @@ export const LotStatusTransitionCandidateScreen = () => {
             clearLabel={messages.common.clear}
           />
           <FilterSelect
+            cellClassName="wide-select lot-status-transition-item-filter"
             disabled={confirmationPinned}
             label={t.filters.item}
             options={[{ value: '', label: t.filters.all }, ...itemOptions]}
@@ -368,13 +378,15 @@ export const LotStatusTransitionCandidateScreen = () => {
             onChange={(itemId) => setDraft((current) => ({ ...current, itemId }))}
           />
           <FilterSelect
+            cellClassName="lot-status-transition-status-filter"
             disabled={confirmationPinned}
             label={t.filters.status}
             options={[{ value: '', label: t.filters.all }, ...statusOptions]}
             value={draft.lotStatusCode}
             onChange={(lotStatusCode) => setDraft((current) => ({ ...current, lotStatusCode }))}
           />
-          <div className="form-actions lot-status-transition-filter-actions">
+          {/* 조회·초기화는 조건과 같은 줄 끝에 한 덩어리로 붙인다(규범 2-1) — 좁아지면 함께 넘어간다. */}
+          <div className="filter-actions field-cell-unlabeled">
             <Button variant="outlined" disabled={confirmationPinned} onClick={reset}>
               {t.filters.reset}
             </Button>
