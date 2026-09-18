@@ -24,7 +24,7 @@ describe('ReceiptSummaryPane', () => {
     expect(within(pane).getByText(t.summary.goodsReceiptNo)).toBeInTheDocument();
     expect(within(pane).getByText('GR-2026-900001')).toBeInTheDocument();
     expect(within(pane).getByText(WAREHOUSE_LABEL)).toBeInTheDocument();
-    expect(within(pane).getByText('2026-08-06 09:12')).toBeInTheDocument();
+    expect(within(pane).getByText('2026-08-06 07:12')).toBeInTheDocument();
     expect(within(pane).getByText('SAMPLE_GR_TYPE_A')).toBeInTheDocument();
     expect(within(pane).getByText('SAMPLE_GR_STATUS_A')).toBeInTheDocument();
   });

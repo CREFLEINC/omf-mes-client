@@ -416,7 +416,7 @@ describe('첫 진입', () => {
     expect(table.getByText('INVENTORY_ADJUSTMENT')).toBeInTheDocument();
     expect(table.getAllByText('합성 상신자1').length).toBe(2);
     /* 상신 일시는 **시각까지** 보인다 — 날짜만 그리면 여기서 멈춘다. */
-    expect(table.getByText('2026-08-06 14:20')).toBeInTheDocument();
+    expect(table.getByText('2026-08-06 12:20')).toBeInTheDocument();
     /*
      * 사유는 첫 줄만 온다.
      *
@@ -1410,7 +1410,7 @@ describe('고른 요청의 아래 구획', () => {
     const pane = await detailPane();
 
     expect(await pane.findByText(SAMPLE_DECISION_CODE_A)).toBeVisible();
-    expect(pane.getByText('2026-08-06 15:02')).toBeVisible();
+    expect(pane.getByText('2026-08-06 13:02')).toBeVisible();
     expect(pane.getByText('합성 결재 의견 하나')).toBeVisible();
   });
 

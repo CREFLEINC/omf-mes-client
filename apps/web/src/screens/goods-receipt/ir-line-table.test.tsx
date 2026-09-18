@@ -116,7 +116,7 @@ describe('IrLineTable — 고른 전표의 제목줄', () => {
 
     expect(within(summary).getByText('IR-2026-900001')).toBeInTheDocument();
     expect(within(summary).getByText('SAMPLE-PLT-01 · 합성 공장 가')).toBeInTheDocument();
-    expect(within(summary).getByText('2026-08-06 09:12')).toBeInTheDocument();
+    expect(within(summary).getByText('2026-08-06 07:12')).toBeInTheDocument();
   });
 
   it('거래명세서번호가 없으면 빈 값 표기를 낸다', () => {
@@ -171,12 +171,12 @@ describe('IrLineTable — 라인 표', () => {
       ],
     });
 
-    expect(screen.getByRole('button', { name: t.actions.selectLine(1) })).toHaveAccessibleDescription(
-      t.reasons.lineNoLot,
-    );
-    expect(screen.getByRole('button', { name: t.actions.selectLine(2) })).toHaveAccessibleDescription(
-      t.reasons.lineQtyNotPositive,
-    );
+    expect(
+      screen.getByRole('button', { name: t.actions.selectLine(1) }),
+    ).toHaveAccessibleDescription(t.reasons.lineNoLot);
+    expect(
+      screen.getByRole('button', { name: t.actions.selectLine(2) }),
+    ).toHaveAccessibleDescription(t.reasons.lineQtyNotPositive);
   });
 
   /* 사유 `id`가 줄마다 달라야 한다 — 같으면 HTML도 어긋나고 연결도 뒤섞인다. */
@@ -189,7 +189,9 @@ describe('IrLineTable — 라인 표', () => {
     });
 
     const ids = [1, 2].map((lineNo) =>
-      screen.getByRole('button', { name: t.actions.selectLine(lineNo) }).getAttribute('aria-describedby'),
+      screen
+        .getByRole('button', { name: t.actions.selectLine(lineNo) })
+        .getAttribute('aria-describedby'),
     );
 
     expect(ids[0]).not.toBeNull();
@@ -239,9 +241,7 @@ describe('IrLineTable — 라인 표', () => {
   it('고른 줄의 버튼은 해제로 바뀐다', () => {
     renderTable({ selectedLineId: 9401 });
 
-    expect(
-      screen.getByRole('button', { name: t.actions.deselectLine(1) }),
-    ).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: t.actions.deselectLine(1) })).toBeInTheDocument();
   });
 
   /*

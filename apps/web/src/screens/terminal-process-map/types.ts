@@ -1,6 +1,7 @@
 import type { components, TerminalRegistrationStatusCode } from '@omf-mes/api-client';
 
 import { ALL_CLOSED, FLAG_KEYS, type FlagKey } from './flags';
+import { formatPlantDateTime } from '../../patterns/plant-time';
 
 /**
  * W-CO-06 이 다루는 모양들.
@@ -88,10 +89,11 @@ const equipmentLabelOf = (source: Terminal): string | null => {
   return `${code} · ${name}`;
 };
 
-type TerminalWithRegistration = Terminal & Partial<{
-  registrationStatusCode: TerminalRegistrationStatusCode;
-  registrationConfirmedAt: string | null;
-}>;
+type TerminalWithRegistration = Terminal &
+  Partial<{
+    registrationStatusCode: TerminalRegistrationStatusCode;
+    registrationConfirmedAt: string | null;
+  }>;
 
 export const toTerminalView = (source: TerminalWithRegistration): TerminalView => ({
   terminalId: source.terminalId,
@@ -130,13 +132,7 @@ export const toTokenView = (source: TerminalRegistrationToken): TokenView => ({
   expiresAt: nullable(source.expiresAt),
 });
 
-const RFC3339_PATTERN = /^(\d{4}-\d{2}-\d{2})T(\d{2}:\d{2})/;
-
-/** 서버가 준 벽시계를 옮기지 않고 자른다. 알아볼 수 없으면 원문 그대로 낸다. */
+/** 서버가 준 시각을 공장 시각(`patterns/plant-time`)으로 보인다. 알아볼 수 없으면 원문 그대로 낸다. */
 export const formatMoment = (value: string): string => {
-  const matched = RFC3339_PATTERN.exec(value);
-
-  if (matched === null) return value;
-
-  return `${matched[1] ?? ''} ${matched[2] ?? ''}`;
+  return formatPlantDateTime(value) ?? value;
 };

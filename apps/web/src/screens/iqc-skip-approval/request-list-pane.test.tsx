@@ -180,10 +180,10 @@ describe('RequestListPane — 확정된 여섯 열', () => {
     const { container } = renderPane();
     const text = container.textContent ?? '';
 
-    expect(screen.getByText('2026-08-06 14:20')).toBeInTheDocument();
+    expect(screen.getByText('2026-08-06 12:20')).toBeInTheDocument();
     /* 앞자리 0이 붙는 시각도 그대로 읽힌다. */
-    expect(screen.getByText('2026-08-05 09:05')).toBeInTheDocument();
-    expect(text).toContain('18:40');
+    expect(screen.getByText('2026-08-05 07:05')).toBeInTheDocument();
+    expect(text).toContain('16:40');
   });
 
   /**

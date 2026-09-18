@@ -64,11 +64,15 @@ describe('readableName', () => {
 
 describe('formatDateTime', () => {
   it('연·월·일과 시·분을 낸다 — 같은 날의 앞뒤가 읽혀야 한다', () => {
-    expect(formatDateTime('2026-08-06T14:20:00+09:00')).toBe('2026-08-06 14:20');
+    expect(formatDateTime('2026-08-06T14:20:00+09:00')).toBe('2026-08-06 12:20');
   });
 
-  it('실행 환경 시간대로 옮기지 않는다 — 실려 온 시각 그대로다', () => {
-    expect(formatDateTime('2026-08-06T23:50:00+00:00')).toBe('2026-08-06 23:50');
+  /* 공장 시각(UTC+7)으로 낸다 — 보는 사람의 실행 환경 시간대와 무관하다(omf-all-around#20). */
+  it('같은 순간이면 offset이 달라도 같은 공장 시각이다 — 순간이 다르면 표기도 다르다', () => {
+    expect(formatDateTime('2026-08-06T23:50:00+00:00')).toBe('2026-08-07 06:50');
+    expect(formatDateTime('2026-08-07T08:50:00+09:00')).toBe('2026-08-07 06:50');
+    expect(formatDateTime('2026-08-07T06:50:00+07:00')).toBe('2026-08-07 06:50');
+    expect(formatDateTime('2026-08-06T23:50:00+09:00')).toBe('2026-08-06 21:50');
   });
 
   it('형식이 아니면 원문을 그대로 낸다 — 서버 값을 삼키지 않는다', () => {
@@ -87,7 +91,7 @@ describe('toRequestRow', () => {
     expect(row.targetName).toBe('합성 대상 문서 가');
     expect(row.reasonFirstLine).toBe('합성 사유 첫 줄');
     expect(row.requesterName).toBe('합성 상신자1');
-    expect(row.requestedAtText).toBe('2026-08-06 14:20');
+    expect(row.requestedAtText).toBe('2026-08-06 12:20');
   });
 
   it('행이 나르는 값에 내부 번호가 없다 — 고르는 데 쓰는 식별자 하나뿐이다', () => {
@@ -172,7 +176,7 @@ describe('toRequestDetailView', () => {
     expect(view.approvalRequestNo).toBe('SYNTH-REQ-001');
     expect(view.approvalTypeCode).toBe('GOODS_ISSUE_DISPOSAL');
     expect(view.requesterName).toBe('합성 상신자1');
-    expect(view.requestedAtText).toBe('2026-08-06 14:20');
+    expect(view.requestedAtText).toBe('2026-08-06 12:20');
     expect(view.statusCode).toBe('SAMPLE-STATUS-OPEN');
     expect(view.reasonLines).toHaveLength(2);
   });

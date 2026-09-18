@@ -23,7 +23,7 @@ const pad = (value: number, length: number): string => String(value).padStart(le
  * 그 시각의 알림을 본 것으로 읽으므로 **표기 자체를 내지 않는다.**
  *
  * ⚠ 카드의 발생 시각(`types.ts`의 `formatOccurredAt`)과 규율이 **반대**다. 그쪽은 서버가 준
- * 문자열의 벽시계를 그대로 자르고(옮기면 같은 알림이 사람마다 다른 시각으로 보인다), 여기는
+ * 순간을 공장 시각(`patterns/plant-time` · omf-all-around#20)으로 보이고, 여기는
  * 밀리초 수치를 **보는 사람의 시간대로** 읽는다 — 이 값은 *내가 언제 받았는가*라 보는 사람의
  * 시계가 정본이다.
  */

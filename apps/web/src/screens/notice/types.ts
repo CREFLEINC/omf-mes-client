@@ -1,4 +1,5 @@
 import type { components } from '@omf-mes/api-client';
+import { formatPlantDateTime } from '../../patterns/plant-time';
 
 /**
  * W-CO-04 가 다루는 모양들.
@@ -121,15 +122,9 @@ export const toAckView = (source: NoticeAcknowledgement): AckView => {
   };
 };
 
-const RFC3339_PATTERN = /^(\d{4}-\d{2}-\d{2})T(\d{2}:\d{2})/;
-
-/** 서버가 준 벽시계를 옮기지 않고 자른다. 알아볼 수 없으면 원문 그대로 낸다. */
+/** 서버가 준 시각을 공장 시각(`patterns/plant-time`)으로 보인다. 알아볼 수 없으면 원문 그대로 낸다. */
 export const formatMoment = (value: string): string => {
-  const matched = RFC3339_PATTERN.exec(value);
-
-  if (matched === null) return value;
-
-  return `${matched[1] ?? ''} ${matched[2] ?? ''}`;
+  return formatPlantDateTime(value) ?? value;
 };
 
 /** 게시 기간 표기. 종료일이 없으면 그 사실을 적는다 — 빈칸으로 두지 않는다. */

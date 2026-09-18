@@ -84,7 +84,7 @@ describe('NotificationCard', () => {
     renderCard();
 
     expect(screen.getByText('SYN-EVENT-01')).toBeInTheDocument();
-    expect(screen.getByText('08-17 14:05')).toBeInTheDocument();
+    expect(screen.getByText('08-17 12:05')).toBeInTheDocument();
     expect(screen.getByText('합성 알림 문구 가입니다.')).toBeInTheDocument();
   });
 
@@ -104,7 +104,7 @@ describe('NotificationCard', () => {
   it('시각에 원문을 함께 둔다 — 표기 조각만으로는 언제인지 되짚을 수 없다', () => {
     renderCard();
 
-    expect(screen.getByText('08-17 14:05')).toHaveAttribute(
+    expect(screen.getByText('08-17 12:05')).toHaveAttribute(
       'dateTime',
       '2026-08-17T14:05:00+09:00',
     );

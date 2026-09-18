@@ -2,6 +2,7 @@ import type { components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 
 import type { GroupBy } from './filters';
+import { formatPlantDateTime } from '../../patterns/plant-time';
 
 /**
  * W-05-08이 다루는 모양들.
@@ -193,21 +194,15 @@ export const toSummaryView = (source: DowntimeSummary, groupBy: GroupBy): Downti
   rows: toDistributionRows(source, groupBy),
 });
 
-const RFC3339_PATTERN = /^(\d{4}-\d{2}-\d{2})T(\d{2}:\d{2})/;
-
 /**
- * 서버가 준 시각을 「YYYY-MM-DD HH:mm」으로 자른다.
+ * 서버가 준 시각을 「YYYY-MM-DD HH:mm」(공장 시각)으로 보인다.
  *
- * ⭐ **옮기지 않고 자른다.** 이 값은 현장에서 설비가 선 시각이라 기록한 쪽의 벽시계가 정본이다 —
- * 보는 사람의 시간대로 옮기면 같은 구간이 사람마다 다른 시각으로 보인다.
+ * **공장 시각으로 보인다**(`patterns/plant-time` · omf-all-around#20). 보는 사람(실행 환경)의
+ * 시간대로 옮기지 않는다 — 서버가 UTC 로 보내므로 글자만 자르면 7시간 이르게 찍힌다.
  * 알아볼 수 없으면 원문을 그대로 낸다 — 잘라 내지 못한 값을 감추면 되짚을 단서가 사라진다.
  */
 export const formatMoment = (value: string): string => {
-  const matched = RFC3339_PATTERN.exec(value);
-
-  if (matched === null) return value;
-
-  return `${matched[1] ?? ''} ${matched[2] ?? ''}`;
+  return formatPlantDateTime(value) ?? value;
 };
 
 export const toIntervalView = (source: Downtime): DowntimeIntervalView => ({

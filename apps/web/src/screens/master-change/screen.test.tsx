@@ -640,7 +640,7 @@ describe('MasterChangeScreen — 변경 내용 창', () => {
 
     const before = requestsTo(requests, LIST_PATH).length;
 
-    await user.click(screen.getByRole('button', { name: '2026-08-04 09:12 변경 내용 보기' }));
+    await user.click(screen.getByRole('button', { name: '2026-08-04 07:12 변경 내용 보기' }));
 
     expect(screen.getByRole('dialog')).toBeInTheDocument();
     expect(requestsTo(requests, LIST_PATH)).toHaveLength(before);
@@ -653,7 +653,7 @@ describe('MasterChangeScreen — 변경 내용 창', () => {
     );
     await screen.findByText('SAMPLE_EVENT_A');
 
-    await user.click(screen.getByRole('button', { name: '2026-08-04 09:12 변경 내용 보기' }));
+    await user.click(screen.getByRole('button', { name: '2026-08-04 07:12 변경 내용 보기' }));
 
     const location = currentLocation();
     expect(location).toContain('sel=9001');
@@ -674,7 +674,7 @@ describe('MasterChangeScreen — 변경 내용 창', () => {
     const { user } = renderScreen([listRoute()], PERIOD_SEARCH);
     await screen.findByText('SAMPLE_EVENT_A');
 
-    await user.click(screen.getByRole('button', { name: '2026-08-04 09:12 변경 내용 보기' }));
+    await user.click(screen.getByRole('button', { name: '2026-08-04 07:12 변경 내용 보기' }));
     expect(currentLocation()).toContain('sel=9001');
 
     await user.click(screen.getByRole('dialog'));
@@ -695,7 +695,7 @@ describe('MasterChangeScreen — 변경 내용 창', () => {
     );
     await screen.findByText('SAMPLE_EVENT_A');
 
-    await user.click(screen.getByRole('button', { name: '2026-08-04 09:12 변경 내용 보기' }));
+    await user.click(screen.getByRole('button', { name: '2026-08-04 07:12 변경 내용 보기' }));
     await user.click(screen.getByRole('dialog'));
 
     expect(currentLocation()).not.toContain('sel=');
@@ -739,7 +739,7 @@ describe('MasterChangeScreen — 창 수명', () => {
     const { user } = renderScreen([filteringListRoute()], PERIOD_SEARCH);
     await screen.findByText('SAMPLE_EVENT_A');
 
-    await user.click(screen.getByRole('button', { name: '2026-08-04 09:12 변경 내용 보기' }));
+    await user.click(screen.getByRole('button', { name: '2026-08-04 07:12 변경 내용 보기' }));
     expect(screen.getByRole('dialog')).toBeInTheDocument();
 
     await user.click(screen.getByLabelText('대상 종류'));
@@ -757,7 +757,7 @@ describe('MasterChangeScreen — 창 수명', () => {
     );
     await screen.findByText('SAMPLE_EVENT_A');
 
-    await user.click(screen.getByRole('button', { name: '2026-08-04 09:12 변경 내용 보기' }));
+    await user.click(screen.getByRole('button', { name: '2026-08-04 07:12 변경 내용 보기' }));
     await user.click(screen.getByRole('button', { name: '다음' }));
 
     expect(currentLocation()).not.toContain('sel=');
@@ -804,7 +804,7 @@ describe('MasterChangeScreen — 창 수명', () => {
     );
     await screen.findByText('SAMPLE_EVENT_A');
 
-    await user.click(screen.getByRole('button', { name: '2026-08-04 09:12 변경 내용 보기' }));
+    await user.click(screen.getByRole('button', { name: '2026-08-04 07:12 변경 내용 보기' }));
     await user.click(screen.getByRole('dialog'));
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
 

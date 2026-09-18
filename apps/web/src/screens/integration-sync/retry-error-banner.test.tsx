@@ -35,7 +35,7 @@ describe('RetryErrorBanner — 충돌 3값', () => {
     );
 
     expect(
-      screen.getByText('이 건을 처리하는 작업이 11:20부터 진행 중입니다. 잠시 뒤 다시 시도하세요.'),
+      screen.getByText('이 건을 처리하는 작업이 09:20부터 진행 중입니다. 잠시 뒤 다시 시도하세요.'),
     ).toBeInTheDocument();
   });
 

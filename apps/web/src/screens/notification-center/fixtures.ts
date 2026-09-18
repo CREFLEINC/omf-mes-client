@@ -19,7 +19,10 @@ type NotificationEvent = components['schemas']['NotificationEvent'];
  * 알림이 있으며, 본문이 공백뿐인 알림이 있다.
  */
 
-/** 발생 시각의 기준 형태. **`+09:00`이 붙어 있다** — 시간대를 옮기지 않는 것이 규율이다. */
+/**
+ * 발생 시각의 기준 형태. **`+09:00`이 붙어 있다** — 표시는 같은 순간의 공장 시각(UTC+7)으로
+ * 옮긴다(`08-17 12:05`, omf-all-around#20).
+ */
 const BASE_NOTIFICATION: Notification = {
   notificationId: 7101,
   eventCode: 'SYN-EVENT-01',

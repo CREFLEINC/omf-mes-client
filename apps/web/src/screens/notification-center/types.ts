@@ -1,4 +1,5 @@
 import type { components } from '@omf-mes/api-client';
+import { toPlantDateTimeParts } from '../../patterns/plant-time';
 
 /**
  * 이 화면이 다루는 자료의 모양.
@@ -45,15 +46,12 @@ export interface NotificationListResult {
   page: PageMeta;
 }
 
-/** 계약의 date-time 문자열에서 표기용 조각을 뽑는다. */
-const RFC3339_PATTERN = /^\d{4}-(\d{2}-\d{2})T(\d{2}:\d{2})/;
-
 /**
  * 발생 시각 표기(`08-13 09:12`).
  *
- * **실행 환경 시간대로 옮기지 않는다.** 문자열에 실려 온 offset은 그 일이 실제로 일어난 곳의
- * 시각이고, 보는 사람의 시간대로 옮기면 같은 알림이 사람마다 다른 시각으로 보인다.
- * `new Date(value)`로 파싱해 다시 그리는 형태가 정확히 그 함정이다.
+ * **공장 시각으로 보인다**(`patterns/plant-time` · omf-all-around#20). 보는 사람(실행 환경)의
+ * 시간대로 옮기지 않는다 — 같은 알림이 사람마다 다른 시각으로 보이면 안 된다. 서버가 UTC 로
+ * 보내므로 글자만 자르면 7시간 이르게 찍힌다.
  *
  * **해를 적지 않는다.** 목록이 기간으로 좁혀져 있어 해가 갈리는 일이 드물고, 카드 머리줄에
  * 이벤트 코드·읽음 표시와 함께 서는 자리라 글자 수를 아낀다.
@@ -64,11 +62,9 @@ const RFC3339_PATTERN = /^\d{4}-(\d{2}-\d{2})T(\d{2}:\d{2})/;
  * 이 화면이 소유한다 — 다른 화면 슬라이스의 같은 이름 함수를 참조하지 않는다.
  */
 export const formatOccurredAt = (value: string): string => {
-  const matched = RFC3339_PATTERN.exec(value);
+  const parts = toPlantDateTimeParts(value);
 
-  if (matched === null) return value;
-
-  return `${matched[1] ?? ''} ${matched[2] ?? ''}`;
+  return parts === null ? value : `${parts.date.slice(5)} ${parts.time}`;
 };
 
 /**

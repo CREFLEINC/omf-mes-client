@@ -4,24 +4,27 @@ import { notificationFixture } from './fixtures';
 import { formatOccurredAt, toNotificationView } from './types';
 
 describe('formatOccurredAt', () => {
-  it('월·일과 시·분만 남긴다', () => {
-    expect(formatOccurredAt('2026-08-13T09:12:00+09:00')).toBe('08-13 09:12');
+  it('공장 시각(UTC+7)의 월·일과 시·분만 남긴다', () => {
+    expect(formatOccurredAt('2026-08-13T09:12:00+09:00')).toBe('08-13 07:12');
   });
 
-  it('실행 환경 시간대로 옮기지 않는다 — 온 문자열의 벽시계를 그대로 자른다', () => {
+  it('보는 사람의 시간대가 아니라 공장 시각으로 옮긴다 — 자정을 넘기면 날짜도 바뀐다', () => {
     /*
-     * ⭐ 이 값을 `new Date(...)`로 파싱해 다시 그리면 한국 자리에서 「08-14 08:30」이 된다.
-     * 같은 알림이 보는 사람의 시간대마다 다른 시각으로 보이면 안 된다.
+     * ⭐ 이 값을 보는 사람의 시간대로 그리면 한국 자리에서 「08-14 08:30」, 글자만 자르면
+     * 「08-13 23:30」이 된다. 같은 알림은 누가 보든 공장 시각 하나로 보여야 한다(omf-all-around#20).
      */
-    expect(formatOccurredAt('2026-08-13T23:30:00+00:00')).toBe('08-13 23:30');
+    expect(formatOccurredAt('2026-08-13T23:30:00+00:00')).toBe('08-14 06:30');
   });
 
   it('초와 밀리초가 붙어 있어도 분까지만 낸다', () => {
-    expect(formatOccurredAt('2026-08-13T09:12:34.567+09:00')).toBe('08-13 09:12');
+    expect(formatOccurredAt('2026-08-13T09:12:34.567+09:00')).toBe('08-13 07:12');
   });
 
-  it('시간대 표기가 Z여도 벽시계를 그대로 낸다', () => {
-    expect(formatOccurredAt('2026-08-13T23:30:00Z')).toBe('08-13 23:30');
+  it('시간대 표기가 Z여도 같은 순간이면 같은 공장 시각이다', () => {
+    expect(formatOccurredAt('2026-08-13T23:30:00Z')).toBe('08-14 06:30');
+    expect(formatOccurredAt('2026-08-13T23:30:00Z')).toBe(
+      formatOccurredAt('2026-08-14T08:30:00+09:00'),
+    );
   });
 
   it('형식이 아니면 원문을 그대로 낸다 — 서버가 보낸 값을 화면이 삼키지 않는다', () => {
@@ -45,7 +48,7 @@ describe('toNotificationView', () => {
   it('표기와 원문을 함께 든다 — 원문이 필요한 자리가 따로 있다', () => {
     const view = toNotificationView(notificationFixture());
 
-    expect(view.occurredAtText).toBe('08-17 14:05');
+    expect(view.occurredAtText).toBe('08-17 12:05');
   });
 
   it('빈 본문도 다듬지 않고 그대로 나른다 — 낙하 판정은 그리는 쪽이 한다', () => {

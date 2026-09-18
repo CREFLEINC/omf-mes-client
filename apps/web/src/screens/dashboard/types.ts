@@ -1,4 +1,5 @@
 import type { components } from '@omf-mes/api-client';
+import { formatPlantDateTime } from '../../patterns/plant-time';
 
 /**
  * W-CO-05가 다루는 모양들.
@@ -84,24 +85,19 @@ export interface DashboardView {
 }
 
 /**
- * 서버가 준 집계 기준 시각을 「YYYY-MM-DD HH:mm」으로 자른다.
+ * 서버가 준 집계 기준 시각을 「YYYY-MM-DD HH:mm」(공장 시각)으로 보인다.
  *
- * ⭐ **옮기지 않고 자른다.** 이 값은 *서버가 언제까지 세었는가*라 보내는 쪽의 벽시계가 정본이다 —
- * 보는 사람의 시간대로 옮기면 같은 집계가 사람마다 다른 시각으로 보인다. `notification-center`의
+ * **공장 시각으로 보인다**(`patterns/plant-time` · omf-all-around#20). 보는 사람(실행 환경)의
+ * 시간대로 옮기지 않는다 — 서버가 UTC 로 보내므로 글자만 자르면 7시간 이르게 찍힌다. `notification-center`의
  * 발생 시각과 같은 규율이고, 「내가 언제 받았는가」(그쪽 `as-of.ts`)와는 반대다.
  *
  * 모양이 다르면 `null`이다 — 알아볼 수 없는 값을 그럴듯하게 잘라 내면 틀린 시각이 조용히 선다.
  */
-const RFC3339_PATTERN = /^(\d{4}-\d{2}-\d{2})T(\d{2}:\d{2})/;
 
 export const formatAsOf = (value: string | null | undefined): string | null => {
   if (value === null || value === undefined) return null;
 
-  const matched = RFC3339_PATTERN.exec(value);
-
-  if (matched === null) return null;
-
-  return `${matched[1] ?? ''} ${matched[2] ?? ''}`;
+  return formatPlantDateTime(value);
 };
 
 /** 천 단위 자리 구분. 정수부에만 건다. */

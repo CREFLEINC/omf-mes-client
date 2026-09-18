@@ -1,3 +1,5 @@
+import { formatPlantDateTime } from '../../patterns/plant-time';
+
 /**
  * 표기 규칙 — **시각 하나**와 **자유 형식 값 하나**.
  *
@@ -6,21 +8,15 @@
  */
 
 /**
- * 계약의 date-time 문자열에서 표기용 조각을 뽑는다.
+ * `2026-08-04 09:12`. 값이 없거나 형식이 아니면 null — 호출부가 「—」로 바꾼다.
  *
- * **실행 환경 시간대로 옮기지 않는다.** 서버가 적어 보낸 벽시계 시각이 현장이 쓰는 시각이고,
- * 옮기면 같은 자료가 보는 사람마다 다른 시각으로 보인다.
+ * **공장 시각으로 보인다**(`patterns/plant-time` · omf-all-around#20). 보는 사람(실행 환경)의
+ * 시간대로 옮기지 않는다 — 서버가 UTC 로 보내므로 글자만 자르면 7시간 이르게 찍힌다.
  */
-const RFC3339_PATTERN = /^(\d{4}-\d{2}-\d{2})T(\d{2}:\d{2})/;
-
-/** `2026-08-04 09:12`. 값이 없거나 형식이 아니면 null — 호출부가 「—」로 바꾼다. */
 export const formatDateTime = (value: string | null | undefined): string | null => {
   if (value === null || value === undefined) return null;
 
-  const matched = RFC3339_PATTERN.exec(value);
-  if (matched === null) return null;
-
-  return `${matched[1] ?? ''} ${matched[2] ?? ''}`;
+  return formatPlantDateTime(value);
 };
 
 /**

@@ -40,9 +40,15 @@ describe('orderedRounds', () => {
 });
 
 describe('formatDateTime', () => {
-  it('실행 환경 시간대로 옮기지 않는다 — 옮기면 같은 일이 사람마다 다른 시각에 온 것으로 보인다', () => {
-    expect(formatDateTime('2026-08-30T10:00:00+09:00')).toBe('2026-08-30 10:00');
-    expect(formatDateTime('2026-08-30T10:00:00Z')).toBe('2026-08-30 10:00');
+  it('공장 시각(UTC+7)으로 낸다 — 실행 환경 시간대를 따르면 같은 일이 사람마다 다른 시각에 온 것으로 보인다(omf-all-around#20)', () => {
+    expect(formatDateTime('2026-08-30T10:00:00+09:00')).toBe('2026-08-30 08:00');
+    expect(formatDateTime('2026-08-30T10:00:00Z')).toBe('2026-08-30 17:00');
+  });
+
+  it('같은 순간이면 offset이 달라도 표기가 같다', () => {
+    expect(formatDateTime('2026-08-30T01:00:00Z')).toBe(
+      formatDateTime('2026-08-30T10:00:00+09:00'),
+    );
   });
 
   it('형식이 아니면 원문을 그대로 낸다 — 삼키면 없는 값과 못 알아본 값이 구분되지 않는다', () => {

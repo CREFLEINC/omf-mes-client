@@ -242,7 +242,7 @@ describe('toStepProgressViews — 단계 배열을 그릴 값으로', () => {
   it('결재 시각을 읽을 수 있는 표기로 낸다', () => {
     const views = toStepProgressViews([step({ decisionAt: '2026-08-08T15:02:00+09:00' })], []);
 
-    expect(views[0]?.decisionAtText).toBe('2026-08-08 15:02');
+    expect(views[0]?.decisionAtText).toBe('2026-08-08 13:02');
   });
 
   /* 이름을 못 풀면 **번호를 대신 내지 않는다**(`omf-mes#44`). */
@@ -293,7 +293,7 @@ describe('toRequestProgressView — 구획이 그리는 것 전부', () => {
 
   it('상신자와 상신일을 낸다', () => {
     expect(view.requesterLabel).toBe('합성 상신자 가');
-    expect(view.requestedAtText).toBe('2026-08-08 14:35');
+    expect(view.requestedAtText).toBe('2026-08-08 12:35');
   });
 
   /* 사유는 **전문**이고 줄바꿈이 유지된다 — 첫 줄만 내는 것은 목록의 일이다. */

@@ -189,7 +189,7 @@ describe('ProgressPane — 단계', () => {
     ]);
 
     expect(within(pane).getByText(SAMPLE_DECISION_CODE_A)).toBeVisible();
-    expect(within(pane).getByText('2026-08-06 15:02')).toBeVisible();
+    expect(within(pane).getByText('2026-08-06 13:02')).toBeVisible();
     expect(within(pane).getByText('합성 결재 의견')).toBeVisible();
   });
 
@@ -216,7 +216,7 @@ describe('ProgressPane — 단계', () => {
     expect(label?.textContent).toContain('합성 승인자1');
     for (const shown of [
       SAMPLE_DECISION_CODE_A,
-      '2026-08-06 15:02',
+      '2026-08-06 13:02',
       '합성 결재 의견',
       t.progress.mine,
     ]) {

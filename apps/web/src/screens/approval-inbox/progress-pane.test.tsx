@@ -164,7 +164,7 @@ describe('ProgressPane — 단계', () => {
     ]);
 
     expect(within(pane).getByText('APPROVED')).toBeVisible();
-    expect(within(pane).getByText('2026-08-06 15:02')).toBeVisible();
+    expect(within(pane).getByText('2026-08-06 13:02')).toBeVisible();
     expect(within(pane).getByText('합성 결재 의견')).toBeVisible();
   });
 
@@ -189,7 +189,7 @@ describe('ProgressPane — 단계', () => {
 
     /* 이름 칸은 승인자 이름만 맡는다 — 결과가 여기로 흘러들면 단계 이름이 문장이 된다. */
     expect(label?.textContent).toContain('합성 승인자1');
-    for (const shown of ['APPROVED', '2026-08-06 15:02', '합성 결재 의견', t.progress.mine]) {
+    for (const shown of ['APPROVED', '2026-08-06 13:02', '합성 결재 의견', t.progress.mine]) {
       expect(description?.textContent).toContain(shown);
       expect(label?.textContent).not.toContain(shown);
     }

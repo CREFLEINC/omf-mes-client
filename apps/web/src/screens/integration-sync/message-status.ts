@@ -2,6 +2,7 @@ import type { ChipStatus } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 
 import type { IntegrationMessageRow } from './types';
+import { toPlantDateTimeParts, type PlantDateTimeParts } from '../../patterns/plant-time';
 
 /**
  * 상태 열의 표시 산출 — 칩 하나와 보조 한 줄.
@@ -29,21 +30,12 @@ export interface StatusView {
 }
 
 /**
- * 계약의 date-time 문자열에서 표기용 조각을 뽑는다.
- *
- * **실행 환경 시간대로 옮기지 않는다.** 서버가 적어 보낸 벽시계 시각이 현장이 쓰는 시각이고,
- * 옮기면 같은 자료가 보는 사람마다 다른 시각으로 보인다.
+ * 계약의 date-time 문자열을 **공장 시각**의 날짜·시각으로 나눈다(`patterns/plant-time` ·
+ * omf-all-around#20). 보는 사람(실행 환경)의 시간대로 옮기지 않는다 — 같은 자료가 사람마다 다른
+ * 시각으로 보이면 안 된다.
  */
-const RFC3339_PATTERN = /^(\d{4}-\d{2}-\d{2})T(\d{2}:\d{2})/;
-
-const parseParts = (value: string | null | undefined): { date: string; time: string } | null => {
-  if (value === null || value === undefined) return null;
-
-  const matched = RFC3339_PATTERN.exec(value);
-  if (matched === null) return null;
-
-  return { date: matched[1] ?? '', time: matched[2] ?? '' };
-};
+const parseParts = (value: string | null | undefined): PlantDateTimeParts | null =>
+  toPlantDateTimeParts(value);
 
 /** `2026-08-04 09:12`. 값이 없거나 형식이 아니면 null — 호출부가 「—」로 바꾼다. */
 export const formatDateTime = (value: string | null | undefined): string | null => {

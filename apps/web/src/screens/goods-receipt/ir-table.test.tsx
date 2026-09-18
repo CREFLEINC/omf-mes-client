@@ -106,11 +106,14 @@ describe('IrTable — 대상 입하 전표 목록 표', () => {
     expect(screen.getAllByText('SAMPLE-SUP-01 · 합성 공급사 가').length).toBeGreaterThan(0);
   });
 
-  /* 입하일시는 **적힌 벽시계 시각**을 분까지 보인다 — 실행 환경 시간대로 옮기지 않는다. */
-  it('입하일시를 분까지 보인다', () => {
+  /*
+   * 입하일시는 **공장 시각(UTC+7)**으로 분까지 보인다(omf-all-around#20) — `+09:00` 09:12는
+   * 공장 시각 07:12다. 보는 사람의 실행 환경 시간대와는 상관없다.
+   */
+  it('입하일시를 공장 시각으로 분까지 보인다', () => {
     renderTable({ rows: [inboundReceipt()] });
 
-    expect(screen.getByText('2026-08-06 09:12')).toBeInTheDocument();
+    expect(screen.getByText('2026-08-06 07:12')).toBeInTheDocument();
     /* 초·offset을 그대로 늘어놓지 않는다 — 폭 예산이 `YYYY-MM-DD HH:mm`에 맞춰져 있다. */
     expect(screen.queryByText('2026-08-06T09:12:00+09:00')).not.toBeInTheDocument();
   });

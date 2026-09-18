@@ -1,4 +1,5 @@
 import type { components } from '@omf-mes/api-client';
+import { formatPlantDateTime } from '../../patterns/plant-time';
 
 /**
  * W-04-10 화면 슬라이스의 계약.
@@ -98,9 +99,6 @@ export const toIssueRow = (data: GoodsIssueResponse): IssueRow => ({
 export const isProductDisposal = (row: IssueRow): boolean =>
   row.sourceDocumentTypeCode === 'DISPOSITION_DECISION';
 
-/** 계약의 date-time 문자열에서 표기용 조각을 뽑는다. */
-const RFC3339_PATTERN = /^(\d{4}-\d{2}-\d{2})T(\d{2}:\d{2})/;
-
 /**
  * 표로 낼 시각.
  *
@@ -110,11 +108,7 @@ const RFC3339_PATTERN = /^(\d{4}-\d{2}-\d{2})T(\d{2}:\d{2})/;
  * 이 화면이 소유한다 — 다른 화면 슬라이스의 같은 이름 함수를 참조하지 않는다.
  */
 export const formatDateTime = (value: string): string => {
-  const matched = RFC3339_PATTERN.exec(value);
-
-  if (matched === null) return value;
-
-  return `${matched[1] ?? ''} ${matched[2] ?? ''}`;
+  return formatPlantDateTime(value) ?? value;
 };
 
 export interface DisposalPartner {

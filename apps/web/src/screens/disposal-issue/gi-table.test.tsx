@@ -83,8 +83,8 @@ describe('GiTable — 행 표기', () => {
     renderTable();
 
     expect(screen.getByText('GI-2026-950001')).toBeInTheDocument();
-    expect(screen.getByText('2026-08-08 14:20')).toBeInTheDocument();
-    expect(screen.getByText('2026-08-09 10:05')).toBeInTheDocument();
+    expect(screen.getByText('2026-08-08 12:20')).toBeInTheDocument();
+    expect(screen.getByText('2026-08-09 08:05')).toBeInTheDocument();
   });
 
   /** 짝 방향 단언 — 이름이 실제로 보이고, 그 자리에 번호가 없다(`omf-mes#44`). */

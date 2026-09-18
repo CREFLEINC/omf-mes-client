@@ -17,7 +17,7 @@ describe('ReceiptSummaryPane', () => {
 
     expect(pane).toHaveTextContent('GR-2026-900001');
     expect(pane).toHaveTextContent(WAREHOUSE_LABEL);
-    expect(pane).toHaveTextContent('2026-08-06 09:12');
+    expect(pane).toHaveTextContent('2026-08-06 07:12');
     expect(pane).toHaveTextContent('SAMPLE_GR_TYPE_A');
     expect(pane).toHaveTextContent('SAMPLE_GR_STATUS_A');
   });

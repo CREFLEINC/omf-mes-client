@@ -1,5 +1,6 @@
 import type { components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
+import { formatPlantDateTime } from '../../patterns/plant-time';
 
 /**
  * W-05-04가 다루는 모양들.
@@ -131,19 +132,13 @@ export const toDetailView = (source: Breakdown): BreakdownDetailView => ({
   attachmentCount: source.attachments?.length ?? 0,
 });
 
-const RFC3339_PATTERN = /^(\d{4}-\d{2}-\d{2})T(\d{2}:\d{2})/;
-
 /**
- * 서버가 준 시각을 「YYYY-MM-DD HH:mm」으로 자른다.
+ * 서버가 준 시각을 「YYYY-MM-DD HH:mm」(공장 시각)으로 보인다.
  *
- * ⭐ **옮기지 않고 자른다.** 현장이 고장을 본 시각이라 보고한 쪽의 벽시계가 정본이다 —
- * 보는 사람의 시간대로 옮기면 같은 사건이 사람마다 다른 시각으로 보인다.
+ * **공장 시각으로 보인다**(`patterns/plant-time` · omf-all-around#20). 보는 사람(실행 환경)의
+ * 시간대로 옮기지 않는다 — 서버가 UTC 로 보내므로 글자만 자르면 7시간 이르게 찍힌다.
  * 알아볼 수 없으면 원문을 그대로 낸다 — 감추면 되짚을 단서가 사라진다.
  */
 export const formatMoment = (value: string): string => {
-  const matched = RFC3339_PATTERN.exec(value);
-
-  if (matched === null) return value;
-
-  return `${matched[1] ?? ''} ${matched[2] ?? ''}`;
+  return formatPlantDateTime(value) ?? value;
 };

@@ -271,10 +271,11 @@ describe('IntegrationSyncScreen — 목록 표시', () => {
     expect(within(row as HTMLElement).getByText('—')).toBeInTheDocument();
   });
 
-  it('생성 시각을 서버가 적어 보낸 벽시계 그대로 낸다', async () => {
+  it('생성 시각을 공장 시각(UTC+7)으로 옮겨 낸다', async () => {
     renderScreen([listRoute([messageRow()])]);
 
-    expect(await screen.findByText('2026-08-04 09:12')).toBeInTheDocument();
+    // 픽스처 2026-08-04T09:12:00+09:00 은 공장 시각 07:12 다(omf-all-around#20).
+    expect(await screen.findByText('2026-08-04 07:12')).toBeInTheDocument();
   });
 
   it('모르는 상태 코드는 코드 문자열 그대로 나온다 — 이름을 지어내지 않는다', async () => {
@@ -288,13 +289,13 @@ describe('IntegrationSyncScreen — 목록 표시', () => {
   it('워커가 잡고 있는 행에는 처리 중 보조 문구가 붙는다', async () => {
     renderScreen([listRoute()]);
 
-    expect(await screen.findByText('11:20부터 처리 중')).toBeInTheDocument();
+    expect(await screen.findByText('09:20부터 처리 중')).toBeInTheDocument();
   });
 
   it('다음 시도가 미래인 행에는 자동 재시도 보조 문구가 붙는다', async () => {
     renderScreen([listRoute()]);
 
-    expect(await screen.findByText('23:30 자동 재시도')).toBeInTheDocument();
+    expect(await screen.findByText('21:30 자동 재시도')).toBeInTheDocument();
   });
 });
 
@@ -748,7 +749,7 @@ describe('IntegrationSyncScreen — 단건 재처리', () => {
 
     expect(
       await screen.findByText(
-        '이 건을 처리하는 작업이 11:20부터 진행 중입니다. 잠시 뒤 다시 시도하세요.',
+        '이 건을 처리하는 작업이 09:20부터 진행 중입니다. 잠시 뒤 다시 시도하세요.',
       ),
     ).toBeInTheDocument();
     // 실패했으면 창을 닫지 않는다 — 사유를 보고 다음 행동을 정해야 한다.

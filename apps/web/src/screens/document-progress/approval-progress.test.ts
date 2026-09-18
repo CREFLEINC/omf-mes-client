@@ -194,7 +194,7 @@ describe('toStepProgressViews', () => {
   it('결재 시각을 화면 표기로 옮긴다', () => {
     const [first] = toStepProgressViews([approvalStep()], []);
 
-    expect(first?.decisionAtText).toBe('2026-08-06 15:02');
+    expect(first?.decisionAtText).toBe('2026-08-06 13:02');
   });
 });
 
@@ -206,7 +206,7 @@ describe('toRequestProgressView', () => {
     expect(view.approvalTypeCode).toBe('GOODS_RECEIPT_CANCEL');
     expect(view.statusCode).toBe('SYN_APPROVAL_IN_PROGRESS');
     expect(view.requesterLabel).toBe('이상신');
-    expect(view.requestedAtText).toBe('2026-08-06 14:20');
+    expect(view.requestedAtText).toBe('2026-08-06 12:20');
   });
 
   /* 취소 사유가 곧 이력이다 — 전문이 줄째 온다. */

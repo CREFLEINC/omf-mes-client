@@ -39,7 +39,7 @@ describe('RoundHistory', () => {
   /**
    * ⭐ **수량과 확정 시각이 한 줄로 이어 붙지 않는다.**
    *
-   * 그냥 `<span>` 둘을 나란히 두면 인라인이라 「보류 5확정 2026-08-30 10:00」으로 읽히고,
+   * 그냥 `<span>` 둘을 나란히 두면 인라인이라 「보류 5확정 2026-08-30 08:00」으로 읽히고,
    * 수량 칸이라 **「5확정」이 값처럼 보인다.**
    *
    * ⚠ **부분 일치(`toHaveTextContent`)로는 못 잡는다** — 붙어 있어도 통과한다. jsdom 에는
@@ -62,7 +62,8 @@ describe('RoundHistory', () => {
 
     /* 각 줄의 글자가 «정확히» 그 값이다 — 한 마디로 합쳐지면 둘 다 죽는다. */
     expect(lines.getByText('합격 480 · 불합격 15 · 보류 5')).toBeInTheDocument();
-    expect(lines.getByText(t.confirmedAt('2026-08-30 10:00'))).toBeInTheDocument();
+    /* 픽스처 `2026-08-30T10:00:00+09:00` 은 공장 시각(UTC+7) 08:00 이다(omf-all-around#20). */
+    expect(lines.getByText(t.confirmedAt('2026-08-30 08:00'))).toBeInTheDocument();
   });
 
   it('읽기 전용이다 — 앞 회차를 고치는 자리가 아니므로 누를 것을 두지 않는다', () => {
