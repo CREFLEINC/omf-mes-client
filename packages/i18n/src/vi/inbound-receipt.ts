@@ -45,6 +45,12 @@ export const inboundReceipt: Translated<typeof ko.inboundReceipt> = {
     pickNote: 'Chỉ số đã quét thì chưa xác định được P/O vật tư. Người phụ trách tự chọn.',
     narrowedNote: 'Chỉ hiện các P/O vật tư có mặt hàng của vật tư đã quét.',
     showAll: 'Xem toàn bộ P/O vật tư',
+    itemChecking: 'Đang xác nhận mặt hàng của vật tư đã quét',
+    itemCheckFailed: 'Không xác nhận được mặt hàng của vật tư đã quét. Hãy kiểm tra kết nối.',
+    itemNotFound: (code: string) =>
+      `Không có ${code} trong dữ liệu gốc mặt hàng. Hãy kiểm tra lại nhãn.`,
+    noneForItem: (code: string) =>
+      `Không có P/O vật tư chưa chốt nào cho mặt hàng ${code}. Nếu hàng đến mà không có đơn đặt hàng, hãy tiếp tục bằng 「Đăng ký không kèm P/O vật tư」.`,
     linesLoading: 'Đang tải các dòng P/O vật tư',
     linesLoadFailed: 'Không xác nhận được các dòng P/O vật tư',
     linesNone: 'P/O vật tư này không có dòng nào',

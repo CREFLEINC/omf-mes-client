@@ -255,12 +255,11 @@ describe('입하 등록 화면', () => {
   });
 
   /*
-   * 좁혔는데 한 건도 없으면 고를 것이 사라진다. 넓힐 단추는 좁혀진 동안에만 서 있어 그대로
-   * 두면 빠져나갈 길도 없다. 설계는 이 자리를 자동 전환으로 정했다.
+   * 라벨 품목의 미마감 발주가 없을 때 전체 목록으로 넘기면, 그 목록의 발주는 라벨 품목과 달라
+   * 어느 것을 골라도 등록 전에 막힌다(omf-all-around#25). 넘기지 않고 없다고 알린다.
    */
-  it('좁힌 후보가 비면 스스로 전체를 낸다', async () => {
+  it('라벨 품목의 후보가 없으면 전체로 넘어가지 않고 알린다', async () => {
     const asked: (string | null)[] = [];
-    const user = userEvent.setup();
     mount([
       {
         match: (req) => new URL(req.url).pathname === '/mdm/items',
@@ -283,11 +282,92 @@ describe('입하 등록 화면', () => {
     await screen.findByLabelText('LOT 번호');
     scan(SCANNED);
 
-    await waitFor(() => {
-      expect(asked).toContain('77');
-    });
+    expect(
+      await screen.findByText(
+        'ABC-123 품목의 미마감 자재 P/O가 없습니다. 발주 없이 들어온 물건이면 「자재 P/O 없이 등록」으로 진행하세요.',
+      ),
+    ).toBeTruthy();
+    expect(asked).toContain('77');
+    expect(screen.queryByRole('combobox', { name: '자재 P/O 번호' })).toBeNull();
+    expect(screen.queryByRole('button', { name: '전체 자재 P/O 보기' })).toBeNull();
+  });
 
-    /* 좁힌 결과가 비었어도 고를 것이 남아 있어야 한다. */
+  /* 품목 목록에 없는 제품코드면 어느 발주에도 맞지 않는다. 전체 목록을 대신 내지 않는다. */
+  it('라벨 제품코드가 품목 기준정보에 없으면 전체로 넘어가지 않고 알린다', async () => {
+    mount([
+      {
+        match: (req) => new URL(req.url).pathname === '/mdm/items',
+        respond: () => jsonResponse({ items: [], page }),
+      },
+    ]);
+    await screen.findByLabelText('LOT 번호');
+    scan('XYZ-999|500|260731|SUP-002|0007');
+
+    expect(
+      await screen.findByText('등록된 품목 중에 XYZ-999가 없습니다. 라벨을 다시 확인하세요.'),
+    ).toBeTruthy();
+    expect(screen.queryByRole('combobox', { name: '자재 P/O 번호' })).toBeNull();
+  });
+
+  /* 품목을 확인하는 동안 스캔 전의 전체 목록이 그대로 서 있으면 그 사이에 무관한 발주를 고른다. */
+  it('라벨 품목을 확인하는 동안 전체 목록을 보이지 않는다', async () => {
+    let release: () => void = () => undefined;
+    const held = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    mount([
+      {
+        match: (req) => new URL(req.url).pathname === '/mdm/items',
+        respond: async () => {
+          await held;
+          return jsonResponse({
+            items: [{ itemId: 31, itemCode: 'ABC-123', itemName: '원자재' }],
+            page,
+          });
+        },
+      },
+    ]);
+    await screen.findByLabelText('LOT 번호');
+    scan(SCANNED);
+
+    expect(await screen.findByText('스캔한 자재의 품목을 확인하는 중입니다')).toBeTruthy();
+    expect(screen.queryByRole('combobox', { name: '자재 P/O 번호' })).toBeNull();
+
+    release();
+
+    expect(await screen.findByText('스캔한 자재의 품목이 있는 자재 P/O만 보입니다.')).toBeTruthy();
+    expect(screen.getByRole('combobox', { name: '자재 P/O 번호' })).toBeTruthy();
+  });
+
+  /*
+   * 라벨 없이 납품서 번호를 손으로 넣은 건은 제품코드 대조가 없다. 좁힌 후보가 비면 전처럼 전체로
+   * 넘어가 고를 것을 남긴다.
+   */
+  it('라벨 미부착 번호는 좁힌 후보가 비면 스스로 전체를 낸다', async () => {
+    const user = userEvent.setup();
+    mount([
+      {
+        match: (req) => new URL(req.url).pathname === '/mdm/items',
+        respond: () =>
+          jsonResponse({
+            items: [{ itemId: 77, itemCode: 'ABC-123', itemName: '스캔한 자재' }],
+            page,
+          }),
+      },
+      {
+        match: (req) => new URL(req.url).pathname === '/logistics/purchase-orders',
+        respond: (req) =>
+          jsonResponse({
+            items: new URL(req.url).searchParams.get('itemId') === null ? [order] : [],
+            page,
+          }),
+      },
+    ]);
+    await screen.findByLabelText('LOT 번호');
+    await user.click(screen.getByRole('button', { name: '납품서의 공급사 LOT 번호 입력' }));
+    await user.type(screen.getByLabelText('공급사 LOT 번호'), SCANNED);
+    await user.click(screen.getByRole('button', { name: '공급사 LOT 번호 넣기' }));
+
     await user.click(await screen.findByRole('combobox', { name: '자재 P/O 번호' }));
 
     expect(await screen.findByRole('option', { name: 'PO-2026-0003' })).toBeTruthy();
@@ -432,12 +512,15 @@ describe('입하 등록 화면', () => {
     expect(screen.getByLabelText('공급사 LOT 번호')).toHaveValue('A'.repeat(101));
   });
 
-  /* 번호만으로는 어느 발주 물품인지 확정되지 않는다. 담당자가 고른다. */
-  it('스캔값이 발주를 정하지 않는다고 말한다', async () => {
+  /* 양식이 달라 품목을 못 읽으면 좁히지 않는다(화면 스펙 §6). 담당자가 고른다. */
+  it('품목을 못 읽는 번호는 발주를 정하지 않는다고 말한다', async () => {
+    const user = userEvent.setup();
     mount();
 
     await screen.findByLabelText('LOT 번호');
-    scan(SCANNED);
+    await user.click(screen.getByRole('button', { name: '납품서의 공급사 LOT 번호 입력' }));
+    await user.type(screen.getByLabelText('공급사 LOT 번호'), '납품서-LOT/A-01');
+    await user.click(screen.getByRole('button', { name: '공급사 LOT 번호 넣기' }));
 
     expect(
       await screen.findByText(
@@ -513,9 +596,19 @@ describe('입하 등록 화면 — 발주 경로', () => {
   /* 서버가 등록할 때 같은 대조로 거부한다. 담아 둔 뒤에 되돌아오면 한참 뒤 전송 실패로만 보인다. */
   it('라벨의 제품코드가 발주 라인 품목과 다르면 등록할 수 없다', async () => {
     const user = userEvent.setup();
-    mount();
+    /* 라벨 품목(XYZ-999)이 있는 발주를 고르되, 그 발주의 다른 품목 줄(ABC-123)을 고른 자리다. */
+    mount([
+      {
+        match: (req) => new URL(req.url).pathname === '/mdm/items',
+        respond: () =>
+          jsonResponse({
+            items: [{ itemId: 99, itemCode: 'XYZ-999', itemName: '다른 자재' }],
+            page,
+          }),
+      },
+    ]);
     await screen.findByLabelText('LOT 번호');
-    await choosePoLine(user, /ABC-123|31/, 'XYZ-999|500|260731|SUP-002|0007');
+    await choosePoLine(user, /ABC-123|31/, 'XYZ-999|500|260731|SUP-002|0007', true);
 
     await user.type(await screen.findByLabelText(/실입하\ 수량/), '500');
 
@@ -601,7 +694,8 @@ describe('입하 등록 화면 — 발주 경로', () => {
     mount([
       {
         match: (req) => new URL(req.url).pathname === '/mdm/items',
-        respond: () => jsonResponse({ items: [], page }),
+        respond: () =>
+          jsonResponse({ items: [{ itemId: 31, itemCode: 'ABC-123', itemName: '원자재' }], page }),
       },
       {
         match: (req) => new URL(req.url).pathname === '/mdm/items/31',
@@ -613,8 +707,8 @@ describe('입하 등록 화면 — 발주 경로', () => {
       },
     ]);
     await screen.findByLabelText('LOT 번호');
-    /* 품목 조회가 비어 스캔한 제품코드로 좁혀지지 않는다. */
-    await choosePoLine(user, /품목 정보 없음/, SCANNED, false);
+    /* 라벨 제품코드로는 품목을 찾아 좁히지만, 라인 카드가 쓰는 품목 단건 조회는 비어 있다. */
+    await choosePoLine(user, /품목 정보 없음/, SCANNED, true);
 
     /* 라인 카드와 품목·수량 확인 두 자리 모두에 선다. */
     expect(await screen.findAllByText(/품목 정보 없음/)).toHaveLength(2);

@@ -4,7 +4,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router';
 
-import { isMaterialLotNo } from '../../patterns/material-lot-no';
+import { isMaterialLotNo, itemCodeOf } from '../../patterns/material-lot-no';
 import { useItem, useItemLabels, useSuppliers, useUomCodes } from '../../patterns/masters';
 import { useOutbox } from '../../patterns/outbox';
 import { currentPlantId } from '../../patterns/plant';
@@ -211,25 +211,51 @@ export const InboundReceiptScreen = () => {
   useAdvanceTo(draft.purchaseOrderLine !== null || draft.unordered, qtySection);
 
   /*
-   * 스캔한 번호가 품목을 가리키면 그 품목이 있는 미마감 자재 P/O 만 후보로 낸다. 못 찾거나
-   * 후보가 비면 좁히지 않는다 - 양식이 다른 번호도 들어오고, 그때 0건으로 만들면 담당자가
-   * 고를 것이 사라진다(화면 스펙 §5-1 · §6).
+   * 스캔한 번호가 양식대로 읽혀 제품코드가 나오면 그 품목이 있는 미마감 자재 P/O 만 후보로 낸다
+   * (화면 스펙 §5 「사전부착이면 후보만 표시」). 전체 목록으로 스스로 넘어가는 것은 양식이 달라
+   * 제품코드를 못 읽었을 때뿐이다(§6).
+   *
+   * ⛔ 품목을 확인하는 중·못 찾았을 때·후보가 0건일 때 전체 목록을 대신 내지 않는다. 그 목록의
+   *    발주는 라벨 제품코드와 품목이 달라 어느 것을 골라도 등록 전에 막히고(`labelMismatchOf`)
+   *    서버도 거부한다 - 고를 수 있어 보이는 막다른 길이다(omf-all-around#25).
    */
+  const scannedCode = itemCodeOf(draft.supplierLotNo);
   const scannedItem = useScannedItem(draft.supplierLotNo);
-  const narrowTo = showAllOrders ? null : (scannedItem.data ?? null);
+  const narrowing = scannedCode !== null && !showAllOrders;
+  const narrowTo = narrowing ? (scannedItem.data ?? null) : null;
   const orders = useOpenPurchaseOrders(narrowTo);
-  const narrowed = narrowTo !== null && (orders.data?.length ?? 0) > 0;
+  const itemCheck: 'none' | 'pending' | 'failed' | 'unknown' | 'found' = !narrowing
+    ? 'none'
+    : scannedItem.isPending
+      ? 'pending'
+      : scannedItem.isError
+        ? 'failed'
+        : scannedItem.data === null
+          ? 'unknown'
+          : 'found';
   /*
-   * 좁혔는데 한 건도 없으면 스스로 전체로 넘어간다. 그대로 두면 고를 것이 하나도 없는 채로
-   * 멈추고, 넓힐 단추는 좁혀진 동안에만 서 있어 빠져나갈 길도 없다.
+   * 막다른 길은 «스캔한 라벨»에만 생긴다 - 라벨 제품코드 대조는 부착 라벨만 한다. 납품서 번호를
+   * 손으로 넣은 건(라벨 미부착)은 대조가 없어, 품목을 못 찾거나 후보가 없으면 전에처럼 넓힌다.
    */
-  const narrowedEmpty = narrowTo !== null && orders.isSuccess && orders.data.length === 0;
+  const strictLabel = draft.supplierLotLabelAttached && !draft.supplierLotMissing;
+  /* 품목을 확인해 좁힌 조회이거나, 좁히지 않는 경우의 전체 조회만 목록으로 낸다. */
+  const candidates =
+    itemCheck === 'none' ||
+    itemCheck === 'found' ||
+    (!strictLabel && (itemCheck === 'unknown' || itemCheck === 'failed'))
+      ? orders
+      : null;
+  const narrowed = itemCheck === 'found';
+  /* 좁힌 후보가 실제로 도착했는가. 안내와 「전체 보기」는 고를 것이 있을 때만 선다. */
+  const narrowedWithCandidates = narrowed && orders.isSuccess && orders.data.length > 0;
+  const narrowedEmptyUnlabelled =
+    !strictLabel && narrowed && orders.isSuccess && orders.data.length === 0;
 
   useEffect(() => {
-    if (narrowedEmpty) {
+    if (narrowedEmptyUnlabelled) {
       setShowAllOrders(true);
     }
-  }, [narrowedEmpty]);
+  }, [narrowedEmptyUnlabelled]);
 
   const lines = usePurchaseOrderLines(draft.purchaseOrder?.purchaseOrderId ?? null);
   const reasons = useCodeValues(SUBSTITUTE_LOT_REASON);
@@ -623,15 +649,38 @@ export const InboundReceiptScreen = () => {
           <section className="receipt__section" ref={poSection}>
             <h2>{t.po.legend}</h2>
             {/* 번호만으로는 어느 발주 물품인지 확정되지 않는다. 담당자가 고른다. */}
-            <p className="receipt__note">{narrowed ? t.po.narrowedNote : t.po.pickNote}</p>
-            {orders.isPending ? <p role="status">{t.po.loading}</p> : null}
-            {orders.isError ? (
-              <FailureBanner variant="error" title={failureText(orders.error, t.po.loadFailed)} />
+            {narrowedWithCandidates ? (
+              <p className="receipt__note">{t.po.narrowedNote}</p>
+            ) : candidates === null || narrowed ? null : (
+              <p className="receipt__note">{t.po.pickNote}</p>
+            )}
+            {itemCheck === 'pending' ? <p role="status">{t.po.itemChecking}</p> : null}
+            {itemCheck === 'failed' && strictLabel ? (
+              <FailureBanner
+                variant="error"
+                title={failureText(scannedItem.error, t.po.itemCheckFailed)}
+              />
             ) : null}
-            {orders.isSuccess && orders.data.length === 0 ? (
-              <p className="receipt__note">{t.po.none}</p>
+            {itemCheck === 'unknown' && strictLabel && scannedCode !== null ? (
+              <AlertBanner variant="warning" title={t.po.itemNotFound(scannedCode)} />
             ) : null}
-            {orders.data === undefined ? null : (
+            {candidates?.isPending ? <p role="status">{t.po.loading}</p> : null}
+            {candidates?.isError ? (
+              <FailureBanner
+                variant="error"
+                title={failureText(candidates.error, t.po.loadFailed)}
+              />
+            ) : null}
+            {candidates?.isSuccess && candidates.data.length === 0 ? (
+              narrowed && strictLabel && scannedCode !== null ? (
+                <AlertBanner variant="warning" title={t.po.noneForItem(scannedCode)} />
+              ) : (
+                <p className="receipt__note">{t.po.none}</p>
+              )
+            ) : null}
+            {candidates === null ||
+            orders.data === undefined ||
+            (narrowed && orders.data.length === 0) ? null : (
               <div className="receipt__field">
                 <label htmlFor="receipt-po">{t.po.selectLabel}</label>
                 <Select
@@ -675,7 +724,7 @@ export const InboundReceiptScreen = () => {
              * 좁힌 것이 틀릴 수 있다. 번호 양식이 다르거나 다른 품목으로 들어온 물건이면
              * 후보에 없다 - 막지 않고 전체로 넓힐 길을 둔다(화면 스펙 §3 · §6).
              */}
-            {narrowed ? (
+            {narrowedWithCandidates ? (
               <Button
                 className="receipt__wide"
                 variant="text"
