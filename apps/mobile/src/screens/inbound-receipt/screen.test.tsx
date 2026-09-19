@@ -550,15 +550,34 @@ describe('입하 등록 화면', () => {
   });
 
   /* 미부착 분기는 데이터에 있는 구분이다. 사유 없이 참으로 보내면 서버가 거부한다. */
-  it('LOT 번호 없음을 고르면 대체 사유를 받는다', async () => {
+  /**
+   * ⭐ **사유는 등록 단추 «바로 위»에 선다**(사용자 지시 2026-09-19 · omf-all-around#34).
+   *
+   * 필수값이라 누르기 직전에 한 번 더 눈에 들어와야 한다 — 스캔 구역에 두면 발주·수량을 거치는
+   * 사이 화면 밖으로 밀려났다.
+   */
+  it('LOT 번호 없음을 고르면 등록 단추 바로 위에서 대체 사유를 받는다', async () => {
     const user = userEvent.setup();
     mount();
 
     await screen.findByLabelText('LOT 번호');
     await user.click(screen.getByRole('button', { name: 'LOT 번호 없음' }));
 
-    expect(await screen.findByText('공급사 LOT 번호가 없습니다.')).toBeTruthy();
-    expect(screen.getByText(/대체\ LOT\ 사유/)).toBeTruthy();
+    /* ⛔ 「공급사 LOT 번호가 없습니다」 띠는 세우지 않는다(사용자 지시 2026-09-19). */
+    expect(screen.queryByText('공급사 LOT 번호가 없습니다.')).toBeNull();
+
+    const reason = await screen.findByText(/대체\ LOT\ 사유/);
+    const submit = screen.getByRole('button', { name: '입하 등록' });
+
+    /* 문서 차례로 사유가 먼저, 그 바로 뒤가 등록 단추다. */
+    expect(reason.compareDocumentPosition(submit) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    const between = [...document.querySelectorAll('section.receipt__section')].filter(
+      (section) =>
+        section.contains(reason) === false &&
+        (section.compareDocumentPosition(reason) & Node.DOCUMENT_POSITION_PRECEDING) !== 0 &&
+        (section.compareDocumentPosition(submit) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0,
+    );
+    expect(between).toHaveLength(0);
   });
 
   /* 확인하지 못한 것을 발주가 없는 것으로 말하지 않는다. */
@@ -590,13 +609,48 @@ describe('입하 등록 화면', () => {
   });
 
   /* 없어도 등록을 막지 않는다. 다만 없다는 사실은 말한다. */
-  it('명세서 번호가 없어도 막지 않고 그 사실만 말한다', async () => {
+  /**
+   * ⭐ **사유는 「라벨 미부착」이 미리 골라져 있고, 두 단추는 한 줄에 선다**(사용자 지시
+   * 2026-09-19 · omf-all-around#34).
+   */
+  it('LOT 번호 없음을 고르면 사유가 미리 골라지고 단추 둘이 한 줄에 선다', async () => {
+    const user = userEvent.setup();
+    mount();
+
+    await screen.findByLabelText('LOT 번호');
+    await user.click(screen.getByRole('button', { name: 'LOT 번호 없음' }));
+
+    /*
+     * 목록이 도착하면 고른 값이 선택칸에 보인다 — 「사유를 고르세요」가 아니다.
+     * ⚠ 보이는 글자는 서버가 준 이름이다. 이 시험의 대역은 `NO_LABEL` 을 「라벨 없음」으로 준다.
+     */
+    expect(await screen.findByText('라벨 없음')).toBeTruthy();
+
+    const manual = screen.getByRole('button', { name: '직접 입력' });
+    const back = screen.getByRole('button', { name: '스캔으로 되돌리기' });
+
+    expect(manual.parentElement).toHaveClass('receipt__row');
+    expect(back.parentElement).toBe(manual.parentElement);
+  });
+
+  /**
+   * ⛔ **거래명세서 구역을 화면에 세우지 않는다**(사용자 지시 2026-09-19 · omf-all-around#34).
+   *
+   * 지운 것이 아니라 감춘 것이다 — 문구도 본문에 값을 싣는 자리도 그대로 두었고, 스위치
+   * (`SHOW_DELIVERY_NOTE`) 하나로 되살린다. 두 칸 모두 선택 입력이라 비어도 등록은 막히지 않는다.
+   */
+  it('거래명세서 구역을 보이지 않는다', async () => {
     mount();
 
     await screen.findByLabelText('LOT 번호');
     scan(SCANNED);
 
-    expect(await screen.findByText('명세서 번호가 없습니다. 등록은 진행됩니다.')).toBeTruthy();
+    /* 스캔 뒤 구역들이 다 선 상태에서 본다 — 등록 단추가 그 마지막이다. */
+    await screen.findByRole('button', { name: '입하 등록' });
+    expect(screen.queryByText('거래명세서')).toBeNull();
+    expect(screen.queryByLabelText('거래명세서번호')).toBeNull();
+    expect(screen.queryByLabelText('차량번호')).toBeNull();
+    expect(screen.queryByText('명세서 번호가 없습니다. 등록은 진행됩니다.')).toBeNull();
   });
 });
 
@@ -685,7 +739,7 @@ describe('입하 등록 화면 — 발주 경로', () => {
    * 라인이 다 찬 발주도 후보에 선다. 카드가 발주량과 누적만 보이면 작업자는 굵게 보이는 발주량
    * 대로 적고 초과 판정을 받는다 - 견주는 수인 남은 예정을 카드가 직접 말해야 한다.
    */
-  it('라인 카드가 남은 예정을 보이고 다 받은 줄을 표식한다', async () => {
+  it('라인 카드가 잔여 수량을 보이고 다 받은 줄을 표식한다', async () => {
     const user = userEvent.setup();
     mount([], {
       lines: [
@@ -699,9 +753,14 @@ describe('입하 등록 화면 — 발주 경로', () => {
     await user.click(screen.getByRole('combobox', { name: '자재 P/O 번호' }));
     await user.click(await screen.findByRole('option', { name: 'PO-2026-0003' }));
 
-    expect(await screen.findByText(/남은 예정 0/)).toBeTruthy();
+    expect(await screen.findByText(/잔여 수량 0/)).toBeTruthy();
     expect(screen.getByText('다 받았습니다')).toBeTruthy();
-    expect(screen.getByText(/남은 예정 50/)).toBeTruthy();
+    /*
+     * ⭐ **발주량과 같으면 잔여 수량을 세우지 않는다**(사용자 지시 2026-09-19). 둘째 줄은 아직
+     *    하나도 받지 않아 잔여가 발주량과 같다 — 같은 수를 두 번 말할 뿐이다.
+     */
+    expect(screen.queryByText(/잔여 수량 50/)).toBeNull();
+    expect(screen.getByText(/발주량 50/)).toBeTruthy();
   });
 
   /*
@@ -732,7 +791,7 @@ describe('입하 등록 화면 — 발주 경로', () => {
 
     /* 라인 카드와 품목·수량 확인 두 자리 모두에 선다. */
     expect(await screen.findAllByText(/품목 정보 없음/)).toHaveLength(2);
-    expect(screen.getAllByText(/발주 500 단위 없음/)).toHaveLength(2);
+    expect(screen.getAllByText(/발주량 500 단위 없음/)).toHaveLength(2);
   });
 
   /*
@@ -753,19 +812,23 @@ describe('입하 등록 화면 — 발주 경로', () => {
     await user.click(screen.getByRole('combobox', { name: '자재 P/O 번호' }));
     await user.click(await screen.findByRole('option', { name: 'PO-2026-0003' }));
 
-    const remainings = await screen.findAllByText(/남은 예정/);
+    /*
+     * ⚠ 차례는 «발주량» 줄로 잰다. 잔여 수량은 발주량과 같으면 서지 않으므로(사용자 지시
+     *   2026-09-19) 아직 하나도 받지 않은 줄에는 그 말이 없다.
+     */
+    const ordered = await screen.findAllByText(/발주량/);
 
     /* 개수를 못 박지 않으면 위쪽에 같은 말이 하나 생길 때 차례가 아닌 것을 재게 된다. */
-    expect(remainings).toHaveLength(2);
-    expect(remainings[0]?.textContent).toMatch(/남은 예정 50/);
-    expect(remainings[1]?.textContent).toMatch(/남은 예정 0/);
+    expect(ordered).toHaveLength(2);
+    expect(ordered[0]?.textContent).toMatch(/발주량 50/);
+    expect(ordered[1]?.textContent).toMatch(/발주량 100/);
   });
 
   /*
-   * 담아 둔 것은 서버의 누적에 없다. 카드가 그것을 빼지 않으면 카드는 남은 예정 500,
+   * 담아 둔 것은 서버의 누적에 없다. 카드가 그것을 빼지 않으면 카드는 잔여 수량 500,
    * 그 카드를 누른 뒤 수량 칸은 0 이 되어 고치려던 어긋남이 오프라인 경로에 그대로 남는다.
    */
-  it('라인 카드가 담아 둔 수량까지 빼고 남은 예정을 낸다', async () => {
+  it('라인 카드가 담아 둔 수량까지 빼고 잔여 수량을 낸다', async () => {
     const user = userEvent.setup();
     store.set(
       OUTBOX_KEY,
@@ -789,7 +852,7 @@ describe('입하 등록 화면 — 발주 경로', () => {
     await user.click(screen.getByRole('combobox', { name: '자재 P/O 번호' }));
     await user.click(await screen.findByRole('option', { name: 'PO-2026-0003' }));
 
-    expect(await screen.findByText(/남은 예정 0/)).toBeTruthy();
+    expect(await screen.findByText(/잔여 수량 0/)).toBeTruthy();
     expect(screen.getByText('다 받았습니다')).toBeTruthy();
   });
 
@@ -797,14 +860,27 @@ describe('입하 등록 화면 — 발주 경로', () => {
    * 판정이 견주는 것은 발주 총량이 아니라 남은 예정이다. 총량만 칸 옆에 두면 적는 사람이
    * 그 수에 맞추려 하고, 판정은 다른 수로 나온다.
    */
-  it('칸 옆에 발주 총량과 남은 예정을 함께 보인다', async () => {
+  it('칸 옆에 발주량을 보이고, 잔여가 그와 다를 때만 잔여 수량을 더한다', async () => {
+    const user = userEvent.setup();
+    mount([], { lines: [poLine({ orderedQty: 500, receivedQty: 200 })] });
+    await screen.findByLabelText('LOT 번호');
+    await choosePoLine(user);
+
+    /* ⚠ 고른 라인 카드에도 같은 말이 선다 — 여기서 재는 것은 「있는가」다. */
+    expect(await screen.findAllByText('발주량 500 EA')).not.toHaveLength(0);
+    expect(screen.getAllByText('잔여 수량 300 EA')).not.toHaveLength(0);
+  });
+
+  /* ⭐ 같은 수를 두 번 말하지 않는다(사용자 지시 2026-09-19). */
+  it('잔여가 발주량과 같으면 잔여 수량을 세우지 않는다', async () => {
     const user = userEvent.setup();
     mount();
     await screen.findByLabelText('LOT 번호');
     await choosePoLine(user);
 
-    expect(await screen.findByText('발주 500 EA')).toBeTruthy();
-    expect(screen.getByText('남은 예정 500 EA')).toBeTruthy();
+    expect(await screen.findAllByText('발주량 500 EA')).not.toHaveLength(0);
+    /* 라인 카드에도 칸 옆에도 서지 않는다 — 발주량과 같은 수다. */
+    expect(screen.queryAllByText('잔여 수량 500 EA')).toHaveLength(0);
   });
 
   /* 허용치는 발주 라인이 갖고 있고 서버가 다시 판정하지 않는다. */
@@ -816,7 +892,7 @@ describe('입하 등록 화면 — 발주 경로', () => {
 
     await user.type(await screen.findByLabelText(/실입하\ 수량/), '505');
 
-    expect(await screen.findByText('남은 예정과 맞습니다')).toBeTruthy();
+    expect(await screen.findByText('잔여 수량과 맞습니다')).toBeTruthy();
   });
 
   /* 판정 결과를 먼저 보인 뒤에 넘긴다. 조용히 넘기면 왜 왔는지 알 수 없다. */
@@ -828,7 +904,7 @@ describe('입하 등록 화면 — 발주 경로', () => {
 
     await user.type(await screen.findByLabelText(/실입하\ 수량/), '511');
 
-    expect(await screen.findByText('수량 초과 — 남은 예정 500, 이번 도착 511')).toBeTruthy();
+    expect(await screen.findByText('수량 초과 — 잔여 수량 500, 이번 도착 511')).toBeTruthy();
     expect(screen.getByText('초과 입하 분리')).toBeTruthy();
     expect(screen.getByText('510 EA')).toBeTruthy();
     expect(screen.getByText('1 EA')).toBeTruthy();
@@ -846,7 +922,7 @@ describe('입하 등록 화면 — 발주 경로', () => {
 
     await user.type(await screen.findByLabelText(/실입하\ 수량/), '400');
 
-    expect(await screen.findByText('수량 부족 — 남은 예정 500, 이번 도착 400')).toBeTruthy();
+    expect(await screen.findByText('수량 부족 — 잔여 수량 500, 이번 도착 400')).toBeTruthy();
   });
 
   /*
@@ -930,7 +1006,7 @@ describe('입하 등록 화면 — 발주 경로', () => {
     await user.clear(qty);
     await user.type(qty, '300');
 
-    await screen.findByText('수량 부족 — 남은 예정 500, 이번 도착 300');
+    await screen.findByText('수량 부족 — 잔여 수량 500, 이번 도착 300');
     expect(screen.getByRole('button', { name: '입하 등록' })).toBeDisabled();
   });
 
@@ -941,8 +1017,8 @@ describe('입하 등록 화면 — 발주 경로', () => {
     await choosePoLine(user);
 
     await user.type(await screen.findByLabelText(/실입하\ 수량/), '500');
-    await user.type(screen.getByLabelText('제조일'), '2026-07-20');
-    await user.type(screen.getByLabelText('유효기한'), '2026-07-19');
+    await user.type(screen.getByLabelText('제조일 (선택)'), '2026-07-20');
+    await user.type(screen.getByLabelText('유효기한 (선택)'), '2026-07-19');
 
     expect(await screen.findByText('유효기한이 제조일보다 앞설 수 없습니다')).toBeTruthy();
     expect(screen.getByRole('button', { name: '입하 등록' }).hasAttribute('disabled')).toBe(true);
@@ -1187,9 +1263,9 @@ describe('입하 등록 화면 — 되돌릴 수 없는 쓰기', () => {
 
   /*
    * 서버가 주는 누적 입하에는 큐에 있는 것이 없다. 셈에 넣지 않으면 오프라인에서 같은 라인에
-   * 두 번 적었을 때 둘 다 남은 예정 안으로 읽혀, 서버가 거부할 초과가 정상으로 보인다.
+   * 두 번 적었을 때 둘 다 잔여 수량 안으로 읽혀, 서버가 거부할 초과가 정상으로 보인다.
    */
-  it('담긴 입하를 남은 예정에서 뺀다', async () => {
+  it('담긴 입하를 잔여 수량에서 뺀다', async () => {
     const user = userEvent.setup();
     mount([
       {
@@ -1212,7 +1288,7 @@ describe('입하 등록 화면 — 되돌릴 수 없는 쓰기', () => {
     await choosePoLine(user);
     await user.type(await screen.findByLabelText(/실입하\ 수량/), '500');
 
-    expect(await screen.findByText('수량 초과 — 남은 예정 0, 이번 도착 500')).toBeTruthy();
+    expect(await screen.findByText('수량 초과 — 잔여 수량 0, 이번 도착 500')).toBeTruthy();
   });
 });
 
@@ -1682,7 +1758,7 @@ describe('입하 등록 화면 — 발주 없이 도착', () => {
     await screen.findByLabelText('LOT 번호');
     await choosePoLine(user);
     await user.type(await screen.findByLabelText(/실입하 수량/), '400');
-    await screen.findByText('수량 부족 — 남은 예정 500, 이번 도착 400');
+    await screen.findByText('수량 부족 — 잔여 수량 500, 이번 도착 400');
 
     await user.click(screen.getByRole('button', { name: '보류로 받고 오류 등록' }));
 
@@ -1710,9 +1786,9 @@ describe('입하 등록 화면 — 발주 없이 도착', () => {
     await screen.findByLabelText('LOT 번호');
     await choosePoLine(user);
     await user.type(await screen.findByLabelText(/실입하 수량/), '400');
-    await user.type(screen.getByLabelText('제조일'), '2026-07-20');
-    await user.type(screen.getByLabelText('유효기한'), '2026-07-19');
-    await screen.findByText('수량 부족 — 남은 예정 500, 이번 도착 400');
+    await user.type(screen.getByLabelText('제조일 (선택)'), '2026-07-20');
+    await user.type(screen.getByLabelText('유효기한 (선택)'), '2026-07-19');
+    await screen.findByText('수량 부족 — 잔여 수량 500, 이번 도착 400');
 
     expect(screen.getByRole('button', { name: '보류로 받고 오류 등록' })).toBeDisabled();
 

@@ -56,8 +56,9 @@ export const inboundReceipt: Translated<typeof ko.inboundReceipt> = {
     linesLoading: 'Đang tải các dòng P/O vật tư',
     linesLoadFailed: 'Không xác nhận được các dòng P/O vật tư',
     linesNone: 'P/O vật tư này không có dòng nào',
-    lineLabel: (item: string, ordered: string, uom: string) =>
-      `${item} · Đặt hàng ${ordered} ${uom}`,
+    lineItemCode: (code: string) => `Mã mặt hàng ${code}`,
+    lineItemName: (name: string) => `Tên mặt hàng ${name}`,
+    lineOrdered: (qty: string, uom: string) => `SL đặt hàng ${qty} ${uom}`,
     itemUnknown: 'Không có thông tin mặt hàng',
     uomUnknown: 'Không có đơn vị',
     received: (qty: string) => `Nhập hàng lũy kế ${qty}`,
@@ -114,7 +115,9 @@ export const inboundReceipt: Translated<typeof ko.inboundReceipt> = {
   qty: {
     legend: 'Xác nhận mặt hàng và số lượng',
     itemLoadFailed: 'Không xác nhận được mặt hàng',
-    ordered: (qty: string, uom: string) => `Đặt hàng ${qty} ${uom}`,
+    itemCode: (code: string) => `Mã mặt hàng ${code}`,
+    itemName: (name: string) => `Tên mặt hàng ${name}`,
+    ordered: (qty: string, uom: string) => `SL đặt hàng ${qty} ${uom}`,
     remaining: (qty: string, uom: string) => `Dự kiến còn lại ${qty} ${uom}`,
     received: 'Số lượng thực nhận',
     packageCount: 'Số kiện',

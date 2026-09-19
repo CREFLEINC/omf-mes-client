@@ -32,6 +32,7 @@ import {
   OVER,
   UNDER,
   canSubmit,
+  defaultSubstituteLotReason,
   hasScannedLabel,
   isExpiryBeforeManufactured,
   labelMismatchOf,
@@ -57,11 +58,26 @@ import './screen.css';
 const t = messages.inboundReceipt;
 /* 필수 표시는 화면마다 짓지 않는다. 같은 뜻이 여러 모양으로 갈린다. */
 const required = messages.common.required;
+/* 비워도 되는 칸임을 라벨이 말한다 — 필수와 같은 자리·같은 모양이라 둘이 눈에 갈린다. */
+const optional = messages.common.optional;
 const INBOUND_RECEIPT_EXCEPTION_TYPE = 'INBOUND_RECEIPT_EXCEPTION_TYPE';
 /** 계약 InboundReceiptLineUpsert.supplierLotNo의 varchar(100) 상한. 붙여넣기를 자르지 않는다. */
 const SUPPLIER_LOT_NO_MAX_LENGTH = 100;
 
 type Outcome = 'queued' | 'sent' | 'rejected';
+
+/**
+ * 거래명세서 구역을 화면에 세울 것인가 — **지금은 감춘다**(사용자 지시 2026-09-19 ·
+ * omf-all-around#34).
+ *
+ * ⛔ **지우지 않는다.** 현장에서 다시 쓰기로 하면 이 값만 `true` 로 되돌리면 된다 — 문구
+ *    (i18n)도, 본문에 값을 싣는 자리(`receipt.ts` 의 `deliveryNoteNo` · `vehicleNo`)도 그대로
+ *    두었다.
+ *
+ * ⚠ **구역 제목이 「거래명세서」라 그 안의 차량번호도 함께 감춘다**(사용자 결정). 두 칸 모두
+ *   선택 입력이라 비어도 등록은 막히지 않고, 값이 없으면 본문에 실리지도 않는다(`optional`).
+ */
+const SHOW_DELIVERY_NOTE = false;
 
 const emptyDraft: ReceiptDraft = {
   supplierLotNo: '',
@@ -325,6 +341,23 @@ export const InboundReceiptScreen = () => {
   const lines = usePurchaseOrderLines(draft.purchaseOrder?.purchaseOrderId ?? null);
   const reasons = useCodeValues(SUBSTITUTE_LOT_REASON);
   const exceptionTypes = useCodeValues(INBOUND_RECEIPT_EXCEPTION_TYPE);
+
+  /*
+   * ⭐ **대체 LOT 사유의 기본값을 미리 골라 둔다** — 「라벨 미부착」(사용자 지시 2026-09-19 ·
+   *    omf-all-around#34). 목록은 서버가 주므로 도착한 뒤에야 고를 수 있다.
+   *
+   * ⛔ **이미 고른 값을 덮지 않는다.** 판정은 `defaultSubstituteLotReason` 한 곳에 있다 —
+   *    목록이 다시 와도 사람이 고른 사유가 기본값으로 되돌아가지 않는다.
+   */
+  useEffect(() => {
+    if (!draft.supplierLotMissing) return;
+
+    const picked = defaultSubstituteLotReason(reasons.data ?? [], draft.substituteLotReasonCode);
+
+    if (picked === null) return;
+
+    patch({ substituteLotReasonCode: picked });
+  }, [draft.supplierLotMissing, draft.substituteLotReasonCode, reasons.data]);
   const item = useItem((draft.unordered ? draft.itemId : draft.purchaseOrderLine?.itemId) ?? null);
   const uoms = useUomCodes(true);
   /* 목록의 발주 라인은 품목 식별자만 준다. 그 번호로는 실물 라벨과 대조할 수 없다. */
@@ -408,11 +441,24 @@ export const InboundReceiptScreen = () => {
     uoms.data?.get(uomId ?? -1) ?? t.po.uomUnknown;
   const uom = uomOf(draft.unordered ? draft.uomId : draft.purchaseOrderLine?.uomId);
 
-  /* 코드와 이름을 함께 보인다. 라벨에는 코드가 찍혀 있고 사람은 이름으로 고른다. */
-  const itemLabelOf = (itemId: number): string => {
+  /**
+   * 품목의 코드와 이름 — **각자의 줄에 선다**(사용자 지시 2026-09-19 · omf-all-around#34).
+   *
+   * 붙여 두면 어디까지가 코드인지 매번 가려 읽어야 하고, 실물 라벨과 대조하는 것은 코드 쪽이다.
+   * 못 찾았으면 `null` 이고, 그때는 「품목 정보 없음」 한 줄만 선다 — 빈 글자를 끼우면 이름도
+   * 코드도 없이 수량만 남아 무엇을 세는지 모르는 채 적는다.
+   */
+  const itemPartsOf = (itemId: number): { code: string; name: string } | null => {
     const found = itemLabels.get(itemId);
 
-    return found === undefined ? t.po.itemUnknown : `${found.itemCode} ${found.itemName}`;
+    return found === undefined ? null : { code: found.itemCode, name: found.itemName };
+  };
+
+  /* 접근 이름·읽어 주는 도구가 쓰는 한 줄. 화면에는 두 줄로 서지만 말로는 한 덩어리다. */
+  const itemLabelOf = (itemId: number): string => {
+    const parts = itemPartsOf(itemId);
+
+    return parts === null ? t.po.itemUnknown : `${parts.code} ${parts.name}`;
   };
 
   const qtyMessage = (): string | undefined => {
@@ -601,44 +647,30 @@ export const InboundReceiptScreen = () => {
          * 스캔 칸 하나로 받는다. 스캐너를 기다리는 동안에는 키보드를 열지 않고, 직접
          * 입력을 누르면 그 칸이 열린다. 치는 도중 스캔이 오면 스캔값이 이긴다.
          */}
-        {scanField.manual ? (
-          <Button
-            className="receipt__wide"
-            variant="outlined"
-            size="xl"
-            onClick={scanField.submitManual}
-          >
-            {t.scan.manualSubmit}
-          </Button>
-        ) : (
-          <Button className="receipt__wide" variant="text" size="xl" onClick={scanField.openManual}>
-            {t.scan.manualLabel}
-          </Button>
-        )}
-
-        {draft.supplierLotMissing ? (
-          <>
-            <AlertBanner variant="info" title={t.scan.missingChosen} />
-            <div className="receipt__field">
-              <label htmlFor="receipt-reason">{required(t.scan.reasonLabel)}</label>
-              <Select
-                id="receipt-reason"
-                placeholder={t.scan.reasonPlaceholder}
-                size="xl"
-                value={draft.substituteLotReasonCode === '' ? null : draft.substituteLotReasonCode}
-                onChange={(value) => {
-                  patch({ substituteLotReasonCode: String(value) });
-                }}
-                options={(reasons.data ?? []).map((each) => ({
-                  value: each.code,
-                  label: each.name,
-                }))}
-              />
-              {reasons.isError ? <p className="receipt__note">{t.scan.reasonLoadFailed}</p> : null}
-            </div>
+        {/*
+         * ⭐ **직접 입력과 되돌리기를 한 줄에 나란히 둔다**(사용자 지시 2026-09-19 ·
+         *    omf-all-around#34). 세로로 쌓으면 스캔 칸과 아래 구획 사이가 단추로 메워진다.
+         *
+         * ⛔ **「공급사 LOT 번호가 없습니다」 띠를 세우지 않는다**(같은 지시). 고른 사람이 방금
+         *    누른 것을 되풀이해 말할 뿐이고, 사유 선택칸이 아래에서 같은 사실을 이미 말한다.
+         *
+         * ⭐ **사유 입력은 여기 두지 않는다.** 고른 뒤 발주·수량을 거쳐 화면을 한참 내려가
+         *    등록하는데, 그 사이 사유는 화면 밖으로 밀려난다 — 등록 단추 바로 위로 옮겼다.
+         */}
+        <div className="receipt__row">
+          {scanField.manual ? (
+            <Button variant="outlined" size="xl" onClick={scanField.submitManual}>
+              {t.scan.manualSubmit}
+            </Button>
+          ) : (
+            <Button variant="text" size="xl" onClick={scanField.openManual}>
+              {t.scan.manualLabel}
+            </Button>
+          )}
+          {draft.supplierLotMissing ? (
             <Button
               variant="text"
-              size="lg"
+              size="xl"
               onClick={() => {
                 patch({
                   supplierLotMissing: false,
@@ -649,8 +681,10 @@ export const InboundReceiptScreen = () => {
             >
               {t.scan.back}
             </Button>
-          </>
-        ) : draft.supplierLotNo === '' ? (
+          ) : null}
+        </div>
+
+        {draft.supplierLotMissing ? null : draft.supplierLotNo === '' ? (
           <>
             {externalLotInput ? (
               <div className="receipt__field">
@@ -836,27 +870,37 @@ export const InboundReceiptScreen = () => {
                           }}
                         >
                           <Card.Body className="card-body receipt__line">
-                            <strong>
-                              {t.po.lineLabel(
-                                itemLabelOf(line.itemId),
-                                String(line.orderedQty),
-                                uomOf(line.uomId),
-                              )}
-                            </strong>
+                            {/* ⭐ 코드와 이름을 각자의 줄에 적는다(사용자 지시 2026-09-19). */}
+                            {itemPartsOf(line.itemId) === null ? (
+                              <strong>{t.po.itemUnknown}</strong>
+                            ) : (
+                              <>
+                                <strong>
+                                  {t.po.lineItemCode(itemPartsOf(line.itemId)?.code ?? '')}
+                                </strong>
+                                <p>{t.po.lineItemName(itemPartsOf(line.itemId)?.name ?? '')}</p>
+                              </>
+                            )}
+                            <p>{t.po.lineOrdered(String(line.orderedQty), uomOf(line.uomId))}</p>
                             <p>{t.po.received(String(line.receivedQty))}</p>
                             {/*
                              * 후보 목록은 발주 단위라 그 품목의 라인이 다 찬 발주도 선다.
                              * 견주는 수를 카드가 직접 말하지 않으면 발주량대로 적게 된다.
+                             *
+                             * ⭐ **발주량과 같으면 세우지 않는다**(사용자 지시 2026-09-19) — 같은
+                             *    수를 두 번 말할 뿐이고, 그때는 발주량대로 적는 것이 맞다.
                              */}
-                            <p>
-                              {t.po.lineRemaining(String(lineRemaining))}
-                              {lineRemaining > 0 ? null : (
-                                <>
-                                  {' · '}
-                                  <strong>{t.po.lineClosed}</strong>
-                                </>
-                              )}
-                            </p>
+                            {lineRemaining === line.orderedQty ? null : (
+                              <p>
+                                {t.po.lineRemaining(String(lineRemaining))}
+                                {lineRemaining > 0 ? null : (
+                                  <>
+                                    {' · '}
+                                    <strong>{t.po.lineClosed}</strong>
+                                  </>
+                                )}
+                              </p>
+                            )}
                             <p>
                               {t.po.tolerance(
                                 String(line.toleranceOverQty),
@@ -1043,32 +1087,34 @@ export const InboundReceiptScreen = () => {
             </section>
           ) : null}
 
-          <section className="receipt__section">
-            <h2>{t.note.legend}</h2>
-            <p className="receipt__note">{t.note.photoAbsent}</p>
-            <TextField
-              label={t.note.label}
-              size="xl"
-              fullWidth
-              value={draft.deliveryNoteNo}
-              onChange={(event) => {
-                patch({ deliveryNoteNo: event.target.value });
-              }}
-            />
+          {!SHOW_DELIVERY_NOTE ? null : (
+            <section className="receipt__section">
+              <h2>{t.note.legend}</h2>
+              <p className="receipt__note">{t.note.photoAbsent}</p>
+              <TextField
+                label={t.note.label}
+                size="xl"
+                fullWidth
+                value={draft.deliveryNoteNo}
+                onChange={(event) => {
+                  patch({ deliveryNoteNo: event.target.value });
+                }}
+              />
 
-            <TextField
-              label={t.note.vehicle}
-              size="xl"
-              fullWidth
-              value={draft.vehicleNo}
-              onChange={(event) => {
-                patch({ vehicleNo: event.target.value });
-              }}
-            />
-            {draft.deliveryNoteNo.trim() === '' ? (
-              <AlertBanner variant="warning" title={t.note.absent} />
-            ) : null}
-          </section>
+              <TextField
+                label={t.note.vehicle}
+                size="xl"
+                fullWidth
+                value={draft.vehicleNo}
+                onChange={(event) => {
+                  patch({ vehicleNo: event.target.value });
+                }}
+              />
+              {draft.deliveryNoteNo.trim() === '' ? (
+                <AlertBanner variant="warning" title={t.note.absent} />
+              ) : null}
+            </section>
+          )}
 
           {draft.purchaseOrderLine === null &&
           !(draft.unordered && draft.itemId !== null) ? null : (
@@ -1076,11 +1122,15 @@ export const InboundReceiptScreen = () => {
               <h2>{t.qty.legend}</h2>
               <Card bordered>
                 <Card.Body className="card-body receipt__card">
-                  <strong>
-                    {item.data === undefined
-                      ? t.po.itemUnknown
-                      : `${item.data.itemCode} ${item.data.itemName}`}
-                  </strong>
+                  {/* ⭐ 여기서도 코드와 이름을 각자의 줄에 적는다(사용자 지시 2026-09-19). */}
+                  {item.data === undefined ? (
+                    <strong>{t.po.itemUnknown}</strong>
+                  ) : (
+                    <>
+                      <strong>{t.qty.itemCode(item.data.itemCode)}</strong>
+                      <p>{t.qty.itemName(item.data.itemName)}</p>
+                    </>
+                  )}
                   {item.isError ? <p className="receipt__note">{t.qty.itemLoadFailed}</p> : null}
                   {/*
                    * 발주가 없으면 견줄 수량이 없다. 없는 것을 0 으로 보이지 않는다.
@@ -1091,14 +1141,18 @@ export const InboundReceiptScreen = () => {
                   {draft.purchaseOrderLine === null ? null : (
                     <>
                       <p>{t.qty.ordered(String(draft.purchaseOrderLine.orderedQty), uom)}</p>
-                      <p>
-                        <strong>
-                          {t.qty.remaining(
-                            String(remainingQtyOf(draft.purchaseOrderLine, queuedQty)),
-                            uom,
-                          )}
-                        </strong>
-                      </p>
+                      {/* ⭐ 발주량과 같으면 세우지 않는다 — 같은 수를 두 번 말할 뿐이다. */}
+                      {remainingQtyOf(draft.purchaseOrderLine, queuedQty) ===
+                      draft.purchaseOrderLine.orderedQty ? null : (
+                        <p>
+                          <strong>
+                            {t.qty.remaining(
+                              String(remainingQtyOf(draft.purchaseOrderLine, queuedQty)),
+                              uom,
+                            )}
+                          </strong>
+                        </p>
+                      )}
                     </>
                   )}
                 </Card.Body>
@@ -1154,7 +1208,7 @@ export const InboundReceiptScreen = () => {
               <div className="receipt__row receipt__row--split">
                 <TextField
                   type="date"
-                  label={t.qty.manufactured}
+                  label={optional(t.qty.manufactured)}
                   size="xl"
                   fullWidth
                   value={draft.manufacturedDate}
@@ -1164,7 +1218,7 @@ export const InboundReceiptScreen = () => {
                 />
                 <TextField
                   type="date"
-                  label={t.qty.expiry}
+                  label={optional(t.qty.expiry)}
                   size="xl"
                   fullWidth
                   value={draft.expiryDate}
@@ -1379,6 +1433,37 @@ export const InboundReceiptScreen = () => {
            * 동안만 풀면 같은 단추가 상태에 따라 붙었다 흘렀다 한다. 등록은 다 채운 뒤에
            * 하는 마지막 일이라 흐름 끝에 두어도 찾는 데 문제가 없다.
            */}
+          {/*
+           * ⭐ **대체 LOT 사유는 등록 단추 바로 위에 선다**(사용자 지시 2026-09-19 ·
+           *    omf-all-around#34). 필수값이라 누르기 직전에 한 번 더 눈에 들어와야 한다 — 스캔
+           *    구역에 두면 발주·수량을 거치는 사이 화면 밖으로 밀려났다.
+           */}
+          {draft.supplierLotMissing ? (
+            <section className="receipt__section">
+              <div className="receipt__field">
+                <label htmlFor="receipt-reason">{required(t.scan.reasonLabel)}</label>
+                <Select
+                  id="receipt-reason"
+                  placeholder={t.scan.reasonPlaceholder}
+                  size="xl"
+                  value={
+                    draft.substituteLotReasonCode === '' ? null : draft.substituteLotReasonCode
+                  }
+                  onChange={(value) => {
+                    patch({ substituteLotReasonCode: String(value) });
+                  }}
+                  options={(reasons.data ?? []).map((each) => ({
+                    value: each.code,
+                    label: each.name,
+                  }))}
+                />
+                {reasons.isError ? (
+                  <p className="receipt__note">{t.scan.reasonLoadFailed}</p>
+                ) : null}
+              </div>
+            </section>
+          ) : null}
+
           {verdict === OVER ? null : (
             <Button
               className="receipt__wide"

@@ -36,7 +36,8 @@ export const shippingPackingLabel: Translated<typeof ko.shippingPackingLabel> = 
     neverIssued: '—',
     seqNotice: 'Lượt và kết quả in gần nhất hiển thị theo lịch sử phát hành trên máy chủ.',
     beforeKind: 'Hãy chọn loại nhãn trước.',
-    empty: 'Lô xuất hàng này chưa có đơn vị giao hàng. Hãy tạo ở màn hình cấu thành đơn vị giao hàng.',
+    empty:
+      'Lô xuất hàng này chưa có đơn vị giao hàng. Hãy tạo ở màn hình cấu thành đơn vị giao hàng.',
     emptyPacking: 'Xuất hàng này chưa có kiện. Hãy đăng ký kết quả đóng gói trước.',
     loadFailed: 'Không tải được danh sách đối tượng.',
     retry: 'Tải lại',

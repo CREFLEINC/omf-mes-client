@@ -222,6 +222,35 @@ export const canSubmit = (draft: ReceiptDraft, hasWorker: boolean): boolean => {
   return draft.purchaseOrder !== null && draft.purchaseOrderLine !== null;
 };
 
+/**
+ * 대체 LOT 사유 선택칸의 **기본값** — 「라벨 미부착」(사용자 지시 2026-09-19 · omf-all-around#34).
+ *
+ * ⭐ 이 현장에서 사유는 거의 언제나 「라벨이 붙어 오지 않았다」다. 미리 골라 두면 고르는 손을
+ *    한 번 던다 — 다른 사유면 그 자리에서 바꾸면 된다.
+ *
+ * ⛔ **값을 지어내지 않는다.** `NO_LABEL` 은 계약이 적은 초기 시드의 하나이고(공유계약 G-31),
+ *    **고객이 값을 늘리거나 줄인다.** 그래서 서버가 준 목록에 그 값이 실제로 있을 때만 고른다
+ *    (`defaultSubstituteLotReason`) — 없으면 아무것도 고르지 않고 사람이 고른다.
+ */
+export const DEFAULT_SUBSTITUTE_LOT_REASON = 'NO_LABEL';
+
+/**
+ * 미리 골라 둘 사유. 고를 것이 없으면 `null` 이다.
+ *
+ * ⛔ **이미 고른 값을 덮지 않는다.** 목록이 다시 오는 일이 있고(재조회), 그때 사람이 고른 사유가
+ *    기본값으로 되돌아가면 무엇을 보낼지가 조용히 바뀐다.
+ */
+export const defaultSubstituteLotReason = (
+  reasons: readonly { code: string }[],
+  picked: string,
+): string | null => {
+  if (picked !== '') return null;
+
+  return reasons.some((each) => each.code === DEFAULT_SUBSTITUTE_LOT_REASON)
+    ? DEFAULT_SUBSTITUTE_LOT_REASON
+    : null;
+};
+
 /** 스캔한 사전부착 라벨이 있는가. 외부 LOT 직접 입력과 미부착은 라벨 대조를 하지 않는다 - 서버도 보지 않는다. */
 export const hasScannedLabel = (draft: ReceiptDraft): boolean =>
   !draft.supplierLotMissing && draft.supplierLotLabelAttached && draft.supplierLotNo !== '';
