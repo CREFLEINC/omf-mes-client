@@ -170,6 +170,14 @@ export const InboundReceiptScreen = () => {
       return;
     }
 
+    /*
+     * 손으로 넣은 같은 번호를 라벨로 다시 댄 자리다. 손 입력에서 넓혀 둔 목록을 그대로 두면
+     * 라벨인데도 무관한 발주가 후보로 남는다 - 라벨 기준으로 다시 좁힌다(omf-all-around#25).
+     */
+    if (!draft.supplierLotLabelAttached) {
+      setShowAllOrders(false);
+    }
+
     patch({
       supplierLotNo: code,
       supplierLotMissing: false,
@@ -238,11 +246,17 @@ export const InboundReceiptScreen = () => {
    * 손으로 넣은 건(라벨 미부착)은 대조가 없어, 품목을 못 찾거나 후보가 없으면 전에처럼 넓힌다.
    */
   const strictLabel = draft.supplierLotLabelAttached && !draft.supplierLotMissing;
-  /* 품목을 확인해 좁힌 조회이거나, 좁히지 않는 경우의 전체 조회만 목록으로 낸다. */
+  /*
+   * 품목을 확인해 좁힌 조회이거나, 좁히지 않는 경우의 전체 조회만 목록으로 낸다.
+   *
+   * 품목 조회가 «실패»한 것은 없다는 답이 아니다 - 확인하지 못했으면 알리되 막지 않는다(연결 없이도
+   * 입하가 담겨야 한다). 그때는 전체 목록을 내고 라벨과 같은 품목을 고르라고 알린다.
+   */
   const candidates =
     itemCheck === 'none' ||
     itemCheck === 'found' ||
-    (!strictLabel && (itemCheck === 'unknown' || itemCheck === 'failed'))
+    itemCheck === 'failed' ||
+    (!strictLabel && itemCheck === 'unknown')
       ? orders
       : null;
   const narrowed = itemCheck === 'found';

@@ -46,7 +46,8 @@ export const inboundReceipt: Translated<typeof ko.inboundReceipt> = {
     narrowedNote: 'Chỉ hiện các P/O vật tư có mặt hàng của vật tư đã quét.',
     showAll: 'Xem toàn bộ P/O vật tư',
     itemChecking: 'Đang xác nhận mặt hàng của vật tư đã quét',
-    itemCheckFailed: 'Không xác nhận được mặt hàng của vật tư đã quét. Hãy kiểm tra kết nối.',
+    itemCheckFailed:
+      'Không xác nhận được mặt hàng của vật tư đã quét nên hiện toàn bộ P/O vật tư. Hãy chọn đơn đặt hàng cùng mặt hàng với nhãn.',
     itemNotFound: (code: string) =>
       `Không có ${code} trong dữ liệu gốc mặt hàng. Hãy kiểm tra lại nhãn.`,
     noneForItem: (code: string) =>

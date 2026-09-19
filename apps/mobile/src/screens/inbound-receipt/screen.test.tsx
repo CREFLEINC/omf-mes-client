@@ -339,6 +339,26 @@ describe('입하 등록 화면', () => {
     expect(screen.getByRole('combobox', { name: '자재 P/O 번호' })).toBeTruthy();
   });
 
+  /* 확인하지 못한 것은 없다는 답이 아니다. 연결이 없어도 입하가 담기도록 전체 목록을 내고 알린다. */
+  it('라벨 품목을 확인하지 못하면 알리고 전체 목록을 낸다', async () => {
+    const user = userEvent.setup();
+    mount([
+      {
+        match: (req) => new URL(req.url).pathname === '/mdm/items',
+        respond: () => Promise.reject(new TypeError('Failed to fetch')),
+      },
+    ]);
+    await screen.findByLabelText('LOT 번호');
+    scan(SCANNED);
+
+    expect(
+      await screen.findByText(/전체 자재 P\/O를 보입니다\. 라벨과 같은 품목의 발주를 고르세요/),
+    ).toBeTruthy();
+    await user.click(await screen.findByRole('combobox', { name: '자재 P/O 번호' }));
+
+    expect(await screen.findByRole('option', { name: 'PO-2026-0003' })).toBeTruthy();
+  });
+
   /*
    * 라벨 없이 납품서 번호를 손으로 넣은 건은 제품코드 대조가 없다. 좁힌 후보가 비면 전처럼 전체로
    * 넘어가 고를 것을 남긴다.
