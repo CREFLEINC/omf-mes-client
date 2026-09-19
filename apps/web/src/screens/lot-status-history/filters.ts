@@ -18,6 +18,12 @@ const LOT_STATUS_SORTS: readonly LotStatusSort[] = [
   'latestTransitionDesc',
 ];
 
+/**
+ * LOT 유형 「전체」. 비어 있는 값('')은 「아직 조회하지 않음」이라 둘을 가른다 — 유형 없이도
+ * 조회할 수 있게 풀었다(사용자 지시 2026-09-19). 서버에는 lotTypeCode 를 빼서 보낸다.
+ */
+export const ALL_LOT_TYPES = 'ALL';
+
 export interface LotFilters {
   lotType: string;
   q: string;

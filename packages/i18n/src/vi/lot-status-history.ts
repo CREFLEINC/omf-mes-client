@@ -20,8 +20,8 @@ export const lotStatusHistory: Translated<typeof ko.lotStatusHistory> = {
     reset: 'Đặt lại',
     retry: 'Thử lại',
     retryLabel: (name: string): string => `Thử lại ${name}`,
-    previousPage: 'Trang trước',
-    nextPage: 'Trang sau',
+    previousPage: 'Trước',
+    nextPage: 'Sau',
   },
   range: {
     total: (total: string): string => `Tổng ${total} mục`,
@@ -38,10 +38,11 @@ export const lotStatusHistory: Translated<typeof ko.lotStatusHistory> = {
     inactive: (label: string): string => `${label} (ngừng dùng)`,
     unlisted: (value: string): string => `${value} (chưa có trong danh sách)`,
   },
-  scopeNotice:
-    'Chỉ hiển thị lịch sử đăng ký · gỡ tạm giữ, toàn bộ chuyển đổi trạng thái không được ghi lại.',
   lotFilter: {
     pane: 'Điều kiện tra cứu LOT',
+    itemPlaceholder: 'Tìm theo mã · tên',
+    itemClear: 'Xóa mặt hàng',
+    itemPick: 'Chọn',
     fields: {
       lotType: 'Loại LOT',
       lotNo: 'Số LOT',
@@ -52,16 +53,11 @@ export const lotStatusHistory: Translated<typeof ko.lotStatusHistory> = {
     },
     notes: {
       lotTypeTruncated: 'Chỉ hiển thị một phần loại LOT.',
+      lotTypeUnseeded: 'Giá trị gốc của loại LOT chưa sẵn sàng.',
       lotStatusUnseeded: 'Giá trị gốc của trạng thái hiện tại chưa sẵn sàng.',
-      locationNeedsWarehouse: 'Hãy chọn kho trước.',
+      locationNeedsWarehouse: 'Chọn kho rồi mới chọn được vị trí.',
       locationFailed: 'Không tải được danh sách vị trí.',
       locationTruncated: 'Chỉ hiển thị một phần vị trí.',
-    },
-    reasons: {
-      lotTypeRequired: 'Hãy chọn loại LOT.',
-      lotTypeLoading: 'Đang tải giá trị gốc của loại LOT.',
-      lotTypeFailed: 'Không tải được giá trị gốc của loại LOT.',
-      lotTypeUnseeded: 'Giá trị gốc của loại LOT chưa sẵn sàng.',
     },
   },
   historyFilter: {
@@ -69,12 +65,17 @@ export const lotStatusHistory: Translated<typeof ko.lotStatusHistory> = {
     fields: {
       period: 'Khoảng thời gian',
       actor: 'Người thực hiện',
-      lot: 'LOT',
+      lot: 'Số LOT',
     },
     actorUnknownOption: 'Người thực hiện đã chọn (không xác nhận được tên)',
     actorUnknownNote: 'Không xác nhận được tên người thực hiện đã chọn.',
+    periodPlaceholder: 'Ngày bắt đầu ~ Ngày kết thúc',
+    steps: {
+      start: 'Hãy chọn ngày bắt đầu.',
+      end: 'Hãy chọn ngày kết thúc.',
+    },
     reasons: {
-      missing: 'Chọn đủ khoảng thời gian thì mới tra cứu được.',
+      missing: 'Hãy chọn ngày bắt đầu rồi chọn ngày kết thúc.',
       invalid: 'Hãy chọn khoảng thời gian hợp lệ.',
       reversed: 'Ngày kết thúc không được trước ngày bắt đầu.',
     },
@@ -82,7 +83,7 @@ export const lotStatusHistory: Translated<typeof ko.lotStatusHistory> = {
   current: {
     pane: 'Trạng thái LOT hiện tại',
     beforeSearch: {
-      title: 'Hãy chọn loại LOT rồi tra cứu',
+      title: 'Hãy chọn điều kiện tra cứu rồi tra cứu',
       description:
         'Áp dụng điều kiện tra cứu thì tóm tắt trạng thái hiện tại và danh sách LOT sẽ hiện ra.',
     },
@@ -90,8 +91,8 @@ export const lotStatusHistory: Translated<typeof ko.lotStatusHistory> = {
       lot: 'LOT',
       item: 'Mặt hàng',
       status: 'Trạng thái hiện tại',
-      onHand: 'Đang giữ',
-      latestTransition: 'Chuyển đổi gần nhất',
+      onHand: 'Số lượng đang giữ',
+      latestTransition: 'Thay đổi trạng thái gần nhất',
       reason: 'Lý do',
     },
     itemLabel: {
@@ -122,32 +123,59 @@ export const lotStatusHistory: Translated<typeof ko.lotStatusHistory> = {
     },
   },
   history: {
-    pane: 'Lịch sử sự kiện tạm giữ',
+    pane: 'Lịch sử LOT',
     columns: {
       occurredAt: 'Thời điểm',
       lot: 'LOT',
-      event: 'Chuyển đổi / sự kiện',
+      event: 'Phân loại',
+      change: 'Thay đổi trạng thái',
       actor: 'Người thực hiện',
       reason: 'Lý do',
     },
     events: {
       held: 'Đăng ký tạm giữ',
       released: 'Gỡ tạm giữ',
+      statusChanged: 'Thay đổi trạng thái',
     },
+    transitions: {
+      C4: 'Đạt',
+      C5: 'Tạm giữ kiểm tra',
+      C6: 'Không đạt',
+      C7: 'Đánh giá lại đạt',
+      C8: 'Đánh giá lại không đạt',
+      C9: 'Khiếu nại · thu hồi',
+      C10: 'Đăng ký vật tư nghi ngờ',
+      C14: 'Vượt số lượng chấp nhận',
+      C15: 'Kiểm tra lại toàn bộ đạt',
+      C17: 'Xử lý làm lại',
+      C18: 'Xử lý hủy bỏ',
+      C19: 'Xử lý bình thường',
+      C20: 'Đăng ký lại tồn kho',
+    },
+    initialStatus: 'Ban đầu',
     actorUnknown: 'Chưa xác định tên',
     beforeSearch: {
       title: 'Hãy chọn khoảng thời gian rồi tra cứu',
-      description: 'Áp dụng đủ khoảng thời gian tra cứu thì lịch sử sự kiện tạm giữ sẽ hiện ra.',
+      description:
+        'Áp dụng đủ khoảng thời gian tra cứu thì lịch sử đăng ký · gỡ tạm giữ và thay đổi trạng thái sẽ hiện ra.',
     },
-    loading: 'Đang tải lịch sử sự kiện tạm giữ',
-    failed: 'Không tải được lịch sử sự kiện tạm giữ.',
-    refreshing: 'Đang làm mới lịch sử sự kiện tạm giữ',
-    refreshingText: 'Đang làm mới lịch sử sự kiện tạm giữ.',
+    loading: 'Đang tải lịch sử LOT',
+    failed: 'Không tải được lịch sử LOT.',
+    refreshing: 'Đang làm mới lịch sử LOT',
+    refreshingText: 'Đang làm mới lịch sử LOT.',
     empty: {
-      title: 'Khoảng thời gian này không có sự kiện tạm giữ nào',
+      title: 'Khoảng thời gian này không có lịch sử nào',
       description: 'Không khớp với trạng thái LOT hiện tại cũng không phải là lỗi.',
     },
-    pagination: 'Chuyển trang lịch sử sự kiện tạm giữ',
+    truncated: 'Có nhiều sự kiện tạm giữ nên chỉ hiển thị một phần. Hãy thu hẹp khoảng thời gian.',
+    pagination: 'Chuyển trang lịch sử LOT',
+  },
+  timeline: {
+    pane: 'Lịch sử LOT',
+    loading: 'Đang tải lịch sử LOT',
+    failed: 'Không tải được lịch sử LOT.',
+    empty: 'Không có lịch sử nào được ghi lại',
+    truncated: 'Có nhiều sự kiện tạm giữ nên chỉ hiển thị một phần.',
   },
   detail: {
     title: 'Chi tiết LOT',
@@ -165,8 +193,9 @@ export const lotStatusHistory: Translated<typeof ko.lotStatusHistory> = {
       manufacturedAt: 'Thời điểm sản xuất',
     },
     transition: 'Xử lý đánh giá · chuyển đổi',
-    transitionNote: 'Dùng được khi màn hình W-03-02 đã sẵn sàng.',
-    suspiciousNote: 'Hãy đăng ký vật tư nghi ngờ ở màn hình W-03-03.',
+    transitionNote:
+      'Không dùng được trong cửa sổ này. Hãy thực hiện ở màn hình 「Xử lý đánh giá · chuyển đổi Lot Status」.',
+    suspiciousNote: 'Hãy đăng ký vật tư nghi ngờ ở màn hình 「Đăng ký vật tư nghi ngờ」.',
   },
   holdDocuments: {
     pane: 'Chứng từ tạm giữ',
@@ -176,6 +205,14 @@ export const lotStatusHistory: Translated<typeof ko.lotStatusHistory> = {
       holdStatus: 'Trạng thái mục tạm giữ',
       holdQty: 'Số lượng tạm giữ',
       releaseCondition: 'Điều kiện gỡ',
+    },
+    times: {
+      held: 'Đăng ký',
+      released: 'Gỡ',
+    },
+    holdStates: {
+      open: 'Đang tạm giữ',
+      released: 'Đã gỡ',
     },
     fullQty: 'Toàn bộ',
     actorPending: 'Đang xác nhận…',

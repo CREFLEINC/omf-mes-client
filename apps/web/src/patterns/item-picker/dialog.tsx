@@ -63,6 +63,15 @@ export interface ItemPickerDialogProps {
   onClose: () => void;
   /** 고른 품목들. 단일 선택이어도 배열로 준다 — 부르는 쪽의 분기를 하나로 둔다. */
   onConfirm: (items: ItemRow[]) => void;
+  /**
+   * 사용 중지된 품목도 찾는다. 조회 필터처럼 지난 자료를 찾는 쪽이 켠다. 기본 false —
+   * 편성·등록 화면은 중지 품목을 새로 고르지 않는다.
+   */
+  includeInactive?: boolean;
+  /** 가용 재고 열. 조회 필터처럼 재고와 상관없는 쪽은 끈다 — 끄면 품목마다 가는 재고 요청도 없다. 기본 true. */
+  showAvailability?: boolean;
+  /** 확인 단추 이름. 비우면 종전대로 「추가」/「교체」. */
+  confirmLabel?: string;
 }
 
 const describeAvailability = (state: AvailabilityState): string => {
@@ -82,6 +91,9 @@ export const ItemPickerDialog = ({
   addedItemIds = [],
   onClose,
   onConfirm,
+  includeInactive = false,
+  showAvailability = true,
+  confirmLabel,
 }: ItemPickerDialogProps) => {
   const keywordId = useId();
   const typeId = useId();
@@ -95,10 +107,10 @@ export const ItemPickerDialog = ({
   const [picked, setPicked] = useState<ItemRow[]>([]);
 
   const types = useItemTypeOptions(true);
-  const search = useItemSearch(submitted, itemTypeCode, page);
+  const search = useItemSearch(submitted, itemTypeCode, page, includeInactive);
   const rows = search.data?.rows ?? [];
   const total = search.data?.total ?? 0;
-  const availabilityOf = useItemAvailability(rows.map((row) => row.itemId));
+  const availabilityOf = useItemAvailability(showAvailability ? rows.map((row) => row.itemId) : []);
 
   const submit = (): void => {
     setPage(1);
@@ -144,6 +156,7 @@ export const ItemPickerDialog = ({
       render: (row) => (
         <span>
           {row.itemName}
+          {row.isActive ? '' : ` · ${t.inactive}`}
           {/* 막지 않는다 — 같은 품목 두 라인이 허용된다. 담겼다는 «사실»만 알린다. */}
           {addedItemIds.includes(row.itemId) ? ` · ${t.alreadyAdded}` : ''}
         </span>
@@ -158,13 +171,17 @@ export const ItemPickerDialog = ({
         types.data?.find((option) => option.code === row.itemTypeCode)?.codeName ??
         row.itemTypeCode,
     },
-    {
-      key: 'availableQty',
-      header: t.columns.availableQty,
-      align: 'end',
-      width: '112px',
-      render: (row) => describeAvailability(availabilityOf(row.itemId)),
-    },
+    ...(showAvailability
+      ? [
+          {
+            key: 'availableQty',
+            header: t.columns.availableQty,
+            align: 'end' as const,
+            width: '112px',
+            render: (row: ItemRow) => describeAvailability(availabilityOf(row.itemId)),
+          },
+        ]
+      : []),
   ];
 
   const from = (page - 1) * ITEM_PAGE_SIZE + 1;
@@ -198,7 +215,7 @@ export const ItemPickerDialog = ({
               onConfirm(picked);
             }}
           >
-            {multiple ? t.add : t.replace}
+            {confirmLabel ?? (multiple ? t.add : t.replace)}
           </Button>
         </>
       }

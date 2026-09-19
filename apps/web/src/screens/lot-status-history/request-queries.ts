@@ -1,6 +1,6 @@
 import type { paths } from '@omf-mes/api-client';
 
-import type { HistoryFilters, LotFilters } from './filters';
+import { ALL_LOT_TYPES, type HistoryFilters, type LotFilters } from './filters';
 import { toHistoryPeriodBounds, validateHistoryPeriod } from './period';
 
 export type LotStatusListQuery = NonNullable<
@@ -11,6 +11,9 @@ export type LotStatusSummaryQuery = NonNullable<
 >;
 export type LotHoldEventQuery = NonNullable<
   paths['/quality/lot-hold-events']['get']
+>['parameters']['query'];
+export type LotStatusEventQuery = NonNullable<
+  paths['/trace/lot-status-events']['get']
 >['parameters']['query'];
 export type LotHoldListQuery = NonNullable<
   NonNullable<paths['/quality/lot-holds']['get']>['parameters']['query']
@@ -28,7 +31,7 @@ const toPositiveIdentifier = (raw: string): number | undefined => {
 const toPage = (page: number): number | undefined =>
   Number.isSafeInteger(page) && page > 1 ? page : undefined;
 
-/** 목록과 요약이 같은 모집단을 보도록 공통 필터를 한 자리에서 만든다. */
+/** 목록과 요약이 같은 모집단을 보도록 공통 필터를 한 자리에서 만든다. 유형이 비면 아직 조회 전이다. */
 export const toLotStatusSummaryQuery = (filters: LotFilters): LotStatusSummaryQuery | null => {
   if (filters.lotType === '') return null;
 
@@ -37,7 +40,7 @@ export const toLotStatusSummaryQuery = (filters: LotFilters): LotStatusSummaryQu
   const warehouseId = toPositiveIdentifier(filters.warehouse);
   const locationId = toPositiveIdentifier(filters.location);
 
-  if (filters.lotType !== '') query.lotTypeCode = filters.lotType;
+  if (filters.lotType !== ALL_LOT_TYPES) query.lotTypeCode = filters.lotType;
   if (filters.q !== '') query.q = filters.q;
   if (itemId !== undefined) query.itemId = itemId;
   if (filters.status !== '') query.lotStatusCode = filters.status;
@@ -88,6 +91,33 @@ export const toLotHoldEventQuery = (
 
   return query;
 };
+
+/** 상태 변경이력은 행위자·LOT 번호를 받지 않는다 — 기간만 보내고 화면이 거른다(timeline.ts). */
+export const toLotStatusEventQuery = (
+  filters: HistoryFilters,
+  offsetMinutes: number,
+): LotStatusEventQuery | null => {
+  const period = { from: filters.from, to: filters.to };
+  if (validateHistoryPeriod(period) !== null) return null;
+
+  const bounds = toHistoryPeriodBounds(period, offsetMinutes);
+  return { occurredFrom: bounds.from, occurredTo: bounds.to };
+};
+
+/** 행위자 필터 값. 보류 사건 쪽 질의와 같은 규칙으로 읽는다. */
+export const toHistoryActorId = (filters: HistoryFilters): number | undefined =>
+  toPositiveIdentifier(filters.actor);
+
+/**
+ * LOT 한 건의 이력은 LOT 이 생긴 뒤 전부다. 두 이력 API 가 기간을 필수로 받아(L-3) 시작은
+ * 운영 이전으로, 끝은 부르는 순간의 다음 날로 둔다.
+ */
+export const LOT_HISTORY_FROM = '2000-01-01T00:00:00Z';
+
+export const toLotHistoryBounds = (now: Date): { occurredFrom: string; occurredTo: string } => ({
+  occurredFrom: LOT_HISTORY_FROM,
+  occurredTo: new Date(now.getTime() + 24 * 60 * 60 * 1000).toISOString(),
+});
 
 export const toLotHoldListQuery = (lotId: number | null, page = 1): LotHoldListQuery | null => {
   if (lotId === null || !Number.isSafeInteger(lotId) || lotId < 1) return null;

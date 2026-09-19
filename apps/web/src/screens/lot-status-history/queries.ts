@@ -6,18 +6,26 @@ import { runRequest } from '../../patterns/request';
 import type { HistoryFilters, LotFilters } from './filters';
 import { lotStatusKeys } from './query-keys';
 import {
+  toHistoryActorId,
+  toLotHistoryBounds,
   toLotHoldEventQuery,
   toLotHoldListQuery,
+  toLotStatusEventQuery,
   toLotStatusListQuery,
   toLotStatusSummaryQuery,
+  type LotHoldEventQuery,
+  type LotStatusEventQuery,
 } from './request-queries';
+import { mergeTimeline, scopeStatusEvents, type LotTimelineEntry } from './timeline';
 import {
   toLotHoldEventView,
+  toLotStatusEventView,
   toLotHoldView,
   toLotDetailView,
   toLotStatusRow,
   toLotStatusSummaryView,
   type LotHoldEventView,
+  type LotStatusEventView,
   type LotHoldView,
   type LotDetailView,
   type LotStatusRow,
@@ -38,9 +46,10 @@ export interface LotHoldListResult {
   page: PageMeta;
 }
 
-export interface LotHoldEventListResult {
-  rows: readonly LotHoldEventView[];
-  page: PageMeta;
+export interface LotTimelineResult {
+  entries: readonly LotTimelineEntry[];
+  /** 보류 사건이 읽기 상한을 넘어 일부만 합쳤다. */
+  isTruncated: boolean;
 }
 
 export interface LotActorListResult {
@@ -151,33 +160,88 @@ export const useLotHolds = (lotId: number | null, page = 1): UseQueryResult<LotH
   });
 };
 
-const fetchLotHoldEvents = async (
-  client: Client,
-  query: NonNullable<ReturnType<typeof toLotHoldEventQuery>>,
-): Promise<LotHoldEventListResult> => {
-  const data = await runRequest(() =>
-    client.GET('/quality/lot-hold-events', { params: { query } }),
-  );
+/** 한 번에 받을 보류 사건 수. 서버 상한(200)과 같다. */
+const HOLD_EVENT_PAGE_SIZE = 200;
+/** 기간이 넓어도 화면이 멎지 않게 읽기를 여기서 멈춘다. 넘으면 「일부만」을 밝힌다. */
+const HOLD_EVENT_MAX_PAGES = 10;
 
-  return { rows: data.items.map(toLotHoldEventView), page: data.page };
+/**
+ * 상태 변경과 한 표에 합치려면 기간 안의 보류 사건을 모두 받아야 한다 — 서버 쪽 나눔을
+ * 그대로 쓰면 두 줄 종류의 쪽 경계가 어긋난다. 쪽을 넘기며 끝까지 읽는다.
+ */
+const fetchAllHoldEvents = async (
+  client: Client,
+  query: LotHoldEventQuery,
+): Promise<{ rows: LotHoldEventView[]; isTruncated: boolean }> => {
+  const rows: LotHoldEventView[] = [];
+
+  for (let page = 1; page <= HOLD_EVENT_MAX_PAGES; page += 1) {
+    const data = await runRequest(() =>
+      client.GET('/quality/lot-hold-events', {
+        params: { query: { ...query, page, size: HOLD_EVENT_PAGE_SIZE } },
+      }),
+    );
+    rows.push(...data.items.map(toLotHoldEventView));
+    if (data.items.length === 0 || rows.length >= data.page.total) {
+      return { rows, isTruncated: false };
+    }
+  }
+
+  return { rows, isTruncated: true };
 };
 
-export const useLotHoldEvents = (
+const fetchStatusEvents = async (
+  client: Client,
+  query: LotStatusEventQuery,
+): Promise<LotStatusEventView[]> => {
+  const data = await runRequest(() =>
+    client.GET('/trace/lot-status-events', { params: { query } }),
+  );
+  return data.items.map(toLotStatusEventView);
+};
+
+/** 「이력으로 찾기」 — 기간 안의 보류 사건과 상태 변경을 합친다. 쪽 나눔은 화면이 한다. */
+export const useLotHistoryTimeline = (
   filters: HistoryFilters,
-  page: number,
   offsetMinutes: number,
-): UseQueryResult<LotHoldEventListResult> => {
+): UseQueryResult<LotTimelineResult> => {
   const { client } = useApiClient();
-  const query = toLotHoldEventQuery(filters, page, offsetMinutes);
+  const holdQuery = toLotHoldEventQuery(filters, 1, offsetMinutes);
+  const statusQuery = toLotStatusEventQuery(filters, offsetMinutes);
 
   return useQuery({
-    queryKey: lotStatusKeys.history(filters, page, offsetMinutes),
-    enabled: query !== null,
+    queryKey: lotStatusKeys.history(filters, offsetMinutes),
+    enabled: holdQuery !== null && statusQuery !== null,
     placeholderData: keepPreviousData,
-    queryFn: () => {
-      if (query === null)
+    queryFn: async () => {
+      if (holdQuery === null || statusQuery === null)
         throw new Error('유효한 기간을 입력하기 전에는 이력을 조회하지 않습니다.');
-      return fetchLotHoldEvents(client, query);
+      const [holds, statuses] = await Promise.all([
+        fetchAllHoldEvents(client, holdQuery),
+        fetchStatusEvents(client, statusQuery),
+      ]);
+      const scoped = scopeStatusEvents(statuses, {
+        lotNo: filters.lot,
+        actorId: toHistoryActorId(filters),
+      });
+      return { entries: mergeTimeline(holds.rows, scoped), isTruncated: holds.isTruncated };
+    },
+  });
+};
+
+/** LOT 상세 — 그 LOT 의 보류 사건과 상태 변경 전부. */
+export const useLotTimeline = (lotId: number): UseQueryResult<LotTimelineResult> => {
+  const { client } = useApiClient();
+
+  return useQuery({
+    queryKey: lotStatusKeys.lotTimeline(lotId),
+    queryFn: async () => {
+      const bounds = toLotHistoryBounds(new Date());
+      const [holds, statuses] = await Promise.all([
+        fetchAllHoldEvents(client, { ...bounds, lotId, sort: 'occurredDesc' }),
+        fetchStatusEvents(client, { ...bounds, lotId }),
+      ]);
+      return { entries: mergeTimeline(holds.rows, statuses), isTruncated: holds.isTruncated };
     },
   });
 };

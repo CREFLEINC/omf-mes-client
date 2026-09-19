@@ -38,6 +38,9 @@ export const itemPicker = {
   /** 이미 라인에 담긴 품목 — **막지 않고 표식만 단다**(같은 품목 두 라인이 허용된다). */
   alreadyAdded: '담김',
 
+  /** 사용 중지된 품목 — 중지 품목까지 찾는 창에서만 보인다. */
+  inactive: '미사용',
+
   page: {
     /** 「1–20 / 전체 37건」 */
     range: (from: number, to: number, total: number): string =>

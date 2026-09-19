@@ -2,7 +2,8 @@ import { Button, SearchInput, Select } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useId, useState } from 'react';
 
-import type { LotFilters } from './filters';
+import { ALL_LOT_TYPES, type LotFilters } from './filters';
+import { ItemFilterField } from './item-filter-field';
 import { useLocationReferenceOptions } from './reference-options';
 
 const t = messages.lotStatusHistory;
@@ -17,12 +18,9 @@ export interface LotFilterBarProps {
   lotTypeOptions: readonly FilterOption[];
   lotStatusOptions: readonly FilterOption[];
   warehouseOptions: readonly FilterOption[];
-  itemOptions: readonly FilterOption[];
   lotTypeNote?: string;
   lotStatusNote?: string;
   warehouseNote?: string;
-  itemNote?: string;
-  lotTypeBlockReason?: string;
   onSearch: (filters: LotFilters) => void;
   onReset: () => void;
 }
@@ -32,7 +30,12 @@ interface SelectFieldProps {
   options: readonly FilterOption[];
   value: string;
   note?: string;
-  required?: boolean;
+  /** 칸 폭 규칙(app.css). 값의 길이에 맞춘 폭을 칸마다 따로 준다. */
+  className: string;
+  /** 먼저 골라야 할 것이 남아 잠겨 있다. */
+  disabled?: boolean;
+  /** 잠긴 까닭 — 라벨 옆에 옅은 안내 글자로 둔다. */
+  labelHint?: string;
   onChange: (value: string) => void;
 }
 
@@ -41,24 +44,42 @@ const SelectField = ({
   options,
   value,
   note,
-  required = false,
+  className,
+  disabled = false,
+  labelHint,
   onChange,
 }: SelectFieldProps) => {
   const id = useId();
   const noteId = `${id}-note`;
+  const hintId = `${id}-hint`;
+  const describedBy = [labelHint === undefined ? '' : hintId, note === undefined ? '' : noteId]
+    .filter((part) => part !== '')
+    .join(' ');
 
   return (
-    <div className="field-cell wide-select">
-      <label className="field-label" htmlFor={id}>
-        {label}
-      </label>
+    <div className={`field-cell ${className}`}>
+      {labelHint === undefined ? (
+        <label className="field-label" htmlFor={id}>
+          {label}
+        </label>
+      ) : (
+        /* ⭐ 안내는 라벨 옆에 옅은 글자로만 — 칩 모양은 쓰지 않는다(사용자 지시 2026-09-19). */
+        <div className="lot-status-filter-label-row">
+          <label className="field-label" htmlFor={id}>
+            {label}
+          </label>
+          <span id={hintId} className="field-note">
+            {labelHint}
+          </span>
+        </div>
+      )}
       <Select
         id={id}
         options={[...options]}
-        value={value === '' && required ? null : value}
+        value={value}
+        disabled={disabled}
         onChange={onChange}
-        aria-required={required || undefined}
-        aria-describedby={note === undefined ? undefined : noteId}
+        aria-describedby={describedBy === '' ? undefined : describedBy}
       />
       {note !== undefined && (
         <span id={noteId} className="field-note">
@@ -81,17 +102,13 @@ export const LotFilterBar = ({
   lotTypeOptions,
   lotStatusOptions,
   warehouseOptions,
-  itemOptions,
   lotTypeNote,
   lotStatusNote,
   warehouseNote,
-  itemNote,
-  lotTypeBlockReason,
   onSearch,
   onReset,
 }: LotFilterBarProps) => {
   const [filters, setFilters] = useState<LotFilters>(appliedFilters);
-  const reasonId = useId();
 
   const {
     lotType: appliedLotType,
@@ -129,46 +146,47 @@ export const LotFilterBar = ({
       value: entry.value,
       label: entry.isActive ? entry.label : t.values.inactive(entry.label),
     })) ?? [];
-  const locationNote =
-    filters.warehouse === ''
-      ? t.lotFilter.notes.locationNeedsWarehouse
-      : locations.isError
-        ? t.lotFilter.notes.locationFailed
-        : locations.data?.isTruncated === true
-          ? t.lotFilter.notes.locationTruncated
-          : undefined;
+  /*
+   * ⭐ 위치는 창고를 고른 뒤에 연다 — 그 전에는 잠그고 까닭은 라벨 옆 안내 글자로 둔다
+   * (사용자 지시 2026-09-19).
+   */
+  const isLocationLocked = filters.warehouse === '';
+  const locationNote = isLocationLocked
+    ? undefined
+    : locations.isError
+      ? t.lotFilter.notes.locationFailed
+      : locations.data?.isTruncated === true
+        ? t.lotFilter.notes.locationTruncated
+        : undefined;
 
-  const searchReason =
-    lotTypeBlockReason ?? (filters.lotType === '' ? t.lotFilter.reasons.lotTypeRequired : null);
-  const search = (): void => {
-    if (searchReason === null) onSearch(filters);
-  };
+  /* 아직 조회 전('')이면 초안은 「전체」다 — 유형을 고르지 않고 조회해도 된다(사용자 지시 2026-09-19). */
+  const lotType = filters.lotType === '' ? ALL_LOT_TYPES : filters.lotType;
+  const search = (): void => onSearch({ ...filters, lotType });
 
   return (
     <div className="filter-bar lot-status-filter">
       <SelectField
-        required
+        className="lot-status-filter-lot-type"
         label={t.lotFilter.fields.lotType}
-        options={lotTypeOptions}
-        value={filters.lotType}
+        options={[{ value: ALL_LOT_TYPES, label: t.values.all }, ...lotTypeOptions]}
+        value={lotType}
         note={lotTypeNote}
         onChange={(lotType) => setFilters((current) => ({ ...current, lotType }))}
       />
       <SearchInput
+        containerClassName="lot-status-filter-lot-no"
         label={t.lotFilter.fields.lotNo}
         value={filters.q}
         onChange={(event) => setFilters((current) => ({ ...current, q: event.target.value }))}
         onSearch={search}
         clearLabel={messages.common.clear}
       />
-      <SelectField
-        label={t.lotFilter.fields.item}
-        options={withAll(itemOptions)}
+      <ItemFilterField
         value={filters.item}
-        note={itemNote}
         onChange={(item) => setFilters((current) => ({ ...current, item }))}
       />
       <SelectField
+        className="lot-status-filter-status"
         label={t.lotFilter.fields.status}
         options={withAll(lotStatusOptions)}
         value={filters.status}
@@ -176,6 +194,7 @@ export const LotFilterBar = ({
         onChange={(status) => setFilters((current) => ({ ...current, status }))}
       />
       <SelectField
+        className="lot-status-filter-place"
         label={t.lotFilter.fields.warehouse}
         options={withAll(warehouseOptions)}
         value={filters.warehouse}
@@ -189,31 +208,21 @@ export const LotFilterBar = ({
         }
       />
       <SelectField
+        className="lot-status-filter-place lot-status-filter-location"
         label={t.lotFilter.fields.location}
         options={withAll(locationOptions)}
         value={filters.location}
         note={locationNote}
+        disabled={isLocationLocked}
+        labelHint={isLocationLocked ? t.lotFilter.notes.locationNeedsWarehouse : undefined}
         onChange={(location) => setFilters((current) => ({ ...current, location }))}
       />
-      <div className="lot-status-filter-footer">
-        {searchReason !== null && (
-          <span id={reasonId} className="field-note">
-            {searchReason}
-          </span>
-        )}
-
-        <div className="filter-actions lot-status-filter-buttons">
-          <Button
-            disabled={searchReason !== null}
-            aria-describedby={searchReason === null ? undefined : reasonId}
-            onClick={search}
-          >
-            {t.actions.search}
-          </Button>
-          <Button variant="outlined" onClick={onReset}>
-            {t.actions.reset}
-          </Button>
-        </div>
+      {/* 조회·초기화는 조건과 같은 줄 끝에 한 덩어리로(규범 2-1). 조회가 주 동작이라 오른쪽 끝. */}
+      <div className="filter-actions field-cell-unlabeled lot-status-filter-actions">
+        <Button variant="outlined" onClick={onReset}>
+          {t.actions.reset}
+        </Button>
+        <Button onClick={search}>{t.actions.search}</Button>
       </div>
     </div>
   );

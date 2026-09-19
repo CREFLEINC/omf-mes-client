@@ -25,7 +25,7 @@ describe('HistoryFilterBar', () => {
     await pickRange(user, screen.getByLabelText('기간'), '2026-07-20', '2026-07-25');
     await user.click(screen.getByLabelText('행위자'));
     await user.click(screen.getByRole('option', { name: '합성 퇴직자 (미사용)' }));
-    await user.type(screen.getByLabelText('LOT'), 'SAMPLE-LOT-001');
+    await user.type(screen.getByLabelText('LOT 번호'), 'SAMPLE-LOT-001');
     expect(props.onSearch).not.toHaveBeenCalled();
 
     await user.click(screen.getByRole('button', { name: '조회' }));
@@ -38,8 +38,30 @@ describe('HistoryFilterBar', () => {
     expect(screen.queryByText('602')).not.toBeInTheDocument();
   });
 
+  it('달력이 열리면 시작일 → 종료일 순서로 지금 고를 날짜를 기간 옆에 말한다', async () => {
+    render(<HistoryFilterBar {...baseProps()} appliedFilters={EMPTY_HISTORY_FILTERS} />);
+    const user = userEvent.setup();
+    const trigger = screen.getByLabelText('기간');
+
+    expect(trigger).toHaveTextContent('시작일 ~ 종료일');
+    await user.click(trigger);
+    expect(await screen.findByText('시작일을 선택해 주세요.')).toBeInTheDocument();
+
+    const popup = document.getElementById(trigger.getAttribute('aria-controls') ?? '');
+    const cells = [...(popup?.querySelectorAll<HTMLElement>('td[data-date]') ?? [])];
+    const [first, second] = cells;
+    if (first === undefined || second === undefined) throw new Error('달력 칸이 없습니다.');
+    await user.click(first);
+    expect(await screen.findByText('종료일을 선택해 주세요.')).toBeInTheDocument();
+    expect(trigger).toHaveTextContent(`${first.dataset.date ?? ''} ~`);
+
+    await user.click(second);
+    expect(trigger).toHaveTextContent(`${first.dataset.date ?? ''} ~ ${second.dataset.date ?? ''}`);
+    expect(screen.queryByText('종료일을 선택해 주세요.')).not.toBeInTheDocument();
+  });
+
   it.each([
-    [{ from: '', to: '' }, '기간을 모두 선택한 뒤 조회할 수 있습니다.'],
+    [{ from: '', to: '' }, '시작일을 선택한 후 종료일을 선택해 주세요.'],
     [{ from: '2026-08-07', to: '2026-08-01' }, '기간 종료는 시작보다 앞설 수 없습니다.'],
     [{ from: '2026-02-30', to: '2026-03-01' }, '유효한 기간을 선택해 주세요.'],
   ])('유효하지 않은 기간 %o이면 조회를 막고 사유를 잇는다', (period, reason) => {
@@ -62,7 +84,7 @@ describe('HistoryFilterBar', () => {
     const { rerender } = render(<HistoryFilterBar {...props} />);
     const user = userEvent.setup();
 
-    await user.type(screen.getByLabelText('LOT'), 'DRAFT');
+    await user.type(screen.getByLabelText('LOT 번호'), 'DRAFT');
     rerender(
       <HistoryFilterBar
         {...props}
@@ -71,7 +93,7 @@ describe('HistoryFilterBar', () => {
       />,
     );
 
-    expect(screen.getByLabelText('LOT')).toHaveValue('DRAFT');
+    expect(screen.getByLabelText('LOT 번호')).toHaveValue('DRAFT');
   });
 
   it('바깥의 적용 의미값이 바뀌면 뒤로가기 값으로 동기화한다', () => {
@@ -87,7 +109,7 @@ describe('HistoryFilterBar', () => {
 
     expect(screen.getByLabelText('기간')).toHaveTextContent('2026-07-01 ~ 2026-07-31');
     expect(screen.getByLabelText('행위자')).toHaveTextContent('합성 담당자');
-    expect(screen.getByLabelText('LOT')).toHaveValue('BACK');
+    expect(screen.getByLabelText('LOT 번호')).toHaveValue('BACK');
   });
 
   it('URL 행위자가 목록에 없어도 내부 번호 대신 이름 확인 실패를 표시한다', async () => {
