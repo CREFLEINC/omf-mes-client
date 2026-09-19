@@ -1805,21 +1805,44 @@ describe('입하 등록 화면 — 이미 등록된 LOT 라벨(omf-all-around#28
 
   /* 서버 유일키는 공장 단위다 — 다른 공장의 같은 번호는 이 입하를 막지 않는다. */
   it('다른 공장의 LOT 이면 막지 않는다', async () => {
-    mount([lotRoute(() => jsonResponse({ items: [lotOf(2)], page }))]);
+    let asked = 0;
+    mount([
+      lotRoute(() => {
+        asked += 1;
+
+        return jsonResponse({ items: [lotOf(2)], page });
+      }),
+    ]);
     await screen.findByLabelText('LOT 번호');
 
     await scanLabel();
+    /* 조회가 돌아온 뒤에 본다 — 늦게 오는 답이 판정을 뒤집을 틈을 남기지 않는다. */
+    await waitFor(() => {
+      expect(asked).toBe(1);
+    });
 
     expect(screen.queryByText(/이미 등록된 LOT입니다/)).toBeNull();
+    expect(screen.getByText('자재 P/O 선택')).toBeTruthy();
   });
 
   /* 「확인하지 못함」은 「없음」이 아니다 — 연결 없이도 입하가 담겨야 한다. 서버 거부로 남는다. */
   it('LOT 을 확인하지 못하면 막지 않는다', async () => {
-    mount([lotRoute(() => Promise.reject(new TypeError('Failed to fetch')))]);
+    let asked = 0;
+    mount([
+      lotRoute(() => {
+        asked += 1;
+
+        return Promise.reject(new TypeError('Failed to fetch'));
+      }),
+    ]);
     await screen.findByLabelText('LOT 번호');
 
     await scanLabel();
+    await waitFor(() => {
+      expect(asked).toBe(1);
+    });
 
     expect(screen.queryByText(/이미 등록된 LOT입니다/)).toBeNull();
+    expect(screen.getByText('자재 P/O 선택')).toBeTruthy();
   });
 });

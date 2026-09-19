@@ -264,8 +264,12 @@ export const InboundReceiptScreen = () => {
    *   연결 없이도 입하가 담겨야 하고, 그때는 전송 뒤 서버 거부로 남는다.
    * - 다른 공장의 LOT 은 막지 않는다 — 서버 유일키가 공장 단위다.
    */
+  /*
+   * ⛔ 결과 화면에서는 묻지 않는다. 방금 보낸 입하가 그 LOT 을 만들었으므로, 연결이 다시 잡혀
+   *    재조회가 돌면 성공 화면에서 오류음이 울리고 결과가 지워진다(리뷰 지적).
+   */
   const lotCheck = useScannedLot(
-    strictLabel && draft.supplierLotNo !== '' ? draft.supplierLotNo : null,
+    outcome === null && strictLabel && draft.supplierLotNo !== '' ? draft.supplierLotNo : null,
     /* 앞선 입하가 방금 이 라벨로 LOT 을 만들었을 수 있다 — 캐시의 「없음」을 믿지 않는다. */
     { alwaysFresh: true },
   );
@@ -290,6 +294,7 @@ export const InboundReceiptScreen = () => {
     setSplitExceptionReason('');
     setShowAllOrders(false);
     setKeypadFor(null);
+    setPickingItem(false);
     setDraft(emptyDraft);
   }, [registeredLot]);
   /*
