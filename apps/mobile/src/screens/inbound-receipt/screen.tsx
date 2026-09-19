@@ -58,6 +58,8 @@ import './screen.css';
 const t = messages.inboundReceipt;
 /* 필수 표시는 화면마다 짓지 않는다. 같은 뜻이 여러 모양으로 갈린다. */
 const required = messages.common.required;
+/* 비워도 되는 칸임을 라벨이 말한다 — 필수와 같은 자리·같은 모양이라 둘이 눈에 갈린다. */
+const optional = messages.common.optional;
 const INBOUND_RECEIPT_EXCEPTION_TYPE = 'INBOUND_RECEIPT_EXCEPTION_TYPE';
 /** 계약 InboundReceiptLineUpsert.supplierLotNo의 varchar(100) 상한. 붙여넣기를 자르지 않는다. */
 const SUPPLIER_LOT_NO_MAX_LENGTH = 100;
@@ -439,11 +441,24 @@ export const InboundReceiptScreen = () => {
     uoms.data?.get(uomId ?? -1) ?? t.po.uomUnknown;
   const uom = uomOf(draft.unordered ? draft.uomId : draft.purchaseOrderLine?.uomId);
 
-  /* 코드와 이름을 함께 보인다. 라벨에는 코드가 찍혀 있고 사람은 이름으로 고른다. */
-  const itemLabelOf = (itemId: number): string => {
+  /**
+   * 품목의 코드와 이름 — **각자의 줄에 선다**(사용자 지시 2026-09-19 · omf-all-around#34).
+   *
+   * 붙여 두면 어디까지가 코드인지 매번 가려 읽어야 하고, 실물 라벨과 대조하는 것은 코드 쪽이다.
+   * 못 찾았으면 `null` 이고, 그때는 「품목 정보 없음」 한 줄만 선다 — 빈 글자를 끼우면 이름도
+   * 코드도 없이 수량만 남아 무엇을 세는지 모르는 채 적는다.
+   */
+  const itemPartsOf = (itemId: number): { code: string; name: string } | null => {
     const found = itemLabels.get(itemId);
 
-    return found === undefined ? t.po.itemUnknown : `${found.itemCode} ${found.itemName}`;
+    return found === undefined ? null : { code: found.itemCode, name: found.itemName };
+  };
+
+  /* 접근 이름·읽어 주는 도구가 쓰는 한 줄. 화면에는 두 줄로 서지만 말로는 한 덩어리다. */
+  const itemLabelOf = (itemId: number): string => {
+    const parts = itemPartsOf(itemId);
+
+    return parts === null ? t.po.itemUnknown : `${parts.code} ${parts.name}`;
   };
 
   const qtyMessage = (): string | undefined => {
@@ -855,27 +870,37 @@ export const InboundReceiptScreen = () => {
                           }}
                         >
                           <Card.Body className="card-body receipt__line">
-                            <strong>
-                              {t.po.lineLabel(
-                                itemLabelOf(line.itemId),
-                                String(line.orderedQty),
-                                uomOf(line.uomId),
-                              )}
-                            </strong>
+                            {/* ⭐ 코드와 이름을 각자의 줄에 적는다(사용자 지시 2026-09-19). */}
+                            {itemPartsOf(line.itemId) === null ? (
+                              <strong>{t.po.itemUnknown}</strong>
+                            ) : (
+                              <>
+                                <strong>
+                                  {t.po.lineItemCode(itemPartsOf(line.itemId)?.code ?? '')}
+                                </strong>
+                                <p>{t.po.lineItemName(itemPartsOf(line.itemId)?.name ?? '')}</p>
+                              </>
+                            )}
+                            <p>{t.po.lineOrdered(String(line.orderedQty), uomOf(line.uomId))}</p>
                             <p>{t.po.received(String(line.receivedQty))}</p>
                             {/*
                              * 후보 목록은 발주 단위라 그 품목의 라인이 다 찬 발주도 선다.
                              * 견주는 수를 카드가 직접 말하지 않으면 발주량대로 적게 된다.
+                             *
+                             * ⭐ **발주량과 같으면 세우지 않는다**(사용자 지시 2026-09-19) — 같은
+                             *    수를 두 번 말할 뿐이고, 그때는 발주량대로 적는 것이 맞다.
                              */}
-                            <p>
-                              {t.po.lineRemaining(String(lineRemaining))}
-                              {lineRemaining > 0 ? null : (
-                                <>
-                                  {' · '}
-                                  <strong>{t.po.lineClosed}</strong>
-                                </>
-                              )}
-                            </p>
+                            {lineRemaining === line.orderedQty ? null : (
+                              <p>
+                                {t.po.lineRemaining(String(lineRemaining))}
+                                {lineRemaining > 0 ? null : (
+                                  <>
+                                    {' · '}
+                                    <strong>{t.po.lineClosed}</strong>
+                                  </>
+                                )}
+                              </p>
+                            )}
                             <p>
                               {t.po.tolerance(
                                 String(line.toleranceOverQty),
@@ -1097,11 +1122,15 @@ export const InboundReceiptScreen = () => {
               <h2>{t.qty.legend}</h2>
               <Card bordered>
                 <Card.Body className="card-body receipt__card">
-                  <strong>
-                    {item.data === undefined
-                      ? t.po.itemUnknown
-                      : `${item.data.itemCode} ${item.data.itemName}`}
-                  </strong>
+                  {/* ⭐ 여기서도 코드와 이름을 각자의 줄에 적는다(사용자 지시 2026-09-19). */}
+                  {item.data === undefined ? (
+                    <strong>{t.po.itemUnknown}</strong>
+                  ) : (
+                    <>
+                      <strong>{t.qty.itemCode(item.data.itemCode)}</strong>
+                      <p>{t.qty.itemName(item.data.itemName)}</p>
+                    </>
+                  )}
                   {item.isError ? <p className="receipt__note">{t.qty.itemLoadFailed}</p> : null}
                   {/*
                    * 발주가 없으면 견줄 수량이 없다. 없는 것을 0 으로 보이지 않는다.
@@ -1112,14 +1141,18 @@ export const InboundReceiptScreen = () => {
                   {draft.purchaseOrderLine === null ? null : (
                     <>
                       <p>{t.qty.ordered(String(draft.purchaseOrderLine.orderedQty), uom)}</p>
-                      <p>
-                        <strong>
-                          {t.qty.remaining(
-                            String(remainingQtyOf(draft.purchaseOrderLine, queuedQty)),
-                            uom,
-                          )}
-                        </strong>
-                      </p>
+                      {/* ⭐ 발주량과 같으면 세우지 않는다 — 같은 수를 두 번 말할 뿐이다. */}
+                      {remainingQtyOf(draft.purchaseOrderLine, queuedQty) ===
+                      draft.purchaseOrderLine.orderedQty ? null : (
+                        <p>
+                          <strong>
+                            {t.qty.remaining(
+                              String(remainingQtyOf(draft.purchaseOrderLine, queuedQty)),
+                              uom,
+                            )}
+                          </strong>
+                        </p>
+                      )}
                     </>
                   )}
                 </Card.Body>
@@ -1175,7 +1208,7 @@ export const InboundReceiptScreen = () => {
               <div className="receipt__row receipt__row--split">
                 <TextField
                   type="date"
-                  label={t.qty.manufactured}
+                  label={optional(t.qty.manufactured)}
                   size="xl"
                   fullWidth
                   value={draft.manufacturedDate}
@@ -1185,7 +1218,7 @@ export const InboundReceiptScreen = () => {
                 />
                 <TextField
                   type="date"
-                  label={t.qty.expiry}
+                  label={optional(t.qty.expiry)}
                   size="xl"
                   fullWidth
                   value={draft.expiryDate}

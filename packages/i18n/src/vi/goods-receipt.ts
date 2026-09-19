@@ -173,7 +173,8 @@ export const goodsReceipt: Translated<typeof ko.goodsReceipt> = {
   notes: {
     singleLineSelect: 'Mỗi lần chỉ chọn được một dòng nhập hàng.',
     businessDateDerived: 'Ngày nghiệp vụ tự đặt theo thời điểm nhập kho đã chọn.',
-    qtyFromInboundLine: 'Nhập nguyên mặt hàng, số lượng, đơn vị, LOT vật tư của dòng đã chọn; không nhập tách số lượng.',
+    qtyFromInboundLine:
+      'Nhập nguyên mặt hàng, số lượng, đơn vị, LOT vật tư của dòng đã chọn; không nhập tách số lượng.',
     plantFromInboundReceipt: 'Nhà máy tự áp dụng theo phiếu nhập hàng đã chọn.',
     warehousePlant: (plant: string): string => `Nhà máy của kho đã chọn: ${plant}`,
     warehousePlantDiffers: (plant: string): string =>

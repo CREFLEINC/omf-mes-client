@@ -4,6 +4,8 @@ export const common = {
    * 갈리고, 번역할 때도 자리마다 따로 옮기게 된다.
    */
   required: (label: string) => `${label} (필수)`,
+  /* 비워도 되는 칸에 붙인다. 필수와 같은 자리·같은 모양으로 적어야 둘이 눈에 갈린다. */
+  optional: (label: string) => `${label} (선택)`,
   save: '저장',
   cancel: '취소',
   add: '추가',

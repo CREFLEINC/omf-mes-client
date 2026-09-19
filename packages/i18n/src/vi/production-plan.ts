@@ -94,7 +94,8 @@ export const productionPlan: Translated<typeof ko.productionPlan> = {
     empty: 'Phải thêm ít nhất 1 kế hoạch mới triển khai được.',
     over: (amount: string, uomLabel: string) => `Vượt số lượng ERP W/O ${amount} ${uomLabel}.`,
     overDescription: 'Hãy kiểm tra chính sách sản xuất vượt.',
-    under: (amount: string, uomLabel: string) => `Thiếu so với số lượng ERP W/O ${amount} ${uomLabel}.`,
+    under: (amount: string, uomLabel: string) =>
+      `Thiếu so với số lượng ERP W/O ${amount} ${uomLabel}.`,
     underDescription: 'Nếu đang chia nhỏ kế hoạch thì cứ soạn tiếp.',
     matched: 'Tổng số lượng kế hoạch khớp với số lượng ERP W/O.',
   },

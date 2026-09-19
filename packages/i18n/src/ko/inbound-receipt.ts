@@ -69,7 +69,11 @@ export const inboundReceipt = {
     linesLoading: '자재 P/O 라인을 불러오는 중입니다',
     linesLoadFailed: '자재 P/O 라인을 확인할 수 없습니다',
     linesNone: '이 자재 P/O에 라인이 없습니다',
-    lineLabel: (item: string, ordered: string, uom: string) => `${item} · 발주 ${ordered} ${uom}`,
+    /* ⭐ 코드와 이름을 «각자의 줄»에 적는다(사용자 지시 2026-09-19) — 붙여 두면 어디까지가
+       코드인지 매번 가려 읽어야 하고, 실물 라벨과 대조하는 것은 코드 쪽이다. */
+    lineItemCode: (code: string) => `품목코드 ${code}`,
+    lineItemName: (name: string) => `품목명 ${name}`,
+    lineOrdered: (qty: string, uom: string) => `발주량 ${qty} ${uom}`,
     /*
      * 품목과 단위는 다른 조회에서 온다. 못 찾았을 때 빈 글자를 끼우면 이름도 단위도 없이
      * 수량만 남아, 작업자가 무엇을 세는지 모르는 채 적는다. 없는 것은 없다고 적는다.
@@ -77,8 +81,13 @@ export const inboundReceipt = {
     itemUnknown: '품목 정보 없음',
     uomUnknown: '단위 없음',
     received: (qty: string) => `누적 입하 ${qty}`,
-    /** 판정이 견주는 수다. 발주 총량만 보이면 그 수에 맞춰 적고 초과 판정을 받는다. */
-    lineRemaining: (qty: string) => `남은 예정 ${qty}`,
+    /**
+     * 판정이 견주는 수다. 발주량만 보이면 그 수에 맞춰 적고 초과 판정을 받는다.
+     *
+     * ⚠ **발주량과 같으면 화면이 이 줄을 세우지 않는다**(사용자 지시 2026-09-19) — 같은 수를
+     *   두 번 말할 뿐이고, 그때는 발주량대로 적는 것이 맞다.
+     */
+    lineRemaining: (qty: string) => `잔여 수량 ${qty}`,
     lineClosed: '다 받았습니다',
     tolerance: (over: string, under: string) => `허용 +${over} / -${under}`,
     linePicked: '선택됨',
@@ -139,11 +148,13 @@ export const inboundReceipt = {
     legend: '품목·수량 확인',
     itemLoadFailed: '품목을 확인할 수 없습니다',
     /*
-     * 발주 총량과 남은 예정을 같은 말로 부르지 않는다. 판정이 견주는 것은 남은 예정인데
-     * 총량까지 예정이라 부르면 칸 옆의 수와 판정에 나오는 수가 다른 뜻의 같은 이름이 된다.
+     * 발주량과 잔여 수량을 같은 말로 부르지 않는다. 판정이 견주는 것은 잔여 수량인데 총량까지
+     * 같은 이름으로 부르면 칸 옆의 수와 판정에 나오는 수가 다른 뜻의 같은 이름이 된다.
      */
-    ordered: (qty: string, uom: string) => `발주 ${qty} ${uom}`,
-    remaining: (qty: string, uom: string) => `남은 예정 ${qty} ${uom}`,
+    itemCode: (code: string) => `품목코드 ${code}`,
+    itemName: (name: string) => `품목명 ${name}`,
+    ordered: (qty: string, uom: string) => `발주량 ${qty} ${uom}`,
+    remaining: (qty: string, uom: string) => `잔여 수량 ${qty} ${uom}`,
     received: '실입하 수량',
     packageCount: '포장 수',
     /* 두 칸을 오간다. 숫자판을 닫았다 다시 열지 않고 옆으로 옮긴다. */
@@ -158,14 +169,14 @@ export const inboundReceipt = {
     expiryBeforeManufactured: '유효기한이 제조일보다 앞설 수 없습니다',
   },
   verdict: {
-    normal: '남은 예정과 맞습니다',
+    normal: '잔여 수량과 맞습니다',
     /** 판정 결과를 먼저 보인 뒤 같은 화면의 분리 단계로 이어 간다. */
     over: (remaining: string, arrived: string) =>
-      `수량 초과 — 남은 예정 ${remaining}, 이번 도착 ${arrived}`,
+      `수량 초과 — 잔여 수량 ${remaining}, 이번 도착 ${arrived}`,
     overNext: '정량분과 초과분을 확인하고 이번 화면에서 등록 방식을 고르세요.',
     split: {
       legend: '초과 입하 분리',
-      remaining: '남은 예정수량',
+      remaining: '잔여 수량',
       normal: '정량분',
       excess: '초과분',
       exceptionType: '초과 예외 유형',
@@ -180,7 +191,7 @@ export const inboundReceipt = {
       atomic: '정량분과 초과분은 한 번에 저장되며 일부만 성공하지 않습니다.',
     },
     under: (remaining: string, arrived: string) =>
-      `수량 부족 — 남은 예정 ${remaining}, 이번 도착 ${arrived}`,
+      `수량 부족 — 잔여 수량 ${remaining}, 이번 도착 ${arrived}`,
     /*
      * 화면은 더 올 것인지 알지 못한다. 트럭과 거래명세서를 본 사람이 안다. 네 수를 보이고
      * 사람이 고르게 한다 - 수 없이 고르라 하면 무엇을 고르는지 모른다.
@@ -189,7 +200,7 @@ export const inboundReceipt = {
       ordered: '발주',
       received: '누적',
       arrived: '이번 도착',
-      /* 판정이 견주는 남은 예정이 아니라 이번 것까지 받고도 남는 몫이다. */
+      /* 판정이 견주는 잔여 수량이 아니라 이번 것까지 받고도 남는 몫이다. */
       remaining: '남은',
     },
     underAsk: '더 들어올 물량이 있습니까?',
