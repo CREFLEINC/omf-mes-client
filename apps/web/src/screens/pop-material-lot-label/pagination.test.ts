@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { toPageView } from './pagination';
+import { ROWS_PER_PAGE, toLinePageView, toPageView } from './pagination';
 
 const meta = (page: number, size: number, total: number) => ({ page, size, total });
 
@@ -47,5 +47,68 @@ describe('toPageView', () => {
     const view = toPageView(meta(1, 0, 10), 0);
 
     expect(Number.isFinite(view.totalPages)).toBe(true);
+  });
+});
+
+/**
+ * ⭐ **잘릴 줄은 다음 쪽으로 넘긴다**(사용자 지시 2026-09-19 · omf-all-around#32).
+ *
+ * 서버 쪽 나눔은 입하 «건» 단위라, 건이 한 쪽에 다 들어가면 줄이 아무리 많아도 이전·다음이
+ * 영영 꺼져 있었다 — 목록은 넘치는 줄을 잘라 냈고 스크롤도 없어 그 줄에 닿을 길이 없었다.
+ */
+describe('toLinePageView', () => {
+  const oneReceiptPage = { page: 1, size: 50, total: 7 };
+
+  it('줄이 한 쪽에 다 들어가면 쪽이 하나다', () => {
+    const view = toLinePageView(oneReceiptPage, ROWS_PER_PAGE, 1);
+
+    expect(view.totalPages).toBe(1);
+    expect(view.canNext).toBe(false);
+    expect(view.start).toBe(0);
+  });
+
+  /** ⛔ 한 줄이라도 넘치면 그 줄은 «다음 쪽»이다 — 잘라 보이지 않는다. */
+  it('한 줄이 넘치면 쪽이 하나 더 생긴다', () => {
+    const view = toLinePageView(oneReceiptPage, ROWS_PER_PAGE + 1, 1);
+
+    expect(view.totalPages).toBe(2);
+    expect(view.canNext).toBe(true);
+    expect(view.end - view.start).toBe(ROWS_PER_PAGE);
+  });
+
+  it('둘째 쪽은 앞 쪽이 세운 줄 다음부터 센다', () => {
+    const view = toLinePageView(oneReceiptPage, ROWS_PER_PAGE + 3, 2);
+
+    expect(view.start).toBe(ROWS_PER_PAGE);
+    expect(view.canPrev).toBe(true);
+    expect(view.canNext).toBe(false);
+  });
+
+  /** 앞 건 쪽으로 돌아갈 때는 줄 수를 모르므로 범위를 넘겨 두고 여기서 잡는다. */
+  it('범위를 넘긴 줄 쪽은 마지막 쪽으로 잡는다', () => {
+    const view = toLinePageView(oneReceiptPage, ROWS_PER_PAGE + 1, Number.MAX_SAFE_INTEGER);
+
+    expect(view.page).toBe(2);
+    expect(view.start).toBe(ROWS_PER_PAGE);
+  });
+
+  /** ⭐ 줄 쪽을 다 넘기면 **다음 건 쪽**으로 이어 넘어간다 — 사용자에게는 그냥 「다음」이다. */
+  it('마지막 줄 쪽이어도 건 쪽이 남아 있으면 다음이 열린다', () => {
+    const view = toLinePageView({ page: 1, size: 50, total: 60 }, 3, 1);
+
+    expect(view.totalPages).toBe(1);
+    expect(view.canNext).toBe(true);
+  });
+
+  it('첫 줄 쪽이어도 앞 건 쪽이 있으면 이전이 열린다', () => {
+    const view = toLinePageView({ page: 2, size: 50, total: 60 }, 3, 1);
+
+    expect(view.canPrev).toBe(true);
+  });
+
+  /** 줄이 하나도 없어도 자리는 말한다 — 「이 쪽에는 없다」 안내와 함께 어디인지 보여야 한다. */
+  it('줄이 없어도 쪽 자리를 비우지 않는다', () => {
+    expect(toLinePageView(oneReceiptPage, 0, 1).rangeLabel).not.toBe('');
+    expect(toLinePageView({ page: 1, size: 50, total: 0 }, 0, 1).rangeLabel).toBe('');
   });
 });

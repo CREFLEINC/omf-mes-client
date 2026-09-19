@@ -661,6 +661,12 @@ describe('PopMaterialLotLabelScreen — 등록·인쇄', () => {
     });
     // 보기를 바꿔도 고른 줄이 풀린다 — 실행 중에는 쪽 이동과 함께 탭도 잠근다(#1241).
     expect(screen.getByRole('button', { name: '발행 완료' })).toBeDisabled();
+    /*
+     * ⛔ **갱신도 같은 자리에서 잠근다**(omf-all-around#29). 도는 사이에 목록이 바뀌면 고른 줄이
+     *    빠질 수 있고, 그때 발번 대상 카드가 빈 상태로 돌아가 「인쇄 중인데 아무것도 고르지 않은
+     *    화면」이 된다. 주기 갱신도 같은 까닭으로 멈춘다(`queries.listRefetchInterval`).
+     */
+    expect(screen.getByRole('button', { name: '갱신' })).toBeDisabled();
   });
 
   /**

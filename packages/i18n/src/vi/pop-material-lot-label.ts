@@ -30,6 +30,7 @@ export const popMaterialLotLabel: Translated<typeof ko.popMaterialLotLabel> = {
     issuedEmpty: 'Không có vật tư đã phát hành.',
     issuedEmptyOnThisPage:
       'Các phiếu nhập hàng ở trang này không có vật tư đã phát hành. Hãy xem trang sau.',
+    refresh: 'Làm mới',
     loadFailed: 'Không tải được danh sách nhập hàng.',
     unsupported:
       'Máy chủ chưa hỗ trợ danh sách đối tượng phát hành. Khi máy chủ sẵn sàng, có thể chọn vật tư tại màn hình này.',

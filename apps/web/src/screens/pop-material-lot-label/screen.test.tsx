@@ -4,6 +4,8 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { createStubFetch, jsonResponse, renderWithProviders } from '../../test/api-harness';
+import { ROWS_PER_PAGE } from './pagination';
+import { LIST_REFRESH_MS } from './queries';
 import { PopMaterialLotLabelScreen } from './screen';
 
 /** 합성값이다 — 계약의 예시값을 쓰지 않는다(공개 저장소 경계). */
@@ -251,6 +253,109 @@ describe('PopMaterialLotLabelScreen — 입하 목록', () => {
       expect(lineUrls.at(-1)?.searchParams.get('labelIssued')).toBe('true');
     });
     expect(screen.getByText('왼쪽에서 자재를 고르세요.')).toBeInTheDocument();
+  });
+
+  /**
+   * ⭐ **목록의 자료를 만드는 것은 이 화면이 아니다**(omf-all-around#29). PDA 로 등록한 입하가
+   * 앱을 껐다 켜야 보이던 자리다 — 화면이 떠 있는 동안 다시 부르는 장치가 없었다.
+   *
+   * 주기 갱신은 다른 자리에서 재고(`queries.test.ts`), 여기서는 **사람이 지금 부르는 길**이
+   * 실제로 목록과 라인을 다시 받아 오는지를 본다.
+   */
+  it('갱신을 누르면 건과 라인을 다시 받는다', async () => {
+    const receiptUrls: URL[] = [];
+    const lineUrls: URL[] = [];
+    const { user } = renderScreen({
+      onReceiptRequest: (url) => receiptUrls.push(url),
+      onLineRequest: (url) => lineUrls.push(url),
+    });
+
+    await screen.findByRole('button', { name: /SYN-IB-0001/u });
+    await waitFor(() => {
+      expect(lineUrls.length).toBeGreaterThan(0);
+    });
+    const receiptCalls = receiptUrls.length;
+    const lineCalls = lineUrls.length;
+
+    await user.click(screen.getByRole('button', { name: '갱신' }));
+
+    await waitFor(() => {
+      expect(receiptUrls.length).toBeGreaterThan(receiptCalls);
+    });
+    await waitFor(() => {
+      expect(lineUrls.length).toBeGreaterThan(lineCalls);
+    });
+  });
+
+  /**
+   * ⭐ **가만히 두어도 목록이 스스로 다시 뜬다**(omf-all-around#29). 간격 자체는 다른 자리에서
+   * 재고(`queries.test.ts`), 여기서는 **그 간격이 실제로 조회에 걸려 있는지**를 본다 — 값만
+   * 정하고 조회에 매달지 않으면 시험은 통과하는데 현장에서는 그대로 멈춰 있다.
+   */
+  it('가만히 두어도 목록을 다시 받는다', async () => {
+    vi.useFakeTimers();
+
+    try {
+      const receiptUrls: URL[] = [];
+      const lineUrls: URL[] = [];
+      renderScreen({
+        onReceiptRequest: (url) => receiptUrls.push(url),
+        onLineRequest: (url) => lineUrls.push(url),
+      });
+
+      /* 첫 조회가 끝나기를 기다린다 — 가짜 타이머라 마이크로태스크를 직접 흘려보낸다. */
+      await vi.advanceTimersByTimeAsync(100);
+      const receiptCalls = receiptUrls.length;
+      const lineCalls = lineUrls.length;
+      expect(receiptCalls).toBeGreaterThan(0);
+      expect(lineCalls).toBeGreaterThan(0);
+
+      await vi.advanceTimersByTimeAsync(LIST_REFRESH_MS + 100);
+
+      expect(receiptUrls.length).toBeGreaterThan(receiptCalls);
+      expect(lineUrls.length).toBeGreaterThan(lineCalls);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  /**
+   * ⛔ **세로를 더 먹지 않는 자리에 둔다.** 세로 여유가 119px 뿐인 화면이라(스펙 §4) 제목 줄에
+   * 얹으면 목록이 그만큼 짧아진다. 쪽 이동 줄은 이미 단추 높이를 쓰고 있다.
+   */
+  it('갱신은 쪽 이동과 한 줄을 함께 쓴다', async () => {
+    renderScreen();
+
+    const nav = await screen.findByRole('navigation', { name: '쪽 이동' });
+    const refresh = screen.getByRole('button', { name: '갱신' });
+
+    expect(refresh.parentElement).toHaveClass('pop-lot-list-foot');
+    expect(refresh.parentElement).toBe(nav.parentElement);
+  });
+
+  /**
+   * ⭐ **잘릴 줄은 다음 쪽으로 넘긴다**(사용자 지시 2026-09-19 · omf-all-around#32). 목록에
+   * 스크롤을 두지 않으므로, 잘라 보이면 그 줄에는 닿을 방법이 없다 — 실제로 열한 줄 중 두 줄이
+   * 화면 밖에 있었고 쪽 이동은 「1쪽 중 1쪽」으로 꺼져 있었다.
+   */
+  it('한 쪽에 들어가지 않는 줄은 다음 쪽에서 보인다', async () => {
+    const lines = Array.from({ length: ROWS_PER_PAGE + 2 }, (_, index) =>
+      line(8600 + index, 8101, 8601, 100 + index, false),
+    );
+    const { user } = renderScreen({ lines });
+
+    const rows = await screen.findAllByRole('button', { name: /입하 SYN-IB-0001/u });
+
+    expect(rows).toHaveLength(ROWS_PER_PAGE);
+    expect(screen.getByText(`2쪽 중 1쪽`)).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: '다음 ▶' }));
+
+    expect(await screen.findByText('2쪽 중 2쪽')).toBeInTheDocument();
+    expect(screen.getAllByRole('button', { name: /입하 SYN-IB-0001/u })).toHaveLength(2);
+    /* 되돌아가면 앞 쪽 줄이 그대로 선다 — 넘긴 줄이 사라지는 것이 아니다. */
+    await user.click(screen.getByRole('button', { name: '◀ 이전' }));
+    expect(await screen.findByText('2쪽 중 1쪽')).toBeInTheDocument();
   });
 
   it('첫 쪽에서는 쪽 조건을 싣지 않는다 — 서버 기본값이 1이다', async () => {
