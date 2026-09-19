@@ -28,7 +28,6 @@ export const PageNav = ({ view, isLocked, onChange }: PageNavProps) => (
     <p className="field-note form-actions-secondary">{view.rangeLabel}</p>
     <Button
       variant="outlined"
-      size="sm"
       disabled={!view.canPrev || isLocked}
       onClick={() => {
         onChange(view.page - 1);
@@ -38,7 +37,6 @@ export const PageNav = ({ view, isLocked, onChange }: PageNavProps) => (
     </Button>
     <Button
       variant="outlined"
-      size="sm"
       disabled={!view.canNext || isLocked}
       onClick={() => {
         onChange(view.page + 1);

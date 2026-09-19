@@ -22,7 +22,11 @@ const t = messages.goodsReceipt;
  * 한 줄의 선택 가능 여부. **두 갈래이고 막힌 쪽은 사유를 함께 낸다** —
  * 사유 없이 잠그면 사용자가 무엇을 해야 풀리는지 화면에서 읽을 수 없다(배치 규범 4).
  */
-export type LineSelectState = { kind: 'selectable' } | { kind: 'blocked'; reason: string };
+/** 고를 수 없는 원인 — 사유를 원인이 된 칸(자재 LOT·입하 수량) 안에 두는 데 쓴다. */
+export type LineBlockCause = 'noLot' | 'qtyNotPositive';
+
+export type LineSelectState =
+  { kind: 'selectable' } | { kind: 'blocked'; cause: LineBlockCause; reason: string };
 
 /**
  * 판정 순서가 뜻을 정한다 — **자재 LOT이 수량보다 앞선다.**
@@ -35,8 +39,10 @@ export type LineSelectState = { kind: 'selectable' } | { kind: 'blocked'; reason
  * - **수량 0 이하**: 계약이 `receiptQty`에 `exclusiveMinimum: 0`을 두어 0도 보낼 수 없다.
  */
 export const describeLineSelect = (line: IrLineView): LineSelectState => {
-  if (line.lotId === null) return { kind: 'blocked', reason: t.reasons.lineNoLot };
-  if (line.receivedQty <= 0) return { kind: 'blocked', reason: t.reasons.lineQtyNotPositive };
+  if (line.lotId === null) return { kind: 'blocked', cause: 'noLot', reason: t.reasons.lineNoLot };
+  if (line.receivedQty <= 0) {
+    return { kind: 'blocked', cause: 'qtyNotPositive', reason: t.reasons.lineQtyNotPositive };
+  }
 
   return { kind: 'selectable' };
 };

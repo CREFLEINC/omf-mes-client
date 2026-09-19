@@ -34,8 +34,12 @@ export const PLACEHOLDER_IR_STATUS_CODES: readonly string[] = [];
 export const irStatusOptions = (): SelectOption[] =>
   PLACEHOLDER_IR_STATUS_CODES.map((code) => ({ value: code, label: code }));
 
-/** 선택지가 왜 비어 있는지 밝히는 안내. 비어 있는 선택칸만 두면 고장으로 읽힌다. */
-export const irStatusNote = (): string => messages.pendingCode.note;
+/**
+ * 선택지가 왜 비어 있는지 밝히는 안내. 비어 있는 선택칸만 두면 고장으로 읽힌다.
+ *
+ * 공용 `pendingCode.note` 와 뜻이 같은 짧은 문구다 — 조회 조건 줄 아래 한곳에 모아 두므로 줄였다.
+ */
+export const irStatusNote = (): string => messages.goodsReceipt.filters.statusPending;
 
 /** 선택칸 트리거에 보이는 자리표시 문구. */
 export const irStatusPlaceholder = (): string => messages.pendingCode.placeholder;

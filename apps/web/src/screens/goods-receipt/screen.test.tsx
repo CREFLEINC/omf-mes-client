@@ -34,6 +34,12 @@ import { GoodsReceiptScreen } from './screen';
 
 const t = messages.goodsReceipt;
 
+/** 안내 문장 전체로 찾는다 — 공장 이름만 굵게 감싸 글자가 여러 요소로 나뉜다. */
+const noteText =
+  (message: string) =>
+  (_: string, element: Element | null): boolean =>
+    element?.classList.contains('field-note') === true && element.textContent === message;
+
 /**
  * **값 목록이 확정된 뒤의 화면**을 이 파일에서 만들어 내기 위한 자리.
  *
@@ -728,7 +734,7 @@ describe('GoodsReceiptScreen — 첫 진입 조회', () => {
    * 짝 방향으로 **다른 참조에는 싣지 않는다**를 함께 단언한다 — 그래야 이 값이
    * 「자재 LOT에만 필요한 완화」임이 고정된다.
    */
-  it('자재 LOT에만 쪽 크기를 싣는다', async () => {
+  it('자재 LOT·공급사에만 쪽 크기를 싣는다', async () => {
     const { requests, user } = renderScreen(allRoutes());
 
     await screen.findAllByText('IR-2026-900001');
@@ -742,7 +748,12 @@ describe('GoodsReceiptScreen — 첫 진입 조회', () => {
       expect(request.url.searchParams.get('size')).toBe(String(LOT_PAGE_SIZE));
     }
 
-    for (const path of [PARTNERS_PATH, PLANTS_PATH, ITEMS_PATH, UOMS_PATH, LIST_PATH]) {
+    /* 공급사는 끝까지 받느라 200건씩 부른다(목록 표의 「알 수 없음」·검색 누락을 없앤다). */
+    for (const request of requestsTo(requests, PARTNERS_PATH)) {
+      expect(request.url.searchParams.get('size')).toBe('200');
+    }
+
+    for (const path of [PLANTS_PATH, ITEMS_PATH, UOMS_PATH, LIST_PATH]) {
       for (const request of requestsTo(requests, path)) {
         expect(request.url.searchParams.has('size')).toBe(false);
       }
@@ -758,7 +769,7 @@ describe('GoodsReceiptScreen — 첫 진입 조회', () => {
     const status = screen.getByLabelText(t.fields.status);
 
     expect(status.getAttribute('aria-describedby')).toBe(
-      screen.getByText(messages.pendingCode.note).getAttribute('id'),
+      screen.getByText(t.filters.statusPending).getAttribute('id'),
     );
   });
 });
@@ -1397,9 +1408,10 @@ describe('GoodsReceiptScreen — 참조 풀이', () => {
     expect(screen.getAllByText(SUPPLIER_LABEL).length).toBeGreaterThan(0);
     expect(screen.getAllByText(PLANT_LABEL).length).toBeGreaterThan(0);
     expect(screen.getAllByText('LOT-2026-900010').length).toBeGreaterThan(0);
-    expect(screen.getAllByText(t.lineTable.receivedQtyPair(100, UOM_LABEL)).length).toBeGreaterThan(
-      0,
-    );
+    /* 수량 옆 단위는 코드만(「100 SAMPLE-EA」) — 「코드 · 이름」은 같은 뜻을 두 번 적는다. */
+    expect(
+      screen.getAllByText(t.lineTable.receivedQtyPair(100, 'SAMPLE-EA')).length,
+    ).toBeGreaterThan(0);
 
     expectNoInternalIds();
   });
@@ -1517,24 +1529,6 @@ describe('GoodsReceiptScreen — 참조 풀이', () => {
     expect(screen.queryByText(t.reasons.lineReferencesTruncated)).not.toBeInTheDocument();
   });
 
-  /* 잘림을 밝히지 않으면 불완전한 목록을 완전한 것으로 읽는다. */
-  it('공급사 선택지가 잘리면 잘림 표식이 붙는다', async () => {
-    renderScreen([
-      listRoute(),
-      linesRoute(),
-      otherLinesRoute(),
-      detailRoute(),
-      goodsReceiptRoute(),
-      lookupRoute(PARTNERS_PATH, partnerFixtures, { total: 500 }),
-      lookupRoute(PLANTS_PATH, plantFixtures),
-      lookupRoute(ITEMS_PATH, itemFixtures),
-      lookupRoute(UOMS_PATH, uomFixtures),
-      lotsRoute(),
-    ]);
-
-    await screen.findByText(t.filters.lookupTruncated);
-  });
-
   /*
    * 라인이 참조보다 먼저 오는 순서를 실제로 만든다 — LOT 이름이 아직 없을 때
    * 「알 수 없음」이 아니라 「이름 불러오는 중」이 보여야 한다.
@@ -1584,7 +1578,8 @@ describe('GoodsReceiptScreen — 참조 풀이', () => {
 
     await screen.findAllByText(ITEM_LABEL);
 
-    expect(within(lineTable()).getByText(t.values.empty)).toBeInTheDocument();
+    /* `—` 대신 「자재 LOT이 생성되지 않았습니다.」만 둔다(사용자 지시). */
+    expect(within(lineTable()).getByText(t.reasons.lineNoLot)).toBeInTheDocument();
     expect(within(lineTable()).queryByText(t.values.unknown)).not.toBeInTheDocument();
     expect(screen.getByText(t.reasons.lineNoLot)).toBeInTheDocument();
   });
@@ -1704,7 +1699,7 @@ describe('GoodsReceiptScreen — 코드 목록이 확정되지 않은 지금', (
 
     const pane = screen.getByRole('region', { name: t.panes.post });
 
-    expect(within(pane).getAllByText(messages.pendingCode.note)).toHaveLength(3);
+    expect(within(pane).getAllByText(t.filters.codePending)).toHaveLength(3);
   });
 });
 
@@ -1740,13 +1735,47 @@ describe('GoodsReceiptScreen — 코드 목록이 채워지면', () => {
      */
     const pane = screen.getByRole('region', { name: t.panes.post });
 
-    expect(within(pane).queryByText(messages.pendingCode.note)).not.toBeInTheDocument();
+    expect(within(pane).queryByText(t.filters.codePending)).not.toBeInTheDocument();
 
-    await chooseOption(user, t.fields.qualityStatus, SAMPLE_QUALITY);
+    /* 입고 정보는 순서대로 입력한다 — 앞 칸(창고·위치·입고 유형·원천 문서 유형) 전에는 잠겨 있다. */
+    expect(screen.getByRole('combobox', { name: t.fields.qualityStatus })).toBeDisabled();
+
+    await fillDraft(user);
 
     expect(screen.getByRole('combobox', { name: t.fields.qualityStatus })).toHaveTextContent(
       SAMPLE_QUALITY,
     );
+  });
+
+  /* 공장은 고르는 칸이 아니다 — 「입고 정보」 제목 옆에서 밝힌다(사용자 지시). */
+  it('입고 정보에 공장이 입하 전표에서 온다는 안내가 있다', async () => {
+    const { user } = renderScreen(allRoutes(), '?ir=9001');
+
+    await openPostPane(user);
+
+    const pane = screen.getByRole('region', { name: t.panes.post });
+
+    expect(within(pane).getByText(t.notes.plantFromInboundReceipt)).toBeInTheDocument();
+  });
+
+  /* 한 칸을 채우면 다음 칸이 열리고 포커스가 그 칸으로 옮겨 간다(사용자 지시). */
+  it('창고를 고르면 적치 위치가 열리고 포커스가 옮겨 간다', async () => {
+    fillCodeLists();
+
+    const { user } = renderScreen(allRoutes(), '?ir=9001');
+
+    await openPostPane(user);
+
+    expect(screen.getByRole('combobox', { name: t.fields.location })).toBeDisabled();
+
+    await chooseOption(user, t.fields.warehouse, WAREHOUSE_LABEL);
+
+    const location = screen.getByRole('combobox', { name: t.fields.location });
+
+    expect(location).toBeEnabled();
+    await waitFor(() => {
+      expect(location).toHaveFocus();
+    });
   });
 
   /* 다 채우면 실제로 열린다 — 여기까지 와야 「차면 활성」이 값으로 고정된다. */
@@ -1902,11 +1931,15 @@ describe('GoodsReceiptScreen — 창고와 적치 위치', () => {
   it('고른 창고의 공장이 전표와 다르면 그 사실을 밝힌다', async () => {
     const { user } = await setupReadyToPost();
 
-    expect(screen.queryByText(t.notes.warehousePlantDiffers)).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(noteText(t.notes.warehousePlantDiffers(PLANT_LABEL))),
+    ).not.toBeInTheDocument();
 
     await chooseOption(user, t.fields.warehouse, OTHER_WAREHOUSE_LABEL);
 
-    expect(screen.getByText(t.notes.warehousePlantDiffers)).toBeInTheDocument();
+    expect(
+      screen.getByText(noteText(t.notes.warehousePlantDiffers(PLANT_LABEL))),
+    ).toBeInTheDocument();
     expect(
       screen.getByText(t.notes.warehousePlant('SAMPLE-PLT-02 · 합성 공장 나')),
     ).toBeInTheDocument();
@@ -2059,7 +2092,9 @@ describe('GoodsReceiptScreen — 제출 확인 창', () => {
     const { user, requests } = await setupReadyToPost();
 
     await clickPost(user);
-    await user.click(screen.getByRole('button', { name: t.actions.keepEditing }));
+    await user.click(
+      within(screen.getByRole('dialog')).getByRole('button', { name: t.actions.cancelPost }),
+    );
 
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     expect(postRequests(requests)).toHaveLength(0);
@@ -2616,16 +2651,19 @@ describe('GoodsReceiptScreen — 취소와 파기 확인', () => {
 
     await selectReceipt(user, 'IR-2026-900002');
 
-    expect(screen.getByText(messages.common.discardChangesConfirm)).toBeInTheDocument();
+    expect(screen.getByText(t.dialog.discardLead)).toBeInTheDocument();
     /* 아직 바뀌지 않았다 — 확인해야 바뀐다. */
     expect(currentLocation()).toContain('ir=9001');
   });
 
-  it('계속 입력을 고르면 대상이 그대로 남는다', async () => {
+  it('계속 입력(취소)을 고르면 대상이 그대로 남는다', async () => {
     const { user } = await setupReadyToPost();
 
     await selectReceipt(user, 'IR-2026-900002');
-    await user.click(screen.getByRole('button', { name: t.actions.keepEditing }));
+    /* 창 밖 폼에도 「취소」가 있다 — 창 안의 단추를 누른다. */
+    await user.click(
+      within(screen.getByRole('dialog')).getByRole('button', { name: t.actions.keepEditing }),
+    );
 
     expect(currentLocation()).toContain('ir=9001');
     expect(screen.getByLabelText(t.fields.receiptDatetime)).toHaveValue(RECEIPT_DATETIME);

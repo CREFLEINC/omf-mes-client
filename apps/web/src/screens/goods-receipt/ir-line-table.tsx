@@ -2,14 +2,42 @@ import { Button, Chip, type Column, EmptyState, SkeletonText, Table } from '@cre
 import { messages } from '@omf-mes/i18n';
 import { useId, type ReactNode } from 'react';
 
-import { describeLineSelect } from './line-select';
+import { describeLineSelect, type LineBlockCause } from './line-select';
 import { describeReference, toReference, type ReferenceSource } from './lookups';
+import { toStatusTone } from './status-badge';
 import { formatDateTime, type IrLineView, type IrView } from './types';
 
 const t = messages.goodsReceipt;
 
 /** 값이 없는 칸은 비워 두지 않는다 — 자료가 없는 것인지 화면이 빠뜨린 것인지 구분되지 않는다. */
 const orEmptyMark = (value: string | null): ReactNode => value ?? t.values.empty;
+
+/**
+ * 수량 옆 단위 — **코드만 쓴다**(「1 EA」). 「코드 · 이름」(「EA · 개」)은 같은 뜻을 두 번 적는다.
+ * 코드를 모르는 갈래(불러오는 중·목록에 없음·실패)는 참조 풀이의 문구를 그대로 낸다.
+ */
+const uomCodeOf = (lookup: ReferenceSource, uomId: number): string =>
+  lookup.entries.find((entry) => entry.value === String(uomId))?.code ??
+  describeReference(toReference(lookup, uomId));
+
+/**
+ * 고를 수 없는 줄의 사유 — **원인이 된 칸 안에** 짧은 보조 글자로 둔다(사용자 지시). 비활성 「선택」 단추가
+ * `aria-describedby` 로 이 글자를 잇는다(배치 규범 4-1 — 사유는 늘 보이는 DOM 텍스트. 비활성 단추는 초점을
+ * 못 받아 툴팁으로는 닿을 수 없다). 경고색을 쓰지 않는다 — 오류가 아니라 아직 조건이 안 된 상태다.
+ */
+const blockedReasonIn = (
+  row: IrLineView,
+  cause: LineBlockCause,
+  reasonIdPrefix: string,
+): ReactNode => {
+  const state = describeLineSelect(row);
+
+  return state.kind === 'blocked' && state.cause === cause ? (
+    <span id={`${reasonIdPrefix}-${String(row.lineNo)}`} className="goods-receipt-line-cell-reason">
+      {state.reason}
+    </span>
+  ) : null;
+};
 
 /**
  * 자재 LOT 칸.
@@ -48,17 +76,16 @@ export interface IrLineColumnsInput {
  *
  * | 열 | 폭 | 근거 |
  * | --- | ---: | --- |
- * | 줄번호 | 64px | 두 자리 수 + 우측정렬 여백 |
- * | **품목** | **미지정** | 「코드 · 이름」을 담고 남는 폭을 흡수한다 |
- * | 입하 수량 | 136px | 수 + 단위 표기(「100 SAMPLE-EA」) |
- * | **자재 LOT** | 176px | LOT 번호 15자 113px + 4갈래 표기(「이름 불러오는 중」)가 들어가는 폭 |
- * | 유효기한 | 120px | `YYYY-MM-DD` 75px + 셀 여백 32px |
- * | 선택 | 128px | `sm` 버튼 + **고를 수 없는 줄의 사유**가 들어간다 |
- * | **지정 폭 합** | **624px** | |
- * | 흡수 열 예산 | 200px | 「코드 · 이름」이 접히지 않고 읽히는 하한 |
- * | **합** | **824px** | `58rem`(928px) 안에 들어간다 |
+ * | 줄번호 | 72px | 두 자리 수 |
+ * | **품목** | **24%** | 「코드 · 이름」— 가장 넓은 열 |
+ * | 입하 수량 | 120px | 수 + 단위 코드(「100 EA」) |
+ * | **자재 LOT** | **30%** | (가장 넓다 · 고를 수 없는 사유도 이 칸에 선다) 자재 LOT 번호(`품목|수량|날짜|공급사|번호`) 한 줄 |
+ * | 유효기한 | 128px | `YYYY-MM-DD` |
+ * | 선택 | 128px | 버튼 + **고를 수 없는 줄의 사유**가 들어간다 |
  *
- * 흡수 열이 실제로 받는 폭은 304px(928 − 624)로 예산 200px보다 넓다.
+ * px 합 448px + 비율 54% 가 표 하한 `64rem`(1024px) 안에 든다(448 ≤ 1024 × 0.46).
+ * 긴 두 열(품목·자재 LOT)만 비율로 두어 남는 폭이 짧은 열로 몰리지 않게 한다 — 목록 표와 같은 풀이.
+ * 모든 칸은 가운데 정렬이다(`app.css` 의 `.goods-receipt-line-table`).
  */
 export const buildIrLineColumns = ({
   selectedLineId,
@@ -72,41 +99,45 @@ export const buildIrLineColumns = ({
   {
     key: 'lineNo',
     header: t.lineTable.lineNo,
-    align: 'end',
-    width: '64px',
+    width: '72px',
   },
   {
     key: 'item',
     header: t.lineTable.item,
+    width: '24%',
     render: (row) => describeReference(toReference(itemLookup, row.itemId)),
   },
   {
     key: 'receivedQty',
     header: t.lineTable.receivedQty,
-    align: 'end',
-    width: '136px',
+    width: '120px',
     /* **수량을 화면이 고치지 않는다**(계획 결정 4 — 전량 입고라 입력칸이 없다). 그대로 보인다. */
-    render: (row) =>
-      t.lineTable.receivedQtyPair(
-        row.receivedQty,
-        describeReference(toReference(uomLookup, row.uomId)),
-      ),
+    render: (row) => (
+      <>
+        <span className="goods-receipt-ir-nowrap">
+          {t.lineTable.receivedQtyPair(row.receivedQty, uomCodeOf(uomLookup, row.uomId))}
+        </span>
+        {blockedReasonIn(row, 'qtyNotPositive', reasonIdPrefix)}
+      </>
+    ),
   },
   {
     key: 'lot',
     header: t.lineTable.lot,
-    width: '176px',
-    render: (row) => lotCell(lotLookup, row.lotId),
+    width: '30%',
+    /* 자재 LOT이 없는 줄은 `—` 대신 그 사유 문구만 둔다(사용자 지시). */
+    render: (row) => blockedReasonIn(row, 'noLot', reasonIdPrefix) ?? lotCell(lotLookup, row.lotId),
   },
   {
     key: 'expiryDate',
     header: t.lineTable.expiryDate,
-    width: '120px',
-    render: (row) => orEmptyMark(row.expiryDate),
+    width: '128px',
+    render: (row) => <span className="goods-receipt-ir-nowrap">{orEmptyMark(row.expiryDate)}</span>,
   },
   {
     key: 'select',
-    header: t.lineTable.select,
+    /* 머리줄 글자는 화면에서 감춘다(사용자 지시 · 목록 표와 같다). 열 이름은 스크린리더에만 남긴다. */
+    header: <span className="goods-receipt-visually-hidden">{t.lineTable.select}</span>,
     width: '128px',
     /*
      * **고를 수 없는 줄의 사유는 감추지 않고 항상 보이는 DOM 텍스트로 렌더하고
@@ -122,29 +153,25 @@ export const buildIrLineColumns = ({
       const reasonId = `${reasonIdPrefix}-${String(row.lineNo)}`;
 
       if (state.kind === 'blocked') {
+        /* 사유는 표 아래 줄 전체 폭의 라벨로 낸다(사용자 지시) — 칸 안에 두면 행이 여러 줄로 부푼다. */
         return (
-          <div className="field-cell">
-            <Button
-              variant="outlined"
-              size="sm"
-              disabled
-              aria-describedby={reasonId}
-              aria-label={t.actions.selectLine(row.lineNo)}
-            >
-              {t.actions.select}
-            </Button>
-            <span id={reasonId} className="field-note">
-              {state.reason}
-            </span>
-          </div>
+          <Button
+            variant="outlined"
+            disabled
+            aria-describedby={reasonId}
+            aria-label={t.actions.selectLine(row.lineNo)}
+          >
+            {t.actions.select}
+          </Button>
         );
       }
 
       return (
         <Button
           variant="outlined"
-          size="sm"
           disabled={isLocked}
+          /* 고른 라인 표시 — 다른 목록 화면과 같은 표식(`aria-current`). `app.css` 가 이 값으로 행을 칠한다. */
+          aria-current={selected ? 'true' : undefined}
           aria-label={
             selected ? t.actions.deselectLine(row.lineNo) : t.actions.selectLine(row.lineNo)
           }
@@ -165,8 +192,10 @@ interface SummaryItem {
   value: ReactNode;
 }
 
-export interface IrLineTableProps
-  extends Omit<IrLineColumnsInput, 'reasonIdPrefix' | 'itemLookup'> {
+export interface IrLineTableProps extends Omit<
+  IrLineColumnsInput,
+  'reasonIdPrefix' | 'itemLookup'
+> {
   /** 고른 입하 전표. 제목줄의 자료는 목록 응답의 행에 이미 있어 상세 경로를 부르지 않는다. */
   inboundReceipt: IrView;
   /**
@@ -251,8 +280,9 @@ export const IrLineTable = ({
     {
       key: 'status',
       label: t.summary.status,
+      /* 목록 표와 같은 색 — 글자는 서버 코드 그대로. */
       value: (
-        <Chip variant="status" size="sm">
+        <Chip variant="status" size="sm" status={toStatusTone(inboundReceipt.statusCode)}>
           {inboundReceipt.statusCode}
         </Chip>
       ),
@@ -273,10 +303,7 @@ export const IrLineTable = ({
     {
       key: 'receivedQty',
       label: t.lineSummary.receivedQty,
-      value: t.lineTable.receivedQtyPair(
-        line.receivedQty,
-        describeReference(toReference(uomLookup, line.uomId)),
-      ),
+      value: t.lineTable.receivedQtyPair(line.receivedQty, uomCodeOf(uomLookup, line.uomId)),
     },
     { key: 'lot', label: t.lineSummary.lot, value: lotCell(lotLookup, line.lotId) },
     {
@@ -324,7 +351,7 @@ export const IrLineTable = ({
        * 제목줄 전체가 하나의 이름을 갖게 한다.
        */}
       <div role="group" aria-label={t.summary.label}>
-        <dl className="filter-bar">
+        <dl className="goods-receipt-summary">
           {summary.map((item) => (
             <div className="field-cell" key={item.key}>
               <dt className="field-label">{item.label}</dt>
@@ -340,7 +367,18 @@ export const IrLineTable = ({
         </div>
       ) : (
         <>
-          <div className="wide-table">
+          {/* 제목줄(입하 기본정보)과 고르는 자리(라인 표)를 가른다. */}
+          <h3 className="goods-receipt-section-title">
+            {t.lineTable.title}
+            {/* 보조 안내는 제목 옆 같은 줄에 이어 쓴다(사용자 지시) — 한 줄 선택 규칙, 이름 목록 잘림(있을 때만). */}
+            <span className="goods-receipt-section-hint">{t.notes.singleLineSelect}</span>
+            {hasTruncatedReference && (
+              <span className="goods-receipt-section-hint">
+                {t.reasons.lineReferencesTruncated}
+              </span>
+            )}
+          </h3>
+          <div className="wide-table goods-receipt-line-table">
             <Table
               density="compact"
               columns={columns}
@@ -356,16 +394,20 @@ export const IrLineTable = ({
               }
             />
           </div>
-
-          <p className="field-note">{t.notes.singleLineSelect}</p>
         </>
       )}
 
       {selectedLine !== null && (
-        <div role="group" aria-label={t.lineSummary.label}>
-          <dl className="filter-bar">
+        <div role="group" aria-label={t.lineSummary.label} className="goods-receipt-line-summary">
+          {/* 목록이 아니라 선택 결과라는 것을 제목으로 가른다. 이름은 구획의 접근 이름과 같다. */}
+          <h3 className="goods-receipt-section-title">
+            <span aria-hidden="true">{t.lineSummary.label}</span>
+            {/* 이 값들은 폼에서 고치는 것이 아니다 — 선택한 라인 요약 곁에서 밝힌다(사용자 지시). */}
+            <span className="goods-receipt-section-hint">{t.notes.qtyFromInboundLine}</span>
+          </h3>
+          <dl className="goods-receipt-summary goods-receipt-summary-grid">
             {lineSummary(selectedLine).map((item) => (
-              <div className="field-cell" key={item.key}>
+              <div className={`field-cell goods-receipt-summary-${item.key}`} key={item.key}>
                 <dt className="field-label">{item.label}</dt>
                 <dd>{item.value}</dd>
               </div>
@@ -373,8 +415,6 @@ export const IrLineTable = ({
           </dl>
         </div>
       )}
-
-      {hasTruncatedReference && <p className="field-note">{t.reasons.lineReferencesTruncated}</p>}
 
       {hasReferenceError && (
         <div className="field-cell">

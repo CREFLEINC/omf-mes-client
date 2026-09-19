@@ -30,16 +30,21 @@ export const DiscardConfirmDialog = ({ onConfirm, onClose }: DiscardConfirmDialo
     onClose={onClose}
     size="sm"
     title={t.dialog.discardTitle}
+    /* 닫기(X)는 「계속 입력」과 같은 동작이라 두지 않는다(사용자 지시). Esc·스크림으로도 닫힌다. */
+    showCloseButton={false}
     footer={
       <>
-        {/* 문구가 「확인/취소」가 아니다 — 무엇을 누르는지 창을 다시 읽지 않아도 알아야 한다. */}
-        <Button variant="outlined" onClick={onClose}>
+        {/*
+         * 문구가 「확인/취소」가 아니다 — 무엇을 누르는지 창을 다시 읽지 않아도 알아야 한다.
+         * 창이 열리면 초점이 계속 입력(안전한 쪽)에 간다 — 엔터 한 번에 입력이 버려지지 않는다.
+         */}
+        <Button variant="outlined" autoFocus onClick={onClose}>
           {t.actions.keepEditing}
         </Button>
         <Button onClick={onConfirm}>{t.actions.discardDraft}</Button>
       </>
     }
   >
-    <p>{messages.common.discardChangesConfirm}</p>
+    <p>{t.dialog.discardLead}</p>
   </Dialog>
 );

@@ -81,7 +81,22 @@ describe('SubmitConfirmDialog — 보낼 값을 그대로 다시 보인다', () 
     for (const moved of ['입고 전표', '자재 LOT', '수불 원장', '재고 잔액', 'ERP 송신 대기열']) {
       expect(effects.textContent ?? '').toContain(moved);
     }
-    expect(effects.textContent ?? '').toContain('되돌릴 수 없습니다');
+    /* 되돌릴 수 없다는 경고는 짧은 한 줄로 앞세운다(보조 설명과 나눴다). */
+    expect(screen.getByText(t.dialog.submitIrreversible)).toBeInTheDocument();
+  });
+
+  /* 공통코드 표시 이름을 쓰고, 보내는 값(코드)은 바꾸지 않는다. */
+  it('코드는 넘겨받은 표시 이름으로 보인다', () => {
+    render(
+      <SubmitConfirmDialog
+        summary={SUMMARY}
+        codeLabel={(key, code) => (key === 'receiptType' ? `표시-${code}` : code)}
+        onConfirm={vi.fn()}
+        onClose={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText(`표시-${SUMMARY.receiptTypeCode}`)).toBeInTheDocument();
   });
 
   /* 「적재」는 「전송」이 아니다(이슈 §6의 ⭐) — 확인 창에서도 같다. */
@@ -128,7 +143,7 @@ describe('SubmitConfirmDialog — 버튼', () => {
   it('계속 입력을 누르면 닫기만 한다', async () => {
     const { onConfirm, onClose, user } = renderDialog();
 
-    await user.click(screen.getByRole('button', { name: t.actions.keepEditing }));
+    await user.click(screen.getByRole('button', { name: t.actions.cancelPost }));
 
     expect(onClose).toHaveBeenCalledTimes(1);
     expect(onConfirm).not.toHaveBeenCalled();

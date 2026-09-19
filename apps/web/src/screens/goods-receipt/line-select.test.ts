@@ -25,6 +25,7 @@ describe('describeLineSelect', () => {
   it('자재 LOT이 없으면 고를 수 없고 사유가 붙는다', () => {
     expect(describeLineSelect(inboundReceiptLine({ lotId: null }))).toEqual({
       kind: 'blocked',
+      cause: 'noLot',
       reason: t.reasons.lineNoLot,
     });
   });
@@ -36,6 +37,7 @@ describe('describeLineSelect', () => {
   it.each([0, -1])('입하 수량이 %s이면 고를 수 없고 사유가 붙는다', (receivedQty) => {
     expect(describeLineSelect(inboundReceiptLine({ lotId: 9601, receivedQty }))).toEqual({
       kind: 'blocked',
+      cause: 'qtyNotPositive',
       reason: t.reasons.lineQtyNotPositive,
     });
   });
@@ -56,6 +58,7 @@ describe('describeLineSelect', () => {
     );
     expect(describeLineSelect(inboundReceiptLine({ lotId: null, receivedQty: 0 }))).toEqual({
       kind: 'blocked',
+      cause: 'noLot',
       reason: t.reasons.lineNoLot,
     });
   });

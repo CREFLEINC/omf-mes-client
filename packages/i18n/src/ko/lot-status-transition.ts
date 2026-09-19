@@ -69,11 +69,11 @@ export const lotStatusTransition = {
     item: '품목',
     currentTitle: '현재 상태',
     current: '선택 LOT 현재 상태',
-    status: 'Lot Status',
+    status: '현재 상태',
     onHand: '보유 수량',
     held: '보류 수량',
     available: '가용 수량',
-    latestTransition: '최근 전이',
+    latestTransition: '최근 상태 변경',
     latestReason: '최근 사유',
   },
   /** 전이 선택지·열린 보류를 세워 실행 칸을 열지 말지 정하는 패널. */
@@ -83,11 +83,11 @@ export const lotStatusTransition = {
     failed: '전이 선택지를 불러오지 못했습니다.',
     retry: '다시 시도',
     noTransition: '현재 LOT은 전이할 수 없습니다.',
-    choiceTitle: '전이할 상태',
+    choiceTitle: '변경할 상태',
     choiceLabel: '전이',
     holds: {
       pane: '열린 보류 목록',
-      title: '열린 보류',
+      title: '해제할 보류',
       reason: '보류 사유',
       heldAt: '보류 시각',
       quantity: '보류 수량',
@@ -105,7 +105,6 @@ export const lotStatusTransition = {
       holdsEmpty: '해제할 열린 보류가 없습니다.',
       detailLoading: '보류 상세를 불러오는 중입니다.',
       detailFailed: '보류 상세를 불러오지 못했습니다.',
-      releaseReady: '보류 해제 준비가 완료되었습니다.',
     },
   },
   /** CREATE_HOLD 실행 칸 — 보류 범위·수량·사유를 받아 확인 대화상자로 넘긴다. */
@@ -150,8 +149,14 @@ export const lotStatusTransition = {
     partial: '일부 해제',
     quantity: '해제 수량',
     remarks: '비고',
-    confirm: '해제 확인',
-    dialogTitle: (lotNo: string): string => `LOT 보류 해제 — ${lotNo}`,
+    /** 해제 확인 창을 연다 — 확인하면 보류를 풀고 LOT 상태를 고른 상태로 바꾼다. */
+    confirm: '상태 변경 및 보류 해제',
+    /** 실행 칸의 구획 제목·해제 방식 묶음 이름(사용자 지시). */
+    sectionTitle: '해제 정보',
+    modeLabel: '해제 방식',
+    /** 확인 창 제목 — LOT 번호는 제목에 붙이지 않고 아래 요약에 둔다(사용자 지시). */
+    dialogTitle: 'LOT 보류를 해제할까요?',
+    dialogLot: 'LOT',
     cancel: '취소',
     release: '보류 해제',
     reload: '최신 불러오기',
@@ -160,17 +165,19 @@ export const lotStatusTransition = {
     quantityUnknown: '해제 가능한 보류 수량을 확인하지 못했습니다.',
     quantityMax: (maximum: string): string => `해제 수량은 보류 수량 ${maximum} 이하여야 합니다.`,
     remarksRequired: '비고를 입력하세요.',
+    /** 확인 창 — 해제 정보(대상 수량·위치·결과 설명)와 주의(두 줄)를 가른다. */
     impact: {
-      title: '이 전이가 하는 일',
-      description: '보류 해제는 대상 수량의 출고·출하 및 피킹 제한을 풉니다.',
-      targetQuantity: (quantity: string): string => `대상 수량: ${quantity}`,
+      infoTitle: '보류 해제 정보',
+      quantity: '대상 수량',
+      location: '대상 위치',
+      description: '보류를 해제하면 해당 수량의 출고·출하 및 피킹 제한이 해제됩니다.',
       fullQuantity: '전량',
-      targetLocation: (location: string): string => `대상 위치: ${location}`,
-      location: (warehouse: string, location: string): string =>
-        `창고 ${warehouse} / Location ${location}`,
+      locationValue: (warehouse: string, location: string): string =>
+        `창고 ${warehouse} · 위치 ${location}`,
       unknown: '미확인',
-      recovery:
-        '다시 보류가 필요하면 새 Hold를 등록해야 하며, 이미 출고된 수량은 회수되지 않습니다.',
+      cautionTitle: '주의',
+      reHold: '해제 후 다시 보류하려면 새로 등록해야 합니다.',
+      shipped: '이미 출고된 수량은 보류 해제 후에도 되돌아오지 않습니다.',
     },
   },
   /** 409·412로 되돌아온 뒤 대화상자가 내는 말. 서버가 사유를 주면 그 말이 먼저다. */

@@ -18,12 +18,14 @@ export const goodsReceipt = {
   },
   fields: {
     supplier: '공급사',
+    supplierPlaceholder: '공급사 코드 또는 이름',
     /** 계약의 `receiptDateFrom`·`receiptDateTo`. **기본 기간을 심지 않는다**(W-01-09가 세운 규칙). */
-    receiptDateFrom: '입하일 시작',
-    receiptDateTo: '입하일 종료',
+    receiptDateFrom: '입하 시작일',
+    receiptDateTo: '입하 종료일',
     /** 값 목록이 확정되지 않아 선택지가 비어 있다 — 안내는 `pendingCode`가 맡는다. */
     status: '상태',
     q: '입하번호·거래명세서번호 검색',
+    qPlaceholder: '입하번호 또는 거래명세서번호',
     /* 아래는 확정 입력. **사용자가 고르는 것은 이 여덟뿐이다** — 수량·품목·단위·자재 LOT은
      * 고른 입하 라인의 값을 그대로 싣는다(전량 입고라 수량 입력칸이 없다). */
     warehouse: '입고 창고',
@@ -54,9 +56,11 @@ export const goodsReceipt = {
     deselectLine: (lineNo: number): string => `${String(lineNo)}번 줄 선택 해제`,
     /** 이 화면의 유일한 쓰기. 누르면 곧바로 나가지 않고 확인 창이 먼저 뜬다. */
     post: '입고 처리',
-    confirmPost: '입고 처리 실행',
-    keepEditing: '계속 입력',
-    discardDraft: '입력 버리기',
+    confirmPost: '입고 처리 완료',
+    keepEditing: '취소',
+    /** 입고 처리 확인 창의 닫기(사용자 지시) — 창만 닫고 입력 화면으로 돌아간다. */
+    cancelPost: '취소',
+    discardDraft: '재선택',
     viewSourceDocument: '원천 문서 보기',
   },
   /**
@@ -76,8 +80,6 @@ export const goodsReceipt = {
     postNeedsLocation: '입고 처리: 적치 위치를 고르세요.',
     postNeedsCodes: '입고 처리: 필수 코드를 모두 고르세요.',
     postNeedsReceiptDatetime: '입고 처리: 입고 일시를 넣으세요.',
-    /** 위치 선택칸이 잠기는 이유. 계약이 창고를 고른 뒤에만 위치를 조회하게 한다. */
-    locationNeedsWarehouse: '적치 위치: 입고 창고를 먼저 고르면 그 창고의 위치를 고를 수 있습니다.',
     /*
      * 원천 문서로 넘어갈 수 없는 이유. 유형 코드와 대상의 대응 규약이 아직 없어 무엇을 가리키는지
      * 화면이 알 수 없다 — 짐작해서 열면 다른 문서를 연다.
@@ -106,17 +108,15 @@ export const goodsReceipt = {
      * 다시 시도로 풀리지 않으므로 복구 버튼을 붙이지 않고 사실만 밝힌다.
      */
     lineReferencesTruncated:
-      '품목·단위·자재 LOT·공장 이름 목록이 일부만 왔습니다. 이름 자리의 「알 수 없음」은 값이 잘못된 것이 아니라 이 목록에 아직 없다는 뜻일 수 있습니다.',
+      '확인되지 않은 정보는 「알 수 없음」으로 표시될 수 있으며, 실제 값의 오류는 아닙니다.',
     /*
      * 고를 수 없는 줄의 사유. **값 자체를 설명한다** — 상태 코드로 판정하지 않는다(공유계약 G-2).
      * 여러 줄이 함께 쓰는 문구라 컨트롤 이름이 아니라 무엇에 대한 안내인지로 시작한다(규범 4의 이탈 조건).
      */
     /** 입고 창고·적치 위치 선택지를 못 받았다. 이 둘이 없으면 어디에 넣을지 정할 수 없다. */
     postOptionsFailed: '입고 창고·적치 위치 선택지를 불러오지 못했습니다.',
-    lineNoLot:
-      '이 줄은 자재 LOT이 아직 없어 입고할 수 없습니다. 자재 LOT이 만들어지면 이 줄을 고를 수 있습니다.',
-    lineQtyNotPositive:
-      '이 줄은 입하 수량이 0 이하라 입고할 수 없습니다. 입하 수량이 0보다 크면 이 줄을 고를 수 있습니다.',
+    lineNoLot: '자재 LOT이 생성되지 않았습니다.',
+    lineQtyNotPositive: '입하 수량이 0보다 커야 선택할 수 있습니다.',
   },
   loading: {
     inboundReceipts: '대상 입하 전표 목록을 불러오는 중',
@@ -132,7 +132,11 @@ export const goodsReceipt = {
     select: '선택',
   },
   /** 라인 표의 머리글과 칸 문구. 폭의 근거는 screens/goods-receipt/ir-line-table.tsx에 있다. */
+  /** 입고 처리 입력 구획의 제목. */
+  postTitle: '입고 정보',
   lineTable: {
+    /** 제목줄(입하 기본정보)과 라인 표를 가르는 구획 제목. */
+    title: '입하 라인',
     lineNo: '줄번호',
     item: '품목',
     receivedQty: '입하 수량',
@@ -159,7 +163,7 @@ export const goodsReceipt = {
    * 고른 한 줄에서만 필요한 값이라 표 전체에 열을 낼 이유가 없다(계획 §5.5).
    */
   lineSummary: {
-    label: '고른 입하 라인',
+    label: '선택한 입하 라인',
     lineNo: '줄번호',
     item: '품목',
     receivedQty: '입하 수량',
@@ -180,8 +184,12 @@ export const goodsReceipt = {
      * (미도착을 「알 수 없음」으로 내지 않는다)을 선택지 목록에서도 지킨다.
      */
     lookupLoading: '선택지를 불러오는 중입니다.',
-    /* 기본 기간을 심지 않는다는 사실은 화면에서 읽혀야 한다 — 비어 있는 것이 고장으로 읽히지 않게 한다. */
-    periodNote: '입하일을 비워 두면 기간을 좁히지 않고 전체를 봅니다.',
+    /** 상태 선택지가 왜 비어 있는지 — 라벨 옆 같은 줄. 공용 `pendingCode.note` 와 뜻이 같은 짧은 문구다. */
+    /** 공급사 칸에 목록에 없는 글자를 두고 조회했을 때. 조건을 몰래 넓히지 않는다. */
+    supplierPickFromList: '목록에서 공급사를 골라 주세요.',
+    statusPending: '코드 확정 전엔 선택이 불가합니다.',
+    /** 입고 처리의 코드 선택칸이 비어 있는 이유 — 라벨 옆 같은 줄. 공용 `pendingCode.note` 의 짧은 판. */
+    codePending: '코드 확정 전엔 선택이 불가합니다.',
     chipSupplier: (value: string): string => `공급사: ${value}`,
     /** 한쪽만 넣은 기간도 조건이다 — 그 사실이 칩에서 읽혀야 한다. */
     chipPeriodBoth: (from: string, to: string): string => `입하일: ${from} ~ ${to}`,
@@ -208,10 +216,10 @@ export const goodsReceipt = {
     noResultDescription: '조건을 줄이거나 입하일 범위를 넓힌 뒤 다시 조회하세요.',
     beyondLastTitle: '이 쪽에는 결과가 없습니다',
     beyondLastDescription: '첫 쪽으로 이동하세요.',
-    noSelectionTitle: '입하 전표를 고르면 라인이 보입니다',
-    noSelectionDescription: '위 목록에서 창고로 받아들일 입하 전표를 골라 「선택」을 누르세요.',
-    noLinesTitle: '이 입하 전표에는 라인이 없습니다',
-    noLinesDescription: '전표에 담긴 품목 줄이 하나도 없어 입고할 것을 정할 수 없습니다.',
+    noSelectionTitle: '입하 전표를 선택해 주세요',
+    noSelectionDescription: '목록에서 입하할 전표의 「선택」을 눌러 주세요.',
+    noLinesTitle: '입고할 라인이 없습니다',
+    noLinesDescription: '이 전표에는 입고할 수 있는 품목 라인이 없습니다.',
     /*
      * 주소에 고른 전표가 있는데 **목록 조회가 실패한** 자리. 골격(「불러오는 중」)을 내면
      * 기다리라고 말하는데 기다려서 풀리지 않는다. 라인 값을 받아도 구획을 열 수 없다 —
@@ -232,22 +240,33 @@ export const goodsReceipt = {
     inactiveSuffix: ' (미사용)',
     /** 아직 고르지 않은 선택칸의 트리거 문구. 값 목록이 준비되지 않은 칸은 `pendingCode`가 맡는다. */
     selectPlaceholder: '고르세요',
+    /** 입고 정보 선택칸마다의 자리표시(사용자 지시) — 무엇을 고르는 칸인지 칸 안에서 읽힌다. */
+    fieldPlaceholders: {
+      warehouse: '입고 창고를 선택하세요',
+      location: '적재 위치를 선택하세요',
+      receiptType: '입고 유형을 선택하세요',
+      sourceDocumentType: '원천 문서 유형을 선택하세요',
+      qualityStatus: '품질 상태를 선택하세요',
+      inventoryStatus: '재고 상태를 선택하세요',
+      reason: '사유를 선택하세요',
+    },
   },
   notes: {
     /*
      * 한 줄만 고를 수 있다는 사실. 밝히지 않으면 둘째 줄을 골랐을 때 앞 선택이 풀리는 것이
      * 고장으로 읽힌다(계약이 라인마다 위치를 받으므로 나중에 여러 줄로 늘 수 있다 — 이슈 §4).
      */
-    singleLineSelect: '한 번에 한 줄만 고를 수 있습니다. 다른 줄을 고르면 앞 선택이 풀립니다.',
+    singleLineSelect: '한 번에 하나의 입하 라인만 선택할 수 있습니다.',
     /** 입력칸이 없는 값이 무엇에서 정해지는지 밝힌다 — 밝히지 않으면 화면 어디에서도 읽을 수 없다. */
-    businessDateDerived: '영업일은 입고 일시의 날짜로 정합니다. 따로 넣는 칸을 두지 않습니다.',
+    businessDateDerived: '영업일은 선택한 입고 일시를 기준으로 자동 설정됩니다.',
     qtyFromInboundLine:
-      '입고 수량·품목·단위·자재 LOT은 고른 입하 라인의 값을 그대로 싣습니다. 나눠 받는 입력은 두지 않습니다.',
-    plantFromInboundReceipt: '공장은 고른 입하 전표의 값을 싣습니다.',
+      '선택한 라인의 품목·수량·단위·자재 LOT이 그대로 입고되며, 수량을 나누어 입고할 수 없습니다.',
+    plantFromInboundReceipt: '공장은 선택한 입하 전표의 공장으로 자동 적용됩니다.',
     /** 고른 창고의 공장을 함께 보인다 — 전표의 공장과 다르면 눈으로 보인다. 막지는 않는다. */
     warehousePlant: (plant: string): string => `고른 창고의 공장: ${plant}`,
-    warehousePlantDiffers:
-      '고른 창고의 공장이 입하 전표의 공장과 다릅니다. 입고 전표에는 입하 전표의 공장을 싣습니다.',
+    /** 고른 창고의 공장이 입하 전표와 다를 때 — 입하 전표의 공장을 함께 보인다(사용자 지시). */
+    warehousePlantDiffers: (plant: string): string =>
+      `선택한 창고의 공장이 입하 전표의 공장(${plant})과 다릅니다.`,
     /*
      * **응답을 받지 못한 실패에만 붙인다.** 공통 문구는 「다시 시도하세요」로 끝나는데,
      * 확인 없이 다시 보내면 같은 입하가 입고 전표 두 벌이 될 수 있다.
@@ -263,11 +282,19 @@ export const goodsReceipt = {
    */
   dialog: {
     submitTitle: '이 내용으로 입고 처리할까요?',
-    submitLead: '아래 값으로 입고 전표를 만듭니다. 보내기 전에 한 번 더 확인하세요.',
-    /** 이슈 §6 — 한 번의 확정으로 함께 움직이는 것을 문장으로 밝힌다. */
+    submitLead: '입고할 내용을 확인한 후 실행해 주세요.',
+    /** 확인 창의 묶음 제목 — 무엇을 · 어디로 · 어떤 상태로. */
+    submitGroupWhat: '입고 대상',
+    submitGroupWhere: '입고 위치',
+    submitGroupHow: '입고 조건',
+    /** 되돌릴 수 없다는 경고 — 짧은 한 줄로 앞세운다. */
+    submitIrreversible: '입고 처리 후에는 이 화면에서 되돌릴 수 없습니다.',
+    /** 이슈 §6 — 한 번의 확정으로 함께 움직이는 것. 경고 아래 보조 설명으로 낮춘다. */
     submitEffects:
-      '입고 처리 한 번에 입고 전표 생성·전기, 자재 LOT 상태 전이, 수불 원장 기록, 재고 잔액 반영, ERP 송신 대기열 적재가 함께 일어납니다. 이 화면에서는 되돌릴 수 없습니다.',
-    discardTitle: '입력한 값을 버릴까요?',
+      '입고 전표 생성·전기, 자재 LOT 상태 변경, 수불 원장 기록, 재고 잔액 반영, ERP 송신 대기열 적재가 함께 처리됩니다.',
+    discardTitle: '변경사항을 취소할까요?',
+    /** 이 화면의 버리기 확인 본문(사용자 지시) — 공용 `discardChangesConfirm` 은 다른 화면이 쓴다. */
+    discardLead: '저장하지 않은 내용이 있습니다. 취소하면 변경한 내용이 사라집니다.',
   },
   /**
    * 입고 처리 결과.

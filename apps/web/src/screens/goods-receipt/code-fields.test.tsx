@@ -80,17 +80,18 @@ describe('CodeFields — 값 목록이 비어 있을 때', () => {
   it('운영 코드 세 칸은 왜 비었는지 밝히고 그 문구가 칸에 이어진다', () => {
     renderFields();
 
-    expect(screen.getAllByText(messages.pendingCode.note)).toHaveLength(3);
+    /* 라벨 옆 짧은 안내(공용 `pendingCode.note` 의 짧은 판). */
+    expect(screen.getAllByText(t.filters.codePending)).toHaveLength(3);
 
     for (const label of PENDING_LABELS) {
       expect(screen.getByRole('combobox', { name: label })).toHaveAccessibleDescription(
-        messages.pendingCode.note,
+        t.filters.codePending,
       );
     }
 
     for (const label of [t.fields.sourceDocumentType, t.fields.inventoryStatus]) {
       expect(screen.getByRole('combobox', { name: label })).not.toHaveAccessibleDescription(
-        messages.pendingCode.note,
+        t.filters.codePending,
       );
     }
   });
@@ -110,7 +111,7 @@ describe('CodeFields — 값 목록이 채워졌을 때', () => {
   it('준비 중 안내가 사라진다', () => {
     renderFields({ options: FILLED_SETS });
 
-    expect(screen.queryByText(messages.pendingCode.note)).not.toBeInTheDocument();
+    expect(screen.queryByText(t.filters.codePending)).not.toBeInTheDocument();
     /* 짝 방향 — 칸 자체는 그대로 다섯이다. */
     expect(screen.getAllByRole('combobox')).toHaveLength(5);
   });

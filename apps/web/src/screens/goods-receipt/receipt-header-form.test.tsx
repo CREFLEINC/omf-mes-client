@@ -52,17 +52,19 @@ describe('ReceiptHeaderForm', () => {
   });
 
   /* 전량 입고라 수량 입력칸이 없다 — 밝히지 않으면 「수량을 어디서 고치나」를 찾게 된다. */
-  it('수량 입력칸을 두지 않고 값이 어디서 오는지 밝힌다', () => {
+  /* 값이 어디서 오는지는 「선택한 입하 라인」 제목 옆이 밝힌다(`ir-line-table`). */
+  it('수량 입력칸을 두지 않는다', () => {
     renderForm();
 
-    expect(screen.getByText(t.notes.qtyFromInboundLine)).toBeInTheDocument();
     expect(screen.queryByRole('spinbutton')).not.toBeInTheDocument();
   });
 
   it('입고 일시를 고치면 그 값이 올라간다', async () => {
     const { onChangeReceiptDatetime } = renderForm();
 
-    await userEvent.setup().type(screen.getByLabelText(t.fields.receiptDatetime), '2026-08-06T09:12');
+    await userEvent
+      .setup()
+      .type(screen.getByLabelText(t.fields.receiptDatetime), '2026-08-06T09:12');
 
     expect(onChangeReceiptDatetime).toHaveBeenCalled();
   });

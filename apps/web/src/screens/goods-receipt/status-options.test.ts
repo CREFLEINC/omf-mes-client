@@ -28,7 +28,7 @@ describe('PLACEHOLDER_IR_STATUS_CODES', () => {
 describe('irStatusNote · irStatusPlaceholder', () => {
   /* 비어 있는 선택칸만 두면 고장으로 읽힌다. 왜 비어 있는지 밝힌다. */
   it('왜 비어 있는지 밝히는 공통 안내를 쓴다', () => {
-    expect(irStatusNote()).toBe(messages.pendingCode.note);
+    expect(irStatusNote()).toBe(messages.goodsReceipt.filters.statusPending);
     expect(irStatusPlaceholder()).toBe(messages.pendingCode.placeholder);
   });
 

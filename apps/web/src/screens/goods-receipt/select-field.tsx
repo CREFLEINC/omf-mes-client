@@ -1,5 +1,5 @@
 import { Select, type SelectItems } from '@crefle/web-ui';
-import { useId } from 'react';
+import { useId, type ReactNode } from 'react';
 
 import { FieldLabel } from './field-label';
 
@@ -10,7 +10,7 @@ export interface SelectFieldProps {
   value: string;
   onChange: (value: string) => void;
   /** 선택지의 한계(잘림·불러오기 실패·값 목록 미확정)나 잠금 사유를 밝히는 보조 문구. */
-  note?: string;
+  note?: ReactNode;
   /** 화면이 잡았거나 서버가 준 오류. 있으면 `invalid`와 함께 오류 문구를 낸다. */
   error?: string;
   placeholder?: string;
@@ -27,14 +27,21 @@ export interface SelectFieldProps {
    * 그리고 적치 위치처럼 앞선 선택이 있어야 목록이 열리는 곳.
    */
   disabled?: boolean;
+  /** 셀에 덧붙일 화면 전용 클래스(폭 조정 등). */
+  className?: string;
+  /**
+   * 라벨 오른쪽 같은 줄의 짧은 안내. 칸 아래 `note` 와 달리 칸의 키를 늘리지 않아, 조회 조건 줄처럼
+   * 칸들의 윗선이 맞아야 하는 자리에 쓴다. 칸의 설명으로 이어진다.
+   */
+  labelHint?: string;
+  /** 입고 처리에 꼭 필요한 칸. 라벨에 `*` 를 달고 칸에 `aria-required` 를 준다. */
+  required?: boolean;
 }
 
 /** 그룹 안까지 훑는다 — 빈 값 선택지는 그룹 안에 들어 있을 수도 있다. */
 const hasEmptyValue = (options: SelectItems): boolean =>
   options.some((item) =>
-    'options' in item
-      ? item.options.some((option) => option.value === '')
-      : item.value === '',
+    'options' in item ? item.options.some((option) => option.value === '') : item.value === '',
   );
 
 /**
@@ -61,23 +68,40 @@ export const SelectField = ({
   placeholder,
   wide = false,
   disabled = false,
+  className,
+  labelHint,
+  required = false,
 }: SelectFieldProps) => {
   const id = useId();
   const noteId = `${id}-note`;
   const errorId = `${id}-error`;
+  const hintId = `${id}-hint`;
 
   /*
    * 선택지에 빈 값(「전체」)이 있으면 **빈 값도 고른 값이다** — 그때는 자리표시로 대신하지 않는다.
    */
   const hasEmptyOption = hasEmptyValue(options);
 
-  const describedBy = [note === undefined ? null : noteId, error === undefined ? null : errorId]
+  const describedBy = [
+    labelHint === undefined ? null : hintId,
+    note === undefined ? null : noteId,
+    error === undefined ? null : errorId,
+  ]
     .filter((candidate): candidate is string => candidate !== null)
     .join(' ');
 
   return (
-    <div className={wide ? 'field-cell wide-select' : 'field-cell'}>
-      <FieldLabel htmlFor={id} label={label} />
+    <div
+      className={['field-cell', wide ? 'wide-select' : null, className ?? null]
+        .filter((name): name is string => name !== null)
+        .join(' ')}
+    >
+      <FieldLabel
+        htmlFor={id}
+        label={label}
+        hint={labelHint === undefined ? undefined : { id: hintId, text: labelHint }}
+        required={required}
+      />
       <Select
         id={id}
         options={options}
@@ -86,6 +110,7 @@ export const SelectField = ({
         placeholder={placeholder}
         disabled={disabled}
         invalid={error !== undefined}
+        aria-required={required || undefined}
         aria-describedby={describedBy === '' ? undefined : describedBy}
       />
       {note !== undefined && (

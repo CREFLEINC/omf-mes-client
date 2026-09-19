@@ -114,6 +114,8 @@ export interface LookupEntry {
   value: string;
   label: string;
   isActive: boolean;
+  /** 코드만 — 「코드 · 이름」이 뜻을 겹쳐 적는 자리(수량 단위 「1 EA」)에 쓴다. 단위만 채운다. */
+  code?: string;
 }
 
 export interface SelectOption {

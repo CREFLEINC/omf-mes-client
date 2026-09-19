@@ -9456,3 +9456,638 @@ dl.filter-bar.approval-inbox-detail-facts {
   margin-top: var(--field-label-layer);
   color: var(--on-surface-variant);
 }
+
+/*
+ * W-01-10 정상품 입하 처리 — 입하 전표 목록 표. 열 폭·정렬은 `ir-table.tsx` 의 열 정의가 정한다.
+ * 지정 폭 합 796px + 공급사 예산 200px 이 공용 하한(58rem)을 넘어, 이 표만 하한을 64rem 으로 둔다
+ * — 좁으면 짓누르지 않고 가로로 넘긴다.
+ */
+.wide-table.goods-receipt-ir-table table,
+.wide-table.goods-receipt-line-table table {
+  min-width: 64rem;
+}
+
+/*
+ * 입하 전표 목록·입하 라인 두 표의 머리줄과 모든 열을 가운데로(사용자 지시 · IQC 수입검사 판정 표와 같은 풀이). DS 의 열별 정렬
+ * ([data-align])보다 앞선다.
+ */
+.goods-receipt-ir-table thead th,
+.goods-receipt-ir-table thead th[data-align],
+.goods-receipt-ir-table td,
+.goods-receipt-ir-table td[data-align],
+.goods-receipt-line-table thead th,
+.goods-receipt-line-table thead th[data-align],
+.goods-receipt-line-table td,
+.goods-receipt-line-table td[data-align] {
+  text-align: center;
+}
+
+/* 공급사 — 지나치게 긴 이름은 한 줄에서 말줄임한다. 상자째 가운데로 둔다. */
+.goods-receipt-ir-supplier {
+  display: block;
+  max-width: 32rem;
+  margin-inline: auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 입하일시·상태 칩·선택 버튼은 줄을 바꾸지 않는다. */
+.goods-receipt-ir-nowrap {
+  white-space: nowrap;
+}
+
+/*
+ * W-01-10 정상품 입하 처리 — 조회 조건 줄. 칸마다 데이터 길이에 맞는 폭을 따로 준다(같은 폭으로 늘리지
+ * 않는다). 넓으면 한 줄, 좁으면 칸 단위로 줄을 바꾼다. 모든 칸은 라벨 층 + 컨트롤 높이가 같아 윗선이 맞는다.
+ */
+.goods-receipt-filter-bar {
+  align-items: flex-start;
+  gap: var(--space-3) var(--space-4);
+}
+
+.goods-receipt-filter-bar > .field-cell {
+  align-items: stretch;
+}
+
+/* 공급사 검색칸 — 「코드 · 이름」이 읽히는 폭. 입력 부품이 상자 폭을 다 채운다. */
+.goods-receipt-filter-bar .goods-receipt-filter-supplier {
+  display: flex;
+  flex-direction: column;
+  flex: 0 1 16rem;
+  min-width: 13rem;
+}
+
+.goods-receipt-filter-supplier > * {
+  width: 100%;
+}
+
+/* 입하 시작일·종료일 — 값(YYYY-MM-DD)과 달력 단추가 들어갈 만큼만. */
+.goods-receipt-filter-bar .goods-receipt-filter-date {
+  display: flex;
+  flex-direction: column;
+  flex: 0 0 9.5rem;
+}
+
+.goods-receipt-filter-date > * {
+  width: 100%;
+}
+
+/*
+ * 검색칸 + 조회·초기화. 묶음이 줄의 남은 폭을 채우고 조회·초기화는 그 오른쪽 끝에 선다(사용자 지시 —
+ * 줄이 바뀌어도 그 줄의 끝). 검색칸은 제 폭(최대 20rem)만 쓴다.
+ */
+.goods-receipt-filter-search-group {
+  display: flex;
+  flex: 1 1 26rem;
+  align-items: flex-start;
+  gap: var(--space-3);
+  min-width: 24rem;
+}
+
+.goods-receipt-filter-search-group > .field-cell {
+  flex: 0 0 auto;
+  margin-left: auto;
+}
+
+/*
+ * 검색칸 — 부품을 줄 기준(글자 줄)이 아니라 상자 위에 붙여 다른 칸과 윗선을 맞추고(인라인이면 6px 내려간다),
+ * 상자 폭을 다 채운다. 안내 문구(입하번호 또는 거래명세서번호)가 잘리지 않는 폭.
+ */
+.goods-receipt-filter-search {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 18rem;
+  min-width: 16rem;
+  max-width: 20rem;
+}
+
+.goods-receipt-filter-search > * {
+  width: 100%;
+}
+
+/* 라벨 오른쪽 같은 줄의 짧은 안내(상태) — IQC 수입검사 판정의 라벨 옆 안내와 같은 모양(보조색). */
+.goods-receipt-label-hint {
+  margin-left: var(--space-2);
+  color: var(--on-surface-muted);
+  white-space: nowrap;
+}
+
+/* 상태 칸 — 라벨 옆 안내가 한 줄로 서는 폭. */
+.goods-receipt-filter-bar .goods-receipt-filter-status {
+  flex: 0 0 auto;
+  min-width: 17rem;
+}
+
+/* 화면에서 감추고 스크린리더에만 남기는 글자(입하 전표 목록의 「선택」 열 이름). */
+.goods-receipt-visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* 위 감춘 글자의 기준 상자를 이 표 안에 둔다 — 앱 셸까지 올라가면 문서가 길어진다(IQC 화면과 같은 이유). */
+.wide-table.goods-receipt-ir-table,
+.wide-table.goods-receipt-line-table {
+  position: relative;
+}
+
+/*
+ * W-01-10 입하 상세 — 고른 전표·고른 줄의 제목줄. 항목을 줄 전체에 흩지 않고 내용 폭만큼 붙여 한 묶음으로
+ * 읽히게 한다. 항목명은 작은 보조 글자, 값은 본문 글자로 계층을 가른다.
+ */
+/*
+ * 화면 폭에 맞춰 펼친다(사용자 지시) — 항목마다 최소 폭을 두고 남는 폭을 고르게 나눈다. 좁으면 줄을 바꾼다.
+ * 긴 값(공급사 「코드 · 이름」)은 한 칸에서 줄을 바꿀 수 있다.
+ */
+.goods-receipt-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
+  gap: var(--space-3) var(--space-6);
+  margin: 0;
+}
+
+.goods-receipt-summary > .field-cell {
+  align-items: flex-start;
+  min-height: 0;
+}
+
+.goods-receipt-summary dd {
+  margin: 0;
+  font: var(--type-body-lg);
+  letter-spacing: var(--type-body-lg-tracking);
+  font-weight: 600;
+  color: var(--on-surface);
+  overflow-wrap: anywhere;
+}
+
+/* 제목줄과 라인 표를 가르는 구획 제목 — 얇은 구분선 + 작은 제목. */
+.goods-receipt-section-title {
+  margin: var(--space-4) 0 var(--space-2);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--outline-variant);
+  font: var(--type-title-sm);
+  letter-spacing: var(--type-title-sm-tracking);
+  color: var(--on-surface);
+}
+
+/* 고른 줄의 제목줄은 라인 표 아래 한 칸 띄운다. */
+.goods-receipt-line-table + [role='group'] {
+  margin-top: var(--space-4);
+}
+
+/* 필수 칸 표시 — 라벨 뒤 `*`(입고 처리 폼). */
+.goods-receipt-required {
+  margin-left: var(--space-1);
+  color: var(--semantic-error-text);
+}
+
+/*
+ * 고른 전표·고른 라인 표시 — W-CO-06 단말기-공정 매핑(`.terminal-map-list`)과 같은 모양: 안쪽 「선택 해제」
+ * 단추의 `aria-current` 로 행을 짚고, 행 배경(--primary-container) + 줄 앞 3px 막대로 드러낸다.
+ */
+.goods-receipt-ir-table tbody tr:has(button[aria-current='true']) > td,
+.goods-receipt-line-table tbody tr:has(button[aria-current='true']) > td {
+  background: var(--primary-container);
+}
+
+.goods-receipt-ir-table tbody tr:has(button[aria-current='true']) > td:first-child,
+.goods-receipt-line-table tbody tr:has(button[aria-current='true']) > td:first-child {
+  box-shadow: inset 3px 0 0 var(--primary);
+}
+
+/* 선택한 입하 라인 요약 — 여러 칸 격자로 촘촘히(넓으면 한 줄, 좁으면 2~4열). */
+.goods-receipt-summary-grid {
+  grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
+}
+
+.goods-receipt-line-summary .goods-receipt-section-title {
+  margin-top: var(--space-2);
+}
+
+/* 입고 정보 구획 — 구획 제목이 카드 맨 위면 위 여백·구분선을 두지 않는다. */
+.goods-receipt-section-title-first {
+  margin-top: 0;
+  padding-top: 0;
+  border-top: 0;
+}
+
+/*
+ * 입고 정보 폼 — 12칸 격자에 칸마다 데이터에 맞는 폭을 준다(사용자 지시 — 모두 같은 폭이 아니다).
+ * 넓은 화면(1400px 이상):
+ *   창고 4 · 위치 4 · 입고 유형 2 · 원천 문서 유형 2
+ *   품질 상태 2 · 재고 상태 2 · 사유 4
+ *   입고 일시 3 · 비고 6
+ * 좁으면 두 칸(각 6)이고 비고만 줄 전체다. 짝(창고↔위치 · 품질↔재고 · 일시↔비고)은 이웃 칸이다.
+ * 안쪽 묶음의 `.form-grid` 는 풀어 칸이 이 격자에 바로 선다. 안내·재시도 같은 칸 아닌 것은 줄 전체를 쓴다.
+ */
+.goods-receipt-post-form {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: var(--space-4);
+  margin-bottom: var(--space-4);
+}
+
+.goods-receipt-post-form > .form-grid.goods-receipt-post-grid {
+  display: contents;
+}
+
+.goods-receipt-post-form > :not(.form-grid) {
+  grid-column: 1 / -1;
+}
+
+.goods-receipt-post-form .field-cell {
+  grid-column: span 6;
+}
+
+/* 비고는 자유 입력이라 좁은 화면에서도 줄 전체. */
+.goods-receipt-post-form .goods-receipt-post-grid > .field-cell:last-child:not([class*='goods-receipt-step-']) {
+  grid-column: span 12;
+}
+
+@media (min-width: 1400px) {
+  .goods-receipt-post-form .goods-receipt-step-warehouse,
+  .goods-receipt-post-form .goods-receipt-step-location,
+  .goods-receipt-post-form .goods-receipt-step-reason {
+    grid-column: span 4;
+  }
+
+  .goods-receipt-post-form .goods-receipt-step-receiptType,
+  .goods-receipt-post-form .goods-receipt-step-sourceDocumentType,
+  .goods-receipt-post-form .goods-receipt-step-qualityStatus,
+  .goods-receipt-post-form .goods-receipt-step-inventoryStatus {
+    grid-column: span 2;
+  }
+
+  .goods-receipt-post-form .goods-receipt-step-receiptDatetime {
+    grid-column: 1 / span 3;
+  }
+
+  .goods-receipt-post-form .goods-receipt-post-grid > .field-cell:last-child:not([class*='goods-receipt-step-']) {
+    grid-column: span 6;
+  }
+}
+
+/*
+ * 순서대로 입력 — 아직 열리지 않은 칸은 라벨까지 흐리게, 지금 채울 칸은 라벨을 강조색으로(사용자 지시).
+ * 공용 선택칸의 비활성 모양이 옅어 켜진 칸과 구분이 잘 안 되는 것을 라벨로 보탠다.
+ */
+.goods-receipt-post-form .field-cell:has(:disabled) .field-label,
+.goods-receipt-post-form .field-cell:has(input:disabled) label {
+  color: var(--on-surface-muted);
+  opacity: 0.6;
+}
+
+.goods-receipt-post-form[data-current-step='warehouse'] .goods-receipt-step-warehouse .field-label,
+.goods-receipt-post-form[data-current-step='location'] .goods-receipt-step-location .field-label,
+.goods-receipt-post-form[data-current-step='receiptType'] .goods-receipt-step-receiptType .field-label,
+.goods-receipt-post-form[data-current-step='sourceDocumentType'] .goods-receipt-step-sourceDocumentType .field-label,
+.goods-receipt-post-form[data-current-step='qualityStatus'] .goods-receipt-step-qualityStatus .field-label,
+.goods-receipt-post-form[data-current-step='inventoryStatus'] .goods-receipt-step-inventoryStatus .field-label,
+.goods-receipt-post-form[data-current-step='receiptDatetime'] .goods-receipt-step-receiptDatetime label {
+  color: var(--primary-text);
+  font-weight: 600;
+}
+
+/* 하단 액션 줄 — 구분선 아래 오른쪽 끝, 막힌 이유는 단추 바로 왼쪽. */
+.goods-receipt-post-actions {
+  align-items: center;
+  margin-top: var(--space-4);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--outline-variant);
+}
+
+/* 고를 수 없는 입하 라인의 사유 — 원인이 된 칸(자재 LOT·입하 수량) 안, 값 아래의 작은 보조 글자. 경고색 없음. */
+.goods-receipt-line-cell-reason {
+  display: block;
+  font: var(--type-body-sm);
+  letter-spacing: var(--type-body-sm-tracking);
+  color: var(--on-surface-muted);
+}
+
+/* 값 아래에 붙을 때(입하 수량 칸)만 한 칸 띄운다. */
+* + .goods-receipt-line-cell-reason {
+  margin-top: var(--space-1);
+}
+
+/* 구획 제목 옆 같은 줄의 보조 안내(입하 라인) — 작은 보조 글자, 좁으면 줄을 바꾼다. */
+.goods-receipt-section-title:has(.goods-receipt-section-hint) {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-1) var(--space-3);
+}
+
+.goods-receipt-section-hint {
+  font: var(--type-body-sm);
+  letter-spacing: var(--type-body-sm-tracking);
+  color: var(--on-surface-muted);
+}
+
+/* 선택한 입하 라인 요약 — 자재 LOT 번호가 길어 두 칸을 쓰고 한 줄로 보인다(사용자 지시). */
+.goods-receipt-summary-grid .goods-receipt-summary-lot {
+  grid-column: span 2;
+}
+
+.goods-receipt-summary-grid .goods-receipt-summary-lot dd {
+  overflow-wrap: normal;
+  white-space: nowrap;
+}
+
+/* 버튼 줄의 감춘 글자(막힌 이유)의 기준 상자 — 앱 셸까지 올라가면 문서가 길어져 하단이 빈다. */
+.goods-receipt-post-actions {
+  position: relative;
+}
+
+/* 공장이 다를 때의 안내 — 한 줄로(창고 칸에서만 공용 폭 제한을 푼다), 입하 전표의 공장 이름은 굵게. */
+.goods-receipt-step-warehouse .field-note {
+  max-width: none;
+  white-space: nowrap;
+}
+
+.goods-receipt-note-emphasis {
+  font-weight: 600;
+  color: var(--on-surface);
+}
+
+/*
+ * W-01-10 입고 처리 확인 창 — 입고 대상 · 입고 위치 · 입고 조건 세 묶음. 항목명은 작은 보조 글자, 값은 본문.
+ * 핵심(대상·위치)은 값을 굵게, 조건은 한 단계 낮춘다. 긴 자재 LOT 번호는 줄 전체를 쓰고 숨기지 않는다.
+ */
+.goods-receipt-confirm {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.goods-receipt-confirm p,
+.goods-receipt-confirm dl,
+.goods-receipt-confirm dd {
+  margin: 0;
+}
+
+.goods-receipt-confirm-lead {
+  color: var(--on-surface-variant);
+}
+
+.goods-receipt-confirm-group {
+  display: grid;
+  gap: var(--space-2);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--outline-variant);
+}
+
+.goods-receipt-confirm-group-title {
+  margin: 0;
+  font: var(--type-label-lg);
+  letter-spacing: var(--type-label-lg-tracking);
+  color: var(--on-surface-variant);
+}
+
+.goods-receipt-confirm-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-3) var(--space-5);
+}
+
+.goods-receipt-confirm-item {
+  display: grid;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.goods-receipt-confirm-item dt {
+  font: var(--type-label-sm);
+  letter-spacing: var(--type-label-sm-tracking);
+  color: var(--on-surface-muted);
+}
+
+.goods-receipt-confirm-item dd {
+  overflow-wrap: anywhere;
+}
+
+.goods-receipt-confirm-key dd {
+  font: var(--type-body-lg);
+  letter-spacing: var(--type-body-lg-tracking);
+  font-weight: 600;
+  color: var(--on-surface);
+}
+
+.goods-receipt-confirm-minor dd {
+  font: var(--type-body-sm);
+  letter-spacing: var(--type-body-sm-tracking);
+  color: var(--on-surface-variant);
+}
+
+/* 자재 LOT 번호·비고는 길다 — 줄 전체를 쓴다(숨기지 않는다). */
+.goods-receipt-confirm-lot,
+.goods-receipt-confirm-remarks {
+  grid-column: 1 / -1;
+}
+
+/* 되돌릴 수 없다는 경고 — 아이콘 + 짧은 한 줄(상자 없이), 함께 처리되는 일은 그 아래 흐린 보조 설명. */
+/* 경고는 노란 배경 띠(사용자 지시) — 경고 컨테이너 색 + 둥근 모서리. 강한 테두리·큰 상자는 두지 않는다. */
+.goods-receipt-confirm-warning {
+  display: grid;
+  gap: var(--space-1);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-md);
+  background: var(--semantic-warning-container);
+}
+
+.goods-receipt-confirm-warning > p:first-child {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--semantic-warning);
+}
+
+.goods-receipt-confirm-effects {
+  font: var(--type-body-sm);
+  letter-spacing: var(--type-body-sm-tracking);
+  color: var(--on-surface-muted);
+}
+
+/* W-03-02 LOT Status 판정·전이 — 기간 라벨 옆 기준 안내(최근 전이일). 칩이 아닌 흐린 보조 글자. */
+.lot-status-transition-period-hint {
+  font: var(--type-label-sm);
+  letter-spacing: var(--type-label-sm-tracking);
+  color: var(--on-surface-muted);
+  white-space: nowrap;
+}
+
+/*
+ * W-03-02 LOT Status 판정·전이 — 선택 LOT·상태 전이 준비 정돈(사용자 지시 2026-09-19).
+ * 좌측(확인 정보)을 줄이고 우측(작업)을 넓힌다. 우측은 한 카드 안에서 구획 제목·구분선으로
+ * ① 변경할 상태 ② 해제할 보류 ③ 해제 정보를 가른다(카드를 겹치지 않는다).
+ */
+@media (min-width: 1440px) {
+  .lot-status-transition-detail-grid {
+    grid-template-columns: minmax(22rem, 2fr) minmax(32rem, 3fr);
+  }
+}
+
+/* 현재 상태 — 세 칸 격자(좁은 좌측에서도 여섯 항목이 두 줄로 선다). */
+.lot-status-transition-status-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+/* 최근 사유 — 이름이 낱말 단위로 접힌다(글자 중간에서 끊지 않는다). */
+.lot-status-transition-status-grid .lot-status-transition-current-latestReason dd {
+  overflow-wrap: normal;
+  word-break: keep-all;
+}
+
+/* ① 변경할 상태 — 상자를 없애고 제목 + 라디오 묶음만. */
+.lot-status-transition-choice {
+  padding: 0;
+  border: 0;
+  background: none;
+}
+
+/* ② 해제할 보류 · ③ 해제 정보 — 앞 구획과 얇은 구분선으로 가른다. */
+.lot-status-transition-holds,
+.lot-status-transition-execution {
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--outline-variant);
+}
+
+.lot-status-transition-nowrap {
+  white-space: nowrap;
+}
+
+/* 해제 대상이 골라졌다는 짧은 상태 표시 — 표 바로 아래. */
+.lot-status-transition-holds + .lot-status-transition-preparation-note {
+  margin-top: calc(-1 * var(--space-2));
+}
+
+/* 해제 방식 — 이름과 두 선택지를 한 줄 묶음으로. */
+.lot-status-transition-mode {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-4);
+}
+
+.lot-status-transition-mode > .field-label {
+  margin: 0;
+}
+
+/* 해제 수량 → 해제 사유 → 비고 — 한 줄기로 붙인다. 선택칸은 적당한 폭, 비고는 줄 전체. */
+.lot-status-transition-execution-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-3);
+}
+
+.lot-status-transition-execution-form > .field-cell,
+.lot-status-transition-execution-form > :first-child:not(.field-cell) {
+  max-width: 28rem;
+}
+
+.lot-status-transition-execution-form > :last-child {
+  max-width: none;
+}
+
+.lot-status-transition-required {
+  margin-left: var(--space-1);
+  color: var(--semantic-error-text);
+}
+
+/*
+ * W-03-02 보류 해제 확인 창 — LOT 요약 → 보류 해제 정보(항목명·값) → 결과 설명(흐린 글자) → 작은 주의 상자.
+ * 긴 LOT 번호는 창 폭을 밀지 않고 줄을 바꾼다.
+ */
+.lot-release-confirm {
+  display: grid;
+  gap: var(--space-4);
+  min-width: 0;
+}
+
+.lot-release-confirm dl,
+.lot-release-confirm dd,
+.lot-release-confirm p,
+.lot-release-confirm h3 {
+  margin: 0;
+}
+
+.lot-release-confirm-lot {
+  display: grid;
+  gap: var(--space-1);
+  padding-bottom: var(--space-3);
+  border-bottom: 1px solid var(--outline-variant);
+}
+
+.lot-release-confirm-lot dt,
+.lot-release-confirm-info dt {
+  font: var(--type-label-sm);
+  letter-spacing: var(--type-label-sm-tracking);
+  color: var(--on-surface-muted);
+}
+
+.lot-release-confirm-lot dd {
+  font: var(--type-body-lg);
+  letter-spacing: var(--type-body-lg-tracking);
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.lot-release-confirm-info {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.lot-release-confirm-info h3 {
+  font: var(--type-label-lg);
+  letter-spacing: var(--type-label-lg-tracking);
+  color: var(--on-surface-variant);
+}
+
+.lot-release-confirm-info dl {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.lot-release-confirm-info dl > div {
+  display: grid;
+  grid-template-columns: 6rem minmax(0, 1fr);
+  align-items: baseline;
+  gap: var(--space-3);
+}
+
+.lot-release-confirm-info dd {
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.lot-release-confirm-description {
+  font: var(--type-body-sm);
+  letter-spacing: var(--type-body-sm-tracking);
+  color: var(--on-surface-muted);
+}
+
+/* 주의 — 작은 노란 상자(아이콘 + 두 줄). 창 전체를 덮지 않는다. */
+.lot-release-confirm-caution {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--semantic-warning-container);
+  color: var(--semantic-warning);
+  font: var(--type-body-sm);
+  letter-spacing: var(--type-body-sm-tracking);
+}
+
+/* 해제할 보류 표 — 머리줄과 모든 열을 가운데로(사용자 지시 · DS 열별 정렬보다 앞선다). */
+.lot-status-transition-holds thead th,
+.lot-status-transition-holds thead th[data-align],
+.lot-status-transition-holds td,
+.lot-status-transition-holds td[data-align] {
+  text-align: center;
+}

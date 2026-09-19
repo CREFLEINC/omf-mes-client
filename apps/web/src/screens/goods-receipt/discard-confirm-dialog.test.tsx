@@ -20,7 +20,7 @@ describe('DiscardConfirmDialog', () => {
   it('무엇을 잃는지 밝힌다', () => {
     renderDialog();
 
-    expect(screen.getByText(messages.common.discardChangesConfirm)).toBeInTheDocument();
+    expect(screen.getByText(t.dialog.discardLead)).toBeInTheDocument();
   });
 
   /* 「확인/취소」가 아니다 — 무엇을 누르는지 창을 다시 읽지 않아도 알아야 한다. */
