@@ -205,6 +205,22 @@ describe('LOT 이력 hook — 보류 사건과 상태 변경을 합친다', () =
     expect(result.current.data?.entries).toHaveLength(2);
   });
 
+  it('같은 시각의 사건은 서버처럼 식별자 큰 것이 위다(문자 비교가 아니다)', async () => {
+    const stub = createStubFetch([
+      route(EVENTS_PATH, { items: [], page: { page: 1, size: 200, total: 0 } }),
+      route(STATUS_EVENTS_PATH, {
+        items: [statusEvent({ lotStatusHistoryId: 9 }), statusEvent({ lotStatusHistoryId: 10 })],
+      }),
+    ]);
+    const { result } = renderHookWithProviders(() => useLotTimeline(404), { fetch: stub });
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(result.current.data?.entries.map((entry) => entry.key)).toEqual([
+      'status:10',
+      'status:9',
+    ]);
+  });
+
   it('LOT 상세는 그 LOT 의 두 이력을 LOT id 로 부른다', async () => {
     const urls: URL[] = [];
     const stub = createStubFetch([

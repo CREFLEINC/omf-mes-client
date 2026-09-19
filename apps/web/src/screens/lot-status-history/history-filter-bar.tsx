@@ -122,7 +122,8 @@ export const HistoryFilterBar = ({
         </Button>
         <Button
           disabled={reason !== null}
-          aria-describedby={reason === null ? undefined : reasonId}
+          /* 달력이 열려 있는 동안 그 칸은 단계 안내라 조회를 막는 까닭이 아니다 — 닫혀 있을 때만 잇는다. */
+          aria-describedby={reason === null || step !== 'closed' ? undefined : reasonId}
           onClick={() => onSearch(draft)}
         >
           {t.actions.search}

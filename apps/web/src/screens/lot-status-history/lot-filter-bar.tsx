@@ -161,7 +161,9 @@ export const LotFilterBar = ({
 
   /* 아직 조회 전('')이면 초안은 「전체」다 — 유형을 고르지 않고 조회해도 된다(사용자 지시 2026-09-19). */
   const lotType = filters.lotType === '' ? ALL_LOT_TYPES : filters.lotType;
-  const search = (): void => onSearch({ ...filters, lotType });
+  // 창고가 비면 위치는 잠겨 있다 — 주소로 들어온 위치 값이 잠긴 채 조회에 실리지 않게 비운다.
+  const search = (): void =>
+    onSearch({ ...filters, lotType, location: filters.warehouse === '' ? '' : filters.location });
 
   return (
     <div className="filter-bar lot-status-filter">

@@ -64,7 +64,10 @@ export const useLotActorOptions = (enabled: boolean): UseQueryResult<LotActorLis
     queryKey: lotStatusKeys.actors,
     enabled,
     queryFn: () =>
-      runRequest(() => client.GET('/app/users', { params: { query: { includeInactive: true } } })),
+      /* 이력 표가 상태 변경 줄의 처리자 이름을 이 목록으로 푼다 — 서버 기본 50명이면 그 밖이 「이름 미확인」이 된다. */
+      runRequest(() =>
+        client.GET('/app/users', { params: { query: { includeInactive: true, size: 200 } } }),
+      ),
   });
 };
 

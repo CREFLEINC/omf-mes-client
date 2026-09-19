@@ -28,6 +28,21 @@ export const statusEntry = (event: LotStatusEventView): LotTimelineEntry => ({
   event,
 });
 
+/** 같은 종류·같은 시각의 순서 — 서버 정렬(시각 desc, 식별자 desc)과 같게 숫자로 가른다. */
+const sameKindOrder = (a: LotTimelineEntry, b: LotTimelineEntry): number => {
+  if (a.kind === 'status' && b.kind === 'status') {
+    return b.event.lotStatusHistoryId - a.event.lotStatusHistoryId;
+  }
+  if (a.kind === 'hold' && b.kind === 'hold') {
+    const byHold = b.event.lotHoldId - a.event.lotHoldId;
+    if (byHold !== 0) return byHold;
+    // 한 보류의 해제는 등록 뒤의 일이다 — 위(최신)에 둔다.
+    if (a.event.eventTypeCode === b.event.eventTypeCode) return 0;
+    return a.event.eventTypeCode === 'RELEASED' ? -1 : 1;
+  }
+  return 0;
+};
+
 /** 최신이 위. 같은 시각이면 보류가 원인이므로 보류 사건을 상태 변경보다 아래(먼저 일어난 쪽)에 둔다. */
 export const mergeTimeline = (
   holds: readonly LotHoldEventView[],
@@ -37,7 +52,7 @@ export const mergeTimeline = (
     const diff = Date.parse(b.occurredAt) - Date.parse(a.occurredAt);
     if (diff !== 0) return diff;
     if (a.kind !== b.kind) return a.kind === 'status' ? -1 : 1;
-    return a.key < b.key ? 1 : a.key > b.key ? -1 : 0;
+    return sameKindOrder(a, b);
   });
 
 export interface StatusEventScope {
