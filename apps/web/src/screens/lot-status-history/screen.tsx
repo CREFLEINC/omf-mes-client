@@ -27,11 +27,7 @@ import { HistoryResults } from './history-results';
 import { LotDetailDialog } from './lot-detail-dialog';
 import { LotFilterBar, type FilterOption } from './lot-filter-bar';
 import { useLotStatusOptions, useLotTypeOptions, type LotCodeOption } from './options';
-import {
-  useItemReferenceOptions,
-  useWarehouseReferenceOptions,
-  type ReferenceOption,
-} from './reference-options';
+import { useWarehouseReferenceOptions, type ReferenceOption } from './reference-options';
 import { useLotActorOptions } from './queries';
 
 const t = messages.lotStatusHistory;
@@ -88,15 +84,7 @@ const LotMode = ({
   const lotTypes = useLotTypeOptions();
   const lotStatuses = useLotStatusOptions();
   const warehouses = useWarehouseReferenceOptions();
-  const items = useItemReferenceOptions();
 
-  const lotTypeBlockReason = lotTypes.isPending
-    ? t.lotFilter.reasons.lotTypeLoading
-    : lotTypes.isError
-      ? t.lotFilter.reasons.lotTypeFailed
-      : lotTypes.data?.isSeeded === false
-        ? t.lotFilter.reasons.lotTypeUnseeded
-        : undefined;
   const lotStatusNote =
     lotStatuses.data?.isSeeded === false
       ? t.lotFilter.notes.lotStatusUnseeded
@@ -111,14 +99,15 @@ const LotMode = ({
           lotTypeOptions={toCodeOptions(lotTypes.data?.items)}
           lotStatusOptions={toCodeOptions(lotStatuses.data?.items)}
           warehouseOptions={toReferenceOptions(warehouses.data?.entries)}
-          itemOptions={toReferenceOptions(items.data?.entries)}
           lotTypeNote={
-            lotTypes.data?.isTruncated === true ? t.lotFilter.notes.lotTypeTruncated : undefined
+            lotTypes.data?.isSeeded === false
+              ? t.lotFilter.notes.lotTypeUnseeded
+              : lotTypes.data?.isTruncated === true
+                ? t.lotFilter.notes.lotTypeTruncated
+                : optionNote(lotTypes, t.lotFilter.fields.lotType)
           }
           lotStatusNote={lotStatusNote}
           warehouseNote={optionNote(warehouses, t.lotFilter.fields.warehouse)}
-          itemNote={optionNote(items, t.lotFilter.fields.item)}
-          lotTypeBlockReason={lotTypeBlockReason}
           onSearch={onSearch}
           onReset={onReset}
         />
@@ -153,6 +142,12 @@ interface HistoryModeProps {
 
 const HistoryMode = ({ filters, page, onSearch, onReset, onPageChange }: HistoryModeProps) => {
   const actors = useLotActorOptions(true);
+  const lotStatuses = useLotStatusOptions();
+  const appUserName = (appUserId: number): string | null => {
+    const actor = actors.data?.items.find((item) => item.appUserId === appUserId);
+    if (actor === undefined) return null;
+    return actor.userName === '' ? actor.loginId : actor.userName;
+  };
   const actorOptions: FilterOption[] =
     actors.data?.items.map((actor) => ({
       value: String(actor.appUserId),
@@ -184,6 +179,8 @@ const HistoryMode = ({ filters, page, onSearch, onReset, onPageChange }: History
         filters={filters}
         page={page}
         offsetMinutes={-new Date().getTimezoneOffset()}
+        statusOptions={toCodeOptions(lotStatuses.data?.items)}
+        appUserName={appUserName}
         onPageChange={onPageChange}
       />
     </div>

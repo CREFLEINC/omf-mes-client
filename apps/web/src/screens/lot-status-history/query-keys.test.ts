@@ -96,26 +96,20 @@ describe('lotStatusKeys.history', () => {
   ] as const)('%s 조건이 다르면 이력 캐시를 분리한다', (key, value) => {
     const changed = { ...EMPTY_HISTORY_FILTERS, [key]: value };
 
-    expect(lotStatusKeys.history(EMPTY_HISTORY_FILTERS, 1, 540)).not.toEqual(
-      lotStatusKeys.history(changed, 1, 540),
-    );
-  });
-
-  it('페이지가 다르면 이력 캐시를 분리한다', () => {
-    expect(lotStatusKeys.history(EMPTY_HISTORY_FILTERS, 1, 540)).not.toEqual(
-      lotStatusKeys.history(EMPTY_HISTORY_FILTERS, 2, 540),
+    expect(lotStatusKeys.history(EMPTY_HISTORY_FILTERS, 540)).not.toEqual(
+      lotStatusKeys.history(changed, 540),
     );
   });
 
   it('같은 지역 날짜라도 UTC offset이 다르면 이력 캐시를 분리한다', () => {
-    expect(lotStatusKeys.history(EMPTY_HISTORY_FILTERS, 1, 540)).not.toEqual(
-      lotStatusKeys.history(EMPTY_HISTORY_FILTERS, 1, -300),
+    expect(lotStatusKeys.history(EMPTY_HISTORY_FILTERS, 540)).not.toEqual(
+      lotStatusKeys.history(EMPTY_HISTORY_FILTERS, -300),
     );
   });
 
   it('호출자가 이력 필터 객체를 바꿔도 이미 만든 캐시 키는 변하지 않는다', () => {
     const filters: HistoryFilters = { ...EMPTY_HISTORY_FILTERS, actor: '505' };
-    const key = lotStatusKeys.history(filters, 2, 540);
+    const key = lotStatusKeys.history(filters, 540);
 
     filters.actor = '606';
 
@@ -123,7 +117,6 @@ describe('lotStatusKeys.history', () => {
       'lot-status-history',
       'history',
       { from: '', to: '', actor: '505', lot: '' },
-      2,
       540,
     ]);
   });

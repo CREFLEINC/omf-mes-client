@@ -35,8 +35,8 @@ const ITEM_TYPE_CODE_GROUP = 'ITEM_TYPE';
 
 export const itemPickerKeys = {
   types: [ROOT, 'item-types'] as const,
-  search: (term: string, itemTypeCode: string, page: number) =>
-    [ROOT, 'search', term, itemTypeCode, page] as const,
+  search: (term: string, itemTypeCode: string, page: number, includeInactive = false) =>
+    [ROOT, 'search', term, itemTypeCode, page, includeInactive] as const,
   availability: (itemId: number) => [ROOT, 'availability', itemId] as const,
 };
 
@@ -72,6 +72,8 @@ export interface ItemRow {
   itemTypeCode: string;
   /** 기준 단위. 라인을 만들 때 그대로 채운다 — 화면이 단위를 지어내지 않는다. */
   baseUomId: number;
+  /** 사용 중지된 품목인가. 중지 품목까지 찾는 창(`includeInactive`)에서만 false 가 온다. */
+  isActive: boolean;
 }
 
 export interface ItemSearchResult {
@@ -93,18 +95,21 @@ export interface ItemSearchResult {
  *    ⚠ `W-06-05` 쪽 규칙은 그대로다 — 그쪽은 근거가 아직 살아 있다.
  * ⛔ **`includeInactive` 를 주지 않는다.** 중지된 품목은 새로 편성할 대상이 아니다 — 종전
  *    인라인 검색이 그것을 켜 두어 중지된 품목까지 후보에 올렸다(2026-09-18 정정).
+ *    ⚠ 조회 필터처럼 **지난 자료를 찾는** 창은 `includeInactive` 로 켠다 — 중지된 품목의 LOT 도
+ *    찾을 수 있어야 한다(W-03-01 품목 필터 · 2026-09-19). 기본은 그대로 끈다.
  * ⚠ 유형은 **한 번에 하나**만 실린다(계약 `itemTypeCode?: string`). 「전체」면 싣지 않는다.
  */
 export const useItemSearch = (
   term: string,
   itemTypeCode: string,
   page: number,
+  includeInactive = false,
 ): UseQueryResult<ItemSearchResult> => {
   const { client } = useApiClient();
   const trimmed = term.trim();
 
   return useQuery({
-    queryKey: itemPickerKeys.search(trimmed, itemTypeCode, page),
+    queryKey: itemPickerKeys.search(trimmed, itemTypeCode, page, includeInactive),
     queryFn: async () => {
       const data = await runRequest(() =>
         client.GET('/mdm/items', {
@@ -113,6 +118,7 @@ export const useItemSearch = (
               /* 빈 검색어는 축을 아예 싣지 않는다 — 빈 문자열을 검색어로 보내지 않는다. */
               ...(trimmed === '' ? {} : { q: trimmed }),
               ...(itemTypeCode === '' ? {} : { itemTypeCode }),
+              ...(includeInactive ? { includeInactive: true } : {}),
               page,
               size: ITEM_PAGE_SIZE,
             },
@@ -127,6 +133,7 @@ export const useItemSearch = (
           itemName: item.itemName,
           itemTypeCode: item.itemTypeCode,
           baseUomId: item.baseUomId,
+          isActive: item.isActive,
         })),
         total: data.page.total,
       };
@@ -136,9 +143,7 @@ export const useItemSearch = (
 
 /** 한 품목의 가용 재고가 지금 어떤 상태인가. **「모른다」와 「없다」를 가른다.** */
 export type AvailabilityState =
-  | { kind: 'loading' }
-  | { kind: 'failed' }
-  | { kind: 'qty'; value: number };
+  { kind: 'loading' } | { kind: 'failed' } | { kind: 'qty'; value: number };
 
 const fetchAvailability = async (client: Client, itemId: number): Promise<number> => {
   const data = await runRequest(() =>

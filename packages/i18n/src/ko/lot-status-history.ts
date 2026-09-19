@@ -14,8 +14,8 @@ export const lotStatusHistory = {
     retry: '다시 시도',
     /** 다시 시도 단추가 여럿이라 어느 패널을 다시 부르는지 이름으로 가른다. */
     retryLabel: (name: string): string => `${name} 다시 시도`,
-    previousPage: '이전 쪽',
-    nextPage: '다음 쪽',
+    previousPage: '이전',
+    nextPage: '다음',
   },
   /** 쪽 이동 줄의 건수 표기. 숫자 서식은 부르는 쪽이 맞춘다. */
   range: {
@@ -36,10 +36,12 @@ export const lotStatusHistory = {
     /** 기준값 목록에 없는 코드. 코드를 감추면 무엇이 어긋났는지 알 길이 없다. */
     unlisted: (value: string): string => `${value} (목록 미확정)`,
   },
-  /** 이력에 담기는 범위를 미리 알린다. 보류 문서 목록과 보류 사건 이력이 함께 쓴다. */
-  scopeNotice: '보류 등록·해제 이력만 표시하며 전체 상태 전이는 기록되지 않습니다.',
   lotFilter: {
     pane: 'LOT 조회 조건',
+    /** 품목은 검색해서 고른다 — 품목 선택 창을 여는 단추와 고른 값을 지우는 단추. */
+    itemPlaceholder: '코드·이름으로 검색',
+    itemClear: '품목 지우기',
+    itemPick: '선택',
     fields: {
       lotType: 'LOT 유형',
       lotNo: 'LOT 번호',
@@ -50,17 +52,11 @@ export const lotStatusHistory = {
     },
     notes: {
       lotTypeTruncated: '일부 LOT 유형만 표시됩니다.',
+      lotTypeUnseeded: 'LOT 유형 기준값이 준비되지 않았습니다.',
       lotStatusUnseeded: '현재 상태 기준값이 준비되지 않았습니다.',
-      locationNeedsWarehouse: '창고를 먼저 선택하세요.',
+      locationNeedsWarehouse: '창고 선택 후 위치를 선택할 수 있습니다.',
       locationFailed: '위치 목록을 불러오지 못했습니다.',
       locationTruncated: '일부 위치만 표시됩니다.',
-    },
-    /** 조회 단추를 막는 사유. */
-    reasons: {
-      lotTypeRequired: 'LOT 유형을 선택하세요.',
-      lotTypeLoading: 'LOT 유형 기준값을 불러오는 중입니다.',
-      lotTypeFailed: 'LOT 유형 기준값을 불러오지 못했습니다.',
-      lotTypeUnseeded: 'LOT 유형 기준값이 준비되지 않았습니다.',
     },
   },
   historyFilter: {
@@ -68,14 +64,21 @@ export const lotStatusHistory = {
     fields: {
       period: '기간',
       actor: '행위자',
-      lot: 'LOT',
+      lot: 'LOT 번호',
     },
     /** 고른 행위자가 목록에 없을 때 자리를 비우지 않고 고른 사실만 남긴다. */
     actorUnknownOption: '선택한 행위자 (이름 확인 불가)',
     actorUnknownNote: '선택한 행위자 이름을 확인하지 못했습니다.',
+    /** 기간 입력창이 비었을 때 — 두 날짜가 필요하다는 것을 먼저 보인다. */
+    periodPlaceholder: '시작일 ~ 종료일',
+    /** 달력이 열려 있는 동안 지금 고를 날짜. */
+    steps: {
+      start: '시작일을 선택해 주세요.',
+      end: '종료일을 선택해 주세요.',
+    },
     /** 조회 단추를 막는 기간 사유. */
     reasons: {
-      missing: '기간을 모두 선택한 뒤 조회할 수 있습니다.',
+      missing: '시작일을 선택한 후 종료일을 선택해 주세요.',
       invalid: '유효한 기간을 선택해 주세요.',
       reversed: '기간 종료는 시작보다 앞설 수 없습니다.',
     },
@@ -83,15 +86,15 @@ export const lotStatusHistory = {
   current: {
     pane: '현재 LOT 상태',
     beforeSearch: {
-      title: 'LOT 유형을 선택하고 조회하세요',
+      title: '조회 조건을 선택하고 조회하세요',
       description: '조회 조건을 적용하면 현재 상태 요약과 LOT 목록이 표시됩니다.',
     },
     columns: {
       lot: 'LOT',
       item: '품목',
       status: '현재 상태',
-      onHand: '보유',
-      latestTransition: '최근 전이',
+      onHand: '보유 수량',
+      latestTransition: '최근 상태 변경',
       reason: '사유',
     },
     /** 품목 이름을 아직 못 붙였을 때 왜 못 붙였는지를 칸에 그대로 적는다. */
@@ -122,33 +125,63 @@ export const lotStatusHistory = {
       pagination: 'LOT 목록 쪽 이동',
     },
   },
+  /** 보류 등록·해제와 상태 변경을 한 표에 시간순으로 보인다(omf-all-around#24). */
   history: {
-    pane: '보류 사건 이력',
+    pane: 'LOT 이력',
     columns: {
       occurredAt: '일시',
       lot: 'LOT',
-      event: '전이/사건',
+      event: '구분',
+      change: '상태 변경',
       actor: '행위자',
       reason: '사유',
     },
     events: {
       held: '보류 등록',
       released: '보류 해제',
+      statusChanged: '상태 변경',
     },
+    /** 상태 변경의 까닭. 서버 전이 코드 13종(W-03-01 §5-1 · 서버 C17~C20). */
+    transitions: {
+      C4: '합격',
+      C5: '검사 보류',
+      C6: '불합격',
+      C7: '재판정 합격',
+      C8: '재판정 불합격',
+      C9: '클레임·리콜',
+      C10: '의심자재 등록',
+      C14: '합격판정개수 초과',
+      C15: '전수 재검 양품',
+      C17: '처분 재작업',
+      C18: '처분 폐기',
+      C19: '처분 정상',
+      C20: '재고 재등록',
+    },
+    /** 최초 등록 전이는 이전 상태가 없다. */
+    initialStatus: '최초',
     actorUnknown: '이름 미확인',
     beforeSearch: {
       title: '기간을 선택하고 조회하세요',
-      description: '조회 기간을 모두 적용하면 보류 사건 이력이 표시됩니다.',
+      description: '조회 기간을 모두 적용하면 보류 등록·해제와 상태 변경 이력이 표시됩니다.',
     },
-    loading: '보류 사건 이력을 불러오는 중',
-    failed: '보류 사건 이력을 불러오지 못했습니다.',
-    refreshing: '보류 사건 이력 갱신 중',
-    refreshingText: '보류 사건 이력을 갱신하는 중입니다.',
+    loading: 'LOT 이력을 불러오는 중',
+    failed: 'LOT 이력을 불러오지 못했습니다.',
+    refreshing: 'LOT 이력 갱신 중',
+    refreshingText: 'LOT 이력을 갱신하는 중입니다.',
     empty: {
-      title: '이 기간의 보류 사건이 없습니다',
+      title: '이 기간의 이력이 없습니다',
       description: '현재 LOT 상태와 일치하지 않아도 오류가 아닙니다.',
     },
-    pagination: '보류 사건 이력 쪽 이동',
+    truncated: '보류 사건이 많아 일부만 표시합니다. 기간을 좁혀 조회하세요.',
+    pagination: 'LOT 이력 쪽 이동',
+  },
+  /** LOT 상세의 이력. 표 모양은 「이력으로 찾기」와 같고 LOT 열만 없다. */
+  timeline: {
+    pane: 'LOT 이력',
+    loading: 'LOT 이력을 불러오는 중',
+    failed: 'LOT 이력을 불러오지 못했습니다.',
+    empty: '기록된 이력이 없습니다',
+    truncated: '보류 사건이 많아 일부만 표시합니다.',
   },
   detail: {
     title: 'LOT 상세',
@@ -166,8 +199,10 @@ export const lotStatusHistory = {
       manufacturedAt: '제조 시각',
     },
     transition: '판정·전이 처리',
-    transitionNote: 'W-03-02 화면이 제공되면 사용할 수 있습니다.',
-    suspiciousNote: '의심자재 등록은 W-03-03 화면에서 진행하세요.',
+    /** 화면 코드 대신 메뉴에 보이는 화면 이름으로 안내한다(사용자 지시 2026-09-19). */
+    transitionNote:
+      '이 창에서는 사용할 수 없습니다. 「Lot Status 판정·전이 처리」 화면에서 진행하세요.',
+    suspiciousNote: '의심자재 등록은 「의심자재 등록」 화면에서 진행하세요.',
   },
   holdDocuments: {
     pane: '보류 문서',
@@ -177,6 +212,15 @@ export const lotStatusHistory = {
       holdStatus: '보류 건 상태',
       holdQty: '보류 수량',
       releaseCondition: '해제 조건',
+    },
+    /** 등록·해제 칸의 줄 이름. */
+    times: {
+      held: '등록',
+      released: '해제',
+    },
+    holdStates: {
+      open: '보류 중',
+      released: '해제',
     },
     /** 수량을 비운 보류는 적용 시점의 전량을 뜻한다. */
     fullQty: '전량',

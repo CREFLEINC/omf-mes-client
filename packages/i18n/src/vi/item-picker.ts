@@ -33,6 +33,7 @@ export const itemPicker: Translated<typeof ko.itemPicker> = {
   },
 
   alreadyAdded: 'Đã thêm',
+  inactive: 'Ngừng sử dụng',
 
   page: {
     range: (from: number, to: number, total: number): string =>

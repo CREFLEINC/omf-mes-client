@@ -38,11 +38,11 @@ export const lotStatusKeys = {
   detail: (lotId: number | null): QueryKey => [ROOT_KEY, 'detail', lotId],
   holds: (lotId: number | null, page = 1): QueryKey => [ROOT_KEY, 'holds', lotId, page],
   actors: [ROOT_KEY, 'actors'] as const,
-  history: (filters: HistoryFilters, page: number, offsetMinutes: number): QueryKey => [
+  history: (filters: HistoryFilters, offsetMinutes: number): QueryKey => [
     ROOT_KEY,
     'history',
     copyHistoryFilters(filters),
-    page,
     offsetMinutes,
   ],
+  lotTimeline: (lotId: number): QueryKey => [ROOT_KEY, 'lot-timeline', lotId],
 };

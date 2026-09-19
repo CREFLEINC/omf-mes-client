@@ -1789,54 +1789,313 @@ main > * + * {
 }
 
 .filter-bar.lot-status-filter {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
-  gap: var(--space-4);
   margin-bottom: 0;
 }
 
-.lot-status-filter > *,
-.lot-status-filter .field-cell {
-  min-width: 0;
-}
+/*
+ * 조회 조건은 공용 필터 바(규범 2·2-1)를 그대로 쓴다 — 칸마다 값 길이에 맞는 폭을 갖고 왼쪽부터
+ * 쌓이며 좁아지면 줄을 넘긴다. 예전에는 칸을 카드 폭에 균등하게 늘려 값보다 칸이 훨씬 넓었고
+ * 오른쪽이 비었다(사용자 지시 2026-09-19). 칸 폭은 아래 규칙이 정한다.
+ */
 
-.lot-status-filter .field-cell {
+/*
+ * 칸 폭은 값의 길이대로 차등을 둔다(사용자 지시 2026-09-19). 짧은 선택지는 가장 긴 값을 담는
+ * 트리거 폭(규범 3-2 식: 16 + 16px×글자수 + 12 + 20 + 16)만, 긴 값(LOT 번호·품목)은 넉넉히.
+ */
+
+/* LOT 유형 — 값이 두 글자(전체·자재·생산·제품): 16 + 32 + 12 + 20 + 16 = 96px 에 여유를 둔 7rem. */
+.field-cell.lot-status-filter-lot-type {
   align-items: stretch;
+  width: 7rem;
 }
 
-.lot-status-filter-footer {
+/* LOT 번호 — 번호가 길다(「품번|차수|날짜|…」 30자 안팎). 입력 중인 앞부분이 보이는 폭. */
+.lot-status-filter-lot-no {
+  width: 16rem;
+}
+
+/* 품목 — 「코드 · 이름」이라 가장 길다. 검색 입력 하나가 묶음이다(넘치면 칸 안에서 말줄임). */
+.lot-status-filter-item {
+  width: 20rem;
+}
+
+.lot-status-filter-item input {
+  cursor: pointer;
+  text-overflow: ellipsis;
+}
+
+/* 현재 상태 — 가장 긴 값 「검사 대기」를 담는 폭(W-03-02 품질 상태와 같은 9rem). */
+.field-cell.lot-status-filter-status {
+  align-items: stretch;
+  width: 9rem;
+}
+
+/* 창고·위치 — 이름이 중간 길이다. */
+.field-cell.lot-status-filter-place {
+  align-items: stretch;
+  width: 12rem;
+}
+
+/*
+ * 위치가 잠긴 동안 — 라벨 옆에 옅은 안내 글자를 붙인다(칩 모양 없이 · 사용자 지시 2026-09-19).
+ * 라벨 줄 높이는 다른 칸 라벨과 같게 두어 선택 상자들의 윗선이 어긋나지 않게 한다.
+ * 칸은 칩 폭만큼 넓어지고, 선택 상자는 창고와 같은 12rem 을 지킨다.
+ */
+.field-cell.lot-status-filter-location {
+  width: auto;
+}
+
+.field-cell.lot-status-filter-location > div:last-of-type {
+  width: 12rem;
+}
+
+/* 기간 — 안내 글자가 라벨 옆으로 가면 칸이 그만큼 넓어진다. 날짜 상자는 17rem 을 지킨다. */
+.field-cell.lot-status-filter-period {
+  width: auto;
+  /* 긴 안내가 다음 칸 라벨과 한 문장처럼 붙어 읽히지 않게 한 칸 더 띄운다. */
+  margin-right: var(--space-3);
+}
+
+.field-cell.lot-status-filter-period > :last-child {
+  width: 17rem;
+}
+
+.lot-status-filter-label-row {
   display: flex;
-  grid-column: 1 / -1;
-  flex-wrap: wrap;
   align-items: center;
-  justify-content: space-between;
-  gap: var(--space-3);
+  gap: var(--space-2);
+  height: 16px;
+  margin-bottom: var(--space-1);
+  white-space: nowrap;
 }
 
-.lot-status-filter-footer > .field-note {
-  flex: 1 1 20rem;
+.lot-status-filter-label-row > .field-label {
+  margin-bottom: 0;
+}
+
+.lot-status-filter-label-row > .field-note {
   max-width: none;
   margin: 0;
 }
 
-.lot-status-filter-buttons {
-  justify-content: flex-end;
-  margin-left: auto;
+/* 기간 — 날짜 범위(YYYY-MM-DD ~ YYYY-MM-DD)의 내용 폭. */
+.field-cell.lot-status-filter-period {
+  align-items: stretch;
+  width: 17rem;
 }
 
-.lot-status-history-filter {
-  grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+.lot-status-filter .field-cell > .field-note {
+  max-width: 100%;
+}
+
+/* 조회·초기화 묶음은 줄의 오른쪽 끝 — 줄을 넘겨도 왼쪽에 혼자 떨어지지 않는다(W-03-02와 같다). */
+.filter-bar.lot-status-filter > .lot-status-filter-actions {
+  margin-left: auto;
 }
 
 .lot-status-empty-pane {
   min-height: 14rem;
 }
 
+/* 빈 화면 안내는 한 줄로 — DS 설명 폭(42자)에서 꺾이지 않게 한다(사용자 지시 2026-09-19). */
+.lot-status-empty-pane p,
+.lot-status-history-pane p {
+  max-width: none;
+}
+
+/* 상태 요약 — 카드 폭 전체에 반응형으로 나눠 편다(사용자 지시 2026-09-19). */
 .lot-status-summary-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(8rem, 1fr));
   gap: var(--space-3);
   min-width: 0;
+}
+
+/* 구획 머리 — 제목 옆에 기준 시각을 작은 글씨로 붙인다. */
+.lot-status-pane-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-2) var(--space-4);
+}
+
+.lot-status-pane-head > .pane-title {
+  margin: 0;
+  color: var(--on-surface);
+  font: var(--type-title-lg);
+  letter-spacing: var(--type-title-lg-tracking);
+}
+
+.lot-status-pane-head > .field-note {
+  max-width: none;
+  margin: 0;
+}
+
+/*
+ * LOT 상세 — 이력·보류 문서 표의 열이 창 폭(lg)을 넘어 오른쪽이 잘렸다. 이 창만 넓힌다
+ * (사용자 지시 2026-09-19). 표 제목은 구획 머리가 이미 말하므로 화면에서만 감춘다(이름은 유지).
+ */
+.lot-status-detail-dialog {
+  --dialog-max-lg: 64rem;
+}
+
+.lot-status-detail-dialog caption {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/*
+ * LOT 상세 창 안쪽(사용자 지시 2026-09-19) — 기본 정보 → 이력 → 보류 문서 → 가능한 작업이
+ * 같은 간격으로 이어지게 한다. 이 창 밖에는 걸지 않는다. 창 높이를 넘으면 DS Dialog 본문이 스크롤한다.
+ */
+.lot-status-detail-dialog section {
+  display: grid;
+  gap: var(--space-2);
+  margin-top: var(--space-5);
+}
+
+.lot-status-detail-dialog section > h3 {
+  margin: 0;
+  color: var(--on-surface);
+  font: var(--type-title-md);
+  letter-spacing: var(--type-title-md-tracking);
+}
+
+.lot-status-detail-dialog section .form-actions {
+  margin: 0;
+}
+
+/* 기본 정보 — 10칸 격자. 긴 값(LOT 번호·품목)은 5칸씩 첫 줄, 짧은 값 다섯은 2칸씩 둘째 줄. */
+.lot-detail-fields {
+  display: grid;
+  grid-template-columns: repeat(10, minmax(0, 1fr));
+  gap: var(--space-3) var(--space-5);
+  margin: 0;
+}
+
+.lot-detail-field {
+  display: grid;
+  align-content: start;
+  gap: var(--space-1);
+  min-width: 0;
+  grid-column: span 2;
+}
+
+.lot-detail-field[data-size='wide'] {
+  grid-column: span 5;
+}
+
+.lot-detail-field > dt {
+  margin: 0;
+}
+
+.lot-detail-field > dd {
+  margin: 0;
+  color: var(--on-surface);
+  font: var(--type-body-lg);
+  font-weight: 500;
+  letter-spacing: var(--type-body-lg-tracking);
+  overflow-wrap: anywhere;
+}
+
+.lot-detail-field[data-size='short'] > dd {
+  font-weight: 400;
+}
+
+/* 이력의 상태 변경 — 이 표에서 가장 먼저 읽을 값. 색은 그대로 두고 굵기로만 세운다. */
+.lot-status-detail-dialog .lot-timeline-change {
+  color: var(--on-surface);
+  font-weight: 600;
+}
+
+/* 보류 문서 등록·해제 — 「등록 / 해제」 이름과 값을 두 줄 격자로 맞춰 세운다. */
+.lot-hold-times {
+  display: inline-grid;
+  gap: var(--space-1);
+  margin: 0;
+  text-align: left;
+}
+
+.lot-hold-times > div {
+  display: grid;
+  grid-template-columns: 2.5rem auto;
+  gap: var(--space-2);
+}
+
+.lot-hold-times dt {
+  color: var(--on-surface-variant);
+}
+
+.lot-hold-times dd {
+  margin: 0;
+}
+
+/* 가능한 작업 — 막힌 단추와 그 까닭을 한 줄로 붙이고, 참고 안내는 그 아래 작은 글씨로 따로 둔다. */
+.lot-detail-actions {
+  display: grid;
+  gap: var(--space-2);
+  margin-top: var(--space-5);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--outline-variant);
+}
+
+.lot-detail-action {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.lot-detail-actions .field-note {
+  max-width: none;
+  margin: 0;
+}
+
+/* 일시는 한 줄 — 넓은 행 간격(comfortable)에서 날짜와 시각이 갈라지지 않게 한다. */
+.lot-status-detail-dialog td:first-child {
+  white-space: nowrap;
+}
+
+/*
+ * LOT 목록 — 고정 배치로 열 비율(current-results.tsx)을 지킨다. 자동 배치에서는 긴 값 하나가
+ * 다른 열을 밀어내고, 넓은 화면에서 한 열이 남는 폭을 독차지했다(사용자 지시 2026-09-19).
+ */
+.lot-status-list-table table {
+  table-layout: fixed;
+}
+
+/* 칸 안 한 줄 — 넘치면 말줄임(전체 값은 title). 날짜·수량·사유·품목이 쓴다. */
+.lot-status-one-line {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* LOT 이력(이력으로 찾기) — 양 끝 열이 표 가장자리에 붙어 보이지 않게 안쪽 여백을 더한다(사용자 지시 2026-09-19). */
+.lot-status-history-pane th:first-child,
+.lot-status-history-pane td:first-child {
+  padding-left: var(--space-8);
+}
+
+.lot-status-history-pane th:last-child,
+.lot-status-history-pane td:last-child {
+  padding-right: var(--space-6);
+}
+
+/* LOT 번호는 한 줄 — 칸보다 길면 말줄임하고 전체 번호는 title 로 보인다. */
+.lot-status-lot-no {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .lot-status-list-title {
@@ -1866,22 +2125,6 @@ main > * + * {
   clip: rect(0 0 0 0);
   white-space: nowrap;
   border: 0;
-}
-
-@media (max-width: 720px) {
-  .lot-status-filter-footer {
-    align-items: stretch;
-    flex-direction: column;
-  }
-
-  .lot-status-filter-footer > .field-note {
-    flex: initial;
-  }
-
-  .lot-status-filter-buttons {
-    align-self: flex-end;
-    margin-left: 0;
-  }
 }
 
 /* Lot Status 판정·전이 — 조회, 선택 확인, 실행 준비를 순서가 보이는 별도 구획으로 나눈다. */
@@ -5229,7 +5472,6 @@ dl.filter-bar.approval-inbox-detail-facts {
   align-items: center;
   gap: var(--space-2);
 }
-
 
 /*
  * Location 탭 윗부분(omf-all-around#17) — 검색은 왼쪽, 등록 단추 묶음은 오른쪽 끝(검색 옆에 붙어

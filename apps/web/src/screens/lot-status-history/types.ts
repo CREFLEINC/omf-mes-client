@@ -5,6 +5,7 @@ type LotDetailResponse = components['schemas']['LotDetailResponse'];
 type LotStatusSummaryResponse = components['schemas']['LotStatusSummary'];
 type LotHoldResponse = components['schemas']['LotHold'];
 type LotHoldEventResponse = components['schemas']['LotHoldEvent'];
+type LotStatusEventResponse = components['schemas']['LotStatusHistoryEvent'];
 
 export interface LotStatusRow {
   lotId: number;
@@ -155,4 +156,32 @@ export const toLotHoldEventView = (value: LotHoldEventResponse): LotHoldEventVie
   uomId: value.uomId ?? null,
   releaseCondition: value.releaseCondition ?? null,
   targetLotStatusCode: value.targetLotStatusCode ?? null,
+});
+
+export type LotStatusTransitionCode = LotStatusEventResponse['transitionCode'];
+
+export interface LotStatusEventView {
+  lotStatusHistoryId: number;
+  lotId: number;
+  lotNo: string;
+  fromStatusCode: string | null;
+  toStatusCode: string;
+  transitionCode: LotStatusTransitionCode;
+  reason: string | null;
+  changedBy: number | null;
+  changedWorkerId: number | null;
+  changedAt: string;
+}
+
+export const toLotStatusEventView = (value: LotStatusEventResponse): LotStatusEventView => ({
+  lotStatusHistoryId: value.lotStatusHistoryId,
+  lotId: value.lotId,
+  lotNo: value.lotNo ?? '',
+  fromStatusCode: value.fromStatusCode ?? null,
+  toStatusCode: value.toStatusCode,
+  transitionCode: value.transitionCode,
+  reason: value.reason ?? null,
+  changedBy: value.changedBy ?? null,
+  changedWorkerId: value.changedWorkerId ?? null,
+  changedAt: value.changedAt,
 });
