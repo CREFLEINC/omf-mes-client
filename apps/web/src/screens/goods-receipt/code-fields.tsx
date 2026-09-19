@@ -1,6 +1,6 @@
 import { messages } from '@omf-mes/i18n';
 
-import { codeNote, codePlaceholder, type CodeOptionSets } from './code-options';
+import { codePlaceholder, REQUIRED_CODE_KEYS, type CodeOptionSets } from './code-options';
 import { SelectField } from './select-field';
 import type { CodeDraft, GoodsReceiptCodeKey } from './types';
 import { CODE_FIELD_NAMES } from './validation';
@@ -13,6 +13,11 @@ export interface CodeFieldsProps {
   /** 화면이 잡은 오류와 서버가 준 필드 오류를 합친 것. 어느 쪽이든 같은 자리에 낸다 */
   fieldErrors: Record<string, string>;
   isLocked: boolean;
+  /**
+   * 이 칸이 열려 있는가 — 입고 정보는 순서대로 입력한다(`post-steps.ts`). 닫힌 칸은 비활성이다.
+   * 주지 않으면 모든 칸이 열린다.
+   */
+  isOpen?: (key: GoodsReceiptCodeKey) => boolean;
   onChange: (key: GoodsReceiptCodeKey, value: string) => void;
 }
 
@@ -53,23 +58,29 @@ export const CodeFields = ({
   values,
   fieldErrors,
   isLocked,
+  isOpen = () => true,
   onChange,
 }: CodeFieldsProps) => (
-  <div className="form-grid">
+  <div className="form-grid goods-receipt-post-grid">
     {CODE_FIELDS.map(({ key, label }) => {
       const codeOptions = options[key];
 
       return (
         <SelectField
           key={key}
+          className={`goods-receipt-step-${key}`}
           label={label}
+          required={REQUIRED_CODE_KEYS.includes(key)}
           options={codeOptions}
           value={values[key]}
-          note={codeNote(codeOptions)}
+          /* 선택지가 비어 있는 이유는 라벨 옆 한 줄로 — 칸 아래에 두면 그 칸만 키가 커진다. */
+          labelHint={codeOptions.length === 0 ? t.filters.codePending : undefined}
           error={fieldErrors[CODE_FIELD_NAMES[key]]}
           /* 고를 것이 없는 칸과 고를 수 있는 칸은 트리거 문구가 달라야 한다. */
-          placeholder={codeOptions.length === 0 ? codePlaceholder() : t.values.selectPlaceholder}
-          disabled={isLocked}
+          placeholder={
+            codeOptions.length === 0 ? codePlaceholder() : t.values.fieldPlaceholders[key]
+          }
+          disabled={isLocked || !isOpen(key)}
           onChange={(value) => {
             onChange(key, value);
           }}

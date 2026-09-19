@@ -22,7 +22,13 @@ import {
   selectableLookupOptions,
 } from '../../patterns/lookup-display';
 import { runRequest } from '../../patterns/request';
-import { useLotStatusOptions } from '../lot-status-history/options';
+import {
+  codeName,
+  lotStatusTone,
+  useLotHoldReasonOptions as useHoldReasonNames,
+  useLotStatusOptions,
+} from '../lot-status-history/options';
+import { LOT_HOLD_RELEASE_REASON_GROUP, useLotHoldReasonOptions } from './code-options';
 import {
   useItemNameSources,
   useItemReferenceOptions,
@@ -222,6 +228,14 @@ export const LotStatusTransitionCandidateScreen = () => {
     candidates.data?.items.map((candidate) => candidate.itemId) ?? [],
   );
   const statuses = useLotStatusOptions();
+  /* 최근 사유는 코드가 아니라 공통코드 이름으로 보인다(보류·해제 사유 · LOT 이력 화면과 같은 매핑). */
+  const holdReasonNames = useHoldReasonNames();
+  const releaseReasonNames = useLotHoldReasonOptions(LOT_HOLD_RELEASE_REASON_GROUP);
+  const reasonLabel = (code: string): string => {
+    const hold = codeName(holdReasonNames.data?.items, code);
+    if (hold !== code) return hold;
+    return releaseReasonNames.options.find((option) => option.value === code)?.label ?? code;
+  };
   const periodId = useId();
   const periodError = validateTransitionPeriod(draft);
   const periodErrorMessage =
@@ -305,7 +319,12 @@ export const LotStatusTransitionCandidateScreen = () => {
       key: 'status',
       header: t.fields.status,
       align: 'center',
-      render: (row) => <Chip variant="status">{statusLabel(row.lotStatusCode)}</Chip>,
+      /* 상태 색은 LOT 이력 화면과 같다(사용자 지시) — 정상 초록 · 검사 대기 노랑 · 불량 빨강 · 그 밖 회색. */
+      render: (row) => (
+        <Chip variant="status" status={lotStatusTone(row.lotStatusCode)}>
+          {statusLabel(row.lotStatusCode)}
+        </Chip>
+      ),
     },
     {
       key: 'onHand',
@@ -335,17 +354,14 @@ export const LotStatusTransitionCandidateScreen = () => {
         <div className="filter-bar lot-status-transition-filter">
           <div className="field-cell lot-status-transition-period">
             {/*
-             * 기간의 기준(최근 전이일)은 라벨 옆에 라벨 형식(칩)으로 둔다(사용자 지시 2026-09-18).
-             * 품질 상태 배지(기본 idle)와 헷갈리지 않게 info 톤을 쓴다 — 표시 전용이라 누를 수 없다.
+             * 기간의 기준(최근 전이일)은 라벨 옆 같은 줄의 흐린 보조 글자로 둔다(사용자 지시 2026-09-19 —
+             * 칩 형식을 없앤다). 표시 전용이다.
              */}
             <div className="lot-status-transition-period-label">
               <label className="field-label" htmlFor={periodId}>
                 {t.filters.period}
               </label>
-              {/* 칩 문구는 자르지 않는다 — 칩 줄이 날짜 입력보다 길면 칸이 그 폭을 갖고 입력이 따라 늘어난다. */}
-              <Chip size="sm" status="info">
-                {t.filters.note}
-              </Chip>
+              <span className="lot-status-transition-period-hint">{t.filters.note}</span>
             </div>
             <DatePicker
               className="lot-status-transition-period-input"
@@ -470,16 +486,38 @@ export const LotStatusTransitionCandidateScreen = () => {
               ))}
             </dl>
             <h3 className="lot-status-transition-subtitle">{tSelected.currentTitle}</h3>
+            {/*
+             * 현재 상태만 색 칩으로 강조하고(LOT 이력 화면과 같은 색) 수량·최근 변경은 정돈된 글자로 둔다
+             * (사용자 지시). 최근 사유는 공통코드 이름이다 — 코드가 글자 중간에서 접히지 않는다.
+             */}
             <dl className="lot-status-transition-status-grid" aria-label={tSelected.current}>
-              {[
-                [tSelected.status, statusLabel(selected.lotStatusCode)],
-                [tSelected.onHand, quantity(selected.onHandQty)],
-                [tSelected.held, quantity(selected.heldQty)],
-                [tSelected.available, quantity(selected.availableQty)],
-                [tSelected.latestTransition, formatDateTime(selected.latestTransitionAt)],
-                [tSelected.latestReason, selected.latestReasonCode ?? emptyValue],
-              ].map(([label, value]) => (
-                <div className="field-cell" key={label}>
+              {(
+                [
+                  [
+                    'status',
+                    tSelected.status,
+                    <Chip variant="status" status={lotStatusTone(selected.lotStatusCode)}>
+                      {statusLabel(selected.lotStatusCode)}
+                    </Chip>,
+                  ],
+                  ['onHand', tSelected.onHand, quantity(selected.onHandQty)],
+                  ['held', tSelected.held, quantity(selected.heldQty)],
+                  ['available', tSelected.available, quantity(selected.availableQty)],
+                  [
+                    'latestTransition',
+                    tSelected.latestTransition,
+                    formatDateTime(selected.latestTransitionAt),
+                  ],
+                  [
+                    'latestReason',
+                    tSelected.latestReason,
+                    selected.latestReasonCode === null || selected.latestReasonCode === undefined
+                      ? emptyValue
+                      : reasonLabel(selected.latestReasonCode),
+                  ],
+                ] as const
+              ).map(([key, label, value]) => (
+                <div className={`field-cell lot-status-transition-current-${key}`} key={key}>
                   <dt className="field-label">{label}</dt>
                   <dd>{value}</dd>
                 </div>

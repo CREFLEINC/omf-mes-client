@@ -1,5 +1,6 @@
 import { Button } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
+import type { ReactNode } from 'react';
 
 import { toLocationOptions } from './location-options';
 import type { OptionListResult } from './queries';
@@ -20,6 +21,8 @@ export interface WarehouseLocationFieldsProps {
   warehousePlantName: string | null;
   /** 고른 창고의 공장이 입하 전표의 공장과 다른가. **막지 않고 보이기만 한다** */
   isPlantMismatch: boolean;
+  /** 입하 전표의 공장 이름 — 공장이 다를 때 안내에 함께 보인다. */
+  inboundPlantName: string;
   onChangeWarehouse: (value: string) => void;
   onChangeLocation: (value: string) => void;
   onRetryOptions: () => void;
@@ -67,6 +70,25 @@ const listNote = (list: OptionListResult<unknown>): string | undefined => {
  *
  * 기존 디자인 시스템 컴포넌트의 조합이라 이 화면 슬라이스가 소유한다.
  */
+/**
+ * 공장이 다를 때의 안내 — 입하 전표의 공장 이름을 굵게 강조한다(사용자 지시). 문장은 i18n 한 줄 그대로이고
+ * 그 안의 공장 이름만 감싼다(스크린리더는 같은 문장을 읽는다).
+ */
+const plantDiffersNote = (plant: string): ReactNode => {
+  const text = t.notes.warehousePlantDiffers(plant);
+  const at = text.indexOf(plant);
+
+  if (at < 0) return text;
+
+  return (
+    <>
+      {text.slice(0, at)}
+      <strong className="goods-receipt-note-emphasis">{plant}</strong>
+      {text.slice(at + plant.length)}
+    </>
+  );
+};
+
 export const WarehouseLocationFields = ({
   warehouses,
   locations,
@@ -76,6 +98,7 @@ export const WarehouseLocationFields = ({
   isLocked,
   warehousePlantName,
   isPlantMismatch,
+  inboundPlantName,
   onChangeWarehouse,
   onChangeLocation,
   onRetryOptions,
@@ -84,41 +107,43 @@ export const WarehouseLocationFields = ({
 
   return (
     <>
-      <div className="form-grid">
+      <div className="form-grid goods-receipt-post-grid">
         <SelectField
           wide
+          required
+          className="goods-receipt-step-warehouse"
           label={t.fields.warehouse}
           options={toWarehouseOptions(warehouses.items)}
           value={warehouseValue}
-          note={listNote(warehouses)}
+          /*
+           * 고른 창고의 공장은 라벨 옆 같은 줄에 둔다 — 칸 밖 한 줄로 내면 입력 격자가 둘로 갈라진다(사용자 지시).
+           * 공장이 입하 전표와 다를 때의 안내만 칸 아래에 둔다(드물고 알아야 하는 사실이다).
+           */
+          labelHint={
+            warehousePlantName === null ? undefined : t.notes.warehousePlant(warehousePlantName)
+          }
+          note={isPlantMismatch ? plantDiffersNote(inboundPlantName) : listNote(warehouses)}
           error={fieldErrors.warehouseId}
-          placeholder={t.values.selectPlaceholder}
+          placeholder={t.values.fieldPlaceholders.warehouse}
           disabled={isLocked}
           onChange={onChangeWarehouse}
         />
 
         <SelectField
           wide
+          required
+          className="goods-receipt-step-location"
           label={t.fields.location}
           options={hasWarehouse ? toLocationOptions(locations.items) : []}
           value={locationValue}
-          /* 잠긴 이유가 먼저다 — 창고를 고르기 전에는 잘림도 실패도 있을 수 없다. */
-          note={hasWarehouse ? listNote(locations) : t.actionReasons.locationNeedsWarehouse}
+          /* 창고를 고르기 전의 잠금 사유는 두지 않는다(사용자 지시) — 순서대로 입력(흐린 라벨)이 드러낸다. */
+          note={hasWarehouse ? listNote(locations) : undefined}
           error={fieldErrors.destinationLocationId}
-          placeholder={t.values.selectPlaceholder}
+          placeholder={t.values.fieldPlaceholders.location}
           disabled={isLocked || !hasWarehouse}
           onChange={onChangeLocation}
         />
       </div>
-
-      {/* 공장은 사용자가 고르지 않는다 — 어디서 오는지 밝히지 않으면 화면에서 읽을 수 없다. */}
-      <p className="field-note">{t.notes.plantFromInboundReceipt}</p>
-
-      {warehousePlantName !== null && (
-        <p className="field-note">{t.notes.warehousePlant(warehousePlantName)}</p>
-      )}
-
-      {isPlantMismatch && <p className="field-note">{t.notes.warehousePlantDiffers}</p>}
 
       {(warehouses.isError || locations.isError) && (
         <div className="field-cell">

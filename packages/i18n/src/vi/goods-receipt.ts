@@ -15,10 +15,12 @@ export const goodsReceipt: Translated<typeof ko.goodsReceipt> = {
   },
   fields: {
     supplier: 'Nhà cung cấp',
+    supplierPlaceholder: 'Mã hoặc tên nhà cung cấp',
     receiptDateFrom: 'Ngày nhập hàng bắt đầu',
     receiptDateTo: 'Ngày nhập hàng kết thúc',
     status: 'Trạng thái',
     q: 'Tìm số nhập hàng · số phiếu giao hàng',
+    qPlaceholder: 'Số nhập hàng hoặc số phiếu giao hàng',
     warehouse: 'Kho nhập',
     location: 'Vị trí cất hàng',
     receiptType: 'Loại nhập kho',
@@ -41,8 +43,9 @@ export const goodsReceipt: Translated<typeof ko.goodsReceipt> = {
     deselectLine: (lineNo: number): string => `Bỏ chọn dòng ${String(lineNo)}`,
     post: 'Xử lý nhập kho',
     confirmPost: 'Thực hiện xử lý nhập kho',
-    keepEditing: 'Nhập tiếp',
-    discardDraft: 'Bỏ nội dung đã nhập',
+    keepEditing: 'Hủy',
+    cancelPost: 'Hủy',
+    discardDraft: 'Chọn lại',
     viewSourceDocument: 'Xem chứng từ gốc',
   },
   actionReasons: {
@@ -52,8 +55,6 @@ export const goodsReceipt: Translated<typeof ko.goodsReceipt> = {
     postNeedsLocation: 'Xử lý nhập kho: hãy chọn vị trí cất hàng.',
     postNeedsCodes: 'Xử lý nhập kho: hãy chọn đủ các mã bắt buộc.',
     postNeedsReceiptDatetime: 'Xử lý nhập kho: hãy nhập thời điểm nhập kho.',
-    locationNeedsWarehouse:
-      'Vị trí cất hàng: hãy chọn kho nhập trước thì mới chọn được vị trí của kho đó.',
     sourceDocumentUnavailable:
       'Xem chứng từ gốc: quy ước tương ứng giữa loại chứng từ gốc và đối tượng chưa được chốt nên không mở được chứng từ. Chỉ thấy mã loại và số nhập hàng.',
   },
@@ -65,12 +66,10 @@ export const goodsReceipt: Translated<typeof ko.goodsReceipt> = {
     lineReferencesFailed:
       'Không tải được tên mặt hàng, đơn vị, LOT vật tư và nhà máy. Lý do sẽ hiện ở chỗ của tên.',
     lineReferencesTruncated:
-      'Danh sách tên mặt hàng, đơn vị, LOT vật tư và nhà máy chỉ về một phần. 「Không xác định」 ở chỗ của tên có thể không phải là giá trị sai mà là chưa có trong danh sách này.',
+      'Thông tin chưa xác nhận có thể hiện 「Không xác định」; đó không phải lỗi của giá trị thực.',
     postOptionsFailed: 'Không tải được danh sách chọn kho nhập và vị trí cất hàng.',
-    lineNoLot:
-      'Dòng này chưa có LOT vật tư nên chưa nhập kho được. Khi LOT vật tư được tạo thì chọn được dòng này.',
-    lineQtyNotPositive:
-      'Dòng này có số lượng nhập hàng từ 0 trở xuống nên không nhập kho được. Khi số lượng nhập hàng lớn hơn 0 thì chọn được dòng này.',
+    lineNoLot: 'Chưa tạo LOT vật tư.',
+    lineQtyNotPositive: 'Số lượng nhập phải lớn hơn 0 mới chọn được.',
   },
   loading: {
     inboundReceipts: 'Đang tải danh sách phiếu nhập hàng',
@@ -84,7 +83,9 @@ export const goodsReceipt: Translated<typeof ko.goodsReceipt> = {
     status: 'Trạng thái',
     select: 'Chọn',
   },
+  postTitle: 'Thông tin nhập kho',
   lineTable: {
+    title: 'Dòng nhập hàng',
     lineNo: 'Số dòng',
     item: 'Mặt hàng',
     receivedQty: 'Số lượng nhập hàng',
@@ -120,7 +121,9 @@ export const goodsReceipt: Translated<typeof ko.goodsReceipt> = {
       'Danh sách chọn chỉ hiện một phần đầu. Nếu không thấy giá trị cần tìm, hãy báo người phụ trách.',
     lookupFailed: 'Không tải được danh sách chọn.',
     lookupLoading: 'Đang tải danh sách chọn.',
-    periodNote: 'Để trống ngày nhập hàng thì xem toàn bộ, không thu hẹp khoảng thời gian.',
+    supplierPickFromList: 'Hãy chọn nhà cung cấp trong danh sách.',
+    statusPending: 'Chưa chốt mã nên chưa chọn được.',
+    codePending: 'Chưa chốt mã nên chưa chọn được.',
     chipSupplier: (value: string): string => `Nhà cung cấp: ${value}`,
     chipPeriodBoth: (from: string, to: string): string => `Ngày nhập hàng: ${from} ~ ${to}`,
     chipPeriodFrom: (from: string): string => `Ngày nhập hàng: từ ${from}`,
@@ -143,12 +146,10 @@ export const goodsReceipt: Translated<typeof ko.goodsReceipt> = {
     noResultDescription: 'Hãy bớt điều kiện hoặc nới rộng khoảng ngày nhập hàng rồi tra cứu lại.',
     beyondLastTitle: 'Trang này không có kết quả',
     beyondLastDescription: 'Hãy về trang đầu.',
-    noSelectionTitle: 'Chọn một phiếu nhập hàng để xem các dòng',
-    noSelectionDescription:
-      'Hãy chọn phiếu nhập hàng cần nhận vào kho ở danh sách trên rồi bấm 「Chọn」.',
-    noLinesTitle: 'Phiếu nhập hàng này không có dòng nào',
-    noLinesDescription:
-      'Phiếu không chứa dòng mặt hàng nào nên không xác định được thứ cần nhập kho.',
+    noSelectionTitle: 'Hãy chọn phiếu nhập hàng',
+    noSelectionDescription: 'Bấm 「Chọn」 ở phiếu cần nhập trong danh sách.',
+    noLinesTitle: 'Không có dòng để nhập kho',
+    noLinesDescription: 'Phiếu này không có dòng mặt hàng nào có thể nhập kho.',
     listFailedTitle: 'Không tải được danh sách phiếu nhập hàng nên không mở được phiếu này',
     listFailedDescription: 'Hãy bấm 「Thử lại」 ở trên để tải danh sách rồi chọn lại.',
   },
@@ -159,27 +160,38 @@ export const goodsReceipt: Translated<typeof ko.goodsReceipt> = {
     referenceFailed: 'Không tải được tên',
     inactiveSuffix: ' (không dùng)',
     selectPlaceholder: 'Hãy chọn',
+    fieldPlaceholders: {
+      warehouse: 'Hãy chọn kho nhập',
+      location: 'Hãy chọn vị trí cất hàng',
+      receiptType: 'Hãy chọn loại nhập kho',
+      sourceDocumentType: 'Hãy chọn loại chứng từ gốc',
+      qualityStatus: 'Hãy chọn trạng thái chất lượng',
+      inventoryStatus: 'Hãy chọn trạng thái tồn kho',
+      reason: 'Hãy chọn lý do',
+    },
   },
   notes: {
-    singleLineSelect: 'Mỗi lần chỉ chọn được một dòng. Chọn dòng khác thì lựa chọn trước đó bị gỡ.',
-    businessDateDerived:
-      'Ngày làm việc được lấy theo ngày của thời điểm nhập kho. Không có ô nhập riêng.',
-    qtyFromInboundLine:
-      'Số lượng nhập kho, mặt hàng, đơn vị và LOT vật tư được lấy nguyên theo dòng nhập hàng đã chọn. Không có ô nhập để nhận tách phần.',
-    plantFromInboundReceipt: 'Nhà máy được lấy theo phiếu nhập hàng đã chọn.',
+    singleLineSelect: 'Mỗi lần chỉ chọn được một dòng nhập hàng.',
+    businessDateDerived: 'Ngày nghiệp vụ tự đặt theo thời điểm nhập kho đã chọn.',
+    qtyFromInboundLine: 'Nhập nguyên mặt hàng, số lượng, đơn vị, LOT vật tư của dòng đã chọn; không nhập tách số lượng.',
+    plantFromInboundReceipt: 'Nhà máy tự áp dụng theo phiếu nhập hàng đã chọn.',
     warehousePlant: (plant: string): string => `Nhà máy của kho đã chọn: ${plant}`,
-    warehousePlantDiffers:
-      'Nhà máy của kho đã chọn khác với nhà máy của phiếu nhập hàng. Phiếu nhập kho sẽ ghi nhà máy của phiếu nhập hàng.',
+    warehousePlantDiffers: (plant: string): string =>
+      `Nhà máy của kho đã chọn khác với nhà máy của phiếu nhập hàng (${plant}).`,
     postRecheck:
       'Hãy kiểm tra xem phiếu nhập kho đã được tạo chưa rồi mới thử lại. Gửi lại mà không kiểm tra thì cùng một lần nhập hàng có thể bị nhập kho hai lần.',
   },
   dialog: {
     submitTitle: 'Xử lý nhập kho với nội dung này chứ?',
-    submitLead:
-      'Phiếu nhập kho sẽ được tạo với các giá trị dưới đây. Hãy kiểm tra một lần nữa trước khi gửi.',
+    submitLead: 'Hãy kiểm tra nội dung nhập kho rồi thực hiện.',
+    submitGroupWhat: 'Đối tượng nhập kho',
+    submitGroupWhere: 'Vị trí nhập kho',
+    submitGroupHow: 'Điều kiện nhập kho',
+    submitIrreversible: 'Sau khi nhập kho sẽ không hoàn tác được trên màn hình này.',
     submitEffects:
-      'Một lần xử lý nhập kho sẽ đồng thời tạo và ghi sổ phiếu nhập kho, chuyển trạng thái LOT vật tư, ghi sổ cái xuất nhập, cập nhật số dư tồn kho và đưa vào hàng đợi gửi ERP. Màn hình này không hoàn tác được.',
-    discardTitle: 'Bỏ các giá trị đã nhập chứ?',
+      'Tạo và ghi sổ phiếu nhập kho, đổi trạng thái LOT vật tư, ghi sổ xuất nhập, cập nhật tồn kho, xếp hàng đợi gửi ERP được xử lý cùng lúc.',
+    discardTitle: 'Hủy các thay đổi chứ?',
+    discardLead: 'Có nội dung chưa lưu. Nếu hủy, các thay đổi sẽ mất.',
   },
   result: {
     label: 'Kết quả xử lý nhập kho',

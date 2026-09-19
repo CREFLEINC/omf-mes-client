@@ -1,7 +1,7 @@
 import { Breadcrumb, Button, EmptyState, PageHeader, SkeletonText } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
-import { useEffect, useId, useMemo, useState } from 'react';
+import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router';
 
 import { SaveErrorBanner } from '../../patterns/master';
@@ -34,7 +34,6 @@ import { findSelectedLine, nextSelectedLineId } from './line-select';
 import { LoadErrorBanner } from './load-error-banner';
 import {
   describeReference,
-  lookupNote,
   toReference,
   useItemOptions,
   useLotOptions,
@@ -69,6 +68,14 @@ import {
   type ReceiptDraft,
   type SelectOption,
 } from './types';
+import {
+  currentPostStep,
+  isOptionalPostFieldOpen,
+  isPostStepOpen,
+  POST_STEPS,
+  postStepClass,
+  type PostStep,
+} from './post-steps';
 import { CODE_FIELD_NAMES, postBlockReason, validateDraft } from './validation';
 import { WarehouseLocationFields } from './warehouse-location-fields';
 
@@ -250,6 +257,32 @@ export const GoodsReceiptScreen = () => {
    * 입력을 같은 통로로 다루게 된다.
    */
   const [draft, setDraft] = useState<ReceiptDraft>(EMPTY_RECEIPT_DRAFT);
+
+  /*
+   * 입고 정보는 순서대로 입력한다(`post-steps.ts`). 한 칸을 채워 다음 칸이 열리면 포커스를 그 칸으로
+   * 옮긴다(사용자 지시 2026-09-19). **앞으로 나아갔을 때만** 옮긴다 — 첫 그림이나 앞 칸을 고쳐 단계가
+   * 되돌아갈 때는 포커스를 뺏지 않는다. 모두 채운 뒤(입고 일시 입력 중)에도 옮기지 않는다.
+   */
+  const nextPostStep = currentPostStep(draft);
+  const previousPostStep = useRef<PostStep | null | undefined>(undefined);
+
+  useEffect(() => {
+    const previous = previousPostStep.current;
+    previousPostStep.current = nextPostStep;
+
+    if (previous === undefined || nextPostStep === null) return;
+
+    const order = (step: PostStep | null): number =>
+      step === null ? POST_STEPS.length : POST_STEPS.indexOf(step);
+
+    if (order(nextPostStep) <= order(previous)) return;
+
+    document
+      .querySelector<HTMLElement>(
+        `.${postStepClass(nextPostStep)} :is(button, input):not(:disabled)`,
+      )
+      ?.focus();
+  }, [nextPostStep]);
 
   /** 만들어진 입고 전표. `null`이면 아직 처리하지 않았거나 마지막 시도가 실패했다 */
   const [result, setResult] = useState<GoodsReceiptResultView | null>(null);
@@ -574,10 +607,29 @@ export const GoodsReceiptScreen = () => {
 
     const itemName = describeReference(toReference(items, line.itemId));
     const lotName = describeReference(toReference(lots, line.lotId));
+    /* 단위는 코드만(「1 EA」) — 「코드 · 이름」은 같은 뜻을 두 번 적는다(라인 표와 같다). */
     const receiptQty = t.lineTable.receivedQtyPair(
       line.receivedQty,
-      describeReference(toReference(uoms, line.uomId)),
+      uoms.entries.find((entry) => entry.value === String(line.uomId))?.code ??
+        describeReference(toReference(uoms, line.uomId)),
     );
+    /**
+     * 확인 창의 코드 표시 이름 — 공통코드 조회가 준 이름(`nameKo` → `codeName`)을 쓴다. 조회하지 않는
+     * 코드(원천 문서 유형·사유)나 이름이 없으면 코드 그대로다. 보내는 값은 코드 그대로다.
+     */
+    const codeLabel = (key: GoodsReceiptCodeKey, code: string): string => {
+      const values =
+        key === 'receiptType'
+          ? receiptTypes.data
+          : key === 'qualityStatus'
+            ? qualityStatuses.data
+            : key === 'inventoryStatus'
+              ? inventoryStatuses.data
+              : undefined;
+      const found = values?.find((value) => value.code === code);
+
+      return found?.nameKo ?? found?.codeName ?? code;
+    };
     const warehousePlantName =
       selectedWarehouse === null
         ? null
@@ -661,38 +713,56 @@ export const GoodsReceiptScreen = () => {
 
     return (
       <>
-        <WarehouseLocationFields
-          warehouses={warehouses}
-          locations={locations}
-          warehouseValue={draft.warehouse}
-          locationValue={draft.location}
-          fieldErrors={fieldErrors}
-          isLocked={isLocked}
-          warehousePlantName={warehousePlantName}
-          isPlantMismatch={
-            selectedWarehouse !== null && selectedWarehouse.plantId !== inboundReceipt.plantId
-          }
-          onChangeWarehouse={changeWarehouse}
-          onChangeLocation={changeLocation}
-          onRetryOptions={retryPostOptions}
-        />
+        <h3 className="goods-receipt-section-title goods-receipt-section-title-first">
+          {t.postTitle}
+          {/* 공장은 고르는 칸이 아니다 — 입력 칸처럼 보이지 않게 제목 옆 보조 글자로 밝힌다(사용자 지시). */}
+          <span className="goods-receipt-section-hint">{t.notes.plantFromInboundReceipt}</span>
+        </h3>
 
-        <CodeFields
-          options={codeOptions}
-          values={draft.codes}
-          fieldErrors={fieldErrors}
-          isLocked={isLocked}
-          onChange={changeCode}
-        />
+        {/*
+         * 입고 정보 입력 칸을 한 격자로 모은다 — 넓은 화면은 네 칸(입력 순서대로 왼쪽→오른쪽), 좁으면 두 칸.
+         * 안쪽 세 묶음의 격자는 풀어(`display: contents`) 칸이 이 격자에 바로 선다. 짝(창고↔위치 등)은 이웃 칸이다.
+         */}
+        {/* 지금 채울 칸 — `app.css` 가 이 칸의 라벨을 강조한다(순서대로 입력 · 사용자 지시). */}
+        <div className="goods-receipt-post-form" data-current-step={nextPostStep ?? 'done'}>
+          <WarehouseLocationFields
+            warehouses={warehouses}
+            locations={locations}
+            warehouseValue={draft.warehouse}
+            locationValue={draft.location}
+            fieldErrors={fieldErrors}
+            isLocked={isLocked}
+            warehousePlantName={warehousePlantName}
+            inboundPlantName={describeReference(toReference(plants, inboundReceipt.plantId))}
+            isPlantMismatch={
+              selectedWarehouse !== null && selectedWarehouse.plantId !== inboundReceipt.plantId
+            }
+            onChangeWarehouse={changeWarehouse}
+            onChangeLocation={changeLocation}
+            onRetryOptions={retryPostOptions}
+          />
 
-        <ReceiptHeaderForm
-          receiptDatetime={draft.receiptDatetime}
-          remarks={draft.remarks}
-          fieldErrors={fieldErrors}
-          isLocked={isLocked}
-          onChangeReceiptDatetime={changeReceiptDatetime}
-          onChangeRemarks={changeRemarks}
-        />
+          <CodeFields
+            options={codeOptions}
+            values={draft.codes}
+            fieldErrors={fieldErrors}
+            isLocked={isLocked}
+            isOpen={(key) =>
+              key === 'reason' ? isOptionalPostFieldOpen(draft) : isPostStepOpen(draft, key)
+            }
+            onChange={changeCode}
+          />
+
+          <ReceiptHeaderForm
+            receiptDatetime={draft.receiptDatetime}
+            remarks={draft.remarks}
+            fieldErrors={fieldErrors}
+            isLocked={isLocked}
+            isOpen={isOptionalPostFieldOpen(draft)}
+            onChangeReceiptDatetime={changeReceiptDatetime}
+            onChangeRemarks={changeRemarks}
+          />
+        </div>
 
         {/*
          * 저장 실패는 **세 갈래**다(계획 결정 13). 배너가 검증 실패(400)·권한 없음(403)·
@@ -707,10 +777,19 @@ export const GoodsReceiptScreen = () => {
          */}
         {post.error?.kind === 'network' && <p className="field-error">{t.notes.postRecheck}</p>}
 
-        <div className="form-actions">
-          {/* 취소가 입고 처리보다 앞에 선다 — 되돌릴 수 없는 것이 손 가까이 있으면 안 된다. */}
+        {/*
+         * 하단 액션 줄 — 취소(보조 · 테두리)·입고 처리(주 액션)를 오른쪽에 둔다. 막힌 이유는 화면에서 감추고
+         * (사용자 지시 — 입력 순서 강조가 다음 칸을 보인다) 비활성 단추의 스크린리더 설명으로만 남긴다.
+         * 취소가 입고 처리보다 앞에 선다 — 되돌릴 수 없는 것이 손 가까이 있으면 안 된다.
+         */}
+        <div className="form-actions goods-receipt-post-actions">
+          {blockReason !== null && (
+            <span id={blockReasonId} className="goods-receipt-visually-hidden">
+              {blockReason}
+            </span>
+          )}
           <Button
-            variant="text"
+            variant="outlined"
             disabled={isLocked}
             onClick={() => {
               requestIntent({ kind: 'cancel' });
@@ -718,23 +797,15 @@ export const GoodsReceiptScreen = () => {
           >
             {messages.common.cancel}
           </Button>
-
-          <div className="field-cell">
-            <Button
-              variant="outlined"
-              disabled={blockReason !== null || isLocked}
-              loading={isLocked}
-              aria-describedby={blockReason === null ? undefined : blockReasonId}
-              onClick={openConfirm}
-            >
-              {t.actions.post}
-            </Button>
-            {blockReason !== null && (
-              <span id={blockReasonId} className="field-note">
-                {blockReason}
-              </span>
-            )}
-          </div>
+          <Button
+            variant="filled"
+            disabled={blockReason !== null || isLocked}
+            loading={isLocked}
+            aria-describedby={blockReason === null ? undefined : blockReasonId}
+            onClick={openConfirm}
+          >
+            {t.actions.post}
+          </Button>
         </div>
 
         {isConfirmOpen && (
@@ -758,6 +829,7 @@ export const GoodsReceiptScreen = () => {
               receiptDatetime: formatDateTime(draft.receiptDatetime),
               remarks: draft.remarks,
             }}
+            codeLabel={codeLabel}
             onConfirm={submit}
             onClose={() => {
               setConfirmOpen(false);
@@ -898,7 +970,6 @@ export const GoodsReceiptScreen = () => {
           appliedFilters={filters}
           supplierOptions={toSelectOptions(suppliers)}
           chipNames={{ supplier: describeReference(supplierReference) }}
-          supplierNote={lookupNote(suppliers)}
           isLocked={isLocked}
           onSearch={(nextFilters) => {
             applyQuery(nextFilters);

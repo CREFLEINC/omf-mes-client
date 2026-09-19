@@ -11,14 +11,15 @@ import type { IrLineView } from './types';
 
 const t = messages.goodsReceipt;
 
-/** `.wide-table`이 표에 주는 최소 폭(58rem). */
-const WIDE_TABLE_MIN_PX = 928;
+/** 이 표의 최소 폭(`.goods-receipt-line-table` 64rem). */
+const WIDE_TABLE_MIN_PX = 1024;
 
 /** 「코드 · 이름」이 한 줄에 들어가는 폭(`docs/layout-conventions.md`의 선례 값). */
 const CODE_NAME_COLUMN_PX = 200;
 
+/** px 로 지정한 폭만 센다 — 비율 폭(품목·자재 LOT)은 표 폭에 따라 달라 합에 넣지 않는다. */
 const toPx = (width: string | undefined): number =>
-  width === undefined ? 0 : Number.parseInt(width, 10);
+  width === undefined || !width.endsWith('px') ? 0 : Number.parseInt(width, 10);
 
 const specifiedWidthOf = (columns: Column<IrLineView>[]): number =>
   columns.reduce((sum, column) => sum + toPx(column.width), 0);
@@ -92,19 +93,28 @@ describe('buildIrLineColumns — 열 구성과 폭', () => {
   });
 
   /* **M42** — 흡수 열이 둘이 되거나 사라지면 표가 짓눌리거나 늘 가로로 넘친다. */
-  it('폭을 지정하지 않은 흡수 열이 정확히 하나다', () => {
-    const absorbing = columns().filter((column) => column.width === undefined);
+  /* 긴 두 열(품목·자재 LOT)만 비율 폭이다 — 남는 폭이 짧은 열로 몰리지 않게 한다. */
+  it('품목·자재 LOT만 비율 폭이고 나머지는 px 폭이다', () => {
+    const ratio = columns().filter((column) => column.width?.endsWith('%'));
 
-    expect(absorbing).toHaveLength(1);
-    expect(absorbing[0]?.key).toBe('item');
+    expect(ratio.map((column) => [column.key, column.width])).toEqual([
+      ['item', '24%'],
+      ['lot', '30%'],
+    ]);
+    expect(
+      columns()
+        .filter((column) => !column.width?.endsWith('%'))
+        .every((column) => column.width?.endsWith('px')),
+    ).toBe(true);
   });
 
-  it('지정 폭 합에 흡수 열 예산을 더해도 표 하한 안이다', () => {
+  /* 표 하한에서도 품목이 「코드 · 이름」을 담을 폭(24%)을 받는다. */
+  it('px 폭 합과 두 비율 열을 더해도 표 하한 안이다', () => {
     const specified = specifiedWidthOf(columns());
 
-    expect(specified).toBe(624);
-    expect(specified + CODE_NAME_COLUMN_PX).toBeLessThanOrEqual(WIDE_TABLE_MIN_PX);
-    expect(WIDE_TABLE_MIN_PX - specified).toBeGreaterThanOrEqual(CODE_NAME_COLUMN_PX);
+    expect(specified).toBe(448);
+    expect(WIDE_TABLE_MIN_PX * 0.24).toBeGreaterThanOrEqual(CODE_NAME_COLUMN_PX);
+    expect(specified + WIDE_TABLE_MIN_PX * 0.54).toBeLessThanOrEqual(WIDE_TABLE_MIN_PX);
   });
 });
 
@@ -211,12 +221,26 @@ describe('IrLineTable — 라인 표', () => {
    * **`lotId`가 없는 것을 「알 수 없음」으로 내지 않는다.** 없는 것은 사실이고
    * 「알 수 없음」은 *값이 잘못됐다*는 뜻이라 사용자에게 반대로 읽힌다.
    */
+  /* 수량·품목 등은 폼에서 고치는 값이 아니다 — 선택한 라인 요약 곁에서 밝힌다(사용자 지시). */
+  it('라인을 고르면 선택한 라인의 값이 그대로 입고된다는 안내가 요약 곁에 있다', () => {
+    const line = inboundReceiptLine();
+
+    renderTable({ rows: [line], selectedLineId: line.inboundReceiptLineId, selectedLine: line });
+
+    expect(
+      within(screen.getByRole('group', { name: t.lineSummary.label })).getByText(
+        t.notes.qtyFromInboundLine,
+      ),
+    ).toBeInTheDocument();
+  });
+
   it('자재 LOT이 없는 칸은 알 수 없음이 아니라 빈 값 표기다', () => {
     renderTable({ rows: [inboundReceiptLine({ lotId: null })] });
 
     const table = screen.getByRole('table');
 
-    expect(within(table).getByText(t.values.empty)).toBeInTheDocument();
+    /* `—` 대신 「자재 LOT이 생성되지 않았습니다.」만 둔다(사용자 지시). */
+    expect(within(table).getByText(t.reasons.lineNoLot)).toBeInTheDocument();
     expect(within(table).queryByText(t.values.unknown)).not.toBeInTheDocument();
   });
 

@@ -15,7 +15,11 @@ import type { PropsWithChildren } from 'react';
 
 import { useApiClient } from '../../patterns/api-context';
 import { runRequest } from '../../patterns/request';
-import { useLotStatusOptions } from '../lot-status-history/options';
+import {
+  codeName,
+  useLotHoldReasonOptions as useHoldReasonNames,
+  useLotStatusOptions,
+} from '../lot-status-history/options';
 import type { LotStatusCandidate } from './candidate-screen';
 import { CreateHoldExecution } from './create-hold-execution';
 import { ReleaseHoldExecution } from './release-hold-execution';
@@ -127,6 +131,8 @@ export const LotStatusTransitionPreparation = ({
   );
   const transitions = useTransitions(lot.lotId, !confirmationPinned);
   const statuses = useLotStatusOptions();
+  /* 보류 사유는 공통코드 이름으로 보인다(LOT 이력 화면과 같은 매핑) — 코드면 코드 그대로. */
+  const holdReasons = useHoldReasonNames();
   const [selectedTransitionKey, setSelectedTransitionKey] = useState<string | null>(null);
   const [autoSelectOwner, setAutoSelectOwner] = useState<string | null>(null);
   const [selectedHoldId, setSelectedHoldId] = useState<number | null>(null);
@@ -196,21 +202,36 @@ export const LotStatusTransitionPreparation = ({
   const targetLabel = (code: string): string =>
     statuses.data?.items.find((item) => item.code === code)?.label ?? code;
   const holdColumns: Column<LotHold>[] = [
-    { key: 'reason', header: t.holds.reason, render: (item) => item.reasonCode },
+    /*
+     * 네 열을 모두 비율로 고르게 나눈다(사용자 지시 — 가운데 정렬 표에서 한 열로 폭이 몰리지 않게).
+     * 사유 34 · 시각 28 · 수량 16 · 해제 대상 22. 가운데 정렬은 `app.css` 의 `.lot-status-transition-holds`.
+     */
+    {
+      key: 'reason',
+      header: t.holds.reason,
+      width: '34%',
+      render: (item) => codeName(holdReasons.data?.items, item.reasonCode),
+    },
     {
       key: 'heldAt',
       header: t.holds.heldAt,
-      render: (item) => <time dateTime={item.heldAt}>{formatDateTime(item.heldAt)}</time>,
+      width: '28%',
+      render: (item) => (
+        <time className="lot-status-transition-nowrap" dateTime={item.heldAt}>
+          {formatDateTime(item.heldAt)}
+        </time>
+      ),
     },
     {
       key: 'quantity',
       header: t.holds.quantity,
-      align: 'end',
+      width: '16%',
       render: (item) => item.holdQty ?? t.holds.full,
     },
     {
       key: 'select',
       header: t.holds.target,
+      width: '22%',
       render: (item) => (
         <Button
           variant="outlined"
@@ -266,11 +287,10 @@ export const LotStatusTransitionPreparation = ({
             ? t.notes.detailLoading
             : detail.isError
               ? t.notes.detailFailed
-              : selectedHold !== undefined && token !== undefined
-                ? t.notes.releaseReady
-                : selectedHold === undefined
-                  ? null
-                  : t.notes.lockUnknown;
+              : /* 준비가 끝나면 문구 없이 아래 해제 정보가 열린다(사용자 지시). */
+                (selectedHold !== undefined && token !== undefined) || selectedHold === undefined
+                ? null
+                : t.notes.lockUnknown;
   }
 
   return (

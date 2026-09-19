@@ -10,6 +10,12 @@ import { WarehouseLocationFields } from './warehouse-location-fields';
 
 const t = messages.goodsReceipt;
 
+/** 안내 문장 전체로 찾는다 — 공장 이름만 굵게 감싸 글자가 여러 요소로 나뉜다. */
+const noteText =
+  (message: string) =>
+  (_: string, element: Element | null): boolean =>
+    element?.classList.contains('field-note') === true && element.textContent === message;
+
 /* 픽스처는 화면이 읽는 필드만 담는다 — 응답 → 화면 타입 변환은 `types.test.ts`가 검사한다. */
 const WAREHOUSES: WarehouseView[] = warehouseFixtures;
 const LOCATIONS: LocationView[] = locationFixtures;
@@ -52,6 +58,7 @@ const renderFields = (
       isLocked={overrides.isLocked ?? false}
       warehousePlantName={overrides.warehousePlantName ?? null}
       isPlantMismatch={overrides.isPlantMismatch ?? false}
+      inboundPlantName="SAMPLE-PL-01 · 합성 공장"
       onChangeWarehouse={onChangeWarehouse}
       onChangeLocation={onChangeLocation}
       onRetryOptions={onRetryOptions}
@@ -69,12 +76,11 @@ describe('WarehouseLocationFields — 창고를 고르기 전', () => {
    * 계약이 위치 조회에 `warehouseId`를 필수로 요구한다(실측). 열어 두면 고를 수 없는 칸을
    * 눌러 보게 되고, 잠그기만 하면 무엇을 해야 풀리는지 알 수 없다.
    */
-  it('위치 칸이 잠기고 사유가 항상 보이는 문구로 붙는다', () => {
+  /* 잠금 사유 문구는 두지 않는다(사용자 지시) — 입력 순서(흐린 라벨·다음 칸 포커스)가 드러낸다. */
+  it('창고를 고르기 전에는 위치 칸이 잠긴다', () => {
     renderFields();
 
     expect(locationBox()).toBeDisabled();
-    expect(screen.getByText(t.actionReasons.locationNeedsWarehouse)).toBeInTheDocument();
-    expect(locationBox()).toHaveAccessibleDescription(t.actionReasons.locationNeedsWarehouse);
   });
 
   /* 짝 방향 — 창고 칸은 열려 있어야 한다. 둘 다 잠기면 시작할 수 없다. */
@@ -99,7 +105,6 @@ describe('WarehouseLocationFields — 창고를 고른 뒤', () => {
     renderFields({ warehouseValue: '9701' });
 
     expect(locationBox()).not.toBeDisabled();
-    expect(screen.queryByText(t.actionReasons.locationNeedsWarehouse)).not.toBeInTheDocument();
   });
 
   /* 상위 위치로 묶인 1단 그룹이 실제로 그려지는지 본다(계획 결정 7). */
@@ -110,10 +115,16 @@ describe('WarehouseLocationFields — 창고를 고른 뒤', () => {
 
     const group = screen.getByRole('group', { name: 'SAMPLE-LOC-A · 합성 구역 가' });
 
-    expect(within(group).getByRole('option', { name: 'SAMPLE-LOC-A1 · 합성 열 가1' })).toBeInTheDocument();
-    expect(within(group).getByRole('option', { name: 'SAMPLE-LOC-A2 · 합성 열 가2' })).toBeInTheDocument();
+    expect(
+      within(group).getByRole('option', { name: 'SAMPLE-LOC-A1 · 합성 열 가1' }),
+    ).toBeInTheDocument();
+    expect(
+      within(group).getByRole('option', { name: 'SAMPLE-LOC-A2 · 합성 열 가2' }),
+    ).toBeInTheDocument();
     /* 3단 깊이는 직속 상위의 그룹으로 간다 — 최상위 그룹에 올려 붙이지 않는다. */
-    expect(within(group).queryByRole('option', { name: /SAMPLE-LOC-A1-1/ })).not.toBeInTheDocument();
+    expect(
+      within(group).queryByRole('option', { name: /SAMPLE-LOC-A1-1/ }),
+    ).not.toBeInTheDocument();
   });
 
   it('상위가 없는 위치는 그룹 밖 평면으로 보인다', async () => {
@@ -214,13 +225,6 @@ describe('WarehouseLocationFields — 목록의 한계', () => {
 });
 
 describe('WarehouseLocationFields — 공장 표기', () => {
-  /* 요청에 싣는 공장은 입하 전표의 값이다 — 어디서 오는지 밝히지 않으면 화면에서 읽을 수 없다. */
-  it('공장이 입하 전표에서 온다는 사실을 늘 밝힌다', () => {
-    renderFields();
-
-    expect(screen.getByText(t.notes.plantFromInboundReceipt)).toBeInTheDocument();
-  });
-
   it('고른 창고의 공장을 함께 보인다', () => {
     renderFields({ warehouseValue: '9701', warehousePlantName: 'SAMPLE-PLT-01 · 합성 공장 가' });
 
@@ -237,7 +241,9 @@ describe('WarehouseLocationFields — 공장 표기', () => {
       isPlantMismatch: true,
     });
 
-    expect(screen.getByText(t.notes.warehousePlantDiffers)).toBeInTheDocument();
+    expect(
+      screen.getByText(noteText(t.notes.warehousePlantDiffers('SAMPLE-PL-01 · 합성 공장'))),
+    ).toBeInTheDocument();
     expect(warehouseBox()).not.toBeDisabled();
     expect(locationBox()).not.toBeDisabled();
   });
@@ -245,7 +251,9 @@ describe('WarehouseLocationFields — 공장 표기', () => {
   it('어긋나지 않으면 그 안내를 내지 않는다', () => {
     renderFields({ warehouseValue: '9701', warehousePlantName: 'SAMPLE-PLT-01 · 합성 공장 가' });
 
-    expect(screen.queryByText(t.notes.warehousePlantDiffers)).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(noteText(t.notes.warehousePlantDiffers('SAMPLE-PL-01 · 합성 공장'))),
+    ).not.toBeInTheDocument();
   });
 });
 

@@ -50,18 +50,11 @@ describe('IrFilterBar — 조건 줄', () => {
     renderBar();
 
     const status = screen.getByLabelText(t.fields.status);
-    const note = screen.getByText(messages.pendingCode.note);
+    const note = screen.getByText(t.filters.statusPending);
 
     expect(status.getAttribute('aria-describedby')).toBe(note.getAttribute('id'));
     /* 짝 방향 — 공급사 선택지는 실제로 들어 있다(빈 것이 부품 탓이 아님을 밝힌다). */
     expect(screen.getByLabelText(t.fields.supplier)).toBeInTheDocument();
-  });
-
-  /* 기본 기간이 없다는 사실을 밝히지 않으면 비어 있는 칸이 고장으로 읽힌다. */
-  it('기간을 비워 두면 전체를 본다는 안내가 있다', () => {
-    renderBar();
-
-    expect(screen.getByText(t.filters.periodNote)).toBeInTheDocument();
   });
 
   /*
@@ -86,6 +79,27 @@ describe('IrFilterBar — 조건 줄', () => {
     await user.type(screen.getByLabelText(t.fields.q), 'IR-2026{Enter}');
 
     expect(onSearch).toHaveBeenCalledWith({ ...DEFAULT_FILTERS, q: 'IR-2026' });
+  });
+
+  /* 공급사 검색칸 — 목록의 「코드 · 이름」을 고르면 그 공급사 번호가 조건이 된다. */
+  it('공급사를 검색해 고르면 번호가 조회에 실린다', async () => {
+    const { onSearch, user } = renderBar();
+
+    await user.type(screen.getByLabelText(t.fields.supplier), SUPPLIER_LABEL);
+    await user.click(screen.getByRole('button', { name: messages.common.search }));
+
+    expect(onSearch).toHaveBeenCalledWith({ ...DEFAULT_FILTERS, supplier: '9101' });
+  });
+
+  /* 목록에 없는 글자로 조회하면 조건을 몰래 넓히지 않는다 — 조회하지 않고 칸에서 알린다. */
+  it('목록에 없는 공급사 글자면 조회하지 않고 알린다', async () => {
+    const { onSearch, user } = renderBar();
+
+    await user.type(screen.getByLabelText(t.fields.supplier), '없는 공급사');
+    await user.click(screen.getByRole('button', { name: messages.common.search }));
+
+    expect(onSearch).not.toHaveBeenCalled();
+    expect(screen.getByText(t.filters.supplierPickFromList)).toBeInTheDocument();
   });
 
   it('기간을 고르면 조회에 함께 실린다', async () => {

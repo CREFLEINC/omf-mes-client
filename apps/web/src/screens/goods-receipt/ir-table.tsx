@@ -3,6 +3,7 @@ import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
 
 import { describeReference, toReference, type ReferenceSource } from './lookups';
+import { toStatusTone } from './status-badge';
 import { formatDateTime, type IrView } from './types';
 
 const t = messages.goodsReceipt;
@@ -33,21 +34,28 @@ export interface IrColumnsInput {
  *
  * 열 폭의 도출(`docs/layout-conventions.md`의 방식 — 흡수 열에도 예산을 잡는다):
  *
- * | 열 | 폭 | 근거 |
- * | --- | ---: | --- |
- * | 입하번호 | 160px | 14자 ASCII(`--type-body-sm` 14px · 자폭 약 7.5px) 105px + 셀 여백 32px |
- * | **공급사** | **미지정** | 「코드 · 이름」을 담고 남는 폭을 흡수한다 |
- * | 입하일시 | 160px | `YYYY-MM-DD HH:mm` 16자 120px + 셀 여백 32px |
- * | 거래명세서번호 | 152px | 15자 ASCII 113px + 셀 여백 32px |
- * | 상태 | 152px | 코드 13자 98px + 칩 안쪽 여백 24px + 32px |
- * | 선택 | 88px | `sm` 버튼 하나 |
- * | **지정 폭 합** | **712px** | |
- * | 흡수 열 예산 | 200px | 「코드 · 이름」이 접히지 않고 읽히는 하한 |
- * | **합** | **912px** | `58rem`(928px) 안에 들어간다 — 16px 여유 |
+ * | 열 | 폭 | 정렬 | 근거 |
+ * | --- | ---: | --- | --- |
+ * | 입하번호 | 200px | 가운데 | `IR-YYYYMMDD-NNNN` 16자가 한 줄로 서고 여유가 남는 폭 |
+ * | **공급사** | **35%** | 가운데 | 가장 넓은 열. 너무 긴 이름은 `32rem` 에서 말줄임한다 |
+ * | 입하일시 | 180px | 가운데 | `YYYY-MM-DD HH:mm` 가 줄바꿈 없이 선다 |
+ * | 거래명세서번호 | 180px | 가운데 | 15자 안팎의 번호 · 없으면 `—` |
+ * | 상태 | 140px | 가운데 | 상태 칩 하나 |
+ * | 선택 | 96px | 가운데 | `md` 버튼 하나 |
+ * | **지정 폭 합** | **796px** | | |
+ * | 공급사 예산 | 200px | | 「코드 · 이름」이 접히지 않고 읽히는 하한 |
+ * | **합** | **996px** | | 이 표의 하한 `64rem`(1024px) 안에 들어간다 — 28px 여유 |
  *
- * **흡수 열이 실제로 받는 폭은 216px**(928 − 712)로 예산 200px보다 넓다. 지정 폭 합이 표 하한에
- * 가까우면 흡수 열이 몇십 px밖에 못 받아 「코드 · 이름」이 낱말 단위로 쪼개진다. 그 어긋남은
- * 열 폭 합만 세는 단언을 통과하므로 **남는 폭까지 함께 단언한다**.
+ * **공급사를 비율로 둔다.** 폭을 비우면 표가 남는 폭을 전부 그 열에 줘서, 넓은 화면(1920px)에서
+ * 짧은 이름 뒤로 1,000px 넘는 빈 칸이 생긴다. 35% 로 두면 남는 폭이 px 열들에 비례로 나뉜다
+ * (실측 1880px: 307 · 658 · 276 · 276 · 215 · 147, 1400px: 229 · 490 · 206 · 206 · 160 · 110).
+ * 그래서 위 px 값은 넓은 화면에서의 «하한»이다.
+ *
+ * 머리줄과 본문은 모두 가운데 정렬이다(사용자 지시) — `app.css` 의 `.goods-receipt-ir-table` 이 맞춘다.
+ * 날짜·상태 칩·버튼은 줄을 바꾸지 않는다.
+ *
+ * 지정 폭 합이 표 하한에 가까우면 흡수 열이 몇십 px밖에 못 받아 「코드 · 이름」이 낱말 단위로
+ * 쪼개진다. 그 어긋남은 열 폭 합만 세는 단언을 통과하므로 **남는 폭까지 함께 단언한다**.
  */
 export const buildIrColumns = ({
   selectedIrId,
@@ -55,46 +63,58 @@ export const buildIrColumns = ({
   isLocked,
   onToggleSelect,
 }: IrColumnsInput): Column<IrView>[] => [
-  { key: 'inboundReceiptNo', header: t.table.inboundReceiptNo, width: '160px' },
+  { key: 'inboundReceiptNo', header: t.table.inboundReceiptNo, width: '200px' },
   {
     key: 'supplier',
     header: t.table.supplier,
+    width: '35%',
     /*
      * **번호를 문자열로 바꾸는 자리가 없다**(#44). 이름으로 풀 수 없는 세 갈래(미도착·목록에
      * 없음·실패)는 전부 문구로 갈리며, 어느 갈래에도 원시 번호가 담기지 않는다.
      */
-    render: (row) => describeReference(toReference(supplierLookup, row.supplierId)),
+    render: (row) => {
+      const name = describeReference(toReference(supplierLookup, row.supplierId));
+
+      /* 너무 긴 이름은 말줄임한다 — 온전한 이름은 마우스를 올리면 보인다. */
+      return (
+        <span className="goods-receipt-ir-supplier" title={name}>
+          {name}
+        </span>
+      );
+    },
   },
   {
     key: 'receiptDatetime',
     header: t.table.receiptDatetime,
-    width: '160px',
-    render: (row) => formatDateTime(row.receiptDatetime),
+    width: '180px',
+    render: (row) => (
+      <span className="goods-receipt-ir-nowrap">{formatDateTime(row.receiptDatetime)}</span>
+    ),
   },
   {
     key: 'deliveryNoteNo',
     header: t.table.deliveryNoteNo,
-    width: '152px',
+    width: '180px',
     render: (row) => orEmptyMark(row.deliveryNoteNo),
   },
   {
     key: 'statusCode',
     header: t.table.status,
-    width: '152px',
-    /*
-     * **값에 따라 변형을 가르지 않는다.** 값 집합이 확정되지 않아(공유계약 G-2) 색을 가르면
-     * 뜻을 지어내는 것이 된다. 코드는 번역하지 않고 그대로 낸다.
-     */
+    width: '140px',
+    /* 글자는 서버 코드 그대로, 색만 `status-badge.ts` 가 가른다(사용자 지시). */
     render: (row) => (
-      <Chip variant="status" size="sm">
-        {row.statusCode}
-      </Chip>
+      <span className="goods-receipt-ir-nowrap">
+        <Chip variant="status" size="sm" status={toStatusTone(row.statusCode)}>
+          {row.statusCode}
+        </Chip>
+      </span>
     ),
   },
   {
     key: 'select',
-    header: t.table.select,
-    width: '88px',
+    /* 머리줄 글자는 화면에서 감춘다(사용자 지시) — 단추가 스스로 말한다. 열 이름은 스크린리더에만 남긴다. */
+    header: <span className="goods-receipt-visually-hidden">{t.table.select}</span>,
+    width: '96px',
     render: (row) => {
       const selected = row.inboundReceiptId === selectedIrId;
 
@@ -105,8 +125,10 @@ export const buildIrColumns = ({
          */
         <Button
           variant="outlined"
-          size="sm"
+          className="goods-receipt-ir-nowrap"
           disabled={isLocked}
+          /* 고른 전표 표시 — 다른 목록 화면과 같은 표식(`aria-current`). `app.css` 가 이 값으로 행을 칠한다. */
+          aria-current={selected ? 'true' : undefined}
           aria-label={
             selected
               ? t.actions.deselectRow(row.inboundReceiptNo)
@@ -195,7 +217,7 @@ export const IrTable = ({
        * `.wide-table`이 표에 최소 폭을 준다 — 폭이 모자라면 짓누르는 대신 가로로 넘긴다.
        * 스크롤 상자는 디자인 시스템 `Table`이 이미 갖고 있어 우리가 만들지 않는다.
        */}
-      <div className="wide-table">
+      <div className="wide-table goods-receipt-ir-table">
         <Table
           density="compact"
           columns={columns}

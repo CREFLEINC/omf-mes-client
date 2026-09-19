@@ -2,6 +2,7 @@ import {
   AlertBanner,
   Button,
   Dialog,
+  Icon,
   Radio,
   RadioGroup,
   Select,
@@ -119,10 +120,19 @@ export const ReleaseHoldExecution = (props: ReleaseHoldExecutionProps) => {
     remarks: '',
   });
   const [confirmation, setConfirmation] = useState<LotHoldRelease | null>(null);
+  /*
+   * 오류는 그 칸을 건드린 뒤에만 보인다(사용자 지시) — 처음부터 빨간 칸이 서지 않게 한다. 판정은 그대로다
+   * (실행 단추는 판정대로 잠긴다). 사유 목록을 못 받은 사정처럼 입력과 무관한 사유는 늘 보인다.
+   */
+  const [touched, setTouched] = useState({ quantity: false, reason: false, remarks: false });
   const reasons = useLotHoldReasonOptions(LOT_HOLD_RELEASE_REASON_GROUP);
   const reasonId = useId();
   const reasonNoteId = `${reasonId}-note`;
   const validation = validate(draft, props.maxReleaseQty, props.targetLotStatusCode, reasons);
+  const quantityError = touched.quantity ? validation.quantityError : undefined;
+  const reasonError =
+    reasons.unavailableReason ?? (touched.reason ? validation.releaseReasonError : undefined);
+  const remarksError = touched.remarks ? validation.remarksError : undefined;
   const write = useMasterWrite<LotHoldRelease, LotHold>({
     request: (body, headers) =>
       client.POST('/quality/lot-holds/{lotHoldId}:release', {
@@ -158,69 +168,83 @@ export const ReleaseHoldExecution = (props: ReleaseHoldExecutionProps) => {
     props.onStale();
     void queryClient.invalidateQueries({ queryKey: ROOT_KEY });
   };
-  const location = t.impact.location(
+  const location = t.impact.locationValue(
     props.warehouseId === undefined ? t.impact.unknown : String(props.warehouseId),
     props.locationId === undefined ? t.impact.unknown : String(props.locationId),
   );
 
   return (
     <section className="lot-status-transition-execution" aria-label={t.pane}>
-      <RadioGroup
-        name={`release-mode-${String(props.lotHoldId)}`}
-        orientation="horizontal"
-        value={draft.mode}
-        disabled={write.isSaving}
-        aria-label={t.scope}
-        onChange={(value) => {
-          setDraft({
-            mode: value === 'PARTIAL' ? 'PARTIAL' : 'FULL',
-            releaseQty: '',
-            releaseReasonCode: '',
-            remarks: '',
-          });
-          setConfirmation(null);
-          write.reset();
-        }}
-      >
-        <Radio value="FULL">{t.full}</Radio>
-        <Radio value="PARTIAL">{t.partial}</Radio>
-      </RadioGroup>
-      <div className="form-grid lot-status-transition-execution-form">
+      <h3 className="lot-status-transition-subtitle">{t.sectionTitle}</h3>
+      {/* 해제 방식 → (일부면 수량) → 해제 사유 → 비고 → 실행 순서로 한 줄기(사용자 지시). */}
+      <div className="lot-status-transition-mode">
+        <span className="field-label">{t.modeLabel}</span>
+        <RadioGroup
+          name={`release-mode-${String(props.lotHoldId)}`}
+          orientation="horizontal"
+          value={draft.mode}
+          disabled={write.isSaving}
+          aria-label={t.scope}
+          onChange={(value) => {
+            setDraft({
+              mode: value === 'PARTIAL' ? 'PARTIAL' : 'FULL',
+              releaseQty: '',
+              releaseReasonCode: '',
+              remarks: '',
+            });
+            setTouched({ quantity: false, reason: false, remarks: false });
+            setConfirmation(null);
+            write.reset();
+          }}
+        >
+          <Radio value="FULL">{t.full}</Radio>
+          <Radio value="PARTIAL">{t.partial}</Radio>
+        </RadioGroup>
+      </div>
+      <div className="lot-status-transition-execution-form">
         {draft.mode === 'PARTIAL' && (
           <TextField
             label={t.quantity}
             inputMode="decimal"
             required
             value={draft.releaseQty}
-            error={validation.quantityError}
+            error={quantityError}
+            onBlur={() => setTouched((current) => ({ ...current, quantity: true }))}
             onChange={(event) =>
               setDraft((current) => ({ ...current, releaseQty: event.target.value }))
             }
           />
         )}
         {/* 규범 3 — Select 에 label prop 이 없어 라벨을 직접 세운다. 잠긴 사유는 상시 텍스트(규범 4). */}
-        <div className="field-cell wide-select">
-          <label className="field-label" htmlFor={reasonId}>
-            {tReason.releaseLabel}
-          </label>
+        <div
+          className="field-cell wide-select"
+          /* 선택칸을 거쳐 나가면 「건드렸다」 — 고르지 않고 지나쳐도 필수 안내가 선다. */
+          onBlur={() => setTouched((current) => ({ ...current, reason: true }))}
+        >
+          <span className="field-label">
+            <label htmlFor={reasonId}>{tReason.releaseLabel}</label>
+            {/* 필수 표시는 라벨 밖 — 칸 이름에 `*` 가 섞이지 않게 한다. */}
+            <span className="lot-status-transition-required" aria-hidden="true">
+              *
+            </span>
+          </span>
           <Select
             id={reasonId}
             options={reasons.options}
             value={draft.releaseReasonCode === '' ? null : draft.releaseReasonCode}
             placeholder={tReason.placeholder}
             disabled={write.isSaving || reasons.unavailableReason !== undefined}
-            invalid={validation.releaseReasonError !== undefined && draft.releaseReasonCode !== ''}
+            invalid={reasonError !== undefined && draft.releaseReasonCode !== ''}
             aria-required
-            aria-describedby={
-              validation.releaseReasonError === undefined ? undefined : reasonNoteId
-            }
-            onChange={(value) =>
-              setDraft((current) => ({ ...current, releaseReasonCode: value ?? '' }))
-            }
+            aria-describedby={reasonError === undefined ? undefined : reasonNoteId}
+            onChange={(value) => {
+              setTouched((current) => ({ ...current, reason: true }));
+              setDraft((current) => ({ ...current, releaseReasonCode: value ?? '' }));
+            }}
           />
-          {validation.releaseReasonError === undefined ? null : (
+          {reasonError === undefined ? null : (
             <p className="field-note" id={reasonNoteId}>
-              {validation.releaseReasonError}
+              {reasonError}
             </p>
           )}
         </div>
@@ -228,9 +252,10 @@ export const ReleaseHoldExecution = (props: ReleaseHoldExecutionProps) => {
           label={t.remarks}
           required
           fullWidth
-          rows={3}
+          rows={2}
           value={draft.remarks}
-          error={validation.remarksError}
+          error={remarksError}
+          onBlur={() => setTouched((current) => ({ ...current, remarks: true }))}
           onChange={(event) => setDraft((current) => ({ ...current, remarks: event.target.value }))}
         />
       </div>
@@ -252,7 +277,7 @@ export const ReleaseHoldExecution = (props: ReleaseHoldExecutionProps) => {
           open
           closeOnBackdropClick={false}
           showCloseButton={false}
-          title={t.dialogTitle(props.lotNo)}
+          title={t.dialogTitle}
           onClose={() => {
             if (!write.isSaving) closeDialog();
           }}
@@ -280,18 +305,45 @@ export const ReleaseHoldExecution = (props: ReleaseHoldExecutionProps) => {
           ) : (
             <SaveErrorBanner error={write.error} />
           )}
-          <AlertBanner variant="warning" title={t.impact.title}>
-            <p>{t.impact.description}</p>
-            <p>
-              {t.impact.targetQuantity(
-                confirmation.releaseQty === undefined
-                  ? t.impact.fullQuantity
-                  : String(confirmation.releaseQty),
-              )}
-            </p>
-            <p>{t.impact.targetLocation(location)}</p>
-            <p>{t.impact.recovery}</p>
-          </AlertBanner>
+          {/*
+           * 최종 실행 확인 — 어떤 LOT · 얼마나 · 어디서를 먼저, 결과 설명은 흐린 글자, 되돌릴 수 없는 사정만
+           * 작은 주의 상자(사용자 지시). 큰 경고 상자 하나에 모두 담지 않는다.
+           */}
+          <div className="lot-release-confirm">
+            <dl className="lot-release-confirm-lot">
+              <dt>{t.dialogLot}</dt>
+              <dd>{props.lotNo}</dd>
+            </dl>
+            <section className="lot-release-confirm-info" aria-label={t.impact.infoTitle}>
+              <h3>{t.impact.infoTitle}</h3>
+              <dl>
+                <div>
+                  <dt>{t.impact.quantity}</dt>
+                  <dd>
+                    {confirmation.releaseQty === undefined
+                      ? t.impact.fullQuantity
+                      : String(confirmation.releaseQty)}
+                  </dd>
+                </div>
+                <div>
+                  <dt>{t.impact.location}</dt>
+                  <dd>{location}</dd>
+                </div>
+              </dl>
+              <p className="lot-release-confirm-description">{t.impact.description}</p>
+            </section>
+            <div
+              className="lot-release-confirm-caution"
+              role="note"
+              aria-label={t.impact.cautionTitle}
+            >
+              <Icon name="warning" size={18} />
+              <div>
+                <p>{t.impact.reHold}</p>
+                <p>{t.impact.shipped}</p>
+              </div>
+            </div>
+          </div>
         </Dialog>
       )}
     </section>

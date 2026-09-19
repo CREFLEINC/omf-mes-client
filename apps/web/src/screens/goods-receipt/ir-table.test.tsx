@@ -11,14 +11,15 @@ import type { IrView } from './types';
 
 const t = messages.goodsReceipt;
 
-/** `.wide-table`이 표에 주는 최소 폭(58rem). */
-const WIDE_TABLE_MIN_PX = 928;
+/** 이 표의 최소 폭(`.goods-receipt-ir-table` 64rem). */
+const WIDE_TABLE_MIN_PX = 1024;
 
 /** 「코드 · 이름」이 한 줄에 들어가는 폭(`docs/layout-conventions.md`의 선례 값). */
 const CODE_NAME_COLUMN_PX = 200;
 
+/** px 로 지정한 폭만 센다 — 비율(공급사 35%)은 표 폭에 따라 달라 합에 넣지 않는다. */
 const toPx = (width: string | undefined): number =>
-  width === undefined ? 0 : Number.parseInt(width, 10);
+  width === undefined || !width.endsWith('px') ? 0 : Number.parseInt(width, 10);
 
 const specifiedWidthOf = (columns: Column<IrView>[]): number =>
   columns.reduce((sum, column) => sum + toPx(column.width), 0);
@@ -75,14 +76,18 @@ describe('buildIrColumns — 열 구성과 폭', () => {
   });
 
   /*
-   * **M42** — 흡수 열이 둘이 되면 남는 폭이 나뉘어 「코드 · 이름」이 낱말 단위로 쪼개진다.
-   * 하나도 없으면 표가 하한보다 좁아져 고정 배치가 남는 폭을 제멋대로 나눈다.
+   * 공급사만 비율 폭이다 — 폭을 비우면 넓은 화면에서 남는 폭이 전부 공급사로 몰려 큰 빈 칸이
+   * 생기고, 비율 열이 둘이 되면 「코드 · 이름」이 받을 폭이 줄어든다. 나머지는 px 폭이다.
    */
-  it('폭을 지정하지 않은 흡수 열이 정확히 하나다', () => {
-    const absorbing = columnsWith().filter((column) => column.width === undefined);
+  it('공급사만 비율 폭이고 나머지 열은 px 폭이다', () => {
+    const columns = columnsWith();
 
-    expect(absorbing).toHaveLength(1);
-    expect(absorbing[0]?.key).toBe('supplier');
+    expect(columns.find((column) => column.key === 'supplier')?.width).toBe('35%');
+    expect(
+      columns
+        .filter((column) => column.key !== 'supplier')
+        .every((column) => column.width?.endsWith('px')),
+    ).toBe(true);
   });
 
   /*
@@ -92,7 +97,7 @@ describe('buildIrColumns — 열 구성과 폭', () => {
   it('지정 폭 합에 흡수 열 예산을 더해도 표 하한 안이다', () => {
     const specified = specifiedWidthOf(columnsWith());
 
-    expect(specified).toBe(712);
+    expect(specified).toBe(796);
     expect(specified + CODE_NAME_COLUMN_PX).toBeLessThanOrEqual(WIDE_TABLE_MIN_PX);
     expect(WIDE_TABLE_MIN_PX - specified).toBeGreaterThanOrEqual(CODE_NAME_COLUMN_PX);
   });

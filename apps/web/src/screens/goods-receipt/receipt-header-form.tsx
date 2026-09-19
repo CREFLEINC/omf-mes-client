@@ -9,6 +9,8 @@ export interface ReceiptHeaderFormProps {
   /** 화면이 잡은 오류와 서버가 준 필드 오류를 합친 것. 어느 쪽이든 같은 자리에 낸다 */
   fieldErrors: Record<string, string>;
   isLocked: boolean;
+  /** 입고 일시·비고 칸이 열려 있는가 — 입고 정보는 순서대로 입력한다(`post-steps.ts`). 주지 않으면 열린다. */
+  isOpen?: boolean;
   onChangeReceiptDatetime: (value: string) => void;
   onChangeRemarks: (value: string) => void;
 }
@@ -32,37 +34,39 @@ export const ReceiptHeaderForm = ({
   remarks,
   fieldErrors,
   isLocked,
+  isOpen = true,
   onChangeReceiptDatetime,
   onChangeRemarks,
 }: ReceiptHeaderFormProps) => (
   <>
-    <div className="form-grid">
-      <TextField
-        type="datetime-local"
-        label={t.fields.receiptDatetime}
-        value={receiptDatetime}
-        error={fieldErrors.receiptDatetime}
-        disabled={isLocked}
-        onChange={(event) => {
-          onChangeReceiptDatetime(event.target.value);
-        }}
-      />
+    <div className="form-grid goods-receipt-post-grid">
+      <div className="field-cell goods-receipt-step-receiptDatetime">
+        <TextField
+          type="datetime-local"
+          label={t.fields.receiptDatetime}
+          required
+          /* 영업일은 따로 넣는 칸이 없다 — 어디서 정해지는지 이 칸 바로 아래에 밝힌다(사용자 지시). */
+          helperText={t.notes.businessDateDerived}
+          value={receiptDatetime}
+          error={fieldErrors.receiptDatetime}
+          disabled={isLocked || !isOpen}
+          onChange={(event) => {
+            onChangeReceiptDatetime(event.target.value);
+          }}
+        />
+      </div>
 
-      <TextField
-        label={t.fields.remarks}
-        value={remarks}
-        error={fieldErrors.remarks}
-        disabled={isLocked}
-        onChange={(event) => {
-          onChangeRemarks(event.target.value);
-        }}
-      />
-    </div>
-
-    {/* 입력칸이 없는 값이 무엇에서 정해지는지 밝힌다 — 밝히지 않으면 화면 어디에서도 읽을 수 없다. */}
-    <div className="field-cell">
-      <span className="field-note">{t.notes.businessDateDerived}</span>
-      <span className="field-note">{t.notes.qtyFromInboundLine}</span>
+      <div className="field-cell">
+        <TextField
+          label={t.fields.remarks}
+          value={remarks}
+          error={fieldErrors.remarks}
+          disabled={isLocked || !isOpen}
+          onChange={(event) => {
+            onChangeRemarks(event.target.value);
+          }}
+        />
+      </div>
     </div>
   </>
 );

@@ -274,14 +274,14 @@ describe('Lot Status 전이 후보', () => {
       within(current)
         .getAllByRole('term')
         .map((node) => node.textContent),
-    ).toEqual(['Lot Status', '보유 수량', '보류 수량', '가용 수량', '최근 전이', '최근 사유']);
+    ).toEqual(['현재 상태', '보유 수량', '보류 수량', '가용 수량', '최근 상태 변경', '최근 사유']);
     /* 최근 전이는 공장 시각(UTC+7)으로 보인다 — omf-all-around#20 */
     expect([
-      valueOf(current, 'Lot Status'),
+      valueOf(current, '현재 상태'),
       valueOf(current, '보유 수량'),
       valueOf(current, '보류 수량'),
       valueOf(current, '가용 수량'),
-      valueOf(current, '최근 전이'),
+      valueOf(current, '최근 상태 변경'),
       valueOf(current, '최근 사유'),
     ]).toEqual(['정상', '25', '5', '20', '2026-08-21 10:34', 'SYN-REASON-A']);
     expect(select).toHaveAttribute('aria-current', 'true');
@@ -326,7 +326,7 @@ describe('Lot Status 전이 후보', () => {
     await user.click(await screen.findByRole('button', { name: 'SYN-LOT-ALPHA 선택' }));
     const current = screen.getByLabelText('선택 LOT 현재 상태');
 
-    expect(valueOf(current, '최근 전이')).toBe('—');
+    expect(valueOf(current, '최근 상태 변경')).toBe('—');
     expect(valueOf(current, '최근 사유')).toBe('—');
     expect(screen.queryByText('987654')).toBeNull();
   });
@@ -368,7 +368,7 @@ describe('Lot Status 전이 후보', () => {
     releaseRefetch(jsonResponse(page([updated])));
     const current = await screen.findByLabelText('선택 LOT 현재 상태');
     await waitFor(() => expect(valueOf(current, '보유 수량')).toBe('30'));
-    expect(valueOf(current, 'Lot Status')).toBe('DEFECTIVE (이름 미확인)');
+    expect(valueOf(current, '현재 상태')).toBe('DEFECTIVE (이름 미확인)');
     expect(valueOf(current, '보류 수량')).toBe('4');
     expect(valueOf(current, '가용 수량')).toBe('26');
     await view.user.click(await screen.findByRole('radio', { name: 'DEFECTIVE' }));
