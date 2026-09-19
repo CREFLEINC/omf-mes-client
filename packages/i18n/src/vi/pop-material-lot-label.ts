@@ -11,6 +11,13 @@ export const popMaterialLotLabel: Translated<typeof ko.popMaterialLotLabel> = {
       `Chọn nhập hàng ${receiptNo} · mặt hàng ${itemName} · số lượng ${qty}`,
     deselectRow: (receiptNo: string, itemName: string, qty: string) =>
       `Bỏ chọn nhập hàng ${receiptNo} · mặt hàng ${itemName} · số lượng ${qty}`,
+    fields: {
+      itemName: 'Tên mặt hàng',
+      itemCode: 'Mã mặt hàng',
+      qty: 'Số lượng',
+      supplier: 'Nhà cung cấp',
+      date: 'Ngày nhập',
+    },
     empty: 'Không có vật tư cần phát hành.',
     emptyOnThisPage: 'Không có vật tư chưa phát hành. Hãy xem vật tư đã phát hành.',
     emptyOnThisPageMore: 'Trang này không có vật tư chưa phát hành. Hãy xem trang sau.',
@@ -86,9 +93,12 @@ export const popMaterialLotLabel: Translated<typeof ko.popMaterialLotLabel> = {
       loadFailed: 'Không tải được lý do phát hành lại.',
     },
     fields: {
-      item: 'Mặt hàng',
+      receipt: 'Số nhập hàng',
+      itemCode: 'Mã mặt hàng',
+      itemName: 'Tên mặt hàng',
       quantity: 'Số lượng',
-      supplier: 'Nhà cung cấp',
+      supplierCode: 'Mã nhà cung cấp',
+      supplierName: 'Tên nhà cung cấp',
     },
   },
   pageNav: {

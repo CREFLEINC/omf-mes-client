@@ -4520,14 +4520,16 @@
   display: grid;
   width: 100%;
   /*
-   * ⚠ 첫 칸은 «내용»에 맞춘다. 1fr 로 반씩 가르면 둘째 줄의 공급사(가장 긴 값)가 접혀
-   *   줄 높이가 건마다 달라진다(실측 2026-09-10).
-   * ⚠ 행을 «명시»해 둔다 — 암시 행만 있으면 수량의 `1 / -1` 이 첫 행에서 끝난다.
+   * **두 줄이다** — 입하일·공급사·수량 / 품목명·품목코드(사용자 지시 2026-09-19).
+   *
+   * ⚠ 첫 줄만 셋으로 갈린다. **가운데 칸(공급사)만 남는 폭을 갖는다** — 날짜·수량은 길이가
+   *   정해져 있고, 넘칠 수 있는 것은 거래처명뿐이라 그쪽이 줄어야 한다.
+   * ⚠ 행을 «명시»해 둔다 — 암시 행만 있으면 품목의 `1 / -1` 이 첫 행에서 끝난다.
    */
   grid-template-columns: auto minmax(0, 1fr) auto;
   grid-template-rows: auto auto;
   gap: var(--space-1) var(--space-4);
-  align-items: center;
+  align-items: baseline;
   padding: var(--space-3) var(--space-4);
   border: 0;
   border-inline-start: 4px solid transparent;
@@ -4553,39 +4555,84 @@
   background: rgb(220 80 70 / 18%);
 }
 
-.pop-material-lot-line-receipt,
-.pop-material-lot-line-supplier {
+/* 첫 줄 — 입하일 · 공급사 · 수량. 값은 굵게, 칸 이름은 옅게(아래). */
+.pop-material-lot-line-date,
+.pop-material-lot-line-supplier,
+.pop-material-lot-line-qty,
+.pop-material-lot-line-item-code {
   font-weight: 700;
-}
-
-/* 첫 줄의 세 자리 — 입하번호 · 품목 · 수량. 둘째 줄이 같은 칸을 물려받는다. */
-.pop-material-lot-line-receipt {
-  grid-column: 1;
-}
-
-.pop-material-lot-line-item {
-  grid-column: 2;
-}
-
-/*
- * 수량은 **두 줄 가운데**에 선다(사용자 지시 2026-09-10). 값이 하나뿐인 칸이라 첫 줄에 붙여
- * 두면 둘째 줄이 빈 채로 남아 줄이 한쪽으로 쏠려 보인다.
- *
- * ⚠ 접히지 않는다 — 「150」과 「EA」가 갈리면 두 값처럼 읽힌다.
- */
-.pop-material-lot-line-qty {
-  grid-column: 3;
-  grid-row: 1 / -1;
-  align-self: center;
   white-space: nowrap;
 }
 
-.pop-material-lot-line-supplier {
+.pop-material-lot-line-date {
   grid-column: 1;
 }
 
-.pop-material-lot-line-date {
+/*
+ * 가운데 칸만 줄어든다 — 긴 거래처명은 여기서 말줄임된다.
+ * ⚠ `min-width` 를 풀지 않으면 flex·grid 항목이 내용보다 작아지지 않아 줄이 옆으로 밀린다.
+ */
+.pop-material-lot-line-supplier {
   grid-column: 2;
+  display: flex;
+  align-items: baseline;
+  min-width: 0;
+}
+
+.pop-material-lot-line-supplier-value {
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+/* ⚠ 수량은 접히지 않는다 — 「150」과 「EA」가 갈리면 두 값처럼 읽힌다(사용자 지적 2026-09-10). */
+.pop-material-lot-line-qty {
+  grid-column: 3;
+  justify-self: end;
+}
+
+/*
+ * 품목명은 **둘째 줄의 남는 폭을 전부 쓴다**(사용자 지시 2026-09-19). 앞선 판에서 이 값이 첫 줄
+ * 146px 칸에 갇혀 네 줄로 접혔다 — `screens/pop-material-lot-label/receipt-list` 머리말에 실측이
+ * 있다. 길이가 정해진 품목코드는 옆에 두고, 늘어날 수 있는 이름이 남는 자리를 갖는다.
+ */
+.pop-material-lot-line-item {
+  grid-column: 1 / 3;
+  display: flex;
+  align-items: baseline;
+  min-width: 0;
+}
+
+/* 품목코드는 수량과 같은 오른쪽 줄기에 선다 — 길이가 고른 값이라 세로로 맞는다. */
+.pop-material-lot-line-item-code {
+  grid-column: 3;
+  justify-self: end;
+}
+
+/*
+ * ⚠ **값만 줄어들 수 있게 둔다.** `min-width` 를 풀지 않으면 flex 항목이 내용보다 작아지지
+ *   않아 말줄임도 걸리지 않고 줄이 옆으로 밀린다.
+ */
+.pop-material-lot-line-item-value {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+/*
+ * 값에 붙는 이름 — **값보다 한 급 작고 옅다.** 이름이 값과 같은 무게로 서면 훑는 눈이 이름을
+ * 먼저 읽는다. 크기는 고정이다 — 품목이 줄어들 때 이름까지 함께 작아지면 무엇을 보고 있는지
+ * 부터 흐려진다.
+ */
+.pop-material-lot-line-label {
+  margin-inline-end: var(--space-2);
+  color: var(--on-surface-variant, #5d6873);
+  font-size: var(--pop-label);
+  font-weight: 500;
+  letter-spacing: 0.02em;
 }
 
 /*
