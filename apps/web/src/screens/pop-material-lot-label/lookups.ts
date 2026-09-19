@@ -35,16 +35,39 @@ export const lookupKeys = {
 const EMPTY_ENTRIES: readonly never[] = [];
 
 /** 아직 답을 받지 못한 식별자의 자리. **「없다」가 아니라 「모른다」** 로 서야 한다. */
-const PENDING_SOURCE: LookupSource = { entries: EMPTY_ENTRIES, isError: false, isLoading: true };
+const PENDING_SOURCE: ItemNameSource = {
+  item: null,
+  entries: EMPTY_ENTRIES,
+  isError: false,
+  isLoading: true,
+};
 
 /** 이름 풀이 원천 하나를 꺼낸다. 아직 목록에 서지 않은 식별자는 조회 전이다. */
-export const nameSource = (sources: ReadonlyMap<number, LookupSource>, id: number): LookupSource =>
-  sources.get(id) ?? PENDING_SOURCE;
+export const nameSource = (
+  sources: ReadonlyMap<number, ItemNameSource>,
+  id: number,
+): ItemNameSource => sources.get(id) ?? PENDING_SOURCE;
 
-/** 이름 풀이가 낼 수 있는 값 한 가지. 어느 마스터든 화면에는 이 모양으로만 선다. */
-interface ResolvedName {
-  label: string;
+/**
+ * 풀어 낸 품목 한 건. **코드와 이름을 따로 들고 있는다.**
+ *
+ * ⭐ 목록 줄은 둘을 붙여 한 줄로 내고(`코드 · 이름`), 채번 대상 카드는 **칸을 갈라** 싣는다
+ *    (사용자 지시 2026-09-19). 붙인 글자만 들고 있으면 카드가 그것을 다시 쪼개야 하는데,
+ *    품목명에도 가운뎃점이 들어갈 수 있어 되돌릴 수 없다.
+ */
+export interface ItemName {
+  code: string;
+  name: string;
   isActive: boolean;
+}
+
+/**
+ * 이름 풀이 원천 + **풀어 낸 값 자체.**
+ *
+ * 목록은 `entries` 로 라벨을 얻고 카드는 `item` 에서 코드·이름을 갈라 쓴다 — 조회는 한 번이다.
+ */
+export interface ItemNameSource extends LookupSource {
+  item: ItemName | null;
 }
 
 /**
@@ -58,39 +81,50 @@ const isNotFound = (error: unknown): boolean => {
   return apiError.kind === 'http' && apiError.status === 404;
 };
 
+/** 품목 한 건을 받아 온다. 목록 줄과 카드가 **같은 열쇠**를 쓰므로 조회는 한 번이다. */
+const fetchItemName = async (client: Client, itemId: number): Promise<ItemName> => {
+  const data = await runRequest(() =>
+    client.GET('/mdm/items/{itemId}', { params: { path: { itemId } } }),
+  );
+
+  return { code: data.item.itemCode, name: data.item.itemName, isActive: data.item.isActive };
+};
+
+/** 목록 줄에 세울 한 줄짜리 라벨. 카드는 이것을 쓰지 않고 `item` 을 갈라 쓴다. */
+export const itemLabel = (item: ItemName): string => `${item.code} · ${item.name}`;
+
 /**
- * 식별자마다 이름 풀이 원천 하나를 낸다 — **줄마다 따로 판정한다.**
+ * 품목 — **줄마다 따로 판정한다.**
  *
- * 한 식별자의 실패가 다른 줄의 이름을 지우지 않는다. 같은 식별자가 여러 줄에 있어도 조회는
+ * 한 품목의 실패가 다른 줄의 이름을 지우지 않는다. 같은 품목이 여러 줄에 있어도 조회는
  * 한 번이다(중복 제거 + 조회 캐시).
  */
-const useNameSources = (
-  ids: readonly number[],
-  toKey: (id: number) => readonly unknown[],
-  fetchName: (client: Client, id: number) => Promise<ResolvedName>,
-): ReadonlyMap<number, LookupSource> => {
+export const useItemNameSources = (
+  itemIds: readonly number[],
+): ReadonlyMap<number, ItemNameSource> => {
   const { client } = useApiClient();
-  const uniqueIds = [...new Set(ids)];
+  const uniqueIds = [...new Set(itemIds)];
 
   const results = useQueries({
-    queries: uniqueIds.map((id) => ({
-      queryKey: toKey(id),
-      queryFn: () => fetchName(client, id),
+    queries: uniqueIds.map((itemId) => ({
+      queryKey: lookupKeys.itemDetail(itemId),
+      queryFn: () => fetchItemName(client, itemId),
     })),
   });
 
   return new Map(
-    uniqueIds.map((id, index): [number, LookupSource] => {
+    uniqueIds.map((itemId, index): [number, ItemNameSource] => {
       const result = results[index];
-      const resolved = result?.data;
+      const item = result?.data ?? null;
 
       return [
-        id,
+        itemId,
         {
+          item,
           entries:
-            resolved === undefined
+            item === null
               ? EMPTY_ENTRIES
-              : [{ value: String(id), label: resolved.label, isActive: resolved.isActive }],
+              : [{ value: String(itemId), label: itemLabel(item), isActive: item.isActive }],
           isError: result?.isError === true && !isNotFound(result.error),
           isLoading: result === undefined || result.isPending,
         },
@@ -99,18 +133,21 @@ const useNameSources = (
   );
 };
 
-/** 품목 — 입하 라인 줄과 발번 대상 카드가 함께 쓴다. */
-export const useItemNameSources = (itemIds: readonly number[]): ReadonlyMap<number, LookupSource> =>
-  useNameSources(itemIds, lookupKeys.itemDetail, async (client, itemId) => {
-    const data = await runRequest(() =>
-      client.GET('/mdm/items/{itemId}', { params: { path: { itemId } } }),
-    );
+/** 풀어 낸 거래처 한 건. 품목과 같은 모양이다 — 카드가 코드·이름을 갈라 싣는다. */
+export interface PartnerName {
+  code: string;
+  name: string;
+  isActive: boolean;
+}
 
-    return {
-      label: `${data.item.itemCode} · ${data.item.itemName}`,
-      isActive: data.item.isActive,
-    };
-  });
+/**
+ * 공급사 이름 풀이 원천 + **풀어 낸 값.**
+ *
+ * `entries` 의 라벨은 **이름뿐**이다(목록이 쓴다). 코드까지 필요한 카드는 `byId` 를 쓴다.
+ */
+export interface SupplierLookup extends LookupSource {
+  byId: ReadonlyMap<number, PartnerName>;
+}
 
 /**
  * 거래처 목록의 쪽 크기 — **계약 상한이다.**
@@ -137,8 +174,11 @@ const PARTNER_PAGE_SIZE = 200;
  *
  * 지금 쓰지 않는 거래처도 함께 받는다(`includeInactive`) — 과거 입하가 그런 거래처를
  * 참조하고 있고, 빼면 그 건의 공급사 칸이 「모름」이 된다.
+ *
+ * ⭐ **목록에는 이름만, 카드에는 코드·이름을 갈라** 낸다(사용자 지시 2026-09-19). 그래서
+ *    `entries` 의 라벨은 이름뿐이고, 코드가 필요한 자리는 `byId` 에서 꺼낸다.
  */
-export const useSupplierLookup = (): LookupSource => {
+export const useSupplierLookup = (): SupplierLookup => {
   const { client } = useApiClient();
 
   const query = useQuery({
@@ -169,13 +209,20 @@ export const useSupplierLookup = (): LookupSource => {
     },
   });
 
+  const partners = query.data ?? [];
+
   return {
-    entries:
-      query.data?.map((item) => ({
-        value: String(item.partnerId),
-        label: `${item.partnerCode} · ${item.partnerName}`,
-        isActive: item.isActive,
-      })) ?? EMPTY_ENTRIES,
+    entries: partners.map((item) => ({
+      value: String(item.partnerId),
+      label: item.partnerName,
+      isActive: item.isActive,
+    })),
+    byId: new Map(
+      partners.map((item) => [
+        item.partnerId,
+        { code: item.partnerCode, name: item.partnerName, isActive: item.isActive },
+      ]),
+    ),
     isError: query.isError,
     isLoading: query.isPending,
   };
