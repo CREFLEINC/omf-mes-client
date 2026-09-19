@@ -17,9 +17,12 @@ export const putawayKeys = {
 };
 
 /**
- * 이 작업자에게 할당된 적치 지시.
+ * 단말 공장의 대기 중인 적치 지시.
  *
- * 담당자를 비우고 묻지 않는다 - 비우면 남의 지시까지 함께 오고, 서버가 본인을 풀 근거도 없다.
+ * 담당자로 거르지 않는다 - 적치에는 담당자가 없고 누구나 대기 지시를 처리한다(omf-all-around#26 ·
+ * 사용자 결정 2026-09-19). 실제 지시가 모두 담당자 없이 만들어져 담당자로 거르면 목록이 늘 빈다.
+ * 공장 범위는 서버가 단말로 좁힌다. 사번은 조회 조건이 아니라 「사번을 확인한 뒤에 목록을 보인다」는
+ * 화면 흐름의 문으로만 쓴다 - 캐시 키에 남겨 두어 등록 뒤 무효화(`screen.tsx`)와 어긋나지 않게 한다.
  */
 export const usePutawayTasks = (workerId: number | null): UseQueryResult<PutawayTask[]> => {
   const { client } = useApiClient();
@@ -34,7 +37,7 @@ export const usePutawayTasks = (workerId: number | null): UseQueryResult<Putaway
 
       const data = await runRequest(() =>
         client.GET('/logistics/putaway-tasks', {
-          params: { query: { assignedWorkerId: workerId, statusCode: PENDING, size: 100 } },
+          params: { query: { statusCode: PENDING, size: 100 } },
         }),
       );
 
