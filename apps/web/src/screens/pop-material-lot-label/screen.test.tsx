@@ -40,6 +40,14 @@ const line = (
 
 const DEFAULT_RECEIPTS = [receipt(8101, 'SYN-IB-0001', 8201, '2026-08-27T09:12:30Z')];
 const DEFAULT_LINES = [line(8501, 8101, 8601, 500, false)];
+const DEFAULT_ITEMS = [
+  { itemId: 8601, itemCode: 'SYN-ITEM-01', itemName: '합성 품목 가', isActive: true },
+];
+const DEFAULT_PARTNERS = [
+  { partnerId: 8201, partnerCode: 'SYN-P-01', partnerName: '합성 공급사 가', isActive: true },
+];
+/** 거래처 목록 스텁의 쪽 크기. 작게 두어 「쪽을 끝까지 받는다」를 실제로 돌린다. */
+const PARTNER_STUB_PAGE_SIZE = 1;
 
 interface StubOptions {
   receipts?: ReturnType<typeof receipt>[];
@@ -49,14 +57,20 @@ interface StubOptions {
   linesFail?: boolean;
   printers?: unknown[];
   printersFail?: boolean;
+  items?: typeof DEFAULT_ITEMS;
+  partners?: typeof DEFAULT_PARTNERS;
   onReceiptRequest?: (url: URL) => void;
   onLineRequest?: (url: URL) => void;
   onPrinterRequest?: (url: URL) => void;
+  /** 마스터 이름을 어느 경로로 물었는가. 「목록으로 풀지 않는다」를 재는 자리가 쓴다. */
+  onMasterRequest?: (url: URL) => void;
 }
 
 const renderScreen = (options: StubOptions = {}) => {
   const receipts = options.receipts ?? DEFAULT_RECEIPTS;
   const lines = options.lines ?? DEFAULT_LINES;
+  const items = options.items ?? DEFAULT_ITEMS;
+  const partners = options.partners ?? DEFAULT_PARTNERS;
   const page = options.page ?? { page: 1, size: 20, total: receipts.length };
 
   const user = userEvent.setup();
@@ -110,30 +124,43 @@ const renderScreen = (options: StubOptions = {}) => {
               });
         },
       },
+      /*
+       * ⭐ **마스터는 단건 경로로만 스텁한다**(omf-all-around#27). 목록 경로(`/mdm/items` ·
+       *    `/mdm/partners`)를 남겨 두면, 화면이 목록으로 돌아가도 시험이 통과한다 — 그 목록은
+       *    한 쪽만 돌려줘 첫 쪽 밖 품목·공급사가 「알 수 없음」이 되는 자리다. 하네스는 스텁에
+       *    없는 요청을 던지므로, 여기 없는 것이 곧 **부르지 않는다는 감지기**다.
+       */
+      /*
+       * ⚠ **거래처는 목록이되 한 쪽이 아니다.** 단건 조회는 단말 토큰에 열려 있지 않아(실측
+       *   401) 화면이 쪽을 끝까지 받는다 — 여기서 **쪽 크기를 1 로 낮춰** 그 되돌이를 실제로
+       *   돌린다. 서버가 요청한 크기를 낮춰 적용하는 자리도 같은 모양이다.
+       */
       {
         match: (request) => new URL(request.url).pathname === '/mdm/partners',
-        respond: () =>
-          jsonResponse({
-            items: [
-              {
-                partnerId: 8201,
-                partnerCode: 'SYN-P-01',
-                partnerName: '합성 공급사 가',
-                isActive: true,
-              },
-            ],
-            page: { page: 1, size: 20, total: 1 },
-          }),
+        respond: (request) => {
+          const url = new URL(request.url);
+          options.onMasterRequest?.(url);
+          const page = Number(url.searchParams.get('page') ?? '1');
+          const start = (page - 1) * PARTNER_STUB_PAGE_SIZE;
+
+          return jsonResponse({
+            items: partners.slice(start, start + PARTNER_STUB_PAGE_SIZE),
+            page: { page, size: PARTNER_STUB_PAGE_SIZE, total: partners.length },
+          });
+        },
       },
       {
-        match: (request) => new URL(request.url).pathname === '/mdm/items',
-        respond: () =>
-          jsonResponse({
-            items: [
-              { itemId: 8601, itemCode: 'SYN-ITEM-01', itemName: '합성 품목 가', isActive: true },
-            ],
-            page: { page: 1, size: 20, total: 1 },
-          }),
+        match: (request) => /\/mdm\/items\/(\d+)$/u.test(new URL(request.url).pathname),
+        respond: (request) => {
+          const url = new URL(request.url);
+          options.onMasterRequest?.(url);
+          const itemId = Number(/\/mdm\/items\/(\d+)$/u.exec(url.pathname)?.[1] ?? 0);
+          const found = items.find((row) => row.itemId === itemId);
+
+          return found === undefined
+            ? jsonResponse({ message: '없음' }, { status: 404 })
+            : jsonResponse({ item: found });
+        },
       },
       {
         match: (request) => new URL(request.url).pathname === '/mdm/uoms',
@@ -250,6 +277,52 @@ describe('PopMaterialLotLabelScreen — 입하 목록', () => {
     expect(within(row).getByText('SYN-ITEM-01 · 합성 품목 가')).toBeInTheDocument();
     expect(within(row).getByText('500 EA')).toBeInTheDocument();
     expect(within(row).getByText('08-27')).toBeInTheDocument();
+  });
+
+  /**
+   * ⛔ **마스터 목록 첫 쪽에 없는 품목·공급사도 이름이 나와야 한다**(omf-all-around#27).
+   *
+   * 종전에는 `GET /mdm/items` · `GET /mdm/partners` 를 한 번 받아 그 안에서 식별자를 찾았다.
+   * 그 조회는 한 쪽(계약 기본 50건)만 돌려주므로, 품목 9천여 건인 현장에서는 목록에 선 자재의
+   * 품목이 거의 언제나 첫 쪽 밖이라 **「알 수 없음」**이 섰다 — 값은 서버에 멀쩡히 있는데도.
+   *
+   * 여기서 쓰는 식별자는 **기본 시험 자료와 다른 것**이라, 목록 한 벌로 푸는 구현으로 되돌리면
+   * 이름을 찾지 못해 이 시험이 깨진다.
+   */
+  it('마스터 목록 첫 쪽 밖 품목·공급사도 이름이 나온다', async () => {
+    const masterUrls: URL[] = [];
+    renderScreen({
+      receipts: [receipt(8102, 'SYN-IB-0009', 9201, '2026-08-28T01:02:03Z')],
+      lines: [line(8502, 8102, 9601, 12, false)],
+      items: [
+        { itemId: 9601, itemCode: 'SYN-ITEM-99', itemName: '합성 품목 먼쪽', isActive: true },
+      ],
+      /* 쓰는 공급사를 **둘째 쪽**에 둔다 — 첫 쪽만 받으면 여기서 「알 수 없음」이 선다. */
+      partners: [
+        { partnerId: 8201, partnerCode: 'SYN-P-01', partnerName: '합성 공급사 가', isActive: true },
+        {
+          partnerId: 9201,
+          partnerCode: 'SYN-P-99',
+          partnerName: '합성 공급사 먼쪽',
+          isActive: true,
+        },
+      ],
+      onMasterRequest: (url) => masterUrls.push(url),
+    });
+
+    const row = await screen.findByRole('button', { name: /SYN-IB-0009/u });
+
+    expect(within(row).getByText('SYN-ITEM-99 · 합성 품목 먼쪽')).toBeInTheDocument();
+    expect(await within(row).findByText('SYN-P-99 · 합성 공급사 먼쪽')).toBeInTheDocument();
+    /* 품목은 줄에 선 식별자만 묻는다 — 9천여 건을 다 받아 오지 않는다. */
+    expect(masterUrls.map((url) => url.pathname)).toContain('/mdm/items/9601');
+    expect(masterUrls.some((url) => url.pathname === '/mdm/items')).toBe(false);
+    /* 공급사는 쪽을 끝까지 받는다 — 둘째 쪽을 실제로 물었다. */
+    expect(
+      masterUrls
+        .filter((url) => url.pathname === '/mdm/partners')
+        .map((url) => url.searchParams.get('page')),
+    ).toEqual(['1', '2']);
   });
 
   /**
