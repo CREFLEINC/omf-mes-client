@@ -182,6 +182,12 @@ const renderFlow = (options: FlowOptions = {}) => {
               ],
             }),
         },
+        /*
+         * ⭐ **품목은 단건 경로로만 스텁한다**(omf-all-around#27) — 목록(`/mdm/items`)은 한 쪽만
+         *    돌려줘 첫 쪽 밖 품목이 「알 수 없음」이 되는 자리다. 하네스가 스텁 없는 요청을
+         *    던지므로, 목록 스텁이 여기 없는 것이 곧 감지기다. 거래처는 단건 조회가 단말
+         *    토큰에 열려 있지 않아 목록 그대로다(`lookups` 머리말).
+         */
         {
           match: (request) => new URL(request.url).pathname === '/mdm/partners',
           respond: () =>
@@ -193,16 +199,6 @@ const renderFlow = (options: FlowOptions = {}) => {
                   partnerName: '합성 공급사 가',
                   isActive: true,
                 },
-              ],
-              page: { page: 1, size: 20, total: 1 },
-            }),
-        },
-        {
-          match: (request) => new URL(request.url).pathname === '/mdm/items',
-          respond: () =>
-            jsonResponse({
-              items: [
-                { itemId: 8601, itemCode: 'SYN-ITEM-01', itemName: '합성 품목 가', isActive: true },
               ],
               page: { page: 1, size: 20, total: 1 },
             }),
@@ -319,8 +315,15 @@ const renderFlow = (options: FlowOptions = {}) => {
           match: (request) => new URL(request.url).pathname === '/mdm/items/8601',
           respond: (request) => {
             void record(request);
+            /*
+             * ⚠ **이 경로를 부르는 자리가 둘이다** — 목록·카드의 품목 이름(화면이 열릴 때)과
+             *   라벨에 찍을 품번(등록이 끝난 뒤 · `mutations.buildLabel`). `renderFails` 가
+             *   겨냥하는 것은 뒤쪽이므로, 발행 기록이 생긴 뒤의 호출만 실패로 돌린다. 앞쪽까지
+             *   실패시키면 줄의 이름이 「이름을 불러오지 못했습니다」가 되어 줄을 고를 수 없다.
+             */
+            const isAfterIssue = sent.some((entry) => entry.path === '/app/document-issues');
 
-            return options.renderFails === true
+            return options.renderFails === true && isAfterIssue
               ? jsonResponse(
                   { errors: [{ scope: 'screen', code: 'ITEM_FAILED', message: '품목 조회 실패' }] },
                   { status: 503 },
@@ -399,8 +402,11 @@ describe('PopMaterialLotLabelScreen — 등록·인쇄', () => {
       ).toBeDefined();
     });
     expect(sent.map((entry) => entry.path)).toEqual([
+      /* 화면이 목록 줄의 품목 이름을 단건으로 푼다(omf-all-around#27). */
+      '/mdm/items/8601',
       '/trace/lots',
       '/app/document-issues',
+      /* 라벨에 찍을 품번 — 이름 풀이와 같은 경로지만 부르는 자리가 다르다. */
       '/mdm/items/8601',
       `/app/document-issues/${String(ISSUE_LOG_ID)}:report-print`,
     ]);

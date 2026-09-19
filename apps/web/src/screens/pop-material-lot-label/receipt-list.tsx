@@ -3,14 +3,17 @@ import { messages } from '@omf-mes/i18n';
 import { lookupDisplayLabel, lookupDisplayLabelWithInactive } from '../../patterns/lookup-display';
 import type { LookupSource } from '../../patterns/lookup-display';
 import { popTouchClass } from '../../patterns/pop-touch';
+import { nameSource } from './lookups';
 import { formatReceiptDate, type TargetRow } from './types';
 
 const t = messages.popMaterialLotLabel.receipts;
 
 export interface ReceiptListProps {
   rows: TargetRow[];
+  /** 공급사 — 마지막 쪽까지 받은 목록 하나다(`lookups` 머리말의 표). */
   supplierLookup: LookupSource;
-  itemLookup: LookupSource;
+  /** 품목 이름 — **줄에 선 `itemId` 마다 원천 하나**다. 목록 첫 쪽으로 풀지 않는다(omf-all-around#27). */
+  itemNames: ReadonlyMap<number, LookupSource>;
   uomLookup: LookupSource;
   selectedId: number | null;
   /**
@@ -48,7 +51,7 @@ export interface ReceiptListProps {
 export const ReceiptList = ({
   rows,
   supplierLookup,
-  itemLookup,
+  itemNames,
   uomLookup,
   selectedId,
   isLocked,
@@ -61,7 +64,7 @@ export const ReceiptList = ({
     <ul className="pop-material-lot-lines" aria-label={t.caption}>
       {rows.map((row) => {
         const isSelected = row.inboundReceiptLineId === selectedId;
-        const itemName = lookupDisplayLabel(itemLookup, row.itemId);
+        const itemName = lookupDisplayLabel(nameSource(itemNames, row.itemId), row.itemId);
         const qtyText = `${String(row.receivedQty)} ${lookupDisplayLabel(uomLookup, row.uomId)}`;
 
         return (

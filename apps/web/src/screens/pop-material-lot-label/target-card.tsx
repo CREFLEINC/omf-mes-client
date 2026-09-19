@@ -3,6 +3,7 @@ import { messages } from '@omf-mes/i18n';
 
 import { lookupDisplayLabel, type LookupSource } from '../../patterns/lookup-display';
 import { popTouchClass } from '../../patterns/pop-touch';
+import { nameSource } from './lookups';
 import type { IssueStep } from './mutations';
 import { toIssueStage, type TargetRow } from './types';
 
@@ -10,7 +11,8 @@ const t = messages.popMaterialLotLabel.target;
 
 export interface TargetCardProps {
   row: TargetRow | null;
-  itemLookup: LookupSource;
+  /** 품목 이름 — 목록 줄과 **같은 원천**을 쓴다(`lookups`). `itemId` 마다 하나다. */
+  itemNames: ReadonlyMap<number, LookupSource>;
   uomLookup: LookupSource;
   supplierLookup: LookupSource;
   /** 이미 등록된 자재의 LOT 번호. 아직 등록 전이거나 못 읽었으면 `null`. */
@@ -51,7 +53,7 @@ export interface TargetCardProps {
  */
 export const TargetCard = ({
   row,
-  itemLookup,
+  itemNames,
   uomLookup,
   supplierLookup,
   lotNo,
@@ -79,7 +81,7 @@ export const TargetCard = ({
       <Card>
         <dl className="pop-target-fields">
           <dt>{t.fields.item}</dt>
-          <dd>{lookupDisplayLabel(itemLookup, row.itemId)}</dd>
+          <dd>{lookupDisplayLabel(nameSource(itemNames, row.itemId), row.itemId)}</dd>
 
           <dt>{t.fields.quantity}</dt>
           <dd>

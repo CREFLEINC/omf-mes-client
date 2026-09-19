@@ -8,7 +8,7 @@ import { PopWorkerMissingBanner } from '../../patterns/pop-worker-missing-banner
 import { popTouchClass } from '../../patterns/pop-touch';
 import { toIssueFailure } from './failure';
 import { IssueOutcome } from './issue-outcome';
-import { useItemLookup, useSupplierLookup, useUomLookup } from './lookups';
+import { useItemNameSources, useSupplierLookup, useUomLookup } from './lookups';
 import { useLabelIssue } from './mutations';
 import { PageNav } from './page-nav';
 import { toPageView } from './pagination';
@@ -84,8 +84,13 @@ export const PopMaterialLotLabelScreen = () => {
   const targets = useTargetRows(receipts.data?.items ?? [], issuedView);
   const printers = usePrinters();
 
+  /*
+   * ⭐ **품목 이름은 「보이는 줄」의 것만 푼다**(omf-all-around#27). 마스터 목록 조회는 한 쪽만
+   *    돌려줘, 품목이 9천여 건인 현장에서 첫 쪽 밖 품목이 통째로 「알 수 없음」으로 섰다.
+   *    공급사는 단건 조회가 단말 토큰에 열려 있지 않아 목록을 끝까지 받는다 — `lookups` 머리말.
+   */
+  const itemNames = useItemNameSources(targets.rows.map((row) => row.itemId));
   const supplierLookup = useSupplierLookup();
-  const itemLookup = useItemLookup(true);
   const uomLookup = useUomLookup(true);
 
   const result = receipts.data;
@@ -259,7 +264,7 @@ export const PopMaterialLotLabelScreen = () => {
               <ReceiptList
                 rows={targets.rows}
                 supplierLookup={supplierLookup}
-                itemLookup={itemLookup}
+                itemNames={itemNames}
                 uomLookup={uomLookup}
                 selectedId={selectedLineId}
                 // 실행 중에 줄을 바꾸면 그 실행의 결과가 어디에도 서지 않는다.
@@ -298,7 +303,7 @@ export const PopMaterialLotLabelScreen = () => {
           <h2 className="pop-lot-pane-title">{t.target.title}</h2>
           <TargetCard
             row={selectedRow}
-            itemLookup={itemLookup}
+            itemNames={itemNames}
             uomLookup={uomLookup}
             supplierLookup={supplierLookup}
             lotNo={lot.data ?? null}
