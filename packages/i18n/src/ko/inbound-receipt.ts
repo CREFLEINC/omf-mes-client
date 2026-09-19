@@ -20,6 +20,8 @@ export const inboundReceipt = {
     /** 읽은 값을 함께 보인다. 스캐너 설정에 따라 구분자 `|` 가 다른 글자로 들어온다. */
     malformed: (read: string) =>
       `자재 LOT 번호 형식이 아닙니다(제품코드|수량|날짜|공급사|번호). 읽은 값: ${read}`,
+    /** 이 공장에 이미 있는 LOT 의 라벨. 받으면 전송 뒤 서버가 거부한다(omf-all-around#28). */
+    registered: (read: string) => `이미 등록된 LOT입니다. 읽은 값: ${read}`,
     scanned: (lotNo: string) => `공급사 LOT ${lotNo}`,
     externalEntry: '납품서의 공급사 LOT 번호 입력',
     externalLabel: '공급사 LOT 번호',

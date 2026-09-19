@@ -13,6 +13,7 @@ export const inboundReceipt: Translated<typeof ko.inboundReceipt> = {
     manualSubmit: 'Đưa vào',
     malformed: (read: string) =>
       `Không đúng định dạng số LOT vật tư (mã sản phẩm|số lượng|ngày|nhà cung cấp|số thứ tự). Giá trị đã đọc: ${read}`,
+    registered: (read: string) => `LOT này đã được đăng ký. Giá trị đã đọc: ${read}`,
     scanned: (lotNo: string) => `LOT của nhà cung cấp ${lotNo}`,
     externalEntry: 'Nhập số LOT nhà cung cấp trên phiếu giao hàng',
     externalLabel: 'Số LOT nhà cung cấp',

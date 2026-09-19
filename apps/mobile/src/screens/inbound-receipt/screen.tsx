@@ -19,6 +19,7 @@ import { DockedNumberPad } from '../../patterns/docked-number-pad';
 import { playErrorTone } from '../../patterns/error-tone';
 import { FailureBanner } from '../../patterns/failure-banner';
 import { useLoadFailure } from '../../patterns/load-failure';
+import { useScannedLot } from '../../patterns/lots';
 import {
   SUBSTITUTE_LOT_REASON,
   receiptKeys,
@@ -94,6 +95,8 @@ export const InboundReceiptScreen = () => {
 
   const [draft, setDraft] = useState<ReceiptDraft>(emptyDraft);
   const [malformed, setMalformed] = useState<string | null>(null);
+  /* 이미 등록된 LOT 이라 받지 않은 라벨(omf-all-around#28). 다음 스캔까지 사유를 남긴다. */
+  const [registeredLotNo, setRegisteredLotNo] = useState<string | null>(null);
   const [externalLotInput, setExternalLotInput] = useState(false);
   const [externalLotNo, setExternalLotNo] = useState('');
   const [externalLotError, setExternalLotError] = useState<string | null>(null);
@@ -145,6 +148,7 @@ export const InboundReceiptScreen = () => {
     }
 
     setMalformed(null);
+    setRegisteredLotNo(null);
 
     /*
      * 라벨이 바뀌면 그 아래 고른 것을 비운다.
@@ -200,6 +204,7 @@ export const InboundReceiptScreen = () => {
     }
 
     setMalformed(null);
+    setRegisteredLotNo(null);
     setExternalLotError(null);
     patch({
       supplierLotNo: lotNo,
@@ -246,6 +251,52 @@ export const InboundReceiptScreen = () => {
    * 손으로 넣은 건(라벨 미부착)은 대조가 없어, 품목을 못 찾거나 후보가 없으면 전에처럼 넓힌다.
    */
   const strictLabel = draft.supplierLotLabelAttached && !draft.supplierLotMissing;
+
+  /*
+   * 라벨 번호의 LOT 이 이 공장에 이미 있으면 받지 않는다(omf-all-around#28 · 사용자 결정 2026-09-19).
+   *
+   * 사전부착 라벨이면 서버가 입하와 같은 트랜잭션에서 라벨 원문으로 LOT 을 만든다. 이미 있으면
+   * 공장 단위 유일키에 걸려 전송 뒤에야 「이미 있는 값입니다」로 거부되고, 현장은 무엇이 잘못됐는지
+   * 알 수 없다. 스캔 자리에서 막고 발주 선택으로 넘어가지 않는다.
+   *
+   * - 라벨(사전부착)만 본다. 미부착·「LOT 번호 없음」은 LOT 을 만들지 않는다.
+   * - ⛔ 조회 실패는 막지 않는다 — 「확인하지 못함」은 「없음」이 아니다(#25 와 같은 원칙).
+   *   연결 없이도 입하가 담겨야 하고, 그때는 전송 뒤 서버 거부로 남는다.
+   * - 다른 공장의 LOT 은 막지 않는다 — 서버 유일키가 공장 단위다.
+   */
+  /*
+   * ⛔ 결과 화면에서는 묻지 않는다. 방금 보낸 입하가 그 LOT 을 만들었으므로, 연결이 다시 잡혀
+   *    재조회가 돌면 성공 화면에서 오류음이 울리고 결과가 지워진다(리뷰 지적).
+   */
+  const lotCheck = useScannedLot(
+    outcome === null && strictLabel && draft.supplierLotNo !== '' ? draft.supplierLotNo : null,
+    /* 앞선 입하가 방금 이 라벨로 LOT 을 만들었을 수 있다 — 캐시의 「없음」을 믿지 않는다. */
+    { alwaysFresh: true },
+  );
+  const plantOfTerminal = currentPlantId();
+  const registeredLot =
+    lotCheck.data !== undefined &&
+    lotCheck.data !== null &&
+    plantOfTerminal !== null &&
+    lotCheck.data.plantId === plantOfTerminal
+      ? lotCheck.data.lotNo
+      : null;
+
+  useEffect(() => {
+    if (registeredLot === null) return;
+
+    /* 화면을 보고 있지 않을 수 있다. 소리로도 알린다(공유계약 D-2). */
+    playErrorTone();
+    setRegisteredLotNo(registeredLot);
+    setContinueUnder(false);
+    setVarianceNext(false);
+    setSplitExceptionType('');
+    setSplitExceptionReason('');
+    setShowAllOrders(false);
+    setKeypadFor(null);
+    setPickingItem(false);
+    setDraft(emptyDraft);
+  }, [registeredLot]);
   /*
    * 품목을 확인해 좁힌 조회이거나, 좁히지 않는 경우의 전체 조회만 목록으로 낸다.
    *
@@ -373,6 +424,7 @@ export const InboundReceiptScreen = () => {
   const restart = () => {
     setDraft(emptyDraft);
     setMalformed(null);
+    setRegisteredLotNo(null);
     setExternalLotInput(false);
     setExternalLotNo('');
     setOutcome(null);
@@ -537,7 +589,13 @@ export const InboundReceiptScreen = () => {
           placeholder={t.scan.placeholder}
           size="xl"
           fullWidth
-          error={malformed === null ? undefined : t.scan.malformed(malformed)}
+          error={
+            malformed !== null
+              ? t.scan.malformed(malformed)
+              : registeredLotNo !== null
+                ? t.scan.registered(registeredLotNo)
+                : undefined
+          }
         />
         {/*
          * 스캔 칸 하나로 받는다. 스캐너를 기다리는 동안에는 키보드를 열지 않고, 직접
@@ -624,6 +682,7 @@ export const InboundReceiptScreen = () => {
                 size="xl"
                 onClick={() => {
                   setMalformed(null);
+                  setRegisteredLotNo(null);
                   setExternalLotError(null);
                   setExternalLotInput(true);
                 }}
@@ -637,6 +696,7 @@ export const InboundReceiptScreen = () => {
               size="xl"
               onClick={() => {
                 setMalformed(null);
+                setRegisteredLotNo(null);
                 setExternalLotInput(false);
                 setExternalLotError(null);
                 patch({
