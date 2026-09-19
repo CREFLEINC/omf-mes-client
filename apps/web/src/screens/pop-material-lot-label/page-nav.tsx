@@ -13,7 +13,12 @@ export interface PageNavProps {
    * 서지 않는다 — 목록 줄을 잠그는 것과 같은 이유다.
    */
   isLocked: boolean;
-  onChange: (page: number) => void;
+  /**
+   * ⚠ **쪽 번호를 주고받지 않는다.** 쪽 나눔이 두 겹이라(줄 쪽 → 건 쪽) 「+1」이 무엇을 뜻하는지
+   *   이 부품이 알 수 없다 — 다음으로 갈지 앞으로 갈지만 말하고, 어디로 가는지는 화면이 셈한다.
+   */
+  onPrev: () => void;
+  onNext: () => void;
 }
 
 /**
@@ -27,7 +32,7 @@ export interface PageNavProps {
  *
  * 이 화면 슬라이스가 소유한다 — 다른 화면 슬라이스의 같은 이름 부품을 참조하지 않는다.
  */
-export const PageNav = ({ view, isLocked, onChange }: PageNavProps) => (
+export const PageNav = ({ view, isLocked, onPrev, onNext }: PageNavProps) => (
   <nav className="pop-page-nav" aria-label={t.label}>
     {view.rangeLabel === '' ? null : <p className="field-note">{view.rangeLabel}</p>}
     <Button
@@ -35,9 +40,7 @@ export const PageNav = ({ view, isLocked, onChange }: PageNavProps) => (
       variant="outlined"
       size="xl"
       disabled={isLocked || !view.canPrev}
-      onClick={() => {
-        onChange(view.page - 1);
-      }}
+      onClick={onPrev}
     >
       {t.prev}
     </Button>
@@ -46,9 +49,7 @@ export const PageNav = ({ view, isLocked, onChange }: PageNavProps) => (
       variant="outlined"
       size="xl"
       disabled={isLocked || !view.canNext}
-      onClick={() => {
-        onChange(view.page + 1);
-      }}
+      onClick={onNext}
     >
       {t.next}
     </Button>

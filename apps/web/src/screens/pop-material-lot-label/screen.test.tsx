@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { createStubFetch, jsonResponse, renderWithProviders } from '../../test/api-harness';
+import { ROWS_PER_PAGE } from './pagination';
 import { LIST_REFRESH_MS } from './queries';
 import { PopMaterialLotLabelScreen } from './screen';
 
@@ -330,6 +331,31 @@ describe('PopMaterialLotLabelScreen — 입하 목록', () => {
 
     expect(refresh.parentElement).toHaveClass('pop-lot-list-foot');
     expect(refresh.parentElement).toBe(nav.parentElement);
+  });
+
+  /**
+   * ⭐ **잘릴 줄은 다음 쪽으로 넘긴다**(사용자 지시 2026-09-19 · omf-all-around#32). 목록에
+   * 스크롤을 두지 않으므로, 잘라 보이면 그 줄에는 닿을 방법이 없다 — 실제로 열한 줄 중 두 줄이
+   * 화면 밖에 있었고 쪽 이동은 「1쪽 중 1쪽」으로 꺼져 있었다.
+   */
+  it('한 쪽에 들어가지 않는 줄은 다음 쪽에서 보인다', async () => {
+    const lines = Array.from({ length: ROWS_PER_PAGE + 2 }, (_, index) =>
+      line(8600 + index, 8101, 8601, 100 + index, false),
+    );
+    const { user } = renderScreen({ lines });
+
+    const rows = await screen.findAllByRole('button', { name: /입하 SYN-IB-0001/u });
+
+    expect(rows).toHaveLength(ROWS_PER_PAGE);
+    expect(screen.getByText(`2쪽 중 1쪽`)).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: '다음 ▶' }));
+
+    expect(await screen.findByText('2쪽 중 2쪽')).toBeInTheDocument();
+    expect(screen.getAllByRole('button', { name: /입하 SYN-IB-0001/u })).toHaveLength(2);
+    /* 되돌아가면 앞 쪽 줄이 그대로 선다 — 넘긴 줄이 사라지는 것이 아니다. */
+    await user.click(screen.getByRole('button', { name: '◀ 이전' }));
+    expect(await screen.findByText('2쪽 중 1쪽')).toBeInTheDocument();
   });
 
   it('첫 쪽에서는 쪽 조건을 싣지 않는다 — 서버 기본값이 1이다', async () => {

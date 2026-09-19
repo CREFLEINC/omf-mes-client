@@ -11,7 +11,7 @@ import { IssueOutcome } from './issue-outcome';
 import { useItemNameSources, useSupplierLookup, useUomLookup } from './lookups';
 import { useLabelIssue } from './mutations';
 import { PageNav } from './page-nav';
-import { toPageView } from './pagination';
+import { toLinePageView } from './pagination';
 import { PrinterStatusIndicator } from './printer-status';
 import {
   useLotNo,
@@ -69,6 +69,14 @@ const ISSUED_VIEWS: readonly IssuedView[] = ['unissued', 'issued'];
  */
 export const PopMaterialLotLabelScreen = () => {
   const [page, setPage] = useState(1);
+  /**
+   * 줄 쪽 — **화면이 줄을 다시 쪽으로 자른 것**이다(`pagination`). 서버 쪽은 「건」 단위라 건이
+   * 한 쪽에 다 들어가면 늘 1쪽이고, 그러면 줄이 아무리 많아도 이전·다음이 꺼져 있었다(#32).
+   *
+   * ⚠ **큰 수는 「마지막 줄 쪽」을 뜻한다.** 앞 건 쪽으로 돌아갈 때 그 쪽의 줄 수를 아직 모르므로
+   *   범위를 넘겨 두고 `toLinePageView` 가 잡아 준다.
+   */
+  const [linePage, setLinePage] = useState(1);
   const [issuedView, setIssuedView] = useState<IssuedView>('unissued');
   const [selectedLineId, setSelectedLineId] = useState<number | null>(null);
   const [isReissueOpen, setReissueOpen] = useState(false);
@@ -102,12 +110,18 @@ export const PopMaterialLotLabelScreen = () => {
 
   const result = receipts.data;
   /*
-   * ⚠ **세는 단위가 둘이다.** 쪽 나눔은 입하 건 단위이고 목록 줄은 자재다. 쪽 계산에는
-   * 입하 건 수를 넘긴다 — 자재 줄 수를 넘기면 「51–52 / 전체 3건」 같은 값이 나온다.
+   * ⚠ **세는 단위가 둘이다.** 서버 쪽 나눔은 입하 «건» 단위이고 목록 줄은 «자재»다. 그래서 줄
+   * 쪽은 화면이 따로 셈하고(`toLinePageView`), 줄 쪽을 다 넘기면 다음 건 쪽으로 이어 넘어간다.
    */
-  const pageView = result === undefined ? null : toPageView(result.page, result.items.length);
+  const pageView =
+    result === undefined ? null : toLinePageView(result.page, targets.rows.length, linePage);
+  /**
+   * 이 쪽에 세울 줄 — **잘릴 줄은 다음 쪽으로 넘긴다**(사용자 지시 2026-09-19). 목록에 스크롤을
+   * 두지 않으므로, 잘라 보이면 그 줄에는 닿을 방법이 없다.
+   */
+  const visibleRows = pageView === null ? [] : targets.rows.slice(pageView.start, pageView.end);
   const selectedRow =
-    targets.rows.find((row) => row.inboundReceiptLineId === selectedLineId) ?? null;
+    visibleRows.find((row) => row.inboundReceiptLineId === selectedLineId) ?? null;
 
   const lot = useLotNo(selectedRow?.lotId ?? null);
   const reissueReasons = useReissueReasons(isReissueOpen);
@@ -160,6 +174,38 @@ export const PopMaterialLotLabelScreen = () => {
 
   /** 한 건이라도 실패하면 목록이 불완전하다 — 일부만 보이는 것을 「전부」로 내지 않는다. */
   const isListError = receipts.isError || targets.isError;
+
+  /**
+   * 쪽 이동 — **줄 쪽을 먼저 넘기고, 다 넘기면 건 쪽으로 넘어간다.**
+   *
+   * ⛔ 쪽을 옮기면 고른 줄이 화면에서 사라진다 — 남겨 두면 보이지 않는 것을 가리킨다.
+   */
+  const goPrev = (): void => {
+    setSelectedLineId(null);
+
+    if (pageView !== null && pageView.page > 1) {
+      setLinePage(pageView.page - 1);
+
+      return;
+    }
+
+    setPage((current) => Math.max(1, current - 1));
+    /* 앞 건 쪽의 «마지막» 줄 쪽으로 간다 — 줄 수를 모르므로 범위를 넘겨 두고 잡히게 한다. */
+    setLinePage(Number.MAX_SAFE_INTEGER);
+  };
+
+  const goNext = (): void => {
+    setSelectedLineId(null);
+
+    if (pageView !== null && pageView.page < pageView.totalPages) {
+      setLinePage(pageView.page + 1);
+
+      return;
+    }
+
+    setPage((current) => current + 1);
+    setLinePage(1);
+  };
 
   /** 목록을 지금 다시 받는다. 오류 배너의 「다시 불러오기」와 **같은 동작**이다. */
   const reloadList = (): void => {
@@ -241,6 +287,7 @@ export const PopMaterialLotLabelScreen = () => {
                   if (issuedView === view) return;
                   setSelectedLineId(null);
                   setPage(1);
+                  setLinePage(1);
                   setIssuedView(view);
                 }}
               >
@@ -271,7 +318,7 @@ export const PopMaterialLotLabelScreen = () => {
                *    한다. 세로 여유가 119px 뿐인 화면이라 배너 한 줄이 목록에서 그만큼을 가져간다.
                */}
               <ReceiptList
-                rows={targets.rows}
+                rows={visibleRows}
                 supplierLookup={supplierLookup}
                 itemNames={itemNames}
                 uomLookup={uomLookup}
@@ -305,20 +352,12 @@ export const PopMaterialLotLabelScreen = () => {
                 >
                   {t.receipts.refresh}
                 </Button>
+                {/*
+                 * ⛔ 쪽을 옮기면 고른 줄이 풀린다 — 실행 중에 풀리면 그 실행의 결과가 어느 줄에도
+                 * 서지 않는다. 목록 줄을 잠그면서 이 자리를 열어 두면 같은 구멍이 남는다.
+                 */}
                 {pageView === null ? null : (
-                  <PageNav
-                    view={pageView}
-                    /*
-                     * ⛔ 쪽을 옮기면 고른 줄이 풀린다 — 실행 중에 풀리면 그 실행의 결과가 어느 줄에도
-                     * 서지 않는다. 목록 줄을 잠그면서 이 자리를 열어 두면 같은 구멍이 남는다.
-                     */
-                    isLocked={isIssuing}
-                    onChange={(nextPage) => {
-                      // 쪽을 옮기면 고른 줄이 화면에서 사라진다 — 남겨 두면 보이지 않는 것을 가리킨다.
-                      setSelectedLineId(null);
-                      setPage(nextPage);
-                    }}
-                  />
+                  <PageNav view={pageView} isLocked={isIssuing} onPrev={goPrev} onNext={goNext} />
                 )}
               </div>
             </>
