@@ -54,6 +54,35 @@ export interface ReceiptListQuery {
  */
 export type IssuedView = 'unissued' | 'issued';
 
+/**
+ * 목록 주기 갱신 간격.
+ *
+ * ## 왜 주기 갱신을 두는가
+ *
+ * ⭐ **이 목록의 자료를 만드는 것은 이 화면이 아니다.** 작업자는 PDA 로 입하를 등록하고 POP 앞으로
+ *    걸어와 라벨을 찍는다. 그런데 화면이 떠 있는 동안 목록을 다시 부르는 장치가 없어, **앱을 껐다
+ *    켜야** 방금 등록한 입하가 보였다(omf-all-around#29). 다른 기기가 만든 자료라 화면이 스스로
+ *    캐시를 무효화할 길도 없다.
+ *
+ * ⛔ **조회 화면에 자동 갱신을 두지 않는다는 관례의 예외다**(공유계약 L-6 · `screens/dashboard` ·
+ *    `screens/work-order-progress`). 그 관례의 근거는 「사용자 수만큼 부하가 곱해진다」인데, POP
+ *    단말은 **공장당 몇 대뿐**이라 사정이 다르다. 관리웹 조회 화면에는 그대로 두지 않는다.
+ *
+ * ⚠ 걸어오는 동안 떠 있으면 되므로 초 단위로 조일 이유가 없다. 20초면 화면 앞에 서기 전에 한 번은
+ *   돈다.
+ */
+export const LIST_REFRESH_MS = 20_000;
+
+/**
+ * 주기 갱신을 걸 것인가 — **실행 중에는 걸지 않는다.**
+ *
+ * ⛔ 등록·인쇄가 도는 사이에 목록이 바뀌면 고른 줄이 목록에서 빠질 수 있고, 그때 발번 대상 카드가
+ *    빈 상태로 돌아가 **인쇄 중인데 아무것도 고르지 않은 화면**이 된다. 끝난 뒤의 무효화가 어차피
+ *    목록을 새로 받으므로, 그 사이에는 멈춰 두는 편이 맞다(#1241 이 세운 규율과 같은 자리).
+ */
+export const listRefetchInterval = (isIssuing: boolean): number | false =>
+  isIssuing ? false : LIST_REFRESH_MS;
+
 const RECEIPT_LIST_KEY = ['pop-material-lot-label', 'receipts'] as const;
 
 export const receiptKeys = {
@@ -114,12 +143,15 @@ const fetchReceipts = async (
 export const useReceipts = (
   view: IssuedView,
   query: ReceiptListQuery,
+  isIssuing: boolean,
 ): UseQueryResult<ReceiptListResult> => {
   const { client } = useApiClient();
 
   return useQuery({
     queryKey: receiptKeys.list(view, query),
     queryFn: () => fetchReceipts(client, view, query),
+    /* PDA 가 만든 입하가 스스로 떠야 한다 — 까닭은 `LIST_REFRESH_MS` 머리말에 있다. */
+    refetchInterval: listRefetchInterval(isIssuing),
   });
 };
 
@@ -193,13 +225,19 @@ export interface TargetRowsResult {
  * ⚠ **요청이 쪽마다 1 + N 이다.** 쪽 크기를 작게 두어(POP 목록은 한 화면에 몇 줄뿐이다)
  * 감당한다. 계약이 라인을 함께 내려 주면 1 회로 줄어든다(변경 통지 #534).
  */
-export const useTargetRows = (receipts: ReceiptView[], view: IssuedView): TargetRowsResult => {
+export const useTargetRows = (
+  receipts: ReceiptView[],
+  view: IssuedView,
+  isIssuing: boolean,
+): TargetRowsResult => {
   const { client } = useApiClient();
 
   const results = useQueries({
     queries: receipts.map((receipt) => ({
       queryKey: receiptKeys.lines(receipt.inboundReceiptId, view),
       queryFn: () => fetchReceiptLines(client, receipt.inboundReceiptId, view),
+      /* 건 목록만 새로 받고 라인을 묵혀 두면 줄이 옛 자료로 남는다 — 같은 주기로 돈다. */
+      refetchInterval: listRefetchInterval(isIssuing),
     })),
   });
 

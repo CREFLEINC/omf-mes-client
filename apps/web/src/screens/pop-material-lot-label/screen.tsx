@@ -79,9 +79,16 @@ export const PopMaterialLotLabelScreen = () => {
    */
   const { workerNo, terminalId } = usePopIdentity();
 
+  const issue = useLabelIssue({ workerNo });
+  /*
+   * ⛔ **실행 중에는 목록을 주기 갱신하지 않는다.** 도는 사이에 고른 줄이 목록에서 빠지면 발번
+   *    대상 카드가 빈 상태로 돌아가 「인쇄 중인데 아무것도 고르지 않은 화면」이 된다(#1241).
+   */
+  const isIssuing = issue.step !== null;
+
   // 첫 쪽이면 조건을 싣지 않는다 — 서버 기본값이 1이라 URL에 없는 편이 조건을 정직하게 드러낸다.
-  const receipts = useReceipts(issuedView, page === 1 ? {} : { page });
-  const targets = useTargetRows(receipts.data?.items ?? [], issuedView);
+  const receipts = useReceipts(issuedView, page === 1 ? {} : { page }, isIssuing);
+  const targets = useTargetRows(receipts.data?.items ?? [], issuedView, isIssuing);
   const printers = usePrinters();
 
   /*
@@ -105,7 +112,6 @@ export const PopMaterialLotLabelScreen = () => {
   const lot = useLotNo(selectedRow?.lotId ?? null);
   const reissueReasons = useReissueReasons(isReissueOpen);
   const headPrinter = toHeadPrinter(printers.data ?? []);
-  const issue = useLabelIssue({ workerNo });
 
   /*
    * ⛔ **결과는 그 결과를 만든 줄의 것이다.** 다른 자재를 고르면 앞 자재의 실패가 따라오지
@@ -154,6 +160,12 @@ export const PopMaterialLotLabelScreen = () => {
 
   /** 한 건이라도 실패하면 목록이 불완전하다 — 일부만 보이는 것을 「전부」로 내지 않는다. */
   const isListError = receipts.isError || targets.isError;
+
+  /** 목록을 지금 다시 받는다. 오류 배너의 「다시 불러오기」와 **같은 동작**이다. */
+  const reloadList = (): void => {
+    void receipts.refetch();
+    targets.refetch();
+  };
 
   return (
     /*
@@ -224,7 +236,7 @@ export const PopMaterialLotLabelScreen = () => {
                 type="button"
                 className={`pop-material-lot-filter-item ${popTouchClass('normal')}`}
                 aria-pressed={issuedView === view}
-                disabled={issue.step !== null}
+                disabled={isIssuing}
                 onClick={() => {
                   if (issuedView === view) return;
                   setSelectedLineId(null);
@@ -246,10 +258,7 @@ export const PopMaterialLotLabelScreen = () => {
                   className={popTouchClass('normal')}
                   variant="outlined"
                   size="xl"
-                  onClick={() => {
-                    void receipts.refetch();
-                    targets.refetch();
-                  }}
+                  onClick={reloadList}
                 >
                   {t.receipts.retry}
                 </Button>
@@ -268,7 +277,7 @@ export const PopMaterialLotLabelScreen = () => {
                 uomLookup={uomLookup}
                 selectedId={selectedLineId}
                 // 실행 중에 줄을 바꾸면 그 실행의 결과가 어디에도 서지 않는다.
-                isLocked={issue.step !== null}
+                isLocked={isIssuing}
                 onToggleSelect={(lineId) => {
                   // 같은 줄을 다시 누르면 해제한다 — 고른 것을 무를 수단이 없으면 갇힌다.
                   setSelectedLineId((current) => (current === lineId ? null : lineId));
@@ -280,21 +289,38 @@ export const PopMaterialLotLabelScreen = () => {
                   pageView?.canNext === true,
                 )}
               />
-              {pageView === null ? null : (
-                <PageNav
-                  view={pageView}
-                  /*
-                   * ⛔ 쪽을 옮기면 고른 줄이 풀린다 — 실행 중에 풀리면 그 실행의 결과가 어느 줄에도
-                   * 서지 않는다. 목록 줄을 잠그면서 이 자리를 열어 두면 같은 구멍이 남는다.
-                   */
-                  isLocked={issue.step !== null}
-                  onChange={(nextPage) => {
-                    // 쪽을 옮기면 고른 줄이 화면에서 사라진다 — 남겨 두면 보이지 않는 것을 가리킨다.
-                    setSelectedLineId(null);
-                    setPage(nextPage);
-                  }}
-                />
-              )}
+              {/*
+               * ⭐ **「갱신」은 쪽 이동 줄에 둔다**(omf-all-around#29). 이 줄은 이미 단추 높이를
+               *    쓰고 있어 **세로를 더 먹지 않는다** — 세로 여유가 119px 뿐인 화면이다(스펙 §4).
+               *    제목 줄에 얹으면 목록이 그만큼 짧아진다.
+               */}
+              <div className="pop-lot-list-foot">
+                <Button
+                  className={popTouchClass('normal')}
+                  variant="outlined"
+                  size="xl"
+                  /* 실행 중에는 잠근다 — 쪽 이동·줄 선택과 같은 까닭이다. */
+                  disabled={isIssuing}
+                  onClick={reloadList}
+                >
+                  {t.receipts.refresh}
+                </Button>
+                {pageView === null ? null : (
+                  <PageNav
+                    view={pageView}
+                    /*
+                     * ⛔ 쪽을 옮기면 고른 줄이 풀린다 — 실행 중에 풀리면 그 실행의 결과가 어느 줄에도
+                     * 서지 않는다. 목록 줄을 잠그면서 이 자리를 열어 두면 같은 구멍이 남는다.
+                     */
+                    isLocked={isIssuing}
+                    onChange={(nextPage) => {
+                      // 쪽을 옮기면 고른 줄이 화면에서 사라진다 — 남겨 두면 보이지 않는 것을 가리킨다.
+                      setSelectedLineId(null);
+                      setPage(nextPage);
+                    }}
+                  />
+                )}
+              </div>
             </>
           )}
         </section>
