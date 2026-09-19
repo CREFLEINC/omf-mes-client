@@ -3,7 +3,7 @@ import { messages } from '@omf-mes/i18n';
 
 import { lookupDisplayLabel, type LookupSource } from '../../patterns/lookup-display';
 import { popTouchClass } from '../../patterns/pop-touch';
-import { nameSource } from './lookups';
+import { nameSource, type ItemNameSource, type SupplierLookup } from './lookups';
 import type { IssueStep } from './mutations';
 import { toIssueStage, type TargetRow } from './types';
 
@@ -11,10 +11,11 @@ const t = messages.popMaterialLotLabel.target;
 
 export interface TargetCardProps {
   row: TargetRow | null;
-  /** 품목 이름 — 목록 줄과 **같은 원천**을 쓴다(`lookups`). `itemId` 마다 하나다. */
-  itemNames: ReadonlyMap<number, LookupSource>;
+  /** 품목 — 목록 줄과 **같은 원천**을 쓴다(`lookups`). 카드는 코드·이름을 갈라 싣는다. */
+  itemNames: ReadonlyMap<number, ItemNameSource>;
   uomLookup: LookupSource;
-  supplierLookup: LookupSource;
+  /** 공급사 — 목록과 같은 원천을 쓴다. 카드는 코드·이름을 갈라 싣는다. */
+  supplierLookup: SupplierLookup;
   /** 이미 등록된 자재의 LOT 번호. 아직 등록 전이거나 못 읽었으면 `null`. */
   lotNo: string | null;
   isLotNoLoading: boolean;
@@ -72,6 +73,18 @@ export const TargetCard = ({
    * 등록이 이미 끝난 라인은 **인쇄만** 한다. 단추 이름이 다음에 무슨 일이 일어나는지를
    * 말해야 한다 — 「등록·인쇄」로 두면 이미 있는 LOT 위에 또 만든다고 읽힌다.
    */
+  /*
+   * 풀어 낸 품목. 못 풀었으면 `null` 이고, 그때 두 칸에 세울 사유가 `itemStatus` 다 —
+   * 「알 수 없음」·「이름 불러오는 중」·「이름을 불러오지 못했습니다」를 가른다.
+   */
+  const itemSource = nameSource(itemNames, row.itemId);
+  const item = itemSource.item;
+  const itemStatus = lookupDisplayLabel(itemSource, row.itemId);
+
+  /* 공급사도 같은 규율이다 — 못 풀었으면 두 칸이 같은 사유를 말한다. */
+  const supplier = supplierLookup.byId.get(row.supplierId) ?? null;
+  const supplierStatus = lookupDisplayLabel(supplierLookup, row.supplierId);
+
   const isRegistered = toIssueStage(row) === 'registered';
   const isRunning = runningStep !== null;
   const isBlocked = !hasWorkerNo || isRunning || isPrintForbidden;
@@ -80,16 +93,33 @@ export const TargetCard = ({
     <>
       <Card>
         <dl className="pop-target-fields">
-          <dt>{t.fields.item}</dt>
-          <dd>{lookupDisplayLabel(nameSource(itemNames, row.itemId), row.itemId)}</dd>
+          {/*
+           * ⭐ **입하번호는 여기서만 보인다**(사용자 지시 2026-09-19). 목록에서 뺀 값이라,
+           *    고른 줄이 어느 입하의 것인지 확인하는 자리가 여기다.
+           */}
+          <dt>{t.fields.receipt}</dt>
+          <dd>{row.inboundReceiptNo}</dd>
+
+          {/*
+           * ⭐ **코드와 이름을 가른다**(같은 지시). 아직 못 푼 동안에는 두 칸이 같은 사유를
+           *    말한다 — 코드도 이름도 같은 한 번의 조회에서 오므로 한쪽만 아는 상태가 없다.
+           */}
+          <dt>{t.fields.itemCode}</dt>
+          <dd>{item === null ? itemStatus : item.code}</dd>
+
+          <dt>{t.fields.itemName}</dt>
+          <dd>{item === null ? itemStatus : item.name}</dd>
 
           <dt>{t.fields.quantity}</dt>
           <dd>
             {row.receivedQty} {lookupDisplayLabel(uomLookup, row.uomId)}
           </dd>
 
-          <dt>{t.fields.supplier}</dt>
-          <dd>{lookupDisplayLabel(supplierLookup, row.supplierId)}</dd>
+          <dt>{t.fields.supplierCode}</dt>
+          <dd>{supplier === null ? supplierStatus : supplier.code}</dd>
+
+          <dt>{t.fields.supplierName}</dt>
+          <dd>{supplier === null ? supplierStatus : supplier.name}</dd>
         </dl>
       </Card>
 

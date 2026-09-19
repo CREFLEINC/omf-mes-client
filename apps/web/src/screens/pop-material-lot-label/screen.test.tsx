@@ -264,19 +264,24 @@ describe('PopMaterialLotLabelScreen — 입하 목록', () => {
   });
 
   /**
-   * ⭐ 스펙 §3 은 목록 한 줄에 입하번호·품목·수량·공급사·입하일을 함께 그린다. 계약이 그것을
-   * 두 경로로 나눠 주므로 화면이 합친다 — **고르기 전에 이미 다 보여야 한다.**
+   * ⭐ 목록 한 줄이 **입하일·수량·품목·공급사**를 함께 그린다 — 고르기 전에 이미 다 보여야 한다.
+   *
+   * ⛔ 입하번호와 공급사 코드는 여기 두지 않는다(사용자 지시 2026-09-19) — 줄을 가리는 값이
+   *    아니고, 고른 뒤 채번 대상 카드에서 갈라 본다.
    */
-  it('한 줄에 입하번호·공급사·품목·수량·입하일이 함께 온다', async () => {
+  it('한 줄에 입하일·공급사·수량·품목명·품목코드가 함께 온다', async () => {
     renderScreen();
 
     const row = await screen.findByRole('button', { name: /SYN-IB-0001/u });
 
-    expect(within(row).getByText('SYN-IB-0001')).toBeInTheDocument();
-    expect(within(row).getByText('SYN-P-01 · 합성 공급사 가')).toBeInTheDocument();
-    expect(within(row).getByText('SYN-ITEM-01 · 합성 품목 가')).toBeInTheDocument();
-    expect(within(row).getByText('500 EA')).toBeInTheDocument();
     expect(within(row).getByText('08-27')).toBeInTheDocument();
+    expect(within(row).getByText('합성 공급사 가')).toBeInTheDocument();
+    expect(within(row).getByText('500 EA')).toBeInTheDocument();
+    expect(within(row).getByText('합성 품목 가')).toBeInTheDocument();
+    expect(within(row).getByText('SYN-ITEM-01')).toBeInTheDocument();
+    /* 붙여 내던 한 줄은 목록에 남아 있으면 안 된다 — 이름과 코드가 제 칸을 갖는다. */
+    expect(within(row).queryByText('SYN-ITEM-01 · 합성 품목 가')).not.toBeInTheDocument();
+    expect(within(row).queryByText('SYN-P-01 · 합성 공급사 가')).not.toBeInTheDocument();
   });
 
   /**
@@ -312,8 +317,8 @@ describe('PopMaterialLotLabelScreen — 입하 목록', () => {
 
     const row = await screen.findByRole('button', { name: /SYN-IB-0009/u });
 
-    expect(within(row).getByText('SYN-ITEM-99 · 합성 품목 먼쪽')).toBeInTheDocument();
-    expect(await within(row).findByText('SYN-P-99 · 합성 공급사 먼쪽')).toBeInTheDocument();
+    expect(within(row).getByText('합성 품목 먼쪽')).toBeInTheDocument();
+    expect(await within(row).findByText('합성 공급사 먼쪽')).toBeInTheDocument();
     /* 품목은 줄에 선 식별자만 묻는다 — 9천여 건을 다 받아 오지 않는다. */
     expect(masterUrls.map((url) => url.pathname)).toContain('/mdm/items/9601');
     expect(masterUrls.some((url) => url.pathname === '/mdm/items')).toBe(false);
@@ -326,20 +331,44 @@ describe('PopMaterialLotLabelScreen — 입하 목록', () => {
   });
 
   /**
-   * ⭐ **날짜는 품목 아래 자리다** — 스펙 §3 도면의 둘째 줄이 `(주)…    08-04` 이고
-   * `08-04` 가 첫 줄 품목 자리에 맞춰 선다. 수량 아래에 두면 「그날의 수량」으로 읽힌다.
+   * ⭐ **값마다 이름이 붙는다**(사용자 지시 2026-09-19). 무엇을 보고 있는지 화면이 말한다 —
+   * 읽어 주는 도구가 쓰는 어휘(`selectRow`)와 같은 말이라 보는 사람과 듣는 사람이 같은 것을 듣는다.
+   *
+   * ⛔ **열 머리글 줄을 되살리는 것이 아니다.** 이름은 값 «옆»에 붙어 세로를 쓰지 않는다 —
+   * 머리줄은 그 자체로 한 줄을 먹으면서 값과 같은 말을 되풀이해 걷어 낸 것이다(2026-09-10).
+   */
+  it('줄의 값마다 이름이 함께 선다', async () => {
+    renderScreen();
+
+    const row = await screen.findByRole('button', { name: /SYN-IB-0001/u });
+
+    for (const name of ['입하일', '공급사', '수량', '품목명', '품목코드']) {
+      expect(within(row).getByText(name)).toHaveClass('pop-material-lot-line-label');
+    }
+    /* 이름은 «목록 위»가 아니라 줄 «안»에 있다 — 머리줄이 아니다. */
+    expect(within(row).getAllByText('품목명')).toHaveLength(1);
+    /* ⛔ 입하번호는 목록에서 뺐다 — 고른 뒤 채번 대상 카드에서 본다(사용자 지시 2026-09-19). */
+    expect(within(row).queryByText('SYN-IB-0001')).not.toBeInTheDocument();
+  });
+
+  /**
+   * ⭐ **품목이 줄 하나를 통째로 쓴다**(사용자 지시 2026-09-19). 첫 줄 가운데 칸에 두었을 때
+   * 그 칸이 1024×768 에서 146px 뿐이라 실제 품목이 네 줄로 접혔다(실측) — 줄 높이가 148px 까지
+   * 부풀어 405px 짜리 목록에 두세 줄밖에 서지 못했다.
    *
    * ⚠ **수량은 한 덩어리다.** 「150」과 「EA」가 갈려 서면 두 값처럼 읽힌다 — 좁은 창에서
    * 실제로 그렇게 나왔다(사용자 지적 2026-09-10).
    */
-  it('입하일은 품목 자리 아래에 서고 수량은 한 덩어리로 선다', async () => {
+  it('품목명은 한 줄을 통째로 쓰고 첫 줄은 입하일·공급사·수량으로 갈린다', async () => {
     renderScreen();
 
-    expect(await screen.findByText('08-27')).toHaveClass('pop-material-lot-line-date');
-    expect(screen.getByText('SYN-ITEM-01 · 합성 품목 가')).toHaveClass(
-      'pop-material-lot-line-item',
-    );
-    expect(await screen.findByText('500 EA')).toHaveClass('pop-material-lot-line-qty');
+    const itemName = await screen.findByText('합성 품목 가');
+
+    expect(itemName).toHaveClass('pop-material-lot-line-item-value');
+    expect(itemName.parentElement).toHaveClass('pop-material-lot-line-item');
+    expect(screen.getByText('SYN-ITEM-01')).toHaveClass('pop-material-lot-line-item-code');
+    expect(screen.getByText('08-27')).toHaveClass('pop-material-lot-line-date');
+    expect(screen.getByText('500 EA')).toHaveClass('pop-material-lot-line-qty');
   });
 
   /**
@@ -416,7 +445,7 @@ describe('PopMaterialLotLabelScreen — 입하 목록', () => {
     const { user } = renderScreen();
 
     // 품목 칸에는 조작이 없다. 그 글자를 눌러도 그 줄의 선택이 뒤집혀야 한다.
-    await user.click(await screen.findByText('SYN-ITEM-01 · 합성 품목 가'));
+    await user.click(await screen.findByText('합성 품목 가'));
 
     expect(
       await screen.findByRole('button', {
@@ -428,7 +457,7 @@ describe('PopMaterialLotLabelScreen — 입하 목록', () => {
   it('같은 줄의 다른 칸을 다시 누르면 선택이 풀린다 — 무를 수단이 없으면 갇힌다', async () => {
     const { user } = renderScreen();
 
-    const itemCell = await screen.findByText('SYN-ITEM-01 · 합성 품목 가');
+    const itemCell = await screen.findByText('합성 품목 가');
     await user.click(itemCell);
     await user.click(itemCell);
 
@@ -447,7 +476,7 @@ describe('PopMaterialLotLabelScreen — 입하 목록', () => {
   it('열 머리글 줄을 두지 않는다', async () => {
     renderScreen();
 
-    await screen.findByText('SYN-IB-0001');
+    await screen.findByRole('button', { name: /SYN-IB-0001/u });
 
     expect(screen.queryAllByRole('columnheader')).toHaveLength(0);
   });
@@ -541,15 +570,26 @@ describe('PopMaterialLotLabelScreen — 채번 대상', () => {
     expect(await screen.findByText('왼쪽에서 자재를 고르세요.')).toBeInTheDocument();
   });
 
-  it('고르면 품목·수량·공급사가 뜬다', async () => {
+  /**
+   * ⭐ **입하번호와 품목코드·품목명이 여기서 갈려 선다**(사용자 지시 2026-09-19). 목록은 품목을
+   * 한 줄로 붙여 내고, 무엇을 찍을지 확인하는 이 카드는 칸을 갈라 낸다 — 실물 라벨과 눈으로
+   * 대조하는 것은 코드 쪽이다.
+   */
+  it('고르면 입하번호·품목코드·품목명·수량·공급사코드·공급사명이 뜬다', async () => {
     const { user } = renderScreen();
 
     await selectFirst(user);
     const target = screen.getByLabelText('채번 대상');
 
-    expect(await within(target).findByText('SYN-ITEM-01 · 합성 품목 가')).toBeInTheDocument();
+    expect(await within(target).findByText('SYN-ITEM-01')).toBeInTheDocument();
+    expect(within(target).getByText('합성 품목 가')).toBeInTheDocument();
+    /* 붙여 놓은 한 줄은 카드에 서지 않는다 — 갈라 낸 것이 요구다. */
+    expect(within(target).queryByText('SYN-ITEM-01 · 합성 품목 가')).not.toBeInTheDocument();
+    expect(within(target).getByText('SYN-IB-0001')).toBeInTheDocument();
     expect(within(target).getByText('500 EA')).toBeInTheDocument();
-    expect(within(target).getByText('SYN-P-01 · 합성 공급사 가')).toBeInTheDocument();
+    expect(within(target).getByText('SYN-P-01')).toBeInTheDocument();
+    expect(within(target).getByText('합성 공급사 가')).toBeInTheDocument();
+    expect(within(target).queryByText('SYN-P-01 · 합성 공급사 가')).not.toBeInTheDocument();
   });
 
   /**
@@ -625,7 +665,7 @@ describe('PopMaterialLotLabelScreen — 프린터 상태', () => {
     renderScreen({ printersFail: true });
 
     expect(await screen.findByText('프린터 상태를 확인할 수 없습니다.')).toBeInTheDocument();
-    expect(await screen.findByText('SYN-IB-0001')).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: /SYN-IB-0001/u })).toBeInTheDocument();
   });
 
   it('문서 유형으로 프린터를 거르지 않는다', async () => {
