@@ -550,7 +550,13 @@ describe('입하 등록 화면', () => {
   });
 
   /* 미부착 분기는 데이터에 있는 구분이다. 사유 없이 참으로 보내면 서버가 거부한다. */
-  it('LOT 번호 없음을 고르면 대체 사유를 받는다', async () => {
+  /**
+   * ⭐ **사유는 등록 단추 «바로 위»에 선다**(사용자 지시 2026-09-19 · omf-all-around#34).
+   *
+   * 필수값이라 누르기 직전에 한 번 더 눈에 들어와야 한다 — 스캔 구역에 두면 발주·수량을 거치는
+   * 사이 화면 밖으로 밀려났다.
+   */
+  it('LOT 번호 없음을 고르면 등록 단추 바로 위에서 대체 사유를 받는다', async () => {
     const user = userEvent.setup();
     mount();
 
@@ -558,7 +564,19 @@ describe('입하 등록 화면', () => {
     await user.click(screen.getByRole('button', { name: 'LOT 번호 없음' }));
 
     expect(await screen.findByText('공급사 LOT 번호가 없습니다.')).toBeTruthy();
-    expect(screen.getByText(/대체\ LOT\ 사유/)).toBeTruthy();
+
+    const reason = screen.getByText(/대체\ LOT\ 사유/);
+    const submit = screen.getByRole('button', { name: '입하 등록' });
+
+    /* 문서 차례로 사유가 먼저, 그 바로 뒤가 등록 단추다. */
+    expect(reason.compareDocumentPosition(submit) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    const between = [...document.querySelectorAll('section.receipt__section')].filter(
+      (section) =>
+        section.contains(reason) === false &&
+        (section.compareDocumentPosition(reason) & Node.DOCUMENT_POSITION_PRECEDING) !== 0 &&
+        (section.compareDocumentPosition(submit) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0,
+    );
+    expect(between).toHaveLength(0);
   });
 
   /* 확인하지 못한 것을 발주가 없는 것으로 말하지 않는다. */
@@ -590,13 +608,24 @@ describe('입하 등록 화면', () => {
   });
 
   /* 없어도 등록을 막지 않는다. 다만 없다는 사실은 말한다. */
-  it('명세서 번호가 없어도 막지 않고 그 사실만 말한다', async () => {
+  /**
+   * ⛔ **거래명세서 구역을 화면에 세우지 않는다**(사용자 지시 2026-09-19 · omf-all-around#34).
+   *
+   * 지운 것이 아니라 감춘 것이다 — 문구도 본문에 값을 싣는 자리도 그대로 두었고, 스위치
+   * (`SHOW_DELIVERY_NOTE`) 하나로 되살린다. 두 칸 모두 선택 입력이라 비어도 등록은 막히지 않는다.
+   */
+  it('거래명세서 구역을 보이지 않는다', async () => {
     mount();
 
     await screen.findByLabelText('LOT 번호');
     scan(SCANNED);
 
-    expect(await screen.findByText('명세서 번호가 없습니다. 등록은 진행됩니다.')).toBeTruthy();
+    /* 스캔 뒤 구역들이 다 선 상태에서 본다 — 등록 단추가 그 마지막이다. */
+    await screen.findByRole('button', { name: '입하 등록' });
+    expect(screen.queryByText('거래명세서')).toBeNull();
+    expect(screen.queryByLabelText('거래명세서번호')).toBeNull();
+    expect(screen.queryByLabelText('차량번호')).toBeNull();
+    expect(screen.queryByText('명세서 번호가 없습니다. 등록은 진행됩니다.')).toBeNull();
   });
 });
 

@@ -63,6 +63,19 @@ const SUPPLIER_LOT_NO_MAX_LENGTH = 100;
 
 type Outcome = 'queued' | 'sent' | 'rejected';
 
+/**
+ * 거래명세서 구역을 화면에 세울 것인가 — **지금은 감춘다**(사용자 지시 2026-09-19 ·
+ * omf-all-around#34).
+ *
+ * ⛔ **지우지 않는다.** 현장에서 다시 쓰기로 하면 이 값만 `true` 로 되돌리면 된다 — 문구
+ *    (i18n)도, 본문에 값을 싣는 자리(`receipt.ts` 의 `deliveryNoteNo` · `vehicleNo`)도 그대로
+ *    두었다.
+ *
+ * ⚠ **구역 제목이 「거래명세서」라 그 안의 차량번호도 함께 감춘다**(사용자 결정). 두 칸 모두
+ *   선택 입력이라 비어도 등록은 막히지 않고, 값이 없으면 본문에 실리지도 않는다(`optional`).
+ */
+const SHOW_DELIVERY_NOTE = false;
+
 const emptyDraft: ReceiptDraft = {
   supplierLotNo: '',
   supplierLotMissing: false,
@@ -619,23 +632,12 @@ export const InboundReceiptScreen = () => {
         {draft.supplierLotMissing ? (
           <>
             <AlertBanner variant="info" title={t.scan.missingChosen} />
-            <div className="receipt__field">
-              <label htmlFor="receipt-reason">{required(t.scan.reasonLabel)}</label>
-              <Select
-                id="receipt-reason"
-                placeholder={t.scan.reasonPlaceholder}
-                size="xl"
-                value={draft.substituteLotReasonCode === '' ? null : draft.substituteLotReasonCode}
-                onChange={(value) => {
-                  patch({ substituteLotReasonCode: String(value) });
-                }}
-                options={(reasons.data ?? []).map((each) => ({
-                  value: each.code,
-                  label: each.name,
-                }))}
-              />
-              {reasons.isError ? <p className="receipt__note">{t.scan.reasonLoadFailed}</p> : null}
-            </div>
+            {/*
+             * ⭐ **사유 입력은 여기 두지 않는다**(사용자 지시 2026-09-19 · omf-all-around#34).
+             *    고른 뒤 발주·수량을 거쳐 화면을 한참 내려가 등록하는데, 그 사이 사유는 화면
+             *    밖으로 밀려난다 — 필수값인데 등록 직전에 확인할 수 없었다. 등록 단추 바로
+             *    위로 옮겼다(아래 `SubstituteLotReason`).
+             */}
             <Button
               variant="text"
               size="lg"
@@ -1043,32 +1045,34 @@ export const InboundReceiptScreen = () => {
             </section>
           ) : null}
 
-          <section className="receipt__section">
-            <h2>{t.note.legend}</h2>
-            <p className="receipt__note">{t.note.photoAbsent}</p>
-            <TextField
-              label={t.note.label}
-              size="xl"
-              fullWidth
-              value={draft.deliveryNoteNo}
-              onChange={(event) => {
-                patch({ deliveryNoteNo: event.target.value });
-              }}
-            />
+          {!SHOW_DELIVERY_NOTE ? null : (
+            <section className="receipt__section">
+              <h2>{t.note.legend}</h2>
+              <p className="receipt__note">{t.note.photoAbsent}</p>
+              <TextField
+                label={t.note.label}
+                size="xl"
+                fullWidth
+                value={draft.deliveryNoteNo}
+                onChange={(event) => {
+                  patch({ deliveryNoteNo: event.target.value });
+                }}
+              />
 
-            <TextField
-              label={t.note.vehicle}
-              size="xl"
-              fullWidth
-              value={draft.vehicleNo}
-              onChange={(event) => {
-                patch({ vehicleNo: event.target.value });
-              }}
-            />
-            {draft.deliveryNoteNo.trim() === '' ? (
-              <AlertBanner variant="warning" title={t.note.absent} />
-            ) : null}
-          </section>
+              <TextField
+                label={t.note.vehicle}
+                size="xl"
+                fullWidth
+                value={draft.vehicleNo}
+                onChange={(event) => {
+                  patch({ vehicleNo: event.target.value });
+                }}
+              />
+              {draft.deliveryNoteNo.trim() === '' ? (
+                <AlertBanner variant="warning" title={t.note.absent} />
+              ) : null}
+            </section>
+          )}
 
           {draft.purchaseOrderLine === null &&
           !(draft.unordered && draft.itemId !== null) ? null : (
@@ -1379,6 +1383,37 @@ export const InboundReceiptScreen = () => {
            * 동안만 풀면 같은 단추가 상태에 따라 붙었다 흘렀다 한다. 등록은 다 채운 뒤에
            * 하는 마지막 일이라 흐름 끝에 두어도 찾는 데 문제가 없다.
            */}
+          {/*
+           * ⭐ **대체 LOT 사유는 등록 단추 바로 위에 선다**(사용자 지시 2026-09-19 ·
+           *    omf-all-around#34). 필수값이라 누르기 직전에 한 번 더 눈에 들어와야 한다 — 스캔
+           *    구역에 두면 발주·수량을 거치는 사이 화면 밖으로 밀려났다.
+           */}
+          {draft.supplierLotMissing ? (
+            <section className="receipt__section">
+              <div className="receipt__field">
+                <label htmlFor="receipt-reason">{required(t.scan.reasonLabel)}</label>
+                <Select
+                  id="receipt-reason"
+                  placeholder={t.scan.reasonPlaceholder}
+                  size="xl"
+                  value={
+                    draft.substituteLotReasonCode === '' ? null : draft.substituteLotReasonCode
+                  }
+                  onChange={(value) => {
+                    patch({ substituteLotReasonCode: String(value) });
+                  }}
+                  options={(reasons.data ?? []).map((each) => ({
+                    value: each.code,
+                    label: each.name,
+                  }))}
+                />
+                {reasons.isError ? (
+                  <p className="receipt__note">{t.scan.reasonLoadFailed}</p>
+                ) : null}
+              </div>
+            </section>
+          ) : null}
+
           {verdict === OVER ? null : (
             <Button
               className="receipt__wide"
