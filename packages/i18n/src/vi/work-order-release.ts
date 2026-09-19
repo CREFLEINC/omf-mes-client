@@ -141,8 +141,7 @@ export const workOrderRelease: Translated<typeof ko.workOrderRelease> = {
     openAssignment: 'Thiết lập ở phân bổ 4M',
   },
   locations: {
-    missingTitle: 'Thiếu vị trí mặc định',
-    missingDescription: 'Các vị trí mặc định sau chưa được thiết lập.',
+    missingList: (names: string) => `(Thiếu: ${names})`,
     wip: 'Vị trí WIP',
     finishedGoods: 'Vị trí thành phẩm',
     scrap: 'Vị trí phế liệu',

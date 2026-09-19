@@ -127,8 +127,8 @@ export const workOrderRelease = {
     openAssignment: '4M 자원배정에서 설정',
   },
   locations: {
-    missingTitle: '기본 위치가 누락됨',
-    missingDescription: '다음 기본 위치가 설정되지 않았습니다.',
+    /** 상태 문구 뒤에 붙는 누락 위치 목록 — 별도 경고 배너는 같은 말을 반복해 없앴다 */
+    missingList: (names: string): string => `(누락: ${names})`,
     wip: 'WIP 위치',
     finishedGoods: '완제품 위치',
     scrap: '스크랩 위치',

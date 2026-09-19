@@ -114,26 +114,25 @@ describe('WorkOrderReleaseStatusPane', () => {
     expect(screen.queryByText(/최종.*준비|최종.*완료/)).toBeNull();
   });
 
-  it('renders supplied missing locations in order without raw IDs', () => {
+  it('names the missing locations in order inside the one status banner', () => {
     const { container } = renderPane({
-      preconditions: preconditions({ missingDefaultLocations: ['scrap', 'wip', 'finishedGoods'] }),
+      preconditions: preconditions({
+        passesStaticGate: false,
+        blockReason: 'missingDefaultLocations',
+        missingDefaultLocations: ['scrap', 'wip', 'finishedGoods'],
+      }),
     });
-    const warning = screen.getByRole('alert');
-    const bannerSlot = container.querySelector('.banner-slot');
 
-    expect(screen.getByText(t.locations.missingTitle)).toBeVisible();
-    expect(screen.getByText(new RegExp(t.locations.missingDescription))).toBeVisible();
-    expect(warning).toHaveTextContent(t.locations.missingTitle);
-    expect(warning).toHaveTextContent(t.locations.missingDescription);
-    expect(warning).toHaveTextContent(
-      `${t.locations.scrap}, ${t.locations.wip}, ${t.locations.finishedGoods}`,
+    const [banner, ...others] = screen.getAllByRole('alert');
+    expect(others).toHaveLength(0);
+    expect(banner).toHaveTextContent(t.status.missingDefaultLocations);
+    expect(banner).toHaveTextContent(
+      t.locations.missingList(
+        `${t.locations.scrap}, ${t.locations.wip}, ${t.locations.finishedGoods}`,
+      ),
     );
-    expect(warning.className).toContain('warning');
-    expect(bannerSlot).not.toBeNull();
-    expect(bannerSlot).toContainElement(screen.getByText(t.status.staticPassed));
+    expect(container.querySelector('.banner-slot')).toBeNull();
     expect(screen.queryByText('911')).toBeNull();
-    expect(screen.queryByText('912')).toBeNull();
-    expect(screen.queryByText('913')).toBeNull();
   });
 
   it('suppresses missing-location warning when none are supplied and has no controls', () => {

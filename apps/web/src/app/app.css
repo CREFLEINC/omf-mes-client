@@ -1022,6 +1022,23 @@ main > * + * {
   letter-spacing: var(--type-title-lg-tracking);
 }
 
+/* 조치 버튼을 문구 «오른쪽»에 둔다 — 공용 배너는 설명 아래에 두므로 이 배너만 가로로 편다. */
+.work-order-release-status-banner {
+  align-items: center;
+}
+
+.work-order-release-status-banner > [class*='content'] {
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.work-order-release-status-banner [class*='action'] {
+  margin-top: 0;
+}
+
 .work-order-release-filter {
   margin-bottom: 0;
 }

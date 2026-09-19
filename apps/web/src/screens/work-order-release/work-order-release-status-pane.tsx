@@ -96,25 +96,19 @@ export const WorkOrderReleaseStatusPane = ({
     FIXED_IN_ASSIGNMENT.includes(preconditions.blockReason) ? (
       <OpenAssignmentButton target={assignmentTarget} />
     ) : undefined;
-  const statusBanner = (
-    <AlertBanner variant={status.variant} action={fixAction}>
-      {status.message}
-    </AlertBanner>
-  );
 
   return (
     <section className="pane work-order-release-status-pane" aria-label={t.pane}>
       <h2 className="pane-title">{t.heading(selectedWorkOrderNo)}</h2>
-      {missingLocations === '' ? (
-        statusBanner
-      ) : (
-        <>
-          <div className="banner-slot">{statusBanner}</div>
-          <AlertBanner variant="warning" title={t.locations.missingTitle}>
-            {t.locations.missingDescription} {missingLocations}
-          </AlertBanner>
-        </>
-      )}
+      <AlertBanner
+        className="work-order-release-status-banner"
+        variant={status.variant}
+        action={fixAction}
+      >
+        {missingLocations === ''
+          ? status.message
+          : `${status.message} ${t.locations.missingList(missingLocations)}`}
+      </AlertBanner>
     </section>
   );
 };
