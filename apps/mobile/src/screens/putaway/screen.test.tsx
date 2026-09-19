@@ -341,7 +341,8 @@ describe('적치·입고 완료 화면', () => {
     });
   });
 
-  it('담당자와 적치 대기 상태로 좁혀 묻는다', async () => {
+  /* omf-all-around#26 — 적치에는 담당자가 없어 담당자로 거르지 않는다. */
+  it('사번 확인 뒤 담당자 없이 적치 대기 상태로 묻는다', async () => {
     const seen: URL[] = [];
     mount([
       {
@@ -355,7 +356,7 @@ describe('적치·입고 완료 화면', () => {
 
     await screen.findByRole('button', { name: /RM-1001/ });
 
-    expect(seen[0]?.searchParams.get('assignedWorkerId')).toBe('77');
+    expect(seen[0]?.searchParams.has('assignedWorkerId')).toBe(false);
     expect(seen[0]?.searchParams.get('statusCode')).toBe('PENDING');
   });
 
