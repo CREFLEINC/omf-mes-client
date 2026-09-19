@@ -1,13 +1,14 @@
 import { describe, expect, it } from 'vitest';
 
 import {
-  NORMAL,
-  OVER,
-  UNDER,
   businessDateOf,
   canSubmit,
-  openLinesFirst,
+  DEFAULT_SUBSTITUTE_LOT_REASON,
+  defaultSubstituteLotReason,
   isExpiryBeforeManufactured,
+  NORMAL,
+  openLinesFirst,
+  OVER,
   packageProblem,
   qtyProblem,
   queuedQtyOf,
@@ -15,6 +16,7 @@ import {
   splitQuantitiesOf,
   toOutboxDraft,
   toSplitOutboxDraft,
+  UNDER,
   verdictOf,
   type PurchaseOrder,
   type PurchaseOrderLine,
@@ -612,5 +614,29 @@ describe('담긴 입하 셈', () => {
     expect(remainingQtyOf(line, 500)).toBe(0);
     expect(verdictOf(line, 500, 0)).toBe(NORMAL);
     expect(verdictOf(line, 500, 500)).toBe(OVER);
+  });
+});
+
+/**
+ * ⭐ **사유 선택칸의 기본값은 「라벨 미부착」이다**(사용자 지시 2026-09-19 · omf-all-around#34).
+ *
+ * ⛔ 값을 지어내지 않는다 — 고객이 값 목록을 늘리고 줄이므로, 서버가 준 목록에 그 값이 실제로
+ *    있을 때만 고른다.
+ */
+describe('defaultSubstituteLotReason', () => {
+  const reasons = [{ code: 'NO_LABEL' }, { code: 'LABEL_DAMAGED' }, { code: 'OTHER' }];
+
+  it('아직 고르지 않았으면 라벨 미부착을 고른다', () => {
+    expect(defaultSubstituteLotReason(reasons, '')).toBe(DEFAULT_SUBSTITUTE_LOT_REASON);
+  });
+
+  /** ⛔ 사람이 고른 값을 덮으면 무엇을 보낼지가 조용히 바뀐다 — 목록은 다시 오기도 한다. */
+  it('이미 고른 값은 덮지 않는다', () => {
+    expect(defaultSubstituteLotReason(reasons, 'OTHER')).toBeNull();
+  });
+
+  it('목록에 없는 값을 고르지 않는다 — 고객이 뺀 자리다', () => {
+    expect(defaultSubstituteLotReason([{ code: 'OTHER' }], '')).toBeNull();
+    expect(defaultSubstituteLotReason([], '')).toBeNull();
   });
 });

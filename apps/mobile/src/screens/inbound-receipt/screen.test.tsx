@@ -563,9 +563,10 @@ describe('입하 등록 화면', () => {
     await screen.findByLabelText('LOT 번호');
     await user.click(screen.getByRole('button', { name: 'LOT 번호 없음' }));
 
-    expect(await screen.findByText('공급사 LOT 번호가 없습니다.')).toBeTruthy();
+    /* ⛔ 「공급사 LOT 번호가 없습니다」 띠는 세우지 않는다(사용자 지시 2026-09-19). */
+    expect(screen.queryByText('공급사 LOT 번호가 없습니다.')).toBeNull();
 
-    const reason = screen.getByText(/대체\ LOT\ 사유/);
+    const reason = await screen.findByText(/대체\ LOT\ 사유/);
     const submit = screen.getByRole('button', { name: '입하 등록' });
 
     /* 문서 차례로 사유가 먼저, 그 바로 뒤가 등록 단추다. */
@@ -608,6 +609,30 @@ describe('입하 등록 화면', () => {
   });
 
   /* 없어도 등록을 막지 않는다. 다만 없다는 사실은 말한다. */
+  /**
+   * ⭐ **사유는 「라벨 미부착」이 미리 골라져 있고, 두 단추는 한 줄에 선다**(사용자 지시
+   * 2026-09-19 · omf-all-around#34).
+   */
+  it('LOT 번호 없음을 고르면 사유가 미리 골라지고 단추 둘이 한 줄에 선다', async () => {
+    const user = userEvent.setup();
+    mount();
+
+    await screen.findByLabelText('LOT 번호');
+    await user.click(screen.getByRole('button', { name: 'LOT 번호 없음' }));
+
+    /*
+     * 목록이 도착하면 고른 값이 선택칸에 보인다 — 「사유를 고르세요」가 아니다.
+     * ⚠ 보이는 글자는 서버가 준 이름이다. 이 시험의 대역은 `NO_LABEL` 을 「라벨 없음」으로 준다.
+     */
+    expect(await screen.findByText('라벨 없음')).toBeTruthy();
+
+    const manual = screen.getByRole('button', { name: '직접 입력' });
+    const back = screen.getByRole('button', { name: '스캔으로 되돌리기' });
+
+    expect(manual.parentElement).toHaveClass('receipt__row');
+    expect(back.parentElement).toBe(manual.parentElement);
+  });
+
   /**
    * ⛔ **거래명세서 구역을 화면에 세우지 않는다**(사용자 지시 2026-09-19 · omf-all-around#34).
    *

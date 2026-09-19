@@ -32,6 +32,7 @@ import {
   OVER,
   UNDER,
   canSubmit,
+  defaultSubstituteLotReason,
   hasScannedLabel,
   isExpiryBeforeManufactured,
   labelMismatchOf,
@@ -338,6 +339,23 @@ export const InboundReceiptScreen = () => {
   const lines = usePurchaseOrderLines(draft.purchaseOrder?.purchaseOrderId ?? null);
   const reasons = useCodeValues(SUBSTITUTE_LOT_REASON);
   const exceptionTypes = useCodeValues(INBOUND_RECEIPT_EXCEPTION_TYPE);
+
+  /*
+   * ⭐ **대체 LOT 사유의 기본값을 미리 골라 둔다** — 「라벨 미부착」(사용자 지시 2026-09-19 ·
+   *    omf-all-around#34). 목록은 서버가 주므로 도착한 뒤에야 고를 수 있다.
+   *
+   * ⛔ **이미 고른 값을 덮지 않는다.** 판정은 `defaultSubstituteLotReason` 한 곳에 있다 —
+   *    목록이 다시 와도 사람이 고른 사유가 기본값으로 되돌아가지 않는다.
+   */
+  useEffect(() => {
+    if (!draft.supplierLotMissing) return;
+
+    const picked = defaultSubstituteLotReason(reasons.data ?? [], draft.substituteLotReasonCode);
+
+    if (picked === null) return;
+
+    patch({ substituteLotReasonCode: picked });
+  }, [draft.supplierLotMissing, draft.substituteLotReasonCode, reasons.data]);
   const item = useItem((draft.unordered ? draft.itemId : draft.purchaseOrderLine?.itemId) ?? null);
   const uoms = useUomCodes(true);
   /* 목록의 발주 라인은 품목 식별자만 준다. 그 번호로는 실물 라벨과 대조할 수 없다. */
@@ -614,33 +632,30 @@ export const InboundReceiptScreen = () => {
          * 스캔 칸 하나로 받는다. 스캐너를 기다리는 동안에는 키보드를 열지 않고, 직접
          * 입력을 누르면 그 칸이 열린다. 치는 도중 스캔이 오면 스캔값이 이긴다.
          */}
-        {scanField.manual ? (
-          <Button
-            className="receipt__wide"
-            variant="outlined"
-            size="xl"
-            onClick={scanField.submitManual}
-          >
-            {t.scan.manualSubmit}
-          </Button>
-        ) : (
-          <Button className="receipt__wide" variant="text" size="xl" onClick={scanField.openManual}>
-            {t.scan.manualLabel}
-          </Button>
-        )}
-
-        {draft.supplierLotMissing ? (
-          <>
-            <AlertBanner variant="info" title={t.scan.missingChosen} />
-            {/*
-             * ⭐ **사유 입력은 여기 두지 않는다**(사용자 지시 2026-09-19 · omf-all-around#34).
-             *    고른 뒤 발주·수량을 거쳐 화면을 한참 내려가 등록하는데, 그 사이 사유는 화면
-             *    밖으로 밀려난다 — 필수값인데 등록 직전에 확인할 수 없었다. 등록 단추 바로
-             *    위로 옮겼다(아래 `SubstituteLotReason`).
-             */}
+        {/*
+         * ⭐ **직접 입력과 되돌리기를 한 줄에 나란히 둔다**(사용자 지시 2026-09-19 ·
+         *    omf-all-around#34). 세로로 쌓으면 스캔 칸과 아래 구획 사이가 단추로 메워진다.
+         *
+         * ⛔ **「공급사 LOT 번호가 없습니다」 띠를 세우지 않는다**(같은 지시). 고른 사람이 방금
+         *    누른 것을 되풀이해 말할 뿐이고, 사유 선택칸이 아래에서 같은 사실을 이미 말한다.
+         *
+         * ⭐ **사유 입력은 여기 두지 않는다.** 고른 뒤 발주·수량을 거쳐 화면을 한참 내려가
+         *    등록하는데, 그 사이 사유는 화면 밖으로 밀려난다 — 등록 단추 바로 위로 옮겼다.
+         */}
+        <div className="receipt__row">
+          {scanField.manual ? (
+            <Button variant="outlined" size="xl" onClick={scanField.submitManual}>
+              {t.scan.manualSubmit}
+            </Button>
+          ) : (
+            <Button variant="text" size="xl" onClick={scanField.openManual}>
+              {t.scan.manualLabel}
+            </Button>
+          )}
+          {draft.supplierLotMissing ? (
             <Button
               variant="text"
-              size="lg"
+              size="xl"
               onClick={() => {
                 patch({
                   supplierLotMissing: false,
@@ -651,8 +666,10 @@ export const InboundReceiptScreen = () => {
             >
               {t.scan.back}
             </Button>
-          </>
-        ) : draft.supplierLotNo === '' ? (
+          ) : null}
+        </div>
+
+        {draft.supplierLotMissing ? null : draft.supplierLotNo === '' ? (
           <>
             {externalLotInput ? (
               <div className="receipt__field">
