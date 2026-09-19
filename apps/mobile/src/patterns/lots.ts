@@ -35,12 +35,20 @@ const findLot = async (client: Client, code: string): Promise<ScannedLot> => {
  * 스캔값으로 LOT을 찾는다. 찾지 못한 것과 조회가 실패한 것을 훅이 갈라 준다 —
  * 전자는 데이터가 돌아온 정상 결과(null)이고 후자는 오류 상태다.
  */
-export const useScannedLot = (code: string | null): UseQueryResult<ScannedLot> => {
+export const useScannedLot = (
+  code: string | null,
+  /**
+   * 댈 때마다 서버에 다시 묻는다. 「이미 있는가」를 가르는 확인은 앞서 받은 「없음」을 믿으면
+   * 안 된다 — 그 사이 이 단말의 입하가 그 LOT 을 만들었을 수 있다(omf-all-around#28).
+   */
+  options: { alwaysFresh?: boolean } = {},
+): UseQueryResult<ScannedLot> => {
   const { client } = useApiClient();
 
   return useQuery({
     queryKey: lotKeys.scanned(code),
     enabled: code !== null,
+    ...(options.alwaysFresh === true ? { staleTime: 0 } : {}),
     queryFn: () => {
       if (code === null) {
         throw new Error('스캔하기 전에는 LOT을 조회하지 않습니다.');
