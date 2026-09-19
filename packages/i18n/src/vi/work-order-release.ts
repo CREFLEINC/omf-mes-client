@@ -138,6 +138,7 @@ export const workOrderRelease: Translated<typeof ko.workOrderRelease> = {
       'Không tải được kết quả kiểm tra. Hãy chọn lại hoặc làm mới trang rồi tiếp tục.',
     missingDefaultLocations:
       'Hãy thiết lập vị trí WIP, thành phẩm và phế liệu mặc định rồi kiểm tra lại.',
+    openAssignment: 'Thiết lập ở phân bổ 4M',
   },
   locations: {
     missingTitle: 'Thiếu vị trí mặc định',

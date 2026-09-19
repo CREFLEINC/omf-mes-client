@@ -15,6 +15,7 @@ import { useWorkOrderList, useWorkOrderValidation, type WorkOrderFact } from './
 import { useWorkOrderScreenContext } from './screen-context';
 import {
   readWorkOrderProductionPlanId,
+  readWorkOrderSelectedId,
   toWorkOrderScreenRow,
   workOrderFieldErrorMessage,
 } from './screen-model';
@@ -40,11 +41,13 @@ const priorityError = (fact: WorkOrderFact, priorityText: string): string | unde
 
 export const WorkOrderAssignmentWorkspace = ({
   productionPlanId,
+  initialWorkOrderId = null,
 }: {
   productionPlanId: number;
+  initialWorkOrderId?: number | null;
 }) => {
   const [page, setPage] = useState(1);
-  const [selectedWorkOrderId, setSelectedWorkOrderId] = useState<number | null>(null);
+  const [selectedWorkOrderId, setSelectedWorkOrderId] = useState<number | null>(initialWorkOrderId);
   const [priorities, setPriorities] = useState<Record<number, string>>({});
   const context = useWorkOrderScreenContext(productionPlanId);
   const workOrders = useWorkOrderList(productionPlanId, page);
@@ -204,6 +207,7 @@ export const WorkOrderAssignmentWorkspace = ({
 export const WorkOrderAssignmentScreen = () => {
   const [searchParams] = useSearchParams();
   const productionPlanId = readWorkOrderProductionPlanId(searchParams);
+  const initialWorkOrderId = readWorkOrderSelectedId(searchParams);
 
   return (
     <>
@@ -213,7 +217,11 @@ export const WorkOrderAssignmentScreen = () => {
           <Link to="/production/production-plans">{t.selectPlanLink}</Link>
         </AlertBanner>
       ) : (
-        <WorkOrderAssignmentWorkspace key={productionPlanId} productionPlanId={productionPlanId} />
+        <WorkOrderAssignmentWorkspace
+          key={productionPlanId}
+          productionPlanId={productionPlanId}
+          initialWorkOrderId={initialWorkOrderId}
+        />
       )}
     </>
   );

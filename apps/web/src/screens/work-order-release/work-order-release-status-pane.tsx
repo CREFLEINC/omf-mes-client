@@ -1,7 +1,12 @@
-import { AlertBanner, EmptyState, type AlertVariant } from '@crefle/web-ui';
+import { AlertBanner, Button, EmptyState, type AlertVariant } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
+import { useNavigate } from 'react-router';
 
-import type { WorkOrderReleasePreconditions } from './release-preconditions';
+import { workOrderAssignmentPath } from '../work-order/screen-model';
+import type {
+  WorkOrderReleaseBlockReason,
+  WorkOrderReleasePreconditions,
+} from './release-preconditions';
 
 const t = messages.workOrderRelease;
 
@@ -31,14 +36,43 @@ const toStatusPresentation = (preconditions: WorkOrderReleasePreconditions): Sta
   }
 };
 
+/** 이 차단은 W-02-03 에서 고친다 — 위치는 Material 칸, 검증 차단은 4M 배정이다. */
+const FIXED_IN_ASSIGNMENT: readonly WorkOrderReleaseBlockReason[] = [
+  'missingDefaultLocations',
+  'validationBlocked',
+];
+
+export interface WorkOrderReleaseAssignmentTarget {
+  productionPlanId: number;
+  workOrderId: number;
+}
+
+const OpenAssignmentButton = ({ target }: { target: WorkOrderReleaseAssignmentTarget }) => {
+  const navigate = useNavigate();
+  return (
+    <Button
+      size="sm"
+      variant="outlined"
+      onClick={() =>
+        void navigate(workOrderAssignmentPath(target.productionPlanId, target.workOrderId))
+      }
+    >
+      {t.status.openAssignment}
+    </Button>
+  );
+};
+
 export interface WorkOrderReleaseStatusPaneProps {
   selectedWorkOrderNo: string | null;
   preconditions: WorkOrderReleasePreconditions;
+  /** 고칠 화면으로 보낼 W/O. 상세를 아직 못 받았으면 null — 버튼을 내지 않는다. */
+  assignmentTarget?: WorkOrderReleaseAssignmentTarget | null;
 }
 
 export const WorkOrderReleaseStatusPane = ({
   selectedWorkOrderNo,
   preconditions,
+  assignmentTarget = null,
 }: WorkOrderReleaseStatusPaneProps) => {
   if (selectedWorkOrderNo === null || preconditions.blockReason === 'noSelection') {
     return (
@@ -56,7 +90,17 @@ export const WorkOrderReleaseStatusPane = ({
   const missingLocations = preconditions.missingDefaultLocations
     .map((location) => t.locations[location])
     .join(', ');
-  const statusBanner = <AlertBanner variant={status.variant}>{status.message}</AlertBanner>;
+  const fixAction =
+    assignmentTarget !== null &&
+    preconditions.blockReason !== null &&
+    FIXED_IN_ASSIGNMENT.includes(preconditions.blockReason) ? (
+      <OpenAssignmentButton target={assignmentTarget} />
+    ) : undefined;
+  const statusBanner = (
+    <AlertBanner variant={status.variant} action={fixAction}>
+      {status.message}
+    </AlertBanner>
+  );
 
   return (
     <section className="pane work-order-release-status-pane" aria-label={t.pane}>

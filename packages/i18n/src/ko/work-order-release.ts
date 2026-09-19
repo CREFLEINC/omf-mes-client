@@ -123,6 +123,8 @@ export const workOrderRelease = {
     validationUnavailable:
       '검증 결과를 불러올 수 없습니다. 다시 선택하거나 새로고침한 뒤 계속하세요.',
     missingDefaultLocations: '기본 WIP·완제품·스크랩 위치를 설정한 뒤 다시 확인하세요.',
+    /** 위치 누락·검증 차단은 둘 다 W-02-03 에서 고친다 — 그 화면으로 가는 버튼 */
+    openAssignment: '4M 자원배정에서 설정',
   },
   locations: {
     missingTitle: '기본 위치가 누락됨',

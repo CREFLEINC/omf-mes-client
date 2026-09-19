@@ -134,6 +134,14 @@ const SelectedWorkOrderReleaseExecution = ({
       <WorkOrderReleaseStatusPane
         selectedWorkOrderNo={ownedDetail?.workOrderNo ?? null}
         preconditions={readiness.preconditions}
+        assignmentTarget={
+          ownedDetail === null
+            ? null
+            : {
+                productionPlanId: ownedDetail.productionPlanId,
+                workOrderId: ownedDetail.workOrderId,
+              }
+        }
       />
       <WorkOrderValidationPane
         selectedWorkOrderNo={ownedDetail?.workOrderNo ?? null}

@@ -1,5 +1,7 @@
 import { messages } from '@omf-mes/i18n';
 import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { MemoryRouter, Route, Routes, useLocation } from 'react-router';
 import { describe, expect, it } from 'vitest';
 
 import type { WorkOrderReleasePreconditions } from './release-preconditions';
@@ -142,5 +144,71 @@ describe('WorkOrderReleaseStatusPane', () => {
     expect(screen.queryByRole('button')).toBeNull();
     expect(screen.queryByRole('textbox')).toBeNull();
     expect(screen.queryByRole('combobox')).toBeNull();
+  });
+
+  describe('fix button to the 4M screen', () => {
+    const target = { productionPlanId: 501, workOrderId: 701 };
+    const Landing = () => {
+      const location = useLocation();
+      return <p data-testid="landed">{`${location.pathname}${location.search}`}</p>;
+    };
+    const renderRouted = (result: WorkOrderReleasePreconditions) =>
+      render(
+        <MemoryRouter initialEntries={['/production/work-order-release']}>
+          <Routes>
+            <Route
+              path="/production/work-order-release"
+              element={
+                <WorkOrderReleaseStatusPane
+                  selectedWorkOrderNo="SYN-WO-ALPHA"
+                  preconditions={result}
+                  assignmentTarget={target}
+                />
+              }
+            />
+            <Route path="/production/work-order-assignments" element={<Landing />} />
+          </Routes>
+        </MemoryRouter>,
+      );
+
+    it.each([
+      preconditions({
+        passesStaticGate: false,
+        blockReason: 'missingDefaultLocations',
+        missingDefaultLocations: ['wip', 'scrap'],
+      }),
+      preconditions({ passesStaticGate: false, blockReason: 'validationBlocked' }),
+    ])('opens the 4M screen on the blocked W/O for $blockReason', async (result) => {
+      renderRouted(result);
+
+      await userEvent.click(screen.getByRole('button', { name: t.status.openAssignment }));
+
+      expect(screen.getByTestId('landed')).toHaveTextContent(
+        '/production/work-order-assignments?productionPlanId=501&workOrderId=701',
+      );
+    });
+
+    it.each([
+      preconditions(),
+      preconditions({ passesStaticGate: false, blockReason: 'alreadyReleased' }),
+      preconditions({ passesStaticGate: false, blockReason: 'validationUnavailable' }),
+    ])('offers no fix button when 4M cannot fix it ($blockReason)', (result) => {
+      renderRouted(result);
+
+      expect(screen.queryByRole('button', { name: t.status.openAssignment })).toBeNull();
+    });
+
+    it('offers no fix button before the W/O detail is known', () => {
+      renderPane({
+        preconditions: preconditions({
+          passesStaticGate: false,
+          blockReason: 'missingDefaultLocations',
+          missingDefaultLocations: ['wip'],
+        }),
+        assignmentTarget: null,
+      });
+
+      expect(screen.queryByRole('button', { name: t.status.openAssignment })).toBeNull();
+    });
   });
 });

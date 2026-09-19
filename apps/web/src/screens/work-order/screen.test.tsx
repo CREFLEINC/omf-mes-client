@@ -137,6 +137,28 @@ it('opens the exact production plan workspace from the public route parameter', 
   expect(contextPane.parentElement).toHaveClass('work-order-assignment-workspace');
 });
 
+it('opens with the W/O another screen sent to be fixed already selected', () => {
+  render(
+    <MemoryRouter
+      initialEntries={['/production/work-order-assignments?productionPlanId=501&workOrderId=701']}
+    >
+      <WorkOrderAssignmentScreen />
+    </MemoryRouter>,
+  );
+
+  expect(screen.getByTestId('editor')).toHaveTextContent('701:601:2:open');
+});
+
+it('opens with nothing selected when the route carries no W/O', () => {
+  render(
+    <MemoryRouter initialEntries={['/production/work-order-assignments?productionPlanId=501']}>
+      <WorkOrderAssignmentScreen />
+    </MemoryRouter>,
+  );
+
+  expect(screen.queryByTestId('editor')).toBeNull();
+});
+
 it('joins exact context, display references, selection, and shared priority draft', async () => {
   const user = userEvent.setup();
   renderScreen();
