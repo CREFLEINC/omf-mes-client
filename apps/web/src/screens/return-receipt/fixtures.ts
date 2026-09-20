@@ -337,40 +337,31 @@ export const returnStub = (options: ReturnStubOptions = {}): StubFetch => {
           ]),
         ),
     },
-    {
-      match: (request) => pathOf(request) === '/mdm/items',
+    /*
+     * 품목은 **번호마다 상세**를 부른다(`GET /mdm/items/{itemId}`) — 목록이 아니다.
+     * 응답이 `{ item, editability }` 봉투라는 것까지 여기서 굳힌다.
+     */
+    ...[
+      { itemId: 2003, itemCode: 'SYN-FG-1', itemName: '합성 제품 1' },
+      { itemId: 2004, itemCode: 'SYN-FG-2', itemName: '합성 제품 2' },
+    ].map((each) => ({
+      match: (request: Request) => pathOf(request) === `/mdm/items/${String(each.itemId)}`,
       respond: () =>
-        jsonResponse(
-          listBody([
-            {
-              itemId: 2003,
-              itemCode: 'SYN-FG-1',
-              itemName: '합성 제품 1',
-              itemTypeCode: 'FG',
-              baseUomId: 7001,
-              lotControlled: true,
-              serialControlTypeCode: 'NONE',
-              inspectionRequired: true,
-              fifoPolicyCode: 'FEFO',
-              negativeStockAllowed: false,
-              isActive: true,
-            },
-            {
-              itemId: 2004,
-              itemCode: 'SYN-FG-2',
-              itemName: '합성 제품 2',
-              itemTypeCode: 'FG',
-              baseUomId: 7001,
-              lotControlled: true,
-              serialControlTypeCode: 'NONE',
-              inspectionRequired: true,
-              fifoPolicyCode: 'FEFO',
-              negativeStockAllowed: false,
-              isActive: true,
-            },
-          ]),
-        ),
-    },
+        jsonResponse({
+          item: {
+            ...each,
+            itemTypeCode: 'FG',
+            baseUomId: 7001,
+            lotControlled: true,
+            serialControlTypeCode: 'NONE',
+            inspectionRequired: true,
+            fifoPolicyCode: 'FEFO',
+            negativeStockAllowed: false,
+            isActive: true,
+          },
+          editability: {},
+        }),
+    })),
   ]);
 
   return async (request: Request): Promise<Response> => {

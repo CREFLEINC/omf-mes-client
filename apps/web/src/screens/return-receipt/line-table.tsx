@@ -3,6 +3,7 @@ import { messages } from '@omf-mes/i18n';
 
 import { lookupDisplayLabel, type LookupSource } from '../../patterns/lookup-display';
 import type { LineDraft } from './line-draft';
+import type { ItemNameLookup } from './lookups';
 import { formatQty } from './types';
 
 const t = messages.returnReceipt;
@@ -11,7 +12,8 @@ export interface LineTableProps {
   drafts: LineDraft[];
   errors: Record<string, string>;
   uoms: LookupSource;
-  items: LookupSource;
+  /** 품목은 번호마다 하나씩 푼다 — 목록 원천이 아니라 풀이 함수를 받는다. */
+  items: ItemNameLookup;
   isLocked: boolean;
   onChangeQty: (key: string, qtyText: string) => void;
   onRemove: (key: string) => void;
@@ -35,7 +37,8 @@ export const LineTable = ({
     {
       key: 'item',
       header: t.fields.item,
-      render: (row) => row.source.itemCode ?? lookupDisplayLabel(items, row.source.itemId),
+      render: (row) =>
+        row.source.itemCode ?? lookupDisplayLabel(items.of(row.source.itemId), row.source.itemId),
     },
     { key: 'lot', header: t.fields.lotNo, render: (row) => row.source.lotNo },
     {
