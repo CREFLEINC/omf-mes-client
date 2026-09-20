@@ -6,6 +6,7 @@ import {
   describeReference,
   isLotHeld,
   toReference,
+  type ItemNameLookup,
   type LotReferenceSource,
   type ReferenceSource,
 } from './lookups';
@@ -15,7 +16,8 @@ import type { ReturnLineRow, ReturnSelectionView } from './return-selection';
 const t = messages.supplierReturn;
 
 export interface GrLineColumnsInput {
-  itemLookup: ReferenceSource;
+  /** 품목은 번호마다 하나씩 푼다 — 목록 참조가 아니라 풀이 함수를 받는다. */
+  itemNames: ItemNameLookup;
   uomLookup: ReferenceSource;
   lotLookup: LotReferenceSource;
   locationLookup: ReferenceSource;
@@ -69,7 +71,7 @@ export interface GrLineColumnsInput {
  * **되돌릴 수 없는 쓰기**에서 그 어긋남은 잘못된 반품 전표로 남는다.
  */
 export const buildGrLineColumns = ({
-  itemLookup,
+  itemNames,
   uomLookup,
   lotLookup,
   locationLookup,
@@ -111,7 +113,7 @@ export const buildGrLineColumns = ({
     {
       key: 'item',
       header: t.lineTable.item,
-      render: (row) => describeReference(toReference(itemLookup, row.line.itemId)),
+      render: (row) => describeReference(itemNames.of(row.line.itemId)),
     },
     {
       key: 'lot',
@@ -230,7 +232,7 @@ export interface GrLineTableProps extends Omit<GrLineColumnsInput, 'reasonIdPref
  */
 export const GrLineTable = ({
   rows,
-  itemLookup,
+  itemNames,
   uomLookup,
   lotLookup,
   locationLookup,
@@ -245,7 +247,7 @@ export const GrLineTable = ({
 }: GrLineTableProps) => {
   const reasonIdPrefix = useId();
   const columns = buildGrLineColumns({
-    itemLookup,
+    itemNames,
     uomLookup,
     lotLookup,
     locationLookup,
@@ -257,7 +259,7 @@ export const GrLineTable = ({
 
   /* 이 구획이 이름을 내는 참조 넷 중 **하나라도** 실패하면 안내와 복구 수단을 낸다. */
   const hasReferenceError =
-    itemLookup.isError || uomLookup.isError || lotLookup.isError || locationLookup.isError;
+    itemNames.isError || uomLookup.isError || lotLookup.isError || locationLookup.isError;
 
   /*
    * **잘림은 실패와 따로 낸다.** 실패는 「이름을 못 받았다」이고 잘림은 「일부만 받았다」인데,
@@ -269,7 +271,7 @@ export const GrLineTable = ({
    * 알아야 할 사실만 있다.
    */
   const hasTruncatedReference =
-    itemLookup.truncated || uomLookup.truncated || lotLookup.truncated || locationLookup.truncated;
+    uomLookup.truncated || lotLookup.truncated || locationLookup.truncated;
 
   /* 보류가 실제로 있을 때만 그 뜻을 밝힌다 — 늘 세워 두면 안내가 배경이 된다. */
   const hasHeldLot = rows.some((row) => isLotHeld(lotLookup, row.line.lotId));

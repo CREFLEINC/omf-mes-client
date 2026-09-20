@@ -22,7 +22,7 @@ import {
   toggleLineSelection,
   type LineDraft,
 } from './line-draft';
-import type { LotReferenceSource, ReferenceSource } from './lookups';
+import type { ItemNameLookup, LotReferenceSource, ReferenceSource, ReferenceState } from './lookups';
 import type { BalanceSource, ItemBalance } from './on-hand';
 import { describeReturnSelection, toReturnLineRows, type ReturnLineRow } from './return-selection';
 import { toBalanceView } from './types';
@@ -41,15 +41,27 @@ const source = (entries: ReferenceSource['entries'], overrides: Partial<Referenc
   ...overrides,
 });
 
-const itemSource = (overrides: Partial<ReferenceSource> = {}): ReferenceSource =>
-  source(
-    itemFixtures.map((item) => ({
-      value: String(item.itemId),
-      label: `${item.itemCode} · ${item.itemName}`,
-      isActive: item.isActive,
-    })),
-    overrides,
-  );
+/**
+ * 품목만 목록 참조가 아니다 — 번호를 표기 상태로 바로 옮기는 풀이를 세운다.
+ *
+ * **「잘림」 축이 없다.** 번호마다 따로 물어 받은 쪽에 없다는 일 자체가 서지 않는다 —
+ * 그 자리를 대신하는 갈래는 *그 번호의 품목이 없다*(404 → 「알 수 없음」)이다.
+ */
+const itemNames = (overrides: Partial<ItemNameLookup> = {}): ItemNameLookup => ({
+  of: (itemId) => {
+    const item = itemFixtures.find((each) => each.itemId === itemId);
+
+    return item === undefined
+      ? { kind: 'unknown' }
+      : { kind: 'named', label: `${item.itemCode} · ${item.itemName}` };
+  },
+  isError: false,
+  refetch: () => undefined,
+  ...overrides,
+});
+
+const itemNamesIn = (state: ReferenceState): ItemNameLookup =>
+  itemNames({ of: () => state, isError: state.kind === 'failed' });
 
 const uomSource = (overrides: Partial<ReferenceSource> = {}): ReferenceSource =>
   source(
@@ -115,7 +127,7 @@ const rowsFrom = (draft: LineDraft = EMPTY_LINE_DRAFT, balances = balanceSource(
   toReturnLineRows(goodsReceiptLineFixtures, draft, balances);
 
 const columnInput = () => ({
-  itemLookup: itemSource(),
+  itemNames: itemNames(),
   uomLookup: uomSource(),
   lotLookup: lotSource(),
   locationLookup: locationSource(),
@@ -136,7 +148,7 @@ const baseProps = (overrides: Partial<GrLineTableProps> = {}): GrLineTableProps 
 
   return {
     rows,
-    itemLookup: itemSource(),
+    itemNames: itemNames(),
     uomLookup: uomSource(),
     lotLookup: lotSource(),
     locationLookup: locationSource(),
@@ -266,21 +278,24 @@ describe('GrLineTable — 참조 표기', () => {
    * 미도착과 목록에 없음을 가른다.
    */
   it('참조가 아직 오지 않은 것과 목록에 없는 것을 가른다', () => {
-    renderTable({ itemLookup: itemSource({ entries: [], isLoading: true }) });
+    renderTable({ itemNames: itemNamesIn({ kind: 'loading' }) });
 
     expect(screen.getAllByText(t.values.referenceLoading).length).toBe(
       goodsReceiptLineFixtures.length,
     );
   });
 
-  it('목록에 없는 품목·LOT·위치는 알 수 없음으로 낸다', () => {
+  it('목록에 없는 LOT·위치는 알 수 없음으로 낸다', () => {
     renderTable();
 
     /*
-     * 9402의 품목 · 9403의 LOT·위치 셋이 제 칸을 통째로 차지한다.
+     * 9403의 LOT·위치 둘이 제 칸을 통째로 차지한다.
      * 9403의 단위도 목록에 없으나 수량 표기 안에 붙어 있어 따로 세지 않는다.
+     *
+     * **품목은 이 셈에서 빠진다** — 번호마다 따로 물어 「목록에 없음」이 서지 않는다.
+     * 그 자리를 대신하는 갈래(그 품목이 없음 · 404)는 위 `itemNamesIn` 자리에서 잰다.
      */
-    expect(screen.getAllByText(t.values.unknown).length).toBe(3);
+    expect(screen.getAllByText(t.values.unknown).length).toBe(2);
   });
 });
 
@@ -709,7 +724,7 @@ describe('GrLineTable — 빈 상태와 실패', () => {
    * 판정도 넷을 다 보아야 한다 — 하나만 재면 그 참조만 실패했을 때 **복구 수단이 사라진다.**
    */
   const eachReference: [string, () => Partial<GrLineTableProps>][] = [
-    ['품목', () => ({ itemLookup: itemSource({ isError: true }) })],
+    ['품목', () => ({ itemNames: itemNamesIn({ kind: 'failed' }) })],
     ['단위', () => ({ uomLookup: uomSource({ isError: true }) })],
     ['자재 LOT', () => ({ lotLookup: lotSource({ isError: true }) })],
     ['위치', () => ({ locationLookup: locationSource({ isError: true }) })],
@@ -730,7 +745,6 @@ describe('GrLineTable — 빈 상태와 실패', () => {
    * **복구 버튼을 붙이지 않는다** — 다시 불러도 같은 쪽이 온다.
    */
   const eachTruncated: [string, () => Partial<GrLineTableProps>][] = [
-    ['품목', () => ({ itemLookup: itemSource({ truncated: true }) })],
     ['단위', () => ({ uomLookup: uomSource({ truncated: true }) })],
     ['자재 LOT', () => ({ lotLookup: lotSource({ truncated: true }) })],
     ['위치', () => ({ locationLookup: locationSource({ truncated: true }) })],
