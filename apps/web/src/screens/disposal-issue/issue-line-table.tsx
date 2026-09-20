@@ -6,6 +6,7 @@ import {
   describeReference,
   isLotHeld,
   toReference,
+  type ItemNameLookup,
   type LotReferenceSource,
   type ReferenceSource,
 } from './lookups';
@@ -22,7 +23,8 @@ const t = messages.disposalIssue;
 export const ISSUE_LINE_TABLE_MIN_WIDTH_PX = 928;
 
 export interface IssueLineColumnsInput {
-  itemLookup: ReferenceSource;
+  /** 품목은 번호마다 하나씩 푼다 — 목록 참조가 아니라 풀이 함수를 받는다. */
+  itemNames: ItemNameLookup;
   uomLookup: ReferenceSource;
   lotLookup: LotReferenceSource;
   locationLookup: ReferenceSource;
@@ -57,7 +59,7 @@ export interface IssueLineColumnsInput {
  * 단언은 흡수 열이 몇십 px밖에 못 받는 어긋남을 놓치므로 **남는 폭까지 함께 단언한다**(C46).
  */
 export const buildIssueLineColumns = ({
-  itemLookup,
+  itemNames,
   uomLookup,
   lotLookup,
   locationLookup,
@@ -69,7 +71,7 @@ export const buildIssueLineColumns = ({
      * **번호를 문자열로 바꾸는 자리가 없다**(`omf-mes#44`). 이름으로 풀 수 없는 세 갈래
      * (미도착·목록에 없음·실패)는 전부 문구로 갈리며, 어느 갈래에도 원시 번호가 담기지 않는다.
      */
-    render: (row) => describeReference(toReference(itemLookup, row.itemId)),
+    render: (row) => describeReference(itemNames.of(row.itemId)),
   },
   {
     key: 'lot',
@@ -134,14 +136,14 @@ export interface IssueLineTableProps extends IssueLineColumnsInput {
  */
 export const IssueLineTable = ({
   rows,
-  itemLookup,
+  itemNames,
   uomLookup,
   lotLookup,
   locationLookup,
   hasReferenceError,
   onRetryReferences,
 }: IssueLineTableProps) => {
-  const columns = buildIssueLineColumns({ itemLookup, uomLookup, lotLookup, locationLookup });
+  const columns = buildIssueLineColumns({ itemNames, uomLookup, lotLookup, locationLookup });
 
   return (
     <>

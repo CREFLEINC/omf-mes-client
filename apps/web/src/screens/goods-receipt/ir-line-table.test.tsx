@@ -6,7 +6,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { inboundReceipt, inboundReceiptLine, inboundReceiptLineFixtures } from './fixtures';
 import { buildIrLineColumns, IrLineTable, type IrLineTableProps } from './ir-line-table';
-import type { ReferenceSource } from './lookups';
+import type { ItemNameLookup, ReferenceSource, ReferenceState } from './lookups';
 import type { IrLineView } from './types';
 
 const t = messages.goodsReceipt;
@@ -31,9 +31,23 @@ const source = (entries: ReferenceSource['entries'] = []): ReferenceSource => ({
   truncated: false,
 });
 
-const itemSource = source([
-  { value: '9301', label: 'SAMPLE-ITEM-01 · 합성 품목 가', isActive: true },
-]);
+/**
+ * 품목만 목록 참조가 아니다 — 번호를 표기 상태로 바로 옮기는 풀이를 세운다.
+ * 적지 않은 번호는 「아직 답이 오지 않음」이다(요청이 줄마다 따로 나간다).
+ */
+const itemNames = (
+  states: Record<number, ReferenceState>,
+  overrides: Partial<ItemNameLookup> = {},
+): ItemNameLookup => ({
+  of: (itemId) => states[itemId] ?? { kind: 'loading' },
+  isError: false,
+  refetch: () => undefined,
+  ...overrides,
+});
+
+const itemSource = itemNames({
+  9301: { kind: 'named', label: 'SAMPLE-ITEM-01 · 합성 품목 가' },
+});
 const uomSource = source([{ value: '9501', label: 'SAMPLE-EA · 합성 단위 개', isActive: true }]);
 const lotSource = source([
   { value: '9601', label: 'LOT-2026-900010', isActive: true },
@@ -46,7 +60,7 @@ const plantSource = source([
 const columns = (): Column<IrLineView>[] =>
   buildIrLineColumns({
     selectedLineId: null,
-    itemLookup: itemSource,
+    itemNames: itemSource,
     uomLookup: uomSource,
     lotLookup: lotSource,
     reasonIdPrefix: 'reason',
@@ -65,7 +79,7 @@ const renderTable = (overrides: Partial<IrLineTableProps> = {}) => {
       rows={inboundReceiptLineFixtures}
       isLoading={false}
       plantLookup={plantSource}
-      itemLookup={itemSource}
+      itemNames={itemSource}
       uomLookup={uomSource}
       lotLookup={lotSource}
       selectedLineId={null}
@@ -355,7 +369,7 @@ describe('IrLineTable — 고른 라인의 제목줄', () => {
 
 describe('IrLineTable — 참조 실패', () => {
   it.each([
-    ['품목', { itemLookup: { ...itemSource, isError: true } }],
+    ['품목', { itemNames: itemNames({}, { isError: true }) }],
     ['단위', { uomLookup: { ...uomSource, isError: true } }],
     ['자재 LOT', { lotLookup: { ...lotSource, isError: true } }],
     ['공장', { plantLookup: { ...plantSource, isError: true } }],
@@ -384,7 +398,6 @@ describe('IrLineTable — 참조 잘림', () => {
    */
   it.each([
     ['자재 LOT', { lotLookup: { ...lotSource, truncated: true } }],
-    ['품목', { itemLookup: { ...itemSource, truncated: true } }],
     ['단위', { uomLookup: { ...uomSource, truncated: true } }],
     ['공장', { plantLookup: { ...plantSource, truncated: true } }],
   ])('%s 목록이 잘리면 그 사실을 밝힌다', (_label, overrides) => {
@@ -400,10 +413,24 @@ describe('IrLineTable — 참조 잘림', () => {
    * 이 화면이 막으려는 #47 그 자체다 — 정상 값에 *값이 잘못됐다*는 표를 붙이는 것.
    */
   it('잘려도 목록에 있는 이름은 이름으로 낸다', () => {
-    renderTable({ itemLookup: { ...itemSource, truncated: true } });
+    renderTable({ lotLookup: { ...lotSource, truncated: true } });
 
     expect(screen.getByText(t.reasons.lineReferencesTruncated)).toBeInTheDocument();
+    expect(screen.getAllByText('LOT-2026-900010').length).toBeGreaterThan(0);
+  });
+
+  /*
+   * **품목은 잘림 축이 없다** — 번호마다 따로 물어 받은 쪽에 없다는 일 자체가 서지 않는다.
+   * 목록으로 풀던 때 그 쪽 밖의 품목이 전부 「알 수 없음」으로 섰던 것이 이 화면의 결함이었다.
+   */
+  it('품목 이름은 줄마다 따로 오고 늦은 줄에도 번호를 내지 않는다', () => {
+    renderTable({
+      itemNames: itemNames({ 9301: { kind: 'named', label: 'SAMPLE-ITEM-01 · 합성 품목 가' } }),
+    });
+
     expect(screen.getAllByText('SAMPLE-ITEM-01 · 합성 품목 가').length).toBeGreaterThan(0);
+    expect(screen.queryByText(t.reasons.lineReferencesTruncated)).not.toBeInTheDocument();
+    expect(screen.getByRole('table').textContent ?? '').not.toContain('9301');
   });
 
   /* 짝 방향 — 잘리지 않으면 내지 않는다. 늘 뜨는 안내는 읽히지 않는다. */

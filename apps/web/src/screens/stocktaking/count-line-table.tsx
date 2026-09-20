@@ -12,7 +12,12 @@ import type { ReactNode } from 'react';
 
 import { codeNote, codePlaceholder } from './code-options';
 import type { LineRowView } from './line-replace-request';
-import { describeReference, toReference, type ReferenceSource } from './lookups';
+import {
+  describeReference,
+  toReference,
+  type ItemNameLookup,
+  type ReferenceSource,
+} from './lookups';
 import type { SelectOption } from './types';
 
 const t = messages.stocktaking;
@@ -25,7 +30,8 @@ export interface CountLineColumnsInput {
    * 한 줄만 빠진 어긋난 응답에서 열이 나타났다 사라진다.
    */
   isBlind: boolean;
-  itemLookup: ReferenceSource;
+  /** 품목은 번호마다 하나씩 푼다 — 목록 참조가 아니라 풀이 함수를 받는다. */
+  itemNames: ItemNameLookup;
   uomLookup: ReferenceSource;
   lotLookup: ReferenceSource;
   /** 차이 사유 선택지. 값 목록이 확정되지 않아 지금은 비어 있다(승인 G1). */
@@ -80,7 +86,7 @@ const describeQty = (qty: number | null, uomName: string): string =>
  */
 export const buildCountLineColumns = ({
   isBlind,
-  itemLookup,
+  itemNames,
   uomLookup,
   lotLookup,
   reasonOptions,
@@ -132,7 +138,7 @@ export const buildCountLineColumns = ({
        * **번호를 문자열로 바꾸는 자리가 없다**(#44). 이름으로 풀 수 없는 세 갈래(미도착·목록에
        * 없음·실패)는 전부 문구로 갈리며, 어느 갈래에도 원시 번호가 담기지 않는다.
        */
-      render: (row) => describeReference(toReference(itemLookup, row.line.itemId)),
+      render: (row) => describeReference(itemNames.of(row.line.itemId)),
     },
     {
       key: 'lot',
@@ -241,7 +247,7 @@ export const CountLineTable = ({
   isLoading,
   isTruncated,
   isBlind,
-  itemLookup,
+  itemNames,
   uomLookup,
   lotLookup,
   reasonOptions,
@@ -260,7 +266,7 @@ export const CountLineTable = ({
 
   const columns = buildCountLineColumns({
     isBlind,
-    itemLookup,
+    itemNames,
     uomLookup,
     lotLookup,
     reasonOptions,
@@ -270,7 +276,7 @@ export const CountLineTable = ({
   });
 
   /* 이 표가 이름을 내는 참조 셋 중 **하나라도** 실패하면 안내와 복구 수단을 낸다. */
-  const hasReferenceError = itemLookup.isError || uomLookup.isError || lotLookup.isError;
+  const hasReferenceError = itemNames.isError || uomLookup.isError || lotLookup.isError;
 
   return (
     <>

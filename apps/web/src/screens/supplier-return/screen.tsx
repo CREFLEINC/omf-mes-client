@@ -44,7 +44,7 @@ import {
   describeReference,
   lookupNote,
   toReference,
-  useItemOptions,
+  useItemNames,
   useLocationOptions,
   useLotOptions,
   usePartnerOptions,
@@ -246,7 +246,14 @@ export const SupplierReturnScreen = () => {
    * 미리 받아 둘 이득이 없고, 고르기 전에 부르면 첫 진입의 요청 수만 이유 없이 는다.
    */
   const hasSelection = selectedReceiptId !== null;
-  const items = useItemOptions(hasSelection);
+  /*
+   * 품목 이름은 **줄이 가리키는 번호마다** 묻는다 — 자재 LOT과 같은 짜임이다.
+   * 목록 첫 쪽으로 풀면 그 쪽 밖의 품목이 전부 「알 수 없음」으로 선다(`lookups.ts`의 ⛔ 첫째).
+   */
+  const items = useItemNames(
+    lineRows.map((line) => line.itemId),
+    hasSelection,
+  );
   const uoms = useUomOptions(hasSelection);
 
   /*
@@ -679,7 +686,7 @@ export const SupplierReturnScreen = () => {
   };
 
   /** 표기 헬퍼 — 확인 창과 결과 구획이 **같은 규칙으로** 이름과 수량을 읽는다. */
-  const itemNameOf = (itemId: number): string => describeReference(toReference(items, itemId));
+  const itemNameOf = (itemId: number): string => describeReference(items.of(itemId));
   const lotNameOf = (lotId: number): string => describeReference(toReference(lots, lotId));
   const qtyTextOf = (qty: number, uomId: number): string =>
     t.lineTable.returnQtyPair(qty, describeReference(toReference(uoms, uomId)));
@@ -993,7 +1000,7 @@ export const SupplierReturnScreen = () => {
            * 품목·단위·LOT·위치는 **이름이 아니라 참조 자체**를 넘긴다 — 이 구획이 실패·잘림
            * 안내와 다시 시도를 소유하므로 그 사실을 함께 알아야 한다.
            */
-          itemLookup={items}
+          itemNames={items}
           uomLookup={uoms}
           lotLookup={lots}
           locationLookup={locations}

@@ -153,13 +153,20 @@ export const expeditedStub = (options: ExpeditedStubOptions = {}): StubFetch => 
       respond: () => jsonResponse(shipmentRequest),
     },
     {
-      match: (request: Request) => new URL(request.url).pathname === '/mdm/items',
+      /*
+       * 품목은 **번호마다 상세**를 부른다(`GET /mdm/items/{itemId}`) — 목록이 아니다.
+       * 응답이 `{ item, editability }` 봉투라는 것까지 여기서 굳힌다.
+       */
+      match: (request: Request) => new URL(request.url).pathname === '/mdm/items/5001',
       respond: () =>
         jsonResponse({
-          items: [
-            { itemId: 5001, itemCode: 'SYNTH-FG-0311', itemName: '합성 완제품', isActive: true },
-          ],
-          page: page(1),
+          item: {
+            itemId: 5001,
+            itemCode: 'SYNTH-FG-0311',
+            itemName: '합성 완제품',
+            isActive: true,
+          },
+          editability: {},
         }),
     },
     {

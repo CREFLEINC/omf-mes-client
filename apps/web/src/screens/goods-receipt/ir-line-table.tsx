@@ -3,7 +3,12 @@ import { messages } from '@omf-mes/i18n';
 import { useId, type ReactNode } from 'react';
 
 import { describeLineSelect, type LineBlockCause } from './line-select';
-import { describeReference, toReference, type ReferenceSource } from './lookups';
+import {
+  describeReference,
+  toReference,
+  type ItemNameLookup,
+  type ReferenceSource,
+} from './lookups';
 import { toStatusTone } from './status-badge';
 import { formatDateTime, type IrLineView, type IrView } from './types';
 
@@ -52,7 +57,8 @@ const lotCell = (lookup: ReferenceSource, lotId: number | null): ReactNode =>
 
 export interface IrLineColumnsInput {
   selectedLineId: number | null;
-  itemLookup: ReferenceSource;
+  /** 품목은 번호마다 하나씩 푼다 — 목록 참조가 아니라 풀이 함수를 받는다. */
+  itemNames: ItemNameLookup;
   uomLookup: ReferenceSource;
   lotLookup: ReferenceSource;
   /** 사유 텍스트의 `id` 앞머리. 비활성 버튼과 사유를 `aria-describedby`로 잇는 데 쓴다 */
@@ -89,7 +95,7 @@ export interface IrLineColumnsInput {
  */
 export const buildIrLineColumns = ({
   selectedLineId,
-  itemLookup,
+  itemNames,
   uomLookup,
   lotLookup,
   reasonIdPrefix,
@@ -105,7 +111,7 @@ export const buildIrLineColumns = ({
     key: 'item',
     header: t.lineTable.item,
     width: '24%',
-    render: (row) => describeReference(toReference(itemLookup, row.itemId)),
+    render: (row) => describeReference(itemNames.of(row.itemId)),
   },
   {
     key: 'receivedQty',
@@ -192,10 +198,7 @@ interface SummaryItem {
   value: ReactNode;
 }
 
-export interface IrLineTableProps extends Omit<
-  IrLineColumnsInput,
-  'reasonIdPrefix' | 'itemLookup'
-> {
+export interface IrLineTableProps extends Omit<IrLineColumnsInput, 'reasonIdPrefix' | 'itemNames'> {
   /** 고른 입하 전표. 제목줄의 자료는 목록 응답의 행에 이미 있어 상세 경로를 부르지 않는다. */
   inboundReceipt: IrView;
   /**
@@ -210,7 +213,7 @@ export interface IrLineTableProps extends Omit<
    * 여기가 소유하고, 그러려면 이름이 아니라 참조 자체를 받아 실패 여부를 알아야 한다.
    */
   plantLookup: ReferenceSource;
-  itemLookup: ReferenceSource;
+  itemNames: ItemNameLookup;
   /** 고른 줄. 없으면 아래 제목줄을 그리지 않는다 — 닿을 수 없는 가지를 만들지 않는다. */
   selectedLine: IrLineView | null;
   onRetryReferences: () => void;
@@ -234,7 +237,7 @@ export const IrLineTable = ({
   rows,
   isLoading,
   plantLookup,
-  itemLookup,
+  itemNames,
   uomLookup,
   lotLookup,
   selectedLineId,
@@ -247,7 +250,7 @@ export const IrLineTable = ({
 
   const columns = buildIrLineColumns({
     selectedLineId,
-    itemLookup,
+    itemNames,
     uomLookup,
     lotLookup,
     reasonIdPrefix,
@@ -298,7 +301,7 @@ export const IrLineTable = ({
     {
       key: 'item',
       label: t.lineSummary.item,
-      value: describeReference(toReference(itemLookup, line.itemId)),
+      value: describeReference(itemNames.of(line.itemId)),
     },
     {
       key: 'receivedQty',
@@ -330,7 +333,7 @@ export const IrLineTable = ({
 
   /* 이 구획이 이름을 내는 참조 넷 중 **하나라도** 실패하면 안내와 복구 수단을 낸다. */
   const hasReferenceError =
-    itemLookup.isError || uomLookup.isError || lotLookup.isError || plantLookup.isError;
+    itemNames.isError || uomLookup.isError || lotLookup.isError || plantLookup.isError;
 
   /*
    * **잘림은 실패와 따로 낸다.** 실패는 「이름을 못 받았다」이고 잘림은 「일부만 받았다」인데,
@@ -341,8 +344,7 @@ export const IrLineTable = ({
    * **복구 버튼을 붙이지 않는다** — 다시 불러도 같은 쪽이 온다. 사용자가 할 조치가 없고
    * 알아야 할 사실만 있다.
    */
-  const hasTruncatedReference =
-    itemLookup.truncated || uomLookup.truncated || lotLookup.truncated || plantLookup.truncated;
+  const hasTruncatedReference = uomLookup.truncated || lotLookup.truncated || plantLookup.truncated;
 
   return (
     <>

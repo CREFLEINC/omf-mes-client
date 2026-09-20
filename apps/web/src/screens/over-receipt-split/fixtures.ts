@@ -76,7 +76,7 @@ export const purchaseOrderLine = (overrides: Partial<PoLineView> = {}): PoLineVi
  *
  * - 9401 — 잔량 60 · 허용 5 → **정량 한도 65.** 65는 전부 정량분, 66은 1만 초과분이다
  * - 9402 — 꼭 맞게 받았고 **초과 허용치가 0**이다 → 한도 0. 도착한 전부가 초과분이다.
- *   품목 번호가 **참조 목록에 없다**
+ *   품목이 9401·9403과 **다르다** — 품목을 번호마다 묻는지(같은 품목이면 한 번)를 드러낸다
  * - 9403 — **누적 입하가 발주를 넘겼다**(45 > 30). 잔량을 음수로 쓰면 한도가 0이 되어
  *   허용치 안쪽 도착까지 초과분으로 갈린다
  */
@@ -100,11 +100,15 @@ export const purchaseOrderLineFixtures: PoLineView[] = [
 ];
 
 /**
- * 참조 목록의 응답 본문. **화면이 읽는 필드만 담는다** — 스텁 응답은 JSON이라
+ * 참조 응답의 본문. **화면이 읽는 필드만 담는다** — 스텁 응답은 JSON이라
  * 계약의 모든 필드를 갖출 필요가 없고, 갖추면 무엇을 읽는지가 오히려 가려진다.
  *
- * 목록에 **없는 번호**를 가진 행이 픽스처에 함께 있다(9002의 공급사 · 9402의 품목) —
+ * 목록에 **없는 번호**를 가진 행이 픽스처에 함께 있다(9002의 공급사) —
  * 「목록에 없음」 갈래를 실제 값으로 만들어 내는 유일한 방법이다.
+ *
+ * **품목만 목록이 아니다.** 번호마다 상세를 부르므로(`GET /mdm/items/{itemId}`)
+ * 라인이 쓰는 번호가 모두 여기 있어야 정상 경로가 선다 — 「못 풀었다」는 갈래는
+ * 목록에서 빼는 것이 아니라 그 번호의 조회를 실패시켜 만든다.
  */
 export const partnerFixtures = [
   { partnerId: 9101, partnerCode: 'SAMPLE-SUP-01', partnerName: '합성 공급사 가', isActive: true },
@@ -123,6 +127,7 @@ export const plantFixtures = [
 
 export const itemFixtures = [
   { itemId: 9301, itemCode: 'SAMPLE-ITEM-01', itemName: '합성 품목 가', isActive: true },
+  { itemId: 9302, itemCode: 'SAMPLE-ITEM-02', itemName: '합성 품목 나', isActive: true },
 ];
 
 export const uomFixtures = [

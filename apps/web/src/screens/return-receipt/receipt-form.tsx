@@ -12,7 +12,7 @@ import { LineTable } from './line-table';
 import { LoadErrorBanner } from './load-error';
 import type { Lock } from './lock';
 import { toLocationOptions } from './location-options';
-import type { CodeOptionSource, OptionListResult } from './lookups';
+import type { CodeOptionSource, ItemNameLookup, OptionListResult } from './lookups';
 import type { ReceiptDraft } from './receipt-body';
 import { SelectField } from './select-field';
 import { formatQty, type LocationView, type WarehouseView } from './types';
@@ -45,7 +45,8 @@ export interface ReceiptFormProps {
   warehouses: OptionListResult<WarehouseView>;
   locations: OptionListResult<LocationView>;
   uoms: LookupSource;
-  items: LookupSource;
+  /** 품목은 번호마다 하나씩 푼다 — 목록 원천이 아니라 풀이 함수를 받는다. */
+  items: ItemNameLookup;
   lock: Lock;
   writeError: ApiError | null;
   isSaving: boolean;

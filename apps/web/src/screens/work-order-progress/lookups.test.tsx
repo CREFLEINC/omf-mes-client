@@ -5,7 +5,7 @@ import { jsonResponse, renderHookWithProviders, type StubFetch } from '../../tes
 import {
   LOOKUP_SIZE,
   NAME_UNKNOWN,
-  useItemLookup,
+  useItemNames,
   useProductionLineLookup,
   useProductionOrderLookup,
 } from './lookups';
@@ -51,12 +51,13 @@ const stub = (
 
     if (options.fail === true) return jsonResponse({ message: '실패' }, { status: 500 });
 
-    const items =
-      url.pathname === '/mdm/items'
-        ? [ITEM]
-        : url.pathname === '/planning/production-orders'
-          ? [ORDER]
-          : [LINE];
+    /* 품목만 **번호마다 상세**를 부른다 — 응답이 `{ item, editability }` 봉투다. */
+    if (url.pathname === '/mdm/items/5001') return jsonResponse({ item: ITEM, editability: {} });
+    if (url.pathname.startsWith('/mdm/items/')) {
+      return jsonResponse({ message: '없다' }, { status: 404 });
+    }
+
+    const items = url.pathname === '/planning/production-orders' ? [ORDER] : [LINE];
     const total = options.total ?? items.length;
     return jsonResponse({ items, page: { page: 1, size: 200, total } });
   };
@@ -64,9 +65,13 @@ const stub = (
   return { urls, fetch };
 };
 
-describe('useItemLookup', () => {
+describe('useItemNames', () => {
+  const ITEM_IDS = [5001];
+
   it('코드와 이름을 함께 보인다 — 이름만으로는 같은 이름이 여럿일 때 못 가른다', async () => {
-    const { result } = renderHookWithProviders(() => useItemLookup(), { fetch: stub().fetch });
+    const { result } = renderHookWithProviders(() => useItemNames(ITEM_IDS), {
+      fetch: stub().fetch,
+    });
 
     await waitFor(() => {
       expect(result.current.isPending).toBe(false);
@@ -75,21 +80,14 @@ describe('useItemLookup', () => {
   });
 
   it('문자열 식별자로도 찾는다 — 목록의 행은 글자로 들고 있다', async () => {
-    const { result } = renderHookWithProviders(() => useItemLookup(), { fetch: stub().fetch });
+    const { result } = renderHookWithProviders(() => useItemNames(ITEM_IDS), {
+      fetch: stub().fetch,
+    });
 
     await waitFor(() => {
       expect(result.current.isPending).toBe(false);
     });
     expect(result.current.labelOf('5001')).toBe('SYN-ITEM-0001 · 합성 품목');
-  });
-
-  it('고를 수 있는 값들을 함께 내준다 — 필터의 선택지가 된다', async () => {
-    const { result } = renderHookWithProviders(() => useItemLookup(), { fetch: stub().fetch });
-
-    await waitFor(() => {
-      expect(result.current.isPending).toBe(false);
-    });
-    expect(result.current.options).toEqual([{ value: '5001', label: 'SYN-ITEM-0001 · 합성 품목' }]);
   });
 
   /*
@@ -98,9 +96,11 @@ describe('useItemLookup', () => {
    */
   it.each([
     ['고른 것이 없을 때', undefined],
-    ['목록에 없는 식별자일 때', 9999],
+    ['묻지 않은 식별자일 때', 9999],
   ])('⛔ %s 숫자 식별자를 보이지 않는다', async (_name, id) => {
-    const { result } = renderHookWithProviders(() => useItemLookup(), { fetch: stub().fetch });
+    const { result } = renderHookWithProviders(() => useItemNames(ITEM_IDS), {
+      fetch: stub().fetch,
+    });
 
     await waitFor(() => {
       expect(result.current.isPending).toBe(false);
@@ -109,7 +109,7 @@ describe('useItemLookup', () => {
   });
 
   it('⛔ 조회가 실패해도 숫자로 물러나지 않는다', async () => {
-    const { result } = renderHookWithProviders(() => useItemLookup(), {
+    const { result } = renderHookWithProviders(() => useItemNames(ITEM_IDS), {
       fetch: stub({ fail: true }).fetch,
     });
 
@@ -121,71 +121,48 @@ describe('useItemLookup', () => {
   });
 
   it('받기 전에도 숫자를 보이지 않는다', () => {
-    const { result } = renderHookWithProviders(() => useItemLookup(), { fetch: stub().fetch });
+    const { result } = renderHookWithProviders(() => useItemNames(ITEM_IDS), {
+      fetch: stub().fetch,
+    });
 
     expect(result.current.labelOf(5001)).toBe(NAME_UNKNOWN);
   });
 
-  it('쓰지 않게 된 품목도 이름을 낸다 — 이미 그 품목으로 만든 지시가 있다', async () => {
-    const stubbed = stub();
-
-    renderHookWithProviders(() => useItemLookup(), { fetch: stubbed.fetch });
-
-    await waitFor(() => {
-      expect(stubbed.urls).toHaveLength(1);
-    });
-    expect(stubbed.urls[0]).toContain('includeInactive=true');
-  });
-
   /*
-   * ⛔ 200건을 넘으면 뒤쪽 품목은 이름이 안 붙고 필터에서 고를 수조차 없다. 화면이 그것을
-   * 모르면 「선택지가 이게 전부」인 척하게 된다 — 잘렸다는 사실을 내줘야 적을 수 있다(A-11).
+   * ⭐ **이 화면이 고친 결함이다**(omf-all-around#37). 목록 한 쪽(상한 200건)으로 풀던 때는
+   * 그 밖의 품목이 전부 「이름 확인 중」으로 굳었다 — 마스터가 9,269건인 환경이 실재한다.
+   * 번호마다 물으면 마스터가 아무리 커도 화면에 선 줄은 이름이 붙는다.
    */
-  it('⛔ 받은 것보다 전체가 많으면 잘렸다고 알린다', async () => {
-    const { result } = renderHookWithProviders(() => useItemLookup(), {
-      fetch: stub({ total: 4321 }).fetch,
-    });
-
-    await waitFor(() => {
-      expect(result.current.isPending).toBe(false);
-    });
-    expect(result.current.isTruncated).toBe(true);
-  });
-
-  it('다 받았으면 잘렸다고 하지 않는다', async () => {
-    const { result } = renderHookWithProviders(() => useItemLookup(), { fetch: stub().fetch });
-
-    await waitFor(() => {
-      expect(result.current.isPending).toBe(false);
-    });
-    expect(result.current.isTruncated).toBe(false);
-  });
-
-  it.each([
-    ['받기 전에는', false],
-    ['조회가 실패했을 때는', true],
-  ])('%s 잘렸다고 하지 않는다 — 모르는 것을 안다고 하지 않는다', async (_name, fail) => {
-    const { result } = renderHookWithProviders(() => useItemLookup(), {
-      fetch: stub({ fail }).fetch,
-    });
-
-    if (fail) {
-      await waitFor(() => {
-        expect(result.current.isError).toBe(true);
-      });
-    }
-    expect(result.current.isTruncated).toBe(false);
-  });
-
-  it(`한 번에 ${String(LOOKUP_SIZE)}건을 받는다`, async () => {
+  it('⭐ 번호마다 상세를 부르고 목록은 부르지 않는다', async () => {
     const stubbed = stub();
 
-    renderHookWithProviders(() => useItemLookup(), { fetch: stubbed.fetch });
+    renderHookWithProviders(() => useItemNames(ITEM_IDS), { fetch: stubbed.fetch });
 
     await waitFor(() => {
       expect(stubbed.urls).toHaveLength(1);
     });
-    expect(stubbed.urls[0]).toContain(`size=${String(LOOKUP_SIZE)}`);
+    expect(stubbed.urls[0]).toBe('/mdm/items/5001');
+    /* 짝 방향 — 목록 경로로는 한 번도 나가지 않는다(쪽 크기를 실을 자리 자체가 없다). */
+    expect(stubbed.urls.some((url) => url.startsWith('/mdm/items?'))).toBe(false);
+  });
+
+  it('같은 품목을 가리키는 지시가 여럿이어도 한 번만 묻는다', async () => {
+    const stubbed = stub();
+
+    renderHookWithProviders(() => useItemNames([5001, 5001, 5001]), { fetch: stubbed.fetch });
+
+    await waitFor(() => {
+      expect(stubbed.urls).toHaveLength(1);
+    });
+  });
+
+  it('부를 번호가 없으면 요청도 없다', () => {
+    const stubbed = stub();
+
+    const { result } = renderHookWithProviders(() => useItemNames([]), { fetch: stubbed.fetch });
+
+    expect(stubbed.urls).toEqual([]);
+    expect(result.current.isPending).toBe(false);
   });
 });
 
@@ -261,7 +238,7 @@ describe('useProductionLineLookup', () => {
 
     renderHookWithProviders(
       () => ({
-        items: useItemLookup(),
+        items: useItemNames([5001]),
         lines: useProductionLineLookup(),
         orders: useProductionOrderLookup(),
       }),
@@ -271,7 +248,7 @@ describe('useProductionLineLookup', () => {
     await waitFor(() => {
       expect(stubbed.urls).toHaveLength(3);
     });
-    for (const path of ['/mdm/items', '/mdm/production-lines', '/planning/production-orders']) {
+    for (const path of ['/mdm/items/', '/mdm/production-lines', '/planning/production-orders']) {
       expect(stubbed.urls.some((url) => url.startsWith(path))).toBe(true);
     }
   });

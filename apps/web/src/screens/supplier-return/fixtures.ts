@@ -124,8 +124,14 @@ export const warehouseFixtures = [
   },
 ];
 
+/**
+ * **품목만 목록이 아니다.** 번호마다 상세를 부르므로(`GET /mdm/items/{itemId}`)
+ * 줄이 쓰는 번호가 모두 여기 있어야 정상 경로가 선다 — 「그 품목이 없다」는 갈래는
+ * 목록에서 빼는 것이 아니라 그 번호의 조회를 404로 답해 만든다.
+ */
 export const itemFixtures = [
   { itemId: 9301, itemCode: 'SAMPLE-ITEM-01', itemName: '합성 품목 가', isActive: true },
+  { itemId: 9302, itemCode: 'SAMPLE-ITEM-02', itemName: '합성 품목 나', isActive: true },
 ];
 
 export const uomFixtures = [

@@ -1,7 +1,8 @@
 import { messages } from '@omf-mes/i18n';
-import { useQuery } from '@tanstack/react-query';
+import { useQueries, useQuery } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
+import { masterName } from '../../patterns/master-name';
 import { runRequest } from '../../patterns/request';
 
 /**
@@ -59,31 +60,59 @@ const toLookup = (
   };
 };
 
-/** 품목 이름표. 목록의 품목 열과 상세가 함께 쓴다. */
-export const useItemLookup = (): NameLookup => {
+/**
+ * 품목 이름표. 목록의 품목 열과 상세가 함께 쓴다. **번호로 하나씩 푼다**(`GET /mdm/items/{itemId}`).
+ *
+ * ⛔ **목록 한 쪽으로 풀지 않는다.** 종전에는 `GET /mdm/items?size=200`을 한 번 받아 그 안에서
+ *    이름을 찾았다 — `size` 상한이 200이라 품목 마스터가 그보다 크면 그 밖의 품목이 **전부**
+ *    「이름 확인 중」으로 굳었다(omf-all-around#37). 마스터가 9,269건인 환경이 실재한다.
+ * ⛔ **쪽을 돌며 다 받는 것으로 바꾸지 않는다.** 첫 진입에 46번을 부르게 되고, 얻는 것은
+ *    한 쪽에 실제로 뜬 스무 줄의 이름뿐이다.
+ * ⭐ 부르는 횟수는 **그 쪽에 선 작업지시가 가리키는 품목 수**다. 같은 품목의 지시가 여럿이면
+ *    요청도 하나다.
+ *
+ * **「잘림」 축이 사라진다** — 목록을 부르지 않으므로 쪽 자체가 없다. 품목은 이 화면의
+ * 필터 선택지가 아니라 **이름을 푸는 데만** 쓰므로 목록이 필요 없다.
+ *
+ * 계약에 `itemIds` 같은 복수 번호 필터가 없어 한 번에 묶어 묻는 길이 없다.
+ * 생기면 이 자리를 한 번의 요청으로 되돌린다.
+ */
+export interface ItemNameLookup {
+  /** 못 받았거나 아직인 번호는 **숫자가 아니라** 「이름 확인 중」이다(위 ⛔ 첫째와 같은 이유). */
+  labelOf: (id: number | string | undefined) => string;
+  isPending: boolean;
+  isError: boolean;
+}
+
+export const useItemNames = (itemIds: readonly number[]): ItemNameLookup => {
   const { client } = useApiClient();
+  const uniqueIds = [...new Set(itemIds)].sort((left, right) => left - right);
 
-  const query = useQuery({
-    queryKey: ['work-order-progress', 'items'] as const,
-    queryFn: async () => {
-      const data = await runRequest(() =>
-        client.GET('/mdm/items', {
-          params: { query: { includeInactive: true, size: LOOKUP_SIZE } },
-        }),
-      );
-
-      return {
-        entries: data.items.map((item) => ({
-          value: String(item.itemId),
-          /* 코드와 이름을 함께 보인다 — 이름만으로는 같은 이름이 여럿일 때 못 가른다. */
-          label: `${item.itemCode} · ${item.itemName}`,
-        })),
-        total: data.page.total,
-      };
-    },
+  const results = useQueries({
+    queries: uniqueIds.map((itemId) => ({
+      queryKey: ['work-order-progress', 'item-name', itemId] as const,
+      queryFn: () =>
+        runRequest(() => client.GET('/mdm/items/{itemId}', { params: { path: { itemId } } })),
+    })),
   });
 
-  return toLookup(query.data, query.isPending, query.isError);
+  const byId = new Map(
+    results.flatMap((result, index) => {
+      const itemId = uniqueIds[index];
+      const item = result.data?.item;
+
+      return itemId === undefined || item === undefined
+        ? []
+        : /* 코드와 이름을 함께 보인다 — 이름만으로는 같은 이름이 여럿일 때 못 가른다. */
+          [[String(itemId), `${item.itemCode} · ${masterName(item, item.itemName)}`] as const];
+    }),
+  );
+
+  return {
+    labelOf: (id) => (id === undefined ? NAME_UNKNOWN : (byId.get(String(id)) ?? NAME_UNKNOWN)),
+    isPending: results.some((result) => result.isPending),
+    isError: results.some((result) => result.isError),
+  };
 };
 
 /**

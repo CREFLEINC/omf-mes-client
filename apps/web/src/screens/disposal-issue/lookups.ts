@@ -2,7 +2,8 @@ import { messages } from '@omf-mes/i18n';
 import { useQueries, useQuery } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
-import { runRequest } from '../../patterns/request';
+import { masterName } from '../../patterns/master-name';
+import { runRequest, toApiError } from '../../patterns/request';
 import { isDisposalPartnerRolePending, type DisposalPartnerRoleCode } from './code-options';
 import type { LookupEntry, LotEntry, PageMeta, WarehouseEntry } from './types';
 
@@ -219,7 +220,8 @@ export const LOT_PAGE_SIZE = 200;
 
 export const lookupKeys = {
   warehouses: ['disposal-issue-lookups', 'warehouses'] as const,
-  items: ['disposal-issue-lookups', 'items'] as const,
+  /** 품목은 **번호마다** 갈린다 — 목록이 아니라 상세를 하나씩 부른다. */
+  itemName: (itemId: number) => ['disposal-issue-lookups', 'item-name', itemId] as const,
   uoms: ['disposal-issue-lookups', 'uoms'] as const,
   /** LOT은 **품목마다** 캐시가 갈린다 — 한 요청이 한 품목의 LOT만 담기 때문이다. */
   lots: (itemId: number) => ['disposal-issue-lookups', 'lots', itemId] as const,
@@ -289,37 +291,88 @@ export const useWarehouseOptions = (): WarehouseLookupResult => {
   };
 };
 
+/** 그 번호의 품목이 없다(404). **못 받은 것과 다르다** — 다시 부를 이유가 없다. */
+const isNotFound = (error: unknown): boolean => {
+  const apiError = toApiError(error);
+
+  return apiError.kind === 'http' && apiError.status === 404;
+};
+
 /**
- * 품목 — 라인 표의 품목 칸이 쓴다.
+ * 품목 — 라인 표의 품목 칸이 쓴다. **번호로 하나씩 푼다**(`GET /mdm/items/{itemId}`).
  *
- * **전표를 고르기 전에는 부르지 않는다**(`enabled`) — 단위·LOT·위치와 **같은 시점**이다.
- * 이름이 필요한 라인 표 자체가 상세 응답을 기다리므로, 미리 받아 둘 이득이 없고
- * 첫 진입의 요청 수만 이유 없이 는다.
+ * ⛔ **목록 첫 쪽으로 풀지 않는다.** 종전에는 `GET /mdm/items`를 `size` 없이 한 번 받아
+ *    그 안에서 이름을 찾았다 — 계약의 기본 쪽 크기가 50이라, 품목 마스터가 그보다 크면
+ *    첫 쪽 밖의 품목을 실은 줄이 **전부 「알 수 없음」**으로 섰다(omf-all-around#37).
+ *    그 문구는 *값이 잘못됐다*는 뜻이라 사용자에게 정반대로 읽힌다(#47).
+ * ⛔ **쪽을 돌며 다 받는 것으로 바꾸지 않는다.** 마스터가 9,000건인 곳이 있어 첫 진입에
+ *    46번을 부르게 된다 — 얻는 것은 표에 실제로 뜬 서너 줄의 이름뿐이다.
+ * ⭐ 부르는 횟수는 **보이는 탭의 줄이 가리키는 품목 수**다 — 자재 LOT과 같은 짜임이라
+ *    요청 수가 늘지 않는다. 같은 품목을 실은 줄이 여럿이면 요청도 하나다.
+ *
+ * 계약에 `itemIds` 같은 복수 번호 필터가 없어 한 번에 묶어 묻는 길이 없다.
+ * 생기면 이 자리를 한 번의 요청으로 되돌린다.
+ *
+ * **전표를 고르기 전에는 부르지 않는다**(`enabled`) — 고르기 전에는 물을 번호 자체가 없다.
  */
-export const useItemOptions = (enabled: boolean): LookupResult => {
+export interface ItemNameLookup {
+  /**
+   * 한 줄의 품목 표기 상태. **네 갈래가 그대로 산다** —
+   * 「목록에 없음」은 이제 *그 번호의 품목이 없다*(404)는 뜻이고, 못 받은 것(실패)과 가른다.
+   * 둘을 뭉개면 지워진 품목 한 건이 라인 구획 전체에 「다시 시도」를 세우고 영영 풀리지 않는다.
+   */
+  of: (itemId: number) => ReferenceState;
+  /** 하나라도 **못 받았는가**(404는 아니다). 라인 구획의 실패 안내와 「다시 시도」가 본다. */
+  isError: boolean;
+  refetch: () => void;
+}
+
+type ItemClient = ReturnType<typeof useApiClient>['client'];
+
+const fetchItemName = async (client: ItemClient, itemId: number): Promise<string> => {
+  const data = await runRequest(() =>
+    client.GET('/mdm/items/{itemId}', { params: { path: { itemId } } }),
+  );
+
+  /* 상세는 봉투로 온다 — 편집 가능 여부(`editability`)는 이 화면이 쓰지 않는다. */
+  const item = data.item;
+
+  return `${item.itemCode} · ${masterName(item, item.itemName)}`;
+};
+
+export const useItemNames = (
+  itemIds: readonly number[],
+  enabled: boolean,
+): ItemNameLookup => {
   const { client } = useApiClient();
 
-  const query = useQuery({
-    queryKey: lookupKeys.items,
-    enabled,
-    queryFn: () =>
-      runRequest(() => client.GET('/mdm/items', { params: { query: { includeInactive: true } } })),
+  /** 같은 품목을 실은 줄이 여럿이면 요청은 하나다. 정렬은 요청 순서를 읽기 쉽게 둔다. */
+  const uniqueIds = [...new Set(itemIds)].sort((left, right) => left - right);
+
+  const results = useQueries({
+    queries: uniqueIds.map((itemId) => ({
+      queryKey: lookupKeys.itemName(itemId),
+      enabled,
+      queryFn: () => fetchItemName(client, itemId),
+    })),
   });
 
-  const data = query.data;
-
   return {
-    entries:
-      data?.items.map((item) => ({
-        value: String(item.itemId),
-        label: `${item.itemCode} · ${item.itemName}`,
-        isActive: item.isActive,
-      })) ?? EMPTY_ENTRIES,
-    truncated: data !== undefined && isTruncated(data.page, data.items.length),
-    isError: query.isError,
-    isLoading: enabled && query.isPending,
+    of: (itemId) => {
+      const index = uniqueIds.indexOf(itemId);
+      const result = index === -1 ? undefined : results[index];
+
+      if (result === undefined) return { kind: 'loading' };
+      /* 없는 품목은 실패가 아니다 — 다시 불러도 같은 답이 온다. */
+      if (result.isError) return isNotFound(result.error) ? { kind: 'unknown' } : { kind: 'failed' };
+
+      return result.data === undefined
+        ? { kind: 'loading' }
+        : { kind: 'named', label: result.data };
+    },
+    isError: results.some((result) => result.isError && !isNotFound(result.error)),
     refetch: () => {
-      void query.refetch();
+      for (const result of results) void result.refetch();
     },
   };
 };

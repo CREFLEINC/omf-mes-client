@@ -121,7 +121,8 @@ const OTHER_LINES_PATH = '/logistics/inbound-receipts/9002/lines';
 const GOODS_RECEIPTS_PATH = '/logistics/goods-receipts';
 const PARTNERS_PATH = '/mdm/partners';
 const PLANTS_PATH = '/mdm/plants';
-const ITEMS_PATH = '/mdm/items';
+/** 품목만 번호마다 상세를 부른다 — 경로가 하나가 아니라 번호마다 하나다. */
+const itemPath = (itemId: number): string => `/mdm/items/${String(itemId)}`;
 const UOMS_PATH = '/mdm/uoms';
 const LOTS_PATH = '/trace/lots';
 const WAREHOUSES_PATH = '/mdm/warehouses';
@@ -301,6 +302,16 @@ const lotsRoute = (): StubRoute => ({
   },
 });
 
+/**
+ * 품목 상세. **번호마다 하나씩** 답한다(`GET /mdm/items/{itemId}`) — 응답이
+ * `{ item, editability }` 봉투라는 것까지 여기서 굳힌다.
+ */
+const itemDetailRoutes = (): StubRoute[] =>
+  itemFixtures.map((item) => ({
+    match: (request: Request) => isGet(request, itemPath(item.itemId)),
+    respond: () => jsonResponse({ item, editability: {} }),
+  }));
+
 /** 적치 위치는 **창고마다** 다른 목록이 온다 — 창고를 바꾸면 앞 위치가 뜻을 잃는다. */
 const locationsRoute = (
   page?: Partial<{ page: number; size: number; total: number }>,
@@ -319,7 +330,7 @@ const locationsRoute = (
 const lookupRoutes = (): StubRoute[] => [
   lookupRoute(PARTNERS_PATH, partnerFixtures),
   lookupRoute(PLANTS_PATH, plantFixtures),
-  lookupRoute(ITEMS_PATH, itemFixtures),
+  ...itemDetailRoutes(),
   lookupRoute(UOMS_PATH, uomFixtures),
   lotsRoute(),
   lookupRoute(WAREHOUSES_PATH, warehouseFixtures),
@@ -365,17 +376,15 @@ const changingItemRoute = (): StubRoute => {
   let call = 0;
 
   return {
-    match: (request) => isGet(request, ITEMS_PATH),
+    match: (request) => isGet(request, itemPath(9301)),
     respond: () => {
       call += 1;
+      const item = itemFixtures[0] ?? {};
 
-      return jsonResponse(
-        listBody(
-          call === 1
-            ? itemFixtures
-            : itemFixtures.map((item) => ({ ...item, itemName: '합성 품목 가(갱신)' })),
-        ),
-      );
+      return jsonResponse({
+        item: call === 1 ? item : { ...item, itemName: '합성 품목 가(갱신)' },
+        editability: {},
+      });
     },
   };
 };
@@ -682,7 +691,7 @@ describe('GoodsReceiptScreen — 첫 진입 조회', () => {
 
     await screen.findAllByText('IR-2026-900001');
 
-    expect(requestsTo(requests, ITEMS_PATH)).toHaveLength(0);
+    expect(requestsTo(requests, itemPath(9301))).toHaveLength(0);
     expect(requestsTo(requests, UOMS_PATH)).toHaveLength(0);
     expect(requestsTo(requests, LOTS_PATH)).toHaveLength(0);
 
@@ -690,7 +699,7 @@ describe('GoodsReceiptScreen — 첫 진입 조회', () => {
     await selectReceipt(user, 'IR-2026-900001');
 
     await waitFor(() => {
-      expect(requestsTo(requests, ITEMS_PATH).length).toBeGreaterThan(0);
+      expect(requestsTo(requests, itemPath(9301)).length).toBeGreaterThan(0);
       expect(requestsTo(requests, UOMS_PATH).length).toBeGreaterThan(0);
       expect(requestsTo(requests, LOTS_PATH).length).toBeGreaterThan(0);
     });
@@ -753,7 +762,7 @@ describe('GoodsReceiptScreen — 첫 진입 조회', () => {
       expect(request.url.searchParams.get('size')).toBe('200');
     }
 
-    for (const path of [PLANTS_PATH, ITEMS_PATH, UOMS_PATH, LIST_PATH]) {
+    for (const path of [PLANTS_PATH, itemPath(9301), UOMS_PATH, LIST_PATH]) {
       for (const request of requestsTo(requests, path)) {
         expect(request.url.searchParams.has('size')).toBe(false);
       }
@@ -1429,7 +1438,7 @@ describe('GoodsReceiptScreen — 참조 풀이', () => {
   it.each([
     ['공급사', PARTNERS_PATH, t.reasons.referencesFailed, t.panes.list],
     ['공장', PLANTS_PATH, t.reasons.lineReferencesFailed, t.panes.lines],
-    ['품목', ITEMS_PATH, t.reasons.lineReferencesFailed, t.panes.lines],
+    ['품목', itemPath(9301), t.reasons.lineReferencesFailed, t.panes.lines],
     ['단위', UOMS_PATH, t.reasons.lineReferencesFailed, t.panes.lines],
     ['자재 LOT', LOTS_PATH, t.reasons.lineReferencesFailed, t.panes.lines],
   ])(
@@ -1478,19 +1487,20 @@ describe('GoodsReceiptScreen — 참조 풀이', () => {
         lookupRoute(PLANTS_PATH, plantFixtures),
         lookupRoute(UOMS_PATH, uomFixtures),
         lotsRoute(),
-        failingLookupRoute(ITEMS_PATH),
+        failingLookupRoute(itemPath(9301)),
+        ...itemDetailRoutes(),
       ],
       '?ir=9001',
     );
 
     await screen.findByText(t.reasons.lineReferencesFailed);
 
-    const before = requestsTo(requests, ITEMS_PATH).length;
+    const before = requestsTo(requests, itemPath(9301)).length;
 
     await user.click(screen.getByRole('button', { name: messages.common.retry }));
 
     await waitFor(() => {
-      expect(requestsTo(requests, ITEMS_PATH).length).toBeGreaterThan(before);
+      expect(requestsTo(requests, itemPath(9301)).length).toBeGreaterThan(before);
     });
   });
 
@@ -1509,7 +1519,7 @@ describe('GoodsReceiptScreen — 참조 풀이', () => {
         goodsReceiptRoute(),
         lookupRoute(PARTNERS_PATH, partnerFixtures),
         lookupRoute(PLANTS_PATH, plantFixtures),
-        lookupRoute(ITEMS_PATH, itemFixtures),
+        ...itemDetailRoutes(),
         lookupRoute(UOMS_PATH, uomFixtures),
         /* 서버가 「전체 500건 중 이만큼」이라고 답한다 — 쪽 크기를 실어도 잘릴 수 있다. */
         lookupRoute(LOTS_PATH, lotFixtures, { total: 500 }),

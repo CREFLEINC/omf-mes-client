@@ -10,6 +10,7 @@ import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
 
 import { lookupDisplayLabel, type LookupSource } from '../../patterns/lookup-display';
+import type { ItemNameLookup } from './lookups';
 import { formatDateTime, type DisposalTarget } from './types';
 
 const t = messages.productDisposalRequest;
@@ -30,7 +31,8 @@ export interface TargetListProps {
   selected: readonly number[];
   isLoading: boolean;
   error: ReactNode;
-  items: LookupSource;
+  /** 품목은 번호마다 하나씩 푼다 — 목록 원천이 아니라 풀이 함수를 받는다. */
+  items: ItemNameLookup;
   uoms: LookupSource;
   onToggle: (dispositionDecisionId: number) => void;
   onToggleAll: () => void;
@@ -87,7 +89,7 @@ export const TargetList = ({
       render: (row) =>
         row.itemId === null
           ? messages.common.reference.unknown
-          : lookupDisplayLabel(items, row.itemId),
+          : lookupDisplayLabel(items.of(row.itemId), row.itemId),
     },
     {
       key: 'qty',
