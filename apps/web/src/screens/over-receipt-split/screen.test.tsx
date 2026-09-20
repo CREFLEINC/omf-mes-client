@@ -192,6 +192,29 @@ const lookupRoute = (
   respond: () => jsonResponse(listBody(items, page)),
 });
 
+/**
+ * 쪽을 **실제로 나눠 주는** 거래처 목록.
+ *
+ * ⭐ 기존 스텁은 한 쪽에 다 담아 주므로 「끝까지 받는다」를 증명하지 못한다 — 첫 쪽만 받는
+ * 화면도 그 스텁에서는 전부 통과한다. 거래처는 936건이고 그 너머의 공급사가 목록 표에서
+ * 「알 수 없음」으로 섰다(omf-all-around#38).
+ *
+ * **서버가 정한 쪽 크기로 자른다**(요청한 `size`를 쓰지 않는다) — 서버가 요청값을 낮춰
+ * 적용하는 일이 실재하고, 그때 「받은 수 === 요청한 size」로 세는 판정은 두 쪽째에서 멈춘다.
+ */
+const pagedPartnersRoute = (items: unknown[], serverSize = 1): StubRoute => ({
+  match: (request) => isGet(request, PARTNERS_PATH),
+  respond: (request) => {
+    const page = Number(new URL(request.url).searchParams.get('page') ?? '1');
+    const from = (page - 1) * serverSize;
+
+    return jsonResponse({
+      items: items.slice(from, from + serverSize),
+      page: { page, size: serverSize, total: items.length },
+    });
+  },
+});
+
 /** 참조 목록 넷. 화면이 이름으로 풀 수 있는 정상 상태다. */
 const lookupRoutes = (): StubRoute[] => [
   lookupRoute(PARTNERS_PATH, partnerFixtures),
@@ -1068,6 +1091,47 @@ describe('OverReceiptSplitScreen — 참조 표기 네 갈래', () => {
     await waitFor(() => {
       expect(requestsTo(requests, UOMS_PATH).length).toBeGreaterThan(before);
     });
+  });
+
+  /**
+   * ⭐ **거래처는 한 쪽에 들어가지 않는다**(936건 · omf-all-around#38).
+   *
+   * 첫 쪽만 받으면 그 너머의 공급사가 목록 표에서 「알 수 없음」으로 찍히고 조건 줄에서도
+   * 고를 수 없다. 그 문구는 *값이 잘못됐다*는 뜻이라 사용자에게 정반대로 읽힌다(#47).
+   *
+   * 여기서는 서버가 **한 건씩** 나눠 주게 해 두 쪽째에 있는 공급사를 만든다.
+   */
+  it('거래처가 여러 쪽이면 끝까지 받아 두 쪽째 공급사도 이름으로 낸다', async () => {
+    const { requests } = renderScreen([
+      listRoute(),
+      linesRoute(),
+      otherLinesRoute(),
+      detailRoute(),
+      splitRoute(),
+      /* 9101(9001의 공급사)을 **둘째 쪽**에 둔다. */
+      pagedPartnersRoute([...partnerFixtures].reverse()),
+      lookupRoute(PLANTS_PATH, plantFixtures),
+      ...itemDetailRoutes(),
+      lookupRoute(UOMS_PATH, uomFixtures),
+    ]);
+
+    await screen.findByText('PO-2026-900001');
+
+    await waitFor(() => {
+      expect(within(listTable()).getAllByText(SUPPLIER_LABEL).length).toBeGreaterThan(0);
+    });
+
+    /* 짝 방향 — 두 쪽을 실제로 불렀다(한 번만 불러 통과한 것이 아니다). */
+    const pages = requestsTo(requests, PARTNERS_PATH).map((request) =>
+      request.url.searchParams.get('page'),
+    );
+
+    expect(pages).toEqual(['1', '2']);
+    /*
+     * 9002의 공급사(9102)는 픽스처 어디에도 없어 여전히 「알 수 없음」이다 — 그것은
+     * 잘림이 아니라 **정말 없는 값**이고, 이 수정이 지우는 대상이 아니다.
+     */
+    expect(within(listTable()).getAllByText(t.values.unknown)).toHaveLength(1);
   });
 
   /* 선택지가 잘렸으면 사용자가 「그런 공급사가 없다」로 결론짓지 않게 밝힌다. */
