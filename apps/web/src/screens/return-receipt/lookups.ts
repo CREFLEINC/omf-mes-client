@@ -2,6 +2,7 @@ import { messages } from '@omf-mes/i18n';
 import { useQueries, useQuery } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
+import { fetchAllPages } from '../../patterns/fetch-all-pages';
 import type { LookupEntry, LookupSource } from '../../patterns/lookup-display';
 import { masterName } from '../../patterns/master-name';
 import { runRequest, toApiError } from '../../patterns/request';
@@ -195,10 +196,13 @@ export const useCustomerOptions = (): CodeOptionSource => {
   const query = useQuery({
     queryKey: [ROOT, 'customers'],
     queryFn: async () => {
-      const data = await runRequest(() =>
-        client.GET('/mdm/partners', {
-          params: { query: { roleTypeCode: CUSTOMER_ROLE, size: LOOKUP_PAGE_SIZE } },
-        }),
+      /* 고객은 639건이라 한 쪽에 들어가지 않는다 — 끝까지 받는다(omf-all-around#38). */
+      const data = await fetchAllPages((page, size) =>
+        runRequest(() =>
+          client.GET('/mdm/partners', {
+            params: { query: { roleTypeCode: CUSTOMER_ROLE, page, size } },
+          }),
+        ),
       );
 
       return data.items
