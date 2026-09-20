@@ -81,7 +81,8 @@ export const inboundReceiptLine = (overrides: Partial<IrLineView> = {}): IrLineV
  * 9001의 라인 네 줄. **고를 수 있는 줄과 없는 줄이 함께 있어야** 판정이 실제로 검사된다.
  *
  * - 9401 — 전부 채워져 있다. **고를 수 있다**
- * - 9402 — 수량이 **소수**이고 **품목이 참조 목록에 없다**. 유효기한이 `null`이며
+ * - 9402 — 수량이 **소수**이고 **품목이 9401과 다르다**(품목을 번호마다 묻는지 드러낸다).
+ *   유효기한이 `null`이며
  *   수입검사 대상이 아니다. **고를 수 있다**(둘째 줄이 있어야 「한 줄만 고른다」를 검사할 수 있다)
  * - 9403 — **자재 LOT이 없다.** 고를 수 없는 첫째 사유
  * - 9404 — 수량이 **0**이다. 고를 수 없는 둘째 사유이며, **LOT 번호가 참조 목록에 없어**
@@ -134,8 +135,14 @@ export const plantFixtures = [
   { plantId: 9202, plantCode: 'SAMPLE-PLT-02', plantName: '합성 공장 나', isActive: true },
 ];
 
+/**
+ * **품목만 목록이 아니다.** 번호마다 상세를 부르므로(`GET /mdm/items/{itemId}`)
+ * 라인이 쓰는 번호가 모두 여기 있어야 정상 경로가 선다 — 「이름을 못 풀었다」는 갈래는
+ * 목록에서 빼는 것이 아니라 그 번호의 조회를 실패시켜 만든다.
+ */
 export const itemFixtures = [
   { itemId: 9301, itemCode: 'SAMPLE-ITEM-01', itemName: '합성 품목 가', isActive: true },
+  { itemId: 9302, itemCode: 'SAMPLE-ITEM-02', itemName: '합성 품목 나', isActive: true },
 ];
 
 export const uomFixtures = [
