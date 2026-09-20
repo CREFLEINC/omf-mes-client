@@ -654,6 +654,138 @@ describe('입하 등록 화면', () => {
   });
 });
 
+/**
+ * 자재 P/O 에 자재가 여럿일 때, 자재를 바꾸면 그 자재에 딸린 칸을 비운다(현장 보고 2026-09-21).
+ *
+ * 남겨 두면 앞 자재에 적은 수량이 다음 자재에 붙은 채 판정까지 다시 선다 - 발주량 500 짜리에
+ * 500 을 적고 발주량 80 짜리로 옮기면 초과 판정이 나서 등록 단추가 사라지고 초과 분리 구획이
+ * 섰다. 눈치채지 못하면 앞 자재의 수량이 다른 자재로 등록된다.
+ */
+describe('입하 등록 화면 — 자재를 바꿀 때', () => {
+  const twoLines: Options = {
+    lines: [
+      poLine({ purchaseOrderLineId: 41, itemId: 31, orderedQty: 500 }),
+      poLine({ purchaseOrderLineId: 42, lineNo: 2, itemId: 32, orderedQty: 80 }),
+    ],
+  };
+
+  const fillFirstLine = async (user: ReturnType<typeof userEvent.setup>) => {
+    await screen.findByLabelText('LOT 번호');
+    await user.click(screen.getByRole('button', { name: 'LOT 번호 없음' }));
+    await user.click(await screen.findByRole('combobox', { name: '자재 P/O 번호' }));
+    await user.click(await screen.findByRole('option', { name: 'PO-2026-0003' }));
+    await user.click(await screen.findByRole('button', { name: /ABC-123|31/ }));
+    await user.type(await screen.findByLabelText(/실입하\ 수량/), '500');
+    await user.type(screen.getByLabelText(/포장\ 수/), '10');
+    await user.type(screen.getByLabelText('제조일 (선택)'), '2026-07-01');
+  };
+
+  it('다른 자재로 옮기면 앞 자재에 적은 값을 비운다', async () => {
+    const user = userEvent.setup();
+    mount([], twoLines);
+    await fillFirstLine(user);
+
+    await user.click(await screen.findByRole('button', { name: /품목 정보 없음|32/ }));
+
+    expect((screen.getByLabelText(/실입하\ 수량/) as HTMLInputElement).value).toBe('');
+    expect((screen.getByLabelText(/포장\ 수/) as HTMLInputElement).value).toBe('');
+    expect((screen.getByLabelText('제조일 (선택)') as HTMLInputElement).value).toBe('');
+  });
+
+  /* 앞 자재의 500 이 남으면 발주량 80 짜리에서 초과 판정이 나 등록 단추가 사라진다. */
+  it('다른 자재로 옮겨도 앞 자재의 수량으로 초과 판정하지 않는다', async () => {
+    const user = userEvent.setup();
+    mount([], twoLines);
+    await fillFirstLine(user);
+
+    await user.click(await screen.findByRole('button', { name: /품목 정보 없음|32/ }));
+
+    expect(screen.queryByText('초과 입하 분리')).toBeNull();
+    expect(screen.getByRole('button', { name: '입하 등록' })).toBeTruthy();
+    expect(await screen.findByText('실입하 수량을 먼저 적으세요')).toBeTruthy();
+  });
+
+  /* 같은 자재를 다시 누른 것은 바꾸는 것이 아니다 - 적어 둔 것을 잃지 않는다. */
+  it('같은 자재를 다시 누르면 적어 둔 것을 잃지 않는다', async () => {
+    const user = userEvent.setup();
+    mount([], twoLines);
+    await fillFirstLine(user);
+
+    await user.click(await screen.findByRole('button', { name: /ABC-123|31/ }));
+
+    expect((screen.getByLabelText(/실입하\ 수량/) as HTMLInputElement).value).toBe('500');
+    expect((screen.getByLabelText(/포장\ 수/) as HTMLInputElement).value).toBe('10');
+  });
+
+  /* 공급사 LOT 과 대체 사유는 «이 도착»의 것이다. 비우면 자재마다 다시 고르게 된다. */
+  it('LOT 번호 없음과 그 사유는 자재를 바꿔도 그대로 둔다', async () => {
+    const user = userEvent.setup();
+    mount([], twoLines);
+    await fillFirstLine(user);
+
+    await user.click(await screen.findByRole('button', { name: /품목 정보 없음|32/ }));
+
+    expect(screen.getByRole('button', { name: '스캔으로 되돌리기' })).toBeTruthy();
+    expect(screen.getByText('라벨 없음')).toBeTruthy();
+  });
+});
+
+/**
+ * 등록한 값을 등록 «뒤»에 확인할 수 있어야 한다(현장 요청 2026-09-21).
+ *
+ * 전에는 「등록했습니다」 띠와 「다음 입하」 단추뿐이라, 같은 자재 P/O 의 자재를 여러 번 넣을 때
+ * 앞 자재를 무엇으로 얼마나 넣었는지 되짚을 곳이 화면에 없었다.
+ */
+describe('입하 등록 화면 — 등록한 내용', () => {
+  const accepts: StubRoute = {
+    match: (req) =>
+      new URL(req.url).pathname === '/logistics/inbound-receipts' && req.method === 'POST',
+    respond: () => jsonResponse({ inboundReceipt: {}, lines: [] }, { status: 201 }),
+  };
+
+  it('등록한 자재와 수량과 LOT 을 적은 그대로 다시 보인다', async () => {
+    const user = userEvent.setup();
+    mount([accepts]);
+
+    await screen.findByLabelText('LOT 번호');
+    await user.click(screen.getByRole('button', { name: 'LOT 번호 없음' }));
+    await user.click(await screen.findByRole('combobox', { name: '자재 P/O 번호' }));
+    await user.click(await screen.findByRole('option', { name: 'PO-2026-0003' }));
+    await user.click(await screen.findByRole('button', { name: /ABC-123|31/ }));
+    await user.type(await screen.findByLabelText(/실입하\ 수량/), '500');
+    await user.type(screen.getByLabelText(/포장\ 수/), '10');
+    await user.click(screen.getByRole('button', { name: '입하 등록' }));
+
+    expect(await screen.findByText('입하를 등록했습니다')).toBeTruthy();
+    expect(screen.getByText('등록한 내용')).toBeTruthy();
+    expect(screen.getByText('PO-2026-0003 · 1번 라인')).toBeTruthy();
+    expect(screen.getByText('ABC-123 원자재')).toBeTruthy();
+    expect(screen.getByText('500 EA')).toBeTruthy();
+    expect(screen.getByText('10')).toBeTruthy();
+    expect(screen.getByText('라벨 미부착 · 라벨 없음')).toBeTruthy();
+  });
+
+  /* 「다음 입하」로 넘어가면 앞 건의 요약이 남아 있으면 안 된다 - 다음 건의 것으로 읽힌다. */
+  it('다음 입하로 넘어가면 앞 건의 요약을 지운다', async () => {
+    const user = userEvent.setup();
+    mount([accepts]);
+
+    await screen.findByLabelText('LOT 번호');
+    await user.click(screen.getByRole('button', { name: 'LOT 번호 없음' }));
+    await user.click(await screen.findByRole('combobox', { name: '자재 P/O 번호' }));
+    await user.click(await screen.findByRole('option', { name: 'PO-2026-0003' }));
+    await user.click(await screen.findByRole('button', { name: /ABC-123|31/ }));
+    await user.type(await screen.findByLabelText(/실입하\ 수량/), '500');
+    await user.click(screen.getByRole('button', { name: '입하 등록' }));
+
+    await screen.findByText('등록한 내용');
+    await user.click(screen.getByRole('button', { name: '다음 입하' }));
+
+    expect(screen.queryByText('등록한 내용')).toBeNull();
+    expect(await screen.findByLabelText('LOT 번호')).toBeTruthy();
+  });
+});
+
 const choosePoLine = async (
   user: ReturnType<typeof userEvent.setup>,
   lineName: RegExp = /ABC-123|31/,

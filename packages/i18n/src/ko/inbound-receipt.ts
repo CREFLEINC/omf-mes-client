@@ -214,6 +214,56 @@ export const inboundReceipt = {
   /** 검사 대상 여부는 서버가 라인마다 정한다. 화면이 보내지 않는다. */
   inspectionNote: '검사 대상 여부는 등록한 뒤에 라인마다 정해집니다',
   submit: '입하 등록',
+  /**
+   * 잠긴 등록 단추가 «왜» 잠겼는지 — 단추 바로 아래 한 줄로 선다(공유계약 G-1).
+   *
+   * ⭐ 위에서부터 처음 비어 있는 것 하나만 말한다. 다 늘어놓으면 무엇부터 할지가 흐려진다.
+   * ⛔ 작업자가 확인할 길이 없는 것을 확인하라 하지 않는다 — 그때는 관리자에게 문의하게 한다.
+   */
+  locked: {
+    loading: '담아 둔 기록을 읽는 중입니다. 잠시 뒤에 눌러 주세요.',
+    noWorker: '사번을 확인해야 등록할 수 있습니다',
+    noOrder: '자재 P/O를 먼저 고르세요',
+    noOrderLine: '자재 P/O 라인을 먼저 고르세요',
+    noSupplier: '공급사를 먼저 고르세요',
+    noItem: '품목을 먼저 고르세요',
+    noUom: '단위를 먼저 고르세요',
+    noExceptionType: '예외입하 유형을 먼저 고르세요',
+    noExceptionReason: '예외 사유를 먼저 적으세요',
+    /* 공장은 발주에서 승계하거나 기기가 싣고 온다. 작업자가 이 화면에서 고칠 수 없다. */
+    noPlant: '이 입하의 공장을 확인할 수 없습니다. 관리자에게 문의하세요.',
+    qtyEmpty: '실입하 수량을 먼저 적으세요',
+    qtyNotNumber: '실입하 수량을 숫자로 고치세요',
+    qtyNotPositive: '실입하 수량을 0보다 크게 고치세요',
+    packageCount: '포장 수를 0보다 크게 고치세요',
+    expiryBeforeManufactured: '유효기한을 제조일 뒤로 고치세요',
+    labelChecking: '라벨 확인이 끝나면 등록할 수 있습니다',
+    labelMismatch: '라벨의 품목과 맞는 자재 P/O를 고르세요',
+    underUnanswered: '더 들어올 물량이 있는지 먼저 고르세요',
+    noSubstituteReason: '대체 LOT 사유를 먼저 고르세요',
+  },
+  /**
+   * 방금 등록한 한 건을 되짚는 자리 — 「등록했습니다」 아래에 선다(현장 요청 2026-09-21).
+   *
+   * ⭐ 같은 자재 P/O 의 자재를 여러 번 넣을 때, 앞 자재를 무엇으로 얼마나 넣었는지 확인할
+   *    곳이 화면에 없었다. 적은 값을 그대로 다시 보인다.
+   */
+  recorded: {
+    legend: '등록한 내용',
+    purchaseOrder: '자재 P/O',
+    line: (lineNo: string) => `${lineNo}번 라인`,
+    item: '품목',
+    qty: '실입하 수량',
+    /* 초과 분리는 두 몫으로 나뉘어 나간다. 합만 보이면 어느 쪽이 얼마인지 알 수 없다. */
+    normalQty: '정량분',
+    excessQty: '초과분',
+    packageCount: '포장 수',
+    lotNo: '공급사 LOT',
+    lotMissing: '라벨 미부착',
+    manufactured: '제조일',
+    expiry: '유효기한',
+    none: '없음',
+  },
   sent: {
     title: '입하를 등록했습니다',
     description: '사전부착 라인의 자재 LOT도 함께 만들어졌습니다. 모두 보류 상태입니다.',

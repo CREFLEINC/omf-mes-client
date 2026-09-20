@@ -182,27 +182,158 @@ export interface ReceiptDraft {
   expiryDate: string;
 }
 
-export const canSubmit = (draft: ReceiptDraft, hasWorker: boolean): boolean => {
+/**
+ * 방금 등록한 한 건을 화면에 다시 보이기 위한 요약.
+ *
+ * ⭐ **적은 값을 등록 뒤에 확인할 수 있어야 한다**(현장 요청 2026-09-21). 전에는 「등록했습니다」
+ *    띠와 「다음 입하」 단추뿐이라, 같은 자재 P/O 의 자재를 여러 번 넣을 때 무엇을 얼마나
+ *    넣었는지 되짚을 곳이 화면에 없었다.
+ *
+ * ⛔ **화면이 수량을 다시 셈하지 않는다.** 이 값들은 «담아 보낸 본문»에서 되읽는다 - 따로
+ *    셈하면 보낸 것과 보이는 것이 갈려, 확인하려고 보는 수가 도리어 틀린 수가 된다.
+ */
+export interface RecordedPart {
+  /** 한 건이면 `null`, 초과 분리면 정량분·초과분. */
+  part: 'normal' | 'excess' | null;
+  receivedQty: number;
+  packageCount: number | null;
+}
+
+export interface RecordedReceipt {
+  purchaseOrderNo: string | null;
+  lineNo: number | null;
+  itemId: number;
+  uomId: number;
+  supplierLotNo: string | null;
+  supplierLotMissing: boolean;
+  substituteLotReasonCode: string | null;
+  manufacturedDate: string | null;
+  expiryDate: string | null;
+  parts: RecordedPart[];
+}
+
+const partOf = (raw: unknown, part: RecordedPart['part']): RecordedPart | null => {
+  const line = (raw as { lines?: unknown } | null)?.lines;
+  const first = Array.isArray(line) ? (line[0] as InboundReceiptLineUpsert | undefined) : undefined;
+
+  return first === undefined
+    ? null
+    : { part, receivedQty: first.receivedQty, packageCount: first.packageCount ?? null };
+};
+
+/**
+ * 담아 보낸 본문에서 「무엇을 얼마나 적었는가」를 되읽는다.
+ *
+ * 경로로 갈린다 - 한 건과 초과 분리는 본문 모양이 다르고, 분리는 모드에 따라 실리는 파트가
+ * 다르다. 없는 파트를 0 으로 보이면 보내지 않은 것을 보낸 것처럼 말한다.
+ */
+export const recordedPartsOf = (path: string, body: unknown): RecordedPart[] => {
+  if (path === RECEIPT_PATH) {
+    const only = partOf(body, null);
+
+    return only === null ? [] : [only];
+  }
+
+  if (path !== SPLIT_RECEIPT_PATH) {
+    return [];
+  }
+
+  const split = body as { normal?: unknown; excess?: unknown } | null;
+
+  return [partOf(split?.normal, 'normal'), partOf(split?.excess, 'excess')].filter(
+    (each): each is RecordedPart => each !== null,
+  );
+};
+
+export const recordedOf = (
+  draft: ReceiptDraft,
+  source: ReceiptSource,
+  path: string,
+  body: unknown,
+): RecordedReceipt => ({
+  purchaseOrderNo: draft.purchaseOrder?.purchaseOrderNo ?? null,
+  lineNo: draft.purchaseOrderLine?.lineNo ?? null,
+  itemId: source.itemId,
+  uomId: source.uomId,
+  supplierLotNo:
+    draft.supplierLotMissing || draft.supplierLotNo === '' ? null : draft.supplierLotNo,
+  supplierLotMissing: draft.supplierLotMissing,
+  substituteLotReasonCode: draft.supplierLotMissing ? draft.substituteLotReasonCode : null,
+  manufacturedDate: draft.manufacturedDate.trim() === '' ? null : draft.manufacturedDate.trim(),
+  expiryDate: draft.expiryDate.trim() === '' ? null : draft.expiryDate.trim(),
+  parts: recordedPartsOf(path, body),
+});
+
+/**
+ * 자재가 바뀌면 함께 비우는 칸들 — 수량·포장 수·제조일·유효기한.
+ *
+ * ⭐ 이 넷은 «그 자재»의 것이다. 자재 P/O 라인을 다른 자재로 옮겼는데 남겨 두면 앞 자재에
+ *    적은 수량이 다음 자재에 그대로 붙는다. 실기기에서 발주량 500 짜리 라인에 500 을 적고
+ *    발주량 80 짜리 라인으로 옮겼더니 500 이 남아 초과 판정이 났고, 등록 단추가 사라진 자리에
+ *    초과 분리 구획이 섰다(2026-09-21).
+ *
+ * ⛔ 공급사 LOT 번호·대체 사유·자재 P/O 는 여기 넣지 않는다. 그것들은 «이 도착»의 것이라
+ *    자재를 바꿔도 그대로다 - 비우면 같은 자재 P/O 의 다음 자재를 넣을 때마다 다시 스캔한다.
+ */
+export const LINE_SCOPED_BLANK: Pick<
+  ReceiptDraft,
+  'receivedQty' | 'packageCount' | 'manufacturedDate' | 'expiryDate'
+> = {
+  receivedQty: '',
+  packageCount: '',
+  manufacturedDate: '',
+  expiryDate: '',
+};
+
+/**
+ * 등록 단추를 잠근 «한 가지» 이유. 잠글 것이 없으면 `null` 이다.
+ *
+ * ⭐ **잠근 단추는 왜 잠겼는지 함께 말한다**(공유계약 G-1). 같은 화면의 초과 분리 구획이
+ *    이미 그렇게 한다(`excessLocked`) — 그런데 정작 등록 단추는 아무 말도 하지 않아,
+ *    다 채웠는데 눌리지 않는다는 말이 현장에서 나왔다(2026-09-20).
+ *
+ * ⛔ **판정을 두 벌로 적지 않는다.** 아래 `canSubmit` 과 화면의 `ready` 가 이 한 곳에서
+ *    나온다 — 따로 적으면 한쪽만 고쳐져 단추는 잠긴 채 「고칠 것이 없다」고 말하게 된다.
+ *
+ * 차례는 «화면에 선 차례»다. 위에서부터 처음 비어 있는 것을 가리켜야 사람의 눈이 그리로 간다.
+ */
+export type SubmitLock =
+  | 'loading'
+  | 'noWorker'
+  | 'noOrder'
+  | 'noOrderLine'
+  | 'noSupplier'
+  | 'noItem'
+  | 'noUom'
+  | 'noExceptionType'
+  | 'noExceptionReason'
+  | 'noPlant'
+  | 'qtyEmpty'
+  | 'qtyNotNumber'
+  | 'qtyNotPositive'
+  | 'packageCount'
+  | 'expiryBeforeManufactured'
+  | 'labelChecking'
+  | 'labelMismatch'
+  | 'underUnanswered'
+  | 'noSubstituteReason';
+
+/** 화면만 아는 것들. 초안에 없어 따로 받는다. */
+export interface SubmitGate {
+  /** 담긴 것을 다 읽었는가. 읽기 전에는 초과가 초과로 보이지 않아 막아 둔다. */
+  loaded: boolean;
+  hasWorker: boolean;
+  /** 발주에서 승계하거나 기기 토큰이 싣고 온 공장. 모르면 지어내지 않는다. */
+  plantId: number | null;
+  label: 'ok' | 'checking' | 'mismatch';
+  verdict: Verdict | null;
+  continueUnder: boolean;
+}
+
+/** 초안만 보고 아는 잠금. 화면 밖에서도 같은 답이 나와야 해서 따로 둔다. */
+const draftLockOf = (draft: ReceiptDraft, hasWorker: boolean): SubmitLock | null => {
   if (!hasWorker) {
-    return false;
-  }
-
-  if (qtyProblem(draft.receivedQty) !== null || packageProblem(draft.packageCount) !== null) {
-    return false;
-  }
-
-  if (isExpiryBeforeManufactured(draft.manufacturedDate, draft.expiryDate)) {
-    return false;
-  }
-
-  /* 미부착 분기는 데이터에 있는 구분이다. 사유 없이 참으로 보내면 서버가 거부한다. */
-  if (draft.supplierLotMissing && draft.substituteLotReasonCode === '') {
-    return false;
-  }
-
-  /* 번호가 없는데 부착됐다고 보내면 사전부착 스캔 경로와 충돌한다. */
-  if (draft.supplierLotMissing && draft.supplierLotLabelAttached) {
-    return false;
+    return 'noWorker';
   }
 
   /*
@@ -210,17 +341,77 @@ export const canSubmit = (draft: ReceiptDraft, hasWorker: boolean): boolean => {
    * 담아 둔 뒤에야 오므로 화면에서 막는다.
    */
   if (draft.unordered) {
-    return (
-      draft.supplierId !== null &&
-      draft.itemId !== null &&
-      draft.uomId !== null &&
-      draft.exceptionTypeCode.trim() !== '' &&
-      draft.exceptionReason.trim() !== ''
-    );
+    if (draft.supplierId === null) return 'noSupplier';
+    if (draft.itemId === null) return 'noItem';
+    if (draft.uomId === null) return 'noUom';
+    if (draft.exceptionTypeCode.trim() === '') return 'noExceptionType';
+    if (draft.exceptionReason.trim() === '') return 'noExceptionReason';
+  } else {
+    if (draft.purchaseOrder === null) return 'noOrder';
+    if (draft.purchaseOrderLine === null) return 'noOrderLine';
   }
 
-  return draft.purchaseOrder !== null && draft.purchaseOrderLine !== null;
+  const qty = qtyProblem(draft.receivedQty);
+
+  if (qty !== null) {
+    return qty === 'empty' ? 'qtyEmpty' : qty === 'notNumber' ? 'qtyNotNumber' : 'qtyNotPositive';
+  }
+
+  if (packageProblem(draft.packageCount) !== null) {
+    return 'packageCount';
+  }
+
+  if (isExpiryBeforeManufactured(draft.manufacturedDate, draft.expiryDate)) {
+    return 'expiryBeforeManufactured';
+  }
+
+  /* 번호가 없는데 부착됐다고 보내면 사전부착 스캔 경로와 충돌한다. */
+  if (draft.supplierLotMissing && draft.supplierLotLabelAttached) {
+    return 'noSubstituteReason';
+  }
+
+  /* 미부착 분기는 데이터에 있는 구분이다. 사유 없이 참으로 보내면 서버가 거부한다. */
+  return draft.supplierLotMissing && draft.substituteLotReasonCode === ''
+    ? 'noSubstituteReason'
+    : null;
 };
+
+export const submitLockOf = (draft: ReceiptDraft, gate: SubmitGate): SubmitLock | null => {
+  if (!gate.loaded) {
+    return 'loading';
+  }
+
+  const inDraft = draftLockOf(draft, gate.hasWorker);
+
+  /*
+   * 공장은 발주 라인을 고른 «뒤»에 정해진다(발주에서 승계한다). 고르기 전에 공장부터 말하면
+   * 사람이 고칠 수 없는 것을 가리키게 되므로, 초안이 먼저 가리키는 것을 앞에 둔다.
+   */
+  if (inDraft !== null && inDraft !== 'noSubstituteReason') {
+    return inDraft;
+  }
+
+  if (gate.plantId === null) {
+    return 'noPlant';
+  }
+
+  if (gate.label === 'checking') {
+    return 'labelChecking';
+  }
+
+  if (gate.label === 'mismatch') {
+    return 'labelMismatch';
+  }
+
+  if (gate.verdict === UNDER && !gate.continueUnder) {
+    return 'underUnanswered';
+  }
+
+  return inDraft;
+};
+
+export const canSubmit = (draft: ReceiptDraft, hasWorker: boolean): boolean =>
+  draftLockOf(draft, hasWorker) === null;
 
 /**
  * 대체 LOT 사유 선택칸의 **기본값** — 「라벨 미부착」(사용자 지시 2026-09-19 · omf-all-around#34).
