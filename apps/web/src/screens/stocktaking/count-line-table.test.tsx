@@ -13,7 +13,7 @@ import {
 import { blindCountLineResponse, countLineFixtures, uncountedLineResponse } from './fixtures';
 import { EMPTY_LINE_DRAFTS, setDraftQty, setDraftReason, type LineDrafts } from './line-draft';
 import { toLineRows, type LineRowView } from './line-replace-request';
-import type { ReferenceSource } from './lookups';
+import type { ItemNameLookup, ReferenceSource, ReferenceState } from './lookups';
 import { toCountLineView, type SelectOption } from './types';
 
 const t = messages.stocktaking;
@@ -45,10 +45,28 @@ const source = (
   ...overrides,
 });
 
-const itemLookup = source([
-  { value: '9301', label: 'SAMPLE-ITEM-01 · 합성 품목 가', isActive: true },
-  { value: '9302', label: 'SAMPLE-ITEM-02 · 합성 품목 나', isActive: true },
-]);
+/**
+ * 품목만 목록 참조가 아니다 — 번호를 표기 상태로 바로 옮기는 풀이를 세운다.
+ * 여기 없는 번호(9303)는 *그 품목이 없다*(404)는 뜻의 「알 수 없음」이다.
+ */
+const ITEM_LABELS: Record<number, string> = {
+  9301: 'SAMPLE-ITEM-01 · 합성 품목 가',
+  9302: 'SAMPLE-ITEM-02 · 합성 품목 나',
+};
+
+const itemNames = (overrides: Partial<ItemNameLookup> = {}): ItemNameLookup => ({
+  of: (itemId) => {
+    const label = ITEM_LABELS[itemId];
+
+    return label === undefined ? { kind: 'unknown' } : { kind: 'named', label };
+  },
+  isError: false,
+  refetch: () => undefined,
+  ...overrides,
+});
+
+const itemNamesIn = (state: ReferenceState): ItemNameLookup =>
+  itemNames({ of: () => state, isError: state.kind === 'failed' });
 
 const uomLookup = source([
   { value: '9501', label: 'SAMPLE-EA', isActive: true },
@@ -65,7 +83,7 @@ const rowsOf = (drafts: LineDrafts = EMPTY_LINE_DRAFTS, isBlind = false): LineRo
 const columnsWith = (overrides: Partial<CountLineColumnsInput> = {}): Column<LineRowView>[] =>
   buildCountLineColumns({
     isBlind: false,
-    itemLookup,
+    itemNames: itemNames(),
     uomLookup,
     lotLookup,
     reasonOptions: REASON_OPTIONS,
@@ -86,7 +104,7 @@ const renderTable = (overrides: Partial<CountLineTableProps> = {}) => {
       isLoading={false}
       isTruncated={false}
       isBlind={false}
-      itemLookup={itemLookup}
+      itemNames={itemNames()}
       uomLookup={uomLookup}
       lotLookup={lotLookup}
       reasonOptions={REASON_OPTIONS}
@@ -190,7 +208,7 @@ describe('CountLineTable — 값 표기', () => {
 
   it('참조가 아직 오지 않았으면 알 수 없음과 다른 문구를 낸다', () => {
     renderTable({
-      itemLookup: source([], { isLoading: true }),
+      itemNames: itemNamesIn({ kind: 'loading' }),
       lotLookup: source([], { isLoading: true }),
     });
 
