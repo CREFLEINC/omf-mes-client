@@ -14,7 +14,7 @@ import { useSearchParams } from 'react-router';
 import { SaveErrorBanner } from '../../patterns/master';
 import { progressSummary, toProgressSteps } from './approval-progress';
 import { HistoryPane, type ApprovalView } from './history-pane';
-import { useIssueReasonCodes, useIssueTypeCodes, useItemLookup, useUomLookup } from './lookups';
+import { useIssueReasonCodes, useIssueTypeCodes, useItemNames, useUomLookup } from './lookups';
 import { useDisposalPostMutation, useDisposalRequestMutation } from './mutations';
 import { resolvePlacements } from './placement';
 import {
@@ -70,7 +70,11 @@ export const ProductDisposalRequestScreen = () => {
 
   const list = useDisposalTargets(1);
   const rows = useMemo(() => list.data?.items ?? [], [list.data]);
-  const items = useItemLookup();
+  /*
+   * 품목 이름은 **표에 선 번호마다** 묻는다 — 목록 첫 쪽으로 풀면 그 쪽 밖의 품목이
+   * 전부 「알 수 없음」으로 선다(`lookups.ts`의 ⛔ 첫째).
+   */
+  const items = useItemNames(rows.map((row) => row.itemId));
   const uoms = useUomLookup();
   const partners = useDisposalPartners();
   const issueTypes = useIssueTypeCodes();
