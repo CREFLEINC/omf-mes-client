@@ -3,7 +3,7 @@ import { messages } from '@omf-mes/i18n';
 import { useId } from 'react';
 
 import { lookupDisplayLabel } from '../../patterns/lookup-display';
-import type { ExpeditedLookup } from './lookups';
+import type { ExpeditedLookup, ItemNameLookup } from './lookups';
 import type { LotReleaseState } from './lot-release';
 import { formatQty } from './quantity';
 import type { ProductionLotCandidate } from './types';
@@ -17,7 +17,8 @@ export interface LotPaneProps {
   isError: boolean;
   selected: ProductionLotCandidate | null;
   release: LotReleaseState | null;
-  items: ExpeditedLookup;
+  /** 품목은 번호마다 하나씩 푼다 — 목록 원천이 아니라 풀이 함수를 받는다. */
+  items: ItemNameLookup;
   uoms: ExpeditedLookup;
   onSelect: (lotId: number | null) => void;
 }
@@ -67,7 +68,7 @@ export const LotPane = ({
 
   const options = lots.map((lot) => ({
     value: String(lot.lotId),
-    label: `${lot.lotNo} · ${lookupDisplayLabel(items, lot.itemId)} · ${formatQty(lot.initialQty)}`,
+    label: `${lot.lotNo} · ${lookupDisplayLabel(items.of(lot.itemId), lot.itemId)} · ${formatQty(lot.initialQty)}`,
   }));
 
   return (
@@ -115,7 +116,7 @@ export const LotPane = ({
             </div>
             <div className="field-cell">
               <dt className="field-label">{t.lot.fields.item}</dt>
-              <dd>{lookupDisplayLabel(items, selected.itemId)}</dd>
+              <dd>{lookupDisplayLabel(items.of(selected.itemId), selected.itemId)}</dd>
             </div>
             <div className="field-cell">
               <dt className="field-label">{t.lot.fields.qty}</dt>

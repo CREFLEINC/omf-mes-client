@@ -74,6 +74,24 @@ describe('ExpeditedShipmentScreen', () => {
     expect(outcome).toHaveTextContent('장부상');
   });
 
+  /**
+   * **품목 이름은 번호마다 상세로 푼다**(omf-all-around#37).
+   *
+   * 목록 첫 쪽(계약 기본 50건)으로 풀던 때는 그 쪽 밖의 품목이 「알 수 없음」으로 섰다 —
+   * LOT 선택지는 **무엇을 내보내는지 아는 유일한 자리**라 그 글자가 서면 고를 수가 없다.
+   */
+  it('LOT 선택지와 요약이 품목을 「코드 · 이름」으로 낸다', async () => {
+    const { user } = renderScreen();
+
+    await pickOption(user, t.lot.label, /SYNTH-LOT-0311/);
+
+    const lotPane = await screen.findByRole('region', { name: t.panes.lot });
+
+    expect(lotPane).toHaveTextContent('SYNTH-FG-0311 · 합성 완제품');
+    /* 짝 방향 — 이름 자리가 「알 수 없음」으로 남지 않는다. */
+    expect(lotPane).not.toHaveTextContent(messages.common.reference.unknown);
+  });
+
   it('선택하기 전에도 결과 구획이 보인다 — 관문이 막혀 있어도 성격을 먼저 알아야 한다', async () => {
     renderScreen();
 
