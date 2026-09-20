@@ -2,6 +2,7 @@ import { messages } from '@omf-mes/i18n';
 import { useQueries, useQuery } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
+import { fetchAllPages } from '../../patterns/fetch-all-pages';
 import { masterName } from '../../patterns/master-name';
 import { runRequest, toApiError } from '../../patterns/request';
 import type { LookupEntry, PageMeta } from './types';
@@ -163,16 +164,12 @@ export const lookupKeys = {
   lots: (itemId: number) => ['goods-receipt-lookups', 'lots', itemId] as const,
 };
 
-/** 공급사를 한 번에 받는 건수 — 서버 상한(200)과 같다. */
-const SUPPLIER_PAGE_SIZE = 200;
-/** 끝까지 받되 이 쪽 수에서 멈춘다(5,000건) — 서버가 잘못된 총계를 줄 때 끝없이 부르지 않게 한다. */
-const SUPPLIER_MAX_PAGES = 25;
-
 /**
  * 공급사 — 목록 표의 공급사 칸과 조건 줄의 공급사 검색이 함께 쓴다.
  *
- * **끝까지 받는다**(200건씩 · 사용자 지시 2026-09-19). 첫 쪽만 받으면 그 뒤 공급사가 목록 표에서
- * 「알 수 없음」으로 찍히고 검색에서도 찾을 수 없다. 받은 수가 총계에 못 미치면(쪽 수 상한) 잘림으로 알린다.
+ * **끝까지 받는다**(`fetchAllPages` · 사용자 지시 2026-09-19). 첫 쪽만 받으면 그 뒤 공급사가
+ * 목록 표에서 「알 수 없음」으로 찍히고 검색에서도 찾을 수 없다 — 거래처는 936건이다
+ * (omf-all-around#38). 다 받지 못하면 그 사실을 잘림으로 알린다.
  *
  * 계약이 거래처를 공급사·고객으로 가르는 조건을 주지 않으므로 전체 거래처를 받는다.
  */
@@ -182,31 +179,13 @@ export const useSupplierOptions = (): LookupResult => {
   const query = useQuery({
     queryKey: lookupKeys.suppliers,
     queryFn: async () => {
-      const first = await runRequest(() =>
-        client.GET('/mdm/partners', {
-          params: { query: { includeInactive: true, page: 1, size: SUPPLIER_PAGE_SIZE } },
-        }),
-      );
-      const items = [...first.items];
-      let last = first.items.length;
-
-      for (
-        let page = 2;
-        page <= SUPPLIER_MAX_PAGES &&
-        last === SUPPLIER_PAGE_SIZE &&
-        items.length < first.page.total;
-        page += 1
-      ) {
-        const next = await runRequest(() =>
+      return fetchAllPages((page, size) =>
+        runRequest(() =>
           client.GET('/mdm/partners', {
-            params: { query: { includeInactive: true, page, size: SUPPLIER_PAGE_SIZE } },
+            params: { query: { includeInactive: true, page, size } },
           }),
-        );
-        items.push(...next.items);
-        last = next.items.length;
-      }
-
-      return { items, page: first.page };
+        ),
+      );
     },
   });
 
@@ -219,7 +198,7 @@ export const useSupplierOptions = (): LookupResult => {
         label: `${item.partnerCode} · ${item.partnerName}`,
         isActive: item.isActive,
       })) ?? EMPTY_ENTRIES,
-    truncated: data !== undefined && isTruncated(data.page, data.items.length),
+    truncated: data?.truncated === true,
     isError: query.isError,
     isLoading: query.isPending,
     refetch: () => {

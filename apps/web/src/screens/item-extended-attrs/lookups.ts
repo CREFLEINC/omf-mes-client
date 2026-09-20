@@ -1,6 +1,7 @@
 import { useQueries, useQuery } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
+import { fetchAllPages } from '../../patterns/fetch-all-pages';
 import { runRequest } from '../../patterns/request';
 import {
   toRoutingOperationOptions,
@@ -121,8 +122,12 @@ export const usePartnerOptions = (enabled: boolean): LookupResult => {
     queryKey: lookupKeys.partners,
     enabled,
     queryFn: () =>
-      runRequest(() =>
-        client.GET('/mdm/partners', { params: { query: { includeInactive: true } } }),
+      fetchAllPages((page, size) =>
+        runRequest(() =>
+          client.GET('/mdm/partners', {
+            params: { query: { includeInactive: true, page, size } },
+          }),
+        ),
       ),
   });
 
@@ -135,7 +140,7 @@ export const usePartnerOptions = (enabled: boolean): LookupResult => {
         label: `${item.partnerCode} · ${item.partnerName}`,
         isActive: item.isActive,
       })) ?? EMPTY_ENTRIES,
-    truncated: data !== undefined && isTruncated(data.page, data.items.length),
+    truncated: data?.truncated === true,
     isError: query.isError,
     isLoading: query.isPending,
   };
