@@ -23,7 +23,7 @@ import {
   describeReference,
   lookupNote,
   toReference,
-  useItemOptions,
+  useItemNames,
   usePlantOptions,
   useSupplierOptions,
   useUomOptions,
@@ -57,6 +57,7 @@ const t = messages.overReceiptSplit;
 /** 참조가 매 렌더 새로 만들어지면 이 값을 의존성에 둔 계산이 멈추지 않는다. */
 const EMPTY_ROWS: PoView[] = [];
 const EMPTY_LINES: PoLineView[] = [];
+const EMPTY_ITEM_IDS: number[] = [];
 const EMPTY_DRAFTS: LineDrafts = {};
 const NO_FIELD_ERRORS: Record<string, string> = {};
 
@@ -166,11 +167,17 @@ export const OverReceiptSplitScreen = () => {
 
   const suppliers = useSupplierOptions();
   const plants = usePlantOptions();
-  const items = useItemOptions();
   /* 단위는 아래 구획만 쓴다 — 고르기 전에 부르면 첫 진입의 요청 수가 이유 없이 는다. */
   const uoms = useUomOptions(selectedPoId !== null);
 
   const lines = usePurchaseOrderLines(selectedPoId);
+  const lineData = lines.data;
+
+  /*
+   * 품목 이름은 **라인이 온 뒤에** 그 줄에 실린 번호만 묻는다(`lookups.ts`의 ⛔ 둘).
+   * 라인을 고르기 전에는 물을 번호가 없어 요청도 나가지 않는다.
+   */
+  const items = useItemNames(lineData?.map((line) => line.itemId) ?? EMPTY_ITEM_IDS);
 
   /**
    * 라인별 도착 수량 초안. **주소에 싣지 않는다** — 글자마다 뒤로가기 기록이 쌓이고,
@@ -187,8 +194,6 @@ export const OverReceiptSplitScreen = () => {
    * `useMemo`로 만든 파생 객체(예: 아래 `splitLines`)를 의존성에 넣지 않는 것도 같은 이유다.
    * 파생값은 렌더마다 새 참조라 그것을 의존성으로 삼으면 매 렌더 초안이 되돌아간다.
    */
-  const lineData = lines.data;
-
   useEffect(() => {
     setDrafts(createDrafts(lineData ?? EMPTY_LINES));
   }, [selectedPoId, lineData]);
@@ -532,7 +537,7 @@ export const OverReceiptSplitScreen = () => {
          * 소유하므로 실패 여부를 함께 알아야 한다. 공급사는 위 구획이 소유해 이름만 넘긴다.
          */
         plantLookup={plants}
-        itemLookup={items}
+        itemNames={items}
         uomLookup={uoms}
         onChangeQty={changeQty}
         onRetryReferences={retryLineReferences}
