@@ -2,6 +2,7 @@ import { messages } from '@omf-mes/i18n';
 import { useQueries, useQuery } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
+import { fetchAllPages } from '../../patterns/fetch-all-pages';
 import { masterName } from '../../patterns/master-name';
 import { runRequest, toApiError } from '../../patterns/request';
 import { isDisposalPartnerRolePending, type DisposalPartnerRoleCode } from './code-options';
@@ -521,9 +522,11 @@ export const useDisposalPartnerOptions = (
         throw new Error('폐기처리 역할 코드가 확정되기 전에는 거래처 선택지를 조회하지 않습니다.');
       }
 
-      const query = { roleTypeCode };
-
-      return runRequest(() => client.GET('/mdm/partners', { params: { query } }));
+      return fetchAllPages((page, size) =>
+        runRequest(() =>
+          client.GET('/mdm/partners', { params: { query: { roleTypeCode, page, size } } }),
+        ),
+      );
     },
   });
 
@@ -568,8 +571,12 @@ export const usePartnerNames = (enabled: boolean): PartnerLookupResult => {
     queryKey: lookupKeys.partnerNames,
     enabled,
     queryFn: () =>
-      runRequest(() =>
-        client.GET('/mdm/partners', { params: { query: { includeInactive: true } } }),
+      fetchAllPages((page, size) =>
+        runRequest(() =>
+          client.GET('/mdm/partners', {
+            params: { query: { includeInactive: true, page, size } },
+          }),
+        ),
       ),
   });
 
@@ -582,7 +589,7 @@ export const usePartnerNames = (enabled: boolean): PartnerLookupResult => {
         label: `${item.partnerCode} · ${item.partnerName}`,
         isActive: item.isActive,
       })) ?? EMPTY_ENTRIES,
-    truncated: data !== undefined && isTruncated(data.page, data.items.length),
+    truncated: data?.truncated === true,
     isError: query.isError,
     isLoading: enabled && query.isPending,
   };
