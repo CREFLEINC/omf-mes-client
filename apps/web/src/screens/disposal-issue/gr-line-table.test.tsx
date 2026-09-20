@@ -24,7 +24,7 @@ import {
   type GrLineTableProps,
 } from './gr-line-table';
 import { EMPTY_LINE_DRAFT, setDraftQty, toggleLineSelection, type LineDraft } from './line-draft';
-import type { LotReferenceSource, ReferenceSource } from './lookups';
+import type { ItemNameLookup, LotReferenceSource, ReferenceSource, ReferenceState } from './lookups';
 import type { BalanceSource, ItemBalance } from './on-hand';
 import { toBalanceView, type ReceiptLineView } from './types';
 
@@ -49,15 +49,28 @@ const source = (
   ...overrides,
 });
 
-const itemSource = (overrides: Partial<ReferenceSource> = {}): ReferenceSource =>
-  source(
-    itemFixtures.map((item) => ({
-      value: String(item.itemId),
-      label: `${item.itemCode} · ${item.itemName}`,
-      isActive: item.isActive,
-    })),
-    overrides,
-  );
+/**
+ * 품목만 목록 참조가 아니다 — 번호를 표기 상태로 바로 옮기는 풀이를 세운다.
+ *
+ * **「잘림」 축이 없다.** 번호마다 따로 물어 받은 쪽에 없다는 일 자체가 서지 않는다 —
+ * 그 자리를 대신하는 갈래는 *그 번호의 품목이 없다*(404 → 「알 수 없음」)이다.
+ */
+const itemNames = (overrides: Partial<ItemNameLookup> = {}): ItemNameLookup => ({
+  of: (itemId) => {
+    const item = itemFixtures.find((each) => each.itemId === itemId);
+
+    return item === undefined
+      ? { kind: 'unknown' }
+      : { kind: 'named', label: `${item.itemCode} · ${item.itemName}` };
+  },
+  isError: false,
+  refetch: () => undefined,
+  ...overrides,
+});
+
+/** 줄 전부가 한 갈래에 있는 풀이. 갈래마다 문구가 갈리는지 재는 자리가 쓴다. */
+const itemNamesIn = (state: ReferenceState): ItemNameLookup =>
+  itemNames({ of: () => state, isError: state.kind === 'failed' });
 
 const uomSource = (overrides: Partial<ReferenceSource> = {}): ReferenceSource =>
   source(
@@ -122,7 +135,7 @@ const rowsFrom = (
 ): DisposalLineRow[] => toDisposalLineRows(receiptLineFixtures, draft, balances);
 
 const columnInput = () => ({
-  itemLookup: itemSource(),
+  itemNames: itemNames(),
   uomLookup: uomSource(),
   lotLookup: lotSource(),
   locationLookup: locationSource(),
@@ -137,7 +150,7 @@ const baseProps = (overrides: Partial<GrLineTableProps> = {}): GrLineTableProps 
 
   return {
     rows,
-    itemLookup: itemSource(),
+    itemNames: itemNames(),
     uomLookup: uomSource(),
     lotLookup: lotSource(),
     locationLookup: locationSource(),
@@ -232,11 +245,11 @@ describe('GrLineTable — 이름과 값', () => {
    * 미도착·실패를 그 글자로 내면 정상 값이 잘못된 값으로 보인다(`omf-mes#47`).
    */
   it.each([
-    ['미도착', { entries: [], isLoading: true }, t.values.referenceLoading],
-    ['실패', { entries: [], isError: true }, t.values.referenceFailed],
-    ['목록에 없음', { entries: [] }, t.values.unknown],
-  ])('품목 이름의 %s 갈래를 그 문구로 낸다', (_name, overrides, message) => {
-    renderTable({ itemLookup: itemSource(overrides) });
+    ['미도착', { kind: 'loading' } as ReferenceState, t.values.referenceLoading],
+    ['실패', { kind: 'failed' } as ReferenceState, t.values.referenceFailed],
+    ['그 품목이 없음', { kind: 'unknown' } as ReferenceState, t.values.unknown],
+  ])('품목 이름의 %s 갈래를 그 문구로 낸다', (_name, state, message) => {
+    renderTable({ itemNames: itemNamesIn(state) });
 
     expect(screen.getAllByText(message).length).toBeGreaterThan(0);
     /* 짝 방향 — 정상 갈래의 이름은 그 자리에 없다. */
@@ -258,7 +271,7 @@ describe('GrLineTable — 이름과 값', () => {
    */
   it.each([
     ['정상', {}],
-    ['이름 실패', { itemLookup: itemSource({ entries: [], isError: true }) }],
+    ['이름 실패', { itemNames: itemNamesIn({ kind: 'failed' }) }],
     ['LOT 실패', { lotLookup: lotSource({ entries: [], isError: true }) }],
   ])('%s 갈래에도 내부 번호를 내지 않는다', (_name, overrides) => {
     renderTable(overrides);
@@ -568,7 +581,7 @@ describe('GrLineTable — 빈 상태와 복구', () => {
   it('잔액 실패와 이름 실패가 각자의 복구 경로를 갖는다', async () => {
     const { props, user } = renderTable({
       hasBalanceError: true,
-      itemLookup: itemSource({ entries: [], isError: true }),
+      itemNames: itemNamesIn({ kind: 'failed' }),
     });
 
     expect(screen.getByText(t.reasons.balancesFailed)).toBeInTheDocument();
@@ -594,7 +607,7 @@ describe('GrLineTable — 빈 상태와 복구', () => {
    * 무엇을 눌러야 하는지도** 화면에서 읽을 수 없다.
    */
   it.each([
-    ['품목', { itemLookup: itemSource({ entries: [], isError: true }) }],
+    ['품목', { itemNames: itemNamesIn({ kind: 'failed' }) }],
     ['단위', { uomLookup: uomSource({ entries: [], isError: true }) }],
     ['자재 LOT', { lotLookup: lotSource({ entries: [], isError: true }) }],
     ['위치', { locationLookup: locationSource({ entries: [], isError: true }) }],
@@ -611,7 +624,6 @@ describe('GrLineTable — 빈 상태와 복구', () => {
 
   /** 잘림 접기도 **같은 범위**다 — 한쪽만 잘려도 그 사실이 화면에 있어야 한다. */
   it.each([
-    ['품목', { itemLookup: itemSource({ truncated: true }) }],
     ['단위', { uomLookup: uomSource({ truncated: true }) }],
     ['자재 LOT', { lotLookup: lotSource({ truncated: true }) }],
     ['위치', { locationLookup: locationSource({ truncated: true }) }],
@@ -625,7 +637,7 @@ describe('GrLineTable — 빈 상태와 복구', () => {
   it('잘림은 사실만 밝히고 복구 버튼을 붙이지 않는다', () => {
     renderTable({
       hasBalanceTruncated: true,
-      itemLookup: itemSource({ truncated: true }),
+      uomLookup: uomSource({ truncated: true }),
     });
 
     expect(screen.getByText(t.reasons.balancesTruncated)).toBeInTheDocument();

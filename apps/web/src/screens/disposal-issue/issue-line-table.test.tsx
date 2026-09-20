@@ -17,7 +17,12 @@ import {
   IssueLineTable,
   type IssueLineTableProps,
 } from './issue-line-table';
-import type { LotReferenceSource, ReferenceSource } from './lookups';
+import type {
+  ItemNameLookup,
+  LotReferenceSource,
+  ReferenceSource,
+  ReferenceState,
+} from './lookups';
 
 const t = messages.disposalIssue;
 
@@ -38,15 +43,22 @@ const source = (
   ...overrides,
 });
 
-const itemSource = (overrides: Partial<ReferenceSource> = {}): ReferenceSource =>
-  source(
-    itemFixtures.map((item) => ({
-      value: String(item.itemId),
-      label: `${item.itemCode} · ${item.itemName}`,
-      isActive: item.isActive,
-    })),
-    overrides,
-  );
+/** 품목만 목록 참조가 아니다 — 번호를 표기 상태로 바로 옮기는 풀이를 세운다. */
+const itemNames = (overrides: Partial<ItemNameLookup> = {}): ItemNameLookup => ({
+  of: (itemId) => {
+    const item = itemFixtures.find((each) => each.itemId === itemId);
+
+    return item === undefined
+      ? { kind: 'unknown' }
+      : { kind: 'named', label: `${item.itemCode} · ${item.itemName}` };
+  },
+  isError: false,
+  refetch: () => undefined,
+  ...overrides,
+});
+
+const itemNamesIn = (state: ReferenceState): ItemNameLookup =>
+  itemNames({ of: () => state, isError: state.kind === 'failed' });
 
 const uomSource = (overrides: Partial<ReferenceSource> = {}): ReferenceSource =>
   source(
@@ -87,7 +99,7 @@ const lotSource = (overrides: Partial<LotReferenceSource> = {}): LotReferenceSou
 
 const baseProps = (overrides: Partial<IssueLineTableProps> = {}): IssueLineTableProps => ({
   rows: goodsIssueLineFixtures,
-  itemLookup: itemSource(),
+  itemNames: itemNames(),
   uomLookup: uomSource(),
   lotLookup: lotSource(),
   locationLookup: locationSource(),
@@ -105,7 +117,7 @@ const renderTable = (overrides: Partial<IssueLineTableProps> = {}) => {
 
 describe('buildIssueLineColumns — 열 폭 예산', () => {
   const columns = buildIssueLineColumns({
-    itemLookup: itemSource(),
+    itemNames: itemNames(),
     uomLookup: uomSource(),
     lotLookup: lotSource(),
     locationLookup: locationSource(),
@@ -166,7 +178,7 @@ describe('IssueLineTable — 행 표기', () => {
   });
 
   it('참조가 아직 오지 않았으면 그 사실을 낸다', () => {
-    renderTable({ itemLookup: itemSource({ entries: [], isLoading: true }) });
+    renderTable({ itemNames: itemNamesIn({ kind: 'loading' }) });
 
     expect(screen.getAllByText(t.values.referenceLoading).length).toBe(
       goodsIssueLineFixtures.length,
