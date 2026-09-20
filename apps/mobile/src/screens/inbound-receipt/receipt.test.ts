@@ -6,14 +6,20 @@ import {
   DEFAULT_SUBSTITUTE_LOT_REASON,
   defaultSubstituteLotReason,
   isExpiryBeforeManufactured,
+  LINE_SCOPED_BLANK,
   NORMAL,
   openLinesFirst,
   OVER,
   packageProblem,
   qtyProblem,
   queuedQtyOf,
+  recordedOf,
+  recordedPartsOf,
   remainingQtyOf,
+  RECEIPT_PATH,
   splitQuantitiesOf,
+  SPLIT_RECEIPT_PATH,
+  submitLockOf,
   toOutboxDraft,
   toSplitOutboxDraft,
   UNDER,
@@ -21,6 +27,7 @@ import {
   type PurchaseOrder,
   type PurchaseOrderLine,
   type ReceiptDraft,
+  type SubmitGate,
 } from './receipt';
 
 const SCANNED = '7770001118880002229901015554447777';
@@ -229,6 +236,252 @@ describe('등록 조건', () => {
         true,
       ),
     ).toBe(true);
+  });
+});
+
+/**
+ * 잠긴 등록 단추는 «왜» 잠겼는지 말해야 한다(공유계약 G-1).
+ *
+ * 현장에서 「다 채웠는데 눌리지 않는다」가 나왔다(2026-09-20). 막는 조건은 여럿인데 그중
+ * 공장 없음만 발주 경로에서 아무 말도 하지 않았고, 화면만 보아서는 고칠 것을 알 수 없었다.
+ */
+/**
+ * 등록한 값을 등록 «뒤»에 확인할 수 있어야 한다(현장 요청 2026-09-21).
+ *
+ * 같은 자재 P/O 의 자재를 여러 번 넣을 때, 앞 자재를 무엇으로 얼마나 넣었는지 되짚을 곳이
+ * 화면에 없었다. 요약은 담아 보낸 본문에서 되읽는다 - 따로 셈하면 보낸 것과 갈린다.
+ */
+describe('등록한 내용 요약', () => {
+  const source = { itemId: 31, uomId: 9, supplierId: 2 };
+
+  it('한 건은 보낸 수량 하나를 낸다', () => {
+    const body = { lines: [{ receivedQty: 500, packageCount: 10 }] };
+
+    expect(recordedPartsOf(RECEIPT_PATH, body)).toEqual([
+      { part: null, receivedQty: 500, packageCount: 10 },
+    ]);
+  });
+
+  /* 합만 보이면 어느 쪽이 얼마인지 알 수 없다. 두 몫을 갈라 낸다. */
+  it('초과 분리는 정량분과 초과분을 갈라 낸다', () => {
+    const body = {
+      normal: { lines: [{ receivedQty: 510, packageCount: null }] },
+      excess: { lines: [{ receivedQty: 40, packageCount: null }] },
+    };
+
+    expect(recordedPartsOf(SPLIT_RECEIPT_PATH, body)).toEqual([
+      { part: 'normal', receivedQty: 510, packageCount: null },
+      { part: 'excess', receivedQty: 40, packageCount: null },
+    ]);
+  });
+
+  /* 없는 파트를 0 으로 보이면 보내지 않은 것을 보낸 것처럼 말한다. */
+  it('실리지 않은 파트는 내지 않는다', () => {
+    const body = { normal: { lines: [{ receivedQty: 510, packageCount: null }] } };
+
+    expect(recordedPartsOf(SPLIT_RECEIPT_PATH, body)).toEqual([
+      { part: 'normal', receivedQty: 510, packageCount: null },
+    ]);
+  });
+
+  it('자재 P/O 와 라인과 LOT 을 적은 그대로 낸다', () => {
+    const recorded = recordedOf(
+      draft({ receivedQty: '500', manufacturedDate: '2026-07-01' }),
+      source,
+      RECEIPT_PATH,
+      { lines: [{ receivedQty: 500, packageCount: null }] },
+    );
+
+    expect(recorded.purchaseOrderNo).toBe('PO-2026-0003');
+    expect(recorded.lineNo).toBe(1);
+    expect(recorded.supplierLotNo).toBe(SCANNED);
+    expect(recorded.supplierLotMissing).toBe(false);
+    expect(recorded.manufacturedDate).toBe('2026-07-01');
+    expect(recorded.expiryDate).toBe(draft().expiryDate);
+  });
+
+  /* 번호가 없는 건은 번호 자리에 빈 글자를 두지 않는다 - 미부착이라는 사실과 사유가 남는다. */
+  it('LOT 번호 없음은 사유를 함께 남긴다', () => {
+    const recorded = recordedOf(
+      draft({
+        supplierLotNo: '',
+        supplierLotMissing: true,
+        supplierLotLabelAttached: false,
+        substituteLotReasonCode: 'NO_LABEL',
+        receivedQty: '500',
+      }),
+      source,
+      RECEIPT_PATH,
+      { lines: [{ receivedQty: 500, packageCount: null }] },
+    );
+
+    expect(recorded.supplierLotNo).toBeNull();
+    expect(recorded.supplierLotMissing).toBe(true);
+    expect(recorded.substituteLotReasonCode).toBe('NO_LABEL');
+  });
+});
+
+/**
+ * 자재를 바꾸면 그 자재에 딸린 칸을 비운다(현장 보고 2026-09-21).
+ *
+ * 남겨 두면 앞 자재에 적은 수량이 다음 자재에 붙은 채 판정까지 다시 선다.
+ */
+describe('자재가 바뀔 때 비우는 칸', () => {
+  it('수량·포장 수·제조일·유효기한 넷만 비운다', () => {
+    expect(LINE_SCOPED_BLANK).toEqual({
+      receivedQty: '',
+      packageCount: '',
+      manufacturedDate: '',
+      expiryDate: '',
+    });
+  });
+
+  /* 공급사 LOT·대체 사유·자재 P/O 는 이 도착의 것이다. 비우면 자재마다 다시 스캔한다. */
+  it('이 도착의 것은 건드리지 않는다', () => {
+    const keys = Object.keys(LINE_SCOPED_BLANK);
+
+    expect(keys).not.toContain('supplierLotNo');
+    expect(keys).not.toContain('supplierLotMissing');
+    expect(keys).not.toContain('substituteLotReasonCode');
+    expect(keys).not.toContain('purchaseOrder');
+  });
+});
+
+describe('등록 단추가 잠긴 이유', () => {
+  const gate = (overrides: Partial<SubmitGate> = {}): SubmitGate => ({
+    loaded: true,
+    hasWorker: true,
+    plantId: 1,
+    label: 'ok',
+    verdict: NORMAL,
+    continueUnder: false,
+    ...overrides,
+  });
+
+  it('채울 것이 없으면 이유가 없다', () => {
+    expect(submitLockOf(draft({ receivedQty: '500' }), gate())).toBeNull();
+  });
+
+  /* 담긴 것을 읽기 전에는 초과가 초과로 보이지 않는다. 그 사이는 잠그되 잠깐이라고 말한다. */
+  it('담긴 기록을 읽기 전에는 그 사실을 말한다', () => {
+    expect(submitLockOf(draft({ receivedQty: '500' }), gate({ loaded: false }))).toBe('loading');
+  });
+
+  /*
+   * ⭐ 공장을 모르면 발주 경로에서도 말한다. 전에는 무발주 구획에서만 띠가 섰고, 발주에서
+   *    승계하지 못한 경우에는 단추가 아무 말 없이 잠겨 있었다.
+   */
+  it('발주 경로에서도 공장을 모르면 그 사실을 말한다', () => {
+    expect(submitLockOf(draft({ receivedQty: '500' }), gate({ plantId: null }))).toBe('noPlant');
+  });
+
+  it('화면에 선 차례대로 처음 비어 있는 것을 가리킨다', () => {
+    const empty = draft({ purchaseOrder: null, purchaseOrderLine: null, receivedQty: '' });
+
+    expect(submitLockOf(empty, gate())).toBe('noOrder');
+    expect(submitLockOf({ ...empty, purchaseOrder: po() }, gate())).toBe('noOrderLine');
+    expect(
+      submitLockOf({ ...empty, purchaseOrder: po(), purchaseOrderLine: poLine() }, gate()),
+    ).toBe('qtyEmpty');
+  });
+
+  /* 사번이 없으면 무엇을 채워도 담을 수 없다. 가장 먼저 말한다. */
+  it('사번이 없으면 그것부터 말한다', () => {
+    expect(submitLockOf(draft({ receivedQty: '' }), gate({ hasWorker: false }))).toBe('noWorker');
+  });
+
+  it('LOT 번호 없음인데 대체 사유가 비면 그 사유를 말한다', () => {
+    const missing = draft({
+      supplierLotNo: '',
+      supplierLotMissing: true,
+      supplierLotLabelAttached: false,
+      receivedQty: '500',
+    });
+
+    expect(submitLockOf(missing, gate())).toBe('noSubstituteReason');
+    expect(submitLockOf({ ...missing, substituteLotReasonCode: 'NO_LABEL' }, gate())).toBeNull();
+  });
+
+  /*
+   * 사유는 등록 단추 바로 위에 있고 공장은 고칠 수 없는 것이다. 사유가 비었다고 먼저 말하면
+   * 그것을 고른 뒤에야 고칠 수 없는 것이 나와, 두 번 헛걸음한다.
+   */
+  it('고칠 수 없는 공장을 대체 사유보다 먼저 말한다', () => {
+    const missing = draft({
+      supplierLotNo: '',
+      supplierLotMissing: true,
+      supplierLotLabelAttached: false,
+      receivedQty: '500',
+    });
+
+    expect(submitLockOf(missing, gate({ plantId: null }))).toBe('noPlant');
+  });
+
+  it('부족 판정에 답하기 전에는 그 사실을 말한다', () => {
+    const under = draft({ receivedQty: '100' });
+
+    expect(submitLockOf(under, gate({ verdict: UNDER }))).toBe('underUnanswered');
+    expect(submitLockOf(under, gate({ verdict: UNDER, continueUnder: true }))).toBeNull();
+  });
+
+  it('라벨을 확인하는 중과 라벨이 다른 것을 갈라 말한다', () => {
+    const ready = draft({ receivedQty: '500' });
+
+    expect(submitLockOf(ready, gate({ label: 'checking' }))).toBe('labelChecking');
+    expect(submitLockOf(ready, gate({ label: 'mismatch' }))).toBe('labelMismatch');
+  });
+
+  it('수량이 잘못된 갈래를 갈라 말한다', () => {
+    expect(submitLockOf(draft({ receivedQty: 'abc' }), gate())).toBe('qtyNotNumber');
+    expect(submitLockOf(draft({ receivedQty: '0' }), gate())).toBe('qtyNotPositive');
+    expect(submitLockOf(draft({ receivedQty: '500', packageCount: '0' }), gate())).toBe(
+      'packageCount',
+    );
+    expect(
+      submitLockOf(
+        draft({ receivedQty: '500', manufacturedDate: '2026-07-20', expiryDate: '2026-07-19' }),
+        gate(),
+      ),
+    ).toBe('expiryBeforeManufactured');
+  });
+
+  it('무발주는 고를 것을 차례로 가리킨다', () => {
+    const unordered = draft({
+      unordered: true,
+      purchaseOrder: null,
+      purchaseOrderLine: null,
+      receivedQty: '40',
+    });
+
+    expect(submitLockOf(unordered, gate({ verdict: null }))).toBe('noSupplier');
+    expect(submitLockOf({ ...unordered, supplierId: 2 }, gate({ verdict: null }))).toBe('noItem');
+    expect(submitLockOf({ ...unordered, supplierId: 2, itemId: 31 }, gate({ verdict: null }))).toBe(
+      'noUom',
+    );
+    expect(
+      submitLockOf({ ...unordered, supplierId: 2, itemId: 31, uomId: 9 }, gate({ verdict: null })),
+    ).toBe('noExceptionType');
+    expect(
+      submitLockOf(
+        { ...unordered, supplierId: 2, itemId: 31, uomId: 9, exceptionTypeCode: 'URGENT_RECEIPT' },
+        gate({ verdict: null }),
+      ),
+    ).toBe('noExceptionReason');
+  });
+
+  /* 판정과 그 이유가 갈리면 단추는 잠긴 채 화면은 고칠 것이 없다고 말한다. */
+  it('잠긴 이유가 없는 것과 등록 조건이 갈리지 않는다', () => {
+    const cases: ReceiptDraft[] = [
+      draft({ receivedQty: '500' }),
+      draft({ receivedQty: '' }),
+      draft({ receivedQty: '0' }),
+      draft({ purchaseOrderLine: null }),
+      draft({ supplierLotNo: '', supplierLotMissing: true, supplierLotLabelAttached: false }),
+    ];
+
+    for (const each of cases) {
+      expect(submitLockOf(each, gate()) === null).toBe(canSubmit(each, true));
+    }
   });
 });
 

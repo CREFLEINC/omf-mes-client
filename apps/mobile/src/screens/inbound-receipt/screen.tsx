@@ -1,7 +1,7 @@
 import { AlertBanner, Button, Card, Chip, Select, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useQueryClient } from '@tanstack/react-query';
-import { useEffect, useRef, useState } from 'react';
+import { Fragment, useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router';
 
 import { isMaterialLotNo, itemCodeOf } from '../../patterns/material-lot-no';
@@ -12,7 +12,7 @@ import { ScanReplaceDialog } from '../../patterns/scan-replace-dialog';
 import { useScanField } from '../../patterns/use-scan-field';
 import { useScreenTitle } from '../../patterns/screen-title';
 import { useWorkerSession } from '../../patterns/worker-session';
-import { useCodeValues } from '../../patterns/code-values';
+import { displayNameOf, useCodeValues } from '../../patterns/code-values';
 import { useAdvanceTo } from '../../patterns/advance-to';
 import { useBackStep } from '../../patterns/back-step';
 import { DockedNumberPad } from '../../patterns/docked-number-pad';
@@ -36,20 +36,24 @@ import {
   hasScannedLabel,
   isExpiryBeforeManufactured,
   labelMismatchOf,
+  LINE_SCOPED_BLANK,
   openLinesFirst,
   packageProblem,
   qtyProblem,
   queuedQtyOf,
+  recordedOf,
   remainingAfterOf,
   remainingQtyOf,
   sourceOf,
   splitQuantitiesOf,
+  submitLockOf,
   toOutboxDraft,
   toSplitOutboxDraft,
   verdictOf,
   type PurchaseOrder,
   type PurchaseOrderLine,
   type ReceiptDraft,
+  type RecordedReceipt,
   type SplitMode,
 } from './receipt';
 import { ItemPicker } from '../../patterns/item-picker';
@@ -117,6 +121,11 @@ export const InboundReceiptScreen = () => {
   const [externalLotNo, setExternalLotNo] = useState('');
   const [externalLotError, setExternalLotError] = useState<string | null>(null);
   const [outcome, setOutcome] = useState<Outcome | null>(null);
+  /*
+   * 방금 등록한 한 건의 요약. 「등록했습니다」 만으로는 무엇을 얼마나 넣었는지 되짚을 곳이
+   * 없어, 같은 자재 P/O 의 자재를 여러 번 넣을 때 확인할 길이 없었다(현장 요청 2026-09-21).
+   */
+  const [recorded, setRecorded] = useState<RecordedReceipt | null>(null);
   /* 부족한데도 그대로 등록하겠다는 사람의 답. 화면은 더 올 것인지 알지 못한다. */
   const [continueUnder, setContinueUnder] = useState(false);
   /*
@@ -151,6 +160,26 @@ export const InboundReceiptScreen = () => {
     }
 
     setDraft((current) => ({ ...current, ...next }));
+  };
+
+  /**
+   * 자재 P/O 라인을 고른다.
+   *
+   * ⭐ **다른 자재로 옮기면 그 자재에 딸린 칸을 비운다**(`LINE_SCOPED_BLANK`). 남겨 두면
+   *    앞 자재에 적은 수량이 다음 자재에 붙은 채 판정까지 다시 서서, 사람이 눈치채지 못하면
+   *    앞 자재의 수량이 다른 자재로 등록된다.
+   *
+   * ⛔ 같은 자재를 다시 누른 것은 바꾸는 것이 아니다 - 적어 둔 것을 잃지 않는다. 스캔 칸도
+   *    같은 번호를 다시 댔을 때 그대로 둔다.
+   */
+  const pickLine = (line: PurchaseOrderLine) => {
+    if (draft.purchaseOrderLine?.purchaseOrderLineId === line.purchaseOrderLineId) {
+      return;
+    }
+
+    /* 숫자판은 앞 자재의 칸에 열려 있다. 비운 칸 위에 그대로 두면 어디에 치는지 어긋난다. */
+    setKeypadFor(null);
+    patch({ purchaseOrderLine: line, ...LINE_SCOPED_BLANK });
   };
 
   const take = (value: string) => {
@@ -414,13 +443,20 @@ export const InboundReceiptScreen = () => {
    * 큐를 읽기 전에는 막아 둔다 - 담긴 것이 없는 것과 구별되지 않아, 앞서 담은 입하가 셈에서
    * 빠진 채로 같은 라인에 한 건이 더 나간다.
    */
-  const ready =
-    loaded &&
-    plantId !== null &&
-    canSubmit(draft, worker !== null) &&
-    labelOk &&
-    verdict !== OVER &&
-    (verdict !== UNDER || continueUnder);
+  /*
+   * ⭐ **잠근 단추는 왜 잠겼는지 함께 말한다**(공유계약 G-1). 판정과 그 이유가 한 곳
+   *    (`submitLockOf`)에서 나온다 — 따로 적으면 한쪽만 고쳐져, 단추는 잠긴 채 화면은
+   *    고칠 것이 없다고 말하게 된다.
+   */
+  const lock = submitLockOf(draft, {
+    loaded,
+    hasWorker: worker !== null,
+    plantId,
+    label: labelMismatch !== null ? 'mismatch' : labelChecking ? 'checking' : 'ok',
+    verdict,
+    continueUnder,
+  });
+  const ready = lock === null && verdict !== OVER;
   const splitReady =
     loaded &&
     plantId !== null &&
@@ -474,6 +510,7 @@ export const InboundReceiptScreen = () => {
     setExternalLotInput(false);
     setExternalLotNo('');
     setOutcome(null);
+    setRecorded(null);
     setContinueUnder(false);
     setVarianceNext(false);
     setSplitExceptionType('');
@@ -526,6 +563,12 @@ export const InboundReceiptScreen = () => {
         return;
       }
 
+      /*
+       * 확인용 요약은 «담아 보낸 본문»에서 되읽는다. 화면이 따로 셈하면 보낸 것과 보이는 것이
+       * 갈려, 확인하려고 보는 수가 도리어 틀린 수가 된다.
+       */
+      setRecorded(recordedOf(draft, source, entry.path, entry.body));
+
       const result = await flush().catch(() => null);
       const mine = (each: { idempotencyKey: string }) =>
         each.idempotencyKey === entry.idempotencyKey;
@@ -577,7 +620,12 @@ export const InboundReceiptScreen = () => {
     return (
       <ItemPicker
         onPick={(picked) => {
-          patch({ itemId: picked.itemId });
+          /* 품목이 바뀌면 수량도 그 품목의 것이 아니다 - 라인을 바꿀 때와 같은 이유로 비운다. */
+          patch(
+            picked.itemId === draft.itemId
+              ? { itemId: picked.itemId }
+              : { itemId: picked.itemId, ...LINE_SCOPED_BLANK },
+          );
           setPickingItem(false);
         }}
         onCancel={() => {
@@ -618,6 +666,76 @@ export const InboundReceiptScreen = () => {
             <Link to="/rejections">{t.rejected.action}</Link>
           </AlertBanner>
         ) : null}
+        {/*
+         * ⭐ **적은 값을 등록 뒤에 다시 보인다**(현장 요청 2026-09-21). 전에는 띠와 「다음
+         *    입하」 단추뿐이라, 같은 자재 P/O 의 자재를 여러 번 넣을 때 앞 자재를 무엇으로
+         *    얼마나 넣었는지 되짚을 곳이 화면에 없었다.
+         *
+         * 되돌아온 건(`rejected`)에는 세우지 않는다 - 등록되지 않은 값을 등록한 내용으로
+         * 보이면 사람이 들어간 줄 안다.
+         */}
+        {recorded === null || outcome === 'rejected' ? null : (
+          <section className="receipt__section">
+            <h2>{t.recorded.legend}</h2>
+            <dl className="receipt__counts">
+              {recorded.purchaseOrderNo === null ? null : (
+                <>
+                  <dt>{t.recorded.purchaseOrder}</dt>
+                  <dd>
+                    {recorded.lineNo === null
+                      ? recorded.purchaseOrderNo
+                      : `${recorded.purchaseOrderNo} · ${t.recorded.line(String(recorded.lineNo))}`}
+                  </dd>
+                </>
+              )}
+              <dt>{t.recorded.item}</dt>
+              <dd>
+                {item.data === undefined
+                  ? t.po.itemUnknown
+                  : `${item.data.itemCode} ${item.data.itemName}`}
+              </dd>
+              {recorded.parts.map((each) => (
+                <Fragment key={each.part ?? 'only'}>
+                  <dt>
+                    {each.part === null
+                      ? t.recorded.qty
+                      : each.part === 'normal'
+                        ? t.recorded.normalQty
+                        : t.recorded.excessQty}
+                  </dt>
+                  <dd>{`${String(each.receivedQty)} ${uomOf(recorded.uomId)}`}</dd>
+                </Fragment>
+              ))}
+              {recorded.parts[0]?.packageCount == null ? null : (
+                <>
+                  <dt>{t.recorded.packageCount}</dt>
+                  <dd>{String(recorded.parts[0].packageCount)}</dd>
+                </>
+              )}
+              <dt>{t.recorded.lotNo}</dt>
+              <dd>
+                {recorded.supplierLotMissing
+                  ? `${t.recorded.lotMissing} · ${displayNameOf(
+                      reasons.data ?? [],
+                      recorded.substituteLotReasonCode ?? '',
+                    )}`
+                  : (recorded.supplierLotNo ?? t.recorded.none)}
+              </dd>
+              {recorded.manufacturedDate === null ? null : (
+                <>
+                  <dt>{t.recorded.manufactured}</dt>
+                  <dd>{recorded.manufacturedDate}</dd>
+                </>
+              )}
+              {recorded.expiryDate === null ? null : (
+                <>
+                  <dt>{t.recorded.expiry}</dt>
+                  <dd>{recorded.expiryDate}</dd>
+                </>
+              )}
+            </dl>
+          </section>
+        )}
         <Button className="receipt__wide" variant="filled" size="2xl" onClick={restart}>
           {t.another}
         </Button>
@@ -818,6 +936,7 @@ export const InboundReceiptScreen = () => {
                       uomId: null,
                       exceptionTypeCode: '',
                       exceptionReason: '',
+                      ...LINE_SCOPED_BLANK,
                     });
                   }}
                   options={orders.data.map((each) => ({
@@ -839,7 +958,7 @@ export const InboundReceiptScreen = () => {
                 size="xl"
                 onClick={() => {
                   setShowAllOrders(true);
-                  patch({ purchaseOrder: null, purchaseOrderLine: null });
+                  patch({ purchaseOrder: null, purchaseOrderLine: null, ...LINE_SCOPED_BLANK });
                 }}
               >
                 {t.po.showAll}
@@ -866,7 +985,7 @@ export const InboundReceiptScreen = () => {
                           bordered
                           interactive
                           onClick={() => {
-                            patch({ purchaseOrderLine: line });
+                            pickLine(line);
                           }}
                         >
                           <Card.Body className="card-body receipt__line">
@@ -921,7 +1040,7 @@ export const InboundReceiptScreen = () => {
                   variant="text"
                   size="lg"
                   onClick={() => {
-                    patch({ purchaseOrder: null, purchaseOrderLine: null });
+                    patch({ purchaseOrder: null, purchaseOrderLine: null, ...LINE_SCOPED_BLANK });
                   }}
                 >
                   {t.po.clear}
@@ -940,6 +1059,7 @@ export const InboundReceiptScreen = () => {
                     purchaseOrderLine: null,
                     exceptionTypeCode: '',
                     exceptionReason: '',
+                    ...LINE_SCOPED_BLANK,
                   });
                 }}
               >
@@ -1465,15 +1585,29 @@ export const InboundReceiptScreen = () => {
           ) : null}
 
           {verdict === OVER ? null : (
-            <Button
-              className="receipt__wide"
-              variant="filled"
-              size="2xl"
-              disabled={!ready}
-              onClick={() => void submit()}
-            >
-              {t.submit}
-            </Button>
+            <>
+              <Button
+                className="receipt__wide"
+                variant="filled"
+                size="2xl"
+                disabled={!ready}
+                onClick={() => void submit()}
+              >
+                {t.submit}
+              </Button>
+              {/*
+               * 잠긴 이유는 단추 «바로 아래»에 선다. 위에 두면 사유 선택칸과 붙어 그 칸의
+               * 설명으로 읽히고, 무엇이 안 눌리는지가 흐려진다.
+               *
+               * 위에서부터 처음 비어 있는 것 하나만 말한다 - 다 늘어놓으면 무엇부터 할지가
+               * 흐려진다. 다음 것은 이것을 채우면 그 자리에 선다.
+               */}
+              {lock === null ? null : (
+                <p className="receipt__note receipt__locked" role="status">
+                  {t.locked[lock]}
+                </p>
+              )}
+            </>
           )}
         </>
       )}

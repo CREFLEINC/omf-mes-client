@@ -23,6 +23,19 @@
   color: var(--on-surface-muted, inherit);
 }
 
+/*
+ * 잠긴 등록 단추가 왜 잠겼는지 적는 줄.
+ *
+ * 다른 안내와 같은 흐린 색이면 잠긴 단추 아래 흘려 읽힌다 - 이것은 다음에 할 일을 가리키는
+ * 말이라, 가운데로 모으고 색을 죽이지 않는다. 띠(AlertBanner)로 세우지는 않는다: 오류가
+ * 아니라 아직 덜 채운 것이고, 큰 띠가 단추 아래 서면 단추보다 그쪽이 먼저 보인다.
+ */
+.receipt__locked {
+  color: inherit;
+  text-align: center;
+  margin-top: var(--space-2, 8px);
+}
+
 .receipt__field {
   display: flex;
   flex-direction: column;
