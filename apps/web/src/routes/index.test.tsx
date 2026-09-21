@@ -1502,16 +1502,15 @@ describe('appRouter — P/O 수신·조회의 진입 경로', () => {
   });
 });
 
+/*
+ * omf-all-around#41 — 두 화면은 주소에 대상이 실려야 그린다. 그래서 «메뉴에 두지 않고» 앞
+ * 화면의 이동 버튼으로만 들어간다. 여기서 재는 것은 ① 메뉴에 없다 ② 주소는 살아 있다 둘이다.
+ */
 describe('appRouter — W/O 전개·편성의 진입 경로', () => {
-  it('생산 메뉴를 키보드로 열면 P/O 선택 안내와 공개 주소가 선다', async () => {
-    const user = userEvent.setup();
-    renderRoutedApp('/quality/lot-status', lotStatusRoutes());
+  it('사이드 메뉴에 없고, 대상 없이 주소로 열면 P/O 선택 안내가 선다', () => {
+    renderRoutedApp('/production/production-plans', lotStatusRoutes());
 
-    const link = screen.getByRole('link', { name: 'W/O 전개·편성' });
-    link.focus();
-    await user.keyboard('{Enter}');
-
-    await waitFor(() => expect(currentLocation()).toBe('/production/production-plans'));
+    expect(screen.queryByRole('link', { name: 'W/O 전개·편성' })).toBeNull();
     expect(screen.getByRole('heading', { level: 1, name: 'W/O 전개·편성' })).toBeVisible();
     expect(screen.getByText('ERP W/O를 먼저 선택하세요.')).toBeVisible();
   });
@@ -1523,15 +1522,12 @@ describe('appRouter — W/O 전개·편성의 진입 경로', () => {
 });
 
 describe('appRouter — 4M 자원배정·유효성 점검의 진입 경로', () => {
-  it('생산 메뉴를 키보드로 열면 생산계획 선택 안내와 공개 주소가 선다', async () => {
-    const user = userEvent.setup();
-    renderRoutedApp('/quality/lot-status', lotStatusRoutes());
+  it('사이드 메뉴에 없고, 대상 없이 주소로 열면 생산계획 선택 안내가 선다', () => {
+    renderRoutedApp('/production/work-order-assignments', lotStatusRoutes());
 
-    const link = screen.getByRole('link', { name: messages.workOrder.screen.view.title });
-    link.focus();
-    await user.keyboard('{Enter}');
-
-    await waitFor(() => expect(currentLocation()).toBe('/production/work-order-assignments'));
+    expect(
+      screen.queryByRole('link', { name: messages.workOrder.screen.view.title }),
+    ).toBeNull();
     expect(
       screen.getByRole('heading', { level: 1, name: messages.workOrder.screen.view.title }),
     ).toBeVisible();

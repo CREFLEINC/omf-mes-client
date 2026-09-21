@@ -238,8 +238,8 @@ describe('베트남어 문구 — 관리웹', () => {
 describe('베트남어 이름 — 셸이 제 손으로 드는 것', () => {
   const named: LocalizedLabel[] = [...NAV_ENTRIES, ...NAV_GROUPS, SHELL_BRAND, LOCALE_CHOICE];
 
-  it('잴 이름이 있다 — 항목 69 · 묶음 9 · 제품 이름 · 언어칸', () => {
-    expect(named).toHaveLength(80);
+  it('잴 이름이 있다 — 항목 67 · 묶음 9 · 제품 이름 · 언어칸', () => {
+    expect(named).toHaveLength(78);
   });
 
   /** 빈 `labelVi` 는 베트남어 화면에서 **아무것도 안 보이는 줄**이 된다. 공백만 있는 것도 빈 것이다. */

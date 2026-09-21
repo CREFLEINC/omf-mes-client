@@ -423,21 +423,15 @@ export const NAV_GROUPS: readonly NavGroup[] = [
         label: 'P/O 변경 관리자 확인',
         labelVi: 'Quản trị xác nhận thay đổi P/O',
       },
-      /* W-02-02 — 선택한 ERP W/O를 계획·W/O로 전개하므로 조회 바로 뒤에 둔다. */
-      {
-        to: '/production/production-plans',
-        icon: 'schema',
-        label: 'W/O 전개·편성',
-        labelVi: 'Triển khai · lập W/O',
-      },
-      /* W-02-03 — 전개된 W/O의 4M 자원을 배정하므로 편성 바로 뒤에 둔다. */
-      {
-        to: '/production/work-order-assignments',
-        icon: 'tune',
-        label: '4M 자원배정·유효성 점검',
-        labelVi: 'Phân bổ nguồn lực 4M · kiểm tra hợp lệ',
-      },
-      /* W-02-04 — 4M 배정을 통과한 W/O를 배포하므로 배정 뒤·마감 앞에 둔다. */
+      /*
+       * ⛔ `W-02-02`(W/O 전개·편성)와 `W-02-03`(4M 자원배정)은 **메뉴에 두지 않는다**
+       * (omf-all-around#41 · 사용자 2026-09-21). 두 화면은 주소의 `?productionOrderId=` ·
+       * `?productionPlanId=` 로 대상을 받아 그린다 — 메뉴의 맨 주소로 열면 본문이 없고
+       * 「먼저 선택하세요」만 선다. 들어가는 길은 앞 화면의 이동 버튼이다
+       * (`production-order/screen.tsx` → 전개·편성 → `production-plan/work-order-result-pane.tsx` → 4M).
+       * 화면 목록(`web-screen-catalog.ts`)과 route 는 그대로 둔다 — 주소가 살아 있어야 그 버튼이 산다.
+       */
+      /* W-02-04 — 4M 배정을 통과한 W/O를 배포하므로 조회 뒤·마감 앞에 둔다. */
       {
         to: '/production/work-order-release',
         icon: 'rocket_launch',

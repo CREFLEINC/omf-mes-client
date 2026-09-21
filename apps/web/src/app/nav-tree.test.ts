@@ -135,8 +135,6 @@ describe('주 메뉴 트리', () => {
       '/shipment/product-disposal-request → delete_sweep',
       '/production/production-orders → account_tree',
       '/production/po-change-review → published_with_changes',
-      '/production/production-plans → schema',
-      '/production/work-order-assignments → tune',
       '/production/work-order-release → rocket_launch',
       '/production/work-order-close → archive',
       '/production/emergency-work-orders → bolt',
