@@ -87,8 +87,16 @@ const renderActions = (target: ProductionPlanEditorStateRow, handlers = callback
   );
   return { ...view, handlers };
 };
-const expectWritesLocked = () => {
-  for (const name of ['저장', '삭제']) expect(screen.getByRole('button', { name })).toBeDisabled();
+/*
+ * 확정된 줄은 저장·삭제 단추를 아예 내지 않는다 — 서버가 확정 계획 삭제를 거부하므로 누를 수
+ * 없는 단추를 늘어놓지 않는다(사용자 지시 2026-09-21). 저장 중인 줄은 단추가 있되 잠긴다.
+ */
+const expectWritesLocked = (confirmed = false) => {
+  for (const name of ['저장', '삭제']) {
+    const button = screen.queryByRole('button', { name });
+    if (confirmed) expect(button).toBeNull();
+    else expect(button).toBeDisabled();
+  }
 };
 beforeEach(() => {
   vi.clearAllMocks();
@@ -157,9 +165,9 @@ describe('ProductionPlanRowActions', () => {
     const { handlers } = renderActions(target);
 
     await user.click(screen.getByRole('button', { name: '전개 확정' }));
-    const dialog = screen.getByRole('dialog', { name: 'PLAN-101 전개 확정' });
-    expect(dialog).toHaveTextContent('Routing 공정별 W/O와 공정 의존 관계를 함께 생성합니다.');
-    expect(dialog).toHaveTextContent('서버가 한 트랜잭션으로 처리');
+    const dialog = screen.getByRole('dialog', { name: '생산계획 PLAN-101' });
+    expect(dialog).toHaveTextContent('Routing 공정별 W/O와 공정 간 의존 관계가 생성됩니다.');
+    expect(dialog).toHaveTextContent('확정 후에는 이 계획을 수정하거나 삭제할 수 없습니다.');
     act(() => {
       const submit = within(dialog).getByRole('button', { name: '전개 확정' });
       submit.click();
@@ -192,7 +200,7 @@ describe('ProductionPlanRowActions', () => {
       { ...row(null), isPending: true },
     ]) {
       const view = renderActions(target);
-      expectWritesLocked();
+      expectWritesLocked(target.confirmed === true);
       view.unmount();
     }
   });

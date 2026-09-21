@@ -14,6 +14,7 @@ import { SaveErrorBanner } from '../../patterns/master';
 import { useReleaseWorkOrder } from './mutations';
 import { useWorkOrderReleaseDetail } from './queries';
 import { useWorkOrderReleaseSummary } from './use-work-order-release-summary';
+import { isFixedInAssignment } from './release-preconditions';
 import { WorkOrderReleaseActions } from './work-order-release-actions';
 import {
   toWorkOrderReleaseDetailState,
@@ -149,12 +150,25 @@ const SelectedWorkOrderReleaseExecution = ({
         isInitialLoading={validation.isPending && validation.data === undefined}
         isRefreshing={validation.isFetching && validation.data !== undefined}
         loadError={validationError}
+        summaryChipSize="md"
+        checkScope={
+          ownedDetail === null
+            ? undefined
+            : {
+                hasEquipment: ownedDetail.plannedEquipmentId !== null,
+                hasMold: ownedDetail.plannedMoldId !== null,
+                hasWorker: ownedDetail.responsibleWorkerId !== null,
+              }
+        }
       />
       <WorkOrderReleaseInputPane
         ownerKey={ownedDetail?.workOrderId ?? null}
         orderQty={ownedDetail?.orderQty ?? null}
         uomLabel={uomLabel}
         lockedReason={lockedReason}
+        lockedNote={
+          isFixedInAssignment(readiness.preconditions.blockReason) ? t.input.locked.bySetup : null
+        }
         fieldErrors={release.fieldErrors}
         onClearFieldError={release.clearFieldError}
         onBodyChange={setBody}

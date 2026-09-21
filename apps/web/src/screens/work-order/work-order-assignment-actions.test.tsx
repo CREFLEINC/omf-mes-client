@@ -14,9 +14,10 @@ const draft = (overrides: Partial<WorkOrderAssignmentDraft> = {}): WorkOrderAssi
   plannedEquipmentId: '',
   plannedMoldId: '',
   plannedShiftId: '',
-  defaultWipLocationId: '',
-  defaultFgLocationId: '',
-  defaultScrapLocationId: '',
+  /* 저장 필수 칸 — 비면 저장이 잠긴다(assignment-model). */
+  defaultWipLocationId: '911',
+  defaultFgLocationId: '912',
+  defaultScrapLocationId: '913',
   plannedStartAtLocal: '2026-08-23T09:00',
   plannedEndAtLocal: '2026-08-23T11:00',
   priorityNo: '7',

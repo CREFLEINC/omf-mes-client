@@ -1,8 +1,10 @@
 import { Chip, type Column, EmptyState, IconButton, SkeletonText, Table } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 
+import { HelpBubble } from './help-bubble';
 import { PageNav } from './page-nav';
 import type { CodeNameOf } from './code-names';
+import { productionOrderStatusTone } from './status-tone';
 import type { PageView } from './pagination';
 import type { ProductionOrderRow } from './types';
 
@@ -90,7 +92,16 @@ export const ProductionOrderListPane = ({
     },
     {
       key: 'workOrderProgress',
-      header: t.fields.workOrderProgress,
+      /* 두 숫자의 뜻은 열 이름 옆 도움말 말풍선이 말한다(`help-bubble`). */
+      header: (
+        <span className="production-order-progress-header">
+          {t.fields.workOrderProgress}
+          <HelpBubble
+            label={t.basic.workOrderProgressHelp}
+            content={t.basic.workOrderProgressTooltip}
+          />
+        </span>
+      ),
       align: 'end',
       render: (row) =>
         `${String(row.expandedWorkOrderCount ?? '-')} / ${String(row.plannedWorkOrderCount ?? '-')}`,
@@ -99,7 +110,7 @@ export const ProductionOrderListPane = ({
       key: 'statusCode',
       header: t.fields.statusCode,
       render: (row) => (
-        <Chip variant="status" status="idle" size="sm">
+        <Chip variant="status" status={productionOrderStatusTone(row.statusCode)} size="sm">
           {statusNameOf(row.statusCode)}
         </Chip>
       ),
@@ -137,7 +148,6 @@ export const ProductionOrderListPane = ({
           }
         />
       </div>
-      <p className="field-note production-order-list-note">{t.values.workOrderProgressHelp}</p>
       <PageNav view={page} onChange={onChangePage} />
     </section>
   );

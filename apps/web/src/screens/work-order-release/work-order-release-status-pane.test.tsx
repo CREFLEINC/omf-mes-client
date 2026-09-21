@@ -85,9 +85,7 @@ describe('WorkOrderReleaseStatusPane', () => {
       const pane = screen.getByRole('region', { name: t.pane });
 
       expect(pane).toHaveClass('work-order-release-status-pane');
-      expect(
-        screen.getByRole('heading', { level: 2, name: t.heading('SYN-WO-ALPHA') }),
-      ).toBeVisible();
+      expect(screen.getByRole('heading', { level: 2, name: t.status.heading })).toBeVisible();
       expect(banner).toHaveTextContent(copy);
       expect(banner.className).toContain(variant);
       expect(screen.getAllByRole(role)).toHaveLength(1);
@@ -114,7 +112,7 @@ describe('WorkOrderReleaseStatusPane', () => {
     expect(screen.queryByText(/최종.*준비|최종.*완료/)).toBeNull();
   });
 
-  it('names the missing locations in order inside the one status banner', () => {
+  it('names what is missing first, then where to fix it, in one banner', () => {
     const { container } = renderPane({
       preconditions: preconditions({
         passesStaticGate: false,
@@ -125,14 +123,29 @@ describe('WorkOrderReleaseStatusPane', () => {
 
     const [banner, ...others] = screen.getAllByRole('alert');
     expect(others).toHaveLength(0);
-    expect(banner).toHaveTextContent(t.status.missingDefaultLocations);
     expect(banner).toHaveTextContent(
-      t.locations.missingList(
+      t.locations.missingTitle(
         `${t.locations.scrap}, ${t.locations.wip}, ${t.locations.finishedGoods}`,
       ),
     );
+    expect(banner).toHaveTextContent(t.locations.missingAction);
+    expect(banner).not.toHaveTextContent(t.status.missingDefaultLocations);
     expect(container.querySelector('.banner-slot')).toBeNull();
     expect(screen.queryByText('911')).toBeNull();
+  });
+
+  it('names a single missing location without implying all three must be set', () => {
+    renderPane({
+      preconditions: preconditions({
+        passesStaticGate: false,
+        blockReason: 'missingDefaultLocations',
+        missingDefaultLocations: ['scrap'],
+      }),
+    });
+
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      t.locations.missingTitle(t.locations.scrap),
+    );
   });
 
   it('suppresses missing-location warning when none are supplied and has no controls', () => {

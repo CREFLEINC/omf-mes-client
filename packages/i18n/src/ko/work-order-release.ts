@@ -4,6 +4,9 @@ export const workOrderRelease = {
   filter: {
     pane: '배포 후보 조회 조건',
     productionLine: '생산 라인',
+    /** 두 칸은 「계획 시작일」 하나의 범위다 — 묶음 라벨을 한 번만 보이고 칸 이름은 읽어 주기용으로 남긴다. */
+    plannedStartRange: '계획 시작일 범위',
+    plannedStartRangeSeparator: '~',
     plannedStartFrom: '계획 시작일(부터)',
     plannedStartTo: '계획 시작일(까지)',
     status: '확정 대기 상태',
@@ -23,15 +26,16 @@ export const workOrderRelease = {
   input: {
     pane: '생산LOT 선발행 입력',
     heading: '생산LOT 선발행',
-    fields: { lotSize: 'LOT 크기', handoverNote: '전달사항' },
+    /** 전달사항은 비워 보낼 수 있다(`release-draft` 가 빈 값을 본문에서 뺀다) */
+    fields: { lotSize: 'LOT 크기', handoverNote: '전달사항 (선택)' },
     helper: {
-      lotSize: (unit: string): string =>
-        `품목 기본값이 없습니다. 매번 직접 입력하세요. 단위: ${unit}`,
+      /** 라벨 옆 안내 — 옆 단추가 그 화면(W-CO-04 공지·전달 게시/조회)을 연다 */
       handoverNote: '공지 확인 이력은 별도 화면에서 관리합니다.',
+      handoverNoteGo: '공지 화면 열기',
     },
     locked: {
-      lotSize: (reason: string): string => `LOT 크기: ${reason}`,
-      handoverNote: (reason: string): string => `전달사항: ${reason}`,
+      /** 원인은 「배포 전 확인」이 한 번 말한다 — 여기서는 입력이 왜 잠겼는지만 */
+      bySetup: 'W/O 설정을 완료하면 LOT 정보를 입력할 수 있습니다.',
     },
     preview: {
       title: (slotCount: number): string => `${String(slotCount)} 슬롯을 선발행합니다.`,
@@ -69,7 +73,6 @@ export const workOrderRelease = {
       shift: '작업조',
       plannedPeriod: '계획 기간',
     },
-    values: { unavailable: '표시명 없음' },
     empty: {
       title: '요약할 배포 후보 작업지시를 선택하세요.',
       description: '목록에서 작업지시를 선택하면 준비된 요약을 확인할 수 있습니다.',
@@ -103,20 +106,28 @@ export const workOrderRelease = {
     actions: { select: (workOrderNo: string): string => `${workOrderNo} 선택` },
     values: { missingItem: '품목 표시명 없음' },
     loading: '배포 후보 작업지시 목록을 불러오는 중입니다.',
+    /** 다른 목록 화면과 같은 두 단추(이전·다음) */
+    page: { label: '배포 후보 쪽 이동', prev: '이전', next: '다음' },
     empty: {
+      /** 아직 조회하지 않은 상태 — 「없다」가 아니라 「아직 찾지 않았다」다 */
+      notSearchedTitle: '배포 후보를 조회해 주세요.',
+      notSearchedDescription: '조회 조건을 선택한 후 「조회」를 눌러 주세요.',
       title: '배포 후보 작업지시가 없습니다.',
       description: '다른 쪽으로 이동해 다시 확인하세요.',
       beyondTitle: '현재 쪽에 배포 후보 작업지시가 없습니다.',
-      beyondDescription: '첫 쪽 또는 이전 쪽으로 이동해 다시 확인하세요.',
+      beyondDescription: '이전 쪽으로 이동해 다시 확인하세요.',
     },
   },
   pane: '작업지시 배포 전 확인',
-  heading: (workOrderNo: string): string => `선택한 W/O — ${workOrderNo}`,
   empty: {
     notSelectedTitle: '배포할 작업지시를 선택하세요.',
     notSelectedDescription: '목록에서 작업지시를 선택하면 정적 확인 결과를 볼 수 있습니다.',
   },
   status: {
+    /** 선택한 W/O 의 배포 가능 여부를 알리는 영역 — W/O 번호는 바로 위 요약 카드가 이미 보인다 */
+    heading: '배포 전 확인',
+    /** 제목 옆 안내 — 이 구획이 무엇을 말하는 자리인지 알린다(사용자 지시 2026-09-20) */
+    headingHint: '배포 가능 여부는 여기서 확인합니다.',
     staticPassed: '정적 확인을 통과했습니다. 남은 입력 조건은 계속 확인하세요.',
     alreadyReleased: '이미 배포된 작업지시입니다. 다시 배포할 수 없습니다.',
     validationBlocked: '검증 결과의 차단 항목을 해결한 뒤 다시 확인하세요.',
@@ -127,8 +138,9 @@ export const workOrderRelease = {
     openAssignment: '4M 자원배정에서 설정',
   },
   locations: {
-    /** 상태 문구 뒤에 붙는 누락 위치 목록 — 별도 경고 배너는 같은 말을 반복해 없앴다 */
-    missingList: (names: string): string => `(누락: ${names})`,
+    /** 빠진 위치를 먼저 말하고(원인) 고칠 곳을 뒤에 말한다(해결) */
+    missingTitle: (names: string): string => `${names}가 설정되지 않았습니다.`,
+    missingAction: '배포하려면 4M 자원배정에서 위치를 설정해 주세요.',
     wip: 'WIP 위치',
     finishedGoods: '완제품 위치',
     scrap: '스크랩 위치',

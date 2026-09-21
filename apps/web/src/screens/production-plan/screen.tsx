@@ -85,11 +85,26 @@ const ProductionPlanWorkspace = ({
           <span>{tPlan.order.heading}</span>
           <h2>{order.productionOrderNo}</h2>
         </header>
-        <p className="production-plan-order-facts">
-          {describeItem(order.itemId, new Map(itemNames.items.map((item) => [item.itemId, item])))}{' '}
-          · {quantity(order.orderQty)} {uomLabel}
-          {order.dueDate === null ? '' : tPlan.order.due(order.dueDate)}
-        </p>
+        {/* 값마다 이름을 달아 읽는다 — 큰 상세 카드로 키우지 않는다(사용자 지시 2026-09-20). */}
+        <dl className="production-plan-order-facts">
+          <div>
+            <dt>{tPlan.order.fields.item}</dt>
+            <dd>
+              {describeItem(
+                order.itemId,
+                new Map(itemNames.items.map((item) => [item.itemId, item])),
+              )}
+            </dd>
+          </div>
+          <div>
+            <dt>{tPlan.order.fields.quantity}</dt>
+            <dd>{`${quantity(order.orderQty)} ${uomLabel}`}</dd>
+          </div>
+          <div>
+            <dt>{tPlan.order.fields.dueDate}</dt>
+            <dd>{order.dueDate ?? tPlan.order.dueUnset}</dd>
+          </div>
+        </dl>
       </section>
       <MasterCheckPane
         boms={{
@@ -119,7 +134,7 @@ const ProductionPlanWorkspace = ({
           variant="error"
           title={tPlan.lines.loadFailed}
           action={
-            <Button size="sm" variant="outlined" onClick={() => void lines.refetch()}>
+            <Button variant="outlined" onClick={() => void lines.refetch()}>
               {tPlan.lines.retry}
             </Button>
           }
@@ -158,7 +173,6 @@ const ProductionPlanWorkspace = ({
           uomLabel={uomLabel}
         />
       )}
-      <AlertBanner variant="info">{t.lotNotice}</AlertBanner>
     </div>
   );
 };
@@ -187,7 +201,16 @@ export const ProductionPlanScreen = () => {
 
   return (
     <>
-      <PageHeader title={tPlan.title} breadcrumb={BREADCRUMB} />
+      {/* 이 단계에서 입력할 수 없는 항목은 제목 «옆»에서 한 번 알린다(사용자 지시 2026-09-20). */}
+      <PageHeader
+        title={
+          <span className="production-plan-title">
+            {tPlan.title}
+            <span className="production-plan-lot-notice">{t.lotNotice}</span>
+          </span>
+        }
+        breadcrumb={BREADCRUMB}
+      />
       {productionOrderId === null ? (
         <AlertBanner variant="warning" title={t.unselected}>
           <Link to="/production/production-orders">{t.openProductionOrders}</Link>
@@ -200,10 +223,11 @@ export const ProductionPlanScreen = () => {
         <>
           {(workspaceOrder === null || orderUnavailable) && (
             <AlertBanner
+              className="production-plan-failure-banner"
               variant="error"
               title={failureTitle}
               action={
-                <Button size="sm" variant="outlined" onClick={() => void order.refetch()}>
+                <Button variant="outlined" onClick={() => void order.refetch()}>
                   {t.retry}
                 </Button>
               }

@@ -244,7 +244,7 @@ it('fails closed when a server page extends past the reported total', async () =
     query(listResponse(pageNo, pageNo === 1 ? 2 : 1)),
   );
   const view = renderScreen();
-  await user.click(screen.getByRole('button', { name: messages.workOrder.pageNav.next }));
+  await user.click(screen.getByRole('button', { name: messages.workOrder.assignmentPageNav.next }));
 
   expect(mocks.list).toHaveBeenLastCalledWith(501, 2);
   expect(screen.getByText(messages.workOrder.screen.view.failed)).toBeVisible();

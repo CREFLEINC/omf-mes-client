@@ -3,10 +3,7 @@ import { messages } from '@omf-mes/i18n';
 import { useNavigate } from 'react-router';
 
 import { workOrderAssignmentPath } from '../work-order/screen-model';
-import type {
-  WorkOrderReleaseBlockReason,
-  WorkOrderReleasePreconditions,
-} from './release-preconditions';
+import { isFixedInAssignment, type WorkOrderReleasePreconditions } from './release-preconditions';
 
 const t = messages.workOrderRelease;
 
@@ -36,12 +33,6 @@ const toStatusPresentation = (preconditions: WorkOrderReleasePreconditions): Sta
   }
 };
 
-/** 이 차단은 W-02-03 에서 고친다 — 위치는 Material 칸, 검증 차단은 4M 배정이다. */
-const FIXED_IN_ASSIGNMENT: readonly WorkOrderReleaseBlockReason[] = [
-  'missingDefaultLocations',
-  'validationBlocked',
-];
-
 export interface WorkOrderReleaseAssignmentTarget {
   productionPlanId: number;
   workOrderId: number;
@@ -51,7 +42,6 @@ const OpenAssignmentButton = ({ target }: { target: WorkOrderReleaseAssignmentTa
   const navigate = useNavigate();
   return (
     <Button
-      size="sm"
       variant="outlined"
       onClick={() =>
         void navigate(workOrderAssignmentPath(target.productionPlanId, target.workOrderId))
@@ -90,24 +80,27 @@ export const WorkOrderReleaseStatusPane = ({
   const missingLocations = preconditions.missingDefaultLocations
     .map((location) => t.locations[location])
     .join(', ');
+  /* 위치 누락은 «무엇이» 빠졌는지를 제목으로 먼저 말한다 — 전부 다시 정해야 하는 것처럼 읽히지 않게 */
+  const namesMissing =
+    preconditions.blockReason === 'missingDefaultLocations' && missingLocations !== '';
   const fixAction =
-    assignmentTarget !== null &&
-    preconditions.blockReason !== null &&
-    FIXED_IN_ASSIGNMENT.includes(preconditions.blockReason) ? (
+    assignmentTarget !== null && isFixedInAssignment(preconditions.blockReason) ? (
       <OpenAssignmentButton target={assignmentTarget} />
     ) : undefined;
 
   return (
     <section className="pane work-order-release-status-pane" aria-label={t.pane}>
-      <h2 className="pane-title">{t.heading(selectedWorkOrderNo)}</h2>
+      <div className="work-order-release-status-heading">
+        <h2 className="pane-title">{t.status.heading}</h2>
+        <span className="work-order-release-status-hint">{t.status.headingHint}</span>
+      </div>
       <AlertBanner
         className="work-order-release-status-banner"
         variant={status.variant}
+        title={namesMissing ? t.locations.missingTitle(missingLocations) : undefined}
         action={fixAction}
       >
-        {missingLocations === ''
-          ? status.message
-          : `${status.message} ${t.locations.missingList(missingLocations)}`}
+        {namesMissing ? t.locations.missingAction : status.message}
       </AlertBanner>
     </section>
   );

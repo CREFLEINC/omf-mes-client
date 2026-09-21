@@ -45,6 +45,7 @@ export const workOrder: Translated<typeof ko.workOrder> = {
       openAssignment: 'Đến phân bổ nguồn lực 4M · kiểm tra hợp lệ',
       contextPane: 'Kế hoạch sản xuất đã chọn',
       editorPane: 'Soạn phân bổ lệnh sản xuất',
+      selectedHeading: (workOrderNo: string) => `W/O đã chọn — ${workOrderNo}`,
       context: (productionOrderNo: string, total: number) =>
         `P/O ${productionOrderNo} · ${String(total)} W/O`,
       selectWorkOrder: 'Hãy chọn lệnh sản xuất để phân bổ.',
@@ -99,6 +100,7 @@ export const workOrder: Translated<typeof ko.workOrder> = {
       `${String(start)}–${String(end)} / tổng ${String(total)} mục`,
     total: (total: number) => `Tổng ${String(total)} mục`,
   },
+  assignmentPageNav: { label: 'Chuyển trang lệnh sản xuất', prev: 'Trước', next: 'Sau' },
   pageNav: {
     label: 'Chuyển trang lệnh sản xuất',
     first: 'Trang đầu',
@@ -112,6 +114,22 @@ export const workOrder: Translated<typeof ko.workOrder> = {
     },
   },
   validationPane: {
+    /* 검증 결과 표시 문구 — W-02-03·W-02-04 가 같이 쓴다(사용자 지시 2026-09-20). */
+    clean: 'Chặn 0 · cảnh báo 0',
+    checksTitle: 'Mục kiểm',
+    resultTitle: 'Kết quả',
+    skippedNote:
+      'Các mục liên quan đến thiết bị · khuôn · người làm chưa được phân bổ không thuộc phạm vi kiểm tra.',
+    checks: {
+      equipmentStatus: 'Trạng thái sử dụng thiết bị',
+      equipmentCalibration: 'Hạn hiệu chuẩn thiết bị',
+      equipmentDoubleBooked: 'Trùng lịch thiết bị',
+      moldStatus: 'Trạng thái sử dụng khuôn',
+      moldLife: 'Tuổi thọ khuôn',
+      workerQualification: 'Chứng chỉ công đoạn của người làm',
+    },
+    checkState: { checked: 'Không có vấn đề', skipped: 'Không áp dụng' },
+
     panes: { validation: 'Kiểm tra lệnh sản xuất' },
     fields: { severity: 'Mức', message: 'Nội dung' },
     loading: 'Đang tải kết quả kiểm tra lệnh sản xuất.',
@@ -129,9 +147,10 @@ export const workOrder: Translated<typeof ko.workOrder> = {
   },
   resourcePane: {
     pane: 'Phân bổ nguồn lực lệnh sản xuất',
-    heading: (workOrderNo: string) => `W/O đã chọn — ${workOrderNo}`,
+    heading: 'Phân bổ nguồn lực 4M',
     warning: 'Mỗi loại nguồn lực chỉ phân bổ được một. Cần thêm thì hãy tách W/O.',
     placeholder: 'Hãy chọn',
+    requiredHint: 'Bắt buộc',
     clearOption: 'Không phân bổ',
     cards: { machine: 'Machine', man: 'Man', tool: 'Tool/Mold', material: 'Material' },
     fields: {
@@ -144,7 +163,27 @@ export const workOrder: Translated<typeof ko.workOrder> = {
       defaultFgLocation: 'Vị trí thành phẩm mặc định',
       defaultScrapLocation: 'Vị trí phế liệu mặc định',
     },
-    workerSearch: { label: 'Tìm người phụ trách', placeholder: 'Tìm theo mã hoặc tên công nhân' },
+    workerPicker: {
+      open: 'Tìm theo mã · tên',
+      clear: 'Xóa người phụ trách',
+      title: 'Chọn người phụ trách',
+      keywordLabel: 'Từ khóa',
+      keywordPlaceholder: 'Mã nhân viên hoặc họ tên',
+      search: 'Tìm',
+      columns: { select: 'Chọn', workerNo: 'Mã nhân viên', workerName: 'Họ tên' },
+      inactive: 'Ngừng dùng',
+      noResult: 'Không có kết quả. Hãy thử một phần mã hoặc tên.',
+      searchFailed: 'Không tìm được người làm.',
+      searching: 'Đang tìm…',
+      page: {
+        range: (from: number, to: number, total: number) =>
+          `${String(from)}–${String(to)} / tổng ${String(total)}`,
+        previous: 'Trước',
+        next: 'Sau',
+      },
+      cancel: 'Hủy',
+      pick: 'Chọn',
+    },
     materialInfo: 'Phân bổ vật tư không thay đổi ở màn hình này.',
     empty: {
       notSelectedTitle: 'Hãy chọn lệnh sản xuất để phân bổ nguồn lực.',
@@ -154,8 +193,7 @@ export const workOrder: Translated<typeof ko.workOrder> = {
   },
   planFieldsPane: {
     pane: 'Trường kế hoạch của lệnh sản xuất',
-    heading: (workOrderNo: string) => `W/O đã chọn — ${workOrderNo}`,
-    card: 'Kế hoạch',
+    heading: 'Kế hoạch',
     fields: {
       plannedStartAtLocal: 'Bắt đầu theo kế hoạch',
       plannedEndAtLocal: 'Kết thúc theo kế hoạch',

@@ -122,7 +122,6 @@ export const MasterCheckPane = ({
           placeholder={t.revisionPlaceholder}
           onChange={onChange}
         />
-        {kind === 'BOM' && automaticBom !== null && <p>{t.bomAutoSelected}</p>}
         {kind === 'BOM' && automaticBom === null && options.length > 0 && (
           <AlertBanner variant="warning">{t.bomAmbiguous}</AlertBanner>
         )}
@@ -145,7 +144,15 @@ export const MasterCheckPane = ({
         <Card bordered className="production-plan-master-card">
           <Card.Header className="production-plan-master-card-header">
             <h3>{t.bomCard}</h3>
-            {isBomSelected && <Chip status="success">{t.selected}</Chip>}
+            {/* 자동 선택 안내는 제목 옆 작은 글로 둔다(사용자 지시 2026-09-20). */}
+            {automaticBom !== null && (
+              <span className="production-plan-master-note">{t.bomAutoSelected}</span>
+            )}
+            {isBomSelected && (
+              <Chip status="success" size="sm">
+                {t.selected}
+              </Chip>
+            )}
           </Card.Header>
           <Card.Body className="production-plan-master-card-body">
             {referenceBody(
@@ -161,7 +168,7 @@ export const MasterCheckPane = ({
             {boms.items
               .filter((item) => String(item.bomId) === bomId)
               .map((item) => (
-                <p key={item.bomId}>
+                <p key={item.bomId} className="production-plan-master-period">
                   {t.effectivePeriod(period(item.effectiveFrom, item.effectiveTo))}
                 </p>
               ))}
@@ -170,7 +177,11 @@ export const MasterCheckPane = ({
         <Card bordered className="production-plan-master-card">
           <Card.Header className="production-plan-master-card-header">
             <h3>{t.routingCard}</h3>
-            {isRoutingSelected && <Chip status="success">{t.selected}</Chip>}
+            {isRoutingSelected && (
+              <Chip status="success" size="sm">
+                {t.selected}
+              </Chip>
+            )}
           </Card.Header>
           <Card.Body className="production-plan-master-card-body">
             {referenceBody(
@@ -186,7 +197,7 @@ export const MasterCheckPane = ({
             {routings.items
               .filter((item) => String(item.routingId) === routingId)
               .map((item) => (
-                <p key={item.routingId}>
+                <p key={item.routingId} className="production-plan-master-period">
                   {t.effectivePeriod(period(item.effectiveFrom, item.effectiveTo))}
                 </p>
               ))}

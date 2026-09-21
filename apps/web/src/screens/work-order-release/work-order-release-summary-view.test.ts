@@ -86,7 +86,8 @@ describe('work-order release summary view', () => {
       equipmentLabel: 'EQ-A · Synthetic Equipment',
       moldLabel: 'MOLD-A · Synthetic Mold',
       shiftLabel: 'SHIFT-A · Synthetic Shift',
-      plannedPeriodLabel: '2026-08-26T09:00:00+09:00 ~ 2026-08-26T18:00:00+09:00',
+      // 공장 시각(Asia/Ho_Chi_Minh) — 원문은 +09:00 이다
+      plannedPeriodLabel: '2026-08-26 07:00 ~ 2026-08-26 16:00',
     });
     expect({ selected, refs }).toEqual(snapshot);
   });

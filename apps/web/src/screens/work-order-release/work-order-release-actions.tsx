@@ -21,7 +21,7 @@ const ReleaseAction = ({
   loading = false,
   onClick,
 }: ReleaseActionProps) => (
-  <div className="field-cell">
+  <div className="field-cell work-order-release-action-cell">
     <Button
       type="button"
       variant={variant}
@@ -32,8 +32,12 @@ const ReleaseAction = ({
     >
       {label}
     </Button>
+    {/*
+      이유는 화면에 다시 쓰지 않는다 — 배포를 막는 원인은 「배포 전 확인」과 입력 칸이 이미 보인다.
+      보조기기에는 버튼 설명으로 남긴다.
+    */}
     {reason !== null && (
-      <span id={reasonId} className="field-note">
+      <span id={reasonId} className="work-order-release-visually-hidden">
         {reason}
       </span>
     )}

@@ -15,6 +15,8 @@ export const workOrderRelease: Translated<typeof ko.workOrderRelease> = {
   filter: {
     pane: 'Điều kiện tra cứu ứng viên phát hành',
     productionLine: 'Dòng sản xuất',
+    plannedStartRange: 'Khoảng ngày bắt đầu kế hoạch',
+    plannedStartRangeSeparator: '~',
     plannedStartFrom: 'Ngày bắt đầu kế hoạch (từ)',
     plannedStartTo: 'Ngày bắt đầu kế hoạch (đến)',
     status: 'Trạng thái chờ chốt',
@@ -36,15 +38,13 @@ export const workOrderRelease: Translated<typeof ko.workOrderRelease> = {
   input: {
     pane: 'Nhập phát trước LOT sản xuất',
     heading: 'Phát trước LOT sản xuất',
-    fields: { lotSize: 'Cỡ LOT', handoverNote: 'Nội dung bàn giao' },
+    fields: { lotSize: 'Cỡ LOT', handoverNote: 'Nội dung bàn giao (tùy chọn)' },
     helper: {
-      lotSize: (unit: string) =>
-        `Mặt hàng không có giá trị mặc định. Hãy tự nhập mỗi lần. Đơn vị: ${unit}`,
       handoverNote: 'Lịch sử xác nhận thông báo được quản lý ở màn hình riêng.',
+      handoverNoteGo: 'Mở màn hình thông báo',
     },
     locked: {
-      lotSize: (reason: string) => `Cỡ LOT: ${reason}`,
-      handoverNote: (reason: string) => `Nội dung bàn giao: ${reason}`,
+      bySetup: 'Hoàn tất thiết lập W/O để nhập thông tin LOT.',
     },
     preview: {
       title: (slotCount: number) => `Sẽ phát trước ${String(slotCount)} suất.`,
@@ -83,7 +83,6 @@ export const workOrderRelease: Translated<typeof ko.workOrderRelease> = {
       shift: 'Ca làm việc',
       plannedPeriod: 'Kỳ kế hoạch',
     },
-    values: { unavailable: 'Không có tên hiển thị' },
     empty: {
       title: 'Hãy chọn lệnh sản xuất ứng viên phát hành để xem tóm tắt.',
       description: 'Chọn một lệnh sản xuất trong danh sách để xem tóm tắt đã chuẩn bị.',
@@ -117,20 +116,24 @@ export const workOrderRelease: Translated<typeof ko.workOrderRelease> = {
     actions: { select: (workOrderNo: string) => `Chọn ${workOrderNo}` },
     values: { missingItem: 'Không có tên hiển thị mặt hàng' },
     loading: 'Đang tải danh sách lệnh sản xuất ứng viên phát hành.',
+    page: { label: 'Chuyển trang ứng viên phát hành', prev: 'Trước', next: 'Sau' },
     empty: {
+      notSearchedTitle: 'Hãy tìm lệnh sản xuất ứng viên phát hành.',
+      notSearchedDescription: 'Chọn điều kiện tìm rồi bấm 「Tìm」.',
       title: 'Không có lệnh sản xuất ứng viên phát hành.',
       description: 'Hãy sang trang khác rồi xem lại.',
       beyondTitle: 'Trang hiện tại không có lệnh sản xuất ứng viên phát hành.',
-      beyondDescription: 'Hãy về trang đầu hoặc trang trước rồi xem lại.',
+      beyondDescription: 'Hãy về trang trước rồi xem lại.',
     },
   },
   pane: 'Kiểm tra trước khi phát hành lệnh sản xuất',
-  heading: (workOrderNo: string) => `W/O đã chọn — ${workOrderNo}`,
   empty: {
     notSelectedTitle: 'Hãy chọn lệnh sản xuất để phát hành.',
     notSelectedDescription: 'Chọn một lệnh sản xuất trong danh sách để xem kết quả kiểm tra tĩnh.',
   },
   status: {
+    heading: 'Kiểm tra trước khi phát hành',
+    headingHint: 'Khả năng phát hành được xem ở đây.',
     staticPassed: 'Đã qua kiểm tra tĩnh. Hãy tiếp tục kiểm các điều kiện nhập còn lại.',
     alreadyReleased: 'Lệnh sản xuất này đã phát hành. Không phát hành lại được.',
     validationBlocked: 'Hãy xử lý các mục bị chặn trong kết quả kiểm tra rồi xem lại.',
@@ -141,7 +144,8 @@ export const workOrderRelease: Translated<typeof ko.workOrderRelease> = {
     openAssignment: 'Thiết lập ở phân bổ 4M',
   },
   locations: {
-    missingList: (names: string) => `(Thiếu: ${names})`,
+    missingTitle: (names: string) => `Chưa thiết lập ${names}.`,
+    missingAction: 'Để phát hành, hãy thiết lập vị trí ở phân bổ 4M.',
     wip: 'Vị trí WIP',
     finishedGoods: 'Vị trí thành phẩm',
     scrap: 'Vị trí phế liệu',

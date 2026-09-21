@@ -15,7 +15,8 @@ export const productionPlan: Translated<typeof ko.productionPlan> = {
   order: {
     pane: 'ERP W/O đã chọn',
     heading: 'ERP W/O đã chọn',
-    due: (dueDate: string) => ` · Ngày giao ${dueDate}`,
+    fields: { item: 'Mặt hàng', quantity: 'Số lượng', dueDate: 'Ngày giao' },
+    dueUnset: 'Không có ngày giao',
   },
 
   /** ① 없는 것과 못 받은 것을 가른다 — 사용자가 갈 곳이 다르다(다시 시도 · 기준정보 등록). */
@@ -79,9 +80,16 @@ export const productionPlan: Translated<typeof ko.productionPlan> = {
     lineUnset: 'Chưa chỉ định',
     selectPlaceholder: 'Chọn',
     confirmedLock: 'Kế hoạch đã chốt thì không sửa được.',
-    confirmedChip: 'Đã chốt · không sửa được',
+    confirmedChip: 'Đã chốt',
     savingChip: 'Đang lưu',
     remove: 'Xóa',
+    remarksEdit: (rowName: string) => `Nhập ghi chú ${rowName}`,
+    remarksEmpty: 'Nhập',
+    remarksWritten: 'Sửa',
+    remarksView: 'Xem',
+    remarksViewLabel: (rowName: string) => `Xem ghi chú ${rowName}`,
+    remarksDialog: 'Ghi chú',
+    confirmedNotice: 'Sau khi chốt kế hoạch thì không sửa hoặc xóa được.',
     totalLabel: 'Tổng',
     totalUnknown: 'Không tính được tổng',
     total: (planned: string, ordered: string, uomLabel: string) =>
@@ -92,9 +100,11 @@ export const productionPlan: Translated<typeof ko.productionPlan> = {
   quantitySummary: {
     invalid: 'Hãy sửa lỗi số lượng kế hoạch trước.',
     empty: 'Phải thêm ít nhất 1 kế hoạch mới triển khai được.',
-    over: (amount: string, uomLabel: string) => `Vượt số lượng ERP W/O ${amount} ${uomLabel}.`,
-    overDescription: 'Hãy kiểm tra chính sách sản xuất vượt.',
-    under: (amount: string, uomLabel: string) => `Thiếu so với số lượng ERP W/O ${amount} ${uomLabel}.`,
+    over: () => 'Số lượng kế hoạch đã vượt.',
+    overFacts: (ordered: string, planned: string, uomLabel: string) =>
+      `Số lượng W/O ${ordered} ${uomLabel} · Tổng kế hoạch ${planned} ${uomLabel}`,
+    under: (amount: string, uomLabel: string) =>
+      `Thiếu so với số lượng ERP W/O ${amount} ${uomLabel}.`,
     underDescription: 'Nếu đang chia nhỏ kế hoạch thì cứ soạn tiếp.',
     matched: 'Tổng số lượng kế hoạch khớp với số lượng ERP W/O.',
   },
@@ -111,15 +121,20 @@ export const productionPlan: Translated<typeof ko.productionPlan> = {
 
   /** ③ 무엇이 함께 생기고 무엇을 잃는지 둘 다 적는다. */
   confirmDialog: {
-    title: (planNo: string) => `Chốt triển khai ${planNo}`,
+    planLabel: 'Kế hoạch sản xuất',
     cancel: 'Hủy',
     confirm: 'Chốt triển khai',
     effect:
-      'Khi chốt kế hoạch, hệ thống tạo cùng lúc W/O theo từng công đoạn Routing và quan hệ phụ thuộc giữa các công đoạn.',
-    irreversible:
-      'Máy chủ xử lý trong một giao dịch, và kế hoạch đã chốt thì không sửa hay xóa được.',
+      'Khi chốt triển khai, W/O theo từng công đoạn Routing và quan hệ phụ thuộc giữa các công đoạn sẽ được tạo.',
+    irreversible: 'Sau khi chốt thì không sửa hoặc xóa được kế hoạch này.',
   },
 
+  resultPageNav: {
+    label: 'Chuyển trang W/O đã triển khai',
+    first: 'Trang đầu',
+    prev: 'Trước',
+    next: 'Sau',
+  },
   result: {
     pane: 'Lệnh sản xuất đã triển khai',
     heading: (planName: string) => `Kết quả triển khai ${planName}`,

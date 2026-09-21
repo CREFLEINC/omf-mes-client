@@ -82,7 +82,7 @@ describe('WorkOrderReleaseSummaryPane', () => {
     ]);
   });
 
-  it('uses the generic fallback for null, undefined, and blank nullable labels', () => {
+  it('shows the common muted empty mark for null, undefined, and blank nullable labels', () => {
     renderPane(
       view({
         itemLabel: null,
@@ -96,7 +96,9 @@ describe('WorkOrderReleaseSummaryPane', () => {
       }),
     );
 
-    expect(screen.getAllByText(t.values.unavailable)).toHaveLength(8);
+    const empties = screen.getAllByText(messages.common.reference.empty);
+    expect(empties).toHaveLength(8);
+    empties.forEach((mark) => expect(mark).toHaveClass('work-order-release-summary-empty'));
     expect(screen.getByText('12.5 SYN-EA')).toBeVisible();
     expect(screen.queryByText('undefined')).toBeNull();
   });

@@ -2,8 +2,9 @@ import { type Column, EmptyState, SkeletonText, Table } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
 
-import { PageNav } from '../work-order/page-nav';
 import type { WorkOrderPageView } from '../work-order/pagination';
+import { ItemLabelLines } from './item-label-lines';
+import { PageNav } from './page-nav';
 
 const t = messages.workOrderRelease.candidateList;
 
@@ -20,6 +21,8 @@ export interface WorkOrderReleaseCandidateListPaneProps {
   isLoading: boolean;
   loadError: ReactNode;
   page: WorkOrderPageView;
+  /** 조회를 한 번이라도 했는가. 아직이면 「없다」가 아니라 「조회해 주세요」다. */
+  hasSearched: boolean;
   onSelect: (workOrderId: number) => void;
   onChangePage: (page: number) => void;
 }
@@ -33,6 +36,7 @@ export const WorkOrderReleaseCandidateListPane = ({
   isLoading,
   loadError,
   page,
+  hasSearched,
   onSelect,
   onChangePage,
 }: WorkOrderReleaseCandidateListPaneProps) => {
@@ -40,6 +44,8 @@ export const WorkOrderReleaseCandidateListPane = ({
     {
       key: 'workOrderNo',
       header: t.fields.workOrderNo,
+      align: 'center',
+      width: '35%',
       render: (row) => (
         <button
           type="button"
@@ -54,8 +60,14 @@ export const WorkOrderReleaseCandidateListPane = ({
         </button>
       ),
     },
-    { key: 'item', header: t.fields.item, render: (row) => itemLabel(row.itemLabel) },
-    { key: 'quantityLabel', header: t.fields.quantity, align: 'end' },
+    {
+      key: 'item',
+      header: t.fields.item,
+      align: 'center',
+      width: '45%',
+      render: (row) => <ItemLabelLines label={itemLabel(row.itemLabel)} />,
+    },
+    { key: 'quantityLabel', header: t.fields.quantity, align: 'center', width: '20%' },
   ];
 
   if (loadError !== null && loadError !== undefined) {
@@ -91,8 +103,20 @@ export const WorkOrderReleaseCandidateListPane = ({
             <EmptyState
               size="sm"
               live
-              title={page.isBeyondLast ? t.empty.beyondTitle : t.empty.title}
-              description={page.isBeyondLast ? t.empty.beyondDescription : t.empty.description}
+              title={
+                !hasSearched
+                  ? t.empty.notSearchedTitle
+                  : page.isBeyondLast
+                    ? t.empty.beyondTitle
+                    : t.empty.title
+              }
+              description={
+                !hasSearched
+                  ? t.empty.notSearchedDescription
+                  : page.isBeyondLast
+                    ? t.empty.beyondDescription
+                    : t.empty.description
+              }
             />
           }
         />

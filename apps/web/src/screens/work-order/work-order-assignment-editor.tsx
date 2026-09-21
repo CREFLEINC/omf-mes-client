@@ -78,16 +78,16 @@ export const WorkOrderAssignmentEditorSession = ({
   const lineId = idOrNull(effectiveDraft.productionLineId);
   const lines = useWorkOrderProductionLines(plantId, 1);
   const equipments = useWorkOrderEquipments(plantId, lineId, 1);
-  const [workerSearch, setWorkerSearch] = useState('');
-  const workerTerm = useDebounced(workerSearch.trim(), WORKER_SEARCH_DEBOUNCE_MS);
-  const workers = useWorkOrderWorkers(plantId, 1, workerTerm);
+  /* 작업자는 창에서 찾아 고른다(사용자 지시 2026-09-20) — 첫 쪽은 저장된 값의 이름을 풀 때 쓴다. */
+  const workers = useWorkOrderWorkers(plantId, 1);
   /*
    * ⛔ 고른 작업자가 지금 쪽(첫 쪽·검색 결과)에 없어도 이름이 사라지면 안 된다 — 한 번 본
    *    작업자를 기억하고, 처음부터 못 본 저장값은 그 한 명만 따로 묻는다.
    */
   const seenWorkers = useRef(new Map<number, WorkOrderWorkerFact>());
   useEffect(() => {
-    for (const worker of workers.data?.items ?? []) seenWorkers.current.set(worker.workerId, worker);
+    for (const worker of workers.data?.items ?? [])
+      seenWorkers.current.set(worker.workerId, worker);
   });
   const selectedWorkerId = idOrNull(effectiveDraft.responsibleWorkerId);
   const listedWorker =
@@ -143,15 +143,9 @@ export const WorkOrderAssignmentEditorSession = ({
           : truncated
             ? t.lookup.truncated
             : undefined;
-  const workerNote = (): string | undefined => {
-    if (workerTerm === '') {
-      const note = lookupNote(workerSource, workers.data?.truncated);
-      return note === t.lookup.truncated ? t.lookup.workerTruncated : note;
-    }
-    if (workerSource.isError || workerSource.isLoading) return lookupNote(workerSource, false);
-    if (workers.data?.items.length === 0) return t.lookup.searchEmpty;
-    return workers.data?.truncated === true ? t.lookup.searchTruncated : undefined;
-  };
+  /* 창이 서버에서 찾으므로 「일부만 보인다」는 안내는 더 두지 않는다 — 실패·대기만 알린다. */
+  const workerNote = (): string | undefined =>
+    workerSource.isError || workerSource.isLoading ? lookupNote(workerSource, false) : undefined;
   const lineSource = toOwnedResourceLookup(
     { items: lines.data?.items ?? [], plantId, isPending: lines.isPending, isError: lines.isError },
     (item) => entry(item.productionLineId, item.lineCode, item.lineName, item.isActive),
@@ -240,6 +234,10 @@ export const WorkOrderAssignmentEditorSession = ({
     <div className="work-order-assignment-editor">
       <SaveErrorBanner error={update.error} onReload={onReload} />
       {writeOwnerMismatch && <AlertBanner variant="error">{t.writeOwnerMismatch}</AlertBanner>}
+      {/* W/O 번호는 여기서 한 번만 — 아래 두 구획은 제 역할 이름만 단다(사용자 지시 2026-09-20). */}
+      <h2 className="work-order-assignment-selected">
+        {messages.workOrder.screen.view.selectedHeading(workOrder.workOrderNo)}
+      </h2>
       <div className="work-order-assignment-edit-grid">
         <WorkOrderResourcePane
           selectedWorkOrderNo={workOrder.workOrderNo}
@@ -251,10 +249,12 @@ export const WorkOrderAssignmentEditorSession = ({
           plannedShiftOptions={options(shiftSource, effectiveDraft.plannedShiftId)}
           defaultWipLocationOptions={options(locationSource, effectiveDraft.defaultWipLocationId)}
           defaultFgLocationOptions={options(locationSource, effectiveDraft.defaultFgLocationId)}
-          defaultScrapLocationOptions={options(locationSource, effectiveDraft.defaultScrapLocationId)}
+          defaultScrapLocationOptions={options(
+            locationSource,
+            effectiveDraft.defaultScrapLocationId,
+          )}
           fieldErrors={fieldErrors}
-          responsibleWorkerSearch={workerSearch}
-          onResponsibleWorkerSearch={setWorkerSearch}
+          plantId={plantId}
           fieldNotes={{
             productionLineId: lookupNote(lineSource, lines.data?.truncated),
             plannedEquipmentId: lookupNote(equipmentSource, equipments.data?.truncated),
@@ -284,6 +284,12 @@ export const WorkOrderAssignmentEditorSession = ({
         isInitialLoading={validationQuery.isPending && validationQuery.data === undefined}
         isRefreshing={validationQuery.isFetching && validationQuery.data !== undefined}
         loadError={validationError}
+        summaryChipSize="md"
+        checkScope={{
+          hasEquipment: workOrder.plannedEquipmentId !== null,
+          hasMold: workOrder.plannedMoldId !== null,
+          hasWorker: workOrder.responsibleWorkerId !== null,
+        }}
       />
       <WorkOrderAssignmentActions
         draft={effectiveDraft}
