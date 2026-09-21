@@ -38,6 +38,8 @@ export const productPicking = {
     itemFailed: '품목을 확인할 수 없습니다',
   },
   candidates: {
+    /* ⛔ 쪽이 잘렸다. 「없다」와 「못 받았다」를 같은 얼굴로 두면 작업자가 헛걸음한다. */
+    truncated: '후보가 많아 일부만 받았습니다. 찾는 LOT 이 없으면 번호로 직접 입력하세요',
     legend: (policy: string) => `권장 LOT — ${policy}`,
     fefo: '유효기간 이른 순',
     fifo: '먼저 만든 순',
@@ -88,6 +90,8 @@ export const productPicking = {
     /* 있는 LOT 인데 다른 품목이면 없는 번호와 다른 상황이다. 작업자가 할 일도 다르다. */
     otherItem: (code: string) => `${code} 은(는) 이 라인의 품목이 아닙니다`,
     /* 스캔이 빗나가도 앞서 고른 것이 남는다. 무엇을 집는 중인지 글자로 없으면 모른다. */
+    /* 같은 품목인데 후보에 없다 — 번호 문제가 아니라 상태 문제다. 할 일이 다르다. */
+    notPickable: (code: string) => `${code} 은(는) 아직 집을 수 있는 상태가 아닙니다`,
     picked: (lotNo: string) => `스캔됨 ${lotNo}`,
   },
   qty: {

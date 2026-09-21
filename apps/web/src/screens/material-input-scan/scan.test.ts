@@ -5,6 +5,7 @@ import {
   applyScan,
   EMPTY_SCAN_DRAFT,
   hasMaterial,
+  isInputAllowedStatus,
   isShotCountExceeded,
   normalizeScanCode,
   toScannedMaterial,
@@ -128,6 +129,12 @@ describe('applyScan', () => {
     { kind: 'duplicate', code: 'SAMPLE-LOT-0001', lotNo: 'SAMPLE-LOT-0001' } as const,
     { kind: 'ambiguous', count: 3 } as const,
     { kind: 'not-found', code: 'SAMPLE-X' } as const,
+    {
+      kind: 'blocked-status',
+      code: 'SAMPLE-LOT-0002',
+      lotNo: 'SAMPLE-LOT-0002',
+      statusCode: 'INSPECTION_PENDING',
+    } as const,
   ])('담기지 않는 결과($kind)는 후보를 바꾸지 않는다', (outcome) => {
     const before: ScanDraft = { materials: [material], mold: scannedMold };
 
@@ -141,5 +148,26 @@ describe('hasMaterial', () => {
 
     expect(hasMaterial(draft, 7301)).toBe(true);
     expect(hasMaterial(draft, 7302)).toBe(false);
+  });
+});
+
+describe('isInputAllowedStatus', () => {
+  /*
+   * 설계는 「정상만 투입 가능」이고 나머지 셋이 차단이다(P-02-03 §5-2). ⛔ 막을 값을
+   * 나열하지 않는다 — 값이 하나 늘면 그것만 조용히 통과한다.
+   */
+  it('정상만 담을 수 있다', () => {
+    expect(isInputAllowedStatus('NORMAL')).toBe(true);
+    /* 앞뒤 공백이 섞여도 같은 값이다 — 서버가 다듬어 주리라 믿지 않는다. */
+    expect(isInputAllowedStatus(' NORMAL ')).toBe(true);
+  });
+
+  it.each(['DEFECTIVE', 'INSPECTION_PENDING', 'SCRAPPED'])('%s 는 담지 않는다', (statusCode) => {
+    expect(isInputAllowedStatus(statusCode)).toBe(false);
+  });
+
+  it('⛔ 모르는 값과 빈 값을 「정상」으로 그리지 않는다', () => {
+    expect(isInputAllowedStatus('SYN-UNKNOWN')).toBe(false);
+    expect(isInputAllowedStatus('')).toBe(false);
   });
 });

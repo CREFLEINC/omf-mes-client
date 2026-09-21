@@ -155,6 +155,19 @@ export const materialInputScan = {
        */
       mold: (moldCode: string): string => `금형 ${moldCode} 지정했습니다.`,
       duplicate: (lotNo: string): string => `${lotNo}은(는) 이미 담겨 있습니다.`,
+      /*
+       * ⛔ **차단할 상태 코드를 문구에 박지 않는다.** 상태 «이름»은 `LOT_STATUS` 코드값
+       * 조회로 받은 것을 그대로 넣는다(스펙 §5-2 · 고객 편집 불가). 화면이 「검사 대기」
+       * 같은 말을 직접 적으면 값이 바뀔 때 화면만 옛말을 한다.
+       *
+       * 뒷문장은 **다음에 할 일**을 말한다(공유계약 G-3) — 무엇이 막혔는지만 알려 주면
+       * 작업자는 그 자재를 들고 무엇을 해야 할지 모른다.
+       */
+      blockedStatus: (lotNo: string, statusName: string): string =>
+        `${lotNo}은(는) 「${statusName}」 상태라 담을 수 없습니다. 정상 자재만 투입할 수 있습니다.`,
+      /** 상태 자체를 받지 못한 경우. ⛔ 모르는 것을 「정상」으로 그리지 않는다(스펙 §5-2). */
+      blockedStatusUnknown: (lotNo: string): string =>
+        `${lotNo}의 상태를 확인하지 못해 담을 수 없습니다. 잠시 뒤 다시 읽어 주세요.`,
       ambiguous: (count: number): string =>
         `${String(count)}건이 함께 검색됐습니다. 코드를 더 정확히 읽어 주세요.`,
       notFound: (code: string): string => `${code}을(를) 찾을 수 없습니다.`,
