@@ -19,6 +19,13 @@ import { useWorkerSession } from '../../patterns/worker-session';
 export interface GoodsIssueQrEntry {
   /** 출고 전표 식별자. 없으면 `null` */
   goodsIssueId: number | null;
+  /**
+   * 대기 목록에서 고른 라인 — **그 줄만 세운다**(사용자 지시 2026-09-21 · omf-all-around#35).
+   *
+   * ⭐ 주소가 갖는다. 화면 상태에 담아 두면 새로 고침·되돌아오기에서 그 줄이 사라지고,
+   *    같은 단말을 넘겨받은 다음 작업자가 남의 줄을 이어 본다(`goodsIssueId` 와 같은 규율).
+   */
+  goodsIssueLineId: number | null;
   /** 귀속용 사번. 없으면 `null` */
   workerNo: string | null;
 }
@@ -46,6 +53,7 @@ export const useGoodsIssueQrEntry = (): GoodsIssueQrEntry => {
 
   return {
     goodsIssueId: parseGoodsIssueId(searchParams.get('goodsIssueId')),
+    goodsIssueLineId: parseGoodsIssueId(searchParams.get('goodsIssueLineId')),
     /*
      * ⭐ **사번은 주소가 아니라 «지금 이 단말의 작업자»다**(사용자 지시 2026-09-08).
      *

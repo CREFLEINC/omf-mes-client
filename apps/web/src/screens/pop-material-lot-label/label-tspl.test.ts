@@ -53,14 +53,14 @@ describe('buildMaterialLotLabel', () => {
    * ⛔ 3 mm 여백으로 짜면 QR 윗변·오른쪽 끝이 라벨지 가장자리에 붙어, 프린터가 조금만 밀려도
    *    잘렸다(실기 HT800 2026-09-15). 시작점만 보던 검사가 이것을 못 잡았다 — «끝점»을 본다.
    *
-   * 가로는 프린터가 오른쪽으로 약 2.5 mm 치우쳐 찍어 왼쪽 12점(1.5 mm)·오른쪽 52점(6.5 mm)으로
-   * 당겨 짠다(실기 2026-09-15). 세로도 2 mm 올려 위 16점(2 mm)·아래 48점(6 mm)으로 짠다(사용자 지시).
+   * 가로는 좌우 32점(4 mm)으로 같게 짠다(2026-09-15 에 왼쪽으로 당겼다가 왼쪽에 너무 붙어
+   * 2026-09-19 에 되돌렸다). 세로도 2 mm 올려 위 16점(2 mm)·아래 48점(6 mm)으로 짠다(사용자 지시).
    */
-  it('⛔ 글줄과 QR 이 안전 여백 안에서 끝나고 서로 겹치지 않는다 — 가로는 왼쪽으로 당긴다', () => {
+  it('⛔ 글줄과 QR 이 안전 여백 안에서 끝나고 서로 겹치지 않는다 — 가로는 좌우 같다', () => {
     const TOP = 16;
     const BOTTOM = 48;
-    const LEFT = 12;
-    const RIGHT = 52;
+    const LEFT = 32;
+    const RIGHT = 32;
     const lines = buildMaterialLotLabel(FIELDS).split('\r\n');
     const qr = lines.find((line) => line.startsWith('QRCODE ')) ?? '';
     const [qrX, qrY] = origin(qr);

@@ -100,6 +100,14 @@ const fetchWorkOrders = (
            *    걸러진다. 두 조건 모두 서버에 싣는다.
            */
           open: true,
+          /*
+           * ⭐ **누적 양품을 함께 받는다**(omf-all-around#45). 지시 수량을 이미 채운 지시를
+           *    고르면 「마감이 남았다」고 알리는데, 그 판정의 근거가 `progress.goodQty` 다.
+           *
+           * ⛔ **화면이 실적을 세지 않는다.** 실적은 여러 세션·여러 단말에 흩어져 쌓이므로
+           *    이 화면이 본 것만 더하면 늘 실제보다 적다 — 서버가 낸 합계만 쓴다.
+           */
+          withProgress: true,
           /* 「전체 보기」는 이 축만 뺀다 — 다른 조건은 그대로다(§5-5). */
           ...(equipmentId === null ? {} : { plannedEquipmentId: equipmentId }),
           page,

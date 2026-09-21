@@ -58,6 +58,8 @@ interface Options {
   summaryFails?: boolean;
   /** 서버가 말한 총계. 받은 수보다 크면 창 밖에 더 있다. */
   total?: number;
+  /** 한 전표에 라인을 여럿 두고 싶을 때 — 기본은 전표마다 한 줄이다. */
+  extraLine?: boolean;
   requests?: string[];
 }
 
@@ -90,7 +92,13 @@ const routes = (options: Options): StubRoute[] => {
         const goodsIssueId = Number(new URL(request.url).pathname.split('/').at(-2));
 
         return jsonResponse({
-          items: [lineOf(goodsIssueId, goodsIssueId - 900, goodsIssueId - 880)],
+          items:
+            options.extraLine === true
+              ? [
+                  lineOf(goodsIssueId, goodsIssueId - 900, goodsIssueId - 880),
+                  lineOf(goodsIssueId, goodsIssueId - 800, goodsIssueId - 780),
+                ]
+              : [lineOf(goodsIssueId, goodsIssueId - 900, goodsIssueId - 880)],
         });
       },
     },
@@ -244,8 +252,48 @@ describe('QR 발행 대기 목록', () => {
     expect(within(freshRow as HTMLElement).getByText(t.pending.statusNotIssued)).toBeTruthy();
   });
 
+  /*
+   * ⭐ **찍은 라인은 「발행 완료」 탭에서 다시 찾는다**(사용자 지시 2026-09-21). 라벨이 찢어지면
+   *    다시 찍어야 하는데, 목록에서 통째로 빠지면 전표 번호를 외워 들어가야 했다.
+   */
+  it('발행 완료 탭에서 이미 찍은 라인을 골라 재발행할 수 있다', async () => {
+    const user = userEvent.setup();
+    render({ issueCounts: { 2: 1 }, printOutcomes: { 2: 'SUCCEEDED' } });
+
+    await screen.findByText('GI-20260916-0001');
+    await user.click(screen.getByRole('button', { name: t.pending.filter.issued }));
+
+    const issuedRow = (await screen.findByText('GI-20260916-0002')).closest('tr');
+    expect(within(issuedRow as HTMLElement).getByText(t.pending.statusIssued(1))).toBeTruthy();
+    /* 미발행 쪽 줄은 이 탭에 서지 않는다. */
+    expect(screen.queryByText('GI-20260916-0001')).toBeNull();
+  });
+
+  /*
+   * ⛔ **고른 줄을 접어 숨기지 않는다**(리뷰 지적 2026-09-21). 펼친 사이 고른 줄이 다시 접을 때
+   *    사라지면, 목록에 없는 대상이 함께 발행된다 — 발행은 되돌릴 수 없다.
+   */
+  it('펼쳐서 고른 줄은 다시 접어도 목록에 남는다', async () => {
+    const user = userEvent.setup();
+    render({ extraLine: true });
+
+    /* 같은 전표의 줄이 둘이라 같은 번호가 두 번 선다 — 첫 줄을 고른다. */
+    const row = (await screen.findAllByText('GI-20260916-0002'))[0]?.closest('tr');
+    await user.click(within(row as HTMLElement).getByRole('button', { name: t.pending.pick }));
+
+    /* 고른 줄만 선 상태에서 편다 — 같은 전표의 둘째 줄이 함께 선다. */
+    await user.click(await screen.findByRole('button', { name: t.lines.showAll }));
+    await user.click(
+      (await screen.findAllByRole('button', { name: t.lines.pick }))[0] as HTMLElement,
+    );
+    await user.click(screen.getByRole('button', { name: t.lines.showPickedOnly }));
+
+    /* 접었어도 고른 두 줄은 그대로 선다 — 숨은 대상이 함께 발행되지 않는다. */
+    expect(screen.getAllByRole('button', { name: t.lines.picked, pressed: true })).toHaveLength(2);
+  });
+
   /* 잘 찍힌 것은 다시 세우지 않는다 — 세우면 같은 라벨을 두 번 붙인다. */
-  it('인쇄가 성공한 라인은 목록에서 빠진다', async () => {
+  it('인쇄가 성공한 라인은 미발행 목록에서 빠진다', async () => {
     render({ issueCounts: { 2: 1 }, printOutcomes: { 2: 'SUCCEEDED' } });
 
     expect(await screen.findByText('GI-20260916-0001')).toBeTruthy();
@@ -372,7 +420,7 @@ describe('QR 발행 대기 목록', () => {
     /* 고른 그 라인 하나만 [선택]이 눌린 상태로 선다. */
     await waitFor(() => {
       expect(
-        screen.getAllByRole('button', { name: messages.goodsIssueQr.lines.pick, pressed: true }),
+        screen.getAllByRole('button', { name: messages.goodsIssueQr.lines.picked, pressed: true }),
       ).toHaveLength(1);
     });
   });

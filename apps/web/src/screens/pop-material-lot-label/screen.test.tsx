@@ -262,7 +262,7 @@ describe('PopMaterialLotLabelScreen — 입하 목록', () => {
    * 주기 갱신은 다른 자리에서 재고(`queries.test.ts`), 여기서는 **사람이 지금 부르는 길**이
    * 실제로 목록과 라인을 다시 받아 오는지를 본다.
    */
-  it('갱신을 누르면 건과 라인을 다시 받는다', async () => {
+  it('새로 고침을 누르면 건과 라인을 다시 받는다', async () => {
     const receiptUrls: URL[] = [];
     const lineUrls: URL[] = [];
     const { user } = renderScreen({
@@ -277,7 +277,7 @@ describe('PopMaterialLotLabelScreen — 입하 목록', () => {
     const receiptCalls = receiptUrls.length;
     const lineCalls = lineUrls.length;
 
-    await user.click(screen.getByRole('button', { name: '갱신' }));
+    await user.click(screen.getByRole('button', { name: '새로 고침' }));
 
     await waitFor(() => {
       expect(receiptUrls.length).toBeGreaterThan(receiptCalls);
@@ -327,7 +327,7 @@ describe('PopMaterialLotLabelScreen — 입하 목록', () => {
     renderScreen();
 
     const nav = await screen.findByRole('navigation', { name: '쪽 이동' });
-    const refresh = screen.getByRole('button', { name: '갱신' });
+    const refresh = screen.getByRole('button', { name: '새로 고침' });
 
     expect(refresh.parentElement).toHaveClass('pop-lot-list-foot');
     expect(refresh.parentElement).toBe(nav.parentElement);

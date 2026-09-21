@@ -1251,9 +1251,16 @@
   grid-column: 1;
 }
 
-.pop-ui .pop-giqr-preview-row > .field-note {
+.pop-ui .pop-giqr-preview-row > .pop-giqr-preview-notes {
   grid-row: 1;
   grid-column: 2;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-inline-size: 0;
+}
+
+.pop-ui .pop-giqr-preview-row .field-note {
   max-width: none;
   margin: 0;
 }
@@ -2823,11 +2830,14 @@
 }
 
 /*
- * 자재LOT 의 「인쇄만」과 「재인쇄」는 **둘 다 열려 있는 것이 정상이다**(다른 동작이다).
- * 그래서 무게로 가른다 — 채운 쪽이 이번 회차의 인쇄이고, 재인쇄는 사유를 실어 보내는
- * 되짚는 조작이라 조용히 둔다. 같은 붉은색으로 나란히 서면 어느 쪽이 지금 할 일인지 흐려진다.
+ * ⛔ **두 번째 단추만 조용히 둔다.** 앞 판은 `:last-child` 라, #1241 로 보기마다 단추가 하나가
+ *    된 뒤에는 **그 하나가 늘 흰 단추로 눌러앉았다**(사용자 지적 2026-09-21 · omf-all-around#35 —
+ *    「재인쇄가 안 바뀐다」). 단추가 둘일 때만 무게를 가른다.
+ *
+ * 자재LOT 의 「인쇄만」과 「재인쇄」가 나란히 설 때는 채운 쪽이 이번 회차의 인쇄이고, 재인쇄는
+ * 사유를 실어 보내는 되짚는 조작이라 조용히 둔다.
  */
-.pop-ui .pop-target-actions > button:last-child {
+.pop-ui .pop-target-actions > button:not(:first-child) {
   background: transparent;
   box-shadow: inset 0 0 0 1px var(--outline-variant);
   color: var(--on-surface-variant);
@@ -6106,6 +6116,15 @@
 }
 
 /*
+ * 띠 안의 [이어서 하기]만 **낮춘다**(사용자 지시 2026-09-19 · omf-all-around#35) — 72 는 띠를
+ * 불필요하게 두껍게 만들었다. 목록의 [전체 보기]는 72 그대로 둔다.
+ */
+.pop-ui .banner-slot [role='alert'] button.work-start-head-button,
+.pop-ui .banner-slot [role='status'] button.work-start-head-button {
+  min-block-size: 48px;
+}
+
+/*
  * 생산 포장의 「내용물이 없습니다.」 — 구획 폭의 가운데에 세운다(사용자 지시 2026-09-17).
  * `field-note` 의 폭 상한(704)이 걸려 글자가 왼쪽 704 안에서만 가운데로 섰다(실측).
  */
@@ -7279,9 +7298,10 @@
    * ⭐ 장갑 낀 손이 누르는 자리다 — 아이콘만으로 줄이지 않고 「← 대기 목록으로」 글자를 함께 두며
    *    좌우 여백 20 을 지킨다. 주 작업 단추처럼 강조색을 쓰지 않고 중립색 테두리·글자로
    *    «되돌아가는 길»임을 보인다(사용자 지시 2026-09-17 · secondary navigation).
-   * ⭐ 높이는 자재 투입 화면 [직접 입력](xl · 72px)과 같다(사용자 지시 2026-09-17).
+   * ⭐ 높이는 [전체 선택]·[선택 해제](56)와 같다(사용자 지시 2026-09-19 · omf-all-around#35 —
+   *    앞 판의 72 는 너무 컸다).
    */
-  min-block-size: 72px;
+  min-block-size: 56px;
   padding-inline: var(--space-5);
   color: var(--on-surface);
   border-color: var(--outline-variant);
@@ -7305,7 +7325,7 @@
 .pop-ui.pop-giqr-shell
   .pop-giqr-lines-pane
   > *
-  > :not(.pane-title):not(.pop-giqr-select-all):not(.pop-giqr-back) {
+  > :not(.pane-title):not(.pop-giqr-select-all):not(.pop-giqr-back):not(.pop-giqr-line-scope) {
   grid-row: 2;
   grid-column: 1 / -1;
   align-self: stretch;
@@ -7385,7 +7405,7 @@
   min-inline-size: 0;
 }
 
-.pop-ui.pop-giqr-shell .pop-giqr-target-pane .pop-giqr-preview-row > .field-note {
+.pop-ui.pop-giqr-shell .pop-giqr-target-pane .pop-giqr-preview-row .field-note {
   overflow-wrap: anywhere;
 }
 
@@ -7543,10 +7563,55 @@
   padding-inline: var(--space-3);
 }
 
+/* ⭐ 발행 대상의 [선택](재발행 사유·파렛트)은 행 [선택]과 같은 폭이다(사용자 지시 2026-09-19 · omf-all-around#35). */
+.pop-ui.pop-giqr-shell .pop-giqr-target-pane .pop-select {
+  grid-template-columns: minmax(0, 1fr) 8.5rem;
+}
+
+/*
+ * ⭐ **[이 전표 라인 모두 보기]는 표제 줄 오른쪽, [전체 선택] 왼쪽에 선다**(사용자 지시
+ *    2026-09-21 · omf-all-around#35). 대기 목록에서 고른 줄만 서 있을 때만 나타나므로,
+ *    그 단추가 있는 줄에서만 칸을 하나 더 연다.
+ */
+.pop-ui.pop-giqr-shell .pop-giqr-lines-pane > *:has(.pop-giqr-line-scope) {
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
+}
+
+.pop-ui.pop-giqr-shell .pop-giqr-line-scope {
+  grid-row: 1;
+  grid-column: 3;
+  align-self: center;
+  margin: 0;
+  margin-inline-end: var(--space-3);
+  min-block-size: 56px;
+}
+
+.pop-ui.pop-giqr-shell .pop-giqr-lines-pane > *:has(.pop-giqr-line-scope) .pop-giqr-select-all {
+  grid-column: 4;
+}
+
+/*
+ * ⭐ **고른 줄의 [선택]은 회색으로 가라앉는다**(사용자 지시 2026-09-21 · omf-all-around#35).
+ *    고르기 전은 강조색(채운 단추)이라 눌러야 할 자리가 먼저 보인다.
+ */
+.pop-ui.pop-giqr-shell .pop-giqr-pick[aria-pressed='true'] {
+  color: var(--on-surface-variant);
+  border-color: var(--outline-variant);
+  background: var(--surface-container-low);
+}
+
 /* ⭐ 행 [선택]은 [전체 선택]과 같은 세로줄에 선다 — 칸 오른쪽 끝에 붙인다(사용자 지시 2026-09-17). */
 .pop-ui.pop-giqr-shell .pop-giqr-lines-pane table td:has(> .pop-giqr-pick) {
   text-align: end;
   padding-inline-end: 0;
+}
+
+/*
+ * ⭐ **대기 목록의 발행 여부 탭**(사용자 지시 2026-09-21 · omf-all-around#35). 모양은 자재 LOT
+ *    라벨 발행(P-01-01)의 탭을 그대로 쓰고, 이 화면에서는 안내 줄과 표 사이 간격만 맞춘다.
+ */
+.pop-ui.pop-giqr-shell .pop-giqr-pending-filter {
+  margin-block: var(--space-2) var(--space-3);
 }
 
 /* ⭐ 대기 표의 [선택]은 칸 오른쪽 끝에 선다(사용자 지시 2026-09-17). */

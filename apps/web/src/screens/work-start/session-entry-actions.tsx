@@ -30,9 +30,9 @@ export interface SessionEntryActionsProps {
  * ⛔ **쓰기가 하나도 없다.** 전부 «자리를 옮기는» 것뿐이다 — 중단 사유·교체 부품·검사값·포장
  *    수량은 각 화면이 받는다.
  *
- * ⚠ **1024×768 의 가로 예산.** 단추는 목록의 [ 전체 보기 ]와 같은 `xl` 에 최소 폭 9rem 으로
- *   서고(`work-start-head-button`), 띠의 조작 칸이 `flex-wrap` 이라 넘치면 다음 줄로 접힌다.
- *   넷(+PQC 의뢰 수)이 한 줄에 서는 폭이지만, 의뢰번호가 붙는 단추는 길어 접힐 수 있다 —
+ * ⚠ **1024×768 의 예산.** 높이는 48(`lg`)이고 폭 하한은 9rem 이다(`work-start-head-button` ·
+ *   사용자 지시 2026-09-19). 띠의 조작 칸이 `flex-wrap` 이라 넘치면 다음 줄로 접힌다 —
+ *   넷(+PQC 의뢰 수)이 한 줄에 서는 폭이지만, 의뢰번호가 붙는 단추는 길어 접힐 수 있고
  *   세로로 커지는 쪽이 잘려 사라지는 것보다 낫다.
  */
 export const SessionEntryActions = ({
@@ -48,14 +48,14 @@ export const SessionEntryActions = ({
      * ⛔ **쓰기가 아니다.** 이미 열린 세션으로 «자리를 옮기는» 것뿐이라 여기서 아무것도
      *    보내지 않는다 — 재개(`RESUME` 적재)는 중단 상태의 사건이고(§5-4) 이 갈래가 아니다.
      *
-     * ⭐ **크기는 목록의 [ 전체 보기 ]와 같게 둔다**(`xl` · 사용자 지시 2026-09-16). 이 단추는
-     *    띠 안에 있지만 작업자가 실제로 누르는 다음 걸음이라, 같은 화면의 다른 조작보다
-     *    작으면 눌러야 할 자리로 읽히지 않는다. 뒤따르는 단추도 같은 규격으로 세운다.
+     * ⭐ **높이는 48 로 낮춘다**(`lg` · 사용자 지시 2026-09-19 — 앞 판은 목록의 [ 전체 보기 ]와
+     *    같은 `xl`·72 였다). 폭 하한은 그대로라 누를 자리로는 계속 읽힌다(`pop.css`).
+     *    뒤따르는 단추도 모두 같은 규격으로 세운다 — 한 묶음이 서로 다른 크기로 서지 않는다.
      */}
     <Button
       type="button"
       variant="outlined"
-      size="xl"
+      size="lg"
       className="work-start-head-button"
       onClick={onContinue}
     >
@@ -68,7 +68,7 @@ export const SessionEntryActions = ({
     <Button
       type="button"
       variant="outlined"
-      size="xl"
+      size="lg"
       className="work-start-head-button"
       onClick={onHold}
     >
@@ -77,7 +77,7 @@ export const SessionEntryActions = ({
     <Button
       type="button"
       variant="outlined"
-      size="xl"
+      size="lg"
       className="work-start-head-button"
       onClick={onRunningChange}
     >
@@ -93,7 +93,7 @@ export const SessionEntryActions = ({
         key={request.inspectionRequestId}
         type="button"
         variant="outlined"
-        size="xl"
+        size="lg"
         className="work-start-head-button"
         onClick={() => {
           onPqcInspection(request.inspectionRequestId);
@@ -105,7 +105,7 @@ export const SessionEntryActions = ({
     <Button
       type="button"
       variant="outlined"
-      size="xl"
+      size="lg"
       className="work-start-head-button"
       onClick={onPacking}
     >

@@ -73,13 +73,6 @@ export interface ReferenceLabels {
   describeItem: (itemId: number) => string;
   /** 단위 번호를 코드로 옮긴다. **모르면 빈 문자열** — 수량 뒤에 번호가 붙으면 값처럼 읽힌다. */
   describeUom: (uomId: number) => string;
-  /**
-   * 이 단위가 허용하는 소수 자릿수. **모르면 0** — 소수점 키를 세울지 정하는 값이다.
-   *
-   * ⛔ **모르는 단위에 소수점을 열지 않는다.** 「개」에 소수점을 주면 넣을 수 없는 값을 넣게
-   *    되고, 투입은 되돌릴 수 없다(정정 경로가 계약에 없다).
-   */
-  decimalScaleOf: (uomId: number) => number;
 }
 
 /**
@@ -116,6 +109,5 @@ export const useReferenceLabels = (itemIds: readonly number[]): ReferenceLabels 
   return {
     describeItem: (itemId) => itemCodes.get(itemId) ?? String(itemId),
     describeUom: (uomId) => uoms.data?.get(uomId)?.code ?? '',
-    decimalScaleOf: (uomId) => uoms.data?.get(uomId)?.decimalScale ?? 0,
   };
 };

@@ -1,5 +1,5 @@
 import { messages } from '@omf-mes/i18n';
-import { act, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { RegistrationPanel } from './registration-panel';
@@ -59,6 +59,27 @@ const openPanel = (): { current: PopRegistration } => {
 afterEach(() => {
   delete (globalThis as { pop?: unknown }).pop;
   forgetTerminalToken();
+});
+
+/*
+ * ⭐ **바코드로 읽으면 [등록 확인]까지 간다**(사용자 지시 2026-09-19 · omf-all-around#35).
+ *    스캐너가 값 끝에 Enter 를 붙이지 않아도, 글자가 멈추면 확인이 나간다.
+ */
+describe('RegistrationPanel — 스캔', () => {
+  it('스캐너 속도로 들어온 토큰은 Enter 없이도 확인까지 간다', async () => {
+    openPanel();
+    const field = screen.getByLabelText(t.tokenLabel);
+    const token = tokenFor(2003);
+
+    for (let length = 1; length <= token.length; length += 1) {
+      fireEvent.change(field, { target: { value: token.slice(0, length) } });
+    }
+
+    /* 이 시험의 서버는 모두 401 이라, 「확인이 나갔다」는 그 거절 문구로 드러난다. */
+    await waitFor(() => {
+      expect(screen.getByText(t.failure.rejected)).toBeInTheDocument();
+    });
+  });
 });
 
 describe('RegistrationPanel — 판정이 누구 이야기인가', () => {

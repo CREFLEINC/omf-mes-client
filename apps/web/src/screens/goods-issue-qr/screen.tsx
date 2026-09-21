@@ -11,7 +11,7 @@ import { PopWorkerTag } from '../../patterns/pop-worker-tag';
 import { usePopIdentity } from '../../patterns/pop-identity';
 import { PopWorkerMissingBanner } from '../../patterns/pop-worker-missing-banner';
 import { SaveErrorBanner } from '../../patterns/master';
-import { canIssue, issueGuard, type IssueGuard } from './issue-target';
+import { canIssue, issueGuard } from './issue-target';
 import { hasIssuedTarget, hasUnknownTarget, rowId, toLineRows } from './line-rows';
 import { LineListPane } from './line-list-pane';
 import { IssueLookupField } from './issue-lookup-field';
@@ -21,6 +21,7 @@ import { usePendingIssueLines } from './pending-list';
 import { renderGoodsIssueQrLabel } from './label-image';
 import {
   useDestinationCode,
+  useItemCodes,
   useItemNames,
   useLotNames,
   useReissueReasonOptions,
@@ -108,6 +109,27 @@ export const GoodsIssueQrScreen = () => {
     lineItems.map((line) => line.goodsIssueLineId),
   );
   const rows = toLineRows(lineItems, summary.data ?? []);
+  /*
+   * ⭐ **대기 목록에서 고른 줄만 세운다**(사용자 지시 2026-09-21 · omf-all-around#35). 담당이
+   *    누른 것은 「이 줄을 찍는다」인데 같은 전표의 다른 줄까지 함께 서면 무엇을 고른 상태인지
+   *    다시 읽어야 했다. 같은 전표의 다른 줄도 찍어야 하면 [모두 보기]로 편다.
+   *
+   * ⛔ 출고번호로 들어온 길은 그대로 전부 선다 — 그 길은 「이 전표를 본다」이지 줄을 고른 것이 아니다.
+   */
+  const [showAllLines, setShowAllLines] = useState(false);
+  const focusedLineId = entry.goodsIssueLineId;
+  const isFocused = focusedLineId !== null && !showAllLines;
+  /*
+   * ⛔ **고른 줄을 숨기지 않는다**(리뷰 지적 2026-09-21). 주소의 그 줄로만 좁히면, 펼친 사이
+   *    다른 줄을 고르고 다시 접었을 때 **그 줄이 목록에서 사라진 채 함께 발행된다** — 발행은
+   *    되돌릴 수 없다. 접힌 보기는 「주소의 줄 + 지금 고른 줄」이다.
+   */
+  const visibleRows = isFocused
+    ? rows.filter(
+        (row) =>
+          row.line.goodsIssueLineId === focusedLineId || selectedIds.includes(rowId(row.line)),
+      )
+    : rows;
 
   /*
    * 파렛트 대상은 **고른 라인의 LOT** 으로 좁힌다(스펙 §5-2). 라인이 하나로 정해지지 않으면
@@ -147,11 +169,19 @@ export const GoodsIssueQrScreen = () => {
   const itemNames = useItemNames([
     ...lineItems.map((line) => line.itemId),
     ...pending.lines.map((each) => each.line.itemId),
+    ...pending.issuedLines.map((each) => each.line.itemId),
+  ]);
+  /* 라벨에는 품목 **코드만** 싣는다 — 화면 표시값에는 한글 품명이 붙는다(`useItemCodes`). */
+  const itemCodes = useItemCodes([
+    ...lineItems.map((line) => line.itemId),
+    ...pending.lines.map((each) => each.line.itemId),
+    ...pending.issuedLines.map((each) => each.line.itemId),
   ]);
   const uomNames = useUomNames();
   const lotNames = useLotNames([
     ...lineItems.map((line) => line.lotId),
     ...pending.lines.map((each) => each.line.lotId),
+    ...pending.issuedLines.map((each) => each.line.lotId),
   ]);
   const reasonOptions = useReissueReasonOptions();
 
@@ -170,7 +200,7 @@ export const GoodsIssueQrScreen = () => {
     toLabelFields(record, {
       issue: goodsIssue.data ?? null,
       lines: lineItems,
-      itemNames,
+      itemCodes,
       lotNames,
       destination,
     });
@@ -327,7 +357,7 @@ export const GoodsIssueQrScreen = () => {
 
     const fields = toLabelFieldsForLine(previewLine, {
       issue: goodsIssue.data ?? null,
-      itemNames,
+      itemCodes,
       lotNames,
       destination,
     });
@@ -349,7 +379,7 @@ export const GoodsIssueQrScreen = () => {
   }, [
     previewLine,
     goodsIssue.data,
-    itemNames.entries.length,
+    itemCodes.entries.length,
     lotNames.entries.length,
     destination,
   ]);
@@ -441,6 +471,8 @@ export const GoodsIssueQrScreen = () => {
               (previous) => {
                 const next = new URLSearchParams(previous);
                 next.set('goodsIssueId', String(goodsIssueId));
+                /* 고른 줄도 주소가 갖는다 — 새로 고쳐도 그 줄만 선다. */
+                next.set('goodsIssueLineId', String(goodsIssueLineId));
 
                 return next;
               },
@@ -519,6 +551,7 @@ export const GoodsIssueQrScreen = () => {
                       (previous) => {
                         const next = new URLSearchParams(previous);
                         next.delete('goodsIssueId');
+                        next.delete('goodsIssueLineId');
 
                         return next;
                       },
@@ -531,7 +564,22 @@ export const GoodsIssueQrScreen = () => {
                   {t.pending.back}
                 </Button>
               }
-              rows={rows}
+              headerEnd={
+                focusedLineId === null ? undefined : (
+                  <Button
+                    variant="outlined"
+                    size="md"
+                    className="pop-touch-target pop-giqr-line-scope"
+                    type="button"
+                    onClick={() => {
+                      setShowAllLines((previous) => !previous);
+                    }}
+                  >
+                    {showAllLines ? t.lines.showPickedOnly : t.lines.showAll}
+                  </Button>
+                )
+              }
+              rows={visibleRows}
               selectedIds={selectedIds}
               onSelectionChange={(ids) => {
                 setSelectedIds(ids);
@@ -612,13 +660,9 @@ export const GoodsIssueQrScreen = () => {
            */}
           <div className="pop-action-bar pop-giqr-actions">
             {/*
-             * ⛔ 「발행할 라인을 먼저 고르세요」는 띄우지 않는다(사용자 지시 2026-09-15) — 비활성 단추와
-             *    라인 목록이 이미 말한다. 다른 사유(파렛트·재발행 사유)는 그대로 남긴다.
-             * ⭐ 사번 사유는 여기 적지 않는다 — 맨 위 공용 띠가 말한다(사용자 지시 2026-09-17).
+             * ⛔ **바닥 띠에 막힌 사유를 적지 않는다**(사용자 지시 2026-09-19 · omf-all-around#35 —
+             *    「재발행 사유를 고르세요」 등). 비활성 단추와 발행 대상 칸의 사유 안내가 이미 말한다.
              */}
-            {guard.kind !== 'ready' &&
-              guard.kind !== 'noSelection' &&
-              guard.kind !== 'noWorker' && <p className="field-note">{guardNote(guard.kind)}</p>}
             <Button
               variant="filled"
               size="2xl"
@@ -667,26 +711,6 @@ const toPalletQuantities = (contents: readonly HandlingUnitContent[]): PalletQua
 /** 서버가 이 단말의 발행을 막았는가. 게이트는 서버가 갖는다(통지 #535). */
 const isForbidden = (error: ApiError | null): boolean =>
   error !== null && error.kind === 'http' && error.status === 403;
-
-const guardNote = (
-  kind: Exclude<IssueGuard['kind'], 'ready' | 'noSelection' | 'noWorker'>,
-): string => {
-  switch (kind) {
-    case 'palletNeedsOneLine':
-      return t.action.disabledPalletNeedsOneLine;
-    case 'noPallet':
-      return t.action.disabledNoPallet;
-    /* 막힌 사유는 대상 칸이 이미 적는다 — 액션바에서 되풀이하지 않는다(#1095). */
-    case 'palletUnsupported':
-      return t.action.disabledPalletUnsupported;
-    case 'palletContentsPending':
-      return t.action.disabledPalletContentsPending;
-    case 'emptyPallet':
-      return t.action.disabledEmptyPallet;
-    case 'reasonRequired':
-      return t.action.disabledNoReason;
-  }
-};
 
 interface PrinterChipProps {
   isLoading: boolean;

@@ -135,6 +135,17 @@ export const workStart: Translated<typeof ko.workStart> = {
     packingWork: 'Đóng gói',
   },
 
+  /**
+   * 지시 수량을 채운 작업지시 — 다음에 할 일은 «마감»이다(omf-all-around#45). ⛔ 막는 말이
+   * 아니다 — 버튼은 그대로 두고 남은 일만 알린다.
+   */
+  closing: {
+    fulfilled:
+      'Lệnh sản xuất này đã hoàn tất đăng ký sản lượng. Hãy kết thúc lệnh trên web quản trị.',
+    fulfilledWithOpenSession:
+      'Đã hoàn tất đăng ký sản lượng nhưng vẫn còn công việc đang làm. Hãy hoàn tất công việc đang làm rồi kết thúc lệnh sản xuất trên web quản trị.',
+  },
+
   resume: {
     sessionNotFound: 'Không tìm thấy phiên làm việc để tiếp tục lại. Hãy liên hệ quản trị viên.',
     sessionLookupFailed: 'Không xác nhận được phiên làm việc. Hãy thử lại.',

@@ -42,6 +42,18 @@ export const goodsIssueQr = {
     /** 전표에서 목록으로 돌아가는 길. 돌아가면 목록을 다시 받는다. */
     back: '대기 목록으로',
     refresh: '새로 고침',
+    /**
+     * ⭐ 발행 여부로 목록을 가른다(사용자 지시 2026-09-21) — 자재 LOT 라벨 발행(P-01-01)과 같다.
+     *    찍은 라인이 목록에서 빠지면 라벨이 찢어졌을 때 다시 찍을 길이 없다.
+     */
+    filter: {
+      label: '발행 여부',
+      unissued: '미발행',
+      issued: '발행 완료',
+    },
+    /** 발행 완료 쪽의 상태 표식. 「몇 회 찍었는가」가 재발행 판단의 근거다. */
+    statusIssued: (count: number) => `${String(count)}회 발행`,
+    issuedEmpty: '창 안에 발행한 라인이 없습니다.',
     pick: '선택',
     columnIssueNo: '자재 출고번호',
     columnLine: '라인',
@@ -65,7 +77,7 @@ export const goodsIssueQr = {
     failed: '발행 대기를 불러오지 못했습니다. 연결을 확인한 뒤 새로 고치세요.',
     empty: '발행 대기 중인 자재 출고가 없습니다.',
     allIssued: (count: number): string =>
-      `이 기간의 자재 출고 라인 ${String(count)}건은 이미 찍었습니다.`,
+      `자재 출고 라인 ${String(count)}건이 이미 발행되었습니다.`,
     truncated: '이 기간에 더 많은 자재 출고가 있습니다. 못 찾은 건은 출고번호로 불러오세요.',
   },
 
@@ -95,13 +107,21 @@ export const goodsIssueQr = {
     selectAll: '전체 선택',
     /** 행 오른쪽 고르기 단추(사용자 지시 2026-09-17 — 체크 칸 대신). */
     pick: '선택',
+    /** 고른 뒤의 같은 단추 — 무엇이 골라졌는지 글자로도 말한다(사용자 지시 2026-09-21). */
+    picked: '선택됨',
+    /**
+     * 대기 목록에서 한 줄을 골라 들어오면 **그 줄만 선다**(사용자 지시 2026-09-21). 같은 전표의
+     * 다른 줄도 찍어야 하면 이 단추로 펼친다 — 감춘 줄이 있다는 사실을 단추가 말한다.
+     */
+    showAll: '이 전표 라인 모두 보기',
+    showPickedOnly: '고른 라인만 보기',
     clearSelection: '선택 해제',
     empty: '이 전표에 출고 라인이 없습니다.',
     loading: '출고 라인을 불러오는 중입니다.',
     failed: '출고 라인을 불러오지 못했습니다.',
     /** 행마다 붙는 발행 현황. 「모른다」와 「없다」를 다르게 말한다. */
     statusNotIssued: '미발행',
-    statusIssued: (count: number) => `발행됨 ${String(count)}회`,
+    statusIssued: (count: number) => `${String(count)}회 발행`,
     statusUnknown: '발행 현황 확인 불가',
   },
 
@@ -188,21 +208,6 @@ export const goodsIssueQr = {
 
   action: {
     issue: '발행·인쇄',
-    /**
-     * 막힌 사유 — 「어떻게 풀 것인가」를 담는다(공유계약 G-3).
-     *
-     * ⛔ **조작 이름을 앞에 붙이지 않는다.** 이 문구는 단추 바로 옆 한 줄에 서므로 무엇에
-     * 대한 말인지는 «자리»가 말한다. 다른 POP 화면도 앞머리 없이 쓴다(사용자 지시 2026-09-07).
-     */
-    disabledPalletNeedsOneLine: '파렛트로 발행하려면 라인을 하나만 고르세요.',
-    disabledNoPallet: '발행할 파렛트를 고르세요.',
-    /* 대상 칸이 이미 사유를 적고 있다 — 같은 말을 액션바에서 되풀이하지 않는다(#1095). */
-    disabledPalletUnsupported: '라인 단위로 발행하세요.',
-    /** 빈 파렛트 차단(스펙 §6)이 서기 전 — 잠깐 열렸다가 닫히지 않게 그동안 막는다. */
-    disabledPalletContentsPending: '담긴 내용을 확인하는 중입니다. 잠시 뒤 발행할 수 있습니다.',
-    /** 빈 파렛트에는 찍을 것이 없다(스펙 §6). */
-    disabledEmptyPallet: '고른 파렛트에 담긴 것이 없습니다. 다른 파렛트를 고르세요.',
-    disabledNoReason: '재발행 사유를 고르세요.',
   },
 
   result: {
