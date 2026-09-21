@@ -13,12 +13,14 @@ import {
   queuedQtyOf,
   remainingQtyOf,
   splitQuantitiesOf,
+  submitLockReason,
   toOutboxDraft,
   toSplitOutboxDraft,
   verdictOf,
   type PurchaseOrder,
   type PurchaseOrderLine,
   type ReceiptDraft,
+  type SubmitLockInput,
 } from './receipt';
 
 const SCANNED = '7770001118880002229901015554447777';
@@ -227,6 +229,121 @@ describe('등록 조건', () => {
         true,
       ),
     ).toBe(true);
+  });
+});
+
+describe('등록이 잠긴 사유', () => {
+  const lock = (overrides: Partial<SubmitLockInput> = {}): SubmitLockInput => ({
+    draft: draft(),
+    loaded: true,
+    plantId: 1,
+    hasWorker: true,
+    labelSettled: true,
+    needsUnderAnswer: false,
+    ...overrides,
+  });
+
+  it('등록할 수 있는 건에는 사유가 없다', () => {
+    expect(submitLockReason(lock())).toBeNull();
+  });
+
+  it('사번과 라벨 대조는 단추 곁에서 이미 말하므로 겹쳐 말하지 않는다', () => {
+    expect(submitLockReason(lock({ hasWorker: false }))).toBeNull();
+    expect(submitLockReason(lock({ labelSettled: false }))).toBeNull();
+  });
+
+  it('수량과 날짜의 잘못은 칸 아래에서 이미 말하므로 겹쳐 말하지 않는다', () => {
+    expect(submitLockReason(lock({ draft: draft({ receivedQty: '0' }) }))).toBeNull();
+    expect(submitLockReason(lock({ draft: draft({ packageCount: '0' }) }))).toBeNull();
+    expect(submitLockReason(lock({ draft: draft({ expiryDate: '2026-07-19' }) }))).toBeNull();
+  });
+
+  it('단말 보관소를 읽는 동안은 읽는 중이라고 말한다', () => {
+    expect(submitLockReason(lock({ loaded: false }))).toBe('loading');
+  });
+
+  /* 발주 경로의 공장은 고른 자재 P/O 가 싣고 온다. 안 골랐으면 공장도 비어 있다. */
+  it('발주 경로에서 공장이 비면 공장이 아니라 자재 P/O 를 가리킨다', () => {
+    expect(
+      submitLockReason(
+        lock({ plantId: null, draft: draft({ purchaseOrder: null, purchaseOrderLine: null }) }),
+      ),
+    ).toBe('purchaseOrder');
+  });
+
+  /* 무발주 구역은 같은 사실을 제 배너로 말한다. */
+  it('무발주에서 단말의 공장을 못 읽으면 겹쳐 말하지 않는다', () => {
+    expect(submitLockReason(lock({ plantId: null, draft: draft({ unordered: true }) }))).toBeNull();
+  });
+
+  it('라벨 미부착이면 사유를 고르라고 말한다', () => {
+    const missing = draft({
+      supplierLotNo: '',
+      supplierLotMissing: true,
+      supplierLotLabelAttached: false,
+    });
+
+    expect(submitLockReason(lock({ draft: missing }))).toBe('substituteLotReason');
+    expect(
+      submitLockReason(lock({ draft: { ...missing, substituteLotReasonCode: 'NO_LABEL' } })),
+    ).toBeNull();
+  });
+
+  it('자재 P/O 나 라인을 고르지 않았으면 고르라고 말한다', () => {
+    expect(
+      submitLockReason(lock({ draft: draft({ purchaseOrder: null, purchaseOrderLine: null }) })),
+    ).toBe('purchaseOrder');
+    expect(submitLockReason(lock({ draft: draft({ purchaseOrderLine: null }) }))).toBe(
+      'purchaseOrder',
+    );
+  });
+
+  /* 화면에 선 순서대로 하나씩 가리킨다. 다섯을 한꺼번에 말하면 무엇부터 할지가 흐려진다. */
+  it('무발주는 빈 칸을 화면 순서대로 하나씩 가리킨다', () => {
+    const unordered = draft({ unordered: true, purchaseOrder: null, purchaseOrderLine: null });
+
+    expect(submitLockReason(lock({ draft: unordered }))).toBe('supplier');
+    expect(submitLockReason(lock({ draft: { ...unordered, supplierId: 2 } }))).toBe('item');
+    expect(submitLockReason(lock({ draft: { ...unordered, supplierId: 2, itemId: 31 } }))).toBe(
+      'uom',
+    );
+    expect(
+      submitLockReason(lock({ draft: { ...unordered, supplierId: 2, itemId: 31, uomId: 9 } })),
+    ).toBe('exceptionType');
+    expect(
+      submitLockReason(
+        lock({
+          draft: {
+            ...unordered,
+            supplierId: 2,
+            itemId: 31,
+            uomId: 9,
+            exceptionTypeCode: 'URGENT_RECEIPT',
+          },
+        }),
+      ),
+    ).toBe('exceptionReason');
+  });
+
+  it('부족 물음에 답하지 않았으면 답하라고 말한다', () => {
+    expect(submitLockReason(lock({ needsUnderAnswer: true }))).toBe('underAnswer');
+  });
+
+  /* 라벨 구역이 P/O 구역보다 위에 선다. 아래 것을 먼저 가리키면 위로 되짚어 올라가게 된다. */
+  it('둘이 함께 비면 화면에서 위에 선 것을 가리킨다', () => {
+    expect(
+      submitLockReason(
+        lock({
+          draft: draft({
+            supplierLotNo: '',
+            supplierLotMissing: true,
+            supplierLotLabelAttached: false,
+            purchaseOrder: null,
+            purchaseOrderLine: null,
+          }),
+        }),
+      ),
+    ).toBe('substituteLotReason');
   });
 });
 

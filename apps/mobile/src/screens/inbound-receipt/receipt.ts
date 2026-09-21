@@ -222,6 +222,95 @@ export const canSubmit = (draft: ReceiptDraft, hasWorker: boolean): boolean => {
   return draft.purchaseOrder !== null && draft.purchaseOrderLine !== null;
 };
 
+export type SubmitLockReason =
+  | 'loading'
+  | 'substituteLotReason'
+  | 'purchaseOrder'
+  | 'supplier'
+  | 'item'
+  | 'uom'
+  | 'exceptionType'
+  | 'exceptionReason'
+  | 'underAnswer';
+
+export interface SubmitLockInput {
+  draft: ReceiptDraft;
+  /** 단말 보관소를 읽었는가. 읽기 전에는 앞서 담은 입하를 셈에 넣을 수 없어 막아 둔다. */
+  loaded: boolean;
+  /** 발주 경로에서는 고른 자재 P/O 가, 무발주에서는 단말이 싣고 온다. */
+  plantId: number | null;
+  hasWorker: boolean;
+  /** 라벨 대조가 끝났고 어긋나지 않았는가. */
+  labelSettled: boolean;
+  needsUnderAnswer: boolean;
+}
+
+/**
+ * 등록 단추가 잠긴 까닭 중 작업자가 먼저 풀어야 할 하나.
+ *
+ * 잠금의 근거는 여럿인데 작업자에게는 모두 흐린 단추 하나로 보인다. 그래서 무엇을 하면 풀리는지를
+ * 한 줄로 말한다. 이미 제 자리에서 말하고 있는 것은 널로 돌려 겹쳐 말하지 않는다.
+ *
+ * 순서는 화면에 선 순서다. 아래 것을 먼저 가리키면 위로 되짚어 올라가게 된다.
+ */
+export const submitLockReason = (input: SubmitLockInput): SubmitLockReason | null => {
+  const { draft, loaded, plantId, hasWorker, labelSettled, needsUnderAnswer } = input;
+
+  /* 사번과 라벨 대조는 단추 곁에 제 안내가 이미 선다. */
+  if (!hasWorker || !labelSettled) {
+    return null;
+  }
+
+  if (!loaded) {
+    return 'loading';
+  }
+
+  if (draft.supplierLotMissing && draft.substituteLotReasonCode === '') {
+    return 'substituteLotReason';
+  }
+
+  if (draft.unordered) {
+    /* 단말의 공장을 못 읽은 것은 무발주 구역이 제 배너로 말한다. */
+    if (plantId === null) {
+      return null;
+    }
+
+    if (draft.supplierId === null) {
+      return 'supplier';
+    }
+
+    if (draft.itemId === null) {
+      return 'item';
+    }
+
+    if (draft.uomId === null) {
+      return 'uom';
+    }
+
+    if (draft.exceptionTypeCode.trim() === '') {
+      return 'exceptionType';
+    }
+
+    if (draft.exceptionReason.trim() === '') {
+      return 'exceptionReason';
+    }
+  } else if (draft.purchaseOrder === null || draft.purchaseOrderLine === null) {
+    /* 발주 경로의 공장은 고른 자재 P/O 가 싣고 온다. 따로 물을 것이 없다. */
+    return 'purchaseOrder';
+  }
+
+  /* 수량과 날짜의 잘못은 칸 아래에 오류 문구가 이미 붙는다. */
+  if (qtyProblem(draft.receivedQty) !== null || packageProblem(draft.packageCount) !== null) {
+    return null;
+  }
+
+  if (isExpiryBeforeManufactured(draft.manufacturedDate, draft.expiryDate)) {
+    return null;
+  }
+
+  return needsUnderAnswer ? 'underAnswer' : null;
+};
+
 /** 스캔한 사전부착 라벨이 있는가. 외부 LOT 직접 입력과 미부착은 라벨 대조를 하지 않는다 - 서버도 보지 않는다. */
 export const hasScannedLabel = (draft: ReceiptDraft): boolean =>
   !draft.supplierLotMissing && draft.supplierLotLabelAttached && draft.supplierLotNo !== '';

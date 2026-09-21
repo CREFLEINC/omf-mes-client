@@ -455,7 +455,7 @@ describe('입하 등록 화면', () => {
     await user.click(screen.getByRole('button', { name: 'LOT 번호 없음' }));
 
     expect(await screen.findByText('공급사 LOT 번호가 없습니다.')).toBeTruthy();
-    expect(screen.getByText(/대체\ LOT\ 사유/)).toBeTruthy();
+    expect(screen.getByRole('combobox', { name: '대체 LOT 사유 (필수)' })).toBeTruthy();
   });
 
   /* 확인하지 못한 것을 발주가 없는 것으로 말하지 않는다. */
@@ -510,6 +510,32 @@ const choosePoLine = async (
 };
 
 describe('입하 등록 화면 — 발주 경로', () => {
+  /* 흐린 단추만 보고는 무엇을 더 해야 하는지 알 수 없어 화면을 위아래로 훑게 된다. */
+  it('등록이 잠기면 무엇을 하면 풀리는지 단추 곁에서 말한다', async () => {
+    const user = userEvent.setup();
+    mount();
+    await screen.findByLabelText('LOT 번호');
+    await scanLabel();
+
+    expect(await screen.findByText('자재 P/O와 라인을 고르면 등록할 수 있습니다')).toBeTruthy();
+
+    await user.click(screen.getByRole('combobox', { name: '자재 P/O 번호' }));
+    await user.click(await screen.findByRole('option', { name: 'PO-2026-0003' }));
+    await user.click(await screen.findByRole('button', { name: /ABC-123|31/ }));
+    await user.type(await screen.findByLabelText(/실입하\ 수량/), '400');
+
+    expect(
+      await screen.findByText('더 들어올 물량이 있는지 답하면 등록할 수 있습니다'),
+    ).toBeTruthy();
+
+    await user.click(screen.getByRole('button', { name: '계속 등록' }));
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: '입하 등록' })).not.toBeDisabled();
+    });
+    expect(screen.queryByText(/등록할 수 있습니다/)).toBeNull();
+  });
+
   /* 서버가 등록할 때 같은 대조로 거부한다. 담아 둔 뒤에 되돌아오면 한참 뒤 전송 실패로만 보인다. */
   it('라벨의 제품코드가 발주 라인 품목과 다르면 등록할 수 없다', async () => {
     const user = userEvent.setup();

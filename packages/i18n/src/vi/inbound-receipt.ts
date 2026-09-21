@@ -178,5 +178,16 @@ export const inboundReceipt: Translated<typeof ko.inboundReceipt> = {
     description: 'Chưa được đăng ký. Hãy thử lại.',
   },
   noWorker: 'Hãy xác nhận mã nhân viên trước',
+  submitLock: {
+    loading: 'Đang kiểm tra các bản ghi lưu trong máy',
+    substituteLotReason: 'Chọn lý do dùng LOT thay thế thì có thể đăng ký',
+    purchaseOrder: 'Chọn P/O vật tư và dòng thì có thể đăng ký',
+    supplier: 'Chọn nhà cung cấp thì có thể đăng ký',
+    item: 'Chọn mặt hàng thì có thể đăng ký',
+    uom: 'Chọn đơn vị thì có thể đăng ký',
+    exceptionType: 'Chọn loại nhập hàng ngoại lệ thì có thể đăng ký',
+    exceptionReason: 'Nhập lý do ngoại lệ thì có thể đăng ký',
+    underAnswer: 'Trả lời còn hàng về thêm hay không thì có thể đăng ký',
+  },
   another: 'Lần nhập hàng tiếp theo',
 };

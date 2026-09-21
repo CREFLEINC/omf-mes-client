@@ -215,5 +215,21 @@ export const inboundReceipt = {
     description: '등록되지 않았습니다. 다시 시도하세요.',
   },
   noWorker: '사번을 먼저 확인하세요',
+  /**
+   * 잠긴 등록 단추 곁에 서는 한 줄.
+   *
+   * 무엇이 모자란지가 아니라 무엇을 하면 풀리는지를 적는다. 조사가 낱말마다 달라 문장을 통째로 둔다.
+   */
+  submitLock: {
+    loading: '기기에 담긴 기록을 확인하는 중입니다',
+    substituteLotReason: '대체 LOT 사유를 고르면 등록할 수 있습니다',
+    purchaseOrder: '자재 P/O와 라인을 고르면 등록할 수 있습니다',
+    supplier: '공급사를 고르면 등록할 수 있습니다',
+    item: '품목을 고르면 등록할 수 있습니다',
+    uom: '단위를 고르면 등록할 수 있습니다',
+    exceptionType: '예외입하 유형을 고르면 등록할 수 있습니다',
+    exceptionReason: '예외 사유를 적으면 등록할 수 있습니다',
+    underAnswer: '더 들어올 물량이 있는지 답하면 등록할 수 있습니다',
+  },
   another: '다음 입하',
 } as const;

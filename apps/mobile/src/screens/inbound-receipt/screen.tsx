@@ -42,6 +42,7 @@ import {
   remainingQtyOf,
   sourceOf,
   splitQuantitiesOf,
+  submitLockReason,
   toOutboxDraft,
   toSplitOutboxDraft,
   verdictOf,
@@ -297,6 +298,15 @@ export const InboundReceiptScreen = () => {
     labelOk &&
     verdict !== OVER &&
     (verdict !== UNDER || continueUnder);
+  /* 잠긴 단추만 보고는 무엇을 더 해야 하는지 알 수 없어 한 줄로 말한다. */
+  const submitLock = submitLockReason({
+    draft,
+    loaded,
+    plantId,
+    hasWorker: worker !== null,
+    labelSettled: labelOk,
+    needsUnderAnswer: verdict === UNDER && !continueUnder,
+  });
   const splitReady =
     loaded &&
     plantId !== null &&
@@ -1249,6 +1259,9 @@ export const InboundReceiptScreen = () => {
               </AlertBanner>
             ) : null}
             {worker === null ? <p className="receipt__note">{t.noWorker}</p> : null}
+            {submitLock === null ? null : (
+              <p className="receipt__note">{t.submitLock[submitLock]}</p>
+            )}
           </section>
 
           {/*
