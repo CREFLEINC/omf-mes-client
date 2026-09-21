@@ -161,7 +161,8 @@ export const emergencyWorkOrder: Translated<typeof ko.emergencyWorkOrder> = {
     placeholder: 'Mã mặt hàng hoặc tên mặt hàng',
     search: 'Tìm',
     searching: 'Đang tìm.',
-    empty: 'Không tìm thấy mặt hàng nào. Hãy tìm bằng từ khác.',
+    /** ⛔ 감춘다는 사실을 말한다(omf-all-around#43). */
+    empty: 'Không tìm thấy mặt hàng nào. Chỉ hiển thị mặt hàng có thể sản xuất (có Routing).',
     error: 'Không tìm được mặt hàng. Hãy thử lại sau giây lát.',
     select: (itemCode: string) => `Chọn ${itemCode}`,
     selected: 'Mặt hàng đã chọn',

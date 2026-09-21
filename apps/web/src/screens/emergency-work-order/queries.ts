@@ -31,12 +31,17 @@ export const emergencyWorkOrderKeys = {
 export const ITEM_SEARCH_SIZE = 20;
 
 /**
- * 품목 검색.
+ * 품목 검색 — **Routing 이 있는 품목만** 묻는다(`hasRouting=true`).
  *
- * ⛔ **`hasRouting`으로 미리 거르지 않는다.** 계약에 그 조건이 있어 Routing 없는 품목을
- * 목록에서 지울 수 있지만, 지우면 **찾던 품목이 아예 안 나온다.** 사용자는 「없는 품목」과
- * 「Routing 이 없어 발행할 수 없는 품목」을 구분할 수 없게 된다. 감추지 않고 **고르게 한 뒤
- * 사유와 함께 막는다**(G-1·G-2).
+ * ⚠ **종전에는 거르지 않았다.** 「없는 품목」과 「발행할 수 없는 품목」을 사용자가 구분하지
+ * 못하게 된다는 이유였는데, 실제 품목 마스터는 ERP 원자재가 대부분이라 **검색 결과의 거의
+ * 전부가 고르면 막히는 품목**이었다. 원자재는 만드는 물건이 아니라 Routing 이 «없는 것이
+ * 정상»이고, 그것까지 후보로 세우면 고른 뒤에야 막히고 안내는 기준정보를 고치라고 읽힌다.
+ * 사용자 결정(2026-09-21 · omf-all-around#43)으로 **만들 수 없는 품목은 내지 않는다.**
+ * 감춘다는 사실은 빈 결과 문구(`itemPicker.empty`)가 말한다.
+ *
+ * ⛔ **BOM 은 여기서 거르지 않는다.** 서버 질의에 그 축이 없고, Routing 은 있는데 BOM 이 없는
+ * 것은 기준정보를 고쳐야 하는 «실제 문제»다 — 고르게 한 뒤 `bomMissing` 으로 막는다.
  *
  * 검색어가 비면 조회하지 않는다 — 전 품목을 받아 오는 것은 이 화면의 일이 아니다.
  */
@@ -50,7 +55,7 @@ export const useItemSearch = (keyword: string): UseQueryResult<ItemListResponse>
     queryFn: () =>
       runRequest(() =>
         client.GET('/mdm/items', {
-          params: { query: { q: trimmed, size: ITEM_SEARCH_SIZE } },
+          params: { query: { q: trimmed, size: ITEM_SEARCH_SIZE, hasRouting: true } },
         }),
       ),
   });

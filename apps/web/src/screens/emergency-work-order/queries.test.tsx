@@ -118,7 +118,11 @@ describe('useItemSearch', () => {
     expect(params.get('size')).toBe(String(ITEM_SEARCH_SIZE));
   });
 
-  it('⛔ Routing 보유로 미리 거르지 않는다 — 지우면 「없는 품목」과 구분할 수 없다', async () => {
+  /**
+   * omf-all-around#43 — 원자재는 Routing 이 없는 것이 정상이라 고를 수 없다. 후보에 세우면
+   * 고른 뒤에야 막힌다. 종전에는 일부러 안 걸렀는데 사용자 결정으로 뒤집혔다.
+   */
+  it('만들 수 없는 품목을 빼려고 Routing 보유를 싣는다', async () => {
     const { urls, fetch } = collecting();
 
     renderHookWithProviders(() => useItemSearch('SYN-ITEM'), { fetch });
@@ -126,7 +130,7 @@ describe('useItemSearch', () => {
     await waitFor(() => {
       expect(urls).toHaveLength(1);
     });
-    expect(urls[0]).not.toContain('hasRouting');
+    expect(new URLSearchParams(urls[0]?.split('?')[1] ?? '').get('hasRouting')).toBe('true');
   });
 
   it('앞뒤 공백은 검색어에 싣지 않는다 — 같은 검색이 다른 키로 두 번 나간다', async () => {

@@ -154,7 +154,8 @@ describe('ItemPicker', () => {
     expect(screen.queryByText(t.truncated(1))).not.toBeInTheDocument();
   });
 
-  it('⛔ Routing 보유로 미리 거르지 않는다 — 지우면 「없는 품목」과 구분할 수 없다', async () => {
+  /** omf-all-around#43 — 고를 수 없는 품목(원자재 등)은 후보에 세우지 않는다. */
+  it('만들 수 없는 품목을 빼려고 Routing 보유를 싣는다', async () => {
     const { user, urls } = renderPicker();
 
     await searchFor(user, 'SYN');
@@ -162,6 +163,6 @@ describe('ItemPicker', () => {
       expect(urls).toHaveLength(1);
     });
 
-    expect(urls[0]).not.toContain('hasRouting');
+    expect(new URLSearchParams(urls[0]?.split('?')[1] ?? '').get('hasRouting')).toBe('true');
   });
 });

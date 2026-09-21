@@ -230,7 +230,11 @@ export const emergencyWorkOrder = {
     placeholder: '품목코드 또는 품목명',
     search: '검색',
     searching: '찾는 중입니다.',
-    empty: '찾은 품목이 없습니다. 다른 말로 찾아보세요.',
+    /**
+     * ⛔ **감춘다는 사실을 말한다**(omf-all-around#43). 목록에는 Routing 이 있는 품목만 선다 —
+     * 그 말이 없으면 있는 품목을 없다고 읽는다.
+     */
+    empty: '찾은 품목이 없습니다. 만들 수 있는 품목(Routing 이 있는 품목)만 보입니다.',
     error: '품목을 찾지 못했습니다. 잠시 뒤 다시 시도하세요.',
     select: (itemCode: string): string => `${itemCode} 고르기`,
     selected: '고른 품목',
