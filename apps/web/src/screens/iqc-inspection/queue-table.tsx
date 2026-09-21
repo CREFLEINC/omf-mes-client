@@ -4,6 +4,7 @@ import type { ReactNode } from 'react';
 
 import { toStatusBadge } from './status-badge';
 import { formatDateTime, type InspectionQueueRow } from './types';
+import type { NameLookup } from './reference-lookup';
 
 /**
  * 좌측 검사 대기 큐의 표.
@@ -24,6 +25,8 @@ const t = messages.iqcInspection.queue;
 
 export interface QueueTableProps {
   rows: InspectionQueueRow[];
+  /** 자재 LOT 번호 풀이. **번호가 아니라 LOT 번호를 보인다**(omf-all-around#40). */
+  lotNumbers: NameLookup;
   /** 고른 의뢰. 없으면 `null` — 아무 줄도 현재가 아니다 */
   selectedId: number | null;
   onSelect: (inspectionRequestId: number) => void;
@@ -34,6 +37,7 @@ export interface QueueTableProps {
 const columnsOf = (
   selectedId: number | null,
   onSelect: (inspectionRequestId: number) => void,
+  lotNumbers: NameLookup,
 ): Column<InspectionQueueRow>[] => [
   {
     key: 'inspectionRequestNo',
@@ -56,14 +60,15 @@ const columnsOf = (
   {
     key: 'lotId',
     header: t.columns.lotId,
-    width: '88px',
-    /* 없는 것이 정상이다(작업지시 대상 검사 등). 빈 칸으로 두면 못 불러온 것과 구분되지 않는다. */
-    /* 긴 번호는 좁은 칸 안에서 줄을 바꾼다 — 옆 칸으로 넘치거나 잘리지 않게. */
-    render: (row) => (
-      <span className="iqc-inspection-lot">
-        {row.lotId === null ? t.emptyValue : String(row.lotId)}
-      </span>
-    ),
+    /*
+     * **폭을 지정하지 않는 흡수 열이 여기 하나다.** LOT 번호는 길이가 들쭉날쭉하고
+     * (`040101-00076|3925|260920|105900|0001`) 이 표에서 유일하게 길이가 정해지지 않은 값이라,
+     * 남는 폭을 이 칸이 받는다. 그래도 좁으면 칸 안에서 줄을 바꾼다(`iqc-inspection-lot`).
+     *
+     * 없는 것이 정상이다(작업지시 대상 검사 등) — 빈 칸으로 두면 못 불러온 것과 구분되지 않아
+     * 풀이가 네 갈래를 서로 다른 글자로 낸다.
+     */
+    render: (row) => <span className="iqc-inspection-lot">{lotNumbers.labelOf(row.lotId)}</span>,
   },
   {
     key: 'statusCode',
@@ -94,12 +99,12 @@ const columnsOf = (
   },
 ];
 
-export const QueueTable = ({ rows, selectedId, onSelect, empty }: QueueTableProps) => (
+export const QueueTable = ({ rows, lotNumbers, selectedId, onSelect, empty }: QueueTableProps) => (
   <Table
     /* 제목은 화면에서 감추고 표의 접근 이름으로만 남긴다. */
     caption={<span className="iqc-inspection-table-caption">{t.caption}</span>}
     density="compact"
-    columns={columnsOf(selectedId, onSelect)}
+    columns={columnsOf(selectedId, onSelect, lotNumbers)}
     rows={rows}
     getRowId={(row) => String(row.inspectionRequestId)}
     empty={empty}

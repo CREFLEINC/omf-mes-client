@@ -6,10 +6,30 @@ import { describe, expect, it, vi } from 'vitest';
 import { renderWithProviders } from '../../test/api-harness';
 import { queueItems } from './fixtures';
 import { QueueTable } from './queue-table';
+import type { NameLookup } from './reference-lookup';
 import { toInspectionQueueRow } from './types';
 
 const t = messages.iqcInspection.queue;
 const rows = queueItems.map(toInspectionQueueRow);
+
+/**
+ * LOT 번호 풀이. **내부 번호가 아니라 라벨에 찍히는 번호**를 낸다(omf-all-around#40).
+ *
+ * 번호를 라벨에 섞지 않는다 — 「번호가 남지 않는다」를 재는 단언이 제 꼬리를 물면 안 된다.
+ */
+const LOT_IDS = [
+  ...new Set(rows.map((row) => row.lotId).filter((lotId): lotId is number => lotId !== null)),
+];
+
+const LOT_LABELS = new Map<number, string>(
+  LOT_IDS.map((lotId, index) => [lotId, `SAMPLE-LOT|${'ABCDEFGH'[index] ?? 'Z'}|CCC`]),
+);
+
+const LOT_NO = (lotId: number) => LOT_LABELS.get(lotId) ?? 'SAMPLE-LOT|Z|CCC';
+
+const lotNumbers: NameLookup = {
+  labelOf: (id) => (id === null || id === undefined ? '—' : LOT_NO(id)),
+};
 
 const renderTable = (overrides: Partial<Parameters<typeof QueueTable>[0]> = {}) => {
   const onSelect = vi.fn();
@@ -17,6 +37,7 @@ const renderTable = (overrides: Partial<Parameters<typeof QueueTable>[0]> = {}) 
   renderWithProviders(
     <QueueTable
       rows={rows}
+      lotNumbers={lotNumbers}
       selectedId={null}
       onSelect={onSelect}
       empty={<p>{t.empty}</p>}
@@ -87,5 +108,34 @@ describe('QueueTable', () => {
     renderTable({ rows: [] });
 
     expect(screen.getByText(t.empty)).toBeInTheDocument();
+  });
+});
+
+describe('QueueTable — 자재 LOT 표기', () => {
+  /**
+   * ⛔ **내부 번호를 화면에 내지 않는다**(`omf-mes#44`). 이 칸은 종전에 `lotId` 를 그대로 찍어
+   * 「44」·「45」가 나왔다 — 검사자가 손에 든 라벨과 대조할 수 없었다(omf-all-around#40).
+   */
+  it('LOT 번호를 보이고 내부 번호는 어디에도 없다', () => {
+    renderTable();
+
+    const table = screen.getByRole('table');
+
+    expect(LOT_IDS.length).toBeGreaterThan(0);
+
+    for (const lotId of LOT_IDS) {
+      expect(within(table).getAllByText(LOT_NO(lotId)).length).toBeGreaterThan(0);
+      /* 짝 방향 — 번호가 글자로도 남지 않는다. */
+      expect(table.textContent ?? '').not.toContain(String(lotId));
+    }
+  });
+
+  /** 없는 것이 정상이다(작업지시 대상 검사 등) — 풀이가 그 갈래의 글자를 정한다. */
+  it('LOT 이 없는 줄은 풀이가 정한 빈 값 표기를 낸다', () => {
+    renderTable({ rows: rows.map((row) => ({ ...row, lotId: null })) });
+
+    const table = screen.getByRole('table');
+
+    expect(within(table).getAllByText('—').length).toBe(rows.length);
   });
 });
