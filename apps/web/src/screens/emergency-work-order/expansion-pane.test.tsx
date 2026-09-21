@@ -66,6 +66,7 @@ const renderPane = (overrides: Partial<ExpansionPaneProps> = {}) => {
     <ExpansionPane
       state={READY}
       orderQtyText="200"
+      uomLabel="EA"
       selectedRoutingId={31}
       onSelectRouting={onSelectRouting}
       {...overrides}
@@ -90,7 +91,8 @@ describe('ExpansionPane', () => {
     expect(rows.length).toBeGreaterThan(2);
     expect(within(region).getByText('사출')).toBeInTheDocument();
     expect(within(region).getByText('조립')).toBeInTheDocument();
-    expect(within(region).getAllByText('200')).toHaveLength(2);
+    /* 수량은 단위와 함께 선다 — 공정마다 같은 값이다(전개는 나누지 않는다). */
+    expect(within(region).getAllByText('200 EA')).toHaveLength(2);
   });
 
   it('⚠ LOT 을 화면이 나눈 사실을 밝힌다 — 조용히 정하지 않는다', () => {
@@ -197,5 +199,18 @@ describe('ExpansionPane', () => {
     const lock = messages.emergencyWorkOrder.lock;
 
     expect(within(region).queryByText(lock.blocked.bomMissing)).not.toBeInTheDocument();
+  });
+
+  /* 수량이 어느 단위인지는 사실이다 — 단위를 아는 때에만 숫자 옆에 적는다. */
+  it('수량 칸에 고른 품목의 단위를 함께 적는다', () => {
+    renderPane();
+
+    expect(screen.getAllByRole('cell', { name: '200 EA' }).length).toBeGreaterThan(0);
+  });
+
+  it('단위를 모르면 숫자만 적는다 — 「확인 중」 같은 말을 칸에 넣지 않는다', () => {
+    renderPane({ uomLabel: '' });
+
+    expect(screen.getAllByRole('cell', { name: '200' }).length).toBeGreaterThan(0);
   });
 });

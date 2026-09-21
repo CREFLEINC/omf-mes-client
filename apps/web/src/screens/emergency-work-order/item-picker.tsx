@@ -1,9 +1,9 @@
-import { AlertBanner, Button, SearchInput } from '@crefle/web-ui';
+import { SearchInput } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useState } from 'react';
 
-import { ITEM_SEARCH_SIZE, useItemSearch } from './queries';
-import { type SelectedItem, toSelectedItem } from './types';
+import { ItemPickerDialog } from '../../patterns/item-picker';
+import type { SelectedItem } from './types';
 
 export interface ItemPickerProps {
   selected: SelectedItem | null;
@@ -11,100 +11,79 @@ export interface ItemPickerProps {
 }
 
 /**
- * 품목 고르기.
+ * 품목 선택.
  *
- * ⛔ **Routing 보유로 미리 거르지 않는다.** 거르면 찾던 품목이 아예 안 나와, 사용자가 「없는
- * 품목」과 「Routing 이 없어 발행할 수 없는 품목」을 구분할 수 없다. 고르게 한 뒤 사유와 함께
- * 막는 것은 전개와 잠금의 몫이다.
+ * ⭐ **칸 하나가 곧 고르는 자리다**(사용자 결정 2026-09-21 · `W-01-01`·`W-03-02` 와 같은 모양).
+ * 읽기 전용 검색칸을 누르면 공용 창이 열리고, 고른 품목은 그 칸에 값으로 선다 — 「아직 고른
+ * 품목이 없습니다」 같은 말을 따로 두지 않는다. 빈 칸과 자리표시 글자가 이미 그 사실이다.
  *
- * ⛔ **잘린 목록을 잘렸다고 말한다.** 안 말하면 「찾는 품목이 없다」로 읽는다 — 목록에 없는
- * 것과 목록이 잘린 것은 다른 사실이고, 사용자가 할 일이 다르다.
+ * ⚠ **Routing 이 있는 품목만 낸다**(`hasRouting` · omf-all-around#43) — 원자재처럼 만들 수
+ * 없는 품목을 후보에 세우면 고른 뒤에야 막힌다.
  *
- * ⚠ **글자마다 찾지 않는다.** 치는 값과 **찾기로 한 값**을 갈라 두어, 확정했을 때만 요청이
- * 나간다. 긴급 화면이라고 서버를 글자 수만큼 두드릴 이유는 없다.
+ * ⛔ **가용 재고 열은 끈다.** 이 화면이 묻는 것은 「무엇을 만들까」이지 「지금 얼마나 있나」가
+ * 아니다 — 켜 두면 품목마다 재고 요청이 한 번씩 더 나간다.
  */
 export const ItemPicker = ({ selected, onSelect }: ItemPickerProps) => {
   const t = messages.emergencyWorkOrder.itemPicker;
-  const [draft, setDraft] = useState('');
-  const [keyword, setKeyword] = useState('');
-  const search = useItemSearch(keyword);
-
-  const items = search.data?.items ?? [];
-  const total = search.data?.page?.total ?? 0;
+  const [isOpen, setOpen] = useState(false);
+  const label = selected === null ? '' : `${selected.itemCode} · ${selected.itemName}`;
+  const open = (): void => {
+    setOpen(true);
+  };
 
   return (
     <section className="pane emergency-work-order-pane" aria-label={t.title}>
-      <h2 className="pane-title">{t.title}</h2>
+      <h2 className="pane-title">
+        {t.title}
+        <span aria-hidden="true" className="required-mark">
+          *
+        </span>
+      </h2>
 
-      <div className="emergency-work-order-search-row">
-        <SearchInput
-          aria-label={t.label}
-          placeholder={t.placeholder}
-          value={draft}
-          onChange={(event) => {
-            setDraft(event.target.value);
+      <SearchInput
+        label={t.label}
+        containerClassName={label === '' ? 'emergency-work-order-required-empty' : undefined}
+        value={label}
+        readOnly
+        title={label === '' ? undefined : label}
+        placeholder={t.placeholder}
+        required
+        aria-haspopup="dialog"
+        clearLabel={t.clear}
+        onClick={open}
+        onSearch={open}
+        onChange={() => undefined}
+        onClear={() => {
+          onSelect(null);
+        }}
+      />
+
+      {isOpen && (
+        <ItemPickerDialog
+          multiple={false}
+          hasRouting
+          compact
+          showAvailability={false}
+          /* 좁혀 놓고 0건이라 말하면 오독한다 — 무엇만 보이는지 함께 적는다(omf-all-around#43). */
+          emptyText={t.empty}
+          confirmLabel={t.confirm}
+          onClose={() => {
+            setOpen(false);
           }}
-          onSearch={setKeyword}
-          loading={search.isFetching}
-          clearLabel={messages.common.clear}
+          onConfirm={([item]) => {
+            /* 단일 선택이라 한 건이다 — 빈 확인이 들어와도 고른 것을 지우지 않는다. */
+            if (item !== undefined) {
+              onSelect({
+                itemId: item.itemId,
+                itemCode: item.itemCode,
+                itemName: item.itemName,
+                baseUomId: item.baseUomId,
+              });
+            }
+
+            setOpen(false);
+          }}
         />
-        <Button
-          onClick={() => {
-            setKeyword(draft);
-          }}
-        >
-          {t.search}
-        </Button>
-      </div>
-
-      {selected !== null && (
-        <div className="emergency-work-order-selected-item">
-          <div className="field-cell">
-            <span className="field-label">{t.selected}</span>
-            <strong>{`${selected.itemCode} · ${selected.itemName}`}</strong>
-          </div>
-          <Button
-            variant="text"
-            onClick={() => {
-              onSelect(null);
-            }}
-          >
-            {t.clear}
-          </Button>
-        </div>
-      )}
-
-      {search.isFetching && <p role="status">{t.searching}</p>}
-
-      {search.isError && (
-        <div className="banner-slot">
-          <AlertBanner variant="error">{t.error}</AlertBanner>
-        </div>
-      )}
-
-      {search.isSuccess && !search.isFetching && items.length === 0 && <p>{t.empty}</p>}
-
-      {items.length > 0 && (
-        <ul className="emergency-work-order-search-results">
-          {items.map((item) => (
-            <li key={item.itemId}>
-              <Button
-                variant="text"
-                onClick={() => {
-                  onSelect(toSelectedItem(item));
-                }}
-              >
-                {t.select(`${item.itemCode} · ${item.itemName}`)}
-              </Button>
-            </li>
-          ))}
-        </ul>
-      )}
-
-      {total > ITEM_SEARCH_SIZE && (
-        <div className="banner-slot">
-          <AlertBanner variant="warning">{t.truncated(items.length)}</AlertBanner>
-        </div>
       )}
     </section>
   );

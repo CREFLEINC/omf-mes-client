@@ -109,6 +109,9 @@ const stub = (
     }
 
     if (path === '/mdm/items') return listOf([ITEM]);
+    /* 공용 품목 창이 유형 목록을 코드 그룹에서 받는다(공유계약 G-32). */
+    if (path === '/mdm/code-values')
+      return listOf([{ code: 'SYN_PRODUCT', codeName: '합성 유형' }]);
     if (path === '/mdm/uoms') return listOf([{ uomId: 11, uomCode: 'EA', isActive: true }]);
     if (path === '/planning/boms') return listOf(options.boms ?? [BOM]);
     if (path === '/planning/routings') return listOf(options.routings ?? [ROUTING]);
@@ -185,32 +188,53 @@ const renderWithScreenDefaultTypeCode = (options: StubOptions = {}) => {
 /**
  * 품목을 찾아 고르고, 수량·사유를 채운다 — 발행 직전까지.
  *
- * ⭐ 수량 칸을 **단위 이름으로** 집으므로, 이 함수를 쓰는 모든 검사가 「수량 라벨에 고른
- * 품목의 단위가 붙는다」를 함께 고정한다.
+ * ⭐ 공용 품목 창의 체크칸을 **품목 코드로** 집으므로, 이 함수를 쓰는 모든 검사가 「줄마다
+ * 어느 품목인지 접근명에 실린다」를 함께 고정한다.
  */
 const fillForm = async (user: ReturnType<typeof userEvent.setup>): Promise<void> => {
-  await user.type(screen.getByLabelText(t.itemPicker.label), 'SYN');
-  await user.click(screen.getByRole('button', { name: t.itemPicker.search }));
-  await user.click(await screen.findByRole('button', { name: /SYN-ITEM-0001/ }));
-  await user.type(await screen.findByLabelText(/EA/), '200');
+  await user.click(screen.getByLabelText(t.itemPicker.label));
+  const dialog = within(await screen.findByRole('dialog'));
+  await user.click(await dialog.findByRole('checkbox', { name: 'SYN-ITEM-0001' }));
+  await user.click(dialog.getByRole('button', { name: t.itemPicker.confirm }));
+  await user.type(await screen.findByLabelText(t.form.orderQty), '200');
   await user.type(screen.getByLabelText(t.form.reason), '고객 긴급 요청');
 };
 
 describe('EmergencyWorkOrderScreen', () => {
-  it('⛔ 서버가 계획 없는 발행을 받지 않으면 누르기 «전에» 잠그고 현장 말로 알린다', () => {
-    /*
-     * 열어 두면 사용자는 품목·수량·사유를 다 채운 뒤에야 거부당하고, 그 문구가 내부 용어라
-     * 자기 입력이 잘못된 줄 안다(omf-all-around#44).
-     */
+  /*
+   * ⛔ 서버가 계획 없는 발행을 받지 않는 동안에는 **안내 한 장만** 세운다(사용자 결정
+   * 2026-09-21). 입력 구획을 그려 두면 사람이 품목·수량·사유를 다 채운 뒤에야 못 쓴다는 것을
+   * 알게 되고, 그때 뜨는 서버 문구는 내부 용어라 자기 입력이 잘못된 줄 안다(omf-all-around#44).
+   */
+  it('⛔ 서버가 계획 없는 발행을 받지 않으면 입력 구획 없이 그 사실만 알린다', () => {
     const stubbed = stub();
     renderWithProviders(<EmergencyWorkOrderScreen typeCode={KNOWN_CODE} />, {
       fetch: stubbed.fetch,
     });
 
-    expect(screen.getByRole('button', { name: t.action })).toBeDisabled();
     expect(screen.getByText(t.lock.notOpenYet)).toBeVisible();
+    /* 채울 자리를 내주지 않는다 — 구획도 발행 단추도 서지 않는다. */
+    expect(screen.queryByRole('button', { name: t.action })).toBeNull();
+    for (const title of [t.fixedTerms.title, t.itemPicker.title, t.form.title, t.expansion.title]) {
+      expect(screen.queryByRole('region', { name: title })).toBeNull();
+    }
     /* 내부 용어를 화면에 내지 않는다 — 문의 번호·공장 컨텍스트 같은 말은 현장에서 못 읽는다. */
     expect(screen.queryByText(/문의\s*0?040/)).toBeNull();
+  });
+
+  /*
+   * ⭐ **지금 이 화면에서 실제로 할 수 있는 일은 이것뿐이다.** 발행이 닫혀 있어도 이미 만들어진
+   * W/O 의 배포 재시도는 여기서 끝내야 한다 — 안내만 남기고 그 길까지 지우면 안 된다.
+   */
+  it('발행이 닫혀 있어도 배포가 남은 W/O 는 보이고 재시도를 낼 수 있다', async () => {
+    const stubbed = stub({ unreleased: [UNRELEASED] });
+    renderWithProviders(<EmergencyWorkOrderScreen typeCode={KNOWN_CODE} />, {
+      fetch: stubbed.fetch,
+    });
+
+    expect(await screen.findByRole('region', { name: t.handover.title })).toBeInTheDocument();
+    expect(screen.getByRole('cell', { name: 'SYN-WO-0009' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: t.handover.retry })).toBeEnabled();
   });
 
   it('고정 조건·품목·발행 정보·자동 전개·발행 준비를 제목이 있는 구획으로 나눈다', () => {
@@ -228,15 +252,14 @@ describe('EmergencyWorkOrderScreen', () => {
     }
   });
 
-  it('바꿀 수 없는 조건을 먼저 보이고, 발행은 사유와 함께 잠겨 있다', () => {
+  it('긴급 발행 조건을 먼저 보이고, 품목을 고르기 전에는 발행이 잠겨 있다', () => {
     renderScreen();
 
     expect(screen.getByRole('region', { name: t.fixedTerms.title })).toBeInTheDocument();
 
-    const action = screen.getByRole('button', { name: t.action });
-    expect(action).toBeDisabled();
-    /* ⛔ 잠긴 이유를 감추지 않고, 버튼에 «묶어» 낸다. */
-    expect(action).toHaveAccessibleDescription(t.lock.itemNotChosen);
+    expect(screen.getByRole('button', { name: t.action })).toBeDisabled();
+    /* 무엇이 없어서 잠겼는지는 빈 품목 칸이 말한다 — 화면 아래에서 되풀이하지 않는다. */
+    expect(screen.getByLabelText(t.itemPicker.label)).toHaveValue('');
     /* 배포 재시도는 낼 것이 있을 때만 나온다. */
     expect(screen.queryByRole('button', { name: t.outcome.retryRelease })).not.toBeInTheDocument();
   });
@@ -350,10 +373,15 @@ describe('EmergencyWorkOrderScreen', () => {
     expect(screen.getByRole('button', { name: t.action })).toBeDisabled();
   });
 
-  it('⛔ 잠금 사유를 한 곳에서만 말한다 — 두 곳이면 갈라진다', () => {
-    renderScreen();
+  /* 사유를 내는 자리는 한 곳뿐이다 — 두 곳이면 한쪽만 고쳐질 때 화면이 스스로와 어긋난다. */
+  it('⛔ 잠금 사유를 한 곳에서만 말한다 — 두 곳이면 갈라진다', async () => {
+    const { user } = renderScreen({ boms: [] });
 
-    expect(screen.getAllByText(t.lock.itemNotChosen)).toHaveLength(1);
+    await fillForm(user);
+
+    await waitFor(() => {
+      expect(screen.getAllByText(t.lock.blocked.bomMissing)).toHaveLength(1);
+    });
   });
 
   /*
@@ -400,7 +428,8 @@ describe('EmergencyWorkOrderScreen', () => {
     it('⚠ 밀린 것이 없으면 구획이 서지 않는다', async () => {
       renderScreen();
 
-      await screen.findByRole('button', { name: t.itemPicker.search });
+      /* 품목 칸은 늘 서 있다 — 그것으로 첫 렌더를 기다린다. */
+      await screen.findByLabelText(t.itemPicker.label);
       expect(screen.queryByRole('region', { name: t.handover.title })).not.toBeInTheDocument();
     });
 

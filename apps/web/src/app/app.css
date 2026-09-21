@@ -1993,23 +1993,33 @@ main > * + * {
 .emergency-work-order-inputs {
   display: grid;
   align-content: start;
-  gap: var(--space-5);
+  gap: var(--space-4);
   min-width: 0;
 }
 
 .emergency-work-order-composer {
   display: grid;
-  grid-template-columns: minmax(24rem, 2fr) minmax(0, 3fr);
-  gap: var(--space-5);
-  align-items: start;
+  /* 왼쪽 42% · 오른쪽 58% — 전개 결과(BOM·Routing 표)가 서는 쪽을 넓게 둔다. */
+  grid-template-columns: minmax(22rem, 42fr) minmax(0, 58fr);
+  gap: var(--space-4);
+  /*
+   * ⭐ **자동 전개 상자를 왼쪽 두 상자 높이에 맞춘다.** 짧게 서면 오른쪽 아래가 크게 비어
+   * 화면이 한쪽으로 쏠린다. `start` 로 두면 내용만큼만 서므로 늘려 준다.
+   */
+  align-items: stretch;
   min-width: 0;
+}
+
+/* 발행 준비는 늘릴 것이 없다 — 한 줄짜리 자리라 제 높이를 지킨다. */
+.emergency-work-order-composer > .emergency-work-order-action-pane {
+  align-self: start;
 }
 
 .emergency-work-order-pane {
   display: grid;
   align-content: start;
-  gap: var(--space-4);
-  padding: var(--space-5);
+  gap: var(--space-3);
+  padding: var(--space-4);
 }
 
 .emergency-work-order-pane > .pane-title {
@@ -2023,37 +2033,101 @@ main > * + * {
   margin-bottom: 0;
 }
 
-.emergency-work-order-lead,
+/*
+ * 한 줄짜리 안내의 아이콘과 글자를 같은 줄에 세운다 — **임시 우회**.
+ * DS 배너는 여러 줄을 전제로 아이콘을 위에 붙이고(`align-items: flex-start` + 아이콘
+ * `margin-top`) 한 줄일 때는 아이콘만 아래로 처져 보인다. 이 화면의 배너는 전부 한 줄이다.
+ */
+.emergency-work-order-pane > .banner-slot > *,
+.emergency-work-order-workspace > .banner-slot > * {
+  align-items: center;
+}
+
+.emergency-work-order-pane > .banner-slot > * > [aria-hidden='true'],
+.emergency-work-order-workspace > .banner-slot > * > [aria-hidden='true'] {
+  margin-top: 0;
+}
+
 .emergency-work-order-pane > p,
 .emergency-work-order-action-row > p {
   margin: 0;
   color: var(--on-surface-variant);
 }
 
+/* 읽는 값 넷 — 2열로 접어 두고 라벨·값을 한 줄에 붙인다. 손댈 것이 없는 구획이라 자리를 적게 쓴다. */
 .emergency-work-order-terms {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: var(--space-3);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-2) var(--space-3);
   margin: 0;
 }
 
 .emergency-work-order-term {
+  display: grid;
+  grid-template-columns: 6.5rem minmax(0, 1fr);
+  column-gap: var(--space-3);
+  align-items: baseline;
   min-width: 0;
-  padding: var(--space-4);
+  padding: var(--space-2) var(--space-3);
   border: 1px solid var(--outline-variant);
   border-radius: var(--radius-md);
+}
+
+.emergency-work-order-term > dt {
+  color: var(--on-surface-variant);
+}
+
+/*
+ * 필수인데 아직 비어 있는 칸 — 테두리로 알린다(사용자 결정 2026-09-21).
+ *
+ * ⚠ **임시 우회.** DS 입력칸의 테두리는 안쪽 그림자로 그려지고 그 자리를 여는 속성이 없어,
+ * 칸 껍데기(`containerClassName`)를 걸고 그 «안의 상자»에 같은 모양으로 덮어쓴다. DS 가 이
+ * 상태를 받게 되면 이 규칙을 지운다.
+ */
+.emergency-work-order-required-empty > div:has(input),
+.emergency-work-order-required-empty > div:has(textarea) {
+  /* DS 가 잘못된 값에 쓰는 것과 같은 붉은색(`--semantic-error`)이다 — 라벨 별표의 연한
+     `--semantic-error-text` 보다 진해서 테두리로 봐야 눈에 든다. */
+  box-shadow: inset 0 0 0 1px var(--semantic-error);
+}
+
+/* 사유 칸의 라벨 줄 — DS 라벨과 같은 간격으로 별표를 붙인다. */
+.emergency-work-order-reason-label {
+  display: block;
+  margin-bottom: var(--space-1);
+}
+
+/* 필수 구획임을 라벨 옆 별표로 알린다 — DS 입력칸의 별표와 같은 색이다. */
+.emergency-work-order-pane .required-mark {
+  margin-left: var(--space-1);
+  color: var(--semantic-error-text);
+}
+
+/* 갈 곳이 있는 항목은 **값과 같은 줄 오른쪽**에 이동 단추를 세운다. */
+.emergency-work-order-term:has(.emergency-work-order-term-link) {
+  grid-template-columns: 6.5rem minmax(0, 1fr) auto;
+}
+
+.emergency-work-order-term-link {
+  align-self: center;
+  justify-self: end;
+  margin-left: var(--space-3);
 }
 
 .emergency-work-order-term > dd,
 .emergency-work-order-expansion-field > dd {
   display: grid;
-  gap: var(--space-2);
+  gap: var(--space-1);
   margin: 0;
   overflow-wrap: anywhere;
 }
 
-.emergency-work-order-term > dd > strong,
-.emergency-work-order-selected-item strong,
+.emergency-work-order-term > dd > strong {
+  color: var(--on-surface);
+  font: var(--type-body-lg);
+  letter-spacing: var(--type-body-lg-tracking);
+}
+
 .emergency-work-order-form-item > strong {
   color: var(--on-surface);
   font: var(--type-title-md);
@@ -2067,43 +2141,36 @@ main > * + * {
   letter-spacing: var(--type-body-sm-tracking);
 }
 
-.emergency-work-order-search-row {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: var(--space-3);
-  align-items: end;
-  min-width: 0;
+@media (max-width: 960px) {
+  .emergency-work-order-terms {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 
-.emergency-work-order-selected-item {
+/* 아직 안 고른 상태의 「—」는 값이 아니라 빈 자리다. */
+.emergency-work-order-form-item[data-empty='true'] > strong {
+  color: var(--on-surface-variant);
+}
+
+.emergency-work-order-uom {
+  color: var(--on-surface-variant);
+  font: var(--type-body-sm);
+  letter-spacing: var(--type-body-sm-tracking);
+  white-space: nowrap;
+}
+
+/* 발행 정보 머리 — 제목 왼쪽, 발행 단추 오른쪽. */
+.emergency-work-order-form-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: var(--space-3);
-  min-width: 0;
-  padding: var(--space-3) var(--space-4);
-  border: 1px solid var(--outline-variant);
-  border-radius: var(--radius-md);
-}
-
-.emergency-work-order-search-results {
-  display: grid;
-  gap: var(--space-1);
-  max-height: 16rem;
-  margin: 0;
-  padding: 0;
-  overflow-y: auto;
-  list-style: none;
-}
-
-.emergency-work-order-search-results > li {
-  min-width: 0;
 }
 
 .emergency-work-order-form-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--space-4);
+  gap: var(--space-3);
   align-items: start;
   min-width: 0;
 }
@@ -2118,9 +2185,14 @@ main > * + * {
 }
 
 .emergency-work-order-form-item {
-  padding: var(--space-3) var(--space-4);
+  padding: var(--space-2) var(--space-3);
   border: 1px solid var(--outline-variant);
   border-radius: var(--radius-md);
+}
+
+.emergency-work-order-form-reason {
+  display: grid;
+  gap: var(--space-2);
 }
 
 .emergency-work-order-expansion-summary {
@@ -2137,13 +2209,20 @@ main > * + * {
   border-radius: var(--radius-md);
 }
 
+/*
+ * 빈 상태 — **테두리를 두르지 않는다.** 구획이 이미 상자라, 그 안에 점선 상자를 또 그리면
+ * 빈 자리가 두 겹으로 강조된다.
+ *
+ * ⭐ **글자는 구획 위쪽에 둔다**(사용자 결정 2026-09-21). 상자가 왼쪽 두 상자 높이만큼
+ * 늘어나 있어 세로 한가운데에 놓으면 제목에서 멀찍이 떨어져 딴 자리처럼 읽힌다. 가로만
+ * 가운데다 — 결과가 서면 그 자리를 표가 이어받는다.
+ */
 .emergency-work-order-empty {
   display: grid;
-  min-height: 8rem;
-  place-items: center;
-  padding: var(--space-5);
-  border: 1px dashed var(--outline-variant);
-  border-radius: var(--radius-md);
+  justify-items: center;
+  align-content: start;
+  min-height: 4.5rem;
+  padding: var(--space-2) var(--space-4) var(--space-4);
   text-align: center;
 }
 
@@ -2154,7 +2233,29 @@ main > * + * {
 }
 
 .emergency-work-order-table table {
-  min-width: 38rem;
+  min-width: 0;
+}
+
+/* 표가 구획 테두리에 붙지 않게 양끝을 띄운다 — 첫 열 왼쪽, 끝 열 오른쪽. */
+.emergency-work-order-table th:first-child,
+.emergency-work-order-table td:first-child {
+  padding-left: var(--space-4);
+}
+
+.emergency-work-order-table th:last-child,
+.emergency-work-order-table td:last-child {
+  padding-right: var(--space-4);
+}
+
+/* 순서·수량은 숫자 몇 자리라 좁게 잡고, 남는 자리는 공정 이름이 쓴다. */
+.emergency-work-order-table th:first-child,
+.emergency-work-order-table td:first-child {
+  width: 5rem;
+}
+
+.emergency-work-order-table th:last-child,
+.emergency-work-order-table td:last-child {
+  width: 8rem;
 }
 
 .emergency-work-order-table caption {
@@ -2169,8 +2270,28 @@ main > * + * {
   border: 0;
 }
 
+/*
+ * 발행 준비 — **상자를 두르지 않는다.** 안에 든 것이 단추 하나와 막힌 사유 한 줄뿐이라,
+ * 테두리를 치면 빈 상자가 화면 아래를 가로지른다. 구획 제목은 화면 낭독기용으로 남긴다.
+ */
 .emergency-work-order-composer > .emergency-work-order-action-pane {
   grid-column: 1 / -1;
+  padding: 0;
+  background: none;
+  border: 0;
+  box-shadow: none;
+}
+
+.emergency-work-order-action-pane > .pane-title {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
 }
 
 .emergency-work-order-action-row {
@@ -2215,7 +2336,6 @@ main > * + * {
     grid-column: auto;
   }
 
-  .emergency-work-order-selected-item,
   .emergency-work-order-action-row {
     align-items: stretch;
     flex-direction: column;

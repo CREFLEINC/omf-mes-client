@@ -2,58 +2,17 @@ import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
 import { runRequest } from '../../patterns/request';
-import type {
-  BomListResponse,
-  ItemListResponse,
-  RoutingListResponse,
-  RoutingOperationListResponse,
-} from './types';
+import type { BomListResponse, RoutingListResponse, RoutingOperationListResponse } from './types';
 
 /** 이 화면이 소유하는 캐시 키. 다른 화면 슬라이스의 키 모듈을 참조하지 않는다. */
 export const emergencyWorkOrderKeys = {
   all: ['emergency-work-order'] as const,
-  itemSearch: (keyword: string) => ['emergency-work-order', 'item-search', keyword] as const,
   boms: (itemId: number | null) => ['emergency-work-order', 'boms', itemId] as const,
   routings: (itemId: number | null) => ['emergency-work-order', 'routings', itemId] as const,
   routingOperations: (routingId: number | null) =>
     ['emergency-work-order', 'routing-operations', routingId] as const,
   /** 배포가 끝나지 않은 긴급 W/O. 조건이 고정이라 키에 담을 것이 없다. */
   unreleased: () => ['emergency-work-order', 'unreleased'] as const,
-};
-
-/**
- * 검색 한 번에 받아 둘 최대 건수.
- *
- * ⚠ **잘렸다는 사실을 화면이 말해야 한다.** 응답의 전체 건수가 이 수보다 크면 사용자가 보는
- * 목록은 답의 일부인데, 말하지 않으면 **「찾는 품목이 없다」로 읽는다.** 그 안내를 붙이는
- * 것은 이 목록을 그리는 자리의 몫이고 여기서는 건수만 정한다.
- */
-export const ITEM_SEARCH_SIZE = 20;
-
-/**
- * 품목 검색.
- *
- * ⛔ **`hasRouting`으로 미리 거르지 않는다.** 계약에 그 조건이 있어 Routing 없는 품목을
- * 목록에서 지울 수 있지만, 지우면 **찾던 품목이 아예 안 나온다.** 사용자는 「없는 품목」과
- * 「Routing 이 없어 발행할 수 없는 품목」을 구분할 수 없게 된다. 감추지 않고 **고르게 한 뒤
- * 사유와 함께 막는다**(G-1·G-2).
- *
- * 검색어가 비면 조회하지 않는다 — 전 품목을 받아 오는 것은 이 화면의 일이 아니다.
- */
-export const useItemSearch = (keyword: string): UseQueryResult<ItemListResponse> => {
-  const { client } = useApiClient();
-  const trimmed = keyword.trim();
-
-  return useQuery({
-    queryKey: emergencyWorkOrderKeys.itemSearch(trimmed),
-    enabled: trimmed !== '',
-    queryFn: () =>
-      runRequest(() =>
-        client.GET('/mdm/items', {
-          params: { query: { q: trimmed, size: ITEM_SEARCH_SIZE } },
-        }),
-      ),
-  });
 };
 
 /**

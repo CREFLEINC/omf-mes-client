@@ -8,6 +8,11 @@ export interface ExpansionPaneProps {
   state: ExpansionState;
   /** 지시 수량. 공정마다 같은 수량이 걸린다 — 전개는 나누지 않는다. */
   orderQtyText: string;
+  /**
+   * 고른 품목의 기준 단위. **모르면 빈 문자열**이다 — 그때는 숫자만 적는다(사용자 결정
+   * 2026-09-21). 「단위 확인 중」 같은 시스템 사정을 표 칸에 넣지 않는다.
+   */
+  uomLabel: string;
   onSelectRouting: (routingId: number) => void;
   selectedRoutingId: number | null;
 }
@@ -24,15 +29,27 @@ export interface ExpansionPaneProps {
 export const ExpansionPane = ({
   state,
   orderQtyText,
+  uomLabel,
   onSelectRouting,
   selectedRoutingId,
 }: ExpansionPaneProps) => {
   const t = messages.emergencyWorkOrder.expansion;
 
+  /* 세 열 모두 가운데 정렬이다(사용자 결정 2026-09-21) — 값이 짧아 끝에 붙으면 흩어져 보인다. */
   const columns: Column<RoutingOperation>[] = [
-    { key: 'seq', header: t.columns.seq, render: (row) => row.operationSeq },
-    { key: 'operation', header: t.columns.operation, render: (row) => row.operationName },
-    { key: 'qty', header: t.columns.qty, align: 'end', render: () => orderQtyText },
+    { key: 'seq', header: t.columns.seq, align: 'center', render: (row) => row.operationSeq },
+    {
+      key: 'operation',
+      header: t.columns.operation,
+      align: 'center',
+      render: (row) => row.operationName,
+    },
+    {
+      key: 'qty',
+      header: t.columns.qty,
+      align: 'center',
+      render: () => (uomLabel === '' ? orderQtyText : `${orderQtyText} ${uomLabel}`),
+    },
   ];
 
   return (

@@ -42,9 +42,11 @@ export const itemPicker: Translated<typeof ko.itemPicker> = {
     next: 'Sau',
   },
 
+  /** 아직 아무것도 고르지 않았을 때. `compact` 창은 두지 않는다. */
+  needsSelection: 'Chọn mặt hàng thì bấm được.',
+
   selectedCount: (count: number): string => `Đã chọn ${String(count)}`,
   cancel: 'Hủy',
   add: 'Thêm dòng',
   replace: 'Đổi',
-  needsSelection: 'Chọn mặt hàng thì bấm được.',
 };

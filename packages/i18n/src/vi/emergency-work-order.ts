@@ -18,34 +18,33 @@ export const emergencyWorkOrder: Translated<typeof ko.emergencyWorkOrder> = {
   title: 'Phát hành W/O khẩn',
   breadcrumbRoot: 'Thực thi sản xuất',
 
-  /** 「바꿀 수 없는 것」 구획 — 값이 보여야 고정이 고정으로 읽힌다. */
+  /** 긴급 발행 조건 구획 — 값이 보여야 고정이 고정으로 읽힌다. */
   fixedTerms: {
-    title: 'Điều kiện không thay đổi được',
-    lead: 'Phát hành khẩn có bốn điều sau đã định sẵn. Không đổi được ở màn hình.',
+    title: 'Điều kiện phát hành khẩn',
 
     type: {
       label: 'Loại',
       value: 'Khẩn',
-      note: 'Đây là màn hình chuyên cho phát hành khẩn nên không chọn loại được.',
     },
     approval: {
       label: 'Phê duyệt',
       value: 'Không có',
-      note: 'Phát hành thẳng, không qua thủ tục phê duyệt riêng.',
     },
     materialRequest: {
       label: 'Yêu cầu xuất kho vật tư',
       value: 'Không tự phát hành',
-      note: 'Không tự động phát hành yêu cầu xuất kho vật tư (chốt ngày 2026-07-14 #4·#5·#7·#8). Phần thiếu hãy đi qua đường chính thức là «Yêu cầu xuất kho vật tư bổ sung».',
+      note: 'Vật tư cần thiết hãy yêu cầu ở «Yêu cầu xuất kho vật tư bổ sung».',
     },
     resource: {
       label: 'Phân bổ nguồn lực',
       value: 'Không có',
-      note: 'Phát hành mà không phân bổ thiết bị · khuôn · ca · dòng · người phụ trách. Việc phân bổ do hiện trường quyết định.',
+      note: 'Nguồn lực do hiện trường phân bổ.',
     },
 
-    internalOrder:
-      'Khi phát hành sẽ sinh kèm một số quản lý nội bộ. Số này không thuộc về P/O của ERP.',
+    /** 갈 곳이 있는 항목의 이동 단추. 나머지 셋에는 갈 곳이 없어 두지 않는다. */
+    materialRequestLink: 'Đi tới màn hình yêu cầu xuất kho',
+
+    internalOrder: 'W/O khẩn không gắn với P/O của ERP và được phát hành bằng số quản lý riêng.',
   },
 
   /** 발행 정보 입력. 고정된 넷은 여기 없다. */
@@ -54,24 +53,19 @@ export const emergencyWorkOrder: Translated<typeof ko.emergencyWorkOrder> = {
     item: 'Mặt hàng',
     orderQty: 'Số lượng',
     plannedEnd: 'Ngày giao',
-    reason: 'Lý do',
+    reason: 'Lý do phát hành',
 
-    itemRequired: 'Mặt hàng: Hãy chọn mặt hàng cần phát hành.',
-    qtyRequired: 'Số lượng: Hãy nhập số lượng lệnh.',
-    qtyNotNumber: 'Số lượng: Hãy nhập bằng số.',
-    qtyTooLong:
-      'Số lượng: Quá nhiều chữ số. Chỉ nhập được tối đa 12 chữ số phần nguyên và 6 chữ số thập phân.',
-    qtyNotPositive: 'Số lượng: Hãy nhập số lớn hơn 0.',
-    dueInvalid: 'Ngày giao: Ngày này không có trên lịch. Hãy chọn lại.',
+    itemRequired: 'Hãy chọn mặt hàng trước.',
+    qtyRequired: 'Hãy nhập số lượng.',
+    qtyNotNumber: 'Số lượng phải nhập bằng số.',
+    qtyTooLong: 'Số lượng chỉ nhập được tối đa 12 chữ số phần nguyên và 6 chữ số thập phân.',
+    qtyNotPositive: 'Số lượng phải lớn hơn 0.',
+    dueInvalid: 'Ngày này không có trên lịch. Hãy chọn lại.',
 
-    reasonRequired: 'Lý do: Hãy nhập lý do phát hành.',
-    reasonHelp:
-      'Vì không có thủ tục phê duyệt nên lý do là ghi chép duy nhất. Hãy viết điều mà sau này người ta sẽ dựa vào để phán đoán.',
+    reasonRequired: 'Hãy nhập lý do phát hành.',
+    reasonPlaceholder: 'Hãy nhập lý do phát hành khẩn',
 
-    /** 물러난 수준을 밝힌다 — 사유별로 모아 세는 기능이 없다는 사실을 미리 적는다. */
-    reasonScope: 'Lý do được lưu dưới dạng ghi chú. Không có chức năng gom đếm theo từng lý do.',
-
-    dueHelp: 'Có thể để trống.',
+    optional: 'tùy chọn',
   },
 
   /** ⛔ 숫자 식별자로 메우지 않는다 — 모르면 모른다고 적는다. */
@@ -95,7 +89,7 @@ export const emergencyWorkOrder: Translated<typeof ko.emergencyWorkOrder> = {
       qty: 'Số lượng',
     },
 
-    selectItem: 'Chọn mặt hàng thì BOM và Routing sẽ tự mở ra.',
+    selectItem: 'Chọn mặt hàng thì hệ thống sẽ tải thông tin BOM và Routing.',
     loading: 'Đang nhận phần triển khai.',
     loadError: 'Chưa nhận được phần triển khai. Hãy thử lại sau giây lát.',
 
@@ -158,18 +152,12 @@ export const emergencyWorkOrder: Translated<typeof ko.emergencyWorkOrder> = {
   itemPicker: {
     title: 'Chọn mặt hàng',
     label: 'Tìm mặt hàng',
-    placeholder: 'Mã mặt hàng hoặc tên mặt hàng',
-    search: 'Tìm',
-    searching: 'Đang tìm.',
-    empty: 'Không tìm thấy mặt hàng nào. Hãy tìm bằng từ khác.',
-    error: 'Không tìm được mặt hàng. Hãy thử lại sau giây lát.',
-    select: (itemCode: string) => `Chọn ${itemCode}`,
-    selected: 'Mặt hàng đã chọn',
+    placeholder: 'Hãy chọn mặt hàng',
     clear: 'Xóa mặt hàng đã chọn',
-
-    /** ⛔ 목록에 없는 것과 목록이 잘린 것은 다른 사실이다. */
-    truncated: (shown: number) =>
-      `Chỉ thấy ${String(shown)} mục đầu. Không có mặt hàng cần tìm thì hãy thu hẹp từ khóa.`,
+    /** 0건일 때 — 감춘다는 사실을 말한다(omf-all-around#43). */
+    empty: 'Không tìm thấy mặt hàng nào. Chỉ hiển thị mặt hàng có thể sản xuất (có Routing).',
+    /** 공용 품목 창의 확인 단추 이름 — 이 화면에서는 「추가」가 아니라 «고르기»다. */
+    confirm: 'Chọn',
   },
 
   outcome: {
@@ -184,31 +172,30 @@ export const emergencyWorkOrder: Translated<typeof ko.emergencyWorkOrder> = {
 
   /** 비활성 사유는 전부 컨트롤 이름으로 시작하고, 무엇이 갖춰지면 열리는지를 함께 적는다. */
   lock: {
-    issuing: 'Phát hành · phát đi: Đang gửi.',
+    issuing: 'Đang gửi.',
 
     notSent: (workOrderNo: string) =>
-      `Phát hành · phát đi: ${workOrderNo} đã được tạo nhưng chưa được phát đi. Hãy thử phát đi lại. Phát hành mới sẽ thành hai lệnh giống nhau.`,
+      `${workOrderNo} đã được tạo nhưng chưa được phát đi. Hãy thử phát đi lại. Phát hành mới sẽ thành hai lệnh giống nhau.`,
     releaseUnknown: (workOrderNo: string) =>
-      `Phát hành · phát đi: ${workOrderNo} đã được tạo. Chưa xác nhận được đã phát đi hay chưa. Thử lại cũng không bị phát đi hai lần.`,
+      `${workOrderNo} đã được tạo. Chưa xác nhận được đã phát đi hay chưa. Thử lại cũng không bị phát đi hai lần.`,
 
     uncertain:
-      'Phát hành · phát đi: Đã gửi nhưng chưa xác nhận được đã xử lý hay chưa. Hãy kiểm tra kết quả rồi thử lại.',
+      'Đã gửi nhưng chưa xác nhận được đã xử lý hay chưa. Hãy kiểm tra kết quả rồi thử lại.',
 
-    forbidden:
-      'Phát hành · phát đi: Tài khoản này không có quyền phát hành khẩn. Hãy đề nghị người phụ trách quyền.',
+    forbidden: 'Tài khoản này không có quyền phát hành khẩn. Hãy đề nghị người phụ trách quyền.',
 
     /** ⚠ 정상 화면에서는 나올 수 없는 말이다 — 「기다리세요」가 아니라 알릴 상대를 적는다. */
     typeCodeUnknown:
-      'Phát hành · phát đi: Giá trị loại khẩn chưa được đặt trên màn hình nên không phát hành được. Gửi như vậy sẽ tạo ra lệnh sản xuất hàng loạt. Hãy báo cho người phụ trách.',
+      'Giá trị loại khẩn chưa được đặt trên màn hình nên không phát hành được. Gửi như vậy sẽ tạo ra lệnh sản xuất hàng loạt. Hãy báo cho người phụ trách.',
 
     notOpenYet:
-      'Phát hành · phát đi: Phát hành khẩn hiện chưa dùng được. Khi chuẩn bị xong sẽ có thông báo. Lệnh gấp xin tạo ở màn hình «Triển khai · lập W/O».',
+      'Phát hành khẩn hiện chưa dùng được. Khi chuẩn bị xong sẽ có thông báo. Lệnh gấp xin tạo ở màn hình «Triển khai · lập W/O».',
 
-    itemNotChosen: 'Phát hành · phát đi: Hãy chọn mặt hàng cần phát hành trước.',
-    expansionLoading: 'Phát hành · phát đi: Đang nhận BOM · Routing.',
-    expansionError: 'Phát hành · phát đi: Chưa nhận được BOM · Routing. Hãy thử lại.',
-    revisionNotChosen: 'Phát hành · phát đi: Hãy chọn phát hành theo bản sửa đổi Routing nào.',
-    inputIncomplete: 'Phát hành · phát đi: Hãy điền mặt hàng · số lượng · lý do.',
+    itemNotChosen: 'Hãy chọn mặt hàng trước.',
+    expansionLoading: 'Đang nhận BOM · Routing.',
+    expansionError: 'Chưa nhận được BOM · Routing. Hãy thử lại.',
+    revisionNotChosen: 'Hãy chọn phát hành theo bản sửa đổi Routing nào.',
+    inputIncomplete: 'Hãy điền mặt hàng · số lượng · lý do.',
 
     /**
      * ⚠ **「없다」가 아니라 「지금 쓸 수 있는 것이 없다」로 적는다.** 「없습니다」로 읽으면
@@ -216,13 +203,13 @@ export const emergencyWorkOrder: Translated<typeof ko.emergencyWorkOrder> = {
      */
     blocked: {
       bomMissing:
-        'Phát hành · phát đi: Mặt hàng này hiện không có BOM nào dùng được. Dù đã đăng ký nhưng nếu bị hủy hoặc chưa chốt thì cũng không dùng được — hãy xem ở dữ liệu gốc.',
+        'Mặt hàng này hiện không có BOM nào dùng được. Dù đã đăng ký nhưng nếu bị hủy hoặc chưa chốt thì cũng không dùng được — hãy xem ở dữ liệu gốc.',
       routingMissing:
-        'Phát hành · phát đi: Mặt hàng này hiện không có bản sửa đổi Routing nào dùng được. Dù đã đăng ký nhưng nếu bị hủy hoặc chưa chốt thì cũng không dùng được — hãy xem ở dữ liệu gốc.',
+        'Mặt hàng này hiện không có bản sửa đổi Routing nào dùng được. Dù đã đăng ký nhưng nếu bị hủy hoặc chưa chốt thì cũng không dùng được — hãy xem ở dữ liệu gốc.',
       bothMissing:
-        'Phát hành · phát đi: Mặt hàng này hiện không có cả BOM lẫn bản sửa đổi Routing nào dùng được. Dù đã đăng ký nhưng nếu bị hủy hoặc chưa chốt thì cũng không dùng được — hãy xem ở dữ liệu gốc.',
+        'Mặt hàng này hiện không có cả BOM lẫn bản sửa đổi Routing nào dùng được. Dù đã đăng ký nhưng nếu bị hủy hoặc chưa chốt thì cũng không dùng được — hãy xem ở dữ liệu gốc.',
       operationsMissing:
-        'Phát hành · phát đi: Bản sửa đổi Routing đã chọn không có công đoạn nào. Hãy chọn bản sửa đổi có công đoạn hoặc đăng ký công đoạn ở dữ liệu gốc.',
+        'Bản sửa đổi Routing đã chọn không có công đoạn nào. Hãy chọn bản sửa đổi có công đoạn hoặc đăng ký công đoạn ở dữ liệu gốc.',
     },
   },
 };

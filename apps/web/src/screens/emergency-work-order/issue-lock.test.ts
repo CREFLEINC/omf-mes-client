@@ -331,7 +331,12 @@ describe('toIssueLock', () => {
     });
   });
 
-  it('⛔ 모든 사유가 컨트롤 이름으로 시작한다 — 끊겨 보여도 무엇이 막혔는지 안다', () => {
+  /*
+   * ⛔ **사유에 단추 이름을 되풀이하지 않는다**(사용자 결정 2026-09-21). 사유는 그 단추
+   * 바로 옆에 서므로 「발행·배포:」를 앞에 붙이면 한 화면에서 같은 말을 두 번 읽는다.
+   * 대신 **사유마다 할 일이나 사실이 첫 마디에 오는지**를 잰다 — 비어 있지 않고 문장이다.
+   */
+  it('사유가 단추 이름을 되풀이하지 않는다', () => {
     const reasons = [
       t.issuing,
       t.uncertain,
@@ -348,7 +353,11 @@ describe('toIssueLock', () => {
     ];
 
     for (const reason of reasons) {
-      expect(reason.startsWith(`${messages.emergencyWorkOrder.action}:`)).toBe(true);
+      expect(reason).not.toContain(`${messages.emergencyWorkOrder.action}:`);
+      /* 사유는 문장이다 — 낱말만 던지면 무엇이 막혔는지도, 무엇을 하면 되는지도 알 수 없다. */
+      expect(reason.trim()).toMatch(/[.!?]$/);
     }
+    /* 사유끼리 겹치지 않는다 — 같은 문장이 둘이면 어느 쪽에 걸렸는지 가릴 수 없다. */
+    expect(new Set(reasons).size).toBe(reasons.length);
   });
 });

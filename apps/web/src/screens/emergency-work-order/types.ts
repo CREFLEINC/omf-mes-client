@@ -29,10 +29,3 @@ export interface SelectedItem {
   itemName: string;
   baseUomId: number;
 }
-
-export const toSelectedItem = (item: Item): SelectedItem => ({
-  itemId: item.itemId,
-  itemCode: item.itemCode,
-  itemName: item.itemName,
-  baseUomId: item.baseUomId,
-});

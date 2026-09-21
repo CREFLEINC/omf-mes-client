@@ -72,6 +72,27 @@ export interface ItemPickerDialogProps {
   showAvailability?: boolean;
   /** 확인 단추 이름. 비우면 종전대로 「추가」/「교체」. */
   confirmLabel?: string;
+  /**
+   * Routing 이 있는 품목만 낸다. 만들 수 없는 품목을 고르면 그 뒤에 막히는 화면이 켠다
+   * (omf-all-around#43 · 긴급 W/O 발행). 기본 false — 다른 창의 후보는 좁히지 않는다.
+   */
+  hasRouting?: boolean;
+  /**
+   * 표를 가운데로 세우고, 오른쪽 위 × 와 꼬리말 건수를 뺀 «정돈된» 모양으로 연다.
+   *
+   * ⭐ **부르는 쪽이 켠다**(사용자 결정 2026-09-21 · 긴급 W/O 발행에서만). 이 창은 네 화면이
+   * 나눠 쓰므로(IQC 수입검사 · Lot Status 이력 · 출하 요청 생성 · 긴급 W/O 발행), 한 화면의
+   * 보기 규칙을 전 화면에 밀면 감지기 없는 자리에서 조용히 바뀐다. 기본은 꺼짐 — 나머지
+   * 화면은 종전 모양 그대로다.
+   */
+  compact?: boolean;
+  /**
+   * 결과가 0건일 때의 문구. 비우면 공용 문구(`t.noResult`)다.
+   *
+   * ⭐ **후보를 좁힌 창은 그 사실을 여기서 말해야 한다.** 좁혀 놓고 「코드나 이름의 일부로 다시
+   * 찾아보세요」라고만 하면, 있는 품목을 없다고 읽고 검색어만 바꾸게 된다(omf-all-around#43).
+   */
+  emptyText?: string;
 }
 
 const describeAvailability = (state: AvailabilityState): string => {
@@ -94,6 +115,9 @@ export const ItemPickerDialog = ({
   includeInactive = false,
   showAvailability = true,
   confirmLabel,
+  hasRouting = false,
+  compact = false,
+  emptyText,
 }: ItemPickerDialogProps) => {
   const keywordId = useId();
   const typeId = useId();
@@ -107,7 +131,7 @@ export const ItemPickerDialog = ({
   const [picked, setPicked] = useState<ItemRow[]>([]);
 
   const types = useItemTypeOptions(true);
-  const search = useItemSearch(submitted, itemTypeCode, page, includeInactive);
+  const search = useItemSearch(submitted, itemTypeCode, page, includeInactive, hasRouting);
   const rows = search.data?.rows ?? [];
   const total = search.data?.total ?? 0;
   const availabilityOf = useItemAvailability(showAvailability ? rows.map((row) => row.itemId) : []);
@@ -149,10 +173,18 @@ export const ItemPickerDialog = ({
         />
       ),
     },
-    { key: 'itemCode', header: t.columns.itemCode, width: '160px', render: (row) => row.itemCode },
+    /* ⭐ `compact` 인 창만 가운데 정렬이다 — 코드·유형이 짧아 왼쪽에 붙으면 열이 흩어져 보인다. */
+    {
+      key: 'itemCode',
+      header: t.columns.itemCode,
+      ...(compact ? { align: 'center' as const } : {}),
+      width: '160px',
+      render: (row) => row.itemCode,
+    },
     {
       key: 'itemName',
       header: t.columns.itemName,
+      ...(compact ? { align: 'center' as const } : {}),
       render: (row) => (
         <span>
           {row.itemName}
@@ -165,6 +197,7 @@ export const ItemPickerDialog = ({
     {
       key: 'itemTypeCode',
       header: t.columns.itemType,
+      ...(compact ? { align: 'center' as const } : {}),
       width: '128px',
       /* 서버가 준 코드 그대로다 — 이름은 유형 목록이 갖고, 없으면 지어내지 않는다. */
       render: (row) =>
@@ -176,6 +209,7 @@ export const ItemPickerDialog = ({
           {
             key: 'availableQty',
             header: t.columns.availableQty,
+            /* 숫자 열은 오른쪽이다 — 자릿수가 맞아야 크기를 눈으로 견준다. */
             align: 'end' as const,
             width: '112px',
             render: (row: ItemRow) => describeAvailability(availabilityOf(row.itemId)),
@@ -198,13 +232,25 @@ export const ItemPickerDialog = ({
        */
       size="lg"
       closeOnBackdropClick={false}
+      /* `compact` 창은 닫는 길이 꼬리말의 「취소」 하나다 — 같은 일을 하는 단추를 위아래에 두지 않는다. */
+      showCloseButton={!compact}
       title={t.title}
       onClose={onClose}
       footer={
         <>
-          <span className="field-note">
-            {picked.length === 0 ? t.needsSelection : t.selectedCount(picked.length)}
-          </span>
+          {/*
+           * ⭐ **꼬리말은 `compact` 창에서만 걷는다**(사용자 결정 2026-09-21). 그 창에서는
+           * 「1개 선택」도 「고르면 누를 수 있습니다」도 표의 체크와 잠긴 단추가 이미 말한다.
+           * ⛔ 나머지 창은 **종전 그대로** — 0건이면 안내를, 고른 뒤에는 건수를 낸다.
+           */}
+          {!compact && (
+            <span className="field-note">
+              {picked.length === 0 ? t.needsSelection : t.selectedCount(picked.length)}
+            </span>
+          )}
+          {compact && multiple && picked.length > 0 && (
+            <span className="field-note">{t.selectedCount(picked.length)}</span>
+          )}
           <Button variant="outlined" onClick={onClose}>
             {t.cancel}
           </Button>
@@ -284,7 +330,7 @@ export const ItemPickerDialog = ({
             columns={columns}
             rows={rows}
             getRowId={(row) => String(row.itemId)}
-            empty={search.isPending ? t.searching : search.isError ? '' : t.noResult}
+            empty={search.isPending ? t.searching : search.isError ? '' : (emptyText ?? t.noResult)}
           />
         </div>
 
