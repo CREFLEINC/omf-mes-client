@@ -24,13 +24,38 @@ export const normalizeScanCode = (raw: string): string | null => {
   return trimmed === '' ? null : trimmed;
 };
 
+/**
+ * 투입할 수 있는 LOT 상태.
+ *
+ * ⛔ **막을 값을 나열하지 않는다.** 설계는 「정상만 투입 가능」이고 나머지 셋(불량·검사
+ * 대기·폐기)이 차단이다(§5-2). 차단 쪽을 적으면 값이 하나 늘 때 그것만 조용히 통과한다 —
+ * 허용 쪽을 적으면 모르는 값은 자동으로 막힌다.
+ *
+ * 이 값 집합은 고객이 편집할 수 없다(`registry-system` · 2026-08-07 확정).
+ */
+const INPUT_ALLOWED_STATUS = 'NORMAL';
+
+/**
+ * 이 상태의 LOT 을 투입에 담을 수 있는가.
+ *
+ * 상태를 **받지 못한 경우는 「정상」으로 그리지 않는다** — 모르는 것과 정상인 것은 다르다.
+ */
+export const isInputAllowedStatus = (statusCode: string): boolean =>
+  statusCode.trim() === INPUT_ALLOWED_STATUS;
+
 /** 담긴 자재LOT 한 줄. */
 export interface ScannedMaterial {
   lotId: number;
   lotNo: string;
   itemId: number;
   uomId: number;
-  /** 품질 판정 축. **화면이 이 값으로 막지 않는다** — 투입 가부는 서버가 정한다(스펙 §5-2). */
+  /**
+   * 품질 판정 축.
+   *
+   * 화면은 이 값으로 **담기 전에** 막는다(스펙 §6 「Hold 자재 스캔 ⛔ 차단 — R37」). 값을
+   * 지어내지 않고 서버가 내린 것을 읽을 뿐이며, **최종 판정은 여전히 서버다**(§5-2) — 화면
+   * 차단은 다 담고 수량까지 넣은 뒤 거부당하는 헛수고를 막는 앞단 안내다.
+   */
   statusCode: string;
   /** 지금 보류 중인지. 역시 표시만 한다. */
   isHeld: boolean;
@@ -83,6 +108,13 @@ export type ScanOutcome =
   | { kind: 'material'; code: string; material: ScannedMaterial }
   | { kind: 'mold'; code: string; mold: ScannedMold }
   | { kind: 'duplicate'; code: string; lotNo: string }
+  /**
+   * 투입할 수 없는 상태의 LOT 이다. **담지 않는다** — 담아 두면 수량까지 넣은 뒤 확정에서
+   * 서버에 거부당한다(스펙 §6 R37).
+   *
+   * 상태 코드를 함께 들고 다닌다 — 화면이 그 상태의 «표시명»으로 사유를 말한다.
+   */
+  | { kind: 'blocked-status'; code: string; lotNo: string; statusCode: string }
   | { kind: 'ambiguous'; count: number }
   | { kind: 'not-found'; code: string };
 
@@ -107,6 +139,7 @@ export const applyScan = (draft: ScanDraft, outcome: ScanOutcome): ScanDraft => 
     case 'mold':
       return { ...draft, mold: outcome.mold };
     case 'duplicate':
+    case 'blocked-status':
     case 'ambiguous':
     case 'not-found':
       return draft;
