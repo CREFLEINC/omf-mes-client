@@ -160,6 +160,18 @@ describe('P-02-01 작업 시작 — 목록 조회 축', () => {
   });
 
   /**
+   * ⭐ **누적 양품은 서버가 낸다**(omf-all-around#45). 이 축이 빠지면 「지시 수량을 채웠다」를
+   *    화면이 알 길이 없어 마감 안내가 조용히 사라진다.
+   */
+  it('목록에 누적 양품 축을 함께 싣는다', async () => {
+    const { recorded } = renderScreen();
+
+    await screen.findByRole('button', { name: selectName(WORK_ORDER.workOrderNo) });
+
+    expect(listUrls(recorded.urls)[0]).toContain('withProgress=true');
+  });
+
+  /**
    * ⚠ **버튼 이름만으로는 무엇이 열리는지 읽히지 않는다**(사용자 확인 실측 · 2026-09-02).
    * 지금 목록이 어느 범위인지, 누르면 무엇이 늘어나는지를 화면이 말해야 한다.
    */
@@ -829,5 +841,82 @@ describe('P-02-01 작업 시작 — 누르면 반드시 무언가 말한다(#114
     await waitFor(() => {
       expect(listUrls(rendered.recorded.urls).length).toBeGreaterThan(before);
     });
+  });
+});
+
+/**
+ * omf-all-around#45 — **다 만든 작업지시에 다음 걸음을 말한다.**
+ *
+ * 실적 등록은 W/O 를 끝내지 않는다. 지시 수량을 채워도 남는 일이 «마감»인데, 화면이 그 말을
+ * 하지 않으면 작업자는 [이어서 하기] 만 보고 다 끝난 작업을 다시 연다.
+ *
+ * ⛔ **막는 감지기가 아니다** — 초과 생산·재작업으로 더 돌릴 수 있고, 버튼은 그대로 선다.
+ */
+describe('P-02-01 작업 시작 — 지시 수량을 채운 작업지시(#45)', () => {
+  /** 지시 수량(500)을 채운 줄 — 누적 양품은 «서버가» 낸 값이다(`withProgress=true`). */
+  const FULFILLED = { ...WORK_ORDER, progress: { goodQty: 500, achievementRate: 1 } };
+
+  const OPEN_SESSION = {
+    workSessionId: 9801,
+    workOrderId: WORK_ORDER.workOrderId,
+    sessionNo: 1,
+    terminalId: 9101,
+    startedAt: '2026-09-02T08:10:00+09:00',
+    statusCode: 'SYN_RUNNING',
+  };
+
+  const selectWorkOrder = async (rendered: ReturnType<typeof renderScreen>) => {
+    await screen.findByRole('button', { name: selectName(WORK_ORDER.workOrderNo) });
+    await enterWorkerNo(rendered.user, WORKER.workerNo);
+    await rendered.user.click(
+      await screen.findByRole('button', { name: selectName(WORK_ORDER.workOrderNo) }),
+    );
+  };
+
+  it('지시 수량을 채운 지시를 고르면 마감이 남았다고 알린다', async () => {
+    const rendered = renderScreen({ workOrders: [FULFILLED] });
+
+    await selectWorkOrder(rendered);
+
+    expect(await screen.findByText(t.closing.fulfilled)).toBeInTheDocument();
+  });
+
+  /** ⛔ 안내는 막는 말이 아니다 — 더 돌릴 수 있어야 한다. */
+  it('안내를 내면서도 시작을 막지 않는다', async () => {
+    const rendered = renderScreen({ workOrders: [FULFILLED] });
+
+    await selectWorkOrder(rendered);
+
+    await screen.findByText(t.closing.fulfilled);
+    await waitFor(() => {
+      expect(startButton()).toBeEnabled();
+    });
+  });
+
+  /**
+   * ⭐ **순서를 함께 말한다** — 서버 마감은 열린 세션이 없어야 서므로, 「작업을 종료한 뒤」가
+   *    빠지면 작업자가 마감을 눌러 보고 거절당한다. ⛔ [이어서 하기] 는 그대로 둔다.
+   */
+  it('열린 세션까지 있으면 종료한 뒤 마감하라고 말하고 이어갈 길은 그대로 둔다', async () => {
+    const rendered = renderScreen({ workOrders: [FULFILLED], openSessions: [OPEN_SESSION] });
+
+    await selectWorkOrder(rendered);
+
+    expect(await screen.findByText(t.closing.fulfilledWithOpenSession)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: t.blocked.continueToSession })).toBeInTheDocument();
+  });
+
+  /** ⛔ 아직 못 채운 지시에는 마감을 말하지 않는다 — 안 끝난 작업을 끝난 것으로 보이게 한다. */
+  it('지시 수량을 못 채웠으면 마감을 말하지 않는다', async () => {
+    const rendered = renderScreen({
+      workOrders: [{ ...WORK_ORDER, progress: { goodQty: 499, achievementRate: 0.998 } }],
+    });
+
+    await selectWorkOrder(rendered);
+
+    await waitFor(() => {
+      expect(startButton()).toBeEnabled();
+    });
+    expect(screen.queryByText(t.closing.fulfilled)).not.toBeInTheDocument();
   });
 });

@@ -130,6 +130,16 @@ export const workStart: Translated<typeof ko.workStart> = {
     continueToSession: 'Vào việc đang làm',
   },
 
+  /**
+   * 지시 수량을 채운 작업지시 — 다음에 할 일은 «마감»이다(omf-all-around#45). ⛔ 막는 말이
+   * 아니다 — 버튼은 그대로 두고 남은 일만 알린다.
+   */
+  closing: {
+    fulfilled: 'Đã đạt đủ số lượng chỉ thị. Còn lại việc kết thúc lệnh sản xuất.',
+    fulfilledWithOpenSession:
+      'Đã đạt đủ số lượng chỉ thị. Còn lại việc kết thúc lệnh sản xuất. Hãy kết thúc công việc rồi mới kết thúc lệnh.',
+  },
+
   resume: {
     sessionNotFound: 'Không tìm thấy phiên làm việc để tiếp tục lại. Hãy liên hệ quản trị viên.',
     sessionLookupFailed: 'Không xác nhận được phiên làm việc. Hãy thử lại.',
