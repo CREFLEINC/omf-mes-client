@@ -3,7 +3,13 @@ import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
 import { runRequest } from '../../patterns/request';
-import type { Terminal, WorkOrderListResponse, WorkSession, Worker } from './types';
+import type {
+  InspectionRequest,
+  Terminal,
+  WorkOrderListResponse,
+  WorkSession,
+  Worker,
+} from './types';
 
 /**
  * 이 화면이 부르는 조회.
@@ -13,6 +19,7 @@ import type { Terminal, WorkOrderListResponse, WorkSession, Worker } from './typ
  * GET /production/work-orders                     작업지시 목록 (이 설비 / 전체)
  * GET /production/work-sessions?workOrderId&open  재개할 «열린» 세션 찾기
  * GET /mdm/workers?workerNo                       사번 확인 (공통 계약 · 귀속이지 인증이 아니다)
+ * GET /quality/inspection-requests?workOrderId     끝나지 않은 PQC 검사 의뢰 (진입 단추의 조건)
  * ```
  *
  * 단말 기능 구성(`/mdm/terminals/{terminalId}/processes`)은 판정이 붙어 있어 `gating.ts` 가
@@ -41,8 +48,13 @@ export const workStartKeys = {
     [...ALL_KEY, 'work-orders', equipmentId, page] as const,
   openSession: (workOrderId: number) => [...ALL_KEY, 'open-session', workOrderId] as const,
   worker: (workerNo: string) => [...ALL_KEY, 'worker', workerNo] as const,
+  /** 고른 지시의 끝나지 않은 PQC 의뢰. 지시마다 다른 목록이라 키에 지시를 넣는다. */
+  pendingPqc: (workOrderId: number) => [...ALL_KEY, 'pending-pqc', workOrderId] as const,
   uoms: () => [...ALL_KEY, 'uoms'] as const,
 };
+
+/** PQC 대기 조회의 검사 유형. 요구서 §3-12 가 이 값을 그대로 적었다(자매 화면 `P-02-09` 와 같다). */
+const PQC_TYPE_CODE = 'PQC';
 
 /** 한 번에 받아 볼 최대 건수. 1024×768 단말의 목록 구획에 담기는 만큼만 본다. */
 export const LIST_SIZE = 20;
@@ -210,6 +222,43 @@ export const useUomCodes = (): UseQueryResult<Map<number, string>> => {
       );
 
       return new Map(data.items.map((uom) => [uom.uomId, uom.uomCode]));
+    },
+  });
+};
+
+/**
+ * 고른 작업지시의 **아직 끝나지 않은 PQC 검사 의뢰**(omf-all-around#42).
+ *
+ * ⭐ **고르는 자리가 이 화면이다.** PQC 제품 검사(`P-02-13`)는 대상을 주소로 받아 열리고
+ *    「화면 안에 목록을 얹지 않는다」가 스펙 §5-10 의 금지다 — 그래서 어느 의뢰로 들어갈지는
+ *    여기서 정해져야 한다. 의뢰가 없으면 그 작업지시는 PQC 대상이 아니다.
+ *
+ * ⛔ **상태 코드 문자열을 화면에 고정하지 않는다**(공유계약 G-6). 「아직 안 끝났다」의 정의는
+ *    `pendingOnly` 가 계약 쪽에 들고 있다 — 자매 화면(`P-02-09`)도 같은 축으로 묻는다.
+ *
+ * ⛔ **의뢰를 만들지 않는다** — 생성 경로가 계약에 없고 서버가 만든다(요구서 §3-12).
+ */
+export const usePendingPqcRequests = (
+  workOrderId: number | null,
+  enabled: boolean,
+): UseQueryResult<InspectionRequest[]> => {
+  const { client } = useApiClient();
+
+  return useQuery({
+    queryKey: workStartKeys.pendingPqc(workOrderId ?? 0),
+    enabled: enabled && workOrderId !== null,
+    queryFn: async (): Promise<InspectionRequest[]> => {
+      if (workOrderId === null) {
+        throw new Error('작업지시를 모르면 검사 의뢰를 조회하지 않습니다.');
+      }
+
+      const data = await runRequest(() =>
+        client.GET('/quality/inspection-requests', {
+          params: { query: { workOrderId, inspectionTypeCode: PQC_TYPE_CODE, pendingOnly: true } },
+        }),
+      );
+
+      return data.items;
     },
   });
 };

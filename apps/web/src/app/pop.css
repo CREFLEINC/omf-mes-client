@@ -5707,8 +5707,8 @@
  *   그 규칙과 **특정도가 같아(0,3,1) 순서로 이긴다** — ⛔ 이 블록을 그 규칙 «위»로 옮기지
  *   않는다. 옮기면 폭이 조용히 되돌아간다. 그 규칙 자체는 그대로 둔다 — 겨냥을 넓히면 띠 안
  *   단추 전부가 8rem 로 부푼다.
- * ⚠ `[role='status']` 갈래는 지금 대상이 없다(이 띠는 늘 `warning`=`alert`). 띠의 종류가
- *   바뀌어도 폭이 따라오게 함께 적어 둔다.
+ * ⚠ `[role='status']` 갈래도 함께 적어 둔다 — 「진행 중」 띠가 안내(`info`=`status`)로 내려와
+ *   (사용자 지시 2026-09-21) 실제로 그 갈래로 선다.
  */
 .pop-ui .work-start-head-button,
 .pop-ui [role='alert'] button.work-start-head-button,
@@ -7942,4 +7942,73 @@
   min-inline-size: 7rem;
   inline-size: auto;
   min-block-size: 56px;
+}
+
+/*
+ * 작업 시작 — 「진행 중인 작업이 있습니다」 띠(사용자 지시 2026-09-21 · 2차).
+ *
+ * 앞 판은 안내가 윗줄, 단추 넷이 아랫줄에 저마다 폭 하한 9rem 으로 흩어져 섰고 띠 전체가
+ * 파랑으로 채워져 화면에서 제일 센 자리가 됐다(사용자 지적). 셋을 글자 폭으로 되돌려 한
+ * 상자에 모으고, 안내·주 단추·보조 묶음을 **한 줄에** 세운다 — 여백을 더 주는 쪽으로 풀지
+ * 않는다. 겨냥은 이 띠 하나다(`work-start-entry-actions` 를 품은 띠).
+ */
+
+/*
+ * ① **정보 영역의 강도를 낮춘다.** 안내 색(`semantic-info-container`)은 다크 테마에서 파랑이
+ *    통째로 차올라 목록보다 먼저 눈에 든다. 이 화면의 다른 구획이 쓰는 표면·테두리 토큰으로
+ *    바꿔 «구획 하나»로 읽히게 한다 — ⛔ 새 색을 만들지 않는다(기존 토큰 셋뿐).
+ */
+.pop-ui .banner-slot > [role='status']:has(.work-start-entry-actions) {
+  background: var(--surface-container-low);
+  color: var(--on-surface);
+  border: 1px solid var(--outline-variant);
+  /* 아이콘·글·단추를 같은 세로선에 맞춘다 — 부품 기본은 아이콘을 글 첫 줄에 붙인다. */
+  align-items: center;
+}
+
+.pop-ui .banner-slot > [role='status']:has(.work-start-entry-actions) > :first-child {
+  margin-block-start: 0;
+}
+
+/*
+ * ② **안내와 조작을 한 줄로 눕힌다.** 부품은 둘을 세로로 쌓는데, 그러면 글 한 줄 아래에
+ *    단추 줄이 따로 서서 띠 높이가 두 배가 되고 시선이 끊긴다. 좁아지면 접힌다.
+ */
+.pop-ui .banner-slot > [role='status']:has(.work-start-entry-actions) > :last-child {
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+/*
+ * ③ 주 단추와 보조 묶음 — 사이를 구분선 하나로 가른다. ⛔ 「기타 작업」 같은 말을 새로
+ *    늘리지 않는다(사용자 판단 위임 · 간격과 선으로 충분하다).
+ */
+.pop-ui .work-start-entry-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.pop-ui .work-start-entry-others {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  padding-inline-start: var(--space-3);
+  border-inline-start: 1px solid var(--outline-variant);
+}
+
+/*
+ * ④ 보조 단추 — **글자만큼만 서되 높이는 지킨다.**
+ *
+ * ⚠ 높이 48 은 사용자가 정한 값이다(2026-09-19). 위쪽 「알림 띠 안의 단추는 액션 줄이 아니다」
+ *   규칙이 띠 안 단추의 세로 하한을 0 으로 되돌리므로, 그 뒤인 여기서 다시 세운다.
+ * ⛔ 폭 하한을 주지 않는다 — 그것이 넷을 흩어 놓았다. 주 단추만 9rem 을 지킨다.
+ */
+.pop-ui .banner-slot [role='alert'] button.work-start-entry-secondary,
+.pop-ui .banner-slot [role='status'] button.work-start-entry-secondary {
+  min-block-size: 48px;
 }

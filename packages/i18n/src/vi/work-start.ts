@@ -126,8 +126,13 @@ export const workStart: Translated<typeof ko.workStart> = {
 
     notSelected: 'Bắt đầu sản xuất: hãy chọn lệnh sản xuất trước.',
 
-    alreadyOpen: 'Lệnh sản xuất này đang có công việc đang làm. Hãy làm tiếp công việc đó.',
-    continueToSession: 'Vào việc đang làm',
+    alreadyOpen: 'Đang có công việc dở dang.',
+    continueToSession: 'Tiếp tục công việc',
+    holdWork: 'Tạm dừng công việc',
+    runningChange: 'Thay linh kiện',
+    pqcInspection: 'Kiểm tra PQC',
+    pqcInspectionOf: (inspectionRequestNo: string): string => `Kiểm tra PQC ${inspectionRequestNo}`,
+    packingWork: 'Đóng gói',
   },
 
   /**
