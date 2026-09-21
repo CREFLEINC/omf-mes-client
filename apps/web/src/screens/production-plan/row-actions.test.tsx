@@ -193,6 +193,17 @@ describe('ProductionPlanRowActions', () => {
     expect(handlers.onShowResults).toHaveBeenCalledWith(101);
     expect(screen.queryByRole('button', { name: '전개 확정' })).not.toBeInTheDocument();
   });
+  it('고칠 것이 없는 줄에는 저장 단추를 내지 않는다', () => {
+    /* 잠긴 단추를 남겨 두지 않는다(사용자 지시 2026-09-21) — 고친 뒤에 나타난다. */
+    const clean = renderActions({ ...row(101), isDirty: false });
+    expect(screen.queryByRole('button', { name: '저장' })).toBeNull();
+    expect(screen.getByRole('button', { name: '삭제' })).toBeEnabled();
+    clean.unmount();
+
+    renderActions(row(101));
+    expect(screen.getByRole('button', { name: '저장' })).toBeEnabled();
+  });
+
   it('확정·pending 행은 custom 저장과 삭제를 모두 잠근다', () => {
     for (const target of [
       { ...row(101), confirmed: true },

@@ -131,12 +131,13 @@ describe('WorkOrderReleaseFilterBar', () => {
     const { props } = renderBar({ appliedFilters: filters });
     const search = screen.getByRole('button', { name: t.search });
     expect(search).toBeDisabled();
-    if (reason === null) {
-      expect(search).toHaveAccessibleDescription('');
-      expect(screen.queryByText(t.statusRequired)).toBeNull();
-    } else {
-      expect(search).toHaveAccessibleDescription(reason);
-      expect(screen.queryByText(t.statusRequired)).toBeNull();
+    /* 상태 사유는 눈에 띄지 않되 말로는 남는다 — 화면을 못 보면 막힌 까닭을 알 길이 없다. */
+    expect(search).toHaveAccessibleDescription(
+      reason === null ? t.statusRequired : new RegExp(reason),
+    );
+    const statusReasonText = screen.queryByText(t.statusRequired);
+    if (statusReasonText !== null) {
+      expect(statusReasonText).toHaveClass('work-order-release-visually-hidden');
     }
     fireEvent.submit(search.closest('form')!);
     expect(props.onSearch).not.toHaveBeenCalled();

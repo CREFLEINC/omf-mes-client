@@ -79,7 +79,6 @@ export const productionPlan: Translated<typeof ko.productionPlan> = {
     quantityField: 'Số lượng kế hoạch',
     lineUnset: 'Chưa chỉ định',
     selectPlaceholder: 'Chọn',
-    confirmedLock: 'Kế hoạch đã chốt thì không sửa được.',
     confirmedChip: 'Đã chốt',
     savingChip: 'Đang lưu',
     remove: 'Xóa',

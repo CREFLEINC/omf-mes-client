@@ -18,6 +18,7 @@ import {
   type ProductionPlanDraftErrors,
   type ProductionPlanDraftField,
 } from './editor-model';
+import { PLAN_ROW_ERROR_SLOT } from './row-error-slot';
 
 const t = messages.productionPlan.editor;
 const summaryText = messages.productionPlan.quantitySummary;
@@ -215,7 +216,8 @@ export const ProductionPlanEditorPane = ({
             <DatePicker
               aria-label={t.fieldLabel(rowName(row), t.columns.planDate)}
               aria-describedby={
-                fieldError(row, 'planDate') === null ? undefined : `${row.key}-planDate-error`
+                /* 글이 그려질 때만 가리킨다 — 필수 누락은 글 없이 테두리로만 말한다. */
+                shownError(row, 'planDate') === null ? undefined : `${row.key}-planDate-error`
               }
               aria-required="true"
               size="sm"
@@ -251,9 +253,8 @@ export const ProductionPlanEditorPane = ({
             min="0"
             step="any"
             value={row.draft.plannedQty}
-            disabled={locked(row)}
-            /* 확정 안내는 줄마다 큰 글로 반복하지 않는다 — 상태 칩이 말하고, 칸에는 짧게 붙인다. */
-            title={row.confirmed ? t.confirmedLock : undefined}
+            /* 확정된 줄은 위에서 글자로 갈라졌다 — 여기 오는 줄은 저장 중인지만 본다. */
+            disabled={row.isPending}
             /*
              * 필수 누락은 머리글이 말한다 — 칸에는 붉은 테두리만 남긴다. 테두리를 켜는 스위치가
              * 「오류 글」이라 글을 «보이지 않게» 실어 보낸다(사용자 지시 2026-09-21).
@@ -437,7 +438,7 @@ export const ProductionPlanEditorPane = ({
         </Dialog>
       )}
       {/* 줄 단추가 만든 오류 안내가 서는 자리 — 좁은 칸 대신 표 아래에서 읽는다. */}
-      <div className="production-plan-row-errors" data-plan-error-slot="" />
+      <div className="production-plan-row-errors" {...{ [PLAN_ROW_ERROR_SLOT]: '' }} />
       {summary === null ? (
         <AlertBanner
           className="production-plan-summary-banner"

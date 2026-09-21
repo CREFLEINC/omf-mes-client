@@ -89,7 +89,6 @@ export const productionPlan = {
     quantityField: '계획수량',
     lineUnset: '미지정',
     selectPlaceholder: '선택',
-    confirmedLock: '확정된 계획은 수정할 수 없습니다.',
     confirmedChip: '확정',
     savingChip: '저장 중',
     remove: '삭제',

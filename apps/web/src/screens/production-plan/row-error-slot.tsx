@@ -13,9 +13,14 @@ export const PLAN_ROW_ERROR_SLOT = 'data-plan-error-slot';
 export const ProductionPlanRowErrorSlot = ({ children }: { children: ReactNode }) => {
   const [host, setHost] = useState<HTMLElement | null>(null);
 
+  /*
+   * 자리를 «매번» 다시 찾는다 — 표가 다시 그려져 자리가 바뀌면, 한 번만 찾아 둔 옛 노드로 그려
+   * 저장 오류가 조용히 사라진다(리뷰 지적 2026-09-21). 같은 노드면 상태를 건드리지 않는다.
+   */
   useEffect(() => {
-    setHost(document.querySelector<HTMLElement>(`[${PLAN_ROW_ERROR_SLOT}]`));
-  }, []);
+    const found = document.querySelector<HTMLElement>(`[${PLAN_ROW_ERROR_SLOT}]`);
+    setHost((prev) => (prev === found ? prev : found));
+  });
 
   if (host === null) return <>{children}</>;
   return createPortal(children, host);

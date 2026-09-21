@@ -460,12 +460,6 @@ main > * + * {
   overflow-wrap: anywhere;
 }
 
-@media (max-width: 720px) {
-  .production-plan-order-facts {
-    grid-template-columns: minmax(0, 1fr);
-  }
-}
-
 .production-plan-section {
   display: grid;
   gap: var(--space-5);

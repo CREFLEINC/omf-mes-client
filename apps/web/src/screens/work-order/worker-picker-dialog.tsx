@@ -148,7 +148,16 @@ export const WorkerPickerDialog = ({ plantId, onClose, onConfirm }: WorkerPicker
             columns={columns}
             rows={rows}
             getRowId={(row) => String(row.workerId)}
-            empty={search.isPending ? t.searching : search.isError ? '' : t.noResult}
+            empty={
+              /* 공장이 없으면 조회가 아예 나가지 않는다 — 「찾는 중」으로 붙잡아 두지 않는다. */
+              plantId === null
+                ? t.searchFailed
+                : search.isPending
+                  ? t.searching
+                  : search.isError
+                    ? ''
+                    : t.noResult
+            }
           />
         </div>
 

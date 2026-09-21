@@ -44,7 +44,10 @@ export const HelpBubble = ({ label, content }: HelpBubbleProps) => {
     /* 스크롤하거나 창이 바뀌면 말풍선이 단추를 따라간다 — 따로 떠 있는 상자이기 때문이다. */
     const follow = (): void => place();
     const close = (event: KeyboardEvent): void => {
-      if (event.key === 'Escape') setIsPinned(false);
+      if (event.key !== 'Escape') return;
+      /* 눌러 고정한 것과 마우스로 띄운 것 둘 다 푼다 — 하나만 풀면 커서 아래에서 닫히지 않는다. */
+      setIsPinned(false);
+      setIsHovered(false);
     };
 
     window.addEventListener('scroll', follow, true);

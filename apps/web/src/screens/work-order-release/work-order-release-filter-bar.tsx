@@ -73,6 +73,8 @@ export const WorkOrderReleaseFilterBar = ({
   }
   const searchDisabled = validationReasons.length > 0;
   const visibleReasons = validationReasons.filter((reason) => reason !== t.statusRequired);
+  /* 눈으로는 칸의 필수 표시로 아는 사유. 화면을 못 보는 사람에게는 말로 남긴다(리뷰 지적). */
+  const hiddenReasons = validationReasons.filter((reason) => !visibleReasons.includes(reason));
 
   return (
     <section className="pane work-order-release-filter-pane" aria-label={t.pane}>
@@ -168,7 +170,14 @@ export const WorkOrderReleaseFilterBar = ({
           <div className="filter-actions">
             <Button
               type="submit"
-              aria-describedby={visibleReasons.length > 0 ? validationId : undefined}
+              aria-describedby={
+                [
+                  visibleReasons.length > 0 ? validationId : null,
+                  hiddenReasons.length > 0 ? `${validationId}-hidden` : null,
+                ]
+                  .filter((id) => id !== null)
+                  .join(' ') || undefined
+              }
               disabled={searchDisabled}
             >
               {t.search}
@@ -191,6 +200,15 @@ export const WorkOrderReleaseFilterBar = ({
           {visibleReasons.length > 0 && (
             <p className="field-error" id={validationId}>
               {visibleReasons.join(' ')}
+            </p>
+          )}
+          {/*
+            눈으로는 칸의 필수 표시로 아는 사유도 말로는 남긴다 — 보이는 글만 남기면 화면을
+            못 보는 사람은 단추가 왜 잠겼는지 알 길이 없다(리뷰 지적 2026-09-21).
+          */}
+          {hiddenReasons.length > 0 && (
+            <p className="work-order-release-visually-hidden" id={`${validationId}-hidden`}>
+              {hiddenReasons.join(' ')}
             </p>
           )}
         </div>
