@@ -244,8 +244,25 @@ describe('QR 발행 대기 목록', () => {
     expect(within(freshRow as HTMLElement).getByText(t.pending.statusNotIssued)).toBeTruthy();
   });
 
+  /*
+   * ⭐ **찍은 라인은 「발행 완료」 탭에서 다시 찾는다**(사용자 지시 2026-09-21). 라벨이 찢어지면
+   *    다시 찍어야 하는데, 목록에서 통째로 빠지면 전표 번호를 외워 들어가야 했다.
+   */
+  it('발행 완료 탭에서 이미 찍은 라인을 골라 재발행할 수 있다', async () => {
+    const user = userEvent.setup();
+    render({ issueCounts: { 2: 1 }, printOutcomes: { 2: 'SUCCEEDED' } });
+
+    await screen.findByText('GI-20260916-0001');
+    await user.click(screen.getByRole('button', { name: t.pending.filter.issued }));
+
+    const issuedRow = (await screen.findByText('GI-20260916-0002')).closest('tr');
+    expect(within(issuedRow as HTMLElement).getByText(t.pending.statusIssued(1))).toBeTruthy();
+    /* 미발행 쪽 줄은 이 탭에 서지 않는다. */
+    expect(screen.queryByText('GI-20260916-0001')).toBeNull();
+  });
+
   /* 잘 찍힌 것은 다시 세우지 않는다 — 세우면 같은 라벨을 두 번 붙인다. */
-  it('인쇄가 성공한 라인은 목록에서 빠진다', async () => {
+  it('인쇄가 성공한 라인은 미발행 목록에서 빠진다', async () => {
     render({ issueCounts: { 2: 1 }, printOutcomes: { 2: 'SUCCEEDED' } });
 
     expect(await screen.findByText('GI-20260916-0001')).toBeTruthy();
@@ -372,7 +389,7 @@ describe('QR 발행 대기 목록', () => {
     /* 고른 그 라인 하나만 [선택]이 눌린 상태로 선다. */
     await waitFor(() => {
       expect(
-        screen.getAllByRole('button', { name: messages.goodsIssueQr.lines.pick, pressed: true }),
+        screen.getAllByRole('button', { name: messages.goodsIssueQr.lines.picked, pressed: true }),
       ).toHaveLength(1);
     });
   });

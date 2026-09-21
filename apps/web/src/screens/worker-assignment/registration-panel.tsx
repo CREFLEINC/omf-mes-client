@@ -1,12 +1,13 @@
 import { AlertBanner, Button, Card, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { useEffect, useState, type CSSProperties } from 'react';
+import { useEffect, useRef, useState, type CSSProperties } from 'react';
 
 import {
   usePopRegistration,
   type FailureSource,
   type RegistrationFailure,
 } from '../../patterns/pop-registration';
+import { useScannerSubmit } from '../../patterns/pop-scanner-submit';
 import { panelScale } from './panel-scale';
 
 /**
@@ -25,6 +26,7 @@ import { panelScale } from './panel-scale';
  */
 
 const t = messages.workerAssignment.registration;
+
 
 /**
  * 사유를 문장으로. **각 사유가 사람이 할 일이 다르다** — 401 은 재발급, 403 은 다른 토큰,
@@ -109,6 +111,19 @@ export const RegistrationPanel = () => {
   const { phase, failure, failureSource, pendingCount, terminal } = registration;
   const busy = phase === 'verifying' || phase === 'preparing';
   const scale = usePanelScale();
+  const tokenRef = useRef<HTMLInputElement>(null);
+
+  const scanner = useScannerSubmit(
+    (value) => {
+      const trimmed = value.trim();
+
+      /* ⛔ 빈 값·확인 중에는 보내지 않는다 — 단추의 잠금과 같은 판정이다. */
+      if (trimmed === '' || busy) return;
+
+      void registration.verify(trimmed);
+    },
+    () => tokenRef.current?.value ?? '',
+  );
 
   return (
     <div className="pop-registration" style={{ '--pop-reg-scale': scale } as CSSProperties}>
@@ -162,16 +177,29 @@ export const RegistrationPanel = () => {
         {phase === 'unregistered' || phase === 'verifying' ? (
           <>
             <p className="pop-registration__guide">{t.guide}</p>
+            {/*
+             * ⭐ **바코드로 읽으면 그대로 확인까지 간다**(사용자 지시 2026-09-19 · omf-all-around#35).
+             *    스캐너가 값 끝에 Enter 를 붙이지 않아도, 글자가 멈추면 [등록 확인]을 누른 것과
+             *    같다 — 판정은 `patterns/pop-scanner-submit` 한 곳이다. 손으로 친 값은 그대로
+             *    Enter·단추로만 나간다.
+             */}
             <TextField
+              ref={tokenRef}
               label={t.tokenLabel}
               placeholder={t.tokenPlaceholder}
               value={token}
-              onChange={(event) => setToken(event.target.value)}
+              onKeyDown={scanner.onKeyDown}
+              onChange={(event) => {
+                setToken(event.target.value);
+                scanner.noteInput();
+              }}
               disabled={busy}
             />
             <div className="pop-registration__actions">
               <Button
-                onClick={() => void registration.verify(token)}
+                onClick={() => {
+                  scanner.submit(token);
+                }}
                 disabled={busy || token.trim() === ''}
               >
                 {phase === 'verifying' ? t.verifying : t.verify}

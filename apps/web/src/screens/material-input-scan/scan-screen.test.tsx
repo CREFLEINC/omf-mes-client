@@ -1,5 +1,5 @@
 import { messages } from '@omf-mes/i18n';
-import { screen, waitFor, within } from '@testing-library/react';
+import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useState } from 'react';
 import { describe, expect, it } from 'vitest';
@@ -188,6 +188,22 @@ describe('MaterialInputScanScreen — 스캔', () => {
 
     const lotRequest = requests.find((request) => request.url.pathname === LOTS_PATH);
     expect(lotRequest?.url.searchParams.get('lotNo')).toBe('SAMPLE-LOT-0001');
+  });
+
+  /*
+   * ⭐ **Enter 를 붙이지 않는 스캐너도 한 번에 담긴다**(omf-all-around#35). 스캐너 속도로 들어온
+   *    글자가 멈추면 보낸다 — 실기에서 LOT 을 읽고 Enter 를 한 번 더 쳐야 담겼다.
+   */
+  it('Enter 없이 스캐너 속도로 들어온 코드도 멈추면 담는다', async () => {
+    renderScreen([lotsRoute([lot()])]);
+    const field = screen.getByLabelText(t.scan.label);
+    const code = 'SAMPLE-LOT-0001';
+
+    for (let length = 1; length <= code.length; length += 1) {
+      fireEvent.change(field, { target: { value: code.slice(0, length) } });
+    }
+
+    expect(await screen.findByText(t.scan.outcomes.material(code))).toBeTruthy();
   });
 
   /*
@@ -783,9 +799,9 @@ describe('MaterialInputScanScreen — 단말 게이팅', () => {
     await scanCode(user, 'SAMPLE-LOT-0001');
     await screen.findByText(t.scan.outcomes.material('SAMPLE-LOT-0001'));
 
-    /* 담기만 해서는 열리지 않는다 — 아직 기록되지 않았다. */
-    expect(await screen.findByText(t.confirm.reasons.qtyMissing)).toBeTruthy();
+    /* 담기만 해서는 열리지 않는다 — 아직 기록되지 않았다(맨 위 띠는 세우지 않는다 · 2026-09-19). */
     expect(screen.getByRole('button', { name: t.confirm.action })).toHaveProperty('disabled', true);
+    expect(screen.queryByText(t.confirm.reasons.qtyMissing)).toBeNull();
 
     /* 수량을 쳐도 아직이다 — 「기록」을 눌러야 원장에 남는다. */
     await user.type(screen.getByLabelText(t.scanned.qtyLabel('SAMPLE-LOT-0001')), '12');

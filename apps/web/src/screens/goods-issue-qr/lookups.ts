@@ -69,6 +69,44 @@ export const useItemNames = (itemIds: readonly number[]): LookupSource => {
   };
 };
 
+/**
+ * 품목 **코드만** — 라벨 면에 찍히는 값(`label-fields.ts`).
+ *
+ * ⛔ **화면 표시값(`useItemNames`)을 라벨에 싣지 않는다.** 그 값은 「코드 · 이름」이라 한글
+ *    품명이 붙는데, 라벨 내장 글꼴은 한글을 못 찍어 `?` 로 나가고 칸만 먹는다(사용자 지적
+ *    2026-09-21 · omf-all-around#35). 라벨은 코드로 대조한다.
+ *
+ * ⭐ 조회 키가 `useItemNames` 와 같아 **요청이 늘지 않는다** — 받아 둔 응답에서 코드만 꺼낸다.
+ */
+export const useItemCodes = (itemIds: readonly number[]): LookupSource => {
+  const { client } = useApiClient();
+  const unique = [...new Set(itemIds)].sort((left, right) => left - right);
+
+  const results = useQueries({
+    queries: unique.map((itemId) => ({
+      queryKey: goodsIssueQrLookupKeys.item(itemId),
+      queryFn: () =>
+        runRequest(() => client.GET('/mdm/items/{itemId}', { params: { path: { itemId } } })),
+    })),
+  });
+
+  return {
+    entries: results.flatMap((result) =>
+      result.data === undefined
+        ? []
+        : [
+            {
+              value: String(result.data.item.itemId),
+              label: result.data.item.itemCode,
+              isActive: true,
+            },
+          ],
+    ),
+    isError: results.some((result) => result.isError),
+    isLoading: results.some((result) => result.isPending),
+  };
+};
+
 /** 단위 이름 — 수량 옆에 붙는다. */
 export const useUomNames = (): LookupSource => {
   const { client } = useApiClient();
@@ -160,7 +198,8 @@ export const useDestinationCode = (
   if (query.isPending) return { kind: 'loading' };
   if (query.isError) return { kind: 'failed' };
 
-  const code = query.data?.location.locationCode;
+  /* ⛔ 응답이 이 모양이 아니어도 화면을 떨어뜨리지 않는다 — 못 읽은 것은 「실패」다. */
+  const code = query.data?.location?.locationCode;
 
   return code === undefined || code === '' ? { kind: 'failed' } : { kind: 'code', code };
 };

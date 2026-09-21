@@ -375,7 +375,14 @@ export const MaterialInputScanScreen = () => {
        *    값으로 잠긴다(`confirm-panel`). 두 벌이 되면 띠와 버튼이 갈린다.
        */}
       {/* ⭐ 사번 사유는 이 띠에서 거른다 — 위 공용 띠가 말한다(사용자 지시 2026-09-17). 잠금은 그대로. */}
-      {blockReason !== undefined && blockReason !== t.confirm.reasons.workerMissing && (
+      {/*
+       * ⭐ 「아직 기록되지 않은 자재」도 이 띠에서 거른다(사용자 지시 2026-09-19 · omf-all-around#35) —
+       *    LOT 을 담을 때마다 맨 위에 떠 저장이 안 된 것처럼 읽혔다. 줄마다 「기록」 단추가 있고,
+       *    확정 버튼 잠금은 그대로다.
+       */}
+      {blockReason !== undefined &&
+        blockReason !== t.confirm.reasons.workerMissing &&
+        blockReason !== t.confirm.reasons.qtyMissing && (
         <div className="banner-slot">
           {/* ⭐ 제목을 두지 않는다(사용자 지시 2026-09-16) — 「투입 확정」을 덧붙이면 사유
               앞에 한 줄이 더 생기고, 아이콘과 문구만으로 이미 무엇이 막혔는지 읽힌다. */}
@@ -444,7 +451,6 @@ export const MaterialInputScanScreen = () => {
             statusLabels={statusLabels}
             describeItem={labels.describeItem}
             describeUom={labels.describeUom}
-            decimalScaleOf={labels.decimalScaleOf}
             qtyDrafts={qtyDrafts}
             notes={notes}
             recordedLotIds={recordedLotIdsSeen}

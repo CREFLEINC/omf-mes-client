@@ -22,9 +22,14 @@ import { LINE_TARGET_TYPE_CODE } from './types';
 export type LabelFields = GoodsIssueQrLabelFields | { unavailableReason: string };
 
 export interface LabelFieldsInput {
-  issue: GoodsIssue | null;
+  /**
+   * 라벨이 쓰는 것은 **출고번호뿐이다.** 대기 목록에서 고른 줄은 전표를 따로 조회하지 않고
+   * 목록이 들고 있는 값을 그대로 준다(사용자 지시 2026-09-21 · omf-all-around#35).
+   */
+  issue: Pick<GoodsIssue, 'goodsIssueNo'> | null;
   lines: readonly GoodsIssueLine[];
-  itemNames: LookupSource;
+  /** 라벨의 `ITEM` — **코드만**이다(`useItemCodes`). 화면 표시값(코드 · 이름)이 아니다. */
+  itemCodes: LookupSource;
   lotNames: LookupSource;
   destination: DestinationState;
 }
@@ -68,7 +73,7 @@ const LINE_MISSING = '이 발행 대상에 해당하는 출고 라인을 찾지 
  */
 export const toLabelFieldsForLine = (
   line: GoodsIssueLine,
-  { issue, itemNames, lotNames, destination }: Omit<LabelFieldsInput, 'lines'>,
+  { issue, itemCodes, lotNames, destination }: Omit<LabelFieldsInput, 'lines'>,
 ): LabelFields => {
   if (issue === null) return { unavailableReason: LINE_MISSING };
 
@@ -77,7 +82,7 @@ export const toLabelFieldsForLine = (
    *    같은 **사람에게 보일 문구**로 바꿔 준다 — 라벨에 그 문구가 그대로 찍히면 현장에서
    *    품목 코드 자리에 한글 문장이 선다. 여기서는 **이름을 받은 경우만** 통과시킨다.
    */
-  const itemState = toLookupDisplayState(itemNames, line.itemId);
+  const itemState = toLookupDisplayState(itemCodes, line.itemId);
   const lotState = toLookupDisplayState(lotNames, line.lotId);
 
   /*

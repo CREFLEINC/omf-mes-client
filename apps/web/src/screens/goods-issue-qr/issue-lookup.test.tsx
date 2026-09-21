@@ -1,5 +1,5 @@
 import { messages } from '@omf-mes/i18n';
-import { screen, waitFor } from '@testing-library/react';
+import { fireEvent, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useSearchParams } from 'react-router';
 import { describe, expect, it } from 'vitest';
@@ -74,6 +74,64 @@ describe('출고번호로 전표 불러오기', () => {
     await waitFor(() => {
       expect(found).toEqual([7001]);
     });
+  });
+
+  /*
+   * ⭐ **스캔 한 번에 조회된다**(omf-all-around#35). 한/영 입력기가 조합 중이면 Enter 가
+   *    `key: 'Process'` 로 오고 폼 제출이 되지 않으며, 조합이 끝나며 같은 값의 변경이 한 번 더
+   *    온다 — 전에는 그 변경이 방금 낸 조회를 지워 Enter 를 한 번 더 쳐야 했다.
+   */
+  it('입력기 조합 중의 Enter 한 번으로 조회하고, 뒤따르는 같은 값 변경이 조회를 지우지 않는다', async () => {
+    const found = render(listRoute([issue(7004, ISSUE_NO)]));
+    const field = screen.getByLabelText(t.label);
+
+    fireEvent.change(field, { target: { value: ISSUE_NO } });
+    fireEvent.keyDown(field, { key: 'Process', code: 'Enter', keyCode: 229 });
+    fireEvent.change(field, { target: { value: `${ISSUE_NO} ` } });
+
+    await waitFor(() => {
+      expect(found).toEqual([7004]);
+    });
+  });
+
+  /* ⭐ 끝에 Enter 를 붙이지 않는 스캐너 — 스캐너 속도로 들어온 글자가 멈추면 묻는다. */
+  it('Enter 없이 스캐너 속도로 들어온 번호도 멈추면 바로 조회한다', async () => {
+    const found = render(listRoute([issue(7005, ISSUE_NO)]));
+    const field = screen.getByLabelText(t.label);
+
+    for (let length = 1; length <= ISSUE_NO.length; length += 1) {
+      fireEvent.change(field, { target: { value: ISSUE_NO.slice(0, length) } });
+    }
+
+    await waitFor(() => {
+      expect(found).toEqual([7005]);
+    });
+  });
+
+  /* ⭐ 끝에 Tab 을 붙이는 스캐너 — 포커스가 단추로 넘어가지 않고 바로 묻는다. */
+  it('스캔 끝의 Tab 은 조회로 받는다', async () => {
+    const found = render(listRoute([issue(7006, ISSUE_NO)]));
+    const field = screen.getByLabelText(t.label);
+
+    for (let length = 1; length <= ISSUE_NO.length; length += 1) {
+      fireEvent.change(field, { target: { value: ISSUE_NO.slice(0, length) } });
+    }
+    fireEvent.keyDown(field, { key: 'Tab', code: 'Tab' });
+
+    await waitFor(() => {
+      expect(found).toEqual([7006]);
+    });
+  });
+
+  /* 사람이 천천히 친 값은 멈춰도 묻지 않는다 — Enter·단추로만. */
+  it('사람 속도로 친 값은 멈춰도 저절로 조회하지 않는다', async () => {
+    const user = userEvent.setup({ delay: 100 });
+    const found = render(listRoute([issue(7007, 'GI-1')]));
+
+    await user.type(screen.getByLabelText(t.label), 'GI-1');
+    await new Promise((resolve) => setTimeout(resolve, 300));
+
+    expect(found).toEqual([]);
   });
 
   /*

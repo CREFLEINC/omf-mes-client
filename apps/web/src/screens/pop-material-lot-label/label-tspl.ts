@@ -33,15 +33,13 @@ const HEIGHT = dots(30);
 const MARGIN = dots(4);
 
 /**
- * 가로 좌표는 **2.5 mm 왼쪽으로 당겨** 짠다 — 왼쪽 1.5 mm · 오른쪽 6.5 mm.
+ * 가로는 **좌우 4 mm 같게** 짠다(사용자 지시 2026-09-19 · omf-all-around#35).
  *
- * ⭐ HT800 실기에서 4 mm 로 좌우를 같게 짜니 찍힌 것이 오른쪽으로 치우쳤다 — 왼쪽 약 6.5 mm ·
- *   오른쪽 약 2 mm(사진 실측 2026-09-15 · 사용자가 「왼쪽으로」를 지시). 당겨 짜야 라벨지
- *   위에서 좌우가 고르게 선다. 세로는 치우침이 없어 그대로 둔다.
+ * ⚠ 9/15 HT800 실기에서 오른쪽으로 치우쳐 2.5 mm 왼쪽으로 당겼으나, 그 판이 왼쪽에 너무 붙어
+ *   1 mm 로 줄였다가 다시 좌우 같게 되돌렸다. 한쪽으로 치우쳐 찍히면 이 두 값부터 본다.
  */
-const SHIFT_LEFT = dots(2.5);
-const LEFT = MARGIN - SHIFT_LEFT;
-const RIGHT = MARGIN + SHIFT_LEFT;
+const LEFT = MARGIN;
+const RIGHT = MARGIN;
 
 /**
  * 세로는 **2 mm 위로 올려** 짠다 — 위 2 mm · 아래 6 mm(사용자 지시 2026-09-15 · 실기 두 차례 확인 뒤

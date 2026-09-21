@@ -4,7 +4,14 @@ import { describe, expect, it } from 'vitest';
 import { readDot, textDots } from '../../patterns/label/bitmap';
 import { toPng } from '../../patterns/label/png';
 
-import { drawGoodsIssueQrLabel, renderGoodsIssueQrLabel } from './label-image';
+import { layoutLotLabel } from '../pop-material-lot-label/label-tspl';
+
+import {
+  buildGoodsIssueQrLabel,
+  drawGoodsIssueQrLabel,
+  goodsIssueQrLabelRows,
+  renderGoodsIssueQrLabel,
+} from './label-image';
 import { buildGoodsIssueQrPayload } from './qr-payload';
 
 /**
@@ -102,13 +109,13 @@ describe('출고 QR 라벨 — 점판', () => {
     let maxY = -Infinity;
 
     /*
-     * ⚠ **QR 구획만 본다.** 처음에 넓게 잡았다가 두 번 걸렸다 — 위 테두리가 전폭으로 깔려
-     *   상자가 라벨 끝까지 벌어졌고, 아래 글줄(LOT·QTY·TO)이 라벨 폭을 다 쓰므로 그 y 까지
-     *   내려가면 글자가 상자에 섞인다. QR 은 x ≥ 520 · y < 110 안에만 있다(윗 세 줄은
-     *   `besideQr` 폭에서 끝나므로 이 창에 들어오지 못한다).
+     * ⚠ **QR 구획만 본다** — 배치(`layoutLotLabel`)가 준 QR 상자 안쪽. 글줄은 QR 왼쪽 칸에서
+     *   끝나므로 이 창에 들어오지 못한다.
      */
-    for (let y = BORDER_MARGIN; y < 110; y += 1) {
-      for (let x = 520; x < bitmap.width - BORDER_MARGIN; x += 1) {
+    const { qr } = layoutLotLabel(goodsIssueQrLabelRows(FIELDS), FIELDS.payload);
+
+    for (let y = qr.y; y < qr.y + qr.side; y += 1) {
+      for (let x = qr.x; x < qr.x + qr.side; x += 1) {
         if (!readDot(bitmap, x, y)) continue;
 
         minX = Math.min(minX, x);
@@ -183,6 +190,22 @@ describe('출고 QR 라벨 — 점판', () => {
 });
 
 const BORDER_MARGIN = 3;
+
+/*
+ * ⭐ **종이는 TSPL 로 나간다**(omf-all-around#35). 그림을 드라이버로 찍으면 크기가 틀리고 상하가
+ *    뒤집혔다. 명령이 80 × 30 대지와 같은 QR 내용을 싣는지 잰다.
+ */
+describe('출고 QR 라벨 — TSPL', () => {
+  it('80 × 30 mm 한 장에 글줄과 출고 QR 을 싣는다', () => {
+    const command = buildGoodsIssueQrLabel(FIELDS);
+
+    expect(command).toContain('SIZE 80 mm,30 mm');
+    expect(command).toContain('"GI: GI-20260916-0001"');
+    expect(command).toContain('"TO: S220-WIP"');
+    expect(command).toMatch(/QRCODE \d+,\d+,M,4,A,0,M2,"OMF-GIL\|17\|GI-20260916-0001\|1"/u);
+    expect(command.trimEnd().endsWith('PRINT 1,1')).toBe(true);
+  });
+});
 
 describe('출고 QR 라벨 — PNG', () => {
   it('PNG 머리표와 덩어리 셋을 갖춘다', () => {
