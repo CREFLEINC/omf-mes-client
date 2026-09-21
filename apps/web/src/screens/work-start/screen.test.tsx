@@ -831,3 +831,54 @@ describe('P-02-01 작업 시작 — 누르면 반드시 무언가 말한다(#114
     });
   });
 });
+
+/**
+ * omf-all-around#42 — **작업 중단(`P-02-10`)으로 가는 길.**
+ *
+ * 중단 화면은 작업지시를 주소로만 받고, 못 받으면 「작업 시작 화면에서 지시를 고른 뒤
+ * 들어오세요」로 막힌다. 그런데 그 「고른 뒤 들어오는」 길이 이 화면에 없어 설치본(주소창
+ * 없음)에서는 중단을 열 수 없었다. 여기 감지기는 그 길이 **열린 세션에서만** 서는지를 잰다.
+ */
+describe('P-02-01 작업 시작 — 작업 중단으로 가는 길(omf-all-around#42)', () => {
+  const OPEN_SESSION = {
+    workSessionId: 9801,
+    workOrderId: WORK_ORDER.workOrderId,
+    sessionNo: 1,
+    terminalId: 9101,
+    startedAt: '2026-09-02T08:10:00+09:00',
+    statusCode: 'SYN_RUNNING',
+  };
+
+  const selectWorkOrder = async (rendered: ReturnType<typeof renderScreen>) => {
+    await screen.findByRole('button', { name: selectName(WORK_ORDER.workOrderNo) });
+    await enterWorkerNo(rendered.user, WORKER.workerNo);
+    await rendered.user.click(
+      await screen.findByRole('button', { name: selectName(WORK_ORDER.workOrderNo) }),
+    );
+  };
+
+  /** ⭐ 고른 작업지시를 주소로 실어 보낸다 — 중단 화면이 그것으로만 열린다. */
+  it('진행 중인 세션이 있으면 작업 중단으로 갈 길을 준다', async () => {
+    const rendered = renderScreen({ openSessions: [OPEN_SESSION] });
+
+    await selectWorkOrder(rendered);
+
+    await rendered.user.click(await screen.findByRole('button', { name: t.blocked.holdWork }));
+
+    expect(screen.getByTestId('location')).toHaveTextContent(
+      `/pop/work-hold?workOrderId=${String(WORK_ORDER.workOrderId)}`,
+    );
+  });
+
+  /** ⛔ 세션이 없으면 내지 않는다 — 중단은 «세션» 사건이다(`P-02-10` §5-2). */
+  it('열린 세션이 없으면 작업 중단을 세우지 않는다', async () => {
+    const rendered = renderScreen();
+
+    await selectWorkOrder(rendered);
+
+    await waitFor(() => {
+      expect(startButton()).toBeEnabled();
+    });
+    expect(screen.queryByRole('button', { name: t.blocked.holdWork })).not.toBeInTheDocument();
+  });
+});

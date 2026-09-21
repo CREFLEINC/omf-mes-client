@@ -128,6 +128,7 @@ export const workStart: Translated<typeof ko.workStart> = {
 
     alreadyOpen: 'Lệnh sản xuất này đang có công việc đang làm. Hãy làm tiếp công việc đó.',
     continueToSession: 'Vào việc đang làm',
+    holdWork: 'Tạm dừng công việc',
   },
 
   resume: {

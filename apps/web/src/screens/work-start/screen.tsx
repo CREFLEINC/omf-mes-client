@@ -217,6 +217,17 @@ export const WorkStartScreen = () => {
     void navigate(`/pop/material-input?workOrderId=${String(workOrderId)}`);
   };
 
+  /**
+   * **작업 중단(`P-02-10`)으로 보낸다**(omf-all-around#42).
+   *
+   * ⛔ **여기서도 작업지시를 주소로 넘긴다.** 중단 화면은 지시를 주소로만 받고, 못 받으면
+   *    「작업 시작 화면에서 지시를 고른 뒤 들어오세요」로 막힌다 — 그 안내가 가리키는 길이
+   *    이것이다. 설치본에는 주소창이 없어 손으로 넣을 수도 없었다.
+   */
+  const goToWorkHold = (workOrderId: number): void => {
+    void navigate(`/pop/work-hold?workOrderId=${String(workOrderId)}`);
+  };
+
   const startWork = useStartWork({
     workerNo: confirmedNo ?? '',
     onSuccess: () => {
@@ -488,17 +499,39 @@ export const WorkStartScreen = () => {
                  *    이 버튼은 띠 안에 있지만 작업자가 실제로 누르는 다음 걸음이라, 같은 화면의
                  *    다른 조작보다 작으면 눌러야 할 자리로 읽히지 않는다.
                  */
-                <Button
-                  type="button"
-                  variant="outlined"
-                  size="xl"
-                  className="work-start-head-button"
-                  onClick={() => {
-                    if (selected !== null) goToMaterialInput(selected.workOrderId);
-                  }}
-                >
-                  {t.blocked.continueToSession}
-                </Button>
+                <>
+                  <Button
+                    type="button"
+                    variant="outlined"
+                    size="xl"
+                    className="work-start-head-button"
+                    onClick={() => {
+                      if (selected !== null) goToMaterialInput(selected.workOrderId);
+                    }}
+                  >
+                    {t.blocked.continueToSession}
+                  </Button>
+                  {/*
+                   * ⭐ **[ 작업 중단 ]은 [ 이어서 하기 ] 옆에 선다**(omf-all-around#42).
+                   *    둘 다 «열린 세션이 있을 때»만 성립하는 동작이라(중단은 세션 사건이다 ·
+                   *    `P-02-10` §5-2) 같은 조건에서 나란히 둔다 — 조건이 갈리면 한쪽만
+                   *    보이는 날 작업자는 다른 쪽이 사라진 이유를 알 수 없다.
+                   *
+                   * ⛔ **쓰기가 아니다.** 여기서는 중단 화면으로 자리를 옮기기만 한다 —
+                   *    중단 사유·수량은 그 화면이 받는다.
+                   */}
+                  <Button
+                    type="button"
+                    variant="outlined"
+                    size="xl"
+                    className="work-start-head-button"
+                    onClick={() => {
+                      if (selected !== null) goToWorkHold(selected.workOrderId);
+                    }}
+                  >
+                    {t.blocked.holdWork}
+                  </Button>
+                </>
               ) : retryLabel === null ? undefined : (
                 <Button type="button" variant="outlined" size="sm" onClick={gate.retry}>
                   {retryLabel}
