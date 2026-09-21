@@ -32,7 +32,8 @@ export const productPicking: Translated<typeof ko.productPicking> = {
   },
   candidates: {
     /* ⛔ 쪽이 잘렸다. 「없다」와 「못 받았다」를 같은 얼굴로 두면 작업자가 헛걸음한다. */
-    truncated: 'Có quá nhiều ứng viên nên chỉ nhận được một phần. Nếu không thấy LOT cần tìm, hãy nhập trực tiếp số LOT',
+    truncated:
+      'Có quá nhiều ứng viên nên chỉ nhận được một phần. Nếu không thấy LOT cần tìm, hãy nhập trực tiếp số LOT',
     legend: (policy: string) => `LOT gợi ý — ${policy}`,
     fefo: 'Hết hạn sớm trước',
     fifo: 'Sản xuất trước thì ra trước',
@@ -57,7 +58,6 @@ export const productPicking: Translated<typeof ko.productPicking> = {
     heldRelease: (condition: string) => `Điều kiện gỡ ${condition}`,
     heldReasonLoading: 'Đang xác nhận lý do tạm giữ',
     heldReasonFailed: 'Không xác nhận được lý do tạm giữ',
-    noAvailable: 'Đã phân bổ cho lần xuất hàng khác',
     otherItem: 'Không phải mặt hàng của dòng này',
     shelfLifeShort: (required: number, actual: number) =>
       `Chưa đủ ${String(required)} ngày khách hàng yêu cầu (thực tế ${String(actual)} ngày)`,
@@ -73,7 +73,7 @@ export const productPicking: Translated<typeof ko.productPicking> = {
     notFound: (code: string) => `Không tìm thấy LOT ${code} trong mặt hàng này`,
     otherItem: (code: string) => `${code} không phải mặt hàng của dòng này`,
     /* 같은 품목인데 후보에 없다 — 번호 문제가 아니라 상태 문제다. 할 일이 다르다. */
-    notPickable: (code: string) => `${code} chưa ở trạng thái có thể lấy hàng`,
+    notPickable: (code: string) => `${code} hiện không phải LOT có thể lấy hàng`,
     picked: (lotNo: string) => `Đã quét ${lotNo}`,
   },
   qty: {

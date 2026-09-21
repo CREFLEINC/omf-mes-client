@@ -136,7 +136,11 @@ describe('LOT 후보', () => {
   /* ⛔ 잘렸는데 말하지 않으면 「없다」와 「못 받았다」가 같아 보인다. */
   it('한 쪽에 다 담기지 않으면 잘렸다고 알린다', async () => {
     const fetch = createStubFetch([
-      capturing('/trace/lots', { items: [lotRow(1, 'A')], page: { page: 1, size: 200, total: 900 } }, []),
+      capturing(
+        '/trace/lots',
+        { items: [lotRow(1, 'A')], page: { page: 1, size: 200, total: 900 } },
+        [],
+      ),
     ]);
 
     const { result } = renderHookWithProviders(() => useLotPool(31), { fetch });
@@ -157,8 +161,7 @@ describe('LOT 후보', () => {
 });
 
 describe('가용 수량', () => {
-  /* 잔액 0인 줄까지 받아야 소진된 LOT 이 목록에서 사라지지 않는다. */
-  it('LOT 별로 갈라 받고 잔액 0인 줄도 받는다', async () => {
+  it('LOT 별로 갈라 받는다', async () => {
     const seen: URL[] = [];
     const fetch = createStubFetch([
       capturing(
@@ -202,19 +205,60 @@ describe('가용 수량', () => {
       expect(result.current.isSuccess).toBe(true);
     });
     expect(seen[0]?.searchParams.get('groupBy')).toBe('LOT');
-    expect(seen[0]?.searchParams.get('includeZero')).toBe('true');
+    /* ⛔ 가용 0 은 후보가 아니다 — 0 인 줄을 받아 봐야 쪽 예산만 먹는다. */
+    expect(seen[0]?.searchParams.get('includeZero')).toBeNull();
     /* ⛔ `size` 가 빠지면 서버 기본 쪽수로 잘리고, 잘린 LOT 은 후보에 서지 못한다. */
     expect(seen[0]?.searchParams.get('size')).toBe('200');
     expect(result.current.data?.byLot.get(1)).toBe(180);
     expect(result.current.data?.byLot.get(2)).toBe(0);
     expect(result.current.data?.truncated).toBe(false);
   });
+  /*
+   * ⛔ 소유 구분이 갈리면 **한 LOT 이 여러 줄로** 온다. 합치지 않고 덮어쓰면 마지막 줄만
+   *    남는데, 그 줄이 0 이면 실제로는 집을 수 있는 LOT 이 후보에서 통째로 사라진다 —
+   *    합산은 이제 「표시 수량」이 아니라 「후보가 서느냐」를 정한다.
+   */
+  it('한 LOT 이 여러 줄로 오면 합쳐서 센다', async () => {
+    const row = (lotId: number, availableQty: number, ownershipTypeCode: string) => ({
+      groupBy: 'LOT',
+      itemId: 31,
+      lotId,
+      availableQty,
+      uomId: 9,
+      onHandQty: availableQty,
+      reservedQty: 0,
+      pickedQty: 0,
+      blockedQty: 0,
+      ownershipTypeCode,
+    });
+    const fetch = createStubFetch([
+      capturing(
+        '/inventory/balances',
+        { items: [row(1, 50, 'OWN'), row(1, 0, 'CONSIGNED')], page },
+        [],
+      ),
+    ]);
+
+    const { result } = renderHookWithProviders(() => useAvailableByLot(31), { fetch });
+
+    await waitFor(() => {
+      expect(result.current.isSuccess).toBe(true);
+    });
+    expect(result.current.data?.byLot.get(1)).toBe(50);
+  });
 });
 
 describe('후보 조립', () => {
-  /* 다 쓴 LOT 은 잔액 0 인 줄로 온다 - 사라지면 재고가 없어진 것처럼 보인다. */
-  it('가용이 0 이어도 잔액 줄이 있으면 후보에서 빼지 않는다', () => {
-    const pool = { lots: [lotRow(1, 'A'), lotRow(2, 'B')], heldLotIds: new Set([2]), truncated: false };
+  /*
+   * ⛔ 가용 0 은 집을 수 없다 - 보여 주면 작업자가 그것부터 집으려다 막힌다
+   *    (사용자 결정 2026-09-21 · omf-all-around#50).
+   */
+  it('가용이 0 인 LOT 은 후보에서 뺀다', () => {
+    const pool = {
+      lots: [lotRow(1, 'A'), lotRow(2, 'B')],
+      heldLotIds: new Set([2]),
+      truncated: false,
+    };
     const candidates = toCandidates(
       pool,
       new Map([
@@ -223,15 +267,18 @@ describe('후보 조립', () => {
       ]),
     );
 
-    expect(candidates).toHaveLength(2);
+    expect(candidates).toHaveLength(1);
+    expect(candidates[0]?.lot.lotId).toBe(1);
     expect(candidates[0]?.availableQty).toBe(180);
-    expect(candidates[1]?.availableQty).toBe(0);
-    expect(candidates[1]?.held).toBe(true);
   });
 
-  /* 창고에 들어온 적이 없는 공정 중 LOT 은 집을 수 없다 - 후보로 세우지 않는다. */
+  /* 잔액에 줄이 아예 없는 LOT 도 마찬가지다 - 가용을 모르는 것이 아니라 없는 것이다. */
   it('재고 잔액에 줄이 없는 LOT 은 후보에서 뺀다', () => {
-    const pool = { lots: [lotRow(1, 'A'), lotRow(2, 'B')], heldLotIds: new Set<number>(), truncated: false };
+    const pool = {
+      lots: [lotRow(1, 'A'), lotRow(2, 'B')],
+      heldLotIds: new Set<number>(),
+      truncated: false,
+    };
     const candidates = toCandidates(pool, new Map([[1, 180]]));
 
     expect(candidates).toHaveLength(1);

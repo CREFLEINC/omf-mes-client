@@ -132,10 +132,6 @@ describe('집을 수 없는 사유', () => {
     expect(lotProblem(candidate({ held: true }), line(), TODAY)).toBe('held');
   });
 
-  it('가용이 없으면 집을 수 없다', () => {
-    expect(lotProblem(candidate({ availableQty: 0 }), line(), TODAY)).toBe('noAvailable');
-  });
-
   it('다른 품목의 LOT은 집을 수 없다', () => {
     expect(lotProblem(candidate({ lot: lot({ itemId: 99 }) }), line(), TODAY)).toBe('otherItem');
   });
