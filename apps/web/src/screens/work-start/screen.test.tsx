@@ -994,6 +994,26 @@ describe('P-02-01 작업 시작 — 다음 작업 화면으로 가는 길(omf-al
     expect(banner).toHaveAttribute('role', 'status');
   });
 
+  /**
+   * ⭐ **주 단추와 보조 작업은 다른 상자에 선다**(사용자 지시 2026-09-21 · 2차). 넷이 한 줄에
+   *    흩어지면 무엇이 지금 할 일인지 화면에 없다 — 구분은 색이 아니라 «자리»가 진다.
+   *    ⚠ 서식은 감지기에 보이지 않으므로 상자 구조로 잰다.
+   */
+  it('보조 작업 셋은 주 단추와 다른 상자에 모인다', async () => {
+    const rendered = renderScreen({ openSessions: [OPEN_SESSION] });
+
+    await selectWorkOrder(rendered);
+
+    const primary = await screen.findByRole('button', { name: t.blocked.continueToSession });
+    const others = screen.getByRole('button', { name: t.blocked.holdWork }).closest('div');
+
+    expect(others).toHaveClass('work-start-entry-others');
+    expect(primary.closest('.work-start-entry-others')).toBeNull();
+    for (const label of [t.blocked.runningChange, t.blocked.packingWork]) {
+      expect(screen.getByRole('button', { name: label }).closest('div')).toBe(others);
+    }
+  });
+
   /** ⛔ 풀어야 하는 막힘까지 낮추지 않는다 — 눈에 걸리지 않으면 작업자가 지나친다. */
   it('작업자가 풀어야 할 막힘은 경고 그대로 선다', async () => {
     vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(false);
