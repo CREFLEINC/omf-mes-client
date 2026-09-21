@@ -326,7 +326,8 @@ describe('제품LOT 피킹 스캔 화면', () => {
       [
         {
           match: (req) =>
-            new URL(req.url).pathname === '/trace/lots' && new URL(req.url).searchParams.has('lotNo'),
+            new URL(req.url).pathname === '/trace/lots' &&
+            new URL(req.url).searchParams.has('lotNo'),
           respond: () => jsonResponse({ items: [wip], page }),
         },
       ],
@@ -335,7 +336,9 @@ describe('제품LOT 피킹 스캔 화면', () => {
     await chooseTarget(user);
     await pickLot(user, 'FG-0999');
 
-    expect(await screen.findByText(/FG-0999 은\(는\) 아직 집을 수 있는 상태가 아닙니다/)).toBeTruthy();
+    expect(
+      await screen.findByText(/FG-0999 은\(는\) 아직 집을 수 있는 상태가 아닙니다/),
+    ).toBeTruthy();
   });
 
   /*
@@ -638,12 +641,19 @@ describe('제품LOT 피킹 스캔 화면', () => {
     expect(asked).toHaveLength(0);
   });
 
-  it('가용이 없는 LOT은 다른 출하에 배정됐다고 말한다', async () => {
+  /*
+   * ⛔ 가용 0 은 집을 수 없으니 아예 보이지 않는다(사용자 결정 2026-09-21 · omf-all-around#50).
+   *   전에는 목록에 두고 「다른 출하에 배정됐습니다」로 말했는데, 그러면 작업자가 맨 위에 선
+   *   그것부터 집으려다 막힌다.
+   */
+  it('가용이 없는 LOT 은 목록에 세우지 않는다', async () => {
     const user = userEvent.setup();
     mount([], { balances: [balance(1, 0), balance(2, 500)] });
     await chooseTarget(user);
+    await screen.findByText('FG-0311');
 
-    expect(await screen.findByText('다른 출하에 배정됐습니다')).toBeTruthy();
+    expect(screen.queryByText('FG-0298')).toBeNull();
+    expect(screen.queryByText('다른 출하에 배정됐습니다')).toBeNull();
   });
 
   it('잔여 유효기간이 하한에 못 미치면 그 수치와 함께 막는다', async () => {

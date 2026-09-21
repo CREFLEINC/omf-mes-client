@@ -200,8 +200,11 @@ export const useAvailableByLot = (itemId: number | null): UseQueryResult<Availab
  * 화면이 고르는 데 필요한 것을 LOT 하나로 모은다.
  *
  * 좁히는 축은 둘이다. **생산 완료**는 서버가 본다(`completed: true`) - 공정 중 LOT 은 아예
- * 오지 않는다. 그 위에 **재고 잔액에 줄이 선 LOT 만** 남긴다 - 완료됐어도 이미 다 나간 LOT 은
- * 집을 것이 없다.
+ * 오지 않는다. 그 위에 **가용 수량이 남은 LOT 만** 남긴다.
+ *
+ * ⭐ **가용 0 은 보이지 않는다**(사용자 결정 2026-09-21 · omf-all-around#50). 집을 수 없는 줄을
+ *   보여 주면 작업자가 그것부터 집으려다 막힌다 - 「재고가 사라진 것처럼 보인다」보다 그쪽이
+ *   현장에서 더 나쁘다. ⛔ 「잔액 줄이 있는가」가 아니라 「집을 것이 남았는가」로 가른다.
  *
  * ⚠ 잔액 줄이 선다는 것이 「창고에 있다」와 같은 뜻인지는 **실서버에서 확인하지 않았다** -
  *   현장 위치 재고도 잔액에 줄로 서는 화면이 있다(`shopfloor-receipt`). 그래서 이 축 «하나»에
@@ -210,7 +213,7 @@ export const useAvailableByLot = (itemId: number | null): UseQueryResult<Availab
  */
 export const toCandidates = (pool: LotPool, available: Map<number, number>): Candidate[] =>
   pool.lots
-    .filter((lot) => available.has(lot.lotId))
+    .filter((lot) => (available.get(lot.lotId) ?? 0) > 0)
     .map((lot) => ({
       lot,
       availableQty: available.get(lot.lotId) ?? 0,

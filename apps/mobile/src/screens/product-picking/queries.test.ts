@@ -136,7 +136,11 @@ describe('LOT 후보', () => {
   /* ⛔ 잘렸는데 말하지 않으면 「없다」와 「못 받았다」가 같아 보인다. */
   it('한 쪽에 다 담기지 않으면 잘렸다고 알린다', async () => {
     const fetch = createStubFetch([
-      capturing('/trace/lots', { items: [lotRow(1, 'A')], page: { page: 1, size: 200, total: 900 } }, []),
+      capturing(
+        '/trace/lots',
+        { items: [lotRow(1, 'A')], page: { page: 1, size: 200, total: 900 } },
+        [],
+      ),
     ]);
 
     const { result } = renderHookWithProviders(() => useLotPool(31), { fetch });
@@ -212,9 +216,16 @@ describe('가용 수량', () => {
 });
 
 describe('후보 조립', () => {
-  /* 다 쓴 LOT 은 잔액 0 인 줄로 온다 - 사라지면 재고가 없어진 것처럼 보인다. */
-  it('가용이 0 이어도 잔액 줄이 있으면 후보에서 빼지 않는다', () => {
-    const pool = { lots: [lotRow(1, 'A'), lotRow(2, 'B')], heldLotIds: new Set([2]), truncated: false };
+  /*
+   * ⛔ 가용 0 은 집을 수 없다 - 보여 주면 작업자가 그것부터 집으려다 막힌다
+   *    (사용자 결정 2026-09-21 · omf-all-around#50).
+   */
+  it('가용이 0 인 LOT 은 후보에서 뺀다', () => {
+    const pool = {
+      lots: [lotRow(1, 'A'), lotRow(2, 'B')],
+      heldLotIds: new Set([2]),
+      truncated: false,
+    };
     const candidates = toCandidates(
       pool,
       new Map([
@@ -223,15 +234,18 @@ describe('후보 조립', () => {
       ]),
     );
 
-    expect(candidates).toHaveLength(2);
+    expect(candidates).toHaveLength(1);
+    expect(candidates[0]?.lot.lotId).toBe(1);
     expect(candidates[0]?.availableQty).toBe(180);
-    expect(candidates[1]?.availableQty).toBe(0);
-    expect(candidates[1]?.held).toBe(true);
   });
 
-  /* 창고에 들어온 적이 없는 공정 중 LOT 은 집을 수 없다 - 후보로 세우지 않는다. */
+  /* 잔액에 줄이 아예 없는 LOT 도 마찬가지다 - 가용을 모르는 것이 아니라 없는 것이다. */
   it('재고 잔액에 줄이 없는 LOT 은 후보에서 뺀다', () => {
-    const pool = { lots: [lotRow(1, 'A'), lotRow(2, 'B')], heldLotIds: new Set<number>(), truncated: false };
+    const pool = {
+      lots: [lotRow(1, 'A'), lotRow(2, 'B')],
+      heldLotIds: new Set<number>(),
+      truncated: false,
+    };
     const candidates = toCandidates(pool, new Map([[1, 180]]));
 
     expect(candidates).toHaveLength(1);
