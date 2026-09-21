@@ -12,7 +12,14 @@ import {
   labelNote,
   referenceNote,
 } from './asset-actions';
-import { CODE_GROUPS, defaultToolFilters, selectableOptions, toCodeLabels } from './code-options';
+import {
+  CODE_GROUPS,
+  codeOptionsNote,
+  defaultToolFilters,
+  selectableOptions,
+  toCodeLabels,
+  toLookupEntries,
+} from './code-options';
 import type { BatchResult } from './import-result';
 import { LoadErrorBanner } from './load-error-banner';
 import { RetireConfirmDialog } from './retire-confirm-dialog';
@@ -163,6 +170,7 @@ export const ToolMasterScreen = () => {
   const tools = useToolList(filters);
   const plants = usePlantLookup();
   const statusValues = useCodeValues(CODE_GROUPS.assetStatus);
+  const typeValues = useCodeValues(CODE_GROUPS.toolType);
 
   /* 창을 열 때만 상세를 조회한다 — 목록 응답에는 잠금 토큰도 코드 편집 가부도 없다. */
   const editingId = dialog?.mode === 'edit' ? dialog.moldId : null;
@@ -176,6 +184,16 @@ export const ToolMasterScreen = () => {
     isError: plants.isError,
     isLoading: plants.isLoading,
   };
+  /*
+   * ⭐ 도구 유형은 **서버 공통코드가 정본**이다. 한 출처를 「고를 목록」과 「이름표」 양쪽에
+   *   쓴다 — 고를 때는 사용 중인 것만, 읽을 때는 사용 중지된 코드까지 푼다.
+   */
+  const typeSource: LookupSource = {
+    entries: toLookupEntries(typeValues.data ?? NO_ITEMS),
+    isError: typeValues.isError,
+    isLoading: typeValues.isPending,
+  };
+  const typeNote = codeOptionsNote(typeSource, t.typeOptionsEmpty, t.optionsLoadFailed);
 
   /*
    * 조회 실패와 잘림은 함께 서지 않는다 — 실패하면 받아 온 목록 자체가 없다.
@@ -356,6 +374,8 @@ export const ToolMasterScreen = () => {
         onApplyFilters={setFilters}
         plantOptions={selectableOptions(plantSource, filters.plantId)}
         plantSource={plantSource}
+        typeSource={typeSource}
+        typeNote={typeNote}
         statusOptions={statusOptions}
         onAdd={openCreate}
         onEdit={openEdit}
@@ -386,6 +406,8 @@ export const ToolMasterScreen = () => {
           codeLockReason={codeLockReason}
           plantOptions={selectableOptions(plantSource, values.plantId)}
           plantSource={plantSource}
+          typeSource={typeSource}
+          typeNote={typeNote}
           optionsNote={optionsNote}
           statusCode={tool?.statusCode ?? null}
           statusOptions={statusOptions}

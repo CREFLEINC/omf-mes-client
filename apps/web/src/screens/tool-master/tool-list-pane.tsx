@@ -14,11 +14,11 @@ import { type ReactNode, useEffect, useState } from 'react';
 import type { LookupSource } from '../../patterns/lookup-display';
 import {
   SORT_OPTIONS,
-  TOOL_TYPE_OPTIONS,
   type CodeOption,
   codeLabel,
   defaultToolFilters,
   lookupLabel,
+  selectableOptions,
   toToolSort,
 } from './code-options';
 import { PmBadge } from './pm-badge';
@@ -36,6 +36,10 @@ export interface ToolListPaneProps {
   plantOptions: CodeOption[];
   /** 공장 이름과 조회 상태 — 좁힌 선택지가 아니라 전체에서 찾는다 */
   plantSource: LookupSource;
+  /** 도구 유형 — 서버 공통코드가 정본이다(omf-all-around#52). */
+  typeSource: LookupSource;
+  /** 유형 선택지의 한계 안내(값 없음·조회 실패). 없으면 붙이지 않는다 */
+  typeNote?: string;
   statusOptions: CodeOption[];
   onAdd: () => void;
   onEdit: (tool: Mold) => void;
@@ -83,6 +87,8 @@ export const ToolListPane = ({
   onApplyFilters,
   plantOptions,
   plantSource,
+  typeSource,
+  typeNote,
   statusOptions,
   onAdd,
   onEdit,
@@ -155,8 +161,12 @@ export const ToolListPane = ({
       key: 'toolTypeCode',
       header: t.fields.toolType,
       width: '104px',
-      /* ⚠ 값 목록이 없어 지금은 코드가 그대로 선다 — 이름을 지어내지 않는다(G-9). */
-      render: (row) => codeLabel(row.toolTypeCode, TOOL_TYPE_OPTIONS),
+      /*
+       * 이름표는 사용 중지된 코드도 푼다 — 안 그러면 옛 자료의 유형이 코드로 보인다.
+       * ⛔ 못 찾으면 **코드를 그대로** 보인다(G-9) — 「알 수 없음」으로 덮으면 무엇이 걸려
+       *    있는지조차 사라져 고칠 값을 못 찾는다.
+       */
+      render: (row) => codeLabel(row.toolTypeCode, typeSource.entries),
     },
     {
       key: 'pm',
@@ -252,10 +262,13 @@ export const ToolListPane = ({
         />
         <SelectField
           label={t.fields.toolType}
-          options={[{ value: '', label: t.filters.typeAll }, ...TOOL_TYPE_OPTIONS]}
+          options={[
+            { value: '', label: t.filters.typeAll },
+            ...selectableOptions(typeSource, draft.toolTypeCode),
+          ]}
           value={draft.toolTypeCode}
           onChange={(value) => setDraft((prev) => ({ ...prev, toolTypeCode: value }))}
-          note={messages.pendingCode.note}
+          note={typeNote}
         />
         {/* 정렬은 목록을 좁히지 않는다 — 모아서 적용할 이유가 없어 고르는 즉시 나간다. */}
         <SelectField
@@ -340,7 +353,7 @@ export const ToolListPane = ({
             removeLabel={t.filters.chipRemoveType}
             onRemove={() => onApplyFilters({ ...appliedFilters, toolTypeCode: '' })}
           >
-            {t.filters.chipType(codeLabel(appliedFilters.toolTypeCode, TOOL_TYPE_OPTIONS))}
+            {t.filters.chipType(lookupLabel(typeSource, appliedFilters.toolTypeCode))}
           </Chip>
         )}
         {appliedFilters.guaranteedShotCountMissing && (

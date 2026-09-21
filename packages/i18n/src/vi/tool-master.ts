@@ -47,6 +47,9 @@ export const toolMaster: Translated<typeof ko.toolMaster> = {
   },
   listTruncated: (shown: number, total: number): string =>
     `Hiển thị ${shown} trong tổng ${total} mục. Hãy thu hẹp điều kiện rồi tra cứu.`,
+  /* ⛔ 「못 받았다」와 가른다 — 사용자가 할 일이 다르다(omf-all-around#52). */
+  typeOptionsEmpty:
+    'Máy chủ chưa có giá trị loại công cụ. Phải đăng ký ở quản lý mã chung mới chọn được.',
   optionsTruncated:
     'Danh sách lựa chọn chỉ hiển thị một phần. Không thấy giá trị cần tìm thì hãy báo người phụ trách.',
   optionsLoadFailed: 'Không tải được danh sách lựa chọn. Chỉ hiển thị giá trị đang lưu.',

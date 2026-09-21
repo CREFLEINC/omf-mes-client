@@ -8,10 +8,10 @@ import type { ActionAvailability } from './asset-actions';
 import {
   PM_CYCLE_UNIT_OPTIONS,
   PM_TRIGGER_OPTIONS,
-  TOOL_TYPE_OPTIONS,
   type CodeOption,
   codeLabel,
   ensureOption,
+  selectableOptions,
   usesDateAxis,
   usesShotAxis,
 } from './code-options';
@@ -63,6 +63,10 @@ export interface ToolFormDialogProps {
   plantOptions: CodeOption[];
   /** 공장 이름과 조회 상태 — 수정에서는 고르지 않고 읽는다 */
   plantSource: LookupSource;
+  /** 도구 유형 — 서버 공통코드가 정본이다(omf-all-around#52). */
+  typeSource: LookupSource;
+  /** 유형 선택지의 한계 안내(값 없음·조회 실패). 없으면 붙이지 않는다 */
+  typeNote?: string;
   /** 선택 목록의 한계(잘림·실패) 안내. 없으면 붙이지 않는다 */
   optionsNote?: string;
   /** 읽기 전용 값들 — 이 화면이 정하지 않는다 */
@@ -105,6 +109,8 @@ export const ToolFormDialog = ({
   codeLockReason,
   plantOptions,
   plantSource,
+  typeSource,
+  typeNote,
   optionsNote,
   statusCode,
   statusOptions,
@@ -133,7 +139,11 @@ export const ToolFormDialog = ({
    */
   const cycleUnitOptions = ensureOption([...PM_CYCLE_UNIT_OPTIONS], values.pmCycleUnitCode);
   const triggerOptions = ensureOption([...PM_TRIGGER_OPTIONS], values.pmTriggerTypeCode);
-  const typeOptions = ensureOption([...TOOL_TYPE_OPTIONS], values.toolTypeCode);
+  /*
+   * ⭐ 사용 중인 값만 고르게 하되 **지금 걸린 값은 남긴다** — 그 값이 사용 중지돼도 칸이 비어
+   *   보이면 사용자가 값이 사라진 줄 알고 다시 고른다. 원래 값은 그렇게 조용히 바뀐다.
+   */
+  const typeOptions = selectableOptions(typeSource, values.toolTypeCode);
 
   return (
     <Dialog
@@ -204,7 +214,7 @@ export const ToolFormDialog = ({
           value={values.toolTypeCode}
           onChange={(value) => onChange({ toolTypeCode: value })}
           error={fieldErrors.toolTypeCode}
-          note={messages.pendingCode.note}
+          note={typeNote}
           placeholder={t.form.typePlaceholder}
         />
 

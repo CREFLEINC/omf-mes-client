@@ -6,6 +6,7 @@ import { describe, expect, it } from 'vitest';
 import { createStubFetch, jsonResponse, renderWithProviders } from '../../test/api-harness';
 import {
   closedPlant,
+  codeValuesOfGroup,
   codeValuesResponse,
   labelIssuedCode,
   makeCodeValue,
@@ -120,7 +121,15 @@ const renderScreen = (options: RenderOptions = {}) => {
       respond: (request) => {
         codeValueSent.push(new URL(request.url));
 
-        return (options.respondCodeValues ?? (() => jsonResponse(codeValuesResponse())))();
+        return (
+          options.respondCodeValues ??
+          ((req: Request) =>
+            jsonResponse(
+              codeValuesResponse(
+                codeValuesOfGroup(new URL(req.url).searchParams.get('codeGroupCode')),
+              ),
+            ))
+        )(request);
       },
     },
   ]);
@@ -277,9 +286,11 @@ describe('W-05-13 툴 마스터 — 목록', () => {
 
     await screen.findByRole('cell', { name: 'TL-01' });
 
-    expect(codeValueSent.map((url) => url.searchParams.get('codeGroupCode'))).toContain(
-      'EQUIPMENT_STATUS',
-    );
+    const groups = codeValueSent.map((url) => url.searchParams.get('codeGroupCode'));
+
+    expect(groups).toContain('EQUIPMENT_STATUS');
+    /* ⛔ 도구 유형을 서버에 묻는다 — 상수로 돌아가면 값이 있어도 등록이 막힌다(#52). */
+    expect(groups).toContain('TOOL_TYPE');
     expect(codeValueSent.every((url) => url.searchParams.get('codeGroupId') === null)).toBe(true);
   });
 
@@ -316,11 +327,20 @@ describe('W-05-13 툴 마스터 — 목록', () => {
     expect(within(await rowOf('TL-12')).getByText('BLANK_NAME')).toBeInTheDocument();
   });
 
-  /* ⚠ 도구 유형 값 목록이 아직 없다(추적 omf-mes#145) — 이름을 지어내지 않는다. */
-  it('도구 유형은 이름을 못 풀면 코드를 그대로 보인다', async () => {
+  it('도구 유형을 서버 공통코드의 이름으로 보인다', async () => {
     renderScreen();
 
-    expect(within(await rowOf('TL-01')).getByText('MOLD')).toBeInTheDocument();
+    expect(within(await rowOf('TL-01')).getByText('금형')).toBeInTheDocument();
+  });
+
+  /* ⛔ 「알 수 없음」으로 덮지 않는다 — 무엇이 걸려 있는지조차 사라지면 고칠 값을 못 찾는다. */
+  it('도구 유형은 이름을 못 풀면 코드를 그대로 보인다', async () => {
+    renderScreen({
+      respondTools: () =>
+        jsonResponse(toolsResponse([makeTool(7013, 'TL-13', { toolTypeCode: 'MYSTERY' })])),
+    });
+
+    expect(within(await rowOf('TL-13')).getByText('MYSTERY')).toBeInTheDocument();
   });
 
   /*
@@ -956,13 +976,30 @@ describe('W-05-13 툴 마스터 — 예방보전 주기 짝', () => {
   });
 
   /* 도구 유형도 같다 — 값 목록이 자리표시뿐이라 저장된 코드는 늘 목록 밖이다. */
-  it('저장된 도구 유형이 자리표시 목록에 없어도 그 값을 보인다', async () => {
+  it('도구 유형 선택칸이 서버 공통코드의 이름을 보인다', async () => {
     const { user } = renderScreen();
 
     await openEditOf(user, 'TL-01');
 
     expect(within(formDialog()).getByRole('combobox', { name: /도구 유형/ })).toHaveTextContent(
-      'MOLD',
+      '금형',
+    );
+  });
+
+  /*
+   * ⛔ 사용 중지된 유형이 걸린 툴을 열어도 **칸이 비어 보이면 안 된다** — 비면 사용자가 값이
+   *    사라진 줄 알고 다시 고르고, 원래 값은 그렇게 조용히 바뀐다.
+   */
+  it('사용 중지된 도구 유형이 걸려 있어도 그 값을 남긴다', async () => {
+    const { user } = renderScreen({
+      respondTools: () =>
+        jsonResponse(toolsResponse([makeTool(7014, 'TL-14', { toolTypeCode: 'RETIRED_TYPE' })])),
+    });
+
+    await openEditOf(user, 'TL-14');
+
+    expect(within(formDialog()).getByRole('combobox', { name: /도구 유형/ })).toHaveTextContent(
+      '쓰지 않는 유형',
     );
   });
 
@@ -990,6 +1027,8 @@ describe('W-05-13 툴 마스터 — 저장', () => {
     await user.type(screen.getByRole('textbox', { name: /툴명/ }), '신규 금형');
     await user.click(within(formDialog()).getByRole('combobox', { name: /공장/ }));
     await user.click(await screen.findByRole('option', { name: '제1공장' }));
+    await user.click(within(formDialog()).getByRole('combobox', { name: /도구 유형/ }));
+    await user.click(await screen.findByRole('option', { name: '금형' }));
     await user.click(screen.getByRole('button', { name: messages.common.save }));
 
     await waitFor(() => {
@@ -1001,7 +1040,13 @@ describe('W-05-13 툴 마스터 — 저장', () => {
     expect(request.method).toBe('POST');
     expect(request.headers.get('Idempotency-Key')).not.toBeNull();
     expect(request.headers.get('If-Match')).toBeNull();
-    expect(await request.json()).toMatchObject({ moldCode: 'TL-90', plantId: 11, cavityCount: 1 });
+    expect(await request.json()).toMatchObject({
+      moldCode: 'TL-90',
+      plantId: 11,
+      cavityCount: 1,
+      /* ⛔ 고른 값이 그대로 실린다 — 자리표시자를 실으면 서버가 거절한다(#52). */
+      toolTypeCode: 'MOLD',
+    });
   });
 
   /* ⭐ 잠금 토큰은 상세 응답의 ETag 에서 온다 — 목록만으로는 저장을 시작할 수 없다. */
@@ -1234,6 +1279,23 @@ describe('W-05-13 툴 마스터 — 사용 중지·폐기', () => {
       within(formDialog()).getByRole('button', { name: t.retire.disposeConfirm }),
     ).toBeDisabled();
     expect(screen.getByText(t.actionReasons.alreadyDisposed)).toBeInTheDocument();
+  });
+
+  /*
+   * ⛔ 「받지 못했다」와 「서버에 값이 없다」를 **갈라 말한다** — 사용자가 할 일이 다르다.
+   *    앞은 다시 시도하거나 담당자에게 알릴 일이고, 뒤는 공통코드에 값을 등록할 일이다.
+   */
+  it('도구 유형 값이 0건이면 어디서 등록하는지 말한다', async () => {
+    renderScreen({ respondCodeValues: () => jsonResponse(codeValuesResponse([])) });
+
+    expect(await screen.findByText(t.typeOptionsEmpty)).toBeInTheDocument();
+  });
+
+  it('도구 유형을 받지 못하면 값이 없다고 말하지 않는다', async () => {
+    renderScreen({ respondCodeValues: () => new Response('', { status: 500 }) });
+
+    expect(await screen.findByText(t.optionsLoadFailed)).toBeInTheDocument();
+    expect(screen.queryByText(t.typeOptionsEmpty)).not.toBeInTheDocument();
   });
 
   /* 폐기 코드값이 없으면 이미 폐기된 자산인지 판정할 수 없다 — 판정 없이 열지 않는다. */

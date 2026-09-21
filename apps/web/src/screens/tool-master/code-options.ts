@@ -3,6 +3,7 @@ import { messages } from '@omf-mes/i18n';
 
 import {
   lookupDisplayLabel,
+  type LookupEntry,
   type LookupSource,
   selectableLookupOptions,
 } from '../../patterns/lookup-display';
@@ -29,6 +30,14 @@ export const CODE_GROUPS = {
    * ⚠ 값 목록 시드가 아직 없어 지금은 코드가 그대로 보일 수 있다(설계 `omf-mes#182`).
    */
   assetStatus: 'EQUIPMENT_STATUS',
+  /**
+   * 도구 유형(금형·지그·그 밖의 도구).
+   *
+   * ⚠ 한동안 자리표시자 상수였다 — 값 목록이 확정되기 전의 임시 조치였는데 **값이 들어온
+   * 뒤에도 그대로 남아** 등록·수정이 통째로 막혔다(omf-all-around#52). 서버가 내주는 값을
+   * 쓰지 않는 상수는 그 값이 도착한 날부터 화면을 고장 내는 것이라, 상수로 되돌리지 않는다.
+   */
+  toolType: 'TOOL_TYPE',
 } as const;
 
 /**
@@ -81,17 +90,6 @@ export const defaultToolFilters: ToolFilters = {
 };
 
 /**
- * 값 목록이 확정되지 않은 코드의 자리표시자.
- * ⚠ 도구 유형이 여기 해당한다(추적 `omf-mes#145`).
- */
-export const PENDING_CODE_VALUE = 'PENDING';
-
-/** 도구 유형 — 값 목록 미정. 고를 것이 자리표시뿐이라는 사실을 안내로 밝힌다. */
-export const TOOL_TYPE_OPTIONS: CodeOption[] = [
-  { value: PENDING_CODE_VALUE, label: messages.pendingCode.placeholder },
-];
-
-/**
  * 공통코드 값 목록을 **이름 풀이표**로 옮긴다.
  *
  * ⛔ **거르지도 정렬하지도 않는다** — 이것은 «고를 목록»이 아니라 **읽는 값의 이름표**다.
@@ -103,6 +101,35 @@ export const toCodeLabels = (values: readonly CodeValue[]): CodeOption[] =>
     value: value.code,
     label: value.codeName.trim() === '' ? value.code : value.codeName,
   }));
+
+/**
+ * 공통코드 값을 **고름·이름풀이 공용 모양**으로 옮긴다.
+ *
+ * ⛔ 여기서 거르지 않는다 — `isActive` 를 값으로 들고 가야 「고를 목록」은 사용 중인 것만,
+ * 「이름표」는 사용 중지된 것까지 풀 수 있다. 미리 걸러 내면 그 둘을 한 출처로 못 쓴다.
+ */
+export const toLookupEntries = (values: readonly CodeValue[]): LookupEntry[] =>
+  values.map((value) => ({
+    value: value.code,
+    label: value.codeName.trim() === '' ? value.code : value.codeName,
+    isActive: value.isActive,
+  }));
+
+/**
+ * 선택 목록의 한계를 **갈라 말한다.** 「받지 못했다」와 「서버에 값이 없다」는 사용자가 할 일이
+ * 다르다 — 앞은 다시 시도하거나 담당자에게 알릴 일이고, 뒤는 공통코드에 값을 등록할 일이다.
+ * 한 문구로 뭉뚱그리면 둘 다 「어딘가 고장」으로만 읽힌다.
+ */
+export const codeOptionsNote = (
+  source: Pick<LookupSource, 'isError' | 'isLoading'> & { entries: readonly unknown[] },
+  empty: string,
+  failed: string,
+): string | undefined => {
+  if (source.isError) return failed;
+  if (source.isLoading) return undefined;
+
+  return source.entries.length === 0 ? empty : undefined;
+};
 
 /**
  * 서버가 준 현재 값이 선택지에 없으면 **코드 그대로 덧붙인다.**

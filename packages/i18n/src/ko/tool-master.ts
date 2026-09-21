@@ -60,6 +60,8 @@ export const toolMaster = {
   },
   listTruncated: (shown: number, total: number): string =>
     `전체 ${total}건 중 ${shown}건을 표시합니다. 조건을 좁혀 조회하세요.`,
+  /* ⛔ 「못 받았다」와 가른다 — 사용자가 할 일이 다르다(omf-all-around#52). */
+  typeOptionsEmpty: '서버에 도구 유형 값이 없습니다. 공통코드 관리에서 등록해야 고를 수 있습니다.',
   optionsTruncated: '선택 목록이 일부만 표시됩니다. 찾는 값이 없으면 담당자에게 알려 주세요.',
   optionsLoadFailed: '선택 목록을 불러오지 못했습니다. 지금 저장된 값만 표시됩니다.',
   empty: {
