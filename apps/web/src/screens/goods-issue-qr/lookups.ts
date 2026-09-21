@@ -171,10 +171,7 @@ export const useLotNames = (lotIds: readonly number[]): LookupSource => {
  */
 export type DestinationState =
   /** 도착지가 위치가 아니거나 비어 있다 — **기다려도 코드가 생기지 않는다.** */
-  | { kind: 'none' }
-  | { kind: 'loading' }
-  | { kind: 'failed' }
-  | { kind: 'code'; code: string };
+  { kind: 'none' } | { kind: 'loading' } | { kind: 'failed' } | { kind: 'code'; code: string };
 
 export const useDestinationCode = (
   destinationTypeCode: string | null | undefined,

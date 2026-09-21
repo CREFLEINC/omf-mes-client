@@ -208,21 +208,6 @@ export const goodsIssueQr = {
 
   action: {
     issue: '발행·인쇄',
-    /**
-     * 막힌 사유 — 「어떻게 풀 것인가」를 담는다(공유계약 G-3).
-     *
-     * ⛔ **조작 이름을 앞에 붙이지 않는다.** 이 문구는 단추 바로 옆 한 줄에 서므로 무엇에
-     * 대한 말인지는 «자리»가 말한다. 다른 POP 화면도 앞머리 없이 쓴다(사용자 지시 2026-09-07).
-     */
-    disabledPalletNeedsOneLine: '파렛트로 발행하려면 라인을 하나만 고르세요.',
-    disabledNoPallet: '발행할 파렛트를 고르세요.',
-    /* 대상 칸이 이미 사유를 적고 있다 — 같은 말을 액션바에서 되풀이하지 않는다(#1095). */
-    disabledPalletUnsupported: '라인 단위로 발행하세요.',
-    /** 빈 파렛트 차단(스펙 §6)이 서기 전 — 잠깐 열렸다가 닫히지 않게 그동안 막는다. */
-    disabledPalletContentsPending: '담긴 내용을 확인하는 중입니다. 잠시 뒤 발행할 수 있습니다.',
-    /** 빈 파렛트에는 찍을 것이 없다(스펙 §6). */
-    disabledEmptyPallet: '고른 파렛트에 담긴 것이 없습니다. 다른 파렛트를 고르세요.',
-    disabledNoReason: '재발행 사유를 고르세요.',
   },
 
   result: {

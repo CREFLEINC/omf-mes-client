@@ -11,8 +11,11 @@ import { useEffect, useRef, type KeyboardEvent } from 'react';
  *    - 스캔 직후의 Tab — 조회로 받고 포커스를 붙든다
  *    - 스캐너 속도로 몰려 들어온 글자가 멈추면 — Enter 없이 보낸다
  *
- * ⛔ **사람이 친 값은 저절로 보내지 않는다.** 사람은 글자 사이가 80ms 를 넘는다 — 그 값은
+ * ⛔ **사람이 친 값은 저절로 보내지 않는다.** 사람은 글자 사이가 이 기준보다 느리다 — 그 값은
  *    지금처럼 Enter·단추로만 나간다.
+ *
+ * ⛔ **글자가 «늘어난» 변경만 센다.** 간격만 세면 백스페이스 길게 누르기(OS 자동반복 ≈ 30ms)가
+ *    스캔으로 읽혀, 지우다 만 토막으로 조회가 나간다(리뷰 지적 2026-09-21).
  */
 
 /** 글자 사이가 이 안쪽이면 사람이 친 것이 아니다. */
@@ -25,8 +28,11 @@ const SCAN_IDLE_MS = 150;
 export interface ScannerSubmit {
   /** 칸의 `onKeyDown` 에 건다. */
   onKeyDown: (event: KeyboardEvent<HTMLInputElement>) => void;
-  /** 칸의 `onChange` 안에서 부른다 — 글자 속도를 재고 멈춤을 기다린다. */
-  noteInput: () => void;
+  /**
+   * 칸의 `onChange` 안에서 **바뀐 값과 함께** 부른다 — 글자 속도를 재고 멈춤을 기다린다.
+   * 값이 줄거나 앞이 달라지면(지우기·고쳐 쓰기) 스캔으로 세지 않는다.
+   */
+  noteInput: (value: string) => void;
   /** 단추·폼 제출로 보낼 때 — 기다리던 자동 전송을 거둔다. */
   submit: (value: string) => void;
 }
@@ -40,6 +46,8 @@ export const useScannerSubmit = (
   readValue: () => string,
 ): ScannerSubmit => {
   const lastInputAt = useRef(0);
+  /** 직전 값 — 글자가 늘어난 변경만 스캔으로 센다. */
+  const previous = useRef('');
   const burst = useRef(0);
   const idleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   /* 타이머가 낡은 처리기를 부르지 않게 최신 것을 쥔다. */
@@ -56,6 +64,7 @@ export const useScannerSubmit = (
   const submit = (value: string): void => {
     cancel();
     burst.current = 0;
+    previous.current = value;
     latest.current.send(value);
   };
 
@@ -74,10 +83,15 @@ export const useScannerSubmit = (
       event.preventDefault();
       submit(event.currentTarget.value);
     },
-    noteInput: () => {
+    noteInput: (value) => {
       const now = Date.now();
+      const isFast = now - lastInputAt.current <= SCAN_KEY_INTERVAL_MS;
+      /* 스캐너는 앞에 이어 붙이기만 한다 — 지우기·중간 고치기는 사람의 손이다. */
+      const isGrowing =
+        value.length > previous.current.length && value.startsWith(previous.current);
 
-      burst.current = now - lastInputAt.current <= SCAN_KEY_INTERVAL_MS ? burst.current + 1 : 1;
+      burst.current = isFast && isGrowing ? burst.current + 1 : isGrowing ? 1 : 0;
+      previous.current = value;
       lastInputAt.current = now;
 
       cancel();

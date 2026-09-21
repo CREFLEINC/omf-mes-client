@@ -15,7 +15,11 @@
  */
 
 import { toPng } from '../../patterns/label/png';
-import { buildLotLabel, layoutLotLabel, type LotLabelRow } from '../pop-material-lot-label/label-tspl';
+import {
+  buildLotLabel,
+  layoutLotLabel,
+  type LotLabelRow,
+} from '../pop-material-lot-label/label-tspl';
 import { drawLotLabelLayout } from '../shipping-packing-label/packing-label-image';
 import type { LabelBitmap } from '../../patterns/label/bitmap';
 

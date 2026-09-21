@@ -78,7 +78,7 @@ export const IssueLookupField = ({ onFound }: IssueLookupFieldProps) => {
           const next = event.target.value;
 
           setDraft(next);
-          scanner.noteInput();
+          scanner.noteInput(next);
           /*
            * 값을 고치면 앞 결과는 이 값의 사실이 아니다. 단 **같은 값**이면 지우지 않는다 —
            * 입력기 조합이 Enter 뒤에 끝나며 같은 값을 한 번 더 알린다.

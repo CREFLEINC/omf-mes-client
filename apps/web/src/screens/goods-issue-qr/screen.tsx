@@ -11,7 +11,7 @@ import { PopWorkerTag } from '../../patterns/pop-worker-tag';
 import { usePopIdentity } from '../../patterns/pop-identity';
 import { PopWorkerMissingBanner } from '../../patterns/pop-worker-missing-banner';
 import { SaveErrorBanner } from '../../patterns/master';
-import { canIssue, issueGuard, type IssueGuard } from './issue-target';
+import { canIssue, issueGuard } from './issue-target';
 import { hasIssuedTarget, hasUnknownTarget, rowId, toLineRows } from './line-rows';
 import { LineListPane } from './line-list-pane';
 import { IssueLookupField } from './issue-lookup-field';
@@ -119,8 +119,16 @@ export const GoodsIssueQrScreen = () => {
   const [showAllLines, setShowAllLines] = useState(false);
   const focusedLineId = entry.goodsIssueLineId;
   const isFocused = focusedLineId !== null && !showAllLines;
+  /*
+   * ⛔ **고른 줄을 숨기지 않는다**(리뷰 지적 2026-09-21). 주소의 그 줄로만 좁히면, 펼친 사이
+   *    다른 줄을 고르고 다시 접었을 때 **그 줄이 목록에서 사라진 채 함께 발행된다** — 발행은
+   *    되돌릴 수 없다. 접힌 보기는 「주소의 줄 + 지금 고른 줄」이다.
+   */
   const visibleRows = isFocused
-    ? rows.filter((row) => row.line.goodsIssueLineId === focusedLineId)
+    ? rows.filter(
+        (row) =>
+          row.line.goodsIssueLineId === focusedLineId || selectedIds.includes(rowId(row.line)),
+      )
     : rows;
 
   /*

@@ -51,7 +51,7 @@ describe('납품 라벨 — 점판', () => {
     const expected = encodeQr(FIELDS.shippingUnitNo).modules.flat().filter(Boolean).length;
 
     let dark = 0;
-    /* QR 은 오른쪽 안전 여백(4 mm) 안쪽 위에 선다 — 종이와 같은 자리다. */
+    /* QR 은 오른쪽 안전 여백(6.5 mm) 안쪽 위에 선다 — 종이와 같은 자리다. */
     for (let y = 3; y < 125; y += 1) {
       for (let x = 491; x < bitmap.width - 3; x += 1) {
         if (readDot(bitmap, x, y)) dark += 1;

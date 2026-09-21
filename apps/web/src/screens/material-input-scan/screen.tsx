@@ -383,22 +383,22 @@ export const MaterialInputScanScreen = () => {
       {blockReason !== undefined &&
         blockReason !== t.confirm.reasons.workerMissing &&
         blockReason !== t.confirm.reasons.qtyMissing && (
-        <div className="banner-slot">
-          {/* ⭐ 제목을 두지 않는다(사용자 지시 2026-09-16) — 「투입 확정」을 덧붙이면 사유
+          <div className="banner-slot">
+            {/* ⭐ 제목을 두지 않는다(사용자 지시 2026-09-16) — 「투입 확정」을 덧붙이면 사유
               앞에 한 줄이 더 생기고, 아이콘과 문구만으로 이미 무엇이 막혔는지 읽힌다. */}
-          {/*
-           * ⚠ `assertive={false}` — 색은 경고로 두되 **읽던 것을 끊지 않는다**(리뷰 지적).
-           *   이 문구는 사건이 아니라 «지금 왜 못 누르는가»라는 지속 상태라, 담기·기록으로
-           *   사유가 바뀔 때마다 화면 읽기 프로그램이 끼어들면 듣던 줄을 잃는다.
-           */}
-          <AlertBanner
-            variant="warning"
-            assertive={false}
-            title={blockReason}
-            id={confirmReasonId}
-          />
-        </div>
-      )}
+            {/*
+             * ⚠ `assertive={false}` — 색은 경고로 두되 **읽던 것을 끊지 않는다**(리뷰 지적).
+             *   이 문구는 사건이 아니라 «지금 왜 못 누르는가»라는 지속 상태라, 담기·기록으로
+             *   사유가 바뀔 때마다 화면 읽기 프로그램이 끼어들면 듣던 줄을 잃는다.
+             */}
+            <AlertBanner
+              variant="warning"
+              assertive={false}
+              title={blockReason}
+              id={confirmReasonId}
+            />
+          </div>
+        )}
 
       {receipt.isError && <LoadErrorBanner error={receipt.error} onRetry={receipt.refetch} />}
 

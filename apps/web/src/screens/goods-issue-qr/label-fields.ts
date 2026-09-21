@@ -61,7 +61,8 @@ const NO_DESTINATION = '-';
 const PALLET_UNSUPPORTED = '파렛트 단위 라벨은 아직 만들 수 없습니다. 라인 단위로 발행하세요.';
 const NOT_LOADED = '라벨에 실을 이름을 아직 받지 못했습니다. 잠시 뒤 다시 발행하세요.';
 /** 조회가 끝났는데 이름이 없다 — 다시 눌러도 같다. 담당자를 불러야 하는 갈래다. */
-const NAME_UNRESOLVED = '품목 코드·LOT 번호를 불러오지 못했습니다. 연결을 확인한 뒤 다시 발행하세요.';
+const NAME_UNRESOLVED =
+  '품목 코드·LOT 번호를 불러오지 못했습니다. 연결을 확인한 뒤 다시 발행하세요.';
 const LINE_MISSING = '이 발행 대상에 해당하는 출고 라인을 찾지 못했습니다.';
 
 /**

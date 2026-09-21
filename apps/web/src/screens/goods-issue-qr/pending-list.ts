@@ -207,8 +207,7 @@ export const usePendingIssueLines = (): PendingList => {
       issues.isPending ||
       lineQueries.some((query) => query.isPending) ||
       (all.length > 0 && summary.isPending),
-    isError:
-      issues.isError || lineQueries.some((query) => query.isError) || summary.isError,
+    isError: issues.isError || lineQueries.some((query) => query.isError) || summary.isError,
     truncated: issues.data !== undefined && issues.data.page.total > sorted.length,
   };
 };

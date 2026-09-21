@@ -533,7 +533,6 @@ describe('GoodsIssueQrScreen', () => {
 
     /* 바닥 띠에는 사유를 적지 않는다(사용자 지시 2026-09-19) — 사유 칸이 서고 단추가 잠긴다. */
     expect(await screen.findByRole('combobox', { name: t.reissue.label })).toBeInTheDocument();
-    expect(screen.queryByText(t.action.disabledNoReason)).toBeNull();
     expect(screen.getByRole('button', { name: t.action.issue })).toBeDisabled();
 
     await user.click(screen.getByRole('combobox', { name: t.reissue.label }));

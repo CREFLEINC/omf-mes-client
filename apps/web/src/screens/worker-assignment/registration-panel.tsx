@@ -27,7 +27,6 @@ import { panelScale } from './panel-scale';
 
 const t = messages.workerAssignment.registration;
 
-
 /**
  * 사유를 문장으로. **각 사유가 사람이 할 일이 다르다** — 401 은 재발급, 403 은 다른 토큰,
  * 미보관은 설치 담당자 호출이다. 한 문장으로 뭉치면 아무도 다음 행동을 모른다.
@@ -191,7 +190,7 @@ export const RegistrationPanel = () => {
               onKeyDown={scanner.onKeyDown}
               onChange={(event) => {
                 setToken(event.target.value);
-                scanner.noteInput();
+                scanner.noteInput(event.target.value);
               }}
               disabled={busy}
             />

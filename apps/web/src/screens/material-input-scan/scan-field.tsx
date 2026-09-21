@@ -113,7 +113,7 @@ export const ScanField = ({ isScanning, onScan, outcome }: ScanFieldProps) => {
           onKeyDown={scanner.onKeyDown}
           onChange={(event) => {
             setValue(event.target.value);
-            scanner.noteInput();
+            scanner.noteInput(event.target.value);
           }}
         />
         {/*

@@ -123,6 +123,40 @@ describe('출고번호로 전표 불러오기', () => {
     });
   });
 
+  /*
+   * ⛔ **지우기는 스캔이 아니다**(리뷰 지적 2026-09-21). 백스페이스를 길게 누르면 OS 자동반복이
+   *    스캐너 속도(≈30ms)로 변경을 쏟는다 — 글자가 «늘어난» 변경만 세지 않으면 지우다 만
+   *    토막으로 조회가 나간다.
+   */
+  it('빠르게 지우는 중에는 조회를 내보내지 않는다', async () => {
+    const asked: string[] = [];
+
+    renderWithProviders(<IssueLookupField onFound={() => undefined} />, {
+      fetch: createStubFetch([
+        {
+          match: (request) => {
+            asked.push(new URL(request.url).searchParams.get('q') ?? '');
+
+            return true;
+          },
+          respond: () => jsonResponse({ items: [], page: { page: 1, size: 200, total: 0 } }),
+        },
+      ]),
+      route: '/pop/goods-issue-qr',
+    });
+
+    const field = screen.getByLabelText(t.label);
+
+    /* 붙여넣기 한 번(변경 1회)으로는 스캔이 아니다 — 그 뒤 빠르게 지운다. */
+    fireEvent.change(field, { target: { value: ISSUE_NO } });
+    for (let length = ISSUE_NO.length - 1; length >= ISSUE_NO.length - 8; length -= 1) {
+      fireEvent.change(field, { target: { value: ISSUE_NO.slice(0, length) } });
+    }
+    await new Promise((resolve) => setTimeout(resolve, 300));
+
+    expect(asked).toEqual([]);
+  });
+
   /* 사람이 천천히 친 값은 멈춰도 묻지 않는다 — Enter·단추로만. */
   it('사람 속도로 친 값은 멈춰도 저절로 조회하지 않는다', async () => {
     const user = userEvent.setup({ delay: 100 });
