@@ -21,6 +21,15 @@ import {
 
 export type LotHold = components['schemas']['LotHold'];
 
+/**
+ * 한 쪽으로 받을 최대 줄 수.
+ *
+ * ⛔ **이 값을 안 실으면 서버 기본 쪽수로 잘린다.** 잔액은 이제 수량을 채우는 데만 쓰이지
+ * 않고 «후보가 서느냐»를 정하므로, 잘린 줄의 LOT 은 목록에서 통째로 사라진다. 형제 화면들이
+ * 같은 이유로 같은 값을 쓴다(자재 반품·폐기 출고).
+ */
+const PAGE_SIZE = 200;
+
 export const pickingKeys = {
   requests: (day: string) => ['picking-requests', day] as const,
   lots: (itemId: number | null) => ['picking-lots', itemId] as const,
@@ -75,6 +84,8 @@ export const useTodayRequests = (today: Date): UseQueryResult<ShipmentRequest[]>
 export interface LotPool {
   lots: Lot[];
   heldLotIds: Set<number>;
+  /** 한 쪽에 다 담기지 않았다. 화면이 「전부 보고 있지는 않다」고 말해야 한다. */
+  truncated: boolean;
 }
 
 export interface LotPoolResult {
@@ -88,23 +99,32 @@ export interface LotPoolResult {
 export const useLotPool = (itemId: number | null): LotPoolResult => {
   const { client } = useApiClient();
 
-  const askLots = async (heldOnly: boolean): Promise<Lot[]> => {
+  const askLots = async (heldOnly: boolean): Promise<{ items: Lot[]; truncated: boolean }> => {
     if (itemId === null) {
       throw new Error('대상을 고르기 전에는 LOT을 조회하지 않습니다.');
     }
 
     /*
-     * 제품 LOT 만 후보다. 유형을 안 거르면 같은 품목의 생산 LOT 이 함께 와, 집을 수 없는
-     * 줄이 목록에 선다. 유효기간이 없어 순서를 정할 수 없는 묶음으로 몰린다.
+     * LOT 유형으로 거르지 않는다. 「제품 LOT」은 따로 발번하는 번호가 아니라 완제품 창고에
+     * 선 생산 LOT 을 부르는 이름이다(경계 B6-01 갈래 ⓐ · omf-all-around#50). 유형을
+     * `PRODUCT` 로 걸면 그 값으로 만들어지는 LOT 이 없어 후보가 영영 0건이다.
+     *
+     * 좁히는 축은 출하 요청 라인의 품목이고, 공정 중 LOT 을 거르는 몫은 재고 잔액이
+     * 맡는다(`toCandidates`).
      */
-    const query = { itemId, lotTypeCode: 'PRODUCT', size: 200 };
+    /*
+     * ⭐ `completed: true` 로 **생산이 끝난 LOT 만** 받는다. 유형 축을 걷어낸 자리를 이 축이
+     *    메운다 - 계약이 「completedAt 이 비어 있는 것만/값이 있는 것만」으로 갈라 준다고
+     *    못박았다. 공정 중 LOT 을 서버에서 거르므로 화면이 잔액만으로 판정하지 않는다.
+     */
+    const query = { itemId, completed: true, size: PAGE_SIZE };
     const data = await runRequest(() =>
       client.GET('/trace/lots', {
         params: { query: heldOnly ? { ...query, heldOnly: true } : query },
       }),
     );
 
-    return data.items;
+    return { items: data.items, truncated: data.page.total > data.items.length };
   };
 
   return useQueries({
@@ -127,13 +147,23 @@ export const useLotPool = (itemId: number | null): LotPoolResult => {
       data:
         all.data === undefined || held.data === undefined
           ? undefined
-          : { lots: all.data, heldLotIds: new Set(held.data.map((lot) => lot.lotId)) },
+          : {
+              lots: all.data.items,
+              heldLotIds: new Set(held.data.items.map((lot) => lot.lotId)),
+              truncated: all.data.truncated || held.data.truncated,
+            },
     }),
   });
 };
 
 /** LOT 별 가용 수량. 서버가 계산해 내려주며 화면이 다시 빼지 않는다. */
-export const useAvailableByLot = (itemId: number | null): UseQueryResult<Map<number, number>> => {
+export interface AvailableByLot {
+  byLot: Map<number, number>;
+  /** 한 쪽에 다 담기지 않았다 — 잘린 줄의 LOT 은 후보에서 조용히 빠진다. */
+  truncated: boolean;
+}
+
+export const useAvailableByLot = (itemId: number | null): UseQueryResult<AvailableByLot> => {
   const { client } = useApiClient();
 
   return useQuery({
@@ -146,7 +176,8 @@ export const useAvailableByLot = (itemId: number | null): UseQueryResult<Map<num
 
       const data = await runRequest(() =>
         client.GET('/inventory/balances', {
-          params: { query: { itemId, groupBy: 'LOT', includeZero: true } },
+          /* ⛔ `size` 를 빼면 서버 기본 쪽수로 잘린다 — 잘린 LOT 은 후보에 서지 못한다. */
+          params: { query: { itemId, groupBy: 'LOT', includeZero: true, size: PAGE_SIZE } },
         }),
       );
 
@@ -160,18 +191,31 @@ export const useAvailableByLot = (itemId: number | null): UseQueryResult<Map<num
         byLot.set(balance.lotId, (byLot.get(balance.lotId) ?? 0) + balance.availableQty);
       }
 
-      return byLot;
+      return { byLot, truncated: data.page.total > data.items.length };
     },
   });
 };
 
-/** 화면이 고르는 데 필요한 것을 LOT 하나로 모은다. */
+/**
+ * 화면이 고르는 데 필요한 것을 LOT 하나로 모은다.
+ *
+ * 좁히는 축은 둘이다. **생산 완료**는 서버가 본다(`completed: true`) - 공정 중 LOT 은 아예
+ * 오지 않는다. 그 위에 **재고 잔액에 줄이 선 LOT 만** 남긴다 - 완료됐어도 이미 다 나간 LOT 은
+ * 집을 것이 없다.
+ *
+ * ⚠ 잔액 줄이 선다는 것이 「창고에 있다」와 같은 뜻인지는 **실서버에서 확인하지 않았다** -
+ *   현장 위치 재고도 잔액에 줄로 서는 화면이 있다(`shopfloor-receipt`). 그래서 이 축 «하나»에
+ *   기대지 않고 완료 축을 서버에 함께 건다. 창고로 바로 좁히지는 못한다 - 계약의 LOT 목록에
+ *   창고 축이 없고 출하 요청도 창고를 들고 있지 않다(omf-all-around#50).
+ */
 export const toCandidates = (pool: LotPool, available: Map<number, number>): Candidate[] =>
-  pool.lots.map((lot) => ({
-    lot,
-    availableQty: available.get(lot.lotId) ?? 0,
-    held: pool.heldLotIds.has(lot.lotId),
-  }));
+  pool.lots
+    .filter((lot) => available.has(lot.lotId))
+    .map((lot) => ({
+      lot,
+      availableQty: available.get(lot.lotId) ?? 0,
+      held: pool.heldLotIds.has(lot.lotId),
+    }));
 
 export interface PickVariables {
   /*

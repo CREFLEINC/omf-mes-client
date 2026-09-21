@@ -24,7 +24,7 @@ const lot = (overrides: Partial<Lot> = {}): Lot => ({
   lotId: 11,
   lotNo: 'FG-2026-0311',
   itemId: 31,
-  lotTypeCode: 'PRODUCT',
+  lotTypeCode: 'PRODUCTION',
   plantId: 1,
   initialQty: 500,
   uomId: 9,

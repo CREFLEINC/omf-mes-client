@@ -232,7 +232,7 @@ export const ProductPickingScreen = () => {
     () =>
       pool.data === undefined || available.data === undefined
         ? []
-        : toCandidates(pool.data, available.data),
+        : toCandidates(pool.data, available.data.byLot),
     [available.data, pool.data],
   );
 
@@ -517,9 +517,18 @@ export const ProductPickingScreen = () => {
 
     const other = missedLot.data ?? null;
 
-    return other !== null && other.itemId !== target.line.itemId
-      ? t.scan.otherItem(missed)
-      : t.scan.notFound(missed);
+    if (other === null) {
+      return t.scan.notFound(missed);
+    }
+    if (other.itemId !== target.line.itemId) {
+      return t.scan.otherItem(missed);
+    }
+
+    /*
+     * ⭐ 같은 품목인데 후보에 없다 — 번호를 잘못 읽은 것이 아니라 «아직 집을 수 없는» LOT 이다
+     *   (생산 미완료이거나 재고가 남지 않았다). 「못 찾았다」로 말하면 작업자가 다시 스캔한다.
+     */
+    return t.scan.notPickable(missed);
   };
 
   const lineUom = uomOf(target.line.uomId);
@@ -599,6 +608,13 @@ export const ProductPickingScreen = () => {
         ) : null}
         {pool.data !== undefined && candidates.length === 0 ? (
           <AlertBanner variant="warning" title={t.candidates.none} />
+        ) : null}
+        {/*
+          ⛔ 쪽이 잘렸는데 말하지 않으면 「없다」와 「못 받았다」가 같아 보인다 — 작업자가 있는
+             LOT 을 없다고 믿고 되돌아간다.
+        */}
+        {pool.data?.truncated === true || available.data?.truncated === true ? (
+          <AlertBanner variant="warning" title={t.candidates.truncated} />
         ) : null}
 
         {/* 모르는 정책으로 줄을 세운 척하면 엉뚱한 순서를 권장으로 낸다. */}
