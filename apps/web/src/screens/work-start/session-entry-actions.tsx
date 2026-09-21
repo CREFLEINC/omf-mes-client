@@ -30,10 +30,17 @@ export interface SessionEntryActionsProps {
  * ⛔ **쓰기가 하나도 없다.** 전부 «자리를 옮기는» 것뿐이다 — 중단 사유·교체 부품·검사값·포장
  *    수량은 각 화면이 받는다.
  *
- * ⚠ **1024×768 의 예산.** 높이는 48(`lg`)이고 폭 하한은 9rem 이다(`work-start-head-button` ·
- *   사용자 지시 2026-09-19). 띠의 조작 칸이 `flex-wrap` 이라 넘치면 다음 줄로 접힌다 —
- *   넷(+PQC 의뢰 수)이 한 줄에 서는 폭이지만, 의뢰번호가 붙는 단추는 길어 접힐 수 있고
- *   세로로 커지는 쪽이 잘려 사라지는 것보다 낫다.
+ * ⭐ **[ 이어서 하기 ]가 한 단계 위다**(사용자 지시 2026-09-21). 지금 해야 할 일 하나를
+ *    채움(`filled`)으로 세우고 나머지 셋은 테두리(`outlined`)로 남긴다 — 넷이 같은 무게로
+ *    서면 무엇을 먼저 누르는지가 화면에 없다. ⛔ 새 색을 만들지 않는다.
+ *
+ * ⚠ **1024×768 의 예산.** 높이는 48 로 묶여 있고(`pop.css`) 주 단추만 폭 하한 9rem 을
+ *   지킨다(`work-start-head-button` · 사용자 지시 2026-09-19). 보조 셋은 글자만큼만 서서
+ *   묶음으로 읽힌다 — 넷을 모두 9rem 로 두면 띠 폭을 가로질러 흩어진다(사용자 지적).
+ *
+ * ⚠ **묶음을 제 상자에 담는다.** 띠의 조작 칸에 단추를 바로 두면 「문구와 단추가 한 칸에
+ *   있는 본문」 규칙이 걸려 줄바꿈이 꺼진다(`pop.css`) — 상자 하나로 그 겨냥에서 벗어나고,
+ *   간격·줄바꿈을 이 묶음이 스스로 정한다.
  */
 export const SessionEntryActions = ({
   onContinue,
@@ -43,18 +50,20 @@ export const SessionEntryActions = ({
   pendingPqc,
   onPqcInspection,
 }: SessionEntryActionsProps) => (
-  <>
+  <div className="work-start-entry-actions">
     {/*
      * ⛔ **쓰기가 아니다.** 이미 열린 세션으로 «자리를 옮기는» 것뿐이라 여기서 아무것도
      *    보내지 않는다 — 재개(`RESUME` 적재)는 중단 상태의 사건이고(§5-4) 이 갈래가 아니다.
      *
      * ⭐ **높이는 48 로 낮춘다**(`lg` · 사용자 지시 2026-09-19 — 앞 판은 목록의 [ 전체 보기 ]와
      *    같은 `xl`·72 였다). 폭 하한은 그대로라 누를 자리로는 계속 읽힌다(`pop.css`).
-     *    뒤따르는 단추도 모두 같은 규격으로 세운다 — 한 묶음이 서로 다른 크기로 서지 않는다.
+     *
+     * ⭐ **채움은 이 하나뿐이다**(사용자 지시 2026-09-21) — 「진행 중이면 이어서 한다」가 이
+     *    자리의 기본 걸음이고, 나머지 셋은 그때그때 고르는 갈래다.
      */}
     <Button
       type="button"
-      variant="outlined"
+      variant="filled"
       size="lg"
       className="work-start-head-button"
       onClick={onContinue}
@@ -69,7 +78,7 @@ export const SessionEntryActions = ({
       type="button"
       variant="outlined"
       size="lg"
-      className="work-start-head-button"
+      className="work-start-entry-secondary"
       onClick={onHold}
     >
       {t.holdWork}
@@ -78,7 +87,7 @@ export const SessionEntryActions = ({
       type="button"
       variant="outlined"
       size="lg"
-      className="work-start-head-button"
+      className="work-start-entry-secondary"
       onClick={onRunningChange}
     >
       {t.runningChange}
@@ -94,7 +103,7 @@ export const SessionEntryActions = ({
         type="button"
         variant="outlined"
         size="lg"
-        className="work-start-head-button"
+        className="work-start-entry-secondary"
         onClick={() => {
           onPqcInspection(request.inspectionRequestId);
         }}
@@ -106,10 +115,10 @@ export const SessionEntryActions = ({
       type="button"
       variant="outlined"
       size="lg"
-      className="work-start-head-button"
+      className="work-start-entry-secondary"
       onClick={onPacking}
     >
       {t.packingWork}
     </Button>
-  </>
+  </div>
 );

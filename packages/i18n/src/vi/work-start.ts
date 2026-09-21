@@ -126,7 +126,7 @@ export const workStart: Translated<typeof ko.workStart> = {
 
     notSelected: 'Bắt đầu sản xuất: hãy chọn lệnh sản xuất trước.',
 
-    alreadyOpen: 'Lệnh sản xuất này đang có công việc đang làm. Hãy làm tiếp công việc đó.',
+    alreadyOpen: 'Đang có công việc dở dang. Hãy tiếp tục công việc.',
     continueToSession: 'Vào việc đang làm',
     holdWork: 'Tạm dừng công việc',
     runningChange: 'Thay linh kiện',

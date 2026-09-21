@@ -979,6 +979,34 @@ describe('P-02-01 작업 시작 — 다음 작업 화면으로 가는 길(omf-al
     );
   });
 
+  /**
+   * ⭐ **진행 중은 «상태»다**(사용자 지시 2026-09-21). 띠 전체를 경고 상자로 세우면 작업자가
+   *    풀어야 할 진짜 막힘과 구분되지 않는다. 디자인 시스템이 경고를 `alert`, 안내를
+   *    `status` 로 내므로 그 역할로 잰다 — 색 이름은 화면 밖에서 볼 수 없다.
+   */
+  it('진행 중 안내는 경고가 아니라 상태로 선다', async () => {
+    const rendered = renderScreen({ openSessions: [OPEN_SESSION] });
+
+    await selectWorkOrder(rendered);
+
+    const banner = (await screen.findByText(t.blocked.alreadyOpen)).closest('[role]');
+
+    expect(banner).toHaveAttribute('role', 'status');
+  });
+
+  /** ⛔ 풀어야 하는 막힘까지 낮추지 않는다 — 눈에 걸리지 않으면 작업자가 지나친다. */
+  it('작업자가 풀어야 할 막힘은 경고 그대로 선다', async () => {
+    vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(false);
+
+    const rendered = renderScreen({ openSessions: [OPEN_SESSION] });
+
+    await selectWorkOrder(rendered);
+
+    const banner = (await screen.findByText(t.blocked.offline)).closest('[role]');
+
+    expect(banner).toHaveAttribute('role', 'alert');
+  });
+
   /** ⭐ 러닝체인지도 같은 자리에서 작업지시를 싣는다(체크리스트 43). */
   it('진행 중인 세션이 있으면 부품 교체로 갈 길을 준다', async () => {
     const rendered = renderScreen({ openSessions: [OPEN_SESSION] });
