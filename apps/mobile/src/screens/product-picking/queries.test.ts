@@ -161,8 +161,7 @@ describe('LOT 후보', () => {
 });
 
 describe('가용 수량', () => {
-  /* 잔액 0인 줄까지 받아야 소진된 LOT 이 목록에서 사라지지 않는다. */
-  it('LOT 별로 갈라 받고 잔액 0인 줄도 받는다', async () => {
+  it('LOT 별로 갈라 받는다', async () => {
     const seen: URL[] = [];
     const fetch = createStubFetch([
       capturing(
@@ -206,12 +205,46 @@ describe('가용 수량', () => {
       expect(result.current.isSuccess).toBe(true);
     });
     expect(seen[0]?.searchParams.get('groupBy')).toBe('LOT');
-    expect(seen[0]?.searchParams.get('includeZero')).toBe('true');
+    /* ⛔ 가용 0 은 후보가 아니다 — 0 인 줄을 받아 봐야 쪽 예산만 먹는다. */
+    expect(seen[0]?.searchParams.get('includeZero')).toBeNull();
     /* ⛔ `size` 가 빠지면 서버 기본 쪽수로 잘리고, 잘린 LOT 은 후보에 서지 못한다. */
     expect(seen[0]?.searchParams.get('size')).toBe('200');
     expect(result.current.data?.byLot.get(1)).toBe(180);
     expect(result.current.data?.byLot.get(2)).toBe(0);
     expect(result.current.data?.truncated).toBe(false);
+  });
+  /*
+   * ⛔ 소유 구분이 갈리면 **한 LOT 이 여러 줄로** 온다. 합치지 않고 덮어쓰면 마지막 줄만
+   *    남는데, 그 줄이 0 이면 실제로는 집을 수 있는 LOT 이 후보에서 통째로 사라진다 —
+   *    합산은 이제 「표시 수량」이 아니라 「후보가 서느냐」를 정한다.
+   */
+  it('한 LOT 이 여러 줄로 오면 합쳐서 센다', async () => {
+    const row = (lotId: number, availableQty: number, ownershipTypeCode: string) => ({
+      groupBy: 'LOT',
+      itemId: 31,
+      lotId,
+      availableQty,
+      uomId: 9,
+      onHandQty: availableQty,
+      reservedQty: 0,
+      pickedQty: 0,
+      blockedQty: 0,
+      ownershipTypeCode,
+    });
+    const fetch = createStubFetch([
+      capturing(
+        '/inventory/balances',
+        { items: [row(1, 50, 'OWN'), row(1, 0, 'CONSIGNED')], page },
+        [],
+      ),
+    ]);
+
+    const { result } = renderHookWithProviders(() => useAvailableByLot(31), { fetch });
+
+    await waitFor(() => {
+      expect(result.current.isSuccess).toBe(true);
+    });
+    expect(result.current.data?.byLot.get(1)).toBe(50);
   });
 });
 

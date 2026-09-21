@@ -176,8 +176,13 @@ export const useAvailableByLot = (itemId: number | null): UseQueryResult<Availab
 
       const data = await runRequest(() =>
         client.GET('/inventory/balances', {
-          /* ⛔ `size` 를 빼면 서버 기본 쪽수로 잘린다 — 잘린 LOT 은 후보에 서지 못한다. */
-          params: { query: { itemId, groupBy: 'LOT', includeZero: true, size: PAGE_SIZE } },
+          /*
+           * ⛔ `size` 를 빼면 서버 기본 쪽수로 잘린다 — 잘린 LOT 은 후보에 서지 못한다.
+           * ⛔ `includeZero` 는 싣지 않는다 — 가용 0 은 후보가 아니라(`toCandidates`) 0 인 줄을
+           *    받아도 집합이 달라지지 않는데, 쪽 예산만 먹어 «집을 수 있는» 줄을 쪽 밖으로
+           *    밀어낸다. 밀려난 LOT 은 조용히 사라진다.
+           */
+          params: { query: { itemId, groupBy: 'LOT', size: PAGE_SIZE } },
         }),
       );
 

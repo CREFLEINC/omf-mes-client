@@ -99,10 +99,14 @@ export const rankCandidates = (candidates: Candidate[], policy: string): Ranked 
 export const remainingAllocated = (line: ShipmentRequestLine): number =>
   line.allocatedQty - line.pickedQty;
 
-export type LotProblem = 'held' | 'noAvailable' | 'shelfLifeShort' | 'otherItem';
+export type LotProblem = 'held' | 'shelfLifeShort' | 'otherItem';
 
 /**
  * 이 LOT 을 집을 수 없게 하는 것이 있는가.
+ *
+ * ⛔ 가용 0 은 여기서 보지 않는다 - 후보가 되는 조건이 이미 「집을 것이 남았는가」라
+ * (`toCandidates`) 가용 0 인 `Candidate` 는 만들어지지 않는다. 갈래를 남겨 두면 닿지 않는
+ * 문구를 지키느라 다음 사람이 헛되이 붙든다(omf-all-around#50 리뷰 실측).
  *
  * 잔여 유효기간은 구조화된 값이라 판정한다. 고객 LOT 요구 문장은 판정하지 않는다 - 자유
  * 텍스트라 못 알아들은 조건을 조용히 통과시키게 되고, 그것은 잘못된 LOT 이 나가는 것보다
@@ -119,10 +123,6 @@ export const lotProblem = (
 
   if (candidate.held) {
     return 'held';
-  }
-
-  if (candidate.availableQty <= 0) {
-    return 'noAvailable';
   }
 
   const minimum = line.minimumRemainingShelfLifeDays;

@@ -337,7 +337,7 @@ describe('제품LOT 피킹 스캔 화면', () => {
     await pickLot(user, 'FG-0999');
 
     expect(
-      await screen.findByText(/FG-0999 은\(는\) 아직 집을 수 있는 상태가 아닙니다/),
+      await screen.findByText(/FG-0999 은\(는\) 지금 집을 수 있는 LOT 이 아닙니다/),
     ).toBeTruthy();
   });
 
