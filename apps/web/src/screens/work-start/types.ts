@@ -16,3 +16,6 @@ export type ControlOverride = components['schemas']['ControlOverride'];
 
 export type Terminal = components['schemas']['Terminal'];
 export type Worker = components['schemas']['Worker'];
+
+/** 고른 작업지시의 **아직 끝나지 않은 PQC 검사 의뢰** — 그 화면으로 가는 단추가 이것으로 선다. */
+export type InspectionRequest = components['schemas']['InspectionRequest'];

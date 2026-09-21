@@ -6,6 +6,7 @@ import { setWorkerSession } from '../../patterns/worker-session';
 import {
   EQUIPMENT_ID,
   IDENTITY,
+  PQC_REQUEST,
   PROCESS_ID,
   TERMINAL,
   WORKER,
@@ -833,13 +834,14 @@ describe('P-02-01 작업 시작 — 누르면 반드시 무언가 말한다(#114
 });
 
 /**
- * omf-all-around#42 — **작업 중단(`P-02-10`)으로 가는 길.**
+ * omf-all-around#42 — **다음 작업 화면으로 가는 길.**
  *
- * 중단 화면은 작업지시를 주소로만 받고, 못 받으면 「작업 시작 화면에서 지시를 고른 뒤
+ * 작업 중단(`P-02-10`)·부품 교체(`P-02-11`)·PQC 검사(`P-02-13`)·포장 작업(`P-02-08`)은 모두
+ * 작업지시(또는 그 지시의 검사 의뢰)를 주소로만 받고, 못 받으면 「작업 시작 화면에서 고른 뒤
  * 들어오세요」로 막힌다. 그런데 그 「고른 뒤 들어오는」 길이 이 화면에 없어 설치본(주소창
- * 없음)에서는 중단을 열 수 없었다. 여기 감지기는 그 길이 **열린 세션에서만** 서는지를 잰다.
+ * 없음)에서는 넷 다 열 수 없었다. 여기 감지기는 그 길이 **열린 세션에서만** 서는지를 잰다.
  */
-describe('P-02-01 작업 시작 — 작업 중단으로 가는 길(omf-all-around#42)', () => {
+describe('P-02-01 작업 시작 — 다음 작업 화면으로 가는 길(omf-all-around#42)', () => {
   const OPEN_SESSION = {
     workSessionId: 9801,
     workOrderId: WORK_ORDER.workOrderId,
@@ -870,15 +872,102 @@ describe('P-02-01 작업 시작 — 작업 중단으로 가는 길(omf-all-aroun
     );
   });
 
-  /** ⛔ 세션이 없으면 내지 않는다 — 중단은 «세션» 사건이다(`P-02-10` §5-2). */
-  it('열린 세션이 없으면 작업 중단을 세우지 않는다', async () => {
-    const rendered = renderScreen();
+  /** ⭐ 러닝체인지도 같은 자리에서 작업지시를 싣는다(체크리스트 43). */
+  it('진행 중인 세션이 있으면 부품 교체로 갈 길을 준다', async () => {
+    const rendered = renderScreen({ openSessions: [OPEN_SESSION] });
+
+    await selectWorkOrder(rendered);
+
+    await rendered.user.click(await screen.findByRole('button', { name: t.blocked.runningChange }));
+
+    expect(screen.getByTestId('location')).toHaveTextContent(
+      `/pop/running-change?workOrderId=${String(WORK_ORDER.workOrderId)}`,
+    );
+  });
+
+  /** ⭐ 포장 작업도 같은 조건·같은 자리다. */
+  it('진행 중인 세션이 있으면 포장 작업으로 갈 길을 준다', async () => {
+    const rendered = renderScreen({ openSessions: [OPEN_SESSION] });
+
+    await selectWorkOrder(rendered);
+
+    await rendered.user.click(await screen.findByRole('button', { name: t.blocked.packingWork }));
+
+    expect(screen.getByTestId('location')).toHaveTextContent(
+      `/pop/packing-work?workOrderId=${String(WORK_ORDER.workOrderId)}`,
+    );
+  });
+
+  /**
+   * ⭐ **PQC 는 «검사 의뢰»를 싣는다** — 그 화면의 진입 인자가 의뢰 하나다(스펙 §5-10).
+   */
+  it('끝나지 않은 PQC 의뢰가 하나면 그 의뢰로 검사 화면을 연다', async () => {
+    const rendered = renderScreen({ openSessions: [OPEN_SESSION], pendingPqc: [PQC_REQUEST] });
+
+    await selectWorkOrder(rendered);
+
+    await rendered.user.click(await screen.findByRole('button', { name: t.blocked.pqcInspection }));
+
+    expect(screen.getByTestId('location')).toHaveTextContent(
+      `/pop/pqc-inspection?ir=${String(PQC_REQUEST.inspectionRequestId)}`,
+    );
+  });
+
+  /** ⛔ **화면이 대신 고르지 않는다** — 의뢰가 여럿이면 번호를 적은 단추를 모두 세운다. */
+  it('PQC 의뢰가 여럿이면 의뢰마다 번호를 적어 고르게 한다', async () => {
+    const second = {
+      ...PQC_REQUEST,
+      inspectionRequestId: 7302,
+      inspectionRequestNo: 'SYN-IR-0002',
+    };
+    const rendered = renderScreen({
+      openSessions: [OPEN_SESSION],
+      pendingPqc: [PQC_REQUEST, second],
+    });
+
+    await selectWorkOrder(rendered);
+
+    expect(
+      await screen.findByRole('button', {
+        name: t.blocked.pqcInspectionOf(PQC_REQUEST.inspectionRequestNo),
+      }),
+    ).toBeInTheDocument();
+
+    await rendered.user.click(
+      screen.getByRole('button', { name: t.blocked.pqcInspectionOf(second.inspectionRequestNo) }),
+    );
+
+    expect(screen.getByTestId('location')).toHaveTextContent(
+      `/pop/pqc-inspection?ir=${String(second.inspectionRequestId)}`,
+    );
+  });
+
+  /** ⛔ 끝나지 않은 의뢰가 없으면 내지 않는다 — PQC 대상이 아닌 작업지시다. */
+  it('끝나지 않은 PQC 의뢰가 없으면 검사 단추를 세우지 않는다', async () => {
+    const rendered = renderScreen({ openSessions: [OPEN_SESSION] });
+
+    await selectWorkOrder(rendered);
+
+    await screen.findByRole('button', { name: t.blocked.holdWork });
+    expect(screen.queryByRole('button', { name: t.blocked.pqcInspection })).not.toBeInTheDocument();
+  });
+
+  /** ⛔ 세션이 없으면 넷 다 내지 않는다 — 중단·교체·검사·포장은 «세션» 위의 일이다. */
+  it('열린 세션이 없으면 네 단추를 모두 세우지 않는다', async () => {
+    const rendered = renderScreen({ pendingPqc: [PQC_REQUEST] });
 
     await selectWorkOrder(rendered);
 
     await waitFor(() => {
       expect(startButton()).toBeEnabled();
     });
-    expect(screen.queryByRole('button', { name: t.blocked.holdWork })).not.toBeInTheDocument();
+    for (const label of [
+      t.blocked.holdWork,
+      t.blocked.runningChange,
+      t.blocked.pqcInspection,
+      t.blocked.packingWork,
+    ]) {
+      expect(screen.queryByRole('button', { name: label })).not.toBeInTheDocument();
+    }
   });
 });

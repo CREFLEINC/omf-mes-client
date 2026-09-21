@@ -82,6 +82,17 @@ export const PASSED_INSPECTION = {
   inspectorWorkerNo: '3391',
 };
 
+/** 끝나지 않은 PQC 검사 의뢰 한 건 — 이 지시가 PQC 대상임을 만드는 값이다. */
+export const PQC_REQUEST = {
+  inspectionRequestId: 7301,
+  inspectionRequestNo: 'SYN-IR-0001',
+  inspectionTypeCode: 'PQC',
+  targetTypeCode: 'WORK_ORDER',
+  workOrderId: WORK_ORDER.workOrderId,
+  statusCode: 'REQUESTED',
+  requestedAt: '2026-09-02T08:30:00+09:00',
+};
+
 /** ⚠ `workerNo` 는 숫자 칸이라 `SYN-` 접두를 붙일 수 없다 — **지어낸 값**이다. */
 export const WORKER = {
   workerId: 2101,
@@ -104,6 +115,9 @@ export interface StubOptions {
   listStatus?: number;
   /** 고른 작업지시의 열린 세션. 기본은 없음. */
   openSessions?: Record<string, unknown>[];
+  /** 고른 작업지시의 끝나지 않은 PQC 검사 의뢰. 기본은 없음 — PQC 대상이 아닌 지시다. */
+  pendingPqc?: Record<string, unknown>[];
+  pqcStatus?: number;
   workers?: Record<string, unknown>[];
   workersStatus?: number;
   /** 사번 조회를 «첫 번째만» 실패시킨다 — 「다시 시도」가 실제로 푸는지 재려면 필요하다. */
@@ -200,6 +214,16 @@ const stub = (options: StubOptions = {}): { recorded: Recorded; fetch: StubFetch
       const items = options.openSessions ?? [];
 
       return jsonResponse({ items, page: { page: 1, size: 2, total: items.length } });
+    }
+
+    if (url.pathname === '/quality/inspection-requests') {
+      if (options.pqcStatus !== undefined) {
+        return jsonResponse({ message: '실패' }, { status: options.pqcStatus });
+      }
+
+      const items = options.pendingPqc ?? [];
+
+      return jsonResponse({ items, page: { page: 1, size: 50, total: items.length } });
     }
 
     if (url.pathname === '/production/work-sessions' && request.method === 'POST') {

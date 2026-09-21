@@ -15,11 +15,13 @@ import { PopHeader } from './pop-header';
 import { SelectionCard } from './selection-card';
 import {
   useOpenSession,
+  usePendingPqcRequests,
   useTerminal,
   useUomCodes,
   useWorkOrders,
   useWorkerLookup,
 } from './queries';
+import { SessionEntryActions } from './session-entry-actions';
 import { toSessionRequest } from './session-request';
 import { assignedAtText, terminalNow } from './terminal-clock';
 import type { ControlOverride, WorkOrder } from './types';
@@ -168,6 +170,18 @@ export const WorkStartScreen = () => {
    */
   const openSession = useOpenSession(selected?.workOrderId ?? null, selected !== null);
 
+  /*
+   * 고른 지시의 **끝나지 않은 PQC 검사 의뢰**(omf-all-around#42). 그 화면으로 가는 단추가
+   * 설 조건이다 — 의뢰가 없으면 PQC 대상이 아닌 지시라 단추를 내지 않는다.
+   *
+   * ⚠ **세션이 열려 있을 때만 묻는다** — 다른 진입 단추와 같은 조건에서만 서므로, 그 밖에서는
+   *   물을 이유가 없다. 지시를 훑는 동안 쪽마다 조회가 따라붙지 않게 하는 자리이기도 하다.
+   */
+  const pendingPqc = usePendingPqcRequests(
+    selected?.workOrderId ?? null,
+    selected !== null && openSession.data != null,
+  );
+
   /**
    * 이 시도가 언제 일어났는가. **한 번 정하면 성공할 때까지 붙든다.**
    *
@@ -226,6 +240,32 @@ export const WorkStartScreen = () => {
    */
   const goToWorkHold = (workOrderId: number): void => {
     void navigate(`/pop/work-hold?workOrderId=${String(workOrderId)}`);
+  };
+
+  /**
+   * **러닝체인지 부품 교체(`P-02-11`)로 보낸다**(omf-all-around#42).
+   *
+   * ⚠ 스펙 §2 의 진입은 「메인 작업 화면 안의 인라인 교체」다 — 그 화면이 이 저장소에 서면
+   *   진입을 그쪽으로 옮긴다. 그때까지 작업지시를 실어 보낼 길이 여기밖에 없다.
+   */
+  const goToRunningChange = (workOrderId: number): void => {
+    void navigate(`/pop/running-change?workOrderId=${String(workOrderId)}`);
+  };
+
+  /**
+   * **PQC 제품 검사(`P-02-13`)로 보낸다**(omf-all-around#42).
+   *
+   * ⛔ **작업지시가 아니라 «검사 의뢰»를 싣는다.** 그 화면의 진입 인자는 의뢰 하나이고
+   *    (`pqc-inspection/target.ts`), 화면 안에 대상 목록을 두지 않는다(스펙 §5-10) — 여럿이면
+   *    고르는 것은 이 화면의 몫이다.
+   */
+  const goToPqcInspection = (inspectionRequestId: number): void => {
+    void navigate(`/pop/pqc-inspection?ir=${String(inspectionRequestId)}`);
+  };
+
+  /** **포장 작업(`P-02-08`)으로 보낸다**(omf-all-around#42) — 여기도 작업지시를 주소로 받는다. */
+  const goToPackingWork = (workOrderId: number): void => {
+    void navigate(`/pop/packing-work?workOrderId=${String(workOrderId)}`);
   };
 
   const startWork = useStartWork({
@@ -488,50 +528,29 @@ export const WorkStartScreen = () => {
           <AlertBanner
             variant="warning"
             action={
-              block.code === 'alreadyOpen' ? (
+              block.code === 'alreadyOpen' && selected !== null ? (
                 /*
-                 * ⛔ **쓰기가 아니다.** 이미 열린 세션으로 «자리를 옮기는» 것뿐이라 여기서
-                 *    아무것도 보내지 않는다 — 재개(`RESUME` 적재)는 중단 상태의 사건이고(§5-4)
-                 *    이 갈래가 아니다.
+                 * ⭐ **진입 단추 묶음**(omf-all-around#42) — 다음 작업 화면들이 모두 작업지시를
+                 *    주소로 받아야 열리므로, 열린 세션이 있는 이 자리에서 길을 함께 낸다.
+                 *    묶음의 자리·규격·조건은 `session-entry-actions.tsx` 가 소유한다.
                  */
-                /*
-                 * ⭐ **크기는 목록의 [ 전체 보기 ]와 같게 둔다**(`xl` · 사용자 지시 2026-09-16).
-                 *    이 버튼은 띠 안에 있지만 작업자가 실제로 누르는 다음 걸음이라, 같은 화면의
-                 *    다른 조작보다 작으면 눌러야 할 자리로 읽히지 않는다.
-                 */
-                <>
-                  <Button
-                    type="button"
-                    variant="outlined"
-                    size="xl"
-                    className="work-start-head-button"
-                    onClick={() => {
-                      if (selected !== null) goToMaterialInput(selected.workOrderId);
-                    }}
-                  >
-                    {t.blocked.continueToSession}
-                  </Button>
-                  {/*
-                   * ⭐ **[ 작업 중단 ]은 [ 이어서 하기 ] 옆에 선다**(omf-all-around#42).
-                   *    둘 다 «열린 세션이 있을 때»만 성립하는 동작이라(중단은 세션 사건이다 ·
-                   *    `P-02-10` §5-2) 같은 조건에서 나란히 둔다 — 조건이 갈리면 한쪽만
-                   *    보이는 날 작업자는 다른 쪽이 사라진 이유를 알 수 없다.
-                   *
-                   * ⛔ **쓰기가 아니다.** 여기서는 중단 화면으로 자리를 옮기기만 한다 —
-                   *    중단 사유·수량은 그 화면이 받는다.
-                   */}
-                  <Button
-                    type="button"
-                    variant="outlined"
-                    size="xl"
-                    className="work-start-head-button"
-                    onClick={() => {
-                      if (selected !== null) goToWorkHold(selected.workOrderId);
-                    }}
-                  >
-                    {t.blocked.holdWork}
-                  </Button>
-                </>
+                <SessionEntryActions
+                  onContinue={() => {
+                    goToMaterialInput(selected.workOrderId);
+                  }}
+                  onHold={() => {
+                    goToWorkHold(selected.workOrderId);
+                  }}
+                  onRunningChange={() => {
+                    goToRunningChange(selected.workOrderId);
+                  }}
+                  onPacking={() => {
+                    goToPackingWork(selected.workOrderId);
+                  }}
+                  /* ⚠ 아직 못 받았거나 조회가 실패했으면 «없는 것»으로 둔다 — 지어내지 않는다. */
+                  pendingPqc={pendingPqc.data ?? []}
+                  onPqcInspection={goToPqcInspection}
+                />
               ) : retryLabel === null ? undefined : (
                 <Button type="button" variant="outlined" size="sm" onClick={gate.retry}>
                   {retryLabel}
