@@ -23,7 +23,7 @@ const lotRow = (lotId: number, lotNo: string) => ({
   lotId,
   lotNo,
   itemId: 31,
-  lotTypeCode: 'PRODUCT',
+  lotTypeCode: 'PRODUCTION',
   plantId: 1,
   initialQty: 500,
   uomId: 9,
@@ -109,6 +109,26 @@ describe('LOT 후보', () => {
     expect(result.current.data?.heldLotIds.has(1)).toBe(false);
   });
 
+  /*
+   * 「제품 LOT」은 따로 발번하는 유형이 아니다 - 유형 축을 실으면 후보가 영영 0건이다
+   * (경계 B6-01 갈래 ⓐ · omf-all-around#50).
+   */
+  it('LOT 유형으로 거르지 않고 품목으로만 좁힌다', async () => {
+    const seen: URL[] = [];
+    const fetch = createStubFetch([capturing('/trace/lots', { items: [], page }, seen)]);
+
+    const { result } = renderHookWithProviders(() => useLotPool(31), { fetch });
+
+    await waitFor(() => {
+      expect(result.current.data).not.toBeUndefined();
+    });
+    expect(seen).toHaveLength(2);
+    for (const url of seen) {
+      expect(url.searchParams.get('lotTypeCode')).toBeNull();
+      expect(url.searchParams.get('itemId')).toBe('31');
+    }
+  });
+
   it('대상을 고르기 전에는 묻지 않는다', () => {
     const fetch = createStubFetch([]);
 
@@ -171,13 +191,29 @@ describe('가용 수량', () => {
 });
 
 describe('후보 조립', () => {
-  it('가용이 없는 LOT 도 후보에서 빼지 않는다', () => {
+  /* 다 쓴 LOT 은 잔액 0 인 줄로 온다 - 사라지면 재고가 없어진 것처럼 보인다. */
+  it('가용이 0 이어도 잔액 줄이 있으면 후보에서 빼지 않는다', () => {
     const pool = { lots: [lotRow(1, 'A'), lotRow(2, 'B')], heldLotIds: new Set([2]) };
-    const candidates = toCandidates(pool, new Map([[1, 180]]));
+    const candidates = toCandidates(
+      pool,
+      new Map([
+        [1, 180],
+        [2, 0],
+      ]),
+    );
 
     expect(candidates).toHaveLength(2);
     expect(candidates[0]?.availableQty).toBe(180);
     expect(candidates[1]?.availableQty).toBe(0);
     expect(candidates[1]?.held).toBe(true);
+  });
+
+  /* 창고에 들어온 적이 없는 공정 중 LOT 은 집을 수 없다 - 후보로 세우지 않는다. */
+  it('재고 잔액에 줄이 없는 LOT 은 후보에서 뺀다', () => {
+    const pool = { lots: [lotRow(1, 'A'), lotRow(2, 'B')], heldLotIds: new Set<number>() };
+    const candidates = toCandidates(pool, new Map([[1, 180]]));
+
+    expect(candidates).toHaveLength(1);
+    expect(candidates[0]?.lot.lotId).toBe(1);
   });
 });

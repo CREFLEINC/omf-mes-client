@@ -35,7 +35,8 @@ const lotRow = (lotId: number, lotNo: string, expiryDate: string | null) => ({
   lotId,
   lotNo,
   itemId: 31,
-  lotTypeCode: 'PRODUCT',
+  /* 완제품도 생산에서 나온 LOT 은 PRODUCTION 이다 - 서버에 PRODUCT 유형은 서지 않는다. */
+  lotTypeCode: 'PRODUCTION',
   plantId: 1,
   initialQty: 500,
   uomId: 9,
@@ -274,17 +275,18 @@ describe('제품LOT 피킹 스캔 화면', () => {
 
   /* 자유 텍스트라 해석하지 않는다. 사람이 읽고 고르도록 그대로 크게 보인다. */
   /*
-   * 유형을 안 거르면 같은 품목의 생산 LOT 이 후보로 온다. 유효기간이 없어 순서를 정할 수
-   * 없는 묶음에 서고, 작업자는 집을 수 없는 줄을 셋 넘게 본다.
+   * 「제품 LOT」은 따로 발번하는 유형이 아니라 완제품 창고에 선 생산 LOT 을 부르는 이름이다
+   * (경계 B6-01 갈래 ⓐ · omf-all-around#50). 유형을 실으면 후보가 영영 0건이라 피킹이
+   * 아예 열리지 않는다. 공정 중 LOT 을 거르는 몫은 재고 잔액이 맡는다.
    */
-  it('후보를 제품 LOT으로만 묻는다', async () => {
-    const asked: string[] = [];
+  it('후보를 LOT 유형으로 거르지 않는다', async () => {
+    const asked: (string | null)[] = [];
     const user = userEvent.setup();
     mount([
       {
         match: (req) => new URL(req.url).pathname === '/trace/lots',
         respond: (req) => {
-          asked.push(new URL(req.url).searchParams.get('lotTypeCode') ?? '');
+          asked.push(new URL(req.url).searchParams.get('lotTypeCode'));
           return jsonResponse({ items: [EARLY, LATE], page });
         },
       },
@@ -294,7 +296,23 @@ describe('제품LOT 피킹 스캔 화면', () => {
     await waitFor(() => {
       expect(asked.length).toBeGreaterThan(0);
     });
-    expect(asked.every((each) => each === 'PRODUCT')).toBe(true);
+    expect(asked.every((each) => each === null)).toBe(true);
+  });
+
+  /*
+   * 유형 축을 걷어낸 뒤로는 같은 품목의 공정 중 LOT 까지 함께 온다. 창고에 들어온 적이 없어
+   * 재고 잔액에 줄이 없고, 집을 수 없으므로 후보로 세우지 않는다.
+   */
+  it('재고 잔액에 줄이 없는 LOT 은 후보로 세우지 않는다', async () => {
+    const user = userEvent.setup();
+    const wip = lotRow(9, 'FG-0999', '2099-02-02');
+    mount([], { lots: [EARLY, LATE, wip], balances: [balance(1, 500), balance(2, 500)] });
+    await chooseTarget(user);
+    await screen.findByText('권장 1순위');
+
+    expect(screen.getByText('FG-0298')).toBeTruthy();
+    expect(screen.getByText('FG-0311')).toBeTruthy();
+    expect(screen.queryByText('FG-0999')).toBeNull();
   });
 
   /*

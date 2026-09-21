@@ -94,10 +94,14 @@ export const useLotPool = (itemId: number | null): LotPoolResult => {
     }
 
     /*
-     * 제품 LOT 만 후보다. 유형을 안 거르면 같은 품목의 생산 LOT 이 함께 와, 집을 수 없는
-     * 줄이 목록에 선다. 유효기간이 없어 순서를 정할 수 없는 묶음으로 몰린다.
+     * LOT 유형으로 거르지 않는다. 「제품 LOT」은 따로 발번하는 번호가 아니라 완제품 창고에
+     * 선 생산 LOT 을 부르는 이름이다(경계 B6-01 갈래 ⓐ · omf-all-around#50). 유형을
+     * `PRODUCT` 로 걸면 그 값으로 만들어지는 LOT 이 없어 후보가 영영 0건이다.
+     *
+     * 좁히는 축은 출하 요청 라인의 품목이고, 공정 중 LOT 을 거르는 몫은 재고 잔액이
+     * 맡는다(`toCandidates`).
      */
-    const query = { itemId, lotTypeCode: 'PRODUCT', size: 200 };
+    const query = { itemId, size: 200 };
     const data = await runRequest(() =>
       client.GET('/trace/lots', {
         params: { query: heldOnly ? { ...query, heldOnly: true } : query },
@@ -165,13 +169,23 @@ export const useAvailableByLot = (itemId: number | null): UseQueryResult<Map<num
   });
 };
 
-/** 화면이 고르는 데 필요한 것을 LOT 하나로 모은다. */
+/**
+ * 화면이 고르는 데 필요한 것을 LOT 하나로 모은다.
+ *
+ * 재고 잔액에 줄이 선 LOT 만 후보다. 유형 축을 걷어낸 뒤로는 같은 품목의 «공정 중» 생산
+ * LOT 까지 목록에 오는데, 그것은 아직 창고에 없어 집을 수 없다. 잔액 조회를
+ * `includeZero` 로 묻고 있어 «다 쓴» LOT 은 잔액 0 인 줄로 그대로 오고, 창고에 들어온 적이
+ * 없는 LOT 만 줄이 없다 - 그래서 이 둘이 갈린다. 창고·위치로 바로 좁히지는 못한다 -
+ * 계약의 LOT 목록에 창고 축이 없고 출하 요청도 창고를 들고 있지 않다(omf-all-around#50).
+ */
 export const toCandidates = (pool: LotPool, available: Map<number, number>): Candidate[] =>
-  pool.lots.map((lot) => ({
-    lot,
-    availableQty: available.get(lot.lotId) ?? 0,
-    held: pool.heldLotIds.has(lot.lotId),
-  }));
+  pool.lots
+    .filter((lot) => available.has(lot.lotId))
+    .map((lot) => ({
+      lot,
+      availableQty: available.get(lot.lotId) ?? 0,
+      held: pool.heldLotIds.has(lot.lotId),
+    }));
 
 export interface PickVariables {
   /*
