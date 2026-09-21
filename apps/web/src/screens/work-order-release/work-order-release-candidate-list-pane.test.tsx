@@ -11,7 +11,7 @@ import {
 } from './work-order-release-candidate-list-pane';
 
 const t = messages.workOrderRelease.candidateList;
-const nav = messages.workOrder.pageNav;
+const nav = messages.workOrderRelease.candidateList.page;
 
 const page = (overrides: Partial<WorkOrderPageView> = {}): WorkOrderPageView => ({
   page: 2,
@@ -41,6 +41,7 @@ const propsOf = (
   isLoading: false,
   loadError: null,
   page: page(),
+  hasSearched: true,
   onSelect: vi.fn(),
   onChangePage: vi.fn(),
   ...overrides,
@@ -156,5 +157,20 @@ describe('WorkOrderReleaseCandidateListPane', () => {
 
     expect(screen.queryByRole('textbox')).toBeNull();
     expect(screen.queryByRole('combobox')).toBeNull();
+  });
+
+  it('asks for a search before the first one instead of saying there is nothing', () => {
+    renderPane({ rows: [], hasSearched: false });
+
+    expect(screen.getByText(t.empty.notSearchedTitle)).toBeVisible();
+    expect(screen.getByText(t.empty.notSearchedDescription)).toBeVisible();
+    expect(screen.queryByText(t.empty.title)).toBeNull();
+  });
+
+  it('says there is nothing only after a search came back empty', () => {
+    renderPane({ rows: [], hasSearched: true });
+
+    expect(screen.getByText(t.empty.title)).toBeVisible();
+    expect(screen.queryByText(t.empty.notSearchedTitle)).toBeNull();
   });
 });

@@ -13,13 +13,23 @@ const ASSIGNMENT_FIELDS = [
   'plannedShiftId',
 ] as const;
 
-export const readWorkOrderProductionPlanId = (params: URLSearchParams): number | null => {
-  const raw = params.get('productionPlanId');
+const readPositiveId = (params: URLSearchParams, name: string): number | null => {
+  const raw = params.get(name);
   if (raw === null || !/^[1-9]\d*$/.test(raw)) return null;
 
   const value = Number(raw);
   return Number.isSafeInteger(value) ? value : null;
 };
+
+export const readWorkOrderProductionPlanId = (params: URLSearchParams): number | null =>
+  readPositiveId(params, 'productionPlanId');
+
+/** 다른 화면이 특정 W/O 를 고친 채로 열라고 보낸 선택. 목록에 없으면 무시된다. */
+export const readWorkOrderSelectedId = (params: URLSearchParams): number | null =>
+  readPositiveId(params, 'workOrderId');
+
+export const workOrderAssignmentPath = (productionPlanId: number, workOrderId: number): string =>
+  `/production/work-order-assignments?productionPlanId=${String(productionPlanId)}&workOrderId=${String(workOrderId)}`;
 
 export const workOrderDraftEquals = (
   left: WorkOrderAssignmentDraft,

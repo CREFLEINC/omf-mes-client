@@ -67,14 +67,18 @@ describe('workOrderPeopleToolKeys', () => {
     expect(workOrderPeopleToolKeys.molds(501, 1)).not.toEqual(
       workOrderPeopleToolKeys.molds(501, 2),
     );
-    expect(workOrderPeopleToolKeys.workers(501, 1, '')).not.toEqual(
-      workOrderPeopleToolKeys.workers(502, 1, ''),
+    expect(workOrderPeopleToolKeys.workers(501, 1, '', 200)).not.toEqual(
+      workOrderPeopleToolKeys.workers(502, 1, '', 200),
     );
-    expect(workOrderPeopleToolKeys.workers(501, 1, '')).not.toEqual(
-      workOrderPeopleToolKeys.workers(501, 1, 'kim'),
+    expect(workOrderPeopleToolKeys.workers(501, 1, '', 200)).not.toEqual(
+      workOrderPeopleToolKeys.workers(501, 1, 'kim', 200),
+    );
+    /* 쪽 건수가 다르면 다른 조회다 — 「담당 작업자 선택」 창은 20건씩 받는다. */
+    expect(workOrderPeopleToolKeys.workers(501, 1, '', 200)).not.toEqual(
+      workOrderPeopleToolKeys.workers(501, 1, '', 20),
     );
     expect(workOrderPeopleToolKeys.molds(501, 1)).not.toEqual(
-      workOrderPeopleToolKeys.workers(501, 1, ''),
+      workOrderPeopleToolKeys.workers(501, 1, '', 200),
     );
   });
 });

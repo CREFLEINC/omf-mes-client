@@ -1,5 +1,6 @@
 import { messages } from '@omf-mes/i18n';
 
+import { formatPlantDateTime } from '../../patterns/plant-time';
 import { describeItem } from '../production-order/screen-model';
 import type { ProductionOrderItemName } from '../production-order/item-lookups';
 import {
@@ -75,9 +76,10 @@ const listLabel = <T>(
 };
 
 const plannedPeriod = (detail: WorkOrderReleaseFact): string | null => {
-  const values = [detail.plannedStartAt, detail.plannedEndAt].filter(
-    (value): value is string => value !== null,
-  );
+  /* 서버 원문(UTC ISO)을 그대로 두지 않고 공장 시각으로 읽힌다 — 값 자체는 바꾸지 않는다. */
+  const values = [detail.plannedStartAt, detail.plannedEndAt]
+    .map((value) => formatPlantDateTime(value) ?? value)
+    .filter((value): value is string => value !== null);
   return values.length === 0 ? null : values.join(' ~ ');
 };
 

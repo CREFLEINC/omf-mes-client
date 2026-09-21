@@ -119,19 +119,39 @@ describe('WorkOrderReleaseFilterBar', () => {
   });
 
   it.each([
-    [{ ...applied, statusCode: '' }, t.statusRequired],
+    /* 상태 미선택은 칸의 필수 표시가 말한다 — 버튼 아래에 문장을 두지 않는다. */
+    [{ ...applied, statusCode: '' }, null],
     [{ ...applied, plannedStartFrom: '2026-08-03', plannedStartTo: '2026-08-02' }, t.dateRange],
+    /* 둘 다 어긋나도 칸만으로 알 수 없는 기간 사유만 남는다. */
     [
       { ...applied, statusCode: '', plannedStartFrom: '2026-08-03', plannedStartTo: '2026-08-02' },
-      `${t.statusRequired} ${t.dateRange}`,
+      t.dateRange,
     ],
-  ] as const)('blocks invalid submit with ordered reasons', (filters, reason) => {
+  ] as const)('blocks invalid submit and shows only field-invisible reasons', (filters, reason) => {
     const { props } = renderBar({ appliedFilters: filters });
     const search = screen.getByRole('button', { name: t.search });
     expect(search).toBeDisabled();
-    expect(search).toHaveAccessibleDescription(reason);
+    /* 상태 사유는 눈에 띄지 않되 말로는 남는다 — 화면을 못 보면 막힌 까닭을 알 길이 없다. */
+    expect(search).toHaveAccessibleDescription(
+      reason === null ? t.statusRequired : new RegExp(reason),
+    );
+    const statusReasonText = screen.queryByText(t.statusRequired);
+    if (statusReasonText !== null) {
+      expect(statusReasonText).toHaveClass('work-order-release-visually-hidden');
+    }
     fireEvent.submit(search.closest('form')!);
     expect(props.onSearch).not.toHaveBeenCalled();
+  });
+
+  it('puts the required status field first, left of the production line', () => {
+    renderBar();
+    const fields = [...document.querySelectorAll('.filter-bar > .field-cell')];
+    const labels = fields.map((cell) => cell.querySelector('label')?.textContent ?? '');
+
+    expect(labels.slice(0, 2)).toEqual([t.status, t.productionLine]);
+    expect(fields[0]?.querySelector('.field-label')?.textContent).toBe(`${t.status} *`);
+    expect(fields[0]?.querySelector('.required-mark')).not.toBeNull();
+    expect(screen.getByRole('combobox', { name: t.status })).toHaveAttribute('aria-required');
   });
 
   it('resets the local draft even when unchanged applied primitives cannot retrigger sync', async () => {

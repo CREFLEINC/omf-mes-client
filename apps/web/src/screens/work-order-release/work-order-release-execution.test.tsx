@@ -2,6 +2,7 @@ import { ToastProvider } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { MemoryRouter } from 'react-router';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { WorkOrderReleaseFact } from './queries';
@@ -61,13 +62,16 @@ const fact = (overrides: Partial<WorkOrderReleaseFact> = {}): WorkOrderReleaseFa
   releasedAt: null,
   ...overrides,
 });
+/* 전달사항 옆 「공지 화면 열기」가 라우터를 쓴다 — 실제 화면도 라우터 «안»에 선다. */
 const execution = (selectedWorkOrderId: number | null = 704) => (
-  <ToastProvider>
-    <WorkOrderReleaseExecution
-      selectedWorkOrderId={selectedWorkOrderId}
-      onClearSelection={vi.fn()}
-    />
-  </ToastProvider>
+  <MemoryRouter initialEntries={['/production/work-order-release']}>
+    <ToastProvider>
+      <WorkOrderReleaseExecution
+        selectedWorkOrderId={selectedWorkOrderId}
+        onClearSelection={vi.fn()}
+      />
+    </ToastProvider>
+  </MemoryRouter>
 );
 
 beforeEach(() => {

@@ -40,8 +40,8 @@ export const workOrderPeopleToolKeys = {
   all: ['work-order-people-tools'] as const,
   molds: (plantId: number | null, page: number) =>
     ['work-order-people-tools', 'molds', plantId, page] as const,
-  workers: (plantId: number | null, page: number, term: string) =>
-    ['work-order-people-tools', 'workers', plantId, page, term] as const,
+  workers: (plantId: number | null, page: number, term: string, size: number) =>
+    ['work-order-people-tools', 'workers', plantId, page, term, size] as const,
   worker: (workerId: number | null) => ['work-order-people-tools', 'worker', workerId] as const,
 };
 
@@ -113,11 +113,13 @@ export const useWorkOrderWorkers = (
   plantId: number | null,
   page: number,
   term = '',
+  /** 한 쪽 건수. 「담당 작업자 선택」 창은 20건씩 넘긴다(사용자 지시 2026-09-20). */
+  size: number = WORKER_PAGE_SIZE,
 ): UseQueryResult<WorkOrderPeopleToolList<WorkOrderWorkerFact>> => {
   const { client } = useApiClient();
 
   return useQuery({
-    queryKey: workOrderPeopleToolKeys.workers(plantId, page, term),
+    queryKey: workOrderPeopleToolKeys.workers(plantId, page, term, size),
     enabled: plantId !== null,
     queryFn: async () => {
       if (plantId === null) {
@@ -133,7 +135,7 @@ export const useWorkOrderWorkers = (
                 ...(term === '' ? {} : { q: term }),
                 includeInactive: true,
                 page,
-                size: WORKER_PAGE_SIZE,
+                size,
               },
             },
           }),

@@ -137,6 +137,28 @@ it('opens the exact production plan workspace from the public route parameter', 
   expect(contextPane.parentElement).toHaveClass('work-order-assignment-workspace');
 });
 
+it('opens with the W/O another screen sent to be fixed already selected', () => {
+  render(
+    <MemoryRouter
+      initialEntries={['/production/work-order-assignments?productionPlanId=501&workOrderId=701']}
+    >
+      <WorkOrderAssignmentScreen />
+    </MemoryRouter>,
+  );
+
+  expect(screen.getByTestId('editor')).toHaveTextContent('701:601:2:open');
+});
+
+it('opens with nothing selected when the route carries no W/O', () => {
+  render(
+    <MemoryRouter initialEntries={['/production/work-order-assignments?productionPlanId=501']}>
+      <WorkOrderAssignmentScreen />
+    </MemoryRouter>,
+  );
+
+  expect(screen.queryByTestId('editor')).toBeNull();
+});
+
 it('joins exact context, display references, selection, and shared priority draft', async () => {
   const user = userEvent.setup();
   renderScreen();
@@ -222,7 +244,7 @@ it('fails closed when a server page extends past the reported total', async () =
     query(listResponse(pageNo, pageNo === 1 ? 2 : 1)),
   );
   const view = renderScreen();
-  await user.click(screen.getByRole('button', { name: messages.workOrder.pageNav.next }));
+  await user.click(screen.getByRole('button', { name: messages.workOrder.assignmentPageNav.next }));
 
   expect(mocks.list).toHaveBeenLastCalledWith(501, 2);
   expect(screen.getByText(messages.workOrder.screen.view.failed)).toBeVisible();

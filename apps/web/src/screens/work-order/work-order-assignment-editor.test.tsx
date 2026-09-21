@@ -35,7 +35,8 @@ vi.mock('./resource-queries', () => ({
   useWorkOrderShifts: mocks.shifts,
   useWorkOrderLocations: mocks.locations,
 }));
-vi.mock('./people-tool-queries', () => ({
+vi.mock('./people-tool-queries', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('./people-tool-queries')>()),
   useWorkOrderWorkers: mocks.workers,
   useWorkOrderWorker: mocks.worker,
   useWorkOrderMolds: mocks.molds,
@@ -67,7 +68,12 @@ const query = (data: unknown, overrides: Record<string, unknown> = {}) => ({
   ...overrides,
 });
 const resources = (items: unknown[], truncated = false) =>
-  query({ items: items.map((item) => ({ plantId: 501, ...(item as object) })), truncated });
+  query({
+    items: items.map((item) => ({ plantId: 501, ...(item as object) })),
+    /* 「담당 작업자 선택」 창이 쪽 정보를 읽는다 — 실제 응답과 같은 모양으로 둔다. */
+    page: { page: 1, size: 200, total: items.length },
+    truncated,
+  });
 const updateState = (overrides: Record<string, unknown> = {}) => ({
   write: mocks.write,
   reset: vi.fn(),
@@ -109,9 +115,33 @@ beforeEach(() => {
   );
   mocks.locations.mockReturnValue({
     items: [
-      { locationId: 601, warehouseId: 34, warehouseCode: 'S210', warehouseName: '제품창고', locationCode: 'WIP', locationName: 'WIP 위치', isActive: true },
-      { locationId: 602, warehouseId: 34, warehouseCode: 'S210', warehouseName: '제품창고', locationCode: 'FG', locationName: '완제품 위치', isActive: true },
-      { locationId: 603, warehouseId: 34, warehouseCode: 'S210', warehouseName: '제품창고', locationCode: 'SCRAP', locationName: '스크랩 위치', isActive: true },
+      {
+        locationId: 601,
+        warehouseId: 34,
+        warehouseCode: 'S210',
+        warehouseName: '제품창고',
+        locationCode: 'WIP',
+        locationName: 'WIP 위치',
+        isActive: true,
+      },
+      {
+        locationId: 602,
+        warehouseId: 34,
+        warehouseCode: 'S210',
+        warehouseName: '제품창고',
+        locationCode: 'FG',
+        locationName: '완제품 위치',
+        isActive: true,
+      },
+      {
+        locationId: 603,
+        warehouseId: 34,
+        warehouseCode: 'S210',
+        warehouseName: '제품창고',
+        locationCode: 'SCRAP',
+        locationName: '스크랩 위치',
+        isActive: true,
+      },
     ],
     truncated: false,
     isPending: false,
@@ -397,10 +427,12 @@ it('shows the warehouse on every default location option', async () => {
     screen.getByRole('combobox', { name: t.resourcePane.fields.defaultWipLocation }),
   ).toHaveTextContent('[S210 제품창고] WIP · WIP 위치');
   await user.click(screen.getByRole('combobox', { name: t.resourcePane.fields.defaultFgLocation }));
-  expect(screen.getByRole('option', { name: '[S210 제품창고] FG · 완제품 위치' })).toBeInTheDocument();
+  expect(
+    screen.getByRole('option', { name: '[S210 제품창고] FG · 완제품 위치' }),
+  ).toBeInTheDocument();
 });
 
-it('searches workers by the typed term and keeps a saved worker that is off the page', async () => {
+it('keeps a saved worker that is off the first page and opens the picker to change it', async () => {
   const user = userEvent.setup();
   mocks.workers.mockReturnValue(
     resources([{ workerId: 202, workerNo: 'W-2', workerName: '김철수', isActive: true }], true),
@@ -414,11 +446,13 @@ it('searches workers by the typed term and keeps a saved worker that is off the 
   );
   render(<Harness />);
   expect(mocks.worker).toHaveBeenLastCalledWith(201);
-  expect(screen.getByRole('combobox', { name: t.resourcePane.fields.worker })).toHaveTextContent(
-    'W-1 · 홍길동',
-  );
-  expect(screen.getByText(t.editor.lookup.workerTruncated)).toBeInTheDocument();
+  /* 저장된 작업자는 첫 쪽에 없어도 칸에 이름으로 선다. */
+  expect(screen.getByLabelText(t.resourcePane.fields.worker)).toHaveValue('W-1 · 홍길동');
+  /* 「일부만 보인다」는 안내는 두지 않는다 — 창이 서버에서 찾는다. */
+  expect(screen.queryByText(t.editor.lookup.workerTruncated)).toBeNull();
 
-  await user.type(screen.getByLabelText(t.resourcePane.workerSearch.label), '김');
-  await waitFor(() => expect(mocks.workers).toHaveBeenLastCalledWith(501, 1, '김'));
+  await user.click(screen.getByLabelText(t.resourcePane.fields.worker));
+  expect(
+    screen.getByRole('dialog', { name: t.resourcePane.workerPicker.title }),
+  ).toBeInTheDocument();
 });

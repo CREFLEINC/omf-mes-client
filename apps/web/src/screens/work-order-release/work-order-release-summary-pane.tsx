@@ -1,6 +1,8 @@
 import { Card, EmptyState } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 
+import { ItemLabelLines } from './item-label-lines';
+
 const t = messages.workOrderRelease.summary;
 
 export interface WorkOrderReleaseSummaryView {
@@ -32,8 +34,16 @@ const DISPLAY_FIELDS: ReadonlyArray<{ key: NullableDisplayField; label: string }
   { key: 'plannedPeriodLabel', label: t.fields.plannedPeriod },
 ];
 
-const displayLabel = (value: string | null | undefined): string =>
-  value === null || value === undefined || value.trim() === '' ? t.values.unavailable : value;
+const isBlank = (value: string | null | undefined): value is null | undefined | '' =>
+  value === null || value === undefined || value.trim() === '';
+
+/** 값 없음은 공통 표기(—)를 흐리게 — 여러 칸에 반복돼도 채워진 값보다 눈에 띄지 않게 한다. */
+const DisplayValue = ({ value }: { value: string | null | undefined }) =>
+  isBlank(value) ? (
+    <dd className="work-order-release-summary-empty">{messages.common.reference.empty}</dd>
+  ) : (
+    <dd>{value}</dd>
+  );
 
 export interface WorkOrderReleaseSummaryPaneProps {
   view: WorkOrderReleaseSummaryView | null;
@@ -56,7 +66,13 @@ export const WorkOrderReleaseSummaryPane = ({ view }: WorkOrderReleaseSummaryPan
           <dl className="work-order-release-summary-grid">
             <div className="field-cell work-order-release-summary-field">
               <dt className="field-label">{t.fields.item}</dt>
-              <dd>{displayLabel(view.itemLabel)}</dd>
+              {isBlank(view.itemLabel) ? (
+                <DisplayValue value={view.itemLabel} />
+              ) : (
+                <dd>
+                  <ItemLabelLines label={view.itemLabel} />
+                </dd>
+              )}
             </div>
             <div className="field-cell work-order-release-summary-field">
               <dt className="field-label">{t.fields.quantity}</dt>
@@ -65,7 +81,7 @@ export const WorkOrderReleaseSummaryPane = ({ view }: WorkOrderReleaseSummaryPan
             {DISPLAY_FIELDS.slice(1).map((field) => (
               <div key={field.key} className="field-cell work-order-release-summary-field">
                 <dt className="field-label">{field.label}</dt>
-                <dd>{displayLabel(view[field.key])}</dd>
+                <DisplayValue value={view[field.key]} />
               </div>
             ))}
           </dl>

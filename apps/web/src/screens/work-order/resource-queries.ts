@@ -77,8 +77,7 @@ export const workOrderResourceKeys = {
   shifts: (plantId: number | null, page: number) =>
     ['work-order-resources', 'shifts', plantId, page] as const,
   warehouses: ['work-order-resources', 'warehouses'] as const,
-  locations: (warehouseId: number) =>
-    ['work-order-resources', 'locations', warehouseId] as const,
+  locations: (warehouseId: number) => ['work-order-resources', 'locations', warehouseId] as const,
 };
 
 export const toWorkOrderProductionLineFact = (
@@ -239,8 +238,9 @@ export const useWorkOrderLocations = (): WorkOrderLocationLookup => {
       ),
   });
   const activeWarehouseIds =
-    warehouses.data?.items.filter((warehouse) => warehouse.isActive).map((warehouse) => warehouse.warehouseId) ??
-    [];
+    warehouses.data?.items
+      .filter((warehouse) => warehouse.isActive)
+      .map((warehouse) => warehouse.warehouseId) ?? [];
   const locations = useQueries({
     queries: activeWarehouseIds.map((warehouseId) => ({
       queryKey: workOrderResourceKeys.locations(warehouseId),
@@ -259,12 +259,15 @@ export const useWorkOrderLocations = (): WorkOrderLocationLookup => {
         query.data?.items.map((location) =>
           toWorkOrderLocationFact(
             location,
-            warehouses.data?.items.find((warehouse) => warehouse.warehouseId === location.warehouseId),
+            warehouses.data?.items.find(
+              (warehouse) => warehouse.warehouseId === location.warehouseId,
+            ),
           ),
         ) ?? [],
     ),
     truncated:
-      (warehouses.data !== undefined && warehouses.data.page.total > warehouses.data.items.length) ||
+      (warehouses.data !== undefined &&
+        warehouses.data.page.total > warehouses.data.items.length) ||
       locations.some(
         (query) => query.data !== undefined && query.data.page.total > query.data.items.length,
       ),

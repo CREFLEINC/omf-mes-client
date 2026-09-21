@@ -168,4 +168,38 @@ describe('WorkOrderValidationPane', () => {
     expect(screen.getByText('SYN-SERVER-MESSAGE')).toBeInTheDocument();
     expect(screen.queryByRole('status', { name: t.loading })).toBeNull();
   });
+
+  it('keeps the regular empty state for a clean report unless the check scope is given', () => {
+    const clean = report({ passed: true, findings: [] });
+    const { unmount } = renderPane({ report: clean });
+    expect(screen.getByText(t.empty.noFindingsTitle)).toBeInTheDocument();
+    unmount();
+
+    renderPane({
+      report: clean,
+      checkScope: { hasEquipment: true, hasMold: true, hasWorker: true },
+    });
+    expect(screen.getByText(t.clean)).toBeVisible();
+    expect(screen.getByText(t.checksTitle)).toBeVisible();
+    expect(screen.queryByText(t.empty.noFindingsTitle)).toBeNull();
+    expect(screen.getByText(t.summary.passed)).toBeVisible();
+    expect(screen.queryByText(t.skippedNote)).toBeNull();
+  });
+
+  it('names the skipped scope once beside the heading', () => {
+    renderPane({
+      report: report({ passed: true, findings: [] }),
+      checkScope: { hasEquipment: false, hasMold: true, hasWorker: true },
+    });
+
+    expect(screen.getByText(t.skippedNote)).toBeVisible();
+    expect(screen.getAllByText(t.checkState.skipped)).toHaveLength(3);
+  });
+
+  it('shows findings instead of the check table when there are any', () => {
+    renderPane({ checkScope: { hasEquipment: true, hasMold: true, hasWorker: true } });
+
+    expect(screen.queryByText(t.checksTitle)).toBeNull();
+    expect(screen.getByText('SYN-SERVER-MESSAGE')).toBeVisible();
+  });
 });

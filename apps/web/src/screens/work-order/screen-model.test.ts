@@ -4,7 +4,9 @@ import type { WorkOrderAssignmentDraft } from './assignment-model';
 import type { WorkOrderFact, WorkOrderValidationReport } from './queries';
 import {
   readWorkOrderProductionPlanId,
+  readWorkOrderSelectedId,
   toWorkOrderScreenRow,
+  workOrderAssignmentPath,
   workOrderDraftEquals,
   workOrderFieldErrorMessage,
 } from './screen-model';
@@ -66,6 +68,21 @@ describe('work-order screen model', () => {
     ['?productionPlanId=501', 501],
   ])('reads an exact positive safe productionPlanId from %s', (search, expected) => {
     expect(readWorkOrderProductionPlanId(new URLSearchParams(search))).toBe(expected);
+  });
+
+  it.each([
+    ['?productionPlanId=501', null],
+    ['?workOrderId=0', null],
+    ['?workOrderId=abc', null],
+    ['?productionPlanId=501&workOrderId=701', 701],
+  ])('reads the W/O to select from %s', (search, expected) => {
+    expect(readWorkOrderSelectedId(new URLSearchParams(search))).toBe(expected);
+  });
+
+  it('builds the 4M route that the screen reads back', () => {
+    const params = new URL(workOrderAssignmentPath(501, 701), 'http://x').searchParams;
+    expect(readWorkOrderProductionPlanId(params)).toBe(501);
+    expect(readWorkOrderSelectedId(params)).toBe(701);
   });
 
   it('compares every owned draft field without object identity', () => {
