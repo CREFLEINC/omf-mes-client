@@ -6,7 +6,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { renderWithProviders } from '../../test/api-harness';
 import { queueItems } from './fixtures';
 import { QueueTable } from './queue-table';
-import type { NameLookup } from './reference-lookup';
+import type { ItemNameLookup, NameLookup } from './reference-lookup';
 import { toInspectionQueueRow } from './types';
 
 const t = messages.iqcInspection.queue;
@@ -27,6 +27,24 @@ const LOT_LABELS = new Map<number, string>(
 
 const LOT_NO = (lotId: number) => LOT_LABELS.get(lotId) ?? 'SAMPLE-LOT|Z|CCC';
 
+/**
+ * 품목 풀이. 첫 칸이 **이름과 코드를 두 줄로** 세운다(사용자 지시 2026-09-21).
+ * 번호를 라벨에 섞지 않는다 — 「번호가 남지 않는다」를 재는 단언이 제 꼬리를 물면 안 된다.
+ */
+const ITEM_NAME = '합성 품목 가';
+const ITEM_CODE = 'SAMPLE-ITEM-AA';
+
+const itemNames: ItemNameLookup = {
+  labelOf: () => `${ITEM_CODE} · ${ITEM_NAME}`,
+  partsOf: () => ({ code: ITEM_CODE, name: ITEM_NAME }),
+};
+
+/** 못 푼 갈래 — 줄이 하나뿐이라 풀이가 그 자리에 사유를 낸다. */
+const unresolvedItems: ItemNameLookup = {
+  labelOf: () => messages.common.reference.failed,
+  partsOf: () => null,
+};
+
 const lotNumbers: NameLookup = {
   labelOf: (id) => (id === null || id === undefined ? '—' : LOT_NO(id)),
 };
@@ -37,6 +55,7 @@ const renderTable = (overrides: Partial<Parameters<typeof QueueTable>[0]> = {}) 
   renderWithProviders(
     <QueueTable
       rows={rows}
+      itemNames={itemNames}
       lotNumbers={lotNumbers}
       selectedId={null}
       onSelect={onSelect}
@@ -49,18 +68,65 @@ const renderTable = (overrides: Partial<Parameters<typeof QueueTable>[0]> = {}) 
 };
 
 const openButton = (inspectionRequestNo: string) =>
-  screen.getByRole('button', { name: t.openRow(inspectionRequestNo) });
+  screen.getByRole('button', {
+    name: t.openRow(`${ITEM_NAME} ${ITEM_CODE}`, inspectionRequestNo),
+  });
 
 describe('QueueTable', () => {
   it('의뢰마다 한 줄을 그린다', () => {
     renderTable();
 
-    expect(screen.getByText('IR-2026-0001')).toBeInTheDocument();
-    expect(screen.getByText('IR-2026-0002')).toBeInTheDocument();
-    expect(screen.getByText('IR-2026-0003')).toBeInTheDocument();
+    expect(screen.getAllByRole('row')).toHaveLength(rows.length + 1);
   });
 
-  it('의뢰번호를 누르면 그 의뢰를 고른다 — 코드 칸이 곧 「이 줄을 연다」다', async () => {
+  /*
+   * **첫 칸은 품목이다**(사용자 지시 2026-09-21). 의뢰번호는 고르는 데 필요한 값이 아니고
+   * 고른 뒤 우측 창이 먼저 보여 준다 — 좁은 칸의 자리를 검사자가 실제로 찾는 값에 내줬다.
+   */
+  it('첫 칸에 품목 이름과 코드를 두 줄로 세운다', () => {
+    renderTable();
+
+    const table = screen.getByRole('table');
+
+    expect(within(table).getAllByText(ITEM_NAME).length).toBe(rows.length);
+    expect(within(table).getAllByText(ITEM_CODE).length).toBe(rows.length);
+  });
+
+  /** 열에서 뺐다 — 화면에 남으면 그 자리를 도로 차지한다. */
+  it('의뢰번호를 열로 두지 않는다', () => {
+    renderTable();
+
+    const table = screen.getByRole('table');
+
+    expect(within(table).queryByText('IR-2026-0001')).not.toBeInTheDocument();
+    expect(within(table).queryByText(t.columns.item)).toBeInTheDocument();
+  });
+
+  /**
+   * 열에서 뺐다고 **줄을 가릴 수 없게 되면 안 된다** — 같은 품목의 의뢰가 여럿일 수 있어
+   * 보이는 글자만으로는 줄이 갈리지 않는다. 접근 이름이 의뢰번호를 함께 담는다.
+   */
+  it('줄을 여는 단추의 접근 이름이 보이는 품목과 의뢰번호를 함께 담는다', () => {
+    renderTable();
+
+    const button = openButton('IR-2026-0002');
+
+    expect(button).toHaveAccessibleName(
+      expect.stringContaining('IR-2026-0002') as unknown as string,
+    );
+    expect(button).toHaveAccessibleName(expect.stringContaining(ITEM_NAME) as unknown as string);
+  });
+
+  /** 못 푼 갈래는 줄이 하나뿐이다 — 그 자리에 사유가 선다. */
+  it('품목을 못 풀면 그 자리에 사유를 낸다', () => {
+    renderTable({ itemNames: unresolvedItems });
+
+    const table = screen.getByRole('table');
+
+    expect(within(table).getAllByText(messages.common.reference.failed).length).toBe(rows.length);
+  });
+
+  it('품목 칸을 누르면 그 의뢰를 고른다 — 첫 칸이 곧 「이 줄을 연다」다', async () => {
     const onSelect = renderTable();
 
     await userEvent.click(openButton('IR-2026-0002'));

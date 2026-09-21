@@ -9,13 +9,14 @@ export const iqcInspection: Translated<typeof ko.iqcInspection> = {
   queue: {
     heading: 'Chờ kiểm tra',
     columns: {
-      inspectionRequestNo: 'Số yêu cầu',
+      item: 'Mặt hàng',
       lotId: 'LOT vật tư',
       statusCode: 'Trạng thái',
       requestedAt: 'Thời điểm yêu cầu',
     },
     emptyValue: '—',
-    openRow: (inspectionRequestNo: string): string => `Mở yêu cầu kiểm tra ${inspectionRequestNo}`,
+    openRow: (item: string, inspectionRequestNo: string): string =>
+      `${item} · Mở yêu cầu kiểm tra ${inspectionRequestNo}`,
     caption: 'Danh sách chờ kiểm tra',
     empty: 'Không có yêu cầu kiểm tra nào khớp điều kiện. Hãy thử nới rộng điều kiện.',
     unavailable: 'Không hiển thị được danh sách.',

@@ -475,6 +475,7 @@ export const IqcInspectionScreen = () => {
 
           <QueueTable
             rows={rows}
+            itemNames={itemNames}
             lotNumbers={lotNumbers}
             selectedId={selectedId}
             onSelect={select}

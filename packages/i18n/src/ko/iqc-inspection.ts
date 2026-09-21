@@ -17,15 +17,27 @@ export const iqcInspection = {
      * 품목·수량 같은 나머지는 고른 뒤 우측 창이 보인다.
      */
     columns: {
-      inspectionRequestNo: '의뢰번호',
+      /**
+       * 첫 칸은 **품목**이다(사용자 지시 2026-09-21). 의뢰번호는 고르는 데 필요한 값이 아니고
+       * 고른 뒤 우측 창이 먼저 보여 주므로 열에서 뺐다 — 좁은 칸의 자리를 검사자가 실제로
+       * 찾는 값(무엇을 검사하는가)에 내준다.
+       */
+      item: '품목',
       lotId: '자재 LOT',
       statusCode: '상태',
       requestedAt: '의뢰 일시',
     },
     /** 값이 없는 칸. 빈 칸으로 두면 「없음」인지 「못 불러왔는지」 구분되지 않는다. */
     emptyValue: '—',
-    /** 이 줄을 여는 버튼의 접근 이름 — 화면에는 의뢰번호만 보이므로 무엇을 여는지 밝힌다. */
-    openRow: (inspectionRequestNo: string): string => `검사 의뢰 ${inspectionRequestNo} 열기`,
+    /**
+     * 이 줄을 여는 버튼의 접근 이름.
+     *
+     * **보이는 글자(품목)를 그대로 담는다** — 담지 않으면 음성 조작이 화면에 보이는 말로
+     * 이 버튼을 부를 수 없다. 거기에 의뢰번호를 덧붙여 **어느 건인지** 밝힌다 — 같은 품목의
+     * 의뢰가 여럿일 수 있어 보이는 글자만으로는 줄이 갈리지 않는다.
+     */
+    openRow: (item: string, inspectionRequestNo: string): string =>
+      `${item} · 검사 의뢰 ${inspectionRequestNo} 열기`,
     caption: '검사 대기 목록',
     /**
      * 조회는 됐는데 결과가 없다. 조건을 바꾸는 것이 사용자가 할 수 있는 유일한 조치다.

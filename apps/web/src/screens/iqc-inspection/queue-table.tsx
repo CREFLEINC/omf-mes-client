@@ -4,7 +4,7 @@ import type { ReactNode } from 'react';
 
 import { toStatusBadge } from './status-badge';
 import { formatDateTime, type InspectionQueueRow } from './types';
-import type { NameLookup } from './reference-lookup';
+import type { ItemNameLookup, NameLookup } from './reference-lookup';
 
 /**
  * 좌측 검사 대기 큐의 표.
@@ -25,6 +25,8 @@ const t = messages.iqcInspection.queue;
 
 export interface QueueTableProps {
   rows: InspectionQueueRow[];
+  /** 품목 풀이. 첫 칸이 **이름과 코드를 두 줄로** 세운다(사용자 지시 2026-09-21). */
+  itemNames: ItemNameLookup;
   /** 자재 LOT 번호 풀이. **번호가 아니라 LOT 번호를 보인다**(omf-all-around#40). */
   lotNumbers: NameLookup;
   /** 고른 의뢰. 없으면 `null` — 아무 줄도 현재가 아니다 */
@@ -37,25 +39,48 @@ export interface QueueTableProps {
 const columnsOf = (
   selectedId: number | null,
   onSelect: (inspectionRequestId: number) => void,
+  itemNames: ItemNameLookup,
   lotNumbers: NameLookup,
 ): Column<InspectionQueueRow>[] => [
   {
-    key: 'inspectionRequestNo',
-    header: t.columns.inspectionRequestNo,
-    /* 번호가 잘리지 않고 한 줄로 보이는 최소 폭(글자 136px + 좌우 여백 24px). */
+    key: 'item',
+    header: t.columns.item,
+    /* 「이름 / 코드」 두 줄이 서는 폭. 종전 의뢰번호 칸과 같아 표의 폭 예산이 그대로다. */
     width: '160px',
-    /* 코드 칸이 곧 「이 줄을 연다」다 — 저장소의 목록 창들과 같은 관용구. */
-    render: (row) => (
-      <button
-        type="button"
-        className="link-cell iqc-inspection-request-no"
-        aria-current={row.inspectionRequestId === selectedId ? 'true' : undefined}
-        aria-label={t.openRow(row.inspectionRequestNo)}
-        onClick={() => onSelect(row.inspectionRequestId)}
-      >
-        {row.inspectionRequestNo}
-      </button>
-    ),
+    /*
+     * **첫 칸이 곧 「이 줄을 연다」다** — 저장소의 목록 창들과 같은 관용구다. 종전에는 그 자리가
+     * 의뢰번호였는데, 고르는 데 필요한 값이 아니고 고른 뒤 우측 창이 먼저 보여 주므로
+     * **검사자가 실제로 찾는 값**(무엇을 검사하는가)에 자리를 내줬다(사용자 지시 2026-09-21).
+     *
+     * 이름과 코드를 **두 줄로** 세운다 — 좁은 칸에서 한 줄로 붙이면 이름이 잘려 무엇인지 알 수
+     * 없다. 못 푼 갈래는 줄이 하나뿐이라 풀이가 네 갈래의 사유를 그 자리에 낸다.
+     */
+    render: (row) => {
+      const parts = itemNames.partsOf(row.itemId);
+      const label = itemNames.labelOf(row.itemId);
+
+      return (
+        <button
+          type="button"
+          className="link-cell iqc-inspection-queue-item"
+          aria-current={row.inspectionRequestId === selectedId ? 'true' : undefined}
+          aria-label={t.openRow(
+            parts === null ? label : `${parts.name} ${parts.code}`,
+            row.inspectionRequestNo,
+          )}
+          onClick={() => onSelect(row.inspectionRequestId)}
+        >
+          {parts === null ? (
+            <span className="iqc-inspection-queue-item-name">{label}</span>
+          ) : (
+            <>
+              <span className="iqc-inspection-queue-item-name">{parts.name}</span>
+              <span className="iqc-inspection-queue-item-code">{parts.code}</span>
+            </>
+          )}
+        </button>
+      );
+    },
   },
   {
     key: 'lotId',
@@ -99,12 +124,19 @@ const columnsOf = (
   },
 ];
 
-export const QueueTable = ({ rows, lotNumbers, selectedId, onSelect, empty }: QueueTableProps) => (
+export const QueueTable = ({
+  rows,
+  itemNames,
+  lotNumbers,
+  selectedId,
+  onSelect,
+  empty,
+}: QueueTableProps) => (
   <Table
     /* 제목은 화면에서 감추고 표의 접근 이름으로만 남긴다. */
     caption={<span className="iqc-inspection-table-caption">{t.caption}</span>}
     density="compact"
-    columns={columnsOf(selectedId, onSelect, lotNumbers)}
+    columns={columnsOf(selectedId, onSelect, itemNames, lotNumbers)}
     rows={rows}
     getRowId={(row) => String(row.inspectionRequestId)}
     empty={empty}

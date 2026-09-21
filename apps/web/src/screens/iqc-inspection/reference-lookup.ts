@@ -51,15 +51,33 @@ export interface NameLookup {
   labelOf: (id: number | null | undefined) => string;
 }
 
+export interface ItemNameParts {
+  code: string;
+  name: string;
+}
+
+/**
+ * 품목 풀이. 한 줄로 낼 자리와 **두 줄로 낼 자리**가 서로 다른 모양을 쓴다.
+ *
+ * - 상세 창은 한 칸에 한 줄이라 「코드 · 이름」으로 붙인다(`labelOf`).
+ * - 큐 표의 첫 칸은 **이름과 코드를 두 줄로** 세운다(`partsOf`) — 좁은 칸에서 한 줄로 붙이면
+ *   이름이 잘려 무엇인지 알 수 없다. 못 푼 갈래는 줄이 하나뿐이라 `labelOf` 가 사유를 낸다.
+ */
+export interface ItemNameLookup extends NameLookup {
+  /** 풀렸으면 코드와 이름, 아니면 `null` — 그때는 `labelOf` 가 네 갈래의 사유를 낸다. */
+  partsOf: (itemId: number | null | undefined) => ItemNameParts | null;
+}
+
 type Client = ReturnType<typeof useApiClient>['client'];
 
 const describe = (
-  result: { isPending: boolean; isError: boolean; error: unknown; data?: string } | undefined,
+  result: { isPending: boolean; isError: boolean; error: unknown } | undefined,
+  label: string | undefined,
 ): string => {
   if (result === undefined || result.isPending) return t.loading;
   if (result.isError) return isNotFound(result.error) ? t.unknown : t.failed;
 
-  return result.data ?? t.unknown;
+  return label ?? t.unknown;
 };
 
 /** 부르는 횟수를 줄 수가 아니라 **값의 가짓수**로 만든다. 정렬은 요청 순서를 읽기 쉽게 둔다. */
@@ -74,31 +92,41 @@ const uniqueOf = (ids: readonly (number | null | undefined)[]): number[] =>
  * 코드만으로는 무엇인지 알려면 외우고 있어야 하고, 이름만으로는 실물 라벨과 눈으로 대조할 수
  * 없다 — 라벨에 찍히는 것은 코드다.
  */
-export const useItemNames = (itemIds: readonly (number | null | undefined)[]): NameLookup => {
+export const useItemNames = (itemIds: readonly (number | null | undefined)[]): ItemNameLookup => {
   const { client } = useApiClient();
   const ids = uniqueOf(itemIds);
 
   const results = useQueries({
     queries: ids.map((itemId) => ({
       queryKey: ['iqc-inspection', 'item-name', itemId] as const,
-      queryFn: () => fetchItemName(client, itemId),
+      queryFn: () => fetchItemParts(client, itemId),
       retry: false,
       staleTime: Infinity,
     })),
   });
 
+  const resultOf = (id: number | null | undefined) => {
+    if (id === null || id === undefined) return undefined;
+
+    const index = ids.indexOf(id);
+
+    return index === -1 ? undefined : results[index];
+  };
+
   return {
     labelOf: (id) => {
       if (id === null || id === undefined) return t.empty;
 
-      const index = ids.indexOf(id);
+      const result = resultOf(id);
+      const parts = result?.data;
 
-      return describe(index === -1 ? undefined : results[index]);
+      return describe(result, parts === undefined ? undefined : `${parts.code} · ${parts.name}`);
     },
+    partsOf: (id) => resultOf(id)?.data ?? null,
   };
 };
 
-const fetchItemName = async (client: Client, itemId: number): Promise<string> => {
+const fetchItemParts = async (client: Client, itemId: number): Promise<ItemNameParts> => {
   const data = await runRequest(() =>
     client.GET('/mdm/items/{itemId}', { params: { path: { itemId } } }),
   );
@@ -106,7 +134,7 @@ const fetchItemName = async (client: Client, itemId: number): Promise<string> =>
   /* 상세는 봉투로 온다 — 편집 가능 여부(`editability`)는 이 화면이 쓰지 않는다. */
   const item = data.item;
 
-  return `${item.itemCode} · ${masterName(item, item.itemName)}`;
+  return { code: item.itemCode, name: masterName(item, item.itemName) };
 };
 
 /**
@@ -133,8 +161,9 @@ export const useLotNumbers = (lotIds: readonly (number | null | undefined)[]): N
       if (id === null || id === undefined) return t.empty;
 
       const index = ids.indexOf(id);
+      const result = index === -1 ? undefined : results[index];
 
-      return describe(index === -1 ? undefined : results[index]);
+      return describe(result, result?.data);
     },
   };
 };

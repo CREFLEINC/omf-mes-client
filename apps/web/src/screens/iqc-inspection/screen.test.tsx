@@ -166,7 +166,16 @@ const queueCalls = (sent: URL[]) =>
   sent.filter((url) => url.pathname === '/quality/inspection-requests');
 
 const lastQuery = (sent: URL[]) => queueCalls(sent).at(-1)?.searchParams;
-const openButton = (no: string) => screen.getByRole('button', { name: t.queue.openRow(no) });
+/**
+ * 줄을 여는 단추. **의뢰번호가 든 접근 이름으로 찾는다** — 첫 칸이 품목으로 바뀌면서
+ * 접근 이름이 「품목 · 검사 의뢰 … 열기」가 됐고, 품목 이름은 조회가 도착해야 정해진다.
+ */
+const openButton = (no: string) =>
+  screen.getByRole('button', { name: (accessibleName: string) => accessibleName.includes(no) });
+
+/** 큐가 그려질 때까지 기다리는 자리. 의뢰번호는 **열이 아니라 접근 이름에 있다.** */
+const findOpenButton = (no: string) =>
+  screen.findByRole('button', { name: (accessibleName: string) => accessibleName.includes(no) });
 
 /** [임시 저장]은 마지막 저장 상태와 달라진 것이 있을 때만 켜진다 — 누르기 전에 한 칸을 바꾼다. */
 const editQuantity = async (): Promise<void> => {
@@ -177,7 +186,7 @@ describe('IqcInspectionScreen', () => {
   it('검사 대기 큐를 그린다', async () => {
     renderScreen();
 
-    expect(await screen.findByText('IR-2026-0001')).toBeInTheDocument();
+    expect(await findOpenButton('IR-2026-0001')).toBeInTheDocument();
   });
 
   it('고정 축을 늘 실어 보낸다 — 사용자가 끌 수 없는 이 화면의 정의다', async () => {
@@ -230,7 +239,7 @@ describe('IqcInspectionScreen', () => {
     await userEvent.click(screen.getByRole('button', { name: t.filters.apply }));
 
     await waitFor(() => expect(queueCalls(sent)).toHaveLength(2));
-    expect(await screen.findByText(waitingRequest.inspectionRequestNo)).toBeInTheDocument();
+    expect(await findOpenButton(waitingRequest.inspectionRequestNo)).toBeInTheDocument();
     expect(lastQuery(sent)?.get('inspectionTypeCode')).toBe('IQC');
     expect(lastQuery(sent)?.get('pendingOnly')).toBe('true');
   });
@@ -238,7 +247,7 @@ describe('IqcInspectionScreen', () => {
   it('의뢰를 고르면 그 줄이 현재가 된다', async () => {
     renderScreen();
 
-    await screen.findByText('IR-2026-0002');
+    await findOpenButton('IR-2026-0002');
     await userEvent.click(openButton('IR-2026-0002'));
 
     await waitFor(() => expect(openButton('IR-2026-0002')).toHaveAttribute('aria-current', 'true'));
@@ -249,7 +258,7 @@ describe('IqcInspectionScreen', () => {
       jsonResponse(queueResponse(queueItems, pageOf(120, 1, 50))),
     );
 
-    await screen.findByText('IR-2026-0001');
+    await findOpenButton('IR-2026-0001');
     await userEvent.click(screen.getByRole('button', { name: t.pageNav.next }));
 
     await waitFor(() => expect(lastQuery(sent)?.get('page')).toBe('2'));
@@ -271,7 +280,7 @@ describe('IqcInspectionScreen', () => {
     await userEvent.click(retry);
 
     await waitFor(() => expect(queueCalls(sent).length).toBeGreaterThan(1));
-    expect(await screen.findByText('IR-2026-0001')).toBeInTheDocument();
+    expect(await findOpenButton('IR-2026-0001')).toBeInTheDocument();
   });
 
   /**
@@ -349,7 +358,7 @@ describe('IqcInspectionScreen', () => {
     await userEvent.type(screen.getByLabelText(t.result.fields.accepted), '123');
     expect(screen.getByLabelText(t.result.fields.accepted)).toHaveValue('123');
 
-    await userEvent.click(screen.getByRole('button', { name: t.queue.openRow('IR-2026-0002') }));
+    await userEvent.click(openButton('IR-2026-0002'));
 
     await waitFor(() => expect(screen.getByLabelText(t.result.fields.accepted)).toHaveValue(''));
   });
@@ -733,9 +742,7 @@ describe('IqcInspectionScreen — 확정 결과 문면', () => {
     await userEvent.click(screen.getByRole('button', { name: t.result.confirm }));
     await screen.findByText(t.result.confirmSucceeded);
 
-    await userEvent.click(
-      screen.getByRole('button', { name: t.queue.openRow(queueItems[1]!.inspectionRequestNo) }),
-    );
+    await userEvent.click(openButton(queueItems[1]!.inspectionRequestNo));
 
     await waitFor(() =>
       expect(screen.queryByText(t.result.confirmSucceeded)).not.toBeInTheDocument(),
@@ -808,9 +815,7 @@ describe('IqcInspectionScreen — 재검사 저장 뒤', () => {
     await userEvent.click(screen.getByRole('button', { name: t.result.reinspect }));
     expect(screen.getByText(t.result.reinspectRound)).toBeInTheDocument();
 
-    await userEvent.click(
-      screen.getByRole('button', { name: t.queue.openRow(queueItems[1]!.inspectionRequestNo) }),
-    );
+    await userEvent.click(openButton(queueItems[1]!.inspectionRequestNo));
 
     await waitFor(() => expect(screen.getByText(t.result.round(1))).toBeInTheDocument());
     expect(screen.queryByText(t.result.reinspectRound)).not.toBeInTheDocument();
