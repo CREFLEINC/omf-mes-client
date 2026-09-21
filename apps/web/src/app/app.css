@@ -9522,6 +9522,17 @@ dl.filter-bar.approval-inbox-detail-facts {
   width: 100%;
 }
 
+/* 공급사 칸은 누르면 창이 열리는 읽기 전용 검색칸이다 — W-03-01 품목 칸(.lot-status-filter-item)과 같게. */
+.goods-receipt-filter-supplier-search input {
+  cursor: pointer;
+  text-overflow: ellipsis;
+}
+
+/* 「공급사 선택」 창 — 품목 창의 첫 칸(유형, 12rem 고정)이 여기에는 없어 검색어 칸이 늘어난다. */
+.item-picker-controls.goods-receipt-supplier-picker-controls > .field-cell:first-child {
+  flex: 1 1 16rem;
+}
+
 /* 입하 시작일·종료일 — 값(YYYY-MM-DD)과 달력 단추가 들어갈 만큼만. */
 .goods-receipt-filter-bar .goods-receipt-filter-date {
   display: flex;
@@ -9707,7 +9718,9 @@ dl.filter-bar.approval-inbox-detail-facts {
 }
 
 /* 비고는 자유 입력이라 좁은 화면에서도 줄 전체. */
-.goods-receipt-post-form .goods-receipt-post-grid > .field-cell:last-child:not([class*='goods-receipt-step-']) {
+.goods-receipt-post-form
+  .goods-receipt-post-grid
+  > .field-cell:last-child:not([class*='goods-receipt-step-']) {
   grid-column: span 12;
 }
 
@@ -9729,7 +9742,9 @@ dl.filter-bar.approval-inbox-detail-facts {
     grid-column: 1 / span 3;
   }
 
-  .goods-receipt-post-form .goods-receipt-post-grid > .field-cell:last-child:not([class*='goods-receipt-step-']) {
+  .goods-receipt-post-form
+    .goods-receipt-post-grid
+    > .field-cell:last-child:not([class*='goods-receipt-step-']) {
     grid-column: span 6;
   }
 }
@@ -9746,11 +9761,21 @@ dl.filter-bar.approval-inbox-detail-facts {
 
 .goods-receipt-post-form[data-current-step='warehouse'] .goods-receipt-step-warehouse .field-label,
 .goods-receipt-post-form[data-current-step='location'] .goods-receipt-step-location .field-label,
-.goods-receipt-post-form[data-current-step='receiptType'] .goods-receipt-step-receiptType .field-label,
-.goods-receipt-post-form[data-current-step='sourceDocumentType'] .goods-receipt-step-sourceDocumentType .field-label,
-.goods-receipt-post-form[data-current-step='qualityStatus'] .goods-receipt-step-qualityStatus .field-label,
-.goods-receipt-post-form[data-current-step='inventoryStatus'] .goods-receipt-step-inventoryStatus .field-label,
-.goods-receipt-post-form[data-current-step='receiptDatetime'] .goods-receipt-step-receiptDatetime label {
+.goods-receipt-post-form[data-current-step='receiptType']
+  .goods-receipt-step-receiptType
+  .field-label,
+.goods-receipt-post-form[data-current-step='sourceDocumentType']
+  .goods-receipt-step-sourceDocumentType
+  .field-label,
+.goods-receipt-post-form[data-current-step='qualityStatus']
+  .goods-receipt-step-qualityStatus
+  .field-label,
+.goods-receipt-post-form[data-current-step='inventoryStatus']
+  .goods-receipt-step-inventoryStatus
+  .field-label,
+.goods-receipt-post-form[data-current-step='receiptDatetime']
+  .goods-receipt-step-receiptDatetime
+  label {
   color: var(--primary-text);
   font-weight: 600;
 }

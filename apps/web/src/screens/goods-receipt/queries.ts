@@ -79,15 +79,14 @@ export const useGoodsReceiptCodeValues = (
     queryKey: irKeys.codeValues(codeGroupCode),
     queryFn: () =>
       runRequest(() =>
-        client.GET('/mdm/code-values', { params: { query: { codeGroupCode, page: 1, size: 200 } } }),
+        client.GET('/mdm/code-values', {
+          params: { query: { codeGroupCode, page: 1, size: 200 } },
+        }),
       ).then((response) => response.items),
   });
 };
 
-const fetchInboundReceipts = async (
-  client: Client,
-  query: IrListQuery,
-): Promise<IrListResult> => {
+const fetchInboundReceipts = async (client: Client, query: IrListQuery): Promise<IrListResult> => {
   const data = await runRequest(() =>
     client.GET('/logistics/inbound-receipts', { params: { query } }),
   );
@@ -278,9 +277,7 @@ export const useLotStatus = (lotId: number | null): LotStatusResult => {
         throw new Error('입고 처리에 성공하기 전에는 자재 LOT을 다시 조회하지 않습니다.');
       }
 
-      return runRequest(() =>
-        client.GET('/trace/lots/{lotId}', { params: { path: { lotId } } }),
-      );
+      return runRequest(() => client.GET('/trace/lots/{lotId}', { params: { path: { lotId } } }));
     },
   });
 

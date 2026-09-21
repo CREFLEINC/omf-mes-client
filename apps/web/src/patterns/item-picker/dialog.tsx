@@ -202,9 +202,10 @@ export const ItemPickerDialog = ({
       onClose={onClose}
       footer={
         <>
-          <span className="field-note">
-            {picked.length === 0 ? t.needsSelection : t.selectedCount(picked.length)}
-          </span>
+          {/* 고르기 전에는 안내 문구 없이 확인 단추만 잠근다(사용자 지시 2026-09-19). */}
+          {picked.length > 0 && (
+            <span className="field-note">{t.selectedCount(picked.length)}</span>
+          )}
           <Button variant="outlined" onClick={onClose}>
             {t.cancel}
           </Button>

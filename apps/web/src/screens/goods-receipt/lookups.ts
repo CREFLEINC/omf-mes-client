@@ -155,6 +155,56 @@ export const lookupKeys = {
   uoms: ['goods-receipt-lookups', 'uoms'] as const,
   /** LOT은 **품목마다** 캐시가 갈린다 — 한 요청이 한 품목의 LOT만 담기 때문이다. */
   lots: (itemId: number) => ['goods-receipt-lookups', 'lots', itemId] as const,
+  supplierSearch: (term: string, page: number) =>
+    ['goods-receipt-lookups', 'supplier-search', term, page] as const,
+};
+
+/** 「공급사 선택」 창 한 쪽의 건수 — 공용 「품목 선택」 창과 같다. */
+export const SUPPLIER_SEARCH_PAGE_SIZE = 20;
+
+export interface SupplierSearchRow {
+  partnerId: number;
+  partnerCode: string;
+  partnerName: string;
+  isActive: boolean;
+}
+
+/**
+ * 「공급사 선택」 창의 검색 — `GET /mdm/partners?q=&page=&size=`.
+ *
+ * 조건 줄 목록(`useSupplierOptions`)과 같은 범위(전체 거래처 · 사용 중지 포함)를 찾는다 — 창에서만
+ * 찾히거나 창에서만 안 찾히는 공급사가 생기지 않게 한다. 검색어가 비면 전체를 쪽으로 보인다.
+ */
+export const useSupplierSearch = (term: string, page: number) => {
+  const { client } = useApiClient();
+
+  return useQuery({
+    queryKey: lookupKeys.supplierSearch(term, page),
+    queryFn: async () => {
+      const data = await runRequest(() =>
+        client.GET('/mdm/partners', {
+          params: {
+            query: {
+              ...(term === '' ? {} : { q: term }),
+              includeInactive: true,
+              page,
+              size: SUPPLIER_SEARCH_PAGE_SIZE,
+            },
+          },
+        }),
+      );
+
+      return {
+        rows: data.items.map((item): SupplierSearchRow => ({
+          partnerId: item.partnerId,
+          partnerCode: item.partnerCode,
+          partnerName: item.partnerName,
+          isActive: item.isActive,
+        })),
+        total: data.page.total,
+      };
+    },
+  });
 };
 
 /** 공급사를 한 번에 받는 건수 — 서버 상한(200)과 같다. */

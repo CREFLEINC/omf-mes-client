@@ -224,14 +224,14 @@ describe('ItemPickerDialog — 고르기', () => {
     await dialog().findByRole('checkbox', { name: 'SYN-ITEM-01' });
   };
 
-  it('고르지 않으면 확인을 누를 수 없고 사유를 말한다', async () => {
+  it('고르지 않으면 확인을 누를 수 없고 안내 문구는 두지 않는다', async () => {
     const user = userEvent.setup();
     renderDialog();
 
     await search(user);
 
     expect(dialog().getByRole('button', { name: t.add })).toBeDisabled();
-    expect(dialog().getByText(t.needsSelection)).toBeInTheDocument();
+    expect(dialog().queryByText(/누를 수 있습니다/)).toBeNull();
   });
 
   it('여러 개를 골라 한 번에 넘긴다', async () => {

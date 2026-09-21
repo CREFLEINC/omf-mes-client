@@ -6,6 +6,41 @@ import { describe, expect, it, vi } from 'vitest';
 import { DEFAULT_FILTERS, type ChipFilterKey, type IrFilters } from './filters';
 import { IrFilterBar, type IrFilterBarProps } from './ir-filter-bar';
 
+/* 창의 서버 검색은 `supplier-picker-dialog.test.tsx` 가 본다 — 여기서는 칸과 창의 연결만 본다. */
+vi.mock('./supplier-picker-dialog', () => ({
+  SupplierPickerDialog: ({
+    onConfirm,
+    onClose,
+  }: {
+    onConfirm: (row: {
+      partnerId: number;
+      partnerCode: string;
+      partnerName: string;
+      isActive: boolean;
+    }) => void;
+    onClose: () => void;
+  }) => (
+    <div role="dialog" aria-label="SYN SUPPLIER PICKER">
+      <button
+        type="button"
+        onClick={() =>
+          onConfirm({
+            partnerId: 9202,
+            partnerCode: 'SAMPLE-SUP-02',
+            partnerName: '합성 공급사 나',
+            isActive: true,
+          })
+        }
+      >
+        SYN PICK
+      </button>
+      <button type="button" onClick={onClose}>
+        SYN CLOSE
+      </button>
+    </div>
+  ),
+}));
+
 const t = messages.goodsReceipt;
 
 const SUPPLIER_LABEL = 'SAMPLE-SUP-01 · 합성 공급사 가';
@@ -81,25 +116,42 @@ describe('IrFilterBar — 조건 줄', () => {
     expect(onSearch).toHaveBeenCalledWith({ ...DEFAULT_FILTERS, q: 'IR-2026' });
   });
 
-  /* 공급사 검색칸 — 목록의 「코드 · 이름」을 고르면 그 공급사 번호가 조건이 된다. */
-  it('공급사를 검색해 고르면 번호가 조회에 실린다', async () => {
+  /* 공급사 칸 — W-03-01 품목 칸처럼 누르면 창이 열리고, 창에서 고른 공급사 번호가 조건이 된다. */
+  it('공급사 칸을 누르면 창이 열리고 고른 공급사가 칸에 서며 번호가 조회에 실린다', async () => {
     const { onSearch, user } = renderBar();
+    const field = screen.getByLabelText(t.fields.supplier);
 
-    await user.type(screen.getByLabelText(t.fields.supplier), SUPPLIER_LABEL);
+    expect(field).toHaveAttribute('readonly');
+    expect(screen.queryByRole('dialog')).toBeNull();
+    await user.click(field);
+    await user.click(screen.getByRole('button', { name: 'SYN PICK' }));
+
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(field).toHaveValue('SAMPLE-SUP-02 · 합성 공급사 나');
     await user.click(screen.getByRole('button', { name: messages.common.search }));
-
-    expect(onSearch).toHaveBeenCalledWith({ ...DEFAULT_FILTERS, supplier: '9101' });
+    expect(onSearch).toHaveBeenCalledWith({ ...DEFAULT_FILTERS, supplier: '9202' });
   });
 
-  /* 목록에 없는 글자로 조회하면 조건을 몰래 넓히지 않는다 — 조회하지 않고 칸에서 알린다. */
-  it('목록에 없는 공급사 글자면 조회하지 않고 알린다', async () => {
+  it('주소에 걸린 공급사는 목록 이름으로 서고 ×로 지우면 전체로 조회한다', async () => {
+    const { onSearch, user } = renderBar({
+      appliedFilters: { ...DEFAULT_FILTERS, supplier: '9101' },
+    });
+    const field = screen.getByLabelText(t.fields.supplier);
+
+    expect(field).toHaveValue(SUPPLIER_LABEL);
+    await user.click(screen.getByRole('button', { name: t.fields.supplierClear }));
+    expect(field).toHaveValue('');
+    await user.click(screen.getByRole('button', { name: messages.common.search }));
+    expect(onSearch).toHaveBeenCalledWith({ ...DEFAULT_FILTERS, supplier: '' });
+  });
+
+  it('창을 닫으면 조건이 그대로다', async () => {
     const { onSearch, user } = renderBar();
 
-    await user.type(screen.getByLabelText(t.fields.supplier), '없는 공급사');
+    await user.click(screen.getByLabelText(t.fields.supplier));
+    await user.click(screen.getByRole('button', { name: 'SYN CLOSE' }));
     await user.click(screen.getByRole('button', { name: messages.common.search }));
-
-    expect(onSearch).not.toHaveBeenCalled();
-    expect(screen.getByText(t.filters.supplierPickFromList)).toBeInTheDocument();
+    expect(onSearch).toHaveBeenCalledWith(DEFAULT_FILTERS);
   });
 
   it('기간을 고르면 조회에 함께 실린다', async () => {

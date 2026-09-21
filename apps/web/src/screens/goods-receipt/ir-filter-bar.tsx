@@ -1,9 +1,10 @@
 import { Button, Chip, SearchInput, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { useEffect, useId, useState } from 'react';
+import { useEffect, useState } from 'react';
 
 import { toFilterChips, type ChipFilterKey, type FilterChipNames, type IrFilters } from './filters';
 import { SelectField } from './select-field';
+import { SupplierPickerDialog } from './supplier-picker-dialog';
 import { irStatusNote, irStatusOptions, irStatusPlaceholder } from './status-options';
 import type { SelectOption } from './types';
 
@@ -59,13 +60,17 @@ export const IrFilterBar = ({
   onReset,
 }: IrFilterBarProps) => {
   const [filters, setFilters] = useState<IrFilters>(appliedFilters);
-  const supplierListId = `${useId()}-suppliers`;
-  /** 공급사 칸에 친 글자. 조건(번호)은 목록의 「코드 · 이름」과 맞을 때만 바뀐다. */
-  const appliedSupplierLabel =
-    supplierOptions.find((option) => option.value === appliedFilters.supplier)?.label ?? '';
-  const [supplierText, setSupplierText] = useState(appliedSupplierLabel);
-  /** 목록에 없는 글자로 조회하려 했는가 — 조건을 몰래 넓히지 않고 칸에서 알린다. */
-  const [supplierUnmatched, setSupplierUnmatched] = useState(false);
+  const [isSupplierPickerOpen, setIsSupplierPickerOpen] = useState(false);
+  /** 창에서 방금 고른 공급사의 이름표 — 목록(`supplierOptions`)이 아직 오지 않았어도 칸에 선다. */
+  const [pickedSupplier, setPickedSupplier] = useState<{ value: string; label: string } | null>(
+    null,
+  );
+  const supplierLabel =
+    filters.supplier === ''
+      ? ''
+      : (supplierOptions.find((option) => option.value === filters.supplier)?.label ??
+        (pickedSupplier?.value === filters.supplier ? pickedSupplier.label : ''));
+  const openSupplierPicker = (): void => setIsSupplierPickerOpen(true);
 
   /*
    * 주소가 정본이다 — 뒤로가기·초기화로 주소가 **바뀌면** 편집 중인 값도 그 값으로 되돌아간다.
@@ -82,12 +87,6 @@ export const IrFilterBar = ({
     q: appliedQ,
   } = appliedFilters;
 
-  /* 주소가 바뀌거나 공급사 목록이 도착하면 칸의 글자를 조건에 맞춘다. */
-  useEffect(() => {
-    setSupplierText(appliedSupplierLabel);
-    setSupplierUnmatched(false);
-  }, [appliedSupplier, appliedSupplierLabel]);
-
   useEffect(() => {
     setFilters({
       supplier: appliedSupplier,
@@ -99,16 +98,7 @@ export const IrFilterBar = ({
   }, [appliedSupplier, appliedFrom, appliedTo, appliedStatus, appliedQ]);
 
   const search = (): void => {
-    const text = supplierText.trim();
-    const match = supplierOptions.find((option) => option.label === text);
-
-    /* 목록에 없는 글자면 조회하지 않는다 — 조건 없이 조회하면 사용자가 좁혔다고 믿는 결과가 전체로 나온다. */
-    if (text !== '' && match === undefined) {
-      setSupplierUnmatched(true);
-      return;
-    }
-
-    onSearch({ ...filters, supplier: match?.value ?? '' });
+    onSearch(filters);
   };
 
   const chips = toFilterChips(appliedFilters, chipNames);
@@ -124,34 +114,41 @@ export const IrFilterBar = ({
        */}
       <div className="filter-bar goods-receipt-filter-bar">
         {/*
-         * 공급사 — 글자를 치면 맞는 공급사가 추려지는 검색칸(사용자 지시). 목록에서 고른 「코드 · 이름」만
-         * 조건이 된다 — 조건에 싣는 값은 전처럼 공급사 번호다. 비우면 전체다.
+         * 공급사 — W-03-01 품목 칸과 같은 검색 묶음(사용자 지시 2026-09-19). 칸은 읽기 전용이고 누르거나
+         * 엔터를 치면 「공급사 선택」 창이 열려 서버에서 찾는다. 지우기는 값이 있을 때만 칸 안의 ×.
+         * 조건에 싣는 값은 전처럼 공급사 번호다. 비우면 전체다.
          */}
         <div className="goods-receipt-filter-supplier">
-          <TextField
+          <SearchInput
             label={t.fields.supplier}
+            containerClassName="goods-receipt-filter-supplier-search"
+            value={supplierLabel}
+            readOnly
+            title={supplierLabel === '' ? undefined : supplierLabel}
             placeholder={t.fields.supplierPlaceholder}
-            list={supplierListId}
-            autoComplete="off"
-            value={supplierText}
-            error={supplierUnmatched ? t.filters.supplierPickFromList : undefined}
-            onChange={(event) => {
-              const text = event.target.value;
-              const match = supplierOptions.find((option) => option.label === text.trim());
-
-              setSupplierText(text);
-              setSupplierUnmatched(false);
-              setFilters((prev) => ({
-                ...prev,
-                supplier: text.trim() === '' ? '' : (match?.value ?? prev.supplier),
-              }));
+            aria-haspopup="dialog"
+            clearLabel={t.fields.supplierClear}
+            onClick={openSupplierPicker}
+            onSearch={openSupplierPicker}
+            onChange={() => undefined}
+            onClear={() => {
+              setFilters((prev) => ({ ...prev, supplier: '' }));
             }}
           />
-          <datalist id={supplierListId}>
-            {supplierOptions.map((option) => (
-              <option key={option.value} value={option.label} />
-            ))}
-          </datalist>
+          {isSupplierPickerOpen && (
+            <SupplierPickerDialog
+              onClose={() => setIsSupplierPickerOpen(false)}
+              onConfirm={(supplier) => {
+                const value = String(supplier.partnerId);
+                setPickedSupplier({
+                  value,
+                  label: `${supplier.partnerCode} · ${supplier.partnerName}`,
+                });
+                setFilters((prev) => ({ ...prev, supplier: value }));
+                setIsSupplierPickerOpen(false);
+              }}
+            />
+          )}
         </div>
 
         {/*

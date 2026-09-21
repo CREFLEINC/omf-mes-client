@@ -15,7 +15,8 @@ export const goodsReceipt: Translated<typeof ko.goodsReceipt> = {
   },
   fields: {
     supplier: 'Nhà cung cấp',
-    supplierPlaceholder: 'Mã hoặc tên nhà cung cấp',
+    supplierPlaceholder: 'Tìm theo mã · tên',
+    supplierClear: 'Xóa nhà cung cấp',
     receiptDateFrom: 'Ngày nhập hàng bắt đầu',
     receiptDateTo: 'Ngày nhập hàng kết thúc',
     status: 'Trạng thái',
@@ -121,7 +122,6 @@ export const goodsReceipt: Translated<typeof ko.goodsReceipt> = {
       'Danh sách chọn chỉ hiện một phần đầu. Nếu không thấy giá trị cần tìm, hãy báo người phụ trách.',
     lookupFailed: 'Không tải được danh sách chọn.',
     lookupLoading: 'Đang tải danh sách chọn.',
-    supplierPickFromList: 'Hãy chọn nhà cung cấp trong danh sách.',
     statusPending: 'Chưa chốt mã nên chưa chọn được.',
     codePending: 'Chưa chốt mã nên chưa chọn được.',
     chipSupplier: (value: string): string => `Nhà cung cấp: ${value}`,
@@ -173,7 +173,8 @@ export const goodsReceipt: Translated<typeof ko.goodsReceipt> = {
   notes: {
     singleLineSelect: 'Mỗi lần chỉ chọn được một dòng nhập hàng.',
     businessDateDerived: 'Ngày nghiệp vụ tự đặt theo thời điểm nhập kho đã chọn.',
-    qtyFromInboundLine: 'Nhập nguyên mặt hàng, số lượng, đơn vị, LOT vật tư của dòng đã chọn; không nhập tách số lượng.',
+    qtyFromInboundLine:
+      'Nhập nguyên mặt hàng, số lượng, đơn vị, LOT vật tư của dòng đã chọn; không nhập tách số lượng.',
     plantFromInboundReceipt: 'Nhà máy tự áp dụng theo phiếu nhập hàng đã chọn.',
     warehousePlant: (plant: string): string => `Nhà máy của kho đã chọn: ${plant}`,
     warehousePlantDiffers: (plant: string): string =>
@@ -216,5 +217,24 @@ export const goodsReceipt: Translated<typeof ko.goodsReceipt> = {
       'Chưa được đưa vào hàng đợi gửi ERP. Việc hệ thống bên kia đã cập nhật hay chưa, hãy xem ở màn hình tình trạng đồng bộ liên kết.',
     erpUnknown:
       'Không xác định được đã đưa vào hàng đợi gửi ERP hay chưa. Phản hồi không kèm giá trị đó.',
+  },
+  supplierPicker: {
+    title: 'Chọn nhà cung cấp',
+    keywordLabel: 'Từ khóa',
+    keywordPlaceholder: 'Mã hoặc tên nhà cung cấp',
+    search: 'Tìm',
+    columns: { select: 'Chọn', code: 'Mã', name: 'Tên' },
+    inactive: 'Ngừng dùng',
+    noResult: 'Không có kết quả. Hãy thử một phần mã hoặc tên.',
+    searchFailed: 'Không tìm được nhà cung cấp.',
+    searching: 'Đang tìm…',
+    page: {
+      range: (from: number, to: number, total: number) =>
+        `${String(from)}–${String(to)} / tổng ${String(total)}`,
+      previous: 'Trước',
+      next: 'Sau',
+    },
+    cancel: 'Hủy',
+    pick: 'Chọn',
   },
 };

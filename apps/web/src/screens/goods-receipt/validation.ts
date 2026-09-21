@@ -114,10 +114,7 @@ export const postBlockReason = (input: PostGateInput): string | null => {
 export const validateDraft = (draft: ReceiptDraft): Record<string, string> => {
   const errors: Record<string, string> = {};
 
-  for (const [key, field] of Object.entries(CODE_FIELD_NAMES) as [
-    GoodsReceiptCodeKey,
-    string,
-  ][]) {
+  for (const [key, field] of Object.entries(CODE_FIELD_NAMES) as [GoodsReceiptCodeKey, string][]) {
     if (draft.codes[key].trim().length > CODE_MAX) {
       errors[field] = t.errors.codeTooLong(CODE_MAX);
     }

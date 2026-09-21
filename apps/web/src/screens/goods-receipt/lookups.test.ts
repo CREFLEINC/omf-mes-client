@@ -49,7 +49,9 @@ describe('toReference', () => {
    */
   it('아직 오지 않았으면 목록에 없음으로 판정하지 않는다', () => {
     expect(toReference(source({ isLoading: true }), 9101)).toEqual({ kind: 'loading' });
-    expect(toReference(source({ entries: [], isLoading: true }), 9101)).toEqual({ kind: 'loading' });
+    expect(toReference(source({ entries: [], isLoading: true }), 9101)).toEqual({
+      kind: 'loading',
+    });
   });
 
   /**

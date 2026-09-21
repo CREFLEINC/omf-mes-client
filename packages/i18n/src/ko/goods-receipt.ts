@@ -18,7 +18,9 @@ export const goodsReceipt = {
   },
   fields: {
     supplier: '공급사',
-    supplierPlaceholder: '공급사 코드 또는 이름',
+    /** W-03-01 품목 칸과 같은 검색 묶음 — 누르면 「공급사 선택」 창이 열린다. */
+    supplierPlaceholder: '코드·이름으로 검색',
+    supplierClear: '공급사 지우기',
     /** 계약의 `receiptDateFrom`·`receiptDateTo`. **기본 기간을 심지 않는다**(W-01-09가 세운 규칙). */
     receiptDateFrom: '입하 시작일',
     receiptDateTo: '입하 종료일',
@@ -185,8 +187,6 @@ export const goodsReceipt = {
      */
     lookupLoading: '선택지를 불러오는 중입니다.',
     /** 상태 선택지가 왜 비어 있는지 — 라벨 옆 같은 줄. 공용 `pendingCode.note` 와 뜻이 같은 짧은 문구다. */
-    /** 공급사 칸에 목록에 없는 글자를 두고 조회했을 때. 조건을 몰래 넓히지 않는다. */
-    supplierPickFromList: '목록에서 공급사를 골라 주세요.',
     statusPending: '코드 확정 전엔 선택이 불가합니다.',
     /** 입고 처리의 코드 선택칸이 비어 있는 이유 — 라벨 옆 같은 줄. 공용 `pendingCode.note` 의 짧은 판. */
     codePending: '코드 확정 전엔 선택이 불가합니다.',
@@ -334,5 +334,25 @@ export const goodsReceipt = {
     erpNotQueued:
       'ERP 송신 대기열에 적재되지 않았습니다. 상대 시스템 반영 여부는 연계 동기화 현황 화면에서 확인하세요.',
     erpUnknown: 'ERP 송신 대기열 적재 여부를 알 수 없습니다. 응답에 그 값이 오지 않았습니다.',
+  },
+  /** 조건 줄 공급사 칸이 여는 창 — 공용 「품목 선택」 창과 같은 모양·조작이다. */
+  supplierPicker: {
+    title: '공급사 선택',
+    keywordLabel: '검색어',
+    keywordPlaceholder: '공급사 코드 또는 이름',
+    search: '찾기',
+    columns: { select: '선택', code: '코드', name: '이름' },
+    inactive: '미사용',
+    noResult: '검색 결과가 없습니다. 코드나 이름의 일부로 다시 찾아보세요.',
+    searchFailed: '공급사를 찾지 못했습니다.',
+    searching: '찾는 중입니다…',
+    page: {
+      range: (from: number, to: number, total: number): string =>
+        `${String(from)}–${String(to)} / 전체 ${String(total)}건`,
+      previous: '이전',
+      next: '다음',
+    },
+    cancel: '취소',
+    pick: '선택',
   },
 } as const;
