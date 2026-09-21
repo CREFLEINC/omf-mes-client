@@ -706,16 +706,6 @@ main > * + * {
 
 /* 초과·부족 안내 — 숫자 줄과 보조 문구를 나눠 둔다. */
 .production-plan-summary-facts,
-.production-plan-summary-note {
-  display: block;
-}
-
-.production-plan-summary-note {
-  color: var(--on-surface-variant);
-  font: var(--type-label-sm);
-  letter-spacing: var(--type-label-sm-tracking);
-}
-
 /* 줄 단추는 글자가 두 줄로 깨지지 않을 만큼만 — 저장처럼 짧은 이름은 더 좁아도 된다. */
 .production-plan-row-actions button {
   min-width: 0;
@@ -1064,11 +1054,6 @@ main > * + * {
   white-space: nowrap;
 }
 
-.field-note.production-order-list-note {
-  max-width: none;
-  margin: 0;
-}
-
 .production-order-table {
   min-width: 0;
   overflow-x: auto;
@@ -1247,7 +1232,7 @@ main > * + * {
 }
 
 .po-change-review-table-caption {
-  position: fixed;
+  position: absolute;
   width: 1px;
   height: 1px;
   padding: 0;
@@ -1952,7 +1937,7 @@ main > * + * {
 }
 
 .work-order-close-table-caption {
-  position: fixed;
+  position: absolute;
   width: 1px;
   height: 1px;
   padding: 0;
@@ -2179,7 +2164,7 @@ main > * + * {
 }
 
 .emergency-work-order-table caption {
-  position: fixed;
+  position: absolute;
   width: 1px;
   height: 1px;
   padding: 0;
@@ -2314,7 +2299,7 @@ main > * + * {
 }
 
 .material-issue-request-table caption {
-  position: fixed;
+  position: absolute;
   width: 1px;
   height: 1px;
   padding: 0;
@@ -2510,7 +2495,7 @@ main > * + * {
 }
 
 .work-order-progress-table caption {
-  position: fixed;
+  position: absolute;
   width: 1px;
   height: 1px;
   padding: 0;
@@ -2722,7 +2707,7 @@ main > * + * {
 }
 
 .lot-status-detail-dialog caption {
-  position: fixed;
+  position: absolute;
   width: 1px;
   height: 1px;
   padding: 0;
@@ -2898,7 +2883,7 @@ main > * + * {
 }
 
 .lot-status-table caption {
-  position: fixed;
+  position: absolute;
   width: 1px;
   height: 1px;
   padding: 0;
@@ -3095,7 +3080,7 @@ main > * + * {
 }
 
 .lot-status-transition-table caption {
-  position: fixed;
+  position: absolute;
   width: 1px;
   height: 1px;
   padding: 0;
@@ -3298,7 +3283,7 @@ main > * + * {
 }
 
 .suspicious-material-hold-table caption {
-  position: fixed;
+  position: absolute;
   width: 1px;
   height: 1px;
   padding: 0;
@@ -3545,7 +3530,7 @@ main > * + * {
 }
 
 .inspection-results-table caption {
-  position: fixed;
+  position: absolute;
   width: 1px;
   height: 1px;
   padding: 0;
@@ -3677,7 +3662,7 @@ main > * + * {
 }
 
 .quality-approval-table-caption {
-  position: fixed;
+  position: absolute;
   width: 1px;
   height: 1px;
   padding: 0;
@@ -3909,7 +3894,7 @@ main > * + * {
 }
 
 .disposition-table-caption {
-  position: fixed;
+  position: absolute;
   width: 1px;
   height: 1px;
   padding: 0;
@@ -4114,7 +4099,7 @@ main > * + * {
 }
 
 .equipment-master-table-caption {
-  position: fixed;
+  position: absolute;
   width: 1px;
   height: 1px;
   padding: 0;
@@ -4268,7 +4253,7 @@ main > * + * {
 }
 
 .tool-master-table-caption {
-  position: fixed;
+  position: absolute;
   width: 1px;
   height: 1px;
   padding: 0;
@@ -4376,7 +4361,7 @@ main > * + * {
 }
 
 .work-calendar-table-caption {
-  position: fixed;
+  position: absolute;
   width: 1px;
   height: 1px;
   padding: 0;
@@ -4543,7 +4528,7 @@ main > * + * {
 }
 
 .collection-channel-table-caption {
-  position: fixed;
+  position: absolute;
   width: 1px;
   height: 1px;
   padding: 0;
@@ -4645,7 +4630,7 @@ main > * + * {
 }
 
 .shot-conversion-table-caption {
-  position: fixed;
+  position: absolute;
   width: 1px;
   height: 1px;
   padding: 0;
@@ -4758,7 +4743,7 @@ main > * + * {
 }
 
 .gauge-master-table-caption {
-  position: fixed;
+  position: absolute;
   width: 1px;
   height: 1px;
   padding: 0;
@@ -4852,7 +4837,7 @@ main > * + * {
 }
 
 .gauge-calibration-table-caption {
-  position: fixed;
+  position: absolute;
   width: 1px;
   height: 1px;
   padding: 0;
@@ -4941,7 +4926,7 @@ main > * + * {
 }
 
 .equipment-failure-table-caption {
-  position: fixed;
+  position: absolute;
   width: 1px;
   height: 1px;
   padding: 0;
@@ -5074,7 +5059,7 @@ main > * + * {
 }
 
 .maintenance-order-table-caption {
-  position: fixed;
+  position: absolute;
   width: 1px;
   height: 1px;
   padding: 0;
@@ -5184,7 +5169,7 @@ main > * + * {
 }
 
 .maintenance-result-table-caption {
-  position: fixed;
+  position: absolute;
   width: 1px;
   height: 1px;
   padding: 0;
@@ -5279,7 +5264,7 @@ main > * + * {
 }
 
 .tool-pm-order-table-caption {
-  position: fixed;
+  position: absolute;
   width: 1px;
   height: 1px;
   padding: 0;
@@ -5430,7 +5415,7 @@ main > * + * {
 }
 
 .tool-pm-result-table-caption {
-  position: fixed;
+  position: absolute;
   width: 1px;
   height: 1px;
   padding: 0;
@@ -5602,7 +5587,7 @@ main > * + * {
 }
 
 .approval-inbox-table caption {
-  position: fixed;
+  position: absolute;
   width: 1px;
   height: 1px;
   padding: 0;
@@ -5786,7 +5771,7 @@ dl.filter-bar.approval-inbox-detail-facts {
 }
 
 .notice-table caption {
-  position: fixed;
+  position: absolute;
   width: 1px;
   height: 1px;
   padding: 0;
@@ -9197,7 +9182,7 @@ dl.filter-bar.approval-inbox-detail-facts {
 }
 
 .disposition-request-table-caption {
-  position: fixed;
+  position: absolute;
   width: 1px;
   height: 1px;
   overflow: hidden;
@@ -9363,7 +9348,7 @@ dl.filter-bar.approval-inbox-detail-facts {
 }
 
 .return-receipt-table-caption {
-  position: fixed;
+  position: absolute;
   width: 1px;
   height: 1px;
   overflow: hidden;
@@ -10052,7 +10037,7 @@ dl.filter-bar.approval-inbox-detail-facts {
 /* 대기 목록 제목 — 화면에서는 감추고 표의 접근 이름(caption)으로만 남긴다. */
 .iqc-inspection-table-caption,
 .iqc-inspection-visually-hidden {
-  position: fixed;
+  position: absolute;
   width: 1px;
   height: 1px;
   padding: 0;
@@ -10389,7 +10374,7 @@ dl.filter-bar.approval-inbox-detail-facts {
 
 /* 화면에서 감추고 스크린리더에만 남기는 글자(입하 전표 목록의 「선택」 열 이름). */
 .goods-receipt-visually-hidden {
-  position: fixed;
+  position: absolute;
   width: 1px;
   height: 1px;
   padding: 0;

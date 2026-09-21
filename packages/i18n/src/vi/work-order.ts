@@ -32,8 +32,6 @@ export const workOrder: Translated<typeof ko.workOrder> = {
       truncated: 'Chỉ hiển thị trang đầu của danh sách lựa chọn.',
       noPlant: 'P/O không có nhà máy nên không tải được danh sách lựa chọn.',
       workerTruncated: 'Chỉ hiển thị một phần công nhân. Hãy tìm theo mã hoặc tên công nhân.',
-      searchEmpty: 'Không có kết quả tìm kiếm.',
-      searchTruncated: 'Chỉ hiển thị một phần kết quả. Hãy nhập thêm từ khóa.',
     },
   },
   screen: {

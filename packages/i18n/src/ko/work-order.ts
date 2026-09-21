@@ -18,8 +18,6 @@ export const workOrder = {
       truncated: '선택 목록의 첫 페이지만 표시합니다.',
       noPlant: 'P/O에 공장이 없어 선택 목록을 불러올 수 없습니다.',
       workerTruncated: '작업자 일부만 표시합니다. 사번·성명으로 검색하세요.',
-      searchEmpty: '검색 결과가 없습니다.',
-      searchTruncated: '검색 결과 일부만 표시합니다. 검색어를 더 입력하세요.',
     },
   },
   screen: {

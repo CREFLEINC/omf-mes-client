@@ -31,14 +31,12 @@ import {
   useWorkOrderShifts,
 } from './resource-queries';
 import { workOrderDraftEquals, workOrderFieldErrorMessage } from './screen-model';
-import { useDebounced } from './use-debounced';
 import { WorkOrderAssignmentActions } from './work-order-assignment-actions';
 import { WorkOrderPlanFieldsPane } from './work-order-plan-fields-pane';
 import { WorkOrderResourcePane, type WorkOrderResourceOption } from './work-order-resource-pane';
 import { WorkOrderValidationPane } from './work-order-validation-pane';
 
 const t = messages.workOrder.editor;
-const WORKER_SEARCH_DEBOUNCE_MS = 300;
 const idOrNull = (value: string): number | null =>
   /^[1-9]\d*$/.test(value) && Number.isSafeInteger(Number(value)) ? Number(value) : null;
 const options = (lookup: LookupSource, current: string): WorkOrderResourceOption[] =>

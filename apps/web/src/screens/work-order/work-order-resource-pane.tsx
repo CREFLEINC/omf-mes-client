@@ -87,6 +87,8 @@ const ResourceSelect = ({
   const isMissingRequired = required && error === messages.workOrder.screen.errors.REQUIRED;
   const description = isMissingRequired ? undefined : (error ?? (disabled ? disabledReason : note));
   const descriptionId = `${id}-description`;
+  /* 필수 안내는 라벨 옆에 두되 칸과 이어 둔다 — 안 그러면 막힌 이유가 보조기술에 닿지 않는다. */
+  const requiredHintId = `${id}-required`;
   const availableOptions: SelectItems = [
     { value: '', label: t.clearOption },
     ...options.filter((option) => option.value.trim() !== ''),
@@ -104,7 +106,11 @@ const ResourceSelect = ({
           </span>
         )}
         {/* 필수 안내는 라벨 옆에 — 칸 아래로 내려가면 줄 높이가 칸마다 들쭉날쭉해진다(사용자 지시). */}
-        {required && <span className="work-order-resource-label-error">{t.requiredHint}</span>}
+        {required && (
+          <span id={requiredHintId} className="work-order-resource-label-error">
+            {t.requiredHint}
+          </span>
+        )}
       </span>
       <Select
         id={id}
@@ -114,7 +120,9 @@ const ResourceSelect = ({
         invalid={error !== undefined}
         aria-required={required || undefined}
         disabled={disabled}
-        aria-describedby={description === undefined ? undefined : descriptionId}
+        aria-describedby={
+          description !== undefined ? descriptionId : isMissingRequired ? requiredHintId : undefined
+        }
         onChange={(nextValue) => {
           onChange({ [field]: nextValue });
         }}
