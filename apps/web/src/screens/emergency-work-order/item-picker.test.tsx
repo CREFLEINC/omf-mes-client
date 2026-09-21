@@ -33,7 +33,16 @@ const SELECTED: SelectedItem = {
 
 const pathOf = (request: Request): string => new URL(request.url).pathname;
 
-const routes = (searches: URL[], items?: unknown[]): StubRoute[] => [
+const routes = (searches: URL[], calls: URL[], items?: unknown[]): StubRoute[] => [
+  {
+    /* 나간 요청을 «전부» 담는다 — 부르지 «않는» 것을 재려면 담기는 자리가 넓어야 한다. */
+    match: (request) => {
+      calls.push(new URL(request.url));
+
+      return false;
+    },
+    respond: () => jsonResponse({}),
+  },
   {
     match: (request) => pathOf(request) === '/mdm/code-values',
     respond: () =>
@@ -69,13 +78,14 @@ const renderPicker = (
 ) => {
   const onSelect = vi.fn();
   const searches: URL[] = [];
+  const calls: URL[] = [];
 
   renderWithProviders(<ItemPicker selected={selected} onSelect={onSelect} />, {
-    fetch: createStubFetch(routes(searches, options.items)),
+    fetch: createStubFetch(routes(searches, calls, options.items)),
     route: '/',
   });
 
-  return { onSelect, searches, user: userEvent.setup() };
+  return { onSelect, searches, calls, user: userEvent.setup() };
 };
 
 /** 칸을 누르면 창이 열린다 — 이 화면에는 「찾기」 단추가 따로 없다. */
@@ -107,14 +117,14 @@ describe('ItemPicker', () => {
 
   /* ⛔ 이 화면이 묻는 것은 「무엇을 만들까」다 — 품목마다 재고를 한 번 더 부르지 않는다. */
   it('가용 재고를 부르지 않는다', async () => {
-    const { searches, user } = renderPicker();
+    const { calls, user } = renderPicker();
 
     await openDialog(user);
     await waitFor(() => {
-      expect(searches.length).toBeGreaterThan(0);
+      expect(calls.some((url) => url.pathname === '/mdm/items')).toBe(true);
     });
 
-    expect(searches.some((url) => url.pathname === '/inventory/balances')).toBe(false);
+    expect(calls.some((url) => url.pathname === '/inventory/balances')).toBe(false);
   });
 
   it('⛔ 고른 품목의 기준 단위를 함께 들고 간다 — 수량이 어느 단위인지가 사실이다', async () => {

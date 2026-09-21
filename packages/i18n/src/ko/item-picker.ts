@@ -49,6 +49,14 @@ export const itemPicker = {
     next: '다음',
   },
 
+  /**
+   * 아직 아무것도 고르지 않았을 때 꼬리말에 서는 말.
+   *
+   * ⛔ `compact` 창은 이 말을 두지 않는다(사용자 결정 2026-09-21) — 잠긴 단추가 이미 말한다.
+   * 나머지 창은 종전 그대로다.
+   */
+  needsSelection: '품목을 고르면 누를 수 있습니다.',
+
   selectedCount: (count: number): string => `${String(count)}개 선택`,
   cancel: '취소',
   /** 여는 자리에 따라 단추 이름이 다르다 — 「라인 추가」와 「바꾸기」. */

@@ -188,8 +188,8 @@ const renderWithScreenDefaultTypeCode = (options: StubOptions = {}) => {
 /**
  * 품목을 찾아 고르고, 수량·사유를 채운다 — 발행 직전까지.
  *
- * ⭐ 품목 줄의 단추를 **품목 코드가 실린 접근명**으로 집으므로, 이 함수를 쓰는 모든 검사가
- * 「어느 품목을 고르는 단추인지 이름에 실린다」를 함께 고정한다(보이는 글자는 「선택」이다).
+ * ⭐ 공용 품목 창의 체크칸을 **품목 코드로** 집으므로, 이 함수를 쓰는 모든 검사가 「줄마다
+ * 어느 품목인지 접근명에 실린다」를 함께 고정한다.
  */
 const fillForm = async (user: ReturnType<typeof userEvent.setup>): Promise<void> => {
   await user.click(screen.getByLabelText(t.itemPicker.label));
@@ -220,6 +220,21 @@ describe('EmergencyWorkOrderScreen', () => {
     }
     /* 내부 용어를 화면에 내지 않는다 — 문의 번호·공장 컨텍스트 같은 말은 현장에서 못 읽는다. */
     expect(screen.queryByText(/문의\s*0?040/)).toBeNull();
+  });
+
+  /*
+   * ⭐ **지금 이 화면에서 실제로 할 수 있는 일은 이것뿐이다.** 발행이 닫혀 있어도 이미 만들어진
+   * W/O 의 배포 재시도는 여기서 끝내야 한다 — 안내만 남기고 그 길까지 지우면 안 된다.
+   */
+  it('발행이 닫혀 있어도 배포가 남은 W/O 는 보이고 재시도를 낼 수 있다', async () => {
+    const stubbed = stub({ unreleased: [UNRELEASED] });
+    renderWithProviders(<EmergencyWorkOrderScreen typeCode={KNOWN_CODE} />, {
+      fetch: stubbed.fetch,
+    });
+
+    expect(await screen.findByRole('region', { name: t.handover.title })).toBeInTheDocument();
+    expect(screen.getByRole('cell', { name: 'SYN-WO-0009' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: t.handover.retry })).toBeEnabled();
   });
 
   it('고정 조건·품목·발행 정보·자동 전개·발행 준비를 제목이 있는 구획으로 나눈다', () => {

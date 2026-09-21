@@ -80,9 +80,10 @@ export interface ItemPickerDialogProps {
   /**
    * 표를 가운데로 세우고, 오른쪽 위 × 와 꼬리말 건수를 뺀 «정돈된» 모양으로 연다.
    *
-   * ⭐ **부르는 쪽이 켠다**(사용자 결정 2026-09-21 · 긴급 W/O 발행에서만). 이 창은 여섯 화면이
-   * 나눠 쓰므로, 한 화면의 보기 규칙을 전 화면에 밀면 감지기 없는 자리에서 조용히 바뀐다.
-   * 기본은 꺼짐 — 나머지 화면은 종전 모양 그대로다.
+   * ⭐ **부르는 쪽이 켠다**(사용자 결정 2026-09-21 · 긴급 W/O 발행에서만). 이 창은 네 화면이
+   * 나눠 쓰므로(IQC 수입검사 · Lot Status 이력 · 출하 요청 생성 · 긴급 W/O 발행), 한 화면의
+   * 보기 규칙을 전 화면에 밀면 감지기 없는 자리에서 조용히 바뀐다. 기본은 꺼짐 — 나머지
+   * 화면은 종전 모양 그대로다.
    */
   compact?: boolean;
   /**
@@ -238,11 +239,16 @@ export const ItemPickerDialog = ({
       footer={
         <>
           {/*
-           * 건수는 종전대로 알린다. 다만 `compact` 이면서 하나만 고르는 창에서는 뺀다
-           * (사용자 결정 2026-09-21) — 「1개 선택」은 표의 체크 하나가 이미 말하는 사실이다.
-           * 「고르면 누를 수 있습니다」는 잠긴 단추가 이미 말하므로 어느 창에서도 두지 않는다.
+           * ⭐ **꼬리말은 `compact` 창에서만 걷는다**(사용자 결정 2026-09-21). 그 창에서는
+           * 「1개 선택」도 「고르면 누를 수 있습니다」도 표의 체크와 잠긴 단추가 이미 말한다.
+           * ⛔ 나머지 창은 **종전 그대로** — 0건이면 안내를, 고른 뒤에는 건수를 낸다.
            */}
-          {(!compact || multiple) && picked.length > 0 && (
+          {!compact && (
+            <span className="field-note">
+              {picked.length === 0 ? t.needsSelection : t.selectedCount(picked.length)}
+            </span>
+          )}
+          {compact && multiple && picked.length > 0 && (
             <span className="field-note">{t.selectedCount(picked.length)}</span>
           )}
           <Button variant="outlined" onClick={onClose}>

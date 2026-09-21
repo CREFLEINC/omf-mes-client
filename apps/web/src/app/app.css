@@ -2048,7 +2048,6 @@ main > * + * {
   margin-top: 0;
 }
 
-.emergency-work-order-lead,
 .emergency-work-order-pane > p,
 .emergency-work-order-action-row > p {
   margin: 0;

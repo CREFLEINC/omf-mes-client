@@ -85,14 +85,6 @@ describe('고르기 전 조회를 열지 않는다', () => {
       expect(query.fetchStatus).toBe('idle');
     }
   });
-
-  it('⛔ 검색어가 비면 품목을 조회하지 않는다 — 전 품목을 받아 올 자리가 아니다', async () => {
-    const { urls, fetch } = collecting();
-
-    await waitFor(() => {
-      expect(urls).toEqual([]);
-    });
-  });
 });
 
 describe('고른 뒤의 조회', () => {
