@@ -24,9 +24,13 @@ export const iqcInspection: Translated<typeof ko.iqcInspection> = {
 
   filters: {
     item: 'Mặt hàng',
-    itemPlaceholder: 'Tìm theo số mặt hàng',
+    itemPlaceholder: 'Hãy chọn mặt hàng',
+    itemPick: 'Chọn mặt hàng này',
+    itemClear: 'Xóa điều kiện mặt hàng',
     supplier: 'Nhà cung cấp',
-    supplierPlaceholder: 'Tìm theo số nhà cung cấp',
+    supplierPlaceholder: 'Hãy chọn nhà cung cấp',
+    all: 'Tất cả',
+    supplierLoadFailed: 'Không tải được danh sách nhà cung cấp.',
     keyword: 'Số yêu cầu',
     keywordPlaceholder: 'Tìm theo số yêu cầu',
     apply: 'Tra cứu',

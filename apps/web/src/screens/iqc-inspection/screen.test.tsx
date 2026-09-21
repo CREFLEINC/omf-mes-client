@@ -205,12 +205,16 @@ describe('IqcInspectionScreen', () => {
 
     await waitFor(() => expect(queueCalls(sent)).toHaveLength(1));
 
-    await userEvent.type(screen.getByLabelText(t.filters.item), '1001');
+    /*
+     * 의뢰번호로 좁힌다 — 품목·공급사는 이제 **골라서** 넣으므로(omf-all-around#40) 이 판정에
+     * 필요 없는 선택 창·선택지 조회까지 끌고 들어온다. 재는 것은 「조건이 바뀌면 첫 쪽」이다.
+     */
+    await userEvent.type(screen.getByLabelText(t.filters.keyword), 'IR-1');
     await userEvent.click(screen.getByRole('button', { name: t.filters.apply }));
 
     await waitFor(() => expect(queueCalls(sent).length).toBeGreaterThan(1));
     expect(lastQuery(sent)?.get('page')).toBe('1');
-    expect(lastQuery(sent)?.get('itemId')).toBe('1001');
+    expect(lastQuery(sent)?.get('q')).toBe('IR-1');
   });
 
   it('같은 조건으로 다시 조회하면 외부에서 새로 생긴 의뢰를 받는다', async () => {

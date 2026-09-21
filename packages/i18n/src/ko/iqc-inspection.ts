@@ -52,9 +52,19 @@ export const iqcInspection = {
    */
   filters: {
     item: '품목',
-    itemPlaceholder: '품목 번호로 검색',
+    /** 창을 여는 칸이다 — 「치세요」가 아니라 「고르세요」로 적는다. */
+    itemPlaceholder: '품목을 고르세요',
+    itemPick: '이 품목으로',
+    itemClear: '품목 조건 지우기',
     supplier: '공급사',
-    supplierPlaceholder: '공급사 번호로 검색',
+    supplierPlaceholder: '공급사를 고르세요',
+    /** 조건 줄의 「전체」 — 좁히지 않는다는 뜻이다(빈 값과 같은 자리). */
+    all: '전체',
+    /**
+     * 공급사 선택지를 못 받았다. **조건을 못 쓰게 됐다는 사실을 적는다** — 빈 선택지를 그대로
+     * 두면 사용자는 「공급사가 하나도 없다」로 읽는다.
+     */
+    supplierLoadFailed: '공급사 선택지를 불러오지 못했습니다.',
     keyword: '의뢰번호',
     keywordPlaceholder: '의뢰번호로 검색',
     apply: '조회',
