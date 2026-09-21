@@ -298,6 +298,13 @@ export const emergencyWorkOrder = {
     typeCodeUnknown:
       '발행·배포: 긴급 유형 값이 화면에 설정되지 않아 발행할 수 없습니다. 이대로 보내면 양산 작업지시가 만들어집니다. 담당자에게 알려 주세요.',
 
+    /**
+     * 서버가 계획 없는 긴급 발행을 아직 받지 않는다(omf-all-around#44). 누른 뒤에야 서버 문구가
+     * 뜨면 사용자는 자기 입력이 잘못된 줄 안다 — 누르기 전에 쓸 수 없다고 말한다.
+     */
+    notOpenYet:
+      '발행·배포: 긴급 발행은 아직 사용할 수 없습니다. 준비가 끝나면 안내드립니다. 급한 지시는 「W/O 전개·편성」에서 만들어 주세요.',
+
     itemNotChosen: '발행·배포: 발행할 품목을 먼저 고르세요.',
     expansionLoading: '발행·배포: BOM·Routing 을 받는 중입니다.',
     expansionError: '발행·배포: BOM·Routing 을 받지 못했습니다. 다시 시도하세요.',

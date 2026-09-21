@@ -22,6 +22,13 @@ export interface IssueLockInput {
   isInputComplete: boolean;
   /** 긴급을 뜻하는 유형 코드. 비어 있으면 아직 정해지지 않은 것이다. */
   typeCode?: string;
+  /**
+   * 계획 없는 긴급 발행을 서버가 받는가. 넘기지 않으면 받는 것으로 본다.
+   *
+   * ⛔ 지금 서버는 받지 않는다 — 내부 P/O 의 공장·사업부를 채울 근거가 요청에도 물리에도 없어
+   * 400 으로 거부한다(omf-all-around#44). 화면이 그 사실을 알고 미리 잠근다.
+   */
+  isPlanlessIssueOpen?: boolean;
 }
 
 export interface IssueLock {
@@ -128,6 +135,11 @@ export const toIssueLock = (input: IssueLockInput): IssueLock => {
 
   if (isForbidden(input.issueError)) {
     return { reason: t.forbidden, isUncertain: false, canRetryRelease: false };
+  }
+
+  /* 사용자가 풀 수 없는 것은 입력을 채우게 두기 전에 말한다 — 헛수고를 시키지 않는다. */
+  if (input.isPlanlessIssueOpen === false) {
+    return { reason: t.notOpenYet, isUncertain: false, canRetryRelease: false };
   }
 
   if (!isEmergencyTypeCodeKnown(input.typeCode)) {
