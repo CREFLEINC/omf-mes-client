@@ -1525,9 +1525,7 @@ describe('appRouter — 4M 자원배정·유효성 점검의 진입 경로', () 
   it('사이드 메뉴에 없고, 대상 없이 주소로 열면 생산계획 선택 안내가 선다', () => {
     renderRoutedApp('/production/work-order-assignments', lotStatusRoutes());
 
-    expect(
-      screen.queryByRole('link', { name: messages.workOrder.screen.view.title }),
-    ).toBeNull();
+    expect(screen.queryByRole('link', { name: messages.workOrder.screen.view.title })).toBeNull();
     expect(
       screen.getByRole('heading', { level: 1, name: messages.workOrder.screen.view.title }),
     ).toBeVisible();

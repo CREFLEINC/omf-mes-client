@@ -230,10 +230,10 @@ describe('베트남어 문구 — 관리웹', () => {
 });
 
 /**
- * 사이드바 78개와 셸의 제 이름은 `@omf-mes/i18n` 이 아니라 `nav-tree.ts`·`shell-label.ts`·
+ * 사이드바 76개와 셸의 제 이름은 `@omf-mes/i18n` 이 아니라 `nav-tree.ts`·`shell-label.ts`·
  * `patterns/locale-select.tsx` 가
  * 갖는다(그 규칙의 근거는 `nav-tree.ts` 머리말에 있다). **그래서 여기서 따로 잰다** — 위
- * 감지기는 문구 묶음만 훑어 이 78개를 보지 못한다.
+ * 감지기는 문구 묶음만 훑어 이 76개를 보지 못한다.
  */
 describe('베트남어 이름 — 셸이 제 손으로 드는 것', () => {
   const named: LocalizedLabel[] = [...NAV_ENTRIES, ...NAV_GROUPS, SHELL_BRAND, LOCALE_CHOICE];
