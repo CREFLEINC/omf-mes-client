@@ -82,6 +82,8 @@ export const materialPicking: Translated<typeof ko.materialPicking> = {
   },
   saveFailed: 'Không lưu được trên máy này. Hãy kiểm tra dung lượng rồi thử lại.',
   allIssued: 'Lệnh này không còn gì để xuất kho.',
+  allPickedIssued: (unpickedLines: number): string =>
+    `Đã xuất kho hết số lượng đã lấy. Vẫn còn ${String(unpickedLines)} dòng cần lấy hàng. Hãy lấy hàng tiếp rồi xác nhận.`,
   issueQueued: 'Việc xuất kho của lệnh này đã đang chờ gửi. Sẽ gửi khi có kết nối.',
   returned: {
     title: (count: string) => `Số bản ghi gửi thất bại của lệnh này ${count}`,

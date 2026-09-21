@@ -45,6 +45,7 @@ import {
   isOutOfSequence,
   isOfOrder,
   issuedLinesOf,
+  hasIssuedAllPicked,
   issuableQtyOf,
   isScannedLotOf,
   lineProblemOf,
@@ -54,6 +55,7 @@ import {
   queuedPicksOf,
   queuedQtyOf,
   remainingQtyOf,
+  unpickedLineCount,
   toIssueDraft,
   toPickDraft,
   type GoodsIssueLineUpsert,
@@ -219,6 +221,8 @@ export const MaterialPickingScreen = () => {
   const alreadyIssued = issuedQtyByLine(issuedRecords, orderId ?? -1, (key) =>
     rejected.some((each) => each.entry.idempotencyKey === key),
   );
+  /* 계획 대비 아직 덜 집은 라인 수 — 안내가 「끝났다」로 읽히지 않게 이 값으로 가른다. */
+  const unpickedLines = unpickedLineCount(lines, queued);
 
   /*
    * 셸이 스스로 큐를 비운다. 그때 다시 조회하지 않으면 담긴 것이 셈에서 빠진 자리에 서버가
@@ -814,9 +818,17 @@ export const MaterialPickingScreen = () => {
         {worker === null ? <p className="picking-out__note">{t.noWorker}</p> : null}
         {saveFailed ? <AlertBanner variant="error" title={t.saveFailed} /> : null}
         {queuedIssues === 0 ? null : <AlertBanner variant="warning" title={t.issueQueued} />}
-        {alreadyIssued.size > 0 &&
-        !lines.some((each) => issuableQtyOf(each, queued, alreadyIssued) > 0) ? (
-          <AlertBanner variant="info" title={t.allIssued} />
+        {/*
+          ⛔ **「집어 둔 것을 다 내보냈다」와 「지시가 끝났다」를 가른다.** 부분 출고 직후에는
+          앞의 것이 참인데 계획에는 아직 남은 수량이 있다 — 한 문구로 합치면 작업자가 끝난
+          줄 알고 나가고 잔량이 그대로 남는다(omf-all-around#49 · 실기 재현).
+        */}
+        {hasIssuedAllPicked(lines, alreadyIssued, queued) ? (
+          unpickedLines > 0 ? (
+            <AlertBanner variant="warning" title={t.allPickedIssued(unpickedLines)} />
+          ) : (
+            <AlertBanner variant="info" title={t.allIssued} />
+          )
         ) : null}
       </section>
 
