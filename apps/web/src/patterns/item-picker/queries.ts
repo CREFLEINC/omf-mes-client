@@ -35,8 +35,13 @@ const ITEM_TYPE_CODE_GROUP = 'ITEM_TYPE';
 
 export const itemPickerKeys = {
   types: [ROOT, 'item-types'] as const,
-  search: (term: string, itemTypeCode: string, page: number, includeInactive = false) =>
-    [ROOT, 'search', term, itemTypeCode, page, includeInactive] as const,
+  search: (
+    term: string,
+    itemTypeCode: string,
+    page: number,
+    includeInactive = false,
+    hasRouting = false,
+  ) => [ROOT, 'search', term, itemTypeCode, page, includeInactive, hasRouting] as const,
   availability: (itemId: number) => [ROOT, 'availability', itemId] as const,
 };
 
@@ -104,12 +109,18 @@ export const useItemSearch = (
   itemTypeCode: string,
   page: number,
   includeInactive = false,
+  /**
+   * Routing 이 있는 품목만 찾는다. 만들 수 없는 품목(원자재 등)을 후보로 세우면 고른 뒤에야
+   * 막히는 자리에서 켠다(omf-all-around#43 · 긴급 W/O 발행). 기본은 끈다 — 다른 창은
+   * 마스터 전체를 골라야 한다.
+   */
+  hasRouting = false,
 ): UseQueryResult<ItemSearchResult> => {
   const { client } = useApiClient();
   const trimmed = term.trim();
 
   return useQuery({
-    queryKey: itemPickerKeys.search(trimmed, itemTypeCode, page, includeInactive),
+    queryKey: itemPickerKeys.search(trimmed, itemTypeCode, page, includeInactive, hasRouting),
     queryFn: async () => {
       const data = await runRequest(() =>
         client.GET('/mdm/items', {
@@ -119,6 +130,7 @@ export const useItemSearch = (
               ...(trimmed === '' ? {} : { q: trimmed }),
               ...(itemTypeCode === '' ? {} : { itemTypeCode }),
               ...(includeInactive ? { includeInactive: true } : {}),
+              ...(hasRouting ? { hasRouting: true } : {}),
               page,
               size: ITEM_PAGE_SIZE,
             },

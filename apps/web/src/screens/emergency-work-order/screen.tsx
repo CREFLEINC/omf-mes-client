@@ -9,7 +9,7 @@ import { useHandoverRelease } from './handover';
 import { HandoverPane } from './handover-pane';
 import { EMPTY_ISSUE_FORM, isIssueInputComplete, validateIssueForm } from './issue-form';
 import { IssueFormPane } from './issue-form-pane';
-import { IssueAction } from './issue-action';
+import { IssueAction, IssueActionButtons } from './issue-action';
 import { toIssueLock } from './issue-lock';
 import { ItemPicker } from './item-picker';
 import { useIssueEmergencyWorkOrder } from './mutations';
@@ -149,6 +149,21 @@ export const EmergencyWorkOrderScreen = ({
               errors={validateIssueForm(form)}
               item={item}
               uomLabel={uoms.labelOf(item?.baseUomId)}
+              /* 입력을 다 채운 자리에서 바로 누르게 한다 — 사용자 결정(2026-09-21). */
+              action={
+                <IssueActionButtons
+                  lock={lock}
+                  onRetryRelease={issue.retryRelease}
+                  onIssue={() => {
+                    issue.issue({
+                      form,
+                      item: item ?? { itemId: 0, itemCode: '', itemName: '', baseUomId: 0 },
+                      routingOperationId: issueRoutingOperationId(expansion),
+                      typeCode,
+                    });
+                  }}
+                />
+              }
               onChange={setForm}
             />
           </div>
@@ -156,6 +171,13 @@ export const EmergencyWorkOrderScreen = ({
           <ExpansionPane
             state={expansion}
             orderQtyText={form.orderQty}
+            /* 단위는 고른 품목의 것이다 — 아직 모르면 빈 값으로 넘겨 숫자만 적게 한다. */
+            uomLabel={
+              item === null ||
+              uoms.labelOf(item.baseUomId) === messages.emergencyWorkOrder.uomUnknown
+                ? ''
+                : uoms.labelOf(item.baseUomId)
+            }
             selectedRoutingId={routingId}
             onSelectRouting={setRoutingId}
           />
@@ -165,15 +187,6 @@ export const EmergencyWorkOrderScreen = ({
             releasedNo={issue.releasedNo}
             pending={issue.pending}
             error={issue.error}
-            onRetryRelease={issue.retryRelease}
-            onIssue={() => {
-              issue.issue({
-                form,
-                item: item ?? { itemId: 0, itemCode: '', itemName: '', baseUomId: 0 },
-                routingOperationId: issueRoutingOperationId(expansion),
-                typeCode,
-              });
-            }}
           />
         </div>
       </div>

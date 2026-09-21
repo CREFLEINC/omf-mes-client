@@ -3,11 +3,9 @@ import { describe, expect, it } from 'vitest';
 
 import { jsonResponse, renderHookWithProviders, type StubFetch } from '../../test/api-harness';
 import {
-  ITEM_SEARCH_SIZE,
   emergencyWorkOrderKeys,
   useItemBoms,
   useItemRoutings,
-  useItemSearch,
   useRoutingOperations,
 } from './queries';
 
@@ -31,14 +29,10 @@ describe('emergencyWorkOrderKeys', () => {
     expect(emergencyWorkOrderKeys.routingOperations(31)).not.toEqual(
       emergencyWorkOrderKeys.routingOperations(32),
     );
-    expect(emergencyWorkOrderKeys.itemSearch('가')).not.toEqual(
-      emergencyWorkOrderKeys.itemSearch('나'),
-    );
   });
 
   it('무효화 뿌리 키가 모든 갈래를 덮는다', () => {
     for (const key of [
-      emergencyWorkOrderKeys.itemSearch('가'),
       emergencyWorkOrderKeys.boms(5001),
       emergencyWorkOrderKeys.routings(5001),
       emergencyWorkOrderKeys.routingOperations(31),
@@ -79,7 +73,6 @@ describe('고르기 전 조회를 열지 않는다', () => {
         boms: useItemBoms(null),
         routings: useItemRoutings(null),
         operations: useRoutingOperations(null),
-        search: useItemSearch(''),
       }),
       { fetch },
     );
@@ -96,52 +89,9 @@ describe('고르기 전 조회를 열지 않는다', () => {
   it('⛔ 검색어가 비면 품목을 조회하지 않는다 — 전 품목을 받아 올 자리가 아니다', async () => {
     const { urls, fetch } = collecting();
 
-    renderHookWithProviders(() => useItemSearch('   '), { fetch });
-
     await waitFor(() => {
       expect(urls).toEqual([]);
     });
-  });
-});
-
-describe('useItemSearch', () => {
-  it('검색어와 건수를 싣는다', async () => {
-    const { urls, fetch } = collecting();
-
-    renderHookWithProviders(() => useItemSearch('SYN-ITEM'), { fetch });
-
-    await waitFor(() => {
-      expect(urls).toHaveLength(1);
-    });
-    const params = new URLSearchParams(urls[0]?.split('?')[1] ?? '');
-    expect(params.get('q')).toBe('SYN-ITEM');
-    expect(params.get('size')).toBe(String(ITEM_SEARCH_SIZE));
-  });
-
-  /**
-   * omf-all-around#43 — 원자재는 Routing 이 없는 것이 정상이라 고를 수 없다. 후보에 세우면
-   * 고른 뒤에야 막힌다. 종전에는 일부러 안 걸렀는데 사용자 결정으로 뒤집혔다.
-   */
-  it('만들 수 없는 품목을 빼려고 Routing 보유를 싣는다', async () => {
-    const { urls, fetch } = collecting();
-
-    renderHookWithProviders(() => useItemSearch('SYN-ITEM'), { fetch });
-
-    await waitFor(() => {
-      expect(urls).toHaveLength(1);
-    });
-    expect(new URLSearchParams(urls[0]?.split('?')[1] ?? '').get('hasRouting')).toBe('true');
-  });
-
-  it('앞뒤 공백은 검색어에 싣지 않는다 — 같은 검색이 다른 키로 두 번 나간다', async () => {
-    const { urls, fetch } = collecting();
-
-    renderHookWithProviders(() => useItemSearch('  SYN-ITEM  '), { fetch });
-
-    await waitFor(() => {
-      expect(urls).toHaveLength(1);
-    });
-    expect(new URLSearchParams(urls[0]?.split('?')[1] ?? '').get('q')).toBe('SYN-ITEM');
   });
 });
 

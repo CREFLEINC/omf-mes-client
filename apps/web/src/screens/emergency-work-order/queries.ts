@@ -2,63 +2,17 @@ import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
 import { runRequest } from '../../patterns/request';
-import type {
-  BomListResponse,
-  ItemListResponse,
-  RoutingListResponse,
-  RoutingOperationListResponse,
-} from './types';
+import type { BomListResponse, RoutingListResponse, RoutingOperationListResponse } from './types';
 
 /** 이 화면이 소유하는 캐시 키. 다른 화면 슬라이스의 키 모듈을 참조하지 않는다. */
 export const emergencyWorkOrderKeys = {
   all: ['emergency-work-order'] as const,
-  itemSearch: (keyword: string) => ['emergency-work-order', 'item-search', keyword] as const,
   boms: (itemId: number | null) => ['emergency-work-order', 'boms', itemId] as const,
   routings: (itemId: number | null) => ['emergency-work-order', 'routings', itemId] as const,
   routingOperations: (routingId: number | null) =>
     ['emergency-work-order', 'routing-operations', routingId] as const,
   /** 배포가 끝나지 않은 긴급 W/O. 조건이 고정이라 키에 담을 것이 없다. */
   unreleased: () => ['emergency-work-order', 'unreleased'] as const,
-};
-
-/**
- * 검색 한 번에 받아 둘 최대 건수.
- *
- * ⚠ **잘렸다는 사실을 화면이 말해야 한다.** 응답의 전체 건수가 이 수보다 크면 사용자가 보는
- * 목록은 답의 일부인데, 말하지 않으면 **「찾는 품목이 없다」로 읽는다.** 그 안내를 붙이는
- * 것은 이 목록을 그리는 자리의 몫이고 여기서는 건수만 정한다.
- */
-export const ITEM_SEARCH_SIZE = 20;
-
-/**
- * 품목 검색 — **Routing 이 있는 품목만** 묻는다(`hasRouting=true`).
- *
- * ⚠ **종전에는 거르지 않았다.** 「없는 품목」과 「발행할 수 없는 품목」을 사용자가 구분하지
- * 못하게 된다는 이유였는데, 실제 품목 마스터는 ERP 원자재가 대부분이라 **검색 결과의 거의
- * 전부가 고르면 막히는 품목**이었다. 원자재는 만드는 물건이 아니라 Routing 이 «없는 것이
- * 정상»이고, 그것까지 후보로 세우면 고른 뒤에야 막히고 안내는 기준정보를 고치라고 읽힌다.
- * 사용자 결정(2026-09-21 · omf-all-around#43)으로 **만들 수 없는 품목은 내지 않는다.**
- * 감춘다는 사실은 빈 결과 문구(`itemPicker.empty`)가 말한다.
- *
- * ⛔ **BOM 은 여기서 거르지 않는다.** 서버 질의에 그 축이 없고, Routing 은 있는데 BOM 이 없는
- * 것은 기준정보를 고쳐야 하는 «실제 문제»다 — 고르게 한 뒤 `bomMissing` 으로 막는다.
- *
- * 검색어가 비면 조회하지 않는다 — 전 품목을 받아 오는 것은 이 화면의 일이 아니다.
- */
-export const useItemSearch = (keyword: string): UseQueryResult<ItemListResponse> => {
-  const { client } = useApiClient();
-  const trimmed = keyword.trim();
-
-  return useQuery({
-    queryKey: emergencyWorkOrderKeys.itemSearch(trimmed),
-    enabled: trimmed !== '',
-    queryFn: () =>
-      runRequest(() =>
-        client.GET('/mdm/items', {
-          params: { query: { q: trimmed, size: ITEM_SEARCH_SIZE, hasRouting: true } },
-        }),
-      ),
-  });
 };
 
 /**

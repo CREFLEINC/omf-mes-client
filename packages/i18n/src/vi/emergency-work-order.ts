@@ -152,23 +152,10 @@ export const emergencyWorkOrder: Translated<typeof ko.emergencyWorkOrder> = {
   itemPicker: {
     title: 'Chọn mặt hàng',
     label: 'Tìm mặt hàng',
-    placeholder: 'Mã mặt hàng hoặc tên mặt hàng',
-    search: 'Tìm',
-    searching: 'Đang tìm.',
-    /** ⛔ 감춘다는 사실을 말한다(omf-all-around#43). */
-    empty: 'Không tìm thấy mặt hàng nào. Chỉ hiển thị mặt hàng có thể sản xuất (có Routing).',
-    error: 'Không tìm được mặt hàng. Hãy thử lại sau giây lát.',
-    selectAction: 'Chọn',
-    select: (itemCode: string) => `Chọn ${itemCode}`,
-    selected: 'Đã chọn',
-    clear: 'Xóa',
-    open: 'Tìm mặt hàng',
-    change: 'Đổi mặt hàng',
-    notChosen: 'Chưa chọn mặt hàng nào.',
-
-    /** ⛔ 목록에 없는 것과 목록이 잘린 것은 다른 사실이다. */
-    truncated: (shown: number) =>
-      `Chỉ thấy ${String(shown)} mục đầu. Không có mặt hàng cần tìm thì hãy thu hẹp từ khóa.`,
+    placeholder: 'Hãy chọn mặt hàng',
+    clear: 'Xóa mặt hàng đã chọn',
+    /** 공용 품목 창의 확인 단추 이름 — 이 화면에서는 「추가」가 아니라 «고르기»다. */
+    confirm: 'Dùng mặt hàng này',
   },
 
   outcome: {

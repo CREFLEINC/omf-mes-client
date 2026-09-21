@@ -72,6 +72,11 @@ export interface ItemPickerDialogProps {
   showAvailability?: boolean;
   /** 확인 단추 이름. 비우면 종전대로 「추가」/「교체」. */
   confirmLabel?: string;
+  /**
+   * Routing 이 있는 품목만 낸다. 만들 수 없는 품목을 고르면 그 뒤에 막히는 화면이 켠다
+   * (omf-all-around#43 · 긴급 W/O 발행). 기본 false — 다른 창의 후보는 좁히지 않는다.
+   */
+  hasRouting?: boolean;
 }
 
 const describeAvailability = (state: AvailabilityState): string => {
@@ -94,6 +99,7 @@ export const ItemPickerDialog = ({
   includeInactive = false,
   showAvailability = true,
   confirmLabel,
+  hasRouting = false,
 }: ItemPickerDialogProps) => {
   const keywordId = useId();
   const typeId = useId();
@@ -107,7 +113,7 @@ export const ItemPickerDialog = ({
   const [picked, setPicked] = useState<ItemRow[]>([]);
 
   const types = useItemTypeOptions(true);
-  const search = useItemSearch(submitted, itemTypeCode, page, includeInactive);
+  const search = useItemSearch(submitted, itemTypeCode, page, includeInactive, hasRouting);
   const rows = search.data?.rows ?? [];
   const total = search.data?.total ?? 0;
   const availabilityOf = useItemAvailability(showAvailability ? rows.map((row) => row.itemId) : []);
@@ -149,10 +155,18 @@ export const ItemPickerDialog = ({
         />
       ),
     },
-    { key: 'itemCode', header: t.columns.itemCode, width: '160px', render: (row) => row.itemCode },
+    /* ⭐ 표는 **모두 가운데 정렬**이다(사용자 결정 2026-09-21) — 코드·유형이 짧아 왼쪽에 붙으면 열이 흩어져 보인다. */
+    {
+      key: 'itemCode',
+      header: t.columns.itemCode,
+      align: 'center',
+      width: '160px',
+      render: (row) => row.itemCode,
+    },
     {
       key: 'itemName',
       header: t.columns.itemName,
+      align: 'center',
       render: (row) => (
         <span>
           {row.itemName}
@@ -165,6 +179,7 @@ export const ItemPickerDialog = ({
     {
       key: 'itemTypeCode',
       header: t.columns.itemType,
+      align: 'center',
       width: '128px',
       /* 서버가 준 코드 그대로다 — 이름은 유형 목록이 갖고, 없으면 지어내지 않는다. */
       render: (row) =>
@@ -176,7 +191,7 @@ export const ItemPickerDialog = ({
           {
             key: 'availableQty',
             header: t.columns.availableQty,
-            align: 'end' as const,
+            align: 'center' as const,
             width: '112px',
             render: (row: ItemRow) => describeAvailability(availabilityOf(row.itemId)),
           },
@@ -198,13 +213,16 @@ export const ItemPickerDialog = ({
        */
       size="lg"
       closeOnBackdropClick={false}
+      /* 닫는 길은 꼬리말의 「취소」 하나다 — 같은 일을 하는 단추를 위아래에 두지 않는다. */
+      showCloseButton={false}
       title={t.title}
       onClose={onClose}
       footer={
         <>
-          <span className="field-note">
-            {picked.length === 0 ? t.needsSelection : t.selectedCount(picked.length)}
-          </span>
+          {/* 고른 건수만 알린다 — 「고르면 누를 수 있습니다」는 잠긴 단추가 이미 말한다. */}
+          {picked.length > 0 && (
+            <span className="field-note">{t.selectedCount(picked.length)}</span>
+          )}
           <Button variant="outlined" onClick={onClose}>
             {t.cancel}
           </Button>

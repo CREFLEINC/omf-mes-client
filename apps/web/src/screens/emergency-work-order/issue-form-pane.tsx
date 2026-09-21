@@ -1,7 +1,7 @@
 import { TextArea, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 
-import { useState } from 'react';
+import { type ReactNode, useId, useState } from 'react';
 
 import type { IssueFormErrors, IssueFormValue } from './issue-form';
 import type { SelectedItem } from './types';
@@ -12,6 +12,8 @@ export interface IssueFormPaneProps {
   /** 고른 품목. 수량 옆에 붙일 단위 이름이 여기서 나온다. */
   item: SelectedItem | null;
   uomLabel: string;
+  /** 구획 머리 오른쪽에 설 것 — 발행 단추가 여기 선다. */
+  action?: ReactNode;
   onChange: (next: IssueFormValue) => void;
 }
 
@@ -28,9 +30,24 @@ export interface IssueFormPaneProps {
  * 떠 있으면, 아직 아무것도 하지 않은 사람을 나무라는 꼴이 된다 — 무엇이 모자란지는 발행
  * 버튼 옆 사유가 이미 말한다. **한 번 손댄 칸부터** 그 칸의 오류를 보인다.
  */
-export const IssueFormPane = ({ value, errors, item, uomLabel, onChange }: IssueFormPaneProps) => {
+export const IssueFormPane = ({
+  value,
+  errors,
+  item,
+  uomLabel,
+  action,
+  onChange,
+}: IssueFormPaneProps) => {
   const t = messages.emergencyWorkOrder.form;
   const [touched, setTouched] = useState<Record<string, boolean>>({});
+  const reasonId = useId();
+
+  /**
+   * 필수인데 비어 있는 칸은 **테두리로 먼저 알린다**(사용자 결정 2026-09-21). 글자로 나무라지
+   * 않고 색만 쓴다 — 채우면 사라진다. 오류 문구는 종전대로 «손댄» 칸에서만 난다.
+   */
+  const emptyRequired = (value: string): string | undefined =>
+    value.trim() === '' ? 'emergency-work-order-required-empty' : undefined;
 
   /** 아직 품목을 고르지 않았거나 단위 이름을 못 받았으면 붙일 것이 없다. */
   const unit =
@@ -41,13 +58,30 @@ export const IssueFormPane = ({ value, errors, item, uomLabel, onChange }: Issue
     onChange({ ...value, [field]: next });
   };
 
-  /** 손댄 칸의 오류만 낸다. 손대기 전에는 사유가 발행 버튼 옆에서 말한다. */
-  const errorOf = (field: keyof IssueFormErrors): string | undefined =>
-    touched[field] === true ? errors[field] : undefined;
+  /**
+   * 손댄 칸의 오류만 낸다.
+   *
+   * ⛔ **「…를 입력하세요」는 내지 않는다**(사용자 결정 2026-09-21). 비었다는 사실은 붉은
+   * 테두리가 이미 말한다 — 같은 말을 글자로 또 적으면 칸마다 문장이 하나씩 붙는다.
+   * 값이 «있는데» 틀린 것(숫자 아님·0 이하·없는 날짜)은 그대로 말한다.
+   */
+  const errorOf = (field: keyof IssueFormErrors): string | undefined => {
+    if (touched[field] !== true) return undefined;
+
+    const message = errors[field];
+    const isEmptyRequired =
+      (field === 'orderQty' && value.orderQty.trim() === '') ||
+      (field === 'remarks' && value.remarks.trim() === '');
+
+    return isEmptyRequired ? undefined : message;
+  };
 
   return (
     <section className="pane emergency-work-order-pane" aria-label={t.title}>
-      <h2 className="pane-title">{t.title}</h2>
+      <div className="emergency-work-order-form-head">
+        <h2 className="pane-title">{t.title}</h2>
+        {action}
+      </div>
 
       <div className="emergency-work-order-form-grid">
         {/* 고른 결과를 «읽는 값»으로 그린다 — 입력칸처럼 보이면 여기서도 고칠 수 있다고 읽는다. */}
@@ -67,6 +101,7 @@ export const IssueFormPane = ({ value, errors, item, uomLabel, onChange }: Issue
         <TextField
           label={t.orderQty}
           required
+          containerClassName={emptyRequired(value.orderQty)}
           inputMode="decimal"
           value={value.orderQty}
           trailingIcon={
@@ -95,9 +130,23 @@ export const IssueFormPane = ({ value, errors, item, uomLabel, onChange }: Issue
            * 말한다 — 「승인이 없어 사유가 유일한 기록이다」는 시스템 사정이라 여기서 뺐다
            * (사용자 결정 2026-09-21).
            */}
+          {/*
+           * ⚠ **별표를 손으로 붙인다.** DS `TextField` 는 `required` 에 별표를 그리지만
+           * `TextArea` 는 그리지 않는다(실측). 4M 배정 화면(`W-02-03`)이 쓰는 것과 같은
+           * `.required-mark` · 같은 빨강 토큰이다.
+           */}
+          <span className="field-label emergency-work-order-reason-label">
+            <label htmlFor={reasonId}>{t.reason}</label>
+            <span aria-hidden="true" className="required-mark">
+              {' '}
+              *
+            </span>
+          </span>
           <TextArea
-            label={t.reason}
+            id={reasonId}
+            aria-label={t.reason}
             required
+            containerClassName={emptyRequired(value.remarks)}
             placeholder={t.reasonPlaceholder}
             value={value.remarks}
             error={errorOf('remarks')}

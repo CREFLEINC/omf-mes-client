@@ -2002,8 +2002,17 @@ main > * + * {
   /* 왼쪽 42% · 오른쪽 58% — 전개 결과(BOM·Routing 표)가 서는 쪽을 넓게 둔다. */
   grid-template-columns: minmax(22rem, 42fr) minmax(0, 58fr);
   gap: var(--space-4);
-  align-items: start;
+  /*
+   * ⭐ **자동 전개 상자를 왼쪽 두 상자 높이에 맞춘다.** 짧게 서면 오른쪽 아래가 크게 비어
+   * 화면이 한쪽으로 쏠린다. `start` 로 두면 내용만큼만 서므로 늘려 준다.
+   */
+  align-items: stretch;
   min-width: 0;
+}
+
+/* 발행 준비는 늘릴 것이 없다 — 한 줄짜리 자리라 제 높이를 지킨다. */
+.emergency-work-order-composer > .emergency-work-order-action-pane {
+  align-self: start;
 }
 
 .emergency-work-order-pane {
@@ -2067,28 +2076,41 @@ main > * + * {
   color: var(--on-surface-variant);
 }
 
+/*
+ * 필수인데 아직 비어 있는 칸 — 테두리로 알린다(사용자 결정 2026-09-21).
+ *
+ * ⚠ **임시 우회.** DS 입력칸의 테두리는 안쪽 그림자로 그려지고 그 자리를 여는 속성이 없어,
+ * 칸 껍데기(`containerClassName`)를 걸고 그 «안의 상자»에 같은 모양으로 덮어쓴다. DS 가 이
+ * 상태를 받게 되면 이 규칙을 지운다.
+ */
+.emergency-work-order-required-empty > div:has(input),
+.emergency-work-order-required-empty > div:has(textarea) {
+  /* DS 가 잘못된 값에 쓰는 것과 같은 붉은색(`--semantic-error`)이다 — 라벨 별표의 연한
+     `--semantic-error-text` 보다 진해서 테두리로 봐야 눈에 든다. */
+  box-shadow: inset 0 0 0 1px var(--semantic-error);
+}
+
+/* 사유 칸의 라벨 줄 — DS 라벨과 같은 간격으로 별표를 붙인다. */
+.emergency-work-order-reason-label {
+  display: block;
+  margin-bottom: var(--space-1);
+}
+
 /* 필수 구획임을 라벨 옆 별표로 알린다 — DS 입력칸의 별표와 같은 색이다. */
 .emergency-work-order-pane .required-mark {
   margin-left: var(--space-1);
   color: var(--semantic-error-text);
 }
 
-/* 아직 고르지 않았을 때 구획이 비어 보이지 않게 한 줄을 둔다. */
-.emergency-work-order-picker-empty {
-  margin: 0;
-  color: var(--on-surface-variant);
+/* 갈 곳이 있는 항목은 **값과 같은 줄 오른쪽**에 이동 단추를 세운다. */
+.emergency-work-order-term:has(.emergency-work-order-term-link) {
+  grid-template-columns: 6.5rem minmax(0, 1fr) auto;
 }
 
-.emergency-work-order-picker-actions {
-  display: flex;
-  justify-content: flex-start;
-}
-
-/* 갈 곳이 있는 항목은 줄 오른쪽에 이동 단추를 세운다. */
 .emergency-work-order-term-link {
-  grid-column: 1 / -1;
+  align-self: center;
   justify-self: end;
-  margin-top: var(--space-1);
+  margin-left: var(--space-3);
 }
 
 .emergency-work-order-term > dd,
@@ -2212,6 +2234,14 @@ main > * + * {
   letter-spacing: var(--type-body-sm-tracking);
 }
 
+/* 발행 정보 머리 — 제목 왼쪽, 발행 단추 오른쪽. */
+.emergency-work-order-form-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
 .emergency-work-order-form-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -2254,14 +2284,20 @@ main > * + * {
   border-radius: var(--radius-md);
 }
 
-/* 빈 상태는 자리를 잡아 두되 넓게 비우지 않는다 — 결과가 서면 표가 그 자리를 넓힌다. */
+/*
+ * 빈 상태 — **테두리를 두르지 않는다.** 구획이 이미 상자라, 그 안에 점선 상자를 또 그리면
+ * 빈 자리가 두 겹으로 강조된다.
+ *
+ * ⭐ **글자는 구획 위쪽에 둔다**(사용자 결정 2026-09-21). 상자가 왼쪽 두 상자 높이만큼
+ * 늘어나 있어 세로 한가운데에 놓으면 제목에서 멀찍이 떨어져 딴 자리처럼 읽힌다. 가로만
+ * 가운데다 — 결과가 서면 그 자리를 표가 이어받는다.
+ */
 .emergency-work-order-empty {
   display: grid;
+  justify-items: center;
+  align-content: start;
   min-height: 4.5rem;
-  place-items: center;
-  padding: var(--space-4);
-  border: 1px dashed var(--outline-variant);
-  border-radius: var(--radius-md);
+  padding: var(--space-2) var(--space-4) var(--space-4);
   text-align: center;
 }
 
@@ -2273,6 +2309,17 @@ main > * + * {
 
 .emergency-work-order-table table {
   min-width: 0;
+}
+
+/* 표가 구획 테두리에 붙지 않게 양끝을 띄운다 — 첫 열 왼쪽, 끝 열 오른쪽. */
+.emergency-work-order-table th:first-child,
+.emergency-work-order-table td:first-child {
+  padding-left: var(--space-4);
+}
+
+.emergency-work-order-table th:last-child,
+.emergency-work-order-table td:last-child {
+  padding-right: var(--space-4);
 }
 
 /* 순서·수량은 숫자 몇 자리라 좁게 잡고, 남는 자리는 공정 이름이 쓴다. */

@@ -109,15 +109,31 @@ describe('IssueFormPane', () => {
       expect(screen.getByLabelText(t.orderQty)).not.toHaveAttribute('aria-invalid', 'true');
     });
 
-    it.each([
-      ['수량', t.orderQty, { orderQty: t.qtyNotPositive }, t.qtyNotPositive],
-      ['사유', t.reason, { remarks: t.reasonRequired }, t.reasonRequired],
-    ])('%s 은 손댄 뒤부터 오류를 낸다', async (_name, label, errors, message) => {
-      const { user } = renderPane({ value: EMPTY_ISSUE_FORM, errors });
+    /*
+     * ⛔ **「…를 입력하세요」를 내지 않는다**(사용자 결정 2026-09-21). 비었다는 사실은 붉은
+     * 테두리가 말한다 — 값이 «있는데» 틀린 것만 글자로 말한다.
+     */
+    it('값이 있는데 틀리면 손댄 뒤 그 까닭을 말한다', async () => {
+      const { user } = renderPane({
+        value: { ...EMPTY_ISSUE_FORM, orderQty: '0' },
+        errors: { orderQty: t.qtyNotPositive },
+      });
 
-      await user.type(screen.getByLabelText(label), '1');
+      await user.type(screen.getByLabelText(t.orderQty), '0');
 
-      expect(screen.getByText(message)).toBeInTheDocument();
+      expect(screen.getByText(t.qtyNotPositive)).toBeInTheDocument();
+    });
+
+    it('비어 있는 필수 칸은 손댄 뒤에도 글자로 나무라지 않는다', async () => {
+      const { user } = renderPane({
+        value: EMPTY_ISSUE_FORM,
+        errors: { orderQty: t.qtyRequired, remarks: t.reasonRequired },
+      });
+
+      await user.type(screen.getByLabelText(t.orderQty), '1');
+
+      expect(screen.queryByText(t.qtyRequired)).not.toBeInTheDocument();
+      expect(screen.queryByText(t.reasonRequired)).not.toBeInTheDocument();
     });
 
     it('⛔ 손댄 칸은 유효하지 않다고 표시된다', async () => {
@@ -130,13 +146,13 @@ describe('IssueFormPane', () => {
 
     it('⛔ 한 칸을 손대도 다른 칸은 조용하다 — 칸마다 따로 센다', async () => {
       const { user } = renderPane({
-        value: EMPTY_ISSUE_FORM,
-        errors: { orderQty: t.qtyRequired, remarks: t.reasonRequired },
+        value: { ...EMPTY_ISSUE_FORM, orderQty: '0', remarks: '급' },
+        errors: { orderQty: t.qtyNotPositive, remarks: t.reasonRequired },
       });
 
-      await user.type(screen.getByLabelText(t.orderQty), '1');
+      await user.type(screen.getByLabelText(t.orderQty), '0');
 
-      expect(screen.getByText(t.qtyRequired)).toBeInTheDocument();
+      expect(screen.getByText(t.qtyNotPositive)).toBeInTheDocument();
       expect(screen.queryByText(t.reasonRequired)).not.toBeInTheDocument();
     });
   });

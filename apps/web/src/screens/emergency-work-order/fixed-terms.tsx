@@ -51,7 +51,6 @@ export const FixedTermsPane = () => {
               <Button
                 className="emergency-work-order-term-link"
                 variant="outlined"
-                size="sm"
                 onClick={() => {
                   void navigate(MATERIAL_ISSUE_REQUEST_PATH);
                 }}

@@ -3,7 +3,7 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
-import { IssueAction, type IssueActionProps } from './issue-action';
+import { IssueAction, IssueActionButtons, type IssueActionProps } from './issue-action';
 import type { PendingWorkOrder } from './mutations';
 
 const t = messages.emergencyWorkOrder;
@@ -18,20 +18,21 @@ const pendingWorkOrder = (failedAt: PendingWorkOrder['failedAt']): PendingWorkOr
   failedAt,
 });
 
+/*
+ * 발행 단추는 **발행 정보 구획의 머리**에 서고(`IssueActionButtons`), 결과·사유는 아래
+ * 구획(`IssueAction`)이 낸다. 화면에서는 둘이 함께 서므로 여기서도 함께 태운다 —
+ * 사유와 단추를 잇는 `aria-describedby` 가 둘 사이를 건너기 때문이다.
+ */
 const renderAction = (overrides: Partial<IssueActionProps> = {}) => {
   const onIssue = vi.fn();
   const onRetryRelease = vi.fn();
+  const props = { lock: OPEN, releasedNo: null, pending: null, error: null, ...overrides };
 
   render(
-    <IssueAction
-      lock={OPEN}
-      releasedNo={null}
-      pending={null}
-      error={null}
-      onIssue={onIssue}
-      onRetryRelease={onRetryRelease}
-      {...overrides}
-    />,
+    <>
+      <IssueActionButtons lock={props.lock} onIssue={onIssue} onRetryRelease={onRetryRelease} />
+      <IssueAction {...props} />
+    </>,
   );
 
   return {
@@ -54,11 +55,24 @@ describe('IssueAction', () => {
 
   it('⛔ 잠기면 사유를 버튼에 묶어 낸다 — 감추지 않는다', () => {
     const { action } = renderAction({
+      lock: { reason: t.lock.forbidden, isUncertain: false, canRetryRelease: false },
+    });
+
+    expect(action).toBeDisabled();
+    expect(action).toHaveAccessibleDescription(t.lock.forbidden);
+  });
+
+  /*
+   * ⛔ **품목을 안 골랐다는 말만은 여기서 하지 않는다**(사용자 결정 2026-09-21) — 품목 구획이
+   * 이미 그 말을 하고 있다. 단추는 그대로 잠긴다.
+   */
+  it('품목을 아직 안 골랐을 때는 사유를 되풀이하지 않고 잠그기만 한다', () => {
+    const { action } = renderAction({
       lock: { reason: t.lock.itemNotChosen, isUncertain: false, canRetryRelease: false },
     });
 
     expect(action).toBeDisabled();
-    expect(action).toHaveAccessibleDescription(t.lock.itemNotChosen);
+    expect(screen.queryByText(t.lock.itemNotChosen)).not.toBeInTheDocument();
   });
 
   it('잠기지 않았으면 사유를 붙이지 않는다', () => {
