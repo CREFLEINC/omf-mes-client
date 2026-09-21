@@ -894,15 +894,16 @@ describe('P-02-01 작업 시작 — 지시 수량을 채운 작업지시(#45)', 
   });
 
   /**
-   * ⭐ **순서를 함께 말한다** — 서버 마감은 열린 세션이 없어야 서므로, 「작업을 종료한 뒤」가
-   *    빠지면 작업자가 마감을 눌러 보고 거절당한다. ⛔ [이어서 하기] 는 그대로 둔다.
+   * ⭐ **두 안내가 «함께» 선다**(사용자 지시 2026-09-21). 마감 안내가 「진행 중인 작업이
+   *    있습니다」를 가리면 작업자는 이어갈 길을 잃는다. ⛔ [이어서 하기] 도 그대로 둔다.
    */
-  it('열린 세션까지 있으면 종료한 뒤 마감하라고 말하고 이어갈 길은 그대로 둔다', async () => {
+  it('열린 세션까지 있으면 진행 중 안내와 마감 안내를 함께 보이고 이어갈 길도 남긴다', async () => {
     const rendered = renderScreen({ workOrders: [FULFILLED], openSessions: [OPEN_SESSION] });
 
     await selectWorkOrder(rendered);
 
-    expect(await screen.findByText(t.closing.fulfilledWithOpenSession)).toBeInTheDocument();
+    expect(await screen.findByText(t.closing.fulfilled)).toBeInTheDocument();
+    expect(screen.getByText(t.blocked.alreadyOpen)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: t.blocked.continueToSession })).toBeInTheDocument();
   });
 

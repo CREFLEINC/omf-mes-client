@@ -313,33 +313,21 @@ export const WorkStartScreen = () => {
    * ⛔ **막지 않는다.** 초과 생산·재작업으로 더 돌릴 수 있고 화면이 그것을 막을 근거가 없다 —
    *    `block` 에 넣지 않는 이유가 이것이다. [작업 시작]·[이어서 하기]는 그대로 선다.
    *
-   * ⭐ **열린 세션이 있으면 순서를 함께 말한다** — 서버 마감은 열린 세션이 없어야 서므로,
-   *    「작업을 종료한 뒤 마감하세요」까지 적어야 작업자가 헛걸음하지 않는다.
+   * ⭐ **진행 중인 작업이 있든 없든 같은 문장이다**(사용자 확정 2026-09-21). 진행 중이라는
+   *    사실은 아래 `blockText`(기존 `blocked.alreadyOpen`)가 제자리에서 말한다.
    */
-  const closeNotice = ((): string | null => {
-    if (selected === null || !isOrderQtyFulfilled(selected)) return null;
-
-    /* ⚠ 아직 답을 못 받은 사이(`undefined`)에는 순서를 덧붙이지 않는다 — 모르는 것을 말하지 않는다. */
-    return openSession.data != null ? t.closing.fulfilledWithOpenSession : t.closing.fulfilled;
-  })();
+  const closeNotice =
+    selected !== null && isOrderQtyFulfilled(selected) ? t.closing.fulfilled : null;
 
   /**
-   * 띠에 세울 글 한 줄.
+   * 막힘 사유 중 **띠로 말하는 것**.
    *
-   * ⭐ **막힘 사유가 먼저다** — 못 하는 이유를 두고 「마감이 남았다」부터 말하면 작업자가
-   *    풀어야 할 것을 못 본다. 다만 「이미 진행 중」은 이 안내가 **그 말을 품는다** —
-   *    「작업을 종료한 뒤 마감하세요」가 진행 중이라는 사실과 다음 걸음을 함께 말하고,
-   *    [이어서 하기] 는 그 자리에 그대로 선다.
-   *
-   * ⛔ **「아직 안 골랐다」·「사번이 없다」 자리에는 아무것도 세우지 않는다**(아래 주석).
+   * ⛔ **「아직 안 골랐다」·「사번이 없다」는 여기 내지 않는다**(아래 주석 · 사용자 지시).
    */
-  const bannerText = ((): string | null => {
-    if (block === null) return closeNotice;
-    if (block.code === 'alreadyOpen') return closeNotice ?? block.text;
-    if (block.code === 'notSelected' || block.code === 'workerMissing') return null;
-
-    return block.text;
-  })();
+  const blockText =
+    block === null || block.code === 'notSelected' || block.code === 'workerMissing'
+      ? null
+      : block.text;
 
   const retryLabel = gate.verdict === 'unavailable' ? t.blocked.retry : null;
 
@@ -503,7 +491,7 @@ export const WorkStartScreen = () => {
        *    ② 목록이 긴 화면에서 사유가 화면 맨 아래에 있어, 「왜 안 눌리지」 하고 버튼을 먼저
        *    보게 된다. 머리줄 아래는 이 셸이 「지금 이 화면에 걸린 것」을 말해 온 자리다.
        */}
-      {bannerText !== null && (
+      {(blockText !== null || closeNotice !== null) && (
         <div className="banner-slot">
           {/*
            * ⭐ **[ 다시 확인 ]은 띠의 조작 칸에 선다**(사용자 지시 2026-09-11 · POP 공통).
@@ -512,11 +500,18 @@ export const WorkStartScreen = () => {
            */}
           <AlertBanner
             /*
-             * ⭐ **막힌 것이 없으면 경고가 아니다**(omf-all-around#45). 「지시 수량을 채웠다」는
+             * ⭐ **막힌 것이 없으면 경고가 아니다**(omf-all-around#45). 「실적 등록이 완료됐다」는
              *    잘못된 상태가 아니라 **남은 일의 안내**라, 경고색으로 세우면 다 만든 작업을
              *    사고처럼 보이게 한다.
              */
-            variant={block === null ? 'info' : 'warning'}
+            variant={blockText === null ? 'info' : 'warning'}
+            /*
+             * ⭐ **둘이 겹치면 한 띠에 두 줄로 세운다**(사용자 지시 2026-09-21 · 세로 예산).
+             *    마감 안내가 머리줄, 「진행 중인 작업이 있습니다」가 본문이다 — 띠를 둘로
+             *    늘리면 1024×768 에서 목록이 그만큼 깎인다. ⛔ **기존 안내를 가리지 않는다** —
+             *    [ 이어서 하기 ]도 같은 띠의 조작 칸에 그대로 선다.
+             */
+            title={blockText === null ? undefined : (closeNotice ?? undefined)}
             action={
               block?.code === 'alreadyOpen' ? (
                 /*
@@ -546,7 +541,7 @@ export const WorkStartScreen = () => {
               )
             }
           >
-            {bannerText}
+            {blockText ?? closeNotice}
           </AlertBanner>
         </div>
       )}
