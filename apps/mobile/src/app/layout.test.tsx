@@ -180,6 +180,27 @@ describe('AppLayout', () => {
     expect(screen.queryByRole('navigation')).toBeNull();
   });
 
+  it('연결·전송 상태는 제목과 같은 줄, 사번은 아래 줄에 선다', async () => {
+    /* 화면 이름과 「지금 보낼 수 있는가」는 함께 읽는 값이다(사용자 지시 2026-09-21). */
+    vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(true);
+    const user = userEvent.setup();
+    render(
+      <Shell>
+        <SignedInScreen />
+      </Shell>,
+    );
+    await user.click(screen.getByRole('button', { name: '사번 세우기' }));
+
+    const banner = screen.getByRole('banner');
+    const titleRow = banner.querySelector('.mobile-shell__titlebar');
+
+    expect(titleRow).not.toBeNull();
+    expect(titleRow).toHaveTextContent('온라인');
+    /* 사번은 제목 줄에 끼지 않는다 — 성격이 다른 값이라 아래 줄에 혼자 선다. */
+    expect(titleRow).not.toHaveTextContent('900029');
+    expect(banner).toHaveTextContent('작업자 2 · 900029');
+  });
+
   it('연결돼 있으면 온라인으로 보인다', () => {
     vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(true);
 

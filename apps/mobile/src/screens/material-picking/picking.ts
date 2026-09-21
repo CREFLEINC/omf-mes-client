@@ -237,6 +237,29 @@ export const issuableQtyOf = (
 ): number => pickedQtyOf(line, queued) - (alreadyIssued.get(line.pickingLineId) ?? 0);
 
 /**
+ * 계획 대비 아직 집지 않은 라인이 몇 건인가.
+ *
+ * ⭐ **건수로 센다 — 수량을 더하지 않는다.** 라인마다 단위가 다를 수 있어(개·kg·m) 합계는
+ * 뜻이 서지 않는다.
+ */
+export const unpickedLineCount = (lines: PickingLine[], queued: QueuedPick[] = []): number =>
+  lines.filter((line) => remainingQtyOf(line, queued) > 0).length;
+
+/**
+ * 집어 둔 것을 **모두 내보낸** 상태인가.
+ *
+ * ⛔ **이것은 「지시가 끝났다」가 아니다.** 부분 출고 직후에는 「집은 양 = 출고한 양」이라 이
+ * 값이 참이 되는데, 계획에는 아직 남은 수량이 있다. 둘을 한 문구로 합치면 작업자가 지시가
+ * 끝난 줄 알고 나간다(omf-all-around#49 — 실기 재현).
+ */
+export const hasIssuedAllPicked = (
+  lines: PickingLine[],
+  alreadyIssued: ReadonlyMap<number, number>,
+  queued: QueuedPick[] = [],
+): boolean =>
+  alreadyIssued.size > 0 && !lines.some((line) => issuableQtyOf(line, queued, alreadyIssued) > 0);
+
+/**
  * 한 건이라도 집었으면 출고를 확정할 수 있다. 모자란 만큼은 부분 출고로 남는다.
  *
  * 담아 둔 것도 집은 것으로 센다. 서버가 아는 것만 세면 오프라인에서 확정이 영영 열리지

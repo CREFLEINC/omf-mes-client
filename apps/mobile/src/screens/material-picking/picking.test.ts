@@ -7,6 +7,7 @@ import {
   queuedQtyOf,
   canConfirmIssue,
   canPick,
+  hasIssuedAllPicked,
   isOutOfSequence,
   isOfOrder,
   issuableQtyOf,
@@ -17,6 +18,7 @@ import {
   remainingQtyOf,
   toIssueDraft,
   toPickDraft,
+  unpickedLineCount,
   type PickingLine,
   type PickingOrder,
 } from './picking';
@@ -430,5 +432,50 @@ describe('이미 내보낸 양', () => {
     const body = draft.body as { lines: unknown[] };
 
     expect(body.lines).toEqual([]);
+  });
+});
+
+describe('부분 출고 뒤의 안내 판정', () => {
+  /*
+   * 실기 재현(omf-all-around#49) — 계획 600 인 라인을 10 만 집어 출고하면 「집은 양 = 출고한
+   * 양」이라 내보낼 것이 0 이 된다. 그렇다고 지시가 끝난 것은 아니다.
+   */
+  const partlyIssued = line({ pickingLineId: 41, plannedQty: 600, pickedQty: 10 });
+  const issuedTen = new Map([[41, 10]]);
+
+  it('집어 둔 것을 다 내보낸 상태를 알아본다', () => {
+    expect(hasIssuedAllPicked([partlyIssued], issuedTen)).toBe(true);
+  });
+
+  it('⛔ 그것을 「지시가 끝났다」로 세지 않는다 — 덜 집은 라인이 남아 있다', () => {
+    expect(unpickedLineCount([partlyIssued])).toBe(1);
+  });
+
+  it('계획까지 다 집어 내보냈으면 남은 라인이 없다', () => {
+    const done = line({ pickingLineId: 41, plannedQty: 600, pickedQty: 600 });
+
+    expect(hasIssuedAllPicked([done], new Map([[41, 600]]))).toBe(true);
+    expect(unpickedLineCount([done])).toBe(0);
+  });
+
+  it('내보낸 적이 없으면 안내 자체가 서지 않는다', () => {
+    expect(hasIssuedAllPicked([partlyIssued], new Map())).toBe(false);
+  });
+
+  it('담아 둔 것이 있으면 아직 다 내보낸 것이 아니다', () => {
+    /* 아직 서버가 모르는 20 을 담아 두었다 — 그만큼은 내보낼 것이 남아 있다. */
+    expect(
+      hasIssuedAllPicked([partlyIssued], issuedTen, [{ pickingLineId: 41, pickedQty: 20 }]),
+    ).toBe(false);
+  });
+
+  it('덜 집은 라인만 센다 — 라인마다 단위가 달라 수량 합계는 세지 않는다', () => {
+    const lines = [
+      line({ pickingLineId: 41, plannedQty: 600, pickedQty: 10 }),
+      line({ pickingLineId: 42, plannedQty: 1000, pickedQty: 1000 }),
+      line({ pickingLineId: 43, plannedQty: 600, pickedQty: 0 }),
+    ];
+
+    expect(unpickedLineCount(lines)).toBe(2);
   });
 });

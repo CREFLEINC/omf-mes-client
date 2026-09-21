@@ -78,16 +78,48 @@ body {
 }
 
 /*
- * ⭐ 앱바는 모든 화면에서 두 줄이다 - 첫 줄에 제목, 둘째 줄 오른쪽에 사번·온라인 칩(사용자 지시
- * 2026-09-14). 제목 길이에 따라 칩이 제목 옆에 섰다 아래로 내려갔다 하지 않게, 제목 줄을 늘 한
- * 줄 통째로 준다. 제목이 그 한 줄보다 길면 말줄임하고, 칩이 많으면 둘째 줄 안에서 줄을 바꾼다.
+ * ⭐ 앱바는 모든 화면에서 두 줄이다 - 첫 줄에 제목과 연결·전송 상태, 둘째 줄 오른쪽에 사번
+ * (사용자 지시 2026-09-14 · 배치 개정 2026-09-21). 제목 길이에 따라 칩이 섰다 내려갔다 하지
+ * 않게 제목 줄을 늘 한 줄 통째로 준다 — 디자인 시스템의 brand 칸은 내용만큼만 넓어, 늘리지
+ * 않으면 상태 칩이 제목 옆에 바짝 붙는다. 제목이 그 한 줄보다 길면 말줄임한다.
  * DS 가 제목과 칩 사이에 두는 늘어나는 빈 칸은 줄 하나를 따로 차지하므로 접는다.
  */
 .mobile-shell header.mobile-shell__topbar > *:first-child {
   flex: 1 0 100%;
+  min-width: 0;
 }
 
 .mobile-shell header.mobile-shell__topbar > *:not(:first-child):not(:last-child) {
+  display: none;
+}
+
+/* 제목 줄 — 왼쪽에 화면 이름, 오른쪽에 연결·전송 상태(사용자 지시 2026-09-21). */
+.mobile-shell__titlebar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2, 8px);
+  min-width: 0;
+  width: 100%;
+}
+
+.mobile-shell__titlebar > .mobile-shell__title,
+.mobile-shell__titlebar > strong {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mobile-shell__status {
+  display: flex;
+  align-items: center;
+  flex: 0 0 auto;
+  gap: var(--space-1, 4px);
+}
+
+/* 사번이 없는 화면에서는 아래 줄을 만들지 않는다 — 빈 줄이 앱바만 키운다. */
+.mobile-shell header.mobile-shell__topbar > *:last-child:empty {
   display: none;
 }
 
