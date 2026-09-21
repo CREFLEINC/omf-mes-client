@@ -1,4 +1,4 @@
-import { PageHeader } from '@crefle/web-ui';
+import { AlertBanner, PageHeader } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useState } from 'react';
 
@@ -139,6 +139,38 @@ export const EmergencyWorkOrderScreen = ({
     setRoutingId(null);
     setForm({ ...form, itemId: next === null ? '' : String(next.itemId) });
   };
+
+  /*
+   * ⭐ **못 쓰는 동안에는 안내 한 장만 세운다**(사용자 결정 2026-09-21). 서버가 계획 없는
+   * 발행을 받지 않는 지금, 입력 구획을 그려 두면 사람이 다 채운 뒤에야 못 쓴다는 것을 안다 —
+   * 채우기 «전»에, 그리고 **그 말만** 보여 준다. 서버가 열리면 위 상수 하나로 되돌아온다.
+   *
+   * ⛔ 배포가 남은 W/O 는 이때도 보인다 — 그것은 «이미 만들어진» 일이라 여기서 끝내야 한다.
+   */
+  if (!isPlanlessIssueOpen) {
+    return (
+      <>
+        <PageHeader title={t.title} />
+
+        <div className="emergency-work-order-workspace">
+          <div className="banner-slot">
+            <AlertBanner variant="info">{t.lock.notOpenYet}</AlertBanner>
+          </div>
+
+          <HandoverPane
+            workOrders={handoverRows}
+            total={unreleased.data?.page.total}
+            isError={unreleased.isError}
+            releasingId={handover.releasingId}
+            releasedNo={handover.releasedNo}
+            failure={handover.failure}
+            uomLabel={(uomId) => uoms.labelOf(uomId)}
+            onRelease={handover.release}
+          />
+        </div>
+      </>
+    );
+  }
 
   return (
     <>

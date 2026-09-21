@@ -235,7 +235,26 @@ describe('ItemPickerDialog — 고르기', () => {
     await search(user);
 
     expect(dialog().getByRole('button', { name: t.add })).toBeDisabled();
-    expect(dialog().queryByText(t.needsSelection)).not.toBeInTheDocument();
+    /* 고른 것이 없으면 건수도 적지 않는다 — 잠긴 단추가 이미 「아직 못 누른다」를 말한다. */
+    expect(dialog().queryByText(t.selectedCount(0))).not.toBeInTheDocument();
+  });
+
+  /*
+   * ⭐ **보기 규칙은 부르는 쪽이 켠다**(사용자 결정 2026-09-21). 한 화면의 규칙을 전 화면에
+   * 밀면 감지기 없는 자리에서 조용히 바뀐다 — 기본은 종전 모양이다.
+   */
+  it('기본 창은 오른쪽 위 닫기를 그대로 두고, `compact` 창만 뺀다', async () => {
+    const user = userEvent.setup();
+    const { unmount } = renderDialog();
+
+    await search(user);
+    expect(dialog().getByRole('button', { name: '닫기' })).toBeInTheDocument();
+
+    unmount();
+    renderDialog({ compact: true });
+    await search(user);
+
+    expect(dialog().queryByRole('button', { name: '닫기' })).not.toBeInTheDocument();
   });
 
   it('여러 개를 골라 한 번에 넘긴다', async () => {

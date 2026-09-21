@@ -55,5 +55,4 @@ export const itemPicker = {
   add: '라인 추가',
   replace: '바꾸기',
   /** 고르지 않으면 왜 누를 수 없는지 말한다 — 비활성만 두면 고장으로 읽는다. */
-  needsSelection: '품목을 고르면 누를 수 있습니다.',
 } as const;

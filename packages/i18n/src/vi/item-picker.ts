@@ -46,5 +46,4 @@ export const itemPicker: Translated<typeof ko.itemPicker> = {
   cancel: 'Hủy',
   add: 'Thêm dòng',
   replace: 'Đổi',
-  needsSelection: 'Chọn mặt hàng thì bấm được.',
 };

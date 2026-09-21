@@ -201,18 +201,23 @@ const fillForm = async (user: ReturnType<typeof userEvent.setup>): Promise<void>
 };
 
 describe('EmergencyWorkOrderScreen', () => {
-  it('⛔ 서버가 계획 없는 발행을 받지 않으면 누르기 «전에» 잠그고 현장 말로 알린다', () => {
-    /*
-     * 열어 두면 사용자는 품목·수량·사유를 다 채운 뒤에야 거부당하고, 그 문구가 내부 용어라
-     * 자기 입력이 잘못된 줄 안다(omf-all-around#44).
-     */
+  /*
+   * ⛔ 서버가 계획 없는 발행을 받지 않는 동안에는 **안내 한 장만** 세운다(사용자 결정
+   * 2026-09-21). 입력 구획을 그려 두면 사람이 품목·수량·사유를 다 채운 뒤에야 못 쓴다는 것을
+   * 알게 되고, 그때 뜨는 서버 문구는 내부 용어라 자기 입력이 잘못된 줄 안다(omf-all-around#44).
+   */
+  it('⛔ 서버가 계획 없는 발행을 받지 않으면 입력 구획 없이 그 사실만 알린다', () => {
     const stubbed = stub();
     renderWithProviders(<EmergencyWorkOrderScreen typeCode={KNOWN_CODE} />, {
       fetch: stubbed.fetch,
     });
 
-    expect(screen.getByRole('button', { name: t.action })).toBeDisabled();
     expect(screen.getByText(t.lock.notOpenYet)).toBeVisible();
+    /* 채울 자리를 내주지 않는다 — 구획도 발행 단추도 서지 않는다. */
+    expect(screen.queryByRole('button', { name: t.action })).toBeNull();
+    for (const title of [t.fixedTerms.title, t.itemPicker.title, t.form.title, t.expansion.title]) {
+      expect(screen.queryByRole('region', { name: title })).toBeNull();
+    }
     /* 내부 용어를 화면에 내지 않는다 — 문의 번호·공장 컨텍스트 같은 말은 현장에서 못 읽는다. */
     expect(screen.queryByText(/문의\s*0?040/)).toBeNull();
   });

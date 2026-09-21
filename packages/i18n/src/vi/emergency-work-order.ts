@@ -154,8 +154,10 @@ export const emergencyWorkOrder: Translated<typeof ko.emergencyWorkOrder> = {
     label: 'Tìm mặt hàng',
     placeholder: 'Hãy chọn mặt hàng',
     clear: 'Xóa mặt hàng đã chọn',
+    /** 0건일 때 — 감춘다는 사실을 말한다(omf-all-around#43). */
+    empty: 'Không tìm thấy mặt hàng nào. Chỉ hiển thị mặt hàng có thể sản xuất (có Routing).',
     /** 공용 품목 창의 확인 단추 이름 — 이 화면에서는 「추가」가 아니라 «고르기»다. */
-    confirm: 'Dùng mặt hàng này',
+    confirm: 'Chọn',
   },
 
   outcome: {

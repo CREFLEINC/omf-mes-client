@@ -354,7 +354,10 @@ describe('toIssueLock', () => {
 
     for (const reason of reasons) {
       expect(reason).not.toContain(`${messages.emergencyWorkOrder.action}:`);
-      expect(reason.trim().length).toBeGreaterThan(0);
+      /* 사유는 문장이다 — 낱말만 던지면 무엇이 막혔는지도, 무엇을 하면 되는지도 알 수 없다. */
+      expect(reason.trim()).toMatch(/[.!?]$/);
     }
+    /* 사유끼리 겹치지 않는다 — 같은 문장이 둘이면 어느 쪽에 걸렸는지 가릴 수 없다. */
+    expect(new Set(reasons).size).toBe(reasons.length);
   });
 });

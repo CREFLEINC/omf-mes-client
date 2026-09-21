@@ -47,6 +47,7 @@ export const ItemPicker = ({ selected, onSelect }: ItemPickerProps) => {
         readOnly
         title={label === '' ? undefined : label}
         placeholder={t.placeholder}
+        required
         aria-haspopup="dialog"
         clearLabel={t.clear}
         onClick={open}
@@ -61,7 +62,10 @@ export const ItemPicker = ({ selected, onSelect }: ItemPickerProps) => {
         <ItemPickerDialog
           multiple={false}
           hasRouting
+          compact
           showAvailability={false}
+          /* 좁혀 놓고 0건이라 말하면 오독한다 — 무엇만 보이는지 함께 적는다(omf-all-around#43). */
+          emptyText={t.empty}
           confirmLabel={t.confirm}
           onClose={() => {
             setOpen(false);

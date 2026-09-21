@@ -33,7 +33,7 @@ const SELECTED: SelectedItem = {
 
 const pathOf = (request: Request): string => new URL(request.url).pathname;
 
-const routes = (searches: URL[]): StubRoute[] => [
+const routes = (searches: URL[], items?: unknown[]): StubRoute[] => [
   {
     match: (request) => pathOf(request) === '/mdm/code-values',
     respond: () =>
@@ -47,29 +47,31 @@ const routes = (searches: URL[]): StubRoute[] => [
     respond: (request) => {
       searches.push(new URL(request.url));
 
-      return jsonResponse({
-        items: [
-          {
-            itemId: 5001,
-            itemCode: 'SYN-ITEM-0001',
-            itemName: '합성 품목',
-            itemTypeCode: 'FINISHED',
-            baseUomId: 11,
-            isActive: true,
-          },
-        ],
-        page: { page: 1, size: 20, total: 1 },
-      });
+      const rows = items ?? [
+        {
+          itemId: 5001,
+          itemCode: 'SYN-ITEM-0001',
+          itemName: '합성 품목',
+          itemTypeCode: 'FINISHED',
+          baseUomId: 11,
+          isActive: true,
+        },
+      ];
+
+      return jsonResponse({ items: rows, page: { page: 1, size: 20, total: rows.length } });
     },
   },
 ];
 
-const renderPicker = (selected: SelectedItem | null = null) => {
+const renderPicker = (
+  selected: SelectedItem | null = null,
+  options: { items?: unknown[] } = {},
+) => {
   const onSelect = vi.fn();
   const searches: URL[] = [];
 
   renderWithProviders(<ItemPicker selected={selected} onSelect={onSelect} />, {
-    fetch: createStubFetch(routes(searches)),
+    fetch: createStubFetch(routes(searches, options.items)),
     route: '/',
   });
 
@@ -135,6 +137,18 @@ describe('ItemPicker', () => {
     expect(screen.getByLabelText(t.label)).toHaveValue(
       `${SELECTED.itemCode} · ${SELECTED.itemName}`,
     );
+  });
+
+  /*
+   * omf-all-around#43 — 후보를 좁혀 놓고 「검색 결과가 없습니다」로만 답하면, 있는 품목을
+   * 없다고 읽고 검색어만 바꾸게 된다. 창에 이 화면 전용 문구를 넘겨 그 사실을 말한다.
+   */
+  it('0건일 때 만들 수 있는 품목만 보인다는 사실을 말한다', async () => {
+    const { user } = renderPicker(null, { items: [] });
+
+    await openDialog(user);
+
+    expect(await screen.findByText(t.empty)).toBeInTheDocument();
   });
 
   it('고른 품목을 지울 수 있다', async () => {
