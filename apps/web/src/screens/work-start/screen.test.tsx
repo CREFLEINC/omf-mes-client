@@ -921,4 +921,20 @@ describe('P-02-01 작업 시작 — 지시 수량을 채운 작업지시(#45)', 
     });
     expect(screen.queryByText(t.closing.fulfilled)).not.toBeInTheDocument();
   });
+
+  /**
+   * ⛔ **막힘 사유는 마감 안내에 밀리지 않는다**(리뷰 지적 2026-09-21). 못 하는 이유를 덮으면
+   *    작업자는 풀어야 할 것을 못 본 채 잠긴 버튼만 본다. 마감 안내가 자리를 가져가는 것은
+   *    「이미 진행 중」 하나뿐이고, 그것은 **같은 사실을 두 번 적지 않기** 위해서다.
+   */
+  it('막힘 사유가 있으면 마감 안내가 그 사유를 덮지 않는다', async () => {
+    vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(false);
+
+    const rendered = renderScreen({ workOrders: [FULFILLED] });
+
+    await selectWorkOrder(rendered);
+
+    expect(await screen.findByText(t.blocked.offline)).toBeInTheDocument();
+    expect(screen.queryByText(t.closing.fulfilled)).not.toBeInTheDocument();
+  });
 });
