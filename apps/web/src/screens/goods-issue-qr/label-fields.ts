@@ -22,9 +22,14 @@ import { LINE_TARGET_TYPE_CODE } from './types';
 export type LabelFields = GoodsIssueQrLabelFields | { unavailableReason: string };
 
 export interface LabelFieldsInput {
-  issue: GoodsIssue | null;
+  /**
+   * 라벨이 쓰는 것은 **출고번호뿐이다.** 대기 목록에서 고른 줄은 전표를 따로 조회하지 않고
+   * 목록이 들고 있는 값을 그대로 준다(사용자 지시 2026-09-21 · omf-all-around#35).
+   */
+  issue: Pick<GoodsIssue, 'goodsIssueNo'> | null;
   lines: readonly GoodsIssueLine[];
-  itemNames: LookupSource;
+  /** 라벨의 `ITEM` — **코드만**이다(`useItemCodes`). 화면 표시값(코드 · 이름)이 아니다. */
+  itemCodes: LookupSource;
   lotNames: LookupSource;
   destination: DestinationState;
 }
@@ -56,7 +61,8 @@ const NO_DESTINATION = '-';
 const PALLET_UNSUPPORTED = '파렛트 단위 라벨은 아직 만들 수 없습니다. 라인 단위로 발행하세요.';
 const NOT_LOADED = '라벨에 실을 이름을 아직 받지 못했습니다. 잠시 뒤 다시 발행하세요.';
 /** 조회가 끝났는데 이름이 없다 — 다시 눌러도 같다. 담당자를 불러야 하는 갈래다. */
-const NAME_UNRESOLVED = '품목 코드·LOT 번호를 불러오지 못했습니다. 연결을 확인한 뒤 다시 발행하세요.';
+const NAME_UNRESOLVED =
+  '품목 코드·LOT 번호를 불러오지 못했습니다. 연결을 확인한 뒤 다시 발행하세요.';
 const LINE_MISSING = '이 발행 대상에 해당하는 출고 라인을 찾지 못했습니다.';
 
 /**
@@ -68,7 +74,7 @@ const LINE_MISSING = '이 발행 대상에 해당하는 출고 라인을 찾지 
  */
 export const toLabelFieldsForLine = (
   line: GoodsIssueLine,
-  { issue, itemNames, lotNames, destination }: Omit<LabelFieldsInput, 'lines'>,
+  { issue, itemCodes, lotNames, destination }: Omit<LabelFieldsInput, 'lines'>,
 ): LabelFields => {
   if (issue === null) return { unavailableReason: LINE_MISSING };
 
@@ -77,7 +83,7 @@ export const toLabelFieldsForLine = (
    *    같은 **사람에게 보일 문구**로 바꿔 준다 — 라벨에 그 문구가 그대로 찍히면 현장에서
    *    품목 코드 자리에 한글 문장이 선다. 여기서는 **이름을 받은 경우만** 통과시킨다.
    */
-  const itemState = toLookupDisplayState(itemNames, line.itemId);
+  const itemState = toLookupDisplayState(itemCodes, line.itemId);
   const lotState = toLookupDisplayState(lotNames, line.lotId);
 
   /*

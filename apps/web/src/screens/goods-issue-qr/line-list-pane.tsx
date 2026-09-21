@@ -43,6 +43,8 @@ export interface LineListPaneProps {
   isError: boolean;
   /** 표제 줄 왼쪽에 세울 조작(대기 목록으로 돌아가기). */
   headerStart?: ReactNode;
+  /** 표제 줄 오른쪽 — 지금은 [모두 보기]/[고른 라인만 보기] 하나다. */
+  headerEnd?: ReactNode;
 }
 
 /**
@@ -78,6 +80,7 @@ export const LineListPane = ({
   isLoading,
   isError,
   headerStart,
+  headerEnd,
 }: LineListPaneProps) => {
   const allIds = rows.map((row) => rowId(row.line));
   const isAllSelected = allIds.length > 0 && selectedIds.length === allIds.length;
@@ -136,7 +139,10 @@ export const LineListPane = ({
     {
       /*
        * ⭐ **체크 칸 대신 행 오른쪽 [선택]으로 고른다**(사용자 지시 2026-09-17). 장갑 낀 손에는
-       *    작은 체크 칸보다 단추가 낫다. 누를 때마다 고르기·풀기가 바뀌고, 고른 줄은 채운 단추다.
+       *    작은 체크 칸보다 단추가 낫다. 누를 때마다 고르기·풀기가 바뀐다.
+       *
+       * ⭐ **고르기 «전»이 빨강, 고른 «뒤»가 회색이다**(사용자 지시 2026-09-21). 눌러야 할 자리가
+       *    눈에 띄고, 이미 고른 줄은 가라앉는다 — 색은 `pop.css` 가 잡는다.
        */
       key: 'pick',
       header: '',
@@ -149,7 +155,7 @@ export const LineListPane = ({
         return (
           <Button
             type="button"
-            variant={isSelected ? 'filled' : 'outlined'}
+            variant={isSelected ? 'outlined' : 'filled'}
             size="2xl"
             className="pop-touch-target pop-giqr-pick"
             aria-pressed={isSelected}
@@ -159,7 +165,7 @@ export const LineListPane = ({
               );
             }}
           >
-            {t.lines.pick}
+            {isSelected ? t.lines.picked : t.lines.pick}
           </Button>
         );
       },
@@ -171,6 +177,7 @@ export const LineListPane = ({
       <Card.Body>
         {headerStart}
         <h2 className="pane-title">{t.lines.sectionLabel}</h2>
+        {headerEnd}
 
         {isLoading ? (
           <div role="status" aria-label={t.lines.loading}>

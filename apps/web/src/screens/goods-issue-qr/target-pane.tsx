@@ -304,16 +304,23 @@ export const TargetPane = ({
           </div>
 
           {/*
-           * ⚠ **라벨의 도착지가 비었다는 사실을 미리보기 옆에 둔다** — 그림에는 `TO: -` 로만
-           *   보여 왜 비었는지 알 수 없다. 발행하기 직전에 보는 자리다.
+           * ⛔ **두 문구를 한 묶음으로 싼다.** 따로 두면 둘 다 「이름 옆 칸」으로 놓여 **같은 자리에
+           *    겹쳐 찍혔다**(실기 2026-09-21 · omf-all-around#35 — 도착지를 못 읽는 단말에서 늘
+           *    그랬다). 묶어 두면 한 칸 안에서 위아래로 선다.
            */}
-          {destinationMissing && <p className="field-note">{t.target.destinationMissing}</p>}
+          <div className="pop-giqr-preview-notes">
+            {/*
+             * ⚠ **라벨의 도착지가 비었다는 사실을 미리보기 옆에 둔다** — 그림에는 `TO: -` 로만
+             *   보여 왜 비었는지 알 수 없다. 발행하기 직전에 보는 자리다.
+             */}
+            {destinationMissing && <p className="field-note">{t.target.destinationMissing}</p>}
 
-          {/*
-           * 「왜 전량인데도 찍나」에 답할 근거(스펙 §5-3 · G-5)를 **미리보기 옆에** 둔다
-           * (사용자 지시 2026-09-07) — 발행하기 직전에 보는 자리다.
-           */}
-          <p className="field-note">{t.alwaysIssueNote}</p>
+            {/*
+             * 「왜 전량인데도 찍나」에 답할 근거(스펙 §5-3 · G-5)를 **미리보기 옆에** 둔다
+             * (사용자 지시 2026-09-07) — 발행하기 직전에 보는 자리다.
+             */}
+            <p className="field-note">{t.alwaysIssueNote}</p>
+          </div>
         </div>
       </Card.Body>
     </Card>

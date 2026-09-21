@@ -484,14 +484,13 @@ export const WorkStartScreen = () => {
                  *    이 갈래가 아니다.
                  */
                 /*
-                 * ⭐ **크기는 목록의 [ 전체 보기 ]와 같게 둔다**(`xl` · 사용자 지시 2026-09-16).
-                 *    이 버튼은 띠 안에 있지만 작업자가 실제로 누르는 다음 걸음이라, 같은 화면의
-                 *    다른 조작보다 작으면 눌러야 할 자리로 읽히지 않는다.
+                 * ⭐ **높이는 48 로 낮춘다**(사용자 지시 2026-09-19 — 앞 판은 목록의 [ 전체 보기 ]와
+                 *    같은 `xl`·72 였다). 폭 하한은 그대로라 누를 자리로는 계속 읽힌다(`pop.css`).
                  */
                 <Button
                   type="button"
                   variant="outlined"
-                  size="xl"
+                  size="lg"
                   className="work-start-head-button"
                   onClick={() => {
                     if (selected !== null) goToMaterialInput(selected.workOrderId);

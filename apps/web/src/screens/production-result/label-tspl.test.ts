@@ -14,11 +14,11 @@ const FIELDS = {
 
 const WIDTH = 639;
 const HEIGHT = 240;
-/* 실기에서 맞춘 안전 여백 — 가로는 왼쪽으로 당겨 짠다(`pop-material-lot-label/label-tspl`). */
+/* 실기에서 맞춘 안전 여백 — 가로는 좌우 같다(`pop-material-lot-label/label-tspl`). */
 const TOP = 16;
 const BOTTOM = 48;
-const LEFT = 12;
-const RIGHT = 52;
+const LEFT = 32;
+const RIGHT = 32;
 
 /** 명령 한 줄의 x·y 좌표. */
 const origin = (line: string): [number, number] => {

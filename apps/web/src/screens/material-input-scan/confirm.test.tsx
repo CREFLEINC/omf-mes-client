@@ -430,9 +430,9 @@ describe('투입 확정 — 보내지 않는 경우', () => {
 
     expect(sent).toHaveLength(0);
 
-    /* 담아 둔 줄이 있으므로 사유는 「담아라」가 아니라 「그것을 기록해라」다. */
+    /* 확정은 잠긴 채다. 「기록되지 않은 자재」 띠는 맨 위에 세우지 않는다(사용자 지시 2026-09-19). */
     expect(screen.getByRole('button', { name: t.confirm.action })).toHaveProperty('disabled', true);
-    expect(screen.getByText(t.confirm.reasons.qtyMissing)).toBeTruthy();
+    expect(screen.queryByText(t.confirm.reasons.qtyMissing)).toBeNull();
   });
 
   /*
@@ -654,7 +654,7 @@ describe('MaterialInputScanScreen — 목록 닫기', () => {
     await prepareWithoutRecord(user, 'SAMPLE-LOT-0002', '5');
 
     expect(screen.getByRole('button', { name: t.confirm.action })).toHaveProperty('disabled', true);
-    expect(screen.getByText(t.confirm.reasons.qtyMissing)).toBeTruthy();
+    expect(screen.queryByText(t.confirm.reasons.qtyMissing)).toBeNull();
   });
 });
 
