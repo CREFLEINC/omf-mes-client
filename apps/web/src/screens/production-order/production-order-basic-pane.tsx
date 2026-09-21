@@ -4,6 +4,7 @@ import type { ReactNode } from 'react';
 
 import type { CodeNameOf } from './code-names';
 import type { ProductionOrderItemName } from './item-lookups';
+import { productionOrderStatusTone } from './status-tone';
 import { describeReference, resolveReference, type ReferenceSource } from './reference-lookups';
 import type { ProductionOrderFact } from './types';
 
@@ -132,7 +133,7 @@ export const ProductionOrderBasicPane = ({
       label: t.fields.statusCode,
       /* 목록과 같은 상태 표식을 쓴다. */
       value: (
-        <Chip variant="status" status="idle" size="sm">
+        <Chip variant="status" status={productionOrderStatusTone(data.statusCode)} size="sm">
           {statusNameOf(data.statusCode)}
         </Chip>
       ),

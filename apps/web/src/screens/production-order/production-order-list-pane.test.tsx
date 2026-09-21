@@ -66,7 +66,7 @@ const dataRow = (orderNo: string): HTMLTableRowElement => {
 };
 
 describe('ProductionOrderListPane 목록', () => {
-  it('W/O 전개/계획을 포함한 열과 받은 형제 순서를 그대로 표시한다', () => {
+  it('W/O 전개/계획을 포함한 열과 받은 형제 순서를 그대로 표시한다', async () => {
     renderPane();
 
     const pane = screen.getByLabelText(t.panes.list);
@@ -81,9 +81,18 @@ describe('ProductionOrderListPane 목록', () => {
       t.fields.item,
       t.fields.orderedQty,
       t.fields.dueDate,
-      t.fields.workOrderProgress,
+      /* 열 이름 옆에 도움말 단추가 붙는다. */
+      `${t.fields.workOrderProgress}help`,
       t.fields.statusCode,
     ]);
+    /* 두 숫자의 뜻은 열 이름 옆 말풍선이 말한다 — 표 밖으로 떠서 잘리지 않는다. */
+    const help = screen.getByRole('button', { name: t.basic.workOrderProgressHelp });
+    await userEvent.setup().click(help);
+    /* 문장마다 한 줄로 그린다. */
+    const bubble = screen.getByRole('tooltip');
+    for (const line of t.basic.workOrderProgressTooltip) {
+      expect(within(bubble).getByText(line)).toBeVisible();
+    }
     expect(
       screen.getAllByRole('button', { name: /SYNTH-PO-[AB] 선택/ }).map((node) => node.textContent),
     ).toEqual(['SYNTH-PO-B', 'SYNTH-PO-A']);

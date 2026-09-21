@@ -1517,7 +1517,8 @@ describe('appRouter — W/O 전개·편성의 진입 경로', () => {
     renderRoutedApp('/production/production-plans', lotStatusRoutes());
 
     expect(screen.queryByRole('link', { name: 'W/O 전개·편성' })).toBeNull();
-    expect(screen.getByRole('heading', { level: 1, name: 'W/O 전개·편성' })).toBeVisible();
+    /* 제목 옆에 안내 한마디가 붙어 이름이 길어졌다(사용자 지시 2026-09-20) — 제목만 짚는다. */
+    expect(screen.getByRole('heading', { level: 1, name: /^W\/O 전개·편성/ })).toBeVisible();
     expect(screen.getByText('ERP W/O를 먼저 선택하세요.')).toBeVisible();
   });
 

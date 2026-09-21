@@ -9,13 +9,13 @@ import {
 } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useState } from 'react';
-import { Link } from 'react-router';
+import { useNavigate } from 'react-router';
 
-import { PageNav } from '../work-order/page-nav';
 import { toWorkOrderPageView } from '../work-order/pagination';
 import { useWorkOrderList, type WorkOrderFact } from '../work-order/queries';
 import { useRoutingOperations } from '../routing/queries';
 import { useProductionPlanDetail } from './queries';
+import { ResultPageNav } from './result-page-nav';
 
 const t = messages.productionPlan.result;
 
@@ -29,6 +29,7 @@ export const WorkOrderResultPane = ({
   productionPlanId: number;
   uomLabel: string;
 }) => {
+  const navigate = useNavigate();
   const [page, setPage] = useState(1);
   const plan = useProductionPlanDetail(productionPlanId);
   const workOrders = useWorkOrderList(productionPlanId, page);
@@ -46,22 +47,27 @@ export const WorkOrderResultPane = ({
     ]) ?? [],
   );
   const columns: Column<WorkOrderFact>[] = [
-    { key: 'workOrderNo', header: t.columns.workOrderNo },
+    { key: 'workOrderNo', header: t.columns.workOrderNo, width: '30%', align: 'center' },
     {
       key: 'operation',
       header: t.columns.operation,
+      width: '22%',
+      align: 'center',
       render: (row) => operationNames.get(row.routingOperationId) ?? t.operationUnknown,
     },
     {
       key: 'orderQty',
       header: t.columns.orderQty,
-      align: 'end',
+      width: '12%',
+      align: 'center',
       render: (row) => quantity(row.orderQty, uomLabel),
     },
-    { key: 'workOrderTypeCode', header: t.columns.workOrderType },
+    { key: 'workOrderTypeCode', header: t.columns.workOrderType, width: '16%', align: 'center' },
     {
       key: 'statusCode',
       header: t.columns.status,
+      width: '14%',
+      align: 'center',
       render: (row) => (
         <Chip variant="status" status="idle" size="sm">
           {row.statusCode}
@@ -75,7 +81,22 @@ export const WorkOrderResultPane = ({
 
   return (
     <section className="pane production-plan-section" aria-label={t.pane}>
-      <h2>{t.heading(trustedPlan?.planNo ?? t.fallbackPlanName(productionPlanId))}</h2>
+      <div className="production-plan-result-heading">
+        <h2>{t.heading(trustedPlan?.planNo ?? t.fallbackPlanName(productionPlanId))}</h2>
+        {!failed && !loading && (
+          /* 다음 작업으로 가는 보조 동작이다 — 밑줄 링크 대신 테두리 단추로 둔다(사용자 지시). */
+          <Button
+            variant="outlined"
+            onClick={() =>
+              void navigate(
+                `/production/work-order-assignments?productionPlanId=${String(productionPlanId)}`,
+              )
+            }
+          >
+            {messages.workOrder.screen.view.openAssignment}
+          </Button>
+        )}
+      </div>
       {failed ? (
         <AlertBanner
           variant="error"
@@ -98,11 +119,6 @@ export const WorkOrderResultPane = ({
         </div>
       ) : (
         <>
-          <Link
-            to={`/production/work-order-assignments?productionPlanId=${String(productionPlanId)}`}
-          >
-            {messages.workOrder.screen.view.openAssignment}
-          </Link>
           <div className="wide-table">
             <Table
               density="compact"
@@ -113,7 +129,7 @@ export const WorkOrderResultPane = ({
               empty={<EmptyState size="sm" live title={t.empty} />}
             />
           </div>
-          <PageNav
+          <ResultPageNav
             view={toWorkOrderPageView(workOrders.data.page, workOrders.data.items.length)}
             onChange={setPage}
           />

@@ -162,12 +162,16 @@ describe('WorkOrderReleaseCandidateBrowser', () => {
     expect(selected).toBeVisible();
     expect(selected.closest('.work-order-release-detail')).not.toBeNull();
     expect(selected.closest('.work-order-release-content')).toHaveClass('has-selection');
-    await user.click(screen.getByRole('button', { name: messages.workOrder.pageNav.next }));
+    await user.click(
+      screen.getByRole('button', { name: messages.workOrderRelease.candidateList.page.next }),
+    );
     expect(
       await screen.findByRole('button', { name: t.candidateList.actions.select('SYN-WO-702') }),
     ).toBeVisible();
     expect(screen.getByText('SELECTION:NONE')).toBeVisible();
-    await user.click(screen.getByRole('button', { name: messages.workOrder.pageNav.previous }));
+    await user.click(
+      screen.getByRole('button', { name: messages.workOrderRelease.candidateList.page.prev }),
+    );
     await user.click(
       await screen.findByRole('button', { name: t.candidateList.actions.select('SYN-WO-701') }),
     );

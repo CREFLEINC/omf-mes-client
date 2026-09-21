@@ -10,6 +10,7 @@ import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
 
 import type { WorkOrderValidationFinding, WorkOrderValidationReport } from './queries';
+import { WorkOrderValidationChecks, type WorkOrderValidationCheckScope } from './validation-checks';
 
 const t = messages.workOrder.validationPane;
 
@@ -41,6 +42,14 @@ export interface WorkOrderValidationPaneProps {
   isInitialLoading: boolean;
   isRefreshing: boolean;
   loadError: ReactNode;
+  /**
+   * 배정된 자원. 주면 지적 0건일 때 큰 빈 상태 대신 「확인 항목 / 결과」 표를 그린다.
+   * 「검증 통과」 칩 옆에 「검증 항목이 없습니다」만 뜨면 검증을 안 한 것처럼 읽히기 때문이다.
+   * 주지 않으면 종전 빈 상태 그대로다.
+   */
+  checkScope?: WorkOrderValidationCheckScope;
+  /** 결과 칩 크기. 기본은 작게 — 이 칩이 화면의 주인공인 쪽만 키운다. */
+  summaryChipSize?: 'sm' | 'md';
 }
 
 export const WorkOrderValidationPane = ({
@@ -49,6 +58,8 @@ export const WorkOrderValidationPane = ({
   isInitialLoading,
   isRefreshing,
   loadError,
+  checkScope,
+  summaryChipSize = 'sm',
 }: WorkOrderValidationPaneProps) => {
   const columns: Column<WorkOrderValidationFinding>[] = [
     {
@@ -106,6 +117,12 @@ export const WorkOrderValidationPane = ({
   }
 
   const summary = toValidationSummary(report);
+  const skippedNote =
+    checkScope !== undefined &&
+    report.findings.length === 0 &&
+    (!checkScope.hasEquipment || !checkScope.hasMold || !checkScope.hasWorker)
+      ? t.skippedNote
+      : null;
 
   return (
     <section
@@ -115,7 +132,11 @@ export const WorkOrderValidationPane = ({
     >
       <div className="work-order-validation-heading">
         <h2 className="pane-title">{t.panes.validation}</h2>
-        <Chip variant="status" status={summaryStatus[summary]} size="sm">
+        {/* 같은 까닭을 줄마다 반복하지 않고 제목 옆에서 한 번 말한다. */}
+        {skippedNote !== null && (
+          <span className="work-order-validation-heading-hint">{skippedNote}</span>
+        )}
+        <Chip variant="status" status={summaryStatus[summary]} size={summaryChipSize}>
           {t.summary[summary]}
         </Chip>
       </div>
@@ -124,7 +145,12 @@ export const WorkOrderValidationPane = ({
           {t.refreshing}
         </p>
       )}
-      {report.findings.length === 0 ? (
+      {report.findings.length === 0 && checkScope !== undefined ? (
+        <div className="work-order-validation-clean">
+          <p className="work-order-validation-clean-line">{t.clean}</p>
+          <WorkOrderValidationChecks {...checkScope} />
+        </div>
+      ) : report.findings.length === 0 ? (
         <EmptyState
           size="sm"
           title={t.empty.noFindingsTitle}
