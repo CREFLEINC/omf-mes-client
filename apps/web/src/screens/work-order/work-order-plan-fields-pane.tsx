@@ -1,4 +1,4 @@
-import { AlertBanner, Card, EmptyState, TextField } from '@crefle/web-ui';
+import { AlertBanner, EmptyState, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 
 import type { WorkOrderAssignmentDraft } from './assignment-model';
@@ -77,48 +77,44 @@ export const WorkOrderPlanFieldsPane = ({
 
   return (
     <section className="pane work-order-plan-pane" aria-label={t.pane}>
-      <h2 className="pane-title">{t.heading(selectedWorkOrderNo)}</h2>
-      <AlertBanner variant="warning">{t.warning}</AlertBanner>
-      <Card bordered>
-        <Card.Header>
-          <h3>{t.card}</h3>
-        </Card.Header>
-        <Card.Body>
-          <div className="work-order-plan-fields">
-            <PlanFieldInput
-              field="plannedStartAtLocal"
-              label={t.fields.plannedStartAtLocal}
-              type="datetime-local"
-              value={draft.plannedStartAtLocal}
-              error={fieldErrors.plannedStartAtLocal}
-              disabled={disabled}
-              disabledReason={disabledReason}
-              onChange={onChange}
-            />
-            <PlanFieldInput
-              field="plannedEndAtLocal"
-              label={t.fields.plannedEndAtLocal}
-              type="datetime-local"
-              value={draft.plannedEndAtLocal}
-              error={fieldErrors.plannedEndAtLocal}
-              disabled={disabled}
-              disabledReason={disabledReason}
-              onChange={onChange}
-            />
-            <PlanFieldInput
-              field="priorityNo"
-              label={t.fields.priorityNo}
-              type="text"
-              inputMode="numeric"
-              value={draft.priorityNo}
-              error={fieldErrors.priorityNo}
-              disabled={disabled}
-              disabledReason={disabledReason}
-              onChange={onChange}
-            />
-          </div>
-        </Card.Body>
-      </Card>
+      <h2 className="pane-title">{t.heading}</h2>
+      {/* 카드 안 카드를 만들지 않는다 — 구획 제목이 곧 「계획」이다(사용자 지시 2026-09-20). */}
+      <AlertBanner className="work-order-plan-rule" variant="info">
+        {t.warning}
+      </AlertBanner>
+      <div className="work-order-plan-fields">
+        <PlanFieldInput
+          field="plannedStartAtLocal"
+          label={t.fields.plannedStartAtLocal}
+          type="datetime-local"
+          value={draft.plannedStartAtLocal}
+          error={fieldErrors.plannedStartAtLocal}
+          disabled={disabled}
+          disabledReason={disabledReason}
+          onChange={onChange}
+        />
+        <PlanFieldInput
+          field="plannedEndAtLocal"
+          label={t.fields.plannedEndAtLocal}
+          type="datetime-local"
+          value={draft.plannedEndAtLocal}
+          error={fieldErrors.plannedEndAtLocal}
+          disabled={disabled}
+          disabledReason={disabledReason}
+          onChange={onChange}
+        />
+        <PlanFieldInput
+          field="priorityNo"
+          label={t.fields.priorityNo}
+          type="text"
+          inputMode="numeric"
+          value={draft.priorityNo}
+          error={fieldErrors.priorityNo}
+          disabled={disabled}
+          disabledReason={disabledReason}
+          onChange={onChange}
+        />
+      </div>
     </section>
   );
 };

@@ -18,8 +18,6 @@ export const workOrder = {
       truncated: '선택 목록의 첫 페이지만 표시합니다.',
       noPlant: 'P/O에 공장이 없어 선택 목록을 불러올 수 없습니다.',
       workerTruncated: '작업자 일부만 표시합니다. 사번·성명으로 검색하세요.',
-      searchEmpty: '검색 결과가 없습니다.',
-      searchTruncated: '검색 결과 일부만 표시합니다. 검색어를 더 입력하세요.',
     },
   },
   screen: {
@@ -31,6 +29,8 @@ export const workOrder = {
       openAssignment: '4M 자원배정·유효성 점검으로 이동',
       contextPane: '선택 생산계획',
       editorPane: '작업지시 배정 편집',
+      /** 두 구획 위에서 한 번만 쓰는 제목 — 카드마다 W/O 번호를 반복하지 않는다 */
+      selectedHeading: (workOrderNo: string): string => `선택한 W/O — ${workOrderNo}`,
       context: (productionOrderNo: string, total: number): string =>
         `P/O ${productionOrderNo} · W/O ${String(total)}건`,
       selectWorkOrder: '배정할 작업지시를 선택하세요.',
@@ -85,6 +85,8 @@ export const workOrder = {
       `${String(start)}–${String(end)} / 전체 ${String(total)}건`,
     total: (total: number): string => `전체 ${String(total)}건`,
   },
+  /** 4M 화면 목록 전용 — 생산계획·W/O 마감이 함께 쓰는 `pageNav` 는 그대로 둔다. */
+  assignmentPageNav: { label: '작업지시 쪽 이동', prev: '이전', next: '다음' },
   pageNav: {
     label: '작업지시 쪽 이동',
     first: '첫 쪽',
@@ -97,6 +99,25 @@ export const workOrder = {
     },
   },
   validationPane: {
+    /* 검증 결과 표시 문구 — W-02-03·W-02-04 가 같이 쓴다(사용자 지시 2026-09-20). */
+    /** 통과 칩과 겹치지 않게 숫자만 남긴다(사용자 지시 2026-09-20). */
+    clean: '차단 0건 · 경고 0건',
+    checksTitle: '확인 항목',
+    resultTitle: '결과',
+    /** 배정이 없어 돌지 않은 검사가 있을 때만 한 번 보인다 */
+    skippedNote: '배정되지 않은 설비·금형·작업자 관련 항목은 검증 대상에서 제외됩니다.',
+    /** 서버 작업지시 검증이 도는 검사들. 배정이 없는 자원은 그 검사를 돌지 않는다. */
+    checks: {
+      equipmentStatus: '설비 사용 가능 상태',
+      equipmentCalibration: '설비 검교정 기한',
+      equipmentDoubleBooked: '설비 일정 겹침',
+      moldStatus: '금형 사용 가능 상태',
+      moldLife: '금형 수명',
+      workerQualification: '작업자 공정 자격',
+    },
+    /** 돌지 않은 검사를 「이상 없음」이라고 말하지 않는다 — 대상이 아니었다고 말한다 */
+    checkState: { checked: '이상 없음', skipped: '해당 없음' },
+
     panes: { validation: '작업지시 검증' },
     fields: { severity: '등급', message: '내용' },
     loading: '작업지시 검증 결과를 불러오는 중입니다.',
@@ -114,9 +135,12 @@ export const workOrder = {
   },
   resourcePane: {
     pane: '작업지시 자원 배정',
-    heading: (workOrderNo: string): string => `선택한 W/O — ${workOrderNo}`,
-    warning: '자원 종류별로 하나만 배정할 수 있습니다. 더 필요하면 W/O를 분할하세요.',
+    /** W/O 번호는 두 구획 위에서 한 번만 쓴다(사용자 지시 2026-09-20). */
+    heading: '4M 자원배정',
+    warning: '자원별로 1개만 배정할 수 있습니다. 추가 배정이 필요하면 W/O를 분할해 주세요.',
     placeholder: '선택하세요',
+    /** 별표 옆 한마디 — 칸 아래에 문장을 다시 쓰지 않는다(사용자 지시 2026-09-20) */
+    requiredHint: '필수 입력',
     clearOption: '배정 없음',
     cards: { machine: 'Machine', man: 'Man', tool: 'Tool/Mold', material: 'Material' },
     fields: {
@@ -129,7 +153,28 @@ export const workOrder = {
       defaultFgLocation: '기본 완제품 위치',
       defaultScrapLocation: '기본 스크랩 위치',
     },
-    workerSearch: { label: '담당 작업자 검색', placeholder: '사번·성명 검색' },
+    /** 담당 작업자는 창에서 찾아 고른다 — 품목·공급사 선택 창과 같은 방식(사용자 지시 2026-09-20). */
+    workerPicker: {
+      open: '코드·이름으로 검색',
+      clear: '담당 작업자 지우기',
+      title: '담당 작업자 선택',
+      keywordLabel: '검색어',
+      keywordPlaceholder: '사번 또는 성명',
+      search: '찾기',
+      columns: { select: '선택', workerNo: '사번', workerName: '성명' },
+      inactive: '미사용',
+      noResult: '검색 결과가 없습니다. 사번이나 성명의 일부로 다시 찾아보세요.',
+      searchFailed: '작업자를 찾지 못했습니다.',
+      searching: '찾는 중입니다…',
+      page: {
+        range: (from: number, to: number, total: number): string =>
+          `${String(from)}–${String(to)} / 전체 ${String(total)}건`,
+        previous: '이전',
+        next: '다음',
+      },
+      cancel: '취소',
+      pick: '선택',
+    },
     materialInfo: '자재 배정은 이 화면에서 변경하지 않습니다.',
     empty: {
       notSelectedTitle: '자원을 배정할 작업지시를 선택하세요.',
@@ -138,14 +183,13 @@ export const workOrder = {
   },
   planFieldsPane: {
     pane: '작업지시 계획 필드',
-    heading: (workOrderNo: string): string => `선택한 W/O — ${workOrderNo}`,
-    card: '계획',
+    heading: '계획',
     fields: {
       plannedStartAtLocal: '계획 시작',
       plannedEndAtLocal: '계획 종료',
       priorityNo: '우선순위',
     },
-    warning: '계획 시작과 계획 종료가 모두 있어야 자원 겹침을 확인할 수 있습니다.',
+    warning: '계획 시작·종료 시간을 입력하면 자원 일정 중복을 확인할 수 있습니다.',
     empty: {
       notSelectedTitle: '계획을 확인할 작업지시를 선택하세요.',
       notSelectedDescription: '목록에서 작업지시를 선택하면 계획 정보를 확인할 수 있습니다.',

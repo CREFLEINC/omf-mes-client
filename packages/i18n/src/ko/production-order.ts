@@ -28,7 +28,7 @@ export const productionOrder = {
     select: (orderNo: string): string => `${orderNo} 선택`,
     expand: (orderNo: string): string => `${orderNo} 하위 ERP W/O 펼치기`,
     collapse: (orderNo: string): string => `${orderNo} 하위 ERP W/O 접기`,
-    firstPage: '첫 쪽으로',
+    firstPage: '첫 쪽',
     prevPage: '이전',
     nextPage: '다음',
     integrationSync: '연계 현황 보기',
@@ -39,8 +39,6 @@ export const productionOrder = {
       'ERP에서 받은 정보라 이 화면에서는 수정할 수 없습니다. ERP에서 수정한 뒤 다시 동기화하세요.',
     erpSyncHint: '동기화 결과는 연계 현황에서 확인할 수 있습니다.',
     searchPlaceholder: 'ERP W/O 번호',
-    workOrderProgressHelp:
-      'W/O 생성/예정 — 현재 생성된 W/O 수 / 생산계획 기준으로 생성될 전체 W/O 수입니다. 0 / 0은 생산계획이 없는 상태입니다.',
     missingErpOrderNo: 'ERP 원번호 없음',
     missingItemLabel: '품목 표시명 없음',
     missingDueDate: '납기일 없음',
@@ -56,8 +54,12 @@ export const productionOrder = {
   basic: {
     heading: '기본 정보',
     workOrderProgressHelp: 'W/O 생성/예정 설명',
-    workOrderProgressTooltip:
-      '생성된 W/O 수 / 생성 예정 W/O 수입니다. 0 / 0은 생산계획이 없음을 의미합니다.',
+    /** 말풍선 — 제목 한 줄, 뜻 한 줄, 보충 한 줄(사용자 지시 2026-09-20). */
+    workOrderProgressTooltip: [
+      'W/O 생성 현황',
+      '앞 숫자: 생성 완료 · 뒤 숫자: 생성 예정',
+      '0 / 0은 생산계획이 없는 경우입니다.',
+    ],
     loading: 'ERP W/O 기본 정보 불러오는 중',
     loadFailedTitle: '기본 정보를 불러오지 못했습니다',
     loadFailedDescription: '잠시 후 ERP W/O를 다시 선택해 주세요.',
@@ -83,7 +85,7 @@ export const productionOrder = {
       workOrderNo: 'W/O 번호',
       workOrderType: 'W/O 유형',
       orderQty: '지시수량·단위',
-      plannedRange: '계획 시작·종료',
+      plannedRange: '계획 시작일·종료일',
       status: '상태',
     },
   },

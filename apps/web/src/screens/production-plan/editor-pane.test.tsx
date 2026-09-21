@@ -52,13 +52,14 @@ const expectBanner = (title: string, role: string, icon: string) => {
 };
 describe('ProductionPlanEditorPane', () => {
   it('표 제목을 보조기술에 남기고 편집 컨트롤의 정렬 기준을 한 행으로 묶는다', () => {
-    renderPane([row({ confirmed: true, statusCode: 'CONFIRMED' })]);
+    /* 확정된 줄은 글자로 보이므로 편집 칸의 정렬은 쓸 수 있는 줄로 본다. */
+    renderPane([row()]);
 
     const pane = screen.getByLabelText('생산계획 편집');
     const heading = within(pane).getByRole('heading', { name: '생산계획' });
     const table = within(pane).getByRole('table', { name: 'ERP W/O 생산계획 편집 표' });
     const quantity = within(table).getByRole('spinbutton', { name: 'PLAN-101 계획수량' });
-    const status = within(table).getByText('확정 · 편집 불가');
+    const status = within(table).getByText('DRAFT');
 
     expect(pane).toHaveClass('production-plan-section');
     expect(heading.parentElement).toHaveClass('production-plan-section-heading');
@@ -67,7 +68,7 @@ describe('ProductionPlanEditorPane', () => {
     expect(within(table).getByText('ERP W/O 생산계획 편집 표')).toHaveClass(
       'production-plan-table-caption',
     );
-    expect(quantity.closest('td')).toHaveAttribute('data-align', 'end');
+    expect(quantity.closest('td')).toHaveAttribute('data-align', 'center');
     expect(quantity.closest('.production-plan-quantity-field')).not.toBeNull();
     expect(status.closest('td')).toHaveAttribute('data-align', 'center');
   });
@@ -105,7 +106,9 @@ describe('ProductionPlanEditorPane', () => {
     renderPane([
       row({ key: 'over', planNo: 'PLAN-OVER', draft: { ...row().draft, plannedQty: '120' } }),
     ]);
-    expectBanner('ERP W/O 수량보다 20 EA 초과합니다.', 'alert', 'warning');
+    expectBanner('계획 수량이 초과되었습니다.', 'alert', 'warning');
+    /* 숫자 둘을 나란히 보인다 — 어디가 어긋났는지 배너 안에서 읽힌다. */
+    expect(screen.getByText('W/O 수량 100 EA · 계획 합계 120 EA')).toBeVisible();
     renderPane([]);
     expectBanner('계획을 1건 이상 추가해야 전개할 수 있습니다.', 'alert', 'error');
   });
@@ -120,27 +123,30 @@ describe('ProductionPlanEditorPane', () => {
     expect(screen.getByText('계획 수량 오류를 먼저 수정하세요.')).toBeVisible();
     expect(screen.getByText('서버 수량 오류')).toBeVisible();
   });
-  it('확정 또는 저장 중인 계획은 모든 편집·삭제를 잠근다', () => {
+  it('확정된 계획은 글자로 보이고 저장 중인 계획은 입력칸을 잠근다', () => {
     renderPane([
       row({ confirmed: true, statusCode: 'CONFIRMED' }),
       row({ key: 'pending', planNo: 'PLAN-PENDING', isPending: true }),
     ]);
-    const confirmed = screen.getByText('확정 · 편집 불가').closest('tr') as HTMLElement;
+    const confirmed = screen.getByText('확정').closest('tr') as HTMLElement;
     const pending = screen.getByText('저장 중').closest('tr') as HTMLElement;
-    for (const lockedRow of [confirmed, pending]) {
-      for (const role of ['button', 'combobox'] as const) {
-        expect(
-          within(lockedRow)
-            .getAllByRole(role)
-            .every((item) => item.hasAttribute('disabled')),
-        ).toBe(true);
-      }
-      expect(within(lockedRow).getByRole('spinbutton')).toBeDisabled();
-      expect(within(lockedRow).getByRole('textbox')).toBeDisabled();
+
+    /* 확정된 줄에는 쓰는 칸이 없다 — 값은 글자로 읽는다. */
+    expect(within(confirmed).queryByRole('combobox')).toBeNull();
+    expect(within(confirmed).queryByRole('spinbutton')).toBeNull();
+    expect(within(confirmed).getByText('2026-08-26')).toBeVisible();
+    expect(within(confirmed).getByText('60')).toBeVisible();
+    /* 적힌 비고는 「확인」 단추로 읽는다. */
+    expect(within(confirmed).getByRole('button', { name: /비고 확인/ })).toBeEnabled();
+
+    /* 저장 중인 줄은 곧 다시 쓸 수 있으므로 칸을 그대로 두고 잠근다. */
+    for (const control of within(pending).getAllByRole('combobox')) {
+      expect(control).toBeDisabled();
     }
-    expect(screen.getByText('확정된 계획은 수정할 수 없습니다.')).toBeVisible();
+    expect(within(pending).getByRole('spinbutton')).toBeDisabled();
     expect(within(pending).getByRole('button', { name: '삭제' })).toHaveAttribute('aria-busy');
   });
+
   it('신규 행 이름을 구분하고 선택 오류를 해당 입력과 연결한다', () => {
     renderPane([
       row({

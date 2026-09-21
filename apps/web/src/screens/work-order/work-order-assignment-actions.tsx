@@ -37,7 +37,7 @@ const AssignmentAction = ({
   const reasonId = useId();
 
   return (
-    <div className="field-cell">
+    <div className="field-cell work-order-assignment-action-cell">
       <Button
         type="button"
         variant={variant}
@@ -48,8 +48,12 @@ const AssignmentAction = ({
       >
         {label}
       </Button>
+      {/*
+        이유는 화면에 문장으로 쓰지 않는다 — 비활성 상태로 보이고, 보조기기에는 설명으로 남긴다
+        (사용자 지시 2026-09-20).
+      */}
       {reason !== null && (
-        <span id={reasonId} className="field-note">
+        <span id={reasonId} className="work-order-assignment-visually-hidden">
           {reason}
         </span>
       )}

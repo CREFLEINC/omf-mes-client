@@ -41,7 +41,9 @@ const POSTED = 'POSTED';
  */
 export type PendingReason =
   | { kind: 'notIssued' }
-  | { kind: 'printFailed'; issueCount: number };
+  | { kind: 'printFailed'; issueCount: number }
+  /** 이미 찍힌 라인 — 「발행 완료」 쪽에 선다. 재발행 사유를 골라 다시 찍을 수 있다. */
+  | { kind: 'issued'; issueCount: number };
 
 export interface PendingLine {
   goodsIssueId: number;
@@ -56,6 +58,13 @@ export interface PendingLine {
 export interface PendingList {
   /** 찍어야 할 라인 — 미발행이거나 **인쇄가 실패한** 것. 최근 전표가 위로 온다. */
   lines: readonly PendingLine[];
+  /**
+   * 이미 찍힌 라인 — **「발행 완료」 탭**(사용자 지시 2026-09-21 · omf-all-around#35).
+   *
+   * ⭐ 자재 LOT 라벨 발행(P-01-01)과 같은 짜임이다. 찍은 라인이 목록에서 통째로 빠지면
+   *    **라벨이 찢어졌을 때 다시 찍을 길이 없다** — 담당이 전표 번호를 외워 들어가야 했다.
+   */
+  issuedLines: readonly PendingLine[];
   /** 창 안에서 **더 찍을 것이 없는** 라인 수. 「대기 없음」이 왜 비었는지 말할 때 쓴다. */
   issuedCount: number;
   isLoading: boolean;
@@ -171,7 +180,7 @@ export const usePendingIssueLines = (): PendingList => {
 
     return found.lastPrintOutcome === 'FAILED'
       ? { kind: 'printFailed', issueCount: found.issueCount }
-      : null;
+      : { kind: 'issued', issueCount: found.issueCount };
   };
 
   /*
@@ -180,23 +189,25 @@ export const usePendingIssueLines = (): PendingList => {
    *    화면이 그 사실을 말한다(아래 `isLoading`·`isError`).
    */
   const ready = summary.isSuccess;
-  const pending = ready
+  const classified = ready
     ? all.flatMap((each) => {
         const reason = reasonOf(each);
 
         return reason === null ? [] : [{ ...each, reason }];
       })
     : [];
+  const pending = classified.filter((each) => each.reason.kind !== 'issued');
+  const issued = classified.filter((each) => each.reason.kind === 'issued');
 
   return {
     lines: pending,
-    issuedCount: ready ? all.length - pending.length : 0,
+    issuedLines: issued,
+    issuedCount: issued.length,
     isLoading:
       issues.isPending ||
       lineQueries.some((query) => query.isPending) ||
       (all.length > 0 && summary.isPending),
-    isError:
-      issues.isError || lineQueries.some((query) => query.isError) || summary.isError,
+    isError: issues.isError || lineQueries.some((query) => query.isError) || summary.isError,
     truncated: issues.data !== undefined && issues.data.page.total > sorted.length,
   };
 };

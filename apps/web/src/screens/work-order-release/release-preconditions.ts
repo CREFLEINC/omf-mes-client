@@ -11,6 +11,10 @@ export type WorkOrderReleaseBlockReason =
   | 'missingDefaultLocations'
   | 'alreadyReleased';
 
+/** 이 차단은 W-02-03 에서 고친다 — 위치는 Material 칸, 검증 차단은 4M 배정이다. */
+export const isFixedInAssignment = (reason: WorkOrderReleaseBlockReason | null): boolean =>
+  reason === 'missingDefaultLocations' || reason === 'validationBlocked';
+
 export interface WorkOrderReleasePreconditions {
   passesStaticGate: boolean;
   blockReason: WorkOrderReleaseBlockReason | null;

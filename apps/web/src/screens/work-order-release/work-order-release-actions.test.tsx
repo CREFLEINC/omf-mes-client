@@ -82,7 +82,8 @@ describe('WorkOrderReleaseActions', () => {
     expect(cancel).not.toHaveAttribute('aria-describedby');
     expect(release).toBeDisabled();
     expect(release).toHaveAccessibleDescription(reason);
-    expect(screen.getByText(reason)).toBeVisible();
+    // 원인은 「배포 전 확인」이 보인다 — 버튼 아래에는 다시 쓰지 않고 보조기기에만 남긴다
+    expect(screen.getByText(reason)).toHaveClass('work-order-release-visually-hidden');
   });
 
   it('keeps disabled release descriptions and reason IDs unique across instances', () => {

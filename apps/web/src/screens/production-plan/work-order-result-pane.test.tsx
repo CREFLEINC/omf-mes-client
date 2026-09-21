@@ -1,5 +1,6 @@
 import { render, screen } from '@testing-library/react';
-import { MemoryRouter } from 'react-router';
+import userEvent from '@testing-library/user-event';
+import { MemoryRouter, useLocation } from 'react-router';
 import { beforeEach, expect, it, vi } from 'vitest';
 
 import { WorkOrderResultPane } from './work-order-result-pane';
@@ -15,10 +16,16 @@ const query = (data: unknown, overrides: Record<string, unknown> = {}) => ({
   refetch: vi.fn(),
   ...overrides,
 });
+/** 이동 결과를 읽는다 — 단추가 부른 주소를 화면에 적어 둔다. */
+const LocationProbe = () => {
+  const location = useLocation();
+  return <output data-testid="location">{`${location.pathname}${location.search}`}</output>;
+};
 const renderPane = () =>
   render(
     <MemoryRouter>
       <WorkOrderResultPane productionPlanId={101} uomLabel="EA" />
+      <LocationProbe />
     </MemoryRouter>,
   );
 beforeEach(() => {
@@ -60,11 +67,13 @@ it('다른 Routing 소유 공정을 결과 표에 노출하지 않는다', () =>
   expect(screen.queryByRole('table')).not.toBeInTheDocument();
 });
 
-it('links a trusted result to the exact 4M assignment workspace', () => {
+it('moves a trusted result to the exact 4M assignment workspace', async () => {
+  /* 링크 대신 보조 동작 단추다(사용자 지시 2026-09-20) — 주소는 종전과 같다. */
   renderPane();
 
-  expect(screen.getByRole('link', { name: '4M 자원배정·유효성 점검으로 이동' })).toHaveAttribute(
-    'href',
+  await userEvent.click(screen.getByRole('button', { name: '4M 자원배정·유효성 점검으로 이동' }));
+
+  expect(screen.getByTestId('location')).toHaveTextContent(
     '/production/work-order-assignments?productionPlanId=101',
   );
 });

@@ -1,6 +1,8 @@
 import { AlertBanner, Chip, type Column, EmptyState, SkeletonText, Table } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 
+import { formatPlantDateTime } from '../../patterns/plant-time';
+
 import type { ProductionOrderCodeNames } from './code-names';
 import type { ProductionOrderPlanFact, ProductionOrderWorkOrderFact } from './detail-queries';
 import { describeReference, resolveReference, type ReferenceSource } from './reference-lookups';
@@ -28,9 +30,13 @@ export type ProductionOrderDetailListPaneProps = SharedProps &
 const quantity = (value: number, uomId: number, uoms: ReferenceSource): string =>
   `${String(value)} ${describeReference(resolveReference(uoms, uomId))}`;
 
+/* 서버 원문(UTC ISO)을 그대로 두지 않고 공장 시각으로 읽힌다 — 값 자체는 바꾸지 않는다. */
 const plannedRange = (start: string | null, end: string | null): string => {
   if (start === null && end === null) return t.detail.unscheduled;
-  return `${start ?? '-'} ~ ${end ?? '-'}`;
+  const at = (value: string | null): string =>
+    value === null ? '-' : (formatPlantDateTime(value) ?? value);
+
+  return `${at(start)} ~ ${at(end)}`;
 };
 
 const status = (label: string) => (
@@ -98,16 +104,20 @@ export const ProductionOrderDetailListPane = (props: ProductionOrderDetailListPa
   if (!props.isSelected) {
     return (
       <section className="pane production-order-pane" aria-label={paneLabel}>
-        <h2>{heading}</h2>
-        <p className="production-order-pane-description">{t.detail.unselectedNote}</p>
+        <div className="production-order-pane-heading">
+          <h2>{heading}</h2>
+          <span className="production-order-pane-description">{t.detail.unselectedNote}</span>
+        </div>
       </section>
     );
   }
   if (props.state.kind === 'LOADING') {
     return (
       <section className="pane production-order-pane" aria-label={paneLabel}>
-        <h2>{heading}</h2>
-        <p className="production-order-pane-description">{description}</p>
+        <div className="production-order-pane-heading">
+          <h2>{heading}</h2>
+          <span className="production-order-pane-description">{description}</span>
+        </div>
         <div role="status" aria-label={isPlans ? t.detail.planLoading : t.detail.workOrderLoading}>
           <SkeletonText lines={3} />
         </div>
@@ -117,8 +127,10 @@ export const ProductionOrderDetailListPane = (props: ProductionOrderDetailListPa
   if (props.state.kind === 'ERROR') {
     return (
       <section className="pane production-order-pane" aria-label={paneLabel}>
-        <h2>{heading}</h2>
-        <p className="production-order-pane-description">{description}</p>
+        <div className="production-order-pane-heading">
+          <h2>{heading}</h2>
+          <span className="production-order-pane-description">{description}</span>
+        </div>
         <AlertBanner
           variant="error"
           title={isPlans ? t.detail.planLoadFailedTitle : t.detail.workOrderLoadFailedTitle}
@@ -131,8 +143,10 @@ export const ProductionOrderDetailListPane = (props: ProductionOrderDetailListPa
 
   return (
     <section className="pane production-order-pane" aria-label={paneLabel}>
-      <h2>{heading}</h2>
-      <p className="production-order-pane-description">{description}</p>
+      <div className="production-order-pane-heading">
+        <h2>{heading}</h2>
+        <span className="production-order-pane-description">{description}</span>
+      </div>
       <div
         className={`wide-table production-order-table ${
           isPlans ? 'production-order-plan-table' : 'production-order-work-order-table'

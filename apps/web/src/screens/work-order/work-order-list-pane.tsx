@@ -2,7 +2,7 @@ import { Chip, type Column, EmptyState, SkeletonText, Table, TextField } from '@
 import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
 
-import { PageNav } from './page-nav';
+import { AssignmentPageNav } from './assignment-page-nav';
 import type { WorkOrderListRow } from './list-row';
 import type { WorkOrderPageView } from './pagination';
 
@@ -54,15 +54,18 @@ export const WorkOrderListPane = ({
         </button>
       ),
     },
+    /* W/O 번호만 왼쪽, 나머지는 가운데로 읽는다(사용자 지시 2026-09-20). */
     {
       key: 'operation',
       header: t.fields.operation,
+      align: 'center',
       render: (row) => operationLabel(row.operationLabel),
     },
-    { key: 'quantityLabel', header: t.fields.quantity, align: 'end' },
+    { key: 'quantityLabel', header: t.fields.quantity, align: 'center' },
     {
       key: 'priorityText',
       header: t.fields.priority,
+      align: 'center',
       render: (row) => (
         <TextField
           size="sm"
@@ -79,10 +82,11 @@ export const WorkOrderListPane = ({
         />
       ),
     },
-    { key: 'assignmentLabel', header: t.fields.assignment },
+    { key: 'assignmentLabel', header: t.fields.assignment, align: 'center' },
     {
       key: 'validationLabel',
       header: t.fields.validation,
+      align: 'center',
       render: (row) => (
         <Chip variant="status" status={row.validationTone} size="sm">
           {row.validationLabel}
@@ -130,7 +134,7 @@ export const WorkOrderListPane = ({
           }
         />
       </div>
-      <PageNav view={page} onChange={onChangePage} />
+      <AssignmentPageNav view={page} onChange={onChangePage} />
     </section>
   );
 };

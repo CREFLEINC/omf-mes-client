@@ -153,8 +153,10 @@ export const TargetCard = ({
       <div className="pop-target-actions">
         {isIssued ? (
           <Button
+            /* ⭐ [재인쇄]도 [등록·인쇄]와 같은 채운 단추다(사용자 지시 2026-09-21) — 두 보기에서
+               같은 자리·같은 무게의 주 조작이라 한쪽만 테두리 단추면 다른 일처럼 읽힌다. */
             className={popTouchClass('critical')}
-            variant="outlined"
+            variant="filled"
             size="xl"
             disabled={isBlocked}
             onClick={onReissue}

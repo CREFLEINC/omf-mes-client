@@ -17,7 +17,9 @@ export const productionPlan = {
   order: {
     pane: '선택 ERP W/O',
     heading: '선택 ERP W/O',
-    due: (dueDate: string): string => ` · 납기 ${dueDate}`,
+    /** 값마다 이름을 달아 한눈에 읽는다(사용자 지시 2026-09-20) */
+    fields: { item: '품목', quantity: '수량', dueDate: '납기' },
+    dueUnset: '납기 없음',
   },
 
   /**
@@ -87,11 +89,21 @@ export const productionPlan = {
     quantityField: '계획수량',
     lineUnset: '미지정',
     selectPlaceholder: '선택',
-    confirmedLock: '확정된 계획은 수정할 수 없습니다.',
-    confirmedChip: '확정 · 편집 불가',
+    confirmedChip: '확정',
     savingChip: '저장 중',
     remove: '삭제',
-    totalLabel: '합계',
+    /** 비고는 좁은 칸 대신 창에서 적는다(사용자 지시 2026-09-20) */
+    remarksEdit: (rowName: string): string => `${rowName} 비고 입력`,
+    remarksEmpty: '입력',
+    /** 이미 적힌 비고는 글을 칸에 늘어놓지 않고 고치는 단추로 보인다(사용자 지시 2026-09-20). */
+    remarksWritten: '수정',
+    /** 확정된 줄은 적지 못한다 — 적힌 비고가 있을 때만 보기 단추를 둔다 */
+    remarksView: '확인',
+    remarksViewLabel: (rowName: string): string => `${rowName} 비고 확인`,
+    remarksDialog: '비고',
+    /** 제목 옆 안내 — 확정 뒤에는 고칠 수 없다는 사실을 미리 알린다(사용자 지시 2026-09-20) */
+    confirmedNotice: '계획 확정 시 수정 및 삭제가 불가합니다.',
+    totalLabel: '계획 수량 합계',
     totalUnknown: '합계 계산 불가',
     total: (planned: string, ordered: string, uomLabel: string): string =>
       `${planned} / ${ordered} ${uomLabel}`,
@@ -104,9 +116,10 @@ export const productionPlan = {
   quantitySummary: {
     invalid: '계획 수량 오류를 먼저 수정하세요.',
     empty: '계획을 1건 이상 추가해야 전개할 수 있습니다.',
-    over: (amount: string, uomLabel: string): string =>
-      `ERP W/O 수량보다 ${amount} ${uomLabel} 초과합니다.`,
-    overDescription: '초과 생산 정책을 확인하세요.',
+    over: (): string => '계획 수량이 초과되었습니다.',
+    /** 숫자 둘을 나란히 보여 어디가 어긋났는지 바로 읽힌다(사용자 지시 2026-09-20) */
+    overFacts: (ordered: string, planned: string, uomLabel: string): string =>
+      `W/O 수량 ${ordered} ${uomLabel} · 계획 합계 ${planned} ${uomLabel}`,
     under: (amount: string, uomLabel: string): string =>
       `ERP W/O 수량보다 ${amount} ${uomLabel} 부족합니다.`,
     underDescription: '나눠 계획하는 중이면 계속 편집하세요.',
@@ -126,14 +139,17 @@ export const productionPlan = {
 
   /** ③ 확정 전 마지막 물음. 무엇이 함께 생기고 무엇을 잃는지 둘 다 적는다. */
   confirmDialog: {
-    title: (planNo: string): string => `${planNo} 전개 확정`,
+    planLabel: '생산계획',
     cancel: '취소',
     confirm: '전개 확정',
-    effect: '계획을 확정하면 Routing 공정별 W/O와 공정 의존 관계를 함께 생성합니다.',
-    irreversible: '서버가 한 트랜잭션으로 처리하며, 확정된 계획은 수정하거나 삭제할 수 없습니다.',
+    effect: '전개를 확정하면 Routing 공정별 W/O와 공정 간 의존 관계가 생성됩니다.',
+    /** 내부 처리 방식(트랜잭션)은 말하지 않는다 — 사용자가 판단할 내용만 남긴다. */
+    irreversible: '확정 후에는 이 계획을 수정하거나 삭제할 수 없습니다.',
   },
 
   /** 전개 결과. 확정이 만든 W/O 를 그 자리에서 확인한다. */
+  /** 전개 결과 목록의 쪽 이동 — 사유 문장을 상시로 내지 않는다(사용자 지시 2026-09-20). */
+  resultPageNav: { label: '전개된 W/O 쪽 이동', first: '첫 쪽', prev: '이전', next: '다음' },
   result: {
     pane: '전개된 작업지시',
     heading: (planName: string): string => `${planName} 전개 결과`,
@@ -175,6 +191,6 @@ export const productionPlan = {
     stale: '최신 ERP W/O를 확인하지 못했습니다.',
     retry: '다시 시도',
     keepsEdits: '현재 편집 내용은 유지됩니다.',
-    lotNotice: '생산 LOT 크기와 선발행은 W/O 확정·배포 단계에서 입력합니다.',
+    lotNotice: '생산 LOT 크기와 선발행 정보는 W/O 확정·배포 단계에서 입력합니다.',
   },
 } as const;

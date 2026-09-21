@@ -1,5 +1,7 @@
 import { messages } from '@omf-mes/i18n';
 import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { MemoryRouter, Route, Routes, useLocation } from 'react-router';
 import { describe, expect, it } from 'vitest';
 
 import type { WorkOrderReleasePreconditions } from './release-preconditions';
@@ -83,9 +85,7 @@ describe('WorkOrderReleaseStatusPane', () => {
       const pane = screen.getByRole('region', { name: t.pane });
 
       expect(pane).toHaveClass('work-order-release-status-pane');
-      expect(
-        screen.getByRole('heading', { level: 2, name: t.heading('SYN-WO-ALPHA') }),
-      ).toBeVisible();
+      expect(screen.getByRole('heading', { level: 2, name: t.status.heading })).toBeVisible();
       expect(banner).toHaveTextContent(copy);
       expect(banner.className).toContain(variant);
       expect(screen.getAllByRole(role)).toHaveLength(1);
@@ -112,26 +112,40 @@ describe('WorkOrderReleaseStatusPane', () => {
     expect(screen.queryByText(/최종.*준비|최종.*완료/)).toBeNull();
   });
 
-  it('renders supplied missing locations in order without raw IDs', () => {
+  it('names what is missing first, then where to fix it, in one banner', () => {
     const { container } = renderPane({
-      preconditions: preconditions({ missingDefaultLocations: ['scrap', 'wip', 'finishedGoods'] }),
+      preconditions: preconditions({
+        passesStaticGate: false,
+        blockReason: 'missingDefaultLocations',
+        missingDefaultLocations: ['scrap', 'wip', 'finishedGoods'],
+      }),
     });
-    const warning = screen.getByRole('alert');
-    const bannerSlot = container.querySelector('.banner-slot');
 
-    expect(screen.getByText(t.locations.missingTitle)).toBeVisible();
-    expect(screen.getByText(new RegExp(t.locations.missingDescription))).toBeVisible();
-    expect(warning).toHaveTextContent(t.locations.missingTitle);
-    expect(warning).toHaveTextContent(t.locations.missingDescription);
-    expect(warning).toHaveTextContent(
-      `${t.locations.scrap}, ${t.locations.wip}, ${t.locations.finishedGoods}`,
+    const [banner, ...others] = screen.getAllByRole('alert');
+    expect(others).toHaveLength(0);
+    expect(banner).toHaveTextContent(
+      t.locations.missingTitle(
+        `${t.locations.scrap}, ${t.locations.wip}, ${t.locations.finishedGoods}`,
+      ),
     );
-    expect(warning.className).toContain('warning');
-    expect(bannerSlot).not.toBeNull();
-    expect(bannerSlot).toContainElement(screen.getByText(t.status.staticPassed));
+    expect(banner).toHaveTextContent(t.locations.missingAction);
+    expect(banner).not.toHaveTextContent(t.status.missingDefaultLocations);
+    expect(container.querySelector('.banner-slot')).toBeNull();
     expect(screen.queryByText('911')).toBeNull();
-    expect(screen.queryByText('912')).toBeNull();
-    expect(screen.queryByText('913')).toBeNull();
+  });
+
+  it('names a single missing location without implying all three must be set', () => {
+    renderPane({
+      preconditions: preconditions({
+        passesStaticGate: false,
+        blockReason: 'missingDefaultLocations',
+        missingDefaultLocations: ['scrap'],
+      }),
+    });
+
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      t.locations.missingTitle(t.locations.scrap),
+    );
   });
 
   it('suppresses missing-location warning when none are supplied and has no controls', () => {
@@ -142,5 +156,71 @@ describe('WorkOrderReleaseStatusPane', () => {
     expect(screen.queryByRole('button')).toBeNull();
     expect(screen.queryByRole('textbox')).toBeNull();
     expect(screen.queryByRole('combobox')).toBeNull();
+  });
+
+  describe('fix button to the 4M screen', () => {
+    const target = { productionPlanId: 501, workOrderId: 701 };
+    const Landing = () => {
+      const location = useLocation();
+      return <p data-testid="landed">{`${location.pathname}${location.search}`}</p>;
+    };
+    const renderRouted = (result: WorkOrderReleasePreconditions) =>
+      render(
+        <MemoryRouter initialEntries={['/production/work-order-release']}>
+          <Routes>
+            <Route
+              path="/production/work-order-release"
+              element={
+                <WorkOrderReleaseStatusPane
+                  selectedWorkOrderNo="SYN-WO-ALPHA"
+                  preconditions={result}
+                  assignmentTarget={target}
+                />
+              }
+            />
+            <Route path="/production/work-order-assignments" element={<Landing />} />
+          </Routes>
+        </MemoryRouter>,
+      );
+
+    it.each([
+      preconditions({
+        passesStaticGate: false,
+        blockReason: 'missingDefaultLocations',
+        missingDefaultLocations: ['wip', 'scrap'],
+      }),
+      preconditions({ passesStaticGate: false, blockReason: 'validationBlocked' }),
+    ])('opens the 4M screen on the blocked W/O for $blockReason', async (result) => {
+      renderRouted(result);
+
+      await userEvent.click(screen.getByRole('button', { name: t.status.openAssignment }));
+
+      expect(screen.getByTestId('landed')).toHaveTextContent(
+        '/production/work-order-assignments?productionPlanId=501&workOrderId=701',
+      );
+    });
+
+    it.each([
+      preconditions(),
+      preconditions({ passesStaticGate: false, blockReason: 'alreadyReleased' }),
+      preconditions({ passesStaticGate: false, blockReason: 'validationUnavailable' }),
+    ])('offers no fix button when 4M cannot fix it ($blockReason)', (result) => {
+      renderRouted(result);
+
+      expect(screen.queryByRole('button', { name: t.status.openAssignment })).toBeNull();
+    });
+
+    it('offers no fix button before the W/O detail is known', () => {
+      renderPane({
+        preconditions: preconditions({
+          passesStaticGate: false,
+          blockReason: 'missingDefaultLocations',
+          missingDefaultLocations: ['wip'],
+        }),
+        assignmentTarget: null,
+      });
+
+      expect(screen.queryByRole('button', { name: t.status.openAssignment })).toBeNull();
+    });
   });
 });
