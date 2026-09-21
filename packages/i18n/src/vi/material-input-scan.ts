@@ -58,6 +58,10 @@ export const materialInputScan: Translated<typeof ko.materialInputScan> = {
       material: (lotNo: string): string => `Đã thêm ${lotNo}.`,
       mold: (moldCode: string): string => `Đã chỉ định khuôn ${moldCode}.`,
       duplicate: (lotNo: string): string => `${lotNo} đã được thêm rồi.`,
+      blockedStatus: (lotNo: string, statusName: string): string =>
+        `${lotNo} đang ở trạng thái 「${statusName}」 nên không thêm được. Chỉ vật tư bình thường mới đầu vào được.`,
+      blockedStatusUnknown: (lotNo: string): string =>
+        `Không xác nhận được trạng thái của ${lotNo} nên không thêm được. Lát nữa hãy đọc lại.`,
       ambiguous: (count: number): string =>
         `Tìm thấy cùng lúc ${String(count)} mục. Hãy đọc mã chính xác hơn.`,
       notFound: (code: string): string => `Không tìm thấy ${code}.`,

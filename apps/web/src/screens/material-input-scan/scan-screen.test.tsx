@@ -819,19 +819,33 @@ describe('MaterialInputScanScreen — 단말 게이팅', () => {
 
 describe('MaterialInputScanScreen — 자재 상태 표시', () => {
   /*
-   * 스펙 §5-2 — 투입 가부는 **서버가 정한다.** 화면이 상태 코드로 갈래를 만들면 화면이
-   * 판정한 것처럼 읽히고, 서버가 허용하는 자재를 작업자가 스스로 버린다.
+   * 스펙 §5-2 는 「정상만 투입 가능」이고 §6 예외표가 「Hold 자재 스캔 ⛔ 차단 — R37」이다.
+   * 담아 두면 수량까지 넣은 뒤 확정에서 서버에 거부당한다 — 그 헛수고를 스캔 자리에서 끊는다
+   * (omf-all-around#48). 최종 판정은 여전히 서버다.
    */
-  it('상태 코드를 그대로 보이고 그것으로 막지 않는다', async () => {
+  it('⛔ 정상이 아닌 LOT 은 담지 않고 그 자리에서 사유를 말한다', async () => {
     const user = userEvent.setup();
     renderScreen([lotsRoute([lot({ statusCode: 'INSPECTION_PENDING', held: true })])]);
+
+    await scanCode(user, 'SAMPLE-LOT-0001');
+
+    /* 상태 «이름»은 코드값 조회로 받은 것을 쓴다 — 화면이 그 말을 지어내지 않는다. */
+    await screen.findByText(t.scan.outcomes.blockedStatus('SAMPLE-LOT-0001', '검사 대기'));
+    expect(screen.queryByText(t.scan.outcomes.material('SAMPLE-LOT-0001'))).toBeNull();
+    /* 담기지 않았으므로 목록은 빈 안내로 남는다. */
+    expect(scannedHas('SAMPLE-LOT-0001')).toBe(false);
+  });
+
+  it('정상 LOT 은 담고 상태와 보류 표식을 그대로 보인다', async () => {
+    const user = userEvent.setup();
+    renderScreen([lotsRoute([lot({ statusCode: 'NORMAL', held: true })])]);
 
     await scanCode(user, 'SAMPLE-LOT-0001');
     await screen.findByText(t.scan.outcomes.material('SAMPLE-LOT-0001'));
 
     const item = within(scannedList()).getByText('SAMPLE-LOT-0001').closest('li');
     expect(item).not.toBeNull();
-    expect(within(item as HTMLElement).getByText(/검사 대기/)).toBeTruthy();
+    expect(within(item as HTMLElement).getByText(/정상/)).toBeTruthy();
     expect(within(item as HTMLElement).getByText(t.scanned.heldMark)).toBeTruthy();
   });
 });

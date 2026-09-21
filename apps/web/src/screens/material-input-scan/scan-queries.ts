@@ -8,6 +8,7 @@ import {
   toScannedMaterial,
   toScannedMold,
   type ScanDraft,
+  isInputAllowedStatus,
   type ScanOutcome,
 } from './scan';
 
@@ -24,11 +25,22 @@ import {
 type Client = ApiClient['client'];
 type LotItem = Parameters<typeof toScannedMaterial>[0];
 
-/** 찾은 LOT을 결과로 옮긴다. 이미 담긴 것이면 중복으로 말한다. */
-const toLotOutcome = (draft: ScanDraft, code: string, lot: LotItem): ScanOutcome =>
-  hasMaterial(draft, lot.lotId)
-    ? { kind: 'duplicate', code, lotNo: lot.lotNo }
-    : { kind: 'material', code, material: toScannedMaterial(lot) };
+/**
+ * 찾은 LOT을 결과로 옮긴다. 이미 담긴 것이면 중복으로, 투입할 수 없는 상태면 그 사유로 말한다.
+ *
+ * ⭐ **중복을 먼저 본다.** 이미 담긴 줄을 다시 읽은 것이라면 작업자가 할 일은 「상태를 고쳐
+ * 오라」가 아니라 「그 줄은 이미 있다」이다.
+ */
+const toLotOutcome = (draft: ScanDraft, code: string, lot: LotItem): ScanOutcome => {
+  if (hasMaterial(draft, lot.lotId)) return { kind: 'duplicate', code, lotNo: lot.lotNo };
+
+  const material = toScannedMaterial(lot);
+  if (!isInputAllowedStatus(material.statusCode)) {
+    return { kind: 'blocked-status', code, lotNo: material.lotNo, statusCode: material.statusCode };
+  }
+
+  return { kind: 'material', code, material };
+};
 
 /**
  * 스캔값 하나로 무엇을 읽었는지 정한다 — **세 단계이고 순서가 뜻을 정한다**(omf-mes#254 회신).

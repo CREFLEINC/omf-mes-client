@@ -39,7 +39,11 @@ const t = messages.materialInputScan;
  * 구분되지 않아 **담긴 줄 알고 넘어갈** 수 있었다 — 이 슬라이스가 다른 자리에서 계속 경계해 온
  * 바로 그 형태다(`scan-field.tsx` 머리말 「읽었다고 믿고 넘어간다」).
  */
-const describeOutcome = (outcome: ScanOutcome): ScanOutcomeView => {
+const describeOutcome = (
+  outcome: ScanOutcome,
+  /** 상태 코드를 사람이 읽는 말로 옮긴다. 화면이 그 말을 지어내지 않는다. */
+  describeStatus: (code: string) => string,
+): ScanOutcomeView => {
   switch (outcome.kind) {
     case 'material':
       return { tone: 'success', text: t.scan.outcomes.material(outcome.material.lotNo) };
@@ -48,6 +52,21 @@ const describeOutcome = (outcome: ScanOutcome): ScanOutcomeView => {
     /* 담기지 «않았다» — 실패는 아니지만 그냥 넘어가면 같은 것을 또 읽는다. */
     case 'duplicate':
       return { tone: 'warning', text: t.scan.outcomes.duplicate(outcome.lotNo) };
+    /*
+     * 담기 전에 막은 것이다(스펙 §6 R37). 다 담고 수량까지 넣은 뒤 서버에 거부당하는
+     * 헛수고를 여기서 끊는다. 서버 거부는 그대로 둔다 — 최종 판정은 서버다.
+     */
+    case 'blocked-status': {
+      const statusName = describeStatus(outcome.statusCode).trim();
+
+      return {
+        tone: 'error',
+        text:
+          statusName === ''
+            ? t.scan.outcomes.blockedStatusUnknown(outcome.lotNo)
+            : t.scan.outcomes.blockedStatus(outcome.lotNo, statusName),
+      };
+    }
     case 'ambiguous':
       return { tone: 'warning', text: t.scan.outcomes.ambiguous(outcome.count) };
     case 'not-found':
@@ -283,7 +302,7 @@ export const MaterialInputScanScreen = () => {
       }
     : outcome === undefined
       ? null
-      : describeOutcome(outcome);
+      : describeOutcome(outcome, statusLabels.describe);
 
   /* 띠와 버튼이 같은 값으로 서게, 잠금 사유는 이 한 곳에서 읽는다. */
   const blockReason = confirmBlockReason({
