@@ -53,12 +53,6 @@ export interface EmergencyWorkOrderScreenProps {
 }
 
 /**
- * `W-02-07` 긴급 W/O 발행.
- *
- * ⛔ **막힌 사유를 한 곳에서만 말한다** — 발행 버튼 옆이다. 구획마다 되풀이하면 한쪽만
- * 고쳐질 때 화면이 스스로와 어긋난다.
- */
-/**
  * 계획 없는 긴급 발행을 서버가 받는가.
  *
  * ⛔ 지금은 받지 않는다 — 서버가 내부 P/O 의 공장·사업부를 채울 근거가 없어 400 으로 거부한다
@@ -70,6 +64,12 @@ export interface EmergencyWorkOrderScreenProps {
  */
 const IS_PLANLESS_ISSUE_OPEN = false;
 
+/**
+ * `W-02-07` 긴급 W/O 발행.
+ *
+ * ⛔ **막힌 사유를 한 곳에서만 말한다** — 발행 버튼 옆이다. 구획마다 되풀이하면 한쪽만
+ * 고쳐질 때 화면이 스스로와 어긋난다.
+ */
 export const EmergencyWorkOrderScreen = ({
   typeCode = EMERGENCY_WORK_ORDER_TYPE_CODE,
   isPlanlessIssueOpen = IS_PLANLESS_ISSUE_OPEN,
