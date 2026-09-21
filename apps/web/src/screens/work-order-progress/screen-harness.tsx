@@ -58,14 +58,19 @@ const stub = (options: StubOptions = {}): { urls: string[]; fetch: StubFetch } =
       });
     }
 
+    /*
+     * 품목만 **번호마다 상세**를 부른다(`GET /mdm/items/{itemId}`) — 목록이 아니다.
+     * 응답이 `{ item, editability }` 봉투라는 것까지 여기서 굳힌다.
+     */
+    if (url.pathname === '/mdm/items/5001') {
+      return jsonResponse({
+        item: { itemId: 5001, itemCode: 'SYN-ITEM-0001', itemName: '합성 품목', isActive: true },
+        editability: {},
+      });
+    }
+
     /* 이름표들. 목록이 식별자만 주므로 화면이 이것들로 사람이 읽는 말을 만든다. */
     const named: Record<string, unknown> = {
-      '/mdm/items': {
-        itemId: 5001,
-        itemCode: 'SYN-ITEM-0001',
-        itemName: '합성 품목',
-        isActive: true,
-      },
       '/mdm/code-values': {
         codeValueId: 9001,
         codeGroupId: 42,

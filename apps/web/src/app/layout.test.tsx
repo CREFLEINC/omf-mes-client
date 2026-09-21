@@ -600,7 +600,7 @@ describe('AppLayout', () => {
     );
   });
 
-  it('생산 섹션의 P/O 조회·전개·4M 배정·배포·W/O 마감이 업무 순서대로 있다', () => {
+  it('생산 섹션의 P/O 조회·배포·W/O 마감이 업무 순서대로 있다', () => {
     renderLayout('본문 내용');
 
     const sidebar = screen.getByRole('navigation', { name: '주 메뉴' });
@@ -613,14 +613,12 @@ describe('AppLayout', () => {
       'href',
       '/production/production-orders',
     );
-    expect(within(sidebar).getByRole('link', { name: 'W/O 전개·편성' })).toHaveAttribute(
-      'href',
-      '/production/production-plans',
-    );
-    expect(within(sidebar).getByRole('link', { name: '4M 자원배정·유효성 점검' })).toHaveAttribute(
-      'href',
-      '/production/work-order-assignments',
-    );
+    /*
+     * ⛔ 전개·편성(`W-02-02`)과 4M 배정(`W-02-03`)은 메뉴에 «없다»(omf-all-around#41) — 주소에
+     * 대상이 실려야 그리는 화면이라 맨 주소로 열면 안내만 선다. 앞 화면의 이동 버튼으로 들어간다.
+     */
+    expect(links).not.toContain('/production/production-plans');
+    expect(links).not.toContain('/production/work-order-assignments');
     expect(
       within(sidebar).getByRole('link', { name: 'W/O 확정·배포·생산LOT 선발행' }),
     ).toHaveAttribute('href', '/production/work-order-release');
@@ -651,14 +649,8 @@ describe('AppLayout', () => {
     expect(links.indexOf('/production/po-change-review')).toBe(
       links.indexOf('/production/production-orders') + 1,
     );
-    expect(links.indexOf('/production/production-plans')).toBe(
-      links.indexOf('/production/po-change-review') + 1,
-    );
-    expect(links.indexOf('/production/work-order-assignments')).toBe(
-      links.indexOf('/production/production-plans') + 1,
-    );
     expect(links.indexOf('/production/work-order-release')).toBe(
-      links.indexOf('/production/work-order-assignments') + 1,
+      links.indexOf('/production/po-change-review') + 1,
     );
     expect(links.indexOf('/production/work-order-close')).toBe(
       links.indexOf('/production/work-order-release') + 1,
@@ -863,8 +855,6 @@ describe('AppLayout', () => {
       '/production/production-orders',
       /* W-02-06 — 받은 P/O 가 «바뀌었을 때» 판정하는 자리라 수신·조회 바로 뒤다. */
       '/production/po-change-review',
-      '/production/production-plans',
-      '/production/work-order-assignments',
       '/production/work-order-release',
       '/production/work-order-close',
       '/production/emergency-work-orders',
@@ -1420,7 +1410,7 @@ describe('AppLayout — 레일', () => {
 
     await collapseRail(user);
 
-    expect(within(navSidebar()).getAllByRole('link')).toHaveLength(69);
+    expect(within(navSidebar()).getAllByRole('link')).toHaveLength(67);
   });
 });
 
@@ -1449,7 +1439,7 @@ describe('AppLayout — 레일과 검색', () => {
     await typeQuery(user, '실사');
     await collapseRail(user);
 
-    expect(within(navSidebar()).getAllByRole('link')).toHaveLength(69);
+    expect(within(navSidebar()).getAllByRole('link')).toHaveLength(67);
   });
 
   /** 섹션 밖 항목이 빠지면 레일에서 대시보드로 갈 길이 사라진다. */

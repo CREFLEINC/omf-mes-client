@@ -28,7 +28,7 @@ import { LoadErrorBanner } from './load-error';
 import { toSubmitLock } from './lock';
 import {
   useCustomerOptions,
-  useItemLookup,
+  useItemNames,
   useLocations,
   useReasonOptions,
   useShipmentStatusLookup,
@@ -75,7 +75,7 @@ export const ReturnReceiptScreen = () => {
   const reasons = useReasonOptions();
   const statusLookup = useShipmentStatusLookup();
   const uoms = useUomLookup();
-  const items = useItemLookup();
+
   const warehouses = useWarehouses();
 
   const [draft, setDraft] = useState<ReceiptDraft>(EMPTY_RECEIPT_DRAFT);
@@ -121,6 +121,12 @@ export const ReturnReceiptScreen = () => {
       setLines(toLineDrafts(toReturnLineSources(detailData)));
     }
   }, [detailData, selectedShipmentId]);
+
+  /*
+   * 품목 이름은 **줄에 선 번호마다** 묻는다 — 목록 한 쪽으로 풀면 그 밖의 품목이
+   * 「알 수 없음」으로 선다(`lookups.ts`의 ⛔ 첫째).
+   */
+  const items = useItemNames(lines.map((line) => line.source.itemId));
 
   const lineErrors = useMemo(() => validateLines(lines), [lines]);
   const active = useMemo(() => activeLines(lines), [lines]);

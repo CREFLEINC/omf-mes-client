@@ -159,7 +159,9 @@ const WAREHOUSES_PATH = '/mdm/warehouses';
 const DETAIL_PATH = '/logistics/goods-receipts/9001';
 const MISSING_DETAIL_PATH = '/logistics/goods-receipts/9002';
 const BALANCES_PATH = '/inventory/balances';
-const ITEMS_PATH = '/mdm/items';
+/** 품목만 번호마다 상세를 부른다 — 경로가 하나가 아니라 번호마다 하나다. */
+const itemPath = (itemId: number): string => `/mdm/items/${String(itemId)}`;
+const ITEM_PATHS = itemFixtures.map((item) => itemPath(item.itemId));
 /**
  * 거래처 — **한 경로를 두 가지로 부른다**(변경 통지 #128). 선택지는 역할 코드로 좁혀 받고,
  * 이름 풀이는 좁히지 않는다. 어느 쪽인지는 **질의로만** 갈린다.
@@ -384,10 +386,11 @@ const failingReferenceRoute = (pathname: string): StubRoute => ({
 });
 
 const lineReferenceRoutes = (): StubRoute[] => [
-  {
-    match: (request) => isGet(request, ITEMS_PATH),
-    respond: () => jsonResponse(listBody(itemFixtures)),
-  },
+  ...itemFixtures.map((item) => ({
+    /* 품목 상세는 봉투로 온다 — 그 모양까지 여기서 굳힌다. */
+    match: (request: Request) => isGet(request, itemPath(item.itemId)),
+    respond: () => jsonResponse({ item, editability: {} }),
+  })),
   {
     match: (request) => isGet(request, UOMS_PATH),
     respond: () => jsonResponse(listBody(uomFixtures)),
@@ -747,7 +750,7 @@ const KNOWN_PATHS = [
   WAREHOUSES_PATH,
   DETAIL_PATH,
   BALANCES_PATH,
-  ITEMS_PATH,
+  ...ITEM_PATHS,
   UOMS_PATH,
   LOTS_PATH,
   LOCATIONS_PATH,
@@ -778,7 +781,7 @@ const expectNoUnknownPath = (requests: RecordedRequest[]): void => {
 const SELECTION_PATHS = [
   DETAIL_PATH,
   BALANCES_PATH,
-  ITEMS_PATH,
+  ...ITEM_PATHS,
   UOMS_PATH,
   LOTS_PATH,
   LOCATIONS_PATH,
@@ -1561,7 +1564,10 @@ describe('DisposalIssueScreen — 고른 전표의 상세 조회', () => {
     await waitForLines();
 
     expect(requestsTo(requests, DETAIL_PATH)).toHaveLength(1);
-    expect(requestsTo(requests, ITEMS_PATH)).toHaveLength(1);
+    /* 품목은 **줄이 가리키는 번호마다** 한 번씩이다 — 줄이 둘이고 품목이 둘이라 둘이다. */
+    for (const path of ITEM_PATHS) {
+      expect(requestsTo(requests, path)).toHaveLength(1);
+    }
     expect(requestsTo(requests, UOMS_PATH)).toHaveLength(1);
     expect(requestsTo(requests, LOCATIONS_PATH)).toHaveLength(1);
     expectNoUnknownPath(requests);
@@ -1668,7 +1674,9 @@ describe('DisposalIssueScreen — 고른 전표의 상세 조회', () => {
     });
 
     /* 참조는 그대로다 — 기준정보는 이 조작으로 달라지지 않는다. */
-    expect(requestsTo(requests, ITEMS_PATH)).toHaveLength(1);
+    for (const path of ITEM_PATHS) {
+      expect(requestsTo(requests, path)).toHaveLength(1);
+    }
     expect(requestsTo(requests, WAREHOUSES_PATH)).toHaveLength(1);
   });
 });

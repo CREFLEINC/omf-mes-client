@@ -150,8 +150,16 @@ const buildFetch = (options: StubOptions = {}): StubFetch => {
         }),
     },
     {
-      match: (r) => r.url.includes('/mdm/items'),
-      respond: () => jsonResponse({ items: [], page }),
+      /*
+       * 품목은 **번호마다 상세**를 부른다(`GET /mdm/items/{itemId}`) — 목록이 아니다.
+       * 응답이 `{ item, editability }` 봉투라는 것까지 여기서 굳힌다.
+       */
+      match: (r) => r.url.includes('/mdm/items/501'),
+      respond: () =>
+        jsonResponse({
+          item: { itemId: 501, itemCode: 'FG-501', itemName: '합성 완제품 가', isActive: true },
+          editability: {},
+        }),
     },
     { match: (r) => r.url.includes('/mdm/uoms'), respond: () => jsonResponse({ items: [], page }) },
     {
@@ -251,6 +259,20 @@ const submitRequest = async (user: ReturnType<typeof userEvent.setup>): Promise<
 };
 
 describe('W-04-10 제품 폐기 요청 — 화면', () => {
+  /**
+   * **품목 이름은 번호마다 상세로 푼다**(omf-all-around#37).
+   *
+   * 목록 첫 쪽(계약 기본 50건)으로 풀던 때는 그 쪽 밖의 품목이 전부 「알 수 없음」으로 섰고,
+   * 그 문구는 *값이 잘못됐다*는 뜻이라 사용자에게 정반대로 읽혔다(G-9).
+   */
+  it('대상 표의 품목을 「코드 · 이름」으로 낸다', async () => {
+    openScreen();
+
+    expect(await screen.findByText('FG-501 · 합성 완제품 가')).toBeInTheDocument();
+    /* 짝 방향 — 이름 자리가 「알 수 없음」으로 남지 않는다. */
+    expect(screen.queryByText(messages.common.reference.unknown)).not.toBeInTheDocument();
+  });
+
   /** ⭐ 처분 사유를 요청 사유의 기본값으로 인용한다(§5-5) — 승인자가 판정 근거를 바로 본다. */
   it('대상을 고르면 처분 사유가 요청 사유에 채워진다', async () => {
     const user = userEvent.setup();

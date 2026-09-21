@@ -6,7 +6,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { purchaseOrder, purchaseOrderLineFixtures } from './fixtures';
 import { createDrafts, setDraftQty, type LineDrafts } from './line-draft';
-import type { ReferenceSource } from './lookups';
+import type { ItemNameLookup, ReferenceSource, ReferenceState } from './lookups';
 import { toSplitLines, type SplitLineView } from './split-calc';
 import {
   buildSplitLineColumns,
@@ -38,16 +38,35 @@ const source = (
   ...overrides,
 });
 
-/* 9302(품목)는 일부러 빼 둔다 — 「목록에 없음」 갈래를 실제 값으로 만든다. */
-const ITEMS = source([[9301, 'SAMPLE-ITEM-01 · 합성 품목 가']]);
+/**
+ * 품목은 번호마다 하나씩 풀어 목록 참조가 아니다 — 번호를 표기 상태로 바로 옮기는 풀이를 세운다.
+ *
+ * 9302(9402번 줄의 품목)는 **아직 답이 오지 않은** 상태로 둔다. 번호마다 묻는 방식에서는
+ * 한 줄의 이름이 늦게 오는 일이 실제로 있고(요청이 줄 수만큼이다), 그 사이에 번호를
+ * 그리지 않는지는 이 줄로 검사한다.
+ */
+const itemNames = (
+  states: Record<number, ReferenceState>,
+  overrides: Partial<ItemNameLookup> = {},
+): ItemNameLookup => ({
+  of: (itemId) => states[itemId] ?? { kind: 'loading' },
+  isError: false,
+  refetch: () => undefined,
+  ...overrides,
+});
+
+const ITEMS = itemNames({
+  9301: { kind: 'named', label: 'SAMPLE-ITEM-01 · 합성 품목 가' },
+  9302: { kind: 'loading' },
+});
 const UOMS = source([[9501, 'SAMPLE-EA · 합성 단위 개']]);
 const PLANTS = source([[9201, 'SAMPLE-PLT-01 · 합성 공장 가']]);
 
 const columnsWith = (
-  itemLookup: ReferenceSource = ITEMS,
+  names: ItemNameLookup = ITEMS,
   uomLookup: ReferenceSource = UOMS,
 ): Column<SplitLineView>[] =>
-  buildSplitLineColumns({ itemLookup, uomLookup, onChangeQty: () => undefined });
+  buildSplitLineColumns({ itemNames: names, uomLookup, onChangeQty: () => undefined });
 
 const rowsWith = (texts: Record<number, string> = {}): SplitLineView[] =>
   toSplitLines(
@@ -69,7 +88,7 @@ const renderTable = (overrides: Partial<SplitLineTableProps> = {}) => {
       rows={rowsWith()}
       isLoading={false}
       plantLookup={PLANTS}
-      itemLookup={ITEMS}
+      itemNames={ITEMS}
       uomLookup={UOMS}
       onChangeQty={onChangeQty}
       onRetryReferences={onRetryReferences}
@@ -131,11 +150,11 @@ describe('SplitLineTable — 발주 라인의 네 수치', () => {
     expect(within(table()).getByText(t.lineTable.remainingPair(0, 5))).toBeInTheDocument();
   });
 
-  it('품목을 이름으로 풀고 목록에 없으면 번호 대신 문구를 낸다', () => {
+  it('품목을 이름으로 풀고 아직 못 받은 줄은 번호 대신 문구를 낸다', () => {
     renderTable();
 
     expect(within(table()).getAllByText('SAMPLE-ITEM-01 · 합성 품목 가')).toHaveLength(2);
-    expect(within(table()).getByText(t.values.unknown)).toBeInTheDocument();
+    expect(within(table()).getByText(t.values.referenceLoading)).toBeInTheDocument();
     expect(within(table()).queryByText('9302')).not.toBeInTheDocument();
   });
 
@@ -269,6 +288,20 @@ describe('SplitLineTable — 라인이 없거나 참조가 실패한 경우', ()
     });
 
     expect(screen.getByText(t.reasons.lineReferencesFailed)).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: messages.common.retry }));
+
+    expect(onRetryReferences).toHaveBeenCalledTimes(1);
+  });
+
+  /* 품목은 줄마다 따로 부른다 — 한 줄만 실패해도 그 줄의 이름이 비므로 복구 수단이 필요하다. */
+  it('품목 이름 하나가 실패해도 안내와 복구 수단을 낸다', async () => {
+    const { onRetryReferences, user } = renderTable({
+      itemNames: itemNames({ 9301: { kind: 'failed' } }, { isError: true }),
+    });
+
+    expect(screen.getByText(t.reasons.lineReferencesFailed)).toBeInTheDocument();
+    expect(within(table()).getAllByText(t.values.referenceFailed).length).toBeGreaterThan(0);
 
     await user.click(screen.getByRole('button', { name: messages.common.retry }));
 

@@ -1,10 +1,11 @@
 import { messages } from '@omf-mes/i18n';
-import { useQuery } from '@tanstack/react-query';
+import { useQueries, useQuery } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
+import { fetchAllPages } from '../../patterns/fetch-all-pages';
 import type { LookupEntry, LookupSource } from '../../patterns/lookup-display';
 import { masterName } from '../../patterns/master-name';
-import { runRequest } from '../../patterns/request';
+import { runRequest, toApiError } from '../../patterns/request';
 import {
   CUSTOMER_ROLE,
   LOOKUP_PAGE_SIZE,
@@ -73,30 +74,81 @@ export const useUomLookup = (): ReceiptLookup => {
   return toLookup(query.data, query.isError, query.isPending);
 };
 
-/** 품목 이름 — 직접 찾은 LOT 은 품목 번호만 든다. 배분은 코드를 실어 오지만 이름은 여기서 붙인다. */
-export const useItemLookup = (): ReceiptLookup => {
-  const { client } = useApiClient();
-  const query = useQuery({
-    queryKey: [ROOT, 'items'],
-    queryFn: async () => {
-      const data = await runRequest(() =>
-        client.GET('/mdm/items', {
-          params: { query: { includeInactive: true, size: LOOKUP_PAGE_SIZE } },
-        }),
-      );
+/** 그 번호의 품목이 없다(404). **못 받은 것과 다르다** — 다시 부를 이유가 없다. */
+const isNotFound = (error: unknown): boolean => {
+  const apiError = toApiError(error);
 
-      return {
-        entries: data.items.map((item) => ({
-          value: String(item.itemId),
-          label: `${item.itemCode} · ${nameOr(masterName(item, item.itemName))}`,
-          isActive: item.isActive,
-        })),
-        page: data.page,
-      };
-    },
+  return apiError.kind === 'http' && apiError.status === 404;
+};
+
+/** 아직 묻지 않은 번호의 자리. 「없다」가 아니라 「아직 오지 않았다」로 읽혀야 한다. */
+const PENDING_SOURCE: LookupSource = { entries: EMPTY_ENTRIES, isError: false, isLoading: true };
+
+/**
+ * 품목 이름 — 직접 찾은 LOT 은 품목 번호만 든다(배분은 코드를 실어 오지만 이름은 여기서 붙인다).
+ * **번호로 하나씩 푼다**(`GET /mdm/items/{itemId}`).
+ *
+ * ⛔ **목록 한 쪽으로 풀지 않는다.** 종전에는 `GET /mdm/items?size=200`을 한 번 받아 그 안에서
+ *    이름을 찾았다 — `size` 상한이 200이라 품목 마스터가 그보다 크면 그 밖의 품목이 **전부**
+ *    「알 수 없음」으로 섰다(omf-all-around#37). 마스터가 9,269건인 환경이 실재한다.
+ *    **직접 찾은 LOT 에서 그 자리가 드러난다** — 배분과 달리 행에 품목 코드가 없어
+ *    이름이 그 줄의 **유일한 표시**다.
+ * ⛔ **쪽을 돌며 다 받는 것으로 바꾸지 않는다.** 첫 진입에 46번을 부르게 되고, 얻는 것은
+ *    줄에 실제로 선 몇 품목의 이름뿐이다.
+ * ⭐ 부르는 횟수는 **줄에 선 품목 수**다. 같은 품목의 줄이 여럿이면 요청도 하나다.
+ *
+ * **「잘림」 축이 사라진다** — 목록을 부르지 않으므로 쪽 자체가 없다.
+ * 없는 품목(404)은 실패가 아니라 「알 수 없음」이다(빈 원천으로 낸다).
+ */
+export interface ItemNameLookup {
+  of: (itemId: number) => LookupSource;
+  /** 하나라도 **못 받았는가**(404는 아니다). */
+  isError: boolean;
+  refetch: () => void;
+}
+
+export const useItemNames = (itemIds: readonly number[]): ItemNameLookup => {
+  const { client } = useApiClient();
+  const uniqueIds = [...new Set(itemIds)].sort((left, right) => left - right);
+
+  const results = useQueries({
+    queries: uniqueIds.map((itemId) => ({
+      queryKey: [ROOT, 'item-name', itemId] as const,
+      queryFn: () =>
+        runRequest(() => client.GET('/mdm/items/{itemId}', { params: { path: { itemId } } })),
+    })),
   });
 
-  return toLookup(query.data, query.isError, query.isPending);
+  return {
+    of: (itemId) => {
+      const index = uniqueIds.indexOf(itemId);
+      const result = index === -1 ? undefined : results[index];
+
+      if (result === undefined) return PENDING_SOURCE;
+
+      const item = result.data?.item;
+
+      return {
+        entries:
+          item === undefined
+            ? EMPTY_ENTRIES
+            : [
+                {
+                  value: String(itemId),
+                  label: `${item.itemCode} · ${nameOr(masterName(item, item.itemName))}`,
+                  isActive: item.isActive,
+                },
+              ],
+        /* 없는 품목은 실패가 아니다 — 빈 원천이 되어 「알 수 없음」으로 읽힌다. */
+        isError: result.isError && !isNotFound(result.error),
+        isLoading: result.isPending,
+      };
+    },
+    isError: results.some((result) => result.isError && !isNotFound(result.error)),
+    refetch: () => {
+      for (const result of results) void result.refetch();
+    },
+  };
 };
 
 /** 출하 상태 표시명 — 계약은 코드만 내린다(G-32). 없으면 코드를 그대로 보인다. */
@@ -144,10 +196,13 @@ export const useCustomerOptions = (): CodeOptionSource => {
   const query = useQuery({
     queryKey: [ROOT, 'customers'],
     queryFn: async () => {
-      const data = await runRequest(() =>
-        client.GET('/mdm/partners', {
-          params: { query: { roleTypeCode: CUSTOMER_ROLE, size: LOOKUP_PAGE_SIZE } },
-        }),
+      /* 고객은 639건이라 한 쪽에 들어가지 않는다 — 끝까지 받는다(omf-all-around#38). */
+      const data = await fetchAllPages((page, size) =>
+        runRequest(() =>
+          client.GET('/mdm/partners', {
+            params: { query: { roleTypeCode: CUSTOMER_ROLE, page, size } },
+          }),
+        ),
       );
 
       return data.items

@@ -10,7 +10,12 @@ import {
 import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
 
-import { describeReference, toReference, type ReferenceSource } from './lookups';
+import {
+  describeReference,
+  toReference,
+  type ItemNameLookup,
+  type ReferenceSource,
+} from './lookups';
 import type { SplitLineView } from './split-calc';
 import type { PoView } from './types';
 
@@ -20,7 +25,8 @@ const t = messages.overReceiptSplit;
 const orEmptyMark = (value: string | null): ReactNode => value ?? t.values.empty;
 
 export interface SplitLineColumnsInput {
-  itemLookup: ReferenceSource;
+  /** 품목은 번호마다 하나씩 푼다 — 목록 참조가 아니라 풀이 함수를 받는다. */
+  itemNames: ItemNameLookup;
   uomLookup: ReferenceSource;
   onChangeQty: (purchaseOrderLineId: number, text: string) => void;
 }
@@ -50,7 +56,7 @@ export interface SplitLineColumnsInput {
  * 흡수 열이 실제로 받는 폭은 216px(928 − 712)로 예산 200px보다 넓다.
  */
 export const buildSplitLineColumns = ({
-  itemLookup,
+  itemNames,
   uomLookup,
   onChangeQty,
 }: SplitLineColumnsInput): Column<SplitLineView>[] => [
@@ -64,7 +70,7 @@ export const buildSplitLineColumns = ({
   {
     key: 'item',
     header: t.lineTable.item,
-    render: (row) => describeReference(toReference(itemLookup, row.line.itemId)),
+    render: (row) => describeReference(itemNames.of(row.line.itemId)),
   },
   {
     key: 'ordered',
@@ -163,12 +169,12 @@ export const SplitLineTable = ({
   rows,
   isLoading,
   plantLookup,
-  itemLookup,
+  itemNames,
   uomLookup,
   onChangeQty,
   onRetryReferences,
 }: SplitLineTableProps) => {
-  const columns = buildSplitLineColumns({ itemLookup, uomLookup, onChangeQty });
+  const columns = buildSplitLineColumns({ itemNames, uomLookup, onChangeQty });
 
   const summary: SummaryItem[] = [
     {
@@ -200,7 +206,7 @@ export const SplitLineTable = ({
   ];
 
   /* 이 구획이 이름을 내는 참조 셋 중 **하나라도** 실패하면 안내와 복구 수단을 낸다. */
-  const hasReferenceError = itemLookup.isError || uomLookup.isError || plantLookup.isError;
+  const hasReferenceError = itemNames.isError || uomLookup.isError || plantLookup.isError;
 
   return (
     <>

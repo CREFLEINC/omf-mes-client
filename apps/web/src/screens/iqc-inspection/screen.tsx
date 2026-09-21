@@ -39,6 +39,7 @@ import { RequestDetailPane } from './request-detail-pane';
 import { ResultFormPane } from './result-form-pane';
 import { RoundHistory } from './round-history';
 import { latestRound, previousRounds } from './types';
+import { useItemNames, useLotNumbers } from './reference-lookup';
 import { useUomLookup } from './uom-lookup';
 
 /**
@@ -279,6 +280,16 @@ export const IqcInspectionScreen = () => {
   const inspectedQty = round?.inspectedQty ?? detail.data?.targetQty ?? 0;
   /* 수량 옆 단위 코드(표시 전용). 회차는 의뢰의 단위로 저장되므로(저장 요청의 `uomId`) 의뢰 단위 하나를 쓴다. */
   const uoms = useUomLookup();
+
+  /*
+   * 품목·자재 LOT 은 **번호마다 하나씩** 이름으로 푼다 — 계약이 식별자만 싣고, 번호를 그대로
+   * 보이면 검사자가 무엇을 검사하는지 알 수 없다(omf-all-around#40).
+   *
+   * 큐에 선 줄과 고른 의뢰를 **함께** 넘긴다 — 고른 의뢰가 다른 쪽에 있으면 큐에 없어서,
+   * 큐만 넘기면 상세의 이름이 비는 자리가 생긴다.
+   */
+  const itemNames = useItemNames([...rows.map((row) => row.itemId), detail.data?.itemId]);
+  const lotNumbers = useLotNumbers([...rows.map((row) => row.lotId), detail.data?.lotId]);
   const uomCode = uoms.codeOf(detail.data?.uomId);
 
   /*
@@ -361,7 +372,12 @@ export const IqcInspectionScreen = () => {
       <p className="field-note">{t.detail.loading}</p>
     ) : (
       <>
-        <RequestDetailPane detail={detail.data} uomCode={uomCode} />
+        <RequestDetailPane
+          detail={detail.data}
+          uomCode={uomCode}
+          itemNames={itemNames}
+          lotNumbers={lotNumbers}
+        />
         {rounds.isPending ? (
           <p className="field-note">{t.result.loading}</p>
         ) : (
@@ -457,7 +473,14 @@ export const IqcInspectionScreen = () => {
             />
           )}
 
-          <QueueTable rows={rows} selectedId={selectedId} onSelect={select} empty={emptyContent} />
+          <QueueTable
+            rows={rows}
+            itemNames={itemNames}
+            lotNumbers={lotNumbers}
+            selectedId={selectedId}
+            onSelect={select}
+            empty={emptyContent}
+          />
 
           {/*
            * ⛔ **셀 것이 없으면 그리지 않는다.** 조회가 끝나기 전이나 실패했을 때는 총계를

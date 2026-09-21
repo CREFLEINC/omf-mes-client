@@ -9,7 +9,7 @@ import {
   resolvedWarehouseId,
   toWarehouseOptions,
   useActiveWarehouses,
-  useItemLookup,
+  useItemNames,
   useUomLookup,
 } from './lookups';
 import { LotPane } from './lot-pane';
@@ -72,10 +72,15 @@ export const ExpeditedShipmentScreen = ({
   const [showErrors, setShowErrors] = useState(false);
   const [confirming, setConfirming] = useState<ShipmentCreateBody | null>(null);
 
-  const items = useItemLookup();
   const uoms = useUomLookup();
   const lotQuery = useProductionLotCandidates();
   const lots = lotQuery.data?.items ?? [];
+
+  /*
+   * 품목 이름은 **선택지에 선 LOT이 가리키는 번호마다** 묻는다 — 목록 첫 쪽으로 풀면
+   * 그 쪽 밖의 품목이 전부 「알 수 없음」으로 선다(`lookups.ts`의 ⛔ 첫째).
+   */
+  const items = useItemNames(lots.map((lot) => lot.itemId));
   const selectedLot = lots.find((lot) => lot.lotId === selectedLotId) ?? null;
   const release = lotReleaseState(selectedLot, inspectionPendingCode);
 

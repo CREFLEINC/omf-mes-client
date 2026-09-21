@@ -2,6 +2,7 @@ import type { components } from '@omf-mes/api-client';
 import { useQueries, useQuery, type UseQueryResult } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
+import { fetchAllPages } from '../../patterns/fetch-all-pages';
 import { runRequest } from '../../patterns/request';
 import {
   DISPOSAL_DISPOSITION_TYPE,
@@ -102,10 +103,16 @@ export const useDisposalPartners = (): UseQueryResult<DisposalPartner[]> => {
   return useQuery({
     queryKey: disposalRequestKeys.partners(),
     queryFn: async () => {
-      const data = await runRequest(() =>
-        client.GET('/mdm/partners', {
-          params: { query: { roleTypeCode: DISPOSAL_PARTNER_ROLE, page: 1, size: PAGE_SIZE } },
-        }),
+      /*
+       * 역할로 좁혀도 한 쪽에 들어간다는 보장이 없다 — 거래처는 936건이고 역할별로도
+       * 수백 건이다(omf-all-around#38). 끝까지 받는다.
+       */
+      const data = await fetchAllPages((page, size) =>
+        runRequest(() =>
+          client.GET('/mdm/partners', {
+            params: { query: { roleTypeCode: DISPOSAL_PARTNER_ROLE, page, size } },
+          }),
+        ),
       );
 
       return data.items.map(toDisposalPartner);

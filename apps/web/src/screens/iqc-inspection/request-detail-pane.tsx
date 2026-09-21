@@ -2,6 +2,7 @@ import { messages } from '@omf-mes/i18n';
 
 import { formatDateTime, type InspectionRequestDetail } from './types';
 import { withUom } from './uom-lookup';
+import type { NameLookup } from './reference-lookup';
 
 /**
  * 고른 의뢰의 상세 — **스펙 §4-A 의 여섯 항목이다.**
@@ -24,9 +25,18 @@ export interface RequestDetailPaneProps {
   detail: InspectionRequestDetail;
   /** 수량 옆에 붙일 단위 코드. 모르면 `null` — 숫자만 둔다 */
   uomCode: string | null;
+  /** 품목 이름 풀이. **번호가 아니라 「코드 · 이름」을 보인다**(omf-all-around#40). */
+  itemNames: NameLookup;
+  /** 자재 LOT 번호 풀이. 검사자가 손에 든 라벨과 대조하는 값이다. */
+  lotNumbers: NameLookup;
 }
 
-export const RequestDetailPane = ({ detail, uomCode }: RequestDetailPaneProps) => {
+export const RequestDetailPane = ({
+  detail,
+  uomCode,
+  itemNames,
+  lotNumbers,
+}: RequestDetailPaneProps) => {
   /* 식별에 쓰이는 넷(의뢰번호·품목·대상 LOT·검사수량)은 값을 조금 굵게 — 먼저 눈에 들어오게. */
   const items = [
     {
@@ -36,11 +46,16 @@ export const RequestDetailPane = ({ detail, uomCode }: RequestDetailPaneProps) =
       emphasized: true,
     },
     { key: 'type', label: t.fields.inspectionTypeCode, value: detail.inspectionTypeCode },
-    { key: 'item', label: t.fields.itemId, value: String(detail.itemId), emphasized: true },
+    {
+      key: 'item',
+      label: t.fields.itemId,
+      value: itemNames.labelOf(detail.itemId),
+      emphasized: true,
+    },
     {
       key: 'lot',
       label: t.fields.lotId,
-      value: detail.lotId === null ? empty : String(detail.lotId),
+      value: lotNumbers.labelOf(detail.lotId),
       emphasized: true,
     },
     {

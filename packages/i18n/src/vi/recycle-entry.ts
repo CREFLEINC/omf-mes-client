@@ -13,8 +13,7 @@ export const recycleEntry: Translated<typeof ko.recycleEntry> = {
     manualSubmit: 'Tìm',
     searching: 'Đang tìm mặt hàng',
     loadFailed: 'Không xác nhận được mặt hàng',
-    notRecycled: (itemCode: string) =>
-      `Mặt hàng tái chế chưa được đăng ký — đã đọc ${itemCode}`,
+    notRecycled: (itemCode: string) => `Mặt hàng tái chế chưa được đăng ký — đã đọc ${itemCode}`,
     notRecycledWhy: 'Phải đăng ký mặt hàng tái chế ở Web quản trị trước.',
     chosen: (code: string, name: string) => `${code} ${name}`,
     uom: (code: string) => `Đơn vị ${code}`,

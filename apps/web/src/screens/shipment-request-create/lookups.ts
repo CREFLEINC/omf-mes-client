@@ -3,6 +3,7 @@ import { messages } from '@omf-mes/i18n';
 import { useQueries, useQuery } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
+import { fetchAllPages } from '../../patterns/fetch-all-pages';
 import { runRequest } from '../../patterns/request';
 import type { LookupEntry, PageMeta } from './types';
 
@@ -89,6 +90,8 @@ const toPartnerLookupResult = (
     | {
         items: { partnerId: number; partnerCode: string; partnerName: string; isActive: boolean }[];
         page: PageMeta;
+        /** 쪽을 끝까지 받고도 총계에 못 미쳤는가(`fetchAllPages`). */
+        truncated: boolean;
       }
     | undefined,
   isError: boolean,
@@ -101,7 +104,7 @@ const toPartnerLookupResult = (
       label: `${item.partnerCode} · ${item.partnerName}`,
       isActive: item.isActive,
     })) ?? EMPTY_ENTRIES,
-  truncated: data !== undefined && isTruncated(data.page, data.items.length),
+  truncated: data?.truncated === true,
   isError,
   isLoading,
   refetch,
@@ -114,8 +117,12 @@ export const useCustomerOptions = (): LookupResult => {
   const query = useQuery({
     queryKey: lookupKeys.customers,
     queryFn: () =>
-      runRequest(() =>
-        client.GET('/mdm/partners', { params: { query: { includeInactive: true } } }),
+      fetchAllPages((page, size) =>
+        runRequest(() =>
+          client.GET('/mdm/partners', {
+            params: { query: { includeInactive: true, page, size } },
+          }),
+        ),
       ),
   });
 
@@ -131,8 +138,12 @@ export const useShipToPartnerOptions = (): LookupResult => {
   const query = useQuery({
     queryKey: lookupKeys.shipToPartners,
     queryFn: () =>
-      runRequest(() =>
-        client.GET('/mdm/partners', { params: { query: { includeInactive: true } } }),
+      fetchAllPages((page, size) =>
+        runRequest(() =>
+          client.GET('/mdm/partners', {
+            params: { query: { includeInactive: true, page, size } },
+          }),
+        ),
       ),
   });
 

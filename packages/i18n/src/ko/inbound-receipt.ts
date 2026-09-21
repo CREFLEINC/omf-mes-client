@@ -20,6 +20,8 @@ export const inboundReceipt = {
     /** 읽은 값을 함께 보인다. 스캐너 설정에 따라 구분자 `|` 가 다른 글자로 들어온다. */
     malformed: (read: string) =>
       `자재 LOT 번호 형식이 아닙니다(제품코드|수량|날짜|공급사|번호). 읽은 값: ${read}`,
+    /** 이 공장에 이미 있는 LOT 의 라벨. 받으면 전송 뒤 서버가 거부한다(omf-all-around#28). */
+    registered: (read: string) => `이미 등록된 LOT입니다. 읽은 값: ${read}`,
     scanned: (lotNo: string) => `공급사 LOT ${lotNo}`,
     externalEntry: '납품서의 공급사 LOT 번호 입력',
     externalLabel: '공급사 LOT 번호',
@@ -67,7 +69,11 @@ export const inboundReceipt = {
     linesLoading: '자재 P/O 라인을 불러오는 중입니다',
     linesLoadFailed: '자재 P/O 라인을 확인할 수 없습니다',
     linesNone: '이 자재 P/O에 라인이 없습니다',
-    lineLabel: (item: string, ordered: string, uom: string) => `${item} · 발주 ${ordered} ${uom}`,
+    /* ⭐ 코드와 이름을 «각자의 줄»에 적는다(사용자 지시 2026-09-19) — 붙여 두면 어디까지가
+       코드인지 매번 가려 읽어야 하고, 실물 라벨과 대조하는 것은 코드 쪽이다. */
+    lineItemCode: (code: string) => `품목코드 ${code}`,
+    lineItemName: (name: string) => `품목명 ${name}`,
+    lineOrdered: (qty: string, uom: string) => `발주량 ${qty} ${uom}`,
     /*
      * 품목과 단위는 다른 조회에서 온다. 못 찾았을 때 빈 글자를 끼우면 이름도 단위도 없이
      * 수량만 남아, 작업자가 무엇을 세는지 모르는 채 적는다. 없는 것은 없다고 적는다.
@@ -75,8 +81,13 @@ export const inboundReceipt = {
     itemUnknown: '품목 정보 없음',
     uomUnknown: '단위 없음',
     received: (qty: string) => `누적 입하 ${qty}`,
-    /** 판정이 견주는 수다. 발주 총량만 보이면 그 수에 맞춰 적고 초과 판정을 받는다. */
-    lineRemaining: (qty: string) => `남은 예정 ${qty}`,
+    /**
+     * 판정이 견주는 수다. 발주량만 보이면 그 수에 맞춰 적고 초과 판정을 받는다.
+     *
+     * ⚠ **발주량과 같으면 화면이 이 줄을 세우지 않는다**(사용자 지시 2026-09-19) — 같은 수를
+     *   두 번 말할 뿐이고, 그때는 발주량대로 적는 것이 맞다.
+     */
+    lineRemaining: (qty: string) => `잔여 수량 ${qty}`,
     lineClosed: '다 받았습니다',
     tolerance: (over: string, under: string) => `허용 +${over} / -${under}`,
     linePicked: '선택됨',
@@ -137,11 +148,13 @@ export const inboundReceipt = {
     legend: '품목·수량 확인',
     itemLoadFailed: '품목을 확인할 수 없습니다',
     /*
-     * 발주 총량과 남은 예정을 같은 말로 부르지 않는다. 판정이 견주는 것은 남은 예정인데
-     * 총량까지 예정이라 부르면 칸 옆의 수와 판정에 나오는 수가 다른 뜻의 같은 이름이 된다.
+     * 발주량과 잔여 수량을 같은 말로 부르지 않는다. 판정이 견주는 것은 잔여 수량인데 총량까지
+     * 같은 이름으로 부르면 칸 옆의 수와 판정에 나오는 수가 다른 뜻의 같은 이름이 된다.
      */
-    ordered: (qty: string, uom: string) => `발주 ${qty} ${uom}`,
-    remaining: (qty: string, uom: string) => `남은 예정 ${qty} ${uom}`,
+    itemCode: (code: string) => `품목코드 ${code}`,
+    itemName: (name: string) => `품목명 ${name}`,
+    ordered: (qty: string, uom: string) => `발주량 ${qty} ${uom}`,
+    remaining: (qty: string, uom: string) => `잔여 수량 ${qty} ${uom}`,
     received: '실입하 수량',
     packageCount: '포장 수',
     /* 두 칸을 오간다. 숫자판을 닫았다 다시 열지 않고 옆으로 옮긴다. */
@@ -156,14 +169,14 @@ export const inboundReceipt = {
     expiryBeforeManufactured: '유효기한이 제조일보다 앞설 수 없습니다',
   },
   verdict: {
-    normal: '남은 예정과 맞습니다',
+    normal: '잔여 수량과 맞습니다',
     /** 판정 결과를 먼저 보인 뒤 같은 화면의 분리 단계로 이어 간다. */
     over: (remaining: string, arrived: string) =>
-      `수량 초과 — 남은 예정 ${remaining}, 이번 도착 ${arrived}`,
+      `수량 초과 — 잔여 수량 ${remaining}, 이번 도착 ${arrived}`,
     overNext: '정량분과 초과분을 확인하고 이번 화면에서 등록 방식을 고르세요.',
     split: {
       legend: '초과 입하 분리',
-      remaining: '남은 예정수량',
+      remaining: '잔여 수량',
       normal: '정량분',
       excess: '초과분',
       exceptionType: '초과 예외 유형',
@@ -178,7 +191,7 @@ export const inboundReceipt = {
       atomic: '정량분과 초과분은 한 번에 저장되며 일부만 성공하지 않습니다.',
     },
     under: (remaining: string, arrived: string) =>
-      `수량 부족 — 남은 예정 ${remaining}, 이번 도착 ${arrived}`,
+      `수량 부족 — 잔여 수량 ${remaining}, 이번 도착 ${arrived}`,
     /*
      * 화면은 더 올 것인지 알지 못한다. 트럭과 거래명세서를 본 사람이 안다. 네 수를 보이고
      * 사람이 고르게 한다 - 수 없이 고르라 하면 무엇을 고르는지 모른다.
@@ -187,7 +200,7 @@ export const inboundReceipt = {
       ordered: '발주',
       received: '누적',
       arrived: '이번 도착',
-      /* 판정이 견주는 남은 예정이 아니라 이번 것까지 받고도 남는 몫이다. */
+      /* 판정이 견주는 잔여 수량이 아니라 이번 것까지 받고도 남는 몫이다. */
       remaining: '남은',
     },
     underAsk: '더 들어올 물량이 있습니까?',
@@ -201,6 +214,56 @@ export const inboundReceipt = {
   /** 검사 대상 여부는 서버가 라인마다 정한다. 화면이 보내지 않는다. */
   inspectionNote: '검사 대상 여부는 등록한 뒤에 라인마다 정해집니다',
   submit: '입하 등록',
+  /**
+   * 잠긴 등록 단추가 «왜» 잠겼는지 — 단추 바로 아래 한 줄로 선다(공유계약 G-1).
+   *
+   * ⭐ 위에서부터 처음 비어 있는 것 하나만 말한다. 다 늘어놓으면 무엇부터 할지가 흐려진다.
+   * ⛔ 작업자가 확인할 길이 없는 것을 확인하라 하지 않는다 — 그때는 관리자에게 문의하게 한다.
+   */
+  locked: {
+    loading: '담아 둔 기록을 읽는 중입니다. 잠시 뒤에 눌러 주세요.',
+    noWorker: '사번을 확인해야 등록할 수 있습니다',
+    noOrder: '자재 P/O를 먼저 고르세요',
+    noOrderLine: '자재 P/O 라인을 먼저 고르세요',
+    noSupplier: '공급사를 먼저 고르세요',
+    noItem: '품목을 먼저 고르세요',
+    noUom: '단위를 먼저 고르세요',
+    noExceptionType: '예외입하 유형을 먼저 고르세요',
+    noExceptionReason: '예외 사유를 먼저 적으세요',
+    /* 공장은 발주에서 승계하거나 기기가 싣고 온다. 작업자가 이 화면에서 고칠 수 없다. */
+    noPlant: '이 입하의 공장을 확인할 수 없습니다. 관리자에게 문의하세요.',
+    qtyEmpty: '실입하 수량을 먼저 적으세요',
+    qtyNotNumber: '실입하 수량을 숫자로 고치세요',
+    qtyNotPositive: '실입하 수량을 0보다 크게 고치세요',
+    packageCount: '포장 수를 0보다 크게 고치세요',
+    expiryBeforeManufactured: '유효기한을 제조일 뒤로 고치세요',
+    labelChecking: '라벨 확인이 끝나면 등록할 수 있습니다',
+    labelMismatch: '라벨의 품목과 맞는 자재 P/O를 고르세요',
+    underUnanswered: '더 들어올 물량이 있는지 먼저 고르세요',
+    noSubstituteReason: '대체 LOT 사유를 먼저 고르세요',
+  },
+  /**
+   * 방금 등록한 한 건을 되짚는 자리 — 「등록했습니다」 아래에 선다(현장 요청 2026-09-21).
+   *
+   * ⭐ 같은 자재 P/O 의 자재를 여러 번 넣을 때, 앞 자재를 무엇으로 얼마나 넣었는지 확인할
+   *    곳이 화면에 없었다. 적은 값을 그대로 다시 보인다.
+   */
+  recorded: {
+    legend: '등록한 내용',
+    purchaseOrder: '자재 P/O',
+    line: (lineNo: string) => `${lineNo}번 라인`,
+    item: '품목',
+    qty: '실입하 수량',
+    /* 초과 분리는 두 몫으로 나뉘어 나간다. 합만 보이면 어느 쪽이 얼마인지 알 수 없다. */
+    normalQty: '정량분',
+    excessQty: '초과분',
+    packageCount: '포장 수',
+    lotNo: '공급사 LOT',
+    lotMissing: '라벨 미부착',
+    manufactured: '제조일',
+    expiry: '유효기한',
+    none: '없음',
+  },
   sent: {
     title: '입하를 등록했습니다',
     description: '사전부착 라인의 자재 LOT도 함께 만들어졌습니다. 모두 보류 상태입니다.',

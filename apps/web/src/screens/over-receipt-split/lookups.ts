@@ -1,19 +1,25 @@
 import { messages } from '@omf-mes/i18n';
-import { useQuery } from '@tanstack/react-query';
+import { useQueries, useQuery } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
-import { runRequest } from '../../patterns/request';
+import { fetchAllPages } from '../../patterns/fetch-all-pages';
+import { masterName } from '../../patterns/master-name';
+import { runRequest, toApiError } from '../../patterns/request';
 import type { LookupEntry, PageMeta } from './types';
 
 /**
- * 내부 번호(FK)로 이어진 값을 이름으로 푸는 선택 목록 넷 — 공급사·공장·품목·단위.
+ * 내부 번호(FK)로 이어진 값을 이름으로 푸는 참조 넷 — 공급사·공장·품목·단위.
+ *
+ * **셋은 목록으로 받고 품목만 번호로 하나씩 푼다.** 가름의 잣대는 마스터의 크기다 —
+ * 목록 한 번으로 받는 방식은 그 한 쪽에 담기는 만큼만 이름을 얻고 나머지는 조용히 빈다.
  *
  * **지어내는 것이 아니라 실제로 조회한다.** 자리표시로 두는 것은 값 목록이 확정되지 않은
  * 코드 선택지뿐이고, 그 자리는 PR ②에 있다.
  *
- * 전부 `includeInactive=true`로 한 번 받아 둔다. 기본 조회는 사용 중인 것만 내려주므로,
- * 미사용 값을 참조하는 발주가 오면 이름이 비어 보인다 — 지금은 쓰지 않는 거래처·품목을
- * 참조하는 과거 발주가 실제로 있다.
+ * 목록으로 받는 셋은 `includeInactive=true`로 한 번 받아 둔다. 기본 조회는 사용 중인 것만
+ * 내려주므로, 미사용 값을 참조하는 발주가 오면 이름이 비어 보인다 — 지금은 쓰지 않는
+ * 거래처·공장을 참조하는 과거 발주가 실제로 있다. 번호로 묻는 품목은 그 축이 없다
+ * (상세 조회는 사용 여부로 거르지 않는다).
  *
  * **참조 → 보이는 자리 → 복구 표**(계획 결정 15). 실패 안내와 「다시 시도」는 그 이름이
  * 실제로 실패로 보이는 자리에 있어야 사용자가 무엇을 되살리는지 알 수 있다.
@@ -123,7 +129,8 @@ export const lookupNote = (lookup: LookupResult): string | undefined => {
 export const lookupKeys = {
   suppliers: ['over-receipt-split-lookups', 'suppliers'] as const,
   plants: ['over-receipt-split-lookups', 'plants'] as const,
-  items: ['over-receipt-split-lookups', 'items'] as const,
+  /** 품목은 번호마다 하나씩이라 열쇠도 번호를 담는다. */
+  itemName: (itemId: number) => ['over-receipt-split-lookups', 'item-name', itemId] as const,
   uoms: ['over-receipt-split-lookups', 'uoms'] as const,
 };
 
@@ -139,8 +146,12 @@ export const useSupplierOptions = (): LookupResult => {
   const query = useQuery({
     queryKey: lookupKeys.suppliers,
     queryFn: () =>
-      runRequest(() =>
-        client.GET('/mdm/partners', { params: { query: { includeInactive: true } } }),
+      fetchAllPages((page, size) =>
+        runRequest(() =>
+          client.GET('/mdm/partners', {
+            params: { query: { includeInactive: true, page, size } },
+          }),
+        ),
       ),
   });
 
@@ -153,7 +164,7 @@ export const useSupplierOptions = (): LookupResult => {
         label: `${item.partnerCode} · ${item.partnerName}`,
         isActive: item.isActive,
       })) ?? EMPTY_ENTRIES,
-    truncated: data !== undefined && isTruncated(data.page, data.items.length),
+    truncated: data?.truncated === true,
     isError: query.isError,
     isLoading: query.isPending,
     refetch: () => {
@@ -196,30 +207,85 @@ export const usePlantOptions = (): LookupResult => {
   };
 };
 
-/** 품목 — 라인 표의 품목 칸이 쓴다. 공장과 같은 이유로 미리 받아 둔다. */
-export const useItemOptions = (): LookupResult => {
+/** 그 번호의 품목이 없다(404). **못 받은 것과 다르다** — 다시 부를 이유가 없다. */
+const isNotFound = (error: unknown): boolean => {
+  const apiError = toApiError(error);
+
+  return apiError.kind === 'http' && apiError.status === 404;
+};
+
+/**
+ * 품목 — 라인 표의 품목 칸이 쓴다. **번호로 하나씩 푼다**(`GET /mdm/items/{itemId}`).
+ *
+ * ⛔ **목록 첫 쪽으로 풀지 않는다.** 종전에는 `GET /mdm/items`를 `size` 없이 한 번 받아
+ *    그 안에서 이름을 찾았다 — 계약의 기본 쪽 크기가 50이라, 품목 마스터가 그보다 크면
+ *    첫 쪽 밖의 품목을 실은 발주가 **전부 「알 수 없음」**으로 섰다. 그 문구는
+ *    *값이 잘못됐다*는 뜻이라 사용자에게 정반대로 읽힌다.
+ * ⛔ **쪽을 돌며 다 받는 것으로 바꾸지 않는다.** 마스터가 9,000건인 곳이 있어
+ *    첫 진입에 180번을 부르게 된다 — 얻는 것은 화면에 뜬 서너 줄의 이름뿐이다.
+ * ⭐ 부르는 횟수는 **고른 발주의 라인에 실제로 실린 품목 수**다. 두 라인이 같은 품목이면
+ *    요청도 하나다(같은 캐시 열쇠).
+ *
+ * 계약에 `itemIds` 같은 복수 번호 필터가 없어 한 번에 묶어 묻는 길이 없다.
+ * 생기면 이 자리를 한 번의 요청으로 되돌린다.
+ */
+export interface ItemNameLookup {
+  /**
+   * 한 라인의 품목 표기 상태.
+   *
+   * **네 갈래가 그대로 산다.** 「목록에 없음」은 이제 *그 번호의 품목이 없다*(404)는 뜻이다 —
+   * 못 받은 것(실패)과 가른다. 둘을 뭉개면 지워진 품목 한 건이 라인 구획 전체에
+   * 「다시 시도」를 세우고, 눌러도 영영 풀리지 않는다.
+   * 라인의 `itemId`는 계약상 필수라 빈 값 갈래만 서지 않는다.
+   */
+  of: (itemId: number) => ReferenceState;
+  /** 하나라도 실패했는가. 라인 구획의 실패 안내와 「다시 시도」가 이것을 본다. */
+  isError: boolean;
+  refetch: () => void;
+}
+
+type Client = ReturnType<typeof useApiClient>['client'];
+
+const fetchItemName = async (client: Client, itemId: number): Promise<string> => {
+  const data = await runRequest(() =>
+    client.GET('/mdm/items/{itemId}', { params: { path: { itemId } } }),
+  );
+
+  /* 상세는 봉투로 온다 — 편집 가능 여부(`editability`)는 이 화면이 쓰지 않는다. */
+  const item = data.item;
+
+  return `${item.itemCode} · ${masterName(item, item.itemName)}`;
+};
+
+export const useItemNames = (itemIds: readonly number[]): ItemNameLookup => {
   const { client } = useApiClient();
 
-  const query = useQuery({
-    queryKey: lookupKeys.items,
-    queryFn: () =>
-      runRequest(() => client.GET('/mdm/items', { params: { query: { includeInactive: true } } })),
+  /** 같은 품목을 실은 라인이 여럿이면 요청은 하나다. */
+  const uniqueIds = [...new Set(itemIds)];
+
+  const results = useQueries({
+    queries: uniqueIds.map((itemId) => ({
+      queryKey: lookupKeys.itemName(itemId),
+      queryFn: () => fetchItemName(client, itemId),
+    })),
   });
 
-  const data = query.data;
-
   return {
-    entries:
-      data?.items.map((item) => ({
-        value: String(item.itemId),
-        label: `${item.itemCode} · ${item.itemName}`,
-        isActive: item.isActive,
-      })) ?? EMPTY_ENTRIES,
-    truncated: data !== undefined && isTruncated(data.page, data.items.length),
-    isError: query.isError,
-    isLoading: query.isPending,
+    of: (itemId) => {
+      const index = uniqueIds.indexOf(itemId);
+      const result = index === -1 ? undefined : results[index];
+
+      if (result === undefined) return { kind: 'loading' };
+      /* 없는 품목은 실패가 아니다 — 다시 불러도 같은 답이 온다. */
+      if (result.isError) return isNotFound(result.error) ? { kind: 'unknown' } : { kind: 'failed' };
+
+      return result.data === undefined
+        ? { kind: 'loading' }
+        : { kind: 'named', label: result.data };
+    },
+    isError: results.some((result) => result.isError && !isNotFound(result.error)),
     refetch: () => {
-      void query.refetch();
+      for (const result of results) void result.refetch();
     },
   };
 };

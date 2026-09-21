@@ -38,7 +38,8 @@ const OTHER_LINES_PATH = '/logistics/purchase-orders/9002/lines';
 const SPLIT_PATH = '/logistics/inbound-receipts:split';
 const PARTNERS_PATH = '/mdm/partners';
 const PLANTS_PATH = '/mdm/plants';
-const ITEMS_PATH = '/mdm/items';
+/** 품목만 번호마다 상세를 부른다 — 경로가 하나가 아니라 번호마다 하나다. */
+const itemPath = (itemId: number): string => `/mdm/items/${String(itemId)}`;
 const UOMS_PATH = '/mdm/uoms';
 
 /**
@@ -191,11 +192,34 @@ const lookupRoute = (
   respond: () => jsonResponse(listBody(items, page)),
 });
 
+/**
+ * 쪽을 **실제로 나눠 주는** 거래처 목록.
+ *
+ * ⭐ 기존 스텁은 한 쪽에 다 담아 주므로 「끝까지 받는다」를 증명하지 못한다 — 첫 쪽만 받는
+ * 화면도 그 스텁에서는 전부 통과한다. 거래처는 936건이고 그 너머의 공급사가 목록 표에서
+ * 「알 수 없음」으로 섰다(omf-all-around#38).
+ *
+ * **서버가 정한 쪽 크기로 자른다**(요청한 `size`를 쓰지 않는다) — 서버가 요청값을 낮춰
+ * 적용하는 일이 실재하고, 그때 「받은 수 === 요청한 size」로 세는 판정은 두 쪽째에서 멈춘다.
+ */
+const pagedPartnersRoute = (items: unknown[], serverSize = 1): StubRoute => ({
+  match: (request) => isGet(request, PARTNERS_PATH),
+  respond: (request) => {
+    const page = Number(new URL(request.url).searchParams.get('page') ?? '1');
+    const from = (page - 1) * serverSize;
+
+    return jsonResponse({
+      items: items.slice(from, from + serverSize),
+      page: { page, size: serverSize, total: items.length },
+    });
+  },
+});
+
 /** 참조 목록 넷. 화면이 이름으로 풀 수 있는 정상 상태다. */
 const lookupRoutes = (): StubRoute[] => [
   lookupRoute(PARTNERS_PATH, partnerFixtures),
   lookupRoute(PLANTS_PATH, plantFixtures),
-  lookupRoute(ITEMS_PATH, itemFixtures),
+  ...itemDetailRoutes(),
   lookupRoute(UOMS_PATH, uomFixtures),
 ];
 
@@ -203,6 +227,25 @@ const failingLookupRoute = (pathname: string): StubRoute => ({
   match: (request) => isGet(request, pathname),
   respond: () => jsonResponse({ message: '' }, { status: 500 }),
 });
+
+/**
+ * 품목 상세. **번호마다 하나씩** 답한다(`GET /mdm/items/{itemId}`) — 응답이
+ * `{ item, editability }` 봉투라는 것까지 여기서 굳힌다.
+ *
+ * `failing`에 든 번호는 500으로 답한다. 목록으로 풀던 때 「목록에서 뺀다」로 만들던
+ * 「이름을 못 풀었다」를 이제는 **그 번호의 조회를 실패시켜** 만든다.
+ */
+const itemDetailRoutes = (failing: number[] = [], missing: number[] = []): StubRoute[] =>
+  itemFixtures.map((item) => ({
+    match: (request: Request) => isGet(request, itemPath(item.itemId)),
+    respond: () => {
+      if (missing.includes(item.itemId)) return jsonResponse({ message: '' }, { status: 404 });
+
+      return failing.includes(item.itemId)
+        ? jsonResponse({ message: '' }, { status: 500 })
+        : jsonResponse({ item, editability: {} });
+    },
+  }));
 
 /** 라인 조회. 고른 발주의 줄만 돌려준다. */
 const linesRoute = (items: unknown[] = purchaseOrderLineFixtures): StubRoute => ({
@@ -903,9 +946,98 @@ describe('OverReceiptSplitScreen — 참조 표기 네 갈래', () => {
 
     await screen.findByText(t.lineTable.orderedPair(100, 40));
 
-    // 공급사 9102(목록에 없음)와 품목 9302(목록에 없음)가 함께 이 갈래로 간다.
-    expect(screen.getAllByText(t.values.unknown).length).toBeGreaterThan(1);
+    // 공급사 9102가 이 갈래다 — 목록으로 푸는 참조에만 「목록에 없음」이 선다.
+    expect(screen.getAllByText(t.values.unknown).length).toBeGreaterThan(0);
     expectNoInternalIds();
+  });
+
+  /*
+   * **품목은 줄마다 따로 부른다** — 한 줄이 실패해도 나머지 줄의 이름은 그대로 서야 하고,
+   * 실패한 줄에는 번호가 아니라 문구가 와야 한다(#44).
+   *
+   * 이 자리가 종전 결함의 회귀 지점이다. 목록 첫 쪽으로 풀던 때는 쪽 밖의 품목이 전부
+   * 「알 수 없음」으로 섰고, 그 문구는 *값이 잘못됐다*는 뜻이라 정반대로 읽혔다.
+   */
+  it('품목 하나를 못 풀어도 나머지 줄의 이름은 그대로 선다', async () => {
+    const { user } = renderScreen([
+      listRoute(),
+      linesRoute(),
+      otherLinesRoute(),
+      detailRoute(),
+      splitRoute(),
+      lookupRoute(PARTNERS_PATH, partnerFixtures),
+      lookupRoute(PLANTS_PATH, plantFixtures),
+      ...itemDetailRoutes([9302]),
+      lookupRoute(UOMS_PATH, uomFixtures),
+    ]);
+
+    await screen.findByText('PO-2026-900001');
+    await selectPo(user, 'PO-2026-900001');
+
+    await screen.findByText(t.lineTable.orderedPair(100, 40));
+
+    await waitFor(() => {
+      expect(within(lineTable()).getAllByText(ITEM_LABEL).length).toBeGreaterThan(0);
+    });
+    expect(within(lineTable()).getByText(t.values.referenceFailed)).toBeInTheDocument();
+    expectNoInternalIds();
+  });
+
+  /*
+   * **없는 품목(404)과 못 받은 품목은 다르다.** 404는 다시 불러도 같은 답이라
+   * 「다시 시도」를 세우면 눌러도 영영 풀리지 않는다 — 그 줄만 「알 수 없음」으로 둔다.
+   */
+  it('없는 품목은 실패가 아니라 알 수 없음이고 다시 시도를 세우지 않는다', async () => {
+    const { user } = renderScreen([
+      listRoute(),
+      linesRoute(),
+      otherLinesRoute(),
+      detailRoute(),
+      splitRoute(),
+      lookupRoute(PARTNERS_PATH, partnerFixtures),
+      lookupRoute(PLANTS_PATH, plantFixtures),
+      ...itemDetailRoutes([], [9302]),
+      lookupRoute(UOMS_PATH, uomFixtures),
+    ]);
+
+    await screen.findByText('PO-2026-900001');
+    await selectPo(user, 'PO-2026-900001');
+
+    await screen.findByText(t.lineTable.orderedPair(100, 40));
+
+    await waitFor(() => {
+      expect(within(lineTable()).getByText(t.values.unknown)).toBeInTheDocument();
+    });
+    expect(within(lineTable()).queryByText(t.values.referenceFailed)).not.toBeInTheDocument();
+    expect(screen.queryByText(t.reasons.lineReferencesFailed)).not.toBeInTheDocument();
+    expectNoInternalIds();
+  });
+
+  /* 같은 품목을 실은 줄이 둘이면 요청도 하나다 — 줄 수만큼 부르면 라인이 늘 때 요청이 는다. */
+  it('같은 품목을 실은 줄이 여럿이어도 그 품목은 한 번만 묻는다', async () => {
+    const { requests, user } = renderScreen(allRoutes());
+
+    await screen.findByText('PO-2026-900001');
+    await selectPo(user, 'PO-2026-900001');
+
+    await waitFor(() => {
+      expect(within(lineTable()).getAllByText(ITEM_LABEL).length).toBeGreaterThan(0);
+    });
+
+    /* 9401·9403이 같은 품목(9301)이다. */
+    expect(requestsTo(requests, itemPath(9301))).toHaveLength(1);
+  });
+
+  /* 라인을 고르기 전에는 물을 번호가 없다 — 첫 진입의 요청 수가 이유 없이 늘지 않는다. */
+  it('발주를 고르기 전에는 품목을 부르지 않는다', async () => {
+    const { requests } = renderScreen(allRoutes());
+
+    await screen.findByText('PO-2026-900001');
+    await waitFor(() => {
+      expect(screen.getAllByText(SUPPLIER_LABEL).length).toBeGreaterThan(0);
+    });
+
+    expect(requestsTo(requests, itemPath(9301))).toHaveLength(0);
   });
 
   it('참조 조회가 실패하면 그 구획이 사유와 복구 수단을 낸다', async () => {
@@ -917,7 +1049,7 @@ describe('OverReceiptSplitScreen — 참조 표기 네 갈래', () => {
       splitRoute(),
       failingLookupRoute(PARTNERS_PATH),
       lookupRoute(PLANTS_PATH, plantFixtures),
-      lookupRoute(ITEMS_PATH, itemFixtures),
+      ...itemDetailRoutes(),
       lookupRoute(UOMS_PATH, uomFixtures),
     ]);
 
@@ -943,7 +1075,7 @@ describe('OverReceiptSplitScreen — 참조 표기 네 갈래', () => {
       splitRoute(),
       lookupRoute(PARTNERS_PATH, partnerFixtures),
       lookupRoute(PLANTS_PATH, plantFixtures),
-      lookupRoute(ITEMS_PATH, itemFixtures),
+      ...itemDetailRoutes(),
       failingLookupRoute(UOMS_PATH),
     ]);
 
@@ -961,6 +1093,47 @@ describe('OverReceiptSplitScreen — 참조 표기 네 갈래', () => {
     });
   });
 
+  /**
+   * ⭐ **거래처는 한 쪽에 들어가지 않는다**(936건 · omf-all-around#38).
+   *
+   * 첫 쪽만 받으면 그 너머의 공급사가 목록 표에서 「알 수 없음」으로 찍히고 조건 줄에서도
+   * 고를 수 없다. 그 문구는 *값이 잘못됐다*는 뜻이라 사용자에게 정반대로 읽힌다(#47).
+   *
+   * 여기서는 서버가 **한 건씩** 나눠 주게 해 두 쪽째에 있는 공급사를 만든다.
+   */
+  it('거래처가 여러 쪽이면 끝까지 받아 두 쪽째 공급사도 이름으로 낸다', async () => {
+    const { requests } = renderScreen([
+      listRoute(),
+      linesRoute(),
+      otherLinesRoute(),
+      detailRoute(),
+      splitRoute(),
+      /* 9101(9001의 공급사)을 **둘째 쪽**에 둔다. */
+      pagedPartnersRoute([...partnerFixtures].reverse()),
+      lookupRoute(PLANTS_PATH, plantFixtures),
+      ...itemDetailRoutes(),
+      lookupRoute(UOMS_PATH, uomFixtures),
+    ]);
+
+    await screen.findByText('PO-2026-900001');
+
+    await waitFor(() => {
+      expect(within(listTable()).getAllByText(SUPPLIER_LABEL).length).toBeGreaterThan(0);
+    });
+
+    /* 짝 방향 — 두 쪽을 실제로 불렀다(한 번만 불러 통과한 것이 아니다). */
+    const pages = requestsTo(requests, PARTNERS_PATH).map((request) =>
+      request.url.searchParams.get('page'),
+    );
+
+    expect(pages).toEqual(['1', '2']);
+    /*
+     * 9002의 공급사(9102)는 픽스처 어디에도 없어 여전히 「알 수 없음」이다 — 그것은
+     * 잘림이 아니라 **정말 없는 값**이고, 이 수정이 지우는 대상이 아니다.
+     */
+    expect(within(listTable()).getAllByText(t.values.unknown)).toHaveLength(1);
+  });
+
   /* 선택지가 잘렸으면 사용자가 「그런 공급사가 없다」로 결론짓지 않게 밝힌다. */
   it('공급사 선택지가 잘렸으면 조건 줄이 그 사실을 밝힌다', async () => {
     renderScreen([
@@ -971,7 +1144,7 @@ describe('OverReceiptSplitScreen — 참조 표기 네 갈래', () => {
       splitRoute(),
       lookupRoute(PARTNERS_PATH, partnerFixtures, { total: partnerFixtures.length + 1 }),
       lookupRoute(PLANTS_PATH, plantFixtures),
-      lookupRoute(ITEMS_PATH, itemFixtures),
+      ...itemDetailRoutes(),
       lookupRoute(UOMS_PATH, uomFixtures),
     ]);
 

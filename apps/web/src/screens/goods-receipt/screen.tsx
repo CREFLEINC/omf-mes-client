@@ -35,7 +35,7 @@ import { LoadErrorBanner } from './load-error-banner';
 import {
   describeReference,
   toReference,
-  useItemOptions,
+  useItemNames,
   useLotOptions,
   usePlantOptions,
   useSupplierOptions,
@@ -228,8 +228,16 @@ export const GoodsReceiptScreen = () => {
    * 품목·단위·자재 LOT은 **라인 표가 그려질 때** 쓴다 — 그 표는 라인 응답을 기다리므로
    * 미리 받아 둘 이득이 없고, 고르기 전에 부르면 첫 진입의 요청 수만 이유 없이 는다.
    */
-  const items = useItemOptions(selectedIrId !== null);
   const uoms = useUomOptions(selectedIrId !== null);
+
+  /*
+   * 품목 이름은 **라인이 가리키는 번호마다** 묻는다 — 자재 LOT과 같은 짜임이다.
+   * 목록 첫 쪽으로 풀면 그 쪽 밖의 품목이 전부 「알 수 없음」으로 선다(`lookups.ts`의 ⛔ 첫째).
+   */
+  const items = useItemNames(
+    lineRows.map((line) => line.itemId),
+    selectedIrId !== null,
+  );
 
   /*
    * 자재 LOT은 **라인이 가리키는 품목마다** 받는다 — 번호 여러 개로 한 번에 조회하는 수단이
@@ -605,7 +613,7 @@ export const GoodsReceiptScreen = () => {
       draft,
     });
 
-    const itemName = describeReference(toReference(items, line.itemId));
+    const itemName = describeReference(items.of(line.itemId));
     const lotName = describeReference(toReference(lots, line.lotId));
     /* 단위는 코드만(「1 EA」) — 「코드 · 이름」은 같은 뜻을 두 번 적는다(라인 표와 같다). */
     const receiptQty = t.lineTable.receivedQtyPair(
@@ -911,7 +919,7 @@ export const GoodsReceiptScreen = () => {
          * 이름만 넘긴다.
          */
         plantLookup={plants}
-        itemLookup={items}
+        itemNames={items}
         uomLookup={uoms}
         lotLookup={lots}
         selectedLineId={selectedLineId}

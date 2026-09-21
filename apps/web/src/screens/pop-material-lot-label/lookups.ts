@@ -2,6 +2,7 @@ import type { ApiClient } from '@omf-mes/api-client';
 import { useQueries, useQuery } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
+import { fetchAllPages } from '../../patterns/fetch-all-pages';
 import type { LookupSource } from '../../patterns/lookup-display';
 import { runRequest, toApiError } from '../../patterns/request';
 
@@ -169,7 +170,8 @@ const PARTNER_PAGE_SIZE = 200;
  * ⛔ **첫 쪽만 받지도 않는다.** 거래처가 900 건이 넘는 현장에서 첫 쪽(기본 50건) 밖 공급사가
  *    「알 수 없음」으로 섰다(omf-all-around#27). 이름 풀이는 목록에 «무엇이 있든» 답해야 한다.
  *
- * ⚠ 그래서 **쪽을 끝까지 받는다.** 화면을 여는 동안 한 번이고 그 뒤로는 조회 캐시가 답한다.
+ * ⚠ 그래서 **쪽을 끝까지 받는다**(`fetchAllPages`). 화면을 여는 동안 한 번이고 그 뒤로는
+ *   조회 캐시가 답한다.
  *   단말 토큰이 단건 조회를 쓸 수 있게 되면 품목과 같은 모양으로 되돌린다.
  *
  * 지금 쓰지 않는 거래처도 함께 받는다(`includeInactive`) — 과거 입하가 그런 거래처를
@@ -184,28 +186,17 @@ export const useSupplierLookup = (): SupplierLookup => {
   const query = useQuery({
     queryKey: lookupKeys.partners,
     queryFn: async () => {
-      const fetchPage = (page: number) =>
-        runRequest(() =>
-          client.GET('/mdm/partners', {
-            params: { query: { includeInactive: true, page, size: PARTNER_PAGE_SIZE } },
-          }),
-        );
+      const all = await fetchAllPages(
+        (page, size) =>
+          runRequest(() =>
+            client.GET('/mdm/partners', {
+              params: { query: { includeInactive: true, page, size } },
+            }),
+          ),
+        { size: PARTNER_PAGE_SIZE },
+      );
 
-      const first = await fetchPage(1);
-      const items = [...first.items];
-
-      /*
-       * 받은 건수와 `total` 을 견준다 — 서버가 요청한 쪽 크기를 낮춰 적용할 수 있어 `size` 로
-       * 세면 어긋난다. 빈 쪽이나 엉뚱한 쪽이 오면 더 받아도 새 사실이 없으므로 멈춘다.
-       */
-      for (let page = 2; items.length < first.page.total; page += 1) {
-        const next = await fetchPage(page);
-
-        if (next.items.length === 0 || next.page.page !== page) break;
-        items.push(...next.items);
-      }
-
-      return items;
+      return all.items;
     },
   });
 

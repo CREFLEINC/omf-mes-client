@@ -51,7 +51,7 @@ import {
   describeReference,
   lookupNote,
   toReference,
-  useItemLookup,
+  useItemNames,
   useLocationLookup,
   useLotLookup,
   useUomLookup,
@@ -411,7 +411,14 @@ export const StocktakingScreen = () => {
 
   /* 위치를 고르기 전에는 라인 표가 없다 — 그 표가 쓰는 참조 셋도 부르지 않는다. */
   const hasLocation = activeLocationId !== null;
-  const items = useItemLookup(hasLocation);
+  /*
+   * 품목 이름은 **줄이 가리키는 번호마다** 묻는다 — 자재 LOT과 같은 짜임이다.
+   * 목록 첫 쪽으로 풀면 그 쪽 밖의 품목이 전부 「알 수 없음」으로 선다(`lookups.ts`의 ⛔ 첫째).
+   */
+  const items = useItemNames(
+    lineItems.map((line) => line.itemId),
+    hasLocation,
+  );
   const uoms = useUomLookup(hasLocation);
   const lots = useLotLookup(
     lineItems.flatMap((line) => (line.lotId === null ? [] : [line.itemId])),
@@ -1247,7 +1254,7 @@ export const StocktakingScreen = () => {
           isLoading={lines.isPending}
           isTruncated={isLineListTruncated}
           isBlind={isBlindCount}
-          itemLookup={items}
+          itemNames={items}
           uomLookup={uoms}
           lotLookup={lots}
           reasonOptions={codeOptions.varianceReason}

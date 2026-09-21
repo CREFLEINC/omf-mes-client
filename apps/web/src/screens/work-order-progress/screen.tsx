@@ -21,7 +21,7 @@ import {
   withSelectedWorkOrder,
   withSort,
 } from './filters';
-import { useItemLookup, useProductionLineLookup, useProductionOrderLookup } from './lookups';
+import { useItemNames, useProductionLineLookup, useProductionOrderLookup } from './lookups';
 import { PageNav } from './page-nav';
 import { toPageView } from './pagination';
 import { defaultPeriod } from './period';
@@ -110,7 +110,6 @@ export const WorkOrderProgressScreen = ({ now }: WorkOrderProgressScreenProps) =
 
   const list = useWorkOrderProgressList(toProgressListQuery(filters, sort, page, offsetMinutes));
   const detail = useWorkOrderDetail(selectedWorkOrderId);
-  const items = useItemLookup();
   const lines = useProductionLineLookup();
   const orders = useProductionOrderLookup();
   const statuses = useWorkOrderStatusOptions();
@@ -119,6 +118,16 @@ export const WorkOrderProgressScreen = ({ now }: WorkOrderProgressScreenProps) =
   const basisAt = list.dataUpdatedAt > 0 ? new Date(list.dataUpdatedAt) : today;
   const workOrders = list.data?.items ?? [];
   const rows = workOrders.map((workOrder) => toWorkOrderRow(workOrder, basisAt));
+
+  /*
+   * 품목 이름은 **이 쪽에 선 지시가 가리키는 번호마다** 묻는다 — 목록 한 쪽으로 풀면
+   * 그 쪽 밖의 품목이 전부 「이름 확인 중」으로 굳는다(`lookups.ts`의 ⛔ 첫째).
+   * 상세 창의 품목도 같은 자리에서 푼다 — 목록의 그 줄을 눌러 여는 창이라 번호가 이미 있다.
+   */
+  const items = useItemNames([
+    ...workOrders.map((workOrder) => workOrder.itemId),
+    ...(detail.data === undefined ? [] : [detail.data.itemId]),
+  ]);
   const pageView = toPageView(list.data?.page ?? { page, size: PAGE_SIZE, total: 0 }, rows.length);
 
   const apply = (next: ProgressFilters): void => {

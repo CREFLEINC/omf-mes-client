@@ -88,7 +88,7 @@ import {
   lookupNote,
   toReference,
   useDisposalPartnerOptions,
-  useItemOptions,
+  useItemNames,
   useLocationOptions,
   useLotOptions,
   usePartnerNames,
@@ -536,7 +536,7 @@ export const DisposalIssueScreen = () => {
     : (detailData?.receipt.warehouseId ?? null);
   const hasLineSelection = isHistoryTab ? selectedIssueId !== null : selectedReceiptId !== null;
 
-  const items = useItemOptions(hasLineSelection);
+  const items = useItemNames(lineItemIds, hasLineSelection);
   const uoms = useUomOptions(hasLineSelection);
 
   /*
@@ -1379,7 +1379,7 @@ export const DisposalIssueScreen = () => {
   const selection = describeDisposalSelection(lineTableRows);
 
   /** 표기 헬퍼 — 확인 창과 결과 구획이 **같은 규칙으로** 이름과 수량을 읽는다. */
-  const itemNameOf = (itemId: number): string => describeReference(toReference(items, itemId));
+  const itemNameOf = (itemId: number): string => describeReference(items.of(itemId));
   const lotNameOf = (lotId: number): string => describeReference(toReference(lots, lotId));
   const qtyTextOf = (qty: number, uomId: number): string =>
     t.lineTable.receiptQtyPair(qty, describeReference(toReference(uoms, uomId)));
@@ -1904,7 +1904,7 @@ export const DisposalIssueScreen = () => {
 
             <GrLineTable
               rows={lineTableRows}
-              itemLookup={items}
+              itemNames={items}
               uomLookup={uoms}
               lotLookup={lots}
               locationLookup={locations}
@@ -2206,7 +2206,7 @@ export const DisposalIssueScreen = () => {
 
             <IssueLineTable
               rows={issueLineRows}
-              itemLookup={items}
+              itemNames={items}
               uomLookup={uoms}
               lotLookup={lots}
               locationLookup={locations}

@@ -86,7 +86,9 @@ const WAREHOUSES_PATH = '/mdm/warehouses';
 const LINES_PATH = '/inventory/counts/9001/lines';
 const OTHER_LINES_PATH = '/inventory/counts/9003/lines';
 const LOCATIONS_PATH = '/mdm/locations';
-const ITEMS_PATH = '/mdm/items';
+/** 품목만 번호마다 상세를 부른다 — 경로가 하나가 아니라 번호마다 하나다. */
+const itemPath = (itemId: number): string => `/mdm/items/${String(itemId)}`;
+const ITEM_PATHS = itemFixtures.map((item) => itemPath(item.itemId));
 const UOMS_PATH = '/mdm/uoms';
 const LOTS_PATH = '/trace/lots';
 
@@ -425,10 +427,11 @@ const replaceThenForbiddenRoute = (): StubRoute => {
 
 /** 라인 표가 이름을 내는 참조 셋. **위치를 고른 뒤에만 불린다.** */
 const lineLookupRoutes = (): StubRoute[] => [
-  {
-    match: (request) => isGet(request, ITEMS_PATH),
-    respond: () => jsonResponse(listBody(itemFixtures)),
-  },
+  ...itemFixtures.map((item) => ({
+    /* 품목 상세는 봉투로 온다 — 그 모양까지 여기서 굳힌다. */
+    match: (request: Request) => isGet(request, itemPath(item.itemId)),
+    respond: () => jsonResponse({ item, editability: {} }),
+  })),
   {
     match: (request) => isGet(request, UOMS_PATH),
     respond: () => jsonResponse(listBody(uomFixtures)),
@@ -2417,7 +2420,7 @@ describe('StocktakingScreen — 위치와 라인 조회', () => {
 
     await screen.findByLabelText(t.fields.location);
 
-    for (const path of [ITEMS_PATH, UOMS_PATH, LOTS_PATH]) {
+    for (const path of [...ITEM_PATHS, UOMS_PATH, LOTS_PATH]) {
       expect(requestsTo(requests, path)).toHaveLength(0);
     }
   });
@@ -4064,7 +4067,9 @@ describe('StocktakingScreen — 마감 성공', () => {
     });
 
     expect(lineRequests(requests)).toHaveLength(0);
-    expect(requestsTo(requests, ITEMS_PATH)).toHaveLength(0);
+    for (const path of ITEM_PATHS) {
+      expect(requestsTo(requests, path)).toHaveLength(0);
+    }
     expect(screen.getByText(t.empty.closedTitle)).toBeInTheDocument();
   });
 

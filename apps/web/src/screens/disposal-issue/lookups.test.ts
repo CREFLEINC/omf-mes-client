@@ -26,7 +26,7 @@ import {
   lookupNote,
   toReference,
   useDisposalPartnerOptions,
-  useItemOptions,
+  useItemNames,
   useLocationOptions,
   useLotOptions,
   usePartnerNames,
@@ -228,7 +228,9 @@ describe('useWarehouseOptions', () => {
   });
 });
 
-const ITEMS_PATH = '/mdm/items';
+/** 품목만 번호마다 상세를 부른다 — 경로가 하나가 아니라 번호마다 하나다. */
+const itemPath = (itemId: number): string => `/mdm/items/${String(itemId)}`;
+const ITEM_IDS = itemFixtures.map((item) => item.itemId);
 const UOMS_PATH = '/mdm/uoms';
 const LOTS_PATH = '/trace/lots';
 const LOCATIONS_PATH = '/mdm/locations';
@@ -259,100 +261,128 @@ const route = (pathname: string, respond: StubRoute['respond']): StubRoute => ({
   respond,
 });
 
-describe('useItemOptions · useUomOptions', () => {
+/** 품목 상세 스텁. 응답이 `{ item, editability }` 봉투라는 것까지 여기서 굳힌다. */
+const itemDetailRoutes = (status: Record<number, number> = {}): StubRoute[] =>
+  itemFixtures.map((item) =>
+    route(itemPath(item.itemId), () => {
+      const failWith = status[item.itemId];
+
+      return failWith === undefined
+        ? jsonResponse({ item, editability: {} })
+        : jsonResponse({ message: '' }, { status: failWith });
+    }),
+  );
+
+describe('useItemNames · useUomOptions', () => {
   /**
    * **전표를 고르기 전에는 부르지 않는다.** 이름이 필요한 라인 표 자체가 상세 응답을
    * 기다리므로 미리 받아 둘 이득이 없고, 첫 진입의 요청 수만 이유 없이 는다.
    */
   it('고르기 전에는 요청이 나가지 않는다', async () => {
-    const { fetch, urls } = recording([
-      route(ITEMS_PATH, () => jsonResponse(listBody(itemFixtures))),
-      route(UOMS_PATH, () => jsonResponse(listBody(uomFixtures))),
-    ]);
+    const { fetch, urls } = recording([...itemDetailRoutes(), route(UOMS_PATH, () => jsonResponse(listBody(uomFixtures)))]);
     const { result } = renderHookWithProviders(
-      () => ({ items: useItemOptions(false), uoms: useUomOptions(false) }),
+      () => ({ items: useItemNames(ITEM_IDS, false), uoms: useUomOptions(false) }),
       { fetch },
     );
 
     await waitFor(() => {
-      expect(result.current.items.isLoading).toBe(false);
+      expect(result.current.uoms.isLoading).toBe(false);
     });
 
     expect(urls).toEqual([]);
-    /* 「아직 안 불렀다」를 **불러오는 중**으로 말하지 않는다 — 그러면 이름 칸이 영영 회색이다. */
-    expect(result.current.uoms.isLoading).toBe(false);
+    /* 「아직 안 불렀다」를 **실패**로 말하지 않는다 — 그러면 안 부른 것이 고장으로 읽힌다. */
+    expect(result.current.items.isError).toBe(false);
   });
 
-  it('「코드 · 이름」으로 풀고 미사용까지 받아 온다', async () => {
+  it('「코드 · 이름」으로 풀고 번호마다 한 번씩만 부른다', async () => {
     const { fetch, urls } = recording([
-      route(ITEMS_PATH, () => jsonResponse(listBody(itemFixtures))),
+      ...itemDetailRoutes(),
       route(UOMS_PATH, () => jsonResponse(listBody(uomFixtures))),
     ]);
     const { result } = renderHookWithProviders(
-      () => ({ items: useItemOptions(true), uoms: useUomOptions(true) }),
+      /* 같은 품목을 실은 줄이 셋이어도 요청은 품목 수만큼이다. */
+      () => ({ items: useItemNames([...ITEM_IDS, 9301, 9301], true), uoms: useUomOptions(true) }),
       { fetch },
     );
 
     await waitFor(() => {
-      expect(result.current.items.entries).toHaveLength(itemFixtures.length);
-      expect(result.current.uoms.entries).toHaveLength(uomFixtures.length);
+      expect(result.current.items.of(9301)).toEqual({
+        kind: 'named',
+        label: 'SAMPLE-ITEM-01 · 합성 자재 가',
+      });
     });
 
-    expect(result.current.items.entries[0]).toEqual({
-      value: '9301',
-      label: 'SAMPLE-ITEM-01 · 합성 자재 가',
-      isActive: true,
+    /* 미사용 품목도 이름이 나온다 — 상세 조회는 사용 여부로 거르지 않는다. */
+    await waitFor(() => {
+      expect(result.current.items.of(9302)).toEqual({
+        kind: 'named',
+        label: 'SAMPLE-ITEM-02 · 합성 자재 나',
+      });
     });
     expect(result.current.uoms.entries[0]?.label).toBe('SAMPLE-UOM-EA · 합성 낱개');
-    expect(result.current.items.entries.some((entry) => !entry.isActive)).toBe(true);
 
-    for (const url of urls) {
-      expect(url.searchParams.get('includeInactive')).toBe('true');
-    }
+    expect(urls.filter((url) => url.pathname === itemPath(9301))).toHaveLength(1);
   });
 
-  it('잘리면 그 사실을 낸다', async () => {
-    const { fetch } = recording([
-      route(ITEMS_PATH, () => jsonResponse(listBody(itemFixtures, 500))),
-    ]);
-    const { result } = renderHookWithProviders(() => useItemOptions(true), { fetch });
+  /**
+   * **없는 품목과 못 받은 품목은 다르다.** 404는 다시 불러도 같은 답이라 「다시 시도」를
+   * 세우면 눌러도 영영 풀리지 않는다 — 그 줄만 「알 수 없음」으로 둔다.
+   */
+  it('404는 알 수 없음이고 실패로 세지 않는다', async () => {
+    const { fetch } = recording(itemDetailRoutes({ 9302: 404 }));
+    const { result } = renderHookWithProviders(() => useItemNames(ITEM_IDS, true), { fetch });
 
     await waitFor(() => {
-      expect(result.current.truncated).toBe(true);
+      expect(result.current.of(9302)).toEqual({ kind: 'unknown' });
     });
+
+    expect(result.current.isError).toBe(false);
+    /* 짝 방향 — 한 품목의 404가 다른 줄의 이름을 지우지 않는다. */
+    expect(result.current.of(9301).kind).toBe('named');
+  });
+
+  it('못 받은 품목은 실패이고 그 줄만 실패다', async () => {
+    const { fetch } = recording(itemDetailRoutes({ 9302: 500 }));
+    const { result } = renderHookWithProviders(() => useItemNames(ITEM_IDS, true), { fetch });
+
+    await waitFor(() => {
+      expect(result.current.of(9302)).toEqual({ kind: 'failed' });
+    });
+
+    expect(result.current.isError).toBe(true);
+    expect(result.current.of(9301).kind).toBe('named');
   });
 
   /**
    * **기준정보 조회는 쪽 크기를 싣지 않는다**(`filters.ts`의 문면과 짝). 예외는 **잘릴 수
    * 있는 거래 기록 둘**(자재 LOT·재고 잔액)뿐이다 — 그 사실이 한 곳에만 적혀 있으면
    * 나중에 상수가 늘어도 아무도 모른다.
+   *
+   * 품목은 이 축에서 빠진다 — **목록을 부르지 않으므로 쪽 자체가 없다**(omf-all-around#37).
    */
-  it('창고·품목·단위·위치는 쪽 크기를 싣지 않는다', async () => {
+  it('창고·단위·위치는 쪽 크기를 싣지 않는다', async () => {
     const { fetch, urls } = recording([
       route(WAREHOUSES_PATH, () => jsonResponse(listBody(warehouseFixtures))),
-      route(ITEMS_PATH, () => jsonResponse(listBody(itemFixtures))),
       route(UOMS_PATH, () => jsonResponse(listBody(uomFixtures))),
       route(LOCATIONS_PATH, () => jsonResponse(listBody(locationFixtures))),
     ]);
     const { result } = renderHookWithProviders(
       () => ({
         warehouses: useWarehouseOptions(),
-        items: useItemOptions(true),
         uoms: useUomOptions(true),
         locations: useLocationOptions(9701),
       }),
       { fetch },
     );
 
-    /* 짝 방향 — 네 조회가 실제로 나가 응답까지 도착했다. 0건이면 「싣지 않는다」가 공허하다. */
+    /* 짝 방향 — 세 조회가 실제로 나가 응답까지 도착했다. 0건이면 「싣지 않는다」가 공허하다. */
     await waitFor(() => {
       expect(result.current.warehouses.entries.length).toBeGreaterThan(0);
-      expect(result.current.items.entries.length).toBeGreaterThan(0);
       expect(result.current.uoms.entries.length).toBeGreaterThan(0);
       expect(result.current.locations.entries.length).toBeGreaterThan(0);
     });
 
-    expect(urls).toHaveLength(4);
+    expect(urls).toHaveLength(3);
 
     for (const url of urls) {
       expect(url.searchParams.has('size')).toBe(false);

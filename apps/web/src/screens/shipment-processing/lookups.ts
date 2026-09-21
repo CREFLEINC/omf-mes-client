@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
+import { fetchAllPages } from '../../patterns/fetch-all-pages';
 import { runRequest } from '../../patterns/request';
 
 /**
@@ -43,11 +44,14 @@ export const usePartnerLookup = (): LookupResult => {
 
   const query = useQuery({
     queryKey: lookupKeys.partners,
+    /* 거래처는 936건이라 한 쪽에 들어가지 않는다 — 끝까지 받는다(omf-all-around#38). */
     queryFn: () =>
-      runRequest(() =>
-        client.GET('/mdm/partners', {
-          params: { query: { includeInactive: true, page: 1, size: LOOKUP_PAGE_SIZE } },
-        }),
+      fetchAllPages((page, size) =>
+        runRequest(() =>
+          client.GET('/mdm/partners', {
+            params: { query: { includeInactive: true, page, size } },
+          }),
+        ),
       ),
   });
 
@@ -60,7 +64,7 @@ export const usePartnerLookup = (): LookupResult => {
         label: `${item.partnerCode} · ${item.partnerName}`,
         isActive: item.isActive,
       })) ?? EMPTY_ENTRIES,
-    truncated: data !== undefined && isTruncated(data.page, data.items.length),
+    truncated: data?.truncated === true,
     isError: query.isError,
     isLoading: query.isPending,
   };

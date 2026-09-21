@@ -104,3 +104,53 @@ describe('스캔값으로 LOT 찾기', () => {
     });
   });
 });
+
+describe('스캔값으로 LOT 찾기 — 늘 다시 묻기(omf-all-around#28)', () => {
+  /*
+   * 같은 라벨을 비웠다가 다시 대는 자리 — 첫 입하 뒤 「다음 입하」에서 같은 라벨을 대는 것과 같다.
+   * 그 사이 첫 입하가 LOT 을 만들었다. 30초 캐시의 「없음」을 믿으면 막지 못하고 전송 뒤 거부된다.
+   */
+  const rescan = async (alwaysFresh: boolean) => {
+    const created = { value: false };
+    let code: string | null = SCANNED;
+    const fetch = createStubFetch([
+      {
+        match: (request) => new URL(request.url).pathname === '/trace/lots',
+        respond: () => jsonResponse({ items: created.value ? [lotRow(9, SCANNED)] : [], page }),
+      },
+    ]);
+
+    const { result, rerender } = renderHookWithProviders(
+      () => useScannedLot(code, { alwaysFresh }),
+      { fetch },
+    );
+
+    await waitFor(() => {
+      expect(result.current.isSuccess).toBe(true);
+    });
+    expect(result.current.data).toBeNull();
+
+    created.value = true;
+    code = null;
+    rerender();
+    code = SCANNED;
+    rerender();
+
+    return result;
+  };
+
+  it('⭐ 켜면 앞서 받은 「없음」을 믿지 않고 다시 물어 새로 생긴 LOT 을 찾는다', async () => {
+    const result = await rescan(true);
+
+    await waitFor(() => {
+      expect(result.current.data?.lotId).toBe(9);
+    });
+  });
+
+  it('끄면(기본) 30초 안에는 앞서 받은 값을 그대로 쓴다 — 다른 화면의 동작은 바꾸지 않는다', async () => {
+    const result = await rescan(false);
+
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(result.current.data).toBeNull();
+  });
+});

@@ -127,7 +127,10 @@ const BALANCES_PATH = '/inventory/balances';
 const PARTNERS_PATH = '/mdm/partners';
 
 const WAREHOUSES_PATH = '/mdm/warehouses';
-const ITEMS_PATH = '/mdm/items';
+/** 품목만 번호마다 상세를 부른다 — 경로가 하나가 아니라 번호마다 하나다. */
+const itemPath = (itemId: number): string => `/mdm/items/${String(itemId)}`;
+/** 줄이 가리키는 품목 둘. 같은 품목을 실은 줄이 둘이어도 경로는 품목마다 하나다. */
+const ITEM_PATHS = itemFixtures.map((item) => itemPath(item.itemId));
 const UOMS_PATH = '/mdm/uoms';
 const LOTS_PATH = '/trace/lots';
 const LOCATIONS_PATH = '/mdm/locations';
@@ -140,6 +143,7 @@ const LINES_PATH_MARKER_QTY = 777;
 
 const WAREHOUSE_LABEL = 'SAMPLE-WH-01 · 합성 창고 가';
 const ITEM_LABEL = 'SAMPLE-ITEM-01 · 합성 품목 가';
+const ITEM_LABEL_B = 'SAMPLE-ITEM-02 · 합성 품목 나';
 const UOM_LABEL = 'SAMPLE-EA · 합성 단위 개';
 const LOCATION_LABEL = 'SAMPLE-LOC-A1 · 합성 열 가1';
 
@@ -456,7 +460,11 @@ const partialFailingLotsRoute = (failingItemId: string): StubRoute => ({
 /** 참조 다섯. 화면이 이름으로 풀 수 있는 정상 상태다. */
 const lookupRoutes = (): StubRoute[] => [
   lookupRoute(WAREHOUSES_PATH, warehouseFixtures),
-  lookupRoute(ITEMS_PATH, itemFixtures),
+  ...itemFixtures.map((item) => ({
+    /* 품목 상세는 봉투로 온다 — 그 모양까지 여기서 굳힌다. */
+    match: (request: Request) => isGet(request, itemPath(item.itemId)),
+    respond: () => jsonResponse({ item, editability: {} }),
+  })),
   lookupRoute(UOMS_PATH, uomFixtures),
   lotsRoute(),
   lookupRoute(LOCATIONS_PATH, locationFixtures),
@@ -563,7 +571,7 @@ const KNOWN_PATHS = [
   OTHER_DETAIL_PATH,
   MISSING_DETAIL_PATH,
   WAREHOUSES_PATH,
-  ITEMS_PATH,
+  ...ITEM_PATHS,
   UOMS_PATH,
   LOTS_PATH,
   LOCATIONS_PATH,
@@ -816,7 +824,7 @@ describe('SupplierReturnScreen — 첫 진입 조회', () => {
 
     await screen.findByText('GR-2026-900001');
 
-    for (const path of [ITEMS_PATH, UOMS_PATH, LOTS_PATH, LOCATIONS_PATH]) {
+    for (const path of [...ITEM_PATHS, UOMS_PATH, LOTS_PATH, LOCATIONS_PATH]) {
       expect(requestsTo(requests, path)).toHaveLength(0);
     }
 
@@ -1161,7 +1169,8 @@ describe('SupplierReturnScreen — 전표를 고른 뒤', () => {
     await selectReceipt(user, 'GR-2026-900001');
     await screen.findByText(LOCATION_LABEL);
 
-    for (const path of [WAREHOUSES_PATH, ITEMS_PATH, UOMS_PATH, LOCATIONS_PATH]) {
+    /* 품목은 목록을 부르지 않으므로 이 축에 들지 않는다 — 상세는 사용 여부로 거르지 않는다. */
+    for (const path of [WAREHOUSES_PATH, UOMS_PATH, LOCATIONS_PATH]) {
       const sent = requestsTo(requests, path);
 
       expect(sent).toHaveLength(1);
@@ -1257,7 +1266,7 @@ describe('SupplierReturnScreen — 전표를 고른 뒤', () => {
    * 그 문구는 *값이 잘못됐다*는 뜻이라 사용자가 반대로 읽는다.
    */
   it('참조가 아직 오지 않은 동안 알 수 없음으로 내지 않는다', async () => {
-    const { release } = renderScreen(allRoutes(), '?gr=9001', '', [ITEMS_PATH]);
+    const { release } = renderScreen(allRoutes(), '?gr=9001', '', ITEM_PATHS);
 
     await waitFor(() => {
       /* 품목 칸 셋이 전부 「불러오는 중」이다 — 「알 수 없음」이 아니다. */
@@ -1269,6 +1278,35 @@ describe('SupplierReturnScreen — 전표를 고른 뒤', () => {
     release();
 
     expect(await screen.findAllByText(ITEM_LABEL)).toHaveLength(2);
+  });
+
+  /**
+   * **없는 품목(404)과 못 받은 품목은 다르다.** 404는 다시 불러도 같은 답이라
+   * 「다시 시도」를 세우면 눌러도 영영 풀리지 않는다 — 그 줄만 「알 수 없음」으로 둔다.
+   */
+  it('없는 품목은 실패가 아니라 알 수 없음이고 복구 수단을 세우지 않는다', async () => {
+    const { user } = renderScreen(
+      allRoutes([
+        {
+          match: (request: Request) => isGet(request, itemPath(9302)),
+          respond: () => jsonResponse({ message: '' }, { status: 404 }),
+        },
+      ]),
+    );
+
+    await screen.findByText('GR-2026-900001');
+    await selectReceipt(user, 'GR-2026-900001');
+
+    await waitFor(() => {
+      expect(screen.getAllByText(ITEM_LABEL).length).toBeGreaterThan(0);
+    });
+
+    /* 그 줄의 이름만 사라진다 — 다른 줄의 이름은 그대로다. */
+    expect(screen.queryByText(ITEM_LABEL_B)).not.toBeInTheDocument();
+    expect(screen.getAllByText(t.values.unknown).length).toBeGreaterThan(0);
+    /* 404는 다시 불러도 같은 답이라 복구 수단을 세우지 않는다. */
+    expect(screen.queryByText(t.reasons.lineReferencesFailed)).not.toBeInTheDocument();
+    expectNoInternalIds();
   });
 
   /** **M11 · 조용한 잘림 방지** — 잘린 목록으로 이름을 풀면 정상 값이 잘못된 값으로 보인다. */
@@ -2823,7 +2861,9 @@ describe('SupplierReturnScreen — 처리 성공', () => {
     /* 잔액은 고유 품목 둘이라 한 회차에 2건씩이다. */
     expect(requestsTo(requests, BALANCES_PATH)).toHaveLength(4);
 
-    expect(requestsTo(requests, ITEMS_PATH)).toHaveLength(1);
+    for (const path of ITEM_PATHS) {
+      expect(requestsTo(requests, path)).toHaveLength(1);
+    }
     expect(requestsTo(requests, UOMS_PATH)).toHaveLength(1);
     expect(requestsTo(requests, LOCATIONS_PATH)).toHaveLength(1);
     expect(requestsTo(requests, PARTNERS_PATH)).toHaveLength(1);
@@ -3236,7 +3276,7 @@ describe('SupplierReturnScreen — 확인 창과 요청의 줄이 같다', () =>
     const body = issueRequests(requests)[0]?.body as {
       lines: { itemId: number; lotId: number; issueQty: number }[];
     };
-    const itemNames: Record<number, string> = { 9301: ITEM_LABEL, 9302: t.values.unknown };
+    const itemNames: Record<number, string> = { 9301: ITEM_LABEL, 9302: ITEM_LABEL_B };
     const lotNames: Record<number, string> = {
       9601: 'LOT-2026-900010',
       9602: 'LOT-2026-900011',

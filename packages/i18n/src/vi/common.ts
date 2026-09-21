@@ -4,6 +4,7 @@ import type { Translated } from './translated';
 /** 화면 여럿이 함께 쓰는 말. 여기가 갈리면 화면마다 같은 뜻이 다른 모양으로 나간다. */
 export const common: Translated<typeof ko.common> = {
   required: (label: string) => `${label} (bắt buộc)`,
+  optional: (label: string) => `${label} (tùy chọn)`,
   save: 'Lưu',
   cancel: 'Hủy',
   add: 'Thêm',

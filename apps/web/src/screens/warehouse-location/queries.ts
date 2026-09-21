@@ -2,6 +2,7 @@ import type { components } from '@omf-mes/api-client';
 import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
+import { fetchAllPages } from '../../patterns/fetch-all-pages';
 import { runRequest } from '../../patterns/request';
 import { CODE_GROUPS } from './code-options';
 import type { LookupEntry, LookupSources, WarehouseFilters } from './types';
@@ -225,9 +226,14 @@ export const useLookupOptions = (): LookupResult => {
 
   const partners = useQuery({
     queryKey: lookupKeys.list('partners'),
+    /* 거래처는 936건이라 한 쪽에 들어가지 않는다 — 끝까지 받는다(omf-all-around#38). */
     queryFn: () =>
-      runRequest(() =>
-        client.GET('/mdm/partners', { params: { query: { includeInactive: true } } }),
+      fetchAllPages((page, size) =>
+        runRequest(() =>
+          client.GET('/mdm/partners', {
+            params: { query: { includeInactive: true, page, size } },
+          }),
+        ),
       ),
   });
 
