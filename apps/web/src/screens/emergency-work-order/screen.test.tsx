@@ -183,14 +183,15 @@ const renderWithScreenDefaultTypeCode = (options: StubOptions = {}) => {
 /**
  * 품목을 찾아 고르고, 수량·사유를 채운다 — 발행 직전까지.
  *
- * ⭐ 수량 칸을 **단위 이름으로** 집으므로, 이 함수를 쓰는 모든 검사가 「수량 라벨에 고른
- * 품목의 단위가 붙는다」를 함께 고정한다.
+ * ⭐ 품목 줄의 단추를 **품목 코드가 실린 접근명**으로 집으므로, 이 함수를 쓰는 모든 검사가
+ * 「어느 품목을 고르는 단추인지 이름에 실린다」를 함께 고정한다(보이는 글자는 「선택」이다).
  */
 const fillForm = async (user: ReturnType<typeof userEvent.setup>): Promise<void> => {
-  await user.type(screen.getByLabelText(t.itemPicker.label), 'SYN');
+  await user.click(screen.getByRole('button', { name: t.itemPicker.open }));
+  await user.type(await screen.findByLabelText(t.itemPicker.label), 'SYN');
   await user.click(screen.getByRole('button', { name: t.itemPicker.search }));
   await user.click(await screen.findByRole('button', { name: /SYN-ITEM-0001/ }));
-  await user.type(await screen.findByLabelText(/EA/), '200');
+  await user.type(await screen.findByLabelText(t.form.orderQty), '200');
   await user.type(screen.getByLabelText(t.form.reason), '고객 긴급 요청');
 };
 
@@ -382,7 +383,8 @@ describe('EmergencyWorkOrderScreen', () => {
     it('⚠ 밀린 것이 없으면 구획이 서지 않는다', async () => {
       renderScreen();
 
-      await screen.findByRole('button', { name: t.itemPicker.search });
+      /* 검색칸은 대화상자 안에 있다 — 본문에 늘 서 있는 「품목 찾기」로 첫 렌더를 기다린다. */
+      await screen.findByRole('button', { name: t.itemPicker.open });
       expect(screen.queryByRole('region', { name: t.handover.title })).not.toBeInTheDocument();
     });
 

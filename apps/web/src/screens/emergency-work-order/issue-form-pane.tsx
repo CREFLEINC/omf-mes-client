@@ -32,6 +32,10 @@ export const IssueFormPane = ({ value, errors, item, uomLabel, onChange }: Issue
   const t = messages.emergencyWorkOrder.form;
   const [touched, setTouched] = useState<Record<string, boolean>>({});
 
+  /** 아직 품목을 고르지 않았거나 단위 이름을 못 받았으면 붙일 것이 없다. */
+  const unit =
+    item === null || uomLabel === messages.emergencyWorkOrder.uomUnknown ? null : uomLabel;
+
   const set = (field: keyof IssueFormValue, next: string): void => {
     setTouched((current) => ({ ...current, [field]: true }));
     onChange({ ...value, [field]: next });
@@ -46,26 +50,39 @@ export const IssueFormPane = ({ value, errors, item, uomLabel, onChange }: Issue
       <h2 className="pane-title">{t.title}</h2>
 
       <div className="emergency-work-order-form-grid">
-        <div className="field-cell emergency-work-order-form-item">
+        {/* 고른 결과를 «읽는 값»으로 그린다 — 입력칸처럼 보이면 여기서도 고칠 수 있다고 읽는다. */}
+        <div className="field-cell emergency-work-order-form-item" data-empty={item === null}>
           <span className="field-label">{t.item}</span>
           <strong>{item === null ? '—' : `${item.itemCode} · ${item.itemName}`}</strong>
         </div>
 
+        {/*
+         * ⭐ **단위는 라벨이 아니라 칸 끝에 붙인다.** 종전에는 「수량 (단위 확인 중)」처럼
+         * 시스템 상태가 라벨에 섞여, 칸 이름이 상황마다 바뀌었다. 라벨은 늘 「수량」이다.
+         */}
+        {/*
+         * ⛔ **모르는 단위를 「확인 중」으로 적지 않는다.** 그것은 시스템 사정이고, 사용자가
+         * 할 일을 바꾸지 않는다 — 단위를 아는 때에만 칸 끝에 붙인다.
+         */}
         <TextField
-          label={`${t.orderQty} (${uomLabel})`}
+          label={t.orderQty}
+          required
           inputMode="decimal"
           value={value.orderQty}
+          trailingIcon={
+            unit === null ? undefined : <span className="emergency-work-order-uom">{unit}</span>
+          }
           error={errorOf('orderQty')}
           onChange={(event) => {
             set('orderQty', event.target.value);
           }}
         />
 
+        {/* 비워도 되는 칸은 «라벨»이 그렇다고 말한다 — 칸 아래 한 줄을 더 두지 않는다. */}
         <TextField
-          label={t.plannedEnd}
+          label={`${t.plannedEnd} (${t.optional})`}
           type="date"
           value={value.dueDate}
-          helperText={t.dueHelp}
           error={errorOf('dueDate')}
           onChange={(event) => {
             set('dueDate', event.target.value);
@@ -73,11 +90,16 @@ export const IssueFormPane = ({ value, errors, item, uomLabel, onChange }: Issue
         />
 
         <div className="emergency-work-order-form-reason">
+          {/*
+           * ⛔ **칸 아래 설명을 두지 않는다.** 필수인 것은 별표가, 무엇을 쓰는지는 칸 안 글자가
+           * 말한다 — 「승인이 없어 사유가 유일한 기록이다」는 시스템 사정이라 여기서 뺐다
+           * (사용자 결정 2026-09-21).
+           */}
           <TextArea
             label={t.reason}
+            required
+            placeholder={t.reasonPlaceholder}
             value={value.remarks}
-            /* 왜 필수인지와, 어디에 어떻게 남는지를 함께 적는다. */
-            helperText={`${t.reasonHelp} ${t.reasonScope}`}
             error={errorOf('remarks')}
             onChange={(event) => {
               set('remarks', event.target.value);

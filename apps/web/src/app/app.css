@@ -1232,14 +1232,15 @@ main > * + * {
 .emergency-work-order-inputs {
   display: grid;
   align-content: start;
-  gap: var(--space-5);
+  gap: var(--space-4);
   min-width: 0;
 }
 
 .emergency-work-order-composer {
   display: grid;
-  grid-template-columns: minmax(24rem, 2fr) minmax(0, 3fr);
-  gap: var(--space-5);
+  /* 왼쪽 42% · 오른쪽 58% — 전개 결과(BOM·Routing 표)가 서는 쪽을 넓게 둔다. */
+  grid-template-columns: minmax(22rem, 42fr) minmax(0, 58fr);
+  gap: var(--space-4);
   align-items: start;
   min-width: 0;
 }
@@ -1247,8 +1248,8 @@ main > * + * {
 .emergency-work-order-pane {
   display: grid;
   align-content: start;
-  gap: var(--space-4);
-  padding: var(--space-5);
+  gap: var(--space-3);
+  padding: var(--space-4);
 }
 
 .emergency-work-order-pane > .pane-title {
@@ -1262,6 +1263,19 @@ main > * + * {
   margin-bottom: 0;
 }
 
+/*
+ * 한 줄짜리 안내의 아이콘과 글자를 같은 줄에 세운다 — **임시 우회**.
+ * DS 배너는 여러 줄을 전제로 아이콘을 위에 붙이고(`align-items: flex-start` + 아이콘
+ * `margin-top`) 한 줄일 때는 아이콘만 아래로 처져 보인다. 이 화면의 배너는 전부 한 줄이다.
+ */
+.emergency-work-order-pane > .banner-slot > * {
+  align-items: center;
+}
+
+.emergency-work-order-pane > .banner-slot > * > [aria-hidden='true'] {
+  margin-top: 0;
+}
+
 .emergency-work-order-lead,
 .emergency-work-order-pane > p,
 .emergency-work-order-action-row > p {
@@ -1269,29 +1283,67 @@ main > * + * {
   color: var(--on-surface-variant);
 }
 
+/* 읽는 값 넷 — 2열로 접어 두고 라벨·값을 한 줄에 붙인다. 손댈 것이 없는 구획이라 자리를 적게 쓴다. */
 .emergency-work-order-terms {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: var(--space-3);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-2) var(--space-3);
   margin: 0;
 }
 
 .emergency-work-order-term {
+  display: grid;
+  grid-template-columns: 6.5rem minmax(0, 1fr);
+  column-gap: var(--space-3);
+  align-items: baseline;
   min-width: 0;
-  padding: var(--space-4);
+  padding: var(--space-2) var(--space-3);
   border: 1px solid var(--outline-variant);
   border-radius: var(--radius-md);
+}
+
+.emergency-work-order-term > dt {
+  color: var(--on-surface-variant);
+}
+
+/* 필수 구획임을 라벨 옆 별표로 알린다 — DS 입력칸의 별표와 같은 색이다. */
+.emergency-work-order-pane .required-mark {
+  margin-left: var(--space-1);
+  color: var(--semantic-error-text);
+}
+
+/* 아직 고르지 않았을 때 구획이 비어 보이지 않게 한 줄을 둔다. */
+.emergency-work-order-picker-empty {
+  margin: 0;
+  color: var(--on-surface-variant);
+}
+
+.emergency-work-order-picker-actions {
+  display: flex;
+  justify-content: flex-start;
+}
+
+/* 갈 곳이 있는 항목은 줄 오른쪽에 이동 단추를 세운다. */
+.emergency-work-order-term-link {
+  grid-column: 1 / -1;
+  justify-self: end;
+  margin-top: var(--space-1);
 }
 
 .emergency-work-order-term > dd,
 .emergency-work-order-expansion-field > dd {
   display: grid;
-  gap: var(--space-2);
+  gap: var(--space-1);
   margin: 0;
   overflow-wrap: anywhere;
 }
 
-.emergency-work-order-term > dd > strong,
+.emergency-work-order-term > dd > strong {
+  color: var(--on-surface);
+  font: var(--type-body-lg);
+  letter-spacing: var(--type-body-lg-tracking);
+}
+
 .emergency-work-order-selected-item strong,
 .emergency-work-order-form-item > strong {
   color: var(--on-surface);
@@ -1304,6 +1356,12 @@ main > * + * {
   color: var(--on-surface-variant);
   font: var(--type-body-sm);
   letter-spacing: var(--type-body-sm-tracking);
+}
+
+@media (max-width: 960px) {
+  .emergency-work-order-terms {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 
 .emergency-work-order-search-row {
@@ -1339,10 +1397,64 @@ main > * + * {
   min-width: 0;
 }
 
+/* 찾은 줄 — 코드를 세우고 이름은 보조로. 고르는 일은 줄 끝 단추가 맡는다. */
+.emergency-work-order-search-result {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-md);
+}
+
+.emergency-work-order-search-result-text {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.emergency-work-order-search-result-text > strong {
+  color: var(--on-surface);
+  overflow-wrap: anywhere;
+}
+
+.emergency-work-order-search-result-text > span {
+  color: var(--on-surface-variant);
+  font: var(--type-body-sm);
+  letter-spacing: var(--type-body-sm-tracking);
+  overflow-wrap: anywhere;
+}
+
+/* 고른 품목 — 찾은 줄과 헷갈리지 않게 테두리를 세운다. */
+.emergency-work-order-selected-item {
+  border-color: var(--primary);
+}
+
+/* 아직 안 고른 상태의 「—」는 값이 아니라 빈 자리다. */
+.emergency-work-order-form-item[data-empty='true'] > strong {
+  color: var(--on-surface-variant);
+}
+
+.emergency-work-order-uom {
+  color: var(--on-surface-variant);
+  font: var(--type-body-sm);
+  letter-spacing: var(--type-body-sm-tracking);
+  white-space: nowrap;
+}
+
+/* 지금 입력에 필요한 말이 아니라 구획 끝으로 내린 한 줄. */
+.emergency-work-order-form-footnote {
+  margin: 0;
+  color: var(--on-surface-variant);
+  font: var(--type-body-sm);
+  letter-spacing: var(--type-body-sm-tracking);
+}
+
 .emergency-work-order-form-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--space-4);
+  gap: var(--space-3);
   align-items: start;
   min-width: 0;
 }
@@ -1357,9 +1469,14 @@ main > * + * {
 }
 
 .emergency-work-order-form-item {
-  padding: var(--space-3) var(--space-4);
+  padding: var(--space-2) var(--space-3);
   border: 1px solid var(--outline-variant);
   border-radius: var(--radius-md);
+}
+
+.emergency-work-order-form-reason {
+  display: grid;
+  gap: var(--space-2);
 }
 
 .emergency-work-order-expansion-summary {
@@ -1376,11 +1493,12 @@ main > * + * {
   border-radius: var(--radius-md);
 }
 
+/* 빈 상태는 자리를 잡아 두되 넓게 비우지 않는다 — 결과가 서면 표가 그 자리를 넓힌다. */
 .emergency-work-order-empty {
   display: grid;
-  min-height: 8rem;
+  min-height: 4.5rem;
   place-items: center;
-  padding: var(--space-5);
+  padding: var(--space-4);
   border: 1px dashed var(--outline-variant);
   border-radius: var(--radius-md);
   text-align: center;
@@ -1393,7 +1511,18 @@ main > * + * {
 }
 
 .emergency-work-order-table table {
-  min-width: 38rem;
+  min-width: 0;
+}
+
+/* 순서·수량은 숫자 몇 자리라 좁게 잡고, 남는 자리는 공정 이름이 쓴다. */
+.emergency-work-order-table th:first-child,
+.emergency-work-order-table td:first-child {
+  width: 5rem;
+}
+
+.emergency-work-order-table th:last-child,
+.emergency-work-order-table td:last-child {
+  width: 8rem;
 }
 
 .emergency-work-order-table caption {
@@ -1408,8 +1537,28 @@ main > * + * {
   border: 0;
 }
 
+/*
+ * 발행 준비 — **상자를 두르지 않는다.** 안에 든 것이 단추 하나와 막힌 사유 한 줄뿐이라,
+ * 테두리를 치면 빈 상자가 화면 아래를 가로지른다. 구획 제목은 화면 낭독기용으로 남긴다.
+ */
 .emergency-work-order-composer > .emergency-work-order-action-pane {
   grid-column: 1 / -1;
+  padding: 0;
+  background: none;
+  border: 0;
+  box-shadow: none;
+}
+
+.emergency-work-order-action-pane > .pane-title {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
 }
 
 .emergency-work-order-action-row {
@@ -9733,7 +9882,9 @@ dl.filter-bar.approval-inbox-detail-facts {
 }
 
 /* 비고는 자유 입력이라 좁은 화면에서도 줄 전체. */
-.goods-receipt-post-form .goods-receipt-post-grid > .field-cell:last-child:not([class*='goods-receipt-step-']) {
+.goods-receipt-post-form
+  .goods-receipt-post-grid
+  > .field-cell:last-child:not([class*='goods-receipt-step-']) {
   grid-column: span 12;
 }
 
@@ -9755,7 +9906,9 @@ dl.filter-bar.approval-inbox-detail-facts {
     grid-column: 1 / span 3;
   }
 
-  .goods-receipt-post-form .goods-receipt-post-grid > .field-cell:last-child:not([class*='goods-receipt-step-']) {
+  .goods-receipt-post-form
+    .goods-receipt-post-grid
+    > .field-cell:last-child:not([class*='goods-receipt-step-']) {
     grid-column: span 6;
   }
 }
@@ -9772,11 +9925,21 @@ dl.filter-bar.approval-inbox-detail-facts {
 
 .goods-receipt-post-form[data-current-step='warehouse'] .goods-receipt-step-warehouse .field-label,
 .goods-receipt-post-form[data-current-step='location'] .goods-receipt-step-location .field-label,
-.goods-receipt-post-form[data-current-step='receiptType'] .goods-receipt-step-receiptType .field-label,
-.goods-receipt-post-form[data-current-step='sourceDocumentType'] .goods-receipt-step-sourceDocumentType .field-label,
-.goods-receipt-post-form[data-current-step='qualityStatus'] .goods-receipt-step-qualityStatus .field-label,
-.goods-receipt-post-form[data-current-step='inventoryStatus'] .goods-receipt-step-inventoryStatus .field-label,
-.goods-receipt-post-form[data-current-step='receiptDatetime'] .goods-receipt-step-receiptDatetime label {
+.goods-receipt-post-form[data-current-step='receiptType']
+  .goods-receipt-step-receiptType
+  .field-label,
+.goods-receipt-post-form[data-current-step='sourceDocumentType']
+  .goods-receipt-step-sourceDocumentType
+  .field-label,
+.goods-receipt-post-form[data-current-step='qualityStatus']
+  .goods-receipt-step-qualityStatus
+  .field-label,
+.goods-receipt-post-form[data-current-step='inventoryStatus']
+  .goods-receipt-step-inventoryStatus
+  .field-label,
+.goods-receipt-post-form[data-current-step='receiptDatetime']
+  .goods-receipt-step-receiptDatetime
+  label {
   color: var(--primary-text);
   font-weight: 600;
 }

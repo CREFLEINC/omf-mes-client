@@ -65,10 +65,17 @@ const renderPicker = (
   return { onSelect, user: userEvent.setup(), urls: stubbed.urls };
 };
 
+/** 찾는 일은 대화상자 안에서 한다 — 열고 나서 친다. */
+const openDialog = async (user: ReturnType<typeof userEvent.setup>): Promise<void> => {
+  await user.click(screen.getByRole('button', { name: new RegExp(`${t.open}|${t.change}`) }));
+  await screen.findByRole('dialog');
+};
+
 const searchFor = async (
   user: ReturnType<typeof userEvent.setup>,
   keyword: string,
 ): Promise<void> => {
+  await openDialog(user);
   await user.type(screen.getByLabelText(t.label), keyword);
   await user.click(screen.getByRole('button', { name: t.search }));
 };
@@ -77,6 +84,7 @@ describe('ItemPicker', () => {
   it('⛔ 글자마다 찾지 않는다 — 확정했을 때만 요청이 나간다', async () => {
     const { user, urls } = renderPicker();
 
+    await openDialog(user);
     await user.type(screen.getByLabelText(t.label), 'SYN');
     expect(urls).toHaveLength(0);
 
@@ -86,7 +94,7 @@ describe('ItemPicker', () => {
     });
   });
 
-  it('찾은 품목을 고를 수 있다', async () => {
+  it('찾은 품목을 고르면 대화상자가 닫힌다', async () => {
     const { onSelect, user } = renderPicker();
 
     await searchFor(user, 'SYN');
@@ -98,6 +106,15 @@ describe('ItemPicker', () => {
       itemName: '합성 품목',
       baseUomId: 11,
     });
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    });
+  });
+
+  it('고르기 전에는 본문에 고른 품목이 없다고 적는다', () => {
+    renderPicker();
+
+    expect(screen.getByText(t.notChosen)).toBeInTheDocument();
   });
 
   it('⛔ 고른 품목의 기준 단위를 함께 들고 간다 — 수량이 어느 단위인지가 사실이다', async () => {
