@@ -1107,6 +1107,22 @@ describe('P-02-01 작업 시작 — 다음 작업 화면으로 가는 길(omf-al
     expect(screen.queryByRole('button', { name: t.blocked.pqcInspection })).not.toBeInTheDocument();
   });
 
+  /**
+   * ⛔ **의뢰 조회가 실패해도 나머지 길은 막지 않는다.** 검사 의뢰를 못 물어본 것과 「PQC 대상이
+   *    아니다」는 다른 일이지만, 어느 쪽이든 «있다고 지어낼» 수는 없다 — 그래서 PQC 단추만
+   *    서지 않고 중단·교체·포장은 그대로 선다.
+   */
+  it('PQC 의뢰 조회가 실패해도 나머지 진입은 그대로 선다', async () => {
+    const rendered = renderScreen({ openSessions: [OPEN_SESSION], pqcStatus: 500 });
+
+    await selectWorkOrder(rendered);
+
+    for (const label of [t.blocked.holdWork, t.blocked.runningChange, t.blocked.packingWork]) {
+      expect(await screen.findByRole('button', { name: label })).toBeInTheDocument();
+    }
+    expect(screen.queryByRole('button', { name: t.blocked.pqcInspection })).not.toBeInTheDocument();
+  });
+
   /** ⛔ 세션이 없으면 넷 다 내지 않는다 — 중단·교체·검사·포장은 «세션» 위의 일이다. */
   it('열린 세션이 없으면 네 단추를 모두 세우지 않는다', async () => {
     const rendered = renderScreen({ pendingPqc: [PQC_REQUEST] });
