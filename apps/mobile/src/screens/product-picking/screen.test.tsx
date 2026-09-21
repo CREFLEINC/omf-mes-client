@@ -316,6 +316,29 @@ describe('제품LOT 피킹 스캔 화면', () => {
   });
 
   /*
+   * ⭐ 같은 품목인데 후보에 없다 - 번호를 잘못 읽은 것이 아니라 아직 집을 수 없는 LOT 이다.
+   *   「못 찾았다」로 말하면 작업자가 같은 번호를 다시 스캔하며 헤맨다.
+   */
+  it('같은 품목인데 후보에 없는 LOT 은 못 찾았다고 말하지 않는다', async () => {
+    const user = userEvent.setup();
+    const wip = lotRow(9, 'FG-0999', '2099-02-02');
+    mount(
+      [
+        {
+          match: (req) =>
+            new URL(req.url).pathname === '/trace/lots' && new URL(req.url).searchParams.has('lotNo'),
+          respond: () => jsonResponse({ items: [wip], page }),
+        },
+      ],
+      { lots: [EARLY, LATE], balances: [balance(1, 500), balance(2, 500)] },
+    );
+    await chooseTarget(user);
+    await pickLot(user, 'FG-0999');
+
+    expect(await screen.findByText(/FG-0999 은\(는\) 아직 집을 수 있는 상태가 아닙니다/)).toBeTruthy();
+  });
+
+  /*
    * 설계 레이아웃이 대상 - 권장 LOT - 스캔 순이다. 스캔이 먼저 서면 무엇을 집어야 하는지
    * 보기 전에 집으라고 시키는 것이 된다.
    */
