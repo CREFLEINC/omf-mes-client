@@ -240,6 +240,38 @@ describe('toIssueLock', () => {
     it('값이 있으면 그 자리가 열린다', () => {
       expect(toIssueLock(input({ typeCode: KNOWN_CODE })).reason).toBeUndefined();
     });
+  });
+
+  describe('서버가 계획 없는 발행을 아직 받지 않을 때', () => {
+    it('⛔ 입력·전개보다 «먼저» 말한다 — 다 채운 뒤에 거부당하지 않게', () => {
+      const lock = toIssueLock(
+        input({
+          isPlanlessIssueOpen: false,
+          expansion: { kind: 'idle' },
+          isInputComplete: false,
+        }),
+      );
+
+      expect(lock.reason).toBe(t.notOpenYet);
+      expect(lock.isUncertain).toBe(false);
+      expect(lock.canRetryRelease).toBe(false);
+    });
+
+    it('⛔ 배포가 남은 W/O 보다는 뒤다 — 먼저 끝내야 할 일이 있으면 그것부터 말한다', () => {
+      const lock = toIssueLock(
+        input({
+          isPlanlessIssueOpen: false,
+          pending: pendingWorkOrder('notSent'),
+        }),
+      );
+
+      expect(lock.reason).not.toBe(t.notOpenYet);
+      expect(lock.canRetryRelease).toBe(true);
+    });
+
+    it('넘기지 않으면 받는 것으로 본다 — 서버가 열린 뒤의 흐름을 가리지 않는다', () => {
+      expect(toIssueLock(input()).reason).toBeUndefined();
+    });
 
     /* 넘기지 않으면 화면이 쓰는 상수를 그대로 쓴다 — 그 값이 이제 정해져 있어 열린다. */
     it('넘기지 않으면 확정된 상수를 쓴다 — 발행이 열려 있다', () => {

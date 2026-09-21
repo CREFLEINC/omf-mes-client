@@ -1,5 +1,8 @@
 import { AlertBanner, Button, Chip, Table, type Column } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
+import { useState } from 'react';
+
+import { popTouchClass } from '../../patterns/pop-touch';
 
 import { toLookupDisplayState, type LookupSource } from '../../patterns/lookup-display';
 
@@ -41,6 +44,10 @@ export const PendingPane = ({
   onPick,
   onRefresh,
 }: PendingPaneProps) => {
+  /* ⭐ 발행 여부 탭(사용자 지시 2026-09-21) — P-01-01 과 같은 짜임이다. */
+  const [view, setView] = useState<'unissued' | 'issued'>('unissued');
+  const rows = view === 'issued' ? list.issuedLines : list.lines;
+
   const label = (source: LookupSource, value: number): string => {
     const state = toLookupDisplayState(source, value);
 
@@ -71,6 +78,11 @@ export const PendingPane = ({
         row.reason.kind === 'notIssued' ? (
           <Chip variant="status" size="md" status="info">
             {t.statusNotIssued}
+          </Chip>
+        ) : row.reason.kind === 'issued' ? (
+          /* 이미 찍힌 라인 — 다시 찍으려면 재발행 사유가 필요하다. */
+          <Chip variant="status" size="md" status="success">
+            {t.statusIssued(row.reason.issueCount)}
           </Chip>
         ) : (
           /* ⚠ 인쇄 실패는 **경고**다 — 기록은 남았는데 현장에 라벨이 없다. */
@@ -119,22 +131,50 @@ export const PendingPane = ({
       {/* ⚠ 창을 늘 적는다 — 「없다」와 「창 밖에 있다」가 같아 보이면 안 된다. */}
       <p className="field-note">{t.window(PENDING_WINDOW_DAYS, PENDING_ISSUE_LIMIT)}</p>
 
+      {/*
+       * ⭐ **발행 여부로 목록을 가른다**(사용자 지시 2026-09-21 · 자재 LOT 라벨 발행과 같은 모양).
+       *    찍은 라인이 목록에서 빠지면 라벨이 찢어졌을 때 다시 찍을 길이 없다.
+       */}
+      <div
+        className="pop-material-lot-filter pop-giqr-pending-filter"
+        role="group"
+        aria-label={t.filter.label}
+      >
+        {(['unissued', 'issued'] as const).map((each) => (
+          <button
+            key={each}
+            type="button"
+            className={`pop-material-lot-filter-item ${popTouchClass('normal')}`}
+            aria-pressed={view === each}
+            onClick={() => {
+              setView(each);
+            }}
+          >
+            {t.filter[each]}
+          </button>
+        ))}
+      </div>
+
       {list.isError ? (
         <div className="banner-slot">
           <AlertBanner variant="error">{t.failed}</AlertBanner>
         </div>
       ) : list.isLoading ? (
         <p className="field-note">{t.loading}</p>
-      ) : list.lines.length === 0 ? (
+      ) : rows.length === 0 ? (
         <p className="field-note">
-          {list.issuedCount === 0 ? t.empty : t.allIssued(list.issuedCount)}
+          {view === 'issued'
+            ? t.issuedEmpty
+            : list.issuedCount === 0
+              ? t.empty
+              : t.allIssued(list.issuedCount)}
         </p>
       ) : (
         <Table
           density="compact"
           getRowId={(row: PendingLine) => String(row.line.goodsIssueLineId)}
           columns={columns}
-          rows={[...list.lines]}
+          rows={[...rows]}
         />
       )}
 

@@ -4,8 +4,17 @@ import { useMutation, useQueryClient, type UseMutationResult } from '@tanstack/r
 import { useApiClient } from '../../patterns/api-context';
 import { useMasterWrite, type MasterWriteResult } from '../../patterns/master';
 import { runRequest } from '../../patterns/request';
-import { renderGoodsIssueQrLabel, type GoodsIssueQrLabelFields } from './label-image';
-import { hasPrintBridge, sendToPrinter, type PrintAttempt } from '../../patterns/pop-print';
+import {
+  buildGoodsIssueQrLabel,
+  renderGoodsIssueQrLabel,
+  type GoodsIssueQrLabelFields,
+} from './label-image';
+import {
+  hasPrintBridge,
+  keepOnDevice,
+  sendToPrinter,
+  type PrintAttempt,
+} from '../../patterns/pop-print';
 import { goodsIssueQrKeys } from './queries';
 import type { DocumentIssue, DocumentIssueCreate } from './types';
 
@@ -149,23 +158,28 @@ const printOne = async (record: DocumentIssue, fieldsOf: LabelFieldsOf): Promise
    *    **그래서 이 자리는 `fetchLabelRendition` 을 부르지 않는다** — 준비 목록·형식 협상과
    *    무관하다.
    *
-   * ⚠ **형식은 `png` 고정이다.** 명령형(TSPL)은 RAW 자리로만 나가는데 그 자리는 win32 에서만
-   *    선다(WIP-CHAIN-01 D6 실측) — 가상 큐로 찍는 이번 흐름에서는 그림이라야 한다.
+   * ⭐ **종이는 80 × 30 mm TSPL 로 찍는다**(omf-all-around#35). 그림(PNG)은 드라이버 대지를
+   *    거쳐 크기가 라벨지와 맞지 않고 상하가 뒤집혀 나왔다 — 포장 라벨과 같은 해법이다.
+   *    그림은 확인용으로 단말에만 함께 남긴다(`keepOnDevice`, 인쇄 없음).
    */
   const fields = fieldsOf(record);
 
   if (!isReady(fields)) return { kind: 'failed', reason: fields.unavailableReason };
 
-  let bytes: Uint8Array;
+  let command: string;
+  let image: Uint8Array;
 
   try {
-    bytes = renderGoodsIssueQrLabel(fields);
+    command = buildGoodsIssueQrLabel(fields);
+    image = renderGoodsIssueQrLabel(fields);
   } catch (cause) {
     /* 그리지 못한 것도 인쇄 실패다 — 종이는 나오지 않았고, 발행 기록은 남아 있다. */
     return { kind: 'failed', reason: cause instanceof Error ? cause.message : String(cause) };
   }
 
-  return sendToPrinter(bytes, printLabel(record), 'png');
+  await keepOnDevice(image, printLabel(record), 'png');
+
+  return sendToPrinter(new TextEncoder().encode(command), printLabel(record), 'tspl');
 };
 
 /**

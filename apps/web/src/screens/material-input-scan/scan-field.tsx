@@ -2,6 +2,7 @@ import { AlertBanner, Button, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 
+import { useScannerSubmit } from '../../patterns/pop-scanner-submit';
 import { popTouchClass } from '../../patterns/pop-touch';
 import { normalizeScanCode } from './scan';
 
@@ -55,13 +56,12 @@ export const ScanField = ({ isScanning, onScan, outcome }: ScanFieldProps) => {
     if (!isScanning) inputRef.current?.focus();
   }, [isScanning]);
 
-  const submit = (event: FormEvent<HTMLFormElement>): void => {
-    /*
-     * ⛔ 기본 제출을 막는다. `<form>`은 기본이 GET 제출이라 Enter 한 번에 읽은 코드가 질의
-     * 문자열로 올라가고 화면이 통째로 다시 뜬다 — 담아 둔 후보가 그 자리에서 사라진다.
-     */
-    event.preventDefault();
-
+  /*
+   * ⭐ **스캔 한 번에 보낸다**(omf-all-around#35). 실기에서 LOT 을 읽고도 Enter 를 한 번 더
+   *    쳐야 담겼다 — 스캐너가 Enter 를 안 붙이거나 Tab 을 붙이거나 입력기가 Enter 를 삼키는
+   *    경우를 `patterns/pop-scanner-submit` 이 함께 받는다. 보내는 길은 아래 `send` 하나다.
+   */
+  const send = (raw: string): void => {
     /*
      * **버튼 잠금과 별개의 겹이다**(전례 `login/screen.tsx`와 같은 규율). 제출 단추가 없어진 지금
      * (설계 §3 도면) **이 줄이 유일한 방어다** — 앞 판은 잠긴 단추가 Enter 의 암묵 제출까지
@@ -70,7 +70,7 @@ export const ScanField = ({ isScanning, onScan, outcome }: ScanFieldProps) => {
      */
     if (isScanning) return;
 
-    const code = normalizeScanCode(value);
+    const code = normalizeScanCode(raw);
     if (code === null) return;
 
     /*
@@ -82,6 +82,17 @@ export const ScanField = ({ isScanning, onScan, outcome }: ScanFieldProps) => {
 
     /* 버튼으로 보냈으면 포커스가 버튼에 있다. 위 효과가 돌지 않는 경우까지 여기서 덮는다. */
     inputRef.current?.focus();
+  };
+
+  const scanner = useScannerSubmit(send, () => inputRef.current?.value ?? '');
+
+  const submit = (event: FormEvent<HTMLFormElement>): void => {
+    /*
+     * ⛔ 기본 제출을 막는다. `<form>`은 기본이 GET 제출이라 Enter 한 번에 읽은 코드가 질의
+     * 문자열로 올라가고 화면이 통째로 다시 뜬다 — 담아 둔 후보가 그 자리에서 사라진다.
+     */
+    event.preventDefault();
+    scanner.submit(value);
   };
 
   return (
@@ -99,8 +110,10 @@ export const ScanField = ({ isScanning, onScan, outcome }: ScanFieldProps) => {
            * 놓기 전에 읽힌 코드가 사라진다 — 스캐너는 사람이 기다려 주지 않는다. 두 번 보내는
            * 것은 `submit`의 진행 중 검사가 막는다.
            */
+          onKeyDown={scanner.onKeyDown}
           onChange={(event) => {
             setValue(event.target.value);
+            scanner.noteInput(event.target.value);
           }}
         />
         {/*

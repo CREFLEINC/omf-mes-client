@@ -168,9 +168,11 @@ const stub = (
 const renderScreen = (options: StubOptions & { typeCode?: string } = {}) => {
   const stubbed = stub(options);
 
-  renderWithProviders(<EmergencyWorkOrderScreen typeCode={options.typeCode ?? KNOWN_CODE} />, {
-    fetch: stubbed.fetch,
-  });
+  /* 서버가 열린 뒤의 흐름을 본다 — 잠금 자체는 아래 전용 검사가 따로 고정한다. */
+  renderWithProviders(
+    <EmergencyWorkOrderScreen typeCode={options.typeCode ?? KNOWN_CODE} isPlanlessIssueOpen />,
+    { fetch: stubbed.fetch },
+  );
 
   return { user: userEvent.setup(), paths: stubbed.paths, writes: stubbed.writes };
 };
@@ -178,7 +180,7 @@ const renderScreen = (options: StubOptions & { typeCode?: string } = {}) => {
 const renderWithScreenDefaultTypeCode = (options: StubOptions = {}) => {
   const stubbed = stub(options);
 
-  renderWithProviders(<EmergencyWorkOrderScreen />, { fetch: stubbed.fetch });
+  renderWithProviders(<EmergencyWorkOrderScreen isPlanlessIssueOpen />, { fetch: stubbed.fetch });
 
   return { user: userEvent.setup(), paths: stubbed.paths, writes: stubbed.writes };
 };
@@ -199,6 +201,22 @@ const fillForm = async (user: ReturnType<typeof userEvent.setup>): Promise<void>
 };
 
 describe('EmergencyWorkOrderScreen', () => {
+  it('⛔ 서버가 계획 없는 발행을 받지 않으면 누르기 «전에» 잠그고 현장 말로 알린다', () => {
+    /*
+     * 열어 두면 사용자는 품목·수량·사유를 다 채운 뒤에야 거부당하고, 그 문구가 내부 용어라
+     * 자기 입력이 잘못된 줄 안다(omf-all-around#44).
+     */
+    const stubbed = stub();
+    renderWithProviders(<EmergencyWorkOrderScreen typeCode={KNOWN_CODE} />, {
+      fetch: stubbed.fetch,
+    });
+
+    expect(screen.getByRole('button', { name: t.action })).toBeDisabled();
+    expect(screen.getByText(t.lock.notOpenYet)).toBeVisible();
+    /* 내부 용어를 화면에 내지 않는다 — 문의 번호·공장 컨텍스트 같은 말은 현장에서 못 읽는다. */
+    expect(screen.queryByText(/문의\s*0?040/)).toBeNull();
+  });
+
   it('고정 조건·품목·발행 정보·자동 전개·발행 준비를 제목이 있는 구획으로 나눈다', () => {
     renderScreen();
 

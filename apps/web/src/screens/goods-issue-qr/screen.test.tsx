@@ -531,7 +531,8 @@ describe('GoodsIssueQrScreen', () => {
     await screen.findByText('LOT-SAMPLE-21');
     await user.click(within(rowFor('LOT-SAMPLE-21')).getByRole('button', { name: t.lines.pick }));
 
-    expect(await screen.findByText(t.action.disabledNoReason)).toBeInTheDocument();
+    /* 바닥 띠에는 사유를 적지 않는다(사용자 지시 2026-09-19) — 사유 칸이 서고 단추가 잠긴다. */
+    expect(await screen.findByRole('combobox', { name: t.reissue.label })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: t.action.issue })).toBeDisabled();
 
     await user.click(screen.getByRole('combobox', { name: t.reissue.label }));
@@ -613,7 +614,7 @@ describe('GoodsIssueQrScreen', () => {
 
     expect(await screen.findByText(t.errors.forbidden)).toBeInTheDocument();
     expect(
-      within(rowFor('LOT-SAMPLE-20')).getByRole('button', { name: t.lines.pick }),
+      within(rowFor('LOT-SAMPLE-20')).getByRole('button', { name: t.lines.picked }),
     ).toHaveAttribute('aria-pressed', 'true');
   });
 
@@ -713,7 +714,7 @@ describe('GoodsIssueQrScreen', () => {
     await user.click(await screen.findByRole('option', { name: '인쇄 실패' }));
 
     /* 미발행으로 읽힌 라인으로 갈아탄다 — 사유 칸이 접힌다 */
-    await user.click(within(rowFor('LOT-SAMPLE-21')).getByRole('button', { name: t.lines.pick }));
+    await user.click(within(rowFor('LOT-SAMPLE-21')).getByRole('button', { name: t.lines.picked }));
     await user.click(within(rowFor('LOT-SAMPLE-20')).getByRole('button', { name: t.lines.pick }));
 
     expect(screen.queryByRole('combobox', { name: t.reissue.label })).not.toBeInTheDocument();
@@ -736,12 +737,11 @@ describe('GoodsIssueQrScreen', () => {
    * 보고되는 나머지 사실은 바로 아래 「그린 것을 못 받으면…」 시험이 잰다.
    */
   /*
-   * ⭐ **POP 이 스스로 그린 라벨이 셸까지 간다**(설계 결정 8·9 의 2단계). 전에는 여기서 잴 것이
-   *    「부르지 않는다」뿐이었다 — 서버가 그려 주지 않으니 인쇄가 설 수 없었다. 이제는 정상
-   *    경로가 성립하므로 **무엇이 넘어갔는지**를 잰다: PNG 바이트인가 · 형식이 `png` 인가 ·
-   *    파일 이름이 대상과 회차를 담는가 · SUCCEEDED 로 보고하는가.
+   * ⭐ **POP 이 스스로 짠 라벨이 셸까지 간다**(설계 결정 8·9 의 2단계). **무엇이 넘어갔는지**를
+   *    잰다: 80 × 30 TSPL 명령인가 · 형식이 `tspl` 인가(omf-all-around#35 — 그림은 크기가 틀리고
+   *    상하가 뒤집혔다) · 파일 이름이 대상과 회차를 담는가 · SUCCEEDED 로 보고하는가.
    */
-  it('스스로 그린 PNG 를 셸로 넘기고 성공으로 보고한다', async () => {
+  it('스스로 짠 80 × 30 TSPL 을 셸로 넘기고 성공으로 보고한다', async () => {
     const user = userEvent.setup();
     const renditionCalls: string[] = [];
     const reports: Request[] = [];
@@ -766,13 +766,13 @@ describe('GoodsIssueQrScreen', () => {
 
     if (sent === undefined) throw new Error('셸로 넘어간 것이 없습니다');
 
-    expect(sent.format).toBe('png');
+    expect(sent.format).toBe('tspl');
     /* 파일 이름이 「무엇을 몇 회차로」를 담는다 — 셸의 파일 목록에서 그것만 보고 가려야 한다. */
     expect(sent.label).toBe('GOODS_ISSUE_QR-1001-1');
-    /* PNG 머리표. 「무언가 넘어갔다」와 「PNG 가 넘어갔다」는 다르다. */
-    expect([...sent.bytes.subarray(0, 8)]).toEqual([
-      0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a,
-    ]);
+    /* 「무언가 넘어갔다」와 「80 × 30 명령이 넘어갔다」는 다르다. */
+    const command = new TextDecoder().decode(sent.bytes);
+    expect(command).toContain('SIZE 80 mm,30 mm');
+    expect(command).toContain('QRCODE ');
 
     /* ⛔ 서버 렌디션은 부르지 않는다 — 이 유형을 서버가 그리지 않는다. */
     expect(renditionCalls).toHaveLength(0);
@@ -901,12 +901,12 @@ describe('GoodsIssueQrScreen', () => {
 
     /* ⭐ 발행 대상은 고른 라인마다 한 줄이다(사용자 지시 2026-09-17). */
     await waitFor(() => {
-      expect(screen.getAllByRole('button', { name: t.lines.pick, pressed: true })).toHaveLength(
+      expect(screen.getAllByRole('button', { name: t.lines.picked, pressed: true })).toHaveLength(
         LINES.length,
       );
     });
     expect(
-      within(rowFor('LOT-SAMPLE-21')).getByRole('button', { name: t.lines.pick }),
+      within(rowFor('LOT-SAMPLE-21')).getByRole('button', { name: t.lines.picked }),
     ).toHaveAttribute('aria-pressed', 'true');
 
     await user.click(screen.getByRole('button', { name: t.lines.clearSelection }));

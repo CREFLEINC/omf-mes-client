@@ -186,6 +186,9 @@ export const emergencyWorkOrder: Translated<typeof ko.emergencyWorkOrder> = {
     typeCodeUnknown:
       'Giá trị loại khẩn chưa được đặt trên màn hình nên không phát hành được. Gửi như vậy sẽ tạo ra lệnh sản xuất hàng loạt. Hãy báo cho người phụ trách.',
 
+    notOpenYet:
+      'Phát hành khẩn hiện chưa dùng được. Khi chuẩn bị xong sẽ có thông báo. Lệnh gấp xin tạo ở màn hình «Triển khai · lập W/O».',
+
     itemNotChosen: 'Hãy chọn mặt hàng trước.',
     expansionLoading: 'Đang nhận BOM · Routing.',
     expansionError: 'Chưa nhận được BOM · Routing. Hãy thử lại.',

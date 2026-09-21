@@ -43,7 +43,27 @@ export interface EmergencyWorkOrderScreenProps {
    * 잠기는지를 감지기가 확인할 수 있어야 한다. 상수만 읽으면 그 닫힌 쪽 경로를 확인할 길이 없다.
    */
   typeCode?: string;
+  /**
+   * 계획 없는 긴급 발행을 서버가 받는가. 넘기지 않으면 화면 상수를 쓴다.
+   *
+   * ⚠ `typeCode` 와 같은 뜻으로 밖에서 받는 자리를 남긴다 — 서버가 열린 뒤의 발행 흐름을
+   * 감지기가 계속 확인할 수 있어야 한다. 상수만 읽으면 그 경로가 통째로 가려진다.
+   */
+  isPlanlessIssueOpen?: boolean;
 }
+
+/**
+ * 계획 없는 긴급 발행을 서버가 받는가.
+ *
+ * ⛔ 지금은 받지 않는다 — 서버가 내부 P/O 의 공장·사업부를 채울 근거가 없어 400 으로 거부한다
+ * (omf-all-around#44). 그때까지 단추를 잠가 둔다. 열어 두면 사용자는 입력을 다 채운 뒤에야
+ * 거부당하고, 그 문구가 내부 용어라 자기 입력이 잘못된 줄 안다.
+ *
+ * 서버가 열리면 `true` 로 바꾼다. **화면이 더 할 일은 없다** — 공장·사업부는 서버가 로그인
+ * 계정의 데이터 범위로 정한다(사용자 확정 2026-09-21). 한 계정이 여러 공장을 담당하면 고르는
+ * 칸이 필요하겠지만 그런 계정은 두지 않기로 했다 — 공장 선택 칸은 만들지 않는다.
+ */
+const IS_PLANLESS_ISSUE_OPEN = false;
 
 /**
  * `W-02-07` 긴급 W/O 발행.
@@ -53,6 +73,7 @@ export interface EmergencyWorkOrderScreenProps {
  */
 export const EmergencyWorkOrderScreen = ({
   typeCode = EMERGENCY_WORK_ORDER_TYPE_CODE,
+  isPlanlessIssueOpen = IS_PLANLESS_ISSUE_OPEN,
 }: EmergencyWorkOrderScreenProps) => {
   const t = messages.emergencyWorkOrder;
   const [item, setItem] = useState<SelectedItem | null>(null);
@@ -109,6 +130,7 @@ export const EmergencyWorkOrderScreen = ({
     expansion,
     isInputComplete: isIssueInputComplete(form),
     typeCode,
+    isPlanlessIssueOpen,
   });
 
   /* 품목을 바꾸면 고른 개정을 지운다 — 앞 품목의 개정으로 발행되지 않게. */
