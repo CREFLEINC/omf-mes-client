@@ -137,6 +137,8 @@ export const workStart: Translated<typeof ko.workStart> = {
   closing: {
     fulfilled:
       'Lệnh sản xuất này đã hoàn tất đăng ký sản lượng. Hãy kết thúc lệnh trên web quản trị.',
+    fulfilledWithOpenSession:
+      'Đã hoàn tất đăng ký sản lượng nhưng vẫn còn công việc đang làm. Hãy hoàn tất công việc đang làm rồi kết thúc lệnh sản xuất trên web quản trị.',
   },
 
   resume: {

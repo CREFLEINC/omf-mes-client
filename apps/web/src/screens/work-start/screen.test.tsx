@@ -894,16 +894,17 @@ describe('P-02-01 작업 시작 — 지시 수량을 채운 작업지시(#45)', 
   });
 
   /**
-   * ⭐ **두 안내가 «함께» 선다**(사용자 지시 2026-09-21). 마감 안내가 「진행 중인 작업이
-   *    있습니다」를 가리면 작업자는 이어갈 길을 잃는다. ⛔ [이어서 하기] 도 그대로 둔다.
+   * ⭐ **진행 중이면 그 사실까지 한 문장이 말한다**(사용자 확정 2026-09-21). ⛔ 같은 사실을
+   *    적은 기존 안내를 겹쳐 세우지 않는다 — 띠만 길어지고 읽히지 않는다.
+   *    다만 **[이어서 하기] 는 반드시 남는다**.
    */
-  it('열린 세션까지 있으면 진행 중 안내와 마감 안내를 함께 보이고 이어갈 길도 남긴다', async () => {
+  it('열린 세션까지 있으면 그 사실까지 한 문장으로 말하고 이어갈 길을 남긴다', async () => {
     const rendered = renderScreen({ workOrders: [FULFILLED], openSessions: [OPEN_SESSION] });
 
     await selectWorkOrder(rendered);
 
-    expect(await screen.findByText(t.closing.fulfilled)).toBeInTheDocument();
-    expect(screen.getByText(t.blocked.alreadyOpen)).toBeInTheDocument();
+    expect(await screen.findByText(t.closing.fulfilledWithOpenSession)).toBeInTheDocument();
+    expect(screen.queryByText(t.blocked.alreadyOpen)).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: t.blocked.continueToSession })).toBeInTheDocument();
   });
 
