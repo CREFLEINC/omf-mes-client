@@ -9,13 +9,14 @@ export const iqcInspection: Translated<typeof ko.iqcInspection> = {
   queue: {
     heading: 'Chờ kiểm tra',
     columns: {
-      inspectionRequestNo: 'Số yêu cầu',
+      item: 'Mặt hàng',
       lotId: 'LOT vật tư',
       statusCode: 'Trạng thái',
       requestedAt: 'Thời điểm yêu cầu',
     },
     emptyValue: '—',
-    openRow: (inspectionRequestNo: string): string => `Mở yêu cầu kiểm tra ${inspectionRequestNo}`,
+    openRow: (item: string, inspectionRequestNo: string): string =>
+      `${item} · Mở yêu cầu kiểm tra ${inspectionRequestNo}`,
     caption: 'Danh sách chờ kiểm tra',
     empty: 'Không có yêu cầu kiểm tra nào khớp điều kiện. Hãy thử nới rộng điều kiện.',
     unavailable: 'Không hiển thị được danh sách.',
@@ -24,9 +25,13 @@ export const iqcInspection: Translated<typeof ko.iqcInspection> = {
 
   filters: {
     item: 'Mặt hàng',
-    itemPlaceholder: 'Tìm theo số mặt hàng',
+    itemPlaceholder: 'Hãy chọn mặt hàng',
+    itemPick: 'Chọn mặt hàng này',
+    itemClear: 'Xóa điều kiện mặt hàng',
     supplier: 'Nhà cung cấp',
-    supplierPlaceholder: 'Tìm theo số nhà cung cấp',
+    supplierPlaceholder: 'Hãy chọn nhà cung cấp',
+    all: 'Tất cả',
+    supplierLoadFailed: 'Không tải được danh sách nhà cung cấp.',
     keyword: 'Số yêu cầu',
     keywordPlaceholder: 'Tìm theo số yêu cầu',
     apply: 'Tra cứu',
