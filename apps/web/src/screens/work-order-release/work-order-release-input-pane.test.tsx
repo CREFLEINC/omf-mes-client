@@ -3,6 +3,8 @@ import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
+import { MemoryRouter } from 'react-router';
+
 import { renderWithProviders } from '../../test/api-harness';
 import {
   WorkOrderReleaseInputPane,
@@ -25,7 +27,12 @@ const propsOf = (
 const renderPane = (overrides: Partial<WorkOrderReleaseInputPaneProps> = {}) => {
   const props = propsOf(overrides);
   const user = userEvent.setup();
-  return { ...renderWithProviders(<WorkOrderReleaseInputPane {...props} />), props, user };
+  return {
+    /* 공용 하네스가 이미 라우터를 세운다 — 여기에 또 감싸면 라우터가 둘이 된다. */
+    ...renderWithProviders(<WorkOrderReleaseInputPane {...props} />),
+    props,
+    user,
+  };
 };
 
 describe('WorkOrderReleaseInputPane', () => {
@@ -76,8 +83,11 @@ describe('WorkOrderReleaseInputPane', () => {
       expect(onBodyChange).toHaveBeenLastCalledWith({ lotSize: 500, handoverNote: 'OLD NOTE' }),
     );
 
+    /* 하네스가 세운 라우터 밖으로 나가지 않게 다시 그린다 — 칸이 라우터를 쓴다. */
     rerender(
-      <WorkOrderReleaseInputPane {...propsOf({ ownerKey: 705, orderQty: 120, onBodyChange })} />,
+      <MemoryRouter>
+        <WorkOrderReleaseInputPane {...propsOf({ ownerKey: 705, orderQty: 120, onBodyChange })} />
+      </MemoryRouter>,
     );
 
     expect(screen.getByRole('textbox', { name: t.fields.lotSize })).toHaveValue('');
@@ -103,25 +113,23 @@ describe('WorkOrderReleaseInputPane', () => {
     expect(onClearFieldError).toHaveBeenCalledWith('handoverNote');
   });
 
-  it('locks both inputs with field-owned visible reasons and does not add a checkbox', () => {
-    renderPane({ lockedReason: '배포 처리가 끝나면 다시 입력할 수 있습니다.' });
+  it('locks both inputs with one note above them instead of repeating the cause per field', () => {
+    renderPane({ lockedReason: 'SYN BLOCK REASON', lockedNote: t.locked.bySetup });
 
     const lotSize = screen.getByRole('textbox', { name: t.fields.lotSize });
     const note = screen.getByRole('textbox', { name: t.fields.handoverNote });
     expect(lotSize).toBeDisabled();
     expect(note).toBeDisabled();
-    expect(lotSize).toHaveAccessibleDescription(
-      t.locked.lotSize('배포 처리가 끝나면 다시 입력할 수 있습니다.'),
-    );
-    expect(note).toHaveAccessibleDescription(
-      t.locked.handoverNote('배포 처리가 끝나면 다시 입력할 수 있습니다.'),
-    );
-    expect(
-      screen.getByText(t.locked.lotSize('배포 처리가 끝나면 다시 입력할 수 있습니다.')),
-    ).toBeVisible();
-    expect(
-      screen.getByText(t.locked.handoverNote('배포 처리가 끝나면 다시 입력할 수 있습니다.')),
-    ).toBeVisible();
+    expect(screen.getAllByText(t.locked.bySetup)).toHaveLength(1);
+    expect(screen.queryByText(/SYN BLOCK REASON/)).toBeNull();
     expect(screen.queryByRole('checkbox')).toBeNull();
+  });
+
+  it('locks silently when the cause is already shown elsewhere', () => {
+    renderPane({ lockedReason: 'SYN BLOCK REASON' });
+
+    expect(screen.getByRole('textbox', { name: t.fields.lotSize })).toBeDisabled();
+    expect(screen.queryByText(t.locked.bySetup)).toBeNull();
+    expect(screen.queryByText(/SYN BLOCK REASON/)).toBeNull();
   });
 });

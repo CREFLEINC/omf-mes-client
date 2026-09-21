@@ -1251,13 +1251,19 @@ describe('appRouter — IQC 수입검사·판정의 진입 경로', () => {
   /**
    * ⭐ 라우트만 열고 화면이 서지 않는 상태를 잡으려면 **조회가 실제로 도는 것**까지 봐야 한다.
    * 이 화면의 첫 진입은 검사 대기 큐 하나다.
+   *
+   * ⚠ **의뢰번호를 보이는 글자로 찾지 않는다.** 큐 표의 첫 칸은 의뢰번호가 아니라 품목이고
+   * (omf-all-around#40), 의뢰번호는 그 줄을 여는 버튼의 **접근 이름**에만 남는다. 품목 이름은
+   * 참조 조회(`/mdm/items/{itemId}`)가 풀어 주는데 여기서는 그것을 스텁하지 않았으므로 —
+   * 재려는 것은 라우트이지 이름 풀이가 아니다 — 자리에 사유가 선다. 줄이 그려졌다는 사실은
+   * 접근 이름에 실린 의뢰번호로 잰다.
    */
   it('첫 진입에 검사 대기 큐가 실제로 그려진다', async () => {
     renderRoutedApp('/logistics/iqc-inspection', iqcInspectionRoutes());
 
     await screen.findByRole('heading', { level: 1, name: messages.iqcInspection.title });
 
-    expect(await screen.findByText('IR-2026-0001')).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: /IR-2026-0001/ })).toBeInTheDocument();
   });
 });
 
@@ -1511,7 +1517,8 @@ describe('appRouter — W/O 전개·편성의 진입 경로', () => {
     renderRoutedApp('/production/production-plans', lotStatusRoutes());
 
     expect(screen.queryByRole('link', { name: 'W/O 전개·편성' })).toBeNull();
-    expect(screen.getByRole('heading', { level: 1, name: 'W/O 전개·편성' })).toBeVisible();
+    /* 제목 옆에 안내 한마디가 붙어 이름이 길어졌다(사용자 지시 2026-09-20) — 제목만 짚는다. */
+    expect(screen.getByRole('heading', { level: 1, name: /^W\/O 전개·편성/ })).toBeVisible();
     expect(screen.getByText('ERP W/O를 먼저 선택하세요.')).toBeVisible();
   });
 

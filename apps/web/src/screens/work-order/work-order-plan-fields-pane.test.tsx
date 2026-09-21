@@ -59,24 +59,25 @@ describe('WorkOrderPlanFieldsPane', () => {
     expect(screen.queryByText(t.warning)).toBeNull();
   });
 
-  it('renders the named pane, bordered card, and three plan fields in order', () => {
+  it('renders the named pane and three plan fields in order', () => {
     renderPane();
 
     const pane = screen.getByRole('region', { name: t.pane });
     expect(pane).toHaveClass('work-order-plan-pane');
     expect(pane.querySelector('.work-order-plan-fields')).not.toBeNull();
-    expect(
-      screen.getByRole('heading', { level: 2, name: t.heading('SYN-WO-ALPHA') }),
-    ).toBeVisible();
-    const cardHeading = screen.getByRole('heading', { level: 3, name: t.card });
-    expect(cardHeading.closest('[class*="_card_"]')?.className).toContain('_bordered_');
+    /* W/O 번호는 이 구획이 달지 않는다 — 두 구획 위에서 한 번만 단다. */
+    expect(screen.getByRole('heading', { level: 2, name: t.heading })).toBeVisible();
+    expect(screen.queryByText(/SYN-WO-ALPHA/)).toBeNull();
+    expect(screen.queryByRole('heading', { level: 3 })).toBeNull();
 
     const start = screen.getByLabelText(t.fields.plannedStartAtLocal);
     const end = screen.getByLabelText(t.fields.plannedEndAtLocal);
     const priority = screen.getByLabelText(t.fields.priorityNo);
-    expect(Array.from(cardHeading.closest('[class*="_card_"]')!.querySelectorAll('input'))).toEqual(
-      [start, end, priority],
-    );
+    expect(Array.from(pane.querySelectorAll('.work-order-plan-fields input'))).toEqual([
+      start,
+      end,
+      priority,
+    ]);
     expect([
       start.getAttribute('type'),
       end.getAttribute('type'),

@@ -77,7 +77,7 @@ describe('WorkOrderResourcePane', () => {
     const pane = screen.getByRole('region', { name: t.pane });
     expect(pane).toHaveClass('work-order-resource-pane');
     expect(pane.querySelector('.work-order-resource-grid')).not.toBeNull();
-    expect(screen.getByRole('heading', { name: t.heading('SYN-WO-ALPHA') })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 2, name: t.heading })).toBeInTheDocument();
     const cards = screen.getAllByRole('heading', { level: 3 });
     expect(cards.map((card) => card.textContent)).toEqual([
       t.cards.machine,
@@ -90,7 +90,9 @@ describe('WorkOrderResourcePane', () => {
     ).toBe(true);
     expect(screen.getByRole('combobox', { name: t.fields.productionLine })).toBeInTheDocument();
     expect(screen.getByRole('combobox', { name: t.fields.equipment })).toBeInTheDocument();
-    expect(screen.getByRole('combobox', { name: t.fields.worker })).toBeInTheDocument();
+    /* 담당 작업자는 창에서 고른다 — 선택칸이 아니라 읽기 전용 검색칸이다. */
+    const worker = screen.getByLabelText(t.fields.worker);
+    expect(worker).toHaveAttribute('readonly');
     expect(screen.getByRole('combobox', { name: t.fields.mold })).toBeInTheDocument();
     expect(screen.getByRole('combobox', { name: t.fields.shift })).toBeInTheDocument();
     expect(screen.getByRole('combobox', { name: t.fields.defaultWipLocation })).toBeInTheDocument();
@@ -99,7 +101,7 @@ describe('WorkOrderResourcePane', () => {
       screen.getByRole('combobox', { name: t.fields.defaultScrapLocation }),
     ).toBeInTheDocument();
     expect(screen.getByText(t.materialInfo)).toBeInTheDocument();
-    expect(screen.getAllByRole('combobox')).toHaveLength(8);
+    expect(screen.getAllByRole('combobox')).toHaveLength(7);
   });
 
   it('preserves caller option order and text, owns one clear option, and emits exact patches', async () => {
@@ -118,8 +120,6 @@ describe('WorkOrderResourcePane', () => {
     await user.click(screen.getByRole('option', { name: 'SYN-A-LINE-NEXT' }));
     await user.click(screen.getByRole('combobox', { name: t.fields.equipment }));
     await user.click(screen.getByRole('option', { name: 'SYN-EQUIPMENT-NEXT' }));
-    await user.click(screen.getByRole('combobox', { name: t.fields.worker }));
-    await user.click(screen.getByRole('option', { name: 'SYN-WORKER-NEXT' }));
     await user.click(screen.getByRole('combobox', { name: t.fields.mold }));
     await user.click(screen.getByRole('option', { name: 'SYN-MOLD-NEXT' }));
     await user.click(screen.getByRole('combobox', { name: t.fields.shift }));
@@ -129,7 +129,6 @@ describe('WorkOrderResourcePane', () => {
     expect(onChange.mock.calls).toEqual([
       [{ productionLineId: '102' }],
       [{ plannedEquipmentId: '302' }],
-      [{ responsibleWorkerId: '202' }],
       [{ plannedMoldId: '402' }],
       [{ plannedShiftId: '502' }],
       [{ productionLineId: '' }],
@@ -164,6 +163,8 @@ describe('WorkOrderResourcePane', () => {
       expect(control).toBeDisabled();
       expect(control).toHaveAccessibleDescription('SYN-SAVE-LOCK');
     }
-    expect(screen.getAllByText('SYN-SAVE-LOCK')).toHaveLength(8);
+    /* 작업자 칸은 선택칸이 아니라 검색칸이다 — 잠기면 창이 열리지 않는다. */
+    expect(screen.getByLabelText(t.fields.worker)).toBeDisabled();
+    expect(screen.getAllByText('SYN-SAVE-LOCK')).toHaveLength(7);
   });
 });

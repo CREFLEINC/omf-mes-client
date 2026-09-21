@@ -118,7 +118,9 @@ describe('ProductionOrderBasicPane', () => {
     /* W/O 생성/예정의 두 숫자 뜻은 도움말 단추가 말한다. */
     const help = screen.getByRole('button', { name: t.basic.workOrderProgressHelp });
     await userEvent.setup().hover(help);
-    expect(await screen.findByRole('tooltip')).toHaveTextContent(t.basic.workOrderProgressTooltip);
+    expect(await screen.findByRole('tooltip')).toHaveTextContent(
+      t.basic.workOrderProgressTooltip.join(''),
+    );
     expect(screen.getByRole('heading', { name: t.basic.heading })).toBeInTheDocument();
     for (const rawId of ['701', '2101', '3101', '7101', '8101']) {
       expect(screen.queryByText(rawId)).not.toBeInTheDocument();

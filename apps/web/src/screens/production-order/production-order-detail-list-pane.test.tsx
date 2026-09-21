@@ -189,7 +189,8 @@ describe('ProductionOrderDetailListPane', () => {
     expect(rowText()[0]).toContain('합성 일반');
     expect(rowText()[0]).toContain('합성 배포');
     expect(rowText()[0]).not.toContain('SYN-NORMAL');
-    expect(rowText()[0]).toContain('2026-08-25T10:00:00+09:00 ~ 2026-08-25T11:00:00+09:00');
+    /* 서버 원문(+09:00)을 공장 시각(Asia/Ho_Chi_Minh)으로 읽힌다. */
+    expect(rowText()[0]).toContain('2026-08-25 08:00 ~ 2026-08-25 09:00');
     expect(rowText()[1]).toContain('SYN-WO-601');
     expect(rowText()[1]).toContain(t.detail.unscheduled);
     for (const hiddenId of ['501', '601', '602', '701', '7101', '8101']) {

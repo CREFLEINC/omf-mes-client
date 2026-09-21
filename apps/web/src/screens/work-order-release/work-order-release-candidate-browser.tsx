@@ -143,6 +143,7 @@ export const WorkOrderReleaseCandidateBrowser = ({
           isLoading={candidatesQuery.isFetching || itemNames.isLoading}
           loadError={loadError}
           page={page}
+          hasSearched={filters.statusCode !== null}
           onSelect={(workOrderId) => {
             dispatch({ type: 'SELECT', workOrderId });
           }}

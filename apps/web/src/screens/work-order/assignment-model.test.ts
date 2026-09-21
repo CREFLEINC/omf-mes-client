@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import type { WorkOrderFact } from './queries';
 import {
   isWorkOrderAssignmentSaveEnabled,
+  REQUIRED_ASSIGNMENT_FIELDS,
   toWorkOrderAssignmentUpdate,
   validateWorkOrderAssignmentDraft,
   workOrderAssignmentDraftFrom,
@@ -37,14 +38,15 @@ const workOrderFact = (overrides: Partial<WorkOrderFact> = {}): WorkOrderFact =>
 const validDraft = (
   overrides: Partial<WorkOrderAssignmentDraft> = {},
 ): WorkOrderAssignmentDraft => ({
+  /* 생산 라인과 기본 위치 셋은 저장 필수다 — 유효한 초안은 넷을 모두 채운다. */
   productionLineId: '901',
   responsibleWorkerId: '',
   plannedEquipmentId: '',
   plannedMoldId: '',
   plannedShiftId: '',
-  defaultWipLocationId: '',
-  defaultFgLocationId: '',
-  defaultScrapLocationId: '',
+  defaultWipLocationId: '911',
+  defaultFgLocationId: '912',
+  defaultScrapLocationId: '913',
   plannedStartAtLocal: '2026-08-23T09:45',
   plannedEndAtLocal: '2026-08-23T10:45',
   priorityNo: '2',
@@ -97,7 +99,7 @@ describe('work-order assignment model', () => {
     });
   });
 
-  it('reports priority and assignment independently for an empty draft without requiring resources', () => {
+  it('names every required field and the priority for an empty draft', () => {
     expect(
       validateWorkOrderAssignmentDraft({
         productionLineId: ' ',
@@ -112,7 +114,16 @@ describe('work-order assignment model', () => {
         plannedEndAtLocal: '',
         priorityNo: '',
       }),
-    ).toEqual({ fieldErrors: { priorityNo: 'REQUIRED' }, formError: 'ASSIGNMENT_REQUIRED' });
+    ).toEqual({
+      fieldErrors: {
+        productionLineId: 'REQUIRED',
+        defaultWipLocationId: 'REQUIRED',
+        defaultFgLocationId: 'REQUIRED',
+        defaultScrapLocationId: 'REQUIRED',
+        priorityNo: 'REQUIRED',
+      },
+      formError: 'ASSIGNMENT_REQUIRED',
+    });
   });
 
   it('hydrates a UTC response into local input values so a location-only save preserves the instant', () => {
@@ -221,9 +232,8 @@ describe('work-order assignment model', () => {
     'plannedEquipmentId',
     'plannedMoldId',
     'plannedShiftId',
-  ] as const)('enables save for one valid resource and priority: %s', (field) => {
-    const resourceOnlyDraft = validDraft({
-      productionLineId: '',
+  ] as const)('enables save once the required four are set: %s', (field) => {
+    const draft = validDraft({
       responsibleWorkerId: '',
       plannedEquipmentId: '',
       plannedMoldId: '',
@@ -231,7 +241,14 @@ describe('work-order assignment model', () => {
       [field]: '910',
     });
 
-    expect(isWorkOrderAssignmentSaveEnabled(resourceOnlyDraft)).toBe(true);
+    expect(isWorkOrderAssignmentSaveEnabled(draft)).toBe(true);
+  });
+
+  it.each(REQUIRED_ASSIGNMENT_FIELDS)('disables save while %s is empty', (field) => {
+    expect(isWorkOrderAssignmentSaveEnabled(validDraft({ [field]: '' }))).toBe(false);
+    expect(validateWorkOrderAssignmentDraft(validDraft({ [field]: ' ' })).fieldErrors).toEqual({
+      [field]: 'REQUIRED',
+    });
   });
 
   it('disables save for field or assignment errors', () => {
@@ -289,7 +306,6 @@ describe('work-order assignment model', () => {
 
     const body = toWorkOrderAssignmentUpdate(
       validDraft({
-        productionLineId: '',
         responsibleWorkerId: '',
         plannedEquipmentId: '903',
         plannedMoldId: '',
@@ -301,14 +317,14 @@ describe('work-order assignment model', () => {
     );
 
     expect(body).toEqual({
-      productionLineId: null,
+      productionLineId: 901,
       responsibleWorkerId: null,
       plannedEquipmentId: 903,
       plannedMoldId: null,
       plannedShiftId: null,
-      defaultWipLocationId: null,
-      defaultFgLocationId: null,
-      defaultScrapLocationId: null,
+      defaultWipLocationId: 911,
+      defaultFgLocationId: 912,
+      defaultScrapLocationId: 913,
       plannedStartAt: null,
       plannedEndAt: null,
       priorityNo: 2,
