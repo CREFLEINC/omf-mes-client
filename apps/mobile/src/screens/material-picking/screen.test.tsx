@@ -1086,6 +1086,21 @@ describe('자재 출고·피킹 화면', () => {
    * 서버는 출고 뒤에도 집은 양을 그대로 내려주고, 라인에 이미 내보낸 양을 담은 자리가 없다.
    * 빼지 않으면 같은 지시를 다시 열었을 때 같은 수량이 한 번 더 나간다.
    */
+  it('계획까지 다 집어 내보냈으면 「내보낼 것이 없다」로 끝을 말한다', async () => {
+    /* 잔량이 남은 부분 출고와 갈라야 한다 — 이 문구는 정말 끝났을 때만 쓴다(#49). */
+    const user = userEvent.setup();
+    mount({ lines: [line({ plannedQty: 120, pickedQty: 120 })] });
+    await chooseOrder(user);
+    await user.click(screen.getByRole('button', { name: '출고 확정' }));
+    await screen.findByText('출고를 확정했습니다');
+
+    await user.click(screen.getByRole('button', { name: '다음 지시' }));
+    await chooseOrder(user);
+
+    expect(await screen.findByText('이 지시에서 내보낼 것이 남아 있지 않습니다.')).toBeTruthy();
+    expect(screen.queryByText(/집어 둔 수량은 모두 출고했습니다/)).toBeNull();
+  });
+
   it('온라인으로 확정한 뒤 같은 지시를 다시 열어도 같은 수량이 다시 나가지 않는다', async () => {
     const user = userEvent.setup();
     const sent = mount({ lines: [line({ pickedQty: 120 })] });
@@ -1096,7 +1111,15 @@ describe('자재 출고·피킹 화면', () => {
     await user.click(screen.getByRole('button', { name: '다음 지시' }));
     await chooseOrder(user);
 
-    expect(await screen.findByText('이 지시에서 내보낼 것이 남아 있지 않습니다.')).toBeTruthy();
+    /*
+     * 계획 200 중 120 만 집어 내보낸 «부분 출고»다 — 「끝났다」가 아니라 「집어 둔 것은 다
+     * 내보냈고 아직 덜 집은 라인이 있다」가 사실이다(omf-all-around#49).
+     */
+    expect(
+      await screen.findByText(
+        '집어 둔 수량은 모두 출고했습니다. 아직 피킹이 필요한 라인이 1건 남아 있습니다. 다시 피킹한 후 확정해주세요.',
+      ),
+    ).toBeTruthy();
     expect(screen.getByRole('button', { name: '출고 확정' }).hasAttribute('disabled')).toBe(true);
     expect(sent.issues).toHaveLength(1);
   });
@@ -1119,7 +1142,15 @@ describe('자재 출고·피킹 화면', () => {
     const second = mount({ lines: [line({ pickedQty: 120 })] });
     await chooseOrder(user);
 
-    expect(await screen.findByText('이 지시에서 내보낼 것이 남아 있지 않습니다.')).toBeTruthy();
+    /*
+     * 계획 200 중 120 만 집어 내보낸 «부분 출고»다 — 「끝났다」가 아니라 「집어 둔 것은 다
+     * 내보냈고 아직 덜 집은 라인이 있다」가 사실이다(omf-all-around#49).
+     */
+    expect(
+      await screen.findByText(
+        '집어 둔 수량은 모두 출고했습니다. 아직 피킹이 필요한 라인이 1건 남아 있습니다. 다시 피킹한 후 확정해주세요.',
+      ),
+    ).toBeTruthy();
     expect(screen.getByRole('button', { name: '출고 확정' }).hasAttribute('disabled')).toBe(true);
     expect(first.issues).toHaveLength(1);
     expect(second.issues).toHaveLength(0);
@@ -1286,7 +1317,15 @@ describe('자재 출고·피킹 화면', () => {
     await user.click(screen.getByRole('button', { name: '다음 지시' }));
     await chooseOrder(user);
 
-    expect(await screen.findByText('이 지시에서 내보낼 것이 남아 있지 않습니다.')).toBeTruthy();
+    /*
+     * 계획 200 중 120 만 집어 내보낸 «부분 출고»다 — 「끝났다」가 아니라 「집어 둔 것은 다
+     * 내보냈고 아직 덜 집은 라인이 있다」가 사실이다(omf-all-around#49).
+     */
+    expect(
+      await screen.findByText(
+        '집어 둔 수량은 모두 출고했습니다. 아직 피킹이 필요한 라인이 1건 남아 있습니다. 다시 피킹한 후 확정해주세요.',
+      ),
+    ).toBeTruthy();
     expect(screen.getByRole('button', { name: '출고 확정' }).hasAttribute('disabled')).toBe(true);
   });
 
@@ -1384,6 +1423,7 @@ describe('자재 출고·피킹 화면', () => {
       ),
     ).toBeTruthy();
     expect(screen.queryByText('이 지시에서 내보낼 것이 남아 있지 않습니다.')).toBeNull();
+    expect(screen.queryByText(/집어 둔 수량은 모두 출고했습니다/)).toBeNull();
     expect(screen.getByRole('button', { name: '출고 확정' }).hasAttribute('disabled')).toBe(false);
     expect(sent.issues).toHaveLength(0);
   });

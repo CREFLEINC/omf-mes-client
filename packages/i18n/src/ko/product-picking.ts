@@ -71,7 +71,6 @@ export const productPicking = {
     heldRelease: (condition: string) => `해제 조건 ${condition}`,
     heldReasonLoading: '보류 사유를 확인하는 중입니다',
     heldReasonFailed: '보류 사유를 확인하지 못했습니다',
-    noAvailable: '다른 출하에 배정됐습니다',
     otherItem: '이 라인의 품목이 아닙니다',
     shelfLifeShort: (required: number, actual: number) =>
       `고객 요구 ${String(required)}일 미달(실제 ${String(actual)}일)`,
@@ -90,8 +89,12 @@ export const productPicking = {
     /* 있는 LOT 인데 다른 품목이면 없는 번호와 다른 상황이다. 작업자가 할 일도 다르다. */
     otherItem: (code: string) => `${code} 은(는) 이 라인의 품목이 아닙니다`,
     /* 스캔이 빗나가도 앞서 고른 것이 남는다. 무엇을 집는 중인지 글자로 없으면 모른다. */
-    /* 같은 품목인데 후보에 없다 — 번호 문제가 아니라 상태 문제다. 할 일이 다르다. */
-    notPickable: (code: string) => `${code} 은(는) 아직 집을 수 있는 상태가 아닙니다`,
+    /*
+     * 같은 품목인데 후보에 없다 — 번호 문제가 아니라 상태 문제다. 할 일이 다르다.
+     * ⛔ 「아직」이라고 쓰지 않는다 — 생산 미완료는 기다리면 풀리지만 다 나간 LOT 은 풀리지
+     *    않는다. 둘을 가를 값이 화면에 없으므로 어느 쪽에도 거짓이 아닌 말로 적는다.
+     */
+    notPickable: (code: string) => `${code} 은(는) 지금 집을 수 있는 LOT 이 아닙니다`,
     picked: (lotNo: string) => `스캔됨 ${lotNo}`,
   },
   qty: {
