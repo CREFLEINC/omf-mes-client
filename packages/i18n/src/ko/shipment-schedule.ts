@@ -18,6 +18,12 @@ export const shipmentSchedule = {
     fulfillmentPlant: '출하 공장 지정',
   },
   fields: {
+    /** 두 칸을 한 묶음으로 읽히게 하는 이름(사용자 지시 2026-09-22). 칸마다의 이름은 아래 둘. */
+    period: '출하 기간',
+    periodSeparator: '~',
+    /** 값이 비었을 때 칸 안에 보이는 말 — 무엇을 고르는 칸인지 칸 스스로 말한다. */
+    periodFromPlaceholder: '시작일 선택',
+    periodToPlaceholder: '종료일 선택',
     periodFrom: '출하일 시작',
     periodTo: '출하일 종료',
     customer: '고객',
@@ -30,8 +36,9 @@ export const shipmentSchedule = {
     prevPage: '이전',
     nextPage: '다음',
     goFirstPage: '첫 쪽으로',
-    assignPlant: '출하 공장 지정',
-    savePlant: '공장 지정 저장',
+    assignPlant: '공장 지정',
+    changePlant: '변경',
+    savePlant: '저장',
   },
   /** 비활성 사유·실패 사유는 그 컨트롤이나 대상의 이름으로 시작한다. */
   reasons: {
@@ -55,6 +62,20 @@ export const shipmentSchedule = {
     progress: '진행',
     fulfillmentPlant: '출하 담당 공장',
   },
+  /**
+   * 진행 상태 6값의 표시명.
+   *
+   * ⛔ **새 업무 낱말을 만들지 않는다** — 출하 처리(W-04-04)가 이미 쓰는 말을 그대로 옮겼다
+   * (사용자 지시 2026-09-22). 계약이 닫은 값이라 표시명은 화면이 갖는다.
+   */
+  progressCodes: {
+    NOT_ALLOCATED: '미편성',
+    PARTIALLY_ALLOCATED: '부분 편성',
+    PICKING: '피킹중',
+    PICKED: '피킹 완료',
+    PARTIALLY_SHIPPED: '부분 출하',
+    SHIPPED: '출하 완료',
+  },
   values: {
     /** 값이 없는 칸. 빈 칸으로 두면 자료가 없는 것인지 화면이 빠뜨린 것인지 구분되지 않는다. */
     empty: '—',
@@ -63,15 +84,17 @@ export const shipmentSchedule = {
     referenceFailed: '이름을 불러오지 못했습니다',
     inspectionPending: '대기',
     inspectionPassed: '합격',
-    plantAssigned: '지정됨',
   },
   filters: {
     all: '전체',
     inspectionRequired: '대상',
     inspectionNotRequired: '대상 아님',
-    /* 저장 컬럼이 없다는 사실은 스펙 §5-2가 확정한 것이다 — 없다고만 말하지 않고 왜 없는지를 밝힌다. */
-    timeSlotNote: '시간대 필터는 저장 자리가 없어 제공하지 않습니다.',
-    summaryNote: '집계 요약은 설계 확인 후 제공될 예정입니다.',
+    /*
+     * ⛔ 시간대 필터 안내를 걷어냈다(사용자 지시 2026-09-22) — 없는 기능의 «없는 이유»를
+     * 설명하는 자리였다. 저장 컬럼이 없다는 사실은 스펙 §5-2 와 코드 주석에 남아 있다.
+     */
+    /** 집계 자리를 비워 둔 사실만 말한다 — 왜 비었는지(설계·계약 사정)는 말하지 않는다. */
+    summaryNote: '집계는 준비 중입니다.',
     lookupTruncated: '선택지가 앞쪽 일부만 보입니다. 찾는 값이 없으면 담당자에게 알려 주세요.',
     lookupFailed: '선택지를 불러오지 못했습니다.',
     chipCustomer: (value: string): string => `고객: ${value}`,
@@ -93,14 +116,9 @@ export const shipmentSchedule = {
     noResultTitle: '조건에 맞는 출하 예정이 없습니다',
     noResultDescription: '기간을 넓히거나 조건을 줄인 뒤 다시 조회하세요.',
     /* 출하일 시작이 없어 조회 자체가 나가지 않은 상태 — 「결과 없음」과 다른 안내를 낸다. */
-    notQueriedTitle: '아직 조회하지 않았습니다',
-    notQueriedDescription: '조건 줄의 안내에 따라 출하일 시작을 입력한 뒤 조회하세요.',
+    notQueriedTitle: '조회할 조건을 입력해 주세요',
+    notQueriedDescription: '출하일을 입력한 후 조회하면 결과가 표시됩니다.',
     beyondLastTitle: '이 쪽에는 결과가 없습니다',
     beyondLastDescription: '첫 쪽으로 이동하세요.',
-  },
-  notes: {
-    /* 밝히지 않으면 사용자가 「현재 쪽 안에서만 정렬된 것」으로 읽는다 — 서버가 전체를 정렬해 쪽을 나눠 준다. */
-    sortScope:
-      '정렬은 전체 결과 기준입니다. 계약이 정렬 방향을 구분하지 않아 오름차순으로 표시합니다.',
   },
 } as const;

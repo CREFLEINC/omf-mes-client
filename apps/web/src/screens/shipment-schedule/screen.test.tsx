@@ -4,6 +4,8 @@ import userEvent from '@testing-library/user-event';
 import { useLocation, useSearchParams } from 'react-router';
 import { describe, expect, it } from 'vitest';
 
+import { pickDate } from '../../test/date-picker';
+
 import {
   createStubFetch,
   jsonResponse,
@@ -205,8 +207,8 @@ describe('ShipmentScheduleScreen — 조건과 주소', () => {
 
     await screen.findByText('SAMPLE-SR-0001');
 
-    const toField = screen.getByLabelText(t.fields.periodTo);
-    await user.type(toField, '2026-08-31');
+    /* 달력 칸은 글자로 치는 자리가 아니다 — 열어서 고른다(`test/date-picker`). */
+    await pickDate(user, screen.getByLabelText(t.fields.periodTo), '2026-08-31');
     await user.click(screen.getByRole('button', { name: messages.common.search }));
 
     await waitFor(() => {
@@ -377,6 +379,33 @@ describe('ShipmentScheduleScreen — 요청/배정/출하·검사 열', () => {
     expect(listTable()).toHaveTextContent('500 / 500 / 500');
   });
 
+  /* ⛔ 화면에 `NaN` 이 나가지 않는다 — 88단계 66번에서 실제로 나갔다(client#1042). */
+  it('수량 칸이 비어 온 축은 빈 표기로 그리고 NaN 을 내지 않는다', async () => {
+    const broken = [
+      {
+        ...ROWS[0],
+        /* 배정만 오고 요청·출하는 비어 온 응답 — 실측된 모양이다. */
+        lines: [
+          {
+            shipmentRequestLineId: 9701,
+            lineNo: 1,
+            itemId: 9301,
+            allocatedQty: 500,
+            uomId: 9501,
+            shippingInspectionRequired: false,
+          },
+        ],
+      },
+    ];
+    renderScreen([listRoute(broken), ...partnerRoutes()], SHIP_DATE_FROM);
+
+    await screen.findByText('SAMPLE-SR-0001');
+
+    expect(listTable()).not.toHaveTextContent('NaN');
+    /* 받은 축(배정)은 그대로 보이고, 못 받은 두 축만 빈 표기다. */
+    expect(listTable()).toHaveTextContent(`${t.values.empty} / 500 / ${t.values.empty}`);
+  });
+
   it('검사 상태가 PENDING이면 「대기」 배지가 보인다', async () => {
     renderScreen([listRoute(), ...partnerRoutes()], SHIP_DATE_FROM);
 
@@ -416,7 +445,8 @@ describe('ShipmentScheduleScreen — 요청/배정/출하·검사 열', () => {
     },
   );
 
-  it('진행 열은 서버의 6개 진행 코드를 모두 손실 없이 보인다', async () => {
+  /* 코드를 그대로 내지 않고 표시명으로 옮긴다 — 낱말은 출하 처리 화면과 같다(사용자 지시). */
+  it('진행 열은 서버의 6개 진행 코드를 모두 표시명으로 보인다', async () => {
     const progressCodes = [
       'NOT_ALLOCATED',
       'PARTIALLY_ALLOCATED',
@@ -438,8 +468,24 @@ describe('ShipmentScheduleScreen — 요청/배정/출하·검사 열', () => {
     await screen.findByText('SAMPLE-SR-10');
 
     for (const code of progressCodes) {
-      expect(within(listTable()).getByText(code)).toBeInTheDocument();
+      expect(within(listTable()).getByText(t.progressCodes[code])).toBeInTheDocument();
+      /* ⛔ 내부 코드는 화면에 나오지 않는다. */
+      expect(within(listTable()).queryByText(code)).toBeNull();
     }
+  });
+
+  /*
+   * 계약에 값이 늘어도 **빈 칸이 되지 않는다**(공유계약 G-9). 표시명을 모르면 코드를 그대로
+   * 남겨 담당자에게 전할 단서를 둔다 — 지우면 「진행 상태가 비었다」로 잘못 보고된다.
+   */
+  it('표시명을 모르는 진행 코드는 코드를 그대로 보인다', async () => {
+    const rows = [shipmentRequest({ shipmentProgressCode: 'SAMPLE_FUTURE_CODE' })];
+
+    renderScreen([listRoute(rows), ...partnerRoutes()], SHIP_DATE_FROM);
+
+    await screen.findByText('SAMPLE-SR-0001');
+
+    expect(within(listTable()).getByText('SAMPLE_FUTURE_CODE')).toBeInTheDocument();
   });
 });
 
@@ -458,5 +504,108 @@ describe('ShipmentScheduleScreen — 조건 초안의 수명', () => {
     await waitFor(() => {
       expect(currentLocation()).toContain('progress=PICKED');
     });
+  });
+});
+
+const PLANTS_PATH = '/mdm/plants';
+const DETAIL_PATH = `${LIST_PATH}/9001`;
+
+const plantFixtures = [
+  { plantId: 9201, plantCode: 'SAMPLE-PLT-01', plantName: '합성 공장 가', isActive: true },
+  { plantId: 9202, plantCode: 'SAMPLE-PLT-02', plantName: '합성 공장 나', isActive: true },
+];
+
+const PLANT_A = plantFixtures[0] as (typeof plantFixtures)[number];
+const PLANT_B = plantFixtures[1] as (typeof plantFixtures)[number];
+
+const plantLabel = (plant: (typeof plantFixtures)[number]): string =>
+  `${plant.plantCode} · ${plant.plantName}`;
+
+const plantsRoute = (): StubRoute => lookupRoute(PLANTS_PATH, plantFixtures);
+
+/** 상세는 **ETag 를 낸다** — 없으면 저장 요청이 나가기 전에 화면이 멈춘다. */
+const detailRoute = (fulfillmentPlantId: number | null = null): StubRoute => ({
+  match: (request) => isGet(request, DETAIL_PATH),
+  respond: () =>
+    jsonResponse(shipmentRequest({ fulfillmentPlantId }), {
+      headers: { ETag: '"sample-shipment-request-v1"' },
+    }),
+});
+
+const savePlantRoute = (status = 200): StubRoute => ({
+  match: (request) => request.method === 'PUT' && new URL(request.url).pathname === DETAIL_PATH,
+  respond: () =>
+    status === 200
+      ? jsonResponse(shipmentRequest({ fulfillmentPlantId: 9202 }))
+      : jsonResponse({ message: '' }, { status }),
+});
+
+/** 창을 열고 공장을 고른다. 디자인 시스템의 고르는 칸은 목록 단추라 `selectOptions` 가 안 먹는다. */
+const openPlantDialogAndPick = async (
+  user: ReturnType<typeof userEvent.setup>,
+): Promise<HTMLElement> => {
+  await user.click(
+    screen.getAllByRole('button', { name: t.actions.assignPlant })[0] as HTMLElement,
+  );
+  const dialog = await screen.findByRole('dialog');
+
+  await user.click(await within(dialog).findByRole('combobox'));
+  await user.click(await screen.findByRole('option', { name: plantLabel(PLANT_B) }));
+
+  return dialog;
+};
+
+describe('ShipmentScheduleScreen — 출하 담당 공장 지정', () => {
+  const rows = [shipmentRequest({ fulfillmentPlantId: null })];
+
+  it('지정이 끝난 줄은 공장 이름과 「변경」을 보인다', async () => {
+    renderScreen(
+      [
+        listRoute([shipmentRequest({ fulfillmentPlantId: PLANT_A.plantId })]),
+        plantsRoute(),
+        ...partnerRoutes(),
+      ],
+      SHIP_DATE_FROM,
+    );
+
+    /* ⛔ 「지정됨」처럼 여부만 말하지 않는다 — 어느 공장인지 적는다. */
+    expect(await screen.findByText(plantLabel(PLANT_A))).toBeInTheDocument();
+    expect(
+      within(listTable()).getByRole('button', { name: t.actions.changePlant }),
+    ).toBeInTheDocument();
+  });
+
+  it('저장이 끝나면 창이 닫힌다', async () => {
+    const { user } = renderScreen(
+      [listRoute(rows), detailRoute(), savePlantRoute(), plantsRoute(), ...partnerRoutes()],
+      SHIP_DATE_FROM,
+    );
+
+    await screen.findByText('SAMPLE-SR-0001');
+    const dialog = await openPlantDialogAndPick(user);
+    await user.click(within(dialog).getByRole('button', { name: t.actions.savePlant }));
+
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog')).toBeNull();
+    });
+  });
+
+  it('저장이 실패하면 창이 닫히지 않는다', async () => {
+    const { user } = renderScreen(
+      [listRoute(rows), detailRoute(), savePlantRoute(500), plantsRoute(), ...partnerRoutes()],
+      SHIP_DATE_FROM,
+    );
+
+    await screen.findByText('SAMPLE-SR-0001');
+    const dialog = await openPlantDialogAndPick(user);
+    await user.click(within(dialog).getByRole('button', { name: t.actions.savePlant }));
+
+    /*
+     * 실패를 삼키고 닫으면 저장된 줄 안다 — 고칠 자리를 그대로 열어 둔다.
+     * ⭐ 사유가 뜨는 것까지 함께 본다 — 창이 열려 있다는 것만 보면 요청이 아예 나가지
+     * 않았을 때도(단추 잠김·처리기 유실) 그대로 통과한다.
+     */
+    expect(await screen.findByText(messages.httpError.description)).toBeInTheDocument();
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
   });
 });
