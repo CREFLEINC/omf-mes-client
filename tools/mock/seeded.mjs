@@ -51,6 +51,13 @@ const putawayRuleVersions = new Map(state.putawayRules.map((row) => [row.putaway
 const goodsIssueVersions = new Map(state.goodsIssues.map((row) => [row.goodsIssueId, 1]));
 /* LOT 의 판 번호 — 마감이 If-Match 를 싣는데 상세가 토큰을 내지 않아 화면이 스스로 멈췄다. */
 const lotVersions = new Map(state.lots.map((row) => [row.lotId, 1]));
+/*
+ * 출하작업지시의 판 번호 — 공장 지정(PUT)이 If-Match 를 필수로 받는데 상세가 토큰을 내지
+ * 않아 화면이 저장 요청을 내보내기 전에 스스로 멈췄다(client#1042).
+ */
+const shipmentRequestVersions = new Map(
+  state.shipmentRequests.map((row) => [row.shipmentRequestId, 1]),
+);
 const idempotentResults = new Map();
 
 const resourceEtag = (kind, id, versions) =>
@@ -3282,6 +3289,55 @@ on('GET', '/logistics/shipment-requests', (_p, query) => {
 
   return page(rows, query);
 });
+
+/** 목록과 같은 모양의 단건. ⭐ **ETag 를 낸다** — 공장 지정이 이 토큰을 If-Match 로 되싣는다. */
+const withLines = (request) => ({
+  ...request,
+  lines: state.shipmentRequestLines.filter(
+    (line) => line.shipmentRequestId === request.shipmentRequestId,
+  ),
+});
+
+on('GET', '/logistics/shipment-requests/{shipmentRequestId}', (params) => {
+  const request = state.shipmentRequests.find(
+    (row) => row.shipmentRequestId === Number(params.shipmentRequestId),
+  );
+  if (request === undefined) return null;
+
+  return {
+    status: 200,
+    created: withLines(request),
+    headers: {
+      ETag: resourceEtag('shipment-request', request.shipmentRequestId, shipmentRequestVersions),
+    },
+  };
+});
+
+on('PUT', '/logistics/shipment-requests/{shipmentRequestId}', (params, _query, body, headers) =>
+  idempotent(`logistics.shipmentRequests:${params.shipmentRequestId}:update`, headers, () => {
+    const request = state.shipmentRequests.find(
+      (row) => row.shipmentRequestId === Number(params.shipmentRequestId),
+    );
+    if (request === undefined) return null;
+
+    const currentEtag = resourceEtag(
+      'shipment-request',
+      request.shipmentRequestId,
+      shipmentRequestVersions,
+    );
+    if (!matchesEtag(headers, currentEtag)) return conflict();
+
+    Object.assign(request, body);
+    bumpVersion(shipmentRequestVersions, request.shipmentRequestId);
+    return {
+      status: 200,
+      created: withLines(request),
+      headers: {
+        ETag: resourceEtag('shipment-request', request.shipmentRequestId, shipmentRequestVersions),
+      },
+    };
+  }),
+);
 
 on(
   'POST',

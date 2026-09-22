@@ -1,4 +1,12 @@
-import { Breadcrumb, Button, PageHeader, Select, type SortState } from '@crefle/web-ui';
+import {
+  Breadcrumb,
+  Button,
+  Dialog,
+  PageHeader,
+  Select,
+  useToast,
+  type SortState,
+} from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router';
@@ -16,7 +24,11 @@ import {
 import { PageNav } from './page-nav';
 import { toPageView } from './pagination';
 import { readPeriod, toPeriodQuery, validatePeriod, type PeriodInput } from './period';
-import { useFulfillmentPlantUpdate, useShipmentRequestDetail, useShipmentScheduleList } from './queries';
+import {
+  useFulfillmentPlantUpdate,
+  useShipmentRequestDetail,
+  useShipmentScheduleList,
+} from './queries';
 import { SaveErrorBanner } from '../../patterns/master';
 import { ShipmentFilterBar } from './shipment-filter-bar';
 import { ShipmentTable } from './shipment-table';
@@ -93,11 +105,20 @@ export const ShipmentScheduleScreen = () => {
   const [selectedRequestId, setSelectedRequestId] = useState<number | null>(null);
   const [fulfillmentPlantId, setFulfillmentPlantId] = useState('');
   const selectedDetail = useShipmentRequestDetail(selectedRequestId);
-  const updatePlant = useFulfillmentPlantUpdate(selectedRequestId);
+  const toast = useToast();
+  /* 저장이 끝나면 창을 닫고 다른 화면과 같은 자리에 알린다(사용자 지시 2026-09-22). */
+  const updatePlant = useFulfillmentPlantUpdate(selectedRequestId, () => {
+    setSelectedRequestId(null);
+    toast.show({ variant: 'success', description: messages.common.saved });
+  });
 
   useEffect(() => {
     if (selectedDetail.data === undefined) return;
-    setFulfillmentPlantId(selectedDetail.data.fulfillmentPlantId == null ? '' : String(selectedDetail.data.fulfillmentPlantId));
+    setFulfillmentPlantId(
+      selectedDetail.data.fulfillmentPlantId == null
+        ? ''
+        : String(selectedDetail.data.fulfillmentPlantId),
+    );
   }, [selectedDetail.data]);
 
   /**
@@ -153,7 +174,7 @@ export const ShipmentScheduleScreen = () => {
         />
       )}
 
-      <section className="pane" aria-label={t.panes.list}>
+      <section className="pane shipment-schedule-pane" aria-label={t.panes.list}>
         <ShipmentFilterBar
           appliedPeriod={period}
           appliedFilters={filters}
@@ -188,6 +209,7 @@ export const ShipmentScheduleScreen = () => {
               onSortChange={changeSort}
               customerLookup={customers}
               shipToPartnerLookup={shipToPartners}
+              fulfillmentPlantLookup={fulfillmentPlants}
               onFirstPage={() => {
                 applyQuery(period, filters, sortKey);
               }}
@@ -209,45 +231,80 @@ export const ShipmentScheduleScreen = () => {
         )}
       </section>
 
+      {/*
+        공장 지정은 목록 아래 구획이 아니라 **창**으로 연다(사용자 지시 2026-09-22) — 고른 줄과
+        입력 자리가 멀어 어느 건을 고치는지 흐려졌다. 여는 조건과 저장 동작은 그대로다.
+      */}
       {selectedRequestId !== null && (
-        <section className="pane" aria-label={t.panes.fulfillmentPlant}>
-          {selectedDetail.isPending && <p>{t.loading.detail}</p>}
-          {selectedDetail.isError && (
-            <LoadErrorBanner error={selectedDetail.error} onRetry={() => { void selectedDetail.refetch(); }} />
-          )}
-          {selectedDetail.data !== undefined && (
-            <div className="form-grid">
-              <div className="field-cell wide-select">
-                <label className="field-label" htmlFor="shipment-fulfillment-plant">
-                  {t.fields.fulfillmentPlant}
-                </label>
-                <Select
-                  id="shipment-fulfillment-plant"
-                  options={toSelectOptions(fulfillmentPlants)}
-                  value={fulfillmentPlantId === '' ? null : fulfillmentPlantId}
-                  disabled={updatePlant.isSaving}
-                  invalid={updatePlant.fieldErrors.fulfillmentPlantId !== undefined}
-                  onChange={(value) => {
-                    setFulfillmentPlantId(value);
-                    updatePlant.clearFieldError('fulfillmentPlantId');
-                  }}
-                />
-                {updatePlant.fieldErrors.fulfillmentPlantId !== undefined && (
-                  <span className="field-error">{updatePlant.fieldErrors.fulfillmentPlantId}</span>
-                )}
+        <Dialog
+          open
+          size="sm"
+          /* 아래 「취소」가 같은 일을 한다 — 우상단 × 는 두지 않는다(사용자 지시 2026-09-22). */
+          showCloseButton={false}
+          title={t.panes.fulfillmentPlant}
+          onClose={() => {
+            setSelectedRequestId(null);
+          }}
+          footer={
+            <>
+              <Button
+                variant="outlined"
+                disabled={updatePlant.isSaving}
+                onClick={() => {
+                  setSelectedRequestId(null);
+                }}
+              >
+                {messages.common.cancel}
+              </Button>
+              <Button
+                disabled={fulfillmentPlantId === '' || updatePlant.isSaving}
+                onClick={() => {
+                  updatePlant.write({ fulfillmentPlantId: Number(fulfillmentPlantId) });
+                }}
+              >
+                {t.actions.savePlant}
+              </Button>
+            </>
+          }
+        >
+          <div className="shipment-schedule-plant-body">
+            {selectedDetail.isPending && <p>{t.loading.detail}</p>}
+            {selectedDetail.isError && (
+              <LoadErrorBanner
+                error={selectedDetail.error}
+                onRetry={() => {
+                  void selectedDetail.refetch();
+                }}
+              />
+            )}
+            {selectedDetail.data !== undefined && (
+              <div className="form-grid shipment-schedule-plant-form">
+                <div className="field-cell wide-select">
+                  <label className="field-label" htmlFor="shipment-fulfillment-plant">
+                    {t.fields.fulfillmentPlant}
+                  </label>
+                  <Select
+                    id="shipment-fulfillment-plant"
+                    options={toSelectOptions(fulfillmentPlants)}
+                    value={fulfillmentPlantId === '' ? null : fulfillmentPlantId}
+                    disabled={updatePlant.isSaving}
+                    invalid={updatePlant.fieldErrors.fulfillmentPlantId !== undefined}
+                    onChange={(value) => {
+                      setFulfillmentPlantId(value);
+                      updatePlant.clearFieldError('fulfillmentPlantId');
+                    }}
+                  />
+                  {updatePlant.fieldErrors.fulfillmentPlantId !== undefined && (
+                    <span className="field-error">
+                      {updatePlant.fieldErrors.fulfillmentPlantId}
+                    </span>
+                  )}
+                </div>
               </div>
-              <div className="field-cell">
-                <Button
-                  disabled={fulfillmentPlantId === '' || updatePlant.isSaving}
-                  onClick={() => { updatePlant.write({ fulfillmentPlantId: Number(fulfillmentPlantId) }); }}
-                >
-                  {t.actions.savePlant}
-                </Button>
-              </div>
-            </div>
-          )}
-          <SaveErrorBanner error={updatePlant.error} />
-        </section>
+            )}
+            <SaveErrorBanner error={updatePlant.error} />
+          </div>
+        </Dialog>
       )}
     </>
   );

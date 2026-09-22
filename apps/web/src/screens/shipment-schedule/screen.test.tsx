@@ -4,6 +4,8 @@ import userEvent from '@testing-library/user-event';
 import { useLocation, useSearchParams } from 'react-router';
 import { describe, expect, it } from 'vitest';
 
+import { pickDate } from '../../test/date-picker';
+
 import {
   createStubFetch,
   jsonResponse,
@@ -205,8 +207,8 @@ describe('ShipmentScheduleScreen — 조건과 주소', () => {
 
     await screen.findByText('SAMPLE-SR-0001');
 
-    const toField = screen.getByLabelText(t.fields.periodTo);
-    await user.type(toField, '2026-08-31');
+    /* 달력 칸은 글자로 치는 자리가 아니다 — 열어서 고른다(`test/date-picker`). */
+    await pickDate(user, screen.getByLabelText(t.fields.periodTo), '2026-08-31');
     await user.click(screen.getByRole('button', { name: messages.common.search }));
 
     await waitFor(() => {
@@ -377,6 +379,33 @@ describe('ShipmentScheduleScreen — 요청/배정/출하·검사 열', () => {
     expect(listTable()).toHaveTextContent('500 / 500 / 500');
   });
 
+  /* ⛔ 화면에 `NaN` 이 나가지 않는다 — 88단계 66번에서 실제로 나갔다(client#1042). */
+  it('수량 칸이 비어 온 축은 빈 표기로 그리고 NaN 을 내지 않는다', async () => {
+    const broken = [
+      {
+        ...ROWS[0],
+        /* 배정만 오고 요청·출하는 비어 온 응답 — 실측된 모양이다. */
+        lines: [
+          {
+            shipmentRequestLineId: 9701,
+            lineNo: 1,
+            itemId: 9301,
+            allocatedQty: 500,
+            uomId: 9501,
+            shippingInspectionRequired: false,
+          },
+        ],
+      },
+    ];
+    renderScreen([listRoute(broken), ...partnerRoutes()], SHIP_DATE_FROM);
+
+    await screen.findByText('SAMPLE-SR-0001');
+
+    expect(listTable()).not.toHaveTextContent('NaN');
+    /* 받은 축(배정)은 그대로 보이고, 못 받은 두 축만 빈 표기다. */
+    expect(listTable()).toHaveTextContent(`${t.values.empty} / 500 / ${t.values.empty}`);
+  });
+
   it('검사 상태가 PENDING이면 「대기」 배지가 보인다', async () => {
     renderScreen([listRoute(), ...partnerRoutes()], SHIP_DATE_FROM);
 
@@ -416,7 +445,8 @@ describe('ShipmentScheduleScreen — 요청/배정/출하·검사 열', () => {
     },
   );
 
-  it('진행 열은 서버의 6개 진행 코드를 모두 손실 없이 보인다', async () => {
+  /* 코드를 그대로 내지 않고 표시명으로 옮긴다 — 낱말은 출하 처리 화면과 같다(사용자 지시). */
+  it('진행 열은 서버의 6개 진행 코드를 모두 표시명으로 보인다', async () => {
     const progressCodes = [
       'NOT_ALLOCATED',
       'PARTIALLY_ALLOCATED',
@@ -438,7 +468,9 @@ describe('ShipmentScheduleScreen — 요청/배정/출하·검사 열', () => {
     await screen.findByText('SAMPLE-SR-10');
 
     for (const code of progressCodes) {
-      expect(within(listTable()).getByText(code)).toBeInTheDocument();
+      expect(within(listTable()).getByText(t.progressCodes[code])).toBeInTheDocument();
+      /* ⛔ 내부 코드는 화면에 나오지 않는다. */
+      expect(within(listTable()).queryByText(code)).toBeNull();
     }
   });
 });

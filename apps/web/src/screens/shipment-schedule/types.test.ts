@@ -38,6 +38,26 @@ describe('toLineQtyTotals', () => {
     ).toEqual({ requestedQty: 150, allocatedQty: 130, shippedQty: 20 });
   });
 
+  /*
+   * ⛔ **받지 못한 축을 0 으로 지어내지 않는다.** 계약은 이 칸을 필수로 적지만 서버가 비워
+   * 보낸 적이 있고, 그대로 더하면 합계가 `NaN` 이 되어 화면에 나갔다(client#1042 · 88단계 66번).
+   */
+  it('한 줄이라도 수량 칸이 비면 그 축만 「모른다」가 된다', () => {
+    const missing = { ...LINE, shipmentRequestLineId: 2, requestedQty: undefined } as never;
+
+    expect(toLineQtyTotals([LINE, missing])).toEqual({
+      requestedQty: null,
+      allocatedQty: 160,
+      shippedQty: 40,
+    });
+  });
+
+  it('숫자가 아닌 값이 와도 합계를 NaN 으로 내지 않는다', () => {
+    const broken = { ...LINE, shipmentRequestLineId: 2, shippedQty: null } as never;
+
+    expect(toLineQtyTotals([broken])?.shippedQty).toBeNull();
+  });
+
   /* 0/0/0을 내지 않는다 — 「수량이 0」과 「받지 못했다」가 같은 모양이 되면 안 된다. */
   it('lines가 없으면 null이다', () => {
     expect(toLineQtyTotals(undefined)).toBeNull();

@@ -11012,3 +11012,166 @@ dl.filter-bar.approval-inbox-detail-facts {
 .lot-status-transition-holds td[data-align] {
   text-align: center;
 }
+
+/*
+ * W-04-02 출하 예정 목록 — 조회 조건·표·쪽 이동을 한 흐름으로 읽히게 간격을 좁힌다
+ * (사용자 지시 2026-09-22). 카드는 내용만큼만 서고 아래가 비어 늘어지지 않는다.
+ */
+.shipment-schedule-pane {
+  display: grid;
+  gap: var(--space-3);
+  align-content: start;
+}
+
+/* 조건 칸들은 같은 윗선에서 시작하고, 칸 높이와 이름 간격을 하나로 맞춘다. */
+.filter-bar.shipment-schedule-filters {
+  align-items: end;
+  gap: var(--space-3) var(--space-4);
+  margin-bottom: 0;
+}
+
+/* 출하일은 두 칸이지만 한 조건이다 — 「~」를 사이에 두고 한 묶음으로 세운다. */
+.shipment-schedule-date-range-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.shipment-schedule-date-range-row > * {
+  flex: 0 0 auto;
+}
+
+/* 두 날짜 칸은 같은 폭으로 선다 — 폭이 다르면 한 조건이 아니라 두 조건으로 읽힌다. */
+.shipment-schedule-date-field {
+  width: 11rem;
+}
+
+.shipment-schedule-date-field input {
+  width: 100%;
+}
+
+/* 「~」는 두 칸을 잇는 표시일 뿐이다 — 칸보다 흐리게 두어 값이 먼저 읽히게 한다. */
+.shipment-schedule-date-range-separator {
+  align-self: center;
+  color: var(--on-surface-muted);
+  font: var(--type-body-md);
+  letter-spacing: var(--type-body-md-tracking);
+}
+
+/* 안내와 표, 표와 쪽 이동 사이의 빈 자리를 줄인다 — 구획 사이 간격은 위 grid 가 정한다. */
+.shipment-schedule-pane > * {
+  margin-block: 0;
+}
+
+/* 조회·초기화는 조건 줄 오른쪽 끝에 선다(사용자 지시 2026-09-22). */
+.shipment-schedule-filter-actions {
+  margin-inline-start: auto;
+}
+
+/* 한 줄짜리 안내 — 표식과 글자를 같은 가운데 선에 둔다(사용자 지시 2026-09-22). */
+.shipment-schedule-summary-banner {
+  align-items: center;
+}
+
+/*
+ * 한 줄짜리 배너라 아이콘을 내릴 이유가 없다 — 디자인 시스템이 여러 줄을 기준으로 준
+ * `margin-top` 이 그대로 남아 글자보다 아래로 처진다(사용자 지시 2026-09-22).
+ * ⛔ 공통 부품을 고치지 않고 이 화면의 배너에만 건다. 첫 자식 span 이 아이콘이다.
+ */
+.shipment-schedule-summary-banner > span:first-child {
+  margin-block-start: 0;
+}
+
+/*
+ * 표의 열 폭은 비율로 나눈다 — 남는 자리가 마지막 열에 몰리면 오른쪽이 비어 보인다
+ * (사용자 지시 2026-09-22). 좁아지면 긴 글이 든 고객·납품처가 먼저 줄고, 날짜·수량·상태는
+ * 제 폭을 지킨다.
+ */
+.shipment-schedule-table table {
+  table-layout: fixed;
+  width: 100%;
+}
+
+/* 날짜·번호·수량은 줄을 바꾸지 않는다 — 한 줄로 읽는 값이다. */
+.shipment-schedule-table td:nth-child(1),
+.shipment-schedule-table td:nth-child(2),
+.shipment-schedule-table td:nth-child(5) {
+  white-space: nowrap;
+}
+
+/* 이름이 길면 줄을 늘리지 않고 말줄임한다 — 줄 높이가 행마다 달라지지 않게. */
+.shipment-schedule-table td:nth-child(3),
+.shipment-schedule-table td:nth-child(4) {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 필수 표식 — 라벨 글자와 같은 크기로, 색만 다르게. */
+.shipment-schedule-filters .field-label > .required-mark {
+  color: var(--semantic-error-text);
+}
+
+/*
+ * 조회가 막힌 사유는 화면에서 감추고 보조기술에만 남긴다 — 별표와 붉은 테두리가 이미 말한다
+ * (사용자 지시 2026-09-22). `position: fixed` 로 둬야 문서 높이를 늘리지 않는다.
+ */
+.shipment-schedule-visually-hidden {
+  position: fixed;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* 공장 지정 창 — 고르는 칸이 창 너비를 다 쓴다. 한 칸뿐인 창에서 절반만 쓸 이유가 없다. */
+.form-grid.shipment-schedule-plant-form {
+  grid-template-columns: 1fr;
+}
+
+.shipment-schedule-plant-form .field-cell > [class*='select'],
+.shipment-schedule-plant-form .field-cell > button {
+  width: 100%;
+}
+
+/*
+ * 지정이 끝난 칸 — 자리를 내주던 단추와 같은 높이로 선다(사용자 지시 2026-09-22).
+ * 이 화면의 마지막 열에서만 쓴다.
+ */
+.shipment-schedule-plant-assigned {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  min-width: 0;
+  max-width: 100%;
+  min-height: var(--control-height-md);
+}
+
+/* 공장 이름이 길어도 「변경」을 밀어내지 않는다 — 이름만 줄인다. */
+.shipment-schedule-plant-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 「변경」은 보조 액션이라 작게 두되 테두리는 남긴다(사용자 지시 2026-09-22). */
+.shipment-schedule-plant-assigned > .shipment-schedule-plant-change {
+  flex: none;
+}
+
+/*
+ * 공장 지정 창의 본문 — 칸과 안내 사이를 띄우고, 아래에 남는 빈 자리를 없앤다
+ * (사용자 지시 2026-09-22). 내용만큼만 서는 창이라 여백이 크면 창이 헐거워 보인다.
+ */
+.shipment-schedule-plant-body {
+  display: grid;
+  gap: var(--space-3);
+  align-content: start;
+}
+
+.shipment-schedule-plant-body > * {
+  margin-block: 0;
+}

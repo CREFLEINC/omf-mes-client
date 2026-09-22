@@ -27,6 +27,8 @@ export interface ShipmentTableProps {
   onSortChange: (next: SortState | null) => void;
   customerLookup: ReferenceSource;
   shipToPartnerLookup: ReferenceSource;
+  /** 지정이 끝난 줄에 **어느 공장인지**를 적기 위해 받는다(사용자 지시 2026-09-22). */
+  fulfillmentPlantLookup: ReferenceSource;
   onFirstPage: () => void;
   onRetryReferences: () => void;
   onAssignPlant: (shipmentRequestId: number) => void;
@@ -35,11 +37,18 @@ export interface ShipmentTableProps {
 /** 값이 없는 칸은 비워 두지 않는다. */
 const orEmptyMark = (value: string): ReactNode => (value === '' ? t.values.empty : value);
 
-/** 세 수량을 「500 / 500 / 500」 한 칸으로 그린다 — `lines`를 못 받았으면 셋 다 빈 칸이다. */
+/**
+ * 세 수량을 「500 / 500 / 500」 한 칸으로 그린다 — `lines` 를 못 받았으면 셋 다 빈 칸이다.
+ *
+ * ⛔ **받지 못한 축은 0 으로 그리지 않는다**(client#1042). 축 하나만 비어 와도 그 자리에 빈
+ * 표기를 두어 「수량이 0」과 구분한다 — 예전에는 `NaN` 이 그대로 나갔다.
+ */
+const qtyText = (value: number | null): string => (value === null ? t.values.empty : String(value));
+
 const renderQty = (totals: LineQtyTotals | null): ReactNode => {
   if (totals === null) return t.values.empty;
 
-  return `${String(totals.requestedQty)} / ${String(totals.allocatedQty)} / ${String(totals.shippedQty)}`;
+  return `${qtyText(totals.requestedQty)} / ${qtyText(totals.allocatedQty)} / ${qtyText(totals.shippedQty)}`;
 };
 
 /**
@@ -48,6 +57,23 @@ const renderQty = (totals: LineQtyTotals | null): ReactNode => {
  * (계약 주석 W-04-02 §5-3 · omf-mes#232 · omf-mes#235, 다음 착수에서 분리). **default 분기가
  * 곧 미지 값 대응이다** — 계약에 값이 늘어도 여기로 떨어져 빈 배지·예외로 이어지지 않는다.
  */
+/**
+ * 진행 코드의 표시명. **모르는 값은 코드를 그대로 돌려준다** — 계약에 값이 늘어도 빈 칸이
+ * 되지 않고, 담당자에게 전할 단서가 남는다(공유계약 G-9).
+ */
+const progressLabel = (code: string): string =>
+  (t.progressCodes as Record<string, string | undefined>)[code] ?? code;
+
+/**
+ * 진행 상태의 시각 강도.
+ *
+ * ⛔ **모든 상태를 강하게 칠하지 않는다**(사용자 지시 2026-09-22). 끝난 것만 눈에 띄면 되고,
+ * 나머지는 지나가는 단계라 같은 무게로 선다 — 다 칠하면 어느 것이 끝인지 읽히지 않는다.
+ * 새 색 체계를 만들지 않고 이 화면이 이미 쓰는 두 값(`success`·기본)만 쓴다.
+ */
+const progressTone = (code: string): 'success' | undefined =>
+  code === 'SHIPPED' ? 'success' : undefined;
+
 const renderInspectionStatus = (status: ShipmentRequestView['inspectionStatus']): ReactNode => {
   if (status === 'NOT_REQUIRED') return t.values.empty;
 
@@ -92,6 +118,7 @@ export const ShipmentTable = ({
   onSortChange,
   customerLookup,
   shipToPartnerLookup,
+  fulfillmentPlantLookup,
   onFirstPage,
   onRetryReferences,
   onAssignPlant,
@@ -99,18 +126,22 @@ export const ShipmentTable = ({
   const columns: Column<ShipmentRequestView>[] = [
     {
       key: 'requestedShipDate',
+      align: 'center',
       header: t.table.requestedShipDate,
-      width: '112px',
+      width: '8%',
       sortable: SORTABLE_KEYS.has('requestedShipDate'),
     },
     {
       key: 'shipmentRequestNo',
+      align: 'center',
       header: t.table.shipmentRequestNo,
-      width: '180px',
+      width: '13%',
       sortable: SORTABLE_KEYS.has('shipmentRequestNo'),
     },
     {
       key: 'customerId',
+      align: 'center',
+      width: '18%',
       header: t.table.customer,
       sortable: SORTABLE_KEYS.has('customerId'),
       /* 계약 정렬 키는 번호(customerId)지만 표시는 이름이다 — #44와 같은 이유로 번호를 칸에 담지 않는다. */
@@ -118,41 +149,84 @@ export const ShipmentTable = ({
     },
     {
       key: 'shipToPartnerId',
+      align: 'center',
+      width: '18%',
       header: t.table.shipToPartner,
       render: (row) => describeReference(toReference(shipToPartnerLookup, row.shipToPartnerId)),
     },
     {
       key: 'qty',
       header: t.table.qty,
-      width: '168px',
-      align: 'end',
+      width: '14%',
+      align: 'center',
       render: (row) => renderQty(row.lineTotals),
     },
     {
       key: 'inspection',
+      align: 'center',
       header: t.table.inspection,
-      width: '96px',
+      width: '7%',
       render: (row) => renderInspectionStatus(row.inspectionStatus),
     },
     {
       key: 'progress',
+      align: 'center',
       header: t.table.progress,
-      width: '120px',
-      /* 진행과 검사를 섞지 않는다. 서버가 계산한 진행 코드를 손실 없이 그대로 낸다. */
+      width: '9%',
+      /*
+       * 진행과 검사를 섞지 않는다. 서버가 계산한 진행 코드를 그대로 받아 «표시명»만 옮긴다.
+       * ⛔ 모르는 값은 코드를 그대로 보인다 — 계약에 값이 늘어도 빈 칸이 되지 않는다.
+       */
       render: (row) => (
-        <Chip variant="status" size="sm">
-          {orEmptyMark(row.shipmentProgressCode)}
+        <Chip variant="status" status={progressTone(row.shipmentProgressCode)} size="sm">
+          {orEmptyMark(progressLabel(row.shipmentProgressCode))}
         </Chip>
       ),
     },
     {
       key: 'fulfillmentPlant',
+      align: 'center',
+      width: '13%',
       header: t.table.fulfillmentPlant,
-      render: (row) => row.fulfillmentPlantId == null ? (
-        <Button variant="outlined" size="sm" onClick={() => { onAssignPlant(row.shipmentRequestId); }}>
-          {t.actions.assignPlant}
-        </Button>
-      ) : t.values.plantAssigned,
+      render: (row) =>
+        row.fulfillmentPlantId == null ? (
+          <Button
+            variant="outlined"
+            onClick={() => {
+              onAssignPlant(row.shipmentRequestId);
+            }}
+          >
+            {t.actions.assignPlant}
+          </Button>
+        ) : (
+          /*
+           * 「지정됨」이 아니라 **어느 공장인지** 적는다(사용자 지시 2026-09-22) — 지정 여부만
+           * 알려서는 다시 눌러 확인해야 한다. 이름을 못 구한 사정은 다른 참조 열과 같게 말한다.
+           *
+           * 단추가 글자로 바뀌어도 **줄 높이가 달라지지 않게** 한다 — 저장 뒤에 표가 낮아지면
+           * 고친 줄이 아니라 표 전체가 움직인 것처럼 보인다.
+           */
+          /*
+           * 지정을 끝낸 뒤에도 **다시 열 수 있다**(사용자 지시 2026-09-22). 서버는 피킹 전이고
+           * 이미 나간 출하의 창고 공장이 같으면 몇 번이든 받아 준다 — 막힌 경우는 서버가
+           * 사유를 돌려주므로 화면이 미리 잠그지 않는다.
+           */
+          <span className="shipment-schedule-plant-assigned">
+            <span className="shipment-schedule-plant-name">
+              {describeReference(toReference(fulfillmentPlantLookup, row.fulfillmentPlantId))}
+            </span>
+            <Button
+              className="shipment-schedule-plant-change"
+              variant="outlined"
+              size="sm"
+              onClick={() => {
+                onAssignPlant(row.shipmentRequestId);
+              }}
+            >
+              {t.actions.changePlant}
+            </Button>
+          </span>
+        ),
     },
   ];
 
@@ -205,6 +279,7 @@ export const ShipmentTable = ({
     <>
       <div className="wide-table">
         <Table
+          className="shipment-schedule-table"
           density="compact"
           columns={columns}
           rows={rows}
@@ -221,8 +296,6 @@ export const ShipmentTable = ({
           empty={emptySlot()}
         />
       </div>
-
-      <p className="field-note">{t.notes.sortScope}</p>
 
       {(customerLookup.isError || shipToPartnerLookup.isError) && (
         <div className="field-cell">
