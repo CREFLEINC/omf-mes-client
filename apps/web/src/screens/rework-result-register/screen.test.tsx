@@ -9,7 +9,7 @@
 import { messages } from '@omf-mes/i18n';
 import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 
 import { PopIdentityProvider } from '../../patterns/pop-identity';
 import { jsonResponse, renderWithProviders, type StubFetch } from '../../test/api-harness';
@@ -41,13 +41,37 @@ const WORK_ORDER = {
 /** 단위 조회가 실제로 실은 질의. 아래 「첫 쪽만 받지 않는다」가 본다. */
 let uomQuery: URLSearchParams | null = null;
 
+/** 배포 전 재작업 지시. 기본은 없고, 그 줄을 재는 검사만 채운다. */
+let plannedRows: (typeof WORK_ORDER)[] = [];
+
+/** 배포된 쪽의 전체 건수. 기본은 한 쪽이고, 쪽 넘김을 재는 검사만 늘린다. */
+let releasedTotal = 1;
+
 const stubFetch: StubFetch = async (request) => {
   const url = new URL(request.url);
 
   if (url.pathname === '/production/work-orders') {
+    /*
+     * 화면은 두 번 묻는다 — 배포된 것(`open=true`)과 배포 전(`statusCode=PLANNED`).
+     * 기본 하네스는 배포된 것 한 건만 답하고 배포 전은 0건이다(omf-all-around#47).
+     */
+    const planned = url.searchParams.get('statusCode') === 'PLANNED';
+
+    if (planned) {
+      return jsonResponse({
+        items: plannedRows,
+        page: { page: 1, size: 20, total: plannedRows.length },
+      });
+    }
+
+    /* 배포된 쪽만 쪽을 나눈다 — 쪽마다 번호가 다른 한 건을 낸다. */
+    const page = Number(url.searchParams.get('page') ?? '1');
+
     return jsonResponse({
-      items: [WORK_ORDER],
-      page: { page: 1, size: 20, total: 1 },
+      items: [
+        page === 1 ? WORK_ORDER : { ...WORK_ORDER, workOrderId: 8899, workOrderNo: 'SYN-WO-R099' },
+      ],
+      page: { page, size: 20, total: releasedTotal },
     });
   }
 
@@ -159,6 +183,11 @@ const renderWithFractionalUom = () => {
         const url = new URL(request.url);
 
         if (url.pathname === '/production/work-orders') {
+          /* 배포 전 조회에는 0건 — 이 검사는 단위 하나만 본다. */
+          if (url.searchParams.get('statusCode') === 'PLANNED') {
+            return jsonResponse({ items: [], page: { page: 1, size: 20, total: 0 } });
+          }
+
           return jsonResponse({
             items: [{ ...WORK_ORDER, uomId: 12 }],
             page: { page: 1, size: 20, total: 1 },
@@ -227,6 +256,72 @@ const pickWorkOrder = async (user: ReturnType<typeof userEvent.setup>) => {
 };
 
 describe('ReworkResultRegisterScreen — 스펙 §3 의 구획', () => {
+  afterEach(() => {
+    plannedRows = [];
+    releasedTotal = 1;
+  });
+
+  /*
+   * ⭐ **배포 전 지시도 목록에 선다**(사용자 결정 2026-09-21 · omf-all-around#47). 품질 담당이
+   *    발행하고 배포는 그 뒤 단계라, 배포된 것만 보이면 현장은 지시가 난 줄도 모른다.
+   * ⛔ **고르지는 못한다** — 서버가 `PLANNED` 의 실적을 받지 않는다. 고르게 두면 수량까지
+   *    넣은 뒤 저장에서 막힌다.
+   */
+  it('배포 전 지시는 표식과 함께 보이되 고를 수 없다', async () => {
+    plannedRows = [
+      {
+        ...WORK_ORDER,
+        workOrderId: 8802,
+        workOrderNo: 'SYN-WO-R013',
+        statusCode: 'PLANNED',
+      },
+    ];
+    const { user } = renderScreen();
+
+    expect(await screen.findByText('SYN-WO-R013')).toBeInTheDocument();
+    expect(screen.getByText(t.notReleased)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: t.selectRow('SYN-WO-R013') })).toBeNull();
+    /* 배포된 것은 그대로 고를 수 있다 — 함께 보이는 것이 요점이다. */
+    expect(screen.getByRole('button', { name: t.selectRow('SYN-WO-R012') })).toBeEnabled();
+
+    /*
+     * ⛔ **줄 전체를 눌러도 열리지 않는다.** POP 목록은 줄의 어느 칸을 눌러도 그 줄의 선택
+     *    버튼을 대신 누르는데(`913a82c`), 배포 전 줄에는 그 버튼이 없어야 아무 일도 없다.
+     *    버튼만 지우고 다른 경로로 열리면 수량까지 넣은 뒤 저장에서 막힌다.
+     */
+    await user.click(screen.getByText(t.notReleased));
+
+    /* 목록 구획은 고르기 «전»에만 선다 — 아직 서 있다면 아무것도 고르지 않은 것이다. */
+    expect(screen.getByRole('region', { name: t.workOrders })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: t.selectRow('SYN-WO-R012') })).toBeInTheDocument();
+  });
+
+  /*
+   * ⛔ **배포 전 줄은 첫 쪽에만 선다.** 쪽 나누기는 배포된 쪽을 따르고 배포 전 조회는 쪽을
+   *    나누지 않아 늘 같은 답이다 — 매 쪽 꼬리에 다시 세우면 「2쪽인데 왜 아까 그 줄이 또」가
+   *    된다.
+   */
+  it('둘째 쪽에는 배포 전 줄을 다시 세우지 않는다', async () => {
+    releasedTotal = 21;
+    plannedRows = [
+      {
+        ...WORK_ORDER,
+        workOrderId: 8802,
+        workOrderNo: 'SYN-WO-R013',
+        statusCode: 'PLANNED',
+      },
+    ];
+    const { user } = renderScreen();
+
+    expect(await screen.findByText('SYN-WO-R013')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: messages.popPageNav.pageDown }));
+
+    expect(await screen.findByText('SYN-WO-R099')).toBeInTheDocument();
+    expect(screen.queryByText('SYN-WO-R013')).toBeNull();
+    expect(screen.queryByText(t.notReleased)).toBeNull();
+  });
+
   it('사번을 모르면 맨 위 공용 띠로 말하고 액션바에는 옛 문구가 없다', async () => {
     const { user } = renderScreen(null);
     await pickWorkOrder(user);

@@ -173,6 +173,21 @@ export const statusCodeValues: CodeValue[] = [
   makeCodeValue('RETIRED_CODE', '쓰지 않는 상태', false),
 ];
 
+/**
+ * 도구 유형. **서버가 내주는 값이다**(금형·지그·그 밖의 도구 — 2026-09-21 실측).
+ * 한동안 화면이 자리표시자 상수만 써서 등록이 막혀 있었다(omf-all-around#52).
+ */
+export const toolTypeCodeValues: CodeValue[] = [
+  makeCodeValue('MOLD', '금형'),
+  makeCodeValue('JIG', '지그'),
+  makeCodeValue('OTHER', '그 밖의 도구'),
+  makeCodeValue('RETIRED_TYPE', '쓰지 않는 유형', false),
+];
+
+/** 그룹 이름으로 갈라 답한다 — 한 벌로 답하면 어느 그룹을 물었는지 시험이 못 가린다. */
+export const codeValuesOfGroup = (codeGroupCode: string | null): CodeValue[] =>
+  codeGroupCode === 'TOOL_TYPE' ? toolTypeCodeValues : statusCodeValues;
+
 export const codeValuesResponse = (items: CodeValue[] = statusCodeValues) => ({
   items,
   page: pageOf(items),

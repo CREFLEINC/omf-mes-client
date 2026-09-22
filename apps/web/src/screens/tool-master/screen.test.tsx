@@ -6,6 +6,7 @@ import { describe, expect, it } from 'vitest';
 import { createStubFetch, jsonResponse, renderWithProviders } from '../../test/api-harness';
 import {
   closedPlant,
+  codeValuesOfGroup,
   codeValuesResponse,
   labelIssuedCode,
   makeCodeValue,
@@ -120,7 +121,15 @@ const renderScreen = (options: RenderOptions = {}) => {
       respond: (request) => {
         codeValueSent.push(new URL(request.url));
 
-        return (options.respondCodeValues ?? (() => jsonResponse(codeValuesResponse())))();
+        return (
+          options.respondCodeValues ??
+          ((req: Request) =>
+            jsonResponse(
+              codeValuesResponse(
+                codeValuesOfGroup(new URL(req.url).searchParams.get('codeGroupCode')),
+              ),
+            ))
+        )(request);
       },
     },
   ]);
@@ -277,9 +286,15 @@ describe('W-05-13 툴 마스터 — 목록', () => {
 
     await screen.findByRole('cell', { name: 'TL-01' });
 
-    expect(codeValueSent.map((url) => url.searchParams.get('codeGroupCode'))).toContain(
-      'EQUIPMENT_STATUS',
+    const groups = codeValueSent.map((url) => url.searchParams.get('codeGroupCode'));
+
+    expect(groups).toContain('EQUIPMENT_STATUS');
+    /* ⛔ 사용 중지된 값까지 받는다 — 빼면 그 값을 가진 자료의 이름이 코드로 떨어진다. */
+    expect(codeValueSent.every((url) => url.searchParams.get('includeInactive') === 'true')).toBe(
+      true,
     );
+    /* ⛔ 도구 유형을 서버에 묻는다 — 상수로 돌아가면 값이 있어도 등록이 막힌다(#52). */
+    expect(groups).toContain('TOOL_TYPE');
     expect(codeValueSent.every((url) => url.searchParams.get('codeGroupId') === null)).toBe(true);
   });
 
@@ -316,11 +331,94 @@ describe('W-05-13 툴 마스터 — 목록', () => {
     expect(within(await rowOf('TL-12')).getByText('BLANK_NAME')).toBeInTheDocument();
   });
 
-  /* ⚠ 도구 유형 값 목록이 아직 없다(추적 omf-mes#145) — 이름을 지어내지 않는다. */
-  it('도구 유형은 이름을 못 풀면 코드를 그대로 보인다', async () => {
+  /* ⭐ 건수는 서버가 센 전체다 — 한 쪽에 다 담기지 않아도 받은 줄 수로 세지 않는다. */
+  it('결과 건수를 서버가 센 전체로 보인다', async () => {
+    renderScreen({
+      respondTools: () =>
+        jsonResponse({
+          ...toolsResponse([makeTool(7015, 'TL-15')]),
+          page: { page: 1, size: 50, total: 1200 },
+        }),
+    });
+
+    /* 천 단위 쉼표 — 목록 건수 선례와 같다. 받은 줄 수(1)가 아니라 전체(1,200)다. */
+    expect(await within(listPane()).findByText(t.resultTotal('1,200'))).toBeInTheDocument();
+  });
+
+  /*
+   * ⭐ 체크칸 셋은 「추가 필터」라는 **이름 붙은 한 무리**다 — 검색칸 밑에 붙어 검색의 일부로
+   *   읽히지 않게, 상자 대신 이름으로 묶었다(사용자 지정). 건수는 그 줄 오른쪽 끝에 선다.
+   */
+  it('체크칸 셋을 「추가 필터」 무리로 묶고 건수를 같은 줄에 둔다', async () => {
     renderScreen();
 
-    expect(within(await rowOf('TL-01')).getByText('MOLD')).toBeInTheDocument();
+    const group = await within(listPane()).findByRole('group', { name: t.filters.extraLabel });
+
+    expect(within(group).getAllByRole('checkbox')).toHaveLength(3);
+    expect(group.parentElement).toContainElement(
+      await within(listPane()).findByText(t.resultTotal('6')),
+    );
+  });
+
+  /*
+   * ⭐ 등록·올리기는 조회 조건이 아니다 — 조회·초기화와 한 무리에 섞이면 「무엇을 누르면 목록이
+   *   바뀌는가」가 흐려진다. 두 무리가 서로 다른 자리에 선다.
+   */
+  it('관리 액션을 조회 액션과 다른 자리에 둔다', async () => {
+    renderScreen();
+
+    const search = await within(listPane()).findByRole('button', { name: messages.common.search });
+    const add = within(listPane()).getByRole('button', { name: t.actions.addTool });
+    const upload = within(listPane()).getByRole('button', { name: t.actions.importTools });
+
+    expect(add.parentElement).toBe(upload.parentElement);
+    expect(add.parentElement).not.toBe(search.parentElement);
+  });
+
+  /*
+   * ⭐ 값이 아니라 «값이 없는 사유»는 흐린 글자로 — 실제 수치가 먼저 읽히게 한다.
+   * ⛔ 두 사유를 한 말로 합치지 않는다 — 적정타수를 채우면 풀리는 것과 그렇지 않은 것이다.
+   */
+  it('수치가 없는 사유는 흐린 글자로 보이고 뜻은 그대로 남긴다', async () => {
+    renderScreen({
+      respondTools: () =>
+        jsonResponse(
+          toolsResponse([
+            makeTool(7016, 'TL-16', {
+              guaranteedShotCount: null,
+              availableShotCount: null,
+              shotUsageRatio: null,
+            }),
+            makeTool(7017, 'TL-17', { guaranteedShotCount: 1000, shotUsageRatio: null }),
+          ]),
+        ),
+    });
+
+    const missing = within(await rowOf('TL-16')).getAllByText(t.shots.guaranteedMissing);
+    const notCalculable = within(await rowOf('TL-17')).getAllByText(t.shots.notCalculable);
+
+    expect(missing.every((cell) => cell.classList.contains('tool-master-figure-missing'))).toBe(
+      true,
+    );
+    expect(
+      notCalculable.every((cell) => cell.classList.contains('tool-master-figure-missing')),
+    ).toBe(true);
+  });
+
+  it('도구 유형을 서버 공통코드의 이름으로 보인다', async () => {
+    renderScreen();
+
+    expect(within(await rowOf('TL-01')).getByText('금형')).toBeInTheDocument();
+  });
+
+  /* ⛔ 「알 수 없음」으로 덮지 않는다 — 무엇이 걸려 있는지조차 사라지면 고칠 값을 못 찾는다. */
+  it('도구 유형은 이름을 못 풀면 코드를 그대로 보인다', async () => {
+    renderScreen({
+      respondTools: () =>
+        jsonResponse(toolsResponse([makeTool(7013, 'TL-13', { toolTypeCode: 'MYSTERY' })])),
+    });
+
+    expect(within(await rowOf('TL-13')).getByText('MYSTERY')).toBeInTheDocument();
   });
 
   /*
@@ -723,7 +821,7 @@ describe('W-05-13 툴 마스터 — 등록·수정 창', () => {
    * ⛔ **누계 타발수에 입력칸을 만들지 않는다**(스펙 §6). 더하는 것은 툴 사용실적 입력이고
    * 되돌리는 것은 툴 예방보전 실적 등록이다 — 여기서 고칠 수 있으면 실적과 마스터가 어긋난다.
    */
-  it('누계 타발수는 고칠 수 없고 어디서 정해지는지 밝힌다', async () => {
+  it('누계 타발수는 고칠 수 없고 「현재 상태」에 값으로 선다', async () => {
     const { user } = renderScreen();
 
     await openEditOf(user, 'TL-01');
@@ -732,11 +830,16 @@ describe('W-05-13 툴 마스터 — 등록·수정 창', () => {
       screen.queryByRole('textbox', { name: new RegExp(t.fields.currentShotCount) }),
     ).not.toBeInTheDocument();
     expect(screen.getByLabelText(t.fields.currentShotCount)).toHaveTextContent('128,400');
-    expect(screen.getByText(t.actionReasons.shotCountOwnedElsewhere)).toBeInTheDocument();
+    /* 칸마다 붙던 「어디서 정해지는가」 설명 대신 구획이 그 뜻을 맡는다(사용자 지정). */
+    expect(
+      within(screen.getByRole('region', { name: t.form.sections.status })).getByLabelText(
+        t.fields.currentShotCount,
+      ),
+    ).toBeInTheDocument();
   });
 
   /* 마지막 시행일도 같다 — 예방보전 실적 등록이 정한다(스펙 §6). */
-  it('마지막 예방보전일은 고칠 수 없고 어디서 정해지는지 밝힌다', async () => {
+  it('마지막 예방보전일은 고칠 수 없고 「현재 상태」에 값으로 선다', async () => {
     const { user } = renderScreen();
 
     await openEditOf(user, 'TL-03');
@@ -745,7 +848,11 @@ describe('W-05-13 툴 마스터 — 등록·수정 창', () => {
       screen.queryByRole('textbox', { name: new RegExp(t.fields.lastPmDate) }),
     ).not.toBeInTheDocument();
     expect(screen.getByLabelText(t.fields.lastPmDate)).toHaveTextContent('2026-01-02');
-    expect(screen.getByText(t.actionReasons.pmDateOwnedElsewhere)).toBeInTheDocument();
+    expect(
+      within(screen.getByRole('region', { name: t.form.sections.status })).getByLabelText(
+        t.fields.lastPmDate,
+      ),
+    ).toBeInTheDocument();
   });
 
   /* ⛔ 없는 값을 빈칸으로 두면 「없다」와 「아직 안 불러왔다」가 같은 모양이 된다(G-9). */
@@ -828,7 +935,46 @@ describe('W-05-13 툴 마스터 — 등록·수정 창', () => {
 
     expect(within(formDialog()).queryByRole('combobox', { name: /공장/ })).not.toBeInTheDocument();
     expect(within(formDialog()).getByLabelText(t.fields.plant)).toHaveTextContent('제1공장');
-    expect(screen.getByText(t.actionReasons.plantFixed)).toBeInTheDocument();
+    /* 긴 설명 대신 「현재 상태」의 글자로 전한다(사용자 지정). */
+    expect(
+      within(screen.getByRole('region', { name: t.form.sections.status })).getByLabelText(
+        t.fields.plant,
+      ),
+    ).toHaveTextContent('제1공장');
+  });
+
+  /*
+   * ⭐ 비어 있는 필수 칸은 저장 전에도 빨간 테두리로 보인다(사용자 지정) — 채우면 사라진다.
+   *   문구는 여전히 저장 때 검증이 낸다.
+   */
+  it('비어 있는 필수 칸을 표시하고 채우면 거둔다', async () => {
+    const { user } = renderScreen();
+
+    await openCreate(user);
+
+    const name = screen.getByRole('textbox', { name: /툴명/ });
+    const type = within(formDialog()).getByRole('combobox', { name: /도구 유형/ });
+
+    expect(name.closest('.tool-form-empty-required')).not.toBeNull();
+    expect(type).toHaveAttribute('aria-invalid', 'true');
+
+    await user.type(name, '신규 금형');
+    await user.click(type);
+    await user.click(await screen.findByRole('option', { name: '금형' }));
+
+    expect(name.closest('.tool-form-empty-required')).toBeNull();
+    expect(type).not.toHaveAttribute('aria-invalid', 'true');
+  });
+
+  /* ⭐ 선택칸의 * 도 공용 필수 표시(빨강)를 입는다 — 빠져 있어 흰색으로 보였다. */
+  it('선택칸의 필수 표시가 공용 빨강 표식을 입는다', async () => {
+    const { user } = renderScreen();
+
+    await openCreate(user);
+
+    const typeLabel = within(formDialog()).getByText(t.fields.toolType, { selector: 'label' });
+
+    expect(typeLabel.nextElementSibling).toHaveClass('required-mark');
   });
 
   it('등록에서는 공장을 고른다', async () => {
@@ -853,14 +999,17 @@ describe('W-05-13 툴 마스터 — 등록·수정 창', () => {
 
 describe('W-05-13 툴 마스터 — 예방보전 주기 짝', () => {
   /* 감추지 않고 잠그고 사유를 붙인다(G-2) — 사라진 칸은 「원래 없는 것」과 구분되지 않는다. */
-  it('날짜 축을 쓰지 않으면 주기 두 칸을 잠그고 사유를 밝힌다', async () => {
+  /*
+   * 감추지 않고 잠근다(G-2) — 사라진 칸은 「원래 없는 것」과 구분되지 않는다. 잠긴 까닭은 글로
+   * 쓰지 않고 잠긴 칸의 모양으로 전한다(사용자 지정 2026-09-22).
+   */
+  it('날짜 축을 쓰지 않으면 주기 두 칸을 감추지 않고 잠근다', async () => {
     const { user } = renderScreen();
 
     await openEditOf(user, 'TL-01');
 
     expect(screen.getByRole('textbox', { name: /예방보전 주기 간격/ })).toBeDisabled();
     expect(screen.getByRole('combobox', { name: /예방보전 주기 단위/ })).toBeDisabled();
-    expect(screen.getAllByText(t.actionReasons.cycleNeedsDateAxis).length).toBeGreaterThan(0);
   });
 
   it('날짜 축을 고르면 주기 두 칸이 열린다', async () => {
@@ -872,6 +1021,29 @@ describe('W-05-13 툴 마스터 — 예방보전 주기 짝', () => {
 
     expect(screen.getByRole('textbox', { name: /예방보전 주기 간격/ })).toBeEnabled();
     expect(screen.getByRole('combobox', { name: /예방보전 주기 단위/ })).toBeEnabled();
+    /* 안내 문장 대신 **채울 칸 표식**이 뜬다 — 비어 있는 필수 칸이 된 순간이다(사용자 지정). */
+    expect(
+      screen
+        .getByRole('textbox', { name: /예방보전 주기 간격/ })
+        .closest('.tool-form-empty-required'),
+    ).not.toBeNull();
+  });
+
+  /*
+   * ⭐ 상태를 바꾸는 두 액션은 **정보 목록 밖**에 선다 — 목록의 한 항목처럼 읽히지 않게(사용자 지정).
+   */
+  it('사용 중지·폐기는 현재 상태 목록 밖에 선다', async () => {
+    const { user } = renderScreen();
+
+    await openEditOf(user, 'TL-01');
+
+    const region = screen.getByRole('region', { name: t.form.sections.status });
+    const list = within(region).getByRole('definition', { name: t.fields.plant }).closest('dl');
+
+    expect(list).not.toBeNull();
+    expect(list).not.toContainElement(
+      within(region).getByRole('button', { name: t.retire.deactivateConfirm }),
+    );
   });
 
   /*
@@ -956,13 +1128,30 @@ describe('W-05-13 툴 마스터 — 예방보전 주기 짝', () => {
   });
 
   /* 도구 유형도 같다 — 값 목록이 자리표시뿐이라 저장된 코드는 늘 목록 밖이다. */
-  it('저장된 도구 유형이 자리표시 목록에 없어도 그 값을 보인다', async () => {
+  it('도구 유형 선택칸이 서버 공통코드의 이름을 보인다', async () => {
     const { user } = renderScreen();
 
     await openEditOf(user, 'TL-01');
 
     expect(within(formDialog()).getByRole('combobox', { name: /도구 유형/ })).toHaveTextContent(
-      'MOLD',
+      '금형',
+    );
+  });
+
+  /*
+   * ⛔ 사용 중지된 유형이 걸린 툴을 열어도 **칸이 비어 보이면 안 된다** — 비면 사용자가 값이
+   *    사라진 줄 알고 다시 고르고, 원래 값은 그렇게 조용히 바뀐다.
+   */
+  it('사용 중지된 도구 유형이 걸려 있어도 그 값을 남긴다', async () => {
+    const { user } = renderScreen({
+      respondTools: () =>
+        jsonResponse(toolsResponse([makeTool(7014, 'TL-14', { toolTypeCode: 'RETIRED_TYPE' })])),
+    });
+
+    await openEditOf(user, 'TL-14');
+
+    expect(within(formDialog()).getByRole('combobox', { name: /도구 유형/ })).toHaveTextContent(
+      '쓰지 않는 유형',
     );
   });
 
@@ -990,6 +1179,8 @@ describe('W-05-13 툴 마스터 — 저장', () => {
     await user.type(screen.getByRole('textbox', { name: /툴명/ }), '신규 금형');
     await user.click(within(formDialog()).getByRole('combobox', { name: /공장/ }));
     await user.click(await screen.findByRole('option', { name: '제1공장' }));
+    await user.click(within(formDialog()).getByRole('combobox', { name: /도구 유형/ }));
+    await user.click(await screen.findByRole('option', { name: '금형' }));
     await user.click(screen.getByRole('button', { name: messages.common.save }));
 
     await waitFor(() => {
@@ -1001,7 +1192,13 @@ describe('W-05-13 툴 마스터 — 저장', () => {
     expect(request.method).toBe('POST');
     expect(request.headers.get('Idempotency-Key')).not.toBeNull();
     expect(request.headers.get('If-Match')).toBeNull();
-    expect(await request.json()).toMatchObject({ moldCode: 'TL-90', plantId: 11, cavityCount: 1 });
+    expect(await request.json()).toMatchObject({
+      moldCode: 'TL-90',
+      plantId: 11,
+      cavityCount: 1,
+      /* ⛔ 고른 값이 그대로 실린다 — 자리표시자를 실으면 서버가 거절한다(#52). */
+      toolTypeCode: 'MOLD',
+    });
   });
 
   /* ⭐ 잠금 토큰은 상세 응답의 ETag 에서 온다 — 목록만으로는 저장을 시작할 수 없다. */
@@ -1234,6 +1431,23 @@ describe('W-05-13 툴 마스터 — 사용 중지·폐기', () => {
       within(formDialog()).getByRole('button', { name: t.retire.disposeConfirm }),
     ).toBeDisabled();
     expect(screen.getByText(t.actionReasons.alreadyDisposed)).toBeInTheDocument();
+  });
+
+  /*
+   * ⛔ 「받지 못했다」와 「서버에 값이 없다」를 **갈라 말한다** — 사용자가 할 일이 다르다.
+   *    앞은 다시 시도하거나 담당자에게 알릴 일이고, 뒤는 공통코드에 값을 등록할 일이다.
+   */
+  it('도구 유형 값이 0건이면 어디서 등록하는지 말한다', async () => {
+    renderScreen({ respondCodeValues: () => jsonResponse(codeValuesResponse([])) });
+
+    expect(await screen.findByText(t.typeOptionsEmpty)).toBeInTheDocument();
+  });
+
+  it('도구 유형을 받지 못하면 값이 없다고 말하지 않는다', async () => {
+    renderScreen({ respondCodeValues: () => new Response('', { status: 500 }) });
+
+    expect(await screen.findByText(t.optionsLoadFailed)).toBeInTheDocument();
+    expect(screen.queryByText(t.typeOptionsEmpty)).not.toBeInTheDocument();
   });
 
   /* 폐기 코드값이 없으면 이미 폐기된 자산인지 판정할 수 없다 — 판정 없이 열지 않는다. */

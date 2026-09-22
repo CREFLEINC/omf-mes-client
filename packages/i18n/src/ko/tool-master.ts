@@ -9,8 +9,8 @@ export const toolMaster = {
   paneTitle: '툴 목록',
   breadcrumbRoot: '설비/툴',
   actions: {
-    addTool: '툴 등록',
-    importTools: '엑셀 올리기',
+    addTool: '툴 생성',
+    importTools: '엑셀 업로드',
   },
   /**
    * 현행 엑셀 대장을 옮기는 경로.
@@ -21,7 +21,7 @@ export const toolMaster = {
    * 라벨이 나가는 것이 아니다(스펙 §6).
    */
   import: {
-    title: '툴 엑셀 올리기',
+    title: '툴 엑셀 업로드',
     partialWarningTitle: '올리기는 통째로 되돌리지 않습니다',
     partialWarning:
       '성공한 행은 그대로 등록되고 실패한 행만 돌아옵니다. 잘못 올려도 되돌리는 수단이 없으니 파일을 먼저 확인하세요.',
@@ -58,8 +58,12 @@ export const toolMaster = {
   loading: {
     tools: '툴 목록을 불러오는 중',
   },
+  /** 서버가 센 전체 건수. 잘렸는지는 `listTruncated` 가 따로 말한다. */
+  resultTotal: (total: string): string => `총 ${total}건`,
   listTruncated: (shown: number, total: number): string =>
     `전체 ${total}건 중 ${shown}건을 표시합니다. 조건을 좁혀 조회하세요.`,
+  /* ⛔ 「못 받았다」와 가른다 — 사용자가 할 일이 다르다(omf-all-around#52). */
+  typeOptionsEmpty: '도구 유형 값이 없습니다 · 공통코드에서 등록하세요',
   optionsTruncated: '선택 목록이 일부만 표시됩니다. 찾는 값이 없으면 담당자에게 알려 주세요.',
   optionsLoadFailed: '선택 목록을 불러오지 못했습니다. 지금 저장된 값만 표시됩니다.',
   empty: {
@@ -74,7 +78,9 @@ export const toolMaster = {
     plantAll: '전체 공장',
     typeAll: '전체 유형',
     /** ⭐ 적정타수가 비면 사용 가능 타수도 초과율도 셀 수 없다 — **채울 것을 세는 자리**다. */
-    guaranteedMissingOnly: '적정타수 없는 것만',
+    /** 체크칸 무리의 이름표 — 기본 조회 조건과 갈라 읽히게 한다. */
+    extraLabel: '추가 필터',
+    guaranteedMissingOnly: '적정 타수 미설정',
     pmDueOnly: '예방보전 도래만',
     sortLabel: '정렬',
     sort: {
@@ -113,6 +119,12 @@ export const toolMaster = {
     notRecorded: '기록 없음',
   },
   form: {
+    /** 창의 세 구획 — 「고칠 값 → 예방보전 설정 → 보기만 하는 값」 차례로 읽힌다. */
+    sections: {
+      basic: '기본 정보',
+      pm: '예방보전 설정',
+      status: '현재 상태',
+    },
     createTitle: '툴 등록',
     editTitle: '툴 수정',
     plantPlaceholder: '공장을 고르세요',
@@ -164,13 +176,6 @@ export const toolMaster = {
   },
   /** ⭐ 감추지 않고 「왜 여기서 못 하는지」를 말한다(공유계약 G-2). */
   actionReasons: {
-    plantFixed: '공장은 등록할 때 정해지며 이 화면에서 옮길 수 없습니다.',
-    cycleNeedsDateAxis: '판정 기준에 날짜를 넣으면 주기를 입력할 수 있습니다.',
-    statusOwnedElsewhere: '운용상태는 사용 중지·폐기 처리로 바뀝니다.',
-    /** ⭐ 스펙 §6 의 첫 항목 — 여기서 손으로 고칠 수 있으면 실적과 마스터가 조용히 어긋난다. */
-    shotCountOwnedElsewhere:
-      '누계 타발수는 툴 사용실적 입력이 더하고, 툴 예방보전 실적 등록이 되돌립니다.',
-    pmDateOwnedElsewhere: '마지막 예방보전일은 툴 예방보전 실적 등록에서 정합니다.',
     alreadyInactive: '이미 사용 중지된 툴입니다.',
     alreadyDisposed: '이미 폐기된 툴입니다.',
     /** ⛔ 모르면 잠근다 — 열어 두면 눌러도 아무 일도 일어나지 않는다. */
@@ -187,7 +192,7 @@ export const toolMaster = {
      * ⚠ 도구 유형 값 목록이 아직 없어(추적 `omf-mes#145`) **어느 코드가 금형인지 화면이
      * 판정할 수 없다.** 잠그는 대신 뜻을 밝힌다 — 값 목록이 들어오면 잠글 수 있다.
      */
-    cavityMeaningfulForMold: '캐비티 수는 금형에서만 뜻이 있습니다.',
+    cavityMeaningfulForMold: '금형에만 적용됩니다.',
     /**
      * ⭐ **막지 않고 알린다.** 「적정타수 없는 것만」 조회 조건이 있다는 것은 이 상태로 저장하는
      * 것을 **업무가 허용한다**는 뜻이다 — 막으면 나중에 채우는 길이 사라진다.

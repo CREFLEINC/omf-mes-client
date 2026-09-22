@@ -29,10 +29,29 @@ export const useReworkDefectCodes = () => {
   });
 };
 
+/**
+ * 배포 전 재작업 지시의 상태. 품질 담당이 처분 판정에서 발행하면 이 상태로 선다
+ * (omf-all-around#47) — 배포까지 해야 실적을 받는다.
+ */
+export const PLANNED_STATUS_CODE = 'PLANNED';
+
+/**
+ * 재작업 W/O 후보.
+ *
+ * ⭐ **배포된 것과 «아직 배포 전」것을 함께 보인다**(사용자 결정 2026-09-21). 발행은 품질
+ * 담당이 하고 배포는 그 뒤 단계라, 배포된 것만 보이면 현장은 **지시가 났는지조차 모른다.**
+ *
+ * ⛔ **배포 전은 고를 수 없다.** 서버가 `PLANNED` 의 실적을 받지 않는다(선발행 슬롯이 없다).
+ * 고르게 두면 수량까지 넣은 뒤 저장에서 막힌다 — 목록에서 표식으로만 알린다(화면의 몫).
+ *
+ * ⚠ **질의 축이 하나라 두 번 묻는다.** `open` 은 「배포됐고 안 끝났다」이고 `statusCode` 는
+ * 한 값만 받는다. 두 답을 합치되 **쪽 나누기는 배포된 쪽을 따른다** — 배포 전은 건수가 적고,
+ * 고를 수 없는 줄이 쪽을 밀어내면 정작 고를 것이 뒤로 넘어간다.
+ */
 export const useReworkWorkOrders = (page = 1) => {
   const { client } = useApiClient();
-  return useQuery({
-    queryKey: [...reworkResultKeys.list, page],
+  const open = useQuery({
+    queryKey: [...reworkResultKeys.list, 'open', page],
     queryFn: () =>
       runRequest(() =>
         client.GET('/production/work-orders', {
@@ -42,6 +61,24 @@ export const useReworkWorkOrders = (page = 1) => {
         }),
       ),
   });
+  const planned = useQuery({
+    queryKey: [...reworkResultKeys.list, 'planned'],
+    queryFn: () =>
+      runRequest(() =>
+        client.GET('/production/work-orders', {
+          params: {
+            query: {
+              workOrderTypeCode: REWORK_WORK_ORDER_TYPE_CODE,
+              statusCode: PLANNED_STATUS_CODE,
+              page: 1,
+              size: 20,
+            },
+          },
+        }),
+      ),
+  });
+
+  return { open, planned };
 };
 
 export const useReworkSource = (nonconformanceId: number | null) => {

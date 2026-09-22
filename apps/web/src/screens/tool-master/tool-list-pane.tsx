@@ -4,38 +4,45 @@ import {
   Chip,
   type Column,
   EmptyState,
+  Icon,
   SearchInput,
   SkeletonText,
   Table,
 } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { type ReactNode, useEffect, useState } from 'react';
+import { type ReactNode, useEffect, useId, useState } from 'react';
 
 import type { LookupSource } from '../../patterns/lookup-display';
 import {
   SORT_OPTIONS,
-  TOOL_TYPE_OPTIONS,
   type CodeOption,
   codeLabel,
   defaultToolFilters,
   lookupLabel,
+  selectableOptions,
   toToolSort,
 } from './code-options';
 import { PmBadge } from './pm-badge';
 import { judgePm } from './pm-status';
 import { SelectField } from './select-field';
-import { availableShots, isOverUsed, shotUsage } from './shot-counts';
+import { availableShots, isOverUsed, type ShotFigure, shotUsage } from './shot-counts';
 import { countText, figureText, ratioText } from './shot-text';
 import type { Mold, ToolFilters } from './types';
 
 export interface ToolListPaneProps {
   items: Mold[];
+  /** 서버가 센 전체 건수. 한 쪽에 다 담기지 않아도 이 값은 전체다 — 잘림 안내는 화면이 따로 한다 */
+  total: number | null;
   isLoading: boolean;
   appliedFilters: ToolFilters;
   onApplyFilters: (next: ToolFilters) => void;
   plantOptions: CodeOption[];
   /** 공장 이름과 조회 상태 — 좁힌 선택지가 아니라 전체에서 찾는다 */
   plantSource: LookupSource;
+  /** 도구 유형 — 서버 공통코드가 정본이다(omf-all-around#52). */
+  typeSource: LookupSource;
+  /** 유형 선택지의 한계 안내(값 없음·조회 실패). 없으면 붙이지 않는다 */
+  typeNote?: string;
   statusOptions: CodeOption[];
   onAdd: () => void;
   onEdit: (tool: Mold) => void;
@@ -78,17 +85,22 @@ const hasAnyFilter = (filters: ToolFilters): boolean =>
 
 export const ToolListPane = ({
   items,
+  total,
   isLoading,
   appliedFilters,
   onApplyFilters,
   plantOptions,
   plantSource,
+  typeSource,
+  typeNote,
   statusOptions,
   onAdd,
   onEdit,
   onImport,
   loadError,
 }: ToolListPaneProps) => {
+  /* 「추가 필터」 이름표가 체크칸 무리의 이름이 된다 — 상자 없이 묶는 자리라 이름으로 잇는다. */
+  const extraLabelId = useId();
   // 트리거 모델: 편집은 모아서 적용, 해제는 즉시.
   const [draft, setDraft] = useState<DraftFilters>(draftOf(appliedFilters));
   const { q: appliedQ, plantId: appliedPlantId, toolTypeCode: appliedType } = appliedFilters;
@@ -121,11 +133,29 @@ export const ToolListPane = ({
   const nameCell = (row: Mold): ReactNode =>
     row.isActive ? row.moldName : `${row.moldName}${t.values.inactiveSuffix}`;
 
+  /**
+   * 수치 칸 하나. **값이 아니라 «값이 없는 사유»면 흐린 글자로** 세운다 — 실제 수치가 먼저 읽히게.
+   * ⛔ 두 사유(적정타수 없음·산출 불가)를 한 말로 합치지 않는다 — 채우면 풀리는 것과 그렇지
+   *    않은 것이라 할 일이 다르다(`figureText`).
+   */
+  const figureCell = (figure: ShotFigure, format: (value: number) => string): ReactNode => {
+    const text = figureText(figure, format);
+
+    return figure.kind === 'value' ? (
+      text
+    ) : (
+      <span className="tool-master-figure-missing">{text}</span>
+    );
+  };
+
   const usageCell = (row: Mold): ReactNode => {
     const figure = shotUsage(row);
-    const text = figureText(figure, ratioText);
 
-    return isOverUsed(figure) ? <span className="figure-alert">{text}</span> : text;
+    return isOverUsed(figure) ? (
+      <span className="figure-alert">{figureText(figure, ratioText)}</span>
+    ) : (
+      figureCell(figure, ratioText)
+    );
   };
 
   /**
@@ -136,13 +166,17 @@ export const ToolListPane = ({
    * ⭐ 공장은 **거르는 축으로 남기고** 칸은 두지 않는다 — 조회 조건과 칩이 그 값을 말한다.
    * ⭐ 사용 여부는 칸이 아니라 **이름에 붙는 표식**이다(아래 `nameCell`).
    *
-   * 지정 폭 합 750px — 최소 폭 58rem(928px) 안에 들어가며 178px 이 툴명의 하한이 된다.
+   * ⭐ **사용자 지정 배치(2026-09-22) — 다음 작업자가 되돌리지 않는다.** 모든 칸을 가운데 정렬하고,
+   *   폭을 백분율로 나눠 툴명이 표를 독차지하지 않게 한다(합 100%). 툴명이 남는 폭을 다 받으면
+   *   넓은 화면에서 툴명과 나머지 칸 사이가 크게 벌어져 한 줄로 읽히지 않았다(실측 캡처).
+   *   툴명은 값이 길어 조금 더 받되 다른 칸과 크게 차이 나지 않게 둔다.
    */
   const columns: Column<Mold>[] = [
     {
       key: 'moldCode',
       header: t.fields.toolCode,
-      width: '148px',
+      align: 'center',
+      width: '14%',
       /* 코드가 곧 여는 손잡이다 — 줄마다 「수정」 단추를 세우면 표가 조작으로 덮인다. */
       render: (row) => (
         <button type="button" className="link-cell" onClick={() => onEdit(row)}>
@@ -150,39 +184,46 @@ export const ToolListPane = ({
         </button>
       ),
     },
-    { key: 'moldName', header: t.fields.toolName, render: nameCell },
+    { key: 'moldName', header: t.fields.toolName, align: 'center', width: '18%', render: nameCell },
     {
       key: 'toolTypeCode',
       header: t.fields.toolType,
-      width: '104px',
-      /* ⚠ 값 목록이 없어 지금은 코드가 그대로 선다 — 이름을 지어내지 않는다(G-9). */
-      render: (row) => codeLabel(row.toolTypeCode, TOOL_TYPE_OPTIONS),
+      align: 'center',
+      width: '12%',
+      /*
+       * 이름표는 사용 중지된 코드도 푼다 — 안 그러면 옛 자료의 유형이 코드로 보인다.
+       * ⛔ 못 찾으면 **코드를 그대로** 보인다(G-9) — 「알 수 없음」으로 덮으면 무엇이 걸려
+       *    있는지조차 사라져 고칠 값을 못 찾는다.
+       */
+      render: (row) => codeLabel(row.toolTypeCode, typeSource.entries),
     },
     {
       key: 'pm',
       header: t.fields.pm,
-      width: '126px',
+      align: 'center',
+      width: '14%',
       /* ⭐ 판정은 서버가 한다 — 화면은 받은 값을 그리기만 한다. */
       render: (row) => <PmBadge judgment={judgePm(row)} />,
     },
     {
       key: 'availableShotCount',
       header: t.fields.availableShotCount,
-      align: 'end',
-      width: '130px',
-      render: (row) => figureText(availableShots(row), countText),
+      align: 'center',
+      width: '15%',
+      render: (row) => figureCell(availableShots(row), countText),
     },
     {
       key: 'shotUsageRatio',
       header: t.fields.shotUsageRatio,
-      align: 'end',
-      width: '130px',
+      align: 'center',
+      width: '13%',
       render: usageCell,
     },
     {
       key: 'statusCode',
       header: t.fields.status,
-      width: '112px',
+      align: 'center',
+      width: '14%',
       render: (row) => codeLabel(row.statusCode, statusOptions),
     },
   ];
@@ -234,7 +275,32 @@ export const ToolListPane = ({
 
   return (
     <section className="pane tool-master-pane" aria-label={t.paneTitle}>
-      <h2 className="pane-title">{t.paneTitle}</h2>
+      {/*
+       * ⭐ **관리 액션은 제목 줄 오른쪽에 둔다.** 등록·올리기는 조회 조건이 아니라 자료를 만드는
+       *   일이다 — 조회·초기화와 한 줄에 섞이면 「무엇을 누르면 목록이 바뀌는가」가 흐려진다.
+       *   본문은 찾는 자리, 제목 줄 오른쪽은 만드는 자리로 갈라 읽히게 한다.
+       */}
+      <div className="pane-heading-row tool-master-heading">
+        <h2 className="pane-title">{t.paneTitle}</h2>
+        <div className="tool-master-manage-actions">
+          {/*
+           * ⭐ **사용자 지정(2026-09-22) — 되돌리지 않는다.** 두 관리 액션의 무게를 가른다.
+           *   「툴 생성」은 이 화면의 주 액션이라 채움 + 더하기 표식, 「엑셀 업로드」는 일괄 등록이라
+           *   외곽선 + 올리기 표식. 둘이 같은 채움이면 무엇이 먼저인지 읽히지 않았다(실측 캡처).
+           * 차례는 생성이 먼저다 — 형제 화면(검사 기준 목록)의 「추가 → 엑셀」 차례와 맞춘다.
+           */}
+          <Button leadingIcon={<Icon name="add" size={18} />} onClick={onAdd}>
+            {t.actions.addTool}
+          </Button>
+          <Button
+            variant="outlined"
+            leadingIcon={<Icon name="upload" size={18} />}
+            onClick={onImport}
+          >
+            {t.actions.importTools}
+          </Button>
+        </div>
+      </div>
       <div className="filter-bar tool-master-filter">
         <SearchInput
           label={t.filters.searchLabel}
@@ -252,10 +318,12 @@ export const ToolListPane = ({
         />
         <SelectField
           label={t.fields.toolType}
-          options={[{ value: '', label: t.filters.typeAll }, ...TOOL_TYPE_OPTIONS]}
+          options={[
+            { value: '', label: t.filters.typeAll },
+            ...selectableOptions(typeSource, draft.toolTypeCode),
+          ]}
           value={draft.toolTypeCode}
           onChange={(value) => setDraft((prev) => ({ ...prev, toolTypeCode: value }))}
-          note={messages.pendingCode.note}
         />
         {/* 정렬은 목록을 좁히지 않는다 — 모아서 적용할 이유가 없어 고르는 즉시 나간다. */}
         <SelectField
@@ -265,54 +333,73 @@ export const ToolListPane = ({
           onChange={(value) => onApplyFilters({ ...appliedFilters, sort: toToolSort(value) })}
         />
         {/*
-         * 해제 축이라 변경 즉시 적용한다. **셋을 한 덩어리로 묶는다** — 줄바꿈으로 갈라지면
-         * 남은 체크칸이 무엇에 딸린 것인지 읽히지 않는다(규범 2-1 과 같은 갈래 · 브라우저
-         * 확인에서 실제로 하나만 앞줄에 남았다).
+         * ⭐ 조회·초기화는 **조건 칸과 같은 줄 끝**에 둔다 — 조건을 고른 손이 바로 닿는 자리이고,
+         *   줄 반대편 끝으로 멀어지면 한 조회 영역으로 읽히지 않는다.
+         *   규범 2-1 — 뜻이 짝인 두 액션이 줄바꿈으로 갈라지지 않게 한 덩어리로 묶는다.
          */}
-        <div className="tool-master-filter-footer">
-          <div className="check-group">
-            <Checkbox
-              checked={appliedFilters.guaranteedShotCountMissing}
-              onChange={(event) =>
-                onApplyFilters({
-                  ...appliedFilters,
-                  guaranteedShotCountMissing: event.target.checked,
-                })
-              }
-            >
-              {t.filters.guaranteedMissingOnly}
-            </Checkbox>
-            <Checkbox
-              checked={appliedFilters.pmDueOnly}
-              onChange={(event) =>
-                onApplyFilters({ ...appliedFilters, pmDueOnly: event.target.checked })
-              }
-            >
-              {t.filters.pmDueOnly}
-            </Checkbox>
-            <Checkbox
-              checked={appliedFilters.includeInactive}
-              onChange={(event) =>
-                onApplyFilters({ ...appliedFilters, includeInactive: event.target.checked })
-              }
-            >
-              {messages.common.includeInactive}
-            </Checkbox>
-          </div>
-          {/* 규범 2-1 — 뜻이 짝인 액션이 줄바꿈으로 갈라지지 않게 한 덩어리로 묶는다. */}
-          <div className="filter-actions">
-            <Button onClick={() => applyDraft()}>{messages.common.search}</Button>
-            <Button variant="outlined" onClick={resetAll}>
-              {messages.common.reset}
-            </Button>
-            <Button variant="outlined" onClick={onAdd}>
-              {t.actions.addTool}
-            </Button>
-            <Button variant="outlined" onClick={onImport}>
-              {t.actions.importTools}
-            </Button>
-          </div>
+        <div className="filter-actions tool-master-search-actions">
+          <Button onClick={() => applyDraft()}>{messages.common.search}</Button>
+          <Button variant="outlined" onClick={resetAll}>
+            {messages.common.reset}
+          </Button>
         </div>
+      </div>
+
+      {/*
+       * ⭐ **2행 — 추가 필터 · 건수**(사용자 지정 2026-09-22 · 되돌리지 않는다). 체크칸이 검색칸 바로
+       *   밑에 붙어 있으면 검색의 일부인지 따로인지 애매했다. 「기본 조건 → 추가 필터 → 결과」가 한눈에
+       *   갈리도록 조건 격자에서 떼어 제 줄을 주고, 건수는 이 줄 오른쪽 끝에 둔다(바로 아래가 표다).
+       * 해제 축이라 변경 즉시 적용한다. **셋을 한 덩어리로 묶는다** — 줄바꿈으로 갈라지면 남은 체크칸이
+       * 무엇에 딸린 것인지 읽히지 않는다(규범 2-1). 상자는 두지 않고 이름표로만 묶는다.
+       */}
+      <div className="tool-master-extra-row">
+        <span id={extraLabelId} className="tool-master-extra-label">
+          {t.filters.extraLabel}
+        </span>
+        <div className="check-group" role="group" aria-labelledby={extraLabelId}>
+          <Checkbox
+            checked={appliedFilters.guaranteedShotCountMissing}
+            onChange={(event) =>
+              onApplyFilters({
+                ...appliedFilters,
+                guaranteedShotCountMissing: event.target.checked,
+              })
+            }
+          >
+            {t.filters.guaranteedMissingOnly}
+          </Checkbox>
+          <Checkbox
+            checked={appliedFilters.pmDueOnly}
+            onChange={(event) =>
+              onApplyFilters({ ...appliedFilters, pmDueOnly: event.target.checked })
+            }
+          >
+            {t.filters.pmDueOnly}
+          </Checkbox>
+          <Checkbox
+            checked={appliedFilters.includeInactive}
+            onChange={(event) =>
+              onApplyFilters({ ...appliedFilters, includeInactive: event.target.checked })
+            }
+          >
+            {messages.common.includeInactive}
+          </Checkbox>
+        </div>
+        {/*
+         * ⭐ 유형 안내는 **조건 칸 밑이 아니라 이 줄에** 한 줄로 둔다 — 칸 밑에 붙으면 그 칸만 키가
+         *   커져 조회 줄의 입력 상자 높이가 어긋난다. 값이 있을 때는 아예 서지 않는다.
+         */}
+        {typeNote !== undefined && <p className="tool-master-type-note">{typeNote}</p>}
+        {/*
+         * ⭐ 건수는 **서버가 센 전체**다 — 한 쪽에 다 담기지 않아도 받은 줄 수로 세지 않는다. 잘렸는지는
+         *   화면 위 안내가 따로 말한다. 불러오는 중·실패일 때는 셀 수 없으니 세우지 않는다.
+         *   글자 결은 목록 건수 선례와 같은 `field-note`, 숫자는 천 단위 쉼표.
+         */}
+        {!isLoading && (loadError === null || loadError === undefined) && total !== null && (
+          <p className="field-note tool-master-result-count" aria-live="polite">
+            {t.resultTotal(new Intl.NumberFormat('ko-KR').format(total))}
+          </p>
+        )}
       </div>
 
       <div className="filter-bar tool-master-filter-chips">
@@ -340,7 +427,7 @@ export const ToolListPane = ({
             removeLabel={t.filters.chipRemoveType}
             onRemove={() => onApplyFilters({ ...appliedFilters, toolTypeCode: '' })}
           >
-            {t.filters.chipType(codeLabel(appliedFilters.toolTypeCode, TOOL_TYPE_OPTIONS))}
+            {t.filters.chipType(lookupLabel(typeSource, appliedFilters.toolTypeCode))}
           </Chip>
         )}
         {appliedFilters.guaranteedShotCountMissing && (
