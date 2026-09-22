@@ -1,6 +1,6 @@
 import type { components } from '@omf-mes/api-client';
 
-import { PENDING_CODE_VALUE, PM_TRIGGER, usesDateAxis } from './code-options';
+import { PM_TRIGGER, usesDateAxis } from './code-options';
 import type { Mold, ToolFormValues } from './types';
 
 type MoldCreate = components['schemas']['MoldCreate'];
@@ -37,7 +37,8 @@ export const formValuesFrom = (tool: Mold): ToolFormValues => ({
 export const emptyFormValues = (plantId: string): ToolFormValues => ({
   moldCode: '',
   moldName: '',
-  toolTypeCode: PENDING_CODE_VALUE,
+  /* 고르지 않은 상태로 연다 — 자리표시자를 기본값으로 두면 그대로 저장돼 서버가 거절한다. */
+  toolTypeCode: '',
   plantId,
   cavityCount: '1',
   guaranteedShotCount: '',

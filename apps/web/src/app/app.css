@@ -4297,26 +4297,68 @@ main > * + * {
   }
 }
 
-/* 툴/금형/지그 마스터 — 조회 조건, 즉시 조건, 목록 액션의 층을 분리한다. */
+/*
+ * 툴/금형/지그 마스터 — 제목 줄(관리 액션) · 조회 줄(조건 + 조회·초기화) · 딸린 조건(체크칸) ·
+ * 건수 · 표의 층을 가른다. 여백은 공용 간격 토큰만 쓰고, 한 단계씩 줄여 정보량에 맞춘다.
+ */
+/*
+ * 페이지 제목과 카드 사이 — 공용 `.screen` 에는 간격 규칙이 없어 둘이 맞붙는다. 전 화면 공통을
+ * 건드리면 다른 화면 배치가 함께 움직이므로 이 화면 뿌리에만 준다. 배너 칸은 제 아래 여백을
+ * 이미 갖고 있어 카드 앞에서만 벌린다.
+ */
+.tool-master-screen > .tool-master-pane {
+  margin-top: var(--space-4);
+}
+
+.tool-master-screen > .banner-slot + .tool-master-pane {
+  margin-top: 0;
+}
+
 .tool-master-pane {
   display: grid;
   align-content: start;
-  gap: var(--space-4);
-  padding: var(--space-5);
+  gap: var(--space-3);
+  padding: var(--space-4);
   min-width: 0;
+  /* 접는 기준을 화면이 아니라 이 카드의 폭으로 — 옆 메뉴가 열리면 둘이 달라진다. */
+  container-type: inline-size;
 }
 
-.tool-master-pane > .pane-title {
+.tool-master-pane > .pane-title,
+.tool-master-heading > .pane-title {
   margin: 0;
   color: var(--on-surface);
   font: var(--type-title-lg);
   letter-spacing: var(--type-title-lg-tracking);
 }
 
+/* 공용 `pane-heading-row` 의 아래 여백은 격자 간격이 대신한다 — 두 번 벌어지지 않게. */
+.pane-heading-row.tool-master-heading {
+  align-items: center;
+  margin-bottom: 0;
+}
+
+/* 관리 액션 한 무리 — 높이는 같은 크기의 버튼이 맞추고, 간격 8px 로 붙여 카드 오른쪽 위에 세운다. */
+.tool-master-manage-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-2);
+}
+
+/*
+ * 조회 줄 — 검색이 주 입력이라 한 칸 반, 나머지 셋은 같은 폭, 끝에 조회·초기화.
+ * 칸들은 아래 끝(입력 상자)에 맞춰 선다 — 라벨 높이가 달라도 상자 줄이 어긋나지 않는다.
+ */
 .filter-bar.tool-master-filter {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
-  gap: var(--space-4);
+  grid-template-columns:
+    minmax(16rem, 1.6fr)
+    repeat(3, minmax(10rem, 1fr))
+    auto;
+  align-items: end;
+  gap: var(--space-2) var(--space-3);
   margin-bottom: 0;
 }
 
@@ -4329,26 +4371,43 @@ main > * + * {
   align-items: stretch;
 }
 
-.tool-master-filter-footer {
-  display: flex;
-  grid-column: 1 / -1;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-3);
+.tool-master-search-actions {
+  flex-wrap: nowrap;
+  gap: var(--space-2);
 }
 
-.tool-master-filter-footer > .check-group {
-  flex: 1 1 28rem;
+/*
+ * 2행 — 추가 필터 · 건수. 상자 없이 이름표로 묶고, 건수는 줄 오른쪽 끝. 바로 아래 표와는 격자
+ * 간격보다 한 단계 좁게 붙인다 — 건수가 표의 머리로 읽히게.
+ */
+.tool-master-extra-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-4);
+  margin-bottom: calc(var(--space-2) - var(--space-3));
+}
+
+.tool-master-extra-label {
+  color: var(--on-surface-variant);
+  font: var(--type-body-sm);
+}
+
+.tool-master-extra-row > .check-group {
   flex-flow: row wrap;
   align-items: center;
-  gap: var(--space-3);
+  gap: var(--space-2) var(--space-4);
 }
 
-.tool-master-filter-footer > .filter-actions {
-  flex-wrap: wrap;
-  justify-content: flex-end;
-  margin-left: auto;
+.tool-master-extra-row > .tool-master-result-count {
+  max-width: none;
+  margin: 0 0 0 auto;
+}
+
+.tool-master-type-note {
+  margin: 0;
+  color: var(--on-surface-variant);
+  font: var(--type-body-sm);
 }
 
 .filter-bar.tool-master-filter-chips {
@@ -4358,6 +4417,150 @@ main > * + * {
 
 .tool-master-filter-chips:empty {
   display: none;
+}
+
+/*
+ * 값이 아니라 «값이 없는 사유»인 글자 — 「대상 아님」·「적정타수 없음」·「산출 불가」.
+ * 흐린 색으로 실제 수치·배지가 먼저 읽히게 한다. 문구는 그대로라 뜻은 갈린 채 남는다.
+ */
+.tool-master-pm-plain,
+.tool-master-figure-missing {
+  color: var(--on-surface-variant);
+}
+
+/*
+ * 툴 등록·수정 창 — 기본 정보 · 예방보전 설정 · 현재 상태 세 구획. 상자 대신 제목과 선 하나로
+ * 가르고, 칸 사이 세로 간격을 한 단계 줄여 창 높이를 줄인다. 보기만 하는 값은 입력칸이 아닌
+ * 「이름 값」 줄로 촘촘히 세운다.
+ */
+.tool-form {
+  display: grid;
+  gap: var(--space-4);
+}
+
+/*
+ * 공용 `dialog-scroll` 은 60vh 에서 자른다. 이 창은 세 구획이라 그 높이에서는 「현재 상태」 끝줄이
+ * 반쯤 잘린 채 스크롤이 생겼다(실측 캡처) — 이 창만 조금 더 연다. 다른 창은 그대로다.
+ */
+.dialog-scroll.tool-form {
+  max-height: 72vh;
+}
+
+/*
+ * 필수 * 는 **언제나 빨강**(사용자 지정 2026-09-22) — 디자인 시스템은 잠긴 칸의 * 를 회색으로
+ * 바꾼다. 라벨 바로 뒤의 표식을 짚어 내부 클래스 이름에 기대지 않는다.
+ */
+.tool-form label + [aria-hidden='true'] {
+  color: var(--semantic-error-text);
+}
+
+/*
+ * 비어 있는 필수 입력칸 — 테두리만 빨갛게. 입력 상자(입력 요소를 바로 품은 칸)를 짚고, 값은
+ * 디자인 시스템의 오류 테두리와 같은 토큰을 쓴다. 문구는 저장 때 검증이 낸다.
+ * ⭐ **「필수인데 비어 있다」는 표식이지 입력 중 표식이 아니다**(사용자 지정 2026-09-22) — 칸을
+ *   눌러 입력하는 동안은 평소 포커스 모양(디자인 시스템)이 서게 두고, 비운 채 떠나면 다시 빨갛다.
+ */
+.tool-form-empty-required :has(> input):not(:focus-within) {
+  box-shadow: inset 0 0 0 1px var(--semantic-error);
+}
+
+.tool-form-section {
+  display: grid;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.tool-form-section + .tool-form-section {
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--outline-variant);
+}
+
+.tool-form-section-title {
+  margin: 0;
+  color: var(--on-surface);
+  font: var(--type-title-sm);
+  letter-spacing: var(--type-title-sm-tracking);
+}
+
+.form-grid.tool-form-grid {
+  gap: var(--space-3) var(--space-4);
+}
+
+/* 구획 제목과 그 옆 안내 — 한 줄에, 좁으면 안내가 아래로 접힌다. */
+/* 예방보전 설정 — 판정 기준·주기 간격·주기 단위를 한 줄에. */
+.form-grid.tool-form-pm-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+/*
+ * 현재 상태 — 보기만 하는 값이라 입력 구획보다 가볍게. 작은 흐린 이름 바로 아래 값을 둬 한
+ * 묶음으로 읽히게 하고, 4열 두 줄로 압축한다. 칸마다 상자는 두지 않는다.
+ */
+.tool-form-status {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--space-3) var(--space-4);
+  margin: 0;
+}
+
+.tool-form-status-item {
+  display: grid;
+  gap: 2px;
+  align-content: start;
+  min-width: 0;
+}
+
+.tool-form-status-item > dt {
+  color: var(--on-surface-variant);
+  font: var(--type-body-sm);
+}
+
+.tool-form-status-item > dd {
+  margin: 0;
+  color: var(--on-surface);
+  overflow-wrap: anywhere;
+}
+
+/* 구획 제목 줄 — 제목은 왼쪽, 그 구획의 값을 바꾸는 손잡이는 오른쪽. */
+.tool-form-section-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-2) var(--space-3);
+}
+
+/* 상태를 바꾸는 두 액션 — 「현재 상태」 제목 줄 오른쪽. 잠긴 사유는 버튼 바로 아래에 선다. */
+.tool-form-retire {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--space-2);
+}
+
+.tool-form-retire-action {
+  display: grid;
+  gap: var(--space-1);
+  justify-items: end;
+  max-width: 16rem;
+}
+
+.tool-form-retire-action > .field-note {
+  text-align: right;
+}
+
+.tool-form-retire-action > .field-note {
+  margin-top: 0;
+}
+
+@media (max-width: 720px) {
+  .tool-form-status {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .form-grid.tool-form-pm-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 
 .tool-master-table {
@@ -4529,19 +4732,59 @@ main > * + * {
   }
 }
 
-@media (max-width: 640px) {
-  .tool-master-filter-footer,
-  .tool-master-filter-footer > .check-group {
-    align-items: stretch;
+/*
+ * 폭이 모자라면 두 줄로 접는다 — ⭐ **검색과 조회·초기화는 첫 줄에 함께 남는다**(사용자 지정
+ * 2026-09-22). 조회 버튼이 맨 아래로 떨어지면 검색어를 친 손이 버튼을 찾아 내려가야 한다.
+ * 공장·유형·정렬은 둘째 줄에 같은 폭으로 선다. 한 줄 배치의 최소 폭(약 60rem) 아래에서 접는다.
+ */
+@container (max-width: 62rem) {
+  .filter-bar.tool-master-filter {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-areas:
+      'search search actions'
+      'plant type sort';
+  }
+
+  .filter-bar.tool-master-filter > :nth-child(1) {
+    grid-area: search;
+  }
+
+  .filter-bar.tool-master-filter > :nth-child(2) {
+    grid-area: plant;
+  }
+
+  .filter-bar.tool-master-filter > :nth-child(3) {
+    grid-area: type;
+  }
+
+  .filter-bar.tool-master-filter > :nth-child(4) {
+    grid-area: sort;
+  }
+
+  .filter-bar.tool-master-filter > .tool-master-search-actions {
+    grid-area: actions;
+    justify-self: start;
+  }
+}
+
+/* 아주 좁으면 한 칸씩 세로로. 영역 이름을 풀어야 위 배치가 끼어들지 않는다. */
+@container (max-width: 36rem) {
+  .filter-bar.tool-master-filter {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas: none;
+  }
+
+  .filter-bar.tool-master-filter > :nth-child(n) {
+    grid-area: auto;
+  }
+
+  .tool-master-extra-row,
+  .tool-master-extra-row > .check-group {
+    align-items: flex-start;
     flex-direction: column;
   }
 
-  .tool-master-filter-footer > .check-group {
-    flex: initial;
-  }
-
-  .tool-master-filter-footer > .filter-actions {
-    align-self: flex-end;
+  .tool-master-extra-row > .tool-master-result-count {
     margin-left: 0;
   }
 }
