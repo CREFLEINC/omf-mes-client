@@ -52,9 +52,17 @@ describe('toReference', () => {
     });
   });
 
-  it('가리키는 번호가 없으면 알 수 없음이다', () => {
-    expect(toReference(source(), null)).toEqual({ kind: 'unknown' });
-    expect(toReference(source(), undefined)).toEqual({ kind: 'unknown' });
+  /*
+   * ⭐ **값이 없는 것과 이름을 못 찾은 것은 다르다**(사용자 지시 2026-09-22). 서버가 납품처를
+   * 비워 보내는 건이 있는데 「알 수 없음」으로 그리면 조회가 잘못된 것처럼 읽힌다.
+   */
+  it('가리키는 번호가 없으면 빈 값이다', () => {
+    expect(toReference(source(), null)).toEqual({ kind: 'empty' });
+    expect(toReference(source(), undefined)).toEqual({ kind: 'empty' });
+  });
+
+  it('번호는 있는데 목록에 없으면 알 수 없음이다', () => {
+    expect(toReference(source(), 9999)).toEqual({ kind: 'unknown' });
   });
 
   it('가리키는 번호가 없어도 실패가 앞선다', () => {

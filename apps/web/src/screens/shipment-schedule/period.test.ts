@@ -1,7 +1,13 @@
 import { messages } from '@omf-mes/i18n';
 import { describe, expect, it } from 'vitest';
 
-import { readPeriod, toPeriodQuery, validatePeriod } from './period';
+import {
+  readPeriod,
+  toPeriodQuery,
+  validatePeriod,
+  isPeriodEndReason,
+  isPeriodRequiredReason,
+} from './period';
 
 const t = messages.shipmentSchedule;
 
@@ -98,5 +104,34 @@ describe('readPeriod', () => {
       from: '2026-02-31',
       to: '',
     });
+  });
+});
+
+describe('isPeriodRequiredReason', () => {
+  /* 별표와 붉은 테두리가 대신 말하는 사유는 이 하나뿐이다 — 나머지는 문장이 그대로 필요하다. */
+  it('「시작일이 비었다」만 참이다', () => {
+    expect(isPeriodRequiredReason(t.reasons.periodRequired)).toBe(true);
+    expect(isPeriodRequiredReason(t.reasons.periodInvalid)).toBe(false);
+    expect(isPeriodRequiredReason(t.reasons.periodReversed)).toBe(false);
+    expect(isPeriodRequiredReason(null)).toBe(false);
+  });
+});
+
+describe('isPeriodEndReason', () => {
+  it('종료일이 막은 경우에만 참이다', () => {
+    /* 없는 날짜 · 뒤집힌 기간 — 둘 다 종료일 칸을 짚어야 한다. */
+    expect(isPeriodEndReason({ from: '2026-08-01', to: '2026-02-31' })).toBe(true);
+    expect(isPeriodEndReason({ from: '2026-08-31', to: '2026-08-01' })).toBe(true);
+  });
+
+  it('종료일이 비었거나 정상이면 거짓이다', () => {
+    expect(isPeriodEndReason({ from: '', to: '' })).toBe(false);
+    expect(isPeriodEndReason({ from: '2026-02-31', to: '' })).toBe(false);
+    expect(isPeriodEndReason({ from: '2026-08-01', to: '2026-08-31' })).toBe(false);
+  });
+
+  /* 시작일이 깨졌으면 뒤집힘을 따지지 않는다 — 짚을 칸은 시작일이다. */
+  it('시작일이 깨졌으면 종료일 탓으로 돌리지 않는다', () => {
+    expect(isPeriodEndReason({ from: '2026-02-31', to: '2026-08-01' })).toBe(false);
   });
 });
