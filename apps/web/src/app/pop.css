@@ -8012,3 +8012,16 @@
 .pop-ui .banner-slot [role='status'] button.work-start-entry-secondary {
   min-block-size: 48px;
 }
+
+/* 배포 전 재작업 지시 줄 — 고를 수 없다는 것이 색과 표식으로 함께 읽혀야 한다. */
+.rework-result-planned-row {
+  display: grid;
+  gap: 2px;
+  justify-items: center;
+  color: var(--on-surface-variant);
+}
+
+.rework-result-planned-note {
+  font: var(--type-body-sm);
+  letter-spacing: var(--type-body-sm-tracking);
+}
