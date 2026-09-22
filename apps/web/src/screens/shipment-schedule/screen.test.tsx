@@ -600,9 +600,12 @@ describe('ShipmentScheduleScreen — 출하 담당 공장 지정', () => {
     const dialog = await openPlantDialogAndPick(user);
     await user.click(within(dialog).getByRole('button', { name: t.actions.savePlant }));
 
-    /* 실패를 삼키고 닫으면 저장된 줄 안다 — 고칠 자리를 그대로 열어 둔다. */
-    await waitFor(() => {
-      expect(screen.getByRole('dialog')).toBeInTheDocument();
-    });
+    /*
+     * 실패를 삼키고 닫으면 저장된 줄 안다 — 고칠 자리를 그대로 열어 둔다.
+     * ⭐ 사유가 뜨는 것까지 함께 본다 — 창이 열려 있다는 것만 보면 요청이 아예 나가지
+     * 않았을 때도(단추 잠김·처리기 유실) 그대로 통과한다.
+     */
+    expect(await screen.findByText(messages.httpError.description)).toBeInTheDocument();
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
   });
 });

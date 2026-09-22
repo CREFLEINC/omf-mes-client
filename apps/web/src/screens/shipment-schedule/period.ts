@@ -73,11 +73,6 @@ export const validatePeriod = (input: PeriodInput): string | null => {
 };
 
 /**
- * 기간을 계약이 받는 쿼리로 바꾼다. **호출부가 먼저 `validatePeriod`로 보낼 수 있는지 확인한다**
- * — 이 함수는 그 확인을 되풀이하지 않고 유효한 입력을 전제로 한다(inbound-schedule의
- * `toPeriodQuery`와 같은 분업).
- */
-/**
  * 막힌 사유가 「시작일이 비었다」인가.
  *
  * ⭐ **이 사유 하나만** 별표와 붉은 테두리가 대신 말한다(사용자 지시 2026-09-22). 없는 날짜·
@@ -91,6 +86,11 @@ export const isPeriodRequiredReason = (reason: string | null): boolean =>
 export const isPeriodEndReason = (input: PeriodInput): boolean =>
   input.to !== '' && (!isDate(input.to) || (isDate(input.from) && input.to < input.from));
 
+/**
+ * 기간을 계약이 받는 쿼리로 바꾼다. **호출부가 먼저 `validatePeriod`로 보낼 수 있는지 확인한다**
+ * — 이 함수는 그 확인을 되풀이하지 않고 유효한 입력을 전제로 한다(inbound-schedule의
+ * `toPeriodQuery`와 같은 분업).
+ */
 export const toPeriodQuery = (input: PeriodInput): PeriodQuery => ({
   shipDateFrom: input.from,
   ...(input.to === '' ? {} : { shipDateTo: input.to }),

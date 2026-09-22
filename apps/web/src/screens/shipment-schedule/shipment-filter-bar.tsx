@@ -152,9 +152,14 @@ export const ShipmentFilterBar = ({
               placeholder={t.fields.periodToPlaceholder}
               /* 종료일 쪽이 막은 것이면 그 칸을 짚는다 — 시작일에 테두리를 두르면 엉뚱하다. */
               invalid={isPeriodEndReason(period)}
+              /*
+               * 종료일은 **혼자 지울 수 있어야 한다** — 지우는 길이 없으면 기간을 좁혔다 다시
+               * 넓히려고 「초기화」를 눌러야 하고, 그러면 고객·진행·검사 조건까지 함께 날아간다.
+               */
+              clearable
               value={period.to === '' ? null : period.to}
               onChange={(value) => {
-                setPeriod((prev) => ({ ...prev, to: value }));
+                setPeriod((prev) => ({ ...prev, to: value ?? '' }));
               }}
             />
           </div>
@@ -224,7 +229,7 @@ export const ShipmentFilterBar = ({
               className={
                 isPeriodRequiredReason(searchReason)
                   ? 'shipment-schedule-visually-hidden'
-                  : 'field-note shipment-schedule-filter-reason'
+                  : 'field-note'
               }
             >
               {searchReason}
@@ -233,7 +238,6 @@ export const ShipmentFilterBar = ({
         </div>
       </div>
 
-      {/* 확정 사항(스펙 §5-2)을 안내한다 — 빼기만 하고 이유를 말하지 않으면 「고장났다」로 읽힌다. */}
       {/* 계약에 자리가 없어 이번 슬라이스에서 뺀 구획을 밝힌다 — 감추면 「원래 없다」로 읽힌다. */}
       <AlertBanner
         className="shipment-schedule-summary-banner"

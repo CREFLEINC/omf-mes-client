@@ -8,7 +8,7 @@ import {
   type SortState,
 } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router';
 
 import { LoadErrorBanner } from './load-error-banner';
@@ -114,6 +114,7 @@ export const ShipmentScheduleScreen = () => {
   const closePlantDialog = (): void => {
     setSelectedRequestId(null);
     setFulfillmentPlantId('');
+    filledForRequestId.current = null;
   };
 
   const updatePlant = useFulfillmentPlantUpdate(selectedRequestId, () => {
@@ -121,14 +122,24 @@ export const ShipmentScheduleScreen = () => {
     toast.show({ variant: 'success', description: messages.common.saved });
   });
 
+  /*
+   * ⭐ **대상이 바뀔 때만** 서버 값으로 채운다. 데이터 자체를 의존성에 두면 다른 쓰기의 무효화나
+   * 초점 복귀로 상세가 다시 오는 순간 사용자가 고르던 공장이 서버 값으로 되돌아간다 —
+   * 창으로 옮기며 머무는 시간이 길어져 더 잘 걸린다.
+   */
+  const filledForRequestId = useRef<number | null>(null);
+
   useEffect(() => {
     if (selectedDetail.data === undefined) return;
+    if (filledForRequestId.current === selectedRequestId) return;
+
+    filledForRequestId.current = selectedRequestId;
     setFulfillmentPlantId(
       selectedDetail.data.fulfillmentPlantId == null
         ? ''
         : String(selectedDetail.data.fulfillmentPlantId),
     );
-  }, [selectedDetail.data]);
+  }, [selectedDetail.data, selectedRequestId]);
 
   /**
    * 조건을 주소에 반영한다. 주소가 정본이라 조회는 주소가 바뀐 결과로 일어난다.
@@ -261,6 +272,7 @@ export const ShipmentScheduleScreen = () => {
                 /* 상세를 받기 전에는 잠근다 — 최신본 표가 없으면 요청이 나가지도 않는다. */
                 disabled={
                   selectedDetail.data === undefined ||
+                  selectedDetail.isFetching ||
                   fulfillmentPlantId === '' ||
                   updatePlant.isSaving
                 }

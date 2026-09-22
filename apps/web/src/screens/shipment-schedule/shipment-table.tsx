@@ -53,12 +53,6 @@ const renderQty = (totals: LineQtyTotals | null): ReactNode => {
 };
 
 /**
- * 「검사」 열 — 서버 롤업(`ShipmentRequestView.inspectionStatus`)을 그대로 옮긴다.
- * `REJECTED`·`HELD` 전용 배지는 이번 슬라이스에서 두지 않는다 — `PENDING`과 같게 그린다
- * (계약 주석 W-04-02 §5-3 · omf-mes#232 · omf-mes#235, 다음 착수에서 분리). **default 분기가
- * 곧 미지 값 대응이다** — 계약에 값이 늘어도 여기로 떨어져 빈 배지·예외로 이어지지 않는다.
- */
-/**
  * 진행 상태의 시각 강도.
  *
  * ⛔ **모든 상태를 강하게 칠하지 않는다**(사용자 지시 2026-09-22). 끝난 것만 눈에 띄면 되고,
@@ -68,6 +62,12 @@ const renderQty = (totals: LineQtyTotals | null): ReactNode => {
 const progressTone = (code: string): 'success' | undefined =>
   code === 'SHIPPED' ? 'success' : undefined;
 
+/**
+ * 「검사」 열 — 서버 롤업(`ShipmentRequestView.inspectionStatus`)을 그대로 옮긴다.
+ * `REJECTED`·`HELD` 전용 배지는 이번 슬라이스에서 두지 않는다 — `PENDING`과 같게 그린다
+ * (계약 주석 W-04-02 §5-3 · omf-mes#232 · omf-mes#235, 다음 착수에서 분리). **default 분기가
+ * 곧 미지 값 대응이다** — 계약에 값이 늘어도 여기로 떨어져 빈 배지·예외로 이어지지 않는다.
+ */
 const renderInspectionStatus = (status: ShipmentRequestView['inspectionStatus']): ReactNode => {
   if (status === 'NOT_REQUIRED') return t.values.empty;
 
@@ -98,6 +98,10 @@ const SORTABLE_KEYS = new Set<string>(CONTRACT_SORT_KEYS);
  * **열이 일곱이다**(§4-A 필드 표 그대로): 출하일·작업지시번호·고객·납품처·요청/배정/출하(한
  * 칸)·검사·진행. 편성/출하 확정으로의 행 이동은 이 슬라이스에 없다(계획서 미결) — 선택·액션
  * 열을 두지 않는다.
+ *
+ * ⛔ **정렬 범위 안내를 두지 않는다**(사용자 지시 2026-09-22 — 「전체 조회 결과를 기준으로
+ * 정렬됩니다. 문구는 없애줘」). 같은 안내를 두는 형제 화면(W-01-09·재고 현황)과 갈리지만
+ * 이 화면의 문구는 사용자가 직접 뺄 것을 정했다.
  *
  * **「검사」는 서버 롤업(`shippingInspectionStatusCode`)을 그대로 옮긴다**(omf-mes#232 ·
  * omf-mes#235). `REJECTED`·`HELD` 전용 배지는 이번 슬라이스에서 두지 않는다 — 「대기」로 같이
@@ -212,6 +216,7 @@ export const ShipmentTable = ({
             <Button
               className="shipment-schedule-plant-change"
               variant="outlined"
+              /* 지정은 해야 할 일이고 변경은 이미 끝난 일을 되돌리는 보조 액션이라 작다. */
               size="sm"
               onClick={() => {
                 onAssignPlant(row.shipmentRequestId);

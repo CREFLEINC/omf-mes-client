@@ -98,9 +98,6 @@ export const describeReference = (state: ReferenceState): string => {
 
 const EMPTY_ENTRIES: LookupEntry[] = [];
 
-/** 서버가 보낸 전체 건수가 받은 건수보다 많으면 잘린 것이다. */
-const isTruncated = (page: PageMeta, shown: number): boolean => page.total > shown;
-
 /**
  * 선택칸 아래에 붙일 안내. 밝히지 않으면 사용자가 불완전한 목록을 완전한 것으로 읽고
  * 찾는 값이 없으면 「그런 거래처가 없다」고 결론짓는다.
@@ -189,11 +186,25 @@ export const useShipToPartnerOptions = (): LookupResult => {
   });
 };
 
+/**
+ * 출하 담당 공장 — 지정 창의 선택지이자 **목록 표의 공장 이름**이다.
+ *
+ * ⭐ 이름을 푸는 조회라 `includeInactive` 를 켜고 쪽을 끝까지 받는다(고객·납품처와 같다).
+ * 켜지 않으면 서버가 «사용 중인 것»만 내려, 폐기된 공장에 지정된 과거 줄과 뒷쪽 쪽의 공장이
+ * 「알 수 없음」으로 떨어진다 — 값은 멀쩡한데 화면만 모른다고 말하는 꼴이다(공유계약 G-8).
+ */
 export const useFulfillmentPlantOptions = (): LookupResult => {
   const { client } = useApiClient();
   const query = useQuery({
     queryKey: lookupKeys.fulfillmentPlants,
-    queryFn: () => runRequest(() => client.GET('/mdm/plants', { params: { query: {} } })),
+    queryFn: () =>
+      fetchAllPages((page, size) =>
+        runRequest(() =>
+          client.GET('/mdm/plants', {
+            params: { query: { includeInactive: true, page, size } },
+          }),
+        ),
+      ),
   });
   const data = query.data;
   return {
@@ -203,7 +214,7 @@ export const useFulfillmentPlantOptions = (): LookupResult => {
         label: `${plant.plantCode} · ${plant.plantName}`,
         isActive: plant.isActive,
       })) ?? EMPTY_ENTRIES,
-    truncated: data !== undefined && isTruncated(data.page, data.items.length),
+    truncated: data?.truncated === true,
     isError: query.isError,
     isLoading: query.isPending,
     refetch: () => {
