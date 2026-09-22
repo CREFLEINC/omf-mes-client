@@ -5053,9 +5053,10 @@
  *
  * ⛔ **오류 표시는 건드리지 않는다** — `aria-invalid` 가 붙은 자리는 그대로 붉다.
  * ⛔ **주 조작(채운 버튼)도 건드리지 않는다** — 「포장 확정」처럼 흐름을 진행시키는 자리다.
+ *    P-02-08 [담기](`.pack-work-add-row`)도 채운 버튼이라 여기서 뺐다 — 걸려 있으면 밝은
+ *    테마에서 붉은 바탕에 검은 글씨가 된다. 활성 글씨는 흰색이다(사용자 지시 2026-09-22 · #1402).
  */
 .pop-ui .scan-row > button:not([aria-invalid='true']),
-.pop-ui .pack-work-add-row > button:not([aria-invalid='true']),
 .pop-ui .pop-select__trigger:not([aria-invalid='true']) {
   color: var(--on-surface);
 }

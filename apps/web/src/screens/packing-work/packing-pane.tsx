@@ -98,7 +98,12 @@ export const PackingPane = ({
   return (
     <>
       <div className="pack-work-unit-fields">
-        <label className="pack-work-field">
+        {/*
+         * ⛔ **`<label>` 로 감싸지 않는다**(#1402). 선택 팝업은 이 칸 «안»의 `<dialog>` 로 그려져,
+         *    팝업을 누른 것이 label 활성화로 [선택]에 다시 전달된다 — 단말 터치에서 고르거나
+         *    [✕]를 눌러도 팝업이 다시 열렸다. 칸의 이름은 `aria-label` 이 준다.
+         */}
+        <div className="pack-work-field">
           <span className="pack-work-field-label">{t.unit.typeLabel}</span>
           <Select
             ref={typeRef}
@@ -120,9 +125,9 @@ export const PackingPane = ({
             disabled={locked || unitTypesFailed}
             onChange={onTypeChange}
           />
-        </label>
+        </div>
 
-        <label className="pack-work-field">
+        <div className="pack-work-field">
           <span className="pack-work-field-label">{t.unit.parentLabel}</span>
           <Select
             options={[
@@ -147,7 +152,7 @@ export const PackingPane = ({
               onParentChange(value === NO_PARENT ? null : Number(value));
             }}
           />
-        </label>
+        </div>
       </div>
 
       {/*
