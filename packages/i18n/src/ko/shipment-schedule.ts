@@ -121,8 +121,4 @@ export const shipmentSchedule = {
     beyondLastTitle: '이 쪽에는 결과가 없습니다',
     beyondLastDescription: '첫 쪽으로 이동하세요.',
   },
-  notes: {
-    /* 밝히지 않으면 사용자가 「현재 쪽 안에서만 정렬된 것」으로 읽는다 — 서버가 전체를 정렬해 쪽을 나눠 준다. */
-    sortScope: '전체 조회 결과를 기준으로 정렬됩니다.',
-  },
 } as const;

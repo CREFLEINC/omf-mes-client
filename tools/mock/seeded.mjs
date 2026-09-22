@@ -3868,7 +3868,11 @@ on('POST', '/logistics/shipping-units/{shippingUnitId}:add-box', (params, _q, bo
     const link = state.shippingUnitBoxes.find((row) => row.handlingUnitId === box.handlingUnitId);
     if (link?.shippingUnitId === unit.shippingUnitId) return shippingUnitOk(unit);
     if (link !== undefined) {
-      return fieldError('handlingUnitNo', 'UNIQUE_VIOLATION', '이미 다른 출하 단위에 구성된 상자입니다.');
+      return fieldError(
+        'handlingUnitNo',
+        'UNIQUE_VIOLATION',
+        '이미 다른 출하 단위에 구성된 상자입니다.',
+      );
     }
 
     const last = Math.max(

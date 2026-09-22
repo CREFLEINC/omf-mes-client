@@ -3,8 +3,14 @@ import { messages } from '@omf-mes/i18n';
 import { useEffect, useId, useState } from 'react';
 
 import { toFilterChips, type FilterChipNames, type ShipmentFilters } from './filters';
-import { validatePeriod, type PeriodInput } from './period';
+import {
+  isPeriodEndReason,
+  isPeriodRequiredReason,
+  validatePeriod,
+  type PeriodInput,
+} from './period';
 import { SelectField } from './select-field';
+import { progressLabel } from './status-options';
 import type { SelectOption } from './types';
 
 const t = messages.shipmentSchedule;
@@ -131,7 +137,7 @@ export const ShipmentFilterBar = ({
               placeholder={t.fields.periodFromPlaceholder}
               aria-required="true"
               /* 비어 있으면 붉은 테두리로 어디를 채워야 하는지 보인다(사용자 지시). */
-              invalid={period.from === ''}
+              invalid={period.from === '' || (searchReason !== null && !isPeriodEndReason(period))}
               value={period.from === '' ? null : period.from}
               onChange={(value) => {
                 setPeriod((prev) => ({ ...prev, from: value }));
@@ -144,6 +150,8 @@ export const ShipmentFilterBar = ({
               className="shipment-schedule-date-field"
               aria-label={t.fields.periodTo}
               placeholder={t.fields.periodToPlaceholder}
+              /* 종료일 쪽이 막은 것이면 그 칸을 짚는다 — 시작일에 테두리를 두르면 엉뚱하다. */
+              invalid={isPeriodEndReason(period)}
               value={period.to === '' ? null : period.to}
               onChange={(value) => {
                 setPeriod((prev) => ({ ...prev, to: value }));
@@ -175,7 +183,10 @@ export const ShipmentFilterBar = ({
         <SelectField
           wide
           label={t.fields.progress}
-          options={withAll(progressOptions.map((code) => ({ value: code, label: code })))}
+          /* 고르는 자리도 표와 같은 말을 쓴다 — 보내는 값은 코드 그대로다. */
+          options={withAll(
+            progressOptions.map((code) => ({ value: code, label: progressLabel(code) })),
+          )}
           value={filters.progress}
           onChange={(value) => {
             setFilters((prev) => ({ ...prev, progress: value as ShipmentFilters['progress'] }));
@@ -208,7 +219,14 @@ export const ShipmentFilterBar = ({
             보조기술에는 남긴다(단추의 `aria-describedby`).
           */}
           {searchReason !== null && (
-            <span id={reasonId} className="shipment-schedule-visually-hidden">
+            <span
+              id={reasonId}
+              className={
+                isPeriodRequiredReason(searchReason)
+                  ? 'shipment-schedule-visually-hidden'
+                  : 'field-note shipment-schedule-filter-reason'
+              }
+            >
               {searchReason}
             </span>
           )}

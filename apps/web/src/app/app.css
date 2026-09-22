@@ -11289,10 +11289,6 @@ dl.filter-bar.approval-inbox-detail-facts {
   width: 11rem;
 }
 
-.shipment-schedule-date-field input {
-  width: 100%;
-}
-
 /* 「~」는 두 칸을 잇는 표시일 뿐이다 — 칸보다 흐리게 두어 값이 먼저 읽히게 한다. */
 .shipment-schedule-date-range-separator {
   align-self: center;
@@ -11348,11 +11344,6 @@ dl.filter-bar.approval-inbox-detail-facts {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-/* 필수 표식 — 라벨 글자와 같은 크기로, 색만 다르게. */
-.shipment-schedule-filters .field-label > .required-mark {
-  color: var(--semantic-error-text);
 }
 
 /*

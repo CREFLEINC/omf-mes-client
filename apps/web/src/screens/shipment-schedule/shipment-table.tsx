@@ -12,6 +12,7 @@ import type { ReactNode } from 'react';
 
 import { describeReference, toReference, type ReferenceSource } from './lookups';
 import { CONTRACT_SORT_KEYS, toSortState, type SortKey } from './sort';
+import { progressLabel } from './status-options';
 import type { LineQtyTotals, ShipmentRequestView } from './types';
 
 const t = messages.shipmentSchedule;
@@ -57,13 +58,6 @@ const renderQty = (totals: LineQtyTotals | null): ReactNode => {
  * (계약 주석 W-04-02 §5-3 · omf-mes#232 · omf-mes#235, 다음 착수에서 분리). **default 분기가
  * 곧 미지 값 대응이다** — 계약에 값이 늘어도 여기로 떨어져 빈 배지·예외로 이어지지 않는다.
  */
-/**
- * 진행 코드의 표시명. **모르는 값은 코드를 그대로 돌려준다** — 계약에 값이 늘어도 빈 칸이
- * 되지 않고, 담당자에게 전할 단서가 남는다(공유계약 G-9).
- */
-const progressLabel = (code: string): string =>
-  (t.progressCodes as Record<string, string | undefined>)[code] ?? code;
-
 /**
  * 진행 상태의 시각 강도.
  *
@@ -277,9 +271,9 @@ export const ShipmentTable = ({
 
   return (
     <>
-      <div className="wide-table">
+      {/* 폭 규칙은 래퍼에 건다 — 디자인 시스템이 className 을 <table> 자신에 붙인다. */}
+      <div className="wide-table shipment-schedule-table">
         <Table
-          className="shipment-schedule-table"
           density="compact"
           columns={columns}
           rows={rows}

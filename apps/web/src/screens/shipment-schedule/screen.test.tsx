@@ -473,6 +473,20 @@ describe('ShipmentScheduleScreen — 요청/배정/출하·검사 열', () => {
       expect(within(listTable()).queryByText(code)).toBeNull();
     }
   });
+
+  /*
+   * 계약에 값이 늘어도 **빈 칸이 되지 않는다**(공유계약 G-9). 표시명을 모르면 코드를 그대로
+   * 남겨 담당자에게 전할 단서를 둔다 — 지우면 「진행 상태가 비었다」로 잘못 보고된다.
+   */
+  it('표시명을 모르는 진행 코드는 코드를 그대로 보인다', async () => {
+    const rows = [shipmentRequest({ shipmentProgressCode: 'SAMPLE_FUTURE_CODE' })];
+
+    renderScreen([listRoute(rows), ...partnerRoutes()], SHIP_DATE_FROM);
+
+    await screen.findByText('SAMPLE-SR-0001');
+
+    expect(within(listTable()).getByText('SAMPLE_FUTURE_CODE')).toBeInTheDocument();
+  });
 });
 
 describe('ShipmentScheduleScreen — 조건 초안의 수명', () => {
@@ -489,6 +503,106 @@ describe('ShipmentScheduleScreen — 조건 초안의 수명', () => {
 
     await waitFor(() => {
       expect(currentLocation()).toContain('progress=PICKED');
+    });
+  });
+});
+
+const PLANTS_PATH = '/mdm/plants';
+const DETAIL_PATH = `${LIST_PATH}/9001`;
+
+const plantFixtures = [
+  { plantId: 9201, plantCode: 'SAMPLE-PLT-01', plantName: '합성 공장 가', isActive: true },
+  { plantId: 9202, plantCode: 'SAMPLE-PLT-02', plantName: '합성 공장 나', isActive: true },
+];
+
+const PLANT_A = plantFixtures[0] as (typeof plantFixtures)[number];
+const PLANT_B = plantFixtures[1] as (typeof plantFixtures)[number];
+
+const plantLabel = (plant: (typeof plantFixtures)[number]): string =>
+  `${plant.plantCode} · ${plant.plantName}`;
+
+const plantsRoute = (): StubRoute => lookupRoute(PLANTS_PATH, plantFixtures);
+
+/** 상세는 **ETag 를 낸다** — 없으면 저장 요청이 나가기 전에 화면이 멈춘다. */
+const detailRoute = (fulfillmentPlantId: number | null = null): StubRoute => ({
+  match: (request) => isGet(request, DETAIL_PATH),
+  respond: () =>
+    jsonResponse(shipmentRequest({ fulfillmentPlantId }), {
+      headers: { ETag: '"sample-shipment-request-v1"' },
+    }),
+});
+
+const savePlantRoute = (status = 200): StubRoute => ({
+  match: (request) => request.method === 'PUT' && new URL(request.url).pathname === DETAIL_PATH,
+  respond: () =>
+    status === 200
+      ? jsonResponse(shipmentRequest({ fulfillmentPlantId: 9202 }))
+      : jsonResponse({ message: '' }, { status }),
+});
+
+/** 창을 열고 공장을 고른다. 디자인 시스템의 고르는 칸은 목록 단추라 `selectOptions` 가 안 먹는다. */
+const openPlantDialogAndPick = async (
+  user: ReturnType<typeof userEvent.setup>,
+): Promise<HTMLElement> => {
+  await user.click(
+    screen.getAllByRole('button', { name: t.actions.assignPlant })[0] as HTMLElement,
+  );
+  const dialog = await screen.findByRole('dialog');
+
+  await user.click(await within(dialog).findByRole('combobox'));
+  await user.click(await screen.findByRole('option', { name: plantLabel(PLANT_B) }));
+
+  return dialog;
+};
+
+describe('ShipmentScheduleScreen — 출하 담당 공장 지정', () => {
+  const rows = [shipmentRequest({ fulfillmentPlantId: null })];
+
+  it('지정이 끝난 줄은 공장 이름과 「변경」을 보인다', async () => {
+    renderScreen(
+      [
+        listRoute([shipmentRequest({ fulfillmentPlantId: PLANT_A.plantId })]),
+        plantsRoute(),
+        ...partnerRoutes(),
+      ],
+      SHIP_DATE_FROM,
+    );
+
+    /* ⛔ 「지정됨」처럼 여부만 말하지 않는다 — 어느 공장인지 적는다. */
+    expect(await screen.findByText(plantLabel(PLANT_A))).toBeInTheDocument();
+    expect(
+      within(listTable()).getByRole('button', { name: t.actions.changePlant }),
+    ).toBeInTheDocument();
+  });
+
+  it('저장이 끝나면 창이 닫힌다', async () => {
+    const { user } = renderScreen(
+      [listRoute(rows), detailRoute(), savePlantRoute(), plantsRoute(), ...partnerRoutes()],
+      SHIP_DATE_FROM,
+    );
+
+    await screen.findByText('SAMPLE-SR-0001');
+    const dialog = await openPlantDialogAndPick(user);
+    await user.click(within(dialog).getByRole('button', { name: t.actions.savePlant }));
+
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog')).toBeNull();
+    });
+  });
+
+  it('저장이 실패하면 창이 닫히지 않는다', async () => {
+    const { user } = renderScreen(
+      [listRoute(rows), detailRoute(), savePlantRoute(500), plantsRoute(), ...partnerRoutes()],
+      SHIP_DATE_FROM,
+    );
+
+    await screen.findByText('SAMPLE-SR-0001');
+    const dialog = await openPlantDialogAndPick(user);
+    await user.click(within(dialog).getByRole('button', { name: t.actions.savePlant }));
+
+    /* 실패를 삼키고 닫으면 저장된 줄 안다 — 고칠 자리를 그대로 열어 둔다. */
+    await waitFor(() => {
+      expect(screen.getByRole('dialog')).toBeInTheDocument();
     });
   });
 });

@@ -107,8 +107,17 @@ export const ShipmentScheduleScreen = () => {
   const selectedDetail = useShipmentRequestDetail(selectedRequestId);
   const toast = useToast();
   /* 저장이 끝나면 창을 닫고 다른 화면과 같은 자리에 알린다(사용자 지시 2026-09-22). */
-  const updatePlant = useFulfillmentPlantUpdate(selectedRequestId, () => {
+  /*
+   * 창을 닫으면 고른 값도 비운다 — 남겨 두면 다음 줄을 열었을 때 앞 줄의 공장이 이미 골라진
+   * 것처럼 보이고, 상세가 아직 안 왔는데 저장이 눌린다.
+   */
+  const closePlantDialog = (): void => {
     setSelectedRequestId(null);
+    setFulfillmentPlantId('');
+  };
+
+  const updatePlant = useFulfillmentPlantUpdate(selectedRequestId, () => {
+    closePlantDialog();
     toast.show({ variant: 'success', description: messages.common.saved });
   });
 
@@ -242,22 +251,19 @@ export const ShipmentScheduleScreen = () => {
           /* 아래 「취소」가 같은 일을 한다 — 우상단 × 는 두지 않는다(사용자 지시 2026-09-22). */
           showCloseButton={false}
           title={t.panes.fulfillmentPlant}
-          onClose={() => {
-            setSelectedRequestId(null);
-          }}
+          onClose={closePlantDialog}
           footer={
             <>
-              <Button
-                variant="outlined"
-                disabled={updatePlant.isSaving}
-                onClick={() => {
-                  setSelectedRequestId(null);
-                }}
-              >
+              <Button variant="outlined" disabled={updatePlant.isSaving} onClick={closePlantDialog}>
                 {messages.common.cancel}
               </Button>
               <Button
-                disabled={fulfillmentPlantId === '' || updatePlant.isSaving}
+                /* 상세를 받기 전에는 잠근다 — 최신본 표가 없으면 요청이 나가지도 않는다. */
+                disabled={
+                  selectedDetail.data === undefined ||
+                  fulfillmentPlantId === '' ||
+                  updatePlant.isSaving
+                }
                 onClick={() => {
                   updatePlant.write({ fulfillmentPlantId: Number(fulfillmentPlantId) });
                 }}

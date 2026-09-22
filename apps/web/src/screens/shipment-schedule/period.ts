@@ -77,6 +77,20 @@ export const validatePeriod = (input: PeriodInput): string | null => {
  * — 이 함수는 그 확인을 되풀이하지 않고 유효한 입력을 전제로 한다(inbound-schedule의
  * `toPeriodQuery`와 같은 분업).
  */
+/**
+ * 막힌 사유가 「시작일이 비었다」인가.
+ *
+ * ⭐ **이 사유 하나만** 별표와 붉은 테두리가 대신 말한다(사용자 지시 2026-09-22). 없는 날짜·
+ * 뒤집힌 기간은 표식만으로는 무엇이 잘못됐는지 알 수 없어 문장이 그대로 필요하다 — 셋을 함께
+ * 감추면 조회가 왜 안 되는지 화면에서 알 길이 사라진다.
+ */
+export const isPeriodRequiredReason = (reason: string | null): boolean =>
+  reason === t.reasons.periodRequired;
+
+/** 종료일 칸이 막힌 사유를 들고 있는가 — 잘못된 칸에 붉은 테두리를 두르기 위해 가른다. */
+export const isPeriodEndReason = (input: PeriodInput): boolean =>
+  input.to !== '' && (!isDate(input.to) || (isDate(input.from) && input.to < input.from));
+
 export const toPeriodQuery = (input: PeriodInput): PeriodQuery => ({
   shipDateFrom: input.from,
   ...(input.to === '' ? {} : { shipDateTo: input.to }),

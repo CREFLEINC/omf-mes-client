@@ -99,7 +99,4 @@ export const shipmentSchedule: Translated<typeof ko.shipmentSchedule> = {
     beyondLastTitle: 'Trang này không có kết quả',
     beyondLastDescription: 'Hãy về trang đầu.',
   },
-  notes: {
-    sortScope: 'Sắp xếp theo toàn bộ kết quả tìm kiếm.',
-  },
 };
