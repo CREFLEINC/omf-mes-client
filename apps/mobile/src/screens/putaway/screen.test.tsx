@@ -589,6 +589,11 @@ describe('적치·입고 완료 화면', () => {
 
     expect(await screen.findByText('관리 위치가 없는 품목입니다. 여기 적치합니까?')).toBeTruthy();
     expect(screen.queryByLabelText(/LOT 라벨 스캔/)).toBeNull();
+    /* 규칙 없음은 막힌 판정이 아니다 — 자리 내용이 확인되면 칸을 접고 재스캔을 둔다. */
+    await waitFor(() => {
+      expect(screen.queryByLabelText(/위치 코드 스캔/)).toBeNull();
+    });
+    expect(screen.getByRole('button', { name: '위치 재스캔' })).toBeTruthy();
 
     await user.click(screen.getByRole('button', { name: '여기 적치합니다' }));
 
@@ -611,6 +616,9 @@ describe('적치·입고 완료 화면', () => {
 
     expect(await screen.findByText('이 위치는 단일 품목만 보관합니다')).toBeTruthy();
     expect(screen.queryByLabelText(/LOT 라벨 스캔/)).toBeNull();
+    /* ⛔ 혼적도 막힌 판정 — 곧바로 다른 자리를 읽어야 하므로 칸을 남기고 재스캔은 두지 않는다. */
+    expect(screen.getByLabelText(/위치 코드 스캔/)).toBeTruthy();
+    expect(screen.queryByRole('button', { name: '위치 재스캔' })).toBeNull();
   });
 
   /*
@@ -648,12 +656,31 @@ describe('적치·입고 완료 화면', () => {
    */
   it('권장 위치가 아니면 스캔 칸을 남기고 임시 적재로 가는 버튼을 보인다', async () => {
     const user = userEvent.setup();
-    mount([]);
+    mount([], {
+      locations: [
+        location(),
+        location({
+          locationId: 9,
+          locationCode: 'B-02-01',
+          locationName: '자재 B열',
+          capacityQty: 150,
+        }),
+        FROM,
+      ],
+      balances: [
+        { itemId: 31, lotId: 4, onHandQty: 100, groupBy: 'LOT', ownershipTypeCode: 'OWN' },
+      ],
+    });
     await chooseTask(user);
 
     scan('B-02-01');
 
     expect(await screen.findByText('권장 위치 A-01-03 가 아닙니다')).toBeTruthy();
+    /*
+     * ⛔ 자리 내용 조회가 **끝난 뒤**에 본다 — 그 전에는 판정이 서지 않아 칸이 원래 서 있다(리뷰 지적).
+     *    수용량 경고는 자리 내용이 있어야 서므로 조회가 끝났다는 표지다.
+     */
+    await screen.findByText('수용량 150 · 현재 100 + 120');
     expect(screen.getByLabelText(/위치 코드 스캔/)).toBeTruthy();
     expect(screen.queryByRole('button', { name: '위치 재스캔' })).toBeNull();
     expect(screen.getByText('임시로 두어야 하면 임시 위치 적재로 갑니다')).toBeTruthy();
@@ -688,6 +715,9 @@ describe('적치·입고 완료 화면', () => {
     await screen.findByText('권장 위치와 일치합니다');
 
     expect(screen.queryByLabelText(/LOT 라벨 스캔/)).toBeNull();
+    /* ⛔ 자리 내용을 모르면 판정이 서지 않았다 — 칸을 접지 않아 곧바로 다시 읽을 수 있다. */
+    expect(screen.getByLabelText(/위치 코드 스캔/)).toBeTruthy();
+    expect(screen.queryByRole('button', { name: '위치 재스캔' })).toBeNull();
   });
 
   /* 자리는 유한하다. 넘겨서 두는 판단은 자리를 보는 사람이 하되, 넘는다는 것은 알려야 한다. */

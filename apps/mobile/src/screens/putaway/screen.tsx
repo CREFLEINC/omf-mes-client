@@ -438,9 +438,14 @@ export const PutawayScreen = () => {
           </section>
 
           <section className="putaway__section" ref={locationSection}>
-            {/* 단계 번호는 작은 뱃지로, 제목과 한 덩어리로 읽히게(사용자 지정 2026-09-22). */}
+            {/*
+             * 단계 번호는 작은 뱃지로, 제목과 한 덩어리로 읽히게(사용자 지정 2026-09-22). 번호는 눈으로
+             * 보는 차례 표시라 화면 낭독에서는 뺀다 — 넣으면 「1적치 위치」로 붙어 읽힌다.
+             */}
             <h2 className="putaway__step-title">
-              <span className="putaway__step-badge">1</span>
+              <span className="putaway__step-badge" aria-hidden="true">
+                1
+              </span>
               {t.location.legend}
             </h2>
             {locations.isPending ? <p role="status">{t.location.loading}</p> : null}
@@ -626,7 +631,9 @@ export const PutawayScreen = () => {
           {!locationSettled ? null : (
             <section className="putaway__section" ref={lotSection}>
               <h2 className="putaway__step-title">
-                <span className="putaway__step-badge">2</span>
+                <span className="putaway__step-badge" aria-hidden="true">
+                  2
+                </span>
                 {t.lot.legend}
               </h2>
               {lotNo.isPending ? <p role="status">{t.lot.loading}</p> : null}
