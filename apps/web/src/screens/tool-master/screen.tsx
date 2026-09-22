@@ -342,7 +342,7 @@ export const ToolMasterScreen = () => {
       : null;
 
   return (
-    <div className="screen">
+    <div className="screen tool-master-screen">
       <PageHeader
         title={t.title}
         breadcrumb={
@@ -369,6 +369,7 @@ export const ToolMasterScreen = () => {
 
       <ToolListPane
         items={items}
+        total={tools.data?.page.total ?? null}
         isLoading={tools.isLoading}
         appliedFilters={filters}
         onApplyFilters={setFilters}

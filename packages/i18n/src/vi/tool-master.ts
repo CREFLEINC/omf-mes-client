@@ -10,7 +10,7 @@ export const toolMaster: Translated<typeof ko.toolMaster> = {
   paneTitle: 'Danh sách công cụ',
   breadcrumbRoot: 'Thiết bị / Công cụ',
   actions: {
-    addTool: 'Đăng ký công cụ',
+    addTool: 'Tạo công cụ',
     importTools: 'Tải lên Excel',
   },
   import: {
@@ -45,11 +45,12 @@ export const toolMaster: Translated<typeof ko.toolMaster> = {
   loading: {
     tools: 'Đang tải danh sách công cụ',
   },
+  /** 서버가 센 전체 건수. 잘렸는지는 `listTruncated` 가 따로 말한다. */
+  resultTotal: (total: string): string => `Tổng ${total} mục`,
   listTruncated: (shown: number, total: number): string =>
     `Hiển thị ${shown} trong tổng ${total} mục. Hãy thu hẹp điều kiện rồi tra cứu.`,
   /* ⛔ 「못 받았다」와 가른다 — 사용자가 할 일이 다르다(omf-all-around#52). */
-  typeOptionsEmpty:
-    'Máy chủ chưa có giá trị loại công cụ. Phải đăng ký ở quản lý mã chung mới chọn được.',
+  typeOptionsEmpty: 'Chưa có giá trị loại công cụ · Hãy đăng ký trong mã chung',
   optionsTruncated:
     'Danh sách lựa chọn chỉ hiển thị một phần. Không thấy giá trị cần tìm thì hãy báo người phụ trách.',
   optionsLoadFailed: 'Không tải được danh sách lựa chọn. Chỉ hiển thị giá trị đang lưu.',
@@ -65,7 +66,9 @@ export const toolMaster: Translated<typeof ko.toolMaster> = {
     plantAll: 'Tất cả nhà máy',
     typeAll: 'Tất cả loại',
     /** 적정타수가 비면 사용 가능 타수도 초과율도 셀 수 없다 — 채울 것을 세는 자리다. */
-    guaranteedMissingOnly: 'Chỉ công cụ không có số nhát dập đảm bảo',
+    /** 체크칸 무리의 이름표 — 기본 조회 조건과 갈라 읽히게 한다. */
+    extraLabel: 'Bộ lọc thêm',
+    guaranteedMissingOnly: 'Chưa đặt số nhát dập đảm bảo',
     pmDueOnly: 'Chỉ mục đến hạn bảo trì phòng ngừa',
     sortLabel: 'Sắp xếp',
     sort: {
@@ -104,6 +107,12 @@ export const toolMaster: Translated<typeof ko.toolMaster> = {
     notRecorded: 'Không có ghi nhận',
   },
   form: {
+    /** 창의 세 구획 — 「고칠 값 → 예방보전 설정 → 보기만 하는 값」 차례로 읽힌다. */
+    sections: {
+      basic: 'Thông tin cơ bản',
+      pm: 'Thiết lập bảo trì phòng ngừa',
+      status: 'Trạng thái hiện tại',
+    },
     createTitle: 'Đăng ký công cụ',
     editTitle: 'Sửa công cụ',
     plantPlaceholder: 'Hãy chọn nhà máy',
@@ -147,13 +156,6 @@ export const toolMaster: Translated<typeof ko.toolMaster> = {
   },
   /** ⭐ 감추지 않고 「왜 여기서 못 하는지」를 말한다. */
   actionReasons: {
-    plantFixed: 'Nhà máy được định khi đăng ký và không thể chuyển ở màn hình này.',
-    cycleNeedsDateAxis: 'Đưa ngày vào tiêu chí đánh giá thì mới nhập được chu kỳ.',
-    statusOwnedElsewhere: 'Trạng thái vận hành thay đổi qua ngừng sử dụng · xử lý thanh lý.',
-    shotCountOwnedElsewhere:
-      'Số nhát dập lũy kế do nhập kết quả sử dụng công cụ cộng thêm, và do đăng ký kết quả bảo trì phòng ngừa công cụ trả lại.',
-    pmDateOwnedElsewhere:
-      'Ngày bảo trì phòng ngừa gần nhất được định ở đăng ký kết quả bảo trì phòng ngừa công cụ.',
     alreadyInactive: 'Công cụ này đã ngừng sử dụng.',
     alreadyDisposed: 'Công cụ này đã thanh lý.',
     targetUnknown: 'Chưa tải được thông tin công cụ.',
@@ -161,7 +163,7 @@ export const toolMaster: Translated<typeof ko.toolMaster> = {
       'Danh sách giá trị trạng thái tài sản chưa sẵn sàng nên chưa thể xử lý thanh lý.',
   },
   notes: {
-    cavityMeaningfulForMold: 'Số khoang khuôn chỉ có ý nghĩa với khuôn.',
+    cavityMeaningfulForMold: 'Chỉ áp dụng cho khuôn.',
     /** ⭐ 막지 않고 알린다 — 막으면 나중에 채우는 길이 사라진다. */
     guaranteedMissingBlocksShotAxis:
       'Nếu số nhát dập đảm bảo để trống thì không tính được số nhát dập khả dụng và tỷ lệ vượt, và bảo trì phòng ngừa không đến hạn theo số nhát dập.',

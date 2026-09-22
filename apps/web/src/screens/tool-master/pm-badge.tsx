@@ -11,10 +11,10 @@ const t = messages.toolMaster.pm;
  *
  * ⛔ **「판정 없음」을 정상과 같은 결로 그리지 않는다.** 모르는 것은 정상이 아니다(G-9) —
  * 같은 회색으로 그리면 도래했는지 알 수 없는 툴이 도래 전과 구별되지 않는다.
- * ⛔ **「대상 아님」은 중립이다** — 예방보전을 하지 않기로 한 것이라 눈길을 끌 이유가 없다.
+ * ⛔ **「대상 아님」은 배지로 그리지 않는다** — 예방보전을 하지 않기로 한 것이라 눈길을 끌
+ * 이유가 없다(아래 `PmBadge`).
  */
-const STATUS: Record<PmJudgment['status'], ChipStatus> = {
-  notRequired: 'idle',
+const STATUS: Record<Exclude<PmJudgment['status'], 'notRequired'>, ChipStatus> = {
   due: 'error',
   beforeDue: 'success',
   /** 채워야 할 것이라 경고다 — 정상과 갈리는 자리다. */
@@ -53,8 +53,17 @@ export interface PmBadgeProps {
   judgment: PmJudgment;
 }
 
-export const PmBadge = ({ judgment }: PmBadgeProps) => (
-  <Chip variant="status" status={STATUS[judgment.status]}>
-    {label(judgment)}
-  </Chip>
-);
+/**
+ * ⭐ **배지는 갈라 봐야 하는 판정에만 쓴다.** 「대상 아님」은 예방보전을 하지 않기로 한 툴이라
+ *   훑을 때 눈길을 멈출 까닭이 없다 — 같은 모양의 배지로 세우면 도래·미상 배지가 그 사이에 묻힌다.
+ *   글자는 그대로 남긴다(값이 사라지면 「판정이 비었다」로 읽힌다). 색만으로 가르지 않는다 —
+ *   배지에도 문구가 늘 함께 선다.
+ */
+export const PmBadge = ({ judgment }: PmBadgeProps) =>
+  judgment.status === 'notRequired' ? (
+    <span className="tool-master-pm-plain">{label(judgment)}</span>
+  ) : (
+    <Chip variant="status" status={STATUS[judgment.status]}>
+      {label(judgment)}
+    </Chip>
+  );

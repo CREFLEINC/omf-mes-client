@@ -327,6 +327,80 @@ describe('W-05-13 툴 마스터 — 목록', () => {
     expect(within(await rowOf('TL-12')).getByText('BLANK_NAME')).toBeInTheDocument();
   });
 
+  /* ⭐ 건수는 서버가 센 전체다 — 한 쪽에 다 담기지 않아도 받은 줄 수로 세지 않는다. */
+  it('결과 건수를 서버가 센 전체로 보인다', async () => {
+    renderScreen({
+      respondTools: () =>
+        jsonResponse({
+          ...toolsResponse([makeTool(7015, 'TL-15')]),
+          page: { page: 1, size: 50, total: 1200 },
+        }),
+    });
+
+    /* 천 단위 쉼표 — 목록 건수 선례와 같다. 받은 줄 수(1)가 아니라 전체(1,200)다. */
+    expect(await within(listPane()).findByText(t.resultTotal('1,200'))).toBeInTheDocument();
+  });
+
+  /*
+   * ⭐ 체크칸 셋은 「추가 필터」라는 **이름 붙은 한 무리**다 — 검색칸 밑에 붙어 검색의 일부로
+   *   읽히지 않게, 상자 대신 이름으로 묶었다(사용자 지정). 건수는 그 줄 오른쪽 끝에 선다.
+   */
+  it('체크칸 셋을 「추가 필터」 무리로 묶고 건수를 같은 줄에 둔다', async () => {
+    renderScreen();
+
+    const group = await within(listPane()).findByRole('group', { name: t.filters.extraLabel });
+
+    expect(within(group).getAllByRole('checkbox')).toHaveLength(3);
+    expect(group.parentElement).toContainElement(
+      await within(listPane()).findByText(t.resultTotal('6')),
+    );
+  });
+
+  /*
+   * ⭐ 등록·올리기는 조회 조건이 아니다 — 조회·초기화와 한 무리에 섞이면 「무엇을 누르면 목록이
+   *   바뀌는가」가 흐려진다. 두 무리가 서로 다른 자리에 선다.
+   */
+  it('관리 액션을 조회 액션과 다른 자리에 둔다', async () => {
+    renderScreen();
+
+    const search = await within(listPane()).findByRole('button', { name: messages.common.search });
+    const add = within(listPane()).getByRole('button', { name: t.actions.addTool });
+    const upload = within(listPane()).getByRole('button', { name: t.actions.importTools });
+
+    expect(add.parentElement).toBe(upload.parentElement);
+    expect(add.parentElement).not.toBe(search.parentElement);
+  });
+
+  /*
+   * ⭐ 값이 아니라 «값이 없는 사유»는 흐린 글자로 — 실제 수치가 먼저 읽히게 한다.
+   * ⛔ 두 사유를 한 말로 합치지 않는다 — 적정타수를 채우면 풀리는 것과 그렇지 않은 것이다.
+   */
+  it('수치가 없는 사유는 흐린 글자로 보이고 뜻은 그대로 남긴다', async () => {
+    renderScreen({
+      respondTools: () =>
+        jsonResponse(
+          toolsResponse([
+            makeTool(7016, 'TL-16', {
+              guaranteedShotCount: null,
+              availableShotCount: null,
+              shotUsageRatio: null,
+            }),
+            makeTool(7017, 'TL-17', { guaranteedShotCount: 1000, shotUsageRatio: null }),
+          ]),
+        ),
+    });
+
+    const missing = within(await rowOf('TL-16')).getAllByText(t.shots.guaranteedMissing);
+    const notCalculable = within(await rowOf('TL-17')).getAllByText(t.shots.notCalculable);
+
+    expect(missing.every((cell) => cell.classList.contains('tool-master-figure-missing'))).toBe(
+      true,
+    );
+    expect(
+      notCalculable.every((cell) => cell.classList.contains('tool-master-figure-missing')),
+    ).toBe(true);
+  });
+
   it('도구 유형을 서버 공통코드의 이름으로 보인다', async () => {
     renderScreen();
 
@@ -743,7 +817,7 @@ describe('W-05-13 툴 마스터 — 등록·수정 창', () => {
    * ⛔ **누계 타발수에 입력칸을 만들지 않는다**(스펙 §6). 더하는 것은 툴 사용실적 입력이고
    * 되돌리는 것은 툴 예방보전 실적 등록이다 — 여기서 고칠 수 있으면 실적과 마스터가 어긋난다.
    */
-  it('누계 타발수는 고칠 수 없고 어디서 정해지는지 밝힌다', async () => {
+  it('누계 타발수는 고칠 수 없고 「현재 상태」에 값으로 선다', async () => {
     const { user } = renderScreen();
 
     await openEditOf(user, 'TL-01');
@@ -752,11 +826,16 @@ describe('W-05-13 툴 마스터 — 등록·수정 창', () => {
       screen.queryByRole('textbox', { name: new RegExp(t.fields.currentShotCount) }),
     ).not.toBeInTheDocument();
     expect(screen.getByLabelText(t.fields.currentShotCount)).toHaveTextContent('128,400');
-    expect(screen.getByText(t.actionReasons.shotCountOwnedElsewhere)).toBeInTheDocument();
+    /* 칸마다 붙던 「어디서 정해지는가」 설명 대신 구획이 그 뜻을 맡는다(사용자 지정). */
+    expect(
+      within(screen.getByRole('region', { name: t.form.sections.status })).getByLabelText(
+        t.fields.currentShotCount,
+      ),
+    ).toBeInTheDocument();
   });
 
   /* 마지막 시행일도 같다 — 예방보전 실적 등록이 정한다(스펙 §6). */
-  it('마지막 예방보전일은 고칠 수 없고 어디서 정해지는지 밝힌다', async () => {
+  it('마지막 예방보전일은 고칠 수 없고 「현재 상태」에 값으로 선다', async () => {
     const { user } = renderScreen();
 
     await openEditOf(user, 'TL-03');
@@ -765,7 +844,11 @@ describe('W-05-13 툴 마스터 — 등록·수정 창', () => {
       screen.queryByRole('textbox', { name: new RegExp(t.fields.lastPmDate) }),
     ).not.toBeInTheDocument();
     expect(screen.getByLabelText(t.fields.lastPmDate)).toHaveTextContent('2026-01-02');
-    expect(screen.getByText(t.actionReasons.pmDateOwnedElsewhere)).toBeInTheDocument();
+    expect(
+      within(screen.getByRole('region', { name: t.form.sections.status })).getByLabelText(
+        t.fields.lastPmDate,
+      ),
+    ).toBeInTheDocument();
   });
 
   /* ⛔ 없는 값을 빈칸으로 두면 「없다」와 「아직 안 불러왔다」가 같은 모양이 된다(G-9). */
@@ -848,7 +931,46 @@ describe('W-05-13 툴 마스터 — 등록·수정 창', () => {
 
     expect(within(formDialog()).queryByRole('combobox', { name: /공장/ })).not.toBeInTheDocument();
     expect(within(formDialog()).getByLabelText(t.fields.plant)).toHaveTextContent('제1공장');
-    expect(screen.getByText(t.actionReasons.plantFixed)).toBeInTheDocument();
+    /* 긴 설명 대신 「현재 상태」의 글자로 전한다(사용자 지정). */
+    expect(
+      within(screen.getByRole('region', { name: t.form.sections.status })).getByLabelText(
+        t.fields.plant,
+      ),
+    ).toHaveTextContent('제1공장');
+  });
+
+  /*
+   * ⭐ 비어 있는 필수 칸은 저장 전에도 빨간 테두리로 보인다(사용자 지정) — 채우면 사라진다.
+   *   문구는 여전히 저장 때 검증이 낸다.
+   */
+  it('비어 있는 필수 칸을 표시하고 채우면 거둔다', async () => {
+    const { user } = renderScreen();
+
+    await openCreate(user);
+
+    const name = screen.getByRole('textbox', { name: /툴명/ });
+    const type = within(formDialog()).getByRole('combobox', { name: /도구 유형/ });
+
+    expect(name.closest('.tool-form-empty-required')).not.toBeNull();
+    expect(type).toHaveAttribute('aria-invalid', 'true');
+
+    await user.type(name, '신규 금형');
+    await user.click(type);
+    await user.click(await screen.findByRole('option', { name: '금형' }));
+
+    expect(name.closest('.tool-form-empty-required')).toBeNull();
+    expect(type).not.toHaveAttribute('aria-invalid', 'true');
+  });
+
+  /* ⭐ 선택칸의 * 도 공용 필수 표시(빨강)를 입는다 — 빠져 있어 흰색으로 보였다. */
+  it('선택칸의 필수 표시가 공용 빨강 표식을 입는다', async () => {
+    const { user } = renderScreen();
+
+    await openCreate(user);
+
+    const typeLabel = within(formDialog()).getByText(t.fields.toolType, { selector: 'label' });
+
+    expect(typeLabel.nextElementSibling).toHaveClass('required-mark');
   });
 
   it('등록에서는 공장을 고른다', async () => {
@@ -873,14 +995,17 @@ describe('W-05-13 툴 마스터 — 등록·수정 창', () => {
 
 describe('W-05-13 툴 마스터 — 예방보전 주기 짝', () => {
   /* 감추지 않고 잠그고 사유를 붙인다(G-2) — 사라진 칸은 「원래 없는 것」과 구분되지 않는다. */
-  it('날짜 축을 쓰지 않으면 주기 두 칸을 잠그고 사유를 밝힌다', async () => {
+  /*
+   * 감추지 않고 잠근다(G-2) — 사라진 칸은 「원래 없는 것」과 구분되지 않는다. 잠긴 까닭은 글로
+   * 쓰지 않고 잠긴 칸의 모양으로 전한다(사용자 지정 2026-09-22).
+   */
+  it('날짜 축을 쓰지 않으면 주기 두 칸을 감추지 않고 잠근다', async () => {
     const { user } = renderScreen();
 
     await openEditOf(user, 'TL-01');
 
     expect(screen.getByRole('textbox', { name: /예방보전 주기 간격/ })).toBeDisabled();
     expect(screen.getByRole('combobox', { name: /예방보전 주기 단위/ })).toBeDisabled();
-    expect(screen.getAllByText(t.actionReasons.cycleNeedsDateAxis).length).toBeGreaterThan(0);
   });
 
   it('날짜 축을 고르면 주기 두 칸이 열린다', async () => {
@@ -892,6 +1017,29 @@ describe('W-05-13 툴 마스터 — 예방보전 주기 짝', () => {
 
     expect(screen.getByRole('textbox', { name: /예방보전 주기 간격/ })).toBeEnabled();
     expect(screen.getByRole('combobox', { name: /예방보전 주기 단위/ })).toBeEnabled();
+    /* 안내 문장 대신 **채울 칸 표식**이 뜬다 — 비어 있는 필수 칸이 된 순간이다(사용자 지정). */
+    expect(
+      screen
+        .getByRole('textbox', { name: /예방보전 주기 간격/ })
+        .closest('.tool-form-empty-required'),
+    ).not.toBeNull();
+  });
+
+  /*
+   * ⭐ 상태를 바꾸는 두 액션은 **정보 목록 밖**에 선다 — 목록의 한 항목처럼 읽히지 않게(사용자 지정).
+   */
+  it('사용 중지·폐기는 현재 상태 목록 밖에 선다', async () => {
+    const { user } = renderScreen();
+
+    await openEditOf(user, 'TL-01');
+
+    const region = screen.getByRole('region', { name: t.form.sections.status });
+    const list = within(region).getByRole('definition', { name: t.fields.plant }).closest('dl');
+
+    expect(list).not.toBeNull();
+    expect(list).not.toContainElement(
+      within(region).getByRole('button', { name: t.retire.deactivateConfirm }),
+    );
   });
 
   /*

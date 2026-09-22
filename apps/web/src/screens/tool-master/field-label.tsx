@@ -21,6 +21,11 @@ export interface FieldLabelProps {
 export const FieldLabel = ({ htmlFor, label, required = false }: FieldLabelProps) => (
   <span className="field-label">
     <label htmlFor={htmlFor}>{label}</label>
-    {required && <span aria-hidden="true"> *</span>}
+    {/* `required-mark` — 공용 필수 표시(빨강). 빠져 있어 선택칸의 * 만 흰색으로 보였다. */}
+    {required && (
+      <span className="required-mark" aria-hidden="true">
+        {' *'}
+      </span>
+    )}
   </span>
 );

@@ -63,4 +63,17 @@ describe('PmBadge', () => {
     expect(label).toBe(t.due);
     expect(label).not.toContain('—');
   });
+
+  /*
+   * ⭐ 배지는 갈라 봐야 하는 판정에만 — 「대상 아님」까지 배지로 세우면 도래·미상 배지가 묻힌다.
+   * ⛔ 글자는 남긴다 — 값이 사라지면 「판정이 비었다」로 읽힌다.
+   */
+  it('「대상 아님」은 배지 없이 글자로만 보인다', () => {
+    const plain = renderBadge({ status: 'notRequired', axis: null });
+    const due = renderBadge({ status: 'due', axis: null });
+
+    expect(plain.className).toBe('tool-master-pm-plain');
+    expect(plain.textContent).toBe(t.notRequired);
+    expect(due.className).not.toBe('tool-master-pm-plain');
+  });
 });

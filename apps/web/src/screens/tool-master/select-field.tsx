@@ -67,7 +67,12 @@ export const SelectField = ({
         onChange={onChange}
         placeholder={placeholder}
         disabled={disabled}
-        invalid={error !== undefined}
+        /*
+         * ⭐ 비어 있는 필수 칸은 **테두리만** 빨갛게 한다(사용자 지정 2026-09-22) — 무엇을 채워야
+         *   하는지 저장 전에 보이게. 문구는 저장 때 검증이 낸다(검증 규칙은 그대로). 잠긴 칸은
+         *   채울 수 없으니 칠하지 않는다.
+         */
+        invalid={error !== undefined || (required && !disabled && value === '')}
         aria-required={required || undefined}
         aria-describedby={message === undefined ? undefined : noteId}
       />
