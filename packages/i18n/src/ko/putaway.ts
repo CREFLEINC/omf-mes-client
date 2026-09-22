@@ -49,7 +49,7 @@ export const putaway = {
     change: '다른 지시 고르기',
   },
   location: {
-    legend: '① 적치 위치',
+    legend: '적치 위치',
     scanLabel: '위치 코드 스캔',
     scanPlaceholder: '위치 라벨을 스캔하세요',
     /** 위치를 관리하지 않는 창고에는 스캔할 라벨이 없어 목록에서 고른다. */
@@ -59,12 +59,15 @@ export const putaway = {
     loadFailed: '위치를 확인할 수 없습니다. 연결을 확인하세요.',
     none: '이 창고에 등록된 위치가 없습니다',
     notFound: (code: string) => `${code} 위치를 이 창고에서 찾지 못했습니다`,
-    chosen: (code: string, name: string) => `${code} ${name}`,
     manual: '직접 입력',
     manualSubmit: '입력한 위치로',
+    /** 스캔으로 정한 위치를 되돌리고 스캔 칸을 다시 연다. */
+    rescan: '위치 재스캔',
+    /** 판정 배너 제목 — 읽은 위치(주 정보). 판정은 본문이 보조로 말한다. */
+    scanned: (code: string, name: string) => `${code} · ${name}`,
   },
   lot: {
-    legend: '② 자재 LOT 스캔',
+    legend: '자재 LOT 스캔',
     scanLabel: 'LOT 라벨 스캔',
     scanPlaceholder: '자재 라벨을 스캔하세요',
     manual: '직접 입력',
@@ -72,15 +75,20 @@ export const putaway = {
     loading: 'LOT 번호를 불러오는 중입니다',
     loadFailed: 'LOT 번호를 확인할 수 없습니다. 연결을 확인하세요.',
     expected: (lotNo: string) => `지시 LOT ${lotNo}`,
-    matched: (lotNo: string) => `스캔됨 ${lotNo}`,
-    /** 다른 자재를 얹으면 그 뒤로 재고가 있다는 자리에 없다. */
-    mismatch: (lotNo: string) => `이 지시의 LOT 이 아닙니다 — 읽은 값 ${lotNo}`,
+    /** 판정(보조 정보) — 배너 제목의 읽은 LOT 아래에 선다. */
+    matched: '지시 LOT 과 일치합니다',
+    /** 다른 자재를 얹으면 그 뒤로 재고가 있다는 자리에 없다. 읽은 값은 배너 제목이 말한다. */
+    mismatch: '이 지시의 LOT 이 아닙니다',
+    /** 맞춘 LOT 을 되돌리고 스캔 칸을 다시 연다. */
+    rescan: 'LOT 재스캔',
   },
   verdict: {
-    matched: '권장 위치와 같습니다',
-    /** 다른 곳에 두면 다음 사람이 찾지 못한다. 임시로 두어야 하면 다른 화면이 받는다. */
-    notRecommended: (code: string) => `권장 위치 ${code} 가 아닙니다`,
+    /** 판정(보조 정보) — 제목의 위치 아래에 선다. */
+    matched: '권장 위치와 일치합니다',
     temporary: '임시로 두어야 하면 임시 위치 적재로 갑니다',
+    /** 임시로 두는 화면으로 가는 버튼 — 안내 문구와 갈라 둔다. */
+    temporaryMove: '임시 위치 적재로 이동',
+    notRecommended: (recommended: string) => `권장 위치 ${recommended} 가 아닙니다`,
     noRule: '관리 위치가 없는 품목입니다. 여기 적치합니까?',
     noRuleConfirm: '여기 적치합니다',
   },

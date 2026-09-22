@@ -233,7 +233,7 @@ const chooseTask = async (user: ReturnType<typeof userEvent.setup>) => {
 const readyToRecord = async (user: ReturnType<typeof userEvent.setup>) => {
   await chooseTask(user);
   scan('A-01-03');
-  await screen.findByText('권장 위치와 같습니다');
+  await screen.findByText('권장 위치와 일치합니다');
   await scanLot(LOT_NO);
   await waitFor(() => {
     expect(screen.getByRole('button', { name: '이 지시 적치' })).not.toBeDisabled();
@@ -467,7 +467,7 @@ describe('적치·입고 완료 화면', () => {
     expect(screen.queryByLabelText(/LOT 라벨 스캔/)).toBeNull();
 
     scan('A-01-03');
-    await screen.findByText('권장 위치와 같습니다');
+    await screen.findByText('권장 위치와 일치합니다');
 
     expect(await screen.findByLabelText(/LOT 라벨 스캔/)).toBeTruthy();
   });
@@ -477,7 +477,23 @@ describe('적치·입고 완료 화면', () => {
     mount();
     await readyToRecord(user);
 
-    expect(screen.getByText(`스캔됨 ${LOT_NO}`)).toBeTruthy();
+    /* 위치와 같은 틀 — 제목은 읽은 LOT, 본문은 판정. 맞으면 스캔 칸을 접는다(사용자 지정). */
+    expect(screen.getByText(LOT_NO)).toBeTruthy();
+    expect(screen.getByText('지시 LOT 과 일치합니다')).toBeTruthy();
+    expect(screen.queryByLabelText(/LOT 라벨 스캔/)).toBeNull();
+  });
+
+  /* 맞춘 LOT 은 [LOT 재스캔]으로만 다시 연다 — 칸이 다시 서고, 다시 맞추기 전에는 적치가 닫힌다. */
+  it('LOT 재스캔으로 스캔 칸을 다시 연다', async () => {
+    const user = userEvent.setup();
+    mount();
+    await readyToRecord(user);
+
+    await user.click(screen.getByRole('button', { name: 'LOT 재스캔' }));
+
+    expect(await screen.findByLabelText(/LOT 라벨 스캔/)).toBeTruthy();
+    expect(screen.queryByText('지시 LOT 과 일치합니다')).toBeNull();
+    expect(screen.getByRole('button', { name: '이 지시 적치' })).toBeDisabled();
   });
 
   /* 다른 자재를 얹으면 그 뒤로 재고가 있다는 자리에 없다. */
@@ -487,11 +503,14 @@ describe('적치·입고 완료 화면', () => {
     await chooseTask(user);
 
     scan('A-01-03');
-    await screen.findByText('권장 위치와 같습니다');
+    await screen.findByText('권장 위치와 일치합니다');
     await scanLot('RM-LOT-9999');
 
-    /* 읽은 값이 함께 보여야 잘못 읽은 것인지 다른 LOT 인지 가릴 수 있다. */
-    expect(await screen.findByText(/이 지시의 LOT 이 아닙니다 — 읽은 값 /)).toBeTruthy();
+    /* 읽은 값이 함께 보여야 잘못 읽은 것인지 다른 LOT 인지 가릴 수 있다 — 배너 제목이 읽은 값이다. */
+    expect(await screen.findByText('이 지시의 LOT 이 아닙니다')).toBeTruthy();
+    expect(screen.getByText('RM-LOT-9999')).toBeTruthy();
+    /* 맞지 않으면 곧바로 다시 읽어야 하므로 칸을 남긴다. */
+    expect(screen.getByLabelText(/LOT 라벨 스캔/)).toBeTruthy();
     expect(screen.getByRole('button', { name: '이 지시 적치' })).toBeDisabled();
   });
 
@@ -519,9 +538,7 @@ describe('적치·입고 완료 화면', () => {
     scan('B-02-01');
     await screen.findByText('권장 위치 A-01-03 가 아닙니다');
 
-    await user.click(
-      screen.getByRole('link', { name: '임시로 두어야 하면 임시 위치 적재로 갑니다' }),
-    );
+    await user.click(screen.getByRole('button', { name: '임시 위치 적재로 이동' }));
 
     expect(await screen.findByText('위치 안 넘김')).toBeTruthy();
   });
@@ -547,7 +564,7 @@ describe('적치·입고 완료 화면', () => {
     await chooseTask(user);
 
     scan('A-01-03');
-    await screen.findByText('권장 위치와 같습니다');
+    await screen.findByText('권장 위치와 일치합니다');
 
     expect(tone.played).toBe(0);
   });
@@ -600,6 +617,63 @@ describe('적치·입고 완료 화면', () => {
    * 잔액을 받지 못한 것은 부딪치는 것이 없다는 뜻이 아니다. 빈 목록으로 판정하면 혼적이 막힌
    * 자리가 조회 실패 한 번에 열린다.
    */
+  /*
+   * ⭐ 스캔으로 위치가 정해지면 스캔 칸을 접고, 판정 줄의 [위치 재스캔]으로만 다시 연다(사용자 지정).
+   *   칸이 남으면 다음에 읽는 라벨이 위치 칸으로 들어갈 수 있다.
+   */
+  it('위치가 정해지면 스캔 칸을 접고 재스캔으로 다시 연다', async () => {
+    const user = userEvent.setup();
+    mount([]);
+    await chooseTask(user);
+
+    scan('A-01-03');
+    await screen.findByText('권장 위치와 일치합니다');
+
+    /* 자리 내용까지 확인돼 판정이 선 뒤에 접힌다. */
+    await waitFor(() => {
+      expect(screen.queryByLabelText(/위치 코드 스캔/)).toBeNull();
+    });
+    /* 읽은 위치는 배너 제목(주 정보)으로 한 번만 선다 — 따로 떠 있던 위치 줄은 없다. */
+    expect(screen.getAllByText('A-01-03 · 자재 A열')).toHaveLength(1);
+
+    await user.click(screen.getByRole('button', { name: '위치 재스캔' }));
+
+    expect(await screen.findByLabelText(/위치 코드 스캔/)).toBeTruthy();
+    expect(screen.queryByText('권장 위치와 일치합니다')).toBeNull();
+  });
+
+  /*
+   * ⭐ 권장 위치가 아니면 **스캔 칸을 남긴다**(사용자 지정) — 곧바로 다른 자리를 읽어야 한다. 읽은
+   *   위치는 판정 배너 한 줄에 함께 서고, 임시로 두는 길은 안내 글과 버튼으로 갈린다.
+   */
+  it('권장 위치가 아니면 스캔 칸을 남기고 임시 적재로 가는 버튼을 보인다', async () => {
+    const user = userEvent.setup();
+    mount([]);
+    await chooseTask(user);
+
+    scan('B-02-01');
+
+    expect(await screen.findByText('권장 위치 A-01-03 가 아닙니다')).toBeTruthy();
+    expect(screen.getByLabelText(/위치 코드 스캔/)).toBeTruthy();
+    expect(screen.queryByRole('button', { name: '위치 재스캔' })).toBeNull();
+    expect(screen.getByText('임시로 두어야 하면 임시 위치 적재로 갑니다')).toBeTruthy();
+    expect(screen.queryByRole('link', { name: /임시/ })).toBeNull();
+    expect(screen.getByRole('button', { name: '임시 위치 적재로 이동' })).toBeTruthy();
+  });
+
+  /* 못 찾은 코드는 정해진 위치가 아니다 — 칸을 접지 않고 그 자리에서 고쳐 읽게 한다. */
+  it('못 찾은 위치 코드면 스캔 칸을 남긴다', async () => {
+    const user = userEvent.setup();
+    mount([]);
+    await chooseTask(user);
+
+    scan('NO-SUCH');
+
+    expect(await screen.findByText(/NO-SUCH 위치를 이 창고에서 찾지 못했습니다/)).toBeTruthy();
+    expect(screen.getByLabelText(/위치 코드 스캔/)).toBeTruthy();
+    expect(screen.queryByRole('button', { name: '위치 재스캔' })).toBeNull();
+  });
+
   it('위치에 무엇이 있는지 확인하지 못하면 다음으로 넘기지 않는다', async () => {
     const user = userEvent.setup();
     mount([
@@ -611,7 +685,7 @@ describe('적치·입고 완료 화면', () => {
     await chooseTask(user);
 
     scan('A-01-03');
-    await screen.findByText('A-01-03 자재 A열');
+    await screen.findByText('권장 위치와 일치합니다');
 
     expect(screen.queryByLabelText(/LOT 라벨 스캔/)).toBeNull();
   });
