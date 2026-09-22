@@ -30,7 +30,7 @@ export const putaway: Translated<typeof ko.putaway> = {
     change: 'Chọn lệnh khác',
   },
   location: {
-    legend: '① Vị trí cất hàng',
+    legend: 'Vị trí cất hàng',
     scanLabel: 'Quét mã vị trí',
     scanPlaceholder: 'Hãy quét nhãn vị trí',
     pickLabel: 'Vị trí cất hàng',
@@ -39,12 +39,15 @@ export const putaway: Translated<typeof ko.putaway> = {
     loadFailed: 'Không xác nhận được vị trí. Hãy kiểm tra kết nối.',
     none: 'Kho này chưa đăng ký vị trí nào',
     notFound: (code: string) => `Không tìm thấy vị trí ${code} trong kho này`,
-    chosen: (code: string, name: string) => `${code} ${name}`,
     manual: 'Nhập tay',
     manualSubmit: 'Dùng vị trí đã nhập',
+    /** 스캔으로 정한 위치를 되돌리고 스캔 칸을 다시 연다. */
+    rescan: 'Quét lại vị trí',
+    /** 판정 배너 제목 — 읽은 위치(주 정보). 판정은 본문이 보조로 말한다. */
+    scanned: (code: string, name: string) => `${code} · ${name}`,
   },
   lot: {
-    legend: '② Quét LOT vật tư',
+    legend: 'Quét LOT vật tư',
     scanLabel: 'Quét nhãn LOT',
     scanPlaceholder: 'Hãy quét nhãn vật tư',
     manual: 'Nhập tay',
@@ -52,13 +55,17 @@ export const putaway: Translated<typeof ko.putaway> = {
     loading: 'Đang tải số LOT',
     loadFailed: 'Không xác nhận được số LOT. Hãy kiểm tra kết nối.',
     expected: (lotNo: string) => `LOT của lệnh ${lotNo}`,
-    matched: (lotNo: string) => `Đã quét ${lotNo}`,
-    mismatch: (lotNo: string) => `Đây không phải LOT của lệnh này — đã đọc ${lotNo}`,
+    matched: 'Trùng LOT của lệnh',
+    mismatch: 'Đây không phải LOT của lệnh này',
+    rescan: 'Quét lại LOT',
   },
   verdict: {
-    matched: 'Đúng vị trí đề xuất',
-    notRecommended: (code: string) => `Không phải vị trí đề xuất ${code}`,
+    /** 판정(보조 정보) — 제목의 위치 아래에 선다. */
+    matched: 'Trùng vị trí đề xuất',
     temporary: 'Nếu phải để tạm, hãy sang màn hình cất hàng vào vị trí tạm',
+    /** 임시로 두는 화면으로 가는 버튼 — 안내 문구와 갈라 둔다. */
+    temporaryMove: 'Chuyển sang xếp tạm',
+    notRecommended: (recommended: string) => `Không phải vị trí đề xuất ${recommended}`,
     noRule: 'Mặt hàng này không có vị trí quản lý. Cất hàng ở đây chứ?',
     noRuleConfirm: 'Cất hàng ở đây',
   },

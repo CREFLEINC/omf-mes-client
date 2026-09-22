@@ -103,3 +103,69 @@
   margin: 0;
   min-width: 0;
 }
+
+/*
+ * 배너 아이콘을 제목 첫 줄 가운데에 맞춘다. 디자인 시스템 배너는 아이콘(20px)을 위쪽 정렬에
+ * 4px 내려 두는데, 제목 줄 높이가 24px 라 아이콘이 글자보다 2px 처진다 — 제대로 맞는 값은
+ * (24 - 20) / 2 = 2px 이다. 여러 줄 배너에서도 첫 줄에 맞으므로 가운데 정렬로 바꾸지 않는다.
+ * 부품 내부 클래스 이름 대신 「배너의 첫 아이콘」 구조로 짚는다.
+ */
+.putaway :is([role='status'], [role='alert']) > span[aria-hidden='true']:first-child {
+  margin-top: calc((24px - 20px) / 2);
+}
+
+/*
+ * 단계 제목 — 번호는 작은 원형 뱃지로 제목과 한 덩어리. 번호가 제목보다 튀지 않게 흐린 바탕과
+ * 작은 글자로 두고, 줄 높이를 조금 줄여 구획 머리를 낮춘다(사용자 지정 2026-09-22).
+ */
+.putaway__step-title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2, 8px);
+  line-height: 24px;
+}
+
+.putaway__step-badge {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--surface-container-high);
+  color: var(--on-surface-variant);
+  font: var(--type-label-sm);
+}
+
+/* 판정 배너 — 위아래 여백을 줄여 촘촘하게. 제목(읽은 위치)이 주, 본문(판정)이 보조다. */
+.putaway__verdict {
+  padding-block: var(--space-2, 8px);
+}
+
+.putaway__verdict-line {
+  display: block;
+}
+
+/*
+ * 배너 안 버튼([위치 재스캔]·[임시 위치 적재로 이동])은 **글자와 같은 행의 오른쪽**에(사용자 지정 2026-09-22).
+ * 디자인 시스템 배너는 버튼을 본문 아래 줄에 두므로, 본문 칸을 두 열로 나눠 제목·안내는 왼쪽,
+ * 버튼은 오른쪽에 세로 가운데로 세운다. 부품 내부 클래스 대신 「배너의 본문 칸과 그 마지막 줄」
+ * 구조로 짚는다.
+ */
+.putaway__verdict--action > div {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  column-gap: var(--space-3, 12px);
+  align-items: center;
+}
+
+.putaway__verdict--action > div > * {
+  grid-column: 1;
+}
+
+.putaway__verdict--action > div > :last-child {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  margin-top: 0;
+}

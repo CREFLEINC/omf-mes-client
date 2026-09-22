@@ -170,6 +170,54 @@ export const PutawayScreen = () => {
     }
   }, [locationBlocked, scanSeq]);
 
+  /*
+   * ⭐ 스캔으로 위치가 정해졌는가(사용자 지정 2026-09-22). 정해지면 스캔 칸을 접고, 판정 줄 옆의
+   *   [위치 재스캔]으로만 다시 연다 — 칸이 남아 있으면 다음에 읽는 라벨(LOT)이 위치 칸으로 들어갈
+   *   수 있고, 화면도 한 줄 길어진다.
+   * 목록에서 고르는 창고(위치 라벨이 없다)는 고른 칸이 곧 표시라 접지 않는다.
+   */
+  /*
+   * ⭐ **막힌 판정이면 접지 않는다**(사용자 지정 2026-09-22) — 권장 위치가 아니거나 자리에 다른
+   *   품목·LOT 이 있으면 곧바로 다른 자리를 읽어야 하므로 칸을 그대로 둔다. 자리 내용을 아직
+   *   모르면(조회 중·실패) 판정이 서지 않았으니 역시 접지 않는다 — 접었다 다시 펼치는 깜빡임도 막는다.
+   */
+  const locationRejected = verdict === NOT_RECOMMENDED || mixProblem !== null;
+  const scanResolved =
+    task !== null &&
+    scansLocation(task) &&
+    scanned !== null &&
+    location !== null &&
+    contentsKnown &&
+    !locationRejected;
+
+  /*
+   * [위치 재스캔] — 배너 안 오른쪽 버튼. [임시 위치 적재로 이동]과 같은 모양이다(사용자 지정
+   * 2026-09-22). 버튼이 있을 때만 배너를 두 칸으로 나눈다 — 없을 때 나누면 본문 마지막 줄이
+   * 오른쪽 칸으로 밀린다.
+   */
+  const rescanButton = (
+    <Button variant="outlined" size="lg" onClick={() => rescanLocation()}>
+      {t.location.rescan}
+    </Button>
+  );
+  /* 읽은 LOT 이 지시 LOT 과 맞는가 — 맞으면 LOT 스캔 칸을 접는다(위치와 같은 규칙). */
+  const lotMatched = scannedLot !== null && lotMatches(lotNo.data ?? null, scannedLot);
+
+  const verdictClass = (withAction: boolean): string =>
+    withAction ? 'putaway__verdict putaway__verdict--action' : 'putaway__verdict';
+
+  /* 임시로 두는 길은 다른 화면이 받는다 — 지시를 들고 간다. */
+  const toTemporaryPutaway = () => {
+    void navigate('/temporary-putaway', { state: { task } });
+  };
+
+  /* 위치만 되돌린다 — LOT 판정은 위치와 상관없어 그대로 둔다. 칸이 다시 서면 포커스를 받는다. */
+  const rescanLocation = () => {
+    setScanned(null);
+    setPickedId(null);
+    setConfirmedNoRule(false);
+  };
+
   const clearScans = () => {
     setPickedId(null);
     setScanned(null);
@@ -390,7 +438,16 @@ export const PutawayScreen = () => {
           </section>
 
           <section className="putaway__section" ref={locationSection}>
-            <h2>{t.location.legend}</h2>
+            {/*
+             * 단계 번호는 작은 뱃지로, 제목과 한 덩어리로 읽히게(사용자 지정 2026-09-22). 번호는 눈으로
+             * 보는 차례 표시라 화면 낭독에서는 뺀다 — 넣으면 「1적치 위치」로 붙어 읽힌다.
+             */}
+            <h2 className="putaway__step-title">
+              <span className="putaway__step-badge" aria-hidden="true">
+                1
+              </span>
+              {t.location.legend}
+            </h2>
             {locations.isPending ? <p role="status">{t.location.loading}</p> : null}
             {locations.isError ? (
               <FailureBanner
@@ -407,37 +464,39 @@ export const PutawayScreen = () => {
              * 라벨을 읽지 않고 화면만 보고 적치가 끝난다.
              */}
             {scansLocation(task) ? (
-              <>
-                <TextField
-                  ref={locationField.ref}
-                  label={required(t.location.scanLabel)}
-                  placeholder={t.location.scanPlaceholder}
-                  size="xl"
-                  fullWidth
-                  error={
-                    scanned !== null && byCode.isSuccess && byCode.data === null
-                      ? t.location.notFound(scanned)
-                      : undefined
-                  }
-                />
-                {byCode.isError ? (
-                  <FailureBanner
-                    variant="error"
-                    title={failureText(byCode.error, t.location.loadFailed)}
+              scanResolved ? null : (
+                <>
+                  <TextField
+                    ref={locationField.ref}
+                    label={required(t.location.scanLabel)}
+                    placeholder={t.location.scanPlaceholder}
+                    size="xl"
+                    fullWidth
+                    error={
+                      scanned !== null && byCode.isSuccess && byCode.data === null
+                        ? t.location.notFound(scanned)
+                        : undefined
+                    }
                   />
-                ) : null}
-                {/* 스캐너가 못 읽는 라벨이 있다. 손으로 넣는 길을 늘 연다(공유계약 D-3). */}
-                <Button
-                  className="putaway__wide"
-                  variant={locationField.manual ? 'outlined' : 'text'}
-                  size="xl"
-                  onClick={
-                    locationField.manual ? locationField.submitManual : locationField.openManual
-                  }
-                >
-                  {locationField.manual ? t.location.manualSubmit : t.location.manual}
-                </Button>
-              </>
+                  {byCode.isError ? (
+                    <FailureBanner
+                      variant="error"
+                      title={failureText(byCode.error, t.location.loadFailed)}
+                    />
+                  ) : null}
+                  {/* 스캐너가 못 읽는 라벨이 있다. 손으로 넣는 길을 늘 연다(공유계약 D-3). */}
+                  <Button
+                    className="putaway__wide"
+                    variant={locationField.manual ? 'outlined' : 'text'}
+                    size="xl"
+                    onClick={
+                      locationField.manual ? locationField.submitManual : locationField.openManual
+                    }
+                  >
+                    {locationField.manual ? t.location.manualSubmit : t.location.manual}
+                  </Button>
+                </>
+              )
             ) : locations.data === undefined ? null : (
               <div className="putaway__field">
                 <label htmlFor="putaway-location">{required(t.location.pickLabel)}</label>
@@ -461,40 +520,75 @@ export const PutawayScreen = () => {
 
             {location === null ? null : (
               <>
-                <p>{t.location.chosen(location.locationCode, location.locationName)}</p>
-
+                {/*
+                 * ⭐ 판정 배너는 모두 같은 틀이다(사용자 지정 2026-09-22) — **제목은 읽은 위치**(주 정보),
+                 *   **본문은 판정**(보조 정보). 긴 한 문장으로 두지 않는다. 색·아이콘·판정 문구만 판정마다
+                 *   다르다. 따로 떠 있던 위치 줄은 걷었다. 배너 안 버튼([위치 재스캔]·[임시 위치 적재로
+                 *   이동])은 모두 글자와 같은 행 오른쪽에 같은 모양으로 선다.
+                 */}
                 {verdict === MATCHED && mixProblem === null ? (
-                  <AlertBanner variant="success" title={t.verdict.matched} />
+                  <AlertBanner
+                    className={verdictClass(scanResolved)}
+                    variant="success"
+                    title={t.location.scanned(location.locationCode, location.locationName)}
+                    action={scanResolved ? rescanButton : undefined}
+                  >
+                    {t.verdict.matched}
+                  </AlertBanner>
                 ) : null}
 
-                {/* 다른 곳에 두면 다음 사람이 찾지 못한다. 임시로 두는 길은 다른 화면이 받는다. */}
+                {/*
+                 * 다른 곳에 두면 다음 사람이 찾지 못한다. 임시로 두는 길은 다른 화면이 받는다 — 안내는
+                 * 글로, 가는 길은 버튼으로 가른다(사용자 지정). 스캔 칸은 남아 있어 곧바로 다시 읽는다.
+                 */}
                 {verdict === NOT_RECOMMENDED ? (
                   <AlertBanner
+                    className="putaway__verdict putaway__verdict--action"
                     variant="error"
-                    title={t.verdict.notRecommended(codeOf(task.recommendedLocationId))}
+                    title={t.location.scanned(location.locationCode, location.locationName)}
+                    action={
+                      <Button variant="outlined" size="lg" onClick={toTemporaryPutaway}>
+                        {t.verdict.temporaryMove}
+                      </Button>
+                    }
                   >
-                    <Link to="/temporary-putaway" state={{ task }}>
-                      {t.verdict.temporary}
-                    </Link>
+                    <span className="putaway__verdict-line">
+                      {t.verdict.notRecommended(codeOf(task.recommendedLocationId))}
+                    </span>
+                    <span className="putaway__verdict-line">{t.verdict.temporary}</span>
                   </AlertBanner>
                 ) : null}
 
                 {/* 지금 그 자리에 있는 것과 부딪친다. 얹으면 다음 사람이 찾지 못한다. */}
                 {mixProblem === null ? null : (
                   <AlertBanner
+                    className="putaway__verdict putaway__verdict--action"
                     variant="error"
-                    title={mixProblem === MIXED_ITEM ? t.mix.item : t.mix.lot}
+                    title={t.location.scanned(location.locationCode, location.locationName)}
+                    action={
+                      <Button variant="outlined" size="lg" onClick={toTemporaryPutaway}>
+                        {t.verdict.temporaryMove}
+                      </Button>
+                    }
                   >
-                    <Link to="/temporary-putaway" state={{ task }}>
-                      {t.mix.temporary}
-                    </Link>
+                    <span className="putaway__verdict-line">
+                      {mixProblem === MIXED_ITEM ? t.mix.item : t.mix.lot}
+                    </span>
+                    <span className="putaway__verdict-line">{t.mix.temporary}</span>
                   </AlertBanner>
                 )}
 
                 {/* 규칙이 없다고 막으면 미등록 품목이 적치 자체를 못 한다. 확인을 받고 통과시킨다. */}
                 {verdict === NO_RULE && mixProblem === null ? (
                   <>
-                    <AlertBanner variant="warning" title={t.verdict.noRule} />
+                    <AlertBanner
+                      className={verdictClass(scanResolved)}
+                      variant="warning"
+                      title={t.location.scanned(location.locationCode, location.locationName)}
+                      action={scanResolved ? rescanButton : undefined}
+                    >
+                      {t.verdict.noRule}
+                    </AlertBanner>
                     <Button
                       className="putaway__wide"
                       variant={confirmedNoRule ? 'filled' : 'outlined'}
@@ -536,31 +630,64 @@ export const PutawayScreen = () => {
 
           {!locationSettled ? null : (
             <section className="putaway__section" ref={lotSection}>
-              <h2>{t.lot.legend}</h2>
+              <h2 className="putaway__step-title">
+                <span className="putaway__step-badge" aria-hidden="true">
+                  2
+                </span>
+                {t.lot.legend}
+              </h2>
               {lotNo.isPending ? <p role="status">{t.lot.loading}</p> : null}
               {lotNo.isError ? (
                 <FailureBanner variant="error" title={failureText(lotNo.error, t.lot.loadFailed)} />
               ) : null}
-              <TextField
-                ref={lotField.ref}
-                label={required(t.lot.scanLabel)}
-                placeholder={t.lot.scanPlaceholder}
-                size="xl"
-                fullWidth
-              />
-              <Button
-                className="putaway__wide"
-                variant={lotField.manual ? 'outlined' : 'text'}
-                size="xl"
-                onClick={lotField.manual ? lotField.submitManual : lotField.openManual}
-              >
-                {lotField.manual ? t.lot.manualSubmit : t.lot.manual}
-              </Button>
+              {/*
+               * ⭐ 위치와 같은 틀(사용자 지정 2026-09-22) — 지시 LOT 과 맞으면 스캔 칸을 접고, 판정 배너
+               *   (제목 = 읽은 LOT, 본문 = 판정) 안 오른쪽의 [LOT 재스캔]으로만 다시 연다. 맞지 않으면
+               *   곧바로 다시 읽어야 하므로 칸을 남긴다.
+               */}
+              {lotMatched ? null : (
+                <>
+                  <TextField
+                    ref={lotField.ref}
+                    label={required(t.lot.scanLabel)}
+                    placeholder={t.lot.scanPlaceholder}
+                    size="xl"
+                    fullWidth
+                  />
+                  <Button
+                    className="putaway__wide"
+                    variant={lotField.manual ? 'outlined' : 'text'}
+                    size="xl"
+                    onClick={lotField.manual ? lotField.submitManual : lotField.openManual}
+                  >
+                    {lotField.manual ? t.lot.manualSubmit : t.lot.manual}
+                  </Button>
+                </>
+              )}
 
-              {scannedLot === null ? null : lotMatches(lotNo.data ?? null, scannedLot) ? (
-                <p className="putaway__scanned">{t.lot.matched(scannedLot)}</p>
+              {scannedLot === null ? null : lotMatched ? (
+                <AlertBanner
+                  className={verdictClass(true)}
+                  variant="success"
+                  title={scannedLot}
+                  action={
+                    <Button
+                      variant="outlined"
+                      size="lg"
+                      onClick={() => {
+                        setScannedLot(null);
+                      }}
+                    >
+                      {t.lot.rescan}
+                    </Button>
+                  }
+                >
+                  {t.lot.matched}
+                </AlertBanner>
               ) : (
-                <AlertBanner variant="error" title={t.lot.mismatch(scannedLot)} />
+                <AlertBanner className={verdictClass(false)} variant="error" title={scannedLot}>
+                  {t.lot.mismatch}
+                </AlertBanner>
               )}
             </section>
           )}
