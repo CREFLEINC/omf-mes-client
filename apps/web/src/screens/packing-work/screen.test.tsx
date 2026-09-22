@@ -509,6 +509,28 @@ describe('P-02-08 포장 작업', () => {
     expect(typeSelect).toHaveAttribute('aria-invalid', 'true');
   });
 
+  /*
+   * #1402 — 선택 칸이 `<label>` 안에 있으면 팝업(같은 DOM 안의 `<dialog>`)을 누른 것이 label
+   * 활성화로 [선택]에 다시 전달된다. 단말 터치에서는 고르거나 [✕]를 눌러도 팝업이 다시 열렸다.
+   */
+  it.each([t.unit.typeLabel, t.unit.parentLabel])(
+    '%s 팝업 안을 눌러도 [선택]이 다시 눌리지 않는다',
+    async (name) => {
+      const user = userEvent.setup();
+
+      renderScreen();
+
+      const trigger = await screen.findByRole('combobox', { name });
+      const clicks = vi.fn();
+      trigger.addEventListener('click', clicks);
+
+      await user.click(trigger);
+      await user.click(within(screen.getByRole('dialog')).getByRole('heading'));
+
+      expect(clicks).toHaveBeenCalledTimes(1);
+    },
+  );
+
   it('첫 줄을 담으면 포장 단위가 서고 번호가 그 자리에서 생긴다', async () => {
     const user = userEvent.setup();
     const writes: Request[] = [];
