@@ -289,6 +289,10 @@ describe('W-05-13 툴 마스터 — 목록', () => {
     const groups = codeValueSent.map((url) => url.searchParams.get('codeGroupCode'));
 
     expect(groups).toContain('EQUIPMENT_STATUS');
+    /* ⛔ 사용 중지된 값까지 받는다 — 빼면 그 값을 가진 자료의 이름이 코드로 떨어진다. */
+    expect(codeValueSent.every((url) => url.searchParams.get('includeInactive') === 'true')).toBe(
+      true,
+    );
     /* ⛔ 도구 유형을 서버에 묻는다 — 상수로 돌아가면 값이 있어도 등록이 막힌다(#52). */
     expect(groups).toContain('TOOL_TYPE');
     expect(codeValueSent.every((url) => url.searchParams.get('codeGroupId') === null)).toBe(true);

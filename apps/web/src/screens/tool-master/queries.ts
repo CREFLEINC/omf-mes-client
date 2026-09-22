@@ -80,6 +80,9 @@ export const codeValueKeys = {
 /**
  * 공통코드 값 목록 — **그룹을 이름으로 가리킨다.**
  * ⛔ `codeGroupId` 정수를 코드에 박지 않는다: 환경마다 다르다(설계 `omf-mes#179`).
+ * ⛔ **사용 중지된 값까지 받는다**(`includeInactive`) — 서버 기본은 사용 중인 것만이라, 빼면
+ *    사용 중지된 유형·상태를 가진 자료의 이름이 코드로 떨어진다. 「고를 목록」에서 사용 중인
+ *    것만 남기는 일은 화면(`selectableOptions`)이 한다.
  */
 export const useCodeValues = (codeGroupCode: string): UseQueryResult<CodeValue[]> => {
   const { client } = useApiClient();
@@ -89,7 +92,9 @@ export const useCodeValues = (codeGroupCode: string): UseQueryResult<CodeValue[]
     queryFn: () =>
       runRequest(() =>
         client.GET('/mdm/code-values', {
-          params: { query: { codeGroupCode, page: 1, size: CODE_VALUES_PAGE_SIZE } },
+          params: {
+            query: { codeGroupCode, includeInactive: true, page: 1, size: CODE_VALUES_PAGE_SIZE },
+          },
         }),
       ).then((response) => response.items),
   });
