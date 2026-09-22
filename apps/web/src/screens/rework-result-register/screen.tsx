@@ -41,7 +41,18 @@ export const ReworkResultRegisterScreen = () => {
   const { client } = useApiClient();
   const identity = usePopIdentity();
   const [listPage, setListPage] = useState(1);
-  const workOrders = useReworkWorkOrders(listPage);
+  const { open: releasedOrders, planned: plannedOrders } = useReworkWorkOrders(listPage);
+  /*
+   * 배포된 것 뒤에 **배포 전**을 잇는다 — 고를 수 있는 것이 위에 선다. 배포 전 줄은 표식만
+   * 달고 고르지 못한다(서버가 그 상태의 실적을 받지 않는다 · omf-all-around#47).
+   *
+   * ⛔ **첫 쪽에만 잇는다.** 쪽 나누기는 배포된 쪽을 따르는데(배포 전은 쪽을 나누지 않고 늘
+   *    같은 답이다), 매 쪽 꼬리에 같은 줄을 다시 세우면 「2쪽인데 왜 아까 그 줄이 또 있나」가
+   *    된다. 알리는 것이 목적이므로 첫 쪽 한 번이면 족하다.
+   */
+  const plannedRows = listPage === 1 ? (plannedOrders.data?.items ?? []) : [];
+  const plannedIds = new Set(plannedRows.map((row) => row.workOrderId));
+  const rows = [...(releasedOrders.data?.items ?? []), ...plannedRows];
   const defectCodeId = useId();
   const [selectedId, setSelectedId] = useState<number | null>(null);
   /**
@@ -63,7 +74,7 @@ export const ReworkResultRegisterScreen = () => {
   const [pendingCount, setPendingCount] = useState(pendingReworkResultCount);
   const [isOnline, setIsOnline] = useState(() => globalThis.navigator.onLine);
 
-  const selected = workOrders.data?.items.find((row) => row.workOrderId === selectedId) ?? null;
+  const selected = rows.find((row) => row.workOrderId === selectedId) ?? null;
   const nonconformanceId = selected?.reworkSourceNonconformanceId ?? null;
   const source = useReworkSource(nonconformanceId);
   const dispositions = useDispositionDecisions(nonconformanceId);
@@ -229,11 +240,13 @@ export const ReworkResultRegisterScreen = () => {
       {selected === null ? (
         <section className="pane" aria-label={t.workOrders}>
           <h2 className="pane-title">{t.workOrders}</h2>
-          {workOrders.isError && <AlertBanner variant="error">{t.loadError}</AlertBanner>}
-          {workOrders.isSuccess && workOrders.data.items.length === 0 && (
+          {(releasedOrders.isError || plannedOrders.isError) && (
+            <AlertBanner variant="error">{t.loadError}</AlertBanner>
+          )}
+          {releasedOrders.isSuccess && plannedOrders.isSuccess && rows.length === 0 && (
             <AlertBanner variant="info">{t.empty}</AlertBanner>
           )}
-          {(workOrders.data?.items ?? []).length > 0 && (
+          {rows.length > 0 && (
             /*
              * 줄의 어느 칸을 눌러도 그 줄의 버튼을 대신 누른다 — POP 목록 정본이다
              * (표 · 선택 칸 없음 · 줄 전체가 누르는 자리 · `913a82c`).
@@ -251,7 +264,7 @@ export const ReworkResultRegisterScreen = () => {
                 aria-label={t.workOrderCaption}
                 density="comfortable"
                 getRowId={(row) => String(row.workOrderId)}
-                rows={workOrders.data?.items ?? []}
+                rows={rows}
                 columns={[
                   {
                     key: 'workOrder',
@@ -259,16 +272,23 @@ export const ReworkResultRegisterScreen = () => {
                     align: 'center',
                     /* ⭐ 열 폭: 작업지시는 줄이고 품목·수량을 넓힌다(사용자 지시 2026-09-17). */
                     width: '40%',
-                    render: (row) => (
-                      <button
-                        type="button"
-                        className={`pop-row-select ${popTouchClass('normal')}`}
-                        aria-label={t.selectRow(row.workOrderNo)}
-                        onClick={() => setSelectedId(row.workOrderId)}
-                      >
-                        <span>{row.workOrderNo}</span>
-                      </button>
-                    ),
+                    render: (row) =>
+                      plannedIds.has(row.workOrderId) ? (
+                        /* 배포 전 — 고를 수 없다. 왜 못 고르는지 그 자리에서 말한다. */
+                        <span className="rework-result-planned-row">
+                          <span>{row.workOrderNo}</span>
+                          <span className="rework-result-planned-note">{t.notReleased}</span>
+                        </span>
+                      ) : (
+                        <button
+                          type="button"
+                          className={`pop-row-select ${popTouchClass('normal')}`}
+                          aria-label={t.selectRow(row.workOrderNo)}
+                          onClick={() => setSelectedId(row.workOrderId)}
+                        >
+                          <span>{row.workOrderNo}</span>
+                        </button>
+                      ),
                   },
                   {
                     key: 'item',
@@ -299,7 +319,7 @@ export const ReworkResultRegisterScreen = () => {
                * 21번째 재작업 지시부터 고를 수 없었다.
                */}
               <PopPageNav
-                boundary={pageBoundaryOf(workOrders.data?.page)}
+                boundary={pageBoundaryOf(releasedOrders.data?.page)}
                 label={t.pageNav}
                 onChange={(page) => {
                   /* 쪽을 넘기면 고른 것을 놓는다 — 다른 쪽의 지시가 상세에 남지 않게 한다. */

@@ -21,6 +21,8 @@ export const reworkResultRegister: Translated<typeof ko.reworkResultRegister> = 
     item: 'Mặt hàng',
     quantity: 'Số lượng',
   },
+  /** 배포 전 표식 — 있다는 사실만 알린다(omf-all-around#47). */
+  notReleased: 'Hãy phát đi trước',
   selectRow: (workOrderNo: string): string => `Chọn ${workOrderNo}`,
   target: 'Đối tượng làm lại',
   sourceLot: 'LOT gốc',
