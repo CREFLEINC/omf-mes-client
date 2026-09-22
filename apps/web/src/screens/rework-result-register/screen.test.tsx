@@ -44,6 +44,9 @@ let uomQuery: URLSearchParams | null = null;
 /** 배포 전 재작업 지시. 기본은 없고, 그 줄을 재는 검사만 채운다. */
 let plannedRows: (typeof WORK_ORDER)[] = [];
 
+/** 배포된 쪽의 전체 건수. 기본은 한 쪽이고, 쪽 넘김을 재는 검사만 늘린다. */
+let releasedTotal = 1;
+
 const stubFetch: StubFetch = async (request) => {
   const url = new URL(request.url);
 
@@ -54,9 +57,21 @@ const stubFetch: StubFetch = async (request) => {
      */
     const planned = url.searchParams.get('statusCode') === 'PLANNED';
 
+    if (planned) {
+      return jsonResponse({
+        items: plannedRows,
+        page: { page: 1, size: 20, total: plannedRows.length },
+      });
+    }
+
+    /* 배포된 쪽만 쪽을 나눈다 — 쪽마다 번호가 다른 한 건을 낸다. */
+    const page = Number(url.searchParams.get('page') ?? '1');
+
     return jsonResponse({
-      items: planned ? plannedRows : [WORK_ORDER],
-      page: { page: 1, size: 20, total: planned ? plannedRows.length : 1 },
+      items: [
+        page === 1 ? WORK_ORDER : { ...WORK_ORDER, workOrderId: 8899, workOrderNo: 'SYN-WO-R099' },
+      ],
+      page: { page, size: 20, total: releasedTotal },
     });
   }
 
@@ -243,6 +258,7 @@ const pickWorkOrder = async (user: ReturnType<typeof userEvent.setup>) => {
 describe('ReworkResultRegisterScreen — 스펙 §3 의 구획', () => {
   afterEach(() => {
     plannedRows = [];
+    releasedTotal = 1;
   });
 
   /*
@@ -260,13 +276,50 @@ describe('ReworkResultRegisterScreen — 스펙 §3 의 구획', () => {
         statusCode: 'PLANNED',
       },
     ];
-    renderScreen();
+    const { user } = renderScreen();
 
     expect(await screen.findByText('SYN-WO-R013')).toBeInTheDocument();
     expect(screen.getByText(t.notReleased)).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: t.selectRow('SYN-WO-R013') })).toBeNull();
     /* 배포된 것은 그대로 고를 수 있다 — 함께 보이는 것이 요점이다. */
     expect(screen.getByRole('button', { name: t.selectRow('SYN-WO-R012') })).toBeEnabled();
+
+    /*
+     * ⛔ **줄 전체를 눌러도 열리지 않는다.** POP 목록은 줄의 어느 칸을 눌러도 그 줄의 선택
+     *    버튼을 대신 누르는데(`913a82c`), 배포 전 줄에는 그 버튼이 없어야 아무 일도 없다.
+     *    버튼만 지우고 다른 경로로 열리면 수량까지 넣은 뒤 저장에서 막힌다.
+     */
+    await user.click(screen.getByText(t.notReleased));
+
+    /* 목록 구획은 고르기 «전»에만 선다 — 아직 서 있다면 아무것도 고르지 않은 것이다. */
+    expect(screen.getByRole('region', { name: t.workOrders })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: t.selectRow('SYN-WO-R012') })).toBeInTheDocument();
+  });
+
+  /*
+   * ⛔ **배포 전 줄은 첫 쪽에만 선다.** 쪽 나누기는 배포된 쪽을 따르고 배포 전 조회는 쪽을
+   *    나누지 않아 늘 같은 답이다 — 매 쪽 꼬리에 다시 세우면 「2쪽인데 왜 아까 그 줄이 또」가
+   *    된다.
+   */
+  it('둘째 쪽에는 배포 전 줄을 다시 세우지 않는다', async () => {
+    releasedTotal = 21;
+    plannedRows = [
+      {
+        ...WORK_ORDER,
+        workOrderId: 8802,
+        workOrderNo: 'SYN-WO-R013',
+        statusCode: 'PLANNED',
+      },
+    ];
+    const { user } = renderScreen();
+
+    expect(await screen.findByText('SYN-WO-R013')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: messages.popPageNav.pageDown }));
+
+    expect(await screen.findByText('SYN-WO-R099')).toBeInTheDocument();
+    expect(screen.queryByText('SYN-WO-R013')).toBeNull();
+    expect(screen.queryByText(t.notReleased)).toBeNull();
   });
 
   it('사번을 모르면 맨 위 공용 띠로 말하고 액션바에는 옛 문구가 없다', async () => {

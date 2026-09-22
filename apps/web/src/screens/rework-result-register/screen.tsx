@@ -45,9 +45,14 @@ export const ReworkResultRegisterScreen = () => {
   /*
    * 배포된 것 뒤에 **배포 전**을 잇는다 — 고를 수 있는 것이 위에 선다. 배포 전 줄은 표식만
    * 달고 고르지 못한다(서버가 그 상태의 실적을 받지 않는다 · omf-all-around#47).
+   *
+   * ⛔ **첫 쪽에만 잇는다.** 쪽 나누기는 배포된 쪽을 따르는데(배포 전은 쪽을 나누지 않고 늘
+   *    같은 답이다), 매 쪽 꼬리에 같은 줄을 다시 세우면 「2쪽인데 왜 아까 그 줄이 또 있나」가
+   *    된다. 알리는 것이 목적이므로 첫 쪽 한 번이면 족하다.
    */
-  const plannedIds = new Set((plannedOrders.data?.items ?? []).map((row) => row.workOrderId));
-  const rows = [...(releasedOrders.data?.items ?? []), ...(plannedOrders.data?.items ?? [])];
+  const plannedRows = listPage === 1 ? (plannedOrders.data?.items ?? []) : [];
+  const plannedIds = new Set(plannedRows.map((row) => row.workOrderId));
+  const rows = [...(releasedOrders.data?.items ?? []), ...plannedRows];
   const defectCodeId = useId();
   const [selectedId, setSelectedId] = useState<number | null>(null);
   /**
