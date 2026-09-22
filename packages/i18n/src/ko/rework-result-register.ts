@@ -39,7 +39,7 @@ export const reworkResultRegister = {
    * 배포 전 재작업 지시에 다는 표식(omf-all-around#47). 발행은 됐지만 배포 전이라
    * 실적을 받지 못한다 — 있다는 사실은 알리고 고르지는 못하게 한다.
    */
-  notReleased: '아직 배포 전',
+  notReleased: '배포를 먼저 진행해주세요',
   selectRow: (workOrderNo: string): string => `${workOrderNo} 선택`,
   target: '재작업 대상',
   sourceLot: '원 LOT',
