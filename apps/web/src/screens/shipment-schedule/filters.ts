@@ -1,5 +1,7 @@
 import { messages } from '@omf-mes/i18n';
 
+import { progressLabel } from './status-options';
+
 import type { PeriodInput } from './period';
 import type { SortKey } from './sort';
 import { SHIPMENT_PROGRESS_CODES } from './status-options';
@@ -155,7 +157,8 @@ export const toFilterChips = (filters: ShipmentFilters, names: FilterChipNames):
     },
     {
       key: 'progress',
-      label: t.filters.chipProgress(filters.progress),
+      /* 표와 같은 말로 적는다 — 칩만 내부 코드를 보이면 같은 조건인 줄 모른다. */
+      label: t.filters.chipProgress(progressLabel(filters.progress)),
       removeLabel: t.filters.chipRemoveProgress,
     },
     {

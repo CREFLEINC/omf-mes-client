@@ -19,12 +19,29 @@ export type ShipmentProgressCode = ShipmentRequestResponse['shipmentProgressCode
 
 export type PageMeta = components['schemas']['PageMeta'];
 
-/** 한 행의 요청/배정/출하 합계 — **그 행 자신의 `lines`만 더한다**(다른 행·페이지를 넘나들지 않는다). */
+/**
+ * 한 행의 요청/배정/출하 합계 — **그 행 자신의 `lines`만 더한다**(다른 행·페이지를 넘나들지
+ * 않는다).
+ *
+ * ⭐ **축마다 「받지 못했다」가 따로 있다.** 줄은 왔는데 어느 한 축만 비어 오는 일이 있어
+ * (실측 2026-09-11 · client#1042), 그 축만 `null` 로 둔다. 셋을 한 덩어리로 묶으면 받은 축까지
+ * 가려진다.
+ */
 export interface LineQtyTotals {
-  requestedQty: number;
-  allocatedQty: number;
-  shippedQty: number;
+  requestedQty: number | null;
+  allocatedQty: number | null;
+  shippedQty: number | null;
 }
+
+/**
+ * 한 축을 더한다. **받지 못한 값을 0 으로 지어내지 않는다** — 한 줄이라도 비면 그 축은 통째로
+ * 「모른다」다.
+ *
+ * ⚠ 계약은 이 칸을 필수로 적지만 **서버가 비워 보낸 적이 있다**(client#1042). 타입만 믿고
+ * 더하면 합계가 `NaN` 이 되어 화면에 그대로 나간다 — 값이 숫자인지 여기서 본다.
+ */
+const addQty = (total: number | null, value: number | undefined): number | null =>
+  total === null || typeof value !== 'number' || !Number.isFinite(value) ? null : total + value;
 
 /**
  * `lines`를 세 합계로 접는다. 계약에서 `lines`는 선택 필드다 — 비어 있거나 없으면 `null`을 낸다.
@@ -37,9 +54,9 @@ export const toLineQtyTotals = (
 
   return lines.reduce<LineQtyTotals>(
     (totals, line) => ({
-      requestedQty: totals.requestedQty + line.requestedQty,
-      allocatedQty: totals.allocatedQty + line.allocatedQty,
-      shippedQty: totals.shippedQty + line.shippedQty,
+      requestedQty: addQty(totals.requestedQty, line.requestedQty),
+      allocatedQty: addQty(totals.allocatedQty, line.allocatedQty),
+      shippedQty: addQty(totals.shippedQty, line.shippedQty),
     }),
     { requestedQty: 0, allocatedQty: 0, shippedQty: 0 },
   );

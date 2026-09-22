@@ -37,10 +37,13 @@ export type ShipmentScheduleListQuery = PeriodQuery &
 export const shipmentScheduleKeys = {
   all: ['shipment-schedule'] as const,
   list: (query: ShipmentScheduleListQuery | null) => ['shipment-schedule', 'list', query] as const,
-  detail: (shipmentRequestId: number | null) => ['shipment-schedule', 'detail', shipmentRequestId] as const,
+  detail: (shipmentRequestId: number | null) =>
+    ['shipment-schedule', 'detail', shipmentRequestId] as const,
 };
 
-const shipmentRequestDetailPath = (shipmentRequestId: number): '/logistics/shipment-requests/{shipmentRequestId}' =>
+const shipmentRequestDetailPath = (
+  shipmentRequestId: number,
+): '/logistics/shipment-requests/{shipmentRequestId}' =>
   '/logistics/shipment-requests/{shipmentRequestId}';
 
 const fetchShipmentSchedule = async (
@@ -85,9 +88,11 @@ export const useShipmentRequestDetail = (shipmentRequestId: number | null) => {
     enabled: shipmentRequestId !== null,
     queryFn: async () => {
       if (shipmentRequestId === null) throw new Error('선택한 출하작업지시가 없습니다.');
-      const { data, response } = await runRequestWithResponse(() => client.GET('/logistics/shipment-requests/{shipmentRequestId}', {
-        params: { path: { shipmentRequestId } },
-      }));
+      const { data, response } = await runRequestWithResponse(() =>
+        client.GET('/logistics/shipment-requests/{shipmentRequestId}', {
+          params: { path: { shipmentRequestId } },
+        }),
+      );
       const etag = response.headers.get('ETag');
       if (etag !== null) etags.capture(shipmentRequestDetailPath(shipmentRequestId), etag);
       return data;
@@ -97,18 +102,28 @@ export const useShipmentRequestDetail = (shipmentRequestId: number | null) => {
 
 export const useFulfillmentPlantUpdate = (
   shipmentRequestId: number | null,
+  /** 저장이 실제로 끝났을 때만 부른다 — 화면은 이때 창을 닫는다(사용자 지시 2026-09-22). */
+  onSaved?: () => void,
 ): MasterWriteResult<components['schemas']['ShipmentRequestUpdate']> => {
   const { client } = useApiClient();
-  return useMasterWrite<components['schemas']['ShipmentRequestUpdate'], components['schemas']['ShipmentRequest']>({
+  return useMasterWrite<
+    components['schemas']['ShipmentRequestUpdate'],
+    components['schemas']['ShipmentRequest']
+  >({
     request: (body, headers) => {
       if (shipmentRequestId === null) throw new Error('선택한 출하작업지시가 없습니다.');
       return client.PUT('/logistics/shipment-requests/{shipmentRequestId}', {
-        params: { path: { shipmentRequestId }, header: {
-          'Idempotency-Key': headers['Idempotency-Key'], 'If-Match': headers['If-Match'] ?? '',
-        } },
+        params: {
+          path: { shipmentRequestId },
+          header: {
+            'Idempotency-Key': headers['Idempotency-Key'],
+            'If-Match': headers['If-Match'] ?? '',
+          },
+        },
         body,
       });
     },
+    onSuccess: onSaved,
     etagPath: shipmentRequestId === null ? null : shipmentRequestDetailPath(shipmentRequestId),
     invalidateKeys: [shipmentScheduleKeys.all],
     knownFields: ['fulfillmentPlantId'],

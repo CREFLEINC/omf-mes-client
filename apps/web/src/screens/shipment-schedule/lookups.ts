@@ -50,7 +50,12 @@ export interface LookupResult extends ReferenceSource {
  * **어느 갈래에도 번호를 담지 않는다** — 담을 자리가 없으면 화면으로 샐 경로도 없다.
  */
 export type ReferenceState =
-  { kind: 'named'; label: string } | { kind: 'unknown' } | { kind: 'loading' } | { kind: 'failed' };
+  | { kind: 'named'; label: string }
+  /** 가리키는 값 자체가 없다. 「이름을 못 찾았다」와 다른 사실이다. */
+  | { kind: 'empty' }
+  | { kind: 'unknown' }
+  | { kind: 'loading' }
+  | { kind: 'failed' };
 
 /**
  * 참조 하나를 표기 상태로 옮긴다.
@@ -64,7 +69,11 @@ export const toReference = (
 ): ReferenceState => {
   if (source.isError) return { kind: 'failed' };
   if (source.isLoading) return { kind: 'loading' };
-  if (id === null || id === undefined) return { kind: 'unknown' };
+  /*
+   * ⭐ **값이 없는 것과 이름을 못 찾은 것은 다르다**(사용자 지시 2026-09-22). 서버가 납품처를
+   * 비워 보내는 건이 있는데, 그것을 「알 수 없음」으로 그리면 조회가 잘못된 것처럼 읽힌다.
+   */
+  if (id === null || id === undefined) return { kind: 'empty' };
 
   const label = source.entries.find((entry) => entry.value === String(id))?.label;
 
@@ -76,6 +85,8 @@ export const describeReference = (state: ReferenceState): string => {
   switch (state.kind) {
     case 'named':
       return state.label;
+    case 'empty':
+      return t.values.empty;
     case 'unknown':
       return t.values.unknown;
     case 'loading':
@@ -86,9 +97,6 @@ export const describeReference = (state: ReferenceState): string => {
 };
 
 const EMPTY_ENTRIES: LookupEntry[] = [];
-
-/** 서버가 보낸 전체 건수가 받은 건수보다 많으면 잘린 것이다. */
-const isTruncated = (page: PageMeta, shown: number): boolean => page.total > shown;
 
 /**
  * 선택칸 아래에 붙일 안내. 밝히지 않으면 사용자가 불완전한 목록을 완전한 것으로 읽고
@@ -178,20 +186,39 @@ export const useShipToPartnerOptions = (): LookupResult => {
   });
 };
 
+/**
+ * 출하 담당 공장 — 지정 창의 선택지이자 **목록 표의 공장 이름**이다.
+ *
+ * ⭐ 이름을 푸는 조회라 `includeInactive` 를 켜고 쪽을 끝까지 받는다(고객·납품처와 같다).
+ * 켜지 않으면 서버가 «사용 중인 것»만 내려, 폐기된 공장에 지정된 과거 줄과 뒷쪽 쪽의 공장이
+ * 「알 수 없음」으로 떨어진다 — 값은 멀쩡한데 화면만 모른다고 말하는 꼴이다(공유계약 G-8).
+ */
 export const useFulfillmentPlantOptions = (): LookupResult => {
   const { client } = useApiClient();
   const query = useQuery({
     queryKey: lookupKeys.fulfillmentPlants,
-    queryFn: () => runRequest(() => client.GET('/mdm/plants', { params: { query: {} } })),
+    queryFn: () =>
+      fetchAllPages((page, size) =>
+        runRequest(() =>
+          client.GET('/mdm/plants', {
+            params: { query: { includeInactive: true, page, size } },
+          }),
+        ),
+      ),
   });
   const data = query.data;
   return {
-    entries: data?.items.map((plant) => ({
-      value: String(plant.plantId), label: `${plant.plantCode} · ${plant.plantName}`, isActive: plant.isActive,
-    })) ?? EMPTY_ENTRIES,
-    truncated: data !== undefined && isTruncated(data.page, data.items.length),
+    entries:
+      data?.items.map((plant) => ({
+        value: String(plant.plantId),
+        label: `${plant.plantCode} · ${plant.plantName}`,
+        isActive: plant.isActive,
+      })) ?? EMPTY_ENTRIES,
+    truncated: data?.truncated === true,
     isError: query.isError,
     isLoading: query.isPending,
-    refetch: () => { void query.refetch(); },
+    refetch: () => {
+      void query.refetch();
+    },
   };
 };

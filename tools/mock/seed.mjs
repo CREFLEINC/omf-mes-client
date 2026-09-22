@@ -1970,8 +1970,11 @@ export const createSeed = (now = new Date()) => {
       shipmentRequestId: 9601,
       lineNo: 1,
       itemId: 2003,
+      /* 계약이 필수로 적은 칸이다 — 비워 두면 화면의 수량 칸이 늘 빈 표기가 된다. */
+      requestedQty: 300,
       allocatedQty: 300,
       pickedQty: 0,
+      shippedQty: 0,
       uomId: 1001,
       fifoPolicyCode: 'FEFO',
       /*
@@ -1991,8 +1994,10 @@ export const createSeed = (now = new Date()) => {
       shipmentRequestId: 9601,
       lineNo: 2,
       itemId: 2003,
+      requestedQty: 200,
       allocatedQty: 200,
       pickedQty: 0,
+      shippedQty: 0,
       uomId: 1001,
       fifoPolicyCode: 'FEFO',
     },

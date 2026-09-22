@@ -10,6 +10,10 @@ export const shipmentSchedule: Translated<typeof ko.shipmentSchedule> = {
     fulfillmentPlant: 'Chỉ định nhà máy xuất hàng',
   },
   fields: {
+    period: 'Kỳ xuất hàng',
+    periodSeparator: '~',
+    periodFromPlaceholder: 'Chọn ngày bắt đầu',
+    periodToPlaceholder: 'Chọn ngày kết thúc',
     periodFrom: 'Ngày xuất hàng từ',
     periodTo: 'Ngày xuất hàng đến',
     customer: 'Khách hàng',
@@ -22,8 +26,9 @@ export const shipmentSchedule: Translated<typeof ko.shipmentSchedule> = {
     prevPage: 'Trước',
     nextPage: 'Sau',
     goFirstPage: 'Về trang đầu',
-    assignPlant: 'Chỉ định nhà máy xuất hàng',
-    savePlant: 'Lưu chỉ định nhà máy',
+    assignPlant: 'Chỉ định nhà máy',
+    changePlant: 'Thay đổi',
+    savePlant: 'Lưu',
   },
   reasons: {
     periodRequired: 'Ngày xuất hàng từ bắt buộc phải nhập.',
@@ -47,6 +52,14 @@ export const shipmentSchedule: Translated<typeof ko.shipmentSchedule> = {
     progress: 'Tiến độ',
     fulfillmentPlant: 'Nhà máy phụ trách xuất hàng',
   },
+  progressCodes: {
+    NOT_ALLOCATED: 'Chưa lập',
+    PARTIALLY_ALLOCATED: 'Lập một phần',
+    PICKING: 'Đang lấy hàng',
+    PICKED: 'Đã lấy hàng',
+    PARTIALLY_SHIPPED: 'Xuất một phần',
+    SHIPPED: 'Đã xuất hàng',
+  },
   values: {
     empty: '—',
     unknown: 'Không xác định',
@@ -54,14 +67,12 @@ export const shipmentSchedule: Translated<typeof ko.shipmentSchedule> = {
     referenceFailed: 'Không tải được tên',
     inspectionPending: 'Chờ',
     inspectionPassed: 'Đạt',
-    plantAssigned: 'Đã chỉ định',
   },
   filters: {
     all: 'Tất cả',
     inspectionRequired: 'Thuộc diện',
     inspectionNotRequired: 'Không thuộc diện',
-    timeSlotNote: 'Không cung cấp bộ lọc khung giờ vì không có chỗ lưu.',
-    summaryNote: 'Phần tổng hợp sẽ được cung cấp sau khi xác nhận thiết kế.',
+    summaryNote: 'Đang chuẩn bị phần tổng hợp.',
     lookupTruncated:
       'Chỉ hiện một phần đầu của các lựa chọn. Nếu không có giá trị cần tìm, hãy báo người phụ trách.',
     lookupFailed: 'Không tải được các lựa chọn.',
@@ -83,14 +94,9 @@ export const shipmentSchedule: Translated<typeof ko.shipmentSchedule> = {
   empty: {
     noResultTitle: 'Không có kế hoạch xuất hàng nào khớp điều kiện',
     noResultDescription: 'Hãy mở rộng khoảng thời gian hoặc bớt điều kiện rồi tra cứu lại.',
-    notQueriedTitle: 'Chưa tra cứu',
-    notQueriedDescription:
-      'Hãy nhập ngày xuất hàng từ theo hướng dẫn ở dòng điều kiện rồi tra cứu.',
+    notQueriedTitle: 'Hãy nhập điều kiện tra cứu',
+    notQueriedDescription: 'Nhập ngày xuất hàng rồi tra cứu thì kết quả sẽ hiển thị.',
     beyondLastTitle: 'Trang này không có kết quả',
     beyondLastDescription: 'Hãy về trang đầu.',
-  },
-  notes: {
-    sortScope:
-      'Sắp xếp tính trên toàn bộ kết quả. Hợp đồng không phân biệt chiều sắp xếp nên hiển thị theo thứ tự tăng dần.',
   },
 };
