@@ -45,7 +45,16 @@
 | 서버   | 버전          | 커밋       | 확인일     |
 | ------ | ------------- | ---------- | ---------- |
 | 테스트 | `web-v0.3.13` | `e8056cfb` | 2026-09-18 |
-| 고객사 | `web-v0.3.13` | `e8056cfb` | 2026-09-18 |
+| 고객사 | `web-v0.3.17` | `8f7df6d8` | 2026-09-21 |
+
+⚠ **이 표는 손으로 적는다 — 배포가 갱신해 주지 않는다.** 2026-09-21 에 고객사 서버는 실제로
+`web-v0.3.15`(`e2d2cb44`)가 돌고 있었는데 이 표에는 `web-v0.3.13` 으로 남아 있었다. 표를 믿고
+「무엇이 올라가 있나」를 판정하지 말고 서버에서 직접 본다.
+
+```bash
+ssh <서버> 'cd /opt/services/omf-mes-front && docker compose ps \
+  && docker inspect --format "{{index .Config.Labels \"org.opencontainers.image.revision\"}}" $(docker compose ps -q)'
+```
 
 재배포는 **버전만** 주면 된다 — 나머지는 그 서버의 `.env`에서 읽는다.
 
