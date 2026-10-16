@@ -57,6 +57,7 @@ const routing = (routingId: number) => ({
   routingCode: `ROUTE-SYN-${String(routingId)}`,
   routingVersion: routingId === 801 ? 8 : 2,
   statusCode: routingId === 801 ? 'OBSOLETE' : 'DRAFT',
+  isDefault: routingId === 801,
   ...(routingId === 802 ? { effectiveFrom: '2026-02-01', effectiveTo: '2026-11-30' } : {}),
 });
 
@@ -78,7 +79,7 @@ describe('production plan reference queries', () => {
     const { result } = renderHookWithProviders(
       () => ({
         boms: useBomReferenceQuery(null),
-        routings: useRoutingReferenceQuery(null),
+        routings: useRoutingReferenceQuery(null, true),
         productionLines: useProductionLineReferenceQuery(null),
       }),
       { fetch },
@@ -104,7 +105,7 @@ describe('production plan reference queries', () => {
       },
     ]);
     const { result } = renderHookWithProviders(
-      () => ({ boms: useBomReferenceQuery(4101), routings: useRoutingReferenceQuery(4101) }),
+      () => ({ boms: useBomReferenceQuery(4101), routings: useRoutingReferenceQuery(4101, false) }),
       { fetch },
     );
 
@@ -130,7 +131,29 @@ describe('production plan reference queries', () => {
     expect(result.current.routings.data?.items[0]?.effectiveFrom).toBeNull();
     expect(result.current.routings.data?.items[0]?.effectiveTo).toBeNull();
     expect(productionPlanReferenceKeys.boms(4101)).not.toEqual(
-      productionPlanReferenceKeys.routings(4101),
+      productionPlanReferenceKeys.routings(4101, true),
+    );
+  });
+
+  it('계획 후보 Routing 은 usableOnly 로 서버에 판정을 맡기고 키도 전 개정과 가른다 (#91)', async () => {
+    const { fetch, requests } = recordingFetch([
+      {
+        match: (request) => isGet(request, ROUTINGS_PATH),
+        respond: () => jsonResponse({ items: [routing(801)] }),
+      },
+    ]);
+    const { result } = renderHookWithProviders(() => useRoutingReferenceQuery(4101, true), {
+      fetch,
+    });
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(Array.from(requests[0]?.url.searchParams.entries() ?? [])).toEqual([
+      ['itemId', '4101'],
+      ['usableOnly', 'true'],
+    ]);
+    expect(result.current.data?.items[0]?.isDefault).toBe(true);
+    expect(productionPlanReferenceKeys.routings(4101, true)).not.toEqual(
+      productionPlanReferenceKeys.routings(4101, false),
     );
   });
 
@@ -193,7 +216,7 @@ describe('production plan reference queries', () => {
     const { result } = renderHookWithProviders(
       () => ({
         boms: useBomReferenceQuery(4101),
-        routings: useRoutingReferenceQuery(4101),
+        routings: useRoutingReferenceQuery(4101, false),
         productionLines: useProductionLineReferenceQuery(3101),
       }),
       { fetch },

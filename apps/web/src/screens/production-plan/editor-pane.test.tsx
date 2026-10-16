@@ -185,4 +185,33 @@ describe('ProductionPlanEditorPane', () => {
     expect(screen.getByRole('button', { name: '저장 PLAN-101' })).toBeVisible();
     expect(screen.queryByRole('button', { name: '삭제' })).not.toBeInTheDocument();
   });
+  it('확정된 줄은 선택지에 없는 Routing 도 전 개정 목록으로 이름을 푼다 (#91)', () => {
+    renderWithProviders(
+      <ProductionPlanEditorPane
+        rows={[
+          row({
+            confirmed: true,
+            statusCode: 'CONFIRMED',
+            draft: { ...row().draft, routingId: '809' },
+          }),
+        ]}
+        orderQty={100}
+        uomLabel="EA"
+        {...options}
+        routingLabelOptions={[{ value: '809', label: 'ROUTE-A · Rev 1 · OBSOLETE' }]}
+        onAdd={vi.fn()}
+        onChange={vi.fn()}
+        onRemove={vi.fn()}
+      />,
+    );
+    expect(screen.getByText('ROUTE-A · Rev 1 · OBSOLETE')).toBeVisible();
+  });
+  it('작성 중 줄이 쓸 수 없는 Routing 을 들고 있으면 다시 고르라고 알린다 (#91)', () => {
+    renderPane([row({ draft: { ...row().draft, routingId: '809' } })]);
+    expect(screen.getByText('이 Routing 개정은 쓸 수 없습니다. 다시 선택하세요.')).toBeVisible();
+    expect(screen.getByRole('combobox', { name: 'PLAN-101 Routing Rev' })).toHaveAttribute(
+      'aria-invalid',
+      'true',
+    );
+  });
 });
