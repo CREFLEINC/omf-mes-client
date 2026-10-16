@@ -3,6 +3,7 @@ import type { DashboardEquipmentStatusCode } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import {
   useEffect,
+  useLayoutEffect,
   useRef,
   useState,
   type FocusEvent,
@@ -483,6 +484,25 @@ const AllEquipmentDialog = ({
 /** 가동 외 설비 현황 — 그룹마다 이만큼만 보이고 나머지는 「외 n대」로 전체 설비 보기 창(사용자 결정 2026-10-16). */
 export const STOPPED_GROUP_PREVIEW_COUNT = 3;
 
+/**
+ * 그룹마다 보일 줄 수 — 그룹당 최대 `cap`, 카드 전체로는 `budget`(없으면 제한 없음)을 그룹 순서대로 나눠 쓴다.
+ * 예산이 모자라면 뒤 그룹은 머리와 「외 n대」만 남는다(사용자 지정 2026-10-16 — 옆 카드 높이를 넘지 않게).
+ */
+export const allocateRows = (
+  groupSizes: readonly number[],
+  cap: number,
+  budget: number | null,
+): number[] => {
+  let left = budget ?? Number.POSITIVE_INFINITY;
+
+  return groupSizes.map((size) => {
+    const shown = Math.max(0, Math.min(size, cap, left));
+    left -= shown;
+
+    return shown;
+  });
+};
+
 /** 상태별 대수 — 고른 범위(라인) 기준. 필터와 떨어진 오른쪽에 선다. */
 const StatusLegend = ({ items }: { items: readonly EquipmentItemView[] }) => (
   <ul className="dash-eq-legend" aria-label={t.legend}>
@@ -508,6 +528,45 @@ export const StoppedPanel = (props: EquipmentPanelProps) => {
   const pointerInput = usePointerInput();
   const blocked = gate(props);
   const { view } = props;
+  /*
+   * 카드 전체 줄 수 예산(사용자 지정 2026-10-16) — 넓은 화면에서 이 카드는 옆 설비 카드 높이에 맞춰 늘어나고
+   * (`.dash-fit`), 내용이 넘치면 한 줄씩 덜어 낸다. 크기 · 자료가 바뀌면 처음부터 다시 맞춘다. 1열(좁은 화면)
+   * 에서는 넘치지 않아 그룹당 3행 규칙만 남는다.
+   */
+  const [budget, setBudget] = useState<number | null>(null);
+  const [listEl, setListEl] = useState<HTMLDivElement | null>(null);
+  const shownTotalRef = useRef(0);
+
+  useEffect(() => {
+    setBudget(null);
+  }, [view]);
+
+  useEffect(() => {
+    const body = listEl?.parentElement;
+    if (body === null || body === undefined || typeof ResizeObserver === 'undefined') {
+      return undefined;
+    }
+    let lastHeight = body.clientHeight;
+    const observer = new ResizeObserver(() => {
+      if (body.clientHeight !== lastHeight) {
+        lastHeight = body.clientHeight;
+        setBudget(null);
+      }
+    });
+    observer.observe(body);
+
+    return () => {
+      observer.disconnect();
+    };
+  }, [listEl]);
+
+  useLayoutEffect(() => {
+    const body = listEl?.parentElement;
+    if (body === null || body === undefined) return;
+    if (body.scrollHeight > body.clientHeight + 1 && shownTotalRef.current > 0) {
+      setBudget(shownTotalRef.current - 1);
+    }
+  });
 
   const body = (() => {
     if (blocked !== null || view === null) return blocked;
@@ -521,6 +580,15 @@ export const StoppedPanel = (props: EquipmentPanelProps) => {
     const openTile = (target: EquipmentItemView): void => {
       setOpenedId(target.equipmentId);
     };
+    const groups = EQUIPMENT_STATUS_ORDER.filter((code) => code !== 'RUNNING')
+      .map((code) => ({ code, rows: stopped.filter((item) => item.statusCode === code) }))
+      .filter((group) => group.rows.length > 0);
+    const shownCounts = allocateRows(
+      groups.map((group) => group.rows.length),
+      STOPPED_GROUP_PREVIEW_COUNT,
+      budget,
+    );
+    shownTotalRef.current = shownCounts.reduce((sum, count) => sum + count, 0);
 
     return (
       <>
@@ -529,14 +597,13 @@ export const StoppedPanel = (props: EquipmentPanelProps) => {
          * 그룹마다 달라 줄이 들쭉날쭉했다. ⚠ 대시보드 표의 「가운데 정렬」 규칙에서 뺀다 — 사유는 긴 문장이라
          * 왼쪽에서 읽어야 하고, 경과 시간은 오른쪽 끝에 맞춰야 위아래로 견준다.
          */}
-        <div className="dash-stopped">
+        <div className="dash-stopped" ref={setListEl}>
           <div className="dash-stopped-colhead" aria-hidden="true">
             <span>{t.stoppedElapsedColumn}</span>
           </div>
-          {EQUIPMENT_STATUS_ORDER.filter((code) => code !== 'RUNNING').map((code) => {
-            const rows = stopped.filter((item) => item.statusCode === code);
-            if (rows.length === 0) return null;
-            const hidden = rows.length - STOPPED_GROUP_PREVIEW_COUNT;
+          {groups.map(({ code, rows }, groupIndex) => {
+            const shown = shownCounts[groupIndex] ?? 0;
+            const hidden = rows.length - shown;
 
             return (
               <section key={code} className="dash-stopped-group" aria-label={t.status[code]}>
@@ -546,12 +613,28 @@ export const StoppedPanel = (props: EquipmentPanelProps) => {
                     {formatFigure(rows.length)}
                     {t.countUnit}
                   </span>
+                  {/*
+                   * 「외 n대」는 그룹 머리 오른쪽 — 줄을 덜어 낼 때 높이가 다시 늘지 않게(따로 한 줄을 쓰면 덜어 낸
+                   * 줄보다 단추 줄이 더 높아 예산이 끝까지 줄었다).
+                   */}
+                  {hidden > 0 && (
+                    <Button
+                      variant="text"
+                      size="sm"
+                      className="dash-stopped-more"
+                      onClick={() => {
+                        setIsAllOpen(true);
+                      }}
+                    >
+                      {t.stoppedMore(formatFigure(hidden))}
+                    </Button>
+                  )}
                 </div>
                 <ul
                   className="dash-stopped-list"
                   aria-label={t.stoppedGroupCaption(t.status[code])}
                 >
-                  {rows.slice(0, STOPPED_GROUP_PREVIEW_COUNT).map((item) => (
+                  {rows.slice(0, shown).map((item) => (
                     <li key={item.equipmentId} className="dash-stopped-row">
                       <button
                         type="button"
@@ -562,19 +645,15 @@ export const StoppedPanel = (props: EquipmentPanelProps) => {
                           openTile(item);
                         }}
                       >
-                        <span className="dash-stopped-unit">
-                          <span className="dash-stopped-code">{item.equipmentCode}</span>
-                          {item.tonnage !== null && (
-                            <span className="dash-stopped-type">{item.tonnage}</span>
-                          )}
-                        </span>
+                        {/* 4열 — 설비명 · 설비 종류 · 사유 · 경과 시간(사용자 지정 2026-10-16). */}
+                        <span className="dash-stopped-code">{item.equipmentCode}</span>
+                        <span className="dash-stopped-type">{item.tonnage ?? ''}</span>
                         <span
                           className={
                             item.reasonName === null
                               ? 'dash-stopped-reason dash-stopped-reason-none'
                               : 'dash-stopped-reason'
                           }
-                          title={describeReason(item)}
                         >
                           {describeReason(item)}
                         </span>
@@ -585,18 +664,6 @@ export const StoppedPanel = (props: EquipmentPanelProps) => {
                     </li>
                   ))}
                 </ul>
-                {hidden > 0 && (
-                  <Button
-                    variant="text"
-                    size="sm"
-                    className="dash-stopped-more"
-                    onClick={() => {
-                      setIsAllOpen(true);
-                    }}
-                  >
-                    {t.stoppedMore(formatFigure(hidden))}
-                  </Button>
-                )}
               </section>
             );
           })}
@@ -621,7 +688,7 @@ export const StoppedPanel = (props: EquipmentPanelProps) => {
   })();
 
   return (
-    <Panel title={t.stoppedTitle} sub={t.stoppedSub} tag={t.tagLive}>
+    <Panel title={t.stoppedTitle} tag={t.tagLive} className="dash-fit">
       {body}
     </Panel>
   );

@@ -148,40 +148,39 @@ export const DashboardScreen = () => {
       />
 
       {/*
-       * ⭐ 왼쪽 열 = 설비 가동 현황 → 생산 추이, 오른쪽 열 = 멈춘 설비 → 출하 현황 → 미확인 알림(한 묶음 ·
-       * 사용자 지시 2026-10-16). 설비 타일이 2행(12대)으로 줄면서 오른쪽 열이 더 길어져 설비 패널 아래가 크게
-       * 비었다 — 생산 추이를 그 아래로 올려 두 열의 높이를 맞춘다(순서는 그대로). 오른쪽 열을 위에 붙이던
-       * sticky 는 왼쪽이 짧아져 필요 없어 없앴다.
+       * ⭐ 행 단위 격자(사용자 지정 2026-10-16) — 2행: 설비 가동 현황 | 가동 외 설비 현황, 3행: 일일 생산실적 추이 |
+       * 출하 현황 / 미확인 알림(세로). 두 행 모두 같은 좌우 비율이고 행 안 카드는 위 · 아래 끝을 맞춘다. 행 높이는
+       * 왼쪽 설비 카드(2행) · 오른쪽 출하 + 알림(3행)이 정하고, 가동 외 설비는 그 높이에 맞춰 줄 수를, 추이는 그래프
+       * 높이를 맞춘다(`.dash-fit`). 좁으면 1열로 쌓는다.
        */}
-      <div className="dash-row2">
-        <div className="dash-main-col">
-          <EquipmentBoard
-            view={view?.equipment ?? null}
+      <div className="dash-overview">
+        <EquipmentBoard
+          view={view?.equipment ?? null}
+          isLoading={summary.isPending}
+          isFailed={isFailed}
+        />
+        <StoppedPanel
+          view={view?.equipment ?? null}
+          isLoading={summary.isPending}
+          isFailed={isFailed}
+        />
+        {/* 「단위 EA」는 그래프 안이 아니라 상자 머리 오른쪽(사용자 지시 2026-10-16). */}
+        <Panel
+          title={t.panes.trend}
+          className="dash-fit"
+          action={
+            view?.trend?.unit === null || view?.trend?.unit === undefined ? undefined : (
+              <span className="dash-panel-unit">{t.trend.unitSuffix(view.trend.unit)}</span>
+            )
+          }
+        >
+          <TrendPanel
+            view={view?.trend ?? null}
+            baseDate={view?.baseDate ?? null}
             isLoading={summary.isPending}
-            isFailed={isFailed}
           />
-          {/* 「단위 EA」는 그래프 안이 아니라 상자 머리 오른쪽(사용자 지시 2026-10-16). */}
-          <Panel
-            title={t.panes.trend}
-            action={
-              view?.trend?.unit === null || view?.trend?.unit === undefined ? undefined : (
-                <span className="dash-panel-unit">{t.trend.unitSuffix(view.trend.unit)}</span>
-              )
-            }
-          >
-            <TrendPanel
-              view={view?.trend ?? null}
-              baseDate={view?.baseDate ?? null}
-              isLoading={summary.isPending}
-            />
-          </Panel>
-        </div>
-        <div className="dash-side">
-          <StoppedPanel
-            view={view?.equipment ?? null}
-            isLoading={summary.isPending}
-            isFailed={isFailed}
-          />
+        </Panel>
+        <div className="dash-overview-stack">
           <ShipmentPanel
             view={view?.shipment ?? null}
             baseDate={view?.baseDate ?? null}

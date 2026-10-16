@@ -127,7 +127,6 @@ export const dashboard = {
     reasonUnknown: '사유 미등록',
     /** ⭐ 「비가동」이 상태값으로 따로 있어 「멈춘 설비」와 혼동됐다(사용자 결정 2026-10-16). */
     stoppedTitle: '가동 외 설비 현황',
-    stoppedSub: '상태별 설비 및 경과 시간',
     stoppedElapsedColumn: '경과 시간',
     /** 그룹에 다 보이지 않은 대수 — 누르면 「전체 설비 보기」 창. */
     stoppedMore: (count: string): string => `외 ${count}대`,

@@ -50,6 +50,9 @@ export const alertTimeOf = (view: DashboardAlertView): string => {
   return parts === null ? view.occurredAtText : `${parts.date.replaceAll('-', '.')} ${parts.time}`;
 };
 
+/** 카드에 보일 최근 알림 수(⭐ 사용자 지정 2026-10-16 — 3~5건 범위의 상수). 나머지는 「알림센터 보기」. */
+export const ALERT_PREVIEW_COUNT = 3;
+
 export interface AlertPanelProps {
   views: DashboardAlertView[];
   /** 알림 유형 이름 목록(알림센터와 같은 조회 · `useNotificationEventOptions`). */
@@ -82,7 +85,7 @@ export const AlertPanel = ({ views, events, isLoading }: AlertPanelProps) => {
    */
   return (
     <ul className="dash-alert-list">
-      {views.map((view) => {
+      {views.slice(0, ALERT_PREVIEW_COUNT).map((view) => {
         const message = describeMessage(view.message);
         const location = view.locationPath?.trim() ?? '';
 

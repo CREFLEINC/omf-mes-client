@@ -62,6 +62,7 @@ export const placeTip = (
   size: { width: number; height: number },
   positions: readonly { x: number; y: number }[],
   areaWidth: number,
+  areaHeight: number = CHART_HEIGHT,
 ): { left: number; top: number } => {
   /* 왼쪽 끝은 y축 글자(그림 여백 안)를 덮지 않게 그림 영역 시작 조금 앞에서 멈춘다. */
   const minLeft = DS_CHART_PAD.left - 6;
@@ -87,7 +88,7 @@ export const placeTip = (
       ? above
       : Math.min(...aboveCovered.map((point) => point.y)) - TIP_POINT_MARGIN_PX - 1 - size.height;
   const candidates = [above, below, higher].filter(
-    (top) => top >= 0 && top + size.height <= CHART_HEIGHT,
+    (top) => top >= 0 && top + size.height <= areaHeight,
   );
   if (candidates.length === 0) return { left, top: Math.max(above, 0) };
 
@@ -122,10 +123,11 @@ export const toPointPositions = (
   points: readonly DashboardTrendPointView[],
   width: number,
   max: number,
+  height: number = CHART_HEIGHT,
 ): { x: number; y: number }[] => {
   const plotW = width - DS_CHART_PAD.left - DS_CHART_PAD.right;
   const top = DS_CHART_PAD.top;
-  const bottom = CHART_HEIGHT - DS_CHART_PAD.bottom;
+  const bottom = height - DS_CHART_PAD.bottom;
   const min = Math.min(0, ...points.map((point) => point.value));
   const span = max - min || 1;
 
@@ -146,12 +148,14 @@ export const toPointPositions = (
 const PointTips = ({
   points,
   width,
+  height,
   max,
   unit,
   baseDate,
 }: {
   points: readonly DashboardTrendPointView[];
   width: number;
+  height: number;
   max: number;
   unit: string | null;
   baseDate: string | null;
@@ -189,7 +193,7 @@ const PointTips = ({
     };
   }, [pinned]);
 
-  const positions = toPointPositions(points, width, max);
+  const positions = toPointPositions(points, width, max, height);
   const slot =
     points.length <= 1
       ? width
@@ -200,10 +204,10 @@ const PointTips = ({
 
   const active = shown === null ? undefined : points[shown];
   const at = shown === null ? undefined : positions[shown];
-  const place = at === undefined ? undefined : placeTip(at, tipSize, positions, width);
+  const place = at === undefined ? undefined : placeTip(at, tipSize, positions, width, height);
 
   return (
-    <div ref={layerRef} className="dash-trend-tips" style={{ width, height: CHART_HEIGHT }}>
+    <div ref={layerRef} className="dash-trend-tips" style={{ width, height }}>
       {points.map((point, index) => {
         const position = positions[index];
         if (position === undefined) return null;
@@ -217,7 +221,7 @@ const PointTips = ({
               left: position.x - slot / 2,
               width: slot,
               top: DS_CHART_PAD.top,
-              height: CHART_HEIGHT - DS_CHART_PAD.top - DS_CHART_PAD.bottom,
+              height: height - DS_CHART_PAD.top - DS_CHART_PAD.bottom,
             }}
             aria-label={textOf(point)}
             onMouseEnter={() => {
@@ -292,6 +296,8 @@ export const TrendPanel = ({ view, baseDate = null, isLoading }: TrendPanelProps
   /* 실제 폭으로 그린다 — 그림을 줄이면 좁은 폭에서 축 글자가 8px 까지 작아졌다(원칙 d). */
   const [chartRef, chartWidth] = useChartWidth<HTMLDivElement>(640);
   const plotRef = useRef<HTMLDivElement | null>(null);
+  const pointCount = view?.points.length ?? 0;
+  const [fitHeight, setFitHeight] = useState<number | null>(null);
   const setPlot = useCallback(
     (node: HTMLDivElement | null) => {
       plotRef.current = node;
@@ -299,7 +305,33 @@ export const TrendPanel = ({ view, baseDate = null, isLoading }: TrendPanelProps
     },
     [chartRef],
   );
-  const pointCount = view?.points.length ?? 0;
+
+  /*
+   * 그래프 높이를 행 높이에 맞춘다(⭐ 사용자 지정 2026-10-16 — 오른쪽 출하 + 알림 높이 합에 맞춤). 카드가 행을
+   * 따라가는 자리(`.dash-fit` · 크기 봉쇄)일 때만 몸통 높이를 재서 쓰고, 1열처럼 제 높이대로 서는 자리에서는 기본
+   * 높이 그대로다 — 재는 높이를 그대로 쓰면 그림이 몸통을 키우고 몸통이 다시 그림을 키운다.
+   */
+  useEffect(() => {
+    const plot = plotRef.current;
+    const body = plot?.closest<HTMLElement>('.dash-panel-body');
+    const card = plot?.closest<HTMLElement>('.dash-fit');
+    if (body === null || body === undefined || card === null || card === undefined)
+      return undefined;
+    if (typeof ResizeObserver === 'undefined') return undefined;
+
+    const measure = () => {
+      const fitted = getComputedStyle(card).contain.includes('size');
+      setFitHeight(fitted ? Math.floor(body.clientHeight) : null);
+    };
+    const observer = new ResizeObserver(measure);
+    observer.observe(body);
+    measure();
+
+    return () => {
+      observer.disconnect();
+    };
+  }, [view === null, isLoading, pointCount]);
+  const chartHeight = Math.max(CHART_HEIGHT, fitHeight ?? 0);
 
   /* 날짜 이름표 솎기 — 칠하기 전에 숨긴다(겹친 글자가 한 번 보였다 사라지지 않게). */
   useLayoutEffect(() => {
@@ -363,7 +395,7 @@ export const TrendPanel = ({ view, baseDate = null, isLoading }: TrendPanelProps
          * 그림이라 세로로 키운다고 더 읽히지 않는다.
          */
         width={chartWidth}
-        height={CHART_HEIGHT}
+        height={chartHeight}
         showPoints
         /* 시리즈가 하나뿐이라 범례는 같은 이름을 한 번 더 적을 뿐이다. */
         showLegend={false}
@@ -371,6 +403,7 @@ export const TrendPanel = ({ view, baseDate = null, isLoading }: TrendPanelProps
       <PointTips
         points={view.points}
         width={chartWidth}
+        height={chartHeight}
         max={chartMax}
         unit={view.unit}
         baseDate={baseDate}

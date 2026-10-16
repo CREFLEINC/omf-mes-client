@@ -8,6 +8,7 @@ import { toEquipmentView } from './equipment';
 import {
   EquipmentBoard,
   STOPPED_GROUP_PREVIEW_COUNT,
+  allocateRows,
   StoppedPanel,
   formatElapsed,
 } from './equipment-panel';
@@ -261,13 +262,14 @@ describe('StoppedPanel', () => {
     expect(screen.queryByRole('region', { name: t.status.CHANGEOVER })).not.toBeInTheDocument();
   });
 
-  it('제목 · 열 제목, 사유 미등록은 보조 글 · 사유 전체는 title', () => {
+  it('제목 · 열 제목, 사유 미등록은 보조 글 · 사유는 말줄임 없이', () => {
     render(<StoppedPanel view={view} isLoading={false} isFailed={false} />);
 
     expect(screen.getByText(t.stoppedTitle)).toBeInTheDocument();
     expect(t.stoppedTitle).toBe('가동 외 설비 현황');
     expect(screen.getByText(t.stoppedElapsedColumn)).toBeInTheDocument();
-    expect(screen.getByText('유압 이상')).toHaveAttribute('title', '유압 이상');
+    /* 사유는 말줄임 없이 그대로(줄바꿈) — 사용자 지시 2026-10-16. */
+    expect(screen.getByText('유압 이상')).toHaveClass('dash-stopped-reason');
     expect(screen.getByText(t.reasonUnknown)).toHaveClass('dash-stopped-reason-none');
   });
 
@@ -396,5 +398,13 @@ describe('EquipmentBoard — 12대 표시 · 전체 보기', () => {
 
     expect(screen.getByRole('button', { name: 'PERF · 3 1' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'PERF · 7 1' })).toBeInTheDocument();
+  });
+});
+
+describe('allocateRows — 가동 외 설비 줄 수 예산', () => {
+  it('그룹당 최대 3행, 예산이 있으면 그룹 순서대로 나눠 쓰고 모자라면 뒤 그룹은 0행', () => {
+    expect(allocateRows([2, 5, 1], 3, null)).toEqual([2, 3, 1]);
+    expect(allocateRows([2, 5, 1], 3, 4)).toEqual([2, 2, 0]);
+    expect(allocateRows([2, 5, 1], 3, 0)).toEqual([0, 0, 0]);
   });
 });

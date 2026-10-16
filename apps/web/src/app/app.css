@@ -7801,24 +7801,39 @@ dl.filter-bar.approval-inbox-detail-facts {
   --dash-row-cols: 1;
 }
 
-.dash-side {
+/*
+ * 대시보드 탭 행 격자(⭐ 사용자 지정 2026-10-16) — 2행: 설비 가동 현황 | 가동 외 설비, 3행: 생산 추이 | 출하 /
+ * 알림(세로). 두 행이 같은 좌우 비율(≈ 62 : 38)이고 행 안 카드는 위 · 아래 끝을 맞춘다(늘임). 이 탭에서는 공통
+ * 원칙 (b)(짧은 상자를 늘이지 않음)를 이 지정으로 대체한다 — 늘어나는 두 카드(가동 외 설비 · 추이)는 내용을 그
+ * 높이에 맞춘다(`.dash-fit`: 줄 수 예산 · 그래프 높이). 고정 · 최소 높이는 두지 않는다.
+ */
+.dash-overview {
+  display: grid;
+  grid-template-columns: minmax(0, 62fr) minmax(0, 38fr);
+  gap: var(--space-4);
+}
+
+.dash-overview-stack {
   display: grid;
   align-content: start;
   gap: var(--space-4);
   min-width: 0;
 }
 
-/* 두 열(왼쪽 설비 → 추이 / 오른쪽 멈춘 설비 → 출하 → 알람)은 제 높이대로 쌓는다. */
-.dash-main-col {
-  display: grid;
-  align-content: start;
-  gap: var(--space-4);
-  min-width: 0;
+/*
+ * 행 높이를 정하지 않고 따라가는 카드 — 크기 봉쇄(`contain: size`)로 제 내용 높이를 행에 내지 않고, 행 높이에
+ * 맞춰 늘어난 몸통 안에 내용을 맞춘다(넘치면 화면 코드가 줄을 덜어 낸다 · 그래프는 높이를 맞춘다).
+ */
+.dash-overview > .dash-fit {
+  display: flex;
+  flex-direction: column;
+  contain: size;
 }
 
-.dash-row2 > .dash-main-col,
-.dash-row2 > .dash-side {
-  align-self: start;
+.dash-overview > .dash-fit > .dash-panel-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
 }
 
 /*
@@ -7847,8 +7862,18 @@ dl.filter-bar.approval-inbox-detail-facts {
 
 @container (max-width: 860px) {
   .dash-row2,
-  .dash-split {
+  .dash-split,
+  .dash-overview {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  /* 1열이면 따라갈 옆 카드가 없다 — 제 내용 높이대로(줄 수 예산 · 그래프 높이 맞춤이 쉰다). */
+  .dash-overview > .dash-fit {
+    contain: none;
+  }
+
+  .dash-overview > .dash-fit > .dash-panel-body {
+    overflow: visible;
   }
 }
 
@@ -8609,7 +8634,8 @@ dl.filter-bar.approval-inbox-detail-facts {
  */
 .dash-stopped {
   display: grid;
-  grid-template-columns: max-content minmax(0, 1fr) max-content;
+  /* 설비명 · 설비 종류 · 사유 · 경과 시간 — 모든 줄이 같은 열 위치(사용자 지정 2026-10-16). */
+  grid-template-columns: max-content max-content minmax(0, 1fr) max-content;
   column-gap: var(--space-3);
 }
 
@@ -8695,35 +8721,25 @@ dl.filter-bar.approval-inbox-detail-facts {
   box-shadow: none;
 }
 
-/* 설비 코드는 굵게, 설비 종류는 옆에 작은 회색 — 원칙(a) 코드는 줄을 바꾸지 않는다. */
-.dash-stopped-unit {
-  display: flex;
-  align-items: baseline;
-  gap: var(--space-1);
-  white-space: nowrap;
-}
-
+/* 설비명은 굵게, 설비 종류는 작은 회색 — 원칙(a) 코드 · 종류는 줄을 바꾸지 않는다. */
 .dash-stopped-code {
   font-weight: 600;
+  white-space: nowrap;
 }
 
 .dash-stopped-type {
   font: var(--type-label-sm);
   letter-spacing: var(--type-label-sm-tracking);
   color: var(--on-surface-muted);
+  white-space: nowrap;
 }
 
-/* 사유 — 최대 2줄, 넘치면 말줄임(전체는 `title` · 상세 창). */
+/* 사유 — 말줄임 없이 자연 줄바꿈(사용자 지시 2026-10-16 — 앞의 「최대 2줄 + 말줄임」 대체). */
 .dash-stopped-reason {
-  display: -webkit-box;
   min-width: 0;
-  overflow: hidden;
   color: var(--on-surface-variant);
   word-break: keep-all;
   overflow-wrap: break-word;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-  line-clamp: 2;
 }
 
 /* 「사유 미등록」 — 오류 · 경고가 아니라 차분한 보조 글. */
@@ -8738,10 +8754,10 @@ dl.filter-bar.approval-inbox-detail-facts {
   white-space: nowrap;
 }
 
-/* 「외 n대」 — 그룹 끝, 왼쪽 정렬. */
-.dash-stopped-more {
-  grid-column: 1 / -1;
-  justify-self: start;
+/* 「외 n대」 — 그룹 머리 오른쪽 끝. 머리줄 높이를 늘리지 않게 위아래를 당긴다. */
+.dash-stopped-head .dash-stopped-more {
+  margin-block: calc(var(--space-1) * -1);
+  margin-inline-start: auto;
 }
 
 /*
@@ -8750,16 +8766,21 @@ dl.filter-bar.approval-inbox-detail-facts {
  */
 @container (max-width: 380px) {
   .dash-stopped {
-    grid-template-columns: minmax(0, 1fr) max-content;
+    grid-template-columns: max-content minmax(0, 1fr) max-content;
   }
 
-  .dash-stopped-unit {
+  .dash-stopped-code {
     grid-column: 1;
     grid-row: 1;
   }
 
-  .dash-stopped-elapsed {
+  .dash-stopped-type {
     grid-column: 2;
+    grid-row: 1;
+  }
+
+  .dash-stopped-elapsed {
+    grid-column: 3;
     grid-row: 1;
   }
 

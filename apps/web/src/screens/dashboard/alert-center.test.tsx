@@ -4,7 +4,12 @@ import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router';
 import { describe, expect, it } from 'vitest';
 
-import { AlertCenterButton, AlertPanel, NOTIFICATION_CENTER_PATH } from './alert-panel';
+import {
+  ALERT_PREVIEW_COUNT,
+  AlertCenterButton,
+  AlertPanel,
+  NOTIFICATION_CENTER_PATH,
+} from './alert-panel';
 
 const t = messages.dashboard.alerts;
 
@@ -73,5 +78,30 @@ describe('미확인 알림 카드', () => {
     expect(screen.getAllByRole('listitem')[0]).not.toHaveTextContent('위치');
     expect(screen.getByText('합성공장 > 가라인')).toBeInTheDocument();
     expect(screen.getByText('합성 메시지')).toHaveAttribute('title', '합성 메시지');
+  });
+
+  it('최근 3건만 보인다 — 나머지는 「알림센터 보기」', () => {
+    render(
+      <MemoryRouter>
+        <AlertPanel
+          views={[1, 2, 3, 4, 5].map((id) => ({
+            notificationId: id,
+            eventCode: 'SAMPLE_EVENT',
+            message: `합성 메시지 ${String(id)}`,
+            occurredAt: '2026-10-15T02:05:00Z',
+            occurredAtText: '2026-10-15 09:05',
+            read: false,
+            locationPath: null,
+          }))}
+          events={[]}
+          isLoading={false}
+        />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getAllByRole('listitem')).toHaveLength(ALERT_PREVIEW_COUNT);
+    expect(ALERT_PREVIEW_COUNT).toBe(3);
+    expect(screen.getByText('합성 메시지 1')).toBeInTheDocument();
+    expect(screen.queryByText('합성 메시지 4')).not.toBeInTheDocument();
   });
 });
