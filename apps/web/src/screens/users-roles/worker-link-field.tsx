@@ -239,48 +239,32 @@ export const WorkerLinkField = ({ appUserId, departmentLabel }: WorkerLinkFieldP
         </>
       )}
 
+      {/*
+       * 연결·변경 모달 — X 없음, 닫기는 [취소](처리 중이 아니면 Esc 도). 버튼 줄은 footer 대신 본문 마지막 줄에 둔다
+       * (footer 의 구분선·여백이 무거웠다 · 담당자 지시 2026-10-16). form 안이라 Enter 제출은 그대로다.
+       */}
       <Dialog
         open={pickMode !== null}
         onClose={closePick}
         size="sm"
         title={pickMode === 'change' ? t.change : t.connect}
         closeOnBackdropClick={false}
-        footer={
-          <>
-            <Button
-              type="button"
-              variant="outlined"
-              className="app-button-neutral"
-              disabled={isBusy}
-              onClick={closePick}
-            >
-              {messages.common.cancel}
-            </Button>
-            <Button type="submit" form={`${inputId}-form`} loading={isBusy} disabled={isBusy}>
-              {pickMode === 'change' ? t.submitChange : t.submitConnect}
-            </Button>
-          </>
-        }
+        showCloseButton={false}
       >
         {pickMode !== null && (
-          <form
-            id={`${inputId}-form`}
-            className="users-roles-worker-dialog"
-            onSubmit={(event) => void submit(event)}
-          >
+          <form className="users-roles-worker-dialog" onSubmit={(event) => void submit(event)}>
             {write.error !== null && <SaveErrorBanner error={write.error} />}
             {pickMode === 'change' && (
               <WorkerBlock name={linkedName} meta={[`${linkedNo} · ${department}`]} />
             )}
-            <div>
-              <FieldLabel
-                htmlFor={inputId}
-                label={pickMode === 'change' ? t.inputChange : t.inputConnect}
-              />
+            <div className="users-roles-worker-dialog-field">
+              <FieldLabel htmlFor={inputId} label={t.inputLabel} />
               <TextField
                 ref={inputRef}
                 id={inputId}
+                fullWidth
                 autoFocus
+                placeholder={t.inputPlaceholder}
                 value={workerNo}
                 onChange={(event) => {
                   setWorkerNo(event.target.value);
@@ -288,8 +272,22 @@ export const WorkerLinkField = ({ appUserId, departmentLabel }: WorkerLinkFieldP
                 disabled={isBusy}
                 error={inputError}
               />
+              <p className="field-note">{pickMode === 'change' ? t.noteChange : t.noteConnect}</p>
             </div>
-            <p className="field-note">{pickMode === 'change' ? t.noteChange : t.noteConnect}</p>
+            <div className="users-roles-worker-dialog-actions">
+              <Button
+                type="button"
+                variant="outlined"
+                className="app-button-neutral"
+                disabled={isBusy}
+                onClick={closePick}
+              >
+                {messages.common.cancel}
+              </Button>
+              <Button type="submit" loading={isBusy} disabled={isBusy || workerNo.trim() === ''}>
+                {pickMode === 'change' ? t.submitChange : t.submitConnect}
+              </Button>
+            </div>
           </form>
         )}
       </Dialog>
@@ -302,29 +300,7 @@ export const WorkerLinkField = ({ appUserId, departmentLabel }: WorkerLinkFieldP
         size="sm"
         title={t.unlinkConfirmTitle}
         closeOnBackdropClick={false}
-        footer={
-          <>
-            <Button
-              variant="outlined"
-              className="app-button-neutral"
-              disabled={write.isSaving}
-              onClick={() => {
-                setIsUnlinkOpen(false);
-              }}
-            >
-              {messages.common.cancel}
-            </Button>
-            <Button
-              loading={write.isSaving}
-              disabled={write.isSaving}
-              onClick={() => {
-                write.write(null);
-              }}
-            >
-              {t.unlink}
-            </Button>
-          </>
-        }
+        showCloseButton={false}
       >
         {isUnlinkOpen && (
           <div className="users-roles-worker-dialog">
@@ -333,6 +309,27 @@ export const WorkerLinkField = ({ appUserId, departmentLabel }: WorkerLinkFieldP
             <p className="users-roles-worker-dialog-question">{t.unlinkQuestion}</p>
             <AlertBanner variant="warning">{t.unlinkImpact}</AlertBanner>
             <p className="field-note">{t.unlinkNote}</p>
+            <div className="users-roles-worker-dialog-actions">
+              <Button
+                variant="outlined"
+                className="app-button-neutral"
+                disabled={write.isSaving}
+                onClick={() => {
+                  setIsUnlinkOpen(false);
+                }}
+              >
+                {messages.common.cancel}
+              </Button>
+              <Button
+                loading={write.isSaving}
+                disabled={write.isSaving}
+                onClick={() => {
+                  write.write(null);
+                }}
+              >
+                {t.unlink}
+              </Button>
+            </div>
           </div>
         )}
       </Dialog>

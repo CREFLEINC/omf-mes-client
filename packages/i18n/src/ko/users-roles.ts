@@ -387,8 +387,8 @@ export const usersRoles = {
     connect: '작업자 연결',
     change: '작업자 변경',
     unlink: '연결 해제',
-    inputConnect: '연결할 작업자 사번',
-    inputChange: '변경할 작업자 사번',
+    inputLabel: '작업자 사번',
+    inputPlaceholder: '사번 입력',
     submitConnect: '연결',
     submitChange: '변경',
     /** 입력 그룹 맨 아래에만 — 실패했는데 적용됐다고 말하지 않도록 「~하면」으로 쓴다. */

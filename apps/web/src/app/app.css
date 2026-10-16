@@ -7183,6 +7183,27 @@ dl.filter-bar.approval-inbox-detail-facts {
   margin: 0;
 }
 
+/* 라벨·입력·(오류)·보조 문구를 한 묶음으로 촘촘히 — 오류는 TextField 안(입력칸 바로 아래), 보조 문구는 그 아래. */
+.users-roles-worker-dialog-field {
+  display: grid;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.users-roles-worker-dialog-field > p {
+  max-width: none;
+  margin: 0;
+}
+
+/* 버튼 줄 — Dialog footer(구분선·큰 여백) 대신 본문 마지막 줄, 오른쪽 정렬. */
+.users-roles-worker-dialog-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  margin-top: var(--space-1);
+}
+
 .users-roles-worker-dialog-question {
   font: var(--type-title-sm);
   letter-spacing: var(--type-title-sm-tracking);

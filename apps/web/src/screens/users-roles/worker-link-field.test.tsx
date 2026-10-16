@@ -91,7 +91,7 @@ describe('WorkerLinkField', () => {
     await user.click(await screen.findByRole('button', { name: t.connect }));
     const modal = await dialog();
     expect(within(modal).getByText(t.noteConnect)).toBeInTheDocument();
-    await user.type(within(modal).getByLabelText(t.inputConnect), 'SYN-W-01{Enter}');
+    await user.type(within(modal).getByLabelText(t.inputLabel), 'SYN-W-01{Enter}');
 
     await waitFor(() => {
       expect(puts).toEqual([{ workerId: 8501 }]);
@@ -106,15 +106,24 @@ describe('WorkerLinkField', () => {
     expect(await screen.findByText(t.linkedToast('SYN-W-01 · 합성 작업자'))).toBeInTheDocument();
   });
 
-  it('빈칸이면 입력칸 아래에 이유를 내고 모달을 연 채 입력칸으로 돌아간다', async () => {
+  it('입력이 비어 있으면(공백만이어도) [연결]이 눌리지 않고, 모달에는 X 가 없다', async () => {
     const { puts, user } = render(NONE);
 
     await user.click(await screen.findByRole('button', { name: t.connect }));
     const modal = await dialog();
-    await user.click(within(modal).getByRole('button', { name: t.submitConnect }));
-
-    expect(await within(modal).findByText(t.workerNoRequired)).toBeInTheDocument();
-    expect(within(modal).getByLabelText(t.inputConnect)).toHaveFocus();
+    const submitButton = within(modal).getByRole('button', { name: t.submitConnect });
+    expect(submitButton).toBeDisabled();
+    await user.type(within(modal).getByLabelText(t.inputLabel), '   ');
+    expect(submitButton).toBeDisabled();
+    expect(within(modal).getByLabelText(t.inputLabel)).toHaveAttribute(
+      'placeholder',
+      t.inputPlaceholder,
+    );
+    expect(
+      within(modal)
+        .getAllByRole('button')
+        .map((button) => button.textContent),
+    ).toEqual([messages.common.cancel, t.submitConnect]);
     expect(puts).toEqual([]);
   });
 
@@ -123,7 +132,7 @@ describe('WorkerLinkField', () => {
 
     await user.click(await screen.findByRole('button', { name: t.change }));
     const modal = await dialog();
-    await user.type(within(modal).getByLabelText(t.inputChange), 'NOPE{Enter}');
+    await user.type(within(modal).getByLabelText(t.inputLabel), 'NOPE{Enter}');
 
     expect(await within(modal).findByText(t.notFound)).toBeInTheDocument();
     expect(puts).toEqual([]);
@@ -134,7 +143,7 @@ describe('WorkerLinkField', () => {
 
     await user.click(await screen.findByRole('button', { name: t.change }));
     const modal = await dialog();
-    await user.type(within(modal).getByLabelText(t.inputChange), 'SYN-W-01{Enter}');
+    await user.type(within(modal).getByLabelText(t.inputLabel), 'SYN-W-01{Enter}');
 
     expect(await within(modal).findByText(t.linkedElsewhere)).toBeInTheDocument();
     expect(puts).toEqual([]);
@@ -147,7 +156,7 @@ describe('WorkerLinkField', () => {
     await user.click(await screen.findByRole('button', { name: t.change }));
     const modal = await dialog();
     expect(within(modal).getByText('합성 작업자')).toBeInTheDocument();
-    await user.type(within(modal).getByLabelText(t.inputChange), 'SYN-W-01{Enter}');
+    await user.type(within(modal).getByLabelText(t.inputLabel), 'SYN-W-01{Enter}');
 
     expect(
       await within(modal).findByText('이미 다른 계정에 연결된 작업자입니다.'),
@@ -160,14 +169,14 @@ describe('WorkerLinkField', () => {
     const { puts, user } = render(LINKED);
 
     await user.click(await screen.findByRole('button', { name: t.change }));
-    await user.type(within(await dialog()).getByLabelText(t.inputChange), '123');
+    await user.type(within(await dialog()).getByLabelText(t.inputLabel), '123');
     await user.click(within(await dialog()).getByRole('button', { name: messages.common.cancel }));
     await waitFor(() => {
       expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     });
 
     await user.click(screen.getByRole('button', { name: t.change }));
-    expect(within(await dialog()).getByLabelText(t.inputChange)).toHaveValue('');
+    expect(within(await dialog()).getByLabelText(t.inputLabel)).toHaveValue('');
     expect(puts).toEqual([]);
   });
 
