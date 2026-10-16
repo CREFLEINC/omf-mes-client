@@ -60,7 +60,8 @@ const ProductionPlanWorkspace = ({
   const [routingId, setRoutingId] = useState('');
   const [resultPlanId, setResultPlanId] = useState<number | null>(null);
   const boms = useBomReferenceQuery(order.itemId);
-  const routings = useRoutingReferenceQuery(order.itemId);
+  const routings = useRoutingReferenceQuery(order.itemId, true);
+  const routingNames = useRoutingReferenceQuery(order.itemId, false);
   const lines = useProductionLineReferenceQuery(order.plantId);
   const itemNames = useProductionOrderItemNames([order.itemId]);
   const uoms = useUomReferenceLookup();
@@ -68,9 +69,10 @@ const ProductionPlanWorkspace = ({
   const routingItems = routings.data?.items ?? [];
   const lineItems = lines.data?.items ?? [];
   const masterReady = isMasterCheckReady(bomItems, routingItems, bomId, routingId);
-  const referencesLoaded = boms.data !== undefined && routings.data !== undefined;
+  const referencesLoaded =
+    boms.data !== undefined && routings.data !== undefined && routingNames.data !== undefined;
   const linesLoaded = order.plantId === null || lines.data !== undefined;
-  const referenceFailed = boms.isError || routings.isError || lines.isError;
+  const referenceFailed = boms.isError || routings.isError || routingNames.isError || lines.isError;
   const uomLabel = describeReference(resolveReference(uoms, order.uomId));
   const lineNames = useMemo(
     () => new Map(lineItems.map((line) => [line.productionLineId, line.lineName])),
@@ -116,8 +118,12 @@ const ProductionPlanWorkspace = ({
         routings={{
           items: routingItems,
           isLoading: routings.isPending && routings.data === undefined,
-          isError: routings.isError,
-          refetch: () => void routings.refetch(),
+          /* 이름 풀이용 전 개정 목록도 Routing 조회다 — 실패·재시도를 함께 묶는다. */
+          isError: routings.isError || routingNames.isError,
+          refetch: () => {
+            void routings.refetch();
+            void routingNames.refetch();
+          },
         }}
         bomId={bomId}
         routingId={routingId}
@@ -155,6 +161,10 @@ const ProductionPlanWorkspace = ({
             label: bomRevisionLabel(item),
           }))}
           routingOptions={routingItems.map((item) => ({
+            value: String(item.routingId),
+            label: routingRevisionLabel(item),
+          }))}
+          routingLabelOptions={(routingNames.data?.items ?? []).map((item) => ({
             value: String(item.routingId),
             label: routingRevisionLabel(item),
           }))}

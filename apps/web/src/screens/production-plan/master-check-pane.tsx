@@ -28,8 +28,12 @@ export const automaticBomId = (items: readonly BomRevisionFact[]): number | null
   return defaults.length === 1 ? (defaults[0]?.bomId ?? null) : null;
 };
 
-export const automaticRoutingId = (items: readonly RoutingRevisionFact[]): number | null =>
-  items.length === 1 ? (items[0]?.routingId ?? null) : null;
+/** 후보는 이미 쓸 수 있는 개정뿐이다(#91) — 하나면 그것, 여럿이면 기본 Rev 하나. */
+export const automaticRoutingId = (items: readonly RoutingRevisionFact[]): number | null => {
+  if (items.length === 1) return items[0]?.routingId ?? null;
+  const defaults = items.filter((item) => item.isDefault);
+  return defaults.length === 1 ? (defaults[0]?.routingId ?? null) : null;
+};
 
 export const isMasterCheckReady = (
   boms: readonly BomRevisionFact[],
@@ -125,7 +129,7 @@ export const MasterCheckPane = ({
         {kind === 'BOM' && automaticBom === null && options.length > 0 && (
           <AlertBanner variant="warning">{t.bomAmbiguous}</AlertBanner>
         )}
-        {kind === 'Routing' && options.length > 1 && (
+        {kind === 'Routing' && automaticRouting === null && options.length > 0 && (
           <AlertBanner variant="warning">{t.routingNoDefault}</AlertBanner>
         )}
       </>

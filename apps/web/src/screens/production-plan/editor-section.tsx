@@ -16,6 +16,8 @@ interface ProductionPlanEditorSectionProps {
   defaults: NewProductionPlanDefaults;
   bomOptions: ProductionPlanEditorOption[];
   routingOptions: ProductionPlanEditorOption[];
+  /** 확정된 줄의 Routing 이름을 푸는 전 개정 목록 — 선택지(`routingOptions`)에 없는 Rev 도 있다. */
+  routingLabelOptions?: ProductionPlanEditorOption[];
   lineOptions: ProductionPlanEditorOption[];
   addDisabled?: boolean;
   onShowResults?: (productionPlanId: number) => void;
@@ -29,6 +31,7 @@ export const ProductionPlanEditorSection = ({
   defaults,
   bomOptions,
   routingOptions,
+  routingLabelOptions,
   lineOptions,
   addDisabled = false,
   onShowResults,
@@ -78,6 +81,7 @@ export const ProductionPlanEditorSection = ({
         uomLabel={uomLabel}
         bomOptions={bomOptions}
         routingOptions={routingOptions}
+        routingLabelOptions={routingLabelOptions}
         lineOptions={lineOptions}
         addDisabled={addDisabled || editor.plans.isError}
         onAdd={() => editor.add(defaults)}
