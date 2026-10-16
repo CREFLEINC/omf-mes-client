@@ -9258,15 +9258,33 @@ dl.filter-bar.approval-inbox-detail-facts {
  */
 .filter-bar.dashboard-filter-bar {
   align-items: flex-end;
+  /* 기간 묶음 · 공장 · 갱신 묶음 사이는 넉넉히, 줄이 바뀔 때의 위아래 간격은 그대로(사용자 지시 2026-10-16). */
+  column-gap: var(--space-5);
   margin-bottom: 0;
 }
 
-/* 기간 — DS 기간 달력 옆에 빠른 선택(좁으면 아래 줄로). */
+/* 기간 — DS 기간 달력과 빠른 선택이 한 묶음(좁으면 빠른 선택이 아래 줄로). */
 .dashboard-period {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: var(--space-2);
+}
+
+.dashboard-quick {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+}
+
+/*
+ * 빠른 선택 — 입력칸과 같은 높이 · 모서리(사용자 지시 2026-10-16). 색 · 글자 · 테두리 · 고른 상태는 DS filter 칩
+ * 그대로이고, 높이와 모서리만 입력칸에 맞춘다.
+ */
+.dashboard-quick > * {
+  height: var(--control-height-md);
+  padding-inline: var(--space-3);
+  border-radius: var(--radius-sm);
 }
 
 .filter-actions.dashboard-filter-actions {

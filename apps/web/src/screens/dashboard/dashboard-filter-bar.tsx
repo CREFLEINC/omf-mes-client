@@ -112,7 +112,7 @@ export const DashboardFilterBar = ({
               applyPeriod(from, to);
             }}
           />
-          <div className="dash-segment" role="group" aria-label={t.filters.quickLabel}>
+          <div className="dashboard-quick" role="group" aria-label={t.filters.quickLabel}>
             {QUICK_PERIODS.map((quick) => {
               const [from, to] = quickPeriodOf(quick, today);
 
@@ -120,7 +120,7 @@ export const DashboardFilterBar = ({
                 <Chip
                   key={quick}
                   variant="filter"
-                  size="sm"
+                  size="md"
                   selected={from === shownFrom && to === shownTo}
                   onSelectedChange={() => {
                     applyPeriod(from, to);
