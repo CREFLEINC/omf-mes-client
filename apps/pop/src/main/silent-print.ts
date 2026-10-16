@@ -75,10 +75,27 @@ export function selectPrinter(
   return printers.length === 0 ? { kind: 'none' } : { kind: 'systemDefault' };
 }
 
+/**
+ * 렌더러가 넘긴 프린터 이름을 받아들일 모양으로 고른다. 문자열이 아니거나 비었으면 «고르지 않은 것»이다 —
+ * 통로 너머에서 온 값이라 모양을 믿지 않는다.
+ */
+export const requestedPrinterName = (value: unknown): string | undefined => {
+  if (typeof value !== 'string') return undefined;
+  const name = value.trim();
+
+  return name === '' ? undefined : name;
+};
+
 export interface TerminalPrinterInput {
   printers: readonly AvailablePrinter[];
   /** 기동 시 지정값(`POP_PRINTER_NAME`). 비었으면 지정하지 않은 것이다. */
   preferred?: string;
+  /**
+   * 화면이 이 작업에 고른 프린터(자재LOT 라벨 화면의 프린터 선택 · 2단계 검증 2026-10-16).
+   * ⭐ 실었을 때만 기동 시 지정값보다 앞선다 — 사람이 그 자리에서 고른 것이다. 싣지 않은 호출(다른 화면 ·
+   *    옛 화면)은 지금까지와 같다: 기동 시 지정값 → OS 기본. 목록에 없는 이름이면 다른 곳으로 대신 보내지 않는다.
+   */
+  requested?: string;
   /** OS 가 알려 준 기본 프린터 이름. 못 물어봤으면 `null`. */
   defaultName: string | null;
 }
@@ -100,11 +117,12 @@ export interface TerminalPrinterInput {
 export const resolveTerminalPrinter = ({
   printers,
   preferred,
+  requested,
   defaultName,
 }: TerminalPrinterInput): { choice: PrinterChoice; available: LoggedPrinter[] } => {
   /* 고르지 못했을 때 무엇이 있었는지를 기록에 남기려고 함께 들고 나간다. */
   const available = printers.map(({ name, displayName }) => ({ name, displayName }));
-  const chosen = selectPrinter(printers, preferred);
+  const chosen = selectPrinter(printers, requested ?? preferred);
 
   /* 지정값이 정했거나 보낼 곳이 없는 것은 기본 프린터가 뒤집지 않는다. */
   if (chosen.kind !== 'systemDefault') return { choice: chosen, available };

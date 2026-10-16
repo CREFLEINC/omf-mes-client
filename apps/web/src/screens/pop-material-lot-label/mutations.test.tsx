@@ -17,6 +17,7 @@ const row: TargetRow = {
   receivedQty: 500,
   uomId: 8401,
   lotId: null,
+  inspectionRequired: false,
 };
 
 describe('useLabelIssue — 사번을 모를 때', () => {
@@ -36,7 +37,13 @@ describe('useLabelIssue — 사번을 모를 때', () => {
     });
 
     act(() => {
-      result.current.run({ row, printerName: null, reissueReasonCode: null, uomCode: null });
+      result.current.run({
+        row,
+        printerName: null,
+        reissueReasonCode: null,
+        uomCode: null,
+        lotStatusCode: null,
+      });
     });
 
     expect(calls).toBe(0);
@@ -67,8 +74,20 @@ describe('useLabelIssue — 두 번 눌렸을 때', () => {
 
     // 렌더 사이를 두지 않고 잇달아 부른다 — 두 번 누름과 같은 모양이다.
     act(() => {
-      result.current.run({ row, printerName: null, reissueReasonCode: null, uomCode: null });
-      result.current.run({ row, printerName: null, reissueReasonCode: null, uomCode: null });
+      result.current.run({
+        row,
+        printerName: null,
+        reissueReasonCode: null,
+        uomCode: null,
+        lotStatusCode: null,
+      });
+      result.current.run({
+        row,
+        printerName: null,
+        reissueReasonCode: null,
+        uomCode: null,
+        lotStatusCode: null,
+      });
     });
 
     await waitFor(() => {

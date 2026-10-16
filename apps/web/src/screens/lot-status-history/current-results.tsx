@@ -116,7 +116,8 @@ export const CurrentResults = ({
           aria-label={t.current.openDetail(row.lotNo)}
           onClick={() => onSelectLot(row.lotId)}
         >
-          {row.lotNo}
+          {/* 말줄임은 안쪽 글자에 건다 — 단추가 가운데 정렬 flex 라 단추에 걸면 앞부분부터 잘린다. */}
+          <span className="lot-status-lot-no-text">{row.lotNo}</span>
         </Button>
       ),
     },

@@ -30,7 +30,7 @@ interface PrinterShell {
    * 이 셸이 명령형(RAW) 인쇄를 할 수 있는가. **옛 설치본에는 없다** — 없으면 묻지 않은 것으로
    * 보고 그림으로 간다(아래 `shellPrintsRaw`).
    */
-  capabilities?: () => Promise<{ raw: boolean }>;
+  capabilities?: () => Promise<{ raw: boolean; selectable?: boolean }>;
 }
 
 interface ShellCarrier {
@@ -90,6 +90,26 @@ export const shellPrintsRaw = async (): Promise<boolean> => {
     const { raw } = await shell.capabilities();
 
     return raw;
+  } catch {
+    return false;
+  }
+};
+
+/**
+ * 이 셸이 **작업마다 고른 프린터로 보낼 수 있는가**(`rendition.save` 의 `printerName` · 2단계 검증 2026-10-16).
+ *
+ * ⛔ 모르면 「못 한다」로 본다 — 브라우저(통로 없음)·옛 설치본(물음을 모름)·묻다가 실패. 그때 화면은 고르는
+ *    칸을 막는다. 고른 것처럼 보이는데 실제로는 기본 프린터로 나가면 그쪽이 더 나쁘다.
+ */
+export const shellSelectsPrinter = async (): Promise<boolean> => {
+  const shell = printerShell();
+
+  if (shell?.capabilities === undefined) return false;
+
+  try {
+    const { selectable } = await shell.capabilities();
+
+    return selectable === true;
   } catch {
     return false;
   }
