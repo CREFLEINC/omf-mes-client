@@ -7735,6 +7735,93 @@ dl.filter-bar.approval-inbox-detail-facts {
 }
 
 /*
+ * 대시보드 설비 현황(omf-all-around#111) — 상태 집계 줄 · 라인 필터 · 호기 타일 · 멈춘 설비.
+ * 집계 줄은 위 `.kpi-grid` 를 그대로 쓴다(지표 카드와 같은 묶음 규칙).
+ */
+.dashboard-equipment {
+  display: grid;
+  gap: var(--space-4);
+  min-width: 0;
+}
+
+.dashboard-equipment-filter {
+  max-width: 20rem;
+}
+
+.dashboard-subtitle {
+  margin: 0;
+  font: var(--type-title-sm);
+  letter-spacing: var(--type-title-sm-tracking);
+  color: var(--on-surface);
+}
+
+/* 호기 타일 — 지표 카드보다 조금 넓다: 항목 다섯에 사유 · 경과가 더 붙는다. */
+.dashboard-equipment-tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(13rem, 1fr));
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* 타일 전체가 단추다 — 단추의 기본 모양을 지우고 포커스 링은 단추가 직접 그린다. */
+.dashboard-equipment-tile {
+  display: block;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: start;
+  cursor: pointer;
+  border-radius: var(--radius-md);
+}
+
+.dashboard-equipment-tile:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.dashboard-equipment-tile > * {
+  height: 100%;
+}
+
+.dashboard-equipment-tile-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.dashboard-equipment-code {
+  font-weight: 600;
+}
+
+/* 항목 이름 · 값 두 열. 값은 숫자라 오른쪽에 맞춘다. */
+.dashboard-equipment-facts {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: var(--space-1) var(--space-3);
+  margin: 0;
+  font: var(--type-body-sm);
+  letter-spacing: var(--type-body-sm-tracking);
+}
+
+.dashboard-equipment-facts dt {
+  color: var(--on-surface-muted);
+}
+
+.dashboard-equipment-facts dd {
+  margin: 0;
+  text-align: end;
+  overflow-wrap: anywhere;
+}
+
+/*
  * ── POP(1024×768 터치 키오스크) ────────────────────────────────────────────
  *
  * 관리웹과 폼팩터가 다르다. **세로 여유가 119px뿐이라** 구획을 쌓지 않고 좌우로 편다.

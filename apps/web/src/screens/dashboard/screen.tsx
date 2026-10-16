@@ -6,6 +6,7 @@ import { Link, useSearchParams } from 'react-router';
 import { AlertPanel, NOTIFICATION_CENTER_PATH } from './alert-panel';
 import { CARD_ROUTES } from './card-routes';
 import { DashboardFilterBar } from './dashboard-filter-bar';
+import { EquipmentPanel } from './equipment-panel';
 import {
   readFilters,
   toDrilldownParams,
@@ -127,6 +128,15 @@ export const DashboardScreen = () => {
 
       <section className="pane" aria-label={t.panes.cards}>
         <KpiCardGrid views={cards} isLoading={summary.isPending} axes={axes} routes={CARD_ROUTES} />
+      </section>
+
+      <section className="pane" aria-label={t.panes.equipment}>
+        <h2>{t.panes.equipment}</h2>
+        <EquipmentPanel
+          view={view?.equipment ?? null}
+          isLoading={summary.isPending}
+          isFailed={summary.isError && view === undefined}
+        />
       </section>
 
       <section className="pane" aria-label={t.panes.trend}>

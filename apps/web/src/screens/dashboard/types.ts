@@ -1,5 +1,6 @@
-import type { components } from '@omf-mes/api-client';
+import type { components, DashboardSummarySections } from '@omf-mes/api-client';
 import { formatPlantDateTime } from '../../patterns/plant-time';
+import { toEquipmentView, type EquipmentView } from './equipment';
 
 /**
  * W-CO-05가 다루는 모양들.
@@ -11,7 +12,8 @@ import { formatPlantDateTime } from '../../patterns/plant-time';
  * 이 화면이 소유한다 — 다른 화면 슬라이스의 같은 이름 파일을 참조하지 않는다.
  */
 
-type DashboardSummary = components['schemas']['DashboardSummary'];
+/** 계약의 집계에 2차 규격의 선택 섹션(설비 · 출하)을 더한 모양(omf-all-around#118 · forward-contract). */
+type DashboardSummary = components['schemas']['DashboardSummary'] & DashboardSummarySections;
 type DashboardCard = components['schemas']['DashboardCard'];
 type Notification = components['schemas']['Notification'];
 
@@ -81,6 +83,8 @@ export interface DashboardView {
   alerts: DashboardAlertView[];
   /** 계약이 추이를 선택으로 두어 아예 오지 않을 수 있다 — 「없음」을 값으로 낸다. */
   trend: DashboardTrendView | null;
+  /** 설비 현황(#111). 서버가 섹션을 주지 않으면 `null` — 설비 0대와 다르다. */
+  equipment: EquipmentView | null;
   asOfText: string | null;
 }
 
@@ -188,5 +192,6 @@ export const toDashboardView = (source: DashboardSummary): DashboardView => ({
           })),
           asOfText: formatAsOf(source.trend.asOf),
         },
+  equipment: toEquipmentView(source.equipment),
   asOfText: formatAsOf(source.asOf),
 });

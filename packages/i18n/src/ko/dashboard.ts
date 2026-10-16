@@ -13,6 +13,7 @@ export const dashboard = {
     cards: '지표',
     trend: '일일 생산실적 추이',
     alerts: '미처리 알람',
+    equipment: '설비 현황',
   },
 
   filters: {
@@ -82,5 +83,61 @@ export const dashboard = {
     locationUnknown: '위치 정보 없음',
     emptyMessage: '내용이 비어 있습니다.',
     openCenter: '알림센터',
+  },
+
+  /**
+   * 설비 현황(omf-all-around#111). 상태는 서버가 현장 기록(작업 세션 · 비가동 · 고장 · 계획정지)을
+   * 조합해 판단한다 — 화면은 받은 상태를 그대로 말한다.
+   */
+  equipment: {
+    status: {
+      RUNNING: '가동',
+      STOPPED: '정지',
+      WAITING: '대기',
+      CHANGEOVER: '교체',
+      IDLE: '비가동',
+    },
+    runningOfTotal: '가동 / 전체',
+    countUnit: '대',
+    line: '라인',
+    allLines: '전체',
+    tilesTitle: '호기별 상태',
+    /** 라인으로 거른 뒤의 대수. 전체 대수는 위 집계 줄이 말한다. */
+    shownCount: (count: number): string => `${String(count)}대 표시`,
+    tonnage: '톤수',
+    todayQty: '금일 생산',
+    ngQty: 'NG',
+    defectRate: '불량률',
+    standardCycleTime: '표준 C/T',
+    seconds: (value: string): string => `${value}초`,
+    percent: (value: string): string => `${value}%`,
+    reason: '사유',
+    elapsed: '경과 시간',
+    /** 경과 시간. 1시간이 안 되면 분만 적는다. */
+    elapsedText: (hours: number, minutes: number): string =>
+      hours === 0 ? `${String(minutes)}분` : `${String(hours)}시간 ${String(minutes)}분`,
+    since: '시작 시각',
+    /** 값이 없는 칸. 0과 다르다 — 0을 적으면 「잰 결과가 0」으로 읽힌다. */
+    none: '—',
+    reasonUnknown: '사유 미등록',
+    stoppedTitle: '멈춘 설비',
+    stoppedLead: '가동 중이 아닌 설비입니다. 오래 멈춘 것부터 보입니다.',
+    stoppedEmptyTitle: '멈춘 설비 없음',
+    stoppedEmpty: '지금 고른 범위의 설비가 모두 가동 중입니다.',
+    equipmentColumn: '호기',
+    statusColumn: '상태',
+    openDetail: (code: string): string => `${code} 상세 보기`,
+    detailTitle: (code: string, name: string): string => `${code} · ${name}`,
+    workOrder: '현재 작업지시',
+    item: '품목',
+    close: '닫기',
+    emptyTitle: '설비 없음',
+    empty: '이 공장에 표시할 생산 설비가 없습니다.',
+    lineEmpty: '고른 라인에 설비가 없습니다.',
+    /** 서버가 아직 설비 섹션을 주지 않을 때(2차 규격 배포 전). ⛔ 「설비 없음」과 같은 말로 그리지 않는다. */
+    absentTitle: '설비 현황 없음',
+    absent: '설비 현황이 이 응답에 오지 않았습니다.',
+    /** 첫 조회가 실패해 보일 값이 없을 때. 재시도는 화면 위 오류 배너가 맡는다. */
+    failed: '설비 현황을 불러오지 못했습니다. 위의 「다시 시도」를 누르세요.',
   },
 } as const;
