@@ -189,7 +189,8 @@ export const workOrder = {
       plannedEndAtLocal: '계획 종료',
       priorityNo: '우선순위',
     },
-    warning: '계획 시작·종료 시간을 입력하면 자원 일정 중복을 확인할 수 있습니다.',
+    warning:
+      '계획 시작·종료는 공장 시각입니다. 계획일과 계획 교대로 채워지고(교대가 없으면 근무일 하루), 여러 날에 걸친 작업은 직접 고칠 수 있습니다.',
     empty: {
       notSelectedTitle: '계획을 확인할 작업지시를 선택하세요.',
       notSelectedDescription: '목록에서 작업지시를 선택하면 계획 정보를 확인할 수 있습니다.',

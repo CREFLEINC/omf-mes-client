@@ -1,8 +1,10 @@
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 
 import type { WorkOrderFact } from './queries';
+import type { WorkOrderShiftFact } from './resource-queries';
 import {
   isWorkOrderAssignmentSaveEnabled,
+  plannedWindowLocal,
   REQUIRED_ASSIGNMENT_FIELDS,
   toWorkOrderAssignmentUpdate,
   validateWorkOrderAssignmentDraft,
@@ -23,8 +25,8 @@ const workOrderFact = (overrides: Partial<WorkOrderFact> = {}): WorkOrderFact =>
   statusCode: 'SYN_RELEASED',
   productionLineId: 901,
   responsibleWorkerId: 902,
-  plannedStartAt: '2026-08-23T09:45:00+09:00',
-  plannedEndAt: '2026-08-23T10:45:00+09:00',
+  plannedStartAt: '2026-08-23T09:45:00+07:00',
+  plannedEndAt: '2026-08-23T10:45:00+07:00',
   plannedEquipmentId: 903,
   plannedMoldId: 904,
   plannedShiftId: 905,
@@ -126,18 +128,26 @@ describe('work-order assignment model', () => {
     });
   });
 
-  it('hydrates a UTC response into local input values so a location-only save preserves the instant', () => {
-    const instant = '2026-09-12T01:00:00Z';
-    const local = new Date(instant);
-    const expected = `${String(local.getFullYear()).padStart(4, '0')}-${String(
-      local.getMonth() + 1,
-    ).padStart(2, '0')}-${String(local.getDate()).padStart(2, '0')}T${String(
-      local.getHours(),
-    ).padStart(2, '0')}:${String(local.getMinutes()).padStart(2, '0')}`;
-
+  it('hydrates a UTC response into plant-time input values whatever the browser time zone is', () => {
     expect(
-      workOrderAssignmentDraftFrom(workOrderFact({ plannedStartAt: instant })).plannedStartAtLocal,
-    ).toBe(expected);
+      workOrderAssignmentDraftFrom(workOrderFact({ plannedStartAt: '2026-09-12T01:00:00Z' }))
+        .plannedStartAtLocal,
+    ).toBe('2026-09-12T08:00');
+  });
+
+  it('sends plant-time inputs with the plant offset so a location-only save preserves the instant', () => {
+    const draft = workOrderAssignmentDraftFrom(
+      workOrderFact({
+        plannedStartAt: '2026-09-12T01:00:00Z',
+        plannedEndAt: '2026-09-13T01:00:00Z',
+      }),
+    );
+    const body = toWorkOrderAssignmentUpdate({ ...validDraft(), ...draft, priorityNo: '2' });
+
+    expect(body).toMatchObject({
+      plannedStartAt: '2026-09-12T08:00:00+07:00',
+      plannedEndAt: '2026-09-13T08:00:00+07:00',
+    });
   });
 
   it.each([
@@ -266,10 +276,7 @@ describe('work-order assignment model', () => {
     ).toBe(false);
   });
 
-  it('makes the exact generated update body with explicit nullable assignments and local offset', () => {
-    const at = new Date('2026-08-26T12:00:00Z');
-    vi.spyOn(at, 'getTimezoneOffset').mockReturnValue(-540);
-
+  it('makes the exact generated update body with explicit nullable assignments and plant offset', () => {
     expect(
       toWorkOrderAssignmentUpdate(
         validDraft({
@@ -283,7 +290,6 @@ describe('work-order assignment model', () => {
           defaultScrapLocationId: '908',
           priorityNo: ' 7 ',
         }),
-        at,
       ),
     ).toEqual({
       productionLineId: 901,
@@ -294,16 +300,13 @@ describe('work-order assignment model', () => {
       defaultWipLocationId: 906,
       defaultFgLocationId: 907,
       defaultScrapLocationId: 908,
-      plannedStartAt: '2026-08-23T09:45:00+09:00',
-      plannedEndAt: '2026-08-23T10:45:00+09:00',
+      plannedStartAt: '2026-08-23T09:45:00+07:00',
+      plannedEndAt: '2026-08-23T10:45:00+07:00',
       priorityNo: 7,
     });
   });
 
   it('sends every cleared owned field as null and omits fields this screen does not own', () => {
-    const at = new Date('2026-08-26T12:00:00Z');
-    vi.spyOn(at, 'getTimezoneOffset').mockReturnValue(330);
-
     const body = toWorkOrderAssignmentUpdate(
       validDraft({
         responsibleWorkerId: '',
@@ -313,7 +316,6 @@ describe('work-order assignment model', () => {
         plannedStartAtLocal: '',
         plannedEndAtLocal: '',
       }),
-      at,
     );
 
     expect(body).toEqual({
@@ -334,9 +336,7 @@ describe('work-order assignment model', () => {
   });
 
   it('fails closed instead of making a request body from an invalid draft', () => {
-    const at = new Date('2026-08-26T12:00:00Z');
-
-    expect(toWorkOrderAssignmentUpdate(validDraft({ priorityNo: '1.5' }), at)).toBeNull();
+    expect(toWorkOrderAssignmentUpdate(validDraft({ priorityNo: '1.5' }))).toBeNull();
     expect(
       toWorkOrderAssignmentUpdate(
         validDraft({
@@ -346,8 +346,59 @@ describe('work-order assignment model', () => {
           plannedMoldId: '',
           plannedShiftId: '',
         }),
-        at,
       ),
     ).toBeNull();
+  });
+
+  describe('plannedWindowLocal — 계획일 + 교대 → 계획 시각(공장 시각)', () => {
+    const shift = (
+      shiftId: number,
+      startTime: string,
+      endTime: string,
+      crossesMidnight = false,
+      isActive = true,
+    ): WorkOrderShiftFact => ({
+      shiftId,
+      plantId: 3,
+      shiftCode: `S${String(shiftId)}`,
+      shiftName: `교대${String(shiftId)}`,
+      startTime,
+      endTime,
+      crossesMidnight,
+      isActive,
+    });
+    const shifts = [
+      shift(1, '07:00:00', '19:00:00'),
+      shift(2, '19:00:00', '07:00:00', true),
+      shift(9, '05:00:00', '13:00:00', false, false),
+    ];
+
+    it('주간을 고르면 그날 교대 시각이다', () => {
+      expect(plannedWindowLocal('2026-10-20', '1', shifts)).toEqual({
+        plannedStartAtLocal: '2026-10-20T07:00',
+        plannedEndAtLocal: '2026-10-20T19:00',
+      });
+    });
+
+    it('자정을 넘기는 야간은 다음 날 끝난다', () => {
+      expect(plannedWindowLocal('2026-10-20', '2', shifts)).toEqual({
+        plannedStartAtLocal: '2026-10-20T19:00',
+        plannedEndAtLocal: '2026-10-21T07:00',
+      });
+    });
+
+    it('교대를 비우면 근무일 하루 — 가장 이른 «활성» 교대 시작부터 24시간이다', () => {
+      expect(plannedWindowLocal('2026-10-31', '', shifts)).toEqual({
+        plannedStartAtLocal: '2026-10-31T07:00',
+        plannedEndAtLocal: '2026-11-01T07:00',
+      });
+    });
+
+    it('교대가 하나도 없으면 08:00 부터 24시간이다', () => {
+      expect(plannedWindowLocal('2026-12-31', '', [])).toEqual({
+        plannedStartAtLocal: '2026-12-31T08:00',
+        plannedEndAtLocal: '2027-01-01T08:00',
+      });
+    });
   });
 });

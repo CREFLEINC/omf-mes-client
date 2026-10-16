@@ -5,6 +5,7 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { selectableLookupOptions, type LookupSource } from '../../patterns/lookup-display';
 import { SaveErrorBanner } from '../../patterns/master';
 import {
+  plannedWindowLocal,
   toWorkOrderAssignmentUpdate,
   validateWorkOrderAssignmentDraft,
   workOrderAssignmentDraftFrom,
@@ -51,6 +52,8 @@ const workOrderFactEquals = (left: WorkOrderFact, right: WorkOrderFact): boolean
 export interface WorkOrderAssignmentEditorSessionProps {
   workOrder: WorkOrderFact;
   plantId: number | null;
+  /** 생산계획의 계획일 — 교대를 고르면 이 날짜로 계획 시각을 다시 낸다. */
+  planDate: string | null;
   priorityText: string;
   blockedReason?: string | null;
   onPriorityChange: (value: string) => void;
@@ -60,6 +63,7 @@ export interface WorkOrderAssignmentEditorSessionProps {
 export const WorkOrderAssignmentEditorSession = ({
   workOrder,
   plantId,
+  planDate,
   priorityText,
   blockedReason = null,
   onPriorityChange,
@@ -127,6 +131,12 @@ export const WorkOrderAssignmentEditorSession = ({
       ...(next.productionLineId === undefined || next.productionLineId === current.productionLineId
         ? {}
         : { plannedEquipmentId: '' }),
+      /* 교대를 바꾸면 계획 시각을 따라 바꾼다 — 칸은 남겨 두어 여러 날 작업처럼 예외는 손으로 고친다. */
+      ...(next.plannedShiftId === undefined ||
+      next.plannedShiftId === current.plannedShiftId ||
+      planDate === null
+        ? {}
+        : plannedWindowLocal(planDate, next.plannedShiftId, shifts.data?.items ?? [])),
     }));
     setWriteOwnerMismatch(false);
     update.reset();
@@ -302,7 +312,7 @@ export const WorkOrderAssignmentEditorSession = ({
           update.reset();
         }}
         onSave={() => {
-          const body = toWorkOrderAssignmentUpdate(effectiveDraft, new Date());
+          const body = toWorkOrderAssignmentUpdate(effectiveDraft);
           if (body !== null) update.write(body);
         }}
       />
@@ -313,6 +323,7 @@ export const WorkOrderAssignmentEditorSession = ({
 export interface WorkOrderAssignmentEditorProps {
   workOrderId: number;
   plantId: number | null;
+  planDate: string | null;
   priorityText: string;
   blockedReason?: string | null;
   onPriorityChange: (value: string) => void;

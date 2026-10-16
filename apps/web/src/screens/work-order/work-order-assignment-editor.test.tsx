@@ -157,6 +157,7 @@ const Harness = ({ blockedReason = null }: { blockedReason?: string | null }) =>
       <WorkOrderAssignmentEditorSession
         workOrder={workOrder}
         plantId={501}
+        planDate="2026-10-20"
         priorityText={priority}
         blockedReason={blockedReason}
         onPriorityChange={setPriority}
@@ -173,6 +174,7 @@ const OuterHarness = () => {
       <WorkOrderAssignmentEditor
         workOrderId={701}
         plantId={501}
+        planDate="2026-10-20"
         priorityText={priority}
         onPriorityChange={setPriority}
       />
@@ -211,6 +213,23 @@ it('joins resource lookups, clears line-bound equipment, and saves exact owned f
       priorityNo: 2,
     }),
   );
+});
+
+it('교대를 바꾸면 계획일과 교대 시각으로 계획 시작·종료를 다시 채우고, 비우면 근무일 하루로 돌린다', async () => {
+  const user = userEvent.setup();
+  render(<Harness />);
+  const start = () => screen.getByLabelText(t.planFieldsPane.fields.plannedStartAtLocal);
+  const end = () => screen.getByLabelText(t.planFieldsPane.fields.plannedEndAtLocal);
+
+  await user.click(screen.getByRole('combobox', { name: t.resourcePane.fields.shift }));
+  await user.click(screen.getByRole('option', { name: t.resourcePane.clearOption }));
+  expect(start()).toHaveValue('2026-10-20T08:00');
+  expect(end()).toHaveValue('2026-10-21T08:00');
+
+  await user.click(screen.getByRole('combobox', { name: t.resourcePane.fields.shift }));
+  await user.click(screen.getByRole('option', { name: /주간/ }));
+  expect(start()).toHaveValue('2026-10-20T08:00');
+  expect(end()).toHaveValue('2026-10-20T20:00');
 });
 
 it('rejects a successful write response owned by another work order', () => {
@@ -254,6 +273,7 @@ it('forwards a screen-level stale lock into an exact loaded editor', () => {
       <WorkOrderAssignmentEditor
         workOrderId={701}
         plantId={501}
+        planDate="2026-10-20"
         priorityText="2"
         blockedReason="SYN-SCREEN-STALE"
         onPriorityChange={vi.fn()}
@@ -391,6 +411,7 @@ it('ignores a conflict reload that completes after its owner was replaced', asyn
       <WorkOrderAssignmentEditor
         workOrderId={701}
         plantId={501}
+        planDate="2026-10-20"
         priorityText="2"
         onPriorityChange={onPriorityChange}
       />
@@ -405,6 +426,7 @@ it('ignores a conflict reload that completes after its owner was replaced', asyn
       <WorkOrderAssignmentEditor
         workOrderId={702}
         plantId={501}
+        planDate="2026-10-20"
         priorityText="2"
         onPriorityChange={onPriorityChange}
       />

@@ -197,7 +197,8 @@ export const workOrder: Translated<typeof ko.workOrder> = {
       plannedEndAtLocal: 'Kết thúc theo kế hoạch',
       priorityNo: 'Độ ưu tiên',
     },
-    warning: 'Phải có cả bắt đầu và kết thúc theo kế hoạch mới kiểm được nguồn lực bị trùng.',
+    warning:
+      'Giờ bắt đầu và kết thúc theo kế hoạch là giờ nhà máy. Hệ thống điền theo ngày kế hoạch và ca kế hoạch (không chọn ca thì là cả ngày làm việc); công việc kéo dài nhiều ngày có thể sửa trực tiếp.',
     empty: {
       notSelectedTitle: 'Hãy chọn lệnh sản xuất để xem kế hoạch.',
       notSelectedDescription: 'Chọn một lệnh sản xuất trong danh sách để xem thông tin kế hoạch.',

@@ -112,7 +112,7 @@ describe('생산계획 마스터 점검', () => {
     expect(automaticRoutingId(routings)).toBe(801);
   });
 
-  it('Routing 후보가 여럿이어도 기본 Rev 하나를 자동 선택하고 경고하지 않는다 (#91 · F-35)', async () => {
+  it('Routing 후보가 여럿이어도 기본 Rev 하나를 자동 선택하고 경고하지 않는다', async () => {
     const routings = [routing(802), routing(801, true)];
     renderWithProviders(<Harness boms={[bom(701, true)]} routings={routings} />);
 

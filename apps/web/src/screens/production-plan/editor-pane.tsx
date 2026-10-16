@@ -177,7 +177,7 @@ export const ProductionPlanEditorPane = ({
       );
     }
 
-    /* 작성 중 계획이 쓸 수 없게 된 Routing 을 들고 있으면 선택지에 없다 — 빈 칸으로 보이고 다시 고르게 한다(#91). */
+    /* 작성 중 계획이 쓸 수 없게 된 Routing 을 들고 있으면 선택지에 없다 — 빈 칸으로 보이고 다시 고르게 한다. */
     const unavailable =
       field === 'routingId' &&
       row.draft.routingId !== '' &&
