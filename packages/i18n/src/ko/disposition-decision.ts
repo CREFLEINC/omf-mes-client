@@ -138,6 +138,14 @@ export const dispositionDecision = {
     reloadDetail: '부적합 상태 다시 확인',
     irreversible: '판정은 되돌릴 수 없습니다',
     success: '판정을 저장했습니다',
+    /** 선별(omf-all-around#108) — 양품은 정상, 불량분은 새 LOT·새 부적합으로 넘어간다. */
+    acceptedQtyLabel: '양품 수량',
+    rejectedQtyLabel: '불량 수량',
+    sortHelp:
+      '양품은 정상으로 풀리고, 불량 수량은 새 LOT 으로 나뉘어 불량이 됩니다. 불량분은 새 부적합으로 넘어가 폐기·재작업을 따로 정합니다.',
+    sortSumMismatch: '양품과 불량 수량의 합이 처분 수량과 같아야 합니다',
+    sortSuccess: (lotNo: string, nonconformanceNo: string): string =>
+      `선별을 저장했습니다. 불량분은 LOT ${lotNo} · 부적합 ${nonconformanceNo} 로 넘어갔습니다`,
   },
   loading: '판정 대기 목록 불러오는 중',
   historyLoading: '처리 이력 불러오는 중',
@@ -177,6 +185,7 @@ export const dispositionDecision = {
       REWORK: '재작업',
       SCRAP: '폐기',
       NORMAL: '정상',
+      SORT: '선별',
     },
     /** 「판정 진행」 열의 값 셋. 계약이 값을 열거했으므로(G-2 예외) 코드로 갈라도 된다. */
     dispositionProgress: {

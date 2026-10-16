@@ -113,6 +113,27 @@ export interface AffectedProductionLots {
   }[];
 }
 
+/** 서버 선행 P-53(omf-all-around#108) — 처분 «선별». 양품은 정상, 불량분은 자식 LOT·새 부적합. */
+export type DispositionDecisionCreateForward = Omit<
+  components['schemas']['DispositionDecisionCreate'],
+  'dispositionTypeCode'
+> & {
+  dispositionTypeCode:
+    components['schemas']['DispositionDecisionCreate']['dispositionTypeCode'] | 'SORT';
+  acceptedQty?: number;
+  rejectedQty?: number;
+  businessDate?: string;
+};
+
+export interface DispositionSortResult {
+  splitLotId: number;
+  splitLotNo: string;
+  splitNonconformanceId: number;
+  splitNonconformanceNo: string;
+}
+
+type DecisionsPath = paths['/quality/nonconformances/{nonconformanceId}/disposition-decisions'];
+
 /** 서버 선행 P-47(omf-all-around#121) — 확정 본문의 IQC 불합격 사유 한 줄. */
 export interface InspectionDefectInput {
   defectCodeId: number;
@@ -584,6 +605,24 @@ interface Unused {
 }
 
 export interface ForwardPaths {
+  '/quality/nonconformances/{nonconformanceId}/disposition-decisions': Omit<
+    DecisionsPath,
+    'post'
+  > & {
+    post: Omit<DecisionsPath['post'], 'requestBody' | 'responses'> & {
+      requestBody: { content: { 'application/json': DispositionDecisionCreateForward } };
+      responses: Omit<DecisionsPath['post']['responses'], 201> & {
+        201: {
+          headers: { [name: string]: unknown };
+          content: {
+            'application/json': components['schemas']['DispositionDecision'] & {
+              sortResult?: DispositionSortResult | null;
+            };
+          };
+        };
+      };
+    };
+  };
   '/trace/lots/{lotId}/affected-production-lots': {
     parameters: {
       query?: never;

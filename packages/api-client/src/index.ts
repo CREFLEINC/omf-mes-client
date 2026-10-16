@@ -19,6 +19,8 @@ export type {
   InspectionHistory,
   InspectionHistoryEvent,
   AffectedProductionLots,
+  DispositionDecisionCreateForward,
+  DispositionSortResult,
   DefectRecordCreate,
   InspectionDefectInput,
   InspectionResultConfirmForward,

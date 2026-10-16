@@ -20,6 +20,8 @@ const form = (overrides: Partial<DecisionFormValue> = {}): DecisionFormValue => 
   dispositionTypeCode: CODE,
   qty: '120',
   reason: '표면만 손상돼 재작업으로 회복된다',
+  acceptedQty: '',
+  rejectedQty: '',
   ...overrides,
 });
 

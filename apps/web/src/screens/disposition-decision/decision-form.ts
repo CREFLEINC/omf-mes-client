@@ -1,4 +1,4 @@
-import type { components } from '@omf-mes/api-client';
+import type { DispositionDecisionCreateForward } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 
 import type { RemainingQty } from './remaining-qty';
@@ -8,24 +8,34 @@ export interface DecisionFormValue {
   /** 입력 그대로의 글자. 숫자로 바꾸는 것은 검증을 통과한 뒤다. */
   qty: string;
   reason: string;
+  /** 선별(`SORT`)만 — 양품·불량 수량(omf-all-around#108 · 서버 선행 P-53). */
+  acceptedQty: string;
+  rejectedQty: string;
 }
+
+/** 선별 — 양품은 정상, 불량분은 자식 LOT·새 부적합으로 넘어간다. */
+export const SORT = 'SORT';
 
 export interface DecisionFormErrors {
   dispositionTypeCode?: string;
   decisionQty?: string;
   reason?: string;
+  acceptedQty?: string;
+  rejectedQty?: string;
 }
 
 /**
  * 보낼 본문은 **계약에서 파생한다.** 손으로 옮겨 적으면 계약에 필수 필드가 늘어도 컴파일이
  * 잡지 못한다 — 되돌릴 수 없는 쓰기의 본문이라 특히 그렇다.
  */
-export type DecisionCreateBody = components['schemas']['DispositionDecisionCreate'];
+export type DecisionCreateBody = DispositionDecisionCreateForward;
 
 export const EMPTY_DECISION_FORM: DecisionFormValue = {
   dispositionTypeCode: '',
   qty: '',
   reason: '',
+  acceptedQty: '',
+  rejectedQty: '',
 };
 
 /**
@@ -72,7 +82,42 @@ export const validateDecisionForm = (value: DecisionFormValue): DecisionFormErro
 
   if (value.reason.trim() === '') errors.reason = t.reasonRequired;
 
+  if (value.dispositionTypeCode === SORT) Object.assign(errors, validateSort(value, qty));
+
   return errors;
+};
+
+/** 소수 6자리까지를 정수로 — 부동소수 합이 어긋나 「같은데 다르다」가 되지 않게 잰다. */
+const toMicro = (raw: string): number => Math.round(Number(raw) * 1_000_000);
+
+/** 선별 — 양품·불량 둘 다 0 이상의 수이고, 합이 처분 수량과 같다(서버가 같은 규칙으로 400). */
+const validateSort = (value: DecisionFormValue, qty: string): DecisionFormErrors => {
+  const t = messages.dispositionDecision.form;
+  const errors: DecisionFormErrors = {};
+  const accepted = value.acceptedQty.trim();
+  const rejected = value.rejectedQty.trim();
+
+  if (accepted === '') errors.acceptedQty = t.qtyRequired;
+  else if (!DECIMAL.test(accepted)) errors.acceptedQty = t.qtyNotNumber;
+  if (rejected === '') errors.rejectedQty = t.qtyRequired;
+  else if (!DECIMAL.test(rejected)) errors.rejectedQty = t.qtyNotNumber;
+
+  if (errors.acceptedQty === undefined && errors.rejectedQty === undefined && DECIMAL.test(qty)) {
+    if (toMicro(accepted) + toMicro(rejected) !== toMicro(qty))
+      errors.rejectedQty = t.sortSumMismatch;
+  }
+
+  return errors;
+};
+
+/**
+ * 누른 순간의 로컬 날짜 `YYYY-MM-DD` — 선별의 불량분 재고 이동 원장에 싣는다(공유계약 C-8).
+ * ⚠ `toISOString()` 은 UTC 라 자정 근처에서 하루가 밀린다.
+ */
+export const toBusinessDate = (now: Date): string => {
+  const pad = (n: number): string => String(n).padStart(2, '0');
+
+  return `${String(now.getFullYear())}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
 };
 
 export const hasBlockingError = (errors: DecisionFormErrors): boolean =>
@@ -113,14 +158,23 @@ export const remainingNotice = (
 export const toDecisionCreateBody = (
   value: DecisionFormValue,
   uomId: number,
+  now: Date = new Date(),
 ): DecisionCreateBody | undefined => {
   if (hasBlockingError(validateDecisionForm(value))) return undefined;
 
   return {
-    /* 선택지가 계약 `enum` 세 값 그대로다 — 계약이 닫은 형으로 좁혀 싣는다. */
+    /* 선택지가 계약 `enum` 값 그대로다(선별은 서버 선행 P-53) — 계약이 닫은 형으로 좁혀 싣는다. */
     dispositionTypeCode: value.dispositionTypeCode as DecisionCreateBody['dispositionTypeCode'],
     decisionQty: Number(value.qty.trim()),
     uomId,
     reason: value.reason.trim(),
+    /* 선별이 아니면 세 칸을 싣지 않는다 — 다른 처분에는 뜻이 없다. */
+    ...(value.dispositionTypeCode === SORT
+      ? {
+          acceptedQty: Number(value.acceptedQty.trim()),
+          rejectedQty: Number(value.rejectedQty.trim()),
+          businessDate: toBusinessDate(now),
+        }
+      : {}),
   };
 };

@@ -5,7 +5,7 @@ import { useId } from 'react';
 
 import { lookupDisplayLabel } from '../../patterns/lookup-display';
 import { SaveErrorBanner } from '../../patterns/master';
-import type { DecisionFormErrors, DecisionFormValue } from './decision-form';
+import { SORT, type DecisionFormErrors, type DecisionFormValue } from './decision-form';
 import type { CodeOption } from './disposition-codes';
 import type { DispositionLookup } from './lookups';
 
@@ -111,6 +111,32 @@ export const DecisionFormPane = ({
         <p id={noticeId} className="field-note">
           {qtyNotice}
         </p>
+      )}
+      {/* 선별(omf-all-around#108) — 처분 수량을 양품·불량으로 나눈다. 합은 처분 수량이다. */}
+      {value.dispositionTypeCode === SORT && (
+        <>
+          <p className="field-note">{t.form.sortHelp}</p>
+          <TextField
+            label={t.form.acceptedQtyLabel}
+            value={value.acceptedQty}
+            required
+            fullWidth
+            inputMode="decimal"
+            disabled={isLocked}
+            error={errors.acceptedQty}
+            onChange={(event) => onChange({ ...value, acceptedQty: event.target.value })}
+          />
+          <TextField
+            label={t.form.rejectedQtyLabel}
+            value={value.rejectedQty}
+            required
+            fullWidth
+            inputMode="decimal"
+            disabled={isLocked}
+            error={errors.rejectedQty}
+            onChange={(event) => onChange({ ...value, rejectedQty: event.target.value })}
+          />
+        </>
       )}
 
       {/* ⛔ 디자인 시스템에 여러 줄 입력이 없다 — 토큰을 입힌 후보 부품을 쓴다(DS #74). */}
