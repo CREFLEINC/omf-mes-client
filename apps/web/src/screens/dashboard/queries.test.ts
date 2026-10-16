@@ -1,3 +1,4 @@
+import { focusManager } from '@tanstack/react-query';
 import { act, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
@@ -13,7 +14,7 @@ const summaryBody = {
   baseDate: '2026-10-16',
   plantId: 1,
   asOf: '2026-10-16T09:20:00+07:00',
-  cards: [{ cardCode: 'PRODUCTION_QTY', label: '금일 총생산', value: 63730, unit: 'EA' }],
+  cards: [{ cardCode: 'PRODUCTION_QTY', label: '금일 총생산', value: 4321, unit: 'EA' }],
 };
 
 const isSummaryRequest = (request: Request): boolean =>
@@ -38,7 +39,7 @@ describe('useDashboardSummary', () => {
     expect(url.searchParams.get('plantId')).toBe('1');
     expect(result.current.data?.cards[0]).toMatchObject({
       cardCode: 'PRODUCTION_QTY',
-      value: 63730,
+      value: 4321,
     });
   });
 
@@ -75,6 +76,7 @@ describe('useDashboardSummary', () => {
 describe('useDashboardSummary — 주기 자동 갱신', () => {
   afterEach(() => {
     vi.useRealTimers();
+    focusManager.setFocused(undefined);
   });
 
   it('주기마다 서버 집계를 다시 부른다', async () => {
@@ -96,6 +98,29 @@ describe('useDashboardSummary — 주기 자동 갱신', () => {
       await vi.advanceTimersByTimeAsync(1_000);
     });
     await waitFor(() => expect(fetch).toHaveBeenCalledTimes(2));
+  });
+
+  it('탭이 숨겨진 동안에는 주기가 와도 다시 부르지 않는다', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    const fetch = vi.fn(
+      createStubFetch([{ match: isSummaryRequest, respond: () => jsonResponse(summaryBody) }]),
+    );
+
+    const { result, queryClient } = renderHookWithProviders(() => useDashboardSummary({}), {
+      fetch,
+    });
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(queryClient.getQueryCache().getAll()[0]?.options).not.toMatchObject({
+      refetchIntervalInBackground: true,
+    });
+
+    act(() => {
+      focusManager.setFocused(false);
+    });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(DASHBOARD_REFRESH_INTERVAL_MS * 2);
+    });
+    expect(fetch).toHaveBeenCalledTimes(1);
   });
 
   it('자동 갱신이 실패해도 직전 값을 지우지 않고 오류로 정착한다', async () => {

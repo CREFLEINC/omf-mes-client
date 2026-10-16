@@ -5507,8 +5507,9 @@ on('POST', '/app/approval-requests/{approvalRequestId}:reject', (params, _q, bod
 /* ── 대시보드 (W-CO-05 · omf-all-around#111 · #113 · #114) ───────────── */
 
 /*
- * 2차 응답 규격(omf-all-around#118 코멘트)이 공식 계약보다 앞선다 — 계약 예시 서버는 설비 · 출하
- * 섹션과 품질 경로를 모른다. 그래서 이 두 경로는 여기서 답한다. ⛔ 값은 화면 배치를 보기 위한
+ * 2차 응답 규격(omf-all-around#118 코멘트 · 서버 대조 보정)이 공식 계약보다 앞선다 — 계약 예시
+ * 서버는 summary 의 설비 · 출하 · 품질 섹션을 모른다. 그래서 `GET /app/dashboard-summary` 한 경로를
+ * 여기서 답한다(품질 전용 경로는 없다). ⛔ 값은 화면 배치를 보기 위한
  * 가짜다 — 시안의 예시 숫자 · 고객사명 · 업체명을 옮기지 않는다(공개 저장소).
  */
 const dashboardBaseDate = (query) => query.get('baseDate') ?? new Date().toISOString().slice(0, 10);
@@ -5589,7 +5590,7 @@ on('GET', '/app/dashboard-summary', (_params, query) => {
       {
         cardCode: 'YIELD_RATE',
         label: '양품률',
-        value: 98.6,
+        value: 96.4,
         unit: '%',
         valueStatusCode: 'AVAILABLE',
       },
@@ -5682,7 +5683,7 @@ const dashboardQualityBlock = (baseDate, kind) => ({
     itemName: `시험 품목 ${String(seq)}`,
     /* 규격: PQC · OQC 는 LOT 번호가 null. */
     lotNo: kind === 'IQC' ? `LOT-MOCK-${String(seq)}` : null,
-    qty: 500 * seq,
+    qty: 420 * seq,
     judgmentCode: seq === 2 ? 'REJECTED' : seq === 3 ? 'HELD' : 'ACCEPTED',
   })),
 });

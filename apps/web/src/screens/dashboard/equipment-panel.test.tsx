@@ -23,7 +23,7 @@ const item = (overrides: Partial<DashboardEquipmentItem>): DashboardEquipmentIte
   statusReasonName: null,
   todayTotalQty: 1200,
   todayNgQty: 6,
-  defectRate: 0.5,
+  defectRate: 0.7,
   standardCycleTimeSec: 32,
   currentWorkOrderNo: 'WO-1',
   currentItemCode: 'ITEM-1',
@@ -71,7 +71,7 @@ describe('EquipmentPanel', () => {
     expect(running.getByText(t.status.RUNNING)).toBeInTheDocument();
     expect(running.getByText('100T')).toBeInTheDocument();
     expect(running.getByText('1,200')).toBeInTheDocument();
-    expect(running.getByText('0.5%')).toBeInTheDocument();
+    expect(running.getByText('0.7%')).toBeInTheDocument();
     expect(running.getByText('32초')).toBeInTheDocument();
     /* 가동 중인 설비에는 사유 · 경과 칸이 없다. */
     expect(running.queryByText(t.reason)).not.toBeInTheDocument();
