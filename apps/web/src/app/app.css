@@ -9261,6 +9261,14 @@ dl.filter-bar.approval-inbox-detail-facts {
   margin-bottom: 0;
 }
 
+/* 기간 — DS 기간 달력 옆에 빠른 선택(좁으면 아래 줄로). */
+.dashboard-period {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
 .filter-actions.dashboard-filter-actions {
   flex: 0 1 auto;
   align-items: center;

@@ -20,6 +20,7 @@ import {
 } from './quality';
 import { compareEquipmentCode } from './equipment';
 import { formatFigure } from './types';
+import { usePeriodTags } from './period';
 import {
   DeltaMark,
   EmptyLine,
@@ -54,6 +55,7 @@ export const formatRate = (rate: number | null): string =>
 export const rateDelta = (
   month: number | null,
   prev: number | null,
+  flatText: string = t.deltaFlat,
 ): { direction: 'up' | 'down' | 'flat'; text: string } | null => {
   if (month === null || prev === null) return null;
   const diff = Math.round((month - prev) * 10) / 10;
@@ -62,7 +64,7 @@ export const rateDelta = (
     ? { direction: 'up', text: t.deltaUp(formatFigure(diff)) }
     : diff < 0
       ? { direction: 'down', text: t.deltaDown(formatFigure(-diff)) }
-      : { direction: 'flat', text: t.deltaFlat };
+      : { direction: 'flat', text: flatText };
 };
 
 const JUDGMENT_TONE: Record<DashboardJudgmentCode, ChipStatus> = {
@@ -95,12 +97,14 @@ const PassRateTile = ({
   block: DashboardQualityTypeBlock;
   showDelta?: boolean;
 }) => {
-  const delta = showDelta === true ? rateDelta(block.monthPassRate, block.prevMonthPassRate) : null;
+  const tags = usePeriodTags();
+  const delta =
+    showDelta === true ? rateDelta(block.monthPassRate, block.prevMonthPassRate, tags.flat) : null;
 
   return (
-    <KpiTile label={label} tag={t.tagMonth} value={formatRate(block.monthPassRate)}>
+    <KpiTile label={label} tag={tags.month} value={formatRate(block.monthPassRate)}>
       <span>
-        {t.prevMonth(formatRate(block.prevMonthPassRate))}
+        {tags.prev(formatRate(block.prevMonthPassRate))}
         {/* 합격률은 높을수록 좋다 — 오르면 초록(`DeltaMark`). */}
         {delta !== null && (
           <>
@@ -152,11 +156,15 @@ const DailyPanel = ({
   quality: DashboardQuality;
   kinds: readonly QualityKind[];
   title: string;
-}) => (
-  <Panel title={title} sub={t.dailySub} tag={t.dailyRecent} className="dash-span-wide">
-    <MultiLineChart series={dailySeries(quality, kinds)} caption={title} />
-  </Panel>
-);
+}) => {
+  const tags = usePeriodTags();
+
+  return (
+    <Panel title={title} sub={t.dailySub} tag={tags.recent} className="dash-span-wide">
+      <MultiLineChart series={dailySeries(quality, kinds)} caption={title} />
+    </Panel>
+  );
+};
 
 type Counterpart = 'kind' | 'vendor' | 'customer' | 'equipment';
 
@@ -269,6 +277,7 @@ const countTone = (value: number, tone: ChipStatus): ChipStatus | undefined =>
 
 /** 품질 종합. */
 export const QualityOverviewTab = ({ quality }: { quality: DashboardQuality }) => {
+  const tags = usePeriodTags();
   const todayLots = sumLots([quality.iqc.todayLots, quality.pqc.todayLots, quality.oqc.todayLots]);
   const monthHeld = sumLots([
     quality.iqc.monthLots,
@@ -282,10 +291,10 @@ export const QualityOverviewTab = ({ quality }: { quality: DashboardQuality }) =
         <PassRateTile label={t.passRateOf('IQC')} block={quality.iqc} showDelta />
         <PassRateTile label={t.passRateOf('PQC')} block={quality.pqc} />
         <PassRateTile label={t.passRateOf('OQC')} block={quality.oqc} />
-        <LotTile label={t.todayLots} tag={t.tagToday} counts={todayLots} />
+        <LotTile label={t.todayLots} tag={tags.today} counts={todayLots} />
         <KpiTile
           label={t.customerReturn}
-          tag={t.tagMonth}
+          tag={tags.month}
           value={formatFigure(quality.oqc.customerReturnQty)}
           unit={t.qtyUnit}
         >
@@ -294,7 +303,7 @@ export const QualityOverviewTab = ({ quality }: { quality: DashboardQuality }) =
       </div>
       <Row kind="row2">
         <DailyPanel quality={quality} kinds={['IQC', 'PQC', 'OQC']} title={t.dailyTitleAll} />
-        <Panel title={t.vendorDefects} sub={t.qtyShareSub} tag={t.tagMonthTotal}>
+        <Panel title={t.vendorDefects} sub={t.qtyShareSub} tag={tags.monthTotal}>
           <RankBars
             entries={quality.iqc.vendorDefects.map((entry) => ({
               key: String(entry.partnerId),
@@ -306,7 +315,7 @@ export const QualityOverviewTab = ({ quality }: { quality: DashboardQuality }) =
       </Row>
       <Row kind="split">
         <div className="dash-stack">
-          <Panel title={t.phenomena} sub={t.qtyShareSub} tag={t.tagMonth}>
+          <Panel title={t.phenomena} sub={t.qtyShareSub} tag={tags.month}>
             <RankBars entries={phenomenaEntries(quality.nonconformance.phenomena)} />
           </Panel>
           <Panel title={t.currentTitle} tag={t.tagNow}>
@@ -353,6 +362,7 @@ export const QualityOverviewTab = ({ quality }: { quality: DashboardQuality }) =
 };
 
 export const IqcTab = ({ quality }: { quality: DashboardQuality }) => {
+  const tags = usePeriodTags();
   const iqc = quality.iqc;
   const topVendor = iqc.vendorDefects[0];
   const vendorTotal = iqc.vendorDefects.reduce((sum, entry) => sum + entry.rejectedQty, 0);
@@ -361,12 +371,12 @@ export const IqcTab = ({ quality }: { quality: DashboardQuality }) => {
     <div className="dash-tab">
       <div className="dash-kpis">
         <PassRateTile label={t.passRateOf('IQC')} block={iqc} showDelta />
-        <LotTile label={t.monthLots} tag={t.tagMonth} counts={iqc.monthLots} />
+        <LotTile label={t.monthLots} tag={tags.month} counts={iqc.monthLots} />
         {/* 지금은 늘 null(양품 복원 데이터 없음) — 값이 오기 전에는 칸을 두지 않는다. */}
         {iqc.fullReinspect !== null && (
           <KpiTile
             label={t.fullReinspect}
-            tag={t.tagMonth}
+            tag={tags.month}
             value={formatFigure(iqc.fullReinspect.inputQty)}
             unit={t.qtyUnit}
           >
@@ -380,7 +390,7 @@ export const IqcTab = ({ quality }: { quality: DashboardQuality }) => {
         )}
         <KpiTile
           label={t.topVendor}
-          tag={t.tagMonth}
+          tag={tags.month}
           value={topVendor === undefined ? t.none : topVendor.partnerName}
         >
           {topVendor !== undefined && (
@@ -390,7 +400,7 @@ export const IqcTab = ({ quality }: { quality: DashboardQuality }) => {
       </div>
       <Row kind="row2">
         <DailyPanel quality={quality} kinds={['IQC']} title={t.dailyTitleOf('IQC')} />
-        <Panel title={t.vendorDefects} sub={t.vendorTableSub} tag={t.tagMonthTotal}>
+        <Panel title={t.vendorDefects} sub={t.vendorTableSub} tag={tags.monthTotal}>
           {/* 표 칸은 줄을 바꾸지 않는다 — 넓으면 표 영역만 가로 스크롤(원칙 a). */}
           <div className="dash-table-wrap">
             <Table
@@ -421,7 +431,7 @@ export const IqcTab = ({ quality }: { quality: DashboardQuality }) => {
       </Row>
       <Row kind="split">
         <div className="dash-stack">
-          <Panel title={t.itemDefects} sub={t.qtyShareSub} tag={t.tagMonth}>
+          <Panel title={t.itemDefects} sub={t.qtyShareSub} tag={tags.month}>
             <StackedBar100
               entries={iqc.itemDefects.map((entry) => ({
                 key: String(entry.itemId),
@@ -464,6 +474,7 @@ export const IqcTab = ({ quality }: { quality: DashboardQuality }) => {
 };
 
 export const PqcTab = ({ quality }: { quality: DashboardQuality }) => {
+  const tags = usePeriodTags();
   const pqc = quality.pqc;
   const worst = pqc.equipmentDefectRates[0];
 
@@ -471,7 +482,7 @@ export const PqcTab = ({ quality }: { quality: DashboardQuality }) => {
     <div className="dash-tab">
       <div className="dash-kpis">
         <PassRateTile label={t.passRateOf('PQC')} block={pqc} />
-        <LotTile label={t.pqcLots} tag={t.tagMonth} counts={pqc.monthLots} />
+        <LotTile label={t.pqcLots} tag={tags.month} counts={pqc.monthLots} />
         <KpiTile
           label={t.pendingLots}
           tag={t.tagNow}
@@ -482,7 +493,7 @@ export const PqcTab = ({ quality }: { quality: DashboardQuality }) => {
         </KpiTile>
         <KpiTile
           label={t.monthDefectQty}
-          tag={t.tagMonth}
+          tag={tags.month}
           value={formatFigure(pqc.monthDefectQty)}
           unit={t.qtyUnit}
           tone={pqc.monthDefectQty > 0 ? 'error' : undefined}
@@ -491,7 +502,7 @@ export const PqcTab = ({ quality }: { quality: DashboardQuality }) => {
         </KpiTile>
         <KpiTile
           label={t.worstEquipment}
-          tag={t.tagToday}
+          tag={tags.today}
           value={worst === undefined ? t.none : worst.equipmentCode}
         >
           {worst !== undefined && (
@@ -503,7 +514,7 @@ export const PqcTab = ({ quality }: { quality: DashboardQuality }) => {
       </div>
       <Row kind="row2">
         <DailyPanel quality={quality} kinds={['PQC']} title={t.dailyTitleOf('PQC')} />
-        <Panel title={t.equipmentDefectRates} sub={t.equipmentDefectRatesSub} tag={t.tagToday}>
+        <Panel title={t.equipmentDefectRates} sub={t.equipmentDefectRatesSub} tag={tags.today}>
           <RankBars
             /*
              * 불량률이 같으면 설비 코드 자연 정렬(17-1 < 17-2 < 17-10) — 서버 순서는 같은 값끼리 문자열
@@ -533,7 +544,7 @@ export const PqcTab = ({ quality }: { quality: DashboardQuality }) => {
       </Row>
       <Row kind="split">
         <div className="dash-stack">
-          <Panel title={t.phenomenaOf('PQC')} sub={t.qtyShareSub} tag={t.tagMonth}>
+          <Panel title={t.phenomenaOf('PQC')} sub={t.qtyShareSub} tag={tags.month}>
             <RankBars entries={phenomenaEntries(pqc.defectPhenomena)} />
           </Panel>
           <Panel title={t.currentTitle} tag={t.tagNow}>
@@ -569,16 +580,17 @@ export const PqcTab = ({ quality }: { quality: DashboardQuality }) => {
 };
 
 export const OqcTab = ({ quality }: { quality: DashboardQuality }) => {
+  const tags = usePeriodTags();
   const oqc = quality.oqc;
 
   return (
     <div className="dash-tab">
       <div className="dash-kpis">
         <PassRateTile label={t.passRateOf('OQC')} block={oqc} />
-        <LotTile label={t.oqcLots} tag={t.tagMonth} counts={oqc.monthLots} />
+        <LotTile label={t.oqcLots} tag={tags.month} counts={oqc.monthLots} />
         <KpiTile
           label={t.customerReturn}
-          tag={t.tagMonth}
+          tag={tags.month}
           value={formatFigure(oqc.customerReturnQty)}
           unit={t.qtyUnit}
         >
@@ -601,6 +613,7 @@ export const OqcTab = ({ quality }: { quality: DashboardQuality }) => {
 };
 
 export const NonconformanceTab = ({ quality }: { quality: DashboardQuality }) => {
+  const tags = usePeriodTags();
   const nc = quality.nonconformance;
   const causes = nc.causeGroups.map((entry) => ({
     key: String(entry.causeCodeId),
@@ -613,14 +626,14 @@ export const NonconformanceTab = ({ quality }: { quality: DashboardQuality }) =>
       <div className="dash-kpis">
         <KpiTile
           label={t.ncMonthQty}
-          tag={t.tagMonth}
+          tag={tags.month}
           value={formatFigure(nc.monthQty)}
           unit={t.qtyUnit}
           tone={nc.monthQty > 0 ? 'error' : undefined}
         />
         <KpiTile
           label={t.ncScrap}
-          tag={t.tagMonth}
+          tag={tags.month}
           value={formatFigure(nc.scrapQty)}
           unit={t.qtyUnit}
         >
@@ -628,7 +641,7 @@ export const NonconformanceTab = ({ quality }: { quality: DashboardQuality }) =>
         </KpiTile>
         <KpiTile
           label={t.ncReworkReleased}
-          tag={t.tagMonth}
+          tag={tags.month}
           value={formatFigure(nc.reworkReleasedQty)}
           unit={t.qtyUnit}
         >
@@ -652,7 +665,7 @@ export const NonconformanceTab = ({ quality }: { quality: DashboardQuality }) =>
         )}
       </div>
       <Row kind="row2">
-        <Panel title={t.ncPareto} sub={t.paretoSub} tag={t.tagMonth} className="dash-span-wide">
+        <Panel title={t.ncPareto} sub={t.paretoSub} tag={tags.month} className="dash-span-wide">
           <ParetoChart
             entries={nc.phenomena.map((entry) => ({
               key: String(entry.defectCodeId),
@@ -662,15 +675,15 @@ export const NonconformanceTab = ({ quality }: { quality: DashboardQuality }) =>
             caption={t.ncPareto}
           />
         </Panel>
-        <Panel title={t.ncCauseGroups} sub={t.qtyShareSub} tag={t.tagMonth}>
+        <Panel title={t.ncCauseGroups} sub={t.qtyShareSub} tag={tags.month}>
           <RankBars entries={causes} />
         </Panel>
       </Row>
       <Row kind="row3">
-        <Panel title={t.ncCauseShare} sub={t.qtyShareSub} tag={t.tagMonth}>
+        <Panel title={t.ncCauseShare} sub={t.qtyShareSub} tag={tags.month}>
           <StackedBar100 entries={causes} />
         </Panel>
-        <Panel title={t.ncHandlingTitle} tag={t.tagMonth}>
+        <Panel title={t.ncHandlingTitle} tag={tags.month}>
           <StatusList
             items={[
               {

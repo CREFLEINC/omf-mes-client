@@ -168,7 +168,63 @@ export interface DashboardSummarySections {
   quality?: DashboardQuality;
 }
 
+/**
+ * 대시보드 기간 조회(2026-10-16 사용자 확정 · 서버 36f06e5) — 요청 `dateFrom` · `dateTo`(YYYY-MM-DD, 둘 다 함께,
+ * 양 끝 포함 최대 92일, `dateTo` ≤ 공장 오늘). `baseDate` 는 하루 조회용 하위 호환이며 기간과 함께 보내면 400.
+ * 응답은 실제 적용 기간을 돌려주고 `baseDate` = `dateTo` 다. 공식 설계 사본이 갱신될 때 동등성을 대조하고 제거한다.
+ */
+export interface DashboardSummaryPeriodQuery {
+  dateFrom?: string;
+  dateTo?: string;
+}
+
+export interface DashboardSummaryPeriod {
+  dateFrom?: string;
+  dateTo?: string;
+}
+
+/**
+ * 카드 값을 낼 수 없는 이유(2026-10-16 사용자 결정 · 서버 bf6cf79) — `AVAILABILITY_RATE` 카드가 `NOT_YET` 일 때만
+ * 싣는다. `CALENDAR_UNRESOLVED` = 조회 기간에 근무 일정이 등록되지 않은 날짜가 있다.
+ */
+export type DashboardCardNotYetReasonCode =
+  'NO_SESSION' | 'CALENDAR_UNRESOLVED' | 'NO_PLANNED_TIME';
+
+export interface DashboardCardForward {
+  notYetReasonCode?: DashboardCardNotYetReasonCode | null;
+}
+
 export interface ForwardPaths {
+  '/app/dashboard-summary': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: {
+      parameters: {
+        query?: DashboardSummaryPeriodQuery;
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        200: {
+          headers: { [name: string]: unknown };
+          content: { 'application/json': DashboardSummaryPeriod };
+        };
+      };
+    };
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/mdm/terminals/{terminalId}/accessible-screens': {
     parameters: {
       query?: never;

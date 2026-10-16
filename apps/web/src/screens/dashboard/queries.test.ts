@@ -21,13 +21,13 @@ const isSummaryRequest = (request: Request): boolean =>
   request.method === 'GET' && new URL(request.url).pathname === '/app/dashboard-summary';
 
 describe('useDashboardSummary', () => {
-  it('기준 날짜·공장을 질의로 실어 서버 집계를 부른다', async () => {
+  it('기간·공장을 질의로 실어 서버 집계를 부른다', async () => {
     const fetch = vi.fn(
       createStubFetch([{ match: isSummaryRequest, respond: () => jsonResponse(summaryBody) }]),
     );
 
     const { result } = renderHookWithProviders(
-      () => useDashboardSummary({ baseDate: '2026-10-16', plantId: 1 }),
+      () => useDashboardSummary({ dateFrom: '2026-10-10', dateTo: '2026-10-16', plantId: 1 }),
       { fetch },
     );
 
@@ -35,7 +35,9 @@ describe('useDashboardSummary', () => {
 
     expect(fetch).toHaveBeenCalledTimes(1);
     const url = new URL(fetch.mock.calls[0]![0].url);
-    expect(url.searchParams.get('baseDate')).toBe('2026-10-16');
+    expect(url.searchParams.get('dateFrom')).toBe('2026-10-10');
+    expect(url.searchParams.get('dateTo')).toBe('2026-10-16');
+    expect(url.searchParams.has('baseDate')).toBe(false);
     expect(url.searchParams.get('plantId')).toBe('1');
     expect(result.current.data?.cards[0]).toMatchObject({
       cardCode: 'PRODUCTION_QTY',
@@ -98,6 +100,24 @@ describe('useDashboardSummary — 주기 자동 갱신', () => {
       await vi.advanceTimersByTimeAsync(1_000);
     });
     await waitFor(() => expect(fetch).toHaveBeenCalledTimes(2));
+  });
+
+  it('지난 기간(live: false)이면 주기가 와도 다시 부르지 않는다', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    const fetch = vi.fn(
+      createStubFetch([{ match: isSummaryRequest, respond: () => jsonResponse(summaryBody) }]),
+    );
+
+    const { result } = renderHookWithProviders(
+      () => useDashboardSummary({ dateFrom: '2026-10-01', dateTo: '2026-10-07' }, { live: false }),
+      { fetch },
+    );
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(DASHBOARD_REFRESH_INTERVAL_MS * 2);
+    });
+    expect(fetch).toHaveBeenCalledTimes(1);
   });
 
   it('탭이 숨겨진 동안에는 주기가 와도 다시 부르지 않는다', async () => {

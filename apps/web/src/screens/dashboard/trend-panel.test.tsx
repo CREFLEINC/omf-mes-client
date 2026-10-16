@@ -2,7 +2,14 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 
-import { TrendPanel, placeTip, toPointPositions, toTipDate } from './trend-panel';
+import {
+  DS_AXIS_LABEL_SELECTOR,
+  TrendPanel,
+  labelStepOf,
+  placeTip,
+  toPointPositions,
+  toTipDate,
+} from './trend-panel';
 import type { DashboardTrendView } from './types';
 
 const view: DashboardTrendView = {
@@ -102,5 +109,31 @@ describe('TrendPanel 점 툴팁', () => {
     expect(positions.map((point) => point.x)).toEqual([40, 332, 624]);
     expect(positions[1]?.y).toBe(188);
     expect(toPointPositions([{ label: 'a', value: 1_500_000 }], 640, 1_500_000)[0]?.y).toBe(16);
+  });
+});
+
+describe('TrendPanel 날짜 이름표 솎기', () => {
+  it('점이 많으면 그림 폭에 들어가는 만큼만 보인다 — DS 가로축 글자를 찾지 못하면 실패(내부 클래스 의존)', () => {
+    const many: DashboardTrendView = {
+      ...view,
+      points: Array.from({ length: 92 }, (_, index) => ({
+        label: `L${String(index)}`,
+        value: index * 10,
+      })),
+    };
+    const { container } = render(<TrendPanel view={many} isLoading={false} />);
+
+    const labels = container.querySelectorAll<SVGTextElement>(DS_AXIS_LABEL_SELECTOR);
+    expect(labels).toHaveLength(92);
+    const shown = [...labels].filter((label) => label.style.visibility !== 'hidden');
+    expect(shown.length).toBeLessThan(92);
+    expect(shown[0]?.textContent).toBe('L0');
+    /* 툴팁 자리(날짜 칸 단추)는 그대로 92개. */
+    expect(container.querySelectorAll('.dash-trend-hit')).toHaveLength(92);
+  });
+
+  it('간격 계산 — 폭 640 에 9점은 모두, 92점은 솎는다', () => {
+    expect(labelStepOf(9, 640)).toBe(1);
+    expect(labelStepOf(92, 640)).toBe(10);
   });
 });

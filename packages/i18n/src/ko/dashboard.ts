@@ -17,6 +17,15 @@ export const dashboard = {
 
   filters: {
     baseDate: '기준 날짜',
+    /** ⭐ 기간 조회(사용자 확정 2026-10-16) — 빠른 선택 + 시작~종료 직접 고르기. */
+    period: '기간',
+    quickLabel: '빠른 선택',
+    quick: { today: '오늘', yesterday: '어제', last7: '최근 7일', thisMonth: '이번 달' },
+    periodOrder: '시작일이 종료일보다 늦습니다.',
+    periodTooLong: (days: number): string => `기간은 최대 ${String(days)}일까지 고를 수 있습니다.`,
+    periodFuture: '오늘 이후 날짜는 고를 수 없습니다.',
+    /** 지난 기간 — 값이 바뀌지 않아 자동 갱신을 하지 않는다(「갱신」은 그대로). */
+    autoRefreshOff: '지난 기간 · 자동 갱신 안 함',
     plant: '공장',
     allPlants: '전체',
     refresh: '갱신',
@@ -48,6 +57,11 @@ export const dashboard = {
     deltaFlat: '전일과 동일',
     /** 생산 수량 칸의 증감 — 「전일 대비」 글자와 색을 입힌 기호 · 수치를 나눠 그린다. */
     deltaBase: '전일 대비',
+    /** 이틀 이상 기간 — 「직전 기간」(같은 길이의 바로 앞 기간)과 견준다. */
+    deltaUpPeriod: (text: string): string => `직전 기간 대비 ↑ ${text}`,
+    deltaDownPeriod: (text: string): string => `직전 기간 대비 ↓ ${text}`,
+    deltaFlatPeriod: '직전 기간과 동일',
+    deltaBasePeriod: '직전 기간 대비',
     /** 카드를 눌러 소유 화면으로 갈 수 있을 때. */
     openHint: (label: string): string => `${label} 상세 화면으로 이동`,
   },
@@ -119,7 +133,7 @@ export const dashboard = {
     stoppedMore: (count: string): string => `외 ${count}대`,
     stoppedGroupCaption: (status: string): string => `${status} 설비`,
     /** ⛔ 「모든 설비가 가동 중」이라 단정하지 않는다(사용자 지시 2026-10-16) — 목록이 비었다는 사실만 말한다. */
-    stoppedEmpty: '현재 멈춘 설비가 없습니다.',
+    stoppedEmpty: '현재 가동 외 설비가 없습니다.',
     statusColumn: '가동 상태',
     openDetail: (code: string): string => `${code} 상세 보기`,
     groupRun: '상태 시간',
@@ -176,6 +190,7 @@ export const dashboard = {
     none: '—',
     tagLive: '실시간',
     tagToday: '금일',
+    tagPeriod: '선택 기간',
     runningOfTotal: '가동 설비',
     availability: '시간가동률',
     /** 서버 설명이 올 때만 쓰는 짧은 기준 줄(원문은 설명 단추의 툴팁). */
@@ -183,6 +198,10 @@ export const dashboard = {
     workedEquipment: (count: string): string => `작업\u00a0설비\u00a0${count}대`,
     /** ⭐ 툴팁 문구 — 사용자 지정(2026-10-16), 그대로 쓴다. */
     availabilityTip: '계획된 가동시간 중 실제 가동한 시간의 비율입니다.',
+    /** ⭐ 사용자 결정 2026-10-16 — 서버 notYetReasonCode = CALENDAR_UNRESOLVED 일 때만. */
+    availabilityCalendarMissing: '근무 일정 미등록',
+    availabilityCalendarMissingTip:
+      '조회 기간에 근무 일정이 등록되지 않은 날짜가 있어 가동률을 계산할 수 없습니다.',
     productionQty: '생산 수량',
     /** 이 띠에서는 「NG」 대신 「불량」(사용자 지시 2026-10-16). */
     defectLine: (qty: string): string => `불량 ${qty} EA`,
@@ -231,12 +250,16 @@ export const dashboard = {
     tagMonth: '당월',
     tagMonthTotal: '당월 누계',
     tagToday: '금일',
+    /** 이틀 이상 기간 — 「당월」 · 「당월 누계」 · 「금일」 자리(사용자 확정 2026-10-16). */
+    tagPeriod: '선택 기간',
     tagNow: '현재',
     passRateOf: (kind: string): string => `${kind} 합격률`,
     prevMonth: (rate: string): string => `전월 ${rate}`,
+    prevPeriod: (rate: string): string => `직전 기간 ${rate}`,
     deltaUp: (p: string): string => `↑ ${p}p`,
     deltaDown: (p: string): string => `↓ ${p}p`,
     deltaFlat: '전월과 동일',
+    deltaFlatPeriod: '직전 기간과 동일',
     /** 모수가 0이라 합격률을 낼 수 없다. ⛔ 0%로 그리지 않는다. */
     rateNone: '—',
     percent: (value: string): string => `${value}%`,

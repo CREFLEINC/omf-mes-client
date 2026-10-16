@@ -21,6 +21,7 @@ const card = (overrides: Partial<DashboardCardView>): DashboardCardView => ({
   note: null,
   valueStatusCode: 'AVAILABLE',
   excludedCount: null,
+  notYetReasonCode: null,
   ...overrides,
 });
 
@@ -158,6 +159,31 @@ describe('OverviewKpis', () => {
 
     renderKpis(PRODUCTION, withDelta('UNHANDLED_ALARM', -0.5));
     expect(markIn(alarmRow())).toHaveClass('dash-delta-good');
+  });
+
+  it('시간가동률 — NOT_YET 사유가 CALENDAR_UNRESOLVED 일 때만 「근무 일정 미등록」 · 그 이유 툴팁', async () => {
+    const user = userEvent.setup();
+    const withReason = (notYetReasonCode: DashboardCardView['notYetReasonCode']) =>
+      cards.map((entry) =>
+        entry.cardCode === 'AVAILABILITY_RATE'
+          ? { ...entry, valueStatusCode: 'NOT_YET' as const, notYetReasonCode }
+          : entry,
+      );
+    const availabilityGroup = () => screen.getByRole('group', { name: '시간가동률' });
+
+    for (const reason of ['NO_SESSION', 'NO_PLANNED_TIME'] as const) {
+      const other = renderKpis(PRODUCTION, withReason(reason));
+      expect(availabilityGroup()).not.toHaveTextContent(k.availabilityCalendarMissing);
+      other.unmount();
+    }
+
+    renderKpis(PRODUCTION, withReason('CALENDAR_UNRESOLVED'));
+    expect(availabilityGroup()).toHaveTextContent(k.availabilityCalendarMissing);
+    expect(k.availabilityCalendarMissing).toBe('근무 일정 미등록');
+    await user.hover(screen.getByRole('button', { name: v.infoLabel('시간가동률') }));
+    expect(await screen.findByRole('tooltip')).toHaveTextContent(
+      '조회 기간에 근무 일정이 등록되지 않은 날짜가 있어 가동률을 계산할 수 없습니다.',
+    );
   });
 
   describe('설명 단추를 누르면', () => {

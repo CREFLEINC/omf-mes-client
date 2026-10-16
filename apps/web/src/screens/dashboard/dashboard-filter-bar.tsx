@@ -1,9 +1,16 @@
-import { Button, DatePicker, Icon } from '@crefle/web-ui';
+import { Button, Chip, DatePicker, Icon } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { useId } from 'react';
+import { useId, useState } from 'react';
 
 import { FieldLabel } from './field-label';
-import type { DashboardFilters } from './filters';
+import {
+  MAX_PERIOD_DAYS,
+  QUICK_PERIODS,
+  periodProblemOf,
+  quickPeriodOf,
+  type DashboardFilters,
+  type PeriodProblem,
+} from './filters';
 import { DASHBOARD_REFRESH_INTERVAL_MS } from './queries';
 import { SelectField } from './select-field';
 import type { SelectOption } from './types';
@@ -23,10 +30,27 @@ export interface DashboardFilterBarProps {
   lastUpdatedText: string | null;
   /** 갱신이 실패해 직전 값을 보이고 있다. */
   isStale: boolean;
+  /** 공장 시각의 오늘(YYYY-MM-DD) — 빠른 선택과 미래 날짜 막기에만 쓴다. */
+  today: string;
+  /** 자동 갱신 중인가 — 지난 기간이면 `false`(안내를 「자동 갱신 안 함」으로). */
+  isLive: boolean;
+  /** 서버가 기간을 거절한 이유(400 field dateFrom · dateTo). 없으면 `undefined`. */
+  periodError?: string;
 }
 
+const problemText = (problem: PeriodProblem): string => {
+  switch (problem) {
+    case 'order':
+      return t.filters.periodOrder;
+    case 'tooLong':
+      return t.filters.periodTooLong(MAX_PERIOD_DAYS);
+    case 'future':
+      return t.filters.periodFuture;
+  }
+};
+
 /**
- * 기준 조건 줄 — **축이 둘뿐이다**(기준 날짜 · 공장).
+ * 기준 조건 줄 — **축이 둘뿐이다**(기간 · 공장).
  *
  * ⭐ **고르는 즉시 반영한다.** 형제 조회 화면들은 「모아서 적용」(조회 버튼)인데 여기는 다르다:
  * 자유 입력 칸이 없고 컨트롤이 둘뿐이라, 고르고 나서 다시 「조회」를 눌러야 하는 것은 한 걸음이
@@ -48,29 +72,71 @@ export const DashboardFilterBar = ({
   isRefreshing,
   lastUpdatedText,
   isStale,
+  today,
+  isLive,
+  periodError,
 }: DashboardFilterBarProps) => {
-  const baseDateId = useId();
-  const noteId = `${baseDateId}-manual`;
+  const periodId = useId();
+  const noteId = `${periodId}-manual`;
+  const periodNoteId = `${periodId}-note`;
+  /* 고를 수 없는 기간(92일 초과 등)을 골랐을 때의 안내 — 조회하지 않고 칸 옆에 남긴다. */
+  const [problem, setProblem] = useState<PeriodProblem | null>(null);
+  const shownFrom = filters.dateFrom === '' ? today : filters.dateFrom;
+  const shownTo = filters.dateTo === '' ? today : filters.dateTo;
+  const periodNote = problem === null ? periodError : problemText(problem);
+
+  const applyPeriod = (from: string, to: string): void => {
+    const found = periodProblemOf(from, to, today);
+    setProblem(found);
+    if (found === null) onChange({ ...filters, dateFrom: from, dateTo: to });
+  };
 
   return (
     <div className="filter-bar dashboard-filter-bar">
-      <div className="field-cell">
-        <FieldLabel htmlFor={baseDateId} label={t.filters.baseDate} />
-        {/*
-         * 기준 날짜를 비울 수 있게 둔다(`clearable`) — 비우면 서버가 오늘로 정한다.
-         * 화면이 「오늘」을 계산하지 않으므로 비움이 곧 「오늘」이고, 그 길을 막으면 한 번
-         * 날짜를 고른 뒤에는 오늘로 돌아올 방법이 칸 안에 없어진다.
-         */}
-        <DatePicker
-          id={baseDateId}
-          mode="single"
-          clearable
-          placeholder={messages.common.selectDate}
-          value={filters.baseDate === '' ? null : filters.baseDate}
-          onChange={(value) => {
-            onChange({ ...filters, baseDate: value ?? '' });
-          }}
-        />
+      {/*
+       * ⭐ 기간(사용자 확정 2026-10-16) — 빠른 선택(오늘 · 어제 · 최근 7일 · 이번 달) + DS 기간 달력. 기본은 오늘이고
+       * 비워 두면 서버가 오늘로 정한다. 미래 날짜는 달력이 막고(`max`), 92일 초과는 고른 뒤 칸 옆에 안내하고
+       * 조회하지 않는다. 서버가 거절한 이유(400)도 같은 자리에 선다.
+       */}
+      <div className="field-cell dashboard-period-cell">
+        <FieldLabel htmlFor={periodId} label={t.filters.period} />
+        <div className="dashboard-period">
+          <DatePicker
+            id={periodId}
+            mode="range"
+            max={today}
+            value={[shownFrom, shownTo]}
+            invalid={periodNote !== undefined}
+            aria-describedby={periodNote === undefined ? undefined : periodNoteId}
+            onChange={([from, to]) => {
+              applyPeriod(from, to);
+            }}
+          />
+          <div className="dash-segment" role="group" aria-label={t.filters.quickLabel}>
+            {QUICK_PERIODS.map((quick) => {
+              const [from, to] = quickPeriodOf(quick, today);
+
+              return (
+                <Chip
+                  key={quick}
+                  variant="filter"
+                  size="sm"
+                  selected={from === shownFrom && to === shownTo}
+                  onSelectedChange={() => {
+                    applyPeriod(from, to);
+                  }}
+                >
+                  {t.filters.quick[quick]}
+                </Chip>
+              );
+            })}
+          </div>
+        </div>
+        {periodNote !== undefined && (
+          <span id={periodNoteId} className="field-error" role="alert">
+            {periodNote}
+          </span>
+        )}
       </div>
 
       <SelectField
@@ -97,7 +163,9 @@ export const DashboardFilterBar = ({
          */}
         <p id={noteId} className="dashboard-refresh-status">
           {[
-            t.filters.autoRefresh(DASHBOARD_REFRESH_INTERVAL_MS / 60_000),
+            isLive
+              ? t.filters.autoRefresh(DASHBOARD_REFRESH_INTERVAL_MS / 60_000)
+              : t.filters.autoRefreshOff,
             ...(lastUpdatedText === null ? [] : [t.filters.lastUpdated(lastUpdatedText)]),
             ...(isStale ? [t.filters.refreshFailed] : []),
           ].join(' · ')}

@@ -31,6 +31,31 @@ export const describeLoadError = (error: ApiError): string => {
   }
 };
 
+/** 기간 칸이 가리키는 서버 필드. */
+const PERIOD_FIELDS = ['dateFrom', 'dateTo'];
+
+/**
+ * 서버가 **기간만** 거절했는가(400 · scope 'field' · field dateFrom/dateTo — 기간 조회 2026-10-16). 그렇다면 그
+ * 안내를 돌려준다 — 화면은 배너 대신 날짜 칸 옆에 둔다(다시 시도해도 같은 답이라 재시도 단추가 쓸모없다).
+ * 다른 오류가 섞였거나 기간 오류가 아니면 `undefined`.
+ */
+export const periodErrorOf = (error: unknown): string | undefined => {
+  if (error === null || error === undefined) return undefined;
+  const apiError = toApiError(error);
+  if (apiError.kind !== 'validation' || apiError.errors.length === 0) return undefined;
+  const onlyPeriod = apiError.errors.every(
+    (item) => item.scope === 'field' && PERIOD_FIELDS.includes(item.field ?? ''),
+  );
+  if (!onlyPeriod) return undefined;
+
+  const text = apiError.errors
+    .map((item) => item.message.trim())
+    .filter((message) => message !== '')
+    .join(' ');
+
+  return text === '' ? messages.httpError.description : text;
+};
+
 /** 권한 없음인가. 같은 권한으로 다시 불러도 같은 답이 오므로 재시도를 붙이지 않는다. */
 const isForbidden = (error: ApiError): boolean => error.kind === 'http' && error.status === 403;
 

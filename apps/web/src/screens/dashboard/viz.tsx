@@ -16,6 +16,9 @@ import { useChartWidth } from './use-chart-width';
 
 const t = messages.dashboard.viz;
 
+/** 날짜 이름표 하나에 줄 폭(px) — 「10-14」 글자 폭 + 사이 여백. */
+const AXIS_LABEL_SLOT_PX = 56;
+
 /**
  * 대시보드 그림 부품(⭐ 사용자 지시 2026-10-16, 시안 v1.3 기준 재구성).
  *
@@ -426,6 +429,11 @@ export const MultiLineChart = ({ series, caption }: { series: LineSeries[]; capt
   const yAt = (value: number): number =>
     PAD.top + plotH - ((value - domain.min) / (domain.max - domain.min || 1)) * plotH;
   const ticks = [0, 1, 2, 3, 4].map((step) => domain.min + ((domain.max - domain.min) * step) / 4);
+  /* 날짜 이름표 솎기(기간 조회 2026-10-16 — 최대 92점) — 폭에 들어가는 만큼만, 점 · 선은 그대로. */
+  const labelStep = Math.max(
+    1,
+    Math.ceil(labels.length / Math.max(1, Math.floor(plotW / AXIS_LABEL_SLOT_PX))),
+  );
   const endLabelY = spreadLabels(
     series.map((entry) => {
       const last = toLineSegments(entry.points).at(-1)?.at(-1);
@@ -465,17 +473,19 @@ export const MultiLineChart = ({ series, caption }: { series: LineSeries[]; capt
             </text>
           </g>
         ))}
-        {labels.map((label, index) => (
-          <text
-            key={label}
-            className="dash-axis"
-            x={xAt(index, labels.length)}
-            y={H - 8}
-            textAnchor="middle"
-          >
-            {label}
-          </text>
-        ))}
+        {labels.map((label, index) =>
+          index % labelStep !== 0 ? null : (
+            <text
+              key={label}
+              className="dash-axis"
+              x={xAt(index, labels.length)}
+              y={H - 8}
+              textAnchor="middle"
+            >
+              {label}
+            </text>
+          ),
+        )}
         {series.map((entry, seriesIndex) => {
           const segments = toLineSegments(entry.points);
           const last = segments.at(-1)?.at(-1);

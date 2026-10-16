@@ -1,5 +1,7 @@
 import type {
   components,
+  DashboardCardForward,
+  DashboardCardNotYetReasonCode,
   DashboardProduction,
   DashboardQuality,
   DashboardShipment,
@@ -20,7 +22,7 @@ import { toEquipmentView, type EquipmentView } from './equipment';
 
 /** 계약의 집계에 2차 규격의 선택 섹션(설비 · 출하)을 더한 모양(omf-all-around#118 · forward-contract). */
 type DashboardSummary = components['schemas']['DashboardSummary'] & DashboardSummarySections;
-type DashboardCard = components['schemas']['DashboardCard'];
+type DashboardCard = components['schemas']['DashboardCard'] & DashboardCardForward;
 type Notification = components['schemas']['Notification'];
 
 export interface PageMeta {
@@ -55,6 +57,8 @@ export interface DashboardCardView {
   valueStatusCode: CardValueStatus;
   /** 분모에서 뺀 건수. `PARTIAL`일 때 함께 보인다. */
   excludedCount: number | null;
+  /** 값을 낼 수 없는 이유(`NOT_YET` 일 때만 · 지금은 시간가동률만 싣는다). 없으면 `null`. */
+  notYetReasonCode: DashboardCardNotYetReasonCode | null;
 }
 
 export interface DashboardTrendPointView {
@@ -187,6 +191,7 @@ const toCardView = (source: DashboardCard): DashboardCardView => ({
   note: source.note ?? null,
   valueStatusCode: source.valueStatusCode,
   excludedCount: source.excludedCount ?? null,
+  notYetReasonCode: source.notYetReasonCode ?? null,
 });
 
 const toAlertView = (source: Notification): DashboardAlertView => ({

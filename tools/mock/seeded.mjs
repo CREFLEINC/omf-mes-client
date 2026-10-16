@@ -5512,7 +5512,9 @@ on('POST', '/app/approval-requests/{approvalRequestId}:reject', (params, _q, bod
  * 여기서 답한다(품질 전용 경로는 없다). ⛔ 값은 화면 배치를 보기 위한
  * 가짜다 — 시안의 예시 숫자 · 고객사명 · 업체명을 옮기지 않는다(공개 저장소).
  */
-const dashboardBaseDate = (query) => query.get('baseDate') ?? new Date().toISOString().slice(0, 10);
+/* 기간 조회(2026-10-16 · 서버 36f06e5) — dateFrom · dateTo 가 오면 끝 날이 기준일이다. */
+const dashboardBaseDate = (query) =>
+  query.get('dateTo') ?? query.get('baseDate') ?? new Date().toISOString().slice(0, 10);
 const dashboardShiftDate = (baseDate, days) => {
   const date = new Date(`${baseDate}T00:00:00Z`);
   date.setUTCDate(date.getUTCDate() + days);
@@ -5575,8 +5577,11 @@ on('GET', '/app/dashboard-summary', (_params, query) => {
   const plantId = query.get('plantId');
   const asOf = new Date().toISOString();
 
+  const dateFrom = query.get('dateFrom');
+
   return {
     baseDate,
+    ...(dateFrom === null ? {} : { dateFrom, dateTo: baseDate }),
     ...(plantId === null ? {} : { plantId: Number(plantId) }),
     asOf,
     cards: [

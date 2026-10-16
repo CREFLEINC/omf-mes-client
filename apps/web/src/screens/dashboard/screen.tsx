@@ -8,6 +8,9 @@ import { CARD_ROUTES } from './card-routes';
 import { DashboardFilterBar } from './dashboard-filter-bar';
 import { EquipmentBoard, StoppedPanel } from './equipment-panel';
 import {
+  isLivePeriod,
+  isSingleDay,
+  plantToday,
   readFilters,
   toDrilldownParams,
   toFilterQuery,
@@ -15,8 +18,9 @@ import {
   type DashboardFilters,
 } from './filters';
 import { formatLastUpdated } from './last-updated';
-import { LoadErrorBanner } from './load-error-banner';
+import { LoadErrorBanner, periodErrorOf } from './load-error-banner';
 import { OverviewKpis } from './overview-kpis';
+import { SingleDayContext } from './period';
 import { ShipmentPanel } from './shipment-panel';
 import { plantNote, usePlantOptions } from './lookups';
 import {
@@ -78,7 +82,12 @@ export const DashboardScreen = () => {
   const filters = useMemo<DashboardFilters>(() => readFilters(searchParams), [searchParams]);
   const query = useMemo(() => toFilterQuery(filters), [filters]);
 
-  const summary = useDashboardSummary(query);
+  /* 공장 시각의 오늘 — 빠른 선택 · 미래 막기 · 자동 갱신 판단에만 쓴다(조회 기본값은 서버가 정한다). */
+  const today = plantToday();
+  const isLive = isLivePeriod(filters, today);
+  const summary = useDashboardSummary(query, { live: isLive });
+  /* 서버가 기간을 거절한 이유(400 field dateFrom · dateTo) — 배너 대신 날짜 칸 옆에 둔다. */
+  const periodError = periodErrorOf(summary.error);
   /* 알림 이름 풀이 — 알림센터와 같은 유형 목록을 쓴다(코드 원문을 보이지 않는다). */
   const alertEvents = useNotificationEventOptions();
   /* 출하 현황 칸을 눌러 갈 화면 — 사이드바와 같은 권한 판정(세션 권한)으로 링크 여부를 정한다. */
@@ -189,7 +198,7 @@ export const DashboardScreen = () => {
   );
 
   return (
-    <>
+    <SingleDayContext.Provider value={isSingleDay(filters)}>
       <PageHeader
         title={t.title}
         breadcrumb={
@@ -200,7 +209,7 @@ export const DashboardScreen = () => {
         }
       />
 
-      {summary.isError && (
+      {summary.isError && periodError === undefined && (
         <LoadErrorBanner
           error={summary.error}
           onRetry={() => {
@@ -217,6 +226,9 @@ export const DashboardScreen = () => {
           isRefreshing={summary.isFetching}
           lastUpdatedText={lastUpdatedText}
           isStale={hasStaleData}
+          today={today}
+          isLive={isLive}
+          periodError={periodError}
           onChange={(next) => {
             setSearchParams(toSearchParams(next));
           }}
@@ -252,6 +264,6 @@ export const DashboardScreen = () => {
           })),
         ]}
       />
-    </>
+    </SingleDayContext.Provider>
   );
 };

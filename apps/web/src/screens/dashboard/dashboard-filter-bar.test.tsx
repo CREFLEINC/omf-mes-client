@@ -12,13 +12,15 @@ const renderBar = (overrides: Partial<DashboardFilterBarProps> = {}) => {
   const onRefresh = vi.fn();
   render(
     <DashboardFilterBar
-      filters={{ baseDate: '', plant: '' }}
+      filters={{ dateFrom: '', dateTo: '', plant: '' }}
       plantOptions={[]}
       onChange={() => undefined}
       onRefresh={onRefresh}
       isRefreshing={false}
       lastUpdatedText="09:41"
       isStale={false}
+      today="2026-10-16"
+      isLive
       {...overrides}
     />,
   );
@@ -50,6 +52,12 @@ describe('DashboardFilterBar — 갱신', () => {
     ).toBeInTheDocument();
   });
 
+  it('지난 기간이면 자동 갱신 안내 대신 「자동 갱신 안 함」', () => {
+    renderBar({ isLive: false });
+
+    expect(screen.getByText(`${t.autoRefreshOff} · ${t.lastUpdated('09:41')}`)).toBeInTheDocument();
+  });
+
   it('누르면 다시 부른다', async () => {
     const user = userEvent.setup();
     const { onRefresh } = renderBar();
@@ -65,5 +73,27 @@ describe('DashboardFilterBar — 갱신', () => {
     expect(button).toBeDisabled();
     await user.click(button);
     expect(onRefresh).not.toHaveBeenCalled();
+  });
+});
+
+describe('DashboardFilterBar — 기간', () => {
+  it('빠른 선택을 누르면 그 기간으로 바꾼다 · 비어 있으면 「오늘」이 골라져 있다', async () => {
+    const user = userEvent.setup();
+    const onChange = vi.fn();
+    renderBar({ onChange });
+
+    expect(screen.getByRole('button', { name: t.quick.today, pressed: true })).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: t.quick.last7 }));
+    expect(onChange).toHaveBeenCalledWith({
+      dateFrom: '2026-10-10',
+      dateTo: '2026-10-16',
+      plant: '',
+    });
+  });
+
+  it('서버가 기간을 거절한 이유는 날짜 칸 옆에 선다', () => {
+    renderBar({ periodError: '기간이 너무 깁니다.' });
+
+    expect(screen.getByRole('alert')).toHaveTextContent('기간이 너무 깁니다.');
   });
 });

@@ -57,12 +57,16 @@ const fetchSummary = async (
  * **조건이 비어 있어도 부른다** — 기준 날짜가 없으면 서버가 오늘로 정하고, 공장이 없으면
  * 전체다. 필수 조건이 없는 화면이라 「조건이 설 때까지 기다리는」 갈래 자체가 없다.
  */
-export const useDashboardSummary = (query: DashboardFilterQuery): UseQueryResult<DashboardView> => {
+export const useDashboardSummary = (
+  query: DashboardFilterQuery,
+  { live = true }: { live?: boolean } = {},
+): UseQueryResult<DashboardView> => {
   const { client } = useApiClient();
 
   return useQuery({
     queryKey: dashboardKeys.summary(query),
     queryFn: () => fetchSummary(client, query),
-    refetchInterval: DASHBOARD_REFRESH_INTERVAL_MS,
+    /* 지난 기간(끝이 오늘 전)은 값이 바뀌지 않아 자동 갱신을 걸지 않는다(사용자 확정 2026-10-16). */
+    refetchInterval: live ? DASHBOARD_REFRESH_INTERVAL_MS : false,
   });
 };

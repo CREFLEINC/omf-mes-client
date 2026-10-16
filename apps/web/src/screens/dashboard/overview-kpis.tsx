@@ -9,6 +9,7 @@ import { toDelta } from './delta';
 import type { EquipmentView } from './equipment';
 import { EQUIPMENT_STATUS_TONE } from './equipment-panel';
 import { formatFigure, type DashboardCardView } from './types';
+import { useSingleDay } from './period';
 import { DeltaMark, InfoTip, KpiTile } from './viz';
 
 const t = messages.dashboard;
@@ -36,8 +37,10 @@ export const serverNoteOf = (card: DashboardCardView | undefined): string | unde
     : card.note;
 
 /** 전일 대비 증감 — 값을 낼 수 없는 카드에는 무엇 대비인지가 성립하지 않아 두지 않는다. */
-const cardDeltaOf = (card: DashboardCardView | undefined) =>
-  card === undefined || card.valueStatusCode === 'NOT_YET' ? undefined : toDelta(card.deltaRatio);
+const cardDeltaOf = (card: DashboardCardView | undefined, singleDay = true) =>
+  card === undefined || card.valueStatusCode === 'NOT_YET'
+    ? undefined
+    : toDelta(card.deltaRatio, singleDay);
 
 /** 늘수록 나쁜 카드 — 증감 색을 뒤집는다(사용자 결정 2026-10-16). 안 읽은 알림이 늘면 나쁘다. */
 const LOWER_IS_BETTER: readonly DashboardCardView['cardCode'][] = ['UNHANDLED_ALARM'];
@@ -47,7 +50,8 @@ const LOWER_IS_BETTER: readonly DashboardCardView['cardCode'][] = ['UNHANDLED_AL
  * 변동 없음은 기호 없이 「전일과 동일」 회색. 증감이 없으면 `null`.
  */
 const CardDeltaLine = ({ card }: { card: DashboardCardView | undefined }) => {
-  const delta = cardDeltaOf(card);
+  const singleDay = useSingleDay();
+  const delta = cardDeltaOf(card, singleDay);
   if (card === undefined || delta === undefined) return null;
   const mark = (
     <DeltaMark direction={delta.direction} lowerIsBetter={LOWER_IS_BETTER.includes(card.cardCode)}>
@@ -59,7 +63,7 @@ const CardDeltaLine = ({ card }: { card: DashboardCardView | undefined }) => {
     mark
   ) : (
     <>
-      {t.cards.deltaBase} {mark}
+      {singleDay ? t.cards.deltaBase : t.cards.deltaBasePeriod} {mark}
     </>
   );
 };
@@ -180,11 +184,20 @@ export const OverviewKpis = ({
   axes,
   routes,
 }: OverviewKpisProps) => {
+  /* 하루면 「금일」, 이틀 이상이면 「선택 기간」(사용자 확정 2026-10-16). 가동 설비 칸은 「실시간」 그대로. */
+  const dayTag = useSingleDay() ? k.tagToday : k.tagPeriod;
   if (isLoading) return <Skeleton variant="rect" height="7rem" />;
 
   const byCode = new Map(cards.map((card) => [card.cardCode, card]));
   const availability = byCode.get('AVAILABILITY_RATE');
   const productionQty = byCode.get('PRODUCTION_QTY');
+  /*
+   * 근무 일정이 없는 날이 섞여 가동률을 낼 수 없다(사용자 결정 2026-10-16) — 값 자리에 「근무 일정 미등록」, ⓘ 에 그
+   * 이유. 그 밖의 NOT_YET 사유와 OEE 칸은 지금 표시 그대로.
+   */
+  const calendarMissing =
+    availability?.valueStatusCode === 'NOT_YET' &&
+    availability.notYetReasonCode === 'CALENDAR_UNRESOLVED';
   const auxCards = [
     ...AUX_ORDER.flatMap((code) => {
       const card = byCode.get(code);
@@ -238,9 +251,9 @@ export const OverviewKpis = ({
         <Linked path={pathOf(availability)} label={availability?.label ?? k.availability}>
           <KpiTile
             label={availability?.label ?? k.availability}
-            info={k.availabilityTip}
-            tag={k.tagToday}
-            value={cardValueText(availability)}
+            info={calendarMissing ? k.availabilityCalendarMissingTip : k.availabilityTip}
+            tag={dayTag}
+            value={calendarMissing ? k.availabilityCalendarMissing : cardValueText(availability)}
             unit={unitOf(availability)}
           >
             {availabilityBasis(availability) !== undefined && (
@@ -261,7 +274,7 @@ export const OverviewKpis = ({
           <KpiTile
             label={productionQty?.label ?? k.productionQty}
             info={serverNoteOf(productionQty)}
-            tag={k.tagToday}
+            tag={dayTag}
             value={cardValueText(productionQty)}
             unit={unitOf(productionQty)}
           >
@@ -280,7 +293,7 @@ export const OverviewKpis = ({
         <KpiTile
           label={k.defectRate}
           info={k.defectRateTip}
-          tag={k.tagToday}
+          tag={dayTag}
           value={qtyOrNone(production?.defectRate)}
           unit={production?.defectRate === null || production === null ? undefined : '%'}
         >

@@ -1,6 +1,6 @@
 import { LineChart, Skeleton, type ReferenceLine } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 
 import {
   formatFigure,
@@ -22,6 +22,29 @@ const CHART_HEIGHT = 220;
  * 다시 계산하려고 옮겨 둔다. DS 가 이 값을 바꾸면 툴팁 자리가 어긋난다 — 그때 여기를 맞춘다.
  */
 const DS_CHART_PAD = { top: 16, right: 16, bottom: 32, left: 40 } as const;
+
+/** 날짜 이름표 하나에 줄 폭(px) — 「10-14」 글자 폭 + 사이 여백. */
+const AXIS_LABEL_SLOT_PX = 56;
+
+/**
+ * 날짜 이름표를 몇 개마다 하나씩 보일지(기간 조회 2026-10-16 — 점은 최대 92개). 그림 폭에 들어가는 만큼만 보이고
+ * 나머지는 숨긴다. 점과 툴팁은 그대로다.
+ */
+export const labelStepOf = (count: number, width: number): number => {
+  const room = Math.max(
+    1,
+    Math.floor((width - DS_CHART_PAD.left - DS_CHART_PAD.right) / AXIS_LABEL_SLOT_PX),
+  );
+
+  return Math.max(1, Math.ceil(count / room));
+};
+
+/**
+ * ⚠ DS LineChart 내부 클래스 의존 — 가로축 날짜 글자는 CSS 모듈 클래스 `_axisText_…`(DS dist)로 그려진다. 공용
+ * 부품에 솎기 옵션이 없어 대시보드가 그 글자를 찾아 숨긴다(사용자 확정 2026-10-16). DS 가 이 이름을 바꾸면 솎기가
+ * 멈춘다 — `trend-panel.test.tsx` 가 글자를 찾지 못하면 실패해 알려 준다.
+ */
+export const DS_AXIS_LABEL_SELECTOR = 'svg [class*="_axisText_"]';
 
 /** 말풍선과 점 사이 간격(px). */
 const TIP_GAP_PX = 12;
@@ -268,6 +291,25 @@ export interface TrendPanelProps {
 export const TrendPanel = ({ view, baseDate = null, isLoading }: TrendPanelProps) => {
   /* 실제 폭으로 그린다 — 그림을 줄이면 좁은 폭에서 축 글자가 8px 까지 작아졌다(원칙 d). */
   const [chartRef, chartWidth] = useChartWidth<HTMLDivElement>(640);
+  const plotRef = useRef<HTMLDivElement | null>(null);
+  const setPlot = useCallback(
+    (node: HTMLDivElement | null) => {
+      plotRef.current = node;
+      chartRef(node);
+    },
+    [chartRef],
+  );
+  const pointCount = view?.points.length ?? 0;
+
+  /* 날짜 이름표 솎기 — 칠하기 전에 숨긴다(겹친 글자가 한 번 보였다 사라지지 않게). */
+  useLayoutEffect(() => {
+    const labels = plotRef.current?.querySelectorAll<SVGTextElement>(DS_AXIS_LABEL_SELECTOR);
+    if (labels === undefined) return;
+    const step = labelStepOf(labels.length, chartWidth);
+    labels.forEach((label, index) => {
+      label.style.visibility = index % step === 0 ? '' : 'hidden';
+    });
+  }, [pointCount, chartWidth]);
   if (isLoading) return <Skeleton variant="rect" height="16rem" />;
 
   if (view === null) {
@@ -302,7 +344,7 @@ export const TrendPanel = ({ view, baseDate = null, isLoading }: TrendPanelProps
      * 큰 값은 앞자리가 잘려 「6,000」으로 읽혔다(사용자 보고 2026-10-16). 값은 그대로 두고 그림 왼쪽에
      * 여백을 주어 넘친 글자가 보이게 한다(`.dash-trend`).
      */
-    <div className="dash-trend" ref={chartRef}>
+    <div className="dash-trend" ref={setPlot}>
       <LineChart
         series={[
           {
