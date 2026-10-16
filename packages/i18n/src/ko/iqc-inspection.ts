@@ -207,6 +207,14 @@ export const iqcInspection = {
     confirmBlockedByTotals: '입력 합계가 검사수량과 같아야 확정할 수 있습니다.',
     workerNotLinked:
       '이 계정에 연결된 작업자가 없어 판정을 저장할 수 없습니다. 사용자 관리에서 작업자를 연결해 주세요.',
+    followUp: {
+      title: '불량 LOT 입니다 — 재검사 대신 처분하세요',
+      body: '불합격으로 확정된 LOT 은 재검사 회차를 확정할 수 없습니다. 처분 판정에서 재작업(재검)·폐기·정상·선별을 고르거나, 공급사로 반품하세요.',
+      toDisposition: '처분 판정으로 이동',
+      toSupplierReturn: '공급사 반품으로 이동',
+      noNonconformance:
+        '처분을 기다리는 부적합을 찾지 못했습니다. 처분 판정 목록에서 이 LOT 을 찾아 주세요.',
+    },
     rejection: {
       heading: '불합격 사유',
       major: '불량 대분류',

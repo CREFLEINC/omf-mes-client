@@ -104,6 +104,11 @@ export interface ResultFormPaneProps {
   saveBlockedReason?: string | null;
   /** 종합 판정 바로 아래 칸 — 불합격 사유(omf-all-around#106). 화면이 판정에 따라 채운다. */
   judgmentDetail?: ReactNode;
+  /**
+   * 확정된 회차의 「재검사」 자리를 대신할 안내(omf-all-around#106 후속) — LOT 이 불량이면 재검 회차를 확정할 수
+   * 없어 처분·반품으로 잇는다. 없으면 종전대로 「재검사」 단추다.
+   */
+  reinspectReplacement?: ReactNode;
   /** 확정만 막는 사유(저장은 막지 않는다) — 불합격인데 불량 코드를 고르지 않았을 때다. */
   confirmOnlyBlockedReason?: string | null;
 }
@@ -141,6 +146,7 @@ export const ResultFormPane = ({
   saveBlockedReason = null,
   judgmentDetail = null,
   confirmOnlyBlockedReason = null,
+  reinspectReplacement = null,
 }: ResultFormPaneProps) => {
   const judgmentId = useId();
   const isConfirmed = round?.statusCode === 'CONFIRMED';
@@ -376,7 +382,9 @@ export const ResultFormPane = ({
 
             <div className="iqc-inspection-submit">
               <span className="field-label">{t.submitTitle}</span>
-              {isConfirmed ? (
+              {isConfirmed && reinspectReplacement !== null ? (
+                reinspectReplacement
+              ) : isConfirmed ? (
                 <div className="form-actions">
                   <Button type="button" variant="outlined" size="md" onClick={onStartReinspection}>
                     {t.reinspect}

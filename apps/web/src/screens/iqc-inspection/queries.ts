@@ -551,3 +551,54 @@ export const useRecordRejection = (
     onSuccess: onRecorded,
   });
 };
+
+/** 불합격 뒤 다음 처리(omf-all-around#106 후속 (나)) — LOT 이 불량인가, 처분을 기다리는 부적합이 있는가. */
+export interface RejectedLotFollowUp {
+  isDefective: boolean;
+  nonconformanceId: number | null;
+}
+
+/**
+ * 불량(`DEFECTIVE`) LOT 은 재검 회차를 확정할 수 없다(문의 088 — 직행 전이를 열지 않았다). 다음 처리는
+ * 처분 판정(W-03-10)이나 공급사 반품(W-01-05)이다. 불합격 확정이 세운 부적합(서버 P-41)을 찾아 그리로 잇는다.
+ */
+export const useRejectedLotFollowUp = (lotId: number | null, enabled: boolean) => {
+  const { client } = useApiClient();
+
+  return useQuery({
+    queryKey: [...ALL_KEY, 'follow-up', lotId ?? 0] as const,
+    enabled: enabled && lotId !== null,
+    queryFn: async (): Promise<RejectedLotFollowUp> => {
+      const id = lotId as number;
+      const lot = await runRequest(() =>
+        client.GET('/trace/lots/{lotId}', { params: { path: { lotId: id } } }),
+      );
+      if (lot.lot.statusCode !== DEFECTIVE_LOT_STATUS)
+        return { isDefective: false, nonconformanceId: null };
+      const open = await runRequest(() =>
+        client.GET('/quality/nonconformances', {
+          /*
+           * 계약이 기간을 필수로 둔다 — 「이 LOT 의 처분 대기」를 찾는 자리라 기간으로 거를 뜻이 없어 넓게 연다.
+           * LOT 당 열린 부적합은 하나뿐이다(서버 규칙).
+           */
+          params: {
+            query: {
+              lotId: id,
+              statusCode: PENDING_DECISION,
+              openedFrom: OPENED_FROM_ANY,
+              openedTo: new Date(Date.now() + 86_400_000).toISOString(),
+              page: 1,
+              size: 1,
+            },
+          },
+        }),
+      );
+      return { isDefective: true, nonconformanceId: open.items[0]?.nonconformanceId ?? null };
+    },
+  });
+};
+
+/** 시드 `LOT_STATUS` 의 불량 · 부적합의 처분 대기 상태. */
+const DEFECTIVE_LOT_STATUS = 'DEFECTIVE';
+const PENDING_DECISION = 'PENDING_DECISION';
+const OPENED_FROM_ANY = '2000-01-01T00:00:00.000Z';

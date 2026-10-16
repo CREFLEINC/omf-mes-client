@@ -88,6 +88,24 @@ const renderScreen = (
               : jsonResponse(found);
           },
         },
+        /* LOT 상세 — 시험이 상태를 정했을 때만 답한다(불량 LOT 안내 · omf-all-around#106 후속). */
+        {
+          match: (request) =>
+            /^\/trace\/lots\/\d+$/.test(new URL(request.url).pathname) && lotStatusForTest !== null,
+          respond: () =>
+            jsonResponse({
+              lot: { lotId: 9001, lotNo: 'SYN-LOT-1', statusCode: lotStatusForTest },
+              holds: [],
+            }),
+        },
+        {
+          match: (request) => new URL(request.url).pathname === '/quality/nonconformances',
+          respond: () =>
+            jsonResponse({
+              items: [{ nonconformanceId: 6601 }],
+              page: { page: 1, size: 1, total: 1 },
+            }),
+        },
         /* 불량 코드 마스터 — 불합격 사유(omf-all-around#106). 대분류 1 · 상세 1. */
         {
           match: (request) => new URL(request.url).pathname === '/quality/defect-codes',
@@ -216,9 +234,12 @@ const LINKED_SESSION: Session = {
   worker: { workerId: 8501, workerNo: 'SYN-W-01', workerName: '합성 작업자' },
 };
 let testSession: Session = LINKED_SESSION;
+/** LOT 상세의 품질 상태. `null` 이면 LOT 상세에 답하지 않는다(종전 시험들). */
+let lotStatusForTest: string | null = null;
 
 beforeEach(() => {
   testSession = LINKED_SESSION;
+  lotStatusForTest = null;
   confirmResponder = null;
   samplingVersion = null;
 });
@@ -907,6 +928,39 @@ describe('IqcInspectionScreen — 불합격 사유', () => {
       defectDescription: '표면 긁힘',
     });
     expect(new URL((writes[1] as Request).url).pathname).toContain(':confirm');
+  });
+});
+
+/* omf-all-around#106 후속 (나) — 불량 LOT 은 재검사 대신 처분·반품으로 잇는다. */
+describe('IqcInspectionScreen — 불량 LOT 다음 처리', () => {
+  const rejectedConfirmed = {
+    ...confirmedRound,
+    overallJudgmentCode: 'REJECTED',
+    acceptedQty: 485,
+    rejectedQty: 15,
+    heldQty: 0,
+  };
+
+  it('불합격 확정 LOT 이 불량이면 재검사 단추 대신 처분 판정·공급사 반품 안내가 선다', async () => {
+    lotStatusForTest = 'DEFECTIVE';
+    renderScreen('/?ir=1001', () => jsonResponse(queueResponse()), [rejectedConfirmed]);
+
+    expect(await screen.findByText(t.result.followUp.title)).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: t.result.followUp.toDisposition }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: t.result.followUp.toSupplierReturn }),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: t.result.reinspect })).not.toBeInTheDocument();
+  });
+
+  it('처분으로 재검 대기가 된 LOT(불량 아님)은 종전처럼 재검사 단추다', async () => {
+    lotStatusForTest = 'INSPECTION_PENDING';
+    renderScreen('/?ir=1001', () => jsonResponse(queueResponse()), [rejectedConfirmed]);
+
+    expect(await screen.findByRole('button', { name: t.result.reinspect })).toBeInTheDocument();
+    expect(screen.queryByText(t.result.followUp.title)).not.toBeInTheDocument();
   });
 });
 

@@ -35,9 +35,11 @@ import {
   useConfirmResult,
   useDefectCodes,
   useRecordRejection,
+  useRejectedLotFollowUp,
   useMeasurements,
   useSaveDraft,
 } from './queries';
+import { RejectedLotGuide } from './rejected-lot-guide';
 import {
   EMPTY_REJECTION,
   RejectionReason,
@@ -175,6 +177,11 @@ export const IqcInspectionScreen = () => {
   const isRejected = judgment === REJECTED_JUDGMENT;
   const defectCodes = useDefectCodes(isRejected);
   const resolvedDefect = resolveDefectCode(defectCodes.data ?? [], rejection);
+  /* 확정된 불합격 회차면 LOT 이 불량인지 보고 처분·반품으로 잇는다(omf-all-around#106 후속 (나)). */
+  const followUp = useRejectedLotFollowUp(
+    detail.data?.lotId ?? null,
+    round?.statusCode === 'CONFIRMED' && round.overallJudgmentCode === REJECTED_JUDGMENT,
+  );
   const recordRejection = useRecordRejection(() => {
     setRecordedResultId(editingResultId);
     confirm.write({ overallJudgmentCode: judgment });
@@ -488,6 +495,11 @@ export const IqcInspectionScreen = () => {
                   onChange={setRejection}
                   disabled={confirm.isSaving || recordRejection.isSaving}
                 />
+              ) : null
+            }
+            reinspectReplacement={
+              followUp.data?.isDefective === true ? (
+                <RejectedLotGuide nonconformanceId={followUp.data.nonconformanceId} />
               ) : null
             }
             confirmOnlyBlockedReason={
