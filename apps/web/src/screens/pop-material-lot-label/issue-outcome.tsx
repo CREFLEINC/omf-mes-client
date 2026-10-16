@@ -8,15 +8,24 @@ const t = messages.popMaterialLotLabel.target.outcome;
 
 /**
  * 멈춘 자리마다의 문구. **표로 둔다** — 갈래가 늘 때 분기를 더 깊게 하지 않고 칸만 는다.
+ * `next` 는 제목 아래 줄에 서는 «다음에 할 일»이다.
  */
-const FAILURE_MESSAGE: Record<IssueFailure, string> = {
-  printFailed: t.printFailed,
-  reportFailedAfterPrint: t.reportFailedAfterPrint,
-  issueForbidden: t.issueForbidden,
-  registerConflict: t.registerConflict,
-  iqcPlanMissing: t.iqcPlanMissing,
-  other: t.failed,
+const FAILURE_MESSAGE: Record<IssueFailure, { title: string; next?: string }> = {
+  printFailed: { title: t.printFailed, next: t.printFailedNext },
+  reportFailedAfterPrint: { title: t.reportFailedAfterPrint },
+  issueForbidden: { title: t.issueForbidden },
+  registerConflict: { title: t.registerConflict },
+  iqcPlanMissing: { title: t.iqcPlanMissing },
+  labelStateLocked: { title: t.labelStateLocked, next: t.labelStateLockedNext },
+  other: { title: t.failed },
 };
+
+/** IQC 라벨 결과 줄 — 자재 라벨 결과(제목)와 따로 선다(2단계 검증 2026-10-16). */
+const IQC_MESSAGE = {
+  printed: t.iqcPrinted,
+  failed: t.iqcFailed,
+  notPrinted: t.iqcNotPrinted,
+} as const;
 
 export interface IssueOutcomeProps {
   result: IssueRunResult;
@@ -32,7 +41,7 @@ export interface IssueOutcomeProps {
  * | --- | --- |
  * | 끝까지 | 인쇄했다 · LOT 번호와 회차 |
  * | 인쇄만 실패 | 기록은 남았다 — **재인쇄**로 이어간다 |
- * | LOT 은 생기고 기록이 실패 | ⛔ **다시 등록하지 말 것** — 「인쇄」로 이어간다 |
+ * | LOT 은 생기고 기록이 실패 | ⛔ **새로 등록되지 않는다** — 같은 단추가 인쇄만 이어간다 |
  * | 발행이 403 | 이 단말에서는 못 찍는다 — **다른 단말**로 안내하고 재시도를 권하지 않는다 |
  * | 등록이 409 | 채번 충돌이다 — **다시 누르면 풀린다**(400 과 같이 말하지 않는다) |
  * | 등록도 못 함 | 그대로 다시 시도해도 된다 |
@@ -58,34 +67,39 @@ export const IssueOutcome = ({ result }: IssueOutcomeProps) => {
    * 자재를 다시 누르면 자연히 사라진다.
    */
 
+  const message =
+    isPrinted && issue !== null
+      ? { title: t.printed(issue.lotNo ?? '', issue.issueSeq) }
+      : FAILURE_MESSAGE[failure ?? 'other'];
+  /*
+   * ⚠ **LOT 이 생겼다는 사실은 실패 문구와 «함께» 말한다.** 실패만 보이면 사용자가 다시
+   * 등록을 누르고, 그러면 같은 자재에 LOT 이 둘 생긴다.
+   *
+   * ⛔ 출력 권한이 없는 단말에서는 이어서 찍으라고 하지 않는다 — 그 단추가 막혀 있다.
+   */
+  const lines = [
+    message.next,
+    result.iqcLabel === null ? undefined : IQC_MESSAGE[result.iqcLabel],
+    !isPrinted && hasCreatedLot && failure !== 'printFailed'
+      ? failure === 'issueForbidden'
+        ? t.lotCreatedForbidden
+        : t.lotCreated
+      : undefined,
+  ].filter((line): line is string => line !== undefined);
+
   return (
     /*
-     * ⚠ **표식과 글줄의 높이를 맞춘다.** DS 는 앞머리 표식을 위에 붙이는데(`align-items:
-     * flex-start` + 표식 쪽 여백), 제목 없이 한 줄만 내는 이 자리에서는 표식이 글줄보다 4px
-     * 내려앉아 «높낮이가 어긋나 보인다»(실측 2026-09-10 · 사용자가 짚었다).
+     * ⭐ 제목 = 자재 라벨의 결과, 아래 줄 = 다음에 할 일 · IQC 라벨의 결과. 표식은 제목 줄에 맞춘다
+     *    (`pop.css` 의 `.pop-material-lot-outcome`).
      */
-    <AlertBanner className="pop-material-lot-outcome" variant={variant}>
-      {isPrinted && issue !== null
-        ? t.printed(issue.lotNo ?? '', issue.issueSeq)
-        : failure === null
-          ? t.failed
-          : FAILURE_MESSAGE[failure]}
-      {/*
-       * ⚠ **LOT 이 생겼다는 사실은 실패 문구와 «함께» 말한다.** 실패만 보이면 사용자가 다시
-       * 등록을 누르고, 그러면 같은 자재에 LOT 이 둘 생긴다.
-       *
-       * ⛔ 출력 권한이 없는 단말에서는 「인쇄」로 이어가라고 하지 않는다 — 그 단추가 막혀 있다.
-       */}
-      {isPrinted && result.iqcLabel !== null ? (
-        <p className="pop-wide-note">
-          {result.iqcLabel === 'printed' ? t.iqcPrinted : t.iqcFailed}
-        </p>
-      ) : null}
-      {!isPrinted && hasCreatedLot ? (
-        <p className="pop-wide-note">
-          {failure === 'issueForbidden' ? t.lotCreatedForbidden : t.lotCreated}
-        </p>
-      ) : null}
+    <AlertBanner className="pop-material-lot-outcome" variant={variant} title={message.title}>
+      {lines.length === 0
+        ? null
+        : lines.map((line) => (
+            <p key={line} className="pop-wide-note">
+              {line}
+            </p>
+          ))}
     </AlertBanner>
   );
 };

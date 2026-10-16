@@ -9,6 +9,9 @@ import { toIssueStage, type TargetRow } from './types';
 
 const t = messages.popMaterialLotLabel.target;
 
+/** 자재 LOT 라벨을 낼 수 있는 품질 상태 — 서버 `qualifyDocumentIssueTarget`(MATERIAL_LOT_LABEL)과 같다. */
+const LABEL_ISSUABLE_LOT_STATUS: readonly string[] = ['INSPECTION_PENDING', 'NORMAL'];
+
 export interface TargetCardProps {
   row: TargetRow | null;
   /** 품목 — 목록 줄과 **같은 원천**을 쓴다(`lookups`). 카드는 코드·이름을 갈라 싣는다. */
@@ -18,6 +21,8 @@ export interface TargetCardProps {
   supplierLookup: SupplierLookup;
   /** 이미 등록된 자재의 LOT 번호. 아직 등록 전이거나 못 읽었으면 `null`. */
   lotNo: string | null;
+  /** 이미 등록된 자재 LOT 의 품질 상태. 모르면 `null`(그때는 막지 않고 서버 판정에 맡긴다). */
+  lotStatusCode: string | null;
   isLotNoLoading: boolean;
   isLotNoError: boolean;
   /**
@@ -58,6 +63,7 @@ export const TargetCard = ({
   uomLookup,
   supplierLookup,
   lotNo,
+  lotStatusCode,
   isLotNoLoading,
   isLotNoError,
   hasWorkerNo,
@@ -87,7 +93,13 @@ export const TargetCard = ({
 
   const isRegistered = toIssueStage(row) === 'registered';
   const isRunning = runningStep !== null;
-  const isBlocked = !hasWorkerNo || isRunning || isPrintForbidden;
+  /*
+   * ⛔ 라벨을 낼 수 없는 LOT 은 누르기 «전»에 막고 까닭을 말한다(2단계 검증 2026-10-16 · 9줄).
+   *    서버 규칙(자재 LOT 라벨은 검사 대기·정상만)과 같은 값이다 — 서버가 바뀌면 함께 고친다.
+   */
+  const isLotLocked =
+    isRegistered && lotStatusCode !== null && !LABEL_ISSUABLE_LOT_STATUS.includes(lotStatusCode);
+  const isBlocked = !hasWorkerNo || isRunning || isPrintForbidden || isLotLocked;
 
   return (
     <>
@@ -190,6 +202,16 @@ export const TargetCard = ({
        * 진행 상태도 결과와 같은 띠로 낸다(`AlertBanner` · 사용자 지시 2026-09-10) — 발행·인쇄가
        * 어디까지 갔는지는 다른 POP 화면이 모두 띠로 말한다.
        */}
+      {isLotLocked && lotStatusCode !== null ? (
+        <div className="banner-slot pop-wide-note">
+          <AlertBanner
+            variant="warning"
+            title={t.lotBlocked.title(t.lotBlocked.status[lotStatusCode] ?? lotStatusCode)}
+          >
+            {t.lotBlocked.next}
+          </AlertBanner>
+        </div>
+      ) : null}
       {runningStep === null ? null : (
         <div className="banner-slot pop-wide-note">
           <AlertBanner variant="info" title={t.actions.running[runningStep]} />

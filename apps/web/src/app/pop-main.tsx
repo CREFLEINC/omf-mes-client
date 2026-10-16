@@ -95,10 +95,16 @@ const PopRegistrationGate = ({ children }: { children: ReactNode }) => {
   return <>{children}</>;
 };
 
+/*
+ * ⛔ 개발용 브라우저 실행에는 프린터가 없다 — 통로는 열어 두되 인쇄는 «실패»로 돌려준다.
+ *    전에는 경로를 돌려줘 성공으로 접혔고, 라벨이 안 나왔는데 「인쇄했습니다」가 떴다(2단계 검증 2026-10-16).
+ */
 if (import.meta.env.DEV && window.pop === undefined) {
   window.pop = {
     rendition: {
-      save: async (_bytes, label) => `dev://print/${encodeURIComponent(label)}`,
+      save: async () => {
+        throw new Error('브라우저 실행 — 프린터로 보내지 않았습니다.');
+      },
     },
   };
 }

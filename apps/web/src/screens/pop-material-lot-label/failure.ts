@@ -26,6 +26,11 @@ export type IssueFailure =
    * 전에는 다시 눌러도 같은 답이 온다(사용자 지시 2026-09-14 · 실기 확인).
    */
   | 'iqcPlanMissing'
+  /**
+   * 서버가 LOT 상태로 자재 라벨 발행을 막았다(검사 대기·정상만 발행 — 불량·폐기는 막는다).
+   * 처분 판정이 LOT 을 되돌리기 전에는 다시 눌러도 같은 답이 온다.
+   */
+  | 'labelStateLocked'
   /** 그 밖의 실패 — 값이 틀렸거나(400) 서버가 거부했다. */
   | 'other';
 
@@ -72,6 +77,15 @@ const isForbidden = (error: ApiError): boolean => {
  */
 const IQC_PLAN_MISSING_MESSAGE = '유효한 IQC 검사기준이 없습니다';
 
+/**
+ * 서버 `MATERIAL_LABEL_UNRESOLVED_STATE_POLICY` 의 문구. ⚠ 이것도 코드 없이 문구로만 가른다 — 위와 같은 사정이다.
+ */
+const LABEL_STATE_LOCKED_MESSAGE = '자재 LOT 라벨을 발행할 수 없는 상태입니다';
+
+const isLabelStateLocked = (error: ApiError): boolean =>
+  error.kind === 'stateLocked' &&
+  error.errors.some((item) => item.message.startsWith(LABEL_STATE_LOCKED_MESSAGE));
+
 const isIqcPlanMissing = (error: ApiError): boolean =>
   error.kind === 'stateLocked' &&
   error.errors.some((item) => item.message.startsWith(IQC_PLAN_MISSING_MESSAGE));
@@ -93,6 +107,7 @@ export const toIssueFailure = (result: IssueRunResult): IssueFailure | null => {
   if (error === null) return 'other';
   if (failedAt === 'register' && isRetryableConflict(error)) return 'registerConflict';
   if (failedAt === 'register' && isIqcPlanMissing(error)) return 'iqcPlanMissing';
+  if (failedAt === 'issue' && isLabelStateLocked(error)) return 'labelStateLocked';
   /*
    * ⚠ **권한 거부는 걸음을 가리지 않는다.** 라벨을 받는 걸음이나 등록에서 나와도 이 단말에
    * 권한이 없다는 뜻은 같다 — 갈래를 발행 걸음으로 좁히면 나머지가 「그 밖의 실패」로 접혀

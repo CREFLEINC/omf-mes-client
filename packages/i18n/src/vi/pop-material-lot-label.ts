@@ -61,7 +61,7 @@ export const popMaterialLotLabel: Translated<typeof ko.popMaterialLotLabel> = {
     },
     actions: {
       issue: 'Đăng ký · In',
-      printOnly: 'In',
+      printOnly: 'Đăng ký · In',
       reissue: 'In lại',
       running: {
         register: 'Đang đăng ký LOT…',
@@ -74,17 +74,29 @@ export const popMaterialLotLabel: Translated<typeof ko.popMaterialLotLabel> = {
     outcome: {
       iqcPrinted: 'Đã in kèm nhãn IQC. Hãy dán khi chuyển vật tư đến khu chờ IQC.',
       iqcFailed: 'Nhãn IQC chưa được in. Nhãn vật tư vẫn bình thường — hãy kiểm tra máy in.',
+      iqcNotPrinted: 'Nhãn IQC cũng chưa được in.',
       printed: (lotNo: string, seq: number) =>
         lotNo === '' ? `Đã in. Lượt ${seq}` : `Đã in. Số LOT ${lotNo} · lượt ${seq}`,
-      lotCreated: 'LOT vật tư đã được tạo. Đừng đăng ký lại, hãy tiếp tục bằng 「In」.',
+      lotCreated:
+        'LOT vật tư đã được tạo. Bấm lại 「Đăng ký · In」 cho vật tư này sẽ chỉ in, không tạo LOT mới.',
       lotCreatedForbidden: 'LOT vật tư đã được tạo. Đừng đăng ký lại — có thể in ở máy trạm khác.',
-      printFailed: 'Nhãn chưa ra. Kiểm tra máy in rồi bấm 「In lại」 ở 「Đã phát hành」.',
+      printFailed: 'Đã đăng ký nhưng nhãn chưa ra.',
+      printFailedNext: 'Kiểm tra máy in rồi bấm 「In lại」 ở 「Đã phát hành」.',
       registerConflict: 'Chưa đăng ký xong lúc này. Lát nữa hãy bấm lại 「Đăng ký · In」.',
       issueForbidden: 'Máy trạm này không phát hành nhãn được. Hãy in ở máy trạm có máy in nhãn.',
       reportFailedAfterPrint:
         'Nhãn đã ra. Chỉ là chưa lưu được kết quả in lên máy chủ — đừng in lại.',
       iqcPlanMissing: 'Không có tiêu chuẩn kiểm tra IQC hợp lệ nên không thể đăng ký · in.',
       failed: 'Chưa đăng ký · in xong.',
+      labelStateLocked: 'Không thể phát hành nhãn cho LOT này ở trạng thái hiện tại.',
+      labelStateLockedNext:
+        'LOT lỗi · hủy không được phát hành nhãn. Có thể phát hành khi xử lý xong và LOT trở lại bình thường.',
+    },
+    lotBlocked: {
+      title: (status: string) =>
+        `LOT này đang ở trạng thái 「${status}」 nên không thể phát hành nhãn.`,
+      next: 'Có thể phát hành khi xử lý xong và LOT trở lại bình thường.',
+      status: { DEFECTIVE: 'Lỗi', SCRAPPED: 'Hủy' } as Record<string, string | undefined>,
     },
     reissueDialog: {
       title: 'Lý do in lại',

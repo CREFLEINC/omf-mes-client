@@ -371,7 +371,8 @@ export const PopMaterialLotLabelScreen = () => {
             itemNames={itemNames}
             uomLookup={uomLookup}
             supplierLookup={supplierLookup}
-            lotNo={lot.data ?? null}
+            lotNo={lot.data?.lotNo ?? null}
+            lotStatusCode={lot.data?.statusCode ?? null}
             isLotNoLoading={lot.isPending && selectedRow?.lotId !== null}
             isLotNoError={lot.isError}
             hasWorkerNo={workerNo !== null}

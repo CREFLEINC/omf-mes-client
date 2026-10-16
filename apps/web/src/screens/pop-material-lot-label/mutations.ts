@@ -64,10 +64,11 @@ export interface IssueRunResult {
   issue: IssueView | null;
   error: ApiError | null;
   /**
-   * IQC 라벨(omf-all-around#110) — IQC 대상 자재의 첫 발행에서만 찍는다. 대상이 아니거나 자재 라벨이
-   * 안 나왔으면 `null`. ⭐ 자재 라벨의 성패와 따로 센다 — IQC 라벨이 실패해도 자재 라벨은 나왔다.
+   * IQC 라벨(omf-all-around#110) — IQC 대상 자재의 첫 발행에서만 찍는다. 대상이 아니면 `null`.
+   * ⭐ 자재 라벨의 성패와 따로 센다 — IQC 라벨이 실패해도 자재 라벨은 나왔다. 자재 라벨이 안 나왔으면
+   *   IQC 라벨은 시도하지 않고 `notPrinted` 다(화면이 «둘 다 안 나왔다»를 따로 말한다).
    */
-  iqcLabel: 'printed' | 'failed' | null;
+  iqcLabel: 'printed' | 'failed' | 'notPrinted' | null;
 }
 
 const IDLE: IssueRunResult = {
@@ -398,12 +399,16 @@ export const useLabelIssue = ({ workerNo }: IssueRunOptions): IssueRunResultHand
            * 재인쇄는 자재 라벨만 다시 찍는다(IQC 라벨은 대기 장소로 옮길 때 한 번이면 된다).
            */
           const iqcLabel =
-            row.inspectionRequired &&
-            reissueReasonCode === null &&
-            failureReason === null &&
-            shell !== null
-              ? await printIqcLabel(client, { row, lotId, uomCode, printerName }, workerNo, shell)
-              : null;
+            !row.inspectionRequired || reissueReasonCode !== null
+              ? null
+              : failureReason !== null || shell === null
+                ? 'notPrinted'
+                : await printIqcLabel(
+                    client,
+                    { row, lotId, uomCode, printerName },
+                    workerNo,
+                    shell,
+                  );
 
           setResult({
             lineId: row.inboundReceiptLineId,

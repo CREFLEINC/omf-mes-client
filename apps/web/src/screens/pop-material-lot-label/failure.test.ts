@@ -102,6 +102,22 @@ describe('toIssueFailure', () => {
     expect(toIssueFailure(resultOf({ failedAt: 'register', error: duplicated }))).toBe('other');
   });
 
+  it('발행에서 LOT 상태 잠김(불량·폐기)은 그 사유로 말한다 — 뭉뚱그린 실패로 접지 않는다', () => {
+    const locked: ApiError = {
+      kind: 'stateLocked',
+      errors: [
+        {
+          scope: 'screen',
+          code: 'STATE_LOCKED',
+          message: '자재 LOT 라벨을 발행할 수 없는 상태입니다.',
+        },
+      ],
+    };
+
+    expect(toIssueFailure(resultOf({ failedAt: 'issue', error: locked }))).toBe('labelStateLocked');
+    expect(toIssueFailure(resultOf({ failedAt: 'register', error: locked }))).toBe('other');
+  });
+
   it('갈래를 가릴 오류가 없으면 그 밖의 실패다', () => {
     expect(toIssueFailure(resultOf({ failedAt: 'register', error: null }))).toBe('other');
   });
