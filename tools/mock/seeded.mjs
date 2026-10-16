@@ -5523,7 +5523,7 @@ const minutesAgo = (minutes) => new Date(Date.now() - minutes * 60_000).toISOStr
 const DASHBOARD_EQUIPMENT = [
   ['RUNNING', null, null, 0, 1],
   ['RUNNING', null, null, 0, 1],
-  ['STOPPED', 'BREAKDOWN', '설비 고장', 42, 1],
+  ['STOPPED', null, '유압 이상 — 점검 중', 42, 1],
   ['RUNNING', null, null, 0, 1],
   ['CHANGEOVER', 'MOLD_CHANGE', '금형 교체', 18, 2],
   ['WAITING', null, null, 7, 2],
@@ -5639,6 +5639,7 @@ on('GET', '/app/dashboard-summary', (_params, query) => {
       },
       overdueCount: 1,
     },
+    quality: dashboardQuality(baseDate),
   };
 });
 
@@ -5679,61 +5680,56 @@ const dashboardQualityBlock = (baseDate, kind) => ({
     equipmentCode: kind === 'PQC' ? `EQ-0${String(seq)}` : null,
     itemCode: `ITEM-${String(seq).padStart(3, '0')}`,
     itemName: `시험 품목 ${String(seq)}`,
-    lotNo: seq === 3 ? null : `LOT-MOCK-${String(seq)}`,
+    /* 규격: PQC · OQC 는 LOT 번호가 null. */
+    lotNo: kind === 'IQC' ? `LOT-MOCK-${String(seq)}` : null,
     qty: 500 * seq,
     judgmentCode: seq === 2 ? 'REJECTED' : seq === 3 ? 'HELD' : 'ACCEPTED',
   })),
 });
 
-on('GET', '/app/dashboard-quality', (_params, query) => {
-  const baseDate = dashboardBaseDate(query);
-  const plantId = query.get('plantId');
-
-  return {
-    baseDate,
-    ...(plantId === null ? {} : { plantId: Number(plantId) }),
-    asOf: new Date().toISOString(),
-    iqc: {
-      ...dashboardQualityBlock(baseDate, 'IQC'),
-      vendorDefects: [
-        { partnerId: 9601, partnerName: '공급사 A', rejectedQty: 30 },
-        { partnerId: 9602, partnerName: '공급사 B', rejectedQty: 12 },
-      ],
-      itemDefects: [
-        { itemId: 9701, itemCode: 'ITEM-001', itemName: '시험 품목 1', qty: 20 },
-        { itemId: 9702, itemCode: 'ITEM-002', itemName: '시험 품목 2', qty: 9 },
-      ],
-      fullReinspect: { inputQty: 800, restoredQty: 760 },
-      receiptHoldLotCount: 2,
-    },
-    pqc: {
-      ...dashboardQualityBlock(baseDate, 'PQC'),
-      pendingLotCount: 3,
-      reworkRequestCount: 1,
-      equipmentDefectRates: DASHBOARD_EQUIPMENT.filter((item) => item.defectRate !== null)
-        .map((item) => ({
-          equipmentId: item.equipmentId,
-          equipmentCode: item.equipmentCode,
-          defectRate: item.defectRate,
-          ngQty: item.todayNgQty,
-        }))
-        .sort((a, b) => b.defectRate - a.defectRate)
-        .slice(0, 8),
-    },
-    oqc: { ...dashboardQualityBlock(baseDate, 'OQC'), supplierReturnQty: 150 },
-    nonconformance: {
-      monthQty: 77,
-      phenomena: DASHBOARD_PHENOMENA,
-      causeGroups: [
-        { causeCodeId: 9801, causeName: '원인 구분 A', qty: 45 },
-        { causeCodeId: 9802, causeName: '원인 구분 B', qty: 32 },
-      ],
-      scrapQty: 20,
-      reworkReleasedQty: 35,
-      openCount: 4,
-      overdueCount: 1,
-    },
-  };
+const dashboardQuality = (baseDate) => ({
+  iqc: {
+    ...dashboardQualityBlock(baseDate, 'IQC'),
+    vendorDefects: [
+      { partnerId: 9601, partnerName: '공급사 A', rejectedQty: 30 },
+      { partnerId: 9602, partnerName: '공급사 B', rejectedQty: 12 },
+    ],
+    itemDefects: [
+      { itemId: 9701, itemCode: 'ITEM-001', itemName: '시험 품목 1', qty: 20 },
+      { itemId: 9702, itemCode: 'ITEM-002', itemName: '시험 품목 2', qty: 9 },
+    ],
+    /* 규격: 양품 복원 데이터를 구할 수 없어 지금은 늘 null. */
+    fullReinspect: null,
+    receiptHoldLotCount: 2,
+  },
+  pqc: {
+    ...dashboardQualityBlock(baseDate, 'PQC'),
+    pendingLotCount: 3,
+    reworkRequestCount: 1,
+    equipmentDefectRates: DASHBOARD_EQUIPMENT.filter((item) => item.defectRate !== null)
+      .map((item) => ({
+        equipmentId: item.equipmentId,
+        equipmentCode: item.equipmentCode,
+        defectRate: item.defectRate,
+        ngQty: item.todayNgQty,
+      }))
+      .sort((a, b) => b.defectRate - a.defectRate)
+      .slice(0, 8),
+  },
+  oqc: { ...dashboardQualityBlock(baseDate, 'OQC'), customerReturnQty: 150 },
+  nonconformance: {
+    monthQty: 77,
+    phenomena: DASHBOARD_PHENOMENA,
+    causeGroups: [
+      { causeCodeId: 9801, causeName: '원인 구분 A', qty: 45 },
+      { causeCodeId: 9802, causeName: '원인 구분 B', qty: 32 },
+    ],
+    scrapQty: 20,
+    reworkReleasedQty: 35,
+    openCount: 4,
+    /* 규격: 조치 기한 데이터가 없어 지금은 늘 null. */
+    overdueCount: null,
+  },
 });
 
 /* ── 서버 ─────────────────────────────────────────────────── */
