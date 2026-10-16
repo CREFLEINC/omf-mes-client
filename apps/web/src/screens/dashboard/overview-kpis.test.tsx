@@ -4,7 +4,7 @@ import { MemoryRouter } from 'react-router';
 import { describe, expect, it } from 'vitest';
 
 import { toEquipmentView } from './equipment';
-import { OverviewKpis } from './overview-kpis';
+import { OverviewKpis, auxNoteLines } from './overview-kpis';
 import type { DashboardCardView } from './types';
 
 const k = messages.dashboard.kpi;
@@ -91,5 +91,15 @@ describe('OverviewKpis', () => {
     expect(screen.getByRole('group', { name: k.defectRate })).toHaveTextContent(k.none);
     expect(screen.getByText(k.totalNg).closest('div')).toHaveTextContent(k.none);
     expect(screen.getByRole('group', { name: '가동률' })).toHaveTextContent('81.2');
+  });
+
+  it('성능률의 「표준 C/T 기준」은 서버 설명이 없을 때만 — 서버 설명이 오면 한 번만 보인다', () => {
+    const performance = card({ cardCode: 'PERFORMANCE_RATE', label: '성능률', note: null });
+
+    expect(auxNoteLines(performance)).toEqual([k.performanceNote]);
+    expect(auxNoteLines({ ...performance, note: '서버 설명' })).toEqual(['서버 설명']);
+    expect(auxNoteLines(card({ cardCode: 'OEE', label: 'OEE', note: '서버 설명' }))).toEqual([
+      '서버 설명',
+    ]);
   });
 });

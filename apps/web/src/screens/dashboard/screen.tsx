@@ -1,6 +1,6 @@
 import { Breadcrumb, PageHeader, Tabs } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router';
 
 import { AlertPanel, NOTIFICATION_CENTER_PATH } from './alert-panel';
@@ -27,6 +27,7 @@ import {
   QualityOverviewTab,
 } from './quality-panels';
 import { useDashboardSummary } from './queries';
+import { useFitsScrollport } from './use-fits-scrollport';
 import { TrendPanel } from './trend-panel';
 import type { DashboardAlertView, DashboardCardView, SelectOption } from './types';
 import { Panel } from './viz';
@@ -76,6 +77,9 @@ export const DashboardScreen = () => {
 
   const summary = useDashboardSummary(query);
   const [tab, setTab] = useState<DashboardTab>('overview');
+  /* 오른쪽 열(멈춘 설비 · 출하 현황)은 화면 안에 들어갈 때만 위에 붙인다(`use-fits-scrollport.ts`). */
+  const sideRef = useRef<HTMLDivElement>(null);
+  const sideFits = useFitsScrollport(sideRef);
   const plants = usePlantOptions();
 
   const view = summary.data;
@@ -137,7 +141,7 @@ export const DashboardScreen = () => {
           isLoading={summary.isPending}
           isFailed={isFailed}
         />
-        <div className="dash-side">
+        <div ref={sideRef} className={sideFits ? 'dash-side dash-side-sticky' : 'dash-side'}>
           <StoppedPanel
             view={view?.equipment ?? null}
             isLoading={summary.isPending}

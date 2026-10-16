@@ -42,6 +42,19 @@ export const cardNoteLines = (card: DashboardCardView | undefined): string[] => 
   return lines;
 };
 
+/**
+ * 보조 열 설명. 성능률의 화면 쪽 기준 문구(「표준 C/T 기준」)는 **서버 설명이 없을 때만** 붙인다 — 서버가
+ * 「표준 C/T 기준 근사값입니다.」를 주면 같은 말이 두 번 섰다(사용자 지적 2026-10-16).
+ */
+export const auxNoteLines = (card: DashboardCardView): string[] => {
+  const lines = cardNoteLines(card);
+  const hasServerNote = card.note !== null && card.note.trim() !== '';
+
+  return card.cardCode === 'PERFORMANCE_RATE' && !hasServerNote
+    ? [k.performanceNote, ...lines]
+    : lines;
+};
+
 const unitOf = (card: DashboardCardView | undefined): string | undefined =>
   card === undefined || card.valueStatusCode === 'NOT_YET' ? undefined : (card.unit ?? undefined);
 
@@ -117,84 +130,87 @@ export const OverviewKpis = ({
   const pathOf = (card: DashboardCardView | undefined): string | null =>
     card === undefined ? null : cardPathOf(card.cardCode, axes, routes);
 
+  /*
+   * ⭐ 본 칸 넷을 한 묶음(`.dash-kpi-main`)으로 둔다 — 넓은 폭에선 한 줄, 좁은 폭에선 2×2 로 왼쪽 절반,
+   * 보조 열은 오른쪽 절반(사용자 지시 2026-10-16). 묶음 안 칸은 띠 높이까지 늘어나고 구분선도 끝까지
+   * 이어져, 보조 열이 더 길어도 「빈 칸」처럼 보이지 않는다(`app.css` `.dash-kpis-overview`).
+   */
   return (
-    <div className="dash-kpis">
-      <KpiTile
-        label={k.runningOfTotal}
-        tag={k.tagLive}
-        value={
-          equipment === null || running === undefined
-            ? k.none
-            : `${formatFigure(running)} / ${formatFigure(equipment.totalCount)}`
-        }
-        unit={equipment === null ? undefined : t.equipment.countUnit}
-      >
-        {equipment !== null && (
-          <span className="dash-tag-row">
-            {equipment.statusCounts
-              .filter((entry) => entry.statusCode !== 'RUNNING')
-              .map((entry) => (
-                <Chip
-                  key={entry.statusCode}
-                  size="sm"
-                  status={entry.count === 0 ? 'idle' : EQUIPMENT_STATUS_TONE[entry.statusCode]}
-                >
-                  {`${t.equipment.status[entry.statusCode]} ${formatFigure(entry.count)}`}
-                </Chip>
-              ))}
-          </span>
-        )}
-      </KpiTile>
-
-      <Linked path={pathOf(availability)} label={availability?.label ?? k.availability}>
+    <div className="dash-kpis dash-kpis-overview">
+      <div className="dash-kpi-main">
         <KpiTile
-          label={availability?.label ?? k.availability}
-          tag={k.tagToday}
-          value={cardValueText(availability)}
-          unit={unitOf(availability)}
+          label={k.runningOfTotal}
+          tag={k.tagLive}
+          value={
+            equipment === null || running === undefined
+              ? k.none
+              : `${formatFigure(running)} / ${formatFigure(equipment.totalCount)}`
+          }
+          unit={equipment === null ? undefined : t.equipment.countUnit}
         >
-          {[k.availabilityNote, ...cardNoteLines(availability)].map((line) => (
-            <span key={line}>{line}</span>
-          ))}
+          {equipment !== null && (
+            <span className="dash-tag-row">
+              {equipment.statusCounts
+                .filter((entry) => entry.statusCode !== 'RUNNING')
+                .map((entry) => (
+                  <Chip
+                    key={entry.statusCode}
+                    size="sm"
+                    status={entry.count === 0 ? 'idle' : EQUIPMENT_STATUS_TONE[entry.statusCode]}
+                  >
+                    {`${t.equipment.status[entry.statusCode]} ${formatFigure(entry.count)}`}
+                  </Chip>
+                ))}
+            </span>
+          )}
         </KpiTile>
-      </Linked>
 
-      <Linked path={pathOf(productionQty)} label={productionQty?.label ?? k.productionQty}>
+        <Linked path={pathOf(availability)} label={availability?.label ?? k.availability}>
+          <KpiTile
+            label={availability?.label ?? k.availability}
+            tag={k.tagToday}
+            value={cardValueText(availability)}
+            unit={unitOf(availability)}
+          >
+            {[k.availabilityNote, ...cardNoteLines(availability)].map((line) => (
+              <span key={line}>{line}</span>
+            ))}
+          </KpiTile>
+        </Linked>
+
+        <Linked path={pathOf(productionQty)} label={productionQty?.label ?? k.productionQty}>
+          <KpiTile
+            label={productionQty?.label ?? k.productionQty}
+            tag={k.tagToday}
+            value={cardValueText(productionQty)}
+            unit={unitOf(productionQty)}
+          >
+            {[k.ngLine(qtyOrNone(production?.ngQty)), ...cardNoteLines(productionQty)].map(
+              (line) => (
+                <span key={line}>{line}</span>
+              ),
+            )}
+          </KpiTile>
+        </Linked>
+
         <KpiTile
-          label={productionQty?.label ?? k.productionQty}
+          label={k.defectRate}
           tag={k.tagToday}
-          value={cardValueText(productionQty)}
-          unit={unitOf(productionQty)}
+          value={qtyOrNone(production?.defectRate)}
+          unit={production?.defectRate === null || production === null ? undefined : '%'}
         >
-          {[k.ngLine(qtyOrNone(production?.ngQty)), ...cardNoteLines(productionQty)].map((line) => (
-            <span key={line}>{line}</span>
-          ))}
+          <span>{k.defectRateNote}</span>
         </KpiTile>
-      </Linked>
+      </div>
 
-      <KpiTile
-        label={k.defectRate}
-        tag={k.tagToday}
-        value={qtyOrNone(production?.defectRate)}
-        unit={production?.defectRate === null || production === null ? undefined : '%'}
-      >
-        <span>{k.defectRateNote}</span>
-      </KpiTile>
-
+      {/*
+       * 보조 열 — 줄마다 「이름 … 값」 한 줄, 그 아래 설명을 보조 열 전체 폭으로 편다. 이름 칸 폭에 설명을
+       * 가두면 줄이 서너 번 꺾여 띠 전체가 그만큼 높아졌다(실데이터 확인 · 328px).
+       */}
       <dl className="dash-kpi-aux">
         {auxCards.map((card) => (
           <div key={card.cardCode} className="dash-kpi-aux-row">
-            <dt>
-              {card.cardCode === 'PERFORMANCE_RATE' ? k.performance : card.label}
-              {card.cardCode === 'PERFORMANCE_RATE' && (
-                <span className="dash-kpi-aux-note">{k.performanceNote}</span>
-              )}
-              {cardNoteLines(card).map((line) => (
-                <span key={line} className="dash-kpi-aux-note">
-                  {line}
-                </span>
-              ))}
-            </dt>
+            <dt>{card.cardCode === 'PERFORMANCE_RATE' ? k.performance : card.label}</dt>
             <dd>
               <Linked path={pathOf(card)} label={card.label}>
                 {cardValueText(card)}
@@ -203,6 +219,11 @@ export const OverviewKpis = ({
                 )}
               </Linked>
             </dd>
+            {auxNoteLines(card).map((line) => (
+              <dd key={line} className="dash-kpi-aux-note">
+                {line}
+              </dd>
+            ))}
           </div>
         ))}
         <div className="dash-kpi-aux-row">

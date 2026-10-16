@@ -7744,6 +7744,8 @@ dl.filter-bar.approval-inbox-detail-facts {
   display: grid;
   gap: var(--space-4);
   min-width: 0;
+  /* KPI 띠가 화면 폭이 아니라 «이 영역 폭»으로 배치를 고른다 — 왼쪽 메뉴를 접고 펴도 맞게. */
+  container-type: inline-size;
 }
 
 .dash-row2 {
@@ -7771,6 +7773,15 @@ dl.filter-bar.approval-inbox-detail-facts {
   display: grid;
   gap: var(--space-4);
   min-width: 0;
+}
+
+/*
+ * 오른쪽 열을 위에 붙인다 — 설비가 많으면 왼쪽 패널만 길어져 오른쪽이 통째로 비어 보였다(실데이터 120대).
+ * 열이 화면보다 길면 붙이지 않는다(아래가 영영 안 보이게 된다) — 그 판정은 `use-fits-scrollport.ts`.
+ */
+.dash-side-sticky {
+  position: sticky;
+  top: var(--space-4);
 }
 
 @media (max-width: 1100px) {
@@ -7811,31 +7822,31 @@ dl.filter-bar.approval-inbox-detail-facts {
   min-width: 0;
 }
 
-/* KPI 띠 — 칸 사이를 세로줄로 가르는 한 장의 띠. 보조 열은 마지막에 붙는다. */
+/*
+ * KPI 띠 — 한 장의 띠. 칸 사이 선은 띠 배경(1px 틈)으로 그려 줄이 바뀌어도 끊기지 않고, 줄바꿈된
+ * 마지막 줄의 칸은 남는 폭을 채운다 — 좁은 폭에서 오른쪽에 빈 칸이 남지 않는다.
+ */
 .dash-kpis {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
-  gap: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1px;
   border: 1px solid var(--outline-variant);
   border-radius: var(--radius-md);
-  background: var(--surface);
+  background: var(--outline-variant);
   overflow: hidden;
 }
 
 .dash-kpis > * {
+  flex: 1 1 11rem;
   min-width: 0;
-  border-inline-end: 1px solid var(--outline-variant);
-}
-
-.dash-kpis > :last-child {
-  border-inline-end: 0;
+  background: var(--surface);
 }
 
 .dash-kpi {
   display: grid;
   align-content: start;
   gap: var(--space-1);
-  padding: var(--space-3) var(--space-4);
+  padding: var(--space-3);
 }
 
 .dash-kpi-head {
@@ -7886,33 +7897,79 @@ dl.filter-bar.approval-inbox-detail-facts {
   gap: var(--space-1);
 }
 
+/*
+ * 대시보드 탭 KPI 띠 — 본 칸 넷(`.dash-kpi-main`) + 보조 열. 칸 사이 구분선은 묶음 배경(1px 틈)으로 그려
+ * 띠 높이까지 끊김 없이 이어진다 — 보조 열이 더 길어도 본 칸이 「빈 칸」처럼 보이지 않는다.
+ * 넓은 폭: 한 줄 / 중간 폭: 왼쪽 절반 2×2 + 오른쪽 절반 보조 열 / 좁은 폭: 세로로 쌓기(사용자 지시 2026-10-16).
+ */
+.dash-kpis-overview {
+  display: grid;
+  grid-template-columns: minmax(0, 4fr) minmax(16rem, 1.6fr);
+}
+
+.dash-kpi-main {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 1px;
+  background: var(--outline-variant);
+}
+
+.dash-kpi-main > * {
+  min-width: 0;
+  background: var(--surface);
+}
+
+.dash-kpi-main > .kpi-card-link > .dash-kpi {
+  height: 100%;
+}
+
+@container (max-width: 860px) {
+  /* 반반이 아니다 — 수치 칸이 설명을 덜 꺾도록 왼쪽을 넓게(≈58 : 42). 보조 목록은 최소 15rem. */
+  .dash-kpis-overview {
+    grid-template-columns: minmax(0, 1.4fr) minmax(15rem, 1fr);
+  }
+
+  .dash-kpi-main {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@container (max-width: 620px) {
+  .dash-kpis-overview {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
 .dash-kpi-aux {
   display: grid;
-  align-content: center;
+  align-content: start;
   gap: var(--space-2);
   margin: 0;
-  padding: var(--space-3) var(--space-4);
+  padding: var(--space-3);
   background: var(--surface-container-low);
 }
 
 .dash-kpi-aux-row {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: baseline;
-  justify-content: space-between;
-  gap: var(--space-3);
+  column-gap: var(--space-3);
   font: var(--type-body-sm);
   letter-spacing: var(--type-body-sm-tracking);
 }
 
 .dash-kpi-aux-row dt {
-  display: grid;
   color: var(--on-surface-variant);
 }
 
-.dash-kpi-aux-note {
+/* 설명은 이름 칸에 가두지 않고 보조 열 전체 폭으로 편다. */
+.dash-kpi-aux-row .dash-kpi-aux-note {
+  grid-column: 1 / -1;
   font: var(--type-label-sm);
   letter-spacing: var(--type-label-sm-tracking);
+  font-weight: 400;
   color: var(--on-surface-muted);
+  white-space: normal;
 }
 
 .dash-kpi-aux-row dd {
