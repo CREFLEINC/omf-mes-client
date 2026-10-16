@@ -21,7 +21,8 @@ export const dashboard: Translated<typeof ko.dashboard> = {
     plant: 'Nhà máy',
     allPlants: 'Tất cả',
     refresh: 'Làm mới',
-    manualOnly: 'Màn hình không tự làm mới. Hãy bấm «Làm mới» để xem số liệu mới nhất.',
+    autoRefresh: (minutes: number): string =>
+      `Màn hình tự làm mới mỗi ${String(minutes)} phút. Muốn xem ngay số liệu mới nhất thì hãy bấm «Làm mới».`,
     plantLookupFailed: 'Không tải được danh sách nhà máy nên hiện chưa chọn được. Hãy thử lại.',
     plantLookupTruncated:
       'Chỉ hiển thị một phần danh sách nhà máy. Không thấy nhà máy cần tìm thì hãy hỏi người phụ trách.',

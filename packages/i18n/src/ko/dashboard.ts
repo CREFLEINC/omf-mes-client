@@ -20,8 +20,12 @@ export const dashboard = {
     plant: '공장',
     allPlants: '전체',
     refresh: '갱신',
-    /** 자동 갱신이 없다는 사실을 조건 줄에 상시로 적는다 — 없으면 실시간으로 읽는다. */
-    manualOnly: '자동으로 갱신되지 않습니다. 최신 값을 보려면 「갱신」을 누르세요.',
+    /**
+     * 자동 갱신 주기를 조건 줄에 상시로 적는다(omf-all-around#115). 주기는 화면의 상수에서 받는다 —
+     * 숫자를 여기 박으면 주기를 바꿀 때 문구만 남는다.
+     */
+    autoRefresh: (minutes: number): string =>
+      `${String(minutes)}분마다 자동으로 갱신됩니다. 바로 최신 값을 보려면 「갱신」을 누르세요.`,
     plantLookupFailed: '공장 목록을 불러오지 못해 지금은 고를 수 없습니다. 다시 시도해 주세요.',
     plantLookupTruncated: '공장 목록의 일부만 보입니다. 찾는 공장이 없으면 담당자에게 문의하세요.',
   },

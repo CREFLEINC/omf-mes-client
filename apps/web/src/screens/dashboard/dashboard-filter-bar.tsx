@@ -4,6 +4,7 @@ import { useId } from 'react';
 
 import { FieldLabel } from './field-label';
 import type { DashboardFilters } from './filters';
+import { DASHBOARD_REFRESH_INTERVAL_MS } from './queries';
 import { SelectField } from './select-field';
 import type { SelectOption } from './types';
 
@@ -84,8 +85,8 @@ export const DashboardFilterBar = ({
         <div className="filter-actions">
           {/*
            * 안내를 **이 버튼에** 잇는다. 줄을 감싼 `div`에 붙이면 역할이 없는 요소라 보조 기술이
-           * 읽지 않는다 — 「자동으로 갱신되지 않는다」는 사실이 이 버튼을 두는 이유 자체이므로,
-           * 그 사실이 닿아야 할 자리도 여기다.
+           * 읽지 않는다 — 갱신 주기(omf-all-around#115)와 「바로 보려면 이 버튼」이라는 사실이 이
+           * 버튼을 두는 이유이므로, 그 사실이 닿아야 할 자리도 여기다.
            */}
           <Button
             variant="outlined"
@@ -99,7 +100,7 @@ export const DashboardFilterBar = ({
       </div>
 
       <p id={noteId} className="pane-lead">
-        {t.filters.manualOnly}
+        {t.filters.autoRefresh(DASHBOARD_REFRESH_INTERVAL_MS / 60_000)}
       </p>
     </>
   );
