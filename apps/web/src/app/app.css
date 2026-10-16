@@ -7823,31 +7823,87 @@ dl.filter-bar.approval-inbox-detail-facts {
 }
 
 /*
- * KPI 띠 — 한 장의 띠. 칸 사이 선은 띠 배경(1px 틈)으로 그려 줄이 바뀌어도 끊기지 않고, 줄바꿈된
- * 마지막 줄의 칸은 남는 폭을 채운다 — 좁은 폭에서 오른쪽에 빈 칸이 남지 않는다.
+ * KPI 띠 — 한 장의 띠. 칸 사이 선은 띠 배경(1px 틈)으로 그려 하나로 이어지고, 바깥 테두리도 띠에만 있다
+ * (칸마다 테두리 · 모서리를 그리지 않는다).
+ *
+ * ⭐ 열 수는 **칸 수에 맞춘다**(사용자 보고 2026-10-16 — 4칸이 3+1 로 꺾여 외톨이 칸이 줄 전체로 늘어났다).
+ * 3칸 → 3열, 4칸 → 4열, 5칸 → 5열, 6칸 → 6열. 좁아지면 외톨이 줄 없이 2×2 · 3+2(마지막 칸 2칸 폭) ·
+ * 1열로 접는다. 칸 수는 `:has()` 로 읽는다 — 화면 코드가 칸 수를 따로 넘기지 않아도 된다.
  */
 .dash-kpis {
+  --dash-kpi-cols: 4;
   --dash-kpi-corner: calc(var(--radius-md) - 1px);
 
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: repeat(var(--dash-kpi-cols), minmax(0, 1fr));
   gap: 1px;
   border: 1px solid var(--outline-variant);
   border-radius: var(--radius-md);
   background: var(--outline-variant);
 }
 
+.dash-kpis > * {
+  min-width: 0;
+  background: var(--surface);
+}
+
+.dash-kpis:has(> :nth-child(3):last-child) {
+  --dash-kpi-cols: 3;
+}
+
+.dash-kpis:has(> :nth-child(5):last-child) {
+  --dash-kpi-cols: 5;
+}
+
+.dash-kpis:has(> :nth-child(6):last-child) {
+  --dash-kpi-cols: 6;
+}
+
 /*
- * ⛔ 띠에 `overflow: hidden` 을 두지 않는다 — 둥근 모서리를 자르려고 뒀더니 칸 안 설명 단추의 툴팁
- * (DS Tooltip 은 칸 안에 그려지고 포털 옵션이 없다)까지 잘려 위쪽이 가려졌다(사용자 보고 2026-10-16).
+ * 품질 탭들의 띠 — 칸 안에 툴팁이 없어 모서리를 띠가 통째로 자른다(가장 단순하고 칸 모서리가 어긋날 일이 없다).
+ * 대시보드 탭 띠(`.dash-kpis-overview`)는 설명 툴팁이 있어 자르지 않고 모서리 칸만 깎는다(아래).
+ */
+.dash-kpis:not(.dash-kpis-overview) {
+  overflow: hidden;
+}
+
+@container (max-width: 860px) {
+  .dash-kpis:has(> :nth-child(4):last-child) {
+    --dash-kpi-cols: 2;
+  }
+
+  .dash-kpis:has(> :nth-child(5):last-child),
+  .dash-kpis:has(> :nth-child(6):last-child) {
+    --dash-kpi-cols: 3;
+  }
+
+  /* 5칸 → 3+2 — 마지막 칸이 남은 두 칸 폭을 채워 빈 구멍이 없다. */
+  .dash-kpis:has(> :nth-child(5):last-child) > :last-child {
+    grid-column: span 2;
+  }
+}
+
+@container (max-width: 520px) {
+  .dash-kpis:not(.dash-kpis-overview) {
+    --dash-kpi-cols: 1;
+  }
+
+  .dash-kpis:not(.dash-kpis-overview) > :last-child {
+    grid-column: auto;
+  }
+}
+
+/*
+ * ⛔ 대시보드 탭 띠에는 `overflow: hidden` 을 두지 않는다 — 둥근 모서리를 자르려고 뒀더니 칸 안 설명 단추의
+ * 툴팁(DS Tooltip 은 칸 안에 그려지고 포털 옵션이 없다)까지 잘려 위쪽이 가려졌다(사용자 보고 2026-10-16).
  * 대신 모서리에 닿는 칸만 같은 반경으로 깎는다.
  */
-.dash-kpis > :first-child {
+.dash-kpis-overview > :first-child {
   border-start-start-radius: var(--dash-kpi-corner);
   border-end-start-radius: var(--dash-kpi-corner);
 }
 
-.dash-kpis > :last-child {
+.dash-kpis-overview > :last-child {
   border-start-end-radius: var(--dash-kpi-corner);
   border-end-end-radius: var(--dash-kpi-corner);
 }
@@ -7855,12 +7911,6 @@ dl.filter-bar.approval-inbox-detail-facts {
 .dash-kpi-main > :first-child {
   border-start-start-radius: var(--dash-kpi-corner);
   border-end-start-radius: var(--dash-kpi-corner);
-}
-
-.dash-kpis > * {
-  flex: 1 1 11rem;
-  min-width: 0;
-  background: var(--surface);
 }
 
 .dash-kpi {
