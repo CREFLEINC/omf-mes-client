@@ -284,7 +284,11 @@ const printIqcLabel = async (
       .catch((cause: unknown) =>
         cause instanceof Error ? cause.message : '셸 인쇄가 실패했습니다.',
       );
-    await reportPrint(client, issue.documentIssueLogId, failureReason, workerNo);
+    try {
+      await reportPrint(client, issue.documentIssueLogId, failureReason, workerNo);
+    } catch {
+      // 결과 보고만 실패했다 — 종이가 나왔으면 「나오지 않았다」고 말하지 않는다(재인쇄로 한 장 더 나간다).
+    }
     return failureReason === null ? 'printed' : 'failed';
   } catch {
     return 'failed';
