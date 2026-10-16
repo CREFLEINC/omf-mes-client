@@ -3,7 +3,9 @@ import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
+import { SessionProvider } from '../../patterns/session';
 import { createStubFetch, jsonResponse, renderWithProviders } from '../../test/api-harness';
+import { SYNTHETIC_SESSION } from '../../test/session-harness';
 import { quality } from './quality.fixture';
 import { DashboardScreen } from './screen';
 
@@ -36,7 +38,13 @@ describe('DashboardScreen — 탭', () => {
       ]),
     );
 
-    renderWithProviders(<DashboardScreen />, { fetch });
+    /* 화면이 세션 권한으로 출하 칸 링크를 정한다 — 세션을 심어 둔다. */
+    renderWithProviders(
+      <SessionProvider>
+        <DashboardScreen />
+      </SessionProvider>,
+      { fetch, session: SYNTHETIC_SESSION },
+    );
 
     for (const label of Object.values(t.tabs).slice(1)) {
       expect(screen.getByRole('tab', { name: label })).toBeInTheDocument();

@@ -65,6 +65,11 @@ export interface DashboardShipment {
   waitingRequestCount: number;
   nextShipment: DashboardNextShipment | null;
   overdueCount: number;
+  /**
+   * 대기 건수를 센 같은 요청 중 가장 이른 요청일(YYYY-MM-DD) — 대기 0건이면 `null`(2026-10-16 추가 · 서버 반영
+   * 대기). 대시보드 「출하 대기」에서 출하 예정 목록을 대시보드 건수와 같은 범위로 열 때 쓴다.
+   */
+  oldestWaitingShipDate?: string | null;
 }
 
 export interface DashboardLotCounts {

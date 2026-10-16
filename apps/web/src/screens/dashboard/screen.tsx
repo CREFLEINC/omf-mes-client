@@ -27,6 +27,8 @@ import {
   QualityGate,
   QualityOverviewTab,
 } from './quality-panels';
+import { useSession } from '../../patterns/session';
+import { toWebAccess } from '../../patterns/web-access';
 import { useDashboardSummary } from './queries';
 import { useFitsScrollport } from './use-fits-scrollport';
 import { TrendPanel } from './trend-panel';
@@ -77,6 +79,9 @@ export const DashboardScreen = () => {
   const query = useMemo(() => toFilterQuery(filters), [filters]);
 
   const summary = useDashboardSummary(query);
+  /* 출하 현황 칸을 눌러 갈 화면 — 사이드바와 같은 권한 판정(세션 권한)으로 링크 여부를 정한다. */
+  const { session } = useSession();
+  const access = toWebAccess(session?.permissions);
   const [tab, setTab] = useState<DashboardTab>('overview');
   /* 오른쪽 열(멈춘 설비 · 출하 현황)은 화면 안에 들어갈 때만 위에 붙인다(`use-fits-scrollport.ts`). */
   const sideRef = useRef<HTMLDivElement>(null);
@@ -152,8 +157,10 @@ export const DashboardScreen = () => {
           />
           <ShipmentPanel
             view={view?.shipment ?? null}
+            baseDate={view?.baseDate ?? null}
             isLoading={summary.isPending}
             isFailed={isFailed}
+            allows={access.allows}
           />
           <Panel title={t.panes.alerts}>
             <AlertPanel views={alerts} isLoading={summary.isPending} />

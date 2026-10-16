@@ -135,7 +135,7 @@ export const dashboard = {
     todayShipped: '오늘 출하 실적',
     todayShipmentCount: (count: string): string => `출하 확정 ${count}건`,
     waiting: '출하 대기',
-    waitingNote: '기준 날짜까지 요청됐고 아직 출하하지 않은 요청',
+    waitingNote: '기준일까지 요청 · 미출하',
     next: '다음 출하',
     /** 기준 날짜 이후 가장 이른 미출하 요청이 없을 때. */
     nextNone: '예정 없음',
@@ -143,7 +143,7 @@ export const dashboard = {
     remainingQty: (qty: string): string => `남은 수량 ${qty}`,
     customerUnknown: '고객 미지정',
     overdue: '납기 지연',
-    overdueNote: '납기가 지났는데 출하 잔량이 남은 수주 줄',
+    overdueNote: '납기 경과 · 출하 잔량 있음',
     qtyUnit: 'EA',
     countUnit: '건',
     absent: '출하 현황이 이 응답에 오지 않았습니다.',

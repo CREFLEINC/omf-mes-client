@@ -5513,12 +5513,13 @@ on('POST', '/app/approval-requests/{approvalRequestId}:reject', (params, _q, bod
  * 가짜다 — 시안의 예시 숫자 · 고객사명 · 업체명을 옮기지 않는다(공개 저장소).
  */
 const dashboardBaseDate = (query) => query.get('baseDate') ?? new Date().toISOString().slice(0, 10);
-const dashboardNextDate = (baseDate) => {
+const dashboardShiftDate = (baseDate, days) => {
   const date = new Date(`${baseDate}T00:00:00Z`);
-  date.setUTCDate(date.getUTCDate() + 1);
+  date.setUTCDate(date.getUTCDate() + days);
 
   return date.toISOString().slice(0, 10);
 };
+const dashboardNextDate = (baseDate) => dashboardShiftDate(baseDate, 1);
 const minutesAgo = (minutes) => new Date(Date.now() - minutes * 60_000).toISOString();
 
 const DASHBOARD_EQUIPMENT = [
@@ -5637,6 +5638,7 @@ on('GET', '/app/dashboard-summary', (_params, query) => {
       todayShippedQty: 4_200,
       todayShipmentCount: 3,
       waitingRequestCount: 5,
+      oldestWaitingShipDate: dashboardShiftDate(baseDate, -12),
       nextShipment: {
         shipmentRequestId: 9301,
         shipmentRequestNo: 'SR-MOCK-0001',
