@@ -1,6 +1,6 @@
 import { Breadcrumb, PageHeader, Tabs } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { useMemo, useRef, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router';
 
 import { AlertCenterButton, AlertPanel } from './alert-panel';
@@ -30,7 +30,6 @@ import {
 import { useSession } from '../../patterns/session';
 import { toWebAccess } from '../../patterns/web-access';
 import { useDashboardSummary } from './queries';
-import { useFitsScrollport } from './use-fits-scrollport';
 import { TrendPanel } from './trend-panel';
 import type { DashboardAlertView, DashboardCardView, SelectOption } from './types';
 import { Panel } from './viz';
@@ -83,9 +82,6 @@ export const DashboardScreen = () => {
   const { session } = useSession();
   const access = toWebAccess(session?.permissions);
   const [tab, setTab] = useState<DashboardTab>('overview');
-  /* 오른쪽 열(멈춘 설비 · 출하 현황)은 화면 안에 들어갈 때만 위에 붙인다(`use-fits-scrollport.ts`). */
-  const sideRef = useRef<HTMLDivElement>(null);
-  const sideFits = useFitsScrollport(sideRef);
   const plants = usePlantOptions();
 
   const view = summary.data;
@@ -140,16 +136,23 @@ export const DashboardScreen = () => {
       />
 
       {/*
-       * ⭐ 오른쪽 열은 멈춘 설비 → 출하 현황 → 미처리 알람 **한 묶음**이다(사용자 지시 2026-10-16) — 셋이 같이
-       * 움직인다. 묶음이 화면에 들어갈 때만 위에 붙인다(sticky). 생산 추이는 그 아래 전체 폭.
+       * ⭐ 왼쪽 열 = 설비 가동 현황 → 생산 추이, 오른쪽 열 = 멈춘 설비 → 출하 현황 → 미처리 알람(한 묶음 ·
+       * 사용자 지시 2026-10-16). 설비 타일이 2행(12대)으로 줄면서 오른쪽 열이 더 길어져 설비 패널 아래가 크게
+       * 비었다 — 생산 추이를 그 아래로 올려 두 열의 높이를 맞춘다(순서는 그대로). 오른쪽 열을 위에 붙이던
+       * sticky 는 왼쪽이 짧아져 필요 없어 없앴다.
        */}
       <div className="dash-row2">
-        <EquipmentBoard
-          view={view?.equipment ?? null}
-          isLoading={summary.isPending}
-          isFailed={isFailed}
-        />
-        <div ref={sideRef} className={sideFits ? 'dash-side dash-side-sticky' : 'dash-side'}>
+        <div className="dash-main-col">
+          <EquipmentBoard
+            view={view?.equipment ?? null}
+            isLoading={summary.isPending}
+            isFailed={isFailed}
+          />
+          <Panel title={t.panes.trend}>
+            <TrendPanel view={view?.trend ?? null} isLoading={summary.isPending} />
+          </Panel>
+        </div>
+        <div className="dash-side">
           <StoppedPanel
             view={view?.equipment ?? null}
             isLoading={summary.isPending}
@@ -167,10 +170,6 @@ export const DashboardScreen = () => {
           </Panel>
         </div>
       </div>
-
-      <Panel title={t.panes.trend}>
-        <TrendPanel view={view?.trend ?? null} isLoading={summary.isPending} />
-      </Panel>
     </div>
   );
 

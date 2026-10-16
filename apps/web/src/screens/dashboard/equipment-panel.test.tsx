@@ -59,14 +59,16 @@ const tileOf = (code: string): HTMLElement =>
   screen.getByRole('button', { name: t.openDetail(code) });
 
 describe('EquipmentBoard', () => {
-  it('가동 호기는 금일 생산 · NG · 불량률 · 표준 C/T, 멈춘 호기는 상태 · 사유 · 경과를 보인다', () => {
+  it('타일 — 호기 · 톤수 / 상태(가동도) / 금일 생산 / 가동이면 NG · 불량률 · C/T, 아니면 사유 · 경과', () => {
     render(<EquipmentBoard view={view} isLoading={false} isFailed={false} />);
 
     const running = within(tileOf('EQ-01'));
     expect(running.getByText('100T')).toBeInTheDocument();
+    expect(running.getByText(t.status.RUNNING)).toBeInTheDocument();
     expect(running.getByText('1,200')).toBeInTheDocument();
-    expect(running.getByText(t.ngLine('6', '0.7%'))).toBeInTheDocument();
-    expect(running.getByText(t.cycleLine('32초'))).toBeInTheDocument();
+    expect(
+      running.getByText(`${t.ngLine('6', '0.7%')} · ${t.cycleLine('32초')}`),
+    ).toBeInTheDocument();
 
     const stopped = within(tileOf('EQ-02'));
     expect(stopped.getByText(t.status.STOPPED)).toBeInTheDocument();
@@ -77,6 +79,15 @@ describe('EquipmentBoard', () => {
     /* 톤수가 없으면 0이 아니라 「—」, 멈췄는데 사유가 없으면 「미등록」. */
     expect(within(tileOf('EQ-03')).getByText(t.none)).toBeInTheDocument();
     expect(within(tileOf('EQ-03')).getByText(t.reasonUnknown)).toBeInTheDocument();
+  });
+
+  it('정렬 — 정지 → 대기 → 교체 → 비가동 → 가동, 같은 상태는 코드 자연 정렬', () => {
+    render(<EquipmentBoard view={view} isLoading={false} isFailed={false} />);
+
+    const codes = screen
+      .getAllByRole('button', { name: /상세 보기/ })
+      .map((button) => button.querySelector('.dash-eq-code')?.textContent);
+    expect(codes).toEqual(['EQ-02', 'EQ-03', 'EQ-01']);
   });
 
   it('라인 구분을 누르면 그 라인 타일만 남고 범례 대수도 그 범위로 바뀐다', async () => {
@@ -194,5 +205,58 @@ describe('StoppedPanel', () => {
     expect(formatElapsed(85)).toBe('1시간 25분');
     expect(formatElapsed(7)).toBe('7분');
     expect(formatElapsed(null)).toBe(t.none);
+  });
+});
+
+describe('EquipmentBoard — 12대 표시 · 전체 보기', () => {
+  const many = toEquipmentView({
+    asOf: '2026-10-16T03:00:00Z',
+    statusCounts: { RUNNING: 19, STOPPED: 1, WAITING: 0, CHANGEOVER: 0, IDLE: 0 },
+    items: Array.from({ length: 20 }, (_, index) =>
+      item({
+        equipmentId: index + 1,
+        equipmentCode: `E-1-${String(index + 1)}`,
+        statusCode: index === 14 ? 'STOPPED' : 'RUNNING',
+      }),
+    ),
+  });
+
+  it('기본 12대 — 멈춘 호기가 맨 앞, 코드는 자연 정렬(E-1-2 < E-1-10), 「전체 20대 중 12대 표시」', () => {
+    render(<EquipmentBoard view={many} isLoading={false} isFailed={false} />);
+
+    const codes = screen
+      .getAllByRole('button', { name: /상세 보기/ })
+      .map((button) => button.querySelector('.dash-eq-code')?.textContent);
+    expect(codes).toHaveLength(12);
+    expect(codes.slice(0, 4)).toEqual(['E-1-15', 'E-1-1', 'E-1-2', 'E-1-3']);
+    expect(screen.getByText(t.shownOf('20', '12'))).toBeInTheDocument();
+  });
+
+  it('「전체 설비 보기」 — 창에 20대 전부, 타일을 누르면 상세가 그 위에 열린다', async () => {
+    const user = userEvent.setup();
+    render(<EquipmentBoard view={many} isLoading={false} isFailed={false} />);
+
+    await user.click(screen.getByRole('button', { name: t.showAll }));
+    const dialog = screen.getByRole('dialog', { name: t.allTitle('20') });
+    const tiles = within(dialog).getAllByRole('button', { name: /상세 보기/ });
+    expect(tiles).toHaveLength(20);
+
+    await user.click(within(dialog).getByRole('button', { name: t.openDetail('E-1-20') }));
+    expect(screen.getByText(t.detailTitle('E-1-20', '시험 설비 1'))).toBeInTheDocument();
+  });
+
+  it('같은 이름의 라인이 여럿이면 라인 번호로 가른다', () => {
+    const twin = toEquipmentView({
+      asOf: '2026-10-16T03:00:00Z',
+      statusCounts: { RUNNING: 2, STOPPED: 0, WAITING: 0, CHANGEOVER: 0, IDLE: 0 },
+      items: [
+        item({ equipmentId: 1, productionLineId: 3, productionLineName: 'PERF' }),
+        item({ equipmentId: 2, productionLineId: 7, productionLineName: 'PERF' }),
+      ],
+    });
+    render(<EquipmentBoard view={twin} isLoading={false} isFailed={false} />);
+
+    expect(screen.getByRole('button', { name: 'PERF · 3 1' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'PERF · 7 1' })).toBeInTheDocument();
   });
 });

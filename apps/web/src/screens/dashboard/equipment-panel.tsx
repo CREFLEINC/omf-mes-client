@@ -1,12 +1,14 @@
-import { Chip, Dialog, Skeleton, type ChipStatus } from '@crefle/web-ui';
+import { Button, Chip, Dialog, Icon, Skeleton, type ChipStatus } from '@crefle/web-ui';
 import type { DashboardEquipmentStatusCode } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
-import { useState, type ReactNode } from 'react';
+import { useRef, useState, type ReactNode } from 'react';
 
 import { formatPlantDateTime } from '../../patterns/plant-time';
 import {
   ALL_LINES,
   EQUIPMENT_STATUS_ORDER,
+  EQUIPMENT_TILE_PREVIEW_COUNT,
+  sortForBoard,
   effectiveLine,
   filterByLine,
   toLineOptions,
@@ -15,6 +17,7 @@ import {
   type EquipmentView,
 } from './equipment';
 import { formatFigure } from './types';
+import { useGridColumns } from './use-grid-columns';
 import { EmptyLine, Panel } from './viz';
 
 const t = messages.dashboard.equipment;
@@ -60,8 +63,9 @@ interface EquipmentTileProps {
 }
 
 /**
- * 호기 타일. 가동 중이면 금일 생산 · NG · 불량률 · 표준 C/T, 멈췄으면 **상태가 타일을 차지한다**
- * (시안 — 멈춘 호기가 격자에서 먼저 눈에 들어와야 한다). 타일 전체가 단추이고 누르면 상세가 열린다.
+ * 호기 타일(⭐ 사용자 지시 2026-10-16 — 높이 · 줄 수 통일). 1줄 = 호기(굵게, 넘치면 말줄임 · 전체는 `title`과
+ * 상세) + 톤수 · 2줄 = 상태(색 + 글자, 가동도) · 3줄 = 금일 생산(강조) · 4줄 = 가동이면 NG · 불량률 · C/T,
+ * 아니면 사유 · 경과. 멈춘 호기는 상태 색 바탕 · 왼쪽 띠로 격자에서 먼저 보인다. 타일 전체가 단추다.
  */
 const EquipmentTile = ({ item, onOpen }: EquipmentTileProps) => {
   const running = item.statusCode === 'RUNNING';
@@ -75,31 +79,25 @@ const EquipmentTile = ({ item, onOpen }: EquipmentTileProps) => {
           onOpen(item);
         }}
         aria-label={t.openDetail(item.equipmentCode)}
+        title={`${item.equipmentCode} · ${item.equipmentName}`}
       >
         <span className="dash-eq-head">
           <span className="dash-eq-code">{item.equipmentCode}</span>
           <span className="dash-eq-tonnage">{item.tonnage ?? t.none}</span>
         </span>
-        {running ? (
-          <>
-            <span className="dash-eq-qty">
-              {formatFigure(item.todayTotalQty)}
-              <span className="dash-kpi-unit">EA</span>
-            </span>
-            <span className="dash-eq-line">
-              {t.ngLine(formatFigure(item.todayNgQty), formatDefectRate(item.defectRate))}
-            </span>
-            <span className="dash-eq-line">
-              {t.cycleLine(formatCycleTime(item.standardCycleTimeSec))}
-            </span>
-          </>
-        ) : (
-          <>
-            <span className="dash-eq-status">{t.status[item.statusCode]}</span>
-            <span className="dash-eq-line">{describeReason(item)}</span>
-            <span className="dash-eq-line">{formatElapsed(item.elapsedMinutes)}</span>
-          </>
-        )}
+        <span className="dash-eq-state">
+          <StatusChip statusCode={item.statusCode} />
+          {!running && <span className="dash-eq-line">{formatElapsed(item.elapsedMinutes)}</span>}
+        </span>
+        <span className="dash-eq-qty">
+          {formatFigure(item.todayTotalQty)}
+          <span className="dash-kpi-unit">EA</span>
+        </span>
+        <span className="dash-eq-line dash-eq-one-line">
+          {running
+            ? `${t.ngLine(formatFigure(item.todayNgQty), formatDefectRate(item.defectRate))} · ${t.cycleLine(formatCycleTime(item.standardCycleTimeSec))}`
+            : describeReason(item)}
+        </span>
       </button>
     </li>
   );
@@ -224,8 +222,11 @@ const gate = ({ view, isLoading, isFailed }: EquipmentPanelProps) => {
 export const EquipmentBoard = (props: EquipmentPanelProps) => {
   const [line, setLine] = useState<string>(ALL_LINES);
   const [openedId, setOpenedId] = useState<number | null>(null);
+  const [isAllOpen, setIsAllOpen] = useState(false);
+  const gridRef = useRef<HTMLUListElement>(null);
   const blocked = gate(props);
   const { view } = props;
+  const columns = useGridColumns(gridRef, 6, view !== null && view.items.length > 0);
 
   const body = (() => {
     if (blocked !== null || view === null) return blocked;
@@ -235,11 +236,18 @@ export const EquipmentBoard = (props: EquipmentPanelProps) => {
 
     const lineOptions = toLineOptions(view.items);
     const activeLine = effectiveLine(lineOptions, line);
-    const shown = filterByLine(view.items, activeLine);
+    const shown = sortForBoard(filterByLine(view.items, activeLine));
+    /*
+     * 기본 12대, 좁아서 열이 줄면 「2행 수준」으로 끊는다(6열 → 12 · 4열 → 8 · 3열 → 6 · 2열 → 4). 본문 안
+     * 스크롤을 만들지 않는다 — 나머지는 「전체 설비 보기」 창에서.
+     */
+    const previewCount = Math.min(EQUIPMENT_TILE_PREVIEW_COUNT, Math.max(columns, 1) * 2);
+    const preview = shown.slice(0, previewCount);
     /* 자동 갱신으로 목록이 바뀌어도 상세는 그 호기의 새 값을 보인다 — 열 때의 사본을 붙들지 않는다. */
     const opened = view.items.find((item) => item.equipmentId === openedId) ?? null;
-    const countOf = (code: DashboardEquipmentStatusCode): number =>
-      shown.filter((item) => item.statusCode === code).length;
+    const openTile = (target: EquipmentItemView): void => {
+      setOpenedId(target.equipmentId);
+    };
 
     return (
       <>
@@ -259,33 +267,62 @@ export const EquipmentBoard = (props: EquipmentPanelProps) => {
               </Chip>
             ))}
           </div>
-          <ul className="dash-eq-legend" aria-label={t.legend}>
-            {EQUIPMENT_STATUS_ORDER.map((code) => (
-              <li key={code}>
-                <span
-                  className={`dash-dot dash-dot-${EQUIPMENT_STATUS_TONE[code]}`}
-                  aria-hidden="true"
-                />
-                {t.status[code]} <strong>{formatFigure(countOf(code))}</strong>
-              </li>
-            ))}
-          </ul>
+          <StatusLegend items={shown} />
         </div>
         {shown.length === 0 ? (
           <EmptyLine live text={t.lineEmpty} />
         ) : (
-          <ul className="dash-eq-grid">
-            {shown.map((item) => (
-              <EquipmentTile
-                key={item.equipmentId}
-                item={item}
-                onOpen={(target) => {
-                  setOpenedId(target.equipmentId);
-                }}
-              />
-            ))}
-          </ul>
+          <>
+            <ul ref={gridRef} className="dash-eq-grid">
+              {preview.map((item) => (
+                <EquipmentTile key={item.equipmentId} item={item} onOpen={openTile} />
+              ))}
+            </ul>
+            <div className="dash-eq-footer">
+              <span className="dash-eq-shown">
+                {t.shownOf(formatFigure(shown.length), formatFigure(preview.length))}
+              </span>
+              {shown.length > preview.length && (
+                <Button
+                  variant="text"
+                  size="sm"
+                  className="dash-panel-action"
+                  trailingIcon={<Icon name="arrow_forward" size={16} />}
+                  onClick={() => {
+                    setIsAllOpen(true);
+                  }}
+                >
+                  {t.showAll}
+                </Button>
+              )}
+            </div>
+          </>
         )}
+        {/*
+         * 전체 설비 보기 — 대시보드 본문에 펼치지 않고 창으로 연다. 지금 고른 라인 · 같은 정렬 그대로이고,
+         * 타일을 누르면 같은 상세 창이 그 위에 열린다. 닫아도 대시보드의 라인 선택은 그대로다.
+         */}
+        <Dialog
+          open={isAllOpen}
+          onClose={() => {
+            setIsAllOpen(false);
+          }}
+          title={t.allTitle(formatFigure(shown.length))}
+          size="lg"
+          className="dash-eq-all-dialog"
+        >
+          {/* 열 때만 그린다 — 닫힌 창이 120대 타일을 미리 들고 있지 않게. */}
+          {isAllOpen && (
+            <>
+              <StatusLegend items={shown} />
+              <ul className="dash-eq-grid dash-eq-grid-all">
+                {shown.map((item) => (
+                  <EquipmentTile key={item.equipmentId} item={item} onOpen={openTile} />
+                ))}
+              </ul>
+            </>
+          )}
+        </Dialog>
         <EquipmentDetailDialog
           item={opened}
           onClose={() => {
@@ -307,6 +344,19 @@ export const EquipmentBoard = (props: EquipmentPanelProps) => {
     </Panel>
   );
 };
+
+/** 상태별 대수 — 고른 범위(라인) 기준. 필터와 떨어진 오른쪽에 선다. */
+const StatusLegend = ({ items }: { items: readonly EquipmentItemView[] }) => (
+  <ul className="dash-eq-legend" aria-label={t.legend}>
+    {EQUIPMENT_STATUS_ORDER.map((code) => (
+      <li key={code}>
+        <span className={`dash-dot dash-dot-${EQUIPMENT_STATUS_TONE[code]}`} aria-hidden="true" />
+        {t.status[code]}{' '}
+        <strong>{formatFigure(items.filter((item) => item.statusCode === code).length)}</strong>
+      </li>
+    ))}
+  </ul>
+);
 
 /**
  * 멈춘 설비 — 정지 · 대기 · 교체 · 비가동 그룹, 그룹마다 대수, 줄은 호기(톤수) · 사유 · 경과.

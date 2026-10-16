@@ -7790,19 +7790,17 @@ dl.filter-bar.approval-inbox-detail-facts {
   min-width: 0;
 }
 
-/* 오른쪽 열은 늘이지 않는다 — 위에 붙이려면(sticky) 열이 제 높이여야 한다. */
-.dash-row2 > .dash-side {
-  align-self: start;
+/* 두 열(왼쪽 설비 → 추이 / 오른쪽 멈춘 설비 → 출하 → 알람)은 제 높이대로 쌓는다. */
+.dash-main-col {
+  display: grid;
+  align-content: start;
+  gap: var(--space-4);
+  min-width: 0;
 }
 
-/*
- * 오른쪽 열(멈춘 설비 · 출하 현황 · 미처리 알람 한 묶음)을 위에 붙인다 — 설비가 많으면 왼쪽 패널만 길어져
- * 오른쪽이 통째로 비어 보였다(실데이터 120대). 묶음이 화면보다 길면 붙이지 않는다(아래가 영영 안 보이게
- * 된다) — 그 판정은 `use-fits-scrollport.ts`.
- */
-.dash-side-sticky {
-  position: sticky;
-  top: var(--space-4);
+.dash-row2 > .dash-main-col,
+.dash-row2 > .dash-side {
+  align-self: start;
 }
 
 /*
@@ -7865,6 +7863,8 @@ dl.filter-bar.approval-inbox-detail-facts {
 
 .dash-panel-body {
   min-width: 0;
+  /* 패널 안 배치(설비 타일 열 수 등)를 «이 패널 폭»으로 고른다. */
+  container-type: inline-size;
 }
 
 /* 제목 오른쪽 이동 단추 — 기본 글자색(빨간 강조 글자를 쓰지 않는다), 머리줄 높이에 맞춰 위쪽을 당긴다. */
@@ -8212,11 +8212,52 @@ dl.filter-bar.approval-inbox-detail-facts {
 
 .dash-eq-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(6.5rem, 1fr));
+  /* 기본 6열 × 2행(12대) — 좁아지면 열만 줄인다(사용자 지시 2026-10-16). 표시 대수는 열 수 × 2. */
+  grid-template-columns: repeat(6, minmax(0, 1fr));
   gap: var(--space-2);
   margin: 0;
   padding: 0;
   list-style: none;
+}
+
+/* 6열은 패널이 넉넉할 때만 — 730px 에서 6열이면 호기 · C/T 가 말줄임됐다(실측). */
+@container (max-width: 760px) {
+  .dash-eq-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+@container (max-width: 460px) {
+  .dash-eq-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@container (max-width: 340px) {
+  .dash-eq-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* 전체 설비 보기 창 — 창 폭대로 채운다. 창 본문이 스크롤한다. */
+.dash-eq-grid.dash-eq-grid-all {
+  grid-template-columns: repeat(auto-fill, minmax(9rem, 1fr));
+  margin-top: var(--space-3);
+}
+
+.dash-eq-footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+}
+
+.dash-eq-shown {
+  font: var(--type-label-sm);
+  letter-spacing: var(--type-label-sm-tracking);
+  color: var(--on-surface-muted);
 }
 
 .dash-eq-tile {
@@ -8269,15 +8310,40 @@ dl.filter-bar.approval-inbox-detail-facts {
 
 .dash-eq-head {
   display: flex;
+  align-items: baseline;
   justify-content: space-between;
   gap: var(--space-1);
+  min-width: 0;
 }
 
+/* 호기는 한 줄 — 넘치면 말줄임(전체는 타일 title · 상세 창). 톤수는 줄바꿈하지 않는다. */
 .dash-eq-code {
+  min-width: 0;
+  overflow: hidden;
   font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.dash-eq-tonnage,
+.dash-eq-tonnage {
+  flex: none;
+  color: var(--on-surface-muted);
+  white-space: nowrap;
+}
+
+.dash-eq-state {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.dash-eq-one-line {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .dash-eq-line {
   color: var(--on-surface-muted);
   overflow-wrap: anywhere;
@@ -8286,13 +8352,6 @@ dl.filter-bar.approval-inbox-detail-facts {
 .dash-eq-qty {
   font: var(--type-title-sm);
   letter-spacing: var(--type-title-sm-tracking);
-  font-weight: 700;
-}
-
-.dash-eq-status {
-  margin-top: var(--space-1);
-  font: var(--type-label-lg);
-  letter-spacing: var(--type-label-lg-tracking);
   font-weight: 700;
 }
 

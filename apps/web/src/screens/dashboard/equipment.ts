@@ -120,6 +120,33 @@ export const toEquipmentView = (source: DashboardEquipment | undefined): Equipme
   };
 };
 
+/** 설비 가동 현황 타일의 기본 표시 대수(사용자 지시 2026-10-16). 나머지는 「전체 설비 보기」 창에서. */
+export const EQUIPMENT_TILE_PREVIEW_COUNT = 12;
+
+/**
+ * 타일 표시 우선순위(사용자 지시 2026-10-16) — 정지 → 대기 → 교체 → 비가동 → 가동.
+ * 정지(고장 · 중단)가 가장 급하고, 대기는 근무 중인데 일이 없는 손실, 교체는 계획된 작업이지만 진행 확인이
+ * 필요하고, 비가동은 계획 정지 · 비근무라 급하지 않다. 가동은 정상이라 맨 뒤.
+ */
+export const BOARD_STATUS_PRIORITY: readonly DashboardEquipmentStatusCode[] = [
+  'STOPPED',
+  'WAITING',
+  'CHANGEOVER',
+  'IDLE',
+  'RUNNING',
+];
+
+/** 설비 코드 자연 정렬 — PERF-E-1-2 < PERF-E-1-10. */
+const codeCollator = new Intl.Collator('en', { numeric: true, sensitivity: 'base' });
+
+/** 우선순위 → 같은 상태 안에서는 설비 코드 자연 정렬. 받은 배열은 건드리지 않는다. */
+export const sortForBoard = (items: readonly EquipmentItemView[]): EquipmentItemView[] =>
+  [...items].sort(
+    (a, b) =>
+      BOARD_STATUS_PRIORITY.indexOf(a.statusCode) - BOARD_STATUS_PRIORITY.indexOf(b.statusCode) ||
+      codeCollator.compare(a.equipmentCode, b.equipmentCode),
+  );
+
 /** 라인 필터의 「전체」. 라인 번호는 양의 정수라 빈 문자열과 겹치지 않는다. */
 export const ALL_LINES = '';
 
@@ -135,9 +162,19 @@ export const toLineOptions = (items: readonly EquipmentItemView[]): SelectOption
     }
   }
 
+  /*
+   * 이름이 같은 라인이 여럿이면(공장 전체 선택 시 다른 공장의 같은 이름 라인) 라인 번호를 덧붙여 가른다 —
+   * 「PERF · 3」. 데이터는 그대로 두고 표기만 바꾼다(사용자 지시 2026-10-16).
+   */
+  const nameCount = new Map<string, number>();
+  for (const name of lines.values()) nameCount.set(name, (nameCount.get(name) ?? 0) + 1);
+
   return [...lines.entries()]
-    .sort(([, a], [, b]) => a.localeCompare(b))
-    .map(([id, name]) => ({ value: String(id), label: name }));
+    .sort(([idA, a], [idB, b]) => a.localeCompare(b) || idA - idB)
+    .map(([id, name]) => ({
+      value: String(id),
+      label: (nameCount.get(name) ?? 0) > 1 ? `${name} · ${String(id)}` : name,
+    }));
 };
 
 /** 고른 라인의 설비. 라인은 `effectiveLine`을 거친 값을 넘긴다. */
