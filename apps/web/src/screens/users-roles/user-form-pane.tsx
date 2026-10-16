@@ -32,6 +32,8 @@ export interface UserFormPaneProps {
   onDeactivate: () => void;
   /** 비밀번호 초기화 확인 창을 연다. 수정 모드에서만 쓴다. */
   onResetPassword: () => void;
+  /** 작업자 지정 줄(omf-all-around#104). 수정 모드에서만 — 아직 없는 사용자에게는 지정할 수 없다. */
+  workerField?: ReactNode;
 }
 
 /** 라벨과 값 한 쌍. **폼 컨트롤이 아니다** — 잠긴 입력칸은 「언젠가 열린다」는 뜻이 된다. */
@@ -102,6 +104,7 @@ export const UserFormPane = ({
   onCancel,
   onDeactivate,
   onResetPassword,
+  workerField,
 }: UserFormPaneProps) => {
   const loginIdId = useId();
   /*
@@ -252,6 +255,8 @@ export const UserFormPane = ({
         />
       </div>
 
+      {mode === 'edit' && workerField}
+
       <div className="form-actions">
         {/*
          * 계정 관리 묶음 — 비밀번호 초기화·사용 중지. 폼의 「취소·저장」과 같은 줄 양 끝에 두되
@@ -265,7 +270,8 @@ export const UserFormPane = ({
          */}
         {mode === 'edit' && (
           <div className="users-roles-account-actions form-actions-secondary">
-            <Button variant="outlined" onClick={onResetPassword}>
+            {/* 비밀번호 초기화는 중립 보조, 사용 중지는 주의(outlined 기본색) — 강조 정도만 가른다(담당자 결정 2026-10-16). */}
+            <Button variant="outlined" className="app-button-neutral" onClick={onResetPassword}>
               {t.actions.resetPassword}
             </Button>
             {/*

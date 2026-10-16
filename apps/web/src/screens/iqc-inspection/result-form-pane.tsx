@@ -97,6 +97,11 @@ export interface ResultFormPaneProps {
   /** 확정된 회차에서 재검사를 시작한다. **여는 것뿐이다** — 회차는 저장이 만든다 */
   onStartReinspection: () => void;
   onCancelReinspection: () => void;
+  /**
+   * 저장 «전»에 막는 사유(omf-all-around#104) — 계정에 작업자가 연결되지 않으면 서버가 검사자를 풀지 못해
+   * 저장이 400 이 된다. 누르고 실패하기 전에 무엇을 해야 하는지 말하고 저장·확정을 잠근다.
+   */
+  saveBlockedReason?: string | null;
 }
 
 /** 계약이 짚어 줄 수 있는 칸 이름 ↔ 화면의 초안 칸. */
@@ -129,6 +134,7 @@ export const ResultFormPane = ({
   isReinspecting,
   onStartReinspection,
   onCancelReinspection,
+  saveBlockedReason = null,
 }: ResultFormPaneProps) => {
   const judgmentId = useId();
   const isConfirmed = round?.statusCode === 'CONFIRMED';
@@ -156,19 +162,21 @@ export const ResultFormPane = ({
    */
   const confirmBlockedReason: string | null = isConfirmed
     ? t.confirmBlockedByConfirmed
-    : /*
-       * ⛔ **회차가 없으면 확정할 것이 없다.** 확정은 회차 하나를 경로로 지목하는 쓰기라,
-       * 아직 만들어지지 않은 회차를 지목하면 치환되지 않은 «주소 틀» 이 그대로 나간다.
-       * 그러면 사용자는 화면에서 가장 중요한 단추를 눌렀는데 알 수 없는 오류만 받는다 —
-       * 실제로 할 일은 먼저 임시 저장을 하는 것이고 그것을 사유가 말한다.
-       */
-      round === null
-      ? t.confirmBlockedByUnsaved
-      : !canConfirm(totals)
-        ? t.confirmBlockedByTotals
-        : judgment === ''
-          ? t.confirmBlockedByJudgment
-          : null;
+    : saveBlockedReason !== null
+      ? saveBlockedReason
+      : /*
+         * ⛔ **회차가 없으면 확정할 것이 없다.** 확정은 회차 하나를 경로로 지목하는 쓰기라,
+         * 아직 만들어지지 않은 회차를 지목하면 치환되지 않은 «주소 틀» 이 그대로 나간다.
+         * 그러면 사용자는 화면에서 가장 중요한 단추를 눌렀는데 알 수 없는 오류만 받는다 —
+         * 실제로 할 일은 먼저 임시 저장을 하는 것이고 그것을 사유가 말한다.
+         */
+        round === null
+        ? t.confirmBlockedByUnsaved
+        : !canConfirm(totals)
+          ? t.confirmBlockedByTotals
+          : judgment === ''
+            ? t.confirmBlockedByJudgment
+            : null;
 
   /** 서버가 짚어 준 칸 오류를 화면의 칸 이름으로 옮긴다. */
   const serverErrorOf = (key: keyof QuantityDraft): string | undefined => {
@@ -387,7 +395,9 @@ export const ResultFormPane = ({
                       type="submit"
                       variant="outlined"
                       size="md"
-                      disabled={!hasChanges || isSaving || isConfirming}
+                      disabled={
+                        !hasChanges || isSaving || isConfirming || saveBlockedReason !== null
+                      }
                     >
                       {isSaving ? t.saving : t.save}
                     </Button>

@@ -1,4 +1,8 @@
-import { isUnauthenticated as isApiUnauthenticated, type components } from '@omf-mes/api-client';
+import {
+  isUnauthenticated as isApiUnauthenticated,
+  type components,
+  type SessionWorker,
+} from '@omf-mes/api-client';
 import { hashKey, useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query';
 import { createContext, use, useCallback, useEffect, useMemo, type ReactNode } from 'react';
 
@@ -12,7 +16,13 @@ import { runRequest, toApiError } from '../request';
  * 화면 슬라이스의 같은 별칭을 쓸 수 없다. 전례(`patterns/api-context.tsx`)가 `ApiClient`를
  * 패키지에서 직접 가져오는 것과 같은 형태다.
  */
-export type Session = components['schemas']['Session'];
+export type Session = components['schemas']['Session'] & {
+  /**
+   * 서버 선행 P-38(omf-all-around#104) — 이 계정에 연결된 작업자. 서버는 «언제나» 싣고 없으면 `null`.
+   * 칸 자체가 없으면(옛 서버) 모르는 것이다 — 「연결 없음」으로 읽지 않는다.
+   */
+  worker?: SessionWorker | null;
+};
 
 /**
  * 로그인 상태 넷.

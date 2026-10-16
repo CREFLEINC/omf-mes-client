@@ -10,7 +10,67 @@ export interface TerminalRegistrationConfirmation {
   registrationConfirmedAt: string;
 }
 
+/** 서버 선행 P-38(omf-all-around#104) — 계정에 연결된 작업자. 연결이 없으면 세 칸이 모두 null. */
+export interface AppUserWorker {
+  workerId: number | null;
+  workerNo: string | null;
+  workerName: string | null;
+}
+
+/** 서버 선행 P-38 — `Session.worker`. 서버가 «언제나» 싣고 연결이 없으면 null 이다. */
+export interface SessionWorker {
+  workerId: number;
+  workerNo: string;
+  workerName: string;
+}
+
+interface AppUserWorkerPath {
+  parameters: {
+    query?: never;
+    header?: never;
+    path?: never;
+    cookie?: never;
+  };
+  get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: { appUserId: number };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: { [name: string]: unknown };
+        content: { 'application/json': AppUserWorker };
+      };
+    };
+  };
+  put: {
+    parameters: {
+      query?: never;
+      header: { 'Idempotency-Key': string };
+      path: { appUserId: number };
+      cookie?: never;
+    };
+    requestBody: { content: { 'application/json': { workerId: number | null } } };
+    responses: {
+      200: {
+        headers: { [name: string]: unknown };
+        content: { 'application/json': AppUserWorker };
+      };
+    };
+  };
+  post?: never;
+  delete?: never;
+  options?: never;
+  head?: never;
+  patch?: never;
+  trace?: never;
+}
+
 export interface ForwardPaths {
+  '/app/users/{appUserId}/worker': AppUserWorkerPath;
   '/mdm/terminals/{terminalId}/accessible-screens': {
     parameters: {
       query?: never;

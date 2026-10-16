@@ -251,6 +251,25 @@ main > * + * {
   box-sizing: border-box;
 }
 
+/*
+ * 안내 띠(DS AlertBanner)의 아이콘을 **첫 줄**의 세로 가운데에 맞춘다 — 공용 규칙(담당자 기준 2026-10-16).
+ *
+ * DS 는 아이콘(20px)을 `margin-top: 4px` 로 고정해, 제목 줄(24px)이면 2px · 본문 한 줄(20px)이면 4px
+ * 아래로 처진다(실측). 첫 줄 높이에 맞춰 여백을 다시 준다: 제목이 있으면 2px, 없으면 0.
+ * 여러 줄이어도 위에서부터 맞추므로(`align-items: flex-start` 그대로) 아이콘은 첫 줄과 같은 행이다.
+ *
+ * ⚠ DS 빌드의 클래스 이름(`_root_f6a42_*`)으로 고른다 — 다른 수단으로는 「제목이 있는 띠」를 가릴 수 없다.
+ *   DS 를 올려 이름이 바뀌면 이 규칙은 조용히 빠지고 DS 기본 모양으로 돌아간다(깨지지는 않는다).
+ */
+[class*='_root_f6a42_'] > [class*='_icon_f6a42_'] {
+  margin-top: 0;
+}
+
+[class*='_root_f6a42_']:has(> [class*='_content_f6a42_'] > [class*='_title_f6a42_'])
+  > [class*='_icon_f6a42_'] {
+  margin-top: 2px;
+}
+
 .two-pane {
   display: grid;
   grid-template-columns: minmax(320px, 2fr) 3fr;
@@ -7088,6 +7107,128 @@ dl.filter-bar.approval-inbox-detail-facts {
   display: flex;
   align-items: flex-start;
   gap: var(--space-2);
+}
+
+/*
+ * 연결된 작업자(omf-all-around#104) — 사용자 정보 폼의 하위 구역. 큰 면 없이 위쪽 얇은 선과 제목으로만 나눈다
+ * (담당자 결정 2026-10-16). 첫 줄 [배지] 이름 · 사번 · 부서 + 오른쪽 버튼(좁으면 줄바꿈), 그 아래 안내 한 줄.
+ * 선 굵기는 이 파일의 구분선 관례(1px · outline-variant)를 따른다.
+ */
+.users-roles-worker-link {
+  display: grid;
+  gap: var(--space-2);
+  min-width: 0;
+  margin-top: var(--space-4);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--outline-variant);
+}
+
+.users-roles-worker-link-title {
+  margin: 0;
+  font: var(--type-label-lg);
+  letter-spacing: var(--type-label-lg-tracking);
+  color: var(--on-surface-variant);
+}
+
+.users-roles-worker-link-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2) var(--space-4);
+  min-width: 0;
+}
+
+.users-roles-worker-link-summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1) var(--space-3);
+  min-width: 0;
+}
+
+.users-roles-worker-link-summary > * {
+  overflow-wrap: anywhere;
+}
+
+.users-roles-worker-link-meta {
+  color: var(--on-surface-variant);
+}
+
+.users-roles-worker-link-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+/* 공용 .field-note 의 폭 상한은 입력칸 밑 짧은 주석용이다 — 이 구역의 안내는 구역 폭을 쓴다. */
+.users-roles-worker-link-hint {
+  max-width: none;
+  margin: 0;
+}
+
+/*
+ * 연결·변경 모달과 해제 확인 창의 본문 — 내용에 맞춘 높이, 항목 사이는 gap 하나(문단 기본 여백을 걷는다).
+ * 버튼 위 여백이 과하게 벌어지던 것은 문단 margin 이 Dialog 본문 padding 에 더해진 탓이었다.
+ */
+.users-roles-worker-dialog {
+  display: grid;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.users-roles-worker-dialog > p,
+.users-roles-worker-dialog .banner-slot {
+  max-width: none;
+  margin: 0;
+}
+
+/* 라벨·입력·(오류)·보조 문구를 한 묶음으로 촘촘히 — 오류는 TextField 안(입력칸 바로 아래), 보조 문구는 그 아래. */
+.users-roles-worker-dialog-field {
+  display: grid;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.users-roles-worker-dialog-field > p {
+  max-width: none;
+  margin: 0;
+}
+
+/* 버튼 줄 — Dialog footer(구분선·큰 여백) 대신 본문 마지막 줄, 오른쪽 정렬. */
+.users-roles-worker-dialog-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  margin-top: var(--space-1);
+}
+
+.users-roles-worker-dialog-question {
+  font: var(--type-title-sm);
+  letter-spacing: var(--type-title-sm-tracking);
+}
+
+/* 현재 작업자 블록 — 옅은 바탕(카드 면보다 한 단계). 긴 이름은 줄바꿈한다. */
+.users-roles-worker-block {
+  display: grid;
+  gap: var(--space-1);
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--surface-container);
+  overflow-wrap: anywhere;
+}
+
+.users-roles-worker-block > span {
+  color: var(--on-surface-variant);
+}
+
+/*
+ * 중립 보조 버튼 — DS primary 가 빨강이고 Button 에 색 prop 이 없어, outlined·text 의 글자만 중립 토큰으로 바꾼다.
+ * 강조 정도(테두리·면)는 DS 변형 그대로다. 새 컴포넌트가 아니라 클래스 하나다.
+ */
+button.app-button-neutral {
+  color: var(--on-surface-variant);
 }
 
 /* 역할 부여 — 넓으면 여러 열, 좁으면 한 열. 카드 없는 단순 목록 그대로다. */
