@@ -91,7 +91,7 @@ export const dashboard: Translated<typeof ko.dashboard> = {
     stoppedTitle: 'Thiết bị đang dừng',
     stoppedSub: 'Lý do · Thời gian đã qua',
     stoppedGroupCaption: (status: string): string => `Thiết bị ${status}`,
-    stoppedEmpty: 'Tất cả thiết bị đều đang chạy.',
+    stoppedEmpty: 'Hiện không có thiết bị nào đang dừng.',
     equipmentColumn: 'Máy',
     statusColumn: 'Trạng thái',
     openDetail: (code: string): string => `Xem chi tiết ${code}`,

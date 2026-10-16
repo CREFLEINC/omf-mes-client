@@ -112,7 +112,8 @@ export const dashboard = {
     stoppedTitle: '멈춘 설비',
     stoppedSub: '사유 · 경과 시간',
     stoppedGroupCaption: (status: string): string => `${status} 설비`,
-    stoppedEmpty: '모든 설비가 가동 중입니다.',
+    /** ⛔ 「모든 설비가 가동 중」이라 단정하지 않는다(사용자 지시 2026-10-16) — 목록이 비었다는 사실만 말한다. */
+    stoppedEmpty: '현재 멈춘 설비가 없습니다.',
     equipmentColumn: '호기',
     statusColumn: '상태',
     openDetail: (code: string): string => `${code} 상세 보기`,
