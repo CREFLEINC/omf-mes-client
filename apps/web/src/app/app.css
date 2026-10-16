@@ -2990,9 +2990,25 @@ main > * + * {
   padding-right: var(--space-6);
 }
 
-/* LOT 번호는 한 줄 — 칸보다 길면 말줄임하고 전체 번호는 title 로 보인다. */
+/*
+ * LOT 번호는 한 줄 — 칸보다 길면 «앞에서부터» 보이고 끝에 말줄임, 전체 번호는 title 로 보인다.
+ * ⚠ DS 단추는 가운데 정렬 inline-flex 라 단추 자체에 말줄임을 걸면 넘친 글자가 양쪽으로 밀려
+ *   앞부분이 잘렸다(2단계 검증 2026-10-16). 안쪽 글자 칸이 줄어들며 말줄임한다.
+ */
 .lot-status-lot-no {
   max-width: 100%;
+  min-width: 0;
+}
+
+/* DS 단추가 글자를 블록 칸으로 한 번 더 감싼다 — 그 칸도 줄어들어야 안쪽 말줄임이 걸린다(실측). */
+.lot-status-lot-no > span {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.lot-status-lot-no-text {
+  display: block;
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
