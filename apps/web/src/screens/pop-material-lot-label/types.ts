@@ -75,6 +75,8 @@ export interface LineView {
    * 정상적으로 생긴다. 그 상태를 이 값으로 가른다(변경 통지 #534 §3).
    */
   lotId: number | null;
+  /** IQC 대상 품목의 라인인가(서버가 품목 마스터에서 읽어 둔 값) — IQC 라벨을 함께 찍는다(omf-all-around#110). */
+  inspectionRequired: boolean;
 }
 
 /** 라인 한 줄을 화면 타입으로 옮기는 **유일한 지점**이다. */
@@ -85,6 +87,7 @@ export const toLineView = (data: InboundReceiptLineResponse): LineView => ({
   receivedQty: data.receivedQty,
   uomId: data.uomId,
   lotId: data.lotId ?? null,
+  inspectionRequired: data.inspectionRequired === true,
 });
 
 type PrinterResponse = components['schemas']['Printer'];
@@ -143,6 +146,8 @@ export interface TargetRow {
   uomId: number;
   /** 이 라인으로 만들어진 자재LOT. 없으면 아직 등록하지 않은 것이다. */
   lotId: number | null;
+  /** IQC 대상이면 자재 라벨 뒤에 IQC 라벨을 한 장 더 찍는다(omf-all-around#110). */
+  inspectionRequired: boolean;
 }
 
 /**
@@ -186,6 +191,7 @@ export const toTargetRows = (receipt: ReceiptView, lines: LineView[]): TargetRow
     receivedQty: line.receivedQty,
     uomId: line.uomId,
     lotId: line.lotId,
+    inspectionRequired: line.inspectionRequired,
   }));
 
 type DocumentIssueResponse = components['schemas']['DocumentIssue'];

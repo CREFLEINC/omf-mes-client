@@ -7,6 +7,7 @@ import { useApiClient } from '../../patterns/api-context';
 import { renditionShell } from '../../patterns/pop-print';
 import { runRequest, toApiError } from '../../patterns/request';
 
+import { DOCUMENT_TYPE_CODE, IQC_DOCUMENT_TYPE_CODE } from './codes';
 import { toDocumentIssueBody, toLotCreateBody, toPrintReportBody } from './issue-request';
 import { buildMaterialLotLabel } from './label-tspl';
 import { receiptKeys } from './queries';
@@ -62,6 +63,11 @@ export interface IssueRunResult {
   /** 만들어진 발행 기록. `issue` 를 넘겼을 때만 있다. */
   issue: IssueView | null;
   error: ApiError | null;
+  /**
+   * IQC 라벨(omf-all-around#110) — IQC 대상 자재의 첫 발행에서만 찍는다. 대상이 아니거나 자재 라벨이
+   * 안 나왔으면 `null`. ⭐ 자재 라벨의 성패와 따로 센다 — IQC 라벨이 실패해도 자재 라벨은 나왔다.
+   */
+  iqcLabel: 'printed' | 'failed' | null;
 }
 
 const IDLE: IssueRunResult = {
@@ -72,6 +78,7 @@ const IDLE: IssueRunResult = {
   hasPrintedLabel: false,
   issue: null,
   error: null,
+  iqcLabel: null,
 };
 
 export interface IssueCommand {
@@ -111,13 +118,14 @@ const createIssue = async (
   input: { lotId: number; printerName: string | null; reissueReasonCode: string | null },
   workerNo: string,
   idempotencyKey: string,
+  documentTypeCode: typeof DOCUMENT_TYPE_CODE = DOCUMENT_TYPE_CODE,
 ): Promise<IssueView> => {
   const data = await runRequest(() =>
     client.POST('/app/document-issues', {
       params: {
         header: { 'Idempotency-Key': idempotencyKey, 'X-Worker-No': workerNo },
       },
-      body: toDocumentIssueBody(input),
+      body: toDocumentIssueBody(input, documentTypeCode),
     }),
   );
 
@@ -144,6 +152,7 @@ const createIssue = async (
 const buildLabel = async (
   client: Client,
   input: { row: TargetRow; issue: IssueView; lotId: number; uomCode: string | null },
+  heading: 'MATERIAL LOT' | 'IQC LOT' = 'MATERIAL LOT',
 ): Promise<Uint8Array> => {
   const { row, issue, lotId, uomCode } = input;
 
@@ -153,18 +162,20 @@ const buildLabel = async (
 
   const lotNo =
     issue.lotNo ??
-    (
-      await runRequest(() => client.GET('/trace/lots/{lotId}', { params: { path: { lotId } } }))
-    ).lot.lotNo;
+    (await runRequest(() => client.GET('/trace/lots/{lotId}', { params: { path: { lotId } } }))).lot
+      .lotNo;
 
-  const commands = buildMaterialLotLabel({
-    itemCode: item.item.itemCode,
-    lotNo,
-    qty: row.receivedQty,
-    uomCode,
-    issueSeq: issue.issueSeq,
-    inboundReceiptNo: row.inboundReceiptNo,
-  });
+  const commands = buildMaterialLotLabel(
+    {
+      itemCode: item.item.itemCode,
+      lotNo,
+      qty: row.receivedQty,
+      uomCode,
+      issueSeq: issue.issueSeq,
+      inboundReceiptNo: row.inboundReceiptNo,
+    },
+    heading,
+  );
 
   return new TextEncoder().encode(commands);
 };
@@ -184,6 +195,39 @@ const reportPrint = async (
       body: toPrintReportBody(failureReason),
     }),
   );
+};
+
+/**
+ * IQC 라벨 한 장 — 발행 기록 → 라벨 짜기 → 셸 인쇄 → 결과 보고(자재 라벨과 같은 네 걸음).
+ * ⛔ 실패를 던지지 않는다 — 자재 라벨은 이미 나왔고 그 결과를 덮으면 안 된다. 실패는 `failed` 로 알리고,
+ *    보고까지 갔으면 서버에도 실패로 남는다.
+ */
+const printIqcLabel = async (
+  client: Client,
+  input: { row: TargetRow; lotId: number; uomCode: string | null; printerName: string | null },
+  workerNo: string,
+  shell: NonNullable<ReturnType<typeof renditionShell>>,
+): Promise<'printed' | 'failed'> => {
+  try {
+    const issue = await createIssue(
+      client,
+      { lotId: input.lotId, printerName: input.printerName, reissueReasonCode: null },
+      workerNo,
+      createIdempotencyKey(),
+      IQC_DOCUMENT_TYPE_CODE,
+    );
+    const bytes = await buildLabel(client, { ...input, issue }, 'IQC LOT');
+    const failureReason = await shell
+      .save(bytes, `iqc-${String(issue.documentIssueLogId)}`, new Date().toISOString(), 'tspl')
+      .then(() => null)
+      .catch((cause: unknown) =>
+        cause instanceof Error ? cause.message : '셸 인쇄가 실패했습니다.',
+      );
+    await reportPrint(client, issue.documentIssueLogId, failureReason, workerNo);
+    return failureReason === null ? 'printed' : 'failed';
+  } catch {
+    return 'failed';
+  }
 };
 
 export interface IssueRunOptions {
@@ -349,6 +393,18 @@ export const useLabelIssue = ({ workerNo }: IssueRunOptions): IssueRunResultHand
           enter('report');
           await reportPrint(client, issue.documentIssueLogId, failureReason, workerNo);
 
+          /*
+           * IQC 라벨(omf-all-around#110) — IQC 대상 자재의 «첫» 발행이고 자재 라벨이 나왔을 때만 한 장 더.
+           * 재인쇄는 자재 라벨만 다시 찍는다(IQC 라벨은 대기 장소로 옮길 때 한 번이면 된다).
+           */
+          const iqcLabel =
+            row.inspectionRequired &&
+            reissueReasonCode === null &&
+            failureReason === null &&
+            shell !== null
+              ? await printIqcLabel(client, { row, lotId, uomCode, printerName }, workerNo, shell)
+              : null;
+
           setResult({
             lineId: row.inboundReceiptLineId,
             isPrinted: failureReason === null,
@@ -357,6 +413,7 @@ export const useLabelIssue = ({ workerNo }: IssueRunOptions): IssueRunResultHand
             hasPrintedLabel,
             issue,
             error: null,
+            iqcLabel,
           });
         } catch (cause) {
           setResult({
@@ -367,6 +424,7 @@ export const useLabelIssue = ({ workerNo }: IssueRunOptions): IssueRunResultHand
             hasPrintedLabel,
             issue,
             error: toApiError(cause),
+            iqcLabel: null,
           });
         } finally {
           isRunning.current = false;

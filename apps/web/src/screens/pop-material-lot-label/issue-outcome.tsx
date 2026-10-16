@@ -76,6 +76,11 @@ export const IssueOutcome = ({ result }: IssueOutcomeProps) => {
        *
        * ⛔ 출력 권한이 없는 단말에서는 「인쇄」로 이어가라고 하지 않는다 — 그 단추가 막혀 있다.
        */}
+      {isPrinted && result.iqcLabel !== null ? (
+        <p className="pop-wide-note">
+          {result.iqcLabel === 'printed' ? t.iqcPrinted : t.iqcFailed}
+        </p>
+      ) : null}
       {!isPrinted && hasCreatedLot ? (
         <p className="pop-wide-note">
           {failure === 'issueForbidden' ? t.lotCreatedForbidden : t.lotCreated}

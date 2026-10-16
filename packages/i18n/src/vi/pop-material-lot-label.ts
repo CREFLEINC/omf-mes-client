@@ -72,6 +72,8 @@ export const popMaterialLotLabel: Translated<typeof ko.popMaterialLotLabel> = {
       },
     },
     outcome: {
+      iqcPrinted: 'Đã in kèm nhãn IQC. Hãy dán khi chuyển vật tư đến khu chờ IQC.',
+      iqcFailed: 'Nhãn IQC chưa được in. Nhãn vật tư vẫn bình thường — hãy kiểm tra máy in.',
       printed: (lotNo: string, seq: number) =>
         lotNo === '' ? `Đã in. Lượt ${seq}` : `Đã in. Số LOT ${lotNo} · lượt ${seq}`,
       lotCreated: 'LOT vật tư đã được tạo. Đừng đăng ký lại, hãy tiếp tục bằng 「In」.',

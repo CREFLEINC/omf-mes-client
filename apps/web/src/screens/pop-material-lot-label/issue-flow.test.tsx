@@ -29,7 +29,7 @@ const receiptOf = (n: number) => ({
   statusCode: 'SYN_STATUS',
 });
 
-const lineOf = (lotId: number | null, receiptNo = 1) => ({
+const lineOf = (lotId: number | null, receiptNo = 1, inspectionRequired = false) => ({
   inboundReceiptLineId: 8500 + receiptNo,
   inboundReceiptId: 8100 + receiptNo,
   lineNo: 1,
@@ -38,7 +38,7 @@ const lineOf = (lotId: number | null, receiptNo = 1) => ({
   uomId: 8401,
   supplierLotMissing: true,
   supplierLotLabelAttached: false,
-  inspectionRequired: false,
+  inspectionRequired,
   statusCode: 'SYN_STATUS',
   lotId,
 });
@@ -96,6 +96,8 @@ interface FlowOptions {
    * 목록을 답한다. 끄면 발행 전후로 같은 라인을 답한다.
    */
   filtersIssuedAfterReport?: boolean;
+  /** IQC 대상 품목의 라인이다 — 자재 라벨 뒤에 IQC 라벨을 한 장 더 찍는다(omf-all-around#110). */
+  inspectionRequired?: boolean;
 }
 
 const renderFlow = (options: FlowOptions = {}) => {
@@ -161,7 +163,13 @@ const renderFlow = (options: FlowOptions = {}) => {
             }
 
             return jsonResponse({
-              items: [lineOf(receiptNo === 1 ? (lotId ?? createdLotId) : null, receiptNo)],
+              items: [
+                lineOf(
+                  receiptNo === 1 ? (lotId ?? createdLotId) : null,
+                  receiptNo,
+                  options.inspectionRequired === true,
+                ),
+              ],
               page: { page: 1, size: 20, total: 1 },
             });
           },
@@ -387,6 +395,40 @@ describe('PopMaterialLotLabelScreen — 등록·인쇄', () => {
     expect(
       screen.queryByText('사번을 확인한 뒤에 등록·인쇄할 수 있습니다.'),
     ).not.toBeInTheDocument();
+  });
+
+  /* omf-all-around#110 — IQC 대상 자재는 자재 라벨 뒤에 IQC 라벨(IQC_LABEL)을 한 장 더 찍는다. */
+  it('IQC 대상이면 자재 라벨 뒤에 IQC 라벨을 발행·인쇄·보고한다', async () => {
+    const shellPrint = vi.fn(async () => 'C:/syn/label.png');
+    const { user, sent } = renderFlow({ shellPrint, inspectionRequired: true });
+    await chooseLine(user);
+
+    await user.click(screen.getByRole('button', { name: '등록·인쇄' }));
+
+    await waitFor(() => {
+      expect(sent.filter((entry) => entry.path.endsWith(':report-print'))).toHaveLength(2);
+    });
+    const issues = sent.filter((entry) => entry.path === '/app/document-issues');
+    expect(
+      issues.map((entry) => (entry.body as { documentTypeCode: string }).documentTypeCode),
+    ).toEqual(['MATERIAL_LOT_LABEL', 'IQC_LABEL']);
+    expect(shellPrint).toHaveBeenCalledTimes(2);
+    expect(
+      await screen.findByText(messages.popMaterialLotLabel.target.outcome.iqcPrinted),
+    ).toBeInTheDocument();
+  });
+
+  it('IQC 대상이 아니면 IQC 라벨을 찍지 않는다', async () => {
+    const shellPrint = vi.fn(async () => 'C:/syn/label.png');
+    const { user, sent } = renderFlow({ shellPrint });
+    await chooseLine(user);
+
+    await user.click(screen.getByRole('button', { name: '등록·인쇄' }));
+
+    await waitFor(() => {
+      expect(sent.filter((entry) => entry.path.endsWith(':report-print'))).toHaveLength(1);
+    });
+    expect(sent.filter((entry) => entry.path === '/app/document-issues')).toHaveLength(1);
   });
 
   it('등록 → 발행 → 품목 조회 → 인쇄 → 보고를 순서대로 부르고 사번을 싣는다', async () => {
