@@ -2,7 +2,7 @@ import type { ApiClient } from '@omf-mes/api-client';
 import { useQueries, useQuery, type UseQueryResult } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
-import { terminalPrinters } from '../../patterns/pop-terminal-printers';
+import { shellSelectsPrinter, terminalPrinters } from '../../patterns/pop-terminal-printers';
 import { runRequest } from '../../patterns/request';
 import { REISSUE_REASON_CODE_GROUP } from './codes';
 import {
@@ -208,6 +208,13 @@ export const usePrinters = (): UseQueryResult<PrinterView[]> => {
     },
   });
 };
+
+/** 셸이 고른 프린터로 보낼 수 있는가 — 모르면 `false`(화면은 고르는 칸을 막는다). */
+export const useShellSelectsPrinter = (): UseQueryResult<boolean> =>
+  useQuery({
+    queryKey: ['pop-material-lot-label', 'printer-selectable'],
+    queryFn: shellSelectsPrinter,
+  });
 
 export interface TargetRowsResult {
   rows: TargetRow[];

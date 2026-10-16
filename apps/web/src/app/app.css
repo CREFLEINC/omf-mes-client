@@ -8298,6 +8298,20 @@ button.app-button-neutral {
   gap: var(--space-5);
 }
 
+/*
+ * 머리 오른쪽의 프린터 선택(2단계 검증 2026-10-16). 칸 폭을 정해 둔다 — 프린터 이름이 길면 머리줄이 밀린다.
+ * 고를 수 없는 환경에서는 칸 옆에 까닭을 한 줄로 적는다.
+ */
+.pop-lot-printer-select {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.pop-lot-printer-select > :first-child {
+  width: 16rem;
+}
+
 /* LOT 번호 자리의 라벨 — 값이 아직 없으므로 라벨만 또렷이 둔다. */
 .pop-lot-label {
   margin: 0;

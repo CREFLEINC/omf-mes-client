@@ -753,11 +753,13 @@ describe('PopMaterialLotLabelScreen — 채번 대상', () => {
 });
 
 describe('PopMaterialLotLabelScreen — 프린터 상태', () => {
-  it('머리에 프린터와 그 상태를 상시 보인다 — 인쇄가 안 될 때 가장 먼저 보는 자리다', async () => {
+  it('머리에 지금 나갈 프린터를 상시 보인다 — 브라우저에서는 고르는 칸을 막고 까닭을 말한다', async () => {
     renderScreen();
 
-    // 이름만 든다 — 상태 설명은 붙이지 않는다(사용자 지시 2026-09-14).
-    expect(await screen.findByText('프린터 합성 라벨 프린터 가')).toBeInTheDocument();
+    const select = await screen.findByRole('combobox', { name: '프린터 선택' });
+    expect(select.closest('.pop-lot-printer-select')).toHaveTextContent('합성 라벨 프린터 가');
+    expect(select).toBeDisabled();
+    expect(screen.getByText('설치본에서만 프린터를 고를 수 있습니다.')).toBeInTheDocument();
   });
 
   it('프린터가 한 대도 없으면 빈 상태를 그린다 — 오류로 다루지 않는다', async () => {

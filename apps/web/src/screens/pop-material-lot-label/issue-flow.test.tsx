@@ -91,7 +91,11 @@ interface FlowOptions {
   /** 라벨에 실을 품목 조회 실패를 재현한다. */
   renderFails?: boolean;
   /** 셸 인쇄 통로를 심는다. 없으면 브라우저와 같은 상태다. */
-  shellPrint?: (() => Promise<string>) | null;
+  shellPrint?: ((...args: unknown[]) => Promise<string>) | null;
+  /**
+   * 셸의 프린터 목록 통로를 심는다(화면이 먼저 이것을 읽는다). `selectable` 이 참이면 고른 프린터를 받는 설치본이다.
+   */
+  shellPrinters?: { names: string[]; target: string | null; selectable: boolean };
   reissueReasons?: { code: string; codeName: string }[];
   /**
    * 인쇄 결과를 보고한 뒤에는 서버가 그 라인을 발행한 것으로 거른다 — 미발행 라인 질의에 빈
@@ -139,6 +143,17 @@ const renderFlow = (options: FlowOptions = {}) => {
     workerNo: WORKER_NO,
     ...options.identity,
   };
+
+  if (options.shellPrinters !== undefined) {
+    const { names, target, selectable } = options.shellPrinters;
+    window.pop = {
+      rendition: { save: options.shellPrint ?? vi.fn(async () => 'C:/syn/label.png') },
+      printers: {
+        list: async () => ({ printers: names.map((name) => ({ name })), target }),
+        capabilities: async () => (selectable ? { raw: true, selectable } : { raw: true }),
+      },
+    } as unknown as typeof window.pop;
+  }
 
   const result = renderWithProviders(
     <PopIdentityProvider value={identity}>
@@ -389,7 +404,11 @@ const renderFlow = (options: FlowOptions = {}) => {
     },
   );
 
-  if (options.shellPrint !== undefined && options.shellPrint !== null) {
+  if (
+    options.shellPrinters === undefined &&
+    options.shellPrint !== undefined &&
+    options.shellPrint !== null
+  ) {
     window.pop = { rendition: { save: options.shellPrint } };
   }
 
@@ -398,6 +417,7 @@ const renderFlow = (options: FlowOptions = {}) => {
 
 afterEach(() => {
   delete window.pop;
+  localStorage.clear();
 });
 
 const chooseLine = async (user: ReturnType<typeof userEvent.setup>): Promise<void> => {
@@ -1062,5 +1082,79 @@ describe('PopMaterialLotLabelScreen — 재인쇄', () => {
         '고를 수 있는 재발행 사유가 아직 없습니다. 사유 없이는 재인쇄할 수 없습니다.',
       ),
     ).toBeInTheDocument();
+  });
+});
+
+/* 2단계 검증(2026-10-16) — 프린터 선택은 이 화면 전용이고, 셸이 고른 프린터를 받을 때만 연다. */
+describe('PopMaterialLotLabelScreen — 프린터 선택', () => {
+  const PRINTERS = { names: ['HT800', 'HT800 #2'], target: 'HT800' };
+
+  const lastPrinterArg = (shellPrint: ReturnType<typeof vi.fn>): unknown =>
+    shellPrint.mock.calls.at(-1)?.[4];
+
+  it('처음에는 셸의 출력 대상(OS 기본)이 골라져 있고 그 이름으로 셸에 보낸다', async () => {
+    const shellPrint = vi.fn(async () => 'C:/syn/label.png');
+    const { user } = renderFlow({ shellPrint, shellPrinters: { ...PRINTERS, selectable: true } });
+
+    const select = await screen.findByRole('combobox', { name: '프린터 선택' });
+    await waitFor(() => expect(select).not.toBeDisabled());
+    expect(select.closest('.pop-lot-printer-select')?.textContent).toMatch(/HT800(?! #2)/u);
+
+    await chooseLine(user);
+    await user.click(screen.getByRole('button', { name: '등록·인쇄' }));
+
+    await waitFor(() => expect(shellPrint).toHaveBeenCalled());
+    expect(lastPrinterArg(shellPrint)).toBe('HT800');
+  });
+
+  it('다른 프린터를 고르면 그리로 보내고 이 단말에 기억한다', async () => {
+    const shellPrint = vi.fn(async () => 'C:/syn/label.png');
+    const { user, sent } = renderFlow({
+      shellPrint,
+      shellPrinters: { ...PRINTERS, selectable: true },
+    });
+
+    const select = await screen.findByRole('combobox', { name: '프린터 선택' });
+    await waitFor(() => expect(select).not.toBeDisabled());
+    await user.click(select);
+    await user.click(await screen.findByRole('option', { name: 'HT800 #2' }));
+
+    expect(localStorage.getItem('omf-mes.pop-material-lot-label.printer')).toBe('HT800 #2');
+
+    await chooseLine(user);
+    await user.click(screen.getByRole('button', { name: '등록·인쇄' }));
+
+    await waitFor(() => expect(shellPrint).toHaveBeenCalled());
+    expect(lastPrinterArg(shellPrint)).toBe('HT800 #2');
+    expect(sentTo(sent, '/app/document-issues')?.body).toMatchObject({ printerName: 'HT800 #2' });
+  });
+
+  it('기억해 둔 프린터가 사라졌으면 기본으로 돌아가고 그 사실을 말한다', async () => {
+    localStorage.setItem('omf-mes.pop-material-lot-label.printer', '사라진 프린터');
+    renderFlow({ shellPrinters: { ...PRINTERS, selectable: true } });
+
+    expect(
+      await screen.findByText(messages.popMaterialLotLabel.printer.storedMissing('사라진 프린터')),
+    ).toBeInTheDocument();
+    expect(
+      (await screen.findByRole('combobox', { name: '프린터 선택' })).closest(
+        '.pop-lot-printer-select',
+      )?.textContent,
+    ).not.toMatch(/#2|사라진/u);
+  });
+
+  it('⛔ 고른 프린터를 받지 못하는 옛 설치본에서는 칸을 막고, 셸에 이름을 싣지 않는다(지금 동작 그대로)', async () => {
+    localStorage.setItem('omf-mes.pop-material-lot-label.printer', 'HT800 #2');
+    const shellPrint = vi.fn(async () => 'C:/syn/label.png');
+    const { user } = renderFlow({ shellPrint, shellPrinters: { ...PRINTERS, selectable: false } });
+
+    expect(await screen.findByRole('combobox', { name: '프린터 선택' })).toBeDisabled();
+    expect(screen.getByText(messages.popMaterialLotLabel.printer.shellOnly)).toBeInTheDocument();
+
+    await chooseLine(user);
+    await user.click(screen.getByRole('button', { name: '등록·인쇄' }));
+
+    await waitFor(() => expect(shellPrint).toHaveBeenCalled());
+    expect(shellPrint.mock.calls.at(-1)).toHaveLength(4);
   });
 });

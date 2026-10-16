@@ -92,7 +92,16 @@ export interface IssueCommand {
   uomCode: string | null;
   /** 이미 등록된 LOT 의 품질 상태. 재인쇄가 IQC 라벨을 함께 찍을지 이것으로 가른다. 모르면 `null`. */
   lotStatusCode: string | null;
+  /**
+   * 셸에게 «이 프린터로 보내라»고 실을 이름 — 셸이 고른 프린터를 받을 때(`selectable`)만 채운다.
+   * 없거나 `null` 이면 싣지 않는다(셸이 지금처럼 기동 시 지정값 → OS 기본으로 보낸다).
+   */
+  shellPrinterName?: string | null;
 }
+
+/** 셸 인쇄의 다섯째 인자 — 고른 프린터가 있을 때만 싣는다(옛 호출 모양을 그대로 둔다). */
+const printerArgs = (shellPrinterName: string | null | undefined): [] | [string] =>
+  shellPrinterName === null || shellPrinterName === undefined ? [] : [shellPrinterName];
 
 /** IQC 라벨을 붙일 수 있는 LOT 상태 — 서버 IQC_LABEL 자격(수입검사 대기)과 같다. */
 const IQC_PENDING_LOT_STATUS = 'INSPECTION_PENDING';
@@ -255,6 +264,7 @@ const printIqcLabel = async (
     uomCode: string | null;
     printerName: string | null;
     reissueReasonCode: string | null;
+    shellPrinterName?: string | null;
   },
   workerNo: string,
   shell: NonNullable<ReturnType<typeof renditionShell>>,
@@ -263,7 +273,13 @@ const printIqcLabel = async (
     const issue = await createIqcIssue(client, input, workerNo);
     const bytes = await buildLabel(client, { ...input, issue }, 'IQC LOT');
     const failureReason = await shell
-      .save(bytes, `iqc-${String(issue.documentIssueLogId)}`, new Date().toISOString(), 'tspl')
+      .save(
+        bytes,
+        `iqc-${String(issue.documentIssueLogId)}`,
+        new Date().toISOString(),
+        'tspl',
+        ...printerArgs(input.shellPrinterName),
+      )
       .then(() => null)
       .catch((cause: unknown) =>
         cause instanceof Error ? cause.message : '셸 인쇄가 실패했습니다.',
@@ -339,7 +355,8 @@ export const useLabelIssue = ({ workerNo }: IssueRunOptions): IssueRunResultHand
 
   const run = useCallback(
     (command: IssueCommand) => {
-      const { row, printerName, reissueReasonCode, uomCode, lotStatusCode } = command;
+      const { row, printerName, reissueReasonCode, uomCode, lotStatusCode, shellPrinterName } =
+        command;
 
       /*
        * ⛔ **사번을 모르면 아무것도 부르지 않는다**(공유계약 D-5 · F-6). 단추도 함께 막혀
@@ -427,6 +444,7 @@ export const useLabelIssue = ({ workerNo }: IssueRunOptions): IssueRunResultHand
                     `lot-${String(issue.documentIssueLogId)}`,
                     new Date().toISOString(),
                     'tspl',
+                    ...printerArgs(shellPrinterName),
                   )
                   .then(() => null)
                   .catch((cause: unknown) =>
@@ -452,7 +470,7 @@ export const useLabelIssue = ({ workerNo }: IssueRunOptions): IssueRunResultHand
               ? 'notPrinted'
               : await printIqcLabel(
                   client,
-                  { row, lotId, uomCode, printerName, reissueReasonCode },
+                  { row, lotId, uomCode, printerName, reissueReasonCode, shellPrinterName },
                   workerNo,
                   shell,
                 );

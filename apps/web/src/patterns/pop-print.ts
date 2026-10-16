@@ -38,12 +38,18 @@ export type PopRenditionFormat = LabelRenditionFormat | 'pdf';
 
 /** 셸이 여는 통로 중 출력물에 관한 부분. */
 export interface RenditionShell {
-  /** 바이트를 셸이 저장·인쇄하고 만들어진 경로를 돌려준다. */
+  /**
+   * 바이트를 셸이 저장·인쇄하고 만들어진 경로를 돌려준다.
+   *
+   * `printerName` 은 **선택**이다 — 실으면 그 프린터로만 보낸다(셸이 `printers.capabilities().selectable`
+   * 을 말할 때만 알아듣는다 · 옛 설치본은 무시하고 기본으로 보낸다). 자재LOT 라벨 화면만 싣는다.
+   */
   save: (
     bytes: Uint8Array,
     label: string,
     now: string,
     format: PopRenditionFormat,
+    printerName?: string,
   ) => Promise<string>;
   /**
    * 인쇄 없이 파일로만 남긴다. **옛 설치본에는 없다** — 부르는 쪽이 있는지 보고 쓴다.

@@ -44,7 +44,9 @@ export const popMaterialLotLabel: Translated<typeof ko.popMaterialLotLabel> = {
   printer: {
     label: 'Máy in',
     select: 'Chọn máy in',
-    selectPending: 'Khi đã phân máy in thì mới chọn được. Hiện đang in bằng máy in mặc định.',
+    shellOnly: 'Chỉ chọn được máy in trên bản cài đặt.',
+    storedMissing: (name: string) =>
+      `Không tìm thấy máy in đã lưu 「${name}」 nên sẽ in bằng máy in mặc định.`,
     none: 'Không có máy in nào dùng được.',
     unknown: 'Không kiểm tra được trạng thái máy in.',
     retry: 'Kiểm tra lại',
