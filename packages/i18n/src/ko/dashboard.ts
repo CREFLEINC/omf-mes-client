@@ -164,4 +164,102 @@ export const dashboard = {
     absent: '출하 현황이 이 응답에 오지 않았습니다.',
     failed: '출하 현황을 불러오지 못했습니다. 위의 「다시 시도」를 누르세요.',
   },
+
+  /** 대시보드 안의 탭(omf-all-around#113). 탭은 같은 응답을 나눠 보인다 — 탭마다 다시 부르지 않는다. */
+  tabs: {
+    label: '대시보드 보기',
+    overview: '대시보드',
+    quality: '품질 종합',
+    iqc: 'IQC 검사실적',
+    pqc: 'PQC 검사실적',
+    oqc: 'OQC 검사실적',
+    nonconformance: '부적합 현황',
+  },
+
+  /**
+   * 품질 현황(omf-all-around#113).
+   *
+   * ⛔ 「선별」이라는 말을 쓰지 않는다 — MES 용어는 **검사 보류**(판정 보류)와 **전수 재검**이다.
+   * ⛔ 목표선 · 목표값을 그리지 않는다(MES DB에 없음). 합격률은 최종 판정 기준이고 보류는 빠진다.
+   */
+  quality: {
+    monthPassRate: (kind: string): string => `${kind} 당월 합격률`,
+    passRate: '당월 합격률',
+    prevMonth: (rate: string): string => `전월 ${rate}`,
+    /** 모수가 0이라 합격률을 낼 수 없다. ⛔ 0%로 그리지 않는다. */
+    rateNone: '—',
+    percent: (value: string): string => `${value}%`,
+    passRateRule: '최종 판정 기준 · 검사 보류는 합격률에서 뺍니다.',
+    todayLots: '금일 검사 LOT',
+    monthLots: '당월 검사 LOT',
+    lotBreakdown: (accepted: string, rejected: string, held: string): string =>
+      `합격 ${accepted} · 불합격 ${rejected} · 검사 보류 ${held}`,
+    monthDefectQty: '당월 불합격 수량',
+    qtyUnit: 'EA',
+    lotUnit: 'LOT',
+    countUnit: '건',
+    dailyTitle: '일별 합격률',
+    dailyRecent: '최근 9일',
+    dailyColumn: '일자',
+    /** 단일 유형 그래프 — 합격률을 낼 수 없는 날은 점을 찍지 않는다(0으로 찍으면 바닥으로 떨어진 날로 읽힌다). */
+    dailyGapNote: '검사가 없어 합격률을 낼 수 없는 날은 그래프에서 빠집니다.',
+    dailyEmpty: '이 기간에 합격률을 낼 수 있는 날이 없습니다.',
+    vendorDefects: '업체별 IQC 불량 수량',
+    vendorDefectsLead: '당월 · 많은 순 상위 5',
+    phenomena: '불량현상 구성비',
+    phenomenaMonth: '당월',
+    /** 불량 기록이 쌓이지 않아 빈 배열이 온다(불량 기록 등록 경로 미구현). */
+    noRecordsTitle: '기록 없음',
+    noRecords: '아직 집계할 불량 기록이 없습니다.',
+    recentLots: '최근 검사 LOT 판정',
+    recentLotsLead: '최근 5건',
+    recentEmpty: '최근 검사 판정이 없습니다.',
+    column: {
+      inspectedAt: '검사 일시',
+      kind: '구분',
+      vendor: '업체',
+      customer: '고객',
+      equipment: '호기',
+      item: '품목',
+      lotNo: 'LOT',
+      qty: '수량(EA)',
+      judgment: '판정',
+      qtyOnly: '수량',
+      rate: '불량률',
+    },
+    judgment: {
+      ACCEPTED: '합격',
+      REJECTED: '불합격',
+      HELD: '검사 보류',
+    },
+    none: '—',
+    topVendor: '최다 불량 업체',
+    itemDefects: '품목(CODE)별 불량',
+    receiptHold: '입고 보류 LOT',
+    receiptHoldNote: '지금 보류 중인 입하 LOT',
+    fullReinspect: '전수 재검',
+    fullReinspectNote: (input: string, restored: string): string =>
+      `투입 ${input} · 양품 복원 ${restored}`,
+    pendingLots: '검사 대기 LOT',
+    pendingLotsNote: '판정 전 PQC 의뢰',
+    reworkRequests: '재작업 의뢰',
+    reworkRequestsNote: '당월 처분 재작업',
+    worstEquipment: '최고 불량률 호기',
+    equipmentDefectRates: '호기별 불량률',
+    equipmentDefectRatesLead: '기준일 · 높은 순 상위 8',
+    customerReturn: '고객 반품',
+    customerReturnNote: '당월 고객 반품 입고 수량',
+    ncMonthQty: '당월 부적합 수량',
+    ncOpen: '미종결 부적합',
+    ncOverdue: '조치 기한 초과',
+    ncScrap: '폐기',
+    ncScrapNote: '당월 처분 폐기',
+    ncReworkReleased: '재투입',
+    ncReworkReleasedNote: '당월 재작업 후 재투입(합격)',
+    ncPareto: '불량현상별 부적합 수량',
+    ncCauseGroups: '원인 구분별 부적합 수량',
+    absentTitle: '품질 현황 없음',
+    absent: '품질 현황이 이 응답에 오지 않았습니다.',
+    failed: '품질 현황을 불러오지 못했습니다. 위의 「다시 시도」를 누르세요.',
+  },
 } as const;

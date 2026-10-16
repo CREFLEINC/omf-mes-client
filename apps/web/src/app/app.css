@@ -7738,6 +7738,21 @@ dl.filter-bar.approval-inbox-detail-facts {
  * 대시보드 설비 현황(omf-all-around#111) — 상태 집계 줄 · 라인 필터 · 호기 타일 · 멈춘 설비.
  * 집계 줄은 위 `.kpi-grid` 를 그대로 쓴다(지표 카드와 같은 묶음 규칙).
  */
+/* 대시보드 탭 안 — 탭 패널 안에서는 `main > * + *` 이음매를 받지 못해 구획 간격을 직접 준다. */
+.dashboard-tab-body {
+  display: grid;
+  gap: var(--space-5);
+  min-width: 0;
+}
+
+/* 품질 탭(omf-all-around#113) — 집계 카드 줄 아래 블록이 세로로 쌓인다. */
+.dashboard-quality,
+.dashboard-quality-block {
+  display: grid;
+  gap: var(--space-4);
+  min-width: 0;
+}
+
 .dashboard-equipment {
   display: grid;
   gap: var(--space-4);

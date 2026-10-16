@@ -1,6 +1,6 @@
-import { Breadcrumb, PageHeader } from '@crefle/web-ui';
+import { Breadcrumb, PageHeader, Tabs } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router';
 
 import { AlertPanel, NOTIFICATION_CENTER_PATH } from './alert-panel';
@@ -18,11 +18,30 @@ import { KpiCardGrid } from './kpi-card-grid';
 import { LoadErrorBanner } from './load-error-banner';
 import { ShipmentPanel } from './shipment-panel';
 import { plantNote, usePlantOptions } from './lookups';
+import {
+  IqcTab,
+  NonconformanceTab,
+  OqcTab,
+  PqcTab,
+  QualityGate,
+  QualityOverviewTab,
+} from './quality-panels';
 import { useDashboardSummary } from './queries';
 import { TrendPanel } from './trend-panel';
 import type { DashboardAlertView, DashboardCardView, SelectOption } from './types';
 
 const t = messages.dashboard;
+
+type DashboardTab = 'overview' | 'quality' | 'iqc' | 'pqc' | 'oqc' | 'nonconformance';
+
+/** 품질 탭 다섯(omf-all-around#113) — 화면 구성안의 차례. */
+const QUALITY_TABS = [
+  { value: 'quality', label: t.tabs.quality, Panel: QualityOverviewTab },
+  { value: 'iqc', label: t.tabs.iqc, Panel: IqcTab },
+  { value: 'pqc', label: t.tabs.pqc, Panel: PqcTab },
+  { value: 'oqc', label: t.tabs.oqc, Panel: OqcTab },
+  { value: 'nonconformance', label: t.tabs.nonconformance, Panel: NonconformanceTab },
+] as const;
 
 /** 참조가 매 렌더 새로 만들어지면 이 값을 의존성에 둔 계산이 멈추지 않는다. */
 const EMPTY_CARDS: DashboardCardView[] = [];
@@ -55,6 +74,7 @@ export const DashboardScreen = () => {
   const query = useMemo(() => toFilterQuery(filters), [filters]);
 
   const summary = useDashboardSummary(query);
+  const [tab, setTab] = useState<DashboardTab>('overview');
   const plants = usePlantOptions();
 
   const view = summary.data;
@@ -80,6 +100,8 @@ export const DashboardScreen = () => {
    * 숫자마저 잃는다 — 대신 배너로 실패를 알리고 값 옆에 낡았다는 사실을 적는다.
    */
   const hasStaleData = summary.isError && view !== undefined;
+  /* 첫 조회가 실패해 보일 값이 없다 — 패널마다 「섹션이 오지 않았다」와 가른다. */
+  const isFailed = summary.isError && view === undefined;
 
   const asOfText = (() => {
     if (view === undefined) return null;
@@ -87,6 +109,54 @@ export const DashboardScreen = () => {
 
     return hasStaleData ? t.asOf.stale(view.asOfText) : t.asOf.label(view.asOfText);
   })();
+
+  /*
+   * ⭐ 대시보드 안의 탭(omf-all-around#113). 탭은 **같은 응답을 나눠 보인다** — 품질은 summary 의
+   * `quality` 섹션이라 탭을 열 때 따로 부르지 않는다. 조건 줄 · 오류 배너는 탭 밖에 두어 모든 탭에 걸린다.
+   * 고른 탭은 주소에 넣지 않는다 — 조회 조건이 아니다.
+   */
+  const overview = (
+    <div className="dashboard-tab-body">
+      <section className="pane" aria-label={t.panes.cards}>
+        <KpiCardGrid views={cards} isLoading={summary.isPending} axes={axes} routes={CARD_ROUTES} />
+      </section>
+
+      <section className="pane" aria-label={t.panes.equipment}>
+        <h2>{t.panes.equipment}</h2>
+        <EquipmentPanel
+          view={view?.equipment ?? null}
+          isLoading={summary.isPending}
+          isFailed={isFailed}
+        />
+      </section>
+
+      <section className="pane" aria-label={t.panes.shipment}>
+        <h2>{t.panes.shipment}</h2>
+        <ShipmentPanel
+          view={view?.shipment ?? null}
+          isLoading={summary.isPending}
+          isFailed={isFailed}
+        />
+      </section>
+
+      <section className="pane" aria-label={t.panes.trend}>
+        <h2>{t.panes.trend}</h2>
+        <TrendPanel view={view?.trend ?? null} isLoading={summary.isPending} />
+      </section>
+
+      <section className="pane" aria-label={t.panes.alerts}>
+        <h2>{t.panes.alerts}</h2>
+        <AlertPanel views={alerts} isLoading={summary.isPending} />
+        {/*
+         * 알람 구획의 마무리 링크. 목록이 비어 있어도 남긴다 — 「지금 없다」를 확인한 사람이
+         * 지난 알림을 보러 갈 자리가 여기다.
+         */}
+        <div className="form-actions form-actions-secondary">
+          <Link to={NOTIFICATION_CENTER_PATH}>{t.alerts.openCenter}</Link>
+        </div>
+      </section>
+    </div>
+  );
 
   return (
     <>
@@ -127,44 +197,31 @@ export const DashboardScreen = () => {
         {asOfText !== null && <p className="pane-lead">{asOfText}</p>}
       </section>
 
-      <section className="pane" aria-label={t.panes.cards}>
-        <KpiCardGrid views={cards} isLoading={summary.isPending} axes={axes} routes={CARD_ROUTES} />
-      </section>
-
-      <section className="pane" aria-label={t.panes.equipment}>
-        <h2>{t.panes.equipment}</h2>
-        <EquipmentPanel
-          view={view?.equipment ?? null}
-          isLoading={summary.isPending}
-          isFailed={summary.isError && view === undefined}
-        />
-      </section>
-
-      <section className="pane" aria-label={t.panes.shipment}>
-        <h2>{t.panes.shipment}</h2>
-        <ShipmentPanel
-          view={view?.shipment ?? null}
-          isLoading={summary.isPending}
-          isFailed={summary.isError && view === undefined}
-        />
-      </section>
-
-      <section className="pane" aria-label={t.panes.trend}>
-        <h2>{t.panes.trend}</h2>
-        <TrendPanel view={view?.trend ?? null} isLoading={summary.isPending} />
-      </section>
-
-      <section className="pane" aria-label={t.panes.alerts}>
-        <h2>{t.panes.alerts}</h2>
-        <AlertPanel views={alerts} isLoading={summary.isPending} />
-        {/*
-         * 알람 구획의 마무리 링크. 목록이 비어 있어도 남긴다 — 「지금 없다」를 확인한 사람이
-         * 지난 알림을 보러 갈 자리가 여기다.
-         */}
-        <div className="form-actions form-actions-secondary">
-          <Link to={NOTIFICATION_CENTER_PATH}>{t.alerts.openCenter}</Link>
-        </div>
-      </section>
+      <Tabs
+        aria-label={t.tabs.label}
+        value={tab}
+        onChange={(next) => {
+          setTab(next as DashboardTab);
+        }}
+        items={[
+          { value: 'overview', label: t.tabs.overview, content: overview },
+          ...QUALITY_TABS.map(({ value, label, Panel }) => ({
+            value,
+            label,
+            content: (
+              <section className="pane" aria-label={label}>
+                <QualityGate
+                  quality={view?.quality ?? null}
+                  isLoading={summary.isPending}
+                  isFailed={isFailed}
+                >
+                  {(quality) => <Panel quality={quality} />}
+                </QualityGate>
+              </section>
+            ),
+          })),
+        ]}
+      />
     </>
   );
 };
