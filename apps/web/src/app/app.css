@@ -8797,24 +8797,64 @@ dl.filter-bar.approval-inbox-detail-facts {
   color: var(--on-surface-muted);
 }
 
-/* 호기 상세 창 — 항목 이름 · 값 두 열. */
-.dashboard-equipment-facts {
+/*
+ * 호기 상세 창(사용자 지시 2026-10-16) — 묶음 제목 · 얇은 구분선, 항목은 이름 바로 아래 값(2열 격자).
+ * 긴 값(작업지시 · 품목)은 줄 전체 폭에서 자연 줄바꿈 — 말줄임 없음.
+ */
+.dash-detail {
   display: grid;
-  grid-template-columns: auto 1fr;
-  gap: var(--space-1) var(--space-3);
-  margin: 0;
-  font: var(--type-body-sm);
-  letter-spacing: var(--type-body-sm-tracking);
+  gap: var(--space-3);
+  min-width: 0;
 }
 
-.dashboard-equipment-facts dt {
+.dash-detail > section + section {
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--outline-variant);
+}
+
+.dash-detail-title {
+  margin: 0 0 var(--space-2);
+  font: var(--type-label-lg);
+  letter-spacing: var(--type-label-lg-tracking);
+  color: var(--on-surface-variant);
+}
+
+.dash-facts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-2) var(--space-4);
+  margin: 0;
+}
+
+.dash-fact {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.dash-fact-wide {
+  grid-column: 1 / -1;
+}
+
+.dash-fact dt {
+  font: var(--type-label-sm);
+  letter-spacing: var(--type-label-sm-tracking);
   color: var(--on-surface-muted);
 }
 
-.dashboard-equipment-facts dd {
+.dash-fact dd {
   margin: 0;
-  text-align: end;
+  font: var(--type-body-sm);
+  letter-spacing: var(--type-body-sm-tracking);
+  color: var(--on-surface);
   overflow-wrap: anywhere;
+}
+
+/* 생산 실적 수치 — 한 단계만 강조(과하지 않게). */
+.dash-fact dd.dash-fact-strong {
+  font: var(--type-title-sm);
+  letter-spacing: var(--type-title-sm-tracking);
+  font-weight: 700;
 }
 
 /*

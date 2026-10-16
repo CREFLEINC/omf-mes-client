@@ -93,6 +93,40 @@ describe('EquipmentBoard', () => {
     expect(within(legend).getByText(t.status.RUNNING).closest('li')).toHaveTextContent('0');
   });
 
+  it('상세는 설비 기본 · 가동 · 생산 실적 · 현재 작업 묶음이고, 하단 「닫기」가 없으며 X 로 닫힌다', async () => {
+    const user = userEvent.setup();
+    render(<EquipmentBoard view={view} isLoading={false} isFailed={false} />);
+
+    await user.click(tileOf('EQ-02'));
+    const dialog = screen.getByRole('dialog');
+    for (const group of [t.groupBasic, t.groupRun, t.groupOutput, t.groupWork]) {
+      expect(within(dialog).getByRole('heading', { name: group })).toBeInTheDocument();
+    }
+    /* 값이 없는 작업지시 · 품목은 「—」. 항목은 하나도 빠지지 않는다. */
+    for (const label of [
+      t.statusColumn,
+      t.line,
+      t.tonnage,
+      t.reason,
+      t.since,
+      t.elapsed,
+      t.todayQty,
+      t.ngQty,
+      t.defectRate,
+      t.standardCycleTime,
+      t.workOrder,
+      t.item,
+    ]) {
+      expect(within(dialog).getByText(label)).toBeInTheDocument();
+    }
+    /* 닫기 단추는 오른쪽 위 X 하나뿐 — 하단 「닫기」 · 빈 바닥줄은 없다. */
+    expect(within(dialog).getAllByRole('button', { name: messages.common.close })).toHaveLength(1);
+
+    /* ESC 는 브라우저의 <dialog> cancel 로 오는데 jsdom 에는 없다 — 같은 길(onClose)로 가는 X 로 잰다. ESC 는 브라우저에서 확인. */
+    await user.click(within(dialog).getByRole('button', { name: messages.common.close }));
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
+
   it('호기를 고르면 현재 작업지시 · 품목까지 상세가 열린다', async () => {
     const user = userEvent.setup();
     render(<EquipmentBoard view={view} isLoading={false} isFailed={false} />);

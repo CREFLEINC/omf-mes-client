@@ -1,7 +1,7 @@
-import { Button, Chip, Dialog, Skeleton, type ChipStatus } from '@crefle/web-ui';
+import { Chip, Dialog, Skeleton, type ChipStatus } from '@crefle/web-ui';
 import type { DashboardEquipmentStatusCode } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 
 import { formatPlantDateTime } from '../../patterns/plant-time';
 import {
@@ -110,52 +110,91 @@ interface EquipmentDetailDialogProps {
   onClose: () => void;
 }
 
-/** 호기 상세 — 타일의 항목에 지금 작업(작업지시 · 품목)과 상태 시작 시각을 더해 펼친다. */
+/** 상세 항목 하나 — 이름 바로 아래 값(시선 이동을 짧게). `wide` 는 줄 전체 폭(긴 값). */
+const Fact = ({
+  label,
+  children,
+  wide = false,
+  strong = false,
+}: {
+  label: string;
+  children: ReactNode;
+  wide?: boolean;
+  strong?: boolean;
+}) => (
+  <div className={wide ? 'dash-fact dash-fact-wide' : 'dash-fact'}>
+    <dt>{label}</dt>
+    <dd className={strong ? 'dash-fact-strong' : undefined}>{children}</dd>
+  </div>
+);
+
+/**
+ * 호기 상세(⭐ 사용자 지시 2026-10-16 — 묶음 · 2열 · 하단 닫기 없음).
+ *
+ * 묶음: 설비 기본(상태 · 라인 · 톤수 · 사유) → 가동(시작 시각 · 경과) → 생산 실적(금일 생산 · NG · 불량률 한 단계
+ * 강조, 표준 C/T) → 현재 작업(작업지시 · 품목, 줄 전체 폭 · 말줄임 없음). 항목은 하나도 빼지 않는다.
+ * 닫기는 오른쪽 위 X · ESC · 바깥 누르기(DS Dialog 기본 그대로) — 하단 「닫기」와 빈 바닥줄은 두지 않는다
+ * (DS Dialog 에 `footer` 를 넘기지 않는다 · 공용 부품은 고치지 않는다).
+ */
 const EquipmentDetailDialog = ({ item, onClose }: EquipmentDetailDialogProps) => (
   <Dialog
     open={item !== null}
     onClose={onClose}
     title={item === null ? undefined : t.detailTitle(item.equipmentCode, item.equipmentName)}
     size="md"
-    footer={
-      <Button variant="outlined" onClick={onClose}>
-        {t.close}
-      </Button>
-    }
+    className="dash-detail-dialog"
   >
     {item !== null && (
-      <dl className="dashboard-equipment-facts">
-        <dt>{t.statusColumn}</dt>
-        <dd>
-          <StatusChip statusCode={item.statusCode} />
-        </dd>
-        <dt>{t.line}</dt>
-        <dd>{item.productionLineName ?? t.none}</dd>
-        <dt>{t.tonnage}</dt>
-        <dd>{item.tonnage ?? t.none}</dd>
-        <dt>{t.reason}</dt>
-        <dd>{describeReason(item)}</dd>
-        <dt>{t.since}</dt>
-        <dd>{formatPlantDateTime(item.statusSince) ?? t.none}</dd>
-        <dt>{t.elapsed}</dt>
-        <dd>{formatElapsed(item.elapsedMinutes)}</dd>
-        <dt>{t.todayQty}</dt>
-        <dd>{formatFigure(item.todayTotalQty)}</dd>
-        <dt>{t.ngQty}</dt>
-        <dd>{formatFigure(item.todayNgQty)}</dd>
-        <dt>{t.defectRate}</dt>
-        <dd>{formatDefectRate(item.defectRate)}</dd>
-        <dt>{t.standardCycleTime}</dt>
-        <dd>{formatCycleTime(item.standardCycleTimeSec)}</dd>
-        <dt>{t.workOrder}</dt>
-        <dd>{item.currentWorkOrderNo ?? t.none}</dd>
-        <dt>{t.item}</dt>
-        <dd>
-          {item.currentItemCode === null
-            ? t.none
-            : `${item.currentItemCode} ${item.currentItemName ?? ''}`.trim()}
-        </dd>
-      </dl>
+      <div className="dash-detail">
+        <section aria-label={t.groupBasic}>
+          <h3 className="dash-detail-title">{t.groupBasic}</h3>
+          <dl className="dash-facts">
+            <Fact label={t.statusColumn}>
+              <StatusChip statusCode={item.statusCode} />
+            </Fact>
+            <Fact label={t.line}>{item.productionLineName ?? t.none}</Fact>
+            <Fact label={t.tonnage}>{item.tonnage ?? t.none}</Fact>
+            <Fact label={t.reason}>{describeReason(item)}</Fact>
+          </dl>
+        </section>
+        <section aria-label={t.groupRun}>
+          <h3 className="dash-detail-title">{t.groupRun}</h3>
+          <dl className="dash-facts">
+            <Fact label={t.since}>{formatPlantDateTime(item.statusSince) ?? t.none}</Fact>
+            <Fact label={t.elapsed}>{formatElapsed(item.elapsedMinutes)}</Fact>
+          </dl>
+        </section>
+        <section aria-label={t.groupOutput}>
+          <h3 className="dash-detail-title">{t.groupOutput}</h3>
+          <dl className="dash-facts">
+            <Fact label={t.todayQty} strong>
+              {formatFigure(item.todayTotalQty)}
+              <span className="dash-kpi-unit">EA</span>
+            </Fact>
+            <Fact label={t.ngQty} strong>
+              {formatFigure(item.todayNgQty)}
+              <span className="dash-kpi-unit">EA</span>
+            </Fact>
+            <Fact label={t.defectRate} strong>
+              {formatDefectRate(item.defectRate)}
+            </Fact>
+            <Fact label={t.standardCycleTime}>{formatCycleTime(item.standardCycleTimeSec)}</Fact>
+          </dl>
+        </section>
+        <section aria-label={t.groupWork}>
+          <h3 className="dash-detail-title">{t.groupWork}</h3>
+          <dl className="dash-facts">
+            <Fact label={t.workOrder} wide>
+              {item.currentWorkOrderNo ?? t.none}
+            </Fact>
+            <Fact label={t.item} wide>
+              {item.currentItemCode === null
+                ? t.none
+                : `${item.currentItemCode} ${item.currentItemName ?? ''}`.trim()}
+            </Fact>
+          </dl>
+        </section>
+      </div>
     )}
   </Dialog>
 );
