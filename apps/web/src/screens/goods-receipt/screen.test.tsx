@@ -2596,6 +2596,19 @@ describe('GoodsReceiptScreen — 실패 세 갈래', () => {
     expect(screen.queryByRole('status', { name: t.result.label })).not.toBeInTheDocument();
   });
 
+  /* omf-all-around#100 — IQC 합격 전 LOT 은 서버가 막고, 그 사유가 화면에 남아야 한다. */
+  it('IQC 합격 전 LOT 거부는 서버 사유를 배너에 낸다', async () => {
+    const reason = 'IQC 수입검사 합격 전인 LOT 은 입고할 수 없습니다.';
+    await fail(
+      failingGoodsReceiptRoute(400, {
+        errors: [{ scope: 'field', field: 'lines[0].lotId', code: 'STATE_LOCKED', message: reason }],
+      }),
+    );
+
+    expect(await screen.findByText(reason)).toBeInTheDocument();
+    expect(screen.queryByRole('status', { name: t.result.label })).not.toBeInTheDocument();
+  });
+
   /* **M51** — 같은 권한으로 다시 불러도 같은 답이 온다. 재시도를 권하지 않는다. */
   it('권한 없음은 다른 문구이고 다시 시도를 내지 않는다', async () => {
     await fail(failingGoodsReceiptRoute(403));
