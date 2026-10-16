@@ -82,8 +82,8 @@ export const popMaterialLotLabel: Translated<typeof ko.popMaterialLotLabel> = {
       lotCreated:
         'LOT vật tư đã được tạo. Bấm lại 「Đăng ký · In」 cho vật tư này sẽ chỉ in, không tạo LOT mới.',
       lotCreatedForbidden: 'LOT vật tư đã được tạo. Đừng đăng ký lại — có thể in ở máy trạm khác.',
-      printFailed: 'Đã đăng ký nhưng nhãn chưa ra.',
-      printFailedNext: 'Kiểm tra máy in rồi bấm 「In lại」 ở 「Đã phát hành」.',
+      printFailed: 'Đã đăng ký vật tư nhưng in nhãn không thành công.',
+      printFailedNext: 'Hãy kiểm tra máy in rồi in lại ở [Đã phát hành].',
       registerConflict: 'Chưa đăng ký xong lúc này. Lát nữa hãy bấm lại 「Đăng ký · In」.',
       issueForbidden: 'Máy trạm này không phát hành nhãn được. Hãy in ở máy trạm có máy in nhãn.',
       reportFailedAfterPrint:

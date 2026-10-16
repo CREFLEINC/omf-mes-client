@@ -873,8 +873,8 @@ describe('PopMaterialLotLabelScreen — 발행 여부 목록', () => {
     await waitFor(() => {
       expect(screen.queryByRole('button', { name: /SYN-IB-0001/u })).not.toBeInTheDocument();
     });
-    expect(await screen.findByText(/라벨은 나오지 않았습니다/u)).toBeInTheDocument();
-    expect(screen.getByText(/「발행 완료」에서 「재인쇄」/u)).toBeInTheDocument();
+    expect(await screen.findByText(/라벨 인쇄에 실패했습니다/u)).toBeInTheDocument();
+    expect(screen.getByText(/\[발행 완료\]에서 다시 인쇄/u)).toBeInTheDocument();
   });
 
   it('인쇄를 마친 줄이 목록에서 빠져도 인쇄했다는 안내를 남긴다', async () => {
