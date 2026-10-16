@@ -1,10 +1,10 @@
-import { EmptyState, Skeleton } from '@crefle/web-ui';
+import { Skeleton } from '@crefle/web-ui';
 import type { DashboardShipment } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 
 import { shortDate } from './quality';
 import { formatFigure } from './types';
-import { Panel, StatusList, type StatusItem } from './viz';
+import { EmptyLine, Panel, StatusList, type StatusItem } from './viz';
 
 const t = messages.dashboard.shipment;
 
@@ -68,12 +68,7 @@ export const ShipmentPanel = ({ view, isLoading, isFailed }: ShipmentPanelProps)
     {isLoading ? (
       <Skeleton variant="rect" height="10rem" />
     ) : view === null ? (
-      <EmptyState
-        size="sm"
-        live
-        title={t.absentTitle}
-        description={isFailed ? t.failed : t.absent}
-      />
+      <EmptyLine live text={isFailed ? t.failed : t.absent} />
     ) : (
       <StatusList items={toShipmentItems(view)} />
     )}

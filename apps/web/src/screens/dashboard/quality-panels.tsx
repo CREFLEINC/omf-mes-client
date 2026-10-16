@@ -1,4 +1,4 @@
-import { Chip, EmptyState, Skeleton, Table, type ChipStatus, type Column } from '@crefle/web-ui';
+import { Chip, Skeleton, Table, type ChipStatus, type Column } from '@crefle/web-ui';
 import type {
   DashboardJudgmentCode,
   DashboardLotCounts,
@@ -20,6 +20,7 @@ import {
 } from './quality';
 import { formatFigure } from './types';
 import {
+  EmptyLine,
   KpiTile,
   MiniLotBar,
   MultiLineChart,
@@ -201,7 +202,11 @@ const RecentLotsPanel = ({
             render: (row) => <InspectedAt value={row.inspectedAt} />,
           },
           counterpartColumn(counterpart),
-          { key: 'item', header: t.column.item, render: (row) => row.itemCode },
+          {
+            key: 'item',
+            header: t.column.item,
+            render: (row) => <span className="dash-cell-wrap">{row.itemCode}</span>,
+          },
           /*
            * LOT 열을 두지 않는다 — 시안의 표는 일자 · 구분 · CODE · 수량 · 판정이고, 좁은 row3 칸에서 LOT 열이
            * 판정을 칸 밖으로 밀어냈다(브라우저 확인). LOT 은 PQC · OQC 에서 오지도 않는다(규격 보정).
@@ -691,14 +696,7 @@ export const QualityGate = ({ quality, isLoading, isFailed, children }: QualityG
   if (isLoading) return <Skeleton variant="rect" height="16rem" />;
 
   if (quality === null) {
-    return (
-      <EmptyState
-        size="sm"
-        live
-        title={t.absentTitle}
-        description={isFailed ? t.failed : t.absent}
-      />
-    );
+    return <EmptyLine live text={isFailed ? t.failed : t.absent} />;
   }
 
   return <>{children(quality)}</>;

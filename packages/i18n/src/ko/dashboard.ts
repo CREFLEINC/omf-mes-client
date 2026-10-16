@@ -112,7 +112,6 @@ export const dashboard = {
     stoppedTitle: '멈춘 설비',
     stoppedSub: '사유 · 경과 시간',
     stoppedGroupCaption: (status: string): string => `${status} 설비`,
-    stoppedEmptyTitle: '멈춘 설비 없음',
     stoppedEmpty: '모든 설비가 가동 중입니다.',
     equipmentColumn: '호기',
     statusColumn: '상태',
@@ -121,11 +120,9 @@ export const dashboard = {
     workOrder: '현재 작업지시',
     item: '품목',
     close: '닫기',
-    emptyTitle: '설비 없음',
     empty: '이 공장에 표시할 생산 설비가 없습니다.',
     lineEmpty: '고른 라인에 설비가 없습니다.',
     /** 서버가 아직 설비 섹션을 주지 않을 때(2차 규격 배포 전). ⛔ 「설비 없음」과 같은 말로 그리지 않는다. */
-    absentTitle: '설비 현황 없음',
     absent: '설비 현황이 이 응답에 오지 않았습니다.',
     /** 첫 조회가 실패해 보일 값이 없을 때. 재시도는 화면 위 오류 배너가 맡는다. */
     failed: '설비 현황을 불러오지 못했습니다. 위의 「다시 시도」를 누르세요.',
@@ -148,7 +145,6 @@ export const dashboard = {
     overdueNote: '납기가 지났는데 출하 잔량이 남은 수주 줄',
     qtyUnit: 'EA',
     countUnit: '건',
-    absentTitle: '출하 현황 없음',
     absent: '출하 현황이 이 응답에 오지 않았습니다.',
     failed: '출하 현황을 불러오지 못했습니다. 위의 「다시 시도」를 누르세요.',
   },
@@ -198,8 +194,6 @@ export const dashboard = {
   /** 대시보드 그림 부품(순위 막대 · 누적 막대 · 꺾은선 · 파레토)의 공통 문구. */
   viz: {
     none: '—',
-    /** 불량 기록 등이 아직 쌓이지 않아 빈 배열이 온다. */
-    noRecordsTitle: '기록 없음',
     noRecords: '아직 집계할 기록이 없습니다.',
     infoLabel: (name: string): string => `${name} 설명`,
     noRates: '이 기간에 합격률을 낼 수 있는 날이 없습니다.',
@@ -306,7 +300,6 @@ export const dashboard = {
     ncCauseGroups: '원인 구분별 부적합 수량',
     ncCauseShare: '원인 구분별 구성',
     ncHandlingTitle: '부적합 처리 지표',
-    absentTitle: '품질 현황 없음',
     absent: '품질 현황이 이 응답에 오지 않았습니다.',
     failed: '품질 현황을 불러오지 못했습니다. 위의 「다시 시도」를 누르세요.',
   },

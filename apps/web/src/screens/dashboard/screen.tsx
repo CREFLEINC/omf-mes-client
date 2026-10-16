@@ -134,6 +134,10 @@ export const DashboardScreen = () => {
         routes={CARD_ROUTES}
       />
 
+      {/*
+       * ⭐ 오른쪽 열은 멈춘 설비 → 출하 현황 → 미처리 알람 **한 묶음**이다(사용자 지시 2026-10-16) — 셋이 같이
+       * 움직인다. 묶음이 화면에 들어갈 때만 위에 붙인다(sticky). 생산 추이는 그 아래 전체 폭.
+       */}
       <div className="dash-row2">
         <EquipmentBoard
           view={view?.equipment ?? null}
@@ -151,24 +155,22 @@ export const DashboardScreen = () => {
             isLoading={summary.isPending}
             isFailed={isFailed}
           />
+          <Panel title={t.panes.alerts}>
+            <AlertPanel views={alerts} isLoading={summary.isPending} />
+            {/*
+             * 알람 구획의 마무리 링크. 목록이 비어 있어도 남긴다 — 「지금 없다」를 확인한 사람이
+             * 지난 알림을 보러 갈 자리가 여기다.
+             */}
+            <div className="form-actions form-actions-secondary">
+              <Link to={NOTIFICATION_CENTER_PATH}>{t.alerts.openCenter}</Link>
+            </div>
+          </Panel>
         </div>
       </div>
 
-      <div className="dash-row2">
-        <Panel title={t.panes.trend} className="dash-span-wide">
-          <TrendPanel view={view?.trend ?? null} isLoading={summary.isPending} />
-        </Panel>
-        <Panel title={t.panes.alerts}>
-          <AlertPanel views={alerts} isLoading={summary.isPending} />
-          {/*
-           * 알람 구획의 마무리 링크. 목록이 비어 있어도 남긴다 — 「지금 없다」를 확인한 사람이
-           * 지난 알림을 보러 갈 자리가 여기다.
-           */}
-          <div className="form-actions form-actions-secondary">
-            <Link to={NOTIFICATION_CENTER_PATH}>{t.alerts.openCenter}</Link>
-          </div>
-        </Panel>
-      </div>
+      <Panel title={t.panes.trend}>
+        <TrendPanel view={view?.trend ?? null} isLoading={summary.isPending} />
+      </Panel>
     </div>
   );
 

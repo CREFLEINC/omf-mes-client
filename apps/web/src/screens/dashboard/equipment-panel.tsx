@@ -1,4 +1,4 @@
-import { Button, Chip, Dialog, EmptyState, Skeleton, type ChipStatus } from '@crefle/web-ui';
+import { Button, Chip, Dialog, Skeleton, type ChipStatus } from '@crefle/web-ui';
 import type { DashboardEquipmentStatusCode } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useState } from 'react';
@@ -15,7 +15,7 @@ import {
   type EquipmentView,
 } from './equipment';
 import { formatFigure } from './types';
-import { Panel } from './viz';
+import { EmptyLine, Panel } from './viz';
 
 const t = messages.dashboard.equipment;
 
@@ -171,14 +171,7 @@ export interface EquipmentPanelProps {
 const gate = ({ view, isLoading, isFailed }: EquipmentPanelProps) => {
   if (isLoading) return <Skeleton variant="rect" height="16rem" />;
   if (view === null) {
-    return (
-      <EmptyState
-        size="sm"
-        live
-        title={t.absentTitle}
-        description={isFailed ? t.failed : t.absent}
-      />
-    );
+    return <EmptyLine live text={isFailed ? t.failed : t.absent} />;
   }
 
   return null;
@@ -198,7 +191,7 @@ export const EquipmentBoard = (props: EquipmentPanelProps) => {
   const body = (() => {
     if (blocked !== null || view === null) return blocked;
     if (view.items.length === 0) {
-      return <EmptyState size="sm" live title={t.emptyTitle} description={t.empty} />;
+      return <EmptyLine live text={t.empty} />;
     }
 
     const lineOptions = toLineOptions(view.items);
@@ -240,7 +233,7 @@ export const EquipmentBoard = (props: EquipmentPanelProps) => {
           </ul>
         </div>
         {shown.length === 0 ? (
-          <EmptyState size="sm" live title={t.emptyTitle} description={t.lineEmpty} />
+          <EmptyLine live text={t.lineEmpty} />
         ) : (
           <ul className="dash-eq-grid">
             {shown.map((item) => (
@@ -289,7 +282,7 @@ export const StoppedPanel = (props: EquipmentPanelProps) => {
 
     const stopped = toStoppedItems(view.items);
     if (stopped.length === 0) {
-      return <EmptyState size="sm" title={t.stoppedEmptyTitle} description={t.stoppedEmpty} />;
+      return <EmptyLine text={t.stoppedEmpty} />;
     }
 
     return (

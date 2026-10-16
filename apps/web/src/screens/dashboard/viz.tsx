@@ -106,9 +106,31 @@ export const KpiTile = ({ label, info, tag, value, unit, tone, children }: KpiTi
   </div>
 );
 
-export const NoRecords = ({ description }: { description?: string }) => (
-  <EmptyState size="sm" title={t.noRecordsTitle} description={description ?? t.noRecords} />
+/**
+ * 빈 상태 한 줄(전 탭 레이아웃 정비 2026-10-16) — 제목 + 설명 두 줄이 같은 말을 되풀이하고 카드를 높였다.
+ * DS EmptyState 를 제목 한 줄로만 쓰고 위아래 여백을 줄인다(`.dash-empty`).
+ */
+export const EmptyLine = ({ text, live = false }: { text: string; live?: boolean }) => (
+  <EmptyState size="sm" live={live} title={text} className="dash-empty" />
 );
+
+export const NoRecords = ({ description }: { description?: string }) => (
+  <EmptyLine text={description ?? t.noRecords} />
+);
+
+/** 이 길이를 넘는 이름은 두 줄에서 잘릴 수 있어 전체 이름을 툴팁으로도 준다(키보드로도 열린다). */
+const RANK_LABEL_TOOLTIP_FROM = 12;
+
+const RankLabel = ({ label }: { label: string }) =>
+  label.length > RANK_LABEL_TOOLTIP_FROM ? (
+    <Tooltip content={label} placement="top">
+      <span className="dash-rank-label" tabIndex={0}>
+        {label}
+      </span>
+    </Tooltip>
+  ) : (
+    <span className="dash-rank-label">{label}</span>
+  );
 
 const formatShare = (share: number): string => `${String(Math.round(share))}%`;
 
@@ -135,7 +157,7 @@ export const RankBars = ({
     <ol className="dash-rank">
       {toShareRows(entries).map((row, index) => (
         <li key={row.key} className="dash-rank-row">
-          <span className="dash-rank-label">{row.label}</span>
+          <RankLabel label={row.label} />
           <span className="dash-rank-track" aria-hidden="true">
             <span
               className={index === 0 ? 'dash-rank-bar dash-rank-bar-top' : 'dash-rank-bar'}

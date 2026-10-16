@@ -7752,7 +7752,8 @@ dl.filter-bar.approval-inbox-detail-facts {
   display: grid;
   grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
   gap: var(--space-4);
-  align-items: start;
+  /* 같은 줄의 상자는 높이를 맞춘다(전 탭 레이아웃 정비 2026-10-16). 다른 줄까지는 맞추지 않는다. */
+  align-items: stretch;
 }
 
 .dash-row2-single {
@@ -7761,32 +7762,76 @@ dl.filter-bar.approval-inbox-detail-facts {
   gap: var(--space-4);
 }
 
-/* 패널 수가 셋보다 적으면 빈 칸을 남기지 않고 늘어난다(OQC · 부적합). */
+/*
+ * 패널 셋 줄 — 열 수는 **상자 수에 맞춘다**(KPI 줄과 같은 규칙). 3개 → 3열, 2개 → 2열, 1개 → 1열.
+ * 중간 폭에서 3개는 2+1 이 되는데, 남는 하나가 줄 전체 폭을 쓴다 — 빈 구멍 · 외톨이 반쪽이 없다.
+ */
 .dash-row3 {
+  --dash-row-cols: 3;
+
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr));
+  grid-template-columns: repeat(var(--dash-row-cols), minmax(0, 1fr));
   gap: var(--space-4);
-  align-items: start;
+  align-items: stretch;
+}
+
+.dash-row3:has(> :nth-child(2):last-child) {
+  --dash-row-cols: 2;
+}
+
+.dash-row3:has(> :only-child) {
+  --dash-row-cols: 1;
 }
 
 .dash-side {
   display: grid;
+  align-content: start;
   gap: var(--space-4);
   min-width: 0;
 }
 
+/* 오른쪽 열은 늘이지 않는다 — 위에 붙이려면(sticky) 열이 제 높이여야 한다. */
+.dash-row2 > .dash-side {
+  align-self: start;
+}
+
 /*
- * 오른쪽 열을 위에 붙인다 — 설비가 많으면 왼쪽 패널만 길어져 오른쪽이 통째로 비어 보였다(실데이터 120대).
- * 열이 화면보다 길면 붙이지 않는다(아래가 영영 안 보이게 된다) — 그 판정은 `use-fits-scrollport.ts`.
+ * 오른쪽 열(멈춘 설비 · 출하 현황 · 미처리 알람 한 묶음)을 위에 붙인다 — 설비가 많으면 왼쪽 패널만 길어져
+ * 오른쪽이 통째로 비어 보였다(실데이터 120대). 묶음이 화면보다 길면 붙이지 않는다(아래가 영영 안 보이게
+ * 된다) — 그 판정은 `use-fits-scrollport.ts`.
  */
 .dash-side-sticky {
   position: sticky;
   top: var(--space-4);
 }
 
-@media (max-width: 1100px) {
+/*
+ * 반응형은 **이 영역 폭** 하나를 기준으로 한다(`.dash-tab` 컨테이너) — 화면 폭 기준과 섞으면 왼쪽 메뉴를
+ * 접고 펼 때 KPI 줄과 패널 줄이 서로 다르게 반응했다.
+ */
+@container (max-width: 980px) {
+  .dash-row3:has(> :nth-child(3):last-child) {
+    --dash-row-cols: 2;
+  }
+
+  .dash-row3:has(> :nth-child(3):last-child) > :last-child {
+    grid-column: 1 / -1;
+  }
+}
+
+@container (max-width: 860px) {
   .dash-row2 {
     grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@container (max-width: 620px) {
+  .dash-row3 {
+    --dash-row-cols: 1;
+  }
+
+  .dash-row3 > :last-child {
+    grid-column: auto;
   }
 }
 
@@ -8264,14 +8309,12 @@ dl.filter-bar.approval-inbox-detail-facts {
 
 .dash-stopped-table th,
 .dash-stopped-table td {
-  padding: 2px 0;
+  padding: 2px var(--space-1);
   font-weight: 400;
-  text-align: start;
 }
 
 .dash-stopped-table td {
   color: var(--on-surface-variant);
-  text-align: end;
 }
 
 /* 점 · 견본 색 */
@@ -8340,7 +8383,8 @@ dl.filter-bar.approval-inbox-detail-facts {
 
 .dash-rank-row {
   display: grid;
-  grid-template-columns: minmax(4rem, 7rem) minmax(0, 1fr) auto auto;
+  /* 이름 칸을 넓힌다 — 업체명이 「Cong đoan KC…」로 잘렸다(사용자 보고). 넘치면 두 줄 + 툴팁. */
+  grid-template-columns: minmax(7rem, 12rem) minmax(3rem, 1fr) auto auto;
   align-items: center;
   gap: var(--space-2);
   font: var(--type-body-sm);
@@ -8348,9 +8392,11 @@ dl.filter-bar.approval-inbox-detail-facts {
 }
 
 .dash-rank-label {
+  display: -webkit-box;
   overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow-wrap: anywhere;
 }
 
 .dash-rank-track {
@@ -8594,6 +8640,27 @@ dl.filter-bar.approval-inbox-detail-facts {
 .dash-table-wrap th,
 .dash-table-wrap td {
   white-space: nowrap;
+}
+
+/* 품목처럼 긴 값은 줄바꿈해 판정 열이 칸 밖으로 밀리지 않게 한다(사용자 보고 2026-10-16). */
+.dash-table-wrap .dash-cell-wrap {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+/*
+ * ⭐ 대시보드 안의 표는 머리글 · 셀 · 숫자 열까지 모두 가운데 정렬(사용자 지시 2026-10-16 — 숫자 오른쪽 정렬
+ * 관례보다 우선, 대시보드 표에 한함). 공용 Table 부품은 건드리지 않고 대시보드 패널 범위에서만 덮는다.
+ */
+.dash-panel table th,
+.dash-panel table td {
+  text-align: center;
+}
+
+/* 빈 상태 한 줄 — DS EmptyState 의 위아래 여백을 줄여 빈 카드가 높아지지 않게. */
+.dash-panel .dash-empty {
+  min-height: 0;
+  padding-block: var(--space-3);
 }
 
 .dash-sr-only {
