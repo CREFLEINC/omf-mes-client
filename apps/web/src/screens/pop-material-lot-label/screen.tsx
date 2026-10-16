@@ -169,6 +169,7 @@ export const PopMaterialLotLabelScreen = () => {
       printerName: headPrinter?.printerName ?? null,
       reissueReasonCode,
       uomCode: uomCodeOf(selectedRow.uomId),
+      lotStatusCode: lot.data?.statusCode ?? null,
     });
   };
 

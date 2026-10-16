@@ -100,6 +100,8 @@ interface FlowOptions {
   filtersIssuedAfterReport?: boolean;
   /** IQC 대상 품목의 라인이다 — 자재 라벨 뒤에 IQC 라벨을 한 장 더 찍는다(omf-all-around#110). */
   inspectionRequired?: boolean;
+  /** IQC 라벨이 이미 나간 적이 있다 — 사유 없는 IQC 라벨 발행을 서버처럼 422(사유 필수)로 거절한다. */
+  iqcRequiresReason?: boolean;
 }
 
 const renderFlow = (options: FlowOptions = {}) => {
@@ -297,8 +299,30 @@ const renderFlow = (options: FlowOptions = {}) => {
         {
           match: (request) =>
             new URL(request.url).pathname === '/app/document-issues' && request.method === 'POST',
-          respond: (request) => {
+          respond: async (request) => {
             void record(request);
+
+            if (options.iqcRequiresReason === true) {
+              const body = (await request.clone().json()) as {
+                documentTypeCode: string;
+                reissueReasonCode?: string | null;
+              };
+              if (body.documentTypeCode === 'IQC_LABEL' && !body.reissueReasonCode) {
+                return jsonResponse(
+                  {
+                    errors: [
+                      {
+                        scope: 'field',
+                        field: 'reissueReasonCode',
+                        code: 'REQUIRED',
+                        message: '재발행 사유가 필요합니다.',
+                      },
+                    ],
+                  },
+                  { status: 422 },
+                );
+              }
+            }
 
             /*
              * 끝나지 않는 응답 — 「실행 중」이 유지된다. 본문을 닫지 않는 흐름으로 준다.
@@ -947,6 +971,83 @@ describe('PopMaterialLotLabelScreen — 재인쇄', () => {
         reissueReasonCode: 'SYN_REISSUE_01',
       });
     });
+  });
+
+  /* 2단계 검증(2026-10-16) — 재인쇄가 IQC 라벨을 이어 찍는 유일한 길이다(자재 라벨이 안 나와 건너뛴 경우). */
+  const reissueWithReason = async (user: ReturnType<typeof userEvent.setup>): Promise<void> => {
+    await user.click(await screen.findByRole('button', { name: '발행 완료' }));
+    await chooseLine(user);
+    await user.click(screen.getByRole('button', { name: '재인쇄' }));
+    const dialog = within(await screen.findByRole('dialog'));
+    await user.click(dialog.getByRole('combobox', { name: '사유' }));
+    await user.click(await screen.findByRole('option', { name: '인쇄 실패' }));
+    await user.click(dialog.getByRole('button', { name: '재인쇄' }));
+  };
+
+  const issueBodies = (sent: Sent[]) =>
+    sent
+      .filter((entry) => entry.path === '/app/document-issues')
+      .map(
+        (entry) => entry.body as { documentTypeCode: string; reissueReasonCode?: string | null },
+      );
+
+  it('검사 대기인 IQC 대상 LOT 의 재인쇄는 IQC 라벨도 찍는다 — 첫 IQC 라벨이면 사유 없이 낸다', async () => {
+    const shellPrint = vi.fn(async () => 'C:/syn/label.png');
+    const { user, sent } = renderFlow({ lotId: LOT_ID, shellPrint, inspectionRequired: true });
+    await reissueWithReason(user);
+
+    expect(
+      await screen.findByText(messages.popMaterialLotLabel.target.outcome.iqcPrinted),
+    ).toBeInTheDocument();
+    expect(issueBodies(sent)).toEqual([
+      expect.objectContaining({
+        documentTypeCode: 'MATERIAL_LOT_LABEL',
+        reissueReasonCode: 'SYN_REISSUE_01',
+      }),
+      expect.objectContaining({ documentTypeCode: 'IQC_LABEL' }),
+    ]);
+    // 첫 IQC 라벨이다 — 사유를 싣지 않는다(실으면 첫 발행이 재발행으로 남는다).
+    expect(issueBodies(sent)[1]).not.toHaveProperty('reissueReasonCode');
+    expect(shellPrint).toHaveBeenCalledTimes(2);
+  });
+
+  it('IQC 라벨이 이미 나간 적이 있으면 서버가 요구한 사유를 실어 다시 낸다', async () => {
+    const shellPrint = vi.fn(async () => 'C:/syn/label.png');
+    const { user, sent } = renderFlow({
+      lotId: LOT_ID,
+      shellPrint,
+      inspectionRequired: true,
+      iqcRequiresReason: true,
+    });
+    await reissueWithReason(user);
+
+    expect(
+      await screen.findByText(messages.popMaterialLotLabel.target.outcome.iqcPrinted),
+    ).toBeInTheDocument();
+    expect(
+      issueBodies(sent).map((body) => [body.documentTypeCode, body.reissueReasonCode]),
+    ).toEqual([
+      ['MATERIAL_LOT_LABEL', 'SYN_REISSUE_01'],
+      ['IQC_LABEL', undefined],
+      ['IQC_LABEL', 'SYN_REISSUE_01'],
+    ]);
+  });
+
+  it('판정이 끝난 LOT 의 재인쇄는 IQC 라벨을 찍지 않는다', async () => {
+    const shellPrint = vi.fn(async () => 'C:/syn/label.png');
+    const { user, sent } = renderFlow({
+      lotId: LOT_ID,
+      shellPrint,
+      inspectionRequired: true,
+      lotStatusCode: 'NORMAL',
+    });
+    await reissueWithReason(user);
+
+    await waitFor(() => {
+      expect(sent.filter((entry) => entry.path.endsWith(':report-print'))).toHaveLength(1);
+    });
+    expect(issueBodies(sent).map((body) => body.documentTypeCode)).toEqual(['MATERIAL_LOT_LABEL']);
+    expect(shellPrint).toHaveBeenCalledTimes(1);
   });
 
   it('⛔ 고를 사유가 없으면 재인쇄를 열지 않고 왜 못 하는지 보인다', async () => {

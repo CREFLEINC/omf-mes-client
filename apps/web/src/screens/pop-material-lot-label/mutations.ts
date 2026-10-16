@@ -64,7 +64,7 @@ export interface IssueRunResult {
   issue: IssueView | null;
   error: ApiError | null;
   /**
-   * IQC 라벨(omf-all-around#110) — IQC 대상 자재의 첫 발행에서만 찍는다. 대상이 아니면 `null`.
+   * IQC 라벨(omf-all-around#110) — IQC 대상 자재의 첫 발행과, 검사 대기 LOT 의 재인쇄에서 찍는다. 대상이 아니면 `null`.
    * ⭐ 자재 라벨의 성패와 따로 센다 — IQC 라벨이 실패해도 자재 라벨은 나왔다. 자재 라벨이 안 나왔으면
    *   IQC 라벨은 시도하지 않고 `notPrinted` 다(화면이 «둘 다 안 나왔다»를 따로 말한다).
    */
@@ -90,7 +90,12 @@ export interface IssueCommand {
   reissueReasonCode: string | null;
   /** 라벨 수량 옆에 적을 단위 코드. 화면이 이름을 못 풀었으면 `null`. */
   uomCode: string | null;
+  /** 이미 등록된 LOT 의 품질 상태. 재인쇄가 IQC 라벨을 함께 찍을지 이것으로 가른다. 모르면 `null`. */
+  lotStatusCode: string | null;
 }
+
+/** IQC 라벨을 붙일 수 있는 LOT 상태 — 서버 IQC_LABEL 자격(수입검사 대기)과 같다. */
+const IQC_PENDING_LOT_STATUS = 'INSPECTION_PENDING';
 
 /** 인쇄를 못 한 사유 — 서버 보고에 그대로 실린다. `FAILED` 인데 사유가 없으면 422 다. */
 const NO_SHELL_REASON = '셸 인쇄 통로가 없는 단말에서 실행됐습니다.';
@@ -203,20 +208,59 @@ const reportPrint = async (
  * ⛔ 실패를 던지지 않는다 — 자재 라벨은 이미 나왔고 그 결과를 덮으면 안 된다. 실패는 `failed` 로 알리고,
  *    보고까지 갔으면 서버에도 실패로 남는다.
  */
-const printIqcLabel = async (
+/** 서버가 「재발행 사유가 필요합니다」로 거절했는가 — 그 문서의 2회차 이상이라는 뜻이다. */
+const needsReissueReason = (cause: unknown): boolean => {
+  const error = toApiError(cause);
+
+  return (
+    error.kind === 'validation' &&
+    error.errors.some((item) => item.field === 'reissueReasonCode' && item.code === 'REQUIRED')
+  );
+};
+
+/**
+ * IQC 라벨 발행 기록. 재인쇄에서 왔으면(`reissueReasonCode`) **먼저 사유 없이** 부른다 — IQC 라벨은
+ * 자재 라벨과 회차를 따로 세서, 자재 라벨 재인쇄가 IQC 라벨의 «첫» 발행일 수 있다(자재 라벨이 안 나와
+ * IQC 라벨을 건너뛴 경우). 그때 사유를 실으면 첫 발행이 재발행으로 남는다. 서버가 사유를 요구하면
+ * (2회차 이상) 같은 사유로 다시 부른다.
+ */
+const createIqcIssue = async (
   client: Client,
-  input: { row: TargetRow; lotId: number; uomCode: string | null; printerName: string | null },
+  input: { lotId: number; printerName: string | null; reissueReasonCode: string | null },
   workerNo: string,
-  shell: NonNullable<ReturnType<typeof renditionShell>>,
-): Promise<'printed' | 'failed'> => {
-  try {
-    const issue = await createIssue(
+): Promise<IssueView> => {
+  const issueWith = (reissueReasonCode: string | null) =>
+    createIssue(
       client,
-      { lotId: input.lotId, printerName: input.printerName, reissueReasonCode: null },
+      { lotId: input.lotId, printerName: input.printerName, reissueReasonCode },
       workerNo,
       createIdempotencyKey(),
       IQC_DOCUMENT_TYPE_CODE,
     );
+
+  try {
+    return await issueWith(null);
+  } catch (cause) {
+    if (input.reissueReasonCode === null || !needsReissueReason(cause)) throw cause;
+
+    return issueWith(input.reissueReasonCode);
+  }
+};
+
+const printIqcLabel = async (
+  client: Client,
+  input: {
+    row: TargetRow;
+    lotId: number;
+    uomCode: string | null;
+    printerName: string | null;
+    reissueReasonCode: string | null;
+  },
+  workerNo: string,
+  shell: NonNullable<ReturnType<typeof renditionShell>>,
+): Promise<'printed' | 'failed'> => {
+  try {
+    const issue = await createIqcIssue(client, input, workerNo);
     const bytes = await buildLabel(client, { ...input, issue }, 'IQC LOT');
     const failureReason = await shell
       .save(bytes, `iqc-${String(issue.documentIssueLogId)}`, new Date().toISOString(), 'tspl')
@@ -295,7 +339,7 @@ export const useLabelIssue = ({ workerNo }: IssueRunOptions): IssueRunResultHand
 
   const run = useCallback(
     (command: IssueCommand) => {
-      const { row, printerName, reissueReasonCode, uomCode } = command;
+      const { row, printerName, reissueReasonCode, uomCode, lotStatusCode } = command;
 
       /*
        * ⛔ **사번을 모르면 아무것도 부르지 않는다**(공유계약 D-5 · F-6). 단추도 함께 막혀
@@ -395,20 +439,23 @@ export const useLabelIssue = ({ workerNo }: IssueRunOptions): IssueRunResultHand
           await reportPrint(client, issue.documentIssueLogId, failureReason, workerNo);
 
           /*
-           * IQC 라벨(omf-all-around#110) — IQC 대상 자재의 «첫» 발행이고 자재 라벨이 나왔을 때만 한 장 더.
-           * 재인쇄는 자재 라벨만 다시 찍는다(IQC 라벨은 대기 장소로 옮길 때 한 번이면 된다).
+           * IQC 라벨(omf-all-around#110) — IQC 대상 자재면 자재 라벨 뒤에 한 장 더. 재인쇄는 LOT 이 아직
+           * 검사 대기일 때만 함께 찍는다(2단계 검증 2026-10-16 — 자재 라벨이 안 나와 IQC 라벨을 건너뛴
+           * 뒤 재인쇄로만 이어갈 수 있었다). 판정이 끝난 LOT 에는 붙일 일이 없고 서버도 막는다.
            */
-          const iqcLabel =
-            !row.inspectionRequired || reissueReasonCode !== null
-              ? null
-              : failureReason !== null || shell === null
-                ? 'notPrinted'
-                : await printIqcLabel(
-                    client,
-                    { row, lotId, uomCode, printerName },
-                    workerNo,
-                    shell,
-                  );
+          const wantsIqcLabel =
+            row.inspectionRequired &&
+            (reissueReasonCode === null || lotStatusCode === IQC_PENDING_LOT_STATUS);
+          const iqcLabel = !wantsIqcLabel
+            ? null
+            : failureReason !== null || shell === null
+              ? 'notPrinted'
+              : await printIqcLabel(
+                  client,
+                  { row, lotId, uomCode, printerName, reissueReasonCode },
+                  workerNo,
+                  shell,
+                );
 
           setResult({
             lineId: row.inboundReceiptLineId,
