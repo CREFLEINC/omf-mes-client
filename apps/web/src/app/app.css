@@ -7161,41 +7161,45 @@ dl.filter-bar.approval-inbox-detail-facts {
   gap: var(--space-2);
 }
 
-.users-roles-worker-link-hint,
-.users-roles-worker-link-edit > p {
-  /* 공용 .field-note 의 폭 상한은 입력칸 밑 짧은 주석용이다 — 이 구역의 안내는 구역 폭을 쓴다. */
+/* 공용 .field-note 의 폭 상한은 입력칸 밑 짧은 주석용이다 — 이 구역의 안내는 구역 폭을 쓴다. */
+.users-roles-worker-link-hint {
   max-width: none;
   margin: 0;
 }
 
-/* 입력 그룹 — 현재 정보 줄 아래, 왼쪽 옅은 세로선으로 묶는다. */
-.users-roles-worker-link-edit {
+/*
+ * 연결·변경 모달과 해제 확인 창의 본문 — 내용에 맞춘 높이, 항목 사이는 gap 하나(문단 기본 여백을 걷는다).
+ * 버튼 위 여백이 과하게 벌어지던 것은 문단 margin 이 Dialog 본문 padding 에 더해진 탓이었다.
+ */
+.users-roles-worker-dialog {
+  display: grid;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.users-roles-worker-dialog > p,
+.users-roles-worker-dialog .banner-slot {
+  max-width: none;
+  margin: 0;
+}
+
+.users-roles-worker-dialog-question {
+  font: var(--type-title-sm);
+  letter-spacing: var(--type-title-sm-tracking);
+}
+
+/* 현재 작업자 블록 — 옅은 바탕(카드 면보다 한 단계). 긴 이름은 줄바꿈한다. */
+.users-roles-worker-block {
   display: grid;
   gap: var(--space-1);
-  min-width: 0;
-  padding-left: var(--space-3);
-  border-left: 1px solid var(--outline-variant);
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--surface-container);
+  overflow-wrap: anywhere;
 }
 
-/*
- * 입력칸과 [연결/변경][취소]는 같은 줄 · 같은 높이(둘 다 sm). 라벨을 줄 밖에 두고 위쪽으로 맞추므로
- * 입력칸 아래 오류 줄이 생겨도 버튼이 움직이지 않는다.
- */
-.users-roles-worker-link-edit-row {
-  display: flex;
-  align-items: flex-start;
-  gap: var(--space-2);
-  min-width: 0;
-}
-
-/* 좁으면 입력칸이 줄어든다 — 버튼을 다음 줄로 넘기면 오류 줄이 생길 때 버튼이 밀린다. */
-.users-roles-worker-link-edit-row > :first-child {
-  flex: 0 1 18rem;
-  min-width: 0;
-}
-
-.users-roles-worker-link-edit-row > button {
-  flex: none;
+.users-roles-worker-block > span {
+  color: var(--on-surface-variant);
 }
 
 /*

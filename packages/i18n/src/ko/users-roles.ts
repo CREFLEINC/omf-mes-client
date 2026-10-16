@@ -382,7 +382,7 @@ export const usersRoles = {
     none: '연결된 작업자가 없습니다.',
     /** 미연결일 때 한 줄 — 왜 연결해야 하는지 */
     hintUnlinked: '수입검사 판정을 저장하려면 작업자 사번을 연결해야 합니다.',
-    hintLinked: '연결된 작업자 정보를 검사 판정에 사용합니다.',
+    hintLinked: '검사 판정 시 해당 작업자로 기록됩니다.',
     noDepartment: '부서 없음',
     connect: '작업자 연결',
     change: '작업자 변경',
@@ -395,12 +395,15 @@ export const usersRoles = {
     noteConnect: '연결하면 별도 저장 없이 즉시 적용됩니다.',
     noteChange: '변경하면 별도 저장 없이 즉시 적용됩니다.',
     unlinkConfirmTitle: '작업자 연결 해제',
-    unlinkConfirmBody: (summary: string): string =>
-      `${summary} 작업자 연결을 해제할까요? 해제하면 이 계정으로 수입검사 판정을 저장할 수 없습니다. 별도 저장 없이 즉시 적용됩니다.`,
+    unlinkQuestion: '이 작업자의 연결을 해제하시겠습니까?',
+    unlinkImpact: '연결을 해제하면 이 계정에서 수입검사 판정을 저장할 수 없습니다.',
+    unlinkNote: '연결 해제는 즉시 적용됩니다.',
     linkedToast: (summary: string): string => `작업자를 연결했습니다 — ${summary}`,
     unlinkedToast: '작업자 연결을 해제했습니다.',
     /** 조회 조건(재직 중 · 사번 일치)을 그대로 말한다. */
     notFound: '해당 사번의 재직 중인 작업자를 찾을 수 없습니다.',
+    /** 사번 조회 응답의 연결 계정(appUserId)으로 가린다 — 서버도 같은 경우를 400 으로 막는다. */
+    linkedElsewhere: '이미 다른 계정에 연결된 사번입니다.',
     workerNoRequired: '작업자 사번을 입력해 주세요.',
   },
 } as const;

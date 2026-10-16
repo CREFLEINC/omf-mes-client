@@ -1,4 +1,4 @@
-import { Button, Chip, Dialog, TextField, useToast } from '@crefle/web-ui';
+import { AlertBanner, Button, Chip, Dialog, TextField, useToast } from '@crefle/web-ui';
 import type { AppUserWorker } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -22,23 +22,34 @@ const workerDetailKey = (workerId: number) =>
 /** 서버가 연결 거부를 싣는 칸(`PUT /app/users/{id}/worker` · 400 `workerId`) — 입력칸 아래에 낸다. */
 const WORKER_FIELD = 'workerId';
 
+type PickMode = 'connect' | 'change';
+
 export interface WorkerLinkFieldProps {
   appUserId: number;
   /** 작업자의 부서 번호 → 이름. 사용자 정보의 부서 칸과 같은 목록에서 푼다. */
   departmentLabel: (departmentId: number) => string;
 }
 
+/** 모달 안의 「현재 작업자」 블록 — 변경 모달과 해제 확인 창이 같이 쓴다. */
+const WorkerBlock = ({ name, meta }: { name: string; meta: readonly string[] }) => (
+  <div className="users-roles-worker-block">
+    <strong>{name}</strong>
+    {meta.map((line) => (
+      <span key={line}>{line}</span>
+    ))}
+  </div>
+);
+
 /**
  * 계정 ↔ 작업자 연결 — 사용자 정보 카드 안의 「연결된 작업자」 구역(omf-all-around#104 · 서버 선행 P-38).
  *
  * 관리웹 IQC 판정은 계정에 연결된 작업자를 검사자로 남긴다 — 연결이 없으면 화면도 서버도 저장을 막는다.
  *
- * **기본은 한 줄 조회다**(담당자 결정 2026-10-16). [배지] 이름 · 사번 · 부서와 버튼이 한 줄, 그 아래 안내 한 줄.
- * 입력은 [작업자 연결]·[작업자 변경]을 눌렀을 때만 그 아래 그룹으로 열고, 오류는 입력칸 바로 아래에 둔다.
- * 해제는 보조 버튼 + 확인 창. 「즉시 적용」 안내는 입력 그룹과 확인 창에만 둔다.
+ * **카드는 조회만 한다**(담당자 결정 2026-10-16). 연결·변경은 작은 모달에서 사번을 받아 처리하고, 해제는 확인 창을
+ * 거친다 — 버튼을 눌러도 카드의 크기·배치가 바뀌지 않는다.
  *
- * **사번으로 연결한다.** 재직자 중 그 사번을 찾아 그 작업자로 치환한다. 한 작업자가 다른 계정에 이미 연결돼 있으면
- * 서버가 400(`workerId`)으로 막는다 — 그 칸 오류는 입력칸 아래에, 나머지는 배너에 낸다.
+ * **사번으로 연결한다.** 재직자 중 그 사번을 찾아 그 작업자로 치환한다. 조회 응답의 `appUserId` 가 다른 계정이면
+ * 보내지 않고 막는다(서버도 같은 경우를 400 `workerId` 로 막는다 — 경합으로 그 길에 들면 서버 문구를 입력칸 아래에 낸다).
  *
  * ⭐ 성공하면 세션을 다시 읽는다 — 자기 계정을 바꿨다면 IQC 판정 화면이 재로그인 없이 바로 잠기거나 풀린다.
  */
@@ -48,7 +59,7 @@ export const WorkerLinkField = ({ appUserId, departmentLabel }: WorkerLinkFieldP
   const toast = useToast();
   const inputId = useId();
   const inputRef = useRef<HTMLInputElement>(null);
-  const [isEditing, setIsEditing] = useState(false);
+  const [pickMode, setPickMode] = useState<PickMode | null>(null);
   const [workerNo, setWorkerNo] = useState('');
   const [localError, setLocalError] = useState<string | null>(null);
   const [isLookingUp, setIsLookingUp] = useState(false);
@@ -78,12 +89,6 @@ export const WorkerLinkField = ({ appUserId, departmentLabel }: WorkerLinkFieldP
   const departmentId = detail.data?.worker.departmentId ?? null;
   const department = departmentId === null ? t.noDepartment : departmentLabel(departmentId);
 
-  const closeEdit = (): void => {
-    setIsEditing(false);
-    setWorkerNo('');
-    setLocalError(null);
-  };
-
   const write = useMasterWrite<number | null, AppUserWorker>({
     request: (workerId, headers) =>
       client.PUT('/app/users/{appUserId}/worker', {
@@ -96,7 +101,7 @@ export const WorkerLinkField = ({ appUserId, departmentLabel }: WorkerLinkFieldP
     onSuccess: (saved) => {
       queryClient.setQueryData(workerLinkKey(appUserId), saved);
       void queryClient.invalidateQueries({ queryKey: sessionKeys.current });
-      closeEdit();
+      setPickMode(null);
       setIsUnlinkOpen(false);
       toast.show({
         variant: 'success',
@@ -117,6 +122,20 @@ export const WorkerLinkField = ({ appUserId, departmentLabel }: WorkerLinkFieldP
     inputRef.current?.focus();
     inputRef.current?.select();
   }, [inputError]);
+
+  /* 열 때마다 빈 입력에서 시작한다 — 취소한 값이 다음에 남지 않게. */
+  const openPick = (mode: PickMode): void => {
+    write.reset();
+    setWorkerNo('');
+    setLocalError(null);
+    setPickMode(mode);
+  };
+
+  const closePick = (): void => {
+    if (isBusy) return;
+    write.reset();
+    setPickMode(null);
+  };
 
   const submit = async (event: FormEvent): Promise<void> => {
     event.preventDefault();
@@ -139,6 +158,10 @@ export const WorkerLinkField = ({ appUserId, departmentLabel }: WorkerLinkFieldP
         setLocalError(t.notFound);
         return;
       }
+      if (found.appUserId != null && found.appUserId !== appUserId) {
+        setLocalError(t.linkedElsewhere);
+        return;
+      }
       write.write(found.workerId);
     } finally {
       setIsLookingUp(false);
@@ -146,13 +169,14 @@ export const WorkerLinkField = ({ appUserId, departmentLabel }: WorkerLinkFieldP
   };
 
   const isLinked = current !== undefined && linkedId !== null;
+  const linkedName = current?.workerName ?? '';
+  const linkedNo = current?.workerNo ?? '';
 
   return (
     <section className="users-roles-worker-link" aria-label={t.title}>
       <h3 className="users-roles-worker-link-title">{t.title}</h3>
 
       {link.isError && <LoadErrorBanner error={link.error} onRetry={() => void link.refetch()} />}
-      {!isUnlinkOpen && <SaveErrorBanner error={write.error} />}
 
       {current !== undefined && (
         <>
@@ -163,107 +187,117 @@ export const WorkerLinkField = ({ appUserId, departmentLabel }: WorkerLinkFieldP
               </Chip>
               {isLinked ? (
                 <>
-                  <strong>{current.workerName}</strong>
-                  <span className="users-roles-worker-link-meta">{current.workerNo}</span>
+                  <strong>{linkedName}</strong>
+                  <span className="users-roles-worker-link-meta">{linkedNo}</span>
                   <span className="users-roles-worker-link-meta">{department}</span>
                 </>
               ) : (
                 <span>{t.none}</span>
               )}
             </div>
-            {!isEditing && (
-              <div className="users-roles-worker-link-actions">
-                {isLinked ? (
-                  <>
-                    <Button
-                      variant="outlined"
-                      size="sm"
-                      className="app-button-neutral"
-                      disabled={isBusy}
-                      onClick={() => {
-                        write.reset();
-                        setIsEditing(true);
-                      }}
-                    >
-                      {t.change}
-                    </Button>
-                    <Button
-                      variant="text"
-                      size="sm"
-                      className="app-button-neutral"
-                      disabled={isBusy}
-                      onClick={() => {
-                        write.reset();
-                        setIsUnlinkOpen(true);
-                      }}
-                    >
-                      {t.unlink}
-                    </Button>
-                  </>
-                ) : (
+            <div className="users-roles-worker-link-actions">
+              {isLinked ? (
+                <>
                   <Button
-                    variant="tonal"
+                    variant="outlined"
                     size="sm"
-                    disabled={isBusy}
+                    className="app-button-neutral"
                     onClick={() => {
-                      write.reset();
-                      setIsEditing(true);
+                      openPick('change');
                     }}
                   >
-                    {t.connect}
+                    {t.change}
                   </Button>
-                )}
-              </div>
-            )}
+                  <Button
+                    variant="text"
+                    size="sm"
+                    className="app-button-neutral"
+                    onClick={() => {
+                      write.reset();
+                      setIsUnlinkOpen(true);
+                    }}
+                  >
+                    {t.unlink}
+                  </Button>
+                </>
+              ) : (
+                <Button
+                  variant="tonal"
+                  size="sm"
+                  onClick={() => {
+                    openPick('connect');
+                  }}
+                >
+                  {t.connect}
+                </Button>
+              )}
+            </div>
           </div>
-          {!isEditing && (
-            <p className="field-note users-roles-worker-link-hint">
-              {isLinked ? t.hintLinked : t.hintUnlinked}
-            </p>
-          )}
+          <p className="field-note users-roles-worker-link-hint">
+            {isLinked ? t.hintLinked : t.hintUnlinked}
+          </p>
         </>
       )}
 
-      {isEditing && (
-        <form className="users-roles-worker-link-edit" onSubmit={(event) => void submit(event)}>
-          <FieldLabel htmlFor={inputId} label={isLinked ? t.inputChange : t.inputConnect} />
-          <div className="users-roles-worker-link-edit-row">
-            <TextField
-              ref={inputRef}
-              id={inputId}
-              size="sm"
-              value={workerNo}
-              onChange={(event) => {
-                setWorkerNo(event.target.value);
-              }}
-              disabled={isBusy}
-              error={inputError}
-            />
-            <Button type="submit" size="sm" loading={isBusy} disabled={isBusy}>
-              {isLinked ? t.submitChange : t.submitConnect}
-            </Button>
+      <Dialog
+        open={pickMode !== null}
+        onClose={closePick}
+        size="sm"
+        title={pickMode === 'change' ? t.change : t.connect}
+        closeOnBackdropClick={false}
+        footer={
+          <>
             <Button
               type="button"
-              variant="text"
-              size="sm"
+              variant="outlined"
               className="app-button-neutral"
               disabled={isBusy}
-              onClick={() => {
-                write.reset();
-                closeEdit();
-              }}
+              onClick={closePick}
             >
               {messages.common.cancel}
             </Button>
-          </div>
-          <p className="field-note">{isLinked ? t.noteChange : t.noteConnect}</p>
-        </form>
-      )}
+            <Button type="submit" form={`${inputId}-form`} loading={isBusy} disabled={isBusy}>
+              {pickMode === 'change' ? t.submitChange : t.submitConnect}
+            </Button>
+          </>
+        }
+      >
+        {pickMode !== null && (
+          <form
+            id={`${inputId}-form`}
+            className="users-roles-worker-dialog"
+            onSubmit={(event) => void submit(event)}
+          >
+            {write.error !== null && <SaveErrorBanner error={write.error} />}
+            {pickMode === 'change' && (
+              <WorkerBlock name={linkedName} meta={[`${linkedNo} · ${department}`]} />
+            )}
+            <div>
+              <FieldLabel
+                htmlFor={inputId}
+                label={pickMode === 'change' ? t.inputChange : t.inputConnect}
+              />
+              <TextField
+                ref={inputRef}
+                id={inputId}
+                autoFocus
+                value={workerNo}
+                onChange={(event) => {
+                  setWorkerNo(event.target.value);
+                }}
+                disabled={isBusy}
+                error={inputError}
+              />
+            </div>
+            <p className="field-note">{pickMode === 'change' ? t.noteChange : t.noteConnect}</p>
+          </form>
+        )}
+      </Dialog>
 
       <Dialog
         open={isUnlinkOpen}
         onClose={() => {
-          setIsUnlinkOpen(false);
+          if (!write.isSaving) setIsUnlinkOpen(false);
         }}
         size="sm"
         title={t.unlinkConfirmTitle}
@@ -273,6 +307,7 @@ export const WorkerLinkField = ({ appUserId, departmentLabel }: WorkerLinkFieldP
             <Button
               variant="outlined"
               className="app-button-neutral"
+              disabled={write.isSaving}
               onClick={() => {
                 setIsUnlinkOpen(false);
               }}
@@ -291,9 +326,14 @@ export const WorkerLinkField = ({ appUserId, departmentLabel }: WorkerLinkFieldP
           </>
         }
       >
-        {isUnlinkOpen && <SaveErrorBanner error={write.error} />}
         {isUnlinkOpen && (
-          <p>{t.unlinkConfirmBody(`${current?.workerNo ?? ''} · ${current?.workerName ?? ''}`)}</p>
+          <div className="users-roles-worker-dialog">
+            {write.error !== null && <SaveErrorBanner error={write.error} />}
+            <WorkerBlock name={linkedName} meta={[linkedNo]} />
+            <p className="users-roles-worker-dialog-question">{t.unlinkQuestion}</p>
+            <AlertBanner variant="warning">{t.unlinkImpact}</AlertBanner>
+            <p className="field-note">{t.unlinkNote}</p>
+          </div>
         )}
       </Dialog>
     </section>
