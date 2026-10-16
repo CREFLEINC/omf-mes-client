@@ -47,10 +47,6 @@ export const formatCycleTime = (seconds: number | null): string =>
 export const describeReason = (item: EquipmentItemView): string =>
   item.statusCode === 'RUNNING' ? t.none : (item.reasonName ?? t.reasonUnknown);
 
-/** 「호기(톤수)」 — 톤수가 없으면 호기만. */
-export const describeUnit = (item: EquipmentItemView): string =>
-  item.tonnage === null ? item.equipmentCode : `${item.equipmentCode} (${item.tonnage})`;
-
 const StatusChip = ({ statusCode }: { statusCode: DashboardEquipmentStatusCode }) => (
   <Chip size="sm" status={EQUIPMENT_STATUS_TONE[statusCode]}>
     {t.status[statusCode]}
@@ -497,7 +493,16 @@ export const StoppedPanel = (props: EquipmentPanelProps) => {
               <ul className="dash-stopped-list" aria-label={t.stoppedGroupCaption(t.status[code])}>
                 {rows.map((item) => (
                   <li key={item.equipmentId} className="dash-stopped-row">
-                    <span className="dash-stopped-unit">{describeUnit(item)}</span>
+                    {/*
+                     * 호기 칸은 코드만 굵게, 설비 종류는 작은 보조 글 — 「PERF-E-17-2 (프레스)」 한 줄이 열을 넓게 먹어
+                     * 사유가 한두 단어씩 꺾였다(1280 확인 2026-10-16). 남는 폭은 사유 열로 간다.
+                     */}
+                    <span className="dash-stopped-unit">
+                      <span className="dash-stopped-code">{item.equipmentCode}</span>
+                      {item.tonnage !== null && (
+                        <span className="dash-stopped-type">{item.tonnage}</span>
+                      )}
+                    </span>
                     <span className="dash-stopped-reason">{describeReason(item)}</span>
                     <span className="dash-stopped-elapsed">
                       {formatElapsed(item.elapsedMinutes)}

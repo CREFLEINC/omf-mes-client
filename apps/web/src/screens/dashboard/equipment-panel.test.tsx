@@ -246,7 +246,9 @@ describe('StoppedPanel', () => {
     const stoppedGroup = screen.getByRole('region', { name: t.status.STOPPED });
     expect(within(stoppedGroup).getByText(`1 ${t.countUnit}`)).toBeInTheDocument();
     const row = within(stoppedGroup).getByRole('listitem');
-    expect(row).toHaveTextContent('EQ-02 (100T)');
+    /* 코드 굵게 · 설비 종류는 작은 보조 글로 따로. */
+    expect(within(row).getByText('EQ-02')).toHaveClass('dash-stopped-code');
+    expect(within(row).getByText('100T')).toHaveClass('dash-stopped-type');
     expect(within(row).getByText('유압 이상')).toBeInTheDocument();
     expect(within(row).getByText(formatElapsed(85))).toBeInTheDocument();
 

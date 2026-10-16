@@ -8542,9 +8542,48 @@ dl.filter-bar.approval-inbox-detail-facts {
   letter-spacing: var(--type-body-sm-tracking);
 }
 
-/* 호기(설비 종류)는 줄을 바꾸지 않는다 — 원칙(a). */
+/* 호기는 줄을 바꾸지 않는다 — 원칙(a). 코드 굵게, 설비 종류는 그 아래 작은 보조 글. */
 .dash-stopped-unit {
+  display: grid;
   white-space: nowrap;
+}
+
+.dash-stopped-code {
+  font-weight: 600;
+}
+
+.dash-stopped-type {
+  font: var(--type-label-sm);
+  letter-spacing: var(--type-label-sm-tracking);
+  color: var(--on-surface-muted);
+}
+
+/*
+ * 패널이 좁으면(오른쪽 열 · 1440 이하) 사유를 호기 아래 줄로 내린다 — 세 열로 두면 사유 열이 좁아 긴 고장
+ * 사유가 여섯 줄로 꺾였다. 1줄 = 호기(설비 종류는 옆에 작게) · 오른쪽 지속 시간, 2줄 = 사유(줄 전체 폭).
+ */
+@container (max-width: 380px) {
+  .dash-stopped {
+    grid-template-columns: minmax(0, 1fr) max-content;
+  }
+
+  .dash-stopped-unit {
+    display: flex;
+    align-items: baseline;
+    gap: var(--space-1);
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .dash-stopped-elapsed {
+    grid-column: 2;
+    grid-row: 1;
+  }
+
+  .dash-stopped-reason {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
 }
 
 .dash-stopped-reason {
