@@ -519,6 +519,13 @@ export const NAV_GROUPS: readonly NavGroup[] = [
         label: '처분 판정 처리',
         labelVi: 'Ra quyết định xử lý',
       },
+      /* W-03-11 — PQC 검사 등록·조회(#107). 검사 결과 조회(W-03-05)와 달리 판정을 «등록»한다. */
+      {
+        to: '/quality/pqc-inspections',
+        icon: 'fact_check',
+        label: 'PQC 검사 등록·조회',
+        labelVi: 'Đăng ký · tra cứu kiểm tra PQC',
+      },
     ],
   },
   /*

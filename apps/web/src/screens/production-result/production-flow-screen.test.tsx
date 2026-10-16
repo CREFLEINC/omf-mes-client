@@ -1615,3 +1615,101 @@ describe('ProductionFlowScreen · 자동 종료는 한 번만 나간다', () => 
     expect(writes.some((request) => pathOf(request) === END_PATH)).toBe(false);
   });
 });
+
+/*
+ * 생산 실적 ↔ PQC 분할(omf-all-around#107). 남은 PQC 가 있으면 오른쪽에 PQC 를 띄우고, 거기서
+ * 확정해 서버가 받으면 왼쪽 실적의 「PQC 가 남아 있다」 잠금이 그 자리에서 풀린다.
+ */
+describe('ProductionFlowScreen — PQC 분할', () => {
+  const pqc = messages.pqcInspection;
+  const PQC_REQUEST = {
+    inspectionRequestId: 7001,
+    inspectionRequestNo: 'IR-PQC-7001',
+    inspectionTypeCode: 'PQC',
+    /* 기준이 없는 의뢰 — 항목 없이 판정만으로 확정한다(P-02-13 §5-2). */
+    inspectionPlanVersionId: null,
+    targetTypeCode: 'WORK_ORDER',
+    targetId: WORK_ORDER_ID,
+    itemId: 101,
+    lotId: null,
+    workOrderId: WORK_ORDER_ID,
+    targetQty: 5,
+    uomId: 1,
+    statusCode: 'REQUESTED',
+    requestedAt: '2026-10-16T09:00:00+09:00',
+    versionNo: 1,
+  };
+  const JUDGMENTS = [
+    { codeValueId: 1, code: 'ACCEPTED', codeName: '합격', displayOrder: 1, isActive: true },
+    { codeValueId: 2, code: 'REJECTED', codeName: '불합격', displayOrder: 2, isActive: true },
+  ];
+
+  const pqcRoutes = (state: { confirmed: boolean }, writes: Request[]): StubRoute[] => [
+    {
+      match: (request) => pathOf(request) === '/quality/inspection-requests',
+      respond: () =>
+        jsonResponse({
+          items: state.confirmed ? [] : [PQC_REQUEST],
+          page: { page: 1, size: 20, total: state.confirmed ? 0 : 1 },
+        }),
+    },
+    {
+      match: (request) => pathOf(request) === '/quality/inspection-requests/7001',
+      respond: () =>
+        jsonResponse({ ...PQC_REQUEST, statusCode: state.confirmed ? 'COMPLETED' : 'REQUESTED' }),
+    },
+    {
+      match: (request) => pathOf(request) === '/mdm/code-values',
+      respond: () => jsonResponse({ items: JUDGMENTS, page: { page: 1, size: 200, total: 2 } }),
+    },
+    {
+      match: (request) =>
+        request.method === 'POST' && pathOf(request) === '/quality/inspection-results',
+      respond: (request) => {
+        writes.push(request.clone());
+        state.confirmed = true;
+        return jsonResponse({ inspectionResultId: 9001 }, { status: 201 });
+      },
+    },
+  ];
+
+  beforeEach(() => {
+    globalThis.localStorage.clear();
+  });
+
+  it('남은 PQC 를 오른쪽에 띄우고, 확정하면 실적 잠금이 풀린다', async () => {
+    const writes: Request[] = [];
+    const state = { confirmed: false };
+    const user = userEvent.setup();
+    renderScreen(writes, pqcRoutes(state, writes));
+
+    expect(await screen.findByText(t.pqc.blockedTitle)).toBeInTheDocument();
+    const panel = within(await screen.findByRole('region', { name: t.pqc.splitTitle }));
+
+    await user.type(await panel.findByRole('textbox', { name: pqc.result.fields.accepted }), '5');
+    await user.type(panel.getByRole('textbox', { name: pqc.result.fields.rejected }), '0');
+    await user.type(panel.getByRole('textbox', { name: pqc.result.fields.held }), '0');
+    await user.click(panel.getByRole('combobox', { name: pqc.result.judgment }));
+    await user.click(await screen.findByRole('option', { name: '합격' }));
+    await user.click(panel.getByRole('button', { name: pqc.result.confirm }));
+
+    await waitFor(() => expect(writes.map(pathOf)).toContain('/quality/inspection-results'));
+    const [sent] = writes.filter((request) => pathOf(request) === '/quality/inspection-results');
+    expect(sent?.headers.get('X-Worker-No')).toBe('100029');
+    expect(((await sent?.json()) as { statusCode: string }).statusCode).toBe('CONFIRMED');
+
+    await waitFor(() => expect(screen.queryByText(t.pqc.blockedTitle)).not.toBeInTheDocument());
+  });
+
+  it('닫으면 실적만 남고, 잠금 띠에서 다시 열 수 있다', async () => {
+    const user = userEvent.setup();
+    renderScreen([], pqcRoutes({ confirmed: false }, []));
+
+    const region = await screen.findByRole('region', { name: t.pqc.splitTitle });
+    await user.click(within(region).getByRole('button', { name: t.pqc.closeSplit }));
+    expect(screen.queryByRole('region', { name: t.pqc.splitTitle })).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: t.pqc.openSplit }));
+    expect(await screen.findByRole('region', { name: t.pqc.splitTitle })).toBeInTheDocument();
+  });
+});

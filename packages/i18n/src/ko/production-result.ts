@@ -183,6 +183,10 @@ export const productionResult = {
     blockedBody: '이 작업지시의 제품 검사를 먼저 마쳐야 실적을 등록할 수 있습니다.',
     goInspect: '검사 화면으로',
     loadFailed: '검사 의뢰를 확인할 수 없어 실적 입력을 열지 않습니다.',
+    /** 실적과 PQC 를 한 화면에 반씩 띄운다(omf-all-around#107). */
+    openSplit: 'PQC 검사 함께 보기',
+    closeSplit: 'PQC 닫기',
+    splitTitle: 'PQC 제품 검사',
   },
 
   lot: {

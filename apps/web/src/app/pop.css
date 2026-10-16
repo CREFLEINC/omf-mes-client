@@ -4167,6 +4167,35 @@
 }
 
 /*
+ * 생산 실적 ↔ PQC 분할(omf-all-around#107) — 본문을 **반씩** 나눈다. 왼쪽 실적 카드는 한 줄로 쌓고
+ * 양쪽이 각자 굴린다. 1024 단말에서 한쪽이 약 500 이라 카드 두 칸은 서지 않는다.
+ *
+ * ⚠ 나누지 않을 때는 이 틀이 아예 없다(`pqc-split.tsx`) — 위 격자 규칙이 그대로 걸린다.
+ */
+.pop-ui > .pop-fixed.production-flow-split {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: var(--space-3);
+}
+
+.pop-ui > .production-flow-split > .production-flow-grid {
+  min-height: 0;
+  overflow-y: auto;
+  grid-template-columns: minmax(0, 1fr);
+  align-content: start;
+}
+
+.pop-ui > .production-flow-split > .production-flow-pqc {
+  display: flex;
+  min-height: 0;
+  flex-direction: column;
+  gap: var(--space-3);
+  overflow-y: auto;
+}
+
+/*
  * 창 안의 버튼은 **액션 줄의 규격을 물려받지 않는다.**
  *
  * ⚠ 선택 팝업은 부르는 칸 «옆»에 그대로 그려져, 그 칸이 액션 줄 안에 있으면 창 안의 버튼까지

@@ -867,6 +867,7 @@ describe('AppLayout', () => {
       '/quality/inspection-results',
       '/quality/approvals',
       '/quality/dispositions',
+      '/quality/pqc-inspections',
       '/equipment/master',
       '/equipment/tool-master',
       '/equipment/work-calendar',
@@ -1410,7 +1411,7 @@ describe('AppLayout — 레일', () => {
 
     await collapseRail(user);
 
-    expect(within(navSidebar()).getAllByRole('link')).toHaveLength(67);
+    expect(within(navSidebar()).getAllByRole('link')).toHaveLength(68);
   });
 });
 
@@ -1439,7 +1440,7 @@ describe('AppLayout — 레일과 검색', () => {
     await typeQuery(user, '실사');
     await collapseRail(user);
 
-    expect(within(navSidebar()).getAllByRole('link')).toHaveLength(67);
+    expect(within(navSidebar()).getAllByRole('link')).toHaveLength(68);
   });
 
   /** 섹션 밖 항목이 빠지면 레일에서 대시보드로 갈 길이 사라진다. */
