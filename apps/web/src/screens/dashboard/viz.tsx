@@ -1,4 +1,4 @@
-import { Card, Chip, EmptyState, type ChipStatus } from '@crefle/web-ui';
+import { Card, Chip, EmptyState, IconButton, Tooltip, type ChipStatus } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
 
@@ -61,8 +61,23 @@ export const Panel = ({ title, sub, tag, className, children }: PanelProps) => (
   </Card>
 );
 
+/**
+ * 설명 단추 — 누르거나 올리면 DS 툴팁으로 서버 설명 원문을 보인다. ⭐ KPI 띠에 한해 「상세 설명은
+ * 툴팁」을 허용한다(사용자 지시 2026-10-16) — 칸 높이가 설명 때문에 늘지 않게. 원문은 그대로 넣는다.
+ */
+export const InfoTip = ({ label, content }: { label: string; content: string }) => (
+  /*
+   * 아래로 연다 — KPI 띠는 화면 맨 위쪽에 있어 위로 열면 스크롤 영역(셸 `main`) 위 끝에 잘린다.
+   */
+  <Tooltip content={content} placement="bottom">
+    <IconButton size="sm" icon="info" className="dash-info" aria-label={label} />
+  </Tooltip>
+);
+
 export interface KpiTileProps {
   label: string;
+  /** 이름 옆 설명 단추(툴팁). */
+  info?: string;
   tag?: string;
   value: string;
   unit?: string;
@@ -72,10 +87,13 @@ export interface KpiTileProps {
 }
 
 /** KPI 띠의 한 칸. */
-export const KpiTile = ({ label, tag, value, unit, tone, children }: KpiTileProps) => (
+export const KpiTile = ({ label, info, tag, value, unit, tone, children }: KpiTileProps) => (
   <div className="dash-kpi" role="group" aria-label={label}>
     <div className="dash-kpi-head">
-      <span className="dash-kpi-label">{label}</span>
+      <span className="dash-kpi-label">
+        {label}
+        {info !== undefined && <InfoTip label={t.infoLabel(label)} content={info} />}
+      </span>
       {tag !== undefined && <PeriodTag>{tag}</PeriodTag>}
     </div>
     <div className="dash-kpi-value-row">

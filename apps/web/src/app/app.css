@@ -7827,13 +7827,34 @@ dl.filter-bar.approval-inbox-detail-facts {
  * 마지막 줄의 칸은 남는 폭을 채운다 — 좁은 폭에서 오른쪽에 빈 칸이 남지 않는다.
  */
 .dash-kpis {
+  --dash-kpi-corner: calc(var(--radius-md) - 1px);
+
   display: flex;
   flex-wrap: wrap;
   gap: 1px;
   border: 1px solid var(--outline-variant);
   border-radius: var(--radius-md);
   background: var(--outline-variant);
-  overflow: hidden;
+}
+
+/*
+ * ⛔ 띠에 `overflow: hidden` 을 두지 않는다 — 둥근 모서리를 자르려고 뒀더니 칸 안 설명 단추의 툴팁
+ * (DS Tooltip 은 칸 안에 그려지고 포털 옵션이 없다)까지 잘려 위쪽이 가려졌다(사용자 보고 2026-10-16).
+ * 대신 모서리에 닿는 칸만 같은 반경으로 깎는다.
+ */
+.dash-kpis > :first-child {
+  border-start-start-radius: var(--dash-kpi-corner);
+  border-end-start-radius: var(--dash-kpi-corner);
+}
+
+.dash-kpis > :last-child {
+  border-start-end-radius: var(--dash-kpi-corner);
+  border-end-end-radius: var(--dash-kpi-corner);
+}
+
+.dash-kpi-main > :first-child {
+  border-start-start-radius: var(--dash-kpi-corner);
+  border-end-start-radius: var(--dash-kpi-corner);
 }
 
 .dash-kpis > * {
@@ -7857,6 +7878,9 @@ dl.filter-bar.approval-inbox-detail-facts {
 }
 
 .dash-kpi-label {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
   font: var(--type-label-lg);
   letter-spacing: var(--type-label-lg-tracking);
   color: var(--on-surface);
@@ -7932,11 +7956,39 @@ dl.filter-bar.approval-inbox-detail-facts {
   .dash-kpi-main {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+
+  /* 2×2 — 왼쪽 아래 모서리는 셋째 칸이 맡는다. */
+  .dash-kpi-main > :first-child {
+    border-end-start-radius: 0;
+  }
+
+  .dash-kpi-main > :nth-child(3) {
+    border-end-start-radius: var(--dash-kpi-corner);
+  }
 }
 
 @container (max-width: 620px) {
   .dash-kpis-overview {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  /* 세로로 쌓기 — 위 두 모서리는 본 칸 묶음, 아래 두 모서리는 보조 목록. */
+  .dash-kpis-overview > .dash-kpi-main {
+    border-start-end-radius: var(--dash-kpi-corner);
+    border-end-start-radius: 0;
+  }
+
+  .dash-kpis-overview > .dash-kpi-aux {
+    border-start-end-radius: 0;
+    border-end-start-radius: var(--dash-kpi-corner);
+  }
+
+  .dash-kpi-main > :nth-child(2) {
+    border-start-end-radius: var(--dash-kpi-corner);
+  }
+
+  .dash-kpi-main > :nth-child(3) {
+    border-end-start-radius: 0;
   }
 }
 
@@ -7959,7 +8011,34 @@ dl.filter-bar.approval-inbox-detail-facts {
 }
 
 .dash-kpi-aux-row dt {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  min-width: 0;
   color: var(--on-surface-variant);
+}
+
+/* 「추정」 — 이름 옆 작은 표시. 상태가 아니라 성격 표시라 회색 글자만. */
+.dash-kpi-aux-tag {
+  font: var(--type-label-sm);
+  letter-spacing: var(--type-label-sm-tracking);
+  color: var(--on-surface-muted);
+}
+
+/*
+ * 설명 단추(툴팁) — DS IconButton sm 을 글줄 높이에 맞게 줄인다. 칸 높이가 단추 때문에 늘지 않게.
+ * 누르는 자리는 줄어들지만 키보드 포커스 · 올리기로 같은 툴팁이 열린다.
+ */
+.dash-info {
+  width: 1.25rem;
+  height: 1.25rem;
+  min-width: 0;
+  color: var(--on-surface-muted);
+}
+
+.dash-info .material-symbols-rounded,
+.dash-info span {
+  font-size: 1rem;
 }
 
 /* 설명은 이름 칸에 가두지 않고 보조 열 전체 폭으로 편다. */

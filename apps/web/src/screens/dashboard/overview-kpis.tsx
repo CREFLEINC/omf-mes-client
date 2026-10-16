@@ -9,7 +9,7 @@ import { toDelta } from './delta';
 import type { EquipmentView } from './equipment';
 import { EQUIPMENT_STATUS_TONE } from './equipment-panel';
 import { formatFigure, type DashboardCardView } from './types';
-import { KpiTile } from './viz';
+import { InfoTip, KpiTile } from './viz';
 
 const t = messages.dashboard;
 const k = messages.dashboard.kpi;
@@ -18,6 +18,8 @@ const k = messages.dashboard.kpi;
 const MAIN_CARDS = ['AVAILABILITY_RATE', 'PRODUCTION_QTY'] as const;
 /** 보조 열의 차례 — 시안의 「평균 C/T 달성」 자리에 성능률(표준 C/T 기준)이 먼저 선다. */
 const AUX_ORDER = ['PERFORMANCE_RATE', 'YIELD_RATE', 'OEE', 'UNHANDLED_ALARM'];
+/** 서버가 근사값이라고 밝히는 카드 — 이름 옆에 「추정」을 단다(설명이 올 때만). */
+const ESTIMATED_CARDS = ['PERFORMANCE_RATE', 'OEE'];
 
 /** 카드 값의 표기. ⛔ 값을 낼 수 없는 카드를 0으로 그리지 않는다 — 0은 「가동하지 않았다」로 읽힌다. */
 export const cardValueText = (card: DashboardCardView | undefined): string => {
@@ -27,14 +29,23 @@ export const cardValueText = (card: DashboardCardView | undefined): string => {
   return formatFigure(card.value);
 };
 
-/** 카드 아래 본문 — 직전 기준일 대비 · 서버 사유 · 제외 건수. ⛔ 툴팁이 아니다(분모가 온전하지 않으면 늘 보인다). */
+/** 서버 설명 원문. 비어 있으면 `undefined`. */
+export const serverNoteOf = (card: DashboardCardView | undefined): string | undefined =>
+  card?.note === null || card?.note === undefined || card.note.trim() === ''
+    ? undefined
+    : card.note;
+
+/**
+ * 칸에 늘 보이는 짧은 줄 — 전일 대비 증감 · 제외 건수. ⭐ 서버 설명 원문은 여기 두지 않고 설명 단추의
+ * 툴팁으로 옮긴다(사용자 지시 2026-10-16 · KPI 띠 한정) — 칸 높이가 설명 때문에 늘지 않게.
+ * 분모가 온전하지 않다는 사실(제외 건수)은 짧으므로 칸에 그대로 남긴다.
+ */
 export const cardNoteLines = (card: DashboardCardView | undefined): string[] => {
   if (card === undefined) return [];
   const lines: string[] = [];
-  /* 직전 기준일 대비 증감 — 값을 낼 수 없는 카드에는 무엇 대비인지가 성립하지 않아 두지 않는다. */
+  /* 전일 대비 증감 — 값을 낼 수 없는 카드에는 무엇 대비인지가 성립하지 않아 두지 않는다. */
   const delta = card.valueStatusCode === 'NOT_YET' ? undefined : toDelta(card.deltaRatio);
   if (delta?.label !== undefined) lines.push(delta.label);
-  if (card.note !== null && card.note.trim() !== '') lines.push(card.note);
   if (card.valueStatusCode === 'PARTIAL' && card.excludedCount !== null) {
     lines.push(t.cards.excluded(card.excludedCount));
   }
@@ -43,17 +54,37 @@ export const cardNoteLines = (card: DashboardCardView | undefined): string[] => 
 };
 
 /**
- * 보조 열 설명. 성능률의 화면 쪽 기준 문구(「표준 C/T 기준」)는 **서버 설명이 없을 때만** 붙인다 — 서버가
- * 「표준 C/T 기준 근사값입니다.」를 주면 같은 말이 두 번 섰다(사용자 지적 2026-10-16).
+ * 시간가동률 칸의 짧은 기준 줄 — 「계획 가동시간 기준 · 작업 설비 N대」. 설비 수는 서버 설명 원문에서 읽는다
+ * (「… N대」). 설명이 없으면 기준을 지어내지 않고 줄을 두지 않는다. 대수를 못 읽으면 기준만.
  */
-export const auxNoteLines = (card: DashboardCardView): string[] => {
-  const lines = cardNoteLines(card);
-  const hasServerNote = card.note !== null && card.note.trim() !== '';
+export const availabilityBasis = (card: DashboardCardView | undefined): string | undefined => {
+  const note = serverNoteOf(card);
+  if (note === undefined) return undefined;
+  const count = /(\d[\d,]*)\s*대/.exec(note)?.[1];
 
-  return card.cardCode === 'PERFORMANCE_RATE' && !hasServerNote
-    ? [k.performanceNote, ...lines]
-    : lines;
+  return count === undefined
+    ? k.availabilityBasis
+    : `${k.availabilityBasis} · ${k.workedEquipment(count)}`;
 };
+
+/** 보조 열 이름 — 서버 카드 이름을 쓰되, 뜻을 밝혀야 하는 카드만 화면 이름으로 바꾼다(사용자 지시 2026-10-16). */
+export const auxLabelOf = (card: DashboardCardView): string => {
+  switch (card.cardCode) {
+    case 'PERFORMANCE_RATE':
+      return k.performance;
+    case 'OEE':
+      return k.oee;
+    /* 실제 의미는 로그인 사용자의 안 읽은 알림 수다 — 「미처리 알람」으로 두면 공장 전체 알람으로 읽힌다. */
+    case 'UNHANDLED_ALARM':
+      return k.myUnreadAlerts;
+    default:
+      return card.label;
+  }
+};
+
+/** 보조 열 설명 단추 내용 — 서버 원문. 성능률은 원문이 없으면 화면 쪽 기준(「표준 C/T 기준」). */
+export const auxInfoOf = (card: DashboardCardView): string | undefined =>
+  serverNoteOf(card) ?? (card.cardCode === 'PERFORMANCE_RATE' ? k.performanceNote : undefined);
 
 const unitOf = (card: DashboardCardView | undefined): string | undefined =>
   card === undefined || card.valueStatusCode === 'NOT_YET' ? undefined : (card.unit ?? undefined);
@@ -76,7 +107,7 @@ const Linked = ({
     </Link>
   );
 
-/** NG · 불량률 표기 — 음수 NG 도 그대로 적는다(재작업 합격분이 많은 날 · 깎지 않는다). */
+/** 불량 수 표기 — 음수도 그대로 적는다(재작업 합격분이 많은 날 · 깎지 않는다). */
 const qtyOrNone = (value: number | null | undefined): string =>
   value === null || value === undefined ? k.none : formatFigure(value);
 
@@ -84,19 +115,19 @@ export interface OverviewKpisProps {
   cards: DashboardCardView[];
   equipment: EquipmentView | null;
   production: DashboardProduction | null;
-  asOfTime: string | null;
   isLoading: boolean;
   axes: URLSearchParams;
   routes: CardRouteTable;
 }
 
 /**
- * 대시보드 탭의 KPI 띠(⭐ 사용자 지시 2026-10-16, 시안 v1.3 기준 재구성).
+ * 대시보드 탭의 KPI 띠(⭐ 사용자 지시 2026-10-16, 시안 v1.3 기준 재구성 · 같은 날 문구 · 밀도 개선).
  *
- * 가동/전체(+ 정지 · 대기 · 교체 · 비가동 태그) · 종합 가동률 · 금일 총생산(아래 NG) · 종합 불량률, 그리고
- * 오른쪽 보조 열에 성능률(표준 C/T 기준) · 양품률 · OEE · 미처리 알람 · 총 NG · 최근 갱신.
+ * 가동 설비(+ 정지 · 대기 · 교체 · 비가동 태그) · 시간가동률 · 생산 수량(아래 불량) · 종합 불량률, 그리고
+ * 오른쪽 보조 목록에 성능률 · 양품률 · OEE · 내 미확인 알림 · 총 불량. 「최근 갱신」은 조건 줄의 「마지막
+ * 갱신」과 같은 정보라 두지 않는다. 이 띠에서는 「NG」라는 말을 쓰지 않는다(「불량」).
  *
- * ⭐ 종합 불량률 · 총 NG 는 **summary 의 `production` 섹션**(공장 단위)이다 — 설비 합계로 계산하지 않는다
+ * ⭐ 종합 불량률 · 총 불량은 **summary 의 `production` 섹션**(공장 단위)이다 — 설비 합계로 계산하지 않는다
  * (설비 미지정 실적이 빠진다 · 2026-10-16 결정). 섹션이 없으면(서버 배포 전) 그 칸만 「—」.
  *
  * 카드는 여전히 **서버가 준 것만** 그린다 — 자리가 정해지지 않은 새 카드는 보조 열 끝에 붙는다.
@@ -105,7 +136,6 @@ export const OverviewKpis = ({
   cards,
   equipment,
   production,
-  asOfTime,
   isLoading,
   axes,
   routes,
@@ -168,24 +198,26 @@ export const OverviewKpis = ({
         <Linked path={pathOf(availability)} label={availability?.label ?? k.availability}>
           <KpiTile
             label={availability?.label ?? k.availability}
+            info={serverNoteOf(availability)}
             tag={k.tagToday}
             value={cardValueText(availability)}
             unit={unitOf(availability)}
           >
-            {[k.availabilityNote, ...cardNoteLines(availability)].map((line) => (
-              <span key={line}>{line}</span>
-            ))}
+            {[availabilityBasis(availability), ...cardNoteLines(availability)].map(
+              (line) => line !== undefined && <span key={line}>{line}</span>,
+            )}
           </KpiTile>
         </Linked>
 
         <Linked path={pathOf(productionQty)} label={productionQty?.label ?? k.productionQty}>
           <KpiTile
             label={productionQty?.label ?? k.productionQty}
+            info={serverNoteOf(productionQty)}
             tag={k.tagToday}
             value={cardValueText(productionQty)}
             unit={unitOf(productionQty)}
           >
-            {[k.ngLine(qtyOrNone(production?.ngQty)), ...cardNoteLines(productionQty)].map(
+            {[k.defectLine(qtyOrNone(production?.ngQty)), ...cardNoteLines(productionQty)].map(
               (line) => (
                 <span key={line}>{line}</span>
               ),
@@ -195,6 +227,7 @@ export const OverviewKpis = ({
 
         <KpiTile
           label={k.defectRate}
+          info={k.defectRateFormula}
           tag={k.tagToday}
           value={qtyOrNone(production?.defectRate)}
           unit={production?.defectRate === null || production === null ? undefined : '%'}
@@ -204,38 +237,49 @@ export const OverviewKpis = ({
       </div>
 
       {/*
-       * 보조 열 — 줄마다 「이름 … 값」 한 줄, 그 아래 설명을 보조 열 전체 폭으로 편다. 이름 칸 폭에 설명을
-       * 가두면 줄이 서너 번 꺾여 띠 전체가 그만큼 높아졌다(실데이터 확인 · 328px).
+       * 보조 목록 — 줄마다 「이름(+추정 · 설명 단추) … 값」 한 줄. 긴 설명은 설명 단추의 툴팁으로 두고(원문
+       * 그대로), 칸에는 짧은 보조 한 줄만 남긴다 — 제외 건수 · 「전체 공장」.
        */}
       <dl className="dash-kpi-aux">
-        {auxCards.map((card) => (
-          <div key={card.cardCode} className="dash-kpi-aux-row">
-            <dt>{card.cardCode === 'PERFORMANCE_RATE' ? k.performance : card.label}</dt>
-            <dd>
-              <Linked path={pathOf(card)} label={card.label}>
-                {cardValueText(card)}
-                {unitOf(card) !== undefined && (
-                  <span className="dash-kpi-unit">{unitOf(card)}</span>
+        {auxCards.map((card) => {
+          const label = auxLabelOf(card);
+          const info = auxInfoOf(card);
+          const subLines = [
+            ...(card.cardCode === 'UNHANDLED_ALARM' ? [k.allPlants] : []),
+            ...cardNoteLines(card),
+          ];
+
+          return (
+            <div key={card.cardCode} className="dash-kpi-aux-row">
+              <dt>
+                {label}
+                {ESTIMATED_CARDS.includes(card.cardCode) && serverNoteOf(card) !== undefined && (
+                  <span className="dash-kpi-aux-tag">{k.estimated}</span>
                 )}
-              </Linked>
-            </dd>
-            {auxNoteLines(card).map((line) => (
-              <dd key={line} className="dash-kpi-aux-note">
-                {line}
+                {info !== undefined && <InfoTip label={t.viz.infoLabel(label)} content={info} />}
+              </dt>
+              <dd>
+                <Linked path={pathOf(card)} label={card.label}>
+                  {cardValueText(card)}
+                  {unitOf(card) !== undefined && (
+                    <span className="dash-kpi-unit">{unitOf(card)}</span>
+                  )}
+                </Linked>
               </dd>
-            ))}
-          </div>
-        ))}
+              {subLines.map((line) => (
+                <dd key={line} className="dash-kpi-aux-note">
+                  {line}
+                </dd>
+              ))}
+            </div>
+          );
+        })}
         <div className="dash-kpi-aux-row">
-          <dt>{k.totalNg}</dt>
+          <dt>{k.totalDefect}</dt>
           <dd className={(production?.ngQty ?? 0) > 0 ? 'dash-tone-error' : undefined}>
             {qtyOrNone(production?.ngQty)}
             {production !== null && <span className="dash-kpi-unit">EA</span>}
           </dd>
-        </div>
-        <div className="dash-kpi-aux-row">
-          <dt>{k.lastUpdated}</dt>
-          <dd>{asOfTime ?? k.none}</dd>
         </div>
       </dl>
     </div>

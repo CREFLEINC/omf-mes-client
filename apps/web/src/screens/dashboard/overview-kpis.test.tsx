@@ -1,17 +1,19 @@
 import { messages } from '@omf-mes/i18n';
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router';
 import { describe, expect, it } from 'vitest';
 
 import { toEquipmentView } from './equipment';
-import { OverviewKpis, auxNoteLines } from './overview-kpis';
+import { OverviewKpis, availabilityBasis, auxInfoOf } from './overview-kpis';
 import type { DashboardCardView } from './types';
 
 const k = messages.dashboard.kpi;
+const v = messages.dashboard.viz;
 
 const card = (overrides: Partial<DashboardCardView>): DashboardCardView => ({
   cardCode: 'PRODUCTION_QTY',
-  label: '금일 총생산',
+  label: '생산 수량',
   value: 4321,
   unit: 'EA',
   deltaRatio: null,
@@ -21,13 +23,29 @@ const card = (overrides: Partial<DashboardCardView>): DashboardCardView => ({
   ...overrides,
 });
 
+const AVAILABILITY_NOTE = '계획 가동시간 기준입니다(시험 설명). 작업한 설비 7대.';
+const OEE_NOTE = '표준 C/T 기준 근사값입니다.';
+const ALARM_NOTE = '내가 읽지 않은 알림 기준입니다 — 공장 조건은 적용되지 않습니다.';
+
 const cards = [
-  card({}),
-  card({ cardCode: 'AVAILABILITY_RATE', label: '가동률', value: 81.2, unit: '%' }),
-  card({ cardCode: 'PERFORMANCE_RATE', label: '성능률', value: 92.5, unit: '%' }),
+  card({ deltaRatio: 0 }),
+  card({
+    cardCode: 'AVAILABILITY_RATE',
+    label: '시간가동률',
+    value: 81.2,
+    unit: '%',
+    note: AVAILABILITY_NOTE,
+  }),
+  card({ cardCode: 'PERFORMANCE_RATE', label: '성능률', value: 92.5, unit: '%', note: OEE_NOTE }),
   card({ cardCode: 'YIELD_RATE', label: '양품률', value: 96.4, unit: '%' }),
-  card({ cardCode: 'OEE', label: 'OEE', value: 0, unit: '%', valueStatusCode: 'NOT_YET' }),
-  card({ cardCode: 'UNHANDLED_ALARM', label: '미처리 알람', value: 2, unit: '건' }),
+  card({ cardCode: 'OEE', label: 'OEE', value: 47.9, unit: '%', note: OEE_NOTE }),
+  card({
+    cardCode: 'UNHANDLED_ALARM',
+    label: '미처리 알람',
+    value: 2,
+    unit: '건',
+    note: ALARM_NOTE,
+  }),
 ];
 
 const equipment = toEquipmentView({
@@ -36,14 +54,16 @@ const equipment = toEquipmentView({
   items: [],
 });
 
-const renderKpis = (production: Parameters<typeof OverviewKpis>[0]['production']) =>
+const renderKpis = (
+  production: Parameters<typeof OverviewKpis>[0]['production'],
+  list: DashboardCardView[] = cards,
+) =>
   render(
     <MemoryRouter>
       <OverviewKpis
-        cards={cards}
+        cards={list}
         equipment={equipment}
         production={production}
-        asOfTime="09:20"
         isLoading={false}
         axes={new URLSearchParams()}
         routes={{}}
@@ -51,55 +71,71 @@ const renderKpis = (production: Parameters<typeof OverviewKpis>[0]['production']
     </MemoryRouter>,
   );
 
+const PRODUCTION = { totalQty: 4321, goodQty: 4200, ngQty: 112, holdQty: 9, defectRate: 2.6 };
+
+/** KPI 띠 문구 · 밀도(사용자 지시 2026-10-16) — 긴 설명은 툴팁, 칸에는 짧은 한 줄. 「NG」를 쓰지 않는다. */
 describe('OverviewKpis', () => {
-  it('가동/전체 · 상태 태그 · 가동률 · 총생산(아래 NG) · 종합 불량률은 production 섹션 값', () => {
-    renderKpis({ totalQty: 4321, goodQty: 4200, ngQty: 97, holdQty: 24, defectRate: 2.6 });
+  it('가동 설비 · 상태 태그 · 시간가동률(짧은 기준 줄) · 생산 수량(불량 · 전일 대비) · 종합 불량률', () => {
+    renderKpis(PRODUCTION);
 
     expect(screen.getByRole('group', { name: k.runningOfTotal })).toHaveTextContent('5 / 7');
     expect(
       screen.getByText(`${messages.dashboard.equipment.status.STOPPED} 1`),
     ).toBeInTheDocument();
-    expect(screen.getByRole('group', { name: '가동률' })).toHaveTextContent('81.2');
-    expect(screen.getByRole('group', { name: '금일 총생산' })).toHaveTextContent(k.ngLine('97'));
-    expect(screen.getByRole('group', { name: k.defectRate })).toHaveTextContent('2.6');
+    const availability = screen.getByRole('group', { name: '시간가동률' });
+    expect(availability).toHaveTextContent(`${k.availabilityBasis} · ${k.workedEquipment('7')}`);
+    /* 서버 설명 원문은 칸에 펼치지 않는다(툴팁으로). 「금일 누계」는 「금일」 표시와 겹쳐 없앴다. */
+    expect(availability).not.toHaveTextContent('시험 설명');
+    expect(availability).not.toHaveTextContent('누계');
+    const production = screen.getByRole('group', { name: '생산 수량' });
+    expect(production).toHaveTextContent(k.defectLine('112'));
+    expect(production).toHaveTextContent(messages.dashboard.cards.deltaFlat);
+    expect(screen.getByRole('group', { name: k.defectRate })).toHaveTextContent(k.defectRateNote);
   });
 
-  it('보조 열 — 성능률(표준 C/T 기준) · 양품률 · OEE(값 없음은 0이 아님) · 미처리 알람 · 총 NG · 최근 갱신', () => {
-    renderKpis({ totalQty: 4321, goodQty: 4200, ngQty: 97, holdQty: 24, defectRate: 2.6 });
+  it('⛔ KPI 띠에는 「NG」 · 「최근 갱신」이 없다', () => {
+    const { container } = renderKpis(PRODUCTION);
+
+    expect(container.textContent).not.toContain('NG');
+    expect(container.textContent).not.toContain('최근 갱신');
+  });
+
+  it('보조 목록 — 성능률 · 양품률 · OEE(설비종합효율) · 내 미확인 알림(전체 공장) · 총 불량, 근사값엔 「추정」', () => {
+    renderKpis(PRODUCTION);
 
     expect(screen.getByText(k.performance)).toBeInTheDocument();
-    expect(screen.getByText(k.performanceNote)).toBeInTheDocument();
-    expect(screen.getByText('양품률')).toBeInTheDocument();
-    expect(screen.getByText(messages.dashboard.cards.notYet)).toBeInTheDocument();
-    expect(screen.getByText('미처리 알람')).toBeInTheDocument();
-    expect(screen.getByText(k.totalNg).closest('div')).toHaveTextContent('97');
-    expect(screen.getByText('09:20')).toBeInTheDocument();
+    expect(screen.getByText(k.oee)).toBeInTheDocument();
+    expect(screen.getAllByText(k.estimated)).toHaveLength(2);
+    expect(screen.getByText(k.myUnreadAlerts)).toBeInTheDocument();
+    expect(screen.getByText(k.allPlants)).toBeInTheDocument();
+    expect(screen.getByText(k.totalDefect).closest('div')).toHaveTextContent('112');
   });
 
-  it('음수 NG 도 깎지 않고 그대로, production 섹션이 없으면 종합 불량률 · 총 NG 만 「—」', () => {
-    const { unmount } = renderKpis({
-      totalQty: 10,
-      goodQty: 15,
-      ngQty: -5,
-      holdQty: 0,
-      defectRate: null,
-    });
-    expect(screen.getByText(k.totalNg).closest('div')).toHaveTextContent('-5');
+  it('설명 단추를 올리면 서버 설명 원문이 툴팁으로 나온다 — 정보가 사라지지 않는다', async () => {
+    const user = userEvent.setup();
+    renderKpis(PRODUCTION);
+
+    await user.hover(screen.getByRole('button', { name: v.infoLabel(k.myUnreadAlerts) }));
+    expect(await screen.findByText(ALARM_NOTE)).toBeInTheDocument();
+  });
+
+  it('설명 원문 · 기준 줄 계산', () => {
+    expect(auxInfoOf(card({ cardCode: 'PERFORMANCE_RATE', note: null }))).toBe(k.performanceNote);
+    expect(auxInfoOf(card({ cardCode: 'OEE', note: OEE_NOTE }))).toBe(OEE_NOTE);
+    expect(availabilityBasis(card({ note: null }))).toBeUndefined();
+    expect(availabilityBasis(card({ note: '대수 없는 설명' }))).toBe(k.availabilityBasis);
+  });
+
+  it('음수 불량도 깎지 않고 그대로, production 섹션이 없으면 종합 불량률 · 총 불량만 「—」', () => {
+    const { unmount } = renderKpis({ ...PRODUCTION, ngQty: -5, defectRate: null });
+    expect(screen.getByText(k.totalDefect).closest('div')).toHaveTextContent('-5');
     unmount();
 
     renderKpis(null);
     expect(screen.getByRole('group', { name: k.defectRate })).toHaveTextContent(k.none);
-    expect(screen.getByText(k.totalNg).closest('div')).toHaveTextContent(k.none);
-    expect(screen.getByRole('group', { name: '가동률' })).toHaveTextContent('81.2');
-  });
-
-  it('성능률의 「표준 C/T 기준」은 서버 설명이 없을 때만 — 서버 설명이 오면 한 번만 보인다', () => {
-    const performance = card({ cardCode: 'PERFORMANCE_RATE', label: '성능률', note: null });
-
-    expect(auxNoteLines(performance)).toEqual([k.performanceNote]);
-    expect(auxNoteLines({ ...performance, note: '서버 설명' })).toEqual(['서버 설명']);
-    expect(auxNoteLines(card({ cardCode: 'OEE', label: 'OEE', note: '서버 설명' }))).toEqual([
-      '서버 설명',
-    ]);
+    expect(screen.getByText(k.totalDefect).closest('div')).toHaveTextContent(k.none);
+    expect(
+      within(screen.getByRole('group', { name: '시간가동률' })).getByText('81.2'),
+    ).toBeInTheDocument();
   });
 });

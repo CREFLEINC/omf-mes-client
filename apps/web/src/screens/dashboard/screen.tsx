@@ -129,7 +129,6 @@ export const DashboardScreen = () => {
         cards={cards}
         equipment={view?.equipment ?? null}
         production={view?.production ?? null}
-        asOfTime={lastUpdatedText}
         isLoading={summary.isPending}
         axes={axes}
         routes={CARD_ROUTES}

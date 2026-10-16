@@ -33,7 +33,7 @@ export const toDelta = (deltaRatio: number | null): StatCardDelta | undefined =>
 
   if (settled < 0) {
     /* 부호는 숫자가 이미 달고 있다 — 여기서 다시 붙이면 「--0.8%」가 된다. */
-    return { direction: 'down', value: text, label: t.cards.deltaDown(text) };
+    return { direction: 'down', value: text, label: t.cards.deltaDown(text.replace(/^-/, '')) };
   }
 
   return { direction: 'flat', value: text, label: t.cards.deltaFlat };

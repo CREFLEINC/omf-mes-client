@@ -41,9 +41,10 @@ export const dashboard = {
     notYet: '아직 없음',
     /** 분모에서 뺀 것이 있는 카드. 뺐다는 사실을 카드 본문에 적는다. */
     excluded: (count: number): string => `${String(count)}건 제외`,
-    deltaUp: (text: string): string => `직전 기준일 대비 ${text} 상승`,
-    deltaDown: (text: string): string => `직전 기준일 대비 ${text} 하락`,
-    deltaFlat: '직전 기준일과 같음',
+    /** 기준일 전날 대비(서버 규칙) — 「전일 대비 ▲ 4%」. */
+    deltaUp: (text: string): string => `전일 대비 ▲ ${text}`,
+    deltaDown: (text: string): string => `전일 대비 ▼ ${text}`,
+    deltaFlat: '전일 대비 동일',
     /** 카드를 눌러 소유 화면으로 갈 수 있을 때. */
     openHint: (label: string): string => `${label} 상세 화면으로 이동`,
   },
@@ -171,18 +172,27 @@ export const dashboard = {
     none: '—',
     tagLive: '실시간',
     tagToday: '금일',
-    runningOfTotal: '가동 / 전체',
-    availability: '종합 가동률',
-    availabilityNote: '금일 누계',
-    productionQty: '금일 총생산',
-    ngLine: (qty: string): string => `NG ${qty} EA`,
+    runningOfTotal: '가동 설비',
+    availability: '시간가동률',
+    /** 서버 설명이 올 때만 쓰는 짧은 기준 줄(원문은 설명 단추의 툴팁). */
+    availabilityBasis: '계획 가동시간 기준',
+    workedEquipment: (count: string): string => `작업 설비 ${count}대`,
+    productionQty: '생산 수량',
+    /** 이 띠에서는 「NG」 대신 「불량」(사용자 지시 2026-10-16). */
+    defectLine: (qty: string): string => `불량 ${qty} EA`,
     defectRate: '종합 불량률',
-    defectRateNote: 'NG ÷ 총생산',
+    defectRateNote: '생산 수량 중 불량 비율',
+    defectRateFormula: '불량 수량 ÷ 총생산 수량',
     /** 시안의 「평균 C/T 달성」 자리 — 실측 C/T 가 없어 표준 C/T 기준 성능률을 둔다. */
     performance: '성능률',
     performanceNote: '표준 C/T 기준',
-    totalNg: '총 NG',
-    lastUpdated: '최근 갱신',
+    estimated: '추정',
+    oee: 'OEE(설비종합효율)',
+    /** 실제 의미는 로그인 사용자의 안 읽은 알림 수다. */
+    myUnreadAlerts: '내 미확인 알림',
+    /** 공장 조건이 적용되지 않는 값임을 짧게. */
+    allPlants: '전체 공장',
+    totalDefect: '총 불량',
   },
 
   /** 대시보드 그림 부품(순위 막대 · 누적 막대 · 꺾은선 · 파레토)의 공통 문구. */
@@ -191,6 +201,7 @@ export const dashboard = {
     /** 불량 기록 등이 아직 쌓이지 않아 빈 배열이 온다. */
     noRecordsTitle: '기록 없음',
     noRecords: '아직 집계할 기록이 없습니다.',
+    infoLabel: (name: string): string => `${name} 설명`,
     noRates: '이 기간에 합격률을 낼 수 있는 날이 없습니다.',
     dateColumn: '일자',
     itemColumn: '항목',
