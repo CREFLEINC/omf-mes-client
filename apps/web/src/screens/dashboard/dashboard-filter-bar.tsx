@@ -53,76 +53,72 @@ export const DashboardFilterBar = ({
   const noteId = `${baseDateId}-manual`;
 
   return (
-    /*
-     * 안내는 `.filter-bar` **밖**에 둔다 — 그 클래스는 컨트롤을 한 줄로 늘어놓는 flex라
-     * 안에 넣으면 문장이 칸 하나로 끼어들어 컨트롤 사이에 선다.
-     */
-    <>
-      <div className="filter-bar dashboard-filter-bar">
-        <div className="field-cell">
-          <FieldLabel htmlFor={baseDateId} label={t.filters.baseDate} />
-          {/*
-           * 기준 날짜를 비울 수 있게 둔다(`clearable`) — 비우면 서버가 오늘로 정한다.
-           * 화면이 「오늘」을 계산하지 않으므로 비움이 곧 「오늘」이고, 그 길을 막으면 한 번
-           * 날짜를 고른 뒤에는 오늘로 돌아올 방법이 칸 안에 없어진다.
-           */}
-          <DatePicker
-            id={baseDateId}
-            mode="single"
-            clearable
-            placeholder={messages.common.selectDate}
-            value={filters.baseDate === '' ? null : filters.baseDate}
-            onChange={(value) => {
-              onChange({ ...filters, baseDate: value ?? '' });
-            }}
-          />
-        </div>
-
-        <SelectField
-          label={t.filters.plant}
-          options={[{ value: '', label: t.filters.allPlants }, ...plantOptions]}
-          value={filters.plant}
-          note={plantNote}
-          placeholder={t.filters.allPlants}
-          wide
+    <div className="filter-bar dashboard-filter-bar">
+      <div className="field-cell">
+        <FieldLabel htmlFor={baseDateId} label={t.filters.baseDate} />
+        {/*
+         * 기준 날짜를 비울 수 있게 둔다(`clearable`) — 비우면 서버가 오늘로 정한다.
+         * 화면이 「오늘」을 계산하지 않으므로 비움이 곧 「오늘」이고, 그 길을 막으면 한 번
+         * 날짜를 고른 뒤에는 오늘로 돌아올 방법이 칸 안에 없어진다.
+         */}
+        <DatePicker
+          id={baseDateId}
+          mode="single"
+          clearable
+          placeholder={messages.common.selectDate}
+          value={filters.baseDate === '' ? null : filters.baseDate}
           onChange={(value) => {
-            onChange({ ...filters, plant: value });
+            onChange({ ...filters, baseDate: value ?? '' });
           }}
         />
-
-        {/* 라벨 층만큼 내려 입력칸 줄에 맞춘다 — 라벨 없는 단추가 라벨 높이에 떠 있지 않게. */}
-        <div className="filter-actions dashboard-filter-actions">
-          {/*
-           * 안내를 **이 버튼에** 잇는다. 줄을 감싼 `div`에 붙이면 역할이 없는 요소라 보조 기술이
-           * 읽지 않는다 — 갱신 주기(omf-all-around#115)와 「바로 보려면 이 버튼」이라는 사실이 이
-           * 버튼을 두는 이유이므로, 그 사실이 닿아야 할 자리도 여기다.
-           */}
-          {/*
-           * ⭐ 입력칸과 같은 높이 · 모서리 · 테두리, 기본 글자색(사용자 지시 2026-10-16). DS `outlined` 의
-           * 빨간 글자(`--primary-text`)와 둥근 알약 모양만 `.dashboard-refresh-button` 이 덮는다.
-           * 재조회 중에는 막고(로딩) — 자동 갱신이 도는 순간에 눌러도 요청이 겹치지 않는다.
-           */}
-          <Button
-            variant="outlined"
-            className="dashboard-refresh-button"
-            leadingIcon={<Icon name="refresh" size={18} />}
-            onClick={onRefresh}
-            disabled={isRefreshing}
-            loading={isRefreshing}
-            aria-describedby={noteId}
-          >
-            {t.filters.refresh}
-          </Button>
-        </div>
       </div>
 
-      <p id={noteId} className="dashboard-refresh-status">
-        {[
-          t.filters.autoRefresh(DASHBOARD_REFRESH_INTERVAL_MS / 60_000),
-          ...(lastUpdatedText === null ? [] : [t.filters.lastUpdated(lastUpdatedText)]),
-          ...(isStale ? [t.filters.refreshFailed] : []),
-        ].join(' · ')}
-      </p>
-    </>
+      <SelectField
+        label={t.filters.plant}
+        options={[{ value: '', label: t.filters.allPlants }, ...plantOptions]}
+        value={filters.plant}
+        note={plantNote}
+        placeholder={t.filters.allPlants}
+        wide
+        onChange={(value) => {
+          onChange({ ...filters, plant: value });
+        }}
+      />
+
+      {/*
+       * ⭐ 오른쪽 묶음 — 갱신 안내 + 「갱신」(사용자 지시 2026-10-16). 왼쪽 필터와 역할을 나눠 줄 오른쪽 끝에
+       * 선다. 좁으면 묶음째 다음 줄로 내려간다(안내와 단추는 떨어지지 않는다). 줄은 아래 기준선으로
+       * 맞춰 입력칸과 같은 줄에 선다(`app.css` `.dashboard-filter-bar`).
+       */}
+      <div className="filter-actions dashboard-filter-actions">
+        {/*
+         * 안내를 **이 버튼에** 잇는다(`aria-describedby`) — 갱신 주기와 마지막 갱신은 이 버튼을 누를지
+         * 정하는 정보다.
+         */}
+        <p id={noteId} className="dashboard-refresh-status">
+          {[
+            t.filters.autoRefresh(DASHBOARD_REFRESH_INTERVAL_MS / 60_000),
+            ...(lastUpdatedText === null ? [] : [t.filters.lastUpdated(lastUpdatedText)]),
+            ...(isStale ? [t.filters.refreshFailed] : []),
+          ].join(' · ')}
+        </p>
+        {/*
+         * ⭐ 입력칸과 같은 높이 · 모서리 · 테두리, 기본 글자색(사용자 지시 2026-10-16). DS `outlined` 의
+         * 빨간 글자(`--primary-text`)와 둥근 알약 모양만 `.dashboard-refresh-button` 이 덮는다.
+         * 재조회 중에는 막고(로딩) — 자동 갱신이 도는 순간에 눌러도 요청이 겹치지 않는다.
+         */}
+        <Button
+          variant="outlined"
+          className="dashboard-refresh-button"
+          leadingIcon={<Icon name="refresh" size={18} />}
+          onClick={onRefresh}
+          disabled={isRefreshing}
+          loading={isRefreshing}
+          aria-describedby={noteId}
+        >
+          {t.filters.refresh}
+        </Button>
+      </div>
+    </div>
   );
 };
