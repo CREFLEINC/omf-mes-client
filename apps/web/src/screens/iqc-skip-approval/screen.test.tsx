@@ -2719,3 +2719,56 @@ describe('결재 — 상세를 읽을 수 없게 된 뒤', () => {
     expect(screen.queryByRole('dialog')).toBeNull();
   });
 });
+
+/* omf-all-around#105 — 승인된 IQC 생략은 별도 «실행»이 LOT 을 옮긴다(서버 선행 P-36). */
+describe('IqcSkipApprovalScreen — IQC 생략 실행', () => {
+  const approvedDetail = {
+    ...contradictoryDetail,
+    request: {
+      ...contradictoryDetail.request,
+      statusCode: 'APPROVED',
+      isMyTurn: false,
+      target: {
+        targetTypeCode: 'INBOUND_LOT' as const,
+        targetId: 9401,
+        displayName: '합성 LOT',
+        openable: false,
+      },
+    },
+  };
+  const approvedDetailRoute = (): StubRoute => ({
+    match: (request) => isDetailPath(new URL(request.url).pathname),
+    respond: () => jsonResponse(approvedDetail, { headers: { ETag: '"3"' } }),
+  });
+  const skipRoute = (): StubRoute => ({
+    match: (request) => new URL(request.url).pathname === '/trace/lots/9401:skip-iqc',
+    respond: () => jsonResponse({ lot: { lotId: 9401 }, externalIdentifiers: [], holds: [] }),
+  });
+
+  it('승인된 입하 LOT 요청이면 실행 구획이 서고, 확인 뒤 그 LOT 으로 실행을 보낸다', async () => {
+    const { requests, user } = renderScreen(
+      [listRoute(requestFixtures), approvedDetailRoute(), skipRoute()],
+      '?rq=9001',
+    );
+
+    const pane = await screen.findByRole('region', { name: t.skipExecute.heading });
+    await user.click(within(pane).getByRole('button', { name: t.skipExecute.action }));
+    const dialog = await screen.findByRole('dialog');
+    await user.click(within(dialog).getByRole('button', { name: t.skipExecute.action }));
+
+    await screen.findByText(t.skipExecute.done);
+    const posts = requests.filter(
+      (request) => request.url.pathname === '/trace/lots/9401:skip-iqc',
+    );
+    expect(posts).toHaveLength(1);
+    expect(posts[0]?.method).toBe('POST');
+    expect(posts[0]?.headers.get('Idempotency-Key')).not.toBeNull();
+  });
+
+  it('승인 전 요청에는 실행 구획이 없다', async () => {
+    renderScreen([listRoute(requestFixtures), detailRoute()], '?rq=9001');
+
+    await screen.findByRole('group', { name: t.panes.decision });
+    expect(screen.queryByRole('region', { name: t.skipExecute.heading })).toBeNull();
+  });
+});

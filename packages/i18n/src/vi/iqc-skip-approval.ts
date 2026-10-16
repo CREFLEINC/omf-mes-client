@@ -126,6 +126,16 @@ export const iqcSkipApproval: Translated<typeof ko.iqcSkipApproval> = {
     commentRecorded: 'Ý kiến này được lưu vào hồ sơ phê duyệt.',
     irreversible: 'Phê duyệt không hoàn tác được. Muốn lật lại thì phải trình một yêu cầu mới.',
   },
+  skipExecute: {
+    heading: 'Thực hiện bỏ qua IQC',
+    note: 'Yêu cầu đã được phê duyệt. Khi thực hiện, yêu cầu kiểm tra đầu vào của LOT này sẽ được bỏ qua, lệnh giữ chờ kiểm tra được gỡ và LOT chuyển sang bình thường.',
+    action: 'Thực hiện bỏ qua IQC',
+    dialogTitle: 'Thực hiện bỏ qua IQC?',
+    dialogBody:
+      'Yêu cầu kiểm tra đầu vào sẽ được bỏ qua và LOT trở về bình thường để có thể nhập kho. Các lệnh giữ khác (nếu có) vẫn giữ nguyên.',
+    irreversible: 'Không thể hoàn tác sau khi thực hiện.',
+    done: 'Đã thực hiện bỏ qua IQC',
+  },
   toast: {
     approved: 'Đã phê duyệt',
     rejected: 'Đã trả lại',

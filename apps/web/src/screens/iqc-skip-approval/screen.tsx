@@ -51,6 +51,7 @@ import { RequestDetailPane } from './request-detail-pane';
 import { RequestFilterBar } from './request-filter-bar';
 import { RequestListPane } from './request-list-pane';
 import { SCREEN_ROUTES } from './screen-routes';
+import { SkipExecutePane } from './skip-execute-pane';
 import { describeTargetName, judgeTargetOpen } from './target';
 import { TargetPane } from './target-pane';
 import {
@@ -65,6 +66,8 @@ import {
 } from './types';
 
 const t = messages.iqcSkipApproval;
+/** 결재 요청 상태 — 승인 완료(시드 `APPROVAL_REQUEST_STATUS`). */
+const APPROVED_STATUS = 'APPROVED';
 
 /** 참조가 매 렌더 새로 만들어지면 이 값을 의존성에 둔 계산이 멈추지 않는다. */
 const EMPTY_ITEMS: ApprovalRequest[] = [];
@@ -372,6 +375,23 @@ export const IqcSkipApprovalScreen = () => {
     knownFields: DECISION_KNOWN_FIELDS,
     onSuccess: (saved) => {
       finishDecision('approve', saved, selectedRequestId ?? 0);
+    },
+  });
+
+  /**
+   * 승인된 생략의 실행(omf-all-around#105 · 서버 선행 P-36). 승인과 별개의 쓰기다 — 승인은 LOT 을
+   * 옮기지 않는다. 대상 LOT 이 바뀌므로 잠금 토큰이 없고, 성공하면 요청 목록·상세를 다시 부른다.
+   */
+  const skipExecuteWrite = useMasterWrite<number, unknown>({
+    request: (lotId, headers) =>
+      client.POST('/trace/lots/{lotId}:skip-iqc', {
+        params: { path: { lotId }, header: { 'Idempotency-Key': headers['Idempotency-Key'] } },
+      }),
+    etagPath: null,
+    invalidateKeys: [iqcSkipApprovalKeys.all],
+    knownFields: [],
+    onSuccess: () => {
+      toast.show({ variant: 'success', description: t.skipExecute.done });
     },
   });
 
@@ -793,6 +813,17 @@ export const IqcSkipApprovalScreen = () => {
           }}
           banner={decisionBanner}
         />
+        {/* 승인된 IQC 생략만 실행할 수 있다 — 대상이 입하 LOT 이 아니면 실행할 것이 없다. */}
+        {request.statusCode === APPROVED_STATUS &&
+          request.target.targetTypeCode === 'INBOUND_LOT' && (
+            <SkipExecutePane
+              isSaving={skipExecuteWrite.isSaving}
+              onExecute={() => {
+                skipExecuteWrite.write(request.target.targetId);
+              }}
+              banner={<SaveErrorBanner error={skipExecuteWrite.error} />}
+            />
+          )}
       </>
     );
   };
