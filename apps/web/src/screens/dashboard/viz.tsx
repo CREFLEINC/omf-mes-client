@@ -65,6 +65,14 @@ export const Panel = ({ title, sub, tag, action, className, children }: PanelPro
 );
 
 /**
+ * 툴팁 글. DS 툴팁은 줄바꿈 없이(nowrap) 그려 긴 설명이 화면 오른쪽 끝을 넘었다(768 폭 실측) — 글에 최대 폭을
+ * 주어 줄을 바꾼다(`.dash-tip-text`). 공용 Tooltip 은 고치지 않는다.
+ */
+const TipText = ({ children }: { children: string }) => (
+  <span className="dash-tip-text">{children}</span>
+);
+
+/**
  * 설명 단추 — 누르거나 올리면 DS 툴팁으로 서버 설명 원문을 보인다. ⭐ KPI 띠에 한해 「상세 설명은
  * 툴팁」을 허용한다(사용자 지시 2026-10-16) — 칸 높이가 설명 때문에 늘지 않게. 원문은 그대로 넣는다.
  */
@@ -72,7 +80,7 @@ export const InfoTip = ({ label, content }: { label: string; content: string }) 
   /*
    * 아래로 연다 — KPI 띠는 화면 맨 위쪽에 있어 위로 열면 스크롤 영역(셸 `main`) 위 끝에 잘린다.
    */
-  <Tooltip content={content} placement="bottom">
+  <Tooltip content={<TipText>{content}</TipText>} placement="bottom">
     <IconButton size="sm" icon="info" className="dash-info" aria-label={label} />
   </Tooltip>
 );
@@ -126,7 +134,7 @@ const RANK_LABEL_TOOLTIP_FROM = 12;
 
 const RankLabel = ({ label }: { label: string }) =>
   label.length > RANK_LABEL_TOOLTIP_FROM ? (
-    <Tooltip content={label} placement="top">
+    <Tooltip content={<TipText>{label}</TipText>} placement="top">
       <span className="dash-rank-label" tabIndex={0}>
         {label}
       </span>

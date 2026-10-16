@@ -214,13 +214,11 @@ const RecentLotsPanel = ({
           {
             key: 'qty',
             header: t.column.qty,
-            align: 'end',
             render: (row) => formatFigure(row.qty),
           },
           {
             key: 'judgment',
             header: t.column.judgment,
-            align: 'center',
             render: (row) => (
               <Chip size="sm" status={JUDGMENT_TONE[row.judgmentCode]}>
                 {t.judgment[row.judgmentCode]}
@@ -379,13 +377,11 @@ export const IqcTab = ({ quality }: { quality: DashboardQuality }) => {
               {
                 key: 'qty',
                 header: t.column.defectQty,
-                align: 'end',
                 render: (row) => formatFigure(row.rejectedQty),
               },
               {
                 key: 'share',
                 header: t.column.share,
-                align: 'end',
                 render: (row) =>
                   vendorTotal === 0
                     ? t.none

@@ -8811,6 +8811,16 @@ dl.filter-bar.approval-inbox-detail-facts {
   padding-block: var(--space-3);
 }
 
+/* 툴팁 글 — 긴 설명은 줄을 바꾼다(DS 툴팁의 nowrap 을 글 안에서만 푼다). */
+.dash-tip-text {
+  display: block;
+  /* 내용만큼 넓어지되 18rem 에서 줄을 바꾼다 — 폭을 주지 않으면 툴팁 상자가 한 글자 폭으로 줄었다. */
+  width: max-content;
+  max-width: min(18rem, 70vw);
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
 .dash-sr-only {
   position: absolute;
   width: 1px;
