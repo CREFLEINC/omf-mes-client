@@ -7964,24 +7964,23 @@ dl.filter-bar.approval-inbox-detail-facts {
   overflow: hidden;
 }
 
+/*
+ * ⭐ 절반 폭 이하는 KPI 줄을 2열로 — 칸 두 개가 각각 절반 폭, 칸 수가 홀수면 마지막 칸만 전체 폭(사용자 지시
+ * 2026-10-16, 「외톨이 줄 금지」보다 우선). 3+2 로 접으면 아래 줄 둘째 칸이 넓게 늘어 어색했다.
+ */
 @container (max-width: 860px) {
-  .dash-kpis:has(> :nth-child(4):last-child) {
+  /* 칸 수 규칙(`:has(…)`)보다 강해야 한다 — 약하면 5칸이 4+1 로 서고 빈 칸이 남았다(960 실측). */
+  .dash-tab .dash-kpis.dash-kpis:not(.dash-kpis-overview) {
     --dash-kpi-cols: 2;
   }
 
-  .dash-kpis:has(> :nth-child(5):last-child),
-  .dash-kpis:has(> :nth-child(6):last-child) {
-    --dash-kpi-cols: 3;
-  }
-
-  /* 5칸 → 3+2 — 마지막 칸이 남은 두 칸 폭을 채워 빈 구멍이 없다. */
-  .dash-kpis:has(> :nth-child(5):last-child) > :last-child {
-    grid-column: span 2;
+  .dash-tab .dash-kpis.dash-kpis:not(.dash-kpis-overview) > :last-child:nth-child(odd) {
+    grid-column: 1 / -1;
   }
 }
 
 @container (max-width: 520px) {
-  .dash-kpis:not(.dash-kpis-overview) {
+  .dash-tab .dash-kpis.dash-kpis:not(.dash-kpis-overview) {
     --dash-kpi-cols: 1;
   }
 
