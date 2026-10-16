@@ -17,6 +17,7 @@ import {
   overallJudgmentCodeValues,
   pageOf,
   queueItems,
+  requestWithoutPlanVersion,
   queueResponse,
   reinspectionRound,
   roundsResponse,
@@ -78,7 +79,9 @@ const renderScreen = (
             new URL(request.url).pathname.startsWith('/quality/inspection-requests/'),
           respond: (request) => {
             const id = Number(new URL(request.url).pathname.split('/').at(-1));
-            const found = queueItems.find((item) => item.inspectionRequestId === id);
+            const found = [...queueItems, requestWithoutPlanVersion].find(
+              (item) => item.inspectionRequestId === id,
+            );
 
             return found === undefined
               ? jsonResponse({ message: '없는 의뢰' }, { status: 404 })
@@ -542,6 +545,21 @@ describe('IqcInspectionScreen', () => {
       .map((url) => url.searchParams.get('codeGroupCode'));
 
     expect(groups).not.toContain(CODE_GROUPS.measurementJudgment);
+  });
+
+  /*
+   * omf-all-around#101 결정 A — 검사기준이 없어도 입하 IQC 의뢰가 선다. 그 의뢰는 측정 항목 없이
+   * 수량·종합 판정만으로 확정할 수 있어야 한다(항목 규격을 부르지 않는다).
+   */
+  it('검사기준이 없는 의뢰도 항목 없이 수량·판정으로 확정한다', async () => {
+    const { sent, writes } = renderScreen('/?ir=1004');
+
+    await screen.findByText(t.result.round(1));
+    await userEvent.click(await screen.findByRole('button', { name: t.result.confirm }));
+
+    await waitFor(() => expect(writes).toHaveLength(1));
+    expect(new URL((writes[0] as Request).url).pathname).toContain(':confirm');
+    expect(sent.some((url) => url.pathname.endsWith('/items'))).toBe(false);
   });
 
   it('확정하면 되돌릴 수 없는 쓰기가 잠금 토큰과 함께 나간다', async () => {
