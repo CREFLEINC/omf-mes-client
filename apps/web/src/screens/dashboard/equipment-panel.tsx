@@ -393,32 +393,15 @@ export const EquipmentBoard = (props: EquipmentPanelProps) => {
          * 전체 설비 보기 — 대시보드 본문에 펼치지 않고 창으로 연다. 지금 고른 라인 · 같은 정렬 그대로이고,
          * 타일을 누르면 같은 상세 창이 그 위에 열린다. 닫아도 대시보드의 라인 선택은 그대로다.
          */}
-        <Dialog
+        <AllEquipmentDialog
           open={isAllOpen}
+          items={shown}
           onClose={() => {
             setIsAllOpen(false);
           }}
-          title={t.allTitle(formatFigure(shown.length))}
-          size="lg"
-          className="dash-eq-all-dialog"
-        >
-          {/* 열 때만 그린다 — 닫힌 창이 120대 타일을 미리 들고 있지 않게. */}
-          {isAllOpen && (
-            <>
-              <StatusLegend items={shown} />
-              <ul className="dash-eq-grid dash-eq-grid-all">
-                {shown.map((item) => (
-                  <EquipmentTile
-                    key={item.equipmentId}
-                    item={item}
-                    onOpen={openTile}
-                    pointerInput={pointerInput}
-                  />
-                ))}
-              </ul>
-            </>
-          )}
-        </Dialog>
+          onOpenTile={openTile}
+          pointerInput={pointerInput}
+        />
         <EquipmentDetailDialog
           item={opened}
           onClose={() => {
@@ -441,6 +424,49 @@ export const EquipmentBoard = (props: EquipmentPanelProps) => {
   );
 };
 
+/** 「전체 설비 보기」 창 — 설비 가동 현황과 가동 외 설비 현황(「외 n대」)이 같은 창을 쓴다. */
+const AllEquipmentDialog = ({
+  open,
+  items,
+  onClose,
+  onOpenTile,
+  pointerInput,
+}: {
+  open: boolean;
+  items: readonly EquipmentItemView[];
+  onClose: () => void;
+  onOpenTile: (item: EquipmentItemView) => void;
+  pointerInput: RefObject<boolean>;
+}) => (
+  <Dialog
+    open={open}
+    onClose={onClose}
+    title={t.allTitle(formatFigure(items.length))}
+    size="lg"
+    className="dash-eq-all-dialog"
+  >
+    {/* 열 때만 그린다 — 닫힌 창이 120대 타일을 미리 들고 있지 않게. */}
+    {open && (
+      <>
+        <StatusLegend items={items} />
+        <ul className="dash-eq-grid dash-eq-grid-all">
+          {items.map((item) => (
+            <EquipmentTile
+              key={item.equipmentId}
+              item={item}
+              onOpen={onOpenTile}
+              pointerInput={pointerInput}
+            />
+          ))}
+        </ul>
+      </>
+    )}
+  </Dialog>
+);
+
+/** 가동 외 설비 현황 — 그룹마다 이만큼만 보이고 나머지는 「외 n대」로 전체 설비 보기 창(사용자 결정 2026-10-16). */
+export const STOPPED_GROUP_PREVIEW_COUNT = 3;
+
 /** 상태별 대수 — 고른 범위(라인) 기준. 필터와 떨어진 오른쪽에 선다. */
 const StatusLegend = ({ items }: { items: readonly EquipmentItemView[] }) => (
   <ul className="dash-eq-legend" aria-label={t.legend}>
@@ -455,10 +481,15 @@ const StatusLegend = ({ items }: { items: readonly EquipmentItemView[] }) => (
 );
 
 /**
- * 멈춘 설비 — 정지 · 대기 · 교체 · 비가동 그룹, 그룹마다 대수, 줄은 호기(톤수) · 사유 · 경과.
- * 그룹 안에서는 **오래 멈춘 것부터**. 공장 전체 기준이다(라인 구분과 상관없다).
+ * 가동 외 설비 현황(⭐ 사용자 결정 2026-10-16 — 이름 · 행 구성 · 그룹당 3행) — 정지 · 대기 · 교체 · 비가동 그룹,
+ * 그룹 머리는 배지 + 대수 한 줄. 줄 = 설비 코드(굵게, 설비 종류는 옆에 작게) · 상태 사유(최대 2줄) · 경과 시간
+ * (오른쪽 같은 폭). 그룹 안에서는 **오래 멈춘 것부터**, 3행을 넘으면 「외 n대」로 전체 설비 보기 창을 연다.
+ * 줄을 누르면 설비 가동 현황과 같은 상세 창. 공장 전체 기준이다(라인 구분과 상관없다).
  */
 export const StoppedPanel = (props: EquipmentPanelProps) => {
+  const [openedId, setOpenedId] = useState<number | null>(null);
+  const [isAllOpen, setIsAllOpen] = useState(false);
+  const pointerInput = usePointerInput();
   const blocked = gate(props);
   const { view } = props;
 
@@ -470,50 +501,105 @@ export const StoppedPanel = (props: EquipmentPanelProps) => {
       return <EmptyLine text={t.stoppedEmpty} />;
     }
 
-    return (
-      <div className="dash-stopped">
-        {EQUIPMENT_STATUS_ORDER.filter((code) => code !== 'RUNNING').map((code) => {
-          const rows = stopped.filter((item) => item.statusCode === code);
-          if (rows.length === 0) return null;
+    const opened = view.items.find((item) => item.equipmentId === openedId) ?? null;
+    const openTile = (target: EquipmentItemView): void => {
+      setOpenedId(target.equipmentId);
+    };
 
-          return (
-            <section key={code} className="dash-stopped-group" aria-label={t.status[code]}>
-              <div className="dash-stopped-head">
-                <StatusChip statusCode={code} />
-                <span className="dash-stopped-count">
-                  {formatFigure(rows.length)} {t.countUnit}
-                </span>
-              </div>
-              {/*
-               * 줄 = 호기 · 상태 사유 · 상태 지속 시간. 모든 묶음이 한 격자의 열을 나눠 쓴다(subgrid) — 묶음마다
-               * 표를 따로 두면 호기 칸 폭이 묶음마다 달라 줄이 들쭉날쭉했다(실데이터 확인 2026-10-16).
-               * ⚠ 대시보드 표의 「가운데 정렬」 규칙에서 뺀다 — 사유는 긴 문장이라 왼쪽에서 읽어야 하고, 지속 시간은
-               * 오른쪽 끝에 맞춰야 위아래로 견준다.
-               */}
-              <ul className="dash-stopped-list" aria-label={t.stoppedGroupCaption(t.status[code])}>
-                {rows.map((item) => (
-                  <li key={item.equipmentId} className="dash-stopped-row">
-                    {/*
-                     * 호기 칸은 코드만 굵게, 설비 종류는 작은 보조 글 — 「PERF-E-17-2 (프레스)」 한 줄이 열을 넓게 먹어
-                     * 사유가 한두 단어씩 꺾였다(1280 확인 2026-10-16). 남는 폭은 사유 열로 간다.
-                     */}
-                    <span className="dash-stopped-unit">
-                      <span className="dash-stopped-code">{item.equipmentCode}</span>
-                      {item.tonnage !== null && (
-                        <span className="dash-stopped-type">{item.tonnage}</span>
-                      )}
-                    </span>
-                    <span className="dash-stopped-reason">{describeReason(item)}</span>
-                    <span className="dash-stopped-elapsed">
-                      {formatElapsed(item.elapsedMinutes)}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            </section>
-          );
-        })}
-      </div>
+    return (
+      <>
+        {/*
+         * 모든 그룹이 한 격자의 열(설비 · 사유 · 경과 시간)을 나눠 쓴다(subgrid) — 그룹마다 표를 따로 두면 열 폭이
+         * 그룹마다 달라 줄이 들쭉날쭉했다. ⚠ 대시보드 표의 「가운데 정렬」 규칙에서 뺀다 — 사유는 긴 문장이라
+         * 왼쪽에서 읽어야 하고, 경과 시간은 오른쪽 끝에 맞춰야 위아래로 견준다.
+         */}
+        <div className="dash-stopped">
+          <div className="dash-stopped-colhead" aria-hidden="true">
+            <span>{t.stoppedElapsedColumn}</span>
+          </div>
+          {EQUIPMENT_STATUS_ORDER.filter((code) => code !== 'RUNNING').map((code) => {
+            const rows = stopped.filter((item) => item.statusCode === code);
+            if (rows.length === 0) return null;
+            const hidden = rows.length - STOPPED_GROUP_PREVIEW_COUNT;
+
+            return (
+              <section key={code} className="dash-stopped-group" aria-label={t.status[code]}>
+                <div className="dash-stopped-head">
+                  <StatusChip statusCode={code} />
+                  <span className="dash-stopped-count">
+                    {formatFigure(rows.length)}
+                    {t.countUnit}
+                  </span>
+                </div>
+                <ul
+                  className="dash-stopped-list"
+                  aria-label={t.stoppedGroupCaption(t.status[code])}
+                >
+                  {rows.slice(0, STOPPED_GROUP_PREVIEW_COUNT).map((item) => (
+                    <li key={item.equipmentId} className="dash-stopped-row">
+                      <button
+                        type="button"
+                        className="dash-stopped-button"
+                        aria-label={`${t.openDetail(item.equipmentCode)} · ${describeReason(item)} · ${formatElapsed(item.elapsedMinutes)}`}
+                        onClick={() => {
+                          openTile(item);
+                        }}
+                      >
+                        <span className="dash-stopped-unit">
+                          <span className="dash-stopped-code">{item.equipmentCode}</span>
+                          {item.tonnage !== null && (
+                            <span className="dash-stopped-type">{item.tonnage}</span>
+                          )}
+                        </span>
+                        <span
+                          className={
+                            item.reasonName === null
+                              ? 'dash-stopped-reason dash-stopped-reason-none'
+                              : 'dash-stopped-reason'
+                          }
+                          title={describeReason(item)}
+                        >
+                          {describeReason(item)}
+                        </span>
+                        <span className="dash-stopped-elapsed">
+                          {formatElapsed(item.elapsedMinutes)}
+                        </span>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+                {hidden > 0 && (
+                  <Button
+                    variant="text"
+                    size="sm"
+                    className="dash-stopped-more"
+                    onClick={() => {
+                      setIsAllOpen(true);
+                    }}
+                  >
+                    {t.stoppedMore(formatFigure(hidden))}
+                  </Button>
+                )}
+              </section>
+            );
+          })}
+        </div>
+        <AllEquipmentDialog
+          open={isAllOpen}
+          items={sortForBoard(view.items)}
+          onClose={() => {
+            setIsAllOpen(false);
+          }}
+          onOpenTile={openTile}
+          pointerInput={pointerInput}
+        />
+        <EquipmentDetailDialog
+          item={opened}
+          onClose={() => {
+            setOpenedId(null);
+          }}
+        />
+      </>
     );
   })();
 

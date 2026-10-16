@@ -5,7 +5,12 @@ import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 
 import { toEquipmentView } from './equipment';
-import { EquipmentBoard, StoppedPanel, formatElapsed } from './equipment-panel';
+import {
+  EquipmentBoard,
+  STOPPED_GROUP_PREVIEW_COUNT,
+  StoppedPanel,
+  formatElapsed,
+} from './equipment-panel';
 
 const t = messages.dashboard.equipment;
 
@@ -244,7 +249,7 @@ describe('StoppedPanel', () => {
     render(<StoppedPanel view={view} isLoading={false} isFailed={false} />);
 
     const stoppedGroup = screen.getByRole('region', { name: t.status.STOPPED });
-    expect(within(stoppedGroup).getByText(`1 ${t.countUnit}`)).toBeInTheDocument();
+    expect(within(stoppedGroup).getByText(`1${t.countUnit}`)).toBeInTheDocument();
     const row = within(stoppedGroup).getByRole('listitem');
     /* 코드 굵게 · 설비 종류는 작은 보조 글로 따로. */
     expect(within(row).getByText('EQ-02')).toHaveClass('dash-stopped-code');
@@ -254,6 +259,53 @@ describe('StoppedPanel', () => {
 
     expect(screen.getByRole('region', { name: t.status.WAITING })).toBeInTheDocument();
     expect(screen.queryByRole('region', { name: t.status.CHANGEOVER })).not.toBeInTheDocument();
+  });
+
+  it('제목 · 열 제목, 사유 미등록은 보조 글 · 사유 전체는 title', () => {
+    render(<StoppedPanel view={view} isLoading={false} isFailed={false} />);
+
+    expect(screen.getByText(t.stoppedTitle)).toBeInTheDocument();
+    expect(t.stoppedTitle).toBe('가동 외 설비 현황');
+    expect(screen.getByText(t.stoppedElapsedColumn)).toBeInTheDocument();
+    expect(screen.getByText('유압 이상')).toHaveAttribute('title', '유압 이상');
+    expect(screen.getByText(t.reasonUnknown)).toHaveClass('dash-stopped-reason-none');
+  });
+
+  it('줄을 누르면 설비 상세 창이 열린다', async () => {
+    const user = userEvent.setup();
+    render(<StoppedPanel view={view} isLoading={false} isFailed={false} />);
+
+    await user.click(screen.getByRole('button', { name: new RegExp(`^${t.openDetail('EQ-02')}`) }));
+    expect(screen.getByRole('heading', { level: 2 })).toHaveTextContent('EQ-02');
+  });
+
+  it(`그룹당 ${String(STOPPED_GROUP_PREVIEW_COUNT)}행 — 넘으면 오래 멈춘 순으로 자르고 「외 n대」가 전체 설비 보기 창을 연다`, async () => {
+    const user = userEvent.setup();
+    const five = toEquipmentView({
+      asOf: '2026-10-16T03:00:00Z',
+      statusCounts: { RUNNING: 0, STOPPED: 5, WAITING: 0, CHANGEOVER: 0, IDLE: 0 },
+      items: [1, 2, 3, 4, 5].map((index) =>
+        item({
+          equipmentId: index,
+          equipmentCode: `S-${String(index)}`,
+          statusCode: 'STOPPED',
+          /* 번호가 클수록 오래 멈췄다. */
+          statusSince: `2026-10-16T0${String(3 - Math.ceil(index / 2))}:${index % 2 === 0 ? '00' : '30'}:00Z`,
+          statusReasonName: '합성 사유',
+        }),
+      ),
+    });
+    render(<StoppedPanel view={five} isLoading={false} isFailed={false} />);
+
+    const group = screen.getByRole('region', { name: t.status.STOPPED });
+    expect(within(group).getByText(`5${t.countUnit}`)).toBeInTheDocument();
+    const rows = within(group).getAllByRole('listitem');
+    expect(rows).toHaveLength(STOPPED_GROUP_PREVIEW_COUNT);
+    expect(rows[0]).toHaveTextContent('S-5');
+
+    await user.click(within(group).getByRole('button', { name: t.stoppedMore('2') }));
+    const dialog = screen.getByRole('dialog', { name: t.allTitle('5') });
+    expect(within(dialog).getAllByRole('button', { name: /상세 보기/ })).toHaveLength(5);
   });
 
   it('모두 가동이면 「멈춘 설비 없음」', () => {

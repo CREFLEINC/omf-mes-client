@@ -111,8 +111,12 @@ export const dashboard = {
     /** 값이 없는 칸. 0과 다르다 — 0을 적으면 「잰 결과가 0」으로 읽힌다. */
     none: '—',
     reasonUnknown: '사유 미등록',
-    stoppedTitle: '멈춘 설비',
-    stoppedSub: '상태 사유 · 상태 지속 시간',
+    /** ⭐ 「비가동」이 상태값으로 따로 있어 「멈춘 설비」와 혼동됐다(사용자 결정 2026-10-16). */
+    stoppedTitle: '가동 외 설비 현황',
+    stoppedSub: '상태별 설비 및 경과 시간',
+    stoppedElapsedColumn: '경과 시간',
+    /** 그룹에 다 보이지 않은 대수 — 누르면 「전체 설비 보기」 창. */
+    stoppedMore: (count: string): string => `외 ${count}대`,
     stoppedGroupCaption: (status: string): string => `${status} 설비`,
     /** ⛔ 「모든 설비가 가동 중」이라 단정하지 않는다(사용자 지시 2026-10-16) — 목록이 비었다는 사실만 말한다. */
     stoppedEmpty: '현재 멈춘 설비가 없습니다.',

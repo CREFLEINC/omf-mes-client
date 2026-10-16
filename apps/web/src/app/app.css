@@ -8620,28 +8620,63 @@ dl.filter-bar.approval-inbox-detail-facts {
   white-space: nowrap;
 }
 
-/* 멈춘 설비 — 묶음 · 줄이 한 격자의 세 열(호기 · 상태 사유 · 상태 지속 시간)을 나눠 쓴다(subgrid). */
+/*
+ * 가동 외 설비 현황(사용자 결정 2026-10-16) — 열 제목 · 그룹 · 줄이 한 격자의 세 열(설비 · 상태 사유 · 경과 시간)을
+ * 나눠 쓴다(subgrid). 경과 시간은 모든 줄에서 같은 폭 오른쪽 정렬. 그룹은 얇은 선으로 가르고 여백은 줄인다.
+ */
 .dash-stopped {
   display: grid;
   grid-template-columns: max-content minmax(0, 1fr) max-content;
   column-gap: var(--space-3);
-  row-gap: var(--space-3);
 }
 
+.dash-stopped-colhead,
 .dash-stopped-group,
 .dash-stopped-list,
-.dash-stopped-row {
+.dash-stopped-row,
+.dash-stopped-button {
   display: grid;
   grid-column: 1 / -1;
   grid-template-columns: subgrid;
 }
 
+/* 열 제목 「경과 시간」 — 목록 위 오른쪽에 한 번. */
+.dash-stopped-colhead span {
+  grid-column: -2 / -1;
+  font: var(--type-label-sm);
+  letter-spacing: var(--type-label-sm-tracking);
+  color: var(--on-surface-muted);
+  text-align: end;
+}
+
+.dash-stopped-group {
+  padding-block: var(--space-2);
+}
+
+.dash-stopped-group + .dash-stopped-group {
+  border-top: 1px solid var(--outline-variant);
+}
+
+.dash-stopped-group:last-child {
+  padding-bottom: 0;
+}
+
+/* 그룹 머리 — 배지 + 대수 한 줄(「정지 2대」). */
 .dash-stopped-head {
+  display: flex;
   grid-column: 1 / -1;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-1);
+}
+
+.dash-stopped-count {
+  font: var(--type-label-lg);
+  letter-spacing: var(--type-label-lg-tracking);
+  font-weight: 600;
 }
 
 .dash-stopped-list {
-  row-gap: var(--space-1);
   margin: 0;
   padding: 0;
   list-style: none;
@@ -8649,9 +8684,34 @@ dl.filter-bar.approval-inbox-detail-facts {
   letter-spacing: var(--type-body-sm-tracking);
 }
 
-/* 호기는 줄을 바꾸지 않는다 — 원칙(a). 코드 굵게, 설비 종류는 그 아래 작은 보조 글. */
+/* 줄 전체가 단추 — 누르면 상세 창. */
+.dash-stopped-button {
+  align-items: baseline;
+  padding: var(--space-1) 0;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--on-surface);
+  font: inherit;
+  letter-spacing: inherit;
+  text-align: start;
+  cursor: pointer;
+}
+
+.dash-stopped-button:hover {
+  background: var(--state-hover-neutral);
+}
+
+.dash-stopped-button:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+/* 설비 코드는 굵게, 설비 종류는 옆에 작은 회색 — 원칙(a) 코드는 줄을 바꾸지 않는다. */
 .dash-stopped-unit {
-  display: grid;
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-1);
   white-space: nowrap;
 }
 
@@ -8665,9 +8725,40 @@ dl.filter-bar.approval-inbox-detail-facts {
   color: var(--on-surface-muted);
 }
 
+/* 사유 — 최대 2줄, 넘치면 말줄임(전체는 `title` · 상세 창). */
+.dash-stopped-reason {
+  display: -webkit-box;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--on-surface-variant);
+  word-break: keep-all;
+  overflow-wrap: break-word;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+}
+
+/* 「사유 미등록」 — 오류 · 경고가 아니라 차분한 보조 글. */
+.dash-stopped-reason-none {
+  color: var(--on-surface-muted);
+}
+
+.dash-stopped-elapsed {
+  color: var(--on-surface);
+  font-variant-numeric: tabular-nums;
+  text-align: end;
+  white-space: nowrap;
+}
+
+/* 「외 n대」 — 그룹 끝, 왼쪽 정렬. */
+.dash-stopped-more {
+  grid-column: 1 / -1;
+  justify-self: start;
+}
+
 /*
- * 패널이 좁으면(오른쪽 열 · 1440 이하) 사유를 호기 아래 줄로 내린다 — 세 열로 두면 사유 열이 좁아 긴 고장
- * 사유가 여섯 줄로 꺾였다. 1줄 = 호기(설비 종류는 옆에 작게) · 오른쪽 지속 시간, 2줄 = 사유(줄 전체 폭).
+ * 패널이 좁으면(오른쪽 열 · 1440 이하) 사유를 설비 아래 줄로 내린다 — 세 열로 두면 사유 열이 좁아 긴 고장
+ * 사유가 여섯 줄로 꺾였다. 1줄 = 설비(종류는 옆에 작게) · 오른쪽 경과 시간, 2줄 = 사유(줄 전체 폭).
  */
 @container (max-width: 380px) {
   .dash-stopped {
@@ -8675,9 +8766,6 @@ dl.filter-bar.approval-inbox-detail-facts {
   }
 
   .dash-stopped-unit {
-    display: flex;
-    align-items: baseline;
-    gap: var(--space-1);
     grid-column: 1;
     grid-row: 1;
   }
@@ -8691,32 +8779,6 @@ dl.filter-bar.approval-inbox-detail-facts {
     grid-column: 1 / -1;
     grid-row: 2;
   }
-}
-
-.dash-stopped-reason {
-  min-width: 0;
-  color: var(--on-surface-variant);
-  word-break: keep-all;
-  overflow-wrap: break-word;
-}
-
-.dash-stopped-elapsed {
-  color: var(--on-surface-variant);
-  text-align: end;
-  white-space: nowrap;
-}
-
-.dash-stopped-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: var(--space-1);
-}
-
-.dash-stopped-count {
-  font: var(--type-label-lg);
-  letter-spacing: var(--type-label-lg-tracking);
-  font-weight: 700;
 }
 
 /*
