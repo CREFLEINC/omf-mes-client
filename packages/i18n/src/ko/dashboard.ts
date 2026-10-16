@@ -232,7 +232,7 @@ export const dashboard = {
     prevMonth: (rate: string): string => `전월 ${rate}`,
     deltaUp: (p: string): string => `↑ ${p}p`,
     deltaDown: (p: string): string => `↓ ${p}p`,
-    deltaFlat: '전월과 같음',
+    deltaFlat: '전월과 동일',
     /** 모수가 0이라 합격률을 낼 수 없다. ⛔ 0%로 그리지 않는다. */
     rateNone: '—',
     percent: (value: string): string => `${value}%`,
