@@ -19,7 +19,7 @@ export const dashboard: Translated<typeof ko.dashboard> = {
   filters: {
     baseDate: 'Ngày cơ sở',
     period: 'Khoảng thời gian',
-    quickLabel: 'Chọn nhanh',
+    customPeriod: 'Tự chọn',
     quick: {
       today: 'Hôm nay',
       yesterday: 'Hôm qua',

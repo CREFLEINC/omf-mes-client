@@ -1,4 +1,4 @@
-import { Button, Chip, DatePicker, Icon } from '@crefle/web-ui';
+import { Button, DatePicker, Icon, Select } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useId, useState } from 'react';
 
@@ -10,6 +10,7 @@ import {
   quickPeriodOf,
   type DashboardFilters,
   type PeriodProblem,
+  type QuickPeriod,
 } from './filters';
 import { DASHBOARD_REFRESH_INTERVAL_MS } from './queries';
 import { SelectField } from './select-field';
@@ -81,9 +82,19 @@ export const DashboardFilterBar = ({
   const periodNoteId = `${periodId}-note`;
   /* 고를 수 없는 기간(92일 초과 등)을 골랐을 때의 안내 — 조회하지 않고 칸 옆에 남긴다. */
   const [problem, setProblem] = useState<PeriodProblem | null>(null);
+  /* 「직접 지정」을 고른 상태 — 지금 기간이 빠른 항목과 같아도 달력을 켜 둔다. */
+  const [customPicked, setCustomPicked] = useState(false);
   const shownFrom = filters.dateFrom === '' ? today : filters.dateFrom;
   const shownTo = filters.dateTo === '' ? today : filters.dateTo;
   const periodNote = problem === null ? periodError : problemText(problem);
+  /* 주소의 기간이 빠른 항목과 정확히 같으면 그 항목, 아니면 「직접 지정」. */
+  const matchedQuick = QUICK_PERIODS.find((quick) => {
+    const [from, to] = quickPeriodOf(quick, today);
+
+    return from === shownFrom && to === shownTo;
+  });
+  const selected: QuickPeriod | 'custom' =
+    customPicked || matchedQuick === undefined ? 'custom' : matchedQuick;
 
   const applyPeriod = (from: string, to: string): void => {
     const found = periodProblemOf(from, to, today);
@@ -94,43 +105,49 @@ export const DashboardFilterBar = ({
   return (
     <div className="filter-bar dashboard-filter-bar">
       {/*
-       * ⭐ 기간(사용자 확정 2026-10-16) — 빠른 선택(오늘 · 어제 · 최근 7일 · 이번 달) + DS 기간 달력. 기본은 오늘이고
+       * ⭐ 기간(사용자 확정 2026-10-16) — DS 드롭다운(오늘 · 어제 · 최근 7일 · 이번 달 · 직접 지정) + DS 기간 달력
+       * (「직접 지정」일 때만 켬). 기본은 오늘이고
        * 비워 두면 서버가 오늘로 정한다. 미래 날짜는 달력이 막고(`max`), 92일 초과는 고른 뒤 칸 옆에 안내하고
        * 조회하지 않는다. 서버가 거절한 이유(400)도 같은 자리에 선다.
        */}
       <div className="field-cell dashboard-period-cell">
         <FieldLabel htmlFor={periodId} label={t.filters.period} />
         <div className="dashboard-period">
-          <DatePicker
+          <Select
             id={periodId}
+            className="dashboard-period-select"
+            options={[...QUICK_PERIODS, 'custom' as const].map((key) => ({
+              value: key,
+              label: key === 'custom' ? t.filters.customPeriod : t.filters.quick[key],
+            }))}
+            value={selected}
+            onChange={(value) => {
+              if (value === 'custom') {
+                setCustomPicked(true);
+                return;
+              }
+              const quick = QUICK_PERIODS.find((key) => key === value);
+              if (quick === undefined) return;
+              setCustomPicked(false);
+              const [from, to] = quickPeriodOf(quick, today);
+              applyPeriod(from, to);
+            }}
+          />
+          {/*
+           * 날짜 범위 — 「직접 지정」일 때만 켠다. 다른 항목이면 꺼진 채 그 항목이 계산한 기간을 그대로 보인다.
+           */}
+          <DatePicker
             mode="range"
             max={today}
             value={[shownFrom, shownTo]}
+            disabled={selected !== 'custom'}
             invalid={periodNote !== undefined}
+            aria-label={t.filters.customPeriod}
             aria-describedby={periodNote === undefined ? undefined : periodNoteId}
             onChange={([from, to]) => {
               applyPeriod(from, to);
             }}
           />
-          <div className="dashboard-quick" role="group" aria-label={t.filters.quickLabel}>
-            {QUICK_PERIODS.map((quick) => {
-              const [from, to] = quickPeriodOf(quick, today);
-
-              return (
-                <Chip
-                  key={quick}
-                  variant="filter"
-                  size="md"
-                  selected={from === shownFrom && to === shownTo}
-                  onSelectedChange={() => {
-                    applyPeriod(from, to);
-                  }}
-                >
-                  {t.filters.quick[quick]}
-                </Chip>
-              );
-            })}
-          </div>
         </div>
         {periodNote !== undefined && (
           <span id={periodNoteId} className="field-error" role="alert">

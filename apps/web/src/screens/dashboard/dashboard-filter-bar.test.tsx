@@ -77,18 +77,40 @@ describe('DashboardFilterBar — 갱신', () => {
 });
 
 describe('DashboardFilterBar — 기간', () => {
-  it('빠른 선택을 누르면 그 기간으로 바꾼다 · 비어 있으면 「오늘」이 골라져 있다', async () => {
+  it('드롭다운 기본은 「오늘」이고 날짜 칸은 꺼져 있다 · 「최근 7일」을 고르면 그 기간으로 바꾼다', async () => {
     const user = userEvent.setup();
     const onChange = vi.fn();
     renderBar({ onChange });
 
-    expect(screen.getByRole('button', { name: t.quick.today, pressed: true })).toBeInTheDocument();
-    await user.click(screen.getByRole('button', { name: t.quick.last7 }));
+    const select = screen.getByRole('combobox', { name: t.period });
+    expect(select).toHaveTextContent(t.quick.today);
+    expect(screen.getByRole('button', { name: t.customPeriod })).toBeDisabled();
+
+    await user.click(select);
+    await user.click(screen.getByRole('option', { name: t.quick.last7 }));
     expect(onChange).toHaveBeenCalledWith({
       dateFrom: '2026-10-10',
       dateTo: '2026-10-16',
       plant: '',
     });
+  });
+
+  it('주소 기간이 빠른 항목과 다르면 「직접 지정」이고 날짜 칸이 켜진다', () => {
+    renderBar({ filters: { dateFrom: '2026-10-02', dateTo: '2026-10-05', plant: '' } });
+
+    expect(screen.getByRole('combobox', { name: t.period })).toHaveTextContent(t.customPeriod);
+    expect(screen.getByRole('button', { name: t.customPeriod })).toBeEnabled();
+  });
+
+  it('「직접 지정」을 고르면 지금 기간 그대로 날짜 칸을 켠다', async () => {
+    const user = userEvent.setup();
+    const onChange = vi.fn();
+    renderBar({ onChange });
+
+    await user.click(screen.getByRole('combobox', { name: t.period }));
+    await user.click(screen.getByRole('option', { name: t.customPeriod }));
+    expect(screen.getByRole('button', { name: t.customPeriod })).toBeEnabled();
+    expect(onChange).not.toHaveBeenCalled();
   });
 
   it('서버가 기간을 거절한 이유는 날짜 칸 옆에 선다', () => {

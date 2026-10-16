@@ -19,7 +19,7 @@ export const dashboard = {
     baseDate: '기준 날짜',
     /** ⭐ 기간 조회(사용자 확정 2026-10-16) — 빠른 선택 + 시작~종료 직접 고르기. */
     period: '기간',
-    quickLabel: '빠른 선택',
+    customPeriod: '직접 지정',
     quick: { today: '오늘', yesterday: '어제', last7: '최근 7일', thisMonth: '이번 달' },
     periodOrder: '시작일이 종료일보다 늦습니다.',
     periodTooLong: (days: number): string => `기간은 최대 ${String(days)}일까지 고를 수 있습니다.`,
