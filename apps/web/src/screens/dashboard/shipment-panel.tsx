@@ -18,7 +18,11 @@ export interface ShipmentCell {
   label: string;
   value: string;
   unit?: string;
-  sub?: string;
+  /**
+   * 보조 줄 조각 — 「번호 · 고객 · 남은 수량」처럼 나눠 둔다. 조각 안에서는 줄을 바꾸지 않는다(원칙 a — 고객명
+   * 「Cong Nghi?p」이 「?」 뒤에서 끊겼다). 줄은 조각 사이에서만 바뀐다.
+   */
+  sub?: readonly string[];
   tone?: 'warning';
   /** 눌러서 갈 화면. 맞는 화면이 없으면 `null` — 엉뚱한 화면으로 보내지 않는다. */
   path: string | null;
@@ -54,7 +58,7 @@ export const toShipmentCells = (
       label: t.todayShipped,
       value: formatFigure(view.todayShippedQty),
       unit: t.qtyUnit,
-      sub: t.todayShipmentCount(formatFigure(view.todayShipmentCount)),
+      sub: [t.todayShipmentCount(formatFigure(view.todayShipmentCount))],
       path: SHIPMENT_CONFIRM_PATH,
     },
     {
@@ -62,7 +66,7 @@ export const toShipmentCells = (
       label: t.waiting,
       value: formatFigure(view.waitingRequestCount),
       unit: t.countUnit,
-      sub: t.waitingNote,
+      sub: [t.waitingNote],
       path: oldest === null || baseDate === null ? null : schedulePath(oldest, baseDate),
     },
     next === null
@@ -76,7 +80,7 @@ export const toShipmentCells = (
             next.shipmentRequestNo,
             next.customerName ?? t.customerUnknown,
             t.remainingQty(`${formatFigure(next.requestedQty)} ${t.qtyUnit}`),
-          ].join(' · '),
+          ],
           path: schedulePath(next.requestedShipDate, next.requestedShipDate),
         },
     {
@@ -84,7 +88,7 @@ export const toShipmentCells = (
       label: t.overdue,
       value: formatFigure(view.overdueCount),
       unit: t.countUnit,
-      sub: t.overdueNote,
+      sub: [t.overdueNote],
       tone: view.overdueCount > 0 ? 'warning' : undefined,
       path: null,
     },
@@ -104,7 +108,19 @@ const CellBody = ({ cell }: { cell: ShipmentCell }) => (
       </span>
       {cell.unit !== undefined && <span className="dash-kpi-unit">{cell.unit}</span>}
     </span>
-    {cell.sub !== undefined && <span className="dash-mini-sub">{cell.sub}</span>}
+    {cell.sub !== undefined && (
+      <span className="dash-mini-sub">
+        {/* 조각이 하나면 설명 문장이다 — 단어 단위로 줄을 바꾼다. 여럿이면 번호 · 이름 조각이라 붙여 둔다. */}
+        {cell.sub.length === 1
+          ? cell.sub[0]
+          : cell.sub.map((part, index) => (
+              <span key={part}>
+                {index > 0 && ' · '}
+                <span className="dash-nowrap">{part}</span>
+              </span>
+            ))}
+      </span>
+    )}
   </>
 );
 

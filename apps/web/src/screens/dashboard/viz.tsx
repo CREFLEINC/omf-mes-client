@@ -12,6 +12,7 @@ import {
   type NamedQty,
   type SeriesPoint,
 } from './viz-math';
+import { useChartWidth } from './use-chart-width';
 
 const t = messages.dashboard.viz;
 
@@ -277,14 +278,33 @@ export const StatusList = ({ items }: { items: readonly StatusItem[] }) => (
 
 /* ── SVG 그림 ─────────────────────────────────────────────── */
 
-const W = 600;
+/* 높이는 고정, 폭은 실제 폭(`useChartWidth`) — 그림을 늘이고 줄이지 않아 글자 크기가 그대로다. */
 const H = 240;
 const PAD = { top: 16, right: 64, bottom: 28, left: 40 };
-const plotW = W - PAD.left - PAD.right;
 const plotH = H - PAD.top - PAD.bottom;
 
-const xAt = (index: number, count: number): number =>
-  PAD.left + (count <= 1 ? plotW / 2 : (plotW * index) / (count - 1));
+/** 선 끝 이름표의 최소 세로 간격(px) — 글자 줄 높이. */
+const LABEL_GAP = 13;
+
+/**
+ * 선 끝 이름표가 겹치지 않게 위아래로 민다 — 세 계열의 마지막 값이 같으면 「IQC 95 · PQC 95 · OQC 95」가 한
+ * 자리에 겹쳐 읽히지 않았다(점검 2026-10-16). 원래 순서(위→아래)는 지킨다. `null` 은 이름표 없음.
+ */
+const spreadLabels = (ys: readonly (number | null)[]): (number | null)[] => {
+  const order = ys
+    .map((y, index) => ({ y, index }))
+    .filter((entry): entry is { y: number; index: number } => entry.y !== null)
+    .sort((a, b) => a.y - b.y);
+  const placed = [...ys];
+  let previous = -Infinity;
+  for (const entry of order) {
+    const y = Math.max(entry.y, previous + LABEL_GAP);
+    placed[entry.index] = y;
+    previous = y;
+  }
+
+  return placed;
+};
 
 export interface LineSeries {
   name: string;
@@ -298,6 +318,10 @@ export interface LineSeries {
  * 계열 이름과 마지막 값을 선 끝에 적는다 — 범례를 따로 오가지 않게.
  */
 export const MultiLineChart = ({ series, caption }: { series: LineSeries[]; caption: string }) => {
+  const [figureRef, W] = useChartWidth<HTMLElement>();
+  const plotW = W - PAD.left - PAD.right;
+  const xAt = (index: number, count: number): number =>
+    PAD.left + (count <= 1 ? plotW / 2 : (plotW * index) / (count - 1));
   const labels = series[0]?.points.map((point) => point.label) ?? [];
   const values = series.flatMap((entry) => entry.points.map((point) => point.value));
   if (values.every((value) => value === null)) return <NoRecords description={t.noRates} />;
@@ -306,9 +330,15 @@ export const MultiLineChart = ({ series, caption }: { series: LineSeries[]; capt
   const yAt = (value: number): number =>
     PAD.top + plotH - ((value - domain.min) / (domain.max - domain.min || 1)) * plotH;
   const ticks = [0, 1, 2, 3, 4].map((step) => domain.min + ((domain.max - domain.min) * step) / 4);
+  const endLabelY = spreadLabels(
+    series.map((entry) => {
+      const last = toLineSegments(entry.points).at(-1)?.at(-1);
+      return last === undefined ? null : yAt(last.value) + 4;
+    }),
+  );
 
   return (
-    <figure className="dash-figure">
+    <figure className="dash-figure" ref={figureRef}>
       {series.length > 1 && (
         <ul className="dash-legend-inline" aria-hidden="true">
           {series.map((entry) => (
@@ -350,7 +380,7 @@ export const MultiLineChart = ({ series, caption }: { series: LineSeries[]; capt
             {label}
           </text>
         ))}
-        {series.map((entry) => {
+        {series.map((entry, seriesIndex) => {
           const segments = toLineSegments(entry.points);
           const last = segments.at(-1)?.at(-1);
 
@@ -381,7 +411,7 @@ export const MultiLineChart = ({ series, caption }: { series: LineSeries[]; capt
                 <text
                   className="dash-line-end"
                   x={xAt(last.index, labels.length) + 8}
-                  y={yAt(last.value) + 4}
+                  y={endLabelY[seriesIndex] ?? yAt(last.value) + 4}
                 >
                   {series.length > 1
                     ? `${entry.name} ${formatFigure(last.value)}`
@@ -432,6 +462,8 @@ export const ParetoChart = ({
   entries: readonly NamedQty[];
   caption: string;
 }) => {
+  const [figureRef, W] = useChartWidth<HTMLElement>();
+  const plotW = W - PAD.left - PAD.right;
   if (entries.length === 0) return <NoRecords />;
 
   const rows = toParetoRows(entries);
@@ -443,7 +475,7 @@ export const ParetoChart = ({
   const cx = (index: number): number => PAD.left + slot * index + slot / 2;
 
   return (
-    <figure className="dash-figure">
+    <figure className="dash-figure" ref={figureRef}>
       <ul className="dash-legend-inline" aria-hidden="true">
         <li>
           <span className="dash-swatch dash-stack-1" />

@@ -83,7 +83,10 @@ describe('OverviewKpis', () => {
       screen.getByText(`${messages.dashboard.equipment.status.STOPPED} 1`),
     ).toBeInTheDocument();
     const availability = screen.getByRole('group', { name: '시간가동률' });
-    expect(availability).toHaveTextContent(`${k.availabilityBasis} · ${k.workedEquipment('7')}`);
+    /* 이름과 숫자 사이는 붙는 칸(U+00A0) — 화면 글자를 비교할 때는 보통 칸으로 본다. */
+    expect(availability).toHaveTextContent(
+      `${k.availabilityBasis} · ${k.workedEquipment('7')}`.replace(/\u00a0/g, ' '),
+    );
     /* 서버 설명 원문은 칸에 펼치지 않는다(툴팁으로). 「금일 누계」는 「금일」 표시와 겹쳐 없앴다. */
     expect(availability).not.toHaveTextContent('시험 설명');
     expect(availability).not.toHaveTextContent('누계');

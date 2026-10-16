@@ -7752,8 +7752,11 @@ dl.filter-bar.approval-inbox-detail-facts {
   display: grid;
   grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
   gap: var(--space-4);
-  /* 같은 줄의 상자는 높이를 맞춘다(전 탭 레이아웃 정비 2026-10-16). 다른 줄까지는 맞추지 않는다. */
-  align-items: stretch;
+  /*
+   * ⭐ 공통 원칙(b) — 내용이 짧거나 빈 상자를 옆 상자 높이로 늘이지 않는다(사용자 점검 2026-10-16). 늘이면
+   * 1줄짜리 순위 상자 · 빈 상태 상자가 차트 · 표 높이만큼 빈 상자가 됐다.
+   */
+  align-items: start;
 }
 
 .dash-row2-single {
@@ -7772,7 +7775,22 @@ dl.filter-bar.approval-inbox-detail-facts {
   display: grid;
   grid-template-columns: repeat(var(--dash-row-cols), minmax(0, 1fr));
   gap: var(--space-4);
-  align-items: stretch;
+  align-items: start;
+}
+
+/* 넓은 표 + 짧은 상자 묶음 — 표를 넓게(≈1.8 : 1), 짧은 상자 둘은 한 열에 위아래로. */
+.dash-split {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.8fr);
+  gap: var(--space-4);
+  align-items: start;
+}
+
+.dash-stack {
+  display: grid;
+  align-content: start;
+  gap: var(--space-4);
+  min-width: 0;
 }
 
 .dash-row3:has(> :nth-child(2):last-child) {
@@ -7817,8 +7835,19 @@ dl.filter-bar.approval-inbox-detail-facts {
   }
 }
 
+/*
+ * 품질 탭의 「차트 + 짧은 상자」 줄 — 중간 폭에서는 오른쪽을 넓힌다(≈58 : 42). 2 : 1 그대로면 오른쪽 상자가
+ * 290px 남짓이라 업체 표가 잘려 「비중」 열이 가려졌다(1280 실측). 차트는 실제 폭으로 다시 그려 좁아져도 된다.
+ */
+@container (max-width: 1200px) {
+  .dash-row2-quality {
+    grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+  }
+}
+
 @container (max-width: 860px) {
-  .dash-row2 {
+  .dash-row2,
+  .dash-split {
     grid-template-columns: minmax(0, 1fr);
   }
 }
@@ -8007,7 +8036,8 @@ dl.filter-bar.approval-inbox-detail-facts {
   letter-spacing: var(--type-headline-sm-tracking);
   font-weight: 700;
   color: var(--on-surface);
-  overflow-wrap: anywhere;
+  word-break: keep-all;
+  overflow-wrap: break-word;
 }
 
 .dash-kpi-unit {
@@ -8025,9 +8055,10 @@ dl.filter-bar.approval-inbox-detail-facts {
   color: var(--on-surface-muted);
 }
 
+/* 상태 배지 넷은 2+2 — 3+1 로 꺾여 하나만 아래 줄에 남지 않게(사용자 점검 2026-10-16). */
 .dash-tag-row {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: repeat(2, max-content);
   gap: var(--space-1);
 }
 
@@ -8220,20 +8251,24 @@ dl.filter-bar.approval-inbox-detail-facts {
   list-style: none;
 }
 
-/* 6열은 패널이 넉넉할 때만 — 730px 에서 6열이면 호기 · C/T 가 말줄임됐다(실측). */
-@container (max-width: 760px) {
+/*
+ * ⭐ 공통 원칙(c) — 말줄임이 생기면 열 수를 먼저 줄인다(사용자 점검 2026-10-16). 타일 한 칸이 호기 ·
+ * 「NG 40 · 5% · C/T 20초」를 끊지 않고 담으려면 약 160px 가 든다 — 6열은 900px 넘을 때만, 그 아래 4열 ·
+ * 3열 · 2열. 표시 대수는 열 수 × 2 그대로.
+ */
+@container (max-width: 900px) {
   .dash-eq-grid {
     grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 }
 
-@container (max-width: 460px) {
+@container (max-width: 660px) {
   .dash-eq-grid {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
 
-@container (max-width: 340px) {
+@container (max-width: 480px) {
   .dash-eq-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -8346,7 +8381,8 @@ dl.filter-bar.approval-inbox-detail-facts {
 
 .dash-eq-line {
   color: var(--on-surface-muted);
-  overflow-wrap: anywhere;
+  word-break: keep-all;
+  overflow-wrap: break-word;
 }
 
 .dash-eq-qty {
@@ -8379,6 +8415,15 @@ dl.filter-bar.approval-inbox-detail-facts {
   border-collapse: collapse;
   font: var(--type-body-sm);
   letter-spacing: var(--type-body-sm-tracking);
+}
+
+.dash-stopped-group {
+  overflow-x: auto;
+}
+
+/* 호기(톤수)는 줄을 바꾸지 않는다 — 원칙(a). */
+.dash-stopped-table th {
+  white-space: nowrap;
 }
 
 .dash-stopped-table th,
@@ -8458,11 +8503,19 @@ dl.filter-bar.approval-inbox-detail-facts {
   color: var(--on-surface);
 }
 
+/* 조각 안에서는 줄을 바꾸지 않는다 — 원칙(a). 칸보다 긴 조각만 칸 폭에서 끊긴다. */
+.dash-nowrap {
+  display: inline-block;
+  max-width: 100%;
+  white-space: nowrap;
+}
+
 .dash-mini-sub {
   font: var(--type-label-sm);
   letter-spacing: var(--type-label-sm-tracking);
   color: var(--on-surface-muted);
-  overflow-wrap: anywhere;
+  word-break: keep-all;
+  overflow-wrap: break-word;
 }
 
 /* 점 · 견본 색 */
@@ -8544,7 +8597,8 @@ dl.filter-bar.approval-inbox-detail-facts {
   overflow: hidden;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
-  overflow-wrap: anywhere;
+  word-break: keep-all;
+  overflow-wrap: break-word;
 }
 
 .dash-rank-track {
@@ -8718,7 +8772,6 @@ dl.filter-bar.approval-inbox-detail-facts {
   display: block;
   width: 100%;
   height: auto;
-  max-height: 16rem;
   overflow: visible;
 }
 
@@ -8790,10 +8843,12 @@ dl.filter-bar.approval-inbox-detail-facts {
   white-space: nowrap;
 }
 
-/* 품목처럼 긴 값은 줄바꿈해 판정 열이 칸 밖으로 밀리지 않게 한다(사용자 보고 2026-10-16). */
+/*
+ * ⭐ 공통 원칙(a) — 코드 · 번호 · 이름은 글자 중간에서 끊지 않는다(사용자 점검 2026-10-16 — 품목 코드가
+ * 「F5372 / 29401」로 꺾였다). 표 칸은 줄을 바꾸지 않고, 표가 넓으면 표 영역만 가로로 스크롤한다.
+ */
 .dash-table-wrap .dash-cell-wrap {
-  white-space: normal;
-  overflow-wrap: anywhere;
+  white-space: nowrap;
 }
 
 /*
@@ -8818,7 +8873,8 @@ dl.filter-bar.approval-inbox-detail-facts {
   width: max-content;
   max-width: min(18rem, 70vw);
   white-space: normal;
-  overflow-wrap: anywhere;
+  word-break: keep-all;
+  overflow-wrap: break-word;
 }
 
 .dash-sr-only {
@@ -8916,7 +8972,8 @@ dl.filter-bar.approval-inbox-detail-facts {
   font: var(--type-body-sm);
   letter-spacing: var(--type-body-sm-tracking);
   color: var(--on-surface);
-  overflow-wrap: anywhere;
+  word-break: keep-all;
+  overflow-wrap: break-word;
 }
 
 /* 생산 실적 수치 — 한 단계만 강조(과하지 않게). */

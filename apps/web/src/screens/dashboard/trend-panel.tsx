@@ -2,6 +2,7 @@ import { LineChart, Skeleton, type ReferenceLine } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 
 import { formatFigure, toChartMax, type DashboardTrendView } from './types';
+import { useChartWidth } from './use-chart-width';
 import { EmptyLine } from './viz';
 
 const t = messages.dashboard;
@@ -27,6 +28,8 @@ export interface TrendPanelProps {
  * 이 화면 슬라이스가 소유한다 — 다른 화면 슬라이스의 같은 이름 부품을 참조하지 않는다.
  */
 export const TrendPanel = ({ view, isLoading }: TrendPanelProps) => {
+  /* 실제 폭으로 그린다 — 그림을 줄이면 좁은 폭에서 축 글자가 8px 까지 작아졌다(원칙 d). */
+  const [chartRef, chartWidth] = useChartWidth<HTMLDivElement>(640);
   if (isLoading) return <Skeleton variant="rect" height="16rem" />;
 
   if (view === null) {
@@ -56,7 +59,7 @@ export const TrendPanel = ({ view, isLoading }: TrendPanelProps) => {
      * 큰 값은 앞자리가 잘려 「6,000」으로 읽혔다(사용자 보고 2026-10-16). 값은 그대로 두고 그림 왼쪽에
      * 여백을 주어 넘친 글자가 보이게 한다(`.dash-trend`).
      */
-    <div className="dash-trend">
+    <div className="dash-trend" ref={chartRef}>
       <LineChart
         series={[
           {
@@ -74,6 +77,7 @@ export const TrendPanel = ({ view, isLoading }: TrendPanelProps) => {
          * 확인에서 550px가 넘었다. 세로를 낮춰 납작하게 둔다: 추이는 「올랐나 내렸나」를 보는
          * 그림이라 세로로 키운다고 더 읽히지 않는다.
          */
+        width={chartWidth}
         height={220}
         showPoints
         /* 시리즈가 하나뿐이라 범례는 같은 이름을 한 번 더 적을 뿐이다. */

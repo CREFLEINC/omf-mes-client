@@ -177,7 +177,7 @@ export const dashboard = {
     availability: '시간가동률',
     /** 서버 설명이 올 때만 쓰는 짧은 기준 줄(원문은 설명 단추의 툴팁). */
     availabilityBasis: '계획 가동시간 기준',
-    workedEquipment: (count: string): string => `작업 설비 ${count}대`,
+    workedEquipment: (count: string): string => `작업\u00a0설비\u00a0${count}대`,
     productionQty: '생산 수량',
     /** 이 띠에서는 「NG」 대신 「불량」(사용자 지시 2026-10-16). */
     defectLine: (qty: string): string => `불량 ${qty} EA`,
@@ -235,7 +235,8 @@ export const dashboard = {
     pqcLots: '공정검사 LOT',
     oqcLots: '출하검사 LOT',
     lotBreakdown: (accepted: string, rejected: string, held: string): string =>
-      `합격 ${accepted} · 불합격 ${rejected} · 검사 보류 ${held}`,
+      /* 이름과 숫자 사이는 붙는 칸(U+00A0) — 「검사 보류」 / 「0」으로 갈리지 않게. */
+      `합격\u00a0${accepted} · 불합격\u00a0${rejected} · 검사\u00a0보류\u00a0${held}`,
     monthDefectQty: '불량 수량',
     qtyUnit: 'EA',
     lotUnit: 'LOT',

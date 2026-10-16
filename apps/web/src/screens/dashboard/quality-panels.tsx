@@ -66,13 +66,20 @@ const JUDGMENT_TONE: Record<DashboardJudgmentCode, ChipStatus> = {
   HELD: 'warning',
 };
 
+/*
+ * ⭐ 아래 줄(사용자 점검 2026-10-16) — 판정 표를 넓게, 짧은 상자 둘(구성비 · 현재 현황)은 다른 한 열에 위아래로
+ * 쌓는다(`split`). 셋을 나란히 두고 높이를 맞추면 빈 상태 상자가 표 높이만큼 늘어 큰 빈 상자가 됐다.
+ */
 const Row = ({
   kind,
   children,
 }: {
-  kind: 'row2' | 'row2-single' | 'row3';
+  kind: 'row2' | 'row2-single' | 'row3' | 'split';
   children: ReactNode;
-}) => <div className={`dash-${kind}`}>{children}</div>;
+}) => (
+  /* 품질 탭의 차트 + 짧은 상자 줄은 중간 폭에서 오른쪽을 넓힌다(`.dash-row2-quality`) — 업체 표가 잘렸다. */
+  <div className={kind === 'row2' ? 'dash-row2 dash-row2-quality' : `dash-${kind}`}>{children}</div>
+);
 
 const PassRateTile = ({
   label,
@@ -286,47 +293,49 @@ export const QualityOverviewTab = ({ quality }: { quality: DashboardQuality }) =
           />
         </Panel>
       </Row>
-      <Row kind="row3">
-        <Panel title={t.phenomena} sub={t.qtyShareSub} tag={t.tagMonth}>
-          <RankBars entries={phenomenaEntries(quality.nonconformance.phenomena)} />
-        </Panel>
+      <Row kind="split">
+        <div className="dash-stack">
+          <Panel title={t.phenomena} sub={t.qtyShareSub} tag={t.tagMonth}>
+            <RankBars entries={phenomenaEntries(quality.nonconformance.phenomena)} />
+          </Panel>
+          <Panel title={t.currentTitle} tag={t.tagNow}>
+            <StatusList
+              items={[
+                {
+                  key: 'held',
+                  label: t.heldLots,
+                  note: t.heldLotsNote,
+                  value: formatFigure(monthHeld),
+                  unit: t.lotUnit,
+                  tone: countTone(monthHeld, 'warning'),
+                },
+                {
+                  key: 'receiptHold',
+                  label: t.receiptHold,
+                  note: t.receiptHoldNote,
+                  value: formatFigure(quality.iqc.receiptHoldLotCount),
+                  unit: t.lotUnit,
+                  tone: countTone(quality.iqc.receiptHoldLotCount, 'warning'),
+                },
+                {
+                  key: 'pending',
+                  label: t.pendingLots,
+                  note: t.pendingLotsNote,
+                  value: formatFigure(quality.pqc.pendingLotCount),
+                  unit: t.lotUnit,
+                },
+                {
+                  key: 'ncOpen',
+                  label: t.ncOpen,
+                  value: formatFigure(quality.nonconformance.openCount),
+                  unit: t.countUnit,
+                  tone: countTone(quality.nonconformance.openCount, 'error'),
+                },
+              ]}
+            />
+          </Panel>
+        </div>
         <RecentLotsPanel title={t.recentLots} rows={toRecentLotRows(quality)} counterpart="kind" />
-        <Panel title={t.currentTitle} tag={t.tagNow}>
-          <StatusList
-            items={[
-              {
-                key: 'held',
-                label: t.heldLots,
-                note: t.heldLotsNote,
-                value: formatFigure(monthHeld),
-                unit: t.lotUnit,
-                tone: countTone(monthHeld, 'warning'),
-              },
-              {
-                key: 'receiptHold',
-                label: t.receiptHold,
-                note: t.receiptHoldNote,
-                value: formatFigure(quality.iqc.receiptHoldLotCount),
-                unit: t.lotUnit,
-                tone: countTone(quality.iqc.receiptHoldLotCount, 'warning'),
-              },
-              {
-                key: 'pending',
-                label: t.pendingLots,
-                note: t.pendingLotsNote,
-                value: formatFigure(quality.pqc.pendingLotCount),
-                unit: t.lotUnit,
-              },
-              {
-                key: 'ncOpen',
-                label: t.ncOpen,
-                value: formatFigure(quality.nonconformance.openCount),
-                unit: t.countUnit,
-                tone: countTone(quality.nonconformance.openCount, 'error'),
-              },
-            ]}
-          />
-        </Panel>
       </Row>
     </div>
   );
@@ -371,68 +380,73 @@ export const IqcTab = ({ quality }: { quality: DashboardQuality }) => {
       <Row kind="row2">
         <DailyPanel quality={quality} kinds={['IQC']} title={t.dailyTitleOf('IQC')} />
         <Panel title={t.vendorDefects} sub={t.vendorTableSub} tag={t.tagMonthTotal}>
-          <Table
-            columns={[
-              { key: 'vendor', header: t.column.vendor, render: (row) => row.partnerName },
-              {
-                key: 'qty',
-                header: t.column.defectQty,
-                render: (row) => formatFigure(row.rejectedQty),
-              },
-              {
-                key: 'share',
-                header: t.column.share,
-                render: (row) =>
-                  vendorTotal === 0
-                    ? t.none
-                    : `${String(Math.round((row.rejectedQty / vendorTotal) * 100))}%`,
-              },
-            ]}
-            rows={iqc.vendorDefects}
-            getRowId={(row) => String(row.partnerId)}
-            density="compact"
-            aria-label={t.vendorDefects}
-            empty={<NoRecords />}
-          />
+          {/* 표 칸은 줄을 바꾸지 않는다 — 넓으면 표 영역만 가로 스크롤(원칙 a). */}
+          <div className="dash-table-wrap">
+            <Table
+              columns={[
+                { key: 'vendor', header: t.column.vendor, render: (row) => row.partnerName },
+                {
+                  key: 'qty',
+                  header: t.column.defectQty,
+                  render: (row) => formatFigure(row.rejectedQty),
+                },
+                {
+                  key: 'share',
+                  header: t.column.share,
+                  render: (row) =>
+                    vendorTotal === 0
+                      ? t.none
+                      : `${String(Math.round((row.rejectedQty / vendorTotal) * 100))}%`,
+                },
+              ]}
+              rows={iqc.vendorDefects}
+              getRowId={(row) => String(row.partnerId)}
+              density="compact"
+              aria-label={t.vendorDefects}
+              empty={<NoRecords />}
+            />
+          </div>
         </Panel>
       </Row>
-      <Row kind="row3">
-        <Panel title={t.itemDefects} sub={t.qtyShareSub} tag={t.tagMonth}>
-          <StackedBar100
-            entries={iqc.itemDefects.map((entry) => ({
-              key: String(entry.itemId),
-              label: entry.itemCode,
-              value: entry.qty,
-            }))}
-          />
-        </Panel>
+      <Row kind="split">
+        <div className="dash-stack">
+          <Panel title={t.itemDefects} sub={t.qtyShareSub} tag={t.tagMonth}>
+            <StackedBar100
+              entries={iqc.itemDefects.map((entry) => ({
+                key: String(entry.itemId),
+                label: entry.itemCode,
+                value: entry.qty,
+              }))}
+            />
+          </Panel>
+          <Panel title={t.currentTitle} tag={t.tagNow}>
+            <StatusList
+              items={[
+                {
+                  key: 'held',
+                  label: t.heldLots,
+                  note: t.heldLotsNote,
+                  value: formatFigure(iqc.monthLots.held),
+                  unit: t.lotUnit,
+                  tone: countTone(iqc.monthLots.held, 'warning'),
+                },
+                {
+                  key: 'receiptHold',
+                  label: t.receiptHold,
+                  note: t.receiptHoldNote,
+                  value: formatFigure(iqc.receiptHoldLotCount),
+                  unit: t.lotUnit,
+                  tone: countTone(iqc.receiptHoldLotCount, 'warning'),
+                },
+              ]}
+            />
+          </Panel>
+        </div>
         <RecentLotsPanel
           title={t.recentLotsOf('IQC')}
           rows={recentOf(quality, 'IQC')}
           counterpart="vendor"
         />
-        <Panel title={t.currentTitle} tag={t.tagNow}>
-          <StatusList
-            items={[
-              {
-                key: 'held',
-                label: t.heldLots,
-                note: t.heldLotsNote,
-                value: formatFigure(iqc.monthLots.held),
-                unit: t.lotUnit,
-                tone: countTone(iqc.monthLots.held, 'warning'),
-              },
-              {
-                key: 'receiptHold',
-                label: t.receiptHold,
-                note: t.receiptHoldNote,
-                value: formatFigure(iqc.receiptHoldLotCount),
-                unit: t.lotUnit,
-                tone: countTone(iqc.receiptHoldLotCount, 'warning'),
-              },
-            ]}
-          />
-        </Panel>
       </Row>
     </div>
   );
@@ -496,36 +510,38 @@ export const PqcTab = ({ quality }: { quality: DashboardQuality }) => {
           />
         </Panel>
       </Row>
-      <Row kind="row3">
-        <Panel title={t.phenomenaOf('PQC')} sub={t.qtyShareSub} tag={t.tagMonth}>
-          <RankBars entries={phenomenaEntries(pqc.defectPhenomena)} />
-        </Panel>
+      <Row kind="split">
+        <div className="dash-stack">
+          <Panel title={t.phenomenaOf('PQC')} sub={t.qtyShareSub} tag={t.tagMonth}>
+            <RankBars entries={phenomenaEntries(pqc.defectPhenomena)} />
+          </Panel>
+          <Panel title={t.currentTitle} tag={t.tagNow}>
+            <StatusList
+              items={[
+                {
+                  key: 'pending',
+                  label: t.pendingLots,
+                  note: t.pendingLotsNote,
+                  value: formatFigure(pqc.pendingLotCount),
+                  unit: t.lotUnit,
+                  tone: countTone(pqc.pendingLotCount, 'warning'),
+                },
+                {
+                  key: 'rework',
+                  label: t.reworkRequests,
+                  note: t.reworkRequestsNote,
+                  value: formatFigure(pqc.reworkRequestCount),
+                  unit: t.countUnit,
+                },
+              ]}
+            />
+          </Panel>
+        </div>
         <RecentLotsPanel
           title={t.recentLotsOf('PQC')}
           rows={recentOf(quality, 'PQC')}
           counterpart="equipment"
         />
-        <Panel title={t.currentTitle} tag={t.tagNow}>
-          <StatusList
-            items={[
-              {
-                key: 'pending',
-                label: t.pendingLots,
-                note: t.pendingLotsNote,
-                value: formatFigure(pqc.pendingLotCount),
-                unit: t.lotUnit,
-                tone: countTone(pqc.pendingLotCount, 'warning'),
-              },
-              {
-                key: 'rework',
-                label: t.reworkRequests,
-                note: t.reworkRequestsNote,
-                value: formatFigure(pqc.reworkRequestCount),
-                unit: t.countUnit,
-              },
-            ]}
-          />
-        </Panel>
       </Row>
     </div>
   );

@@ -144,7 +144,7 @@ export const dashboard: Translated<typeof ko.dashboard> = {
     runningOfTotal: 'Thiết bị đang chạy',
     availability: 'Tỷ lệ vận hành theo giờ',
     availabilityBasis: 'Theo giờ vận hành kế hoạch',
-    workedEquipment: (count: string): string => `${count} máy làm việc`,
+    workedEquipment: (count: string): string => `${count}\u00a0máy\u00a0làm\u00a0việc`,
     productionQty: 'Sản lượng',
     defectLine: (qty: string): string => `Lỗi ${qty} EA`,
     defectRate: 'Tỷ lệ lỗi tổng hợp',
@@ -190,7 +190,7 @@ export const dashboard: Translated<typeof ko.dashboard> = {
     pqcLots: 'LOT kiểm tra công đoạn',
     oqcLots: 'LOT kiểm tra xuất hàng',
     lotBreakdown: (accepted: string, rejected: string, held: string): string =>
-      `Đạt ${accepted} · Không đạt ${rejected} · Tạm giữ kiểm tra ${held}`,
+      `Đạt\u00a0${accepted} · Không\u00a0đạt\u00a0${rejected} · Tạm\u00a0giữ\u00a0kiểm\u00a0tra\u00a0${held}`,
     monthDefectQty: 'Số lượng lỗi',
     qtyUnit: 'EA',
     lotUnit: 'LOT',

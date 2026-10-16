@@ -30,7 +30,10 @@ describe('품질 탭', () => {
     render(<QualityOverviewTab quality={quality()} />);
 
     expect(screen.getByRole('group', { name: t.passRateOf('IQC') })).toBeInTheDocument();
-    expect(screen.getByText(t.lotBreakdown('6', '3', '3'))).toBeInTheDocument();
+    /* 이름과 숫자 사이는 붙는 칸(U+00A0) — 화면 글자를 비교할 때는 보통 칸으로 본다. */
+    expect(
+      screen.getByText(t.lotBreakdown('6', '3', '3').replace(/\u00a0/g, ' ')),
+    ).toBeInTheDocument();
     expect(screen.getByRole('group', { name: t.customerReturn })).toHaveTextContent('40');
     expect(screen.getByRole('img', { name: t.dailyTitleAll })).toBeInTheDocument();
     /* 불량현상이 빈 배열이면 「기록 없음」. */
