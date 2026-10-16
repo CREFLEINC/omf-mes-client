@@ -8299,17 +8299,24 @@ button.app-button-neutral {
 }
 
 /*
- * 머리 오른쪽의 프린터 선택(2단계 검증 2026-10-16). 칸 폭을 정해 둔다 — 프린터 이름이 길면 머리줄이 밀린다.
- * 고를 수 없는 환경에서는 칸 옆에 까닭을 한 줄로 적는다.
+ * 채번 대상 구획 맨 위의 프린터 선택(2단계 검증 2026-10-16) — 대상 카드의 라벨·값 두 열과 같은 모양.
+ * 고를 수 없는 환경에서는 칸 아래에 까닭을 한 줄로 적는다.
  */
 .pop-lot-printer-select {
-  display: flex;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: var(--space-1) var(--space-4);
   align-items: center;
-  gap: var(--space-2);
+  margin-bottom: var(--space-3);
 }
 
-.pop-lot-printer-select > :first-child {
-  width: 16rem;
+.pop-lot-printer-select-label {
+  color: var(--on-surface-muted);
+}
+
+.pop-lot-printer-select > .field-note {
+  grid-column: 2;
+  margin: 0;
 }
 
 /* LOT 번호 자리의 라벨 — 값이 아직 없으므로 라벨만 또렷이 둔다. */

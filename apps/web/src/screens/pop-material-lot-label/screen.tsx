@@ -247,27 +247,14 @@ export const PopMaterialLotLabelScreen = () => {
          */}
         <h1 className="pop-title">{t.title}</h1>
         <div className="pop-context-right">
-          {printers.isError || printers.isPending || headPrinter === null ? (
-            <PrinterStatusIndicator
-              printer={headPrinter}
-              isLoading={printers.isPending}
-              isError={printers.isError}
-              onRetry={() => {
-                void printers.refetch();
-              }}
-            />
-          ) : (
-            <PrinterSelect
-              printers={printers.data ?? []}
-              selected={headPrinter}
-              isSelectable={isPrinterSelectable}
-              disabled={isIssuing}
-              onSelect={(name) => {
-                setPickedPrinter(name);
-                rememberPrinterName(name);
-              }}
-            />
-          )}
+          <PrinterStatusIndicator
+            printer={headPrinter}
+            isLoading={printers.isPending}
+            isError={printers.isError}
+            onRetry={() => {
+              void printers.refetch();
+            }}
+          />
           {/* 단말도 상시 보인다(스펙 §3 머리줄 `단말 POP-L1 ●`) — 다른 POP 화면과 같은 자리·순서다. */}
           <Chip status={terminalId === null ? 'warning' : 'info'}>
             {`${tDevice.terminalLabel} ${
@@ -406,6 +393,23 @@ export const PopMaterialLotLabelScreen = () => {
 
         <section className="pane pop-lot-pane" aria-label={t.target.paneLabel}>
           <h2 className="pop-lot-pane-title">{t.target.title}</h2>
+          {/*
+           * 프린터는 머리줄이 아니라 이 구획에서 고른다(담당자 지시 2026-10-16) — 인쇄할 곳을 고르는 일이
+           * 등록·인쇄와 같은 자리에 있어야 한다. 머리줄은 지금 상태만 보인다. 목록을 받기 전·조회 실패는
+           * 머리줄이 말하므로 여기서는 받은 뒤에만 그린다(「없다」와 「모른다」를 같은 모양으로 그리지 않는다).
+           */}
+          {printers.data === undefined ? null : (
+            <PrinterSelect
+              printers={printers.data}
+              selected={headPrinter}
+              isSelectable={isPrinterSelectable}
+              disabled={isIssuing}
+              onSelect={(name) => {
+                setPickedPrinter(name);
+                rememberPrinterName(name);
+              }}
+            />
+          )}
           <TargetCard
             row={selectedRow}
             itemNames={itemNames}

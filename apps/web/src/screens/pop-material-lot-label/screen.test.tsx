@@ -753,7 +753,7 @@ describe('PopMaterialLotLabelScreen — 채번 대상', () => {
 });
 
 describe('PopMaterialLotLabelScreen — 프린터 상태', () => {
-  it('머리에 지금 나갈 프린터를 상시 보인다 — 브라우저에서는 고르는 칸을 막고 까닭을 말한다', async () => {
+  it('채번 대상 구획에 지금 나갈 프린터를 보인다 — 브라우저에서는 고르는 칸을 막고 까닭을 말한다', async () => {
     renderScreen();
 
     const select = await screen.findByRole('combobox', { name: '프린터 선택' });
