@@ -173,7 +173,7 @@ export const useBomReferenceQuery = (
 };
 
 /**
- * `usableOnly` — 계획에 걸 수 있는 개정(확정·유효 기간 안)만. 판정은 서버가 한다(omf-all-around#91).
+ * `usableOnly` — 계획에 걸 수 있는 개정(확정·유효 기간 안)만. 판정은 서버가 한다.
  * 끄면 전 개정이다 — 확정된 계획이 쓰던 폐기·만료 Rev 의 이름을 풀 때 쓴다.
  */
 export const useRoutingReferenceQuery = (

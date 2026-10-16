@@ -135,7 +135,7 @@ describe('production plan reference queries', () => {
     );
   });
 
-  it('계획 후보 Routing 은 usableOnly 로 서버에 판정을 맡기고 키도 전 개정과 가른다 (#91)', async () => {
+  it('계획 후보 Routing 은 usableOnly 로 서버에 판정을 맡기고 키도 전 개정과 가른다', async () => {
     const { fetch, requests } = recordingFetch([
       {
         match: (request) => isGet(request, ROUTINGS_PATH),
