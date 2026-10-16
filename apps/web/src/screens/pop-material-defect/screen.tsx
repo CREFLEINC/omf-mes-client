@@ -73,6 +73,8 @@ export const PopMaterialDefectScreen = () => {
   const [description, setDescription] = useState('');
   const [hold, setHold] = useState(false);
   const [holdReason, setHoldReason] = useState('');
+  /* 검사 대기 보류는 해제 조건이 필수다(서버 규칙 · 의심자재 보류와 같다) — 흔한 값을 채워 두고 고칠 수 있게 한다. */
+  const [releaseCondition, setReleaseCondition] = useState<string>(t.hold.releaseConditionDefault);
   const [outcome, setOutcome] = useState<'recorded' | 'held' | 'holdFailed' | null>(null);
 
   const found = useQuery({
@@ -121,6 +123,7 @@ export const PopMaterialDefectScreen = () => {
             lots: [{ lotId: target.lotId, versionNo: target.versionNo ?? 0 }],
             reasonCode: holdReason,
             targetLotStatusCode: HOLD_TARGET_LOT_STATUS,
+            releaseCondition: releaseCondition.trim(),
             ...(description.trim() === '' ? {} : { remarks: description.trim() }),
           },
         }),
@@ -151,7 +154,9 @@ export const PopMaterialDefectScreen = () => {
           ? t.blocked.qty
           : hold && holdReason === ''
             ? t.blocked.holdReason
-            : null;
+            : hold && releaseCondition.trim() === ''
+              ? t.blocked.releaseCondition
+              : null;
   const disabled = workerNo === null || record.isSaving;
 
   const find = (event: FormEvent<HTMLFormElement>): void => {
@@ -163,6 +168,7 @@ export const PopMaterialDefectScreen = () => {
     setDescription('');
     setHold(false);
     setHoldReason('');
+    setReleaseCondition(t.hold.releaseConditionDefault);
     setLotNo(next === '' ? null : next);
   };
 
@@ -313,6 +319,14 @@ export const PopMaterialDefectScreen = () => {
                 onChange={setHoldReason}
               />
             </div>
+          )}
+          {hold && (
+            <TextField
+              label={t.hold.releaseCondition}
+              value={releaseCondition}
+              disabled={disabled}
+              onChange={(event) => setReleaseCondition(event.target.value)}
+            />
           )}
 
           <SaveErrorBanner error={record.error} />

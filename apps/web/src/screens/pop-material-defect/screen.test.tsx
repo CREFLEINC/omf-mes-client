@@ -126,8 +126,32 @@ describe('PopMaterialDefectScreen (P-02-14)', () => {
       lots: [{ lotId: LOT.lotId, versionNo: 7 }],
       reasonCode: 'APPEARANCE_ABNORMAL',
       targetLotStatusCode: 'INSPECTION_PENDING',
+      // 검사 대기 보류는 해제 조건이 필수다 — 기본값이 채워져 그대로 간다.
+      releaseCondition: t.hold.releaseConditionDefault,
     });
     expect(await screen.findByText(`${t.recorded} ${t.held}`)).toBeInTheDocument();
+  });
+
+  it('해제 조건은 고쳐서 보낼 수 있고, 비우면 기록을 막는다', async () => {
+    const user = userEvent.setup();
+    const { writes } = renderScreen('900028');
+
+    await findAndFill(user);
+    await user.click(screen.getByRole('checkbox', { name: t.hold.label }));
+    await user.click(screen.getByRole('combobox', { name: t.hold.reason }));
+    await user.click(await screen.findByRole('option', { name: '외관 이상' }));
+    const condition = screen.getByRole('textbox', { name: t.hold.releaseCondition });
+    expect(condition).toHaveValue(t.hold.releaseConditionDefault);
+
+    await user.clear(condition);
+    expect(screen.getByText(t.blocked.releaseCondition)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: t.submit })).toBeDisabled();
+
+    await user.type(condition, '재검 합격 후 해제');
+    await user.click(screen.getByRole('button', { name: t.submit }));
+
+    await waitFor(() => expect(writes).toHaveLength(2));
+    expect(await (writes[1] as Request).json()).toMatchObject({ releaseCondition: '재검 합격 후 해제' });
   });
 
   it('사번이 없으면 기록할 수 없다', async () => {

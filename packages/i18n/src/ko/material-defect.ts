@@ -38,6 +38,8 @@ export const materialDefect = {
     label: '이 LOT 을 보류합니다',
     reason: '보류 사유',
     reasonPlaceholder: '보류 사유를 고르세요',
+    releaseCondition: '해제 조건',
+    releaseConditionDefault: '품질 판정 후 해제',
     /** 관리웹에는 보류 입력이 같은 화면에 있다. */
     webNote: '보류가 필요하면 이 화면의 보류 입력에서 함께 실행하세요.',
   },
@@ -54,6 +56,7 @@ export const materialDefect = {
     qty: '불량 수량을 넣으세요.',
     uom: 'LOT 의 단위를 알 수 없어 기록할 수 없습니다.',
     holdReason: '보류 사유를 고르세요.',
+    releaseCondition: '해제 조건을 넣으세요.',
   },
 
   pane: {

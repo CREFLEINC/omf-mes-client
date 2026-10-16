@@ -34,6 +34,8 @@ export const materialDefect = {
     label: 'Tạm giữ LOT này',
     reason: 'Lý do tạm giữ',
     reasonPlaceholder: 'Chọn lý do tạm giữ',
+    releaseCondition: 'Điều kiện gỡ',
+    releaseConditionDefault: 'Gỡ sau khi có kết quả đánh giá chất lượng',
     webNote: 'Nếu cần tạm giữ, hãy thực hiện ở phần nhập tạm giữ trên màn hình này.',
   },
 
@@ -50,6 +52,7 @@ export const materialDefect = {
     qty: 'Hãy nhập số lượng lỗi.',
     uom: 'Không biết đơn vị của LOT nên không thể ghi nhận.',
     holdReason: 'Hãy chọn lý do tạm giữ.',
+    releaseCondition: 'Hãy nhập điều kiện gỡ.',
   },
 
   pane: {
