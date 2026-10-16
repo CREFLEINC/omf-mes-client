@@ -224,6 +224,7 @@ describe('toWarehouseView', () => {
       warehouseCode: 'SAMPLE-WH-01',
       warehouseName: '합성 창고 가',
       plantId: 9201,
+      isDefect: false,
     });
   });
 

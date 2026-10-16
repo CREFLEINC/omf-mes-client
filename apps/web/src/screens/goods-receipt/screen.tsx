@@ -350,6 +350,12 @@ export const GoodsReceiptScreen = () => {
    */
   const recheckLotId = result === null ? null : (selectedLine?.lotId ?? null);
   const lotStatus = useLotStatus(recheckLotId);
+  /* IQC 대상 줄만 고를 때 LOT 상태를 읽는다 — 불합격(불량) LOT 은 불량창고로만 입고된다(omf-all-around#84). */
+  const selectedLotStatus = useLotStatus(
+    selectedLine?.inspectionRequired === true ? (selectedLine.lotId ?? null) : null,
+    'select',
+  );
+  const isDefectiveLot = selectedLotStatus.statusCode === 'DEFECTIVE';
 
   const post = useGoodsReceiptPost({
     inboundReceiptId: selectedIrId,
@@ -745,6 +751,7 @@ export const GoodsReceiptScreen = () => {
             isPlantMismatch={
               selectedWarehouse !== null && selectedWarehouse.plantId !== inboundReceipt.plantId
             }
+            defectOnly={isDefectiveLot}
             onChangeWarehouse={changeWarehouse}
             onChangeLocation={changeLocation}
             onRetryOptions={retryPostOptions}

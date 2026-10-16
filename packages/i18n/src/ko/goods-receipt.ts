@@ -252,6 +252,8 @@ export const goodsReceipt = {
     },
   },
   notes: {
+    /** IQC 불합격(불량) LOT — 불량창고만 고를 수 있다(omf-all-around#84). */
+    defectWarehouseOnly: 'IQC 불합격 LOT입니다. 불량창고만 선택할 수 있습니다.',
     /*
      * 한 줄만 고를 수 있다는 사실. 밝히지 않으면 둘째 줄을 골랐을 때 앞 선택이 풀리는 것이
      * 고장으로 읽힌다(계약이 라인마다 위치를 받으므로 나중에 여러 줄로 늘 수 있다 — 이슈 §4).

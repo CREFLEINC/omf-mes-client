@@ -171,6 +171,7 @@ export const goodsReceipt: Translated<typeof ko.goodsReceipt> = {
     },
   },
   notes: {
+    defectWarehouseOnly: 'LOT không đạt IQC. Chỉ chọn được kho hàng lỗi.',
     singleLineSelect: 'Mỗi lần chỉ chọn được một dòng nhập hàng.',
     businessDateDerived: 'Ngày nghiệp vụ tự đặt theo thời điểm nhập kho đã chọn.',
     qtyFromInboundLine:

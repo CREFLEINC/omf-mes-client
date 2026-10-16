@@ -1893,6 +1893,62 @@ describe('GoodsReceiptScreen — 창고와 적치 위치', () => {
     expect(screen.queryByRole('option', { name: LOCATION_LABEL })).not.toBeInTheDocument();
   });
 
+  /* omf-all-around#84 — IQC 불합격(불량) LOT 은 불량창고로만 입고된다(서버도 일반 창고를 거부한다). */
+  describe('IQC 불합격 LOT', () => {
+    const DEFECT_WAREHOUSE_LABEL = 'SAMPLE-WH-NG · 합성 불량창고';
+    const withDefectWarehouse = (statusCode: string): StubRoute[] =>
+      allRoutes([
+        lotDetailRoute(statusCode),
+        lookupRoute(WAREHOUSES_PATH, [
+          ...warehouseFixtures,
+          {
+            warehouseId: 9703,
+            warehouseCode: 'SAMPLE-WH-NG',
+            warehouseName: '합성 불량창고',
+            plantId: 9201,
+            isDefect: true,
+          },
+        ]),
+      ]);
+
+    it('불량 LOT 이면 불량창고만 고를 수 있고 그 이유를 밝힌다', async () => {
+      fillCodeLists();
+      const { user } = renderScreen(withDefectWarehouse('DEFECTIVE'), '?ir=9001');
+
+      await openPostPane(user);
+      const warehouseBox = screen.getByRole('combobox', { name: t.fields.warehouse });
+      await waitFor(() => {
+        expect(warehouseBox).toHaveAccessibleDescription(t.notes.defectWarehouseOnly);
+      });
+
+      await user.click(warehouseBox);
+      expect(
+        await screen.findByRole('option', { name: DEFECT_WAREHOUSE_LABEL }),
+      ).toBeInTheDocument();
+      expect(screen.queryByRole('option', { name: WAREHOUSE_LABEL })).not.toBeInTheDocument();
+      expect(screen.queryByRole('option', { name: OTHER_WAREHOUSE_LABEL })).not.toBeInTheDocument();
+    });
+
+    it('불량이 아닌 LOT 은 창고를 좁히지 않는다', async () => {
+      fillCodeLists();
+      const { user, requests } = renderScreen(
+        withDefectWarehouse('SAMPLE_LOT_STATUS_A'),
+        '?ir=9001',
+      );
+
+      await openPostPane(user);
+      await waitFor(() => {
+        expect(requestsTo(requests, LOT_DETAIL_PATH)).toHaveLength(1);
+      });
+      const warehouseBox = screen.getByRole('combobox', { name: t.fields.warehouse });
+      expect(warehouseBox).not.toHaveAccessibleDescription(t.notes.defectWarehouseOnly);
+
+      await user.click(warehouseBox);
+      expect(await screen.findByRole('option', { name: WAREHOUSE_LABEL })).toBeInTheDocument();
+      expect(screen.getByRole('option', { name: DEFECT_WAREHOUSE_LABEL })).toBeInTheDocument();
+    });
+  });
+
   /* **C24** — 잘린 목록을 완전한 것으로 읽으면 「그런 창고가 없다」로 결론짓는다. */
   it('창고 목록이 잘리면 그 사실을 밝힌다', async () => {
     fillCodeLists();
@@ -2443,8 +2499,9 @@ describe('GoodsReceiptScreen — 성공', () => {
   it('성공하면 자재 LOT을 다시 조회해 상태를 그대로 보인다', async () => {
     const { requests } = await succeed();
 
+    /* 줄을 고를 때 한 번(불량창고 판정 · #84) + 성공 뒤 재조회 한 번. */
     await waitFor(() => {
-      expect(requestsTo(requests, LOT_DETAIL_PATH)).toHaveLength(1);
+      expect(requestsTo(requests, LOT_DETAIL_PATH)).toHaveLength(2);
     });
     expect(await screen.findByText('SAMPLE_LOT_STATUS_A')).toBeInTheDocument();
   });
@@ -2457,16 +2514,19 @@ describe('GoodsReceiptScreen — 성공', () => {
   it('성공하기 전에는 자재 LOT을 다시 부르지 않는다', async () => {
     const { user, requests } = await setupReadyToPost();
 
-    /* 줄을 고르고 확정 입력까지 다 채운 상태다 — 그래도 아직 부르지 않는다. */
-    expect(requestsTo(requests, LOT_DETAIL_PATH)).toHaveLength(0);
+    /*
+     * 줄을 고르고 확정 입력까지 다 채운 상태다 — 고를 때 읽은 한 번(불량창고 판정 · #84)뿐이고
+     * 재조회는 아직 부르지 않는다. 그 한 번은 재조회와 캐시가 갈려 결과에 쓰이지 않는다.
+     */
+    expect(requestsTo(requests, LOT_DETAIL_PATH)).toHaveLength(1);
 
     await clickPost(user);
     await confirmPost(user);
     await screen.findByRole('status', { name: t.result.label });
 
-    /* 짝 방향 — 성공한 뒤에는 실제로 부른다(스텁이 있는데도 0회가 아니다). */
+    /* 짝 방향 — 성공한 뒤에는 실제로 부른다(고를 때의 한 번에 더해진다). */
     await waitFor(() => {
-      expect(requestsTo(requests, LOT_DETAIL_PATH)).toHaveLength(1);
+      expect(requestsTo(requests, LOT_DETAIL_PATH)).toHaveLength(2);
     });
   });
 
@@ -2478,7 +2538,8 @@ describe('GoodsReceiptScreen — 성공', () => {
     await confirmPost(user);
     await screen.findByText(messages.httpError.title);
 
-    expect(requestsTo(requests, LOT_DETAIL_PATH)).toHaveLength(0);
+    /* 고를 때 읽은 한 번(#84)뿐이다. */
+    expect(requestsTo(requests, LOT_DETAIL_PATH)).toHaveLength(1);
   });
 
   it('자재 LOT 재조회가 실패하면 그 사실을 밝힌다', async () => {
@@ -2601,7 +2662,9 @@ describe('GoodsReceiptScreen — 실패 세 갈래', () => {
     const reason = 'IQC 수입검사 합격 전인 LOT 은 입고할 수 없습니다.';
     await fail(
       failingGoodsReceiptRoute(400, {
-        errors: [{ scope: 'field', field: 'lines[0].lotId', code: 'STATE_LOCKED', message: reason }],
+        errors: [
+          { scope: 'field', field: 'lines[0].lotId', code: 'STATE_LOCKED', message: reason },
+        ],
       }),
     );
 
