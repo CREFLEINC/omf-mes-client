@@ -78,6 +78,22 @@ describe('품질 탭', () => {
     expect(screen.getByText(t.reworkLine('1'))).toBeInTheDocument();
   });
 
+  it('PQC 호기별 불량률 — 높은 순, 같은 값은 설비 코드 자연 정렬(17-1 < 17-2 < 17-10)', () => {
+    const q = quality();
+    q.pqc.equipmentDefectRates = ['E-17-1', 'E-17-10', 'E-17-11', 'E-17-2', 'E-9-1'].map(
+      (code, index) => ({
+        equipmentId: index + 1,
+        equipmentCode: code,
+        defectRate: code === 'E-9-1' ? 7 : 5,
+        ngQty: 1,
+      }),
+    );
+    const { container } = render(<PqcTab quality={q} />);
+
+    const labels = [...container.querySelectorAll('.dash-rank-label')].map((l) => l.textContent);
+    expect(labels).toEqual(['E-9-1', 'E-17-1', 'E-17-2', 'E-17-10', 'E-17-11']);
+  });
+
   it('OQC — 고객 반품 · 최근 판정(고객)만 두고 금액 · 클레임 칸은 없다', () => {
     render(<OqcTab quality={quality()} />);
 

@@ -18,6 +18,7 @@ import {
   type QualityKind,
   type RecentLotRow,
 } from './quality';
+import { compareEquipmentCode } from './equipment';
 import { formatFigure } from './types';
 import {
   EmptyLine,
@@ -494,11 +495,21 @@ export const PqcTab = ({ quality }: { quality: DashboardQuality }) => {
         <DailyPanel quality={quality} kinds={['PQC']} title={t.dailyTitleOf('PQC')} />
         <Panel title={t.equipmentDefectRates} sub={t.equipmentDefectRatesSub} tag={t.tagToday}>
           <RankBars
-            entries={pqc.equipmentDefectRates.map((entry) => ({
-              key: String(entry.equipmentId),
-              label: entry.equipmentCode,
-              value: entry.defectRate,
-            }))}
+            /*
+             * 불량률이 같으면 설비 코드 자연 정렬(17-1 < 17-2 < 17-10) — 서버 순서는 같은 값끼리 문자열
+             * 순이었다(사용자 점검 2026-10-16). 불량률 높은 순은 그대로.
+             */
+            entries={[...pqc.equipmentDefectRates]
+              .sort(
+                (a, b) =>
+                  b.defectRate - a.defectRate ||
+                  compareEquipmentCode(a.equipmentCode, b.equipmentCode),
+              )
+              .map((entry) => ({
+                key: String(entry.equipmentId),
+                label: entry.equipmentCode,
+                value: entry.defectRate,
+              }))}
             formatValue={formatRate}
             showShare={false}
             aside={(entry) => {

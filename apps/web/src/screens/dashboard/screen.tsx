@@ -214,6 +214,7 @@ export const DashboardScreen = () => {
       </section>
 
       <Tabs
+        className="dash-tabs"
         aria-label={t.tabs.label}
         value={tab}
         onChange={(next) => {

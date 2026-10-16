@@ -8866,6 +8866,15 @@ dl.filter-bar.approval-inbox-detail-facts {
   padding-block: var(--space-3);
 }
 
+/*
+ * 대시보드 탭 줄 — 좁은 폭에서 6개가 넘치면 가로 스크롤로 숨지 않고 다음 줄로 감싼다(사용자 점검 2026-10-16 —
+ * 780 폭에서 「부적합 현황」이 안 보였고 스크롤된다는 표시도 없었다). 공용 Tabs 는 그대로, 이 화면만 덮는다.
+ */
+.dash-tabs [role='tablist'] {
+  flex-wrap: wrap;
+  overflow-x: visible;
+}
+
 /* 툴팁 글 — 긴 설명은 줄을 바꾼다(DS 툴팁의 nowrap 을 글 안에서만 푼다). */
 .dash-tip-text {
   display: block;

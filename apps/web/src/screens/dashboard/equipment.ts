@@ -139,6 +139,9 @@ export const BOARD_STATUS_PRIORITY: readonly DashboardEquipmentStatusCode[] = [
 /** 설비 코드 자연 정렬 — PERF-E-1-2 < PERF-E-1-10. */
 const codeCollator = new Intl.Collator('en', { numeric: true, sensitivity: 'base' });
 
+/** 설비 코드 자연 정렬 비교 — 설비 타일 · 호기별 불량률이 같은 규칙을 쓴다. */
+export const compareEquipmentCode = (a: string, b: string): number => codeCollator.compare(a, b);
+
 /** 우선순위 → 같은 상태 안에서는 설비 코드 자연 정렬. 받은 배열은 건드리지 않는다. */
 export const sortForBoard = (items: readonly EquipmentItemView[]): EquipmentItemView[] =>
   [...items].sort(
