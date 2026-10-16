@@ -130,8 +130,10 @@ export const dashboard = {
     stoppedElapsedColumn: '경과 시간',
     /** 그룹에 다 보이지 않은 대수 — 누르면 「전체 설비 보기」 창. */
     stoppedMore: (count: string): string => `외 ${count}대`,
-    /** 「외 n대」 창 제목 — 그 그룹에서 숨겨진 설비만 보인다(사용자 지시 2026-10-16). */
-    stoppedMoreTitle: (status: string, count: string): string => `${status} 외 ${count}대`,
+    /** 「외 n대」 창(사용자 지시 2026-10-16) — 제목 「정지 설비」 아래 줄 · 목록 열 제목. */
+    stoppedMoreCount: (count: string): string => `추가 설비 ${count}대`,
+    stoppedEquipmentColumn: '설비명',
+    stoppedReasonColumn: '사유',
     stoppedGroupCaption: (status: string): string => `${status} 설비`,
     /** ⛔ 「모든 설비가 가동 중」이라 단정하지 않는다(사용자 지시 2026-10-16) — 목록이 비었다는 사실만 말한다. */
     stoppedEmpty: '현재 가동 외 설비가 없습니다.',

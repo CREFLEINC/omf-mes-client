@@ -441,21 +441,16 @@ export const EquipmentBoard = (props: EquipmentPanelProps) => {
   );
 };
 
-/**
- * 설비 타일 창 — 「전체 설비 보기」(전체 · 상태별 대수 함께)와 가동 외 설비 현황의 「외 n대」(그 그룹에서 숨겨진
- * 설비만 · ⭐ 사용자 지시 2026-10-16)가 같은 창을 쓴다. `title` 을 주면 「외 n대」 창이다.
- */
+/** 「전체 설비 보기」 창 — 설비 가동 현황의 전체 설비 타일. */
 const AllEquipmentDialog = ({
   open,
   items,
-  title,
   onClose,
   onOpenTile,
   pointerInput,
 }: {
   open: boolean;
   items: readonly EquipmentItemView[];
-  title?: string;
   onClose: () => void;
   onOpenTile: (item: EquipmentItemView) => void;
   pointerInput: RefObject<boolean>;
@@ -463,14 +458,14 @@ const AllEquipmentDialog = ({
   <Dialog
     open={open}
     onClose={onClose}
-    title={title ?? t.allTitle(formatFigure(items.length))}
+    title={t.allTitle(formatFigure(items.length))}
     size="lg"
     className="dash-eq-all-dialog"
   >
     {/* 열 때만 그린다 — 닫힌 창이 120대 타일을 미리 들고 있지 않게. */}
     {open && (
       <>
-        {title === undefined && <StatusLegend items={items} />}
+        <StatusLegend items={items} />
         <ul className="dash-eq-grid dash-eq-grid-all">
           {items.map((item) => (
             <EquipmentTile
@@ -534,6 +529,86 @@ const StatusLegend = ({ items }: { items: readonly EquipmentItemView[] }) => (
       </li>
     ))}
   </ul>
+);
+
+/**
+ * 「외 n대」 창(⭐ 사용자 지시 2026-10-16) — 그 그룹에서 목록에 보이지 않은 설비만, 카드가 아닌 목록으로.
+ * 머리 = 「정지 설비」 + 「추가 설비 n대」, 본문 = 설비명(종류는 아래 작게) · 사유 · 경과 시간(오른쪽).
+ * 상태는 제목에 있으니 줄마다 배지를 되풀이하지 않는다. 줄을 누르면 같은 상세 창. 크기는 내용을 따른다.
+ */
+const StoppedMoreDialog = ({
+  statusCode,
+  items,
+  onClose,
+  onOpenRow,
+  pointerInput,
+}: {
+  statusCode: DashboardEquipmentStatusCode | null;
+  items: readonly EquipmentItemView[];
+  onClose: () => void;
+  onOpenRow: (item: EquipmentItemView) => void;
+  pointerInput: RefObject<boolean>;
+}) => (
+  <Dialog
+    open={statusCode !== null && items.length > 0}
+    onClose={onClose}
+    title={
+      statusCode === null ? undefined : (
+        <span className="dash-detail-head">
+          <span className="dash-detail-head-row">
+            <span
+              className={`dash-dot dash-dot-${EQUIPMENT_STATUS_TONE[statusCode]}`}
+              aria-hidden="true"
+            />
+            {t.stoppedGroupCaption(t.status[statusCode])}
+          </span>
+          <span className="dash-detail-sub">{t.stoppedMoreCount(formatFigure(items.length))}</span>
+        </span>
+      )
+    }
+    size="md"
+    className="dash-stopped-more-dialog"
+  >
+    {statusCode !== null && (
+      <div className="dash-more-list">
+        <div className="dash-more-colhead" aria-hidden="true">
+          <span>{t.stoppedEquipmentColumn}</span>
+          <span>{t.stoppedReasonColumn}</span>
+          <span>{t.stoppedElapsedColumn}</span>
+        </div>
+        <ul aria-label={t.stoppedGroupCaption(t.status[statusCode])}>
+          {items.map((item) => (
+            <li key={item.equipmentId}>
+              <button
+                type="button"
+                className="dash-more-row"
+                {...pointerFocusProps(pointerInput)}
+                aria-label={`${t.openDetail(item.equipmentCode)} · ${describeReason(item)} · ${formatElapsed(item.elapsedMinutes)}`}
+                onClick={() => {
+                  onOpenRow(item);
+                }}
+              >
+                <span className="dash-more-name">
+                  <span className="dash-more-code">{item.equipmentCode}</span>
+                  {item.tonnage !== null && <span className="dash-more-type">{item.tonnage}</span>}
+                </span>
+                <span
+                  className={
+                    item.reasonName === null
+                      ? 'dash-more-reason dash-more-reason-none'
+                      : 'dash-more-reason'
+                  }
+                >
+                  {describeReason(item)}
+                </span>
+                <span className="dash-more-elapsed">{formatElapsed(item.elapsedMinutes)}</span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      </div>
+    )}
+  </Dialog>
 );
 
 /**
@@ -717,18 +792,13 @@ export const StoppedPanel = (props: EquipmentPanelProps) => {
             );
           })}
         </div>
-        <AllEquipmentDialog
-          open={moreCode !== null && moreRows.length > 0}
+        <StoppedMoreDialog
+          statusCode={moreRows.length > 0 ? moreCode : null}
           items={moreRows}
-          title={
-            moreCode === null
-              ? undefined
-              : t.stoppedMoreTitle(t.status[moreCode], formatFigure(moreRows.length))
-          }
           onClose={() => {
             setMoreCode(null);
           }}
-          onOpenTile={openTile}
+          onOpenRow={openTile}
           pointerInput={pointerInput}
         />
         <EquipmentDetailDialog

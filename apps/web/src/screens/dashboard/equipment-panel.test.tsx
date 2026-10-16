@@ -306,15 +306,21 @@ describe('StoppedPanel', () => {
     expect(rows[0]).toHaveTextContent('S-5');
 
     await user.click(within(group).getByRole('button', { name: t.stoppedMore('2') }));
-    const dialog = screen.getByRole('dialog', { name: t.stoppedMoreTitle(t.status.STOPPED, '2') });
-    const tiles = within(dialog).getAllByRole('button', { name: /상세 보기/ });
-    expect(tiles).toHaveLength(2);
-    /* 미리 보인 S-5 · S-4 · S-3 은 빠지고 덜 오래 멈춘 S-2 · S-1 만. */
-    expect(tiles.map((tile) => tile.textContent)).toEqual([
+    const dialog = screen.getByRole('dialog', {
+      name: new RegExp(`^${t.stoppedGroupCaption(t.status.STOPPED)}`),
+    });
+    expect(dialog).toHaveTextContent(t.stoppedMoreCount('2'));
+    const moreRows = within(dialog).getAllByRole('button', { name: /상세 보기/ });
+    /* 미리 보인 S-5 · S-4 · S-3 은 빠지고 덜 오래 멈춘 S-2 · S-1 만 — 목록 줄, 상태 배지는 되풀이하지 않는다. */
+    expect(moreRows.map((row) => row.textContent)).toEqual([
       expect.stringContaining('S-2'),
       expect.stringContaining('S-1'),
     ]);
-    expect(within(dialog).queryByRole('list', { name: t.legend })).not.toBeInTheDocument();
+    expect(moreRows[0]).toHaveTextContent('합성 사유');
+    expect(within(dialog).queryByText(t.status.STOPPED)).not.toBeInTheDocument();
+
+    await user.click(moreRows[1]!);
+    expect(screen.getByRole('heading', { level: 2, name: /S-1/ })).toBeInTheDocument();
   });
 
   it('마우스로 연 상세를 닫아 줄로 포커스가 돌아오면 링을 숨긴다(설비 타일과 같은 규칙)', async () => {
