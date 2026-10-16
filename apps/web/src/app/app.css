@@ -7920,6 +7920,82 @@ dl.filter-bar.approval-inbox-detail-facts {
 }
 
 /*
+ * 점 툴팁(⭐ 사용자 결정 2026-10-16) — DS 차트 위에 같은 크기의 층을 겹친다(`trend-panel.tsx` `PointTips`).
+ * 날짜 칸마다 투명한 단추, 고른 점에 고리와 말풍선. 말풍선은 점 위 가운데, 좌우 끝에서는 안쪽으로, 위쪽 점은
+ * 아래로 연다 — 그래프 · 카드 밖으로 나가지 않게.
+ */
+.dash-trend {
+  position: relative;
+}
+
+.dash-trend-tips {
+  position: absolute;
+  top: 0;
+  inset-inline-start: var(--space-6);
+  pointer-events: none;
+}
+
+.dash-trend-hit {
+  position: absolute;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+.dash-trend-hit:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.dash-trend-ring {
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  border: 2px solid var(--on-surface);
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+}
+
+.dash-trend-tip {
+  position: absolute;
+  padding: var(--space-1) var(--space-2);
+  /* DS 툴팁과 같은 모양(표면 · 테두리 · 그림자 · 글자). */
+  border: 1px solid var(--outline);
+  border-radius: var(--radius-sm);
+  background: var(--surface-container-high);
+  box-shadow: var(--elevation-2);
+  color: var(--on-surface);
+  font: var(--type-body-sm);
+  letter-spacing: var(--type-body-sm-tracking);
+  white-space: nowrap;
+  transform: translate(-50%, calc(-100% - 10px));
+  z-index: 1;
+}
+
+.dash-trend-tip-start {
+  transform: translate(-12px, calc(-100% - 10px));
+}
+
+.dash-trend-tip-end {
+  transform: translate(calc(-100% + 12px), calc(-100% - 10px));
+}
+
+.dash-trend-tip-below {
+  transform: translate(-50%, 10px);
+}
+
+.dash-trend-tip-start.dash-trend-tip-below {
+  transform: translate(-12px, 10px);
+}
+
+.dash-trend-tip-end.dash-trend-tip-below {
+  transform: translate(calc(-100% + 12px), 10px);
+}
+
+/*
  * KPI 띠 — 한 장의 띠. 칸 사이 선은 띠 배경(1px 틈)으로 그려 하나로 이어지고, 바깥 테두리도 띠에만 있다
  * (칸마다 테두리 · 모서리를 그리지 않는다).
  *
@@ -8466,24 +8542,30 @@ dl.filter-bar.approval-inbox-detail-facts {
 
 .dash-alert-head {
   display: flex;
+  flex-wrap: wrap;
   align-items: baseline;
   justify-content: space-between;
-  gap: var(--space-2);
+  gap: 0 var(--space-2);
   min-width: 0;
 }
 
+/*
+ * 제목은 말줄임하지 않는다 — 자리가 모자라면 일시가 제목 아래 줄로 내려간다(사용자 지시 2026-10-16). 일시는
+ * 길이가 같아 오른쪽 끝에 고정폭 숫자로 맞춘다.
+ */
 .dash-alert-title {
   min-width: 0;
-  overflow: hidden;
   font: var(--type-body-sm);
   letter-spacing: var(--type-body-sm-tracking);
   font-weight: 700;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  word-break: keep-all;
+  overflow-wrap: break-word;
 }
 
 .dash-alert-time {
   flex: none;
+  margin-inline-start: auto;
+  font-variant-numeric: tabular-nums;
   font: var(--type-label-sm);
   letter-spacing: var(--type-label-sm-tracking);
   color: var(--on-surface-muted);
