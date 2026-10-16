@@ -41,18 +41,13 @@ export const alertTitleOf = (eventCode: string, entries: readonly EventEntry[]):
 };
 
 /**
- * 발생 시각(공장 시각) — 오늘이면 `HH:mm`, 올해의 다른 날이면 `MM-DD HH:mm`, 올해가 아니면
- * `YYYY-MM-DD HH:mm`(사용자 지시 2026-10-16 — 미확인 알림은 지난 날짜일 수 있다). 읽을 수 없으면 받은 표기 그대로.
+ * 발생 일시(공장 시각) — 모든 항목을 `YYYY.MM.DD HH:mm`(24시간제) 한 형식으로(⭐ 사용자 지시 2026-10-16 · 이 카드
+ * 한정). 오늘 · 지난날을 가르지 않고 상대 시간도 쓰지 않는다. 읽을 수 없으면 받은 표기 그대로.
  */
-export const alertTimeOf = (view: DashboardAlertView, today: string | null): string => {
+export const alertTimeOf = (view: DashboardAlertView): string => {
   const parts = toPlantDateTimeParts(view.occurredAt);
-  if (parts === null) return view.occurredAtText;
 
-  if (parts.date === today) return parts.time;
-
-  return today !== null && parts.date.slice(0, 4) === today.slice(0, 4)
-    ? `${parts.date.slice(5)} ${parts.time}`
-    : `${parts.date} ${parts.time}`;
+  return parts === null ? view.occurredAtText : `${parts.date.replaceAll('-', '.')} ${parts.time}`;
 };
 
 export interface AlertPanelProps {
@@ -80,8 +75,6 @@ export const AlertPanel = ({ views, events, isLoading }: AlertPanelProps) => {
     return <EmptyLine live text={t.alerts.empty} />;
   }
 
-  const today = toPlantDateTimeParts(new Date().toISOString())?.date ?? null;
-
   /*
    * ⭐ 한 항목 = 1줄 알림 이름(굵게) + 오른쪽 시각 / 2줄 메시지(최대 2줄 · 넘치면 말줄임, 전체는 `title`) ·
    * 위치는 있을 때만(사용자 지시 2026-10-16). 항목마다 상자 · 그림자를 두지 않고 얇은 선으로만 가른다 —
@@ -105,7 +98,7 @@ export const AlertPanel = ({ views, events, isLoading }: AlertPanelProps) => {
                 <span className="dash-alert-title">{alertTitleOf(view.eventCode, events)}</span>
                 {/* 원문을 `dateTime`에 그대로 둔다 — 표기는 조각이라 그것만으로는 되짚을 수 없다. */}
                 <time className="dash-alert-time" dateTime={view.occurredAt}>
-                  {alertTimeOf(view, today)}
+                  {alertTimeOf(view)}
                 </time>
               </span>
               <span className="dash-alert-message" title={message}>

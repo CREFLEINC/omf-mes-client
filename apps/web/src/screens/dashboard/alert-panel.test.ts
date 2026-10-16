@@ -49,14 +49,13 @@ describe('alertTimeOf', () => {
     locationPath: null,
   });
 
-  it('오늘(공장 날짜)이면 시:분, 다른 날이면 월-일 시:분 — 공장 시각(UTC+7)으로', () => {
-    expect(alertTimeOf(view('2026-10-16T02:05:00Z'), '2026-10-16')).toBe('09:05');
-    expect(alertTimeOf(view('2026-10-15T02:05:00Z'), '2026-10-16')).toBe('10-15 09:05');
-    /* 올해가 아니면 연도까지. */
-    expect(alertTimeOf(view('2025-12-15T03:00:00Z'), '2026-10-16')).toBe('2025-12-15 10:00');
+  it('오늘 · 지난날 · 지난해 모두 YYYY.MM.DD HH:mm(공장 시각 UTC+7, 24시간제) 한 형식', () => {
+    expect(alertTimeOf(view('2026-10-16T07:02:00Z'))).toBe('2026.10.16 14:02');
+    expect(alertTimeOf(view('2026-10-14T07:18:00Z'))).toBe('2026.10.14 14:18');
+    expect(alertTimeOf(view('2025-12-15T03:00:00Z'))).toBe('2025.12.15 10:00');
   });
 
   it('읽을 수 없으면 받은 표기 그대로', () => {
-    expect(alertTimeOf(view('잘못된 값'), '2026-10-16')).toBe('원문 표기');
+    expect(alertTimeOf(view('잘못된 값'))).toBe('원문 표기');
   });
 });
