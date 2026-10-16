@@ -11,7 +11,7 @@ export const dashboard = {
   panes: {
     filters: '기준 조건',
     trend: '일일 생산실적 추이',
-    alerts: '미처리 알람',
+    alerts: '미확인 알림',
     shipment: '출하 현황',
   },
 
@@ -60,7 +60,7 @@ export const dashboard = {
 
   alerts: {
     /** 알람 0건은 오류가 아니라 정상 상태다. */
-    empty: '미처리 알람이 없습니다.',
+    empty: '미확인 알림이 없습니다.',
     unread: '미확인',
     read: '확인함',
     /** 위치는 계층 텍스트로만 그린다 — 평면 배치·도면 구획을 쓰지 않는다. */
@@ -178,12 +178,15 @@ export const dashboard = {
     /** 서버 설명이 올 때만 쓰는 짧은 기준 줄(원문은 설명 단추의 툴팁). */
     availabilityBasis: '계획 가동시간 기준',
     workedEquipment: (count: string): string => `작업\u00a0설비\u00a0${count}대`,
+    /** ⭐ 툴팁 문구 — 사용자 지정(2026-10-16), 그대로 쓴다. */
+    availabilityTip: '계획된 가동시간 중 실제 가동한 시간의 비율입니다.',
     productionQty: '생산 수량',
     /** 이 띠에서는 「NG」 대신 「불량」(사용자 지시 2026-10-16). */
     defectLine: (qty: string): string => `불량 ${qty} EA`,
     defectRate: '종합 불량률',
     defectRateNote: '생산 수량 중 불량 비율',
-    defectRateFormula: '불량 수량 ÷ 총생산 수량',
+    /** ⭐ 툴팁 문구 — 사용자 지정(2026-10-16), 그대로 쓴다. */
+    defectRateTip: '전체 생산 수량 중 불량 수량이 차지하는 비율입니다.',
     /** 시안의 「평균 C/T 달성」 자리 — 실측 C/T 가 없어 표준 C/T 기준 성능률을 둔다. */
     performance: '성능률',
     /** ⭐ 툴팁 문구 — 사용자 지정(2026-10-16), 그대로 쓴다. */
@@ -194,7 +197,7 @@ export const dashboard = {
     estimated: '추정',
     oee: 'OEE(설비종합효율)',
     /** 실제 의미는 로그인 사용자의 안 읽은 알림 수다. */
-    myUnreadAlerts: '내 미확인 알림',
+    myUnreadAlerts: '미확인 알림',
     /** 공장 조건이 적용되지 않는 값임을 짧게. */
     allPlants: '전체 공장',
     totalDefect: '총 불량',

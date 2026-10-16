@@ -1,6 +1,6 @@
 import type { DashboardEquipmentItem } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
-import { render, screen, within } from '@testing-library/react';
+import { act, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 
@@ -136,6 +136,41 @@ describe('EquipmentBoard', () => {
     /* ESC 는 브라우저의 <dialog> cancel 로 오는데 jsdom 에는 없다 — 같은 길(onClose)로 가는 X 로 잰다. ESC 는 브라우저에서 확인. */
     await user.click(within(dialog).getByRole('button', { name: messages.common.close }));
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
+
+  it('마우스로 연 상세를 닫아 포커스가 타일로 돌아오면 링을 숨기고, 키보드로 연 경우엔 보인다', async () => {
+    const user = userEvent.setup();
+    render(<EquipmentBoard view={view} isLoading={false} isFailed={false} />);
+
+    await user.click(tileOf('EQ-02'));
+    await user.click(
+      within(screen.getByRole('dialog')).getByRole('button', { name: messages.common.close }),
+    );
+    /* 닫힌 창이 포커스를 돌려주는 길 — jsdom 에는 그 동작이 없어 같은 포커스를 직접 준다. */
+    act(() => {
+      tileOf('EQ-02').focus();
+    });
+    expect(tileOf('EQ-02')).toHaveAttribute('data-pointer-focus');
+
+    act(() => {
+      tileOf('EQ-02').blur();
+    });
+    expect(tileOf('EQ-02')).not.toHaveAttribute('data-pointer-focus');
+
+    /* Esc 는 입력 방식을 바꾸지 않는다(창 닫기 키) — 다른 키를 누르면 키보드 입력으로 본다. */
+    await user.keyboard('{Escape}');
+    act(() => {
+      tileOf('EQ-02').focus();
+    });
+    expect(tileOf('EQ-02')).toHaveAttribute('data-pointer-focus');
+    act(() => {
+      tileOf('EQ-02').blur();
+    });
+    await user.keyboard('{Enter}');
+    act(() => {
+      tileOf('EQ-02').focus();
+    });
+    expect(tileOf('EQ-02')).not.toHaveAttribute('data-pointer-focus');
   });
 
   it('호기를 고르면 현재 작업지시 · 품목까지 상세가 열린다', async () => {

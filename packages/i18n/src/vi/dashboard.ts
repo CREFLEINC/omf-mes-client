@@ -12,7 +12,7 @@ export const dashboard: Translated<typeof ko.dashboard> = {
   panes: {
     filters: 'Điều kiện cơ sở',
     trend: 'Diễn biến sản lượng theo ngày',
-    alerts: 'Cảnh báo chưa xử lý',
+    alerts: 'Thông báo chưa đọc',
     shipment: 'Tình trạng xuất hàng',
   },
 
@@ -47,7 +47,7 @@ export const dashboard: Translated<typeof ko.dashboard> = {
   },
 
   alerts: {
-    empty: 'Không có cảnh báo chưa xử lý.',
+    empty: 'Không có thông báo chưa đọc.',
     unread: 'Chưa xem',
     read: 'Đã xem',
     locationUnknown: 'Không có thông tin vị trí',
@@ -145,11 +145,12 @@ export const dashboard: Translated<typeof ko.dashboard> = {
     availability: 'Tỷ lệ vận hành theo giờ',
     availabilityBasis: 'Theo giờ vận hành kế hoạch',
     workedEquipment: (count: string): string => `${count}\u00a0máy\u00a0làm\u00a0việc`,
+    availabilityTip: 'Tỷ lệ thời gian vận hành thực tế trên thời gian vận hành kế hoạch.',
     productionQty: 'Sản lượng',
     defectLine: (qty: string): string => `Lỗi ${qty} EA`,
     defectRate: 'Tỷ lệ lỗi tổng hợp',
     defectRateNote: 'Tỷ lệ lỗi trên sản lượng',
-    defectRateFormula: 'Số lượng lỗi ÷ Tổng sản lượng',
+    defectRateTip: 'Tỷ lệ số lượng lỗi trên tổng sản lượng.',
     performance: 'Hiệu suất',
     performanceTip: 'Giá trị ước tính được tính theo thời gian chu kỳ tiêu chuẩn.',
     oeeTip:
@@ -158,7 +159,7 @@ export const dashboard: Translated<typeof ko.dashboard> = {
       'Số thông báo tài khoản hiện tại chưa xem. Tính trên toàn bộ thông báo, không phụ thuộc nhà máy đã chọn.',
     estimated: 'Ước tính',
     oee: 'OEE (Hiệu suất thiết bị tổng thể)',
-    myUnreadAlerts: 'Thông báo chưa đọc của tôi',
+    myUnreadAlerts: 'Thông báo chưa đọc',
     allPlants: 'Tất cả nhà máy',
     totalDefect: 'Tổng lỗi',
   },

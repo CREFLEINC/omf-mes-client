@@ -1,6 +1,6 @@
 import { Card, Chip, EmptyState, IconButton, Tooltip, type ChipStatus } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import type { ReactNode } from 'react';
+import { useEffect, useRef, type MouseEvent, type ReactNode } from 'react';
 
 import { formatFigure } from './types';
 import {
@@ -69,22 +69,87 @@ export const Panel = ({ title, sub, tag, action, className, children }: PanelPro
  * 툴팁 글. DS 툴팁은 줄바꿈 없이(nowrap) 그려 긴 설명이 화면 오른쪽 끝을 넘었다(768 폭 실측) — 글에 최대 폭을
  * 주어 줄을 바꾼다(`.dash-tip-text`). 공용 Tooltip 은 고치지 않는다.
  */
+/*
+ * 문장마다 한 줄로 세운다(사용자 보고 2026-10-16) — 꺾인 글 상자는 최대 폭에 붙어 남아 말풍선 오른쪽이 비었다.
+ * 문장 단위로 끊으면 상자는 가장 긴 문장 폭에 맞고, 한 문장은 최대 폭을 넘을 때만 꺾인다.
+ */
 const TipText = ({ children }: { children: string }) => (
-  <span className="dash-tip-text">{children}</span>
+  <span className="dash-tip-text">
+    {children.split(/(?<=[.。])\s+/).map((sentence) => (
+      <span key={sentence} className="dash-tip-line">
+        {sentence}
+      </span>
+    ))}
+  </span>
 );
 
 /**
  * 설명 단추 — 누르거나 올리면 DS 툴팁으로 서버 설명 원문을 보인다. ⭐ KPI 띠에 한해 「상세 설명은
  * 툴팁」을 허용한다(사용자 지시 2026-10-16) — 칸 높이가 설명 때문에 늘지 않게. 원문은 그대로 넣는다.
  */
-export const InfoTip = ({ label, content }: { label: string; content: string }) => (
-  /*
-   * 아래로 연다 — KPI 띠는 화면 맨 위쪽에 있어 위로 열면 스크롤 영역(셸 `main`) 위 끝에 잘린다.
-   */
-  <Tooltip content={<TipText>{content}</TipText>} placement="bottom">
-    <IconButton size="sm" icon="info" className="dash-info" aria-label={label} />
-  </Tooltip>
-);
+/** 눌러서 연 설명 툴팁이 스스로 닫히기까지(사용자 지시 2026-10-16). */
+export const INFO_TIP_CLICK_CLOSE_MS = 3_000;
+
+/**
+ * 설명 단추(ⓘ) — 마우스 올림 · 키보드 포커스로 열리는 DS Tooltip 동작은 그대로 두고, **누르면 열리고
+ * 3초 뒤 닫힌다**. 열려 있을 때 다시 누르면 바로 닫힌다(사용자 지시 2026-10-16 — 터치 화면에는 올림이 없다).
+ *
+ * DS Tooltip 은 열림 상태를 밖에서 받지 않는다(`open` · `onOpenChange` 없음). 공용 부품을 고치지 않고 DS 가
+ * 이미 받는 신호로만 움직인다: 열기는 단추에 포커스를 다시 주고(포커스로 열림), 닫기는 Esc 를 보낸다
+ * (DS 가 Esc 로 닫는다 — 포커스는 단추에 남는다).
+ */
+export const InfoTip = ({ label, content }: { label: string; content: string }) => {
+  const rootRef = useRef<HTMLSpanElement>(null);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+
+  const stopTimer = () => {
+    if (timerRef.current !== undefined) clearTimeout(timerRef.current);
+    timerRef.current = undefined;
+  };
+
+  useEffect(() => stopTimer, []);
+
+  const close = (button: HTMLButtonElement) => {
+    stopTimer();
+    button.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+  };
+
+  const onClick = (event: MouseEvent<HTMLButtonElement>) => {
+    /* 칸 전체가 링크일 수 있다 — 설명 단추를 누른 것은 이동이 아니다. */
+    event.preventDefault();
+    event.stopPropagation();
+
+    const button = event.currentTarget;
+    if (timerRef.current !== undefined) {
+      close(button);
+      return;
+    }
+
+    const isOpen = rootRef.current?.querySelector('[role="tooltip"]') != null;
+    if (!isOpen) {
+      button.blur();
+      button.focus();
+    }
+    timerRef.current = setTimeout(() => {
+      close(button);
+    }, INFO_TIP_CLICK_CLOSE_MS);
+  };
+
+  return (
+    /*
+     * 아래로 연다 — KPI 띠는 화면 맨 위쪽에 있어 위로 열면 스크롤 영역(셸 `main`) 위 끝에 잘린다.
+     */
+    <Tooltip ref={rootRef} content={<TipText>{content}</TipText>} placement="bottom">
+      <IconButton
+        size="sm"
+        icon="info"
+        className="dash-info"
+        aria-label={label}
+        onClick={onClick}
+      />
+    </Tooltip>
+  );
+};
 
 export interface KpiTileProps {
   label: string;

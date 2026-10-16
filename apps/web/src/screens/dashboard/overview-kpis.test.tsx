@@ -1,12 +1,13 @@
 import { messages } from '@omf-mes/i18n';
-import { render, screen, within } from '@testing-library/react';
+import { act, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { toEquipmentView } from './equipment';
 import { OverviewKpis, availabilityBasis, auxInfoOf } from './overview-kpis';
 import type { DashboardCardView } from './types';
+import { INFO_TIP_CLICK_CLOSE_MS } from './viz';
 
 const k = messages.dashboard.kpi;
 const v = messages.dashboard.viz;
@@ -103,7 +104,7 @@ describe('OverviewKpis', () => {
     expect(container.textContent).not.toContain('최근 갱신');
   });
 
-  it('보조 목록 — 성능률 · 양품률 · OEE(설비종합효율) · 내 미확인 알림(전체 공장) · 총 불량, 근사값엔 「추정」', () => {
+  it('보조 목록 — 성능률 · 양품률 · OEE(설비종합효율) · 미확인 알림(전체 공장) · 총 불량, 근사값엔 「추정」', () => {
     renderKpis(PRODUCTION);
 
     expect(screen.getByText(k.performance)).toBeInTheDocument();
@@ -119,11 +120,50 @@ describe('OverviewKpis', () => {
     renderKpis(PRODUCTION);
 
     await user.hover(screen.getByRole('button', { name: v.infoLabel(k.myUnreadAlerts) }));
-    expect(await screen.findByText(k.myUnreadAlertsTip)).toBeInTheDocument();
+    /* 문장마다 한 줄로 선다 — 글은 그대로 이어진다. */
+    const tip = await screen.findByRole('tooltip');
+    expect(tip.textContent).toBe(k.myUnreadAlertsTip.replace(/(?<=\.)\s+/g, ''));
+    expect(tip.querySelectorAll('.dash-tip-line')).toHaveLength(2);
+  });
+
+  describe('설명 단추를 누르면', () => {
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    it('열리고 3초 뒤 스스로 닫힌다 · 열려 있을 때 다시 누르면 바로 닫힌다', async () => {
+      vi.useFakeTimers({ shouldAdvanceTime: true });
+      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime.bind(vi) });
+      renderKpis(PRODUCTION);
+      const button = screen.getByRole('button', { name: v.infoLabel(k.oee) });
+
+      await user.click(button);
+      expect(await screen.findByText(k.oeeTip)).toBeInTheDocument();
+      await act(() => vi.advanceTimersByTimeAsync(INFO_TIP_CLICK_CLOSE_MS));
+      expect(screen.queryByText(k.oeeTip)).not.toBeInTheDocument();
+
+      await user.click(button);
+      expect(await screen.findByText(k.oeeTip)).toBeInTheDocument();
+      await user.click(button);
+      expect(screen.queryByText(k.oeeTip)).not.toBeInTheDocument();
+    });
+  });
+
+  it('시간가동률 · 종합 불량률 툴팁은 사용자 지정 문구 — 서버 설명 원문 · 계산식이 아니다', async () => {
+    const user = userEvent.setup();
+    renderKpis(PRODUCTION);
+
+    await user.hover(screen.getByRole('button', { name: v.infoLabel('시간가동률') }));
+    expect(await screen.findByText(k.availabilityTip)).toBeInTheDocument();
+    expect(screen.queryByText(AVAILABILITY_NOTE)).not.toBeInTheDocument();
+    await user.unhover(screen.getByRole('button', { name: v.infoLabel('시간가동률') }));
+
+    await user.hover(screen.getByRole('button', { name: v.infoLabel(k.defectRate) }));
+    expect(await screen.findByText(k.defectRateTip)).toBeInTheDocument();
   });
 
   it('설명 원문 · 기준 줄 계산', () => {
-    /* ⭐ 성능률 · OEE · 내 미확인 알림은 사용자 지정 문구, 그 밖은 서버 원문. */
+    /* ⭐ 성능률 · OEE · 미확인 알림은 사용자 지정 문구, 그 밖은 서버 원문. */
     expect(auxInfoOf(card({ cardCode: 'PERFORMANCE_RATE', note: null }))).toBe(k.performanceTip);
     expect(auxInfoOf(card({ cardCode: 'OEE', note: OEE_NOTE }))).toBe(k.oeeTip);
     expect(auxInfoOf(card({ cardCode: 'UNHANDLED_ALARM', note: ALARM_NOTE }))).toBe(

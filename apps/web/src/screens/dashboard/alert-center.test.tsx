@@ -8,8 +8,8 @@ import { AlertCenterButton, AlertPanel, NOTIFICATION_CENTER_PATH } from './alert
 
 const t = messages.dashboard.alerts;
 
-/** 미처리 알람 카드(사용자 지시 2026-10-16) — 머리의 「알림센터 보기 →」, 빈 상태 한 줄. */
-describe('미처리 알람 카드', () => {
+/** 미확인 알림 카드(사용자 지시 2026-10-16) — 머리의 「알림센터 보기 →」, 빈 상태 한 줄. */
+describe('미확인 알림 카드', () => {
   it('「알림센터 보기」를 누르면 알림센터로 간다(경로 그대로)', async () => {
     const user = userEvent.setup();
     render(
@@ -25,7 +25,7 @@ describe('미처리 알람 카드', () => {
     expect(screen.getByText('알림센터 도착')).toBeInTheDocument();
   });
 
-  it('알람이 없으면 「미처리 알람이 없습니다.」 한 줄만', () => {
+  it('알람이 없으면 「미확인 알림이 없습니다.」 한 줄만', () => {
     render(
       <MemoryRouter>
         <AlertPanel views={[]} isLoading={false} />
@@ -33,6 +33,6 @@ describe('미처리 알람 카드', () => {
     );
 
     expect(screen.getByText(t.empty)).toBeInTheDocument();
-    expect(t.empty).toBe('미처리 알람이 없습니다.');
+    expect(t.empty).toBe('미확인 알림이 없습니다.');
   });
 });

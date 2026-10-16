@@ -1,7 +1,7 @@
 import { Button, Chip, Dialog, Icon, Skeleton, type ChipStatus } from '@crefle/web-ui';
 import type { DashboardEquipmentStatusCode } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
-import { useRef, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode, type RefObject } from 'react';
 
 import { formatPlantDateTime } from '../../patterns/plant-time';
 import {
@@ -57,9 +57,37 @@ const StatusChip = ({ statusCode }: { statusCode: DashboardEquipmentStatusCode }
   </Chip>
 );
 
+/**
+ * 마지막 입력이 포인터(마우스 · 터치)였나. **Esc 는 셈하지 않는다** — 창을 닫는 키라, 마우스로 연 창을 Esc 로
+ * 닫았을 때 브라우저가 키보드 입력으로 보고 돌아온 타일에 포커스 링을 그린다(사용자 보고 2026-10-16).
+ */
+const usePointerInput = (): RefObject<boolean> => {
+  const ref = useRef(false);
+
+  useEffect(() => {
+    const onPointer = () => {
+      ref.current = true;
+    };
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') ref.current = false;
+    };
+    document.addEventListener('pointerdown', onPointer, true);
+    document.addEventListener('keydown', onKey, true);
+
+    return () => {
+      document.removeEventListener('pointerdown', onPointer, true);
+      document.removeEventListener('keydown', onKey, true);
+    };
+  }, []);
+
+  return ref;
+};
+
 interface EquipmentTileProps {
   item: EquipmentItemView;
   onOpen: (item: EquipmentItemView) => void;
+  /** `usePointerInput` — 포인터로 연 상세를 닫고 포커스가 돌아올 때 링을 숨긴다. */
+  pointerInput: RefObject<boolean>;
 }
 
 /**
@@ -67,7 +95,7 @@ interface EquipmentTileProps {
  * 상세) + 톤수 · 2줄 = 상태(색 + 글자, 가동도) · 3줄 = 금일 생산(강조) · 4줄 = 가동이면 NG · 불량률 · C/T,
  * 아니면 사유 · 경과. 멈춘 호기는 상태 색 바탕 · 왼쪽 띠로 격자에서 먼저 보인다. 타일 전체가 단추다.
  */
-const EquipmentTile = ({ item, onOpen }: EquipmentTileProps) => {
+const EquipmentTile = ({ item, onOpen, pointerInput }: EquipmentTileProps) => {
   const running = item.statusCode === 'RUNNING';
 
   return (
@@ -77,6 +105,19 @@ const EquipmentTile = ({ item, onOpen }: EquipmentTileProps) => {
         className={`dash-eq-tile dash-eq-${item.statusCode.toLowerCase()}`}
         onClick={() => {
           onOpen(item);
+        }}
+        /*
+         * 닫힌 창이 포커스를 타일로 돌려준다(DS Dialog · 접근성상 유지). 포인터로 열었으면 그때 링을 숨기고,
+         * 키보드로 열었거나 다른 키를 누르면 링을 보인다(`.dash-eq-tile[data-pointer-focus]`).
+         */
+        onFocus={(event) => {
+          event.currentTarget.toggleAttribute('data-pointer-focus', pointerInput.current);
+        }}
+        onBlur={(event) => {
+          event.currentTarget.removeAttribute('data-pointer-focus');
+        }}
+        onKeyDown={(event) => {
+          if (event.key !== 'Escape') event.currentTarget.removeAttribute('data-pointer-focus');
         }}
         aria-label={t.openDetail(item.equipmentCode)}
         title={`${item.equipmentCode} · ${item.equipmentName}`}
@@ -224,6 +265,7 @@ export const EquipmentBoard = (props: EquipmentPanelProps) => {
   const [openedId, setOpenedId] = useState<number | null>(null);
   const [isAllOpen, setIsAllOpen] = useState(false);
   const gridRef = useRef<HTMLUListElement>(null);
+  const pointerInput = usePointerInput();
   const blocked = gate(props);
   const { view } = props;
   const columns = useGridColumns(gridRef, 6, view !== null && view.items.length > 0);
@@ -275,7 +317,12 @@ export const EquipmentBoard = (props: EquipmentPanelProps) => {
           <>
             <ul ref={gridRef} className="dash-eq-grid">
               {preview.map((item) => (
-                <EquipmentTile key={item.equipmentId} item={item} onOpen={openTile} />
+                <EquipmentTile
+                  key={item.equipmentId}
+                  item={item}
+                  onOpen={openTile}
+                  pointerInput={pointerInput}
+                />
               ))}
             </ul>
             <div className="dash-eq-footer">
@@ -317,7 +364,12 @@ export const EquipmentBoard = (props: EquipmentPanelProps) => {
               <StatusLegend items={shown} />
               <ul className="dash-eq-grid dash-eq-grid-all">
                 {shown.map((item) => (
-                  <EquipmentTile key={item.equipmentId} item={item} onOpen={openTile} />
+                  <EquipmentTile
+                    key={item.equipmentId}
+                    item={item}
+                    onOpen={openTile}
+                    pointerInput={pointerInput}
+                  />
                 ))}
               </ul>
             </>

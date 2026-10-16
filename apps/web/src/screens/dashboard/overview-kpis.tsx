@@ -14,7 +14,7 @@ import { InfoTip, KpiTile } from './viz';
 const t = messages.dashboard;
 const k = messages.dashboard.kpi;
 
-/** KPI 띠 본 칸에 자리가 정해진 카드. 나머지(양품률 · OEE · 미처리 알람 · 앞으로 늘 카드)는 보조 열로 간다. */
+/** KPI 띠 본 칸에 자리가 정해진 카드. 나머지(양품률 · OEE · 미확인 알림 · 앞으로 늘 카드)는 보조 열로 간다. */
 const MAIN_CARDS = ['AVAILABILITY_RATE', 'PRODUCTION_QTY'] as const;
 /** 보조 열의 차례 — 시안의 「평균 C/T 달성」 자리에 성능률(표준 C/T 기준)이 먼저 선다. */
 const AUX_ORDER = ['PERFORMANCE_RATE', 'YIELD_RATE', 'OEE', 'UNHANDLED_ALARM'];
@@ -83,7 +83,7 @@ export const auxLabelOf = (card: DashboardCardView): string => {
 };
 
 /**
- * 보조 열 설명 단추 내용. ⭐ 성능률 · OEE · 내 미확인 알림은 사용자가 정한 문구를 그대로 쓴다(사용자 지시
+ * 보조 열 설명 단추 내용. ⭐ 성능률 · OEE · 미확인 알림은 사용자가 정한 문구를 그대로 쓴다(사용자 지시
  * 2026-10-16 — 서버 설명 원문 대신). 그 밖의 카드는 서버 설명 원문. 분모에서 뺀 건수(PARTIAL)는 툴팁이 아니라
  * 칸 아래 줄에 따로 늘 보이므로(`cardNoteLines`) 문구를 바꿔도 사라지지 않는다.
  */
@@ -138,7 +138,7 @@ export interface OverviewKpisProps {
  * 대시보드 탭의 KPI 띠(⭐ 사용자 지시 2026-10-16, 시안 v1.3 기준 재구성 · 같은 날 문구 · 밀도 개선).
  *
  * 가동 설비(+ 정지 · 대기 · 교체 · 비가동 태그) · 시간가동률 · 생산 수량(아래 불량) · 종합 불량률, 그리고
- * 오른쪽 보조 목록에 성능률 · 양품률 · OEE · 내 미확인 알림 · 총 불량. 「최근 갱신」은 조건 줄의 「마지막
+ * 오른쪽 보조 목록에 성능률 · 양품률 · OEE · 미확인 알림 · 총 불량. 「최근 갱신」은 조건 줄의 「마지막
  * 갱신」과 같은 정보라 두지 않는다. 이 띠에서는 「NG」라는 말을 쓰지 않는다(「불량」).
  *
  * ⭐ 종합 불량률 · 총 불량은 **summary 의 `production` 섹션**(공장 단위)이다 — 설비 합계로 계산하지 않는다
@@ -212,7 +212,7 @@ export const OverviewKpis = ({
         <Linked path={pathOf(availability)} label={availability?.label ?? k.availability}>
           <KpiTile
             label={availability?.label ?? k.availability}
-            info={serverNoteOf(availability)}
+            info={k.availabilityTip}
             tag={k.tagToday}
             value={cardValueText(availability)}
             unit={unitOf(availability)}
@@ -241,7 +241,7 @@ export const OverviewKpis = ({
 
         <KpiTile
           label={k.defectRate}
-          info={k.defectRateFormula}
+          info={k.defectRateTip}
           tag={k.tagToday}
           value={qtyOrNone(production?.defectRate)}
           unit={production?.defectRate === null || production === null ? undefined : '%'}
@@ -273,7 +273,7 @@ export const OverviewKpis = ({
                 {info !== undefined && <InfoTip label={t.viz.infoLabel(label)} content={info} />}
               </dt>
               <dd>
-                <Linked path={pathOf(card)} label={card.label}>
+                <Linked path={pathOf(card)} label={label}>
                   {cardValueText(card)}
                   {unitOf(card) !== undefined && (
                     <span className="dash-kpi-unit">{unitOf(card)}</span>

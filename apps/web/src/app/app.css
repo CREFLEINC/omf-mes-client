@@ -8329,6 +8329,11 @@ dl.filter-bar.approval-inbox-detail-facts {
   box-shadow: var(--focus-ring);
 }
 
+/* 포인터로 연 상세를 닫아 포커스만 돌아온 경우 — 링을 그리지 않는다(`equipment-panel.tsx`). */
+.dash-eq-tile[data-pointer-focus]:focus-visible {
+  box-shadow: none;
+}
+
 /* 멈춘 호기는 상태 색 바탕 + 왼쪽 굵은 띠 — 격자에서 먼저 눈에 들어온다. */
 .dash-eq-stopped {
   background: var(--semantic-error-container);
@@ -8441,6 +8446,20 @@ dl.filter-bar.approval-inbox-detail-facts {
 
 .dash-stopped-table td {
   color: var(--on-surface-variant);
+}
+
+/*
+ * 실데이터 확인(2026-10-16) — 묶음마다 표가 따로라 호기 칸이 가운데 · 왼쪽으로 제각각 섰고, 「2시간 3분」이
+ * 두 줄로 꺾였다. 머리글이 숨은 목록이라 호기 · 사유는 왼쪽, 경과는 오른쪽 끝에 붙이고 꺾지 않는다(원칙 a).
+ */
+.dash-stopped-table th,
+.dash-stopped-table td:first-of-type {
+  text-align: start;
+}
+
+.dash-stopped-table td:last-child {
+  text-align: end;
+  white-space: nowrap;
 }
 
 /*
@@ -8885,12 +8904,21 @@ dl.filter-bar.approval-inbox-detail-facts {
 /* 툴팁 글 — 긴 설명은 줄을 바꾼다(DS 툴팁의 nowrap 을 글 안에서만 푼다). */
 .dash-tip-text {
   display: block;
-  /* 내용만큼 넓어지되 18rem 에서 줄을 바꾼다 — 폭을 주지 않으면 툴팁 상자가 한 글자 폭으로 줄었다. */
+  /*
+   * 내용만큼 넓어지되 24rem 에서 줄을 바꾼다 — 폭을 주지 않으면 툴팁 상자가 한 글자 폭으로 줄었다. 문장은
+   * 한 줄씩(`.dash-tip-line`) 서서 상자가 가장 긴 문장 폭에 맞는다(사용자 보고 2026-10-16 — 오른쪽 빈 공간).
+   */
   width: max-content;
-  max-width: min(18rem, 70vw);
+  max-width: min(24rem, 80vw);
   white-space: normal;
   word-break: keep-all;
   overflow-wrap: break-word;
+}
+
+/* 한 문장이 최대 폭을 넘어 꺾일 때는 줄 길이를 고르게. */
+.dash-tip-line {
+  display: block;
+  text-wrap: balance;
 }
 
 .dash-sr-only {
