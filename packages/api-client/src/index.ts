@@ -13,6 +13,18 @@ export {
 } from './errors';
 export type { components, paths } from './generated/api';
 export type {
+  DashboardDefectPhenomenon,
+  DashboardEquipment,
+  DashboardEquipmentItem,
+  DashboardEquipmentStatusCode,
+  DashboardJudgmentCode,
+  DashboardLotCounts,
+  DashboardNextShipment,
+  DashboardQuality,
+  DashboardQualityTypeBlock,
+  DashboardRecentLot,
+  DashboardShipment,
+  DashboardSummarySections,
   TerminalRegistrationConfirmation,
   TerminalRegistrationStatusCode,
 } from './forward-contract';
