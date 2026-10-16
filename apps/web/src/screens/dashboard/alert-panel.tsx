@@ -1,7 +1,9 @@
-import { Button, Card, Chip, Icon, Skeleton } from '@crefle/web-ui';
+import { Button, Icon, Skeleton } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { Link, useNavigate } from 'react-router';
 
+import { toPlantDateTimeParts } from '../../patterns/plant-time';
+import { describeEvent, type EventEntry } from '../notification-center/lookups';
 import type { DashboardAlertView } from './types';
 import { EmptyLine } from './viz';
 
@@ -29,14 +31,34 @@ export const describeMessage = (message: string): string =>
   message.trim() === '' ? t.alerts.emptyMessage : message;
 
 /**
- * 알람 위치. ⭐ **계층 텍스트다** — 「공장 > 라인 > 설비」 꼴로 서버가 만들어 준다.
- * ⛔ 평면 배치·도면 구획을 쓰지 않는다(설계 확정). 오지 않으면 없다고 적는다.
+ * 알림 이름 — 알림센터와 같은 유형 목록(`/app/notification-events`)으로 푼다(사용자 지시 2026-10-16 — 코드
+ * 원문을 보이지 않는다). 목록에 없거나 아직 안 왔으면 「알림」.
  */
-export const describeLocation = (locationPath: string | null): string =>
-  locationPath === null || locationPath.trim() === '' ? t.alerts.locationUnknown : locationPath;
+export const alertTitleOf = (eventCode: string, entries: readonly EventEntry[]): string => {
+  const label = describeEvent(eventCode, entries);
+
+  return label === eventCode ? t.alerts.unknownEvent : label;
+};
+
+/**
+ * 발생 시각(공장 시각) — 오늘이면 `HH:mm`, 올해의 다른 날이면 `MM-DD HH:mm`, 올해가 아니면
+ * `YYYY-MM-DD HH:mm`(사용자 지시 2026-10-16 — 미확인 알림은 지난 날짜일 수 있다). 읽을 수 없으면 받은 표기 그대로.
+ */
+export const alertTimeOf = (view: DashboardAlertView, today: string | null): string => {
+  const parts = toPlantDateTimeParts(view.occurredAt);
+  if (parts === null) return view.occurredAtText;
+
+  if (parts.date === today) return parts.time;
+
+  return today !== null && parts.date.slice(0, 4) === today.slice(0, 4)
+    ? `${parts.date.slice(5)} ${parts.time}`
+    : `${parts.date} ${parts.time}`;
+};
 
 export interface AlertPanelProps {
   views: DashboardAlertView[];
+  /** 알림 유형 이름 목록(알림센터와 같은 조회 · `useNotificationEventOptions`). */
+  events: readonly EventEntry[];
   isLoading: boolean;
 }
 
@@ -51,50 +73,45 @@ export interface AlertPanelProps {
  *
  * 이 화면 슬라이스가 소유한다 — 다른 화면 슬라이스의 같은 이름 부품을 참조하지 않는다.
  */
-export const AlertPanel = ({ views, isLoading }: AlertPanelProps) => {
+export const AlertPanel = ({ views, events, isLoading }: AlertPanelProps) => {
   if (isLoading) return <Skeleton variant="rect" height="10rem" />;
 
   if (views.length === 0) {
     return <EmptyLine live text={t.alerts.empty} />;
   }
 
+  const today = toPlantDateTimeParts(new Date().toISOString())?.date ?? null;
+
+  /*
+   * ⭐ 한 항목 = 1줄 알림 이름(굵게) + 오른쪽 시각 / 2줄 메시지(최대 2줄 · 넘치면 말줄임, 전체는 `title`) ·
+   * 위치는 있을 때만(사용자 지시 2026-10-16). 항목마다 상자 · 그림자를 두지 않고 얇은 선으로만 가른다 —
+   * 멈춘 설비 · 출하 목록과 같은 밀도. 이 카드는 전부 미확인이라 「미확인」 배지를 두지 않는다.
+   */
   return (
-    <ul className="alert-list">
+    <ul className="dash-alert-list">
       {views.map((view) => {
-        const titleId = `dashboard-alert-${String(view.notificationId)}`;
+        const message = describeMessage(view.message);
+        const location = view.locationPath?.trim() ?? '';
 
         return (
           <li key={view.notificationId}>
             {/*
              * ⛔ **링크에 `aria-label`을 두지 않는다.** 두면 그것이 링크의 이름을 **대체**해
              * 모든 알람이 같은 문구 하나로 읽히고, 어느 알람으로 가는 링크인지 사라진다.
-             * 이름은 카드 내용(유형 · 문구 · 시각)에서 나오게 둔다.
+             * 이름은 항목 내용(이름 · 시각 · 문구)에서 나오게 둔다.
              */}
-            <Link className="alert-link" to={alertPathOf(view.eventCode)}>
-              <Card surface="default" bordered aria-labelledby={titleId}>
-                <Card.Header>
-                  <div className="alert-meta">
-                    <span id={titleId} className="alert-code">
-                      {view.eventCode}
-                    </span>
-                    <Chip size="sm" status={view.read ? 'idle' : 'error'}>
-                      {view.read ? t.alerts.read : t.alerts.unread}
-                    </Chip>
-                    {/* 원문을 `dateTime`에 그대로 둔다 — 표기는 조각이라 그것만으로는 되짚을 수 없다. */}
-                    <time className="alert-time" dateTime={view.occurredAt}>
-                      {view.occurredAtText}
-                    </time>
-                  </div>
-                </Card.Header>
-                <Card.Body>
-                  {describeMessage(view.message)}
-                  {/*
-                   * 위치는 둘째 줄이다. ⛔ `.stacked-cell`을 쓰지 않는다 — 그 클래스는 줄마다
-                   * 줄바꿈을 막아 문장을 잘라 내며, 배치 규범이 문장에 쓰지 말라고 못 박았다.
-                   */}
-                  <span className="field-note">{describeLocation(view.locationPath)}</span>
-                </Card.Body>
-              </Card>
+            <Link className="dash-alert-link" to={alertPathOf(view.eventCode)}>
+              <span className="dash-alert-head">
+                <span className="dash-alert-title">{alertTitleOf(view.eventCode, events)}</span>
+                {/* 원문을 `dateTime`에 그대로 둔다 — 표기는 조각이라 그것만으로는 되짚을 수 없다. */}
+                <time className="dash-alert-time" dateTime={view.occurredAt}>
+                  {alertTimeOf(view, today)}
+                </time>
+              </span>
+              <span className="dash-alert-message" title={message}>
+                {message}
+              </span>
+              {location !== '' && <span className="dash-alert-location">{location}</span>}
             </Link>
           </li>
         );

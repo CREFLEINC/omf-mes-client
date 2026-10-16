@@ -1,7 +1,7 @@
 import { LineChart, Skeleton, type ReferenceLine } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 
-import { formatFigure, toChartMax, type DashboardTrendView } from './types';
+import { formatFigure, toChartMax, toNiceAxis, type DashboardTrendView } from './types';
 import { useChartWidth } from './use-chart-width';
 import { EmptyLine } from './viz';
 
@@ -53,6 +53,9 @@ export const TrendPanel = ({ view, isLoading }: TrendPanelProps) => {
           },
         ];
 
+  const dataMax = Math.max(...view.points.map((point) => point.value));
+  const axis = toNiceAxis(toChartMax(view.points, view.targetValue) ?? dataMax);
+
   return (
     /*
      * 축 글자 자리 — DS 차트는 y축 글자를 고정 위치(x=32)에서 끝맞춤으로 그리고 그림 밖을 자른다. 96,000 같은
@@ -68,7 +71,8 @@ export const TrendPanel = ({ view, isLoading }: TrendPanelProps) => {
           },
         ]}
         /* 목표가 실적보다 높으면 눈금을 목표까지 넓힌다 — 넓히지 않으면 목표선이 그림 밖에 그어진다. */
-        max={toChartMax(view.points, view.targetValue)}
+        max={axis?.max}
+        yTicks={axis?.ticks}
         referenceLines={referenceLines}
         formatValue={formatFigure}
         /*

@@ -40,11 +40,17 @@ export const serverNoteOf = (card: DashboardCardView | undefined): string | unde
  * 툴팁으로 옮긴다(사용자 지시 2026-10-16 · KPI 띠 한정) — 칸 높이가 설명 때문에 늘지 않게.
  * 분모가 온전하지 않다는 사실(제외 건수)은 짧으므로 칸에 그대로 남긴다.
  */
-export const cardNoteLines = (card: DashboardCardView | undefined): string[] => {
+/** 전일 대비 증감 — 값을 낼 수 없는 카드에는 무엇 대비인지가 성립하지 않아 두지 않는다. */
+const cardDeltaOf = (card: DashboardCardView | undefined) =>
+  card === undefined || card.valueStatusCode === 'NOT_YET' ? undefined : toDelta(card.deltaRatio);
+
+export const cardNoteLines = (
+  card: DashboardCardView | undefined,
+  { withDelta = true }: { withDelta?: boolean } = {},
+): string[] => {
   if (card === undefined) return [];
   const lines: string[] = [];
-  /* 전일 대비 증감 — 값을 낼 수 없는 카드에는 무엇 대비인지가 성립하지 않아 두지 않는다. */
-  const delta = card.valueStatusCode === 'NOT_YET' ? undefined : toDelta(card.deltaRatio);
+  const delta = withDelta ? cardDeltaOf(card) : undefined;
   if (delta?.label !== undefined) lines.push(delta.label);
   if (card.valueStatusCode === 'PARTIAL' && card.excludedCount !== null) {
     lines.push(t.cards.excluded(card.excludedCount));
@@ -159,6 +165,7 @@ export const OverviewKpis = ({
   const byCode = new Map(cards.map((card) => [card.cardCode, card]));
   const availability = byCode.get('AVAILABILITY_RATE');
   const productionQty = byCode.get('PRODUCTION_QTY');
+  const productionDelta = cardDeltaOf(productionQty);
   const auxCards = [
     ...AUX_ORDER.flatMap((code) => {
       const card = byCode.get(code);
@@ -231,11 +238,22 @@ export const OverviewKpis = ({
             value={cardValueText(productionQty)}
             unit={unitOf(productionQty)}
           >
-            {[k.defectLine(qtyOrNone(production?.ngQty)), ...cardNoteLines(productionQty)].map(
-              (line) => (
-                <span key={line}>{line}</span>
-              ),
+            <span>{k.defectLine(qtyOrNone(production?.ngQty))}</span>
+            {productionDelta !== undefined && (
+              /*
+               * ⭐ 생산 수량 칸 한정(사용자 지정 2026-10-16) — 「전일 대비」는 보조 색 그대로, 기호 · 수치에만 색:
+               * 상승 초록 · 하락 주황 · 동일 회색(`.dash-delta-*`). 기호를 함께 둬 색만으로 말하지 않는다.
+               */
+              <span>
+                {t.cards.deltaBase}{' '}
+                <span className={`dash-delta dash-delta-${productionDelta.direction}`}>
+                  {productionDelta.mark}
+                </span>
+              </span>
             )}
+            {cardNoteLines(productionQty, { withDelta: false }).map((line) => (
+              <span key={line}>{line}</span>
+            ))}
           </KpiTile>
         </Linked>
 

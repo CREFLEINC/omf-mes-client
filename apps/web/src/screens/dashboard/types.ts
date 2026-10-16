@@ -158,6 +158,26 @@ export const toChartMax = (
   return targetValue > dataMax ? targetValue : undefined;
 };
 
+/** 보기 좋은 눈금 간격의 앞자리 — 1 · 2 · 2.5 · 5 × 10ⁿ. */
+const NICE_STEPS = [1, 2, 2.5, 5, 10] as const;
+
+/**
+ * 추이 그래프 y축 — 상한과 눈금 수(⭐ 사용자 지시 2026-10-16). DS 차트는 상한을 4등분해 1,314,000 · 985,500 같은
+ * 어색한 눈금을 그렸다. 「위 끝 ÷ 4」 이상인 가장 작은 보기 좋은 간격을 고르고, 상한은 그 간격의 배수로 올린다
+ * (예: 1,250,000 → 간격 500,000 · 상한 1,500,000 · 눈금 0 · 500,000 · 1,000,000 · 1,500,000). 데이터는 건드리지
+ * 않는다. 위 끝이 0 이하면 `undefined` — 차트 기본값에 맡긴다.
+ */
+export const toNiceAxis = (top: number): { max: number; ticks: number } | undefined => {
+  if (!(top > 0)) return undefined;
+
+  const raw = top / 4;
+  const magnitude = 10 ** Math.floor(Math.log10(raw));
+  const step = (NICE_STEPS.find((nice) => nice * magnitude >= raw) ?? 10) * magnitude;
+  const divisions = Math.max(1, Math.ceil(top / step - 1e-9));
+
+  return { max: step * divisions, ticks: divisions + 1 };
+};
+
 const toCardView = (source: DashboardCard): DashboardCardView => ({
   cardCode: source.cardCode,
   label: source.label,

@@ -28,6 +28,7 @@ import {
   QualityOverviewTab,
 } from './quality-panels';
 import { useSession } from '../../patterns/session';
+import { useNotificationEventOptions } from '../notification-center/lookups';
 import { toWebAccess } from '../../patterns/web-access';
 import { useDashboardSummary } from './queries';
 import { TrendPanel } from './trend-panel';
@@ -78,6 +79,8 @@ export const DashboardScreen = () => {
   const query = useMemo(() => toFilterQuery(filters), [filters]);
 
   const summary = useDashboardSummary(query);
+  /* 알림 이름 풀이 — 알림센터와 같은 유형 목록을 쓴다(코드 원문을 보이지 않는다). */
+  const alertEvents = useNotificationEventOptions();
   /* 출하 현황 칸을 눌러 갈 화면 — 사이드바와 같은 권한 판정(세션 권한)으로 링크 여부를 정한다. */
   const { session } = useSession();
   const access = toWebAccess(session?.permissions);
@@ -174,7 +177,7 @@ export const DashboardScreen = () => {
             allows={access.allows}
           />
           <Panel title={t.panes.alerts} action={<AlertCenterButton />}>
-            <AlertPanel views={alerts} isLoading={summary.isPending} />
+            <AlertPanel views={alerts} events={alertEvents.entries} isLoading={summary.isPending} />
           </Panel>
         </div>
       </div>

@@ -1,7 +1,7 @@
 import type { components } from '@omf-mes/api-client';
 import { describe, expect, it } from 'vitest';
 
-import { formatAsOf, formatFigure, toChartMax, toDashboardView } from './types';
+import { formatAsOf, formatFigure, toChartMax, toDashboardView, toNiceAxis } from './types';
 
 /**
  * 「틀려도 조용한 것」만 감지기를 붙인다 — 화면은 멀쩡히 서 있는데 값만 틀리는 계산이다.
@@ -136,5 +136,19 @@ describe('toDashboardView', () => {
 
   it('알람이 오지 않으면 빈 배열이다 — 구획이 없는 것이 아니라 건이 없는 것이다', () => {
     expect(toDashboardView(summary()).alerts).toEqual([]);
+  });
+});
+
+describe('toNiceAxis', () => {
+  it('눈금은 1 · 2 · 2.5 · 5 × 10ⁿ 간격, 상한은 그 배수', () => {
+    expect(toNiceAxis(1_250_000)).toEqual({ max: 1_500_000, ticks: 4 });
+    expect(toNiceAxis(1_314_000)).toEqual({ max: 1_500_000, ticks: 4 });
+    expect(toNiceAxis(96_000)).toEqual({ max: 100_000, ticks: 5 });
+    expect(toNiceAxis(2850)).toEqual({ max: 3000, ticks: 4 });
+    expect(toNiceAxis(3000)).toEqual({ max: 3000, ticks: 4 });
+  });
+
+  it('위 끝이 0 이하면 차트 기본값에 맡긴다', () => {
+    expect(toNiceAxis(0)).toBeUndefined();
   });
 });

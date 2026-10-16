@@ -104,20 +104,24 @@ describe('EquipmentBoard', () => {
     expect(within(legend).getByText(t.status.RUNNING).closest('li')).toHaveTextContent('0');
   });
 
-  it('상세는 설비 기본 · 가동 · 생산 실적 · 현재 작업 묶음이고, 하단 「닫기」가 없으며 X 로 닫힌다', async () => {
+  it('상세 — 머리는 코드 + 상태 배지 · 라인 · 설비 종류, 본문은 상태 시간 · 생산 실적 · 현재 작업이고 X 로 닫힌다', async () => {
     const user = userEvent.setup();
     render(<EquipmentBoard view={view} isLoading={false} isFailed={false} />);
 
     await user.click(tileOf('EQ-02'));
     const dialog = screen.getByRole('dialog');
-    for (const group of [t.groupBasic, t.groupRun, t.groupOutput, t.groupWork]) {
+    /* 머리 — 설비 이름(시험 설비 1)은 코드 · 라인과 달라 보조 줄 앞에 붙는다. 상태는 배지 하나. */
+    const heading = within(dialog).getByRole('heading', { level: 2 });
+    expect(heading).toHaveTextContent('EQ-02');
+    expect(heading).toHaveTextContent(t.status.STOPPED);
+    expect(heading).toHaveTextContent('시험 설비 1 · 2라인 · 100T');
+    for (const group of [t.groupRun, t.groupOutput, t.groupWork]) {
       expect(within(dialog).getByRole('heading', { name: group })).toBeInTheDocument();
     }
-    /* 값이 없는 작업지시 · 품목은 「—」. 항목은 하나도 빠지지 않는다. */
+    /* 사용자 지정 용어. 라인 · 설비 종류 · 상태는 머리로 올려 본문에 되풀이하지 않는다. */
+    expect(t.ngQty).toBe('불량 수량');
+    expect(within(dialog).queryByText(t.line)).not.toBeInTheDocument();
     for (const label of [
-      t.statusColumn,
-      t.line,
-      t.tonnage,
       t.reason,
       t.since,
       t.elapsed,
@@ -182,6 +186,35 @@ describe('EquipmentBoard', () => {
     const dialog = screen.getByRole('dialog');
     expect(within(dialog).getByText('WO-1')).toBeInTheDocument();
     expect(within(dialog).getByText('ITEM-1 시험 품목')).toBeInTheDocument();
+    /* 가동 중이면 상태 사유 자리를 두지 않는다. */
+    expect(within(dialog).queryByText(t.reason)).not.toBeInTheDocument();
+  });
+
+  it('작업지시가 없으면 「진행 중인 작업이 없습니다.」 한 줄', async () => {
+    const user = userEvent.setup();
+    render(
+      <EquipmentBoard
+        view={toEquipmentView({
+          asOf: '2026-10-16T03:00:00Z',
+          statusCounts: { RUNNING: 0, STOPPED: 0, WAITING: 0, CHANGEOVER: 0, IDLE: 1 },
+          items: [
+            item({
+              statusCode: 'IDLE',
+              currentWorkOrderNo: null,
+              currentItemCode: null,
+              currentItemName: null,
+            }),
+          ],
+        })}
+        isLoading={false}
+        isFailed={false}
+      />,
+    );
+
+    await user.click(tileOf('EQ-01'));
+    const dialog = screen.getByRole('dialog');
+    expect(within(dialog).getByText(t.noWork)).toBeInTheDocument();
+    expect(within(dialog).queryByText(t.workOrder)).not.toBeInTheDocument();
   });
 
   it('섹션이 오지 않음 · 설비 없음 · 첫 조회 실패를 서로 다른 말로 보인다', () => {
@@ -212,7 +245,8 @@ describe('StoppedPanel', () => {
 
     const stoppedGroup = screen.getByRole('region', { name: t.status.STOPPED });
     expect(within(stoppedGroup).getByText(`1 ${t.countUnit}`)).toBeInTheDocument();
-    const row = within(stoppedGroup).getByRole('row', { name: /EQ-02 \(100T\)/ });
+    const row = within(stoppedGroup).getByRole('listitem');
+    expect(row).toHaveTextContent('EQ-02 (100T)');
     expect(within(row).getByText('유압 이상')).toBeInTheDocument();
     expect(within(row).getByText(formatElapsed(85))).toBeInTheDocument();
 
@@ -277,7 +311,9 @@ describe('EquipmentBoard — 12대 표시 · 전체 보기', () => {
     expect(tiles).toHaveLength(20);
 
     await user.click(within(dialog).getByRole('button', { name: t.openDetail('E-1-20') }));
-    expect(screen.getByText(t.detailTitle('E-1-20', '시험 설비 1'))).toBeInTheDocument();
+    expect(
+      screen.getByRole('heading', { level: 2, name: new RegExp('^E-1-20') }),
+    ).toBeInTheDocument();
   });
 
   it('같은 이름의 라인이 여럿이면 라인 번호로 가른다', () => {

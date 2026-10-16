@@ -90,6 +90,9 @@ const TipText = ({ children }: { children: string }) => (
 /** 눌러서 연 설명 툴팁이 스스로 닫히기까지(사용자 지시 2026-10-16). */
 export const INFO_TIP_CLICK_CLOSE_MS = 3_000;
 
+/** 올림 · 포커스 뒤 툴팁이 뜨기까지(DS 기본값과 같은 값을 명시). 누른 뒤 닫힘은 뜬 순간부터 3초로 센다. */
+const INFO_TIP_DELAY_MS = 400;
+
 /**
  * 설명 단추(ⓘ) — 마우스 올림 · 키보드 포커스로 열리는 DS Tooltip 동작은 그대로 두고, **누르면 열리고
  * 3초 뒤 닫힌다**. 열려 있을 때 다시 누르면 바로 닫힌다(사용자 지시 2026-10-16 — 터치 화면에는 올림이 없다).
@@ -130,16 +133,25 @@ export const InfoTip = ({ label, content }: { label: string; content: string }) 
       button.blur();
       button.focus();
     }
-    timerRef.current = setTimeout(() => {
-      close(button);
-    }, INFO_TIP_CLICK_CLOSE_MS);
+    /* 이미 떠 있으면 지금부터, 아니면 뜨는 순간부터 3초 — 보이는 시간이 3초다. */
+    timerRef.current = setTimeout(
+      () => {
+        close(button);
+      },
+      INFO_TIP_CLICK_CLOSE_MS + (isOpen ? 0 : INFO_TIP_DELAY_MS),
+    );
   };
 
   return (
     /*
      * 아래로 연다 — KPI 띠는 화면 맨 위쪽에 있어 위로 열면 스크롤 영역(셸 `main`) 위 끝에 잘린다.
      */
-    <Tooltip ref={rootRef} content={<TipText>{content}</TipText>} placement="bottom">
+    <Tooltip
+      ref={rootRef}
+      content={<TipText>{content}</TipText>}
+      placement="bottom"
+      delay={INFO_TIP_DELAY_MS}
+    >
       <IconButton
         size="sm"
         icon="info"

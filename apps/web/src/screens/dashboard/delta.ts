@@ -18,7 +18,10 @@ import { formatFigure } from './types';
 
 const t = messages.dashboard;
 
-export const toDelta = (deltaRatio: number | null): StatCardDelta | undefined => {
+/** `mark` — 기호와 수치만(「▲ 8%」). 생산 수량 칸이 「전일 대비」 뒤에 색을 입혀 그린다. */
+export type DashboardDelta = StatCardDelta & { direction: 'up' | 'down' | 'flat'; mark: string };
+
+export const toDelta = (deltaRatio: number | null): DashboardDelta | undefined => {
   if (deltaRatio === null) return undefined;
 
   /* 비율(0.08)을 백분율(8)로 옮긴 뒤 표기 자리수(소수 첫째)까지 접는다. */
@@ -28,13 +31,20 @@ export const toDelta = (deltaRatio: number | null): StatCardDelta | undefined =>
   const text = `${formatFigure(settled)}%`;
 
   if (settled > 0) {
-    return { direction: 'up', value: `+${text}`, label: t.cards.deltaUp(text) };
+    return { direction: 'up', value: `+${text}`, label: t.cards.deltaUp(text), mark: `▲ ${text}` };
   }
 
   if (settled < 0) {
     /* 부호는 숫자가 이미 달고 있다 — 여기서 다시 붙이면 「--0.8%」가 된다. */
-    return { direction: 'down', value: text, label: t.cards.deltaDown(text.replace(/^-/, '')) };
+    const magnitude = text.replace(/^-/, '');
+
+    return {
+      direction: 'down',
+      value: text,
+      label: t.cards.deltaDown(magnitude),
+      mark: `▼ ${magnitude}`,
+    };
   }
 
-  return { direction: 'flat', value: text, label: t.cards.deltaFlat };
+  return { direction: 'flat', value: text, label: t.cards.deltaFlat, mark: t.cards.deltaMarkFlat };
 };

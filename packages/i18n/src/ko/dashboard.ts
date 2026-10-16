@@ -45,6 +45,9 @@ export const dashboard = {
     deltaUp: (text: string): string => `전일 대비 ▲ ${text}`,
     deltaDown: (text: string): string => `전일 대비 ▼ ${text}`,
     deltaFlat: '전일 대비 동일',
+    /** 생산 수량 칸의 증감 — 「전일 대비」 글자와 색을 입힌 기호 · 수치를 나눠 그린다. */
+    deltaBase: '전일 대비',
+    deltaMarkFlat: '— 동일',
     /** 카드를 눌러 소유 화면으로 갈 수 있을 때. */
     openHint: (label: string): string => `${label} 상세 화면으로 이동`,
   },
@@ -61,12 +64,9 @@ export const dashboard = {
   alerts: {
     /** 알람 0건은 오류가 아니라 정상 상태다. */
     empty: '미확인 알림이 없습니다.',
-    unread: '미확인',
-    read: '확인함',
-    /** 위치는 계층 텍스트로만 그린다 — 평면 배치·도면 구획을 쓰지 않는다. */
-    locationUnknown: '위치 정보 없음',
     emptyMessage: '내용이 비어 있습니다.',
     openCenter: '알림센터 보기',
+    unknownEvent: '알림',
   },
 
   /**
@@ -85,45 +85,44 @@ export const dashboard = {
     boardSub: (count: number): string => `${String(count)}대 · 전체 설비`,
     tagLive: '실시간',
     countUnit: '대',
-    line: '라인',
+    line: '생산 라인',
     allLines: '전체',
     shownOf: (total: string, shown: string): string => `전체 ${total}대 중 ${shown}대 표시`,
     showAll: '전체 설비 보기',
     allTitle: (total: string): string => `전체 설비 ${total}대`,
     legend: '상태별 대수',
-    tonnage: '톤수',
-    todayQty: '금일 생산',
-    ngQty: 'NG',
+    /** ⭐ 용어(사용자 지정 2026-10-16) — 값이 「프레스」 같은 설비 유형이라 「톤수」는 부정확하다. */
+    equipmentType: '설비 종류',
+    todayQty: '오늘 생산량',
+    ngQty: '불량 수량',
     defectRate: '불량률',
-    standardCycleTime: '표준 C/T',
-    /** 타일 한 줄 — 「NG 3 · 0.2%」. */
+    standardCycleTime: '표준 사이클 타임',
+    /** 타일 한 줄(좁은 칸이라 축약 그대로 · 마우스 올림 `title` 에는 풀어 쓴 용어) — 「NG 3 · 0.2%」. */
     ngLine: (ng: string, rate: string): string => `NG ${ng} · ${rate}`,
     cycleLine: (value: string): string => `C/T ${value}`,
     seconds: (value: string): string => `${value}초`,
     percent: (value: string): string => `${value}%`,
-    reason: '사유',
-    elapsed: '경과 시간',
+    reason: '상태 사유',
+    elapsed: '상태 지속 시간',
     /** 경과 시간. 1시간이 안 되면 분만 적는다. */
     elapsedText: (hours: number, minutes: number): string =>
       hours === 0 ? `${String(minutes)}분` : `${String(hours)}시간 ${String(minutes)}분`,
-    since: '시작 시각',
+    since: '상태 시작 시각',
     /** 값이 없는 칸. 0과 다르다 — 0을 적으면 「잰 결과가 0」으로 읽힌다. */
     none: '—',
     reasonUnknown: '사유 미등록',
     stoppedTitle: '멈춘 설비',
-    stoppedSub: '사유 · 경과 시간',
+    stoppedSub: '상태 사유 · 상태 지속 시간',
     stoppedGroupCaption: (status: string): string => `${status} 설비`,
     /** ⛔ 「모든 설비가 가동 중」이라 단정하지 않는다(사용자 지시 2026-10-16) — 목록이 비었다는 사실만 말한다. */
     stoppedEmpty: '현재 멈춘 설비가 없습니다.',
-    equipmentColumn: '호기',
-    statusColumn: '상태',
+    statusColumn: '가동 상태',
     openDetail: (code: string): string => `${code} 상세 보기`,
-    groupBasic: '설비 기본',
-    groupRun: '가동',
+    groupRun: '상태 시간',
     groupOutput: '생산 실적',
     groupWork: '현재 작업',
-    detailTitle: (code: string, name: string): string => `${code} · ${name}`,
-    workOrder: '현재 작업지시',
+    workOrder: '작업지시 번호',
+    noWork: '진행 중인 작업이 없습니다.',
     item: '품목',
     empty: '이 공장에 표시할 생산 설비가 없습니다.',
     lineEmpty: '고른 라인에 설비가 없습니다.',
@@ -144,7 +143,7 @@ export const dashboard = {
     /** 기준 날짜 이후 가장 이른 미출하 요청이 없을 때. */
     nextNone: '예정 없음',
     /** 요청 수량이 아니라 아직 출하하지 않은 잔량이다(규격 보정). */
-    remainingQty: (qty: string): string => `남은 수량 ${qty}`,
+    remainingQty: (qty: string): string => `남은 ${qty}`,
     customerUnknown: '고객 미지정',
     overdue: '납기 지연',
     overdueNote: '납기 경과 · 출하 잔량 있음',

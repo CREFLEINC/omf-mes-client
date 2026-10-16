@@ -18,6 +18,8 @@ export interface ShipmentCell {
   label: string;
   value: string;
   unit?: string;
+  /** 값 바로 옆의 짧은 보조(「남은 200 EA」) — 값과 함께 먼저 읽혀야 하는 것. */
+  valueNote?: string;
   /**
    * 보조 줄 조각 — 「번호 · 고객 · 남은 수량」처럼 나눠 둔다. 조각 안에서는 줄을 바꾸지 않는다(원칙 a — 고객명
    * 「Cong Nghi?p」이 「?」 뒤에서 끊겼다). 줄은 조각 사이에서만 바뀐다.
@@ -75,12 +77,12 @@ export const toShipmentCells = (
           key: 'next',
           label: t.next,
           value: shortDate(next.requestedShipDate),
-          /* ⭐ 수량은 요청 수량이 아니라 **남은 수량**이다(규격 보정 2026-10-16). */
-          sub: [
-            next.shipmentRequestNo,
-            next.customerName ?? t.customerUnknown,
-            t.remainingQty(`${formatFigure(next.requestedQty)} ${t.qtyUnit}`),
-          ],
+          /*
+           * ⭐ 수량은 요청 수량이 아니라 **남은 수량**이다(규격 보정 2026-10-16). 날짜와 남은 수량을 먼저 보이고
+           * (값 줄), 요청 번호 · 고객은 보조 줄로(사용자 지시 2026-10-16).
+           */
+          valueNote: t.remainingQty(`${formatFigure(next.requestedQty)} ${t.qtyUnit}`),
+          sub: [next.shipmentRequestNo, next.customerName ?? t.customerUnknown],
           path: schedulePath(next.requestedShipDate, next.requestedShipDate),
         },
     {
@@ -107,6 +109,9 @@ const CellBody = ({ cell }: { cell: ShipmentCell }) => (
         {cell.value}
       </span>
       {cell.unit !== undefined && <span className="dash-kpi-unit">{cell.unit}</span>}
+      {cell.valueNote !== undefined && (
+        <span className="dash-mini-value-note">{cell.valueNote}</span>
+      )}
     </span>
     {cell.sub !== undefined && (
       <span className="dash-mini-sub">

@@ -93,7 +93,9 @@ describe('OverviewKpis', () => {
     expect(availability).not.toHaveTextContent('누계');
     const production = screen.getByRole('group', { name: '생산 수량' });
     expect(production).toHaveTextContent(k.defectLine('112'));
-    expect(production).toHaveTextContent(messages.dashboard.cards.deltaFlat);
+    expect(production).toHaveTextContent(
+      `${messages.dashboard.cards.deltaBase} ${messages.dashboard.cards.deltaMarkFlat}`,
+    );
     expect(screen.getByRole('group', { name: k.defectRate })).toHaveTextContent(k.defectRateNote);
   });
 
@@ -126,6 +128,29 @@ describe('OverviewKpis', () => {
     expect(tip.querySelectorAll('.dash-tip-line')).toHaveLength(2);
   });
 
+  it('생산 수량 칸만 전일 대비 기호 · 수치에 색 — 상승 · 하락 · 동일', () => {
+    const withDelta = (deltaRatio: number) => [
+      card({ deltaRatio }),
+      ...cards.filter((entry) => entry.cardCode !== 'PRODUCTION_QTY'),
+    ];
+    const markOf = () => document.querySelector('.dash-delta');
+
+    const { unmount } = renderKpis(PRODUCTION, withDelta(0.08));
+    expect(markOf()).toHaveClass('dash-delta-up');
+    expect(markOf()).toHaveTextContent('▲ 8%');
+    expect(markOf()?.parentElement).toHaveTextContent(`${messages.dashboard.cards.deltaBase} ▲ 8%`);
+    unmount();
+
+    const second = renderKpis(PRODUCTION, withDelta(-0.758));
+    expect(markOf()).toHaveClass('dash-delta-down');
+    expect(markOf()).toHaveTextContent('▼ 75.8%');
+    second.unmount();
+
+    renderKpis(PRODUCTION, withDelta(0));
+    expect(markOf()).toHaveClass('dash-delta-flat');
+    expect(document.querySelectorAll('.dash-delta')).toHaveLength(1);
+  });
+
   describe('설명 단추를 누르면', () => {
     afterEach(() => {
       vi.useRealTimers();
@@ -139,7 +164,10 @@ describe('OverviewKpis', () => {
 
       await user.click(button);
       expect(await screen.findByText(k.oeeTip)).toBeInTheDocument();
-      await act(() => vi.advanceTimersByTimeAsync(INFO_TIP_CLICK_CLOSE_MS));
+      /* 뜬 순간부터 3초 — 3초 직전에는 아직 보인다. */
+      await act(() => vi.advanceTimersByTimeAsync(INFO_TIP_CLICK_CLOSE_MS - 100));
+      expect(screen.getByText(k.oeeTip)).toBeInTheDocument();
+      await act(() => vi.advanceTimersByTimeAsync(500));
       expect(screen.queryByText(k.oeeTip)).not.toBeInTheDocument();
 
       await user.click(button);

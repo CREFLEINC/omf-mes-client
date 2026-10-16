@@ -83,6 +83,27 @@ const usePointerInput = (): RefObject<boolean> => {
   return ref;
 };
 
+/**
+ * 타일 마우스 올림 글 — 타일 본문은 좁아 「NG 40 · C/T 20초」로 줄여 쓰지만, 여기서는 풀어 쓴 용어로 적는다
+ * (사용자 지정 용어 2026-10-16).
+ */
+const tileTitleOf = (item: EquipmentItemView): string =>
+  [
+    item.equipmentCode,
+    `${t.equipmentType} ${item.tonnage ?? t.none}`,
+    `${t.statusColumn} ${t.status[item.statusCode]}`,
+    ...(item.statusCode === 'RUNNING'
+      ? [
+          `${t.ngQty} ${formatFigure(item.todayNgQty)} EA`,
+          `${t.defectRate} ${formatDefectRate(item.defectRate)}`,
+          `${t.standardCycleTime} ${formatCycleTime(item.standardCycleTimeSec)}`,
+        ]
+      : [
+          `${t.reason} ${describeReason(item)}`,
+          `${t.elapsed} ${formatElapsed(item.elapsedMinutes)}`,
+        ]),
+  ].join('\n');
+
 interface EquipmentTileProps {
   item: EquipmentItemView;
   onOpen: (item: EquipmentItemView) => void;
@@ -120,11 +141,11 @@ const EquipmentTile = ({ item, onOpen, pointerInput }: EquipmentTileProps) => {
           if (event.key !== 'Escape') event.currentTarget.removeAttribute('data-pointer-focus');
         }}
         aria-label={t.openDetail(item.equipmentCode)}
-        title={`${item.equipmentCode} · ${item.equipmentName}`}
+        title={tileTitleOf(item)}
       >
         <span className="dash-eq-head">
           <span className="dash-eq-code">{item.equipmentCode}</span>
-          <span className="dash-eq-tonnage">{item.tonnage ?? t.none}</span>
+          <span className="dash-eq-type">{item.tonnage ?? t.none}</span>
         </span>
         <span className="dash-eq-state">
           <StatusChip statusCode={item.statusCode} />
@@ -168,75 +189,102 @@ const Fact = ({
 );
 
 /**
- * 호기 상세(⭐ 사용자 지시 2026-10-16 — 묶음 · 2열 · 하단 닫기 없음).
+ * 머리 보조 줄 — 생산 라인 · 설비 종류. 설비 이름은 코드 · 라인 이름과 다를 때만 앞에 붙인다(같으면 같은 말의
+ * 되풀이다). 값이 없는 항목은 뺀다.
+ */
+const detailSubOf = (item: EquipmentItemView): string => {
+  const name = item.equipmentName.trim();
+  const showName = name !== '' && name !== item.equipmentCode && name !== item.productionLineName;
+
+  return [showName ? name : null, item.productionLineName, item.tonnage]
+    .filter((part): part is string => part !== null && part !== '')
+    .join(' · ');
+};
+
+/**
+ * 호기 상세(⭐ 사용자 지시 2026-10-16 — 정보 위계 다듬기 · 용어 표).
  *
- * 묶음: 설비 기본(상태 · 라인 · 톤수 · 사유) → 가동(시작 시각 · 경과) → 생산 실적(금일 생산 · NG · 불량률 한 단계
- * 강조, 표준 C/T) → 현재 작업(작업지시 · 품목, 줄 전체 폭 · 말줄임 없음). 항목은 하나도 빼지 않는다.
- * 닫기는 오른쪽 위 X · ESC · 바깥 누르기(DS Dialog 기본 그대로) — 하단 「닫기」와 빈 바닥줄은 두지 않는다
+ * 머리: 설비 코드(큰 제목) + 상태 배지, 그 아래 생산 라인 · 설비 종류 한 줄. 본문 순서 — 상태 시간(상태 사유 ·
+ * 상태 지속 시간 강조 · 상태 시작 시각) → 생산 실적(오늘 생산량만 강조 · 불량 수량 · 불량률 · 표준 사이클 타임,
+ * 2열) → 현재 작업(작업지시 번호 · 품목, 없으면 한 줄 안내). 라인 · 설비 종류는 머리로 올려 본문에서 되풀이하지
+ * 않는다. 상태는 머리 배지 하나로 말한다 — 본문에 다시 적지 않는다. 묶음 구분은 간격으로(구분선 없음).
+ * 닫기는 오른쪽 위 X · ESC · 바깥 누르기(DS Dialog 기본 그대로) — 하단 「닫기」는 두지 않는다
  * (DS Dialog 에 `footer` 를 넘기지 않는다 · 공용 부품은 고치지 않는다).
  */
-const EquipmentDetailDialog = ({ item, onClose }: EquipmentDetailDialogProps) => (
-  <Dialog
-    open={item !== null}
-    onClose={onClose}
-    title={item === null ? undefined : t.detailTitle(item.equipmentCode, item.equipmentName)}
-    size="md"
-    className="dash-detail-dialog"
-  >
-    {item !== null && (
-      <div className="dash-detail">
-        <section aria-label={t.groupBasic}>
-          <h3 className="dash-detail-title">{t.groupBasic}</h3>
-          <dl className="dash-facts">
-            <Fact label={t.statusColumn}>
+const EquipmentDetailDialog = ({ item, onClose }: EquipmentDetailDialogProps) => {
+  const sub = item === null ? '' : detailSubOf(item);
+
+  return (
+    <Dialog
+      open={item !== null}
+      onClose={onClose}
+      title={
+        item === null ? undefined : (
+          <span className="dash-detail-head">
+            <span className="dash-detail-head-row">
+              <span className="dash-detail-code">{item.equipmentCode}</span>
               <StatusChip statusCode={item.statusCode} />
-            </Fact>
-            <Fact label={t.line}>{item.productionLineName ?? t.none}</Fact>
-            <Fact label={t.tonnage}>{item.tonnage ?? t.none}</Fact>
-            <Fact label={t.reason}>{describeReason(item)}</Fact>
-          </dl>
-        </section>
-        <section aria-label={t.groupRun}>
-          <h3 className="dash-detail-title">{t.groupRun}</h3>
-          <dl className="dash-facts">
-            <Fact label={t.since}>{formatPlantDateTime(item.statusSince) ?? t.none}</Fact>
-            <Fact label={t.elapsed}>{formatElapsed(item.elapsedMinutes)}</Fact>
-          </dl>
-        </section>
-        <section aria-label={t.groupOutput}>
-          <h3 className="dash-detail-title">{t.groupOutput}</h3>
-          <dl className="dash-facts">
-            <Fact label={t.todayQty} strong>
-              {formatFigure(item.todayTotalQty)}
-              <span className="dash-kpi-unit">EA</span>
-            </Fact>
-            <Fact label={t.ngQty} strong>
-              {formatFigure(item.todayNgQty)}
-              <span className="dash-kpi-unit">EA</span>
-            </Fact>
-            <Fact label={t.defectRate} strong>
-              {formatDefectRate(item.defectRate)}
-            </Fact>
-            <Fact label={t.standardCycleTime}>{formatCycleTime(item.standardCycleTimeSec)}</Fact>
-          </dl>
-        </section>
-        <section aria-label={t.groupWork}>
-          <h3 className="dash-detail-title">{t.groupWork}</h3>
-          <dl className="dash-facts">
-            <Fact label={t.workOrder} wide>
-              {item.currentWorkOrderNo ?? t.none}
-            </Fact>
-            <Fact label={t.item} wide>
-              {item.currentItemCode === null
-                ? t.none
-                : `${item.currentItemCode} ${item.currentItemName ?? ''}`.trim()}
-            </Fact>
-          </dl>
-        </section>
-      </div>
-    )}
-  </Dialog>
-);
+            </span>
+            {sub !== '' && <span className="dash-detail-sub">{sub}</span>}
+          </span>
+        )
+      }
+      size="md"
+      className="dash-detail-dialog"
+    >
+      {item !== null && (
+        <div className="dash-detail">
+          <section aria-label={t.groupRun}>
+            <h3 className="dash-detail-title">{t.groupRun}</h3>
+            <dl className="dash-facts">
+              {item.statusCode !== 'RUNNING' && (
+                <Fact label={t.reason} wide>
+                  {describeReason(item)}
+                </Fact>
+              )}
+              <Fact label={t.elapsed} strong>
+                {formatElapsed(item.elapsedMinutes)}
+              </Fact>
+              <Fact label={t.since}>{formatPlantDateTime(item.statusSince) ?? t.none}</Fact>
+            </dl>
+          </section>
+          <section aria-label={t.groupOutput}>
+            <h3 className="dash-detail-title">{t.groupOutput}</h3>
+            <dl className="dash-facts">
+              <Fact label={t.todayQty} strong>
+                {formatFigure(item.todayTotalQty)}
+                <span className="dash-kpi-unit">EA</span>
+              </Fact>
+              <Fact label={t.ngQty}>
+                {formatFigure(item.todayNgQty)}
+                <span className="dash-kpi-unit">EA</span>
+              </Fact>
+              <Fact label={t.defectRate}>{formatDefectRate(item.defectRate)}</Fact>
+              <Fact label={t.standardCycleTime}>{formatCycleTime(item.standardCycleTimeSec)}</Fact>
+            </dl>
+          </section>
+          <section aria-label={t.groupWork}>
+            <h3 className="dash-detail-title">{t.groupWork}</h3>
+            {item.currentWorkOrderNo === null ? (
+              <p className="dash-detail-none">{t.noWork}</p>
+            ) : (
+              <dl className="dash-facts">
+                <Fact label={t.workOrder} wide>
+                  <span className="dash-nowrap">{item.currentWorkOrderNo}</span>
+                </Fact>
+                <Fact label={t.item} wide>
+                  {item.currentItemCode === null
+                    ? t.none
+                    : `${item.currentItemCode} ${item.currentItemName ?? ''}`.trim()}
+                </Fact>
+              </dl>
+            )}
+          </section>
+        </div>
+      )}
+    </Dialog>
+  );
+};
 
 export interface EquipmentPanelProps {
   view: EquipmentView | null;
@@ -440,25 +488,23 @@ export const StoppedPanel = (props: EquipmentPanelProps) => {
                   {formatFigure(rows.length)} {t.countUnit}
                 </span>
               </div>
-              <table className="dash-stopped-table">
-                <caption className="dash-sr-only">{t.stoppedGroupCaption(t.status[code])}</caption>
-                <thead className="dash-sr-only">
-                  <tr>
-                    <th scope="col">{t.equipmentColumn}</th>
-                    <th scope="col">{t.reason}</th>
-                    <th scope="col">{t.elapsed}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {rows.map((item) => (
-                    <tr key={item.equipmentId}>
-                      <th scope="row">{describeUnit(item)}</th>
-                      <td>{describeReason(item)}</td>
-                      <td>{formatElapsed(item.elapsedMinutes)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+              {/*
+               * 줄 = 호기 · 상태 사유 · 상태 지속 시간. 모든 묶음이 한 격자의 열을 나눠 쓴다(subgrid) — 묶음마다
+               * 표를 따로 두면 호기 칸 폭이 묶음마다 달라 줄이 들쭉날쭉했다(실데이터 확인 2026-10-16).
+               * ⚠ 대시보드 표의 「가운데 정렬」 규칙에서 뺀다 — 사유는 긴 문장이라 왼쪽에서 읽어야 하고, 지속 시간은
+               * 오른쪽 끝에 맞춰야 위아래로 견준다.
+               */}
+              <ul className="dash-stopped-list" aria-label={t.stoppedGroupCaption(t.status[code])}>
+                {rows.map((item) => (
+                  <li key={item.equipmentId} className="dash-stopped-row">
+                    <span className="dash-stopped-unit">{describeUnit(item)}</span>
+                    <span className="dash-stopped-reason">{describeReason(item)}</span>
+                    <span className="dash-stopped-elapsed">
+                      {formatElapsed(item.elapsedMinutes)}
+                    </span>
+                  </li>
+                ))}
+              </ul>
             </section>
           );
         })}

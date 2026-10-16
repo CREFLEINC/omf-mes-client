@@ -8334,24 +8334,27 @@ dl.filter-bar.approval-inbox-detail-facts {
   box-shadow: none;
 }
 
-/* 멈춘 호기는 상태 색 바탕 + 왼쪽 굵은 띠 — 격자에서 먼저 눈에 들어온다. */
+/*
+ * 멈춘 호기 — 상태 색은 왼쪽 굵은 띠와 상태 배지가 말하고, 바탕은 아주 옅게만 섞는다(사용자 지시 2026-10-16 —
+ * 진한 바탕에 글자가 묻혔고 같은 색 배지가 바탕에 녹아 줄이 들여 쓴 것처럼 보였다).
+ */
 .dash-eq-stopped {
-  background: var(--semantic-error-container);
+  background: color-mix(in srgb, var(--semantic-error-container) 35%, var(--surface));
   border-inline-start: 3px solid var(--semantic-error);
 }
 
 .dash-eq-waiting {
-  background: var(--semantic-warning-container);
+  background: color-mix(in srgb, var(--semantic-warning-container) 35%, var(--surface));
   border-inline-start: 3px solid var(--semantic-warning);
 }
 
 .dash-eq-changeover {
-  background: var(--semantic-info-container);
+  background: color-mix(in srgb, var(--semantic-info-container) 35%, var(--surface));
   border-inline-start: 3px solid var(--semantic-info);
 }
 
 .dash-eq-idle {
-  background: var(--semantic-idle-container);
+  background: color-mix(in srgb, var(--semantic-idle-container) 35%, var(--surface));
   border-inline-start: 3px solid var(--semantic-idle);
 }
 
@@ -8363,7 +8366,7 @@ dl.filter-bar.approval-inbox-detail-facts {
   min-width: 0;
 }
 
-/* 호기는 한 줄 — 넘치면 말줄임(전체는 타일 title · 상세 창). 톤수는 줄바꿈하지 않는다. */
+/* 호기는 한 줄 — 넘치면 말줄임(전체는 타일 title · 상세 창). 설비 종류는 줄바꿈하지 않는다. */
 .dash-eq-code {
   min-width: 0;
   overflow: hidden;
@@ -8372,7 +8375,7 @@ dl.filter-bar.approval-inbox-detail-facts {
   white-space: nowrap;
 }
 
-.dash-eq-tonnage {
+.dash-eq-type {
   flex: none;
   color: var(--on-surface-muted);
   white-space: nowrap;
@@ -8403,10 +8406,158 @@ dl.filter-bar.approval-inbox-detail-facts {
   font-weight: 700;
 }
 
-/* 멈춘 설비 */
+/*
+ * 생산 수량 칸의 전일 대비 기호 · 수치 색(⭐ 사용자 지시 2026-10-16 — 값 그대로, 이 칸 한정). DS 토큰에 같은
+ * 값이 없어 여기서 한 번만 정의한다.
+ */
+.dash-kpis {
+  --dash-delta-up: #16a34a;
+  --dash-delta-down: #d97706;
+  --dash-delta-flat: #6b7280;
+}
+
+.dash-delta-up {
+  color: var(--dash-delta-up);
+}
+
+.dash-delta-down {
+  color: var(--dash-delta-down);
+}
+
+.dash-delta-flat {
+  color: var(--dash-delta-flat);
+}
+
+/*
+ * 미확인 알림 목록(사용자 지시 2026-10-16) — 항목마다 상자 · 그림자 없이 얇은 선으로 가른다. 1줄 = 알림 이름
+ * (굵게) + 오른쪽 시각, 2줄 = 메시지(최대 2줄 · 말줄임), 위치는 있을 때만. 글자는 대시보드 목록 체계(본문 sm ·
+ * 시각 label sm). 항목은 카드 안쪽 폭을 넘지 않는다(`min-width: 0`).
+ */
+.dash-alert-list {
+  display: grid;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.dash-alert-list > li + li {
+  border-top: 1px solid var(--outline-variant);
+}
+
+.dash-alert-link {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+  padding: var(--space-2) var(--space-1);
+  border-radius: var(--radius-sm);
+  color: var(--on-surface);
+  text-decoration: none;
+}
+
+.dash-alert-link:hover {
+  background: var(--state-hover-neutral);
+}
+
+.dash-alert-link:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.dash-alert-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.dash-alert-title {
+  min-width: 0;
+  overflow: hidden;
+  font: var(--type-body-sm);
+  letter-spacing: var(--type-body-sm-tracking);
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dash-alert-time {
+  flex: none;
+  font: var(--type-label-sm);
+  letter-spacing: var(--type-label-sm-tracking);
+  color: var(--on-surface-muted);
+  white-space: nowrap;
+}
+
+.dash-alert-message {
+  display: -webkit-box;
+  min-width: 0;
+  overflow: hidden;
+  font: var(--type-body-sm);
+  letter-spacing: var(--type-body-sm-tracking);
+  color: var(--on-surface-variant);
+  word-break: keep-all;
+  overflow-wrap: break-word;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+}
+
+.dash-alert-location {
+  overflow: hidden;
+  font: var(--type-label-sm);
+  letter-spacing: var(--type-label-sm-tracking);
+  color: var(--on-surface-muted);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 멈춘 설비 — 묶음 · 줄이 한 격자의 세 열(호기 · 상태 사유 · 상태 지속 시간)을 나눠 쓴다(subgrid). */
 .dash-stopped {
   display: grid;
-  gap: var(--space-3);
+  grid-template-columns: max-content minmax(0, 1fr) max-content;
+  column-gap: var(--space-3);
+  row-gap: var(--space-3);
+}
+
+.dash-stopped-group,
+.dash-stopped-list,
+.dash-stopped-row {
+  display: grid;
+  grid-column: 1 / -1;
+  grid-template-columns: subgrid;
+}
+
+.dash-stopped-head {
+  grid-column: 1 / -1;
+}
+
+.dash-stopped-list {
+  row-gap: var(--space-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font: var(--type-body-sm);
+  letter-spacing: var(--type-body-sm-tracking);
+}
+
+/* 호기(설비 종류)는 줄을 바꾸지 않는다 — 원칙(a). */
+.dash-stopped-unit {
+  white-space: nowrap;
+}
+
+.dash-stopped-reason {
+  min-width: 0;
+  color: var(--on-surface-variant);
+  word-break: keep-all;
+  overflow-wrap: break-word;
+}
+
+.dash-stopped-elapsed {
+  color: var(--on-surface-variant);
+  text-align: end;
+  white-space: nowrap;
 }
 
 .dash-stopped-head {
@@ -8420,46 +8571,6 @@ dl.filter-bar.approval-inbox-detail-facts {
   font: var(--type-label-lg);
   letter-spacing: var(--type-label-lg-tracking);
   font-weight: 700;
-}
-
-.dash-stopped-table {
-  width: 100%;
-  border-collapse: collapse;
-  font: var(--type-body-sm);
-  letter-spacing: var(--type-body-sm-tracking);
-}
-
-.dash-stopped-group {
-  overflow-x: auto;
-}
-
-/* 호기(톤수)는 줄을 바꾸지 않는다 — 원칙(a). */
-.dash-stopped-table th {
-  white-space: nowrap;
-}
-
-.dash-stopped-table th,
-.dash-stopped-table td {
-  padding: 2px var(--space-1);
-  font-weight: 400;
-}
-
-.dash-stopped-table td {
-  color: var(--on-surface-variant);
-}
-
-/*
- * 실데이터 확인(2026-10-16) — 묶음마다 표가 따로라 호기 칸이 가운데 · 왼쪽으로 제각각 섰고, 「2시간 3분」이
- * 두 줄로 꺾였다. 머리글이 숨은 목록이라 호기 · 사유는 왼쪽, 경과는 오른쪽 끝에 붙이고 꺾지 않는다(원칙 a).
- */
-.dash-stopped-table th,
-.dash-stopped-table td:first-of-type {
-  text-align: start;
-}
-
-.dash-stopped-table td:last-child {
-  text-align: end;
-  white-space: nowrap;
 }
 
 /*
@@ -8518,8 +8629,18 @@ dl.filter-bar.approval-inbox-detail-facts {
 
 .dash-mini-value-row {
   display: flex;
+  flex-wrap: wrap;
   align-items: baseline;
   gap: var(--space-1);
+}
+
+/* 「다음 출하」 값 옆 남은 수량 — 날짜와 함께 먼저 읽히도록 본문 글자색 · 굵게, 줄은 바꾸지 않는다. */
+.dash-mini-value-note {
+  font: var(--type-label-lg);
+  letter-spacing: var(--type-label-lg-tracking);
+  font-weight: 600;
+  color: var(--on-surface);
+  white-space: nowrap;
 }
 
 .dash-mini-value {
@@ -8967,18 +9088,40 @@ dl.filter-bar.approval-inbox-detail-facts {
 }
 
 /*
- * 호기 상세 창(사용자 지시 2026-10-16) — 묶음 제목 · 얇은 구분선, 항목은 이름 바로 아래 값(2열 격자).
- * 긴 값(작업지시 · 품목)은 줄 전체 폭에서 자연 줄바꿈 — 말줄임 없음.
+ * 호기 상세 창(사용자 지시 2026-10-16) — 묶음은 간격으로만 가른다(구분선 없음), 항목은 이름 바로 아래 값
+ * (2열 격자). 긴 값(품목)은 줄 전체 폭에서 단어 단위 줄바꿈 — 말줄임 없음.
  */
 .dash-detail {
   display: grid;
-  gap: var(--space-3);
+  gap: var(--space-4);
   min-width: 0;
 }
 
-.dash-detail > section + section {
-  padding-top: var(--space-3);
-  border-top: 1px solid var(--outline-variant);
+/* 머리 — 설비 코드(큰 제목) + 상태 배지 한 줄, 아래 생산 라인 · 설비 종류. X 는 DS 머리 오른쪽 그대로. */
+.dash-detail-head {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.dash-detail-head-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.dash-detail-sub {
+  font: var(--type-body-sm);
+  letter-spacing: var(--type-body-sm-tracking);
+  color: var(--on-surface-muted);
+}
+
+.dash-detail-none {
+  margin: 0;
+  font: var(--type-body-sm);
+  letter-spacing: var(--type-body-sm-tracking);
+  color: var(--on-surface-muted);
 }
 
 .dash-detail-title {
