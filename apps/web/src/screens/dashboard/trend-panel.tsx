@@ -26,6 +26,25 @@ const DS_CHART_PAD = { top: 16, right: 16, bottom: 32, left: 40 } as const;
 /** 툴팁이 그래프 좌우 끝에서 잘리지 않게 붙일 기준 — 점이 끝에서 이만큼 안쪽이면 그쪽 끝에 붙인다. */
 const TIP_EDGE_PX = 80;
 
+/** 점이 이보다 위(px)면 말풍선을 아래로 연다 — 위로 열면 그래프 영역 위로 나간다. */
+const TIP_FLIP_Y = 64;
+
+/**
+ * 점 이름표(「10-13」)를 「2026.10.13」로 — 서버는 월-일만 준다. 연도는 기준일에서 읽고, 기준일보다 뒤의 월-일이면
+ * 지난해다(12월 말 ~ 1월 초에 걸친 기간). 이름표가 월-일 꼴이 아니거나 기준일이 없으면 이름표 그대로.
+ */
+export const toTipDate = (label: string, baseDate: string | null): string => {
+  const matched = /^(\d{2})-(\d{2})$/.exec(label);
+  const base = baseDate === null ? null : /^(\d{4})-(\d{2}-\d{2})$/.exec(baseDate);
+  if (matched === null || base === null || base[1] === undefined || base[2] === undefined) {
+    return label;
+  }
+
+  const year = Number(base[1]) - (label > base[2] ? 1 : 0);
+
+  return `${String(year)}.${matched[1] ?? ''}.${matched[2] ?? ''}`;
+};
+
 /** 점 위치(그림 안 px). DS 차트와 같은 식 — x 는 칸을 고르게, y 는 0~상한을 위아래로. */
 export const toPointPositions = (
   points: readonly DashboardTrendPointView[],
@@ -57,11 +76,13 @@ const PointTips = ({
   width,
   max,
   unit,
+  baseDate,
 }: {
   points: readonly DashboardTrendPointView[];
   width: number;
   max: number;
   unit: string | null;
+  baseDate: string | null;
 }) => {
   const [hovered, setHovered] = useState<number | null>(null);
   const [pinned, setPinned] = useState<number | null>(null);
@@ -88,8 +109,9 @@ const PointTips = ({
     points.length <= 1
       ? width
       : (width - DS_CHART_PAD.left - DS_CHART_PAD.right) / (points.length - 1);
+  const qtyOf = (point: DashboardTrendPointView): string => formatFigure(point.value);
   const textOf = (point: DashboardTrendPointView): string =>
-    [point.label, `${formatFigure(point.value)}${unit === null ? '' : ` ${unit}`}`].join(' · ');
+    `${toTipDate(point.label, baseDate)} ${qtyOf(point)}${unit === null ? '' : ` ${unit}`}`;
 
   const active = shown === null ? undefined : points[shown];
   const at = shown === null ? undefined : positions[shown];
@@ -145,13 +167,18 @@ const PointTips = ({
               'dash-trend-tip',
               at.x < TIP_EDGE_PX ? 'dash-trend-tip-start' : '',
               at.x > width - TIP_EDGE_PX ? 'dash-trend-tip-end' : '',
-              at.y < 56 ? 'dash-trend-tip-below' : '',
+              at.y < TIP_FLIP_Y ? 'dash-trend-tip-below' : '',
             ]
               .filter(Boolean)
               .join(' ')}
             style={{ left: at.x, top: at.y }}
           >
-            {textOf(active)}
+            {/* 1줄 날짜(작은 회색) · 2줄 수량(크고 굵게, 단위는 작게) — 사용자 지시 2026-10-16. */}
+            <span className="dash-trend-tip-date">{toTipDate(active.label, baseDate)}</span>
+            <span className="dash-trend-tip-value">
+              {qtyOf(active)}
+              {unit !== null && <span className="dash-trend-tip-unit">{unit}</span>}
+            </span>
           </span>
         </>
       )}
@@ -161,6 +188,8 @@ const PointTips = ({
 
 export interface TrendPanelProps {
   view: DashboardTrendView | null;
+  /** 응답의 기준일(YYYY-MM-DD) — 툴팁 날짜의 연도를 읽는다. */
+  baseDate?: string | null;
   isLoading: boolean;
 }
 
@@ -179,7 +208,7 @@ export interface TrendPanelProps {
  *
  * 이 화면 슬라이스가 소유한다 — 다른 화면 슬라이스의 같은 이름 부품을 참조하지 않는다.
  */
-export const TrendPanel = ({ view, isLoading }: TrendPanelProps) => {
+export const TrendPanel = ({ view, baseDate = null, isLoading }: TrendPanelProps) => {
   /* 실제 폭으로 그린다 — 그림을 줄이면 좁은 폭에서 축 글자가 8px 까지 작아졌다(원칙 d). */
   const [chartRef, chartWidth] = useChartWidth<HTMLDivElement>(640);
   if (isLoading) return <Skeleton variant="rect" height="16rem" />;
@@ -240,7 +269,13 @@ export const TrendPanel = ({ view, isLoading }: TrendPanelProps) => {
         /* 시리즈가 하나뿐이라 범례는 같은 이름을 한 번 더 적을 뿐이다. */
         showLegend={false}
       />
-      <PointTips points={view.points} width={chartWidth} max={chartMax} unit={view.unit} />
+      <PointTips
+        points={view.points}
+        width={chartWidth}
+        max={chartMax}
+        unit={view.unit}
+        baseDate={baseDate}
+      />
     </div>
   );
 };

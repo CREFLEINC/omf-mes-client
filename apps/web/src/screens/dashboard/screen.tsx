@@ -160,7 +160,11 @@ export const DashboardScreen = () => {
               )
             }
           >
-            <TrendPanel view={view?.trend ?? null} isLoading={summary.isPending} />
+            <TrendPanel
+              view={view?.trend ?? null}
+              baseDate={view?.baseDate ?? null}
+              isLoading={summary.isPending}
+            />
           </Panel>
         </div>
         <div className="dash-side">

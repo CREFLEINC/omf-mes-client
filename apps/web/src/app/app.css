@@ -7950,49 +7950,74 @@ dl.filter-bar.approval-inbox-detail-facts {
   box-shadow: var(--focus-ring);
 }
 
+/* 고른 점만 살짝 키우고 옅은 빨강 고리 — 그래프 계열 색(DS `--chart-1`) 그대로. */
 .dash-trend-ring {
   position: absolute;
-  width: 12px;
-  height: 12px;
-  border: 2px solid var(--on-surface);
+  width: 10px;
+  height: 10px;
   border-radius: 50%;
+  background: var(--chart-1);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--chart-1) 22%, transparent);
   transform: translate(-50%, -50%);
 }
 
+/* 말풍선 — 얇은 DS 테두리 · 카드 바탕 · 약한 그림자, 작고 차분하게. 점 위로 간격을 두고 연다. */
 .dash-trend-tip {
   position: absolute;
+  display: grid;
+  gap: 1px;
   padding: var(--space-1) var(--space-2);
-  /* DS 툴팁과 같은 모양(표면 · 테두리 · 그림자 · 글자). */
-  border: 1px solid var(--outline);
+  border: 1px solid var(--outline-variant);
   border-radius: var(--radius-sm);
-  background: var(--surface-container-high);
-  box-shadow: var(--elevation-2);
+  background: var(--surface);
+  box-shadow: var(--elevation-1);
   color: var(--on-surface);
-  font: var(--type-body-sm);
-  letter-spacing: var(--type-body-sm-tracking);
   white-space: nowrap;
-  transform: translate(-50%, calc(-100% - 10px));
+  transform: translate(-50%, calc(-100% - 12px));
   z-index: 1;
 }
 
+.dash-trend-tip-date {
+  font: var(--type-label-sm);
+  letter-spacing: var(--type-label-sm-tracking);
+  color: var(--on-surface-muted);
+}
+
+.dash-trend-tip-value {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-1);
+  font: var(--type-title-sm);
+  letter-spacing: var(--type-title-sm-tracking);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.dash-trend-tip-unit {
+  font: var(--type-label-sm);
+  letter-spacing: var(--type-label-sm-tracking);
+  font-weight: 400;
+  color: var(--on-surface-muted);
+}
+
 .dash-trend-tip-start {
-  transform: translate(-12px, calc(-100% - 10px));
+  transform: translate(-12px, calc(-100% - 12px));
 }
 
 .dash-trend-tip-end {
-  transform: translate(calc(-100% + 12px), calc(-100% - 10px));
+  transform: translate(calc(-100% + 12px), calc(-100% - 12px));
 }
 
 .dash-trend-tip-below {
-  transform: translate(-50%, 10px);
+  transform: translate(-50%, 12px);
 }
 
 .dash-trend-tip-start.dash-trend-tip-below {
-  transform: translate(-12px, 10px);
+  transform: translate(-12px, 12px);
 }
 
 .dash-trend-tip-end.dash-trend-tip-below {
-  transform: translate(calc(-100% + 12px), 10px);
+  transform: translate(calc(-100% + 12px), 12px);
 }
 
 /*
