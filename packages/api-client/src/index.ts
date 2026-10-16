@@ -18,6 +18,7 @@ export type {
   AttachmentTargetType,
   InspectionHistory,
   InspectionHistoryEvent,
+  AffectedProductionLots,
   DefectRecordCreate,
   InspectionDefectInput,
   InspectionResultConfirmForward,

@@ -9,6 +9,7 @@ import { PackingLabelReprintScreen } from '../screens/packing-label-reprint/scre
 import { PackingWorkScreen } from '../screens/packing-work/screen';
 import { PopLocationLabelScreen } from '../screens/pop-location-label/screen';
 import { PopMaterialLotLabelScreen } from '../screens/pop-material-lot-label/screen';
+import { PopMaterialDefectScreen } from '../screens/pop-material-defect/screen';
 import { PqcInspectionScreen } from '../screens/pqc-inspection/screen';
 import { RepackLabelIssueScreen } from '../screens/repack-label-issue/screen';
 import { ProductionFlowScreen } from '../screens/production-result/screen';
@@ -127,6 +128,13 @@ export const popRoutes: RouteObject[] = [
    * 작업 화면에서 진입하라고 안내한다.
    */
   { path: '/pop/pqc-inspection', element: <PqcInspectionScreen /> },
+  /*
+   * P-02-14 — 자재 불량 등록(omf-all-around#108 · 설계보다 앞선 화면, 서버 장부 P-52). 투입된 자재 LOT 의
+   * 불량을 기록하고 고르면 보류한다. ⛔ 생산 화면(P-02-03)에 붙이지 않은 품질 화면이다(사용자 결정).
+   *
+   * ⚠ **진입에 질의 문자열이 없다** — LOT 스캔부터 시작한다. 메뉴는 검사 입력 공정 단말에만 뜬다.
+   */
+  { path: '/pop/material-defect', element: <PopMaterialDefectScreen /> },
   /*
    * P-01-02 — 창고 스테이션 모드의 화면이라 작업지시가 아니라 **출고 전표**에 매인다.
    *

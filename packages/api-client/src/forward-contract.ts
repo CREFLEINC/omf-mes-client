@@ -99,6 +99,20 @@ export interface DefectRecordCreate {
   occurredAt?: string | null;
 }
 
+/** 서버 선행 P-52(omf-all-around#108) — 자재 LOT 이 투입된 작업지시의 생산 LOT(작업지시 기준 추정). */
+export interface AffectedProductionLots {
+  basis: 'WORK_ORDER_ESTIMATE';
+  workOrders: { workOrderId: number; workOrderNo: string }[];
+  items: {
+    lotId: number;
+    lotNo: string;
+    itemId: number;
+    statusCode: string;
+    workOrderId: number;
+    workOrderNo: string;
+  }[];
+}
+
 /** 서버 선행 P-47(omf-all-around#121) — 확정 본문의 IQC 불합격 사유 한 줄. */
 export interface InspectionDefectInput {
   defectCodeId: number;
@@ -570,6 +584,36 @@ interface Unused {
 }
 
 export interface ForwardPaths {
+  '/trace/lots/{lotId}/affected-production-lots': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: { lotId: number };
+      cookie?: never;
+    };
+    get: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: { lotId: number };
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        200: {
+          headers: { [name: string]: unknown };
+          content: { 'application/json': AffectedProductionLots };
+        };
+      };
+    };
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/app/dashboard-quality-lots': {
     parameters: {
       query?: never;

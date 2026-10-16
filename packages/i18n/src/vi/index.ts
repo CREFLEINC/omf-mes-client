@@ -86,6 +86,7 @@ import { popLocationLabel } from './pop-location-label';
 import { inspectionDocuments } from './inspection-documents';
 import { inspectionHistory } from './inspection-history';
 import { pqcInspectionRegister } from './pqc-inspection-register';
+import { materialDefect } from './material-defect';
 import { popMaterialLotLabel } from './pop-material-lot-label';
 import { popChrome } from './pop-chrome';
 import { popPageNav } from './pop-page-nav';
@@ -218,6 +219,7 @@ export const vi: Translated<Messages> = {
   inspectionDocuments,
   inspectionHistory,
   pqcInspectionRegister,
+  materialDefect,
   popMaterialLotLabel,
   popChrome,
   popPageNav,
