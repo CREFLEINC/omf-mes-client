@@ -267,4 +267,15 @@ export const usersRoles: Translated<typeof ko.usersRoles> = {
       noneDescription: 'Hãy dùng «Thêm phạm vi» để định phạm vi mà người dùng này xem được.',
     },
   },
+  workerLink: {
+    heading: 'Liên kết người lao động (mã nhân viên)',
+    note: 'Các thao tác lưu tên người thực hiện như phán định kiểm tra sẽ được lưu theo người lao động liên kết với tài khoản này.',
+    current: 'Người lao động đã liên kết',
+    none: 'Chưa liên kết người lao động',
+    workerNo: 'Mã nhân viên',
+    link: 'Liên kết',
+    unlink: 'Hủy liên kết',
+    notFound: 'Không có mã nhân viên này trong số người lao động đang làm việc.',
+    workerNoRequired: 'Hãy nhập mã nhân viên.',
+  },
 };

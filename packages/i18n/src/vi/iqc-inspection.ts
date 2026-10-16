@@ -99,6 +99,8 @@ export const iqcInspection: Translated<typeof ko.iqcInspection> = {
     confirmNote: 'Khi xác nhận đánh giá, trạng thái LOT sẽ thay đổi, sau đó không thể hoàn tác.',
     submitTitle: 'Lưu và xác nhận',
     confirmBlockedByTotals: 'Tổng đã nhập phải bằng số lượng kiểm tra mới xác nhận được.',
+    workerNotLinked:
+      'Tài khoản này chưa liên kết người lao động (mã nhân viên) nên không lưu được phán định. Hãy liên kết trong Quản lý người dùng.',
     confirmBlockedByJudgment: 'Phải chọn đánh giá tổng hợp mới xác nhận được.',
     confirmBlockedByConfirmed: 'Lượt này đã được xác nhận.',
     confirmBlockedByUnsaved: 'Sau khi lưu tạm mới có thể xác nhận đánh giá.',

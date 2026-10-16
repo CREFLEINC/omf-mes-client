@@ -3,7 +3,9 @@ import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it } from 'vitest';
 
+import { SessionProvider, type Session } from '../../patterns/session';
 import { createStubFetch, jsonResponse, renderWithProviders } from '../../test/api-harness';
+import { SYNTHETIC_SESSION } from '../../test/session-harness';
 import { CODE_GROUPS } from './code-options';
 import {
   codeValuesResponse,
@@ -49,97 +51,103 @@ const renderScreen = (
   /** 저장 요청 원본 — 본문과 헤더를 그대로 본다 */
   const writes: Request[] = [];
 
-  const view = renderWithProviders(<IqcInspectionScreen />, {
-    route,
-    fetch: createStubFetch([
-      {
-        match: (request) => new URL(request.url).pathname === '/quality/inspection-requests',
-        respond: (request) => {
-          sent.push(new URL(request.url));
-          return respond(request);
+  const view = renderWithProviders(
+    <SessionProvider>
+      <IqcInspectionScreen />
+    </SessionProvider>,
+    {
+      route,
+      session: testSession,
+      fetch: createStubFetch([
+        {
+          match: (request) => new URL(request.url).pathname === '/quality/inspection-requests',
+          respond: (request) => {
+            sent.push(new URL(request.url));
+            return respond(request);
+          },
         },
-      },
-      /*
-       * 의뢰를 고르면 상세와 회차를 부른다 — 스텁을 빠뜨리면 그 요청이 조용히 실패한다.
-       * **경로의 번호를 지킨다** — 늘 같은 건을 돌려주면 목록과 상세가 다른 의뢰를 가리키는
-       * 상태를 시험이 정상으로 통과시킨다.
-       */
-      {
-        match: (request) =>
-          new URL(request.url).pathname.startsWith('/quality/inspection-requests/'),
-        respond: (request) => {
-          const id = Number(new URL(request.url).pathname.split('/').at(-1));
-          const found = queueItems.find((item) => item.inspectionRequestId === id);
+        /*
+         * 의뢰를 고르면 상세와 회차를 부른다 — 스텁을 빠뜨리면 그 요청이 조용히 실패한다.
+         * **경로의 번호를 지킨다** — 늘 같은 건을 돌려주면 목록과 상세가 다른 의뢰를 가리키는
+         * 상태를 시험이 정상으로 통과시킨다.
+         */
+        {
+          match: (request) =>
+            new URL(request.url).pathname.startsWith('/quality/inspection-requests/'),
+          respond: (request) => {
+            const id = Number(new URL(request.url).pathname.split('/').at(-1));
+            const found = queueItems.find((item) => item.inspectionRequestId === id);
 
-          return found === undefined
-            ? jsonResponse({ message: '없는 의뢰' }, { status: 404 })
-            : jsonResponse(found);
+            return found === undefined
+              ? jsonResponse({ message: '없는 의뢰' }, { status: 404 })
+              : jsonResponse(found);
+          },
         },
-      },
-      /* 공통코드 — 종합 판정 선택지를 채운다. */
-      {
-        match: (request) => new URL(request.url).pathname === '/mdm/code-values',
-        respond: (request) => {
-          sent.push(new URL(request.url));
-          return jsonResponse(codeValuesResponse(overallJudgmentCodeValues));
+        /* 공통코드 — 종합 판정 선택지를 채운다. */
+        {
+          match: (request) => new URL(request.url).pathname === '/mdm/code-values',
+          respond: (request) => {
+            sent.push(new URL(request.url));
+            return jsonResponse(codeValuesResponse(overallJudgmentCodeValues));
+          },
         },
-      },
-      /* 측정치 — 회차 단건보다 «먼저» 둔다. 경로가 회차 단건의 접두를 포함하기 때문이다. */
-      {
-        match: (request) =>
-          new URL(request.url).pathname.endsWith('/measurements') && request.method === 'GET',
-        respond: () => jsonResponse(measurementsResponse(measurements)),
-      },
-      /* 단위 목록 — 수량 옆 단위 코드(표시 전용). 요청 크기를 시험이 본다. */
-      {
-        match: (request) => new URL(request.url).pathname === '/mdm/uoms',
-        respond: (request) => {
-          sent.push(new URL(request.url));
-          return jsonResponse({ items: [], page: { page: 1, size: 200, total: 0 } });
+        /* 측정치 — 회차 단건보다 «먼저» 둔다. 경로가 회차 단건의 접두를 포함하기 때문이다. */
+        {
+          match: (request) =>
+            new URL(request.url).pathname.endsWith('/measurements') && request.method === 'GET',
+          respond: () => jsonResponse(measurementsResponse(measurements)),
         },
-      },
-      /* 검사기준 버전의 항목 규격 — 그리드의 줄 수를 정한다. */
-      {
-        match: (request) => new URL(request.url).pathname.endsWith('/items'),
-        respond: (request) => {
-          sent.push(new URL(request.url));
-          return jsonResponse(specs);
+        /* 단위 목록 — 수량 옆 단위 코드(표시 전용). 요청 크기를 시험이 본다. */
+        {
+          match: (request) => new URL(request.url).pathname === '/mdm/uoms',
+          respond: (request) => {
+            sent.push(new URL(request.url));
+            return jsonResponse({ items: [], page: { page: 1, size: 200, total: 0 } });
+          },
         },
-      },
-      /* 회차 한 건 — 잠금 토큰이 여기서 온다(목록 200 에는 ETag 가 없다). */
-      {
-        match: (request) =>
-          new URL(request.url).pathname.startsWith('/quality/inspection-results/') &&
-          request.method === 'GET',
-        respond: () => jsonResponse(rounds[0] ?? draftRound, { headers: { ETag: 'W/"7"' } }),
-      },
-      /* 저장 — POST(신규)와 PUT(수정) 둘 다 받는다. */
-      {
-        match: (request) =>
-          new URL(request.url).pathname.startsWith('/quality/inspection-results') &&
-          request.method !== 'GET',
-        respond: (request) => {
-          writes.push(request);
+        /* 검사기준 버전의 항목 규격 — 그리드의 줄 수를 정한다. */
+        {
+          match: (request) => new URL(request.url).pathname.endsWith('/items'),
+          respond: (request) => {
+            sent.push(new URL(request.url));
+            return jsonResponse(specs);
+          },
+        },
+        /* 회차 한 건 — 잠금 토큰이 여기서 온다(목록 200 에는 ETag 가 없다). */
+        {
+          match: (request) =>
+            new URL(request.url).pathname.startsWith('/quality/inspection-results/') &&
+            request.method === 'GET',
+          respond: () => jsonResponse(rounds[0] ?? draftRound, { headers: { ETag: 'W/"7"' } }),
+        },
+        /* 저장 — POST(신규)와 PUT(수정) 둘 다 받는다. */
+        {
+          match: (request) =>
+            new URL(request.url).pathname.startsWith('/quality/inspection-results') &&
+            request.method !== 'GET',
+          respond: (request) => {
+            writes.push(request);
 
-          const responder = confirmResponder;
-          if (responder !== null && new URL(request.url).pathname.endsWith(':confirm')) {
-            return responder(request);
-          }
+            const responder = confirmResponder;
+            if (responder !== null && new URL(request.url).pathname.endsWith(':confirm')) {
+              return responder(request);
+            }
 
-          return jsonResponse(draftRound, { status: request.method === 'POST' ? 201 : 200 });
+            return jsonResponse(draftRound, { status: request.method === 'POST' ? 201 : 200 });
+          },
         },
-      },
-      {
-        match: (request) => new URL(request.url).pathname === '/quality/inspection-results',
-        respond: () =>
-          jsonResponse(
-            roundsResponse(
-              writes.length > 0 && roundsAfterWrite !== null ? roundsAfterWrite : rounds,
+        {
+          match: (request) => new URL(request.url).pathname === '/quality/inspection-results',
+          respond: () =>
+            jsonResponse(
+              roundsResponse(
+                writes.length > 0 && roundsAfterWrite !== null ? roundsAfterWrite : rounds,
+              ),
             ),
-          ),
-      },
-    ]),
-  });
+        },
+      ]),
+    },
+  );
 
   return { sent, writes, view };
 };
@@ -158,7 +166,15 @@ const bodyOf = async (request: Request): Promise<Record<string, unknown>> =>
  */
 let confirmResponder: ((request: Request) => Response) | null = null;
 
+/** 세션 — 기본은 작업자가 연결된 계정이다(검사자를 풀 수 있다 · omf-all-around#104). */
+const LINKED_SESSION: Session = {
+  ...SYNTHETIC_SESSION,
+  worker: { workerId: 8501, workerNo: 'SYN-W-01', workerName: '합성 작업자' },
+};
+let testSession: Session = LINKED_SESSION;
+
 beforeEach(() => {
+  testSession = LINKED_SESSION;
   confirmResponder = null;
 });
 
@@ -361,6 +377,26 @@ describe('IqcInspectionScreen', () => {
     await userEvent.click(openButton('IR-2026-0002'));
 
     await waitFor(() => expect(screen.getByLabelText(t.result.fields.accepted)).toHaveValue(''));
+  });
+
+  /* omf-all-around#104 — 검사자는 계정에 연결된 작업자다. 연결이 없으면 누르기 전에 막고 이유를 말한다. */
+  it('계정에 작업자가 연결되지 않았으면 저장·확정을 잠그고 사유를 낸다', async () => {
+    testSession = { ...SYNTHETIC_SESSION, worker: null };
+    const { writes } = renderScreen('/?ir=1001');
+
+    expect(await screen.findByText(t.result.workerNotLinked)).toBeInTheDocument();
+    await userEvent.type(screen.getByLabelText(t.result.fields.held), '1');
+    expect(screen.getByRole('button', { name: t.result.save })).toBeDisabled();
+    expect(screen.getByRole('button', { name: t.result.confirm })).toBeDisabled();
+    expect(writes).toHaveLength(0);
+  });
+
+  it('옛 서버처럼 세션에 연결 칸이 없으면 막지 않는다 — 모르는 것을 「없음」으로 읽지 않는다', async () => {
+    testSession = SYNTHETIC_SESSION;
+    renderScreen('/?ir=1001');
+
+    await screen.findByText(t.result.round(1));
+    expect(screen.queryByText(t.result.workerNotLinked)).not.toBeInTheDocument();
   });
 
   it('회차가 없으면 저장이 새로 만든다', async () => {

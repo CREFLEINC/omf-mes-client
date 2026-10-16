@@ -115,6 +115,7 @@ import type {
   UserFilters,
   UserFormValues,
 } from './types';
+import { WorkerLinkPane } from './worker-link-pane';
 
 type AppUserDetailResponse = components['schemas']['AppUserDetailResponse'];
 type UserRoleListResponse = components['schemas']['UserRoleListResponse'];
@@ -1425,6 +1426,10 @@ export const UsersRolesScreen = () => {
           {renderUserFormPane()}
           {renderRoleAssignPane()}
           {renderDataScopePane()}
+          {/* 계정 ↔ 작업자 연결(omf-all-around#104) — 역할·접근범위와 같은 조건에서 선다. */}
+          {selectedAppUserId !== null && (
+            <WorkerLinkPane key={selectedAppUserId} appUserId={selectedAppUserId} />
+          )}
         </div>
       )}
     </div>

@@ -371,4 +371,16 @@ export const usersRoles = {
       noneDescription: '「범위 추가」로 이 사용자가 볼 수 있는 범위를 정하세요.',
     },
   },
+  /** 계정 ↔ 작업자(사번) 연결 — omf-all-around#104. 검사 판정처럼 작업자가 남는 관리웹 쓰기에 쓴다. */
+  workerLink: {
+    heading: '작업자(사번) 연결',
+    note: '검사 판정 등 작업자 이름이 기록에 남는 작업은 이 계정에 연결된 작업자로 저장됩니다.',
+    current: '연결된 작업자',
+    none: '연결된 작업자가 없습니다',
+    workerNo: '사번',
+    link: '연결',
+    unlink: '연결 해제',
+    notFound: '재직 중인 작업자 중에 이 사번이 없습니다.',
+    workerNoRequired: '사번을 입력하세요.',
+  },
 } as const;

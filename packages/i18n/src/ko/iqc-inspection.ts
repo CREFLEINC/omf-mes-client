@@ -205,6 +205,8 @@ export const iqcInspection = {
      * 단추 바로 아래에 붙으므로 단추 이름을 되풀이하지 않는다.
      */
     confirmBlockedByTotals: '입력 합계가 검사수량과 같아야 확정할 수 있습니다.',
+    workerNotLinked:
+      '이 계정에 작업자(사번)가 연결되어 있지 않아 판정을 저장할 수 없습니다. 사용자 관리에서 작업자를 연결하세요.',
     confirmBlockedByJudgment: '종합 판정을 선택해야 확정할 수 있습니다.',
     confirmBlockedByConfirmed: '이미 확정된 회차입니다.',
     /*

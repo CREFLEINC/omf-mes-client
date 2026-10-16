@@ -13,6 +13,8 @@ export {
 } from './errors';
 export type { components, paths } from './generated/api';
 export type {
+  AppUserWorker,
+  SessionWorker,
   TerminalRegistrationConfirmation,
   TerminalRegistrationStatusCode,
 } from './forward-contract';

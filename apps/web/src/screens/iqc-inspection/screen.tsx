@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router';
 
 import { toApiError } from '../../patterns/request';
+import { useSession } from '../../patterns/session';
 import {
   EMPTY_FILTERS,
   readFilters,
@@ -70,6 +71,8 @@ export const IqcInspectionScreen = () => {
 
   const queue = useInspectionQueue(toListQuery(filters, page));
   const detail = useInspectionRequestDetail(selectedId);
+  /* 검사자는 계정에 연결된 작업자다(omf-all-around#104) — 연결이 없으면 저장 전에 막는다. */
+  const { session } = useSession();
   const rounds = useInspectionRounds(selectedId);
 
   const round = latestRound(rounds.data ?? []);
@@ -388,6 +391,7 @@ export const IqcInspectionScreen = () => {
              */
             round={isReinspectingNow ? null : round}
             inspectedQty={inspectedQty}
+            saveBlockedReason={session?.worker === null ? t.result.workerNotLinked : null}
             uomCode={uomCode}
             hasChanges={hasChanges}
             draft={draft}
