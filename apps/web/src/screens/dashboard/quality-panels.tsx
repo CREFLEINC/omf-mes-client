@@ -21,6 +21,7 @@ import {
 import { compareEquipmentCode } from './equipment';
 import { formatFigure } from './types';
 import {
+  DeltaMark,
   EmptyLine,
   KpiTile,
   MiniLotBar,
@@ -49,16 +50,19 @@ const t = messages.dashboard.quality;
 export const formatRate = (rate: number | null): string =>
   rate === null ? t.rateNone : t.percent(formatFigure(rate));
 
-/** 전월 대비 p(퍼센트 포인트). 둘 중 하나라도 없으면 `null`. */
-export const rateDelta = (month: number | null, prev: number | null): string | null => {
+/** 전월 대비 p(퍼센트 포인트) — 방향과 표기. 둘 중 하나라도 없으면 `null`. */
+export const rateDelta = (
+  month: number | null,
+  prev: number | null,
+): { direction: 'up' | 'down' | 'flat'; text: string } | null => {
   if (month === null || prev === null) return null;
   const diff = Math.round((month - prev) * 10) / 10;
 
   return diff > 0
-    ? t.deltaUp(formatFigure(diff))
+    ? { direction: 'up', text: t.deltaUp(formatFigure(diff)) }
     : diff < 0
-      ? t.deltaDown(formatFigure(-diff))
-      : t.deltaFlat;
+      ? { direction: 'down', text: t.deltaDown(formatFigure(-diff)) }
+      : { direction: 'flat', text: t.deltaFlat };
 };
 
 const JUDGMENT_TONE: Record<DashboardJudgmentCode, ChipStatus> = {
@@ -97,7 +101,13 @@ const PassRateTile = ({
     <KpiTile label={label} tag={t.tagMonth} value={formatRate(block.monthPassRate)}>
       <span>
         {t.prevMonth(formatRate(block.prevMonthPassRate))}
-        {delta !== null && ` · ${delta}`}
+        {/* 합격률은 높을수록 좋다 — 오르면 초록(`DeltaMark`). */}
+        {delta !== null && (
+          <>
+            {' · '}
+            <DeltaMark direction={delta.direction}>{delta.text}</DeltaMark>
+          </>
+        )}
       </span>
     </KpiTile>
   );

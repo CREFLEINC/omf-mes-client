@@ -8407,21 +8407,21 @@ dl.filter-bar.approval-inbox-detail-facts {
 }
 
 /*
- * 생산 수량 칸의 전일 대비 기호 · 수치 색(⭐ 사용자 지시 2026-10-16 — 값 그대로, 이 칸 한정). DS 토큰에 같은
- * 값이 없어 여기서 한 번만 정의한다.
+ * 증감 기호 · 수치 색(⭐ 사용자 결정 2026-10-16 — 값 그대로). good = 좋은 방향(상승, 늘수록 나쁜 지표는
+ * 하락) · bad = 나쁜 방향 · flat = 변동 없음. DS 토큰에 같은 값이 없어 여기서 한 번만 정의한다.
  */
-.dash-kpis {
-  --dash-delta-up: #16a34a;
-  --dash-delta-down: #d97706;
+.dash-delta {
+  --dash-delta-good: #15803d;
+  --dash-delta-bad: #b45309;
   --dash-delta-flat: #6b7280;
 }
 
-.dash-delta-up {
-  color: var(--dash-delta-up);
+.dash-delta-good {
+  color: var(--dash-delta-good);
 }
 
-.dash-delta-down {
-  color: var(--dash-delta-down);
+.dash-delta-bad {
+  color: var(--dash-delta-bad);
 }
 
 .dash-delta-flat {

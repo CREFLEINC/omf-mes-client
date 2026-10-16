@@ -42,12 +42,12 @@ export const dashboard = {
     /** 분모에서 뺀 것이 있는 카드. 뺐다는 사실을 카드 본문에 적는다. */
     excluded: (count: number): string => `${String(count)}건 제외`,
     /** 기준일 전날 대비(서버 규칙) — 「전일 대비 ▲ 4%」. */
-    deltaUp: (text: string): string => `전일 대비 ▲ ${text}`,
-    deltaDown: (text: string): string => `전일 대비 ▼ ${text}`,
-    deltaFlat: '전일 대비 동일',
+    /** ⭐ 증감 표기(사용자 결정 2026-10-16) — ↑ · ↓, 변동 없음은 기호 없이 「전일과 동일」. */
+    deltaUp: (text: string): string => `전일 대비 ↑ ${text}`,
+    deltaDown: (text: string): string => `전일 대비 ↓ ${text}`,
+    deltaFlat: '전일과 동일',
     /** 생산 수량 칸의 증감 — 「전일 대비」 글자와 색을 입힌 기호 · 수치를 나눠 그린다. */
     deltaBase: '전일 대비',
-    deltaMarkFlat: '— 동일',
     /** 카드를 눌러 소유 화면으로 갈 수 있을 때. */
     openHint: (label: string): string => `${label} 상세 화면으로 이동`,
   },
@@ -230,8 +230,8 @@ export const dashboard = {
     tagNow: '현재',
     passRateOf: (kind: string): string => `${kind} 합격률`,
     prevMonth: (rate: string): string => `전월 ${rate}`,
-    deltaUp: (p: string): string => `▲ ${p}p`,
-    deltaDown: (p: string): string => `▼ ${p}p`,
+    deltaUp: (p: string): string => `↑ ${p}p`,
+    deltaDown: (p: string): string => `↓ ${p}p`,
     deltaFlat: '전월과 같음',
     /** 모수가 0이라 합격률을 낼 수 없다. ⛔ 0%로 그리지 않는다. */
     rateNone: '—',

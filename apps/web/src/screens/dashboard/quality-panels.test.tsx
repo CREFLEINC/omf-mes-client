@@ -21,8 +21,10 @@ describe('품질 탭', () => {
   it('합격률은 서버 값 그대로, 모수가 없으면(null) 0%가 아니라 「—」 · 전월 대비 p', () => {
     expect(formatRate(96.4)).toBe('96.4%');
     expect(formatRate(null)).toBe(t.rateNone);
-    expect(rateDelta(93.7, 87.2)).toBe(t.deltaUp('6.5'));
-    expect(rateDelta(94, 95)).toBe(t.deltaDown('1'));
+    expect(rateDelta(93.7, 87.2)).toEqual({ direction: 'up', text: t.deltaUp('6.5') });
+    expect(rateDelta(94, 95)).toEqual({ direction: 'down', text: t.deltaDown('1') });
+    expect(rateDelta(95, 95)).toEqual({ direction: 'flat', text: t.deltaFlat });
+    expect(t.deltaUp('6.5')).toBe('↑ 6.5p');
     expect(rateDelta(null, 95)).toBeNull();
   });
 

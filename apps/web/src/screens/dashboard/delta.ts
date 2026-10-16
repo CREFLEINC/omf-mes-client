@@ -18,7 +18,7 @@ import { formatFigure } from './types';
 
 const t = messages.dashboard;
 
-/** `mark` — 기호와 수치만(「▲ 8%」). 생산 수량 칸이 「전일 대비」 뒤에 색을 입혀 그린다. */
+/** `mark` — 기호와 수치만(「↑ 8%」) · 변동 없음은 「전일과 동일」. 칸이 「전일 대비」 뒤에 색을 입혀 그린다. */
 export type DashboardDelta = StatCardDelta & { direction: 'up' | 'down' | 'flat'; mark: string };
 
 export const toDelta = (deltaRatio: number | null): DashboardDelta | undefined => {
@@ -31,7 +31,7 @@ export const toDelta = (deltaRatio: number | null): DashboardDelta | undefined =
   const text = `${formatFigure(settled)}%`;
 
   if (settled > 0) {
-    return { direction: 'up', value: `+${text}`, label: t.cards.deltaUp(text), mark: `▲ ${text}` };
+    return { direction: 'up', value: `+${text}`, label: t.cards.deltaUp(text), mark: `↑ ${text}` };
   }
 
   if (settled < 0) {
@@ -42,9 +42,9 @@ export const toDelta = (deltaRatio: number | null): DashboardDelta | undefined =
       direction: 'down',
       value: text,
       label: t.cards.deltaDown(magnitude),
-      mark: `▼ ${magnitude}`,
+      mark: `↓ ${magnitude}`,
     };
   }
 
-  return { direction: 'flat', value: text, label: t.cards.deltaFlat, mark: t.cards.deltaMarkFlat };
+  return { direction: 'flat', value: text, label: t.cards.deltaFlat, mark: t.cards.deltaFlat };
 };

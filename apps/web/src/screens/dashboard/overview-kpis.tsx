@@ -9,7 +9,7 @@ import { toDelta } from './delta';
 import type { EquipmentView } from './equipment';
 import { EQUIPMENT_STATUS_TONE } from './equipment-panel';
 import { formatFigure, type DashboardCardView } from './types';
-import { InfoTip, KpiTile } from './viz';
+import { DeltaMark, InfoTip, KpiTile } from './viz';
 
 const t = messages.dashboard;
 const k = messages.dashboard.kpi;
@@ -35,23 +35,43 @@ export const serverNoteOf = (card: DashboardCardView | undefined): string | unde
     ? undefined
     : card.note;
 
-/**
- * 칸에 늘 보이는 짧은 줄 — 전일 대비 증감 · 제외 건수. ⭐ 서버 설명 원문은 여기 두지 않고 설명 단추의
- * 툴팁으로 옮긴다(사용자 지시 2026-10-16 · KPI 띠 한정) — 칸 높이가 설명 때문에 늘지 않게.
- * 분모가 온전하지 않다는 사실(제외 건수)은 짧으므로 칸에 그대로 남긴다.
- */
 /** 전일 대비 증감 — 값을 낼 수 없는 카드에는 무엇 대비인지가 성립하지 않아 두지 않는다. */
 const cardDeltaOf = (card: DashboardCardView | undefined) =>
   card === undefined || card.valueStatusCode === 'NOT_YET' ? undefined : toDelta(card.deltaRatio);
 
-export const cardNoteLines = (
-  card: DashboardCardView | undefined,
-  { withDelta = true }: { withDelta?: boolean } = {},
-): string[] => {
+/** 늘수록 나쁜 카드 — 증감 색을 뒤집는다(사용자 결정 2026-10-16). 안 읽은 알림이 늘면 나쁘다. */
+const LOWER_IS_BETTER: readonly DashboardCardView['cardCode'][] = ['UNHANDLED_ALARM'];
+
+/**
+ * 전일 대비 증감 한 줄(⭐ 사용자 결정 2026-10-16) — 「전일 대비」는 보조 색, 기호 · 수치에만 색(`DeltaMark`).
+ * 변동 없음은 기호 없이 「전일과 동일」 회색. 증감이 없으면 `null`.
+ */
+const CardDeltaLine = ({ card }: { card: DashboardCardView | undefined }) => {
+  const delta = cardDeltaOf(card);
+  if (card === undefined || delta === undefined) return null;
+  const mark = (
+    <DeltaMark direction={delta.direction} lowerIsBetter={LOWER_IS_BETTER.includes(card.cardCode)}>
+      {delta.mark}
+    </DeltaMark>
+  );
+
+  return delta.direction === 'flat' ? (
+    mark
+  ) : (
+    <>
+      {t.cards.deltaBase} {mark}
+    </>
+  );
+};
+
+/**
+ * 칸에 늘 보이는 짧은 줄 — 제외 건수(증감은 `CardDeltaLine`). ⭐ 서버 설명 원문은 여기 두지 않고 설명 단추의
+ * 툴팁으로 옮긴다(사용자 지시 2026-10-16 · KPI 띠 한정) — 칸 높이가 설명 때문에 늘지 않게.
+ * 분모가 온전하지 않다는 사실(제외 건수)은 짧으므로 칸에 그대로 남긴다.
+ */
+export const cardNoteLines = (card: DashboardCardView | undefined): string[] => {
   if (card === undefined) return [];
   const lines: string[] = [];
-  const delta = withDelta ? cardDeltaOf(card) : undefined;
-  if (delta?.label !== undefined) lines.push(delta.label);
   if (card.valueStatusCode === 'PARTIAL' && card.excludedCount !== null) {
     lines.push(t.cards.excluded(card.excludedCount));
   }
@@ -165,7 +185,6 @@ export const OverviewKpis = ({
   const byCode = new Map(cards.map((card) => [card.cardCode, card]));
   const availability = byCode.get('AVAILABILITY_RATE');
   const productionQty = byCode.get('PRODUCTION_QTY');
-  const productionDelta = cardDeltaOf(productionQty);
   const auxCards = [
     ...AUX_ORDER.flatMap((code) => {
       const card = byCode.get(code);
@@ -224,9 +243,17 @@ export const OverviewKpis = ({
             value={cardValueText(availability)}
             unit={unitOf(availability)}
           >
-            {[availabilityBasis(availability), ...cardNoteLines(availability)].map(
-              (line) => line !== undefined && <span key={line}>{line}</span>,
+            {availabilityBasis(availability) !== undefined && (
+              <span>{availabilityBasis(availability)}</span>
             )}
+            {cardDeltaOf(availability) !== undefined && (
+              <span>
+                <CardDeltaLine card={availability} />
+              </span>
+            )}
+            {cardNoteLines(availability).map((line) => (
+              <span key={line}>{line}</span>
+            ))}
           </KpiTile>
         </Linked>
 
@@ -239,19 +266,12 @@ export const OverviewKpis = ({
             unit={unitOf(productionQty)}
           >
             <span>{k.defectLine(qtyOrNone(production?.ngQty))}</span>
-            {productionDelta !== undefined && (
-              /*
-               * ⭐ 생산 수량 칸 한정(사용자 지정 2026-10-16) — 「전일 대비」는 보조 색 그대로, 기호 · 수치에만 색:
-               * 상승 초록 · 하락 주황 · 동일 회색(`.dash-delta-*`). 기호를 함께 둬 색만으로 말하지 않는다.
-               */
+            {cardDeltaOf(productionQty) !== undefined && (
               <span>
-                {t.cards.deltaBase}{' '}
-                <span className={`dash-delta dash-delta-${productionDelta.direction}`}>
-                  {productionDelta.mark}
-                </span>
+                <CardDeltaLine card={productionQty} />
               </span>
             )}
-            {cardNoteLines(productionQty, { withDelta: false }).map((line) => (
+            {cardNoteLines(productionQty).map((line) => (
               <span key={line}>{line}</span>
             ))}
           </KpiTile>
@@ -276,10 +296,6 @@ export const OverviewKpis = ({
         {auxCards.map((card) => {
           const label = auxLabelOf(card);
           const info = auxInfoOf(card);
-          const subLines = [
-            ...(card.cardCode === 'UNHANDLED_ALARM' ? [k.allPlants] : []),
-            ...cardNoteLines(card),
-          ];
 
           return (
             <div key={card.cardCode} className="dash-kpi-aux-row">
@@ -298,7 +314,15 @@ export const OverviewKpis = ({
                   )}
                 </Linked>
               </dd>
-              {subLines.map((line) => (
+              {card.cardCode === 'UNHANDLED_ALARM' && (
+                <dd className="dash-kpi-aux-note">{k.allPlants}</dd>
+              )}
+              {cardDeltaOf(card) !== undefined && (
+                <dd className="dash-kpi-aux-note">
+                  <CardDeltaLine card={card} />
+                </dd>
+              )}
+              {cardNoteLines(card).map((line) => (
                 <dd key={line} className="dash-kpi-aux-note">
                   {line}
                 </dd>

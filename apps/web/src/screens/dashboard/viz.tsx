@@ -163,6 +163,25 @@ export const InfoTip = ({ label, content }: { label: string; content: string }) 
   );
 };
 
+/**
+ * 증감 기호 · 수치(⭐ 사용자 결정 2026-10-16) — 오르면 초록 · 내리면 주황 · 변동 없음 회색. 늘수록 나쁜 지표
+ * (`lowerIsBetter`)는 색을 뒤집는다. 기호(↑ · ↓)는 실제 방향 그대로 — 색만으로 말하지 않는다.
+ */
+export const DeltaMark = ({
+  direction,
+  lowerIsBetter = false,
+  children,
+}: {
+  direction: 'up' | 'down' | 'flat';
+  lowerIsBetter?: boolean;
+  children: ReactNode;
+}) => {
+  const tone =
+    direction === 'flat' ? 'flat' : (direction === 'up') !== lowerIsBetter ? 'good' : 'bad';
+
+  return <span className={`dash-delta dash-delta-${tone}`}>{children}</span>;
+};
+
 export interface KpiTileProps {
   label: string;
   /** 이름 옆 설명 단추(툴팁). */

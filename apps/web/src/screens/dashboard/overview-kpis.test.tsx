@@ -93,9 +93,7 @@ describe('OverviewKpis', () => {
     expect(availability).not.toHaveTextContent('누계');
     const production = screen.getByRole('group', { name: '생산 수량' });
     expect(production).toHaveTextContent(k.defectLine('112'));
-    expect(production).toHaveTextContent(
-      `${messages.dashboard.cards.deltaBase} ${messages.dashboard.cards.deltaMarkFlat}`,
-    );
+    expect(production).toHaveTextContent(messages.dashboard.cards.deltaFlat);
     expect(screen.getByRole('group', { name: k.defectRate })).toHaveTextContent(k.defectRateNote);
   });
 
@@ -128,27 +126,38 @@ describe('OverviewKpis', () => {
     expect(tip.querySelectorAll('.dash-tip-line')).toHaveLength(2);
   });
 
-  it('생산 수량 칸만 전일 대비 기호 · 수치에 색 — 상승 · 하락 · 동일', () => {
-    const withDelta = (deltaRatio: number) => [
-      card({ deltaRatio }),
-      ...cards.filter((entry) => entry.cardCode !== 'PRODUCTION_QTY'),
-    ];
-    const markOf = () => document.querySelector('.dash-delta');
+  it('증감 표기 3종(↑ · ↓ · 「전일과 동일」)과 색 — 늘수록 나쁜 카드(미확인 알림)는 색을 뒤집는다', () => {
+    const c = messages.dashboard.cards;
+    const withDelta = (code: DashboardCardView['cardCode'], deltaRatio: number) =>
+      cards.map((entry) => (entry.cardCode === code ? { ...entry, deltaRatio } : entry));
+    const groupOf = (name: string) => screen.getByRole('group', { name });
+    const markIn = (element: HTMLElement) => element.querySelector('.dash-delta');
 
-    const { unmount } = renderKpis(PRODUCTION, withDelta(0.08));
-    expect(markOf()).toHaveClass('dash-delta-up');
-    expect(markOf()).toHaveTextContent('▲ 8%');
-    expect(markOf()?.parentElement).toHaveTextContent(`${messages.dashboard.cards.deltaBase} ▲ 8%`);
-    unmount();
+    const first = renderKpis(PRODUCTION, withDelta('PRODUCTION_QTY', 0.125));
+    expect(groupOf('생산 수량')).toHaveTextContent(c.deltaUp('12.5%'));
+    expect(c.deltaUp('12.5%')).toBe('전일 대비 ↑ 12.5%');
+    expect(markIn(groupOf('생산 수량'))).toHaveClass('dash-delta-good');
+    first.unmount();
 
-    const second = renderKpis(PRODUCTION, withDelta(-0.758));
-    expect(markOf()).toHaveClass('dash-delta-down');
-    expect(markOf()).toHaveTextContent('▼ 75.8%');
+    const second = renderKpis(PRODUCTION, withDelta('PRODUCTION_QTY', -0.758));
+    expect(groupOf('생산 수량')).toHaveTextContent('전일 대비 ↓ 75.8%');
+    expect(markIn(groupOf('생산 수량'))).toHaveClass('dash-delta-bad');
     second.unmount();
 
-    renderKpis(PRODUCTION, withDelta(0));
-    expect(markOf()).toHaveClass('dash-delta-flat');
-    expect(document.querySelectorAll('.dash-delta')).toHaveLength(1);
+    const third = renderKpis(PRODUCTION, withDelta('PRODUCTION_QTY', 0));
+    expect(markIn(groupOf('생산 수량'))).toHaveTextContent('전일과 동일');
+    expect(markIn(groupOf('생산 수량'))).toHaveClass('dash-delta-flat');
+    third.unmount();
+
+    /* 역방향 — 안 읽은 알림이 늘면 나쁜 색, 줄면 좋은 색. */
+    const alarmRow = () => screen.getByText(k.myUnreadAlerts).closest('div') as HTMLElement;
+    const fourth = renderKpis(PRODUCTION, withDelta('UNHANDLED_ALARM', 0.5));
+    expect(markIn(alarmRow())).toHaveClass('dash-delta-bad');
+    expect(markIn(alarmRow())).toHaveTextContent('↑ 50%');
+    fourth.unmount();
+
+    renderKpis(PRODUCTION, withDelta('UNHANDLED_ALARM', -0.5));
+    expect(markIn(alarmRow())).toHaveClass('dash-delta-good');
   });
 
   describe('설명 단추를 누르면', () => {
