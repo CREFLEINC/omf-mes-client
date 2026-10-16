@@ -207,6 +207,15 @@ export const iqcInspection = {
     confirmBlockedByTotals: '입력 합계가 검사수량과 같아야 확정할 수 있습니다.',
     workerNotLinked:
       '이 계정에 연결된 작업자가 없어 판정을 저장할 수 없습니다. 사용자 관리에서 작업자를 연결해 주세요.',
+    rejection: {
+      heading: '불합격 사유',
+      major: '불량 대분류',
+      minor: '불량 상세',
+      description: '사유',
+      required: '불합격이면 불량 코드를 골라야 확정할 수 있습니다.',
+      minorRequired: '이 대분류에는 상세 코드가 있습니다. 상세 코드를 고르세요.',
+      noCodes: '등록된 불량 코드가 없습니다. 기준정보 > 불량·원인 코드에서 먼저 등록하세요.',
+    },
     confirmBlockedByJudgment: '종합 판정을 선택해야 확정할 수 있습니다.',
     confirmBlockedByConfirmed: '이미 확정된 회차입니다.',
     /*

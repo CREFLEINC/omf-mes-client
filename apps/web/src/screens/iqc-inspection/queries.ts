@@ -1,4 +1,4 @@
-import type { ApiClient, components } from '@omf-mes/api-client';
+import type { ApiClient, components, DefectRecordCreate } from '@omf-mes/api-client';
 import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
@@ -83,6 +83,8 @@ export const iqcInspectionKeys = {
   /** 그 회차의 측정치. 회차 저장이 바꾸므로 저장 뒤 무효화 대상이다. */
   measurements: (inspectionResultId: number) =>
     [...ALL_KEY, 'measurements', inspectionResultId] as const,
+  /** 불량 코드 마스터(W-06-03) — 불합격 사유(omf-all-around#106). 마스터라 저장이 바꾸지 않는다. */
+  defectCodes: [...ALL_KEY, 'defect-codes'] as const,
   /** 그 의뢰의 회차 목록. 상세와도 갈라 둔다 — 저장이 바꾸는 것은 회차이지 의뢰가 아니다. */
   rounds: (inspectionRequestId: number) => [...ALL_KEY, 'rounds', inspectionRequestId] as const,
   /**
@@ -507,3 +509,45 @@ export const useConfirmResult = (
 
 /** 확정이 짚어 줄 수 있는 칸. 수량은 임시 저장이 다루므로 여기서는 판정 하나다. */
 export const CONFIRM_FIELDS = ['overallJudgmentCode'] as const;
+
+/** 불량 코드 한 쪽 크기 — 사업부 공용 마스터라 수백 줄을 넘지 않는다고 본다(넘으면 상세가 잘린다). */
+const DEFECT_CODE_PAGE_SIZE = 500;
+
+/** 불합격 사유에 고를 불량 코드(사용 중인 것만) — omf-all-around#106. */
+export const useDefectCodes = (enabled: boolean) => {
+  const { client } = useApiClient();
+
+  return useQuery({
+    queryKey: iqcInspectionKeys.defectCodes,
+    queryFn: () =>
+      runRequest(() =>
+        client.GET('/quality/defect-codes', {
+          params: { query: { page: 1, size: DEFECT_CODE_PAGE_SIZE } },
+        }),
+      ).then((response) => response.items),
+    enabled,
+  });
+};
+
+/**
+ * 불합격 사유를 불량 기록으로 남긴다(서버 선행 P-39). 확정 «직전»에 부르고, 성공하면 확정으로 잇는다 —
+ * 서버가 IQC 불합격 확정에 불량 기록을 요구한다.
+ */
+export const useRecordRejection = (
+  onRecorded: () => void,
+): MasterWriteResult<DefectRecordCreate> => {
+  const { client } = useApiClient();
+
+  return useMasterWrite<DefectRecordCreate, unknown>({
+    request: (body, headers) =>
+      client.POST('/quality/defect-records', {
+        params: { header: { 'Idempotency-Key': headers['Idempotency-Key'] } },
+        body,
+      }),
+    etagPath: null,
+    invalidateKeys: [],
+    knownFields: [],
+    keyLifetime: 'until-applied',
+    onSuccess: onRecorded,
+  });
+};

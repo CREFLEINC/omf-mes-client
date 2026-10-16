@@ -101,6 +101,15 @@ export const iqcInspection: Translated<typeof ko.iqcInspection> = {
     confirmBlockedByTotals: 'Tổng đã nhập phải bằng số lượng kiểm tra mới xác nhận được.',
     workerNotLinked:
       'Tài khoản này chưa liên kết người lao động nên không lưu được phán định. Hãy liên kết người lao động trong Quản lý người dùng.',
+    rejection: {
+      heading: 'Lý do không đạt',
+      major: 'Nhóm lỗi',
+      minor: 'Mã lỗi chi tiết',
+      description: 'Lý do',
+      required: 'Nếu không đạt, phải chọn mã lỗi mới xác nhận được.',
+      minorRequired: 'Nhóm lỗi này có mã chi tiết. Hãy chọn mã chi tiết.',
+      noCodes: 'Chưa có mã lỗi nào. Hãy đăng ký trước tại Thông tin cơ sở > Mã lỗi·nguyên nhân.',
+    },
     confirmBlockedByJudgment: 'Phải chọn đánh giá tổng hợp mới xác nhận được.',
     confirmBlockedByConfirmed: 'Lượt này đã được xác nhận.',
     confirmBlockedByUnsaved: 'Sau khi lưu tạm mới có thể xác nhận đánh giá.',

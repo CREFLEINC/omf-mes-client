@@ -1,7 +1,7 @@
 import { AlertBanner, Button, Progress, Select, TextField } from '@crefle/web-ui';
 import type { ApiError } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
-import { useId, useState, type FormEvent, type ReactElement } from 'react';
+import { useId, useState, type FormEvent, type ReactElement, type ReactNode } from 'react';
 
 import { SaveErrorBanner } from '../../patterns/master';
 
@@ -102,6 +102,10 @@ export interface ResultFormPaneProps {
    * 저장이 400 이 된다. 누르고 실패하기 전에 무엇을 해야 하는지 말하고 저장·확정을 잠근다.
    */
   saveBlockedReason?: string | null;
+  /** 종합 판정 바로 아래 칸 — 불합격 사유(omf-all-around#106). 화면이 판정에 따라 채운다. */
+  judgmentDetail?: ReactNode;
+  /** 확정만 막는 사유(저장은 막지 않는다) — 불합격인데 불량 코드를 고르지 않았을 때다. */
+  confirmOnlyBlockedReason?: string | null;
 }
 
 /** 계약이 짚어 줄 수 있는 칸 이름 ↔ 화면의 초안 칸. */
@@ -135,6 +139,8 @@ export const ResultFormPane = ({
   onStartReinspection,
   onCancelReinspection,
   saveBlockedReason = null,
+  judgmentDetail = null,
+  confirmOnlyBlockedReason = null,
 }: ResultFormPaneProps) => {
   const judgmentId = useId();
   const isConfirmed = round?.statusCode === 'CONFIRMED';
@@ -176,7 +182,7 @@ export const ResultFormPane = ({
           ? t.confirmBlockedByTotals
           : judgment === ''
             ? t.confirmBlockedByJudgment
-            : null;
+            : confirmOnlyBlockedReason;
 
   /** 서버가 짚어 준 칸 오류를 화면의 칸 이름으로 옮긴다. */
   const serverErrorOf = (key: keyof QuantityDraft): string | undefined => {
@@ -335,6 +341,7 @@ export const ResultFormPane = ({
             <p className="field-note">{t.judgmentUnknown(judgment)}</p>
           )}
         </div>
+        {judgmentDetail}
 
         <SaveErrorBanner error={saveError ?? confirmError} onReload={onReload} />
 

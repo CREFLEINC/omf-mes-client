@@ -88,6 +88,34 @@ const renderScreen = (
               : jsonResponse(found);
           },
         },
+        /* 불량 코드 마스터 — 불합격 사유(omf-all-around#106). 대분류 1 · 상세 1. */
+        {
+          match: (request) => new URL(request.url).pathname === '/quality/defect-codes',
+          respond: () =>
+            jsonResponse({
+              items: [
+                { defectCodeId: 7001, defectCode: 'APP', defectName: '외관', isActive: true },
+                {
+                  defectCodeId: 7002,
+                  defectCode: 'APP-SCR',
+                  defectName: '스크래치',
+                  parentDefectCodeId: 7001,
+                  isActive: true,
+                },
+              ],
+              page: { page: 1, size: 500, total: 2 },
+            }),
+        },
+        /* 불량 기록 등록 — 확정 «직전»에 나간다(P-39). 쓰기 순서를 재려고 `writes` 에 함께 담는다. */
+        {
+          match: (request) =>
+            new URL(request.url).pathname === '/quality/defect-records' &&
+            request.method === 'POST',
+          respond: (request) => {
+            writes.push(request);
+            return jsonResponse({ defectRecordId: 1 }, { status: 201 });
+          },
+        },
         /* 공통코드 — 종합 판정 선택지를 채운다. */
         {
           match: (request) => new URL(request.url).pathname === '/mdm/code-values',
@@ -831,6 +859,54 @@ describe('IqcInspectionScreen — 확정 결과 문면', () => {
     await waitFor(() =>
       expect(screen.queryByText(t.result.confirmSucceeded)).not.toBeInTheDocument(),
     );
+  });
+});
+
+/* omf-all-around#106 — 불합격이면 불량 코드·사유를 받아 불량 기록을 남긴 «뒤» 확정한다. */
+describe('IqcInspectionScreen — 불합격 사유', () => {
+  const rejectedRound = { ...draftRound, acceptedQty: 485, rejectedQty: 15, heldQty: 0 };
+
+  const chooseRejected = async (): Promise<void> => {
+    await screen.findByText(t.result.round(1));
+    await userEvent.click(screen.getByLabelText(t.result.judgment));
+    await userEvent.click(await screen.findByRole('option', { name: '불합격' }));
+  };
+
+  it('불합격을 고르면 사유 칸이 서고, 코드를 고르기 전에는 확정이 잠긴다', async () => {
+    renderScreen('/?ir=1001', () => jsonResponse(queueResponse()), [rejectedRound]);
+    await chooseRejected();
+
+    expect(
+      await screen.findByRole('group', { name: t.result.rejection.heading }),
+    ).toBeInTheDocument();
+    expect(screen.getByText(t.result.rejection.required)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: t.result.confirm })).toBeDisabled();
+  });
+
+  it('상세가 있는 대분류는 상세까지 골라야 하고, 확정은 불량 기록 → 확정 순서로 나간다', async () => {
+    const { writes } = renderScreen('/?ir=1001', () => jsonResponse(queueResponse()), [
+      rejectedRound,
+    ]);
+    await chooseRejected();
+
+    await userEvent.click(await screen.findByLabelText(t.result.rejection.major));
+    await userEvent.click(await screen.findByRole('option', { name: 'APP · 외관' }));
+    expect(screen.getByText(t.result.rejection.minorRequired)).toBeInTheDocument();
+    await userEvent.click(screen.getByLabelText(t.result.rejection.minor));
+    await userEvent.click(await screen.findByRole('option', { name: 'APP-SCR · 스크래치' }));
+    await userEvent.type(screen.getByLabelText(t.result.rejection.description), '표면 긁힘');
+    await userEvent.click(screen.getByRole('button', { name: t.result.confirm }));
+
+    await waitFor(() => expect(writes).toHaveLength(2));
+    expect(new URL((writes[0] as Request).url).pathname).toBe('/quality/defect-records');
+    expect(await bodyOf(writes[0] as Request)).toMatchObject({
+      sourceCode: 'IQC',
+      defectCodeId: 7002,
+      defectQty: 15,
+      inspectionResultId: draftRound.inspectionResultId,
+      defectDescription: '표면 긁힘',
+    });
+    expect(new URL((writes[1] as Request).url).pathname).toContain(':confirm');
   });
 });
 
