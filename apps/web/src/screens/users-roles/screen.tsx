@@ -115,7 +115,7 @@ import type {
   UserFilters,
   UserFormValues,
 } from './types';
-import { WorkerLinkPane } from './worker-link-pane';
+import { WorkerLinkField } from './worker-link-field';
 
 type AppUserDetailResponse = components['schemas']['AppUserDetailResponse'];
 type UserRoleListResponse = components['schemas']['UserRoleListResponse'];
@@ -1282,6 +1282,14 @@ export const UsersRolesScreen = () => {
           userResetPasswordWrite.reset();
           setIsResetPasswordOpen(true);
         }}
+        /* 계정 ↔ 작업자 지정(omf-all-around#104) — 사용자 정보 안에서 지정한다(담당자 지시 2026-10-16). */
+        workerField={
+          <WorkerLinkField
+            key={selectedAppUserId}
+            appUserId={selectedAppUserId}
+            departmentLabel={(departmentId) => lookupLabel(departmentOptions, departmentId)}
+          />
+        }
       />
     );
   };
@@ -1426,10 +1434,6 @@ export const UsersRolesScreen = () => {
           {renderUserFormPane()}
           {renderRoleAssignPane()}
           {renderDataScopePane()}
-          {/* 계정 ↔ 작업자 연결(omf-all-around#104) — 역할·접근범위와 같은 조건에서 선다. */}
-          {selectedAppUserId !== null && (
-            <WorkerLinkPane key={selectedAppUserId} appUserId={selectedAppUserId} />
-          )}
         </div>
       )}
     </div>

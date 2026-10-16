@@ -371,15 +371,31 @@ export const usersRoles = {
       noneDescription: '「범위 추가」로 이 사용자가 볼 수 있는 범위를 정하세요.',
     },
   },
-  /** 계정 ↔ 작업자(사번) 연결 — omf-all-around#104. 검사 판정처럼 작업자가 남는 관리웹 쓰기에 쓴다. */
+  /**
+   * 계정 ↔ 작업자 지정 — omf-all-around#104. 사용자 정보 카드 안의 한 줄이다(담당자 지시 2026-10-16).
+   * 검사 판정처럼 작업자가 남는 관리웹 쓰기에 쓴다.
+   */
   workerLink: {
-    heading: '작업자(사번) 연결',
-    note: '검사 판정 등 작업자 이름이 기록에 남는 작업은 이 계정에 연결된 작업자로 저장됩니다.',
-    current: '연결된 작업자',
-    none: '연결된 작업자가 없습니다',
+    label: '작업자',
+    linked: '지정됨',
+    unlinked: '미지정',
+    /** 사번 · 이름 · 소속 */
+    summary: (workerNo: string, workerName: string, department: string): string =>
+      `${workerNo} · ${workerName} · ${department}`,
+    noDepartment: '소속 없음',
+    unlinkedGuide:
+      '작업자가 지정되지 않아 이 계정으로는 검사 판정을 저장할 수 없습니다. 사번을 입력해 지정해 주세요.',
+    /** 폼의 저장과 따로 바로 반영된다는 사실 — 밝히지 않으면 「저장」을 눌러야 하는 줄 안다. */
+    immediateNote: '지정·해제는 저장 버튼과 별도로 바로 반영됩니다.',
     workerNo: '사번',
-    link: '연결',
-    unlink: '연결 해제',
+    link: '지정',
+    change: '변경',
+    unlink: '지정 해제',
+    linkedToast: (summary: string): string => `작업자를 지정했습니다 — ${summary}`,
+    unlinkConfirmTitle: '작업자 지정을 해제할까요?',
+    unlinkConfirmBody: (summary: string): string =>
+      `${summary} 지정을 해제합니다. 해제하면 이 계정으로는 검사 판정을 저장할 수 없습니다.`,
+    unlinkedToast: '작업자 지정을 해제했습니다.',
     notFound: '재직 중인 작업자 중에 이 사번이 없습니다.',
     workerNoRequired: '사번을 입력하세요.',
   },
