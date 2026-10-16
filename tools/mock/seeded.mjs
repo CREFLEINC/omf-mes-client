@@ -5621,6 +5621,13 @@ on('GET', '/app/dashboard-summary', (_params, query) => {
       })),
       asOf,
     },
+    production: {
+      totalQty: 9_870,
+      goodQty: 9_792,
+      ngQty: 61,
+      holdQty: 17,
+      defectRate: 0.6,
+    },
     equipment: {
       asOf,
       statusCounts: dashboardStatusCounts(DASHBOARD_EQUIPMENT),

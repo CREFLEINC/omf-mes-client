@@ -20,6 +20,7 @@ export type {
   DashboardJudgmentCode,
   DashboardLotCounts,
   DashboardNextShipment,
+  DashboardProduction,
   DashboardQuality,
   DashboardQualityTypeBlock,
   DashboardRecentLot,

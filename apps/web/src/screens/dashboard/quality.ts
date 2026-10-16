@@ -37,43 +37,6 @@ export const lotTotal = (counts: DashboardLotCounts): number =>
 export const shortDate = (date: string): string =>
   /^\d{4}-\d{2}-\d{2}$/.test(date) ? date.slice(5) : date;
 
-/**
- * 단일 유형 일별 합격률 그래프의 점. **합격률이 없는 날은 뺀다** — 차트가 빈 값을 받지 못하고,
- * 0으로 채우면 그날 합격률이 0%로 떨어진 것으로 읽힌다.
- */
-export const toDailyPoints = (
-  block: DashboardQualityTypeBlock,
-): { label: string; value: number }[] =>
-  block.dailyPassRates.flatMap((entry) =>
-    entry.passRate === null ? [] : [{ label: shortDate(entry.date), value: entry.passRate }],
-  );
-
-export interface DailyRateRow {
-  date: string;
-  rates: Record<QualityKind, number | null>;
-}
-
-/**
- * 품질 종합의 일별 합격률 — 세 유형을 날짜 한 줄에 놓는다. 날짜는 IQC → PQC → OQC 순으로 처음
- * 나온 차례를 따른다(규격상 셋 다 같은 아홉 날이다). 어느 유형에 그 날이 없으면 그 칸은 `null`이다.
- */
-export const toDailyRateRows = (quality: DashboardQuality): DailyRateRow[] => {
-  const rows = new Map<string, DailyRateRow>();
-
-  for (const kind of QUALITY_KINDS) {
-    for (const entry of blockOf(quality, kind).dailyPassRates) {
-      const row = rows.get(entry.date) ?? {
-        date: entry.date,
-        rates: { IQC: null, PQC: null, OQC: null },
-      };
-      row.rates[kind] = entry.passRate;
-      rows.set(entry.date, row);
-    }
-  }
-
-  return [...rows.values()];
-};
-
 export interface RecentLotRow extends DashboardRecentLot {
   kind: QualityKind;
 }

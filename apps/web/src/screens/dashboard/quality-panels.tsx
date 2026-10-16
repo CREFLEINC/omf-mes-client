@@ -1,43 +1,63 @@
-import {
-  BarChart,
-  Chip,
-  EmptyState,
-  LineChart,
-  PieChart,
-  Skeleton,
-  StatCard,
-  Table,
-  type ChipStatus,
-  type Column,
-} from '@crefle/web-ui';
+import { Chip, EmptyState, Skeleton, Table, type ChipStatus, type Column } from '@crefle/web-ui';
 import type {
   DashboardJudgmentCode,
+  DashboardLotCounts,
   DashboardQuality,
   DashboardQualityTypeBlock,
 } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
 
-import { formatPlantDateTime } from '../../patterns/plant-time';
+import { toPlantDateTimeParts } from '../../patterns/plant-time';
 import {
   blockOf,
   lotTotal,
   shortDate,
   sumLots,
-  toDailyPoints,
-  toDailyRateRows,
   toRecentLotRows,
-  type DailyRateRow,
   type QualityKind,
   type RecentLotRow,
 } from './quality';
 import { formatFigure } from './types';
+import {
+  KpiTile,
+  MiniLotBar,
+  MultiLineChart,
+  NoRecords,
+  Panel,
+  ParetoChart,
+  RankBars,
+  StackedBar100,
+  StatusList,
+  type LineSeries,
+} from './viz';
 
 const t = messages.dashboard.quality;
+
+/*
+ * 품질 탭 다섯(omf-all-around#113 · ⭐ 사용자 지시 2026-10-16, 시안 v1.3 기준 재구성).
+ * 시안의 격자 — KPI 띠 → row2(넓은 패널 + 좁은 패널) → row3(패널 셋). 규격에 없는 칸(손실금액 · 반품 금액 ·
+ * 클레임 · CAPA · 목표값 · 재발 · 업체 시정요구 · Ass'y 구성비)은 만들지 않고, 빈 자리는 남기지 않는다.
+ *
+ * ⛔ 「선별」이라는 말을 쓰지 않는다 — **검사 보류** · **전수 재검**. ⛔ 목표선을 긋지 않는다.
+ * 합격률은 서버가 낸다(최종 판정 · 보류 제외) — 화면이 다시 계산하지 않는다.
+ */
 
 /** 합격률 · 불량률 표기. 모수가 0이라 `null`이면 「—」 — ⛔ 0%로 그리지 않는다. */
 export const formatRate = (rate: number | null): string =>
   rate === null ? t.rateNone : t.percent(formatFigure(rate));
+
+/** 전월 대비 p(퍼센트 포인트). 둘 중 하나라도 없으면 `null`. */
+export const rateDelta = (month: number | null, prev: number | null): string | null => {
+  if (month === null || prev === null) return null;
+  const diff = Math.round((month - prev) * 10) / 10;
+
+  return diff > 0
+    ? t.deltaUp(formatFigure(diff))
+    : diff < 0
+      ? t.deltaDown(formatFigure(-diff))
+      : t.deltaFlat;
+};
 
 const JUDGMENT_TONE: Record<DashboardJudgmentCode, ChipStatus> = {
   ACCEPTED: 'success',
@@ -45,150 +65,79 @@ const JUDGMENT_TONE: Record<DashboardJudgmentCode, ChipStatus> = {
   HELD: 'warning',
 };
 
-const JudgmentChip = ({ code }: { code: DashboardJudgmentCode }) => (
-  <Chip size="sm" status={JUDGMENT_TONE[code]}>
-    {t.judgment[code]}
-  </Chip>
-);
-
-const Block = ({
-  title,
-  lead,
+const Row = ({
+  kind,
   children,
 }: {
-  title: string;
-  lead?: string;
+  kind: 'row2' | 'row2-single' | 'row3';
   children: ReactNode;
-}) => (
-  <section className="dashboard-quality-block" aria-label={title}>
-    <h3 className="dashboard-subtitle">{title}</h3>
-    {lead !== undefined && <p className="pane-lead">{lead}</p>}
-    {children}
-  </section>
-);
+}) => <div className={`dash-${kind}`}>{children}</div>;
 
-const NoRecords = () => <EmptyState size="sm" title={t.noRecordsTitle} description={t.noRecords} />;
-
-const lotNote = (counts: { accepted: number; rejected: number; held: number }): string =>
-  t.lotBreakdown(
-    formatFigure(counts.accepted),
-    formatFigure(counts.rejected),
-    formatFigure(counts.held),
-  );
-
-const Note = ({ lines }: { lines: string[] }) => (
-  <span className="kpi-card-note">
-    {lines.map((line) => (
-      <span key={line}>{line}</span>
-    ))}
-  </span>
-);
-
-const PassRateCard = ({ label, block }: { label: string; block: DashboardQualityTypeBlock }) => (
-  <StatCard label={label} value={formatRate(block.monthPassRate)} bordered>
-    <Note lines={[t.prevMonth(formatRate(block.prevMonthPassRate))]} />
-  </StatCard>
-);
-
-const LotCard = ({
+const PassRateTile = ({
   label,
-  counts,
-}: {
-  label: string;
-  counts: { accepted: number; rejected: number; held: number };
-}) => (
-  <StatCard label={label} value={formatFigure(lotTotal(counts))} unit={t.lotUnit} bordered>
-    <Note lines={[lotNote(counts)]} />
-  </StatCard>
-);
-
-const QtyCard = ({
-  label,
-  value,
-  unit,
-  note,
-}: {
-  label: string;
-  value: number;
-  unit: string;
-  note?: string;
-}) => (
-  <StatCard label={label} value={formatFigure(value)} unit={unit} bordered>
-    {note !== undefined && <Note lines={[note]} />}
-  </StatCard>
-);
-
-/** 이름 · 수량 목록을 막대로. 비어 있으면 「기록 없음」 — 불량 기록이 아직 쌓이지 않는 자리가 있다. */
-const QtyBars = ({
-  name,
-  entries,
-}: {
-  name: string;
-  entries: { label: string; value: number }[];
-}) =>
-  entries.length === 0 ? (
-    <NoRecords />
-  ) : (
-    <BarChart
-      series={[{ name, data: entries }]}
-      formatValue={formatFigure}
-      height={220}
-      showLegend={false}
-    />
-  );
-
-const Phenomena = ({
-  entries,
-}: {
-  entries: { defectCodeId: number; defectName: string; qty: number }[];
-}) =>
-  entries.length === 0 ? (
-    <NoRecords />
-  ) : (
-    <PieChart
-      donut
-      data={entries.map((entry) => ({ label: entry.defectName, value: entry.qty }))}
-      formatValue={formatFigure}
-      height={220}
-    />
-  );
-
-/** 단일 유형 일별 합격률. ⛔ 목표선을 긋지 않는다 — 목표값은 MES DB에 없다. */
-const DailyRateChart = ({
-  kind,
   block,
+  showDelta,
 }: {
-  kind: QualityKind;
+  label: string;
   block: DashboardQualityTypeBlock;
+  showDelta?: boolean;
 }) => {
-  const points = toDailyPoints(block);
+  const delta = showDelta === true ? rateDelta(block.monthPassRate, block.prevMonthPassRate) : null;
 
   return (
-    <Block title={`${kind} ${t.dailyTitle}`} lead={`${t.dailyRecent} · ${t.dailyGapNote}`}>
-      {points.length === 0 ? (
-        <EmptyState size="sm" title={t.noRecordsTitle} description={t.dailyEmpty} />
-      ) : (
-        <LineChart
-          series={[{ name: `${kind} ${t.passRate}`, data: points }]}
-          formatValue={formatFigure}
-          height={220}
-          showPoints
-          showLegend={false}
-        />
-      )}
-    </Block>
+    <KpiTile label={label} tag={t.tagMonth} value={formatRate(block.monthPassRate)}>
+      <span>
+        {t.prevMonth(formatRate(block.prevMonthPassRate))}
+        {delta !== null && ` · ${delta}`}
+      </span>
+    </KpiTile>
   );
 };
 
-const DAILY_COLUMNS: Column<DailyRateRow>[] = [
-  { key: 'date', header: t.dailyColumn, render: (row) => shortDate(row.date) },
-  ...(['IQC', 'PQC', 'OQC'] as const).map((kind) => ({
-    key: kind,
-    header: kind,
-    align: 'end' as const,
-    render: (row: DailyRateRow) => formatRate(row.rates[kind]),
-  })),
-];
+const LotTile = ({
+  label,
+  tag,
+  counts,
+}: {
+  label: string;
+  tag: string;
+  counts: DashboardLotCounts;
+}) => (
+  <KpiTile label={label} tag={tag} value={formatFigure(lotTotal(counts))} unit={t.lotUnit}>
+    <span>
+      {t.lotBreakdown(
+        formatFigure(counts.accepted),
+        formatFigure(counts.rejected),
+        formatFigure(counts.held),
+      )}
+    </span>
+    <MiniLotBar counts={counts} />
+  </KpiTile>
+);
+
+const dailySeries = (quality: DashboardQuality, kinds: readonly QualityKind[]): LineSeries[] =>
+  kinds.map((kind, index) => ({
+    name: kind,
+    tone: kinds.length === 1 ? 1 : ((index + 1) as 1 | 2 | 3),
+    points: blockOf(quality, kind).dailyPassRates.map((entry) => ({
+      label: shortDate(entry.date),
+      value: entry.passRate,
+    })),
+  }));
+
+const DailyPanel = ({
+  quality,
+  kinds,
+  title,
+}: {
+  quality: DashboardQuality;
+  kinds: readonly QualityKind[];
+  title: string;
+}) => (
+  <Panel title={title} sub={t.dailySub} tag={t.dailyRecent} className="dash-span-wide">
+    <MultiLineChart series={dailySeries(quality, kinds)} caption={title} />
+  </Panel>
+);
 
 type Counterpart = 'kind' | 'vendor' | 'customer' | 'equipment';
 
@@ -217,156 +166,273 @@ const counterpartColumn = (counterpart: Counterpart): Column<RecentLotRow> => {
   }
 };
 
-const RecentLots = ({ rows, counterpart }: { rows: RecentLotRow[]; counterpart: Counterpart }) => (
-  <Block title={t.recentLots} lead={t.recentLotsLead}>
-    <Table
-      columns={[
-        {
-          key: 'inspectedAt',
-          header: t.column.inspectedAt,
-          render: (row) => formatPlantDateTime(row.inspectedAt) ?? row.inspectedAt,
-        },
-        counterpartColumn(counterpart),
-        { key: 'item', header: t.column.item, render: (row) => `${row.itemCode} ${row.itemName}` },
-        /* PQC · OQC 는 LOT 번호가 오지 않는다(규격 보정) — 「—」. */
-        { key: 'lotNo', header: t.column.lotNo, render: (row) => row.lotNo ?? t.none },
-        { key: 'qty', header: t.column.qty, align: 'end', render: (row) => formatFigure(row.qty) },
-        {
-          key: 'judgment',
-          header: t.column.judgment,
-          render: (row) => <JudgmentChip code={row.judgmentCode} />,
-        },
-      ]}
-      rows={rows}
-      getRowId={(row) => `${row.kind}-${String(row.inspectionResultId)}`}
-      density="compact"
-      caption={t.recentLots}
-      empty={<EmptyState size="sm" title={t.noRecordsTitle} description={t.recentEmpty} />}
-    />
-  </Block>
+/**
+ * 검사 일자는 「10-16」(공장 시각)만 칸에 적고, 시각까지는 `title`로 둔다 — 좁은 칸에서 일시가 두 줄로
+ * 꺾였다(브라우저 확인). 읽을 수 없으면 원문.
+ */
+const InspectedAt = ({ value }: { value: string }) => {
+  const parts = toPlantDateTimeParts(value);
+  if (parts === null) return <>{value}</>;
+
+  return (
+    <time dateTime={value} title={`${parts.date} ${parts.time}`}>
+      {shortDate(parts.date)}
+    </time>
+  );
+};
+
+const RecentLotsPanel = ({
+  title,
+  rows,
+  counterpart,
+}: {
+  title: string;
+  rows: RecentLotRow[];
+  counterpart: Counterpart;
+}) => (
+  <Panel title={title} tag={t.recentLotsLead}>
+    {/* 제목은 패널이 이미 말한다 — 표 제목(caption)을 두면 같은 말이 두 번 보인다. 이름은 aria-label 로. */}
+    <div className="dash-table-wrap">
+      <Table
+        columns={[
+          {
+            key: 'inspectedAt',
+            header: t.column.inspectedAt,
+            render: (row) => <InspectedAt value={row.inspectedAt} />,
+          },
+          counterpartColumn(counterpart),
+          { key: 'item', header: t.column.item, render: (row) => row.itemCode },
+          /*
+           * LOT 열을 두지 않는다 — 시안의 표는 일자 · 구분 · CODE · 수량 · 판정이고, 좁은 row3 칸에서 LOT 열이
+           * 판정을 칸 밖으로 밀어냈다(브라우저 확인). LOT 은 PQC · OQC 에서 오지도 않는다(규격 보정).
+           */
+          {
+            key: 'qty',
+            header: t.column.qty,
+            align: 'end',
+            render: (row) => formatFigure(row.qty),
+          },
+          {
+            key: 'judgment',
+            header: t.column.judgment,
+            align: 'center',
+            render: (row) => (
+              <Chip size="sm" status={JUDGMENT_TONE[row.judgmentCode]}>
+                {t.judgment[row.judgmentCode]}
+              </Chip>
+            ),
+          },
+        ]}
+        rows={rows}
+        getRowId={(row) => `${row.kind}-${String(row.inspectionResultId)}`}
+        density="compact"
+        aria-label={title}
+        empty={<NoRecords description={t.recentEmpty} />}
+      />
+    </div>
+  </Panel>
 );
 
 const recentOf = (quality: DashboardQuality, kind: QualityKind): RecentLotRow[] =>
   blockOf(quality, kind).recentLots.map((lot) => ({ ...lot, kind }));
 
-/** 품질 종합 — 세 유형 합격률 · 금일 검사 LOT · 일별 합격률 · 업체별 IQC 불량 · 불량현상 · 최근 판정. */
-export const QualityOverviewTab = ({ quality }: { quality: DashboardQuality }) => (
-  <div className="dashboard-quality">
-    <p className="pane-lead">{t.passRateRule}</p>
-    <div className="kpi-grid">
-      <PassRateCard label={t.monthPassRate('IQC')} block={quality.iqc} />
-      <PassRateCard label={t.monthPassRate('PQC')} block={quality.pqc} />
-      <PassRateCard label={t.monthPassRate('OQC')} block={quality.oqc} />
-      <LotCard
-        label={t.todayLots}
-        counts={sumLots([quality.iqc.todayLots, quality.pqc.todayLots, quality.oqc.todayLots])}
-      />
+const phenomenaEntries = (entries: { defectCodeId: number; defectName: string; qty: number }[]) =>
+  entries.map((entry) => ({
+    key: String(entry.defectCodeId),
+    label: entry.defectName,
+    value: entry.qty,
+  }));
+
+const countTone = (value: number, tone: ChipStatus): ChipStatus | undefined =>
+  value > 0 ? tone : undefined;
+
+/** 품질 종합. */
+export const QualityOverviewTab = ({ quality }: { quality: DashboardQuality }) => {
+  const todayLots = sumLots([quality.iqc.todayLots, quality.pqc.todayLots, quality.oqc.todayLots]);
+  const monthHeld = sumLots([
+    quality.iqc.monthLots,
+    quality.pqc.monthLots,
+    quality.oqc.monthLots,
+  ]).held;
+
+  return (
+    <div className="dash-tab">
+      <div className="dash-kpis">
+        <PassRateTile label={t.passRateOf('IQC')} block={quality.iqc} showDelta />
+        <PassRateTile label={t.passRateOf('PQC')} block={quality.pqc} />
+        <PassRateTile label={t.passRateOf('OQC')} block={quality.oqc} />
+        <LotTile label={t.todayLots} tag={t.tagToday} counts={todayLots} />
+        <KpiTile
+          label={t.customerReturn}
+          tag={t.tagMonth}
+          value={formatFigure(quality.oqc.customerReturnQty)}
+          unit={t.qtyUnit}
+        >
+          <span>{t.customerReturnNote}</span>
+        </KpiTile>
+      </div>
+      <Row kind="row2">
+        <DailyPanel quality={quality} kinds={['IQC', 'PQC', 'OQC']} title={t.dailyTitleAll} />
+        <Panel title={t.vendorDefects} sub={t.qtyShareSub} tag={t.tagMonthTotal}>
+          <RankBars
+            entries={quality.iqc.vendorDefects.map((entry) => ({
+              key: String(entry.partnerId),
+              label: entry.partnerName,
+              value: entry.rejectedQty,
+            }))}
+          />
+        </Panel>
+      </Row>
+      <Row kind="row3">
+        <Panel title={t.phenomena} sub={t.qtyShareSub} tag={t.tagMonth}>
+          <RankBars entries={phenomenaEntries(quality.nonconformance.phenomena)} />
+        </Panel>
+        <RecentLotsPanel title={t.recentLots} rows={toRecentLotRows(quality)} counterpart="kind" />
+        <Panel title={t.currentTitle} tag={t.tagNow}>
+          <StatusList
+            items={[
+              {
+                key: 'held',
+                label: t.heldLots,
+                note: t.heldLotsNote,
+                value: formatFigure(monthHeld),
+                unit: t.lotUnit,
+                tone: countTone(monthHeld, 'warning'),
+              },
+              {
+                key: 'receiptHold',
+                label: t.receiptHold,
+                note: t.receiptHoldNote,
+                value: formatFigure(quality.iqc.receiptHoldLotCount),
+                unit: t.lotUnit,
+                tone: countTone(quality.iqc.receiptHoldLotCount, 'warning'),
+              },
+              {
+                key: 'pending',
+                label: t.pendingLots,
+                note: t.pendingLotsNote,
+                value: formatFigure(quality.pqc.pendingLotCount),
+                unit: t.lotUnit,
+              },
+              {
+                key: 'ncOpen',
+                label: t.ncOpen,
+                value: formatFigure(quality.nonconformance.openCount),
+                unit: t.countUnit,
+                tone: countTone(quality.nonconformance.openCount, 'error'),
+              },
+            ]}
+          />
+        </Panel>
+      </Row>
     </div>
-    <Block title={t.dailyTitle} lead={t.dailyRecent}>
-      <Table
-        columns={DAILY_COLUMNS}
-        rows={toDailyRateRows(quality)}
-        getRowId={(row) => row.date}
-        density="compact"
-        caption={t.dailyTitle}
-        empty={<EmptyState size="sm" title={t.noRecordsTitle} description={t.dailyEmpty} />}
-      />
-    </Block>
-    <Block title={t.vendorDefects} lead={t.vendorDefectsLead}>
-      <QtyBars
-        name={t.vendorDefects}
-        entries={quality.iqc.vendorDefects.map((entry) => ({
-          label: entry.partnerName,
-          value: entry.rejectedQty,
-        }))}
-      />
-    </Block>
-    <Block title={t.phenomena} lead={t.phenomenaMonth}>
-      <Phenomena entries={quality.nonconformance.phenomena} />
-    </Block>
-    <RecentLots rows={toRecentLotRows(quality)} counterpart="kind" />
-  </div>
-);
+  );
+};
 
 export const IqcTab = ({ quality }: { quality: DashboardQuality }) => {
   const iqc = quality.iqc;
   const topVendor = iqc.vendorDefects[0];
+  const vendorTotal = iqc.vendorDefects.reduce((sum, entry) => sum + entry.rejectedQty, 0);
 
   return (
-    <div className="dashboard-quality">
-      <p className="pane-lead">{t.passRateRule}</p>
-      <div className="kpi-grid">
-        <PassRateCard label={t.passRate} block={iqc} />
-        <LotCard label={t.monthLots} counts={iqc.monthLots} />
-        <LotCard label={t.todayLots} counts={iqc.todayLots} />
-        <QtyCard label={t.monthDefectQty} value={iqc.monthDefectQty} unit={t.qtyUnit} />
-        <StatCard
-          label={t.topVendor}
-          value={topVendor === undefined ? t.none : topVendor.partnerName}
-          bordered
-        >
-          {topVendor !== undefined && (
-            <Note lines={[`${formatFigure(topVendor.rejectedQty)} ${t.qtyUnit}`]} />
-          )}
-        </StatCard>
-        <QtyCard
-          label={t.receiptHold}
-          value={iqc.receiptHoldLotCount}
-          unit={t.lotUnit}
-          note={t.receiptHoldNote}
-        />
+    <div className="dash-tab">
+      <div className="dash-kpis">
+        <PassRateTile label={t.passRateOf('IQC')} block={iqc} showDelta />
+        <LotTile label={t.monthLots} tag={t.tagMonth} counts={iqc.monthLots} />
         {/* 지금은 늘 null(양품 복원 데이터 없음) — 값이 오기 전에는 칸을 두지 않는다. */}
         {iqc.fullReinspect !== null && (
-          <StatCard
+          <KpiTile
             label={t.fullReinspect}
-            value={formatFigure(iqc.fullReinspect.restoredQty)}
+            tag={t.tagMonth}
+            value={formatFigure(iqc.fullReinspect.inputQty)}
             unit={t.qtyUnit}
-            bordered
           >
-            <Note
-              lines={[
-                t.fullReinspectNote(
-                  formatFigure(iqc.fullReinspect.inputQty),
-                  formatFigure(iqc.fullReinspect.restoredQty),
-                ),
-              ]}
-            />
-          </StatCard>
+            <span>
+              {t.fullReinspectNote(
+                formatFigure(iqc.fullReinspect.inputQty),
+                formatFigure(iqc.fullReinspect.restoredQty),
+              )}
+            </span>
+          </KpiTile>
         )}
+        <KpiTile
+          label={t.topVendor}
+          tag={t.tagMonth}
+          value={topVendor === undefined ? t.none : topVendor.partnerName}
+        >
+          {topVendor !== undefined && (
+            <span>{`${formatFigure(topVendor.rejectedQty)} ${t.qtyUnit}`}</span>
+          )}
+        </KpiTile>
       </div>
-      <DailyRateChart kind="IQC" block={iqc} />
-      <Block title={t.vendorDefects} lead={t.vendorDefectsLead}>
-        <QtyBars
-          name={t.vendorDefects}
-          entries={iqc.vendorDefects.map((entry) => ({
-            label: entry.partnerName,
-            value: entry.rejectedQty,
-          }))}
+      <Row kind="row2">
+        <DailyPanel quality={quality} kinds={['IQC']} title={t.dailyTitleOf('IQC')} />
+        <Panel title={t.vendorDefects} sub={t.vendorTableSub} tag={t.tagMonthTotal}>
+          <Table
+            columns={[
+              { key: 'vendor', header: t.column.vendor, render: (row) => row.partnerName },
+              {
+                key: 'qty',
+                header: t.column.defectQty,
+                align: 'end',
+                render: (row) => formatFigure(row.rejectedQty),
+              },
+              {
+                key: 'share',
+                header: t.column.share,
+                align: 'end',
+                render: (row) =>
+                  vendorTotal === 0
+                    ? t.none
+                    : `${String(Math.round((row.rejectedQty / vendorTotal) * 100))}%`,
+              },
+            ]}
+            rows={iqc.vendorDefects}
+            getRowId={(row) => String(row.partnerId)}
+            density="compact"
+            aria-label={t.vendorDefects}
+            empty={<NoRecords />}
+          />
+        </Panel>
+      </Row>
+      <Row kind="row3">
+        <Panel title={t.itemDefects} sub={t.qtyShareSub} tag={t.tagMonth}>
+          <StackedBar100
+            entries={iqc.itemDefects.map((entry) => ({
+              key: String(entry.itemId),
+              label: entry.itemCode,
+              value: entry.qty,
+            }))}
+          />
+        </Panel>
+        <RecentLotsPanel
+          title={t.recentLotsOf('IQC')}
+          rows={recentOf(quality, 'IQC')}
+          counterpart="vendor"
         />
-      </Block>
-      <Block title={t.itemDefects} lead={t.phenomenaMonth}>
-        <Table
-          columns={[
-            {
-              key: 'itemCode',
-              header: t.column.item,
-              render: (row) => `${row.itemCode} ${row.itemName}`,
-            },
-            {
-              key: 'qty',
-              header: t.column.qtyOnly,
-              align: 'end',
-              render: (row) => formatFigure(row.qty),
-            },
-          ]}
-          rows={iqc.itemDefects}
-          getRowId={(row) => String(row.itemId)}
-          density="compact"
-          caption={t.itemDefects}
-          empty={<NoRecords />}
-        />
-      </Block>
-      <RecentLots rows={recentOf(quality, 'IQC')} counterpart="vendor" />
+        <Panel title={t.currentTitle} tag={t.tagNow}>
+          <StatusList
+            items={[
+              {
+                key: 'held',
+                label: t.heldLots,
+                note: t.heldLotsNote,
+                value: formatFigure(iqc.monthLots.held),
+                unit: t.lotUnit,
+                tone: countTone(iqc.monthLots.held, 'warning'),
+              },
+              {
+                key: 'receiptHold',
+                label: t.receiptHold,
+                note: t.receiptHoldNote,
+                value: formatFigure(iqc.receiptHoldLotCount),
+                unit: t.lotUnit,
+                tone: countTone(iqc.receiptHoldLotCount, 'warning'),
+              },
+            ]}
+          />
+        </Panel>
+      </Row>
     </div>
   );
 };
@@ -376,46 +442,90 @@ export const PqcTab = ({ quality }: { quality: DashboardQuality }) => {
   const worst = pqc.equipmentDefectRates[0];
 
   return (
-    <div className="dashboard-quality">
-      <p className="pane-lead">{t.passRateRule}</p>
-      <div className="kpi-grid">
-        <PassRateCard label={t.passRate} block={pqc} />
-        <LotCard label={t.monthLots} counts={pqc.monthLots} />
-        <QtyCard
+    <div className="dash-tab">
+      <div className="dash-kpis">
+        <PassRateTile label={t.passRateOf('PQC')} block={pqc} />
+        <LotTile label={t.pqcLots} tag={t.tagMonth} counts={pqc.monthLots} />
+        <KpiTile
           label={t.pendingLots}
-          value={pqc.pendingLotCount}
+          tag={t.tagNow}
+          value={formatFigure(pqc.pendingLotCount)}
           unit={t.lotUnit}
-          note={t.pendingLotsNote}
-        />
-        <QtyCard label={t.monthDefectQty} value={pqc.monthDefectQty} unit={t.qtyUnit} />
-        <QtyCard
-          label={t.reworkRequests}
-          value={pqc.reworkRequestCount}
-          unit={t.countUnit}
-          note={t.reworkRequestsNote}
-        />
-        <StatCard
-          label={t.worstEquipment}
-          value={worst === undefined ? t.none : worst.equipmentCode}
-          bordered
         >
-          {worst !== undefined && <Note lines={[formatRate(worst.defectRate)]} />}
-        </StatCard>
+          <span>{t.pendingLotsNote}</span>
+        </KpiTile>
+        <KpiTile
+          label={t.monthDefectQty}
+          tag={t.tagMonth}
+          value={formatFigure(pqc.monthDefectQty)}
+          unit={t.qtyUnit}
+          tone={pqc.monthDefectQty > 0 ? 'error' : undefined}
+        >
+          <span>{t.reworkLine(formatFigure(pqc.reworkRequestCount))}</span>
+        </KpiTile>
+        <KpiTile
+          label={t.worstEquipment}
+          tag={t.tagToday}
+          value={worst === undefined ? t.none : worst.equipmentCode}
+        >
+          {worst !== undefined && (
+            <span>
+              {t.worstEquipmentNote(formatFigure(worst.ngQty), formatRate(worst.defectRate))}
+            </span>
+          )}
+        </KpiTile>
       </div>
-      <DailyRateChart kind="PQC" block={pqc} />
-      <Block title={t.equipmentDefectRates} lead={t.equipmentDefectRatesLead}>
-        <QtyBars
-          name={t.column.rate}
-          entries={pqc.equipmentDefectRates.map((entry) => ({
-            label: entry.equipmentCode,
-            value: entry.defectRate,
-          }))}
+      <Row kind="row2">
+        <DailyPanel quality={quality} kinds={['PQC']} title={t.dailyTitleOf('PQC')} />
+        <Panel title={t.equipmentDefectRates} sub={t.equipmentDefectRatesSub} tag={t.tagToday}>
+          <RankBars
+            entries={pqc.equipmentDefectRates.map((entry) => ({
+              key: String(entry.equipmentId),
+              label: entry.equipmentCode,
+              value: entry.defectRate,
+            }))}
+            formatValue={formatRate}
+            showShare={false}
+            aside={(entry) => {
+              const source = pqc.equipmentDefectRates.find(
+                (rate) => String(rate.equipmentId) === entry.key,
+              );
+              return source === undefined ? undefined : t.ngShort(formatFigure(source.ngQty));
+            }}
+          />
+        </Panel>
+      </Row>
+      <Row kind="row3">
+        <Panel title={t.phenomenaOf('PQC')} sub={t.qtyShareSub} tag={t.tagMonth}>
+          <RankBars entries={phenomenaEntries(pqc.defectPhenomena)} />
+        </Panel>
+        <RecentLotsPanel
+          title={t.recentLotsOf('PQC')}
+          rows={recentOf(quality, 'PQC')}
+          counterpart="equipment"
         />
-      </Block>
-      <Block title={t.phenomena} lead={t.phenomenaMonth}>
-        <Phenomena entries={pqc.defectPhenomena} />
-      </Block>
-      <RecentLots rows={recentOf(quality, 'PQC')} counterpart="equipment" />
+        <Panel title={t.currentTitle} tag={t.tagNow}>
+          <StatusList
+            items={[
+              {
+                key: 'pending',
+                label: t.pendingLots,
+                note: t.pendingLotsNote,
+                value: formatFigure(pqc.pendingLotCount),
+                unit: t.lotUnit,
+                tone: countTone(pqc.pendingLotCount, 'warning'),
+              },
+              {
+                key: 'rework',
+                label: t.reworkRequests,
+                note: t.reworkRequestsNote,
+                value: formatFigure(pqc.reworkRequestCount),
+                unit: t.countUnit,
+              },
+            ]}
+          />
+        </Panel>
+      </Row>
     </div>
   );
 };
@@ -424,66 +534,143 @@ export const OqcTab = ({ quality }: { quality: DashboardQuality }) => {
   const oqc = quality.oqc;
 
   return (
-    <div className="dashboard-quality">
-      <p className="pane-lead">{t.passRateRule}</p>
-      <div className="kpi-grid">
-        <PassRateCard label={t.passRate} block={oqc} />
-        <LotCard label={t.monthLots} counts={oqc.monthLots} />
-        <LotCard label={t.todayLots} counts={oqc.todayLots} />
-        <QtyCard label={t.monthDefectQty} value={oqc.monthDefectQty} unit={t.qtyUnit} />
-        <QtyCard
+    <div className="dash-tab">
+      <div className="dash-kpis">
+        <PassRateTile label={t.passRateOf('OQC')} block={oqc} />
+        <LotTile label={t.oqcLots} tag={t.tagMonth} counts={oqc.monthLots} />
+        <KpiTile
           label={t.customerReturn}
-          value={oqc.customerReturnQty}
+          tag={t.tagMonth}
+          value={formatFigure(oqc.customerReturnQty)}
           unit={t.qtyUnit}
-          note={t.customerReturnNote}
-        />
+        >
+          <span>{t.customerReturnNote}</span>
+        </KpiTile>
       </div>
-      <DailyRateChart kind="OQC" block={oqc} />
-      <RecentLots rows={recentOf(quality, 'OQC')} counterpart="customer" />
+      {/* 반품 구분 · 금액 · 반출 · 클레임 칸이 없다 — 빈 자리를 남기지 않고 넓게 쓴다. */}
+      <Row kind="row2-single">
+        <DailyPanel quality={quality} kinds={['OQC']} title={t.dailyTitleOf('OQC')} />
+      </Row>
+      <Row kind="row2-single">
+        <RecentLotsPanel
+          title={t.recentLotsOf('OQC')}
+          rows={recentOf(quality, 'OQC')}
+          counterpart="customer"
+        />
+      </Row>
     </div>
   );
 };
 
 export const NonconformanceTab = ({ quality }: { quality: DashboardQuality }) => {
   const nc = quality.nonconformance;
+  const causes = nc.causeGroups.map((entry) => ({
+    key: String(entry.causeCodeId),
+    label: entry.causeName,
+    value: entry.qty,
+  }));
 
   return (
-    <div className="dashboard-quality">
-      <div className="kpi-grid">
-        <QtyCard label={t.ncMonthQty} value={nc.monthQty} unit={t.qtyUnit} />
-        <QtyCard label={t.ncOpen} value={nc.openCount} unit={t.countUnit} />
+    <div className="dash-tab">
+      <div className="dash-kpis">
+        <KpiTile
+          label={t.ncMonthQty}
+          tag={t.tagMonth}
+          value={formatFigure(nc.monthQty)}
+          unit={t.qtyUnit}
+          tone={nc.monthQty > 0 ? 'error' : undefined}
+        />
+        <KpiTile
+          label={t.ncScrap}
+          tag={t.tagMonth}
+          value={formatFigure(nc.scrapQty)}
+          unit={t.qtyUnit}
+        >
+          <span>{t.ncScrapNote}</span>
+        </KpiTile>
+        <KpiTile
+          label={t.ncReworkReleased}
+          tag={t.tagMonth}
+          value={formatFigure(nc.reworkReleasedQty)}
+          unit={t.qtyUnit}
+        >
+          <span>{t.ncReworkReleasedNote}</span>
+        </KpiTile>
+        <KpiTile
+          label={t.ncOpen}
+          tag={t.tagNow}
+          value={formatFigure(nc.openCount)}
+          unit={t.countUnit}
+        />
         {/* 지금은 늘 null(조치 기한 데이터 없음) — 값이 오기 전에는 칸을 두지 않는다. */}
         {nc.overdueCount !== null && (
-          <StatCard
+          <KpiTile
             label={t.ncOverdue}
+            tag={t.tagNow}
             value={formatFigure(nc.overdueCount)}
             unit={t.countUnit}
-            status={nc.overdueCount > 0 ? 'warning' : undefined}
-            statusLabel={nc.overdueCount > 0 ? t.ncOverdue : undefined}
-            bordered
+            tone={nc.overdueCount > 0 ? 'warning' : undefined}
           />
         )}
-        <QtyCard label={t.ncScrap} value={nc.scrapQty} unit={t.qtyUnit} note={t.ncScrapNote} />
-        <QtyCard
-          label={t.ncReworkReleased}
-          value={nc.reworkReleasedQty}
-          unit={t.qtyUnit}
-          note={t.ncReworkReleasedNote}
-        />
       </div>
-      <Block title={t.ncPareto} lead={t.phenomenaMonth}>
-        {/* 파레토 — 서버가 많은 순으로 준다. 화면이 다시 정렬하지 않는다. */}
-        <QtyBars
-          name={t.ncPareto}
-          entries={nc.phenomena.map((entry) => ({ label: entry.defectName, value: entry.qty }))}
-        />
-      </Block>
-      <Block title={t.ncCauseGroups} lead={t.phenomenaMonth}>
-        <QtyBars
-          name={t.ncCauseGroups}
-          entries={nc.causeGroups.map((entry) => ({ label: entry.causeName, value: entry.qty }))}
-        />
-      </Block>
+      <Row kind="row2">
+        <Panel title={t.ncPareto} sub={t.paretoSub} tag={t.tagMonth} className="dash-span-wide">
+          <ParetoChart
+            entries={nc.phenomena.map((entry) => ({
+              key: String(entry.defectCodeId),
+              label: entry.defectName,
+              value: entry.qty,
+            }))}
+            caption={t.ncPareto}
+          />
+        </Panel>
+        <Panel title={t.ncCauseGroups} sub={t.qtyShareSub} tag={t.tagMonth}>
+          <RankBars entries={causes} />
+        </Panel>
+      </Row>
+      <Row kind="row3">
+        <Panel title={t.ncCauseShare} sub={t.qtyShareSub} tag={t.tagMonth}>
+          <StackedBar100 entries={causes} />
+        </Panel>
+        <Panel title={t.ncHandlingTitle} tag={t.tagMonth}>
+          <StatusList
+            items={[
+              {
+                key: 'scrap',
+                label: t.ncScrap,
+                note: t.ncScrapNote,
+                value: formatFigure(nc.scrapQty),
+                unit: t.qtyUnit,
+              },
+              {
+                key: 'released',
+                label: t.ncReworkReleased,
+                note: t.ncReworkReleasedNote,
+                value: formatFigure(nc.reworkReleasedQty),
+                unit: t.qtyUnit,
+              },
+              {
+                key: 'open',
+                label: t.ncOpen,
+                value: formatFigure(nc.openCount),
+                unit: t.countUnit,
+                tone: countTone(nc.openCount, 'error'),
+              },
+              ...(nc.overdueCount === null
+                ? []
+                : [
+                    {
+                      key: 'overdue',
+                      label: t.ncOverdue,
+                      value: formatFigure(nc.overdueCount),
+                      unit: t.countUnit,
+                      tone: countTone(nc.overdueCount, 'warning'),
+                    },
+                  ]),
+            ]}
+          />
+        </Panel>
+      </Row>
     </div>
   );
 };
@@ -498,7 +685,6 @@ export interface QualityGateProps {
 
 /**
  * 다섯 품질 탭이 함께 쓰는 문 — 불러오는 중 · 섹션이 오지 않음 · 첫 조회 실패를 한 곳에서 가른다.
- *
  * ⭐ 품질은 **summary 의 `quality` 섹션**으로 온다(규격 보정 2026-10-16) — 탭을 열 때 따로 부르지 않는다.
  */
 export const QualityGate = ({ quality, isLoading, isFailed, children }: QualityGateProps) => {

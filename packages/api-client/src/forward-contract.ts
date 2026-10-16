@@ -142,8 +142,22 @@ export interface DashboardQuality {
   };
 }
 
+/**
+ * 공장 단위 금일 생산 합계(2026-10-16 대시보드 재구성 때 추가 — 서버 반영 대기). KPI 띠의 종합 불량률 ·
+ * 총 NG 원천이다 — 설비 합계로 대신 계산하지 않는다(설비 미지정 실적이 빠진다).
+ */
+export interface DashboardProduction {
+  totalQty: number;
+  goodQty: number;
+  ngQty: number;
+  holdQty: number;
+  /** NG ÷ 총생산(%), 총생산이 0이면 `null`. */
+  defectRate: number | null;
+}
+
 /** `GET /app/dashboard-summary` 에 더해지는 선택 섹션. */
 export interface DashboardSummarySections {
+  production?: DashboardProduction;
   equipment?: DashboardEquipment;
   shipment?: DashboardShipment;
   quality?: DashboardQuality;

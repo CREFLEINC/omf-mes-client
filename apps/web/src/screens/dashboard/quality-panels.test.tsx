@@ -11,26 +11,33 @@ import {
   QualityGate,
   QualityOverviewTab,
   formatRate,
+  rateDelta,
 } from './quality-panels';
 
 const t = messages.dashboard.quality;
+const v = messages.dashboard.viz;
 
 describe('품질 탭', () => {
-  it('합격률은 서버 값 그대로, 모수가 없으면(null) 0%가 아니라 「—」', () => {
+  it('합격률은 서버 값 그대로, 모수가 없으면(null) 0%가 아니라 「—」 · 전월 대비 p', () => {
     expect(formatRate(96.4)).toBe('96.4%');
     expect(formatRate(null)).toBe(t.rateNone);
+    expect(rateDelta(93.7, 87.2)).toBe(t.deltaUp('6.5'));
+    expect(rateDelta(94, 95)).toBe(t.deltaDown('1'));
+    expect(rateDelta(null, 95)).toBeNull();
   });
 
-  it('품질 종합 — 세 유형 합격률 · 전월 · 금일 검사 LOT 보류 건수 · 최근 판정', () => {
+  it('품질 종합 — 세 유형 합격률 · 금일 검사 LOT · 고객 반품 · 일별 3계열 · 최근 판정 · 현재 현황', () => {
     render(<QualityOverviewTab quality={quality()} />);
 
-    expect(screen.getByText(t.monthPassRate('IQC'))).toBeInTheDocument();
-    expect(screen.getAllByText(t.prevMonth(t.rateNone))).toHaveLength(3);
+    expect(screen.getByRole('group', { name: t.passRateOf('IQC') })).toBeInTheDocument();
     expect(screen.getByText(t.lotBreakdown('6', '3', '3'))).toBeInTheDocument();
+    expect(screen.getByRole('group', { name: t.customerReturn })).toHaveTextContent('40');
+    expect(screen.getByRole('img', { name: t.dailyTitleAll })).toBeInTheDocument();
     /* 불량현상이 빈 배열이면 「기록 없음」. */
-    expect(screen.getByText(t.noRecords)).toBeInTheDocument();
+    expect(screen.getByText(v.noRecords)).toBeInTheDocument();
     const recent = screen.getByRole('table', { name: t.recentLots });
     expect(within(recent).getByText(t.judgment.HELD)).toBeInTheDocument();
+    expect(screen.getByRole('region', { name: t.currentTitle })).toHaveTextContent(t.receiptHold);
   });
 
   it('⛔ 「선별」을 어디에도 쓰지 않는다 — MES 용어(검사 보류 · 전수 재검)를 쓴다', () => {
@@ -45,39 +52,34 @@ describe('품질 탭', () => {
     );
 
     expect(container.textContent).not.toContain('선별');
-    expect(JSON.stringify(t)).not.toContain('선별');
+    expect(JSON.stringify(messages.dashboard)).not.toContain('선별');
   });
 
-  it('IQC — 전수 재검이 null 이면 칸을 두지 않는다 · 입고 보류 LOT · 최다 불량 업체', () => {
-    render(<IqcTab quality={quality()} />);
-
+  it('IQC — 전수 재검이 null 이면 칸을 두지 않고, 값이 오면 투입 · 양품 복원을 보인다', () => {
+    const { rerender } = render(<IqcTab quality={quality()} />);
     expect(screen.queryByText(t.fullReinspect)).not.toBeInTheDocument();
-    expect(screen.getByText(t.receiptHold)).toBeInTheDocument();
-    expect(screen.getAllByText('공급사 A').length).toBeGreaterThan(0);
-  });
+    expect(screen.getByRole('group', { name: t.topVendor })).toHaveTextContent('공급사 A');
 
-  it('IQC — 전수 재검 값이 오면 투입 · 양품 복원을 보인다', () => {
     const q = quality();
     q.iqc.fullReinspect = { inputQty: 80, restoredQty: 70 };
-    render(<IqcTab quality={q} />);
-
+    rerender(<IqcTab quality={q} />);
     expect(screen.getByText(t.fullReinspectNote('80', '70'))).toBeInTheDocument();
   });
 
-  it('PQC — LOT 번호가 없으면 「—」, 호기 열을 보인다', () => {
+  it('PQC — 최근 판정은 호기 열, 시안대로 LOT 열은 두지 않는다', () => {
     render(<PqcTab quality={quality()} />);
 
-    const recent = screen.getByRole('table', { name: t.recentLots });
+    const recent = screen.getByRole('table', { name: t.recentLotsOf('PQC') });
     expect(within(recent).getByText('EQ-01')).toBeInTheDocument();
-    expect(within(recent).getByText(t.none)).toBeInTheDocument();
-    expect(screen.getByText(t.pendingLots)).toBeInTheDocument();
+    expect(within(recent).queryByRole('columnheader', { name: 'LOT' })).not.toBeInTheDocument();
+    expect(screen.getByText(t.reworkLine('1'))).toBeInTheDocument();
   });
 
-  it('OQC — 「고객 반품」 수량', () => {
+  it('OQC — 고객 반품 · 최근 판정(고객)만 두고 금액 · 클레임 칸은 없다', () => {
     render(<OqcTab quality={quality()} />);
 
-    expect(screen.getByText(t.customerReturn)).toBeInTheDocument();
-    expect(screen.getByText('40')).toBeInTheDocument();
+    expect(screen.getByRole('group', { name: t.customerReturn })).toBeInTheDocument();
+    expect(screen.getAllByRole('region')).toHaveLength(2);
   });
 
   it('부적합 — 조치 기한 초과가 null 이면 칸을 두지 않고, 값이 오면 보인다', () => {

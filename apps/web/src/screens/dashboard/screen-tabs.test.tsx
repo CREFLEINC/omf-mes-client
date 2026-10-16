@@ -49,10 +49,12 @@ describe('DashboardScreen — 탭', () => {
     const before = summaryCalls();
 
     await user.click(screen.getByRole('tab', { name: t.tabs.pqc }));
-    expect(await screen.findByText(t.quality.pendingLots)).toBeInTheDocument();
+    expect(await screen.findByRole('group', { name: t.quality.pendingLots })).toBeInTheDocument();
 
     await user.click(screen.getByRole('tab', { name: t.tabs.oqc }));
-    expect(await screen.findByText(t.quality.customerReturn)).toBeInTheDocument();
+    expect(
+      await screen.findByRole('group', { name: t.quality.customerReturn }),
+    ).toBeInTheDocument();
 
     /* 조건 줄은 탭 밖에 있다. */
     expect(screen.getByRole('button', { name: t.filters.refresh })).toBeInTheDocument();

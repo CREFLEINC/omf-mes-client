@@ -5,7 +5,7 @@ import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 
 import { toEquipmentView } from './equipment';
-import { EquipmentPanel, formatElapsed } from './equipment-panel';
+import { EquipmentBoard, StoppedPanel, formatElapsed } from './equipment-panel';
 
 const t = messages.dashboard.equipment;
 
@@ -44,11 +44,6 @@ const view = toEquipmentView({
       statusCode: 'STOPPED',
       statusSince: '2026-10-16T01:35:00Z',
       statusReasonName: '유압 이상',
-      currentWorkOrderNo: null,
-      currentItemCode: null,
-      currentItemName: null,
-      defectRate: null,
-      standardCycleTimeSec: null,
     }),
     item({
       equipmentId: 3,
@@ -63,81 +58,61 @@ const view = toEquipmentView({
 const tileOf = (code: string): HTMLElement =>
   screen.getByRole('button', { name: t.openDetail(code) });
 
-describe('EquipmentPanel', () => {
-  it('호기마다 상태 · 톤수 · 금일 생산 · NG · 불량률 · 표준 C/T 를 보이고, 없는 값은 0이 아니라 「—」', () => {
-    render(<EquipmentPanel view={view} isLoading={false} isFailed={false} />);
+describe('EquipmentBoard', () => {
+  it('가동 호기는 금일 생산 · NG · 불량률 · 표준 C/T, 멈춘 호기는 상태 · 사유 · 경과를 보인다', () => {
+    render(<EquipmentBoard view={view} isLoading={false} isFailed={false} />);
 
     const running = within(tileOf('EQ-01'));
-    expect(running.getByText(t.status.RUNNING)).toBeInTheDocument();
     expect(running.getByText('100T')).toBeInTheDocument();
     expect(running.getByText('1,200')).toBeInTheDocument();
-    expect(running.getByText('0.7%')).toBeInTheDocument();
-    expect(running.getByText('32초')).toBeInTheDocument();
-    /* 가동 중인 설비에는 사유 · 경과 칸이 없다. */
-    expect(running.queryByText(t.reason)).not.toBeInTheDocument();
+    expect(running.getByText(t.ngLine('6', '0.7%'))).toBeInTheDocument();
+    expect(running.getByText(t.cycleLine('32초'))).toBeInTheDocument();
 
     const stopped = within(tileOf('EQ-02'));
+    expect(stopped.getByText(t.status.STOPPED)).toBeInTheDocument();
     expect(stopped.getByText('유압 이상')).toBeInTheDocument();
     expect(stopped.getByText(formatElapsed(85))).toBeInTheDocument();
-    expect(stopped.getAllByText(t.none)).toHaveLength(2);
+    expect(tileOf('EQ-02')).toHaveClass('dash-eq-stopped');
 
-    /* 멈췄는데 사유가 없으면 「미등록」이다. */
+    /* 톤수가 없으면 0이 아니라 「—」, 멈췄는데 사유가 없으면 「미등록」. */
+    expect(within(tileOf('EQ-03')).getByText(t.none)).toBeInTheDocument();
     expect(within(tileOf('EQ-03')).getByText(t.reasonUnknown)).toBeInTheDocument();
   });
 
-  it('경과 시간은 시 · 분으로 적는다', () => {
-    expect(formatElapsed(85)).toBe('1시간 25분');
-    expect(formatElapsed(7)).toBe('7분');
-    expect(formatElapsed(null)).toBe(t.none);
-  });
-
-  it('멈춘 설비 목록은 가동이 아닌 설비만, 오래 멈춘 것부터 사유 · 경과와 함께 보인다', () => {
-    render(<EquipmentPanel view={view} isLoading={false} isFailed={false} />);
-
-    const table = screen.getByRole('table', { name: t.stoppedTitle });
-    const rows = within(table).getAllByRole('row').slice(1);
-    expect(rows.map((row) => within(row).getAllByRole('cell')[0]?.textContent)).toEqual([
-      'EQ-02',
-      'EQ-03',
-    ]);
-    expect(within(rows[0]!).getByText(formatElapsed(85))).toBeInTheDocument();
-  });
-
-  it('라인을 고르면 타일과 멈춘 설비가 그 라인으로 좁혀진다 — 상태 집계 줄은 그대로', async () => {
+  it('라인 구분을 누르면 그 라인 타일만 남고 범례 대수도 그 범위로 바뀐다', async () => {
     const user = userEvent.setup();
-    render(<EquipmentPanel view={view} isLoading={false} isFailed={false} />);
+    render(<EquipmentBoard view={view} isLoading={false} isFailed={false} />);
 
-    await user.click(screen.getByLabelText(t.line));
-    await user.click(screen.getByRole('option', { name: '2라인' }));
+    expect(screen.getByRole('button', { name: `${t.allLines} 3` })).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: '2라인 1' }));
 
     expect(screen.queryByRole('button', { name: t.openDetail('EQ-01') })).not.toBeInTheDocument();
     expect(tileOf('EQ-02')).toBeInTheDocument();
-    expect(screen.getByText(t.shownCount(1))).toBeInTheDocument();
-    expect(screen.getByText(t.runningOfTotal)).toBeInTheDocument();
-    expect(screen.getByText('1 / 3')).toBeInTheDocument();
+    const legend = screen.getByRole('list', { name: t.legend });
+    expect(within(legend).getByText(t.status.STOPPED).closest('li')).toHaveTextContent('1');
+    expect(within(legend).getByText(t.status.RUNNING).closest('li')).toHaveTextContent('0');
   });
 
   it('호기를 고르면 현재 작업지시 · 품목까지 상세가 열린다', async () => {
     const user = userEvent.setup();
-    render(<EquipmentPanel view={view} isLoading={false} isFailed={false} />);
+    render(<EquipmentBoard view={view} isLoading={false} isFailed={false} />);
 
     await user.click(tileOf('EQ-01'));
 
     const dialog = screen.getByRole('dialog');
     expect(within(dialog).getByText('WO-1')).toBeInTheDocument();
     expect(within(dialog).getByText('ITEM-1 시험 품목')).toBeInTheDocument();
-    expect(within(dialog).getByText('1라인')).toBeInTheDocument();
   });
 
   it('섹션이 오지 않음 · 설비 없음 · 첫 조회 실패를 서로 다른 말로 보인다', () => {
-    const { rerender } = render(<EquipmentPanel view={null} isLoading={false} isFailed={false} />);
+    const { rerender } = render(<EquipmentBoard view={null} isLoading={false} isFailed={false} />);
     expect(screen.getByText(t.absent)).toBeInTheDocument();
 
-    rerender(<EquipmentPanel view={null} isLoading={false} isFailed />);
+    rerender(<EquipmentBoard view={null} isLoading={false} isFailed />);
     expect(screen.getByText(t.failed)).toBeInTheDocument();
 
     rerender(
-      <EquipmentPanel
+      <EquipmentBoard
         view={toEquipmentView({
           asOf: '2026-10-16T03:00:00Z',
           statusCounts: { RUNNING: 0, STOPPED: 0, WAITING: 0, CHANGEOVER: 0, IDLE: 0 },
@@ -148,5 +123,42 @@ describe('EquipmentPanel', () => {
       />,
     );
     expect(screen.getByText(t.empty)).toBeInTheDocument();
+  });
+});
+
+describe('StoppedPanel', () => {
+  it('정지 · 대기 · 교체 · 비가동 그룹별 대수, 줄은 호기(톤수) · 사유 · 경과 — 빈 그룹은 두지 않는다', () => {
+    render(<StoppedPanel view={view} isLoading={false} isFailed={false} />);
+
+    const stoppedGroup = screen.getByRole('region', { name: t.status.STOPPED });
+    expect(within(stoppedGroup).getByText(`1 ${t.countUnit}`)).toBeInTheDocument();
+    const row = within(stoppedGroup).getByRole('row', { name: /EQ-02 \(100T\)/ });
+    expect(within(row).getByText('유압 이상')).toBeInTheDocument();
+    expect(within(row).getByText(formatElapsed(85))).toBeInTheDocument();
+
+    expect(screen.getByRole('region', { name: t.status.WAITING })).toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: t.status.CHANGEOVER })).not.toBeInTheDocument();
+  });
+
+  it('모두 가동이면 「멈춘 설비 없음」', () => {
+    render(
+      <StoppedPanel
+        view={toEquipmentView({
+          asOf: '2026-10-16T03:00:00Z',
+          statusCounts: { RUNNING: 1, STOPPED: 0, WAITING: 0, CHANGEOVER: 0, IDLE: 0 },
+          items: [item({})],
+        })}
+        isLoading={false}
+        isFailed={false}
+      />,
+    );
+
+    expect(screen.getByText(t.stoppedEmpty)).toBeInTheDocument();
+  });
+
+  it('경과 시간은 시 · 분으로 적는다', () => {
+    expect(formatElapsed(85)).toBe('1시간 25분');
+    expect(formatElapsed(7)).toBe('7분');
+    expect(formatElapsed(null)).toBe(t.none);
   });
 });

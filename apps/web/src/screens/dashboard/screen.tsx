@@ -6,7 +6,7 @@ import { Link, useSearchParams } from 'react-router';
 import { AlertPanel, NOTIFICATION_CENTER_PATH } from './alert-panel';
 import { CARD_ROUTES } from './card-routes';
 import { DashboardFilterBar } from './dashboard-filter-bar';
-import { EquipmentPanel } from './equipment-panel';
+import { EquipmentBoard, StoppedPanel } from './equipment-panel';
 import {
   readFilters,
   toDrilldownParams,
@@ -14,8 +14,8 @@ import {
   toSearchParams,
   type DashboardFilters,
 } from './filters';
-import { KpiCardGrid } from './kpi-card-grid';
 import { LoadErrorBanner } from './load-error-banner';
+import { OverviewKpis } from './overview-kpis';
 import { ShipmentPanel } from './shipment-panel';
 import { plantNote, usePlantOptions } from './lookups';
 import {
@@ -29,6 +29,7 @@ import {
 import { useDashboardSummary } from './queries';
 import { TrendPanel } from './trend-panel';
 import type { DashboardAlertView, DashboardCardView, SelectOption } from './types';
+import { Panel } from './viz';
 
 const t = messages.dashboard;
 
@@ -36,11 +37,11 @@ type DashboardTab = 'overview' | 'quality' | 'iqc' | 'pqc' | 'oqc' | 'nonconform
 
 /** 품질 탭 다섯(omf-all-around#113) — 화면 구성안의 차례. */
 const QUALITY_TABS = [
-  { value: 'quality', label: t.tabs.quality, Panel: QualityOverviewTab },
-  { value: 'iqc', label: t.tabs.iqc, Panel: IqcTab },
-  { value: 'pqc', label: t.tabs.pqc, Panel: PqcTab },
-  { value: 'oqc', label: t.tabs.oqc, Panel: OqcTab },
-  { value: 'nonconformance', label: t.tabs.nonconformance, Panel: NonconformanceTab },
+  { value: 'quality', label: t.tabs.quality, TabBody: QualityOverviewTab },
+  { value: 'iqc', label: t.tabs.iqc, TabBody: IqcTab },
+  { value: 'pqc', label: t.tabs.pqc, TabBody: PqcTab },
+  { value: 'oqc', label: t.tabs.oqc, TabBody: OqcTab },
+  { value: 'nonconformance', label: t.tabs.nonconformance, TabBody: NonconformanceTab },
 ] as const;
 
 /** 참조가 매 렌더 새로 만들어지면 이 값을 의존성에 둔 계산이 멈추지 않는다. */
@@ -114,47 +115,57 @@ export const DashboardScreen = () => {
    * ⭐ 대시보드 안의 탭(omf-all-around#113). 탭은 **같은 응답을 나눠 보인다** — 품질은 summary 의
    * `quality` 섹션이라 탭을 열 때 따로 부르지 않는다. 조건 줄 · 오류 배너는 탭 밖에 두어 모든 탭에 걸린다.
    * 고른 탭은 주소에 넣지 않는다 — 조회 조건이 아니다.
+   *
+   * ⭐ 배치는 시안 v1.3 을 따른다(사용자 지시 2026-10-16, 시안 v1.3 기준 재구성) — KPI 띠 → 설비 가동 현황
+   * (왼쪽 넓게) + 오른쪽 세로 열(멈춘 설비 → 출하 현황). 기존 생산 추이 · 미처리 알람은 지우지 않고 아래로 내렸다.
    */
   const overview = (
-    <div className="dashboard-tab-body">
-      <section className="pane" aria-label={t.panes.cards}>
-        <KpiCardGrid views={cards} isLoading={summary.isPending} axes={axes} routes={CARD_ROUTES} />
-      </section>
+    <div className="dash-tab">
+      <OverviewKpis
+        cards={cards}
+        equipment={view?.equipment ?? null}
+        production={view?.production ?? null}
+        asOfTime={view?.asOfText?.slice(11) ?? null}
+        isLoading={summary.isPending}
+        axes={axes}
+        routes={CARD_ROUTES}
+      />
 
-      <section className="pane" aria-label={t.panes.equipment}>
-        <h2>{t.panes.equipment}</h2>
-        <EquipmentPanel
+      <div className="dash-row2">
+        <EquipmentBoard
           view={view?.equipment ?? null}
           isLoading={summary.isPending}
           isFailed={isFailed}
         />
-      </section>
-
-      <section className="pane" aria-label={t.panes.shipment}>
-        <h2>{t.panes.shipment}</h2>
-        <ShipmentPanel
-          view={view?.shipment ?? null}
-          isLoading={summary.isPending}
-          isFailed={isFailed}
-        />
-      </section>
-
-      <section className="pane" aria-label={t.panes.trend}>
-        <h2>{t.panes.trend}</h2>
-        <TrendPanel view={view?.trend ?? null} isLoading={summary.isPending} />
-      </section>
-
-      <section className="pane" aria-label={t.panes.alerts}>
-        <h2>{t.panes.alerts}</h2>
-        <AlertPanel views={alerts} isLoading={summary.isPending} />
-        {/*
-         * 알람 구획의 마무리 링크. 목록이 비어 있어도 남긴다 — 「지금 없다」를 확인한 사람이
-         * 지난 알림을 보러 갈 자리가 여기다.
-         */}
-        <div className="form-actions form-actions-secondary">
-          <Link to={NOTIFICATION_CENTER_PATH}>{t.alerts.openCenter}</Link>
+        <div className="dash-side">
+          <StoppedPanel
+            view={view?.equipment ?? null}
+            isLoading={summary.isPending}
+            isFailed={isFailed}
+          />
+          <ShipmentPanel
+            view={view?.shipment ?? null}
+            isLoading={summary.isPending}
+            isFailed={isFailed}
+          />
         </div>
-      </section>
+      </div>
+
+      <div className="dash-row2">
+        <Panel title={t.panes.trend} className="dash-span-wide">
+          <TrendPanel view={view?.trend ?? null} isLoading={summary.isPending} />
+        </Panel>
+        <Panel title={t.panes.alerts}>
+          <AlertPanel views={alerts} isLoading={summary.isPending} />
+          {/*
+           * 알람 구획의 마무리 링크. 목록이 비어 있어도 남긴다 — 「지금 없다」를 확인한 사람이
+           * 지난 알림을 보러 갈 자리가 여기다.
+           */}
+          <div className="form-actions form-actions-secondary">
+            <Link to={NOTIFICATION_CENTER_PATH}>{t.alerts.openCenter}</Link>
+          </div>
+        </Panel>
+      </div>
     </div>
   );
 
@@ -205,19 +216,17 @@ export const DashboardScreen = () => {
         }}
         items={[
           { value: 'overview', label: t.tabs.overview, content: overview },
-          ...QUALITY_TABS.map(({ value, label, Panel }) => ({
+          ...QUALITY_TABS.map(({ value, label, TabBody }) => ({
             value,
             label,
             content: (
-              <section className="pane" aria-label={label}>
-                <QualityGate
-                  quality={view?.quality ?? null}
-                  isLoading={summary.isPending}
-                  isFailed={isFailed}
-                >
-                  {(quality) => <Panel quality={quality} />}
-                </QualityGate>
-              </section>
+              <QualityGate
+                quality={view?.quality ?? null}
+                isLoading={summary.isPending}
+                isFailed={isFailed}
+              >
+                {(quality) => <TabBody quality={quality} />}
+              </QualityGate>
             ),
           })),
         ]}

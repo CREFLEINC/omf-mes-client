@@ -1,5 +1,6 @@
 import type {
   components,
+  DashboardProduction,
   DashboardQuality,
   DashboardShipment,
   DashboardSummarySections,
@@ -94,6 +95,8 @@ export interface DashboardView {
   shipment: DashboardShipment | null;
   /** 품질 현황(#113). 계약의 모양을 그대로 쓴다. 섹션이 오지 않으면 `null`. */
   quality: DashboardQuality | null;
+  /** 공장 단위 금일 생산 합계 — 종합 불량률 · 총 NG 원천. 섹션이 오지 않으면 `null`. */
+  production: DashboardProduction | null;
   asOfText: string | null;
 }
 
@@ -204,5 +207,6 @@ export const toDashboardView = (source: DashboardSummary): DashboardView => ({
   equipment: toEquipmentView(source.equipment),
   shipment: source.shipment ?? null,
   quality: source.quality ?? null,
+  production: source.production ?? null,
   asOfText: formatAsOf(source.asOf),
 });
