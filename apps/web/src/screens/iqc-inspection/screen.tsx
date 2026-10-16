@@ -42,6 +42,7 @@ import { ResultFormPane } from './result-form-pane';
 import { RoundHistory } from './round-history';
 import { AttachmentPanel } from '../inspection-documents/attachment-panel';
 import { LotScan } from '../inspection-documents/lot-scan';
+import { InspectionHistoryPanel } from '../inspection-history/panel';
 import { latestRound, previousRounds } from './types';
 import { useItemNames, useLotNumbers } from './reference-lookup';
 import { useUomLookup } from './uom-lookup';
@@ -455,6 +456,14 @@ export const IqcInspectionScreen = () => {
             key={detail.data.lotId}
             targetTypeCode="LOT"
             targetId={detail.data.lotId}
+          />
+        )}
+
+        {/* 검사 대상 이력(#61) — 회차가 늘면 다시 세워 새로 부른다. */}
+        {selectedId !== null && (
+          <InspectionHistoryPanel
+            key={`${String(selectedId)}-${String(historyRounds.length)}`}
+            inspectionRequestId={selectedId}
           />
         )}
 

@@ -134,6 +134,7 @@ const TRANSLATED = [
   'packingWork',
   'popLocationLabel',
   'inspectionDocuments',
+  'inspectionHistory',
   'popMaterialLotLabel',
   'popPageNav',
   'pqcInspection',

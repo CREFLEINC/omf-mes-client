@@ -16,6 +16,8 @@ export type {
   AppUserWorker,
   LineDefaultLocations,
   AttachmentTargetType,
+  InspectionHistory,
+  InspectionHistoryEvent,
   SessionWorker,
   TerminalRegistrationConfirmation,
   TerminalRegistrationStatusCode,
