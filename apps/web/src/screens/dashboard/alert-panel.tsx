@@ -1,8 +1,9 @@
-import { Card, Chip, EmptyState, Skeleton } from '@crefle/web-ui';
+import { Button, Card, Chip, Icon, Skeleton } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { Link } from 'react-router';
+import { Link, useNavigate } from 'react-router';
 
 import type { DashboardAlertView } from './types';
+import { EmptyLine } from './viz';
 
 const t = messages.dashboard;
 
@@ -54,7 +55,7 @@ export const AlertPanel = ({ views, isLoading }: AlertPanelProps) => {
   if (isLoading) return <Skeleton variant="rect" height="10rem" />;
 
   if (views.length === 0) {
-    return <EmptyState size="sm" live title={t.alerts.emptyTitle} description={t.alerts.empty} />;
+    return <EmptyLine live text={t.alerts.empty} />;
   }
 
   return (
@@ -99,5 +100,28 @@ export const AlertPanel = ({ views, isLoading }: AlertPanelProps) => {
         );
       })}
     </ul>
+  );
+};
+
+/**
+ * 미처리 알람 카드 머리의 「알림센터 보기 →」(사용자 지시 2026-10-16) — 카드 아래 파란 밑줄 링크를 대신한다.
+ * 가장 약한 강조(DS `text` 단추)에 기본 글자색. 목록이 비어 있어도 둔다 — 「지금 없다」를 확인한 사람이
+ * 지난 알림을 보러 갈 자리다. 이동 경로는 그대로(`NOTIFICATION_CENTER_PATH`).
+ */
+export const AlertCenterButton = () => {
+  const navigate = useNavigate();
+
+  return (
+    <Button
+      variant="text"
+      size="sm"
+      className="dash-panel-action"
+      trailingIcon={<Icon name="arrow_forward" size={16} />}
+      onClick={() => {
+        void navigate(NOTIFICATION_CENTER_PATH);
+      }}
+    >
+      {t.alerts.openCenter}
+    </Button>
   );
 };

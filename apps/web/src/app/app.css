@@ -7867,6 +7867,21 @@ dl.filter-bar.approval-inbox-detail-facts {
   min-width: 0;
 }
 
+/* 제목 오른쪽 이동 단추 — 기본 글자색(빨간 강조 글자를 쓰지 않는다), 머리줄 높이에 맞춰 위쪽을 당긴다. */
+.dash-panel-head .dash-panel-action {
+  margin-block: calc(var(--space-1) * -1);
+  color: var(--on-surface-variant);
+}
+
+/* 생산 추이 — y축 글자가 그림 왼쪽 밖으로 넘친 만큼 보이게 한다(값은 그대로). */
+.dash-trend {
+  padding-inline-start: var(--space-6);
+}
+
+.dash-trend svg {
+  overflow: visible;
+}
+
 /*
  * KPI 띠 — 한 장의 띠. 칸 사이 선은 띠 배경(1px 틈)으로 그려 하나로 이어지고, 바깥 테두리도 띠에만 있다
  * (칸마다 테두리 · 모서리를 그리지 않는다).

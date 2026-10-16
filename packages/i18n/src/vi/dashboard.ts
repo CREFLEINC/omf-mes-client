@@ -41,20 +41,18 @@ export const dashboard: Translated<typeof ko.dashboard> = {
   trend: {
     target: 'Mục tiêu',
     unitSuffix: (unit: string): string => `Đơn vị ${unit}`,
-    emptyTitle: 'Không có diễn biến',
     empty: 'Kỳ này không có sản lượng để vẽ.',
     absent: 'Phản hồi này không kèm diễn biến sản lượng.',
     detail: 'Chi tiết',
   },
 
   alerts: {
-    emptyTitle: 'Không có cảnh báo chưa xử lý',
-    empty: 'Hiện không có cảnh báo nào cần xem.',
+    empty: 'Không có cảnh báo chưa xử lý.',
     unread: 'Chưa xem',
     read: 'Đã xem',
     locationUnknown: 'Không có thông tin vị trí',
     emptyMessage: 'Nội dung đang trống.',
-    openCenter: 'Trung tâm thông báo',
+    openCenter: 'Xem trung tâm thông báo',
   },
 
   equipment: {

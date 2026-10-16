@@ -37,12 +37,14 @@ export interface PanelProps {
   title: string;
   sub?: string;
   tag?: string;
+  /** 제목 오른쪽의 이동 단추 등(예: 「알림센터 보기」). */
+  action?: ReactNode;
   className?: string;
   children: ReactNode;
 }
 
 /** 시안의 패널 한 칸 — 제목 · 부제 · 기간 표시 · 본문. */
-export const Panel = ({ title, sub, tag, className, children }: PanelProps) => (
+export const Panel = ({ title, sub, tag, action, className, children }: PanelProps) => (
   <Card
     surface="default"
     bordered
@@ -56,6 +58,7 @@ export const Panel = ({ title, sub, tag, className, children }: PanelProps) => (
         {sub !== undefined && <p className="dash-panel-sub">{sub}</p>}
       </div>
       {tag !== undefined && <PeriodTag>{tag}</PeriodTag>}
+      {action}
     </div>
     <div className="dash-panel-body">{children}</div>
   </Card>

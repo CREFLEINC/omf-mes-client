@@ -1,7 +1,8 @@
-import { EmptyState, LineChart, Skeleton, type ReferenceLine } from '@crefle/web-ui';
+import { LineChart, Skeleton, type ReferenceLine } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 
 import { formatFigure, toChartMax, type DashboardTrendView } from './types';
+import { EmptyLine } from './viz';
 
 const t = messages.dashboard;
 
@@ -29,11 +30,11 @@ export const TrendPanel = ({ view, isLoading }: TrendPanelProps) => {
   if (isLoading) return <Skeleton variant="rect" height="16rem" />;
 
   if (view === null) {
-    return <EmptyState size="sm" live title={t.trend.emptyTitle} description={t.trend.absent} />;
+    return <EmptyLine live text={t.trend.absent} />;
   }
 
   if (view.points.length === 0) {
-    return <EmptyState size="sm" live title={t.trend.emptyTitle} description={t.trend.empty} />;
+    return <EmptyLine live text={t.trend.empty} />;
   }
 
   const referenceLines: ReferenceLine[] =
@@ -50,27 +51,34 @@ export const TrendPanel = ({ view, isLoading }: TrendPanelProps) => {
         ];
 
   return (
-    <LineChart
-      series={[
-        {
-          name: view.seriesName ?? t.panes.trend,
-          data: view.points.map((point) => ({ label: point.label, value: point.value })),
-        },
-      ]}
-      caption={view.unit === null ? undefined : t.trend.unitSuffix(view.unit)}
-      /* 목표가 실적보다 높으면 눈금을 목표까지 넓힌다 — 넓히지 않으면 목표선이 그림 밖에 그어진다. */
-      max={toChartMax(view.points, view.targetValue)}
-      referenceLines={referenceLines}
-      formatValue={formatFigure}
-      /*
-       * 기본 비율(640×320)은 폭이 넓은 페인에서 **그래프 하나가 화면 한 판을 먹는다** — 브라우저
-       * 확인에서 550px가 넘었다. 세로를 낮춰 납작하게 둔다: 추이는 「올랐나 내렸나」를 보는
-       * 그림이라 세로로 키운다고 더 읽히지 않고, 아래 알람 구획이 접히지 않고 함께 보이는 것이 낫다.
-       */
-      height={220}
-      showPoints
-      /* 시리즈가 하나뿐이라 범례는 같은 이름을 한 번 더 적을 뿐이다. */
-      showLegend={false}
-    />
+    /*
+     * 축 글자 자리 — DS 차트는 y축 글자를 고정 위치(x=32)에서 끝맞춤으로 그리고 그림 밖을 자른다. 96,000 같은
+     * 큰 값은 앞자리가 잘려 「6,000」으로 읽혔다(사용자 보고 2026-10-16). 값은 그대로 두고 그림 왼쪽에
+     * 여백을 주어 넘친 글자가 보이게 한다(`.dash-trend`).
+     */
+    <div className="dash-trend">
+      <LineChart
+        series={[
+          {
+            name: view.seriesName ?? t.panes.trend,
+            data: view.points.map((point) => ({ label: point.label, value: point.value })),
+          },
+        ]}
+        caption={view.unit === null ? undefined : t.trend.unitSuffix(view.unit)}
+        /* 목표가 실적보다 높으면 눈금을 목표까지 넓힌다 — 넓히지 않으면 목표선이 그림 밖에 그어진다. */
+        max={toChartMax(view.points, view.targetValue)}
+        referenceLines={referenceLines}
+        formatValue={formatFigure}
+        /*
+         * 기본 비율(640×320)은 폭이 넓은 페인에서 **그래프 하나가 화면 한 판을 먹는다** — 브라우저
+         * 확인에서 550px가 넘었다. 세로를 낮춰 납작하게 둔다: 추이는 「올랐나 내렸나」를 보는
+         * 그림이라 세로로 키운다고 더 읽히지 않는다.
+         */
+        height={220}
+        showPoints
+        /* 시리즈가 하나뿐이라 범례는 같은 이름을 한 번 더 적을 뿐이다. */
+        showLegend={false}
+      />
+    </div>
   );
 };

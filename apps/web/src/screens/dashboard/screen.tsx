@@ -1,9 +1,9 @@
 import { Breadcrumb, PageHeader, Tabs } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useMemo, useRef, useState } from 'react';
-import { Link, useSearchParams } from 'react-router';
+import { useSearchParams } from 'react-router';
 
-import { AlertPanel, NOTIFICATION_CENTER_PATH } from './alert-panel';
+import { AlertCenterButton, AlertPanel } from './alert-panel';
 import { CARD_ROUTES } from './card-routes';
 import { DashboardFilterBar } from './dashboard-filter-bar';
 import { EquipmentBoard, StoppedPanel } from './equipment-panel';
@@ -162,15 +162,8 @@ export const DashboardScreen = () => {
             isFailed={isFailed}
             allows={access.allows}
           />
-          <Panel title={t.panes.alerts}>
+          <Panel title={t.panes.alerts} action={<AlertCenterButton />}>
             <AlertPanel views={alerts} isLoading={summary.isPending} />
-            {/*
-             * 알람 구획의 마무리 링크. 목록이 비어 있어도 남긴다 — 「지금 없다」를 확인한 사람이
-             * 지난 알림을 보러 갈 자리가 여기다.
-             */}
-            <div className="form-actions form-actions-secondary">
-              <Link to={NOTIFICATION_CENTER_PATH}>{t.alerts.openCenter}</Link>
-            </div>
           </Panel>
         </div>
       </div>

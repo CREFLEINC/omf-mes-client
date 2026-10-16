@@ -52,7 +52,6 @@ export const dashboard = {
   trend: {
     target: '목표',
     unitSuffix: (unit: string): string => `단위 ${unit}`,
-    emptyTitle: '추이 없음',
     empty: '이 기간에 그릴 생산실적이 없습니다.',
     /** 계약이 추이를 선택 항목으로 두어 아예 오지 않을 수 있다. */
     absent: '생산실적 추이가 이 응답에 오지 않았습니다.',
@@ -60,15 +59,14 @@ export const dashboard = {
   },
 
   alerts: {
-    emptyTitle: '미처리 알람 없음',
     /** 알람 0건은 오류가 아니라 정상 상태다. */
-    empty: '지금 확인할 알람이 없습니다.',
+    empty: '미처리 알람이 없습니다.',
     unread: '미확인',
     read: '확인함',
     /** 위치는 계층 텍스트로만 그린다 — 평면 배치·도면 구획을 쓰지 않는다. */
     locationUnknown: '위치 정보 없음',
     emptyMessage: '내용이 비어 있습니다.',
-    openCenter: '알림센터',
+    openCenter: '알림센터 보기',
   },
 
   /**
