@@ -24,19 +24,16 @@ export const dashboard = {
      * 자동 갱신 주기를 조건 줄에 상시로 적는다(omf-all-around#115). 주기는 화면의 상수에서 받는다 —
      * 숫자를 여기 박으면 주기를 바꿀 때 문구만 남는다.
      */
-    autoRefresh: (minutes: number): string =>
-      `${String(minutes)}분마다 자동으로 갱신됩니다. 바로 최신 값을 보려면 「갱신」을 누르세요.`,
+    autoRefresh: (minutes: number): string => `${String(minutes)}분마다 자동 갱신`,
+    /**
+     * 마지막으로 **조회가 성공한** 시각(서버 집계 시각이 아니다 · 사용자 지시 2026-10-16). ⛔ 「기준」이라는
+     * 말을 쓰지 않는다 — 조건 줄의 「기준 날짜」와 헷갈린다.
+     */
+    lastUpdated: (at: string): string => `마지막 갱신 ${at}`,
+    /** 갱신이 실패해 마지막 성공 값을 그대로 보이고 있을 때. 값을 지우지 않는다. */
+    refreshFailed: '갱신 실패 — 직전 값 표시 중',
     plantLookupFailed: '공장 목록을 불러오지 못해 지금은 고를 수 없습니다. 다시 시도해 주세요.',
     plantLookupTruncated: '공장 목록의 일부만 보입니다. 찾는 공장이 없으면 담당자에게 문의하세요.',
-  },
-
-  asOf: {
-    /** 서버가 집계를 끝낸 시각이다 — 브라우저가 받은 시각이 아니다. */
-    label: (at: string): string => `기준 ${at}`,
-    /** 서버가 기준 시각을 주지 않았을 때. 시각을 지어내지 않고 없다는 사실만 적는다. */
-    unknown: '집계 기준 시각을 알 수 없습니다.',
-    /** 갱신에 실패해도 직전 값을 지우지 않는다 — 회색 화면만 남기지 않는다. */
-    stale: (at: string): string => `기준 ${at} · 갱신에 실패해 직전 값을 보이고 있습니다.`,
   },
 
   cards: {

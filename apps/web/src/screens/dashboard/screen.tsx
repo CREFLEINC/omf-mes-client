@@ -14,6 +14,7 @@ import {
   toSearchParams,
   type DashboardFilters,
 } from './filters';
+import { formatLastUpdated } from './last-updated';
 import { LoadErrorBanner } from './load-error-banner';
 import { OverviewKpis } from './overview-kpis';
 import { ShipmentPanel } from './shipment-panel';
@@ -59,8 +60,8 @@ const EMPTY_ALERTS: DashboardAlertView[] = [];
  * ⭐ 대시보드만 주기 자동 갱신(사용자 결정 2026-10-16, omf-all-around#115) — 설비 상태를
  * 실시간으로 보이기 위함. 조회 화면 공통 규약(자동 갱신 없음)의 이 화면 한정 예외이며, 주기와
  * 조건은 `queries.ts`가 정한다. 「갱신」은 그대로 즉시 다시 부른다. 창 포커스 재조회는 걸지
- * 않는다. **집계 기준 시각은 여전히 항상 적는다**: 주기 사이에는 집계 시점과 보는 시점이
- * 어긋나고, 자동 갱신이 실패하면 값이 그 자리에 머문다 — 언제 것인지 말해야 한다.
+ * 않는다. **마지막 갱신 시각을 늘 적는다**(조회가 성공한 시각 · 사용자 지시 2026-10-16): 주기 사이에는
+ * 보는 값과 지금이 어긋나고, 자동 갱신이 실패하면 값이 그 자리에 머문다 — 언제 것인지 말해야 한다.
  *
  * ⛔ **위젯 편집·배치 저장을 만들지 않는다.** 근거가 없고, 만들면 이 화면에만 쓰이는 새 원시
  * 요소를 여럿 낳는다.
@@ -108,12 +109,11 @@ export const DashboardScreen = () => {
   /* 첫 조회가 실패해 보일 값이 없다 — 패널마다 「섹션이 오지 않았다」와 가른다. */
   const isFailed = summary.isError && view === undefined;
 
-  const asOfText = (() => {
-    if (view === undefined) return null;
-    if (view.asOfText === null) return t.asOf.unknown;
-
-    return hasStaleData ? t.asOf.stale(view.asOfText) : t.asOf.label(view.asOfText);
-  })();
+  /*
+   * ⭐ 「마지막 갱신」 = 조회가 **성공한** 시각(`dataUpdatedAt` · 사용자 지시 2026-10-16). 서버 집계 시각이
+   * 아니다. 실패하면 이 값이 바뀌지 않아 마지막 성공 시각이 남는다. KPI 띠 「최근 갱신」도 같은 값이다.
+   */
+  const lastUpdatedText = formatLastUpdated(summary.dataUpdatedAt, Date.now());
 
   /*
    * ⭐ 대시보드 안의 탭(omf-all-around#113). 탭은 **같은 응답을 나눠 보인다** — 품질은 summary 의
@@ -129,7 +129,7 @@ export const DashboardScreen = () => {
         cards={cards}
         equipment={view?.equipment ?? null}
         production={view?.production ?? null}
-        asOfTime={view?.asOfText?.slice(11) ?? null}
+        asOfTime={lastUpdatedText}
         isLoading={summary.isPending}
         axes={axes}
         routes={CARD_ROUTES}
@@ -200,6 +200,8 @@ export const DashboardScreen = () => {
           plantOptions={plantOptions}
           plantNote={plantNote(plants)}
           isRefreshing={summary.isFetching}
+          lastUpdatedText={lastUpdatedText}
+          isStale={hasStaleData}
           onChange={(next) => {
             setSearchParams(toSearchParams(next));
           }}
@@ -209,7 +211,6 @@ export const DashboardScreen = () => {
             if (plants.isError) plants.refetch();
           }}
         />
-        {asOfText !== null && <p className="pane-lead">{asOfText}</p>}
       </section>
 
       <Tabs

@@ -97,7 +97,6 @@ export interface DashboardView {
   quality: DashboardQuality | null;
   /** 공장 단위 금일 생산 합계 — 종합 불량률 · 총 NG 원천. 섹션이 오지 않으면 `null`. */
   production: DashboardProduction | null;
-  asOfText: string | null;
 }
 
 /**
@@ -208,5 +207,4 @@ export const toDashboardView = (source: DashboardSummary): DashboardView => ({
   shipment: source.shipment ?? null,
   quality: source.quality ?? null,
   production: source.production ?? null,
-  asOfText: formatAsOf(source.asOf),
 });

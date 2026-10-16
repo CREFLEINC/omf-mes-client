@@ -1,4 +1,4 @@
-import { Button, DatePicker } from '@crefle/web-ui';
+import { Button, DatePicker, Icon } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useId } from 'react';
 
@@ -17,7 +17,12 @@ export interface DashboardFilterBarProps {
   plantNote?: string;
   onChange: (filters: DashboardFilters) => void;
   onRefresh: () => void;
+  /** 재조회 중(수동 · 자동 모두). 그동안 「갱신」을 막는다 — 같은 요청을 겹쳐 보내지 않는다. */
   isRefreshing: boolean;
+  /** 마지막으로 조회가 성공한 시각(공장 시각 표기). 아직 없으면 `null`. */
+  lastUpdatedText: string | null;
+  /** 갱신이 실패해 직전 값을 보이고 있다. */
+  isStale: boolean;
 }
 
 /**
@@ -28,8 +33,9 @@ export interface DashboardFilterBarProps {
  * 남는 것이지 오조작을 막아 주지 않는다. 편집 중인 값을 따로 들지 않으므로 주소와 화면이
  * 어긋나는 갈래 자체가 생기지 않는다.
  *
- * ⛔ **자동 갱신이 없다** — 「갱신」은 조건을 바꾸는 것이 아니라 **같은 조건을 다시 묻는** 버튼이다.
- * 그 사실을 조건 줄에 상시로 적는다. 적지 않으면 사용자가 화면을 실시간으로 읽는다.
+ * 「갱신」은 조건을 바꾸는 것이 아니라 **같은 조건을 다시 묻는** 버튼이다. 자동 갱신 주기와 마지막 갱신
+ * 시각을 조건 줄 바로 아래 한 줄에 상시로 적는다(omf-all-around#115 · 사용자 지시 2026-10-16) — 적지
+ * 않으면 사용자가 화면을 실시간으로 읽는다.
  *
  * 이 화면 슬라이스가 소유한다 — 다른 화면 슬라이스의 같은 이름 부품을 참조하지 않는다.
  */
@@ -40,6 +46,8 @@ export const DashboardFilterBar = ({
   onChange,
   onRefresh,
   isRefreshing,
+  lastUpdatedText,
+  isStale,
 }: DashboardFilterBarProps) => {
   const baseDateId = useId();
   const noteId = `${baseDateId}-manual`;
@@ -50,7 +58,7 @@ export const DashboardFilterBar = ({
      * 안에 넣으면 문장이 칸 하나로 끼어들어 컨트롤 사이에 선다.
      */
     <>
-      <div className="filter-bar">
+      <div className="filter-bar dashboard-filter-bar">
         <div className="field-cell">
           <FieldLabel htmlFor={baseDateId} label={t.filters.baseDate} />
           {/*
@@ -82,16 +90,25 @@ export const DashboardFilterBar = ({
           }}
         />
 
-        <div className="filter-actions">
+        {/* 라벨 층만큼 내려 입력칸 줄에 맞춘다 — 라벨 없는 단추가 라벨 높이에 떠 있지 않게. */}
+        <div className="filter-actions dashboard-filter-actions">
           {/*
            * 안내를 **이 버튼에** 잇는다. 줄을 감싼 `div`에 붙이면 역할이 없는 요소라 보조 기술이
            * 읽지 않는다 — 갱신 주기(omf-all-around#115)와 「바로 보려면 이 버튼」이라는 사실이 이
            * 버튼을 두는 이유이므로, 그 사실이 닿아야 할 자리도 여기다.
            */}
+          {/*
+           * ⭐ 입력칸과 같은 높이 · 모서리 · 테두리, 기본 글자색(사용자 지시 2026-10-16). DS `outlined` 의
+           * 빨간 글자(`--primary-text`)와 둥근 알약 모양만 `.dashboard-refresh-button` 이 덮는다.
+           * 재조회 중에는 막고(로딩) — 자동 갱신이 도는 순간에 눌러도 요청이 겹치지 않는다.
+           */}
           <Button
             variant="outlined"
+            className="dashboard-refresh-button"
+            leadingIcon={<Icon name="refresh" size={18} />}
             onClick={onRefresh}
             disabled={isRefreshing}
+            loading={isRefreshing}
             aria-describedby={noteId}
           >
             {t.filters.refresh}
@@ -99,8 +116,12 @@ export const DashboardFilterBar = ({
         </div>
       </div>
 
-      <p id={noteId} className="pane-lead">
-        {t.filters.autoRefresh(DASHBOARD_REFRESH_INTERVAL_MS / 60_000)}
+      <p id={noteId} className="dashboard-refresh-status">
+        {[
+          t.filters.autoRefresh(DASHBOARD_REFRESH_INTERVAL_MS / 60_000),
+          ...(lastUpdatedText === null ? [] : [t.filters.lastUpdated(lastUpdatedText)]),
+          ...(isStale ? [t.filters.refreshFailed] : []),
+        ].join(' · ')}
       </p>
     </>
   );

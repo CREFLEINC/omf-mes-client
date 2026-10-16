@@ -21,18 +21,12 @@ export const dashboard: Translated<typeof ko.dashboard> = {
     plant: 'Nhà máy',
     allPlants: 'Tất cả',
     refresh: 'Làm mới',
-    autoRefresh: (minutes: number): string =>
-      `Màn hình tự làm mới mỗi ${String(minutes)} phút. Muốn xem ngay số liệu mới nhất thì hãy bấm «Làm mới».`,
+    autoRefresh: (minutes: number): string => `Tự làm mới mỗi ${String(minutes)} phút`,
+    lastUpdated: (at: string): string => `Cập nhật lần cuối ${at}`,
+    refreshFailed: 'Làm mới thất bại — đang hiển thị số liệu trước',
     plantLookupFailed: 'Không tải được danh sách nhà máy nên hiện chưa chọn được. Hãy thử lại.',
     plantLookupTruncated:
       'Chỉ hiển thị một phần danh sách nhà máy. Không thấy nhà máy cần tìm thì hãy hỏi người phụ trách.',
-  },
-
-  asOf: {
-    label: (at: string): string => `Cơ sở ${at}`,
-    unknown: 'Không rõ thời điểm tổng hợp.',
-    stale: (at: string): string =>
-      `Cơ sở ${at} · Làm mới thất bại nên đang hiển thị số liệu trước.`,
   },
 
   cards: {
