@@ -7,6 +7,7 @@ import { useState } from 'react';
 import { useApiClient } from '../../patterns/api-context';
 import { SaveErrorBanner, useMasterWrite } from '../../patterns/master';
 import { runRequest } from '../../patterns/request';
+import { sessionKeys } from '../../patterns/session';
 import { LoadErrorBanner } from './load-error-banner';
 
 const t = messages.usersRoles.workerLink;
@@ -24,20 +25,24 @@ export interface WorkerLinkFieldProps {
 }
 
 /**
- * 계정 ↔ 작업자 지정 — 사용자 정보 카드 안의 한 줄(omf-all-around#104 · 서버 선행 P-38 · 담당자 지시 2026-10-16).
+ * 계정 ↔ 작업자 지정 — 사용자 정보 카드 안의 「작업자 정보」 구역(omf-all-around#104 · 서버 선행 P-38).
  *
- * 관리웹 IQC 판정은 계정에 지정된 작업자를 검사자로 남긴다 — 지정이 없으면 저장이 막힌다.
+ * 관리웹 IQC 판정은 계정에 지정된 작업자를 검사자로 남긴다 — 지정이 없으면 화면도 서버도 저장을 막는다.
  *
- * **지정 상태가 한눈에 보여야 한다**(담당자 지시) — 지정됨이면 배지와 사번·이름·소속을, 미지정이면 배지와
- * 지정 안내를 낸다. 지정·해제는 폼의 저장과 따로 바로 서버에 나가므로 그 사실을 밝히고, 성공하면 알림을 띄운다.
+ * **기본은 조회다**(담당자 지시 2026-10-16). 지정 여부·사번·이름·부서를 먼저 보이고, 입력칸은 「작업자 지정」·
+ * 「작업자 변경」을 눌렀을 때만 연다. 해제는 변경과 구분되는 보조 버튼이고 확인 창을 거친다. 「즉시 적용」 안내는
+ * 지정·변경·해제를 하는 자리에서만 낸다. 실패하면 입력을 연 채로 두고 지정 정보는 그대로다.
  *
- * **사번으로 지정한다.** 재직자 중 그 사번을 찾아 그 작업자로 치환한다 — 목록에서 고르게 하면
- * 사업부 전체 작업자를 한 번에 내려받아야 한다. 한 작업자가 다른 계정에 이미 지정돼 있으면 서버가 400 으로 막는다.
+ * **사번으로 지정한다.** 재직자 중 그 사번을 찾아 그 작업자로 치환한다. 한 작업자가 다른 계정에 이미 지정돼 있으면
+ * 서버가 400 으로 막는다.
+ *
+ * ⭐ 성공하면 세션을 다시 읽는다 — 자기 계정을 바꿨다면 IQC 판정 화면이 재로그인 없이 바로 잠기거나 풀린다.
  */
 export const WorkerLinkField = ({ appUserId, departmentLabel }: WorkerLinkFieldProps) => {
   const { client } = useApiClient();
   const queryClient = useQueryClient();
   const toast = useToast();
+  const [isEditing, setIsEditing] = useState(false);
   const [workerNo, setWorkerNo] = useState('');
   const [localError, setLocalError] = useState<string | null>(null);
   const [isUnlinkOpen, setIsUnlinkOpen] = useState(false);
@@ -53,7 +58,7 @@ export const WorkerLinkField = ({ appUserId, departmentLabel }: WorkerLinkFieldP
   const current = link.data;
   const linkedId = current?.workerId ?? null;
 
-  /* 소속은 연결 응답에 없다 — 지정된 작업자의 상세에서 부서를 읽는다. */
+  /* 부서는 지정 응답에 없다 — 지정된 작업자의 상세에서 읽는다. */
   const detail = useQuery({
     queryKey: workerDetailKey(linkedId ?? 0),
     enabled: linkedId !== null,
@@ -63,10 +68,13 @@ export const WorkerLinkField = ({ appUserId, departmentLabel }: WorkerLinkFieldP
       ),
   });
 
-  const departmentOf = (): string => {
-    const departmentId = detail.data?.worker.departmentId ?? null;
+  const departmentId = detail.data?.worker.departmentId ?? null;
+  const department = departmentId === null ? t.noDepartment : departmentLabel(departmentId);
 
-    return departmentId === null ? t.noDepartment : departmentLabel(departmentId);
+  const closeEdit = (): void => {
+    setIsEditing(false);
+    setWorkerNo('');
+    setLocalError(null);
   };
 
   const write = useMasterWrite<number | null, AppUserWorker>({
@@ -80,7 +88,8 @@ export const WorkerLinkField = ({ appUserId, departmentLabel }: WorkerLinkFieldP
     knownFields: [],
     onSuccess: (saved) => {
       queryClient.setQueryData(workerLinkKey(appUserId), saved);
-      setWorkerNo('');
+      void queryClient.invalidateQueries({ queryKey: sessionKeys.current });
+      closeEdit();
       setIsUnlinkOpen(false);
       toast.show({
         variant: 'success',
@@ -92,7 +101,7 @@ export const WorkerLinkField = ({ appUserId, departmentLabel }: WorkerLinkFieldP
     },
   });
 
-  const connect = async (): Promise<void> => {
+  const submit = async (): Promise<void> => {
     const trimmed = workerNo.trim();
     if (trimmed === '') {
       setLocalError(t.workerNoRequired);
@@ -114,54 +123,104 @@ export const WorkerLinkField = ({ appUserId, departmentLabel }: WorkerLinkFieldP
   const isLinked = current !== undefined && linkedId !== null;
 
   return (
-    <div className="users-roles-worker-link" role="group" aria-label={t.label}>
+    <section className="users-roles-worker-link" aria-label={t.title}>
+      <div className="users-roles-worker-link-head">
+        <h3>{t.title}</h3>
+        {isLinked && (
+          <Chip variant="status" size="sm" status="success">
+            {t.linked}
+          </Chip>
+        )}
+      </div>
+
       {link.isError && <LoadErrorBanner error={link.error} onRetry={() => void link.refetch()} />}
       {!isUnlinkOpen && <SaveErrorBanner error={write.error} />}
 
-      <div className="users-roles-worker-link-status">
-        <span className="field-label">{t.label}</span>
-        {current !== undefined && (
-          <Chip variant="status" size="sm" status={isLinked ? 'success' : 'warning'}>
-            {isLinked ? t.linked : t.unlinked}
-          </Chip>
-        )}
-        {isLinked && (
-          <strong>
-            {t.summary(current.workerNo ?? '', current.workerName ?? '', departmentOf())}
-          </strong>
-        )}
-        {/* 해제는 상태 바로 옆에 둔다 — 어디서 푸는지 묻지 않게(담당자 지시 2026-10-16). 확인 창을 거친다. */}
-        {isLinked && (
+      {current !== undefined &&
+        (isLinked ? (
+          <dl className="users-roles-worker-link-info">
+            <div>
+              <dt>{t.workerNo}</dt>
+              <dd>{current.workerNo}</dd>
+            </div>
+            <div>
+              <dt>{t.workerName}</dt>
+              <dd>{current.workerName}</dd>
+            </div>
+            <div>
+              <dt>{t.department}</dt>
+              <dd>{department}</dd>
+            </div>
+          </dl>
+        ) : (
+          <p className="users-roles-worker-link-none">{t.none}</p>
+        ))}
+
+      {current !== undefined && !isEditing && (
+        <div className="users-roles-worker-link-actions">
           <Button
-            variant="outlined"
+            variant="tonal"
             size="sm"
             disabled={write.isSaving}
             onClick={() => {
               write.reset();
-              setIsUnlinkOpen(true);
+              setIsEditing(true);
             }}
           >
-            {t.unlink}
+            {isLinked ? t.change : t.assign}
           </Button>
-        )}
-      </div>
-      {current !== undefined && !isLinked && <p className="field-note">{t.unlinkedGuide}</p>}
+          {isLinked && (
+            <Button
+              variant="text"
+              size="sm"
+              disabled={write.isSaving}
+              onClick={() => {
+                write.reset();
+                setIsUnlinkOpen(true);
+              }}
+            >
+              {t.unlink}
+            </Button>
+          )}
+        </div>
+      )}
 
-      <div className="users-roles-worker-link-edit">
-        <TextField
-          label={t.workerNo}
-          value={workerNo}
-          onChange={(event) => {
-            setWorkerNo(event.target.value);
-          }}
-          disabled={write.isSaving}
-          error={localError ?? undefined}
-        />
-        <Button loading={write.isSaving} disabled={write.isSaving} onClick={() => void connect()}>
-          {isLinked ? t.change : t.link}
-        </Button>
-      </div>
-      <p className="field-note">{t.immediateNote}</p>
+      {isEditing && (
+        <div className="users-roles-worker-link-edit">
+          <div className="users-roles-worker-link-edit-row">
+            <TextField
+              size="sm"
+              label={isLinked ? t.inputChange : t.inputAssign}
+              value={workerNo}
+              onChange={(event) => {
+                setWorkerNo(event.target.value);
+              }}
+              disabled={write.isSaving}
+              error={localError ?? undefined}
+            />
+            <Button
+              size="sm"
+              loading={write.isSaving}
+              disabled={write.isSaving}
+              onClick={() => void submit()}
+            >
+              {isLinked ? t.confirmChange : t.confirmAssign}
+            </Button>
+            <Button
+              variant="outlined"
+              size="sm"
+              disabled={write.isSaving}
+              onClick={() => {
+                write.reset();
+                closeEdit();
+              }}
+            >
+              {messages.common.cancel}
+            </Button>
+          </div>
+          <p className="field-note">{t.immediateNote}</p>
+        </div>
+      )}
 
       <Dialog
         open={isUnlinkOpen}
@@ -195,7 +254,8 @@ export const WorkerLinkField = ({ appUserId, departmentLabel }: WorkerLinkFieldP
       >
         {isUnlinkOpen && <SaveErrorBanner error={write.error} />}
         <p>{t.unlinkConfirmBody(`${current?.workerNo ?? ''} · ${current?.workerName ?? ''}`)}</p>
+        {isUnlinkOpen && <p className="field-note">{t.immediateNote}</p>}
       </Dialog>
-    </div>
+    </section>
   );
 };

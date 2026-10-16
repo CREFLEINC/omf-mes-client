@@ -5,7 +5,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 
 import { SessionProvider, type Session } from '../../patterns/session';
 import { createStubFetch, jsonResponse, renderWithProviders } from '../../test/api-harness';
-import { SYNTHETIC_SESSION } from '../../test/session-harness';
+import { SYNTHETIC_SESSION, signedInRoute } from '../../test/session-harness';
 import { CODE_GROUPS } from './code-options';
 import {
   codeValuesResponse,
@@ -59,6 +59,8 @@ const renderScreen = (
       route,
       session: testSession,
       fetch: createStubFetch([
+        /* 화면이 들어올 때 세션을 다시 읽는다(#104) — 같은 세션을 돌려준다. */
+        signedInRoute(testSession),
         {
           match: (request) => new URL(request.url).pathname === '/quality/inspection-requests',
           respond: (request) => {

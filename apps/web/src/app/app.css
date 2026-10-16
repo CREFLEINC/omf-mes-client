@@ -7110,22 +7110,56 @@ dl.filter-bar.approval-inbox-detail-facts {
 }
 
 /*
- * 작업자 지정 줄(omf-all-around#104) — 폼 칸 아래 구분선 다음. 첫 줄은 「작업자 · 상태 배지 · 사번·이름·소속」,
- * 그 아래 사번 입력과 지정·해제. 지정 상태가 한눈에 읽히는 것이 요점이다(담당자 지시 2026-10-16).
+ * 작업자 정보 구역(omf-all-around#104) — 사용자 정보 입력 칸과 갈라 읽히도록 카드 안의 옅은 면 하나로 둔다
+ * (구분선 대신 면 · 카드의 radius·gap 토큰 재사용). 사번·이름·부서는 칸마다 따로 — 긴 이름·부서는 줄을 바꾼다.
+ * 버튼은 sm·tonal/text 라 아래 액션 줄(비밀번호 초기화·사용 중지·취소·저장)과 섞여 보이지 않는다(담당자 지시 2026-10-16).
  */
 .users-roles-worker-link {
   display: grid;
-  gap: var(--space-2);
+  gap: var(--space-3);
   margin-top: var(--space-4);
-  padding-top: var(--space-4);
-  border-top: 1px solid var(--outline-variant);
+  padding: var(--space-4);
+  border-radius: var(--radius-md);
+  /* 카드 면(surface-container-low)보다 한 단계 짙게 — 같은 면이면 구역이 갈라 읽히지 않는다(실측). */
+  background: var(--surface-container);
 }
 
-.users-roles-worker-link > p {
+.users-roles-worker-link-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.users-roles-worker-link-head > h3 {
+  margin: 0;
+  font: var(--type-title-sm);
+  letter-spacing: var(--type-title-sm-tracking);
+}
+
+.users-roles-worker-link-info {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(10rem, 100%), 1fr));
+  gap: var(--space-2) var(--space-4);
   margin: 0;
 }
 
-.users-roles-worker-link-status {
+.users-roles-worker-link-info dt {
+  font: var(--type-label-sm);
+  letter-spacing: var(--type-label-sm-tracking);
+  color: var(--on-surface-variant);
+}
+
+.users-roles-worker-link-info dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.users-roles-worker-link-none,
+.users-roles-worker-link-edit > p {
+  margin: 0;
+}
+
+.users-roles-worker-link-actions {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -7133,14 +7167,20 @@ dl.filter-bar.approval-inbox-detail-facts {
 }
 
 .users-roles-worker-link-edit {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.users-roles-worker-link-edit-row {
   display: flex;
   flex-wrap: wrap;
   align-items: flex-end;
   gap: var(--space-2);
 }
 
-.users-roles-worker-link-edit > :first-child {
-  width: 12rem;
+.users-roles-worker-link-edit-row > :first-child {
+  flex: 1 1 12rem;
+  max-width: 20rem;
 }
 
 /* 역할 부여 — 넓으면 여러 열, 좁으면 한 열. 카드 없는 단순 목록 그대로다. */

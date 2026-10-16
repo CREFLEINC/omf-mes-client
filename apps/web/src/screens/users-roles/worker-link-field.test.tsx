@@ -55,46 +55,60 @@ const render = (initial: typeof NONE | typeof LINKED, directory: (typeof LINKED)
 };
 
 describe('WorkerLinkField', () => {
-  it('미지정이면 배지와 지정 안내를 내고, 사번으로 찾은 작업자를 지정하면 배지·사번·이름·소속과 알림이 뜬다', async () => {
+  it('미지정이면 안내와 「작업자 지정」만 보이고(입력칸·배지 없음), 지정하면 사번·이름·부서를 칸마다 보이고 알림이 뜬다', async () => {
     const { puts, user } = render(NONE);
 
-    expect(await screen.findByText(t.unlinked)).toBeInTheDocument();
-    expect(screen.getByText(t.unlinkedGuide)).toBeInTheDocument();
-    await user.type(screen.getByLabelText(t.workerNo), 'SYN-W-01');
-    await user.click(screen.getByRole('button', { name: t.link }));
+    expect(await screen.findByText(t.none)).toBeInTheDocument();
+    expect(screen.queryByText(t.linked)).not.toBeInTheDocument();
+    expect(screen.queryByRole('textbox')).not.toBeInTheDocument();
+    expect(screen.queryByText(t.immediateNote)).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: t.assign }));
+    expect(screen.getByText(t.immediateNote)).toBeInTheDocument();
+    await user.type(screen.getByLabelText(t.inputAssign), 'SYN-W-01');
+    await user.click(screen.getByRole('button', { name: t.confirmAssign }));
 
     await waitFor(() => {
       expect(puts).toEqual([{ workerId: 8501 }]);
     });
     expect(await screen.findByText(t.linked)).toBeInTheDocument();
-    expect(
-      await screen.findByText(t.summary('SYN-W-01', '합성 작업자', '합성 부서')),
-    ).toBeInTheDocument();
+    expect(screen.getByText('SYN-W-01')).toBeInTheDocument();
+    expect(screen.getByText('합성 작업자')).toBeInTheDocument();
+    expect(await screen.findByText('합성 부서')).toBeInTheDocument();
     expect(await screen.findByText(t.linkedToast('SYN-W-01 · 합성 작업자'))).toBeInTheDocument();
-    expect(screen.queryByText(t.unlinkedGuide)).not.toBeInTheDocument();
+    expect(screen.queryByRole('textbox')).not.toBeInTheDocument();
   });
 
-  it('재직자 중 그 사번이 없으면 보내지 않고 이유를 낸다', async () => {
+  it('재직자 중 그 사번이 없으면 보내지 않고, 입력을 연 채로 이유를 낸다', async () => {
     const { puts, user } = render(NONE, []);
 
-    await screen.findByText(t.unlinked);
-    await user.type(screen.getByLabelText(t.workerNo), 'NOPE');
-    await user.click(screen.getByRole('button', { name: t.link }));
+    await user.click(await screen.findByRole('button', { name: t.assign }));
+    await user.type(screen.getByLabelText(t.inputAssign), 'NOPE');
+    await user.click(screen.getByRole('button', { name: t.confirmAssign }));
 
     expect(await screen.findByText(t.notFound)).toBeInTheDocument();
+    expect(screen.getByLabelText(t.inputAssign)).toBeInTheDocument();
     expect(puts).toEqual([]);
   });
 
-  it('지정되어 있으면 「변경」·「지정 해제」를 내고, 해제하면 미지정과 알림으로 바뀐다', async () => {
+  it('지정되어 있으면 「작업자 변경」을 눌러야 입력이 열리고, 취소하면 닫히고 그대로다', async () => {
     const { puts, user } = render(LINKED);
 
-    expect(
-      await screen.findByText(t.summary('SYN-W-01', '합성 작업자', '합성 부서')),
-    ).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: t.change })).toBeInTheDocument();
-    await user.click(screen.getByRole('button', { name: t.unlink }));
+    await screen.findByText('SYN-W-01');
+    expect(screen.queryByRole('textbox')).not.toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: t.change }));
+    expect(screen.getByLabelText(t.inputChange)).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: messages.common.cancel }));
 
-    /* 확인 창이 영향을 밝히고, 확인 전에는 보내지 않는다. */
+    expect(screen.queryByRole('textbox')).not.toBeInTheDocument();
+    expect(puts).toEqual([]);
+    expect(screen.getByText(t.linked)).toBeInTheDocument();
+  });
+
+  it('지정 해제는 확인 창을 거치고, 해제하면 「지정된 작업자가 없습니다.」와 알림으로 바뀐다', async () => {
+    const { puts, user } = render(LINKED);
+
+    await user.click(await screen.findByRole('button', { name: t.unlink }));
     const dialog = await screen.findByRole('dialog');
     expect(
       within(dialog).getByText(t.unlinkConfirmBody('SYN-W-01 · 합성 작업자')),
@@ -106,7 +120,7 @@ describe('WorkerLinkField', () => {
       expect(puts).toEqual([{ workerId: null }]);
     });
     expect(await screen.findByText(t.unlinkedToast)).toBeInTheDocument();
-    expect(await screen.findByText(t.unlinked)).toBeInTheDocument();
+    expect(await screen.findByText(t.none)).toBeInTheDocument();
   });
 
   it('해제 확인 창에서 취소하면 보내지 않는다', async () => {

@@ -1,10 +1,11 @@
 import { Breadcrumb, Button, PageHeader } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
+import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router';
 
 import { toApiError } from '../../patterns/request';
-import { useSession } from '../../patterns/session';
+import { sessionKeys, useSession } from '../../patterns/session';
 import {
   EMPTY_FILTERS,
   readFilters,
@@ -73,6 +74,15 @@ export const IqcInspectionScreen = () => {
   const detail = useInspectionRequestDetail(selectedId);
   /* 검사자는 계정에 연결된 작업자다(omf-all-around#104) — 연결이 없으면 저장 전에 막는다. */
   const { session } = useSession();
+  const queryClient = useQueryClient();
+
+  /*
+   * 들어올 때 세션을 다시 읽는다(omf-all-around#104) — 다른 관리자가 이 계정의 작업자 지정을 해제·변경했어도
+   * 세션 캐시(5분)가 남아 저장이 열려 보이지 않게 한다. 서버도 지정 없는 계정의 저장을 거부한다.
+   */
+  useEffect(() => {
+    void queryClient.invalidateQueries({ queryKey: sessionKeys.current });
+  }, [queryClient]);
   const rounds = useInspectionRounds(selectedId);
 
   const round = latestRound(rounds.data ?? []);

@@ -372,29 +372,30 @@ export const usersRoles = {
     },
   },
   /**
-   * 계정 ↔ 작업자 지정 — omf-all-around#104. 사용자 정보 카드 안의 한 줄이다(담당자 지시 2026-10-16).
+   * 계정 ↔ 작업자 지정 — omf-all-around#104. 사용자 정보 카드 안의 「작업자 정보」 구역이다(담당자 지시 2026-10-16).
    * 검사 판정처럼 작업자가 남는 관리웹 쓰기에 쓴다.
    */
   workerLink: {
-    label: '작업자',
+    title: '작업자 정보',
     linked: '지정됨',
-    unlinked: '미지정',
-    /** 사번 · 이름 · 소속 */
-    summary: (workerNo: string, workerName: string, department: string): string =>
-      `${workerNo} · ${workerName} · ${department}`,
-    noDepartment: '소속 없음',
-    unlinkedGuide:
-      '작업자가 지정되지 않아 이 계정으로는 검사 판정을 저장할 수 없습니다. 사번을 입력해 지정해 주세요.',
-    /** 폼의 저장과 따로 바로 반영된다는 사실 — 밝히지 않으면 「저장」을 눌러야 하는 줄 안다. */
-    immediateNote: '지정·해제는 저장 버튼과 별도로 바로 반영됩니다.',
+    none: '지정된 작업자가 없습니다.',
     workerNo: '사번',
-    link: '지정',
-    change: '변경',
+    workerName: '이름',
+    department: '부서',
+    noDepartment: '부서 없음',
+    assign: '작업자 지정',
+    change: '작업자 변경',
     unlink: '지정 해제',
-    linkedToast: (summary: string): string => `작업자를 지정했습니다 — ${summary}`,
+    inputAssign: '지정할 작업자 사번',
+    inputChange: '변경할 작업자 사번',
+    confirmAssign: '지정 확인',
+    confirmChange: '변경 확인',
+    /** 지정·변경·해제를 하는 자리에서만 보인다(담당자 지시 2026-10-16) — 평상시에는 내지 않는다. */
+    immediateNote: '작업자 변경 사항은 별도 저장 없이 즉시 적용됩니다.',
     unlinkConfirmTitle: '작업자 지정을 해제할까요?',
     unlinkConfirmBody: (summary: string): string =>
       `${summary} 지정을 해제합니다. 해제하면 이 계정으로는 검사 판정을 저장할 수 없습니다.`,
+    linkedToast: (summary: string): string => `작업자를 지정했습니다 — ${summary}`,
     unlinkedToast: '작업자 지정을 해제했습니다.',
     notFound: '재직 중인 작업자 중에 이 사번이 없습니다.',
     workerNoRequired: '사번을 입력하세요.',
