@@ -2,6 +2,7 @@ import { EmptyState, Skeleton, StatCard } from '@crefle/web-ui';
 import type { DashboardShipment } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 
+import { shortDate } from './quality';
 import { formatFigure } from './types';
 
 const t = messages.dashboard.shipment;
@@ -68,11 +69,20 @@ export const ShipmentPanel = ({ view, isLoading, isFailed }: ShipmentPanelProps)
           <span>{t.waitingNote}</span>
         </span>
       </StatCard>
-      <StatCard label={t.next} value={next === null ? t.nextNone : next.shipmentRequestNo} bordered>
+      {/*
+       * 값 자리에는 **날짜(월-일)**를 둔다. 요청 번호를 큰 글자로 두면 좁은 카드에서 서너 줄로 꺾였다
+       * (브라우저 확인). 번호 · 고객 · 남은 수량은 아래 본문 줄에 적는다.
+       */}
+      <StatCard
+        label={t.next}
+        value={next === null ? t.nextNone : shortDate(next.requestedShipDate)}
+        bordered
+      >
         {next !== null && (
           <span className="kpi-card-note">
-            <span>{next.customerName ?? t.customerUnknown}</span>
             <span>{t.nextDate(next.requestedShipDate)}</span>
+            <span>{next.shipmentRequestNo}</span>
+            <span>{next.customerName ?? t.customerUnknown}</span>
             <span>{t.remainingQty(`${formatFigure(next.requestedQty)} ${t.qtyUnit}`)}</span>
           </span>
         )}

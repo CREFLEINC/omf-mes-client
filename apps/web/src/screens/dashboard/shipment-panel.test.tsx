@@ -29,6 +29,8 @@ describe('ShipmentPanel', () => {
     expect(screen.getByText('4,200')).toBeInTheDocument();
     expect(screen.getByText(t.todayShipmentCount('3'))).toBeInTheDocument();
     expect(screen.getByText('5')).toBeInTheDocument();
+    /* 값 자리는 날짜(월-일), 번호는 본문 줄 — 번호를 크게 두면 좁은 카드에서 꺾인다. */
+    expect(screen.getByText('10-17')).toBeInTheDocument();
     expect(screen.getByText('SR-1')).toBeInTheDocument();
     expect(screen.getByText(t.nextDate('2026-10-17'))).toBeInTheDocument();
     /* 다음 출하 수량은 «남은 수량»이다(규격 보정). */
