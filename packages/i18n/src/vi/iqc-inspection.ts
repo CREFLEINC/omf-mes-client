@@ -100,7 +100,7 @@ export const iqcInspection: Translated<typeof ko.iqcInspection> = {
     submitTitle: 'Lưu và xác nhận',
     confirmBlockedByTotals: 'Tổng đã nhập phải bằng số lượng kiểm tra mới xác nhận được.',
     workerNotLinked:
-      'Tài khoản này chưa có thông tin người lao động nên không lưu được phán định. Hãy chỉ định người lao động trong Quản lý người dùng.',
+      'Tài khoản này chưa liên kết người lao động nên không lưu được phán định. Hãy liên kết người lao động trong Quản lý người dùng.',
     confirmBlockedByJudgment: 'Phải chọn đánh giá tổng hợp mới xác nhận được.',
     confirmBlockedByConfirmed: 'Lượt này đã được xác nhận.',
     confirmBlockedByUnsaved: 'Sau khi lưu tạm mới có thể xác nhận đánh giá.',

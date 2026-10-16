@@ -206,7 +206,7 @@ export const iqcInspection = {
      */
     confirmBlockedByTotals: '입력 합계가 검사수량과 같아야 확정할 수 있습니다.',
     workerNotLinked:
-      '이 계정에 등록된 작업자 정보가 없어 판정을 저장할 수 없습니다. 사용자 관리에서 작업자를 지정해 주세요.',
+      '이 계정에 연결된 작업자가 없어 판정을 저장할 수 없습니다. 사용자 관리에서 작업자를 연결해 주세요.',
     confirmBlockedByJudgment: '종합 판정을 선택해야 확정할 수 있습니다.',
     confirmBlockedByConfirmed: '이미 확정된 회차입니다.',
     /*

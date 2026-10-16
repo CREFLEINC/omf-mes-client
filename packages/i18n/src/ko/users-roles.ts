@@ -372,32 +372,35 @@ export const usersRoles = {
     },
   },
   /**
-   * 계정 ↔ 작업자 지정 — omf-all-around#104. 사용자 정보 카드 안의 「작업자 정보」 구역이다(담당자 지시 2026-10-16).
+   * 계정 ↔ 작업자 연결 — omf-all-around#104. 사용자 정보 카드 안의 「연결된 작업자」 구역이다. 용어는 「연결」로 통일(담당자 결정 2026-10-16).
    * 검사 판정처럼 작업자가 남는 관리웹 쓰기에 쓴다.
    */
   workerLink: {
-    title: '작업자 정보',
-    linked: '지정됨',
-    none: '지정된 작업자가 없습니다.',
-    workerNo: '사번',
-    workerName: '이름',
-    department: '부서',
+    title: '연결된 작업자',
+    linked: '연결됨',
+    unlinked: '미연결',
+    none: '연결된 작업자가 없습니다.',
+    /** 미연결일 때 한 줄 — 왜 연결해야 하는지 */
+    hintUnlinked: '수입검사 판정을 저장하려면 작업자 사번을 연결해야 합니다.',
+    hintLinked: '연결된 작업자 정보를 검사 판정에 사용합니다.',
     noDepartment: '부서 없음',
-    assign: '작업자 지정',
+    connect: '작업자 연결',
     change: '작업자 변경',
-    unlink: '지정 해제',
-    inputAssign: '지정할 작업자 사번',
+    unlink: '연결 해제',
+    inputConnect: '연결할 작업자 사번',
     inputChange: '변경할 작업자 사번',
-    confirmAssign: '지정 확인',
-    confirmChange: '변경 확인',
-    /** 지정·변경·해제를 하는 자리에서만 보인다(담당자 지시 2026-10-16) — 평상시에는 내지 않는다. */
-    immediateNote: '작업자 변경 사항은 별도 저장 없이 즉시 적용됩니다.',
-    unlinkConfirmTitle: '작업자 지정을 해제할까요?',
+    submitConnect: '연결',
+    submitChange: '변경',
+    /** 입력 그룹 맨 아래에만 — 실패했는데 적용됐다고 말하지 않도록 「~하면」으로 쓴다. */
+    noteConnect: '연결하면 별도 저장 없이 즉시 적용됩니다.',
+    noteChange: '변경하면 별도 저장 없이 즉시 적용됩니다.',
+    unlinkConfirmTitle: '작업자 연결 해제',
     unlinkConfirmBody: (summary: string): string =>
-      `${summary} 지정을 해제합니다. 해제하면 이 계정으로는 검사 판정을 저장할 수 없습니다.`,
-    linkedToast: (summary: string): string => `작업자를 지정했습니다 — ${summary}`,
-    unlinkedToast: '작업자 지정을 해제했습니다.',
-    notFound: '재직 중인 작업자 중에 이 사번이 없습니다.',
-    workerNoRequired: '사번을 입력하세요.',
+      `${summary} 작업자 연결을 해제할까요? 해제하면 이 계정으로 수입검사 판정을 저장할 수 없습니다. 별도 저장 없이 즉시 적용됩니다.`,
+    linkedToast: (summary: string): string => `작업자를 연결했습니다 — ${summary}`,
+    unlinkedToast: '작업자 연결을 해제했습니다.',
+    /** 조회 조건(재직 중 · 사번 일치)을 그대로 말한다. */
+    notFound: '해당 사번의 재직 중인 작업자를 찾을 수 없습니다.',
+    workerNoRequired: '작업자 사번을 입력해 주세요.',
   },
 } as const;

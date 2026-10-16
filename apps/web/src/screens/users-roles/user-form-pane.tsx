@@ -270,7 +270,8 @@ export const UserFormPane = ({
          */}
         {mode === 'edit' && (
           <div className="users-roles-account-actions form-actions-secondary">
-            <Button variant="outlined" onClick={onResetPassword}>
+            {/* 비밀번호 초기화는 중립 보조, 사용 중지는 주의(outlined 기본색) — 강조 정도만 가른다(담당자 결정 2026-10-16). */}
+            <Button variant="outlined" className="app-button-neutral" onClick={onResetPassword}>
               {t.actions.resetPassword}
             </Button>
             {/*

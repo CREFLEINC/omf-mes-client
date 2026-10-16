@@ -7110,77 +7110,100 @@ dl.filter-bar.approval-inbox-detail-facts {
 }
 
 /*
- * 작업자 정보 구역(omf-all-around#104) — 사용자 정보 입력 칸과 갈라 읽히도록 카드 안의 옅은 면 하나로 둔다
- * (구분선 대신 면 · 카드의 radius·gap 토큰 재사용). 사번·이름·부서는 칸마다 따로 — 긴 이름·부서는 줄을 바꾼다.
- * 버튼은 sm·tonal/text 라 아래 액션 줄(비밀번호 초기화·사용 중지·취소·저장)과 섞여 보이지 않는다(담당자 지시 2026-10-16).
+ * 연결된 작업자(omf-all-around#104) — 사용자 정보 폼의 하위 구역. 큰 면 없이 위쪽 얇은 선과 제목으로만 나눈다
+ * (담당자 결정 2026-10-16). 첫 줄 [배지] 이름 · 사번 · 부서 + 오른쪽 버튼(좁으면 줄바꿈), 그 아래 안내 한 줄.
+ * 선 굵기는 이 파일의 구분선 관례(1px · outline-variant)를 따른다.
  */
 .users-roles-worker-link {
   display: grid;
-  gap: var(--space-3);
-  margin-top: var(--space-4);
-  padding: var(--space-4);
-  border-radius: var(--radius-md);
-  /* 카드 면(surface-container-low)보다 한 단계 짙게 — 같은 면이면 구역이 갈라 읽히지 않는다(실측). */
-  background: var(--surface-container);
-}
-
-.users-roles-worker-link-head {
-  display: flex;
-  align-items: center;
   gap: var(--space-2);
+  min-width: 0;
+  margin-top: var(--space-4);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--outline-variant);
 }
 
-.users-roles-worker-link-head > h3 {
+.users-roles-worker-link-title {
   margin: 0;
-  font: var(--type-title-sm);
-  letter-spacing: var(--type-title-sm-tracking);
-}
-
-.users-roles-worker-link-info {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(10rem, 100%), 1fr));
-  gap: var(--space-2) var(--space-4);
-  margin: 0;
-}
-
-.users-roles-worker-link-info dt {
-  font: var(--type-label-sm);
-  letter-spacing: var(--type-label-sm-tracking);
+  font: var(--type-label-lg);
+  letter-spacing: var(--type-label-lg-tracking);
   color: var(--on-surface-variant);
 }
 
-.users-roles-worker-link-info dd {
-  margin: 0;
+.users-roles-worker-link-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2) var(--space-4);
+  min-width: 0;
+}
+
+.users-roles-worker-link-summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1) var(--space-3);
+  min-width: 0;
+}
+
+.users-roles-worker-link-summary > * {
   overflow-wrap: anywhere;
 }
 
-.users-roles-worker-link-none,
-.users-roles-worker-link-edit > p {
-  margin: 0;
+.users-roles-worker-link-meta {
+  color: var(--on-surface-variant);
 }
 
 .users-roles-worker-link-actions {
   display: flex;
   flex-wrap: wrap;
-  align-items: center;
   gap: var(--space-2);
 }
 
+.users-roles-worker-link-hint,
+.users-roles-worker-link-edit > p {
+  /* 공용 .field-note 의 폭 상한은 입력칸 밑 짧은 주석용이다 — 이 구역의 안내는 구역 폭을 쓴다. */
+  max-width: none;
+  margin: 0;
+}
+
+/* 입력 그룹 — 현재 정보 줄 아래, 왼쪽 옅은 세로선으로 묶는다. */
 .users-roles-worker-link-edit {
   display: grid;
-  gap: var(--space-2);
+  gap: var(--space-1);
+  min-width: 0;
+  padding-left: var(--space-3);
+  border-left: 1px solid var(--outline-variant);
 }
 
+/*
+ * 입력칸과 [연결/변경][취소]는 같은 줄 · 같은 높이(둘 다 sm). 라벨을 줄 밖에 두고 위쪽으로 맞추므로
+ * 입력칸 아래 오류 줄이 생겨도 버튼이 움직이지 않는다.
+ */
 .users-roles-worker-link-edit-row {
   display: flex;
-  flex-wrap: wrap;
-  align-items: flex-end;
+  align-items: flex-start;
   gap: var(--space-2);
+  min-width: 0;
 }
 
+/* 좁으면 입력칸이 줄어든다 — 버튼을 다음 줄로 넘기면 오류 줄이 생길 때 버튼이 밀린다. */
 .users-roles-worker-link-edit-row > :first-child {
-  flex: 1 1 12rem;
-  max-width: 20rem;
+  flex: 0 1 18rem;
+  min-width: 0;
+}
+
+.users-roles-worker-link-edit-row > button {
+  flex: none;
+}
+
+/*
+ * 중립 보조 버튼 — DS primary 가 빨강이고 Button 에 색 prop 이 없어, outlined·text 의 글자만 중립 토큰으로 바꾼다.
+ * 강조 정도(테두리·면)는 DS 변형 그대로다. 새 컴포넌트가 아니라 클래스 하나다.
+ */
+button.app-button-neutral {
+  color: var(--on-surface-variant);
 }
 
 /* 역할 부여 — 넓으면 여러 열, 좁으면 한 열. 카드 없는 단순 목록 그대로다. */
