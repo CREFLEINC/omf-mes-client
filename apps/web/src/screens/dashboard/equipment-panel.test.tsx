@@ -281,7 +281,7 @@ describe('StoppedPanel', () => {
     expect(screen.getByRole('heading', { level: 2 })).toHaveTextContent('EQ-02');
   });
 
-  it(`그룹당 ${String(STOPPED_GROUP_PREVIEW_COUNT)}행 — 넘으면 오래 멈춘 순으로 자르고 「외 n대」가 전체 설비 보기 창을 연다`, async () => {
+  it(`그룹당 ${String(STOPPED_GROUP_PREVIEW_COUNT)}행 — 넘으면 오래 멈춘 순으로 자르고 「외 n대」는 숨겨진 설비만 창에 보인다`, async () => {
     const user = userEvent.setup();
     const five = toEquipmentView({
       asOf: '2026-10-16T03:00:00Z',
@@ -306,8 +306,15 @@ describe('StoppedPanel', () => {
     expect(rows[0]).toHaveTextContent('S-5');
 
     await user.click(within(group).getByRole('button', { name: t.stoppedMore('2') }));
-    const dialog = screen.getByRole('dialog', { name: t.allTitle('5') });
-    expect(within(dialog).getAllByRole('button', { name: /상세 보기/ })).toHaveLength(5);
+    const dialog = screen.getByRole('dialog', { name: t.stoppedMoreTitle(t.status.STOPPED, '2') });
+    const tiles = within(dialog).getAllByRole('button', { name: /상세 보기/ });
+    expect(tiles).toHaveLength(2);
+    /* 미리 보인 S-5 · S-4 · S-3 은 빠지고 덜 오래 멈춘 S-2 · S-1 만. */
+    expect(tiles.map((tile) => tile.textContent)).toEqual([
+      expect.stringContaining('S-2'),
+      expect.stringContaining('S-1'),
+    ]);
+    expect(within(dialog).queryByRole('list', { name: t.legend })).not.toBeInTheDocument();
   });
 
   it('마우스로 연 상세를 닫아 줄로 포커스가 돌아오면 링을 숨긴다(설비 타일과 같은 규칙)', async () => {

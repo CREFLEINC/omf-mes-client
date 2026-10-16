@@ -441,16 +441,21 @@ export const EquipmentBoard = (props: EquipmentPanelProps) => {
   );
 };
 
-/** 「전체 설비 보기」 창 — 설비 가동 현황과 가동 외 설비 현황(「외 n대」)이 같은 창을 쓴다. */
+/**
+ * 설비 타일 창 — 「전체 설비 보기」(전체 · 상태별 대수 함께)와 가동 외 설비 현황의 「외 n대」(그 그룹에서 숨겨진
+ * 설비만 · ⭐ 사용자 지시 2026-10-16)가 같은 창을 쓴다. `title` 을 주면 「외 n대」 창이다.
+ */
 const AllEquipmentDialog = ({
   open,
   items,
+  title,
   onClose,
   onOpenTile,
   pointerInput,
 }: {
   open: boolean;
   items: readonly EquipmentItemView[];
+  title?: string;
   onClose: () => void;
   onOpenTile: (item: EquipmentItemView) => void;
   pointerInput: RefObject<boolean>;
@@ -458,14 +463,14 @@ const AllEquipmentDialog = ({
   <Dialog
     open={open}
     onClose={onClose}
-    title={t.allTitle(formatFigure(items.length))}
+    title={title ?? t.allTitle(formatFigure(items.length))}
     size="lg"
     className="dash-eq-all-dialog"
   >
     {/* 열 때만 그린다 — 닫힌 창이 120대 타일을 미리 들고 있지 않게. */}
     {open && (
       <>
-        <StatusLegend items={items} />
+        {title === undefined && <StatusLegend items={items} />}
         <ul className="dash-eq-grid dash-eq-grid-all">
           {items.map((item) => (
             <EquipmentTile
@@ -539,7 +544,8 @@ const StatusLegend = ({ items }: { items: readonly EquipmentItemView[] }) => (
  */
 export const StoppedPanel = (props: EquipmentPanelProps) => {
   const [openedId, setOpenedId] = useState<number | null>(null);
-  const [isAllOpen, setIsAllOpen] = useState(false);
+  /* 「외 n대」를 누른 그룹 — 그 그룹에서 숨겨진 설비만 창에 보인다. */
+  const [moreCode, setMoreCode] = useState<DashboardEquipmentStatusCode | null>(null);
   const pointerInput = usePointerInput();
   const blocked = gate(props);
   const { view } = props;
@@ -629,6 +635,9 @@ export const StoppedPanel = (props: EquipmentPanelProps) => {
     );
     shownTotalRef.current = shownCounts.reduce((sum, count) => sum + count, 0);
     groupCountRef.current = groups.length;
+    const moreIndex = groups.findIndex((group) => group.code === moreCode);
+    const moreRows =
+      moreIndex < 0 ? [] : (groups[moreIndex]?.rows ?? []).slice(shownCounts[moreIndex] ?? 0);
 
     return (
       <>
@@ -663,7 +672,7 @@ export const StoppedPanel = (props: EquipmentPanelProps) => {
                       size="sm"
                       className="dash-stopped-more"
                       onClick={() => {
-                        setIsAllOpen(true);
+                        setMoreCode(code);
                       }}
                     >
                       {t.stoppedMore(formatFigure(hidden))}
@@ -709,10 +718,15 @@ export const StoppedPanel = (props: EquipmentPanelProps) => {
           })}
         </div>
         <AllEquipmentDialog
-          open={isAllOpen}
-          items={sortForBoard(view.items)}
+          open={moreCode !== null && moreRows.length > 0}
+          items={moreRows}
+          title={
+            moreCode === null
+              ? undefined
+              : t.stoppedMoreTitle(t.status[moreCode], formatFigure(moreRows.length))
+          }
           onClose={() => {
-            setIsAllOpen(false);
+            setMoreCode(null);
           }}
           onOpenTile={openTile}
           pointerInput={pointerInput}
