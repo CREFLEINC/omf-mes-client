@@ -8353,14 +8353,20 @@ dl.filter-bar.approval-inbox-detail-facts {
   stroke-dasharray: 4 4;
 }
 
+/*
+ * SVG 글자 — DS 에서 가장 작은 글자 토큰(`--type-label-sm`)을 쓴다. DS 에는 `--font-size-*` 토큰이 없다
+ * (이 파일의 다른 사용처는 기본값으로 서 있다). `font` 단축 속성이 굵기도 정하므로 굵기는 그 뒤에 둔다.
+ */
 .dash-axis {
   fill: var(--on-surface-muted);
-  font-size: 11px;
+  font: var(--type-label-sm);
+  letter-spacing: var(--type-label-sm-tracking);
 }
 
 .dash-bar-value {
   fill: var(--on-surface);
-  font-size: 11px;
+  font: var(--type-label-sm);
+  letter-spacing: var(--type-label-sm-tracking);
   font-weight: 700;
 }
 
@@ -8377,7 +8383,8 @@ dl.filter-bar.approval-inbox-detail-facts {
 
 .dash-line-end {
   fill: currentColor;
-  font-size: 11px;
+  font: var(--type-label-sm);
+  letter-spacing: var(--type-label-sm-tracking);
   font-weight: 700;
 }
 
