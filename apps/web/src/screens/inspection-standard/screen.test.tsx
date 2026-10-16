@@ -1288,7 +1288,8 @@ describe('InspectionStandardScreen — 신규 버전 두 갈래', () => {
     const form = screen.getByRole('region', { name: '버전 정보' });
     await pickDate(user, within(form).getByLabelText('유효시작'), '2026-08-01');
     await user.click(within(form).getByRole('combobox', { name: '샘플링 방법' }));
-    await user.click(screen.getByRole('option', { name: '선택지 준비 중' }));
+    await user.click(screen.getByRole('option', { name: '샘플링(LOT 단위)' }));
+    await user.type(within(form).getByLabelText(/샘플 비율/), '10');
     await user.click(within(form).getByRole('combobox', { name: '검사 주기' }));
     await user.click(screen.getByRole('option', { name: '선택지 준비 중' }));
     await user.click(within(form).getByRole('button', { name: '버전 등록' }));
@@ -1303,6 +1304,8 @@ describe('InspectionStandardScreen — 신규 버전 두 갈래', () => {
     expect(body.inspectionPlanId).toBe(3001);
     // 달력에서 고른 날이 그대로 요청에 실린다 — 입력 수단이 바뀌어도 나가는 값의 형식은 그대로다.
     expect(body.effectiveFrom).toBe('2026-08-01');
+    expect(body.samplingMethodCode).toBe('SAMPLE_BY_LOT');
+    expect(body.samplingRatio).toBe(10);
     expect('planVersion' in body).toBe(false);
     expect('statusCode' in body).toBe(false);
   });

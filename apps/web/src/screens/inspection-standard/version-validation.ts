@@ -1,5 +1,6 @@
 import { messages } from '@omf-mes/i18n';
 
+import { FULL_INSPECTION } from './code-options';
 import type { VersionFormValues } from './types';
 
 const t = messages.inspectionStandard.validation;
@@ -83,6 +84,11 @@ export const validateVersionForm = (values: VersionFormValues): Record<string, s
    * 계약 exclusiveMinimum: 0 · maximum: 100 — **0은 위반이다.** 판정 개수 두 칸과 하한 규칙이 다르다.
    * format 이 double 이라 정수로 좁히지 않는다 — 소수가 정상 입력이다(#201).
    */
+  const isSampling =
+    !isBlank(values.samplingMethodCode) && values.samplingMethodCode !== FULL_INSPECTION;
+  // 샘플 방식은 비율로 검사 수량을 환산한다 — 비율이 없으면 검사 수량이 정해지지 않는다(#103).
+  if (isSampling && isBlank(values.samplingRatio)) errors.samplingRatio = t.samplingRatioRequired;
+
   if (!isBlank(values.samplingRatio)) {
     const ratio = Number(values.samplingRatio);
 
