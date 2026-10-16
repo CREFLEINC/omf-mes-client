@@ -186,7 +186,11 @@ export const dashboard = {
     defectRateFormula: '불량 수량 ÷ 총생산 수량',
     /** 시안의 「평균 C/T 달성」 자리 — 실측 C/T 가 없어 표준 C/T 기준 성능률을 둔다. */
     performance: '성능률',
-    performanceNote: '표준 C/T 기준',
+    /** ⭐ 툴팁 문구 — 사용자 지정(2026-10-16), 그대로 쓴다. */
+    performanceTip: '표준 사이클 타임을 기준으로 계산한 추정값입니다.',
+    oeeTip: '표준 사이클 타임을 기준으로 계산한 설비종합효율 추정값입니다.',
+    myUnreadAlertsTip:
+      '현재 계정에서 확인하지 않은 알림 수입니다. 선택한 공장과 관계없이 전체 알림을 집계합니다.',
     estimated: '추정',
     oee: 'OEE(설비종합효율)',
     /** 실제 의미는 로그인 사용자의 안 읽은 알림 수다. */

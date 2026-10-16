@@ -18,7 +18,7 @@ const k = messages.dashboard.kpi;
 const MAIN_CARDS = ['AVAILABILITY_RATE', 'PRODUCTION_QTY'] as const;
 /** 보조 열의 차례 — 시안의 「평균 C/T 달성」 자리에 성능률(표준 C/T 기준)이 먼저 선다. */
 const AUX_ORDER = ['PERFORMANCE_RATE', 'YIELD_RATE', 'OEE', 'UNHANDLED_ALARM'];
-/** 서버가 근사값이라고 밝히는 카드 — 이름 옆에 「추정」을 단다(설명이 올 때만). */
+/** 표준 C/T 로 계산한 추정값 — 이름 옆에 「추정」을 단다(툴팁 문구와 같은 뜻). */
 const ESTIMATED_CARDS = ['PERFORMANCE_RATE', 'OEE'];
 
 /** 카드 값의 표기. ⛔ 값을 낼 수 없는 카드를 0으로 그리지 않는다 — 0은 「가동하지 않았다」로 읽힌다. */
@@ -82,9 +82,23 @@ export const auxLabelOf = (card: DashboardCardView): string => {
   }
 };
 
-/** 보조 열 설명 단추 내용 — 서버 원문. 성능률은 원문이 없으면 화면 쪽 기준(「표준 C/T 기준」). */
-export const auxInfoOf = (card: DashboardCardView): string | undefined =>
-  serverNoteOf(card) ?? (card.cardCode === 'PERFORMANCE_RATE' ? k.performanceNote : undefined);
+/**
+ * 보조 열 설명 단추 내용. ⭐ 성능률 · OEE · 내 미확인 알림은 사용자가 정한 문구를 그대로 쓴다(사용자 지시
+ * 2026-10-16 — 서버 설명 원문 대신). 그 밖의 카드는 서버 설명 원문. 분모에서 뺀 건수(PARTIAL)는 툴팁이 아니라
+ * 칸 아래 줄에 따로 늘 보이므로(`cardNoteLines`) 문구를 바꿔도 사라지지 않는다.
+ */
+export const auxInfoOf = (card: DashboardCardView): string | undefined => {
+  switch (card.cardCode) {
+    case 'PERFORMANCE_RATE':
+      return k.performanceTip;
+    case 'OEE':
+      return k.oeeTip;
+    case 'UNHANDLED_ALARM':
+      return k.myUnreadAlertsTip;
+    default:
+      return serverNoteOf(card);
+  }
+};
 
 const unitOf = (card: DashboardCardView | undefined): string | undefined =>
   card === undefined || card.valueStatusCode === 'NOT_YET' ? undefined : (card.unit ?? undefined);
@@ -253,7 +267,7 @@ export const OverviewKpis = ({
             <div key={card.cardCode} className="dash-kpi-aux-row">
               <dt>
                 {label}
-                {ESTIMATED_CARDS.includes(card.cardCode) && serverNoteOf(card) !== undefined && (
+                {ESTIMATED_CARDS.includes(card.cardCode) && (
                   <span className="dash-kpi-aux-tag">{k.estimated}</span>
                 )}
                 {info !== undefined && <InfoTip label={t.viz.infoLabel(label)} content={info} />}

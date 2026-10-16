@@ -151,7 +151,11 @@ export const dashboard: Translated<typeof ko.dashboard> = {
     defectRateNote: 'Tỷ lệ lỗi trên sản lượng',
     defectRateFormula: 'Số lượng lỗi ÷ Tổng sản lượng',
     performance: 'Hiệu suất',
-    performanceNote: 'Theo C/T tiêu chuẩn',
+    performanceTip: 'Giá trị ước tính được tính theo thời gian chu kỳ tiêu chuẩn.',
+    oeeTip:
+      'Giá trị ước tính hiệu suất thiết bị tổng thể được tính theo thời gian chu kỳ tiêu chuẩn.',
+    myUnreadAlertsTip:
+      'Số thông báo tài khoản hiện tại chưa xem. Tính trên toàn bộ thông báo, không phụ thuộc nhà máy đã chọn.',
     estimated: 'Ước tính',
     oee: 'OEE (Hiệu suất thiết bị tổng thể)',
     myUnreadAlerts: 'Thông báo chưa đọc của tôi',

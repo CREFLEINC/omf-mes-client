@@ -119,12 +119,17 @@ describe('OverviewKpis', () => {
     renderKpis(PRODUCTION);
 
     await user.hover(screen.getByRole('button', { name: v.infoLabel(k.myUnreadAlerts) }));
-    expect(await screen.findByText(ALARM_NOTE)).toBeInTheDocument();
+    expect(await screen.findByText(k.myUnreadAlertsTip)).toBeInTheDocument();
   });
 
   it('설명 원문 · 기준 줄 계산', () => {
-    expect(auxInfoOf(card({ cardCode: 'PERFORMANCE_RATE', note: null }))).toBe(k.performanceNote);
-    expect(auxInfoOf(card({ cardCode: 'OEE', note: OEE_NOTE }))).toBe(OEE_NOTE);
+    /* ⭐ 성능률 · OEE · 내 미확인 알림은 사용자 지정 문구, 그 밖은 서버 원문. */
+    expect(auxInfoOf(card({ cardCode: 'PERFORMANCE_RATE', note: null }))).toBe(k.performanceTip);
+    expect(auxInfoOf(card({ cardCode: 'OEE', note: OEE_NOTE }))).toBe(k.oeeTip);
+    expect(auxInfoOf(card({ cardCode: 'UNHANDLED_ALARM', note: ALARM_NOTE }))).toBe(
+      k.myUnreadAlertsTip,
+    );
+    expect(auxInfoOf(card({ cardCode: 'YIELD_RATE', note: '서버 설명' }))).toBe('서버 설명');
     expect(availabilityBasis(card({ note: null }))).toBeUndefined();
     expect(availabilityBasis(card({ note: '대수 없는 설명' }))).toBe(k.availabilityBasis);
   });
