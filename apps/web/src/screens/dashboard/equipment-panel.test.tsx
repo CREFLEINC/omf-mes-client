@@ -308,6 +308,19 @@ describe('StoppedPanel', () => {
     expect(within(dialog).getAllByRole('button', { name: /상세 보기/ })).toHaveLength(5);
   });
 
+  it('마우스로 연 상세를 닫아 줄로 포커스가 돌아오면 링을 숨긴다(설비 타일과 같은 규칙)', async () => {
+    const user = userEvent.setup();
+    render(<StoppedPanel view={view} isLoading={false} isFailed={false} />);
+    const row = screen.getByRole('button', { name: new RegExp(`^${t.openDetail('EQ-02')}`) });
+
+    await user.click(row);
+    await user.keyboard('{Escape}');
+    act(() => {
+      row.focus();
+    });
+    expect(row).toHaveAttribute('data-pointer-focus');
+  });
+
   it('모두 가동이면 「멈춘 설비 없음」', () => {
     render(
       <StoppedPanel

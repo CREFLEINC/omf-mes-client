@@ -1,7 +1,15 @@
 import { Button, Chip, Dialog, Icon, Skeleton, type ChipStatus } from '@crefle/web-ui';
 import type { DashboardEquipmentStatusCode } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
-import { useEffect, useRef, useState, type ReactNode, type RefObject } from 'react';
+import {
+  useEffect,
+  useRef,
+  useState,
+  type FocusEvent,
+  type KeyboardEvent as ReactKeyboardEvent,
+  type ReactNode,
+  type RefObject,
+} from 'react';
 
 import { formatPlantDateTime } from '../../patterns/plant-time';
 import {
@@ -100,6 +108,22 @@ const tileTitleOf = (item: EquipmentItemView): string =>
         ]),
   ].join('\n');
 
+/**
+ * 포인터로 연 창을 닫아 포커스만 돌아온 단추에 `data-pointer-focus` 를 단다 — CSS 가 그때 포커스 링을 숨긴다.
+ * 키보드로 열었거나 다른 키를 누르면 링을 보인다. 설비 타일 · 가동 외 설비 줄이 함께 쓴다.
+ */
+const pointerFocusProps = (pointerInput: RefObject<boolean>) => ({
+  onFocus: (event: FocusEvent<HTMLButtonElement>) => {
+    event.currentTarget.toggleAttribute('data-pointer-focus', pointerInput.current);
+  },
+  onBlur: (event: FocusEvent<HTMLButtonElement>) => {
+    event.currentTarget.removeAttribute('data-pointer-focus');
+  },
+  onKeyDown: (event: ReactKeyboardEvent<HTMLButtonElement>) => {
+    if (event.key !== 'Escape') event.currentTarget.removeAttribute('data-pointer-focus');
+  },
+});
+
 interface EquipmentTileProps {
   item: EquipmentItemView;
   onOpen: (item: EquipmentItemView) => void;
@@ -127,15 +151,7 @@ const EquipmentTile = ({ item, onOpen, pointerInput }: EquipmentTileProps) => {
          * 닫힌 창이 포커스를 타일로 돌려준다(DS Dialog · 접근성상 유지). 포인터로 열었으면 그때 링을 숨기고,
          * 키보드로 열었거나 다른 키를 누르면 링을 보인다(`.dash-eq-tile[data-pointer-focus]`).
          */
-        onFocus={(event) => {
-          event.currentTarget.toggleAttribute('data-pointer-focus', pointerInput.current);
-        }}
-        onBlur={(event) => {
-          event.currentTarget.removeAttribute('data-pointer-focus');
-        }}
-        onKeyDown={(event) => {
-          if (event.key !== 'Escape') event.currentTarget.removeAttribute('data-pointer-focus');
-        }}
+        {...pointerFocusProps(pointerInput)}
         aria-label={t.openDetail(item.equipmentCode)}
         title={tileTitleOf(item)}
       >
@@ -540,6 +556,7 @@ export const StoppedPanel = (props: EquipmentPanelProps) => {
                       <button
                         type="button"
                         className="dash-stopped-button"
+                        {...pointerFocusProps(pointerInput)}
                         aria-label={`${t.openDetail(item.equipmentCode)} · ${describeReason(item)} · ${formatElapsed(item.elapsedMinutes)}`}
                         onClick={() => {
                           openTile(item);

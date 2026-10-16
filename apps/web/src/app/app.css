@@ -8711,6 +8711,11 @@ dl.filter-bar.approval-inbox-detail-facts {
   box-shadow: var(--focus-ring);
 }
 
+/* 포인터로 연 상세를 닫아 포커스만 돌아온 경우 — 링을 그리지 않는다(설비 타일과 같은 규칙). */
+.dash-stopped-button[data-pointer-focus]:focus-visible {
+  box-shadow: none;
+}
+
 /* 설비 코드는 굵게, 설비 종류는 옆에 작은 회색 — 원칙(a) 코드는 줄을 바꾸지 않는다. */
 .dash-stopped-unit {
   display: flex;
