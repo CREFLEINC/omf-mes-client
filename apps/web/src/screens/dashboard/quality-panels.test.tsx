@@ -2,7 +2,7 @@ import { messages } from '@omf-mes/i18n';
 import { render, screen, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
-import { quality } from './quality.fixture';
+import { quality, qualityBlock } from './quality.fixture';
 import {
   IqcTab,
   NonconformanceTab,
@@ -127,5 +127,31 @@ describe('품질 탭', () => {
       </QualityGate>,
     );
     expect(screen.getByText(t.failed)).toBeInTheDocument();
+  });
+
+  /*
+   * 품질 탭 레이아웃(사용자 지정 2026-10-16) — 주 그래프만 행 높이에 맞춰 커진다(`.dash-chart-fit`). 데이터가 없는
+   * 그래프는 그 자리를 두지 않는다 — 빈 카드를 그래프 높이로 키우지 않는다. 틀은 품질 탭 전용 클래스다.
+   */
+  it('레이아웃 — 품질 탭 전용 틀, 데이터가 있는 주 그래프만 높이 맞춤 자리', () => {
+    const { container, unmount } = render(<IqcTab quality={quality()} />);
+    expect(container.querySelector('.dash-tab.dash-tab-quality')).not.toBeNull();
+    expect(container.querySelectorAll('.dash-chart-fit')).toHaveLength(1);
+    unmount();
+
+    const empty = quality();
+    empty.iqc = {
+      ...empty.iqc,
+      ...qualityBlock({
+        dailyPassRates: [{ date: '2026-10-16', passRate: null }],
+      }),
+    };
+    const second = render(<IqcTab quality={empty} />);
+    expect(second.container.querySelector('.dash-chart-fit')).toBeNull();
+    second.unmount();
+
+    /* 부적합 파레토가 비었으면 높이 맞춤 자리를 두지 않는다. */
+    const nc = render(<NonconformanceTab quality={quality()} />);
+    expect(nc.container.querySelector('.dash-chart-fit')).toBeNull();
   });
 });

@@ -378,9 +378,8 @@ export const StatusList = ({ items }: { items: readonly StatusItem[] }) => (
 /* ── SVG 그림 ─────────────────────────────────────────────── */
 
 /* 높이는 고정, 폭은 실제 폭(`useChartWidth`) — 그림을 늘이고 줄이지 않아 글자 크기가 그대로다. */
-const H = 240;
+export const CHART_H = 240;
 const PAD = { top: 16, right: 64, bottom: 28, left: 40 };
-const plotH = H - PAD.top - PAD.bottom;
 
 /** 선 끝 이름표의 최소 세로 간격(px) — 글자 줄 높이. */
 const LABEL_GAP = 13;
@@ -416,8 +415,19 @@ export interface LineSeries {
  * 여러 계열 꺾은선 — **값이 없는 날에서 선을 끊는다.** 목표선은 없다(목표값은 MES DB에 없다).
  * 계열 이름과 마지막 값을 선 끝에 적는다 — 범례를 따로 오가지 않게.
  */
-export const MultiLineChart = ({ series, caption }: { series: LineSeries[]; caption: string }) => {
+export const MultiLineChart = ({
+  series,
+  caption,
+  height,
+}: {
+  series: LineSeries[];
+  caption: string;
+  /** 그림 높이(px). 없으면 기본 높이 — 품질 탭이 행 높이에 맞출 때만 준다(`FitChart`). */
+  height?: number;
+}) => {
   const [figureRef, W] = useChartWidth<HTMLElement>();
+  const H = height ?? CHART_H;
+  const plotH = H - PAD.top - PAD.bottom;
   const plotW = W - PAD.left - PAD.right;
   const xAt = (index: number, count: number): number =>
     PAD.left + (count <= 1 ? plotW / 2 : (plotW * index) / (count - 1));
@@ -528,31 +538,34 @@ export const MultiLineChart = ({ series, caption }: { series: LineSeries[]; capt
           );
         })}
       </svg>
-      <table className="dash-sr-only">
-        <caption>{caption}</caption>
-        <thead>
-          <tr>
-            <th scope="col">{t.dateColumn}</th>
-            {series.map((entry) => (
-              <th key={entry.name} scope="col">
-                {entry.name}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {labels.map((label, index) => (
-            <tr key={label}>
-              <th scope="row">{label}</th>
-              {series.map((entry) => {
-                const value = entry.points[index]?.value ?? null;
-
-                return <td key={entry.name}>{value === null ? t.none : formatFigure(value)}</td>;
-              })}
+      {/* 숨김 표는 감싼 상자로 줄인다 — 표는 높이 1px 를 받지 않아 행 수만큼 페이지 아래에 빈 스크롤을 만들었다. */}
+      <div className="dash-sr-only">
+        <table>
+          <caption>{caption}</caption>
+          <thead>
+            <tr>
+              <th scope="col">{t.dateColumn}</th>
+              {series.map((entry) => (
+                <th key={entry.name} scope="col">
+                  {entry.name}
+                </th>
+              ))}
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {labels.map((label, index) => (
+              <tr key={label}>
+                <th scope="row">{label}</th>
+                {series.map((entry) => {
+                  const value = entry.points[index]?.value ?? null;
+
+                  return <td key={entry.name}>{value === null ? t.none : formatFigure(value)}</td>;
+                })}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </figure>
   );
 };
@@ -564,11 +577,16 @@ export const MultiLineChart = ({ series, caption }: { series: LineSeries[]; capt
 export const ParetoChart = ({
   entries,
   caption,
+  height,
 }: {
   entries: readonly NamedQty[];
   caption: string;
+  /** 그림 높이(px). 없으면 기본 높이 — 품질 탭이 행 높이에 맞출 때만 준다(`FitChart`). */
+  height?: number;
 }) => {
   const [figureRef, W] = useChartWidth<HTMLElement>();
+  const H = height ?? CHART_H;
+  const plotH = H - PAD.top - PAD.bottom;
   const plotW = W - PAD.left - PAD.right;
   if (entries.length === 0) return <NoRecords />;
 
@@ -653,25 +671,28 @@ export const ParetoChart = ({
           ))}
         </g>
       </svg>
-      <table className="dash-sr-only">
-        <caption>{caption}</caption>
-        <thead>
-          <tr>
-            <th scope="col">{t.itemColumn}</th>
-            <th scope="col">{t.qtyColumn}</th>
-            <th scope="col">{t.cumulativeColumn}</th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((row) => (
-            <tr key={row.key}>
-              <th scope="row">{row.label}</th>
-              <td>{formatFigure(row.value)}</td>
-              <td>{formatShare(row.cumulative)}</td>
+      {/* 숨김 표는 감싼 상자로 줄인다 — 표는 높이 1px 를 받지 않아 행 수만큼 페이지 아래에 빈 스크롤을 만들었다. */}
+      <div className="dash-sr-only">
+        <table>
+          <caption>{caption}</caption>
+          <thead>
+            <tr>
+              <th scope="col">{t.itemColumn}</th>
+              <th scope="col">{t.qtyColumn}</th>
+              <th scope="col">{t.cumulativeColumn}</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {rows.map((row) => (
+              <tr key={row.key}>
+                <th scope="row">{row.label}</th>
+                <td>{formatFigure(row.value)}</td>
+                <td>{formatShare(row.cumulative)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </figure>
   );
 };

@@ -7844,6 +7844,51 @@ dl.filter-bar.approval-inbox-detail-facts {
 }
 
 /*
+ * 품질 · 부적합 5개 탭(⭐ 사용자 지정 2026-10-16 — 품질 탭 레이아웃). `.dash-tab-quality` 아래에만 걸린다 — 대시보드
+ * 탭은 이 규칙을 받지 않는다.
+ * - 같은 행 카드는 위 · 아래 끝을 맞춘다(늘임). 짧은 카드는 내용을 위에서부터 두고, 세로 묶음은 아래 카드가 남는
+ *   높이를 받는다. 행 높이는 그 행의 주 콘텐츠(그래프 · 표)가 정한다.
+ * - 화면 아래까지 남은 높이(`--dash-fill`, 화면 코드가 잰다)는 주 그래프 행(2행)이 먼저 쓴다 — 그래프가 있을 때만
+ *   (`.dash-chart-fit`). 그래프는 상한(480px)까지 커지고, 넘는 높이는 그대로 둔다.
+ */
+.dash-tab-quality:has(.dash-chart-fit) {
+  grid-template-rows: auto minmax(auto, 1fr);
+  min-height: var(--dash-fill, 0px);
+}
+
+.dash-tab-quality .dash-row2,
+.dash-tab-quality .dash-split,
+.dash-tab-quality .dash-row3 {
+  align-items: stretch;
+}
+
+.dash-tab-quality .dash-stack {
+  grid-template-rows: auto 1fr;
+}
+
+.dash-tab-quality .dash-stack:has(> :only-child) {
+  grid-template-rows: auto;
+}
+
+/* 주 그래프 카드 — 몸통이 남는 높이를 받고, 그래프 자리가 그 높이를 잰다(`FitChart`). */
+.dash-tab-quality .dash-panel-fit {
+  display: flex;
+  flex-direction: column;
+}
+
+.dash-tab-quality .dash-panel-fit > .dash-panel-body {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.dash-chart-fit {
+  flex: 1 1 auto;
+  contain: size;
+}
+
+/*
  * 반응형은 **이 영역 폭** 하나를 기준으로 한다(`.dash-tab` 컨테이너) — 화면 폭 기준과 섞으면 왼쪽 메뉴를
  * 접고 펼 때 KPI 줄과 패널 줄이 서로 다르게 반응했다.
  */

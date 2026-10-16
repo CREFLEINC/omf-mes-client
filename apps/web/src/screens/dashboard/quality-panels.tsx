@@ -6,7 +6,15 @@ import type {
   DashboardQualityTypeBlock,
 } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
-import type { ReactNode } from 'react';
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useState,
+  type CSSProperties,
+  type ReactNode,
+} from 'react';
 
 import { toPlantDateTimeParts } from '../../patterns/plant-time';
 import {
@@ -21,7 +29,9 @@ import {
 import { compareEquipmentCode } from './equipment';
 import { formatFigure } from './types';
 import { usePeriodTags } from './period';
+import { useFillHeight } from './use-fill-height';
 import {
+  CHART_H,
   DeltaMark,
   EmptyLine,
   KpiTile,
@@ -148,6 +158,104 @@ const dailySeries = (quality: DashboardQuality, kinds: readonly QualityKind[]): 
     })),
   }));
 
+/** 품질 탭의 주 그래프가 남는 높이를 받아 커질 때의 상한(px) — 지나치게 길쭉해지지 않게(원문 6.2). */
+export const FIT_CHART_MAX_H = 480;
+
+/** 이 폭(px) 이하면 1열로 쌓여(`.dash-row2` 등) 화면 높이 채우기를 쉰다. */
+const QUALITY_FILL_MIN_WIDTH = 861;
+
+/**
+ * 품질 · 부적합 탭의 틀(⭐ 사용자 지정 2026-10-16 — 품질 5개 탭 레이아웃). 화면 아래까지 남은 높이를 재서
+ * `--dash-fill` 로 준다 — 주 그래프 행(2행)이 그 남는 높이를 먼저 쓴다(`.dash-tab-quality`). 1열(좁은 폭)에서는
+ * 쉰다. 대시보드 탭은 이 틀을 쓰지 않는다.
+ */
+/**
+ * 주 그래프가 상한에 닿고도 남는 높이(px, 모자라면 음수) — 틀이 그만큼 채우기 높이를 덜어 낸다. 그래프가 상한에
+ * 닿으면 행도 더 늘지 않고, 남는 높이는 페이지 아래에 그대로 남는다(헤더 결정 2026-10-16).
+ */
+const FitSlackContext = createContext<(slack: number) => void>(() => undefined);
+
+const QualityTabFrame = ({ children }: { children: ReactNode }) => {
+  const [element, setElement] = useState<HTMLDivElement | null>(null);
+  const [wide, setWide] = useState(false);
+  const [reduction, setReduction] = useState(0);
+  const fill = useFillHeight(element);
+  const reportSlack = useCallback((slack: number) => {
+    if (Math.abs(slack) < 1) return;
+    setReduction((current) => Math.max(0, Math.round(current + slack)));
+  }, []);
+
+  useEffect(() => {
+    if (element === null || typeof ResizeObserver === 'undefined') return undefined;
+    const observer = new ResizeObserver(() => {
+      setWide(element.clientWidth >= QUALITY_FILL_MIN_WIDTH);
+    });
+    observer.observe(element);
+
+    return () => {
+      observer.disconnect();
+    };
+  }, [element]);
+
+  const style =
+    fill === null || !wide
+      ? undefined
+      : ({ '--dash-fill': `${String(Math.max(0, fill - reduction))}px` } as CSSProperties);
+
+  return (
+    <FitSlackContext.Provider value={reportSlack}>
+      <div ref={setElement} className="dash-tab dash-tab-quality" style={style}>
+        {children}
+      </div>
+    </FitSlackContext.Provider>
+  );
+};
+
+/**
+ * 주 그래프를 카드 높이에 맞춰 다시 그린다 — 행이 늘면 그래프 실제 영역이 함께 커진다(기본 240 ~ 상한 480).
+ * 자리는 크기 봉쇄(`contain: size`)로 제 높이를 행에 내지 않고, 최소 높이만 기본 그림 + 범례로 둔다. 범례 줄은
+ * 재서 뺀다. 데이터가 없는 그래프에는 쓰지 않는다 — 빈 카드를 그래프 높이로 키우지 않는다(원문 6.5).
+ */
+const FitChart = ({ children }: { children: (height: number) => ReactNode }) => {
+  const [element, setElement] = useState<HTMLDivElement | null>(null);
+  const [height, setHeight] = useState(CHART_H);
+  const [legend, setLegend] = useState(0);
+  const reportSlack = useContext(FitSlackContext);
+
+  useEffect(() => {
+    if (element === null || typeof ResizeObserver === 'undefined') return undefined;
+    const measure = (): void => {
+      const legendEl = element.querySelector<HTMLElement>('.dash-legend-inline');
+      const legendHeight =
+        legendEl === null
+          ? 0
+          : legendEl.offsetHeight +
+            (Number.parseFloat(getComputedStyle(legendEl).marginBottom) || 0);
+      setLegend(legendHeight);
+      reportSlack(element.clientHeight - legendHeight - FIT_CHART_MAX_H);
+      setHeight(
+        Math.min(
+          FIT_CHART_MAX_H,
+          Math.max(CHART_H, Math.floor(element.clientHeight - legendHeight)),
+        ),
+      );
+    };
+    const observer = new ResizeObserver(measure);
+    observer.observe(element);
+    measure();
+
+    return () => {
+      observer.disconnect();
+    };
+  }, [element, reportSlack]);
+
+  return (
+    <div ref={setElement} className="dash-chart-fit" style={{ minHeight: CHART_H + legend }}>
+      {children(height)}
+    </div>
+  );
+};
+
 const DailyPanel = ({
   quality,
   kinds,
@@ -158,10 +266,23 @@ const DailyPanel = ({
   title: string;
 }) => {
   const tags = usePeriodTags();
+  const series = dailySeries(quality, kinds);
+  const hasPoints = series.some((entry) => entry.points.some((point) => point.value !== null));
 
   return (
-    <Panel title={title} sub={t.dailySub} tag={tags.recent} className="dash-span-wide">
-      <MultiLineChart series={dailySeries(quality, kinds)} caption={title} />
+    <Panel
+      title={title}
+      sub={t.dailySub}
+      tag={tags.recent}
+      className={hasPoints ? 'dash-span-wide dash-panel-fit' : 'dash-span-wide'}
+    >
+      {hasPoints ? (
+        <FitChart>
+          {(height) => <MultiLineChart series={series} caption={title} height={height} />}
+        </FitChart>
+      ) : (
+        <MultiLineChart series={series} caption={title} />
+      )}
     </Panel>
   );
 };
@@ -286,7 +407,7 @@ export const QualityOverviewTab = ({ quality }: { quality: DashboardQuality }) =
   ]).held;
 
   return (
-    <div className="dash-tab">
+    <QualityTabFrame>
       <div className="dash-kpis">
         <PassRateTile label={t.passRateOf('IQC')} block={quality.iqc} showDelta />
         <PassRateTile label={t.passRateOf('PQC')} block={quality.pqc} />
@@ -357,7 +478,7 @@ export const QualityOverviewTab = ({ quality }: { quality: DashboardQuality }) =
         </div>
         <RecentLotsPanel title={t.recentLots} rows={toRecentLotRows(quality)} counterpart="kind" />
       </Row>
-    </div>
+    </QualityTabFrame>
   );
 };
 
@@ -368,7 +489,7 @@ export const IqcTab = ({ quality }: { quality: DashboardQuality }) => {
   const vendorTotal = iqc.vendorDefects.reduce((sum, entry) => sum + entry.rejectedQty, 0);
 
   return (
-    <div className="dash-tab">
+    <QualityTabFrame>
       <div className="dash-kpis">
         <PassRateTile label={t.passRateOf('IQC')} block={iqc} showDelta />
         <LotTile label={t.monthLots} tag={tags.month} counts={iqc.monthLots} />
@@ -469,7 +590,7 @@ export const IqcTab = ({ quality }: { quality: DashboardQuality }) => {
           counterpart="vendor"
         />
       </Row>
-    </div>
+    </QualityTabFrame>
   );
 };
 
@@ -479,7 +600,7 @@ export const PqcTab = ({ quality }: { quality: DashboardQuality }) => {
   const worst = pqc.equipmentDefectRates[0];
 
   return (
-    <div className="dash-tab">
+    <QualityTabFrame>
       <div className="dash-kpis">
         <PassRateTile label={t.passRateOf('PQC')} block={pqc} />
         <LotTile label={t.pqcLots} tag={tags.month} counts={pqc.monthLots} />
@@ -575,7 +696,7 @@ export const PqcTab = ({ quality }: { quality: DashboardQuality }) => {
           counterpart="equipment"
         />
       </Row>
-    </div>
+    </QualityTabFrame>
   );
 };
 
@@ -584,7 +705,7 @@ export const OqcTab = ({ quality }: { quality: DashboardQuality }) => {
   const oqc = quality.oqc;
 
   return (
-    <div className="dash-tab">
+    <QualityTabFrame>
       <div className="dash-kpis">
         <PassRateTile label={t.passRateOf('OQC')} block={oqc} />
         <LotTile label={t.oqcLots} tag={tags.month} counts={oqc.monthLots} />
@@ -608,13 +729,18 @@ export const OqcTab = ({ quality }: { quality: DashboardQuality }) => {
           counterpart="customer"
         />
       </Row>
-    </div>
+    </QualityTabFrame>
   );
 };
 
 export const NonconformanceTab = ({ quality }: { quality: DashboardQuality }) => {
   const tags = usePeriodTags();
   const nc = quality.nonconformance;
+  const paretoEntries = nc.phenomena.map((entry) => ({
+    key: String(entry.defectCodeId),
+    label: entry.defectName,
+    value: entry.qty,
+  }));
   const causes = nc.causeGroups.map((entry) => ({
     key: String(entry.causeCodeId),
     label: entry.causeName,
@@ -622,7 +748,7 @@ export const NonconformanceTab = ({ quality }: { quality: DashboardQuality }) =>
   }));
 
   return (
-    <div className="dash-tab">
+    <QualityTabFrame>
       <div className="dash-kpis">
         <KpiTile
           label={t.ncMonthQty}
@@ -665,15 +791,21 @@ export const NonconformanceTab = ({ quality }: { quality: DashboardQuality }) =>
         )}
       </div>
       <Row kind="row2">
-        <Panel title={t.ncPareto} sub={t.paretoSub} tag={tags.month} className="dash-span-wide">
-          <ParetoChart
-            entries={nc.phenomena.map((entry) => ({
-              key: String(entry.defectCodeId),
-              label: entry.defectName,
-              value: entry.qty,
-            }))}
-            caption={t.ncPareto}
-          />
+        <Panel
+          title={t.ncPareto}
+          sub={t.paretoSub}
+          tag={tags.month}
+          className={paretoEntries.length > 0 ? 'dash-span-wide dash-panel-fit' : 'dash-span-wide'}
+        >
+          {paretoEntries.length > 0 ? (
+            <FitChart>
+              {(height) => (
+                <ParetoChart entries={paretoEntries} caption={t.ncPareto} height={height} />
+              )}
+            </FitChart>
+          ) : (
+            <ParetoChart entries={paretoEntries} caption={t.ncPareto} />
+          )}
         </Panel>
         <Panel title={t.ncCauseGroups} sub={t.qtyShareSub} tag={tags.month}>
           <RankBars entries={causes} />
@@ -722,7 +854,7 @@ export const NonconformanceTab = ({ quality }: { quality: DashboardQuality }) =>
           />
         </Panel>
       </Row>
-    </div>
+    </QualityTabFrame>
   );
 };
 
