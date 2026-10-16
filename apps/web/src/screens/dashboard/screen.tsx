@@ -148,7 +148,15 @@ export const DashboardScreen = () => {
             isLoading={summary.isPending}
             isFailed={isFailed}
           />
-          <Panel title={t.panes.trend}>
+          {/* 「단위 EA」는 그래프 안이 아니라 상자 머리 오른쪽(사용자 지시 2026-10-16). */}
+          <Panel
+            title={t.panes.trend}
+            action={
+              view?.trend?.unit === null || view?.trend?.unit === undefined ? undefined : (
+                <span className="dash-panel-unit">{t.trend.unitSuffix(view.trend.unit)}</span>
+              )
+            }
+          >
             <TrendPanel view={view?.trend ?? null} isLoading={summary.isPending} />
           </Panel>
         </div>

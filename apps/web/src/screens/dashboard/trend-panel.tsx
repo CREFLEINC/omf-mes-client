@@ -67,7 +67,6 @@ export const TrendPanel = ({ view, isLoading }: TrendPanelProps) => {
             data: view.points.map((point) => ({ label: point.label, value: point.value })),
           },
         ]}
-        caption={view.unit === null ? undefined : t.trend.unitSuffix(view.unit)}
         /* 목표가 실적보다 높으면 눈금을 목표까지 넓힌다 — 넓히지 않으면 목표선이 그림 밖에 그어진다. */
         max={toChartMax(view.points, view.targetValue)}
         referenceLines={referenceLines}
