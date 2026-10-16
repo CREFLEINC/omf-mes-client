@@ -41,7 +41,7 @@ const DUPLICATE = {
 const render = (
   initial: typeof NONE | typeof LINKED,
   directory: object[] = [FREE],
-  options: { rejectPut?: boolean } = {},
+  options: { rejectPut?: boolean; failLookup?: boolean } = {},
 ) => {
   const puts: unknown[] = [];
   renderWithProviders(<WorkerLinkField appUserId={8101} departmentLabel={departmentLabel} />, {
@@ -66,7 +66,12 @@ const render = (
       {
         match: (request) => new URL(request.url).pathname === '/mdm/workers',
         respond: () =>
-          jsonResponse({ items: directory, page: { page: 1, size: 2, total: directory.length } }),
+          options.failLookup === true
+            ? jsonResponse({ message: '조회 서버 오류' }, { status: 500 })
+            : jsonResponse({
+                items: directory,
+                page: { page: 1, size: 2, total: directory.length },
+              }),
       },
     ]),
   });
@@ -136,6 +141,31 @@ describe('WorkerLinkField', () => {
 
     expect(await within(modal).findByText(t.notFound)).toBeInTheDocument();
     expect(puts).toEqual([]);
+  });
+
+  it('사번 조회 자체가 실패하면 입력칸 아래에 원인을 내고 보내지 않는다', async () => {
+    const { puts, user } = render(LINKED, [], { failLookup: true });
+
+    await user.click(await screen.findByRole('button', { name: t.change }));
+    const modal = await dialog();
+    await user.type(within(modal).getByLabelText(t.inputLabel), 'SYN-W-01{Enter}');
+
+    await waitFor(() => {
+      expect(within(modal).getByLabelText(t.inputLabel)).toHaveAttribute('aria-invalid', 'true');
+    });
+    expect(puts).toEqual([]);
+  });
+
+  it('오류 뒤 사번을 고쳐 쓰면 앞 오류 문구가 사라진다', async () => {
+    const { user } = render(LINKED, []);
+
+    await user.click(await screen.findByRole('button', { name: t.change }));
+    const modal = await dialog();
+    await user.type(within(modal).getByLabelText(t.inputLabel), 'NOPE{Enter}');
+    expect(await within(modal).findByText(t.notFound)).toBeInTheDocument();
+
+    await user.type(within(modal).getByLabelText(t.inputLabel), 'X');
+    expect(within(modal).queryByText(t.notFound)).not.toBeInTheDocument();
   });
 
   it('조회한 사번이 다른 계정에 연결돼 있으면 보내지 않고 「이미 다른 계정에 연결된 사번」을 낸다', async () => {

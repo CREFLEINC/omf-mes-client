@@ -6,10 +6,10 @@ import { useEffect, useId, useRef, useState, type FormEvent } from 'react';
 
 import { useApiClient } from '../../patterns/api-context';
 import { SaveErrorBanner, useMasterWrite } from '../../patterns/master';
-import { runRequest } from '../../patterns/request';
+import { runRequest, toApiError } from '../../patterns/request';
 import { sessionKeys } from '../../patterns/session';
 import { FieldLabel } from './field-label';
-import { LoadErrorBanner } from './load-error-banner';
+import { describeLoadError, LoadErrorBanner } from './load-error-banner';
 
 const t = messages.usersRoles.workerLink;
 
@@ -163,6 +163,9 @@ export const WorkerLinkField = ({ appUserId, departmentLabel }: WorkerLinkFieldP
         return;
       }
       write.write(found.workerId);
+    } catch (error) {
+      // 사번 조회 자체가 실패했다(통신·서버 오류) — 조용히 끝내지 않고 입력칸 아래에 원인을 낸다.
+      setLocalError(describeLoadError(toApiError(error)));
     } finally {
       setIsLookingUp(false);
     }
@@ -268,6 +271,9 @@ export const WorkerLinkField = ({ appUserId, departmentLabel }: WorkerLinkFieldP
                 value={workerNo}
                 onChange={(event) => {
                   setWorkerNo(event.target.value);
+                  // 고쳐 쓰는 동안 앞 제출의 오류를 남기지 않는다.
+                  setLocalError(null);
+                  if (write.error !== null) write.reset();
                 }}
                 disabled={isBusy}
                 error={inputError}
