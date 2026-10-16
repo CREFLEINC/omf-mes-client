@@ -14,6 +14,7 @@ export const dashboard = {
     trend: '일일 생산실적 추이',
     alerts: '미처리 알람',
     equipment: '설비 현황',
+    shipment: '출하 현황',
   },
 
   filters: {
@@ -139,5 +140,28 @@ export const dashboard = {
     absent: '설비 현황이 이 응답에 오지 않았습니다.',
     /** 첫 조회가 실패해 보일 값이 없을 때. 재시도는 화면 위 오류 배너가 맡는다. */
     failed: '설비 현황을 불러오지 못했습니다. 위의 「다시 시도」를 누르세요.',
+  },
+
+  /** 출하 현황(omf-all-around#114). 네 칸 모두 기준 날짜 · 공장 기준이다. */
+  shipment: {
+    todayShipped: '오늘 출하 실적',
+    todayShipmentCount: (count: string): string => `출하 확정 ${count}건`,
+    waiting: '출하 대기',
+    waitingNote: '기준 날짜까지 요청됐고 아직 출하하지 않은 요청',
+    next: '다음 출하',
+    /** 기준 날짜 이후 가장 이른 미출하 요청이 없을 때. */
+    nextNone: '예정 없음',
+    nextDate: (date: string): string => `출하 요청일 ${date}`,
+    /** 요청 수량이 아니라 아직 출하하지 않은 잔량이다(규격 보정). */
+    remainingQty: (qty: string): string => `남은 수량 ${qty}`,
+    customerUnknown: '고객 미지정',
+    overdue: '납기 지연',
+    overdueNote: '납기가 지났는데 출하 잔량이 남은 수주 줄',
+    qtyUnit: 'EA',
+    countUnit: '건',
+    overdueStatus: '지연 있음',
+    absentTitle: '출하 현황 없음',
+    absent: '출하 현황이 이 응답에 오지 않았습니다.',
+    failed: '출하 현황을 불러오지 못했습니다. 위의 「다시 시도」를 누르세요.',
   },
 } as const;

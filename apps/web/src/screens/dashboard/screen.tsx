@@ -16,6 +16,7 @@ import {
 } from './filters';
 import { KpiCardGrid } from './kpi-card-grid';
 import { LoadErrorBanner } from './load-error-banner';
+import { ShipmentPanel } from './shipment-panel';
 import { plantNote, usePlantOptions } from './lookups';
 import { useDashboardSummary } from './queries';
 import { TrendPanel } from './trend-panel';
@@ -134,6 +135,15 @@ export const DashboardScreen = () => {
         <h2>{t.panes.equipment}</h2>
         <EquipmentPanel
           view={view?.equipment ?? null}
+          isLoading={summary.isPending}
+          isFailed={summary.isError && view === undefined}
+        />
+      </section>
+
+      <section className="pane" aria-label={t.panes.shipment}>
+        <h2>{t.panes.shipment}</h2>
+        <ShipmentPanel
+          view={view?.shipment ?? null}
           isLoading={summary.isPending}
           isFailed={summary.isError && view === undefined}
         />

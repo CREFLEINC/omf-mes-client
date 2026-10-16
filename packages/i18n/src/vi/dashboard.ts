@@ -15,6 +15,7 @@ export const dashboard: Translated<typeof ko.dashboard> = {
     trend: 'Diễn biến sản lượng theo ngày',
     alerts: 'Cảnh báo chưa xử lý',
     equipment: 'Tình trạng thiết bị',
+    shipment: 'Tình trạng xuất hàng',
   },
 
   filters: {
@@ -115,5 +116,25 @@ export const dashboard: Translated<typeof ko.dashboard> = {
     absentTitle: 'Không có tình trạng thiết bị',
     absent: 'Phản hồi này không có tình trạng thiết bị.',
     failed: 'Không tải được tình trạng thiết bị. Hãy bấm «Thử lại» ở phía trên.',
+  },
+
+  shipment: {
+    todayShipped: 'Xuất hàng hôm nay',
+    todayShipmentCount: (count: string): string => `${count} lần xác nhận xuất hàng`,
+    waiting: 'Chờ xuất hàng',
+    waitingNote: 'Yêu cầu đến hết ngày cơ sở nhưng chưa xuất hàng',
+    next: 'Lần xuất hàng tiếp theo',
+    nextNone: 'Chưa có kế hoạch',
+    nextDate: (date: string): string => `Ngày yêu cầu xuất ${date}`,
+    remainingQty: (qty: string): string => `Số lượng còn lại ${qty}`,
+    customerUnknown: 'Chưa chỉ định khách hàng',
+    overdue: 'Trễ hạn giao hàng',
+    overdueNote: 'Dòng đơn hàng đã quá hạn giao nhưng còn số lượng chưa xuất',
+    qtyUnit: 'EA',
+    countUnit: 'yêu cầu',
+    overdueStatus: 'Có trễ hạn',
+    absentTitle: 'Không có tình trạng xuất hàng',
+    absent: 'Phản hồi này không có tình trạng xuất hàng.',
+    failed: 'Không tải được tình trạng xuất hàng. Hãy bấm «Thử lại» ở phía trên.',
   },
 };

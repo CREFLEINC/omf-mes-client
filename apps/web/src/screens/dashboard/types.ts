@@ -1,4 +1,4 @@
-import type { components, DashboardSummarySections } from '@omf-mes/api-client';
+import type { components, DashboardShipment, DashboardSummarySections } from '@omf-mes/api-client';
 import { formatPlantDateTime } from '../../patterns/plant-time';
 import { toEquipmentView, type EquipmentView } from './equipment';
 
@@ -85,6 +85,8 @@ export interface DashboardView {
   trend: DashboardTrendView | null;
   /** 설비 현황(#111). 서버가 섹션을 주지 않으면 `null` — 설비 0대와 다르다. */
   equipment: EquipmentView | null;
+  /** 출하 현황(#114). 계약의 모양을 그대로 쓴다 — 옮길 것이 없다. 섹션이 오지 않으면 `null`. */
+  shipment: DashboardShipment | null;
   asOfText: string | null;
 }
 
@@ -193,5 +195,6 @@ export const toDashboardView = (source: DashboardSummary): DashboardView => ({
           asOfText: formatAsOf(source.trend.asOf),
         },
   equipment: toEquipmentView(source.equipment),
+  shipment: source.shipment ?? null,
   asOfText: formatAsOf(source.asOf),
 });
