@@ -120,8 +120,11 @@ export const toEquipmentView = (source: DashboardEquipment | undefined): Equipme
   };
 };
 
-/** 설비 가동 현황 타일의 기본 표시 대수(사용자 지시 2026-10-16). 나머지는 「전체 설비 보기」 창에서. */
-export const EQUIPMENT_TILE_PREVIEW_COUNT = 12;
+/**
+ * 설비 가동 현황 타일의 최대 표시 대수(⭐ 사용자 지정 2026-10-16 — 넓은 폭에서도 8대, 4열 × 2행). 좁으면 열만
+ * 줄고 그 열 × 2 대. 나머지는 「전체 설비 보기」 창에서.
+ */
+export const EQUIPMENT_TILE_PREVIEW_COUNT = 8;
 
 /**
  * 타일 표시 우선순위(사용자 지시 2026-10-16) — 정지 → 대기 → 교체 → 비가동 → 가동.

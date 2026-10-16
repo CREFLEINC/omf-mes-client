@@ -36,6 +36,7 @@ import { useNotificationEventOptions } from '../notification-center/lookups';
 import { toWebAccess } from '../../patterns/web-access';
 import { useDashboardSummary } from './queries';
 import { TrendPanel } from './trend-panel';
+import { useFillHeight } from './use-fill-height';
 import type { DashboardAlertView, DashboardCardView, SelectOption } from './types';
 import { Panel } from './viz';
 
@@ -86,6 +87,9 @@ export const DashboardScreen = () => {
   const today = plantToday();
   const isLive = isLivePeriod(filters, today);
   const summary = useDashboardSummary(query, { live: isLive });
+  /* 2 · 3행이 화면 아래까지 남은 높이를 나눠 갖는다(3행 생산 추이가 먼저 · `.dash-overview`). */
+  const [overviewEl, setOverviewEl] = useState<HTMLDivElement | null>(null);
+  const fillHeight = useFillHeight(overviewEl);
   /* 서버가 기간을 거절한 이유(400 field dateFrom · dateTo) — 배너 대신 날짜 칸 옆에 둔다. */
   const periodError = periodErrorOf(summary.error);
   /* 알림 이름 풀이 — 알림센터와 같은 유형 목록을 쓴다(코드 원문을 보이지 않는다). */
@@ -153,7 +157,11 @@ export const DashboardScreen = () => {
        * 왼쪽 설비 카드(2행) · 오른쪽 출하 + 알림(3행)이 정하고, 가동 외 설비는 그 높이에 맞춰 줄 수를, 추이는 그래프
        * 높이를 맞춘다(`.dash-fit`). 좁으면 1열로 쌓는다.
        */}
-      <div className="dash-overview">
+      <div
+        className="dash-overview"
+        ref={setOverviewEl}
+        style={fillHeight === null ? undefined : { minHeight: fillHeight }}
+      >
         <EquipmentBoard
           view={view?.equipment ?? null}
           isLoading={summary.isPending}

@@ -329,7 +329,7 @@ export const EquipmentBoard = (props: EquipmentPanelProps) => {
   const pointerInput = usePointerInput();
   const blocked = gate(props);
   const { view } = props;
-  const columns = useGridColumns(gridRef, 6, view !== null && view.items.length > 0);
+  const columns = useGridColumns(gridRef, 4, view !== null && view.items.length > 0);
 
   const body = (() => {
     if (blocked !== null || view === null) return blocked;
@@ -485,22 +485,37 @@ const AllEquipmentDialog = ({
 export const STOPPED_GROUP_PREVIEW_COUNT = 3;
 
 /**
- * 그룹마다 보일 줄 수 — 그룹당 최대 `cap`, 카드 전체로는 `budget`(없으면 제한 없음)을 그룹 순서대로 나눠 쓴다.
- * 예산이 모자라면 뒤 그룹은 머리와 「외 n대」만 남는다(사용자 지정 2026-10-16 — 옆 카드 높이를 넘지 않게).
+ * 그룹마다 보일 줄 수(⭐ 사용자 지정 2026-10-16). 예산(카드 전체 줄 수 · 없으면 제한 없음) 안에서 **모든 그룹에 먼저
+ * 1줄**, 남는 줄은 그룹을 가리지 않고 **오래 멈춘 순**으로 나눈다(그룹당 최대 `cap`). 앞 그룹이 예산을 다 써
+ * 뒤 그룹이 「외 n대」만 남던 문제를 막는다. 그룹 안 줄은 이미 오래된 순이라 앞에서부터 보인다.
  */
 export const allocateRows = (
-  groupSizes: readonly number[],
+  groups: readonly (readonly Pick<EquipmentItemView, 'elapsedMinutes'>[])[],
   cap: number,
   budget: number | null,
 ): number[] => {
+  const counts = groups.map(() => 0);
   let left = budget ?? Number.POSITIVE_INFINITY;
 
-  return groupSizes.map((size) => {
-    const shown = Math.max(0, Math.min(size, cap, left));
-    left -= shown;
-
-    return shown;
+  groups.forEach((rows, index) => {
+    if (left > 0 && rows.length > 0 && cap > 0) {
+      counts[index] = 1;
+      left -= 1;
+    }
   });
+
+  const rest = groups
+    .flatMap((rows, index) =>
+      rows.slice(1, cap).map((row) => ({ index, elapsed: row.elapsedMinutes ?? -1 })),
+    )
+    .sort((a, b) => b.elapsed - a.elapsed);
+  for (const row of rest) {
+    if (left <= 0) break;
+    counts[row.index] = (counts[row.index] ?? 0) + 1;
+    left -= 1;
+  }
+
+  return counts;
 };
 
 /** 상태별 대수 — 고른 범위(라인) 기준. 필터와 떨어진 오른쪽에 선다. */
@@ -534,26 +549,46 @@ export const StoppedPanel = (props: EquipmentPanelProps) => {
    * 에서는 넘치지 않아 그룹당 3행 규칙만 남는다.
    */
   const [budget, setBudget] = useState<number | null>(null);
+  /* 카드가 행 높이를 따라가는 자리(넓은 화면)인가 — 아니면(1열) 그룹당 3행 규칙만. */
+  const [fitted, setFitted] = useState(false);
+  /* 모든 그룹 1줄도 들어가지 않는다 — 그때는 카드를 제 높이대로 세운다(내용을 자르지 않는다). */
+  const [tooTall, setTooTall] = useState(false);
   const [listEl, setListEl] = useState<HTMLDivElement | null>(null);
   const shownTotalRef = useRef(0);
+  const groupCountRef = useRef(0);
 
   useEffect(() => {
     setBudget(null);
+    setTooTall(false);
   }, [view]);
 
   useEffect(() => {
     const body = listEl?.parentElement;
-    if (body === null || body === undefined || typeof ResizeObserver === 'undefined') {
+    const card = listEl?.closest<HTMLElement>('.dash-panel');
+    if (body === null || body === undefined || card === null || card === undefined) {
       return undefined;
     }
+    if (typeof ResizeObserver === 'undefined') return undefined;
     let lastHeight = body.clientHeight;
+    let lastWidth = body.clientWidth;
+    const read = (): void => {
+      setFitted(getComputedStyle(card).contain.includes('size'));
+    };
     const observer = new ResizeObserver(() => {
-      if (body.clientHeight !== lastHeight) {
+      read();
+      if (body.clientWidth !== lastWidth) {
+        /* 폭이 바뀌면 처음부터 — 「너무 높음」도 다시 본다(높이로 되돌리면 늘었다 줄었다 맴돈다). */
+        lastWidth = body.clientWidth;
+        lastHeight = body.clientHeight;
+        setTooTall(false);
+        setBudget(null);
+      } else if (body.clientHeight !== lastHeight) {
         lastHeight = body.clientHeight;
         setBudget(null);
       }
     });
     observer.observe(body);
+    read();
 
     return () => {
       observer.disconnect();
@@ -562,9 +597,12 @@ export const StoppedPanel = (props: EquipmentPanelProps) => {
 
   useLayoutEffect(() => {
     const body = listEl?.parentElement;
-    if (body === null || body === undefined) return;
-    if (body.scrollHeight > body.clientHeight + 1 && shownTotalRef.current > 0) {
+    if (body === null || body === undefined || !fitted) return;
+    if (body.scrollHeight <= body.clientHeight + 1) return;
+    if (shownTotalRef.current > groupCountRef.current) {
       setBudget(shownTotalRef.current - 1);
+    } else if (!tooTall) {
+      setTooTall(true);
     }
   });
 
@@ -583,12 +621,14 @@ export const StoppedPanel = (props: EquipmentPanelProps) => {
     const groups = EQUIPMENT_STATUS_ORDER.filter((code) => code !== 'RUNNING')
       .map((code) => ({ code, rows: stopped.filter((item) => item.statusCode === code) }))
       .filter((group) => group.rows.length > 0);
+    /* 넓은 화면(행 높이를 따라감)이면 그룹당 제한 없이 높이가 허락하는 만큼, 1열이면 그룹당 3행. */
     const shownCounts = allocateRows(
-      groups.map((group) => group.rows.length),
-      STOPPED_GROUP_PREVIEW_COUNT,
-      budget,
+      groups.map((group) => group.rows),
+      fitted && !tooTall ? Number.POSITIVE_INFINITY : STOPPED_GROUP_PREVIEW_COUNT,
+      fitted && !tooTall ? budget : null,
     );
     shownTotalRef.current = shownCounts.reduce((sum, count) => sum + count, 0);
+    groupCountRef.current = groups.length;
 
     return (
       <>
@@ -688,7 +728,7 @@ export const StoppedPanel = (props: EquipmentPanelProps) => {
   })();
 
   return (
-    <Panel title={t.stoppedTitle} tag={t.tagLive} className="dash-fit">
+    <Panel title={t.stoppedTitle} tag={t.tagLive} className={tooTall ? undefined : 'dash-fit'}>
       {body}
     </Panel>
   );

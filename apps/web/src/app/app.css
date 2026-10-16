@@ -7810,12 +7810,19 @@ dl.filter-bar.approval-inbox-detail-facts {
 .dash-overview {
   display: grid;
   grid-template-columns: minmax(0, 62fr) minmax(0, 38fr);
+  /*
+   * 화면 높이 채우기(⭐ 사용자 지정 2026-10-16) — 화면 코드가 남은 높이를 `min-height` 로 준다(`useFillHeight`).
+   * 2행은 제 내용 높이, 남는 높이는 3행(생산 추이 쪽)이 먼저 가져간다. 화면이 낮으면 내용 높이대로 서고
+   * 페이지가 세로로 스크롤한다(줄이지 않는다).
+   */
+  grid-template-rows: auto minmax(auto, 1fr);
   gap: var(--space-4);
 }
 
+/* 오른쪽 출하 / 알림 — 알림 카드가 남는 높이를 받아 행 아래 끝을 맞춘다(내용은 위에서부터). */
 .dash-overview-stack {
   display: grid;
-  align-content: start;
+  grid-template-rows: auto 1fr;
   gap: var(--space-4);
   min-width: 0;
 }
@@ -7865,6 +7872,12 @@ dl.filter-bar.approval-inbox-detail-facts {
   .dash-split,
   .dash-overview {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  /* 1열이면 제 내용 높이대로 쌓는다 — 화면 높이 채우기를 쉰다. */
+  .dash-overview {
+    grid-template-rows: none;
+    min-height: 0 !important;
   }
 
   /* 1열이면 따라갈 옆 카드가 없다 — 제 내용 높이대로(줄 수 예산 · 그래프 높이 맞춤이 쉰다). */
@@ -8359,8 +8372,8 @@ dl.filter-bar.approval-inbox-detail-facts {
 
 .dash-eq-grid {
   display: grid;
-  /* 기본 6열 × 2행(12대) — 좁아지면 열만 줄인다(사용자 지시 2026-10-16). 표시 대수는 열 수 × 2. */
-  grid-template-columns: repeat(6, minmax(0, 1fr));
+  /* 기본 4열 × 2행(8대) — 좁아지면 열만 줄인다(사용자 지정 2026-10-16). 표시 대수는 열 수 × 2(최대 8). */
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: var(--space-2);
   margin: 0;
   padding: 0;
@@ -8369,15 +8382,9 @@ dl.filter-bar.approval-inbox-detail-facts {
 
 /*
  * ⭐ 공통 원칙(c) — 말줄임이 생기면 열 수를 먼저 줄인다(사용자 점검 2026-10-16). 타일 한 칸이 호기 ·
- * 「NG 40 · 5% · C/T 20초」를 끊지 않고 담으려면 약 160px 가 든다 — 6열은 900px 넘을 때만, 그 아래 4열 ·
- * 3열 · 2열. 표시 대수는 열 수 × 2 그대로.
+ * 「NG 40 · 5% · C/T 20초」를 끊지 않고 담으려면 약 160px 가 든다 — 4열 기본, 3열 ≤660 · 2열 ≤480.
+ * 표시 대수는 열 수 × 2(최대 8).
  */
-@container (max-width: 900px) {
-  .dash-eq-grid {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-  }
-}
-
 @container (max-width: 660px) {
   .dash-eq-grid {
     grid-template-columns: repeat(3, minmax(0, 1fr));

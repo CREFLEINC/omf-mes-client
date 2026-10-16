@@ -346,7 +346,7 @@ describe('StoppedPanel', () => {
   });
 });
 
-describe('EquipmentBoard — 12대 표시 · 전체 보기', () => {
+describe('EquipmentBoard — 8대 표시 · 전체 보기', () => {
   const many = toEquipmentView({
     asOf: '2026-10-16T03:00:00Z',
     statusCounts: { RUNNING: 19, STOPPED: 1, WAITING: 0, CHANGEOVER: 0, IDLE: 0 },
@@ -359,15 +359,15 @@ describe('EquipmentBoard — 12대 표시 · 전체 보기', () => {
     ),
   });
 
-  it('기본 12대 — 멈춘 호기가 맨 앞, 코드는 자연 정렬(E-1-2 < E-1-10), 「전체 20대 중 12대 표시」', () => {
+  it('최대 8대(4열 × 2행) — 멈춘 호기가 맨 앞, 코드는 자연 정렬(E-1-2 < E-1-10), 「전체 20대 중 8대 표시」', () => {
     render(<EquipmentBoard view={many} isLoading={false} isFailed={false} />);
 
     const codes = screen
       .getAllByRole('button', { name: /상세 보기/ })
       .map((button) => button.querySelector('.dash-eq-code')?.textContent);
-    expect(codes).toHaveLength(12);
+    expect(codes).toHaveLength(8);
     expect(codes.slice(0, 4)).toEqual(['E-1-15', 'E-1-1', 'E-1-2', 'E-1-3']);
-    expect(screen.getByText(t.shownOf('20', '12'))).toBeInTheDocument();
+    expect(screen.getByText(t.shownOf('20', '8'))).toBeInTheDocument();
   });
 
   it('「전체 설비 보기」 — 창에 20대 전부, 타일을 누르면 상세가 그 위에 열린다', async () => {
@@ -402,9 +402,16 @@ describe('EquipmentBoard — 12대 표시 · 전체 보기', () => {
 });
 
 describe('allocateRows — 가동 외 설비 줄 수 예산', () => {
-  it('그룹당 최대 3행, 예산이 있으면 그룹 순서대로 나눠 쓰고 모자라면 뒤 그룹은 0행', () => {
-    expect(allocateRows([2, 5, 1], 3, null)).toEqual([2, 3, 1]);
-    expect(allocateRows([2, 5, 1], 3, 4)).toEqual([2, 2, 0]);
-    expect(allocateRows([2, 5, 1], 3, 0)).toEqual([0, 0, 0]);
+  const rows = (...elapsed: number[]) => elapsed.map((elapsedMinutes) => ({ elapsedMinutes }));
+
+  it('모든 그룹에 먼저 1줄, 남는 줄은 그룹을 가리지 않고 오래 멈춘 순 — 그룹당 최대 cap', () => {
+    const groups = [rows(300, 200, 100), rows(250, 50), rows(30), rows(400, 10)];
+    expect(allocateRows(groups, 3, null)).toEqual([3, 2, 1, 2]);
+    /* 예산 5 — 먼저 넷에 1줄씩, 남는 1줄은 둘째 줄 중 가장 오래된 것(200분 · 정지 그룹). */
+    expect(allocateRows(groups, 3, 5)).toEqual([2, 1, 1, 1]);
+    /* 예산이 그룹 수보다 적으면 앞 그룹부터 1줄. */
+    expect(allocateRows(groups, 3, 2)).toEqual([1, 1, 0, 0]);
+    /* 넓은 화면은 그룹당 제한 없이. */
+    expect(allocateRows([rows(5, 4, 3, 2, 1)], Number.POSITIVE_INFINITY, null)).toEqual([5]);
   });
 });
