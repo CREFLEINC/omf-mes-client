@@ -1,6 +1,6 @@
 import { LineChart, Skeleton, type ReferenceLine } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 
 import {
   formatFigure,
@@ -23,11 +23,60 @@ const CHART_HEIGHT = 220;
  */
 const DS_CHART_PAD = { top: 16, right: 16, bottom: 32, left: 40 } as const;
 
-/** 툴팁이 그래프 좌우 끝에서 잘리지 않게 붙일 기준 — 점이 끝에서 이만큼 안쪽이면 그쪽 끝에 붙인다. */
-const TIP_EDGE_PX = 80;
+/** 말풍선과 점 사이 간격(px). */
+const TIP_GAP_PX = 12;
 
-/** 점이 이보다 위(px)면 말풍선을 아래로 연다 — 위로 열면 그래프 영역 위로 나간다. */
-const TIP_FLIP_Y = 64;
+/** 이웃 점과 겹침을 볼 때 점 둘레 여유(px) — 점 반지름 + 조금. */
+const TIP_POINT_MARGIN_PX = 6;
+
+/**
+ * 말풍선 자리(그림 안 px, 왼쪽 위 모서리). 위 → 아래 순으로 보되 **그래프 영역 안**이고 **이웃 점을 가리지
+ * 않는** 첫 자리를 고른다. 둘 다 가리면 가리는 점이 적은 쪽. 좌우는 점 가운데에 두고 영역 끝에서만 안쪽으로 민다
+ * (사용자 지시 2026-10-16 — 맨 오른쪽 점의 말풍선이 옆 점을 가렸다).
+ */
+export const placeTip = (
+  at: { x: number; y: number },
+  size: { width: number; height: number },
+  positions: readonly { x: number; y: number }[],
+  areaWidth: number,
+): { left: number; top: number } => {
+  /* 왼쪽 끝은 y축 글자(그림 여백 안)를 덮지 않게 그림 영역 시작 조금 앞에서 멈춘다. */
+  const minLeft = DS_CHART_PAD.left - 6;
+  const left = Math.min(
+    Math.max(at.x - size.width / 2, minLeft),
+    Math.max(areaWidth - size.width, minLeft),
+  );
+  const coveredBy = (top: number) =>
+    positions.filter(
+      (point) =>
+        point !== at &&
+        point.x >= left - TIP_POINT_MARGIN_PX &&
+        point.x <= left + size.width + TIP_POINT_MARGIN_PX &&
+        point.y >= top - TIP_POINT_MARGIN_PX &&
+        point.y <= top + size.height + TIP_POINT_MARGIN_PX,
+    );
+  const above = at.y - TIP_GAP_PX - size.height;
+  const below = at.y + TIP_GAP_PX;
+  /* 위에서 이웃 점을 가리면 그 점들보다 더 위로 올린 자리도 본다(오른쪽 끝 점처럼 아래 자리가 없을 때). */
+  const aboveCovered = coveredBy(above);
+  const higher =
+    aboveCovered.length === 0
+      ? above
+      : Math.min(...aboveCovered.map((point) => point.y)) - TIP_POINT_MARGIN_PX - 1 - size.height;
+  const candidates = [above, below, higher].filter(
+    (top) => top >= 0 && top + size.height <= CHART_HEIGHT,
+  );
+  if (candidates.length === 0) return { left, top: Math.max(above, 0) };
+
+  const best = candidates.reduce((chosen, top) =>
+    coveredBy(top).length < coveredBy(chosen).length ? top : chosen,
+  );
+
+  return { left, top: best };
+};
+
+/** 말풍선 크기를 재기 전 첫 그림에 쓰는 어림값 — 잰 뒤 곧바로 바뀐다. */
+const TIP_SIZE_GUESS = { width: 120, height: 46 };
 
 /**
  * 점 이름표(「10-13」)를 「2026.10.13」로 — 서버는 월-일만 준다. 연도는 기준일에서 읽고, 기준일보다 뒤의 월-일이면
@@ -69,7 +118,7 @@ export const toPointPositions = (
 /**
  * 점 툴팁(⭐ 사용자 결정 2026-10-16) — DS 차트는 그대로 두고 그 위에 날짜 칸마다 투명한 단추를 겹친다.
  * 마우스 올림 · 키보드 포커스로 보이고, 누르면(터치 탭) 고정되며 다른 곳을 누르면 닫힌다. 내용은 날짜 ·
- * 정확한 생산량(천 단위 · 단위). 그래프 좌우 끝에서는 말풍선을 안쪽으로 붙이고, 위쪽 점은 아래로 연다.
+ * 정확한 생산량(천 단위 · 단위). 말풍선 자리는 `placeTip` — 영역 안, 이웃 점을 가리지 않는 위 · 아래.
  */
 const PointTips = ({
   points,
@@ -87,7 +136,20 @@ const PointTips = ({
   const [hovered, setHovered] = useState<number | null>(null);
   const [pinned, setPinned] = useState<number | null>(null);
   const layerRef = useRef<HTMLDivElement>(null);
+  const tipRef = useRef<HTMLSpanElement>(null);
+  const [tipSize, setTipSize] = useState(TIP_SIZE_GUESS);
   const shown = hovered ?? pinned;
+
+  /* 말풍선의 실제 크기 — 칠하기 전에 재서 자리를 정한다(겹침 판정에 쓴다). */
+  useLayoutEffect(() => {
+    const tip = tipRef.current;
+    if (tip === null) return;
+    const measured = { width: tip.offsetWidth, height: tip.offsetHeight };
+    if (measured.width === 0) return;
+    setTipSize((current) =>
+      current.width === measured.width && current.height === measured.height ? current : measured,
+    );
+  }, [shown, width]);
 
   useEffect(() => {
     if (pinned === null) return undefined;
@@ -115,6 +177,7 @@ const PointTips = ({
 
   const active = shown === null ? undefined : points[shown];
   const at = shown === null ? undefined : positions[shown];
+  const place = at === undefined ? undefined : placeTip(at, tipSize, positions, width);
 
   return (
     <div ref={layerRef} className="dash-trend-tips" style={{ width, height: CHART_HEIGHT }}>
@@ -158,20 +221,14 @@ const PointTips = ({
           />
         );
       })}
-      {active !== undefined && at !== undefined && (
+      {active !== undefined && at !== undefined && place !== undefined && (
         <>
           <span className="dash-trend-ring" style={{ left: at.x, top: at.y }} aria-hidden="true" />
           <span
+            ref={tipRef}
             role="tooltip"
-            className={[
-              'dash-trend-tip',
-              at.x < TIP_EDGE_PX ? 'dash-trend-tip-start' : '',
-              at.x > width - TIP_EDGE_PX ? 'dash-trend-tip-end' : '',
-              at.y < TIP_FLIP_Y ? 'dash-trend-tip-below' : '',
-            ]
-              .filter(Boolean)
-              .join(' ')}
-            style={{ left: at.x, top: at.y }}
+            className="dash-trend-tip"
+            style={{ left: place.left, top: place.top }}
           >
             {/* 1줄 날짜(작은 회색) · 2줄 수량(크고 굵게, 단위는 작게) — 사용자 지시 2026-10-16. */}
             <span className="dash-trend-tip-date">{toTipDate(active.label, baseDate)}</span>

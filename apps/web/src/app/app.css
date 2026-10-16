@@ -7961,7 +7961,7 @@ dl.filter-bar.approval-inbox-detail-facts {
   transform: translate(-50%, -50%);
 }
 
-/* 말풍선 — 얇은 DS 테두리 · 카드 바탕 · 약한 그림자, 작고 차분하게. 점 위로 간격을 두고 연다. */
+/* 말풍선 — 얇은 DS 테두리 · 카드 바탕 · 약한 그림자, 작고 차분하게. 자리는 화면 코드가 정한다(`placeTip`). */
 .dash-trend-tip {
   position: absolute;
   display: grid;
@@ -7973,7 +7973,6 @@ dl.filter-bar.approval-inbox-detail-facts {
   box-shadow: var(--elevation-1);
   color: var(--on-surface);
   white-space: nowrap;
-  transform: translate(-50%, calc(-100% - 12px));
   z-index: 1;
 }
 
@@ -7998,26 +7997,6 @@ dl.filter-bar.approval-inbox-detail-facts {
   letter-spacing: var(--type-label-sm-tracking);
   font-weight: 400;
   color: var(--on-surface-muted);
-}
-
-.dash-trend-tip-start {
-  transform: translate(-12px, calc(-100% - 12px));
-}
-
-.dash-trend-tip-end {
-  transform: translate(calc(-100% + 12px), calc(-100% - 12px));
-}
-
-.dash-trend-tip-below {
-  transform: translate(-50%, 12px);
-}
-
-.dash-trend-tip-start.dash-trend-tip-below {
-  transform: translate(-12px, 12px);
-}
-
-.dash-trend-tip-end.dash-trend-tip-below {
-  transform: translate(calc(-100% + 12px), 12px);
 }
 
 /*
