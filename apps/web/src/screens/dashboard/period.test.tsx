@@ -6,7 +6,7 @@ import { describe, expect, it } from 'vitest';
 
 import { toEquipmentView } from './equipment';
 import { OverviewKpis } from './overview-kpis';
-import { SingleDayContext, usePeriodTags } from './period';
+import { periodRangeTitle, SingleDayContext, usePeriodTags } from './period';
 import type { DashboardCardView } from './types';
 
 const k = messages.dashboard.kpi;
@@ -82,5 +82,22 @@ describe('기간 표기', () => {
     expect(period.monthTotal).toBe('선택 기간');
     expect(period.prev('90%')).toBe('직전 기간 90%');
     expect(period.flat).toBe('직전 기간과 동일');
+  });
+});
+
+/* 품질 종합 기간 이름표 — 마우스 올림 글에 실제 날짜 범위(사용자 지시 2026-10-19). */
+describe('periodRangeTitle', () => {
+  it('하루 조회 — 금일 · 당월 · 최근 9일, 기간 조회 — 선택 기간, 모르는 이름표는 null', () => {
+    const day = { baseDate: '2026-10-19', dateFrom: null, dateTo: null };
+    expect(periodRangeTitle(q.tagToday, day)).toBe('금일: 2026.10.19');
+    expect(periodRangeTitle(q.tagMonth, day)).toBe('당월: 2026.10.01 ~ 2026.10.19');
+    expect(periodRangeTitle(q.dailyRecent, day)).toBe('최근 9일: 2026.10.11 ~ 2026.10.19');
+    /* 달이 바뀌는 9일. */
+    expect(periodRangeTitle(q.dailyRecent, { ...day, baseDate: '2026-10-03' })).toBe(
+      '최근 9일: 2026.09.25 ~ 2026.10.03',
+    );
+    const span = { baseDate: '2026-10-19', dateFrom: '2026-10-13', dateTo: '2026-10-19' };
+    expect(periodRangeTitle(q.tagPeriod, span)).toBe('선택 기간: 2026.10.13 ~ 2026.10.19');
+    expect(periodRangeTitle('현재', day)).toBeNull();
   });
 });

@@ -19,6 +19,7 @@ import {
   type NamedQty,
   type SeriesPoint,
 } from './viz-math';
+import { usePeriodRangeTitle } from './period';
 import { useChartWidth } from './use-chart-width';
 
 const t = messages.dashboard.viz;
@@ -38,11 +39,23 @@ const AXIS_LABEL_SLOT_PX = 56;
  */
 
 /** 기간 표시(「당월」 · 「금일」 · 「현재」). 상태가 아니라 이름표라 회색이다. */
-export const PeriodTag = ({ children }: { children: string }) => (
-  <Chip size="sm" status="idle">
-    {children}
-  </Chip>
-);
+export const PeriodTag = ({ children }: { children: string }) => {
+  /* 품질 종합만 — 기간 이름표에 실제 날짜 범위를 마우스 올림 글로(⭐ 사용자 지시 2026-10-19 「기간 관계 명확히」). */
+  const range = usePeriodRangeTitle(children);
+  const chip = (
+    <Chip size="sm" status="idle">
+      {children}
+    </Chip>
+  );
+
+  return range === null ? (
+    chip
+  ) : (
+    <span className="dash-period-tag" title={range} aria-label={range}>
+      {chip}
+    </span>
+  );
+};
 
 export interface PanelProps {
   title: string;
@@ -621,6 +634,7 @@ export const MultiLineChart = ({
   tooltip = false,
   tipLabels,
   niceTicks = false,
+  gapMarks = false,
 }: {
   series: LineSeries[];
   caption: string;
@@ -635,6 +649,12 @@ export const MultiLineChart = ({
    * IQC · PQC · OQC 탭만 켠다(4개 탭 정돈 2026-10-19).
    */
   niceTicks?: boolean;
+  /**
+   * 검사가 없는 날과 실제 값을 구분한다(⭐ 품질 종합만 · 사용자 지시 2026-10-19) — 모든 계열에 값이 없는 날은 날짜를
+   * 옅게 쓰고 세로 점선을 긋는다. 앞뒤가 끊겨 혼자 남은 점은 테두리를 둘러 크게 그리고, 끝 이름표가 겹침을 피해
+   * 점에서 떨어지면 점과 이름표를 짧은 선으로 잇는다.
+   */
+  gapMarks?: boolean;
 }) => {
   const [figureRef, W] = useChartWidth<HTMLElement>();
   const H = height ?? CHART_H;
@@ -706,11 +726,28 @@ export const MultiLineChart = ({
               y2={yAt(domain.min)}
             />
           )}
+          {gapMarks &&
+            labels.map((label, index) =>
+              series.every((entry) => (entry.points[index]?.value ?? null) === null) ? (
+                <line
+                  key={`gap-${label}`}
+                  className="dash-gap-guide"
+                  x1={xAt(index, labels.length)}
+                  x2={xAt(index, labels.length)}
+                  y1={PAD.top}
+                  y2={PAD.top + plotH}
+                />
+              ) : null,
+            )}
           {labels.map((label, index) =>
             index % labelStep !== 0 ? null : (
               <text
                 key={label}
-                className="dash-axis"
+                className={
+                  gapMarks && series.every((entry) => (entry.points[index]?.value ?? null) === null)
+                    ? 'dash-axis dash-axis-empty'
+                    : 'dash-axis'
+                }
                 x={xAt(index, labels.length)}
                 y={H - 8}
                 textAnchor="middle"
@@ -737,15 +774,34 @@ export const MultiLineChart = ({
                       .join(' ')}
                   />
                 ))}
-                {segments.flat().map((point) => (
-                  <circle
-                    key={point.index}
-                    className="dash-point"
-                    cx={xAt(point.index, labels.length)}
-                    cy={yAt(point.value)}
-                    r={3}
-                  />
-                ))}
+                {segments.flatMap((segment) =>
+                  segment.map((point) => (
+                    <circle
+                      key={point.index}
+                      className={
+                        gapMarks && segment.length === 1
+                          ? 'dash-point dash-point-solo'
+                          : 'dash-point'
+                      }
+                      cx={xAt(point.index, labels.length)}
+                      cy={yAt(point.value)}
+                      r={gapMarks && segment.length === 1 ? 4.5 : 3}
+                    />
+                  )),
+                )}
+                {gapMarks &&
+                  last !== undefined &&
+                  Math.abs(
+                    (endLabelY[seriesIndex] ?? yAt(last.value) + 4) - (yAt(last.value) + 4),
+                  ) > 2 && (
+                    <line
+                      className="dash-line-leader"
+                      x1={xAt(last.index, labels.length) + 4}
+                      y1={yAt(last.value)}
+                      x2={xAt(last.index, labels.length) + 7}
+                      y2={(endLabelY[seriesIndex] ?? yAt(last.value) + 4) - 4}
+                    />
+                  )}
                 {last !== undefined && (
                   <text
                     className="dash-line-end"

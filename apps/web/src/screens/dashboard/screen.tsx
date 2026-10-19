@@ -20,7 +20,7 @@ import {
 import { formatLastUpdated } from './last-updated';
 import { LoadErrorBanner, periodErrorOf } from './load-error-banner';
 import { OverviewKpis } from './overview-kpis';
-import { FilterQueryContext, SingleDayContext } from './period';
+import { FilterQueryContext, PeriodRangeContext, SingleDayContext } from './period';
 import { ShipmentPanel } from './shipment-panel';
 import { plantNote, usePlantOptions } from './lookups';
 import {
@@ -295,7 +295,26 @@ export const DashboardScreen = () => {
                   isLoading={summary.isPending}
                   isFailed={isFailed}
                 >
-                  {(quality) => <TabBody quality={quality} allows={access.allows} />}
+                  {(quality) =>
+                    value === 'quality' ? (
+                      /* 품질 종합만 — 기간 이름표에 실제 날짜 범위(사용자 지시 2026-10-19). */
+                      <PeriodRangeContext.Provider
+                        value={
+                          view === undefined || view === null
+                            ? null
+                            : {
+                                baseDate: view.baseDate,
+                                dateFrom: query.dateFrom ?? null,
+                                dateTo: query.dateTo ?? null,
+                              }
+                        }
+                      >
+                        <TabBody quality={quality} allows={access.allows} />
+                      </PeriodRangeContext.Provider>
+                    ) : (
+                      <TabBody quality={quality} />
+                    )
+                  }
                 </QualityGate>
               ),
             })),

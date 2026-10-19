@@ -9977,6 +9977,32 @@ dl.filter-bar.approval-inbox-detail-facts {
   fill: currentColor;
 }
 
+/* 품질 종합 일별 합격률 — 검사 없는 날(옅은 날짜 · 세로 점선), 혼자 남은 점(테두리), 끝 이름표 잇는 선. */
+.dash-gap-guide {
+  stroke: var(--outline-variant);
+  stroke-dasharray: 2 4;
+}
+
+.dash-axis.dash-axis-empty {
+  fill: var(--on-surface-muted);
+  opacity: 0.55;
+}
+
+.dash-point.dash-point-solo {
+  stroke: var(--surface-container);
+  stroke-width: 2;
+}
+
+.dash-line-leader {
+  stroke: currentColor;
+  stroke-width: 1;
+}
+
+.dash-period-tag {
+  display: inline-flex;
+  cursor: help;
+}
+
 .dash-line-end {
   fill: currentColor;
   font: var(--type-label-sm);

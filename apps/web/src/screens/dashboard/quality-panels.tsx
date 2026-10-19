@@ -313,10 +313,13 @@ const DailyPanel = ({
   title,
   tooltip = false,
   niceTicks = false,
+  gapMarks = false,
 }: {
   quality: DashboardQuality;
   kinds: readonly QualityKind[];
   title: string;
+  /** 검사 없는 날 · 혼자 남은 점 구분 — 품질 종합만(사용자 지시 2026-10-19). */
+  gapMarks?: boolean;
   /** 날짜 칸 툴팁(날짜 + 유형별 합격률) — 품질 종합 · IQC · PQC · OQC(사용자 확정 2026-10-19). */
   tooltip?: boolean;
   /** 보기 좋은 눈금 — IQC · PQC · OQC 탭만(범위는 그대로). */
@@ -343,6 +346,7 @@ const DailyPanel = ({
               tooltip={tooltip}
               tipLabels={tooltip ? tipDates(quality, kinds) : undefined}
               niceTicks={niceTicks}
+              gapMarks={gapMarks}
             />
           )}
         </FitChart>
@@ -384,13 +388,14 @@ const counterpartColumn = (counterpart: Counterpart): Column<RecentLotRow> => {
  * 검사 일자는 「10-16」(공장 시각)만 칸에 적고, 시각까지는 `title`로 둔다 — 좁은 칸에서 일시가 두 줄로
  * 꺾였다(브라우저 확인). 읽을 수 없으면 원문.
  */
-const InspectedAt = ({ value }: { value: string }) => {
+const InspectedAt = ({ value, full = false }: { value: string; full?: boolean }) => {
   const parts = toPlantDateTimeParts(value);
   if (parts === null) return <>{value}</>;
 
   return (
     <time dateTime={value} title={`${parts.date} ${parts.time}`}>
-      {shortDate(parts.date)}
+      {/* ⭐ 품질 종합은 날짜 표기 원칙(YYYY.MM.DD)대로(사용자 지시 2026-10-19), 다른 탭은 좁은 칸이라 「10-16」. */}
+      {full ? parts.date.replaceAll('-', '.') : shortDate(parts.date)}
     </time>
   );
 };
@@ -420,6 +425,7 @@ const RecentLotsPanel = ({
   counterpart,
   itemTitle = false,
   linked = false,
+  fullDate = false,
 }: {
   title: string;
   rows: RecentLotRow[];
@@ -428,6 +434,8 @@ const RecentLotsPanel = ({
   itemTitle?: boolean;
   /** 줄을 누르면 검사결과 상세로 — 품질 종합만, 그 화면 권한이 있을 때(사용자 지시 2026-10-19). */
   linked?: boolean;
+  /** 일시를 「2026.10.19」로 — 품질 종합만(사용자 지시 2026-10-19). */
+  fullDate?: boolean;
 }) => (
   <Panel title={title} tag={t.recentLotsLead}>
     {/* 제목은 패널이 이미 말한다 — 표 제목(caption)을 두면 같은 말이 두 번 보인다. 이름은 aria-label 로. */}
@@ -437,7 +445,7 @@ const RecentLotsPanel = ({
           {
             key: 'inspectedAt',
             header: t.column.inspectedAt,
-            render: (row) => <InspectedAt value={row.inspectedAt} />,
+            render: (row) => <InspectedAt value={row.inspectedAt} full={fullDate} />,
           },
           counterpartColumn(counterpart),
           {
@@ -585,6 +593,7 @@ export const QualityOverviewTab = ({
           kinds={['IQC', 'PQC', 'OQC']}
           title={t.dailyTitleAll}
           tooltip
+          gapMarks
         />
         <div className="dash-qo-side">
           <Panel title={t.vendorDefects} sub={t.qtyShareSub} tag={tags.monthTotal}>
@@ -653,6 +662,7 @@ export const QualityOverviewTab = ({
           rows={toRecentLotRows(quality)}
           counterpart="kind"
           itemTitle
+          fullDate
           linked={allows(INSPECTION_RESULTS_PATH)}
         />
       </div>

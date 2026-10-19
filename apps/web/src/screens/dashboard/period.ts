@@ -41,3 +41,41 @@ export const usePeriodTags = () =>
  * 기간 · 공장). 화면이 내려 준다.
  */
 export const FilterQueryContext = createContext<DashboardFilterQuery>({});
+
+/** 지금 보는 응답의 실제 기간 — 품질 종합만 내려 준다(그 밖에서는 `null` · 이름표에 범위를 붙이지 않는다). */
+export interface PeriodRange {
+  baseDate: string;
+  dateFrom: string | null;
+  dateTo: string | null;
+}
+
+export const PeriodRangeContext = createContext<PeriodRange | null>(null);
+
+const dotted = (date: string): string => date.replaceAll('-', '.');
+
+const shiftDays = (date: string, days: number): string => {
+  const at = new Date(`${date}T00:00:00Z`);
+  at.setUTCDate(at.getUTCDate() + days);
+  return at.toISOString().slice(0, 10);
+};
+
+/**
+ * 기간 이름표 → 실제 날짜 범위(⭐ 사용자 지시 2026-10-19). 하루 조회면 「금일」 = 기준일, 「당월 · 당월 누계」 =
+ * 그달 1일 ~ 기준일, 「최근 9일」 = 기준일 포함 9일. 이틀 이상이면 「선택 기간」 = 고른 기간. 모르는 이름표면 `null`.
+ */
+export const periodRangeTitle = (tag: string, range: PeriodRange): string | null => {
+  const base = range.baseDate;
+  const span = (from: string, to: string): string => `${tag}: ${dotted(from)} ~ ${dotted(to)}`;
+  if (tag === q.tagToday) return `${tag}: ${dotted(base)}`;
+  if (tag === q.tagMonth || tag === q.tagMonthTotal) return span(`${base.slice(0, 8)}01`, base);
+  if (tag === q.dailyRecent) return span(shiftDays(base, -8), base);
+  if (tag === q.tagPeriod && range.dateFrom !== null && range.dateTo !== null) {
+    return span(range.dateFrom, range.dateTo);
+  }
+  return null;
+};
+
+export const usePeriodRangeTitle = (tag: string): string | null => {
+  const range = useContext(PeriodRangeContext);
+  return range === null ? null : periodRangeTitle(tag, range);
+};
