@@ -7,7 +7,7 @@ import { fileURLToPath } from 'node:url';
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
 
 /**
- * 팀별로 고정한 설계 참조 클론의 계약 경로.
+ * 고정한 설계 참조 클론의 계약 경로.
  *
  * 다른 로컬 설계 체크아웃을 자동 탐색하면 작업 도중 설계 버전이 조용히 바뀔 수 있다.
  * 기본값은 `.client-dev/state.json`과 함께 고정하는 격리 클론 하나뿐이다.
@@ -16,7 +16,7 @@ const workflowStatePath = path.resolve(repoRoot, '.client-dev', 'state.json');
 
 const readWorkflowState = () => {
   if (!existsSync(workflowStatePath)) {
-    throw new Error('설계 고정 상태가 없습니다. pnpm workflow init을 먼저 실행하세요.');
+    throw new Error('설계 고정 상태가 없습니다. pnpm design:pin을 먼저 실행하세요.');
   }
 
   return JSON.parse(readFileSync(workflowStatePath, 'utf8'));
@@ -100,7 +100,7 @@ const pinnedSpecRoot = () => {
   const source = state.designBaseline?.source;
   const commit = state.designBaseline?.commit;
   if (typeof source !== 'string' || !/^[0-9a-f]{40}$/i.test(String(commit ?? ''))) {
-    throw new Error('설계 고정 상태가 올바르지 않습니다. pnpm workflow:check를 실행하세요.');
+    throw new Error('설계 고정 상태가 올바르지 않습니다. pnpm design:check를 실행하세요.');
   }
 
   const designRoot = path.isAbsolute(source) ? source : path.resolve(repoRoot, source);
@@ -113,7 +113,7 @@ const pinnedSpecRoot = () => {
     .toLowerCase();
   if (head !== commit.toLowerCase()) {
     throw new Error(
-      `설계 참조 HEAD(${head})가 고정 커밋(${commit})과 다릅니다. 설계 변동 공지 없이 사용하지 마세요.`,
+      `설계 참조 HEAD(${head})가 고정 커밋(${commit})과 다릅니다. pnpm design:pin으로 다시 고정하세요.`,
     );
   }
 
@@ -184,7 +184,7 @@ export const resolveSpecPaths = () => {
         ...missing.map((specPath) => `  ${specPath}`),
         '',
         '정본은 설계 저장소(omf-mes)의 design/wiki/api-contracts/openapi/ 아래에 있습니다.',
-        'pnpm workflow:check 로 팀별 설계 고정 상태를 먼저 확인하세요.',
+        'pnpm design:check 로 설계 고정 상태를 먼저 확인하세요.',
         '격리된 도구 시험에서만 OMF_SPEC_PATH 로 별도 경로를 명시할 수 있습니다.',
       ].join('\n'),
     );
