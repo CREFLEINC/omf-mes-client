@@ -44,6 +44,31 @@ const t = messages.dashboard;
 
 type DashboardTab = 'overview' | 'quality' | 'iqc' | 'pqc' | 'oqc' | 'nonconformance';
 
+const DASHBOARD_TABS: readonly DashboardTab[] = [
+  'overview',
+  'quality',
+  'iqc',
+  'pqc',
+  'oqc',
+  'nonconformance',
+];
+
+/**
+ * 고른 탭은 주소(`tab`)에 둔다 — 다른 화면으로 갔다가 뒤로 오면 보던 탭으로 돌아온다(⭐ 사용자 지시
+ * 2026-10-19 「뒤로 가기를 누르면 무조건 대시보드 탭으로 간다」). 첫 탭은 주소에 적지 않는다. 모르는 값은 첫 탭.
+ */
+export const TAB_PARAM = 'tab';
+export const readTab = (params: URLSearchParams): DashboardTab => {
+  const raw = params.get(TAB_PARAM);
+  return DASHBOARD_TABS.find((tab) => tab === raw) ?? 'overview';
+};
+const withTab = (params: URLSearchParams, tab: DashboardTab): URLSearchParams => {
+  const next = new URLSearchParams(params);
+  if (tab === 'overview') next.delete(TAB_PARAM);
+  else next.set(TAB_PARAM, tab);
+  return next;
+};
+
 /** 품질 탭 다섯(omf-all-around#113) — 화면 구성안의 차례. */
 const QUALITY_TABS = [
   { value: 'quality', label: t.tabs.quality, TabBody: QualityOverviewTab },
@@ -97,7 +122,7 @@ export const DashboardScreen = () => {
   /* 출하 현황 칸을 눌러 갈 화면 — 사이드바와 같은 권한 판정(세션 권한)으로 링크 여부를 정한다. */
   const { session } = useSession();
   const access = toWebAccess(session?.permissions);
-  const [tab, setTab] = useState<DashboardTab>('overview');
+  const tab = readTab(searchParams);
   const plants = usePlantOptions();
 
   const view = summary.data;
@@ -238,7 +263,8 @@ export const DashboardScreen = () => {
             isLive={isLive}
             periodError={periodError}
             onChange={(next) => {
-              setSearchParams(toSearchParams(next));
+              /* 조건을 바꿔도 보던 탭은 그대로. */
+              setSearchParams(withTab(toSearchParams(next), tab));
             }}
             onRefresh={() => {
               void summary.refetch();
@@ -253,7 +279,10 @@ export const DashboardScreen = () => {
           aria-label={t.tabs.label}
           value={tab}
           onChange={(next) => {
-            setTab(next as DashboardTab);
+            /* 탭 전환은 기록을 쌓지 않는다(replace) — 뒤로 가기가 탭을 하나씩 되짚지 않고 이전 화면으로 간다. */
+            setSearchParams((current) => withTab(current, next as DashboardTab), {
+              replace: true,
+            });
           }}
           items={[
             { value: 'overview', label: t.tabs.overview, content: overview },
