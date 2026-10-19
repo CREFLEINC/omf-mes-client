@@ -46,6 +46,12 @@ export const LOT_TYPE_CODE = 'MATERIAL';
 export const DOCUMENT_TYPE_CODE = 'MATERIAL_LOT_LABEL';
 
 /**
+ * IQC 라벨(omf-all-around#110 · 서버 선행 P-40). IQC 대상 자재면 자재 라벨 뒤에 한 장 더 찍는다.
+ * ⚠ 설계 사본(전달본)의 enum 에 아직 없는 값이라 단언한다 — 사본이 받아 오면 단언을 걷는다.
+ */
+export const IQC_DOCUMENT_TYPE_CODE = 'IQC_LABEL' as unknown as typeof DOCUMENT_TYPE_CODE;
+
+/**
  * ⚠ **자리표시다.** 발행 대상이 LOT 임을 뜻하는 코드 문자열이 아직 정해지지 않았다 — 계약
  * `DocumentTarget.targetTypeCode` 가 「값 문자열은 아직 확정되지 않았다」로 명시한다.
  *

@@ -7,6 +7,17 @@ import { GROUP_TYPE_OPTIONS, type CodeOption } from './code-options';
 import { SelectField } from './select-field';
 import type { GroupFormValues } from './types';
 
+export type LocationField =
+  'defaultWipLocationId' | 'defaultFgLocationId' | 'defaultScrapLocationId';
+const LOCATION_FIELDS: {
+  field: LocationField;
+  label: 'defaultWipLocation' | 'defaultFgLocation' | 'defaultScrapLocation';
+}[] = [
+  { field: 'defaultWipLocationId', label: 'defaultWipLocation' },
+  { field: 'defaultFgLocationId', label: 'defaultFgLocation' },
+  { field: 'defaultScrapLocationId', label: 'defaultScrapLocation' },
+];
+
 export interface GroupFormPaneProps {
   mode: 'create' | 'edit';
   values: GroupFormValues;
@@ -20,6 +31,10 @@ export interface GroupFormPaneProps {
   plantOptions: CodeOption[];
   /** 상위 그룹 선택지. 자기 자신과 후손은 이미 빠져 있다 */
   parentOptions: CodeOption[];
+  /** 기본 위치 칸별 선택지 — 그 공장의, 칸에 맞는 창고 유형의 위치만 온다. */
+  locationOptions: Record<LocationField, CodeOption[]>;
+  /** 위치 선택지가 잘렸거나 공장을 아직 고르지 않았을 때의 안내 */
+  locationNote?: string;
   isActive: boolean;
   isDirty: boolean;
   isSaving: boolean;
@@ -39,6 +54,8 @@ export const GroupFormPane = ({
   codeLockReason,
   plantOptions,
   parentOptions,
+  locationOptions,
+  locationNote,
   isActive,
   isDirty,
   isSaving,
@@ -107,6 +124,18 @@ export const GroupFormPane = ({
           note={mode === 'edit' ? t.actionReasons.parentExcludesSelfAndDescendants : undefined}
           error={fieldErrors.parentGroupId}
         />
+
+        {LOCATION_FIELDS.map(({ field, label }) => (
+          <SelectField
+            key={field}
+            label={t.fields[label]}
+            options={locationOptions[field]}
+            value={values[field]}
+            onChange={(value) => onChange({ [field]: value })}
+            note={locationNote}
+            error={fieldErrors[field]}
+          />
+        ))}
 
         {/* 값을 보여 주기만 하면 되는 자리는 폼 컨트롤을 잠그지 말고 값 표기로 낸다. */}
         <div>

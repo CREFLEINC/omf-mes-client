@@ -2,7 +2,7 @@ import type { ApiClient } from '@omf-mes/api-client';
 import { useQueries, useQuery, type UseQueryResult } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
-import { terminalPrinters } from '../../patterns/pop-terminal-printers';
+import { shellSelectsPrinter, terminalPrinters } from '../../patterns/pop-terminal-printers';
 import { runRequest } from '../../patterns/request';
 import { REISSUE_REASON_CODE_GROUP } from './codes';
 import {
@@ -209,6 +209,13 @@ export const usePrinters = (): UseQueryResult<PrinterView[]> => {
   });
 };
 
+/** 셸이 고른 프린터로 보낼 수 있는가 — 모르면 `false`(화면은 고르는 칸을 막는다). */
+export const useShellSelectsPrinter = (): UseQueryResult<boolean> =>
+  useQuery({
+    queryKey: ['pop-material-lot-label', 'printer-selectable'],
+    queryFn: shellSelectsPrinter,
+  });
+
 export interface TargetRowsResult {
   rows: TargetRow[];
   isPending: boolean;
@@ -258,6 +265,12 @@ export const useTargetRows = (
   };
 };
 
+/** 이미 등록된 라인의 LOT — 번호와 품질 상태(라벨을 낼 수 있는 상태인지 단추가 본다). */
+export interface RegisteredLot {
+  lotNo: string;
+  statusCode: string;
+}
+
 /**
  * 이미 등록된 라인의 **LOT 번호.**
  *
@@ -267,7 +280,7 @@ export const useTargetRows = (
  * **등록 전에는 부르지 않는다**(`enabled`). 번호는 등록 시점에 서버가 매기므로 그 전에는
  * 조회할 대상이 없다.
  */
-export const useLotNo = (lotId: number | null): UseQueryResult<string> => {
+export const useLotNo = (lotId: number | null): UseQueryResult<RegisteredLot> => {
   const { client } = useApiClient();
 
   return useQuery({
@@ -280,7 +293,7 @@ export const useLotNo = (lotId: number | null): UseQueryResult<string> => {
         client.GET('/trace/lots/{lotId}', { params: { path: { lotId } } }),
       );
 
-      return data.lot.lotNo;
+      return { lotNo: data.lot.lotNo, statusCode: data.lot.statusCode };
     },
   });
 };

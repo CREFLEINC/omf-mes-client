@@ -102,6 +102,42 @@ describe('VersionFormPane — 샘플 비율 표기', () => {
   });
 });
 
+describe('VersionFormPane — 샘플링 방법 (omf-all-around#103)', () => {
+  it('전수검사면 샘플 비율 칸이 잠긴다', () => {
+    renderPane({
+      values: {
+        ...versionToFormValues(inspectionPlanVersionFixtures[0]!),
+        samplingMethodCode: 'FULL_INSPECTION',
+      },
+    });
+
+    expect(screen.getByLabelText('샘플 비율(%)')).toBeDisabled();
+  });
+
+  it('샘플 방식이면 샘플 비율 칸이 열린다', () => {
+    renderPane({
+      values: {
+        ...versionToFormValues(inspectionPlanVersionFixtures[0]!),
+        samplingMethodCode: 'SAMPLE_BY_UNIT',
+      },
+    });
+
+    expect(screen.getByLabelText(/샘플 비율/)).toBeEnabled();
+  });
+
+  it('전수검사로 바꾸면 비율을 함께 비운다', async () => {
+    const { onChange, user } = renderPane();
+
+    await user.click(screen.getByRole('combobox', { name: '샘플링 방법' }));
+    await user.click(screen.getByRole('option', { name: '전수검사' }));
+
+    expect(onChange).toHaveBeenCalledWith({
+      samplingMethodCode: 'FULL_INSPECTION',
+      samplingRatio: '',
+    });
+  });
+});
+
 describe('VersionFormPane — 상태 표기', () => {
   it('확정된 상태 배지만 낸다', () => {
     renderPane();

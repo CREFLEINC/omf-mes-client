@@ -4,6 +4,7 @@ import { type ReactNode, useId } from 'react';
 
 import {
   FREQUENCY_INTERVAL_UOM_OPTIONS,
+  FULL_INSPECTION,
   INSPECTION_FREQUENCY_OPTIONS,
   SAMPLING_METHOD_OPTIONS,
   ensureOption,
@@ -67,6 +68,8 @@ export const VersionFormPane = ({
   const samplingRatioId = useId();
 
   const isLocked = status !== null && !status.isEditable;
+  /* 전수검사는 비율이 뜻이 없다 — 칸을 잠그고 값을 비운다(omf-all-around#103). */
+  const isFullInspection = values.samplingMethodCode === FULL_INSPECTION;
   const stateLockMessage =
     status?.status === 'obsolete' ? t.stateLock.obsolete : t.stateLock.confirmed;
 
@@ -131,9 +134,14 @@ export const VersionFormPane = ({
           required
           options={ensureOption(SAMPLING_METHOD_OPTIONS, values.samplingMethodCode)}
           value={values.samplingMethodCode}
-          onChange={(samplingMethodCode) => onChange({ samplingMethodCode })}
+          onChange={(samplingMethodCode) =>
+            onChange(
+              samplingMethodCode === FULL_INSPECTION
+                ? { samplingMethodCode, samplingRatio: '' }
+                : { samplingMethodCode },
+            )
+          }
           disabled={isLocked}
-          note={messages.pendingCode.note}
           error={fieldErrors.samplingMethodCode}
         />
 
@@ -144,7 +152,11 @@ export const VersionFormPane = ({
          * `step="any"` — 기본값 1 은 소수 입력을 브라우저 단에서 막는다. 계약이 double 이다(#201 ③).
          */}
         <div className="field-cell">
-          <FieldLabel htmlFor={samplingRatioId} label={t.fields.samplingRatio} />
+          <FieldLabel
+            htmlFor={samplingRatioId}
+            label={t.fields.samplingRatio}
+            required={!isFullInspection && values.samplingMethodCode !== ''}
+          />
           <TextField
             id={samplingRatioId}
             type="number"
@@ -152,7 +164,7 @@ export const VersionFormPane = ({
             step="any"
             value={values.samplingRatio}
             onChange={(event) => onChange({ samplingRatio: event.target.value })}
-            disabled={isLocked}
+            disabled={isLocked || isFullInspection}
             error={fieldErrors.samplingRatio}
           />
         </div>

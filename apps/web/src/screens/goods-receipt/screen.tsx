@@ -1,4 +1,11 @@
-import { Breadcrumb, Button, EmptyState, PageHeader, SkeletonText } from '@crefle/web-ui';
+import {
+  AlertBanner,
+  Breadcrumb,
+  Button,
+  EmptyState,
+  PageHeader,
+  SkeletonText,
+} from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
@@ -350,6 +357,23 @@ export const GoodsReceiptScreen = () => {
    */
   const recheckLotId = result === null ? null : (selectedLine?.lotId ?? null);
   const lotStatus = useLotStatus(recheckLotId);
+  /* IQC 대상 줄만 고를 때 LOT 상태를 읽는다 — 불합격(불량) LOT 은 불량창고로만 입고된다(omf-all-around#84). */
+  const selectedLotStatus = useLotStatus(
+    selectedLine?.inspectionRequired === true ? (selectedLine.lotId ?? null) : null,
+    'select',
+  );
+  const isDefectiveLot = selectedLotStatus.statusCode === 'DEFECTIVE';
+  /*
+   * ⛔ 입고할 수 없는 IQC LOT 이면 입력 영역을 처음부터 잠근다(#100 · 3단계 검증 2026-10-16) — 서버 규칙과 같다:
+   *    정상(합격)만 입고, 불량(불합격)은 불량창고로만, 그 밖(검사 대기 등)은 어디로도 안 된다. 서버 검증은 그대로다.
+   *    상태를 아직 모르거나 못 읽었으면 잠그지 않는다 — 막는 판정은 서버가 마지막으로 한다.
+   */
+  const gatedLotStatus =
+    selectedLotStatus.statusCode !== null &&
+    selectedLotStatus.statusCode !== 'NORMAL' &&
+    selectedLotStatus.statusCode !== 'DEFECTIVE'
+      ? selectedLotStatus.statusCode
+      : null;
 
   const post = useGoodsReceiptPost({
     inboundReceiptId: selectedIrId,
@@ -652,6 +676,9 @@ export const GoodsReceiptScreen = () => {
      * 그때 나가는 요청은 사용자가 확인한 것과 다른 것이 된다.
      */
     const findBlocked = (): Record<string, string> | null => {
+      // 입고할 수 없는 LOT 이면 보내지 않는다 — 단추가 막지만 확인 창이 그 사이를 벌려 놓는다(위 설명).
+      if (gatedLotStatus !== null) return {};
+
       const errors = validateDraft(draft);
 
       if (Object.keys(errors).length > 0) return errors;
@@ -719,8 +746,26 @@ export const GoodsReceiptScreen = () => {
       post.write(body);
     };
 
+    const isEntryLocked = isLocked || gatedLotStatus !== null;
+
     return (
       <>
+        {gatedLotStatus !== null && (
+          <div className="banner-slot">
+            <AlertBanner
+              variant="warning"
+              title={
+                gatedLotStatus === 'INSPECTION_PENDING'
+                  ? t.notes.iqcGate.pendingTitle
+                  : t.notes.iqcGate.otherTitle(gatedLotStatus)
+              }
+            >
+              {gatedLotStatus === 'INSPECTION_PENDING'
+                ? t.notes.iqcGate.pendingBody
+                : t.notes.iqcGate.otherBody}
+            </AlertBanner>
+          </div>
+        )}
         <h3 className="goods-receipt-section-title goods-receipt-section-title-first">
           {t.postTitle}
           {/* 공장은 고르는 칸이 아니다 — 입력 칸처럼 보이지 않게 제목 옆 보조 글자로 밝힌다(사용자 지시). */}
@@ -739,12 +784,13 @@ export const GoodsReceiptScreen = () => {
             warehouseValue={draft.warehouse}
             locationValue={draft.location}
             fieldErrors={fieldErrors}
-            isLocked={isLocked}
+            isLocked={isEntryLocked}
             warehousePlantName={warehousePlantName}
             inboundPlantName={describeReference(toReference(plants, inboundReceipt.plantId))}
             isPlantMismatch={
               selectedWarehouse !== null && selectedWarehouse.plantId !== inboundReceipt.plantId
             }
+            defectOnly={isDefectiveLot}
             onChangeWarehouse={changeWarehouse}
             onChangeLocation={changeLocation}
             onRetryOptions={retryPostOptions}
@@ -754,7 +800,7 @@ export const GoodsReceiptScreen = () => {
             options={codeOptions}
             values={draft.codes}
             fieldErrors={fieldErrors}
-            isLocked={isLocked}
+            isLocked={isEntryLocked}
             isOpen={(key) =>
               key === 'reason' ? isOptionalPostFieldOpen(draft) : isPostStepOpen(draft, key)
             }
@@ -765,7 +811,7 @@ export const GoodsReceiptScreen = () => {
             receiptDatetime={draft.receiptDatetime}
             remarks={draft.remarks}
             fieldErrors={fieldErrors}
-            isLocked={isLocked}
+            isLocked={isEntryLocked}
             isOpen={isOptionalPostFieldOpen(draft)}
             onChangeReceiptDatetime={changeReceiptDatetime}
             onChangeRemarks={changeRemarks}
@@ -807,7 +853,7 @@ export const GoodsReceiptScreen = () => {
           </Button>
           <Button
             variant="filled"
-            disabled={blockReason !== null || isLocked}
+            disabled={blockReason !== null || isEntryLocked}
             loading={isLocked}
             aria-describedby={blockReason === null ? undefined : blockReasonId}
             onClick={openConfirm}

@@ -1,9 +1,11 @@
 import { Breadcrumb, Button, PageHeader } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
+import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router';
 
 import { toApiError } from '../../patterns/request';
+import { sessionKeys, useSession } from '../../patterns/session';
 import {
   EMPTY_FILTERS,
   readFilters,
@@ -19,28 +21,47 @@ import { QueueLoadErrorBanner } from './load-error-banner';
 import { EMPTY_QUANTITY_DRAFT, toSendableNumber, type QuantityDraft } from './quantity-draft';
 import { PageNav } from './page-nav';
 import { toPageView } from './pagination';
+import { ClosedSummary } from './closed-summary';
 import { CODE_GROUPS, toCodeOptions } from './code-options';
 import { MeasurementGrid } from './measurement-grid';
 import { toMeasurementRows } from './measurement-rows';
 import {
   useInspectionItemSpecs,
   useInspectionRequestDetail,
+  useSamplingRule,
   useInspectionQueue,
   useInspectionRoundLock,
   useInspectionRounds,
   useCodeValues,
   useConfirmResult,
+  useDefectCodes,
+  useRecordRejection,
+  useRejectedLotFollowUp,
   useMeasurements,
   useSaveDraft,
 } from './queries';
+import { RejectedLotGuide } from './rejected-lot-guide';
+import {
+  EMPTY_REJECTION,
+  RejectionReason,
+  resolveDefectCode,
+  type RejectionDraft,
+} from './rejection-reason';
+import { sampleQtyOf } from './sample-qty';
 import { QueueFilterBar } from './queue-filter-bar';
 import { QueueTable } from './queue-table';
 import { RequestDetailPane } from './request-detail-pane';
 import { ResultFormPane } from './result-form-pane';
 import { RoundHistory } from './round-history';
+import { AttachmentPanel } from '../inspection-documents/attachment-panel';
+import { LotScan } from '../inspection-documents/lot-scan';
+import { InspectionHistoryPanel } from '../inspection-history/panel';
 import { latestRound, previousRounds } from './types';
 import { useItemNames, useLotNumbers } from './reference-lookup';
 import { useUomLookup } from './uom-lookup';
+
+/** 끝난 검사 의뢰 — 입력 화면 대신 요약을 보인다(3단계 검증). */
+const REQUEST_COMPLETED = 'COMPLETED';
 
 /**
  * W-01-01 IQC 수입검사·판정 — **이 회차는 좌측 검사 대기 큐 하나다.**
@@ -60,6 +81,10 @@ import { useUomLookup } from './uom-lookup';
  */
 
 const t = messages.iqcInspection;
+/** 종합 판정 불합격(시드 `INSPECTION_RESULT_OVERALL_JUDGMENT`) — 이 값일 때만 불합격 사유를 받는다. */
+const REJECTED_JUDGMENT = 'REJECTED';
+/** 불량 기록 원천 — 수입검사(서버 선행 P-42). 발생·검출 공정은 서버가 수입검사 공정으로 채운다. */
+const IQC_DEFECT_SOURCE = 'IQC';
 
 export const IqcInspectionScreen = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -70,6 +95,17 @@ export const IqcInspectionScreen = () => {
 
   const queue = useInspectionQueue(toListQuery(filters, page));
   const detail = useInspectionRequestDetail(selectedId);
+  /* 검사자는 계정에 연결된 작업자다(omf-all-around#104) — 연결이 없으면 저장 전에 막는다. */
+  const { session } = useSession();
+  const queryClient = useQueryClient();
+
+  /*
+   * 들어올 때 세션을 다시 읽는다(omf-all-around#104) — 다른 관리자가 이 계정의 작업자 지정을 해제·변경했어도
+   * 세션 캐시(5분)가 남아 저장이 열려 보이지 않게 한다. 서버도 지정 없는 계정의 저장을 거부한다.
+   */
+  useEffect(() => {
+    void queryClient.invalidateQueries({ queryKey: sessionKeys.current });
+  }, [queryClient]);
   const rounds = useInspectionRounds(selectedId);
 
   const round = latestRound(rounds.data ?? []);
@@ -106,6 +142,18 @@ export const IqcInspectionScreen = () => {
     round !== null && round.statusCode !== 'CONFIRMED' ? round.inspectionResultId : null;
 
   /*
+   * 끝난 의뢰인가(3단계 검증) — 의뢰 COMPLETED · 최신 회차 확정이면 입력 화면 대신 읽기 전용 요약을 보인다.
+   * 재작업 처분이 의뢰를 IN_PROGRESS 로 다시 열면(서버 P-43) 입력 화면과 [재검사]가 돌아온다.
+   * 작성 중 회차가 있으면(확정 전) 지금처럼 그 회차를 편집한다.
+   * 보류(HELD) 확정은 LOT 이 검사 대기에 남아 그대로 재검사한다 — 의뢰가 COMPLETED 여도 닫지 않는다.
+   */
+  const isClosed =
+    !isReinspectingNow &&
+    round?.statusCode === 'CONFIRMED' &&
+    round.overallJudgmentCode !== 'HELD' &&
+    detail.data?.statusCode === REQUEST_COMPLETED;
+
+  /*
    * ⭐ 잠금 토큰을 얻으려고 회차 한 건을 따로 부른다 — 목록 200 에는 `ETag` 가 없고, 토큰
    * 보관소가 응답이 온 URL 경로를 열쇠로 쓴다. 고칠 회차가 있을 때만 부른다.
    */
@@ -133,6 +181,26 @@ export const IqcInspectionScreen = () => {
   const confirm = useConfirmResult(selectedId, editingResultId, () => {
     setIsSaved(false);
     setIsJustConfirmed(true);
+  });
+
+  /*
+   * 불합격 사유(omf-all-around#106) — 불합격이면 불량 코드·사유를 받아 확정 «직전»에 불량 기록으로 남긴다.
+   * 서버가 IQC 불합격 확정에 불량 기록을 요구한다(P-42). 확정이 실패해 다시 누르면 같은 회차의 사유를
+   * 두 번 남기지 않는다(`recordedResultId`).
+   */
+  const [rejection, setRejection] = useState<RejectionDraft>(EMPTY_REJECTION);
+  const [recordedResultId, setRecordedResultId] = useState<number | null>(null);
+  const isRejected = judgment === REJECTED_JUDGMENT;
+  const defectCodes = useDefectCodes(isRejected);
+  const resolvedDefect = resolveDefectCode(defectCodes.data ?? [], rejection);
+  /* 확정된 불합격 회차면 LOT 이 불량인지 보고 처분·반품으로 잇는다(omf-all-around#106 후속 (나)). */
+  const followUp = useRejectedLotFollowUp(
+    detail.data?.lotId ?? null,
+    round?.statusCode === 'CONFIRMED' && round.overallJudgmentCode === REJECTED_JUDGMENT,
+  );
+  const recordRejection = useRecordRejection(() => {
+    setRecordedResultId(editingResultId);
+    confirm.write({ overallJudgmentCode: judgment });
   });
 
   /**
@@ -207,6 +275,15 @@ export const IqcInspectionScreen = () => {
   }, [selectedId, roundId, acceptedQty, rejectedQty, heldQty, storedJudgment]);
 
   /*
+   * 불합격 사유는 «의뢰가 바뀔 때만» 비운다(3단계 검증 버그 · omf-all-around#106). 사유는 임시 저장 본문에 실리지
+   * 않고 확정 직전 불량 기록으로 남는데, 위 되돌림에 묶여 있으면 저장 응답이 회차·판정을 바꾸는 순간 사유가 사라져
+   * 확정이 다시 잠겼다. 재검사 회차를 열 때는 그 자리에서 따로 비운다.
+   */
+  useEffect(() => {
+    setRejection(EMPTY_REJECTION);
+  }, [selectedId]);
+
+  /*
    * 마지막 저장 상태와 견줘 바뀐 것이 있는가 — 없으면 [임시 저장]을 끈다. 견주는 것은 세 수량 칸과
    * 종합 판정이다. 회차가 없거나 재검사 회차를 쓰는 중이면 기준은 빈 초기 상태다.
    * ⛔ 저장 요청 본문·계산·검증·확정 조건과는 무관하다 — 단추를 켜고 끄는 데만 쓴다.
@@ -277,7 +354,13 @@ export const IqcInspectionScreen = () => {
     <p className="field-note">{t.queue.empty}</p>
   );
 
-  const inspectedQty = round?.inspectedQty ?? detail.data?.targetQty ?? 0;
+  /*
+   * 회차가 있으면 그 회차의 검사수량이고, 없으면 기준 버전의 샘플링 규칙으로 정한다(omf-all-around#102).
+   * 규칙을 아직 못 받았으면 의뢰수량 — 종전 동작이다.
+   */
+  const samplingRule = useSamplingRule(detail.data?.inspectionPlanVersionId ?? null);
+  const inspectedQty =
+    round?.inspectedQty ?? sampleQtyOf(detail.data?.targetQty ?? 0, samplingRule.data ?? null);
   /* 수량 옆 단위 코드(표시 전용). 회차는 의뢰의 단위로 저장되므로(저장 요청의 `uomId`) 의뢰 단위 하나를 쓴다. */
   const uoms = useUomLookup();
 
@@ -380,6 +463,17 @@ export const IqcInspectionScreen = () => {
         />
         {rounds.isPending ? (
           <p className="field-note">{t.result.loading}</p>
+        ) : isClosed && round !== null ? (
+          <ClosedSummary
+            round={round}
+            judgmentOptions={judgmentOptions}
+            uomCode={uomCode}
+            followUp={
+              followUp.data?.isDefective === true ? (
+                <RejectedLotGuide nonconformanceId={followUp.data.nonconformanceId} />
+              ) : null
+            }
+          />
         ) : (
           <ResultFormPane
             /*
@@ -388,6 +482,7 @@ export const IqcInspectionScreen = () => {
              */
             round={isReinspectingNow ? null : round}
             inspectedQty={inspectedQty}
+            saveBlockedReason={session?.worker === null ? t.result.workerNotLinked : null}
             uomCode={uomCode}
             hasChanges={hasChanges}
             draft={draft}
@@ -404,10 +499,47 @@ export const IqcInspectionScreen = () => {
             judgment={judgment}
             onJudgmentChange={setJudgment}
             onConfirm={() => {
-              confirm.write({ overallJudgmentCode: judgment });
+              if (
+                !isRejected ||
+                recordedResultId === editingResultId ||
+                !('defectCodeId' in resolvedDefect)
+              ) {
+                confirm.write({ overallJudgmentCode: judgment });
+                return;
+              }
+              recordRejection.write({
+                sourceCode: IQC_DEFECT_SOURCE,
+                defectCodeId: resolvedDefect.defectCodeId,
+                /* 불합격 수량이 0 인 불합격(전량 판정)은 검사수량을 불량 수량으로 남긴다 — 0 은 서버가 받지 않는다. */
+                defectQty:
+                  round !== null && round.rejectedQty > 0 ? round.rejectedQty : inspectedQty,
+                uomId: detail.data.uomId,
+                detectedAt: new Date().toISOString(),
+                inspectionResultId: editingResultId,
+                defectDescription:
+                  rejection.description.trim() === '' ? null : rejection.description.trim(),
+              });
             }}
-            isConfirming={confirm.isSaving}
-            confirmError={confirm.error}
+            isConfirming={confirm.isSaving || recordRejection.isSaving}
+            confirmError={confirm.error ?? recordRejection.error}
+            judgmentDetail={
+              isRejected ? (
+                <RejectionReason
+                  codes={defectCodes.data ?? []}
+                  draft={rejection}
+                  onChange={setRejection}
+                  disabled={confirm.isSaving || recordRejection.isSaving}
+                />
+              ) : null
+            }
+            reinspectReplacement={
+              followUp.data?.isDefective === true ? (
+                <RejectedLotGuide nonconformanceId={followUp.data.nonconformanceId} />
+              ) : null
+            }
+            confirmOnlyBlockedReason={
+              isRejected && 'blocked' in resolvedDefect ? resolvedDefect.blocked : null
+            }
             isJustConfirmed={isJustConfirmed}
             isReinspecting={isReinspectingNow}
             onStartReinspection={() => {
@@ -415,6 +547,7 @@ export const IqcInspectionScreen = () => {
               setIsSaved(false);
               setDraft(EMPTY_QUANTITY_DRAFT);
               setJudgment('');
+              setRejection(EMPTY_REJECTION);
               setIsReinspecting(true);
             }}
             onCancelReinspection={() => {
@@ -432,6 +565,24 @@ export const IqcInspectionScreen = () => {
 
         {/* ⛔ 읽기 전용이다 — 앞 회차는 정정하지 않고 새 회차를 쌓는다(§5-3). */}
         <RoundHistory rounds={historyRounds} uomCode={uomCode} />
+
+        {/* LOT 별 시험성적서 등 검사 문서(#58) — 대상 LOT 이 있을 때만. */}
+        {detail.data.lotId !== null && (
+          <AttachmentPanel
+            key={detail.data.lotId}
+            targetTypeCode="LOT"
+            targetId={detail.data.lotId}
+          />
+        )}
+
+        {/* 검사 대상 이력(#61) — 회차를 저장·확정하면 새로 부른다. */}
+        {selectedId !== null && (
+          <InspectionHistoryPanel
+            key={`${String(selectedId)}-${String(historyRounds.length)}`}
+            inspectionRequestId={selectedId}
+            revision={`${String(rounds.data?.length ?? 0)}:${JSON.stringify(round ?? null)}`}
+          />
+        )}
 
         {/*
          * ⚠ **`isPending` 이 아니라 `isLoading` 이다.** 측정치 조회는 회차가 없을 때
@@ -460,6 +611,8 @@ export const IqcInspectionScreen = () => {
 
       <div className="two-pane iqc-inspection-panes">
         <section className="pane" aria-label={t.queue.heading}>
+          {/* LOT 바코드로 대기 의뢰를 바로 연다(#58) — 목록 조건은 그대로 두고 선택만 한다. */}
+          <LotScan inspectionTypeCode="IQC" onFound={select} />
           <QueueFilterBar
             appliedFilters={filters}
             onSearch={applyFilters}

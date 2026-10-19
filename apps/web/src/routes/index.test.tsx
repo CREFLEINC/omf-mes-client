@@ -12,7 +12,12 @@ import {
 import { WORK_ORDER_PROGRESS_PATH } from '../screens/work-order-progress/filters';
 import { SessionProvider } from '../patterns/session';
 import { expandAllNavGroups } from '../test/nav-groups';
-import { SYNTHETIC_SESSION, signedOutRoute, withSessionStub } from '../test/session-harness';
+import {
+  SYNTHETIC_SESSION,
+  signedInRoute,
+  signedOutRoute,
+  withSessionStub,
+} from '../test/session-harness';
 import {
   groupsResponse as equipmentGroupsResponse,
   plantsResponse as equipmentPlantsResponse,
@@ -293,6 +298,8 @@ const alarmRecipientRoutes = (): StubRoute[] => [
 
 /** W-01-01이 첫 진입에 부르는 것 — 검사 대기 큐 하나다. 고른 의뢰가 없으면 그것뿐이다. */
 const iqcInspectionRoutes = (): StubRoute[] => [
+  /* 화면이 들어올 때 세션을 다시 읽는다(omf-all-around#104). */
+  signedInRoute(SYNTHETIC_SESSION),
   {
     match: (request) => isGet(request, '/quality/inspection-requests'),
     respond: () => jsonResponse(iqcQueueResponse()),

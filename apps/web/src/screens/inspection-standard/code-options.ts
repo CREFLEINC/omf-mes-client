@@ -41,8 +41,24 @@ const pendingOptions = (): SelectOption[] => [
   { value: PENDING_CODE_VALUE, label: messages.pendingCode.placeholder },
 ];
 
-/** 샘플링 방법 — 공통코드 미확정. */
-export const SAMPLING_METHOD_OPTIONS: SelectOption[] = pendingOptions();
+/** 전수검사 — 샘플 비율을 받지 않는다(검사 수량 = 의뢰 수량). */
+export const FULL_INSPECTION = 'FULL_INSPECTION';
+
+/**
+ * 샘플링 방법 — 시드 공통코드 `INSPECTION_SAMPLING_METHOD` 3값(omf-all-around#103).
+ * 서버가 `FULL_INSPECTION` 을 값으로 분기하므로(PQC 검사 수량) 화면도 같은 값을 쓴다.
+ */
+export const SAMPLING_METHOD_OPTIONS: SelectOption[] = [
+  {
+    value: FULL_INSPECTION,
+    label: messages.inspectionStandard.values.samplingMethods.fullInspection,
+  },
+  {
+    value: 'SAMPLE_BY_UNIT',
+    label: messages.inspectionStandard.values.samplingMethods.sampleByUnit,
+  },
+  { value: 'SAMPLE_BY_LOT', label: messages.inspectionStandard.values.samplingMethods.sampleByLot },
+];
 
 /** 검사 주기 — 공통코드 미확정. */
 export const INSPECTION_FREQUENCY_OPTIONS: SelectOption[] = pendingOptions();

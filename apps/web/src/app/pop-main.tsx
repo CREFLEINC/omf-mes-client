@@ -95,10 +95,63 @@ const PopRegistrationGate = ({ children }: { children: ReactNode }) => {
   return <>{children}</>;
 };
 
+/*
+ * ⛔ 개발용 브라우저 실행에는 프린터가 없다 — 통로는 열어 두되 인쇄는 «실패»로 돌려준다.
+ *    전에는 경로를 돌려줘 성공으로 접혔고, 라벨이 안 나왔는데 「인쇄했습니다」가 떴다(2단계 검증 2026-10-16).
+ */
 if (import.meta.env.DEV && window.pop === undefined) {
-  window.pop = {
+  window.pop =
+    import.meta.env.VITE_POP_VIRTUAL_PRINTERS === '1'
+      ? virtualPrinterShell()
+      : {
+          rendition: {
+            save: async () => {
+              throw new Error('브라우저 실행 — 프린터로 보내지 않았습니다.');
+            },
+          },
+        };
+}
+
+/**
+ * 개발용 가상 프린터 — `VITE_POP_VIRTUAL_PRINTERS=1` 로 띄운 브라우저 POP 에서만 선다(2단계 검증 2026-10-16).
+ * 설치본 없이도 프린터 선택·기억·인쇄 성공/실패·재인쇄를 끝까지 확인하려는 것이다.
+ *
+ * - 1번(기본 출력 대상)은 «출력»한다 — 그림 라벨을 새 탭에 연다(팝업이 막히면 열지 않고 성공만 돌려준다).
+ * - 2번은 «꺼진» 프린터다 — 인쇄를 실패로 돌려준다.
+ *
+ * ⛔ 설치본에는 없다(`window.pop` 을 셸이 심으면 이 자리를 지나지 않는다). 켜지 않으면 위의 «실패» 통로 그대로다.
+ */
+function virtualPrinterShell() {
+  const OK = 'VIRTUAL-1';
+  const OFF = 'VIRTUAL-2';
+  return {
+    printers: {
+      list: async () => ({
+        printers: [
+          { name: OK, displayName: '가상 프린터 1 (출력됨)' },
+          { name: OFF, displayName: '가상 프린터 2 (꺼짐 — 인쇄 실패)' },
+        ],
+        target: OK,
+      }),
+      capabilities: async () => ({ raw: false, selectable: true }),
+    },
     rendition: {
-      save: async (_bytes, label) => `dev://print/${encodeURIComponent(label)}`,
+      save: async (
+        bytes: Uint8Array,
+        label: string,
+        _now: string,
+        format: string,
+        printerName?: string,
+      ) => {
+        const to = printerName ?? OK;
+        if (to === OFF) throw new Error('가상 프린터 2가 꺼져 있어 인쇄하지 못했습니다.');
+        if (to !== OK) throw new Error(`가상 프린터 「${to}」를 찾을 수 없습니다.`);
+        if (format === 'png' || format === 'pdf') {
+          const type = format === 'png' ? 'image/png' : 'application/pdf';
+          window.open(URL.createObjectURL(new Blob([bytes as BlobPart], { type })), '_blank');
+        }
+        return `virtual://${to}/${label}.${format}`;
+      },
     },
   };
 }

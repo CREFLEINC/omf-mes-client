@@ -150,7 +150,7 @@ export const workOrder: Translated<typeof ko.workOrder> = {
     placeholder: 'Hãy chọn',
     requiredHint: 'Bắt buộc',
     clearOption: 'Không phân bổ',
-    cards: { machine: 'Machine', man: 'Man', tool: 'Tool/Mold', material: 'Material' },
+    cards: { machine: 'Machine', man: 'Man', tool: 'Tool/Mold', material: 'Location' },
     fields: {
       productionLine: 'Dòng sản xuất',
       equipment: 'Thiết bị',
@@ -182,7 +182,8 @@ export const workOrder: Translated<typeof ko.workOrder> = {
       cancel: 'Hủy',
       pick: 'Chọn',
     },
-    materialInfo: 'Phân bổ vật tư không thay đổi ở màn hình này.',
+    materialInfo:
+      'Khi chọn dây chuyền, hệ thống điền vị trí mặc định của dây chuyền đó. Vị trí mặc định của dây chuyền được đặt ở danh mục thiết bị · nhóm thiết bị.',
     empty: {
       notSelectedTitle: 'Hãy chọn lệnh sản xuất để phân bổ nguồn lực.',
       notSelectedDescription:
@@ -197,7 +198,8 @@ export const workOrder: Translated<typeof ko.workOrder> = {
       plannedEndAtLocal: 'Kết thúc theo kế hoạch',
       priorityNo: 'Độ ưu tiên',
     },
-    warning: 'Phải có cả bắt đầu và kết thúc theo kế hoạch mới kiểm được nguồn lực bị trùng.',
+    warning:
+      'Giờ bắt đầu và kết thúc theo kế hoạch là giờ nhà máy. Hệ thống điền theo ngày kế hoạch và ca kế hoạch (không chọn ca thì là cả ngày làm việc); công việc kéo dài nhiều ngày có thể sửa trực tiếp.',
     empty: {
       notSelectedTitle: 'Hãy chọn lệnh sản xuất để xem kế hoạch.',
       notSelectedDescription: 'Chọn một lệnh sản xuất trong danh sách để xem thông tin kế hoạch.',

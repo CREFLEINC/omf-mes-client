@@ -1,6 +1,6 @@
 import { AlertBanner, Button } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { useEffect, useMemo, useReducer, type ReactNode } from 'react';
+import { useEffect, useMemo, useReducer, useState, type ReactNode } from 'react';
 
 import { useProductionOrderItemNames } from '../production-order/item-lookups';
 import { useUomReferenceLookup } from '../production-order/reference-lookups';
@@ -22,6 +22,8 @@ import {
   toWorkOrderReleaseFilters,
 } from './work-order-release-screen-model';
 import { useWorkOrderReleaseCandidates } from './queries';
+import { useBulkRelease } from './bulk-release';
+import { BulkReleaseBar } from './bulk-release-bar';
 
 export interface WorkOrderReleaseSelectionContext {
   selectedWorkOrderId: number | null;
@@ -74,6 +76,12 @@ export const WorkOrderReleaseCandidateBrowser = ({
   const itemNames = useProductionOrderItemNames(candidates.map((candidate) => candidate.itemId));
   const uoms = useUomReferenceLookup();
   const rows = toWorkOrderReleaseCandidateRows(candidates, itemNames.items, uoms);
+  const [checkedIds, setCheckedIds] = useState<ReadonlySet<number>>(new Set());
+  const bulk = useBulkRelease();
+  /* 목록이 바뀌면 보이지 않는 W/O 가 일괄 배포에 남지 않게 지금 목록에 있는 것만 남긴다. */
+  const visibleChecked = new Set(
+    [...checkedIds].filter((id) => candidates.some((candidate) => candidate.workOrderId === id)),
+  );
   const snapshot = useMemo(
     () =>
       toWorkOrderReleaseCandidateSnapshot({
@@ -137,20 +145,45 @@ export const WorkOrderReleaseCandidateBrowser = ({
       <div
         className={`work-order-release-content${state.selectedWorkOrderId === null ? '' : ' has-selection'}`}
       >
-        <WorkOrderReleaseCandidateListPane
-          rows={rows}
-          selectedWorkOrderId={state.selectedWorkOrderId}
-          isLoading={candidatesQuery.isFetching || itemNames.isLoading}
-          loadError={loadError}
-          page={page}
-          hasSearched={filters.statusCode !== null}
-          onSelect={(workOrderId) => {
-            dispatch({ type: 'SELECT', workOrderId });
-          }}
-          onChangePage={(nextPage) => {
-            dispatch({ type: 'CHANGE_PAGE', page: nextPage });
-          }}
-        />
+        <div className="work-order-release-list-column">
+          <BulkReleaseBar
+            selectedCount={visibleChecked.size}
+            isRunning={bulk.isRunning}
+            outcomes={bulk.outcomes}
+            onRun={() => {
+              const targets = rows
+                .filter((row) => visibleChecked.has(row.workOrderId))
+                .map((row) => ({ workOrderId: row.workOrderId, workOrderNo: row.workOrderNo }));
+              void bulk.run(targets).then(() => setCheckedIds(new Set()));
+            }}
+            onCloseResult={bulk.clear}
+          />
+          <WorkOrderReleaseCandidateListPane
+            rows={rows}
+            checkedIds={visibleChecked}
+            onToggleChecked={(ids, checked) =>
+              setCheckedIds((current) => {
+                const next = new Set(current);
+                for (const id of ids) {
+                  if (checked) next.add(id);
+                  else next.delete(id);
+                }
+                return next;
+              })
+            }
+            selectedWorkOrderId={state.selectedWorkOrderId}
+            isLoading={candidatesQuery.isFetching || itemNames.isLoading}
+            loadError={loadError}
+            page={page}
+            hasSearched={filters.statusCode !== null}
+            onSelect={(workOrderId) => {
+              dispatch({ type: 'SELECT', workOrderId });
+            }}
+            onChangePage={(nextPage) => {
+              dispatch({ type: 'CHANGE_PAGE', page: nextPage });
+            }}
+          />
+        </div>
         <div className="work-order-release-detail">{selection}</div>
       </div>
     </div>

@@ -34,11 +34,12 @@ export const productionPlan: Translated<typeof ko.productionPlan> = {
     loadFailed: (kind: string) => `Không tải được bản sửa đổi ${kind}.`,
     retry: (kind: string) => `Thử lại ${kind}`,
     bomMissing: 'Không có BOM nên không triển khai được.',
-    routingMissing: 'Không có Routing nên không triển khai được.',
+    routingMissing: 'Không có Routing đã xác nhận và còn hiệu lực nên không triển khai được.',
     openRouting: 'Đến đăng ký Routing',
     bomAutoSelected: 'Đã tự chọn BOM Rev mặc định.',
     bomAmbiguous: 'Không xác định được một BOM Rev mặc định duy nhất.',
-    routingNoDefault: 'Routing không có cờ Rev mặc định. Hãy tự chọn bản sửa đổi sẽ dùng.',
+    routingNoDefault:
+      'Không có Rev mặc định trong các bản sửa đổi Routing dùng được. Hãy tự chọn bản sửa đổi sẽ dùng.',
   },
 
   lines: {
@@ -79,6 +80,7 @@ export const productionPlan: Translated<typeof ko.productionPlan> = {
     quantityField: 'Số lượng kế hoạch',
     lineUnset: 'Chưa chỉ định',
     selectPlaceholder: 'Chọn',
+    routingUnavailable: 'Không thể dùng bản sửa đổi Routing này. Hãy chọn lại.',
     confirmedChip: 'Đã chốt',
     savingChip: 'Đang lưu',
     remove: 'Xóa',

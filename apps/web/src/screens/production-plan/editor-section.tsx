@@ -1,6 +1,8 @@
 import { AlertBanner, Button, SkeletonText } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 
+import { plantToday } from '../../patterns/plant-time';
+import { remainingPlanQtyText } from './editor-model';
 import type { NewProductionPlanDefaults } from './editor-state';
 import { ProductionPlanEditorPane, type ProductionPlanEditorOption } from './editor-pane';
 import { useProductionPlanEditorSession } from './editor-session';
@@ -16,6 +18,8 @@ interface ProductionPlanEditorSectionProps {
   defaults: NewProductionPlanDefaults;
   bomOptions: ProductionPlanEditorOption[];
   routingOptions: ProductionPlanEditorOption[];
+  /** 확정된 줄의 Routing 이름을 푸는 전 개정 목록 — 선택지(`routingOptions`)에 없는 Rev 도 있다. */
+  routingLabelOptions?: ProductionPlanEditorOption[];
   lineOptions: ProductionPlanEditorOption[];
   addDisabled?: boolean;
   onShowResults?: (productionPlanId: number) => void;
@@ -29,6 +33,7 @@ export const ProductionPlanEditorSection = ({
   defaults,
   bomOptions,
   routingOptions,
+  routingLabelOptions,
   lineOptions,
   addDisabled = false,
   onShowResults,
@@ -78,9 +83,23 @@ export const ProductionPlanEditorSection = ({
         uomLabel={uomLabel}
         bomOptions={bomOptions}
         routingOptions={routingOptions}
+        routingLabelOptions={routingLabelOptions}
         lineOptions={lineOptions}
         addDisabled={addDisabled || editor.plans.isError}
-        onAdd={() => editor.add(defaults)}
+        onAdd={() =>
+          editor.add({
+            ...defaults,
+            /* 계획일은 공장 오늘, 수량은 잔량 — 하루치 오더는 그대로 저장하면 된다. */
+            planDate: defaults.planDate === '' ? plantToday() : defaults.planDate,
+            plannedQty:
+              defaults.plannedQty === ''
+                ? remainingPlanQtyText(
+                    orderQty,
+                    editor.rows.map((row) => row.draft.plannedQty),
+                  )
+                : defaults.plannedQty,
+          })
+        }
         onChange={editor.change}
         onRemove={editor.remove}
         renderActions={(displayRow) => {

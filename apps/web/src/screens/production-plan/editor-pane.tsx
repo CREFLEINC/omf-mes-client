@@ -44,6 +44,8 @@ interface ProductionPlanEditorPaneProps {
   uomLabel: string;
   bomOptions: ProductionPlanEditorOption[];
   routingOptions: ProductionPlanEditorOption[];
+  /** 확정된 줄의 Routing 이름을 푸는 전 개정 목록. 없으면 `routingOptions` 로 푼다. */
+  routingLabelOptions?: ProductionPlanEditorOption[];
   lineOptions: ProductionPlanEditorOption[];
   addDisabled?: boolean;
   onAdd: () => void;
@@ -75,6 +77,7 @@ export const ProductionPlanEditorPane = ({
   uomLabel,
   bomOptions,
   routingOptions,
+  routingLabelOptions = routingOptions,
   lineOptions,
   addDisabled = false,
   onAdd,
@@ -161,19 +164,25 @@ export const ProductionPlanEditorPane = ({
     field: 'bomId' | 'routingId' | 'plannedLineId',
     label: string,
     options: ProductionPlanEditorOption[],
+    labelOptions: ProductionPlanEditorOption[] = options,
   ) => {
     const optional = field === 'plannedLineId';
     if (row.confirmed) {
       return readOnlyValue(
         optionLabel(
-          options,
+          labelOptions,
           row.draft[field],
           optional ? t.lineUnset : messages.common.reference.empty,
         ),
       );
     }
 
-    const error = fieldError(row, field);
+    /* 작성 중 계획이 쓸 수 없게 된 Routing 을 들고 있으면 선택지에 없다 — 빈 칸으로 보이고 다시 고르게 한다. */
+    const unavailable =
+      field === 'routingId' &&
+      row.draft.routingId !== '' &&
+      !options.some((option) => option.value === row.draft.routingId);
+    const error = fieldError(row, field) ?? (unavailable ? t.routingUnavailable : null);
     const errorId = `${row.key}-${field}-error`;
     return (
       <div className="production-plan-editor-field">
@@ -282,7 +291,8 @@ export const ProductionPlanEditorPane = ({
       key: 'routingId',
       header: t.columns.routingId,
       width: '19%',
-      render: (row) => select(row, 'routingId', t.columns.routingId, routingOptions),
+      render: (row) =>
+        select(row, 'routingId', t.columns.routingId, routingOptions, routingLabelOptions),
     },
     {
       key: 'plannedLineId',

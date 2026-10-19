@@ -81,6 +81,13 @@ describe('toVersionUpdate', () => {
     });
   });
 
+  /* omf-all-around#103 — 예전에 「전수검사 + 비율」로 저장된 판도 다른 칸만 고쳐 저장할 수 있어야 한다. */
+  it('전수검사면 남아 있는 비율을 싣지 않는다', () => {
+    expect(
+      toVersionUpdate({ ...filled, samplingMethodCode: 'FULL_INSPECTION' }).samplingRatio,
+    ).toBeNull();
+  });
+
   it('비운 선택 값은 널로 보낸다', () => {
     const body = toVersionUpdate({
       ...filled,

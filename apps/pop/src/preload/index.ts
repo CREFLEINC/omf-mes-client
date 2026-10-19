@@ -50,7 +50,9 @@ const api = {
      *    「보낼 프린터를 찾을 수 없다」로 멎고, 화면은 라벨을 못 붙여 다음 걸음으로 못 간다
      *    (WIP-CHAIN-01 D6 실측 2026-09-15 · macOS).
      */
-    capabilities: (): Promise<{ raw: boolean }> => ipcRenderer.invoke('printers:capabilities'),
+    /** `selectable` — 인쇄(`rendition.save`)가 고른 프린터를 받는가. 옛 설치본에는 없다. */
+    capabilities: (): Promise<{ raw: boolean; selectable?: boolean }> =>
+      ipcRenderer.invoke('printers:capabilities'),
   },
   rendition: {
     /**
@@ -67,7 +69,13 @@ const api = {
       label: string,
       now: string,
       format: 'png' | 'pdf' | 'tspl',
-    ): Promise<string> => ipcRenderer.invoke('rendition:save', bytes, label, now, format),
+      /**
+       * 이 작업을 보낼 프린터(`printers.list` 의 `name`). **선택이다** — 싣지 않으면 지금까지와 같다
+       * (기동 시 지정값 → OS 기본). 실으면 그 프린터로만 보내고, 없는 이름이면 다른 곳으로 대신 보내지 않는다.
+       */
+      printerName?: string,
+    ): Promise<string> =>
+      ipcRenderer.invoke('rendition:save', bytes, label, now, format, printerName),
     /**
      * 인쇄하지 않고 **파일로만** 남긴다 — TSPL 로 찍은 라벨의 그림을 함께 두는 자리다.
      * 경로·형식 검사는 `save` 와 같다.

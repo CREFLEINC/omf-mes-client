@@ -251,6 +251,25 @@ main > * + * {
   box-sizing: border-box;
 }
 
+/*
+ * 안내 띠(DS AlertBanner)의 아이콘을 **첫 줄**의 세로 가운데에 맞춘다 — 공용 규칙(담당자 기준 2026-10-16).
+ *
+ * DS 는 아이콘(20px)을 `margin-top: 4px` 로 고정해, 제목 줄(24px)이면 2px · 본문 한 줄(20px)이면 4px
+ * 아래로 처진다(실측). 첫 줄 높이에 맞춰 여백을 다시 준다: 제목이 있으면 2px, 없으면 0.
+ * 여러 줄이어도 위에서부터 맞추므로(`align-items: flex-start` 그대로) 아이콘은 첫 줄과 같은 행이다.
+ *
+ * ⚠ DS 빌드의 클래스 이름(`_root_f6a42_*`)으로 고른다 — 다른 수단으로는 「제목이 있는 띠」를 가릴 수 없다.
+ *   DS 를 올려 이름이 바뀌면 이 규칙은 조용히 빠지고 DS 기본 모양으로 돌아간다(깨지지는 않는다).
+ */
+[class*='_root_f6a42_'] > [class*='_icon_f6a42_'] {
+  margin-top: 0;
+}
+
+[class*='_root_f6a42_']:has(> [class*='_content_f6a42_'] > [class*='_title_f6a42_'])
+  > [class*='_icon_f6a42_'] {
+  margin-top: 2px;
+}
+
 .two-pane {
   display: grid;
   grid-template-columns: minmax(320px, 2fr) 3fr;
@@ -274,6 +293,15 @@ main > * + * {
   grid-template-columns: minmax(240px, 1fr) minmax(200px, 1fr) minmax(480px, 2fr);
   gap: var(--space-5);
   align-items: start;
+}
+
+/*
+ * W-06-02 검사기준 — 3단 배치를 위치 기준으로 삼는다(omf-all-around#103 · 3단계 검증).
+ * 항목 표(DS Table 재정렬)의 화면 낭독기용 숨김 요소가 `position: absolute` 라, 위치 지정 조상이 없으면 main 의
+ * 스크롤 영역 밖으로 빠져 문서 높이를 늘린다(실측 3197px) — 창이 따로 스크롤되며 앱 틀 아래가 빈 바탕으로 보였다.
+ */
+.inspection-standard-layout {
+  position: relative;
 }
 
 .pane-stack {
@@ -1497,6 +1525,24 @@ main > * + * {
 /* 조회·초기화는 조건 칸들과 떨어져 줄의 오른쪽 끝에 선다. */
 .work-order-release-filter > .field-cell-unlabeled {
   margin-left: auto;
+}
+
+/* 일괄 배포 줄은 후보 목록 바로 위에 붙는다 — 목록과 함께 마스터 칸을 이룬다. */
+.work-order-release-list-column,
+.work-order-release-bulk {
+  display: grid;
+  gap: var(--space-3);
+  align-content: start;
+  min-width: 0;
+}
+
+.work-order-release-bulk > button {
+  justify-self: end;
+}
+
+.work-order-release-bulk-result {
+  margin: 0;
+  padding-left: var(--space-5);
 }
 
 .work-order-release-content.has-selection {
@@ -2971,9 +3017,25 @@ main > * + * {
   padding-right: var(--space-6);
 }
 
-/* LOT 번호는 한 줄 — 칸보다 길면 말줄임하고 전체 번호는 title 로 보인다. */
+/*
+ * LOT 번호는 한 줄 — 칸보다 길면 «앞에서부터» 보이고 끝에 말줄임, 전체 번호는 title 로 보인다.
+ * ⚠ DS 단추는 가운데 정렬 inline-flex 라 단추 자체에 말줄임을 걸면 넘친 글자가 양쪽으로 밀려
+ *   앞부분이 잘렸다(2단계 검증 2026-10-16). 안쪽 글자 칸이 줄어들며 말줄임한다.
+ */
 .lot-status-lot-no {
   max-width: 100%;
+  min-width: 0;
+}
+
+/* DS 단추가 글자를 블록 칸으로 한 번 더 감싼다 — 그 칸도 줄어들어야 안쪽 말줄임이 걸린다(실측). */
+.lot-status-lot-no > span {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.lot-status-lot-no-text {
+  display: block;
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -7092,6 +7154,128 @@ dl.filter-bar.approval-inbox-detail-facts {
   gap: var(--space-2);
 }
 
+/*
+ * 연결된 작업자(omf-all-around#104) — 사용자 정보 폼의 하위 구역. 큰 면 없이 위쪽 얇은 선과 제목으로만 나눈다
+ * (담당자 결정 2026-10-16). 첫 줄 [배지] 이름 · 사번 · 부서 + 오른쪽 버튼(좁으면 줄바꿈), 그 아래 안내 한 줄.
+ * 선 굵기는 이 파일의 구분선 관례(1px · outline-variant)를 따른다.
+ */
+.users-roles-worker-link {
+  display: grid;
+  gap: var(--space-2);
+  min-width: 0;
+  margin-top: var(--space-4);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--outline-variant);
+}
+
+.users-roles-worker-link-title {
+  margin: 0;
+  font: var(--type-label-lg);
+  letter-spacing: var(--type-label-lg-tracking);
+  color: var(--on-surface-variant);
+}
+
+.users-roles-worker-link-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2) var(--space-4);
+  min-width: 0;
+}
+
+.users-roles-worker-link-summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1) var(--space-3);
+  min-width: 0;
+}
+
+.users-roles-worker-link-summary > * {
+  overflow-wrap: anywhere;
+}
+
+.users-roles-worker-link-meta {
+  color: var(--on-surface-variant);
+}
+
+.users-roles-worker-link-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+/* 공용 .field-note 의 폭 상한은 입력칸 밑 짧은 주석용이다 — 이 구역의 안내는 구역 폭을 쓴다. */
+.users-roles-worker-link-hint {
+  max-width: none;
+  margin: 0;
+}
+
+/*
+ * 연결·변경 모달과 해제 확인 창의 본문 — 내용에 맞춘 높이, 항목 사이는 gap 하나(문단 기본 여백을 걷는다).
+ * 버튼 위 여백이 과하게 벌어지던 것은 문단 margin 이 Dialog 본문 padding 에 더해진 탓이었다.
+ */
+.users-roles-worker-dialog {
+  display: grid;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.users-roles-worker-dialog > p,
+.users-roles-worker-dialog .banner-slot {
+  max-width: none;
+  margin: 0;
+}
+
+/* 라벨·입력·(오류)·보조 문구를 한 묶음으로 촘촘히 — 오류는 TextField 안(입력칸 바로 아래), 보조 문구는 그 아래. */
+.users-roles-worker-dialog-field {
+  display: grid;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.users-roles-worker-dialog-field > p {
+  max-width: none;
+  margin: 0;
+}
+
+/* 버튼 줄 — Dialog footer(구분선·큰 여백) 대신 본문 마지막 줄, 오른쪽 정렬. */
+.users-roles-worker-dialog-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  margin-top: var(--space-1);
+}
+
+.users-roles-worker-dialog-question {
+  font: var(--type-title-sm);
+  letter-spacing: var(--type-title-sm-tracking);
+}
+
+/* 현재 작업자 블록 — 옅은 바탕(카드 면보다 한 단계). 긴 이름은 줄바꿈한다. */
+.users-roles-worker-block {
+  display: grid;
+  gap: var(--space-1);
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--surface-container);
+  overflow-wrap: anywhere;
+}
+
+.users-roles-worker-block > span {
+  color: var(--on-surface-variant);
+}
+
+/*
+ * 중립 보조 버튼 — DS primary 가 빨강이고 Button 에 색 prop 이 없어, outlined·text 의 글자만 중립 토큰으로 바꾼다.
+ * 강조 정도(테두리·면)는 DS 변형 그대로다. 새 컴포넌트가 아니라 클래스 하나다.
+ */
+button.app-button-neutral {
+  color: var(--on-surface-variant);
+}
+
 /* 역할 부여 — 넓으면 여러 열, 좁으면 한 열. 카드 없는 단순 목록 그대로다. */
 .users-roles-role-list {
   display: grid;
@@ -10704,6 +10888,27 @@ dl.filter-bar.approval-inbox-detail-facts {
   gap: var(--space-5);
 }
 
+/*
+ * 채번 대상 구획 맨 위의 프린터 선택(2단계 검증 2026-10-16) — 대상 카드의 라벨·값 두 열과 같은 모양.
+ * 고를 수 없는 환경에서는 칸 아래에 까닭을 한 줄로 적는다.
+ */
+.pop-lot-printer-select {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: var(--space-1) var(--space-4);
+  align-items: center;
+  margin-bottom: var(--space-3);
+}
+
+.pop-lot-printer-select-label {
+  color: var(--on-surface-muted);
+}
+
+.pop-lot-printer-select > .field-note {
+  grid-column: 2;
+  margin: 0;
+}
+
 /* LOT 번호 자리의 라벨 — 값이 아직 없으므로 라벨만 또렷이 둔다. */
 .pop-lot-label {
   margin: 0;
@@ -12986,6 +13191,88 @@ dl.filter-bar.approval-inbox-detail-facts {
 
 .iqc-inspection-panes > .pane > .iqc-inspection-section:last-child {
   padding-bottom: 0;
+}
+
+/* 검사 문서 첨부(omf-all-around#58) — 고른 파일 한 줄: 이름 · 크기 · [제거], 사전 검사 오류는 그 아래. */
+.inspection-documents-selected {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1) var(--space-3);
+  min-width: 0;
+}
+
+.inspection-documents-selected > .field-note {
+  margin: 0;
+}
+
+.inspection-documents-selected-name {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.inspection-documents-selected > .field-error {
+  flex-basis: 100%;
+  margin: 0;
+}
+
+/* 끝난 의뢰의 읽기 전용 요약(3단계 검증) — 라벨 위·값 아래 칸을 폭에 맞춰 늘어놓는다. */
+.iqc-inspection-closed > p {
+  margin: 0;
+}
+
+.iqc-inspection-closed-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(9rem, 100%), 1fr));
+  gap: var(--space-3) var(--space-4);
+  margin: 0;
+}
+
+.iqc-inspection-closed-grid dd {
+  margin: 0;
+}
+
+/*
+ * 종합 판정과 불합격 사유(omf-all-around#106 · 3단계 검증) — 선택칸이 내용 폭으로 쪼그라들지 않게 칸 폭을 채우고
+ * 판정은 읽기 좋은 폭에서 멈춘다. 사유 구역은 테두리 상자 대신 옅은 면 하나(상자를 겹치지 않는다).
+ */
+.iqc-inspection-judgment-field {
+  align-items: stretch;
+  width: 100%;
+  max-width: 20rem;
+}
+
+.iqc-inspection-rejection {
+  display: grid;
+  gap: var(--space-3);
+  min-width: 0;
+  padding: var(--space-4);
+  border-radius: var(--radius-md);
+  background: var(--surface-container);
+}
+
+.iqc-inspection-rejection-title {
+  margin: 0;
+  font: var(--type-label-lg);
+  letter-spacing: var(--type-label-lg-tracking);
+}
+
+.iqc-inspection-rejection > .field-note {
+  margin: 0;
+}
+
+/* 대분류·상세 같은 폭 2열 — 좁으면 1열. 긴 선택값은 DS Select 가 말줄임한다(칸 폭 안에서). */
+.form-grid.iqc-inspection-rejection-codes {
+  grid-template-columns: repeat(auto-fit, minmax(min(12rem, 100%), 1fr));
+  gap: var(--space-3);
+}
+
+.iqc-inspection-rejection-codes > .field-cell {
+  min-width: 0;
+}
+
+.iqc-inspection-rejection-description {
+  align-items: stretch;
 }
 
 .iqc-inspection-panes .iqc-inspection-section h3 {

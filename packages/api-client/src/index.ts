@@ -13,6 +13,13 @@ export {
 } from './errors';
 export type { components, paths } from './generated/api';
 export type {
+  AppUserWorker,
+  LineDefaultLocations,
+  AttachmentTargetType,
+  InspectionHistory,
+  InspectionHistoryEvent,
+  DefectRecordCreate,
+  SessionWorker,
   DashboardDefectPhenomenon,
   DashboardEquipment,
   DashboardEquipmentItem,

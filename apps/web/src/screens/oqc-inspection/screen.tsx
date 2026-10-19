@@ -32,6 +32,7 @@ import { QueueTable } from './queue-table';
 import { RequestDetailPane } from './request-detail-pane';
 import { ResultFormPane } from './result-form-pane';
 import { RoundHistory } from './round-history';
+import { InspectionHistoryPanel } from '../inspection-history/panel';
 import { latestRound } from './types';
 import { targetSignatureOf, type WriteTargetSignature } from './write-target';
 
@@ -374,6 +375,13 @@ export const OqcInspectionScreen = () => {
           rounds={rounds.data ?? []}
           currentResultId={isReinspectingNow ? null : roundId}
           isReinspecting={isReinspectingNow}
+        />
+
+        {/* 검사 대상 이력(#61) — 회차를 저장·확정하면 새로 부른다. */}
+        <InspectionHistoryPanel
+          key={`${String(selectedId)}-${String(rounds.data?.length ?? 0)}`}
+          inspectionRequestId={selectedId}
+          revision={`${String(rounds.data?.length ?? 0)}:${JSON.stringify(round ?? null)}`}
         />
       </>
     );

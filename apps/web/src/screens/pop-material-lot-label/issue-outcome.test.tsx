@@ -12,6 +12,7 @@ const printed = (lotNo: string | null, issueSeq = 1): IssueRunResult => ({
   hasPrintedLabel: true,
   issue: { documentIssueLogId: 44001, issueSeq, lotNo, printOutcome: 'SUCCEEDED' },
   error: null,
+  iqcLabel: null,
 });
 
 describe('IssueOutcome — 인쇄 결과 띠', () => {
@@ -42,6 +43,7 @@ describe('IssueOutcome — 인쇄 결과 띠', () => {
           hasCreatedLot: false,
           hasPrintedLabel: false,
           issue: null,
+          iqcLabel: null,
           error: {
             kind: 'stateLocked',
             errors: [

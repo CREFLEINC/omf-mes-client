@@ -1,12 +1,15 @@
 import { messages } from '@omf-mes/i18n';
-import { screen, waitFor } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it } from 'vitest';
 
+import { SessionProvider, type Session } from '../../patterns/session';
 import { createStubFetch, jsonResponse, renderWithProviders } from '../../test/api-harness';
+import { SYNTHETIC_SESSION, signedInRoute } from '../../test/session-harness';
 import { CODE_GROUPS } from './code-options';
 import {
   codeValuesResponse,
+  completedRequest,
   confirmedRound,
   draftRound,
   expiredMeasurement,
@@ -15,6 +18,7 @@ import {
   overallJudgmentCodeValues,
   pageOf,
   queueItems,
+  requestWithoutPlanVersion,
   queueResponse,
   reinspectionRound,
   roundsResponse,
@@ -49,97 +53,162 @@ const renderScreen = (
   /** 저장 요청 원본 — 본문과 헤더를 그대로 본다 */
   const writes: Request[] = [];
 
-  const view = renderWithProviders(<IqcInspectionScreen />, {
-    route,
-    fetch: createStubFetch([
-      {
-        match: (request) => new URL(request.url).pathname === '/quality/inspection-requests',
-        respond: (request) => {
-          sent.push(new URL(request.url));
-          return respond(request);
+  const view = renderWithProviders(
+    <SessionProvider>
+      <IqcInspectionScreen />
+    </SessionProvider>,
+    {
+      route,
+      session: testSession,
+      fetch: createStubFetch([
+        /* 화면이 들어올 때 세션을 다시 읽는다(#104) — 같은 세션을 돌려준다. */
+        signedInRoute(testSession),
+        {
+          match: (request) => new URL(request.url).pathname === '/quality/inspection-requests',
+          respond: (request) => {
+            sent.push(new URL(request.url));
+            return respond(request);
+          },
         },
-      },
-      /*
-       * 의뢰를 고르면 상세와 회차를 부른다 — 스텁을 빠뜨리면 그 요청이 조용히 실패한다.
-       * **경로의 번호를 지킨다** — 늘 같은 건을 돌려주면 목록과 상세가 다른 의뢰를 가리키는
-       * 상태를 시험이 정상으로 통과시킨다.
-       */
-      {
-        match: (request) =>
-          new URL(request.url).pathname.startsWith('/quality/inspection-requests/'),
-        respond: (request) => {
-          const id = Number(new URL(request.url).pathname.split('/').at(-1));
-          const found = queueItems.find((item) => item.inspectionRequestId === id);
+        /*
+         * 의뢰를 고르면 상세와 회차를 부른다 — 스텁을 빠뜨리면 그 요청이 조용히 실패한다.
+         * **경로의 번호를 지킨다** — 늘 같은 건을 돌려주면 목록과 상세가 다른 의뢰를 가리키는
+         * 상태를 시험이 정상으로 통과시킨다.
+         */
+        {
+          match: (request) =>
+            new URL(request.url).pathname.startsWith('/quality/inspection-requests/'),
+          respond: (request) => {
+            const id = Number(new URL(request.url).pathname.split('/').at(-1));
+            const found = [...queueItems, requestWithoutPlanVersion, completedRequest].find(
+              (item) => item.inspectionRequestId === id,
+            );
 
-          return found === undefined
-            ? jsonResponse({ message: '없는 의뢰' }, { status: 404 })
-            : jsonResponse(found);
+            return found === undefined
+              ? jsonResponse({ message: '없는 의뢰' }, { status: 404 })
+              : jsonResponse(found);
+          },
         },
-      },
-      /* 공통코드 — 종합 판정 선택지를 채운다. */
-      {
-        match: (request) => new URL(request.url).pathname === '/mdm/code-values',
-        respond: (request) => {
-          sent.push(new URL(request.url));
-          return jsonResponse(codeValuesResponse(overallJudgmentCodeValues));
+        /* LOT 상세 — 시험이 상태를 정했을 때만 답한다(불량 LOT 안내 · omf-all-around#106 후속). */
+        {
+          match: (request) =>
+            /^\/trace\/lots\/\d+$/.test(new URL(request.url).pathname) && lotStatusForTest !== null,
+          respond: () =>
+            jsonResponse({
+              lot: { lotId: 9001, lotNo: 'SYN-LOT-1', statusCode: lotStatusForTest },
+              holds: [],
+            }),
         },
-      },
-      /* 측정치 — 회차 단건보다 «먼저» 둔다. 경로가 회차 단건의 접두를 포함하기 때문이다. */
-      {
-        match: (request) =>
-          new URL(request.url).pathname.endsWith('/measurements') && request.method === 'GET',
-        respond: () => jsonResponse(measurementsResponse(measurements)),
-      },
-      /* 단위 목록 — 수량 옆 단위 코드(표시 전용). 요청 크기를 시험이 본다. */
-      {
-        match: (request) => new URL(request.url).pathname === '/mdm/uoms',
-        respond: (request) => {
-          sent.push(new URL(request.url));
-          return jsonResponse({ items: [], page: { page: 1, size: 200, total: 0 } });
+        {
+          match: (request) => new URL(request.url).pathname === '/quality/nonconformances',
+          respond: () =>
+            jsonResponse({
+              items: [{ nonconformanceId: 6601 }],
+              page: { page: 1, size: 1, total: 1 },
+            }),
         },
-      },
-      /* 검사기준 버전의 항목 규격 — 그리드의 줄 수를 정한다. */
-      {
-        match: (request) => new URL(request.url).pathname.endsWith('/items'),
-        respond: (request) => {
-          sent.push(new URL(request.url));
-          return jsonResponse(specs);
+        /* 불량 코드 마스터 — 불합격 사유(omf-all-around#106). 대분류 1 · 상세 1. */
+        {
+          match: (request) => new URL(request.url).pathname === '/quality/defect-codes',
+          respond: () =>
+            jsonResponse({
+              items: [
+                { defectCodeId: 7001, defectCode: 'APP', defectName: '외관', isActive: true },
+                {
+                  defectCodeId: 7002,
+                  defectCode: 'APP-SCR',
+                  defectName: '스크래치',
+                  parentDefectCodeId: 7001,
+                  isActive: true,
+                },
+              ],
+              page: { page: 1, size: 500, total: 2 },
+            }),
         },
-      },
-      /* 회차 한 건 — 잠금 토큰이 여기서 온다(목록 200 에는 ETag 가 없다). */
-      {
-        match: (request) =>
-          new URL(request.url).pathname.startsWith('/quality/inspection-results/') &&
-          request.method === 'GET',
-        respond: () => jsonResponse(rounds[0] ?? draftRound, { headers: { ETag: 'W/"7"' } }),
-      },
-      /* 저장 — POST(신규)와 PUT(수정) 둘 다 받는다. */
-      {
-        match: (request) =>
-          new URL(request.url).pathname.startsWith('/quality/inspection-results') &&
-          request.method !== 'GET',
-        respond: (request) => {
-          writes.push(request);
+        /* 불량 기록 등록 — 확정 «직전»에 나간다(P-42). 쓰기 순서를 재려고 `writes` 에 함께 담는다. */
+        {
+          match: (request) =>
+            new URL(request.url).pathname === '/quality/defect-records' &&
+            request.method === 'POST',
+          respond: (request) => {
+            writes.push(request);
+            return jsonResponse({ defectRecordId: 1 }, { status: 201 });
+          },
+        },
+        /* 공통코드 — 종합 판정 선택지를 채운다. */
+        {
+          match: (request) => new URL(request.url).pathname === '/mdm/code-values',
+          respond: (request) => {
+            sent.push(new URL(request.url));
+            return jsonResponse(codeValuesResponse(overallJudgmentCodeValues));
+          },
+        },
+        /* 측정치 — 회차 단건보다 «먼저» 둔다. 경로가 회차 단건의 접두를 포함하기 때문이다. */
+        {
+          match: (request) =>
+            new URL(request.url).pathname.endsWith('/measurements') && request.method === 'GET',
+          respond: () => jsonResponse(measurementsResponse(measurements)),
+        },
+        /* 단위 목록 — 수량 옆 단위 코드(표시 전용). 요청 크기를 시험이 본다. */
+        {
+          match: (request) => new URL(request.url).pathname === '/mdm/uoms',
+          respond: (request) => {
+            sent.push(new URL(request.url));
+            return jsonResponse({ items: [], page: { page: 1, size: 200, total: 0 } });
+          },
+        },
+        /* 검사기준 버전 단건 — 샘플링 규칙. 시험이 채우지 않으면 없다(404 · 종전처럼 의뢰수량). */
+        {
+          match: (request) =>
+            /^\/quality\/inspection-plan-versions\/\d+$/.test(new URL(request.url).pathname),
+          respond: () =>
+            samplingVersion === null
+              ? jsonResponse({ message: '없는 버전' }, { status: 404 })
+              : jsonResponse({ inspectionPlanVersion: samplingVersion }),
+        },
+        /* 검사기준 버전의 항목 규격 — 그리드의 줄 수를 정한다. */
+        {
+          match: (request) => new URL(request.url).pathname.endsWith('/items'),
+          respond: (request) => {
+            sent.push(new URL(request.url));
+            return jsonResponse(specs);
+          },
+        },
+        /* 회차 한 건 — 잠금 토큰이 여기서 온다(목록 200 에는 ETag 가 없다). */
+        {
+          match: (request) =>
+            new URL(request.url).pathname.startsWith('/quality/inspection-results/') &&
+            request.method === 'GET',
+          respond: () => jsonResponse(rounds[0] ?? draftRound, { headers: { ETag: 'W/"7"' } }),
+        },
+        /* 저장 — POST(신규)와 PUT(수정) 둘 다 받는다. */
+        {
+          match: (request) =>
+            new URL(request.url).pathname.startsWith('/quality/inspection-results') &&
+            request.method !== 'GET',
+          respond: (request) => {
+            writes.push(request);
 
-          const responder = confirmResponder;
-          if (responder !== null && new URL(request.url).pathname.endsWith(':confirm')) {
-            return responder(request);
-          }
+            const responder = confirmResponder;
+            if (responder !== null && new URL(request.url).pathname.endsWith(':confirm')) {
+              return responder(request);
+            }
 
-          return jsonResponse(draftRound, { status: request.method === 'POST' ? 201 : 200 });
+            return jsonResponse(draftRound, { status: request.method === 'POST' ? 201 : 200 });
+          },
         },
-      },
-      {
-        match: (request) => new URL(request.url).pathname === '/quality/inspection-results',
-        respond: () =>
-          jsonResponse(
-            roundsResponse(
-              writes.length > 0 && roundsAfterWrite !== null ? roundsAfterWrite : rounds,
+        {
+          match: (request) => new URL(request.url).pathname === '/quality/inspection-results',
+          respond: () =>
+            jsonResponse(
+              roundsResponse(
+                writes.length > 0 && roundsAfterWrite !== null ? roundsAfterWrite : rounds,
+              ),
             ),
-          ),
-      },
-    ]),
-  });
+        },
+      ]),
+    },
+  );
 
   return { sent, writes, view };
 };
@@ -157,9 +226,23 @@ const bodyOf = async (request: Request): Promise<Record<string, unknown>> =>
  * 채운다 — 매 시험이 시작할 때 비운다.
  */
 let confirmResponder: ((request: Request) => Response) | null = null;
+/** 검사기준 버전 단건 응답의 샘플링 칸. 샘플 검사수량을 재는 시험만 채운다. */
+let samplingVersion: { samplingMethodCode: string; samplingRatio: number | null } | null = null;
+
+/** 세션 — 기본은 작업자가 연결된 계정이다(검사자를 풀 수 있다 · omf-all-around#104). */
+const LINKED_SESSION: Session = {
+  ...SYNTHETIC_SESSION,
+  worker: { workerId: 8501, workerNo: 'SYN-W-01', workerName: '합성 작업자' },
+};
+let testSession: Session = LINKED_SESSION;
+/** LOT 상세의 품질 상태. `null` 이면 LOT 상세에 답하지 않는다(종전 시험들). */
+let lotStatusForTest: string | null = null;
 
 beforeEach(() => {
+  testSession = LINKED_SESSION;
+  lotStatusForTest = null;
   confirmResponder = null;
+  samplingVersion = null;
 });
 
 const queueCalls = (sent: URL[]) =>
@@ -363,6 +446,42 @@ describe('IqcInspectionScreen', () => {
     await waitFor(() => expect(screen.getByLabelText(t.result.fields.accepted)).toHaveValue(''));
   });
 
+  /* omf-all-around#104 — 검사자는 계정에 연결된 작업자다. 연결이 없으면 누르기 전에 막고 이유를 말한다. */
+  it('계정에 작업자가 연결되지 않았으면 저장·확정을 잠그고 사유를 낸다', async () => {
+    testSession = { ...SYNTHETIC_SESSION, worker: null };
+    const { writes } = renderScreen('/?ir=1001');
+
+    expect(await screen.findByText(t.result.workerNotLinked)).toBeInTheDocument();
+    await userEvent.type(screen.getByLabelText(t.result.fields.held), '1');
+    expect(screen.getByRole('button', { name: t.result.save })).toBeDisabled();
+    expect(screen.getByRole('button', { name: t.result.confirm })).toBeDisabled();
+    expect(writes).toHaveLength(0);
+  });
+
+  it('옛 서버처럼 세션에 연결 칸이 없으면 막지 않는다 — 모르는 것을 「없음」으로 읽지 않는다', async () => {
+    testSession = SYNTHETIC_SESSION;
+    renderScreen('/?ir=1001');
+
+    await screen.findByText(t.result.round(1));
+    expect(screen.queryByText(t.result.workerNotLinked)).not.toBeInTheDocument();
+  });
+
+  /* omf-all-around#102 — 샘플 검사는 샘플 수량만 나눠 넣어도 저장된다. */
+  it('샘플 기준이면 검사수량이 샘플 수량이고 그 수량으로 저장한다', async () => {
+    samplingVersion = { samplingMethodCode: 'SAMPLE_BY_LOT', samplingRatio: 10 };
+    const { writes } = renderScreen('/?ir=1002', () => jsonResponse(queueResponse()), []);
+
+    await screen.findByText(t.result.confirmBlockedByUnsaved);
+    expect(await screen.findByText(/^50\b/)).toBeInTheDocument();
+    await userEvent.type(screen.getByLabelText(t.result.fields.accepted), '50');
+    await userEvent.click(screen.getByRole('button', { name: t.result.save }));
+
+    await waitFor(() => expect(writes).toHaveLength(1));
+    const body = await bodyOf(writes[0]!);
+    expect(body.inspectedQty).toBe(50);
+    expect(body.acceptedQty).toBe(50);
+  });
+
   it('회차가 없으면 저장이 새로 만든다', async () => {
     const { writes } = renderScreen('/?ir=1002', () => jsonResponse(queueResponse()), []);
 
@@ -504,6 +623,21 @@ describe('IqcInspectionScreen', () => {
       .map((url) => url.searchParams.get('codeGroupCode'));
 
     expect(groups).not.toContain(CODE_GROUPS.measurementJudgment);
+  });
+
+  /*
+   * omf-all-around#101 결정 A — 검사기준이 없어도 입하 IQC 의뢰가 선다. 그 의뢰는 측정 항목 없이
+   * 수량·종합 판정만으로 확정할 수 있어야 한다(항목 규격을 부르지 않는다).
+   */
+  it('검사기준이 없는 의뢰도 항목 없이 수량·판정으로 확정한다', async () => {
+    const { sent, writes } = renderScreen('/?ir=1004');
+
+    await screen.findByText(t.result.round(1));
+    await userEvent.click(await screen.findByRole('button', { name: t.result.confirm }));
+
+    await waitFor(() => expect(writes).toHaveLength(1));
+    expect(new URL((writes[0] as Request).url).pathname).toContain(':confirm');
+    expect(sent.some((url) => url.pathname.endsWith('/items'))).toBe(false);
   });
 
   it('확정하면 되돌릴 수 없는 쓰기가 잠금 토큰과 함께 나간다', async () => {
@@ -750,6 +884,135 @@ describe('IqcInspectionScreen — 확정 결과 문면', () => {
   });
 });
 
+/* omf-all-around#106 — 불합격이면 불량 코드·사유를 받아 불량 기록을 남긴 «뒤» 확정한다. */
+describe('IqcInspectionScreen — 불합격 사유', () => {
+  const rejectedRound = { ...draftRound, acceptedQty: 485, rejectedQty: 15, heldQty: 0 };
+
+  const chooseRejected = async (): Promise<void> => {
+    await screen.findByText(t.result.round(1));
+    await userEvent.click(screen.getByLabelText(t.result.judgment));
+    await userEvent.click(await screen.findByRole('option', { name: '불합격' }));
+  };
+
+  it('불합격을 고르면 사유 칸이 서고, 코드를 고르기 전에는 확정이 잠긴다', async () => {
+    renderScreen('/?ir=1001', () => jsonResponse(queueResponse()), [rejectedRound]);
+    await chooseRejected();
+
+    expect(
+      await screen.findByRole('group', { name: t.result.rejection.heading }),
+    ).toBeInTheDocument();
+    expect(screen.getByText(t.result.rejection.required)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: t.result.confirm })).toBeDisabled();
+  });
+
+  it('상세가 있는 대분류는 상세까지 골라야 하고, 확정은 불량 기록 → 확정 순서로 나간다', async () => {
+    const { writes } = renderScreen('/?ir=1001', () => jsonResponse(queueResponse()), [
+      rejectedRound,
+    ]);
+    await chooseRejected();
+
+    await userEvent.click(await screen.findByLabelText(t.result.rejection.major));
+    await userEvent.click(await screen.findByRole('option', { name: 'APP · 외관' }));
+    expect(screen.getByText(t.result.rejection.minorRequired)).toBeInTheDocument();
+    await userEvent.click(screen.getByLabelText(t.result.rejection.minor));
+    await userEvent.click(await screen.findByRole('option', { name: 'APP-SCR · 스크래치' }));
+    await userEvent.type(screen.getByLabelText(t.result.rejection.description), '표면 긁힘');
+    await userEvent.click(screen.getByRole('button', { name: t.result.confirm }));
+
+    await waitFor(() => expect(writes).toHaveLength(2));
+    expect(new URL((writes[0] as Request).url).pathname).toBe('/quality/defect-records');
+    expect(await bodyOf(writes[0] as Request)).toMatchObject({
+      sourceCode: 'IQC',
+      defectCodeId: 7002,
+      defectQty: 15,
+      inspectionResultId: draftRound.inspectionResultId,
+      defectDescription: '표면 긁힘',
+    });
+    expect(new URL((writes[1] as Request).url).pathname).toContain(':confirm');
+  });
+
+  /*
+   * 3단계 검증 버그 — 사유를 넣고 [임시 저장]을 누르면 사유가 사라졌다. 사유는 저장 본문에 실리지 않고(확정 직전 불량
+   * 기록으로 남는다) 저장 응답이 회차의 판정을 바꾸면서 초안 되돌림이 사유까지 비웠다. 저장 뒤에도 남아 확정에 실려야 한다.
+   */
+  it('임시 저장 뒤에도 불량 코드·사유가 남고, 확정하면 그 값으로 불량 기록이 나간다', async () => {
+    const { writes } = renderScreen(
+      '/?ir=1001',
+      () => jsonResponse(queueResponse()),
+      [rejectedRound],
+      [],
+      itemSpecsResponse(),
+      [
+        {
+          ...rejectedRound,
+          overallJudgmentCode: 'REJECTED',
+          versionNo: (rejectedRound.versionNo ?? 1) + 1,
+        },
+      ],
+    );
+    await chooseRejected();
+    await userEvent.click(await screen.findByLabelText(t.result.rejection.major));
+    await userEvent.click(await screen.findByRole('option', { name: 'APP · 외관' }));
+    await userEvent.click(screen.getByLabelText(t.result.rejection.minor));
+    await userEvent.click(await screen.findByRole('option', { name: 'APP-SCR · 스크래치' }));
+    await userEvent.type(screen.getByLabelText(t.result.rejection.description), '표면 긁힘');
+
+    await userEvent.click(screen.getByRole('button', { name: t.result.save }));
+    await waitFor(() => expect(writes).toHaveLength(1));
+    /* 저장 응답으로 회차의 판정이 불합격으로 바뀐 «뒤»를 본다 — 확정이 풀리는 것이 그 신호다. */
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: t.result.confirm })).toBeEnabled(),
+    );
+
+    expect(screen.getByLabelText(t.result.rejection.major)).toHaveTextContent('APP · 외관');
+    expect(screen.getByLabelText(t.result.rejection.minor)).toHaveTextContent('APP-SCR · 스크래치');
+    expect(screen.getByLabelText(t.result.rejection.description)).toHaveValue('표면 긁힘');
+
+    const savedCount = writes.length;
+    await userEvent.click(screen.getByRole('button', { name: t.result.confirm }));
+    await waitFor(() => expect(writes.length).toBe(savedCount + 2));
+    const defect = writes[savedCount] as Request;
+    expect(new URL(defect.url).pathname).toBe('/quality/defect-records');
+    expect(await bodyOf(defect)).toMatchObject({
+      defectCodeId: 7002,
+      defectDescription: '표면 긁힘',
+    });
+  });
+});
+
+/* omf-all-around#106 후속 (나) — 불량 LOT 은 재검사 대신 처분·반품으로 잇는다. */
+describe('IqcInspectionScreen — 불량 LOT 다음 처리', () => {
+  const rejectedConfirmed = {
+    ...confirmedRound,
+    overallJudgmentCode: 'REJECTED',
+    acceptedQty: 485,
+    rejectedQty: 15,
+    heldQty: 0,
+  };
+
+  it('불합격 확정 LOT 이 불량이면 재검사 단추 대신 처분 판정·공급사 반품 안내가 선다', async () => {
+    lotStatusForTest = 'DEFECTIVE';
+    renderScreen('/?ir=1001', () => jsonResponse(queueResponse()), [rejectedConfirmed]);
+
+    expect(await screen.findByText(t.result.followUp.title)).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: t.result.followUp.toDisposition }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: t.result.followUp.toSupplierReturn }),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: t.result.reinspect })).not.toBeInTheDocument();
+  });
+
+  it('처분으로 재검 대기가 된 LOT(불량 아님)은 종전처럼 재검사 단추다', async () => {
+    lotStatusForTest = 'INSPECTION_PENDING';
+    renderScreen('/?ir=1001', () => jsonResponse(queueResponse()), [rejectedConfirmed]);
+
+    expect(await screen.findByRole('button', { name: t.result.reinspect })).toBeInTheDocument();
+    expect(screen.queryByText(t.result.followUp.title)).not.toBeInTheDocument();
+  });
+});
+
 describe('IqcInspectionScreen — 재검사 저장 뒤', () => {
   /**
    * ⛔ **저장 한 번에 회차 하나다.** 저장이 새 회차를 만들면 그 회차는 이제 실재하는 작성중
@@ -890,5 +1153,53 @@ describe('IqcInspectionScreen — 단위 조회', () => {
     const call = sent.find((url) => url.pathname === '/mdm/uoms');
     expect(call?.searchParams.get('size')).toBe('200');
     expect(call?.searchParams.get('includeInactive')).toBe('true');
+  });
+});
+
+/* 3단계 검증 — 끝난 의뢰는 입력 대신 최신 회차의 읽기 전용 요약, 다시 열린 의뢰에서만 [재검사]. */
+describe('IqcInspectionScreen — 끝난 의뢰', () => {
+  const firstRejected = {
+    ...confirmedRound,
+    overallJudgmentCode: 'REJECTED',
+    acceptedQty: 485,
+    rejectedQty: 15,
+    heldQty: 0,
+  };
+  const secondAccepted = {
+    ...confirmedRound,
+    inspectionResultId: 9002,
+    inspectionRound: 2,
+    overallJudgmentCode: 'ACCEPTED',
+    acceptedQty: 500,
+    rejectedQty: 0,
+    heldQty: 0,
+    previousResultId: confirmedRound.inspectionResultId,
+  };
+
+  it('의뢰가 끝났으면 회차 단추 없이 최신 회차 요약만 보이고 판정·수량 입력과 [재검사]가 없다', async () => {
+    renderScreen('/?ir=1005', () => jsonResponse(queueResponse()), [firstRejected, secondAccepted]);
+
+    const summary = await screen.findByRole('region', { name: t.result.closed.title });
+    expect(within(summary).getByText(t.result.round(2))).toBeInTheDocument();
+    expect(within(summary).getByText(t.result.closed.finalJudgment)).toBeInTheDocument();
+    expect(screen.queryByLabelText(t.result.fields.accepted)).not.toBeInTheDocument();
+    expect(screen.queryByLabelText(t.result.judgment)).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: t.result.reinspect })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: t.result.save })).not.toBeInTheDocument();
+  });
+
+  it('보류로 확정한 의뢰는 끝났어도 요약 대신 [재검사]가 선다 — LOT 이 검사 대기에 남는다', async () => {
+    const held = { ...firstRejected, overallJudgmentCode: 'HELD', rejectedQty: 0, heldQty: 15 };
+    renderScreen('/?ir=1005', () => jsonResponse(queueResponse()), [held]);
+
+    expect(await screen.findByRole('button', { name: t.result.reinspect })).toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: t.result.closed.title })).not.toBeInTheDocument();
+  });
+
+  it('재작업으로 의뢰가 다시 열리면(IN_PROGRESS) 확정 회차여도 [재검사]가 선다', async () => {
+    renderScreen('/?ir=1002', () => jsonResponse(queueResponse()), [firstRejected]);
+
+    expect(await screen.findByRole('button', { name: t.result.reinspect })).toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: t.result.closed.title })).not.toBeInTheDocument();
   });
 });

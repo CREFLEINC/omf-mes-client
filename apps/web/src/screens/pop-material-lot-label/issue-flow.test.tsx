@@ -29,7 +29,7 @@ const receiptOf = (n: number) => ({
   statusCode: 'SYN_STATUS',
 });
 
-const lineOf = (lotId: number | null, receiptNo = 1) => ({
+const lineOf = (lotId: number | null, receiptNo = 1, inspectionRequired = false) => ({
   inboundReceiptLineId: 8500 + receiptNo,
   inboundReceiptId: 8100 + receiptNo,
   lineNo: 1,
@@ -38,7 +38,7 @@ const lineOf = (lotId: number | null, receiptNo = 1) => ({
   uomId: 8401,
   supplierLotMissing: true,
   supplierLotLabelAttached: false,
-  inspectionRequired: false,
+  inspectionRequired,
   statusCode: 'SYN_STATUS',
   lotId,
 });
@@ -80,6 +80,8 @@ interface FlowOptions {
   issueFailBody?: unknown;
   /** 등록 호출을 이 상태 코드로 실패시킨다. 409 는 채번 충돌이라 **다시 부르면 풀린다.** */
   registerFailStatus?: number;
+  /** 이미 등록된 LOT 의 품질 상태(상세 응답). 기본은 검사 대기. */
+  lotStatusCode?: string;
   /** 등록 실패의 본문. 계약의 `ConflictResponse`(`conflictCause`)를 실을 때 쓴다. */
   registerFailBody?: unknown;
   /** 발행 호출을 끝나지 않게 붙잡는다 — 실행 중 상태를 재는 데 쓴다. */
@@ -89,13 +91,21 @@ interface FlowOptions {
   /** 라벨에 실을 품목 조회 실패를 재현한다. */
   renderFails?: boolean;
   /** 셸 인쇄 통로를 심는다. 없으면 브라우저와 같은 상태다. */
-  shellPrint?: (() => Promise<string>) | null;
+  shellPrint?: ((...args: unknown[]) => Promise<string>) | null;
+  /**
+   * 셸의 프린터 목록 통로를 심는다(화면이 먼저 이것을 읽는다). `selectable` 이 참이면 고른 프린터를 받는 설치본이다.
+   */
+  shellPrinters?: { names: string[]; target: string | null; selectable: boolean };
   reissueReasons?: { code: string; codeName: string }[];
   /**
    * 인쇄 결과를 보고한 뒤에는 서버가 그 라인을 발행한 것으로 거른다 — 미발행 라인 질의에 빈
    * 목록을 답한다. 끄면 발행 전후로 같은 라인을 답한다.
    */
   filtersIssuedAfterReport?: boolean;
+  /** IQC 대상 품목의 라인이다 — 자재 라벨 뒤에 IQC 라벨을 한 장 더 찍는다(omf-all-around#110). */
+  inspectionRequired?: boolean;
+  /** IQC 라벨이 이미 나간 적이 있다 — 사유 없는 IQC 라벨 발행을 서버처럼 422(사유 필수)로 거절한다. */
+  iqcRequiresReason?: boolean;
 }
 
 const renderFlow = (options: FlowOptions = {}) => {
@@ -134,6 +144,17 @@ const renderFlow = (options: FlowOptions = {}) => {
     ...options.identity,
   };
 
+  if (options.shellPrinters !== undefined) {
+    const { names, target, selectable } = options.shellPrinters;
+    window.pop = {
+      rendition: { save: options.shellPrint ?? vi.fn(async () => 'C:/syn/label.png') },
+      printers: {
+        list: async () => ({ printers: names.map((name) => ({ name })), target }),
+        capabilities: async () => (selectable ? { raw: true, selectable } : { raw: true }),
+      },
+    } as unknown as typeof window.pop;
+  }
+
   const result = renderWithProviders(
     <PopIdentityProvider value={identity}>
       <PopMaterialLotLabelScreen />
@@ -161,7 +182,13 @@ const renderFlow = (options: FlowOptions = {}) => {
             }
 
             return jsonResponse({
-              items: [lineOf(receiptNo === 1 ? (lotId ?? createdLotId) : null, receiptNo)],
+              items: [
+                lineOf(
+                  receiptNo === 1 ? (lotId ?? createdLotId) : null,
+                  receiptNo,
+                  options.inspectionRequired === true,
+                ),
+              ],
               page: { page: 1, size: 20, total: 1 },
             });
           },
@@ -242,7 +269,7 @@ const renderFlow = (options: FlowOptions = {}) => {
                 uomId: 8401,
                 sourceTypeCode: 'INBOUND_RECEIPT_LINE',
                 sourceId: 8501,
-                statusCode: 'SYN_STATUS',
+                statusCode: options.lotStatusCode ?? 'INSPECTION_PENDING',
               },
               externalIdentifiers: [],
               holds: [],
@@ -275,7 +302,7 @@ const renderFlow = (options: FlowOptions = {}) => {
                   uomId: 8401,
                   sourceTypeCode: 'INBOUND_RECEIPT_LINE',
                   sourceId: 8501,
-                  statusCode: 'SYN_STATUS',
+                  statusCode: 'INSPECTION_PENDING',
                 },
                 externalIdentifiers: [],
                 holds: [],
@@ -287,8 +314,30 @@ const renderFlow = (options: FlowOptions = {}) => {
         {
           match: (request) =>
             new URL(request.url).pathname === '/app/document-issues' && request.method === 'POST',
-          respond: (request) => {
+          respond: async (request) => {
             void record(request);
+
+            if (options.iqcRequiresReason === true) {
+              const body = (await request.clone().json()) as {
+                documentTypeCode: string;
+                reissueReasonCode?: string | null;
+              };
+              if (body.documentTypeCode === 'IQC_LABEL' && !body.reissueReasonCode) {
+                return jsonResponse(
+                  {
+                    errors: [
+                      {
+                        scope: 'field',
+                        field: 'reissueReasonCode',
+                        code: 'REQUIRED',
+                        message: '재발행 사유가 필요합니다.',
+                      },
+                    ],
+                  },
+                  { status: 422 },
+                );
+              }
+            }
 
             /*
              * 끝나지 않는 응답 — 「실행 중」이 유지된다. 본문을 닫지 않는 흐름으로 준다.
@@ -355,7 +404,11 @@ const renderFlow = (options: FlowOptions = {}) => {
     },
   );
 
-  if (options.shellPrint !== undefined && options.shellPrint !== null) {
+  if (
+    options.shellPrinters === undefined &&
+    options.shellPrint !== undefined &&
+    options.shellPrint !== null
+  ) {
     window.pop = { rendition: { save: options.shellPrint } };
   }
 
@@ -364,6 +417,7 @@ const renderFlow = (options: FlowOptions = {}) => {
 
 afterEach(() => {
   delete window.pop;
+  localStorage.clear();
 });
 
 const chooseLine = async (user: ReturnType<typeof userEvent.setup>): Promise<void> => {
@@ -387,6 +441,74 @@ describe('PopMaterialLotLabelScreen — 등록·인쇄', () => {
     expect(
       screen.queryByText('사번을 확인한 뒤에 등록·인쇄할 수 있습니다.'),
     ).not.toBeInTheDocument();
+  });
+
+  /* omf-all-around#110 — IQC 대상 자재는 자재 라벨 뒤에 IQC 라벨(IQC_LABEL)을 한 장 더 찍는다. */
+  it('IQC 대상이면 자재 라벨 뒤에 IQC 라벨을 발행·인쇄·보고한다', async () => {
+    const shellPrint = vi.fn(async () => 'C:/syn/label.png');
+    const { user, sent } = renderFlow({ shellPrint, inspectionRequired: true });
+    await chooseLine(user);
+
+    await user.click(screen.getByRole('button', { name: '등록·인쇄' }));
+
+    await waitFor(() => {
+      expect(sent.filter((entry) => entry.path.endsWith(':report-print'))).toHaveLength(2);
+    });
+    const issues = sent.filter((entry) => entry.path === '/app/document-issues');
+    expect(
+      issues.map((entry) => (entry.body as { documentTypeCode: string }).documentTypeCode),
+    ).toEqual(['MATERIAL_LOT_LABEL', 'IQC_LABEL']);
+    expect(shellPrint).toHaveBeenCalledTimes(2);
+    expect(
+      await screen.findByText(messages.popMaterialLotLabel.target.outcome.iqcPrinted),
+    ).toBeInTheDocument();
+  });
+
+  /* 2단계 검증(2026-10-16) — 프린터가 없으면 성공이 아니라 경고이고, IQC 라벨 결과도 따로 말한다. */
+  it('자재 라벨이 안 나오면 경고로 「등록은 됐고」를 말하고, IQC 라벨도 안 나왔다고 따로 말한다', async () => {
+    const shellPrint = vi.fn(async () => {
+      throw new Error('브라우저 실행 — 프린터로 보내지 않았습니다.');
+    });
+    const { user, sent } = renderFlow({ shellPrint, inspectionRequired: true });
+    await chooseLine(user);
+
+    await user.click(screen.getByRole('button', { name: '등록·인쇄' }));
+
+    const banner = await screen.findByRole('alert');
+    expect(banner).toHaveTextContent(messages.popMaterialLotLabel.target.outcome.printFailed);
+    expect(banner).toHaveTextContent(messages.popMaterialLotLabel.target.outcome.iqcNotPrinted);
+    expect(screen.queryByText(/인쇄했습니다/u)).not.toBeInTheDocument();
+    // IQC 라벨은 시도하지 않는다 — 자재 라벨 발행 기록 하나만 생기고 실패로 보고된다.
+    expect(
+      sent
+        .filter((entry) => entry.path === '/app/document-issues')
+        .map((entry) => (entry.body as { documentTypeCode: string }).documentTypeCode),
+    ).toEqual(['MATERIAL_LOT_LABEL']);
+    expect(shellPrint).toHaveBeenCalledTimes(1);
+  });
+
+  it('⛔ 불량 LOT 은 누르기 전에 단추를 막고 그 까닭을 말한다', async () => {
+    const { user, sent } = renderFlow({ lotId: LOT_ID, lotStatusCode: 'DEFECTIVE' });
+    await chooseLine(user);
+
+    expect(
+      await screen.findByText(messages.popMaterialLotLabel.target.lotBlocked.title('불량')),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '등록·인쇄' })).toBeDisabled();
+    expect(sent.filter((entry) => entry.path === '/app/document-issues')).toHaveLength(0);
+  });
+
+  it('IQC 대상이 아니면 IQC 라벨을 찍지 않는다', async () => {
+    const shellPrint = vi.fn(async () => 'C:/syn/label.png');
+    const { user, sent } = renderFlow({ shellPrint });
+    await chooseLine(user);
+
+    await user.click(screen.getByRole('button', { name: '등록·인쇄' }));
+
+    await waitFor(() => {
+      expect(sent.filter((entry) => entry.path.endsWith(':report-print'))).toHaveLength(1);
+    });
+    expect(sent.filter((entry) => entry.path === '/app/document-issues')).toHaveLength(1);
   });
 
   it('등록 → 발행 → 품목 조회 → 인쇄 → 보고를 순서대로 부르고 사번을 싣는다', async () => {
@@ -473,7 +595,7 @@ describe('PopMaterialLotLabelScreen — 등록·인쇄', () => {
 
     expect(await screen.findByText('등록·인쇄를 끝내지 못했습니다.')).toBeInTheDocument();
     expect(
-      screen.getByText('자재LOT 은 만들어졌습니다. 다시 등록하지 마시고 「인쇄」로 이어가세요.'),
+      screen.getByText(messages.popMaterialLotLabel.target.outcome.lotCreated),
     ).toBeInTheDocument();
     expect(
       sentTo(sent, `/app/document-issues/${String(ISSUE_LOG_ID)}:report-print`),
@@ -493,7 +615,7 @@ describe('PopMaterialLotLabelScreen — 등록·인쇄', () => {
     await user.click(screen.getByRole('button', { name: '등록·인쇄' }));
 
     expect(
-      await screen.findByText(/라벨이 나오지 않았습니다|인쇄했습니다|끝내지 못했습니다/u),
+      await screen.findByText(/라벨은 나오지 않았습니다|인쇄했습니다|끝내지 못했습니다/u),
     ).toBeInTheDocument();
 
     await user.click(
@@ -503,7 +625,7 @@ describe('PopMaterialLotLabelScreen — 등록·인쇄', () => {
     );
 
     expect(
-      screen.queryByText(/라벨이 나오지 않았습니다|인쇄했습니다|끝내지 못했습니다/u),
+      screen.queryByText(/라벨은 나오지 않았습니다|인쇄했습니다|끝내지 못했습니다/u),
     ).not.toBeInTheDocument();
   });
 
@@ -513,9 +635,7 @@ describe('PopMaterialLotLabelScreen — 등록·인쇄', () => {
     await user.click(screen.getByRole('button', { name: '등록·인쇄' }));
 
     expect(
-      await screen.findByText(
-        '자재LOT 은 만들어졌습니다. 다시 등록하지 마시고 「인쇄」로 이어가세요.',
-      ),
+      await screen.findByText(messages.popMaterialLotLabel.target.outcome.lotCreated),
     ).toBeInTheDocument();
   });
 
@@ -597,7 +717,7 @@ describe('PopMaterialLotLabelScreen — 등록·인쇄', () => {
 
     // 등록이 끝났으므로 단추 이름은 「인쇄」다 — 그 단추가 막혀 있어야 한다.
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: '인쇄' })).toBeDisabled();
+      expect(screen.getByRole('button', { name: '등록·인쇄' })).toBeDisabled();
     });
     /*
      * ⛔ **닫기를 주지 않는다.** 닫으면 결과가 지워져 차단이 함께 풀리는데 서버의 답은 그대로다 —
@@ -614,10 +734,10 @@ describe('PopMaterialLotLabelScreen — 등록·인쇄', () => {
     const { user, sent } = renderFlow({ lotId: LOT_ID, issueFails: true });
     await chooseLine(user);
 
-    await user.click(screen.getByRole('button', { name: '인쇄' }));
+    await user.click(screen.getByRole('button', { name: '등록·인쇄' }));
     expect(await screen.findByText('등록·인쇄를 끝내지 못했습니다.')).toBeInTheDocument();
 
-    await user.click(screen.getByRole('button', { name: '인쇄' }));
+    await user.click(screen.getByRole('button', { name: '등록·인쇄' }));
 
     await waitFor(() => {
       expect(sent.filter((entry) => entry.path === '/app/document-issues')).toHaveLength(2);
@@ -635,11 +755,11 @@ describe('PopMaterialLotLabelScreen — 등록·인쇄', () => {
   it('이미 등록된 자재에서 라벨 값 조회 실패면 새 LOT 생성 안내를 덧붙이지 않는다', async () => {
     const { user } = renderFlow({ lotId: LOT_ID, renderFails: true });
     await chooseLine(user);
-    await user.click(screen.getByRole('button', { name: '인쇄' }));
+    await user.click(screen.getByRole('button', { name: '등록·인쇄' }));
 
     expect(await screen.findByText('등록·인쇄를 끝내지 못했습니다.')).toBeInTheDocument();
     expect(
-      screen.queryByText('자재LOT 은 만들어졌습니다. 다시 등록하지 마시고 「인쇄」로 이어가세요.'),
+      screen.queryByText(messages.popMaterialLotLabel.target.outcome.lotCreated),
     ).not.toBeInTheDocument();
   });
 
@@ -677,7 +797,7 @@ describe('PopMaterialLotLabelScreen — 등록·인쇄', () => {
     const shellPrint = vi.fn(async () => 'C:/syn/label.png');
     const { user, sent } = renderFlow({ lotId: LOT_ID, reportFails: true, shellPrint });
     await chooseLine(user);
-    await user.click(screen.getByRole('button', { name: '인쇄' }));
+    await user.click(screen.getByRole('button', { name: '등록·인쇄' }));
 
     expect(
       await screen.findByText(
@@ -697,7 +817,7 @@ describe('PopMaterialLotLabelScreen — 이미 등록된 자재', () => {
     });
     await chooseLine(user);
 
-    await user.click(screen.getByRole('button', { name: '인쇄' }));
+    await user.click(screen.getByRole('button', { name: '등록·인쇄' }));
 
     await waitFor(() => {
       expect(sentTo(sent, '/app/document-issues')).toBeDefined();
@@ -727,7 +847,7 @@ describe('PopMaterialLotLabelScreen — 발행 여부 목록', () => {
       filtersIssuedAfterReport: true,
     });
     await chooseLine(user);
-    await user.click(screen.getByRole('button', { name: '인쇄' }));
+    await user.click(screen.getByRole('button', { name: '등록·인쇄' }));
 
     await waitFor(() => {
       expect(screen.queryByRole('button', { name: /SYN-IB-0001/u })).not.toBeInTheDocument();
@@ -736,7 +856,7 @@ describe('PopMaterialLotLabelScreen — 발행 여부 목록', () => {
 
   /**
    * ⛔ **줄이 목록에서 빠져도 그 실행의 결과는 남는다.** 발행 기록이 생긴 줄은 미발행 목록에서
-   * 곧바로 빠지는데, 결과를 줄과 함께 지우면 「라벨이 나오지 않았습니다」가 소리 없이 사라져
+   * 곧바로 빠지는데, 결과를 줄과 함께 지우면 「라벨은 나오지 않았습니다」가 소리 없이 사라져
    * 작업자가 라벨이 나온 줄 안다.
    */
   it('인쇄가 실패한 줄이 목록에서 빠져도 실패 안내와 다음 할 일을 남긴다', async () => {
@@ -748,13 +868,13 @@ describe('PopMaterialLotLabelScreen — 발행 여부 목록', () => {
       filtersIssuedAfterReport: true,
     });
     await chooseLine(user);
-    await user.click(screen.getByRole('button', { name: '인쇄' }));
+    await user.click(screen.getByRole('button', { name: '등록·인쇄' }));
 
     await waitFor(() => {
       expect(screen.queryByRole('button', { name: /SYN-IB-0001/u })).not.toBeInTheDocument();
     });
-    expect(await screen.findByText(/라벨이 나오지 않았습니다/u)).toBeInTheDocument();
-    expect(screen.getByText(/「발행 완료」에서 「재인쇄」/u)).toBeInTheDocument();
+    expect(await screen.findByText(/라벨 인쇄에 실패했습니다/u)).toBeInTheDocument();
+    expect(screen.getByText(/\[발행 완료\]에서 다시 인쇄/u)).toBeInTheDocument();
   });
 
   it('인쇄를 마친 줄이 목록에서 빠져도 인쇄했다는 안내를 남긴다', async () => {
@@ -764,7 +884,7 @@ describe('PopMaterialLotLabelScreen — 발행 여부 목록', () => {
       filtersIssuedAfterReport: true,
     });
     await chooseLine(user);
-    await user.click(screen.getByRole('button', { name: '인쇄' }));
+    await user.click(screen.getByRole('button', { name: '등록·인쇄' }));
 
     await waitFor(() => {
       expect(screen.queryByRole('button', { name: /SYN-IB-0001/u })).not.toBeInTheDocument();
@@ -784,7 +904,7 @@ describe('PopMaterialLotLabelScreen — 재인쇄', () => {
     await chooseLine(user);
 
     expect(await screen.findByRole('button', { name: '재인쇄' })).toBeEnabled();
-    expect(screen.queryByRole('button', { name: '인쇄' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '등록·인쇄' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: '등록·인쇄' })).not.toBeInTheDocument();
   });
 
@@ -792,7 +912,7 @@ describe('PopMaterialLotLabelScreen — 재인쇄', () => {
     const { user } = renderFlow({ lotId: LOT_ID });
     await chooseLine(user);
 
-    expect(await screen.findByRole('button', { name: '인쇄' })).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: '등록·인쇄' })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: '재인쇄' })).not.toBeInTheDocument();
   });
 
@@ -873,6 +993,83 @@ describe('PopMaterialLotLabelScreen — 재인쇄', () => {
     });
   });
 
+  /* 2단계 검증(2026-10-16) — 재인쇄가 IQC 라벨을 이어 찍는 유일한 길이다(자재 라벨이 안 나와 건너뛴 경우). */
+  const reissueWithReason = async (user: ReturnType<typeof userEvent.setup>): Promise<void> => {
+    await user.click(await screen.findByRole('button', { name: '발행 완료' }));
+    await chooseLine(user);
+    await user.click(screen.getByRole('button', { name: '재인쇄' }));
+    const dialog = within(await screen.findByRole('dialog'));
+    await user.click(dialog.getByRole('combobox', { name: '사유' }));
+    await user.click(await screen.findByRole('option', { name: '인쇄 실패' }));
+    await user.click(dialog.getByRole('button', { name: '재인쇄' }));
+  };
+
+  const issueBodies = (sent: Sent[]) =>
+    sent
+      .filter((entry) => entry.path === '/app/document-issues')
+      .map(
+        (entry) => entry.body as { documentTypeCode: string; reissueReasonCode?: string | null },
+      );
+
+  it('검사 대기인 IQC 대상 LOT 의 재인쇄는 IQC 라벨도 찍는다 — 첫 IQC 라벨이면 사유 없이 낸다', async () => {
+    const shellPrint = vi.fn(async () => 'C:/syn/label.png');
+    const { user, sent } = renderFlow({ lotId: LOT_ID, shellPrint, inspectionRequired: true });
+    await reissueWithReason(user);
+
+    expect(
+      await screen.findByText(messages.popMaterialLotLabel.target.outcome.iqcPrinted),
+    ).toBeInTheDocument();
+    expect(issueBodies(sent)).toEqual([
+      expect.objectContaining({
+        documentTypeCode: 'MATERIAL_LOT_LABEL',
+        reissueReasonCode: 'SYN_REISSUE_01',
+      }),
+      expect.objectContaining({ documentTypeCode: 'IQC_LABEL' }),
+    ]);
+    // 첫 IQC 라벨이다 — 사유를 싣지 않는다(실으면 첫 발행이 재발행으로 남는다).
+    expect(issueBodies(sent)[1]).not.toHaveProperty('reissueReasonCode');
+    expect(shellPrint).toHaveBeenCalledTimes(2);
+  });
+
+  it('IQC 라벨이 이미 나간 적이 있으면 서버가 요구한 사유를 실어 다시 낸다', async () => {
+    const shellPrint = vi.fn(async () => 'C:/syn/label.png');
+    const { user, sent } = renderFlow({
+      lotId: LOT_ID,
+      shellPrint,
+      inspectionRequired: true,
+      iqcRequiresReason: true,
+    });
+    await reissueWithReason(user);
+
+    expect(
+      await screen.findByText(messages.popMaterialLotLabel.target.outcome.iqcPrinted),
+    ).toBeInTheDocument();
+    expect(
+      issueBodies(sent).map((body) => [body.documentTypeCode, body.reissueReasonCode]),
+    ).toEqual([
+      ['MATERIAL_LOT_LABEL', 'SYN_REISSUE_01'],
+      ['IQC_LABEL', undefined],
+      ['IQC_LABEL', 'SYN_REISSUE_01'],
+    ]);
+  });
+
+  it('판정이 끝난 LOT 의 재인쇄는 IQC 라벨을 찍지 않는다', async () => {
+    const shellPrint = vi.fn(async () => 'C:/syn/label.png');
+    const { user, sent } = renderFlow({
+      lotId: LOT_ID,
+      shellPrint,
+      inspectionRequired: true,
+      lotStatusCode: 'NORMAL',
+    });
+    await reissueWithReason(user);
+
+    await waitFor(() => {
+      expect(sent.filter((entry) => entry.path.endsWith(':report-print'))).toHaveLength(1);
+    });
+    expect(issueBodies(sent).map((body) => body.documentTypeCode)).toEqual(['MATERIAL_LOT_LABEL']);
+    expect(shellPrint).toHaveBeenCalledTimes(1);
+  });
+
   it('⛔ 고를 사유가 없으면 재인쇄를 열지 않고 왜 못 하는지 보인다', async () => {
     const { user } = renderFlow({ lotId: LOT_ID, reissueReasons: [] });
     await user.click(await screen.findByRole('button', { name: '발행 완료' }));
@@ -885,5 +1082,79 @@ describe('PopMaterialLotLabelScreen — 재인쇄', () => {
         '고를 수 있는 재발행 사유가 아직 없습니다. 사유 없이는 재인쇄할 수 없습니다.',
       ),
     ).toBeInTheDocument();
+  });
+});
+
+/* 2단계 검증(2026-10-16) — 프린터 선택은 이 화면 전용이고, 셸이 고른 프린터를 받을 때만 연다. */
+describe('PopMaterialLotLabelScreen — 프린터 선택', () => {
+  const PRINTERS = { names: ['HT800', 'HT800 #2'], target: 'HT800' };
+
+  const lastPrinterArg = (shellPrint: ReturnType<typeof vi.fn>): unknown =>
+    shellPrint.mock.calls.at(-1)?.[4];
+
+  it('처음에는 셸의 출력 대상(OS 기본)이 골라져 있고 그 이름으로 셸에 보낸다', async () => {
+    const shellPrint = vi.fn(async () => 'C:/syn/label.png');
+    const { user } = renderFlow({ shellPrint, shellPrinters: { ...PRINTERS, selectable: true } });
+
+    const select = await screen.findByRole('combobox', { name: '프린터 선택' });
+    await waitFor(() => expect(select).not.toBeDisabled());
+    expect(select.closest('.pop-lot-printer-select')?.textContent).toMatch(/HT800(?! #2)/u);
+
+    await chooseLine(user);
+    await user.click(screen.getByRole('button', { name: '등록·인쇄' }));
+
+    await waitFor(() => expect(shellPrint).toHaveBeenCalled());
+    expect(lastPrinterArg(shellPrint)).toBe('HT800');
+  });
+
+  it('다른 프린터를 고르면 그리로 보내고 이 단말에 기억한다', async () => {
+    const shellPrint = vi.fn(async () => 'C:/syn/label.png');
+    const { user, sent } = renderFlow({
+      shellPrint,
+      shellPrinters: { ...PRINTERS, selectable: true },
+    });
+
+    const select = await screen.findByRole('combobox', { name: '프린터 선택' });
+    await waitFor(() => expect(select).not.toBeDisabled());
+    await user.click(select);
+    await user.click(await screen.findByRole('option', { name: 'HT800 #2' }));
+
+    expect(localStorage.getItem('omf-mes.pop-material-lot-label.printer')).toBe('HT800 #2');
+
+    await chooseLine(user);
+    await user.click(screen.getByRole('button', { name: '등록·인쇄' }));
+
+    await waitFor(() => expect(shellPrint).toHaveBeenCalled());
+    expect(lastPrinterArg(shellPrint)).toBe('HT800 #2');
+    expect(sentTo(sent, '/app/document-issues')?.body).toMatchObject({ printerName: 'HT800 #2' });
+  });
+
+  it('기억해 둔 프린터가 사라졌으면 기본으로 돌아가고 그 사실을 말한다', async () => {
+    localStorage.setItem('omf-mes.pop-material-lot-label.printer', '사라진 프린터');
+    renderFlow({ shellPrinters: { ...PRINTERS, selectable: true } });
+
+    expect(
+      await screen.findByText(messages.popMaterialLotLabel.printer.storedMissing('사라진 프린터')),
+    ).toBeInTheDocument();
+    expect(
+      (await screen.findByRole('combobox', { name: '프린터 선택' })).closest(
+        '.pop-lot-printer-select',
+      )?.textContent,
+    ).not.toMatch(/#2|사라진/u);
+  });
+
+  it('⛔ 고른 프린터를 받지 못하는 옛 설치본에서는 칸을 막고, 셸에 이름을 싣지 않는다(지금 동작 그대로)', async () => {
+    localStorage.setItem('omf-mes.pop-material-lot-label.printer', 'HT800 #2');
+    const shellPrint = vi.fn(async () => 'C:/syn/label.png');
+    const { user } = renderFlow({ shellPrint, shellPrinters: { ...PRINTERS, selectable: false } });
+
+    expect(await screen.findByRole('combobox', { name: '프린터 선택' })).toBeDisabled();
+    expect(screen.getByText(messages.popMaterialLotLabel.printer.shellOnly)).toBeInTheDocument();
+
+    await chooseLine(user);
+    await user.click(screen.getByRole('button', { name: '등록·인쇄' }));
+
+    await waitFor(() => expect(shellPrint).toHaveBeenCalled());
+    expect(shellPrint.mock.calls.at(-1)).toHaveLength(4);
   });
 });
