@@ -3,6 +3,8 @@ import type {
   components,
   InspectionDefectInput,
   InspectionResultConfirmForward,
+  InspectionResultCreateForward,
+  InspectionResultUpdateForward,
 } from '@omf-mes/api-client';
 import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 
@@ -219,8 +221,6 @@ export const useInspectionRoundLock = (
   });
 };
 
-type InspectionResultCreate = components['schemas']['InspectionResultCreate'];
-type InspectionResultUpdate = components['schemas']['InspectionResultUpdate'];
 type InspectionResultResponse = components['schemas']['InspectionResult'];
 
 /**
@@ -257,6 +257,12 @@ export interface SaveDraftVariables {
    * 값이 아니다. 실으면 이미 쌓인 회차의 앞뒤를 뒤바꾸는 길이 열린다.
    */
   previousResultId: number | null;
+  /**
+   * IQC 불합격 사유(omf-all-around#122 · 서버 P-48) — 임시 저장도 싣는다. 서버가 그 회차의 불량 기록을 이 값으로
+   * 갈아 끼우고(빈 배열 = 지움) 다시 열면 화면이 그 기록으로 사유 칸을 채운다. 확정은 #121 그대로 다시 싣는다.
+   * `undefined` 면 키를 싣지 않는다 — 서버가 기존 기록에 손대지 않는다(아직 되살리지 못한 회차).
+   */
+  defects: InspectionDefectInput[] | undefined;
 }
 
 /** 계약이 못박은 두 값 중 임시 저장이 쓰는 쪽. 확정은 다음 회차가 다룬다. */
@@ -338,7 +344,7 @@ const judgmentOf = (code: string): { overallJudgmentCode?: string } =>
 const previousOf = (previousResultId: number | null): { previousResultId?: number } =>
   previousResultId === null ? {} : { previousResultId };
 
-const toCreateBody = (v: SaveDraftVariables): InspectionResultCreate => ({
+const toCreateBody = (v: SaveDraftVariables): InspectionResultCreateForward => ({
   inspectionRequestId: v.inspectionRequestId,
   inspectedQty: v.inspectedQty,
   acceptedQty: v.acceptedQty,
@@ -349,14 +355,18 @@ const toCreateBody = (v: SaveDraftVariables): InspectionResultCreate => ({
   statusCode: DRAFT_STATUS,
   ...judgmentOf(v.overallJudgmentCode),
   ...previousOf(v.previousResultId),
+  /* 새 회차에 빈 배열은 실을 까닭이 없다 — 지울 기록이 없다. */
+  ...(v.defects === undefined || v.defects.length === 0 ? {} : { defects: v.defects }),
 });
 
-const toUpdateBody = (v: SaveDraftVariables): InspectionResultUpdate => ({
+const toUpdateBody = (v: SaveDraftVariables): InspectionResultUpdateForward => ({
   acceptedQty: v.acceptedQty,
   rejectedQty: v.rejectedQty,
   heldQty: v.heldQty,
   inspectedAt: v.inspectedAt,
   ...judgmentOf(v.overallJudgmentCode),
+  /* ⭐ 빈 배열도 싣는다 — 불합격을 풀고 저장하면 앞서 임시 저장한 사유를 지워야 한다. `undefined` 는 키를 뺀다. */
+  ...(v.defects === undefined ? {} : { defects: v.defects }),
 });
 
 const fetchItemSpecs = (
@@ -538,6 +548,27 @@ export const useDefectCodes = (enabled: boolean) => {
         }),
       ).then((response) => response.items),
     enabled,
+  });
+};
+
+/**
+ * 작성중 회차에 임시 저장된 불합격 사유(omf-all-around#122 · 서버 P-48). 다시 열었을 때 사유 칸을 채운다.
+ * 결과 하나로 좁히면 기간이 필요 없다 — 한 회차의 사유는 많아야 몇 줄이다.
+ */
+export const useDraftRejectionRecords = (inspectionResultId: number | null) => {
+  const { client } = useApiClient();
+
+  return useQuery({
+    queryKey: [...ALL_KEY, 'draft-rejection', inspectionResultId ?? 0] as const,
+    enabled: inspectionResultId !== null,
+    queryFn: () =>
+      runRequest(() =>
+        client.GET('/quality/defect-records', {
+          params: {
+            query: { inspectionResultId: inspectionResultId as number, page: 1, size: 20 },
+          },
+        }),
+      ).then((response) => response.items),
   });
 };
 

@@ -114,6 +114,29 @@ export type InspectionResultConfirmForward = components['schemas']['InspectionRe
 
 type InspectionConfirmPath = paths['/quality/inspection-results/{inspectionResultId}:confirm'];
 
+/**
+ * 서버 선행 P-42·P-48(omf-all-around#122) — 작성중 저장도 IQC 불합격 사유를 싣는다. 실으면 그 회차의 불량 기록을
+ * 갈아 끼우고(빈 배열 = 지움), 생략하면 손대지 않는다.
+ */
+export type InspectionResultCreateForward = components['schemas']['InspectionResultCreate'] & {
+  defects?: InspectionDefectInput[];
+};
+export type InspectionResultUpdateForward = components['schemas']['InspectionResultUpdate'] & {
+  defects?: InspectionDefectInput[];
+};
+
+type InspectionResultsPath = paths['/quality/inspection-results'];
+type InspectionResultPath = paths['/quality/inspection-results/{inspectionResultId}'];
+type DefectRecordsGet = paths['/quality/defect-records']['get'];
+
+/**
+ * 서버 선행 P-42 — 검사 결과 하나로 좁히면(`inspectionResultId`) 기간이 필요 없다. 작성중 회차의 기록도 돌려준다(P-48).
+ */
+export type DefectRecordListQueryForward = Omit<
+  DefectRecordsGet['parameters']['query'],
+  'detectedFrom' | 'detectedTo'
+> & { inspectionResultId?: number; detectedFrom?: string; detectedTo?: string };
+
 /** 서버 선행 P-57(omf-all-around#58) — 첨부 대상에 검사 문서(LOT·검사 결과)를 더한다. */
 export type AttachmentTargetType =
   'WAREHOUSE' | 'NOTICE' | 'BREAKDOWN' | 'LOT' | 'INSPECTION_RESULT';
@@ -523,8 +546,24 @@ export interface ForwardPaths {
       requestBody: { content: { 'application/json': InspectionResultConfirmForward } };
     };
   };
-  /** 기존 조회(GET)에 등록(POST)을 더한다 — 서버 선행 P-42. */
-  '/quality/defect-records': Omit<paths['/quality/defect-records'], 'post'> & {
+  /** 작성중 저장 본문에 불합격 사유(`defects`)를 더한다 — 서버 선행 P-48. */
+  '/quality/inspection-results': Omit<InspectionResultsPath, 'post'> & {
+    post: Omit<InspectionResultsPath['post'], 'requestBody'> & {
+      requestBody: { content: { 'application/json': InspectionResultCreateForward } };
+    };
+  };
+  '/quality/inspection-results/{inspectionResultId}': Omit<InspectionResultPath, 'put'> & {
+    put: Omit<InspectionResultPath['put'], 'requestBody'> & {
+      requestBody: { content: { 'application/json': InspectionResultUpdateForward } };
+    };
+  };
+  /** 기존 조회(GET)에 등록(POST)을 더한다 — 서버 선행 P-42. 조회는 `inspectionResultId` 질의를 더한다. */
+  '/quality/defect-records': Omit<paths['/quality/defect-records'], 'get' | 'post'> & {
+    get: Omit<DefectRecordsGet, 'parameters'> & {
+      parameters: Omit<DefectRecordsGet['parameters'], 'query'> & {
+        query: DefectRecordListQueryForward;
+      };
+    };
     post: {
       parameters: {
         query?: never;

@@ -18,6 +18,22 @@ export interface RejectionDraft {
 
 export const EMPTY_REJECTION: RejectionDraft = { majorId: '', minorId: '', description: '' };
 
+/**
+ * 임시 저장된 불량 기록 → 사유 초안(omf-all-around#122). 상세 코드면 그 부모가 대분류다. 코드 마스터에 없는 코드
+ * (비활성·삭제)는 고를 수 없으니 사유 글만 되살린다.
+ */
+export const rejectionDraftOf = (
+  codes: readonly DefectCode[],
+  record: { defectCodeId: number; defectDescription?: string | null },
+): RejectionDraft => {
+  const code = codes.find((candidate) => candidate.defectCodeId === record.defectCodeId);
+  const description = record.defectDescription ?? '';
+  if (code === undefined) return { ...EMPTY_REJECTION, description };
+  return code.parentDefectCodeId == null
+    ? { majorId: String(code.defectCodeId), minorId: '', description }
+    : { majorId: String(code.parentDefectCodeId), minorId: String(code.defectCodeId), description };
+};
+
 /** 사용 중인 대분류(부모가 없는 코드)와 그 상세. W-06-03 이 두 단계로 관리한다. */
 const majorsOf = (codes: readonly DefectCode[]) =>
   codes.filter((code) => code.parentDefectCodeId == null && code.isActive !== false);
@@ -57,7 +73,7 @@ export interface RejectionReasonProps {
 
 /**
  * 불합격 사유 칸(omf-all-around#106) — 종합 판정이 불합격일 때만 선다. 불량 코드는 사업부 공용 마스터
- * (W-06-03)를 쓴다(2026-10-16 결정). 저장은 확정 직전 불량 기록(서버 선행 P-42)으로 나간다.
+ * (W-06-03)를 쓴다(2026-10-16 결정). 임시 저장(서버 P-48)·확정(P-47)이 그 회차의 불량 기록으로 남긴다.
  *
  * 배치(3단계 검증 · 담당자 지시): 테두리 상자 대신 옅은 면 하나, 1행 대분류·상세 같은 폭 2열(좁으면 1열), 2행 사유
  * 전체 폭. 라벨은 모두 입력 위, 필수 누락은 그 칸 아래. 상세는 대분류에 상세가 있을 때만 고를 수 있다(없으면 비활성).
