@@ -1655,23 +1655,29 @@ const chooseRequiredCodes = async (user: ReturnType<typeof userEvent.setup>): Pr
   await chooseOption(user, t.fields.inventoryStatus, SAMPLE_INVENTORY);
 };
 
-/** 입고 일시를 넣는다 — 날짜는 달력에서, 시·분은 선택칸에서 고른다. */
+/** 입고 일시를 넣는다 — 날짜는 달력에서, 시각은 시각 칸 팝오버의 시·분 두 열에서 고른다. */
 const fillReceiptDatetime = async (user: ReturnType<typeof userEvent.setup>): Promise<void> => {
   await pickDate(user, screen.getByLabelText(t.fields.receiptDate), RECEIPT_DATETIME.slice(0, 10));
-  await chooseOption(user, t.fields.receiptHour, RECEIPT_DATETIME.slice(11, 13));
-  await chooseOption(user, t.fields.receiptMinute, RECEIPT_DATETIME.slice(14, 16));
+  await user.click(screen.getByRole('button', { name: t.fields.receiptTime }));
+  await user.click(
+    within(screen.getByRole('listbox', { name: t.fields.receiptHour })).getByRole('option', {
+      name: RECEIPT_DATETIME.slice(11, 13),
+    }),
+  );
+  await user.click(
+    within(screen.getByRole('listbox', { name: t.fields.receiptMinute })).getByRole('option', {
+      name: RECEIPT_DATETIME.slice(14, 16),
+    }),
+  );
 };
 
-/** 입고 일시 세 칸(날짜·시·분)이 보이는 값. 빈 값이면 세 칸이 다 자리표시다. */
+/** 입고 일시 두 칸(날짜·시각)이 보이는 값. 빈 값이면 두 칸이 다 자리표시다. */
 const expectReceiptDatetime = (value: string): void => {
   expect(screen.getByLabelText(t.fields.receiptDate)).toHaveTextContent(
     value === '' ? messages.common.selectDate : value.slice(0, 10),
   );
-  expect(screen.getByRole('combobox', { name: t.fields.receiptHour })).toHaveTextContent(
-    value === '' ? t.values.receiptHourPlaceholder : value.slice(11, 13),
-  );
-  expect(screen.getByRole('combobox', { name: t.fields.receiptMinute })).toHaveTextContent(
-    value === '' ? t.values.receiptMinutePlaceholder : value.slice(14, 16),
+  expect(screen.getByRole('button', { name: t.fields.receiptTime })).toHaveTextContent(
+    value === '' ? t.values.receiptTimePlaceholder : value.slice(11, 16),
   );
 };
 

@@ -1,6 +1,8 @@
-import { DatePicker, Select, TextField, type SelectOption } from '@crefle/web-ui';
+import { DatePicker, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useId, useState } from 'react';
+
+import { TimeField } from './time-field';
 
 const t = messages.goodsReceipt;
 
@@ -25,17 +27,6 @@ interface DatetimeParts {
   minute: string;
 }
 
-const twoDigits = (count: number): SelectOption[] =>
-  Array.from({ length: count }, (_, index) => {
-    const value = String(index).padStart(2, '0');
-
-    return { value, label: value };
-  });
-
-/** 시 `00`~`23` · 분 `00`~`59` — 1분 단위로 정확히 고른다(담당자 지시: 시각도 날짜처럼 «선택»). */
-const HOUR_OPTIONS = twoDigits(24);
-const MINUTE_OPTIONS = twoDigits(60);
-
 const splitDatetime = (value: string): DatetimeParts =>
   value === ''
     ? { date: '', hour: '', minute: '' }
@@ -50,9 +41,9 @@ const joinDatetime = ({ date, hour, minute }: DatetimeParts): string =>
  *
  * **입고 일시를 날짜와 시각 두 칸으로 받는다**(담당자 지시 — 시스템 표기 `yyyy-MM-dd HH:mm`).
  * 브라우저 기본 `datetime-local` 은 OS 언어를 따라 「연도. 월. 일. 오후 02:05」로 보여 표기를 맞출 수 없다.
- * 날짜는 디자인 시스템 `DatePicker`(표기 `YYYY-MM-DD` 고정 — 다른 화면과 같은 부품), 시각은 시(00~23)·분(00~59)
- * 두 개의 DS `Select` 로 **고른다**(담당자 지시 — 날짜처럼 선택. DS 에 시각 선택 부품이 없어 기존 부품을 조합했다.
- * 네이티브 `type="time"` 은 「오후 02:05」로 보인다). **보내는 값과 검증은 그대로다** — 날짜·시·분이 다 골라졌을 때만
+ * 날짜는 디자인 시스템 `DatePicker`(표기 `YYYY-MM-DD` 고정 — 다른 화면과 같은 부품), 시각은 칸 하나를 누르면 열리는
+ * 시(00~23)·분(00~59) 두 열 팝오버에서 **한 번에 고른다**(`time-field.tsx` · 담당자 지시. DS 에 시각 선택·팝오버
+ * 부품이 없다. 네이티브 `type="time"` 은 「오후 02:05」로 보인다). **보내는 값과 검증은 그대로다** — 날짜·시·분이 다 골라졌을 때만
  * 지금까지와 같은 `YYYY-MM-DDTHH:mm` 하나를 올리고, 아니면 빈 값을 올린다.
  *
  * **영업일 입력칸을 두지 않는다.** 계약이 영업일을 필수로 요구하지만 산출 규칙(야간조 경계 등)이
@@ -129,31 +120,15 @@ export const ReceiptHeaderForm = ({
               changeParts({ ...parts, date: value });
             }}
           />
-          {/* 시·분 — 목록이 길면(분 60개) 목록 안에서 구른다. */}
-          <Select
-            aria-label={t.fields.receiptHour}
-            aria-required
-            aria-describedby={describedBy}
-            options={HOUR_OPTIONS}
-            value={parts.hour === '' ? null : parts.hour}
-            placeholder={t.values.receiptHourPlaceholder}
+          {/* 시각 — 칸 하나를 누르면 시·분 두 열 팝오버에서 한 번에 고른다(담당자 지시). */}
+          <TimeField
+            hour={parts.hour}
+            minute={parts.minute}
             disabled={isDisabled}
             invalid={serverError !== undefined}
-            onChange={(value) => {
-              changeParts({ ...parts, hour: value });
-            }}
-          />
-          <Select
-            aria-label={t.fields.receiptMinute}
-            aria-required
-            aria-describedby={describedBy}
-            options={MINUTE_OPTIONS}
-            value={parts.minute === '' ? null : parts.minute}
-            placeholder={t.values.receiptMinutePlaceholder}
-            disabled={isDisabled}
-            invalid={serverError !== undefined}
-            onChange={(value) => {
-              changeParts({ ...parts, minute: value });
+            describedBy={describedBy}
+            onChange={(hour, minute) => {
+              changeParts({ ...parts, hour, minute });
             }}
           />
         </div>
