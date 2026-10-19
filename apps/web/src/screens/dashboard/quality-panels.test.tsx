@@ -132,7 +132,11 @@ describe('품질 탭', () => {
       0,
     );
     expect(within(recent).queryByRole('columnheader', { name: 'LOT' })).not.toBeInTheDocument();
-    expect(screen.getByText(t.reworkLine('1'))).toBeInTheDocument();
+    expect(screen.getByText(t.pqcDefectQtyNote(t.reworkLine('1')))).toBeInTheDocument();
+    /* PQC 는 단위 「건」으로 통일 — LOT 를 쓰지 않는다(사용자 지시 2026-10-19). */
+    expect(screen.getByRole('group', { name: t.pqcLots })).not.toHaveTextContent('LOT');
+    expect(screen.getByRole('region', { name: t.currentTitle })).not.toHaveTextContent('LOT');
+    expect(screen.getByRole('group', { name: t.worstEquipment })).toBeInTheDocument();
   });
 
   it('PQC 호기별 불량률 — 높은 순, 같은 값은 설비 코드 자연 정렬(17-1 < 17-2 < 17-10)', () => {

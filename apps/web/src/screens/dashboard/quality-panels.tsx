@@ -158,12 +158,15 @@ const OverviewLotTile = ({
   label,
   tag,
   counts,
+  unit = t.lotUnit,
 }: {
   label: string;
   tag: string;
   counts: DashboardLotCounts;
+  /** 단위 — PQC 는 LOT 번호가 없는 검사 결과라 「건」(사용자 지시 2026-10-19). 기본은 LOT. */
+  unit?: string;
 }) => (
-  <KpiTile label={label} tag={tag} value={formatFigure(lotTotal(counts))} unit={t.lotUnit}>
+  <KpiTile label={label} tag={tag} value={formatFigure(lotTotal(counts))} unit={unit}>
     <span className="dash-lot-legend">
       {(['accepted', 'rejected', 'held'] as const).map((key) => (
         <span key={key} className="dash-lot-legend-item">
@@ -1020,7 +1023,12 @@ export const PqcTab = ({
     <QualityTabFrame className="dash-tab-quality-detail">
       <div className="dash-kpis">
         <OverviewPassRateTile label={t.passRateOf('PQC')} block={pqc} />
-        <OverviewLotTile label={t.pqcLots} tag={tags.month} counts={pqc.monthLots} />
+        <OverviewLotTile
+          label={t.pqcLots}
+          tag={tags.month}
+          counts={pqc.monthLots}
+          unit={t.countUnit}
+        />
         {pqc.fullReinspect !== undefined && pqc.fullReinspect !== null && (
           <ReinspectTiles reinspect={pqc.fullReinspect} inputNote={t.pqcReinspectInputNote} />
         )}
@@ -1031,11 +1039,12 @@ export const PqcTab = ({
           unit={t.qtyUnit}
           tone={pqc.monthDefectQty > 0 ? 'error' : undefined}
         >
-          <span>{t.reworkLine(formatFigure(pqc.reworkRequestCount))}</span>
+          <span>{t.pqcDefectQtyNote(t.reworkLine(formatFigure(pqc.reworkRequestCount)))}</span>
         </KpiTile>
         <KpiTile
           label={t.worstEquipment}
-          tag={tags.today}
+          /* 아래 「설비별 불량률」과 같은 품질 누계 구간(서버 장부) — 「금일」이 아니다. */
+          tag={tags.month}
           value={worst === undefined ? t.none : worst.equipmentCode}
         >
           {worst !== undefined && (
@@ -1070,19 +1079,22 @@ export const PqcTab = ({
               items={[
                 {
                   key: 'held',
-                  label: t.heldLots,
+                  /* PQC 는 LOT 번호가 없는 검사 결과 — 단위를 「건」으로 통일(사용자 지시 2026-10-19). */
+                  label: t.pqcHeld,
                   note: t.heldLotsNote,
-                  ...held,
+                  value: formatFigure(held.count),
+                  unit: t.countUnit,
                   tone: countTone(held.count, 'warning'),
                   selectable: held.count > 0,
                 },
                 {
                   key: 'pending',
-                  label: t.pendingLots,
+                  label: t.pqcPending,
                   /* 가장 오래 기다린 LOT 의 경과 시간(사용자 지시 2026-10-19). */
                   note:
                     oldest === null ? t.pendingLotsNote : t.pendingOldest(formatElapsed(oldest)),
-                  ...pending,
+                  value: formatFigure(pending.count),
+                  unit: t.countUnit,
                   tone: countTone(pending.count, 'warning'),
                   selectable: pending.count > 0,
                 },
@@ -1091,9 +1103,8 @@ export const PqcTab = ({
                   label: t.reworkRequests,
                   note: t.reworkRequestsNote,
                   /* LOT · 건수 둘 다(사용자 지시 2026-10-19) — 서버가 LOT 수를 주지 않으면 기존 건수만. */
-                  ...(pqc.reworkRequestCounts === undefined
-                    ? { value: formatFigure(pqc.reworkRequestCount), unit: t.countUnit }
-                    : lotRecordValue(pqc.reworkRequestCounts, pqc.reworkRequestCount)),
+                  value: formatFigure(pqc.reworkRequestCount),
+                  unit: t.countUnit,
                   selectable: canOpenDisposition,
                 },
               ]}
@@ -1108,6 +1119,7 @@ export const PqcTab = ({
       <div className="dash-qo-bottom">
         <DefectTypesPanel
           title={t.phenomenaOf('PQC')}
+          sub={t.pqcPhenomenaSub}
           tag={tags.month}
           entries={phenomenaEntries(pqc.defectPhenomena)}
         />
@@ -1282,8 +1294,9 @@ export const OqcTab = ({
             title={t.returnReasons}
             tag={tags.month}
             entries={oqc.returnReasons.map((entry) => ({
-              key: entry.reasonCode,
-              label: entry.reasonName,
+              /* 사유 없는 반품 입고는 서버가 `null` 한 줄로 준다. */
+              key: entry.reasonCode ?? 'NO_REASON',
+              label: entry.reasonName ?? t.returnReasonNone,
               value: entry.qty,
             }))}
           />

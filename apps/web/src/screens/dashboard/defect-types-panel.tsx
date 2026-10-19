@@ -259,9 +259,12 @@ export const DefectTypesPanel = ({
   entries,
   tag,
   title = t.phenomena,
+  sub = t.defectTypesSub,
 }: {
   entries: NamedQty[];
   tag: string;
+  /** 부제 — PQC 불량현상은 집계 기준을 적는다(사용자 지시 2026-10-19). 기본은 기존 문구. */
+  sub?: string;
   /** IQC 「품목(CODE)별 불량 구성」도 같은 원형 그래프다(사용자 지시 2026-10-19). */
   title?: string;
 }) => {
@@ -328,12 +331,7 @@ export const DefectTypesPanel = ({
   const total = entries.reduce((sum, entry) => sum + Math.max(0, entry.value), 0);
 
   return (
-    <Panel
-      title={title}
-      sub={t.defectTypesSub}
-      tag={tag}
-      className={tooTall ? undefined : 'dash-qo-fit'}
-    >
+    <Panel title={title} sub={sub} tag={tag} className={tooTall ? undefined : 'dash-qo-fit'}>
       <div ref={setBox} className="dash-donut">
         {entries.length === 0 ? (
           <NoRecords />

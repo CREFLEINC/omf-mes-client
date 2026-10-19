@@ -297,7 +297,7 @@ export interface DashboardQuality {
     /** 당월 고객 반품 입고 수량. */
     customerReturnQty: number;
     /** 당월 반품 구분별 수량 — 반품 입고 사유 + 공급사 반품 출고(사용자 지시 2026-10-19). */
-    returnReasons?: { reasonCode: string; reasonName: string; qty: number }[];
+    returnReasons?: { reasonCode: string | null; reasonName: string | null; qty: number }[];
     /** 공급사 반품 출고(반출) 일자별 수량 — 일별 합격률과 같은 날짜, 기록 없는 날 `null`. */
     dailyReturnOutQty?: { date: string; qty: number | null }[];
     /** 반품 입고 뒤 처분 판정 전인 LOT(지금 기준). */
