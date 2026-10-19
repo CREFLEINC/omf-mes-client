@@ -15,6 +15,7 @@ const row: TargetRow = {
   receivedQty: 500,
   uomId: 8401,
   lotId: null,
+  inspectionRequired: false,
 };
 
 describe('toLotCreateBody — 원천 짝', () => {

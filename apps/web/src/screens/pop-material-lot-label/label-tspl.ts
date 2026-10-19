@@ -342,11 +342,19 @@ export interface MaterialLotLabelFields {
   inboundReceiptNo: string;
 }
 
-/** 자재 LOT 라벨 한 장. 배치는 `buildLotLabel` 이 정하고 여기는 글줄만 고른다. */
-export const buildMaterialLotLabel = (fields: MaterialLotLabelFields): string =>
+/**
+ * 자재 LOT 라벨 한 장. 배치는 `buildLotLabel` 이 정하고 여기는 글줄만 고른다.
+ *
+ * `heading` — IQC 라벨(omf-all-around#110)은 같은 판에 머리줄만 `IQC LOT` 으로 찍는다.
+ * ⚠ 양식은 임시다 — 라벨 항목·형식은 #86 확정 후 교체한다.
+ */
+export const buildMaterialLotLabel = (
+  fields: MaterialLotLabelFields,
+  heading: 'MATERIAL LOT' | 'IQC LOT' = 'MATERIAL LOT',
+): string =>
   buildLotLabel(
     [
-      { point: 8, content: `MATERIAL LOT  #${String(fields.issueSeq)}` },
+      { point: 8, content: `${heading}  #${String(fields.issueSeq)}` },
       { point: 10, content: `ITEM ${fields.itemCode}` },
       { point: 10, content: `QTY ${lotLabelQty(fields.qty, fields.uomCode)}` },
       { point: 8, content: `LOT ${fields.lotNo}` },

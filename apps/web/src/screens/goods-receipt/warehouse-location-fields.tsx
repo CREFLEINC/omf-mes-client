@@ -23,6 +23,8 @@ export interface WarehouseLocationFieldsProps {
   isPlantMismatch: boolean;
   /** 입하 전표의 공장 이름 — 공장이 다를 때 안내에 함께 보인다. */
   inboundPlantName: string;
+  /** IQC 불합격 LOT — 창고 선택지를 불량창고로 좁힌다. 서버도 일반 창고를 거부한다(omf-all-around#84). */
+  defectOnly: boolean;
   onChangeWarehouse: (value: string) => void;
   onChangeLocation: (value: string) => void;
   onRetryOptions: () => void;
@@ -99,6 +101,7 @@ export const WarehouseLocationFields = ({
   warehousePlantName,
   isPlantMismatch,
   inboundPlantName,
+  defectOnly,
   onChangeWarehouse,
   onChangeLocation,
   onRetryOptions,
@@ -113,7 +116,11 @@ export const WarehouseLocationFields = ({
           required
           className="goods-receipt-step-warehouse"
           label={t.fields.warehouse}
-          options={toWarehouseOptions(warehouses.items)}
+          options={toWarehouseOptions(
+            defectOnly
+              ? warehouses.items.filter((warehouse) => warehouse.isDefect)
+              : warehouses.items,
+          )}
           value={warehouseValue}
           /*
            * 고른 창고의 공장은 라벨 옆 같은 줄에 둔다 — 칸 밖 한 줄로 내면 입력 격자가 둘로 갈라진다(사용자 지시).
@@ -122,7 +129,11 @@ export const WarehouseLocationFields = ({
           labelHint={
             warehousePlantName === null ? undefined : t.notes.warehousePlant(warehousePlantName)
           }
-          note={isPlantMismatch ? plantDiffersNote(inboundPlantName) : listNote(warehouses)}
+          note={
+            isPlantMismatch
+              ? plantDiffersNote(inboundPlantName)
+              : (listNote(warehouses) ?? (defectOnly ? t.notes.defectWarehouseOnly : undefined))
+          }
           error={fieldErrors.warehouseId}
           placeholder={t.values.fieldPlaceholders.warehouse}
           disabled={isLocked}

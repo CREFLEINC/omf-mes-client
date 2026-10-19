@@ -14,6 +14,9 @@ const values: GroupFormValues = {
   groupName: '프레스 구역',
   groupTypeCode: 'LINE',
   parentGroupId: '',
+  defaultWipLocationId: '',
+  defaultFgLocationId: '',
+  defaultScrapLocationId: '',
 };
 
 const renderPane = (overrides: Partial<GroupFormPaneProps> = {}) => {
@@ -32,6 +35,11 @@ const renderPane = (overrides: Partial<GroupFormPaneProps> = {}) => {
       codeLockReason={null}
       plantOptions={[{ value: '11', label: '제1공장' }]}
       parentOptions={[{ value: '', label: t.form.parentNone }]}
+      locationOptions={{
+        defaultWipLocationId: [{ value: '301', label: '[WH20 MFG WH] WH20-DEF · MFG' }],
+        defaultFgLocationId: [],
+        defaultScrapLocationId: [],
+      }}
       isActive
       isDirty={false}
       isSaving={false}
@@ -206,5 +214,19 @@ describe('GroupFormPane', () => {
 
     expect(screen.getByRole('button', { name: messages.common.deactivate })).toBeEnabled();
     expect(screen.queryByText(t.actionReasons.deactivateNeedsCleanForm)).toBeNull();
+  });
+
+  it('라인 기본 위치 세 칸을 그 칸의 선택지로 그리고, 고르면 그 칸만 바꾼다', async () => {
+    const user = userEvent.setup();
+    const { onChange } = renderPane();
+
+    expect(screen.getByRole('combobox', { name: t.fields.defaultFgLocation })).toBeInTheDocument();
+    expect(
+      screen.getByRole('combobox', { name: t.fields.defaultScrapLocation }),
+    ).toBeInTheDocument();
+    await user.click(screen.getByRole('combobox', { name: t.fields.defaultWipLocation }));
+    await user.click(screen.getByRole('option', { name: /WH20-DEF/ }));
+
+    expect(onChange).toHaveBeenCalledWith({ defaultWipLocationId: '301' });
   });
 });

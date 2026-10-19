@@ -78,6 +78,7 @@ import {
   type PrintPage,
   type PrinterChoice,
   createSilentPrinter,
+  requestedPrinterName,
   resolveTerminalPrinter,
 } from './silent-print';
 import { SecureStore } from './secure-store';
@@ -543,7 +544,9 @@ async function main(): Promise<void> {
    *   목록을 들고 있으면 사라진 장치로 계속 보낸다.
    */
   let printHost: BrowserWindow | null = null;
-  const resolvePrinter = async (): Promise<{
+  const resolvePrinter = async (
+    requested?: string,
+  ): Promise<{
     choice: PrinterChoice;
     available: LoggedPrinter[];
   }> => {
@@ -560,6 +563,7 @@ async function main(): Promise<void> {
     return resolveTerminalPrinter({
       printers: await printHost.webContents.getPrintersAsync(),
       preferred: process.env.POP_PRINTER_NAME,
+      requested,
       defaultName: await readDefaultPrinterName(stagingDir),
     });
   };
@@ -597,7 +601,11 @@ async function main(): Promise<void> {
    * ⭐ 판정은 **인쇄가 실제로 쓰는 것과 같은 값**을 본다 — 같은 `rawPrinter` 가 없으면 없는 것이다.
    *   플랫폼 이름을 화면이 따로 따지지 않게 해, 조건이 바뀌어도 여기 한 곳만 움직인다.
    */
-  ipcMain.handle('printers:capabilities', () => ({ raw: rawPrinter !== undefined }));
+  /* `selectable` — `rendition:save` 가 작업마다 고른 프린터를 받는다(2단계 검증 2026-10-16). 옛 설치본에는 없다. */
+  ipcMain.handle('printers:capabilities', () => ({
+    raw: rawPrinter !== undefined,
+    selectable: true,
+  }));
 
   ipcMain.handle('device-token:get', () => secureStore.get());
   ipcMain.handle('device-token:set', (_e, value: string) => secureStore.set(value));
@@ -642,7 +650,14 @@ async function main(): Promise<void> {
 
   ipcMain.handle(
     'rendition:save',
-    async (_e, bytes: Uint8Array, label: string, now: string, format: unknown) => {
+    async (
+      _e,
+      bytes: Uint8Array,
+      label: string,
+      now: string,
+      format: unknown,
+      printerName?: unknown,
+    ) => {
       // 형식은 파일 경로 계산에 들어간다 — 아는 값인지 경계에서 막는다.
       if (!isRenditionFormat(format)) throw new UnknownFormatError(format);
 
@@ -706,7 +721,8 @@ async function main(): Promise<void> {
        */
       await printer.print(rendition, { kind: 'file', filePath });
 
-      const { choice, available } = await resolvePrinter();
+      /* 화면이 고른 프린터가 있으면 그것이 먼저다. 없으면 지금까지와 같다(기동 시 지정값 → OS 기본). */
+      const { choice, available } = await resolvePrinter(requestedPrinterName(printerName));
 
       /* ⛔ 보낼 곳이 없는 것을 성공으로 두지 않는다(공유계약 F-6) — 화면이 인쇄 실패로 낸다. */
       if (choice.kind === 'none') {

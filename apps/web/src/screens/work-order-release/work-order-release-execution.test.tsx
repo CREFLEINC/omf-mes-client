@@ -35,6 +35,7 @@ vi.mock('../production-order/reference-lookups', () => ({
   describeReference: (reference: { label: string }) => reference.label,
 }));
 vi.mock('./mutations', () => ({ useReleaseWorkOrder: mocks.release }));
+vi.mock('../production-order/item-lookups', () => ({ useItemDefaultLotSize: () => null }));
 
 const fact = (overrides: Partial<WorkOrderReleaseFact> = {}): WorkOrderReleaseFact => ({
   workOrderId: 704,

@@ -193,6 +193,7 @@ export const WorkOrderAssignmentWorkspace = ({
           <WorkOrderAssignmentEditor
             workOrderId={selected.workOrderId}
             plantId={exactOrder.plantId}
+            planDate={exactPlan?.planDate ?? null}
             priorityText={priorities[selected.workOrderId] ?? String(selected.priorityNo)}
             blockedReason={stale ? t.staleBlocked : null}
             onPriorityChange={(value) =>

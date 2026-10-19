@@ -753,11 +753,13 @@ describe('PopMaterialLotLabelScreen — 채번 대상', () => {
 });
 
 describe('PopMaterialLotLabelScreen — 프린터 상태', () => {
-  it('머리에 프린터와 그 상태를 상시 보인다 — 인쇄가 안 될 때 가장 먼저 보는 자리다', async () => {
+  it('채번 대상 구획에 지금 나갈 프린터를 보인다 — 브라우저에서는 고르는 칸을 막고 까닭을 말한다', async () => {
     renderScreen();
 
-    // 이름만 든다 — 상태 설명은 붙이지 않는다(사용자 지시 2026-09-14).
-    expect(await screen.findByText('프린터 합성 라벨 프린터 가')).toBeInTheDocument();
+    const select = await screen.findByRole('combobox', { name: '프린터 선택' });
+    expect(select.closest('.pop-lot-printer-select')).toHaveTextContent('합성 라벨 프린터 가');
+    expect(select).toBeDisabled();
+    expect(screen.getByText('설치본에서만 프린터를 고를 수 있습니다.')).toBeInTheDocument();
   });
 
   it('프린터가 한 대도 없으면 빈 상태를 그린다 — 오류로 다루지 않는다', async () => {
@@ -802,19 +804,19 @@ describe('PopMaterialLotLabelScreen — 등록이 어디까지 갔는가', () =>
   });
 
   /**
-   * ⛔ 이미 등록된 자재에 「등록·인쇄」를 보이면 이미 있는 LOT 위에 또 만든다고 읽힌다.
-   * 실제로 다시 부르면 같은 자재에 LOT 이 둘 생기고 되돌릴 화면이 없다(변경 통지 #534 §3).
+   * ⭐ 미발행 줄의 단추는 LOT 이 있어도 「등록·인쇄」다(2단계 검증 2026-10-16 · 담당자 표현 통일). 등록을
+   *    다시 부르지 않는 것은 단추 이름이 아니라 흐름이 지킨다(`issue-flow` 「등록을 다시 부르지 않고…」).
    *
    * ⛔ **문장으로 되풀이하지 않는다** — 단추 이름이 바뀐 것이 곧 그 사실이다. 스펙 §3 이
    *    이 아래를 「하단에 상시 구획을 두지 않는다」로 못박았다(여유 119px).
    */
-  it('이미 등록된 자재는 「인쇄」로 보인다 — 문장을 덧붙이지 않는다', async () => {
+  it('이미 등록된 미발행 자재도 「등록·인쇄」로 보인다 — 문장을 덧붙이지 않는다', async () => {
     const { user } = renderScreen({ lines: [line(8501, 8101, 8601, 500, true, 9001)] });
 
     await selectRow(user);
 
-    expect(await screen.findByRole('button', { name: '인쇄' })).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: '등록·인쇄' })).not.toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: '등록·인쇄' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '인쇄' })).not.toBeInTheDocument();
     expect(screen.queryByText(/이미 등록된 자재입니다/u)).not.toBeInTheDocument();
   });
 });

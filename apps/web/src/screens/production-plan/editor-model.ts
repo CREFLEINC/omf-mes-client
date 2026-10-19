@@ -218,3 +218,22 @@ export const summarizeProductionPlanQuantities = (
     relation: remainingQty > 0 ? 'under' : 'over',
   };
 };
+
+/**
+ * 새 계획 줄의 수량 기본값 — 오더 수량에서 이미 잡은 계획을 뺀 잔량. 숫자가 아닌 칸이 하나라도 있으면
+ * 합계를 믿을 수 없어 비우고, 잔량이 없으면 비운다(0 을 넣으면 저장이 막힌다).
+ */
+export const remainingPlanQtyText = (
+  orderQty: number,
+  plannedQtyTexts: readonly string[],
+): string => {
+  const quantities = plannedQtyTexts.map((text) => Number(text.trim()));
+  if (
+    plannedQtyTexts.some((text) => text.trim() === '') ||
+    quantities.some((value) => !Number.isFinite(value) || value < 0)
+  ) {
+    return '';
+  }
+  const { remainingQty } = summarizeProductionPlanQuantities(orderQty, quantities);
+  return remainingQty > 0 ? String(Number(remainingQty.toFixed(6))) : '';
+};

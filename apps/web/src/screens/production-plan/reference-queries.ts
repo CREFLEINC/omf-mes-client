@@ -28,6 +28,7 @@ export interface RoutingRevisionFact {
   routingCode: string;
   routingVersion: number;
   statusCode: string;
+  isDefault: boolean;
   effectiveFrom: string | null;
   effectiveTo: string | null;
 }
@@ -58,7 +59,8 @@ export interface ProductionLineReferenceResponse {
 export const productionPlanReferenceKeys = {
   all: ['production-plan-references'] as const,
   boms: (itemId: number | null) => ['production-plan-references', 'boms', itemId] as const,
-  routings: (itemId: number | null) => ['production-plan-references', 'routings', itemId] as const,
+  routings: (itemId: number | null, usableOnly: boolean) =>
+    ['production-plan-references', 'routings', itemId, usableOnly] as const,
   productionLines: (plantId: number | null) =>
     ['production-plan-references', 'production-lines', plantId] as const,
 };
@@ -82,6 +84,7 @@ const toRoutingRevisionFact = (routing: Routing): RoutingRevisionFact => ({
   routingCode: routing.routingCode,
   routingVersion: routing.routingVersion,
   statusCode: routing.statusCode,
+  isDefault: routing.isDefault ?? false,
   effectiveFrom: routing.effectiveFrom ?? null,
   effectiveTo: routing.effectiveTo ?? null,
 });
@@ -169,13 +172,18 @@ export const useBomReferenceQuery = (
   });
 };
 
+/**
+ * `usableOnly` — 계획에 걸 수 있는 개정(확정·유효 기간 안)만. 판정은 서버가 한다.
+ * 끄면 전 개정이다 — 확정된 계획이 쓰던 폐기·만료 Rev 의 이름을 풀 때 쓴다.
+ */
 export const useRoutingReferenceQuery = (
   itemId: number | null,
+  usableOnly: boolean,
 ): UseQueryResult<RoutingReferenceResponse> => {
   const { client } = useApiClient();
 
   return useQuery({
-    queryKey: productionPlanReferenceKeys.routings(itemId),
+    queryKey: productionPlanReferenceKeys.routings(itemId, usableOnly),
     enabled: itemId !== null,
     queryFn: () => {
       if (itemId === null) {
@@ -183,7 +191,9 @@ export const useRoutingReferenceQuery = (
       }
 
       return runRequest(() =>
-        client.GET('/planning/routings', { params: { query: { itemId } } }),
+        client.GET('/planning/routings', {
+          params: { query: usableOnly ? { itemId, usableOnly } : { itemId } },
+        }),
       ).then((response) => ({ items: response.items.map(toRoutingRevisionFact) }));
     },
   });

@@ -29,7 +29,8 @@ vi.mock('./queries', () => ({
   useWorkOrderValidation: mocks.validation,
 }));
 vi.mock('./mutations', () => ({ useUpdateWorkOrder: mocks.update }));
-vi.mock('./resource-queries', () => ({
+vi.mock('./resource-queries', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('./resource-queries')>()),
   useWorkOrderProductionLines: mocks.lines,
   useWorkOrderEquipments: mocks.equipments,
   useWorkOrderShifts: mocks.shifts,
@@ -90,7 +91,15 @@ beforeEach(() => {
   mocks.lines.mockReturnValue(
     resources([
       { productionLineId: 101, lineCode: 'L-1', lineName: '1호선', isActive: true },
-      { productionLineId: 102, lineCode: 'L-2', lineName: '2호선', isActive: true },
+      {
+        productionLineId: 102,
+        lineCode: 'L-2',
+        lineName: '2호선',
+        isActive: true,
+        defaultWipLocationId: 601,
+        defaultFgLocationId: 602,
+        defaultScrapLocationId: 603,
+      },
     ]),
   );
   mocks.equipments.mockReturnValue(resources([]));
@@ -120,6 +129,7 @@ beforeEach(() => {
         warehouseId: 34,
         warehouseCode: 'S210',
         warehouseName: '제품창고',
+        warehouseTypeCode: 'GENERAL',
         locationCode: 'WIP',
         locationName: 'WIP 위치',
         isActive: true,
@@ -129,6 +139,7 @@ beforeEach(() => {
         warehouseId: 34,
         warehouseCode: 'S210',
         warehouseName: '제품창고',
+        warehouseTypeCode: 'PRODUCT',
         locationCode: 'FG',
         locationName: '완제품 위치',
         isActive: true,
@@ -138,6 +149,7 @@ beforeEach(() => {
         warehouseId: 34,
         warehouseCode: 'S210',
         warehouseName: '제품창고',
+        warehouseTypeCode: 'GENERAL',
         locationCode: 'SCRAP',
         locationName: '스크랩 위치',
         isActive: true,
@@ -157,6 +169,7 @@ const Harness = ({ blockedReason = null }: { blockedReason?: string | null }) =>
       <WorkOrderAssignmentEditorSession
         workOrder={workOrder}
         plantId={501}
+        planDate="2026-10-20"
         priorityText={priority}
         blockedReason={blockedReason}
         onPriorityChange={setPriority}
@@ -173,6 +186,7 @@ const OuterHarness = () => {
       <WorkOrderAssignmentEditor
         workOrderId={701}
         plantId={501}
+        planDate="2026-10-20"
         priorityText={priority}
         onPriorityChange={setPriority}
       />
@@ -211,6 +225,49 @@ it('joins resource lookups, clears line-bound equipment, and saves exact owned f
       priorityNo: 2,
     }),
   );
+});
+
+it('교대를 바꾸면 계획일과 교대 시각으로 계획 시작·종료를 다시 채우고, 비우면 근무일 하루로 돌린다', async () => {
+  const user = userEvent.setup();
+  render(<Harness />);
+  const start = () => screen.getByLabelText(t.planFieldsPane.fields.plannedStartAtLocal);
+  const end = () => screen.getByLabelText(t.planFieldsPane.fields.plannedEndAtLocal);
+
+  await user.click(screen.getByRole('combobox', { name: t.resourcePane.fields.shift }));
+  await user.click(screen.getByRole('option', { name: t.resourcePane.clearOption }));
+  expect(start()).toHaveValue('2026-10-20T08:00');
+  expect(end()).toHaveValue('2026-10-21T08:00');
+
+  await user.click(screen.getByRole('combobox', { name: t.resourcePane.fields.shift }));
+  await user.click(screen.getByRole('option', { name: /주간/ }));
+  expect(start()).toHaveValue('2026-10-20T08:00');
+  expect(end()).toHaveValue('2026-10-20T20:00');
+});
+
+it('라인을 바꾸면 기본 위치 셋을 그 라인 기본값으로 덮어쓰고, 칸마다 맞는 창고 유형만 고르게 한다', async () => {
+  const user = userEvent.setup();
+  render(<Harness />);
+  const field = (name: string) => screen.getByRole('combobox', { name });
+
+  await user.click(field(t.resourcePane.fields.productionLine));
+  await user.click(screen.getByRole('option', { name: 'L-2 · 2호선' }));
+  expect(field(t.resourcePane.fields.defaultWipLocation)).toHaveTextContent('WIP · WIP 위치');
+  expect(field(t.resourcePane.fields.defaultFgLocation)).toHaveTextContent('FG · 완제품 위치');
+  expect(field(t.resourcePane.fields.defaultScrapLocation)).toHaveTextContent(
+    'SCRAP · 스크랩 위치',
+  );
+
+  // 기본 위치가 없는 라인으로 바꾸면 앞 라인의 위치를 남기지 않고 비운다.
+  await user.click(field(t.resourcePane.fields.productionLine));
+  await user.click(screen.getByRole('option', { name: 'L-1 · 1호선' }));
+  expect(field(t.resourcePane.fields.defaultWipLocation)).not.toHaveTextContent('WIP · WIP 위치');
+
+  await user.click(field(t.resourcePane.fields.productionLine));
+  await user.click(screen.getByRole('option', { name: 'L-2 · 2호선' }));
+
+  await user.click(field(t.resourcePane.fields.defaultFgLocation));
+  expect(screen.queryByRole('option', { name: /WIP 위치/ })).not.toBeInTheDocument();
+  expect(screen.getByRole('option', { name: /완제품 위치/ })).toBeInTheDocument();
 });
 
 it('rejects a successful write response owned by another work order', () => {
@@ -254,6 +311,7 @@ it('forwards a screen-level stale lock into an exact loaded editor', () => {
       <WorkOrderAssignmentEditor
         workOrderId={701}
         plantId={501}
+        planDate="2026-10-20"
         priorityText="2"
         blockedReason="SYN-SCREEN-STALE"
         onPriorityChange={vi.fn()}
@@ -391,6 +449,7 @@ it('ignores a conflict reload that completes after its owner was replaced', asyn
       <WorkOrderAssignmentEditor
         workOrderId={701}
         plantId={501}
+        planDate="2026-10-20"
         priorityText="2"
         onPriorityChange={onPriorityChange}
       />
@@ -405,6 +464,7 @@ it('ignores a conflict reload that completes after its owner was replaced', asyn
       <WorkOrderAssignmentEditor
         workOrderId={702}
         plantId={501}
+        planDate="2026-10-20"
         priorityText="2"
         onPriorityChange={onPriorityChange}
       />

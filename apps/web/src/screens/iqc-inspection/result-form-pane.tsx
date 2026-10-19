@@ -1,7 +1,7 @@
 import { AlertBanner, Button, Progress, Select, TextField } from '@crefle/web-ui';
 import type { ApiError } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
-import { useId, useState, type FormEvent, type ReactElement } from 'react';
+import { useId, useState, type FormEvent, type ReactElement, type ReactNode } from 'react';
 
 import { SaveErrorBanner } from '../../patterns/master';
 
@@ -97,6 +97,20 @@ export interface ResultFormPaneProps {
   /** 확정된 회차에서 재검사를 시작한다. **여는 것뿐이다** — 회차는 저장이 만든다 */
   onStartReinspection: () => void;
   onCancelReinspection: () => void;
+  /**
+   * 저장 «전»에 막는 사유(omf-all-around#104) — 계정에 작업자가 연결되지 않으면 서버가 검사자를 풀지 못해
+   * 저장이 400 이 된다. 누르고 실패하기 전에 무엇을 해야 하는지 말하고 저장·확정을 잠근다.
+   */
+  saveBlockedReason?: string | null;
+  /** 종합 판정 바로 아래 칸 — 불합격 사유(omf-all-around#106). 화면이 판정에 따라 채운다. */
+  judgmentDetail?: ReactNode;
+  /**
+   * 확정된 회차의 「재검사」 자리를 대신할 안내(omf-all-around#106 후속) — LOT 이 불량이면 재검 회차를 확정할 수
+   * 없어 처분·반품으로 잇는다. 없으면 종전대로 「재검사」 단추다.
+   */
+  reinspectReplacement?: ReactNode;
+  /** 확정만 막는 사유(저장은 막지 않는다) — 불합격인데 불량 코드를 고르지 않았을 때다. */
+  confirmOnlyBlockedReason?: string | null;
 }
 
 /** 계약이 짚어 줄 수 있는 칸 이름 ↔ 화면의 초안 칸. */
@@ -129,6 +143,10 @@ export const ResultFormPane = ({
   isReinspecting,
   onStartReinspection,
   onCancelReinspection,
+  saveBlockedReason = null,
+  judgmentDetail = null,
+  confirmOnlyBlockedReason = null,
+  reinspectReplacement = null,
 }: ResultFormPaneProps) => {
   const judgmentId = useId();
   const isConfirmed = round?.statusCode === 'CONFIRMED';
@@ -156,19 +174,21 @@ export const ResultFormPane = ({
    */
   const confirmBlockedReason: string | null = isConfirmed
     ? t.confirmBlockedByConfirmed
-    : /*
-       * ⛔ **회차가 없으면 확정할 것이 없다.** 확정은 회차 하나를 경로로 지목하는 쓰기라,
-       * 아직 만들어지지 않은 회차를 지목하면 치환되지 않은 «주소 틀» 이 그대로 나간다.
-       * 그러면 사용자는 화면에서 가장 중요한 단추를 눌렀는데 알 수 없는 오류만 받는다 —
-       * 실제로 할 일은 먼저 임시 저장을 하는 것이고 그것을 사유가 말한다.
-       */
-      round === null
-      ? t.confirmBlockedByUnsaved
-      : !canConfirm(totals)
-        ? t.confirmBlockedByTotals
-        : judgment === ''
-          ? t.confirmBlockedByJudgment
-          : null;
+    : saveBlockedReason !== null
+      ? saveBlockedReason
+      : /*
+         * ⛔ **회차가 없으면 확정할 것이 없다.** 확정은 회차 하나를 경로로 지목하는 쓰기라,
+         * 아직 만들어지지 않은 회차를 지목하면 치환되지 않은 «주소 틀» 이 그대로 나간다.
+         * 그러면 사용자는 화면에서 가장 중요한 단추를 눌렀는데 알 수 없는 오류만 받는다 —
+         * 실제로 할 일은 먼저 임시 저장을 하는 것이고 그것을 사유가 말한다.
+         */
+        round === null
+        ? t.confirmBlockedByUnsaved
+        : !canConfirm(totals)
+          ? t.confirmBlockedByTotals
+          : judgment === ''
+            ? t.confirmBlockedByJudgment
+            : confirmOnlyBlockedReason;
 
   /** 서버가 짚어 준 칸 오류를 화면의 칸 이름으로 옮긴다. */
   const serverErrorOf = (key: keyof QuantityDraft): string | undefined => {
@@ -308,7 +328,7 @@ export const ResultFormPane = ({
          * 목록이 비어도 **감추지 않고 사유를 밝힌다**(공유계약 G-2). 시드가 아직 안 들어가
          * 빌 수 있는데, 감추면 그 자리가 왜 없는지 사용자가 알 수 없다.
          */}
-        <div className="field-cell">
+        <div className="field-cell iqc-inspection-judgment-field">
           <FieldLabel htmlFor={judgmentId} label={t.judgment} required />
           <Select
             id={judgmentId}
@@ -327,6 +347,7 @@ export const ResultFormPane = ({
             <p className="field-note">{t.judgmentUnknown(judgment)}</p>
           )}
         </div>
+        {judgmentDetail}
 
         <SaveErrorBanner error={saveError ?? confirmError} onReload={onReload} />
 
@@ -361,7 +382,9 @@ export const ResultFormPane = ({
 
             <div className="iqc-inspection-submit">
               <span className="field-label">{t.submitTitle}</span>
-              {isConfirmed ? (
+              {isConfirmed && reinspectReplacement !== null ? (
+                reinspectReplacement
+              ) : isConfirmed ? (
                 <div className="form-actions">
                   <Button type="button" variant="outlined" size="md" onClick={onStartReinspection}>
                     {t.reinspect}
@@ -387,7 +410,9 @@ export const ResultFormPane = ({
                       type="submit"
                       variant="outlined"
                       size="md"
-                      disabled={!hasChanges || isSaving || isConfirming}
+                      disabled={
+                        !hasChanges || isSaving || isConfirming || saveBlockedReason !== null
+                      }
                     >
                       {isSaving ? t.saving : t.save}
                     </Button>

@@ -45,13 +45,20 @@ import {
   requestDetailPath,
   useRequestDetail,
   useRequestList,
+  useSkipTargetLot,
 } from './queries';
 import { RejectDialog } from './reject-dialog';
 import { RequestDetailPane } from './request-detail-pane';
 import { RequestFilterBar } from './request-filter-bar';
 import { RequestListPane } from './request-list-pane';
 import { SCREEN_ROUTES } from './screen-routes';
-import { describeTargetName, judgeTargetOpen } from './target';
+import { SkipExecutePane } from './skip-execute-pane';
+import {
+  describeTargetName,
+  judgeSkipExecute,
+  judgeTargetOpen,
+  skipExecuteLotIdOf,
+} from './target';
 import { TargetPane } from './target-pane';
 import {
   toDecisionSubject,
@@ -225,6 +232,12 @@ export const IqcSkipApprovalScreen = () => {
    * 함께 실어 준다). 고르기 전에는 열리지 않는다 — `queries.ts`가 그 규칙을 갖는다.
    */
   const detail = useRequestDetail(selectedRequestId);
+  /* 승인된 IQC 생략이면 그 LOT 을 읽어 실행 구획의 모양을 정한다(#105 리뷰). */
+  const skipLotId =
+    detail.data === undefined
+      ? null
+      : skipExecuteLotIdOf(detail.data.request, IQC_SKIP_APPROVAL_TYPE_CODE);
+  const skipLot = useSkipTargetLot(skipLotId);
   const detailError = detail.isError ? toApiError(detail.error) : null;
   const isRequestNotFound =
     detailError !== null && detailError.kind === 'http' && detailError.status === 404;
@@ -372,6 +385,23 @@ export const IqcSkipApprovalScreen = () => {
     knownFields: DECISION_KNOWN_FIELDS,
     onSuccess: (saved) => {
       finishDecision('approve', saved, selectedRequestId ?? 0);
+    },
+  });
+
+  /**
+   * 승인된 생략의 실행(omf-all-around#105 · 서버 선행 P-36). 승인과 별개의 쓰기다 — 승인은 LOT 을
+   * 옮기지 않는다. 대상 LOT 이 바뀌므로 잠금 토큰이 없고, 성공하면 요청 목록·상세를 다시 부른다.
+   */
+  const skipExecuteWrite = useMasterWrite<number, unknown>({
+    request: (lotId, headers) =>
+      client.POST('/trace/lots/{lotId}:skip-iqc', {
+        params: { path: { lotId }, header: { 'Idempotency-Key': headers['Idempotency-Key'] } },
+      }),
+    etagPath: null,
+    invalidateKeys: [iqcSkipApprovalKeys.all],
+    knownFields: [],
+    onSuccess: () => {
+      toast.show({ variant: 'success', description: t.skipExecute.done });
     },
   });
 
@@ -793,6 +823,17 @@ export const IqcSkipApprovalScreen = () => {
           }}
           banner={decisionBanner}
         />
+        {/* 승인된 IQC 생략만 실행 구획이 선다 — 판정은 `target.ts` 한 곳이 한다(대상 유형 코드로 가르지 않는다). */}
+        {skipLotId !== null && (
+          <SkipExecutePane
+            state={judgeSkipExecute(skipLot)}
+            isSaving={skipExecuteWrite.isSaving}
+            onExecute={() => {
+              skipExecuteWrite.write(skipLotId);
+            }}
+            banner={<SaveErrorBanner error={skipExecuteWrite.error} />}
+          />
+        )}
       </>
     );
   };

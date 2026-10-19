@@ -1,4 +1,4 @@
-import type { ApiClient, components } from '@omf-mes/api-client';
+import type { ApiClient, components, DefectRecordCreate } from '@omf-mes/api-client';
 import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
@@ -6,6 +6,7 @@ import { useMasterWrite, type MasterWriteResult, type WriteHeaders } from '../..
 import { runRequest, type ApiCallResult } from '../../patterns/request';
 import type { CodeValueResponse } from './code-options';
 import type { QueueListQuery } from './filters';
+import type { SamplingRule } from './sample-qty';
 import type { InspectionItemSpecResponse, InspectionMeasurementResponse } from './measurement-rows';
 import {
   toInspectionQueueResult,
@@ -76,9 +77,14 @@ export const iqcInspectionKeys = {
    */
   itemSpecs: (inspectionPlanVersionId: number) =>
     [...ALL_KEY, 'item-specs', inspectionPlanVersionId] as const,
+  /** 검사기준 버전의 샘플링 규칙. 항목 규격과 같은 까닭으로 마스터 앞머리에 둔다. */
+  sampling: (inspectionPlanVersionId: number) =>
+    [...ALL_KEY, 'sampling', inspectionPlanVersionId] as const,
   /** 그 회차의 측정치. 회차 저장이 바꾸므로 저장 뒤 무효화 대상이다. */
   measurements: (inspectionResultId: number) =>
     [...ALL_KEY, 'measurements', inspectionResultId] as const,
+  /** 불량 코드 마스터(W-06-03) — 불합격 사유(omf-all-around#106). 마스터라 저장이 바꾸지 않는다. */
+  defectCodes: [...ALL_KEY, 'defect-codes'] as const,
   /** 그 의뢰의 회차 목록. 상세와도 갈라 둔다 — 저장이 바꾸는 것은 회차이지 의뢰가 아니다. */
   rounds: (inspectionRequestId: number) => [...ALL_KEY, 'rounds', inspectionRequestId] as const,
   /**
@@ -147,6 +153,8 @@ export const useInspectionRequestDetail = (
     queryKey: iqcInspectionKeys.detail(inspectionRequestId ?? 0),
     queryFn: () => fetchDetail(client, inspectionRequestId as number),
     enabled: inspectionRequestId !== null,
+    // 처분 화면에서 재작업하면 의뢰가 다시 열린다(서버 P-43) — 돌아왔을 때 옛 상태로 닫힌 요약을 보이지 않게 늘 다시 읽는다.
+    staleTime: 0,
   });
 };
 
@@ -358,6 +366,30 @@ const fetchItemSpecs = (
   ).then((response) => response.items);
 
 /**
+ * 검사기준 버전의 샘플링 규칙을 부른다 — 검사수량 기본값이 이것으로 정해진다(omf-all-around#102).
+ * 항목 규격과 같이 **의뢰가 준 버전 그대로** 부른다.
+ */
+export const useSamplingRule = (
+  inspectionPlanVersionId: number | null,
+): UseQueryResult<SamplingRule> => {
+  const { client } = useApiClient();
+
+  return useQuery({
+    queryKey: iqcInspectionKeys.sampling(inspectionPlanVersionId ?? 0),
+    queryFn: () =>
+      runRequest(() =>
+        client.GET('/quality/inspection-plan-versions/{inspectionPlanVersionId}', {
+          params: { path: { inspectionPlanVersionId: inspectionPlanVersionId as number } },
+        }),
+      ).then(({ inspectionPlanVersion }) => ({
+        samplingMethodCode: inspectionPlanVersion.samplingMethodCode,
+        samplingRatio: inspectionPlanVersion.samplingRatio ?? null,
+      })),
+    enabled: inspectionPlanVersionId !== null,
+  });
+};
+
+/**
  * 검사기준 버전의 항목 규격을 부른다 — **그리드의 줄 수를 정하는 것이 이 목록이다.**
  *
  * ⚠ **검사 시점에 고정된 버전으로 부른다.** 의뢰가 준 `inspectionPlanVersionId` 를 그대로
@@ -479,3 +511,98 @@ export const useConfirmResult = (
 
 /** 확정이 짚어 줄 수 있는 칸. 수량은 임시 저장이 다루므로 여기서는 판정 하나다. */
 export const CONFIRM_FIELDS = ['overallJudgmentCode'] as const;
+
+/** 불량 코드 한 쪽 크기 — 사업부 공용 마스터라 수백 줄을 넘지 않는다고 본다(넘으면 상세가 잘린다). */
+const DEFECT_CODE_PAGE_SIZE = 500;
+
+/** 불합격 사유에 고를 불량 코드(사용 중인 것만) — omf-all-around#106. */
+export const useDefectCodes = (enabled: boolean) => {
+  const { client } = useApiClient();
+
+  return useQuery({
+    queryKey: iqcInspectionKeys.defectCodes,
+    queryFn: () =>
+      runRequest(() =>
+        client.GET('/quality/defect-codes', {
+          params: { query: { page: 1, size: DEFECT_CODE_PAGE_SIZE } },
+        }),
+      ).then((response) => response.items),
+    enabled,
+  });
+};
+
+/**
+ * 불합격 사유를 불량 기록으로 남긴다(서버 선행 P-42). 확정 «직전»에 부르고, 성공하면 확정으로 잇는다 —
+ * 서버가 IQC 불합격 확정에 불량 기록을 요구한다.
+ */
+export const useRecordRejection = (
+  onRecorded: () => void,
+): MasterWriteResult<DefectRecordCreate> => {
+  const { client } = useApiClient();
+
+  return useMasterWrite<DefectRecordCreate, unknown>({
+    request: (body, headers) =>
+      client.POST('/quality/defect-records', {
+        params: { header: { 'Idempotency-Key': headers['Idempotency-Key'] } },
+        body,
+      }),
+    etagPath: null,
+    invalidateKeys: [],
+    knownFields: [],
+    keyLifetime: 'until-applied',
+    onSuccess: onRecorded,
+  });
+};
+
+/** 불합격 뒤 다음 처리(omf-all-around#106 후속 (나)) — LOT 이 불량인가, 처분을 기다리는 부적합이 있는가. */
+export interface RejectedLotFollowUp {
+  isDefective: boolean;
+  nonconformanceId: number | null;
+}
+
+/**
+ * 불량(`DEFECTIVE`) LOT 은 재검 회차를 확정할 수 없다(문의 088 — 직행 전이를 열지 않았다). 다음 처리는
+ * 처분 판정(W-03-10)이나 공급사 반품(W-01-05)이다. 불합격 확정이 세운 부적합(서버 P-41)을 찾아 그리로 잇는다.
+ */
+export const useRejectedLotFollowUp = (lotId: number | null, enabled: boolean) => {
+  const { client } = useApiClient();
+
+  return useQuery({
+    queryKey: [...ALL_KEY, 'follow-up', lotId ?? 0] as const,
+    enabled: enabled && lotId !== null,
+    // 처분 뒤 LOT 상태가 바뀐다 — 다른 화면에서 돌아오면 다시 읽는다(위 상세와 같은 까닭).
+    staleTime: 0,
+    queryFn: async (): Promise<RejectedLotFollowUp> => {
+      const id = lotId as number;
+      const lot = await runRequest(() =>
+        client.GET('/trace/lots/{lotId}', { params: { path: { lotId: id } } }),
+      );
+      if (lot.lot.statusCode !== DEFECTIVE_LOT_STATUS)
+        return { isDefective: false, nonconformanceId: null };
+      const open = await runRequest(() =>
+        client.GET('/quality/nonconformances', {
+          /*
+           * 계약이 기간을 필수로 둔다 — 「이 LOT 의 처분 대기」를 찾는 자리라 기간으로 거를 뜻이 없어 넓게 연다.
+           * LOT 당 열린 부적합은 하나뿐이다(서버 규칙).
+           */
+          params: {
+            query: {
+              lotId: id,
+              statusCode: PENDING_DECISION,
+              openedFrom: OPENED_FROM_ANY,
+              openedTo: new Date(Date.now() + 86_400_000).toISOString(),
+              page: 1,
+              size: 1,
+            },
+          },
+        }),
+      );
+      return { isDefective: true, nonconformanceId: open.items[0]?.nonconformanceId ?? null };
+    },
+  });
+};
+
+/** 시드 `LOT_STATUS` 의 불량 · 부적합의 처분 대기 상태. */
+const DEFECTIVE_LOT_STATUS = 'DEFECTIVE';
+const PENDING_DECISION = 'PENDING_DECISION';
+const OPENED_FROM_ANY = '2000-01-01T00:00:00.000Z';

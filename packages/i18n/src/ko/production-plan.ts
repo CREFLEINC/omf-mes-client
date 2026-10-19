@@ -42,11 +42,12 @@ export const productionPlan = {
     loadFailed: (kind: string): string => `${kind} 개정을 불러오지 못했습니다.`,
     retry: (kind: string): string => `${kind} 다시 시도`,
     bomMissing: 'BOM이 없어 전개할 수 없습니다.',
-    routingMissing: 'Routing이 없어 전개할 수 없습니다.',
+    routingMissing: '확정되고 유효 기간 안인 Routing이 없어 전개할 수 없습니다.',
     openRouting: 'Routing 등록으로 이동',
     bomAutoSelected: '기본 BOM Rev를 자동으로 선택했습니다.',
     bomAmbiguous: '기본 BOM Rev를 하나로 판단할 수 없습니다.',
-    routingNoDefault: 'Routing 기본 Rev 플래그가 없습니다. 사용할 개정을 직접 선택하세요.',
+    routingNoDefault:
+      '사용할 수 있는 Routing 개정 중 기본 Rev가 없습니다. 사용할 개정을 직접 선택하세요.',
   },
 
   /** 생산라인은 ERP W/O 의 공장에 딸린다. 공장이 없으면 고를 것도 없으므로 그 사실을 미리 말한다. */
@@ -89,6 +90,7 @@ export const productionPlan = {
     quantityField: '계획수량',
     lineUnset: '미지정',
     selectPlaceholder: '선택',
+    routingUnavailable: '이 Routing 개정은 쓸 수 없습니다. 다시 선택하세요.',
     confirmedChip: '확정',
     savingChip: '저장 중',
     remove: '삭제',

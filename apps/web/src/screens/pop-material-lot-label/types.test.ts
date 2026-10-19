@@ -47,6 +47,7 @@ const targetRow = (lotId: number | null): TargetRow => ({
   receivedQty: 500,
   uomId: 8401,
   lotId,
+  inspectionRequired: false,
 });
 
 describe('toIssueStage', () => {

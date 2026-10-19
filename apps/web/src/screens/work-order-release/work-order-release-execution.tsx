@@ -23,6 +23,7 @@ import {
 import { WorkOrderReleaseInputPane } from './work-order-release-input-pane';
 import { WorkOrderReleaseStatusPane } from './work-order-release-status-pane';
 import { WorkOrderReleaseSummaryPane } from './work-order-release-summary-pane';
+import { useItemDefaultLotSize } from '../production-order/item-lookups';
 
 type WorkOrderRelease = components['schemas']['WorkOrderRelease'];
 
@@ -87,6 +88,10 @@ const SelectedWorkOrderReleaseExecution = ({
     body,
   );
   const ownedDetail = detail.data?.workOrderId === workOrderId ? detail.data : readiness.detail;
+  const defaultLotSize = useItemDefaultLotSize(
+    ownedDetail?.itemId ?? null,
+    ownedDetail?.uomId ?? null,
+  );
   const summary = useWorkOrderReleaseSummary(readiness.detail);
   const uoms = useUomReferenceLookup();
   const uomLabel =
@@ -172,6 +177,7 @@ const SelectedWorkOrderReleaseExecution = ({
         fieldErrors={release.fieldErrors}
         onClearFieldError={release.clearFieldError}
         onBodyChange={setBody}
+        defaultLotSize={defaultLotSize}
       />
       <SaveErrorBanner error={release.error} onReload={() => void reload()} />
       {writeOwnerMismatch && (

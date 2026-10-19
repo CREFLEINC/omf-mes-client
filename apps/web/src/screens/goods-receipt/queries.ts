@@ -67,6 +67,8 @@ export const irKeys = {
   locations: (warehouseId: number | null) => ['goods-receipt-locations', warehouseId] as const,
   /** 입고 처리 뒤 다시 읽는 자재 LOT. 번호마다 갈린다. */
   lot: (lotId: number | null) => ['goods-receipt-lot', lotId] as const,
+  /** 줄을 고를 때 읽는 자재 LOT — 입고 뒤 재조회와 캐시를 나눠, 재조회가 고를 때의 낡은 값을 보이지 않게 한다. */
+  selectedLot: (lotId: number | null) => ['goods-receipt-selected-lot', lotId] as const,
   codeValues: (codeGroupCode: string) => ['goods-receipt-code-values', codeGroupCode] as const,
 };
 
@@ -79,15 +81,14 @@ export const useGoodsReceiptCodeValues = (
     queryKey: irKeys.codeValues(codeGroupCode),
     queryFn: () =>
       runRequest(() =>
-        client.GET('/mdm/code-values', { params: { query: { codeGroupCode, page: 1, size: 200 } } }),
+        client.GET('/mdm/code-values', {
+          params: { query: { codeGroupCode, page: 1, size: 200 } },
+        }),
       ).then((response) => response.items),
   });
 };
 
-const fetchInboundReceipts = async (
-  client: Client,
-  query: IrListQuery,
-): Promise<IrListResult> => {
+const fetchInboundReceipts = async (client: Client, query: IrListQuery): Promise<IrListResult> => {
   const data = await runRequest(() =>
     client.GET('/logistics/inbound-receipts', { params: { query } }),
   );
@@ -266,21 +267,30 @@ export interface LotStatusResult {
  *
  * **받은 값으로 분기하지 않는다.** 상태 코드의 값 집합이 확정되지 않아(공유계약 G-2)
  * 「이 값이면 Release됐다」를 화면이 판정하면 값이 정해질 때 조용히 틀린다 — 그대로 보인다.
+ *
+ * `stage: 'select'` 는 줄을 고를 때 읽는다 — IQC 불합격(`DEFECTIVE`, 서버 C6 이 정한 값) LOT 이면
+ * 창고 선택지를 불량창고로 좁힌다(omf-all-around#84 · 서버 장부 P-45 와 같은 규칙).
  */
-export const useLotStatus = (lotId: number | null): LotStatusResult => {
+export const useLotStatus = (
+  lotId: number | null,
+  stage: 'recheck' | 'select' = 'recheck',
+): LotStatusResult => {
   const { client } = useApiClient();
 
   const query = useQuery({
-    queryKey: irKeys.lot(lotId),
+    queryKey: stage === 'recheck' ? irKeys.lot(lotId) : irKeys.selectedLot(lotId),
     enabled: lotId !== null,
+    /*
+     * 고를 때 읽는 상태는 입고를 잠그는 근거다 — 다른 탭에서 판정한 뒤 돌아오면 바로 다시 읽어 낡은 잠금이
+     * 남지 않게 한다(전역 기본은 30초 동안 다시 읽지 않는다).
+     */
+    ...(stage === 'select' ? { staleTime: 0, refetchOnWindowFocus: true } : {}),
     queryFn: () => {
       if (lotId === null) {
-        throw new Error('입고 처리에 성공하기 전에는 자재 LOT을 다시 조회하지 않습니다.');
+        throw new Error('자재 LOT이 없으면 조회하지 않습니다.');
       }
 
-      return runRequest(() =>
-        client.GET('/trace/lots/{lotId}', { params: { path: { lotId } } }),
-      );
+      return runRequest(() => client.GET('/trace/lots/{lotId}', { params: { path: { lotId } } }));
     },
   });
 

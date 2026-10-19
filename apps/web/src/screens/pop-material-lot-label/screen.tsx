@@ -12,19 +12,21 @@ import { useItemNameSources, useSupplierLookup, useUomLookup } from './lookups';
 import { useLabelIssue } from './mutations';
 import { PageNav } from './page-nav';
 import { toLinePageView } from './pagination';
+import { choosePrinter, rememberPrinterName, storedPrinterName } from './printer-choice';
+import { PrinterSelect } from './printer-select';
 import { PrinterStatusIndicator } from './printer-status';
 import {
   useLotNo,
   usePrinters,
   useReceipts,
   useReissueReasons,
+  useShellSelectsPrinter,
   useTargetRows,
   type IssuedView,
 } from './queries';
 import { ReceiptList } from './receipt-list';
 import { ReissueDialog } from './reissue-dialog';
 import { TargetCard } from './target-card';
-import { toHeadPrinter } from './types';
 
 const t = messages.popMaterialLotLabel;
 const tDevice = messages.popMaterialLotLabel.device;
@@ -98,6 +100,20 @@ export const PopMaterialLotLabelScreen = () => {
   const receipts = useReceipts(issuedView, page === 1 ? {} : { page }, isIssuing);
   const targets = useTargetRows(receipts.data?.items ?? [], issuedView, isIssuing);
   const printers = usePrinters();
+  /*
+   * 프린터 선택(2단계 검증 2026-10-16 · 이 화면 전용) — 고른 것 → 단말에 기억해 둔 것 → 셸의 출력 대상.
+   * ⛔ 셸이 고른 프린터를 받지 못하면(브라우저·옛 설치본) 기억해 둔 값을 쓰지 않는다 — 머리줄이 실제로
+   *    나가지 않을 프린터를 가리키게 된다.
+   */
+  const printerSelectable = useShellSelectsPrinter();
+  const isPrinterSelectable = printerSelectable.data === true;
+  const [pickedPrinter, setPickedPrinter] = useState<string | null>(null);
+  const [rememberedPrinter] = useState(storedPrinterName);
+  const printerChoice = choosePrinter(
+    printers.data ?? [],
+    pickedPrinter,
+    isPrinterSelectable ? rememberedPrinter : null,
+  );
 
   /*
    * ⭐ **품목 이름은 「보이는 줄」의 것만 푼다**(omf-all-around#27). 마스터 목록 조회는 한 쪽만
@@ -125,7 +141,7 @@ export const PopMaterialLotLabelScreen = () => {
 
   const lot = useLotNo(selectedRow?.lotId ?? null);
   const reissueReasons = useReissueReasons(isReissueOpen);
-  const headPrinter = toHeadPrinter(printers.data ?? []);
+  const headPrinter = printerChoice.printer;
 
   /*
    * ⛔ **결과는 그 결과를 만든 줄의 것이다.** 다른 자재를 고르면 앞 자재의 실패가 따라오지
@@ -167,8 +183,11 @@ export const PopMaterialLotLabelScreen = () => {
       row: selectedRow,
       // 프린터 배정이 정해지기 전에는 한 대 전제다 — 고른 것이 없으면 서버 기본값에 맡긴다.
       printerName: headPrinter?.printerName ?? null,
+      // 셸이 고른 프린터를 받을 때만 싣는다 — 아니면 지금처럼 셸이 기동 시 지정값 → OS 기본으로 보낸다.
+      shellPrinterName: isPrinterSelectable ? (headPrinter?.printerName ?? null) : null,
       reissueReasonCode,
       uomCode: uomCodeOf(selectedRow.uomId),
+      lotStatusCode: lot.data?.statusCode ?? null,
     });
   };
 
@@ -247,6 +266,14 @@ export const PopMaterialLotLabelScreen = () => {
 
       {/* ⭐ 사번 미확인은 모든 POP 화면이 같은 맨 위 띠로 말한다(사용자 지시 2026-09-17). */}
       <PopWorkerMissingBanner workerNo={workerNo} />
+      {printerChoice.missingStoredName === null ? null : (
+        <div className="banner-slot">
+          <AlertBanner
+            variant="warning"
+            title={t.printer.storedMissing(printerChoice.missingStoredName)}
+          />
+        </div>
+      )}
 
       <div className="pop-lot-panes">
         <section className="pane pop-lot-pane" aria-label={t.receipts.paneLabel}>
@@ -366,12 +393,30 @@ export const PopMaterialLotLabelScreen = () => {
 
         <section className="pane pop-lot-pane" aria-label={t.target.paneLabel}>
           <h2 className="pop-lot-pane-title">{t.target.title}</h2>
+          {/*
+           * 프린터는 머리줄이 아니라 이 구획에서 고른다(담당자 지시 2026-10-16) — 인쇄할 곳을 고르는 일이
+           * 등록·인쇄와 같은 자리에 있어야 한다. 머리줄은 지금 상태만 보인다. 목록을 받기 전·조회 실패는
+           * 머리줄이 말하므로 여기서는 받은 뒤에만 그린다(「없다」와 「모른다」를 같은 모양으로 그리지 않는다).
+           */}
+          {printers.data === undefined ? null : (
+            <PrinterSelect
+              printers={printers.data}
+              selected={headPrinter}
+              isSelectable={isPrinterSelectable}
+              disabled={isIssuing}
+              onSelect={(name) => {
+                setPickedPrinter(name);
+                rememberPrinterName(name);
+              }}
+            />
+          )}
           <TargetCard
             row={selectedRow}
             itemNames={itemNames}
             uomLookup={uomLookup}
             supplierLookup={supplierLookup}
-            lotNo={lot.data ?? null}
+            lotNo={lot.data?.lotNo ?? null}
+            lotStatusCode={lot.data?.statusCode ?? null}
             isLotNoLoading={lot.isPending && selectedRow?.lotId !== null}
             isLotNoError={lot.isError}
             hasWorkerNo={workerNo !== null}

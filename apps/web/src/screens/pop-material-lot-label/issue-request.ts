@@ -76,12 +76,11 @@ export interface DocumentIssueInput {
  * 대상은 **한 건**이다. 계약은 여러 건을 한 트랜잭션으로 받지만 이 화면은 고른 자재 하나를
  * 찍는다 — 「하나라도 실패하면 전건 실패」라는 계약 조항이 걸릴 자리가 없다.
  */
-export const toDocumentIssueBody = ({
-  lotId,
-  printerName,
-  reissueReasonCode,
-}: DocumentIssueInput): DocumentIssueCreateBody => ({
-  documentTypeCode: DOCUMENT_TYPE_CODE,
+export const toDocumentIssueBody = (
+  { lotId, printerName, reissueReasonCode }: DocumentIssueInput,
+  documentTypeCode: DocumentIssueCreateBody['documentTypeCode'] = DOCUMENT_TYPE_CODE,
+): DocumentIssueCreateBody => ({
+  documentTypeCode,
   targets: [{ targetTypeCode: DOCUMENT_TARGET_TYPE_CODE, targetId: lotId, lotId }],
   ...(reissueReasonCode === null ? {} : { reissueReasonCode }),
   ...(printerName === null ? {} : { printerName }),

@@ -25,12 +25,13 @@ const bom = (bomId: number, isDefault = false): BomRevisionFact => ({
   baseUomId: 5101,
 });
 
-const routing = (routingId: number): RoutingRevisionFact => ({
+const routing = (routingId: number, isDefault = false): RoutingRevisionFact => ({
   routingId,
   itemId: 4101,
   routingCode: `ROUTE-SYN-${String(routingId)}`,
   routingVersion: routingId,
   statusCode: 'APPROVED',
+  isDefault,
   effectiveFrom: '2026-02-01',
   effectiveTo: '2026-12-31',
 });
@@ -111,14 +112,29 @@ describe('생산계획 마스터 점검', () => {
     expect(automaticRoutingId(routings)).toBe(801);
   });
 
-  it('Routing 후보가 여러 개면 자동 선택하지 않고 사용자의 선택을 새 응답에서도 보존한다', async () => {
+  it('Routing 후보가 여럿이어도 기본 Rev 하나를 자동 선택하고 경고하지 않는다', async () => {
+    const routings = [routing(802), routing(801, true)];
+    renderWithProviders(<Harness boms={[bom(701, true)]} routings={routings} />);
+
+    await waitFor(() =>
+      expect(screen.getByRole('combobox', { name: 'Routing Rev' })).toHaveTextContent(
+        'ROUTE-SYN-801',
+      ),
+    );
+    expect(automaticRoutingId(routings)).toBe(801);
+    expect(screen.queryByText(/기본 Rev가 없습니다/)).not.toBeInTheDocument();
+  });
+
+  it('Routing 후보가 여럿이고 기본 Rev 가 없으면 자동 선택하지 않고 사용자의 선택을 새 응답에서도 보존한다', async () => {
     const user = userEvent.setup();
     const boms = [bom(701, true)];
     const routings = [routing(801), routing(802)];
     renderWithProviders(<Harness boms={boms} routings={routings} />);
 
     expect(
-      await screen.findByText('Routing 기본 Rev 플래그가 없습니다. 사용할 개정을 직접 선택하세요.'),
+      await screen.findByText(
+        '사용할 수 있는 Routing 개정 중 기본 Rev가 없습니다. 사용할 개정을 직접 선택하세요.',
+      ),
     ).toBeVisible();
     expect(screen.getByRole('combobox', { name: 'Routing Rev' })).toHaveTextContent(
       '사용할 개정을 선택하세요',
@@ -161,7 +177,9 @@ describe('생산계획 마스터 점검', () => {
     );
 
     expect(screen.getByText('BOM이 없어 전개할 수 없습니다.')).toBeVisible();
-    expect(screen.getByText('Routing이 없어 전개할 수 없습니다.')).toBeVisible();
+    expect(
+      screen.getByText('확정되고 유효 기간 안인 Routing이 없어 전개할 수 없습니다.'),
+    ).toBeVisible();
     expect(screen.getByRole('link', { name: 'Routing 등록으로 이동' })).toHaveAttribute(
       'href',
       '/master-data/routing',

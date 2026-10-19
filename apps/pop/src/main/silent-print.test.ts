@@ -7,6 +7,7 @@ import {
   PrintTimeoutError,
   type SilentPrintDeps,
   createSilentPrinter,
+  requestedPrinterName,
   resolveTerminalPrinter,
   selectPrinter,
 } from './silent-print';
@@ -321,5 +322,55 @@ describe('보낼 곳 판정', () => {
   it('그때 무엇이 있었는지를 함께 낸다 — 고르지 못한 날의 단서다', () => {
     expect(resolveTerminalPrinter({ printers: [], defaultName: null }).available).toEqual([]);
     expect(resolveTerminalPrinter({ printers, defaultName: null }).available).toHaveLength(2);
+  });
+});
+
+describe('화면이 고른 프린터', () => {
+  const printers = [
+    printer('Microsoft Print to PDF'),
+    printer('HPRT HT800', { displayName: '라벨기 1호' }),
+    printer('HPRT HT800 #2'),
+  ];
+
+  it('고른 것이 있으면 기동 시 지정값보다 앞선다', () => {
+    expect(
+      resolveTerminalPrinter({
+        printers,
+        preferred: 'HPRT HT800',
+        requested: 'HPRT HT800 #2',
+        defaultName: 'Microsoft Print to PDF',
+      }).choice,
+    ).toEqual({ kind: 'named', deviceName: 'HPRT HT800 #2' });
+  });
+
+  it('고르지 않았으면 지금과 같다 — 기동 시 지정값, 그다음 OS 기본', () => {
+    expect(
+      resolveTerminalPrinter({ printers, preferred: 'HPRT HT800', defaultName: 'HPRT HT800 #2' })
+        .choice,
+    ).toEqual({ kind: 'named', deviceName: 'HPRT HT800' });
+    expect(
+      resolveTerminalPrinter({ printers, requested: undefined, defaultName: 'HPRT HT800 #2' })
+        .choice,
+    ).toEqual({ kind: 'named', deviceName: 'HPRT HT800 #2' });
+  });
+
+  it('⛔ 고른 이름이 목록에 없으면 다른 프린터로 대신 보내지 않는다', () => {
+    expect(
+      resolveTerminalPrinter({
+        printers,
+        preferred: 'HPRT HT800',
+        requested: '사라진 프린터',
+        defaultName: 'HPRT HT800',
+      }).choice,
+    ).toEqual({ kind: 'none' });
+  });
+
+  it('통로 너머의 값은 문자열이고 비어 있지 않을 때만 고른 것으로 본다', () => {
+    expect(requestedPrinterName(' HPRT HT800 ')).toBe('HPRT HT800');
+    expect(requestedPrinterName('')).toBeUndefined();
+    expect(requestedPrinterName('   ')).toBeUndefined();
+    expect(requestedPrinterName(undefined)).toBeUndefined();
+    expect(requestedPrinterName(null)).toBeUndefined();
+    expect(requestedPrinterName(42)).toBeUndefined();
   });
 });

@@ -129,6 +129,15 @@ describe('자리표시 상수', () => {
    * 계약의 `inspectionTypeCode`는 enum이 아니다. 그런데도 3값을 둔 근거는
    * 화면 제목·계약 설명·계약 예시 셋의 일치이며, 그 셋이 가리키는 값은 IQC·PQC·OQC다.
    */
+  /* omf-all-around#103 — 시드 `INSPECTION_SAMPLING_METHOD` 3값. */
+  it('샘플링 방법은 시드 세 값이다', () => {
+    expect(values(SAMPLING_METHOD_OPTIONS)).toEqual([
+      'FULL_INSPECTION',
+      'SAMPLE_BY_UNIT',
+      'SAMPLE_BY_LOT',
+    ]);
+  });
+
   it('검사 유형은 세 값뿐이다', () => {
     expect(values(INSPECTION_TYPE_OPTIONS)).toEqual(['IQC', 'PQC', 'OQC']);
   });
@@ -136,7 +145,6 @@ describe('자리표시 상수', () => {
   /** 값 목록이 확정되지 않은 코드는 **값을 지어내지 않는다** — 자리표시 한 값만 둔다. */
   it('값 목록이 미확정인 코드는 자리표시 한 값만 갖는다', () => {
     const pending = [
-      SAMPLING_METHOD_OPTIONS,
       INSPECTION_FREQUENCY_OPTIONS,
       FREQUENCY_INTERVAL_UOM_OPTIONS,
       DATA_TYPE_OPTIONS,

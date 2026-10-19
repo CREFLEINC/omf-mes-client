@@ -1,4 +1,4 @@
-import { type Column, EmptyState, SkeletonText, Table } from '@crefle/web-ui';
+import { Checkbox, type Column, EmptyState, SkeletonText, Table } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
 
@@ -25,6 +25,9 @@ export interface WorkOrderReleaseCandidateListPaneProps {
   hasSearched: boolean;
   onSelect: (workOrderId: number) => void;
   onChangePage: (page: number) => void;
+  /** 일괄 배포에 넣은 W/O. 없으면 선택 칸을 그리지 않는다. */
+  checkedIds?: ReadonlySet<number>;
+  onToggleChecked?: (workOrderIds: readonly number[], checked: boolean) => void;
 }
 
 const itemLabel = (value: string | null | undefined): string =>
@@ -39,8 +42,44 @@ export const WorkOrderReleaseCandidateListPane = ({
   hasSearched,
   onSelect,
   onChangePage,
+  checkedIds,
+  onToggleChecked,
 }: WorkOrderReleaseCandidateListPaneProps) => {
+  const bulk = messages.workOrderRelease.bulk;
+  const allChecked = rows.length > 0 && rows.every((row) => checkedIds?.has(row.workOrderId));
+  const someChecked = rows.some((row) => checkedIds?.has(row.workOrderId));
+  const checkColumn: Column<WorkOrderReleaseCandidateRow>[] =
+    checkedIds === undefined || onToggleChecked === undefined
+      ? []
+      : [
+          {
+            key: 'checked',
+            header: (
+              <Checkbox
+                aria-label={bulk.selectAll}
+                checked={allChecked}
+                indeterminate={someChecked && !allChecked}
+                onChange={(event) =>
+                  onToggleChecked(
+                    rows.map((row) => row.workOrderId),
+                    event.target.checked,
+                  )
+                }
+              />
+            ),
+            align: 'center',
+            width: '3rem',
+            render: (row) => (
+              <Checkbox
+                aria-label={bulk.selectRow(row.workOrderNo)}
+                checked={checkedIds.has(row.workOrderId)}
+                onChange={(event) => onToggleChecked([row.workOrderId], event.target.checked)}
+              />
+            ),
+          },
+        ];
   const columns: Column<WorkOrderReleaseCandidateRow>[] = [
+    ...checkColumn,
     {
       key: 'workOrderNo',
       header: t.fields.workOrderNo,
