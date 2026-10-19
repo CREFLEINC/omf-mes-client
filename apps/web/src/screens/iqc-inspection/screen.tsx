@@ -1,7 +1,7 @@
 import { Breadcrumb, Button, PageHeader } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useQueryClient } from '@tanstack/react-query';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router';
 
 import { toApiError } from '../../patterns/request';
@@ -35,6 +35,7 @@ import {
   useCodeValues,
   useConfirmResult,
   useDefectCodes,
+  useDraftRejectionRecords,
   useRejectedLotFollowUp,
   useMeasurements,
   useSaveDraft,
@@ -43,6 +44,7 @@ import { RejectedLotGuide } from './rejected-lot-guide';
 import {
   EMPTY_REJECTION,
   RejectionReason,
+  rejectionDraftOf,
   resolveDefectCode,
   type RejectionDraft,
 } from './rejection-reason';
@@ -159,8 +161,21 @@ export const IqcInspectionScreen = () => {
   /** 마지막 저장이 성공했는가. 눌렀는데 아무 일도 없어 보이지 않게 한 줄로 알린다. */
   const [isSaved, setIsSaved] = useState(false);
 
+  /*
+   * 마지막으로 서버에 남은 불합격 사유(omf-all-around#122) — 사유만 고쳐도 [임시 저장]이 켜지게 견주는 기준이다.
+   * 저장 응답이 오면 그때 보낸 사유가 기준이 된다(`pendingRejection`).
+   */
+  const [savedRejection, setSavedRejection] = useState<RejectionDraft>(EMPTY_REJECTION);
+  const pendingRejection = useRef<RejectionDraft>(EMPTY_REJECTION);
+
+  /* 지금 나간 저장이 새 회차를 만드는 POST 인가 — 그 회차는 방금 보낸 사유가 곧 서버 값이라 되살리지 않는다(아래). */
+  const savingNewRound = useRef(false);
+  const skipRestoreOfCreated = useRef(false);
+
   const save = useSaveDraft(selectedId, editingResultId, () => {
     setIsSaved(true);
+    setSavedRejection(pendingRejection.current);
+    if (savingNewRound.current) skipRestoreOfCreated.current = true;
   });
 
   /**
@@ -181,8 +196,8 @@ export const IqcInspectionScreen = () => {
   });
 
   /*
-   * 불합격 사유(omf-all-around#106) — 불합격이면 불량 코드·사유를 받아 «확정 요청에 함께» 싣는다.
-   * 서버가 확정과 한 트랜잭션에서 그 회차의 불량 기록을 이 값으로 갈아 끼운다(P-47 · #121) — 확정이 실패해
+   * 불합격 사유(omf-all-around#106) — 불합격이면 불량 코드·사유를 받아 임시 저장(P-48 · #122)과 확정(P-47 · #121)
+   * 요청에 함께 싣는다. 서버가 같은 트랜잭션에서 그 회차의 불량 기록을 이 값으로 갈아 끼운다 — 확정이 실패해
    * 다시 눌러도 사유는 그때 입력 1벌이고, 합격·보류로 확정하면 서버가 그 회차의 기록을 지운다.
    */
   const [rejection, setRejection] = useState<RejectionDraft>(EMPTY_REJECTION);
@@ -267,13 +282,50 @@ export const IqcInspectionScreen = () => {
   }, [selectedId, roundId, acceptedQty, rejectedQty, heldQty, storedJudgment]);
 
   /*
-   * 불합격 사유는 «의뢰가 바뀔 때만» 비운다(3단계 검증 버그 · omf-all-around#106). 사유는 임시 저장 본문에 실리지
-   * 않고 확정 직전 불량 기록으로 남는데, 위 되돌림에 묶여 있으면 저장 응답이 회차·판정을 바꾸는 순간 사유가 사라져
-   * 확정이 다시 잠겼다. 재검사 회차를 열 때는 그 자리에서 따로 비운다.
+   * 불합격 사유는 «의뢰가 바뀔 때만» 비운다(3단계 검증 버그 · omf-all-around#106). 위 되돌림에 묶여 있으면 저장 응답이
+   * 회차·판정을 바꾸는 순간 사유가 사라져 확정이 다시 잠겼다. 재검사 회차를 열 때는 그 자리에서 따로 비운다.
    */
+  const restoredFor = useRef<number | null>(null);
+  /* 되살린 기록의 코드가 코드 마스터에 없어 사유 글만 되살렸는가 — 그러면 코드를 새로 고르기 전에는 기록을 건드리지 않는다. */
+  const restoredTextOnly = useRef(false);
   useEffect(() => {
     setRejection(EMPTY_REJECTION);
+    setSavedRejection(EMPTY_REJECTION);
+    restoredFor.current = null;
+    restoredTextOnly.current = false;
+    skipRestoreOfCreated.current = false;
   }, [selectedId]);
+
+  /*
+   * 임시 저장된 사유를 되살린다(omf-all-around#122) — 확정 전 회차마다 «한 번만». 다시 부를 때마다 덮으면 저장 뒤
+   * 재조회가 사용자가 치던 사유를 지운다. 기록이 상세 코드면 대분류를 찾아야 하므로 코드 마스터를 기다린다.
+   */
+  const draftRejection = useDraftRejectionRecords(editingResultId);
+  useEffect(() => {
+    if (editingResultId === null || restoredFor.current === editingResultId) return;
+    restoredTextOnly.current = false;
+    /* POST 로 막 만든 회차 — 되살리면 응답을 기다리는 사이 사용자가 고친 사유를 덮는다(#122 리뷰 m1). */
+    if (skipRestoreOfCreated.current) {
+      skipRestoreOfCreated.current = false;
+      restoredFor.current = editingResultId;
+      return;
+    }
+    const records = draftRejection.data;
+    if (records === undefined) return;
+    const first = records[0];
+    if (first === undefined) {
+      restoredFor.current = editingResultId;
+      return;
+    }
+    if (defectCodes.data === undefined) return;
+    restoredFor.current = editingResultId;
+    restoredTextOnly.current = !defectCodes.data.some(
+      (code) => code.defectCodeId === first.defectCodeId,
+    );
+    const restored = rejectionDraftOf(defectCodes.data, first);
+    setRejection(restored);
+    setSavedRejection(restored);
+  }, [editingResultId, draftRejection.data, defectCodes.data]);
 
   /*
    * 마지막 저장 상태와 견줘 바뀐 것이 있는가 — 없으면 [임시 저장]을 끈다. 견주는 것은 세 수량 칸과
@@ -286,7 +338,11 @@ export const IqcInspectionScreen = () => {
     draft.accepted !== savedDraft.accepted ||
     draft.rejected !== savedDraft.rejected ||
     draft.held !== savedDraft.held ||
-    judgment !== savedJudgment;
+    judgment !== savedJudgment ||
+    (isRejected &&
+      (rejection.majorId !== savedRejection.majorId ||
+        rejection.minorId !== savedRejection.minorId ||
+        rejection.description !== savedRejection.description));
 
   const rows = queue.data?.rows ?? [];
   const pageView = toPageView(queue.data?.page ?? { page, size: 0, total: 0 }, rows.length);
@@ -400,8 +456,39 @@ export const IqcInspectionScreen = () => {
    * 고른 의뢰를 **인자로 받는다** — 이 자리에 도달했으면 null 이 아니라는 사실이 타입이
    * 아니라 렌더 조건에 있어서, 단언으로 메우면 그 조건이 바뀔 때 조용히 어긋난다.
    */
+  /**
+   * 요청에 실을 불합격 사유 — 불합격이고 코드를 골랐으면 1줄, 아니면 빈 배열이다.
+   * 불합격 수량이 0 인 불합격(전량 판정)은 검사수량을 불량 수량으로 남긴다 — 0 은 서버가 받지 않는다.
+   */
+  const rejectionRows = (rejectedQty: number, inspected: number) =>
+    !isRejected || !('defectCodeId' in resolvedDefect)
+      ? []
+      : [
+          {
+            defectCodeId: resolvedDefect.defectCodeId,
+            defectQty: rejectedQty > 0 ? rejectedQty : inspected,
+            defectDescription:
+              rejection.description.trim() === '' ? null : rejection.description.trim(),
+          },
+        ];
+
   const saveDraft = (inspectionRequestId: number, inspected: number, uomId: number): void => {
     setIsSaved(false);
+    const rows = rejectionRows(toSendableNumber(draft.rejected), inspected);
+    /*
+     * ⛔ 이 회차의 사유를 아직 되살리지 못했으면(조회 중·실패) 사유 키를 싣지 않는다 — 빈 배열을 실으면 서버의 사유가
+     * 지워진다(#122 리뷰 M2). 코드 없이 글만 되살린 경우도 코드를 고르기 전에는 같다.
+     */
+    const unknownOnServer =
+      (editingResultId !== null && restoredFor.current !== editingResultId) ||
+      (restoredTextOnly.current && rows.length === 0);
+    const defects = unknownOnServer ? undefined : rows;
+    pendingRejection.current = unknownOnServer
+      ? savedRejection
+      : rows.length === 0
+        ? EMPTY_REJECTION
+        : rejection;
+    savingNewRound.current = editingResultId === null;
     save.write({
       inspectionRequestId,
       inspectedQty: inspected,
@@ -422,6 +509,7 @@ export const IqcInspectionScreen = () => {
        * ⛔ 빠뜨리면 같은 의뢰에 회차 1이 두 번 만들어지려 해 `UNIQUE(의뢰, 회차)` 에 걸린다.
        */
       previousResultId: reinspectingFrom,
+      defects,
     });
   };
 
@@ -489,25 +577,18 @@ export const IqcInspectionScreen = () => {
             onReload={() => void rounds.refetch()}
             judgmentOptions={judgmentOptions}
             judgment={judgment}
-            onJudgmentChange={setJudgment}
+            onJudgmentChange={(next) => {
+              /* 불합격이 아닌 판정으로 바꾸면 사유 입력을 비운다 — 다시 불합격을 골라도 이전 사유가 되살아나지 않는다(#122 검증). */
+              if (next !== REJECTED_JUDGMENT) setRejection(EMPTY_REJECTION);
+              setJudgment(next);
+            }}
             onConfirm={() => {
-              if (!isRejected || !('defectCodeId' in resolvedDefect)) {
-                confirm.write({ overallJudgmentCode: judgment });
-                return;
-              }
-              confirm.write({
-                overallJudgmentCode: judgment,
-                defects: [
-                  {
-                    defectCodeId: resolvedDefect.defectCodeId,
-                    /* 불합격 수량이 0 인 불합격(전량 판정)은 검사수량을 불량 수량으로 남긴다 — 0 은 서버가 받지 않는다. */
-                    defectQty:
-                      round !== null && round.rejectedQty > 0 ? round.rejectedQty : inspectedQty,
-                    defectDescription:
-                      rejection.description.trim() === '' ? null : rejection.description.trim(),
-                  },
-                ],
-              });
+              const defects = rejectionRows(round?.rejectedQty ?? 0, inspectedQty);
+              confirm.write(
+                defects.length === 0
+                  ? { overallJudgmentCode: judgment }
+                  : { overallJudgmentCode: judgment, defects },
+              );
             }}
             isConfirming={confirm.isSaving}
             confirmError={confirm.error}
@@ -537,6 +618,7 @@ export const IqcInspectionScreen = () => {
               setDraft(EMPTY_QUANTITY_DRAFT);
               setJudgment('');
               setRejection(EMPTY_REJECTION);
+              setSavedRejection(EMPTY_REJECTION);
               setIsReinspecting(true);
             }}
             onCancelReinspection={() => {
