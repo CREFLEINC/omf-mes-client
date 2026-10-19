@@ -327,7 +327,8 @@ export const dashboard = {
       HELD: '검사 보류',
     },
     none: '—',
-    currentTitle: '현재 현황',
+    /** ⭐ 모든 탭 「주요 현황」(사용자 지시 2026-10-19 — 「현재 현황」에서 바꿈). */
+    currentTitle: '주요 현황',
     /** 「현재 현황」 LOT 수 옆 기록 건수(LOT 번호 없는 기록 포함 · 사용자 결정 2026-10-19). */
     recordsSuffix: (count: string): string => `· ${count}건`,
     heldLots: '검사 보류 LOT',

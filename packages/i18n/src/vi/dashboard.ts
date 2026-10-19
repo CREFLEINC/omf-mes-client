@@ -271,7 +271,7 @@ export const dashboard: Translated<typeof ko.dashboard> = {
       HELD: 'Tạm giữ kiểm tra',
     },
     none: '—',
-    currentTitle: 'Tình trạng hiện tại',
+    currentTitle: 'Tình trạng chính',
     /** 「현재 현황」 LOT 수 옆 기록 건수(LOT 번호 없는 기록 포함 · 사용자 결정 2026-10-19). */
     recordsSuffix: (count: string): string => `· ${count} bản ghi`,
     heldLots: 'LOT tạm giữ kiểm tra',
