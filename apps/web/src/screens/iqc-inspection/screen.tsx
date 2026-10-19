@@ -168,9 +168,14 @@ export const IqcInspectionScreen = () => {
   const [savedRejection, setSavedRejection] = useState<RejectionDraft>(EMPTY_REJECTION);
   const pendingRejection = useRef<RejectionDraft>(EMPTY_REJECTION);
 
+  /* 지금 나간 저장이 새 회차를 만드는 POST 인가 — 그 회차는 방금 보낸 사유가 곧 서버 값이라 되살리지 않는다(아래). */
+  const savingNewRound = useRef(false);
+  const skipRestoreOfCreated = useRef(false);
+
   const save = useSaveDraft(selectedId, editingResultId, () => {
     setIsSaved(true);
     setSavedRejection(pendingRejection.current);
+    if (savingNewRound.current) skipRestoreOfCreated.current = true;
   });
 
   /**
@@ -281,10 +286,14 @@ export const IqcInspectionScreen = () => {
    * 회차·판정을 바꾸는 순간 사유가 사라져 확정이 다시 잠겼다. 재검사 회차를 열 때는 그 자리에서 따로 비운다.
    */
   const restoredFor = useRef<number | null>(null);
+  /* 되살린 기록의 코드가 코드 마스터에 없어 사유 글만 되살렸는가 — 그러면 코드를 새로 고르기 전에는 기록을 건드리지 않는다. */
+  const restoredTextOnly = useRef(false);
   useEffect(() => {
     setRejection(EMPTY_REJECTION);
     setSavedRejection(EMPTY_REJECTION);
     restoredFor.current = null;
+    restoredTextOnly.current = false;
+    skipRestoreOfCreated.current = false;
   }, [selectedId]);
 
   /*
@@ -294,6 +303,13 @@ export const IqcInspectionScreen = () => {
   const draftRejection = useDraftRejectionRecords(editingResultId);
   useEffect(() => {
     if (editingResultId === null || restoredFor.current === editingResultId) return;
+    restoredTextOnly.current = false;
+    /* POST 로 막 만든 회차 — 되살리면 응답을 기다리는 사이 사용자가 고친 사유를 덮는다(#122 리뷰 m1). */
+    if (skipRestoreOfCreated.current) {
+      skipRestoreOfCreated.current = false;
+      restoredFor.current = editingResultId;
+      return;
+    }
     const records = draftRejection.data;
     if (records === undefined) return;
     const first = records[0];
@@ -303,6 +319,9 @@ export const IqcInspectionScreen = () => {
     }
     if (defectCodes.data === undefined) return;
     restoredFor.current = editingResultId;
+    restoredTextOnly.current = !defectCodes.data.some(
+      (code) => code.defectCodeId === first.defectCodeId,
+    );
     const restored = rejectionDraftOf(defectCodes.data, first);
     setRejection(restored);
     setSavedRejection(restored);
@@ -455,8 +474,21 @@ export const IqcInspectionScreen = () => {
 
   const saveDraft = (inspectionRequestId: number, inspected: number, uomId: number): void => {
     setIsSaved(false);
-    const defects = rejectionRows(toSendableNumber(draft.rejected), inspected);
-    pendingRejection.current = defects.length === 0 ? EMPTY_REJECTION : rejection;
+    const rows = rejectionRows(toSendableNumber(draft.rejected), inspected);
+    /*
+     * ⛔ 이 회차의 사유를 아직 되살리지 못했으면(조회 중·실패) 사유 키를 싣지 않는다 — 빈 배열을 실으면 서버의 사유가
+     * 지워진다(#122 리뷰 M2). 코드 없이 글만 되살린 경우도 코드를 고르기 전에는 같다.
+     */
+    const unknownOnServer =
+      (editingResultId !== null && restoredFor.current !== editingResultId) ||
+      (restoredTextOnly.current && rows.length === 0);
+    const defects = unknownOnServer ? undefined : rows;
+    pendingRejection.current = unknownOnServer
+      ? savedRejection
+      : rows.length === 0
+        ? EMPTY_REJECTION
+        : rejection;
+    savingNewRound.current = editingResultId === null;
     save.write({
       inspectionRequestId,
       inspectedQty: inspected,

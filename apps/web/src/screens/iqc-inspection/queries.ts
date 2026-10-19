@@ -260,8 +260,9 @@ export interface SaveDraftVariables {
   /**
    * IQC 불합격 사유(omf-all-around#122 · 서버 P-48) — 임시 저장도 싣는다. 서버가 그 회차의 불량 기록을 이 값으로
    * 갈아 끼우고(빈 배열 = 지움) 다시 열면 화면이 그 기록으로 사유 칸을 채운다. 확정은 #121 그대로 다시 싣는다.
+   * `undefined` 면 키를 싣지 않는다 — 서버가 기존 기록에 손대지 않는다(아직 되살리지 못한 회차).
    */
-  defects: InspectionDefectInput[];
+  defects: InspectionDefectInput[] | undefined;
 }
 
 /** 계약이 못박은 두 값 중 임시 저장이 쓰는 쪽. 확정은 다음 회차가 다룬다. */
@@ -355,7 +356,7 @@ const toCreateBody = (v: SaveDraftVariables): InspectionResultCreateForward => (
   ...judgmentOf(v.overallJudgmentCode),
   ...previousOf(v.previousResultId),
   /* 새 회차에 빈 배열은 실을 까닭이 없다 — 지울 기록이 없다. */
-  ...(v.defects.length === 0 ? {} : { defects: v.defects }),
+  ...(v.defects === undefined || v.defects.length === 0 ? {} : { defects: v.defects }),
 });
 
 const toUpdateBody = (v: SaveDraftVariables): InspectionResultUpdateForward => ({
@@ -364,8 +365,8 @@ const toUpdateBody = (v: SaveDraftVariables): InspectionResultUpdateForward => (
   heldQty: v.heldQty,
   inspectedAt: v.inspectedAt,
   ...judgmentOf(v.overallJudgmentCode),
-  /* ⭐ 빈 배열도 싣는다 — 불합격을 풀고 저장하면 앞서 임시 저장한 사유를 지워야 한다. */
-  defects: v.defects,
+  /* ⭐ 빈 배열도 싣는다 — 불합격을 풀고 저장하면 앞서 임시 저장한 사유를 지워야 한다. `undefined` 는 키를 뺀다. */
+  ...(v.defects === undefined ? {} : { defects: v.defects }),
 });
 
 const fetchItemSpecs = (

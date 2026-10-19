@@ -131,6 +131,8 @@ const renderScreen = (
             new URL(request.url).pathname === '/quality/defect-records' && request.method === 'GET',
           respond: (request) => {
             sent.push(new URL(request.url));
+            if (draftRecordsFailForTest)
+              return jsonResponse({ message: '서버 오류' }, { status: 500 });
             return jsonResponse({
               items: draftRecordsForTest,
               page: { page: 1, size: 20, total: draftRecordsForTest.length },
@@ -255,11 +257,14 @@ let draftRecordsForTest: {
   defectCodeId: number;
   defectDescription?: string;
 }[] = [];
+/** 작성중 사유 조회를 실패시킨다(#122 리뷰 M2). */
+let draftRecordsFailForTest = false;
 
 beforeEach(() => {
   testSession = LINKED_SESSION;
   lotStatusForTest = null;
   draftRecordsForTest = [];
+  draftRecordsFailForTest = false;
   confirmResponder = null;
   samplingVersion = null;
 });
@@ -1081,6 +1086,72 @@ describe('IqcInspectionScreen — 불합격 사유 임시 저장', () => {
       overallJudgmentCode: 'REJECTED',
       defects: [{ defectCodeId: 7002, defectQty: 15, defectDescription: '찍힘' }],
     });
+  });
+
+  /* #122 리뷰 M2 — 서버의 사유를 모르는 채로 빈 배열을 보내면 서버가 사유를 지운다. */
+  it('사유 조회가 실패하면 저장 본문에 사유 키를 싣지 않는다', async () => {
+    draftRecordsFailForTest = true;
+    const { writes, sent } = renderScreen('/?ir=1001', () => jsonResponse(queueResponse()), [
+      rejectedDraft,
+    ]);
+    await waitFor(() =>
+      expect(sent.some((url) => url.pathname === '/quality/defect-records')).toBe(true),
+    );
+    await editQuantity();
+    await userEvent.click(screen.getByRole('button', { name: t.result.save }));
+    await waitFor(() => expect(writes).toHaveLength(1));
+
+    expect((writes[0] as Request).method).toBe('PUT');
+    expect(await bodyOf(writes[0] as Request)).not.toHaveProperty('defects');
+  });
+
+  it('코드 마스터에 없는 코드라 사유 글만 되살렸으면 코드를 고르기 전 저장은 사유 키를 싣지 않는다', async () => {
+    draftRecordsForTest = [
+      { defectRecordId: 1, defectCodeId: 9999, defectDescription: '옛 코드 사유' },
+    ];
+    const { writes } = renderScreen('/?ir=1001', () => jsonResponse(queueResponse()), [
+      rejectedDraft,
+    ]);
+    await waitFor(() =>
+      expect(screen.getByLabelText(t.result.rejection.description)).toHaveValue('옛 코드 사유'),
+    );
+    await editQuantity();
+    await userEvent.click(screen.getByRole('button', { name: t.result.save }));
+    await waitFor(() => expect(writes).toHaveLength(1));
+
+    expect(await bodyOf(writes[0] as Request)).not.toHaveProperty('defects');
+  });
+
+  /* #122 리뷰 m1 — 첫 저장(POST)이 만든 회차를 되살리면 그새 고친 사유를 덮는다. */
+  it('첫 저장으로 회차가 생겨도 사유를 서버 값으로 덮지 않는다', async () => {
+    draftRecordsForTest = [{ defectRecordId: 1, defectCodeId: 7001, defectDescription: '서버 값' }];
+    const { writes } = renderScreen(
+      '/?ir=1002',
+      () => jsonResponse(queueResponse()),
+      [],
+      [],
+      itemSpecsResponse(),
+      [rejectedDraft],
+    );
+    await screen.findByText(t.result.confirmBlockedByUnsaved);
+    await editQuantity();
+    await userEvent.click(screen.getByLabelText(t.result.judgment));
+    await userEvent.click(await screen.findByRole('option', { name: '불합격' }));
+    await userEvent.click(await screen.findByLabelText(t.result.rejection.major));
+    await userEvent.click(await screen.findByRole('option', { name: 'APP · 외관' }));
+    await userEvent.click(screen.getByLabelText(t.result.rejection.minor));
+    await userEvent.click(await screen.findByRole('option', { name: 'APP-SCR · 스크래치' }));
+    await userEvent.type(screen.getByLabelText(t.result.rejection.description), '내 사유');
+    await userEvent.click(screen.getByRole('button', { name: t.result.save }));
+    await waitFor(() => expect(writes).toHaveLength(1));
+    expect((writes[0] as Request).method).toBe('POST');
+
+    /* 저장 응답 뒤 회차가 생겨 고칠 회차가 바뀐 것 — 확정이 풀리는 것이 그 신호다. */
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: t.result.confirm })).toBeEnabled(),
+    );
+    expect(screen.getByLabelText(t.result.rejection.description)).toHaveValue('내 사유');
+    expect(screen.getByLabelText(t.result.rejection.minor)).toHaveTextContent('APP-SCR · 스크래치');
   });
 
   it('합격으로 바꿨다가 다시 불합격을 고르면 사유 칸이 비어 있다', async () => {
