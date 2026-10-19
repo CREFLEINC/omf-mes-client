@@ -1,5 +1,6 @@
 import type { components } from '@omf-mes/api-client';
 
+import { FULL_INSPECTION } from './code-options';
 import type { InspectionPlanVersion, VersionFormValues } from './types';
 
 type InspectionPlanVersionCreate = components['schemas']['InspectionPlanVersionCreate'];
@@ -54,7 +55,14 @@ export const toVersionUpdate = (values: VersionFormValues): InspectionPlanVersio
    * 비율(%)이다. **수량으로 환산하지 않는다** — 환산하려면 로트 크기가 필요하고
    * 그것은 기준을 등록하는 지금이 아니라 검사하는 시점에 정해진다(#201).
    */
-  samplingRatio: optionalTextToNumber(values.samplingRatio),
+  /*
+   * ⛔ 전수검사면 비율을 싣지 않는다 — 예전에 「전수검사 + 비율」로 저장된 판을 열면 잠긴 칸에 값이 남아,
+   *    다른 칸만 고쳐도 서버가 400 으로 막았다(omf-all-around#103 · P-37).
+   */
+  samplingRatio:
+    values.samplingMethodCode === FULL_INSPECTION
+      ? null
+      : optionalTextToNumber(values.samplingRatio),
   aqlValue: optionalTextToNumber(values.aqlValue),
   acceptanceNumber: optionalTextToNumber(values.acceptanceNumber),
   rejectionNumber: optionalTextToNumber(values.rejectionNumber),
