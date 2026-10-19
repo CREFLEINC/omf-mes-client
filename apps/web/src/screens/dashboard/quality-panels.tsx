@@ -321,7 +321,7 @@ const DailyPanel = ({
   title: string;
   /** 검사 없는 날 · 혼자 남은 점 구분 — 품질 종합 · IQC(사용자 지시 2026-10-19). */
   gapMarks?: boolean;
-  /** 공백 띠 · 「검사 없음」 · 끊긴 점 잇는 점선 · 혼자 남은 점 값을 점 위에 — IQC 탭만(사용자 지시 2026-10-19). */
+  /** 공백 띠 · 「검사 없음」 · 끊긴 점 잇는 점선 · 혼자 남은 점 값을 점 위에 — IQC · 품질 종합(사용자 지시 2026-10-19). */
   gapDetail?: boolean;
   /** 날짜 칸 툴팁(날짜 + 유형별 합격률) — 품질 종합 · IQC · PQC · OQC(사용자 확정 2026-10-19). */
   tooltip?: boolean;
@@ -599,6 +599,7 @@ export const QualityOverviewTab = ({
           title={t.dailyTitleAll}
           tooltip
           gapMarks
+          gapDetail
         />
         <div className="dash-qo-side">
           <Panel title={t.vendorDefects} sub={t.qtyShareSub} tag={tags.monthTotal}>

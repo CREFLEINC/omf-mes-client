@@ -793,8 +793,9 @@ export const MultiLineChart = ({
           {series.map((entry, seriesIndex) => {
             const segments = toLineSegments(entry.points);
             const last = segments.at(-1)?.at(-1);
-            /* 끝 점이 혼자 남은 점이면 값을 점 바로 위에 쓴다(gapDetail) — 오른쪽에 두면 범례처럼 보였다. */
-            const soloEnd = gapDetail && segments.at(-1)?.length === 1;
+            /* 끝 점이 혼자 남은 점이면 값을 점 바로 위에 쓴다(gapDetail · 계열 하나일 때) — 오른쪽에 두면 범례처럼
+               보였다. 오른쪽 끝에서 잘리지 않게 글 끝을 점에 맞춘다. 계열이 여럿이면 겹침을 피하는 오른쪽 이름표 그대로. */
+            const soloEnd = gapDetail && series.length === 1 && segments.at(-1)?.length === 1;
 
             return (
               <g key={entry.name} className={`dash-line-${String(entry.tone)}`}>
@@ -859,13 +860,13 @@ export const MultiLineChart = ({
                 {last !== undefined && (
                   <text
                     className="dash-line-end"
-                    x={xAt(last.index, labels.length) + (soloEnd ? 0 : 8)}
+                    x={xAt(last.index, labels.length) + (soloEnd ? 4 : 8)}
                     y={
                       soloEnd
                         ? yAt(last.value) - 10
                         : (endLabelY[seriesIndex] ?? yAt(last.value) + 4)
                     }
-                    textAnchor={soloEnd ? 'middle' : undefined}
+                    textAnchor={soloEnd ? 'end' : undefined}
                   >
                     {series.length > 1
                       ? `${entry.name} ${formatFigure(last.value)}`
