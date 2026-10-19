@@ -4,7 +4,8 @@
  * 이 화면의 말은 「실적」이고 받는 수량은 **양품 하나**다 — 불량·손실은 이 화면에 오지 않는다.
  */
 export const productionResult = {
-  title: '생산 실적 등록',
+  /* 화면 이름은 「생산 작업」이다(사용자 지시 2026-10-19 · omf-all-around#107). 실적은 그 안의 한 구획이다. */
+  title: '생산 작업',
 
   flow: {
     header: {
@@ -184,6 +185,13 @@ export const productionResult = {
   pqc: {
     goInspect: '검사 화면으로',
     splitTitle: 'PQC 제품 검사',
+    splitNote: '검사 수량 · 판정 · 결과 확정',
+  },
+
+  /** 「생산 작업」 화면의 왼쪽(검사 off 면 전체) 구획 머리. */
+  zone: {
+    title: '생산 실적',
+    note: 'LOT 진행 · 수량 입력 · 라벨 발행',
   },
 
   lot: {

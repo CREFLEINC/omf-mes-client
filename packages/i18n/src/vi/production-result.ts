@@ -3,7 +3,7 @@ import type { Translated } from './translated';
 
 /** P-02-06 생산 실적 등록. */
 export const productionResult: Translated<typeof ko.productionResult> = {
-  title: 'Đăng ký kết quả sản xuất',
+  title: 'Công việc sản xuất',
   flow: {
     header: {
       /* ⚠ ERP 쪽 번호와 나란히 서는 자리라 어느 쪽 번호인지 밝힌다(사용자 지시 2026-09-10). */
@@ -144,6 +144,11 @@ export const productionResult: Translated<typeof ko.productionResult> = {
   pqc: {
     goInspect: 'Đến màn hình kiểm tra',
     splitTitle: 'Kiểm tra sản phẩm PQC',
+    splitNote: 'Số lượng kiểm tra · Đánh giá · Xác nhận kết quả',
+  },
+  zone: {
+    title: 'Kết quả sản xuất',
+    note: 'Tiến độ LOT · Nhập số lượng · In nhãn',
   },
   lot: {
     sectionLabel: 'LOT đối tượng',

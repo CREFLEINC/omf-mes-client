@@ -1714,6 +1714,9 @@ describe('ProductionFlowScreen — PQC 분할', () => {
 
     const panel = within(await screen.findByRole('region', { name: t.pqc.splitTitle }));
     expect(panel.queryByRole('button', { name: /닫기/ })).not.toBeInTheDocument();
+    expect(screen.getByText(t.zone.title)).toBeInTheDocument();
+    expect(screen.getByText(t.zone.note)).toBeInTheDocument();
+    expect(screen.getByText(t.pqc.splitNote)).toBeInTheDocument();
 
     await user.type(await panel.findByRole('textbox', { name: pqc.result.fields.accepted }), '5');
     await user.type(panel.getByRole('textbox', { name: pqc.result.fields.rejected }), '0');
@@ -1824,5 +1827,7 @@ describe('ProductionFlowScreen — PQC 분할', () => {
 
     expect(await screen.findByText(t.flow.output.printer, { exact: false })).toBeInTheDocument();
     expect(screen.queryByRole('region', { name: t.pqc.splitTitle })).not.toBeInTheDocument();
+    expect(screen.getByText(t.zone.title)).toBeInTheDocument();
+    expect(screen.queryByText(t.pqc.splitNote)).not.toBeInTheDocument();
   });
 });

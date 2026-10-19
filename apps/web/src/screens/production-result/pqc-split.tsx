@@ -44,23 +44,50 @@ export const PqcSplit = ({
     });
   }, [sentCount, queryClient, workOrderId]);
 
-  if (inspectionRequestId === null) return <>{children}</>;
+  const zoneHead = (
+    <ZoneHead
+      title={messages.productionResult.zone.title}
+      note={messages.productionResult.zone.note}
+    />
+  );
+
+  if (inspectionRequestId === null) {
+    return (
+      <>
+        {zoneHead}
+        {children}
+      </>
+    );
+  }
 
   return (
     <div className="production-flow-split pop-fixed">
-      {children}
-      <section className="pane production-flow-pqc" aria-label={t.splitTitle}>
-        <h2 className="pane-title">{t.splitTitle}</h2>
-        <PqcPanel
-          key={inspectionRequestId}
-          inspectionRequestId={inspectionRequestId}
-          submitter={outbox}
-          workerNo={workerNo}
-          requiresWorker
-          withKeypad
-          variant="split"
-        />
-      </section>
+      <div className="production-flow-zone">
+        {zoneHead}
+        {children}
+      </div>
+      <div className="production-flow-zone">
+        <ZoneHead title={t.splitTitle} note={t.splitNote} />
+        <section className="pane production-flow-pqc" aria-label={t.splitTitle}>
+          <PqcPanel
+            key={inspectionRequestId}
+            inspectionRequestId={inspectionRequestId}
+            submitter={outbox}
+            workerNo={workerNo}
+            requiresWorker
+            withKeypad
+            variant="split"
+          />
+        </section>
+      </div>
     </div>
   );
 };
+
+/** 구획 머리 — 이름과 그 구획에서 하는 일(사용자 지시 2026-10-19 · 예시 배치). */
+const ZoneHead = ({ title, note }: { title: string; note: string }) => (
+  <div className="production-flow-zone-head pop-fixed">
+    <h2 className="pane-title">{title}</h2>
+    <p className="field-note">{note}</p>
+  </div>
+);
