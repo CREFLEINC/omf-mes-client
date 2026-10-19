@@ -1,11 +1,14 @@
 import { messages } from '@omf-mes/i18n';
 
-import { codePlaceholder, REQUIRED_CODE_KEYS, type CodeOptionSets } from './code-options';
+import { REQUIRED_CODE_KEYS, type CodeOptionSets } from './code-options';
 import { SelectField } from './select-field';
 import type { CodeDraft, GoodsReceiptCodeKey } from './types';
 import { CODE_FIELD_NAMES } from './validation';
 
 const t = messages.goodsReceipt;
+
+/** 코드 칸의 선택지 목록 상태 — 비어 있을 때 그 이유(불러오는 중·실패·값 없음)를 가른다. */
+export type CodeListState = 'ready' | 'loading' | 'failed';
 
 export interface CodeFieldsProps {
   options: CodeOptionSets;
@@ -18,6 +21,8 @@ export interface CodeFieldsProps {
    * 주지 않으면 모든 칸이 열린다.
    */
   isOpen?: (key: GoodsReceiptCodeKey) => boolean;
+  /** 이 칸의 선택지 목록 상태. 주지 않으면 `ready`(받은 목록 그대로)다. 표시 문구만 가른다. */
+  listState?: (key: GoodsReceiptCodeKey) => CodeListState;
   onChange: (key: GoodsReceiptCodeKey, value: string) => void;
 }
 
@@ -59,11 +64,14 @@ export const CodeFields = ({
   fieldErrors,
   isLocked,
   isOpen = () => true,
+  listState = () => 'ready',
   onChange,
 }: CodeFieldsProps) => (
   <div className="form-grid goods-receipt-post-grid">
     {CODE_FIELDS.map(({ key, label }) => {
       const codeOptions = options[key];
+      const isEmpty = codeOptions.length === 0;
+      const state = listState(key);
 
       return (
         <SelectField
@@ -73,12 +81,21 @@ export const CodeFields = ({
           required={REQUIRED_CODE_KEYS.includes(key)}
           options={codeOptions}
           value={values[key]}
-          /* 선택지가 비어 있는 이유는 라벨 옆 한 줄로 — 칸 아래에 두면 그 칸만 키가 커진다. */
-          labelHint={codeOptions.length === 0 ? t.filters.codePending : undefined}
+          /*
+           * 고를 값이 없는 이유는 라벨 옆 한 줄로 — 칸 아래에 두면 그 칸만 키가 커진다.
+           * 불러오는 중·실패는 「값이 없다」와 다르다 — 그때는 자리표시만 그 사정을 말한다.
+           */
+          labelHint={isEmpty && state === 'ready' ? t.filters.codePending : undefined}
           error={fieldErrors[CODE_FIELD_NAMES[key]]}
           /* 고를 것이 없는 칸과 고를 수 있는 칸은 트리거 문구가 달라야 한다. */
           placeholder={
-            codeOptions.length === 0 ? codePlaceholder() : t.values.fieldPlaceholders[key]
+            !isEmpty
+              ? t.values.fieldPlaceholders[key]
+              : state === 'loading'
+                ? t.values.codeLoadingPlaceholder
+                : state === 'failed'
+                  ? t.values.codeFailedPlaceholder
+                  : t.values.codeEmptyPlaceholder
           }
           disabled={isLocked || !isOpen(key)}
           onChange={(value) => {

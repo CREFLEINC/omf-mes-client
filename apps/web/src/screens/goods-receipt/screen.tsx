@@ -95,6 +95,24 @@ const EMPTY_ROWS: IrView[] = [];
 const EMPTY_LINES: IrLineView[] = [];
 const NO_FIELD_ERRORS: Record<string, string> = {};
 
+/** 안내 문장 안의 값들을 앞에서부터 차례로 굵게 — 수량이 먼저 읽히게 한다. 못 찾은 값은 그대로 둔다. */
+const emphasizeAll = (text: string, parts: readonly string[]): ReactNode[] => {
+  const nodes: ReactNode[] = [];
+  let rest = text;
+
+  parts.forEach((part, index) => {
+    const at = rest.indexOf(part);
+
+    if (at < 0) return;
+
+    nodes.push(rest.slice(0, at), <strong key={index}>{part}</strong>);
+    rest = rest.slice(at + part.length);
+  });
+  nodes.push(rest);
+
+  return nodes;
+};
+
 /**
  * 초안을 버리게 되는 조작. **버리기 전에 확인을 받으려면 「무엇을 하려 했는지」를 붙들어야 한다.**
  *
@@ -651,11 +669,16 @@ export const GoodsReceiptScreen = () => {
     const itemName = describeReference(items.of(line.itemId));
     const lotName = receiptTarget?.splitLotNo ?? describeReference(toReference(lots, receiptLotId));
     /* 단위는 코드만(「1 EA」) — 「코드 · 이름」은 같은 뜻을 두 번 적는다(라인 표와 같다). */
-    const receiptQty = t.lineTable.receivedQtyPair(
-      receiptTarget?.qty ?? line.receivedQty,
+    const uomCode =
       uoms.entries.find((entry) => entry.value === String(line.uomId))?.code ??
-        describeReference(toReference(uoms, line.uomId)),
+      describeReference(toReference(uoms, line.uomId));
+    const qtyText = (qty: number): string => t.lineTable.receivedQtyPair(qty, uomCode);
+    const receiptQty = qtyText(receiptTarget?.qty ?? line.receivedQty);
+    const splitTargetCount = receiptTargets.filter((target) => target.splitLotNo !== null).length;
+    const goodQtyText = qtyText(
+      receiptTargets.find((target) => target.splitLotNo === null)?.qty ?? 0,
     );
+    const splitQtyText = qtyText(splitQtyOf(line));
     /**
      * 확인 창의 코드 표시 이름 — 공통코드 조회가 준 이름(`nameKo` → `codeName`)을 쓴다. 조회하지 않는
      * 코드(원천 문서 유형·사유)나 이름이 없으면 코드 그대로다. 보내는 값은 코드 그대로다.
@@ -782,10 +805,11 @@ export const GoodsReceiptScreen = () => {
         {line.splitLots.length > 0 && receiptTarget !== null && (
           <div className="banner-slot">
             <AlertBanner variant="info">
-              {t.notes.receiptTarget.note(
-                splitQtyOf(line),
-                receiptTargets.find((target) => target.splitLotNo === null)?.qty ?? 0,
-              )}
+              {/* 양품·불량분 수량은 굵게 — 안내에서 먼저 읽혀야 하는 값이다. */}
+              {emphasizeAll(t.notes.receiptTarget.note(goodQtyText, splitQtyText), [
+                goodQtyText,
+                splitQtyText,
+              ])}
             </AlertBanner>
           </div>
         )}
@@ -803,12 +827,27 @@ export const GoodsReceiptScreen = () => {
         {receiptTargets.length > 1 && receiptTarget !== null && (
           <SelectField
             label={t.notes.receiptTarget.label}
+            /* 지금 고른 대상(양품·불량분)을 라벨 옆 상태 글자로 — 색은 `app.css` 가 대상별로 준다. */
+            className={
+              receiptTarget.splitLotNo === null
+                ? 'goods-receipt-target goods-receipt-target-good'
+                : 'goods-receipt-target goods-receipt-target-split'
+            }
+            labelHint={
+              receiptTarget.splitLotNo === null
+                ? t.notes.receiptTarget.goodHint
+                : t.notes.receiptTarget.splitHint
+            }
+            /* 선택지에는 LOT 번호를 싣지 않는다(길어 잘린다) — 고른 대상의 LOT 번호는 칸 아래에 다 보인다. */
+            note={t.notes.receiptTarget.lot(lotName)}
             options={receiptTargets.map((target) => ({
               value: String(target.lotId),
               label:
                 target.splitLotNo === null
-                  ? t.notes.receiptTarget.good(target.qty)
-                  : t.notes.receiptTarget.split(target.splitLotNo, target.qty),
+                  ? t.notes.receiptTarget.good(qtyText(target.qty))
+                  : splitTargetCount > 1
+                    ? t.notes.receiptTarget.splitWithLot(target.splitLotNo, qtyText(target.qty))
+                    : t.notes.receiptTarget.split(qtyText(target.qty)),
             }))}
             value={String(receiptTarget.lotId)}
             disabled={isLocked}
@@ -847,6 +886,21 @@ export const GoodsReceiptScreen = () => {
             isOpen={(key) =>
               key === 'reason' ? isOptionalPostFieldOpen(draft) : isPostStepOpen(draft, key)
             }
+            listState={(key) => {
+              const lookup =
+                key === 'receiptType'
+                  ? receiptTypes
+                  : key === 'qualityStatus'
+                    ? qualityStatuses
+                    : key === 'inventoryStatus'
+                      ? inventoryStatuses
+                      : null;
+
+              if (lookup === null) return 'ready';
+              if (lookup.isError) return 'failed';
+
+              return lookup.isPending ? 'loading' : 'ready';
+            }}
             onChange={changeCode}
           />
 

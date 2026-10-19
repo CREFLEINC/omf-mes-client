@@ -28,7 +28,7 @@ export const FieldLabel = ({ htmlFor, label, hint, required = false }: FieldLabe
       </span>
     )}
     {hint !== undefined && (
-      <span id={hint.id} className="goods-receipt-label-hint">
+      <span id={hint.id} className="goods-receipt-label-hint" title={hint.text}>
         {hint.text}
       </span>
     )}

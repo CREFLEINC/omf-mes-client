@@ -3,7 +3,6 @@ import { describe, expect, it } from 'vitest';
 
 import {
   codeNote,
-  codePlaceholder,
   isRequiredCodeListPending,
   PLACEHOLDER_GOODS_RECEIPT_CODES,
   REQUIRED_CODE_KEYS,
@@ -201,9 +200,5 @@ describe('안내 문구', () => {
   /* 짝 방향 — 채워진 뒤에도 안내가 남으면 「아직 준비 중」이라는 거짓말이 화면에 남는다. */
   it('선택지가 차면 안내를 거둔다', () => {
     expect(codeNote([{ value: 'SAMPLE_QUALITY_A', label: 'SAMPLE_QUALITY_A' }])).toBeUndefined();
-  });
-
-  it('트리거 자리표시가 공통 문구와 같다', () => {
-    expect(codePlaceholder()).toBe(messages.pendingCode.placeholder);
   });
 });

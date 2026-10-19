@@ -3,9 +3,9 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
-import { CodeFields } from './code-fields';
+import { CodeFields, type CodeListState } from './code-fields';
 import { toCodeOptionSets, PLACEHOLDER_GOODS_RECEIPT_CODES } from './code-options';
-import { EMPTY_CODE_DRAFT, type CodeDraft } from './types';
+import { EMPTY_CODE_DRAFT, type CodeDraft, type GoodsReceiptCodeKey } from './types';
 import { CODE_FIELD_NAMES } from './validation';
 
 const t = messages.goodsReceipt;
@@ -26,6 +26,7 @@ const renderFields = (
     values?: CodeDraft;
     fieldErrors?: Record<string, string>;
     isLocked?: boolean;
+    listState?: (key: GoodsReceiptCodeKey) => CodeListState;
   } = {},
 ) => {
   const onChange = vi.fn();
@@ -36,6 +37,7 @@ const renderFields = (
       values={overrides.values ?? EMPTY_CODE_DRAFT}
       fieldErrors={overrides.fieldErrors ?? {}}
       isLocked={overrides.isLocked ?? false}
+      listState={overrides.listState}
       onChange={onChange}
     />,
   );
@@ -96,10 +98,26 @@ describe('CodeFields — 값 목록이 비어 있을 때', () => {
     }
   });
 
-  it('트리거가 준비 중임을 밝힌다', () => {
+  it('트리거가 고를 값이 없음을 밝힌다', () => {
     renderFields();
 
-    expect(screen.getAllByText(messages.pendingCode.placeholder)).toHaveLength(3);
+    expect(screen.getAllByText(t.values.codeEmptyPlaceholder)).toHaveLength(3);
+  });
+
+  /* 불러오는 중·실패는 「값이 없다」와 다르다 — 라벨 옆 안내를 내지 않고 자리표시가 그 사정을 말한다. */
+  it('불러오는 중이면 「불러오는 중」, 실패면 「불러오지 못함」을 보이고 값 없음 안내는 내지 않는다', () => {
+    renderFields({
+      listState: (key) =>
+        key === 'receiptType' ? 'loading' : key === 'qualityStatus' ? 'failed' : 'ready',
+    });
+
+    expect(screen.getByRole('combobox', { name: t.fields.receiptType })).toHaveTextContent(
+      t.values.codeLoadingPlaceholder,
+    );
+    expect(screen.getByRole('combobox', { name: t.fields.qualityStatus })).toHaveTextContent(
+      t.values.codeFailedPlaceholder,
+    );
+    expect(screen.getAllByText(t.filters.codePending)).toHaveLength(1);
   });
 });
 

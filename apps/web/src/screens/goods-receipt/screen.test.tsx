@@ -2950,7 +2950,16 @@ describe('GoodsReceiptScreen — 입고 전 선별(P-56)', () => {
       allRoutes([linesRoute(splitLines), splitLotRoute, defectWarehouseRoute]),
     );
 
-    expect(screen.getByText(t.notes.receiptTarget.note(15, 35))).toBeInTheDocument();
+    /* 수량은 줄의 단위 코드를 붙여(「35 SAMPLE-EA」) 굵게 낸다 — 문장이 여러 요소로 나뉘어 본문 글자로 본다. */
+    expect(document.body).toHaveTextContent(
+      t.notes.receiptTarget.note(
+        t.lineTable.receivedQtyPair(35, 'SAMPLE-EA'),
+        t.lineTable.receivedQtyPair(15, 'SAMPLE-EA'),
+      ),
+    );
+    expect(screen.getByRole('combobox', { name: t.notes.receiptTarget.label })).toHaveTextContent(
+      t.notes.receiptTarget.good(t.lineTable.receivedQtyPair(35, 'SAMPLE-EA')),
+    );
     await clickPost(user);
     await confirmPost(user);
 
@@ -2971,7 +2980,14 @@ describe('GoodsReceiptScreen — 입고 전 선별(P-56)', () => {
     await chooseOption(
       user,
       t.notes.receiptTarget.label,
-      t.notes.receiptTarget.split(SPLIT.lotNo, 15),
+      t.notes.receiptTarget.split(t.lineTable.receivedQtyPair(15, 'SAMPLE-EA')),
+    );
+
+    /* 고른 대상의 LOT 번호는 선택지가 아니라 칸 아래에 다 보인다. */
+    expect(
+      screen.getByRole('combobox', { name: t.notes.receiptTarget.label }),
+    ).toHaveAccessibleDescription(
+      `${t.notes.receiptTarget.splitHint} ${t.notes.receiptTarget.lot(SPLIT.lotNo)}`,
     );
 
     const warehouseBox = screen.getByRole('combobox', { name: t.fields.warehouse });

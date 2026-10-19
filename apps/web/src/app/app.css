@@ -13843,6 +13843,50 @@ button.app-button-neutral {
 }
 
 /*
+ * 입고 대상(선별 뒤 양품·불량분) — 입고 정보 격자 위 한 줄. 선택지 문구(「선별 불량분 · 3 EA」)에 맞는 폭으로 줄이고
+ * 아래 입력 칸과 격자 간격만큼 띄운다. 라벨 옆에 지금 고른 대상을 상태 색 글자로, 칸 아래에 그 LOT 번호를 다 보인다.
+ */
+.field-cell.goods-receipt-target {
+  max-width: 28rem;
+  margin-bottom: var(--space-4);
+}
+
+.goods-receipt-target .goods-receipt-label-hint {
+  font-weight: 600;
+}
+
+.goods-receipt-target-good .goods-receipt-label-hint {
+  color: var(--semantic-success-text);
+}
+
+.goods-receipt-target-split .goods-receipt-label-hint {
+  color: var(--semantic-error-text);
+}
+
+/* 긴 LOT 번호(구분자 `|` · 공백 없음)는 칸 폭 안에서 접는다 — 자르지 않는다. */
+.goods-receipt-target .field-note {
+  max-width: none;
+  overflow-wrap: anywhere;
+}
+
+/*
+ * 입고 정보 칸의 라벨 줄 — 라벨 옆 안내가 좁은 칸에서 넘치면 말줄임(전체 문구는 툴팁·칸 설명으로 남는다).
+ * 줄을 바꾸면 그 칸만 라벨 층이 높아져 같은 행 칸들의 윗선이 어긋난다.
+ */
+.goods-receipt-post-form .field-label {
+  display: flex;
+  align-items: baseline;
+  min-width: 0;
+  white-space: nowrap;
+}
+
+.goods-receipt-post-form .goods-receipt-label-hint {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/*
  * W-01-10 입고 처리 확인 창 — 입고 대상 · 입고 위치 · 입고 조건 세 묶음. 항목명은 작은 보조 글자, 값은 본문.
  * 핵심(대상·위치)은 값을 굵게, 조건은 한 단계 낮춘다. 긴 자재 LOT 번호는 줄 전체를 쓰고 숨기지 않는다.
  */

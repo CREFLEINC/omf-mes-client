@@ -76,10 +76,10 @@ export const goodsReceipt = {
      */
     postCodeListPending:
       '입고 처리: 입고 유형·품질 상태의 운영 코드 목록이 준비되지 않아 지금은 입고 처리를 할 수 없습니다.',
-    postNeedsWarehouse: '입고 처리: 입고 창고를 고르세요.',
-    postNeedsLocation: '입고 처리: 적치 위치를 고르세요.',
-    postNeedsCodes: '입고 처리: 필수 코드를 모두 고르세요.',
-    postNeedsReceiptDatetime: '입고 처리: 입고 일시를 넣으세요.',
+    postNeedsWarehouse: '입고 처리: 입고 창고를 선택해 주세요.',
+    postNeedsLocation: '입고 처리: 적치 위치를 선택해 주세요.',
+    postNeedsCodes: '입고 처리: 필수 항목을 모두 선택해 주세요.',
+    postNeedsReceiptDatetime: '입고 처리: 입고 일시를 입력해 주세요.',
     /*
      * 원천 문서로 넘어갈 수 없는 이유. 유형 코드와 대상의 대응 규약이 아직 없어 무엇을 가리키는지
      * 화면이 알 수 없다 — 짐작해서 열면 다른 문서를 연다.
@@ -188,8 +188,11 @@ export const goodsReceipt = {
     /** 공급사 칸에 목록에 없는 글자를 두고 조회했을 때. 조건을 몰래 넓히지 않는다. */
     supplierPickFromList: '목록에서 공급사를 골라 주세요.',
     statusPending: '코드 확정 전엔 선택이 불가합니다.',
-    /** 입고 처리의 코드 선택칸이 비어 있는 이유 — 라벨 옆 같은 줄. 공용 `pendingCode.note` 의 짧은 판. */
-    codePending: '코드 확정 전엔 선택이 불가합니다.',
+    /**
+     * 입고 처리의 코드 선택칸에 고를 값이 없는 이유 — 라벨 옆 같은 줄. 불러오는 중·불러오기 실패일 때는 내지 않는다
+     * (그때는 칸의 자리표시가 그 사정을 말한다). 사유는 값 목록 자체가 아직 없고, 입고 유형·품질 상태는 활성 코드가 없을 때다.
+     */
+    codePending: '등록된 코드가 없습니다.',
     chipSupplier: (value: string): string => `공급사: ${value}`,
     /** 한쪽만 넣은 기간도 조건이다 — 그 사실이 칩에서 읽혀야 한다. */
     chipPeriodBoth: (from: string, to: string): string => `입하일: ${from} ~ ${to}`,
@@ -242,18 +245,22 @@ export const goodsReceipt = {
     selectPlaceholder: '고르세요',
     /** 입고 정보 선택칸마다의 자리표시(사용자 지시) — 무엇을 고르는 칸인지 칸 안에서 읽힌다. */
     fieldPlaceholders: {
-      warehouse: '입고 창고를 선택하세요',
-      location: '적재 위치를 선택하세요',
-      receiptType: '입고 유형을 선택하세요',
-      sourceDocumentType: '원천 문서 유형을 선택하세요',
-      qualityStatus: '품질 상태를 선택하세요',
-      inventoryStatus: '재고 상태를 선택하세요',
-      reason: '사유를 선택하세요',
+      warehouse: '입고 창고 선택',
+      location: '적치 위치 선택',
+      receiptType: '입고 유형 선택',
+      sourceDocumentType: '원천 문서 유형 선택',
+      qualityStatus: '품질 상태 선택',
+      inventoryStatus: '재고 상태 선택',
+      reason: '사유 선택',
     },
+    /** 입고 정보 코드 칸의 선택지 상태별 자리표시 — 불러오는 중 · 불러오지 못함 · 고를 값 없음을 가른다. */
+    codeLoadingPlaceholder: '불러오는 중…',
+    codeFailedPlaceholder: '불러오지 못함',
+    codeEmptyPlaceholder: '선택할 항목 없음',
   },
   notes: {
-    /** IQC 불합격(불량) LOT — 불량창고만 고를 수 있다(omf-all-around#84). */
-    defectWarehouseOnly: 'IQC 불합격 LOT입니다. 불량창고만 선택할 수 있습니다.',
+    /** 불량 LOT(IQC 불합격 · 선별 불량분) — 불량창고만 고를 수 있다(omf-all-around#84). */
+    defectWarehouseOnly: '불량 LOT은 불량창고에만 입고할 수 있습니다.',
     /**
      * IQC 대상 LOT 이 아직 입고할 수 없는 상태 — 입력 영역을 처음부터 잠그고 먼저 할 일을 말한다(#100 · 3단계 검증).
      * 서버 규칙과 같다: 정상(합격)만 입고, 불량(불합격)은 불량창고로만, 그 밖(검사 대기 등)은 어디로도 안 된다.
@@ -263,10 +270,18 @@ export const goodsReceipt = {
      */
     receiptTarget: {
       label: '입고 대상',
-      good: (qty: number) => `양품(원 LOT) · ${qty}`,
-      split: (lotNo: string, qty: number) => `선별 불량분 ${lotNo} · ${qty}`,
-      note: (split: number, good: number) =>
-        `선별로 불량분 ${split}이(가) 분리됐습니다. 원 LOT 은 양품 ${good}만 입고하고, 불량분은 「입고 대상」에서 골라 불량창고로 입고합니다.`,
+      /** 수량은 줄의 단위 코드를 붙인 표기(「7 EA」)로 받는다 — `lineTable.receivedQtyPair`. */
+      good: (qty: string) => `양품(원 LOT) · ${qty}`,
+      split: (qty: string) => `선별 불량분 · ${qty}`,
+      /** 선별 불량분이 둘 이상이면 선택지끼리 구분되게 LOT 번호를 붙인다. */
+      splitWithLot: (lotNo: string, qty: string) => `선별 불량분 ${lotNo} · ${qty}`,
+      /** 고른 대상의 LOT 번호 — 선택칸 아래 한 줄. 긴 번호도 자르지 않는다. */
+      lot: (lotNo: string) => `입고할 LOT: ${lotNo}`,
+      /** 라벨 옆 지금 고른 대상. */
+      goodHint: '양품 입고',
+      splitHint: '불량분 입고',
+      note: (good: string, split: string) =>
+        `선별로 양품과 불량분이 나뉘었습니다(양품 ${good}, 불량분 ${split}). 「입고 대상」을 하나씩 골라 입고해 주세요. 불량분은 불량창고로만 입고됩니다.`,
     },
     iqcGate: {
       pendingTitle: 'IQC 수입검사 판정 전이라 입고할 수 없습니다.',
@@ -281,10 +296,10 @@ export const goodsReceipt = {
      */
     singleLineSelect: '한 번에 하나의 입하 라인만 선택할 수 있습니다.',
     /** 입력칸이 없는 값이 무엇에서 정해지는지 밝힌다 — 밝히지 않으면 화면 어디에서도 읽을 수 없다. */
-    businessDateDerived: '영업일은 선택한 입고 일시를 기준으로 자동 설정됩니다.',
+    businessDateDerived: '영업일은 입고 일시 기준으로 자동 설정됩니다.',
     qtyFromInboundLine:
       '선택한 라인의 품목·수량·단위·자재 LOT이 그대로 입고되며, 수량을 나누어 입고할 수 없습니다.',
-    plantFromInboundReceipt: '공장은 선택한 입하 전표의 공장으로 자동 적용됩니다.',
+    plantFromInboundReceipt: '공장은 입하 전표의 공장으로 자동 적용됩니다.',
     /** 고른 창고의 공장을 함께 보인다 — 전표의 공장과 다르면 눈으로 보인다. 막지는 않는다. */
     warehousePlant: (plant: string): string => `고른 창고의 공장: ${plant}`,
     /** 고른 창고의 공장이 입하 전표와 다를 때 — 입하 전표의 공장을 함께 보인다(사용자 지시). */
