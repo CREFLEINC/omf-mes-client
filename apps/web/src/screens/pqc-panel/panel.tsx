@@ -4,15 +4,9 @@ import { useEffect, useRef, useState } from 'react';
 
 import { SaveErrorBanner } from '../../patterns/master';
 import { toApiError } from '../../patterns/request';
-import { ActionBar } from '../pqc-inspection/action-bar';
 import { CODE_GROUPS, toCodeOptions } from '../pqc-inspection/code-options';
 import { toConfirmBlockedReason } from '../pqc-inspection/confirm-gate';
-import {
-  EMPTY_COVERAGE_DRAFT,
-  fillCoverage,
-  toCoverageDraft,
-  type CoverageDraft,
-} from '../pqc-inspection/coverage';
+import { EMPTY_COVERAGE_DRAFT } from '../pqc-inspection/coverage';
 import { settleDisposition, type DispositionState } from '../pqc-inspection/disposition';
 import { FreeInputPanel } from '../pqc-inspection/free-input-panel';
 import { ItemPanel } from '../pqc-inspection/item-panel';
@@ -49,8 +43,11 @@ import {
   validateQuantities,
   type QuantityDraft,
 } from '../pqc-inspection/quantity-draft';
-import { ResultPanel } from '../pqc-inspection/result-panel';
-import { TargetHeader } from '../pqc-inspection/target-header';
+import { useWorkOrder } from '../production-result/queries';
+import { PanelActions } from './panel-actions';
+import { pqcPanelKeys, useDraftRound, useRoundMeasurements } from './queries';
+import { ResultForm } from './result-form';
+import { PanelTargetHeader } from './target-header';
 
 const t = messages.pqcInspection;
 
@@ -106,7 +103,13 @@ export const PqcPanel = ({
 }: PqcPanelProps) => {
   const detail = useInspectionRequestDetail(inspectionRequestId);
   const itemSpecs = useInspectionItemSpecs(detail.data?.inspectionPlanVersionId ?? null);
-  const rows = toMeasurementRows(itemSpecs.data ?? [], []);
+  /* 작성중 회차가 있으면 칸을 되살린다 — 다음 저장도 `POST` 이고 서버가 그 회차를 덮는다(장부 P-49). */
+  const draftRound = useDraftRound(inspectionRequestId);
+  const savedRound = draftRound.data ?? null;
+  const savedMeasurements = useRoundMeasurements(savedRound?.inspectionResultId ?? null);
+  const rows = toMeasurementRows(itemSpecs.data ?? [], savedMeasurements.data ?? []);
+  /* 업무 순서는 «실적 입력 → PQC» 다(사용자 결정 2026-10-19). 실적 수는 W/O 진척(양품·불량·보류·폐기·재작업 합)으로 본다. */
+  const workOrder = useWorkOrder(detail.data?.workOrderId ?? null);
   const overallOptions = toCodeOptions(useCodeValues(CODE_GROUPS.overallJudgment).data ?? []);
   const itemJudgmentOptions = toCodeOptions(
     useCodeValues(CODE_GROUPS.measurementJudgment).data ?? [],
@@ -117,7 +120,6 @@ export const PqcPanel = ({
   const [draft, setDraft] = useState<QuantityDraft>(EMPTY_QUANTITY_DRAFT);
   const [inspectedDraft, setInspectedDraft] = useState('');
   const [drafts, setDrafts] = useState<MeasurementDrafts>({});
-  const [coverage, setCoverage] = useState<CoverageDraft>(EMPTY_COVERAGE_DRAFT);
   const [disposition, setDisposition] = useState<DispositionState>(null);
   const [judgment, setJudgment] = useState('');
   const [padField, setPadField] = useState<PadField | null>(null);
@@ -134,6 +136,7 @@ export const PqcPanel = ({
   useEffect(() => {
     if (sentCount === 0) return;
     void queryClient.invalidateQueries({ queryKey: pqcInspectionKeys.detail(inspectionRequestId) });
+    void queryClient.invalidateQueries({ queryKey: pqcPanelKeys.rounds(inspectionRequestId) });
   }, [sentCount, queryClient, inspectionRequestId]);
 
   /* 거부가 돌아오면 「담았다」 표시를 거둔다 — 확정이 거부됐으면 확정 표시도. */
@@ -145,8 +148,6 @@ export const PqcPanel = ({
   }, [rejection, rejectedStatusCode]);
 
   const storedInspectedQty = detail.data?.targetQty ?? 0;
-  const coverageFromAt = detail.data?.coverageFromAt ?? null;
-  const coverageToAt = detail.data?.coverageToAt ?? null;
 
   /* 대상이 바뀌면 초안을 비운다 — 앞 의뢰의 값이 다음 의뢰로 넘어가면 되돌릴 수 없는 판정이 나간다. */
   useEffect(() => {
@@ -161,15 +162,35 @@ export const PqcPanel = ({
     if (lastTargetId.current !== inspectionRequestId) setDrafts({});
     lastTargetId.current = inspectionRequestId;
     setRemarks('');
-    setCoverage(toCoverageDraft(coverageFromAt, coverageToAt));
     setInspectedDraft(String(storedInspectedQty));
-  }, [inspectionRequestId, storedInspectedQty, coverageFromAt, coverageToAt, clearRejection]);
+  }, [inspectionRequestId, storedInspectedQty, clearRejection]);
+
+  /*
+   * 작성중 회차를 칸에 되살린다. ⭐ 위 초기화 «뒤»에 선다 — 의뢰 상세가 늦게 와 초기화가 다시 돌아도 저장된 값이
+   * 이긴다. 같은 회차·같은 판이면 한 번만 — 그 사이 사람이 고친 값을 재조회가 덮지 않는다.
+   */
+  const restoredKey = useRef<string | null>(null);
+  const savedKey =
+    savedRound === null
+      ? null
+      : `${String(savedRound.inspectionResultId)}:${String(savedRound.versionNo ?? 0)}:${String(storedInspectedQty)}`;
+  useEffect(() => {
+    if (savedRound === null || savedKey === null || restoredKey.current === savedKey) return;
+    restoredKey.current = savedKey;
+    const rejected = String(savedRound.rejectedQty);
+    setInspectedDraft(String(savedRound.inspectedQty));
+    setDraft({ accepted: String(savedRound.acceptedQty), rejected, held: String(savedRound.heldQty) });
+    setDisposition((current) => settleDisposition(current, toMicro(rejected)));
+    setJudgment(savedRound.overallJudgmentCode ?? '');
+    setRemarks(savedRound.remarks ?? '');
+  }, [savedRound, savedKey]);
 
   const rowKeys = rows.map((row) => row.key).join('|');
+  const savedMeasurementsData = savedMeasurements.data;
   useEffect(() => {
     setDrafts(toMeasurementDrafts(rows));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [rowKeys]);
+  }, [rowKeys, savedMeasurementsData]);
 
   const changeInspected = (raw: string): void => {
     setIsSaved(false);
@@ -210,6 +231,17 @@ export const PqcPanel = ({
     isJustConfirmed ||
     submitter.hasPendingConfirm(inspectionRequestId);
   const workerMissing = requiresWorker && workerNo === null;
+  const progress = workOrder.data?.progress;
+  const producedQty =
+    progress === undefined
+      ? null
+      : progress.goodQty +
+        (progress.defectQty ?? 0) +
+        (progress.holdQty ?? 0) +
+        (progress.scrapQty ?? 0) +
+        (progress.reworkQty ?? 0);
+  /* 모르면(조회 전·실패) 막지 않는다 — 서버가 같은 규칙으로 막는다. */
+  const lockedReason = !isConfirmed && producedQty === 0 ? t.result.noProductionResult : null;
 
   const confirmBlockedReason = toConfirmBlockedReason({
     isConfirmed,
@@ -248,7 +280,7 @@ export const PqcPanel = ({
         inspectedAt,
         remarks,
         statusCode,
-        coverage: fillCoverage(coverage, inspectedAt),
+        coverage: EMPTY_COVERAGE_DRAFT,
         measurements: toMeasurementInputs(rows, drafts, inspectedAt),
       }),
     );
@@ -275,7 +307,7 @@ export const PqcPanel = ({
 
   return (
     <div className="pqc-panel">
-      <TargetHeader detail={target} />
+      <PanelTargetHeader detail={target} />
 
       {planVersionId === null ? (
         <FreeInputPanel remarks={remarks} onRemarksChange={setRemarks} isLocked={isConfirmed} />
@@ -295,7 +327,7 @@ export const PqcPanel = ({
         />
       )}
 
-      <ResultPanel
+      <ResultForm
         inspectedDraft={inspectedDraft}
         onInspectedChange={changeInspected}
         inspectedQty={inspectedQty}
@@ -305,14 +337,11 @@ export const PqcPanel = ({
         fieldErrors={rejection?.fieldErrors ?? EMPTY_FIELD_ERRORS}
         errorBanner={<SaveErrorBanner error={rejection?.error ?? null} />}
         showErrors={showErrors}
-        coverage={coverage}
-        onCoverageChange={setCoverage}
         judgmentOptions={overallOptions}
         judgment={judgment}
         onJudgmentChange={setJudgment}
         disposition={disposition}
         onDispositionChange={setDisposition}
-        padField={padField?.key === 'measurement' ? null : padField}
         onPadFieldChange={(next) => pickPad(next)}
         isLocked={isConfirmed}
       />
@@ -337,9 +366,10 @@ export const PqcPanel = ({
         />
       )}
 
-      <ActionBar
+      <PanelActions
         isConfirmed={isConfirmed}
-        blockedReason={confirmBlockedReason}
+        lockedReason={lockedReason}
+        confirmBlockedReason={confirmBlockedReason}
         workerMissing={workerMissing}
         saveBlockedReason={saveBlockedReason}
         isSaved={isSaved}
