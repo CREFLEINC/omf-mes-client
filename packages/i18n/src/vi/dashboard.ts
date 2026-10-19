@@ -237,7 +237,7 @@ export const dashboard: Translated<typeof ko.dashboard> = {
     qtyShareSub: 'EA · Tỷ trọng',
     vendorDefects: 'Số lượng lỗi IQC theo nhà cung cấp',
     vendorTableSub: 'Theo số lượng',
-    phenomena: 'Cơ cấu hiện tượng lỗi',
+    phenomena: 'Top 5 loại lỗi',
     phenomenaOf: (kind: string): string => `Cơ cấu hiện tượng lỗi ${kind}`,
     recentLots: 'Phán định LOT kiểm tra gần đây',
     recentLotsOf: (kind: string): string => `Phán định ${kind} gần đây`,

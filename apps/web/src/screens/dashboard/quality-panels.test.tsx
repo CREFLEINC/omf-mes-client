@@ -190,6 +190,68 @@ describe('품질 탭', () => {
     unmount();
   });
 
+  /* 품질 종합 「불량 유형 TOP 5」(사용자 확정 2026-10-19) — 수량 큰 순 상위 5개, 비율은 전체 합 대비. */
+  it('불량 유형 TOP 5 — 내림차순 상위 5개, 비율 분모는 전체 불량 유형 합', () => {
+    const data = quality();
+    const phenomenon = (id: number, name: string, qty: number) => ({
+      defectCodeId: id,
+      defectCode: `D${String(id)}`,
+      defectName: name,
+      qty,
+    });
+    data.nonconformance = {
+      ...data.nonconformance,
+      phenomena: [
+        phenomenon(1, '이물', 10),
+        phenomenon(2, '찍힘', 40),
+        phenomenon(3, '긁힘', 20),
+        phenomenon(4, '변색', 5),
+        phenomenon(5, '버', 15),
+        phenomenon(6, '미성형', 8),
+        phenomenon(7, '치수', 2),
+      ],
+    };
+    const { unmount } = render(<QualityOverviewTab quality={data} />);
+
+    const card = screen.getByRole('region', { name: t.phenomena });
+    expect(t.phenomena).toBe('불량 유형 TOP 5');
+    const rows = [...card.querySelectorAll('.dash-rank-row')];
+    expect(rows).toHaveLength(5);
+    expect(rows.map((row) => row.querySelector('.dash-rank-value')?.textContent)).toEqual([
+      '40',
+      '20',
+      '15',
+      '10',
+      '8',
+    ]);
+    /* 전체 합 100 대비 — 상위 5개 합(93)으로 나누지 않는다. */
+    expect(rows.map((row) => row.querySelector('.dash-rank-share')?.textContent)).toEqual([
+      '40%',
+      '20%',
+      '15%',
+      '10%',
+      '8%',
+    ]);
+    unmount();
+
+    data.nonconformance = {
+      ...data.nonconformance,
+      phenomena: [phenomenon(1, '이물', 1), phenomenon(2, '찍힘', 3)],
+    };
+    const few = render(<QualityOverviewTab quality={data} />);
+    const fewRows = [
+      ...screen.getByRole('region', { name: t.phenomena }).querySelectorAll('.dash-rank-value'),
+    ];
+    expect(fewRows.map((value) => value.textContent)).toEqual(['3', '1']);
+    few.unmount();
+
+    data.nonconformance = { ...data.nonconformance, phenomena: [] };
+    render(<QualityOverviewTab quality={data} />);
+    expect(
+      within(screen.getByRole('region', { name: t.phenomena })).getByText(v.noRecords),
+    ).toBeInTheDocument();
+  });
+
   /* IQC · PQC · OQC · 부적합 탭 — 품질 종합과 같은 표기(사용자 확정 2026-10-19 · r3). */
   it('IQC · PQC · OQC — 합격률 칸은 품질 종합 형식, LOT 칸은 색 점 범례, 일별 그래프 툴팁', async () => {
     const user = userEvent.setup();

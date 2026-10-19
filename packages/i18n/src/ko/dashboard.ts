@@ -290,7 +290,7 @@ export const dashboard = {
     qtyShareSub: 'EA · 비중',
     vendorDefects: '업체별 IQC 불량 수량',
     vendorTableSub: '수량 순',
-    phenomena: '불량현상 구성비',
+    phenomena: '불량 유형 TOP 5',
     phenomenaOf: (kind: string): string => `${kind} 불량현상 구성비`,
     recentLots: '최근 검사 LOT 판정 현황',
     recentLotsOf: (kind: string): string => `최근 ${kind} 판정 현황`,
