@@ -1227,9 +1227,14 @@ const DailyReturnOutPanel = ({
   );
 };
 
+/** 고객 반품 칸의 구분별 수량 — 반품 입고 사유만(공급사 반품 출고는 반출 그래프에 있다). */
+const SUPPLIER_RETURN_OUT = 'SUPPLIER_RETURN_OUT';
+
 /**
- * OQC 검사실적(⭐ 사용자 지시 2026-10-19 「IQC 검사실적 탭 기준 배치」) — 위: 일별 합격률 | 고객별 불합격 · 현재
- * 현황(세로), 아래: 반품 구분별 원형 | 최근 판정, 맨 아래: 반출 일자별 수량. 서버가 새 칸을 주지 않으면 그 박스는 없다.
+ * OQC 검사실적(⭐ 사용자 지시 2026-10-19 구조 예시) — 1행 KPI: 합격률 · 출하검사 LOT · 고객 반품 · 미처리 반품,
+ * 2행: 일별 합격률 | 고객별 불합격 수량(같은 높이), 3행: 반출 일별 수량(실적이 있을 때만) | 최근 판정 5건.
+ * 반품 구성 원형은 두지 않는다 — 구분이 하나뿐이면 100% 원형은 정보가 없어, 고객 반품 칸에 구분별 수량으로 적는다.
+ * 목표 합격률 기준선은 시스템에 목표값이 없어 긋지 않는다(지어내지 않는다).
  */
 export const OqcTab = ({
   quality,
@@ -1241,10 +1246,13 @@ export const OqcTab = ({
 }) => {
   const tags = usePeriodTags();
   const oqc = quality.oqc;
-  const dialog = useLotDialog();
-  const held = lotRecordValue(quality.statusCounts?.INSPECTION_HELD.byType.OQC, oqc.monthLots.held);
-  const topCustomer = oqc.customerDefects?.[0];
   const pendingReturn = oqc.pendingReturnLotCount;
+  const receiptReasons = (oqc.returnReasons ?? []).filter(
+    (entry) => entry.reasonCode !== SUPPLIER_RETURN_OUT && entry.qty > 0,
+  );
+  const hasReturnOut =
+    oqc.dailyReturnOutQty !== undefined &&
+    oqc.dailyReturnOutQty.some((day) => day.qty !== null && day.qty > 0);
 
   return (
     <QualityTabFrame className="dash-tab-quality-detail">
@@ -1257,17 +1265,26 @@ export const OqcTab = ({
           value={formatFigure(oqc.customerReturnQty)}
           unit={t.qtyUnit}
         >
-          <span>{t.customerReturnNoteShort}</span>
+          <span>
+            {receiptReasons.length > 1
+              ? receiptReasons
+                  .map(
+                    (entry) =>
+                      `${entry.reasonName ?? t.returnReasonNone} ${formatFigure(entry.qty)}`,
+                  )
+                  .join(' · ')
+              : t.customerReturnNoteShort}
+          </span>
         </KpiTile>
-        {oqc.customerDefects !== undefined && (
+        {pendingReturn !== undefined && (
           <KpiTile
-            label={t.topCustomer}
-            tag={tags.month}
-            value={topCustomer === undefined ? t.none : topCustomer.customerName}
+            label={t.pendingReturn}
+            tag={t.tagNow}
+            value={formatFigure(pendingReturn.lotCount)}
+            unit={t.lotUnit}
+            tone={pendingReturn.recordCount > 0 ? 'warning' : undefined}
           >
-            {topCustomer !== undefined && (
-              <span>{`${formatFigure(topCustomer.rejectedQty)} ${t.qtyUnit}`}</span>
-            )}
+            <span>{t.pendingReturnKpiNote(formatFigure(pendingReturn.recordCount))}</span>
           </KpiTile>
         )}
       </div>
@@ -1282,65 +1299,20 @@ export const OqcTab = ({
           niceTicks
         />
         <div className="dash-qo-side">
-          {oqc.customerDefects !== undefined && (
-            <Panel title={t.customerDefects} sub={t.vendorTableSub} tag={tags.monthTotal}>
-              <RankBars
-                entries={oqc.customerDefects.map((entry) => ({
-                  key: String(entry.customerId),
-                  label: entry.customerName,
-                  value: entry.rejectedQty,
-                }))}
-              />
-            </Panel>
-          )}
-          <Panel title={t.currentTitle} tag={t.tagNow}>
-            <StatusList
-              rowProps={dialog.rowProps}
-              onSelect={dialog.open}
-              items={[
-                {
-                  key: 'held',
-                  label: t.heldLots,
-                  note: t.heldLotsNote,
-                  ...lotCountValue(
-                    quality.statusCounts?.INSPECTION_HELD.byType.OQC,
-                    oqc.monthLots.held,
-                  ),
-                  tone: countTone(held.count, 'warning'),
-                  selectable: held.count > 0,
-                },
-                ...(pendingReturn === undefined
-                  ? []
-                  : [
-                      {
-                        key: 'pendingReturn',
-                        label: t.pendingReturn,
-                        note: t.pendingReturnNote,
-                        ...lotCountValue(pendingReturn, pendingReturn.recordCount),
-                        tone: countTone(pendingReturn.recordCount, 'warning'),
-                        /* 목록 경로가 없다 — 숫자만. */
-                        selectable: false,
-                      },
-                    ]),
-              ]}
+          <Panel title={t.customerDefects} sub={t.vendorTableSub} tag={tags.monthTotal}>
+            <RankBars
+              entries={(oqc.customerDefects ?? []).map((entry) => ({
+                key: String(entry.customerId),
+                label: entry.customerName,
+                value: entry.rejectedQty,
+              }))}
             />
           </Panel>
         </div>
       </div>
-      <div className="dash-qo-bottom">
-        {oqc.returnReasons !== undefined && (
-          <DefectTypesPanel
-            title={t.returnReasons}
-            sub={t.returnReasonsSub}
-            totalLabel={t.returnReasonsTotal}
-            tag={tags.month}
-            entries={oqc.returnReasons.map((entry) => ({
-              /* 사유 없는 반품 입고는 서버가 `null` 한 줄로 준다. */
-              key: entry.reasonCode ?? 'NO_REASON',
-              label: entry.reasonName ?? t.returnReasonNone,
-              value: entry.qty,
-            }))}
-          />
+      <div className={hasReturnOut ? 'dash-oqc-bottom' : 'dash-oqc-bottom dash-oqc-bottom-single'}>
+        {hasReturnOut && oqc.dailyReturnOutQty !== undefined && (
+          <DailyReturnOutPanel days={oqc.dailyReturnOutQty} />
         )}
         <RecentLotsPanel
           itemTitle
@@ -1351,18 +1323,6 @@ export const OqcTab = ({
           withTime
         />
       </div>
-      {oqc.dailyReturnOutQty !== undefined && (
-        <Row kind="row2-single">
-          <DailyReturnOutPanel days={oqc.dailyReturnOutQty} />
-        </Row>
-      )}
-      {dialog.mounted && (
-        <QualityLotsDialog
-          status={dialog.lotStatus}
-          inspectionType={dialog.lotStatus === 'INSPECTION_HELD' ? 'OQC' : null}
-          onClose={dialog.close}
-        />
-      )}
     </QualityTabFrame>
   );
 };

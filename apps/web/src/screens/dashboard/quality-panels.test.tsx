@@ -166,21 +166,22 @@ describe('품질 탭', () => {
     expect(container.querySelector('.dash-eqrate-qty')).toHaveTextContent('1EA');
   });
 
-  it('OQC — 서버가 새 칸을 주지 않으면 고객 반품 · 현재 현황 · 최근 판정만(금액 · 클레임 칸 없음)', () => {
-    render(<OqcTab quality={quality()} />);
+  it('OQC — 서버가 새 칸을 주지 않으면 미처리 반품 칸 · 반출 그래프 없이, 최근 판정은 한 줄 전체', () => {
+    const { container } = render(<OqcTab quality={quality()} />);
 
     expect(screen.getByRole('group', { name: t.customerReturn })).toBeInTheDocument();
-    expect(screen.queryByRole('group', { name: t.topCustomer })).not.toBeInTheDocument();
-    expect(screen.queryByText(t.returnReasons)).not.toBeInTheDocument();
+    expect(screen.queryByRole('group', { name: t.pendingReturn })).not.toBeInTheDocument();
     expect(screen.queryByText(t.dailyReturnOut)).not.toBeInTheDocument();
+    expect(container.querySelector('.dash-oqc-bottom-single')).not.toBeNull();
   });
 
-  it('OQC — 고객별 불합격 · 반품 구분 원형 · 미처리 반품 · 반출 일자별(사용자 지시 2026-10-19)', () => {
+  it('OQC — 구조 예시 배치: 미처리 반품 KPI · 고객별 불합격 · 반출 일별(실적 있을 때) · 반품 구분은 고객 반품 칸 글(사용자 지시 2026-10-19)', () => {
     const q = quality();
     q.oqc.customerDefects = [{ customerId: 1, customerName: '고객 가', rejectedQty: 30 }];
     q.oqc.returnReasons = [
       { reasonCode: 'CUSTOMER_RETURN', reasonName: '고객반품', qty: 20 },
-      { reasonCode: 'SUPPLIER_RETURN_OUT', reasonName: '공급사 반품 출고', qty: 5 },
+      { reasonCode: 'CLAIM', reasonName: '클레임', qty: 4 },
+      { reasonCode: 'SUPPLIER_RETURN_OUT', reasonName: '공급사반품', qty: 5 },
     ];
     q.oqc.pendingReturnLotCount = { lotCount: 2, recordCount: 3 };
     q.oqc.dailyReturnOutQty = [
@@ -189,9 +190,11 @@ describe('품질 탭', () => {
     ];
     const { container } = render(<OqcTab quality={q} />);
 
-    expect(screen.getByRole('group', { name: t.topCustomer })).toHaveTextContent('고객 가');
-    expect(screen.getByRole('img', { name: t.returnReasons })).toBeInTheDocument();
-    expect(screen.getByText(t.pendingReturn).closest('li')).toHaveTextContent(/2\s*LOT/);
+    expect(screen.getByRole('group', { name: t.pendingReturn })).toHaveTextContent('2');
+    expect(screen.getByRole('group', { name: t.customerReturn })).toHaveTextContent(
+      '고객반품 20 · 클레임 4',
+    );
+    expect(screen.getByText('고객 가')).toBeInTheDocument();
     const bars = container.querySelectorAll('.dash-day-bar');
     expect(bars).toHaveLength(2);
     expect(bars[1]).toHaveTextContent(t.none);

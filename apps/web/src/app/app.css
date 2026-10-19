@@ -14411,3 +14411,26 @@ button.app-button-neutral {
   letter-spacing: var(--type-label-sm-tracking);
   color: var(--on-surface-muted);
 }
+
+/* OQC 3행(사용자 지시 2026-10-19) — 반출 일별 수량 | 최근 판정, 같은 높이. 반출 실적이 없으면 최근 판정만 한 줄. */
+.dash-oqc-bottom {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr);
+  gap: var(--space-4);
+  align-items: stretch;
+}
+
+.dash-oqc-bottom-single {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+@container (max-width: 860px) {
+  .dash-oqc-bottom {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* 오른쪽 묶음에 카드가 하나뿐이면(OQC 고객별 불합격 · 사용자 지시 2026-10-19) 그 카드가 행 높이를 채운다. 둘이면 그대로. */
+.dash-qo-side:has(> :only-child) {
+  grid-template-rows: minmax(0, 1fr);
+}

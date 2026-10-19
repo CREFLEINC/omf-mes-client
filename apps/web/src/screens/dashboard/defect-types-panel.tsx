@@ -138,12 +138,10 @@ const Donut = ({
   slices,
   caption,
   total,
-  totalLabel,
 }: {
   slices: DonutSlice[];
   caption: string;
   total: number;
-  totalLabel: string;
 }) => {
   const [hovered, setHovered] = useState<number | null>(null);
   /*
@@ -222,7 +220,7 @@ const Donut = ({
           </tspan>
         </text>
         <text className="dash-donut-total-label" x={CENTER} y={CENTER + 16} textAnchor="middle">
-          {totalLabel}
+          {t.defectTypesTotal}
         </text>
       </svg>
       {tip !== null && tip !== undefined && tipAt !== null && (
@@ -268,7 +266,6 @@ export const DefectTypesPanel = ({
   tag,
   title = t.phenomena,
   sub = t.defectTypesSub,
-  totalLabel = t.defectTypesTotal,
   toolbar,
   caption,
   remainder = 0,
@@ -283,8 +280,6 @@ export const DefectTypesPanel = ({
   tag: string;
   /** 부제 — PQC 불량현상은 집계 기준을 적는다(사용자 지시 2026-10-19). 기본은 기존 문구, `null` 이면 없음. */
   sub?: string | null;
-  /** 가운데 합계 이름 — OQC 반품 구분은 「총 반품」. 기본은 「총 불량」. */
-  totalLabel?: string;
   /** IQC 「품목(CODE)별 불량 구성」도 같은 원형 그래프다(사용자 지시 2026-10-19). */
   title?: string;
 }) => {
@@ -364,12 +359,7 @@ export const DefectTypesPanel = ({
           <NoRecords />
         ) : (
           <>
-            <Donut
-              slices={slices}
-              caption={caption ?? title}
-              total={total}
-              totalLabel={totalLabel}
-            />
+            <Donut slices={slices} caption={caption ?? title} total={total} />
             <ul className="dash-donut-legend">
               {slices.map((slice, index) => (
                 <li key={slice.key} className="dash-donut-legend-row">
