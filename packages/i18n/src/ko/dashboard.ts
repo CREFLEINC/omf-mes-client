@@ -71,6 +71,8 @@ export const dashboard = {
     unitSuffix: (unit: string): string => `단위 ${unit}`,
     empty: '이 기간에 그릴 생산실적이 없습니다.',
     /** 계약이 추이를 선택 항목으로 두어 아예 오지 않을 수 있다. */
+    /** 생산 실적 기록이 없는 날(그래프 띠 · 툴팁). */
+    noRecord: '실적 없음',
     absent: '생산실적 추이가 이 응답에 오지 않았습니다.',
     detail: '자세히',
   },
@@ -233,6 +235,8 @@ export const dashboard = {
     none: '—',
     noRecords: '아직 집계할 기록이 없습니다.',
     infoLabel: (name: string): string => `${name} 설명`,
+    /** 일별 그래프에서 검사가 없는 날 표시(IQC 탭). */
+    noInspectionDay: '검사 없음',
     noRates: '이 기간에 합격률을 낼 수 있는 날이 없습니다.',
     dateColumn: '일자',
     /** 일별 꺾은선 툴팁(품질 종합) — 값이 없는 날은 「—」. */
@@ -324,15 +328,18 @@ export const dashboard = {
     },
     none: '—',
     currentTitle: '현재 현황',
+    /** 「현재 현황」 LOT 수 옆 기록 건수(LOT 번호 없는 기록 포함 · 사용자 결정 2026-10-19). */
+    recordsSuffix: (count: string): string => `· ${count}건`,
     heldLots: '검사 보류 LOT',
     heldLotsNote: '당월 판정 기준',
     topVendor: '최다 불량 업체',
     itemDefects: '품목(CODE)별 불량 구성',
     receiptHold: '입고 보류 LOT',
     receiptHoldNote: '지금 보류 중인 입하 LOT',
-    fullReinspect: '전수 재검',
-    fullReinspectNote: (input: string, restored: string): string =>
-      `투입 ${input} · 양품 복원 ${restored}`,
+    fullReinspect: '재검 OK 복원율',
+    fullReinspectNote: (restored: string, unit: string): string => `OK 복원 ${restored} ${unit}`,
+    reinspectInput: '재검 투입',
+    reinspectInputNote: '당월 IQC 재검사 수량',
     pendingLots: '검사 대기 LOT',
     pendingLotsNote: '판정 전 PQC 의뢰',
     reworkRequests: '재작업 의뢰',
@@ -350,6 +357,7 @@ export const dashboard = {
     lots: {
       countLots: (count: string): string => `${count} LOT`,
       countCases: (count: string): string => `${count}건`,
+      countLotsRecords: (lots: string, records: string): string => `${lots} LOT · ${records}건`,
       truncated: (total: string, shown: string): string => `전체 ${total}건 중 ${shown}건 표시`,
       loading: 'LOT 목록을 불러오는 중입니다.',
       failed: 'LOT 목록을 불러오지 못했습니다.',

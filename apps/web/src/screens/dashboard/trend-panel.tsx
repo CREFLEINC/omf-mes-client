@@ -103,7 +103,7 @@ export const placeTip = (
 const TIP_SIZE_GUESS = { width: 120, height: 46 };
 
 /**
- * 점 이름표(「10-13」)를 「2026.10.13」로 — 서버는 월-일만 준다. 연도는 기준일에서 읽고, 기준일보다 뒤의 월-일이면
+ * 점 이름표(「10-13」)를 「2026-10-13」로(⭐ 날짜 표기 통일 · 사용자 지시 2026-10-19 — 축은 짧게, 말풍선은 전체 날짜) — 서버는 월-일만 준다. 연도는 기준일에서 읽고, 기준일보다 뒤의 월-일이면
  * 지난해다(12월 말 ~ 1월 초에 걸친 기간). 이름표가 월-일 꼴이 아니거나 기준일이 없으면 이름표 그대로.
  */
 export const toTipDate = (label: string, baseDate: string | null): string => {
@@ -115,7 +115,7 @@ export const toTipDate = (label: string, baseDate: string | null): string => {
 
   const year = Number(base[1]) - (label > base[2] ? 1 : 0);
 
-  return `${String(year)}.${matched[1] ?? ''}.${matched[2] ?? ''}`;
+  return `${String(year)}-${matched[1] ?? ''}-${matched[2] ?? ''}`;
 };
 
 /** 점 위치(그림 안 px). DS 차트와 같은 식 — x 는 칸을 고르게, y 는 0~상한을 위아래로. */
@@ -128,16 +128,121 @@ export const toPointPositions = (
   const plotW = width - DS_CHART_PAD.left - DS_CHART_PAD.right;
   const top = DS_CHART_PAD.top;
   const bottom = height - DS_CHART_PAD.bottom;
-  const min = Math.min(0, ...points.map((point) => point.value));
+  const min = Math.min(0, ...points.map((point) => point.value ?? 0));
   const span = max - min || 1;
 
+  /* 기록 없는 날(`null`)은 바닥(0) 자리 — 툴팁 칸만 쓰고 점은 그리지 않는다. */
   return points.map((point, index) => ({
     x:
       points.length <= 1
         ? DS_CHART_PAD.left
         : DS_CHART_PAD.left + (index / (points.length - 1)) * plotW,
-    y: bottom - ((point.value - min) / span) * (bottom - top),
+    y: bottom - (((point.value ?? 0) - min) / span) * (bottom - top),
   }));
+};
+
+/**
+ * 기록 없는 날 표시(⭐ 사용자 지시 2026-10-19 「대시보드 탭 그래프도 품질 탭처럼」) — 그날에 옅은 띠와 「실적 없음」,
+ * 기록 있는 날끼리만 실선, 끊긴 앞뒤는 점선, 혼자 남은 점은 속 빈 원. DS 차트는 값 없음을 그리지 못해(값이 number)
+ * 기록 없는 날이 있을 때만 DS 의 선 · 점을 숨기고(`.dash-trend-gapped`) 이 층이 같은 자리에 다시 그린다. 축 · 눈금은 DS.
+ */
+const TrendGapLayer = ({
+  points,
+  positions,
+  width,
+  height,
+}: {
+  points: readonly DashboardTrendPointView[];
+  positions: readonly { x: number; y: number }[];
+  width: number;
+  height: number;
+}) => {
+  const top = DS_CHART_PAD.top;
+  const bottom = height - DS_CHART_PAD.bottom;
+  const slot =
+    points.length <= 1
+      ? width - DS_CHART_PAD.left - DS_CHART_PAD.right
+      : (width - DS_CHART_PAD.left - DS_CHART_PAD.right) / (points.length - 1);
+  const segments: number[][] = [];
+  points.forEach((point, index) => {
+    if (point.value === null) return;
+    const current = segments.at(-1);
+    if (current !== undefined && current.at(-1) === index - 1) current.push(index);
+    else segments.push([index]);
+  });
+  const at = (index: number) => positions[index] ?? { x: 0, y: 0 };
+
+  return (
+    <svg className="dash-trend-gap-layer" width={width} height={height} aria-hidden="true">
+      {points.map((point, index) => {
+        if (point.value !== null) return null;
+        const left = Math.max(DS_CHART_PAD.left, at(index).x - slot / 2);
+        const right = Math.min(width - DS_CHART_PAD.right, at(index).x + slot / 2);
+        return (
+          <g key={`gap-${point.label}`}>
+            <rect
+              className="dash-gap-band"
+              x={left}
+              width={Math.max(0, right - left)}
+              y={top}
+              height={bottom - top}
+            />
+            <line
+              className="dash-gap-guide"
+              x1={at(index).x}
+              x2={at(index).x}
+              y1={top}
+              y2={bottom}
+            />
+            <text className="dash-gap-note" x={at(index).x} y={top + 12} textAnchor="middle">
+              {t.trend.noRecord}
+            </text>
+          </g>
+        );
+      })}
+      {segments.slice(1).map((segment, index) => {
+        const from = segments[index]?.at(-1);
+        const to = segment[0];
+        if (from === undefined || to === undefined) return null;
+        return (
+          <line
+            key={`bridge-${String(to)}`}
+            className="dash-trend-gap-bridge"
+            x1={at(from).x}
+            y1={at(from).y}
+            x2={at(to).x}
+            y2={at(to).y}
+          />
+        );
+      })}
+      {segments.map((segment) =>
+        segment.length > 1 ? (
+          <polyline
+            key={`seg-${String(segment[0])}`}
+            className="dash-trend-gap-line"
+            points={segment
+              .map((index) => `${String(at(index).x)},${String(at(index).y)}`)
+              .join(' ')}
+          />
+        ) : null,
+      )}
+      {segments.flatMap((segment) =>
+        segment.map((index) => (
+          <circle
+            key={`pt-${String(index)}`}
+            className={
+              segment.length === 1
+                ? 'dash-trend-gap-point dash-trend-gap-solo'
+                : 'dash-trend-gap-point'
+            }
+            cx={at(index).x}
+            cy={at(index).y}
+            r={segment.length === 1 ? 4.5 : 3}
+          />
+        )),
+      )}
+    </svg>
+  );
 };
 
 /**
@@ -198,9 +303,10 @@ const PointTips = ({
     points.length <= 1
       ? width
       : (width - DS_CHART_PAD.left - DS_CHART_PAD.right) / (points.length - 1);
-  const qtyOf = (point: DashboardTrendPointView): string => formatFigure(point.value);
+  const qtyOf = (point: DashboardTrendPointView): string =>
+    point.value === null ? t.trend.noRecord : formatFigure(point.value);
   const textOf = (point: DashboardTrendPointView): string =>
-    `${toTipDate(point.label, baseDate)} ${qtyOf(point)}${unit === null ? '' : ` ${unit}`}`;
+    `${toTipDate(point.label, baseDate)} ${qtyOf(point)}${unit === null || point.value === null ? '' : ` ${unit}`}`;
 
   const active = shown === null ? undefined : points[shown];
   const at = shown === null ? undefined : positions[shown];
@@ -261,7 +367,9 @@ const PointTips = ({
             <span className="dash-trend-tip-date">{toTipDate(active.label, baseDate)}</span>
             <span className="dash-trend-tip-value">
               {qtyOf(active)}
-              {unit !== null && <span className="dash-trend-tip-unit">{unit}</span>}
+              {unit !== null && active.value !== null && (
+                <span className="dash-trend-tip-unit">{unit}</span>
+              )}
             </span>
           </span>
         </>
@@ -365,7 +473,8 @@ export const TrendPanel = ({ view, baseDate = null, isLoading }: TrendPanelProps
           },
         ];
 
-  const dataMax = Math.max(...view.points.map((point) => point.value));
+  const dataMax = Math.max(...view.points.map((point) => point.value ?? 0));
+  const hasGap = view.points.some((point) => point.value === null);
   const axis = toNiceAxis(toChartMax(view.points, view.targetValue) ?? dataMax);
   /* DS 차트가 실제로 쓰는 상한 — 상한을 넘기지 않으면 데이터 최대값(0이면 1). */
   const chartMax = axis?.max ?? (dataMax > 0 ? dataMax : 1);
@@ -376,12 +485,13 @@ export const TrendPanel = ({ view, baseDate = null, isLoading }: TrendPanelProps
      * 큰 값은 앞자리가 잘려 「6,000」으로 읽혔다(사용자 보고 2026-10-16). 값은 그대로 두고 그림 왼쪽에
      * 여백을 주어 넘친 글자가 보이게 한다(`.dash-trend`).
      */
-    <div className="dash-trend" ref={setPlot}>
+    <div className={hasGap ? 'dash-trend dash-trend-gapped' : 'dash-trend'} ref={setPlot}>
       <LineChart
         series={[
           {
             name: view.seriesName ?? t.panes.trend,
-            data: view.points.map((point) => ({ label: point.label, value: point.value })),
+            /* 기록 없는 날은 DS 에 0 으로 넘겨 축만 맞추고, 선 · 점은 `TrendGapLayer` 가 그린다. */
+            data: view.points.map((point) => ({ label: point.label, value: point.value ?? 0 })),
           },
         ]}
         /* 목표가 실적보다 높으면 눈금을 목표까지 넓힌다 — 넓히지 않으면 목표선이 그림 밖에 그어진다. */
@@ -394,12 +504,37 @@ export const TrendPanel = ({ view, baseDate = null, isLoading }: TrendPanelProps
          * 확인에서 550px가 넘었다. 세로를 낮춰 납작하게 둔다: 추이는 「올랐나 내렸나」를 보는
          * 그림이라 세로로 키운다고 더 읽히지 않는다.
          */
+        /*
+         * 기록 없는 날이 있으면 DS 의 자동 요약 · 숨은 표가 그날을 0 으로 읽는다(값을 0 으로 넘김) — 요약은 직접
+         * 쓰고(「실적 없음」), 숨은 표는 끈다. 날짜별 값은 점 단추(`PointTips`)의 이름으로도 읽힌다.
+         */
+        ariaLabel={
+          hasGap
+            ? `${view.seriesName ?? t.panes.trend}: ${view.points
+                .map(
+                  (point) =>
+                    `${point.label} ${point.value === null ? t.trend.noRecord : formatFigure(point.value)}`,
+                )
+                .join(', ')}`
+            : undefined
+        }
+        showTable={!hasGap}
         width={chartWidth}
         height={chartHeight}
         showPoints
         /* 시리즈가 하나뿐이라 범례는 같은 이름을 한 번 더 적을 뿐이다. */
         showLegend={false}
       />
+      {hasGap && (
+        <div className="dash-trend-tips">
+          <TrendGapLayer
+            points={view.points}
+            positions={toPointPositions(view.points, chartWidth, chartMax, chartHeight)}
+            width={chartWidth}
+            height={chartHeight}
+          />
+        </div>
+      )}
       <PointTips
         points={view.points}
         width={chartWidth}

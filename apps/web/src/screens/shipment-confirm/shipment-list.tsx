@@ -11,6 +11,7 @@ import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
 
 import type { LookupSource } from '../../patterns/lookup-display';
+import { formatPlantDateTime } from '../../patterns/plant-time';
 
 import type { ConfirmOutcome } from './confirm-run';
 import { failureReason } from './confirm-run';
@@ -93,7 +94,11 @@ export const ShipmentList = ({
     {
       key: 'shippedAt',
       header: t.list.fields.shippedAt,
-      render: (row) => row.shippedAt ?? t.list.elapsedUnknown,
+      /* `yyyy-MM-dd HH:mm`(공장 시각 · ⭐ 관리웹 날짜 표기 통일 · 사용자 지시 2026-10-19). 못 읽으면 원문. */
+      render: (row) =>
+        row.shippedAt === null
+          ? t.list.elapsedUnknown
+          : (formatPlantDateTime(row.shippedAt) ?? row.shippedAt),
     },
     {
       key: 'elapsed',

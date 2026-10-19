@@ -1,5 +1,5 @@
 import type { components } from '@omf-mes/api-client';
-import { toPlantDateTimeParts } from '../../patterns/plant-time';
+import { formatPlantDateTime } from '../../patterns/plant-time';
 
 /**
  * 이 화면이 다루는 자료의 모양.
@@ -22,7 +22,7 @@ export interface NotificationView {
   message: string;
   /** 계약 원문(date-time). 표기가 아니라 **원본이 필요한 자리**가 쓴다. */
   occurredAt: string;
-  /** 표기 `MM-DD HH:mm`. 형식이 아니면 원문 그대로다 */
+  /** 표기 `yyyy-MM-dd HH:mm`. 형식이 아니면 원문 그대로다 */
   occurredAtText: string;
   read: boolean;
   targetTypeCode: string | null;
@@ -47,25 +47,18 @@ export interface NotificationListResult {
 }
 
 /**
- * 발생 시각 표기(`08-13 09:12`).
+ * 발생 시각 표기(`2026-08-13 09:12` · ⭐ 관리웹 날짜 표기 통일 · 사용자 지시 2026-10-19).
  *
  * **공장 시각으로 보인다**(`patterns/plant-time` · omf-all-around#20). 보는 사람(실행 환경)의
  * 시간대로 옮기지 않는다 — 같은 알림이 사람마다 다른 시각으로 보이면 안 된다. 서버가 UTC 로
  * 보내므로 글자만 자르면 7시간 이르게 찍힌다.
- *
- * **해를 적지 않는다.** 목록이 기간으로 좁혀져 있어 해가 갈리는 일이 드물고, 카드 머리줄에
- * 이벤트 코드·읽음 표시와 함께 서는 자리라 글자 수를 아낀다.
  *
  * **형식이 아니면 원문을 그대로 낸다.** 서버가 보낸 값을 화면이 삼키지 않는다 —
  * 「—」로 바꾸면 값이 없는 것과 못 알아본 것이 구분되지 않는다.
  *
  * 이 화면이 소유한다 — 다른 화면 슬라이스의 같은 이름 함수를 참조하지 않는다.
  */
-export const formatOccurredAt = (value: string): string => {
-  const parts = toPlantDateTimeParts(value);
-
-  return parts === null ? value : `${parts.date.slice(5)} ${parts.time}`;
-};
+export const formatOccurredAt = (value: string): string => formatPlantDateTime(value) ?? value;
 
 /**
  * 계약의 알림 한 건을 화면이 쓰는 모양으로 옮긴다.

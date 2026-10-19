@@ -48,14 +48,14 @@ const t = messages.stockStatus;
  * | 단위 | 96px | **단위 코드만** 낸다(전체 이름은 상세에서) — 8자 60 + 32 |
  * | 품질 상태 · 재고 상태 | 각 120px | 코드 배지 하나(8자 60 + 24 = 84) + 32 |
  * | 소유 | 128px | 「(자사 소유)」 또는 거래처명 아래에 소유 구분 코드 배지가 쌓인다 |
- * | 최근 거래 | 124px | **`MM-DD HH:mm`** 11자 83 + 32(`as-of.ts`가 그 형태로 줄인다) |
+ * | 최근 거래 | 168px | **`yyyy-MM-dd HH:mm`** 16자 120 + 32(`as-of.ts`가 그 형태로 줄인다 · 사용자 지시 2026-10-19) |
  * | 상세(LOT별만) | 88px | 「선택 해제」 버튼 하나 |
  *
  * | 보기 | 축 열 | 합 |
  * | --- | --- | ---: |
- * | 품목별 | 품목 | **1,132px** |
- * | LOT별 | 품목 · LOT | **1,364px**(상세 열 포함) |
- * | 위치별 | 위치 · 품목 | **1,332px** |
+ * | 품목별 | 품목 | **1,176px** |
+ * | LOT별 | 품목 · LOT | **1,408px**(상세 열 포함) |
+ * | 위치별 | 위치 · 품목 | **1,376px** |
  *
  * **세 합이 모두 928px을 넘는다.** 열이 9~10개인 표를 928px에 넣으려면 열마다 66~91px이라
  * 칩 하나도 한 줄에 들어가지 않는다 — 이 표는 그 하한에 들어가지 않는다.
@@ -72,7 +72,7 @@ const WIDTH = {
   uom: '96px',
   code: '120px',
   ownership: '128px',
-  lastTransactionAt: '124px',
+  lastTransactionAt: '168px',
   select: '88px',
 } as const;
 
@@ -146,7 +146,8 @@ export const buildBalanceColumns = ({
     key: 'itemCode',
     header: t.table.item,
     width: WIDTH.axis,
-    render: (row) => describeReference(toReference(itemNames.get(row.itemId) ?? itemLookup, row.itemId)),
+    render: (row) =>
+      describeReference(toReference(itemNames.get(row.itemId) ?? itemLookup, row.itemId)),
   };
 
   const lotColumn: Column<BalanceView> = {

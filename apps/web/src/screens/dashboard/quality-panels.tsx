@@ -1,5 +1,6 @@
 import { Chip, Icon, Skeleton, Table, type ChipStatus, type Column } from '@crefle/web-ui';
 import type {
+  DashboardLotRecordCount,
   DashboardJudgmentCode,
   DashboardLotCounts,
   DashboardQuality,
@@ -176,11 +177,11 @@ const OverviewLotTile = ({
   </KpiTile>
 );
 
-/** 툴팁 머리의 날짜(YYYY.MM.DD) — 첫 유형의 날짜 축을 쓴다(세 유형이 같은 날짜 축이다). */
+/** 툴팁 머리의 날짜(yyyy-MM-dd · 사용자 지시 2026-10-19) — 첫 유형의 날짜 축을 쓴다(세 유형이 같은 날짜 축이다). */
 const tipDates = (quality: DashboardQuality, kinds: readonly QualityKind[]): string[] =>
   kinds[0] === undefined
     ? []
-    : blockOf(quality, kinds[0]).dailyPassRates.map((entry) => entry.date.replaceAll('-', '.'));
+    : blockOf(quality, kinds[0]).dailyPassRates.map((entry) => entry.date);
 
 const dailySeries = (quality: DashboardQuality, kinds: readonly QualityKind[]): LineSeries[] =>
   kinds.map((kind, index) => ({
@@ -314,12 +315,15 @@ const DailyPanel = ({
   tooltip = false,
   niceTicks = false,
   gapMarks = false,
+  gapDetail = false,
 }: {
   quality: DashboardQuality;
   kinds: readonly QualityKind[];
   title: string;
-  /** 검사 없는 날 · 혼자 남은 점 구분 — 품질 종합만(사용자 지시 2026-10-19). */
+  /** 검사 없는 날 · 혼자 남은 점 구분 — 품질 종합 · IQC(사용자 지시 2026-10-19). */
   gapMarks?: boolean;
+  /** 공백 띠 · 「검사 없음」 · 끊긴 점 잇는 점선 · 혼자 남은 점 값을 점 위에 — IQC · 품질 종합(사용자 지시 2026-10-19). */
+  gapDetail?: boolean;
   /** 날짜 칸 툴팁(날짜 + 유형별 합격률) — 품질 종합 · IQC · PQC · OQC(사용자 확정 2026-10-19). */
   tooltip?: boolean;
   /** 보기 좋은 눈금 — IQC · PQC · OQC 탭만(범위는 그대로). */
@@ -347,6 +351,7 @@ const DailyPanel = ({
               tipLabels={tooltip ? tipDates(quality, kinds) : undefined}
               niceTicks={niceTicks}
               gapMarks={gapMarks}
+              gapDetail={gapDetail}
             />
           )}
         </FitChart>
@@ -385,17 +390,18 @@ const counterpartColumn = (counterpart: Counterpart): Column<RecentLotRow> => {
 };
 
 /**
- * 검사 일자는 「10-16」(공장 시각)만 칸에 적고, 시각까지는 `title`로 둔다 — 좁은 칸에서 일시가 두 줄로
+ * 검사 일자는 날짜(공장 시각)만 칸에 적고, 시각까지는 `title`로 둔다 — 좁은 칸에서 일시가 두 줄로
  * 꺾였다(브라우저 확인). 읽을 수 없으면 원문.
  */
-const InspectedAt = ({ value, full = false }: { value: string; full?: boolean }) => {
+const InspectedAt = ({ value, withTime = false }: { value: string; withTime?: boolean }) => {
   const parts = toPlantDateTimeParts(value);
   if (parts === null) return <>{value}</>;
 
   return (
     <time dateTime={value} title={`${parts.date} ${parts.time}`}>
-      {/* ⭐ 품질 종합은 날짜 표기 원칙(YYYY.MM.DD)대로(사용자 지시 2026-10-19), 다른 탭은 좁은 칸이라 「10-16」. */}
-      {full ? parts.date.replaceAll('-', '.') : shortDate(parts.date)}
+      {/* ⭐ 모든 탭 `yyyy-MM-dd`(관리웹 날짜 표기 통일 · 사용자 지시 2026-10-19).
+          ⭐ 품질 종합만 시각까지 `yyyy-MM-dd HH:mm`(사용자 지시 2026-10-19). */}
+      {withTime ? `${parts.date} ${parts.time}` : parts.date}
     </time>
   );
 };
@@ -425,7 +431,7 @@ const RecentLotsPanel = ({
   counterpart,
   itemTitle = false,
   linked = false,
-  fullDate = false,
+  withTime = false,
 }: {
   title: string;
   rows: RecentLotRow[];
@@ -434,8 +440,8 @@ const RecentLotsPanel = ({
   itemTitle?: boolean;
   /** 줄을 누르면 검사결과 상세로 — 품질 종합만, 그 화면 권한이 있을 때(사용자 지시 2026-10-19). */
   linked?: boolean;
-  /** 일시를 「2026.10.19」로 — 품질 종합만(사용자 지시 2026-10-19). */
-  fullDate?: boolean;
+  /** 일시 칸에 시각까지 — 품질 종합만(사용자 지시 2026-10-19). */
+  withTime?: boolean;
 }) => (
   <Panel title={title} tag={t.recentLotsLead}>
     {/* 제목은 패널이 이미 말한다 — 표 제목(caption)을 두면 같은 말이 두 번 보인다. 이름은 aria-label 로. */}
@@ -445,7 +451,7 @@ const RecentLotsPanel = ({
           {
             key: 'inspectedAt',
             header: t.column.inspectedAt,
-            render: (row) => <InspectedAt value={row.inspectedAt} full={fullDate} />,
+            render: (row) => <InspectedAt value={row.inspectedAt} withTime={withTime} />,
           },
           counterpartColumn(counterpart),
           {
@@ -536,6 +542,23 @@ const phenomenaEntries = (entries: { defectCodeId: number; defectName: string; q
 const countTone = (value: number, tone: ChipStatus): ChipStatus | undefined =>
   value > 0 ? tone : undefined;
 
+/**
+ * 「현재 현황」 LOT 줄 값 — 고유 LOT 수 + 기록 건수(⭐ 사용자 결정 2026-10-19 「LOT 번호가 없어도 데이터 건수를 같이」).
+ * 서버가 건수를 주지 않으면(이전 서버) 기존 숫자만. 색 · 누를 수 있는지는 기록 건수로 본다.
+ */
+const lotRecordValue = (
+  counts: DashboardLotRecordCount | undefined,
+  fallback: number,
+): { value: string; unit: string; records?: string; count: number } =>
+  counts === undefined
+    ? { value: formatFigure(fallback), unit: t.lotUnit, count: fallback }
+    : {
+        value: formatFigure(counts.lotCount),
+        unit: t.lotUnit,
+        records: t.recordsSuffix(formatFigure(counts.recordCount)),
+        count: counts.recordCount,
+      };
+
 /** 품질 종합. */
 /** 「현재 현황」 줄 → LOT 목록 상태(연결 규격의 status). */
 const LOT_STATUS_OF_ROW: Record<string, DashboardQualityLotStatus> = {
@@ -565,6 +588,10 @@ export const QualityOverviewTab = ({
     quality.pqc.monthLots,
     quality.oqc.monthLots,
   ]).held;
+  const counts = quality.statusCounts;
+  const held = lotRecordValue(counts?.INSPECTION_HELD, monthHeld);
+  const receiptHold = lotRecordValue(counts?.RECEIPT_HOLD, quality.iqc.receiptHoldLotCount);
+  const pending = lotRecordValue(counts?.PQC_PENDING, quality.pqc.pendingLotCount);
 
   return (
     <QualityTabFrame fill={false} className="dash-tab-quality-overview">
@@ -594,6 +621,7 @@ export const QualityOverviewTab = ({
           title={t.dailyTitleAll}
           tooltip
           gapMarks
+          gapDetail
         />
         <div className="dash-qo-side">
           <Panel title={t.vendorDefects} sub={t.qtyShareSub} tag={tags.monthTotal}>
@@ -617,27 +645,24 @@ export const QualityOverviewTab = ({
                   key: 'held',
                   label: t.heldLots,
                   note: t.heldLotsNote,
-                  value: formatFigure(monthHeld),
-                  unit: t.lotUnit,
-                  tone: countTone(monthHeld, 'warning'),
-                  selectable: monthHeld > 0,
+                  ...held,
+                  tone: countTone(held.count, 'warning'),
+                  selectable: held.count > 0,
                 },
                 {
                   key: 'receiptHold',
                   label: t.receiptHold,
                   note: t.receiptHoldNote,
-                  value: formatFigure(quality.iqc.receiptHoldLotCount),
-                  unit: t.lotUnit,
-                  tone: countTone(quality.iqc.receiptHoldLotCount, 'warning'),
-                  selectable: quality.iqc.receiptHoldLotCount > 0,
+                  ...receiptHold,
+                  tone: countTone(receiptHold.count, 'warning'),
+                  selectable: receiptHold.count > 0,
                 },
                 {
                   key: 'pending',
                   label: t.pendingLots,
                   note: t.pendingLotsNote,
-                  value: formatFigure(quality.pqc.pendingLotCount),
-                  unit: t.lotUnit,
-                  selectable: quality.pqc.pendingLotCount > 0,
+                  ...pending,
+                  selectable: pending.count > 0,
                 },
                 {
                   key: 'ncOpen',
@@ -662,8 +687,8 @@ export const QualityOverviewTab = ({
           rows={toRecentLotRows(quality)}
           counterpart="kind"
           itemTitle
-          fullDate
           linked={allows(INSPECTION_RESULTS_PATH)}
+          withTime
         />
       </div>
       {/* 처음 고를 때 그린다 — 그 전에는 목록을 부르지 않는다(닫힌 동안에도 부르지 않는다 · `enabled`). */}
@@ -679,32 +704,69 @@ export const QualityOverviewTab = ({
   );
 };
 
-export const IqcTab = ({ quality }: { quality: DashboardQuality }) => {
+export const IqcTab = ({
+  quality,
+  allows = () => false,
+}: {
+  quality: DashboardQuality;
+  /** 이 사용자가 그 화면을 볼 수 있는가 — 못 보면 최근 판정 표는 링크 없이 보인다. */
+  allows?: (path: string) => boolean;
+}) => {
   const tags = usePeriodTags();
   const iqc = quality.iqc;
   const topVendor = iqc.vendorDefects[0];
-  const vendorTotal = iqc.vendorDefects.reduce((sum, entry) => sum + entry.rejectedQty, 0);
+  /* 「검사 보류」(IQC 만) · 「입고 보류」 줄 → LOT 목록 창(사용자 지시 2026-10-19). */
+  const [lotStatus, setLotStatus] = useState<DashboardQualityLotStatus | null>(null);
+  const [lotDialogMounted, setLotDialogMounted] = useState(false);
+  const pointerInput = usePointerInput();
+  const iqcHeld = lotRecordValue(
+    quality.statusCounts?.INSPECTION_HELD.byType.IQC,
+    iqc.monthLots.held,
+  );
+  const iqcReceiptHold = lotRecordValue(
+    quality.statusCounts?.RECEIPT_HOLD,
+    iqc.receiptHoldLotCount,
+  );
 
   return (
     <QualityTabFrame className="dash-tab-quality-detail">
       <div className="dash-kpis">
         <OverviewPassRateTile label={t.passRateOf('IQC')} block={iqc} />
         <OverviewLotTile label={t.monthLots} tag={tags.month} counts={iqc.monthLots} />
-        {/* 지금은 늘 null(양품 복원 데이터 없음) — 값이 오기 전에는 칸을 두지 않는다. */}
+        {/* ⭐ IQC 재검사 회차의 투입 · 합격 수량(사용자 결정 2026-10-19) — 「재검 투입」과 「재검 OK 복원율」을 나란히
+            (사용자 지시 2026-10-19). 복원율 = 합격 ÷ 투입, 투입 0 이면 값 없음. */}
         {iqc.fullReinspect !== null && (
-          <KpiTile
-            label={t.fullReinspect}
-            tag={tags.month}
-            value={formatFigure(iqc.fullReinspect.inputQty)}
-            unit={t.qtyUnit}
-          >
-            <span>
-              {t.fullReinspectNote(
-                formatFigure(iqc.fullReinspect.inputQty),
-                formatFigure(iqc.fullReinspect.restoredQty),
-              )}
-            </span>
-          </KpiTile>
+          <>
+            <KpiTile
+              label={t.reinspectInput}
+              tag={tags.month}
+              value={formatFigure(iqc.fullReinspect.inputQty)}
+              unit={t.qtyUnit}
+            >
+              <span>{t.reinspectInputNote}</span>
+            </KpiTile>
+            <KpiTile
+              label={t.fullReinspect}
+              tag={tags.month}
+              value={
+                iqc.fullReinspect.inputQty > 0
+                  ? formatFigure(
+                      Math.min(
+                        100,
+                        Math.round(
+                          (iqc.fullReinspect.restoredQty / iqc.fullReinspect.inputQty) * 1000,
+                        ) / 10,
+                      ),
+                    )
+                  : t.rateNone
+              }
+              unit={iqc.fullReinspect.inputQty > 0 ? '%' : undefined}
+            >
+              <span>
+                {t.fullReinspectNote(formatFigure(iqc.fullReinspect.restoredQty), t.qtyUnit)}
+              </span>
+            </KpiTile>
+          </>
         )}
         <KpiTile
           label={t.topVendor}
@@ -716,84 +778,88 @@ export const IqcTab = ({ quality }: { quality: DashboardQuality }) => {
           )}
         </KpiTile>
       </div>
-      <Row kind="row2">
+      {/* ⭐ 품질 종합과 같은 배치(사용자 지시 2026-10-19 「현재 현황은 업체별 IQC 불량 수량 아래」 · 박스 끝 맞춤).
+          위: 일별 합격률 | 업체별 불량 · 현재 현황(세로), 아래: 품목별 불량 원형 | 최근 판정. */}
+      <div className="dash-qo-top">
         <DailyPanel
           quality={quality}
           kinds={['IQC']}
           title={t.dailyTitleOf('IQC')}
           tooltip
+          gapMarks
+          gapDetail
           niceTicks
         />
-        <Panel title={t.vendorDefects} sub={t.vendorTableSub} tag={tags.monthTotal}>
-          {/* 표 칸은 줄을 바꾸지 않는다 — 넓으면 표 영역만 가로 스크롤(원칙 a). */}
-          <div className="dash-table-wrap">
-            <Table
-              columns={[
-                { key: 'vendor', header: t.column.vendor, render: (row) => row.partnerName },
-                {
-                  key: 'qty',
-                  header: t.column.defectQty,
-                  render: (row) => formatFigure(row.rejectedQty),
-                },
-                {
-                  key: 'share',
-                  header: t.column.share,
-                  render: (row) =>
-                    vendorTotal === 0
-                      ? t.none
-                      : `${String(Math.round((row.rejectedQty / vendorTotal) * 100))}%`,
-                },
-              ]}
-              rows={iqc.vendorDefects}
-              getRowId={(row) => String(row.partnerId)}
-              density="compact"
-              aria-label={t.vendorDefects}
-              empty={<NoRecords />}
-            />
-          </div>
-        </Panel>
-      </Row>
-      <Row kind="split">
-        <div className="dash-stack">
-          <Panel title={t.itemDefects} sub={t.qtyShareSub} tag={tags.month}>
-            <StackedBar100
-              entries={iqc.itemDefects.map((entry) => ({
-                key: String(entry.itemId),
-                label: entry.itemCode,
-                value: entry.qty,
+        <div className="dash-qo-side">
+          {/* ⭐ 표 대신 가로 막대그래프(사용자 지시 2026-10-19) — 품질 종합과 같은 막대 부품. */}
+          <Panel title={t.vendorDefects} sub={t.vendorTableSub} tag={tags.monthTotal}>
+            <RankBars
+              entries={iqc.vendorDefects.map((entry) => ({
+                key: String(entry.partnerId),
+                label: entry.partnerName,
+                value: entry.rejectedQty,
               }))}
             />
           </Panel>
           <Panel title={t.currentTitle} tag={t.tagNow}>
             <StatusList
+              rowProps={pointerFocusProps(pointerInput)}
+              onSelect={(key) => {
+                setLotStatus(LOT_STATUS_OF_ROW[key] ?? null);
+                setLotDialogMounted(true);
+              }}
               items={[
                 {
                   key: 'held',
                   label: t.heldLots,
                   note: t.heldLotsNote,
-                  value: formatFigure(iqc.monthLots.held),
-                  unit: t.lotUnit,
-                  tone: countTone(iqc.monthLots.held, 'warning'),
+                  ...iqcHeld,
+                  tone: countTone(iqcHeld.count, 'warning'),
+                  /* 목록은 IQC 검사 보류만(`inspectionType`) — 이 숫자와 같은 건수. */
+                  selectable: iqcHeld.count > 0,
                 },
                 {
                   key: 'receiptHold',
                   label: t.receiptHold,
                   note: t.receiptHoldNote,
-                  value: formatFigure(iqc.receiptHoldLotCount),
-                  unit: t.lotUnit,
-                  tone: countTone(iqc.receiptHoldLotCount, 'warning'),
+                  ...iqcReceiptHold,
+                  tone: countTone(iqcReceiptHold.count, 'warning'),
+                  selectable: iqcReceiptHold.count > 0,
                 },
               ]}
             />
           </Panel>
         </div>
+      </div>
+      <div className="dash-qo-bottom">
+        {/* ⭐ 품질 종합 「불량 유형별 현황」과 같은 원형 그래프(사용자 지시 2026-10-19). */}
+        <DefectTypesPanel
+          title={t.itemDefects}
+          tag={tags.month}
+          entries={iqc.itemDefects.map((entry) => ({
+            key: String(entry.itemId),
+            label: entry.itemCode,
+            value: entry.qty,
+          }))}
+        />
         <RecentLotsPanel
           itemTitle
           title={t.recentLotsOf('IQC')}
           rows={recentOf(quality, 'IQC')}
           counterpart="vendor"
+          linked={allows(INSPECTION_RESULTS_PATH)}
+          withTime
         />
-      </Row>
+      </div>
+      {lotDialogMounted && (
+        <QualityLotsDialog
+          status={lotStatus}
+          inspectionType={lotStatus === 'INSPECTION_HELD' ? 'IQC' : null}
+          onClose={() => {
+            setLotStatus(null);
+          }}
+        />
+      )}
     </QualityTabFrame>
   );
 };

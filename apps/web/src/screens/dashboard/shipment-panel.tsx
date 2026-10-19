@@ -3,7 +3,6 @@ import type { DashboardShipment } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { Link } from 'react-router';
 
-import { shortDate } from './quality';
 import { formatFigure } from './types';
 import { EmptyLine, Panel } from './viz';
 
@@ -76,7 +75,8 @@ export const toShipmentCells = (
       : {
           key: 'next',
           label: t.next,
-          value: shortDate(next.requestedShipDate),
+          /* 날짜는 `yyyy-MM-dd`(⭐ 관리웹 날짜 표기 통일 · 사용자 지시 2026-10-19). */
+          value: next.requestedShipDate,
           /*
            * ⭐ 수량은 요청 수량이 아니라 **남은 수량**이다(규격 보정 2026-10-16). 날짜와 남은 수량을 먼저 보이고
            * (값 줄), 요청 번호 · 고객은 보조 줄로(사용자 지시 2026-10-16).

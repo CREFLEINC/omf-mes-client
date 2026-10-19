@@ -376,6 +376,8 @@ export interface StatusItem {
   note?: string;
   value: string;
   unit?: string;
+  /** 값 옆의 기록 건수(「· 5건」) — LOT 번호 없는 기록도 센다(사용자 결정 2026-10-19). */
+  records?: string;
   /** 점 · 값의 색. 0이 아닌 경고만 색을 준다 — 0에 색을 주면 늘 문제가 있는 것처럼 보인다. */
   tone?: ChipStatus;
 }
@@ -397,6 +399,7 @@ const StatusRowBody = ({ item }: { item: StatusItem }) => (
     >
       {item.value}
       {item.unit !== undefined && <span className="dash-kpi-unit">{item.unit}</span>}
+      {item.records !== undefined && <span className="dash-status-records">{item.records}</span>}
     </span>
   </>
 );
@@ -635,6 +638,7 @@ export const MultiLineChart = ({
   tipLabels,
   niceTicks = false,
   gapMarks = false,
+  gapDetail = false,
 }: {
   series: LineSeries[];
   caption: string;
@@ -655,6 +659,11 @@ export const MultiLineChart = ({
    * 점에서 떨어지면 점과 이름표를 짧은 선으로 잇는다.
    */
   gapMarks?: boolean;
+  /**
+   * `gapMarks` 를 더 분명하게(⭐ IQC 탭만 · 사용자 지시 2026-10-19 「마지막 수치가 점과 떨어져 보임 · 공백을 더 명확히」) —
+   * 검사 없는 날에 옅은 띠와 「검사 없음」, 끊긴 앞뒤 점을 점선으로 잇고, 혼자 남은 점은 속이 빈 원 + 값을 점 바로 위에.
+   */
+  gapDetail?: boolean;
 }) => {
   const [figureRef, W] = useChartWidth<HTMLElement>();
   const H = height ?? CHART_H;
@@ -677,6 +686,9 @@ export const MultiLineChart = ({
     1,
     Math.ceil(labels.length / Math.max(1, Math.floor(plotW / AXIS_LABEL_SLOT_PX))),
   );
+  const isGapDay = (index: number): boolean =>
+    series.every((entry) => (entry.points[index]?.value ?? null) === null);
+  const step = labels.length <= 1 ? plotW : plotW / (labels.length - 1);
   const endLabelY = spreadLabels(
     series.map((entry) => {
       const last = toLineSegments(entry.points).at(-1)?.at(-1);
@@ -726,9 +738,34 @@ export const MultiLineChart = ({
               y2={yAt(domain.min)}
             />
           )}
+          {gapDetail &&
+            labels.map((label, index) =>
+              isGapDay(index) ? (
+                <g key={`gap-band-${label}`}>
+                  <rect
+                    className="dash-gap-band"
+                    x={Math.max(PAD.left, xAt(index, labels.length) - step / 2)}
+                    width={
+                      Math.min(W - PAD.right, xAt(index, labels.length) + step / 2) -
+                      Math.max(PAD.left, xAt(index, labels.length) - step / 2)
+                    }
+                    y={PAD.top}
+                    height={plotH}
+                  />
+                  <text
+                    className="dash-gap-note"
+                    x={xAt(index, labels.length)}
+                    y={PAD.top + 12}
+                    textAnchor="middle"
+                  >
+                    {t.noInspectionDay}
+                  </text>
+                </g>
+              ) : null,
+            )}
           {gapMarks &&
             labels.map((label, index) =>
-              series.every((entry) => (entry.points[index]?.value ?? null) === null) ? (
+              isGapDay(index) ? (
                 <line
                   key={`gap-${label}`}
                   className="dash-gap-guide"
@@ -759,9 +796,27 @@ export const MultiLineChart = ({
           {series.map((entry, seriesIndex) => {
             const segments = toLineSegments(entry.points);
             const last = segments.at(-1)?.at(-1);
+            /* 끝 점이 혼자 남은 점이면 값을 점 바로 위에 쓴다(gapDetail · 계열 하나일 때) — 오른쪽에 두면 범례처럼
+               보였다. 오른쪽 끝에서 잘리지 않게 글 끝을 점에 맞춘다. 계열이 여럿이면 겹침을 피하는 오른쪽 이름표 그대로. */
+            const soloEnd = gapDetail && series.length === 1 && segments.at(-1)?.length === 1;
 
             return (
               <g key={entry.name} className={`dash-line-${String(entry.tone)}`}>
+                {gapDetail &&
+                  segments.slice(1).map((segment, segIndex) => {
+                    const from = segments[segIndex]?.at(-1);
+                    const to = segment[0];
+                    return from === undefined || to === undefined ? null : (
+                      <line
+                        key={`bridge-${String(to.index)}`}
+                        className="dash-gap-bridge"
+                        x1={xAt(from.index, labels.length)}
+                        y1={yAt(from.value)}
+                        x2={xAt(to.index, labels.length)}
+                        y2={yAt(to.value)}
+                      />
+                    );
+                  })}
                 {segments.map((segment) => (
                   <polyline
                     key={segment[0]?.index}
@@ -779,9 +834,11 @@ export const MultiLineChart = ({
                     <circle
                       key={point.index}
                       className={
-                        gapMarks && segment.length === 1
-                          ? 'dash-point dash-point-solo'
-                          : 'dash-point'
+                        gapDetail && segment.length === 1
+                          ? 'dash-point dash-point-solo dash-point-ring'
+                          : gapMarks && segment.length === 1
+                            ? 'dash-point dash-point-solo'
+                            : 'dash-point'
                       }
                       cx={xAt(point.index, labels.length)}
                       cy={yAt(point.value)}
@@ -790,6 +847,7 @@ export const MultiLineChart = ({
                   )),
                 )}
                 {gapMarks &&
+                  !soloEnd &&
                   last !== undefined &&
                   Math.abs(
                     (endLabelY[seriesIndex] ?? yAt(last.value) + 4) - (yAt(last.value) + 4),
@@ -805,8 +863,13 @@ export const MultiLineChart = ({
                 {last !== undefined && (
                   <text
                     className="dash-line-end"
-                    x={xAt(last.index, labels.length) + 8}
-                    y={endLabelY[seriesIndex] ?? yAt(last.value) + 4}
+                    x={xAt(last.index, labels.length) + (soloEnd ? 4 : 8)}
+                    y={
+                      soloEnd
+                        ? yAt(last.value) - 10
+                        : (endLabelY[seriesIndex] ?? yAt(last.value) + 4)
+                    }
+                    textAnchor={soloEnd ? 'end' : undefined}
                   >
                     {series.length > 1
                       ? `${entry.name} ${formatFigure(last.value)}`

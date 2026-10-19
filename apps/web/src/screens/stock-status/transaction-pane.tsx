@@ -29,10 +29,10 @@ const t = messages.stockStatus;
  * | 영업일 | 120px | `YYYY-MM-DD` 10자 75 + 셀 여백 32 |
  * | 거래 유형 · 상태 | 각 140·120px | 코드 배지 하나 |
  * | 원천 전표 | 160px | 코드 배지가 길다(`GOODS_RECEIPT` 13자 98 + 칩 여백 24 + 32) |
- * | 발생 시각 | 124px | **`MM-DD HH:mm`**(`as-of.ts`가 그 형태로 줄인다) |
+ * | 발생 시각 | 168px | **`yyyy-MM-dd HH:mm`**(`as-of.ts`가 그 형태로 줄인다 · 사용자 지시 2026-10-19) |
  * | 라인 | 88px | 「닫기」 버튼 하나 |
  *
- * 합은 **952px**로 `.wide-table` 하한(928px) 위다 — 아래로 누르면 고정 배치가 남는 폭을
+ * 합은 **996px**로 `.wide-table` 하한(928px) 위다 — 아래로 누르면 고정 배치가 남는 폭을
  * 나눠 넣어 선언과 실렌더가 어긋난다.
  */
 const WIDTH = {
@@ -41,7 +41,7 @@ const WIDTH = {
   transactionType: '140px',
   sourceDocumentType: '160px',
   status: '120px',
-  occurredAt: '124px',
+  occurredAt: '168px',
   select: '88px',
 } as const;
 

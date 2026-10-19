@@ -19,7 +19,7 @@ const t = messages.stockStatus;
  * | 상태 | 120px | 코드 배지 하나 |
  * | 보류 수량 | 128px | 수 또는 「전량 보류」 다섯 글자 |
  * | 단위 | 96px | 단위 코드만 |
- * | 보류 시각 | 140px | `MM-DD HH:mm` |
+ * | 보류 시각 | 168px | `yyyy-MM-dd HH:mm`(사용자 지시 2026-10-19) |
  * | 해제 조건 · 비고 | 각 200px | 짧은 문장 한 줄 |
  */
 const WIDTH = {
@@ -27,7 +27,7 @@ const WIDTH = {
   status: '120px',
   holdQty: '128px',
   uom: '96px',
-  heldAt: '140px',
+  heldAt: '168px',
   text: '200px',
 } as const;
 

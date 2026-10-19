@@ -1,6 +1,8 @@
 import { Button } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 
+import { formatLocalDateTime } from '../../patterns/date-display';
+
 const t = messages.workOrderProgress.basis;
 
 export interface BasisBarProps {
@@ -27,7 +29,8 @@ export interface BasisBarProps {
 export const BasisBar = ({ basisAt, onRefresh }: BasisBarProps) => (
   <div className="work-order-progress-basis">
     <div className="work-order-progress-basis-copy">
-      <strong>{t.label(basisAt.toLocaleString())}</strong>
+      {/* `yyyy-MM-dd HH:mm`(보는 사람 시계 · ⭐ 관리웹 날짜 표기 통일 · 사용자 지시 2026-10-19). */}
+      <strong>{t.label(formatLocalDateTime(basisAt))}</strong>
       <p>{t.note}</p>
     </div>
     <Button size="sm" variant="outlined" onClick={onRefresh}>

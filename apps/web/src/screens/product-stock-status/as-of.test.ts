@@ -16,8 +16,8 @@ describe('formatAsOf', () => {
 });
 
 describe('formatHeldAt', () => {
-  it('시간대가 붙은 값을 MM-DD HH:mm으로 줄인다', () => {
-    expect(formatHeldAt('2026-08-06T09:12:00+09:00')).toBe('08-06 09:12');
+  it('시간대가 붙은 값을 yyyy-MM-dd HH:mm으로 옮긴다', () => {
+    expect(formatHeldAt('2026-08-06T09:12:00+09:00')).toBe('2026-08-06 09:12');
   });
 
   it('깨진 값에는 표기를 지어내지 않고 원래 값을 낸다', () => {

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { messageRow } from './fixtures';
-import { KNOWN_STATUS, formatDateTime, formatTime, toStatusView } from './message-status';
+import { KNOWN_STATUS, formatDateTime, toStatusView } from './message-status';
 
 /** availableAt이 과거인지 미래인지는 이 기준 시각으로만 판정한다. */
 const NOW = new Date('2026-08-06T12:00:00+09:00');
@@ -34,7 +34,7 @@ describe('toStatusView — 보조 한 줄', () => {
       NOW,
     );
 
-    expect(view.note).toBe('09:20부터 처리 중');
+    expect(view.note).toBe('2026-08-06 09:20부터 처리 중');
   });
 
   it('잡고 있으나 시각이 없으면 시각 없이 알린다 — 시각을 지어내지 않는다', () => {
@@ -56,7 +56,7 @@ describe('toStatusView — 보조 한 줄', () => {
   it('다음 시도 시각이 미래면 자동 재시도를 알린다', () => {
     const view = toStatusView(messageRow({ availableAt: '2026-08-06T12:30:00+09:00' }), NOW);
 
-    expect(view.note).toBe('10:30 자동 재시도');
+    expect(view.note).toBe('2026-08-06 10:30 자동 재시도');
   });
 
   it('다음 시도 시각이 과거면 알리지 않는다 — 이미 지난 예정은 안내가 아니다', () => {
@@ -75,7 +75,7 @@ describe('toStatusView — 보조 한 줄', () => {
       NOW,
     );
 
-    expect(view.note).toBe('09:20부터 처리 중');
+    expect(view.note).toBe('2026-08-06 09:20부터 처리 중');
   });
 
   it('시각이 형식에 맞지 않으면 자동 재시도를 알리지 않는다', () => {
@@ -83,14 +83,14 @@ describe('toStatusView — 보조 한 줄', () => {
   });
 });
 
-describe('formatDateTime · formatTime', () => {
+describe('formatDateTime', () => {
   it('공장 시각(UTC+7)으로 옮겨 낸다 — 서버가 어느 offset 으로 적어 보내도 같은 순간이면 같다', () => {
     // 보는 사람(실행 환경)의 시간대가 아니라 공장 시각이 기준이다(omf-all-around#20).
     expect(formatDateTime('2026-08-04T09:12:00+09:00')).toBe('2026-08-04 07:12');
     expect(formatDateTime('2026-08-04T00:12:00Z')).toBe('2026-08-04 07:12');
     // 다른 순간이면 표기도 다르다 — 글자(09:12)만 같다고 같은 시각이 아니다.
     expect(formatDateTime('2026-08-04T09:12:00Z')).toBe('2026-08-04 16:12');
-    expect(formatTime('2026-08-04T09:12:33+09:00')).toBe('07:12');
+    expect(formatDateTime('2026-08-04T09:12:33+09:00')).toBe('2026-08-04 07:12');
   });
 
   it('값이 없거나 형식이 아니면 null을 낸다 — 화면이 「—」로 바꾼다', () => {
@@ -98,6 +98,5 @@ describe('formatDateTime · formatTime', () => {
     expect(formatDateTime(undefined)).toBeNull();
     expect(formatDateTime('')).toBeNull();
     expect(formatDateTime('2026-08-04')).toBeNull();
-    expect(formatTime(null)).toBeNull();
   });
 });

@@ -21,7 +21,7 @@ type NotificationEvent = components['schemas']['NotificationEvent'];
 
 /**
  * 발생 시각의 기준 형태. **`+09:00`이 붙어 있다** — 표시는 같은 순간의 공장 시각(UTC+7)으로
- * 옮긴다(`08-17 12:05`, omf-all-around#20).
+ * 옮긴다(`2026-08-17 12:05`, omf-all-around#20).
  */
 const BASE_NOTIFICATION: Notification = {
   notificationId: 7101,

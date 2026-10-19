@@ -155,7 +155,7 @@ export const DashboardScreen = () => {
    * ⭐ 「마지막 갱신」 = 조회가 **성공한** 시각(`dataUpdatedAt` · 사용자 지시 2026-10-16). 서버 집계 시각이
    * 아니다. 실패하면 이 값이 바뀌지 않아 마지막 성공 시각이 남는다. KPI 띠 「최근 갱신」도 같은 값이다.
    */
-  const lastUpdatedText = formatLastUpdated(summary.dataUpdatedAt, Date.now());
+  const lastUpdatedText = formatLastUpdated(summary.dataUpdatedAt);
 
   /*
    * ⭐ 대시보드 안의 탭(omf-all-around#113). 탭은 **같은 응답을 나눠 보인다** — 품질은 summary 의
@@ -311,6 +311,9 @@ export const DashboardScreen = () => {
                       >
                         <TabBody quality={quality} allows={access.allows} />
                       </PeriodRangeContext.Provider>
+                    ) : value === 'iqc' ? (
+                      /* 최근 IQC 판정 줄 → 검사결과 상세(사용자 지시 2026-10-19) — 그 화면 권한을 본다. */
+                      <IqcTab quality={quality} allows={access.allows} />
                     ) : (
                       <TabBody quality={quality} />
                     )

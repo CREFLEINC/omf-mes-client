@@ -4641,7 +4641,7 @@ describe('StockAdjustScreen — 전기 확인 창', () => {
 
     expect(within(dialog).getByText('SAMPLE-IA-9301')).toBeVisible();
     expect(within(dialog).getByText('2026-08-17')).toBeVisible();
-    expect(within(dialog).getByText('2026-08-18T00:30')).toBeVisible();
+    expect(within(dialog).getByText('2026-08-18 00:30')).toBeVisible();
     /* 두 날짜가 갈렸다는 사실을 밝히되 막지 않는다(공유계약 C-8). */
     expect(within(dialog).getByText(t.dialog.postDatesApart)).toBeVisible();
 

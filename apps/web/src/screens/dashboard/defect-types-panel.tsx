@@ -255,7 +255,16 @@ const Donut = ({
   );
 };
 
-export const DefectTypesPanel = ({ entries, tag }: { entries: NamedQty[]; tag: string }) => {
+export const DefectTypesPanel = ({
+  entries,
+  tag,
+  title = t.phenomena,
+}: {
+  entries: NamedQty[];
+  tag: string;
+  /** IQC 「품목(CODE)별 불량 구성」도 같은 원형 그래프다(사용자 지시 2026-10-19). */
+  title?: string;
+}) => {
   /* 각각 보일 유형 수. `null` 이면 모두. */
   const [shown, setShown] = useState<number | null>(null);
   const [fitted, setFitted] = useState(false);
@@ -320,7 +329,7 @@ export const DefectTypesPanel = ({ entries, tag }: { entries: NamedQty[]; tag: s
 
   return (
     <Panel
-      title={t.phenomena}
+      title={title}
       sub={t.defectTypesSub}
       tag={tag}
       className={tooTall ? undefined : 'dash-qo-fit'}
@@ -330,7 +339,7 @@ export const DefectTypesPanel = ({ entries, tag }: { entries: NamedQty[]; tag: s
           <NoRecords />
         ) : (
           <>
-            <Donut slices={slices} caption={t.phenomena} total={total} />
+            <Donut slices={slices} caption={title} total={total} />
             <ul className="dash-donut-legend">
               {slices.map((slice, index) => (
                 <li key={slice.key} className="dash-donut-legend-row">

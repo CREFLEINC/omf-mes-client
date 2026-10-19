@@ -40,13 +40,16 @@ const qtyOf = (item: DashboardQualityLotItem): string =>
  */
 export const QualityLotsDialog = ({
   status,
+  inspectionType = null,
   onClose,
 }: {
   status: DashboardQualityLotStatus | null;
+  /** 검사 보류를 한 검사 유형으로 좁힌다 — IQC 탭(사용자 지시 2026-10-19). */
+  inspectionType?: 'IQC' | 'PQC' | 'OQC' | null;
   onClose: () => void;
 }) => {
   const query = useContext(FilterQueryContext);
-  const lots = useDashboardQualityLots(status, query);
+  const lots = useDashboardQualityLots(status, query, inspectionType);
   const meta = status === null ? null : QUALITY_LOT_STATUS[status];
   const data = lots.data;
   const count = (value: number): string =>
@@ -138,7 +141,17 @@ export const QualityLotsDialog = ({
               {meta.label}
             </span>
             {data !== undefined && (
-              <span className="dash-detail-sub">{count(data.totalCount)}</span>
+              <span className="dash-detail-sub">
+                {/* LOT 수 · 기록 건수(사용자 결정 2026-10-19) — 서버가 주지 않으면(이전 서버) 기존 건수만. */}
+                {meta?.cases !== true &&
+                data.lotCount !== undefined &&
+                data.recordCount !== undefined
+                  ? t.lots.countLotsRecords(
+                      formatFigure(data.lotCount),
+                      formatFigure(data.recordCount),
+                    )
+                  : count(data.totalCount)}
+              </span>
             )}
           </span>
         )

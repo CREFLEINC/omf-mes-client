@@ -63,7 +63,7 @@ describe('byDate', () => {
 
 describe('partialHours', () => {
   it('두 시각이 있으면 한 줄로 잇는다', () => {
-    expect(partialHours(day({ startTime: '08:00', endTime: '12:00' }))).toBe('08:00~12:00');
+    expect(partialHours(day({ startTime: '08:00', endTime: '12:00' }))).toBe('08:00 ~ 12:00');
   });
 
   /*

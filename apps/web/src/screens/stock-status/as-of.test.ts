@@ -42,12 +42,12 @@ describe('formatTransactionAt — 표의 최근 거래 표기', () => {
    * **정확한 값은 시간대가 없는 표기로 검사한다.** 시간대가 붙은 값의 현지 표기는 실행 환경의
    * 시간대에 따라 달라져, 기대값을 박으면 테스트가 코드가 아니라 **실행 환경을 검사**하게 된다.
    */
-  it('계약 값을 「MM-DD HH:mm」으로 줄인다', () => {
-    expect(formatTransactionAt('2026-08-06T09:12:00')).toBe('08-06 09:12');
+  it('계약 값을 「yyyy-MM-dd HH:mm」으로 옮긴다', () => {
+    expect(formatTransactionAt('2026-08-06T09:12:00')).toBe('2026-08-06 09:12');
   });
 
   it('한 자리 수를 0으로 채운다', () => {
-    expect(formatTransactionAt('2026-01-02T03:04:00')).toBe('01-02 03:04');
+    expect(formatTransactionAt('2026-01-02T03:04:00')).toBe('2026-01-02 03:04');
   });
 
   /*
@@ -60,12 +60,12 @@ describe('formatTransactionAt — 표의 최근 거래 표기', () => {
     );
   });
 
-  /* 계약 값이 그대로 새어 나오지 않는다 — 25자가 아니라 11자다. */
+  /* 계약 값이 그대로 새어 나오지 않는다 — 25자가 아니라 16자다(사용자 지시 2026-10-19). */
   it('시간대가 붙은 계약 값을 그대로 돌려주지 않는다', () => {
     const shortened = formatTransactionAt('2026-08-06T09:12:00+09:00');
 
-    expect(shortened).toMatch(/^\d{2}-\d{2} \d{2}:\d{2}$/);
-    expect(shortened).not.toContain('2026');
+    expect(shortened).toMatch(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/);
+    expect(shortened).not.toContain('T');
   });
 
   it('값이 없으면 표기하지 않는다 — 호출부가 대시로 둔다', () => {

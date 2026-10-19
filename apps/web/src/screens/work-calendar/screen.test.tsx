@@ -930,7 +930,7 @@ describe('W-05-09 작업 캘린더 — 달력 그리드', () => {
 
     await selectCalendar(user, 'CAL-A');
 
-    expect(await within(gridPane()).findByText('08:00~12:00')).toBeInTheDocument();
+    expect(await within(gridPane()).findByText('08:00 ~ 12:00')).toBeInTheDocument();
   });
 
   it('다음 달로 옮기면 그 달의 기간으로 다시 조회한다', async () => {

@@ -6964,6 +6964,8 @@ dl.filter-bar.approval-inbox-detail-facts {
 .notification-card-time {
   margin-left: auto;
   color: var(--on-surface-muted);
+  /* `yyyy-MM-dd HH:mm`(사용자 지시 2026-10-19)이 날짜 · 시각 사이에서 꺾이지 않게. */
+  white-space: nowrap;
 }
 
 /*
@@ -8519,6 +8521,41 @@ button.app-button-neutral {
   pointer-events: none;
 }
 
+/* 기록 없는 날(⭐ 사용자 지시 2026-10-19) — DS 의 선 · 점을 숨기고 `TrendGapLayer` 가 같은 색으로 다시 그린다. */
+.dash-trend-gapped svg[class] [class*='_line_'],
+.dash-trend-gapped svg[class] [class*='_point_'] {
+  display: none;
+}
+
+.dash-trend-gap-layer {
+  position: absolute;
+  inset: 0;
+  overflow: visible;
+}
+
+.dash-trend-gap-line {
+  fill: none;
+  stroke: var(--chart-1);
+  stroke-width: 2;
+}
+
+.dash-trend-gap-bridge {
+  stroke: var(--chart-1);
+  stroke-width: 1.5;
+  stroke-dasharray: 3 4;
+  opacity: 0.45;
+}
+
+.dash-trend-gap-point {
+  fill: var(--chart-1);
+}
+
+.dash-trend-gap-point.dash-trend-gap-solo {
+  fill: var(--surface-container);
+  stroke: var(--chart-1);
+  stroke-width: 2;
+}
+
 .dash-trend-hit {
   position: absolute;
   padding: 0;
@@ -10015,6 +10052,15 @@ button.app-button-neutral {
   white-space: nowrap;
 }
 
+/* LOT 수 옆 기록 건수(사용자 결정 2026-10-19) — LOT 수보다 작고 옅게, 색은 입히지 않는다. */
+.dash-status-records {
+  margin-inline-start: var(--space-1);
+  font: var(--type-label-sm);
+  letter-spacing: var(--type-label-sm-tracking);
+  font-weight: 400;
+  color: var(--on-surface-muted);
+}
+
 /* SVG 그림 — 꺾은선 · 파레토 */
 .dash-figure {
   margin: 0;
@@ -10180,6 +10226,31 @@ button.app-button-neutral {
 .dash-line-leader {
   stroke: currentColor;
   stroke-width: 1;
+}
+
+/* IQC 일별 합격률 — 검사 없는 날 띠 · 「검사 없음」, 끊긴 앞뒤 잇는 점선, 혼자 남은 점은 속 빈 원(사용자 지시 2026-10-19). */
+.dash-gap-band {
+  fill: var(--on-surface);
+  opacity: 0.04;
+}
+
+.dash-gap-note {
+  fill: var(--on-surface-muted);
+  font: var(--type-label-sm);
+  letter-spacing: var(--type-label-sm-tracking);
+}
+
+.dash-gap-bridge {
+  stroke: currentColor;
+  stroke-width: 1.5;
+  stroke-dasharray: 3 4;
+  opacity: 0.45;
+}
+
+.dash-point.dash-point-ring {
+  fill: var(--surface-container);
+  stroke: currentColor;
+  stroke-width: 2;
 }
 
 .dash-period-tag {

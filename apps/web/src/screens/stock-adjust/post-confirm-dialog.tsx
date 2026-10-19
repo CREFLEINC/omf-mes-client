@@ -2,6 +2,8 @@ import { Button, Dialog } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
 
+import { formatPlantDateTime } from '../../patterns/plant-time';
+
 const t = messages.stockAdjust;
 
 /** 확인 창이 되보일 것 전부. **내부 번호는 하나도 담기지 않는다**(`omf-mes#44`). */
@@ -99,7 +101,8 @@ export const PostConfirmDialog = ({
       </div>
       <div className="field-cell">
         <dt className="field-label">{t.post.occurredAt}</dt>
-        <dd>{summary.occurredAtLocal}</dd>
+        {/* 입력값(`yyyy-MM-ddTHH:mm`)을 `yyyy-MM-dd HH:mm`로 보인다(⭐ 사용자 지시 2026-10-19). offset 이 없어 글자 그대로. */}
+        <dd>{formatPlantDateTime(summary.occurredAtLocal) ?? summary.occurredAtLocal}</dd>
       </div>
     </dl>
 

@@ -44,13 +44,6 @@ export const formatDateTime = (value: string | null | undefined): string | null 
   return parts === null ? null : `${parts.date} ${parts.time}`;
 };
 
-/** `09:12`. 값이 없거나 형식이 아니면 null. */
-export const formatTime = (value: string | null | undefined): string | null => {
-  const parts = parseParts(value);
-
-  return parts === null ? null : parts.time;
-};
-
 /** 미래인지 판정할 때만 실제 시점으로 다룬다 — 벽시계 표기와 달리 비교는 순간으로 해야 맞다. */
 const isFuture = (value: string | null | undefined, now: Date): boolean => {
   if (value === null || value === undefined) return false;
@@ -72,13 +65,13 @@ const toNote = (row: IntegrationMessageRow, now: Date): string | null => {
   const lockedBy = row.lockedBy ?? '';
 
   if (lockedBy !== '') {
-    const at = formatTime(row.lockedAt);
+    const at = formatDateTime(row.lockedAt);
 
     return at === null ? t.status.processingNoTime : t.status.processing(at);
   }
 
   if (isFuture(row.availableAt, now)) {
-    const at = formatTime(row.availableAt);
+    const at = formatDateTime(row.availableAt);
 
     return at === null ? null : t.status.autoRetry(at);
   }
