@@ -19,6 +19,7 @@ import {
   businessUnitFixtures,
   externalCodeFixtures,
   itemFixtures,
+  itemResourceMapFixtures,
   partnerFixtures,
   processFixtures,
   routingFixtures,
@@ -4398,5 +4399,205 @@ describe('ItemExtendedAttrsScreen — 등록 공정 2단 조회의 조건', () =
       screen.getByText('위에서 자재 명세서를 고르면 여기에 그 내용과 구성품이 보입니다'),
     ).toBeInTheDocument();
     expect(routingOperationGets(requests)).toHaveLength(2);
+  });
+});
+
+/* ── 설비·금형 매핑 ───────────────────────────────────────────────────────── */
+
+const RESOURCE_MAPS_PATH = '/mdm/item-resource-maps';
+
+const paged = (items: unknown[]) => ({ items, page: { page: 1, size: 200, total: items.length } });
+
+const resourceMapRoutes = (rows = itemResourceMapFixtures): StubRoute[] => [
+  ...subsidiaryRoutes(),
+  processesRoute(),
+  {
+    match: (request) => isGet(request, '/mdm/plants'),
+    respond: () =>
+      jsonResponse(
+        paged([
+          { plantId: 9001, plantCode: 'SYN-PLANT-01', plantName: '합성 공장', isActive: true },
+        ]),
+      ),
+  },
+  {
+    match: (request) => isGet(request, '/mdm/equipments'),
+    respond: () =>
+      jsonResponse(
+        paged([
+          {
+            equipmentId: 8001,
+            equipmentCode: 'SYN-EQ-01',
+            equipmentName: '합성 설비 A',
+            isActive: true,
+          },
+        ]),
+      ),
+  },
+  {
+    match: (request) => isGet(request, '/mdm/molds'),
+    respond: () =>
+      jsonResponse(
+        paged([
+          { moldId: 8501, moldCode: 'SYN-MOLD-01', moldName: '합성 금형 A', isActive: true },
+          { moldId: 8503, moldCode: 'SYN-MOLD-03', moldName: '합성 금형 C', isActive: true },
+        ]),
+      ),
+  },
+  {
+    match: (request) => isGet(request, RESOURCE_MAPS_PATH),
+    respond: () => jsonResponse({ items: rows }),
+  },
+  {
+    match: (request) =>
+      request.method === 'POST' && new URL(request.url).pathname === RESOURCE_MAPS_PATH,
+    respond: () => jsonResponse(itemResourceMapFixtures[1], { status: 201 }),
+  },
+  {
+    match: (request) =>
+      request.method === 'PUT' &&
+      new URL(request.url).pathname.startsWith(`${RESOURCE_MAPS_PATH}/`),
+    respond: () => jsonResponse(itemResourceMapFixtures[0], { headers: { ETag: '4' } }),
+  },
+];
+
+const resourceMapWrites = (requests: RecordedRequest[], method: 'POST' | 'PUT') =>
+  requests.filter(
+    (request) => request.method === method && request.url.pathname.startsWith(RESOURCE_MAPS_PATH),
+  );
+
+const findResourceMapPane = () => screen.findByRole('region', { name: '설비·금형' });
+
+describe('ItemExtendedAttrsScreen — 설비·금형 매핑', () => {
+  it('하위 탭에 「설비·금형」이 있다', async () => {
+    renderScreen(subsidiaryRoutes(), '?item=1001&tab=sub');
+
+    expect(await screen.findByRole('tab', { name: '설비·금형' })).toBeInTheDocument();
+  });
+
+  /* 다른 하위 탭에서는 받지 않는다 — 공장·설비·금형 목록까지 덩달아 받게 된다. */
+  it('다른 하위 탭에서는 매핑을 조회하지 않는다', async () => {
+    const { requests } = renderScreen(subsidiaryRoutes(), '?item=1001&tab=sub&sub=uom');
+
+    await screen.findByRole('region', { name: '단위 환산' });
+
+    expect(requests.some((request) => request.url.pathname === RESOURCE_MAPS_PATH)).toBe(false);
+  });
+
+  it('하나뿐인 공장으로 사용 중지한 줄까지 조회해 표에 낸다', async () => {
+    const { requests } = renderScreen(resourceMapRoutes(), '?item=1001&tab=sub&sub=res');
+
+    const pane = await findResourceMapPane();
+    expect(await within(pane).findByText('SYN-EQ-01 · 합성 설비 A')).toBeInTheDocument();
+
+    const get = requests.find((request) => request.url.pathname === RESOURCE_MAPS_PATH)!;
+    expect(Object.fromEntries(get.url.searchParams)).toEqual({
+      itemId: '1001',
+      plantId: '9001',
+      includeInactive: 'true',
+    });
+  });
+
+  it('등록은 POST 한 번이고 공장·품목을 싣고 If-Match가 없다', async () => {
+    const { requests, user } = renderScreen(resourceMapRoutes([]), '?item=1001&tab=sub&sub=res');
+
+    const pane = await findResourceMapPane();
+    await within(pane).findByText('등록된 설비·금형 매핑이 없습니다');
+    await user.click(within(pane).getByRole('button', { name: '매핑 추가' }));
+
+    const dialog = await screen.findByRole('dialog', { name: '설비·금형 매핑 추가' });
+    await user.click(within(dialog).getByLabelText('금형'));
+    await user.click(await screen.findByRole('option', { name: 'SYN-MOLD-03 · 합성 금형 C' }));
+    await user.click(within(dialog).getByRole('button', { name: '저장' }));
+
+    await waitFor(() => {
+      expect(resourceMapWrites(requests, 'POST')).toHaveLength(1);
+    });
+
+    const post = resourceMapWrites(requests, 'POST')[0]!;
+    expect(JSON.parse(post.body)).toEqual({
+      plantId: 9001,
+      itemId: 1001,
+      processId: null,
+      equipmentId: null,
+      moldId: 8503,
+      isDefault: false,
+      priorityNo: 100,
+      remarks: null,
+    });
+    expect(post.headers.get('Idempotency-Key')).toMatch(UUID);
+    expect(post.headers.has('If-Match')).toBe(false);
+
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    });
+  });
+
+  it('수정은 그 줄의 versionNo를 If-Match로 보낸다', async () => {
+    const { requests, user } = renderScreen(resourceMapRoutes(), '?item=1001&tab=sub&sub=res');
+
+    const pane = await findResourceMapPane();
+    await user.click(
+      await within(pane).findByRole('button', {
+        name: 'SYN-PROC-01 · 합성 공정 가 / SYN-EQ-01 / SYN-MOLD-01 매핑 수정',
+      }),
+    );
+
+    const dialog = await screen.findByRole('dialog', { name: '설비·금형 매핑 수정' });
+    await user.clear(within(dialog).getByLabelText('비고'));
+    await user.click(within(dialog).getByRole('button', { name: '저장' }));
+
+    await waitFor(() => {
+      expect(resourceMapWrites(requests, 'PUT')).toHaveLength(1);
+    });
+
+    const put = resourceMapWrites(requests, 'PUT')[0]!;
+    expect(put.url.pathname).toBe('/mdm/item-resource-maps/6001');
+    expect(put.headers.get('If-Match')).toBe('3');
+    expect(JSON.parse(put.body)).toEqual({
+      processId: 3001,
+      equipmentId: 8001,
+      moldId: 8501,
+      isDefault: true,
+      priorityNo: 10,
+      remarks: null,
+    });
+  });
+
+  it('기본 지정은 바꾸는 칸만 싣고 그 줄의 versionNo로 잠근다', async () => {
+    const { requests, user } = renderScreen(resourceMapRoutes(), '?item=1001&tab=sub&sub=res');
+
+    const pane = await findResourceMapPane();
+    await user.click(
+      await within(pane).findByRole('button', { name: '품목 공통 / SYN-MOLD-02 기본 지정' }),
+    );
+
+    await waitFor(() => {
+      expect(resourceMapWrites(requests, 'PUT')).toHaveLength(1);
+    });
+
+    const put = resourceMapWrites(requests, 'PUT')[0]!;
+    expect(put.url.pathname).toBe('/mdm/item-resource-maps/6002');
+    expect(put.headers.get('If-Match')).toBe('1');
+    expect(JSON.parse(put.body)).toEqual({ isDefault: true });
+  });
+
+  it('다시 사용은 isActive만 바꾼다', async () => {
+    const { requests, user } = renderScreen(resourceMapRoutes(), '?item=1001&tab=sub&sub=res');
+
+    const pane = await findResourceMapPane();
+    await user.click(
+      await within(pane).findByRole('button', {
+        name: 'SYN-PROC-01 · 합성 공정 가 / SYN-EQ-02 다시 사용',
+      }),
+    );
+
+    await waitFor(() => {
+      expect(resourceMapWrites(requests, 'PUT')).toHaveLength(1);
+    });
+
+    const put = resourceMapWrites(requests, 'PUT')[0]!;
+    expect(put.headers.get('If-Match')).toBe('5');
+    expect(JSON.parse(put.body)).toEqual({ isActive: true });
   });
 });

@@ -66,15 +66,15 @@ export const resolveTab = (param: string | null): ItemExtendedAttrsTabDefinition
 /* ── 부속 정보 안의 하위 탭 ───────────────────────────────────────────────── */
 
 /**
- * 부속 자원 셋. **탭 안의 탭이다**(결정 2).
+ * 부속 자원 넷. **탭 안의 탭이다**(결정 2).
  *
  * 계약이 인용한 화면 스펙의 구획 이름(「부속 정보」)을 그대로 옮긴 결과다.
  * 평평한 탭 다섯으로 펴는 대안이 있으나 그러면 그 구획 이름이 사라진다.
  *
- * **세 자원은 서로를 알지 않는다**(결정 6) — 같은 모양이되 필드도 검증도 다르다.
+ * **자원끼리 서로를 알지 않는다**(결정 6) — 필드도 검증도 저장 방식도 다르다.
  * 여기 있는 것은 「어느 하위 탭인가」뿐이고, 자원의 규칙은 각 파일이 갖는다.
  */
-export type SubsidiaryTabId = 'bu' | 'uom' | 'ext';
+export type SubsidiaryTabId = 'bu' | 'uom' | 'ext' | 'res';
 
 export interface SubsidiaryTabDefinition {
   id: SubsidiaryTabId;
@@ -88,6 +88,7 @@ export const SUBSIDIARY_TABS: readonly [SubsidiaryTabDefinition, ...SubsidiaryTa
   { id: 'bu', label: t.subTabs.buMap },
   { id: 'uom', label: t.subTabs.uomConversion },
   { id: 'ext', label: t.subTabs.externalCode },
+  { id: 'res', label: t.subTabs.resourceMap },
 ];
 
 /** 기본 하위 탭. 바깥 탭과 같은 규칙으로 **주소에 쓰지 않는다.** */

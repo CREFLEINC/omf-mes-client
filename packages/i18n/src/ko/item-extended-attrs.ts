@@ -32,6 +32,7 @@ export const itemExtendedAttrs = {
     buMap: '사업부 매핑',
     uomConversion: '단위 환산',
     externalCode: '외부 코드',
+    resourceMap: '설비·금형',
   },
   panes: {
     item: '품목',
@@ -342,6 +343,81 @@ export const itemExtendedAttrs = {
         '외부 시스템과 거래처가 같은 줄이 이미 있습니다. 거래처를 비운 줄끼리도 같은 줄로 봅니다.',
       duplicateInList:
         '외부 시스템과 거래처가 같은 줄이 있습니다. 거래처를 비운 줄끼리도 같은 줄로 보므로 겹친 줄을 정리하세요.',
+    },
+  },
+  /**
+   * 부속 하위 탭④ — 설비·금형 매핑. 계획 확정이 기본 매핑으로 설비·금형을 배정하고 4M 점검이 추천한다.
+   *
+   * **다른 세 하위 탭과 저장 방식이 다르다** — 전체 치환이 아니라 줄마다 바로 저장한다.
+   * 그래서 「확인을 눌러도 저장되지 않는다」는 안내가 없다.
+   */
+  itemResourceMap: {
+    paneTitle: '설비·금형',
+    fields: {
+      plant: '공장',
+      isDefault: '기본',
+      process: '공정',
+      equipment: '설비',
+      mold: '금형',
+      priorityNo: '우선순위',
+      isActive: '사용 여부',
+      remarks: '비고',
+      actions: '작업',
+    },
+    values: {
+      /* 공정을 비운 줄. 빈 칸으로 두면 빠뜨린 것으로 읽힌다. */
+      allProcesses: '품목 공통',
+      none: '(없음)',
+      isDefault: '기본',
+      active: '사용',
+      inactive: '미사용',
+    },
+    notes: {
+      process: '비우면 품목 공통입니다. 공정 흐름에서 설비·금형이 필요한 공정에만 적용됩니다.',
+      priorityNo: '숫자가 작을수록 먼저 추천합니다.',
+      /* 서버가 같은 자리의 기존 기본을 함께 내린다 — 사용자가 고르지 않은 줄이 바뀐다. */
+      isDefault: '같은 공정의 기존 기본은 자동으로 해제됩니다.',
+      plantFixed: '공장은 바꿀 수 없습니다. 다른 공장이면 새로 등록하세요.',
+    },
+    search: {
+      equipment: '설비 검색',
+      mold: '금형 검색',
+      placeholder: '코드 또는 이름',
+      /* 목록을 다 받은 뒤 화면에서 좁힌다 — 서버 검색이 아니다. */
+      noMatch: '검색어에 맞는 항목이 없습니다.',
+    },
+    actions: {
+      add: '매핑 추가',
+      setDefault: '기본 지정',
+      deactivate: '사용 중지',
+      reactivate: '다시 사용',
+      editRow: (name: string): string => `${name} 매핑 수정`,
+      setDefaultRow: (name: string): string => `${name} 기본 지정`,
+      deactivateRow: (name: string): string => `${name} 사용 중지`,
+      reactivateRow: (name: string): string => `${name} 다시 사용`,
+    },
+    loading: {
+      list: '설비·금형 매핑을 불러오는 중',
+    },
+    empty: {
+      noneTitle: '등록된 설비·금형 매핑이 없습니다',
+      noneDescription: '「매핑 추가」로 이 품목에 쓰는 설비·금형을 등록하세요.',
+      /* 공장이 없으면 설비·금형 목록도 매핑 조회도 성립하지 않는다. */
+      noPlant: '공장을 고르면 매핑이 보입니다',
+    },
+    dialog: {
+      addTitle: '설비·금형 매핑 추가',
+      editTitle: '설비·금형 매핑 수정',
+    },
+    validation: {
+      required: '필수 입력 항목입니다.',
+      /* 계약 ck_item_resource_map_target */
+      equipmentOrMold: '설비나 금형 중 하나는 골라야 합니다.',
+      /* 계약 priority_no >= 0 */
+      priorityNoInvalid: '우선순위는 0 이상의 정수로 입력하세요.',
+      /* 계약 uq_item_resource_map — 사용 중지한 줄도 이 키에 든다. */
+      duplicate:
+        '같은 공정·설비·금형 매핑이 이미 있습니다. 사용 중지한 줄이면 다시 사용으로 되살리세요.',
     },
   },
   /**
