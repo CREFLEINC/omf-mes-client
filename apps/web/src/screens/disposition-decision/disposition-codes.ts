@@ -8,8 +8,7 @@ export interface CodeOption {
   label: string;
 }
 
-/** 고정 OpenAPI가 닫은 처분 유형. 선별(sorting)은 계약 값에 없으므로 추가하지 않는다. */
-/* 선별(`SORT`)은 서버 선행이다(omf-all-around#108 · P-53). */
+/** 고정 OpenAPI가 닫은 처분 유형 셋에 선별(`SORT`)을 더한다 — 선별은 서버 선행이다(omf-all-around#108 · P-53). */
 export const DISPOSITION_TYPE_CODES = ['REWORK', 'SCRAP', 'NORMAL', 'SORT'] as const;
 export type DispositionTypeCode = (typeof DISPOSITION_TYPE_CODES)[number];
 
