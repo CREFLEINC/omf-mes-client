@@ -142,6 +142,15 @@ export const workOrder = {
     /** 별표 옆 한마디 — 칸 아래에 문장을 다시 쓰지 않는다(사용자 지시 2026-09-20) */
     requiredHint: '필수 입력',
     clearOption: '배정 없음',
+    /** 품목 설비·금형 매핑과 최근 사용에서 온 후보 — 누르면 그 칸에 배정한다. */
+    recommendation: {
+      label: '추천',
+      sources: { DEFAULT: '기본', MAPPED: '매핑', RECENT: '최근' },
+      busy: '같은 시간대 배정 있음',
+      outOfService: '비가동',
+      /* 지금 칸의 값과 같은 후보. 색만으로 알리지 않는다. */
+      assigned: '배정됨',
+    },
     cards: { machine: 'Machine', man: 'Man', tool: 'Tool/Mold', material: 'Location' },
     fields: {
       productionLine: '생산 라인',

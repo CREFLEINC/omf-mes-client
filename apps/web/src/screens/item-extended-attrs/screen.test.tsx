@@ -19,6 +19,7 @@ import {
   businessUnitFixtures,
   externalCodeFixtures,
   itemFixtures,
+  itemResourceMapFixtures,
   partnerFixtures,
   processFixtures,
   routingFixtures,
@@ -27,6 +28,8 @@ import {
   uomFixtures,
 } from './fixtures';
 import { ItemExtendedAttrsScreen } from './screen';
+
+type ItemResourceMapRow = (typeof itemResourceMapFixtures)[number];
 
 const ROUTE = '/master-data/item-extended-attrs';
 
@@ -4398,5 +4401,408 @@ describe('ItemExtendedAttrsScreen — 등록 공정 2단 조회의 조건', () =
       screen.getByText('위에서 자재 명세서를 고르면 여기에 그 내용과 구성품이 보입니다'),
     ).toBeInTheDocument();
     expect(routingOperationGets(requests)).toHaveLength(2);
+  });
+});
+
+/* ── 설비·금형 매핑 ───────────────────────────────────────────────────────── */
+
+const RESOURCE_MAPS_PATH = '/mdm/item-resource-maps';
+
+const paged = (items: unknown[]) => ({ items, page: { page: 1, size: 200, total: items.length } });
+
+const resourceMapRoutes = (rows = itemResourceMapFixtures): StubRoute[] => [
+  ...subsidiaryRoutes(),
+  processesRoute(),
+  {
+    match: (request) => isGet(request, '/mdm/plants'),
+    respond: () =>
+      jsonResponse(
+        paged([
+          { plantId: 9001, plantCode: 'SYN-PLANT-01', plantName: '합성 공장', isActive: true },
+        ]),
+      ),
+  },
+  {
+    match: (request) => isGet(request, '/mdm/equipments'),
+    respond: () =>
+      jsonResponse(
+        paged([
+          {
+            equipmentId: 8001,
+            equipmentCode: 'SYN-EQ-01',
+            equipmentName: '합성 설비 A',
+            isActive: true,
+          },
+        ]),
+      ),
+  },
+  {
+    match: (request) => isGet(request, '/mdm/molds'),
+    respond: () =>
+      jsonResponse(
+        paged([
+          { moldId: 8501, moldCode: 'SYN-MOLD-01', moldName: '합성 금형 A', isActive: true },
+          { moldId: 8503, moldCode: 'SYN-MOLD-03', moldName: '합성 금형 C', isActive: true },
+        ]),
+      ),
+  },
+  {
+    match: (request) => isGet(request, RESOURCE_MAPS_PATH),
+    respond: () => jsonResponse({ items: rows }),
+  },
+  {
+    match: (request) =>
+      request.method === 'POST' && new URL(request.url).pathname === RESOURCE_MAPS_PATH,
+    respond: () => jsonResponse(itemResourceMapFixtures[1], { status: 201 }),
+  },
+  {
+    match: (request) =>
+      request.method === 'PUT' &&
+      new URL(request.url).pathname.startsWith(`${RESOURCE_MAPS_PATH}/`),
+    respond: () => jsonResponse(itemResourceMapFixtures[0], { headers: { ETag: '4' } }),
+  },
+];
+
+const resourceMapWrites = (requests: RecordedRequest[], method: 'POST' | 'PUT') =>
+  requests.filter(
+    (request) => request.method === method && request.url.pathname.startsWith(RESOURCE_MAPS_PATH),
+  );
+
+const findResourceMapPane = () => screen.findByRole('region', { name: '설비·금형' });
+
+describe('ItemExtendedAttrsScreen — 설비·금형 매핑', () => {
+  it('하위 탭에 「설비·금형」이 있다', async () => {
+    renderScreen(subsidiaryRoutes(), '?item=1001&tab=sub');
+
+    expect(await screen.findByRole('tab', { name: '설비·금형' })).toBeInTheDocument();
+  });
+
+  /* 다른 하위 탭에서는 받지 않는다 — 공장·설비·금형 목록까지 덩달아 받게 된다. */
+  it('다른 하위 탭에서는 매핑을 조회하지 않는다', async () => {
+    const { requests } = renderScreen(subsidiaryRoutes(), '?item=1001&tab=sub&sub=uom');
+
+    await screen.findByRole('region', { name: '단위 환산' });
+
+    expect(requests.some((request) => request.url.pathname === RESOURCE_MAPS_PATH)).toBe(false);
+  });
+
+  it('하나뿐인 공장으로 사용 중지한 줄까지 조회해 표에 낸다', async () => {
+    const { requests } = renderScreen(resourceMapRoutes(), '?item=1001&tab=sub&sub=res');
+
+    const pane = await findResourceMapPane();
+    expect(await within(pane).findByText('SYN-EQ-01 · 합성 설비 A')).toBeInTheDocument();
+
+    const get = requests.find((request) => request.url.pathname === RESOURCE_MAPS_PATH)!;
+    expect(Object.fromEntries(get.url.searchParams)).toEqual({
+      itemId: '1001',
+      plantId: '9001',
+      includeInactive: 'true',
+    });
+  });
+
+  it('등록은 POST 한 번이고 공장·품목을 싣고 If-Match가 없다', async () => {
+    const { requests, user } = renderScreen(resourceMapRoutes([]), '?item=1001&tab=sub&sub=res');
+
+    const pane = await findResourceMapPane();
+    await within(pane).findByText('등록된 설비·금형 매핑이 없습니다');
+    await user.click(within(pane).getByRole('button', { name: '매핑 추가' }));
+
+    const dialog = await screen.findByRole('dialog', { name: '설비·금형 매핑 추가' });
+    await user.click(within(dialog).getByLabelText('금형'));
+    await user.click(await screen.findByRole('option', { name: 'SYN-MOLD-03 · 합성 금형 C' }));
+    await user.click(within(dialog).getByRole('button', { name: '저장' }));
+
+    await waitFor(() => {
+      expect(resourceMapWrites(requests, 'POST')).toHaveLength(1);
+    });
+
+    const post = resourceMapWrites(requests, 'POST')[0]!;
+    expect(JSON.parse(post.body)).toEqual({
+      plantId: 9001,
+      itemId: 1001,
+      processId: null,
+      equipmentId: null,
+      moldId: 8503,
+      isDefault: false,
+      priorityNo: 100,
+      remarks: null,
+    });
+    expect(post.headers.get('Idempotency-Key')).toMatch(UUID);
+    expect(post.headers.has('If-Match')).toBe(false);
+
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    });
+  });
+
+  it('서버가 화면 범위 중복으로 거부하면 창 안 배너에 화면의 중복 문구가 난다', async () => {
+    const duplicate: StubRoute = {
+      match: (request) =>
+        request.method === 'POST' && new URL(request.url).pathname === RESOURCE_MAPS_PATH,
+      respond: () =>
+        jsonResponse(
+          {
+            errors: [
+              {
+                scope: 'screen',
+                code: 'UNIQUE_VIOLATION',
+                message: '같은 품목·공정·설비·금형 매핑이 이미 있습니다.',
+                uniqueScope: ['plantId', 'itemId', 'processId', 'equipmentId', 'moldId'],
+              },
+            ],
+          },
+          { status: 400 },
+        ),
+    };
+    const { user } = renderScreen(
+      [duplicate, ...resourceMapRoutes([])],
+      '?item=1001&tab=sub&sub=res',
+    );
+
+    const pane = await findResourceMapPane();
+    await within(pane).findByText('등록된 설비·금형 매핑이 없습니다');
+    await user.click(within(pane).getByRole('button', { name: '매핑 추가' }));
+
+    const dialog = await screen.findByRole('dialog', { name: '설비·금형 매핑 추가' });
+    await user.click(within(dialog).getByLabelText('금형'));
+    await user.click(await screen.findByRole('option', { name: 'SYN-MOLD-03 · 합성 금형 C' }));
+    await user.click(within(dialog).getByRole('button', { name: '저장' }));
+
+    expect(
+      await within(dialog).findByText(/사용 중지한 줄이면 다시 사용으로 되살리세요/),
+    ).toBeInTheDocument();
+    expect(within(dialog).queryByText('같은 품목·공정·설비·금형 매핑이 이미 있습니다.')).toBeNull();
+  });
+
+  it('수정은 그 줄의 versionNo를 If-Match로 보낸다', async () => {
+    const { requests, user } = renderScreen(resourceMapRoutes(), '?item=1001&tab=sub&sub=res');
+
+    const pane = await findResourceMapPane();
+    await user.click(
+      await within(pane).findByRole('button', {
+        name: 'SYN-PROC-01 · 합성 공정 가 / SYN-EQ-01 / SYN-MOLD-01 매핑 수정',
+      }),
+    );
+
+    const dialog = await screen.findByRole('dialog', { name: '설비·금형 매핑 수정' });
+    await user.clear(within(dialog).getByLabelText('비고'));
+    await user.click(within(dialog).getByRole('button', { name: '저장' }));
+
+    await waitFor(() => {
+      expect(resourceMapWrites(requests, 'PUT')).toHaveLength(1);
+    });
+
+    const put = resourceMapWrites(requests, 'PUT')[0]!;
+    expect(put.url.pathname).toBe('/mdm/item-resource-maps/6001');
+    expect(put.headers.get('If-Match')).toBe('3');
+    expect(JSON.parse(put.body)).toEqual({
+      processId: 3001,
+      equipmentId: 8001,
+      moldId: 8501,
+      isDefault: true,
+      priorityNo: 10,
+      remarks: null,
+    });
+  });
+
+  it('기본 지정은 바꾸는 칸만 싣고 그 줄의 versionNo로 잠근다', async () => {
+    const { requests, user } = renderScreen(resourceMapRoutes(), '?item=1001&tab=sub&sub=res');
+
+    const pane = await findResourceMapPane();
+    await user.click(
+      await within(pane).findByRole('button', { name: '품목 공통 / SYN-MOLD-02 기본 지정' }),
+    );
+
+    await waitFor(() => {
+      expect(resourceMapWrites(requests, 'PUT')).toHaveLength(1);
+    });
+
+    const put = resourceMapWrites(requests, 'PUT')[0]!;
+    expect(put.url.pathname).toBe('/mdm/item-resource-maps/6002');
+    expect(put.headers.get('If-Match')).toBe('1');
+    expect(JSON.parse(put.body)).toEqual({ isDefault: true });
+  });
+
+  it('다시 사용은 isActive만 바꾼다', async () => {
+    const { requests, user } = renderScreen(resourceMapRoutes(), '?item=1001&tab=sub&sub=res');
+
+    const pane = await findResourceMapPane();
+    await user.click(
+      await within(pane).findByRole('button', {
+        name: 'SYN-PROC-01 · 합성 공정 가 / SYN-EQ-02 다시 사용',
+      }),
+    );
+
+    await waitFor(() => {
+      expect(resourceMapWrites(requests, 'PUT')).toHaveLength(1);
+    });
+
+    const put = resourceMapWrites(requests, 'PUT')[0]!;
+    expect(put.headers.get('If-Match')).toBe('5');
+    expect(JSON.parse(put.body)).toEqual({ isActive: true });
+  });
+});
+
+/**
+ * 줄 쓰기는 목록의 `versionNo`로 잠근다 — 쓰고 나면 목록을 다시 받아야 다음 쓰기가 새 판을 쓴다.
+ * 목록 조회와 `PUT`의 응답을 차례대로 바꿔 가며 그 흐름을 잰다.
+ */
+describe('ItemExtendedAttrsScreen — 설비·금형 매핑의 판 갱신', () => {
+  const [defaultRow, commonRow, inactiveRow] = itemResourceMapFixtures as [
+    ItemResourceMapRow,
+    ItemResourceMapRow,
+    ItemResourceMapRow,
+  ];
+
+  /** 목록은 `lists`를 차례로 내고 마지막 것을 되풀이한다. `PUT`도 `puts`를 같은 식으로 낸다. */
+  const sequencedRoutes = (
+    lists: ItemResourceMapRow[][],
+    puts: (() => Response)[],
+  ): StubRoute[] => {
+    let listCall = 0;
+    let putCall = 0;
+
+    return [
+      {
+        match: (request) => isGet(request, RESOURCE_MAPS_PATH),
+        respond: () => {
+          const items = lists[Math.min(listCall, lists.length - 1)]!;
+          listCall += 1;
+          return jsonResponse({ items });
+        },
+      },
+      {
+        match: (request) =>
+          request.method === 'PUT' &&
+          new URL(request.url).pathname.startsWith(`${RESOURCE_MAPS_PATH}/`),
+        respond: () => {
+          const respond = puts[Math.min(putCall, puts.length - 1)]!;
+          putCall += 1;
+          return respond();
+        },
+      },
+      /* 스텁은 앞의 것이 이긴다 — 기본 목록·`PUT` 규칙보다 먼저 둔다. */
+      ...resourceMapRoutes(),
+    ];
+  };
+
+  const conflict = () => jsonResponse({ conflictCause: 'user', message: '충돌' }, { status: 409 });
+  const saved = () => jsonResponse(defaultRow, { headers: { ETag: '9' } });
+
+  const listGets = (requests: RecordedRequest[]) =>
+    requests.filter(
+      (request) => request.method === 'GET' && request.url.pathname === RESOURCE_MAPS_PATH,
+    );
+
+  const rowWithText = (pane: HTMLElement, text: string): HTMLElement => {
+    const row = within(pane)
+      .getAllByRole('row')
+      .find((item) => within(item).queryByText(text) !== null);
+    if (row === undefined) throw new Error(`${text} 줄이 없습니다`);
+    return row;
+  };
+
+  it('기본 지정 뒤 목록을 다시 받고 앞의 기본 표시가 사라진다', async () => {
+    const afterSetDefault = [
+      { ...commonRow, isDefault: true, versionNo: commonRow.versionNo + 1 },
+      { ...defaultRow, isDefault: false, versionNo: defaultRow.versionNo + 1 },
+      inactiveRow,
+    ];
+    const { requests, user } = renderScreen(
+      sequencedRoutes([itemResourceMapFixtures, afterSetDefault], [saved]),
+      '?item=1001&tab=sub&sub=res',
+    );
+
+    const pane = await findResourceMapPane();
+    await user.click(
+      await within(pane).findByRole('button', { name: '품목 공통 / SYN-MOLD-02 기본 지정' }),
+    );
+
+    await waitFor(() => {
+      expect(listGets(requests)).toHaveLength(2);
+    });
+    await waitFor(() => {
+      expect(within(rowWithText(pane, 'SYN-EQ-01 · 합성 설비 A')).queryByText('기본')).toBeNull();
+    });
+    expect(
+      within(rowWithText(pane, 'SYN-MOLD-02 · 합성 금형 B')).getByText('기본'),
+    ).toBeInTheDocument();
+  });
+
+  it('편집 창의 저장이 충돌하면 창에 안내가 나고, 최신 불러오기가 창을 닫고 목록을 다시 받는다', async () => {
+    const { requests, user } = renderScreen(
+      sequencedRoutes([itemResourceMapFixtures], [conflict]),
+      '?item=1001&tab=sub&sub=res',
+    );
+
+    const pane = await findResourceMapPane();
+    await user.click(
+      await within(pane).findByRole('button', {
+        name: 'SYN-PROC-01 · 합성 공정 가 / SYN-EQ-01 / SYN-MOLD-01 매핑 수정',
+      }),
+    );
+
+    const dialog = await screen.findByRole('dialog', { name: '설비·금형 매핑 수정' });
+    await user.clear(within(dialog).getByLabelText('비고'));
+    await user.click(within(dialog).getByRole('button', { name: '저장' }));
+
+    expect(
+      await within(dialog).findByText(
+        '다른 사용자가 먼저 저장했습니다. 최신 내용을 불러온 뒤 다시 저장하세요.',
+      ),
+    ).toBeInTheDocument();
+    expect(listGets(requests)).toHaveLength(1);
+
+    await user.click(within(dialog).getByRole('button', { name: '최신 불러오기' }));
+
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    });
+    await waitFor(() => {
+      expect(listGets(requests)).toHaveLength(2);
+    });
+  });
+
+  it('줄 작업이 충돌하면 표 위에 안내가 나고, 다시 받은 뒤 같은 버튼은 새 판으로 나간다', async () => {
+    const refreshed = [
+      defaultRow,
+      { ...commonRow, versionNo: commonRow.versionNo + 4 },
+      inactiveRow,
+    ];
+    const { requests, user } = renderScreen(
+      sequencedRoutes([itemResourceMapFixtures, refreshed], [conflict, saved]),
+      '?item=1001&tab=sub&sub=res',
+    );
+
+    const pane = await findResourceMapPane();
+    const setDefaultName = '품목 공통 / SYN-MOLD-02 기본 지정';
+    await user.click(await within(pane).findByRole('button', { name: setDefaultName }));
+
+    expect(
+      await within(pane).findByText(
+        '다른 사용자가 먼저 저장했습니다. 최신 내용을 불러온 뒤 다시 저장하세요.',
+      ),
+    ).toBeInTheDocument();
+    expect(resourceMapWrites(requests, 'PUT')[0]?.headers.get('If-Match')).toBe(
+      String(commonRow.versionNo),
+    );
+
+    await user.click(within(pane).getByRole('button', { name: '최신 불러오기' }));
+
+    await waitFor(() => {
+      expect(listGets(requests)).toHaveLength(2);
+    });
+    await waitFor(() => {
+      expect(within(pane).getByRole('button', { name: setDefaultName })).toBeEnabled();
+    });
+
+    await user.click(within(pane).getByRole('button', { name: setDefaultName }));
+
+    await waitFor(() => {
+      expect(resourceMapWrites(requests, 'PUT')).toHaveLength(2);
+    });
+    expect(resourceMapWrites(requests, 'PUT')[1]?.headers.get('If-Match')).toBe(
+      String(commonRow.versionNo + 4),
+    );
   });
 });

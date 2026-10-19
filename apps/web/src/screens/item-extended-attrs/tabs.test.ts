@@ -64,8 +64,8 @@ describe('resolveTab', () => {
  * 층이 다르다고 해석 규칙을 달리하면 주소를 읽는 사람이 두 가지를 외워야 한다.
  */
 describe('하위 탭 정의', () => {
-  it('부속 자원 셋이 들어 있다', () => {
-    expect(SUBSIDIARY_TABS.map((tab) => tab.id)).toEqual(['bu', 'uom', 'ext']);
+  it('부속 자원 하위 탭이 정해진 순서로 들어 있다', () => {
+    expect(SUBSIDIARY_TABS.map((tab) => tab.id)).toEqual(['bu', 'uom', 'ext', 'res']);
   });
 
   it('하위 탭마다 라벨이 있다', () => {
@@ -92,6 +92,7 @@ describe('resolveSubsidiaryTab', () => {
   it('아는 값은 그 하위 탭이다', () => {
     expect(resolveSubsidiaryTab('uom').id).toBe('uom');
     expect(resolveSubsidiaryTab('ext').id).toBe('ext');
+    expect(resolveSubsidiaryTab('res').id).toBe('res');
   });
 
   it('모르는 값·빈 값은 첫 하위 탭으로 떨어진다', () => {

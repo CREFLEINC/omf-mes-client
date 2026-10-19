@@ -25,6 +25,7 @@ export const itemExtendedAttrs: Translated<typeof ko.itemExtendedAttrs> = {
     buMap: 'Ánh xạ đơn vị kinh doanh',
     uomConversion: 'Quy đổi đơn vị',
     externalCode: 'Mã ngoài',
+    resourceMap: 'Thiết bị · khuôn',
   },
   panes: {
     item: 'Mặt hàng',
@@ -291,6 +292,72 @@ export const itemExtendedAttrs: Translated<typeof ko.itemExtendedAttrs> = {
         'Đã có dòng trùng cả hệ thống ngoài và đối tác. Các dòng để trống đối tác cũng được xem là trùng nhau.',
       duplicateInList:
         'Có dòng trùng cả hệ thống ngoài và đối tác. Các dòng để trống đối tác cũng được xem là trùng nhau nên hãy dọn các dòng trùng.',
+    },
+  },
+  /* 부속 하위 탭 - 설비·금형 매핑. 다른 부속 하위 탭과 달리 줄마다 바로 저장한다. */
+  itemResourceMap: {
+    paneTitle: 'Thiết bị · khuôn',
+    fields: {
+      plant: 'Nhà máy',
+      isDefault: 'Mặc định',
+      process: 'Công đoạn',
+      equipment: 'Thiết bị',
+      mold: 'Khuôn',
+      priorityNo: 'Thứ tự ưu tiên',
+      isActive: 'Trạng thái sử dụng',
+      remarks: 'Ghi chú',
+      actions: 'Thao tác',
+    },
+    values: {
+      allProcesses: 'Chung cho mặt hàng',
+      none: '(Không có)',
+      isDefault: 'Mặc định',
+      active: 'Đang dùng',
+      inactive: 'Ngừng dùng',
+    },
+    notes: {
+      process:
+        'Để trống là chung cho mặt hàng. Chỉ áp dụng cho công đoạn cần thiết bị · khuôn trong quy trình.',
+      priorityNo: 'Số càng nhỏ càng được đề xuất trước.',
+      isDefault: 'Mặc định cũ của cùng công đoạn sẽ tự động bị bỏ.',
+      plantFixed: 'Không đổi được nhà máy. Nếu là nhà máy khác, hãy đăng ký mới.',
+      defaultNeedsActive:
+        'Không đặt làm mặc định được. Dòng này đã ngừng dùng. Hãy «Dùng lại» trong bảng rồi đặt.',
+    },
+    search: {
+      equipment: 'Tìm thiết bị',
+      mold: 'Tìm khuôn',
+      placeholder: 'Mã hoặc tên',
+      noMatch: 'Không có mục khớp từ khóa.',
+    },
+    actions: {
+      add: 'Thêm liên kết',
+      setDefault: 'Đặt mặc định',
+      deactivate: 'Ngừng dùng',
+      reactivate: 'Dùng lại',
+      editRow: (name: string): string => `Sửa liên kết ${name}`,
+      setDefaultRow: (name: string): string => `Đặt ${name} làm mặc định`,
+      deactivateRow: (name: string): string => `Ngừng dùng ${name}`,
+      reactivateRow: (name: string): string => `Dùng lại ${name}`,
+    },
+    loading: {
+      list: 'Đang tải liên kết thiết bị · khuôn',
+    },
+    empty: {
+      noneTitle: 'Chưa đăng ký liên kết thiết bị · khuôn',
+      noneDescription: 'Hãy đăng ký thiết bị · khuôn dùng cho mặt hàng này bằng «Thêm liên kết».',
+      noPlant: 'Chọn nhà máy để xem liên kết',
+    },
+    dialog: {
+      addTitle: 'Thêm liên kết thiết bị · khuôn',
+      editTitle: 'Sửa liên kết thiết bị · khuôn',
+    },
+    validation: {
+      required: 'Đây là mục bắt buộc.',
+      equipmentOrMold: 'Phải chọn thiết bị hoặc khuôn.',
+      priorityNoInvalid: 'Hãy nhập thứ tự ưu tiên là số nguyên từ 0 trở lên.',
+      duplicate:
+        'Đã có liên kết trùng công đoạn · thiết bị · khuôn. Nếu là dòng đã ngừng dùng, hãy dùng lại.',
     },
   },
   /*

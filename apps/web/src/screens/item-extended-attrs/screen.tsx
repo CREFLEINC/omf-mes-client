@@ -68,6 +68,7 @@ import { isSameItemAttrsValues, itemToAttrsFormValues, toItemUpdate } from './it
 import { ITEM_ATTRS_FORM_FIELDS, validateItemAttrsForm } from './item-attrs-validation';
 import { ItemListPane } from './item-list-pane';
 import { ItemOriginPane } from './item-origin-pane';
+import { ItemResourceMapSection } from './item-resource-map-section';
 import { itemDetailPath, itemKeys, useItemDetail, useItemList, useItemNames } from './item-queries';
 import { LoadErrorBanner } from './load-error-banner';
 import {
@@ -1234,6 +1235,10 @@ export const ItemExtendedAttrsScreen = () => {
     if (subTabId === 'bu') return renderBuMapPane();
     if (subTabId === 'uom') return renderUomConversionPane();
     if (subTabId === 'ext') return renderExternalCodePane();
+    /* 품목 번호를 `key`로 준다 — 품목이 바뀌면 열린 창·쓰기 오류가 다음 품목에 따라가지 않는다. */
+    if (subTabId === 'res' && selectedItemId !== null) {
+      return <ItemResourceMapSection key={selectedItemId} itemId={selectedItemId} />;
+    }
 
     return null;
   };
