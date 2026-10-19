@@ -21,7 +21,14 @@ const NOTICE_SCREEN_PATH = '/notification/notices';
 interface OwnedDraft {
   ownerKey: number | null;
   value: WorkOrderReleaseDraft;
+  /** 사람이 한 번이라도 고쳤으면 늦게 도착한 기본값으로 덮지 않는다. */
+  edited: boolean;
 }
+
+const initialDraft = (defaultLotSize: number | null): WorkOrderReleaseDraft =>
+  defaultLotSize === null
+    ? EMPTY_WORK_ORDER_RELEASE_DRAFT
+    : { ...EMPTY_WORK_ORDER_RELEASE_DRAFT, lotSizeText: String(defaultLotSize) };
 
 const formatQuantity = (value: number): string =>
   new Intl.NumberFormat('ko-KR', { maximumFractionDigits: 6 }).format(value);
@@ -36,6 +43,8 @@ export interface WorkOrderReleaseInputPaneProps {
   fieldErrors?: Partial<Record<ReleaseField, string>>;
   onClearFieldError?: (field: ReleaseField) => void;
   onBodyChange: (body: WorkOrderRelease | null) => void;
+  /** 품목 기본 생산 LOT 크기. 단위가 맞지 않거나 없으면 null — 빈칸에서 시작한다. */
+  defaultLotSize?: number | null;
 }
 
 export const WorkOrderReleaseInputPane = ({
@@ -47,25 +56,37 @@ export const WorkOrderReleaseInputPane = ({
   fieldErrors = {},
   onClearFieldError,
   onBodyChange,
+  defaultLotSize = null,
 }: WorkOrderReleaseInputPaneProps) => {
   const navigate = useNavigate();
   const handoverNoteId = useId();
   const [ownedDraft, setOwnedDraft] = useState<OwnedDraft>({
     ownerKey,
-    value: EMPTY_WORK_ORDER_RELEASE_DRAFT,
+    value: initialDraft(defaultLotSize),
+    edited: false,
   });
-  const draft =
-    ownedDraft.ownerKey === ownerKey ? ownedDraft.value : EMPTY_WORK_ORDER_RELEASE_DRAFT;
+  const draft = ownedDraft.ownerKey === ownerKey ? ownedDraft.value : initialDraft(defaultLotSize);
+  const isDefaulted =
+    !ownedDraft.edited && defaultLotSize !== null && draft.lotSizeText === String(defaultLotSize);
   const evaluation = useMemo(
     () => evaluateWorkOrderReleaseDraft(draft, orderQty),
     [draft, orderQty],
   );
 
   useEffect(() => {
-    if (ownedDraft.ownerKey !== ownerKey) {
-      setOwnedDraft({ ownerKey, value: EMPTY_WORK_ORDER_RELEASE_DRAFT });
+    if (ownedDraft.ownerKey !== ownerKey || (!ownedDraft.edited && defaultLotSize !== null)) {
+      const next = initialDraft(defaultLotSize);
+      if (ownedDraft.ownerKey === ownerKey && ownedDraft.value.lotSizeText === next.lotSizeText)
+        return;
+      setOwnedDraft({ ownerKey, value: next, edited: false });
     }
-  }, [ownedDraft.ownerKey, ownerKey]);
+  }, [
+    defaultLotSize,
+    ownedDraft.edited,
+    ownedDraft.ownerKey,
+    ownedDraft.value.lotSizeText,
+    ownerKey,
+  ]);
   useEffect(() => onBodyChange(evaluation.body), [evaluation.body, onBodyChange]);
 
   if (ownerKey === null || orderQty === null) {
@@ -81,9 +102,10 @@ export const WorkOrderReleaseInputPane = ({
     setOwnedDraft((current) => ({
       ownerKey,
       value: {
-        ...(current.ownerKey === ownerKey ? current.value : EMPTY_WORK_ORDER_RELEASE_DRAFT),
+        ...(current.ownerKey === ownerKey ? current.value : initialDraft(defaultLotSize)),
         [field === 'lotSize' ? 'lotSizeText' : 'handoverNote']: value,
       },
+      edited: true,
     }));
     onClearFieldError?.(field);
   };
@@ -110,6 +132,7 @@ export const WorkOrderReleaseInputPane = ({
           }
           /* 단위는 값 바로 옆이 가장 읽기 쉽다 — 서버가 준 단위를 그대로 붙인다. */
           trailingIcon={<span className="work-order-release-unit">{unit}</span>}
+          helperText={isDefaulted && lockedReason === null ? t.lotSizeDefaulted : undefined}
           onChange={(event) => update('lotSize', event.target.value)}
         />
         <TextArea

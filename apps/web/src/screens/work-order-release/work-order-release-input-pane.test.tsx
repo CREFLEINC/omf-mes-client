@@ -132,4 +132,27 @@ describe('WorkOrderReleaseInputPane', () => {
     expect(screen.queryByText(t.locked.bySetup)).toBeNull();
     expect(screen.queryByText(/SYN BLOCK REASON/)).toBeNull();
   });
+
+  it('품목 기본 LOT 크기로 채우고 안내를 보이며, 고치면 안내를 거둔다', async () => {
+    const { props, user } = renderPane({ defaultLotSize: 500 });
+    const lotSize = screen.getByRole('textbox', { name: new RegExp(t.fields.lotSize) });
+
+    expect(lotSize).toHaveValue('500');
+    expect(screen.getByText(t.lotSizeDefaulted)).toBeVisible();
+    await waitFor(() =>
+      expect(props.onBodyChange).toHaveBeenLastCalledWith(
+        expect.objectContaining({ lotSize: 500 }),
+      ),
+    );
+
+    await user.clear(lotSize);
+    await user.type(lotSize, '250');
+    expect(lotSize).toHaveValue('250');
+    expect(screen.queryByText(t.lotSizeDefaulted)).toBeNull();
+  });
+
+  it('기본값이 없으면 빈칸에서 시작한다', () => {
+    renderPane({ defaultLotSize: null });
+    expect(screen.getByRole('textbox', { name: new RegExp(t.fields.lotSize) })).toHaveValue('');
+  });
 });

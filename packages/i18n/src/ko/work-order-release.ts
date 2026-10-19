@@ -28,6 +28,8 @@ export const workOrderRelease = {
     heading: '생산LOT 선발행',
     /** 전달사항은 비워 보낼 수 있다(`release-draft` 가 빈 값을 본문에서 뺀다) */
     fields: { lotSize: 'LOT 크기', handoverNote: '전달사항 (선택)' },
+    /** 품목 확장속성의 기본 생산 LOT 크기로 채웠을 때 칸 아래 안내 */
+    lotSizeDefaulted: '품목 기본 LOT 크기로 채웠습니다. 바꿀 수 있습니다.',
     helper: {
       /** 라벨 옆 안내 — 옆 단추가 그 화면(W-CO-04 공지·전달 게시/조회)을 연다 */
       handoverNote: '공지 확인 이력은 별도 화면에서 관리합니다.',
@@ -99,6 +101,27 @@ export const workOrderRelease = {
     retryDetail: '작업지시 상세 다시 시도',
     retryValidation: '작업지시 검증 다시 시도',
     reloadDetail: '작업지시 상세 다시 불러오기',
+  },
+  /** 여러 W/O 를 품목 기본 LOT 크기로 한 번에 배포한다 */
+  bulk: {
+    selectAll: '이 쪽의 배포 후보 모두 선택',
+    selectRow: (workOrderNo: string): string => `${workOrderNo} 일괄 배포에 넣기`,
+    action: (count: number): string => `선택한 ${String(count)}건 일괄 배포`,
+    dialogTitle: (count: number): string => `${String(count)}건을 일괄 배포할까요?`,
+    dialogBody:
+      '건마다 품목 기본 LOT 크기로 생산 LOT 을 선발행하고 자재 출고요청을 만듭니다. 되돌릴 수 없습니다. 4M 설정이 덜 됐거나 품목 기본 LOT 크기가 없는 건은 건너뜁니다.',
+    confirm: '일괄 배포',
+    cancel: '취소',
+    running: '일괄 배포 중입니다…',
+    resultTitle: (released: number, skipped: number, failed: number): string =>
+      `일괄 배포 결과 — 배포 ${String(released)} · 건너뜀 ${String(skipped)} · 실패 ${String(failed)}`,
+    close: '닫기',
+    reasons: {
+      setupMissing: '생산 라인·기본 위치가 설정되지 않았습니다(4M 자원배정).',
+      noDefaultLotSize: '품목 기본 LOT 크기가 없거나 단위가 다릅니다(품목 확장속성).',
+      failed: '배포하지 못했습니다.',
+    },
+    status: { released: '배포', skipped: '건너뜀', failed: '실패' },
   },
   candidateList: {
     pane: '배포 후보 작업지시 목록',

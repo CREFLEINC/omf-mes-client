@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
-import { formatPlantDateTime, PLANT_TIME_ZONE, toPlantDateTimeParts } from './plant-time';
+import {
+  PLANT_TIME_ZONE,
+  formatPlantDateTime,
+  plantToday,
+  toPlantDateTimeParts,
+} from './plant-time';
 
 /*
  * ⭐ 결과는 실행 환경의 TZ 와 무관해야 한다 — 변환 기준이 `PLANT_TIME_ZONE` 고정값이기 때문이다.
@@ -44,5 +49,12 @@ describe('toPlantDateTimeParts — 공장 시각(Asia/Ho_Chi_Minh) 표시', () =
     expect(toPlantDateTimeParts(null)).toBeNull();
     expect(toPlantDateTimeParts(undefined)).toBeNull();
     expect(toPlantDateTimeParts('2026-13-45T25:99:00Z')).toBeNull();
+  });
+});
+
+describe('plantToday', () => {
+  it('공장 날짜다 — UTC 로 아직 전날이어도 베트남 아침이면 그날이다', () => {
+    expect(plantToday(new Date('2026-10-19T18:30:00Z'))).toBe('2026-10-20');
+    expect(plantToday(new Date('2026-10-19T16:30:00Z'))).toBe('2026-10-19');
   });
 });
