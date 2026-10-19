@@ -30,9 +30,9 @@ describe('TrendPanel 점 툴팁', () => {
     const user = userEvent.setup();
     render(<TrendPanel view={view} baseDate="2026-10-16" isLoading={false} />);
 
-    const hit = screen.getByRole('button', { name: '2026.10.14 1,250,000 EA' });
+    const hit = screen.getByRole('button', { name: '2026-10-14 1,250,000 EA' });
     await user.hover(hit);
-    expect(screen.getByRole('tooltip')).toHaveTextContent(/2026\.10\.14.*1,250,000/);
+    expect(screen.getByRole('tooltip')).toHaveTextContent(/2026-10-14.*1,250,000/);
     await user.unhover(hit);
     expect(screen.queryByRole('tooltip')).not.toBeInTheDocument();
   });
@@ -42,9 +42,9 @@ describe('TrendPanel 점 툴팁', () => {
     render(<TrendPanel view={view} baseDate="2026-10-16" isLoading={false} />);
 
     await user.tab();
-    expect(screen.getByRole('tooltip')).toHaveTextContent(/2026\.10\.14.*1,250,000/);
+    expect(screen.getByRole('tooltip')).toHaveTextContent(/2026-10-14.*1,250,000/);
     await user.tab();
-    expect(screen.getByRole('tooltip')).toHaveTextContent(/2026\.10\.15.*0/);
+    expect(screen.getByRole('tooltip')).toHaveTextContent(/2026-10-15.*0/);
     await user.keyboard('{Escape}');
     expect(screen.queryByRole('tooltip')).not.toBeInTheDocument();
   });
@@ -56,10 +56,10 @@ describe('TrendPanel 점 툴팁', () => {
         <TrendPanel view={view} baseDate="2026-10-16" isLoading={false} />
       </div>,
     );
-    const hit = screen.getByRole('button', { name: '2026.10.16 32,000 EA' });
+    const hit = screen.getByRole('button', { name: '2026-10-16 32,000 EA' });
 
     fireEvent.click(hit);
-    expect(screen.getByRole('tooltip')).toHaveTextContent(/2026\.10\.16.*32,000/);
+    expect(screen.getByRole('tooltip')).toHaveTextContent(/2026-10-16.*32,000/);
     fireEvent.pointerDown(screen.getByText('바깥'));
     expect(screen.queryByRole('tooltip')).not.toBeInTheDocument();
   });
@@ -68,16 +68,16 @@ describe('TrendPanel 점 툴팁', () => {
     const user = userEvent.setup();
     render(<TrendPanel view={view} baseDate="2026-10-16" isLoading={false} />);
 
-    await user.hover(screen.getByRole('button', { name: '2026.10.14 1,250,000 EA' }));
+    await user.hover(screen.getByRole('button', { name: '2026-10-14 1,250,000 EA' }));
     const tip = screen.getByRole('tooltip');
-    expect(tip.querySelector('.dash-trend-tip-date')).toHaveTextContent('2026.10.14');
+    expect(tip.querySelector('.dash-trend-tip-date')).toHaveTextContent('2026-10-14');
     expect(tip.querySelector('.dash-trend-tip-value')).toHaveTextContent('1,250,000EA');
     expect(tip.querySelector('.dash-trend-tip-unit')).toHaveTextContent('EA');
   });
 
   it('날짜 연도 — 기준일 연도, 기준일보다 뒤의 월-일이면 지난해, 꼴이 다르면 그대로', () => {
-    expect(toTipDate('10-13', '2026-10-16')).toBe('2026.10.13');
-    expect(toTipDate('12-30', '2027-01-03')).toBe('2026.12.30');
+    expect(toTipDate('10-13', '2026-10-16')).toBe('2026-10-13');
+    expect(toTipDate('12-30', '2027-01-03')).toBe('2026-12-30');
     expect(toTipDate('기타', '2026-10-16')).toBe('기타');
     expect(toTipDate('10-13', null)).toBe('10-13');
   });

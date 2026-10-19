@@ -49,10 +49,10 @@ describe('alertTimeOf', () => {
     locationPath: null,
   });
 
-  it('오늘 · 지난날 · 지난해 모두 YYYY.MM.DD HH:mm(공장 시각 UTC+7, 24시간제) 한 형식', () => {
-    expect(alertTimeOf(view('2026-10-16T07:02:00Z'))).toBe('2026.10.16 14:02');
-    expect(alertTimeOf(view('2026-10-14T07:18:00Z'))).toBe('2026.10.14 14:18');
-    expect(alertTimeOf(view('2025-12-15T03:00:00Z'))).toBe('2025.12.15 10:00');
+  it('오늘 · 지난날 · 지난해 모두 yyyy-MM-dd HH:mm(공장 시각 UTC+7, 24시간제) 한 형식', () => {
+    expect(alertTimeOf(view('2026-10-16T07:02:00Z'))).toBe('2026-10-16 14:02');
+    expect(alertTimeOf(view('2026-10-14T07:18:00Z'))).toBe('2026-10-14 14:18');
+    expect(alertTimeOf(view('2025-12-15T03:00:00Z'))).toBe('2025-12-15 10:00');
   });
 
   it('읽을 수 없으면 받은 표기 그대로', () => {

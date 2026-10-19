@@ -176,11 +176,11 @@ const OverviewLotTile = ({
   </KpiTile>
 );
 
-/** 툴팁 머리의 날짜(YYYY.MM.DD) — 첫 유형의 날짜 축을 쓴다(세 유형이 같은 날짜 축이다). */
+/** 툴팁 머리의 날짜(yyyy-MM-dd · 사용자 지시 2026-10-19) — 첫 유형의 날짜 축을 쓴다(세 유형이 같은 날짜 축이다). */
 const tipDates = (quality: DashboardQuality, kinds: readonly QualityKind[]): string[] =>
   kinds[0] === undefined
     ? []
-    : blockOf(quality, kinds[0]).dailyPassRates.map((entry) => entry.date.replaceAll('-', '.'));
+    : blockOf(quality, kinds[0]).dailyPassRates.map((entry) => entry.date);
 
 const dailySeries = (quality: DashboardQuality, kinds: readonly QualityKind[]): LineSeries[] =>
   kinds.map((kind, index) => ({
@@ -385,17 +385,17 @@ const counterpartColumn = (counterpart: Counterpart): Column<RecentLotRow> => {
 };
 
 /**
- * 검사 일자는 「10-16」(공장 시각)만 칸에 적고, 시각까지는 `title`로 둔다 — 좁은 칸에서 일시가 두 줄로
+ * 검사 일자는 날짜(공장 시각)만 칸에 적고, 시각까지는 `title`로 둔다 — 좁은 칸에서 일시가 두 줄로
  * 꺾였다(브라우저 확인). 읽을 수 없으면 원문.
  */
-const InspectedAt = ({ value, full = false }: { value: string; full?: boolean }) => {
+const InspectedAt = ({ value }: { value: string }) => {
   const parts = toPlantDateTimeParts(value);
   if (parts === null) return <>{value}</>;
 
   return (
     <time dateTime={value} title={`${parts.date} ${parts.time}`}>
-      {/* ⭐ 품질 종합은 날짜 표기 원칙(YYYY.MM.DD)대로(사용자 지시 2026-10-19), 다른 탭은 좁은 칸이라 「10-16」. */}
-      {full ? parts.date.replaceAll('-', '.') : shortDate(parts.date)}
+      {/* ⭐ 모든 탭 `yyyy-MM-dd`(관리웹 날짜 표기 통일 · 사용자 지시 2026-10-19). */}
+      {parts.date}
     </time>
   );
 };
@@ -425,7 +425,6 @@ const RecentLotsPanel = ({
   counterpart,
   itemTitle = false,
   linked = false,
-  fullDate = false,
 }: {
   title: string;
   rows: RecentLotRow[];
@@ -434,8 +433,6 @@ const RecentLotsPanel = ({
   itemTitle?: boolean;
   /** 줄을 누르면 검사결과 상세로 — 품질 종합만, 그 화면 권한이 있을 때(사용자 지시 2026-10-19). */
   linked?: boolean;
-  /** 일시를 「2026.10.19」로 — 품질 종합만(사용자 지시 2026-10-19). */
-  fullDate?: boolean;
 }) => (
   <Panel title={title} tag={t.recentLotsLead}>
     {/* 제목은 패널이 이미 말한다 — 표 제목(caption)을 두면 같은 말이 두 번 보인다. 이름은 aria-label 로. */}
@@ -445,7 +442,7 @@ const RecentLotsPanel = ({
           {
             key: 'inspectedAt',
             header: t.column.inspectedAt,
-            render: (row) => <InspectedAt value={row.inspectedAt} full={fullDate} />,
+            render: (row) => <InspectedAt value={row.inspectedAt} />,
           },
           counterpartColumn(counterpart),
           {
@@ -662,7 +659,6 @@ export const QualityOverviewTab = ({
           rows={toRecentLotRows(quality)}
           counterpart="kind"
           itemTitle
-          fullDate
           linked={allows(INSPECTION_RESULTS_PATH)}
         />
       </div>

@@ -55,7 +55,7 @@ describe('ShipmentPanel — 2×2 요약 · 칸 이동(사용자 지시 2026-10-1
 
     expect(screen.getByText('4,200')).toBeInTheDocument();
     expect(screen.getByText(t.todayShipmentCount('3'))).toBeInTheDocument();
-    expect(screen.getByText('10-17')).toBeInTheDocument();
+    expect(screen.getByText('2026-10-17')).toBeInTheDocument();
     /* 보조 줄은 조각으로 — 조각 안에서는 줄을 바꾸지 않는다. */
     expect(screen.getByText('고객 A')).toHaveClass('dash-nowrap');
     expect(screen.getByText(t.remainingQty('1,500 EA'))).toBeInTheDocument();

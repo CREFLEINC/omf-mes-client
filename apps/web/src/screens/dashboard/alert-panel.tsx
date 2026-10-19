@@ -2,7 +2,7 @@ import { Button, Icon, Skeleton } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { Link, useNavigate } from 'react-router';
 
-import { toPlantDateTimeParts } from '../../patterns/plant-time';
+import { formatPlantDateTime } from '../../patterns/plant-time';
 import { describeEvent, type EventEntry } from '../notification-center/lookups';
 import type { DashboardAlertView } from './types';
 import { EmptyLine } from './viz';
@@ -41,14 +41,11 @@ export const alertTitleOf = (eventCode: string, entries: readonly EventEntry[]):
 };
 
 /**
- * 발생 일시(공장 시각) — 모든 항목을 `YYYY.MM.DD HH:mm`(24시간제) 한 형식으로(⭐ 사용자 지시 2026-10-16 · 이 카드
- * 한정). 오늘 · 지난날을 가르지 않고 상대 시간도 쓰지 않는다. 읽을 수 없으면 받은 표기 그대로.
+ * 발생 일시(공장 시각) — 모든 항목을 `yyyy-MM-dd HH:mm`(24시간제) 한 형식으로(⭐ 관리웹 날짜 표기 통일 · 사용자 지시
+ * 2026-10-19). 오늘 · 지난날을 가르지 않고 상대 시간도 쓰지 않는다. 읽을 수 없으면 받은 표기 그대로.
  */
-export const alertTimeOf = (view: DashboardAlertView): string => {
-  const parts = toPlantDateTimeParts(view.occurredAt);
-
-  return parts === null ? view.occurredAtText : `${parts.date.replaceAll('-', '.')} ${parts.time}`;
-};
+export const alertTimeOf = (view: DashboardAlertView): string =>
+  formatPlantDateTime(view.occurredAt) ?? view.occurredAtText;
 
 /** 카드에 보일 최근 알림 수(⭐ 사용자 지정 2026-10-16 — 3~5건 범위의 상수). 나머지는 「알림센터 보기」. */
 export const ALERT_PREVIEW_COUNT = 3;

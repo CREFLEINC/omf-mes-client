@@ -103,7 +103,7 @@ export const placeTip = (
 const TIP_SIZE_GUESS = { width: 120, height: 46 };
 
 /**
- * 점 이름표(「10-13」)를 「2026.10.13」로 — 서버는 월-일만 준다. 연도는 기준일에서 읽고, 기준일보다 뒤의 월-일이면
+ * 점 이름표(「10-13」)를 「2026-10-13」로(⭐ 날짜 표기 통일 · 사용자 지시 2026-10-19 — 축은 짧게, 말풍선은 전체 날짜) — 서버는 월-일만 준다. 연도는 기준일에서 읽고, 기준일보다 뒤의 월-일이면
  * 지난해다(12월 말 ~ 1월 초에 걸친 기간). 이름표가 월-일 꼴이 아니거나 기준일이 없으면 이름표 그대로.
  */
 export const toTipDate = (label: string, baseDate: string | null): string => {
@@ -115,7 +115,7 @@ export const toTipDate = (label: string, baseDate: string | null): string => {
 
   const year = Number(base[1]) - (label > base[2] ? 1 : 0);
 
-  return `${String(year)}.${matched[1] ?? ''}.${matched[2] ?? ''}`;
+  return `${String(year)}-${matched[1] ?? ''}-${matched[2] ?? ''}`;
 };
 
 /** 점 위치(그림 안 px). DS 차트와 같은 식 — x 는 칸을 고르게, y 는 0~상한을 위아래로. */

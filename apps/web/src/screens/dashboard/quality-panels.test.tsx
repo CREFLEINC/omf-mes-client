@@ -183,11 +183,11 @@ describe('품질 탭', () => {
     const user = userEvent.setup();
     const { unmount } = render(<QualityOverviewTab quality={quality()} />);
 
-    const hit = screen.getAllByRole('button', { name: /^2026\.10\.14/ })[0];
+    const hit = screen.getAllByRole('button', { name: /^2026-10-14/ })[0];
     if (hit === undefined) throw new Error('날짜 칸 단추가 없다');
     await user.hover(hit);
     const tip = screen.getByRole('tooltip');
-    expect(tip).toHaveTextContent('2026.10.14');
+    expect(tip).toHaveTextContent('2026-10-14');
     expect(tip).toHaveTextContent('IQC95%');
     unmount();
   });
@@ -313,7 +313,7 @@ describe('품질 탭', () => {
     expect(
       screen.getByRole('group', { name: t.monthLots }).querySelectorAll('.dash-lot-legend-item'),
     ).toHaveLength(3);
-    const hit = screen.getAllByRole('button', { name: /^2026\.10\.14/ })[0];
+    const hit = screen.getAllByRole('button', { name: /^2026-10-14/ })[0];
     if (hit === undefined) throw new Error('날짜 칸 단추가 없다');
     await user.hover(hit);
     expect(screen.getByRole('tooltip')).toHaveTextContent('IQC95%');

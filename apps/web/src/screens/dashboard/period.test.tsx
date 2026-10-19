@@ -89,15 +89,15 @@ describe('기간 표기', () => {
 describe('periodRangeTitle', () => {
   it('하루 조회 — 금일 · 당월 · 최근 9일, 기간 조회 — 선택 기간, 모르는 이름표는 null', () => {
     const day = { baseDate: '2026-10-19', dateFrom: null, dateTo: null };
-    expect(periodRangeTitle(q.tagToday, day)).toBe('금일: 2026.10.19');
-    expect(periodRangeTitle(q.tagMonth, day)).toBe('당월: 2026.10.01 ~ 2026.10.19');
-    expect(periodRangeTitle(q.dailyRecent, day)).toBe('최근 9일: 2026.10.11 ~ 2026.10.19');
+    expect(periodRangeTitle(q.tagToday, day)).toBe('금일: 2026-10-19');
+    expect(periodRangeTitle(q.tagMonth, day)).toBe('당월: 2026-10-01 ~ 2026-10-19');
+    expect(periodRangeTitle(q.dailyRecent, day)).toBe('최근 9일: 2026-10-11 ~ 2026-10-19');
     /* 달이 바뀌는 9일. */
     expect(periodRangeTitle(q.dailyRecent, { ...day, baseDate: '2026-10-03' })).toBe(
-      '최근 9일: 2026.09.25 ~ 2026.10.03',
+      '최근 9일: 2026-09-25 ~ 2026-10-03',
     );
     const span = { baseDate: '2026-10-19', dateFrom: '2026-10-13', dateTo: '2026-10-19' };
-    expect(periodRangeTitle(q.tagPeriod, span)).toBe('선택 기간: 2026.10.13 ~ 2026.10.19');
+    expect(periodRangeTitle(q.tagPeriod, span)).toBe('선택 기간: 2026-10-13 ~ 2026-10-19');
     expect(periodRangeTitle('현재', day)).toBeNull();
   });
 });

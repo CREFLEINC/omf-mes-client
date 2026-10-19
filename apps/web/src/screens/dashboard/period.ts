@@ -1,6 +1,7 @@
 import { messages } from '@omf-mes/i18n';
 import { createContext, useContext } from 'react';
 
+import { formatDateRange } from '../../patterns/date-display';
 import type { DashboardFilterQuery } from './filters';
 
 /**
@@ -51,8 +52,6 @@ export interface PeriodRange {
 
 export const PeriodRangeContext = createContext<PeriodRange | null>(null);
 
-const dotted = (date: string): string => date.replaceAll('-', '.');
-
 const shiftDays = (date: string, days: number): string => {
   const at = new Date(`${date}T00:00:00Z`);
   at.setUTCDate(at.getUTCDate() + days);
@@ -60,13 +59,13 @@ const shiftDays = (date: string, days: number): string => {
 };
 
 /**
- * 기간 이름표 → 실제 날짜 범위(⭐ 사용자 지시 2026-10-19). 하루 조회면 「금일」 = 기준일, 「당월 · 당월 누계」 =
+ * 기간 이름표 → 실제 날짜 범위(⭐ 사용자 지시 2026-10-19 · 표기 `yyyy-MM-dd ~ yyyy-MM-dd`). 하루 조회면 「금일」 = 기준일, 「당월 · 당월 누계」 =
  * 그달 1일 ~ 기준일, 「최근 9일」 = 기준일 포함 9일. 이틀 이상이면 「선택 기간」 = 고른 기간. 모르는 이름표면 `null`.
  */
 export const periodRangeTitle = (tag: string, range: PeriodRange): string | null => {
   const base = range.baseDate;
-  const span = (from: string, to: string): string => `${tag}: ${dotted(from)} ~ ${dotted(to)}`;
-  if (tag === q.tagToday) return `${tag}: ${dotted(base)}`;
+  const span = (from: string, to: string): string => `${tag}: ${formatDateRange(from, to)}`;
+  if (tag === q.tagToday) return `${tag}: ${base}`;
   if (tag === q.tagMonth || tag === q.tagMonthTotal) return span(`${base.slice(0, 8)}01`, base);
   if (tag === q.dailyRecent) return span(shiftDays(base, -8), base);
   if (tag === q.tagPeriod && range.dateFrom !== null && range.dateTo !== null) {
