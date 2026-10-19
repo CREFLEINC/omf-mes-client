@@ -269,7 +269,7 @@ export interface LotStatusResult {
  * 「이 값이면 Release됐다」를 화면이 판정하면 값이 정해질 때 조용히 틀린다 — 그대로 보인다.
  *
  * `stage: 'select'` 는 줄을 고를 때 읽는다 — IQC 불합격(`DEFECTIVE`, 서버 C6 이 정한 값) LOT 이면
- * 창고 선택지를 불량창고로 좁힌다(omf-all-around#84 · 서버 장부 P-43 과 같은 규칙).
+ * 창고 선택지를 불량창고로 좁힌다(omf-all-around#84 · 서버 장부 P-45 와 같은 규칙).
  */
 export const useLotStatus = (
   lotId: number | null,
@@ -280,6 +280,11 @@ export const useLotStatus = (
   const query = useQuery({
     queryKey: stage === 'recheck' ? irKeys.lot(lotId) : irKeys.selectedLot(lotId),
     enabled: lotId !== null,
+    /*
+     * 고를 때 읽는 상태는 입고를 잠그는 근거다 — 다른 탭에서 판정한 뒤 돌아오면 바로 다시 읽어 낡은 잠금이
+     * 남지 않게 한다(전역 기본은 30초 동안 다시 읽지 않는다).
+     */
+    ...(stage === 'select' ? { staleTime: 0, refetchOnWindowFocus: true } : {}),
     queryFn: () => {
       if (lotId === null) {
         throw new Error('자재 LOT이 없으면 조회하지 않습니다.');
