@@ -22,8 +22,10 @@ const v = messages.dashboard.viz;
  */
 
 export interface DonutSlice extends NamedQty {
-  /** 전체 유형 합 대비 비율(0~100). */
+  /** 전체 유형 합 대비 비율(0~100). 조각 크기에 쓴다. */
   share: number;
+  /** 화면에 적는 정수 비율 — 모든 조각을 더하면 100이 되게 맞춘 값(`roundShares`). */
+  shareLabel: number;
   /** 「기타」로 합친 유형 수. 합친 조각이 아니면 0. */
   merged: number;
 }
@@ -44,6 +46,7 @@ export const toDonutSlices = (entries: readonly NamedQty[], shown: number): Donu
   const slices: DonutSlice[] = head.map((entry) => ({
     ...entry,
     share: shareOf(entry.value),
+    shareLabel: 0,
     merged: 0,
   }));
 
@@ -54,22 +57,48 @@ export const toDonutSlices = (entries: readonly NamedQty[], shown: number): Donu
       label: t.otherTypes(formatFigure(rest.length)),
       value,
       share: shareOf(value),
+      shareLabel: 0,
       merged: rest.length,
     });
   }
 
-  return slices;
+  const labels = roundShares(slices.map((slice) => slice.share));
+  return slices.map((slice, index) => ({ ...slice, shareLabel: labels[index] ?? 0 }));
 };
 
 /**
- * 조각 색 — DS 정보 파랑과 차트 회색에서만(상태색 빨강 · 노랑 · 초록을 피한다). ⭐ 순위대로 파랑 · 회색을 번갈아
- * 짙은 것부터 옅게 — 이웃한 범례끼리 비슷한 색이 이어지지 않게(사용자 지시 2026-10-19). 여덟째부터 되풀이.
+ * 정수 비율을 더하면 100이 되게 맞춘다(최대 나머지 방식) — 각자 반올림하면 합이 99 · 101이 될 수 있다
+ * (⭐ 사용자 지시 2026-10-19 「반올림으로 인한 합계 차이 처리」). 내림한 뒤 모자란 만큼 소수 부분이 큰 순으로 1씩
+ * 더한다. 모두 0이면 모두 0.
+ */
+export const roundShares = (shares: readonly number[]): number[] => {
+  const total = shares.reduce((sum, share) => sum + share, 0);
+  if (total <= 0) return shares.map(() => 0);
+  const floors = shares.map((share) => Math.floor(share));
+  let left = 100 - floors.reduce((sum, value) => sum + value, 0);
+  const order = shares
+    .map((share, index) => ({ index, remainder: share - Math.floor(share) }))
+    .sort((a, b) => b.remainder - a.remainder || a.index - b.index);
+  for (const { index } of order) {
+    if (left <= 0) break;
+    floors[index] = (floors[index] ?? 0) + 1;
+    left -= 1;
+  }
+  return floors;
+};
+
+/**
+ * 조각 색(⭐ 사용자 지시 2026-10-19) — 가장 많은 유형만 강조색(DS 정보 파랑), 나머지는 명도 차이가 뚜렷한 중립
+ * 회색을 짙은 것부터 옅게. 도넛과 범례가 같은 클래스를 써 색이 늘 같다. 여덟째부터 회색이 되풀이.
  */
 const PALETTE_SIZE = 7;
-const toneOf = (slice: DonutSlice, index: number): string =>
-  slice.merged > 0 ? 'dash-donut-other' : `dash-donut-${String((index % PALETTE_SIZE) + 1)}`;
+const toneOf = (slice: DonutSlice, index: number): string => {
+  if (slice.merged > 0) return 'dash-donut-other';
+  if (index === 0) return 'dash-donut-1';
+  return `dash-donut-${String(((index - 1) % (PALETTE_SIZE - 1)) + 2)}`;
+};
 
-const formatShare = (share: number): string => `${String(Math.round(share))}%`;
+const formatShare = (slice: DonutSlice): string => `${String(slice.shareLabel)}%`;
 
 const SIZE = 160;
 const CENTER = SIZE / 2;
@@ -196,7 +225,7 @@ const Donut = ({
         >
           <span className="dash-line-tip-date">{tip.slice.label}</span>
           <span className="dash-line-tip-value">
-            {`${formatFigure(tip.slice.value)} ${t.qtyUnit} · ${formatShare(tip.slice.share)}`}
+            {`${formatFigure(tip.slice.value)} ${t.qtyUnit} · ${formatShare(tip.slice)}`}
           </span>
         </div>
       )}
@@ -216,7 +245,7 @@ const Donut = ({
               <tr key={slice.key}>
                 <th scope="row">{slice.label}</th>
                 <td>{formatFigure(slice.value)}</td>
-                <td>{formatShare(slice.share)}</td>
+                <td>{formatShare(slice)}</td>
               </tr>
             ))}
           </tbody>
@@ -313,7 +342,7 @@ export const DefectTypesPanel = ({ entries, tag }: { entries: NamedQty[]; tag: s
                     {formatFigure(slice.value)}
                     <span className="dash-donut-unit">{t.qtyUnit}</span>
                   </span>
-                  <span className="dash-donut-share">{formatShare(slice.share)}</span>
+                  <span className="dash-donut-share">{formatShare(slice)}</span>
                 </li>
               ))}
             </ul>

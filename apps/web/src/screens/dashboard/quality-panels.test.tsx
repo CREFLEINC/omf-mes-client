@@ -3,7 +3,7 @@ import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 
-import { OTHER_SLICE_KEY, toDonutSlices } from './defect-types-panel';
+import { OTHER_SLICE_KEY, roundShares, toDonutSlices } from './defect-types-panel';
 import { quality, qualityBlock } from './quality.fixture';
 import { toNiceRateTicks } from './viz';
 import {
@@ -248,6 +248,23 @@ describe('품질 탭', () => {
     expect(t.otherTypes('3')).toBe('기타 (3종)');
 
     expect(toDonutSlices([], 0)).toEqual([]);
+  });
+
+  it('불량 유형 비율 표시 — 정수로 적어도 합이 100(최대 나머지 방식)', () => {
+    /* 각자 반올림하면 33 + 33 + 33 = 99 — 소수가 가장 큰 앞 조각이 1을 더 받는다. */
+    expect(roundShares([100 / 3, 100 / 3, 100 / 3])).toEqual([34, 33, 33]);
+    /* 각자 반올림하면 13 + 13 + 38 + 38 = 102 — 나머지가 같으면 앞 조각부터. */
+    expect(roundShares([12.5, 12.5, 37.5, 37.5])).toEqual([13, 13, 37, 37]);
+    expect(roundShares([0, 0])).toEqual([0, 0]);
+    const slices = toDonutSlices(
+      [
+        { key: '1', label: 'A', value: 1 },
+        { key: '2', label: 'B', value: 1 },
+        { key: '3', label: 'C', value: 1 },
+      ],
+      3,
+    );
+    expect(slices.reduce((sum, slice) => sum + slice.shareLabel, 0)).toBe(100);
   });
 
   /* IQC · PQC · OQC · 부적합 탭 — 품질 종합과 같은 표기(사용자 확정 2026-10-19 · r3). */
