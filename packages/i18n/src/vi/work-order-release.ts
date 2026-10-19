@@ -111,6 +111,26 @@ export const workOrderRelease: Translated<typeof ko.workOrderRelease> = {
     retryValidation: 'Thử lại kiểm tra lệnh sản xuất',
     reloadDetail: 'Tải lại chi tiết lệnh sản xuất',
   },
+  bulk: {
+    selectAll: 'Chọn tất cả ứng viên phát hành trên trang này',
+    selectRow: (workOrderNo: string): string => `Đưa ${workOrderNo} vào phát hành hàng loạt`,
+    action: (count: number): string => `Phát hành hàng loạt ${String(count)} lệnh đã chọn`,
+    dialogTitle: (count: number): string => `Phát hành hàng loạt ${String(count)} lệnh?`,
+    dialogBody:
+      'Mỗi lệnh sẽ phát trước LOT sản xuất theo cỡ LOT mặc định của mặt hàng và tạo yêu cầu xuất vật tư. Không thể hoàn tác. Lệnh chưa thiết lập 4M hoặc mặt hàng chưa có cỡ LOT mặc định sẽ bị bỏ qua.',
+    confirm: 'Phát hành hàng loạt',
+    cancel: 'Hủy',
+    running: 'Đang phát hành hàng loạt…',
+    resultTitle: (released: number, skipped: number, failed: number): string =>
+      `Kết quả phát hành hàng loạt — phát hành ${String(released)} · bỏ qua ${String(skipped)} · lỗi ${String(failed)}`,
+    close: 'Đóng',
+    reasons: {
+      setupMissing: 'Chưa thiết lập dây chuyền · vị trí mặc định (phân bổ 4M).',
+      noDefaultLotSize: 'Mặt hàng chưa có cỡ LOT mặc định hoặc khác đơn vị (thuộc tính mở rộng).',
+      failed: 'Không phát hành được.',
+    },
+    status: { released: 'Phát hành', skipped: 'Bỏ qua', failed: 'Lỗi' },
+  },
   candidateList: {
     pane: 'Danh sách lệnh sản xuất ứng viên phát hành',
     fields: { workOrderNo: 'Số W/O', item: 'Mặt hàng', quantity: 'Số lượng lệnh' },

@@ -1527,6 +1527,24 @@ main > * + * {
   margin-left: auto;
 }
 
+/* 일괄 배포 줄은 후보 목록 바로 위에 붙는다 — 목록과 함께 마스터 칸을 이룬다. */
+.work-order-release-list-column,
+.work-order-release-bulk {
+  display: grid;
+  gap: var(--space-3);
+  align-content: start;
+  min-width: 0;
+}
+
+.work-order-release-bulk > button {
+  justify-self: end;
+}
+
+.work-order-release-bulk-result {
+  margin: 0;
+  padding-left: var(--space-5);
+}
+
 .work-order-release-content.has-selection {
   display: grid;
   grid-template-columns: minmax(20rem, 2fr) minmax(0, 3fr);
