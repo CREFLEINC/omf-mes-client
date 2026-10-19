@@ -4,7 +4,7 @@ import type { ReactNode } from 'react';
 
 import { toLocationOptions } from './location-options';
 import type { OptionListResult } from './queries';
-import { SelectField } from './select-field';
+import { SelectField } from '../../patterns/select-field';
 import type { LocationView, SelectOption, WarehouseView } from './types';
 
 const t = messages.goodsReceipt;

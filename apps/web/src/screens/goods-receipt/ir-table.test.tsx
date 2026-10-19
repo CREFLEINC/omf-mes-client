@@ -11,8 +11,8 @@ import type { IrView } from './types';
 
 const t = messages.goodsReceipt;
 
-/** 이 표의 최소 폭(`.goods-receipt-ir-table` 64rem). */
-const WIDE_TABLE_MIN_PX = 1024;
+/** 이 표의 최소 폭(공용 `.wide-table` 58rem). */
+const WIDE_TABLE_MIN_PX = 928;
 
 /** 「코드 · 이름」이 한 줄에 들어가는 폭(`docs/layout-conventions.md`의 선례 값). */
 const CODE_NAME_COLUMN_PX = 200;
@@ -33,16 +33,11 @@ const source = (overrides: Partial<ReferenceSource> = {}): ReferenceSource => ({
 });
 
 const columnsWith = (supplierLookup: ReferenceSource = source()): Column<IrView>[] =>
-  buildIrColumns({
-    selectedIrId: null,
-    supplierLookup,
-    isLocked: false,
-    onToggleSelect: () => undefined,
-  });
+  buildIrColumns({ supplierLookup });
 
 const renderTable = (overrides: Partial<IrTableProps> = {}) => {
   const onFirstPage = vi.fn<() => void>();
-  const onToggleSelect = vi.fn<(inboundReceiptId: number) => void>();
+  const onOpen = vi.fn<(row: IrView) => void>();
   const onRetryReferences = vi.fn<() => void>();
 
   render(
@@ -50,28 +45,27 @@ const renderTable = (overrides: Partial<IrTableProps> = {}) => {
       rows={inboundReceiptFixtures}
       isLoading={false}
       isBeyondLast={false}
-      selectedIrId={null}
       supplierLookup={source()}
-      isLocked={false}
       onFirstPage={onFirstPage}
-      onToggleSelect={onToggleSelect}
+      onOpen={onOpen}
       onRetryReferences={onRetryReferences}
       {...overrides}
     />,
   );
 
-  return { onFirstPage, onToggleSelect, onRetryReferences, user: userEvent.setup() };
+  return { onFirstPage, onOpen, onRetryReferences, user: userEvent.setup() };
 };
 
 describe('buildIrColumns — 열 구성과 폭', () => {
-  it('열이 여섯이다', () => {
+  /* T-W-C 작업함 — 식별 번호, 상대, 일시, 문서 번호, 상태 칩, 이동 표시(›). [선택] 열이 없다(C-1). */
+  it('열이 여섯이고 마지막이 이동 표시다', () => {
     expect(columnsWith().map((column) => column.key)).toEqual([
       'inboundReceiptNo',
       'supplier',
       'receiptDatetime',
       'deliveryNoteNo',
       'statusCode',
-      'select',
+      'go',
     ]);
   });
 
@@ -97,7 +91,7 @@ describe('buildIrColumns — 열 구성과 폭', () => {
   it('지정 폭 합에 흡수 열 예산을 더해도 표 하한 안이다', () => {
     const specified = specifiedWidthOf(columnsWith());
 
-    expect(specified).toBe(796);
+    expect(specified).toBe(728);
     expect(specified + CODE_NAME_COLUMN_PX).toBeLessThanOrEqual(WIDE_TABLE_MIN_PX);
     expect(WIDE_TABLE_MIN_PX - specified).toBeGreaterThanOrEqual(CODE_NAME_COLUMN_PX);
   });
@@ -151,51 +145,24 @@ describe('IrTable — 대상 입하 전표 목록 표', () => {
     expect(screen.queryByText(t.values.unknown)).not.toBeInTheDocument();
   });
 
-  it('선택을 누르면 그 전표 번호를 알린다', async () => {
-    const { onToggleSelect, user } = renderTable();
+  /* C-1 — 행 전체를 누르면 그 전표를 연다. 행 안에 [선택] 버튼이 없다. */
+  it('행을 누르면 그 전표를 열라고 알린다', async () => {
+    const { onOpen, user } = renderTable();
 
-    await user.click(screen.getByRole('button', { name: t.actions.selectRow('IR-2026-900001') }));
+    expect(within(screen.getByRole('table')).queryAllByRole('button')).toHaveLength(0);
 
-    expect(onToggleSelect).toHaveBeenCalledWith(9001);
+    await user.click(screen.getByText('IR-2026-900001'));
+
+    expect(onOpen).toHaveBeenCalledWith(inboundReceiptFixtures[0]);
   });
 
-  it('고른 행의 버튼은 해제로 바뀐다', () => {
-    renderTable({ selectedIrId: 9001 });
-
-    expect(
-      screen.getByRole('button', { name: t.actions.deselectRow('IR-2026-900001') }),
-    ).toBeInTheDocument();
-  });
-
-  /*
-   * **M34의 한 겹** — 전송 중에 대상을 바꾸면 앞 전표의 처리 결과가 지금 보는 전표의
-   * 맥락에 나타난다. 눈에 보이는 컨트롤을 전부 닫는다.
-   */
-  it('전송 중에는 행의 선택 버튼이 잠기고 눌러도 알리지 않는다', async () => {
-    const { onToggleSelect, user } = renderTable({ isLocked: true });
-
-    const button = screen.getByRole('button', { name: t.actions.selectRow('IR-2026-900001') });
-
-    expect(button).toBeDisabled();
-
-    await user.click(button);
-
-    expect(onToggleSelect).not.toHaveBeenCalled();
-  });
-
-  /* 짝 방향 — 전송 중이 아니면 열려 있다. */
-  it('전송 중이 아니면 선택 버튼이 열려 있다', () => {
+  /* C-1 이탈 조건 — 작업함은 선택 상태가 의미 없어 선택 표시 없이 이동만 한다. */
+  it('행에 선택 표시를 달지 않고 접근 이름에 입하번호를 싣는다', () => {
     renderTable();
 
-    expect(
-      screen.getByRole('button', { name: t.actions.selectRow('IR-2026-900001') }),
-    ).not.toBeDisabled();
-  });
+    const row = screen.getByRole('row', { name: t.actions.openRow('IR-2026-900001') });
 
-  it('전송 중에는 첫 쪽으로 버튼도 잠긴다', () => {
-    renderTable({ rows: [], isBeyondLast: true, isLocked: true });
-
-    expect(screen.getByRole('button', { name: t.actions.goFirstPage })).toBeDisabled();
+    expect(row).not.toHaveAttribute('aria-selected');
   });
 
   /* 「결과가 없다」와 「이 쪽에는 없다」는 사용자가 할 조치가 다르다. */

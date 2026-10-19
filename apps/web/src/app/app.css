@@ -10608,14 +10608,11 @@ dl.filter-bar.approval-inbox-detail-facts {
 }
 
 /*
- * W-01-10 정상품 입하 처리 — 입하 전표 목록 표. 열 폭·정렬은 `ir-table.tsx` 의 열 정의가 정한다.
- * 지정 폭 합 796px + 공급사 예산 200px 이 공용 하한(58rem)을 넘어, 이 표만 하한을 64rem 으로 둔다
- * — 좁으면 짓누르지 않고 가로로 넘긴다.
+ * W-01-10 정상품 입하 처리 — 입하 라인 표. 열 폭·정렬은 `ir-line-table.tsx` 의 열 정의가 정한다.
+ * 작업함 표는 지정 폭 합 728px + 공급사 예산 200px = 928px 로 공용 하한(58rem)에 들어가 따로 두지 않는다
+ * (1280×800 사이드바 펼침에서 가로 넘김 없이 이동 표시 › 열까지 보여야 한다 · C-14).
  */
-.wide-table.goods-receipt-ir-table table,
-.wide-table.goods-receipt-line-table table {
-  min-width: 64rem;
-}
+/* 입하 라인 표는 공용 하한(58rem) 그대로다 — 지정 폭 340px + 비율 열(품목 28% · 자재 LOT 36%). */
 
 /*
  * 입하 전표 목록·입하 라인 두 표의 머리줄과 모든 열을 가운데로(사용자 지시 · IQC 수입검사 판정 표와 같은 풀이). DS 의 열별 정렬
@@ -10664,8 +10661,8 @@ dl.filter-bar.approval-inbox-detail-facts {
 .goods-receipt-filter-bar .goods-receipt-filter-supplier {
   display: flex;
   flex-direction: column;
-  flex: 0 1 16rem;
-  min-width: 13rem;
+  flex: 0 1 14rem;
+  min-width: 12rem;
 }
 
 .goods-receipt-filter-supplier > * {
@@ -10689,10 +10686,10 @@ dl.filter-bar.approval-inbox-detail-facts {
  */
 .goods-receipt-filter-search-group {
   display: flex;
-  flex: 1 1 26rem;
+  flex: 1 1 22rem;
   align-items: flex-start;
   gap: var(--space-3);
-  min-width: 24rem;
+  min-width: 20rem;
 }
 
 .goods-receipt-filter-search-group > .field-cell {
@@ -10707,8 +10704,8 @@ dl.filter-bar.approval-inbox-detail-facts {
 .goods-receipt-filter-search {
   display: flex;
   flex-direction: column;
-  flex: 1 1 18rem;
-  min-width: 16rem;
+  flex: 1 1 14rem;
+  min-width: 12rem;
   max-width: 20rem;
 }
 
@@ -10717,7 +10714,7 @@ dl.filter-bar.approval-inbox-detail-facts {
 }
 
 /* 라벨 오른쪽 같은 줄의 짧은 안내(상태) — IQC 수입검사 판정의 라벨 옆 안내와 같은 모양(보조색). */
-.goods-receipt-label-hint {
+.field-label-hint {
   margin-left: var(--space-2);
   color: var(--on-surface-muted);
   white-space: nowrap;
@@ -10793,7 +10790,7 @@ dl.filter-bar.approval-inbox-detail-facts {
 }
 
 /* 필수 칸 표시 — 라벨 뒤 `*`(입고 처리 폼). */
-.goods-receipt-required {
+.field-required {
   margin-left: var(--space-1);
   color: var(--semantic-error-text);
 }
@@ -11408,4 +11405,251 @@ dl.filter-bar.approval-inbox-detail-facts {
 
 .shipment-schedule-plant-body > * {
   margin-block: 0;
+}
+
+/*
+ * ── 화면 구성 공용 부품(docs/screen-composition.md 6장) ─────────────────────────────
+ * 값은 DS 토큰과 배치 규범에서만 가져온다. 화면 CSS가 이 부품의 색·간격을 다시 정하지 않는다.
+ */
+
+/* SelectableTable (C-1) — 행 전체를 누른다. 고른 행은 배경 + 왼쪽 막대(기존 목록 화면과 같은 표식). */
+.selectable-table tbody tr[data-row-index] {
+  cursor: pointer;
+}
+
+.selectable-table tbody tr[data-row-index][aria-disabled='true'] {
+  cursor: default;
+}
+
+.selectable-table tbody tr[data-row-index]:not([aria-disabled='true']):hover > td {
+  background: var(--surface-container-high);
+}
+
+.selectable-table tbody tr[aria-selected='true'] > td {
+  background: var(--primary-container);
+}
+
+.selectable-table tbody tr[aria-selected='true'] > td:first-child {
+  box-shadow: inset 3px 0 0 var(--primary);
+}
+
+.selectable-table tbody tr[data-row-index]:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: -2px;
+}
+
+/* 작업함의 이동 표시(›) 열 — 행을 누르면 다른 화면으로 간다는 표식. */
+.selectable-table-go {
+  color: var(--on-surface-muted);
+}
+
+/* PageNav (C-8) — 왼쪽 총 건수·페이지 크기, 오른쪽 [처음] [이전] n/N [다음] [마지막]. */
+.page-nav {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.page-nav-count {
+  display: flex;
+  gap: var(--space-3);
+  margin: 0;
+  font: var(--type-body-sm);
+  letter-spacing: var(--type-body-sm-tracking);
+  color: var(--on-surface-variant);
+}
+
+.page-nav-buttons {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.page-nav-position {
+  min-width: 4rem;
+  text-align: center;
+  font: var(--type-body-sm);
+  letter-spacing: var(--type-body-sm-tracking);
+}
+
+/*
+ * ProcessPage (T-W-C) — 처리 머리 · 단계 표시 · 지난 단계 요약 · 본문 · 하단 동작 바.
+ * 블록 사이 이음매는 규범 1과 같은 --space-5.
+ */
+.process-page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  min-height: 100%;
+}
+
+.process-page-back {
+  align-self: flex-start;
+}
+
+.process-page-step-link {
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  color: var(--primary-text);
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.process-page-step-link:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+/* 지난 단계 요약 — 점선 상자 한 줄. */
+.process-page-previous {
+  margin: 0;
+  padding: var(--space-2) var(--space-4);
+  border: 1px dashed var(--outline);
+  border-radius: var(--radius-md);
+  font: var(--type-body-sm);
+  letter-spacing: var(--type-body-sm-tracking);
+  color: var(--on-surface-variant);
+}
+
+.process-page-body {
+  flex: 1 0 auto;
+}
+
+/* ActionBar (C-3·C-5) — 화면 아래에 붙는다. 본문이 길어도 스크롤 영역 밖에 선다. */
+.action-bar {
+  position: sticky;
+  bottom: calc(-1 * var(--space-6));
+  z-index: 1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-inline: calc(-1 * var(--space-6));
+  margin-bottom: calc(-1 * var(--space-6));
+  padding: var(--space-3) var(--space-6);
+  border-top: 1px solid var(--outline-variant);
+  background: var(--surface);
+  box-shadow: var(--elevation-2);
+}
+
+.action-bar-remaining {
+  flex: 1 1 20rem;
+  margin: 0;
+  color: var(--on-surface-variant);
+}
+
+.action-bar-remaining-label {
+  font-weight: 600;
+  color: var(--on-surface);
+}
+
+.action-bar-actions {
+  display: flex;
+  gap: var(--space-3);
+}
+
+/* EffectList (T-W-C 확인 단계) — 「〈업무〉 시 반영 사항」. 빠지는 항목은 지운 줄 + 경고. */
+.effect-list {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.effect-list-title {
+  margin: 0;
+  font: var(--type-title-sm);
+  letter-spacing: var(--type-title-sm-tracking);
+}
+
+.effect-list-items {
+  display: grid;
+  gap: var(--space-1);
+  margin: 0;
+  padding-inline-start: var(--space-6);
+}
+
+.effect-list-note {
+  margin-left: var(--space-2);
+  color: var(--on-surface-muted);
+}
+
+.effect-list-excluded {
+  color: var(--on-surface-muted);
+}
+
+.effect-list-tag,
+.effect-list-warning {
+  color: var(--semantic-warning);
+}
+
+.effect-list-warning {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.effect-list-irreversible {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: var(--space-2) 0 0;
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-md);
+  background: var(--semantic-warning-container);
+  color: var(--semantic-warning);
+}
+
+/*
+ * W-01-10 처리 화면(T-W-C) — 「자동 적용 값」 구획. 이름 열 + 값 열(배치 규범 9), 값 옆에 출처를 흐리게.
+ */
+.goods-receipt-derived {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
+  gap: var(--space-2) var(--space-5);
+  margin: 0 0 var(--space-4);
+  font: var(--type-body-sm);
+  letter-spacing: var(--type-body-sm-tracking);
+}
+
+.goods-receipt-derived-item {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: var(--space-1) var(--space-3);
+}
+
+.goods-receipt-derived-item dt {
+  color: var(--on-surface-muted);
+}
+
+.goods-receipt-derived-item dd {
+  margin: 0;
+  min-width: 0;
+}
+
+.goods-receipt-derived-source {
+  display: block;
+  font: var(--type-label-sm);
+  letter-spacing: var(--type-body-sm-tracking);
+  color: var(--on-surface-muted);
+}
+
+/* 입고 일시 — 날짜(DatePicker)와 시각을 한 칸에 나란히. */
+.goods-receipt-datetime {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.goods-receipt-datetime > :first-child {
+  flex: 1 1 auto;
+}
+
+/* 「추가 입력(선택)」 — 접힌 선택 입력. 펼친 칸은 입고 정보 격자와 같은 배치를 쓴다. */
+.goods-receipt-optional > summary {
+  cursor: pointer;
+  margin-bottom: var(--space-3);
+  color: var(--on-surface-variant);
 }

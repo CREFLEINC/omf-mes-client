@@ -1,4 +1,3 @@
-import { Button, Dialog, Icon } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 
 import type { GoodsReceiptCodeKey } from './types';
@@ -22,15 +21,13 @@ export interface SubmitSummary {
   remarks: string;
 }
 
-export interface SubmitConfirmDialogProps {
+export interface ConfirmSummaryProps {
   summary: SubmitSummary;
   /**
    * 코드의 표시 이름 — 공통코드 조회가 준 이름(`nameKo`·`codeName`)을 화면이 넘긴다. 이름이 없으면
    * 코드 그대로다(지어내지 않는다). 보내는 값은 코드 그대로다.
    */
   codeLabel?: (key: GoodsReceiptCodeKey, code: string) => string;
-  onConfirm: () => void;
-  onClose: () => void;
 }
 
 interface SummaryRow {
@@ -42,18 +39,16 @@ interface SummaryRow {
 const orEmpty = (value: string): string => (value === '' ? t.values.empty : value);
 
 /**
- * 입고 처리 확인 창 — 실행 직전에 2~3초 안에 확인하는 화면이다(사용자 지시).
+ * 처리 화면 「확정 확인」 단계의 저장될 값 요약(T-W-C 확인 단계 · C-9). 확인 대화상자를 대신한다.
  *
  * 세 묶음으로 가른다: **입고 대상**(입하번호·줄·품목·수량·자재 LOT) → **입고 위치**(창고·위치 — 목적지라
- * 나란히) → **입고 조건**(유형·상태·일시 등 — 보조라 작게). 되돌릴 수 없다는 경고는 한 줄로 앞세우고,
- * 함께 처리되는 일(이슈 §6)은 그 아래 보조 설명으로 둔다.
+ * 나란히) → **입고 조건**(유형·상태·일시 등 — 보조라 작게). 반영 사항과 되돌릴 수 없다는 안내는
+ * 공용 `EffectList`가 맡는다.
  */
-export const SubmitConfirmDialog = ({
+export const ConfirmSummary = ({
   summary,
   codeLabel = (_key, code) => code,
-  onConfirm,
-  onClose,
-}: SubmitConfirmDialogProps) => {
+}: ConfirmSummaryProps) => {
   const what: SummaryRow[] = [
     { key: 'inboundReceiptNo', label: t.summary.inboundReceiptNo, value: summary.inboundReceiptNo },
     { key: 'lineNo', label: t.lineSummary.lineNo, value: String(summary.lineNo) },
@@ -110,42 +105,10 @@ export const SubmitConfirmDialog = ({
   );
 
   return (
-    <Dialog
-      open
-      onClose={onClose}
-      size="md"
-      closeOnBackdropClick={false}
-      /* 닫기(X)는 「입력으로 돌아가기」와 같은 동작이라 두지 않는다(사용자 지시). Esc 로도 닫힌다. */
-      showCloseButton={false}
-      title={t.dialog.submitTitle}
-      footer={
-        <>
-          {/*
-           * 문구가 「확인/취소」가 아니다 — 무엇을 누르는지 창을 다시 읽지 않아도 알아야 한다.
-           * 창이 열리면 초점이 되돌아가기(안전한 쪽)에 간다 — 되돌릴 수 없는 실행이 엔터 한 번에 눌리지 않는다.
-           */}
-          <Button variant="outlined" autoFocus onClick={onClose}>
-            {t.actions.cancelPost}
-          </Button>
-          <Button onClick={onConfirm}>{t.actions.confirmPost}</Button>
-        </>
-      }
-    >
-      <div className="goods-receipt-confirm">
-        <p className="goods-receipt-confirm-lead">{t.dialog.submitLead}</p>
-
-        {group(t.dialog.submitGroupWhat, what, 'key')}
-        {group(t.dialog.submitGroupWhere, where, 'key')}
-        {group(t.dialog.submitGroupHow, how, 'minor')}
-
-        <div className="goods-receipt-confirm-warning">
-          <p>
-            <Icon name="warning" size={18} />
-            <strong>{t.dialog.submitIrreversible}</strong>
-          </p>
-          <p className="goods-receipt-confirm-effects">{t.dialog.submitEffects}</p>
-        </div>
-      </div>
-    </Dialog>
+    <div className="goods-receipt-confirm">
+      {group(t.dialog.submitGroupWhat, what, 'key')}
+      {group(t.dialog.submitGroupWhere, where, 'key')}
+      {group(t.dialog.submitGroupHow, how, 'minor')}
+    </div>
   );
 };

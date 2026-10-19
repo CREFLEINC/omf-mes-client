@@ -3,6 +3,7 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
+import { pickDate } from '../../test/date-picker';
 import { DEFAULT_FILTERS, type ChipFilterKey, type IrFilters } from './filters';
 import { IrFilterBar, type IrFilterBarProps } from './ir-filter-bar';
 
@@ -20,7 +21,6 @@ const renderBar = (overrides: Partial<IrFilterBarProps> = {}) => {
       appliedFilters={DEFAULT_FILTERS}
       supplierOptions={[{ value: '9101', label: SUPPLIER_LABEL }]}
       chipNames={{ supplier: SUPPLIER_LABEL }}
-      isLocked={false}
       onSearch={onSearch}
       onRemoveFilter={onRemoveFilter}
       onReset={onReset}
@@ -32,29 +32,23 @@ const renderBar = (overrides: Partial<IrFilterBarProps> = {}) => {
 };
 
 describe('IrFilterBar — 조건 줄', () => {
-  it('조건 칸이 다섯이다', () => {
+  /* C-6 — 기본으로 보이는 조건 넷. 늘 고를 수 없던 상태 칸은 두지 않는다(C-4). */
+  it('조건 칸이 넷이고 상태 칸이 없다', () => {
     renderBar();
 
     expect(screen.getByLabelText(t.fields.supplier)).toBeInTheDocument();
     expect(screen.getByLabelText(t.fields.receiptDateFrom)).toBeInTheDocument();
     expect(screen.getByLabelText(t.fields.receiptDateTo)).toBeInTheDocument();
-    expect(screen.getByLabelText(t.fields.status)).toBeInTheDocument();
     expect(screen.getByLabelText(t.fields.q)).toBeInTheDocument();
+    expect(screen.queryByLabelText(t.fields.status)).not.toBeInTheDocument();
   });
 
-  /*
-   * **C21 · M43** — 값 목록이 확정되지 않아 상태 선택지가 비어 있다.
-   * 비어 있는 선택칸만 두면 고장으로 읽히므로 **왜 비어 있는지**를 `aria-describedby`로 잇는다.
-   */
-  it('상태 선택지가 비어 있고 안내가 붙는다', () => {
-    renderBar();
+  /* C-12 — 날짜는 DS `DatePicker`다. 브라우저 기본 날짜 칸이 없다. */
+  it('입하일 칸이 브라우저 기본 날짜 입력이 아니다', () => {
+    const { container } = renderBar();
 
-    const status = screen.getByLabelText(t.fields.status);
-    const note = screen.getByText(t.filters.statusPending);
-
-    expect(status.getAttribute('aria-describedby')).toBe(note.getAttribute('id'));
-    /* 짝 방향 — 공급사 선택지는 실제로 들어 있다(빈 것이 부품 탓이 아님을 밝힌다). */
-    expect(screen.getByLabelText(t.fields.supplier)).toBeInTheDocument();
+    expect(container.querySelector('input[type="date"]')).toBeNull();
+    expect(screen.getByLabelText(t.fields.receiptDateFrom).tagName).toBe('BUTTON');
   });
 
   /*
@@ -105,7 +99,7 @@ describe('IrFilterBar — 조건 줄', () => {
   it('기간을 고르면 조회에 함께 실린다', async () => {
     const { onSearch, user } = renderBar();
 
-    await user.type(screen.getByLabelText(t.fields.receiptDateFrom), '2026-08-01');
+    await pickDate(user, screen.getByLabelText(t.fields.receiptDateFrom), '2026-08-01');
     await user.click(screen.getByRole('button', { name: messages.common.search }));
 
     expect(onSearch).toHaveBeenCalledWith({ ...DEFAULT_FILTERS, from: '2026-08-01' });
@@ -126,7 +120,6 @@ describe('IrFilterBar — 조건 줄', () => {
         appliedFilters={{ ...DEFAULT_FILTERS }}
         supplierOptions={[{ value: '9101', label: SUPPLIER_LABEL }]}
         chipNames={{ supplier: SUPPLIER_LABEL }}
-        isLocked={false}
         onSearch={vi.fn()}
         onRemoveFilter={vi.fn()}
         onReset={vi.fn()}
@@ -147,7 +140,6 @@ describe('IrFilterBar — 조건 줄', () => {
         appliedFilters={{ ...DEFAULT_FILTERS, q: 'IR-9999' }}
         supplierOptions={[{ value: '9101', label: SUPPLIER_LABEL }]}
         chipNames={{ supplier: SUPPLIER_LABEL }}
-        isLocked={false}
         onSearch={vi.fn()}
         onRemoveFilter={vi.fn()}
         onReset={vi.fn()}
@@ -199,27 +191,5 @@ describe('IrFilterBar — 조건 칩', () => {
     expect(
       screen.getByText(t.filters.chipPeriodBoth('2026-08-01', '2026-08-31')),
     ).toBeInTheDocument();
-  });
-
-  /*
-   * **M34의 한 겹** — 전송 중에 조건을 다시 걸면 고른 전표가 풀려, 앞 전표의 처리 결과가
-   * 다른 맥락에 나타난다.
-   */
-  it('전송 중에는 조회와 초기화가 잠긴다', () => {
-    renderBar({ isLocked: true });
-
-    expect(screen.getByRole('button', { name: messages.common.search })).toBeDisabled();
-    expect(screen.getByRole('button', { name: messages.common.reset })).toBeDisabled();
-  });
-
-  /*
-   * **조건 칸 자체는 잠그지 않는다**(배치 규범 3). 값을 고쳐도 누르기 전에는 조회가 나가지
-   * 않으므로 잠글 이유가 없고, 잠그면 지금 걸린 조건을 읽을 수만 있는 상태가 된다.
-   */
-  it('전송 중에도 조건 칸은 열려 있다', () => {
-    renderBar({ isLocked: true });
-
-    expect(screen.getByLabelText(t.fields.q)).not.toBeDisabled();
-    expect(screen.getByLabelText(t.fields.supplier)).not.toBeDisabled();
   });
 });

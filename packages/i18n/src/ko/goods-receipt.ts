@@ -13,8 +13,6 @@ export const goodsReceipt = {
   breadcrumbRoot: '자재창고',
   panes: {
     list: '대상 입하 전표 목록',
-    lines: '고른 전표의 라인',
-    post: '입고 처리 입력',
   },
   fields: {
     supplier: '공급사',
@@ -39,29 +37,17 @@ export const goodsReceipt = {
     remarks: '비고',
   },
   actions: {
-    prevPage: '이전',
-    nextPage: '다음',
     goFirstPage: '첫 쪽으로',
-    select: '선택',
-    deselect: '선택 해제',
-    /*
-     * 행 안의 버튼은 보이는 글자가 행마다 같다. 접근 이름에 입하번호를 넣어 어느 건인지 밝히되,
-     * 보이는 글자를 그대로 담는다 — 담지 않으면 음성 조작이 「선택」으로 이 버튼을 부를 수 없다.
-     * **내부 번호를 접근 이름에 넣지 않는다** — 그것이 화면 밖으로 새는 또 하나의 경로다.
-     */
-    selectRow: (inboundReceiptNo: string): string => `${inboundReceiptNo} 선택`,
-    deselectRow: (inboundReceiptNo: string): string => `${inboundReceiptNo} 선택 해제`,
-    /** 라인에는 사용자 대면 번호가 줄번호뿐이다 — 입하 라인 번호는 내부 번호라 쓰지 않는다. */
-    selectLine: (lineNo: number): string => `${String(lineNo)}번 줄 선택`,
-    deselectLine: (lineNo: number): string => `${String(lineNo)}번 줄 선택 해제`,
-    /** 이 화면의 유일한 쓰기. 누르면 곧바로 나가지 않고 확인 창이 먼저 뜬다. */
+    /** 이 화면의 유일한 쓰기. 처리 화면의 마지막 단계 「확정 확인」에서만 누를 수 있다. */
     post: '입고 처리',
-    confirmPost: '입고 처리 완료',
     keepEditing: '취소',
-    /** 입고 처리 확인 창의 닫기(사용자 지시) — 창만 닫고 입력 화면으로 돌아간다. */
-    cancelPost: '취소',
     discardDraft: '재선택',
-    viewSourceDocument: '원천 문서 보기',
+    /** 작업함 행의 접근 이름 — 행을 누르면 그 전표의 처리 화면이 열린다. */
+    openRow: (inboundReceiptNo: string): string => `${inboundReceiptNo} 처리`,
+    /** 완료 화면의 주 동작(T-W-C 「다음 〈대상〉 처리」). 같은 입하 전표의 다른 라인으로 간다. */
+    nextLine: '다음 라인 처리',
+    /** 완료 화면의 보조 동작(T-W-C 「〈작업함 이름〉으로」). */
+    toWorklist: '정상품 입하 처리로',
   },
   /**
    * 비활성 사유. **버튼 이름으로 시작한다**(배치 규범 4) — 사유가 시각적으로 끊겼을 때
@@ -75,17 +61,11 @@ export const goodsReceipt = {
      * 운영 공통코드 목록을 받기 전까지 값을 지어내지 않고 처리를 잠그며 사유를 밝힌다.
      */
     postCodeListPending:
-      '입고 처리: 입고 유형·품질 상태의 운영 코드 목록이 준비되지 않아 지금은 입고 처리를 할 수 없습니다.',
-    postNeedsWarehouse: '입고 처리: 입고 창고를 고르세요.',
-    postNeedsLocation: '입고 처리: 적치 위치를 고르세요.',
-    postNeedsCodes: '입고 처리: 필수 코드를 모두 고르세요.',
-    postNeedsReceiptDatetime: '입고 처리: 입고 일시를 넣으세요.',
-    /*
-     * 원천 문서로 넘어갈 수 없는 이유. 유형 코드와 대상의 대응 규약이 아직 없어 무엇을 가리키는지
-     * 화면이 알 수 없다 — 짐작해서 열면 다른 문서를 연다.
-     */
-    sourceDocumentUnavailable:
-      '원천 문서 보기: 원천 문서 유형과 대상의 대응 규약이 아직 정해지지 않아 문서를 열 수 없습니다. 유형 코드와 입하번호만 보입니다.',
+      '입고 유형·품질 상태·재고 상태의 코드 목록이 준비되지 않아 입고 처리를 할 수 없습니다. 관리자에게 문의하세요.',
+    postNeedsWarehouse: '입고 창고를 고르세요.',
+    postNeedsLocation: '적치 위치를 고르세요.',
+    postNeedsCodes: '입고 유형·품질 상태·재고 상태를 고르세요.',
+    postNeedsReceiptDatetime: '입고 일시를 넣으세요.',
   },
   /** 입력칸 옆에 붙는 오류. 서버가 준 필드 오류도 같은 자리에 낸다. */
   errors: {
@@ -100,7 +80,9 @@ export const goodsReceipt = {
      */
     referencesFailed: '공급사 이름을 불러오지 못했습니다. 이름 자리에 사유가 표시됩니다.',
     lineReferencesFailed:
-      '품목·단위·자재 LOT·공장 이름을 불러오지 못했습니다. 이름 자리에 사유가 표시됩니다.',
+      '품목·단위·자재 LOT 이름을 불러오지 못했습니다. 이름 자리에 사유가 표시됩니다.',
+    /** 「자동 적용 값」의 공장 이름을 못 받았다. 복구 버튼이 공장만 다시 부른다. */
+    plantFailed: '공장 이름을 불러오지 못했습니다.',
     /*
      * **잘림은 실패와 다르다.** 이름 목록이 앞쪽만 오면 그 뒤의 정상 값이 「알 수 없음」으로 찍히는데,
      * 그 문구는 *값이 잘못됐다*는 뜻이라 사용자가 반대로 읽는다. 특히 **자재 LOT은 다섯 참조 중
@@ -129,7 +111,8 @@ export const goodsReceipt = {
     receiptDatetime: '입하일시',
     deliveryNoteNo: '거래명세서번호',
     status: '상태',
-    select: '선택',
+    /** 작업함 마지막 열(이동 표시 ›)의 이름 — 화면에서는 감추고 스크린리더에만 남긴다. */
+    go: '처리 화면 열기',
   },
   /** 라인 표의 머리글과 칸 문구. 폭의 근거는 screens/goods-receipt/ir-line-table.tsx에 있다. */
   /** 입고 처리 입력 구획의 제목. */
@@ -142,19 +125,14 @@ export const goodsReceipt = {
     receivedQty: '입하 수량',
     lot: '자재 LOT',
     expiryDate: '유효기한',
-    select: '선택',
     /** 「100 SAMPLE-EA」 — 단위 열을 따로 두지 않고 수량 표기에 붙인다(W-01-03이 세운 처리). */
     receivedQtyPair: (receivedQty: number, uom: string): string => `${String(receivedQty)} ${uom}`,
+    /** 라인 행의 접근 이름. 사용자 대면 번호가 줄번호뿐이다. */
+    rowLabel: (lineNo: number): string => `${String(lineNo)}번 줄`,
   },
-  /** 고른 입하 전표의 제목줄. **목록 표에 두지 않은 값(공장)이 여기서 보인다.** */
+  /** 확정 확인 단계의 입고 대상 묶음. */
   summary: {
-    label: '고른 입하 전표',
     inboundReceiptNo: '입하번호',
-    supplier: '공급사',
-    plant: '공장',
-    receiptDatetime: '입하일시',
-    deliveryNoteNo: '거래명세서번호',
-    status: '상태',
   },
   /**
    * 고른 입하 라인의 제목줄.
@@ -163,16 +141,10 @@ export const goodsReceipt = {
    * 고른 한 줄에서만 필요한 값이라 표 전체에 열을 낼 이유가 없다(계획 §5.5).
    */
   lineSummary: {
-    label: '선택한 입하 라인',
     lineNo: '줄번호',
     item: '품목',
     receivedQty: '입하 수량',
     lot: '자재 LOT',
-    expiryDate: '유효기한',
-    inspectionRequired: '수입검사 대상',
-    status: '상태',
-    inspectionYes: '대상',
-    inspectionNo: '대상 아님',
   },
   filters: {
     all: '전체',
@@ -187,7 +159,6 @@ export const goodsReceipt = {
     /** 상태 선택지가 왜 비어 있는지 — 라벨 옆 같은 줄. 공용 `pendingCode.note` 와 뜻이 같은 짧은 문구다. */
     /** 공급사 칸에 목록에 없는 글자를 두고 조회했을 때. 조건을 몰래 넓히지 않는다. */
     supplierPickFromList: '목록에서 공급사를 골라 주세요.',
-    statusPending: '코드 확정 전엔 선택이 불가합니다.',
     /** 입고 처리의 코드 선택칸이 비어 있는 이유 — 라벨 옆 같은 줄. 공용 `pendingCode.note` 의 짧은 판. */
     codePending: '코드 확정 전엔 선택이 불가합니다.',
     chipSupplier: (value: string): string => `공급사: ${value}`,
@@ -202,31 +173,14 @@ export const goodsReceipt = {
     chipRemoveStatus: '상태 조건 제거',
     chipRemoveQ: '검색어 조건 제거',
   },
-  /** 쪽 이동. 번호 목록을 두지 않는 근거는 screens/goods-receipt/page-nav.tsx에 있다. */
-  pageNav: {
-    label: '쪽 이동',
-    range: (start: number, end: number, total: number): string =>
-      `${String(start)}–${String(end)} / 전체 ${String(total)}건`,
-    /** 이 쪽에 보일 것이 없을 때. 범위를 지어내지 않고 전체 건수만 밝힌다. */
-    totalOnly: (total: number): string => `전체 ${String(total)}건`,
-  },
   /** 빈 상태는 **네 갈래**다. 사용자가 할 조치가 서로 다르다(완료 조건 C07). */
   empty: {
     noResultTitle: '조건에 맞는 입하 전표가 없습니다',
     noResultDescription: '조건을 줄이거나 입하일 범위를 넓힌 뒤 다시 조회하세요.',
     beyondLastTitle: '이 쪽에는 결과가 없습니다',
     beyondLastDescription: '첫 쪽으로 이동하세요.',
-    noSelectionTitle: '입하 전표를 선택해 주세요',
-    noSelectionDescription: '목록에서 입하할 전표의 「선택」을 눌러 주세요.',
     noLinesTitle: '입고할 라인이 없습니다',
     noLinesDescription: '이 전표에는 입고할 수 있는 품목 라인이 없습니다.',
-    /*
-     * 주소에 고른 전표가 있는데 **목록 조회가 실패한** 자리. 골격(「불러오는 중」)을 내면
-     * 기다리라고 말하는데 기다려서 풀리지 않는다. 라인 값을 받아도 구획을 열 수 없다 —
-     * **제목줄이 쓰는 전표의 값이 목록 응답에만 있다**(W-01-03이 세운 형태).
-     */
-    listFailedTitle: '대상 입하 전표를 불러오지 못해 이 전표를 열 수 없습니다',
-    listFailedDescription: '위의 「다시 시도」로 목록을 불러온 뒤 다시 고르세요.',
   },
   values: {
     /** 값이 없는 칸. 빈 칸으로 두면 자료가 없는 것인지 화면이 빠뜨린 것인지 구분되지 않는다. */
@@ -257,11 +211,6 @@ export const goodsReceipt = {
      * 고장으로 읽힌다(계약이 라인마다 위치를 받으므로 나중에 여러 줄로 늘 수 있다 — 이슈 §4).
      */
     singleLineSelect: '한 번에 하나의 입하 라인만 선택할 수 있습니다.',
-    /** 입력칸이 없는 값이 무엇에서 정해지는지 밝힌다 — 밝히지 않으면 화면 어디에서도 읽을 수 없다. */
-    businessDateDerived: '영업일은 선택한 입고 일시를 기준으로 자동 설정됩니다.',
-    qtyFromInboundLine:
-      '선택한 라인의 품목·수량·단위·자재 LOT이 그대로 입고되며, 수량을 나누어 입고할 수 없습니다.',
-    plantFromInboundReceipt: '공장은 선택한 입하 전표의 공장으로 자동 적용됩니다.',
     /** 고른 창고의 공장을 함께 보인다 — 전표의 공장과 다르면 눈으로 보인다. 막지는 않는다. */
     warehousePlant: (plant: string): string => `고른 창고의 공장: ${plant}`,
     /** 고른 창고의 공장이 입하 전표와 다를 때 — 입하 전표의 공장을 함께 보인다(사용자 지시). */
@@ -281,17 +230,12 @@ export const goodsReceipt = {
    * 이 화면에는 되돌리는 수단이 없다 — 무엇을 보내는지 한 번 더 보이는 값이 그만큼 크다.
    */
   dialog: {
-    submitTitle: '이 내용으로 입고 처리할까요?',
-    submitLead: '입고할 내용을 확인한 후 실행해 주세요.',
     /** 확인 창의 묶음 제목 — 무엇을 · 어디로 · 어떤 상태로. */
     submitGroupWhat: '입고 대상',
     submitGroupWhere: '입고 위치',
     submitGroupHow: '입고 조건',
     /** 되돌릴 수 없다는 경고 — 짧은 한 줄로 앞세운다. */
     submitIrreversible: '입고 처리 후에는 이 화면에서 되돌릴 수 없습니다.',
-    /** 이슈 §6 — 한 번의 확정으로 함께 움직이는 것. 경고 아래 보조 설명으로 낮춘다. */
-    submitEffects:
-      '입고 전표 생성·전기, 자재 LOT 상태 변경, 수불 원장 기록, 재고 잔액 반영, ERP 송신 대기열 적재가 함께 처리됩니다.',
     discardTitle: '변경사항을 취소할까요?',
     /** 이 화면의 버리기 확인 본문(사용자 지시) — 공용 `discardChangesConfirm` 은 다른 화면이 쓴다. */
     discardLead: '저장하지 않은 내용이 있습니다. 취소하면 변경한 내용이 사라집니다.',
@@ -334,5 +278,49 @@ export const goodsReceipt = {
     erpNotQueued:
       'ERP 송신 대기열에 적재되지 않았습니다. 상대 시스템 반영 여부는 연계 동기화 현황 화면에서 확인하세요.',
     erpUnknown: 'ERP 송신 대기열 적재 여부를 알 수 없습니다. 응답에 그 값이 오지 않았습니다.',
+  },
+  /**
+   * 처리 화면(화면 구성 규범 T-W-C). 단계 이름은 명사형 2~6자, 「남은 일」은 동사로 끝난다(C-5).
+   */
+  process: {
+    steps: {
+      line: '라인 선택',
+      post: '입고 정보',
+      confirm: '확정 확인',
+    },
+    remaining: {
+      pickLine: '입고할 입하 라인을 고르세요.',
+      next: '다음 단계로 넘어가세요.',
+      confirm: '내용을 확인한 뒤 입고 처리를 누르세요.',
+      done: '다음 라인을 처리하거나 작업함으로 돌아가세요.',
+    },
+    /** 업무 규칙에서 정해지는 값 — 입력 칸이 아니라 출처와 함께 보인다(T-W-C). */
+    derived: {
+      title: '자동 적용 값',
+      plant: '공장',
+      receiptQty: '입고 수량',
+      sourceDocumentType: '원천 문서 유형',
+      businessDate: '영업일',
+      fromInboundReceipt: '입하 전표에서',
+      fromInboundLine: '입하 라인 전량',
+      fromReceiptDatetime: '입고 일시의 날짜',
+    },
+    receiptTime: '입고 시각',
+    effectsTitle: '입고 처리 시 반영 사항',
+    effects: {
+      createReceipt: '입고 전표 생성',
+      lotStatus: '자재 LOT 상태 변경',
+      ledger: '수불 원장 기록',
+      balance: '재고 가용 수량 반영',
+      erp: 'ERP G/R 송신 대기열 적재',
+      erpNote: '즉시 전송 아님',
+    },
+    doneTitle: '입고 처리를 완료했습니다',
+    doneReceiptNo: (goodsReceiptNo: string): string => `입고번호 ${goodsReceiptNo}`,
+    notFoundTitle: '입하 전표를 찾을 수 없습니다',
+    notFoundDescription: '작업함에서 입하 전표를 다시 고르세요.',
+    previousLine: (lineNo: number, item: string, lot: string, qty: string): string =>
+      `${String(lineNo)}번 줄 · ${item} · ${lot} · ${qty}`,
+    previousWhere: (warehouse: string, location: string): string => `${warehouse} / ${location}`,
   },
 } as const;

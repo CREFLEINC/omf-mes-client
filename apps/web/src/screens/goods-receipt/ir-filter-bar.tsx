@@ -1,10 +1,9 @@
-import { Button, Chip, SearchInput, TextField } from '@crefle/web-ui';
+import { Button, Chip, DatePicker, SearchInput, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useId, useState } from 'react';
 
 import { toFilterChips, type ChipFilterKey, type FilterChipNames, type IrFilters } from './filters';
-import { SelectField } from './select-field';
-import { irStatusNote, irStatusOptions, irStatusPlaceholder } from './status-options';
+import { FieldLabel } from '../../patterns/select-field';
 import type { SelectOption } from './types';
 
 const t = messages.goodsReceipt;
@@ -16,15 +15,6 @@ export interface IrFilterBarProps {
   supplierOptions: SelectOption[];
   /** 조건 칩에 실을 참조 이름. 번호를 문구로 만드는 자리를 두지 않기 위한 것이다(#44). */
   chipNames: FilterChipNames;
-  /**
-   * 입고 처리를 보내는 중인가.
-   *
-   * 참이면 **조회·초기화를 닫는다** — 조건을 다시 걸면 고른 전표가 풀려 앞 전표의 처리 결과가
-   * 다른 맥락에 나타난다. **조건 칸 자체는 잠그지 않는다**(배치 규범 3) — 잠그면 지금 걸린
-   * 조건을 읽을 수만 있고 고칠 수 없는 상태가 되는데, 조건을 고쳐도 누르기 전에는 아무 일도
-   * 일어나지 않는다. 칩의 ×는 디자인 시스템이 잠금을 받지 않아 화면의 경로 가드가 막는다.
-   */
-  isLocked: boolean;
   onSearch: (filters: IrFilters) => void;
   /** 조건 칩의 ×. 그 조건 하나만 풀고 곧바로 다시 조회한다. */
   onRemoveFilter: (key: ChipFilterKey) => void;
@@ -41,8 +31,10 @@ export interface IrFilterBarProps {
  * **기본 기간을 심지 않는다**(계획 결정 6). 비어 있는 것이 고장으로 읽히지 않도록
  * 그 사실을 줄 아래 안내가 밝힌다.
  *
- * **상태 선택지는 비어 있다**(결정 18 · `omf-mes#64`). 값 목록이 확정되지 않아 값을 지어내지
- * 않고, 왜 비어 있는지를 `aria-describedby`로 이어 붙인다.
+ * **상태 조건 칸을 두지 않는다**(화면 구성 규범 C-4). 값 목록이 확정되지 않아 늘 고를 수 없는
+ * 칸이었다. 주소의 `st`는 그대로 읽어 조회에 싣는다(손으로 고친 주소의 호환).
+ *
+ * **「처리 대기만」 조건을 두지 않는다**(T-W-C 작업함 기준의 이탈). 목록 계약에 그 조건이 없다.
  *
  * **조건이 하나도 없어도 조회가 열려 있다** — 이 화면은 들어오자마자 대상 후보를 보여야 한다.
  * 잠글 조건이 없어 「조회」에 비활성 사유가 붙는 자리도 없다.
@@ -53,13 +45,15 @@ export const IrFilterBar = ({
   appliedFilters,
   supplierOptions,
   chipNames,
-  isLocked,
   onSearch,
   onRemoveFilter,
   onReset,
 }: IrFilterBarProps) => {
   const [filters, setFilters] = useState<IrFilters>(appliedFilters);
-  const supplierListId = `${useId()}-suppliers`;
+  const baseId = useId();
+  const supplierListId = `${baseId}-suppliers`;
+  const fromId = `${baseId}-from`;
+  const toId = `${baseId}-to`;
   /** 공급사 칸에 친 글자. 조건(번호)은 목록의 「코드 · 이름」과 맞을 때만 바뀐다. */
   const appliedSupplierLabel =
     supplierOptions.find((option) => option.value === appliedFilters.supplier)?.label ?? '';
@@ -116,11 +110,10 @@ export const IrFilterBar = ({
   return (
     <>
       {/*
-       * 한 줄 순서: 공급사 | 입하 시작일 | 입하 종료일 | 상태 | 검색 | 조회·초기화. 칸마다 폭을 따로 준다
+       * 한 줄 순서: 공급사 | 입하 시작일 | 입하 종료일 | 검색 | 초기화·조회. 칸마다 폭을 따로 준다
        * (`app.css` 의 `.goods-receipt-filter-*`) — 같은 폭으로 늘리지 않는다. 좁으면 줄을 바꾼다.
        *
-       * 칸 아래 안내를 두지 않는다 — 안내가 있는 칸만 키가 커져 줄이 들쭉날쭉해진다. 상태 안내만
-       * 라벨 옆 같은 줄에 둔다(사용자 지시).
+       * 칸 아래 안내를 두지 않는다(C-6) — 안내가 있는 칸만 키가 커져 줄이 들쭉날쭉해진다.
        */}
       <div className="filter-bar goods-receipt-filter-bar">
         {/*
@@ -156,44 +149,35 @@ export const IrFilterBar = ({
 
         {/*
          * 입하 시작일·종료일 — 칸마다 제 이름을 단다(사용자 지시). 요청은 두 값을 따로 싣고, 비우면 기간을
-         * 좁히지 않는다. 설치본에 기간 선택 부품이 없어 네이티브 날짜 칸을 쓴다(W-01-07이 세운 처리).
+         * 좁히지 않는다. 날짜는 DS `DatePicker` 하나(C-12). `DatePicker`에는 라벨 속성이 없어 배치 규범 3의
+         * 라벨을 직접 단다.
          */}
-        <div className="goods-receipt-filter-date">
-          <TextField
-            type="date"
-            label={t.fields.receiptDateFrom}
-            value={filters.from}
-            onChange={(event) => {
-              setFilters((prev) => ({ ...prev, from: event.target.value }));
+        <div className="field-cell goods-receipt-filter-date">
+          <FieldLabel htmlFor={fromId} label={t.fields.receiptDateFrom} />
+          <DatePicker
+            id={fromId}
+            clearable
+            value={filters.from === '' ? null : filters.from}
+            max={filters.to === '' ? undefined : filters.to}
+            placeholder={messages.common.selectDate}
+            onChange={(value) => {
+              setFilters((prev) => ({ ...prev, from: value ?? '' }));
             }}
           />
         </div>
-        <div className="goods-receipt-filter-date">
-          <TextField
-            type="date"
-            label={t.fields.receiptDateTo}
-            value={filters.to}
-            onChange={(event) => {
-              setFilters((prev) => ({ ...prev, to: event.target.value }));
+        <div className="field-cell goods-receipt-filter-date">
+          <FieldLabel htmlFor={toId} label={t.fields.receiptDateTo} />
+          <DatePicker
+            id={toId}
+            clearable
+            value={filters.to === '' ? null : filters.to}
+            min={filters.from === '' ? undefined : filters.from}
+            placeholder={messages.common.selectDate}
+            onChange={(value) => {
+              setFilters((prev) => ({ ...prev, to: value ?? '' }));
             }}
           />
         </div>
-
-        {/*
-         * 값 목록이 확정되지 않아 **선택지가 비어 있다.** 자리표시 값을 하나 넣어 두지 않는다 —
-         * 넣으면 서버가 모르는 코드가 조건에 실려 결과가 늘 비어 보인다.
-         */}
-        <SelectField
-          className="goods-receipt-filter-status"
-          label={t.fields.status}
-          options={irStatusOptions()}
-          value={filters.status}
-          labelHint={irStatusNote()}
-          placeholder={irStatusPlaceholder()}
-          onChange={(value) => {
-            setFilters((prev) => ({ ...prev, status: value }));
-          }}
-        />
 
         {/* 검색칸 → 조회 → 초기화를 한 덩어리로 잇는다. */}
         <div className="goods-receipt-filter-search-group">
@@ -212,17 +196,16 @@ export const IrFilterBar = ({
           </div>
 
           {/*
-           * 조회와 초기화는 짝이라 함께 줄바꿈되게 묶는다(배치 규범 2-1). 라벨이 없는 만큼 라벨 층을
-           * 내려 입력 상자와 같은 높이에 선다. 비활성 사유가 붙는 자리가 없다 — 조건 없이도 조회가 열려 있다.
+           * 조회와 초기화는 짝이라 함께 줄바꿈되게 묶는다(배치 규범 2-1). [조회]는 오른쪽 끝 채움 버튼,
+           * [초기화]는 그 왼쪽(C-6). 라벨이 없는 만큼 라벨 층을 내려 입력 상자와 같은 높이에 선다.
+           * 조건 없이도 조회가 열려 있어 비활성 사유가 붙는 자리가 없다.
            */}
           <div className="field-cell field-cell-unlabeled">
             <div className="filter-actions">
-              <Button disabled={isLocked} onClick={search}>
-                {messages.common.search}
-              </Button>
-              <Button variant="outlined" disabled={isLocked} onClick={onReset}>
+              <Button variant="outlined" onClick={onReset}>
                 {messages.common.reset}
               </Button>
+              <Button onClick={search}>{messages.common.search}</Button>
             </div>
           </div>
         </div>

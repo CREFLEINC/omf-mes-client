@@ -172,15 +172,13 @@ describe('ResultPane — 원천 문서', () => {
   });
 
   /*
-   * **M53** — 링크로 두면 없는 화면으로 가는 경로가 생기고, 감추면 왜 못 가는지 읽을 수 없다.
+   * **C-4** — 대응 규약이 없어 늘 쓸 수 없던 「원천 문서 보기」를 두지 않는다. 유형 코드와 입하번호는
+   * 값으로 보인다(스펙 §9-2 — 대응표에 없으면 원본 코드를 그대로 보이고 링크를 만들지 않는다).
    */
-  it('원천 문서 보기가 비활성이고 사유가 이어진다', () => {
+  it('늘 비활성이던 원천 문서 보기 버튼이 없다', () => {
     renderPane();
 
-    const button = screen.getByRole('button', { name: t.actions.viewSourceDocument });
-
-    expect(button).toBeDisabled();
-    expect(button).toHaveAccessibleDescription(t.actionReasons.sourceDocumentUnavailable);
+    expect(screen.queryAllByRole('button')).toHaveLength(0);
   });
 
   it('결과 구획에 이동할 링크가 하나도 없다', () => {

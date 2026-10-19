@@ -1,6 +1,6 @@
-import { Button, Chip } from '@crefle/web-ui';
+import { Chip } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { useId, type ReactNode } from 'react';
+import type { ReactNode } from 'react';
 
 import { describeErpQueue, erpQueueText } from './erp-status';
 import type { GoodsReceiptResultView } from './types';
@@ -88,8 +88,6 @@ const lotStatusValue = (state: LotStatusState): ReactNode => {
  * 기존 디자인 시스템 컴포넌트의 조합이라 이 화면 슬라이스가 소유한다.
  */
 export const ResultPane = ({ result, sourceInboundReceiptNo, lotStatus }: ResultPaneProps) => {
-  const reasonId = `${useId()}-source-document`;
-
   return (
     /* 사용자가 부르지 않은 시점에 나타나는 내용이라 살아 있는 영역으로 알린다. */
     <div role="status" aria-label={t.result.label}>
@@ -131,20 +129,6 @@ export const ResultPane = ({ result, sourceInboundReceiptNo, lotStatus }: Result
 
       {/* 확인하지 않은 것을 밝힌다 — 말하지 않으면 「다 확인됐다」로 읽힌다. */}
       <p className="field-note">{t.result.balanceNote}</p>
-
-      {/*
-       * 원천 문서로 넘어갈 수단이 아직 없다 — 유형 코드와 대상의 대응 규약이 정해지지 않았다.
-       * **감추지 않고 비활성으로 두고 사유를 잇는다**(배치 규범 4-1). 감추면 왜 못 가는지
-       * 화면 어디에서도 읽을 수 없고, 링크로 두면 없는 화면으로 가는 경로가 생긴다.
-       */}
-      <div className="field-cell">
-        <Button variant="outlined" size="sm" disabled aria-describedby={reasonId}>
-          {t.actions.viewSourceDocument}
-        </Button>
-        <span id={reasonId} className="field-note">
-          {t.actionReasons.sourceDocumentUnavailable}
-        </span>
-      </div>
     </div>
   );
 };

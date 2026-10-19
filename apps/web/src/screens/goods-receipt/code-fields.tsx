@@ -1,7 +1,7 @@
 import { messages } from '@omf-mes/i18n';
 
 import { codePlaceholder, REQUIRED_CODE_KEYS, type CodeOptionSets } from './code-options';
-import { SelectField } from './select-field';
+import { SelectField } from '../../patterns/select-field';
 import type { CodeDraft, GoodsReceiptCodeKey } from './types';
 import { CODE_FIELD_NAMES } from './validation';
 
@@ -19,6 +19,11 @@ export interface CodeFieldsProps {
    */
   isOpen?: (key: GoodsReceiptCodeKey) => boolean;
   onChange: (key: GoodsReceiptCodeKey, value: string) => void;
+  /**
+   * 그릴 코드 칸. 처리 화면은 필수 코드를 본문에, 사유를 「추가 입력(선택)」에 나누어 그리고,
+   * 원천 문서 유형은 읽기 전용 값으로 보인다(T-W-C). 주지 않으면 다섯 칸을 모두 그린다.
+   */
+  keys?: readonly GoodsReceiptCodeKey[];
 }
 
 interface CodeField {
@@ -60,32 +65,35 @@ export const CodeFields = ({
   isLocked,
   isOpen = () => true,
   onChange,
+  keys,
 }: CodeFieldsProps) => (
   <div className="form-grid goods-receipt-post-grid">
-    {CODE_FIELDS.map(({ key, label }) => {
-      const codeOptions = options[key];
+    {CODE_FIELDS.filter(({ key }) => keys === undefined || keys.includes(key)).map(
+      ({ key, label }) => {
+        const codeOptions = options[key];
 
-      return (
-        <SelectField
-          key={key}
-          className={`goods-receipt-step-${key}`}
-          label={label}
-          required={REQUIRED_CODE_KEYS.includes(key)}
-          options={codeOptions}
-          value={values[key]}
-          /* 선택지가 비어 있는 이유는 라벨 옆 한 줄로 — 칸 아래에 두면 그 칸만 키가 커진다. */
-          labelHint={codeOptions.length === 0 ? t.filters.codePending : undefined}
-          error={fieldErrors[CODE_FIELD_NAMES[key]]}
-          /* 고를 것이 없는 칸과 고를 수 있는 칸은 트리거 문구가 달라야 한다. */
-          placeholder={
-            codeOptions.length === 0 ? codePlaceholder() : t.values.fieldPlaceholders[key]
-          }
-          disabled={isLocked || !isOpen(key)}
-          onChange={(value) => {
-            onChange(key, value);
-          }}
-        />
-      );
-    })}
+        return (
+          <SelectField
+            key={key}
+            className={`goods-receipt-step-${key}`}
+            label={label}
+            required={REQUIRED_CODE_KEYS.includes(key)}
+            options={codeOptions}
+            value={values[key]}
+            /* 선택지가 비어 있는 이유는 라벨 옆 한 줄로 — 칸 아래에 두면 그 칸만 키가 커진다. */
+            labelHint={codeOptions.length === 0 ? t.filters.codePending : undefined}
+            error={fieldErrors[CODE_FIELD_NAMES[key]]}
+            /* 고를 것이 없는 칸과 고를 수 있는 칸은 트리거 문구가 달라야 한다. */
+            placeholder={
+              codeOptions.length === 0 ? codePlaceholder() : t.values.fieldPlaceholders[key]
+            }
+            disabled={isLocked || !isOpen(key)}
+            onChange={(value) => {
+              onChange(key, value);
+            }}
+          />
+        );
+      },
+    )}
   </div>
 );

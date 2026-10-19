@@ -113,4 +113,28 @@ export const common = {
     keep: '그대로 두기',
     replace: '새로 읽은 값으로',
   },
+  /** 쪽 이동 공용 부품(`patterns/page-nav`, 화면 구성 규범 C-8). */
+  pageNav: {
+    label: '쪽 이동',
+    first: '처음',
+    prev: '이전',
+    next: '다음',
+    last: '마지막',
+    position: (page: number, totalPages: number) => `${String(page)} / ${String(totalPages)}`,
+    total: (total: number) => `전체 ${String(total)}건`,
+    size: (size: number) => `${String(size)}건씩`,
+  },
+
+  /** 처리 화면 공용 틀(`patterns/process-page`, 화면 구성 규범 T-W-C · C-5). */
+  processPage: {
+    steps: '처리 단계',
+    previousSummary: '앞 단계에서 정한 값',
+    actionBar: '처리 동작',
+    remaining: '남은 일',
+    prev: '이전',
+    next: (stepName: string) => `다음: ${stepName}`,
+    returnToStep: (stepName: string) => `${stepName} 단계로 돌아가기`,
+    optionalInput: '추가 입력(선택)',
+    effectExcluded: '제외',
+  },
 } as const;

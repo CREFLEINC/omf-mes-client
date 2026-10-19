@@ -4,7 +4,7 @@ export interface FieldLabelProps {
   label: string;
   /** 라벨 오른쪽 같은 줄의 짧은 안내. 칸이 `aria-describedby` 로 이 id 를 잇는다. */
   hint?: { id: string; text: string };
-  /** 입고 처리에 꼭 필요한 칸 — 라벨 뒤에 `*` 를 단다(스크린리더는 칸의 `aria-required` 로 읽는다). */
+  /** 꼭 필요한 칸 — 라벨 뒤에 `*` 를 단다(스크린리더는 칸의 `aria-required` 로 읽는다). */
   required?: boolean;
 }
 
@@ -17,18 +17,18 @@ export interface FieldLabelProps {
  *
  * 필수 표시(`*`)는 입고 처리 폼의 필수 칸에만 붙인다 — 기준은 `validation.ts` 의 입고 처리 조건이다.
  *
- * 이 화면 슬라이스가 소유한다 — 다른 화면 슬라이스의 같은 이름 부품을 참조하지 않는다.
+ * 화면 구성 규범 6장 — W-01-10 재작업에서 화면 폴더의 복제본을 공용으로 올렸다.
  */
 export const FieldLabel = ({ htmlFor, label, hint, required = false }: FieldLabelProps) => (
   <span className="field-label">
     <label htmlFor={htmlFor}>{label}</label>
     {required && (
-      <span className="goods-receipt-required" aria-hidden="true">
+      <span className="field-required" aria-hidden="true">
         *
       </span>
     )}
     {hint !== undefined && (
-      <span id={hint.id} className="goods-receipt-label-hint">
+      <span id={hint.id} className="field-label-hint">
         {hint.text}
       </span>
     )}

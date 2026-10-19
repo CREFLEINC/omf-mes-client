@@ -19,10 +19,10 @@ const t = messages.goodsReceipt;
 export interface IrFilters {
   /** 공급사 번호. 정수만 뜻이 있다 — 계약이 `supplierId`를 정수로 요구한다. */
   supplier: string;
-  /** 입하일 범위. `<input type="date">`가 주는 `YYYY-MM-DD` 그대로다. */
+  /** 입하일 범위. `DatePicker`가 주는 `YYYY-MM-DD` 그대로다. */
   from: string;
   to: string;
-  /** 상태 코드. 선택지가 자리표시라 지금은 주소를 손으로 고칠 때만 들어온다(결정 18). */
+  /** 상태 코드. 화면에 조건 칸이 없어(C-4) 주소를 손으로 고칠 때만 들어온다(결정 18). */
   status: string;
   /** 입하번호·거래명세서번호 검색어 */
   q: string;

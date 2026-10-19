@@ -19,7 +19,8 @@ import { MaterialIssueRequestScreen } from '../screens/material-issue-request/sc
 import { WorkOrderProgressScreen } from '../screens/work-order-progress/screen';
 import { WorkOrderReleaseScreen } from '../screens/work-order-release/screen';
 import { WorkOrderAssignmentScreen } from '../screens/work-order/screen';
-import { GoodsReceiptScreen } from '../screens/goods-receipt/screen';
+import { GoodsReceiptProcess } from '../screens/goods-receipt/process-screen';
+import { GoodsReceiptWorklist } from '../screens/goods-receipt/screen';
 import { InboundScheduleScreen } from '../screens/inbound-schedule/screen';
 import { InspectionStandardScreen } from '../screens/inspection-standard/screen';
 import { IntegrationSyncScreen } from '../screens/integration-sync/screen';
@@ -200,7 +201,12 @@ export const appRouter = createBrowserRouter([
        * W-01-10 — 같은 규칙(사이드바 섹션)을 따르고 차례도 업무 순서다: 도착을 처리한 뒤
        * (초과 입하 분리) 창고로 받아들이고(정상품 입하 처리) 그 결과를 재고에서 확인한다.
        */
-      { path: 'logistics/goods-receipt', element: <GoodsReceiptScreen /> },
+      { path: 'logistics/goods-receipt', element: <GoodsReceiptWorklist /> },
+      /* 처리형(화면 구성 규범 T-W-C)의 처리 화면은 작업함 아래 경로에 선다. */
+      {
+        path: 'logistics/goods-receipt/:inboundReceiptNo',
+        element: <GoodsReceiptProcess />,
+      },
       /*
        * W-01-07 — 앞머리는 **사이드바 섹션(도메인)을 따른다.** 계약 경로와 같아지는 경우가
        * 많지만 그것이 근거는 아니다: 이 화면의 계약 경로는 `/inventory/**`·`/trace/**`인데

@@ -59,4 +59,26 @@ export const common: Translated<typeof ko.common> = {
     keep: 'Giữ nguyên',
     replace: 'Dùng giá trị vừa đọc',
   },
+  pageNav: {
+    label: 'Chuyển trang',
+    first: 'Đầu',
+    prev: 'Trước',
+    next: 'Sau',
+    last: 'Cuối',
+    position: (page: number, totalPages: number) => `${String(page)} / ${String(totalPages)}`,
+    total: (total: number) => `Tổng ${String(total)} mục`,
+    size: (size: number) => `${String(size)} mục/trang`,
+  },
+
+  processPage: {
+    steps: 'Các bước xử lý',
+    previousSummary: 'Giá trị đã chọn ở bước trước',
+    actionBar: 'Thao tác xử lý',
+    remaining: 'Việc còn lại',
+    prev: 'Trước',
+    next: (stepName: string) => `Tiếp: ${stepName}`,
+    returnToStep: (stepName: string) => `Quay lại bước ${stepName}`,
+    optionalInput: 'Nhập thêm (tùy chọn)',
+    effectExcluded: 'Loại trừ',
+  },
 };

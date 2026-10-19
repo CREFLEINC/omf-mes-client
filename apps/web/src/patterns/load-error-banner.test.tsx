@@ -4,7 +4,7 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
-import { ApiRequestError } from '../../patterns/request';
+import { ApiRequestError } from './request';
 import { describeLoadError, LoadErrorBanner } from './load-error-banner';
 
 const renderBanner = (error: unknown) => {

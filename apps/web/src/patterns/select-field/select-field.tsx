@@ -34,7 +34,7 @@ export interface SelectFieldProps {
    * 칸들의 윗선이 맞아야 하는 자리에 쓴다. 칸의 설명으로 이어진다.
    */
   labelHint?: string;
-  /** 입고 처리에 꼭 필요한 칸. 라벨에 `*` 를 달고 칸에 `aria-required` 를 준다. */
+  /** 꼭 필요한 칸. 라벨에 `*` 를 달고 칸에 `aria-required` 를 준다. */
   required?: boolean;
 }
 
@@ -56,7 +56,7 @@ const hasEmptyValue = (options: SelectItems): boolean =>
  * **둘을 함께 낼 수 있다.** 잠금 사유(「창고를 먼저 고르세요」)와 오류는 서로 다른 사정이라
  * 한쪽이 다른 쪽을 덮으면 사용자가 무엇을 해야 하는지 잃는다.
  *
- * 이 화면 슬라이스가 소유한다 — 다른 화면 슬라이스의 같은 이름 부품을 참조하지 않는다.
+ * 화면 구성 규범 6장 — W-01-10 재작업에서 화면 폴더의 복제본을 공용으로 올렸다.
  */
 export const SelectField = ({
   label,
