@@ -1,47 +1,171 @@
-import { waitFor } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { focusManager } from '@tanstack/react-query';
+import { act, waitFor } from '@testing-library/react';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { renderHookWithProviders } from '../../test/api-harness';
+import { createStubFetch, jsonResponse, renderHookWithProviders } from '../../test/api-harness';
 import { toApiError } from '../../patterns/request';
-import { DASHBOARD_SUMMARY_NOT_READY_REASON, useDashboardSummary } from './queries';
+import { DASHBOARD_REFRESH_INTERVAL_MS, useDashboardSummary } from './queries';
 
 /**
- * `GET /app/dashboard-summary` 는 서버에 경로 자체가 없다(전달본 `manifest.json` ·
- * 대응표 P1 「미구현 5건」 — 집계 대상 도메인 완성 뒤로 미뤘다). 이 화면은 그 오퍼레이션
- * 하나만 읽으므로, 호출을 막는다는 것은 곧 「이 훅이 fetch 를 한 번도 부르지 않는다」는 뜻이다.
+ * `GET /app/dashboard-summary` 를 실제로 부른다(omf-all-around#112). 한동안 서버에 경로가 없어
+ * 부르지 않고 501로 거부했었다(#1063) — 그 차단이 되살아나면 화면은 다시 「준비 중」에 갇힌다.
  */
-describe('useDashboardSummary — 미구현 오퍼레이션 차단', () => {
-  it('네트워크 요청을 한 번도 보내지 않고 곧바로 실패로 정착한다', async () => {
-    const fetch = vi.fn<typeof globalThis.fetch>(async () => {
-      throw new Error('이 훅은 fetch를 부르면 안 된다');
+const summaryBody = {
+  baseDate: '2026-10-16',
+  plantId: 1,
+  asOf: '2026-10-16T09:20:00+07:00',
+  cards: [{ cardCode: 'PRODUCTION_QTY', label: '금일 총생산', value: 4321, unit: 'EA' }],
+};
+
+const isSummaryRequest = (request: Request): boolean =>
+  request.method === 'GET' && new URL(request.url).pathname === '/app/dashboard-summary';
+
+describe('useDashboardSummary', () => {
+  it('기간·공장을 질의로 실어 서버 집계를 부른다', async () => {
+    const fetch = vi.fn(
+      createStubFetch([{ match: isSummaryRequest, respond: () => jsonResponse(summaryBody) }]),
+    );
+
+    const { result } = renderHookWithProviders(
+      () => useDashboardSummary({ dateFrom: '2026-10-10', dateTo: '2026-10-16', plantId: 1 }),
+      { fetch },
+    );
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+
+    expect(fetch).toHaveBeenCalledTimes(1);
+    const url = new URL(fetch.mock.calls[0]![0].url);
+    expect(url.searchParams.get('dateFrom')).toBe('2026-10-10');
+    expect(url.searchParams.get('dateTo')).toBe('2026-10-16');
+    expect(url.searchParams.has('baseDate')).toBe(false);
+    expect(url.searchParams.get('plantId')).toBe('1');
+    expect(result.current.data?.cards[0]).toMatchObject({
+      cardCode: 'PRODUCTION_QTY',
+      value: 4321,
     });
+  });
+
+  it('조건이 비어 있어도 부른다 — 날짜·공장은 서버가 정한다', async () => {
+    const fetch = vi.fn(
+      createStubFetch([{ match: isSummaryRequest, respond: () => jsonResponse(summaryBody) }]),
+    );
+
+    const { result } = renderHookWithProviders(() => useDashboardSummary({}), { fetch });
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+
+    const url = new URL(fetch.mock.calls[0]![0].url);
+    expect([...url.searchParams.keys()]).toEqual([]);
+  });
+
+  it('서버 실패는 상태 코드 그대로 오류로 정착한다', async () => {
+    const fetch = createStubFetch([
+      { match: isSummaryRequest, respond: () => jsonResponse({}, { status: 500 }) },
+    ]);
 
     const { result } = renderHookWithProviders(() => useDashboardSummary({}), { fetch });
 
     await waitFor(() => expect(result.current.isError).toBe(true));
 
-    expect(fetch).not.toHaveBeenCalled();
+    expect(toApiError(result.current.error)).toMatchObject({ kind: 'http', status: 500 });
+  });
+});
+
+/**
+ * ⭐ 대시보드만 주기 자동 갱신(사용자 결정 2026-10-16, omf-all-around#115). 앱 전역 기본값에
+ * 번지지 않았는지는 `app/providers.test.tsx`가 본다.
+ */
+describe('useDashboardSummary — 주기 자동 갱신', () => {
+  afterEach(() => {
+    vi.useRealTimers();
+    focusManager.setFocused(undefined);
   });
 
-  /*
-   * ⛔ **화면의 실패 배너(`load-error-banner.tsx`)는 `describeLoadError` 가 `kind: 'http'` 의
-   * `message` 를 그대로 보인다.** 「불러오지 못했다」는 제목 아래에도 이 사유가 실려야
-   * 사용자가 «네트워크 오류»가 아니라 «준비 중»임을 읽을 수 있다.
-   */
-  it('실패 사유에 아직 준비되지 않았다는 사실이 담긴다', async () => {
-    const { result } = renderHookWithProviders(() => useDashboardSummary({}), {
-      fetch: async () => {
-        throw new Error('이 훅은 fetch를 부르면 안 된다');
-      },
+  it('주기마다 서버 집계를 다시 부른다', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    const fetch = vi.fn(
+      createStubFetch([{ match: isSummaryRequest, respond: () => jsonResponse(summaryBody) }]),
+    );
+
+    const { result } = renderHookWithProviders(() => useDashboardSummary({}), { fetch });
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(fetch).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(DASHBOARD_REFRESH_INTERVAL_MS - 1_000);
+    });
+    expect(fetch).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1_000);
+    });
+    await waitFor(() => expect(fetch).toHaveBeenCalledTimes(2));
+  });
+
+  it('지난 기간(live: false)이면 주기가 와도 다시 부르지 않는다', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    const fetch = vi.fn(
+      createStubFetch([{ match: isSummaryRequest, respond: () => jsonResponse(summaryBody) }]),
+    );
+
+    const { result } = renderHookWithProviders(
+      () => useDashboardSummary({ dateFrom: '2026-10-01', dateTo: '2026-10-07' }, { live: false }),
+      { fetch },
+    );
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(DASHBOARD_REFRESH_INTERVAL_MS * 2);
+    });
+    expect(fetch).toHaveBeenCalledTimes(1);
+  });
+
+  it('탭이 숨겨진 동안에는 주기가 와도 다시 부르지 않는다', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    const fetch = vi.fn(
+      createStubFetch([{ match: isSummaryRequest, respond: () => jsonResponse(summaryBody) }]),
+    );
+
+    const { result, queryClient } = renderHookWithProviders(() => useDashboardSummary({}), {
+      fetch,
+    });
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(queryClient.getQueryCache().getAll()[0]?.options).not.toMatchObject({
+      refetchIntervalInBackground: true,
     });
 
+    act(() => {
+      focusManager.setFocused(false);
+    });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(DASHBOARD_REFRESH_INTERVAL_MS * 2);
+    });
+    expect(fetch).toHaveBeenCalledTimes(1);
+  });
+
+  it('자동 갱신이 실패해도 직전 값을 지우지 않고 오류로 정착한다', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    let fail = false;
+    const fetch = createStubFetch([
+      {
+        match: isSummaryRequest,
+        respond: () => (fail ? jsonResponse({}, { status: 500 }) : jsonResponse(summaryBody)),
+      },
+    ]);
+
+    const { result } = renderHookWithProviders(() => useDashboardSummary({}), { fetch });
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+
+    fail = true;
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(DASHBOARD_REFRESH_INTERVAL_MS);
+    });
     await waitFor(() => expect(result.current.isError).toBe(true));
 
-    const apiError = toApiError(result.current.error);
-    expect(apiError).toEqual({
-      kind: 'http',
-      status: 501,
-      message: DASHBOARD_SUMMARY_NOT_READY_REASON,
-    });
+    expect(result.current.data?.cards[0]).toMatchObject({ cardCode: 'PRODUCTION_QTY' });
+  });
+
+  it('주기는 1분이다', () => {
+    expect(DASHBOARD_REFRESH_INTERVAL_MS).toBe(60_000);
   });
 });

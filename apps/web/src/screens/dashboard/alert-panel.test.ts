@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
-import { alertPathOf, describeLocation, describeMessage } from './alert-panel';
+import type { DashboardAlertView } from './types';
+import { alertPathOf, alertTimeOf, alertTitleOf, describeMessage } from './alert-panel';
 
 describe('alertPathOf', () => {
   it('알림센터를 그 유형으로 좁혀 연다', () => {
@@ -24,15 +25,37 @@ describe('describeMessage', () => {
   });
 });
 
-describe('describeLocation', () => {
-  it('계층 텍스트를 그대로 낸다', () => {
-    expect(describeLocation('합성공장 > 가라인 > 합성설비 1호')).toBe(
-      '합성공장 > 가라인 > 합성설비 1호',
-    );
+describe('alertTitleOf', () => {
+  const entries = [{ value: 'SAMPLE_EVENT', label: '합성 알림 이름' }];
+
+  it('알림센터와 같은 유형 목록으로 이름을 푼다 — 코드 원문을 보이지 않는다', () => {
+    expect(alertTitleOf('SAMPLE_EVENT', entries)).toBe('합성 알림 이름');
   });
 
-  it('오지 않으면 없다고 적는다 — 빈 줄로 두면 카드가 덜 그려진 것으로 읽힌다', () => {
-    expect(describeLocation(null)).toBe('위치 정보 없음');
-    expect(describeLocation('  ')).toBe('위치 정보 없음');
+  it('목록에 없거나 아직 안 왔으면 「알림」', () => {
+    expect(alertTitleOf('UNKNOWN_EVENT', entries)).toBe('알림');
+    expect(alertTitleOf('SAMPLE_EVENT', [])).toBe('알림');
+  });
+});
+
+describe('alertTimeOf', () => {
+  const view = (occurredAt: string): DashboardAlertView => ({
+    notificationId: 1,
+    eventCode: 'SAMPLE_EVENT',
+    message: '',
+    occurredAt,
+    occurredAtText: '원문 표기',
+    read: false,
+    locationPath: null,
+  });
+
+  it('오늘 · 지난날 · 지난해 모두 YYYY.MM.DD HH:mm(공장 시각 UTC+7, 24시간제) 한 형식', () => {
+    expect(alertTimeOf(view('2026-10-16T07:02:00Z'))).toBe('2026.10.16 14:02');
+    expect(alertTimeOf(view('2026-10-14T07:18:00Z'))).toBe('2026.10.14 14:18');
+    expect(alertTimeOf(view('2025-12-15T03:00:00Z'))).toBe('2025.12.15 10:00');
+  });
+
+  it('읽을 수 없으면 받은 표기 그대로', () => {
+    expect(alertTimeOf(view('잘못된 값'))).toBe('원문 표기');
   });
 });

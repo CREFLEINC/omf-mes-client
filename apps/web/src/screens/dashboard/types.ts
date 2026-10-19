@@ -1,5 +1,14 @@
-import type { components } from '@omf-mes/api-client';
+import type {
+  components,
+  DashboardCardForward,
+  DashboardCardNotYetReasonCode,
+  DashboardProduction,
+  DashboardQuality,
+  DashboardShipment,
+  DashboardSummarySections,
+} from '@omf-mes/api-client';
 import { formatPlantDateTime } from '../../patterns/plant-time';
+import { toEquipmentView, type EquipmentView } from './equipment';
 
 /**
  * W-CO-05가 다루는 모양들.
@@ -11,8 +20,9 @@ import { formatPlantDateTime } from '../../patterns/plant-time';
  * 이 화면이 소유한다 — 다른 화면 슬라이스의 같은 이름 파일을 참조하지 않는다.
  */
 
-type DashboardSummary = components['schemas']['DashboardSummary'];
-type DashboardCard = components['schemas']['DashboardCard'];
+/** 계약의 집계에 2차 규격의 선택 섹션(설비 · 출하)을 더한 모양(omf-all-around#118 · forward-contract). */
+type DashboardSummary = components['schemas']['DashboardSummary'] & DashboardSummarySections;
+type DashboardCard = components['schemas']['DashboardCard'] & DashboardCardForward;
 type Notification = components['schemas']['Notification'];
 
 export interface PageMeta {
@@ -47,6 +57,8 @@ export interface DashboardCardView {
   valueStatusCode: CardValueStatus;
   /** 분모에서 뺀 건수. `PARTIAL`일 때 함께 보인다. */
   excludedCount: number | null;
+  /** 값을 낼 수 없는 이유(`NOT_YET` 일 때만 · 지금은 시간가동률만 싣는다). 없으면 `null`. */
+  notYetReasonCode: DashboardCardNotYetReasonCode | null;
 }
 
 export interface DashboardTrendPointView {
@@ -81,7 +93,14 @@ export interface DashboardView {
   alerts: DashboardAlertView[];
   /** 계약이 추이를 선택으로 두어 아예 오지 않을 수 있다 — 「없음」을 값으로 낸다. */
   trend: DashboardTrendView | null;
-  asOfText: string | null;
+  /** 설비 현황(#111). 서버가 섹션을 주지 않으면 `null` — 설비 0대와 다르다. */
+  equipment: EquipmentView | null;
+  /** 출하 현황(#114). 계약의 모양을 그대로 쓴다 — 옮길 것이 없다. 섹션이 오지 않으면 `null`. */
+  shipment: DashboardShipment | null;
+  /** 품질 현황(#113). 계약의 모양을 그대로 쓴다. 섹션이 오지 않으면 `null`. */
+  quality: DashboardQuality | null;
+  /** 공장 단위 금일 생산 합계 — 종합 불량률 · 총 NG 원천. 섹션이 오지 않으면 `null`. */
+  production: DashboardProduction | null;
 }
 
 /**
@@ -143,6 +162,26 @@ export const toChartMax = (
   return targetValue > dataMax ? targetValue : undefined;
 };
 
+/** 보기 좋은 눈금 간격의 앞자리 — 1 · 2 · 2.5 · 5 × 10ⁿ. */
+const NICE_STEPS = [1, 2, 2.5, 5, 10] as const;
+
+/**
+ * 추이 그래프 y축 — 상한과 눈금 수(⭐ 사용자 지시 2026-10-16). DS 차트는 상한을 4등분해 1,314,000 · 985,500 같은
+ * 어색한 눈금을 그렸다. 「위 끝 ÷ 4」 이상인 가장 작은 보기 좋은 간격을 고르고, 상한은 그 간격의 배수로 올린다
+ * (예: 1,250,000 → 간격 500,000 · 상한 1,500,000 · 눈금 0 · 500,000 · 1,000,000 · 1,500,000). 데이터는 건드리지
+ * 않는다. 위 끝이 0 이하면 `undefined` — 차트 기본값에 맡긴다.
+ */
+export const toNiceAxis = (top: number): { max: number; ticks: number } | undefined => {
+  if (!(top > 0)) return undefined;
+
+  const raw = top / 4;
+  const magnitude = 10 ** Math.floor(Math.log10(raw));
+  const step = (NICE_STEPS.find((nice) => nice * magnitude >= raw) ?? 10) * magnitude;
+  const divisions = Math.max(1, Math.ceil(top / step - 1e-9));
+
+  return { max: step * divisions, ticks: divisions + 1 };
+};
+
 const toCardView = (source: DashboardCard): DashboardCardView => ({
   cardCode: source.cardCode,
   label: source.label,
@@ -152,6 +191,7 @@ const toCardView = (source: DashboardCard): DashboardCardView => ({
   note: source.note ?? null,
   valueStatusCode: source.valueStatusCode,
   excludedCount: source.excludedCount ?? null,
+  notYetReasonCode: source.notYetReasonCode ?? null,
 });
 
 const toAlertView = (source: Notification): DashboardAlertView => ({
@@ -188,5 +228,8 @@ export const toDashboardView = (source: DashboardSummary): DashboardView => ({
           })),
           asOfText: formatAsOf(source.trend.asOf),
         },
-  asOfText: formatAsOf(source.asOf),
+  equipment: toEquipmentView(source.equipment),
+  shipment: source.shipment ?? null,
+  quality: source.quality ?? null,
+  production: source.production ?? null,
 });

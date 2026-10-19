@@ -84,6 +84,11 @@ describe('앱 캐시 기본값 — 조회 실패의 종결', () => {
     expect(appQueryDefaults.queries?.retry).toBe(0);
   });
 
+  it('주기 재조회를 전역으로 걸지 않는다 — 대시보드만 예외다(omf-all-around#115)', () => {
+    expect(appQueryDefaults.queries?.refetchInterval).toBeUndefined();
+    expect(appQueryDefaults.queries?.refetchOnWindowFocus).toBe(false);
+  });
+
   it('첫 요청은 오프라인 보고와 무관하게 나간다', () => {
     expect(appQueryDefaults.queries?.networkMode).toBe('always');
     expect(appQueryDefaults.mutations?.networkMode).toBe('always');

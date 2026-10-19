@@ -5504,6 +5504,249 @@ on('POST', '/app/approval-requests/{approvalRequestId}:reject', (params, _q, bod
   decideApproval(params, body, headers, 'REJECTED'),
 );
 
+/* ── 대시보드 (W-CO-05 · omf-all-around#111 · #113 · #114) ───────────── */
+
+/*
+ * 2차 응답 규격(omf-all-around#118 코멘트 · 서버 대조 보정)이 공식 계약보다 앞선다 — 계약 예시
+ * 서버는 summary 의 설비 · 출하 · 품질 섹션을 모른다. 그래서 `GET /app/dashboard-summary` 한 경로를
+ * 여기서 답한다(품질 전용 경로는 없다). ⛔ 값은 화면 배치를 보기 위한
+ * 가짜다 — 시안의 예시 숫자 · 고객사명 · 업체명을 옮기지 않는다(공개 저장소).
+ */
+/* 기간 조회(2026-10-16 · 서버 36f06e5) — dateFrom · dateTo 가 오면 끝 날이 기준일이다. */
+const dashboardBaseDate = (query) =>
+  query.get('dateTo') ?? query.get('baseDate') ?? new Date().toISOString().slice(0, 10);
+const dashboardShiftDate = (baseDate, days) => {
+  const date = new Date(`${baseDate}T00:00:00Z`);
+  date.setUTCDate(date.getUTCDate() + days);
+
+  return date.toISOString().slice(0, 10);
+};
+const dashboardNextDate = (baseDate) => dashboardShiftDate(baseDate, 1);
+const minutesAgo = (minutes) => new Date(Date.now() - minutes * 60_000).toISOString();
+
+const DASHBOARD_EQUIPMENT = [
+  ['RUNNING', null, null, 0, 1],
+  ['RUNNING', null, null, 0, 1],
+  ['STOPPED', null, '유압 이상 — 점검 중', 42, 1],
+  ['RUNNING', null, null, 0, 1],
+  ['CHANGEOVER', 'MOLD_CHANGE', '금형 교체', 18, 2],
+  ['WAITING', null, null, 7, 2],
+  ['RUNNING', null, null, 0, 2],
+  ['IDLE', 'PLANNED_STOP', '계획 정지', 95, null],
+].map(([statusCode, statusReasonCode, statusReasonName, sinceMinutes, line], index) => {
+  const seq = index + 1;
+  const running = statusCode === 'RUNNING';
+  const total = running ? 1_200 + seq * 37 : seq * 50;
+  const ng = running ? seq * 3 : 0;
+
+  return {
+    equipmentId: 9100 + seq,
+    equipmentCode: `EQ-${String(seq).padStart(2, '0')}`,
+    equipmentName: `사출기 ${String(seq)}호`,
+    equipmentTypeCode: seq % 2 === 0 ? 'INJ_200' : 'INJ_100',
+    equipmentTypeName: seq === 8 ? null : seq % 2 === 0 ? '200T' : '100T',
+    productionLineId: line === null ? null : 9000 + line,
+    productionLineName: line === null ? null : `${String(line)}라인`,
+    statusCode,
+    statusSince: minutesAgo(running ? 120 : sinceMinutes),
+    statusReasonCode,
+    statusReasonName,
+    todayTotalQty: total,
+    todayNgQty: ng,
+    defectRate: total === 0 ? null : Math.round((ng / total) * 1000) / 10,
+    standardCycleTimeSec: seq === 6 ? null : 30 + seq,
+    currentWorkOrderNo:
+      running || statusCode === 'CHANGEOVER' ? `WO-MOCK-${String(seq).padStart(3, '0')}` : null,
+    currentItemCode:
+      running || statusCode === 'CHANGEOVER' ? `ITEM-${String(seq).padStart(3, '0')}` : null,
+    currentItemName: running || statusCode === 'CHANGEOVER' ? `시험 품목 ${String(seq)}` : null,
+  };
+});
+
+const dashboardStatusCounts = (items) =>
+  items.reduce((counts, item) => ({ ...counts, [item.statusCode]: counts[item.statusCode] + 1 }), {
+    RUNNING: 0,
+    STOPPED: 0,
+    WAITING: 0,
+    CHANGEOVER: 0,
+    IDLE: 0,
+  });
+
+on('GET', '/app/dashboard-summary', (_params, query) => {
+  const baseDate = dashboardBaseDate(query);
+  const plantId = query.get('plantId');
+  const asOf = new Date().toISOString();
+
+  const dateFrom = query.get('dateFrom');
+
+  return {
+    baseDate,
+    ...(dateFrom === null ? {} : { dateFrom, dateTo: baseDate }),
+    ...(plantId === null ? {} : { plantId: Number(plantId) }),
+    asOf,
+    cards: [
+      {
+        cardCode: 'PRODUCTION_QTY',
+        label: '금일 총생산',
+        value: 9_870,
+        unit: 'EA',
+        deltaRatio: 0.04,
+        valueStatusCode: 'AVAILABLE',
+      },
+      {
+        cardCode: 'YIELD_RATE',
+        label: '양품률',
+        value: 96.4,
+        unit: '%',
+        valueStatusCode: 'AVAILABLE',
+      },
+      {
+        cardCode: 'AVAILABILITY_RATE',
+        label: '가동률',
+        value: 81.2,
+        unit: '%',
+        valueStatusCode: 'PARTIAL',
+        excludedCount: 1,
+      },
+      {
+        cardCode: 'UNHANDLED_ALARM',
+        label: '미처리 알람',
+        value: 2,
+        unit: '건',
+        valueStatusCode: 'AVAILABLE',
+      },
+    ],
+    alerts: [],
+    trend: {
+      seriesName: '생산실적',
+      unit: 'EA',
+      targetValue: null,
+      points: [6, 5, 4, 3, 2, 1, 0].map((daysAgo, index) => ({
+        label: `D-${String(daysAgo)}`,
+        value: 8_000 + index * 260,
+      })),
+      asOf,
+    },
+    production: {
+      totalQty: 9_870,
+      goodQty: 9_792,
+      ngQty: 61,
+      holdQty: 17,
+      defectRate: 0.6,
+    },
+    equipment: {
+      asOf,
+      statusCounts: dashboardStatusCounts(DASHBOARD_EQUIPMENT),
+      items: DASHBOARD_EQUIPMENT,
+    },
+    shipment: {
+      todayShippedQty: 4_200,
+      todayShipmentCount: 3,
+      waitingRequestCount: 5,
+      oldestWaitingShipDate: dashboardShiftDate(baseDate, -12),
+      nextShipment: {
+        shipmentRequestId: 9301,
+        shipmentRequestNo: 'SR-MOCK-0001',
+        customerName: '고객 A',
+        /* 규격: 요청일이 기준일 「이후」인 가장 이른 미출하 요청. */
+        requestedShipDate: dashboardNextDate(baseDate),
+        requestedQty: 1_500,
+      },
+      overdueCount: 1,
+    },
+    quality: dashboardQuality(baseDate),
+  };
+});
+
+const DASHBOARD_PHENOMENA = [
+  { defectCodeId: 9401, defectCode: 'DF-A', defectName: '외관 불량', qty: 40 },
+  { defectCodeId: 9402, defectCode: 'DF-B', defectName: '치수 이탈', qty: 25 },
+  { defectCodeId: 9403, defectCode: 'DF-C', defectName: '기능 불량', qty: 12 },
+];
+
+const dashboardDailyRates = (baseDate) =>
+  [8, 7, 6, 5, 4, 3, 2, 1, 0].map((daysAgo, index) => {
+    const date = new Date(`${baseDate}T00:00:00Z`);
+    date.setUTCDate(date.getUTCDate() - daysAgo);
+
+    return {
+      date: date.toISOString().slice(0, 10),
+      passRate: index === 3 ? null : 95 + (index % 4),
+    };
+  });
+
+const dashboardQualityBlock = (baseDate, kind) => ({
+  monthPassRate: 96.4,
+  prevMonthPassRate: 95.8,
+  dailyPassRates: dashboardDailyRates(baseDate),
+  todayLots: { accepted: 6, rejected: 1, held: 1 },
+  monthLots: { accepted: 120, rejected: 5, held: 2 },
+  monthDefectQty: 77,
+  defectPhenomena: DASHBOARD_PHENOMENA,
+  recentLots: [1, 2, 3].map((seq) => ({
+    inspectionResultId: 9500 + seq,
+    inspectedAt: minutesAgo(seq * 35),
+    counterpartName:
+      kind === 'IQC'
+        ? `공급사 ${'ABC'[seq - 1]}`
+        : kind === 'OQC'
+          ? `고객 ${'ABC'[seq - 1]}`
+          : null,
+    equipmentCode: kind === 'PQC' ? `EQ-0${String(seq)}` : null,
+    itemCode: `ITEM-${String(seq).padStart(3, '0')}`,
+    itemName: `시험 품목 ${String(seq)}`,
+    /* 규격: PQC · OQC 는 LOT 번호가 null. */
+    lotNo: kind === 'IQC' ? `LOT-MOCK-${String(seq)}` : null,
+    qty: 420 * seq,
+    judgmentCode: seq === 2 ? 'REJECTED' : seq === 3 ? 'HELD' : 'ACCEPTED',
+  })),
+});
+
+const dashboardQuality = (baseDate) => ({
+  iqc: {
+    ...dashboardQualityBlock(baseDate, 'IQC'),
+    vendorDefects: [
+      { partnerId: 9601, partnerName: '공급사 A', rejectedQty: 30 },
+      { partnerId: 9602, partnerName: '공급사 B', rejectedQty: 12 },
+    ],
+    itemDefects: [
+      { itemId: 9701, itemCode: 'ITEM-001', itemName: '시험 품목 1', qty: 20 },
+      { itemId: 9702, itemCode: 'ITEM-002', itemName: '시험 품목 2', qty: 9 },
+    ],
+    /* 규격: 양품 복원 데이터를 구할 수 없어 지금은 늘 null. */
+    fullReinspect: null,
+    receiptHoldLotCount: 2,
+  },
+  pqc: {
+    ...dashboardQualityBlock(baseDate, 'PQC'),
+    pendingLotCount: 3,
+    reworkRequestCount: 1,
+    equipmentDefectRates: DASHBOARD_EQUIPMENT.filter((item) => item.defectRate !== null)
+      .map((item) => ({
+        equipmentId: item.equipmentId,
+        equipmentCode: item.equipmentCode,
+        defectRate: item.defectRate,
+        ngQty: item.todayNgQty,
+      }))
+      .sort((a, b) => b.defectRate - a.defectRate)
+      .slice(0, 8),
+  },
+  oqc: { ...dashboardQualityBlock(baseDate, 'OQC'), customerReturnQty: 150 },
+  nonconformance: {
+    monthQty: 77,
+    phenomena: DASHBOARD_PHENOMENA,
+    causeGroups: [
+      { causeCodeId: 9801, causeName: '원인 구분 A', qty: 45 },
+      { causeCodeId: 9802, causeName: '원인 구분 B', qty: 32 },
+    ],
+    scrapQty: 20,
+    reworkReleasedQty: 35,
+    openCount: 4,
+    /* 규격: 조치 기한 데이터가 없어 지금은 늘 null. */
+    overdueCount: null,
+  },
+});
+
 /* ── 서버 ─────────────────────────────────────────────────── */
 
 /**
