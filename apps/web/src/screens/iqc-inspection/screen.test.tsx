@@ -125,7 +125,7 @@ const renderScreen = (
               page: { page: 1, size: 500, total: 2 },
             }),
         },
-        /* 불량 기록 등록 — 확정 «직전»에 나간다(P-42). 쓰기 순서를 재려고 `writes` 에 함께 담는다. */
+        /* 불량 기록 등록 — ⛔ 확정이 사유를 싣는 뒤로는 나가지 않는다(#121 · P-47). 나가면 `writes` 에 잡힌다. */
         {
           match: (request) =>
             new URL(request.url).pathname === '/quality/defect-records' &&
@@ -884,7 +884,7 @@ describe('IqcInspectionScreen — 확정 결과 문면', () => {
   });
 });
 
-/* omf-all-around#106 — 불합격이면 불량 코드·사유를 받아 불량 기록을 남긴 «뒤» 확정한다. */
+/* omf-all-around#106 · #121 — 불합격이면 불량 코드·사유를 받아 확정 요청에 함께 싣는다. */
 describe('IqcInspectionScreen — 불합격 사유', () => {
   const rejectedRound = { ...draftRound, acceptedQty: 485, rejectedQty: 15, heldQty: 0 };
 
@@ -905,7 +905,7 @@ describe('IqcInspectionScreen — 불합격 사유', () => {
     expect(screen.getByRole('button', { name: t.result.confirm })).toBeDisabled();
   });
 
-  it('상세가 있는 대분류는 상세까지 골라야 하고, 확정은 불량 기록 → 확정 순서로 나간다', async () => {
+  it('상세가 있는 대분류는 상세까지 골라야 하고, 사유는 확정 요청 하나에 실려 나간다', async () => {
     const { writes } = renderScreen('/?ir=1001', () => jsonResponse(queueResponse()), [
       rejectedRound,
     ]);
@@ -919,23 +919,54 @@ describe('IqcInspectionScreen — 불합격 사유', () => {
     await userEvent.type(screen.getByLabelText(t.result.rejection.description), '표면 긁힘');
     await userEvent.click(screen.getByRole('button', { name: t.result.confirm }));
 
-    await waitFor(() => expect(writes).toHaveLength(2));
-    expect(new URL((writes[0] as Request).url).pathname).toBe('/quality/defect-records');
-    expect(await bodyOf(writes[0] as Request)).toMatchObject({
-      sourceCode: 'IQC',
-      defectCodeId: 7002,
-      defectQty: 15,
-      inspectionResultId: draftRound.inspectionResultId,
-      defectDescription: '표면 긁힘',
+    await waitFor(() => expect(writes).toHaveLength(1));
+    expect(new URL((writes[0] as Request).url).pathname).toContain(':confirm');
+    expect(await bodyOf(writes[0] as Request)).toEqual({
+      overallJudgmentCode: 'REJECTED',
+      defects: [{ defectCodeId: 7002, defectQty: 15, defectDescription: '표면 긁힘' }],
     });
-    expect(new URL((writes[1] as Request).url).pathname).toContain(':confirm');
+  });
+
+  /* #121 — 확정이 실패한 뒤 사유를 고쳐 다시 누르면 «고친 값»이 나가고, 불량 기록 등록은 따로 나가지 않는다. */
+  it('확정 실패 뒤 사유를 고쳐 다시 확정하면 고친 사유가 실린다', async () => {
+    let shouldFail = true;
+    confirmResponder = (): Response => {
+      if (shouldFail) {
+        shouldFail = false;
+        return jsonResponse({ message: '서버 오류' }, { status: 500 });
+      }
+      return jsonResponse(draftRound);
+    };
+    const { writes } = renderScreen('/?ir=1001', () => jsonResponse(queueResponse()), [
+      rejectedRound,
+    ]);
+    await chooseRejected();
+    await userEvent.click(await screen.findByLabelText(t.result.rejection.major));
+    await userEvent.click(await screen.findByRole('option', { name: 'APP · 외관' }));
+    await userEvent.click(screen.getByLabelText(t.result.rejection.minor));
+    await userEvent.click(await screen.findByRole('option', { name: 'APP-SCR · 스크래치' }));
+    await userEvent.type(screen.getByLabelText(t.result.rejection.description), '처음');
+    await userEvent.click(screen.getByRole('button', { name: t.result.confirm }));
+    await waitFor(() => expect(writes).toHaveLength(1));
+
+    await userEvent.clear(screen.getByLabelText(t.result.rejection.description));
+    await userEvent.type(screen.getByLabelText(t.result.rejection.description), '고친 사유');
+    await userEvent.click(screen.getByRole('button', { name: t.result.confirm }));
+    await waitFor(() => expect(writes).toHaveLength(2));
+
+    expect(writes.every((request) => new URL(request.url).pathname.endsWith(':confirm'))).toBe(
+      true,
+    );
+    expect(await bodyOf(writes[1] as Request)).toMatchObject({
+      defects: [{ defectCodeId: 7002, defectDescription: '고친 사유' }],
+    });
   });
 
   /*
    * 3단계 검증 버그 — 사유를 넣고 [임시 저장]을 누르면 사유가 사라졌다. 사유는 저장 본문에 실리지 않고(확정 직전 불량
    * 기록으로 남는다) 저장 응답이 회차의 판정을 바꾸면서 초안 되돌림이 사유까지 비웠다. 저장 뒤에도 남아 확정에 실려야 한다.
    */
-  it('임시 저장 뒤에도 불량 코드·사유가 남고, 확정하면 그 값으로 불량 기록이 나간다', async () => {
+  it('임시 저장 뒤에도 불량 코드·사유가 남고, 확정하면 그 값이 확정 요청에 실린다', async () => {
     const { writes } = renderScreen(
       '/?ir=1001',
       () => jsonResponse(queueResponse()),
@@ -970,12 +1001,11 @@ describe('IqcInspectionScreen — 불합격 사유', () => {
 
     const savedCount = writes.length;
     await userEvent.click(screen.getByRole('button', { name: t.result.confirm }));
-    await waitFor(() => expect(writes.length).toBe(savedCount + 2));
-    const defect = writes[savedCount] as Request;
-    expect(new URL(defect.url).pathname).toBe('/quality/defect-records');
-    expect(await bodyOf(defect)).toMatchObject({
-      defectCodeId: 7002,
-      defectDescription: '표면 긁힘',
+    await waitFor(() => expect(writes.length).toBe(savedCount + 1));
+    const confirmed = writes[savedCount] as Request;
+    expect(new URL(confirmed.url).pathname).toContain(':confirm');
+    expect(await bodyOf(confirmed)).toMatchObject({
+      defects: [{ defectCodeId: 7002, defectDescription: '표면 긁힘' }],
     });
   });
 });

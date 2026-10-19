@@ -19,6 +19,8 @@ export type {
   InspectionHistory,
   InspectionHistoryEvent,
   DefectRecordCreate,
+  InspectionDefectInput,
+  InspectionResultConfirmForward,
   SessionWorker,
   DashboardDefectPhenomenon,
   DashboardEquipment,
