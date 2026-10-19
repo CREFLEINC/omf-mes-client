@@ -38,6 +38,8 @@ import { IrFilterBar } from './ir-filter-bar';
 import { IrLineTable } from './ir-line-table';
 import { IrTable } from './ir-table';
 import { findSelectedLine, nextSelectedLineId } from './line-select';
+import { chooseReceiptTarget, receiptTargetsOf, splitQtyOf } from './receipt-target';
+import { SelectField } from './select-field';
 import { LoadErrorBanner } from './load-error-banner';
 import {
   describeReference,
@@ -266,6 +268,14 @@ export const GoodsReceiptScreen = () => {
    * 여기서는 아니거나 그 반대인 어긋남을 만들지 않는다.
    */
   const selectedLine = findSelectedLine(lineRows, selectedLineId);
+  /*
+   * 입고 대상(서버 선행 P-56) — 입고 전 선별로 불량분을 떼어 낸 줄은 원 LOT(양품)과 선별 불량분 중 하나를 골라 입고한다.
+   * 고르지 않았으면 수량이 남은 첫 대상(보통 원 LOT 의 양품)이다.
+   */
+  const [pickedTargetLotId, setPickedTargetLotId] = useState<number | null>(null);
+  const receiptTargets = selectedLine === null ? [] : receiptTargetsOf(selectedLine);
+  const receiptTarget = chooseReceiptTarget(receiptTargets, pickedTargetLotId);
+  const receiptLotId = receiptTarget?.lotId ?? selectedLine?.lotId ?? null;
 
   /**
    * 확정 입력. **주소에 싣지 않는다** — 글자마다 뒤로가기 기록이 쌓이고, 화면이 조회 조건과
@@ -345,6 +355,7 @@ export const GoodsReceiptScreen = () => {
     setLocalFieldErrors(NO_FIELD_ERRORS);
     setConfirmOpen(false);
     setPendingDiscard(null);
+    setPickedTargetLotId(null);
   }, [selectedIrId, selectedLineId]);
 
   const warehouses = useWarehouseOptions(selectedIrId !== null);
@@ -355,11 +366,11 @@ export const GoodsReceiptScreen = () => {
    * 입고 처리에 **성공한 뒤에만** 자재 LOT을 다시 읽는다 — 응답에 LOT 상태가 없어(실측)
    * 화면 이름의 「Release」를 값으로 확인할 방법이 이것뿐이다.
    */
-  const recheckLotId = result === null ? null : (selectedLine?.lotId ?? null);
+  const recheckLotId = result === null ? null : receiptLotId;
   const lotStatus = useLotStatus(recheckLotId);
   /* IQC 대상 줄만 고를 때 LOT 상태를 읽는다 — 불합격(불량) LOT 은 불량창고로만 입고된다(omf-all-around#84). */
   const selectedLotStatus = useLotStatus(
-    selectedLine?.inspectionRequired === true ? (selectedLine.lotId ?? null) : null,
+    selectedLine?.inspectionRequired === true ? receiptLotId : null,
     'select',
   );
   const isDefectiveLot = selectedLotStatus.statusCode === 'DEFECTIVE';
@@ -638,10 +649,10 @@ export const GoodsReceiptScreen = () => {
     });
 
     const itemName = describeReference(items.of(line.itemId));
-    const lotName = describeReference(toReference(lots, line.lotId));
+    const lotName = receiptTarget?.splitLotNo ?? describeReference(toReference(lots, receiptLotId));
     /* 단위는 코드만(「1 EA」) — 「코드 · 이름」은 같은 뜻을 두 번 적는다(라인 표와 같다). */
     const receiptQty = t.lineTable.receivedQtyPair(
-      line.receivedQty,
+      receiptTarget?.qty ?? line.receivedQty,
       uoms.entries.find((entry) => entry.value === String(line.uomId))?.code ??
         describeReference(toReference(uoms, line.uomId)),
     );
@@ -727,7 +738,9 @@ export const GoodsReceiptScreen = () => {
 
       const body = toGoodsReceiptRequest({
         inboundReceipt,
-        lines: toReceiptLines([line]),
+        lines: toReceiptLines([
+          { ...line, lotId: receiptLotId, receivableQty: receiptTarget?.qty ?? null },
+        ]),
         draft,
         /* 발생 시각은 **제출 순간**이다. 순수 함수에 넘겨 그 사실이 인자로 드러나게 한다. */
         now: new Date(),
@@ -766,6 +779,16 @@ export const GoodsReceiptScreen = () => {
             </AlertBanner>
           </div>
         )}
+        {line.splitLots.length > 0 && receiptTarget !== null && (
+          <div className="banner-slot">
+            <AlertBanner variant="info">
+              {t.notes.receiptTarget.note(
+                splitQtyOf(line),
+                receiptTargets.find((target) => target.splitLotNo === null)?.qty ?? 0,
+              )}
+            </AlertBanner>
+          </div>
+        )}
         <h3 className="goods-receipt-section-title goods-receipt-section-title-first">
           {t.postTitle}
           {/* 공장은 고르는 칸이 아니다 — 입력 칸처럼 보이지 않게 제목 옆 보조 글자로 밝힌다(사용자 지시). */}
@@ -777,6 +800,26 @@ export const GoodsReceiptScreen = () => {
          * 안쪽 세 묶음의 격자는 풀어(`display: contents`) 칸이 이 격자에 바로 선다. 짝(창고↔위치 등)은 이웃 칸이다.
          */}
         {/* 지금 채울 칸 — `app.css` 가 이 칸의 라벨을 강조한다(순서대로 입력 · 사용자 지시). */}
+        {receiptTargets.length > 1 && receiptTarget !== null && (
+          <SelectField
+            label={t.notes.receiptTarget.label}
+            options={receiptTargets.map((target) => ({
+              value: String(target.lotId),
+              label:
+                target.splitLotNo === null
+                  ? t.notes.receiptTarget.good(target.qty)
+                  : t.notes.receiptTarget.split(target.splitLotNo, target.qty),
+            }))}
+            value={String(receiptTarget.lotId)}
+            disabled={isLocked}
+            wide
+            onChange={(value) => {
+              setPickedTargetLotId(Number(value));
+              // 대상이 바뀌면 고를 수 있는 창고가 달라진다(불량분은 불량창고만) — 고른 창고·위치를 비운다.
+              changeWarehouse('');
+            }}
+          />
+        )}
         <div className="goods-receipt-post-form" data-current-step={nextPostStep ?? 'done'}>
           <WarehouseLocationFields
             warehouses={warehouses}

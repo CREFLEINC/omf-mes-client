@@ -258,6 +258,16 @@ export const goodsReceipt = {
      * IQC 대상 LOT 이 아직 입고할 수 없는 상태 — 입력 영역을 처음부터 잠그고 먼저 할 일을 말한다(#100 · 3단계 검증).
      * 서버 규칙과 같다: 정상(합격)만 입고, 불량(불합격)은 불량창고로만, 그 밖(검사 대기 등)은 어디로도 안 된다.
      */
+    /**
+     * 입고 전 선별로 불량분이 떨어져 나간 줄(서버 선행 P-56 · 3단계 검증) — 원 LOT 은 양품만, 불량분은 따로(불량창고) 입고한다.
+     */
+    receiptTarget: {
+      label: '입고 대상',
+      good: (qty: number) => `양품(원 LOT) · ${qty}`,
+      split: (lotNo: string, qty: number) => `선별 불량분 ${lotNo} · ${qty}`,
+      note: (split: number, good: number) =>
+        `선별로 불량분 ${split}이(가) 분리됐습니다. 원 LOT 은 양품 ${good}만 입고하고, 불량분은 「입고 대상」에서 골라 불량창고로 입고합니다.`,
+    },
     iqcGate: {
       pendingTitle: 'IQC 수입검사 판정 전이라 입고할 수 없습니다.',
       pendingBody:

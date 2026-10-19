@@ -1,4 +1,8 @@
-import type { components } from '@omf-mes/api-client';
+import type {
+  components,
+  InboundReceiptLineForward,
+  InboundReceiptSplitLot,
+} from '@omf-mes/api-client';
 import { formatPlantDateTime } from '../../patterns/plant-time';
 
 /**
@@ -82,10 +86,19 @@ export interface IrLineView {
   lotId: number | null;
   inspectionRequired: boolean;
   statusCode: string;
+  /**
+   * 이 줄 LOT 의 입고 가능 수량(서버 선행 P-56) — 선별로 떼어 낸 불량분·이미 입고한 수량을 뺀 값이고 서버 입고 상한과 같다.
+   * 서버가 싣지 않았으면 `null` 이고, 그때는 입하 수량을 쓴다.
+   */
+  receivableQty: number | null;
+  /** 선별로 떼어 낸 자식 LOT(불량분) — 「선별 불량분」으로 따로 입고한다(불량이면 불량창고만). */
+  splitLots: InboundReceiptSplitLot[];
 }
 
 /** 라인 한 줄을 화면 타입으로 옮기는 **유일한 지점**이다. */
-export const toIrLineView = (data: InboundReceiptLineResponse): IrLineView => ({
+export const toIrLineView = (
+  data: InboundReceiptLineResponse & InboundReceiptLineForward,
+): IrLineView => ({
   inboundReceiptLineId: data.inboundReceiptLineId,
   inboundReceiptId: data.inboundReceiptId,
   lineNo: data.lineNo,
@@ -96,6 +109,8 @@ export const toIrLineView = (data: InboundReceiptLineResponse): IrLineView => ({
   lotId: data.lotId ?? null,
   inspectionRequired: data.inspectionRequired,
   statusCode: data.statusCode,
+  receivableQty: data.receivableQty ?? null,
+  splitLots: data.splitLots ?? [],
 });
 
 /** 목록 조회 결과. `page`는 쪽 이동과 위치 표시의 정본이다. */

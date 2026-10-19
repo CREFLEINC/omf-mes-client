@@ -27,6 +27,8 @@ export type {
   InspectionResultCreateForward,
   InspectionResultUpdateForward,
   DefectRecordListQueryForward,
+  InboundReceiptLineForward,
+  InboundReceiptSplitLot,
   SessionWorker,
   DashboardDefectPhenomenon,
   DashboardEquipment,

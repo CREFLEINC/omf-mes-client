@@ -113,6 +113,23 @@ export interface AffectedProductionLots {
   }[];
 }
 
+/** 서버 선행 P-56(omf-all-around#108) — 입하 라인 LOT 에서 선별로 떼어 낸 자식 LOT(불량분). */
+export interface InboundReceiptSplitLot {
+  lotId: number;
+  lotNo: string;
+  statusCode: string;
+  receivableQty: number;
+}
+
+/**
+ * 서버 선행 P-56 — 입하 라인(`GET …/lines`)에 더해진 두 칸. 입고 가능 수량은 선별로 떼어 낸 불량분·이미 입고한 수량을 뺀
+ * 값이고 서버 입고 상한과 같다. 옛 서버는 싣지 않는다(그때 화면은 입하 수량을 쓴다).
+ */
+export interface InboundReceiptLineForward {
+  receivableQty?: number | null;
+  splitLots?: InboundReceiptSplitLot[];
+}
+
 /** 서버 선행 P-53(omf-all-around#108) — 처분 «선별». 양품은 정상, 불량분은 자식 LOT·새 부적합. */
 export type DispositionDecisionCreateForward = Omit<
   components['schemas']['DispositionDecisionCreate'],

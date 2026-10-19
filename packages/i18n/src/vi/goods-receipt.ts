@@ -172,6 +172,13 @@ export const goodsReceipt: Translated<typeof ko.goodsReceipt> = {
   },
   notes: {
     defectWarehouseOnly: 'LOT không đạt IQC. Chỉ chọn được kho hàng lỗi.',
+    receiptTarget: {
+      label: 'Đối tượng nhập kho',
+      good: (qty: number) => `Hàng đạt (LOT gốc) · ${qty}`,
+      split: (lotNo: string, qty: number) => `Phần lỗi đã tách ${lotNo} · ${qty}`,
+      note: (split: number, good: number) =>
+        `Đã tách ${split} hàng lỗi khi phân loại. LOT gốc chỉ nhập ${good} hàng đạt; phần lỗi chọn ở 「Đối tượng nhập kho」 và nhập vào kho hàng lỗi.`,
+    },
     iqcGate: {
       pendingTitle: 'Chưa có kết quả kiểm tra đầu vào IQC nên không thể nhập kho.',
       pendingBody:

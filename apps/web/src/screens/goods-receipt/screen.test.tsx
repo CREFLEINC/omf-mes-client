@@ -2912,3 +2912,86 @@ describe('GoodsReceiptScreen — 초안이 사라지지 않는다', () => {
     );
   });
 });
+
+/* 서버 선행 P-56 · 3단계 검증 — 입고 전 선별로 불량분을 떼어 낸 줄은 양품만, 불량분은 따로(불량창고) 입고한다. */
+describe('GoodsReceiptScreen — 입고 전 선별(P-56)', () => {
+  const SPLIT = {
+    lotId: 9602,
+    lotNo: 'LOT-2026-900010-S1',
+    statusCode: 'DEFECTIVE',
+    receivableQty: 15,
+  };
+  const splitLines = inboundReceiptLineFixtures.map((line) =>
+    line.inboundReceiptLineId === 9401
+      ? { ...line, receivedQty: 50, receivableQty: 35, splitLots: [SPLIT] }
+      : line,
+  );
+  const splitLotRoute: StubRoute = {
+    match: (request) => isGet(request, '/trace/lots/9602'),
+    respond: () =>
+      jsonResponse({
+        ...lotDetailResponse('DEFECTIVE'),
+        lot: { ...lotDetailResponse('DEFECTIVE').lot, lotId: 9602, lotNo: SPLIT.lotNo },
+      }),
+  };
+  const defectWarehouseRoute = lookupRoute(WAREHOUSES_PATH, [
+    ...warehouseFixtures,
+    {
+      warehouseId: 9703,
+      warehouseCode: 'SAMPLE-WH-NG',
+      warehouseName: '합성 불량창고',
+      plantId: 9201,
+      isDefect: true,
+    },
+  ]);
+
+  it('기본은 양품(입고 가능 수량 35)을 입고한다 — 입하 수량 50 이 아니다', async () => {
+    const { user, requests } = await setupReadyToPost(
+      allRoutes([linesRoute(splitLines), splitLotRoute, defectWarehouseRoute]),
+    );
+
+    expect(screen.getByText(t.notes.receiptTarget.note(15, 35))).toBeInTheDocument();
+    await clickPost(user);
+    await confirmPost(user);
+
+    await waitFor(() => {
+      expect(postRequests(requests)).toHaveLength(1);
+    });
+    expect(lastPostBody(requests).lines[0]).toMatchObject({ lotId: 9601, receiptQty: 35 });
+  });
+
+  it('선별 불량분을 고르면 그 LOT·수량으로 보내고, 불량창고만 고를 수 있다', async () => {
+    fillCodeLists();
+    const { user } = renderScreen(
+      allRoutes([linesRoute(splitLines), splitLotRoute, defectWarehouseRoute]),
+      '?ir=9001',
+    );
+    await openPostPane(user);
+
+    await chooseOption(
+      user,
+      t.notes.receiptTarget.label,
+      t.notes.receiptTarget.split(SPLIT.lotNo, 15),
+    );
+
+    const warehouseBox = screen.getByRole('combobox', { name: t.fields.warehouse });
+    await waitFor(() => {
+      expect(warehouseBox).toHaveAccessibleDescription(t.notes.defectWarehouseOnly);
+    });
+    await user.click(warehouseBox);
+    expect(
+      await screen.findByRole('option', { name: 'SAMPLE-WH-NG · 합성 불량창고' }),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole('option', { name: WAREHOUSE_LABEL })).not.toBeInTheDocument();
+  });
+
+  it('선별이 없는 줄에는 입고 대상 칸도 안내도 없다', async () => {
+    fillCodeLists();
+    const { user } = renderScreen(allRoutes(), '?ir=9001');
+    await openPostPane(user);
+
+    expect(
+      screen.queryByRole('combobox', { name: t.notes.receiptTarget.label }),
+    ).not.toBeInTheDocument();
+  });
+});
