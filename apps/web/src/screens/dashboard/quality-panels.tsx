@@ -3,6 +3,7 @@ import type {
   DashboardJudgmentCode,
   DashboardLotCounts,
   DashboardQuality,
+  DashboardQualityLotStatus,
   DashboardQualityTypeBlock,
 } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
@@ -27,8 +28,10 @@ import {
   type RecentLotRow,
 } from './quality';
 import { compareEquipmentCode } from './equipment';
+import { pointerFocusProps, usePointerInput } from './equipment-panel';
 import { formatFigure } from './types';
 import { usePeriodTags } from './period';
+import { QualityLotsDialog } from './quality-lots-dialog';
 import { useFillHeight } from './use-fill-height';
 import {
   CHART_H,
@@ -517,8 +520,21 @@ const countTone = (value: number, tone: ChipStatus): ChipStatus | undefined =>
   value > 0 ? tone : undefined;
 
 /** 품질 종합. */
+/** 「현재 현황」 줄 → LOT 목록 상태(연결 규격의 status). */
+const LOT_STATUS_OF_ROW: Record<string, DashboardQualityLotStatus> = {
+  held: 'INSPECTION_HELD',
+  receiptHold: 'RECEIPT_HOLD',
+  pending: 'PQC_PENDING',
+  ncOpen: 'NC_OPEN',
+};
+
 export const QualityOverviewTab = ({ quality }: { quality: DashboardQuality }) => {
   const tags = usePeriodTags();
+  /* 「현재 현황」에서 고른 상태 — 그 상태의 LOT 목록 창을 연다(사용자 결정 2026-10-19). */
+  const [lotStatus, setLotStatus] = useState<DashboardQualityLotStatus | null>(null);
+  /* 한 번 연 뒤에는 창을 남겨 둔다 — 닫을 때 없애면 포커스가 눌렀던 줄로 돌아오지 못한다. */
+  const [lotDialogMounted, setLotDialogMounted] = useState(false);
+  const pointerInput = usePointerInput();
   const todayLots = sumLots([quality.iqc.todayLots, quality.pqc.todayLots, quality.oqc.todayLots]);
   const monthHeld = sumLots([
     quality.iqc.monthLots,
@@ -566,6 +582,11 @@ export const QualityOverviewTab = ({ quality }: { quality: DashboardQuality }) =
           </Panel>
           <Panel title={t.currentTitle} tag={t.tagNow}>
             <StatusList
+              rowProps={pointerFocusProps(pointerInput)}
+              onSelect={(key) => {
+                setLotStatus(LOT_STATUS_OF_ROW[key] ?? null);
+                setLotDialogMounted(true);
+              }}
               items={[
                 {
                   key: 'held',
@@ -574,6 +595,7 @@ export const QualityOverviewTab = ({ quality }: { quality: DashboardQuality }) =
                   value: formatFigure(monthHeld),
                   unit: t.lotUnit,
                   tone: countTone(monthHeld, 'warning'),
+                  selectable: monthHeld > 0,
                 },
                 {
                   key: 'receiptHold',
@@ -582,6 +604,7 @@ export const QualityOverviewTab = ({ quality }: { quality: DashboardQuality }) =
                   value: formatFigure(quality.iqc.receiptHoldLotCount),
                   unit: t.lotUnit,
                   tone: countTone(quality.iqc.receiptHoldLotCount, 'warning'),
+                  selectable: quality.iqc.receiptHoldLotCount > 0,
                 },
                 {
                   key: 'pending',
@@ -589,6 +612,7 @@ export const QualityOverviewTab = ({ quality }: { quality: DashboardQuality }) =
                   note: t.pendingLotsNote,
                   value: formatFigure(quality.pqc.pendingLotCount),
                   unit: t.lotUnit,
+                  selectable: quality.pqc.pendingLotCount > 0,
                 },
                 {
                   key: 'ncOpen',
@@ -596,6 +620,7 @@ export const QualityOverviewTab = ({ quality }: { quality: DashboardQuality }) =
                   value: formatFigure(quality.nonconformance.openCount),
                   unit: t.countUnit,
                   tone: countTone(quality.nonconformance.openCount, 'error'),
+                  selectable: quality.nonconformance.openCount > 0,
                 },
               ]}
             />
@@ -613,6 +638,15 @@ export const QualityOverviewTab = ({ quality }: { quality: DashboardQuality }) =
           itemTitle
         />
       </div>
+      {/* 처음 고를 때 그린다 — 그 전에는 목록을 부르지 않는다(닫힌 동안에도 부르지 않는다 · `enabled`). */}
+      {lotDialogMounted && (
+        <QualityLotsDialog
+          status={lotStatus}
+          onClose={() => {
+            setLotStatus(null);
+          }}
+        />
+      )}
     </QualityTabFrame>
   );
 };

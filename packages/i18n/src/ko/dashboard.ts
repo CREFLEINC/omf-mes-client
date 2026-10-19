@@ -341,6 +341,20 @@ export const dashboard = {
     customerReturnNote: '당월 고객 반품 입고 수량',
     /** 품질 종합 KPI — 기준 기간은 배지가 말하므로 설명은 짧게(사용자 지시 2026-10-19). */
     customerReturnNoteShort: '반품 입고 기준',
+    /** ⭐ 「현재 현황」 상태별 LOT 목록 창(사용자 결정 2026-10-19 「서버 추가 + 팝업」). */
+    lots: {
+      countLots: (count: string): string => `${count} LOT`,
+      countCases: (count: string): string => `${count}건`,
+      truncated: (total: string, shown: string): string => `전체 ${total}건 중 ${shown}건 표시`,
+      loading: 'LOT 목록을 불러오는 중입니다.',
+      failed: 'LOT 목록을 불러오지 못했습니다.',
+      empty: '해당하는 LOT 이 없습니다.',
+      lotColumn: 'LOT · 품목',
+      infoColumn: '상세',
+      qtyColumn: '수량 · 시각',
+      noLot: 'LOT 번호 없음',
+      listLabel: (status: string): string => `${status} 목록`,
+    },
     ncMonthQty: '부적합 발생 수량',
     ncOpen: '미종결 부적합',
     ncOverdue: '조치 기한 초과',

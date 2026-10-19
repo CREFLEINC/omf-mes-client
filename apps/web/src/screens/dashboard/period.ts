@@ -1,6 +1,8 @@
 import { messages } from '@omf-mes/i18n';
 import { createContext, useContext } from 'react';
 
+import type { DashboardFilterQuery } from './filters';
+
 /**
  * 지금 보는 기간이 **하루**인가(⭐ 기간 조회 · 사용자 확정 2026-10-16). 화면이 조건에서 정해 내려 준다
  * (`isSingleDay`). 하루면 표기는 지금 그대로(「금일」 · 「당월」 · 「전일 대비」 · 「전월」), 이틀 이상이면
@@ -33,3 +35,9 @@ export const usePeriodTags = () =>
         prevMissing: q.prevMissingPeriod,
         flat: q.deltaFlatPeriod,
       };
+
+/**
+ * 대시보드가 지금 쓰는 조회 조건(기간 · 공장) — 품질 종합 LOT 목록 창이 같은 조건으로 부르려고 쓴다(카드 숫자와 같은
+ * 기간 · 공장). 화면이 내려 준다.
+ */
+export const FilterQueryContext = createContext<DashboardFilterQuery>({});

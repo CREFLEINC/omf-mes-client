@@ -66,7 +66,7 @@ const StatusChip = ({ statusCode }: { statusCode: DashboardEquipmentStatusCode }
  * 마지막 입력이 포인터(마우스 · 터치)였나. **Esc 는 셈하지 않는다** — 창을 닫는 키라, 마우스로 연 창을 Esc 로
  * 닫았을 때 브라우저가 키보드 입력으로 보고 돌아온 타일에 포커스 링을 그린다(사용자 보고 2026-10-16).
  */
-const usePointerInput = (): RefObject<boolean> => {
+export const usePointerInput = (): RefObject<boolean> => {
   const ref = useRef(false);
 
   useEffect(() => {
@@ -113,7 +113,7 @@ const tileTitleOf = (item: EquipmentItemView): string =>
  * 포인터로 연 창을 닫아 포커스만 돌아온 단추에 `data-pointer-focus` 를 단다 — CSS 가 그때 포커스 링을 숨긴다.
  * 키보드로 열었거나 다른 키를 누르면 링을 보인다. 설비 타일 · 가동 외 설비 줄이 함께 쓴다.
  */
-const pointerFocusProps = (pointerInput: RefObject<boolean>) => ({
+export const pointerFocusProps = (pointerInput: RefObject<boolean>) => ({
   onFocus: (event: FocusEvent<HTMLButtonElement>) => {
     event.currentTarget.toggleAttribute('data-pointer-focus', pointerInput.current);
   },

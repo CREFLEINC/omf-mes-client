@@ -194,7 +194,76 @@ export interface DashboardCardForward {
   notYetReasonCode?: DashboardCardNotYetReasonCode | null;
 }
 
+/**
+ * 품질 종합 「현재 현황」 상태별 LOT 목록(2026-10-19 사용자 결정 「서버 추가 + 팝업」 · 헤더 확정 연결 규격).
+ * `totalCount` 는 dashboard-summary 의 해당 숫자와 같은 정의다. 목록은 오래된 것부터 최대 200건. DB에 없는 값은
+ * `null`. 공식 설계 사본이 갱신될 때 동등성을 대조하고 제거한다.
+ */
+export type DashboardQualityLotStatus =
+  'INSPECTION_HELD' | 'RECEIPT_HOLD' | 'PQC_PENDING' | 'NC_OPEN';
+
+export interface DashboardQualityLotItem {
+  key: string;
+  lotNo: string | null;
+  itemCode: string;
+  itemName: string;
+  qty: number | null;
+  unitCode: string | null;
+  /** 상태가 시작된 시각 — 판정 · 보류 시작 · 의뢰 · 부적합 발생. */
+  occurredAt: string;
+  refNo: string | null;
+  inspectionType: 'IQC' | 'PQC' | 'OQC' | null;
+  counterpartName: string | null;
+  equipmentCode: string | null;
+  detail: string | null;
+}
+
+export interface DashboardQualityLots {
+  status: DashboardQualityLotStatus;
+  asOf: string;
+  totalCount: number;
+  items: DashboardQualityLotItem[];
+}
+
+export interface DashboardQualityLotsQuery {
+  status: DashboardQualityLotStatus;
+  plantId?: number;
+  baseDate?: string;
+  dateFrom?: string;
+  dateTo?: string;
+}
+
 export interface ForwardPaths {
+  '/app/dashboard-quality-lots': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: {
+      parameters: {
+        query: DashboardQualityLotsQuery;
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        200: {
+          headers: { [name: string]: unknown };
+          content: { 'application/json': DashboardQualityLots };
+        };
+      };
+    };
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/app/dashboard-summary': {
     parameters: {
       query?: never;

@@ -8874,6 +8874,144 @@ dl.filter-bar.approval-inbox-detail-facts {
 }
 
 /*
+ * 품질 종합 「현재 현황」 LOT 목록 창(⭐ 사용자 결정 2026-10-19) — 「외 n대」 창과 같은 목록형: LOT · 품목 / 상세 /
+ * 수량 · 시각(오른쪽). 모든 줄이 한 격자의 열을 나눠 쓰고(subgrid) 얇은 선으로만 가른다. 창이 좁으면 상세를
+ * 다음 줄로 내린다. 본문 스크롤은 DS Dialog 가 맡는다.
+ */
+.dash-lots-list {
+  container-type: inline-size;
+  display: grid;
+  /* 이름 칸이 품목명 길이만큼 넓어져 상세 칸이 한 글자 폭으로 눌렸다(512px 창 확인) — 두 칸이 폭을 나눈다. */
+  grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr) max-content;
+  column-gap: var(--space-4);
+  font: var(--type-body-sm);
+  letter-spacing: var(--type-body-sm-tracking);
+}
+
+.dash-lots-list ul,
+.dash-lots-colhead,
+.dash-lots-row {
+  display: grid;
+  grid-column: 1 / -1;
+  grid-template-columns: subgrid;
+}
+
+.dash-lots-list ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.dash-lots-row {
+  align-items: baseline;
+  padding: var(--space-2);
+}
+
+.dash-lots-row + .dash-lots-row {
+  border-top: 1px solid var(--outline-variant);
+}
+
+.dash-lots-colhead {
+  padding: 0 var(--space-2) var(--space-2);
+  border-bottom: 1px solid var(--outline-variant);
+  font: var(--type-label-sm);
+  letter-spacing: var(--type-label-sm-tracking);
+  color: var(--on-surface-muted);
+}
+
+.dash-lots-colhead span:last-child {
+  text-align: end;
+}
+
+.dash-lots-name,
+.dash-lots-qty {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.dash-lots-lot {
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.dash-lots-lot-none {
+  font-weight: 400;
+  color: var(--on-surface-muted);
+}
+
+.dash-lots-item,
+.dash-lots-time {
+  font: var(--type-label-sm);
+  letter-spacing: var(--type-label-sm-tracking);
+  color: var(--on-surface-muted);
+}
+
+.dash-lots-item {
+  overflow-wrap: anywhere;
+}
+
+.dash-lots-info {
+  min-width: 0;
+  color: var(--on-surface-variant);
+  word-break: keep-all;
+  overflow-wrap: break-word;
+}
+
+.dash-lots-qty {
+  text-align: end;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.dash-lots-qty-value {
+  font-weight: 600;
+}
+
+.dash-lots-state {
+  display: grid;
+  justify-items: start;
+  gap: var(--space-2);
+  margin: 0;
+  color: var(--on-surface-variant);
+}
+
+.dash-lots-loading {
+  justify-items: stretch;
+}
+
+.dash-lots-truncated {
+  margin: 0 0 var(--space-2);
+  font: var(--type-label-sm);
+  letter-spacing: var(--type-label-sm-tracking);
+  color: var(--on-surface-muted);
+}
+
+/* 보통 크기 창(목록 폭 ≈ 460px)과 좁은 화면 — 1줄 = LOT · 품목 | 수량 · 시각, 2줄 = 상세(줄 전체 폭). */
+@container (max-width: 560px) {
+  .dash-lots-colhead span:nth-child(2) {
+    display: none;
+  }
+
+  .dash-lots-name {
+    grid-column: 1 / 3;
+    grid-row: 1;
+  }
+
+  .dash-lots-colhead span:last-child,
+  .dash-lots-qty {
+    grid-column: 3;
+    grid-row: 1;
+  }
+
+  .dash-lots-info {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    margin-top: var(--space-1);
+  }
+}
+
+/*
  * 「외 n대」 창 목록(사용자 지시 2026-10-16) — 설비명(종류는 아래 작게) · 사유 · 경과 시간. 모든 줄이 한 격자의
  * 열을 나눠 쓴다(subgrid). 줄은 얇은 선으로만 가르고 색은 쓰지 않는다. 창이 좁으면 사유를 설비명 아래로 내린다.
  */
@@ -9365,6 +9503,54 @@ dl.filter-bar.approval-inbox-detail-facts {
 
 .dash-status-list li:last-child {
   border-bottom: 0;
+}
+
+/* 줄 전체가 단추(품질 종합 「현재 현황」) — 같은 칸 배치, 오른쪽 끝에 작은 화살표, 0건 줄은 누를 수 없다. */
+.dash-status-list li:has(> .dash-status-row) {
+  display: block;
+  padding: 0;
+}
+
+.dash-status-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+  padding: var(--space-2) var(--space-1);
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--on-surface);
+  font: inherit;
+  text-align: start;
+  cursor: pointer;
+}
+
+.dash-status-row:hover:not(:disabled) {
+  background: var(--state-hover-neutral);
+}
+
+.dash-status-row:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+/* 포인터로 연 창을 닫아 포커스만 돌아온 경우 — 링을 그리지 않는다(설비 타일과 같은 규칙). */
+.dash-status-row[data-pointer-focus]:focus-visible {
+  box-shadow: none;
+}
+
+.dash-status-row:disabled {
+  cursor: default;
+}
+
+.dash-status-arrow {
+  color: var(--on-surface-muted);
+}
+
+.dash-status-row:disabled .dash-status-arrow {
+  visibility: hidden;
 }
 
 .dash-status-text {

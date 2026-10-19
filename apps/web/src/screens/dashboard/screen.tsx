@@ -20,7 +20,7 @@ import {
 import { formatLastUpdated } from './last-updated';
 import { LoadErrorBanner, periodErrorOf } from './load-error-banner';
 import { OverviewKpis } from './overview-kpis';
-import { SingleDayContext } from './period';
+import { FilterQueryContext, SingleDayContext } from './period';
 import { ShipmentPanel } from './shipment-panel';
 import { plantNote, usePlantOptions } from './lookups';
 import {
@@ -206,71 +206,73 @@ export const DashboardScreen = () => {
 
   return (
     <SingleDayContext.Provider value={isSingleDay(filters)}>
-      <PageHeader
-        title={t.title}
-        breadcrumb={
-          <Breadcrumb
-            items={[{ label: t.breadcrumbRoot }, { label: t.title }]}
-            aria-label={messages.common.shell.breadcrumb}
+      <FilterQueryContext.Provider value={query}>
+        <PageHeader
+          title={t.title}
+          breadcrumb={
+            <Breadcrumb
+              items={[{ label: t.breadcrumbRoot }, { label: t.title }]}
+              aria-label={messages.common.shell.breadcrumb}
+            />
+          }
+        />
+
+        {summary.isError && periodError === undefined && (
+          <LoadErrorBanner
+            error={summary.error}
+            onRetry={() => {
+              void summary.refetch();
+            }}
           />
-        }
-      />
+        )}
 
-      {summary.isError && periodError === undefined && (
-        <LoadErrorBanner
-          error={summary.error}
-          onRetry={() => {
-            void summary.refetch();
-          }}
-        />
-      )}
+        <section className="pane" aria-label={t.panes.filters}>
+          <DashboardFilterBar
+            filters={filters}
+            plantOptions={plantOptions}
+            plantNote={plantNote(plants)}
+            isRefreshing={summary.isFetching}
+            lastUpdatedText={lastUpdatedText}
+            isStale={hasStaleData}
+            today={today}
+            isLive={isLive}
+            periodError={periodError}
+            onChange={(next) => {
+              setSearchParams(toSearchParams(next));
+            }}
+            onRefresh={() => {
+              void summary.refetch();
+              /* 공장 목록이 실패한 채로 남아 있으면 갱신이 그것도 함께 다시 묻는다. */
+              if (plants.isError) plants.refetch();
+            }}
+          />
+        </section>
 
-      <section className="pane" aria-label={t.panes.filters}>
-        <DashboardFilterBar
-          filters={filters}
-          plantOptions={plantOptions}
-          plantNote={plantNote(plants)}
-          isRefreshing={summary.isFetching}
-          lastUpdatedText={lastUpdatedText}
-          isStale={hasStaleData}
-          today={today}
-          isLive={isLive}
-          periodError={periodError}
+        <Tabs
+          className="dash-tabs"
+          aria-label={t.tabs.label}
+          value={tab}
           onChange={(next) => {
-            setSearchParams(toSearchParams(next));
+            setTab(next as DashboardTab);
           }}
-          onRefresh={() => {
-            void summary.refetch();
-            /* 공장 목록이 실패한 채로 남아 있으면 갱신이 그것도 함께 다시 묻는다. */
-            if (plants.isError) plants.refetch();
-          }}
+          items={[
+            { value: 'overview', label: t.tabs.overview, content: overview },
+            ...QUALITY_TABS.map(({ value, label, TabBody }) => ({
+              value,
+              label,
+              content: (
+                <QualityGate
+                  quality={view?.quality ?? null}
+                  isLoading={summary.isPending}
+                  isFailed={isFailed}
+                >
+                  {(quality) => <TabBody quality={quality} />}
+                </QualityGate>
+              ),
+            })),
+          ]}
         />
-      </section>
-
-      <Tabs
-        className="dash-tabs"
-        aria-label={t.tabs.label}
-        value={tab}
-        onChange={(next) => {
-          setTab(next as DashboardTab);
-        }}
-        items={[
-          { value: 'overview', label: t.tabs.overview, content: overview },
-          ...QUALITY_TABS.map(({ value, label, TabBody }) => ({
-            value,
-            label,
-            content: (
-              <QualityGate
-                quality={view?.quality ?? null}
-                isLoading={summary.isPending}
-                isFailed={isFailed}
-              >
-                {(quality) => <TabBody quality={quality} />}
-              </QualityGate>
-            ),
-          })),
-        ]}
-      />
+      </FilterQueryContext.Provider>
     </SingleDayContext.Provider>
   );
 };

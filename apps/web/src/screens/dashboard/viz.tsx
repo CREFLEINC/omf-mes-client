@@ -1,6 +1,13 @@
-import { Card, Chip, EmptyState, IconButton, Tooltip, type ChipStatus } from '@crefle/web-ui';
+import { Card, Chip, EmptyState, Icon, IconButton, Tooltip, type ChipStatus } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { useEffect, useRef, useState, type MouseEvent, type ReactNode } from 'react';
+import {
+  useEffect,
+  useRef,
+  useState,
+  type ButtonHTMLAttributes,
+  type MouseEvent,
+  type ReactNode,
+} from 'react';
 
 import { formatFigure } from './types';
 import {
@@ -361,25 +368,59 @@ export interface StatusItem {
 }
 
 /** 「현재 현황」 목록 — 점 · 항목 · 보조 글 · 값. */
-export const StatusList = ({ items }: { items: readonly StatusItem[] }) => (
+const StatusRowBody = ({ item }: { item: StatusItem }) => (
+  <>
+    <span className={`dash-dot dash-dot-${item.tone ?? 'idle'}`} aria-hidden="true" />
+    <span className="dash-status-text">
+      <span className="dash-status-label">{item.label}</span>
+      {item.note !== undefined && <span className="dash-status-note">{item.note}</span>}
+    </span>
+    <span
+      className={
+        item.tone === 'error' || item.tone === 'warning'
+          ? `dash-status-value dash-tone-${item.tone}`
+          : 'dash-status-value'
+      }
+    >
+      {item.value}
+      {item.unit !== undefined && <span className="dash-kpi-unit">{item.unit}</span>}
+    </span>
+  </>
+);
+
+/**
+ * `onSelect` 를 주면 줄 전체가 단추다(품질 종합 「현재 현황」 · ⭐ 사용자 결정 2026-10-19 — 누르면 LOT 목록 창).
+ * `selectable: false` 인 줄(0건)은 누를 수 없다. 주지 않으면 지금처럼 읽기 전용 목록.
+ */
+export const StatusList = ({
+  items,
+  onSelect,
+  rowProps,
+}: {
+  items: readonly (StatusItem & { selectable?: boolean })[];
+  onSelect?: (key: string) => void;
+  /** 단추 줄에 더할 속성 — 포인터로 연 창을 닫았을 때 포커스 링을 숨기는 처리 등. */
+  rowProps?: ButtonHTMLAttributes<HTMLButtonElement>;
+}) => (
   <ul className="dash-status-list">
     {items.map((item) => (
       <li key={item.key}>
-        <span className={`dash-dot dash-dot-${item.tone ?? 'idle'}`} aria-hidden="true" />
-        <span className="dash-status-text">
-          <span className="dash-status-label">{item.label}</span>
-          {item.note !== undefined && <span className="dash-status-note">{item.note}</span>}
-        </span>
-        <span
-          className={
-            item.tone === 'error' || item.tone === 'warning'
-              ? `dash-status-value dash-tone-${item.tone}`
-              : 'dash-status-value'
-          }
-        >
-          {item.value}
-          {item.unit !== undefined && <span className="dash-kpi-unit">{item.unit}</span>}
-        </span>
+        {onSelect === undefined ? (
+          <StatusRowBody item={item} />
+        ) : (
+          <button
+            type="button"
+            className="dash-status-row"
+            {...rowProps}
+            disabled={item.selectable === false}
+            onClick={() => {
+              onSelect(item.key);
+            }}
+          >
+            <StatusRowBody item={item} />
+            <Icon name="chevron_right" size={18} className="dash-status-arrow" aria-hidden="true" />
+          </button>
+        )}
       </li>
     ))}
   </ul>

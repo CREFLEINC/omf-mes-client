@@ -1,4 +1,8 @@
-import type { ApiClient } from '@omf-mes/api-client';
+import type {
+  ApiClient,
+  DashboardQualityLotStatus,
+  DashboardQualityLots,
+} from '@omf-mes/api-client';
 import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
@@ -31,6 +35,8 @@ type Client = ApiClient['client'];
 export const dashboardKeys = {
   all: ['dashboard'] as const,
   summary: (query: DashboardFilterQuery) => ['dashboard', 'summary', query] as const,
+  qualityLots: (status: DashboardQualityLotStatus, query: DashboardFilterQuery) =>
+    ['dashboard', 'quality-lots', status, query] as const,
 };
 
 /** 대시보드 요약의 자동 재조회 주기 — 1분(omf-all-around#115). */
@@ -68,5 +74,28 @@ export const useDashboardSummary = (
     queryFn: () => fetchSummary(client, query),
     /* 지난 기간(끝이 오늘 전)은 값이 바뀌지 않아 자동 갱신을 걸지 않는다(사용자 확정 2026-10-16). */
     refetchInterval: live ? DASHBOARD_REFRESH_INTERVAL_MS : false,
+  });
+};
+
+/**
+ * 품질 종합 「현재 현황」 상태별 LOT 목록(⭐ 사용자 결정 2026-10-19 「서버 추가 + 팝업」) — 상태를 눌렀을 때만 부른다
+ * (`status` 가 `null` 이면 부르지 않는다). 조건은 대시보드와 같은 기간 · 공장을 넘긴다 — 기간은 서버가
+ * 검사 보류에만 쓰고 나머지 셋은 「지금」 기준이다. 자동 갱신은 걸지 않는다(창이 열린 동안 목록이 바뀌지 않게).
+ */
+export const useDashboardQualityLots = (
+  status: DashboardQualityLotStatus | null,
+  query: DashboardFilterQuery,
+): UseQueryResult<DashboardQualityLots> => {
+  const { client } = useApiClient();
+
+  return useQuery({
+    queryKey: dashboardKeys.qualityLots(status ?? 'INSPECTION_HELD', query),
+    queryFn: () =>
+      runRequest(() =>
+        client.GET('/app/dashboard-quality-lots', {
+          params: { query: { status: status ?? 'INSPECTION_HELD', ...query } },
+        }),
+      ),
+    enabled: status !== null,
   });
 };
