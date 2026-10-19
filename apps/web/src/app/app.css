@@ -7872,9 +7872,10 @@ dl.filter-bar.approval-inbox-detail-facts {
 
 /*
  * 품질 종합 배치(⭐ 사용자 지시 2026-10-19) — 위: 일별 합격률 | 업체별 불량 · 현재 현황(세로), 아래: 불량현상
- * 구성비 | 최근 판정 표. 카드 높이는 내용대로(같은 행을 같은 높이로 늘이지 않는다) — 위 행의 그래프만 오른쪽
- * 묶음 높이에 맞춰 커진다(`FitChart`, 상한 480). 넓음 ≈ 62 : 38 · 중간(1200 이하) 1.4 : 1 · 좁음(860 이하) 1열.
- * 화면 높이 채우기는 쓰지 않는다.
+ * 구성비 | 최근 판정 표. 행 높이 = 그 행에서 내용이 가장 긴 카드, 짧은 카드는 그 높이까지 늘어 아래 끝을 맞춘다
+ * (내용은 위에서부터 · 사용자 지적 2026-10-19 「박스가 어긋나지 않도록」). 화면 높이를 채우려고 행을 키우지는
+ * 않는다. 위 행의 그래프는 오른쪽 묶음 높이에 맞춰 커진다(`FitChart`, 상한 480). 넓음 ≈ 62 : 38 · 중간(1200
+ * 이하) 1.4 : 1 · 좁음(860 이하) 1열(늘이지 않음).
  */
 .dash-qo-top {
   display: grid;
@@ -7885,7 +7886,8 @@ dl.filter-bar.approval-inbox-detail-facts {
 
 .dash-qo-side {
   display: grid;
-  align-content: start;
+  /* 그래프 기본 높이가 오른쪽 묶음보다 길면 아래 카드(현재 현황)가 남는 높이를 받아 끝을 맞춘다. */
+  grid-template-rows: auto 1fr;
   gap: var(--space-4);
   min-width: 0;
 }
@@ -7894,7 +7896,7 @@ dl.filter-bar.approval-inbox-detail-facts {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr);
   gap: var(--space-4);
-  align-items: start;
+  align-items: stretch;
 }
 
 /* 막대 목록 — 이름 · 막대 · 수량 · 비율이 모든 줄에서 같은 열(subgrid), 수량 · 비율은 오른쪽 정렬. */
