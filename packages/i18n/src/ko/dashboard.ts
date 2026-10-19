@@ -233,6 +233,8 @@ export const dashboard = {
     none: '—',
     noRecords: '아직 집계할 기록이 없습니다.',
     infoLabel: (name: string): string => `${name} 설명`,
+    /** 일별 그래프에서 검사가 없는 날 표시(IQC 탭). */
+    noInspectionDay: '검사 없음',
     noRates: '이 기간에 합격률을 낼 수 있는 날이 없습니다.',
     dateColumn: '일자',
     /** 일별 꺾은선 툴팁(품질 종합) — 값이 없는 날은 「—」. */
@@ -331,8 +333,9 @@ export const dashboard = {
     receiptHold: '입고 보류 LOT',
     receiptHoldNote: '지금 보류 중인 입하 LOT',
     fullReinspect: '재검 OK 복원율',
-    fullReinspectNote: (input: string, restored: string): string =>
-      `재검 투입 ${input} EA · OK 복원 ${restored} EA`,
+    fullReinspectNote: (restored: string, unit: string): string => `OK 복원 ${restored} ${unit}`,
+    reinspectInput: '재검 투입',
+    reinspectInputNote: '당월 IQC 재검사 수량',
     pendingLots: '검사 대기 LOT',
     pendingLotsNote: '판정 전 PQC 의뢰',
     reworkRequests: '재작업 의뢰',

@@ -231,6 +231,8 @@ export interface DashboardQualityLotsQuery {
   baseDate?: string;
   dateFrom?: string;
   dateTo?: string;
+  /** INSPECTION_HELD 만 — 그 검사 유형의 검사 보류만(IQC 탭 · 사용자 지시 2026-10-19). 다른 상태는 무시. */
+  inspectionType?: 'IQC' | 'PQC' | 'OQC';
 }
 
 export interface ForwardPaths {

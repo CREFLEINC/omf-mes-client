@@ -35,8 +35,11 @@ type Client = ApiClient['client'];
 export const dashboardKeys = {
   all: ['dashboard'] as const,
   summary: (query: DashboardFilterQuery) => ['dashboard', 'summary', query] as const,
-  qualityLots: (status: DashboardQualityLotStatus, query: DashboardFilterQuery) =>
-    ['dashboard', 'quality-lots', status, query] as const,
+  qualityLots: (
+    status: DashboardQualityLotStatus,
+    query: DashboardFilterQuery,
+    inspectionType: 'IQC' | 'PQC' | 'OQC' | null,
+  ) => ['dashboard', 'quality-lots', status, query, inspectionType] as const,
 };
 
 /** 대시보드 요약의 자동 재조회 주기 — 1분(omf-all-around#115). */
@@ -85,15 +88,23 @@ export const useDashboardSummary = (
 export const useDashboardQualityLots = (
   status: DashboardQualityLotStatus | null,
   query: DashboardFilterQuery,
+  /** 검사 보류를 한 검사 유형으로 좁힌다(IQC 탭). `null` 이면 전체. */
+  inspectionType: 'IQC' | 'PQC' | 'OQC' | null = null,
 ): UseQueryResult<DashboardQualityLots> => {
   const { client } = useApiClient();
 
   return useQuery({
-    queryKey: dashboardKeys.qualityLots(status ?? 'INSPECTION_HELD', query),
+    queryKey: dashboardKeys.qualityLots(status ?? 'INSPECTION_HELD', query, inspectionType),
     queryFn: () =>
       runRequest(() =>
         client.GET('/app/dashboard-quality-lots', {
-          params: { query: { status: status ?? 'INSPECTION_HELD', ...query } },
+          params: {
+            query: {
+              status: status ?? 'INSPECTION_HELD',
+              ...query,
+              ...(inspectionType === null ? {} : { inspectionType }),
+            },
+          },
         }),
       ),
     enabled: status !== null,

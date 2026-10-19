@@ -189,6 +189,8 @@ export const dashboard: Translated<typeof ko.dashboard> = {
     none: '—',
     noRecords: 'Chưa có ghi nhận để tổng hợp.',
     infoLabel: (name: string): string => `Giải thích ${name}`,
+    /** 일별 그래프에서 검사가 없는 날 표시(IQC 탭). */
+    noInspectionDay: 'Không kiểm tra',
     noRates: 'Trong khoảng này không có ngày nào tính được tỷ lệ đạt.',
     dateColumn: 'Ngày',
     tipNone: '—',
@@ -275,8 +277,10 @@ export const dashboard: Translated<typeof ko.dashboard> = {
     receiptHold: 'LOT tạm giữ nhập kho',
     receiptHoldNote: 'LOT nhận hàng đang bị tạm giữ',
     fullReinspect: 'Tỷ lệ khôi phục OK khi kiểm tra lại',
-    fullReinspectNote: (input: string, restored: string): string =>
-      `Đưa vào kiểm tra lại ${input} EA · Khôi phục OK ${restored} EA`,
+    fullReinspectNote: (restored: string, unit: string): string =>
+      `Khôi phục OK ${restored} ${unit}`,
+    reinspectInput: 'Đưa vào kiểm tra lại',
+    reinspectInputNote: 'Số lượng kiểm tra lại IQC trong tháng',
     pendingLots: 'LOT chờ kiểm tra',
     pendingLotsNote: 'Yêu cầu PQC chưa phán định',
     reworkRequests: 'Yêu cầu làm lại',

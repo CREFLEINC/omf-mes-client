@@ -314,12 +314,15 @@ const DailyPanel = ({
   tooltip = false,
   niceTicks = false,
   gapMarks = false,
+  gapDetail = false,
 }: {
   quality: DashboardQuality;
   kinds: readonly QualityKind[];
   title: string;
-  /** 검사 없는 날 · 혼자 남은 점 구분 — 품질 종합만(사용자 지시 2026-10-19). */
+  /** 검사 없는 날 · 혼자 남은 점 구분 — 품질 종합 · IQC(사용자 지시 2026-10-19). */
   gapMarks?: boolean;
+  /** 공백 띠 · 「검사 없음」 · 끊긴 점 잇는 점선 · 혼자 남은 점 값을 점 위에 — IQC 탭만(사용자 지시 2026-10-19). */
+  gapDetail?: boolean;
   /** 날짜 칸 툴팁(날짜 + 유형별 합격률) — 품질 종합 · IQC · PQC · OQC(사용자 확정 2026-10-19). */
   tooltip?: boolean;
   /** 보기 좋은 눈금 — IQC · PQC · OQC 탭만(범위는 그대로). */
@@ -347,6 +350,7 @@ const DailyPanel = ({
               tipLabels={tooltip ? tipDates(quality, kinds) : undefined}
               niceTicks={niceTicks}
               gapMarks={gapMarks}
+              gapDetail={gapDetail}
             />
           )}
         </FitChart>
@@ -691,8 +695,8 @@ export const IqcTab = ({
   const tags = usePeriodTags();
   const iqc = quality.iqc;
   const topVendor = iqc.vendorDefects[0];
-  /* 「입고 보류」 줄 → 보류 LOT 목록 창(보류 사유 포함 · 사용자 지시 2026-10-19). 품질 종합과 같은 창이다. */
-  const [receiptHoldOpen, setReceiptHoldOpen] = useState(false);
+  /* 「검사 보류」(IQC 만) · 「입고 보류」 줄 → LOT 목록 창(사용자 지시 2026-10-19). */
+  const [lotStatus, setLotStatus] = useState<DashboardQualityLotStatus | null>(null);
   const [lotDialogMounted, setLotDialogMounted] = useState(false);
   const pointerInput = usePointerInput();
 
@@ -701,32 +705,40 @@ export const IqcTab = ({
       <div className="dash-kpis">
         <OverviewPassRateTile label={t.passRateOf('IQC')} block={iqc} />
         <OverviewLotTile label={t.monthLots} tag={tags.month} counts={iqc.monthLots} />
-        {/* ⭐ IQC 재검사 회차의 투입 · 합격 수량(사용자 결정 2026-10-19). 복원율 = 합격 ÷ 투입, 투입 0 이면 값 없음. */}
+        {/* ⭐ IQC 재검사 회차의 투입 · 합격 수량(사용자 결정 2026-10-19) — 「재검 투입」과 「재검 OK 복원율」을 나란히
+            (사용자 지시 2026-10-19). 복원율 = 합격 ÷ 투입, 투입 0 이면 값 없음. */}
         {iqc.fullReinspect !== null && (
-          <KpiTile
-            label={t.fullReinspect}
-            tag={tags.month}
-            value={
-              iqc.fullReinspect.inputQty > 0
-                ? formatFigure(
-                    Math.min(
-                      100,
-                      Math.round(
-                        (iqc.fullReinspect.restoredQty / iqc.fullReinspect.inputQty) * 1000,
-                      ) / 10,
-                    ),
-                  )
-                : t.rateNone
-            }
-            unit={iqc.fullReinspect.inputQty > 0 ? '%' : undefined}
-          >
-            <span>
-              {t.fullReinspectNote(
-                formatFigure(iqc.fullReinspect.inputQty),
-                formatFigure(iqc.fullReinspect.restoredQty),
-              )}
-            </span>
-          </KpiTile>
+          <>
+            <KpiTile
+              label={t.reinspectInput}
+              tag={tags.month}
+              value={formatFigure(iqc.fullReinspect.inputQty)}
+              unit={t.qtyUnit}
+            >
+              <span>{t.reinspectInputNote}</span>
+            </KpiTile>
+            <KpiTile
+              label={t.fullReinspect}
+              tag={tags.month}
+              value={
+                iqc.fullReinspect.inputQty > 0
+                  ? formatFigure(
+                      Math.min(
+                        100,
+                        Math.round(
+                          (iqc.fullReinspect.restoredQty / iqc.fullReinspect.inputQty) * 1000,
+                        ) / 10,
+                      ),
+                    )
+                  : t.rateNone
+              }
+              unit={iqc.fullReinspect.inputQty > 0 ? '%' : undefined}
+            >
+              <span>
+                {t.fullReinspectNote(formatFigure(iqc.fullReinspect.restoredQty), t.qtyUnit)}
+              </span>
+            </KpiTile>
+          </>
         )}
         <KpiTile
           label={t.topVendor}
@@ -746,6 +758,8 @@ export const IqcTab = ({
           kinds={['IQC']}
           title={t.dailyTitleOf('IQC')}
           tooltip
+          gapMarks
+          gapDetail
           niceTicks
         />
         <div className="dash-qo-side">
@@ -763,8 +777,7 @@ export const IqcTab = ({
             <StatusList
               rowProps={pointerFocusProps(pointerInput)}
               onSelect={(key) => {
-                if (key !== 'receiptHold') return;
-                setReceiptHoldOpen(true);
+                setLotStatus(LOT_STATUS_OF_ROW[key] ?? null);
                 setLotDialogMounted(true);
               }}
               items={[
@@ -775,8 +788,8 @@ export const IqcTab = ({
                   value: formatFigure(iqc.monthLots.held),
                   unit: t.lotUnit,
                   tone: countTone(iqc.monthLots.held, 'warning'),
-                  /* 목록 창의 「검사 보류」는 IQC · PQC · OQC 를 함께 센다 — IQC 숫자와 달라 열지 않는다. */
-                  selectable: false,
+                  /* 목록은 IQC 검사 보류만(`inspectionType`) — 이 숫자와 같은 건수. */
+                  selectable: iqc.monthLots.held > 0,
                 },
                 {
                   key: 'receiptHold',
@@ -809,13 +822,15 @@ export const IqcTab = ({
           rows={recentOf(quality, 'IQC')}
           counterpart="vendor"
           linked={allows(INSPECTION_RESULTS_PATH)}
+          withTime
         />
       </div>
       {lotDialogMounted && (
         <QualityLotsDialog
-          status={receiptHoldOpen ? 'RECEIPT_HOLD' : null}
+          status={lotStatus}
+          inspectionType={lotStatus === 'INSPECTION_HELD' ? 'IQC' : null}
           onClose={() => {
-            setReceiptHoldOpen(false);
+            setLotStatus(null);
           }}
         />
       )}

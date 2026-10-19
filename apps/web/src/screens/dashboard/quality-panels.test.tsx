@@ -78,7 +78,8 @@ describe('품질 탭', () => {
     const q = quality();
     q.iqc.fullReinspect = { inputQty: 80, restoredQty: 70 };
     rerender(<IqcTab quality={q} />);
-    expect(screen.getByText(t.fullReinspectNote('80', '70'))).toBeInTheDocument();
+    expect(screen.getByRole('group', { name: t.reinspectInput })).toHaveTextContent('80');
+    expect(screen.getByText(t.fullReinspectNote('70', t.qtyUnit))).toBeInTheDocument();
     /* 재검 OK 복원율 = 70 ÷ 80(사용자 결정 2026-10-19). */
     expect(screen.getByText('87.5')).toBeInTheDocument();
   });
