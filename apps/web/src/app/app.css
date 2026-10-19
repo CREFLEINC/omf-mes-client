@@ -14692,14 +14692,13 @@ button.app-button-neutral {
 
 .dash-hit[data-tip]:hover::after,
 .dash-hit[data-tip]:focus-visible::after,
-.dash-axisbars-row[data-tip]:hover::after,
-.dash-axisbars-row[data-tip]:focus-visible::after {
+.dash-axisbars-bar[data-tip]:hover::after,
+.dash-axisbars-bar[data-tip]:focus-visible::after {
   content: attr(data-tip);
   position: absolute;
-  inset-block-start: 0;
-  inset-inline-start: 50%;
+  inset-block-start: 50%;
   z-index: 3;
-  transform: translate(-50%, calc(-100% - var(--space-1)));
+  transform: translateY(-50%);
   padding: var(--space-1) var(--space-2);
   border: 1px solid var(--outline-variant);
   border-radius: var(--radius-sm, 6px);
@@ -14711,14 +14710,27 @@ button.app-button-neutral {
   pointer-events: none;
 }
 
-.dash-axisbars-row {
-  position: relative;
-  border-radius: 2px;
+/* 툴팁 자리 — 기본은 칸 · 막대 오른쪽(막대 끝 수량 뒤), 자리가 없으면 왼쪽(사용자 지시 2026-10-19). */
+.dash-tip-right[data-tip]::after {
+  inset-inline-start: calc(100% + var(--space-2));
 }
 
-.dash-axisbars-row:focus-visible {
+.dash-axisbars-bar.dash-tip-right[data-tip]::after {
+  inset-inline-start: calc(100% + 3rem);
+}
+
+.dash-tip-left[data-tip]::after {
+  inset-inline-end: calc(100% + var(--space-2));
+}
+
+.dash-axisbars-bar.dash-tip-left[data-tip]::after {
+  inset-inline-end: var(--space-2);
+}
+
+.dash-axisbars-bar:hover,
+.dash-axisbars-bar:focus-visible {
   outline: none;
-  box-shadow: var(--focus-ring);
+  filter: brightness(1.25);
 }
 
 /* 원인 구분별 구성 — 카드 높이를 그래프가 채운다(아래 빈 공간 줄임 · 사용자 지시 2026-10-19). */

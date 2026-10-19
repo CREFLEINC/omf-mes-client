@@ -1054,7 +1054,10 @@ export const ParetoChart = ({
         {rows.map((row, index) => (
           <span
             key={row.key}
-            className="dash-hit"
+            /* 툴팁은 막대 칸 오른쪽, 오른쪽 끝 칸들은 왼쪽(⭐ 사용자 지시 2026-10-19 「그래프 우측」). */
+            className={
+              index >= rows.length - 2 ? 'dash-hit dash-tip-left' : 'dash-hit dash-tip-right'
+            }
             tabIndex={0}
             data-tip={t.paretoTip(row.label, formatFigure(row.value), formatShare(row.cumulative))}
             aria-label={t.paretoTip(

@@ -1398,12 +1398,7 @@ const AxisBars = ({ entries, caption }: { entries: readonly NamedQty[]; caption:
     <figure className="dash-axisbars" aria-label={caption}>
       <ol className="dash-axisbars-rows">
         {sorted.map((entry) => (
-          <li
-            key={entry.key}
-            className="dash-axisbars-row"
-            tabIndex={0}
-            data-tip={t.causeTip(entry.label, formatFigure(entry.value), shareOf(entry.value))}
-          >
+          <li key={entry.key} className="dash-axisbars-row">
             <span className="dash-axisbars-name" title={entry.label}>
               {entry.label}
             </span>
@@ -1416,9 +1411,19 @@ const AxisBars = ({ entries, caption }: { entries: readonly NamedQty[]; caption:
                   aria-hidden="true"
                 />
               ))}
+              {/*
+               * 툴팁은 막대 오른쪽(⭐ 사용자 지시 2026-10-19 「상세 데이터는 그래프 우측」) — 막대가 길어 오른쪽에 자리가
+               * 없으면 막대 끝 안쪽 왼쪽으로 띄운다.
+               */}
               <span
-                className="dash-axisbars-bar"
+                className={
+                  Math.max(0, entry.value) / max > 0.6
+                    ? 'dash-axisbars-bar dash-tip-left'
+                    : 'dash-axisbars-bar dash-tip-right'
+                }
                 style={{ width: `${String((Math.max(0, entry.value) / max) * 100)}%` }}
+                tabIndex={0}
+                data-tip={t.causeTip(entry.label, formatFigure(entry.value), shareOf(entry.value))}
               >
                 <span className="dash-axisbars-value">{formatFigure(entry.value)}</span>
               </span>
