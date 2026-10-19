@@ -83,7 +83,7 @@ const REQUEST_COMPLETED = 'COMPLETED';
 const t = messages.iqcInspection;
 /** 종합 판정 불합격(시드 `INSPECTION_RESULT_OVERALL_JUDGMENT`) — 이 값일 때만 불합격 사유를 받는다. */
 const REJECTED_JUDGMENT = 'REJECTED';
-/** 불량 기록 원천 — 수입검사(서버 선행 P-39). 발생·검출 공정은 서버가 수입검사 공정으로 채운다. */
+/** 불량 기록 원천 — 수입검사(서버 선행 P-42). 발생·검출 공정은 서버가 수입검사 공정으로 채운다. */
 const IQC_DEFECT_SOURCE = 'IQC';
 
 export const IqcInspectionScreen = () => {
@@ -143,7 +143,7 @@ export const IqcInspectionScreen = () => {
 
   /*
    * 끝난 의뢰인가(3단계 검증) — 의뢰 COMPLETED · 최신 회차 확정이면 입력 화면 대신 읽기 전용 요약을 보인다.
-   * 재작업 처분이 의뢰를 IN_PROGRESS 로 다시 열면(서버 P-58) 입력 화면과 [재검사]가 돌아온다.
+   * 재작업 처분이 의뢰를 IN_PROGRESS 로 다시 열면(서버 P-43) 입력 화면과 [재검사]가 돌아온다.
    * 작성 중 회차가 있으면(확정 전) 지금처럼 그 회차를 편집한다.
    */
   const isClosed =
@@ -183,7 +183,7 @@ export const IqcInspectionScreen = () => {
 
   /*
    * 불합격 사유(omf-all-around#106) — 불합격이면 불량 코드·사유를 받아 확정 «직전»에 불량 기록으로 남긴다.
-   * 서버가 IQC 불합격 확정에 불량 기록을 요구한다(P-39). 확정이 실패해 다시 누르면 같은 회차의 사유를
+   * 서버가 IQC 불합격 확정에 불량 기록을 요구한다(P-42). 확정이 실패해 다시 누르면 같은 회차의 사유를
    * 두 번 남기지 않는다(`recordedResultId`).
    */
   const [rejection, setRejection] = useState<RejectionDraft>(EMPTY_REJECTION);

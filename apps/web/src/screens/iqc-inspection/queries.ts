@@ -530,7 +530,7 @@ export const useDefectCodes = (enabled: boolean) => {
 };
 
 /**
- * 불합격 사유를 불량 기록으로 남긴다(서버 선행 P-39). 확정 «직전»에 부르고, 성공하면 확정으로 잇는다 —
+ * 불합격 사유를 불량 기록으로 남긴다(서버 선행 P-42). 확정 «직전»에 부르고, 성공하면 확정으로 잇는다 —
  * 서버가 IQC 불합격 확정에 불량 기록을 요구한다.
  */
 export const useRecordRejection = (

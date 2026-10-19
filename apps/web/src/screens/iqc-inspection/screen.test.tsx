@@ -125,7 +125,7 @@ const renderScreen = (
               page: { page: 1, size: 500, total: 2 },
             }),
         },
-        /* 불량 기록 등록 — 확정 «직전»에 나간다(P-39). 쓰기 순서를 재려고 `writes` 에 함께 담는다. */
+        /* 불량 기록 등록 — 확정 «직전»에 나간다(P-42). 쓰기 순서를 재려고 `writes` 에 함께 담는다. */
         {
           match: (request) =>
             new URL(request.url).pathname === '/quality/defect-records' &&

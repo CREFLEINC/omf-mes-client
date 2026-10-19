@@ -20,7 +20,7 @@ export interface ClosedSummaryProps {
  *
  * 의뢰가 끝났고(COMPLETED) 최신 회차가 확정이면 판정·수량·불합격 사유 입력을 두지 않고 최신 회차의 결과만
  * 보인다 — 회차 단추를 누르지 않아도 최신이 보인다. 재작업 처분으로 의뢰가 다시 열리면(IN_PROGRESS) 입력
- * 화면과 [재검사]가 돌아온다(서버 P-58).
+ * 화면과 [재검사]가 돌아온다(서버 P-43).
  */
 export const ClosedSummary = ({
   round,
