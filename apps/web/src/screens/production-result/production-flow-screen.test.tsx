@@ -1832,6 +1832,41 @@ describe('ProductionFlowScreen — PQC 분할', () => {
     ).not.toBeInTheDocument();
   });
 
+  it('⛔ 저장된 회차를 못 읽으면 PQC 저장·확정을 잠근다(리뷰 M1)', async () => {
+    renderScreen(
+      [],
+      [
+        producedWorkOrder(5),
+        {
+          match: (request) =>
+            request.method === 'GET' && pathOf(request) === '/quality/inspection-results',
+          respond: () => jsonResponse({ message: '조회 실패' }, { status: 500 }),
+        },
+        ...pqcRoutes({ confirmed: false }, []),
+      ],
+    );
+
+    const panel = within(await screen.findByRole('region', { name: t.pqc.splitTitle }));
+    expect(await panel.findByText(messages.httpError.description)).toBeInTheDocument();
+    expect(panel.getByRole('button', { name: pqc.result.save })).toBeDisabled();
+    expect(panel.getByRole('button', { name: pqc.result.confirm })).toBeDisabled();
+  });
+
+  it('PQC 의뢰 조회가 실패하면 조용히 실적만 보이지 않고 오류를 알린다(리뷰 m6)', async () => {
+    renderScreen(
+      [],
+      [
+        {
+          match: (request) => pathOf(request) === '/quality/inspection-requests',
+          respond: () => jsonResponse({ message: '조회 실패' }, { status: 500 }),
+        },
+      ],
+    );
+
+    expect(await screen.findByText(t.pqc.loadFailed)).toBeInTheDocument();
+    expect(screen.queryByText(t.pqc.notInspected)).not.toBeInTheDocument();
+  });
+
   it('검사 off(그 W/O 에 PQC 의뢰가 없음)면 나누지 않고 실적만 보인다', async () => {
     renderScreen([], []);
 

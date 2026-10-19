@@ -1015,6 +1015,11 @@ export const ProductionFlowScreen = () => {
           <AlertBanner variant="info" title={t.flow.currentLot.none} />
         </div>
       )}
+      {workOrderPqc.isError && (
+        <div className="banner-slot">
+          <AlertBanner variant="error" title={t.pqc.loadFailed} />
+        </div>
+      )}
       {item.isError && (
         <div className="banner-slot">
           <AlertBanner variant="error" title={t.flow.tag.targetUnknown} />

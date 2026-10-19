@@ -1,9 +1,11 @@
 import { createIdempotencyKey, type components } from '@omf-mes/api-client';
+import { useQueryClient } from '@tanstack/react-query';
 import { useCallback, useState } from 'react';
 
 import { useApiClient } from '../../patterns/api-context';
 import { splitError, type SplitError } from '../../patterns/master';
 import { runRequest, toApiError } from '../../patterns/request';
+import { oqcInspectionKeys } from '../oqc-inspection/queries';
 import { RESULT_STATUS, SAVE_FIELDS } from '../pqc-inspection/queries';
 import type { PqcSubmitter } from './panel';
 
@@ -19,6 +21,7 @@ type InspectionResultCreate = components['schemas']['InspectionResultCreate'];
  */
 export const useDirectSubmitter = (): PqcSubmitter => {
   const { client } = useApiClient();
+  const queryClient = useQueryClient();
   const [rejection, setRejection] = useState<SplitError | null>(null);
   const [rejectedStatusCode, setRejectedStatusCode] = useState<string | null>(null);
   const [sentCount, setSentCount] = useState(0);
@@ -40,7 +43,11 @@ export const useDirectSubmitter = (): PqcSubmitter => {
           body,
         }),
       )
-        .then(() => setSentCount((count) => count + 1))
+        .then(() => {
+          setSentCount((count) => count + 1);
+          /* 목록의 상태(대기 → 진행 → 완료)가 바뀐다 — 확정한 의뢰가 「대기·진행만」에 남지 않게 다시 묻는다(리뷰 m5). */
+          void queryClient.invalidateQueries({ queryKey: oqcInspectionKeys.queues() });
+        })
         .catch((error: unknown) => {
           setRejection(splitError(toApiError(error), SAVE_FIELDS, undefined));
           setRejectedStatusCode(body.statusCode);
@@ -54,7 +61,7 @@ export const useDirectSubmitter = (): PqcSubmitter => {
           });
         });
     },
-    [client],
+    [client, queryClient],
   );
 
   const clearRejection = useCallback((): void => {

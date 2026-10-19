@@ -17,6 +17,8 @@ export interface PanelActionsProps {
   confirmBlockedReason: string | null;
   saveBlockedReason: string | null;
   workerMissing: boolean;
+  /** 관리웹이 저장을 보내 놓고 답을 기다리는 중 — 두 단추를 잠근다(리뷰 m5). POP 큐는 늘 `false`. */
+  isSending: boolean;
   onSave: () => void;
   onConfirm: () => void;
 }
@@ -34,6 +36,7 @@ export const PanelActions = ({
   confirmBlockedReason,
   saveBlockedReason,
   workerMissing,
+  isSending,
   onSave,
   onConfirm,
 }: PanelActionsProps) => {
@@ -69,7 +72,7 @@ export const PanelActions = ({
         variant="outlined"
         size="xl"
         className={popTouchClass('primary')}
-        disabled={isConfirmed || lockedReason !== null}
+        disabled={isConfirmed || lockedReason !== null || isSending}
         onClick={onSave}
       >
         {t.save}
@@ -79,7 +82,9 @@ export const PanelActions = ({
         variant="filled"
         size="xl"
         className={popTouchClass('destructive')}
-        disabled={lockedReason !== null || confirmBlockedReason !== null || workerMissing}
+        disabled={
+          lockedReason !== null || confirmBlockedReason !== null || workerMissing || isSending
+        }
         onClick={onConfirm}
       >
         {t.confirm}

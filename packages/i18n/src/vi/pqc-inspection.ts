@@ -83,6 +83,7 @@ export const pqcInspection: Translated<typeof ko.pqcInspection> = {
     over: (over: string): string => `Vượt ${over}`,
     judgmentPlaceholder: 'Hãy chọn đánh giá tổng hợp',
     dispositionNote: 'Chọn khi có số lượng không đạt. Xác nhận sau khi nhập kho hàng lỗi.',
+    roundLoading: 'Đang tải kết quả kiểm tra đã lưu.',
   },
 
   disposition: {

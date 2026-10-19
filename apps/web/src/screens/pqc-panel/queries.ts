@@ -15,6 +15,7 @@ export const pqcPanelKeys = {
   rounds: (inspectionRequestId: number) => ['pqc-panel', 'rounds', inspectionRequestId] as const,
   measurements: (inspectionResultId: number) =>
     ['pqc-panel', 'measurements', inspectionResultId] as const,
+  allMeasurements: ['pqc-panel', 'measurements'] as const,
 };
 
 /**

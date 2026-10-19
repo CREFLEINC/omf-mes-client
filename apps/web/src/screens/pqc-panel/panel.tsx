@@ -115,7 +115,8 @@ export const PqcPanel = ({
    * 마지막 회차를 칸에 되살린다 — 작성중이면 이어 쓰고(다음 저장도 `POST` 이고 서버가 그 회차를 덮는다 · 장부 P-49),
    * 의뢰가 끝났으면 확정 결과를 읽기 전용으로 보인다. 의뢰가 열려 있는데 마지막 회차가 확정이면(재검사 대기) 되살리지 않는다.
    */
-  const latestRound = useLatestRound(inspectionRequestId).data ?? null;
+  const latestRoundQuery = useLatestRound(inspectionRequestId);
+  const latestRound = latestRoundQuery.data ?? null;
   const savedRound =
     latestRound !== null &&
     (latestRound.statusCode === RESULT_STATUS.draft ||
@@ -147,17 +148,37 @@ export const PqcPanel = ({
 
   const { clearRejection, rejection, rejectedStatusCode, sentCount } = submitter;
 
-  /* 서버가 받았으면 의뢰를 다시 부른다 — 확정이면 의뢰가 완료로 바뀌어 칸이 잠긴다. */
+  /*
+   * 관리웹은 바로 보내므로 «서버가 받았다»를 듣고서야 저장·확정 표시를 낸다(리뷰 m5). 보내는 동안은 두 단추를 잠근다.
+   * POP 오프라인 큐는 담는 순간이 성공이라(공유계약 C-1 #2) 이 기다림이 없다.
+   */
+  const waitsForServer = variant === 'web';
+  const [awaiting, setAwaiting] = useState<string | null>(null);
+  /* 서버 응답 효과가 «무엇을 보냈었나»를 읽는 자리 — 상태 갱신 함수 안에서 다른 상태를 건드리지 않으려고 둔다. */
+  const awaitingRef = useRef<string | null>(null);
+  const waitFor = (statusCode: string | null): void => {
+    awaitingRef.current = statusCode;
+    setAwaiting(statusCode);
+  };
+
+  /* 서버가 받았으면 의뢰·회차·측정치를 다시 부른다 — 확정이면 의뢰가 완료로 바뀌어 칸이 잠긴다. */
   const queryClient = useQueryClient();
   useEffect(() => {
     if (sentCount === 0) return;
     void queryClient.invalidateQueries({ queryKey: pqcInspectionKeys.detail(inspectionRequestId) });
     void queryClient.invalidateQueries({ queryKey: pqcPanelKeys.rounds(inspectionRequestId) });
+    void queryClient.invalidateQueries({ queryKey: pqcPanelKeys.allMeasurements });
+    if (awaitingRef.current === RESULT_STATUS.draft) setIsSaved(true);
+    if (awaitingRef.current === RESULT_STATUS.confirmed) setIsJustConfirmed(true);
+    awaitingRef.current = null;
+    setAwaiting(null);
   }, [sentCount, queryClient, inspectionRequestId]);
 
   /* 거부가 돌아오면 「담았다」 표시를 거둔다 — 확정이 거부됐으면 확정 표시도. */
   useEffect(() => {
     if (rejection === null) return;
+    awaitingRef.current = null;
+    setAwaiting(null);
     setIsSaved(false);
     if (rejectedStatusCode !== RESULT_STATUS.confirmed) return;
     setIsJustConfirmed(false);
@@ -165,6 +186,7 @@ export const PqcPanel = ({
 
   const storedInspectedQty = detail.data?.targetQty ?? 0;
   const restoredKey = useRef<string | null>(null);
+  const measurementsRestoredKey = useRef<string | null>(null);
 
   /* 대상이 바뀌면 초안을 비운다 — 앞 의뢰의 값이 다음 의뢰로 넘어가면 되돌릴 수 없는 판정이 나간다. */
   useEffect(() => {
@@ -182,16 +204,17 @@ export const PqcPanel = ({
     setInspectedDraft(String(storedInspectedQty));
     /* 초기화가 다시 돌면(재마운트 · StrictMode 재실행) 작성중 회차도 다시 되살린다 — 아래 복원이 이 표시를 본다. */
     restoredKey.current = null;
+    measurementsRestoredKey.current = null;
   }, [inspectionRequestId, storedInspectedQty, clearRejection]);
 
   /*
    * 작성중 회차를 칸에 되살린다. ⭐ 위 초기화 «뒤»에 선다 — 의뢰 상세가 늦게 와 초기화가 다시 돌아도 저장된 값이
-   * 이긴다. 같은 회차·같은 판이면 한 번만 — 그 사이 사람이 고친 값을 재조회가 덮지 않는다.
+   * 이긴다. 같은 회차면 한 번만 — 저장 뒤 재조회(판이 오른다)가 그 사이 사람이 고친 값을 되돌리지 않는다(리뷰 m1).
    */
   const savedKey =
     savedRound === null
       ? null
-      : `${String(savedRound.inspectionResultId)}:${String(savedRound.versionNo ?? 0)}:${String(storedInspectedQty)}`;
+      : `${String(savedRound.inspectionResultId)}:${String(storedInspectedQty)}`;
   useEffect(() => {
     if (savedRound === null || savedKey === null || restoredKey.current === savedKey) return;
     restoredKey.current = savedKey;
@@ -207,12 +230,21 @@ export const PqcPanel = ({
     setRemarks(savedRound.remarks ?? '');
   }, [savedRound, savedKey]);
 
+  /*
+   * 측정치 칸도 «한 번만» 되살린다(리뷰 M1) — 항목·회차가 같으면 재조회가 사람이 친 값을 덮지 않는다. 되살릴 회차가
+   * 있으면 그 측정치가 온 뒤에 채운다.
+   */
   const rowKeys = rows.map((row) => row.key).join('|');
-  const savedMeasurementsData = savedMeasurements.data;
+  const measurementsReady = savedRound === null || savedMeasurements.isSuccess;
+  const measurementsKey = measurementsReady
+    ? `${rowKeys}#${String(savedRound?.inspectionResultId ?? 'none')}`
+    : null;
   useEffect(() => {
+    if (measurementsKey === null || measurementsRestoredKey.current === measurementsKey) return;
+    measurementsRestoredKey.current = measurementsKey;
     setDrafts(toMeasurementDrafts(rows));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [rowKeys, savedMeasurementsData]);
+  }, [measurementsKey]);
 
   const changeInspected = (raw: string): void => {
     setIsSaved(false);
@@ -251,7 +283,7 @@ export const PqcPanel = ({
   const isConfirmed =
     detail.data?.statusCode === REQUEST_COMPLETED ||
     isJustConfirmed ||
-    submitter.hasPendingConfirm(inspectionRequestId);
+    (!waitsForServer && submitter.hasPendingConfirm(inspectionRequestId));
   const workerMissing = requiresWorker && workerNo === null;
   const progress = workOrder.data?.progress;
   const producedQty =
@@ -262,8 +294,24 @@ export const PqcPanel = ({
         (progress.holdQty ?? 0) +
         (progress.scrapQty ?? 0) +
         (progress.reworkQty ?? 0);
-  /* 모르면(조회 전·실패) 막지 않는다 — 서버가 같은 규칙으로 막는다. */
-  const lockedReason = !isConfirmed && producedQty === 0 ? t.result.noProductionResult : null;
+  /*
+   * 저장된 회차를 다 읽기 전에는 잠근다(리뷰 M1) — 덜 읽은 칸으로 저장하면 서버가 그 회차를 덮어 저장된 값이 사라진다.
+   * 실적 수는 모르면(조회 전·실패) 막지 않는다 — 서버가 같은 규칙으로 막는다.
+   */
+  const roundLoadFailed =
+    latestRoundQuery.isError || (savedRound !== null && savedMeasurements.isError);
+  const roundLoading =
+    latestRoundQuery.isPending || (savedRound !== null && savedMeasurements.isPending);
+  const lockedReason = isConfirmed
+    ? null
+    : roundLoadFailed
+      ? messages.httpError
+          .description /* 띄우지 않는다 — 아래 오류 띠가 이유와 [다시 시도]를 낸다 */
+      : roundLoading
+        ? t.panel.roundLoading
+        : producedQty === 0
+          ? t.result.noProductionResult
+          : null;
 
   const confirmBlockedReason = toConfirmBlockedReason({
     isConfirmed,
@@ -281,7 +329,7 @@ export const PqcPanel = ({
     uomId: number,
     statusCode: (typeof RESULT_STATUS)[keyof typeof RESULT_STATUS],
   ): void => {
-    if (isConfirmed) return;
+    if (isConfirmed || lockedReason !== null || awaiting !== null) return;
     setShowErrors(true);
     if (workerMissing || hasQuantityError(validateQuantities(draft)) || hasValueError(rows, drafts))
       return;
@@ -306,6 +354,10 @@ export const PqcPanel = ({
         measurements: toMeasurementInputs(rows, drafts, inspectedAt),
       }),
     );
+    if (waitsForServer) {
+      waitFor(statusCode);
+      return;
+    }
     setIsSaved(statusCode === RESULT_STATUS.draft);
     setIsJustConfirmed(statusCode === RESULT_STATUS.confirmed);
   };
@@ -332,7 +384,17 @@ export const PqcPanel = ({
     <div className="pqc-panel">
       <PanelTargetHeader detail={target} />
 
-      {variant === 'split' && lockedReason !== null && (
+      {roundLoadFailed && (
+        <QueueLoadErrorBanner
+          error={toApiError(latestRoundQuery.error ?? savedMeasurements.error)}
+          onRetry={() => {
+            void latestRoundQuery.refetch();
+            if (savedRound !== null) void savedMeasurements.refetch();
+          }}
+        />
+      )}
+
+      {variant === 'split' && lockedReason !== null && !roundLoadFailed && (
         /* 잠긴 이유가 먼저 눈에 들어오게 PQC 맨 위에 둔다(사용자 지시 2026-10-19). */
         <AlertBanner variant="warning" title={lockedReason} />
       )}
@@ -404,7 +466,8 @@ export const PqcPanel = ({
       <PanelActions
         isConfirmed={isConfirmed}
         lockedReason={lockedReason}
-        showLockedNote={variant === 'web'}
+        showLockedNote={variant === 'web' && !roundLoadFailed}
+        isSending={awaiting !== null}
         confirmBlockedReason={confirmBlockedReason}
         workerMissing={workerMissing}
         saveBlockedReason={saveBlockedReason}
