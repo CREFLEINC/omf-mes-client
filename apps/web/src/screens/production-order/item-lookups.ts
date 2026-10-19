@@ -1,4 +1,4 @@
-import { useQueries } from '@tanstack/react-query';
+import { useQueries, useQuery } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
 import { runRequest, toApiError } from '../../patterns/request';
@@ -52,4 +52,27 @@ export const useProductionOrderItemNames = (
     }),
     isLoading: results.some((result) => result.isPending),
   };
+};
+
+/**
+ * 품목 기본 생산 LOT 크기 — 단위가 W/O 단위와 같을 때만 쓴다. 품목 기본값은 기준단위로 적혀 있어
+ * 단위가 다르면 슬롯 수가 틀어진다.
+ */
+export const useItemDefaultLotSize = (
+  itemId: number | null,
+  uomId: number | null,
+): number | null => {
+  const { client } = useApiClient();
+  const item = useQuery({
+    queryKey: productionOrderItemKeys.detail(itemId ?? 0),
+    enabled: itemId !== null,
+    queryFn: () =>
+      runRequest(() =>
+        client.GET('/mdm/items/{itemId}', { params: { path: { itemId: itemId ?? 0 } } }),
+      ),
+  });
+  const detail = item.data?.item;
+  if (detail === undefined || detail.baseUomId !== uomId) return null;
+  const size = detail.defaultProductionLotSize ?? null;
+  return size !== null && size > 0 ? size : null;
 };

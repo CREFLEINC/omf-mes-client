@@ -1,4 +1,4 @@
-import { act, screen, waitFor, within } from '@testing-library/react';
+import { act, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 
@@ -117,11 +117,12 @@ describe('ProductionPlanScreen', () => {
     await user.click(add);
 
     const newRow = screen.getByText('신규 계획 1').closest('tr') as HTMLElement;
+    // 새 줄은 잔량(오더 125)과 공장 오늘로 채워진다 — 수량을 지우면 저장이 막힌다.
+    const quantity = within(newRow).getByRole('spinbutton', { name: '신규 계획 1 계획수량' });
+    expect(quantity).toHaveValue(125);
+    fireEvent.change(quantity, { target: { value: '' } });
     await user.click(within(newRow).getByRole('button', { name: '저장' }));
-    expect(within(newRow).getByRole('button', { name: '신규 계획 1 계획일' })).toHaveAttribute(
-      'aria-invalid',
-      'true',
-    );
+    expect(quantity).toHaveAttribute('aria-invalid', 'true');
     const failures = [
       [
         '/mdm/production-lines',

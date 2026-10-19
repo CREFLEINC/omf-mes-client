@@ -28,6 +28,8 @@ export const workOrderRelease = {
     heading: '생산LOT 선발행',
     /** 전달사항은 비워 보낼 수 있다(`release-draft` 가 빈 값을 본문에서 뺀다) */
     fields: { lotSize: 'LOT 크기', handoverNote: '전달사항 (선택)' },
+    /** 품목 확장속성의 기본 생산 LOT 크기로 채웠을 때 칸 아래 안내 */
+    lotSizeDefaulted: '품목 기본 LOT 크기로 채웠습니다. 바꿀 수 있습니다.',
     helper: {
       /** 라벨 옆 안내 — 옆 단추가 그 화면(W-CO-04 공지·전달 게시/조회)을 연다 */
       handoverNote: '공지 확인 이력은 별도 화면에서 관리합니다.',

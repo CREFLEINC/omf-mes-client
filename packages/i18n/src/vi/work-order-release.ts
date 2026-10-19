@@ -39,6 +39,7 @@ export const workOrderRelease: Translated<typeof ko.workOrderRelease> = {
     pane: 'Nhập phát trước LOT sản xuất',
     heading: 'Phát trước LOT sản xuất',
     fields: { lotSize: 'Cỡ LOT', handoverNote: 'Nội dung bàn giao (tùy chọn)' },
+    lotSizeDefaulted: 'Đã điền cỡ LOT mặc định của mặt hàng. Có thể thay đổi.',
     helper: {
       handoverNote: 'Lịch sử xác nhận thông báo được quản lý ở màn hình riêng.',
       handoverNoteGo: 'Mở màn hình thông báo',

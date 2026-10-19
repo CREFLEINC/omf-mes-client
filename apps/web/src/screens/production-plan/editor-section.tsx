@@ -1,6 +1,8 @@
 import { AlertBanner, Button, SkeletonText } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 
+import { plantToday } from '../../patterns/plant-time';
+import { remainingPlanQtyText } from './editor-model';
 import type { NewProductionPlanDefaults } from './editor-state';
 import { ProductionPlanEditorPane, type ProductionPlanEditorOption } from './editor-pane';
 import { useProductionPlanEditorSession } from './editor-session';
@@ -84,7 +86,20 @@ export const ProductionPlanEditorSection = ({
         routingLabelOptions={routingLabelOptions}
         lineOptions={lineOptions}
         addDisabled={addDisabled || editor.plans.isError}
-        onAdd={() => editor.add(defaults)}
+        onAdd={() =>
+          editor.add({
+            ...defaults,
+            /* 계획일은 공장 오늘, 수량은 잔량 — 하루치 오더는 그대로 저장하면 된다. */
+            planDate: defaults.planDate === '' ? plantToday() : defaults.planDate,
+            plannedQty:
+              defaults.plannedQty === ''
+                ? remainingPlanQtyText(
+                    orderQty,
+                    editor.rows.map((row) => row.draft.plannedQty),
+                  )
+                : defaults.plannedQty,
+          })
+        }
         onChange={editor.change}
         onRemove={editor.remove}
         renderActions={(displayRow) => {

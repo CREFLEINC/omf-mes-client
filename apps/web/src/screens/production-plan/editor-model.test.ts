@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   buildProductionPlanCreate,
   buildProductionPlanUpdate,
+  remainingPlanQtyText,
   summarizeProductionPlanQuantities,
   validateProductionPlanDraft,
   type ProductionPlanDraft,
@@ -184,5 +185,22 @@ describe('production-plan editor model', () => {
     });
     expect(() => summarizeProductionPlanQuantities(Number.NaN, [])).toThrow(Error);
     expect(() => summarizeProductionPlanQuantities(1, [-1])).toThrow(Error);
+  });
+});
+
+describe('remainingPlanQtyText — 새 계획 줄의 수량 기본값', () => {
+  it('오더 수량에서 이미 잡은 계획을 뺀 잔량이다', () => {
+    expect(remainingPlanQtyText(1000, [])).toBe('1000');
+    expect(remainingPlanQtyText(1000, ['300', '200.5'])).toBe('499.5');
+  });
+
+  it('잔량이 없거나 넘쳤으면 비운다 — 0 을 넣으면 저장이 막힌다', () => {
+    expect(remainingPlanQtyText(1000, ['1000'])).toBe('');
+    expect(remainingPlanQtyText(1000, ['1200'])).toBe('');
+  });
+
+  it('숫자가 아니거나 빈 칸이 있으면 합계를 믿을 수 없어 비운다', () => {
+    expect(remainingPlanQtyText(1000, [''])).toBe('');
+    expect(remainingPlanQtyText(1000, ['abc'])).toBe('');
   });
 });
