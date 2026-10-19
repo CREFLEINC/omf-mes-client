@@ -14121,6 +14121,14 @@ button.app-button-neutral {
   background: var(--surface-container);
 }
 
+/*
+ * 비고는 선택 항목이어도 입력란은 흰색이다(담당자 지시) — 아직 열리지 않았을 때도 회색으로 칠하지 않는다.
+ * DS 글자 칸 상자는 바탕이 투명해 페인의 회색이 비치므로 흰 바탕을 직접 준다. 열림·잠금 조건과 라벨 표시는 그대로다.
+ */
+.goods-receipt-post-form .field-cell.goods-receipt-remarks div:has(> input) {
+  background: var(--surface);
+}
+
 .goods-receipt-post-form .goods-receipt-code-empty button[role='combobox'] {
   box-shadow: none;
   outline: 1px dashed var(--outline);
