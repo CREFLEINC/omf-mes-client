@@ -1,6 +1,6 @@
 import { Breadcrumb, PageHeader, Tabs } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router';
 
 import { AlertCenterButton, AlertPanel } from './alert-panel';
@@ -22,7 +22,7 @@ import { LoadErrorBanner, periodErrorOf } from './load-error-banner';
 import { OverviewKpis } from './overview-kpis';
 import { FilterQueryContext, PeriodRangeContext, SingleDayContext } from './period';
 import { ShipmentPanel } from './shipment-panel';
-import { plantNote, usePlantOptions } from './lookups';
+import { plantNote, usePlantOptions, type DataScope } from './lookups';
 import {
   IqcTab,
   NonconformanceTab,
@@ -102,6 +102,8 @@ const EMPTY_ALERTS: DashboardAlertView[] = [];
  * 낸다. 쪽 개념도 선택 개념도 없어 다른 화면들의 「조건이 바뀌면 쪽을 되돌린다」가 성립하지
  * 않는다. 조건이 바뀌면 주소가 통째로 다시 쓰인다.
  */
+const NO_SCOPES: readonly DataScope[] = [];
+
 export const DashboardScreen = () => {
   const [searchParams, setSearchParams] = useSearchParams();
 
@@ -123,7 +125,18 @@ export const DashboardScreen = () => {
   const { session } = useSession();
   const access = toWebAccess(session?.permissions);
   const tab = readTab(searchParams);
-  const plants = usePlantOptions();
+  const scopes = session?.scopes ?? NO_SCOPES;
+  const plants = usePlantOptions(scopes);
+  /* 데이터 범위가 공장 하나뿐이면 그 공장을 기본으로 고른다(omf-all-around#120) — 주소에 적어 조회·공유가 같은 공장을 본다. */
+  const onlyPlant =
+    scopes.length > 0 && plants.entries.length === 1 ? plants.entries[0]?.value : undefined;
+  useEffect(() => {
+    if (onlyPlant !== undefined && filters.plant === '') {
+      setSearchParams(withTab(toSearchParams({ ...filters, plant: onlyPlant }), tab), {
+        replace: true,
+      });
+    }
+  }, [onlyPlant, filters, tab, setSearchParams]);
 
   const view = summary.data;
   const cards = view?.cards ?? EMPTY_CARDS;
@@ -263,6 +276,7 @@ export const DashboardScreen = () => {
           <DashboardFilterBar
             filters={filters}
             plantOptions={plantOptions}
+            allowAllPlants={onlyPlant === undefined}
             plantNote={plantNote(plants)}
             isRefreshing={summary.isFetching}
             lastUpdatedText={lastUpdatedText}

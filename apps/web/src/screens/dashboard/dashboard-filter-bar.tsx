@@ -23,6 +23,8 @@ export interface DashboardFilterBarProps {
   filters: DashboardFilters;
   plantOptions: SelectOption[];
   plantNote?: string;
+  /** 「전체 공장」 선택지를 둘지. 데이터 범위가 공장 하나뿐이면 그 공장만 고를 수 있다(omf-all-around#120). */
+  allowAllPlants?: boolean;
   onChange: (filters: DashboardFilters) => void;
   onRefresh: () => void;
   /** 재조회 중(수동 · 자동 모두). 그동안 「갱신」을 막는다 — 같은 요청을 겹쳐 보내지 않는다. */
@@ -68,6 +70,7 @@ export const DashboardFilterBar = ({
   filters,
   plantOptions,
   plantNote,
+  allowAllPlants = true,
   onChange,
   onRefresh,
   isRefreshing,
@@ -158,7 +161,11 @@ export const DashboardFilterBar = ({
 
       <SelectField
         label={t.filters.plant}
-        options={[{ value: '', label: t.filters.allPlants }, ...plantOptions]}
+        options={
+          allowAllPlants
+            ? [{ value: '', label: t.filters.allPlants }, ...plantOptions]
+            : plantOptions
+        }
         value={filters.plant}
         note={plantNote}
         placeholder={t.filters.allPlants}
