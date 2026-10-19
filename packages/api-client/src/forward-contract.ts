@@ -412,6 +412,7 @@ export interface ForwardPaths {
               DashboardSummaryPeriod;
           };
         };
+        403: DashboardSummaryGet['responses'][403];
       };
     };
     put?: never;
