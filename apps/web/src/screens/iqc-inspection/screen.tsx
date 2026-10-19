@@ -40,6 +40,8 @@ import { QueueTable } from './queue-table';
 import { RequestDetailPane } from './request-detail-pane';
 import { ResultFormPane } from './result-form-pane';
 import { RoundHistory } from './round-history';
+import { AttachmentPanel } from '../inspection-documents/attachment-panel';
+import { LotScan } from '../inspection-documents/lot-scan';
 import { latestRound, previousRounds } from './types';
 import { useItemNames, useLotNumbers } from './reference-lookup';
 import { useUomLookup } from './uom-lookup';
@@ -447,6 +449,15 @@ export const IqcInspectionScreen = () => {
         {/* ⛔ 읽기 전용이다 — 앞 회차는 정정하지 않고 새 회차를 쌓는다(§5-3). */}
         <RoundHistory rounds={historyRounds} uomCode={uomCode} />
 
+        {/* LOT 별 시험성적서 등 검사 문서(#58) — 대상 LOT 이 있을 때만. */}
+        {detail.data.lotId !== null && (
+          <AttachmentPanel
+            key={detail.data.lotId}
+            targetTypeCode="LOT"
+            targetId={detail.data.lotId}
+          />
+        )}
+
         {/*
          * ⚠ **`isPending` 이 아니라 `isLoading` 이다.** 측정치 조회는 회차가 없을 때
          * 비활성이고, 비활성이면 `isPending` 이 계속 참이라 아직 시작하지 않은 의뢰의
@@ -474,6 +485,8 @@ export const IqcInspectionScreen = () => {
 
       <div className="two-pane iqc-inspection-panes">
         <section className="pane" aria-label={t.queue.heading}>
+          {/* LOT 바코드로 대기 의뢰를 바로 연다(#58) — 목록 조건은 그대로 두고 선택만 한다. */}
+          <LotScan inspectionTypeCode="IQC" onFound={select} />
           <QueueFilterBar
             appliedFilters={filters}
             onSearch={applyFilters}

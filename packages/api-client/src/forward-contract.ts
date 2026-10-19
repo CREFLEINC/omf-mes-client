@@ -79,7 +79,23 @@ interface AppUserWorkerPath {
   trace?: never;
 }
 
+/** 서버 선행 P-57(omf-all-around#58) — 첨부 대상에 검사 문서(LOT·검사 결과)를 더한다. */
+export type AttachmentTargetType =
+  'WAREHOUSE' | 'NOTICE' | 'BREAKDOWN' | 'LOT' | 'INSPECTION_RESULT';
+
+type AttachmentsPath = paths['/app/attachments'];
+type AttachmentsListQuery = NonNullable<AttachmentsPath['get']['parameters']['query']>;
+
 export interface ForwardPaths {
+  '/app/attachments': Omit<AttachmentsPath, 'get'> & {
+    get: Omit<AttachmentsPath['get'], 'parameters'> & {
+      parameters: Omit<AttachmentsPath['get']['parameters'], 'query'> & {
+        query?: Omit<AttachmentsListQuery, 'targetTypeCode'> & {
+          targetTypeCode?: AttachmentTargetType;
+        };
+      };
+    };
+  };
   '/app/users/{appUserId}/worker': AppUserWorkerPath;
   '/mdm/terminals/{terminalId}/accessible-screens': {
     parameters: {
@@ -142,4 +158,5 @@ export interface ForwardPaths {
   };
 }
 
-export type ApiPaths = paths & ForwardPaths;
+/** 같은 경로를 forward 가 다시 적으면 그쪽이 이긴다 — 교집합이면 좁은 쪽 enum 이 남는다(omf-all-around#58 첨부 대상). */
+export type ApiPaths = Omit<paths, keyof ForwardPaths> & ForwardPaths;
