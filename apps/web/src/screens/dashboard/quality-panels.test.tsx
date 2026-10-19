@@ -166,6 +166,19 @@ describe('품질 탭', () => {
     expect(container.querySelector('.dash-eqrate-qty')).toHaveTextContent('1EA');
   });
 
+  it('OQC — 반출 실적이 하나도 없어도 반출 일자별 카드는 빈 칸 9개로 보인다(사용자 지시 2026-10-19)', () => {
+    const q = quality();
+    q.oqc.dailyReturnOutQty = Array.from({ length: 9 }, (_, index) => ({
+      date: `2026-10-${String(11 + index)}`,
+      qty: null,
+    }));
+    const { container } = render(<OqcTab quality={q} />);
+
+    expect(screen.getByText(t.dailyReturnOut)).toBeInTheDocument();
+    expect(screen.getByText(t.dailyReturnOutEmpty)).toBeInTheDocument();
+    expect(container.querySelectorAll('.dash-day-bar')).toHaveLength(9);
+  });
+
   it('OQC — 서버가 새 칸을 주지 않으면 미처리 반품 칸 · 반출 그래프 없이, 최근 판정은 한 줄 전체', () => {
     const { container } = render(<OqcTab quality={quality()} />);
 

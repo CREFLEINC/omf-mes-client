@@ -14293,6 +14293,8 @@ button.app-button-neutral {
   width: min(100%, 2rem);
   height: 100%;
   min-height: 6rem;
+  /* 출고 없는 날도 칸이 보이게 옅은 바닥선(사용자 지시 2026-10-19 「빈 칸」). */
+  border-block-end: 1px solid var(--outline-variant);
 }
 
 .dash-day-bar-fill {

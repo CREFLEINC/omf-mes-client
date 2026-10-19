@@ -372,6 +372,7 @@ export const dashboard = {
     returnReasonNone: '사유 미등록',
     dailyReturnOut: '반출 일자별 수량',
     dailyReturnOutSub: '공급사 반품 출고',
+    dailyReturnOutEmpty: '공급사 반품 출고 · 최근 9일 출고 없음',
     pendingReturn: '미처리 반품 LOT',
     pendingReturnKpiNote: (records: string): string => `${records}건 · 처분 판정 전`,
     customerReturn: '고객 반품',

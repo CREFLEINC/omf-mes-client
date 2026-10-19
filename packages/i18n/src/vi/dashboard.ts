@@ -315,6 +315,7 @@ export const dashboard: Translated<typeof ko.dashboard> = {
     returnReasonNone: 'Chưa đăng ký lý do',
     dailyReturnOut: 'Số lượng xuất trả theo ngày',
     dailyReturnOutSub: 'Xuất trả nhà cung cấp',
+    dailyReturnOutEmpty: 'Xuất trả nhà cung cấp · Không có trong 9 ngày',
     pendingReturn: 'LOT trả hàng chưa xử lý',
     pendingReturnKpiNote: (records: string): string => `${records} bản ghi · Chưa phán định`,
     customerReturn: 'Khách hàng trả lại',

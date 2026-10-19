@@ -1200,10 +1200,16 @@ const DailyReturnOutPanel = ({
 }) => {
   const tags = usePeriodTags();
   const max = Math.max(0, ...days.map((day) => day.qty ?? 0));
+  /* 출고가 하나도 없어도 9일 칸은 그대로 보인다(⭐ 사용자 지시 2026-10-19) — 부제로 「출고 없음」을 알린다. */
+  const empty = max === 0;
 
   return (
-    <Panel title={t.dailyReturnOut} sub={t.dailyReturnOutSub} tag={tags.recent}>
-      {days.every((day) => day.qty === null || day.qty === 0) ? (
+    <Panel
+      title={t.dailyReturnOut}
+      sub={empty ? t.dailyReturnOutEmpty : t.dailyReturnOutSub}
+      tag={tags.recent}
+    >
+      {days.length === 0 ? (
         <NoRecords />
       ) : (
         <ol className="dash-day-bars" aria-label={t.dailyReturnOut}>
@@ -1230,7 +1236,7 @@ const DailyReturnOutPanel = ({
 
 /**
  * OQC 검사실적(⭐ 사용자 지시 2026-10-19 구조 예시) — 1행 KPI: 합격률 · 출하검사 LOT · 고객 반품 · 미처리 반품,
- * 2행: 일별 합격률 | 고객별 불합격 수량(같은 높이), 3행: 반출 일별 수량(실적이 있을 때만) | 최근 판정 5건.
+ * 2행: 일별 합격률 | 고객별 불합격 수량(같은 높이), 3행: 반출 일별 수량 | 최근 판정 5건.
  * 반품 구성 원형은 두지 않는다(구분이 하나뿐이면 100% 원형은 정보가 없다) — 고객별 불합격 아래에 반품 구분별
  * 수량 가로 막대(수량만 · 사용자 지시 2026-10-19).
  * 목표 합격률 기준선은 시스템에 목표값이 없어 긋지 않는다(지어내지 않는다).
@@ -1246,9 +1252,8 @@ export const OqcTab = ({
   const tags = usePeriodTags();
   const oqc = quality.oqc;
   const pendingReturn = oqc.pendingReturnLotCount;
-  const hasReturnOut =
-    oqc.dailyReturnOutQty !== undefined &&
-    oqc.dailyReturnOutQty.some((day) => day.qty !== null && day.qty > 0);
+  /* 반출 일자별은 서버가 주면 늘 보인다(⭐ 사용자 지시 2026-10-19 「안 보인다」 — 실적 없어도 빈 칸으로). */
+  const hasReturnOut = oqc.dailyReturnOutQty !== undefined;
 
   return (
     <QualityTabFrame className="dash-tab-quality-detail">
