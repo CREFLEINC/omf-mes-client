@@ -109,6 +109,12 @@ const Donut = ({
   total: number;
 }) => {
   const [hovered, setHovered] = useState<number | null>(null);
+  /*
+   * 말풍선은 화면 기준(position: fixed)으로 띄운다 — 카드는 넘치는 내용을 자르므로(`.dash-qo-fit`) 카드 안에
+   * 두면 위쪽 조각의 말풍선이 잘렸다(사용자 지적 2026-10-19). 조각 가운데의 화면 좌표를 그때그때 잰다.
+   */
+  const [tipAt, setTipAt] = useState<{ x: number; y: number } | null>(null);
+  const [svgEl, setSvgEl] = useState<SVGSVGElement | null>(null);
   let turn = 0;
   const arcs = slices.map((slice, index) => {
     const start = turn;
@@ -116,12 +122,37 @@ const Donut = ({
     return { slice, index, start, end: turn };
   });
   const tip = hovered === null ? null : arcs[hovered];
-  const tipPoint =
-    tip === undefined || tip === null ? null : pointAt(OUTER, (tip.start + tip.end) / 2);
+  const open = (index: number): void => {
+    const arc = arcs[index];
+    if (arc === undefined || svgEl === null) return;
+    const rect = svgEl.getBoundingClientRect();
+    const [x, y] = pointAt(OUTER, (arc.start + arc.end) / 2);
+    setHovered(index);
+    setTipAt({ x: rect.left + (x / SIZE) * rect.width, y: rect.top + (y / SIZE) * rect.height });
+  };
+  const close = (): void => {
+    setHovered(null);
+    setTipAt(null);
+  };
+  /* 화면 좌표로 띄웠으니, 스크롤 · 크기 변경이 생기면 닫는다(제자리에 남지 않게). */
+  useEffect(() => {
+    if (tipAt === null) return undefined;
+    const dismiss = (): void => {
+      setHovered(null);
+      setTipAt(null);
+    };
+    window.addEventListener('scroll', dismiss, true);
+    window.addEventListener('resize', dismiss);
+    return () => {
+      window.removeEventListener('scroll', dismiss, true);
+      window.removeEventListener('resize', dismiss);
+    };
+  }, [tipAt]);
 
   return (
     <figure className="dash-donut-figure">
       <svg
+        ref={setSvgEl}
         className="dash-donut-svg"
         viewBox={`0 0 ${String(SIZE)} ${String(SIZE)}`}
         role="img"
@@ -141,11 +172,9 @@ const Donut = ({
               className={`dash-donut-slice ${toneOf(slice, index)}`}
               d={arcPath(start, end)}
               onMouseEnter={() => {
-                setHovered(index);
+                open(index);
               }}
-              onMouseLeave={() => {
-                setHovered(null);
-              }}
+              onMouseLeave={close}
             />
           ),
         )}
@@ -159,14 +188,11 @@ const Donut = ({
           {t.defectTypesTotal}
         </text>
       </svg>
-      {tip !== null && tip !== undefined && tipPoint !== null && (
+      {tip !== null && tip !== undefined && tipAt !== null && (
         <div
           className="dash-line-tip dash-donut-tip"
           role="tooltip"
-          style={{
-            left: `${String((tipPoint[0] / SIZE) * 100)}%`,
-            top: `${String((tipPoint[1] / SIZE) * 100)}%`,
-          }}
+          style={{ left: `${String(tipAt.x)}px`, top: `${String(tipAt.y)}px` }}
         >
           <span className="dash-line-tip-date">{tip.slice.label}</span>
           <span className="dash-line-tip-value">

@@ -7985,7 +7985,10 @@ dl.filter-bar.approval-inbox-detail-facts {
   font: var(--type-label-sm);
 }
 
-.dash-donut-tip {
+/* 화면 기준으로 띄운다 — 카드가 넘치는 내용을 잘라도 말풍선은 잘리지 않는다. */
+.dash-line-tip.dash-donut-tip {
+  position: fixed;
+  z-index: 20;
   transform: translate(-50%, calc(-100% - var(--space-2)));
   pointer-events: none;
 }
