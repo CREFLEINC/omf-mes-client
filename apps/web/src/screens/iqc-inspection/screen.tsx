@@ -27,6 +27,7 @@ import { toMeasurementRows } from './measurement-rows';
 import {
   useInspectionItemSpecs,
   useInspectionRequestDetail,
+  useSamplingRule,
   useInspectionQueue,
   useInspectionRoundLock,
   useInspectionRounds,
@@ -35,6 +36,7 @@ import {
   useMeasurements,
   useSaveDraft,
 } from './queries';
+import { sampleQtyOf } from './sample-qty';
 import { QueueFilterBar } from './queue-filter-bar';
 import { QueueTable } from './queue-table';
 import { RequestDetailPane } from './request-detail-pane';
@@ -292,7 +294,13 @@ export const IqcInspectionScreen = () => {
     <p className="field-note">{t.queue.empty}</p>
   );
 
-  const inspectedQty = round?.inspectedQty ?? detail.data?.targetQty ?? 0;
+  /*
+   * 회차가 있으면 그 회차의 검사수량이고, 없으면 기준 버전의 샘플링 규칙으로 정한다(omf-all-around#102).
+   * 규칙을 아직 못 받았으면 의뢰수량 — 종전 동작이다.
+   */
+  const samplingRule = useSamplingRule(detail.data?.inspectionPlanVersionId ?? null);
+  const inspectedQty =
+    round?.inspectedQty ?? sampleQtyOf(detail.data?.targetQty ?? 0, samplingRule.data ?? null);
   /* 수량 옆 단위 코드(표시 전용). 회차는 의뢰의 단위로 저장되므로(저장 요청의 `uomId`) 의뢰 단위 하나를 쓴다. */
   const uoms = useUomLookup();
 

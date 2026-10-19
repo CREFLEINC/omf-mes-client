@@ -110,6 +110,15 @@ const renderScreen = (
             return jsonResponse({ items: [], page: { page: 1, size: 200, total: 0 } });
           },
         },
+        /* 검사기준 버전 단건 — 샘플링 규칙. 시험이 채우지 않으면 없다(404 · 종전처럼 의뢰수량). */
+        {
+          match: (request) =>
+            /^\/quality\/inspection-plan-versions\/\d+$/.test(new URL(request.url).pathname),
+          respond: () =>
+            samplingVersion === null
+              ? jsonResponse({ message: '없는 버전' }, { status: 404 })
+              : jsonResponse({ inspectionPlanVersion: samplingVersion }),
+        },
         /* 검사기준 버전의 항목 규격 — 그리드의 줄 수를 정한다. */
         {
           match: (request) => new URL(request.url).pathname.endsWith('/items'),
@@ -170,6 +179,8 @@ const bodyOf = async (request: Request): Promise<Record<string, unknown>> =>
  * 채운다 — 매 시험이 시작할 때 비운다.
  */
 let confirmResponder: ((request: Request) => Response) | null = null;
+/** 검사기준 버전 단건 응답의 샘플링 칸. 샘플 검사수량을 재는 시험만 채운다. */
+let samplingVersion: { samplingMethodCode: string; samplingRatio: number | null } | null = null;
 
 /** 세션 — 기본은 작업자가 연결된 계정이다(검사자를 풀 수 있다 · omf-all-around#104). */
 const LINKED_SESSION: Session = {
@@ -181,6 +192,7 @@ let testSession: Session = LINKED_SESSION;
 beforeEach(() => {
   testSession = LINKED_SESSION;
   confirmResponder = null;
+  samplingVersion = null;
 });
 
 const queueCalls = (sent: URL[]) =>
@@ -402,6 +414,22 @@ describe('IqcInspectionScreen', () => {
 
     await screen.findByText(t.result.round(1));
     expect(screen.queryByText(t.result.workerNotLinked)).not.toBeInTheDocument();
+  });
+
+  /* omf-all-around#102 — 샘플 검사는 샘플 수량만 나눠 넣어도 저장된다. */
+  it('샘플 기준이면 검사수량이 샘플 수량이고 그 수량으로 저장한다', async () => {
+    samplingVersion = { samplingMethodCode: 'SAMPLE_BY_LOT', samplingRatio: 10 };
+    const { writes } = renderScreen('/?ir=1002', () => jsonResponse(queueResponse()), []);
+
+    await screen.findByText(t.result.confirmBlockedByUnsaved);
+    expect(await screen.findByText(/^50\b/)).toBeInTheDocument();
+    await userEvent.type(screen.getByLabelText(t.result.fields.accepted), '50');
+    await userEvent.click(screen.getByRole('button', { name: t.result.save }));
+
+    await waitFor(() => expect(writes).toHaveLength(1));
+    const body = await bodyOf(writes[0]!);
+    expect(body.inspectedQty).toBe(50);
+    expect(body.acceptedQty).toBe(50);
   });
 
   it('회차가 없으면 저장이 새로 만든다', async () => {

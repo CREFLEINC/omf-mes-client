@@ -6,6 +6,7 @@ import { useMasterWrite, type MasterWriteResult, type WriteHeaders } from '../..
 import { runRequest, type ApiCallResult } from '../../patterns/request';
 import type { CodeValueResponse } from './code-options';
 import type { QueueListQuery } from './filters';
+import type { SamplingRule } from './sample-qty';
 import type { InspectionItemSpecResponse, InspectionMeasurementResponse } from './measurement-rows';
 import {
   toInspectionQueueResult,
@@ -76,6 +77,9 @@ export const iqcInspectionKeys = {
    */
   itemSpecs: (inspectionPlanVersionId: number) =>
     [...ALL_KEY, 'item-specs', inspectionPlanVersionId] as const,
+  /** 검사기준 버전의 샘플링 규칙. 항목 규격과 같은 까닭으로 마스터 앞머리에 둔다. */
+  sampling: (inspectionPlanVersionId: number) =>
+    [...ALL_KEY, 'sampling', inspectionPlanVersionId] as const,
   /** 그 회차의 측정치. 회차 저장이 바꾸므로 저장 뒤 무효화 대상이다. */
   measurements: (inspectionResultId: number) =>
     [...ALL_KEY, 'measurements', inspectionResultId] as const,
@@ -356,6 +360,30 @@ const fetchItemSpecs = (
       params: { path: { inspectionPlanVersionId } },
     }),
   ).then((response) => response.items);
+
+/**
+ * 검사기준 버전의 샘플링 규칙을 부른다 — 검사수량 기본값이 이것으로 정해진다(omf-all-around#102).
+ * 항목 규격과 같이 **의뢰가 준 버전 그대로** 부른다.
+ */
+export const useSamplingRule = (
+  inspectionPlanVersionId: number | null,
+): UseQueryResult<SamplingRule> => {
+  const { client } = useApiClient();
+
+  return useQuery({
+    queryKey: iqcInspectionKeys.sampling(inspectionPlanVersionId ?? 0),
+    queryFn: () =>
+      runRequest(() =>
+        client.GET('/quality/inspection-plan-versions/{inspectionPlanVersionId}', {
+          params: { path: { inspectionPlanVersionId: inspectionPlanVersionId as number } },
+        }),
+      ).then(({ inspectionPlanVersion }) => ({
+        samplingMethodCode: inspectionPlanVersion.samplingMethodCode,
+        samplingRatio: inspectionPlanVersion.samplingRatio ?? null,
+      })),
+    enabled: inspectionPlanVersionId !== null,
+  });
+};
 
 /**
  * 검사기준 버전의 항목 규격을 부른다 — **그리드의 줄 수를 정하는 것이 이 목록이다.**
