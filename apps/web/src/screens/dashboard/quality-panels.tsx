@@ -1411,21 +1411,27 @@ const AxisBars = ({ entries, caption }: { entries: readonly NamedQty[]; caption:
                   aria-hidden="true"
                 />
               ))}
-              {/*
-               * 툴팁은 막대 오른쪽(⭐ 사용자 지시 2026-10-19 「상세 데이터는 그래프 우측」) — 막대가 길어 오른쪽에 자리가
-               * 없으면 막대 끝 안쪽 왼쪽으로 띄운다.
-               */}
+              {/* 툴팁은 막대 끝 숫자 바로 오른쪽(⭐ 사용자 지시 2026-10-19 「그래프 오른쪽 = 숫자 옆」). */}
               <span
-                className={
-                  Math.max(0, entry.value) / max > 0.6
-                    ? 'dash-axisbars-bar dash-tip-left'
-                    : 'dash-axisbars-bar dash-tip-right'
-                }
+                className="dash-axisbars-bar"
                 style={{ width: `${String((Math.max(0, entry.value) / max) * 100)}%` }}
                 tabIndex={0}
-                data-tip={t.causeTip(entry.label, formatFigure(entry.value), shareOf(entry.value))}
+                aria-label={t.causeTip(
+                  entry.label,
+                  formatFigure(entry.value),
+                  shareOf(entry.value),
+                )}
               >
-                <span className="dash-axisbars-value">{formatFigure(entry.value)}</span>
+                <span
+                  className="dash-axisbars-value"
+                  data-tip={t.causeTip(
+                    entry.label,
+                    formatFigure(entry.value),
+                    shareOf(entry.value),
+                  )}
+                >
+                  {formatFigure(entry.value)}
+                </span>
               </span>
             </span>
           </li>

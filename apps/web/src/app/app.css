@@ -14691,9 +14691,7 @@ button.app-button-neutral {
 }
 
 .dash-hit[data-tip]:hover::after,
-.dash-hit[data-tip]:focus-visible::after,
-.dash-axisbars-bar[data-tip]:hover::after,
-.dash-axisbars-bar[data-tip]:focus-visible::after {
+.dash-hit[data-tip]:focus-visible::after {
   content: attr(data-tip);
   position: absolute;
   inset-block-start: 50%;
@@ -14715,17 +14713,26 @@ button.app-button-neutral {
   inset-inline-start: calc(100% + var(--space-2));
 }
 
-.dash-axisbars-bar.dash-tip-right[data-tip]::after {
-  inset-inline-start: calc(100% + 3rem);
+/* 원인 구분 툴팁 — 막대 끝 숫자 바로 뒤에 붙는다(숫자 폭이 달라도 늘 숫자 옆 · 사용자 지시 2026-10-19). */
+.dash-axisbars-bar:hover .dash-axisbars-value[data-tip]::after,
+.dash-axisbars-bar:focus-visible .dash-axisbars-value[data-tip]::after {
+  content: attr(data-tip);
+  margin-inline-start: var(--space-2);
+  padding: var(--space-1) var(--space-2);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-sm, 6px);
+  background: var(--surface);
+  box-shadow: var(--elevation-1, 0 1px 3px rgb(0 0 0 / 12%));
+  color: var(--on-surface);
+  font: var(--type-label-sm);
+  white-space: nowrap;
+  pointer-events: none;
 }
 
 .dash-tip-left[data-tip]::after {
   inset-inline-end: calc(100% + var(--space-2));
 }
 
-.dash-axisbars-bar.dash-tip-left[data-tip]::after {
-  inset-inline-end: var(--space-2);
-}
 
 .dash-axisbars-bar:hover,
 .dash-axisbars-bar:focus-visible {
