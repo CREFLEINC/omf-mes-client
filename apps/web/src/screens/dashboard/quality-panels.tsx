@@ -1075,13 +1075,20 @@ export const PqcTab = ({
       <div className="dash-kpis">
         <OverviewPassRateTile label={t.passRateOf('PQC')} block={pqc} />
         {/*
-         * ⭐ PQC 정보 간소화(사용자 지시 2026-10-19) — KPI 는 모두 같은 당월이라 기간 표시는 첫 칸에만. 재검 투입 ·
+         * ⭐ PQC 정보 간소화(사용자 지시 2026-10-19) — 재검 투입 ·
          * 복원율은 한 칸으로(투입 · 복원 수량은 보조 글), 불량 수량 보조 글의 재작업 판정은 주요 현황과 겹쳐 뺐다.
          */}
-        <OverviewLotTile label={t.pqcLots} counts={pqc.monthLots} unit={t.countUnit} />
+        {/* ⭐ 당월 집계 칸은 모두 「당월」 이름표(사용자 지시 2026-10-19 「당월 기준이면 이름표에 표시」). */}
+        <OverviewLotTile
+          label={t.pqcLots}
+          tag={tags.month}
+          counts={pqc.monthLots}
+          unit={t.countUnit}
+        />
         {pqc.fullReinspect !== undefined && pqc.fullReinspect !== null && (
           <KpiTile
             label={t.fullReinspect}
+            tag={tags.month}
             value={
               pqc.fullReinspect.inputQty > 0
                 ? formatFigure(
@@ -1106,6 +1113,7 @@ export const PqcTab = ({
         )}
         <KpiTile
           label={t.monthDefectQty}
+          tag={tags.month}
           value={formatFigure(pqc.monthDefectQty)}
           unit={t.qtyUnit}
           tone={pqc.monthDefectQty > 0 ? 'error' : undefined}

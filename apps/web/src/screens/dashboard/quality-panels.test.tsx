@@ -134,6 +134,10 @@ describe('품질 탭', () => {
     expect(within(recent).queryByRole('columnheader', { name: 'LOT' })).not.toBeInTheDocument();
     /* 불량 수량 보조 글은 집계 기준만 — 재작업 판정은 주요 현황에 있다(간소화 2026-10-19). */
     expect(screen.getByText(t.pqcDefectBasis)).toBeInTheDocument();
+    /* 당월 집계 KPI 는 모두 「당월」 이름표(사용자 지시 2026-10-19). */
+    for (const name of [t.pqcLots, t.monthDefectQty]) {
+      expect(screen.getByRole('group', { name })).toHaveTextContent(t.tagMonth);
+    }
     /* PQC 는 단위 「건」으로 통일 — LOT 를 쓰지 않는다(사용자 지시 2026-10-19). */
     expect(screen.getByRole('group', { name: t.pqcLots })).not.toHaveTextContent('LOT');
     /* 「최고 불량률 설비」 KPI 는 없앴다(사용자 지시 2026-10-19) — 설비별 불량률 카드가 같은 정보. */
