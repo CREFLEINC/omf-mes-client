@@ -255,9 +255,17 @@ export const IqcInspectionScreen = () => {
      */
     setIsReinspecting(false);
     setJudgment(storedJudgment);
-    setRejection(EMPTY_REJECTION);
     setDraft(draftOf(roundId === null ? null : { acceptedQty, rejectedQty, heldQty }));
   }, [selectedId, roundId, acceptedQty, rejectedQty, heldQty, storedJudgment]);
+
+  /*
+   * 불합격 사유는 «의뢰가 바뀔 때만» 비운다(3단계 검증 버그 · omf-all-around#106). 사유는 임시 저장 본문에 실리지
+   * 않고 확정 직전 불량 기록으로 남는데, 위 되돌림에 묶여 있으면 저장 응답이 회차·판정을 바꾸는 순간 사유가 사라져
+   * 확정이 다시 잠겼다. 재검사 회차를 열 때는 그 자리에서 따로 비운다.
+   */
+  useEffect(() => {
+    setRejection(EMPTY_REJECTION);
+  }, [selectedId]);
 
   /*
    * 마지막 저장 상태와 견줘 바뀐 것이 있는가 — 없으면 [임시 저장]을 끈다. 견주는 것은 세 수량 칸과
@@ -512,6 +520,7 @@ export const IqcInspectionScreen = () => {
               setIsSaved(false);
               setDraft(EMPTY_QUANTITY_DRAFT);
               setJudgment('');
+              setRejection(EMPTY_REJECTION);
               setIsReinspecting(true);
             }}
             onCancelReinspection={() => {

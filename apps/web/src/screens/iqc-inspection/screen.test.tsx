@@ -929,6 +929,54 @@ describe('IqcInspectionScreen — 불합격 사유', () => {
     });
     expect(new URL((writes[1] as Request).url).pathname).toContain(':confirm');
   });
+
+  /*
+   * 3단계 검증 버그 — 사유를 넣고 [임시 저장]을 누르면 사유가 사라졌다. 사유는 저장 본문에 실리지 않고(확정 직전 불량
+   * 기록으로 남는다) 저장 응답이 회차의 판정을 바꾸면서 초안 되돌림이 사유까지 비웠다. 저장 뒤에도 남아 확정에 실려야 한다.
+   */
+  it('임시 저장 뒤에도 불량 코드·사유가 남고, 확정하면 그 값으로 불량 기록이 나간다', async () => {
+    const { writes } = renderScreen(
+      '/?ir=1001',
+      () => jsonResponse(queueResponse()),
+      [rejectedRound],
+      [],
+      itemSpecsResponse(),
+      [
+        {
+          ...rejectedRound,
+          overallJudgmentCode: 'REJECTED',
+          versionNo: (rejectedRound.versionNo ?? 1) + 1,
+        },
+      ],
+    );
+    await chooseRejected();
+    await userEvent.click(await screen.findByLabelText(t.result.rejection.major));
+    await userEvent.click(await screen.findByRole('option', { name: 'APP · 외관' }));
+    await userEvent.click(screen.getByLabelText(t.result.rejection.minor));
+    await userEvent.click(await screen.findByRole('option', { name: 'APP-SCR · 스크래치' }));
+    await userEvent.type(screen.getByLabelText(t.result.rejection.description), '표면 긁힘');
+
+    await userEvent.click(screen.getByRole('button', { name: t.result.save }));
+    await waitFor(() => expect(writes).toHaveLength(1));
+    /* 저장 응답으로 회차의 판정이 불합격으로 바뀐 «뒤»를 본다 — 확정이 풀리는 것이 그 신호다. */
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: t.result.confirm })).toBeEnabled(),
+    );
+
+    expect(screen.getByLabelText(t.result.rejection.major)).toHaveTextContent('APP · 외관');
+    expect(screen.getByLabelText(t.result.rejection.minor)).toHaveTextContent('APP-SCR · 스크래치');
+    expect(screen.getByLabelText(t.result.rejection.description)).toHaveValue('표면 긁힘');
+
+    const savedCount = writes.length;
+    await userEvent.click(screen.getByRole('button', { name: t.result.confirm }));
+    await waitFor(() => expect(writes.length).toBe(savedCount + 2));
+    const defect = writes[savedCount] as Request;
+    expect(new URL(defect.url).pathname).toBe('/quality/defect-records');
+    expect(await bodyOf(defect)).toMatchObject({
+      defectCodeId: 7002,
+      defectDescription: '표면 긁힘',
+    });
+  });
 });
 
 /* omf-all-around#106 후속 (나) — 불량 LOT 은 재검사 대신 처분·반품으로 잇는다. */
