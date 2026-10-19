@@ -8488,14 +8488,6 @@ button.app-button-neutral {
   color: var(--on-surface-variant);
 }
 
-/* 상자 머리 오른쪽 단위 표시(생산 추이 「단위 EA」). */
-.dash-panel-unit {
-  font: var(--type-label-sm);
-  letter-spacing: var(--type-label-sm-tracking);
-  color: var(--on-surface-muted);
-  white-space: nowrap;
-}
-
 /* 생산 추이 — y축 글자가 그림 왼쪽 밖으로 넘친 만큼 보이게 한다(값은 그대로). */
 .dash-trend {
   padding-inline-start: var(--space-6);
