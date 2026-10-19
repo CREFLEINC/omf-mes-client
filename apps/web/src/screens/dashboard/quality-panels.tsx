@@ -1292,6 +1292,8 @@ export const OqcTab = ({
         {oqc.returnReasons !== undefined && (
           <DefectTypesPanel
             title={t.returnReasons}
+            sub={t.returnReasonsSub}
+            totalLabel={t.returnReasonsTotal}
             tag={tags.month}
             entries={oqc.returnReasons.map((entry) => ({
               /* 사유 없는 반품 입고는 서버가 `null` 한 줄로 준다. */

@@ -254,7 +254,7 @@ describe('품질 탭', () => {
     expect(screen.getByRole('img', { name: t.pqcItemDefects })).toBeInTheDocument();
     /* 불량현상도 원형 그래프(사용자 지시 2026-10-19). */
     expect(screen.getByRole('img', { name: t.phenomenaOf('PQC') })).toBeInTheDocument();
-    expect(screen.getByText(/가장 오래 기다린 LOT 2시간 5분/)).toBeInTheDocument();
+    expect(screen.getByText(/최장 대기 2시간 5분/)).toBeInTheDocument();
   });
 
   it('부적합 — 조치 기한 초과가 null 이면 칸을 두지 않고, 값이 오면 보인다', () => {
