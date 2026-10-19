@@ -7915,21 +7915,33 @@ dl.filter-bar.approval-inbox-detail-facts {
   overflow: hidden;
 }
 
-/* 도넛 + 범례 — 색은 DS 차트 회색과 정보 파랑에서만(상태색을 피한다), 「기타」는 중립 회색. */
+/*
+ * 도넛 + 범례(⭐ 사용자 지시 2026-10-19) — 도넛 | 범례 2열, 범례는 한 줄로 읽히게 폭을 묶는다(넓어도 벌어지지
+ * 않게). 카드가 좁으면 위아래로 쌓는다. 색은 DS 정보 파랑과 차트 회색에서만(상태색을 피한다), 「기타」는 중립 회색.
+ */
 .dash-donut {
-  display: grid;
-  grid-template-columns: minmax(6rem, 9rem) minmax(0, 1fr);
+  display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: var(--space-4);
+  justify-content: center;
+  column-gap: var(--space-5);
+  row-gap: var(--space-3);
 }
 
 .dash-donut > :only-child {
-  grid-column: 1 / -1;
+  flex: 1 1 100%;
 }
 
+/* 도넛은 7.5~10.5rem, 범례는 14~22rem — 한 줄에 둘이 들어가지 않으면 범례가 아래로 내려간다. */
 .dash-donut-figure {
   position: relative;
+  flex: 0 0 clamp(7.5rem, 32%, 10.5rem);
   margin: 0;
+}
+
+.dash-donut-legend {
+  flex: 1 1 14rem;
+  max-width: 22rem;
 }
 
 .dash-donut-svg {
@@ -7946,13 +7958,31 @@ dl.filter-bar.approval-inbox-detail-facts {
 
 .dash-donut-slice {
   stroke: var(--surface-container);
-  stroke-width: 1;
+  stroke-width: 1.5;
+  cursor: default;
 }
 
-.dash-donut-label {
-  font: var(--type-label-sm);
+.dash-donut-slice:hover {
+  opacity: 0.85;
+}
+
+/* 가운데 — 전체 불량 수량(굵게) · 단위 · 「총 불량」. */
+.dash-donut-total {
+  fill: var(--on-surface);
+  font: var(--type-title-md);
   font-weight: 700;
-  pointer-events: none;
+  font-variant-numeric: tabular-nums;
+}
+
+.dash-donut-total-unit {
+  fill: var(--on-surface-muted);
+  font: var(--type-label-sm);
+  font-weight: 400;
+}
+
+.dash-donut-total-label {
+  fill: var(--on-surface-muted);
+  font: var(--type-label-sm);
 }
 
 .dash-donut-tip {
@@ -7960,66 +7990,54 @@ dl.filter-bar.approval-inbox-detail-facts {
   pointer-events: none;
 }
 
+/* 순위대로 파랑 · 회색을 번갈아, 짙은 것부터 옅게 — 이웃한 범례가 비슷한 색으로 이어지지 않는다. */
 .dash-donut-1 {
-  background: var(--chart-2);
-  fill: var(--chart-2);
-}
-
-.dash-donut-2 {
   background: var(--semantic-info);
   fill: var(--semantic-info);
 }
 
+.dash-donut-2 {
+  background: var(--chart-2);
+  fill: var(--chart-2);
+}
+
 .dash-donut-3 {
+  background: color-mix(in srgb, var(--semantic-info) 62%, var(--surface));
+  fill: color-mix(in srgb, var(--semantic-info) 62%, var(--surface));
+}
+
+.dash-donut-4 {
   background: var(--chart-4);
   fill: var(--chart-4);
 }
 
-.dash-donut-4 {
-  background: color-mix(in srgb, var(--semantic-info) 55%, var(--surface));
-  fill: color-mix(in srgb, var(--semantic-info) 55%, var(--surface));
+.dash-donut-5 {
+  background: color-mix(in srgb, var(--semantic-info) 34%, var(--surface));
+  fill: color-mix(in srgb, var(--semantic-info) 34%, var(--surface));
 }
 
-.dash-donut-5 {
+.dash-donut-6 {
   background: var(--chart-3);
   fill: var(--chart-3);
 }
 
-.dash-donut-6 {
-  background: color-mix(in srgb, var(--semantic-info) 30%, var(--surface));
-  fill: color-mix(in srgb, var(--semantic-info) 30%, var(--surface));
-}
-
 .dash-donut-7 {
-  background: var(--chart-5);
-  fill: var(--chart-5);
+  background: color-mix(in srgb, var(--semantic-info) 16%, var(--surface));
+  fill: color-mix(in srgb, var(--semantic-info) 16%, var(--surface));
 }
 
-/* 「기타」 — 일곱째 회색(`--chart-5`)과 가려지도록 더 옅은 중립 회색. */
+/* 「기타」 — 옅은 중립 회색. */
 .dash-donut-other {
   background: color-mix(in srgb, var(--outline-variant) 60%, var(--surface));
   fill: color-mix(in srgb, var(--outline-variant) 60%, var(--surface));
 }
 
-.dash-donut-1-label,
-.dash-donut-2-label,
-.dash-donut-5-label {
-  fill: var(--surface);
-}
-
-.dash-donut-3-label,
-.dash-donut-4-label,
-.dash-donut-6-label,
-.dash-donut-7-label,
-.dash-donut-other-label {
-  fill: var(--on-surface);
-}
-
-/* 범례 — 점 · 이름 · 수량 · 비율이 모든 줄에서 같은 열(subgrid), 수량 · 비율은 오른쪽 정렬. */
+/* 범례 — 점 · 이름(왼쪽) · 수량(강조) · 비율(보조)(오른쪽)이 모든 줄에서 같은 열(subgrid). */
 .dash-donut-legend {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto auto;
-  gap: var(--space-2);
+  grid-template-columns: auto minmax(0, 1fr) auto 3rem;
+  column-gap: var(--space-2);
+  row-gap: var(--space-2);
   margin: 0;
   padding: 0;
   list-style: none;
@@ -8060,10 +8078,12 @@ dl.filter-bar.approval-inbox-detail-facts {
   margin-inline-start: 2px;
   color: var(--on-surface-muted);
   font: var(--type-label-sm);
+  font-weight: 400;
 }
 
 .dash-donut-share {
   color: var(--on-surface-muted);
+  font: var(--type-label-md);
 }
 
 /* 막대 목록 — 이름 · 막대 · 수량 · 비율이 모든 줄에서 같은 열(subgrid), 수량 · 비율은 오른쪽 정렬. */

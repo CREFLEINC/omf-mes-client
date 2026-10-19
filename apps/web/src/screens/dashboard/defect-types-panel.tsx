@@ -17,7 +17,8 @@ const v = messages.dashboard.viz;
  *   넘치면 한 줄씩 덜어 내고, 크기 · 자료가 바뀌면 처음부터 다시 맞춘다(대시보드 「가동 외 설비」와 같은 방식).
  *   1열이면 따라갈 옆 카드가 없어 모두 보인다. 한 줄도 들어가지 않으면 자르지 않고 제 높이로 세운다.
  * - ⚠ 비율의 분모는 전체 유형 합이다(합친 뒤에도 같다).
- * - 조각 위 비율은 작은 조각에서 생략한다(겹침 방지 · 범례에는 남는다).
+ * - ⭐ 조각 위에는 글자를 얹지 않고 가운데에 전체 불량 수량을 둔다 — 비율은 범례 · 마우스 올림에서 읽는다
+ *   (사용자 지시 2026-10-19 「차트 내부 비율 과도 표시 정리 · 중앙에 전체 불량 수량」).
  */
 
 export interface DonutSlice extends NamedQty {
@@ -29,9 +30,6 @@ export interface DonutSlice extends NamedQty {
 
 /** 「기타」 조각의 키 — 유형 키(불량 코드 번호)와 겹치지 않는다. */
 export const OTHER_SLICE_KEY = 'other';
-
-/** 이 비율보다 작은 조각에는 글자를 얹지 않는다(조각 호가 글자보다 짧다). */
-export const DONUT_LABEL_MIN_SHARE = 6;
 
 /**
  * 수량 큰 순으로 앞에서 `shown` 개를 각각, 나머지를 「기타」 하나로. `shown` 이 유형 수 이상이면 모두 각각.
@@ -63,7 +61,10 @@ export const toDonutSlices = (entries: readonly NamedQty[], shown: number): Donu
   return slices;
 };
 
-/** 조각 색 — DS 차트 회색과 정보 파랑에서만(상태색 빨강 · 노랑 · 초록을 피한다). 여덟째부터 되풀이. */
+/**
+ * 조각 색 — DS 정보 파랑과 차트 회색에서만(상태색 빨강 · 노랑 · 초록을 피한다). ⭐ 순위대로 파랑 · 회색을 번갈아
+ * 짙은 것부터 옅게 — 이웃한 범례끼리 비슷한 색이 이어지지 않게(사용자 지시 2026-10-19). 여덟째부터 되풀이.
+ */
 const PALETTE_SIZE = 7;
 const toneOf = (slice: DonutSlice, index: number): string =>
   slice.merged > 0 ? 'dash-donut-other' : `dash-donut-${String((index % PALETTE_SIZE) + 1)}`;
@@ -98,7 +99,15 @@ const arcPath = (start: number, end: number): string => {
   ].join(' ');
 };
 
-const Donut = ({ slices, caption }: { slices: DonutSlice[]; caption: string }) => {
+const Donut = ({
+  slices,
+  caption,
+  total,
+}: {
+  slices: DonutSlice[];
+  caption: string;
+  total: number;
+}) => {
   const [hovered, setHovered] = useState<number | null>(null);
   let turn = 0;
   const arcs = slices.map((slice, index) => {
@@ -140,23 +149,15 @@ const Donut = ({ slices, caption }: { slices: DonutSlice[]; caption: string }) =
             />
           ),
         )}
-        {arcs.map(({ slice, index, start, end }) => {
-          if (slice.share < DONUT_LABEL_MIN_SHARE) return null;
-          const [x, y] = pointAt(LABEL_R, (start + end) / 2);
-          return (
-            <text
-              key={slice.key}
-              className={`dash-donut-label ${toneOf(slice, index)}-label`}
-              x={x}
-              y={y}
-              textAnchor="middle"
-              dominantBaseline="central"
-              aria-hidden="true"
-            >
-              {formatShare(slice.share)}
-            </text>
-          );
-        })}
+        <text className="dash-donut-total" x={CENTER} y={CENTER - 4} textAnchor="middle">
+          {formatFigure(total)}
+          <tspan className="dash-donut-total-unit" dx={3}>
+            {t.qtyUnit}
+          </tspan>
+        </text>
+        <text className="dash-donut-total-label" x={CENTER} y={CENTER + 16} textAnchor="middle">
+          {t.defectTypesTotal}
+        </text>
       </svg>
       {tip !== null && tip !== undefined && tipPoint !== null && (
         <div
@@ -260,11 +261,12 @@ export const DefectTypesPanel = ({ entries, tag }: { entries: NamedQty[]; tag: s
   });
 
   const slices = toDonutSlices(entries, shown ?? entries.length);
+  const total = entries.reduce((sum, entry) => sum + Math.max(0, entry.value), 0);
 
   return (
     <Panel
       title={t.phenomena}
-      sub={t.qtyShareSub}
+      sub={t.defectTypesSub}
       tag={tag}
       className={tooTall ? undefined : 'dash-qo-fit'}
     >
@@ -273,7 +275,7 @@ export const DefectTypesPanel = ({ entries, tag }: { entries: NamedQty[]; tag: s
           <NoRecords />
         ) : (
           <>
-            <Donut slices={slices} caption={t.phenomena} />
+            <Donut slices={slices} caption={t.phenomena} total={total} />
             <ul className="dash-donut-legend">
               {slices.map((slice, index) => (
                 <li key={slice.key} className="dash-donut-legend-row">

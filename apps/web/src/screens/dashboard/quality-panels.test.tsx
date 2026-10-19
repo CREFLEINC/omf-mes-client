@@ -207,11 +207,16 @@ describe('품질 탭', () => {
     const { unmount } = render(<QualityOverviewTab quality={data} />);
 
     const card = screen.getByRole('region', { name: t.phenomena });
-    expect(t.phenomena).toBe('불량 유형');
+    expect(t.phenomena).toBe('불량 유형별 현황');
     const rows = [...card.querySelectorAll('.dash-donut-legend-row')].map((row) => row.textContent);
     expect(rows).toEqual(['찍힘60EA60%', '긁힘30EA30%', '이물10EA10%']);
     expect(within(card).getByRole('img', { name: t.phenomena })).toBeInTheDocument();
     expect(card.querySelectorAll('.dash-donut-slice')).toHaveLength(3);
+    /* 가운데 = 전체 불량 수량 · 조각 위에는 비율 글자를 얹지 않는다. */
+    expect(card.querySelector('.dash-donut-total')).toHaveTextContent(`100${t.qtyUnit}`);
+    expect(within(card).getByText(t.defectTypesTotal)).toBeInTheDocument();
+    expect(card.querySelector('.dash-donut-svg')?.textContent).not.toMatch(/%/);
+    expect(within(card).getByText(t.defectTypesSub)).toBeInTheDocument();
     expect(within(card).getByRole('table', { name: t.phenomena })).toBeInTheDocument();
     unmount();
 
