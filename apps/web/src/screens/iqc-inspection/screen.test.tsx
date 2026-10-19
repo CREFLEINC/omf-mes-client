@@ -1083,6 +1083,25 @@ describe('IqcInspectionScreen — 불합격 사유 임시 저장', () => {
     });
   });
 
+  it('합격으로 바꿨다가 다시 불합격을 고르면 사유 칸이 비어 있다', async () => {
+    draftRecordsForTest = [
+      { defectRecordId: 1, defectCodeId: 7002, defectDescription: '표면 긁힘' },
+    ];
+    renderScreen('/?ir=1001', () => jsonResponse(queueResponse()), [rejectedDraft]);
+    await waitFor(() =>
+      expect(screen.getByLabelText(t.result.rejection.description)).toHaveValue('표면 긁힘'),
+    );
+
+    await userEvent.click(screen.getByLabelText(t.result.judgment));
+    await userEvent.click(await screen.findByRole('option', { name: '합격' }));
+    await userEvent.click(screen.getByLabelText(t.result.judgment));
+    await userEvent.click(await screen.findByRole('option', { name: '불합격' }));
+
+    expect(await screen.findByLabelText(t.result.rejection.description)).toHaveValue('');
+    expect(screen.getByLabelText(t.result.rejection.major)).not.toHaveTextContent('APP · 외관');
+    expect(screen.getByText(t.result.rejection.required)).toBeInTheDocument();
+  });
+
   it('합격으로 바꿔 저장하면 빈 사유를 실어 앞서 저장한 사유를 지운다', async () => {
     draftRecordsForTest = [
       { defectRecordId: 1, defectCodeId: 7002, defectDescription: '표면 긁힘' },

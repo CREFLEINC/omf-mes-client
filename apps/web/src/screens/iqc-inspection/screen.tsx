@@ -545,7 +545,11 @@ export const IqcInspectionScreen = () => {
             onReload={() => void rounds.refetch()}
             judgmentOptions={judgmentOptions}
             judgment={judgment}
-            onJudgmentChange={setJudgment}
+            onJudgmentChange={(next) => {
+              /* 불합격이 아닌 판정으로 바꾸면 사유 입력을 비운다 — 다시 불합격을 골라도 이전 사유가 되살아나지 않는다(#122 검증). */
+              if (next !== REJECTED_JUDGMENT) setRejection(EMPTY_REJECTION);
+              setJudgment(next);
+            }}
             onConfirm={() => {
               const defects = rejectionRows(round?.rejectedQty ?? 0, inspectedQty);
               confirm.write(
