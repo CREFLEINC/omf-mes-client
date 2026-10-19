@@ -3,6 +3,7 @@ import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 
+import { OTHER_SLICE_KEY, toDonutSlices } from './defect-types-panel';
 import { quality, qualityBlock } from './quality.fixture';
 import { toNiceRateTicks } from './viz';
 import {
@@ -190,8 +191,8 @@ describe('품질 탭', () => {
     unmount();
   });
 
-  /* 품질 종합 「불량 유형 TOP 5」(사용자 확정 2026-10-19) — 수량 큰 순 상위 5개, 비율은 전체 합 대비. */
-  it('불량 유형 TOP 5 — 내림차순 상위 5개, 비율 분모는 전체 불량 유형 합', () => {
+  /* 품질 종합 「불량 유형」 도넛(사용자 확정 2026-10-19) — 수량 큰 순, 남는 유형은 「기타 (n종)」, 비율은 전체 합 대비. */
+  it('불량 유형 — 수량 큰 순으로 모두, 범례에 유형명 · 수량 · 비율, 숨김 표', () => {
     const data = quality();
     const phenomenon = (id: number, name: string, qty: number) => ({
       defectCodeId: id,
@@ -201,55 +202,47 @@ describe('품질 탭', () => {
     });
     data.nonconformance = {
       ...data.nonconformance,
-      phenomena: [
-        phenomenon(1, '이물', 10),
-        phenomenon(2, '찍힘', 40),
-        phenomenon(3, '긁힘', 20),
-        phenomenon(4, '변색', 5),
-        phenomenon(5, '버', 15),
-        phenomenon(6, '미성형', 8),
-        phenomenon(7, '치수', 2),
-      ],
+      phenomena: [phenomenon(1, '이물', 10), phenomenon(2, '찍힘', 60), phenomenon(3, '긁힘', 30)],
     };
     const { unmount } = render(<QualityOverviewTab quality={data} />);
 
     const card = screen.getByRole('region', { name: t.phenomena });
-    expect(t.phenomena).toBe('불량 유형 TOP 5');
-    const rows = [...card.querySelectorAll('.dash-rank-row')];
-    expect(rows).toHaveLength(5);
-    expect(rows.map((row) => row.querySelector('.dash-rank-value')?.textContent)).toEqual([
-      '40',
-      '20',
-      '15',
-      '10',
-      '8',
-    ]);
-    /* 전체 합 100 대비 — 상위 5개 합(93)으로 나누지 않는다. */
-    expect(rows.map((row) => row.querySelector('.dash-rank-share')?.textContent)).toEqual([
-      '40%',
-      '20%',
-      '15%',
-      '10%',
-      '8%',
-    ]);
+    expect(t.phenomena).toBe('불량 유형');
+    const rows = [...card.querySelectorAll('.dash-donut-legend-row')].map((row) => row.textContent);
+    expect(rows).toEqual(['찍힘60EA60%', '긁힘30EA30%', '이물10EA10%']);
+    expect(within(card).getByRole('img', { name: t.phenomena })).toBeInTheDocument();
+    expect(card.querySelectorAll('.dash-donut-slice')).toHaveLength(3);
+    expect(within(card).getByRole('table', { name: t.phenomena })).toBeInTheDocument();
     unmount();
-
-    data.nonconformance = {
-      ...data.nonconformance,
-      phenomena: [phenomenon(1, '이물', 1), phenomenon(2, '찍힘', 3)],
-    };
-    const few = render(<QualityOverviewTab quality={data} />);
-    const fewRows = [
-      ...screen.getByRole('region', { name: t.phenomena }).querySelectorAll('.dash-rank-value'),
-    ];
-    expect(fewRows.map((value) => value.textContent)).toEqual(['3', '1']);
-    few.unmount();
 
     data.nonconformance = { ...data.nonconformance, phenomena: [] };
     render(<QualityOverviewTab quality={data} />);
     expect(
       within(screen.getByRole('region', { name: t.phenomena })).getByText(v.noRecords),
     ).toBeInTheDocument();
+  });
+
+  it('불량 유형 조각 — 앞에서 n개 각각, 나머지는 「기타」 하나, 합계 100%, 분모는 전체 합', () => {
+    const entries = [
+      { key: '1', label: 'A', value: 5 },
+      { key: '2', label: 'B', value: 40 },
+      { key: '3', label: 'C', value: 20 },
+      { key: '4', label: 'D', value: 15 },
+      { key: '5', label: 'E', value: 20 },
+    ];
+
+    const all = toDonutSlices(entries, entries.length);
+    expect(all.map((slice) => slice.label)).toEqual(['B', 'C', 'E', 'D', 'A']);
+    expect(all.some((slice) => slice.key === OTHER_SLICE_KEY)).toBe(false);
+
+    const merged = toDonutSlices(entries, 2);
+    expect(merged.map((slice) => slice.label)).toEqual(['B', 'C', t.otherTypes('3')]);
+    expect(merged.map((slice) => slice.share)).toEqual([40, 20, 40]);
+    expect(merged[2]?.value).toBe(40);
+    expect(merged.reduce((sum, slice) => sum + slice.share, 0)).toBeCloseTo(100);
+    expect(t.otherTypes('3')).toBe('기타 (3종)');
+
+    expect(toDonutSlices([], 0)).toEqual([]);
   });
 
   /* IQC · PQC · OQC · 부적합 탭 — 품질 종합과 같은 표기(사용자 확정 2026-10-19 · r3). */

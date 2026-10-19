@@ -260,11 +260,6 @@ export interface RankBarsProps {
   showShare?: boolean;
   /** 값 오른쪽 보조 글(예: 「NG 12」). */
   aside?: (entry: NamedQty) => string | undefined;
-  /**
-   * 수량 큰 순 상위 몇 줄만 보일지. 없으면 받은 순서 그대로 모두. ⭐ 비율의 분모는 **잘라 내기 전 전체 합**이다 —
-   * 상위 몇 개 합으로 나누면 실제보다 크게 나온다(사용자 확정 2026-10-19). 그래서 보이는 줄 비율 합이 100% 가 안 될 수 있다.
-   */
-  top?: number;
 }
 
 /** 순위 막대 — 받은 순서대로, 1위만 진하게. 비어 있으면 「기록 없음」. */
@@ -273,17 +268,12 @@ export const RankBars = ({
   formatValue = formatFigure,
   showShare = true,
   aside,
-  top,
 }: RankBarsProps) => {
   if (entries.length === 0) return <NoRecords />;
 
-  const shareRows = toShareRows(entries);
-  const rows =
-    top === undefined ? shareRows : [...shareRows].sort((a, b) => b.value - a.value).slice(0, top);
-
   return (
     <ol className="dash-rank">
-      {rows.map((row, index) => (
+      {toShareRows(entries).map((row, index) => (
         <li key={row.key} className="dash-rank-row">
           <RankLabel label={row.label} />
           <span className="dash-rank-track" aria-hidden="true">

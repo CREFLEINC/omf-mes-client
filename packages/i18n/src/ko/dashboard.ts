@@ -290,7 +290,10 @@ export const dashboard = {
     qtyShareSub: 'EA · 비중',
     vendorDefects: '업체별 IQC 불량 수량',
     vendorTableSub: '수량 순',
-    phenomena: '불량 유형 TOP 5',
+    phenomena: '불량 유형',
+    /** 품질 종합 「불량 유형」 도넛 — 범례에 다 들어가지 않는 유형을 합친 조각. */
+    otherTypes: (count: string): string => `기타 (${count}종)`,
+    shareColumn: '비율',
     phenomenaOf: (kind: string): string => `${kind} 불량현상 구성비`,
     recentLots: '최근 검사 LOT 판정 현황',
     recentLotsOf: (kind: string): string => `최근 ${kind} 판정 현황`,

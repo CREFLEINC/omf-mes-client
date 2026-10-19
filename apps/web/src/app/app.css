@@ -7899,6 +7899,173 @@ dl.filter-bar.approval-inbox-detail-facts {
   align-items: stretch;
 }
 
+/*
+ * 품질 종합 「불량 유형」 — 행 높이를 정하지 않고 같은 행 「최근 검사 LOT 판정 현황」 높이를 따라간다(크기 봉쇄).
+ * 범례가 넘치면 화면 코드가 남는 유형을 「기타」로 합친다(`DefectTypesPanel`).
+ */
+.dash-qo-bottom > .dash-qo-fit {
+  display: flex;
+  flex-direction: column;
+  contain: size;
+}
+
+.dash-qo-bottom > .dash-qo-fit > .dash-panel-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* 도넛 + 범례 — 색은 DS 차트 회색과 정보 파랑에서만(상태색을 피한다), 「기타」는 중립 회색. */
+.dash-donut {
+  display: grid;
+  grid-template-columns: minmax(6rem, 9rem) minmax(0, 1fr);
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.dash-donut > :only-child {
+  grid-column: 1 / -1;
+}
+
+.dash-donut-figure {
+  position: relative;
+  margin: 0;
+}
+
+.dash-donut-svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.dash-donut-track {
+  fill: none;
+  stroke: var(--outline-variant);
+  opacity: 0.4;
+}
+
+.dash-donut-slice {
+  stroke: var(--surface-container);
+  stroke-width: 1;
+}
+
+.dash-donut-label {
+  font: var(--type-label-sm);
+  font-weight: 700;
+  pointer-events: none;
+}
+
+.dash-donut-tip {
+  transform: translate(-50%, calc(-100% - var(--space-2)));
+  pointer-events: none;
+}
+
+.dash-donut-1 {
+  background: var(--chart-2);
+  fill: var(--chart-2);
+}
+
+.dash-donut-2 {
+  background: var(--semantic-info);
+  fill: var(--semantic-info);
+}
+
+.dash-donut-3 {
+  background: var(--chart-4);
+  fill: var(--chart-4);
+}
+
+.dash-donut-4 {
+  background: color-mix(in srgb, var(--semantic-info) 55%, var(--surface));
+  fill: color-mix(in srgb, var(--semantic-info) 55%, var(--surface));
+}
+
+.dash-donut-5 {
+  background: var(--chart-3);
+  fill: var(--chart-3);
+}
+
+.dash-donut-6 {
+  background: color-mix(in srgb, var(--semantic-info) 30%, var(--surface));
+  fill: color-mix(in srgb, var(--semantic-info) 30%, var(--surface));
+}
+
+.dash-donut-7 {
+  background: var(--chart-5);
+  fill: var(--chart-5);
+}
+
+/* 「기타」 — 일곱째 회색(`--chart-5`)과 가려지도록 더 옅은 중립 회색. */
+.dash-donut-other {
+  background: color-mix(in srgb, var(--outline-variant) 60%, var(--surface));
+  fill: color-mix(in srgb, var(--outline-variant) 60%, var(--surface));
+}
+
+.dash-donut-1-label,
+.dash-donut-2-label,
+.dash-donut-5-label {
+  fill: var(--surface);
+}
+
+.dash-donut-3-label,
+.dash-donut-4-label,
+.dash-donut-6-label,
+.dash-donut-7-label,
+.dash-donut-other-label {
+  fill: var(--on-surface);
+}
+
+/* 범례 — 점 · 이름 · 수량 · 비율이 모든 줄에서 같은 열(subgrid), 수량 · 비율은 오른쪽 정렬. */
+.dash-donut-legend {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.dash-donut-legend-row {
+  display: grid;
+  grid-column: 1 / -1;
+  grid-template-columns: subgrid;
+  align-items: center;
+  font: var(--type-body-sm);
+}
+
+.dash-donut-key {
+  width: 0.625rem;
+  height: 0.625rem;
+  border-radius: 2px;
+}
+
+.dash-donut-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dash-donut-qty,
+.dash-donut-share {
+  font-variant-numeric: tabular-nums;
+  text-align: end;
+  white-space: nowrap;
+}
+
+.dash-donut-qty {
+  font-weight: 700;
+}
+
+.dash-donut-unit {
+  margin-inline-start: 2px;
+  color: var(--on-surface-muted);
+  font: var(--type-label-sm);
+}
+
+.dash-donut-share {
+  color: var(--on-surface-muted);
+}
+
 /* 막대 목록 — 이름 · 막대 · 수량 · 비율이 모든 줄에서 같은 열(subgrid), 수량 · 비율은 오른쪽 정렬. */
 .dash-tab-quality-overview .dash-rank,
 .dash-tab-quality-detail .dash-rank {
@@ -7991,6 +8158,15 @@ dl.filter-bar.approval-inbox-detail-facts {
   .dash-qo-top,
   .dash-qo-bottom {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  /* 1열이면 「불량 유형」이 따라갈 옆 카드가 없다 — 범례가 모두 들어가도록 제 높이대로. */
+  .dash-qo-bottom > .dash-qo-fit {
+    contain: none;
+  }
+
+  .dash-qo-bottom > .dash-qo-fit > .dash-panel-body {
+    overflow: visible;
   }
 
   /* 1열이면 제 내용 높이대로 쌓는다 — 화면 높이 채우기를 쉰다. */

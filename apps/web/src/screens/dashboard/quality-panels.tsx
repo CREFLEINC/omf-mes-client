@@ -27,6 +27,7 @@ import {
   type QualityKind,
   type RecentLotRow,
 } from './quality';
+import { DefectTypesPanel } from './defect-types-panel';
 import { compareEquipmentCode } from './equipment';
 import { pointerFocusProps, usePointerInput } from './equipment-panel';
 import { formatFigure } from './types';
@@ -582,10 +583,10 @@ export const QualityOverviewTab = ({ quality }: { quality: DashboardQuality }) =
         </div>
       </div>
       <div className="dash-qo-bottom">
-        <Panel title={t.phenomena} sub={t.qtyShareSub} tag={tags.month}>
-          {/* 불량 유형 TOP 5(⭐ 사용자 확정 2026-10-19) — 수량 큰 순 상위 5개, 비율은 전체 불량 유형 합 대비. */}
-          <RankBars entries={phenomenaEntries(quality.nonconformance.phenomena)} top={5} />
-        </Panel>
+        <DefectTypesPanel
+          entries={phenomenaEntries(quality.nonconformance.phenomena)}
+          tag={tags.month}
+        />
         <RecentLotsPanel
           title={t.recentLots}
           rows={toRecentLotRows(quality)}
