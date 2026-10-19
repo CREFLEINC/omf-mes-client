@@ -61,8 +61,7 @@ export const remainingQty = (workOrder: WorkOrder | undefined): number | null =>
  *
  * ⛔ 잔여 초과는 여기 넣지 않는다 — 초과 생산은 허용이라 저장을 막는 사유가 아니다.
  */
-export type BlockReason =
-  'gate' | 'noWorkOrder' | 'noWorker' | 'noLot' | 'emptyQty' | 'zeroQty';
+export type BlockReason = 'gate' | 'noWorkOrder' | 'noWorker' | 'noLot' | 'emptyQty' | 'zeroQty';
 
 export interface SaveGuard {
   /** 게이팅이 열려 있는가 — `canInputResult === true` 일 때만 참이다. */

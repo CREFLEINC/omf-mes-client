@@ -1672,7 +1672,8 @@ describe('ProductionFlowScreen — PQC 분할', () => {
     {
       match: (request) =>
         request.method === 'GET' && pathOf(request) === '/quality/inspection-results',
-      respond: () => jsonResponse({ items: rounds, page: { page: 1, size: 100, total: rounds.length } }),
+      respond: () =>
+        jsonResponse({ items: rounds, page: { page: 1, size: 100, total: rounds.length } }),
     },
     {
       match: (request) => pathOf(request) === '/quality/inspection-requests',
@@ -1724,7 +1725,9 @@ describe('ProductionFlowScreen — PQC 분할', () => {
     await user.type(panel.getByRole('textbox', { name: pqc.result.fields.held }), '0');
     await user.click(panel.getByRole('combobox', { name: pqc.result.judgment }));
     await user.click(await screen.findByRole('option', { name: '합격' }));
-    await waitFor(() => expect(panel.getByRole('button', { name: pqc.result.confirm })).toBeEnabled());
+    await waitFor(() =>
+      expect(panel.getByRole('button', { name: pqc.result.confirm })).toBeEnabled(),
+    );
     await user.click(panel.getByRole('button', { name: pqc.result.confirm }));
 
     await waitFor(() => expect(writes.map(pathOf)).toContain('/quality/inspection-results'));
@@ -1751,24 +1754,28 @@ describe('ProductionFlowScreen — PQC 분할', () => {
       [],
       [
         producedWorkOrder(5),
-        ...pqcRoutes({ confirmed: false }, [], [
-          {
-            inspectionResultId: 9001,
-            inspectionResultNo: 'IRS-9001',
-            inspectionRequestId: 7001,
-            inspectionRound: 1,
-            inspectedQty: 5,
-            acceptedQty: 3,
-            rejectedQty: 0,
-            heldQty: 2,
-            uomId: 1,
-            overallJudgmentCode: 'ACCEPTED',
-            inspectorId: 1,
-            inspectedAt: '2026-10-16T09:00:00+09:00',
-            statusCode: 'DRAFT',
-            versionNo: 1,
-          },
-        ]),
+        ...pqcRoutes(
+          { confirmed: false },
+          [],
+          [
+            {
+              inspectionResultId: 9001,
+              inspectionResultNo: 'IRS-9001',
+              inspectionRequestId: 7001,
+              inspectionRound: 1,
+              inspectedQty: 5,
+              acceptedQty: 3,
+              rejectedQty: 0,
+              heldQty: 2,
+              uomId: 1,
+              overallJudgmentCode: 'ACCEPTED',
+              inspectorId: 1,
+              inspectedAt: '2026-10-16T09:00:00+09:00',
+              statusCode: 'DRAFT',
+              versionNo: 1,
+            },
+          ],
+        ),
       ],
       { strict },
     );
@@ -1820,7 +1827,9 @@ describe('ProductionFlowScreen — PQC 분할', () => {
     const panel = within(await screen.findByRole('region', { name: t.pqc.splitTitle }));
     await panel.findByRole('textbox', { name: pqc.result.fields.accepted });
     expect(panel.queryByText(pqc.coverage.note)).not.toBeInTheDocument();
-    expect(panel.queryByLabelText(`${pqc.coverage.from} ${pqc.coverage.date}`)).not.toBeInTheDocument();
+    expect(
+      panel.queryByLabelText(`${pqc.coverage.from} ${pqc.coverage.date}`),
+    ).not.toBeInTheDocument();
   });
 
   it('검사 off(그 W/O 에 PQC 의뢰가 없음)면 나누지 않고 실적만 보인다', async () => {
