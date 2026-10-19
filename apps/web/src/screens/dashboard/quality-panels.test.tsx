@@ -191,13 +191,14 @@ describe('품질 탭', () => {
     const { container } = render(<OqcTab quality={q} />);
 
     expect(screen.getByRole('group', { name: t.pendingReturn })).toHaveTextContent('2');
-    expect(screen.getByRole('group', { name: t.customerReturn })).toHaveTextContent(
-      '고객반품 20 · 클레임 4',
-    );
+    /* 반품 구분별 수량은 고객별 불합격 아래 가로 막대(수량만) — 공급사 반품 출고 포함. */
+    expect(screen.getByText(t.returnByReason)).toBeInTheDocument();
+    expect(screen.getByText('공급사반품')).toBeInTheDocument();
     expect(screen.getByText('고객 가')).toBeInTheDocument();
     const bars = container.querySelectorAll('.dash-day-bar');
     expect(bars).toHaveLength(2);
-    expect(bars[1]).toHaveTextContent(t.none);
+    /* 출고 없는 날은 빈 칸. */
+    expect(bars[1]?.querySelector('.dash-day-bar-value')?.textContent).toBe('');
   });
 
   it('PQC — 주요 현황 「재작업 의뢰」 줄은 권한이 있으면 처분 판정 처리로 간다(사용자 지시 2026-10-19)', async () => {

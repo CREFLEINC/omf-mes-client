@@ -1192,7 +1192,7 @@ export const PqcTab = ({
   );
 };
 
-/** 반출 일자별 수량(OQC 탭 · 사용자 지시 2026-10-19) — 날짜 막대. 기록 없는 날은 막대 없이 「—」. */
+/** 반출 일자별 수량(OQC 탭 · 사용자 지시 2026-10-19) — 세로 막대, 일별 합격률과 같은 날짜(최근 9일). 출고 없는 날은 빈 칸. */
 const DailyReturnOutPanel = ({
   days,
 }: {
@@ -1209,8 +1209,9 @@ const DailyReturnOutPanel = ({
         <ol className="dash-day-bars" aria-label={t.dailyReturnOut}>
           {days.map((day) => (
             <li key={day.date} className="dash-day-bar">
+              {/* 출고가 없는 날은 빈 칸(사용자 지시 2026-10-19) — 0 · 「—」을 쓰지 않는다. */}
               <span className="dash-day-bar-value">
-                {day.qty === null ? t.none : formatFigure(day.qty)}
+                {day.qty === null || day.qty === 0 ? '' : formatFigure(day.qty)}
               </span>
               <span className="dash-day-bar-track" aria-hidden="true">
                 <span
@@ -1227,13 +1228,11 @@ const DailyReturnOutPanel = ({
   );
 };
 
-/** 고객 반품 칸의 구분별 수량 — 반품 입고 사유만(공급사 반품 출고는 반출 그래프에 있다). */
-const SUPPLIER_RETURN_OUT = 'SUPPLIER_RETURN_OUT';
-
 /**
  * OQC 검사실적(⭐ 사용자 지시 2026-10-19 구조 예시) — 1행 KPI: 합격률 · 출하검사 LOT · 고객 반품 · 미처리 반품,
  * 2행: 일별 합격률 | 고객별 불합격 수량(같은 높이), 3행: 반출 일별 수량(실적이 있을 때만) | 최근 판정 5건.
- * 반품 구성 원형은 두지 않는다 — 구분이 하나뿐이면 100% 원형은 정보가 없어, 고객 반품 칸에 구분별 수량으로 적는다.
+ * 반품 구성 원형은 두지 않는다(구분이 하나뿐이면 100% 원형은 정보가 없다) — 고객별 불합격 아래에 반품 구분별
+ * 수량 가로 막대(수량만 · 사용자 지시 2026-10-19).
  * 목표 합격률 기준선은 시스템에 목표값이 없어 긋지 않는다(지어내지 않는다).
  */
 export const OqcTab = ({
@@ -1247,9 +1246,6 @@ export const OqcTab = ({
   const tags = usePeriodTags();
   const oqc = quality.oqc;
   const pendingReturn = oqc.pendingReturnLotCount;
-  const receiptReasons = (oqc.returnReasons ?? []).filter(
-    (entry) => entry.reasonCode !== SUPPLIER_RETURN_OUT && entry.qty > 0,
-  );
   const hasReturnOut =
     oqc.dailyReturnOutQty !== undefined &&
     oqc.dailyReturnOutQty.some((day) => day.qty !== null && day.qty > 0);
@@ -1265,16 +1261,7 @@ export const OqcTab = ({
           value={formatFigure(oqc.customerReturnQty)}
           unit={t.qtyUnit}
         >
-          <span>
-            {receiptReasons.length > 1
-              ? receiptReasons
-                  .map(
-                    (entry) =>
-                      `${entry.reasonName ?? t.returnReasonNone} ${formatFigure(entry.qty)}`,
-                  )
-                  .join(' · ')
-              : t.customerReturnNoteShort}
-          </span>
+          <span>{t.customerReturnNoteShort}</span>
         </KpiTile>
         {pendingReturn !== undefined && (
           <KpiTile
@@ -1308,6 +1295,19 @@ export const OqcTab = ({
               }))}
             />
           </Panel>
+          {/* ⭐ 반품 구분별 수량(사용자 지시 2026-10-19) — 반품 입고 사유 + 공급사 반품 출고, 가로 막대 · 수량만. */}
+          {oqc.returnReasons !== undefined && (
+            <Panel title={t.returnByReason} sub={t.returnByReasonSub} tag={tags.month}>
+              <RankBars
+                entries={oqc.returnReasons.map((entry) => ({
+                  key: entry.reasonCode ?? 'NO_REASON',
+                  label: entry.reasonName ?? t.returnReasonNone,
+                  value: entry.qty,
+                }))}
+                showShare={false}
+              />
+            </Panel>
+          )}
         </div>
       </div>
       <div className={hasReturnOut ? 'dash-oqc-bottom' : 'dash-oqc-bottom dash-oqc-bottom-single'}>

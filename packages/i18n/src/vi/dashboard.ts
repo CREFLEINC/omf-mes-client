@@ -310,6 +310,8 @@ export const dashboard: Translated<typeof ko.dashboard> = {
     pqcItemDefects: 'Cơ cấu lỗi PQC theo mã hàng',
     pendingOldest: (elapsed: string): string => `Chờ lâu nhất ${elapsed}`,
     customerDefects: 'Số lượng OQC không đạt theo khách hàng',
+    returnByReason: 'Số lượng theo loại trả hàng',
+    returnByReasonSub: 'Lý do nhập trả · Xuất trả nhà cung cấp',
     returnReasonNone: 'Chưa đăng ký lý do',
     dailyReturnOut: 'Số lượng xuất trả theo ngày',
     dailyReturnOutSub: 'Xuất trả nhà cung cấp',
