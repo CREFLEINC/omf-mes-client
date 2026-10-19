@@ -107,6 +107,7 @@ export const PqcInspectionRegisterScreen = () => {
               workerNo={null}
               requiresWorker={false}
               withKeypad={false}
+              variant="web"
             />
           )}
         </section>

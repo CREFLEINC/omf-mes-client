@@ -11,6 +11,8 @@ export interface PanelActionsProps {
   isSaved: boolean;
   /** 저장·확정 둘 다 막는 이유(예: 그 W/O 의 생산 실적이 아직 없다). 있으면 두 단추를 잠그고 이 문구를 낸다. */
   lockedReason: string | null;
+  /** 잠긴 이유를 이 줄에 말할 것인가. 분할 화면은 패널 맨 위에 말하므로 `false` 다. */
+  showLockedNote: boolean;
   /** 확정만 막는 이유. 합계 불일치는 《결과 입력》이 이미 말하므로 여기서 다시 말하지 않는다. */
   confirmBlockedReason: string | null;
   saveBlockedReason: string | null;
@@ -28,20 +30,26 @@ export const PanelActions = ({
   isJustConfirmed,
   isSaved,
   lockedReason,
+  showLockedNote,
   confirmBlockedReason,
   saveBlockedReason,
   workerMissing,
   onSave,
   onConfirm,
 }: PanelActionsProps) => {
-  const note =
-    lockedReason ??
-    saveBlockedReason ??
-    (confirmBlockedReason !== null &&
+  /* 잠겼으면 잠긴 이유 하나만 말한다 — 분할 화면은 그 이유를 패널 맨 위에서 이미 말했다. */
+  const confirmNote =
+    confirmBlockedReason !== null &&
     confirmBlockedReason !== t.confirmBlockedByTotals &&
     confirmBlockedReason !== t.confirmed
       ? confirmBlockedReason
-      : null);
+      : null;
+  const note =
+    lockedReason !== null
+      ? showLockedNote
+        ? lockedReason
+        : null
+      : (saveBlockedReason ?? confirmNote);
 
   return (
     <div className="pop-action-bar">

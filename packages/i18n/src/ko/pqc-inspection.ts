@@ -152,6 +152,18 @@ export const pqcInspection = {
    * 불합격 처분 — ⚠ **잠정이다.** 확정 판정은 불량창고 입고 후 별도 화면이 한다
    * (✅REQ-PR-0025 · 스펙 §5-8). ⛔ 고른 값을 **서버로 보내지 않는다** — 보내면 정본이 둘이 된다.
    */
+  /**
+   * 분할 패널(POP P-02-04 반쪽 · 관리웹 W-03-11)의 말(omf-all-around#107 UI/UX). 단독 화면 P-02-13 은 위 말을 그대로 쓴다.
+   * 현장 작업자가 한 번에 읽도록 짧게 — 상태·원인·행동만.
+   */
+  panel: {
+    noItems: '등록된 검사 항목이 없습니다. 관리자에게 문의하세요.',
+    short: (remaining: string): string => `미입력 ${remaining}`,
+    over: (over: string): string => `${over} 초과`,
+    judgmentPlaceholder: '종합 판정을 선택하세요',
+    dispositionNote: '불합격 수량이 있을 때 고릅니다. 불량창고 입고 후 확정됩니다.',
+  },
+
   disposition: {
     heading: '불합격 처분',
     rework: '재작업 가능',

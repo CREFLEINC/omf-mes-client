@@ -178,16 +178,11 @@ export const productionResult = {
   },
 
   /**
-   * 남은 PQC 안내. ⭐ 업무 순서는 «실적 입력 → PQC» 다(사용자 결정 2026-10-19 · omf-all-around#107) — 앞선
-   * 「PQC 를 먼저 마쳐야 실적 등록」(R54)을 뒤집었다. 실적을 막지 않고, PQC 를 닫아 둔 때만 다시 여는 길을 알린다.
+   * PQC(omf-all-around#107). 검사 on 이면 실적과 PQC 를 늘 반씩 띄운다 — 업무 순서는 «실적 입력 → PQC» 다
+   * (사용자 결정 2026-10-19 · 앞선 「PQC 를 먼저 마쳐야 실적 등록」(R54)을 뒤집었다).
    */
   pqc: {
-    pendingTitle: 'PQC 검사가 남아 있습니다',
-    pendingBody: '실적을 등록한 뒤 PQC 검사를 하세요.',
     goInspect: '검사 화면으로',
-    /** 실적과 PQC 를 한 화면에 반씩 띄운다(omf-all-around#107). */
-    openSplit: 'PQC 검사 함께 보기',
-    closeSplit: 'PQC 닫기',
     splitTitle: 'PQC 제품 검사',
   },
 

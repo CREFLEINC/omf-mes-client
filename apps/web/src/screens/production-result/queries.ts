@@ -12,7 +12,7 @@ export const productionResultKeys = {
   all: ['production-result'] as const,
   workOrder: (workOrderId: number) => ['production-result', 'work-order', workOrderId] as const,
   lots: (workOrderId: number) => ['production-result', 'lots', workOrderId] as const,
-  pendingPqc: (workOrderId: number) => ['production-result', 'pending-pqc', workOrderId] as const,
+  pqc: (workOrderId: number) => ['production-result', 'pqc', workOrderId] as const,
 };
 
 /** 서버가 인라인으로 낼 수 있는 오류를 이 화면의 어느 칸에 놓을지. 없는 칸은 적지 않는다. */
@@ -20,6 +20,8 @@ export const SAVE_FIELDS = ['goodQty', 'remarks'] as const;
 
 /** PQC 대기 조회의 검사 유형. 요구서 §3-12 가 이 값을 그대로 적었다. */
 const PQC_TYPE_CODE = 'PQC';
+/** 취소된 의뢰는 검사 on 으로 세지 않는다. */
+const CANCELLED = 'CANCELLED';
 
 /**
  * 작업지시 한 건 — **헤더의 W/O·품목과 잔여수량의 출처**.
@@ -78,37 +80,35 @@ export const useTargetLots = (workOrderId: number | null): UseQueryResult<Lot[]>
 };
 
 /**
- * 아직 끝나지 않은 PQC 검사 의뢰 — **실적 입력의 선행 판정**(R54 · 스펙 §6).
+ * 이 작업지시의 PQC 의뢰 — **검사 on/off 의 기준**이다(omf-all-around#107 · 사용자 결정 2026-10-19).
  *
- * 프로세스 S7 태스크 ③ 의 「PQC 대상 / 생략」 분기가 이 조회 하나로 갈린다:
+ * 「생산 실적 등록 화면은 검사가 on 이면 무조건 PQC 검사 UI 와 같이, off 면 실적만」. 검사 on = 그 W/O 에 취소되지
+ * 않은 PQC 의뢰가 있다(라우팅 검사 공정이면 배포가 만든다 · 서버 P-32). 대기·진행·확정 어느 상태든 분할한다 —
+ * 확정 뒤에는 패널이 확정 결과를 읽기 전용으로 보인다. 여럿이면 가장 최근 의뢰다. 없으면 `null`.
  *
- * - 비어 있다 → **생략 대상** — 실적 입력으로 직행한다
- * - 있다 → **미수행** — 그 의뢰로 `P-02-13` 을 먼저 연다
- *
- * ⛔ **의뢰를 «만들지» 않는다** — 생성 경로가 계약에 없고 서버가 만든다(요구서 §3-12).
- * ⛔ **상태 코드 문자열을 화면에 고정하지 않는다** — `pendingOnly` 가 「아직 안 끝난 것」의
- * 정의를 계약 쪽에 둔다(공유계약 G-6).
+ * ⛔ 의뢰를 «만들지» 않는다 — 생성 경로가 계약에 없고 서버가 만든다(요구서 §3-12).
  */
-export const usePendingPqc = (workOrderId: number | null): UseQueryResult<InspectionRequest[]> => {
+export const useWorkOrderPqc = (
+  workOrderId: number | null,
+): UseQueryResult<InspectionRequest | null> => {
   const { client } = useApiClient();
 
   return useQuery({
-    queryKey: productionResultKeys.pendingPqc(workOrderId ?? 0),
+    queryKey: productionResultKeys.pqc(workOrderId ?? 0),
     enabled: workOrderId !== null,
-    queryFn: async (): Promise<InspectionRequest[]> => {
+    queryFn: async (): Promise<InspectionRequest | null> => {
       if (workOrderId === null) {
         throw new Error('작업지시를 모르면 검사 의뢰를 조회하지 않습니다.');
       }
 
       const data = await runRequest(() =>
         client.GET('/quality/inspection-requests', {
-          params: {
-            query: { workOrderId, inspectionTypeCode: PQC_TYPE_CODE, pendingOnly: true },
-          },
+          params: { query: { workOrderId, inspectionTypeCode: PQC_TYPE_CODE } },
         }),
       );
 
-      return data.items;
+      const live = data.items.filter((request) => request.statusCode !== CANCELLED);
+      return live.sort((a, b) => b.inspectionRequestId - a.inspectionRequestId)[0] ?? null;
     },
   });
 };

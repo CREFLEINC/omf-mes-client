@@ -58,7 +58,7 @@ import {
   parseGoodQty,
   remainingQty,
 } from './quantity-draft';
-import { usePendingPqc, useWorkOrder } from './queries';
+import { useWorkOrder, useWorkOrderPqc } from './queries';
 import { PqcSplit } from './pqc-split';
 import { buildSaveBody } from './save-request';
 import { useUomLookup } from './uom-lookup';
@@ -185,22 +185,12 @@ export const ProductionFlowScreen = () => {
   const identity = usePopIdentity();
   const workOrder = useWorkOrder(entry.workOrderId);
   const currentLot = useCurrentLot(entry.workOrderId);
-  const pendingPqc = usePendingPqc(entry.workOrderId);
   /*
-   * ⭐ 실적과 PQC 를 반씩 띄운다(omf-all-around#107). 남은 의뢰가 생기면 그 의뢰를 오른쪽에 연다.
-   * 확정해 목록에서 빠져도 **열어 둔 의뢰는 남긴다** — 확정 표시를 보여 주고 작업자가 닫는다.
+   * ⭐ 검사 on(그 W/O 에 PQC 의뢰가 있음)이면 늘 실적과 PQC 를 반씩, off 면 실적만 전체 폭이다
+   * (omf-all-around#107 · 사용자 결정 2026-10-19). 닫는 단추가 없다.
    */
-  const pendingPqcId = pendingPqc.data?.[0]?.inspectionRequestId ?? null;
-  const [pqcTargetId, setPqcTargetId] = useState<number | null>(null);
-  const [isPqcOpen, setIsPqcOpen] = useState(true);
-  useEffect(() => {
-    setPqcTargetId(null);
-    setIsPqcOpen(true);
-  }, [entry.workOrderId]);
-  useEffect(() => {
-    if (pendingPqcId !== null) setPqcTargetId(pendingPqcId);
-  }, [pendingPqcId]);
-  const isPqcSplit = isPqcOpen && pqcTargetId !== null;
+  const workOrderPqc = useWorkOrderPqc(entry.workOrderId);
+  const pqcTargetId = workOrderPqc.data?.inspectionRequestId ?? null;
   const item = useItem(currentLot.data?.itemId ?? workOrder.data?.itemId ?? null);
   const lotPrinters = usePrinters('PRODUCTION_LOT_LABEL');
   const tagPrinters = usePrinters('IDENTIFICATION_TAG');
@@ -1025,17 +1015,6 @@ export const ProductionFlowScreen = () => {
           <AlertBanner variant="info" title={t.flow.currentLot.none} />
         </div>
       )}
-      {/* 오른쪽에 PQC 가 떠 있으면 그 패널이 곧 안내다 — 닫아 둔 때만 다시 여는 길을 알린다(#107). */}
-      {(pendingPqc.data?.length ?? 0) > 0 && !isPqcSplit && (
-        <div className="banner-slot">
-          <AlertBanner variant="info" title={t.pqc.pendingTitle}>
-            {t.pqc.pendingBody}
-            <Button variant="outlined" onClick={() => setIsPqcOpen(true)}>
-              {t.pqc.openSplit}
-            </Button>
-          </AlertBanner>
-        </div>
-      )}
       {item.isError && (
         <div className="banner-slot">
           <AlertBanner variant="error" title={t.flow.tag.targetUnknown} />
@@ -1043,10 +1022,9 @@ export const ProductionFlowScreen = () => {
       )}
 
       <PqcSplit
-        inspectionRequestId={isPqcSplit ? pqcTargetId : null}
+        inspectionRequestId={pqcTargetId}
         workOrderId={entry.workOrderId}
         workerNo={entry.workerNo}
-        onClose={() => setIsPqcOpen(false)}
       >
         <div
           /*

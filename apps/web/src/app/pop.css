@@ -4196,6 +4196,138 @@
 }
 
 /*
+ * 분할 화면 UI/UX(omf-all-around#107 · 담당자 요청서) — 왼쪽은 카드가 «제 높이»로 서고 열 하나가 통째로 굴러간다.
+ *
+ * ⚠ 위 `.pop-ui > .pop-fixed.production-flow-grid` 의 줄 규칙은 격자가 `.pop-ui` 바로 아래일 때만 걸린다. 분할 틀 안에서는
+ *   줄이 높이를 나눠 가지며 카드가 눌려, 카드마다 스크롤이 생기고 키패드가 가려졌다(실측 1920 · 1280).
+ */
+.pop-ui > .production-flow-split > .production-flow-grid {
+  grid-auto-rows: max-content;
+  align-content: start;
+  padding: 0;
+}
+
+.pop-ui > .production-flow-split > .production-flow-grid > .pop-section {
+  overflow: visible;
+}
+
+/* 긴 LOT 번호는 줄을 넘기지 않고 칸 안에서 끝까지 보인다 — 끊으면 번호를 잘못 읽는다. */
+.pop-ui > .production-flow-split .production-flow-grid dd {
+  overflow-wrap: anywhere;
+}
+
+/*
+ * 오른쪽 PQC — 상자 안 상자를 걷는다. 패널 구획은 테두리 없이 간격·구분선으로만 나눈다.
+ * 저장·확정 줄은 열 아래에 붙어 굴려도 늘 보인다.
+ */
+.pop-ui > .production-flow-split > .production-flow-pqc {
+  gap: var(--space-2);
+  /* 내용만큼만 선다 — 내용이 짧을 때 빈 상자를 바닥까지 늘리지 않는다. 넘치면 이 안에서 굴린다. */
+  align-self: start;
+  max-block-size: 100%;
+}
+
+.pop-ui .pqc-panel > .pane {
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+
+.pop-ui .production-flow-pqc .pqc-panel > .pop-action-bar {
+  position: sticky;
+  inset-block-end: calc(-1 * var(--space-3));
+  margin: 0;
+  padding: var(--space-3) 0;
+  border: 0;
+  border-block-start: 1px solid var(--outline-variant);
+  border-radius: 0;
+  /* 굴러 올라오는 칸이 비쳐 보이지 않게 구획 바탕색을 칠한다(1024 실측 — 처분 안내와 겹쳤다). */
+  background: var(--surface-container-low);
+}
+
+.pop-ui .pqc-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.pop-ui .pqc-panel-noitems {
+  margin: 0;
+}
+
+/* 《결과 입력》 — 수량 넷(검사·합격·불합격·보류)은 늘 한 줄에 같은 폭·같은 단위로 선다(1024 단말의 반쪽에서도 들어간다 · 실측). */
+.pop-ui .pqc-panel-result {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.pop-ui .pqc-panel-qty {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--space-3);
+  align-items: end;
+}
+
+.pop-ui .pqc-panel-qty > * {
+  min-width: 0;
+}
+
+.pop-ui .pqc-panel-totals {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1) var(--space-3);
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-sm);
+  background: var(--surface-container-high);
+}
+
+.pop-ui .pqc-panel-totals__value {
+  font-size: var(--pop-value);
+  font-weight: 700;
+}
+
+.pop-ui .pqc-panel-totals__note {
+  margin-inline-start: auto;
+  font-size: var(--pop-label);
+}
+
+/*
+ * 종합 판정 → 불합격 처분을 한 묶음으로 나란히 둔다 — 처분은 판정(불합격 수량)에 딸린 선택이다. 판정 칸이
+ * 「종합 판정을 선택하세요」와 [선택]을 다 담을 폭이 안 되면 위아래로 쌓는다(1280 실측).
+ */
+.pop-ui .pqc-panel-verdict {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(20rem, 1fr));
+  gap: var(--space-3) var(--space-4);
+  align-items: start;
+}
+
+.pop-ui .pqc-panel-verdict .pop-select {
+  inline-size: 100%;
+}
+
+/* 패널 칸도 POP 터치 규격(칸 72 · [선택] 9rem)을 지킨다 — 단독 화면 P-02-13 과 같은 값이다. */
+.pop-ui .pqc-panel-qty [class*='inputWrap'] {
+  min-block-size: 72px;
+  padding-inline: var(--space-2);
+  gap: var(--space-1);
+}
+
+.pop-ui .pqc-panel-verdict .pop-select {
+  grid-template-columns: minmax(0, 1fr) 9rem;
+  column-gap: var(--space-3);
+}
+
+.pop-ui .pqc-panel-verdict .pop-select__value,
+.pop-ui .pqc-panel-verdict .pop-select [role='combobox'],
+.pop-ui .pqc-panel-verdict .pqc-disposition > * {
+  min-block-size: 72px;
+}
+
+/*
  * 창 안의 버튼은 **액션 줄의 규격을 물려받지 않는다.**
  *
  * ⚠ 선택 팝업은 부르는 칸 «옆»에 그대로 그려져, 그 칸이 액션 줄 안에 있으면 창 안의 버튼까지

@@ -1,3 +1,4 @@
+import { AlertBanner } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
@@ -45,8 +46,9 @@ import {
 } from '../pqc-inspection/quantity-draft';
 import { useWorkOrder } from '../production-result/queries';
 import { PanelActions } from './panel-actions';
-import { pqcPanelKeys, useDraftRound, useRoundMeasurements } from './queries';
+import { pqcPanelKeys, useLatestRound, useRoundMeasurements } from './queries';
 import { ResultForm } from './result-form';
+import { SplitResultForm } from './split-result-form';
 import { PanelTargetHeader } from './target-header';
 
 const t = messages.pqcInspection;
@@ -83,6 +85,11 @@ export interface PqcPanelProps {
   requiresWorker: boolean;
   /** 화면 키패드를 둘 것인가. POP 키오스크는 운영체제 키보드가 없어 필수다. */
   withKeypad: boolean;
+  /**
+   * 배치. `split` 은 POP 생산 실적 분할 화면(#107 UI/UX — 수량 넷 한 줄 · 잠긴 이유를 맨 위에), `web` 은 관리웹
+   * W-03-11 이다(웹 UI/UX 는 하지 않기로 했다 · 사용자 결정 2026-10-19). 판정·저장 규칙은 같다.
+   */
+  variant: 'split' | 'web';
 }
 
 /**
@@ -100,12 +107,21 @@ export const PqcPanel = ({
   workerNo,
   requiresWorker,
   withKeypad,
+  variant,
 }: PqcPanelProps) => {
   const detail = useInspectionRequestDetail(inspectionRequestId);
   const itemSpecs = useInspectionItemSpecs(detail.data?.inspectionPlanVersionId ?? null);
-  /* 작성중 회차가 있으면 칸을 되살린다 — 다음 저장도 `POST` 이고 서버가 그 회차를 덮는다(장부 P-49). */
-  const draftRound = useDraftRound(inspectionRequestId);
-  const savedRound = draftRound.data ?? null;
+  /*
+   * 마지막 회차를 칸에 되살린다 — 작성중이면 이어 쓰고(다음 저장도 `POST` 이고 서버가 그 회차를 덮는다 · 장부 P-49),
+   * 의뢰가 끝났으면 확정 결과를 읽기 전용으로 보인다. 의뢰가 열려 있는데 마지막 회차가 확정이면(재검사 대기) 되살리지 않는다.
+   */
+  const latestRound = useLatestRound(inspectionRequestId).data ?? null;
+  const savedRound =
+    latestRound !== null &&
+    (latestRound.statusCode === RESULT_STATUS.draft ||
+      detail.data?.statusCode === REQUEST_COMPLETED)
+      ? latestRound
+      : null;
   const savedMeasurements = useRoundMeasurements(savedRound?.inspectionResultId ?? null);
   const rows = toMeasurementRows(itemSpecs.data ?? [], savedMeasurements.data ?? []);
   /* 업무 순서는 «실적 입력 → PQC» 다(사용자 결정 2026-10-19). 실적 수는 W/O 진척(양품·불량·보류·폐기·재작업 합)으로 본다. */
@@ -148,6 +164,7 @@ export const PqcPanel = ({
   }, [rejection, rejectedStatusCode]);
 
   const storedInspectedQty = detail.data?.targetQty ?? 0;
+  const restoredKey = useRef<string | null>(null);
 
   /* 대상이 바뀌면 초안을 비운다 — 앞 의뢰의 값이 다음 의뢰로 넘어가면 되돌릴 수 없는 판정이 나간다. */
   useEffect(() => {
@@ -163,13 +180,14 @@ export const PqcPanel = ({
     lastTargetId.current = inspectionRequestId;
     setRemarks('');
     setInspectedDraft(String(storedInspectedQty));
+    /* 초기화가 다시 돌면(재마운트 · StrictMode 재실행) 작성중 회차도 다시 되살린다 — 아래 복원이 이 표시를 본다. */
+    restoredKey.current = null;
   }, [inspectionRequestId, storedInspectedQty, clearRejection]);
 
   /*
    * 작성중 회차를 칸에 되살린다. ⭐ 위 초기화 «뒤»에 선다 — 의뢰 상세가 늦게 와 초기화가 다시 돌아도 저장된 값이
    * 이긴다. 같은 회차·같은 판이면 한 번만 — 그 사이 사람이 고친 값을 재조회가 덮지 않는다.
    */
-  const restoredKey = useRef<string | null>(null);
   const savedKey =
     savedRound === null
       ? null
@@ -179,7 +197,11 @@ export const PqcPanel = ({
     restoredKey.current = savedKey;
     const rejected = String(savedRound.rejectedQty);
     setInspectedDraft(String(savedRound.inspectedQty));
-    setDraft({ accepted: String(savedRound.acceptedQty), rejected, held: String(savedRound.heldQty) });
+    setDraft({
+      accepted: String(savedRound.acceptedQty),
+      rejected,
+      held: String(savedRound.heldQty),
+    });
     setDisposition((current) => settleDisposition(current, toMicro(rejected)));
     setJudgment(savedRound.overallJudgmentCode ?? '');
     setRemarks(savedRound.remarks ?? '');
@@ -304,13 +326,26 @@ export const PqcPanel = ({
   const uomCodeOf = (uomId: number | null): string | null =>
     uomId === null ? null : (uoms.data?.find((uom) => uom.uomId === uomId)?.uomCode ?? null);
   const pickPad = withKeypad ? setPadField : () => undefined;
+  const FormOf = variant === 'split' ? SplitResultForm : ResultForm;
 
   return (
     <div className="pqc-panel">
       <PanelTargetHeader detail={target} />
 
+      {variant === 'split' && lockedReason !== null && (
+        /* 잠긴 이유가 먼저 눈에 들어오게 PQC 맨 위에 둔다(사용자 지시 2026-10-19). */
+        <AlertBanner variant="warning" title={lockedReason} />
+      )}
+
       {planVersionId === null ? (
         <FreeInputPanel remarks={remarks} onRemarksChange={setRemarks} isLocked={isConfirmed} />
+      ) : variant === 'split' && itemSpecs.isSuccess && rows.length === 0 ? (
+        /* 항목이 없는 기준은 빈 카드 대신 한 줄로 말한다(#107 UI/UX). */
+        <p className="field-note pqc-panel-noitems">
+          {planVersion.data == null
+            ? t.panel.noItems
+            : `${t.detail.planLabel(planVersion.data.planCode, planVersion.data.planVersion)} · ${t.panel.noItems}`}
+        </p>
       ) : (
         <ItemPanel
           uomCodeOf={uomCodeOf}
@@ -327,7 +362,7 @@ export const PqcPanel = ({
         />
       )}
 
-      <ResultForm
+      <FormOf
         inspectedDraft={inspectedDraft}
         onInspectedChange={changeInspected}
         inspectedQty={inspectedQty}
@@ -369,6 +404,7 @@ export const PqcPanel = ({
       <PanelActions
         isConfirmed={isConfirmed}
         lockedReason={lockedReason}
+        showLockedNote={variant === 'web'}
         confirmBlockedReason={confirmBlockedReason}
         workerMissing={workerMissing}
         saveBlockedReason={saveBlockedReason}

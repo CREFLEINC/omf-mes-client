@@ -77,6 +77,14 @@ export const pqcInspection: Translated<typeof ko.pqcInspection> = {
     confirmSucceeded: 'Đã xác nhận kiểm tra.',
     noProductionResult: 'Lệnh sản xuất này chưa có kết quả sản xuất. Hãy đăng ký kết quả trước.',
   },
+  panel: {
+    noItems: 'Chưa có hạng mục kiểm tra. Hãy hỏi quản lý.',
+    short: (remaining: string): string => `Chưa nhập ${remaining}`,
+    over: (over: string): string => `Vượt ${over}`,
+    judgmentPlaceholder: 'Hãy chọn đánh giá tổng hợp',
+    dispositionNote: 'Chọn khi có số lượng không đạt. Xác nhận sau khi nhập kho hàng lỗi.',
+  },
+
   disposition: {
     heading: 'Quyết định xử lý hàng không đạt',
     rework: 'Có thể làm lại',
