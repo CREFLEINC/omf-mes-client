@@ -10,6 +10,11 @@ export const inspectionDocuments = {
   loadFailed: 'Không tải được tài liệu đính kèm.',
   tooLarge: 'Không thể tải file lớn hơn 10MB. Hãy giảm độ phân giải của PDF scan.',
   uploaded: 'Đã tải tài liệu lên.',
+  submit: 'Tải lên',
+  remove: 'Bỏ',
+  selected: 'File đã chọn',
+  unsupported:
+    'Định dạng không được hỗ trợ. Chỉ tải được PDF · hình ảnh · Excel/Word/PowerPoint · CSV · TXT.',
   caption: 'Danh sách tài liệu đính kèm',
   columns: { fileName: 'File', uploadedAt: 'Thời điểm tải lên', size: 'Dung lượng' },
   scan: {

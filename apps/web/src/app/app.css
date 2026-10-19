@@ -10612,6 +10612,28 @@ button.app-button-neutral {
   padding-bottom: 0;
 }
 
+/* 검사 문서 첨부(omf-all-around#58) — 고른 파일 한 줄: 이름 · 크기 · [제거], 사전 검사 오류는 그 아래. */
+.inspection-documents-selected {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1) var(--space-3);
+  min-width: 0;
+}
+
+.inspection-documents-selected > .field-note {
+  margin: 0;
+}
+
+.inspection-documents-selected-name {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.inspection-documents-selected > .field-error {
+  flex-basis: 100%;
+  margin: 0;
+}
 .iqc-inspection-panes .iqc-inspection-section h3 {
   margin: 0;
   color: var(--on-surface);

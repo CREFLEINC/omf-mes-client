@@ -18,6 +18,16 @@ const t = messages.inspectionDocuments;
 const MAX_BYTES = 10 * 1024 * 1024;
 /** 고르는 창의 거름 — 정본 판정은 서버(파일 머리 바이트)다. */
 const ACCEPT = '.pdf,.png,.jpg,.jpeg,.webp,.xlsx,.xls,.docx,.doc,.pptx,.ppt,.csv,.txt';
+const ACCEPTED_EXTENSIONS = ACCEPT.split(',');
+
+/** 고르는 시점의 사전 검사 — 통과하면 `null`. 서버가 머리 바이트로 다시 판정한다. */
+const precheck = (file: File): string | null => {
+  const dot = file.name.lastIndexOf('.');
+  const extension = dot < 0 ? '' : file.name.slice(dot).toLowerCase();
+  if (!ACCEPTED_EXTENSIONS.includes(extension)) return t.unsupported;
+  if (file.size > MAX_BYTES) return t.tooLarge;
+  return null;
+};
 
 const sizeText = (bytes: number): string =>
   bytes >= 1024 * 1024 ? `${(bytes / 1024 / 1024).toFixed(1)} MB` : `${Math.ceil(bytes / 1024)} KB`;
@@ -45,11 +55,16 @@ export interface AttachmentPanelProps {
  * ⭐ 볼 수 있는 문서만 받는다 — 서버가 파일 머리 바이트로 판정하고 실행 파일은 거절한다. 화면의 고르는 창은
  *    편의일 뿐이다. 10MB 를 넘으면 보내기 전에 막는다.
  * ⛔ 지우기·이름 바꾸기는 없다 — 첨부는 기록이고 계약에 그 경로가 없다.
+ *
+ * 고르기와 올리기를 나눈다(3단계 검증 · 담당자 지시): [문서 올리기]로 고르면 이름·크기를 보이고(제거 가능),
+ * [업로드]를 눌러야 보낸다. 사전 검사에 걸리면 [업로드]가 막힌다. 한 번에 한 파일이다.
  */
 export const AttachmentPanel = ({ targetTypeCode, targetId }: AttachmentPanelProps) => {
   const { client } = useApiClient();
   const inputRef = useRef<HTMLInputElement>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [selected, setSelected] = useState<File | null>(null);
+  const [selectError, setSelectError] = useState<string | null>(null);
 
   const list = useQuery({
     queryKey: attachmentKeys.list(targetTypeCode, targetId),
@@ -73,19 +88,26 @@ export const AttachmentPanel = ({ targetTypeCode, targetId }: AttachmentPanelPro
     etagPath: null,
     invalidateKeys: [attachmentKeys.list(targetTypeCode, targetId)],
     knownFields: ['file'],
-    onSuccess: () => setNotice(t.uploaded),
+    onSuccess: () => {
+      setSelected(null);
+      setNotice(t.uploaded);
+    },
   });
 
   const pick = (event: ChangeEvent<HTMLInputElement>): void => {
     const file = event.target.files?.[0];
     event.target.value = '';
     if (file === undefined) return;
-    if (file.size > MAX_BYTES) {
-      setNotice(t.tooLarge);
-      return;
-    }
+    upload.reset();
     setNotice(null);
-    upload.write({ file });
+    setSelected(file);
+    setSelectError(precheck(file));
+  };
+
+  const clearSelection = (): void => {
+    upload.reset();
+    setSelected(null);
+    setSelectError(null);
   };
 
   const open = async (row: Attachment): Promise<void> => {
@@ -138,6 +160,22 @@ export const AttachmentPanel = ({ targetTypeCode, targetId }: AttachmentPanelPro
         <p className="field-note">{upload.fieldErrors.file}</p>
       )}
       {notice !== null && <p className="field-note">{notice}</p>}
+      {selected !== null && (
+        <div className="inspection-documents-selected" aria-label={t.selected} role="group">
+          <span className="inspection-documents-selected-name">{selected.name}</span>
+          <span className="field-note">{sizeText(selected.size)}</span>
+          <Button
+            variant="text"
+            size="sm"
+            className="app-button-neutral"
+            disabled={upload.isSaving}
+            onClick={clearSelection}
+          >
+            {t.remove}
+          </Button>
+          {selectError !== null && <span className="field-error">{selectError}</span>}
+        </div>
+      )}
       <input
         ref={inputRef}
         type="file"
@@ -153,7 +191,17 @@ export const AttachmentPanel = ({ targetTypeCode, targetId }: AttachmentPanelPro
           disabled={upload.isSaving}
           onClick={() => inputRef.current?.click()}
         >
-          {upload.isSaving ? t.uploading : t.upload}
+          {t.upload}
+        </Button>
+        <Button
+          size="sm"
+          loading={upload.isSaving}
+          disabled={selected === null || selectError !== null || upload.isSaving}
+          onClick={() => {
+            if (selected !== null) upload.write({ file: selected });
+          }}
+        >
+          {upload.isSaving ? t.uploading : t.submit}
         </Button>
       </div>
     </section>

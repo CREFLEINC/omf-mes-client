@@ -10,6 +10,12 @@ export const inspectionDocuments = {
   loadFailed: '첨부 문서를 불러오지 못했습니다.',
   tooLarge: '10MB 를 넘는 파일은 올릴 수 없습니다. 스캔 PDF 는 해상도를 낮춰 주세요.',
   uploaded: '문서를 올렸습니다.',
+  /** 고른 파일은 [업로드]를 눌러야 올라간다(3단계 검증 · 담당자 지시). */
+  submit: '업로드',
+  remove: '제거',
+  selected: '고른 파일',
+  unsupported:
+    '올릴 수 없는 형식입니다. PDF·이미지·엑셀/워드/파워포인트·CSV·TXT 만 올릴 수 있습니다.',
   caption: '첨부 문서 목록',
   columns: { fileName: '파일', uploadedAt: '올린 시각', size: '크기' },
   scan: {

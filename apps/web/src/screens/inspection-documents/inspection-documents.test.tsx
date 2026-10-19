@@ -1,5 +1,5 @@
 import { messages } from '@omf-mes/i18n';
-import { screen, waitFor } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -94,6 +94,12 @@ describe('AttachmentPanel', () => {
     const file = new File(['%PDF-1.7'], '측정.pdf', { type: 'application/pdf' });
     await userEvent.upload(screen.getByLabelText(t.upload), file);
 
+    /* 고르기만 해서는 보내지 않는다 — 이름·크기를 보이고 [업로드]를 눌러야 한다(3단계 검증). */
+    const selected = screen.getByRole('group', { name: t.selected });
+    expect(within(selected).getByText('측정.pdf')).toBeInTheDocument();
+    expect(posts).toHaveLength(0);
+    await userEvent.click(screen.getByRole('button', { name: t.submit }));
+
     await waitFor(() => expect(posts).toHaveLength(1));
     /* ⚠ 시험 환경(jsdom File ↔ undici)은 multipart 를 다시 읽지 못한다 — 본문 글자로 대상을 본다. */
     const body = (await posts[0]?.text()) ?? '';
@@ -101,6 +107,40 @@ describe('AttachmentPanel', () => {
     expect(body).toContain('LOT');
     expect(body).toContain('8801');
     expect(await screen.findByText(t.uploaded)).toBeInTheDocument();
+    /* 성공하면 고른 상태를 비운다. */
+    expect(screen.queryByRole('group', { name: t.selected })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: t.submit })).toBeDisabled();
+  });
+
+  it('고른 파일은 [제거]로 비울 수 있고, 고르기 전에는 [업로드]가 막혀 있다', async () => {
+    const { posts } = renderPanel();
+    await screen.findByText('시험성적서.pdf');
+    expect(screen.getByRole('button', { name: t.submit })).toBeDisabled();
+
+    await userEvent.upload(
+      screen.getByLabelText(t.upload),
+      new File(['%PDF-1.7'], '측정.pdf', { type: 'application/pdf' }),
+    );
+    expect(screen.getByRole('button', { name: t.submit })).toBeEnabled();
+    await userEvent.click(screen.getByRole('button', { name: t.remove }));
+
+    expect(screen.queryByText('측정.pdf')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: t.submit })).toBeDisabled();
+    expect(posts).toHaveLength(0);
+  });
+
+  it('허용하지 않는 형식은 고르는 시점에 막는다', async () => {
+    const { posts } = renderPanel();
+    await screen.findByText('시험성적서.pdf');
+    await userEvent.upload(
+      screen.getByLabelText(t.upload),
+      new File(['MZ'], 'setup.exe', { type: 'application/octet-stream' }),
+      { applyAccept: false },
+    );
+
+    expect(await screen.findByText(t.unsupported)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: t.submit })).toBeDisabled();
+    expect(posts).toHaveLength(0);
   });
 
   it('10MB 를 넘는 파일은 보내지 않고 안내한다', async () => {
@@ -112,6 +152,7 @@ describe('AttachmentPanel', () => {
     await userEvent.upload(screen.getByLabelText(t.upload), big);
 
     expect(await screen.findByText(t.tooLarge)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: t.submit })).toBeDisabled();
     expect(posts).toHaveLength(0);
   });
 });
