@@ -49,6 +49,12 @@ const renderScreen = () => {
       return jsonResponse({ items: [REQUEST], page: { page: 1, size: 50, total: 1 } });
     }
     if (path === '/quality/inspection-requests/7101') return jsonResponse(REQUEST);
+    if (path === '/production/work-orders/701') {
+      return jsonResponse({ workOrderId: 701, workOrderNo: 'WO-20261016-0701', itemId: 101 });
+    }
+    if (path === '/mdm/items/101') {
+      return jsonResponse({ item: { itemId: 101, itemCode: 'F534F50200', itemName: '합성 품목' } });
+    }
     if (path === '/mdm/code-values') {
       return jsonResponse({ items: JUDGMENTS, page: { page: 1, size: 200, total: 2 } });
     }
@@ -78,6 +84,24 @@ describe('PqcInspectionRegisterScreen (W-03-11)', () => {
     expect(await screen.findByText(REQUEST.inspectionRequestNo)).toBeInTheDocument();
     expect(queueQueries[0]?.get('inspectionTypeCode')).toBe('PQC');
     expect(queueQueries[0]?.get('pendingOnly')).toBe('true');
+  });
+
+  it('패널 머리줄은 내부 id 가 아니라 W/O 번호·품목 코드를 보인다 — LOT 이 없으면 「—」', async () => {
+    const user = userEvent.setup();
+    renderScreen();
+
+    await user.click(
+      await screen.findByRole('button', {
+        name: messages.oqcInspection.queue.openRow(REQUEST.inspectionRequestNo),
+      }),
+    );
+
+    const header = await screen.findByLabelText(pqc.detail.heading);
+    await waitFor(() =>
+      expect(header).toHaveTextContent(
+        `${pqc.detail.fields.workOrderId} WO-20261016-0701 · ${pqc.detail.fields.itemId} F534F50200 · ${pqc.detail.fields.lotId} ${pqc.emptyValue}`,
+      ),
+    );
   });
 
   it('고른 의뢰를 판정해 바로 저장한다 — 사번 헤더를 싣지 않는다', async () => {
