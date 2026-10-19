@@ -146,7 +146,8 @@ export const buildBalanceColumns = ({
     key: 'itemCode',
     header: t.table.item,
     width: WIDTH.axis,
-    render: (row) => describeReference(toReference(itemNames.get(row.itemId) ?? itemLookup, row.itemId)),
+    render: (row) =>
+      describeReference(toReference(itemNames.get(row.itemId) ?? itemLookup, row.itemId)),
   };
 
   const lotColumn: Column<BalanceView> = {
