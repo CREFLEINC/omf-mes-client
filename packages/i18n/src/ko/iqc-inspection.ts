@@ -147,6 +147,14 @@ export const iqcInspection = {
      * 정정하지 않고 재검사로 새 회차를 쌓는다.
      */
     confirmed: '이 회차는 확정되어 고칠 수 없습니다. 다시 검사하려면 재검사 회차를 추가합니다.',
+    /** 끝난 의뢰(COMPLETED · 최신 회차 확정)의 읽기 전용 요약 — 입력 칸을 두지 않는다(3단계 검증). */
+    closed: {
+      title: '검사 완료',
+      note: '이 의뢰의 검사는 끝났습니다. 최신 회차의 확정 결과입니다.',
+      finalJudgment: '최종 판정',
+      round: '회차',
+      confirmedAt: '확정 시각',
+    },
     fields: {
       inspectedQty: '검사수량',
       accepted: '합격수량',
@@ -207,6 +215,28 @@ export const iqcInspection = {
     confirmBlockedByTotals: '입력 합계가 검사수량과 같아야 확정할 수 있습니다.',
     workerNotLinked:
       '이 계정에 연결된 작업자가 없어 판정을 저장할 수 없습니다. 사용자 관리에서 작업자를 연결해 주세요.',
+    followUp: {
+      title: '불량 LOT 입니다 — 재검사 대신 처분하세요',
+      body: '불합격으로 확정된 LOT 은 재검사 회차를 확정할 수 없습니다. 처분 판정에서 재작업(재검)·폐기·정상을 고르거나, 공급사로 반품하세요.',
+      toDisposition: '처분 판정으로 이동',
+      toSupplierReturn: '공급사 반품으로 이동',
+      noNonconformance:
+        '처분을 기다리는 부적합을 찾지 못했습니다. 처분 판정 목록에서 이 LOT 을 찾아 주세요.',
+    },
+    rejection: {
+      heading: '불합격 사유',
+      major: '불량 대분류',
+      minor: '불량 상세',
+      description: '사유',
+      required: '불합격이면 불량 코드를 골라야 확정할 수 있습니다.',
+      minorRequired: '이 대분류에는 상세 코드가 있습니다. 상세 코드를 고르세요.',
+      noCodes: '등록된 불량 코드가 없습니다. 기준정보 > 불량·원인 코드에서 먼저 등록하세요.',
+      selectPlaceholder: '선택하세요',
+      descriptionPlaceholder: '사유를 입력해 주세요.',
+      /** 칸 아래 필수 누락 표시 — 확정이 막힌 이유(required·minorRequired)는 확정 단추 곁에 그대로 둔다. */
+      majorMissing: '불량 대분류를 선택하세요.',
+      minorMissing: '불량 상세를 선택하세요.',
+    },
     confirmBlockedByJudgment: '종합 판정을 선택해야 확정할 수 있습니다.',
     confirmBlockedByConfirmed: '이미 확정된 회차입니다.',
     /*

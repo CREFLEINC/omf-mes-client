@@ -18,6 +18,7 @@ export type {
   AttachmentTargetType,
   InspectionHistory,
   InspectionHistoryEvent,
+  DefectRecordCreate,
   SessionWorker,
   TerminalRegistrationConfirmation,
   TerminalRegistrationStatusCode,

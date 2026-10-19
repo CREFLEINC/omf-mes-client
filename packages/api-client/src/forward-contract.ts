@@ -79,6 +79,26 @@ interface AppUserWorkerPath {
   trace?: never;
 }
 
+/** 서버 선행 P-42(omf-all-around#106·#108) — 불량 기록 등록 본문. 공정 2칸은 `sourceCode=IQC` 이면 생략. */
+export interface DefectRecordCreate {
+  sourceCode: string;
+  defectCodeId: number;
+  defectQty: number;
+  uomId: number;
+  detectedAt: string;
+  occurrenceProcessId?: number | null;
+  detectionProcessId?: number | null;
+  inspectionResultId?: number | null;
+  productionResultId?: number | null;
+  workOrderId?: number | null;
+  lotId?: number | null;
+  suspectedCauseCodeId?: number | null;
+  defectDescription?: string | null;
+  equipmentId?: number | null;
+  moldId?: number | null;
+  occurredAt?: string | null;
+}
+
 /** 서버 선행 P-57(omf-all-around#58) — 첨부 대상에 검사 문서(LOT·검사 결과)를 더한다. */
 export type AttachmentTargetType =
   'WAREHOUSE' | 'NOTICE' | 'BREAKDOWN' | 'LOT' | 'INSPECTION_RESULT';
@@ -112,6 +132,24 @@ export interface InspectionHistory {
 }
 
 export interface ForwardPaths {
+  /** 기존 조회(GET)에 등록(POST)을 더한다 — 서버 선행 P-42. */
+  '/quality/defect-records': Omit<paths['/quality/defect-records'], 'post'> & {
+    post: {
+      parameters: {
+        query?: never;
+        header: { 'Idempotency-Key': string };
+        path?: never;
+        cookie?: never;
+      };
+      requestBody: { content: { 'application/json': DefectRecordCreate } };
+      responses: {
+        201: {
+          headers: { [name: string]: unknown };
+          content: { 'application/json': components['schemas']['DefectRecord'] };
+        };
+      };
+    };
+  };
   '/quality/inspection-requests/{inspectionRequestId}/history': {
     parameters: {
       query?: never;

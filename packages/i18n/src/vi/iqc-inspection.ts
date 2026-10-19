@@ -70,6 +70,13 @@ export const iqcInspection: Translated<typeof ko.iqcInspection> = {
     loading: 'Đang tải kết quả kiểm tra.',
     confirmed:
       'Lượt này đã xác nhận nên không sửa được. Muốn kiểm tra lại thì thêm một lượt kiểm tra lại.',
+    closed: {
+      title: 'Đã kiểm tra xong',
+      note: 'Yêu cầu này đã kiểm tra xong. Đây là kết quả xác nhận của lượt mới nhất.',
+      finalJudgment: 'Đánh giá cuối cùng',
+      round: 'Lượt',
+      confirmedAt: 'Thời điểm xác nhận',
+    },
     fields: {
       inspectedQty: 'Số lượng kiểm tra',
       accepted: 'Số lượng đạt',
@@ -101,6 +108,27 @@ export const iqcInspection: Translated<typeof ko.iqcInspection> = {
     confirmBlockedByTotals: 'Tổng đã nhập phải bằng số lượng kiểm tra mới xác nhận được.',
     workerNotLinked:
       'Tài khoản này chưa liên kết người lao động nên không lưu được phán định. Hãy liên kết người lao động trong Quản lý người dùng.',
+    followUp: {
+      title: 'LOT bị lỗi — hãy xử lý thay vì kiểm tra lại',
+      body: 'LOT đã xác nhận không đạt thì không thể xác nhận lượt kiểm tra lại. Hãy chọn làm lại (kiểm tra lại)·hủy·bình thường ở màn hình phán định xử lý, hoặc trả lại nhà cung cấp.',
+      toDisposition: 'Đến phán định xử lý',
+      toSupplierReturn: 'Đến trả hàng nhà cung cấp',
+      noNonconformance:
+        'Không tìm thấy sự không phù hợp đang chờ xử lý. Hãy tìm LOT này trong danh sách phán định xử lý.',
+    },
+    rejection: {
+      heading: 'Lý do không đạt',
+      major: 'Nhóm lỗi',
+      minor: 'Mã lỗi chi tiết',
+      description: 'Lý do',
+      required: 'Nếu không đạt, phải chọn mã lỗi mới xác nhận được.',
+      minorRequired: 'Nhóm lỗi này có mã chi tiết. Hãy chọn mã chi tiết.',
+      noCodes: 'Chưa có mã lỗi nào. Hãy đăng ký trước tại Thông tin cơ sở > Mã lỗi·nguyên nhân.',
+      selectPlaceholder: 'Hãy chọn',
+      descriptionPlaceholder: 'Hãy nhập lý do.',
+      majorMissing: 'Hãy chọn nhóm lỗi.',
+      minorMissing: 'Hãy chọn mã lỗi chi tiết.',
+    },
     confirmBlockedByJudgment: 'Phải chọn đánh giá tổng hợp mới xác nhận được.',
     confirmBlockedByConfirmed: 'Lượt này đã được xác nhận.',
     confirmBlockedByUnsaved: 'Sau khi lưu tạm mới có thể xác nhận đánh giá.',

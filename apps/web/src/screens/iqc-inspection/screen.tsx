@@ -21,6 +21,7 @@ import { QueueLoadErrorBanner } from './load-error-banner';
 import { EMPTY_QUANTITY_DRAFT, toSendableNumber, type QuantityDraft } from './quantity-draft';
 import { PageNav } from './page-nav';
 import { toPageView } from './pagination';
+import { ClosedSummary } from './closed-summary';
 import { CODE_GROUPS, toCodeOptions } from './code-options';
 import { MeasurementGrid } from './measurement-grid';
 import { toMeasurementRows } from './measurement-rows';
@@ -33,9 +34,19 @@ import {
   useInspectionRounds,
   useCodeValues,
   useConfirmResult,
+  useDefectCodes,
+  useRecordRejection,
+  useRejectedLotFollowUp,
   useMeasurements,
   useSaveDraft,
 } from './queries';
+import { RejectedLotGuide } from './rejected-lot-guide';
+import {
+  EMPTY_REJECTION,
+  RejectionReason,
+  resolveDefectCode,
+  type RejectionDraft,
+} from './rejection-reason';
 import { sampleQtyOf } from './sample-qty';
 import { QueueFilterBar } from './queue-filter-bar';
 import { QueueTable } from './queue-table';
@@ -48,6 +59,9 @@ import { InspectionHistoryPanel } from '../inspection-history/panel';
 import { latestRound, previousRounds } from './types';
 import { useItemNames, useLotNumbers } from './reference-lookup';
 import { useUomLookup } from './uom-lookup';
+
+/** 끝난 검사 의뢰 — 입력 화면 대신 요약을 보인다(3단계 검증). */
+const REQUEST_COMPLETED = 'COMPLETED';
 
 /**
  * W-01-01 IQC 수입검사·판정 — **이 회차는 좌측 검사 대기 큐 하나다.**
@@ -67,6 +81,10 @@ import { useUomLookup } from './uom-lookup';
  */
 
 const t = messages.iqcInspection;
+/** 종합 판정 불합격(시드 `INSPECTION_RESULT_OVERALL_JUDGMENT`) — 이 값일 때만 불합격 사유를 받는다. */
+const REJECTED_JUDGMENT = 'REJECTED';
+/** 불량 기록 원천 — 수입검사(서버 선행 P-42). 발생·검출 공정은 서버가 수입검사 공정으로 채운다. */
+const IQC_DEFECT_SOURCE = 'IQC';
 
 export const IqcInspectionScreen = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -124,6 +142,18 @@ export const IqcInspectionScreen = () => {
     round !== null && round.statusCode !== 'CONFIRMED' ? round.inspectionResultId : null;
 
   /*
+   * 끝난 의뢰인가(3단계 검증) — 의뢰 COMPLETED · 최신 회차 확정이면 입력 화면 대신 읽기 전용 요약을 보인다.
+   * 재작업 처분이 의뢰를 IN_PROGRESS 로 다시 열면(서버 P-43) 입력 화면과 [재검사]가 돌아온다.
+   * 작성 중 회차가 있으면(확정 전) 지금처럼 그 회차를 편집한다.
+   * 보류(HELD) 확정은 LOT 이 검사 대기에 남아 그대로 재검사한다 — 의뢰가 COMPLETED 여도 닫지 않는다.
+   */
+  const isClosed =
+    !isReinspectingNow &&
+    round?.statusCode === 'CONFIRMED' &&
+    round.overallJudgmentCode !== 'HELD' &&
+    detail.data?.statusCode === REQUEST_COMPLETED;
+
+  /*
    * ⭐ 잠금 토큰을 얻으려고 회차 한 건을 따로 부른다 — 목록 200 에는 `ETag` 가 없고, 토큰
    * 보관소가 응답이 온 URL 경로를 열쇠로 쓴다. 고칠 회차가 있을 때만 부른다.
    */
@@ -151,6 +181,26 @@ export const IqcInspectionScreen = () => {
   const confirm = useConfirmResult(selectedId, editingResultId, () => {
     setIsSaved(false);
     setIsJustConfirmed(true);
+  });
+
+  /*
+   * 불합격 사유(omf-all-around#106) — 불합격이면 불량 코드·사유를 받아 확정 «직전»에 불량 기록으로 남긴다.
+   * 서버가 IQC 불합격 확정에 불량 기록을 요구한다(P-42). 확정이 실패해 다시 누르면 같은 회차의 사유를
+   * 두 번 남기지 않는다(`recordedResultId`).
+   */
+  const [rejection, setRejection] = useState<RejectionDraft>(EMPTY_REJECTION);
+  const [recordedResultId, setRecordedResultId] = useState<number | null>(null);
+  const isRejected = judgment === REJECTED_JUDGMENT;
+  const defectCodes = useDefectCodes(isRejected);
+  const resolvedDefect = resolveDefectCode(defectCodes.data ?? [], rejection);
+  /* 확정된 불합격 회차면 LOT 이 불량인지 보고 처분·반품으로 잇는다(omf-all-around#106 후속 (나)). */
+  const followUp = useRejectedLotFollowUp(
+    detail.data?.lotId ?? null,
+    round?.statusCode === 'CONFIRMED' && round.overallJudgmentCode === REJECTED_JUDGMENT,
+  );
+  const recordRejection = useRecordRejection(() => {
+    setRecordedResultId(editingResultId);
+    confirm.write({ overallJudgmentCode: judgment });
   });
 
   /**
@@ -223,6 +273,15 @@ export const IqcInspectionScreen = () => {
     setJudgment(storedJudgment);
     setDraft(draftOf(roundId === null ? null : { acceptedQty, rejectedQty, heldQty }));
   }, [selectedId, roundId, acceptedQty, rejectedQty, heldQty, storedJudgment]);
+
+  /*
+   * 불합격 사유는 «의뢰가 바뀔 때만» 비운다(3단계 검증 버그 · omf-all-around#106). 사유는 임시 저장 본문에 실리지
+   * 않고 확정 직전 불량 기록으로 남는데, 위 되돌림에 묶여 있으면 저장 응답이 회차·판정을 바꾸는 순간 사유가 사라져
+   * 확정이 다시 잠겼다. 재검사 회차를 열 때는 그 자리에서 따로 비운다.
+   */
+  useEffect(() => {
+    setRejection(EMPTY_REJECTION);
+  }, [selectedId]);
 
   /*
    * 마지막 저장 상태와 견줘 바뀐 것이 있는가 — 없으면 [임시 저장]을 끈다. 견주는 것은 세 수량 칸과
@@ -404,6 +463,17 @@ export const IqcInspectionScreen = () => {
         />
         {rounds.isPending ? (
           <p className="field-note">{t.result.loading}</p>
+        ) : isClosed && round !== null ? (
+          <ClosedSummary
+            round={round}
+            judgmentOptions={judgmentOptions}
+            uomCode={uomCode}
+            followUp={
+              followUp.data?.isDefective === true ? (
+                <RejectedLotGuide nonconformanceId={followUp.data.nonconformanceId} />
+              ) : null
+            }
+          />
         ) : (
           <ResultFormPane
             /*
@@ -429,10 +499,47 @@ export const IqcInspectionScreen = () => {
             judgment={judgment}
             onJudgmentChange={setJudgment}
             onConfirm={() => {
-              confirm.write({ overallJudgmentCode: judgment });
+              if (
+                !isRejected ||
+                recordedResultId === editingResultId ||
+                !('defectCodeId' in resolvedDefect)
+              ) {
+                confirm.write({ overallJudgmentCode: judgment });
+                return;
+              }
+              recordRejection.write({
+                sourceCode: IQC_DEFECT_SOURCE,
+                defectCodeId: resolvedDefect.defectCodeId,
+                /* 불합격 수량이 0 인 불합격(전량 판정)은 검사수량을 불량 수량으로 남긴다 — 0 은 서버가 받지 않는다. */
+                defectQty:
+                  round !== null && round.rejectedQty > 0 ? round.rejectedQty : inspectedQty,
+                uomId: detail.data.uomId,
+                detectedAt: new Date().toISOString(),
+                inspectionResultId: editingResultId,
+                defectDescription:
+                  rejection.description.trim() === '' ? null : rejection.description.trim(),
+              });
             }}
-            isConfirming={confirm.isSaving}
-            confirmError={confirm.error}
+            isConfirming={confirm.isSaving || recordRejection.isSaving}
+            confirmError={confirm.error ?? recordRejection.error}
+            judgmentDetail={
+              isRejected ? (
+                <RejectionReason
+                  codes={defectCodes.data ?? []}
+                  draft={rejection}
+                  onChange={setRejection}
+                  disabled={confirm.isSaving || recordRejection.isSaving}
+                />
+              ) : null
+            }
+            reinspectReplacement={
+              followUp.data?.isDefective === true ? (
+                <RejectedLotGuide nonconformanceId={followUp.data.nonconformanceId} />
+              ) : null
+            }
+            confirmOnlyBlockedReason={
+              isRejected && 'blocked' in resolvedDefect ? resolvedDefect.blocked : null
+            }
             isJustConfirmed={isJustConfirmed}
             isReinspecting={isReinspectingNow}
             onStartReinspection={() => {
@@ -440,6 +547,7 @@ export const IqcInspectionScreen = () => {
               setIsSaved(false);
               setDraft(EMPTY_QUANTITY_DRAFT);
               setJudgment('');
+              setRejection(EMPTY_REJECTION);
               setIsReinspecting(true);
             }}
             onCancelReinspection={() => {

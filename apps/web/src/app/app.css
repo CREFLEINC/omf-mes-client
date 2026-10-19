@@ -10652,6 +10652,66 @@ button.app-button-neutral {
   flex-basis: 100%;
   margin: 0;
 }
+
+/* 끝난 의뢰의 읽기 전용 요약(3단계 검증) — 라벨 위·값 아래 칸을 폭에 맞춰 늘어놓는다. */
+.iqc-inspection-closed > p {
+  margin: 0;
+}
+
+.iqc-inspection-closed-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(9rem, 100%), 1fr));
+  gap: var(--space-3) var(--space-4);
+  margin: 0;
+}
+
+.iqc-inspection-closed-grid dd {
+  margin: 0;
+}
+
+/*
+ * 종합 판정과 불합격 사유(omf-all-around#106 · 3단계 검증) — 선택칸이 내용 폭으로 쪼그라들지 않게 칸 폭을 채우고
+ * 판정은 읽기 좋은 폭에서 멈춘다. 사유 구역은 테두리 상자 대신 옅은 면 하나(상자를 겹치지 않는다).
+ */
+.iqc-inspection-judgment-field {
+  align-items: stretch;
+  width: 100%;
+  max-width: 20rem;
+}
+
+.iqc-inspection-rejection {
+  display: grid;
+  gap: var(--space-3);
+  min-width: 0;
+  padding: var(--space-4);
+  border-radius: var(--radius-md);
+  background: var(--surface-container);
+}
+
+.iqc-inspection-rejection-title {
+  margin: 0;
+  font: var(--type-label-lg);
+  letter-spacing: var(--type-label-lg-tracking);
+}
+
+.iqc-inspection-rejection > .field-note {
+  margin: 0;
+}
+
+/* 대분류·상세 같은 폭 2열 — 좁으면 1열. 긴 선택값은 DS Select 가 말줄임한다(칸 폭 안에서). */
+.form-grid.iqc-inspection-rejection-codes {
+  grid-template-columns: repeat(auto-fit, minmax(min(12rem, 100%), 1fr));
+  gap: var(--space-3);
+}
+
+.iqc-inspection-rejection-codes > .field-cell {
+  min-width: 0;
+}
+
+.iqc-inspection-rejection-description {
+  align-items: stretch;
+}
+
 .iqc-inspection-panes .iqc-inspection-section h3 {
   margin: 0;
   color: var(--on-surface);
