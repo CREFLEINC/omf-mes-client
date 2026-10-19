@@ -13726,10 +13726,10 @@ button.app-button-neutral {
   grid-column: span 2;
 }
 
-/* 입고 일시 — 날짜와 시각을 한 라벨 아래 나란히. 날짜가 조금 더 넓다. */
+/* 입고 일시 — 한 라벨 아래 날짜 · 시 · 분 선택칸을 나란히. 날짜가 시·분 두 칸만큼 넓다. */
 .goods-receipt-datetime-pair {
   display: grid;
-  grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1fr);
   gap: var(--space-2);
   align-items: start;
 }

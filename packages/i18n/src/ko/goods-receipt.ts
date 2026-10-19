@@ -38,7 +38,8 @@ export const goodsReceipt = {
     receiptDatetime: '입고 일시',
     /** 입고 일시를 날짜(달력)와 시각(24시간 HH:mm)으로 나눠 받는다 — 보내는 값은 합친 `입고 일시` 하나다. */
     receiptDate: '입고 일자',
-    receiptTime: '입고 시각',
+    receiptHour: '입고 시각(시)',
+    receiptMinute: '입고 시각(분)',
     remarks: '비고',
   },
   actions: {
@@ -259,8 +260,9 @@ export const goodsReceipt = {
     /** 입고 정보 코드 칸의 선택지 상태별 자리표시 — 값이 없을 때(`filters.codePending`)와 가른다. */
     codeLoadingPlaceholder: '불러오는 중…',
     codeFailedPlaceholder: '불러오지 못함',
-    /** 입고 시각 칸 — 24시간 `HH:mm`. 숫자 네 자리를 치면 `:` 가 저절로 들어간다. */
-    receiptTimePlaceholder: 'HH:mm',
+    /** 입고 시각의 시(00~23)·분(00~59) 선택칸 자리표시. */
+    receiptHourPlaceholder: '시',
+    receiptMinutePlaceholder: '분',
   },
   notes: {
     /** 불량 LOT(IQC 불합격 · 선별 불량분) — 불량창고만 고를 수 있다(omf-all-around#84). */
@@ -305,8 +307,6 @@ export const goodsReceipt = {
      * 공장은 입하 전표의 공장, 영업일은 입고 일시의 날짜다.
      */
     autoApplied: '공장·영업일은 자동 적용됩니다.',
-    /** 입고 시각이 형식에 맞지 않을 때의 안내. */
-    receiptTimeInvalid: '시각은 00:00~23:59로 입력해 주세요.',
     qtyFromInboundLine:
       '선택한 라인의 품목·수량·단위·자재 LOT이 그대로 입고되며, 수량을 나누어 입고할 수 없습니다.',
     /** 고른 창고의 공장을 함께 보인다 — 전표의 공장과 다르면 눈으로 보인다. 막지는 않는다. */

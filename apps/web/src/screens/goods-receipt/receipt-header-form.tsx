@@ -1,4 +1,4 @@
-import { DatePicker, TextField } from '@crefle/web-ui';
+import { DatePicker, Select, TextField, type SelectOption } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useId, useState } from 'react';
 
@@ -19,33 +19,41 @@ export interface ReceiptHeaderFormProps {
 
 interface DatetimeParts {
   date: string;
-  time: string;
+  /** `00`~`23`. 고르지 않았으면 빈 문자열. */
+  hour: string;
+  /** `00`~`59`. 고르지 않았으면 빈 문자열. */
+  minute: string;
 }
 
-const TIME_PATTERN = /^([01]\d|2[0-3]):[0-5]\d$/;
+const twoDigits = (count: number): SelectOption[] =>
+  Array.from({ length: count }, (_, index) => {
+    const value = String(index).padStart(2, '0');
+
+    return { value, label: value };
+  });
+
+/** 시 `00`~`23` · 분 `00`~`59` — 1분 단위로 정확히 고른다(담당자 지시: 시각도 날짜처럼 «선택»). */
+const HOUR_OPTIONS = twoDigits(24);
+const MINUTE_OPTIONS = twoDigits(60);
 
 const splitDatetime = (value: string): DatetimeParts =>
-  value === '' ? { date: '', time: '' } : { date: value.slice(0, 10), time: value.slice(11, 16) };
+  value === ''
+    ? { date: '', hour: '', minute: '' }
+    : { date: value.slice(0, 10), hour: value.slice(11, 13), minute: value.slice(14, 16) };
 
-/** 날짜와 형식에 맞는 시각이 둘 다 있을 때만 입고 일시가 된다 — 아니면 빈 값(지금까지의 «미입력»과 같다). */
-const joinDatetime = ({ date, time }: DatetimeParts): string =>
-  date !== '' && TIME_PATTERN.test(time) ? `${date}T${time}` : '';
-
-/** 숫자만 받아 `HH:mm` 으로 맞춘다 — 「0912」를 치면 「09:12」. */
-const formatTimeInput = (raw: string): string => {
-  const digits = raw.replace(/\D/g, '').slice(0, 4);
-
-  return digits.length > 2 ? `${digits.slice(0, 2)}:${digits.slice(2)}` : digits;
-};
+/** 날짜·시·분이 다 있을 때만 입고 일시가 된다 — 아니면 빈 값(지금까지의 «미입력»과 같다). */
+const joinDatetime = ({ date, hour, minute }: DatetimeParts): string =>
+  date !== '' && hour !== '' && minute !== '' ? `${date}T${hour}:${minute}` : '';
 
 /**
  * 입고 일자 · 입고 시각 · 비고.
  *
  * **입고 일시를 날짜와 시각 두 칸으로 받는다**(담당자 지시 — 시스템 표기 `yyyy-MM-dd HH:mm`).
  * 브라우저 기본 `datetime-local` 은 OS 언어를 따라 「연도. 월. 일. 오후 02:05」로 보여 표기를 맞출 수 없다.
- * 날짜는 디자인 시스템 `DatePicker`(표기 `YYYY-MM-DD` 고정 — 다른 화면과 같은 부품), 시각은 24시간 `HH:mm`
- * 글자 칸이다(네이티브 `type="time"` 도 「오후 02:05」로 보인다). **보내는 값과 검증은 그대로다** — 두 칸이
- * 다 맞게 채워졌을 때만 지금까지와 같은 `YYYY-MM-DDTHH:mm` 하나를 올리고, 아니면 빈 값을 올린다.
+ * 날짜는 디자인 시스템 `DatePicker`(표기 `YYYY-MM-DD` 고정 — 다른 화면과 같은 부품), 시각은 시(00~23)·분(00~59)
+ * 두 개의 DS `Select` 로 **고른다**(담당자 지시 — 날짜처럼 선택. DS 에 시각 선택 부품이 없어 기존 부품을 조합했다.
+ * 네이티브 `type="time"` 은 「오후 02:05」로 보인다). **보내는 값과 검증은 그대로다** — 날짜·시·분이 다 골라졌을 때만
+ * 지금까지와 같은 `YYYY-MM-DDTHH:mm` 하나를 올리고, 아니면 빈 값을 올린다.
  *
  * **영업일 입력칸을 두지 않는다.** 계약이 영업일을 필수로 요구하지만 산출 규칙(야간조 경계 등)이
  * 어디에도 정의돼 있지 않아, 입력칸을 두면 사용자가 무엇을 넣어야 하는지 화면이 설명할 수 없다.
@@ -66,6 +74,7 @@ export const ReceiptHeaderForm = ({
   onChangeRemarks,
 }: ReceiptHeaderFormProps) => {
   const groupLabelId = useId();
+  const errorId = `${groupLabelId}-error`;
   const isDisabled = isLocked || !isOpen;
 
   /*
@@ -87,8 +96,7 @@ export const ReceiptHeaderForm = ({
   };
 
   const serverError = fieldErrors.receiptDatetime;
-  const isTimeMalformed = parts.time.length === 5 && !TIME_PATTERN.test(parts.time);
-  const timeError = serverError ?? (isTimeMalformed ? t.notes.receiptTimeInvalid : undefined);
+  const describedBy = serverError === undefined ? undefined : errorId;
 
   return (
     <div className="form-grid goods-receipt-post-grid">
@@ -116,24 +124,44 @@ export const ReceiptHeaderForm = ({
             disabled={isDisabled}
             invalid={serverError !== undefined}
             aria-required
+            aria-describedby={describedBy}
             onChange={(value) => {
               changeParts({ ...parts, date: value });
             }}
           />
-          <TextField
-            aria-label={t.fields.receiptTime}
+          {/* 시·분 — 목록이 길면(분 60개) 목록 안에서 구른다. */}
+          <Select
+            aria-label={t.fields.receiptHour}
             aria-required
-            inputMode="numeric"
-            maxLength={5}
-            placeholder={t.values.receiptTimePlaceholder}
-            value={parts.time}
-            error={timeError}
+            aria-describedby={describedBy}
+            options={HOUR_OPTIONS}
+            value={parts.hour === '' ? null : parts.hour}
+            placeholder={t.values.receiptHourPlaceholder}
             disabled={isDisabled}
-            onChange={(event) => {
-              changeParts({ ...parts, time: formatTimeInput(event.target.value) });
+            invalid={serverError !== undefined}
+            onChange={(value) => {
+              changeParts({ ...parts, hour: value });
+            }}
+          />
+          <Select
+            aria-label={t.fields.receiptMinute}
+            aria-required
+            aria-describedby={describedBy}
+            options={MINUTE_OPTIONS}
+            value={parts.minute === '' ? null : parts.minute}
+            placeholder={t.values.receiptMinutePlaceholder}
+            disabled={isDisabled}
+            invalid={serverError !== undefined}
+            onChange={(value) => {
+              changeParts({ ...parts, minute: value });
             }}
           />
         </div>
+        {serverError !== undefined && (
+          <span id={errorId} className="field-error">
+            {serverError}
+          </span>
+        )}
       </div>
 
       <div className="field-cell goods-receipt-remarks">

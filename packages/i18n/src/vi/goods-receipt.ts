@@ -30,7 +30,8 @@ export const goodsReceipt: Translated<typeof ko.goodsReceipt> = {
     reason: 'Lý do',
     receiptDatetime: 'Thời điểm nhập kho',
     receiptDate: 'Ngày nhập kho',
-    receiptTime: 'Giờ nhập kho',
+    receiptHour: 'Giờ nhập kho (giờ)',
+    receiptMinute: 'Giờ nhập kho (phút)',
     remarks: 'Ghi chú',
   },
   actions: {
@@ -173,7 +174,8 @@ export const goodsReceipt: Translated<typeof ko.goodsReceipt> = {
     },
     codeLoadingPlaceholder: 'Đang tải…',
     codeFailedPlaceholder: 'Không tải được',
-    receiptTimePlaceholder: 'HH:mm',
+    receiptHourPlaceholder: 'Giờ',
+    receiptMinutePlaceholder: 'Phút',
   },
   notes: {
     defectWarehouseOnly: 'LOT lỗi chỉ nhập được vào kho hàng lỗi.',
@@ -197,7 +199,6 @@ export const goodsReceipt: Translated<typeof ko.goodsReceipt> = {
     },
     singleLineSelect: 'Mỗi lần chỉ chọn được một dòng nhập hàng.',
     autoApplied: 'Nhà máy và ngày nghiệp vụ được tự động áp dụng.',
-    receiptTimeInvalid: 'Vui lòng nhập giờ từ 00:00 đến 23:59.',
     qtyFromInboundLine:
       'Nhập nguyên mặt hàng, số lượng, đơn vị, LOT vật tư của dòng đã chọn; không nhập tách số lượng.',
     warehousePlant: (plant: string): string => `Nhà máy của kho đã chọn: ${plant}`,
