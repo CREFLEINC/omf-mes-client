@@ -14,6 +14,7 @@ export {
 export type { components, paths } from './generated/api';
 export type {
   AppUserWorker,
+  LineDefaultLocations,
   SessionWorker,
   TerminalRegistrationConfirmation,
   TerminalRegistrationStatusCode,

@@ -29,7 +29,11 @@ import { DiscardConfirmDialog } from './discard-confirm-dialog';
 import { EquipmentFormDialog } from './equipment-form-dialog';
 import { EquipmentListPane } from './equipment-list-pane';
 import { EQUIPMENT_FORM_FIELDS, validateEquipment } from './equipment-validation';
-import { GroupFormPane } from './group-form-pane';
+import {
+  LINE_LOCATION_WAREHOUSE_TYPES,
+  useWorkOrderLocations,
+} from '../work-order/resource-queries';
+import { GroupFormPane, type LocationField } from './group-form-pane';
 import { InspectionAssignDialog } from './inspection-assign-dialog';
 import { InspectionItemDialog } from './inspection-item-dialog';
 import { InspectionItemPane } from './inspection-item-pane';
@@ -381,6 +385,25 @@ export const EquipmentMasterScreen = () => {
    * 상위 그룹 선택지. 자기 자신과 후손을 뺀다 — 데이터베이스는 직계 자기참조만 막는다.
    * 「없음(최상위)」이 첫 줄이고, 지금 매인 값이 목록에 없으면 값은 보존하고 조회 상태를 낸다.
    */
+  const formPlantId = formValues.plantId === '' ? null : Number(formValues.plantId);
+  const lineLocations = useWorkOrderLocations(formPlantId);
+  /* 4M 과 같은 기준으로 고른다 — 그 공장, 칸에 맞는 창고 유형. */
+  const locationOptions = (field: LocationField): CodeOption[] => [
+    { value: '', label: t.form.locationNone },
+    ...lineLocations.items
+      .filter((item) => item.warehouseTypeCode === LINE_LOCATION_WAREHOUSE_TYPES[field])
+      .map((item) => ({
+        value: String(item.locationId),
+        label: `[${item.warehouseCode ?? ''} ${item.warehouseName ?? ''}] ${item.locationCode} · ${item.locationName}`,
+      })),
+  ];
+  const locationNote =
+    formPlantId === null
+      ? t.form.locationNeedsPlant
+      : lineLocations.truncated
+        ? t.optionsTruncated
+        : undefined;
+
   const parentOptions: CodeOption[] = useMemo(() => {
     const selectable = groupOptions.groups
       .filter((group) => !cycleBlockedIds.has(group.equipmentGroupId))
@@ -940,8 +963,13 @@ export const EquipmentMasterScreen = () => {
 
   /** 값을 고치는 중에 옛 오류가 남아 있으면 무엇을 고쳐야 하는지 알 수 없다. */
   const changeFormValues = (patch: Partial<GroupFormValues>) => {
+    /* 공장이 바뀌면 앞 공장의 위치는 고를 수 없다 — 기본 위치 셋을 비운다. */
+    const plantChanged = patch.plantId !== undefined && patch.plantId !== formState?.values.plantId;
+    const nextPatch: Partial<GroupFormValues> = plantChanged
+      ? { ...patch, defaultWipLocationId: '', defaultFgLocationId: '', defaultScrapLocationId: '' }
+      : patch;
     setFormState((prev) =>
-      prev === null ? prev : { ...prev, values: { ...prev.values, ...patch } },
+      prev === null ? prev : { ...prev, values: { ...prev.values, ...nextPatch } },
     );
 
     for (const field of Object.keys(patch)) {
@@ -1126,6 +1154,12 @@ export const EquipmentMasterScreen = () => {
       codeLockReason={detail.data === undefined ? null : codeLockMessage(detail.data.editability)}
       plantOptions={selectableOptions(lookups.sources.plants, formValues.plantId)}
       parentOptions={parentOptions}
+      locationOptions={{
+        defaultWipLocationId: locationOptions('defaultWipLocationId'),
+        defaultFgLocationId: locationOptions('defaultFgLocationId'),
+        defaultScrapLocationId: locationOptions('defaultScrapLocationId'),
+      }}
+      locationNote={locationNote}
       isActive={options.isActive}
       isDirty={isDirty}
       isSaving={groupWrite.isSaving}

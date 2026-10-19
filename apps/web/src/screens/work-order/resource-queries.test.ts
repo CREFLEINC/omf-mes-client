@@ -58,11 +58,17 @@ const shift = (shiftId: number) => ({
   isActive: true,
 });
 
-const warehouse = (warehouseId: number, isActive = true) => ({
+const warehouse = (
+  warehouseId: number,
+  isActive = true,
+  plantId = 501,
+  warehouseTypeCode = 'GENERAL',
+) => ({
   warehouseId,
+  plantId,
   warehouseCode: `SYN-WH-${warehouseId}`,
   warehouseName: `Synthetic warehouse ${warehouseId}`,
-  warehouseTypeCode: 'MATERIAL',
+  warehouseTypeCode,
   isActive,
 });
 
@@ -111,11 +117,17 @@ describe('workOrderResourceKeys', () => {
 });
 
 describe('work-order resource queries', () => {
-  it('loads actual locations from every active warehouse without fixing a seed warehouse ID', async () => {
+  it('같은 공장의 사용 중인 창고 중 자재창고를 뺀 창고의 위치만 부른다 — 창고 ID 를 고정하지 않는다', async () => {
     const { fetch, requests } = recordingFetch([
       getRoute(WAREHOUSES_PATH, {
-        items: [warehouse(34), warehouse(35), warehouse(36, false)],
-        page: { page: 1, size: 200, total: 3 },
+        items: [
+          warehouse(34),
+          warehouse(35, true, 501, 'PRODUCT'),
+          warehouse(36, false),
+          warehouse(37, true, 502),
+          warehouse(38, true, 501, 'MATERIAL'),
+        ],
+        page: { page: 1, size: 200, total: 5 },
       }),
       {
         match: (request) =>
@@ -134,7 +146,7 @@ describe('work-order resource queries', () => {
           jsonResponse({ items: [location(602, 35)], page: { page: 1, size: 200, total: 1 } }),
       },
     ]);
-    const { result } = renderHookWithProviders(() => useWorkOrderLocations(), { fetch });
+    const { result } = renderHookWithProviders(() => useWorkOrderLocations(501), { fetch });
 
     await waitFor(() => expect(result.current.isPending).toBe(false));
 
@@ -149,8 +161,18 @@ describe('work-order resource queries', () => {
         .map((request) => request.url.searchParams.get('warehouseId')),
     ).toEqual(['34', '35']);
     expect(result.current.items).toEqual([
-      { ...location(601, 34), warehouseCode: 'SYN-WH-34', warehouseName: 'Synthetic warehouse 34' },
-      { ...location(602, 35), warehouseCode: 'SYN-WH-35', warehouseName: 'Synthetic warehouse 35' },
+      {
+        ...location(601, 34),
+        warehouseCode: 'SYN-WH-34',
+        warehouseTypeCode: 'GENERAL',
+        warehouseName: 'Synthetic warehouse 34',
+      },
+      {
+        ...location(602, 35),
+        warehouseCode: 'SYN-WH-35',
+        warehouseTypeCode: 'PRODUCT',
+        warehouseName: 'Synthetic warehouse 35',
+      },
     ]);
     expect(result.current.truncated).toBe(false);
   });
@@ -227,8 +249,21 @@ describe('work-order resource queries', () => {
     ]);
     expect(result.current.data).toEqual({
       items: [
-        { ...productionLine(602), parentLineId: 601, isActive: false },
-        { ...productionLine(601), parentLineId: null },
+        {
+          ...productionLine(602),
+          parentLineId: 601,
+          isActive: false,
+          defaultWipLocationId: null,
+          defaultFgLocationId: null,
+          defaultScrapLocationId: null,
+        },
+        {
+          ...productionLine(601),
+          parentLineId: null,
+          defaultWipLocationId: null,
+          defaultFgLocationId: null,
+          defaultScrapLocationId: null,
+        },
       ],
       page: { page: 2, size: 20, total: 3 },
       truncated: true,
@@ -307,7 +342,15 @@ describe('work-order resource queries', () => {
     await waitFor(() => expect(result.current.equipments.isError).toBe(true));
 
     expect(result.current.lines.data).toEqual({
-      items: [{ ...productionLine(601), parentLineId: null }],
+      items: [
+        {
+          ...productionLine(601),
+          parentLineId: null,
+          defaultWipLocationId: null,
+          defaultFgLocationId: null,
+          defaultScrapLocationId: null,
+        },
+      ],
       page: { page: 1, size: 20, total: 1 },
       truncated: false,
     });

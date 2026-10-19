@@ -142,7 +142,7 @@ export const workOrder = {
     /** 별표 옆 한마디 — 칸 아래에 문장을 다시 쓰지 않는다(사용자 지시 2026-09-20) */
     requiredHint: '필수 입력',
     clearOption: '배정 없음',
-    cards: { machine: 'Machine', man: 'Man', tool: 'Tool/Mold', material: 'Material' },
+    cards: { machine: 'Machine', man: 'Man', tool: 'Tool/Mold', material: 'Location' },
     fields: {
       productionLine: '생산 라인',
       equipment: '설비',
@@ -175,7 +175,8 @@ export const workOrder = {
       cancel: '취소',
       pick: '선택',
     },
-    materialInfo: '자재 배정은 이 화면에서 변경하지 않습니다.',
+    materialInfo:
+      '생산 라인을 고르면 그 라인의 기본 위치로 채워집니다. 라인 기본 위치는 설비·설비그룹 마스터에서 정합니다.',
     empty: {
       notSelectedTitle: '자원을 배정할 작업지시를 선택하세요.',
       notSelectedDescription: '목록에서 작업지시를 선택하면 자원 배정 내용을 확인할 수 있습니다.',

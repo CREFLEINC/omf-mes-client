@@ -150,7 +150,7 @@ export const workOrder: Translated<typeof ko.workOrder> = {
     placeholder: 'Hãy chọn',
     requiredHint: 'Bắt buộc',
     clearOption: 'Không phân bổ',
-    cards: { machine: 'Machine', man: 'Man', tool: 'Tool/Mold', material: 'Material' },
+    cards: { machine: 'Machine', man: 'Man', tool: 'Tool/Mold', material: 'Location' },
     fields: {
       productionLine: 'Dòng sản xuất',
       equipment: 'Thiết bị',
@@ -182,7 +182,8 @@ export const workOrder: Translated<typeof ko.workOrder> = {
       cancel: 'Hủy',
       pick: 'Chọn',
     },
-    materialInfo: 'Phân bổ vật tư không thay đổi ở màn hình này.',
+    materialInfo:
+      'Khi chọn dây chuyền, hệ thống điền vị trí mặc định của dây chuyền đó. Vị trí mặc định của dây chuyền được đặt ở danh mục thiết bị · nhóm thiết bị.',
     empty: {
       notSelectedTitle: 'Hãy chọn lệnh sản xuất để phân bổ nguồn lực.',
       notSelectedDescription:
