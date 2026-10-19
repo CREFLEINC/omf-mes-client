@@ -132,7 +132,8 @@ describe('품질 탭', () => {
       0,
     );
     expect(within(recent).queryByRole('columnheader', { name: 'LOT' })).not.toBeInTheDocument();
-    expect(screen.getByText(t.pqcDefectQtyNote(t.reworkLine('1')))).toBeInTheDocument();
+    /* 불량 수량 보조 글은 집계 기준만 — 재작업 판정은 주요 현황에 있다(간소화 2026-10-19). */
+    expect(screen.getByText(t.pqcDefectBasis)).toBeInTheDocument();
     /* PQC 는 단위 「건」으로 통일 — LOT 를 쓰지 않는다(사용자 지시 2026-10-19). */
     expect(screen.getByRole('group', { name: t.pqcLots })).not.toHaveTextContent('LOT');
     expect(screen.getByRole('region', { name: t.currentTitle })).not.toHaveTextContent('LOT');
@@ -249,8 +250,9 @@ describe('품질 탭', () => {
       </MemoryRouter>,
     );
 
-    expect(screen.getByRole('group', { name: t.reinspectInput })).toHaveTextContent('10');
-    expect(screen.getByText('90')).toBeInTheDocument();
+    /* 재검 투입 · 복원율은 한 칸(간소화 2026-10-19) — 값은 복원율, 투입 · 복원 수량은 보조 글. */
+    expect(screen.getByRole('group', { name: t.fullReinspect })).toHaveTextContent('90');
+    expect(screen.getByText(t.pqcReinspectNote('10', '9'))).toBeInTheDocument();
     expect(screen.getByRole('img', { name: t.pqcItemDefects })).toBeInTheDocument();
     /* 불량현상도 원형 그래프(사용자 지시 2026-10-19). */
     expect(screen.getByRole('img', { name: t.phenomenaOf('PQC') })).toBeInTheDocument();

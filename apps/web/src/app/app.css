@@ -14382,3 +14382,18 @@ button.app-button-neutral {
   text-align: end;
   white-space: nowrap;
 }
+
+/*
+ * PQC 품목별 불량 원형이 한 줄 전체일 때(사용자 지시 2026-10-19 「가운데 작게 · 좌우 여백 과다」) — 원형은 왼쪽,
+ * 범례는 남는 폭을 더 쓰게(최대 32rem). 좁으면 기존처럼 줄바꿈. 이 행에만 걸린다.
+ */
+.dash-donut-pair:has(> :only-child) .dash-donut {
+  justify-content: flex-start;
+  column-gap: var(--space-8, 2rem);
+  padding-inline: var(--space-4);
+}
+
+.dash-donut-pair:has(> :only-child) .dash-donut-legend {
+  flex: 1 1 20rem;
+  max-width: 32rem;
+}

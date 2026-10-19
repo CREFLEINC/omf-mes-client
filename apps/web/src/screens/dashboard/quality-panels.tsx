@@ -161,7 +161,8 @@ const OverviewLotTile = ({
   unit = t.lotUnit,
 }: {
   label: string;
-  tag: string;
+  /** 기간 표시 — PQC 는 첫 칸에만 둬 생략(사용자 지시 2026-10-19). */
+  tag?: string;
   counts: DashboardLotCounts;
   /** 단위 — PQC 는 LOT 번호가 없는 검사 결과라 「건」(사용자 지시 2026-10-19). 기본은 LOT. */
   unit?: string;
@@ -319,10 +320,13 @@ const DailyPanel = ({
   niceTicks = false,
   gapMarks = false,
   gapDetail = false,
+  sub = t.dailySub,
 }: {
   quality: DashboardQuality;
   kinds: readonly QualityKind[];
   title: string;
+  /** 부제 — PQC 는 축에 보이는 단위(%)를 빼고 기준만(사용자 지시 2026-10-19). 기본은 기존 문구. */
+  sub?: string;
   /** 검사 없는 날 · 혼자 남은 점 구분 — 품질 종합 · IQC(사용자 지시 2026-10-19). */
   gapMarks?: boolean;
   /** 공백 띠 · 「검사 없음」 · 끊긴 점 잇는 점선 · 혼자 남은 점 값을 점 위에 — IQC · 품질 종합(사용자 지시 2026-10-19). */
@@ -339,7 +343,7 @@ const DailyPanel = ({
   return (
     <Panel
       title={title}
-      sub={t.dailySub}
+      sub={sub}
       tag={tags.recent}
       className={hasPoints ? 'dash-span-wide dash-panel-fit' : 'dash-span-wide'}
     >
@@ -872,47 +876,6 @@ export const IqcTab = ({
   );
 };
 
-/**
- * 재검 투입 · 재검 OK 복원율 칸 둘(PQC 탭 · 사용자 지시 2026-10-19) — IQC 탭과 같은 표기. IQC 탭 코드는 건드리지
- * 않으려고(병합 완료 화면 · 사용자 지시) 따로 둔다. 복원율 = 합격 ÷ 투입(100 상한), 투입 0 이면 값 없음.
- */
-const ReinspectTiles = ({
-  reinspect,
-  inputNote,
-}: {
-  reinspect: { inputQty: number; restoredQty: number };
-  inputNote: string;
-}) => {
-  const tags = usePeriodTags();
-
-  return (
-    <>
-      <KpiTile
-        label={t.reinspectInput}
-        tag={tags.month}
-        value={formatFigure(reinspect.inputQty)}
-        unit={t.qtyUnit}
-      >
-        <span>{inputNote}</span>
-      </KpiTile>
-      <KpiTile
-        label={t.fullReinspect}
-        tag={tags.month}
-        value={
-          reinspect.inputQty > 0
-            ? formatFigure(
-                Math.min(100, Math.round((reinspect.restoredQty / reinspect.inputQty) * 1000) / 10),
-              )
-            : t.rateNone
-        }
-        unit={reinspect.inputQty > 0 ? '%' : undefined}
-      >
-        <span>{t.fullReinspectNote(formatFigure(reinspect.restoredQty), t.qtyUnit)}</span>
-      </KpiTile>
-    </>
-  );
-};
-
 /** 검사 대기 최장 경과(분) — 기준은 지금. 시각이 없거나 읽지 못하면 `null`. */
 export const pendingElapsedMinutes = (
   since: string | null | undefined,
@@ -1023,34 +986,51 @@ export const PqcTab = ({
     <QualityTabFrame className="dash-tab-quality-detail">
       <div className="dash-kpis">
         <OverviewPassRateTile label={t.passRateOf('PQC')} block={pqc} />
-        <OverviewLotTile
-          label={t.pqcLots}
-          tag={tags.month}
-          counts={pqc.monthLots}
-          unit={t.countUnit}
-        />
+        {/*
+         * ⭐ PQC 정보 간소화(사용자 지시 2026-10-19) — KPI 는 모두 같은 당월이라 기간 표시는 첫 칸에만. 재검 투입 ·
+         * 복원율은 한 칸으로(투입 · 복원 수량은 보조 글), 불량 수량 보조 글의 재작업 판정은 주요 현황과 겹쳐 뺐다.
+         */}
+        <OverviewLotTile label={t.pqcLots} counts={pqc.monthLots} unit={t.countUnit} />
         {pqc.fullReinspect !== undefined && pqc.fullReinspect !== null && (
-          <ReinspectTiles reinspect={pqc.fullReinspect} inputNote={t.pqcReinspectInputNote} />
+          <KpiTile
+            label={t.fullReinspect}
+            value={
+              pqc.fullReinspect.inputQty > 0
+                ? formatFigure(
+                    Math.min(
+                      100,
+                      Math.round(
+                        (pqc.fullReinspect.restoredQty / pqc.fullReinspect.inputQty) * 1000,
+                      ) / 10,
+                    ),
+                  )
+                : t.rateNone
+            }
+            unit={pqc.fullReinspect.inputQty > 0 ? '%' : undefined}
+          >
+            <span>
+              {t.pqcReinspectNote(
+                formatFigure(pqc.fullReinspect.inputQty),
+                formatFigure(pqc.fullReinspect.restoredQty),
+              )}
+            </span>
+          </KpiTile>
         )}
         <KpiTile
           label={t.monthDefectQty}
-          tag={tags.month}
           value={formatFigure(pqc.monthDefectQty)}
           unit={t.qtyUnit}
           tone={pqc.monthDefectQty > 0 ? 'error' : undefined}
         >
-          <span>{t.pqcDefectQtyNote(t.reworkLine(formatFigure(pqc.reworkRequestCount)))}</span>
+          <span>{t.pqcDefectBasis}</span>
         </KpiTile>
         <KpiTile
           label={t.worstEquipment}
-          /* 아래 「설비별 불량률」과 같은 품질 누계 구간(서버 장부) — 「금일」이 아니다. */
-          tag={tags.month}
+          /* 아래 「설비별 불량률」과 같은 품질 누계 구간(서버 장부). */
           value={worst === undefined ? t.none : worst.equipmentCode}
         >
           {worst !== undefined && (
-            <span>
-              {t.worstEquipmentNote(formatFigure(worst.ngQty), formatRate(worst.defectRate))}
-            </span>
+            <span>{t.pqcWorstNote(formatRate(worst.defectRate), formatFigure(worst.ngQty))}</span>
           )}
         </KpiTile>
       </div>
@@ -1059,6 +1039,7 @@ export const PqcTab = ({
           quality={quality}
           kinds={['PQC']}
           title={t.dailyTitleOf('PQC')}
+          sub={t.pqcDailySub}
           tooltip
           gapMarks
           gapDetail
@@ -1081,7 +1062,7 @@ export const PqcTab = ({
                   key: 'held',
                   /* PQC 는 LOT 번호가 없는 검사 결과 — 단위를 「건」으로 통일(사용자 지시 2026-10-19). */
                   label: t.pqcHeld,
-                  note: t.heldLotsNote,
+                  note: t.pqcMonthNote,
                   value: formatFigure(held.count),
                   unit: t.countUnit,
                   tone: countTone(held.count, 'warning'),
@@ -1101,7 +1082,7 @@ export const PqcTab = ({
                 {
                   key: 'rework',
                   label: t.reworkRequests,
-                  note: t.reworkRequestsNote,
+                  note: t.pqcMonthNote,
                   /* LOT · 건수 둘 다(사용자 지시 2026-10-19) — 서버가 LOT 수를 주지 않으면 기존 건수만. */
                   value: formatFigure(pqc.reworkRequestCount),
                   unit: t.countUnit,
@@ -1136,6 +1117,7 @@ export const PqcTab = ({
         <div className="dash-donut-pair">
           <DefectTypesPanel
             title={t.pqcItemDefects}
+            sub={t.pqcDefectBasis}
             tag={tags.month}
             entries={pqc.itemDefects.map((entry) => ({
               key: String(entry.itemId),
