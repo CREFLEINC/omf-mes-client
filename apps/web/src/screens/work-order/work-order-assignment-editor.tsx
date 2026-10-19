@@ -25,7 +25,13 @@ import {
   useWorkOrderWorkers,
   type WorkOrderWorkerFact,
 } from './people-tool-queries';
-import { useWorkOrderDetail, useWorkOrderValidation, type WorkOrderFact } from './queries';
+import {
+  useWorkOrderDetail,
+  useWorkOrderResourceRecommendations,
+  useWorkOrderValidation,
+  type WorkOrderFact,
+} from './queries';
+import { toRecommendationChips } from './resource-recommendation';
 import {
   useWorkOrderEquipments,
   LINE_LOCATION_WAREHOUSE_TYPES,
@@ -126,6 +132,7 @@ export const WorkOrderAssignmentEditorSession = ({
   const shifts = useWorkOrderShifts(plantId, 1);
   const locations = useWorkOrderLocations(plantId);
   const validationQuery = useWorkOrderValidation(workOrder.workOrderId);
+  const recommendations = useWorkOrderResourceRecommendations(workOrder.workOrderId);
   const update = useUpdateWorkOrder({
     workOrderId: workOrder.workOrderId,
     onSuccess: (saved) => {
@@ -149,7 +156,11 @@ export const WorkOrderAssignmentEditorSession = ({
       ...next,
       ...(next.productionLineId === undefined || next.productionLineId === current.productionLineId
         ? {}
-        : { plannedEquipmentId: '', ...lineDefaultDraft(next.productionLineId) }),
+        : {
+            /* 추천 설비는 라인과 함께 온다 — 그때는 고른 설비를 지우지 않는다. */
+            plannedEquipmentId: next.plannedEquipmentId ?? '',
+            ...lineDefaultDraft(next.productionLineId),
+          }),
       /* 교대를 바꾸면 계획 시각을 따라 바꾼다 — 칸은 남겨 두어 여러 날 작업처럼 예외는 손으로 고친다. */
       ...(next.plannedShiftId === undefined ||
       next.plannedShiftId === current.plannedShiftId ||
@@ -291,6 +302,7 @@ export const WorkOrderAssignmentEditorSession = ({
             effectiveDraft.defaultScrapLocationId,
           )}
           fieldErrors={fieldErrors}
+          recommendations={toRecommendationChips(recommendations.data)}
           plantId={plantId}
           fieldNotes={{
             productionLineId: lookupNote(lineSource, lines.data?.truncated),

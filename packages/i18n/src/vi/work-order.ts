@@ -150,6 +150,12 @@ export const workOrder: Translated<typeof ko.workOrder> = {
     placeholder: 'Hãy chọn',
     requiredHint: 'Bắt buộc',
     clearOption: 'Không phân bổ',
+    recommendation: {
+      label: 'Gợi ý',
+      sources: { DEFAULT: 'Mặc định', MAPPED: 'Đã gán', RECENT: 'Gần đây' },
+      busy: 'Đã phân bổ cùng khung giờ',
+      outOfService: 'Không hoạt động',
+    },
     cards: { machine: 'Machine', man: 'Man', tool: 'Tool/Mold', material: 'Location' },
     fields: {
       productionLine: 'Dòng sản xuất',

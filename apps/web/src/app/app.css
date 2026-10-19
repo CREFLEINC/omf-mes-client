@@ -1825,6 +1825,15 @@ main > * + * {
   letter-spacing: var(--type-label-sm-tracking);
 }
 
+/* 추천 후보는 칸 바로 아래 한 줄 — 넘치면 접어 내린다. */
+.work-order-recommendations {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1);
+  margin-top: var(--space-1);
+}
+
 /* 안내 상자와 바로 아래 라벨 사이를 띄운다. */
 .work-order-resource-rule {
   margin-bottom: var(--space-2);

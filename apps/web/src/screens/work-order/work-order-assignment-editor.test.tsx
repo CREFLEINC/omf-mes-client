@@ -14,6 +14,7 @@ import type { WorkOrderFact } from './queries';
 const mocks = vi.hoisted(() => ({
   detail: vi.fn(),
   validation: vi.fn(),
+  recommendations: vi.fn(),
   update: vi.fn(),
   lines: vi.fn(),
   equipments: vi.fn(),
@@ -27,6 +28,7 @@ const mocks = vi.hoisted(() => ({
 vi.mock('./queries', () => ({
   useWorkOrderDetail: mocks.detail,
   useWorkOrderValidation: mocks.validation,
+  useWorkOrderResourceRecommendations: mocks.recommendations,
 }));
 vi.mock('./mutations', () => ({ useUpdateWorkOrder: mocks.update }));
 vi.mock('./resource-queries', async (importOriginal) => ({
@@ -88,6 +90,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   mocks.detail.mockReturnValue(query(workOrder));
   mocks.validation.mockReturnValue(query({ passed: true, findings: [] }));
+  mocks.recommendations.mockReturnValue(query(undefined));
   mocks.lines.mockReturnValue(
     resources([
       { productionLineId: 101, lineCode: 'L-1', lineName: '1호선', isActive: true },
@@ -268,6 +271,43 @@ it('라인을 바꾸면 기본 위치 셋을 그 라인 기본값으로 덮어�
   await user.click(field(t.resourcePane.fields.defaultFgLocation));
   expect(screen.queryByRole('option', { name: /WIP 위치/ })).not.toBeInTheDocument();
   expect(screen.getByRole('option', { name: /완제품 위치/ })).toBeInTheDocument();
+});
+
+it('추천 설비를 누르면 그 설비의 라인과 라인 기본 위치까지 함께 맞춘다', async () => {
+  const user = userEvent.setup();
+  mocks.equipments.mockReturnValue(
+    resources([
+      { equipmentId: 302, equipmentCode: 'EQ-2', equipmentName: '2호기', isActive: true },
+    ]),
+  );
+  mocks.recommendations.mockReturnValue(
+    query({
+      equipments: [
+        {
+          equipmentId: 302,
+          equipmentCode: 'EQ-2',
+          equipmentName: '2호기',
+          productionLineId: 102,
+          source: 'DEFAULT',
+          inService: true,
+          busy: false,
+        },
+      ],
+      molds: [],
+    }),
+  );
+  render(<Harness />);
+  const field = (name: string) => screen.getByRole('combobox', { name });
+
+  await user.click(
+    screen.getByRole('button', {
+      name: `${t.resourcePane.recommendation.sources.DEFAULT} · EQ-2 · 2호기`,
+    }),
+  );
+
+  expect(field(t.resourcePane.fields.productionLine)).toHaveTextContent('L-2 · 2호선');
+  expect(field(t.resourcePane.fields.equipment)).toHaveTextContent('EQ-2 · 2호기');
+  expect(field(t.resourcePane.fields.defaultWipLocation)).toHaveTextContent('WIP · WIP 위치');
 });
 
 it('rejects a successful write response owned by another work order', () => {

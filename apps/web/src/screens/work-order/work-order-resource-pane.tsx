@@ -1,5 +1,6 @@
 import {
   AlertBanner,
+  Button,
   Card,
   EmptyState,
   SearchInput,
@@ -11,6 +12,10 @@ import { messages } from '@omf-mes/i18n';
 import { useId, useState } from 'react';
 
 import { REQUIRED_ASSIGNMENT_FIELDS, type WorkOrderAssignmentDraft } from './assignment-model';
+import type {
+  ResourceRecommendationChip,
+  ResourceRecommendationChips,
+} from './resource-recommendation';
 import { WorkerPickerDialog } from './worker-picker-dialog';
 
 const t = messages.workOrder.resourcePane;
@@ -49,6 +54,7 @@ export interface WorkOrderResourcePaneProps {
   defaultScrapLocationOptions: WorkOrderResourceOption[];
   fieldErrors: Partial<Record<ResourceField, string>>;
   fieldNotes: Partial<Record<ResourceField, string>>;
+  recommendations?: ResourceRecommendationChips;
   /** 담당 작업자 창이 쓰는 공장. 없으면 창을 열지 않는다. */
   plantId?: number | null;
   disabled?: boolean;
@@ -67,6 +73,7 @@ interface ResourceSelectProps {
   disabledReason: string | undefined;
   /** 배포까지 가려면 반드시 골라야 하는 칸 — 표시만 한다(판정은 종전 그대로). */
   required?: boolean;
+  recommendations?: ResourceRecommendationChip[];
   onChange: (patch: Partial<Pick<WorkOrderAssignmentDraft, ResourceField>>) => void;
 }
 
@@ -80,6 +87,7 @@ const ResourceSelect = ({
   disabled,
   disabledReason,
   required = false,
+  recommendations = [],
   onChange,
 }: ResourceSelectProps) => {
   const id = useId();
@@ -132,6 +140,34 @@ const ResourceSelect = ({
           {description}
         </span>
       )}
+      {recommendations.length > 0 && (
+        <div
+          className="work-order-recommendations"
+          role="group"
+          aria-label={`${label} ${t.recommendation.label}`}
+        >
+          <span className="field-note">{t.recommendation.label}</span>
+          {recommendations.map((chip) => (
+            <Button
+              key={chip.value}
+              size="sm"
+              variant={chip.value === value ? 'filled' : 'outlined'}
+              aria-pressed={chip.value === value}
+              disabled={disabled}
+              onClick={() => {
+                onChange(
+                  chip.productionLineId === null
+                    ? { [field]: chip.value }
+                    : { productionLineId: chip.productionLineId, [field]: chip.value },
+                );
+              }}
+            >
+              {`${t.recommendation.sources[chip.source]} · ${chip.label}`}
+              {chip.warning !== null && ` (${t.recommendation[chip.warning]})`}
+            </Button>
+          ))}
+        </div>
+      )}
     </div>
   );
 };
@@ -150,6 +186,7 @@ export const WorkOrderResourcePane = ({
   defaultScrapLocationOptions,
   fieldErrors,
   fieldNotes,
+  recommendations,
   disabled = false,
   disabledReason,
   onChange,
@@ -185,6 +222,11 @@ export const WorkOrderResourcePane = ({
       disabled={disabled}
       disabledReason={disabledReason}
       required={REQUIRED_FIELDS.includes(field)}
+      recommendations={
+        field === 'plannedEquipmentId' || field === 'plannedMoldId'
+          ? recommendations?.[field]
+          : undefined
+      }
       onChange={onChange}
     />
   );

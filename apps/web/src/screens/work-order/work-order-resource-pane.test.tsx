@@ -64,6 +64,48 @@ const renderPane = (
 };
 
 describe('WorkOrderResourcePane', () => {
+  it('추천 후보를 칸 아래에 늘어놓고, 누르면 설비는 그 라인과 함께 배정한다', async () => {
+    const { onChange, user } = renderPane({
+      recommendations: {
+        plannedEquipmentId: [
+          {
+            value: '302',
+            label: 'SYN-EQ-REC',
+            source: 'DEFAULT',
+            productionLineId: '102',
+            warning: 'busy',
+          },
+        ],
+        plannedMoldId: [
+          {
+            value: '401',
+            label: 'SYN-MOLD-REC',
+            source: 'MAPPED',
+            productionLineId: null,
+            warning: null,
+          },
+        ],
+      },
+    });
+
+    const equipment = screen.getByRole('button', {
+      name: `${t.recommendation.sources.DEFAULT} · SYN-EQ-REC (${t.recommendation.busy})`,
+    });
+    expect(equipment).toHaveAttribute('aria-pressed', 'false');
+    await user.click(equipment);
+    expect(onChange).toHaveBeenLastCalledWith({
+      productionLineId: '102',
+      plannedEquipmentId: '302',
+    });
+
+    const mold = screen.getByRole('button', {
+      name: `${t.recommendation.sources.MAPPED} · SYN-MOLD-REC`,
+    });
+    expect(mold).toHaveAttribute('aria-pressed', 'true');
+    await user.click(mold);
+    expect(onChange).toHaveBeenLastCalledWith({ plannedMoldId: '401' });
+  });
+
   it('isolates no-selection state from stale assignment data', () => {
     renderPane({ selectedWorkOrderNo: null, fieldErrors: { productionLineId: 'SYN-ERROR' } });
     expect(screen.getByText(t.empty.notSelectedTitle)).toBeInTheDocument();
