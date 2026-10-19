@@ -123,6 +123,8 @@ export const dispositionDecision: Translated<typeof ko.dispositionDecision> = {
     sortHelp:
       'Phần đạt được giải phóng về bình thường; số lượng lỗi được tách thành LOT mới ở trạng thái lỗi và chuyển sang mục không phù hợp mới để quyết định hủy · làm lại riêng.',
     sortSumMismatch: 'Tổng số lượng đạt và lỗi phải bằng số lượng xử lý',
+    sortWholeRemaining: (remaining: string): string =>
+      `Phân loại chỉ được quyết định với toàn bộ số lượng còn lại (${remaining})`,
     sortSuccess: (lotNo: string, nonconformanceNo: string): string =>
       `Đã lưu phân loại. Phần lỗi đã chuyển sang LOT ${lotNo} · không phù hợp ${nonconformanceNo}`,
   },

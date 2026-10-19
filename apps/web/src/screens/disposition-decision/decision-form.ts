@@ -68,7 +68,11 @@ const DECIMAL = /^\d{1,12}(\.\d{1,6})?$/;
  * 물어 두었다(omf-mes#253) — 회신 전까지 물리 모델을 따른다. 「1 이상」으로 막으면 서버가
  * 받아들이는 `0.5` 같은 부분 처분을 화면만 거절하게 된다.
  */
-export const validateDecisionForm = (value: DecisionFormValue): DecisionFormErrors => {
+export const validateDecisionForm = (
+  value: DecisionFormValue,
+  /** 선별일 때만 쓴다 — 선별은 남은 수량 «전체»여야 한다(서버 같은 규칙 400 · #108 리뷰 m3). 모르면 `undefined`. */
+  remainingQty?: number,
+): DecisionFormErrors => {
   const t = messages.dispositionDecision.form;
   const errors: DecisionFormErrors = {};
   const qty = value.qty.trim();
@@ -82,7 +86,19 @@ export const validateDecisionForm = (value: DecisionFormValue): DecisionFormErro
 
   if (value.reason.trim() === '') errors.reason = t.reasonRequired;
 
-  if (value.dispositionTypeCode === SORT) Object.assign(errors, validateSort(value, qty));
+  if (value.dispositionTypeCode === SORT) {
+    Object.assign(errors, validateSort(value, qty));
+    /*
+     * ⭐ 위 「남은 수량 초과는 화면이 막지 않는다」의 예외다 — 선별의 «일부»는 서버가 받지 않는 조합이라(장부 P-53)
+     *    잔량이 화면에 있을 때만 같은 규칙으로 미리 알린다. 잔량을 모르면 서버 400 이 정본이다.
+     */
+    if (
+      errors.decisionQty === undefined &&
+      remainingQty !== undefined &&
+      toMicro(qty) !== toMicro(String(remainingQty))
+    )
+      errors.decisionQty = t.sortWholeRemaining(String(remainingQty));
+  }
 
   return errors;
 };

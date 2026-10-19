@@ -144,6 +144,8 @@ export const dispositionDecision = {
     sortHelp:
       '양품은 정상으로 풀리고, 불량 수량은 새 LOT 으로 나뉘어 불량이 됩니다. 불량분은 새 부적합으로 넘어가 폐기·재작업을 따로 정합니다.',
     sortSumMismatch: '양품과 불량 수량의 합이 처분 수량과 같아야 합니다',
+    sortWholeRemaining: (remaining: string): string =>
+      `선별은 남은 수량 전체(${remaining})로만 판정할 수 있습니다`,
     sortSuccess: (lotNo: string, nonconformanceNo: string): string =>
       `선별을 저장했습니다. 불량분은 LOT ${lotNo} · 부적합 ${nonconformanceNo} 로 넘어갔습니다`,
   },

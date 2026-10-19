@@ -273,7 +273,7 @@ export const DispositionDecisionScreen = ({
   }, [selectedId]);
 
   /* 서버가 되돌린 필드 오류가 화면 검증을 덮는다 — 계약이 정본이다. */
-  const errors = { ...validateDecisionForm(form), ...write.fieldErrors };
+  const errors = { ...validateDecisionForm(form, remaining.value), ...write.fieldErrors };
   const isOtherTarget = pendingTarget !== null && pendingTarget.nonconformanceId !== selectedId;
   const lock = toDecisionLock({
     selectedId,

@@ -112,6 +112,30 @@ describe('validateDecisionForm', () => {
   });
 });
 
+/* #108 리뷰 m3 · 담당자 결정 (a) — 선별은 부적합의 남은 수량 전체일 때만이다(서버 같은 규칙 400). */
+describe('validateDecisionForm — 선별 수량', () => {
+  const sort = (qty: string, accepted: string, rejected: string) =>
+    form({ dispositionTypeCode: 'SORT', qty, acceptedQty: accepted, rejectedQty: rejected });
+
+  it('남은 수량 전체면 통과한다', () => {
+    expect(validateDecisionForm(sort('100', '70', '30'), 100).decisionQty).toBeUndefined();
+  });
+
+  it('남은 수량의 일부면 처분 수량 칸에 남은 수량을 밝혀 막는다', () => {
+    expect(validateDecisionForm(sort('60', '40', '20'), 100).decisionQty).toBe(
+      t.sortWholeRemaining('100'),
+    );
+  });
+
+  it('남은 수량을 모르면 화면이 막지 않는다 — 서버가 정본이다', () => {
+    expect(validateDecisionForm(sort('60', '40', '20'), undefined).decisionQty).toBeUndefined();
+  });
+
+  it('선별이 아니면 일부 판정도 그대로다', () => {
+    expect(validateDecisionForm(form({ qty: '60' }), 100).decisionQty).toBeUndefined();
+  });
+});
+
 describe('remainingNotice', () => {
   it('남은 수량을 넘기면 예고한다', () => {
     expect(remainingNotice(form({ qty: '200' }), remaining(120))).toBe(t.qtyOverRemaining('120'));
