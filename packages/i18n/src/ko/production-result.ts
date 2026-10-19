@@ -186,6 +186,8 @@ export const productionResult = {
     goInspect: '검사 화면으로',
     splitTitle: 'PQC 제품 검사',
     splitNote: '검사 수량 · 판정 · 결과 확정',
+    /** 검사 off(그 W/O 에 PQC 의뢰 없음)일 때 「생산 실적」 머리 오른쪽 칩. */
+    notInspected: 'PQC 미검사',
   },
 
   /** 「생산 작업」 화면의 왼쪽(검사 off 면 전체) 구획 머리. */

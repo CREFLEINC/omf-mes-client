@@ -4226,6 +4226,11 @@
   margin: 0;
 }
 
+.pop-ui .production-flow-zone-head__status {
+  margin-inline-start: auto;
+  align-self: center;
+}
+
 /* 검사 off — 머리가 격자 바로 위에 서므로 격자 안쪽 여백(--space-3)과 왼쪽 선을 맞춘다. */
 .pop-ui > .production-flow-zone-head {
   padding: var(--space-3) var(--space-3) 0;

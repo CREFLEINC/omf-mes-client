@@ -1023,6 +1023,7 @@ export const ProductionFlowScreen = () => {
 
       <PqcSplit
         inspectionRequestId={pqcTargetId}
+        isInspectionOff={workOrderPqc.isSuccess && workOrderPqc.data === null}
         workOrderId={entry.workOrderId}
         workerNo={entry.workerNo}
       >

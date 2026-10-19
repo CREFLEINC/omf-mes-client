@@ -1,3 +1,4 @@
+import { Chip } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, type ReactNode } from 'react';
@@ -11,6 +12,8 @@ const t = messages.productionResult.pqc;
 export interface PqcSplitProps {
   /** 오른쪽에 띄울 PQC 의뢰. `null`(검사 off)이면 나누지 않고 실적 화면만 그대로 그린다. */
   inspectionRequestId: number | null;
+  /** 검사 off 로 «확인됐다»(조회가 끝났고 PQC 의뢰가 없다). 조회 중·실패면 `false` — 모르는 것을 미검사로 말하지 않는다. */
+  isInspectionOff: boolean;
   workOrderId: number | null;
   workerNo: string | null;
   /** 실적 화면 본문(카드 격자). */
@@ -29,6 +32,7 @@ export interface PqcSplitProps {
  */
 export const PqcSplit = ({
   inspectionRequestId,
+  isInspectionOff,
   workOrderId,
   workerNo,
   children,
@@ -48,6 +52,14 @@ export const PqcSplit = ({
     <ZoneHead
       title={messages.productionResult.zone.title}
       note={messages.productionResult.zone.note}
+      status={
+        /* 검사 off 면 「PQC 미검사」를 중립 칩으로 알린다(사용자 지시 2026-10-19). on 이면 PQC 구획이 곧 표시다. */
+        isInspectionOff ? (
+          <Chip status="idle" size="md">
+            {t.notInspected}
+          </Chip>
+        ) : null
+      }
     />
   );
 
@@ -85,9 +97,18 @@ export const PqcSplit = ({
 };
 
 /** 구획 머리 — 이름과 그 구획에서 하는 일(사용자 지시 2026-10-19 · 예시 배치). */
-const ZoneHead = ({ title, note }: { title: string; note: string }) => (
+const ZoneHead = ({
+  title,
+  note,
+  status = null,
+}: {
+  title: string;
+  note: string;
+  status?: ReactNode;
+}) => (
   <div className="production-flow-zone-head pop-fixed">
     <h2 className="pane-title">{title}</h2>
     <p className="field-note">{note}</p>
+    {status !== null && <span className="production-flow-zone-head__status">{status}</span>}
   </div>
 );

@@ -145,6 +145,7 @@ export const productionResult: Translated<typeof ko.productionResult> = {
     goInspect: 'Đến màn hình kiểm tra',
     splitTitle: 'Kiểm tra sản phẩm PQC',
     splitNote: 'Số lượng kiểm tra · Đánh giá · Xác nhận kết quả',
+    notInspected: 'Không kiểm tra PQC',
   },
   zone: {
     title: 'Kết quả sản xuất',

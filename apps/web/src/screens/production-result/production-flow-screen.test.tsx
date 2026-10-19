@@ -1717,6 +1717,7 @@ describe('ProductionFlowScreen — PQC 분할', () => {
     expect(screen.getByText(t.zone.title)).toBeInTheDocument();
     expect(screen.getByText(t.zone.note)).toBeInTheDocument();
     expect(screen.getByText(t.pqc.splitNote)).toBeInTheDocument();
+    expect(screen.queryByText(t.pqc.notInspected)).not.toBeInTheDocument();
 
     await user.type(await panel.findByRole('textbox', { name: pqc.result.fields.accepted }), '5');
     await user.type(panel.getByRole('textbox', { name: pqc.result.fields.rejected }), '0');
@@ -1829,5 +1830,6 @@ describe('ProductionFlowScreen — PQC 분할', () => {
     expect(screen.queryByRole('region', { name: t.pqc.splitTitle })).not.toBeInTheDocument();
     expect(screen.getByText(t.zone.title)).toBeInTheDocument();
     expect(screen.queryByText(t.pqc.splitNote)).not.toBeInTheDocument();
+    expect(await screen.findByText(t.pqc.notInspected)).toBeInTheDocument();
   });
 });
