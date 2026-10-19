@@ -8,7 +8,7 @@ import type {
   DashboardQualityTypeBlock,
 } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
-import { Link } from 'react-router';
+import { Link, useNavigate } from 'react-router';
 import {
   createContext,
   useCallback,
@@ -408,6 +408,9 @@ const InspectedAt = ({ value, withTime = false }: { value: string; withTime?: bo
 
 /** 검사결과 조회(W-03-05) 주소 — 날짜만 있는 화면 조건으로는 사용자가 보는 목록이 비어 그 날짜 · 검사 유형으로 연다. */
 export const INSPECTION_RESULTS_PATH = '/quality/inspection-results';
+
+/** W-04-07 재작업/폐기 판정 의뢰 — PQC 주요 현황 「재작업 의뢰」 줄이 연다(사용자 지시 2026-10-19). */
+export const DISPOSITION_REQUESTS_PATH = '/shipment/disposition-requests';
 
 /**
  * 그 검사 결과의 상세를 여는 주소(⭐ 사용자 지시 2026-10-19 「항목을 누르면 검사실적 · 검사결과 조회 화면에서 상세」).
@@ -954,6 +957,9 @@ export const PqcTab = ({
   const pqc = quality.pqc;
   const worst = pqc.equipmentDefectRates[0];
   const dialog = useLotDialog();
+  const navigate = useNavigate();
+  /* 재작업 의뢰 줄 → W-04-07 재작업/폐기 판정 의뢰(사용자 지시 2026-10-19). 그 화면 권한이 있을 때만. */
+  const canOpenDisposition = allows(DISPOSITION_REQUESTS_PATH);
   const held = lotRecordValue(quality.statusCounts?.INSPECTION_HELD.byType.PQC, pqc.monthLots.held);
   const pending = lotRecordValue(quality.statusCounts?.PQC_PENDING, pqc.pendingLotCount);
   const oldest = pendingElapsedMinutes(pqc.oldestPendingSince, new Date());
@@ -1028,7 +1034,10 @@ export const PqcTab = ({
           <Panel title={t.currentTitle} tag={t.tagNow}>
             <StatusList
               rowProps={dialog.rowProps}
-              onSelect={dialog.open}
+              onSelect={(key) => {
+                if (key === 'rework') void navigate(DISPOSITION_REQUESTS_PATH);
+                else dialog.open(key);
+              }}
               items={[
                 {
                   key: 'held',
@@ -1056,7 +1065,7 @@ export const PqcTab = ({
                   ...(pqc.reworkRequestCounts === undefined
                     ? { value: formatFigure(pqc.reworkRequestCount), unit: t.countUnit }
                     : lotRecordValue(pqc.reworkRequestCounts, pqc.reworkRequestCount)),
-                  selectable: false,
+                  selectable: canOpenDisposition,
                 },
               ]}
             />

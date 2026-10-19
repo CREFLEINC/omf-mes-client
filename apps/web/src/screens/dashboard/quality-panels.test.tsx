@@ -1,13 +1,14 @@
 import { messages } from '@omf-mes/i18n';
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { MemoryRouter } from 'react-router';
+import { MemoryRouter, Route, Routes } from 'react-router';
 import { describe, expect, it } from 'vitest';
 
 import { OTHER_SLICE_KEY, roundShares, toDonutSlices } from './defect-types-panel';
 import { quality, qualityBlock } from './quality.fixture';
 import { toNiceRateTicks } from './viz';
 import {
+  DISPOSITION_REQUESTS_PATH,
   IqcTab,
   NonconformanceTab,
   OqcTab,
@@ -60,7 +61,9 @@ describe('품질 탭', () => {
       <>
         <QualityOverviewTab quality={quality()} />
         <IqcTab quality={quality()} />
-        <PqcTab quality={quality()} />
+        <MemoryRouter>
+          <PqcTab quality={quality()} />
+        </MemoryRouter>
         <OqcTab quality={quality()} />
         <NonconformanceTab quality={quality()} />
       </>,
@@ -116,7 +119,11 @@ describe('품질 탭', () => {
   });
 
   it('PQC — 최근 판정은 호기 열, 시안대로 LOT 열은 두지 않는다', () => {
-    render(<PqcTab quality={quality()} />);
+    render(
+      <MemoryRouter>
+        <PqcTab quality={quality()} />
+      </MemoryRouter>,
+    );
 
     const recent = screen.getByRole('table', { name: t.recentLotsOf('PQC') });
     expect(within(recent).getByText('EQ-01')).toBeInTheDocument();
@@ -138,7 +145,11 @@ describe('품질 탭', () => {
         ngQty: 1,
       }),
     );
-    const { container } = render(<PqcTab quality={q} />);
+    const { container } = render(
+      <MemoryRouter>
+        <PqcTab quality={q} />
+      </MemoryRouter>,
+    );
 
     const labels = [...container.querySelectorAll('.dash-rank-label')].map((l) => l.textContent);
     expect(labels).toEqual(['E-9-1', 'E-17-1', 'E-17-2', 'E-17-10', 'E-17-11']);
@@ -175,13 +186,45 @@ describe('품질 탭', () => {
     expect(bars[1]).toHaveTextContent(t.none);
   });
 
+  it('PQC — 주요 현황 「재작업 의뢰」 줄은 권한이 있으면 재작업/폐기 판정 의뢰로 간다(사용자 지시 2026-10-19)', async () => {
+    const user = userEvent.setup();
+    render(
+      <MemoryRouter initialEntries={['/dashboard?tab=pqc']}>
+        <Routes>
+          <Route
+            path="/dashboard"
+            element={
+              <PqcTab quality={quality()} allows={(path) => path === DISPOSITION_REQUESTS_PATH} />
+            }
+          />
+          <Route path={DISPOSITION_REQUESTS_PATH} element={<p>판정 의뢰 화면</p>} />
+        </Routes>
+      </MemoryRouter>,
+    );
+    await user.click(screen.getByRole('button', { name: new RegExp(t.reworkRequests) }));
+    expect(screen.getByText('판정 의뢰 화면')).toBeInTheDocument();
+  });
+
+  it('PQC — 판정 의뢰 화면 권한이 없으면 「재작업 의뢰」 줄은 누를 수 없다', () => {
+    render(
+      <MemoryRouter>
+        <PqcTab quality={quality()} />
+      </MemoryRouter>,
+    );
+    expect(screen.getByRole('button', { name: new RegExp(t.reworkRequests) })).toBeDisabled();
+  });
+
   it('PQC — 재검 칸 · 품목별 원형 · 검사 대기 최장 경과(사용자 지시 2026-10-19)', () => {
     const q = quality();
     q.pqc.fullReinspect = { inputQty: 10, restoredQty: 9 };
     q.pqc.itemDefects = [{ itemId: 1, itemCode: 'ITEM-9', itemName: '품목 9', qty: 4 }];
     q.pqc.defectPhenomena = [{ defectCodeId: 1, defectCode: 'D01', defectName: '버', qty: 3 }];
     q.pqc.oldestPendingSince = new Date(Date.now() - 125 * 60_000).toISOString();
-    render(<PqcTab quality={q} />);
+    render(
+      <MemoryRouter>
+        <PqcTab quality={q} />
+      </MemoryRouter>,
+    );
 
     expect(screen.getByRole('group', { name: t.reinspectInput })).toHaveTextContent('10');
     expect(screen.getByText('90')).toBeInTheDocument();
@@ -399,7 +442,11 @@ describe('품질 탭', () => {
     expect(screen.getByRole('tooltip')).toHaveTextContent('IQC95%');
     iqc.unmount();
 
-    const pqc = render(<PqcTab quality={data} />);
+    const pqc = render(
+      <MemoryRouter>
+        <PqcTab quality={data} />
+      </MemoryRouter>,
+    );
     expect(screen.getByRole('group', { name: t.passRateOf('PQC') })).toHaveTextContent(
       '전월 92.7% · ↓ 2.3%p',
     );
