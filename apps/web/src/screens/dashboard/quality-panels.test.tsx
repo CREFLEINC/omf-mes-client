@@ -179,12 +179,15 @@ describe('품질 탭', () => {
     const q = quality();
     q.pqc.fullReinspect = { inputQty: 10, restoredQty: 9 };
     q.pqc.itemDefects = [{ itemId: 1, itemCode: 'ITEM-9', itemName: '품목 9', qty: 4 }];
+    q.pqc.defectPhenomena = [{ defectCodeId: 1, defectCode: 'D01', defectName: '버', qty: 3 }];
     q.pqc.oldestPendingSince = new Date(Date.now() - 125 * 60_000).toISOString();
     render(<PqcTab quality={q} />);
 
     expect(screen.getByRole('group', { name: t.reinspectInput })).toHaveTextContent('10');
     expect(screen.getByText('90')).toBeInTheDocument();
     expect(screen.getByRole('img', { name: t.pqcItemDefects })).toBeInTheDocument();
+    /* 불량현상도 원형 그래프(사용자 지시 2026-10-19). */
+    expect(screen.getByRole('img', { name: t.phenomenaOf('PQC') })).toBeInTheDocument();
     expect(screen.getByText(/가장 오래 기다린 LOT 2시간 5분/)).toBeInTheDocument();
   });
 

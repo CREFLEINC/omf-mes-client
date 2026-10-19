@@ -14307,3 +14307,21 @@ button.app-button-neutral {
   color: var(--on-surface-muted);
   white-space: nowrap;
 }
+
+/* PQC 원형 그래프 둘(사용자 지시 2026-10-19) — 같은 행, 높이는 긴 쪽에 맞춤(크기 봉쇄 없음), 좁으면 1열. */
+.dash-donut-pair {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-4);
+  align-items: stretch;
+}
+
+.dash-donut-pair:has(> :only-child) {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+@container (max-width: 860px) {
+  .dash-donut-pair {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

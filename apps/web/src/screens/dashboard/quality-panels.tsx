@@ -1059,12 +1059,17 @@ export const PqcTab = ({
           </Panel>
         </div>
       </div>
-      <div className="dash-qo-bottom">
-        {pqc.itemDefects === undefined ? (
-          <Panel title={t.phenomenaOf('PQC')} sub={t.qtyShareSub} tag={tags.month}>
-            <RankBars entries={phenomenaEntries(pqc.defectPhenomena)} />
-          </Panel>
-        ) : (
+      {/*
+       * ⭐ PQC 불량현상 · 품목별 불량을 원형 그래프 둘로 나란히(사용자 지시 2026-10-19). 두 박스는 같은 행에서 높이를
+       * 맞추고(내용 높이 · 늘이기), 최근 판정은 그 아래 한 줄 전체. 품목별이 없으면(이전 서버) 불량현상만 넓게.
+       */}
+      <div className="dash-donut-pair">
+        <DefectTypesPanel
+          title={t.phenomenaOf('PQC')}
+          tag={tags.month}
+          entries={phenomenaEntries(pqc.defectPhenomena)}
+        />
+        {pqc.itemDefects !== undefined && (
           <DefectTypesPanel
             title={t.pqcItemDefects}
             tag={tags.month}
@@ -1075,6 +1080,8 @@ export const PqcTab = ({
             }))}
           />
         )}
+      </div>
+      <Row kind="row2-single">
         <RecentLotsPanel
           itemTitle
           title={t.recentLotsOf('PQC')}
@@ -1083,7 +1090,7 @@ export const PqcTab = ({
           linked={allows(INSPECTION_RESULTS_PATH)}
           withTime
         />
-      </div>
+      </Row>
       {dialog.mounted && (
         <QualityLotsDialog
           status={dialog.lotStatus}
