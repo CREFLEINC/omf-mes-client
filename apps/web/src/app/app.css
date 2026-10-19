@@ -295,6 +295,15 @@ main > * + * {
   align-items: start;
 }
 
+/*
+ * W-06-02 검사기준 — 3단 배치를 위치 기준으로 삼는다(omf-all-around#103 · 3단계 검증).
+ * 항목 표(DS Table 재정렬)의 화면 낭독기용 숨김 요소가 `position: absolute` 라, 위치 지정 조상이 없으면 main 의
+ * 스크롤 영역 밖으로 빠져 문서 높이를 늘린다(실측 3197px) — 창이 따로 스크롤되며 앱 틀 아래가 빈 바탕으로 보였다.
+ */
+.inspection-standard-layout {
+  position: relative;
+}
+
 .pane-stack {
   display: grid;
   gap: var(--space-5);

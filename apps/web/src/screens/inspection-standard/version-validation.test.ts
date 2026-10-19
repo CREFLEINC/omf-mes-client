@@ -1,3 +1,4 @@
+import { messages } from '@omf-mes/i18n';
 import { describe, expect, it } from 'vitest';
 
 import type { VersionFormValues } from './types';
@@ -7,7 +8,7 @@ import { VERSION_FORM_FIELDS, validateVersionForm } from './version-validation';
 const values = (overrides: Partial<VersionFormValues> = {}): VersionFormValues => ({
   effectiveFrom: '2026-08-01',
   effectiveTo: '',
-  samplingMethodCode: 'PENDING',
+  samplingMethodCode: 'FULL_INSPECTION',
   samplingRatio: '',
   aqlValue: '',
   acceptanceNumber: '',
@@ -174,8 +175,16 @@ describe('validateVersionForm — 샘플 비율', () => {
   });
 
   /* 선택 필드다 — 빈 칸은 「지정하지 않음」이라 검사 대상이 아니다. 0 과 섞지 않는다. */
-  it('빈 칸은 검사하지 않는다', () => {
+  it('전수검사면 빈 칸은 검사하지 않는다', () => {
     expect(validateVersionForm(values({ samplingRatio: '' })).samplingRatio).toBeUndefined();
+  });
+
+  /* omf-all-around#103 — 샘플 방식은 비율로 검사 수량을 환산한다. */
+  it.each(['SAMPLE_BY_UNIT', 'SAMPLE_BY_LOT'])('%s 이면 비율이 필수다', (samplingMethodCode) => {
+    expect(
+      validateVersionForm(values({ samplingMethodCode, samplingRatio: '' })).samplingRatio,
+    ).toBe(messages.inspectionStandard.validation.samplingRatioRequired);
+    expect(validateVersionForm(values({ samplingMethodCode, samplingRatio: '10' }))).toEqual({});
   });
 
   /*

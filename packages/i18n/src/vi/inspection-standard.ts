@@ -219,6 +219,11 @@ export const inspectionStandard: Translated<typeof ko.inspectionStandard> = {
       pqc: 'PQC (kiểm tra công đoạn)',
       oqc: 'OQC (kiểm tra xuất hàng)',
     },
+    samplingMethods: {
+      fullInspection: 'Kiểm tra toàn bộ',
+      sampleByUnit: 'Lấy mẫu (theo sản phẩm)',
+      sampleByLot: 'Lấy mẫu (theo LOT)',
+    },
     routingOption: (code: string, version: number): string => `${code} · Rev ${String(version)}`,
     version: (planVersion: number): string => `Phiên bản ${String(planVersion)}`,
     draft: 'Đang soạn',
@@ -243,6 +248,7 @@ export const inspectionStandard: Translated<typeof ko.inspectionStandard> = {
     acceptanceNumberInvalid: 'Số chấp nhận phải là số từ 0 trở lên.',
     /* 계약 exclusiveMinimum: 0 · maximum: 100. 라벨과 같은 말을 쓴다 — 단위 `%`를 빼지 않는다. */
     samplingRatioInvalid: 'Tỷ lệ lấy mẫu (%) phải là giá trị lớn hơn 0 và nhỏ hơn hoặc bằng 100.',
+    samplingRatioRequired: 'Với phương thức lấy mẫu, hãy nhập tỷ lệ lấy mẫu (%).',
     /* 계약이 버전 내 유일 제약을 두지 않았다 — 중복이 저장되면 측정 기록의 임자를 가릴 수 없다. */
     itemCodeDuplicated: 'Mã hạng mục này đã có trong phiên bản này. Hãy nhập mã khác.',
     /* 계약 ck_inspection_limits — 데이터베이스가 막는다. 먼저 막는 것이 사용자에게 이롭다. */
