@@ -116,4 +116,23 @@ describe('MaterialDefectPane (W-03-03)', () => {
     });
     expect(await screen.findByText(t.recorded)).toBeInTheDocument();
   });
+
+  /* 담당자 결정(#108) — 같은 불량이 2초 간격으로 세 번 기록됐다. 성공하면 입력을 비워 다시 누르려면 새 입력이 필요하다. */
+  it('기록이 성공하면 입력을 비우고 안내는 남긴다 — 그대로 다시 누를 수 없다', async () => {
+    const user = userEvent.setup();
+    const { writes } = renderPane([LOT]);
+
+    await user.click(await screen.findByRole('combobox', { name: t.code.major }));
+    await user.click(await screen.findByRole('option', { name: 'D-SCR · 긁힘' }));
+    await user.type(screen.getByRole('textbox', { name: t.qty.label }), '5');
+    await user.type(screen.getByRole('textbox', { name: t.description }), '찍힘');
+    await user.click(screen.getByRole('button', { name: t.submit }));
+
+    expect(await screen.findByText(t.recorded)).toBeInTheDocument();
+    expect(screen.getByRole('textbox', { name: t.qty.label })).toHaveValue('');
+    expect(screen.getByRole('textbox', { name: t.description })).toHaveValue('');
+    expect(screen.getByRole('combobox', { name: t.code.major })).not.toHaveTextContent('D-SCR');
+    expect(screen.getByRole('button', { name: t.submit })).toBeDisabled();
+    expect(writes).toHaveLength(1);
+  });
 });

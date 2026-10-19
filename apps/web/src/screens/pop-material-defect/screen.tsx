@@ -3,7 +3,7 @@ import { createIdempotencyKey, type ApiError } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { NumericKeypad } from '@omf-mes/ui';
 import { useQuery } from '@tanstack/react-query';
-import { useId, useState, type FormEvent } from 'react';
+import { useId, useRef, useState, type FormEvent } from 'react';
 
 import { useApiClient } from '../../patterns/api-context';
 import { SaveErrorBanner } from '../../patterns/master';
@@ -147,7 +147,7 @@ export const PopMaterialDefectScreen = () => {
             reasonCode: holdReason,
             targetLotStatusCode: HOLD_TARGET_LOT_STATUS,
             releaseCondition: releaseCondition.trim(),
-            ...(description.trim() === '' ? {} : { remarks: description.trim() }),
+            ...(holdRemarks.current === '' ? {} : { remarks: holdRemarks.current }),
           },
         }),
       );
@@ -178,7 +178,17 @@ export const PopMaterialDefectScreen = () => {
     }
   };
 
+  /*
+   * 보류 비고는 «기록할 때의» 불량 내용이다 — 기록이 성공하면 입력 칸을 비우므로(아래) 보류 재시도가 빈 칸을 읽지
+   * 않게 따로 붙든다.
+   */
+  const holdRemarks = useRef('');
+
   const record = useRecordMaterialDefect(() => {
+    /* 같은 불량이 거듭 기록되지 않게 성공하면 불량 입력을 비운다(담당자 결정 · #108). LOT·보류 입력은 그대로다. */
+    setCode(EMPTY_DEFECT_CODE);
+    setQty('');
+    setDescription('');
     if (lot === null || workerNo === null) return;
     if (hold) void holdLot(lot, workerNo);
     else setOutcome('recorded');
@@ -227,6 +237,7 @@ export const PopMaterialDefectScreen = () => {
   const submit = (): void => {
     if (blocked !== null || lot === null || defectCodeId === null || workerNo === null) return;
     setOutcome(null);
+    holdRemarks.current = description.trim();
     record.write({
       lotId: lot.lotId,
       defectCodeId,

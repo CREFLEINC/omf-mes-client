@@ -124,6 +124,26 @@ describe('PopMaterialDefectScreen (P-02-14)', () => {
     expect(writes).toHaveLength(1);
   });
 
+  /* 담당자 결정(#108) — 성공하면 불량 입력을 비워, 같은 불량이 거듭 기록되지 않게 한다. */
+  it('기록이 성공하면 불량 입력을 비우고, 다시 기록하려면 새로 입력해야 한다', async () => {
+    const user = userEvent.setup();
+    const { writes } = renderScreen('900028');
+
+    await findAndFill(user);
+    await user.type(screen.getByRole('textbox', { name: t.description }), '찍힘');
+    await user.click(screen.getByRole('button', { name: t.submit }));
+
+    expect(await screen.findByText(t.recorded)).toBeInTheDocument();
+    expect(screen.getByRole('textbox', { name: t.qty.label })).toHaveValue('');
+    expect(screen.getByRole('textbox', { name: t.description })).toHaveValue('');
+    expect(screen.getByRole('combobox', { name: t.code.major })).not.toHaveTextContent('D-SCR');
+    expect(screen.getByRole('button', { name: t.submit })).toBeDisabled();
+    expect(screen.getByText(t.blocked.code)).toBeInTheDocument();
+    /* LOT 은 그대로다. */
+    expect(screen.getByText(LOT.lotNo, { selector: 'dd' })).toBeInTheDocument();
+    expect(writes).toHaveLength(1);
+  });
+
   it('보류를 고르면 기록 뒤 그 LOT 을 상세의 잠금 값으로 보류한다', async () => {
     const user = userEvent.setup();
     const { writes } = renderScreen('900028');
@@ -184,12 +204,15 @@ describe('PopMaterialDefectScreen (P-02-14)', () => {
     ]);
 
     await findAndFill(user);
+    await user.type(screen.getByRole('textbox', { name: t.description }), '찍힘');
     await chooseHold(user);
     await user.click(screen.getByRole('button', { name: t.submit }));
 
     expect(
       await screen.findByText(`${t.holdFailed} ${t.holdFailure.versionConflict}`),
     ).toBeInTheDocument();
+    /* 기록은 끝났으므로 불량 입력은 비었다 — 보류 재시도는 기록할 때의 내용을 비고로 그대로 싣는다. */
+    expect(screen.getByRole('textbox', { name: t.description })).toHaveValue('');
     expect(screen.queryByRole('button', { name: t.submit })).not.toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: t.retryHold }));
@@ -202,6 +225,7 @@ describe('PopMaterialDefectScreen (P-02-14)', () => {
     ]);
     expect(await (writes[2] as Request).json()).toMatchObject({
       lots: [{ lotId: LOT.lotId, versionNo: 8 }],
+      remarks: '찍힘',
     });
   });
 

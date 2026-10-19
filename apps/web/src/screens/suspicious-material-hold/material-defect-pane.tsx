@@ -60,7 +60,13 @@ export const MaterialDefectPane = ({ selection, isLocked }: MaterialDefectPanePr
   const [qty, setQty] = useState('');
   const [description, setDescription] = useState('');
   const [isRecorded, setIsRecorded] = useState(false);
-  const record = useRecordMaterialDefect(() => setIsRecorded(true));
+  /* 같은 불량이 거듭 기록되지 않게 성공하면 입력을 비운다(담당자 결정 · #108). 「기록했습니다」는 남긴다. */
+  const record = useRecordMaterialDefect(() => {
+    setIsRecorded(true);
+    setCode(EMPTY_DEFECT_CODE);
+    setQty('');
+    setDescription('');
+  });
 
   /* 다른 LOT 으로 옮기면 입력을 비운다 — 앞 LOT 의 불량이 다음 LOT 에 기록되면 안 된다. */
   useEffect(() => {
