@@ -1188,6 +1188,14 @@ describe('IqcInspectionScreen — 끝난 의뢰', () => {
     expect(screen.queryByRole('button', { name: t.result.save })).not.toBeInTheDocument();
   });
 
+  it('보류로 확정한 의뢰는 끝났어도 요약 대신 [재검사]가 선다 — LOT 이 검사 대기에 남는다', async () => {
+    const held = { ...firstRejected, overallJudgmentCode: 'HELD', rejectedQty: 0, heldQty: 15 };
+    renderScreen('/?ir=1005', () => jsonResponse(queueResponse()), [held]);
+
+    expect(await screen.findByRole('button', { name: t.result.reinspect })).toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: t.result.closed.title })).not.toBeInTheDocument();
+  });
+
   it('재작업으로 의뢰가 다시 열리면(IN_PROGRESS) 확정 회차여도 [재검사]가 선다', async () => {
     renderScreen('/?ir=1002', () => jsonResponse(queueResponse()), [firstRejected]);
 

@@ -145,10 +145,12 @@ export const IqcInspectionScreen = () => {
    * 끝난 의뢰인가(3단계 검증) — 의뢰 COMPLETED · 최신 회차 확정이면 입력 화면 대신 읽기 전용 요약을 보인다.
    * 재작업 처분이 의뢰를 IN_PROGRESS 로 다시 열면(서버 P-43) 입력 화면과 [재검사]가 돌아온다.
    * 작성 중 회차가 있으면(확정 전) 지금처럼 그 회차를 편집한다.
+   * 보류(HELD) 확정은 LOT 이 검사 대기에 남아 그대로 재검사한다 — 의뢰가 COMPLETED 여도 닫지 않는다.
    */
   const isClosed =
     !isReinspectingNow &&
     round?.statusCode === 'CONFIRMED' &&
+    round.overallJudgmentCode !== 'HELD' &&
     detail.data?.statusCode === REQUEST_COMPLETED;
 
   /*

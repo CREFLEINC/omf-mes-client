@@ -153,6 +153,8 @@ export const useInspectionRequestDetail = (
     queryKey: iqcInspectionKeys.detail(inspectionRequestId ?? 0),
     queryFn: () => fetchDetail(client, inspectionRequestId as number),
     enabled: inspectionRequestId !== null,
+    // 처분 화면에서 재작업하면 의뢰가 다시 열린다(서버 P-43) — 돌아왔을 때 옛 상태로 닫힌 요약을 보이지 않게 늘 다시 읽는다.
+    staleTime: 0,
   });
 };
 
@@ -568,6 +570,8 @@ export const useRejectedLotFollowUp = (lotId: number | null, enabled: boolean) =
   return useQuery({
     queryKey: [...ALL_KEY, 'follow-up', lotId ?? 0] as const,
     enabled: enabled && lotId !== null,
+    // 처분 뒤 LOT 상태가 바뀐다 — 다른 화면에서 돌아오면 다시 읽는다(위 상세와 같은 까닭).
+    staleTime: 0,
     queryFn: async (): Promise<RejectedLotFollowUp> => {
       const id = lotId as number;
       const lot = await runRequest(() =>
