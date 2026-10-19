@@ -449,6 +449,8 @@ export interface ItemResourceMap {
   priorityNo: number;
   isActive: boolean;
   remarks: string | null;
+  /** 수정의 If-Match 값 — 목록 행마다 실린다. */
+  versionNo: number;
 }
 
 export interface ItemResourceMapCreate {
