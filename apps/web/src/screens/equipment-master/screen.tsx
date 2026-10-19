@@ -387,7 +387,7 @@ export const EquipmentMasterScreen = () => {
    */
   const formPlantId = formValues.plantId === '' ? null : Number(formValues.plantId);
   const lineLocations = useWorkOrderLocations(formPlantId);
-  /* 4M 과 같은 기준으로 고른다 — 그 공장, 칸에 맞는 창고 유형. */
+  /* 4M 과 다른 기준으로 고르면 라인에 둔 위치가 4M 목록에서 사라진다. */
   const locationOptions = (field: LocationField): CodeOption[] => [
     { value: '', label: t.form.locationNone },
     ...lineLocations.items

@@ -11,7 +11,7 @@ import type {
   InspectionItemFormValues,
 } from './types';
 
-/* 기본 위치 셋은 서버 선행 칸(P-40)이라 생성 타입에 없다 — forward 타입을 덧댄다. */
+/* 기본 위치 셋은 생성 타입에 없어 덧댄다 — `LineDefaultLocations` 를 지울 때 함께 지운다. */
 type EquipmentGroupCreate = components['schemas']['EquipmentGroupCreate'] & LineDefaultLocations;
 type EquipmentGroupUpdate = components['schemas']['EquipmentGroupUpdate'] & LineDefaultLocations;
 type EquipmentCreate = components['schemas']['EquipmentCreate'];

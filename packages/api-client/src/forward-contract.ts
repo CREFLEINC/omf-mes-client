@@ -4,8 +4,8 @@ import type { paths } from './generated/api';
 export type TerminalRegistrationStatusCode = 'UNREGISTERED' | 'REGISTERED';
 
 /**
- * 서버 선행 P-40 — 생산라인(설비 그룹)의 기본 위치 셋. `EquipmentGroup`·`ProductionLine` 응답과
- * `EquipmentGroupCreate`·`EquipmentGroupUpdate` 본문에 실린다. 본문에서 생략 = 유지, null = 비움.
+ * 생산라인(설비 그룹)의 기본 위치 셋 — 서버가 계약보다 먼저 연 칸이라 생성 타입에 없다. 계약 사본에
+ * 실려 `gen:api` 가 만들면 이 타입과 덧댄 자리를 지운다. 본문에서 생략 = 유지, null = 비움.
  */
 export interface LineDefaultLocations {
   defaultWipLocationId?: number | null;
