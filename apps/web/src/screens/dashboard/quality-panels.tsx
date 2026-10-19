@@ -883,6 +883,23 @@ export const IqcTab = ({
   );
 };
 
+/**
+ * PQC · OQC 주요 현황 값 — 「n LOT · m건」(⭐ 사용자 지시 2026-10-19 「LOT 이 없으면 0 LOT 으로」). LOT 번호가 없는
+ * 기록뿐이면 0 LOT. 서버 건수가 없으면(이전 서버) 기존 건수만.
+ */
+const lotCountValue = (
+  counts: DashboardLotRecordCount | undefined,
+  fallbackRecords: number,
+): { value: string; unit: string; records?: string; count: number } =>
+  counts === undefined
+    ? { value: formatFigure(fallbackRecords), unit: t.countUnit, count: fallbackRecords }
+    : {
+        value: formatFigure(counts.lotCount),
+        unit: t.lotUnit,
+        records: t.recordsSuffix(formatFigure(counts.recordCount)),
+        count: counts.recordCount,
+      };
+
 /** 검사 대기 최장 경과(분) — 기준은 지금. 시각이 없거나 읽지 못하면 `null`. */
 export const pendingElapsedMinutes = (
   since: string | null | undefined,
@@ -980,7 +997,6 @@ export const PqcTab = ({
 }) => {
   const tags = usePeriodTags();
   const pqc = quality.pqc;
-  const worst = pqc.equipmentDefectRates[0];
   const dialog = useLotDialog();
   const navigate = useNavigate();
   /* 재작업 판정 줄 → 처분 판정 처리(처리 이력 · 사용자 지시 2026-10-19). 그 화면 권한이 있을 때만. */
@@ -1031,15 +1047,6 @@ export const PqcTab = ({
         >
           <span>{t.pqcDefectBasis}</span>
         </KpiTile>
-        <KpiTile
-          label={t.worstEquipment}
-          /* 아래 「설비별 불량률」과 같은 품질 누계 구간(서버 장부). */
-          value={worst === undefined ? t.none : worst.equipmentCode}
-        >
-          {worst !== undefined && (
-            <span>{t.pqcWorstNote(formatRate(worst.defectRate), formatFigure(worst.ngQty))}</span>
-          )}
-        </KpiTile>
       </div>
       <div className="dash-qo-top">
         <DailyPanel
@@ -1070,8 +1077,10 @@ export const PqcTab = ({
                   /* PQC 는 LOT 번호가 없는 검사 결과 — 단위를 「건」으로 통일(사용자 지시 2026-10-19). */
                   label: t.pqcHeld,
                   note: t.pqcMonthNote,
-                  value: formatFigure(held.count),
-                  unit: t.countUnit,
+                  ...lotCountValue(
+                    quality.statusCounts?.INSPECTION_HELD.byType.PQC,
+                    pqc.monthLots.held,
+                  ),
                   tone: countTone(held.count, 'warning'),
                   selectable: held.count > 0,
                 },
@@ -1081,8 +1090,7 @@ export const PqcTab = ({
                   /* 가장 오래 기다린 LOT 의 경과 시간(사용자 지시 2026-10-19). */
                   note:
                     oldest === null ? t.pendingLotsNote : t.pendingOldest(formatElapsed(oldest)),
-                  value: formatFigure(pending.count),
-                  unit: t.countUnit,
+                  ...lotCountValue(quality.statusCounts?.PQC_PENDING, pqc.pendingLotCount),
                   tone: countTone(pending.count, 'warning'),
                   selectable: pending.count > 0,
                 },
@@ -1091,8 +1099,7 @@ export const PqcTab = ({
                   label: t.reworkRequests,
                   note: t.pqcMonthNote,
                   /* LOT · 건수 둘 다(사용자 지시 2026-10-19) — 서버가 LOT 수를 주지 않으면 기존 건수만. */
-                  value: formatFigure(pqc.reworkRequestCount),
-                  unit: t.countUnit,
+                  ...lotCountValue(pqc.reworkRequestCounts, pqc.reworkRequestCount),
                   selectable: canOpenDisposition,
                 },
               ]}
@@ -1265,7 +1272,10 @@ export const OqcTab = ({
                   key: 'held',
                   label: t.heldLots,
                   note: t.heldLotsNote,
-                  ...held,
+                  ...lotCountValue(
+                    quality.statusCounts?.INSPECTION_HELD.byType.OQC,
+                    oqc.monthLots.held,
+                  ),
                   tone: countTone(held.count, 'warning'),
                   selectable: held.count > 0,
                 },
@@ -1276,7 +1286,7 @@ export const OqcTab = ({
                         key: 'pendingReturn',
                         label: t.pendingReturn,
                         note: t.pendingReturnNote,
-                        ...lotRecordValue(pendingReturn, pendingReturn.lotCount),
+                        ...lotCountValue(pendingReturn, pendingReturn.recordCount),
                         tone: countTone(pendingReturn.recordCount, 'warning'),
                         /* 목록 경로가 없다 — 숫자만. */
                         selectable: false,

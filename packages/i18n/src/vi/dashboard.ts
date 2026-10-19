@@ -290,7 +290,6 @@ export const dashboard: Translated<typeof ko.dashboard> = {
     pendingLots: 'LOT chờ kiểm tra',
     pendingLotsNote: 'Yêu cầu PQC chưa phán định',
     reworkRequests: 'Phán định làm lại',
-    worstEquipment: 'Thiết bị tỷ lệ lỗi cao nhất',
     equipmentDefectRates: 'Tỷ lệ lỗi theo thiết bị TOP 8',
     equipmentDefectRatesSub: 'Theo sản lượng',
     ngShort: (qty: string): string => `NG ${qty}`,
@@ -302,7 +301,6 @@ export const dashboard: Translated<typeof ko.dashboard> = {
     pqcReinspectNote: (input: string, restored: string): string =>
       `Đưa vào ${input} EA · Khôi phục OK ${restored} EA`,
     pqcDefectBasis: 'Theo không đạt kiểm tra',
-    pqcWorstNote: (rate: string, ng: string): string => `${rate} · ${ng} EA`,
     pqcDailySub: 'Theo phán định cuối · Không tính tạm giữ kiểm tra',
     pqcMonthNote: 'Tháng này',
     pqcItemDefects: 'Cơ cấu lỗi PQC theo mã hàng',

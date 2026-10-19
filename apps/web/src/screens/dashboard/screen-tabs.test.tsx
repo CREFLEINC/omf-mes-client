@@ -57,10 +57,8 @@ describe('DashboardScreen — 탭', () => {
     const before = summaryCalls();
 
     await user.click(screen.getByRole('tab', { name: t.tabs.pqc }));
-    /* PQC 「검사 대기」는 현재 현황으로 옮겼다(IQC 기준 배치 · 2026-10-19) — 남은 KPI 로 탭 전환을 본다. */
-    expect(
-      await screen.findByRole('group', { name: t.quality.worstEquipment }),
-    ).toBeInTheDocument();
+    /* PQC 탭으로 바뀌었는지 — PQC 만의 「재작업 판정」 줄로 본다(KPI 는 2026-10-19 정리로 바뀌었다). */
+    expect(await screen.findByText(t.quality.reworkRequests)).toBeInTheDocument();
 
     await user.click(screen.getByRole('tab', { name: t.tabs.oqc }));
     expect(

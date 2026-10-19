@@ -136,8 +136,8 @@ describe('품질 탭', () => {
     expect(screen.getByText(t.pqcDefectBasis)).toBeInTheDocument();
     /* PQC 는 단위 「건」으로 통일 — LOT 를 쓰지 않는다(사용자 지시 2026-10-19). */
     expect(screen.getByRole('group', { name: t.pqcLots })).not.toHaveTextContent('LOT');
-    expect(screen.getByRole('region', { name: t.currentTitle })).not.toHaveTextContent('LOT');
-    expect(screen.getByRole('group', { name: t.worstEquipment })).toBeInTheDocument();
+    /* 「최고 불량률 설비」 KPI 는 없앴다(사용자 지시 2026-10-19) — 설비별 불량률 카드가 같은 정보. */
+    expect(screen.queryByText('최고 불량률 설비')).not.toBeInTheDocument();
   });
 
   it('PQC 호기별 불량률 — 높은 순, 같은 값은 설비 코드 자연 정렬(17-1 < 17-2 < 17-10)', () => {
@@ -227,6 +227,29 @@ describe('품질 탭', () => {
 
     expect(screen.getByRole('button', { name: /^2026-10-16.*검사 실적 없음/ })).toBeInTheDocument();
     expect(screen.queryByText(/선을 끊음/)).not.toBeInTheDocument();
+  });
+
+  it('PQC 주요 현황 — LOT 번호가 없으면 0 LOT · n건(사용자 지시 2026-10-19)', () => {
+    const q = quality();
+    const zero = { lotCount: 0, recordCount: 0 };
+    q.statusCounts = {
+      INSPECTION_HELD: {
+        lotCount: 0,
+        recordCount: 8,
+        byType: { IQC: zero, PQC: { lotCount: 0, recordCount: 8 }, OQC: zero },
+      },
+      RECEIPT_HOLD: zero,
+      PQC_PENDING: { lotCount: 0, recordCount: 3 },
+      NC_OPEN: zero,
+    };
+    render(
+      <MemoryRouter>
+        <PqcTab quality={q} />
+      </MemoryRouter>,
+    );
+    const region = screen.getByRole('region', { name: t.currentTitle });
+    expect(region).toHaveTextContent(/0\s*LOT\s*· 8건/);
+    expect(region).toHaveTextContent(/0\s*LOT\s*· 3건/);
   });
 
   it('PQC — 서버가 더 많은 최근 판정을 주면 모두 보이고 이름표는 받은 건수(사용자 지시 2026-10-19)', () => {

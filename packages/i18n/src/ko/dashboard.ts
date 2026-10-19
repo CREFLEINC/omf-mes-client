@@ -347,7 +347,6 @@ export const dashboard = {
     pendingLots: '검사 대기 LOT',
     pendingLotsNote: '판정 전 PQC 의뢰',
     reworkRequests: '재작업 판정',
-    worstEquipment: '최고 불량률 설비',
     equipmentDefectRates: '설비별 불량률 TOP 8',
     equipmentDefectRatesSub: '생산실적 기준',
     ngShort: (qty: string): string => `NG ${qty}`,
@@ -359,7 +358,6 @@ export const dashboard = {
     pqcReinspectNote: (input: string, restored: string): string =>
       `투입 ${input} EA · OK 복원 ${restored} EA`,
     pqcDefectBasis: '검사 불합격 기준',
-    pqcWorstNote: (rate: string, ng: string): string => `${rate} · ${ng} EA`,
     pqcDailySub: '최종 판정 기준 · 검사 보류 제외',
     pqcMonthNote: '당월',
     pqcItemDefects: '품목(CODE)별 PQC 불량 구성',
