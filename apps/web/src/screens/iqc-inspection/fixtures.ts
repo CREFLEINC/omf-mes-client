@@ -74,6 +74,15 @@ export const requestWithoutPlanVersion: InspectionRequestResponse = {
   inspectionPlanVersionId: undefined,
 };
 
+/** 검사가 끝난 건(COMPLETED) — 큐에는 없지만 LOT 스캔·주소로 열 수 있다(3단계 검증). */
+export const completedRequest: InspectionRequestResponse = {
+  ...waitingRequest,
+  inspectionRequestId: 1005,
+  inspectionRequestNo: 'IR-2026-0005',
+  requestedAt: '2026-08-14T08:40:00+09:00',
+  statusCode: 'COMPLETED',
+};
+
 export const queueItems: InspectionRequestResponse[] = [
   waitingRequest,
   inProgressRequest,

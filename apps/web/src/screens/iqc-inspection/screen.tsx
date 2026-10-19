@@ -21,6 +21,7 @@ import { QueueLoadErrorBanner } from './load-error-banner';
 import { EMPTY_QUANTITY_DRAFT, toSendableNumber, type QuantityDraft } from './quantity-draft';
 import { PageNav } from './page-nav';
 import { toPageView } from './pagination';
+import { ClosedSummary } from './closed-summary';
 import { CODE_GROUPS, toCodeOptions } from './code-options';
 import { MeasurementGrid } from './measurement-grid';
 import { toMeasurementRows } from './measurement-rows';
@@ -58,6 +59,9 @@ import { InspectionHistoryPanel } from '../inspection-history/panel';
 import { latestRound, previousRounds } from './types';
 import { useItemNames, useLotNumbers } from './reference-lookup';
 import { useUomLookup } from './uom-lookup';
+
+/** 끝난 검사 의뢰 — 입력 화면 대신 요약을 보인다(3단계 검증). */
+const REQUEST_COMPLETED = 'COMPLETED';
 
 /**
  * W-01-01 IQC 수입검사·판정 — **이 회차는 좌측 검사 대기 큐 하나다.**
@@ -136,6 +140,16 @@ export const IqcInspectionScreen = () => {
    */
   const editingResultId =
     round !== null && round.statusCode !== 'CONFIRMED' ? round.inspectionResultId : null;
+
+  /*
+   * 끝난 의뢰인가(3단계 검증) — 의뢰 COMPLETED · 최신 회차 확정이면 입력 화면 대신 읽기 전용 요약을 보인다.
+   * 재작업 처분이 의뢰를 IN_PROGRESS 로 다시 열면(서버 P-58) 입력 화면과 [재검사]가 돌아온다.
+   * 작성 중 회차가 있으면(확정 전) 지금처럼 그 회차를 편집한다.
+   */
+  const isClosed =
+    !isReinspectingNow &&
+    round?.statusCode === 'CONFIRMED' &&
+    detail.data?.statusCode === REQUEST_COMPLETED;
 
   /*
    * ⭐ 잠금 토큰을 얻으려고 회차 한 건을 따로 부른다 — 목록 200 에는 `ETag` 가 없고, 토큰
@@ -447,6 +461,17 @@ export const IqcInspectionScreen = () => {
         />
         {rounds.isPending ? (
           <p className="field-note">{t.result.loading}</p>
+        ) : isClosed && round !== null ? (
+          <ClosedSummary
+            round={round}
+            judgmentOptions={judgmentOptions}
+            uomCode={uomCode}
+            followUp={
+              followUp.data?.isDefective === true ? (
+                <RejectedLotGuide nonconformanceId={followUp.data.nonconformanceId} />
+              ) : null
+            }
+          />
         ) : (
           <ResultFormPane
             /*

@@ -1,5 +1,5 @@
 import { messages } from '@omf-mes/i18n';
-import { screen, waitFor } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it } from 'vitest';
 
@@ -9,6 +9,7 @@ import { SYNTHETIC_SESSION, signedInRoute } from '../../test/session-harness';
 import { CODE_GROUPS } from './code-options';
 import {
   codeValuesResponse,
+  completedRequest,
   confirmedRound,
   draftRound,
   expiredMeasurement,
@@ -79,7 +80,7 @@ const renderScreen = (
             new URL(request.url).pathname.startsWith('/quality/inspection-requests/'),
           respond: (request) => {
             const id = Number(new URL(request.url).pathname.split('/').at(-1));
-            const found = [...queueItems, requestWithoutPlanVersion].find(
+            const found = [...queueItems, requestWithoutPlanVersion, completedRequest].find(
               (item) => item.inspectionRequestId === id,
             );
 
@@ -1152,5 +1153,45 @@ describe('IqcInspectionScreen — 단위 조회', () => {
     const call = sent.find((url) => url.pathname === '/mdm/uoms');
     expect(call?.searchParams.get('size')).toBe('200');
     expect(call?.searchParams.get('includeInactive')).toBe('true');
+  });
+});
+
+/* 3단계 검증 — 끝난 의뢰는 입력 대신 최신 회차의 읽기 전용 요약, 다시 열린 의뢰에서만 [재검사]. */
+describe('IqcInspectionScreen — 끝난 의뢰', () => {
+  const firstRejected = {
+    ...confirmedRound,
+    overallJudgmentCode: 'REJECTED',
+    acceptedQty: 485,
+    rejectedQty: 15,
+    heldQty: 0,
+  };
+  const secondAccepted = {
+    ...confirmedRound,
+    inspectionResultId: 9002,
+    inspectionRound: 2,
+    overallJudgmentCode: 'ACCEPTED',
+    acceptedQty: 500,
+    rejectedQty: 0,
+    heldQty: 0,
+    previousResultId: confirmedRound.inspectionResultId,
+  };
+
+  it('의뢰가 끝났으면 회차 단추 없이 최신 회차 요약만 보이고 판정·수량 입력과 [재검사]가 없다', async () => {
+    renderScreen('/?ir=1005', () => jsonResponse(queueResponse()), [firstRejected, secondAccepted]);
+
+    const summary = await screen.findByRole('region', { name: t.result.closed.title });
+    expect(within(summary).getByText(t.result.round(2))).toBeInTheDocument();
+    expect(within(summary).getByText(t.result.closed.finalJudgment)).toBeInTheDocument();
+    expect(screen.queryByLabelText(t.result.fields.accepted)).not.toBeInTheDocument();
+    expect(screen.queryByLabelText(t.result.judgment)).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: t.result.reinspect })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: t.result.save })).not.toBeInTheDocument();
+  });
+
+  it('재작업으로 의뢰가 다시 열리면(IN_PROGRESS) 확정 회차여도 [재검사]가 선다', async () => {
+    renderScreen('/?ir=1002', () => jsonResponse(queueResponse()), [firstRejected]);
+
+    expect(await screen.findByRole('button', { name: t.result.reinspect })).toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: t.result.closed.title })).not.toBeInTheDocument();
   });
 });

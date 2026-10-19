@@ -70,6 +70,13 @@ export const iqcInspection: Translated<typeof ko.iqcInspection> = {
     loading: 'Đang tải kết quả kiểm tra.',
     confirmed:
       'Lượt này đã xác nhận nên không sửa được. Muốn kiểm tra lại thì thêm một lượt kiểm tra lại.',
+    closed: {
+      title: 'Đã kiểm tra xong',
+      note: 'Yêu cầu này đã kiểm tra xong. Đây là kết quả xác nhận của lượt mới nhất.',
+      finalJudgment: 'Đánh giá cuối cùng',
+      round: 'Lượt',
+      confirmedAt: 'Thời điểm xác nhận',
+    },
     fields: {
       inspectedQty: 'Số lượng kiểm tra',
       accepted: 'Số lượng đạt',

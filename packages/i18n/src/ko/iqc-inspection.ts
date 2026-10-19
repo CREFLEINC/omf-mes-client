@@ -147,6 +147,14 @@ export const iqcInspection = {
      * 정정하지 않고 재검사로 새 회차를 쌓는다.
      */
     confirmed: '이 회차는 확정되어 고칠 수 없습니다. 다시 검사하려면 재검사 회차를 추가합니다.',
+    /** 끝난 의뢰(COMPLETED · 최신 회차 확정)의 읽기 전용 요약 — 입력 칸을 두지 않는다(3단계 검증). */
+    closed: {
+      title: '검사 완료',
+      note: '이 의뢰의 검사는 끝났습니다. 최신 회차의 확정 결과입니다.',
+      finalJudgment: '최종 판정',
+      round: '회차',
+      confirmedAt: '확정 시각',
+    },
     fields: {
       inspectedQty: '검사수량',
       accepted: '합격수량',

@@ -10653,6 +10653,22 @@ button.app-button-neutral {
   margin: 0;
 }
 
+/* 끝난 의뢰의 읽기 전용 요약(3단계 검증) — 라벨 위·값 아래 칸을 폭에 맞춰 늘어놓는다. */
+.iqc-inspection-closed > p {
+  margin: 0;
+}
+
+.iqc-inspection-closed-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(9rem, 100%), 1fr));
+  gap: var(--space-3) var(--space-4);
+  margin: 0;
+}
+
+.iqc-inspection-closed-grid dd {
+  margin: 0;
+}
+
 /*
  * 종합 판정과 불합격 사유(omf-all-around#106 · 3단계 검증) — 선택칸이 내용 폭으로 쪼그라들지 않게 칸 폭을 채우고
  * 판정은 읽기 좋은 폭에서 멈춘다. 사유 구역은 테두리 상자 대신 옅은 면 하나(상자를 겹치지 않는다).
