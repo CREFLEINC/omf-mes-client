@@ -57,7 +57,7 @@ export const POP_SCREENS: readonly PopScreen[] = [
   {
     path: '/pop/production-result',
     code: 'P-02-04',
-    name: '생산 실적 등록',
+    name: '생산 작업',
     acceptsWorkOrderId: true,
   },
   { path: '/pop/packing-work', code: 'P-02-08', name: '생산 포장' },

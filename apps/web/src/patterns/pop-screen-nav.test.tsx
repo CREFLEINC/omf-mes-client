@@ -114,7 +114,7 @@ describe('PopScreenNavButton — G-34 화면 이동', () => {
       expect(trigger).toBeEnabled();
     });
     await user.click(trigger);
-    await user.click(screen.getByRole('option', { name: '생산 실적 등록' }));
+    await user.click(screen.getByRole('option', { name: '생산 작업' }));
 
     expect(
       screen.getByText('지금: /pop/production-result?workOrderId=7801'),

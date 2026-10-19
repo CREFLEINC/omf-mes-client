@@ -146,6 +146,7 @@ describe('주 메뉴 트리', () => {
       '/quality/inspection-results → analytics',
       '/quality/approvals → approval',
       '/quality/dispositions → gavel',
+      '/quality/pqc-inspections → fact_check',
       '/equipment/master → precision_manufacturing',
       '/equipment/tool-master → handyman',
       '/equipment/work-calendar → calendar_month',

@@ -279,7 +279,7 @@ export const materialInputScan = {
      * 투입을 마친 뒤의 다음 걸음. **화면 이름 그대로 적는다** — 작업자가 머리줄의 [화면 이동]
      * 목록에서 보던 이름과 같아야 같은 곳임을 안다(`pop-screen-catalog` 의 `P-02-04`).
      */
-    goToProductionResult: '생산 실적 등록으로',
+    goToProductionResult: '생산 작업으로',
     failed: '투입을 기록하지 못했습니다.',
   },
 } as const;

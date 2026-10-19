@@ -4,7 +4,8 @@
  * 이 화면의 말은 「실적」이고 받는 수량은 **양품 하나**다 — 불량·손실은 이 화면에 오지 않는다.
  */
 export const productionResult = {
-  title: '생산 실적 등록',
+  /* 화면 이름은 「생산 작업」이다(사용자 지시 2026-10-19 · omf-all-around#107). 실적은 그 안의 한 구획이다. */
+  title: '생산 작업',
 
   flow: {
     header: {
@@ -177,12 +178,24 @@ export const productionResult = {
     pending: (count: number) => `미전송 ${String(count)}건`,
   },
 
-  /** 검사 선행(R54). 대상인데 아직 안 했으면 실적을 먼저 넣지 않는다. */
+  /**
+   * PQC(omf-all-around#107). 검사 on 이면 실적과 PQC 를 늘 반씩 띄운다 — 업무 순서는 «실적 입력 → PQC» 다
+   * (사용자 결정 2026-10-19 · 앞선 「PQC 를 먼저 마쳐야 실적 등록」(R54)을 뒤집었다).
+   */
   pqc: {
-    blockedTitle: 'PQC 검사가 남아 있습니다',
-    blockedBody: '이 작업지시의 제품 검사를 먼저 마쳐야 실적을 등록할 수 있습니다.',
     goInspect: '검사 화면으로',
-    loadFailed: '검사 의뢰를 확인할 수 없어 실적 입력을 열지 않습니다.',
+    splitTitle: 'PQC 제품 검사',
+    splitNote: '검사 수량 · 판정 · 결과 확정',
+    /** 검사 off(그 W/O 에 PQC 의뢰 없음)일 때 「생산 실적」 머리 오른쪽 칩. */
+    notInspected: 'PQC 미검사',
+    /** 검사 on/off 를 묻는 조회가 실패했다(리뷰 m6) — 조용히 실적만 보이지 않게 알린다. */
+    loadFailed: 'PQC 정보를 불러오지 못했습니다. 다시 시도하세요.',
+  },
+
+  /** 「생산 작업」 화면의 왼쪽(검사 off 면 전체) 구획 머리. */
+  zone: {
+    title: '생산 실적',
+    note: 'LOT 진행 · 수량 입력 · 라벨 발행',
   },
 
   lot: {

@@ -57,6 +57,7 @@ import { ProductionOrderScreen } from '../screens/production-order/screen';
 import { ProductionPlanScreen } from '../screens/production-plan/screen';
 import { PutawayRuleScreen } from '../screens/putaway-rule/screen';
 import { DispositionDecisionScreen } from '../screens/disposition-decision/screen';
+import { PqcInspectionRegisterScreen } from '../screens/pqc-inspection-register/screen';
 import { ProductStockStatusScreen } from '../screens/product-stock-status/screen';
 import { QualityApprovalScreen } from '../screens/quality-approval/screen';
 import { RoutingScreen } from '../screens/routing/screen';
@@ -346,6 +347,11 @@ export const appRouter = createBrowserRouter([
        * 앞머리는 계약 경로가 아니라 사이드바 업무 섹션(품질관리)을 따른다.
        */
       { path: 'quality/dispositions', element: <DispositionDecisionScreen /> },
+      /*
+       * W-03-11 — PQC 검사 등록·조회(omf-all-around#107 · 설계보다 앞선 화면). 현장 POP 의 PQC 와
+       * 같은 판정을 관리웹에서 등록하고 지난 의뢰를 본다.
+       */
+      { path: 'quality/pqc-inspections', element: <PqcInspectionRegisterScreen /> },
       /* W-04-11 — 품질에서 정상 판정된 반품 LOT을 출하 가능 재고로 되돌린다. */
       { path: 'shipment/stock-reinstatements', element: <StockReinstatementScreen /> },
       /*

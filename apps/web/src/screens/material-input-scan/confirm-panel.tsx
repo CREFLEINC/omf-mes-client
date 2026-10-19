@@ -30,7 +30,7 @@ export interface ConfirmPanelProps {
   closedCount: number | null;
   onConfirm: () => void;
   /**
-   * 같은 작업지시의 생산 실적 등록으로 간다. 작업지시를 모르면 `null` — 그때는 단추를 두지 않는다.
+   * 같은 작업지시의 생산 작업으로 간다. 작업지시를 모르면 `null` — 그때는 단추를 두지 않는다.
    *
    * ⭐ **닫은 뒤에만 뜬다.** 투입이 끝나야 다음 걸음이고, 닫기 전에 보이면 기록되지 않은 줄을
    *    남긴 채 화면을 뜨는 길이 생긴다.

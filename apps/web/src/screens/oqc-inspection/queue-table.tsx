@@ -88,11 +88,19 @@ export interface QueueTableProps {
   onSelect: (inspectionRequestId: number) => void;
   /** 결과가 없을 때 표 자리에 그릴 것. 조회 실패와 빈 결과는 부르는 쪽이 가른다 */
   empty: ReactNode;
+  /** 표 머리. 기본은 출하검사 목록이다 — 같은 표를 쓰는 W-03-11(PQC)이 제 이름을 준다. */
+  caption?: string;
 }
 
-export const QueueTable = ({ rows, selectedId, onSelect, empty }: QueueTableProps) => (
+export const QueueTable = ({
+  rows,
+  selectedId,
+  onSelect,
+  empty,
+  caption = t.caption,
+}: QueueTableProps) => (
   <Table
-    caption={t.caption}
+    caption={caption}
     density="compact"
     columns={columnsOf(selectedId, onSelect)}
     rows={rows}
