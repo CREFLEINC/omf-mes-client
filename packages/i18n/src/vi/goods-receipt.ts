@@ -29,6 +29,8 @@ export const goodsReceipt: Translated<typeof ko.goodsReceipt> = {
     inventoryStatus: 'Trạng thái tồn kho',
     reason: 'Lý do',
     receiptDatetime: 'Thời điểm nhập kho',
+    receiptDate: 'Ngày nhập kho',
+    receiptTime: 'Giờ nhập kho',
     remarks: 'Ghi chú',
   },
   actions: {
@@ -41,8 +43,8 @@ export const goodsReceipt: Translated<typeof ko.goodsReceipt> = {
     deselectRow: (inboundReceiptNo: string): string => `Bỏ chọn ${inboundReceiptNo}`,
     selectLine: (lineNo: number): string => `Chọn dòng ${String(lineNo)}`,
     deselectLine: (lineNo: number): string => `Bỏ chọn dòng ${String(lineNo)}`,
-    post: 'Xử lý nhập kho',
-    confirmPost: 'Thực hiện xử lý nhập kho',
+    post: 'Kiểm tra nhập kho',
+    confirmPost: 'Xử lý nhập kho',
     keepEditing: 'Hủy',
     cancelPost: 'Hủy',
     discardDraft: 'Chọn lại',
@@ -50,11 +52,11 @@ export const goodsReceipt: Translated<typeof ko.goodsReceipt> = {
   },
   actionReasons: {
     postCodeListPending:
-      'Xử lý nhập kho: danh sách mã vận hành của loại nhập kho và trạng thái chất lượng chưa sẵn sàng nên hiện chưa xử lý nhập kho được.',
-    postNeedsWarehouse: 'Xử lý nhập kho: vui lòng chọn kho nhập.',
-    postNeedsLocation: 'Xử lý nhập kho: vui lòng chọn vị trí cất hàng.',
-    postNeedsCodes: 'Xử lý nhập kho: vui lòng chọn đủ các mục bắt buộc.',
-    postNeedsReceiptDatetime: 'Xử lý nhập kho: vui lòng nhập thời điểm nhập kho.',
+      'Kiểm tra nhập kho: chưa có mã loại nhập kho và trạng thái chất lượng nên hiện chưa nhập kho được.',
+    postNeedsWarehouse: 'Kiểm tra nhập kho: vui lòng chọn kho nhập.',
+    postNeedsLocation: 'Kiểm tra nhập kho: vui lòng chọn vị trí cất hàng.',
+    postNeedsCodes: 'Kiểm tra nhập kho: vui lòng chọn đủ các mục bắt buộc.',
+    postNeedsReceiptDatetime: 'Kiểm tra nhập kho: vui lòng nhập ngày và giờ nhập kho.',
     sourceDocumentUnavailable:
       'Xem chứng từ gốc: quy ước tương ứng giữa loại chứng từ gốc và đối tượng chưa được chốt nên không mở được chứng từ. Chỉ thấy mã loại và số nhập hàng.',
   },
@@ -123,7 +125,7 @@ export const goodsReceipt: Translated<typeof ko.goodsReceipt> = {
     lookupLoading: 'Đang tải danh sách chọn.',
     supplierPickFromList: 'Hãy chọn nhà cung cấp trong danh sách.',
     statusPending: 'Chưa chốt mã nên chưa chọn được.',
-    codePending: 'Chưa có mã nào được đăng ký.',
+    codePending: 'Chưa có mã đăng ký',
     chipSupplier: (value: string): string => `Nhà cung cấp: ${value}`,
     chipPeriodBoth: (from: string, to: string): string => `Ngày nhập hàng: ${from} ~ ${to}`,
     chipPeriodFrom: (from: string): string => `Ngày nhập hàng: từ ${from}`,
@@ -171,7 +173,7 @@ export const goodsReceipt: Translated<typeof ko.goodsReceipt> = {
     },
     codeLoadingPlaceholder: 'Đang tải…',
     codeFailedPlaceholder: 'Không tải được',
-    codeEmptyPlaceholder: 'Không có mục để chọn',
+    receiptTimePlaceholder: 'HH:mm (24 giờ)',
   },
   notes: {
     defectWarehouseOnly: 'LOT lỗi chỉ nhập được vào kho hàng lỗi.',
@@ -183,8 +185,10 @@ export const goodsReceipt: Translated<typeof ko.goodsReceipt> = {
       lot: (lotNo: string) => `LOT nhập kho: ${lotNo}`,
       goodHint: 'Nhập hàng đạt',
       splitHint: 'Nhập phần lỗi',
-      note: (good: string, split: string) =>
-        `Phân loại đã tách hàng đạt và phần lỗi (hàng đạt ${good}, phần lỗi ${split}). Vui lòng chọn lần lượt từng mục ở 「Đối tượng nhập kho」 để nhập kho. Phần lỗi chỉ nhập vào kho hàng lỗi.`,
+      noteTitle: (good: string, split: string) =>
+        `Kết quả phân loại · hàng đạt ${good} / phần lỗi ${split}`,
+      noteBody:
+        'Chọn lần lượt từng mục ở 「Đối tượng nhập kho」 để nhập kho. Phần lỗi chỉ nhập vào kho hàng lỗi.',
     },
     iqcGate: {
       pendingTitle: 'Chưa có kết quả kiểm tra đầu vào IQC nên không thể nhập kho.',
@@ -194,7 +198,8 @@ export const goodsReceipt: Translated<typeof ko.goodsReceipt> = {
       otherBody: 'Hãy đưa LOT về bình thường ở màn hình xử lý rồi nhập kho.',
     },
     singleLineSelect: 'Mỗi lần chỉ chọn được một dòng nhập hàng.',
-    businessDateDerived: 'Ngày nghiệp vụ tự đặt theo thời điểm nhập kho.',
+    businessDateDerived: 'Ngày nghiệp vụ tự đặt theo ngày nhập kho.',
+    receiptTimeInvalid: 'Vui lòng nhập giờ từ 00:00 đến 23:59.',
     qtyFromInboundLine:
       'Nhập nguyên mặt hàng, số lượng, đơn vị, LOT vật tư của dòng đã chọn; không nhập tách số lượng.',
     plantFromInboundReceipt: 'Nhà máy tự áp dụng theo nhà máy của phiếu nhập hàng.',

@@ -78,34 +78,29 @@ describe('CodeFields — 칸 구성', () => {
 });
 
 describe('CodeFields — 값 목록이 비어 있을 때', () => {
-  /* 비어 있는 선택칸만 두면 고장으로 읽힌다. 왜 비었는지가 화면에서 읽혀야 한다. */
-  it('운영 코드 세 칸은 왜 비었는지 밝히고 그 문구가 칸에 이어진다', () => {
+  /*
+   * 비어 있는 선택칸만 두면 고장으로 읽힌다. 왜 비었는지는 **칸 안**에서 밝힌다 — 라벨 옆에 붙이면
+   * 「사유 등록된 코드가 없습니다」처럼 라벨과 한 문장으로 읽힌다(담당자 지시).
+   */
+  it('운영 코드 세 칸은 칸 안에서 고를 값이 없음을 밝히고, 라벨에는 붙이지 않는다', () => {
     renderFields();
 
-    /* 라벨 옆 짧은 안내(공용 `pendingCode.note` 의 짧은 판). */
-    expect(screen.getAllByText(t.filters.codePending)).toHaveLength(3);
-
     for (const label of PENDING_LABELS) {
-      expect(screen.getByRole('combobox', { name: label })).toHaveAccessibleDescription(
-        t.filters.codePending,
-      );
+      const box = screen.getByRole('combobox', { name: label });
+
+      expect(box).toHaveTextContent(t.filters.codePending);
+      expect(box).toHaveAccessibleName(label);
     }
 
     for (const label of [t.fields.sourceDocumentType, t.fields.inventoryStatus]) {
-      expect(screen.getByRole('combobox', { name: label })).not.toHaveAccessibleDescription(
+      expect(screen.getByRole('combobox', { name: label })).not.toHaveTextContent(
         t.filters.codePending,
       );
     }
   });
 
-  it('트리거가 고를 값이 없음을 밝힌다', () => {
-    renderFields();
-
-    expect(screen.getAllByText(t.values.codeEmptyPlaceholder)).toHaveLength(3);
-  });
-
-  /* 불러오는 중·실패는 「값이 없다」와 다르다 — 라벨 옆 안내를 내지 않고 자리표시가 그 사정을 말한다. */
-  it('불러오는 중이면 「불러오는 중」, 실패면 「불러오지 못함」을 보이고 값 없음 안내는 내지 않는다', () => {
+  /* 불러오는 중·실패는 「값이 없다」와 다르다 — 자리표시가 그 사정을 말한다. */
+  it('불러오는 중이면 「불러오는 중」, 실패면 「불러오지 못함」을 보인다', () => {
     renderFields({
       listState: (key) =>
         key === 'receiptType' ? 'loading' : key === 'qualityStatus' ? 'failed' : 'ready',
@@ -117,6 +112,7 @@ describe('CodeFields — 값 목록이 비어 있을 때', () => {
     expect(screen.getByRole('combobox', { name: t.fields.qualityStatus })).toHaveTextContent(
       t.values.codeFailedPlaceholder,
     );
+    /* 값이 정말 없는 칸(사유)만 「등록된 코드 없음」이다. */
     expect(screen.getAllByText(t.filters.codePending)).toHaveLength(1);
   });
 });

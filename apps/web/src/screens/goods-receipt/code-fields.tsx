@@ -76,18 +76,22 @@ export const CodeFields = ({
       return (
         <SelectField
           key={key}
-          className={`goods-receipt-step-${key}`}
+          /* 고를 값이 없는 칸은 `app.css` 가 점선 테두리로 구분한다(비활성·선택 가능 칸과 다른 모양). */
+          className={
+            isEmpty
+              ? `goods-receipt-step-${key} goods-receipt-code-empty`
+              : `goods-receipt-step-${key}`
+          }
           label={label}
           required={REQUIRED_CODE_KEYS.includes(key)}
           options={codeOptions}
           value={values[key]}
-          /*
-           * 고를 값이 없는 이유는 라벨 옆 한 줄로 — 칸 아래에 두면 그 칸만 키가 커진다.
-           * 불러오는 중·실패는 「값이 없다」와 다르다 — 그때는 자리표시만 그 사정을 말한다.
-           */
-          labelHint={isEmpty && state === 'ready' ? t.filters.codePending : undefined}
           error={fieldErrors[CODE_FIELD_NAMES[key]]}
-          /* 고를 것이 없는 칸과 고를 수 있는 칸은 트리거 문구가 달라야 한다. */
+          /*
+           * 고를 것이 없는 칸과 고를 수 있는 칸은 트리거 문구가 달라야 한다. 그 사정은 칸 안에서만 말한다 —
+           * 라벨 옆에 붙이면 「사유 등록된 코드가 없습니다」처럼 라벨과 한 문장으로 읽힌다(담당자 지시).
+           * 불러오는 중·실패는 「값이 없다」와 다르다.
+           */
           placeholder={
             !isEmpty
               ? t.values.fieldPlaceholders[key]
@@ -95,7 +99,7 @@ export const CodeFields = ({
                 ? t.values.codeLoadingPlaceholder
                 : state === 'failed'
                   ? t.values.codeFailedPlaceholder
-                  : t.values.codeEmptyPlaceholder
+                  : t.filters.codePending
           }
           disabled={isLocked || !isOpen(key)}
           onChange={(value) => {

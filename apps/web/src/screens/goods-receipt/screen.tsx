@@ -95,24 +95,6 @@ const EMPTY_ROWS: IrView[] = [];
 const EMPTY_LINES: IrLineView[] = [];
 const NO_FIELD_ERRORS: Record<string, string> = {};
 
-/** 안내 문장 안의 값들을 앞에서부터 차례로 굵게 — 수량이 먼저 읽히게 한다. 못 찾은 값은 그대로 둔다. */
-const emphasizeAll = (text: string, parts: readonly string[]): ReactNode[] => {
-  const nodes: ReactNode[] = [];
-  let rest = text;
-
-  parts.forEach((part, index) => {
-    const at = rest.indexOf(part);
-
-    if (at < 0) return;
-
-    nodes.push(rest.slice(0, at), <strong key={index}>{part}</strong>);
-    rest = rest.slice(at + part.length);
-  });
-  nodes.push(rest);
-
-  return nodes;
-};
-
 /**
  * 초안을 버리게 되는 조작. **버리기 전에 확인을 받으려면 「무엇을 하려 했는지」를 붙들어야 한다.**
  *
@@ -804,12 +786,12 @@ export const GoodsReceiptScreen = () => {
         )}
         {line.splitLots.length > 0 && receiptTarget !== null && (
           <div className="banner-slot">
-            <AlertBanner variant="info">
-              {/* 양품·불량분 수량은 굵게 — 안내에서 먼저 읽혀야 하는 값이다. */}
-              {emphasizeAll(t.notes.receiptTarget.note(goodQtyText, splitQtyText), [
-                goodQtyText,
-                splitQtyText,
-              ])}
+            {/* 수량은 제목 한 줄로(한눈에), 다음 할 일은 본문 한 줄로(담당자 지시 — 간결하게). */}
+            <AlertBanner
+              variant="info"
+              title={t.notes.receiptTarget.noteTitle(goodQtyText, splitQtyText)}
+            >
+              {t.notes.receiptTarget.noteBody}
             </AlertBanner>
           </div>
         )}
@@ -817,6 +799,8 @@ export const GoodsReceiptScreen = () => {
           {t.postTitle}
           {/* 공장은 고르는 칸이 아니다 — 입력 칸처럼 보이지 않게 제목 옆 보조 글자로 밝힌다(사용자 지시). */}
           <span className="goods-receipt-section-hint">{t.notes.plantFromInboundReceipt}</span>
+          {/* 영업일도 고르는 칸이 없다 — 입고 일자에서 정해진다는 사실을 같은 자리에 밝힌다(계획 결정 10). */}
+          <span className="goods-receipt-section-hint">{t.notes.businessDateDerived}</span>
         </h3>
 
         {/*

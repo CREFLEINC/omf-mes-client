@@ -13691,12 +13691,13 @@ button.app-button-neutral {
 }
 
 /*
- * 입고 정보 폼 — 12칸 격자에 칸마다 데이터에 맞는 폭을 준다(사용자 지시 — 모두 같은 폭이 아니다).
+ * 입고 정보 폼 — 12칸 격자, DOM 차례(= 입력 순서) 그대로 왼쪽→오른쪽으로 채워 줄 끝이 비지 않게 한다(담당자 지시).
  * 넓은 화면(1400px 이상):
- *   창고 4 · 위치 4 · 입고 유형 2 · 원천 문서 유형 2
- *   품질 상태 2 · 재고 상태 2 · 사유 4
- *   입고 일시 3 · 비고 6
- * 좁으면 두 칸(각 6)이고 비고만 줄 전체다. 짝(창고↔위치 · 품질↔재고 · 일시↔비고)은 이웃 칸이다.
+ *   어디에·무엇으로  창고 4 · 위치 4 · 입고 유형 2 · 원천 문서 유형 2
+ *   상태·사유·언제   품질 상태 2 · 재고 상태 2 · 사유 4 · 입고 일자 2 · 입고 시각 2
+ *   비고 12
+ * 좁으면 두 칸(각 6) — 사유 6 · 일자 3 · 시각 3 으로 한 줄을 채우고, 비고는 줄 전체.
+ * 아주 좁으면(720px 이하) 한 칸 — 일자·시각만 나란히.
  * 안쪽 묶음의 `.form-grid` 는 풀어 칸이 이 격자에 바로 선다. 안내·재시도 같은 칸 아닌 것은 줄 전체를 쓴다.
  */
 .goods-receipt-post-form {
@@ -13718,11 +13719,13 @@ button.app-button-neutral {
   grid-column: span 6;
 }
 
-/* 비고는 자유 입력이라 좁은 화면에서도 줄 전체. */
-.goods-receipt-post-form
-  .goods-receipt-post-grid
-  > .field-cell:last-child:not([class*='goods-receipt-step-']) {
-  grid-column: span 12;
+.goods-receipt-post-form .goods-receipt-receipt-date,
+.goods-receipt-post-form .goods-receipt-receipt-time {
+  grid-column: span 3;
+}
+
+.goods-receipt-post-form .goods-receipt-remarks {
+  grid-column: 1 / -1;
 }
 
 @media (min-width: 1400px) {
@@ -13735,17 +13738,20 @@ button.app-button-neutral {
   .goods-receipt-post-form .goods-receipt-step-receiptType,
   .goods-receipt-post-form .goods-receipt-step-sourceDocumentType,
   .goods-receipt-post-form .goods-receipt-step-qualityStatus,
-  .goods-receipt-post-form .goods-receipt-step-inventoryStatus {
+  .goods-receipt-post-form .goods-receipt-step-inventoryStatus,
+  .goods-receipt-post-form .goods-receipt-receipt-date,
+  .goods-receipt-post-form .goods-receipt-receipt-time {
     grid-column: span 2;
   }
+}
 
-  .goods-receipt-post-form .goods-receipt-step-receiptDatetime {
-    grid-column: 1 / span 3;
+@media (max-width: 720px) {
+  .goods-receipt-post-form .field-cell {
+    grid-column: 1 / -1;
   }
 
-  .goods-receipt-post-form
-    .goods-receipt-post-grid
-    > .field-cell:last-child:not([class*='goods-receipt-step-']) {
+  .goods-receipt-post-form .goods-receipt-receipt-date,
+  .goods-receipt-post-form .goods-receipt-receipt-time {
     grid-column: span 6;
   }
 }
@@ -13844,14 +13850,27 @@ button.app-button-neutral {
 
 /*
  * 입고 대상(선별 뒤 양품·불량분) — 입고 정보 격자 위 한 줄. 선택지 문구(「선별 불량분 · 3 EA」)에 맞는 폭으로 줄이고
- * 아래 입력 칸과 격자 간격만큼 띄운다. 라벨 옆에 지금 고른 대상을 상태 색 글자로, 칸 아래에 그 LOT 번호를 다 보인다.
+ * 아래 입력 칸과 격자 간격만큼 띄운다. 칸 아래에 고른 대상의 LOT 번호를 다 보인다.
  */
 .field-cell.goods-receipt-target {
   max-width: 28rem;
   margin-bottom: var(--space-4);
 }
 
+/* 긴 LOT 번호(구분자 `|` · 공백 없음)는 칸 폭 안에서 접는다 — 자르지 않는다. */
+.goods-receipt-target .field-note {
+  max-width: none;
+  overflow-wrap: anywhere;
+}
+
+/*
+ * 라벨과 상태를 떼어 읽히게 한다(담당자 지시 — 「입고 대상 양품 입고」처럼 한 문장으로 붙어 보이지 않게).
+ * 입고 대상: 지금 고른 대상을 테두리 있는 작은 꼬리표로 — 양품은 성공색, 불량분은 오류색(절제된 상태 색).
+ */
 .goods-receipt-target .goods-receipt-label-hint {
+  padding: 0 var(--space-2);
+  border: 1px solid currentColor;
+  border-radius: var(--radius-full);
   font-weight: 600;
 }
 
@@ -13863,15 +13882,9 @@ button.app-button-neutral {
   color: var(--semantic-error-text);
 }
 
-/* 긴 LOT 번호(구분자 `|` · 공백 없음)는 칸 폭 안에서 접는다 — 자르지 않는다. */
-.goods-receipt-target .field-note {
-  max-width: none;
-  overflow-wrap: anywhere;
-}
-
 /*
- * 입고 정보 칸의 라벨 줄 — 라벨 옆 안내가 좁은 칸에서 넘치면 말줄임(전체 문구는 툴팁·칸 설명으로 남는다).
- * 줄을 바꾸면 그 칸만 라벨 층이 높아져 같은 행 칸들의 윗선이 어긋난다.
+ * 입고 정보 칸의 라벨 줄 — 라벨 옆 안내(고른 창고의 공장)는 세로 구분선으로 라벨과 떼고, 좁은 칸에서 넘치면
+ * 말줄임(전체 문구는 툴팁·칸 설명으로 남는다). 줄을 바꾸면 그 칸만 라벨 층이 높아져 같은 행의 윗선이 어긋난다.
  */
 .goods-receipt-post-form .field-label {
   display: flex;
@@ -13884,6 +13897,33 @@ button.app-button-neutral {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
+  padding-left: var(--space-2);
+  border-left: 1px solid var(--outline-variant);
+}
+
+/*
+ * 칸 상태를 모양으로 가른다(담당자 지시) — 필수는 라벨의 `*`, 아직 열리지 않은 칸은 흐린 라벨 + 채운 회색 바탕,
+ * 고를 값이 없는 칸은 점선 테두리 + 칸 안 「등록된 코드 없음」. 셋이 겹쳐도 서로 다른 단서로 읽힌다.
+ */
+/* 글자 칸은 입력 요소를 감싼 상자가 테두리를 그린다 — 입력 요소가 아니라 그 상자를 칠한다. */
+.goods-receipt-post-form .field-cell button:disabled,
+.goods-receipt-post-form .field-cell div:has(> input:disabled) {
+  background: var(--surface-container);
+}
+
+.goods-receipt-post-form .goods-receipt-code-empty button[role='combobox'] {
+  box-shadow: none;
+  outline: 1px dashed var(--outline);
+  outline-offset: -1px;
+}
+
+/*
+ * 이 화면에서 연 선택 목록의 테두리 — 디자인 시스템 목록(`body` 로 띄운 `role=listbox`)은 불투명하지만 바탕
+ * (`--surface-container-high`)이 페인 바탕과 거의 같은 회색이고 그림자가 옅어, 아래 칸을 일부 덮을 때 목록 경계가
+ * 흐려 아래 칸이 «비쳐» 보인다(브라우저 실측). 이 화면이 떠 있을 때만 목록에 윤곽선을 더한다. 공용 부품은 그대로다.
+ */
+body:has(.goods-receipt-post-form) > [role='listbox'] {
+  outline: 1px solid var(--outline-variant);
 }
 
 /*
