@@ -141,7 +141,17 @@ export const QualityLotsDialog = ({
               {meta.label}
             </span>
             {data !== undefined && (
-              <span className="dash-detail-sub">{count(data.totalCount)}</span>
+              <span className="dash-detail-sub">
+                {/* LOT 수 · 기록 건수(사용자 결정 2026-10-19) — 서버가 주지 않으면(이전 서버) 기존 건수만. */}
+                {meta?.cases !== true &&
+                data.lotCount !== undefined &&
+                data.recordCount !== undefined
+                  ? t.lots.countLotsRecords(
+                      formatFigure(data.lotCount),
+                      formatFigure(data.recordCount),
+                    )
+                  : count(data.totalCount)}
+              </span>
             )}
           </span>
         )

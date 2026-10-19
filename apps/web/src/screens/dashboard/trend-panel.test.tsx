@@ -137,3 +137,37 @@ describe('TrendPanel 날짜 이름표 솎기', () => {
     expect(labelStepOf(92, 640)).toBe(10);
   });
 });
+
+/** 기록 없는 날(사용자 결정 2026-10-19) — `null` 은 0 과 다르게 띠 · 「실적 없음」 · 끊긴 선으로. */
+describe('TrendPanel 기록 없는 날', () => {
+  it('null 인 날에 「실적 없음」 띠, 툴팁도 「실적 없음」, 0 인 날은 그대로 점', () => {
+    const gapped: DashboardTrendView = {
+      ...view,
+      points: [
+        { label: '10-14', value: 1_250_000 },
+        { label: '10-15', value: 0 },
+        { label: '10-16', value: null },
+        { label: '10-17', value: 32_000 },
+      ],
+    };
+    const { container } = render(
+      <TrendPanel view={gapped} baseDate="2026-10-17" isLoading={false} />,
+    );
+
+    expect(container.querySelector('.dash-trend-gapped')).not.toBeNull();
+    expect(container.querySelectorAll('.dash-gap-band')).toHaveLength(1);
+    expect(screen.getByText('실적 없음')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '2026-10-16 실적 없음' })).toBeInTheDocument();
+    /* 앞 세 점 중 기록 있는 둘(1,250,000 · 0)은 실선, 10-17 은 혼자 남은 점 + 점선으로 이어진다. */
+    expect(container.querySelectorAll('.dash-trend-gap-line')).toHaveLength(1);
+    expect(container.querySelectorAll('.dash-trend-gap-bridge')).toHaveLength(1);
+    expect(container.querySelectorAll('.dash-trend-gap-solo')).toHaveLength(1);
+  });
+
+  it('기록 없는 날이 없으면 DS 차트 그대로', () => {
+    const { container } = render(
+      <TrendPanel view={view} baseDate="2026-10-16" isLoading={false} />,
+    );
+    expect(container.querySelector('.dash-trend-gapped')).toBeNull();
+  });
+});

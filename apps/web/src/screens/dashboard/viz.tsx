@@ -376,6 +376,8 @@ export interface StatusItem {
   note?: string;
   value: string;
   unit?: string;
+  /** 값 옆의 기록 건수(「· 5건」) — LOT 번호 없는 기록도 센다(사용자 결정 2026-10-19). */
+  records?: string;
   /** 점 · 값의 색. 0이 아닌 경고만 색을 준다 — 0에 색을 주면 늘 문제가 있는 것처럼 보인다. */
   tone?: ChipStatus;
 }
@@ -397,6 +399,7 @@ const StatusRowBody = ({ item }: { item: StatusItem }) => (
     >
       {item.value}
       {item.unit !== undefined && <span className="dash-kpi-unit">{item.unit}</span>}
+      {item.records !== undefined && <span className="dash-status-records">{item.records}</span>}
     </span>
   </>
 );

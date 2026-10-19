@@ -113,11 +113,29 @@ export interface DashboardQualityTypeBlock {
   recentLots: DashboardRecentLot[];
 }
 
+/** 고유 LOT 수(LOT 없는 기록 제외) · 기록 수(LOT 없는 것 포함) — 서버 장부 P-58/P-59(사용자 결정 2026-10-19). */
+export interface DashboardLotRecordCount {
+  lotCount: number;
+  recordCount: number;
+}
+
+/** 「현재 현황」 상태별 LOT 수 · 건수. 키는 상태별 LOT 목록의 `status`. */
+export interface DashboardQualityStatusCounts {
+  INSPECTION_HELD: DashboardLotRecordCount & {
+    byType: Record<'IQC' | 'PQC' | 'OQC', DashboardLotRecordCount>;
+  };
+  RECEIPT_HOLD: DashboardLotRecordCount;
+  PQC_PENDING: DashboardLotRecordCount;
+  NC_OPEN: DashboardLotRecordCount;
+}
+
 export interface DashboardQuality {
+  /** 없으면(이전 서버) 화면은 기존 숫자만 보인다. */
+  statusCounts?: DashboardQualityStatusCounts;
   iqc: DashboardQualityTypeBlock & {
     vendorDefects: { partnerId: number; partnerName: string; rejectedQty: number }[];
     itemDefects: { itemId: number; itemCode: string; itemName: string; qty: number }[];
-    /** 지금은 늘 `null` — 양품 복원 데이터를 구할 수 없다. */
+    /** IQC 재검사 회차의 투입(검사) · 합격 수량 합(사용자 결정 2026-10-19). 0건이면 0. */
     fullReinspect: { inputQty: number; restoredQty: number } | null;
     receiptHoldLotCount: number;
   };
@@ -161,6 +179,15 @@ export interface DashboardProduction {
 }
 
 /** `GET /app/dashboard-summary` 에 더해지는 선택 섹션. */
+/**
+ * 생산 추이 점(사용자 결정 2026-10-19 · 서버 장부) — 생산 실적 기록이 아예 없는 날은 `value: null`(수량 0 과 구분).
+ * 공식 설계 사본에 반영되면 대조하고 제거한다.
+ */
+export interface DashboardTrendPointForward {
+  label: string;
+  value: number | null;
+}
+
 export interface DashboardSummarySections {
   production?: DashboardProduction;
   equipment?: DashboardEquipment;
@@ -222,6 +249,9 @@ export interface DashboardQualityLots {
   status: DashboardQualityLotStatus;
   asOf: string;
   totalCount: number;
+  /** 같은 조건의 `statusCounts` 값과 같다(200줄 제한 전). 없으면(이전 서버) `totalCount` 만. */
+  lotCount?: number;
+  recordCount?: number;
   items: DashboardQualityLotItem[];
 }
 

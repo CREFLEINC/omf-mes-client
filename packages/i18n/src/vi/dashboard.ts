@@ -59,6 +59,8 @@ export const dashboard: Translated<typeof ko.dashboard> = {
     target: 'Mục tiêu',
     unitSuffix: (unit: string): string => `Đơn vị ${unit}`,
     empty: 'Kỳ này không có sản lượng để vẽ.',
+    /** 생산 실적 기록이 없는 날(그래프 띠 · 툴팁). */
+    noRecord: 'Không có sản lượng',
     absent: 'Phản hồi này không kèm diễn biến sản lượng.',
     detail: 'Chi tiết',
   },
@@ -270,6 +272,8 @@ export const dashboard: Translated<typeof ko.dashboard> = {
     },
     none: '—',
     currentTitle: 'Tình trạng hiện tại',
+    /** 「현재 현황」 LOT 수 옆 기록 건수(LOT 번호 없는 기록 포함 · 사용자 결정 2026-10-19). */
+    recordsSuffix: (count: string): string => `· ${count} bản ghi`,
     heldLots: 'LOT tạm giữ kiểm tra',
     heldLotsNote: 'Theo phán định trong tháng',
     topVendor: 'Nhà cung cấp lỗi nhiều nhất',
@@ -296,6 +300,8 @@ export const dashboard: Translated<typeof ko.dashboard> = {
     lots: {
       countLots: (count: string): string => `${count} LOT`,
       countCases: (count: string): string => `${count} trường hợp`,
+      countLotsRecords: (lots: string, records: string): string =>
+        `${lots} LOT · ${records} bản ghi`,
       truncated: (total: string, shown: string): string => `Hiển thị ${shown}/${total} mục`,
       loading: 'Đang tải danh sách LOT.',
       failed: 'Không tải được danh sách LOT.',

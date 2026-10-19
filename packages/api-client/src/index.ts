@@ -34,6 +34,9 @@ export type {
   DashboardSummaryPeriod,
   DashboardSummaryPeriodQuery,
   DashboardSummarySections,
+  DashboardLotRecordCount,
+  DashboardQualityStatusCounts,
+  DashboardTrendPointForward,
   TerminalRegistrationConfirmation,
   TerminalRegistrationStatusCode,
 } from './forward-contract';

@@ -8337,6 +8337,41 @@ dl.filter-bar.approval-inbox-detail-facts {
   pointer-events: none;
 }
 
+/* 기록 없는 날(⭐ 사용자 지시 2026-10-19) — DS 의 선 · 점을 숨기고 `TrendGapLayer` 가 같은 색으로 다시 그린다. */
+.dash-trend-gapped svg[class] [class*='_line_'],
+.dash-trend-gapped svg[class] [class*='_point_'] {
+  display: none;
+}
+
+.dash-trend-gap-layer {
+  position: absolute;
+  inset: 0;
+  overflow: visible;
+}
+
+.dash-trend-gap-line {
+  fill: none;
+  stroke: var(--chart-1);
+  stroke-width: 2;
+}
+
+.dash-trend-gap-bridge {
+  stroke: var(--chart-1);
+  stroke-width: 1.5;
+  stroke-dasharray: 3 4;
+  opacity: 0.45;
+}
+
+.dash-trend-gap-point {
+  fill: var(--chart-1);
+}
+
+.dash-trend-gap-point.dash-trend-gap-solo {
+  fill: var(--surface-container);
+  stroke: var(--chart-1);
+  stroke-width: 2;
+}
+
 .dash-trend-hit {
   position: absolute;
   padding: 0;
@@ -9831,6 +9866,15 @@ dl.filter-bar.approval-inbox-detail-facts {
   letter-spacing: var(--type-title-sm-tracking);
   font-weight: 700;
   white-space: nowrap;
+}
+
+/* LOT 수 옆 기록 건수(사용자 결정 2026-10-19) — LOT 수보다 작고 옅게, 색은 입히지 않는다. */
+.dash-status-records {
+  margin-inline-start: var(--space-1);
+  font: var(--type-label-sm);
+  letter-spacing: var(--type-label-sm-tracking);
+  font-weight: 400;
+  color: var(--on-surface-muted);
 }
 
 /* SVG 그림 — 꺾은선 · 파레토 */

@@ -1,5 +1,6 @@
 import { Chip, Icon, Skeleton, Table, type ChipStatus, type Column } from '@crefle/web-ui';
 import type {
+  DashboardLotRecordCount,
   DashboardJudgmentCode,
   DashboardLotCounts,
   DashboardQuality,
@@ -541,6 +542,23 @@ const phenomenaEntries = (entries: { defectCodeId: number; defectName: string; q
 const countTone = (value: number, tone: ChipStatus): ChipStatus | undefined =>
   value > 0 ? tone : undefined;
 
+/**
+ * 「현재 현황」 LOT 줄 값 — 고유 LOT 수 + 기록 건수(⭐ 사용자 결정 2026-10-19 「LOT 번호가 없어도 데이터 건수를 같이」).
+ * 서버가 건수를 주지 않으면(이전 서버) 기존 숫자만. 색 · 누를 수 있는지는 기록 건수로 본다.
+ */
+const lotRecordValue = (
+  counts: DashboardLotRecordCount | undefined,
+  fallback: number,
+): { value: string; unit: string; records?: string; count: number } =>
+  counts === undefined
+    ? { value: formatFigure(fallback), unit: t.lotUnit, count: fallback }
+    : {
+        value: formatFigure(counts.lotCount),
+        unit: t.lotUnit,
+        records: t.recordsSuffix(formatFigure(counts.recordCount)),
+        count: counts.recordCount,
+      };
+
 /** 품질 종합. */
 /** 「현재 현황」 줄 → LOT 목록 상태(연결 규격의 status). */
 const LOT_STATUS_OF_ROW: Record<string, DashboardQualityLotStatus> = {
@@ -570,6 +588,10 @@ export const QualityOverviewTab = ({
     quality.pqc.monthLots,
     quality.oqc.monthLots,
   ]).held;
+  const counts = quality.statusCounts;
+  const held = lotRecordValue(counts?.INSPECTION_HELD, monthHeld);
+  const receiptHold = lotRecordValue(counts?.RECEIPT_HOLD, quality.iqc.receiptHoldLotCount);
+  const pending = lotRecordValue(counts?.PQC_PENDING, quality.pqc.pendingLotCount);
 
   return (
     <QualityTabFrame fill={false} className="dash-tab-quality-overview">
@@ -623,27 +645,24 @@ export const QualityOverviewTab = ({
                   key: 'held',
                   label: t.heldLots,
                   note: t.heldLotsNote,
-                  value: formatFigure(monthHeld),
-                  unit: t.lotUnit,
-                  tone: countTone(monthHeld, 'warning'),
-                  selectable: monthHeld > 0,
+                  ...held,
+                  tone: countTone(held.count, 'warning'),
+                  selectable: held.count > 0,
                 },
                 {
                   key: 'receiptHold',
                   label: t.receiptHold,
                   note: t.receiptHoldNote,
-                  value: formatFigure(quality.iqc.receiptHoldLotCount),
-                  unit: t.lotUnit,
-                  tone: countTone(quality.iqc.receiptHoldLotCount, 'warning'),
-                  selectable: quality.iqc.receiptHoldLotCount > 0,
+                  ...receiptHold,
+                  tone: countTone(receiptHold.count, 'warning'),
+                  selectable: receiptHold.count > 0,
                 },
                 {
                   key: 'pending',
                   label: t.pendingLots,
                   note: t.pendingLotsNote,
-                  value: formatFigure(quality.pqc.pendingLotCount),
-                  unit: t.lotUnit,
-                  selectable: quality.pqc.pendingLotCount > 0,
+                  ...pending,
+                  selectable: pending.count > 0,
                 },
                 {
                   key: 'ncOpen',
@@ -700,6 +719,14 @@ export const IqcTab = ({
   const [lotStatus, setLotStatus] = useState<DashboardQualityLotStatus | null>(null);
   const [lotDialogMounted, setLotDialogMounted] = useState(false);
   const pointerInput = usePointerInput();
+  const iqcHeld = lotRecordValue(
+    quality.statusCounts?.INSPECTION_HELD.byType.IQC,
+    iqc.monthLots.held,
+  );
+  const iqcReceiptHold = lotRecordValue(
+    quality.statusCounts?.RECEIPT_HOLD,
+    iqc.receiptHoldLotCount,
+  );
 
   return (
     <QualityTabFrame className="dash-tab-quality-detail">
@@ -786,20 +813,18 @@ export const IqcTab = ({
                   key: 'held',
                   label: t.heldLots,
                   note: t.heldLotsNote,
-                  value: formatFigure(iqc.monthLots.held),
-                  unit: t.lotUnit,
-                  tone: countTone(iqc.monthLots.held, 'warning'),
+                  ...iqcHeld,
+                  tone: countTone(iqcHeld.count, 'warning'),
                   /* 목록은 IQC 검사 보류만(`inspectionType`) — 이 숫자와 같은 건수. */
-                  selectable: iqc.monthLots.held > 0,
+                  selectable: iqcHeld.count > 0,
                 },
                 {
                   key: 'receiptHold',
                   label: t.receiptHold,
                   note: t.receiptHoldNote,
-                  value: formatFigure(iqc.receiptHoldLotCount),
-                  unit: t.lotUnit,
-                  tone: countTone(iqc.receiptHoldLotCount, 'warning'),
-                  selectable: iqc.receiptHoldLotCount > 0,
+                  ...iqcReceiptHold,
+                  tone: countTone(iqcReceiptHold.count, 'warning'),
+                  selectable: iqcReceiptHold.count > 0,
                 },
               ]}
             />

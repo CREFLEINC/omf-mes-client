@@ -71,6 +71,8 @@ export const dashboard = {
     unitSuffix: (unit: string): string => `단위 ${unit}`,
     empty: '이 기간에 그릴 생산실적이 없습니다.',
     /** 계약이 추이를 선택 항목으로 두어 아예 오지 않을 수 있다. */
+    /** 생산 실적 기록이 없는 날(그래프 띠 · 툴팁). */
+    noRecord: '실적 없음',
     absent: '생산실적 추이가 이 응답에 오지 않았습니다.',
     detail: '자세히',
   },
@@ -326,6 +328,8 @@ export const dashboard = {
     },
     none: '—',
     currentTitle: '현재 현황',
+    /** 「현재 현황」 LOT 수 옆 기록 건수(LOT 번호 없는 기록 포함 · 사용자 결정 2026-10-19). */
+    recordsSuffix: (count: string): string => `· ${count}건`,
     heldLots: '검사 보류 LOT',
     heldLotsNote: '당월 판정 기준',
     topVendor: '최다 불량 업체',
@@ -353,6 +357,7 @@ export const dashboard = {
     lots: {
       countLots: (count: string): string => `${count} LOT`,
       countCases: (count: string): string => `${count}건`,
+      countLotsRecords: (lots: string, records: string): string => `${lots} LOT · ${records}건`,
       truncated: (total: string, shown: string): string => `전체 ${total}건 중 ${shown}건 표시`,
       loading: 'LOT 목록을 불러오는 중입니다.',
       failed: 'LOT 목록을 불러오지 못했습니다.',

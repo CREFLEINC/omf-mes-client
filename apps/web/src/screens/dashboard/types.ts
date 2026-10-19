@@ -6,6 +6,7 @@ import type {
   DashboardQuality,
   DashboardShipment,
   DashboardSummarySections,
+  DashboardTrendPointForward,
 } from '@omf-mes/api-client';
 import { formatPlantDateTime } from '../../patterns/plant-time';
 import { toEquipmentView, type EquipmentView } from './equipment';
@@ -21,7 +22,13 @@ import { toEquipmentView, type EquipmentView } from './equipment';
  */
 
 /** 계약의 집계에 2차 규격의 선택 섹션(설비 · 출하)을 더한 모양(omf-all-around#118 · forward-contract). */
-type DashboardSummary = components['schemas']['DashboardSummary'] & DashboardSummarySections;
+type DashboardSummarySchema = components['schemas']['DashboardSummary'];
+/* 추이 점 값은 `null`(기록 없는 날)일 수 있다 — 생성 계약은 아직 number 만(사용자 결정 2026-10-19). */
+type DashboardSummary = Omit<DashboardSummarySchema, 'trend'> & {
+  trend?: Omit<NonNullable<DashboardSummarySchema['trend']>, 'points'> & {
+    points: DashboardTrendPointForward[];
+  };
+} & DashboardSummarySections;
 type DashboardCard = components['schemas']['DashboardCard'] & DashboardCardForward;
 type Notification = components['schemas']['Notification'];
 
@@ -63,7 +70,8 @@ export interface DashboardCardView {
 
 export interface DashboardTrendPointView {
   label: string;
-  value: number;
+  /** 생산 실적 기록이 없는 날은 `null` — 0(수량 0)과 다르다(사용자 결정 2026-10-19). */
+  value: number | null;
 }
 
 export interface DashboardTrendView {
@@ -157,7 +165,7 @@ export const toChartMax = (
 ): number | undefined => {
   if (targetValue === null || points.length === 0) return undefined;
 
-  const dataMax = points.reduce((max, point) => Math.max(max, point.value), points[0]?.value ?? 0);
+  const dataMax = points.reduce((max, point) => Math.max(max, point.value ?? 0), 0);
 
   return targetValue > dataMax ? targetValue : undefined;
 };
