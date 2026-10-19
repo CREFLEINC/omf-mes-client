@@ -139,6 +139,8 @@ export interface WarehouseView {
   warehouseCode: string;
   warehouseName: string;
   plantId: number;
+  /** 불량창고 여부 — IQC 불합격 LOT 은 여기로만 입고할 수 있다(omf-all-around#84). */
+  isDefect: boolean;
 }
 
 export const toWarehouseView = (data: WarehouseResponse): WarehouseView => ({
@@ -146,6 +148,7 @@ export const toWarehouseView = (data: WarehouseResponse): WarehouseView => ({
   warehouseCode: data.warehouseCode,
   warehouseName: data.warehouseName,
   plantId: data.plantId,
+  isDefect: data.isDefect,
 });
 
 /**

@@ -26,9 +26,8 @@ import type { LocationView } from './types';
 export type LocationSelectItem = SelectOption | SelectOptionGroup;
 
 /** 그룹인가. `Select`가 둘을 한 배열에 받으므로 읽는 쪽이 가릴 수단이 필요하다. */
-export const isLocationGroup = (
-  item: LocationSelectItem | undefined,
-): item is SelectOptionGroup => item !== undefined && 'options' in item;
+export const isLocationGroup = (item: LocationSelectItem | undefined): item is SelectOptionGroup =>
+  item !== undefined && 'options' in item;
 
 /** 「코드 · 이름」. 위치 이름만으로는 같은 이름이 창고마다 있을 수 있어 코드를 앞세운다. */
 const labelOf = (location: LocationView): string =>

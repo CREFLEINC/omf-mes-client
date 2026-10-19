@@ -42,6 +42,7 @@ const renderFields = (
     isLocked?: boolean;
     warehousePlantName?: string | null;
     isPlantMismatch?: boolean;
+    defectOnly?: boolean;
   } = {},
 ) => {
   const onChangeWarehouse = vi.fn();
@@ -59,6 +60,7 @@ const renderFields = (
       warehousePlantName={overrides.warehousePlantName ?? null}
       isPlantMismatch={overrides.isPlantMismatch ?? false}
       inboundPlantName="SAMPLE-PL-01 · 합성 공장"
+      defectOnly={overrides.defectOnly ?? false}
       onChangeWarehouse={onChangeWarehouse}
       onChangeLocation={onChangeLocation}
       onRetryOptions={onRetryOptions}
@@ -254,6 +256,44 @@ describe('WarehouseLocationFields — 공장 표기', () => {
     expect(
       screen.queryByText(noteText(t.notes.warehousePlantDiffers('SAMPLE-PL-01 · 합성 공장'))),
     ).not.toBeInTheDocument();
+  });
+});
+
+/* omf-all-around#84 — IQC 불합격 LOT 은 불량창고로만 입고된다. */
+describe('WarehouseLocationFields — 불량창고만', () => {
+  const withDefect = list([
+    ...WAREHOUSES,
+    {
+      warehouseId: 9703,
+      warehouseCode: 'SAMPLE-WH-NG',
+      warehouseName: '합성 불량창고',
+      plantId: 9201,
+      isDefect: true,
+    },
+  ]);
+
+  it('불량창고만 선택지에 남기고 이유를 밝힌다', async () => {
+    const { user } = renderFields({ warehouses: withDefect, defectOnly: true });
+
+    expect(warehouseBox()).toHaveAccessibleDescription(t.notes.defectWarehouseOnly);
+    await user.click(warehouseBox());
+    expect(
+      screen.getByRole('option', { name: 'SAMPLE-WH-NG · 합성 불량창고' }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole('option', { name: 'SAMPLE-WH-01 · 합성 창고 가' }),
+    ).not.toBeInTheDocument();
+  });
+
+  it('좁히지 않으면 불량창고도 일반 창고와 함께 보인다', async () => {
+    const { user } = renderFields({ warehouses: withDefect });
+
+    expect(screen.queryByText(t.notes.defectWarehouseOnly)).not.toBeInTheDocument();
+    await user.click(warehouseBox());
+    expect(screen.getByRole('option', { name: 'SAMPLE-WH-01 · 합성 창고 가' })).toBeInTheDocument();
+    expect(
+      screen.getByRole('option', { name: 'SAMPLE-WH-NG · 합성 불량창고' }),
+    ).toBeInTheDocument();
   });
 });
 

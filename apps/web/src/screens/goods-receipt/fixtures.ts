@@ -169,12 +169,14 @@ export const warehouseFixtures = [
     warehouseCode: 'SAMPLE-WH-01',
     warehouseName: '합성 창고 가',
     plantId: 9201,
+    isDefect: false,
   },
   {
     warehouseId: 9702,
     warehouseCode: 'SAMPLE-WH-02',
     warehouseName: '합성 창고 나',
     plantId: 9202,
+    isDefect: false,
   },
 ];
 
