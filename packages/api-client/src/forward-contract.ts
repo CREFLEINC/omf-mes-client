@@ -99,6 +99,21 @@ export interface DefectRecordCreate {
   occurredAt?: string | null;
 }
 
+/** 서버 선행 P-47(omf-all-around#121) — 확정 본문의 IQC 불합격 사유 한 줄. */
+export interface InspectionDefectInput {
+  defectCodeId: number;
+  defectQty: number;
+  defectDescription?: string | null;
+  suspectedCauseCodeId?: number | null;
+}
+
+/** 서버 선행 P-47 — 사유를 실으면 서버가 확정과 한 트랜잭션에서 그 회차의 불량 기록을 이 값으로 갈아 끼운다. */
+export type InspectionResultConfirmForward = components['schemas']['InspectionResultConfirm'] & {
+  defects?: InspectionDefectInput[];
+};
+
+type InspectionConfirmPath = paths['/quality/inspection-results/{inspectionResultId}:confirm'];
+
 /** 서버 선행 P-57(omf-all-around#58) — 첨부 대상에 검사 문서(LOT·검사 결과)를 더한다. */
 export type AttachmentTargetType =
   'WAREHOUSE' | 'NOTICE' | 'BREAKDOWN' | 'LOT' | 'INSPECTION_RESULT';
@@ -454,6 +469,15 @@ export interface ForwardPaths {
     head?: never;
     patch?: never;
     trace?: never;
+  };
+  /** 확정 본문에 불합격 사유(`defects`)를 더한다 — 서버 선행 P-47. */
+  '/quality/inspection-results/{inspectionResultId}:confirm': Omit<
+    InspectionConfirmPath,
+    'post'
+  > & {
+    post: Omit<InspectionConfirmPath['post'], 'requestBody'> & {
+      requestBody: { content: { 'application/json': InspectionResultConfirmForward } };
+    };
   };
   /** 기존 조회(GET)에 등록(POST)을 더한다 — 서버 선행 P-42. */
   '/quality/defect-records': Omit<paths['/quality/defect-records'], 'post'> & {

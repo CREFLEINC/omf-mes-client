@@ -35,7 +35,6 @@ import {
   useCodeValues,
   useConfirmResult,
   useDefectCodes,
-  useRecordRejection,
   useRejectedLotFollowUp,
   useMeasurements,
   useSaveDraft,
@@ -83,8 +82,6 @@ const REQUEST_COMPLETED = 'COMPLETED';
 const t = messages.iqcInspection;
 /** 종합 판정 불합격(시드 `INSPECTION_RESULT_OVERALL_JUDGMENT`) — 이 값일 때만 불합격 사유를 받는다. */
 const REJECTED_JUDGMENT = 'REJECTED';
-/** 불량 기록 원천 — 수입검사(서버 선행 P-42). 발생·검출 공정은 서버가 수입검사 공정으로 채운다. */
-const IQC_DEFECT_SOURCE = 'IQC';
 
 export const IqcInspectionScreen = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -184,12 +181,11 @@ export const IqcInspectionScreen = () => {
   });
 
   /*
-   * 불합격 사유(omf-all-around#106) — 불합격이면 불량 코드·사유를 받아 확정 «직전»에 불량 기록으로 남긴다.
-   * 서버가 IQC 불합격 확정에 불량 기록을 요구한다(P-42). 확정이 실패해 다시 누르면 같은 회차의 사유를
-   * 두 번 남기지 않는다(`recordedResultId`).
+   * 불합격 사유(omf-all-around#106) — 불합격이면 불량 코드·사유를 받아 «확정 요청에 함께» 싣는다.
+   * 서버가 확정과 한 트랜잭션에서 그 회차의 불량 기록을 이 값으로 갈아 끼운다(P-47 · #121) — 확정이 실패해
+   * 다시 눌러도 사유는 그때 입력 1벌이고, 합격·보류로 확정하면 서버가 그 회차의 기록을 지운다.
    */
   const [rejection, setRejection] = useState<RejectionDraft>(EMPTY_REJECTION);
-  const [recordedResultId, setRecordedResultId] = useState<number | null>(null);
   const isRejected = judgment === REJECTED_JUDGMENT;
   const defectCodes = useDefectCodes(isRejected);
   const resolvedDefect = resolveDefectCode(defectCodes.data ?? [], rejection);
@@ -198,10 +194,6 @@ export const IqcInspectionScreen = () => {
     detail.data?.lotId ?? null,
     round?.statusCode === 'CONFIRMED' && round.overallJudgmentCode === REJECTED_JUDGMENT,
   );
-  const recordRejection = useRecordRejection(() => {
-    setRecordedResultId(editingResultId);
-    confirm.write({ overallJudgmentCode: judgment });
-  });
 
   /**
    * 초안이 바뀌면 「저장했습니다」를 지운다.
@@ -499,36 +491,33 @@ export const IqcInspectionScreen = () => {
             judgment={judgment}
             onJudgmentChange={setJudgment}
             onConfirm={() => {
-              if (
-                !isRejected ||
-                recordedResultId === editingResultId ||
-                !('defectCodeId' in resolvedDefect)
-              ) {
+              if (!isRejected || !('defectCodeId' in resolvedDefect)) {
                 confirm.write({ overallJudgmentCode: judgment });
                 return;
               }
-              recordRejection.write({
-                sourceCode: IQC_DEFECT_SOURCE,
-                defectCodeId: resolvedDefect.defectCodeId,
-                /* 불합격 수량이 0 인 불합격(전량 판정)은 검사수량을 불량 수량으로 남긴다 — 0 은 서버가 받지 않는다. */
-                defectQty:
-                  round !== null && round.rejectedQty > 0 ? round.rejectedQty : inspectedQty,
-                uomId: detail.data.uomId,
-                detectedAt: new Date().toISOString(),
-                inspectionResultId: editingResultId,
-                defectDescription:
-                  rejection.description.trim() === '' ? null : rejection.description.trim(),
+              confirm.write({
+                overallJudgmentCode: judgment,
+                defects: [
+                  {
+                    defectCodeId: resolvedDefect.defectCodeId,
+                    /* 불합격 수량이 0 인 불합격(전량 판정)은 검사수량을 불량 수량으로 남긴다 — 0 은 서버가 받지 않는다. */
+                    defectQty:
+                      round !== null && round.rejectedQty > 0 ? round.rejectedQty : inspectedQty,
+                    defectDescription:
+                      rejection.description.trim() === '' ? null : rejection.description.trim(),
+                  },
+                ],
               });
             }}
-            isConfirming={confirm.isSaving || recordRejection.isSaving}
-            confirmError={confirm.error ?? recordRejection.error}
+            isConfirming={confirm.isSaving}
+            confirmError={confirm.error}
             judgmentDetail={
               isRejected ? (
                 <RejectionReason
                   codes={defectCodes.data ?? []}
                   draft={rejection}
                   onChange={setRejection}
-                  disabled={confirm.isSaving || recordRejection.isSaving}
+                  disabled={confirm.isSaving}
                 />
               ) : null
             }

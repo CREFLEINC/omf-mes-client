@@ -1,4 +1,9 @@
-import type { ApiClient, components, DefectRecordCreate } from '@omf-mes/api-client';
+import type {
+  ApiClient,
+  components,
+  InspectionDefectInput,
+  InspectionResultConfirmForward,
+} from '@omf-mes/api-client';
 import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
@@ -214,7 +219,6 @@ export const useInspectionRoundLock = (
   });
 };
 
-type InspectionResultConfirm = components['schemas']['InspectionResultConfirm'];
 type InspectionResultCreate = components['schemas']['InspectionResultCreate'];
 type InspectionResultUpdate = components['schemas']['InspectionResultUpdate'];
 type InspectionResultResponse = components['schemas']['InspectionResult'];
@@ -464,6 +468,11 @@ export const useCodeValues = (codeGroupCode: string): UseQueryResult<CodeValueRe
 /** 확정이 보내는 값. ⛔ 비고(`remarks`)를 만들지 않는다 — 스펙 §4-B 가 싣지 않은 칸이다. */
 export interface ConfirmVariables {
   overallJudgmentCode: string;
+  /**
+   * IQC 불합격 사유(omf-all-around#121 · 서버 P-47) — 확정과 한 요청으로 보낸다. 서버가 같은 트랜잭션에서
+   * 그 회차의 불량 기록을 이 값으로 갈아 끼우므로, 확정이 실패해 다시 눌러도 사유는 그때 입력 1벌만 남는다.
+   */
+  defects?: InspectionDefectInput[];
 }
 
 /**
@@ -498,7 +507,8 @@ export const useConfirmResult = (
         },
         body: {
           overallJudgmentCode: variables.overallJudgmentCode,
-        } satisfies InspectionResultConfirm,
+          ...(variables.defects === undefined ? {} : { defects: variables.defects }),
+        } satisfies InspectionResultConfirmForward,
       }),
     etagPath: inspectionResultId === null ? null : roundPath(inspectionResultId),
     invalidateKeys: [iqcInspectionKeys.rounds(inspectionRequestId ?? 0), ALL_KEY],
@@ -528,29 +538,6 @@ export const useDefectCodes = (enabled: boolean) => {
         }),
       ).then((response) => response.items),
     enabled,
-  });
-};
-
-/**
- * 불합격 사유를 불량 기록으로 남긴다(서버 선행 P-42). 확정 «직전»에 부르고, 성공하면 확정으로 잇는다 —
- * 서버가 IQC 불합격 확정에 불량 기록을 요구한다.
- */
-export const useRecordRejection = (
-  onRecorded: () => void,
-): MasterWriteResult<DefectRecordCreate> => {
-  const { client } = useApiClient();
-
-  return useMasterWrite<DefectRecordCreate, unknown>({
-    request: (body, headers) =>
-      client.POST('/quality/defect-records', {
-        params: { header: { 'Idempotency-Key': headers['Idempotency-Key'] } },
-        body,
-      }),
-    etagPath: null,
-    invalidateKeys: [],
-    knownFields: [],
-    keyLifetime: 'until-applied',
-    onSuccess: onRecorded,
   });
 };
 
