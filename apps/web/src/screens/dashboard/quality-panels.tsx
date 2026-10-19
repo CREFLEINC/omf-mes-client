@@ -1,6 +1,8 @@
 import { Chip, Icon, Skeleton, Table, type ChipStatus, type Column } from '@crefle/web-ui';
 import type {
   DashboardLotRecordCount,
+  DashboardOpenNonconformance,
+  DashboardRepeatedItem,
   DashboardJudgmentCode,
   DashboardLotCounts,
   DashboardQuality,
@@ -1376,7 +1378,187 @@ export const OqcTab = ({
   );
 };
 
-export const NonconformanceTab = ({ quality }: { quality: DashboardQuality }) => {
+/** 처분 판정 처리(W-03-10)가 특정 부적합을 여는 주소 — 그 화면 filters.ts 의 진입 키 `nonconformanceId` 와 같다. */
+const dispositionOfNonconformance = (nonconformanceId: number): string =>
+  `${DISPOSITION_DECISIONS_PATH}?nonconformanceId=${String(nonconformanceId)}`;
+
+const SEVERITY_TONE: Record<string, ChipStatus> = {
+  CRITICAL: 'error',
+  MAJOR: 'warning',
+};
+
+/** 발생부터 지금까지 지난 날(내림). 시각을 읽지 못하면 `null`. */
+export const elapsedDays = (openedAt: string, now: Date): number | null => {
+  const at = Date.parse(openedAt);
+  if (Number.isNaN(at)) return null;
+  return Math.max(0, Math.floor((now.getTime() - at) / 86_400_000));
+};
+
+/**
+ * 미종결 부적합 목록(⭐ 사용자 지시 2026-10-19) — 상단 「미종결 부적합」과 같은 조건, 발생 오래된 순 5건.
+ * 열: 부적합 번호 · 품목 · 심각도 · 상태 · 발생일(경과 일수). 줄을 누르면 처분 판정 처리에서 그 부적합을 연다(권한이
+ * 있을 때만, 최근 판정 표와 같은 방식).
+ */
+const OpenNonconformancePanel = ({
+  rows,
+  total,
+  linked,
+}: {
+  rows: readonly DashboardOpenNonconformance[];
+  total: number;
+  linked: boolean;
+}) => {
+  const now = new Date();
+
+  return (
+    <Panel title={t.ncOpenList} sub={t.ncOpenListSub} tag={t.tagNow}>
+      <div className={linked ? 'dash-table-wrap dash-recent-linked' : 'dash-table-wrap'}>
+        <Table
+          columns={[
+            {
+              key: 'no',
+              header: t.column.ncNo,
+              render: (row) =>
+                linked ? (
+                  <Link
+                    className="dash-recent-link"
+                    to={dispositionOfNonconformance(row.nonconformanceId)}
+                    aria-label={t.openDisposition(row.nonconformanceNo)}
+                  >
+                    {row.nonconformanceNo}
+                  </Link>
+                ) : (
+                  row.nonconformanceNo
+                ),
+            },
+            {
+              key: 'item',
+              header: t.column.item,
+              render: (row) => (
+                <span
+                  className="dash-cell-wrap dash-cell-item"
+                  title={[row.itemCode, row.itemName].filter(Boolean).join(' ') || undefined}
+                >
+                  {row.itemCode ?? t.none}
+                </span>
+              ),
+            },
+            {
+              key: 'severity',
+              header: t.column.severity,
+              render: (row) =>
+                row.severityCode === null ? (
+                  t.none
+                ) : (
+                  <Chip size="sm" status={SEVERITY_TONE[row.severityCode] ?? 'idle'}>
+                    {row.severityName ?? row.severityCode}
+                  </Chip>
+                ),
+            },
+            {
+              key: 'status',
+              header: t.column.status,
+              render: (row) => row.statusName ?? row.statusCode,
+            },
+            {
+              key: 'opened',
+              header: t.column.openedAt,
+              render: (row) => {
+                const days = elapsedDays(row.openedAt, now);
+                const date = toPlantDateTimeParts(row.openedAt)?.date ?? row.openedAt;
+                return days === null ? date : t.openedWithDays(date, String(days));
+              },
+            },
+            ...(linked
+              ? [
+                  {
+                    key: 'go',
+                    header: '',
+                    render: () => (
+                      <Icon
+                        name="chevron_right"
+                        size={18}
+                        className="dash-recent-arrow"
+                        aria-hidden="true"
+                      />
+                    ),
+                  } satisfies Column<DashboardOpenNonconformance>,
+                ]
+              : []),
+          ]}
+          rows={[...rows]}
+          getRowId={(row) => String(row.nonconformanceId)}
+          density="compact"
+          aria-label={t.ncOpenList}
+          empty={<NoRecords description={t.ncOpenEmpty} />}
+        />
+      </div>
+      {total > rows.length && (
+        <p className="dash-panel-foot">{t.ncOpenMore(String(total), String(rows.length))}</p>
+      )}
+    </Panel>
+  );
+};
+
+/**
+ * 반복 부적합 품목(⭐ 사용자 결정 2026-10-19) — 같은 기간 부적합이 2건 이상인 품목, 건수 → 최근 발생 순 5개.
+ * 머리에 조건에 드는 품목 수 전체. 불량현상은 따지지 않는다. 링크는 이번 범위에서 걸지 않는다.
+ */
+const RepeatedItemsPanel = ({
+  rows,
+  total,
+  tag,
+}: {
+  rows: readonly DashboardRepeatedItem[];
+  total: number;
+  tag: string;
+}) => (
+  <Panel title={t.ncRepeated} sub={t.ncRepeatedSub} tag={tag}>
+    <p className="dash-panel-lead">{t.ncRepeatedCount(String(total))}</p>
+    <div className="dash-table-wrap">
+      <Table
+        columns={[
+          {
+            key: 'item',
+            header: t.column.item,
+            render: (row) => (
+              <span
+                className="dash-cell-wrap dash-cell-item"
+                title={[row.itemCode, row.itemName].filter(Boolean).join(' ')}
+              >
+                {row.itemCode}
+              </span>
+            ),
+          },
+          {
+            key: 'count',
+            header: t.column.ncCount,
+            render: (row) => `${formatFigure(row.ncCount)}${t.countUnit}`,
+          },
+          {
+            key: 'last',
+            header: t.column.lastOpenedAt,
+            render: (row) => toPlantDateTimeParts(row.lastOpenedAt)?.date ?? row.lastOpenedAt,
+          },
+        ]}
+        rows={[...rows]}
+        getRowId={(row) => String(row.itemId)}
+        density="compact"
+        aria-label={t.ncRepeated}
+        empty={<NoRecords description={t.ncRepeatedEmpty} />}
+      />
+    </div>
+  </Panel>
+);
+
+export const NonconformanceTab = ({
+  quality,
+  allows = () => false,
+}: {
+  quality: DashboardQuality;
+  /** 이 사용자가 그 화면을 볼 수 있는가 — 못 보면 미종결 목록은 링크 없이 보인다. */
+  allows?: (path: string) => boolean;
+}) => {
   const tags = usePeriodTags();
   const nc = quality.nonconformance;
   const paretoEntries = nc.phenomena.map((entry) => ({
@@ -1450,52 +1632,27 @@ export const NonconformanceTab = ({ quality }: { quality: DashboardQuality }) =>
             <ParetoChart entries={paretoEntries} caption={t.ncPareto} />
           )}
         </Panel>
-        <Panel title={t.ncCauseGroups} sub={t.qtyShareSub} tag={tags.month}>
-          <RankBars entries={causes} />
-        </Panel>
+        {/* ⭐ 원인 구분별 수량(아래 구성과 같은 값)을 빼고 그 자리에 미종결 부적합 목록(사용자 지시 2026-10-19). */}
+        {nc.openList !== undefined && (
+          <OpenNonconformancePanel
+            rows={nc.openList}
+            total={nc.openCount}
+            linked={allows(DISPOSITION_DECISIONS_PATH)}
+          />
+        )}
       </Row>
-      <Row kind="row3">
+      {/* ⭐ 부적합 처리 지표(상단 카드와 같은 값)를 빼고 그 자리에 반복 부적합 품목(사용자 지시 2026-10-19). */}
+      <Row kind={nc.repeatedItems === undefined ? 'row2-single' : 'row3'}>
         <Panel title={t.ncCauseShare} sub={t.qtyShareSub} tag={tags.month}>
           <StackedBar100 entries={causes} />
         </Panel>
-        <Panel title={t.ncHandlingTitle} tag={tags.month}>
-          <StatusList
-            items={[
-              {
-                key: 'scrap',
-                label: t.ncScrap,
-                note: t.ncScrapNote,
-                value: formatFigure(nc.scrapQty),
-                unit: t.qtyUnit,
-              },
-              {
-                key: 'released',
-                label: t.ncReworkReleased,
-                note: t.ncReworkReleasedNote,
-                value: formatFigure(nc.reworkReleasedQty),
-                unit: t.qtyUnit,
-              },
-              {
-                key: 'open',
-                label: t.ncOpen,
-                value: formatFigure(nc.openCount),
-                unit: t.countUnit,
-                tone: countTone(nc.openCount, 'error'),
-              },
-              ...(nc.overdueCount === null
-                ? []
-                : [
-                    {
-                      key: 'overdue',
-                      label: t.ncOverdue,
-                      value: formatFigure(nc.overdueCount),
-                      unit: t.countUnit,
-                      tone: countTone(nc.overdueCount, 'warning'),
-                    },
-                  ]),
-            ]}
+        {nc.repeatedItems !== undefined && (
+          <RepeatedItemsPanel
+            rows={nc.repeatedItems}
+            total={nc.repeatedItemCount ?? nc.repeatedItems.length}
+            tag={tags.month}
           />
-        </Panel>
+        )}
       </Row>
     </QualityTabFrame>
   );

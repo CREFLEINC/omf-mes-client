@@ -279,6 +279,61 @@ describe('품질 탭', () => {
     expect(screen.getByRole('button', { name: new RegExp(t.reworkRequests) })).toBeDisabled();
   });
 
+  it('부적합 — 원인 구분별 수량 · 처리 지표 대신 미종결 목록(처분 판정 링크) · 반복 품목(사용자 지시 2026-10-19)', () => {
+    const q = quality();
+    q.nonconformance.openCount = 7;
+    q.nonconformance.openList = [
+      {
+        nonconformanceId: 31,
+        nonconformanceNo: 'NC-0031',
+        itemCode: 'ITEM-1',
+        itemName: '품목 1',
+        severityCode: 'MAJOR',
+        severityName: '중',
+        statusCode: 'OPEN',
+        statusName: '의뢰 전',
+        openedAt: '2026-10-01T01:00:00Z',
+      },
+    ];
+    q.nonconformance.repeatedItems = [
+      {
+        itemId: 1,
+        itemCode: 'ITEM-1',
+        itemName: '품목 1',
+        ncCount: 3,
+        lastOpenedAt: '2026-10-15T01:00:00Z',
+      },
+    ];
+    q.nonconformance.repeatedItemCount = 4;
+    render(
+      <MemoryRouter>
+        <NonconformanceTab quality={q} allows={(path) => path === '/quality/dispositions'} />
+      </MemoryRouter>,
+    );
+
+    expect(screen.queryByText('원인 구분별 부적합 수량')).not.toBeInTheDocument();
+    expect(screen.queryByText('부적합 처리 지표')).not.toBeInTheDocument();
+    expect(screen.getByRole('link', { name: t.openDisposition('NC-0031') })).toHaveAttribute(
+      'href',
+      '/quality/dispositions?nonconformanceId=31',
+    );
+    expect(screen.getByText(t.ncOpenMore('7', '1'))).toBeInTheDocument();
+    expect(screen.getByText(t.ncRepeatedCount('4'))).toBeInTheDocument();
+    expect(screen.getByRole('table', { name: t.ncRepeated })).toHaveTextContent('3건');
+  });
+
+  it('부적합 — 미종결 0건 · 권한 없음이면 안내 문구, 링크 없음', () => {
+    const q = quality();
+    q.nonconformance.openList = [];
+    q.nonconformance.repeatedItems = [];
+    q.nonconformance.repeatedItemCount = 0;
+    render(<NonconformanceTab quality={q} />);
+
+    expect(screen.getByText(t.ncOpenEmpty)).toBeInTheDocument();
+    expect(screen.getByText(t.ncRepeatedEmpty)).toBeInTheDocument();
+    expect(screen.queryByRole('link')).not.toBeInTheDocument();
+  });
+
   it('PQC — 재검 칸 · 불량현상/품목별 탭 전환 원형 · 검사 대기 최장 경과(사용자 지시 2026-10-19)', async () => {
     const user = userEvent.setup();
     const q = quality();

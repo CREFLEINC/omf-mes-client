@@ -320,7 +320,8 @@ export const DashboardScreen = () => {
                     ) : value === 'oqc' ? (
                       <OqcTab quality={quality} allows={access.allows} />
                     ) : (
-                      <TabBody quality={quality} />
+                      /* 부적합 — 미종결 부적합 줄 → 처분 판정 처리(사용자 지시 2026-10-19) · 그 화면 권한을 본다. */
+                      <NonconformanceTab quality={quality} allows={access.allows} />
                     )
                   }
                 </QualityGate>

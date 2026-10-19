@@ -265,6 +265,28 @@ export interface DashboardQualityStatusCounts {
   NC_OPEN: DashboardLotRecordCount;
 }
 
+/** 미종결 부적합 목록의 한 줄. DB 에 없는 값은 `null`. */
+export interface DashboardOpenNonconformance {
+  nonconformanceId: number;
+  nonconformanceNo: string;
+  itemCode: string | null;
+  itemName: string | null;
+  severityCode: string | null;
+  severityName: string | null;
+  statusCode: string;
+  statusName: string | null;
+  openedAt: string;
+}
+
+/** 반복 부적합 품목의 한 줄. */
+export interface DashboardRepeatedItem {
+  itemId: number;
+  itemCode: string;
+  itemName: string;
+  ncCount: number;
+  lastOpenedAt: string;
+}
+
 export interface DashboardQuality {
   /** 없으면(이전 서버) 화면은 기존 숫자만 보인다. */
   statusCounts?: DashboardQualityStatusCounts;
@@ -314,6 +336,12 @@ export interface DashboardQuality {
     openCount: number;
     /** 지금은 늘 `null` — 조치 기한 데이터가 없다. */
     overdueCount: number | null;
+    /** 미종결 부적합 — `openCount` 와 같은 조건, 발생 오래된 순 상위 5건(사용자 지시 2026-10-19 · 서버 장부 P-59). */
+    openList?: DashboardOpenNonconformance[];
+    /** 반복 부적합 품목 — 같은 기간 부적합 2건 이상 품목, 건수 → 최근 발생 순 상위 5(사용자 결정 2026-10-19). */
+    repeatedItems?: DashboardRepeatedItem[];
+    /** 조건에 드는 품목 수 전체(상위 5 밖 포함). */
+    repeatedItemCount?: number;
   };
 }
 

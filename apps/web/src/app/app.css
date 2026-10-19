@@ -14522,3 +14522,18 @@ button.app-button-neutral {
 .dash-dayout-col[data-tip]:focus-visible .dash-dayout-value {
   visibility: hidden;
 }
+
+/* 패널 아래 한 줄 안내(미종결 부적합 「전체 n건 중 오래된 5건」 · 사용자 지시 2026-10-19). */
+.dash-panel-foot {
+  margin: var(--space-2) 0 0;
+  color: var(--on-surface-muted);
+  font: var(--type-label-sm);
+  letter-spacing: var(--type-label-sm-tracking);
+}
+
+/* 패널 머리 한 줄(반복 부적합 품목 「n개 품목」 · 사용자 지시 2026-10-19). */
+.dash-panel-lead {
+  margin: 0 0 var(--space-2);
+  font: var(--type-label-md, var(--type-label-sm));
+  font-weight: 700;
+}
