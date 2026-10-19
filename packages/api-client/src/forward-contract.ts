@@ -284,6 +284,8 @@ export interface DashboardQuality {
     itemDefects?: { itemId: number; itemCode: string; itemName: string; qty: number }[];
     /** 검사 대기 중 가장 오래된 의뢰 시각(ISO). 대기가 없으면 `null`. */
     oldestPendingSince?: string | null;
+    /** 재작업 의뢰 LOT 수 · 건수(`reworkRequestCount` 와 같은 조건 · 사용자 지시 2026-10-19). */
+    reworkRequestCounts?: DashboardLotRecordCount;
     equipmentDefectRates: {
       equipmentId: number;
       equipmentCode: string;

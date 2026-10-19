@@ -667,8 +667,10 @@ export const QualityOverviewTab = ({
                 {
                   key: 'ncOpen',
                   label: t.ncOpen,
-                  value: formatFigure(quality.nonconformance.openCount),
-                  unit: t.countUnit,
+                  /* ⭐ 모든 탭 주요 현황은 LOT · 건수 둘 다(사용자 지시 2026-10-19). 서버 건수가 없으면 기존 건수만. */
+                  ...(counts === undefined
+                    ? { value: formatFigure(quality.nonconformance.openCount), unit: t.countUnit }
+                    : lotRecordValue(counts.NC_OPEN, quality.nonconformance.openCount)),
                   tone: countTone(quality.nonconformance.openCount, 'error'),
                   selectable: quality.nonconformance.openCount > 0,
                 },
@@ -1050,8 +1052,10 @@ export const PqcTab = ({
                   key: 'rework',
                   label: t.reworkRequests,
                   note: t.reworkRequestsNote,
-                  value: formatFigure(pqc.reworkRequestCount),
-                  unit: t.countUnit,
+                  /* LOT · 건수 둘 다(사용자 지시 2026-10-19) — 서버가 LOT 수를 주지 않으면 기존 건수만. */
+                  ...(pqc.reworkRequestCounts === undefined
+                    ? { value: formatFigure(pqc.reworkRequestCount), unit: t.countUnit }
+                    : lotRecordValue(pqc.reworkRequestCounts, pqc.reworkRequestCount)),
                   selectable: false,
                 },
               ]}
@@ -1060,16 +1064,26 @@ export const PqcTab = ({
         </div>
       </div>
       {/*
-       * ⭐ PQC 불량현상 · 품목별 불량을 원형 그래프 둘로 나란히(사용자 지시 2026-10-19). 두 박스는 같은 행에서 높이를
-       * 맞추고(내용 높이 · 늘이기), 최근 판정은 그 아래 한 줄 전체. 품목별이 없으면(이전 서버) 불량현상만 넓게.
+       * ⭐ PQC 불량현상(원형) | 최근 판정 — IQC 탭과 같은 행 · 같은 높이(사용자 지시 2026-10-19). 품목별 불량
+       * 원형은 그 아래 행(서버가 주지 않으면 없음).
        */}
-      <div className="dash-donut-pair">
+      <div className="dash-qo-bottom">
         <DefectTypesPanel
           title={t.phenomenaOf('PQC')}
           tag={tags.month}
           entries={phenomenaEntries(pqc.defectPhenomena)}
         />
-        {pqc.itemDefects !== undefined && (
+        <RecentLotsPanel
+          itemTitle
+          title={t.recentLotsOf('PQC')}
+          rows={recentOf(quality, 'PQC')}
+          counterpart="equipment"
+          linked={allows(INSPECTION_RESULTS_PATH)}
+          withTime
+        />
+      </div>
+      {pqc.itemDefects !== undefined && (
+        <div className="dash-donut-pair">
           <DefectTypesPanel
             title={t.pqcItemDefects}
             tag={tags.month}
@@ -1079,18 +1093,8 @@ export const PqcTab = ({
               value: entry.qty,
             }))}
           />
-        )}
-      </div>
-      <Row kind="row2-single">
-        <RecentLotsPanel
-          itemTitle
-          title={t.recentLotsOf('PQC')}
-          rows={recentOf(quality, 'PQC')}
-          counterpart="equipment"
-          linked={allows(INSPECTION_RESULTS_PATH)}
-          withTime
-        />
-      </Row>
+        </div>
+      )}
       {dialog.mounted && (
         <QualityLotsDialog
           status={dialog.lotStatus}
