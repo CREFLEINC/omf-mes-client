@@ -151,8 +151,14 @@ describe('품질 탭', () => {
       </MemoryRouter>,
     );
 
-    const labels = [...container.querySelectorAll('.dash-rank-label')].map((l) => l.textContent);
+    const labels = [...container.querySelectorAll('.dash-eqrate-name')].map((l) => l.textContent);
     expect(labels).toEqual(['E-9-1', 'E-17-1', 'E-17-2', 'E-17-10', 'E-17-11']);
+    /* 같은 축 — 최고(7%)가 100%, 5% 는 5/7. 최고값만 진한 막대, 같은 값끼리 같은 길이. 수량은 EA. */
+    const bars = [...container.querySelectorAll<HTMLElement>('.dash-eqrate-bar')];
+    expect(bars[0]?.style.width).toBe('100%');
+    expect(bars[1]?.style.width).toBe(bars[2]?.style.width);
+    expect(container.querySelectorAll('.dash-eqrate-bar-top')).toHaveLength(1);
+    expect(container.querySelector('.dash-eqrate-qty')).toHaveTextContent('1EA');
   });
 
   it('OQC — 서버가 새 칸을 주지 않으면 고객 반품 · 현재 현황 · 최근 판정만(금액 · 클레임 칸 없음)', () => {

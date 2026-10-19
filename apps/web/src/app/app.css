@@ -14325,3 +14325,60 @@ button.app-button-neutral {
     grid-template-columns: minmax(0, 1fr);
   }
 }
+
+/* PQC 설비별 불량률 TOP 8(사용자 지시 2026-10-19) — 설비 | 막대(남는 폭) | 불량률 | 불량 수량, 열 폭 고정 · 줄 높이 같게. */
+.dash-eqrate {
+  display: grid;
+  grid-template-columns: minmax(4.5rem, max-content) minmax(2rem, 1fr) 3.5rem 5.5rem;
+  column-gap: var(--space-3);
+  row-gap: var(--space-2);
+  align-items: center;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font: var(--type-body-sm);
+}
+
+.dash-eqrate-row {
+  display: grid;
+  grid-column: 1 / -1;
+  grid-template-columns: subgrid;
+  align-items: center;
+  min-height: 1.5rem;
+}
+
+.dash-eqrate-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dash-eqrate-track {
+  height: 0.625rem;
+  border-radius: 2px;
+  background: color-mix(in srgb, var(--on-surface) 6%, transparent);
+}
+
+.dash-eqrate-bar {
+  display: block;
+  height: 100%;
+  border-radius: 2px;
+  background: var(--chart-5);
+}
+
+.dash-eqrate-bar-top {
+  background: var(--chart-2);
+}
+
+.dash-eqrate-rate {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  text-align: end;
+}
+
+.dash-eqrate-qty {
+  color: var(--on-surface-muted);
+  font-variant-numeric: tabular-nums;
+  text-align: end;
+  white-space: nowrap;
+}

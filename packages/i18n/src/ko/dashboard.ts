@@ -348,8 +348,8 @@ export const dashboard = {
     reworkLine: (count: string): string => `재작업 의뢰 ${count}건`,
     worstEquipment: '최고 불량률 호기',
     worstEquipmentNote: (ng: string, rate: string): string => `NG ${ng} EA · ${rate}`,
-    equipmentDefectRates: '호기별 불량률 상위 8',
-    equipmentDefectRatesSub: '% · 기준일 생산실적',
+    equipmentDefectRates: '설비별 불량률 TOP 8',
+    equipmentDefectRatesSub: '생산실적 기준 · 불량률(%)',
     ngShort: (qty: string): string => `NG ${qty}`,
     /* PQC · OQC 탭 추가 항목(사용자 지시 2026-10-19). */
     pqcItemDefects: '품목(CODE)별 PQC 불량 구성',

@@ -942,6 +942,58 @@ const useLotDialog = () => {
 };
 
 /**
+ * 설비별 불량률 TOP 8(⭐ PQC 탭 · 사용자 지시 2026-10-19) — 설비 | 막대 | 불량률(굵게) | 불량 수량(EA, 보조).
+ * 막대는 0 부터 이 목록의 최고 불량률까지 같은 축(비례 · 과장 없음) — 같은 불량률은 같은 길이 · 같은 색(최고값만 진하게).
+ * 순서는 서버와 같게 불량률 → 불량 수량 → 설비 코드 자연 정렬. 순위 숫자는 두지 않는다. 계산 · 추출은 서버 그대로.
+ */
+const EquipmentRateBars = ({
+  rates,
+}: {
+  rates: readonly {
+    equipmentId: number;
+    equipmentCode: string;
+    defectRate: number;
+    ngQty: number;
+  }[];
+}) => {
+  if (rates.length === 0) return <NoRecords />;
+  const sorted = [...rates].sort(
+    (a, b) =>
+      b.defectRate - a.defectRate ||
+      b.ngQty - a.ngQty ||
+      compareEquipmentCode(a.equipmentCode, b.equipmentCode),
+  );
+  const max = Math.max(...sorted.map((entry) => entry.defectRate));
+
+  return (
+    <ol className="dash-eqrate" aria-label={t.equipmentDefectRates}>
+      {sorted.map((entry) => (
+        <li key={entry.equipmentId} className="dash-eqrate-row">
+          <span className="dash-eqrate-name" title={entry.equipmentCode}>
+            {entry.equipmentCode}
+          </span>
+          <span className="dash-eqrate-track" aria-hidden="true">
+            <span
+              className={
+                entry.defectRate === max && max > 0
+                  ? 'dash-eqrate-bar dash-eqrate-bar-top'
+                  : 'dash-eqrate-bar'
+              }
+              style={{ width: `${String(max > 0 ? (entry.defectRate / max) * 100 : 0)}%` }}
+            />
+          </span>
+          <span className="dash-eqrate-rate">{formatRate(entry.defectRate)}</span>
+          <span className="dash-eqrate-qty">
+            {formatFigure(entry.ngQty)}
+            <span className="dash-kpi-unit">{t.qtyUnit}</span>
+          </span>
+        </li>
+      ))}
+    </ol>
+  );
+};
+
+/**
  * PQC 검사실적(⭐ 사용자 지시 2026-10-19 「IQC 검사실적 탭 기준 배치」) — 위: 일별 합격률 | 호기별 불량률 · PQC
  * 불량현상 · 현재 현황(세로), 아래: 품목별 PQC 불량 원형 | 최근 판정. 박스 끝 맞춤은 품질 종합 · IQC 와 같은 틀.
  */
@@ -1004,32 +1056,9 @@ export const PqcTab = ({
           niceTicks
         />
         <div className="dash-qo-side">
-          <Panel title={t.equipmentDefectRates} sub={t.equipmentDefectRatesSub} tag={tags.today}>
-            <RankBars
-              /*
-               * 불량률이 같으면 설비 코드 자연 정렬(17-1 < 17-2 < 17-10) — 서버 순서는 같은 값끼리 문자열
-               * 순이었다(사용자 점검 2026-10-16). 불량률 높은 순은 그대로.
-               */
-              entries={[...pqc.equipmentDefectRates]
-                .sort(
-                  (a, b) =>
-                    b.defectRate - a.defectRate ||
-                    compareEquipmentCode(a.equipmentCode, b.equipmentCode),
-                )
-                .map((entry) => ({
-                  key: String(entry.equipmentId),
-                  label: entry.equipmentCode,
-                  value: entry.defectRate,
-                }))}
-              formatValue={formatRate}
-              showShare={false}
-              aside={(entry) => {
-                const source = pqc.equipmentDefectRates.find(
-                  (rate) => String(rate.equipmentId) === entry.key,
-                );
-                return source === undefined ? undefined : t.ngShort(formatFigure(source.ngQty));
-              }}
-            />
+          {/* ⭐ 설비별 불량률 TOP 8(사용자 지시 2026-10-19 UI/UX) — 기간은 품질 누계 구간(서버 장부). */}
+          <Panel title={t.equipmentDefectRates} sub={t.equipmentDefectRatesSub} tag={tags.month}>
+            <EquipmentRateBars rates={pqc.equipmentDefectRates} />
           </Panel>
           <Panel title={t.currentTitle} tag={t.tagNow}>
             <StatusList

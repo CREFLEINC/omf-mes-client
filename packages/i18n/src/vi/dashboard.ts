@@ -292,8 +292,8 @@ export const dashboard: Translated<typeof ko.dashboard> = {
     reworkLine: (count: string): string => `Yêu cầu làm lại ${count}`,
     worstEquipment: 'Máy có tỷ lệ lỗi cao nhất',
     worstEquipmentNote: (ng: string, rate: string): string => `NG ${ng} EA · ${rate}`,
-    equipmentDefectRates: 'Tỷ lệ lỗi theo máy · 8 máy cao nhất',
-    equipmentDefectRatesSub: '% · Sản lượng ngày cơ sở',
+    equipmentDefectRates: 'Tỷ lệ lỗi theo thiết bị TOP 8',
+    equipmentDefectRatesSub: 'Theo sản lượng · Tỷ lệ lỗi (%)',
     ngShort: (qty: string): string => `NG ${qty}`,
     /* PQC · OQC 탭 추가 항목(사용자 지시 2026-10-19). */
     pqcItemDefects: 'Cơ cấu lỗi PQC theo mã hàng',
