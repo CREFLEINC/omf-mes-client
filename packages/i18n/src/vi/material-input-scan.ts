@@ -116,7 +116,7 @@ export const materialInputScan: Translated<typeof ko.materialInputScan> = {
     },
     retry: 'Kiểm tra lại quyền đưa vào',
     closed: (count: number): string => `Đã hoàn tất đưa vào với ${String(count)} mục.`,
-    goToProductionResult: 'Sang đăng ký kết quả sản xuất',
+    goToProductionResult: 'Sang công việc sản xuất',
     failed: 'Không ghi được việc đưa vào.',
   },
 };

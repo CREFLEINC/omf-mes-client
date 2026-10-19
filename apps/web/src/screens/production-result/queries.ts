@@ -82,7 +82,7 @@ export const useTargetLots = (workOrderId: number | null): UseQueryResult<Lot[]>
 /**
  * 이 작업지시의 PQC 의뢰 — **검사 on/off 의 기준**이다(omf-all-around#107 · 사용자 결정 2026-10-19).
  *
- * 「생산 실적 등록 화면은 검사가 on 이면 무조건 PQC 검사 UI 와 같이, off 면 실적만」. 검사 on = 그 W/O 에 취소되지
+ * 「생산 작업 화면은 검사가 on 이면 무조건 PQC 검사 UI 와 같이, off 면 실적만」. 검사 on = 그 W/O 에 취소되지
  * 않은 PQC 의뢰가 있다(라우팅 검사 공정이면 배포가 만든다 · 서버 P-32). 대기·진행·확정 어느 상태든 분할한다 —
  * 확정 뒤에는 패널이 확정 결과를 읽기 전용으로 보인다. 여럿이면 가장 최근 의뢰다. 없으면 `null`.
  *

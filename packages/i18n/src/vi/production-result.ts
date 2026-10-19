@@ -1,7 +1,7 @@
 import type { ko } from '../ko';
 import type { Translated } from './translated';
 
-/** P-02-06 생산 실적 등록. */
+/** P-02-04 생산 작업. */
 export const productionResult: Translated<typeof ko.productionResult> = {
   title: 'Công việc sản xuất',
   flow: {
