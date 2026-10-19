@@ -14654,6 +14654,42 @@ button.app-button-neutral {
   max-width: 7.5rem;
 }
 
+/* 미종결 목록은 오른쪽 좁은 카드(약 420px) — 칸 여백을 줄이고, 판정 칩용 마지막 열 최소 폭(4.5rem)을 풀어
+ * 화살표 폭만 남긴다. 열이 카드 밖으로 잘리지 않게(사용자 지시 2026-10-19). */
+.dash-nc-open th:not(:last-child),
+.dash-nc-open td:not(:last-child) {
+  padding-inline: var(--space-2);
+}
+
+.dash-tab-quality-detail .dash-nc-open td:last-child > * {
+  min-width: 0;
+}
+
+/* 번호 열이 남는 폭을 받고, 카드가 더 좁으면 번호만 말줄임(전체는 마우스 올림) — 다른 열은 그대로 보인다. */
+.dash-nc-open td:first-child {
+  width: 100%;
+  max-width: 0;
+}
+
+.dash-nc-open .dash-nc-no {
+  max-width: 100%;
+}
+
+/* 상태가 섞일 때 번호 아래 붙는 상태 한 줄(열 대신 — 카드 폭에 열 6개가 안 들어간다). */
+.dash-nc-no-cell {
+  display: flex;
+  max-width: 100%;
+  flex-direction: column;
+  min-width: 0;
+  vertical-align: middle;
+}
+
+.dash-nc-status {
+  font-size: var(--font-size-xs, 0.75rem);
+  color: var(--on-surface-muted);
+  white-space: nowrap;
+}
+
 /* 파레토 80% 기준(사용자 지시 2026-10-19) — 기준 위를 옅게 칠하고 선 · 이름표를 진하게. */
 .dash-threshold-zone {
   fill: color-mix(in srgb, var(--app-info) 7%, transparent);

@@ -425,7 +425,7 @@ export const dashboard = {
     ncRepeatedCount: (count: string): string => `${count}개 품목`,
     ncRepeatedEmpty: '반복된 품목이 없습니다.',
     ncCauseSub: 'EA · 수량 순',
-    elapsedDaysText: (days: string): string => `${days}일 경과`,
+    elapsedDaysText: (days: string): string => `${days}일`,
     ncRepeatedTopOf: (shown: string, total: string): string => `상위 ${shown}개 / 전체 ${total}개`,
     ncOpenListSubStatus: (status: string): string => `오래된 순 · 모두 ${status}`,
     openedOn: (date: string): string => `발생 ${date}`,

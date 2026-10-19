@@ -329,8 +329,10 @@ describe('품질 탭', () => {
       'href',
       '/quality/dispositions?item=1',
     );
-    /* 보이는 1건만 같은 상태여도 안 보이는 6건이 있으면 「모두」라 하지 않고 상태 열을 둔다. */
-    expect(screen.getByRole('columnheader', { name: t.column.status })).toBeInTheDocument();
+    /* 보이는 1건만 같은 상태여도 안 보이는 6건이 있으면 「모두」라 하지 않고 줄마다 상태를 적는다 —
+     * 좁은 카드라 열이 아니라 번호 아래 한 줄로(열 잘림 방지). */
+    expect(screen.queryByRole('columnheader', { name: t.column.status })).not.toBeInTheDocument();
+    expect(screen.getByRole('table', { name: t.ncOpenList })).toHaveTextContent('의뢰 전');
     expect(screen.queryByText(t.ncOpenListSubStatus('의뢰 전'))).not.toBeInTheDocument();
     expect(screen.getByRole('table', { name: t.ncRepeated })).toHaveTextContent('3건');
   });

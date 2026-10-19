@@ -1518,22 +1518,34 @@ const OpenNonconformancePanel = ({
             {
               key: 'no',
               header: t.column.ncNo,
-              render: (row) =>
-                linked ? (
-                  <Link
-                    className="dash-recent-link"
-                    to={dispositionOfNonconformance(row.nonconformanceId)}
-                    aria-label={t.openDisposition(row.nonconformanceNo)}
-                  >
-                    <span className="dash-nc-no" title={row.nonconformanceNo}>
-                      {row.nonconformanceNo}
-                    </span>
-                  </Link>
-                ) : (
+              render: (row) => {
+                const no = (
                   <span className="dash-nc-no" title={row.nonconformanceNo}>
                     {row.nonconformanceNo}
                   </span>
-                ),
+                );
+                /* 상태가 섞이면 열을 따로 두지 않고 번호 아래 한 줄로 — 카드 폭(약 420px)에 열 6개가
+                 * 다 들어가지 않아 상태 열이 잘렸다(사용자 지시 2026-10-19 「잘리면 안 된다」). */
+                const status =
+                  sameStatus === undefined ? (
+                    <span className="dash-nc-status">{row.statusName ?? row.statusCode}</span>
+                  ) : null;
+                return linked ? (
+                  <Link
+                    className="dash-recent-link dash-nc-no-cell"
+                    to={dispositionOfNonconformance(row.nonconformanceId)}
+                    aria-label={t.openDisposition(row.nonconformanceNo)}
+                  >
+                    {no}
+                    {status}
+                  </Link>
+                ) : (
+                  <span className="dash-nc-no-cell">
+                    {no}
+                    {status}
+                  </span>
+                );
+              },
             },
             {
               key: 'item',
@@ -1559,15 +1571,6 @@ const OpenNonconformancePanel = ({
                   </Chip>
                 ),
             },
-            ...(sameStatus === undefined
-              ? [
-                  {
-                    key: 'status',
-                    header: t.column.status,
-                    render: (row: DashboardOpenNonconformance) => row.statusName ?? row.statusCode,
-                  },
-                ]
-              : []),
             {
               key: 'opened',
               header: t.column.elapsed,
