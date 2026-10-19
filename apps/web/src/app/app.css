@@ -14393,9 +14393,29 @@ button.app-button-neutral {
 }
 
 .dash-pqc-bottom > .dash-panel:last-child > .dash-panel-body {
+  display: flex;
+  flex-direction: column;
   flex: 1 1 auto;
   min-height: 0;
-  overflow-y: auto;
+  overflow: hidden;
+}
+
+/*
+ * 세로 스크롤은 DS 표의 가로 스크롤 상자(표 바로 바깥 div)에서 — 같은 상자라야 열 제목 고정(sticky)이 걸린다.
+ * 감싸개는 그 상자에 남는 높이를 넘겨줄 뿐이다.
+ */
+.dash-pqc-bottom > .dash-panel:last-child .dash-table-wrap {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.dash-pqc-bottom > .dash-panel:last-child .dash-table-wrap > div {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
 }
 
 @container (max-width: 860px) {
@@ -14408,4 +14428,12 @@ button.app-button-neutral {
     contain: none;
     min-height: 0;
   }
+}
+
+/* PQC 최근 판정이 카드 안에서 스크롤될 때 열 제목은 위에 남긴다. */
+.dash-pqc-bottom > .dash-panel:last-child thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--surface-container);
 }
