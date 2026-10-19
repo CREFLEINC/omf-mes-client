@@ -195,7 +195,8 @@ export const dashboard: Translated<typeof ko.dashboard> = {
     noInspectionDay: 'Không kiểm tra',
     noRates: 'Trong khoảng này không có ngày nào tính được tỷ lệ đạt.',
     dateColumn: 'Ngày',
-    tipNone: '—',
+    /** 툴팁 — 그날 그 유형의 검사 실적이 없음(0% 가 아님 · 사용자 지시 2026-10-19). */
+    tipNone: 'Không có kết quả kiểm tra',
     tipRate: (value: string): string => `${value}%`,
     itemColumn: 'Hạng mục',
     qtyColumn: 'Số lượng',
@@ -235,8 +236,8 @@ export const dashboard: Translated<typeof ko.dashboard> = {
     countUnit: 'yêu cầu',
     dailyTitleAll: 'Tỷ lệ đạt theo ngày IQC · PQC · OQC',
     dailyTitleOf: (kind: string): string => `Tỷ lệ đạt theo ngày ${kind}`,
-    dailySub:
-      '% · Theo phán định cuối · Không tính tạm giữ kiểm tra · Ngày không kiểm tra thì ngắt đường',
+    /** ⭐ 「검사가 없는 날은 선을 끊음」 안내 제거(사용자 지시 2026-10-19) — 그날은 툴팁이 「검사 실적 없음」. */
+    dailySub: '% · Theo phán định cuối · Không tính tạm giữ kiểm tra',
     dailyRecent: '9 ngày gần nhất',
     qtyShareSub: 'EA · Tỷ trọng',
     vendorDefects: 'Số lượng lỗi IQC theo nhà cung cấp',

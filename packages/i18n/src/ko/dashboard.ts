@@ -240,7 +240,8 @@ export const dashboard = {
     noRates: '이 기간에 합격률을 낼 수 있는 날이 없습니다.',
     dateColumn: '일자',
     /** 일별 꺾은선 툴팁(품질 종합) — 값이 없는 날은 「—」. */
-    tipNone: '—',
+    /** 툴팁 — 그날 그 유형의 검사 실적이 없음(0% 가 아님 · 사용자 지시 2026-10-19). */
+    tipNone: '검사 실적 없음',
     tipRate: (value: string): string => `${value}%`,
     itemColumn: '항목',
     qtyColumn: '수량',
@@ -289,7 +290,8 @@ export const dashboard = {
     countUnit: '건',
     dailyTitleAll: 'IQC · PQC · OQC 일별 합격률',
     dailyTitleOf: (kind: string): string => `${kind} 일별 합격률`,
-    dailySub: '% · 최종 판정 기준 · 검사 보류 제외 · 검사가 없는 날은 선을 끊음',
+    /** ⭐ 「검사가 없는 날은 선을 끊음」 안내 제거(사용자 지시 2026-10-19) — 그날은 툴팁이 「검사 실적 없음」. */
+    dailySub: '% · 최종 판정 기준 · 검사 보류 제외',
     dailyRecent: '최근 9일',
     qtyShareSub: 'EA · 비중',
     vendorDefects: '업체별 IQC 불량 수량',

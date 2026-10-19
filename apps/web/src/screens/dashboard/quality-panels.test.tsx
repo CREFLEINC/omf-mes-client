@@ -211,6 +211,19 @@ describe('품질 탭', () => {
     expect(screen.getByText('판정 의뢰 화면')).toBeInTheDocument();
   });
 
+  it('일별 합격률 — 검사 실적이 없는 날은 툴팁에 「검사 실적 없음」, 안내 문구는 없다(사용자 지시 2026-10-19)', () => {
+    const q = quality();
+    q.iqc.dailyPassRates = [
+      { date: '2026-10-15', passRate: 90 },
+      { date: '2026-10-16', passRate: null },
+      { date: '2026-10-17', passRate: 80 },
+    ];
+    render(<IqcTab quality={q} />);
+
+    expect(screen.getByRole('button', { name: /^2026-10-16.*검사 실적 없음/ })).toBeInTheDocument();
+    expect(screen.queryByText(/선을 끊음/)).not.toBeInTheDocument();
+  });
+
   it('PQC — 판정 의뢰 화면 권한이 없으면 「재작업 의뢰」 줄은 누를 수 없다', () => {
     render(
       <MemoryRouter>
