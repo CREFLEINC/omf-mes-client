@@ -416,8 +416,12 @@ const InspectedAt = ({ value, withTime = false }: { value: string; withTime?: bo
 /** 검사결과 조회(W-03-05) 주소 — 날짜만 있는 화면 조건으로는 사용자가 보는 목록이 비어 그 날짜 · 검사 유형으로 연다. */
 export const INSPECTION_RESULTS_PATH = '/quality/inspection-results';
 
-/** W-04-07 재작업/폐기 판정 의뢰 — PQC 주요 현황 「재작업 의뢰」 줄이 연다(사용자 지시 2026-10-19). */
-export const DISPOSITION_REQUESTS_PATH = '/shipment/disposition-requests';
+/**
+ * 처분 판정 처리 — PQC 주요 현황 「재작업 판정」 줄이 연다(⭐ 사용자 지시 2026-10-19 「처분 판정 처리 화면」). 이미
+ * 내려진 판정이라 「처리 이력」 탭으로 연다. 화면 슬라이스끼리는 서로 참조하지 않아 주소를 여기 적는다.
+ */
+export const DISPOSITION_DECISIONS_PATH = '/quality/dispositions';
+const DISPOSITION_HISTORY_PATH = `${DISPOSITION_DECISIONS_PATH}?tab=history`;
 
 /**
  * 그 검사 결과의 상세를 여는 주소(⭐ 사용자 지시 2026-10-19 「항목을 누르면 검사실적 · 검사결과 조회 화면에서 상세」).
@@ -979,8 +983,8 @@ export const PqcTab = ({
   const worst = pqc.equipmentDefectRates[0];
   const dialog = useLotDialog();
   const navigate = useNavigate();
-  /* 재작업 의뢰 줄 → W-04-07 재작업/폐기 판정 의뢰(사용자 지시 2026-10-19). 그 화면 권한이 있을 때만. */
-  const canOpenDisposition = allows(DISPOSITION_REQUESTS_PATH);
+  /* 재작업 판정 줄 → 처분 판정 처리(처리 이력 · 사용자 지시 2026-10-19). 그 화면 권한이 있을 때만. */
+  const canOpenDisposition = allows(DISPOSITION_DECISIONS_PATH);
   const held = lotRecordValue(quality.statusCounts?.INSPECTION_HELD.byType.PQC, pqc.monthLots.held);
   const pending = lotRecordValue(quality.statusCounts?.PQC_PENDING, pqc.pendingLotCount);
   const oldest = pendingElapsedMinutes(pqc.oldestPendingSince, new Date());
@@ -1057,7 +1061,7 @@ export const PqcTab = ({
             <StatusList
               rowProps={dialog.rowProps}
               onSelect={(key) => {
-                if (key === 'rework') void navigate(DISPOSITION_REQUESTS_PATH);
+                if (key === 'rework') void navigate(DISPOSITION_HISTORY_PATH);
                 else dialog.open(key);
               }}
               items={[

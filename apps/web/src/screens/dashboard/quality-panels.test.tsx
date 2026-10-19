@@ -8,7 +8,7 @@ import { OTHER_SLICE_KEY, roundShares, toDonutSlices } from './defect-types-pane
 import { quality, qualityBlock } from './quality.fixture';
 import { toNiceRateTicks } from './viz';
 import {
-  DISPOSITION_REQUESTS_PATH,
+  DISPOSITION_DECISIONS_PATH,
   IqcTab,
   NonconformanceTab,
   OqcTab,
@@ -197,7 +197,7 @@ describe('품질 탭', () => {
     expect(bars[1]).toHaveTextContent(t.none);
   });
 
-  it('PQC — 주요 현황 「재작업 의뢰」 줄은 권한이 있으면 재작업/폐기 판정 의뢰로 간다(사용자 지시 2026-10-19)', async () => {
+  it('PQC — 주요 현황 「재작업 의뢰」 줄은 권한이 있으면 처분 판정 처리로 간다(사용자 지시 2026-10-19)', async () => {
     const user = userEvent.setup();
     render(
       <MemoryRouter initialEntries={['/dashboard?tab=pqc']}>
@@ -205,15 +205,15 @@ describe('품질 탭', () => {
           <Route
             path="/dashboard"
             element={
-              <PqcTab quality={quality()} allows={(path) => path === DISPOSITION_REQUESTS_PATH} />
+              <PqcTab quality={quality()} allows={(path) => path === DISPOSITION_DECISIONS_PATH} />
             }
           />
-          <Route path={DISPOSITION_REQUESTS_PATH} element={<p>판정 의뢰 화면</p>} />
+          <Route path={DISPOSITION_DECISIONS_PATH} element={<p>처분 판정 처리 화면</p>} />
         </Routes>
       </MemoryRouter>,
     );
     await user.click(screen.getByRole('button', { name: new RegExp(t.reworkRequests) }));
-    expect(screen.getByText('판정 의뢰 화면')).toBeInTheDocument();
+    expect(screen.getByText('처분 판정 처리 화면')).toBeInTheDocument();
   });
 
   it('일별 합격률 — 검사 실적이 없는 날은 툴팁에 「검사 실적 없음」, 안내 문구는 없다(사용자 지시 2026-10-19)', () => {
@@ -247,7 +247,7 @@ describe('품질 탭', () => {
     expect(screen.getByText(t.recentLotsCount('8'))).toBeInTheDocument();
   });
 
-  it('PQC — 판정 의뢰 화면 권한이 없으면 「재작업 의뢰」 줄은 누를 수 없다', () => {
+  it('PQC — 처분 판정 처리 화면 권한이 없으면 「재작업 의뢰」 줄은 누를 수 없다', () => {
     render(
       <MemoryRouter>
         <PqcTab quality={quality()} />
