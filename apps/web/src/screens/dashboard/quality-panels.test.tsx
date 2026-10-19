@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 
 import { quality, qualityBlock } from './quality.fixture';
+import { toNiceRateTicks } from './viz';
 import {
   IqcTab,
   NonconformanceTab,
@@ -176,7 +177,7 @@ describe('품질 탭', () => {
     expect(pqc.querySelector('.dash-delta')).toHaveClass('dash-delta-bad');
   });
 
-  it('품질 종합 일별 합격률 — 날짜 칸에 마우스를 올리면 날짜와 유형별 합격률(다른 탭은 툴팁 없음)', async () => {
+  it('품질 종합 일별 합격률 — 날짜 칸에 마우스를 올리면 날짜와 유형별 합격률', async () => {
     const user = userEvent.setup();
     const { unmount } = render(<QualityOverviewTab quality={quality()} />);
 
@@ -187,8 +188,64 @@ describe('품질 탭', () => {
     expect(tip).toHaveTextContent('2026.10.14');
     expect(tip).toHaveTextContent('IQC95%');
     unmount();
+  });
 
-    const iqc = render(<IqcTab quality={quality()} />);
-    expect(iqc.container.querySelector('.dash-line-tips')).toBeNull();
+  /* IQC · PQC · OQC · 부적합 탭 — 품질 종합과 같은 표기(사용자 확정 2026-10-19 · r3). */
+  it('IQC · PQC · OQC — 합격률 칸은 품질 종합 형식, LOT 칸은 색 점 범례, 일별 그래프 툴팁', async () => {
+    const user = userEvent.setup();
+    const data = quality();
+    data.pqc = { ...data.pqc, monthPassRate: 90.4, prevMonthPassRate: 92.7 };
+
+    const iqc = render(<IqcTab quality={data} />);
+    expect(iqc.container.querySelector('.dash-tab-quality-detail')).not.toBeNull();
+    expect(screen.getByRole('group', { name: t.passRateOf('IQC') })).toHaveTextContent(
+      t.prevMissing,
+    );
+    expect(
+      screen.getByRole('group', { name: t.monthLots }).querySelectorAll('.dash-lot-legend-item'),
+    ).toHaveLength(3);
+    const hit = screen.getAllByRole('button', { name: /^2026\.10\.14/ })[0];
+    if (hit === undefined) throw new Error('날짜 칸 단추가 없다');
+    await user.hover(hit);
+    expect(screen.getByRole('tooltip')).toHaveTextContent('IQC95%');
+    iqc.unmount();
+
+    const pqc = render(<PqcTab quality={data} />);
+    expect(screen.getByRole('group', { name: t.passRateOf('PQC') })).toHaveTextContent(
+      '전월 92.7% · ↓ 2.3%p',
+    );
+    pqc.unmount();
+
+    render(<OqcTab quality={data} />);
+    expect(screen.getByRole('group', { name: t.customerReturn })).toHaveTextContent(
+      t.customerReturnNoteShort,
+    );
+  });
+
+  it('보기 좋은 y축 눈금 — 범위는 그대로 두고 1 · 2 · 2.5 · 5 × 10ⁿ 간격만 고른다', () => {
+    expect(toNiceRateTicks({ min: 0, max: 100 })).toEqual([0, 20, 40, 60, 80, 100]);
+    expect(toNiceRateTicks({ min: 87.3, max: 100 })).toEqual([87.5, 90, 92.5, 95, 97.5, 100]);
+    expect(toNiceRateTicks({ min: 92.6, max: 98.1 })).toEqual([93, 94, 95, 96, 97, 98]);
+    expect(toNiceRateTicks({ min: 50, max: 50 })).toEqual([50]);
+  });
+
+  it('부적합 파레토 — 막대 값 글자는 누적선 위에 테두리와 함께 그린다', () => {
+    const data = quality();
+    data.nonconformance = {
+      ...data.nonconformance,
+      phenomena: [
+        { defectCodeId: 1, defectCode: 'D01', defectName: '찍힘', qty: 20 },
+        { defectCodeId: 2, defectCode: 'D02', defectName: '긁힘', qty: 10 },
+      ],
+    };
+    const { container } = render(<NonconformanceTab quality={data} />);
+    const svg = container.querySelector('.dash-tab-quality-detail svg');
+    if (svg === null) throw new Error('파레토 그림이 없다');
+    const values = svg.querySelectorAll('.dash-bar-value-halo');
+    expect(values).toHaveLength(2);
+    const line = svg.querySelector('.dash-line');
+    const first = values[0];
+    if (line === null || first === undefined) throw new Error('누적선이 없다');
+    expect(line.compareDocumentPosition(first) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 });

@@ -279,9 +279,6 @@ export const dashboard = {
     monthLots: '검사 LOT',
     pqcLots: '공정검사 LOT',
     oqcLots: '출하검사 LOT',
-    lotBreakdown: (accepted: string, rejected: string, held: string): string =>
-      /* 이름과 숫자 사이는 붙는 칸(U+00A0) — 「검사 보류」 / 「0」으로 갈리지 않게. */
-      `합격\u00a0${accepted} · 불합격\u00a0${rejected} · 검사\u00a0보류\u00a0${held}`,
     monthDefectQty: '불량 수량',
     qtyUnit: 'EA',
     lotUnit: 'LOT',
@@ -338,7 +335,6 @@ export const dashboard = {
     equipmentDefectRatesSub: '% · 기준일 생산실적',
     ngShort: (qty: string): string => `NG ${qty}`,
     customerReturn: '고객 반품',
-    customerReturnNote: '당월 고객 반품 입고 수량',
     /** 품질 종합 KPI — 기준 기간은 배지가 말하므로 설명은 짧게(사용자 지시 2026-10-19). */
     customerReturnNoteShort: '반품 입고 기준',
     /** ⭐ 「현재 현황」 상태별 LOT 목록 창(사용자 결정 2026-10-19 「서버 추가 + 팝업」). */

@@ -458,6 +458,29 @@ const spreadLabels = (ys: readonly (number | null)[]): (number | null)[] => {
 /** 툴팁과 날짜 칸 사이 간격(px). */
 const LINE_TIP_GAP = 12;
 
+/** 보기 좋은 눈금 간격의 앞자리. */
+const NICE_TICK_STEPS = [1, 2, 2.5, 5, 10] as const;
+
+/**
+ * 범위 안의 보기 좋은 눈금(1 · 2 · 2.5 · 5 × 10ⁿ의 배수) — 범위는 바꾸지 않는다. 눈금이 여섯 개 이하가 되는 가장
+ * 촘촘한 간격을 고르고, 범위 아래 끝은 이름 없는 바닥선으로 남긴다(맨 아래 눈금이 끝과 다를 때).
+ */
+export const toNiceRateTicks = (domain: { min: number; max: number }): number[] => {
+  const span = domain.max - domain.min;
+  if (!(span > 0)) return [domain.min];
+  const magnitude = 10 ** Math.floor(Math.log10(span / 6));
+  const steps = [...NICE_TICK_STEPS.map((nice) => nice * magnitude), 10 * 10 * magnitude];
+  const step = steps.find((candidate) => span / candidate <= 6) ?? span;
+  const first = Math.ceil(domain.min / step - 1e-9) * step;
+  const ticks: number[] = [];
+  for (let value = first; value <= domain.max + 1e-9; value += step) {
+    /* `+ 0` — 0 아래에서 올림한 -0 을 0 으로. */
+    ticks.push(Math.round(value * 1000) / 1000 + 0);
+  }
+
+  return ticks;
+};
+
 /**
  * 일별 꺾은선 툴팁(⭐ 사용자 지시 2026-10-19 — 품질 종합, 대시보드 탭 추이 툴팁 참고). 그림 위에 날짜 칸마다 투명한
  * 단추를 겹친다. 마우스 올림 · 키보드 포커스로 보이고, 누르면(터치) 고정 · 다른 곳을 누르면 닫힌다. 내용은 날짜 +
@@ -597,6 +620,7 @@ export const MultiLineChart = ({
   height,
   tooltip = false,
   tipLabels,
+  niceTicks = false,
 }: {
   series: LineSeries[];
   caption: string;
@@ -606,6 +630,11 @@ export const MultiLineChart = ({
   tooltip?: boolean;
   /** 툴팁 머리에 쓸 날짜(점 이름표와 같은 순서). 없으면 이름표. */
   tipLabels?: readonly string[];
+  /**
+   * 눈금을 보기 좋은 간격(1 · 2 · 2.5 · 5 × 10ⁿ)으로 — 범위(점 · 선 위치)는 그대로 두고 눈금 위치 · 글자만 바꾼다.
+   * IQC · PQC · OQC 탭만 켠다(4개 탭 정돈 2026-10-19).
+   */
+  niceTicks?: boolean;
 }) => {
   const [figureRef, W] = useChartWidth<HTMLElement>();
   const H = height ?? CHART_H;
@@ -620,7 +649,9 @@ export const MultiLineChart = ({
   const domain = toRateDomain(values);
   const yAt = (value: number): number =>
     PAD.top + plotH - ((value - domain.min) / (domain.max - domain.min || 1)) * plotH;
-  const ticks = [0, 1, 2, 3, 4].map((step) => domain.min + ((domain.max - domain.min) * step) / 4);
+  const ticks = niceTicks
+    ? toNiceRateTicks(domain)
+    : [0, 1, 2, 3, 4].map((step) => domain.min + ((domain.max - domain.min) * step) / 4);
   /* 날짜 이름표 솎기(기간 조회 2026-10-16 — 최대 92점) — 폭에 들어가는 만큼만, 점 · 선은 그대로. */
   const labelStep = Math.max(
     1,
@@ -666,6 +697,15 @@ export const MultiLineChart = ({
               </text>
             </g>
           ))}
+          {niceTicks && !ticks.includes(domain.min) && (
+            <line
+              className="dash-grid"
+              x1={PAD.left}
+              x2={W - PAD.right}
+              y1={yAt(domain.min)}
+              y2={yAt(domain.min)}
+            />
+          )}
           {labels.map((label, index) =>
             index % labelStep !== 0 ? null : (
               <text
@@ -833,14 +873,6 @@ export const ParetoChart = ({
               width={barW}
               height={PAD.top + plotH - yQty(row.value)}
             />
-            <text
-              className="dash-bar-value"
-              x={cx(index)}
-              y={yQty(row.value) - 4}
-              textAnchor="middle"
-            >
-              {formatFigure(row.value)}
-            </text>
             <text className="dash-axis" x={cx(index)} y={H - 8} textAnchor="middle">
               {row.label}
             </text>
@@ -863,6 +895,21 @@ export const ParetoChart = ({
             />
           ))}
         </g>
+        {/*
+         * 막대 값 글자는 누적 비율 선 위에 그리고 카드 바탕색 테두리를 둘러 선이 지나가도 읽히게 한다(4개 탭 정돈
+         * 2026-10-19 — 「49」가 선에 가려졌다). 위치는 그대로다.
+         */}
+        {rows.map((row, index) => (
+          <text
+            key={row.key}
+            className="dash-bar-value dash-bar-value-halo"
+            x={cx(index)}
+            y={yQty(row.value) - 4}
+            textAnchor="middle"
+          >
+            {formatFigure(row.value)}
+          </text>
+        ))}
       </svg>
       {/* 숨김 표는 감싼 상자로 줄인다 — 표는 높이 1px 를 받지 않아 행 수만큼 페이지 아래에 빈 스크롤을 만들었다. */}
       <div className="dash-sr-only">

@@ -108,8 +108,8 @@ const Row = ({
 
 /**
  * 품질 종합 KPI 의 합격률 칸(⭐ 사용자 지시 2026-10-19) — 이름 → 현재 합격률(숫자 크게 · % 작게) → 전월 값 · 증감
- * (↑ · ↓ %p, 대시보드와 같은 색). 전월 값이 없으면 증감을 지어내지 않고 「전월 데이터 없음」. 다른 탭은
- * `PassRateTile` 그대로다.
+ * (↑ · ↓ %p, 대시보드와 같은 색). 전월 값이 없으면 증감을 지어내지 않고 「전월 데이터 없음」. IQC · PQC · OQC
+ * 탭도 같은 칸을 쓴다(사용자 확정 2026-10-19).
  */
 const OverviewPassRateTile = ({
   label,
@@ -171,56 +171,6 @@ const OverviewLotTile = ({
       ))}
     </span>
     <MiniLotBar counts={counts} order="legend" />
-  </KpiTile>
-);
-
-const PassRateTile = ({
-  label,
-  block,
-  showDelta,
-}: {
-  label: string;
-  block: DashboardQualityTypeBlock;
-  showDelta?: boolean;
-}) => {
-  const tags = usePeriodTags();
-  const delta =
-    showDelta === true ? rateDelta(block.monthPassRate, block.prevMonthPassRate, tags.flat) : null;
-
-  return (
-    <KpiTile label={label} tag={tags.month} value={formatRate(block.monthPassRate)}>
-      <span>
-        {tags.prev(formatRate(block.prevMonthPassRate))}
-        {/* 합격률은 높을수록 좋다 — 오르면 초록(`DeltaMark`). */}
-        {delta !== null && (
-          <>
-            {' · '}
-            <DeltaMark direction={delta.direction}>{delta.text}</DeltaMark>
-          </>
-        )}
-      </span>
-    </KpiTile>
-  );
-};
-
-const LotTile = ({
-  label,
-  tag,
-  counts,
-}: {
-  label: string;
-  tag: string;
-  counts: DashboardLotCounts;
-}) => (
-  <KpiTile label={label} tag={tag} value={formatFigure(lotTotal(counts))} unit={t.lotUnit}>
-    <span>
-      {t.lotBreakdown(
-        formatFigure(counts.accepted),
-        formatFigure(counts.rejected),
-        formatFigure(counts.held),
-      )}
-    </span>
-    <MiniLotBar counts={counts} />
   </KpiTile>
 );
 
@@ -360,12 +310,15 @@ const DailyPanel = ({
   kinds,
   title,
   tooltip = false,
+  niceTicks = false,
 }: {
   quality: DashboardQuality;
   kinds: readonly QualityKind[];
   title: string;
-  /** 날짜 칸 툴팁(날짜 + 유형별 합격률) — 품질 종합만(사용자 지시 2026-10-19). */
+  /** 날짜 칸 툴팁(날짜 + 유형별 합격률) — 품질 종합 · IQC · PQC · OQC(사용자 확정 2026-10-19). */
   tooltip?: boolean;
+  /** 보기 좋은 눈금 — IQC · PQC · OQC 탭만(범위는 그대로). */
+  niceTicks?: boolean;
 }) => {
   const tags = usePeriodTags();
   const series = dailySeries(quality, kinds);
@@ -387,6 +340,7 @@ const DailyPanel = ({
               height={height}
               tooltip={tooltip}
               tipLabels={tooltip ? tipDates(quality, kinds) : undefined}
+              niceTicks={niceTicks}
             />
           )}
         </FitChart>
@@ -658,10 +612,10 @@ export const IqcTab = ({ quality }: { quality: DashboardQuality }) => {
   const vendorTotal = iqc.vendorDefects.reduce((sum, entry) => sum + entry.rejectedQty, 0);
 
   return (
-    <QualityTabFrame>
+    <QualityTabFrame className="dash-tab-quality-detail">
       <div className="dash-kpis">
-        <PassRateTile label={t.passRateOf('IQC')} block={iqc} showDelta />
-        <LotTile label={t.monthLots} tag={tags.month} counts={iqc.monthLots} />
+        <OverviewPassRateTile label={t.passRateOf('IQC')} block={iqc} />
+        <OverviewLotTile label={t.monthLots} tag={tags.month} counts={iqc.monthLots} />
         {/* 지금은 늘 null(양품 복원 데이터 없음) — 값이 오기 전에는 칸을 두지 않는다. */}
         {iqc.fullReinspect !== null && (
           <KpiTile
@@ -689,7 +643,13 @@ export const IqcTab = ({ quality }: { quality: DashboardQuality }) => {
         </KpiTile>
       </div>
       <Row kind="row2">
-        <DailyPanel quality={quality} kinds={['IQC']} title={t.dailyTitleOf('IQC')} />
+        <DailyPanel
+          quality={quality}
+          kinds={['IQC']}
+          title={t.dailyTitleOf('IQC')}
+          tooltip
+          niceTicks
+        />
         <Panel title={t.vendorDefects} sub={t.vendorTableSub} tag={tags.monthTotal}>
           {/* 표 칸은 줄을 바꾸지 않는다 — 넓으면 표 영역만 가로 스크롤(원칙 a). */}
           <div className="dash-table-wrap">
@@ -754,6 +714,7 @@ export const IqcTab = ({ quality }: { quality: DashboardQuality }) => {
           </Panel>
         </div>
         <RecentLotsPanel
+          itemTitle
           title={t.recentLotsOf('IQC')}
           rows={recentOf(quality, 'IQC')}
           counterpart="vendor"
@@ -769,10 +730,10 @@ export const PqcTab = ({ quality }: { quality: DashboardQuality }) => {
   const worst = pqc.equipmentDefectRates[0];
 
   return (
-    <QualityTabFrame>
+    <QualityTabFrame className="dash-tab-quality-detail">
       <div className="dash-kpis">
-        <PassRateTile label={t.passRateOf('PQC')} block={pqc} />
-        <LotTile label={t.pqcLots} tag={tags.month} counts={pqc.monthLots} />
+        <OverviewPassRateTile label={t.passRateOf('PQC')} block={pqc} />
+        <OverviewLotTile label={t.pqcLots} tag={tags.month} counts={pqc.monthLots} />
         <KpiTile
           label={t.pendingLots}
           tag={t.tagNow}
@@ -803,7 +764,13 @@ export const PqcTab = ({ quality }: { quality: DashboardQuality }) => {
         </KpiTile>
       </div>
       <Row kind="row2">
-        <DailyPanel quality={quality} kinds={['PQC']} title={t.dailyTitleOf('PQC')} />
+        <DailyPanel
+          quality={quality}
+          kinds={['PQC']}
+          title={t.dailyTitleOf('PQC')}
+          tooltip
+          niceTicks
+        />
         <Panel title={t.equipmentDefectRates} sub={t.equipmentDefectRatesSub} tag={tags.today}>
           <RankBars
             /*
@@ -860,6 +827,7 @@ export const PqcTab = ({ quality }: { quality: DashboardQuality }) => {
           </Panel>
         </div>
         <RecentLotsPanel
+          itemTitle
           title={t.recentLotsOf('PQC')}
           rows={recentOf(quality, 'PQC')}
           counterpart="equipment"
@@ -874,25 +842,32 @@ export const OqcTab = ({ quality }: { quality: DashboardQuality }) => {
   const oqc = quality.oqc;
 
   return (
-    <QualityTabFrame>
+    <QualityTabFrame className="dash-tab-quality-detail">
       <div className="dash-kpis">
-        <PassRateTile label={t.passRateOf('OQC')} block={oqc} />
-        <LotTile label={t.oqcLots} tag={tags.month} counts={oqc.monthLots} />
+        <OverviewPassRateTile label={t.passRateOf('OQC')} block={oqc} />
+        <OverviewLotTile label={t.oqcLots} tag={tags.month} counts={oqc.monthLots} />
         <KpiTile
           label={t.customerReturn}
           tag={tags.month}
           value={formatFigure(oqc.customerReturnQty)}
           unit={t.qtyUnit}
         >
-          <span>{t.customerReturnNote}</span>
+          <span>{t.customerReturnNoteShort}</span>
         </KpiTile>
       </div>
       {/* 반품 구분 · 금액 · 반출 · 클레임 칸이 없다 — 빈 자리를 남기지 않고 넓게 쓴다. */}
       <Row kind="row2-single">
-        <DailyPanel quality={quality} kinds={['OQC']} title={t.dailyTitleOf('OQC')} />
+        <DailyPanel
+          quality={quality}
+          kinds={['OQC']}
+          title={t.dailyTitleOf('OQC')}
+          tooltip
+          niceTicks
+        />
       </Row>
       <Row kind="row2-single">
         <RecentLotsPanel
+          itemTitle
           title={t.recentLotsOf('OQC')}
           rows={recentOf(quality, 'OQC')}
           counterpart="customer"
@@ -917,7 +892,7 @@ export const NonconformanceTab = ({ quality }: { quality: DashboardQuality }) =>
   }));
 
   return (
-    <QualityTabFrame>
+    <QualityTabFrame className="dash-tab-quality-detail">
       <div className="dash-kpis">
         <KpiTile
           label={t.ncMonthQty}

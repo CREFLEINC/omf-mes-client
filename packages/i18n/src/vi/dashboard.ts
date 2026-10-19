@@ -225,8 +225,6 @@ export const dashboard: Translated<typeof ko.dashboard> = {
     monthLots: 'LOT kiểm tra',
     pqcLots: 'LOT kiểm tra công đoạn',
     oqcLots: 'LOT kiểm tra xuất hàng',
-    lotBreakdown: (accepted: string, rejected: string, held: string): string =>
-      `Đạt\u00a0${accepted} · Không\u00a0đạt\u00a0${rejected} · Tạm\u00a0giữ\u00a0kiểm\u00a0tra\u00a0${held}`,
     monthDefectQty: 'Số lượng lỗi',
     qtyUnit: 'EA',
     lotUnit: 'LOT',
@@ -284,7 +282,6 @@ export const dashboard: Translated<typeof ko.dashboard> = {
     equipmentDefectRatesSub: '% · Sản lượng ngày cơ sở',
     ngShort: (qty: string): string => `NG ${qty}`,
     customerReturn: 'Khách hàng trả lại',
-    customerReturnNote: 'Số lượng hàng khách trả nhập kho trong tháng',
     customerReturnNoteShort: 'Theo nhập hàng trả lại',
     lots: {
       countLots: (count: string): string => `${count} LOT`,

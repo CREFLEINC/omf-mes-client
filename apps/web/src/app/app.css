@@ -7900,24 +7900,29 @@ dl.filter-bar.approval-inbox-detail-facts {
 }
 
 /* 막대 목록 — 이름 · 막대 · 수량 · 비율이 모든 줄에서 같은 열(subgrid), 수량 · 비율은 오른쪽 정렬. */
-.dash-tab-quality-overview .dash-rank {
+.dash-tab-quality-overview .dash-rank,
+.dash-tab-quality-detail .dash-rank {
   grid-template-columns: minmax(5rem, max-content) minmax(3rem, 1fr) auto auto;
   column-gap: var(--space-2);
 }
 
-.dash-tab-quality-overview .dash-rank-row {
+.dash-tab-quality-overview .dash-rank-row,
+.dash-tab-quality-detail .dash-rank-row {
   grid-column: 1 / -1;
   grid-template-columns: subgrid;
 }
 
 .dash-tab-quality-overview .dash-rank-value,
-.dash-tab-quality-overview .dash-rank-share {
+.dash-tab-quality-overview .dash-rank-share,
+.dash-tab-quality-detail .dash-rank-value,
+.dash-tab-quality-detail .dash-rank-share {
   font-variant-numeric: tabular-nums;
   text-align: end;
 }
 
 /* 최근 판정 표 — 품목은 칸 폭에서 말줄임(전체는 마우스 올림), 판정 배지는 같은 폭. */
-.dash-tab-quality-overview .dash-cell-item {
+.dash-tab-quality-overview .dash-cell-item,
+.dash-tab-quality-detail .dash-cell-item {
   display: inline-block;
   max-width: 12rem;
   overflow: hidden;
@@ -7925,9 +7930,15 @@ dl.filter-bar.approval-inbox-detail-facts {
   vertical-align: bottom;
 }
 
-.dash-tab-quality-overview .dash-table-wrap td:last-child > * {
+.dash-tab-quality-overview .dash-table-wrap td:last-child > *,
+.dash-tab-quality-detail .dash-table-wrap td:last-child > * {
   justify-content: center;
   min-width: 4.5rem;
+}
+
+/* IQC · PQC · OQC 일별 툴팁 — 점 간격이 넓으면 양 끝 칸이 반 칸씩 카드 밖으로 나가 가로 스크롤을 만든다. 가로만 자른다. */
+.dash-tab-quality-detail .dash-line-tips {
+  overflow-x: clip;
 }
 
 /* 주 그래프 카드 — 몸통이 남는 높이를 받고, 그래프 자리가 그 높이를 잰다(`FitChart`). */
@@ -9702,6 +9713,14 @@ dl.filter-bar.approval-inbox-detail-facts {
   font: var(--type-label-sm);
   letter-spacing: var(--type-label-sm-tracking);
   font-weight: 700;
+}
+
+/* 파레토 막대 값 — 누적선보다 위에 그려 글자 둘레를 카드 바탕색으로 덮는다(선이 글자를 가리지 않게). */
+.dash-bar-value-halo {
+  paint-order: stroke;
+  stroke: var(--surface-container);
+  stroke-width: 3px;
+  stroke-linejoin: round;
 }
 
 .dash-line {
