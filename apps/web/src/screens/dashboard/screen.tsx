@@ -266,7 +266,7 @@ export const DashboardScreen = () => {
                   isLoading={summary.isPending}
                   isFailed={isFailed}
                 >
-                  {(quality) => <TabBody quality={quality} />}
+                  {(quality) => <TabBody quality={quality} allows={access.allows} />}
                 </QualityGate>
               ),
             })),

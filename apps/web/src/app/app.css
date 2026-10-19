@@ -7985,6 +7985,38 @@ dl.filter-bar.approval-inbox-detail-facts {
   font: var(--type-label-sm);
 }
 
+/*
+ * 품질 종합 「최근 검사 LOT 판정 현황」 — 줄 전체가 검사결과 상세로 가는 링크(⭐ 사용자 지시 2026-10-19). 링크는 품목
+ * 칸에 있고 `::after` 로 줄 전체를 덮는다. 마우스를 올리면 줄 바탕이 옅게 바뀐다.
+ */
+.dash-recent-linked tbody tr {
+  position: relative;
+}
+
+.dash-recent-linked tbody tr:hover {
+  background: var(--state-hover-neutral);
+}
+
+.dash-recent-link {
+  color: inherit;
+  text-decoration: none;
+}
+
+.dash-recent-link::after {
+  position: absolute;
+  inset: 0;
+  content: '';
+}
+
+.dash-recent-link:focus-visible {
+  outline: none;
+}
+
+.dash-recent-link:focus-visible::after {
+  border-radius: var(--radius-sm);
+  box-shadow: var(--focus-ring);
+}
+
 /* 화면 기준으로 띄운다 — 카드가 넘치는 내용을 잘라도 말풍선은 잘리지 않는다. */
 .dash-line-tip.dash-donut-tip {
   position: fixed;

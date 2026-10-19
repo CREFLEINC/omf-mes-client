@@ -1,6 +1,7 @@
 import { messages } from '@omf-mes/i18n';
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { MemoryRouter } from 'react-router';
 import { describe, expect, it } from 'vitest';
 
 import { OTHER_SLICE_KEY, roundShares, toDonutSlices } from './defect-types-panel';
@@ -248,6 +249,31 @@ describe('품질 탭', () => {
     expect(t.otherTypes('3')).toBe('기타 (3종)');
 
     expect(toDonutSlices([], 0)).toEqual([]);
+  });
+
+  it('최근 검사 LOT — 검사결과 조회 화면 권한이 있으면 줄이 상세 링크(검사 일자 · 유형 · selected), 없으면 링크 없음', () => {
+    const data = quality();
+    const { unmount } = render(
+      <MemoryRouter>
+        <QualityOverviewTab
+          quality={data}
+          allows={(path) => path === '/quality/inspection-results'}
+        />
+      </MemoryRouter>,
+    );
+    const iqcLink = screen.getByRole('link', { name: t.openInspectionResult('IQC', 'ITEM-1') });
+    /* 2026-10-16T01:00Z = 공장(하노이) 10-16 08:00. */
+    expect(iqcLink).toHaveAttribute(
+      'href',
+      '/quality/inspection-results?from=2026-10-16&to=2026-10-16&type=IQC&selected=1',
+    );
+    expect(
+      screen.getByRole('link', { name: t.openInspectionResult('PQC', 'ITEM-2') }),
+    ).toHaveAttribute('href', expect.stringContaining('type=PQC&selected=2'));
+    unmount();
+
+    render(<QualityOverviewTab quality={data} allows={() => false} />);
+    expect(screen.queryByRole('link', { name: /검사 결과 상세 보기/ })).not.toBeInTheDocument();
   });
 
   it('불량 유형 비율 표시 — 정수로 적어도 합이 100(최대 나머지 방식)', () => {

@@ -244,6 +244,8 @@ export const dashboard: Translated<typeof ko.dashboard> = {
     shareColumn: 'Tỷ lệ',
     phenomenaOf: (kind: string): string => `Cơ cấu hiện tượng lỗi ${kind}`,
     recentLots: 'Phán định LOT kiểm tra gần đây',
+    openInspectionResult: (kind: string, item: string): string =>
+      `Xem chi tiết kết quả kiểm tra ${kind} ${item}`,
     recentLotsOf: (kind: string): string => `Phán định ${kind} gần đây`,
     recentLotsLead: '5 lần gần nhất',
     recentEmpty: 'Chưa có phán định kiểm tra gần đây.',

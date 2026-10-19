@@ -299,6 +299,9 @@ export const dashboard = {
     shareColumn: '비율',
     phenomenaOf: (kind: string): string => `${kind} 불량현상 구성비`,
     recentLots: '최근 검사 LOT 판정 현황',
+    /** 최근 판정 표의 줄 — 누르면 검사결과 조회 화면의 상세(사용자 지시 2026-10-19). */
+    openInspectionResult: (kind: string, item: string): string =>
+      `${kind} ${item} 검사 결과 상세 보기`,
     recentLotsOf: (kind: string): string => `최근 ${kind} 판정 현황`,
     recentLotsLead: '최근 5건',
     recentEmpty: '최근 검사 판정이 없습니다.',

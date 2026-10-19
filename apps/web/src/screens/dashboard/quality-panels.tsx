@@ -7,6 +7,7 @@ import type {
   DashboardQualityTypeBlock,
 } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
+import { Link } from 'react-router';
 import {
   createContext,
   useCallback,
@@ -394,21 +395,43 @@ const InspectedAt = ({ value }: { value: string }) => {
   );
 };
 
+/** 검사결과 조회(W-03-05) 주소 — 날짜만 있는 화면 조건으로는 사용자가 보는 목록이 비어 그 날짜 · 검사 유형으로 연다. */
+export const INSPECTION_RESULTS_PATH = '/quality/inspection-results';
+
+/**
+ * 그 검사 결과의 상세를 여는 주소(⭐ 사용자 지시 2026-10-19 「항목을 누르면 검사실적 · 검사결과 조회 화면에서 상세」).
+ * `selected` 가 상세 창을 열고, 검사 일자(공장 날짜) · 검사 유형을 조건으로 함께 넘겨 창 뒤 목록에도 그 결과가 보인다.
+ */
+export const inspectionResultPathOf = (row: RecentLotRow): string => {
+  const params = new URLSearchParams();
+  const date = toPlantDateTimeParts(row.inspectedAt)?.date;
+  if (date !== undefined) {
+    params.set('from', date);
+    params.set('to', date);
+  }
+  params.set('type', row.kind);
+  params.set('selected', String(row.inspectionResultId));
+  return `${INSPECTION_RESULTS_PATH}?${params.toString()}`;
+};
+
 const RecentLotsPanel = ({
   title,
   rows,
   counterpart,
   itemTitle = false,
+  linked = false,
 }: {
   title: string;
   rows: RecentLotRow[];
   counterpart: Counterpart;
   /** 품목 칸 마우스 올림 글(코드 · 이름) — 품질 종합만(사용자 지시 2026-10-19). */
   itemTitle?: boolean;
+  /** 줄을 누르면 검사결과 상세로 — 품질 종합만, 그 화면 권한이 있을 때(사용자 지시 2026-10-19). */
+  linked?: boolean;
 }) => (
   <Panel title={title} tag={t.recentLotsLead}>
     {/* 제목은 패널이 이미 말한다 — 표 제목(caption)을 두면 같은 말이 두 번 보인다. 이름은 aria-label 로. */}
-    <div className="dash-table-wrap">
+    <div className={linked ? 'dash-table-wrap dash-recent-linked' : 'dash-table-wrap'}>
       <Table
         columns={[
           {
@@ -421,16 +444,30 @@ const RecentLotsPanel = ({
             key: 'item',
             header: t.column.item,
             /* 품목 전체(코드 · 이름)는 마우스 올림 글로 — 품질 종합은 좁은 칸에서 말줄임(사용자 지시 2026-10-19). */
-            render: (row) => (
-              <span
-                className="dash-cell-wrap dash-cell-item"
-                title={
-                  itemTitle ? [row.itemCode, row.itemName].filter(Boolean).join(' ') : undefined
-                }
-              >
-                {row.itemCode}
-              </span>
-            ),
+            render: (row) => {
+              const label = (
+                <span
+                  className="dash-cell-wrap dash-cell-item"
+                  title={
+                    itemTitle ? [row.itemCode, row.itemName].filter(Boolean).join(' ') : undefined
+                  }
+                >
+                  {row.itemCode}
+                </span>
+              );
+              /* 링크는 품목 칸에 두고 줄 전체로 넓힌다(`::after`) — 키보드로는 한 줄에 한 번 닿는다. */
+              return linked ? (
+                <Link
+                  className="dash-recent-link"
+                  to={inspectionResultPathOf(row)}
+                  aria-label={t.openInspectionResult(row.kind, row.itemCode)}
+                >
+                  {label}
+                </Link>
+              ) : (
+                label
+              );
+            },
           },
           /*
            * LOT 열을 두지 않는다 — 시안의 표는 일자 · 구분 · CODE · 수량 · 판정이고, 좁은 row3 칸에서 LOT 열이
@@ -483,7 +520,14 @@ const LOT_STATUS_OF_ROW: Record<string, DashboardQualityLotStatus> = {
   ncOpen: 'NC_OPEN',
 };
 
-export const QualityOverviewTab = ({ quality }: { quality: DashboardQuality }) => {
+export const QualityOverviewTab = ({
+  quality,
+  allows = () => false,
+}: {
+  quality: DashboardQuality;
+  /** 이 사용자가 그 화면을 볼 수 있는가(사이드바와 같은 판정). 못 보면 표는 링크 없이 보인다. */
+  allows?: (path: string) => boolean;
+}) => {
   const tags = usePeriodTags();
   /* 「현재 현황」에서 고른 상태 — 그 상태의 LOT 목록 창을 연다(사용자 결정 2026-10-19). */
   const [lotStatus, setLotStatus] = useState<DashboardQualityLotStatus | null>(null);
@@ -592,6 +636,7 @@ export const QualityOverviewTab = ({ quality }: { quality: DashboardQuality }) =
           rows={toRecentLotRows(quality)}
           counterpart="kind"
           itemTitle
+          linked={allows(INSPECTION_RESULTS_PATH)}
         />
       </div>
       {/* 처음 고를 때 그린다 — 그 전에는 목록을 부르지 않는다(닫힌 동안에도 부르지 않는다 · `enabled`). */}
