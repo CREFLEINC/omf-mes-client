@@ -1272,7 +1272,7 @@ export const InspectionStandardScreen = () => {
         }
       />
 
-      <div className="three-pane">
+      <div className="three-pane inspection-standard-layout">
         <PlanListPane
           plans={plans}
           isLoading={planList.isPending}
