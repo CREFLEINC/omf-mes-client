@@ -120,8 +120,10 @@ describe('품질 탭', () => {
 
     const recent = screen.getByRole('table', { name: t.recentLotsOf('PQC') });
     expect(within(recent).getByText('EQ-01')).toBeInTheDocument();
-    /* 품질 종합이 아닌 탭은 날짜만. */
-    expect(within(recent).queryByText(/\d{2}:\d{2}$/)).not.toBeInTheDocument();
+    /* IQC 와 같이 일시는 시각까지(사용자 지시 2026-10-19). */
+    expect(within(recent).getAllByText(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/).length).toBeGreaterThan(
+      0,
+    );
     expect(within(recent).queryByRole('columnheader', { name: 'LOT' })).not.toBeInTheDocument();
     expect(screen.getByText(t.reworkLine('1'))).toBeInTheDocument();
   });
@@ -142,11 +144,48 @@ describe('품질 탭', () => {
     expect(labels).toEqual(['E-9-1', 'E-17-1', 'E-17-2', 'E-17-10', 'E-17-11']);
   });
 
-  it('OQC — 고객 반품 · 최근 판정(고객)만 두고 금액 · 클레임 칸은 없다', () => {
+  it('OQC — 서버가 새 칸을 주지 않으면 고객 반품 · 현재 현황 · 최근 판정만(금액 · 클레임 칸 없음)', () => {
     render(<OqcTab quality={quality()} />);
 
     expect(screen.getByRole('group', { name: t.customerReturn })).toBeInTheDocument();
-    expect(screen.getAllByRole('region')).toHaveLength(2);
+    expect(screen.queryByRole('group', { name: t.topCustomer })).not.toBeInTheDocument();
+    expect(screen.queryByText(t.returnReasons)).not.toBeInTheDocument();
+    expect(screen.queryByText(t.dailyReturnOut)).not.toBeInTheDocument();
+  });
+
+  it('OQC — 고객별 불합격 · 반품 구분 원형 · 미처리 반품 · 반출 일자별(사용자 지시 2026-10-19)', () => {
+    const q = quality();
+    q.oqc.customerDefects = [{ customerId: 1, customerName: '고객 가', rejectedQty: 30 }];
+    q.oqc.returnReasons = [
+      { reasonCode: 'CUSTOMER_RETURN', reasonName: '고객반품', qty: 20 },
+      { reasonCode: 'SUPPLIER_RETURN_OUT', reasonName: '공급사 반품 출고', qty: 5 },
+    ];
+    q.oqc.pendingReturnLotCount = { lotCount: 2, recordCount: 3 };
+    q.oqc.dailyReturnOutQty = [
+      { date: '2026-10-15', qty: 4 },
+      { date: '2026-10-16', qty: null },
+    ];
+    const { container } = render(<OqcTab quality={q} />);
+
+    expect(screen.getByRole('group', { name: t.topCustomer })).toHaveTextContent('고객 가');
+    expect(screen.getByRole('img', { name: t.returnReasons })).toBeInTheDocument();
+    expect(screen.getByText(t.pendingReturn).closest('li')).toHaveTextContent(/2\s*LOT/);
+    const bars = container.querySelectorAll('.dash-day-bar');
+    expect(bars).toHaveLength(2);
+    expect(bars[1]).toHaveTextContent(t.none);
+  });
+
+  it('PQC — 재검 칸 · 품목별 원형 · 검사 대기 최장 경과(사용자 지시 2026-10-19)', () => {
+    const q = quality();
+    q.pqc.fullReinspect = { inputQty: 10, restoredQty: 9 };
+    q.pqc.itemDefects = [{ itemId: 1, itemCode: 'ITEM-9', itemName: '품목 9', qty: 4 }];
+    q.pqc.oldestPendingSince = new Date(Date.now() - 125 * 60_000).toISOString();
+    render(<PqcTab quality={q} />);
+
+    expect(screen.getByRole('group', { name: t.reinspectInput })).toHaveTextContent('10');
+    expect(screen.getByText('90')).toBeInTheDocument();
+    expect(screen.getByRole('img', { name: t.pqcItemDefects })).toBeInTheDocument();
+    expect(screen.getByText(/가장 오래 기다린 LOT 2시간 5분/)).toBeInTheDocument();
   });
 
   it('부적합 — 조치 기한 초과가 null 이면 칸을 두지 않고, 값이 오면 보인다', () => {

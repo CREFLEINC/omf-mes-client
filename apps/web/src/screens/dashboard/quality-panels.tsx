@@ -31,7 +31,7 @@ import {
 } from './quality';
 import { DefectTypesPanel } from './defect-types-panel';
 import { compareEquipmentCode } from './equipment';
-import { pointerFocusProps, usePointerInput } from './equipment-panel';
+import { formatElapsed, pointerFocusProps, usePointerInput } from './equipment-panel';
 import { formatFigure } from './types';
 import { usePeriodTags } from './period';
 import { QualityLotsDialog } from './quality-lots-dialog';
@@ -864,24 +864,106 @@ export const IqcTab = ({
   );
 };
 
-export const PqcTab = ({ quality }: { quality: DashboardQuality }) => {
+/**
+ * 재검 투입 · 재검 OK 복원율 칸 둘(PQC 탭 · 사용자 지시 2026-10-19) — IQC 탭과 같은 표기. IQC 탭 코드는 건드리지
+ * 않으려고(병합 완료 화면 · 사용자 지시) 따로 둔다. 복원율 = 합격 ÷ 투입(100 상한), 투입 0 이면 값 없음.
+ */
+const ReinspectTiles = ({
+  reinspect,
+  inputNote,
+}: {
+  reinspect: { inputQty: number; restoredQty: number };
+  inputNote: string;
+}) => {
+  const tags = usePeriodTags();
+
+  return (
+    <>
+      <KpiTile
+        label={t.reinspectInput}
+        tag={tags.month}
+        value={formatFigure(reinspect.inputQty)}
+        unit={t.qtyUnit}
+      >
+        <span>{inputNote}</span>
+      </KpiTile>
+      <KpiTile
+        label={t.fullReinspect}
+        tag={tags.month}
+        value={
+          reinspect.inputQty > 0
+            ? formatFigure(
+                Math.min(100, Math.round((reinspect.restoredQty / reinspect.inputQty) * 1000) / 10),
+              )
+            : t.rateNone
+        }
+        unit={reinspect.inputQty > 0 ? '%' : undefined}
+      >
+        <span>{t.fullReinspectNote(formatFigure(reinspect.restoredQty), t.qtyUnit)}</span>
+      </KpiTile>
+    </>
+  );
+};
+
+/** 검사 대기 최장 경과(분) — 기준은 지금. 시각이 없거나 읽지 못하면 `null`. */
+export const pendingElapsedMinutes = (
+  since: string | null | undefined,
+  now: Date,
+): number | null => {
+  if (since === null || since === undefined) return null;
+  const at = Date.parse(since);
+  if (Number.isNaN(at)) return null;
+  return Math.max(0, Math.floor((now.getTime() - at) / 60_000));
+};
+
+/** 「현재 현황」 LOT 목록 창을 여는 상태 — PQC · OQC 탭은 그 검사 유형으로 좁힌다. */
+const useLotDialog = () => {
+  const [lotStatus, setLotStatus] = useState<DashboardQualityLotStatus | null>(null);
+  const [mounted, setMounted] = useState(false);
+  const pointerInput = usePointerInput();
+
+  return {
+    lotStatus,
+    mounted,
+    rowProps: pointerFocusProps(pointerInput),
+    open: (key: string) => {
+      setLotStatus(LOT_STATUS_OF_ROW[key] ?? null);
+      setMounted(true);
+    },
+    close: () => {
+      setLotStatus(null);
+    },
+  };
+};
+
+/**
+ * PQC 검사실적(⭐ 사용자 지시 2026-10-19 「IQC 검사실적 탭 기준 배치」) — 위: 일별 합격률 | 호기별 불량률 · PQC
+ * 불량현상 · 현재 현황(세로), 아래: 품목별 PQC 불량 원형 | 최근 판정. 박스 끝 맞춤은 품질 종합 · IQC 와 같은 틀.
+ */
+export const PqcTab = ({
+  quality,
+  allows = () => false,
+}: {
+  quality: DashboardQuality;
+  /** 이 사용자가 그 화면을 볼 수 있는가 — 못 보면 최근 판정 표는 링크 없이 보인다. */
+  allows?: (path: string) => boolean;
+}) => {
   const tags = usePeriodTags();
   const pqc = quality.pqc;
   const worst = pqc.equipmentDefectRates[0];
+  const dialog = useLotDialog();
+  const held = lotRecordValue(quality.statusCounts?.INSPECTION_HELD.byType.PQC, pqc.monthLots.held);
+  const pending = lotRecordValue(quality.statusCounts?.PQC_PENDING, pqc.pendingLotCount);
+  const oldest = pendingElapsedMinutes(pqc.oldestPendingSince, new Date());
 
   return (
     <QualityTabFrame className="dash-tab-quality-detail">
       <div className="dash-kpis">
         <OverviewPassRateTile label={t.passRateOf('PQC')} block={pqc} />
         <OverviewLotTile label={t.pqcLots} tag={tags.month} counts={pqc.monthLots} />
-        <KpiTile
-          label={t.pendingLots}
-          tag={t.tagNow}
-          value={formatFigure(pqc.pendingLotCount)}
-          unit={t.lotUnit}
-        >
-          <span>{t.pendingLotsNote}</span>
-        </KpiTile>
+        {pqc.fullReinspect !== undefined && pqc.fullReinspect !== null && (
+          <ReinspectTiles reinspect={pqc.fullReinspect} inputNote={t.pqcReinspectInputNote} />
+        )}
         <KpiTile
           label={t.monthDefectQty}
           tag={tags.month}
@@ -903,57 +985,66 @@ export const PqcTab = ({ quality }: { quality: DashboardQuality }) => {
           )}
         </KpiTile>
       </div>
-      <Row kind="row2">
+      <div className="dash-qo-top">
         <DailyPanel
           quality={quality}
           kinds={['PQC']}
           title={t.dailyTitleOf('PQC')}
           tooltip
+          gapMarks
+          gapDetail
           niceTicks
         />
-        <Panel title={t.equipmentDefectRates} sub={t.equipmentDefectRatesSub} tag={tags.today}>
-          <RankBars
-            /*
-             * 불량률이 같으면 설비 코드 자연 정렬(17-1 < 17-2 < 17-10) — 서버 순서는 같은 값끼리 문자열
-             * 순이었다(사용자 점검 2026-10-16). 불량률 높은 순은 그대로.
-             */
-            entries={[...pqc.equipmentDefectRates]
-              .sort(
-                (a, b) =>
-                  b.defectRate - a.defectRate ||
-                  compareEquipmentCode(a.equipmentCode, b.equipmentCode),
-              )
-              .map((entry) => ({
-                key: String(entry.equipmentId),
-                label: entry.equipmentCode,
-                value: entry.defectRate,
-              }))}
-            formatValue={formatRate}
-            showShare={false}
-            aside={(entry) => {
-              const source = pqc.equipmentDefectRates.find(
-                (rate) => String(rate.equipmentId) === entry.key,
-              );
-              return source === undefined ? undefined : t.ngShort(formatFigure(source.ngQty));
-            }}
-          />
-        </Panel>
-      </Row>
-      <Row kind="split">
-        <div className="dash-stack">
-          <Panel title={t.phenomenaOf('PQC')} sub={t.qtyShareSub} tag={tags.month}>
-            <RankBars entries={phenomenaEntries(pqc.defectPhenomena)} />
+        <div className="dash-qo-side">
+          <Panel title={t.equipmentDefectRates} sub={t.equipmentDefectRatesSub} tag={tags.today}>
+            <RankBars
+              /*
+               * 불량률이 같으면 설비 코드 자연 정렬(17-1 < 17-2 < 17-10) — 서버 순서는 같은 값끼리 문자열
+               * 순이었다(사용자 점검 2026-10-16). 불량률 높은 순은 그대로.
+               */
+              entries={[...pqc.equipmentDefectRates]
+                .sort(
+                  (a, b) =>
+                    b.defectRate - a.defectRate ||
+                    compareEquipmentCode(a.equipmentCode, b.equipmentCode),
+                )
+                .map((entry) => ({
+                  key: String(entry.equipmentId),
+                  label: entry.equipmentCode,
+                  value: entry.defectRate,
+                }))}
+              formatValue={formatRate}
+              showShare={false}
+              aside={(entry) => {
+                const source = pqc.equipmentDefectRates.find(
+                  (rate) => String(rate.equipmentId) === entry.key,
+                );
+                return source === undefined ? undefined : t.ngShort(formatFigure(source.ngQty));
+              }}
+            />
           </Panel>
           <Panel title={t.currentTitle} tag={t.tagNow}>
             <StatusList
+              rowProps={dialog.rowProps}
+              onSelect={dialog.open}
               items={[
+                {
+                  key: 'held',
+                  label: t.heldLots,
+                  note: t.heldLotsNote,
+                  ...held,
+                  tone: countTone(held.count, 'warning'),
+                  selectable: held.count > 0,
+                },
                 {
                   key: 'pending',
                   label: t.pendingLots,
-                  note: t.pendingLotsNote,
-                  value: formatFigure(pqc.pendingLotCount),
-                  unit: t.lotUnit,
-                  tone: countTone(pqc.pendingLotCount, 'warning'),
+                  /* 가장 오래 기다린 LOT 의 경과 시간(사용자 지시 2026-10-19). */
+                  note:
+                    oldest === null ? t.pendingLotsNote : t.pendingOldest(formatElapsed(oldest)),
+                  ...pending,
+                  tone: countTone(pending.count, 'warning'),
+                  selectable: pending.count > 0,
                 },
                 {
                   key: 'rework',
@@ -961,25 +1052,102 @@ export const PqcTab = ({ quality }: { quality: DashboardQuality }) => {
                   note: t.reworkRequestsNote,
                   value: formatFigure(pqc.reworkRequestCount),
                   unit: t.countUnit,
+                  selectable: false,
                 },
               ]}
             />
           </Panel>
         </div>
+      </div>
+      <div className="dash-qo-bottom">
+        {pqc.itemDefects === undefined ? (
+          <Panel title={t.phenomenaOf('PQC')} sub={t.qtyShareSub} tag={tags.month}>
+            <RankBars entries={phenomenaEntries(pqc.defectPhenomena)} />
+          </Panel>
+        ) : (
+          <DefectTypesPanel
+            title={t.pqcItemDefects}
+            tag={tags.month}
+            entries={pqc.itemDefects.map((entry) => ({
+              key: String(entry.itemId),
+              label: entry.itemCode,
+              value: entry.qty,
+            }))}
+          />
+        )}
         <RecentLotsPanel
           itemTitle
           title={t.recentLotsOf('PQC')}
           rows={recentOf(quality, 'PQC')}
           counterpart="equipment"
+          linked={allows(INSPECTION_RESULTS_PATH)}
+          withTime
         />
-      </Row>
+      </div>
+      {dialog.mounted && (
+        <QualityLotsDialog
+          status={dialog.lotStatus}
+          inspectionType={dialog.lotStatus === 'INSPECTION_HELD' ? 'PQC' : null}
+          onClose={dialog.close}
+        />
+      )}
     </QualityTabFrame>
   );
 };
 
-export const OqcTab = ({ quality }: { quality: DashboardQuality }) => {
+/** 반출 일자별 수량(OQC 탭 · 사용자 지시 2026-10-19) — 날짜 막대. 기록 없는 날은 막대 없이 「—」. */
+const DailyReturnOutPanel = ({
+  days,
+}: {
+  days: readonly { date: string; qty: number | null }[];
+}) => {
+  const tags = usePeriodTags();
+  const max = Math.max(0, ...days.map((day) => day.qty ?? 0));
+
+  return (
+    <Panel title={t.dailyReturnOut} sub={t.dailyReturnOutSub} tag={tags.recent}>
+      {days.every((day) => day.qty === null || day.qty === 0) ? (
+        <NoRecords />
+      ) : (
+        <ol className="dash-day-bars" aria-label={t.dailyReturnOut}>
+          {days.map((day) => (
+            <li key={day.date} className="dash-day-bar">
+              <span className="dash-day-bar-value">
+                {day.qty === null ? t.none : formatFigure(day.qty)}
+              </span>
+              <span className="dash-day-bar-track" aria-hidden="true">
+                <span
+                  className="dash-day-bar-fill"
+                  style={{ height: `${String(max === 0 ? 0 : ((day.qty ?? 0) / max) * 100)}%` }}
+                />
+              </span>
+              <span className="dash-day-bar-label">{day.date.slice(5)}</span>
+            </li>
+          ))}
+        </ol>
+      )}
+    </Panel>
+  );
+};
+
+/**
+ * OQC 검사실적(⭐ 사용자 지시 2026-10-19 「IQC 검사실적 탭 기준 배치」) — 위: 일별 합격률 | 고객별 불합격 · 현재
+ * 현황(세로), 아래: 반품 구분별 원형 | 최근 판정, 맨 아래: 반출 일자별 수량. 서버가 새 칸을 주지 않으면 그 박스는 없다.
+ */
+export const OqcTab = ({
+  quality,
+  allows = () => false,
+}: {
+  quality: DashboardQuality;
+  /** 이 사용자가 그 화면을 볼 수 있는가 — 못 보면 최근 판정 표는 링크 없이 보인다. */
+  allows?: (path: string) => boolean;
+}) => {
   const tags = usePeriodTags();
   const oqc = quality.oqc;
+  const dialog = useLotDialog();
+  const held = lotRecordValue(quality.statusCounts?.INSPECTION_HELD.byType.OQC, oqc.monthLots.held);
+  const topCustomer = oqc.customerDefects?.[0];
+  const pendingReturn = oqc.pendingReturnLotCount;
 
   return (
     <QualityTabFrame className="dash-tab-quality-detail">
@@ -994,25 +1162,104 @@ export const OqcTab = ({ quality }: { quality: DashboardQuality }) => {
         >
           <span>{t.customerReturnNoteShort}</span>
         </KpiTile>
+        {oqc.customerDefects !== undefined && (
+          <KpiTile
+            label={t.topCustomer}
+            tag={tags.month}
+            value={topCustomer === undefined ? t.none : topCustomer.customerName}
+          >
+            {topCustomer !== undefined && (
+              <span>{`${formatFigure(topCustomer.rejectedQty)} ${t.qtyUnit}`}</span>
+            )}
+          </KpiTile>
+        )}
       </div>
-      {/* 반품 구분 · 금액 · 반출 · 클레임 칸이 없다 — 빈 자리를 남기지 않고 넓게 쓴다. */}
-      <Row kind="row2-single">
+      <div className="dash-qo-top">
         <DailyPanel
           quality={quality}
           kinds={['OQC']}
           title={t.dailyTitleOf('OQC')}
           tooltip
+          gapMarks
+          gapDetail
           niceTicks
         />
-      </Row>
-      <Row kind="row2-single">
+        <div className="dash-qo-side">
+          {oqc.customerDefects !== undefined && (
+            <Panel title={t.customerDefects} sub={t.vendorTableSub} tag={tags.monthTotal}>
+              <RankBars
+                entries={oqc.customerDefects.map((entry) => ({
+                  key: String(entry.customerId),
+                  label: entry.customerName,
+                  value: entry.rejectedQty,
+                }))}
+              />
+            </Panel>
+          )}
+          <Panel title={t.currentTitle} tag={t.tagNow}>
+            <StatusList
+              rowProps={dialog.rowProps}
+              onSelect={dialog.open}
+              items={[
+                {
+                  key: 'held',
+                  label: t.heldLots,
+                  note: t.heldLotsNote,
+                  ...held,
+                  tone: countTone(held.count, 'warning'),
+                  selectable: held.count > 0,
+                },
+                ...(pendingReturn === undefined
+                  ? []
+                  : [
+                      {
+                        key: 'pendingReturn',
+                        label: t.pendingReturn,
+                        note: t.pendingReturnNote,
+                        ...lotRecordValue(pendingReturn, pendingReturn.lotCount),
+                        tone: countTone(pendingReturn.recordCount, 'warning'),
+                        /* 목록 경로가 없다 — 숫자만. */
+                        selectable: false,
+                      },
+                    ]),
+              ]}
+            />
+          </Panel>
+        </div>
+      </div>
+      <div className="dash-qo-bottom">
+        {oqc.returnReasons !== undefined && (
+          <DefectTypesPanel
+            title={t.returnReasons}
+            tag={tags.month}
+            entries={oqc.returnReasons.map((entry) => ({
+              key: entry.reasonCode,
+              label: entry.reasonName,
+              value: entry.qty,
+            }))}
+          />
+        )}
         <RecentLotsPanel
           itemTitle
           title={t.recentLotsOf('OQC')}
           rows={recentOf(quality, 'OQC')}
           counterpart="customer"
+          linked={allows(INSPECTION_RESULTS_PATH)}
+          withTime
         />
-      </Row>
+      </div>
+      {oqc.dailyReturnOutQty !== undefined && (
+        <Row kind="row2-single">
+          <DailyReturnOutPanel days={oqc.dailyReturnOutQty} />
+        </Row>
+      )}
+      {dialog.mounted && (
+        <QualityLotsDialog
+          status={dialog.lotStatus}
+          inspectionType={dialog.lotStatus === 'INSPECTION_HELD' ? 'OQC' : null}
+          onClose={dialog.close}
+        />
+      )}
     </QualityTabFrame>
   );
 };

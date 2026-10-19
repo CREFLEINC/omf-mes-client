@@ -314,6 +314,11 @@ export const DashboardScreen = () => {
                     ) : value === 'iqc' ? (
                       /* 최근 IQC 판정 줄 → 검사결과 상세(사용자 지시 2026-10-19) — 그 화면 권한을 본다. */
                       <IqcTab quality={quality} allows={access.allows} />
+                    ) : value === 'pqc' ? (
+                      /* PQC · OQC 도 IQC 와 같이 최근 판정 줄 → 검사결과 상세(사용자 지시 2026-10-19). */
+                      <PqcTab quality={quality} allows={access.allows} />
+                    ) : value === 'oqc' ? (
+                      <OqcTab quality={quality} allows={access.allows} />
                     ) : (
                       <TabBody quality={quality} />
                     )

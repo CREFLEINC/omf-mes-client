@@ -14259,3 +14259,51 @@ button.app-button-neutral {
 .shipment-schedule-plant-body > * {
   margin-block: 0;
 }
+
+/* OQC 「반출 일자별 수량」(사용자 지시 2026-10-19) — 날짜마다 세로 막대, 값은 막대 위. 이 박스 전용. */
+.dash-day-bars {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  min-height: 10rem;
+}
+
+.dash-day-bar {
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  justify-items: center;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.dash-day-bar-value {
+  font: var(--type-label-sm);
+  letter-spacing: var(--type-label-sm-tracking);
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.dash-day-bar-track {
+  display: flex;
+  align-items: flex-end;
+  width: min(100%, 2rem);
+  height: 100%;
+  min-height: 6rem;
+}
+
+.dash-day-bar-fill {
+  width: 100%;
+  border-radius: var(--radius-xs, 2px) var(--radius-xs, 2px) 0 0;
+  background: var(--chart-1);
+}
+
+.dash-day-bar-label {
+  font: var(--type-label-sm);
+  letter-spacing: var(--type-label-sm-tracking);
+  color: var(--on-surface-muted);
+  white-space: nowrap;
+}

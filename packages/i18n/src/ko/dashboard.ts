@@ -350,6 +350,17 @@ export const dashboard = {
     equipmentDefectRates: '호기별 불량률 상위 8',
     equipmentDefectRatesSub: '% · 기준일 생산실적',
     ngShort: (qty: string): string => `NG ${qty}`,
+    /* PQC · OQC 탭 추가 항목(사용자 지시 2026-10-19). */
+    pqcItemDefects: '품목(CODE)별 PQC 불량 구성',
+    pqcReinspectInputNote: '당월 PQC 재검사 수량',
+    pendingOldest: (elapsed: string): string => `가장 오래 기다린 LOT ${elapsed}`,
+    topCustomer: '최다 불합격 고객',
+    customerDefects: '고객별 OQC 불합격 수량',
+    returnReasons: '반품 구분별 수량',
+    dailyReturnOut: '반출 일자별 수량',
+    dailyReturnOutSub: '공급사 반품 출고',
+    pendingReturn: '미처리 반품 LOT',
+    pendingReturnNote: '반품 입고 후 처분 판정 전',
     customerReturn: '고객 반품',
     /** 품질 종합 KPI — 기준 기간은 배지가 말하므로 설명은 짧게(사용자 지시 2026-10-19). */
     customerReturnNoteShort: '반품 입고 기준',

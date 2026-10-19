@@ -295,6 +295,17 @@ export const dashboard: Translated<typeof ko.dashboard> = {
     equipmentDefectRates: 'Tỷ lệ lỗi theo máy · 8 máy cao nhất',
     equipmentDefectRatesSub: '% · Sản lượng ngày cơ sở',
     ngShort: (qty: string): string => `NG ${qty}`,
+    /* PQC · OQC 탭 추가 항목(사용자 지시 2026-10-19). */
+    pqcItemDefects: 'Cơ cấu lỗi PQC theo mã hàng',
+    pqcReinspectInputNote: 'Số lượng kiểm tra lại PQC trong tháng',
+    pendingOldest: (elapsed: string): string => `LOT chờ lâu nhất ${elapsed}`,
+    topCustomer: 'Khách hàng không đạt nhiều nhất',
+    customerDefects: 'Số lượng OQC không đạt theo khách hàng',
+    returnReasons: 'Số lượng theo loại trả hàng',
+    dailyReturnOut: 'Số lượng xuất trả theo ngày',
+    dailyReturnOutSub: 'Xuất trả nhà cung cấp',
+    pendingReturn: 'LOT trả hàng chưa xử lý',
+    pendingReturnNote: 'Đã nhập trả, chưa phán định xử lý',
     customerReturn: 'Khách hàng trả lại',
     customerReturnNoteShort: 'Theo nhập hàng trả lại',
     lots: {
