@@ -390,7 +390,8 @@ const changingItemRoute = (): StubRoute => {
 };
 
 /** 입고 처리 뒤 다시 읽는 자재 LOT 상세. **입고 응답에는 LOT 상태가 없다.** */
-const lotDetailRoute = (statusCode = 'SAMPLE_LOT_STATUS_A'): StubRoute => ({
+/* 기본은 합격(정상) — IQC 대상 줄의 LOT 이 정상이 아니면 입고 입력이 잠긴다(#100). */
+const lotDetailRoute = (statusCode = 'NORMAL'): StubRoute => ({
   match: (request) => isGet(request, LOT_DETAIL_PATH),
   respond: () => jsonResponse(lotDetailResponse(statusCode)),
 });
@@ -1929,12 +1930,9 @@ describe('GoodsReceiptScreen — 창고와 적치 위치', () => {
       expect(screen.queryByRole('option', { name: OTHER_WAREHOUSE_LABEL })).not.toBeInTheDocument();
     });
 
-    it('불량이 아닌 LOT 은 창고를 좁히지 않는다', async () => {
+    it('합격(정상) LOT 은 창고를 좁히지 않는다', async () => {
       fillCodeLists();
-      const { user, requests } = renderScreen(
-        withDefectWarehouse('SAMPLE_LOT_STATUS_A'),
-        '?ir=9001',
-      );
+      const { user, requests } = renderScreen(withDefectWarehouse('NORMAL'), '?ir=9001');
 
       await openPostPane(user);
       await waitFor(() => {
@@ -1946,6 +1944,47 @@ describe('GoodsReceiptScreen — 창고와 적치 위치', () => {
       await user.click(warehouseBox);
       expect(await screen.findByRole('option', { name: WAREHOUSE_LABEL })).toBeInTheDocument();
       expect(screen.getByRole('option', { name: DEFECT_WAREHOUSE_LABEL })).toBeInTheDocument();
+    });
+
+    /* #100 · 3단계 검증 — 입고할 수 없는 LOT 은 다 넣고 누른 뒤가 아니라 처음부터 막고 까닭을 말한다. */
+    it('⛔ 검사 대기 LOT 이면 입고 정보 입력을 처음부터 잠그고 판정을 먼저 하라고 말한다', async () => {
+      fillCodeLists();
+      const { user, requests } = renderScreen(
+        withDefectWarehouse('INSPECTION_PENDING'),
+        '?ir=9001',
+      );
+
+      await openPostPane(user);
+
+      expect(await screen.findByText(t.notes.iqcGate.pendingTitle)).toBeInTheDocument();
+      expect(screen.getByText(t.notes.iqcGate.pendingBody)).toBeInTheDocument();
+      expect(screen.getByRole('combobox', { name: t.fields.warehouse })).toBeDisabled();
+      expect(postButton()).toBeDisabled();
+      expect(postRequests(requests)).toHaveLength(0);
+    });
+
+    it('⛔ 그 밖의 입고 불가 상태도 잠그고 그 상태를 말한다', async () => {
+      fillCodeLists();
+      const { user } = renderScreen(withDefectWarehouse('SCRAPPED'), '?ir=9001');
+
+      await openPostPane(user);
+
+      expect(await screen.findByText(t.notes.iqcGate.otherTitle('SCRAPPED'))).toBeInTheDocument();
+      expect(screen.getByRole('combobox', { name: t.fields.warehouse })).toBeDisabled();
+    });
+
+    it('불량 LOT 은 잠그지 않는다 — 불량창고로 입고하는 길은 그대로다', async () => {
+      fillCodeLists();
+      const { user } = renderScreen(withDefectWarehouse('DEFECTIVE'), '?ir=9001');
+
+      await openPostPane(user);
+      await waitFor(() => {
+        expect(
+          screen.getByRole('combobox', { name: t.fields.warehouse }),
+        ).toHaveAccessibleDescription(t.notes.defectWarehouseOnly);
+      });
+      expect(screen.queryByText(t.notes.iqcGate.pendingTitle)).not.toBeInTheDocument();
+      expect(screen.getByRole('combobox', { name: t.fields.warehouse })).not.toBeDisabled();
     });
   });
 
@@ -2503,7 +2542,7 @@ describe('GoodsReceiptScreen — 성공', () => {
     await waitFor(() => {
       expect(requestsTo(requests, LOT_DETAIL_PATH)).toHaveLength(2);
     });
-    expect(await screen.findByText('SAMPLE_LOT_STATUS_A')).toBeInTheDocument();
+    expect(await screen.findByText('NORMAL')).toBeInTheDocument();
   });
 
   /**

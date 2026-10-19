@@ -172,6 +172,13 @@ export const goodsReceipt: Translated<typeof ko.goodsReceipt> = {
   },
   notes: {
     defectWarehouseOnly: 'LOT không đạt IQC. Chỉ chọn được kho hàng lỗi.',
+    iqcGate: {
+      pendingTitle: 'Chưa có kết quả kiểm tra đầu vào IQC nên không thể nhập kho.',
+      pendingBody:
+        'Hãy đánh giá ở màn hình kiểm tra đầu vào IQC trước. Đạt thì nhập kho được; không đạt thì xử lý xong mới tiếp tục.',
+      otherTitle: (status: string) => `LOT đang ở trạng thái 「${status}」 nên không thể nhập kho.`,
+      otherBody: 'Hãy đưa LOT về bình thường ở màn hình xử lý rồi nhập kho.',
+    },
     singleLineSelect: 'Mỗi lần chỉ chọn được một dòng nhập hàng.',
     businessDateDerived: 'Ngày nghiệp vụ tự đặt theo thời điểm nhập kho đã chọn.',
     qtyFromInboundLine:
