@@ -12,6 +12,9 @@ const valid: GroupFormValues = {
   groupName: '프레스 구역',
   groupTypeCode: 'LINE',
   parentGroupId: '',
+  defaultWipLocationId: '',
+  defaultFgLocationId: '',
+  defaultScrapLocationId: '',
 };
 
 const NONE: ReadonlySet<number> = new Set();
@@ -23,7 +26,16 @@ describe('GROUP_FORM_FIELDS', () => {
   /* 목록에 없는 필드명은 인라인 자리를 못 찾아 배너로 간다 — 삼켜지지 않게 폼 칸과 맞춘다. */
   it('폼이 가진 칸을 전부 담는다', () => {
     expect([...GROUP_FORM_FIELDS].sort()).toEqual(
-      ['groupCode', 'groupName', 'groupTypeCode', 'parentGroupId', 'plantId'].sort(),
+      [
+        'groupCode',
+        'groupName',
+        'groupTypeCode',
+        'parentGroupId',
+        'plantId',
+        'defaultWipLocationId',
+        'defaultFgLocationId',
+        'defaultScrapLocationId',
+      ].sort(),
     );
   });
 });

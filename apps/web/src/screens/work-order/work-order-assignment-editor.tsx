@@ -27,6 +27,7 @@ import {
 import { useWorkOrderDetail, useWorkOrderValidation, type WorkOrderFact } from './queries';
 import {
   useWorkOrderEquipments,
+  LINE_LOCATION_WAREHOUSE_TYPES,
   useWorkOrderLocations,
   useWorkOrderProductionLines,
   useWorkOrderShifts,
@@ -79,6 +80,23 @@ export const WorkOrderAssignmentEditorSession = ({
   const validation = validateWorkOrderAssignmentDraft(effectiveDraft);
   const lineId = idOrNull(effectiveDraft.productionLineId);
   const lines = useWorkOrderProductionLines(plantId, 1);
+  /* 라인을 바꾸면 기본 위치 셋을 그 라인 기본값으로 덮어쓴다 — 앞 라인의 위치가 남으면 자재가 엉뚱한 곳으로 나간다. */
+  const lineDefaultDraft = (
+    productionLineId: string,
+  ): Pick<
+    WorkOrderAssignmentDraft,
+    'defaultWipLocationId' | 'defaultFgLocationId' | 'defaultScrapLocationId'
+  > => {
+    const line = lines.data?.items.find(
+      (item) => String(item.productionLineId) === productionLineId,
+    );
+    const text = (id: number | null | undefined): string => (id == null ? '' : String(id));
+    return {
+      defaultWipLocationId: text(line?.defaultWipLocationId),
+      defaultFgLocationId: text(line?.defaultFgLocationId),
+      defaultScrapLocationId: text(line?.defaultScrapLocationId),
+    };
+  };
   const equipments = useWorkOrderEquipments(plantId, lineId, 1);
   /* 작업자는 창에서 찾아 고른다(사용자 지시 2026-09-20) — 첫 쪽은 저장된 값의 이름을 풀 때 쓴다. */
   const workers = useWorkOrderWorkers(plantId, 1);
@@ -105,7 +123,7 @@ export const WorkOrderAssignmentEditorSession = ({
   const keptWorker = listedWorker ?? selectedWorker.data;
   const molds = useWorkOrderMolds(plantId, 1);
   const shifts = useWorkOrderShifts(plantId, 1);
-  const locations = useWorkOrderLocations();
+  const locations = useWorkOrderLocations(plantId);
   const validationQuery = useWorkOrderValidation(workOrder.workOrderId);
   const update = useUpdateWorkOrder({
     workOrderId: workOrder.workOrderId,
@@ -130,7 +148,7 @@ export const WorkOrderAssignmentEditorSession = ({
       ...next,
       ...(next.productionLineId === undefined || next.productionLineId === current.productionLineId
         ? {}
-        : { plannedEquipmentId: '' }),
+        : { plannedEquipmentId: '', ...lineDefaultDraft(next.productionLineId) }),
       /* 교대를 바꾸면 계획 시각을 따라 바꾼다 — 칸은 남겨 두어 여러 날 작업처럼 예외는 손으로 고친다. */
       ...(next.plannedShiftId === undefined ||
       next.plannedShiftId === current.plannedShiftId ||
@@ -201,17 +219,20 @@ export const WorkOrderAssignmentEditorSession = ({
         item.isActive,
       ),
   );
-  const locationSource: LookupSource = {
-    entries: locations.items.map((item) => ({
-      ...entry(item.locationId, item.locationCode, item.locationName, item.isActive),
-      label:
-        item.warehouseCode === null
-          ? `${item.locationCode} · ${item.locationName}`
-          : `[${item.warehouseCode} ${item.warehouseName ?? ''}] ${item.locationCode} · ${item.locationName}`,
-    })),
+  /* 칸마다 맞는 창고 유형의 위치만 고르게 한다 — 완제품 칸에 일반 창고 위치가 섞이지 않게. */
+  const locationSource = (field: keyof typeof LINE_LOCATION_WAREHOUSE_TYPES): LookupSource => ({
+    entries: locations.items
+      .filter((item) => item.warehouseTypeCode === LINE_LOCATION_WAREHOUSE_TYPES[field])
+      .map((item) => ({
+        ...entry(item.locationId, item.locationCode, item.locationName, item.isActive),
+        label:
+          item.warehouseCode === null
+            ? `${item.locationCode} · ${item.locationName}`
+            : `[${item.warehouseCode} ${item.warehouseName ?? ''}] ${item.locationCode} · ${item.locationName}`,
+      })),
     isLoading: locations.isPending,
     isError: locations.isError,
-  };
+  });
   const fieldErrors = mergeWorkOrderAssignmentFieldErrors(
     Object.fromEntries(
       Object.entries(validation.fieldErrors).map(([field, error]) => [
@@ -255,10 +276,16 @@ export const WorkOrderAssignmentEditorSession = ({
           responsibleWorkerOptions={options(workerSource, effectiveDraft.responsibleWorkerId)}
           plannedMoldOptions={options(moldSource, effectiveDraft.plannedMoldId)}
           plannedShiftOptions={options(shiftSource, effectiveDraft.plannedShiftId)}
-          defaultWipLocationOptions={options(locationSource, effectiveDraft.defaultWipLocationId)}
-          defaultFgLocationOptions={options(locationSource, effectiveDraft.defaultFgLocationId)}
+          defaultWipLocationOptions={options(
+            locationSource('defaultWipLocationId'),
+            effectiveDraft.defaultWipLocationId,
+          )}
+          defaultFgLocationOptions={options(
+            locationSource('defaultFgLocationId'),
+            effectiveDraft.defaultFgLocationId,
+          )}
           defaultScrapLocationOptions={options(
-            locationSource,
+            locationSource('defaultScrapLocationId'),
             effectiveDraft.defaultScrapLocationId,
           )}
           fieldErrors={fieldErrors}
@@ -269,9 +296,18 @@ export const WorkOrderAssignmentEditorSession = ({
             responsibleWorkerId: workerNote(),
             plannedMoldId: lookupNote(moldSource, molds.data?.truncated),
             plannedShiftId: lookupNote(shiftSource, shifts.data?.truncated),
-            defaultWipLocationId: lookupNote(locationSource, locations.truncated),
-            defaultFgLocationId: lookupNote(locationSource, locations.truncated),
-            defaultScrapLocationId: lookupNote(locationSource, locations.truncated),
+            defaultWipLocationId: lookupNote(
+              locationSource('defaultWipLocationId'),
+              locations.truncated,
+            ),
+            defaultFgLocationId: lookupNote(
+              locationSource('defaultFgLocationId'),
+              locations.truncated,
+            ),
+            defaultScrapLocationId: lookupNote(
+              locationSource('defaultScrapLocationId'),
+              locations.truncated,
+            ),
           }}
           disabled={lockReason !== null}
           disabledReason={lockReason ?? undefined}

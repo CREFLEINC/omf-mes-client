@@ -137,6 +137,8 @@ export const equipmentMaster = {
     createTitle: '설비 그룹 등록',
     editTitle: '설비 그룹 정보',
     parentNone: '없음 (최상위)',
+    locationNone: '지정 없음',
+    locationNeedsPlant: '공장을 고르면 그 공장의 위치가 나옵니다.',
   },
   equipmentForm: {
     createTitle: '설비 등록',
@@ -200,6 +202,9 @@ export const equipmentMaster = {
     groupName: '그룹명',
     groupType: '그룹유형',
     parentGroup: '상위그룹',
+    defaultWipLocation: '기본 WIP 위치',
+    defaultFgLocation: '기본 완제품 위치',
+    defaultScrapLocation: '기본 스크랩 위치',
     isActive: '사용',
   },
   /**

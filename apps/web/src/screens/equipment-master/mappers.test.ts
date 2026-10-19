@@ -33,6 +33,23 @@ describe('groupToFormValues', () => {
       groupName: 'GRP-A 그룹',
       groupTypeCode: 'LINE',
       parentGroupId: '99',
+      defaultWipLocationId: '',
+      defaultFgLocationId: '',
+      defaultScrapLocationId: '',
+    });
+  });
+
+  it('라인 기본 위치를 문자열로 옮긴다 — 서버 선행 칸이라 없으면 빈 값이다', () => {
+    const values = groupToFormValues({
+      ...makeGroup(101, 'GRP-A'),
+      defaultWipLocationId: 301,
+      defaultFgLocationId: null,
+    } as ReturnType<typeof makeGroup>);
+
+    expect(values).toMatchObject({
+      defaultWipLocationId: '301',
+      defaultFgLocationId: '',
+      defaultScrapLocationId: '',
     });
   });
 
@@ -53,6 +70,9 @@ describe('emptyGroupFormValues', () => {
       groupName: '',
       groupTypeCode: '',
       parentGroupId: '',
+      defaultWipLocationId: '',
+      defaultFgLocationId: '',
+      defaultScrapLocationId: '',
     });
   });
 });
@@ -64,6 +84,9 @@ describe('toGroupUpdate', () => {
     groupName: '  프레스 구역  ',
     groupTypeCode: 'LINE',
     parentGroupId: '99',
+    defaultWipLocationId: '',
+    defaultFgLocationId: '',
+    defaultScrapLocationId: '',
   };
 
   it('코드와 이름의 앞뒤 공백을 떼고 보낸다', () => {
@@ -104,6 +127,19 @@ describe('toGroupUpdate', () => {
   it('상위그룹이 있으면 숫자로 보낸다', () => {
     expect(toGroupUpdate(values, true).parentGroupId).toBe(99);
   });
+
+  it('기본 위치는 고른 것은 숫자로, 비운 것은 널로 보낸다 — 비우면 서버가 지운다', () => {
+    const body = toGroupUpdate(
+      { ...values, defaultWipLocationId: '301', defaultFgLocationId: '' },
+      true,
+    );
+
+    expect(body).toMatchObject({
+      defaultWipLocationId: 301,
+      defaultFgLocationId: null,
+      defaultScrapLocationId: null,
+    });
+  });
 });
 
 describe('toGroupCreate', () => {
@@ -113,6 +149,9 @@ describe('toGroupCreate', () => {
     groupName: '프레스 구역',
     groupTypeCode: 'LINE',
     parentGroupId: '',
+    defaultWipLocationId: '',
+    defaultFgLocationId: '',
+    defaultScrapLocationId: '',
   };
 
   it('수정 본문에 공장을 더한 형태이고 공장은 숫자다', () => {
@@ -122,6 +161,9 @@ describe('toGroupCreate', () => {
       groupName: '프레스 구역',
       groupTypeCode: 'LINE',
       parentGroupId: null,
+      defaultWipLocationId: null,
+      defaultFgLocationId: null,
+      defaultScrapLocationId: null,
     });
   });
 
@@ -138,6 +180,9 @@ describe('isSameGroupValues', () => {
     groupName: '가',
     groupTypeCode: 'LINE',
     parentGroupId: '',
+    defaultWipLocationId: '',
+    defaultFgLocationId: '',
+    defaultScrapLocationId: '',
   };
 
   it('모든 칸이 같으면 참이다', () => {
@@ -148,6 +193,9 @@ describe('isSameGroupValues', () => {
     ['plantId', '12'],
     ['groupCode', 'GRP-B'],
     ['groupName', '나'],
+    ['defaultWipLocationId', '301'],
+    ['defaultFgLocationId', '302'],
+    ['defaultScrapLocationId', '303'],
     ['groupTypeCode', 'WORK_AREA'],
     ['parentGroupId', '99'],
   ] as const)('%s 가 다르면 거짓이다', (field, value) => {

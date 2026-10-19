@@ -30,6 +30,10 @@ export interface GroupFormValues {
   groupName: string;
   groupTypeCode: string;
   parentGroupId: string;
+  /** 라인 기본 위치 셋 — 계획 확정·4M 라인 선택 때 W/O 기본 위치로 복사된다. */
+  defaultWipLocationId: string;
+  defaultFgLocationId: string;
+  defaultScrapLocationId: string;
 }
 
 /** 설비 목록의 조회 조건. */

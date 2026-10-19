@@ -3,6 +3,16 @@ import type { paths } from './generated/api';
 /** P-7/P-10 선행 계약: 공식 설계 사본이 갱신될 때 동등성을 대조하고 제거한다. */
 export type TerminalRegistrationStatusCode = 'UNREGISTERED' | 'REGISTERED';
 
+/**
+ * 생산라인(설비 그룹)의 기본 위치 셋 — 서버가 계약보다 먼저 연 칸이라 생성 타입에 없다. 계약 사본에
+ * 실려 `gen:api` 가 만들면 이 타입과 덧댄 자리를 지운다. 본문에서 생략 = 유지, null = 비움.
+ */
+export interface LineDefaultLocations {
+  defaultWipLocationId?: number | null;
+  defaultFgLocationId?: number | null;
+  defaultScrapLocationId?: number | null;
+}
+
 export interface TerminalRegistrationConfirmation {
   terminalId: number;
   tokenVersion: number;

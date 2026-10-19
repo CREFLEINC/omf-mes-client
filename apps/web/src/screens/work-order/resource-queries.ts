@@ -1,4 +1,4 @@
-import type { components } from '@omf-mes/api-client';
+import type { components, LineDefaultLocations } from '@omf-mes/api-client';
 import { useQueries, useQuery, type UseQueryResult } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
@@ -19,6 +19,10 @@ export interface WorkOrderProductionLineFact {
   lineName: string;
   lineTypeCode: string;
   isActive: boolean;
+  /** 라인 기본 위치 — 4M 에서 라인을 고르면 W/O 기본 위치를 이 값으로 덮어쓴다. */
+  defaultWipLocationId: number | null;
+  defaultFgLocationId: number | null;
+  defaultScrapLocationId: number | null;
 }
 
 export interface WorkOrderEquipmentFact {
@@ -49,6 +53,7 @@ export interface WorkOrderLocationFact {
   warehouseId: number;
   /** 창고를 함께 보여야 WIP·완제품 위치를 가를 수 있다. 창고 목록에 없으면 `null`. */
   warehouseCode: string | null;
+  warehouseTypeCode: string | null;
   warehouseName: string | null;
   locationCode: string;
   locationName: string;
@@ -90,7 +95,30 @@ export const toWorkOrderProductionLineFact = (
   lineName: productionLine.lineName,
   lineTypeCode: productionLine.lineTypeCode,
   isActive: productionLine.isActive,
+  ...lineDefaultLocationsOf(productionLine),
 });
+
+/** 서버 선행 칸이라 생성 타입에 없다 — 없으면 비어 있는 것으로 본다. */
+export const lineDefaultLocationsOf = (
+  source: object,
+): Required<{ [K in keyof LineDefaultLocations]: number | null }> => {
+  const value = source as LineDefaultLocations;
+  return {
+    defaultWipLocationId: value.defaultWipLocationId ?? null,
+    defaultFgLocationId: value.defaultFgLocationId ?? null,
+    defaultScrapLocationId: value.defaultScrapLocationId ?? null,
+  };
+};
+
+/**
+ * 기본 위치 칸마다 보여 줄 창고 유형. 자재창고(MATERIAL)는 어느 칸에도 두지 않는다 — WIP 위치로
+ * 자재창고를 고르면 출고가 창고 안에서 맴돈다.
+ */
+export const LINE_LOCATION_WAREHOUSE_TYPES = {
+  defaultWipLocationId: 'GENERAL',
+  defaultFgLocationId: 'PRODUCT',
+  defaultScrapLocationId: 'GENERAL',
+} as const;
 
 export const toWorkOrderEquipmentFact = (equipment: Equipment): WorkOrderEquipmentFact => ({
   equipmentId: equipment.equipmentId,
@@ -122,6 +150,7 @@ const toWorkOrderLocationFact = (
   locationId: location.locationId,
   warehouseId: location.warehouseId,
   warehouseCode: warehouse?.warehouseCode ?? null,
+  warehouseTypeCode: warehouse?.warehouseTypeCode ?? null,
   warehouseName: warehouse?.warehouseName ?? null,
   locationCode: location.locationCode,
   locationName: location.locationName,
@@ -227,8 +256,11 @@ export const useWorkOrderShifts = (
 /**
  * 작업지시는 기본 위치의 창고를 별도로 갖지 않는다. Location API가 창고를 필수로 받으므로
  * 실제 창고별 목록을 합쳐 선택한다. 창고 ID를 화면이나 시드에 고정하지 않는다.
+ *
+ * 그 공장의 창고만, 자재창고는 빼고 부른다 — 창고를 먼저 거르고 위치를 부르므로 거른 창고의
+ * 위치만 받는다(잘림은 창고 하나가 한 쪽을 넘을 때만 생긴다). 칸별 유형은 `LINE_LOCATION_WAREHOUSE_TYPES`.
  */
-export const useWorkOrderLocations = (): WorkOrderLocationLookup => {
+export const useWorkOrderLocations = (plantId: number | null): WorkOrderLocationLookup => {
   const { client } = useApiClient();
   const warehouses = useQuery({
     queryKey: workOrderResourceKeys.warehouses,
@@ -239,7 +271,12 @@ export const useWorkOrderLocations = (): WorkOrderLocationLookup => {
   });
   const activeWarehouseIds =
     warehouses.data?.items
-      .filter((warehouse) => warehouse.isActive)
+      .filter(
+        (warehouse) =>
+          warehouse.isActive &&
+          warehouse.plantId === plantId &&
+          warehouse.warehouseTypeCode !== 'MATERIAL',
+      )
       .map((warehouse) => warehouse.warehouseId) ?? [];
   const locations = useQueries({
     queries: activeWarehouseIds.map((warehouseId) => ({
