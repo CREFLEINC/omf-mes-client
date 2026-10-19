@@ -38,6 +38,7 @@ import { formatFigure, toNiceAxis } from './types';
 import { usePeriodTags } from './period';
 import { QualityLotsDialog } from './quality-lots-dialog';
 import { useFillHeight } from './use-fill-height';
+import type { NamedQty } from './viz-math';
 import {
   CHART_H,
   DeltaMark,
@@ -49,7 +50,6 @@ import {
   Panel,
   ParetoChart,
   RankBars,
-  StackedBar100,
   StatusList,
   type LineSeries,
 } from './viz';
@@ -1378,9 +1378,75 @@ export const OqcTab = ({
   );
 };
 
+/**
+ * 가로 막대 + 가로축(⭐ 부적합 원인 구분별 구성 · 사용자 지시 2026-10-19) — 왼쪽 이름, 0 부터 보기 좋은 눈금의 가로축과
+ * 세로 눈금선, 막대 끝에 수량. 막대는 중립 단색, 수량 큰 순. 집계는 서버 그대로.
+ */
+const AxisBars = ({ entries, caption }: { entries: readonly NamedQty[]; caption: string }) => {
+  if (entries.length === 0) return <NoRecords />;
+  const sorted = [...entries].sort((a, b) => b.value - a.value);
+  const top = Math.max(0, ...sorted.map((entry) => entry.value));
+  const axis = toNiceAxis(top);
+  const max = axis?.max ?? 1;
+  const tickCount = axis?.ticks ?? 2;
+  const ticks = Array.from({ length: tickCount }, (_, index) => (max * index) / (tickCount - 1));
+  const sum = sorted.reduce((acc, entry) => acc + Math.max(0, entry.value), 0);
+  const shareOf = (value: number): string =>
+    `${String(sum === 0 ? 0 : Math.round((Math.max(0, value) / sum) * 100))}%`;
+
+  return (
+    <figure className="dash-axisbars" aria-label={caption}>
+      <ol className="dash-axisbars-rows">
+        {sorted.map((entry) => (
+          <li
+            key={entry.key}
+            className="dash-axisbars-row"
+            tabIndex={0}
+            data-tip={t.causeTip(entry.label, formatFigure(entry.value), shareOf(entry.value))}
+          >
+            <span className="dash-axisbars-name" title={entry.label}>
+              {entry.label}
+            </span>
+            <span className="dash-axisbars-track">
+              {ticks.map((tick) => (
+                <span
+                  key={tick}
+                  className="dash-axisbars-grid"
+                  style={{ left: `${String((tick / max) * 100)}%` }}
+                  aria-hidden="true"
+                />
+              ))}
+              <span
+                className="dash-axisbars-bar"
+                style={{ width: `${String((Math.max(0, entry.value) / max) * 100)}%` }}
+              >
+                <span className="dash-axisbars-value">{formatFigure(entry.value)}</span>
+              </span>
+            </span>
+          </li>
+        ))}
+      </ol>
+      <div className="dash-axisbars-axis" aria-hidden="true">
+        <span />
+        <span className="dash-axisbars-ticks">
+          {ticks.map((tick) => (
+            <span key={tick} style={{ left: `${String((tick / max) * 100)}%` }}>
+              {formatFigure(tick)}
+            </span>
+          ))}
+        </span>
+      </div>
+    </figure>
+  );
+};
+
 /** 처분 판정 처리(W-03-10)가 특정 부적합을 여는 주소 — 그 화면 filters.ts 의 진입 키 `nonconformanceId` 와 같다. */
 const dispositionOfNonconformance = (nonconformanceId: number): string =>
   `${DISPOSITION_DECISIONS_PATH}?nonconformanceId=${String(nonconformanceId)}`;
+
+/** 처분 판정 처리에서 그 품목의 부적합을 보는 주소 — 그 화면 filters.ts 의 품목 조건 키 `item` 과 같다. */
+const dispositionOfItem = (itemId: number): string =>
+  `${DISPOSITION_DECISIONS_PATH}?item=${String(itemId)}`;
 
 const SEVERITY_TONE: Record<string, ChipStatus> = {
   CRITICAL: 'error',
@@ -1409,10 +1475,23 @@ const OpenNonconformancePanel = ({
   linked: boolean;
 }) => {
   const now = new Date();
+  /* 상태가 모두 같으면 열을 두지 않고 부제에 한 번 적는다(사용자 지시 2026-10-19 「상태 열 필요성 검토」). */
+  const statuses = new Set(rows.map((row) => row.statusName ?? row.statusCode));
+  const sameStatus = rows.length > 0 && statuses.size === 1 ? [...statuses][0] : undefined;
 
   return (
-    <Panel title={t.ncOpenList} sub={t.ncOpenListSub} tag={t.tagNow}>
-      <div className={linked ? 'dash-table-wrap dash-recent-linked' : 'dash-table-wrap'}>
+    <Panel
+      title={t.ncOpenList}
+      sub={sameStatus === undefined ? t.ncOpenListSub : t.ncOpenListSubStatus(sameStatus)}
+      tag={t.tagNow}
+    >
+      <div
+        className={
+          linked
+            ? 'dash-table-wrap dash-recent-linked dash-nc-open'
+            : 'dash-table-wrap dash-nc-open'
+        }
+      >
         <Table
           columns={[
             {
@@ -1425,10 +1504,14 @@ const OpenNonconformancePanel = ({
                     to={dispositionOfNonconformance(row.nonconformanceId)}
                     aria-label={t.openDisposition(row.nonconformanceNo)}
                   >
-                    {row.nonconformanceNo}
+                    <span className="dash-nc-no" title={row.nonconformanceNo}>
+                      {row.nonconformanceNo}
+                    </span>
                   </Link>
                 ) : (
-                  row.nonconformanceNo
+                  <span className="dash-nc-no" title={row.nonconformanceNo}>
+                    {row.nonconformanceNo}
+                  </span>
                 ),
             },
             {
@@ -1455,18 +1538,27 @@ const OpenNonconformancePanel = ({
                   </Chip>
                 ),
             },
-            {
-              key: 'status',
-              header: t.column.status,
-              render: (row) => row.statusName ?? row.statusCode,
-            },
+            ...(sameStatus === undefined
+              ? [
+                  {
+                    key: 'status',
+                    header: t.column.status,
+                    render: (row: DashboardOpenNonconformance) => row.statusName ?? row.statusCode,
+                  },
+                ]
+              : []),
             {
               key: 'opened',
-              header: t.column.openedAt,
+              header: t.column.elapsed,
+              /* ⭐ 경과 일수 우선 — 발생일은 마우스 올림 글과 처분 판정 상세에서(사용자 지시 2026-10-19). */
               render: (row) => {
                 const days = elapsedDays(row.openedAt, now);
                 const date = toPlantDateTimeParts(row.openedAt)?.date ?? row.openedAt;
-                return days === null ? date : t.openedWithDays(date, String(days));
+                return (
+                  <span title={t.openedOn(date)}>
+                    {days === null ? date : t.elapsedDaysText(String(days))}
+                  </span>
+                );
               },
             },
             ...(linked
@@ -1508,27 +1600,48 @@ const RepeatedItemsPanel = ({
   rows,
   total,
   tag,
+  linked,
 }: {
   rows: readonly DashboardRepeatedItem[];
   total: number;
   tag: string;
+  /** 줄 → 처분 판정 처리(그 품목 조건 · 사용자 지시 2026-10-19). 그 화면 권한이 있을 때만. */
+  linked: boolean;
 }) => (
   <Panel title={t.ncRepeated} sub={t.ncRepeatedSub} tag={tag}>
-    <p className="dash-panel-lead">{t.ncRepeatedCount(String(total))}</p>
-    <div className="dash-table-wrap">
+    {/* 보이는 수와 전체가 다르면 「상위 5개 / 전체 n개」(사용자 지시 2026-10-19). */}
+    <p className="dash-panel-lead">
+      {total > rows.length
+        ? t.ncRepeatedTopOf(String(rows.length), String(total))
+        : t.ncRepeatedCount(String(total))}
+    </p>
+    <div className={linked ? 'dash-table-wrap dash-recent-linked' : 'dash-table-wrap'}>
       <Table
         columns={[
           {
             key: 'item',
             header: t.column.item,
-            render: (row) => (
-              <span
-                className="dash-cell-wrap dash-cell-item"
-                title={[row.itemCode, row.itemName].filter(Boolean).join(' ')}
-              >
-                {row.itemCode}
-              </span>
-            ),
+            render: (row) => {
+              const label = (
+                <span
+                  className="dash-cell-wrap dash-cell-item"
+                  title={[row.itemCode, row.itemName].filter(Boolean).join(' ')}
+                >
+                  {row.itemCode}
+                </span>
+              );
+              return linked ? (
+                <Link
+                  className="dash-recent-link"
+                  to={dispositionOfItem(row.itemId)}
+                  aria-label={t.openItemDisposition(row.itemCode)}
+                >
+                  {label}
+                </Link>
+              ) : (
+                label
+              );
+            },
           },
           {
             key: 'count',
@@ -1540,6 +1653,22 @@ const RepeatedItemsPanel = ({
             header: t.column.lastOpenedAt,
             render: (row) => toPlantDateTimeParts(row.lastOpenedAt)?.date ?? row.lastOpenedAt,
           },
+          ...(linked
+            ? [
+                {
+                  key: 'go',
+                  header: '',
+                  render: () => (
+                    <Icon
+                      name="chevron_right"
+                      size={18}
+                      className="dash-recent-arrow"
+                      aria-hidden="true"
+                    />
+                  ),
+                } satisfies Column<DashboardRepeatedItem>,
+              ]
+            : []),
         ]}
         rows={[...rows]}
         getRowId={(row) => String(row.itemId)}
@@ -1643,14 +1772,21 @@ export const NonconformanceTab = ({
       </Row>
       {/* ⭐ 부적합 처리 지표(상단 카드와 같은 값)를 빼고 그 자리에 반복 부적합 품목(사용자 지시 2026-10-19). */}
       <Row kind={nc.repeatedItems === undefined ? 'row2-single' : 'row3'}>
-        <Panel title={t.ncCauseShare} sub={t.qtyShareSub} tag={tags.month}>
-          <StackedBar100 entries={causes} />
+        {/* ⭐ 원인 구분별 구성 — 가로축 눈금이 있는 가로 막대 · 막대 끝 수량(사용자 지시 2026-10-19 참고 그림). */}
+        <Panel
+          title={t.ncCauseShare}
+          sub={t.ncCauseSub}
+          tag={tags.month}
+          className="dash-axisbars-panel"
+        >
+          <AxisBars entries={causes} caption={t.ncCauseShare} />
         </Panel>
         {nc.repeatedItems !== undefined && (
           <RepeatedItemsPanel
             rows={nc.repeatedItems}
             total={nc.repeatedItemCount ?? nc.repeatedItems.length}
             tag={tags.month}
+            linked={allows(DISPOSITION_DECISIONS_PATH)}
           />
         )}
       </Row>

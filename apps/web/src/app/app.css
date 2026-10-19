@@ -14537,3 +14537,219 @@ button.app-button-neutral {
   font: var(--type-label-md, var(--type-label-sm));
   font-weight: 700;
 }
+
+/*
+ * 부적합 원인 구분별 구성 — 가로 막대 + 가로축(사용자 지시 2026-10-19). 이름 칸 | 막대 칸, 아래 같은 칸 나눔으로 눈금.
+ * 막대 끝 수량은 막대 오른쪽 바깥, 칸 끝에서 잘리지 않게 오른쪽 여백을 둔다.
+ */
+.dash-axisbars {
+  --dash-axisbars-name: minmax(4rem, max-content);
+  display: grid;
+  gap: var(--space-1);
+  margin: 0;
+  padding-inline-end: 3rem;
+  font: var(--type-body-sm);
+}
+
+.dash-axisbars-rows {
+  display: grid;
+  grid-template-columns: var(--dash-axisbars-name) minmax(0, 1fr);
+  row-gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.dash-axisbars-row {
+  display: grid;
+  grid-column: 1 / -1;
+  grid-template-columns: subgrid;
+  column-gap: var(--space-3);
+  align-items: center;
+}
+
+.dash-axisbars-name {
+  overflow: hidden;
+  text-align: end;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dash-axisbars-track {
+  position: relative;
+  height: 1.375rem;
+  border-inline-start: 1px solid var(--outline-variant);
+}
+
+.dash-axisbars-grid {
+  position: absolute;
+  inset-block: calc(-1 * var(--space-2));
+  border-inline-start: 1px solid color-mix(in srgb, var(--outline-variant) 60%, transparent);
+  pointer-events: none;
+}
+
+.dash-axisbars-bar {
+  position: relative;
+  display: block;
+  height: 100%;
+  min-width: 1px;
+  background: var(--chart-2);
+}
+
+.dash-axisbars-value {
+  position: absolute;
+  inset-block: 0;
+  inset-inline-start: calc(100% + var(--space-2));
+  display: flex;
+  align-items: center;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.dash-axisbars-axis {
+  display: grid;
+  grid-template-columns: var(--dash-axisbars-name) minmax(0, 1fr);
+  column-gap: var(--space-3);
+}
+
+.dash-axisbars-ticks {
+  position: relative;
+  height: 1.25rem;
+  border-block-start: 1px solid var(--outline-variant);
+  color: var(--on-surface-muted);
+  font: var(--type-label-sm);
+  letter-spacing: var(--type-label-sm-tracking);
+  font-variant-numeric: tabular-nums;
+}
+
+.dash-axisbars-ticks > span {
+  position: absolute;
+  inset-block-start: var(--space-1);
+  transform: translateX(-50%);
+  white-space: nowrap;
+}
+
+/* 미종결 부적합 번호 — 긴 번호는 말줄임(전체는 마우스 올림), 카드 폭 안에 열이 다 들어오게(2026-10-19 화면 확인). */
+.dash-nc-no {
+  display: inline-block;
+  max-width: 11.5rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+.dash-nc-open .dash-cell-item {
+  max-width: 7.5rem;
+}
+
+/* 파레토 80% 기준(사용자 지시 2026-10-19) — 기준 위를 옅게 칠하고 선 · 이름표를 진하게. */
+.dash-threshold-zone {
+  fill: color-mix(in srgb, var(--semantic-info) 7%, transparent);
+}
+
+.dash-threshold.dash-threshold-strong {
+  stroke-width: 1.5;
+  stroke-dasharray: 6 3;
+}
+
+.dash-axis.dash-threshold-label {
+  fill: var(--semantic-info);
+  font-weight: 700;
+}
+
+/*
+ * 그래프 칸 툴팁(부적합 파레토 · 원인 구분 · 사용자 지시 2026-10-19) — 마우스 올림 · 포커스로 이름 · 수량 · 비율.
+ * 생김새는 일별 반출 수량 툴팁과 같다. 파레토는 그림(svg) 위에 같은 높이의 층을 겹친다.
+ */
+.dash-figure-pareto {
+  position: relative;
+}
+
+.dash-figure-pareto > .dash-svg-wrap,
+.dash-figure-pareto > svg {
+  position: relative;
+}
+
+.dash-hit-layer {
+  position: absolute;
+  inset-inline: 0;
+  inset-block-end: 0;
+  pointer-events: none;
+}
+
+.dash-hit {
+  position: absolute;
+  pointer-events: auto;
+  border-radius: 2px;
+}
+
+.dash-hit:hover,
+.dash-hit:focus-visible {
+  background: color-mix(in srgb, var(--on-surface) 5%, transparent);
+  outline: none;
+}
+
+.dash-hit[data-tip]:hover::after,
+.dash-hit[data-tip]:focus-visible::after,
+.dash-axisbars-row[data-tip]:hover::after,
+.dash-axisbars-row[data-tip]:focus-visible::after {
+  content: attr(data-tip);
+  position: absolute;
+  inset-block-start: 0;
+  inset-inline-start: 50%;
+  z-index: 3;
+  transform: translate(-50%, calc(-100% - var(--space-1)));
+  padding: var(--space-1) var(--space-2);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-sm, 6px);
+  background: var(--surface);
+  box-shadow: var(--elevation-1, 0 1px 3px rgb(0 0 0 / 12%));
+  color: var(--on-surface);
+  font: var(--type-label-sm);
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.dash-axisbars-row {
+  position: relative;
+  border-radius: 2px;
+}
+
+.dash-axisbars-row:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+/* 원인 구분별 구성 — 카드 높이를 그래프가 채운다(아래 빈 공간 줄임 · 사용자 지시 2026-10-19). */
+.dash-axisbars-panel {
+  display: flex;
+  flex-direction: column;
+}
+
+.dash-axisbars-panel > .dash-panel-body {
+  display: flex;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.dash-axisbars-panel .dash-axisbars {
+  flex: 1 1 auto;
+  grid-template-rows: minmax(0, 1fr) auto;
+}
+
+.dash-axisbars-panel .dash-axisbars-rows {
+  grid-auto-rows: minmax(1.75rem, 1fr);
+  align-items: stretch;
+}
+
+.dash-axisbars-panel .dash-axisbars-track {
+  display: flex;
+  align-items: center;
+  height: auto;
+}
+
+.dash-axisbars-panel .dash-axisbars-bar {
+  flex: none;
+  height: 1.5rem;
+}

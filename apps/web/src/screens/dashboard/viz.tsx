@@ -955,7 +955,7 @@ export const ParetoChart = ({
   const cx = (index: number): number => PAD.left + slot * index + slot / 2;
 
   return (
-    <figure className="dash-figure" ref={figureRef}>
+    <figure className="dash-figure dash-figure-pareto" ref={figureRef}>
       <ul className="dash-legend-inline" aria-hidden="true">
         <li>
           <span className="dash-swatch dash-stack-1" />
@@ -977,15 +977,27 @@ export const ParetoChart = ({
         aria-label={caption}
       >
         <line className="dash-grid" x1={PAD.left} x2={W - PAD.right} y1={yPct(0)} y2={yPct(0)} />
+        {/* ⭐ 80% 기준을 더 분명하게(사용자 지시 2026-10-19) — 기준 위 영역을 옅게 칠하고 선 · 이름표를 진하게. */}
+        <rect
+          className="dash-threshold-zone"
+          x={PAD.left}
+          y={PAD.top}
+          width={plotW}
+          height={yPct(PARETO_THRESHOLD) - PAD.top}
+        />
         <line
-          className="dash-threshold"
+          className="dash-threshold dash-threshold-strong"
           x1={PAD.left}
           x2={W - PAD.right}
           y1={yPct(PARETO_THRESHOLD)}
           y2={yPct(PARETO_THRESHOLD)}
         />
-        <text className="dash-axis" x={W - PAD.right + 6} y={yPct(PARETO_THRESHOLD) + 4}>
-          {`${String(PARETO_THRESHOLD)}%`}
+        <text
+          className="dash-axis dash-threshold-label"
+          x={W - PAD.right + 6}
+          y={yPct(PARETO_THRESHOLD) + 4}
+        >
+          {t.paretoThresholdLabel(String(PARETO_THRESHOLD))}
         </text>
         {rows.map((row, index) => (
           <g key={row.key}>
@@ -1034,6 +1046,31 @@ export const ParetoChart = ({
           </text>
         ))}
       </svg>
+      {/*
+       * 막대 칸 툴팁(⭐ 사용자 지시 2026-10-19 「그래프에 마우스 올리면 상세 정보」) — 그림 위 칸마다 투명한 칸을
+       * 겹치고 이름 · 수량 · 누적 비율을 보인다. 키보드로도 닿는다.
+       */}
+      <div className="dash-hit-layer" style={{ height: H }}>
+        {rows.map((row, index) => (
+          <span
+            key={row.key}
+            className="dash-hit"
+            tabIndex={0}
+            data-tip={t.paretoTip(row.label, formatFigure(row.value), formatShare(row.cumulative))}
+            aria-label={t.paretoTip(
+              row.label,
+              formatFigure(row.value),
+              formatShare(row.cumulative),
+            )}
+            style={{
+              left: `${String(((cx(index) - slot / 2) / W) * 100)}%`,
+              width: `${String((slot / W) * 100)}%`,
+              top: PAD.top,
+              height: plotH,
+            }}
+          />
+        ))}
+      </div>
       {/* 숨김 표는 감싼 상자로 줄인다 — 표는 높이 1px 를 받지 않아 행 수만큼 페이지 아래에 빈 스크롤을 만들었다. */}
       <div className="dash-sr-only">
         <table>

@@ -318,7 +318,15 @@ describe('품질 탭', () => {
       '/quality/dispositions?nonconformanceId=31',
     );
     expect(screen.getByText(t.ncOpenMore('7', '1'))).toBeInTheDocument();
-    expect(screen.getByText(t.ncRepeatedCount('4'))).toBeInTheDocument();
+    /* 보이는 수(1)와 전체(4)가 다르면 「상위 1개 / 전체 4개」. */
+    expect(screen.getByText(t.ncRepeatedTopOf('1', '4'))).toBeInTheDocument();
+    /* 반복 품목 줄 → 처분 판정 처리(그 품목 조건). 상태가 모두 같으면 상태 열 대신 부제. */
+    expect(screen.getByRole('link', { name: t.openItemDisposition('ITEM-1') })).toHaveAttribute(
+      'href',
+      '/quality/dispositions?item=1',
+    );
+    expect(screen.queryByRole('columnheader', { name: t.column.status })).not.toBeInTheDocument();
+    expect(screen.getByText(t.ncOpenListSubStatus('의뢰 전'))).toBeInTheDocument();
     expect(screen.getByRole('table', { name: t.ncRepeated })).toHaveTextContent('3건');
   });
 
