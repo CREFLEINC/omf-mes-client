@@ -8,7 +8,6 @@ import { toEquipmentView } from './equipment';
 import {
   EquipmentBoard,
   STOPPED_GROUP_SHOWN,
-  allocateRows,
   StoppedPanel,
   formatElapsed,
 } from './equipment-panel';
@@ -283,7 +282,7 @@ describe('StoppedPanel', () => {
     expect(screen.getByRole('heading', { level: 2 })).toHaveTextContent('EQ-02');
   });
 
-  it(`그룹당 ${String(STOPPED_GROUP_SHOWN)}행 — 넘으면 오래 멈춘 순으로 자르고 「외 n대」는 숨겨진 설비만 창에 보인다`, async () => {
+  it(`그룹당 ${String(STOPPED_GROUP_SHOWN)}행 — 넘으면 오래 멈춘 순으로 자르고 「다른 설비 n대 보기」는 숨겨진 설비만 팝업에 보인다(사용자 지시 2026-10-19)`, async () => {
     const user = userEvent.setup();
     const five = toEquipmentView({
       asOf: '2026-10-16T03:00:00Z',
@@ -415,20 +414,5 @@ describe('EquipmentBoard — 8대 표시 · 전체 보기', () => {
 
     expect(screen.getByRole('button', { name: 'PERF · 3 1' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'PERF · 7 1' })).toBeInTheDocument();
-  });
-});
-
-describe('allocateRows — 가동 외 설비 줄 수 예산', () => {
-  const rows = (...elapsed: number[]) => elapsed.map((elapsedMinutes) => ({ elapsedMinutes }));
-
-  it('모든 그룹에 먼저 1줄, 남는 줄은 그룹을 가리지 않고 오래 멈춘 순 — 그룹당 최대 cap', () => {
-    const groups = [rows(300, 200, 100), rows(250, 50), rows(30), rows(400, 10)];
-    expect(allocateRows(groups, 3, null)).toEqual([3, 2, 1, 2]);
-    /* 예산 5 — 먼저 넷에 1줄씩, 남는 1줄은 둘째 줄 중 가장 오래된 것(200분 · 정지 그룹). */
-    expect(allocateRows(groups, 3, 5)).toEqual([2, 1, 1, 1]);
-    /* 예산이 그룹 수보다 적으면 앞 그룹부터 1줄. */
-    expect(allocateRows(groups, 3, 2)).toEqual([1, 1, 0, 0]);
-    /* 넓은 화면은 그룹당 제한 없이. */
-    expect(allocateRows([rows(5, 4, 3, 2, 1)], Number.POSITIVE_INFINITY, null)).toEqual([5]);
   });
 });

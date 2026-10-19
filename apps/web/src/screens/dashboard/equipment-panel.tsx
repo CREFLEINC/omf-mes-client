@@ -3,7 +3,6 @@ import type { DashboardEquipmentStatusCode } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import {
   useEffect,
-  useLayoutEffect,
   useRef,
   useState,
   type FocusEvent,
@@ -482,42 +481,8 @@ const AllEquipmentDialog = ({
 );
 
 /** 가동 외 설비 현황 — 그룹마다 이만큼만 보이고 나머지는 「외 n대」로 전체 설비 보기 창(사용자 결정 2026-10-16). */
-/** 묶음마다 보이는 설비 수 — 나머지는 「외 n대」(사용자 지시 2026-10-19). */
+/** 묶음마다 보이는 설비 수(가장 오래 멈춘 설비) — 나머지는 「다른 설비 n대 보기」 팝업(사용자 지시 2026-10-19). */
 export const STOPPED_GROUP_SHOWN = 1;
-
-/**
- * 그룹마다 보일 줄 수(⭐ 사용자 지정 2026-10-16). 예산(카드 전체 줄 수 · 없으면 제한 없음) 안에서 **모든 그룹에 먼저
- * 1줄**, 남는 줄은 그룹을 가리지 않고 **오래 멈춘 순**으로 나눈다(그룹당 최대 `cap`). 앞 그룹이 예산을 다 써
- * 뒤 그룹이 「외 n대」만 남던 문제를 막는다. 그룹 안 줄은 이미 오래된 순이라 앞에서부터 보인다.
- */
-export const allocateRows = (
-  groups: readonly (readonly Pick<EquipmentItemView, 'elapsedMinutes'>[])[],
-  cap: number,
-  budget: number | null,
-): number[] => {
-  const counts = groups.map(() => 0);
-  let left = budget ?? Number.POSITIVE_INFINITY;
-
-  groups.forEach((rows, index) => {
-    if (left > 0 && rows.length > 0 && cap > 0) {
-      counts[index] = 1;
-      left -= 1;
-    }
-  });
-
-  const rest = groups
-    .flatMap((rows, index) =>
-      rows.slice(1, cap).map((row) => ({ index, elapsed: row.elapsedMinutes ?? -1 })),
-    )
-    .sort((a, b) => b.elapsed - a.elapsed);
-  for (const row of rest) {
-    if (left <= 0) break;
-    counts[row.index] = (counts[row.index] ?? 0) + 1;
-    left -= 1;
-  }
-
-  return counts;
-};
 
 /** 상태별 대수 — 고른 범위(라인) 기준. 필터와 떨어진 오른쪽에 선다. */
 const StatusLegend = ({ items }: { items: readonly EquipmentItemView[] }) => (
@@ -567,7 +532,8 @@ const StoppedMoreDialog = ({
         </span>
       )
     }
-    size="md"
+    /* 열 폭을 넉넉히(사용자 지시 2026-10-19) — 한 단계 큰 창. */
+    size="lg"
     className="dash-stopped-more-dialog"
   >
     {statusCode !== null && (
@@ -620,73 +586,11 @@ const StoppedMoreDialog = ({
  */
 export const StoppedPanel = (props: EquipmentPanelProps) => {
   const [openedId, setOpenedId] = useState<number | null>(null);
-  /* 「외 n대」를 누른 그룹 — 그 그룹에서 숨겨진 설비만 창에 보인다. */
+  /* 「다른 설비 n대 보기」를 누른 묶음 — 그 묶음에서 보이지 않은 설비만 팝업으로(⭐ 사용자 지시 2026-10-19). */
   const [moreCode, setMoreCode] = useState<DashboardEquipmentStatusCode | null>(null);
   const pointerInput = usePointerInput();
   const blocked = gate(props);
   const { view } = props;
-  /*
-   * 카드 전체 줄 수 예산(사용자 지정 2026-10-16) — 넓은 화면에서 이 카드는 옆 설비 카드 높이에 맞춰 늘어나고
-   * (`.dash-fit`), 내용이 넘치면 한 줄씩 덜어 낸다. 크기 · 자료가 바뀌면 처음부터 다시 맞춘다. 1열(좁은 화면)
-   * 에서는 넘치지 않아 그룹당 3행 규칙만 남는다.
-   */
-  const [budget, setBudget] = useState<number | null>(null);
-  /* 카드가 행 높이를 따라가는 자리(넓은 화면)인가 — 아니면(1열) 그룹당 3행 규칙만. */
-  const [fitted, setFitted] = useState(false);
-  /* 모든 그룹 1줄도 들어가지 않는다 — 그때는 카드를 제 높이대로 세운다(내용을 자르지 않는다). */
-  const [tooTall, setTooTall] = useState(false);
-  const [listEl, setListEl] = useState<HTMLDivElement | null>(null);
-  const shownTotalRef = useRef(0);
-  const groupCountRef = useRef(0);
-
-  useEffect(() => {
-    setBudget(null);
-    setTooTall(false);
-  }, [view]);
-
-  useEffect(() => {
-    const body = listEl?.parentElement;
-    const card = listEl?.closest<HTMLElement>('.dash-panel');
-    if (body === null || body === undefined || card === null || card === undefined) {
-      return undefined;
-    }
-    if (typeof ResizeObserver === 'undefined') return undefined;
-    let lastHeight = body.clientHeight;
-    let lastWidth = body.clientWidth;
-    const read = (): void => {
-      setFitted(getComputedStyle(card).contain.includes('size'));
-    };
-    const observer = new ResizeObserver(() => {
-      read();
-      if (body.clientWidth !== lastWidth) {
-        /* 폭이 바뀌면 처음부터 — 「너무 높음」도 다시 본다(높이로 되돌리면 늘었다 줄었다 맴돈다). */
-        lastWidth = body.clientWidth;
-        lastHeight = body.clientHeight;
-        setTooTall(false);
-        setBudget(null);
-      } else if (body.clientHeight !== lastHeight) {
-        lastHeight = body.clientHeight;
-        setBudget(null);
-      }
-    });
-    observer.observe(body);
-    read();
-
-    return () => {
-      observer.disconnect();
-    };
-  }, [listEl]);
-
-  useLayoutEffect(() => {
-    const body = listEl?.parentElement;
-    if (body === null || body === undefined || !fitted) return;
-    if (body.scrollHeight <= body.clientHeight + 1) return;
-    if (shownTotalRef.current > groupCountRef.current) {
-      setBudget(shownTotalRef.current - 1);
-    } else if (!tooTall) {
-      setTooTall(true);
-    }
-  });
 
   const body = (() => {
     if (blocked !== null || view === null) return blocked;
@@ -700,70 +604,44 @@ export const StoppedPanel = (props: EquipmentPanelProps) => {
     const openTile = (target: EquipmentItemView): void => {
       setOpenedId(target.equipmentId);
     };
-    const groups = EQUIPMENT_STATUS_ORDER.filter((code) => code !== 'RUNNING')
-      /* ⭐ 설비가 없는 상태도 「0대」로 묶음을 보인다(사용자 지시 2026-10-19 「비가동이라도 0대로」). */
-      .map((code) => ({ code, rows: stopped.filter((item) => item.statusCode === code) }));
-    /*
-     * ⭐ 묶음마다 첫 1대만, 나머지는 「외 n대」(사용자 지시 2026-10-19 「2대면 외 1대로 통일」) — 화면 높이에 따라
-     * 같은 대수가 다르게 보이지 않게 한다.
-     */
-    const shownCounts = allocateRows(
-      groups.map((group) => group.rows),
-      STOPPED_GROUP_SHOWN,
-      null,
-    );
-    shownTotalRef.current = shownCounts.reduce((sum, count) => sum + count, 0);
-    groupCountRef.current = groups.length;
-    const moreIndex = groups.findIndex((group) => group.code === moreCode);
-    const moreRows =
-      moreIndex < 0 ? [] : (groups[moreIndex]?.rows ?? []).slice(shownCounts[moreIndex] ?? 0);
+    /* ⭐ 설비가 없는 상태도 「0대」로 묶음을 보인다(사용자 지시 2026-10-19 「비가동이라도 0대로」). */
+    const groups = EQUIPMENT_STATUS_ORDER.filter((code) => code !== 'RUNNING').map((code) => ({
+      code,
+      rows: stopped.filter((item) => item.statusCode === code),
+    }));
+
+    const moreGroup = groups.find((group) => group.code === moreCode);
+    const moreRows = moreGroup === undefined ? [] : moreGroup.rows.slice(STOPPED_GROUP_SHOWN);
 
     return (
       <>
-        {/*
-         * 모든 그룹이 한 격자의 열(설비 · 사유 · 경과 시간)을 나눠 쓴다(subgrid) — 그룹마다 표를 따로 두면 열 폭이
-         * 그룹마다 달라 줄이 들쭉날쭉했다. ⚠ 대시보드 표의 「가운데 정렬」 규칙에서 뺀다 — 사유는 긴 문장이라
-         * 왼쪽에서 읽어야 하고, 경과 시간은 오른쪽 끝에 맞춰야 위아래로 견준다.
-         */}
-        <div className="dash-stopped" ref={setListEl}>
+        <div className="dash-stopped">
           <div className="dash-stopped-colhead" aria-hidden="true">
             <span>{t.stoppedElapsedColumn}</span>
           </div>
-          {groups.map(({ code, rows }, groupIndex) => {
-            const shown = shownCounts[groupIndex] ?? 0;
+          {groups.map(({ code, rows }) => {
+            const shown = Math.min(STOPPED_GROUP_SHOWN, rows.length);
             const hidden = rows.length - shown;
 
             return (
               <section key={code} className="dash-stopped-group" aria-label={t.status[code]}>
+                {/*
+                 * ⭐ 묶음 머리 = 배지 + 대수, 줄 = 설비 · 「종류 · 사유」 | 경과 시간 · 「다른 설비 n대 보기」(같은 줄 칸 ·
+                 * 사용자 지시 2026-10-19). 단추를 누르면 그 묶음의 나머지 설비 팝업.
+                 */}
                 <div className="dash-stopped-head">
                   <StatusChip statusCode={code} />
                   <span className="dash-stopped-count">
                     {formatFigure(rows.length)}
                     {t.countUnit}
                   </span>
-                  {/*
-                   * 「외 n대」는 그룹 머리 오른쪽 — 줄을 덜어 낼 때 높이가 다시 늘지 않게(따로 한 줄을 쓰면 덜어 낸
-                   * 줄보다 단추 줄이 더 높아 예산이 끝까지 줄었다).
-                   */}
-                  {hidden > 0 && (
-                    <Button
-                      variant="text"
-                      size="sm"
-                      className="dash-stopped-more"
-                      onClick={() => {
-                        setMoreCode(code);
-                      }}
-                    >
-                      {t.stoppedMore(formatFigure(hidden))}
-                    </Button>
-                  )}
                 </div>
                 {rows.length > 0 && (
                   <ul
                     className="dash-stopped-list"
                     aria-label={t.stoppedGroupCaption(t.status[code])}
                   >
-                    {rows.slice(0, shown).map((item) => (
+                    {rows.slice(0, shown).map((item, rowIndex) => (
                       <li key={item.equipmentId} className="dash-stopped-row">
                         <button
                           type="button"
@@ -774,22 +652,43 @@ export const StoppedPanel = (props: EquipmentPanelProps) => {
                             openTile(item);
                           }}
                         >
-                          {/* 4열 — 설비명 · 설비 종류 · 사유 · 경과 시간(사용자 지정 2026-10-16). */}
                           <span className="dash-stopped-code">{item.equipmentCode}</span>
-                          <span className="dash-stopped-type">{item.tonnage ?? ''}</span>
-                          <span
-                            className={
-                              item.reasonName === null
-                                ? 'dash-stopped-reason dash-stopped-reason-none'
-                                : 'dash-stopped-reason'
-                            }
-                          >
-                            {describeReason(item)}
-                          </span>
-                          <span className="dash-stopped-elapsed">
-                            {formatElapsed(item.elapsedMinutes)}
+                          <span className="dash-stopped-meta">
+                            {item.tonnage !== null && item.tonnage !== '' && (
+                              <>
+                                <span className="dash-stopped-type">{item.tonnage}</span>
+                                {' · '}
+                              </>
+                            )}
+                            <span
+                              className={
+                                item.reasonName === null
+                                  ? 'dash-stopped-reason dash-stopped-reason-none'
+                                  : 'dash-stopped-reason'
+                              }
+                            >
+                              {describeReason(item)}
+                            </span>
                           </span>
                         </button>
+                        <span className="dash-stopped-elapsed" aria-hidden="true">
+                          {formatElapsed(item.elapsedMinutes)}
+                        </span>
+                        {rowIndex === 0 && hidden > 0 && (
+                          <Button
+                            variant="text"
+                            size="sm"
+                            className="dash-stopped-more"
+                            trailingIcon={
+                              <Icon name="chevron_right" size={18} aria-hidden="true" />
+                            }
+                            onClick={() => {
+                              setMoreCode(code);
+                            }}
+                          >
+                            {t.stoppedMore(formatFigure(hidden))}
+                          </Button>
+                        )}
                       </li>
                     ))}
                   </ul>
@@ -817,8 +716,12 @@ export const StoppedPanel = (props: EquipmentPanelProps) => {
     );
   })();
 
+  /*
+   * ⭐ 높이는 옆 「설비 가동 현황」을 따라간다(`.dash-fit` 크기 봉쇄) — 넘치면 이 카드 안에서만 스크롤하고
+   * 행 높이를 늘리지 않는다(사용자 지시 2026-10-19).
+   */
   return (
-    <Panel title={t.stoppedTitle} tag={t.tagLive} className={tooTall ? undefined : 'dash-fit'}>
+    <Panel title={t.stoppedTitle} tag={t.tagLive} className="dash-fit dash-stopped-panel">
       {body}
     </Panel>
   );

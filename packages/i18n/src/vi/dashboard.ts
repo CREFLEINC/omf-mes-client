@@ -108,7 +108,7 @@ export const dashboard: Translated<typeof ko.dashboard> = {
     reasonUnknown: 'Chưa đăng ký lý do',
     stoppedTitle: 'Tình trạng thiết bị ngoài vận hành',
     stoppedElapsedColumn: 'Thời gian đã qua',
-    stoppedMore: (count: string): string => `và ${count} máy khác`,
+    stoppedMore: (count: string): string => `Xem thêm ${count} thiết bị`,
     stoppedMoreCount: (count: string): string => `Thêm ${count} máy`,
     stoppedEquipmentColumn: 'Thiết bị',
     stoppedReasonColumn: 'Lý do',
