@@ -33,8 +33,17 @@ const REASONS = [
   { codeValueId: 1, code: 'APPEARANCE_ABNORMAL', codeName: '외관 이상', isActive: true },
 ];
 
-const renderScreen = (workerNo: string | null) => {
+const LOT_STATUSES = [
+  { codeValueId: 21, code: 'NORMAL', codeName: '정상', isActive: true },
+  { codeValueId: 22, code: 'INSPECTION_PENDING', codeName: '검사 대기', isActive: true },
+];
+
+const ITEM = { itemId: 3001, itemCode: 'RM-3001', itemName: '볼트', isActive: true };
+
+/** 보류 응답을 시험이 갈아 끼운다 — 차례대로 쓰고, 다 쓰면 성공이다. */
+const renderScreen = (workerNo: string | null, holdResponses: Response[] = []) => {
   const writes: Request[] = [];
+  let lotDetailCalls = 0;
 
   const stubFetch: StubFetch = async (request) => {
     const url = new URL(request.url);
@@ -44,13 +53,20 @@ const renderScreen = (workerNo: string | null) => {
       return jsonResponse({ items: [LOT], page: { page: 1, size: 5, total: 1 } });
     }
     if (path === '/trace/lots/8101') {
-      return jsonResponse({ lot: LOT, externalReferences: [] }, { headers: { ETag: '"7"' } });
+      lotDetailCalls += 1;
+      /* 다시 조회하면 잠금 값이 올라 있다 — 다른 곳에서 LOT 이 바뀐 뒤다. */
+      const etag = lotDetailCalls === 1 ? '"7"' : '"8"';
+      return jsonResponse({ lot: LOT, externalReferences: [] }, { headers: { ETag: etag } });
+    }
+    if (path === '/mdm/items/3001') {
+      return jsonResponse({ item: ITEM });
     }
     if (path === '/quality/defect-codes') {
       return jsonResponse({ items: CODES, page: { page: 1, size: 200, total: 1 } });
     }
     if (path === '/mdm/code-values') {
-      return jsonResponse({ items: REASONS, page: { page: 1, size: 100, total: 1 } });
+      const items = url.searchParams.get('codeGroupCode') === 'LOT_STATUS' ? LOT_STATUSES : REASONS;
+      return jsonResponse({ items, page: { page: 1, size: 100, total: items.length } });
     }
     if (request.method === 'POST' && path === '/quality/defect-records') {
       writes.push(request.clone());
@@ -58,7 +74,7 @@ const renderScreen = (workerNo: string | null) => {
     }
     if (request.method === 'POST' && path === '/quality/lot-holds') {
       writes.push(request.clone());
-      return jsonResponse([], { status: 201 });
+      return holdResponses.shift() ?? jsonResponse([], { status: 201 });
     }
 
     throw new Error(`스텁에 없는 요청입니다: ${request.method} ${request.url}`);
@@ -132,6 +148,84 @@ describe('PopMaterialDefectScreen (P-02-14)', () => {
     expect(await screen.findByText(`${t.recorded} ${t.held}`)).toBeInTheDocument();
   });
 
+  /* 담당자 검증 #108 ② — 품목은 코드·이름, 상태는 공통코드 이름으로 보인다. */
+  it('조회한 LOT 의 품목은 코드·이름으로, 상태는 이름으로 보인다', async () => {
+    const user = userEvent.setup();
+    renderScreen('900028');
+
+    await user.type(screen.getByRole('textbox', { name: t.lot.label }), LOT.lotNo);
+    await user.click(screen.getByRole('button', { name: t.lot.find }));
+
+    expect(await screen.findByText(t.lot.item('RM-3001 · 볼트'))).toBeInTheDocument();
+    expect(await screen.findByText(t.lot.status('정상'))).toBeInTheDocument();
+    expect(screen.queryByText(t.lot.status('NORMAL'))).not.toBeInTheDocument();
+  });
+
+  const chooseHold = async (user: ReturnType<typeof userEvent.setup>) => {
+    await user.click(screen.getByRole('checkbox', { name: t.hold.label }));
+    await user.click(screen.getByRole('combobox', { name: t.hold.reason }));
+    await user.click(await screen.findByRole('option', { name: '외관 이상' }));
+  };
+
+  /* 담당자 검증 #108 ② — 기록 뒤 보류만 실패했으면 다시 눌러도 기록이 또 나가지 않는다. */
+  it('보류가 버전 충돌로 실패하면 이유를 보이고, 다시 시도는 LOT 을 다시 조회해 보류만 한다', async () => {
+    const user = userEvent.setup();
+    const { writes } = renderScreen('900028', [
+      jsonResponse(
+        {
+          conflictCause: 'user',
+          code: 'VERSION_CONFLICT',
+          message: '버전이 다릅니다.',
+          currentVersion: '8',
+        },
+        { status: 409 },
+      ),
+    ]);
+
+    await findAndFill(user);
+    await chooseHold(user);
+    await user.click(screen.getByRole('button', { name: t.submit }));
+
+    expect(
+      await screen.findByText(`${t.holdFailed} ${t.holdFailure.versionConflict}`),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: t.submit })).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: t.retryHold }));
+
+    expect(await screen.findByText(`${t.recorded} ${t.held}`)).toBeInTheDocument();
+    expect(writes.map(pathOf)).toEqual([
+      '/quality/defect-records',
+      '/quality/lot-holds',
+      '/quality/lot-holds',
+    ]);
+    expect(await (writes[2] as Request).json()).toMatchObject({
+      lots: [{ lotId: LOT.lotId, versionNo: 8 }],
+    });
+  });
+
+  it('이미 전량 보류된 LOT 이면 다시 보류하지 않아도 된다고 알린다', async () => {
+    const user = userEvent.setup();
+    renderScreen('900028', [
+      jsonResponse(
+        {
+          conflictCause: 'user',
+          code: 'DUPLICATE_HOLD',
+          message: '이미 열려 있는 전량 보류가 있습니다.',
+        },
+        { status: 409 },
+      ),
+    ]);
+
+    await findAndFill(user);
+    await chooseHold(user);
+    await user.click(screen.getByRole('button', { name: t.submit }));
+
+    expect(
+      await screen.findByText(`${t.holdFailed} ${t.holdFailure.alreadyHeld}`),
+    ).toBeInTheDocument();
+  });
+
   it('해제 조건은 고쳐서 보낼 수 있고, 비우면 기록을 막는다', async () => {
     const user = userEvent.setup();
     const { writes } = renderScreen('900028');
@@ -151,7 +245,9 @@ describe('PopMaterialDefectScreen (P-02-14)', () => {
     await user.click(screen.getByRole('button', { name: t.submit }));
 
     await waitFor(() => expect(writes).toHaveLength(2));
-    expect(await (writes[1] as Request).json()).toMatchObject({ releaseCondition: '재검 합격 후 해제' });
+    expect(await (writes[1] as Request).json()).toMatchObject({
+      releaseCondition: '재검 합격 후 해제',
+    });
   });
 
   it('사번이 없으면 기록할 수 없다', async () => {

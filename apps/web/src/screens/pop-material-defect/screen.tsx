@@ -1,5 +1,5 @@
 import { AlertBanner, Button, Checkbox, Chip, TextField } from '@crefle/web-ui';
-import { createIdempotencyKey } from '@omf-mes/api-client';
+import { createIdempotencyKey, type ApiError } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { NumericKeypad } from '@omf-mes/ui';
 import { useQuery } from '@tanstack/react-query';
@@ -7,10 +7,11 @@ import { useId, useState, type FormEvent } from 'react';
 
 import { useApiClient } from '../../patterns/api-context';
 import { SaveErrorBanner } from '../../patterns/master';
+import { masterName } from '../../patterns/master-name';
 import { usePopIdentity } from '../../patterns/pop-identity';
 import { PopSelect as Select } from '../../patterns/pop-select';
 import { PopWorkerMissingBanner } from '../../patterns/pop-worker-missing-banner';
-import { runRequest } from '../../patterns/request';
+import { runRequest, toApiError } from '../../patterns/request';
 import { useWorkerSession } from '../../patterns/worker-session';
 import {
   EMPTY_DEFECT_CODE,
@@ -21,6 +22,7 @@ import {
   type DefectCodeDraft,
 } from '../material-defect/defect-code';
 import { useDefectCodes, useRecordMaterialDefect } from '../material-defect/queries';
+import { useLotStatusLabels } from '../material-input-scan/lot-status-labels';
 
 const t = messages.materialDefect;
 
@@ -32,12 +34,24 @@ const QTY_MAX_LENGTH = 12;
 interface FoundLot {
   lotId: number;
   lotNo: string;
-  itemId: number;
+  /** `품목코드 · 품목명`. 품목을 못 불러왔으면 `null`. */
+  itemLabel: string | null;
   uomId: number;
   statusCode: string;
   /** 보류가 싣는 낙관적 잠금 값 — LOT 상세의 ETag 에서 읽는다. 못 읽었으면 `null`(보류를 막는다). */
   versionNo: number | null;
 }
+
+/** 보류 실패의 이유와 할 일. 기록은 이미 끝났다 — 기록을 다시 내라고 안내하지 않는다. */
+const holdFailureOf = (error: ApiError): string => {
+  if (error.kind === 'conflict' && error.code === 'VERSION_CONFLICT')
+    return t.holdFailure.versionConflict;
+  if (error.kind === 'conflict' && error.code === 'DUPLICATE_HOLD')
+    return t.holdFailure.alreadyHeld;
+  if (error.kind === 'stateLocked') return t.holdFailure.stateLocked;
+  if (error.kind === 'network') return t.holdFailure.network;
+  return t.holdFailure.other;
+};
 
 /** `"7"` · `W/"7"` → 7. */
 const versionOf = (etag: string | undefined): number | null => {
@@ -76,6 +90,9 @@ export const PopMaterialDefectScreen = () => {
   /* 검사 대기 보류는 해제 조건이 필수다(서버 규칙 · 의심자재 보류와 같다) — 흔한 값을 채워 두고 고칠 수 있게 한다. */
   const [releaseCondition, setReleaseCondition] = useState<string>(t.hold.releaseConditionDefault);
   const [outcome, setOutcome] = useState<'recorded' | 'held' | 'holdFailed' | null>(null);
+  const [holdFailure, setHoldFailure] = useState<string | null>(null);
+  const [isRetryingHold, setIsRetryingHold] = useState(false);
+  const statuses = useLotStatusLabels();
 
   const found = useQuery({
     queryKey: ['material-defect', 'pop-lot', lotNo],
@@ -90,10 +107,16 @@ export const PopMaterialDefectScreen = () => {
       await runRequest(() =>
         client.GET('/trace/lots/{lotId}', { params: { path: { lotId: hit.lotId } } }),
       );
+      /* 품목은 코드·이름으로 보인다 — 품목을 못 불러와도 LOT 조회는 실패로 접지 않는다. */
+      const item = await runRequest(() =>
+        client.GET('/mdm/items/{itemId}', { params: { path: { itemId: hit.itemId } } }),
+      )
+        .then((response) => response.item)
+        .catch(() => null);
       return {
         lotId: hit.lotId,
         lotNo: hit.lotNo,
-        itemId: hit.itemId,
+        itemLabel: item === null ? null : `${item.itemCode} · ${masterName(item, item.itemName)}`,
         uomId: hit.uomId,
         statusCode: hit.statusCode,
         versionNo: versionOf(etags.ifMatch(`/trace/lots/${String(hit.lotId)}`)),
@@ -128,9 +151,30 @@ export const PopMaterialDefectScreen = () => {
           },
         }),
       );
+      setHoldFailure(null);
       setOutcome('held');
-    } catch {
+    } catch (error) {
+      setHoldFailure(holdFailureOf(toApiError(error)));
       setOutcome('holdFailed');
+    }
+  };
+
+  /*
+   * 기록은 됐고 보류만 실패한 뒤의 재시도 — ⛔ 기록을 다시 내지 않는다(같은 불량이 두 번 남는다). LOT 을 다시
+   * 조회해 새 잠금 값으로 보류만 다시 한다(버전 충돌이 흔한 실패 이유다).
+   */
+  const retryHold = async (): Promise<void> => {
+    if (workerNo === null) return;
+    setIsRetryingHold(true);
+    try {
+      const fresh = (await found.refetch()).data ?? null;
+      if (fresh === null) {
+        setHoldFailure(t.holdFailure.other);
+        return;
+      }
+      await holdLot(fresh, workerNo);
+    } finally {
+      setIsRetryingHold(false);
     }
   };
 
@@ -157,12 +201,20 @@ export const PopMaterialDefectScreen = () => {
             : hold && releaseCondition.trim() === ''
               ? t.blocked.releaseCondition
               : null;
-  const disabled = workerNo === null || record.isSaving;
+  const holdOnly = outcome === 'holdFailed';
+  const holdBlocked =
+    holdReason === ''
+      ? t.blocked.holdReason
+      : releaseCondition.trim() === ''
+        ? t.blocked.releaseCondition
+        : null;
+  const disabled = workerNo === null || record.isSaving || isRetryingHold;
 
   const find = (event: FormEvent<HTMLFormElement>): void => {
     event.preventDefault();
     const next = lotNoDraft.trim();
     setOutcome(null);
+    setHoldFailure(null);
     setCode(EMPTY_DEFECT_CODE);
     setQty('');
     setDescription('');
@@ -225,8 +277,8 @@ export const PopMaterialDefectScreen = () => {
                 <dd>{lot.lotNo}</dd>
               </div>
               <div>
-                <dt>{t.lot.item(lot.itemId)}</dt>
-                <dd>{t.lot.status(lot.statusCode)}</dd>
+                <dt>{t.lot.item(lot.itemLabel ?? '-')}</dt>
+                <dd>{t.lot.status(statuses.describe(lot.statusCode))}</dd>
               </div>
             </dl>
           )}
@@ -334,20 +386,37 @@ export const PopMaterialDefectScreen = () => {
           {outcome === 'held' && (
             <AlertBanner variant="success">{`${t.recorded} ${t.held}`}</AlertBanner>
           )}
-          {outcome === 'holdFailed' && <AlertBanner variant="warning">{t.holdFailed}</AlertBanner>}
+          {outcome === 'holdFailed' && (
+            <AlertBanner variant="warning">
+              {holdFailure === null ? t.holdFailed : `${t.holdFailed} ${holdFailure}`}
+            </AlertBanner>
+          )}
 
           <div className="pop-action-bar">
             <div className="pop-action-note">
-              {blocked !== null && <p className="field-note">{blocked}</p>}
+              {(holdOnly ? holdBlocked : blocked) !== null && (
+                <p className="field-note">{holdOnly ? holdBlocked : blocked}</p>
+              )}
             </div>
-            <Button
-              variant="filled"
-              size="xl"
-              disabled={blocked !== null || disabled}
-              onClick={submit}
-            >
-              {record.isSaving ? t.saving : t.submit}
-            </Button>
+            {holdOnly ? (
+              <Button
+                variant="filled"
+                size="xl"
+                disabled={holdBlocked !== null || disabled}
+                onClick={() => void retryHold()}
+              >
+                {t.retryHold}
+              </Button>
+            ) : (
+              <Button
+                variant="filled"
+                size="xl"
+                disabled={blocked !== null || disabled}
+                onClick={submit}
+              >
+                {record.isSaving ? t.saving : t.submit}
+              </Button>
+            )}
           </div>
         </section>
       </div>

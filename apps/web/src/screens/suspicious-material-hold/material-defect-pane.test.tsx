@@ -42,11 +42,19 @@ const renderPane = (selection: SelectedLotSnapshot[]) => {
             lotId: 90,
             lotNo: 'PLOT-90',
             itemId: 7,
-            statusCode: 'NORMAL',
+            statusCode: 'INSPECTION_PENDING',
             workOrderId: 41,
             workOrderNo: 'WO-41',
           },
         ],
+      });
+    }
+    if (path === '/mdm/code-values') {
+      return jsonResponse({
+        items: [
+          { codeValueId: 22, code: 'INSPECTION_PENDING', codeName: '검사 대기', isActive: true },
+        ],
+        page: { page: 1, size: 100, total: 1 },
       });
     }
     if (request.method === 'POST' && path === '/quality/defect-records') {
@@ -77,6 +85,14 @@ describe('MaterialDefectPane (W-03-03)', () => {
     expect(await screen.findByText('PLOT-90')).toBeInTheDocument();
     expect(screen.getByText('WO-41')).toBeInTheDocument();
     expect(screen.getByText(t.affected.estimate)).toBeInTheDocument();
+  });
+
+  /* 담당자 검증 #108 ② — 상태는 코드값이 아니라 이름이다. */
+  it('영향 생산 LOT 의 상태를 공통코드 이름으로 보인다', async () => {
+    renderPane([LOT]);
+
+    expect(await screen.findByText('검사 대기')).toBeInTheDocument();
+    expect(screen.queryByText('INSPECTION_PENDING')).not.toBeInTheDocument();
   });
 
   it('자재 불량을 계정 세션으로 기록한다 — 사번 헤더를 싣지 않는다', async () => {

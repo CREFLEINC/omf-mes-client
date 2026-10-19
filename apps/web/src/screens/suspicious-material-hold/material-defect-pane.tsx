@@ -4,6 +4,7 @@ import { messages } from '@omf-mes/i18n';
 import { useEffect, useId, useState } from 'react';
 
 import { SaveErrorBanner } from '../../patterns/master';
+import { useLotStatusLabels } from '../material-input-scan/lot-status-labels';
 import {
   EMPTY_DEFECT_CODE,
   majorsOf,
@@ -23,10 +24,15 @@ const t = messages.materialDefect;
 
 type AffectedRow = AffectedProductionLots['items'][number];
 
-const columns: Column<AffectedRow>[] = [
+/* 상태는 코드가 아니라 공통코드 이름으로 보인다(다른 LOT 화면과 같은 조회). */
+const columnsOf = (statusLabel: (code: string) => string): Column<AffectedRow>[] => [
   { key: 'lotNo', header: t.affected.columns.lotNo, render: (row) => row.lotNo },
   { key: 'workOrderNo', header: t.affected.columns.workOrderNo, render: (row) => row.workOrderNo },
-  { key: 'statusCode', header: t.affected.columns.statusCode, render: (row) => row.statusCode },
+  {
+    key: 'statusCode',
+    header: t.affected.columns.statusCode,
+    render: (row) => statusLabel(row.statusCode),
+  },
 ];
 
 export interface MaterialDefectPaneProps {
@@ -49,6 +55,7 @@ export const MaterialDefectPane = ({ selection, isLocked }: MaterialDefectPanePr
 
   const codes = useDefectCodes(lotId !== null);
   const affected = useAffectedProductionLots(lotId);
+  const statuses = useLotStatusLabels();
   const [code, setCode] = useState<DefectCodeDraft>(EMPTY_DEFECT_CODE);
   const [qty, setQty] = useState('');
   const [description, setDescription] = useState('');
@@ -177,7 +184,7 @@ export const MaterialDefectPane = ({ selection, isLocked }: MaterialDefectPanePr
         <Table
           caption={t.affected.caption}
           density="compact"
-          columns={columns}
+          columns={columnsOf(statuses.describe)}
           rows={affected.data?.items ?? []}
           getRowId={(row) => String(row.lotId)}
           empty={

@@ -12,8 +12,8 @@ export const materialDefect = {
     find: '조회',
     notFound: '이 번호의 LOT 이 없습니다.',
     loadFailed: 'LOT 을 불러오지 못했습니다. 연결을 확인한 뒤 다시 시도하세요.',
-    item: (itemId: number): string => `품목 ${String(itemId)}`,
-    status: (statusCode: string): string => `상태 ${statusCode}`,
+    item: (itemLabel: string): string => `품목 ${itemLabel}`,
+    status: (statusLabel: string): string => `상태 ${statusLabel}`,
   },
 
   code: {
@@ -48,7 +48,17 @@ export const materialDefect = {
   saving: '기록하는 중…',
   recorded: '자재 불량을 기록했습니다.',
   held: 'LOT 을 보류했습니다.',
-  holdFailed: '불량은 기록했지만 LOT 보류에 실패했습니다. 의심자재 등록에서 보류하세요.',
+  holdFailed: '불량은 기록했지만 LOT 보류에 실패했습니다.',
+  /** 기록은 끝났고 보류만 실패했을 때 — 단추가 기록을 다시 내지 않고 보류만 다시 한다. */
+  retryHold: '보류 다시 시도',
+  holdFailure: {
+    versionConflict:
+      '다른 곳에서 LOT 상태가 바뀌었습니다. [보류 다시 시도]를 누르면 LOT 을 다시 조회한 뒤 보류합니다.',
+    alreadyHeld: '이 LOT 에는 이미 전량 보류가 걸려 있습니다. 다시 보류하지 않아도 됩니다.',
+    stateLocked: '지금 LOT 상태에서는 보류할 수 없습니다. 의심자재 등록에서 LOT 상태를 확인하세요.',
+    network: '연결이 끊겨 보류하지 못했습니다. 연결을 확인한 뒤 [보류 다시 시도]를 누르세요.',
+    other: '잠시 뒤 [보류 다시 시도]를 누르거나 의심자재 등록에서 보류하세요.',
+  },
 
   blocked: {
     lot: 'LOT 을 먼저 조회하세요.',

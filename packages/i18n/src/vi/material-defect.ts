@@ -8,8 +8,8 @@ export const materialDefect = {
     find: 'Tra cứu',
     notFound: 'Không có LOT với số này.',
     loadFailed: 'Không tải được LOT. Hãy kiểm tra kết nối rồi thử lại.',
-    item: (itemId: number): string => `Mặt hàng ${String(itemId)}`,
-    status: (statusCode: string): string => `Trạng thái ${statusCode}`,
+    item: (itemLabel: string): string => `Mặt hàng ${itemLabel}`,
+    status: (statusLabel: string): string => `Trạng thái ${statusLabel}`,
   },
 
   code: {
@@ -43,8 +43,18 @@ export const materialDefect = {
   saving: 'Đang ghi nhận…',
   recorded: 'Đã ghi nhận lỗi vật tư.',
   held: 'Đã tạm giữ LOT.',
-  holdFailed:
-    'Đã ghi nhận lỗi nhưng tạm giữ LOT thất bại. Hãy tạm giữ tại màn hình đăng ký vật tư nghi ngờ.',
+  holdFailed: 'Đã ghi nhận lỗi nhưng tạm giữ LOT thất bại.',
+  retryHold: 'Thử tạm giữ lại',
+  holdFailure: {
+    versionConflict:
+      'Trạng thái LOT đã thay đổi ở nơi khác. Nhấn [Thử tạm giữ lại] để tra cứu lại LOT rồi tạm giữ.',
+    alreadyHeld: 'LOT này đã bị tạm giữ toàn bộ. Không cần tạm giữ lại.',
+    stateLocked:
+      'Không thể tạm giữ ở trạng thái LOT hiện tại. Hãy kiểm tra trạng thái LOT tại màn hình đăng ký vật tư nghi ngờ.',
+    network: 'Mất kết nối nên chưa tạm giữ được. Hãy kiểm tra kết nối rồi nhấn [Thử tạm giữ lại].',
+    other:
+      'Hãy nhấn [Thử tạm giữ lại] sau ít phút hoặc tạm giữ tại màn hình đăng ký vật tư nghi ngờ.',
+  },
 
   blocked: {
     lot: 'Hãy tra cứu LOT trước.',

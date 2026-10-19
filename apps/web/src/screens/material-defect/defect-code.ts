@@ -13,10 +13,13 @@ export const EMPTY_DEFECT_CODE: DefectCodeDraft = { majorId: '', minorId: '' };
 export const majorsOf = (codes: readonly DefectCode[]): DefectCode[] =>
   codes.filter((code) => code.parentDefectCodeId == null && code.isActive !== false);
 
+/* ⚠ 대분류를 고르기 전(`''`)에는 상세가 없다 — 부모 없는 코드(대분류)가 `''` 과 같아져 상세로 잡히지 않게. */
 export const minorsOf = (codes: readonly DefectCode[], majorId: string): DefectCode[] =>
-  codes.filter(
-    (code) => String(code.parentDefectCodeId ?? '') === majorId && code.isActive !== false,
-  );
+  majorId === ''
+    ? []
+    : codes.filter(
+        (code) => String(code.parentDefectCodeId ?? '') === majorId && code.isActive !== false,
+      );
 
 export const optionOf = (code: DefectCode): { value: string; label: string } => ({
   value: String(code.defectCodeId),
