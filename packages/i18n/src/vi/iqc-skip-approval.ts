@@ -132,9 +132,13 @@ export const iqcSkipApproval: Translated<typeof ko.iqcSkipApproval> = {
     action: 'Thực hiện bỏ qua IQC',
     dialogTitle: 'Thực hiện bỏ qua IQC?',
     dialogBody:
-      'Yêu cầu kiểm tra đầu vào sẽ được bỏ qua và LOT trở về bình thường để có thể nhập kho. Các lệnh giữ khác (nếu có) vẫn giữ nguyên.',
+      'Yêu cầu kiểm tra đầu vào sẽ được bỏ qua và LOT trở về bình thường để có thể nhập kho. Nếu còn lệnh giữ khác thì không thực hiện được — hãy gỡ lệnh giữ đó trước.',
     irreversible: 'Không thể hoàn tác sau khi thực hiện.',
     done: 'Đã thực hiện bỏ qua IQC',
+    executed: 'Đã thực hiện — LOT đang bình thường.',
+    notPending: (status: string) =>
+      `LOT không ở trạng thái chờ kiểm tra đầu vào (trạng thái ${status}) nên không thể thực hiện bỏ qua.`,
+    checking: 'Đang kiểm tra trạng thái LOT.',
   },
   toast: {
     approved: 'Đã phê duyệt',

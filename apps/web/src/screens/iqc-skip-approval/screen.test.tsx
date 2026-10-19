@@ -2726,6 +2726,8 @@ describe('IqcSkipApprovalScreen — IQC 생략 실행', () => {
     ...contradictoryDetail,
     request: {
       ...contradictoryDetail.request,
+      // 실행 구획은 결재 유형(IQC_SKIP)으로 가른다 — 대상 유형 코드가 아니다(target.ts).
+      approvalTypeCode: 'IQC_SKIP',
       statusCode: 'APPROVED',
       isMyTurn: false,
       target: {
@@ -2744,15 +2746,32 @@ describe('IqcSkipApprovalScreen — IQC 생략 실행', () => {
     match: (request) => new URL(request.url).pathname === '/trace/lots/9401:skip-iqc',
     respond: () => jsonResponse({ lot: { lotId: 9401 }, externalIdentifiers: [], holds: [] }),
   });
+  /** 실행 구획은 대상 LOT 상태를 읽어 모양을 정한다(#105 리뷰). */
+  const lotRoute = (statusCode: string): StubRoute => ({
+    match: (request) =>
+      new URL(request.url).pathname === '/trace/lots/9401' && request.method === 'GET',
+    respond: () =>
+      jsonResponse({
+        lot: { lotId: 9401, lotNo: '합성 LOT', statusCode },
+        externalIdentifiers: [],
+        holds: [],
+      }),
+  });
 
   it('승인된 입하 LOT 요청이면 실행 구획이 서고, 확인 뒤 그 LOT 으로 실행을 보낸다', async () => {
     const { requests, user } = renderScreen(
-      [listRoute(requestFixtures), approvedDetailRoute(), skipRoute()],
+      [
+        listRoute(requestFixtures),
+        approvedDetailRoute(),
+        skipRoute(),
+        lotRoute('INSPECTION_PENDING'),
+      ],
       '?rq=9001',
     );
 
     const pane = await screen.findByRole('region', { name: t.skipExecute.heading });
-    await user.click(within(pane).getByRole('button', { name: t.skipExecute.action }));
+    // LOT 을 읽는 동안은 버튼이 없다(확인 중) — 검사 대기를 받은 뒤에 선다.
+    await user.click(await within(pane).findByRole('button', { name: t.skipExecute.action }));
     const dialog = await screen.findByRole('dialog');
     await user.click(within(dialog).getByRole('button', { name: t.skipExecute.action }));
 
@@ -2763,6 +2782,31 @@ describe('IqcSkipApprovalScreen — IQC 생략 실행', () => {
     expect(posts).toHaveLength(1);
     expect(posts[0]?.method).toBe('POST');
     expect(posts[0]?.headers.get('Idempotency-Key')).not.toBeNull();
+  });
+
+  /* #105 리뷰 — 실행 뒤에도 버튼이 남아 다시 누르면 엉뚱한 문구가 떴다. 검사 대기일 때만 버튼을 낸다. */
+  it('이미 실행돼 LOT 이 정상이면 버튼 대신 「실행됨」을 보인다', async () => {
+    renderScreen(
+      [listRoute(requestFixtures), approvedDetailRoute(), lotRoute('NORMAL')],
+      '?rq=9001',
+    );
+
+    const pane = await screen.findByRole('region', { name: t.skipExecute.heading });
+    expect(await within(pane).findByText(t.skipExecute.executed)).toBeInTheDocument();
+    expect(within(pane).queryByRole('button', { name: t.skipExecute.action })).toBeNull();
+  });
+
+  it('LOT 이 검사 대기가 아니면(불량 등) 실행할 수 없다고 말한다', async () => {
+    renderScreen(
+      [listRoute(requestFixtures), approvedDetailRoute(), lotRoute('DEFECTIVE')],
+      '?rq=9001',
+    );
+
+    const pane = await screen.findByRole('region', { name: t.skipExecute.heading });
+    expect(
+      await within(pane).findByText(t.skipExecute.notPending('DEFECTIVE')),
+    ).toBeInTheDocument();
+    expect(within(pane).queryByRole('button', { name: t.skipExecute.action })).toBeNull();
   });
 
   it('승인 전 요청에는 실행 구획이 없다', async () => {
