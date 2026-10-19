@@ -142,10 +142,9 @@ export const productionResult: Translated<typeof ko.productionResult> = {
     pending: (count: number) => `Chờ gửi ${String(count)} mục`,
   },
   pqc: {
-    blockedTitle: 'Còn kiểm tra PQC chưa xong',
-    blockedBody: 'Phải hoàn tất kiểm tra sản phẩm của lệnh sản xuất này mới đăng ký được kết quả.',
+    pendingTitle: 'Còn kiểm tra PQC chưa xong',
+    pendingBody: 'Hãy kiểm tra PQC sau khi đăng ký kết quả.',
     goInspect: 'Đến màn hình kiểm tra',
-    loadFailed: 'Không xác nhận được yêu cầu kiểm tra nên chưa mở nhập kết quả.',
     openSplit: 'Xem cùng kiểm tra PQC',
     closeSplit: 'Đóng PQC',
     splitTitle: 'Kiểm tra sản phẩm PQC',

@@ -32,7 +32,6 @@ const guard = (patch: Partial<SaveGuard> = {}): SaveGuard => ({
   hasWorkOrder: true,
   hasWorker: true,
   hasLot: true,
-  hasPendingPqc: false,
   draft: { ...emptyResultDraft, goodQty: '120' },
   ...patch,
 });
@@ -109,10 +108,6 @@ describe('saveBlockReason — 고칠 수 없는 것부터 말한다', () => {
 
   it('사번이 없으면 저장하지 않는다 — 서버가 거부하는 쓰기다', () => {
     expect(saveBlockReason(guard({ hasWorker: false }))).toBe('noWorker');
-  });
-
-  it('PQC 가 남아 있으면 실적을 먼저 넣지 않는다', () => {
-    expect(saveBlockReason(guard({ hasPendingPqc: true }))).toBe('pendingPqc');
   });
 
   it('LOT 을 고르지 않았으면 막는다', () => {

@@ -692,8 +692,6 @@ export const ProductionFlowScreen = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tagPrint.state.phase, pendingTagDocuments, pendingSerialQuantity, lot?.lotId]);
 
-  const hasPendingPqc =
-    pendingPqc.isPending || pendingPqc.isError || (pendingPqc.data?.length ?? 0) > 0;
   const hasTagCountMatch =
     isTagTarget !== true ||
     (parsedQty !== null &&
@@ -739,7 +737,6 @@ export const ProductionFlowScreen = () => {
     entry.workerNo !== null &&
     gates.input === 'allowed' &&
     gates.print === 'allowed' &&
-    !hasPendingPqc &&
     isTagTarget !== null &&
     hasTagCountMatch &&
     hasTagDocuments &&
@@ -1028,20 +1025,14 @@ export const ProductionFlowScreen = () => {
           <AlertBanner variant="info" title={t.flow.currentLot.none} />
         </div>
       )}
-      {pendingPqc.isError && (
+      {/* 오른쪽에 PQC 가 떠 있으면 그 패널이 곧 안내다 — 닫아 둔 때만 다시 여는 길을 알린다(#107). */}
+      {(pendingPqc.data?.length ?? 0) > 0 && !isPqcSplit && (
         <div className="banner-slot">
-          <AlertBanner variant="error" title={t.pqc.loadFailed} />
-        </div>
-      )}
-      {(pendingPqc.data?.length ?? 0) > 0 && (
-        <div className="banner-slot">
-          <AlertBanner variant="warning" title={t.pqc.blockedTitle}>
-            {t.pqc.blockedBody}
-            {!isPqcSplit && (
-              <Button variant="outlined" onClick={() => setIsPqcOpen(true)}>
-                {t.pqc.openSplit}
-              </Button>
-            )}
+          <AlertBanner variant="info" title={t.pqc.pendingTitle}>
+            {t.pqc.pendingBody}
+            <Button variant="outlined" onClick={() => setIsPqcOpen(true)}>
+              {t.pqc.openSplit}
+            </Button>
           </AlertBanner>
         </div>
       )}

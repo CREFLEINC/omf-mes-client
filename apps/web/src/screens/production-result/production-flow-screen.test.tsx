@@ -1617,8 +1617,8 @@ describe('ProductionFlowScreen · 자동 종료는 한 번만 나간다', () => 
 });
 
 /*
- * 생산 실적 ↔ PQC 분할(omf-all-around#107). 남은 PQC 가 있으면 오른쪽에 PQC 를 띄우고, 거기서
- * 확정해 서버가 받으면 왼쪽 실적의 「PQC 가 남아 있다」 잠금이 그 자리에서 풀린다.
+ * 생산 실적 ↔ PQC 분할(omf-all-around#107). 남은 PQC 가 있으면 오른쪽에 PQC 를 띄운다. 업무 순서는
+ * «실적 입력 → PQC» 다(사용자 결정 2026-10-19) — 실적을 막지 않고, 실적이 없으면 PQC 쪽이 잠긴다.
  */
 describe('ProductionFlowScreen — PQC 분할', () => {
   const pqc = messages.pqcInspection;
@@ -1644,7 +1644,36 @@ describe('ProductionFlowScreen — PQC 분할', () => {
     { codeValueId: 2, code: 'REJECTED', codeName: '불합격', displayOrder: 2, isActive: true },
   ];
 
-  const pqcRoutes = (state: { confirmed: boolean }, writes: Request[]): StubRoute[] => [
+  /** 그 W/O 의 진척 — 실적이 있으면 양품 누계가 0 보다 크다. */
+  const producedWorkOrder = (goodQty: number): StubRoute => ({
+    match: (request) => pathOf(request) === `/production/work-orders/${String(WORK_ORDER_ID)}`,
+    respond: () =>
+      jsonResponse({
+        workOrderId: WORK_ORDER_ID,
+        workOrderNo: 'WO-SYN-001',
+        productionPlanId: 1,
+        routingOperationId: 1,
+        itemId: 101,
+        itemCode: 'ITEM-SYN-01',
+        orderQty: 12,
+        uomId: 1,
+        workOrderTypeCode: 'NORMAL',
+        statusCode: 'IN_PROGRESS',
+        priorityNo: 1,
+        progress: { goodQty, varianceQty: 12 - goodQty },
+      }),
+  });
+
+  const pqcRoutes = (
+    state: { confirmed: boolean },
+    writes: Request[],
+    rounds: object[] = [],
+  ): StubRoute[] => [
+    {
+      match: (request) =>
+        request.method === 'GET' && pathOf(request) === '/quality/inspection-results',
+      respond: () => jsonResponse({ items: rounds, page: { page: 1, size: 100, total: rounds.length } }),
+    },
     {
       match: (request) => pathOf(request) === '/quality/inspection-requests',
       respond: () =>
@@ -1677,37 +1706,96 @@ describe('ProductionFlowScreen — PQC 분할', () => {
     globalThis.localStorage.clear();
   });
 
-  it('남은 PQC 를 오른쪽에 띄우고, 확정하면 실적 잠금이 풀린다', async () => {
+  it('실적이 있으면 남은 PQC 를 오른쪽에서 확정한다 — 실적 쪽에는 「PQC 먼저」 띠가 없다', async () => {
     const writes: Request[] = [];
     const state = { confirmed: false };
     const user = userEvent.setup();
-    renderScreen(writes, pqcRoutes(state, writes));
+    renderScreen(writes, [producedWorkOrder(5), ...pqcRoutes(state, writes)]);
 
-    expect(await screen.findByText(t.pqc.blockedTitle)).toBeInTheDocument();
     const panel = within(await screen.findByRole('region', { name: t.pqc.splitTitle }));
+    expect(screen.queryByText(t.pqc.pendingTitle)).not.toBeInTheDocument();
 
     await user.type(await panel.findByRole('textbox', { name: pqc.result.fields.accepted }), '5');
     await user.type(panel.getByRole('textbox', { name: pqc.result.fields.rejected }), '0');
     await user.type(panel.getByRole('textbox', { name: pqc.result.fields.held }), '0');
     await user.click(panel.getByRole('combobox', { name: pqc.result.judgment }));
     await user.click(await screen.findByRole('option', { name: '합격' }));
+    await waitFor(() => expect(panel.getByRole('button', { name: pqc.result.confirm })).toBeEnabled());
     await user.click(panel.getByRole('button', { name: pqc.result.confirm }));
 
     await waitFor(() => expect(writes.map(pathOf)).toContain('/quality/inspection-results'));
     const [sent] = writes.filter((request) => pathOf(request) === '/quality/inspection-results');
     expect(sent?.headers.get('X-Worker-No')).toBe('100029');
     expect(((await sent?.json()) as { statusCode: string }).statusCode).toBe('CONFIRMED');
-
-    await waitFor(() => expect(screen.queryByText(t.pqc.blockedTitle)).not.toBeInTheDocument());
   });
 
-  it('닫으면 실적만 남고, 잠금 띠에서 다시 열 수 있다', async () => {
+  it('⛔ 실적이 아직 없으면 PQC 저장·확정이 잠기고 이유를 한 줄로 말한다', async () => {
+    const writes: Request[] = [];
+    renderScreen(writes, [producedWorkOrder(0), ...pqcRoutes({ confirmed: false }, writes)]);
+
+    const panel = within(await screen.findByRole('region', { name: t.pqc.splitTitle }));
+    expect(await panel.findByText(pqc.result.noProductionResult)).toBeInTheDocument();
+    expect(panel.getByRole('button', { name: pqc.result.save })).toBeDisabled();
+    expect(panel.getByRole('button', { name: pqc.result.confirm })).toBeDisabled();
+  });
+
+  it('⭐ 작성중 회차가 있으면 수량·판정을 되살린다', async () => {
+    renderScreen(
+      [],
+      [
+        producedWorkOrder(5),
+        ...pqcRoutes({ confirmed: false }, [], [
+          {
+            inspectionResultId: 9001,
+            inspectionResultNo: 'IRS-9001',
+            inspectionRequestId: 7001,
+            inspectionRound: 1,
+            inspectedQty: 5,
+            acceptedQty: 3,
+            rejectedQty: 0,
+            heldQty: 2,
+            uomId: 1,
+            overallJudgmentCode: 'ACCEPTED',
+            inspectorId: 1,
+            inspectedAt: '2026-10-16T09:00:00+09:00',
+            statusCode: 'DRAFT',
+            versionNo: 1,
+          },
+        ]),
+      ],
+    );
+
+    const panel = within(await screen.findByRole('region', { name: t.pqc.splitTitle }));
+    await waitFor(() =>
+      expect(panel.getByRole('textbox', { name: pqc.result.fields.accepted })).toHaveValue('3'),
+    );
+    expect(panel.getByRole('textbox', { name: pqc.result.fields.held })).toHaveValue('2');
+    expect(panel.getByRole('textbox', { name: pqc.result.fields.rejected })).toHaveValue('0');
+    // 고른 값은 단추 옆 표시 칸에 선다(`pop-select__value`).
+    await waitFor(() =>
+      expect(
+        panel.getByRole('combobox', { name: pqc.result.judgment }).closest('.pop-select'),
+      ).toHaveTextContent('합격'),
+    );
+  });
+
+  it('분할 패널에는 시작·종료 시각 칸이 없다 — 서버가 저장하지 않는 값이다', async () => {
+    renderScreen([], [producedWorkOrder(5), ...pqcRoutes({ confirmed: false }, [])]);
+
+    const panel = within(await screen.findByRole('region', { name: t.pqc.splitTitle }));
+    await panel.findByRole('textbox', { name: pqc.result.fields.accepted });
+    expect(panel.queryByText(pqc.coverage.note)).not.toBeInTheDocument();
+    expect(panel.queryByLabelText(`${pqc.coverage.from} ${pqc.coverage.date}`)).not.toBeInTheDocument();
+  });
+
+  it('닫으면 실적만 남고, 안내 띠에서 다시 열 수 있다', async () => {
     const user = userEvent.setup();
     renderScreen([], pqcRoutes({ confirmed: false }, []));
 
     const region = await screen.findByRole('region', { name: t.pqc.splitTitle });
     await user.click(within(region).getByRole('button', { name: t.pqc.closeSplit }));
     expect(screen.queryByRole('region', { name: t.pqc.splitTitle })).not.toBeInTheDocument();
+    expect(screen.getByText(t.pqc.pendingTitle)).toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: t.pqc.openSplit }));
     expect(await screen.findByRole('region', { name: t.pqc.splitTitle })).toBeInTheDocument();

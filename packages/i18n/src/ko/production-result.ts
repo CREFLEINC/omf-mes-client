@@ -177,12 +177,14 @@ export const productionResult = {
     pending: (count: number) => `미전송 ${String(count)}건`,
   },
 
-  /** 검사 선행(R54). 대상인데 아직 안 했으면 실적을 먼저 넣지 않는다. */
+  /**
+   * 남은 PQC 안내. ⭐ 업무 순서는 «실적 입력 → PQC» 다(사용자 결정 2026-10-19 · omf-all-around#107) — 앞선
+   * 「PQC 를 먼저 마쳐야 실적 등록」(R54)을 뒤집었다. 실적을 막지 않고, PQC 를 닫아 둔 때만 다시 여는 길을 알린다.
+   */
   pqc: {
-    blockedTitle: 'PQC 검사가 남아 있습니다',
-    blockedBody: '이 작업지시의 제품 검사를 먼저 마쳐야 실적을 등록할 수 있습니다.',
+    pendingTitle: 'PQC 검사가 남아 있습니다',
+    pendingBody: '실적을 등록한 뒤 PQC 검사를 하세요.',
     goInspect: '검사 화면으로',
-    loadFailed: '검사 의뢰를 확인할 수 없어 실적 입력을 열지 않습니다.',
     /** 실적과 PQC 를 한 화면에 반씩 띄운다(omf-all-around#107). */
     openSplit: 'PQC 검사 함께 보기',
     closeSplit: 'PQC 닫기',
