@@ -1,4 +1,4 @@
-import { Chip, Skeleton, Table, type ChipStatus, type Column } from '@crefle/web-ui';
+import { Chip, Icon, Skeleton, Table, type ChipStatus, type Column } from '@crefle/web-ui';
 import type {
   DashboardJudgmentCode,
   DashboardLotCounts,
@@ -487,6 +487,23 @@ const RecentLotsPanel = ({
               </Chip>
             ),
           },
+          /* 누르면 넘어간다는 표시 — 줄 맨 오른쪽 「>」(⭐ 사용자 지시 2026-10-19, 출하 칸과 같은 아이콘). */
+          ...(linked
+            ? [
+                {
+                  key: 'go',
+                  header: '',
+                  render: () => (
+                    <Icon
+                      name="chevron_right"
+                      size={18}
+                      className="dash-recent-arrow"
+                      aria-hidden="true"
+                    />
+                  ),
+                } satisfies Column<RecentLotRow>,
+              ]
+            : []),
         ]}
         rows={rows}
         getRowId={(row) => `${row.kind}-${String(row.inspectionResultId)}`}

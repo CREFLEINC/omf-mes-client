@@ -270,10 +270,16 @@ describe('품질 탭', () => {
     expect(
       screen.getByRole('link', { name: t.openInspectionResult('PQC', 'ITEM-2') }),
     ).toHaveAttribute('href', expect.stringContaining('type=PQC&selected=2'));
+    /* 줄 맨 오른쪽 「>」 — 링크가 있는 줄마다 하나. */
+    const table = screen.getByRole('table', { name: t.recentLots });
+    expect(table.querySelectorAll('tbody .dash-recent-arrow')).toHaveLength(
+      table.querySelectorAll('tbody .dash-recent-link').length,
+    );
     unmount();
 
     render(<QualityOverviewTab quality={data} allows={() => false} />);
     expect(screen.queryByRole('link', { name: /검사 결과 상세 보기/ })).not.toBeInTheDocument();
+    expect(document.querySelector('.dash-recent-arrow')).toBeNull();
   });
 
   it('불량 유형 비율 표시 — 정수로 적어도 합이 100(최대 나머지 방식)', () => {

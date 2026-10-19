@@ -8002,6 +8002,18 @@ dl.filter-bar.approval-inbox-detail-facts {
   text-decoration: none;
 }
 
+.dash-recent-arrow {
+  display: block;
+  margin-inline-start: auto;
+  color: var(--on-surface-muted);
+}
+
+.dash-recent-linked th:last-child,
+.dash-recent-linked td:last-child {
+  width: 1.75rem;
+  padding-inline: 0 var(--space-1);
+}
+
 .dash-recent-link::after {
   position: absolute;
   inset: 0;
