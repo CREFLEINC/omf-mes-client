@@ -3,7 +3,13 @@ import { describe, expect, it } from 'vitest';
 
 import { MAPPED_SCREEN_ID, MAPPED_SCREEN_PATH, targetFixtures } from './fixtures';
 import { SCREEN_ROUTES } from './screen-routes';
-import { describeOpenBlock, describeTargetName, judgeTargetOpen } from './target';
+import {
+  describeOpenBlock,
+  describeTargetName,
+  judgeSkipExecute,
+  judgeTargetOpen,
+  skipExecuteLotIdOf,
+} from './target';
 
 const t = messages.iqcSkipApproval;
 
@@ -125,5 +131,35 @@ describe('describeTargetName', () => {
     const sameName = { ...targetFixtures.mapped, targetTypeCode: 'SHIPMENT' as const };
 
     expect(describeTargetName(sameName)).toBe(describeTargetName(targetFixtures.mapped));
+  });
+});
+
+describe('생략 실행 판정(omf-all-around#105 리뷰)', () => {
+  const request = (statusCode: string, approvalTypeCode = 'IQC_SKIP') => ({
+    approvalTypeCode,
+    statusCode,
+    target: { targetId: 9401 },
+  });
+
+  it('승인된 IQC 생략 요청만 그 대상 LOT 을 낸다 — 결재 유형으로 가른다', () => {
+    expect(skipExecuteLotIdOf(request('APPROVED'), 'IQC_SKIP')).toBe(9401);
+    expect(skipExecuteLotIdOf(request('PENDING'), 'IQC_SKIP')).toBeNull();
+    expect(skipExecuteLotIdOf(request('APPROVED', 'OTHER'), 'IQC_SKIP')).toBeNull();
+    expect(skipExecuteLotIdOf(request('APPROVED'), null)).toBeNull();
+  });
+
+  it('버튼은 검사 대기일 때만 — 정상이면 실행됨, 그 밖은 실행 불가, 못 읽었으면 서버 판정에 맡긴다', () => {
+    expect(judgeSkipExecute({ statusCode: 'INSPECTION_PENDING', isError: false })).toEqual({
+      kind: 'executable',
+    });
+    expect(judgeSkipExecute({ statusCode: 'NORMAL', isError: false })).toEqual({
+      kind: 'executed',
+    });
+    expect(judgeSkipExecute({ statusCode: 'DEFECTIVE', isError: false })).toEqual({
+      kind: 'notPending',
+      statusCode: 'DEFECTIVE',
+    });
+    expect(judgeSkipExecute({ statusCode: null, isError: false })).toEqual({ kind: 'checking' });
+    expect(judgeSkipExecute({ statusCode: null, isError: true })).toEqual({ kind: 'executable' });
   });
 });

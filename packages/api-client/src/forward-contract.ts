@@ -1,4 +1,4 @@
-import type { paths } from './generated/api';
+import type { components, paths } from './generated/api';
 
 /** P-7/P-10 선행 계약: 공식 설계 사본이 갱신될 때 동등성을 대조하고 제거한다. */
 export type TerminalRegistrationStatusCode = 'UNREGISTERED' | 'REGISTERED';
@@ -152,6 +152,37 @@ export interface ForwardPaths {
     };
   };
   '/app/users/{appUserId}/worker': AppUserWorkerPath;
+  /** 서버 선행 P-36(omf-all-around#105) — 승인된 IQC 생략의 실행. 본문 없음 · 200 LOT 상세. */
+  '/trace/lots/{lotId}:skip-iqc': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: {
+      parameters: {
+        query?: never;
+        header: { 'Idempotency-Key': string };
+        path: { lotId: number };
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        200: {
+          headers: { [name: string]: unknown };
+          content: { 'application/json': components['schemas']['LotDetailResponse'] };
+        };
+      };
+    };
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/mdm/terminals/{terminalId}/accessible-screens': {
     parameters: {
       query?: never;

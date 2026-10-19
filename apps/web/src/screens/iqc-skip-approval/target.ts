@@ -89,3 +89,57 @@ export const describeOpenBlock = (block: TargetOpenBlock): string => {
  */
 export const describeTargetName = (target: ApprovalTarget): string =>
   readableName(target.displayName, t.values.unknownTarget);
+
+/** 결재 요청 상태 — 승인 완료(시드 `APPROVAL_REQUEST_STATUS`). */
+const APPROVED_STATUS = 'APPROVED';
+/** 대상 LOT 이 생략을 기다리는 상태 · 생략이 옮겨 놓는 상태(서버 C22). */
+const PENDING_LOT_STATUS = 'INSPECTION_PENDING';
+const NORMAL_LOT_STATUS = 'NORMAL';
+
+/**
+ * 생략을 실행할 LOT — 승인된 IQC 생략 요청이면 그 대상 id, 아니면 `null`(omf-all-around#105).
+ *
+ * ⭐ **결재 유형으로 가른다 — 대상 유형 코드로 가르지 않는다**(이 파일 머리말의 규칙). `IQC_SKIP` 결재의 대상은 정의상
+ *    입하 LOT 이다(서버 선행 P-36) — 그래서 유형 코드를 읽어 화면을 고르는 매핑이 아니라, 이 화면의 정체(결재 유형) 하나로 정한다.
+ */
+export const skipExecuteLotIdOf = (
+  request: {
+    approvalTypeCode: string;
+    statusCode: string;
+    target: Pick<ApprovalTarget, 'targetId'>;
+  },
+  iqcSkipTypeCode: string | null,
+): number | null =>
+  iqcSkipTypeCode !== null &&
+  request.approvalTypeCode === iqcSkipTypeCode &&
+  request.statusCode === APPROVED_STATUS
+    ? request.target.targetId
+    : null;
+
+/**
+ * 실행 구획이 무엇을 보이는가 — 버튼은 LOT 이 **검사 대기일 때만**이다(#105 리뷰: 실행 뒤에도 버튼이 남았다).
+ *
+ * | 갈래 | 뜻 |
+ * | --- | --- |
+ * | `executable` | 검사 대기 — 실행할 수 있다. LOT 을 못 읽었으면 여기로 둔다(막는 판정은 서버가 한다) |
+ * | `executed` | 정상 — 생략이 이미 실행됐다 |
+ * | `notPending` | 그 밖(불량 등) — 실행할 수 없다 |
+ * | `checking` | 아직 LOT 을 읽는 중 |
+ */
+export type SkipExecuteState =
+  | { kind: 'executable' }
+  | { kind: 'executed' }
+  | { kind: 'notPending'; statusCode: string }
+  | { kind: 'checking' };
+
+export const judgeSkipExecute = (lot: {
+  statusCode: string | null;
+  isError: boolean;
+}): SkipExecuteState => {
+  if (lot.isError) return { kind: 'executable' };
+  if (lot.statusCode === null) return { kind: 'checking' };
+  if (lot.statusCode === PENDING_LOT_STATUS) return { kind: 'executable' };
+  if (lot.statusCode === NORMAL_LOT_STATUS) return { kind: 'executed' };
+
+  return { kind: 'notPending', statusCode: lot.statusCode };
+};

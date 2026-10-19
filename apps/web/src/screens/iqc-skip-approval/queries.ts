@@ -110,3 +110,25 @@ export const useRequestDetail = (
       ),
   });
 };
+
+/**
+ * 생략을 실행할 LOT 의 품질 상태(#105 리뷰) — 실행 구획이 버튼을 낼지 「실행됨」을 낼지 가른다.
+ * 열쇠가 뿌리(`all`) 아래라 실행이 성공하면 함께 다시 읽힌다.
+ */
+export const useSkipTargetLot = (
+  lotId: number | null,
+): { statusCode: string | null; isError: boolean } => {
+  const { client } = useApiClient();
+  const query = useQuery({
+    queryKey: ['iqc-skip-approval', 'skip-lot', lotId] as const,
+    enabled: lotId !== null,
+    queryFn: () =>
+      runRequest(() =>
+        client.GET('/trace/lots/{lotId}', {
+          params: { path: { lotId: lotId ?? NO_SELECTION_PATH_ID } },
+        }),
+      ),
+  });
+
+  return { statusCode: query.data?.lot.statusCode ?? null, isError: query.isError };
+};
