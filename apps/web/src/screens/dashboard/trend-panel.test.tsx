@@ -162,6 +162,8 @@ describe('TrendPanel 기록 없는 날', () => {
     expect(container.querySelectorAll('.dash-trend-gap-line')).toHaveLength(1);
     expect(container.querySelectorAll('.dash-trend-gap-bridge')).toHaveLength(1);
     expect(container.querySelectorAll('.dash-trend-gap-solo')).toHaveLength(1);
+    /* 화면 낭독기 요약도 0 이 아니라 「실적 없음」. */
+    expect(screen.getByRole('img', { name: /10-16 실적 없음/ })).toBeInTheDocument();
   });
 
   it('기록 없는 날이 없으면 DS 차트 그대로', () => {

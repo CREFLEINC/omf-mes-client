@@ -504,6 +504,21 @@ export const TrendPanel = ({ view, baseDate = null, isLoading }: TrendPanelProps
          * 확인에서 550px가 넘었다. 세로를 낮춰 납작하게 둔다: 추이는 「올랐나 내렸나」를 보는
          * 그림이라 세로로 키운다고 더 읽히지 않는다.
          */
+        /*
+         * 기록 없는 날이 있으면 DS 의 자동 요약 · 숨은 표가 그날을 0 으로 읽는다(값을 0 으로 넘김) — 요약은 직접
+         * 쓰고(「실적 없음」), 숨은 표는 끈다. 날짜별 값은 점 단추(`PointTips`)의 이름으로도 읽힌다.
+         */
+        ariaLabel={
+          hasGap
+            ? `${view.seriesName ?? t.panes.trend}: ${view.points
+                .map(
+                  (point) =>
+                    `${point.label} ${point.value === null ? t.trend.noRecord : formatFigure(point.value)}`,
+                )
+                .join(', ')}`
+            : undefined
+        }
+        showTable={!hasGap}
         width={chartWidth}
         height={chartHeight}
         showPoints
