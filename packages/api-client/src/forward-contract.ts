@@ -158,4 +158,5 @@ export interface ForwardPaths {
   };
 }
 
-export type ApiPaths = paths & ForwardPaths;
+/** 같은 경로를 forward 가 다시 적으면 그쪽이 이긴다 — 교집합이면 좁은 쪽 enum 이 남는다(omf-all-around#58 첨부 대상). */
+export type ApiPaths = Omit<paths, keyof ForwardPaths> & ForwardPaths;
