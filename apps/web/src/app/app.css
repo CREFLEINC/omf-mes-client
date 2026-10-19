@@ -7862,12 +7862,70 @@ dl.filter-bar.approval-inbox-detail-facts {
   align-items: stretch;
 }
 
-.dash-tab-quality .dash-stack {
+.dash-tab-quality .dash-split > .dash-stack {
   grid-template-rows: auto 1fr;
 }
 
-.dash-tab-quality .dash-stack:has(> :only-child) {
+.dash-tab-quality .dash-split > .dash-stack:has(> :only-child) {
   grid-template-rows: auto;
+}
+
+/*
+ * 품질 종합 배치(⭐ 사용자 지시 2026-10-19) — 위: 일별 합격률 | 업체별 불량 · 현재 현황(세로), 아래: 불량현상
+ * 구성비 | 최근 판정 표. 카드 높이는 내용대로(같은 행을 같은 높이로 늘이지 않는다) — 위 행의 그래프만 오른쪽
+ * 묶음 높이에 맞춰 커진다(`FitChart`, 상한 480). 넓음 ≈ 62 : 38 · 중간(1200 이하) 1.4 : 1 · 좁음(860 이하) 1열.
+ * 화면 높이 채우기는 쓰지 않는다.
+ */
+.dash-qo-top {
+  display: grid;
+  grid-template-columns: minmax(0, 62fr) minmax(0, 38fr);
+  gap: var(--space-4);
+  align-items: stretch;
+}
+
+.dash-qo-side {
+  display: grid;
+  align-content: start;
+  gap: var(--space-4);
+  min-width: 0;
+}
+
+.dash-qo-bottom {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr);
+  gap: var(--space-4);
+  align-items: start;
+}
+
+/* 막대 목록 — 이름 · 막대 · 수량 · 비율이 모든 줄에서 같은 열(subgrid), 수량 · 비율은 오른쪽 정렬. */
+.dash-tab-quality-overview .dash-rank {
+  grid-template-columns: minmax(5rem, max-content) minmax(3rem, 1fr) auto auto;
+  column-gap: var(--space-2);
+}
+
+.dash-tab-quality-overview .dash-rank-row {
+  grid-column: 1 / -1;
+  grid-template-columns: subgrid;
+}
+
+.dash-tab-quality-overview .dash-rank-value,
+.dash-tab-quality-overview .dash-rank-share {
+  font-variant-numeric: tabular-nums;
+  text-align: end;
+}
+
+/* 최근 판정 표 — 품목은 칸 폭에서 말줄임(전체는 마우스 올림), 판정 배지는 같은 폭. */
+.dash-tab-quality-overview .dash-cell-item {
+  display: inline-block;
+  max-width: 12rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  vertical-align: bottom;
+}
+
+.dash-tab-quality-overview .dash-table-wrap td:last-child > * {
+  justify-content: center;
+  min-width: 4.5rem;
 }
 
 /* 주 그래프 카드 — 몸통이 남는 높이를 받고, 그래프 자리가 그 높이를 잰다(`FitChart`). */
@@ -7907,7 +7965,8 @@ dl.filter-bar.approval-inbox-detail-facts {
  * 290px 남짓이라 업체 표가 잘려 「비중」 열이 가려졌다(1280 실측). 차트는 실제 폭으로 다시 그려 좁아져도 된다.
  */
 @container (max-width: 1200px) {
-  .dash-row2-quality {
+  .dash-row2-quality,
+  .dash-qo-top {
     grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
   }
 }
@@ -7915,7 +7974,9 @@ dl.filter-bar.approval-inbox-detail-facts {
 @container (max-width: 860px) {
   .dash-row2,
   .dash-split,
-  .dash-overview {
+  .dash-overview,
+  .dash-qo-top,
+  .dash-qo-bottom {
     grid-template-columns: minmax(0, 1fr);
   }
 
@@ -9236,6 +9297,43 @@ dl.filter-bar.approval-inbox-detail-facts {
   height: 100%;
 }
 
+/* 품질 종합 금일 검사 LOT — 막대와 같은 색 점 + 이름 + 수량(색만으로 말하지 않는다). */
+.dash-lot-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px var(--space-2);
+}
+
+.dash-lot-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  white-space: nowrap;
+}
+
+.dash-lot-legend-item strong {
+  color: var(--on-surface);
+  font-weight: 600;
+}
+
+.dash-lot-key {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: var(--radius-full);
+}
+
+.dash-lot-key-accepted {
+  background: var(--chart-5);
+}
+
+.dash-lot-key-rejected {
+  background: var(--semantic-error);
+}
+
+.dash-lot-key-held {
+  background: var(--semantic-warning);
+}
+
 .dash-minibar-ok {
   background: var(--chart-5);
 }
@@ -9312,6 +9410,75 @@ dl.filter-bar.approval-inbox-detail-facts {
   display: flex;
   align-items: center;
   gap: var(--space-1);
+}
+
+/* 일별 꺾은선 툴팁(품질 종합 · `LineTips`) — 그림 위에 같은 크기의 층을 겹친다. */
+.dash-svg-wrap {
+  position: relative;
+}
+
+.dash-line-tips {
+  position: absolute;
+  top: 0;
+  left: 0;
+  pointer-events: none;
+}
+
+.dash-line-hit {
+  position: absolute;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+.dash-line-hit:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.dash-line-guide {
+  position: absolute;
+  width: 1px;
+  background: var(--outline);
+}
+
+/* 말풍선 — 생산 추이 툴팁과 같은 모양(DS 카드 바탕 · 얇은 테두리 · 약한 그림자). */
+.dash-line-tip {
+  position: absolute;
+  display: grid;
+  gap: 2px;
+  padding: var(--space-1) var(--space-2);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  box-shadow: var(--elevation-1);
+  color: var(--on-surface);
+  white-space: nowrap;
+  z-index: 1;
+}
+
+.dash-line-tip-date {
+  font: var(--type-label-sm);
+  letter-spacing: var(--type-label-sm-tracking);
+  color: var(--on-surface-muted);
+}
+
+.dash-line-tip-row {
+  display: grid;
+  grid-template-columns: auto auto 1fr;
+  align-items: center;
+  gap: var(--space-1) var(--space-2);
+  font: var(--type-body-sm);
+  letter-spacing: var(--type-body-sm-tracking);
+}
+
+.dash-line-tip-value {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  text-align: end;
 }
 
 .dash-svg {

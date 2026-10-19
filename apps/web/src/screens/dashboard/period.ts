@@ -21,6 +21,7 @@ export const usePeriodTags = () =>
         today: q.tagToday,
         recent: q.dailyRecent,
         prev: q.prevMonth,
+        prevMissing: q.prevMissing,
         flat: q.deltaFlat,
       }
     : {
@@ -29,5 +30,6 @@ export const usePeriodTags = () =>
         today: q.tagPeriod,
         recent: q.tagPeriod,
         prev: q.prevPeriod,
+        prevMissing: q.prevMissingPeriod,
         flat: q.deltaFlatPeriod,
       };

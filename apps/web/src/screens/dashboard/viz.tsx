@@ -1,6 +1,6 @@
 import { Card, Chip, EmptyState, IconButton, Tooltip, type ChipStatus } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { useEffect, useRef, type MouseEvent, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type MouseEvent, type ReactNode } from 'react';
 
 import { formatFigure } from './types';
 import {
@@ -326,16 +326,26 @@ export interface LotCounts {
 }
 
 /** 검사 LOT 미니 막대 — 합격(회색) · 불합격(error) · 검사 보류(warning). 숫자는 옆 글이 말한다. */
-export const MiniLotBar = ({ counts }: { counts: LotCounts }) => {
+export const MiniLotBar = ({
+  counts,
+  order = 'default',
+}: {
+  counts: LotCounts;
+  /** `legend` — 글(합격 · 불합격 · 검사 보류)과 같은 순서(품질 종합). 기본은 합격 · 검사 보류 · 불합격. */
+  order?: 'default' | 'legend';
+}) => {
   const total = counts.accepted + counts.rejected + counts.held;
   if (total === 0) return null;
   const pct = (value: number): string => `${String((value / total) * 100)}%`;
+  const held = (
+    <span key="held" className="dash-minibar-held" style={{ width: pct(counts.held) }} />
+  );
+  const ng = <span key="ng" className="dash-minibar-ng" style={{ width: pct(counts.rejected) }} />;
 
   return (
     <span className="dash-minibar" aria-hidden="true">
       <span className="dash-minibar-ok" style={{ width: pct(counts.accepted) }} />
-      <span className="dash-minibar-held" style={{ width: pct(counts.held) }} />
-      <span className="dash-minibar-ng" style={{ width: pct(counts.rejected) }} />
+      {order === 'legend' ? [ng, held] : [held, ng]}
     </span>
   );
 };
@@ -404,6 +414,131 @@ const spreadLabels = (ys: readonly (number | null)[]): (number | null)[] => {
   return placed;
 };
 
+/** 툴팁과 날짜 칸 사이 간격(px). */
+const LINE_TIP_GAP = 12;
+
+/**
+ * 일별 꺾은선 툴팁(⭐ 사용자 지시 2026-10-19 — 품질 종합, 대시보드 탭 추이 툴팁 참고). 그림 위에 날짜 칸마다 투명한
+ * 단추를 겹친다. 마우스 올림 · 키보드 포커스로 보이고, 누르면(터치) 고정 · 다른 곳을 누르면 닫힌다. 내용은 날짜 +
+ * 계열(IQC · PQC · OQC)별 합격률(값이 없는 날은 「—」). 말풍선은 날짜 칸 오른쪽에, 자리가 모자라면 왼쪽에 연다 —
+ * 그림 밖으로 나가지 않는다. 고른 날짜에는 세로 안내선.
+ */
+const LineTips = ({
+  series,
+  labels,
+  width,
+  height,
+  xAt,
+}: {
+  series: readonly LineSeries[];
+  labels: readonly string[];
+  width: number;
+  height: number;
+  xAt: (index: number) => number;
+}) => {
+  const [hovered, setHovered] = useState<number | null>(null);
+  const [pinned, setPinned] = useState<number | null>(null);
+  const [tipWidth, setTipWidth] = useState(140);
+  const layerRef = useRef<HTMLDivElement>(null);
+  const tipRef = useRef<HTMLDivElement>(null);
+  const shown = hovered ?? pinned;
+  const count = labels.length;
+
+  useEffect(() => {
+    if (pinned === null) return undefined;
+    const onPointerDown = (event: PointerEvent) => {
+      if (!(event.target instanceof Node) || layerRef.current?.contains(event.target) !== true) {
+        setPinned(null);
+        setHovered(null);
+      }
+    };
+    document.addEventListener('pointerdown', onPointerDown);
+
+    return () => {
+      document.removeEventListener('pointerdown', onPointerDown);
+    };
+  }, [pinned]);
+
+  useEffect(() => {
+    const measured = tipRef.current?.offsetWidth ?? 0;
+    if (measured > 0 && measured !== tipWidth) setTipWidth(measured);
+  });
+
+  if (count === 0) return null;
+  const plotW = width - PAD.left - PAD.right;
+  const slot = count <= 1 ? plotW : plotW / (count - 1);
+  const valueText = (value: number | null | undefined): string =>
+    value === null || value === undefined ? t.tipNone : t.tipRate(formatFigure(value));
+  const textOf = (index: number): string =>
+    [
+      labels[index] ?? '',
+      ...series.map((entry) => `${entry.name} ${valueText(entry.points[index]?.value)}`),
+    ].join(' · ');
+
+  const x = shown === null ? 0 : xAt(shown);
+  const right = x + LINE_TIP_GAP;
+  const left = right + tipWidth <= width ? right : Math.max(0, x - LINE_TIP_GAP - tipWidth);
+
+  return (
+    <div ref={layerRef} className="dash-line-tips" style={{ width, height }}>
+      {labels.map((label, index) => (
+        <button
+          key={label}
+          type="button"
+          className="dash-line-hit"
+          style={{
+            left: xAt(index) - slot / 2,
+            width: slot,
+            top: PAD.top,
+            height: height - PAD.top - PAD.bottom,
+          }}
+          aria-label={textOf(index)}
+          onMouseEnter={() => {
+            setHovered(index);
+          }}
+          onMouseLeave={() => {
+            setHovered(null);
+          }}
+          onFocus={() => {
+            setHovered(index);
+          }}
+          onBlur={() => {
+            setHovered(null);
+          }}
+          onClick={() => {
+            setPinned((current) => (current === index ? null : index));
+          }}
+          onKeyDown={(event) => {
+            if (event.key === 'Escape') {
+              setHovered(null);
+              setPinned(null);
+            }
+          }}
+        />
+      ))}
+      {shown !== null && (
+        <>
+          <span
+            className="dash-line-guide"
+            style={{ left: x, top: PAD.top, height: height - PAD.top - PAD.bottom }}
+            aria-hidden="true"
+          />
+          <div ref={tipRef} role="tooltip" className="dash-line-tip" style={{ left, top: PAD.top }}>
+            <span className="dash-line-tip-date">{labels[shown]}</span>
+            {series.map((entry) => (
+              <span key={entry.name} className="dash-line-tip-row">
+                <span className={`dash-swatch dash-line-${String(entry.tone)}`} />
+                <span className="dash-line-tip-name">{entry.name}</span>
+                <span className="dash-line-tip-value">{valueText(entry.points[shown]?.value)}</span>
+              </span>
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  );
+};
+
 export interface LineSeries {
   name: string;
   points: SeriesPoint[];
@@ -419,11 +554,17 @@ export const MultiLineChart = ({
   series,
   caption,
   height,
+  tooltip = false,
+  tipLabels,
 }: {
   series: LineSeries[];
   caption: string;
   /** 그림 높이(px). 없으면 기본 높이 — 품질 탭이 행 높이에 맞출 때만 준다(`FitChart`). */
   height?: number;
+  /** 날짜 칸 툴팁(날짜 + 계열별 값) — 품질 종합 탭만 켠다(사용자 지시 2026-10-19). */
+  tooltip?: boolean;
+  /** 툴팁 머리에 쓸 날짜(점 이름표와 같은 순서). 없으면 이름표. */
+  tipLabels?: readonly string[];
 }) => {
   const [figureRef, W] = useChartWidth<HTMLElement>();
   const H = height ?? CHART_H;
@@ -463,81 +604,92 @@ export const MultiLineChart = ({
           ))}
         </ul>
       )}
-      <svg
-        viewBox={`0 0 ${String(W)} ${String(H)}`}
-        className="dash-svg"
-        role="img"
-        aria-label={caption}
-      >
-        {ticks.map((tick) => (
-          <g key={tick}>
-            <line
-              className="dash-grid"
-              x1={PAD.left}
-              x2={W - PAD.right}
-              y1={yAt(tick)}
-              y2={yAt(tick)}
-            />
-            <text className="dash-axis" x={PAD.left - 6} y={yAt(tick) + 4} textAnchor="end">
-              {formatFigure(tick)}
-            </text>
-          </g>
-        ))}
-        {labels.map((label, index) =>
-          index % labelStep !== 0 ? null : (
-            <text
-              key={label}
-              className="dash-axis"
-              x={xAt(index, labels.length)}
-              y={H - 8}
-              textAnchor="middle"
-            >
-              {label}
-            </text>
-          ),
-        )}
-        {series.map((entry, seriesIndex) => {
-          const segments = toLineSegments(entry.points);
-          const last = segments.at(-1)?.at(-1);
-
-          return (
-            <g key={entry.name} className={`dash-line-${String(entry.tone)}`}>
-              {segments.map((segment) => (
-                <polyline
-                  key={segment[0]?.index}
-                  className="dash-line"
-                  points={segment
-                    .map(
-                      (point) =>
-                        `${String(xAt(point.index, labels.length))},${String(yAt(point.value))}`,
-                    )
-                    .join(' ')}
-                />
-              ))}
-              {segments.flat().map((point) => (
-                <circle
-                  key={point.index}
-                  className="dash-point"
-                  cx={xAt(point.index, labels.length)}
-                  cy={yAt(point.value)}
-                  r={3}
-                />
-              ))}
-              {last !== undefined && (
-                <text
-                  className="dash-line-end"
-                  x={xAt(last.index, labels.length) + 8}
-                  y={endLabelY[seriesIndex] ?? yAt(last.value) + 4}
-                >
-                  {series.length > 1
-                    ? `${entry.name} ${formatFigure(last.value)}`
-                    : formatFigure(last.value)}
-                </text>
-              )}
+      <div className="dash-svg-wrap">
+        <svg
+          viewBox={`0 0 ${String(W)} ${String(H)}`}
+          className="dash-svg"
+          role="img"
+          aria-label={caption}
+        >
+          {ticks.map((tick) => (
+            <g key={tick}>
+              <line
+                className="dash-grid"
+                x1={PAD.left}
+                x2={W - PAD.right}
+                y1={yAt(tick)}
+                y2={yAt(tick)}
+              />
+              <text className="dash-axis" x={PAD.left - 6} y={yAt(tick) + 4} textAnchor="end">
+                {formatFigure(tick)}
+              </text>
             </g>
-          );
-        })}
-      </svg>
+          ))}
+          {labels.map((label, index) =>
+            index % labelStep !== 0 ? null : (
+              <text
+                key={label}
+                className="dash-axis"
+                x={xAt(index, labels.length)}
+                y={H - 8}
+                textAnchor="middle"
+              >
+                {label}
+              </text>
+            ),
+          )}
+          {series.map((entry, seriesIndex) => {
+            const segments = toLineSegments(entry.points);
+            const last = segments.at(-1)?.at(-1);
+
+            return (
+              <g key={entry.name} className={`dash-line-${String(entry.tone)}`}>
+                {segments.map((segment) => (
+                  <polyline
+                    key={segment[0]?.index}
+                    className="dash-line"
+                    points={segment
+                      .map(
+                        (point) =>
+                          `${String(xAt(point.index, labels.length))},${String(yAt(point.value))}`,
+                      )
+                      .join(' ')}
+                  />
+                ))}
+                {segments.flat().map((point) => (
+                  <circle
+                    key={point.index}
+                    className="dash-point"
+                    cx={xAt(point.index, labels.length)}
+                    cy={yAt(point.value)}
+                    r={3}
+                  />
+                ))}
+                {last !== undefined && (
+                  <text
+                    className="dash-line-end"
+                    x={xAt(last.index, labels.length) + 8}
+                    y={endLabelY[seriesIndex] ?? yAt(last.value) + 4}
+                  >
+                    {series.length > 1
+                      ? `${entry.name} ${formatFigure(last.value)}`
+                      : formatFigure(last.value)}
+                  </text>
+                )}
+              </g>
+            );
+          })}
+        </svg>
+        {tooltip && (
+          <LineTips
+            series={series}
+            labels={tipLabels ?? labels}
+            width={W}
+            height={H}
+            xAt={(index) => xAt(index, labels.length)}
+          />
+        )}
+      </div>
       {/* 숨김 표는 감싼 상자로 줄인다 — 표는 높이 1px 를 받지 않아 행 수만큼 페이지 아래에 빈 스크롤을 만들었다. */}
       <div className="dash-sr-only">
         <table>

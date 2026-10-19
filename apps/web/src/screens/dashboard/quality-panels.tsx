@@ -66,14 +66,19 @@ export const rateDelta = (
   month: number | null,
   prev: number | null,
   flatText: string = t.deltaFlat,
+  /** 품질 종합 KPI 는 %p(사용자 지시 2026-10-19), 다른 탭은 기존 p. */
+  unit: 'p' | '%p' = 'p',
 ): { direction: 'up' | 'down' | 'flat'; text: string } | null => {
   if (month === null || prev === null) return null;
   const diff = Math.round((month - prev) * 10) / 10;
 
   return diff > 0
-    ? { direction: 'up', text: t.deltaUp(formatFigure(diff)) }
+    ? { direction: 'up', text: (unit === '%p' ? t.deltaUpPp : t.deltaUp)(formatFigure(diff)) }
     : diff < 0
-      ? { direction: 'down', text: t.deltaDown(formatFigure(-diff)) }
+      ? {
+          direction: 'down',
+          text: (unit === '%p' ? t.deltaDownPp : t.deltaDown)(formatFigure(-diff)),
+        }
       : { direction: 'flat', text: flatText };
 };
 
@@ -96,6 +101,74 @@ const Row = ({
 }) => (
   /* 품질 탭의 차트 + 짧은 상자 줄은 중간 폭에서 오른쪽을 넓힌다(`.dash-row2-quality`) — 업체 표가 잘렸다. */
   <div className={kind === 'row2' ? 'dash-row2 dash-row2-quality' : `dash-${kind}`}>{children}</div>
+);
+
+/**
+ * 품질 종합 KPI 의 합격률 칸(⭐ 사용자 지시 2026-10-19) — 이름 → 현재 합격률(숫자 크게 · % 작게) → 전월 값 · 증감
+ * (↑ · ↓ %p, 대시보드와 같은 색). 전월 값이 없으면 증감을 지어내지 않고 「전월 데이터 없음」. 다른 탭은
+ * `PassRateTile` 그대로다.
+ */
+const OverviewPassRateTile = ({
+  label,
+  block,
+}: {
+  label: string;
+  block: DashboardQualityTypeBlock;
+}) => {
+  const tags = usePeriodTags();
+  const delta = rateDelta(block.monthPassRate, block.prevMonthPassRate, tags.flat, '%p');
+
+  return (
+    <KpiTile
+      label={label}
+      tag={tags.month}
+      value={block.monthPassRate === null ? t.rateNone : formatFigure(block.monthPassRate)}
+      unit={block.monthPassRate === null ? undefined : '%'}
+    >
+      <span className="dash-kpi-compare">
+        {block.prevMonthPassRate === null ? (
+          tags.prevMissing
+        ) : (
+          <>
+            {tags.prev(formatRate(block.prevMonthPassRate))}
+            {delta !== null && (
+              <>
+                {' · '}
+                <DeltaMark direction={delta.direction}>{delta.text}</DeltaMark>
+              </>
+            )}
+          </>
+        )}
+      </span>
+    </KpiTile>
+  );
+};
+
+/**
+ * 품질 종합 KPI 의 금일 검사 LOT 칸(⭐ 사용자 지시 2026-10-19) — 합계를 크게, 그 아래 합격 · 불합격 · 검사 보류를
+ * 막대와 같은 색 점으로 구분하고(색만으로 말하지 않게 글도 함께), 막대는 같은 순서로 그린다. 0건이면 막대 없음.
+ */
+const OverviewLotTile = ({
+  label,
+  tag,
+  counts,
+}: {
+  label: string;
+  tag: string;
+  counts: DashboardLotCounts;
+}) => (
+  <KpiTile label={label} tag={tag} value={formatFigure(lotTotal(counts))} unit={t.lotUnit}>
+    <span className="dash-lot-legend">
+      {(['accepted', 'rejected', 'held'] as const).map((key) => (
+        <span key={key} className="dash-lot-legend-item">
+          <span className={`dash-lot-key dash-lot-key-${key}`} aria-hidden="true" />
+          {t.lotLegend[key]}
+          <strong>{formatFigure(counts[key])}</strong>
+        </span>
+      ))}
+    </span>
+    <MiniLotBar counts={counts} order="legend" />
+  </KpiTile>
 );
 
 const PassRateTile = ({
@@ -148,6 +221,12 @@ const LotTile = ({
   </KpiTile>
 );
 
+/** 툴팁 머리의 날짜(YYYY.MM.DD) — 첫 유형의 날짜 축을 쓴다(세 유형이 같은 날짜 축이다). */
+const tipDates = (quality: DashboardQuality, kinds: readonly QualityKind[]): string[] =>
+  kinds[0] === undefined
+    ? []
+    : blockOf(quality, kinds[0]).dailyPassRates.map((entry) => entry.date.replaceAll('-', '.'));
+
 const dailySeries = (quality: DashboardQuality, kinds: readonly QualityKind[]): LineSeries[] =>
   kinds.map((kind, index) => ({
     name: kind,
@@ -175,7 +254,16 @@ const QUALITY_FILL_MIN_WIDTH = 861;
  */
 const FitSlackContext = createContext<(slack: number) => void>(() => undefined);
 
-const QualityTabFrame = ({ children }: { children: ReactNode }) => {
+const QualityTabFrame = ({
+  children,
+  fill: fillScreen = true,
+  className,
+}: {
+  children: ReactNode;
+  /** 화면 아래까지 남은 높이 채우기 — 품질 종합은 끈다(카드 높이는 내용대로 · 사용자 지시 2026-10-19). */
+  fill?: boolean;
+  className?: string;
+}) => {
   const [element, setElement] = useState<HTMLDivElement | null>(null);
   const [wide, setWide] = useState(false);
   const [reduction, setReduction] = useState(0);
@@ -198,13 +286,21 @@ const QualityTabFrame = ({ children }: { children: ReactNode }) => {
   }, [element]);
 
   const style =
-    fill === null || !wide
+    fill === null || !wide || !fillScreen
       ? undefined
       : ({ '--dash-fill': `${String(Math.max(0, fill - reduction))}px` } as CSSProperties);
 
   return (
     <FitSlackContext.Provider value={reportSlack}>
-      <div ref={setElement} className="dash-tab dash-tab-quality" style={style}>
+      <div
+        ref={setElement}
+        className={
+          className === undefined
+            ? 'dash-tab dash-tab-quality'
+            : `dash-tab dash-tab-quality ${className}`
+        }
+        style={style}
+      >
         {children}
       </div>
     </FitSlackContext.Provider>
@@ -260,10 +356,13 @@ const DailyPanel = ({
   quality,
   kinds,
   title,
+  tooltip = false,
 }: {
   quality: DashboardQuality;
   kinds: readonly QualityKind[];
   title: string;
+  /** 날짜 칸 툴팁(날짜 + 유형별 합격률) — 품질 종합만(사용자 지시 2026-10-19). */
+  tooltip?: boolean;
 }) => {
   const tags = usePeriodTags();
   const series = dailySeries(quality, kinds);
@@ -278,7 +377,15 @@ const DailyPanel = ({
     >
       {hasPoints ? (
         <FitChart>
-          {(height) => <MultiLineChart series={series} caption={title} height={height} />}
+          {(height) => (
+            <MultiLineChart
+              series={series}
+              caption={title}
+              height={height}
+              tooltip={tooltip}
+              tipLabels={tooltip ? tipDates(quality, kinds) : undefined}
+            />
+          )}
         </FitChart>
       ) : (
         <MultiLineChart series={series} caption={title} />
@@ -333,10 +440,13 @@ const RecentLotsPanel = ({
   title,
   rows,
   counterpart,
+  itemTitle = false,
 }: {
   title: string;
   rows: RecentLotRow[];
   counterpart: Counterpart;
+  /** 품목 칸 마우스 올림 글(코드 · 이름) — 품질 종합만(사용자 지시 2026-10-19). */
+  itemTitle?: boolean;
 }) => (
   <Panel title={title} tag={t.recentLotsLead}>
     {/* 제목은 패널이 이미 말한다 — 표 제목(caption)을 두면 같은 말이 두 번 보인다. 이름은 aria-label 로. */}
@@ -352,7 +462,17 @@ const RecentLotsPanel = ({
           {
             key: 'item',
             header: t.column.item,
-            render: (row) => <span className="dash-cell-wrap">{row.itemCode}</span>,
+            /* 품목 전체(코드 · 이름)는 마우스 올림 글로 — 품질 종합은 좁은 칸에서 말줄임(사용자 지시 2026-10-19). */
+            render: (row) => (
+              <span
+                className="dash-cell-wrap dash-cell-item"
+                title={
+                  itemTitle ? [row.itemCode, row.itemName].filter(Boolean).join(' ') : undefined
+                }
+              >
+                {row.itemCode}
+              </span>
+            ),
           },
           /*
            * LOT 열을 두지 않는다 — 시안의 표는 일자 · 구분 · CODE · 수량 · 판정이고, 좁은 row3 칸에서 LOT 열이
@@ -407,37 +527,42 @@ export const QualityOverviewTab = ({ quality }: { quality: DashboardQuality }) =
   ]).held;
 
   return (
-    <QualityTabFrame>
+    <QualityTabFrame fill={false} className="dash-tab-quality-overview">
       <div className="dash-kpis">
-        <PassRateTile label={t.passRateOf('IQC')} block={quality.iqc} showDelta />
-        <PassRateTile label={t.passRateOf('PQC')} block={quality.pqc} />
-        <PassRateTile label={t.passRateOf('OQC')} block={quality.oqc} />
-        <LotTile label={t.todayLots} tag={tags.today} counts={todayLots} />
+        <OverviewPassRateTile label={t.passRateOf('IQC')} block={quality.iqc} />
+        <OverviewPassRateTile label={t.passRateOf('PQC')} block={quality.pqc} />
+        <OverviewPassRateTile label={t.passRateOf('OQC')} block={quality.oqc} />
+        <OverviewLotTile label={t.todayLots} tag={tags.today} counts={todayLots} />
         <KpiTile
           label={t.customerReturn}
           tag={tags.month}
           value={formatFigure(quality.oqc.customerReturnQty)}
           unit={t.qtyUnit}
         >
-          <span>{t.customerReturnNote}</span>
+          <span>{t.customerReturnNoteShort}</span>
         </KpiTile>
       </div>
-      <Row kind="row2">
-        <DailyPanel quality={quality} kinds={['IQC', 'PQC', 'OQC']} title={t.dailyTitleAll} />
-        <Panel title={t.vendorDefects} sub={t.qtyShareSub} tag={tags.monthTotal}>
-          <RankBars
-            entries={quality.iqc.vendorDefects.map((entry) => ({
-              key: String(entry.partnerId),
-              label: entry.partnerName,
-              value: entry.rejectedQty,
-            }))}
-          />
-        </Panel>
-      </Row>
-      <Row kind="split">
-        <div className="dash-stack">
-          <Panel title={t.phenomena} sub={t.qtyShareSub} tag={tags.month}>
-            <RankBars entries={phenomenaEntries(quality.nonconformance.phenomena)} />
+      {/*
+       * ⭐ 품질 종합 배치(사용자 지시 2026-10-19 — 카드 5개 그대로, 카드 높이는 내용대로). 위: 일별 합격률(넓게) |
+       * 업체별 IQC 불량 · 현재 현황(짧은 목록 둘을 세로로) — 그래프가 오른쪽 묶음 높이에 맞춰 커진다(상한 480).
+       * 아래: 불량현상 구성비 | 최근 검사 LOT 판정 — 둘 다 내용 높이. 같은 행을 같은 높이로 늘이지 않는다.
+       */}
+      <div className="dash-qo-top">
+        <DailyPanel
+          quality={quality}
+          kinds={['IQC', 'PQC', 'OQC']}
+          title={t.dailyTitleAll}
+          tooltip
+        />
+        <div className="dash-qo-side">
+          <Panel title={t.vendorDefects} sub={t.qtyShareSub} tag={tags.monthTotal}>
+            <RankBars
+              entries={quality.iqc.vendorDefects.map((entry) => ({
+                key: String(entry.partnerId),
+                label: entry.partnerName,
+                value: entry.rejectedQty,
+              }))}
+            />
           </Panel>
           <Panel title={t.currentTitle} tag={t.tagNow}>
             <StatusList
@@ -476,8 +601,18 @@ export const QualityOverviewTab = ({ quality }: { quality: DashboardQuality }) =
             />
           </Panel>
         </div>
-        <RecentLotsPanel title={t.recentLots} rows={toRecentLotRows(quality)} counterpart="kind" />
-      </Row>
+      </div>
+      <div className="dash-qo-bottom">
+        <Panel title={t.phenomena} sub={t.qtyShareSub} tag={tags.month}>
+          <RankBars entries={phenomenaEntries(quality.nonconformance.phenomena)} />
+        </Panel>
+        <RecentLotsPanel
+          title={t.recentLots}
+          rows={toRecentLotRows(quality)}
+          counterpart="kind"
+          itemTitle
+        />
+      </div>
     </QualityTabFrame>
   );
 };

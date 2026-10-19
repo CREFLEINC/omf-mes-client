@@ -235,6 +235,9 @@ export const dashboard = {
     infoLabel: (name: string): string => `${name} 설명`,
     noRates: '이 기간에 합격률을 낼 수 있는 날이 없습니다.',
     dateColumn: '일자',
+    /** 일별 꺾은선 툴팁(품질 종합) — 값이 없는 날은 「—」. */
+    tipNone: '—',
+    tipRate: (value: string): string => `${value}%`,
     itemColumn: '항목',
     qtyColumn: '수량',
     cumulativeColumn: '누적 비율',
@@ -258,6 +261,12 @@ export const dashboard = {
     tagNow: '현재',
     passRateOf: (kind: string): string => `${kind} 합격률`,
     prevMonth: (rate: string): string => `전월 ${rate}`,
+    /** ⭐ 품질 종합 KPI(사용자 지시 2026-10-19) — 비교 값이 없으면 증감을 지어내지 않는다. %p 표기. */
+    prevMissing: '전월 데이터 없음',
+    prevMissingPeriod: '직전 기간 데이터 없음',
+    deltaUpPp: (p: string): string => `↑ ${p}%p`,
+    deltaDownPp: (p: string): string => `↓ ${p}%p`,
+    lotLegend: { accepted: '합격', rejected: '불합격', held: '검사 보류' },
     prevPeriod: (rate: string): string => `직전 기간 ${rate}`,
     deltaUp: (p: string): string => `↑ ${p}p`,
     deltaDown: (p: string): string => `↓ ${p}p`,
@@ -330,6 +339,8 @@ export const dashboard = {
     ngShort: (qty: string): string => `NG ${qty}`,
     customerReturn: '고객 반품',
     customerReturnNote: '당월 고객 반품 입고 수량',
+    /** 품질 종합 KPI — 기준 기간은 배지가 말하므로 설명은 짧게(사용자 지시 2026-10-19). */
+    customerReturnNoteShort: '반품 입고 기준',
     ncMonthQty: '부적합 발생 수량',
     ncOpen: '미종결 부적합',
     ncOverdue: '조치 기한 초과',

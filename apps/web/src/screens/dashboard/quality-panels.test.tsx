@@ -1,5 +1,6 @@
 import { messages } from '@omf-mes/i18n';
 import { render, screen, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 
 import { quality, qualityBlock } from './quality.fixture';
@@ -32,11 +33,17 @@ describe('품질 탭', () => {
     render(<QualityOverviewTab quality={quality()} />);
 
     expect(screen.getByRole('group', { name: t.passRateOf('IQC') })).toBeInTheDocument();
-    /* 이름과 숫자 사이는 붙는 칸(U+00A0) — 화면 글자를 비교할 때는 보통 칸으로 본다. */
-    expect(
-      screen.getByText(t.lotBreakdown('6', '3', '3').replace(/\u00a0/g, ' ')),
-    ).toBeInTheDocument();
+    /* 금일 검사 LOT — 합계 크게, 합격 · 불합격 · 검사 보류를 막대와 같은 색 점 + 이름 + 수량으로(사용자 지시 2026-10-19). */
+    const lots = screen.getByRole('group', { name: t.todayLots });
+    expect(lots).toHaveTextContent('12');
+    expect(lots.querySelectorAll('.dash-lot-legend-item')).toHaveLength(3);
+    expect(lots).toHaveTextContent(
+      `${t.lotLegend.accepted}6${t.lotLegend.rejected}3${t.lotLegend.held}3`,
+    );
     expect(screen.getByRole('group', { name: t.customerReturn })).toHaveTextContent('40');
+    expect(screen.getByRole('group', { name: t.customerReturn })).toHaveTextContent(
+      t.customerReturnNoteShort,
+    );
     expect(screen.getByRole('img', { name: t.dailyTitleAll })).toBeInTheDocument();
     /* 불량현상이 빈 배열이면 「기록 없음」. */
     expect(screen.getByText(v.noRecords)).toBeInTheDocument();
@@ -153,5 +160,35 @@ describe('품질 탭', () => {
     /* 부적합 파레토가 비었으면 높이 맞춤 자리를 두지 않는다. */
     const nc = render(<NonconformanceTab quality={quality()} />);
     expect(nc.container.querySelector('.dash-chart-fit')).toBeNull();
+  });
+
+  it('품질 종합 합격률 — 숫자와 % 를 나누고, 전월 값이 없으면 「전월 데이터 없음」, 있으면 증감 %p(사용자 지시 2026-10-19)', () => {
+    const data = quality();
+    data.pqc = { ...data.pqc, monthPassRate: 90.4, prevMonthPassRate: 92.7 };
+    render(<QualityOverviewTab quality={data} />);
+
+    expect(screen.getByRole('group', { name: t.passRateOf('IQC') })).toHaveTextContent(
+      t.prevMissing,
+    );
+    const pqc = screen.getByRole('group', { name: t.passRateOf('PQC') });
+    expect(pqc).toHaveTextContent('90.4%');
+    expect(pqc).toHaveTextContent('전월 92.7% · ↓ 2.3%p');
+    expect(pqc.querySelector('.dash-delta')).toHaveClass('dash-delta-bad');
+  });
+
+  it('품질 종합 일별 합격률 — 날짜 칸에 마우스를 올리면 날짜와 유형별 합격률(다른 탭은 툴팁 없음)', async () => {
+    const user = userEvent.setup();
+    const { unmount } = render(<QualityOverviewTab quality={quality()} />);
+
+    const hit = screen.getAllByRole('button', { name: /^2026\.10\.14/ })[0];
+    if (hit === undefined) throw new Error('날짜 칸 단추가 없다');
+    await user.hover(hit);
+    const tip = screen.getByRole('tooltip');
+    expect(tip).toHaveTextContent('2026.10.14');
+    expect(tip).toHaveTextContent('IQC95%');
+    unmount();
+
+    const iqc = render(<IqcTab quality={quality()} />);
+    expect(iqc.container.querySelector('.dash-line-tips')).toBeNull();
   });
 });
