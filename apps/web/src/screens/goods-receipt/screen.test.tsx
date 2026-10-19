@@ -1728,15 +1728,15 @@ describe('GoodsReceiptScreen — 코드 목록이 확정되지 않은 지금', (
     expect(within(pane).getAllByText(t.filters.codePending)).toHaveLength(3);
   });
 
-  /* 영업일 입력칸은 없다 — 어디서 정해지는지 「입고 정보」 제목 옆에 밝힌다(계획 결정 10). */
-  it('영업일이 입고 일자에서 정해진다는 사실을 밝힌다', async () => {
+  /* 영업일·공장은 고르는 칸이 없다 — 저절로 정해진다는 사실을 「입고 정보」 제목 옆 한 줄로 밝힌다. */
+  it('공장·영업일이 자동 적용된다는 사실을 밝힌다', async () => {
     const { user } = renderScreen(allRoutes(), '?ir=9001');
 
     await openPostPane(user);
 
     const pane = screen.getByRole('region', { name: t.panes.post });
 
-    expect(within(pane).getByText(t.notes.businessDateDerived)).toBeInTheDocument();
+    expect(within(pane).getByText(t.notes.autoApplied)).toBeInTheDocument();
   });
 });
 
@@ -1782,17 +1782,6 @@ describe('GoodsReceiptScreen — 코드 목록이 채워지면', () => {
     expect(screen.getByRole('combobox', { name: t.fields.qualityStatus })).toHaveTextContent(
       SAMPLE_QUALITY,
     );
-  });
-
-  /* 공장은 고르는 칸이 아니다 — 「입고 정보」 제목 옆에서 밝힌다(사용자 지시). */
-  it('입고 정보에 공장이 입하 전표에서 온다는 안내가 있다', async () => {
-    const { user } = renderScreen(allRoutes(), '?ir=9001');
-
-    await openPostPane(user);
-
-    const pane = screen.getByRole('region', { name: t.panes.post });
-
-    expect(within(pane).getByText(t.notes.plantFromInboundReceipt)).toBeInTheDocument();
   });
 
   /* 한 칸을 채우면 다음 칸이 열리고 포커스가 그 칸으로 옮겨 간다(사용자 지시). */
@@ -2989,7 +2978,12 @@ describe('GoodsReceiptScreen — 입고 전 선별(P-56)', () => {
     expect(
       within(screen.getByRole('radiogroup', { name: t.notes.receiptTarget.label })).getByRole(
         'radio',
-        { name: t.notes.receiptTarget.good(t.lineTable.receivedQtyPair(35, 'SAMPLE-EA')) },
+        {
+          name: t.notes.receiptTarget.option(
+            t.notes.receiptTarget.goodName,
+            t.lineTable.receivedQtyPair(35, 'SAMPLE-EA'),
+          ),
+        },
       ),
     ).toBeChecked();
     await clickPost(user);
@@ -3010,7 +3004,10 @@ describe('GoodsReceiptScreen — 입고 전 선별(P-56)', () => {
     await openPostPane(user);
 
     const splitOption = screen.getByRole('radio', {
-      name: t.notes.receiptTarget.split(t.lineTable.receivedQtyPair(15, 'SAMPLE-EA')),
+      name: t.notes.receiptTarget.option(
+        t.notes.receiptTarget.splitName,
+        t.lineTable.receivedQtyPair(15, 'SAMPLE-EA'),
+      ),
     });
     await user.click(splitOption);
 

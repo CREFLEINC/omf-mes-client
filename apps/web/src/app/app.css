@@ -13691,18 +13691,18 @@ button.app-button-neutral {
 }
 
 /*
- * 입고 정보 폼 — 12칸 격자, DOM 차례(= 입력 순서) 그대로 왼쪽→오른쪽으로 채워 줄 끝이 비지 않게 한다(담당자 지시).
- * 넓은 화면(1400px 이상):
- *   어디에·무엇으로  창고 4 · 위치 4 · 입고 유형 2 · 원천 문서 유형 2
- *   상태·사유·언제   품질 상태 2 · 재고 상태 2 · 사유 4 · 입고 일자 2 · 입고 시각 2
- *   비고 12
- * 좁으면 두 칸(각 6) — 사유 6 · 일자 3 · 시각 3 으로 한 줄을 채우고, 비고는 줄 전체.
- * 아주 좁으면(720px 이하) 한 칸 — 일자·시각만 나란히.
- * 안쪽 묶음의 `.form-grid` 는 풀어 칸이 이 격자에 바로 선다. 안내·재시도 같은 칸 아닌 것은 줄 전체를 쓴다.
+ * 입고 정보 폼 — 입력 순서대로 묶음마다 한 줄(담당자 지시):
+ *   입고 창고 · 적치 위치            (3 · 3)
+ *   입고 유형 · 원천 문서 유형        (3 · 3)
+ *   품질 상태 · 재고 상태 · 사유      (2 · 2 · 2)
+ *   입고 일시(날짜+시각) · 비고       (3 · 3)
+ * 6칸 격자라 모든 줄이 페인 끝까지 차고(오른쪽 빈 공간 없음), 칸 사이 세로선이 줄마다 맞는다.
+ * 900px 이하는 두 칸, 600px 이하는 한 칸.
+ * 안쪽 묶음의 `.form-grid` 는 풀어(`display: contents`) 칸이 이 격자에 바로 선다 — DOM 차례 = 입력 순서 = 보이는 차례.
  */
 .goods-receipt-post-form {
   display: grid;
-  grid-template-columns: repeat(12, minmax(0, 1fr));
+  grid-template-columns: repeat(6, minmax(0, 1fr));
   gap: var(--space-4);
   margin-bottom: var(--space-4);
 }
@@ -13716,54 +13716,55 @@ button.app-button-neutral {
 }
 
 .goods-receipt-post-form .field-cell {
-  grid-column: span 6;
-}
-
-.goods-receipt-post-form .goods-receipt-receipt-date,
-.goods-receipt-post-form .goods-receipt-receipt-time {
   grid-column: span 3;
 }
 
-.goods-receipt-post-form .goods-receipt-remarks {
-  grid-column: 1 / -1;
+.goods-receipt-post-form .goods-receipt-step-qualityStatus,
+.goods-receipt-post-form .goods-receipt-step-inventoryStatus,
+.goods-receipt-post-form .goods-receipt-step-reason {
+  grid-column: span 2;
 }
 
-@media (min-width: 1400px) {
-  .goods-receipt-post-form .goods-receipt-step-warehouse,
-  .goods-receipt-post-form .goods-receipt-step-location,
-  .goods-receipt-post-form .goods-receipt-step-reason {
-    grid-column: span 4;
-  }
+/* 입고 일시 — 날짜와 시각을 한 라벨 아래 나란히. 날짜가 조금 더 넓다. */
+.goods-receipt-datetime-pair {
+  display: grid;
+  grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+  gap: var(--space-2);
+  align-items: start;
+}
 
-  .goods-receipt-post-form .goods-receipt-step-receiptType,
-  .goods-receipt-post-form .goods-receipt-step-sourceDocumentType,
+.goods-receipt-datetime-pair > * {
+  min-width: 0;
+}
+
+@media (max-width: 900px) {
+  .goods-receipt-post-form .field-cell,
   .goods-receipt-post-form .goods-receipt-step-qualityStatus,
-  .goods-receipt-post-form .goods-receipt-step-inventoryStatus,
-  .goods-receipt-post-form .goods-receipt-receipt-date,
-  .goods-receipt-post-form .goods-receipt-receipt-time {
-    grid-column: span 2;
+  .goods-receipt-post-form .goods-receipt-step-inventoryStatus {
+    grid-column: span 3;
   }
-}
 
-@media (max-width: 720px) {
-  .goods-receipt-post-form .field-cell {
+  .goods-receipt-post-form .goods-receipt-step-reason,
+  .goods-receipt-post-form .goods-receipt-remarks {
     grid-column: 1 / -1;
   }
+}
 
-  .goods-receipt-post-form .goods-receipt-receipt-date,
-  .goods-receipt-post-form .goods-receipt-receipt-time {
-    grid-column: span 6;
+@media (max-width: 600px) {
+  .goods-receipt-post-form .field-cell,
+  .goods-receipt-post-form .goods-receipt-step-qualityStatus,
+  .goods-receipt-post-form .goods-receipt-step-inventoryStatus {
+    grid-column: 1 / -1;
   }
 }
 
 /*
- * 순서대로 입력 — 아직 열리지 않은 칸은 라벨까지 흐리게, 지금 채울 칸은 라벨을 강조색으로(사용자 지시).
- * 공용 선택칸의 비활성 모양이 옅어 켜진 칸과 구분이 잘 안 되는 것을 라벨로 보탠다.
+ * 순서대로 입력 — 아직 열리지 않은 칸은 라벨을 보조색으로, 지금 채울 칸은 라벨을 강조색 굵게(사용자 지시).
+ * 흐리게만 하면(투명도) 라벨을 읽기 어렵다(담당자 지시) — 투명도 없이 색만 한 단계 낮춘다. 칸 자체는 회색 바탕이다.
  */
 .goods-receipt-post-form .field-cell:has(:disabled) .field-label,
 .goods-receipt-post-form .field-cell:has(input:disabled) label {
   color: var(--on-surface-muted);
-  opacity: 0.6;
 }
 
 .goods-receipt-post-form[data-current-step='warehouse'] .goods-receipt-step-warehouse .field-label,
@@ -13782,12 +13783,15 @@ button.app-button-neutral {
   .field-label,
 .goods-receipt-post-form[data-current-step='receiptDatetime']
   .goods-receipt-step-receiptDatetime
-  label {
+  .field-label {
   color: var(--primary-text);
   font-weight: 600;
 }
 
-/* 하단 액션 줄 — 구분선 아래 오른쪽 끝, 막힌 이유는 단추 바로 왼쪽. */
+/*
+ * 하단 액션 줄 — 구분선 아래 폼 오른쪽 끝(마지막 칸의 오른쪽 선과 같은 선)에 [취소][입고 확인].
+ * 주 동작(입고 확인, 채운 단추)이 맨 오른쪽 — 되돌릴 수 없는 것이 손 가까이 있지 않게 취소가 앞에 선다.
+ */
 .goods-receipt-post-actions {
   align-items: center;
   margin-top: var(--space-4);
@@ -13850,7 +13854,8 @@ button.app-button-neutral {
 
 /*
  * 입고 대상(선별 뒤 양품·불량분) — 선택 버튼 묶음(담당자 결정). 입고 정보 격자 위 한 줄, 아래 칸과 격자 간격만큼 띄운다.
- * DS `Radio` 를 카드로 편다: 터치하기 좋은 높이(48px), 고른 카드는 강조색 테두리 2px + 옅은 강조 바탕 + 굵은 글자.
+ * DS `Radio` 를 카드로 편다: 터치하기 좋은 높이(48px). 고른 카드는 짙은 회색 테두리 2px 와 라디오 점으로
+ * 차분하게 표시한다 — 바탕은 바꾸지 않는다(담당자 지시 — 빨간 테두리·분홍 바탕은 오류처럼 강했다).
  * 대상 성격(양품·불량분)은 문구가 말한다 — 색 띠를 따로 두면 강조색(빨강)과 겹쳐 «고른 것»과 헷갈린다.
  * 좁으면 줄을 바꾸고, 긴 문구(LOT 번호 포함)는 카드 안에서 접는다.
  */
@@ -13866,7 +13871,7 @@ button.app-button-neutral {
 .goods-receipt-target-option {
   box-sizing: border-box;
   min-height: var(--control-height-lg);
-  min-width: 12rem;
+  min-width: 16rem;
   max-width: 100%;
   padding: var(--space-2) var(--space-4);
   border-radius: var(--radius-md);
@@ -13880,15 +13885,29 @@ button.app-button-neutral {
 }
 
 .goods-receipt-target-option:has(input:checked) {
-  background: var(--primary-container);
-  box-shadow: inset 0 0 0 2px var(--primary);
-  font-weight: 600;
+  background: var(--surface);
+  box-shadow: inset 0 0 0 2px var(--on-surface-variant);
 }
 
 .goods-receipt-target-option:has(input:focus-visible) {
   box-shadow:
-    inset 0 0 0 2px var(--primary),
+    inset 0 0 0 2px var(--on-surface-variant),
     var(--focus-ring);
+}
+
+/* 카드 안: 이름은 왼쪽, 수량은 오른쪽 끝에 굵게 — 카드끼리 수량이 같은 자리에서 비교된다. */
+.goods-receipt-target-option > span:last-child {
+  display: flex;
+  flex: 1 1 auto;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-1) var(--space-4);
+}
+
+.goods-receipt-target-qty {
+  font-weight: 600;
+  white-space: nowrap;
 }
 
 .goods-receipt-target-option:has(input:disabled) {

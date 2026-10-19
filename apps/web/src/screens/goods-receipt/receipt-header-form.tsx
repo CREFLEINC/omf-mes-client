@@ -2,8 +2,6 @@ import { DatePicker, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useId, useState } from 'react';
 
-import { FieldLabel } from './field-label';
-
 const t = messages.goodsReceipt;
 
 export interface ReceiptHeaderFormProps {
@@ -67,7 +65,7 @@ export const ReceiptHeaderForm = ({
   onChangeReceiptDatetime,
   onChangeRemarks,
 }: ReceiptHeaderFormProps) => {
-  const dateId = useId();
+  const groupLabelId = useId();
   const isDisabled = isLocked || !isOpen;
 
   /*
@@ -94,36 +92,48 @@ export const ReceiptHeaderForm = ({
 
   return (
     <div className="form-grid goods-receipt-post-grid">
-      <div className="field-cell goods-receipt-step-receiptDatetime goods-receipt-receipt-date">
-        <FieldLabel htmlFor={dateId} label={t.fields.receiptDate} required />
-        <DatePicker
-          id={dateId}
-          mode="single"
-          placeholder={messages.common.selectDate}
-          value={parts.date === '' ? null : parts.date}
-          disabled={isDisabled}
-          invalid={serverError !== undefined}
-          aria-required
-          onChange={(value) => {
-            changeParts({ ...parts, date: value });
-          }}
-        />
-      </div>
-
-      <div className="field-cell goods-receipt-step-receiptDatetime goods-receipt-receipt-time">
-        <TextField
-          label={t.fields.receiptTime}
-          required
-          inputMode="numeric"
-          maxLength={5}
-          placeholder={t.values.receiptTimePlaceholder}
-          value={parts.time}
-          error={timeError}
-          disabled={isDisabled}
-          onChange={(event) => {
-            changeParts({ ...parts, time: formatTimeInput(event.target.value) });
-          }}
-        />
+      {/*
+       * 입고 일시는 한 묶음 — 라벨 하나(「입고 일시 *」) 아래 날짜와 시각을 나란히 둔다(담당자 지시).
+       * 두 칸의 접근 이름은 각각 「입고 일자」·「입고 시각」이고, 묶음 이름이 「입고 일시」다.
+       */}
+      <div
+        className="field-cell goods-receipt-step-receiptDatetime goods-receipt-receipt-datetime"
+        role="group"
+        aria-labelledby={groupLabelId}
+      >
+        <span className="field-label">
+          <span id={groupLabelId}>{t.fields.receiptDatetime}</span>
+          <span className="goods-receipt-required" aria-hidden="true">
+            *
+          </span>
+        </span>
+        <div className="goods-receipt-datetime-pair">
+          <DatePicker
+            mode="single"
+            aria-label={t.fields.receiptDate}
+            placeholder={messages.common.selectDate}
+            value={parts.date === '' ? null : parts.date}
+            disabled={isDisabled}
+            invalid={serverError !== undefined}
+            aria-required
+            onChange={(value) => {
+              changeParts({ ...parts, date: value });
+            }}
+          />
+          <TextField
+            aria-label={t.fields.receiptTime}
+            aria-required
+            inputMode="numeric"
+            maxLength={5}
+            placeholder={t.values.receiptTimePlaceholder}
+            value={parts.time}
+            error={timeError}
+            disabled={isDisabled}
+            onChange={(event) => {
+              changeParts({ ...parts, time: formatTimeInput(event.target.value) });
+            }}
+          />
+        </div>
       </div>
 
       <div className="field-cell goods-receipt-remarks">

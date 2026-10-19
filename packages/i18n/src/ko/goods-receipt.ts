@@ -260,7 +260,7 @@ export const goodsReceipt = {
     codeLoadingPlaceholder: '불러오는 중…',
     codeFailedPlaceholder: '불러오지 못함',
     /** 입고 시각 칸 — 24시간 `HH:mm`. 숫자 네 자리를 치면 `:` 가 저절로 들어간다. */
-    receiptTimePlaceholder: 'HH:mm (24시)',
+    receiptTimePlaceholder: 'HH:mm',
   },
   notes: {
     /** 불량 LOT(IQC 불합격 · 선별 불량분) — 불량창고만 고를 수 있다(omf-all-around#84). */
@@ -274,17 +274,19 @@ export const goodsReceipt = {
      */
     receiptTarget: {
       label: '입고 대상',
-      /** 수량은 줄의 단위 코드를 붙인 표기(「7 EA」)로 받는다 — `lineTable.receivedQtyPair`. */
-      good: (qty: string) => `양품(원 LOT) · ${qty}`,
-      split: (qty: string) => `선별 불량분 · ${qty}`,
-      /** 선별 불량분이 둘 이상이면 선택지끼리 구분되게 LOT 번호를 붙인다. */
-      splitWithLot: (lotNo: string, qty: string) => `선별 불량분 ${lotNo} · ${qty}`,
+      /** 선택 카드의 대상 이름. 수량은 카드 오른쪽에 따로 선다. */
+      goodName: '양품(원 LOT)',
+      splitName: '선별 불량분',
+      /** 선별 불량분이 둘 이상이면 카드끼리 구분되게 LOT 번호를 붙인다. */
+      splitNameWithLot: (lotNo: string) => `선별 불량분 ${lotNo}`,
+      /** 카드의 접근 이름 — 이름과 수량(줄의 단위 코드를 붙인 표기, 「7 EA」)을 잇는다. */
+      option: (name: string, qty: string) => `${name} · ${qty}`,
       /** 고른 대상의 LOT 번호 — 선택칸 아래 한 줄. 긴 번호도 자르지 않는다. */
       lot: (lotNo: string) => `입고할 LOT: ${lotNo}`,
-      /** 안내 띠 제목 — 수량을 한눈에. */
-      noteTitle: (good: string, split: string) => `선별 결과 · 양품 ${good} / 불량분 ${split}`,
+      /** 안내 띠 제목 — 수량을 한눈에(담당자 예시 문구). */
+      noteTitle: (good: string, split: string) => `선별 완료: 양품 ${good} · 불량 ${split}`,
       /** 안내 띠 본문 — 다음 할 일. */
-      noteBody: '「입고 대상」에서 하나씩 골라 입고하세요. 불량분은 불량창고로만 입고됩니다.',
+      noteBody: '입고할 대상을 선택하세요. 불량품은 불량창고에 입고됩니다.',
     },
     iqcGate: {
       pendingTitle: 'IQC 수입검사 판정 전이라 입고할 수 없습니다.',
@@ -298,13 +300,15 @@ export const goodsReceipt = {
      * 고장으로 읽힌다(계약이 라인마다 위치를 받으므로 나중에 여러 줄로 늘 수 있다 — 이슈 §4).
      */
     singleLineSelect: '한 번에 하나의 입하 라인만 선택할 수 있습니다.',
-    /** 입력칸이 없는 값이 무엇에서 정해지는지 밝힌다 — 밝히지 않으면 화면 어디에서도 읽을 수 없다. */
-    businessDateDerived: '영업일은 입고 일자 기준으로 자동 설정됩니다.',
+    /**
+     * 입력칸이 없는 값(공장·영업일)이 저절로 정해진다는 사실 — 「입고 정보」 제목 옆 한 줄(담당자 지시: 짧게).
+     * 공장은 입하 전표의 공장, 영업일은 입고 일시의 날짜다.
+     */
+    autoApplied: '공장·영업일은 자동 적용됩니다.',
     /** 입고 시각이 형식에 맞지 않을 때의 안내. */
     receiptTimeInvalid: '시각은 00:00~23:59로 입력해 주세요.',
     qtyFromInboundLine:
       '선택한 라인의 품목·수량·단위·자재 LOT이 그대로 입고되며, 수량을 나누어 입고할 수 없습니다.',
-    plantFromInboundReceipt: '공장은 입하 전표의 공장으로 자동 적용됩니다.',
     /** 고른 창고의 공장을 함께 보인다 — 전표의 공장과 다르면 눈으로 보인다. 막지는 않는다. */
     warehousePlant: (plant: string): string => `고른 창고의 공장: ${plant}`,
     /** 고른 창고의 공장이 입하 전표와 다를 때 — 입하 전표의 공장을 함께 보인다(사용자 지시). */

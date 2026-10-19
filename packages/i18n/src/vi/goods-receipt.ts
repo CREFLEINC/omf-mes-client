@@ -173,20 +173,20 @@ export const goodsReceipt: Translated<typeof ko.goodsReceipt> = {
     },
     codeLoadingPlaceholder: 'Đang tải…',
     codeFailedPlaceholder: 'Không tải được',
-    receiptTimePlaceholder: 'HH:mm (24 giờ)',
+    receiptTimePlaceholder: 'HH:mm',
   },
   notes: {
     defectWarehouseOnly: 'LOT lỗi chỉ nhập được vào kho hàng lỗi.',
     receiptTarget: {
       label: 'Đối tượng nhập kho',
-      good: (qty: string) => `Hàng đạt (LOT gốc) · ${qty}`,
-      split: (qty: string) => `Phần lỗi đã tách · ${qty}`,
-      splitWithLot: (lotNo: string, qty: string) => `Phần lỗi đã tách ${lotNo} · ${qty}`,
+      goodName: 'Hàng đạt (LOT gốc)',
+      splitName: 'Phần lỗi đã tách',
+      splitNameWithLot: (lotNo: string) => `Phần lỗi đã tách ${lotNo}`,
+      option: (name: string, qty: string) => `${name} · ${qty}`,
       lot: (lotNo: string) => `LOT nhập kho: ${lotNo}`,
       noteTitle: (good: string, split: string) =>
-        `Kết quả phân loại · hàng đạt ${good} / phần lỗi ${split}`,
-      noteBody:
-        'Chọn lần lượt từng mục ở 「Đối tượng nhập kho」 để nhập kho. Phần lỗi chỉ nhập vào kho hàng lỗi.',
+        `Đã phân loại: hàng đạt ${good} · hàng lỗi ${split}`,
+      noteBody: 'Hãy chọn đối tượng nhập kho. Hàng lỗi được nhập vào kho hàng lỗi.',
     },
     iqcGate: {
       pendingTitle: 'Chưa có kết quả kiểm tra đầu vào IQC nên không thể nhập kho.',
@@ -196,11 +196,10 @@ export const goodsReceipt: Translated<typeof ko.goodsReceipt> = {
       otherBody: 'Hãy đưa LOT về bình thường ở màn hình xử lý rồi nhập kho.',
     },
     singleLineSelect: 'Mỗi lần chỉ chọn được một dòng nhập hàng.',
-    businessDateDerived: 'Ngày nghiệp vụ tự đặt theo ngày nhập kho.',
+    autoApplied: 'Nhà máy và ngày nghiệp vụ được tự động áp dụng.',
     receiptTimeInvalid: 'Vui lòng nhập giờ từ 00:00 đến 23:59.',
     qtyFromInboundLine:
       'Nhập nguyên mặt hàng, số lượng, đơn vị, LOT vật tư của dòng đã chọn; không nhập tách số lượng.',
-    plantFromInboundReceipt: 'Nhà máy tự áp dụng theo nhà máy của phiếu nhập hàng.',
     warehousePlant: (plant: string): string => `Nhà máy của kho đã chọn: ${plant}`,
     warehousePlantDiffers: (plant: string): string =>
       `Nhà máy của kho đã chọn khác với nhà máy của phiếu nhập hàng (${plant}).`,

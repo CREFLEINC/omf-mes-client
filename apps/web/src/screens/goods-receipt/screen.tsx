@@ -40,7 +40,12 @@ import { IrFilterBar } from './ir-filter-bar';
 import { IrLineTable } from './ir-line-table';
 import { IrTable } from './ir-table';
 import { findSelectedLine, nextSelectedLineId } from './line-select';
-import { chooseReceiptTarget, receiptTargetsOf, splitQtyOf } from './receipt-target';
+import {
+  chooseReceiptTarget,
+  receiptTargetsOf,
+  splitQtyOf,
+  type ReceiptTarget,
+} from './receipt-target';
 import { LoadErrorBanner } from './load-error-banner';
 import {
   describeReference,
@@ -662,6 +667,13 @@ export const GoodsReceiptScreen = () => {
     const qtyText = (qty: number): string => t.lineTable.receivedQtyPair(qty, uomCode);
     const receiptQty = qtyText(receiptTarget?.qty ?? line.receivedQty);
     const splitTargetCount = receiptTargets.filter((target) => target.splitLotNo !== null).length;
+    /** 입고 대상 카드의 이름 — 선별 불량분이 둘 이상이면 LOT 번호로 구분한다. */
+    const targetName = (target: ReceiptTarget): string =>
+      target.splitLotNo === null
+        ? t.notes.receiptTarget.goodName
+        : splitTargetCount > 1
+          ? t.notes.receiptTarget.splitNameWithLot(target.splitLotNo)
+          : t.notes.receiptTarget.splitName;
     const goodQtyText = qtyText(
       receiptTargets.find((target) => target.splitLotNo === null)?.qty ?? 0,
     );
@@ -802,17 +814,13 @@ export const GoodsReceiptScreen = () => {
         )}
         <h3 className="goods-receipt-section-title goods-receipt-section-title-first">
           {t.postTitle}
-          {/* 공장은 고르는 칸이 아니다 — 입력 칸처럼 보이지 않게 제목 옆 보조 글자로 밝힌다(사용자 지시). */}
-          <span className="goods-receipt-section-hint">{t.notes.plantFromInboundReceipt}</span>
-          {/* 영업일도 고르는 칸이 없다 — 입고 일자에서 정해진다는 사실을 같은 자리에 밝힌다(계획 결정 10). */}
-          <span className="goods-receipt-section-hint">{t.notes.businessDateDerived}</span>
+          {/*
+           * 공장·영업일은 고르는 칸이 없다 — 저절로 정해진다는 사실만 제목 옆 짧은 한 줄로(담당자 지시: 간소화).
+           * 공장은 위 「고른 입하 전표」 제목줄에 보이고, 창고의 공장이 다르면 창고 칸이 따로 알린다.
+           */}
+          <span className="goods-receipt-section-hint">{t.notes.autoApplied}</span>
         </h3>
 
-        {/*
-         * 입고 정보 입력 칸을 한 격자로 모은다 — 넓은 화면은 네 칸(입력 순서대로 왼쪽→오른쪽), 좁으면 두 칸.
-         * 안쪽 세 묶음의 격자는 풀어(`display: contents`) 칸이 이 격자에 바로 선다. 짝(창고↔위치 등)은 이웃 칸이다.
-         */}
-        {/* 지금 채울 칸 — `app.css` 가 이 칸의 라벨을 강조한다(순서대로 입력 · 사용자 지시). */}
         {receiptTargets.length > 1 && receiptTarget !== null && (
           /*
            * 입고 대상은 선택 버튼 묶음(담당자 결정) — 대상이 보통 둘·셋이라 한눈에 보이고, 열린 목록이 아래 칸을
@@ -838,16 +846,15 @@ export const GoodsReceiptScreen = () => {
               }}
             >
               {receiptTargets.map((target) => (
+                /* 이름은 왼쪽, 수량은 오른쪽 끝에 굵게 — 두 카드의 수량이 같은 자리에서 비교된다. */
                 <Radio
                   key={target.lotId}
                   value={String(target.lotId)}
                   className="goods-receipt-target-option"
+                  aria-label={t.notes.receiptTarget.option(targetName(target), qtyText(target.qty))}
                 >
-                  {target.splitLotNo === null
-                    ? t.notes.receiptTarget.good(qtyText(target.qty))
-                    : splitTargetCount > 1
-                      ? t.notes.receiptTarget.splitWithLot(target.splitLotNo, qtyText(target.qty))
-                      : t.notes.receiptTarget.split(qtyText(target.qty))}
+                  <span className="goods-receipt-target-name">{targetName(target)}</span>
+                  <span className="goods-receipt-target-qty">{qtyText(target.qty)}</span>
                 </Radio>
               ))}
             </RadioGroup>
