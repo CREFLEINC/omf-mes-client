@@ -1,6 +1,8 @@
 import { Chip, Icon, Skeleton, Table, type ChipStatus, type Column } from '@crefle/web-ui';
 import type {
   DashboardLotRecordCount,
+  DashboardOpenNonconformance,
+  DashboardRepeatedItem,
   DashboardJudgmentCode,
   DashboardLotCounts,
   DashboardQuality,
@@ -8,7 +10,7 @@ import type {
   DashboardQualityTypeBlock,
 } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
-import { Link } from 'react-router';
+import { Link, useNavigate } from 'react-router';
 import {
   createContext,
   useCallback,
@@ -31,11 +33,12 @@ import {
 } from './quality';
 import { DefectTypesPanel } from './defect-types-panel';
 import { compareEquipmentCode } from './equipment';
-import { pointerFocusProps, usePointerInput } from './equipment-panel';
-import { formatFigure } from './types';
+import { formatElapsed, pointerFocusProps, usePointerInput } from './equipment-panel';
+import { formatFigure, toNiceAxis } from './types';
 import { usePeriodTags } from './period';
 import { QualityLotsDialog } from './quality-lots-dialog';
 import { useFillHeight } from './use-fill-height';
+import type { NamedQty } from './viz-math';
 import {
   CHART_H,
   DeltaMark,
@@ -47,7 +50,6 @@ import {
   Panel,
   ParetoChart,
   RankBars,
-  StackedBar100,
   StatusList,
   type LineSeries,
 } from './viz';
@@ -158,12 +160,16 @@ const OverviewLotTile = ({
   label,
   tag,
   counts,
+  unit = t.lotUnit,
 }: {
   label: string;
-  tag: string;
+  /** 기간 표시 — PQC 는 첫 칸에만 둬 생략(사용자 지시 2026-10-19). */
+  tag?: string;
   counts: DashboardLotCounts;
+  /** 단위 — PQC 는 LOT 번호가 없는 검사 결과라 「건」(사용자 지시 2026-10-19). 기본은 LOT. */
+  unit?: string;
 }) => (
-  <KpiTile label={label} tag={tag} value={formatFigure(lotTotal(counts))} unit={t.lotUnit}>
+  <KpiTile label={label} tag={tag} value={formatFigure(lotTotal(counts))} unit={unit}>
     <span className="dash-lot-legend">
       {(['accepted', 'rejected', 'held'] as const).map((key) => (
         <span key={key} className="dash-lot-legend-item">
@@ -316,10 +322,16 @@ const DailyPanel = ({
   niceTicks = false,
   gapMarks = false,
   gapDetail = false,
+  gapBridge = true,
+  sub = t.dailySub,
 }: {
   quality: DashboardQuality;
   kinds: readonly QualityKind[];
   title: string;
+  /** 끊긴 앞뒤 잇는 점선 — OQC 는 끄고 선을 끊는다(사용자 지시 2026-10-19). 기본 켬. */
+  gapBridge?: boolean;
+  /** 부제 — PQC 는 축에 보이는 단위(%)를 빼고 기준만(사용자 지시 2026-10-19). 기본은 기존 문구. */
+  sub?: string;
   /** 검사 없는 날 · 혼자 남은 점 구분 — 품질 종합 · IQC(사용자 지시 2026-10-19). */
   gapMarks?: boolean;
   /** 공백 띠 · 「검사 없음」 · 끊긴 점 잇는 점선 · 혼자 남은 점 값을 점 위에 — IQC · 품질 종합(사용자 지시 2026-10-19). */
@@ -336,7 +348,7 @@ const DailyPanel = ({
   return (
     <Panel
       title={title}
-      sub={t.dailySub}
+      sub={sub}
       tag={tags.recent}
       className={hasPoints ? 'dash-span-wide dash-panel-fit' : 'dash-span-wide'}
     >
@@ -352,6 +364,7 @@ const DailyPanel = ({
               niceTicks={niceTicks}
               gapMarks={gapMarks}
               gapDetail={gapDetail}
+              gapBridge={gapBridge}
             />
           )}
         </FitChart>
@@ -408,6 +421,13 @@ const InspectedAt = ({ value, withTime = false }: { value: string; withTime?: bo
 
 /** 검사결과 조회(W-03-05) 주소 — 날짜만 있는 화면 조건으로는 사용자가 보는 목록이 비어 그 날짜 · 검사 유형으로 연다. */
 export const INSPECTION_RESULTS_PATH = '/quality/inspection-results';
+
+/**
+ * 처분 판정 처리 — PQC 주요 현황 「재작업 판정」 줄이 연다(⭐ 사용자 지시 2026-10-19 「처분 판정 처리 화면」). 이미
+ * 내려진 판정이라 「처리 이력」 탭으로 연다. 화면 슬라이스끼리는 서로 참조하지 않아 주소를 여기 적는다.
+ */
+export const DISPOSITION_DECISIONS_PATH = '/quality/dispositions';
+const DISPOSITION_HISTORY_PATH = `${DISPOSITION_DECISIONS_PATH}?tab=history`;
 
 /**
  * 그 검사 결과의 상세를 여는 주소(⭐ 사용자 지시 2026-10-19 「항목을 누르면 검사실적 · 검사결과 조회 화면에서 상세」).
@@ -667,8 +687,10 @@ export const QualityOverviewTab = ({
                 {
                   key: 'ncOpen',
                   label: t.ncOpen,
-                  value: formatFigure(quality.nonconformance.openCount),
-                  unit: t.countUnit,
+                  /* ⭐ 모든 탭 주요 현황은 LOT · 건수 둘 다(사용자 지시 2026-10-19). 서버 건수가 없으면 기존 건수만. */
+                  ...(counts === undefined
+                    ? { value: formatFigure(quality.nonconformance.openCount), unit: t.countUnit }
+                    : lotRecordValue(counts.NC_OPEN, quality.nonconformance.openCount)),
                   tone: countTone(quality.nonconformance.openCount, 'error'),
                   selectable: quality.nonconformance.openCount > 0,
                 },
@@ -864,24 +886,231 @@ export const IqcTab = ({
   );
 };
 
-export const PqcTab = ({ quality }: { quality: DashboardQuality }) => {
+/**
+ * PQC · OQC 주요 현황 값 — 「n LOT · m건」(⭐ 사용자 지시 2026-10-19 「LOT 이 없으면 0 LOT 으로」). LOT 번호가 없는
+ * 기록뿐이면 0 LOT. 서버 건수가 없으면(이전 서버) 기존 건수만.
+ */
+const lotCountValue = (
+  counts: DashboardLotRecordCount | undefined,
+  fallbackRecords: number,
+): { value: string; unit: string; records?: string; count: number } =>
+  counts === undefined
+    ? { value: formatFigure(fallbackRecords), unit: t.countUnit, count: fallbackRecords }
+    : {
+        value: formatFigure(counts.lotCount),
+        unit: t.lotUnit,
+        records: t.recordsSuffix(formatFigure(counts.recordCount)),
+        count: counts.recordCount,
+      };
+
+/** 검사 대기 최장 경과(분) — 기준은 지금. 시각이 없거나 읽지 못하면 `null`. */
+export const pendingElapsedMinutes = (
+  since: string | null | undefined,
+  now: Date,
+): number | null => {
+  if (since === null || since === undefined) return null;
+  const at = Date.parse(since);
+  if (Number.isNaN(at)) return null;
+  return Math.max(0, Math.floor((now.getTime() - at) / 60_000));
+};
+
+/** 「현재 현황」 LOT 목록 창을 여는 상태 — PQC · OQC 탭은 그 검사 유형으로 좁힌다. */
+const useLotDialog = () => {
+  const [lotStatus, setLotStatus] = useState<DashboardQualityLotStatus | null>(null);
+  const [mounted, setMounted] = useState(false);
+  const pointerInput = usePointerInput();
+
+  return {
+    lotStatus,
+    mounted,
+    rowProps: pointerFocusProps(pointerInput),
+    open: (key: string) => {
+      setLotStatus(LOT_STATUS_OF_ROW[key] ?? null);
+      setMounted(true);
+    },
+    close: () => {
+      setLotStatus(null);
+    },
+  };
+};
+
+/**
+ * 설비별 불량률 TOP 8(⭐ PQC 탭 · 사용자 지시 2026-10-19) — 설비 | 막대 | 불량률(굵게) | 불량 수량(EA, 보조).
+ * 막대는 0 부터 이 목록의 최고 불량률까지 같은 축(비례 · 과장 없음) — 같은 불량률은 같은 길이 · 같은 색(최고값만 진하게).
+ * 순서는 서버와 같게 불량률 → 불량 수량 → 설비 코드 자연 정렬. 순위 숫자는 두지 않는다. 계산 · 추출은 서버 그대로.
+ */
+const EquipmentRateBars = ({
+  rates,
+}: {
+  rates: readonly {
+    equipmentId: number;
+    equipmentCode: string;
+    defectRate: number;
+    ngQty: number;
+  }[];
+}) => {
+  if (rates.length === 0) return <NoRecords />;
+  const sorted = [...rates].sort(
+    (a, b) =>
+      b.defectRate - a.defectRate ||
+      b.ngQty - a.ngQty ||
+      compareEquipmentCode(a.equipmentCode, b.equipmentCode),
+  );
+  const max = Math.max(...sorted.map((entry) => entry.defectRate));
+
+  return (
+    <ol className="dash-eqrate" aria-label={t.equipmentDefectRates}>
+      {sorted.map((entry) => (
+        <li key={entry.equipmentId} className="dash-eqrate-row">
+          <span className="dash-eqrate-name" title={entry.equipmentCode}>
+            {entry.equipmentCode}
+          </span>
+          <span className="dash-eqrate-track" aria-hidden="true">
+            <span
+              className={
+                entry.defectRate === max && max > 0
+                  ? 'dash-eqrate-bar dash-eqrate-bar-top'
+                  : 'dash-eqrate-bar'
+              }
+              style={{ width: `${String(max > 0 ? (entry.defectRate / max) * 100 : 0)}%` }}
+            />
+          </span>
+          <span className="dash-eqrate-rate">{formatRate(entry.defectRate)}</span>
+          <span className="dash-eqrate-qty">
+            {formatFigure(entry.ngQty)}
+            <span className="dash-kpi-unit">{t.qtyUnit}</span>
+          </span>
+        </li>
+      ))}
+    </ol>
+  );
+};
+
+/** PQC 불량 구성 카드의 두 보기. */
+type PqcBreakdownView = 'phenomena' | 'item';
+
+/**
+ * PQC 불량 구성(⭐ 사용자 지시 2026-10-19 「탭 버튼으로 두 그래프 전환」) — 불량현상 · 품목별 원형을 한 카드에서
+ * 바꿔 본다. 화면 탭(밑줄)과 구분되게 작은 버튼 묶음, 집계 기준 문구는 버튼 아래(고른 보기를 따라 바뀜).
+ * 품목별은 상위 5 밖의 불합격 수량을 「기타」로 넣어 합계 = 상단 불량 수량(검사 불합격 기준), 비율도 그 전체 기준.
+ */
+const PqcDefectBreakdown = ({ pqc, tag }: { pqc: DashboardQuality['pqc']; tag: string }) => {
+  const [view, setView] = useState<PqcBreakdownView>('phenomena');
+  const items = pqc.itemDefects;
+  const active: PqcBreakdownView = items === undefined ? 'phenomena' : view;
+  const itemEntries =
+    items?.map((entry) => ({
+      key: String(entry.itemId),
+      label: entry.itemCode,
+      value: entry.qty,
+    })) ?? [];
+  const itemRest = Math.max(
+    0,
+    pqc.monthDefectQty - itemEntries.reduce((sum, entry) => sum + entry.value, 0),
+  );
+  const basis = active === 'item' ? t.pqcDefectBasis : t.pqcPhenomenaSub;
+  const views: { value: PqcBreakdownView; label: string }[] = [
+    { value: 'phenomena', label: t.pqcBreakdownPhenomena },
+    { value: 'item', label: t.pqcBreakdownItem },
+  ];
+
+  return (
+    <DefectTypesPanel
+      title={t.pqcBreakdownTitle}
+      caption={active === 'item' ? t.pqcItemDefects : t.phenomenaOf('PQC')}
+      sub={items === undefined ? basis : null}
+      tag={tag}
+      entries={active === 'item' ? itemEntries : phenomenaEntries(pqc.defectPhenomena)}
+      remainder={active === 'item' ? itemRest : 0}
+      toolbar={
+        items === undefined ? undefined : (
+          <div className="dash-breakdown-head">
+            <div className="dash-seg" role="group" aria-label={t.pqcBreakdownTitle}>
+              {views.map((option) => (
+                <button
+                  key={option.value}
+                  type="button"
+                  className="dash-seg-button"
+                  aria-pressed={active === option.value}
+                  onClick={() => {
+                    setView(option.value);
+                  }}
+                >
+                  {option.label}
+                </button>
+              ))}
+            </div>
+            <span className="dash-breakdown-basis">{basis}</span>
+          </div>
+        )
+      }
+    />
+  );
+};
+
+/**
+ * PQC 검사실적(⭐ 사용자 지시 2026-10-19 「IQC 검사실적 탭 기준 배치」) — 위: 일별 합격률 | 호기별 불량률 · PQC
+ * 불량현상 · 현재 현황(세로), 아래: 품목별 PQC 불량 원형 | 최근 판정. 박스 끝 맞춤은 품질 종합 · IQC 와 같은 틀.
+ */
+export const PqcTab = ({
+  quality,
+  allows = () => false,
+}: {
+  quality: DashboardQuality;
+  /** 이 사용자가 그 화면을 볼 수 있는가 — 못 보면 최근 판정 표는 링크 없이 보인다. */
+  allows?: (path: string) => boolean;
+}) => {
   const tags = usePeriodTags();
   const pqc = quality.pqc;
-  const worst = pqc.equipmentDefectRates[0];
+  const dialog = useLotDialog();
+  const navigate = useNavigate();
+  /* 재작업 판정 줄 → 처분 판정 처리(처리 이력 · 사용자 지시 2026-10-19). 그 화면 권한이 있을 때만. */
+  const canOpenDisposition = allows(DISPOSITION_DECISIONS_PATH);
+  const held = lotRecordValue(quality.statusCounts?.INSPECTION_HELD.byType.PQC, pqc.monthLots.held);
+  const pending = lotRecordValue(quality.statusCounts?.PQC_PENDING, pqc.pendingLotCount);
+  const oldest = pendingElapsedMinutes(pqc.oldestPendingSince, new Date());
 
   return (
     <QualityTabFrame className="dash-tab-quality-detail">
       <div className="dash-kpis">
         <OverviewPassRateTile label={t.passRateOf('PQC')} block={pqc} />
-        <OverviewLotTile label={t.pqcLots} tag={tags.month} counts={pqc.monthLots} />
-        <KpiTile
-          label={t.pendingLots}
-          tag={t.tagNow}
-          value={formatFigure(pqc.pendingLotCount)}
-          unit={t.lotUnit}
-        >
-          <span>{t.pendingLotsNote}</span>
-        </KpiTile>
+        {/*
+         * ⭐ PQC 정보 간소화(사용자 지시 2026-10-19) — 재검 투입 ·
+         * 복원율은 한 칸으로(투입 · 복원 수량은 보조 글), 불량 수량 보조 글의 재작업 판정은 주요 현황과 겹쳐 뺐다.
+         */}
+        {/* ⭐ 당월 집계 칸은 모두 「당월」 이름표(사용자 지시 2026-10-19 「당월 기준이면 이름표에 표시」). */}
+        <OverviewLotTile
+          label={t.pqcLots}
+          tag={tags.month}
+          counts={pqc.monthLots}
+          unit={t.countUnit}
+        />
+        {pqc.fullReinspect !== undefined && pqc.fullReinspect !== null && (
+          <KpiTile
+            label={t.fullReinspect}
+            tag={tags.month}
+            value={
+              pqc.fullReinspect.inputQty > 0
+                ? formatFigure(
+                    Math.min(
+                      100,
+                      Math.round(
+                        (pqc.fullReinspect.restoredQty / pqc.fullReinspect.inputQty) * 1000,
+                      ) / 10,
+                    ),
+                  )
+                : t.rateNone
+            }
+            unit={pqc.fullReinspect.inputQty > 0 ? '%' : undefined}
+          >
+            <span>
+              {t.pqcReinspectNote(
+                formatFigure(pqc.fullReinspect.inputQty),
+                formatFigure(pqc.fullReinspect.restoredQty),
+              )}
+            </span>
+          </KpiTile>
+        )}
         <KpiTile
           label={t.monthDefectQty}
           tag={tags.month}
@@ -889,97 +1118,195 @@ export const PqcTab = ({ quality }: { quality: DashboardQuality }) => {
           unit={t.qtyUnit}
           tone={pqc.monthDefectQty > 0 ? 'error' : undefined}
         >
-          <span>{t.reworkLine(formatFigure(pqc.reworkRequestCount))}</span>
-        </KpiTile>
-        <KpiTile
-          label={t.worstEquipment}
-          tag={tags.today}
-          value={worst === undefined ? t.none : worst.equipmentCode}
-        >
-          {worst !== undefined && (
-            <span>
-              {t.worstEquipmentNote(formatFigure(worst.ngQty), formatRate(worst.defectRate))}
-            </span>
-          )}
+          <span>{t.pqcDefectBasis}</span>
         </KpiTile>
       </div>
-      <Row kind="row2">
+      <div className="dash-qo-top">
         <DailyPanel
           quality={quality}
           kinds={['PQC']}
           title={t.dailyTitleOf('PQC')}
+          sub={t.pqcDailySub}
           tooltip
+          gapMarks
+          gapDetail
           niceTicks
         />
-        <Panel title={t.equipmentDefectRates} sub={t.equipmentDefectRatesSub} tag={tags.today}>
-          <RankBars
-            /*
-             * 불량률이 같으면 설비 코드 자연 정렬(17-1 < 17-2 < 17-10) — 서버 순서는 같은 값끼리 문자열
-             * 순이었다(사용자 점검 2026-10-16). 불량률 높은 순은 그대로.
-             */
-            entries={[...pqc.equipmentDefectRates]
-              .sort(
-                (a, b) =>
-                  b.defectRate - a.defectRate ||
-                  compareEquipmentCode(a.equipmentCode, b.equipmentCode),
-              )
-              .map((entry) => ({
-                key: String(entry.equipmentId),
-                label: entry.equipmentCode,
-                value: entry.defectRate,
-              }))}
-            formatValue={formatRate}
-            showShare={false}
-            aside={(entry) => {
-              const source = pqc.equipmentDefectRates.find(
-                (rate) => String(rate.equipmentId) === entry.key,
-              );
-              return source === undefined ? undefined : t.ngShort(formatFigure(source.ngQty));
-            }}
-          />
-        </Panel>
-      </Row>
-      <Row kind="split">
-        <div className="dash-stack">
-          <Panel title={t.phenomenaOf('PQC')} sub={t.qtyShareSub} tag={tags.month}>
-            <RankBars entries={phenomenaEntries(pqc.defectPhenomena)} />
+        <div className="dash-qo-side">
+          {/* ⭐ 설비별 불량률 TOP 8(사용자 지시 2026-10-19 UI/UX) — 기간은 품질 누계 구간(서버 장부). */}
+          <Panel title={t.equipmentDefectRates} sub={t.equipmentDefectRatesSub} tag={tags.month}>
+            <EquipmentRateBars rates={pqc.equipmentDefectRates} />
           </Panel>
           <Panel title={t.currentTitle} tag={t.tagNow}>
             <StatusList
+              rowProps={dialog.rowProps}
+              onSelect={(key) => {
+                if (key === 'rework') void navigate(DISPOSITION_HISTORY_PATH);
+                else dialog.open(key);
+              }}
               items={[
                 {
+                  key: 'held',
+                  /* PQC 는 LOT 번호가 없는 검사 결과 — 단위를 「건」으로 통일(사용자 지시 2026-10-19). */
+                  label: t.pqcHeld,
+                  note: t.pqcMonthNote,
+                  ...lotCountValue(
+                    quality.statusCounts?.INSPECTION_HELD.byType.PQC,
+                    pqc.monthLots.held,
+                  ),
+                  tone: countTone(held.count, 'warning'),
+                  selectable: held.count > 0,
+                },
+                {
                   key: 'pending',
-                  label: t.pendingLots,
-                  note: t.pendingLotsNote,
-                  value: formatFigure(pqc.pendingLotCount),
-                  unit: t.lotUnit,
-                  tone: countTone(pqc.pendingLotCount, 'warning'),
+                  label: t.pqcPending,
+                  /* 가장 오래 기다린 LOT 의 경과 시간(사용자 지시 2026-10-19). */
+                  note:
+                    oldest === null ? t.pendingLotsNote : t.pendingOldest(formatElapsed(oldest)),
+                  ...lotCountValue(quality.statusCounts?.PQC_PENDING, pqc.pendingLotCount),
+                  tone: countTone(pending.count, 'warning'),
+                  selectable: pending.count > 0,
                 },
                 {
                   key: 'rework',
                   label: t.reworkRequests,
-                  note: t.reworkRequestsNote,
-                  value: formatFigure(pqc.reworkRequestCount),
-                  unit: t.countUnit,
+                  note: t.pqcMonthNote,
+                  /* LOT · 건수 둘 다(사용자 지시 2026-10-19) — 서버가 LOT 수를 주지 않으면 기존 건수만. */
+                  ...lotCountValue(pqc.reworkRequestCounts, pqc.reworkRequestCount),
+                  selectable: canOpenDisposition,
                 },
               ]}
             />
           </Panel>
         </div>
+      </div>
+      {/*
+       * ⭐ PQC 아래(사용자 지시 2026-10-19) — 불량현상 · 품목별 불량을 한 카드에서 탭으로 전환 | 최근 판정(5건).
+       * IQC 탭과 같은 줄 구성 · 같은 높이. 품목별이 없으면(이전 서버) 탭 없이 불량현상만.
+       */}
+      <div className="dash-qo-bottom">
+        <PqcDefectBreakdown pqc={pqc} tag={tags.month} />
         <RecentLotsPanel
           itemTitle
           title={t.recentLotsOf('PQC')}
           rows={recentOf(quality, 'PQC')}
           counterpart="equipment"
+          linked={allows(INSPECTION_RESULTS_PATH)}
+          withTime
         />
-      </Row>
+      </div>
+      {dialog.mounted && (
+        <QualityLotsDialog
+          status={dialog.lotStatus}
+          inspectionType={dialog.lotStatus === 'INSPECTION_HELD' ? 'PQC' : null}
+          onClose={dialog.close}
+        />
+      )}
     </QualityTabFrame>
   );
 };
 
-export const OqcTab = ({ quality }: { quality: DashboardQuality }) => {
+/**
+ * 일별 반출 수량(OQC 탭 · ⭐ 사용자 지시 2026-10-19 UI/UX) — 세로 막대(중립 단색), 일별 합격률과 같은 최근 9일.
+ * 세로축은 0 부터 보기 좋은 눈금까지, 단위 EA 는 부제. 막대에 마우스를 올리거나 포커스하면 날짜 · 정확한 수량.
+ * 기록 없는 날(`null`)은 빈 칸(막대 · 숫자 없음), 기록이 있는데 0 이면 「0」. 집계는 서버 그대로.
+ */
+const DailyReturnOutPanel = ({
+  days,
+}: {
+  days: readonly { date: string; qty: number | null }[];
+}) => {
+  const tags = usePeriodTags();
+  const top = Math.max(0, ...days.map((day) => day.qty ?? 0));
+  const empty = top === 0;
+  const axis = toNiceAxis(top);
+  const max = axis?.max ?? 1;
+  const tickCount = axis?.ticks ?? 2;
+  const ticks = Array.from(
+    { length: tickCount },
+    (_, index) => (max * index) / (tickCount - 1),
+  ).reverse();
+
+  return (
+    <Panel
+      title={t.dailyReturnOut}
+      sub={empty ? t.dailyReturnOutEmpty : t.dailyReturnOutSub}
+      tag={tags.recent}
+      className="dash-dayout-panel"
+    >
+      {days.length === 0 ? (
+        <NoRecords />
+      ) : (
+        <div className="dash-dayout">
+          <ol className="dash-dayout-axis" aria-hidden="true">
+            {ticks.map((tick) => (
+              <li key={tick}>{formatFigure(tick)}</li>
+            ))}
+          </ol>
+          <div className="dash-dayout-plot">
+            {ticks.map((tick) => (
+              <span
+                key={`grid-${String(tick)}`}
+                className="dash-dayout-grid"
+                style={{ bottom: `${String((tick / max) * 100)}%` }}
+                aria-hidden="true"
+              />
+            ))}
+            <ol className="dash-dayout-cols" aria-label={t.dailyReturnOut}>
+              {days.map((day) => {
+                const date = day.date;
+                const label =
+                  day.qty === null
+                    ? `${date} ${t.dailyReturnOutNone}`
+                    : `${date} ${formatFigure(day.qty)} ${t.qtyUnit}`;
+                return (
+                  <li
+                    key={date}
+                    className="dash-dayout-col"
+                    tabIndex={day.qty === null ? undefined : 0}
+                    aria-label={label}
+                    data-tip={day.qty === null ? undefined : label}
+                  >
+                    {day.qty !== null && (
+                      <span
+                        className="dash-dayout-bar"
+                        style={{ height: `${String((day.qty / max) * 100)}%` }}
+                      >
+                        <span className="dash-dayout-value">{formatFigure(day.qty)}</span>
+                      </span>
+                    )}
+                    <span className="dash-dayout-label">{date.slice(5)}</span>
+                  </li>
+                );
+              })}
+            </ol>
+          </div>
+        </div>
+      )}
+    </Panel>
+  );
+};
+
+/**
+ * OQC 검사실적(⭐ 사용자 지시 2026-10-19 구조 예시) — 1행 KPI: 합격률 · 출하검사 LOT · 고객 반품 · 미처리 반품,
+ * 2행: 일별 합격률 | 고객별 불합격 수량(같은 높이), 3행: 반출 일별 수량 | 최근 판정 5건.
+ * 반품 구성 원형은 두지 않는다(구분이 하나뿐이면 100% 원형은 정보가 없다) — 고객별 불합격 아래에 반품 구분별
+ * 수량 가로 막대(수량만 · 사용자 지시 2026-10-19).
+ * 목표 합격률 기준선은 시스템에 목표값이 없어 긋지 않는다(지어내지 않는다).
+ */
+export const OqcTab = ({
+  quality,
+  allows = () => false,
+}: {
+  quality: DashboardQuality;
+  /** 이 사용자가 그 화면을 볼 수 있는가 — 못 보면 최근 판정 표는 링크 없이 보인다. */
+  allows?: (path: string) => boolean;
+}) => {
   const tags = usePeriodTags();
   const oqc = quality.oqc;
+  const pendingReturn = oqc.pendingReturnLotCount;
+  /* 반출 일자별은 서버가 주면 늘 보인다(⭐ 사용자 지시 2026-10-19 「안 보인다」 — 실적 없어도 빈 칸으로). */
+  const hasReturnOut = oqc.dailyReturnOutQty !== undefined;
 
   return (
     <QualityTabFrame className="dash-tab-quality-detail">
@@ -994,30 +1321,394 @@ export const OqcTab = ({ quality }: { quality: DashboardQuality }) => {
         >
           <span>{t.customerReturnNoteShort}</span>
         </KpiTile>
+        {pendingReturn !== undefined && (
+          <KpiTile
+            label={t.pendingReturn}
+            tag={t.tagNow}
+            value={formatFigure(pendingReturn.lotCount)}
+            unit={t.lotUnit}
+            tone={pendingReturn.recordCount > 0 ? 'warning' : undefined}
+          >
+            <span>{t.pendingReturnKpiNote(formatFigure(pendingReturn.recordCount))}</span>
+          </KpiTile>
+        )}
       </div>
-      {/* 반품 구분 · 금액 · 반출 · 클레임 칸이 없다 — 빈 자리를 남기지 않고 넓게 쓴다. */}
-      <Row kind="row2-single">
+      <div className="dash-qo-top">
         <DailyPanel
           quality={quality}
           kinds={['OQC']}
           title={t.dailyTitleOf('OQC')}
           tooltip
+          gapMarks
+          gapDetail
+          gapBridge={false}
           niceTicks
         />
-      </Row>
-      <Row kind="row2-single">
+        <div className="dash-qo-side">
+          <Panel title={t.customerDefects} sub={t.vendorTableSub} tag={tags.monthTotal}>
+            <RankBars
+              entries={(oqc.customerDefects ?? []).map((entry) => ({
+                key: String(entry.customerId),
+                label: entry.customerName,
+                value: entry.rejectedQty,
+              }))}
+            />
+          </Panel>
+          {/* ⭐ 반품 구분별 수량(사용자 지시 2026-10-19) — 반품 입고 사유 + 공급사 반품 출고, 가로 막대 · 수량만. */}
+          {oqc.returnReasons !== undefined && (
+            <Panel title={t.returnByReason} sub={t.returnByReasonSub} tag={tags.month}>
+              <RankBars
+                entries={oqc.returnReasons.map((entry) => ({
+                  key: entry.reasonCode ?? 'NO_REASON',
+                  label: entry.reasonName ?? t.returnReasonNone,
+                  value: entry.qty,
+                }))}
+                showShare={false}
+              />
+            </Panel>
+          )}
+        </div>
+      </div>
+      <div className={hasReturnOut ? 'dash-oqc-bottom' : 'dash-oqc-bottom dash-oqc-bottom-single'}>
+        {hasReturnOut && oqc.dailyReturnOutQty !== undefined && (
+          <DailyReturnOutPanel days={oqc.dailyReturnOutQty} />
+        )}
         <RecentLotsPanel
           itemTitle
           title={t.recentLotsOf('OQC')}
           rows={recentOf(quality, 'OQC')}
           counterpart="customer"
+          linked={allows(INSPECTION_RESULTS_PATH)}
+          withTime
         />
-      </Row>
+      </div>
     </QualityTabFrame>
   );
 };
 
-export const NonconformanceTab = ({ quality }: { quality: DashboardQuality }) => {
+/**
+ * 가로 막대 + 가로축(⭐ 부적합 원인 구분별 구성 · 사용자 지시 2026-10-19) — 왼쪽 이름, 0 부터 보기 좋은 눈금의 가로축과
+ * 세로 눈금선, 막대 끝에 수량. 막대는 중립 단색, 수량 큰 순. 집계는 서버 그대로.
+ */
+const AxisBars = ({ entries, caption }: { entries: readonly NamedQty[]; caption: string }) => {
+  if (entries.length === 0) return <NoRecords />;
+  const sorted = [...entries].sort((a, b) => b.value - a.value);
+  const top = Math.max(0, ...sorted.map((entry) => entry.value));
+  const axis = toNiceAxis(top);
+  const max = axis?.max ?? 1;
+  const tickCount = axis?.ticks ?? 2;
+  const ticks = Array.from({ length: tickCount }, (_, index) => (max * index) / (tickCount - 1));
+  const sum = sorted.reduce((acc, entry) => acc + Math.max(0, entry.value), 0);
+  const shareOf = (value: number): string =>
+    `${String(sum === 0 ? 0 : Math.round((Math.max(0, value) / sum) * 100))}%`;
+
+  return (
+    <figure className="dash-axisbars" aria-label={caption}>
+      <ol className="dash-axisbars-rows">
+        {sorted.map((entry) => (
+          <li key={entry.key} className="dash-axisbars-row">
+            <span className="dash-axisbars-name" title={entry.label}>
+              {entry.label}
+            </span>
+            <span className="dash-axisbars-track">
+              {ticks.map((tick) => (
+                <span
+                  key={tick}
+                  className="dash-axisbars-grid"
+                  style={{ left: `${String((tick / max) * 100)}%` }}
+                  aria-hidden="true"
+                />
+              ))}
+              {/* 툴팁은 막대 끝 숫자 바로 오른쪽(⭐ 사용자 지시 2026-10-19 「그래프 오른쪽 = 숫자 옆」). */}
+              <span
+                className="dash-axisbars-bar"
+                style={{ width: `${String((Math.max(0, entry.value) / max) * 100)}%` }}
+                tabIndex={0}
+                aria-label={t.causeTip(
+                  entry.label,
+                  formatFigure(entry.value),
+                  shareOf(entry.value),
+                )}
+              >
+                <span
+                  className="dash-axisbars-value"
+                  data-tip={t.causeTip(
+                    entry.label,
+                    formatFigure(entry.value),
+                    shareOf(entry.value),
+                  )}
+                >
+                  {formatFigure(entry.value)}
+                </span>
+              </span>
+            </span>
+          </li>
+        ))}
+      </ol>
+      <div className="dash-axisbars-axis" aria-hidden="true">
+        <span />
+        <span className="dash-axisbars-ticks">
+          {ticks.map((tick) => (
+            <span key={tick} style={{ left: `${String((tick / max) * 100)}%` }}>
+              {formatFigure(tick)}
+            </span>
+          ))}
+        </span>
+      </div>
+    </figure>
+  );
+};
+
+/** 처분 판정 처리(W-03-10)가 특정 부적합을 여는 주소 — 그 화면 filters.ts 의 진입 키 `nonconformanceId` 와 같다. */
+const dispositionOfNonconformance = (nonconformanceId: number): string =>
+  `${DISPOSITION_DECISIONS_PATH}?nonconformanceId=${String(nonconformanceId)}`;
+
+/** 처분 판정 처리에서 그 품목의 부적합을 보는 주소 — 그 화면 filters.ts 의 품목 조건 키 `item` 과 같다. */
+const dispositionOfItem = (itemId: number): string =>
+  `${DISPOSITION_DECISIONS_PATH}?item=${String(itemId)}`;
+
+const SEVERITY_TONE: Record<string, ChipStatus> = {
+  CRITICAL: 'error',
+  MAJOR: 'warning',
+};
+
+/** 발생부터 지금까지 지난 날(내림). 시각을 읽지 못하면 `null`. */
+export const elapsedDays = (openedAt: string, now: Date): number | null => {
+  const at = Date.parse(openedAt);
+  if (Number.isNaN(at)) return null;
+  return Math.max(0, Math.floor((now.getTime() - at) / 86_400_000));
+};
+
+/**
+ * 미종결 부적합 목록(⭐ 사용자 지시 2026-10-19) — 상단 「미종결 부적합」과 같은 조건, 발생 오래된 순 5건.
+ * 열: 부적합 번호 · 품목 · 심각도 · 상태 · 발생일(경과 일수). 줄을 누르면 처분 판정 처리에서 그 부적합을 연다(권한이
+ * 있을 때만, 최근 판정 표와 같은 방식).
+ */
+const OpenNonconformancePanel = ({
+  rows,
+  total,
+  linked,
+}: {
+  rows: readonly DashboardOpenNonconformance[];
+  total: number;
+  linked: boolean;
+}) => {
+  const now = new Date();
+  /* 상태가 모두 같으면 열을 두지 않고 부제에 한 번 적는다(사용자 지시 2026-10-19 「상태 열 필요성 검토」).
+   * 「모두」라고 말할 수 있는 건 전체가 다 보일 때뿐 — 보이지 않는 건이 있으면 열을 둔다. */
+  const statuses = new Set(rows.map((row) => row.statusName ?? row.statusCode));
+  const sameStatus =
+    rows.length > 0 && rows.length >= total && statuses.size === 1 ? [...statuses][0] : undefined;
+
+  return (
+    <Panel
+      title={t.ncOpenList}
+      sub={sameStatus === undefined ? t.ncOpenListSub : t.ncOpenListSubStatus(sameStatus)}
+      tag={t.tagNow}
+    >
+      <div
+        className={
+          linked
+            ? 'dash-table-wrap dash-recent-linked dash-nc-open'
+            : 'dash-table-wrap dash-nc-open'
+        }
+      >
+        <Table
+          columns={[
+            {
+              key: 'no',
+              header: t.column.ncNo,
+              render: (row) =>
+                linked ? (
+                  <Link
+                    className="dash-recent-link"
+                    to={dispositionOfNonconformance(row.nonconformanceId)}
+                    aria-label={t.openDisposition(row.nonconformanceNo)}
+                  >
+                    <span className="dash-nc-no" title={row.nonconformanceNo}>
+                      {row.nonconformanceNo}
+                    </span>
+                  </Link>
+                ) : (
+                  <span className="dash-nc-no" title={row.nonconformanceNo}>
+                    {row.nonconformanceNo}
+                  </span>
+                ),
+            },
+            {
+              key: 'item',
+              header: t.column.item,
+              render: (row) => (
+                <span
+                  className="dash-cell-wrap dash-cell-item"
+                  title={[row.itemCode, row.itemName].filter(Boolean).join(' ') || undefined}
+                >
+                  {row.itemCode ?? t.none}
+                </span>
+              ),
+            },
+            {
+              key: 'severity',
+              header: t.column.severity,
+              render: (row) =>
+                row.severityCode === null ? (
+                  t.none
+                ) : (
+                  <Chip size="sm" status={SEVERITY_TONE[row.severityCode] ?? 'idle'}>
+                    {row.severityName ?? row.severityCode}
+                  </Chip>
+                ),
+            },
+            ...(sameStatus === undefined
+              ? [
+                  {
+                    key: 'status',
+                    header: t.column.status,
+                    render: (row: DashboardOpenNonconformance) => row.statusName ?? row.statusCode,
+                  },
+                ]
+              : []),
+            {
+              key: 'opened',
+              header: t.column.elapsed,
+              /* ⭐ 경과 일수 우선 — 발생일은 마우스 올림 글과 처분 판정 상세에서(사용자 지시 2026-10-19). */
+              render: (row) => {
+                const days = elapsedDays(row.openedAt, now);
+                const date = toPlantDateTimeParts(row.openedAt)?.date ?? row.openedAt;
+                return (
+                  <span title={t.openedOn(date)}>
+                    {days === null ? date : t.elapsedDaysText(String(days))}
+                  </span>
+                );
+              },
+            },
+            ...(linked
+              ? [
+                  {
+                    key: 'go',
+                    header: '',
+                    render: () => (
+                      <Icon
+                        name="chevron_right"
+                        size={18}
+                        className="dash-recent-arrow"
+                        aria-hidden="true"
+                      />
+                    ),
+                  } satisfies Column<DashboardOpenNonconformance>,
+                ]
+              : []),
+          ]}
+          rows={[...rows]}
+          getRowId={(row) => String(row.nonconformanceId)}
+          density="compact"
+          aria-label={t.ncOpenList}
+          empty={<NoRecords description={t.ncOpenEmpty} />}
+        />
+      </div>
+      {total > rows.length && (
+        <p className="dash-panel-foot">{t.ncOpenMore(String(total), String(rows.length))}</p>
+      )}
+    </Panel>
+  );
+};
+
+/**
+ * 반복 부적합 품목(⭐ 사용자 결정 2026-10-19) — 같은 기간 부적합이 2건 이상인 품목, 건수 → 최근 발생 순 5개.
+ * 머리에 조건에 드는 품목 수 전체. 불량현상은 따지지 않는다. 링크는 이번 범위에서 걸지 않는다.
+ */
+const RepeatedItemsPanel = ({
+  rows,
+  total,
+  tag,
+  linked,
+}: {
+  rows: readonly DashboardRepeatedItem[];
+  total: number;
+  tag: string;
+  /** 줄 → 처분 판정 처리(그 품목 조건 · 사용자 지시 2026-10-19). 그 화면 권한이 있을 때만. */
+  linked: boolean;
+}) => (
+  <Panel title={t.ncRepeated} sub={t.ncRepeatedSub} tag={tag}>
+    {/* 보이는 수와 전체가 다르면 「상위 5개 / 전체 n개」(사용자 지시 2026-10-19). */}
+    <p className="dash-panel-lead">
+      {total > rows.length
+        ? t.ncRepeatedTopOf(String(rows.length), String(total))
+        : t.ncRepeatedCount(String(total))}
+    </p>
+    <div className={linked ? 'dash-table-wrap dash-recent-linked' : 'dash-table-wrap'}>
+      <Table
+        columns={[
+          {
+            key: 'item',
+            header: t.column.item,
+            render: (row) => {
+              const label = (
+                <span
+                  className="dash-cell-wrap dash-cell-item"
+                  title={[row.itemCode, row.itemName].filter(Boolean).join(' ')}
+                >
+                  {row.itemCode}
+                </span>
+              );
+              return linked ? (
+                <Link
+                  className="dash-recent-link"
+                  to={dispositionOfItem(row.itemId)}
+                  aria-label={t.openItemDisposition(row.itemCode)}
+                >
+                  {label}
+                </Link>
+              ) : (
+                label
+              );
+            },
+          },
+          {
+            key: 'count',
+            header: t.column.ncCount,
+            render: (row) => `${formatFigure(row.ncCount)}${t.countUnit}`,
+          },
+          {
+            key: 'last',
+            header: t.column.lastOpenedAt,
+            render: (row) => toPlantDateTimeParts(row.lastOpenedAt)?.date ?? row.lastOpenedAt,
+          },
+          ...(linked
+            ? [
+                {
+                  key: 'go',
+                  header: '',
+                  render: () => (
+                    <Icon
+                      name="chevron_right"
+                      size={18}
+                      className="dash-recent-arrow"
+                      aria-hidden="true"
+                    />
+                  ),
+                } satisfies Column<DashboardRepeatedItem>,
+              ]
+            : []),
+        ]}
+        rows={[...rows]}
+        getRowId={(row) => String(row.itemId)}
+        density="compact"
+        aria-label={t.ncRepeated}
+        empty={<NoRecords description={t.ncRepeatedEmpty} />}
+      />
+    </div>
+  </Panel>
+);
+
+export const NonconformanceTab = ({
+  quality,
+  allows = () => false,
+}: {
+  quality: DashboardQuality;
+  /** 이 사용자가 그 화면을 볼 수 있는가 — 못 보면 미종결 목록은 링크 없이 보인다. */
+  allows?: (path: string) => boolean;
+}) => {
   const tags = usePeriodTags();
   const nc = quality.nonconformance;
   const paretoEntries = nc.phenomena.map((entry) => ({
@@ -1091,52 +1782,34 @@ export const NonconformanceTab = ({ quality }: { quality: DashboardQuality }) =>
             <ParetoChart entries={paretoEntries} caption={t.ncPareto} />
           )}
         </Panel>
-        <Panel title={t.ncCauseGroups} sub={t.qtyShareSub} tag={tags.month}>
-          <RankBars entries={causes} />
-        </Panel>
-      </Row>
-      <Row kind="row3">
-        <Panel title={t.ncCauseShare} sub={t.qtyShareSub} tag={tags.month}>
-          <StackedBar100 entries={causes} />
-        </Panel>
-        <Panel title={t.ncHandlingTitle} tag={tags.month}>
-          <StatusList
-            items={[
-              {
-                key: 'scrap',
-                label: t.ncScrap,
-                note: t.ncScrapNote,
-                value: formatFigure(nc.scrapQty),
-                unit: t.qtyUnit,
-              },
-              {
-                key: 'released',
-                label: t.ncReworkReleased,
-                note: t.ncReworkReleasedNote,
-                value: formatFigure(nc.reworkReleasedQty),
-                unit: t.qtyUnit,
-              },
-              {
-                key: 'open',
-                label: t.ncOpen,
-                value: formatFigure(nc.openCount),
-                unit: t.countUnit,
-                tone: countTone(nc.openCount, 'error'),
-              },
-              ...(nc.overdueCount === null
-                ? []
-                : [
-                    {
-                      key: 'overdue',
-                      label: t.ncOverdue,
-                      value: formatFigure(nc.overdueCount),
-                      unit: t.countUnit,
-                      tone: countTone(nc.overdueCount, 'warning'),
-                    },
-                  ]),
-            ]}
+        {/* ⭐ 원인 구분별 수량(아래 구성과 같은 값)을 빼고 그 자리에 미종결 부적합 목록(사용자 지시 2026-10-19). */}
+        {nc.openList !== undefined && (
+          <OpenNonconformancePanel
+            rows={nc.openList}
+            total={nc.openCount}
+            linked={allows(DISPOSITION_DECISIONS_PATH)}
           />
+        )}
+      </Row>
+      {/* ⭐ 부적합 처리 지표(상단 카드와 같은 값)를 빼고 그 자리에 반복 부적합 품목(사용자 지시 2026-10-19). */}
+      <Row kind={nc.repeatedItems === undefined ? 'row2-single' : 'row3'}>
+        {/* ⭐ 원인 구분별 구성 — 가로축 눈금이 있는 가로 막대 · 막대 끝 수량(사용자 지시 2026-10-19 참고 그림). */}
+        <Panel
+          title={t.ncCauseShare}
+          sub={t.ncCauseSub}
+          tag={tags.month}
+          className="dash-axisbars-panel"
+        >
+          <AxisBars entries={causes} caption={t.ncCauseShare} />
         </Panel>
+        {nc.repeatedItems !== undefined && (
+          <RepeatedItemsPanel
+            rows={nc.repeatedItems}
+            total={nc.repeatedItemCount ?? nc.repeatedItems.length}
+            tag={tags.month}
+            linked={allows(DISPOSITION_DECISIONS_PATH)}
+          />
+        )}
       </Row>
     </QualityTabFrame>
   );

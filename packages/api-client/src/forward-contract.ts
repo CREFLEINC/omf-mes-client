@@ -288,6 +288,28 @@ export interface DashboardQualityStatusCounts {
   NC_OPEN: DashboardLotRecordCount;
 }
 
+/** 미종결 부적합 목록의 한 줄. DB 에 없는 값은 `null`. */
+export interface DashboardOpenNonconformance {
+  nonconformanceId: number;
+  nonconformanceNo: string;
+  itemCode: string | null;
+  itemName: string | null;
+  severityCode: string | null;
+  severityName: string | null;
+  statusCode: string;
+  statusName: string | null;
+  openedAt: string;
+}
+
+/** 반복 부적합 품목의 한 줄. */
+export interface DashboardRepeatedItem {
+  itemId: number;
+  itemCode: string;
+  itemName: string;
+  ncCount: number;
+  lastOpenedAt: string;
+}
+
 export interface DashboardQuality {
   /** 없으면(이전 서버) 화면은 기존 숫자만 보인다. */
   statusCounts?: DashboardQualityStatusCounts;
@@ -301,6 +323,14 @@ export interface DashboardQuality {
   pqc: DashboardQualityTypeBlock & {
     pendingLotCount: number;
     reworkRequestCount: number;
+    /** PQC 재검사 회차의 투입 · 합격 수량 합(사용자 지시 2026-10-19 · IQC 와 같은 정의). 없으면(이전 서버) 칸을 두지 않는다. */
+    fullReinspect?: { inputQty: number; restoredQty: number } | null;
+    /** 품목별 PQC 불량 수량(IQC `itemDefects` 와 같은 형태). */
+    itemDefects?: { itemId: number; itemCode: string; itemName: string; qty: number }[];
+    /** 검사 대기 중 가장 오래된 의뢰 시각(ISO). 대기가 없으면 `null`. */
+    oldestPendingSince?: string | null;
+    /** 재작업 의뢰 LOT 수 · 건수(`reworkRequestCount` 와 같은 조건 · 사용자 지시 2026-10-19). */
+    reworkRequestCounts?: DashboardLotRecordCount;
     equipmentDefectRates: {
       equipmentId: number;
       equipmentCode: string;
@@ -311,6 +341,14 @@ export interface DashboardQuality {
   oqc: DashboardQualityTypeBlock & {
     /** 당월 고객 반품 입고 수량. */
     customerReturnQty: number;
+    /** 당월 반품 구분별 수량 — 반품 입고 사유 + 공급사 반품 출고(사용자 지시 2026-10-19). */
+    returnReasons?: { reasonCode: string | null; reasonName: string | null; qty: number }[];
+    /** 공급사 반품 출고(반출) 일자별 수량 — 일별 합격률과 같은 날짜, 기록 없는 날 `null`. */
+    dailyReturnOutQty?: { date: string; qty: number | null }[];
+    /** 반품 입고 뒤 처분 판정 전인 LOT(지금 기준). */
+    pendingReturnLotCount?: DashboardLotRecordCount;
+    /** 고객별 OQC 불합격 수량(IQC `vendorDefects` 와 같은 형태). */
+    customerDefects?: { customerId: number; customerName: string; rejectedQty: number }[];
   };
   nonconformance: {
     monthQty: number;
@@ -321,6 +359,12 @@ export interface DashboardQuality {
     openCount: number;
     /** 지금은 늘 `null` — 조치 기한 데이터가 없다. */
     overdueCount: number | null;
+    /** 미종결 부적합 — `openCount` 와 같은 조건, 발생 오래된 순 상위 5건(사용자 지시 2026-10-19 · 서버 장부 P-59). */
+    openList?: DashboardOpenNonconformance[];
+    /** 반복 부적합 품목 — 같은 기간 부적합 2건 이상 품목, 건수 → 최근 발생 순 상위 5(사용자 결정 2026-10-19). */
+    repeatedItems?: DashboardRepeatedItem[];
+    /** 조건에 드는 품목 수 전체(상위 5 밖 포함). */
+    repeatedItemCount?: number;
   };
 }
 

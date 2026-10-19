@@ -1,13 +1,14 @@
 import { messages } from '@omf-mes/i18n';
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { MemoryRouter } from 'react-router';
+import { MemoryRouter, Route, Routes } from 'react-router';
 import { describe, expect, it } from 'vitest';
 
 import { OTHER_SLICE_KEY, roundShares, toDonutSlices } from './defect-types-panel';
 import { quality, qualityBlock } from './quality.fixture';
 import { toNiceRateTicks } from './viz';
 import {
+  DISPOSITION_DECISIONS_PATH,
   IqcTab,
   NonconformanceTab,
   OqcTab,
@@ -60,7 +61,9 @@ describe('품질 탭', () => {
       <>
         <QualityOverviewTab quality={quality()} />
         <IqcTab quality={quality()} />
-        <PqcTab quality={quality()} />
+        <MemoryRouter>
+          <PqcTab quality={quality()} />
+        </MemoryRouter>
         <OqcTab quality={quality()} />
         <NonconformanceTab quality={quality()} />
       </>,
@@ -116,14 +119,29 @@ describe('품질 탭', () => {
   });
 
   it('PQC — 최근 판정은 호기 열, 시안대로 LOT 열은 두지 않는다', () => {
-    render(<PqcTab quality={quality()} />);
+    render(
+      <MemoryRouter>
+        <PqcTab quality={quality()} />
+      </MemoryRouter>,
+    );
 
     const recent = screen.getByRole('table', { name: t.recentLotsOf('PQC') });
     expect(within(recent).getByText('EQ-01')).toBeInTheDocument();
-    /* 품질 종합이 아닌 탭은 날짜만. */
-    expect(within(recent).queryByText(/\d{2}:\d{2}$/)).not.toBeInTheDocument();
+    /* IQC 와 같이 일시는 시각까지(사용자 지시 2026-10-19). */
+    expect(within(recent).getAllByText(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/).length).toBeGreaterThan(
+      0,
+    );
     expect(within(recent).queryByRole('columnheader', { name: 'LOT' })).not.toBeInTheDocument();
-    expect(screen.getByText(t.reworkLine('1'))).toBeInTheDocument();
+    /* 불량 수량 보조 글은 집계 기준만 — 재작업 판정은 주요 현황에 있다(간소화 2026-10-19). */
+    expect(screen.getByText(t.pqcDefectBasis)).toBeInTheDocument();
+    /* 당월 집계 KPI 는 모두 「당월」 이름표(사용자 지시 2026-10-19). */
+    for (const name of [t.pqcLots, t.monthDefectQty]) {
+      expect(screen.getByRole('group', { name })).toHaveTextContent(t.tagMonth);
+    }
+    /* PQC 는 단위 「건」으로 통일 — LOT 를 쓰지 않는다(사용자 지시 2026-10-19). */
+    expect(screen.getByRole('group', { name: t.pqcLots })).not.toHaveTextContent('LOT');
+    /* 「최고 불량률 설비」 KPI 는 없앴다(사용자 지시 2026-10-19) — 설비별 불량률 카드가 같은 정보. */
+    expect(screen.queryByText('최고 불량률 설비')).not.toBeInTheDocument();
   });
 
   it('PQC 호기별 불량률 — 높은 순, 같은 값은 설비 코드 자연 정렬(17-1 < 17-2 < 17-10)', () => {
@@ -136,17 +154,246 @@ describe('품질 탭', () => {
         ngQty: 1,
       }),
     );
-    const { container } = render(<PqcTab quality={q} />);
+    const { container } = render(
+      <MemoryRouter>
+        <PqcTab quality={q} />
+      </MemoryRouter>,
+    );
 
-    const labels = [...container.querySelectorAll('.dash-rank-label')].map((l) => l.textContent);
+    const labels = [...container.querySelectorAll('.dash-eqrate-name')].map((l) => l.textContent);
     expect(labels).toEqual(['E-9-1', 'E-17-1', 'E-17-2', 'E-17-10', 'E-17-11']);
+    /* 같은 축 — 최고(7%)가 100%, 5% 는 5/7. 최고값만 진한 막대, 같은 값끼리 같은 길이. 수량은 EA. */
+    const bars = [...container.querySelectorAll<HTMLElement>('.dash-eqrate-bar')];
+    expect(bars[0]?.style.width).toBe('100%');
+    expect(bars[1]?.style.width).toBe(bars[2]?.style.width);
+    expect(container.querySelectorAll('.dash-eqrate-bar-top')).toHaveLength(1);
+    expect(container.querySelector('.dash-eqrate-qty')).toHaveTextContent('1EA');
   });
 
-  it('OQC — 고객 반품 · 최근 판정(고객)만 두고 금액 · 클레임 칸은 없다', () => {
-    render(<OqcTab quality={quality()} />);
+  it('OQC — 반출 실적이 하나도 없어도 반출 일자별 카드는 빈 칸 9개로 보인다(사용자 지시 2026-10-19)', () => {
+    const q = quality();
+    q.oqc.dailyReturnOutQty = Array.from({ length: 9 }, (_, index) => ({
+      date: `2026-10-${String(11 + index)}`,
+      qty: null,
+    }));
+    const { container } = render(<OqcTab quality={q} />);
+
+    expect(screen.getByText(t.dailyReturnOut)).toBeInTheDocument();
+    expect(screen.getByText(t.dailyReturnOutEmpty)).toBeInTheDocument();
+    expect(container.querySelectorAll('.dash-dayout-col')).toHaveLength(9);
+  });
+
+  it('OQC — 서버가 새 칸을 주지 않으면 미처리 반품 칸 · 반출 그래프 없이, 최근 판정은 한 줄 전체', () => {
+    const { container } = render(<OqcTab quality={quality()} />);
 
     expect(screen.getByRole('group', { name: t.customerReturn })).toBeInTheDocument();
-    expect(screen.getAllByRole('region')).toHaveLength(2);
+    expect(screen.queryByRole('group', { name: t.pendingReturn })).not.toBeInTheDocument();
+    expect(screen.queryByText(t.dailyReturnOut)).not.toBeInTheDocument();
+    expect(container.querySelector('.dash-oqc-bottom-single')).not.toBeNull();
+  });
+
+  it('OQC — 구조 예시 배치: 미처리 반품 KPI · 고객별 불합격 · 반출 일별(실적 있을 때) · 반품 구분은 고객 반품 칸 글(사용자 지시 2026-10-19)', () => {
+    const q = quality();
+    q.oqc.customerDefects = [{ customerId: 1, customerName: '고객 가', rejectedQty: 30 }];
+    q.oqc.returnReasons = [
+      { reasonCode: 'CUSTOMER_RETURN', reasonName: '고객반품', qty: 20 },
+      { reasonCode: 'CLAIM', reasonName: '클레임', qty: 4 },
+      { reasonCode: 'SUPPLIER_RETURN_OUT', reasonName: '공급사반품', qty: 5 },
+    ];
+    q.oqc.pendingReturnLotCount = { lotCount: 2, recordCount: 3 };
+    q.oqc.dailyReturnOutQty = [
+      { date: '2026-10-15', qty: 4 },
+      { date: '2026-10-16', qty: null },
+    ];
+    const { container } = render(<OqcTab quality={q} />);
+
+    expect(screen.getByRole('group', { name: t.pendingReturn })).toHaveTextContent('2');
+    /* 반품 구분별 수량은 고객별 불합격 아래 가로 막대(수량만) — 공급사 반품 출고 포함. */
+    expect(screen.getByText(t.returnByReason)).toBeInTheDocument();
+    expect(screen.getByText('공급사반품')).toBeInTheDocument();
+    expect(screen.getByText('고객 가')).toBeInTheDocument();
+    const bars = container.querySelectorAll('.dash-dayout-col');
+    expect(bars).toHaveLength(2);
+    /* 출고 기록 없는 날은 빈 칸(막대 · 숫자 없음), 있는 날은 툴팁에 날짜 · 정확한 수량. */
+    expect(bars[1]?.querySelector('.dash-dayout-bar')).toBeNull();
+    expect(bars[0]).toHaveAttribute('data-tip', '2026-10-15 4 EA');
+  });
+
+  it('PQC — 주요 현황 「재작업 의뢰」 줄은 권한이 있으면 처분 판정 처리로 간다(사용자 지시 2026-10-19)', async () => {
+    const user = userEvent.setup();
+    render(
+      <MemoryRouter initialEntries={['/dashboard?tab=pqc']}>
+        <Routes>
+          <Route
+            path="/dashboard"
+            element={
+              <PqcTab quality={quality()} allows={(path) => path === DISPOSITION_DECISIONS_PATH} />
+            }
+          />
+          <Route path={DISPOSITION_DECISIONS_PATH} element={<p>처분 판정 처리 화면</p>} />
+        </Routes>
+      </MemoryRouter>,
+    );
+    await user.click(screen.getByRole('button', { name: new RegExp(t.reworkRequests) }));
+    expect(screen.getByText('처분 판정 처리 화면')).toBeInTheDocument();
+  });
+
+  it('일별 합격률 — 검사 실적이 없는 날은 툴팁에 「검사 실적 없음」, 안내 문구는 없다(사용자 지시 2026-10-19)', () => {
+    const q = quality();
+    q.iqc.dailyPassRates = [
+      { date: '2026-10-15', passRate: 90 },
+      { date: '2026-10-16', passRate: null },
+      { date: '2026-10-17', passRate: 80 },
+    ];
+    render(<IqcTab quality={q} />);
+
+    expect(screen.getByRole('button', { name: /^2026-10-16.*검사 실적 없음/ })).toBeInTheDocument();
+    expect(screen.queryByText(/선을 끊음/)).not.toBeInTheDocument();
+  });
+
+  it('PQC 주요 현황 — LOT 번호가 없으면 0 LOT · n건(사용자 지시 2026-10-19)', () => {
+    const q = quality();
+    const zero = { lotCount: 0, recordCount: 0 };
+    q.statusCounts = {
+      INSPECTION_HELD: {
+        lotCount: 0,
+        recordCount: 8,
+        byType: { IQC: zero, PQC: { lotCount: 0, recordCount: 8 }, OQC: zero },
+      },
+      RECEIPT_HOLD: zero,
+      PQC_PENDING: { lotCount: 0, recordCount: 3 },
+      NC_OPEN: zero,
+    };
+    render(
+      <MemoryRouter>
+        <PqcTab quality={q} />
+      </MemoryRouter>,
+    );
+    const region = screen.getByRole('region', { name: t.currentTitle });
+    expect(region).toHaveTextContent(/0\s*LOT\s*· 8건/);
+    expect(region).toHaveTextContent(/0\s*LOT\s*· 3건/);
+  });
+
+  it('PQC — 처분 판정 처리 화면 권한이 없으면 「재작업 의뢰」 줄은 누를 수 없다', () => {
+    render(
+      <MemoryRouter>
+        <PqcTab quality={quality()} />
+      </MemoryRouter>,
+    );
+    expect(screen.getByRole('button', { name: new RegExp(t.reworkRequests) })).toBeDisabled();
+  });
+
+  it('부적합 — 원인 구분별 수량 · 처리 지표 대신 미종결 목록(처분 판정 링크) · 반복 품목(사용자 지시 2026-10-19)', () => {
+    const q = quality();
+    q.nonconformance.openCount = 7;
+    q.nonconformance.openList = [
+      {
+        nonconformanceId: 31,
+        nonconformanceNo: 'NC-0031',
+        itemCode: 'ITEM-1',
+        itemName: '품목 1',
+        severityCode: 'MAJOR',
+        severityName: '중',
+        statusCode: 'OPEN',
+        statusName: '의뢰 전',
+        openedAt: '2026-10-01T01:00:00Z',
+      },
+    ];
+    q.nonconformance.repeatedItems = [
+      {
+        itemId: 1,
+        itemCode: 'ITEM-1',
+        itemName: '품목 1',
+        ncCount: 3,
+        lastOpenedAt: '2026-10-15T01:00:00Z',
+      },
+    ];
+    q.nonconformance.repeatedItemCount = 4;
+    render(
+      <MemoryRouter>
+        <NonconformanceTab quality={q} allows={(path) => path === '/quality/dispositions'} />
+      </MemoryRouter>,
+    );
+
+    expect(screen.queryByText('원인 구분별 부적합 수량')).not.toBeInTheDocument();
+    expect(screen.queryByText('부적합 처리 지표')).not.toBeInTheDocument();
+    expect(screen.getByRole('link', { name: t.openDisposition('NC-0031') })).toHaveAttribute(
+      'href',
+      '/quality/dispositions?nonconformanceId=31',
+    );
+    expect(screen.getByText(t.ncOpenMore('7', '1'))).toBeInTheDocument();
+    /* 보이는 수(1)와 전체(4)가 다르면 「상위 1개 / 전체 4개」. */
+    expect(screen.getByText(t.ncRepeatedTopOf('1', '4'))).toBeInTheDocument();
+    /* 반복 품목 줄 → 처분 판정 처리(그 품목 조건). */
+    expect(screen.getByRole('link', { name: t.openItemDisposition('ITEM-1') })).toHaveAttribute(
+      'href',
+      '/quality/dispositions?item=1',
+    );
+    /* 보이는 1건만 같은 상태여도 안 보이는 6건이 있으면 「모두」라 하지 않고 상태 열을 둔다. */
+    expect(screen.getByRole('columnheader', { name: t.column.status })).toBeInTheDocument();
+    expect(screen.queryByText(t.ncOpenListSubStatus('의뢰 전'))).not.toBeInTheDocument();
+    expect(screen.getByRole('table', { name: t.ncRepeated })).toHaveTextContent('3건');
+  });
+
+  it('부적합 — 미종결 전체가 보이고 상태가 모두 같으면 상태 열 대신 부제', () => {
+    const q = quality();
+    q.nonconformance.openCount = 1;
+    q.nonconformance.openList = [
+      {
+        nonconformanceId: 31,
+        nonconformanceNo: 'NC-0031',
+        itemCode: 'ITEM-1',
+        itemName: '품목 1',
+        severityCode: 'MAJOR',
+        severityName: '중',
+        statusCode: 'OPEN',
+        statusName: '의뢰 전',
+        openedAt: '2026-10-01T01:00:00Z',
+      },
+    ];
+    render(<NonconformanceTab quality={q} />);
+
+    expect(screen.queryByRole('columnheader', { name: t.column.status })).not.toBeInTheDocument();
+    expect(screen.getByText(t.ncOpenListSubStatus('의뢰 전'))).toBeInTheDocument();
+  });
+
+  it('부적합 — 미종결 0건 · 권한 없음이면 안내 문구, 링크 없음', () => {
+    const q = quality();
+    q.nonconformance.openList = [];
+    q.nonconformance.repeatedItems = [];
+    q.nonconformance.repeatedItemCount = 0;
+    render(<NonconformanceTab quality={q} />);
+
+    expect(screen.getByText(t.ncOpenEmpty)).toBeInTheDocument();
+    expect(screen.getByText(t.ncRepeatedEmpty)).toBeInTheDocument();
+    expect(screen.queryByRole('link')).not.toBeInTheDocument();
+  });
+
+  it('PQC — 재검 칸 · 불량현상/품목별 탭 전환 원형 · 검사 대기 최장 경과(사용자 지시 2026-10-19)', async () => {
+    const user = userEvent.setup();
+    const q = quality();
+    q.pqc.fullReinspect = { inputQty: 10, restoredQty: 9 };
+    q.pqc.itemDefects = [{ itemId: 1, itemCode: 'ITEM-9', itemName: '품목 9', qty: 4 }];
+    q.pqc.defectPhenomena = [{ defectCodeId: 1, defectCode: 'D01', defectName: '버', qty: 3 }];
+    q.pqc.oldestPendingSince = new Date(Date.now() - 125 * 60_000).toISOString();
+    render(
+      <MemoryRouter>
+        <PqcTab quality={q} />
+      </MemoryRouter>,
+    );
+
+    /* 재검 투입 · 복원율은 한 칸(간소화 2026-10-19) — 값은 복원율, 투입 · 복원 수량은 보조 글. */
+    expect(screen.getByRole('group', { name: t.fullReinspect })).toHaveTextContent('90');
+    expect(screen.getByText(t.pqcReinspectNote('10', '9'))).toBeInTheDocument();
+    /* 한 카드에서 탭으로 전환 — 처음은 불량현상, 「품목별」을 누르면 품목별 원형(사용자 지시 2026-10-19). */
+    expect(screen.getByRole('img', { name: t.phenomenaOf('PQC') })).toBeInTheDocument();
+    expect(screen.queryByRole('img', { name: t.pqcItemDefects })).not.toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: t.pqcBreakdownItem }));
+    expect(screen.getByRole('img', { name: t.pqcItemDefects })).toBeInTheDocument();
+    expect(screen.getAllByText(t.pqcDefectBasis)).toHaveLength(2);
+    /* 상위 밖 나머지는 「기타」 — 합계 = 상단 불량 수량. */
+    expect(screen.getAllByText(t.otherRest).length).toBeGreaterThan(0);
+    expect(screen.getByText(/최장 대기 2시간 5분/)).toBeInTheDocument();
   });
 
   it('부적합 — 조치 기한 초과가 null 이면 칸을 두지 않고, 값이 오면 보인다', () => {
@@ -357,7 +604,11 @@ describe('품질 탭', () => {
     expect(screen.getByRole('tooltip')).toHaveTextContent('IQC95%');
     iqc.unmount();
 
-    const pqc = render(<PqcTab quality={data} />);
+    const pqc = render(
+      <MemoryRouter>
+        <PqcTab quality={data} />
+      </MemoryRouter>,
+    );
     expect(screen.getByRole('group', { name: t.passRateOf('PQC') })).toHaveTextContent(
       '전월 92.7% · ↓ 2.3%p',
     );

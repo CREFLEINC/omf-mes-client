@@ -8225,8 +8225,8 @@ button.app-button-neutral {
 
 /* 가장 많은 유형만 강조색(정보 파랑), 나머지는 중립 회색을 짙은 것부터 옅게 — 단계마다 명도 차이가 뚜렷하다. */
 .dash-donut-1 {
-  background: var(--semantic-info);
-  fill: var(--semantic-info);
+  background: var(--app-info);
+  fill: var(--app-info);
 }
 
 .dash-donut-2 {
@@ -8486,14 +8486,6 @@ button.app-button-neutral {
 .dash-panel-head .dash-panel-action {
   margin-block: calc(var(--space-1) * -1);
   color: var(--on-surface-variant);
-}
-
-/* 상자 머리 오른쪽 단위 표시(생산 추이 「단위 EA」). */
-.dash-panel-unit {
-  font: var(--type-label-sm);
-  letter-spacing: var(--type-label-sm-tracking);
-  color: var(--on-surface-muted);
-  white-space: nowrap;
 }
 
 /* 생산 추이 — y축 글자가 그림 왼쪽 밖으로 넘친 만큼 보이게 한다(값은 그대로). */
@@ -8912,7 +8904,7 @@ button.app-button-neutral {
 }
 
 .dash-tone-error {
-  color: var(--semantic-error);
+  color: var(--app-error-text);
 }
 
 .dash-tone-warning {
@@ -9039,7 +9031,7 @@ button.app-button-neutral {
  */
 .dash-eq-stopped {
   background: color-mix(in srgb, var(--semantic-error-container) 35%, var(--surface));
-  border-inline-start: 3px solid var(--semantic-error);
+  border-inline-start: 3px solid var(--app-error);
 }
 
 .dash-eq-waiting {
@@ -9049,7 +9041,7 @@ button.app-button-neutral {
 
 .dash-eq-changeover {
   background: color-mix(in srgb, var(--semantic-info-container) 35%, var(--surface));
-  border-inline-start: 3px solid var(--semantic-info);
+  border-inline-start: 3px solid var(--app-info);
 }
 
 .dash-eq-idle {
@@ -9224,112 +9216,136 @@ button.app-button-neutral {
  */
 .dash-stopped {
   display: grid;
-  /* 설비명 · 설비 종류 · 사유 · 경과 시간 — 모든 줄이 같은 열 위치(사용자 지정 2026-10-16). */
-  grid-template-columns: max-content max-content minmax(0, 1fr) max-content;
-  column-gap: var(--space-3);
 }
 
-.dash-stopped-colhead,
-.dash-stopped-group,
-.dash-stopped-list,
-.dash-stopped-row,
-.dash-stopped-button {
-  display: grid;
-  grid-column: 1 / -1;
-  grid-template-columns: subgrid;
+/*
+ * ⭐ 가동 외 설비 현황(사용자 지시 2026-10-19 예시) — 묶음 머리(배지 + 대수), 줄은 왼쪽 「설비 / 종류 · 사유」,
+ * 오른쪽 「경과 시간 / 다른 설비 n대 보기」. 묶음 사이는 얇은 선. 사유는 말줄임 없이 자연 줄바꿈(2026-10-16 유지).
+ */
+.dash-stopped-colhead {
+  display: flex;
+  justify-content: flex-end;
 }
 
-/* 열 제목 「경과 시간」 — 목록 위 오른쪽에 한 번. */
 .dash-stopped-colhead span {
-  grid-column: -2 / -1;
   font: var(--type-label-sm);
   letter-spacing: var(--type-label-sm-tracking);
   color: var(--on-surface-muted);
-  text-align: end;
 }
 
 .dash-stopped-group {
-  padding-block: var(--space-2);
+  padding-block: var(--space-3);
 }
 
 .dash-stopped-group + .dash-stopped-group {
   border-top: 1px solid var(--outline-variant);
 }
 
+.dash-stopped-group:first-of-type {
+  padding-top: var(--space-1);
+}
+
 .dash-stopped-group:last-child {
   padding-bottom: 0;
 }
 
-/* 그룹 머리 — 배지 + 대수 한 줄(「정지 2대」). */
+/* 묶음 머리 — 배지 + 대수 한 줄(「정지 2대」). */
 .dash-stopped-head {
   display: flex;
-  grid-column: 1 / -1;
   align-items: center;
   gap: var(--space-2);
-  margin-bottom: var(--space-1);
 }
 
 .dash-stopped-count {
-  font: var(--type-label-lg);
-  letter-spacing: var(--type-label-lg-tracking);
+  font: var(--type-title-sm);
+  letter-spacing: var(--type-title-sm-tracking);
   font-weight: 600;
 }
 
 .dash-stopped-list {
-  margin: 0;
+  display: grid;
+  gap: var(--space-2);
+  margin: var(--space-2) 0 0;
   padding: 0;
   list-style: none;
-  font: var(--type-body-sm);
-  letter-spacing: var(--type-body-sm-tracking);
 }
 
-/* 줄 전체가 단추 — 누르면 상세 창. */
-.dash-stopped-button {
-  align-items: baseline;
-  padding: var(--space-1) 0;
-  border: 0;
+/*
+ * 설비 줄(⭐ 사용자 지시 2026-10-19) — 왼쪽 「설비 / 종류 · 사유」 | 오른쪽 「경과 시간 / 다른 설비 n대 보기」를 한 줄
+ * 칸 안에 둔다(따로 줄을 늘리지 않는다). 줄 전체가 상세 단추(`::after` 덮개), 펼치기 단추만 그 위에 올라온다.
+ */
+.dash-stopped-row {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) max-content;
+  grid-template-rows: auto auto;
+  column-gap: var(--space-3);
+  align-items: center;
+  padding: var(--space-1);
   border-radius: var(--radius-sm);
+}
+
+.dash-stopped-row:has(.dash-stopped-button:hover) {
+  background: var(--state-hover-neutral);
+}
+
+.dash-stopped-button {
+  display: grid;
+  grid-column: 1;
+  grid-row: 1 / span 2;
+  gap: 2px;
+  min-width: 0;
+  padding: 0;
+  border: 0;
   background: transparent;
   color: var(--on-surface);
-  font: inherit;
-  letter-spacing: inherit;
+  font: var(--type-body-sm);
+  letter-spacing: var(--type-body-sm-tracking);
   text-align: start;
   cursor: pointer;
 }
 
-.dash-stopped-button:hover {
-  background: var(--state-hover-neutral);
+.dash-stopped-button::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
 }
 
 .dash-stopped-button:focus-visible {
   outline: none;
+}
+
+.dash-stopped-row:has(.dash-stopped-button:focus-visible) {
   box-shadow: var(--focus-ring);
 }
 
 /* 포인터로 연 상세를 닫아 포커스만 돌아온 경우 — 링을 그리지 않는다(설비 타일과 같은 규칙). */
-.dash-stopped-button[data-pointer-focus]:focus-visible {
+.dash-stopped-row:has(.dash-stopped-button[data-pointer-focus]:focus-visible) {
   box-shadow: none;
 }
 
-/* 설비명은 굵게, 설비 종류는 작은 회색 — 원칙(a) 코드 · 종류는 줄을 바꾸지 않는다. */
 .dash-stopped-code {
-  font-weight: 600;
+  font: var(--type-label-lg);
+  letter-spacing: var(--type-label-lg-tracking);
+  font-weight: 700;
   white-space: nowrap;
+}
+
+.dash-stopped-meta {
+  color: var(--on-surface-muted);
+  font: var(--type-label-sm);
+  letter-spacing: var(--type-label-sm-tracking);
+  word-break: keep-all;
+  overflow-wrap: break-word;
 }
 
 .dash-stopped-type {
-  font: var(--type-label-sm);
-  letter-spacing: var(--type-label-sm-tracking);
-  color: var(--on-surface-muted);
   white-space: nowrap;
 }
 
-/* 사유 — 말줄임 없이 자연 줄바꿈(사용자 지시 2026-10-16 — 앞의 「최대 2줄 + 말줄임」 대체). */
 .dash-stopped-reason {
-  min-width: 0;
   color: var(--on-surface-variant);
-  word-break: keep-all;
-  overflow-wrap: break-word;
 }
 
 /* 「사유 미등록」 — 오류 · 경고가 아니라 차분한 보조 글. */
@@ -9338,16 +9354,31 @@ button.app-button-neutral {
 }
 
 .dash-stopped-elapsed {
-  color: var(--on-surface);
+  grid-column: 2;
+  grid-row: 1;
+  font: var(--type-label-lg);
+  letter-spacing: var(--type-label-lg-tracking);
+  font-weight: 700;
   font-variant-numeric: tabular-nums;
   text-align: end;
   white-space: nowrap;
 }
 
-/* 「외 n대」 — 그룹 머리 오른쪽 끝. 머리줄 높이를 늘리지 않게 위아래를 당긴다. */
-.dash-stopped-head .dash-stopped-more {
-  margin-block: calc(var(--space-1) * -1);
-  margin-inline-start: auto;
+/* 「다른 설비 n대 보기」 — 경과 시간 바로 아래(같은 줄 칸의 둘째 줄), 덮개 위로 올려 누를 수 있게. */
+.dash-stopped-row .dash-stopped-more {
+  position: relative;
+  z-index: 1;
+  grid-column: 2;
+  grid-row: 2;
+  justify-self: end;
+  min-height: 0;
+  margin-inline-end: calc(var(--space-2) * -1);
+  padding-block: 0;
+}
+
+/* 넘치면 이 카드 안에서만 세로 스크롤(행 높이는 옆 카드를 따른다 · 사용자 지시 2026-10-19). */
+.dash-overview > .dash-fit.dash-stopped-panel > .dash-panel-body {
+  overflow-y: auto;
 }
 
 /*
@@ -9495,8 +9526,9 @@ button.app-button-neutral {
 .dash-more-list {
   container-type: inline-size;
   display: grid;
-  grid-template-columns: minmax(6rem, max-content) minmax(0, 1fr) max-content;
-  column-gap: var(--space-4);
+  /* 각 열 폭을 넉넉히 — 설비명 · 사유 · 경과 시간 사이를 벌린다(사용자 지시 2026-10-19). */
+  grid-template-columns: minmax(9rem, max-content) minmax(16rem, 1fr) minmax(7rem, max-content);
+  column-gap: var(--space-6);
   font: var(--type-body-sm);
   letter-spacing: var(--type-body-sm-tracking);
 }
@@ -9528,8 +9560,9 @@ button.app-button-neutral {
   color: var(--on-surface-muted);
 }
 
+/* 경과 시간도 왼쪽 정렬(사용자 지시 2026-10-19). */
 .dash-more-colhead span:last-child {
-  text-align: end;
+  text-align: start;
 }
 
 /* 줄 전체가 단추 — 누르면 상세 창. */
@@ -9579,7 +9612,7 @@ button.app-button-neutral {
 
 .dash-more-elapsed {
   font-variant-numeric: tabular-nums;
-  text-align: end;
+  text-align: start;
   white-space: nowrap;
 }
 
@@ -9615,36 +9648,6 @@ button.app-button-neutral {
     grid-column: 1 / -1;
     grid-row: 2;
     margin-top: var(--space-1);
-  }
-}
-
-/*
- * 패널이 좁으면(오른쪽 열 · 1440 이하) 사유를 설비 아래 줄로 내린다 — 세 열로 두면 사유 열이 좁아 긴 고장
- * 사유가 여섯 줄로 꺾였다. 1줄 = 설비(종류는 옆에 작게) · 오른쪽 경과 시간, 2줄 = 사유(줄 전체 폭).
- */
-@container (max-width: 380px) {
-  .dash-stopped {
-    grid-template-columns: max-content minmax(0, 1fr) max-content;
-  }
-
-  .dash-stopped-code {
-    grid-column: 1;
-    grid-row: 1;
-  }
-
-  .dash-stopped-type {
-    grid-column: 2;
-    grid-row: 1;
-  }
-
-  .dash-stopped-elapsed {
-    grid-column: 3;
-    grid-row: 1;
-  }
-
-  .dash-stopped-reason {
-    grid-column: 1 / -1;
-    grid-row: 2;
   }
 }
 
@@ -9755,7 +9758,7 @@ button.app-button-neutral {
 }
 
 .dash-dot-error {
-  background: var(--semantic-error);
+  background: var(--app-error);
 }
 
 .dash-dot-warning {
@@ -9763,7 +9766,7 @@ button.app-button-neutral {
 }
 
 .dash-dot-info {
-  background: var(--semantic-info);
+  background: var(--app-info);
 }
 
 .dash-swatch {
@@ -9942,7 +9945,7 @@ button.app-button-neutral {
 }
 
 .dash-lot-key-rejected {
-  background: var(--semantic-error);
+  background: var(--app-error);
 }
 
 .dash-lot-key-held {
@@ -9958,7 +9961,7 @@ button.app-button-neutral {
 }
 
 .dash-minibar-ng {
-  background: var(--semantic-error);
+  background: var(--app-error);
 }
 
 /* 현재 현황 목록 */
@@ -10166,7 +10169,7 @@ button.app-button-neutral {
 }
 
 .dash-threshold {
-  stroke: var(--semantic-info);
+  stroke: var(--app-info);
   stroke-width: 1;
   stroke-dasharray: 4 4;
 }
@@ -10274,7 +10277,7 @@ button.app-button-neutral {
 }
 
 .dash-line-3 {
-  color: var(--semantic-info);
+  color: var(--app-info);
 }
 
 .dash-table-wrap {
@@ -14258,4 +14261,550 @@ button.app-button-neutral {
 
 .shipment-schedule-plant-body > * {
   margin-block: 0;
+}
+
+/*
+ * OQC 일별 반출 수량(⭐ 사용자 지시 2026-10-19 UI/UX) — 세로축(0 부터) | 막대 영역. 막대는 중립 단색, 값은 막대 위,
+ * 날짜는 바닥선 아래. 카드는 옆 최근 판정 카드 높이를 따라 늘어나고 막대 영역이 남는 높이를 쓴다.
+ */
+.dash-dayout-panel {
+  display: flex;
+  flex-direction: column;
+}
+
+.dash-dayout-panel > .dash-panel-body {
+  display: flex;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.dash-dayout {
+  display: grid;
+  flex: 1 1 auto;
+  grid-template-columns: auto minmax(0, 1fr);
+  column-gap: var(--space-2);
+  min-height: 11rem;
+  padding-block: var(--space-4) var(--space-5);
+}
+
+.dash-dayout-axis {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  color: var(--on-surface-muted);
+  font: var(--type-label-sm);
+  letter-spacing: var(--type-label-sm-tracking);
+  font-variant-numeric: tabular-nums;
+  text-align: end;
+}
+
+.dash-dayout-axis > li {
+  line-height: 0;
+}
+
+.dash-dayout-plot {
+  position: relative;
+  border-block-end: 1px solid var(--outline-variant);
+}
+
+.dash-dayout-cols {
+  position: relative;
+  height: 100%;
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
+  column-gap: var(--space-2);
+  align-items: end;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.dash-dayout-grid {
+  position: absolute;
+  inset-inline: 0;
+  border-block-start: 1px solid color-mix(in srgb, var(--outline-variant) 60%, transparent);
+  pointer-events: none;
+}
+
+.dash-dayout-col {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  align-items: flex-end;
+  height: 100%;
+  border-radius: 2px;
+}
+
+.dash-dayout-col:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.dash-dayout-bar {
+  position: relative;
+  width: min(56%, 1.75rem);
+  min-height: 1px;
+  border-radius: 2px 2px 0 0;
+  background: var(--chart-2);
+}
+
+.dash-dayout-value {
+  position: absolute;
+  inset-block-end: 100%;
+  inset-inline-start: 50%;
+  transform: translate(-50%, -2px);
+  font: var(--type-label-sm);
+  letter-spacing: var(--type-label-sm-tracking);
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.dash-dayout-label {
+  position: absolute;
+  inset-block-start: 100%;
+  margin-block-start: var(--space-1);
+  color: var(--on-surface-muted);
+  font: var(--type-label-sm);
+  letter-spacing: var(--type-label-sm-tracking);
+  white-space: nowrap;
+}
+
+/* 툴팁 — 날짜 · 정확한 수량(마우스 올림 · 포커스). 막대 칸 위 가운데, 다른 카드 툴팁과 같은 생김새. */
+.dash-dayout-col[data-tip]:hover::after,
+.dash-dayout-col[data-tip]:focus-visible::after {
+  content: attr(data-tip);
+  position: absolute;
+  inset-block-start: 0;
+  inset-inline-start: 50%;
+  z-index: 2;
+  transform: translate(-50%, calc(-100% - var(--space-2)));
+  padding: var(--space-1) var(--space-2);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-sm, 6px);
+  background: var(--surface);
+  box-shadow: var(--elevation-1, 0 1px 3px rgb(0 0 0 / 12%));
+  color: var(--on-surface);
+  font: var(--type-label-sm);
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+/* PQC 설비별 불량률 TOP 8(사용자 지시 2026-10-19) — 설비 | 막대(남는 폭) | 불량률 | 불량 수량, 열 폭 고정 · 줄 높이 같게. */
+.dash-eqrate {
+  display: grid;
+  grid-template-columns: minmax(4.5rem, max-content) minmax(2rem, 1fr) 3.5rem 5.5rem;
+  column-gap: var(--space-3);
+  row-gap: var(--space-2);
+  align-items: center;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font: var(--type-body-sm);
+}
+
+.dash-eqrate-row {
+  display: grid;
+  grid-column: 1 / -1;
+  grid-template-columns: subgrid;
+  align-items: center;
+  min-height: 1.5rem;
+}
+
+.dash-eqrate-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dash-eqrate-track {
+  height: 0.625rem;
+  border-radius: 2px;
+  background: color-mix(in srgb, var(--on-surface) 6%, transparent);
+}
+
+.dash-eqrate-bar {
+  display: block;
+  height: 100%;
+  border-radius: 2px;
+  background: var(--chart-5);
+}
+
+.dash-eqrate-bar-top {
+  background: var(--chart-2);
+}
+
+.dash-eqrate-rate {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  text-align: end;
+}
+
+.dash-eqrate-qty {
+  color: var(--on-surface-muted);
+  font-variant-numeric: tabular-nums;
+  text-align: end;
+  white-space: nowrap;
+}
+
+/*
+ * PQC 불량 구성 보기 전환(사용자 지시 2026-10-19) — 화면 탭(빨간 밑줄)과 구분되는 작은 버튼 묶음 + 그 아래 집계 기준.
+ */
+.dash-breakdown-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+  margin-block-end: var(--space-3);
+}
+
+.dash-seg {
+  display: inline-flex;
+  padding: 2px;
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-sm, 6px);
+  background: var(--surface);
+}
+
+.dash-seg-button {
+  padding: var(--space-1) var(--space-3);
+  border: 0;
+  border-radius: calc(var(--radius-sm, 6px) - 2px);
+  background: transparent;
+  color: var(--on-surface-muted);
+  font: var(--type-label-md, var(--type-label-sm));
+  cursor: pointer;
+}
+
+.dash-seg-button[aria-pressed='true'] {
+  background: var(--surface-container-high, var(--surface-container));
+  color: var(--on-surface);
+  font-weight: 700;
+}
+
+.dash-seg-button:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.dash-breakdown-basis {
+  font: var(--type-label-sm);
+  letter-spacing: var(--type-label-sm-tracking);
+  color: var(--on-surface-muted);
+}
+
+/* OQC 3행(사용자 지시 2026-10-19) — 반출 일별 수량 | 최근 판정, 같은 높이. 반출 실적이 없으면 최근 판정만 한 줄. */
+.dash-oqc-bottom {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr);
+  gap: var(--space-4);
+  align-items: stretch;
+}
+
+.dash-oqc-bottom-single {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+@container (max-width: 860px) {
+  .dash-oqc-bottom {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* 오른쪽 묶음에 카드가 하나뿐이면(OQC 고객별 불합격 · 사용자 지시 2026-10-19) 그 카드가 행 높이를 채운다. 둘이면 그대로. */
+.dash-qo-side:has(> :only-child) {
+  grid-template-rows: minmax(0, 1fr);
+}
+
+/* 툴팁이 뜬 막대는 위 숫자를 숨긴다 — 같은 값이 겹쳐 보이지 않게. */
+.dash-dayout-col[data-tip]:hover .dash-dayout-value,
+.dash-dayout-col[data-tip]:focus-visible .dash-dayout-value {
+  visibility: hidden;
+}
+
+/* 패널 아래 한 줄 안내(미종결 부적합 「전체 n건 중 오래된 5건」 · 사용자 지시 2026-10-19). */
+.dash-panel-foot {
+  margin: var(--space-2) 0 0;
+  color: var(--on-surface-muted);
+  font: var(--type-label-sm);
+  letter-spacing: var(--type-label-sm-tracking);
+}
+
+/* 패널 머리 한 줄(반복 부적합 품목 「n개 품목」 · 사용자 지시 2026-10-19). */
+.dash-panel-lead {
+  margin: 0 0 var(--space-2);
+  font: var(--type-label-md, var(--type-label-sm));
+  font-weight: 700;
+}
+
+/*
+ * 부적합 원인 구분별 구성 — 가로 막대 + 가로축(사용자 지시 2026-10-19). 이름 칸 | 막대 칸, 아래 같은 칸 나눔으로 눈금.
+ * 막대 끝 수량은 막대 오른쪽 바깥, 칸 끝에서 잘리지 않게 오른쪽 여백을 둔다.
+ */
+.dash-axisbars {
+  --dash-axisbars-name: minmax(4rem, max-content);
+  display: grid;
+  gap: var(--space-1);
+  margin: 0;
+  padding-inline-end: 3rem;
+  font: var(--type-body-sm);
+}
+
+.dash-axisbars-rows {
+  display: grid;
+  grid-template-columns: var(--dash-axisbars-name) minmax(0, 1fr);
+  row-gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.dash-axisbars-row {
+  display: grid;
+  grid-column: 1 / -1;
+  grid-template-columns: subgrid;
+  column-gap: var(--space-3);
+  align-items: center;
+}
+
+.dash-axisbars-name {
+  overflow: hidden;
+  text-align: end;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dash-axisbars-track {
+  position: relative;
+  height: 1.375rem;
+  border-inline-start: 1px solid var(--outline-variant);
+}
+
+.dash-axisbars-grid {
+  position: absolute;
+  inset-block: calc(-1 * var(--space-2));
+  border-inline-start: 1px solid color-mix(in srgb, var(--outline-variant) 60%, transparent);
+  pointer-events: none;
+}
+
+.dash-axisbars-bar {
+  position: relative;
+  display: block;
+  height: 100%;
+  min-width: 1px;
+  background: var(--chart-2);
+}
+
+.dash-axisbars-value {
+  position: absolute;
+  inset-block: 0;
+  inset-inline-start: calc(100% + var(--space-2));
+  display: flex;
+  align-items: center;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.dash-axisbars-axis {
+  display: grid;
+  grid-template-columns: var(--dash-axisbars-name) minmax(0, 1fr);
+  column-gap: var(--space-3);
+}
+
+.dash-axisbars-ticks {
+  position: relative;
+  height: 1.25rem;
+  border-block-start: 1px solid var(--outline-variant);
+  color: var(--on-surface-muted);
+  font: var(--type-label-sm);
+  letter-spacing: var(--type-label-sm-tracking);
+  font-variant-numeric: tabular-nums;
+}
+
+.dash-axisbars-ticks > span {
+  position: absolute;
+  inset-block-start: var(--space-1);
+  transform: translateX(-50%);
+  white-space: nowrap;
+}
+
+/* 미종결 부적합 번호 — 긴 번호는 말줄임(전체는 마우스 올림), 카드 폭 안에 열이 다 들어오게(2026-10-19 화면 확인). */
+.dash-nc-no {
+  display: inline-block;
+  max-width: 11.5rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+.dash-nc-open .dash-cell-item {
+  max-width: 7.5rem;
+}
+
+/* 파레토 80% 기준(사용자 지시 2026-10-19) — 기준 위를 옅게 칠하고 선 · 이름표를 진하게. */
+.dash-threshold-zone {
+  fill: color-mix(in srgb, var(--app-info) 7%, transparent);
+}
+
+.dash-threshold.dash-threshold-strong {
+  stroke-width: 1.5;
+  stroke-dasharray: 6 3;
+}
+
+.dash-axis.dash-threshold-label {
+  fill: var(--app-info);
+  font-weight: 700;
+}
+
+/*
+ * 그래프 칸 툴팁(부적합 파레토 · 원인 구분 · 사용자 지시 2026-10-19) — 마우스 올림 · 포커스로 이름 · 수량 · 비율.
+ * 생김새는 일별 반출 수량 툴팁과 같다. 파레토는 그림(svg) 위에 같은 높이의 층을 겹친다.
+ */
+.dash-figure-pareto {
+  position: relative;
+}
+
+.dash-figure-pareto > .dash-svg-wrap,
+.dash-figure-pareto > svg {
+  position: relative;
+}
+
+.dash-hit-layer {
+  position: absolute;
+  inset-inline: 0;
+  inset-block-end: 0;
+  pointer-events: none;
+}
+
+.dash-hit {
+  position: absolute;
+  pointer-events: auto;
+  border-radius: 2px;
+}
+
+.dash-hit:hover,
+.dash-hit:focus-visible {
+  background: color-mix(in srgb, var(--on-surface) 5%, transparent);
+  outline: none;
+}
+
+.dash-hit[data-tip]:hover::after,
+.dash-hit[data-tip]:focus-visible::after {
+  content: attr(data-tip);
+  position: absolute;
+  inset-block-start: 50%;
+  z-index: 3;
+  transform: translateY(-50%);
+  padding: var(--space-1) var(--space-2);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-sm, 6px);
+  background: var(--surface);
+  box-shadow: var(--elevation-1, 0 1px 3px rgb(0 0 0 / 12%));
+  color: var(--on-surface);
+  font: var(--type-label-sm);
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+/* 툴팁 자리 — 기본은 칸 · 막대 오른쪽(막대 끝 수량 뒤), 자리가 없으면 왼쪽(사용자 지시 2026-10-19). */
+.dash-tip-right[data-tip]::after {
+  inset-inline-start: calc(100% + var(--space-2));
+}
+
+/* 원인 구분 툴팁 — 막대 끝 숫자 바로 뒤에 붙는다(숫자 폭이 달라도 늘 숫자 옆 · 사용자 지시 2026-10-19). */
+.dash-axisbars-bar:hover .dash-axisbars-value[data-tip]::after,
+.dash-axisbars-bar:focus-visible .dash-axisbars-value[data-tip]::after {
+  content: attr(data-tip);
+  margin-inline-start: var(--space-2);
+  padding: var(--space-1) var(--space-2);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-sm, 6px);
+  background: var(--surface);
+  box-shadow: var(--elevation-1, 0 1px 3px rgb(0 0 0 / 12%));
+  color: var(--on-surface);
+  font: var(--type-label-sm);
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.dash-tip-left[data-tip]::after {
+  inset-inline-end: calc(100% + var(--space-2));
+}
+
+.dash-axisbars-bar:hover,
+.dash-axisbars-bar:focus-visible {
+  outline: none;
+  filter: brightness(1.25);
+}
+
+/* 원인 구분별 구성 — 카드 높이를 그래프가 채운다(아래 빈 공간 줄임 · 사용자 지시 2026-10-19). */
+.dash-axisbars-panel {
+  display: flex;
+  flex-direction: column;
+}
+
+.dash-axisbars-panel > .dash-panel-body {
+  display: flex;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.dash-axisbars-panel .dash-axisbars {
+  flex: 1 1 auto;
+  grid-template-rows: minmax(0, 1fr) auto;
+}
+
+.dash-axisbars-panel .dash-axisbars-rows {
+  grid-auto-rows: minmax(1.75rem, 1fr);
+  align-items: stretch;
+}
+
+.dash-axisbars-panel .dash-axisbars-track {
+  display: flex;
+  align-items: center;
+  height: auto;
+}
+
+.dash-axisbars-panel .dash-axisbars-bar {
+  flex: none;
+  height: 1.5rem;
+}
+
+/*
+ * ⭐ 다크 모드 보정(사용자 지시 2026-10-19) — 배경을 밝히지 않고 강조색 · 보조 글 대비만 올린다. DS 테마(themes.css)는
+ * 표면 · 글자 사다리를 다크로 바꿔 주지만, 라이트 고정인 정보 파랑 · 오류 빨강 · 차트 1번(빨강)은 다크 표면
+ * (#2A2D33) 위에서 3:1 에 못 미쳤다. 대시보드가 쓰는 그림 색만 앱 토큰으로 받아 다크에서 밝은 톤으로 바꾼다.
+ * 라이트 값은 그대로(= DS 시맨틱). DS 토큰(`--chart-1` · `--on-surface-muted`)은 대시보드 탭 안에서만 바꾼다 —
+ * 다른 화면 · POP 은 DS 다크 그대로.
+ */
+:root {
+  --app-info: var(--semantic-info);
+  --app-error: var(--semantic-error);
+  --app-error-text: var(--semantic-error);
+}
+
+[data-theme='dark'] {
+  /* 정보 파랑 · 오류 빨강 그림(점 · 막대 · 기준선 · 누적선) — #2A2D33 위 각 6.2:1 · 3.9:1. */
+  --app-info: #8ab4f8;
+  --app-error: #e5534b;
+  /* 오류 숫자 글 — DS 의 다크용 글자 빨강. */
+  --app-error-text: var(--semantic-error-text);
+}
+
+[data-theme='dark'] .dash-tabs {
+  /* 차트 1번(생산 추이 선 등) — DS 다크에 빠져 있어 오류 빨강과 같은 밝은 톤으로. */
+  --chart-1: #e5534b;
+  /* 보조 글 — DS 다크 #8A8D94 는 카드(#2A2D33) 위 4.0:1 로 본문 기준(4.5:1)에 못 미쳤다 → 5.0:1. */
+  --on-surface-muted: #a2a5ac;
+}
+
+/* 대시보드 증감 표시(좋음 · 나쁨 · 같음) — 라이트 진한 톤은 다크 카드 위 3:1 안팎이었다(`.dash-delta` 에서 정의돼 거기서 바꾼다). */
+[data-theme='dark'] .dash-delta {
+  --dash-delta-good: #81c995;
+  --dash-delta-bad: #f2a65a;
+  --dash-delta-flat: #a2a5ac;
 }

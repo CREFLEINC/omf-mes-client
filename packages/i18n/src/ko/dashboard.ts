@@ -99,7 +99,8 @@ export const dashboard = {
     },
     boardTitle: '설비 가동 현황',
     boardSub: (count: number): string => `${String(count)}대 · 전체 설비`,
-    tagLive: '실시간',
+    /** ⭐ 「실시간」 · 「현재」를 「갱신 시점」으로 통일(사용자 지시 2026-10-19) — 마지막 갱신 시각의 상태. */
+    tagLive: '갱신 시점',
     countUnit: '대',
     line: '생산 라인',
     allLines: '전체',
@@ -131,11 +132,11 @@ export const dashboard = {
     stoppedTitle: '가동 외 설비 현황',
     stoppedElapsedColumn: '경과 시간',
     /** 그룹에 다 보이지 않은 대수 — 누르면 「전체 설비 보기」 창. */
-    stoppedMore: (count: string): string => `외 ${count}대`,
-    /** 「외 n대」 창(사용자 지시 2026-10-16) — 제목 「정지 설비」 아래 줄 · 목록 열 제목. */
+    stoppedMore: (count: string): string => `다른 설비 ${count}대 보기`,
     stoppedMoreCount: (count: string): string => `추가 설비 ${count}대`,
     stoppedEquipmentColumn: '설비명',
     stoppedReasonColumn: '사유',
+    /** 「외 n대」 창(사용자 지시 2026-10-16) — 제목 「정지 설비」 아래 줄 · 목록 열 제목. */
     stoppedGroupCaption: (status: string): string => `${status} 설비`,
     /** ⛔ 「모든 설비가 가동 중」이라 단정하지 않는다(사용자 지시 2026-10-16) — 목록이 비었다는 사실만 말한다. */
     stoppedEmpty: '현재 가동 외 설비가 없습니다.',
@@ -193,7 +194,8 @@ export const dashboard = {
    */
   kpi: {
     none: '—',
-    tagLive: '실시간',
+    /** ⭐ 「실시간」 · 「현재」를 「갱신 시점」으로 통일(사용자 지시 2026-10-19) — 마지막 갱신 시각의 상태. */
+    tagLive: '갱신 시점',
     tagToday: '금일',
     tagPeriod: '선택 기간',
     runningOfTotal: '가동 설비',
@@ -240,7 +242,8 @@ export const dashboard = {
     noRates: '이 기간에 합격률을 낼 수 있는 날이 없습니다.',
     dateColumn: '일자',
     /** 일별 꺾은선 툴팁(품질 종합) — 값이 없는 날은 「—」. */
-    tipNone: '—',
+    /** 툴팁 — 그날 그 유형의 검사 실적이 없음(0% 가 아님 · 사용자 지시 2026-10-19). */
+    tipNone: '검사 실적 없음',
     tipRate: (value: string): string => `${value}%`,
     itemColumn: '항목',
     qtyColumn: '수량',
@@ -248,6 +251,9 @@ export const dashboard = {
     paretoVital: '누적 80%까지',
     paretoOther: '그 외',
     paretoCumulative: '누적 비율',
+    paretoThresholdLabel: (pct: string): string => `누적 ${pct}%`,
+    paretoTip: (name: string, qty: string, cum: string): string =>
+      `${name} ${qty} EA · 누적 ${cum}`,
   },
 
   /**
@@ -262,7 +268,8 @@ export const dashboard = {
     tagToday: '금일',
     /** 이틀 이상 기간 — 「당월」 · 「당월 누계」 · 「금일」 자리(사용자 확정 2026-10-16). */
     tagPeriod: '선택 기간',
-    tagNow: '현재',
+    /** ⭐ 「실시간」 · 「현재」를 「갱신 시점」으로 통일(사용자 지시 2026-10-19) — 마지막 갱신 시각의 상태. */
+    tagNow: '갱신 시점',
     passRateOf: (kind: string): string => `${kind} 합격률`,
     prevMonth: (rate: string): string => `전월 ${rate}`,
     /** ⭐ 품질 종합 KPI(사용자 지시 2026-10-19) — 비교 값이 없으면 증감을 지어내지 않는다. %p 표기. */
@@ -281,7 +288,7 @@ export const dashboard = {
     percent: (value: string): string => `${value}%`,
     todayLots: '금일 검사 LOT',
     monthLots: '검사 LOT',
-    pqcLots: '공정검사 LOT',
+    pqcLots: '공정검사',
     oqcLots: '출하검사 LOT',
     monthDefectQty: '불량 수량',
     qtyUnit: 'EA',
@@ -289,7 +296,8 @@ export const dashboard = {
     countUnit: '건',
     dailyTitleAll: 'IQC · PQC · OQC 일별 합격률',
     dailyTitleOf: (kind: string): string => `${kind} 일별 합격률`,
-    dailySub: '% · 최종 판정 기준 · 검사 보류 제외 · 검사가 없는 날은 선을 끊음',
+    /** ⭐ 「검사가 없는 날은 선을 끊음」 안내 제거(사용자 지시 2026-10-19) — 그날은 툴팁이 「검사 실적 없음」. */
+    dailySub: '% · 최종 판정 기준 · 검사 보류 제외',
     dailyRecent: '최근 9일',
     qtyShareSub: 'EA · 비중',
     vendorDefects: '업체별 IQC 불량 수량',
@@ -300,6 +308,8 @@ export const dashboard = {
     defectTypesTotal: '총 불량',
     /** 품질 종합 「불량 유형」 도넛 — 범례에 다 들어가지 않는 유형을 합친 조각. */
     otherTypes: (count: string): string => `기타 (${count}종)`,
+    /** 목록 밖 나머지를 합친 조각(PQC 품목별 · 사용자 지시 2026-10-19). */
+    otherRest: '기타',
     shareColumn: '비율',
     phenomenaOf: (kind: string): string => `${kind} 불량현상 구성비`,
     recentLots: '최근 검사 LOT 판정 현황',
@@ -311,10 +321,16 @@ export const dashboard = {
     recentEmpty: '최근 검사 판정이 없습니다.',
     column: {
       inspectedAt: '일시',
+      ncNo: '부적합 번호',
+      ncCount: '부적합 건수',
+      lastOpenedAt: '최근 발생일',
+      severity: '심각도',
+      status: '상태',
+      elapsed: '경과',
       kind: '구분',
       vendor: '업체',
       customer: '고객',
-      equipment: '호기',
+      equipment: '설비',
       item: '품목',
       qty: '수량(EA)',
       judgment: '판정',
@@ -327,7 +343,8 @@ export const dashboard = {
       HELD: '검사 보류',
     },
     none: '—',
-    currentTitle: '현재 현황',
+    /** ⭐ 모든 탭 「주요 현황」(사용자 지시 2026-10-19 — 「현재 현황」에서 바꿈). */
+    currentTitle: '주요 현황',
     /** 「현재 현황」 LOT 수 옆 기록 건수(LOT 번호 없는 기록 포함 · 사용자 결정 2026-10-19). */
     recordsSuffix: (count: string): string => `· ${count}건`,
     heldLots: '검사 보류 LOT',
@@ -342,14 +359,35 @@ export const dashboard = {
     reinspectInputNote: '당월 IQC 재검사 수량',
     pendingLots: '검사 대기 LOT',
     pendingLotsNote: '판정 전 PQC 의뢰',
-    reworkRequests: '재작업 의뢰',
-    reworkRequestsNote: '당월 처분 재작업',
-    reworkLine: (count: string): string => `재작업 의뢰 ${count}건`,
-    worstEquipment: '최고 불량률 호기',
-    worstEquipmentNote: (ng: string, rate: string): string => `NG ${ng} EA · ${rate}`,
-    equipmentDefectRates: '호기별 불량률 상위 8',
-    equipmentDefectRatesSub: '% · 기준일 생산실적',
+    reworkRequests: '재작업 판정',
+    equipmentDefectRates: '설비별 불량률 TOP 8',
+    equipmentDefectRatesSub: '생산실적 기준',
     ngShort: (qty: string): string => `NG ${qty}`,
+    /* PQC · OQC 탭 추가 항목(사용자 지시 2026-10-19). */
+    /* PQC 탭 문구(사용자 지시 2026-10-19 — 단위 「건」 통일 · 「설비」로 통일 · 집계 기준 명시). */
+    pqcHeld: '검사 보류',
+    pqcPending: '검사 대기',
+    pqcPhenomenaSub: '불량 기록 기준',
+    pqcReinspectNote: (input: string, restored: string): string =>
+      `투입 ${input} EA · OK 복원 ${restored} EA`,
+    pqcDefectBasis: '검사 불합격 기준',
+    pqcDailySub: '최종 판정 기준 · 검사 보류 제외',
+    pqcMonthNote: '당월',
+    pqcBreakdownTitle: 'PQC 불량 구성',
+    pqcBreakdownPhenomena: '불량현상',
+    pqcBreakdownItem: '품목(CODE)별',
+    pqcItemDefects: '품목(CODE)별 PQC 불량 구성',
+    pendingOldest: (elapsed: string): string => `최장 대기 ${elapsed}`,
+    customerDefects: '고객별 OQC 불합격 수량',
+    returnByReason: '반품 구분별 수량',
+    returnByReasonSub: '반품 입고 사유 · 공급사 반품 출고',
+    returnReasonNone: '사유 미등록',
+    dailyReturnOut: '일별 반출 수량',
+    dailyReturnOutSub: '공급사 반품 출고 · EA',
+    dailyReturnOutEmpty: '공급사 반품 출고 · EA · 조회 기간 출고 없음',
+    dailyReturnOutNone: '출고 없음',
+    pendingReturn: '미처리 반품 LOT',
+    pendingReturnKpiNote: (records: string): string => `${records}건 · 처분 판정 전`,
     customerReturn: '고객 반품',
     /** 품질 종합 KPI — 기준 기간은 배지가 말하므로 설명은 짧게(사용자 지시 2026-10-19). */
     customerReturnNoteShort: '반품 입고 기준',
@@ -377,9 +415,23 @@ export const dashboard = {
     ncReworkReleasedNote: '당월 재작업 후 재투입(합격)',
     ncPareto: '불량현상별 부적합 수량',
     paretoSub: 'EA · 막대 = 수량, 선 = 누적 비율(파레토)',
-    ncCauseGroups: '원인 구분별 부적합 수량',
+    ncOpenList: '미종결 부적합 목록',
+    ncOpenEmpty: '미종결 부적합이 없습니다.',
+    ncOpenMore: (total: string, shown: string): string => `전체 ${total}건 중 오래된 ${shown}건`,
+    openDisposition: (no: string): string => `${no} 처분 판정 열기`,
+    ncOpenListSub: '오래된 순',
+    ncRepeated: '반복 부적합 품목',
+    ncRepeatedSub: '같은 품목 2건 이상 · 건수 순',
+    ncRepeatedCount: (count: string): string => `${count}개 품목`,
+    ncRepeatedEmpty: '반복된 품목이 없습니다.',
+    ncCauseSub: 'EA · 수량 순',
+    elapsedDaysText: (days: string): string => `${days}일 경과`,
+    ncRepeatedTopOf: (shown: string, total: string): string => `상위 ${shown}개 / 전체 ${total}개`,
+    ncOpenListSubStatus: (status: string): string => `오래된 순 · 모두 ${status}`,
+    openedOn: (date: string): string => `발생 ${date}`,
+    causeTip: (name: string, qty: string, share: string): string => `${name} ${qty} EA · ${share}`,
+    openItemDisposition: (item: string): string => `${item} 처분 판정 보기`,
     ncCauseShare: '원인 구분별 구성',
-    ncHandlingTitle: '부적합 처리 지표',
     absent: '품질 현황이 이 응답에 오지 않았습니다.',
     failed: '품질 현황을 불러오지 못했습니다. 위의 「다시 시도」를 누르세요.',
   },

@@ -197,14 +197,22 @@ export const DashboardScreen = () => {
           isLoading={summary.isPending}
           isFailed={isFailed}
         />
-        {/* 「단위 EA」는 그래프 안이 아니라 상자 머리 오른쪽(사용자 지시 2026-10-16). */}
+        {/*
+         * ⭐ 「단위 EA」는 제목 아래 부제로, 오른쪽 위는 기간 이름표 「최근 9일」(기간 조회면 「선택 기간」 ·
+         * 사용자 지시 2026-10-19 — 다른 카드와 같은 머리 구성).
+         */}
         <Panel
           title={t.panes.trend}
           className="dash-fit"
-          action={
-            view?.trend?.unit === null || view?.trend?.unit === undefined ? undefined : (
-              <span className="dash-panel-unit">{t.trend.unitSuffix(view.trend.unit)}</span>
-            )
+          sub={
+            view?.trend?.unit === null || view?.trend?.unit === undefined
+              ? undefined
+              : t.trend.unitSuffix(view.trend.unit)
+          }
+          tag={
+            isSingleDay(filters)
+              ? messages.dashboard.quality.dailyRecent
+              : messages.dashboard.quality.tagPeriod
           }
         >
           <TrendPanel
@@ -314,8 +322,14 @@ export const DashboardScreen = () => {
                     ) : value === 'iqc' ? (
                       /* 최근 IQC 판정 줄 → 검사결과 상세(사용자 지시 2026-10-19) — 그 화면 권한을 본다. */
                       <IqcTab quality={quality} allows={access.allows} />
+                    ) : value === 'pqc' ? (
+                      /* PQC · OQC 도 IQC 와 같이 최근 판정 줄 → 검사결과 상세(사용자 지시 2026-10-19). */
+                      <PqcTab quality={quality} allows={access.allows} />
+                    ) : value === 'oqc' ? (
+                      <OqcTab quality={quality} allows={access.allows} />
                     ) : (
-                      <TabBody quality={quality} />
+                      /* 부적합 — 미종결 부적합 줄 → 처분 판정 처리(사용자 지시 2026-10-19) · 그 화면 권한을 본다. */
+                      <NonconformanceTab quality={quality} allows={access.allows} />
                     )
                   }
                 </QualityGate>

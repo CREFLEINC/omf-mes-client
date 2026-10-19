@@ -48,6 +48,8 @@ export type {
   DashboardSummarySections,
   DashboardLotRecordCount,
   DashboardQualityStatusCounts,
+  DashboardOpenNonconformance,
+  DashboardRepeatedItem,
   DashboardTrendPointForward,
   TerminalRegistrationConfirmation,
   TerminalRegistrationStatusCode,
