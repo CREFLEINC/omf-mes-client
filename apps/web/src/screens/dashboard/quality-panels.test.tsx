@@ -252,24 +252,6 @@ describe('품질 탭', () => {
     expect(region).toHaveTextContent(/0\s*LOT\s*· 3건/);
   });
 
-  it('PQC — 서버가 더 많은 최근 판정을 주면 모두 보이고 이름표는 받은 건수(사용자 지시 2026-10-19)', () => {
-    const q = quality();
-    const base = q.pqc.recentLots[0];
-    if (base === undefined) throw new Error('픽스처에 PQC 최근 판정이 없다');
-    q.pqc.recentLotsMore = Array.from({ length: 8 }, (_, index) => ({
-      ...base,
-      inspectionResultId: 100 + index,
-    }));
-    render(
-      <MemoryRouter>
-        <PqcTab quality={q} />
-      </MemoryRouter>,
-    );
-    const table = screen.getByRole('table', { name: t.recentLotsOf('PQC') });
-    expect(within(table).getAllByRole('row')).toHaveLength(9);
-    expect(screen.getByText(t.recentLotsCount('8'))).toBeInTheDocument();
-  });
-
   it('PQC — 처분 판정 처리 화면 권한이 없으면 「재작업 의뢰」 줄은 누를 수 없다', () => {
     render(
       <MemoryRouter>
@@ -279,7 +261,8 @@ describe('품질 탭', () => {
     expect(screen.getByRole('button', { name: new RegExp(t.reworkRequests) })).toBeDisabled();
   });
 
-  it('PQC — 재검 칸 · 품목별 원형 · 검사 대기 최장 경과(사용자 지시 2026-10-19)', () => {
+  it('PQC — 재검 칸 · 불량현상/품목별 탭 전환 원형 · 검사 대기 최장 경과(사용자 지시 2026-10-19)', async () => {
+    const user = userEvent.setup();
     const q = quality();
     q.pqc.fullReinspect = { inputQty: 10, restoredQty: 9 };
     q.pqc.itemDefects = [{ itemId: 1, itemCode: 'ITEM-9', itemName: '품목 9', qty: 4 }];
@@ -294,9 +277,14 @@ describe('품질 탭', () => {
     /* 재검 투입 · 복원율은 한 칸(간소화 2026-10-19) — 값은 복원율, 투입 · 복원 수량은 보조 글. */
     expect(screen.getByRole('group', { name: t.fullReinspect })).toHaveTextContent('90');
     expect(screen.getByText(t.pqcReinspectNote('10', '9'))).toBeInTheDocument();
-    expect(screen.getByRole('img', { name: t.pqcItemDefects })).toBeInTheDocument();
-    /* 불량현상도 원형 그래프(사용자 지시 2026-10-19). */
+    /* 한 카드에서 탭으로 전환 — 처음은 불량현상, 「품목별」을 누르면 품목별 원형(사용자 지시 2026-10-19). */
     expect(screen.getByRole('img', { name: t.phenomenaOf('PQC') })).toBeInTheDocument();
+    expect(screen.queryByRole('img', { name: t.pqcItemDefects })).not.toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: t.pqcBreakdownItem }));
+    expect(screen.getByRole('img', { name: t.pqcItemDefects })).toBeInTheDocument();
+    expect(screen.getAllByText(t.pqcDefectBasis)).toHaveLength(2);
+    /* 상위 밖 나머지는 「기타」 — 합계 = 상단 불량 수량. */
+    expect(screen.getAllByText(t.otherRest).length).toBeGreaterThan(0);
     expect(screen.getByText(/최장 대기 2시간 5분/)).toBeInTheDocument();
   });
 

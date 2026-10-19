@@ -246,6 +246,8 @@ export const dashboard: Translated<typeof ko.dashboard> = {
     defectTypesSub: 'Số lượng và tỷ lệ lỗi',
     defectTypesTotal: 'Tổng lỗi',
     otherTypes: (count: string): string => `Khác (${count} loại)`,
+    /** 목록 밖 나머지를 합친 조각(PQC 품목별 · 사용자 지시 2026-10-19). */
+    otherRest: 'Khác',
     shareColumn: 'Tỷ lệ',
     phenomenaOf: (kind: string): string => `Cơ cấu hiện tượng lỗi ${kind}`,
     recentLots: 'Phán định LOT kiểm tra gần đây',
@@ -253,7 +255,6 @@ export const dashboard: Translated<typeof ko.dashboard> = {
       `Xem chi tiết kết quả kiểm tra ${kind} ${item}`,
     recentLotsOf: (kind: string): string => `Phán định ${kind} gần đây`,
     recentLotsLead: '5 lần gần nhất',
-    recentLotsCount: (count: string): string => `${count} lần gần nhất`,
     recentEmpty: 'Chưa có phán định kiểm tra gần đây.',
     column: {
       inspectedAt: 'Thời điểm',
@@ -303,6 +304,9 @@ export const dashboard: Translated<typeof ko.dashboard> = {
     pqcDefectBasis: 'Theo không đạt kiểm tra',
     pqcDailySub: 'Theo phán định cuối · Không tính tạm giữ kiểm tra',
     pqcMonthNote: 'Tháng này',
+    pqcBreakdownTitle: 'Cơ cấu lỗi PQC',
+    pqcBreakdownPhenomena: 'Hiện tượng lỗi',
+    pqcBreakdownItem: 'Theo mã hàng',
     pqcItemDefects: 'Cơ cấu lỗi PQC theo mã hàng',
     pendingOldest: (elapsed: string): string => `Chờ lâu nhất ${elapsed}`,
     topCustomer: 'Khách hàng không đạt nhiều nhất',

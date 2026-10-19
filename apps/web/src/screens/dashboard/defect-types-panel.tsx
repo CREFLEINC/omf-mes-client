@@ -1,5 +1,5 @@
 import { messages } from '@omf-mes/i18n';
-import { useEffect, useLayoutEffect, useState } from 'react';
+import { useEffect, useLayoutEffect, useState, type ReactNode } from 'react';
 
 import { formatFigure } from './types';
 import { NoRecords, Panel } from './viz';
@@ -37,8 +37,14 @@ export const OTHER_SLICE_KEY = 'other';
  * 수량 큰 순으로 앞에서 `shown` 개를 각각, 나머지를 「기타」 하나로. `shown` 이 유형 수 이상이면 모두 각각.
  * 같은 수량은 받은 순서를 지킨다.
  */
-export const toDonutSlices = (entries: readonly NamedQty[], shown: number): DonutSlice[] => {
-  const total = entries.reduce((sum, entry) => sum + Math.max(0, entry.value), 0);
+export const toDonutSlices = (
+  entries: readonly NamedQty[],
+  shown: number,
+  /** 목록 밖 나머지 수량(PQC 품목별 상위 5 밖 · 사용자 지시 2026-10-19) — 「기타」에 더하고 비율 모수에 넣는다. */
+  remainder = 0,
+): DonutSlice[] => {
+  const extra = Math.max(0, remainder);
+  const total = entries.reduce((sum, entry) => sum + Math.max(0, entry.value), 0) + extra;
   const shareOf = (value: number): number => (total === 0 ? 0 : (Math.max(0, value) / total) * 100);
   const sorted = [...entries].sort((a, b) => b.value - a.value);
   const head = sorted.slice(0, Math.max(0, shown));
@@ -50,15 +56,15 @@ export const toDonutSlices = (entries: readonly NamedQty[], shown: number): Donu
     merged: 0,
   }));
 
-  if (rest.length > 0) {
-    const value = rest.reduce((sum, entry) => sum + Math.max(0, entry.value), 0);
+  if (rest.length > 0 || extra > 0) {
+    const value = rest.reduce((sum, entry) => sum + Math.max(0, entry.value), 0) + extra;
     slices.push({
       key: OTHER_SLICE_KEY,
-      label: t.otherTypes(formatFigure(rest.length)),
+      label: extra > 0 ? t.otherRest : t.otherTypes(formatFigure(rest.length)),
       value,
       share: shareOf(value),
       shareLabel: 0,
-      merged: rest.length,
+      merged: Math.max(1, rest.length),
     });
   }
 
@@ -263,11 +269,20 @@ export const DefectTypesPanel = ({
   title = t.phenomena,
   sub = t.defectTypesSub,
   totalLabel = t.defectTypesTotal,
+  toolbar,
+  caption,
+  remainder = 0,
 }: {
   entries: NamedQty[];
+  /** 목록 밖 나머지 수량 — 「기타」로 넣고 합계 · 비율에 포함(기본 0 · 기존 화면 그대로). */
+  remainder?: number;
+  /** 원형 위 전환 탭 등(PQC 「불량현상 · 품목별」 · 사용자 지시 2026-10-19). 기본 없음. */
+  toolbar?: ReactNode;
+  /** 그림 이름(화면 낭독) — 기본은 제목. */
+  caption?: string;
   tag: string;
-  /** 부제 — PQC 불량현상은 집계 기준을 적는다(사용자 지시 2026-10-19). 기본은 기존 문구. */
-  sub?: string;
+  /** 부제 — PQC 불량현상은 집계 기준을 적는다(사용자 지시 2026-10-19). 기본은 기존 문구, `null` 이면 없음. */
+  sub?: string | null;
   /** 가운데 합계 이름 — OQC 반품 구분은 「총 반품」. 기본은 「총 불량」. */
   totalLabel?: string;
   /** IQC 「품목(CODE)별 불량 구성」도 같은 원형 그래프다(사용자 지시 2026-10-19). */
@@ -332,17 +347,29 @@ export const DefectTypesPanel = ({
     else setTooTall(true);
   });
 
-  const slices = toDonutSlices(entries, shown ?? entries.length);
-  const total = entries.reduce((sum, entry) => sum + Math.max(0, entry.value), 0);
+  const slices = toDonutSlices(entries, shown ?? entries.length, remainder);
+  const total =
+    entries.reduce((sum, entry) => sum + Math.max(0, entry.value), 0) + Math.max(0, remainder);
 
   return (
-    <Panel title={title} sub={sub} tag={tag} className={tooTall ? undefined : 'dash-qo-fit'}>
+    <Panel
+      title={title}
+      sub={sub ?? undefined}
+      tag={tag}
+      className={tooTall ? undefined : 'dash-qo-fit'}
+    >
+      {toolbar}
       <div ref={setBox} className="dash-donut">
         {entries.length === 0 ? (
           <NoRecords />
         ) : (
           <>
-            <Donut slices={slices} caption={title} total={total} totalLabel={totalLabel} />
+            <Donut
+              slices={slices}
+              caption={caption ?? title}
+              total={total}
+              totalLabel={totalLabel}
+            />
             <ul className="dash-donut-legend">
               {slices.map((slice, index) => (
                 <li key={slice.key} className="dash-donut-legend-row">

@@ -446,12 +446,9 @@ const RecentLotsPanel = ({
   itemTitle = false,
   linked = false,
   withTime = false,
-  lead = t.recentLotsLead,
 }: {
   title: string;
   rows: RecentLotRow[];
-  /** 오른쪽 위 이름표 — PQC 는 받은 건수(「최근 n건」 · 사용자 지시 2026-10-19). 기본 「최근 5건」. */
-  lead?: string;
   counterpart: Counterpart;
   /** 품목 칸 마우스 올림 글(코드 · 이름) — 품질 종합만(사용자 지시 2026-10-19). */
   itemTitle?: boolean;
@@ -460,7 +457,7 @@ const RecentLotsPanel = ({
   /** 일시 칸에 시각까지 — 품질 종합만(사용자 지시 2026-10-19). */
   withTime?: boolean;
 }) => (
-  <Panel title={title} tag={lead}>
+  <Panel title={title} tag={t.recentLotsLead}>
     {/* 제목은 패널이 이미 말한다 — 표 제목(caption)을 두면 같은 말이 두 번 보인다. 이름은 aria-label 로. */}
     <div className={linked ? 'dash-table-wrap dash-recent-linked' : 'dash-table-wrap'}>
       <Table
@@ -983,6 +980,68 @@ const EquipmentRateBars = ({
   );
 };
 
+/** PQC 불량 구성 카드의 두 보기. */
+type PqcBreakdownView = 'phenomena' | 'item';
+
+/**
+ * PQC 불량 구성(⭐ 사용자 지시 2026-10-19 「탭 버튼으로 두 그래프 전환」) — 불량현상 · 품목별 원형을 한 카드에서
+ * 바꿔 본다. 화면 탭(밑줄)과 구분되게 작은 버튼 묶음, 집계 기준 문구는 버튼 아래(고른 보기를 따라 바뀜).
+ * 품목별은 상위 5 밖의 불합격 수량을 「기타」로 넣어 합계 = 상단 불량 수량(검사 불합격 기준), 비율도 그 전체 기준.
+ */
+const PqcDefectBreakdown = ({ pqc, tag }: { pqc: DashboardQuality['pqc']; tag: string }) => {
+  const [view, setView] = useState<PqcBreakdownView>('phenomena');
+  const items = pqc.itemDefects;
+  const active: PqcBreakdownView = items === undefined ? 'phenomena' : view;
+  const itemEntries =
+    items?.map((entry) => ({
+      key: String(entry.itemId),
+      label: entry.itemCode,
+      value: entry.qty,
+    })) ?? [];
+  const itemRest = Math.max(
+    0,
+    pqc.monthDefectQty - itemEntries.reduce((sum, entry) => sum + entry.value, 0),
+  );
+  const basis = active === 'item' ? t.pqcDefectBasis : t.pqcPhenomenaSub;
+  const views: { value: PqcBreakdownView; label: string }[] = [
+    { value: 'phenomena', label: t.pqcBreakdownPhenomena },
+    { value: 'item', label: t.pqcBreakdownItem },
+  ];
+
+  return (
+    <DefectTypesPanel
+      title={t.pqcBreakdownTitle}
+      caption={active === 'item' ? t.pqcItemDefects : t.phenomenaOf('PQC')}
+      sub={items === undefined ? basis : null}
+      tag={tag}
+      entries={active === 'item' ? itemEntries : phenomenaEntries(pqc.defectPhenomena)}
+      remainder={active === 'item' ? itemRest : 0}
+      toolbar={
+        items === undefined ? undefined : (
+          <div className="dash-breakdown-head">
+            <div className="dash-seg" role="group" aria-label={t.pqcBreakdownTitle}>
+              {views.map((option) => (
+                <button
+                  key={option.value}
+                  type="button"
+                  className="dash-seg-button"
+                  aria-pressed={active === option.value}
+                  onClick={() => {
+                    setView(option.value);
+                  }}
+                >
+                  {option.label}
+                </button>
+              ))}
+            </div>
+            <span className="dash-breakdown-basis">{basis}</span>
+          </div>
+        )
+      }
+    />
+  );
+};
+
 /**
  * PQC 검사실적(⭐ 사용자 지시 2026-10-19 「IQC 검사실적 탭 기준 배치」) — 위: 일별 합격률 | 호기별 불량률 · PQC
  * 불량현상 · 현재 현황(세로), 아래: 품목별 PQC 불량 원형 | 최근 판정. 박스 끝 맞춤은 품질 종합 · IQC 와 같은 틀.
@@ -1108,44 +1167,15 @@ export const PqcTab = ({
         </div>
       </div>
       {/*
-       * ⭐ PQC 아래(사용자 지시 2026-10-19 권장 레이아웃) — 왼쪽: 불량현상 원형 · 품목별 불량 원형(위아래, 내용 높이),
-       * 오른쪽: 최근 판정(왼쪽 두 카드 전체 높이에 맞춰 늘어남). 품목별이 없으면(이전 서버) 왼쪽은 불량현상만.
+       * ⭐ PQC 아래(사용자 지시 2026-10-19) — 불량현상 · 품목별 불량을 한 카드에서 탭으로 전환 | 최근 판정(5건).
+       * IQC 탭과 같은 줄 구성 · 같은 높이. 품목별이 없으면(이전 서버) 탭 없이 불량현상만.
        */}
-      <div className="dash-pqc-bottom">
-        <div className="dash-pqc-donuts">
-          <DefectTypesPanel
-            title={t.phenomenaOf('PQC')}
-            sub={t.pqcPhenomenaSub}
-            tag={tags.month}
-            entries={phenomenaEntries(pqc.defectPhenomena)}
-          />
-          {pqc.itemDefects !== undefined && (
-            <DefectTypesPanel
-              title={t.pqcItemDefects}
-              sub={t.pqcDefectBasis}
-              tag={tags.month}
-              entries={pqc.itemDefects.map((entry) => ({
-                key: String(entry.itemId),
-                label: entry.itemCode,
-                value: entry.qty,
-              }))}
-            />
-          )}
-        </div>
+      <div className="dash-qo-bottom">
+        <PqcDefectBreakdown pqc={pqc} tag={tags.month} />
         <RecentLotsPanel
           itemTitle
           title={t.recentLotsOf('PQC')}
-          /* PQC 는 더 많이(최대 15 · 사용자 지시 2026-10-19) — 서버가 주지 않으면(이전 서버) 기존 5건. */
-          rows={
-            pqc.recentLotsMore === undefined
-              ? recentOf(quality, 'PQC')
-              : pqc.recentLotsMore.map((lot) => ({ ...lot, kind: 'PQC' as const }))
-          }
-          lead={
-            pqc.recentLotsMore === undefined
-              ? undefined
-              : t.recentLotsCount(String(pqc.recentLotsMore.length))
-          }
+          rows={recentOf(quality, 'PQC')}
           counterpart="equipment"
           linked={allows(INSPECTION_RESULTS_PATH)}
           withTime

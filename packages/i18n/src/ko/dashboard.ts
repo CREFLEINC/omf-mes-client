@@ -302,6 +302,8 @@ export const dashboard = {
     defectTypesTotal: '총 불량',
     /** 품질 종합 「불량 유형」 도넛 — 범례에 다 들어가지 않는 유형을 합친 조각. */
     otherTypes: (count: string): string => `기타 (${count}종)`,
+    /** 목록 밖 나머지를 합친 조각(PQC 품목별 · 사용자 지시 2026-10-19). */
+    otherRest: '기타',
     shareColumn: '비율',
     phenomenaOf: (kind: string): string => `${kind} 불량현상 구성비`,
     recentLots: '최근 검사 LOT 판정 현황',
@@ -310,7 +312,6 @@ export const dashboard = {
       `${kind} ${item} 검사 결과 상세 보기`,
     recentLotsOf: (kind: string): string => `최근 ${kind} 판정 현황`,
     recentLotsLead: '최근 5건',
-    recentLotsCount: (count: string): string => `최근 ${count}건`,
     recentEmpty: '최근 검사 판정이 없습니다.',
     column: {
       inspectedAt: '일시',
@@ -360,6 +361,9 @@ export const dashboard = {
     pqcDefectBasis: '검사 불합격 기준',
     pqcDailySub: '최종 판정 기준 · 검사 보류 제외',
     pqcMonthNote: '당월',
+    pqcBreakdownTitle: 'PQC 불량 구성',
+    pqcBreakdownPhenomena: '불량현상',
+    pqcBreakdownItem: '품목(CODE)별',
     pqcItemDefects: '품목(CODE)별 PQC 불량 구성',
     pendingOldest: (elapsed: string): string => `최장 대기 ${elapsed}`,
     topCustomer: '최다 불합격 고객',
