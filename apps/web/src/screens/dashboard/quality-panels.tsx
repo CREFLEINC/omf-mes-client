@@ -442,9 +442,12 @@ const RecentLotsPanel = ({
   itemTitle = false,
   linked = false,
   withTime = false,
+  lead = t.recentLotsLead,
 }: {
   title: string;
   rows: RecentLotRow[];
+  /** 오른쪽 위 이름표 — PQC 는 받은 건수(「최근 n건」 · 사용자 지시 2026-10-19). 기본 「최근 5건」. */
+  lead?: string;
   counterpart: Counterpart;
   /** 품목 칸 마우스 올림 글(코드 · 이름) — 품질 종합만(사용자 지시 2026-10-19). */
   itemTitle?: boolean;
@@ -453,7 +456,7 @@ const RecentLotsPanel = ({
   /** 일시 칸에 시각까지 — 품질 종합만(사용자 지시 2026-10-19). */
   withTime?: boolean;
 }) => (
-  <Panel title={title} tag={t.recentLotsLead}>
+  <Panel title={title} tag={lead}>
     {/* 제목은 패널이 이미 말한다 — 표 제목(caption)을 두면 같은 말이 두 번 보인다. 이름은 aria-label 로. */}
     <div className={linked ? 'dash-table-wrap dash-recent-linked' : 'dash-table-wrap'}>
       <Table
@@ -1094,39 +1097,49 @@ export const PqcTab = ({
         </div>
       </div>
       {/*
-       * ⭐ PQC 불량현상(원형) | 최근 판정 — IQC 탭과 같은 행 · 같은 높이(사용자 지시 2026-10-19). 품목별 불량
-       * 원형은 그 아래 행(서버가 주지 않으면 없음).
+       * ⭐ PQC 아래(사용자 지시 2026-10-19 권장 레이아웃) — 왼쪽: 불량현상 원형 · 품목별 불량 원형(위아래, 내용 높이),
+       * 오른쪽: 최근 판정(왼쪽 두 카드 전체 높이에 맞춰 늘어남). 품목별이 없으면(이전 서버) 왼쪽은 불량현상만.
        */}
-      <div className="dash-qo-bottom">
-        <DefectTypesPanel
-          title={t.phenomenaOf('PQC')}
-          sub={t.pqcPhenomenaSub}
-          tag={tags.month}
-          entries={phenomenaEntries(pqc.defectPhenomena)}
-        />
+      <div className="dash-pqc-bottom">
+        <div className="dash-pqc-donuts">
+          <DefectTypesPanel
+            title={t.phenomenaOf('PQC')}
+            sub={t.pqcPhenomenaSub}
+            tag={tags.month}
+            entries={phenomenaEntries(pqc.defectPhenomena)}
+          />
+          {pqc.itemDefects !== undefined && (
+            <DefectTypesPanel
+              title={t.pqcItemDefects}
+              sub={t.pqcDefectBasis}
+              tag={tags.month}
+              entries={pqc.itemDefects.map((entry) => ({
+                key: String(entry.itemId),
+                label: entry.itemCode,
+                value: entry.qty,
+              }))}
+            />
+          )}
+        </div>
         <RecentLotsPanel
           itemTitle
           title={t.recentLotsOf('PQC')}
-          rows={recentOf(quality, 'PQC')}
+          /* PQC 는 더 많이(최대 15 · 사용자 지시 2026-10-19) — 서버가 주지 않으면(이전 서버) 기존 5건. */
+          rows={
+            pqc.recentLotsMore === undefined
+              ? recentOf(quality, 'PQC')
+              : pqc.recentLotsMore.map((lot) => ({ ...lot, kind: 'PQC' as const }))
+          }
+          lead={
+            pqc.recentLotsMore === undefined
+              ? undefined
+              : t.recentLotsCount(String(pqc.recentLotsMore.length))
+          }
           counterpart="equipment"
           linked={allows(INSPECTION_RESULTS_PATH)}
           withTime
         />
       </div>
-      {pqc.itemDefects !== undefined && (
-        <div className="dash-donut-pair">
-          <DefectTypesPanel
-            title={t.pqcItemDefects}
-            sub={t.pqcDefectBasis}
-            tag={tags.month}
-            entries={pqc.itemDefects.map((entry) => ({
-              key: String(entry.itemId),
-              label: entry.itemCode,
-              value: entry.qty,
-            }))}
-          />
-        </div>
-      )}
       {dialog.mounted && (
         <QualityLotsDialog
           status={dialog.lotStatus}

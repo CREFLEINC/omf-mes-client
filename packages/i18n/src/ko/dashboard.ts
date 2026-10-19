@@ -310,6 +310,7 @@ export const dashboard = {
       `${kind} ${item} 검사 결과 상세 보기`,
     recentLotsOf: (kind: string): string => `최근 ${kind} 판정 현황`,
     recentLotsLead: '최근 5건',
+    recentLotsCount: (count: string): string => `최근 ${count}건`,
     recentEmpty: '최근 검사 판정이 없습니다.',
     column: {
       inspectedAt: '일시',

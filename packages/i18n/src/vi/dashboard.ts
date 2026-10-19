@@ -253,6 +253,7 @@ export const dashboard: Translated<typeof ko.dashboard> = {
       `Xem chi tiết kết quả kiểm tra ${kind} ${item}`,
     recentLotsOf: (kind: string): string => `Phán định ${kind} gần đây`,
     recentLotsLead: '5 lần gần nhất',
+    recentLotsCount: (count: string): string => `${count} lần gần nhất`,
     recentEmpty: 'Chưa có phán định kiểm tra gần đây.',
     column: {
       inspectedAt: 'Thời điểm',

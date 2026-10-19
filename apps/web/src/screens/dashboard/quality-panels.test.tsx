@@ -229,6 +229,24 @@ describe('품질 탭', () => {
     expect(screen.queryByText(/선을 끊음/)).not.toBeInTheDocument();
   });
 
+  it('PQC — 서버가 더 많은 최근 판정을 주면 모두 보이고 이름표는 받은 건수(사용자 지시 2026-10-19)', () => {
+    const q = quality();
+    const base = q.pqc.recentLots[0];
+    if (base === undefined) throw new Error('픽스처에 PQC 최근 판정이 없다');
+    q.pqc.recentLotsMore = Array.from({ length: 8 }, (_, index) => ({
+      ...base,
+      inspectionResultId: 100 + index,
+    }));
+    render(
+      <MemoryRouter>
+        <PqcTab quality={q} />
+      </MemoryRouter>,
+    );
+    const table = screen.getByRole('table', { name: t.recentLotsOf('PQC') });
+    expect(within(table).getAllByRole('row')).toHaveLength(9);
+    expect(screen.getByText(t.recentLotsCount('8'))).toBeInTheDocument();
+  });
+
   it('PQC — 판정 의뢰 화면 권한이 없으면 「재작업 의뢰」 줄은 누를 수 없다', () => {
     render(
       <MemoryRouter>

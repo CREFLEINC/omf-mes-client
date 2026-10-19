@@ -14308,23 +14308,6 @@ button.app-button-neutral {
   white-space: nowrap;
 }
 
-/* PQC 원형 그래프 둘(사용자 지시 2026-10-19) — 같은 행, 높이는 긴 쪽에 맞춤(크기 봉쇄 없음), 좁으면 1열. */
-.dash-donut-pair {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--space-4);
-  align-items: stretch;
-}
-
-.dash-donut-pair:has(> :only-child) {
-  grid-template-columns: minmax(0, 1fr);
-}
-
-@container (max-width: 860px) {
-  .dash-donut-pair {
-    grid-template-columns: minmax(0, 1fr);
-  }
-}
 
 /* PQC 설비별 불량률 TOP 8(사용자 지시 2026-10-19) — 설비 | 막대(남는 폭) | 불량률 | 불량 수량, 열 폭 고정 · 줄 높이 같게. */
 .dash-eqrate {
@@ -14384,16 +14367,45 @@ button.app-button-neutral {
 }
 
 /*
- * PQC 품목별 불량 원형이 한 줄 전체일 때(사용자 지시 2026-10-19 「가운데 작게 · 좌우 여백 과다」) — 원형은 왼쪽,
- * 범례는 남는 폭을 더 쓰게(최대 32rem). 좁으면 기존처럼 줄바꿈. 이 행에만 걸린다.
+ * PQC 아래 줄(사용자 지시 2026-10-19 권장 레이아웃) — 왼쪽 원형 둘을 위아래(내용 높이), 오른쪽 최근 판정은 왼쪽
+ * 묶음 전체 높이까지 늘어난다(끝 맞춤). 비율은 품질 종합 · IQC 아래 줄과 같다. 좁으면 1열(늘이지 않음).
  */
-.dash-donut-pair:has(> :only-child) .dash-donut {
-  justify-content: flex-start;
-  column-gap: var(--space-8, 2rem);
-  padding-inline: var(--space-4);
+.dash-pqc-bottom {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr);
+  gap: var(--space-4);
+  align-items: stretch;
 }
 
-.dash-donut-pair:has(> :only-child) .dash-donut-legend {
-  flex: 1 1 20rem;
-  max-width: 32rem;
+.dash-pqc-donuts {
+  display: grid;
+  align-content: start;
+  gap: var(--space-4);
+  min-width: 0;
+}
+
+/* 최근 판정은 왼쪽 묶음 높이를 따른다(크기 봉쇄) — 줄이 많으면 표 안에서만 세로 스크롤, 카드가 아래로 넘치지 않는다. */
+.dash-pqc-bottom > .dash-panel:last-child {
+  display: flex;
+  flex-direction: column;
+  contain: size;
+  min-height: 16rem;
+}
+
+.dash-pqc-bottom > .dash-panel:last-child > .dash-panel-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+@container (max-width: 860px) {
+  .dash-pqc-bottom {
+    grid-template-columns: minmax(0, 1fr);
+    align-items: start;
+  }
+
+  .dash-pqc-bottom > .dash-panel:last-child {
+    contain: none;
+    min-height: 0;
+  }
 }
