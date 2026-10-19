@@ -639,6 +639,7 @@ export const MultiLineChart = ({
   niceTicks = false,
   gapMarks = false,
   gapDetail = false,
+  gapBridge = true,
 }: {
   series: LineSeries[];
   caption: string;
@@ -664,6 +665,8 @@ export const MultiLineChart = ({
    * 검사 없는 날에 옅은 띠와 「검사 없음」, 끊긴 앞뒤 점을 점선으로 잇고, 혼자 남은 점은 속이 빈 원 + 값을 점 바로 위에.
    */
   gapDetail?: boolean;
+  /** `gapDetail` 의 끊긴 앞뒤 잇는 점선 — OQC 는 끊어 둔다(사용자 지시 2026-10-19 「연결선을 끊어」). 기본 그대로. */
+  gapBridge?: boolean;
 }) => {
   const [figureRef, W] = useChartWidth<HTMLElement>();
   const H = height ?? CHART_H;
@@ -803,6 +806,7 @@ export const MultiLineChart = ({
             return (
               <g key={entry.name} className={`dash-line-${String(entry.tone)}`}>
                 {gapDetail &&
+                  gapBridge &&
                   segments.slice(1).map((segment, segIndex) => {
                     const from = segments[segIndex]?.at(-1);
                     const to = segment[0];

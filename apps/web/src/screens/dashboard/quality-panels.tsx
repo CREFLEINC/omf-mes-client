@@ -32,7 +32,7 @@ import {
 import { DefectTypesPanel } from './defect-types-panel';
 import { compareEquipmentCode } from './equipment';
 import { formatElapsed, pointerFocusProps, usePointerInput } from './equipment-panel';
-import { formatFigure } from './types';
+import { formatFigure, toNiceAxis } from './types';
 import { usePeriodTags } from './period';
 import { QualityLotsDialog } from './quality-lots-dialog';
 import { useFillHeight } from './use-fill-height';
@@ -320,11 +320,14 @@ const DailyPanel = ({
   niceTicks = false,
   gapMarks = false,
   gapDetail = false,
+  gapBridge = true,
   sub = t.dailySub,
 }: {
   quality: DashboardQuality;
   kinds: readonly QualityKind[];
   title: string;
+  /** 끊긴 앞뒤 잇는 점선 — OQC 는 끄고 선을 끊는다(사용자 지시 2026-10-19). 기본 켬. */
+  gapBridge?: boolean;
   /** 부제 — PQC 는 축에 보이는 단위(%)를 빼고 기준만(사용자 지시 2026-10-19). 기본은 기존 문구. */
   sub?: string;
   /** 검사 없는 날 · 혼자 남은 점 구분 — 품질 종합 · IQC(사용자 지시 2026-10-19). */
@@ -359,6 +362,7 @@ const DailyPanel = ({
               niceTicks={niceTicks}
               gapMarks={gapMarks}
               gapDetail={gapDetail}
+              gapBridge={gapBridge}
             />
           )}
         </FitChart>
@@ -1192,43 +1196,82 @@ export const PqcTab = ({
   );
 };
 
-/** 반출 일자별 수량(OQC 탭 · 사용자 지시 2026-10-19) — 세로 막대, 일별 합격률과 같은 날짜(최근 9일). 출고 없는 날은 빈 칸. */
+/**
+ * 일별 반출 수량(OQC 탭 · ⭐ 사용자 지시 2026-10-19 UI/UX) — 세로 막대(중립 단색), 일별 합격률과 같은 최근 9일.
+ * 세로축은 0 부터 보기 좋은 눈금까지, 단위 EA 는 부제. 막대에 마우스를 올리거나 포커스하면 날짜 · 정확한 수량.
+ * 기록 없는 날(`null`)은 빈 칸(막대 · 숫자 없음), 기록이 있는데 0 이면 「0」. 집계는 서버 그대로.
+ */
 const DailyReturnOutPanel = ({
   days,
 }: {
   days: readonly { date: string; qty: number | null }[];
 }) => {
   const tags = usePeriodTags();
-  const max = Math.max(0, ...days.map((day) => day.qty ?? 0));
-  /* 출고가 하나도 없어도 9일 칸은 그대로 보인다(⭐ 사용자 지시 2026-10-19) — 부제로 「출고 없음」을 알린다. */
-  const empty = max === 0;
+  const top = Math.max(0, ...days.map((day) => day.qty ?? 0));
+  const empty = top === 0;
+  const axis = toNiceAxis(top);
+  const max = axis?.max ?? 1;
+  const tickCount = axis?.ticks ?? 2;
+  const ticks = Array.from(
+    { length: tickCount },
+    (_, index) => (max * index) / (tickCount - 1),
+  ).reverse();
 
   return (
     <Panel
       title={t.dailyReturnOut}
       sub={empty ? t.dailyReturnOutEmpty : t.dailyReturnOutSub}
       tag={tags.recent}
+      className="dash-dayout-panel"
     >
       {days.length === 0 ? (
         <NoRecords />
       ) : (
-        <ol className="dash-day-bars" aria-label={t.dailyReturnOut}>
-          {days.map((day) => (
-            <li key={day.date} className="dash-day-bar">
-              {/* 출고가 없는 날은 빈 칸(사용자 지시 2026-10-19) — 0 · 「—」을 쓰지 않는다. */}
-              <span className="dash-day-bar-value">
-                {day.qty === null || day.qty === 0 ? '' : formatFigure(day.qty)}
-              </span>
-              <span className="dash-day-bar-track" aria-hidden="true">
-                <span
-                  className="dash-day-bar-fill"
-                  style={{ height: `${String(max === 0 ? 0 : ((day.qty ?? 0) / max) * 100)}%` }}
-                />
-              </span>
-              <span className="dash-day-bar-label">{day.date.slice(5)}</span>
-            </li>
-          ))}
-        </ol>
+        <div className="dash-dayout">
+          <ol className="dash-dayout-axis" aria-hidden="true">
+            {ticks.map((tick) => (
+              <li key={tick}>{formatFigure(tick)}</li>
+            ))}
+          </ol>
+          <div className="dash-dayout-plot">
+            {ticks.map((tick) => (
+              <span
+                key={`grid-${String(tick)}`}
+                className="dash-dayout-grid"
+                style={{ bottom: `${String((tick / max) * 100)}%` }}
+                aria-hidden="true"
+              />
+            ))}
+            <ol className="dash-dayout-cols" aria-label={t.dailyReturnOut}>
+              {days.map((day) => {
+                const date = day.date;
+                const label =
+                  day.qty === null
+                    ? `${date} ${t.dailyReturnOutNone}`
+                    : `${date} ${formatFigure(day.qty)} ${t.qtyUnit}`;
+                return (
+                  <li
+                    key={date}
+                    className="dash-dayout-col"
+                    tabIndex={day.qty === null ? undefined : 0}
+                    aria-label={label}
+                    data-tip={day.qty === null ? undefined : label}
+                  >
+                    {day.qty !== null && (
+                      <span
+                        className="dash-dayout-bar"
+                        style={{ height: `${String((day.qty / max) * 100)}%` }}
+                      >
+                        <span className="dash-dayout-value">{formatFigure(day.qty)}</span>
+                      </span>
+                    )}
+                    <span className="dash-dayout-label">{date.slice(5)}</span>
+                  </li>
+                );
+              })}
+            </ol>
+          </div>
+        </div>
       )}
     </Panel>
   );
@@ -1288,6 +1331,7 @@ export const OqcTab = ({
           tooltip
           gapMarks
           gapDetail
+          gapBridge={false}
           niceTicks
         />
         <div className="dash-qo-side">

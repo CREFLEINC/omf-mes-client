@@ -176,7 +176,7 @@ describe('품질 탭', () => {
 
     expect(screen.getByText(t.dailyReturnOut)).toBeInTheDocument();
     expect(screen.getByText(t.dailyReturnOutEmpty)).toBeInTheDocument();
-    expect(container.querySelectorAll('.dash-day-bar')).toHaveLength(9);
+    expect(container.querySelectorAll('.dash-dayout-col')).toHaveLength(9);
   });
 
   it('OQC — 서버가 새 칸을 주지 않으면 미처리 반품 칸 · 반출 그래프 없이, 최근 판정은 한 줄 전체', () => {
@@ -208,10 +208,11 @@ describe('품질 탭', () => {
     expect(screen.getByText(t.returnByReason)).toBeInTheDocument();
     expect(screen.getByText('공급사반품')).toBeInTheDocument();
     expect(screen.getByText('고객 가')).toBeInTheDocument();
-    const bars = container.querySelectorAll('.dash-day-bar');
+    const bars = container.querySelectorAll('.dash-dayout-col');
     expect(bars).toHaveLength(2);
-    /* 출고 없는 날은 빈 칸. */
-    expect(bars[1]?.querySelector('.dash-day-bar-value')?.textContent).toBe('');
+    /* 출고 기록 없는 날은 빈 칸(막대 · 숫자 없음), 있는 날은 툴팁에 날짜 · 정확한 수량. */
+    expect(bars[1]?.querySelector('.dash-dayout-bar')).toBeNull();
+    expect(bars[0]).toHaveAttribute('data-tip', '2026-10-15 4 EA');
   });
 
   it('PQC — 주요 현황 「재작업 의뢰」 줄은 권한이 있으면 처분 판정 처리로 간다(사용자 지시 2026-10-19)', async () => {

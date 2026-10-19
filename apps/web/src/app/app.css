@@ -14260,54 +14260,134 @@ button.app-button-neutral {
   margin-block: 0;
 }
 
-/* OQC 「반출 일자별 수량」(사용자 지시 2026-10-19) — 날짜마다 세로 막대, 값은 막대 위. 이 박스 전용. */
-.dash-day-bars {
+/*
+ * OQC 일별 반출 수량(⭐ 사용자 지시 2026-10-19 UI/UX) — 세로축(0 부터) | 막대 영역. 막대는 중립 단색, 값은 막대 위,
+ * 날짜는 바닥선 아래. 카드는 옆 최근 판정 카드 높이를 따라 늘어나고 막대 영역이 남는 높이를 쓴다.
+ */
+.dash-dayout-panel {
+  display: flex;
+  flex-direction: column;
+}
+
+.dash-dayout-panel > .dash-panel-body {
+  display: flex;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.dash-dayout {
   display: grid;
-  grid-auto-flow: column;
-  grid-auto-columns: minmax(0, 1fr);
-  gap: var(--space-2);
+  flex: 1 1 auto;
+  grid-template-columns: auto minmax(0, 1fr);
+  column-gap: var(--space-2);
+  min-height: 11rem;
+  padding-block: var(--space-4) var(--space-5);
+}
+
+.dash-dayout-axis {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
   margin: 0;
   padding: 0;
   list-style: none;
-  min-height: 10rem;
+  color: var(--on-surface-muted);
+  font: var(--type-label-sm);
+  letter-spacing: var(--type-label-sm-tracking);
+  font-variant-numeric: tabular-nums;
+  text-align: end;
 }
 
-.dash-day-bar {
+.dash-dayout-axis > li {
+  line-height: 0;
+}
+
+.dash-dayout-plot {
+  position: relative;
+  border-block-end: 1px solid var(--outline-variant);
+}
+
+.dash-dayout-cols {
+  position: relative;
+  height: 100%;
   display: grid;
-  grid-template-rows: auto 1fr auto;
-  justify-items: center;
-  gap: var(--space-1);
-  min-width: 0;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
+  column-gap: var(--space-2);
+  align-items: end;
+  margin: 0;
+  padding: 0;
+  list-style: none;
 }
 
-.dash-day-bar-value {
+.dash-dayout-grid {
+  position: absolute;
+  inset-inline: 0;
+  border-block-start: 1px solid color-mix(in srgb, var(--outline-variant) 60%, transparent);
+  pointer-events: none;
+}
+
+.dash-dayout-col {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  align-items: flex-end;
+  height: 100%;
+  border-radius: 2px;
+}
+
+.dash-dayout-col:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.dash-dayout-bar {
+  position: relative;
+  width: min(56%, 1.75rem);
+  min-height: 1px;
+  border-radius: 2px 2px 0 0;
+  background: var(--chart-2);
+}
+
+.dash-dayout-value {
+  position: absolute;
+  inset-block-end: 100%;
+  inset-inline-start: 50%;
+  transform: translate(-50%, -2px);
   font: var(--type-label-sm);
   letter-spacing: var(--type-label-sm-tracking);
   font-weight: 700;
   white-space: nowrap;
 }
 
-.dash-day-bar-track {
-  display: flex;
-  align-items: flex-end;
-  width: min(100%, 2rem);
-  height: 100%;
-  min-height: 6rem;
-  /* 출고 없는 날도 칸이 보이게 옅은 바닥선(사용자 지시 2026-10-19 「빈 칸」). */
-  border-block-end: 1px solid var(--outline-variant);
-}
-
-.dash-day-bar-fill {
-  width: 100%;
-  border-radius: var(--radius-xs, 2px) var(--radius-xs, 2px) 0 0;
-  background: var(--chart-1);
-}
-
-.dash-day-bar-label {
+.dash-dayout-label {
+  position: absolute;
+  inset-block-start: 100%;
+  margin-block-start: var(--space-1);
+  color: var(--on-surface-muted);
   font: var(--type-label-sm);
   letter-spacing: var(--type-label-sm-tracking);
-  color: var(--on-surface-muted);
   white-space: nowrap;
+}
+
+/* 툴팁 — 날짜 · 정확한 수량(마우스 올림 · 포커스). 막대 칸 위 가운데, 다른 카드 툴팁과 같은 생김새. */
+.dash-dayout-col[data-tip]:hover::after,
+.dash-dayout-col[data-tip]:focus-visible::after {
+  content: attr(data-tip);
+  position: absolute;
+  inset-block-start: 0;
+  inset-inline-start: 50%;
+  z-index: 2;
+  transform: translate(-50%, calc(-100% - var(--space-2)));
+  padding: var(--space-1) var(--space-2);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-sm, 6px);
+  background: var(--surface);
+  box-shadow: var(--elevation-1, 0 1px 3px rgb(0 0 0 / 12%));
+  color: var(--on-surface);
+  font: var(--type-label-sm);
+  white-space: nowrap;
+  pointer-events: none;
 }
 
 
@@ -14435,4 +14515,10 @@ button.app-button-neutral {
 /* 오른쪽 묶음에 카드가 하나뿐이면(OQC 고객별 불합격 · 사용자 지시 2026-10-19) 그 카드가 행 높이를 채운다. 둘이면 그대로. */
 .dash-qo-side:has(> :only-child) {
   grid-template-rows: minmax(0, 1fr);
+}
+
+/* 툴팁이 뜬 막대는 위 숫자를 숨긴다 — 같은 값이 겹쳐 보이지 않게. */
+.dash-dayout-col[data-tip]:hover .dash-dayout-value,
+.dash-dayout-col[data-tip]:focus-visible .dash-dayout-value {
+  visibility: hidden;
 }
