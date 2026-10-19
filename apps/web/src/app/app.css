@@ -13849,37 +13849,63 @@ button.app-button-neutral {
 }
 
 /*
- * 입고 대상(선별 뒤 양품·불량분) — 입고 정보 격자 위 한 줄. 선택지 문구(「선별 불량분 · 3 EA」)에 맞는 폭으로 줄이고
- * 아래 입력 칸과 격자 간격만큼 띄운다. 칸 아래에 고른 대상의 LOT 번호를 다 보인다.
+ * 입고 대상(선별 뒤 양품·불량분) — 선택 버튼 묶음(담당자 결정). 입고 정보 격자 위 한 줄, 아래 칸과 격자 간격만큼 띄운다.
+ * DS `Radio` 를 카드로 편다: 터치하기 좋은 높이(48px), 고른 카드는 강조색 테두리 2px + 옅은 강조 바탕 + 굵은 글자.
+ * 대상 성격(양품·불량분)은 문구가 말한다 — 색 띠를 따로 두면 강조색(빨강)과 겹쳐 «고른 것»과 헷갈린다.
+ * 좁으면 줄을 바꾸고, 긴 문구(LOT 번호 포함)는 카드 안에서 접는다.
  */
 .field-cell.goods-receipt-target {
-  max-width: 28rem;
   margin-bottom: var(--space-4);
 }
 
-/* 긴 LOT 번호(구분자 `|` · 공백 없음)는 칸 폭 안에서 접는다 — 자르지 않는다. */
+.goods-receipt-target-options {
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+
+.goods-receipt-target-option {
+  box-sizing: border-box;
+  min-height: var(--control-height-lg);
+  min-width: 12rem;
+  max-width: 100%;
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  box-shadow: inset 0 0 0 1px var(--outline);
+  overflow-wrap: anywhere;
+}
+
+.goods-receipt-target-option:hover {
+  background: var(--state-hover-neutral);
+}
+
+.goods-receipt-target-option:has(input:checked) {
+  background: var(--primary-container);
+  box-shadow: inset 0 0 0 2px var(--primary);
+  font-weight: 600;
+}
+
+.goods-receipt-target-option:has(input:focus-visible) {
+  box-shadow:
+    inset 0 0 0 2px var(--primary),
+    var(--focus-ring);
+}
+
+.goods-receipt-target-option:has(input:disabled) {
+  cursor: default;
+  background: var(--surface-container);
+}
+
+/* 고른 대상의 LOT 번호 — 긴 번호(구분자 `|` · 공백 없음)는 칸 폭 안에서 접는다. 자르지 않는다. */
 .goods-receipt-target .field-note {
   max-width: none;
   overflow-wrap: anywhere;
 }
 
-/*
- * 라벨과 상태를 떼어 읽히게 한다(담당자 지시 — 「입고 대상 양품 입고」처럼 한 문장으로 붙어 보이지 않게).
- * 입고 대상: 지금 고른 대상을 테두리 있는 작은 꼬리표로 — 양품은 성공색, 불량분은 오류색(절제된 상태 색).
- */
-.goods-receipt-target .goods-receipt-label-hint {
-  padding: 0 var(--space-2);
-  border: 1px solid currentColor;
-  border-radius: var(--radius-full);
-  font-weight: 600;
-}
-
-.goods-receipt-target-good .goods-receipt-label-hint {
-  color: var(--semantic-success-text);
-}
-
-.goods-receipt-target-split .goods-receipt-label-hint {
-  color: var(--semantic-error-text);
+@media (max-width: 720px) {
+  .goods-receipt-target-option {
+    flex: 1 1 100%;
+  }
 }
 
 /*

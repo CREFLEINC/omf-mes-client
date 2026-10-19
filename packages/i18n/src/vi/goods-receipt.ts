@@ -183,8 +183,6 @@ export const goodsReceipt: Translated<typeof ko.goodsReceipt> = {
       split: (qty: string) => `Phần lỗi đã tách · ${qty}`,
       splitWithLot: (lotNo: string, qty: string) => `Phần lỗi đã tách ${lotNo} · ${qty}`,
       lot: (lotNo: string) => `LOT nhập kho: ${lotNo}`,
-      goodHint: 'Nhập hàng đạt',
-      splitHint: 'Nhập phần lỗi',
       noteTitle: (good: string, split: string) =>
         `Kết quả phân loại · hàng đạt ${good} / phần lỗi ${split}`,
       noteBody:

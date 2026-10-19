@@ -4,6 +4,8 @@ import {
   Button,
   EmptyState,
   PageHeader,
+  Radio,
+  RadioGroup,
   SkeletonText,
 } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
@@ -39,7 +41,6 @@ import { IrLineTable } from './ir-line-table';
 import { IrTable } from './ir-table';
 import { findSelectedLine, nextSelectedLineId } from './line-select';
 import { chooseReceiptTarget, receiptTargetsOf, splitQtyOf } from './receipt-target';
-import { SelectField } from './select-field';
 import { LoadErrorBanner } from './load-error-banner';
 import {
   describeReference,
@@ -151,6 +152,10 @@ const toSelectOptions = (lookup: LookupResult): SelectOption[] =>
 export const GoodsReceiptScreen = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const blockReasonId = `${useId()}-post-reason`;
+  /* 입고 대상 선택 버튼 묶음의 이름(라벨)과 설명(LOT 번호). */
+  const targetId = useId();
+  const targetLabelId = `${targetId}-target-label`;
+  const targetNoteId = `${targetId}-target-note`;
 
   /**
    * **무엇이 바뀔 때 무엇을 비우는가 — 수명 표**(계획 결정 6).
@@ -809,39 +814,47 @@ export const GoodsReceiptScreen = () => {
          */}
         {/* 지금 채울 칸 — `app.css` 가 이 칸의 라벨을 강조한다(순서대로 입력 · 사용자 지시). */}
         {receiptTargets.length > 1 && receiptTarget !== null && (
-          <SelectField
-            label={t.notes.receiptTarget.label}
-            /* 지금 고른 대상(양품·불량분)을 라벨 옆 상태 글자로 — 색은 `app.css` 가 대상별로 준다. */
-            className={
-              receiptTarget.splitLotNo === null
-                ? 'goods-receipt-target goods-receipt-target-good'
-                : 'goods-receipt-target goods-receipt-target-split'
-            }
-            labelHint={
-              receiptTarget.splitLotNo === null
-                ? t.notes.receiptTarget.goodHint
-                : t.notes.receiptTarget.splitHint
-            }
-            /* 선택지에는 LOT 번호를 싣지 않는다(길어 잘린다) — 고른 대상의 LOT 번호는 칸 아래에 다 보인다. */
-            note={t.notes.receiptTarget.lot(lotName)}
-            options={receiptTargets.map((target) => ({
-              value: String(target.lotId),
-              label:
-                target.splitLotNo === null
-                  ? t.notes.receiptTarget.good(qtyText(target.qty))
-                  : splitTargetCount > 1
-                    ? t.notes.receiptTarget.splitWithLot(target.splitLotNo, qtyText(target.qty))
-                    : t.notes.receiptTarget.split(qtyText(target.qty)),
-            }))}
-            value={String(receiptTarget.lotId)}
-            disabled={isLocked}
-            wide
-            onChange={(value) => {
-              setPickedTargetLotId(Number(value));
-              // 대상이 바뀌면 고를 수 있는 창고가 달라진다(불량분은 불량창고만) — 고른 창고·위치를 비운다.
-              changeWarehouse('');
-            }}
-          />
+          /*
+           * 입고 대상은 선택 버튼 묶음(담당자 결정) — 대상이 보통 둘·셋이라 한눈에 보이고, 열린 목록이 아래 칸을
+           * 덮지 않는다. 디자인 시스템 `RadioGroup`·`Radio` 를 카드 모양으로 편다(`app.css`). 좁으면 줄을 바꾼다.
+           * 고른 대상의 LOT 번호는 버튼에 싣지 않고(길다) 묶음 아래에 다 보인다.
+           */
+          <div className="field-cell goods-receipt-target">
+            <span id={targetLabelId} className="field-label">
+              {t.notes.receiptTarget.label}
+            </span>
+            <RadioGroup
+              name="goods-receipt-target"
+              orientation="horizontal"
+              className="goods-receipt-target-options"
+              aria-labelledby={targetLabelId}
+              aria-describedby={targetNoteId}
+              value={String(receiptTarget.lotId)}
+              disabled={isLocked}
+              onChange={(value) => {
+                setPickedTargetLotId(Number(value));
+                // 대상이 바뀌면 고를 수 있는 창고가 달라진다(불량분은 불량창고만) — 고른 창고·위치를 비운다.
+                changeWarehouse('');
+              }}
+            >
+              {receiptTargets.map((target) => (
+                <Radio
+                  key={target.lotId}
+                  value={String(target.lotId)}
+                  className="goods-receipt-target-option"
+                >
+                  {target.splitLotNo === null
+                    ? t.notes.receiptTarget.good(qtyText(target.qty))
+                    : splitTargetCount > 1
+                      ? t.notes.receiptTarget.splitWithLot(target.splitLotNo, qtyText(target.qty))
+                      : t.notes.receiptTarget.split(qtyText(target.qty))}
+                </Radio>
+              ))}
+            </RadioGroup>
+            <span id={targetNoteId} className="field-note">
+              {t.notes.receiptTarget.lot(lotName)}
+            </span>
+          </div>
         )}
         <div className="goods-receipt-post-form" data-current-step={nextPostStep ?? 'done'}>
           <WarehouseLocationFields

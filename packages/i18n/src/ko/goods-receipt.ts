@@ -281,9 +281,6 @@ export const goodsReceipt = {
       splitWithLot: (lotNo: string, qty: string) => `선별 불량분 ${lotNo} · ${qty}`,
       /** 고른 대상의 LOT 번호 — 선택칸 아래 한 줄. 긴 번호도 자르지 않는다. */
       lot: (lotNo: string) => `입고할 LOT: ${lotNo}`,
-      /** 라벨 옆 지금 고른 대상. */
-      goodHint: '양품 입고',
-      splitHint: '불량분 입고',
       /** 안내 띠 제목 — 수량을 한눈에. */
       noteTitle: (good: string, split: string) => `선별 결과 · 양품 ${good} / 불량분 ${split}`,
       /** 안내 띠 본문 — 다음 할 일. */

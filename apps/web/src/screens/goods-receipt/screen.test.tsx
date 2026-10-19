@@ -2985,9 +2985,13 @@ describe('GoodsReceiptScreen — 입고 전 선별(P-56)', () => {
         ),
       ),
     ).toBeInTheDocument();
-    expect(screen.getByRole('combobox', { name: t.notes.receiptTarget.label })).toHaveTextContent(
-      t.notes.receiptTarget.good(t.lineTable.receivedQtyPair(35, 'SAMPLE-EA')),
-    );
+    /* 입고 대상은 선택 버튼 묶음 — 기본은 양품(원 LOT)이 골라져 있다. */
+    expect(
+      within(screen.getByRole('radiogroup', { name: t.notes.receiptTarget.label })).getByRole(
+        'radio',
+        { name: t.notes.receiptTarget.good(t.lineTable.receivedQtyPair(35, 'SAMPLE-EA')) },
+      ),
+    ).toBeChecked();
     await clickPost(user);
     await confirmPost(user);
 
@@ -3005,18 +3009,16 @@ describe('GoodsReceiptScreen — 입고 전 선별(P-56)', () => {
     );
     await openPostPane(user);
 
-    await chooseOption(
-      user,
-      t.notes.receiptTarget.label,
-      t.notes.receiptTarget.split(t.lineTable.receivedQtyPair(15, 'SAMPLE-EA')),
-    );
+    const splitOption = screen.getByRole('radio', {
+      name: t.notes.receiptTarget.split(t.lineTable.receivedQtyPair(15, 'SAMPLE-EA')),
+    });
+    await user.click(splitOption);
 
-    /* 고른 대상의 LOT 번호는 선택지가 아니라 칸 아래에 다 보인다. */
+    expect(splitOption).toBeChecked();
+    /* 고른 대상의 LOT 번호는 버튼이 아니라 묶음 아래에 다 보인다. */
     expect(
-      screen.getByRole('combobox', { name: t.notes.receiptTarget.label }),
-    ).toHaveAccessibleDescription(
-      `${t.notes.receiptTarget.splitHint} ${t.notes.receiptTarget.lot(SPLIT.lotNo)}`,
-    );
+      screen.getByRole('radiogroup', { name: t.notes.receiptTarget.label }),
+    ).toHaveAccessibleDescription(t.notes.receiptTarget.lot(SPLIT.lotNo));
 
     const warehouseBox = screen.getByRole('combobox', { name: t.fields.warehouse });
     await waitFor(() => {
@@ -3035,7 +3037,7 @@ describe('GoodsReceiptScreen — 입고 전 선별(P-56)', () => {
     await openPostPane(user);
 
     expect(
-      screen.queryByRole('combobox', { name: t.notes.receiptTarget.label }),
+      screen.queryByRole('radiogroup', { name: t.notes.receiptTarget.label }),
     ).not.toBeInTheDocument();
   });
 });
