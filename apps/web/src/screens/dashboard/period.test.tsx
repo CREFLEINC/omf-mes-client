@@ -98,6 +98,6 @@ describe('periodRangeTitle', () => {
     );
     const span = { baseDate: '2026-10-19', dateFrom: '2026-10-13', dateTo: '2026-10-19' };
     expect(periodRangeTitle(q.tagPeriod, span)).toBe('선택 기간: 2026-10-13 ~ 2026-10-19');
-    expect(periodRangeTitle('현재', day)).toBeNull();
+    expect(periodRangeTitle(q.tagNow, day)).toBeNull();
   });
 });

@@ -82,7 +82,7 @@ export const dashboard: Translated<typeof ko.dashboard> = {
     },
     boardTitle: 'Tình trạng vận hành thiết bị',
     boardSub: (count: number): string => `${String(count)} máy · Toàn bộ thiết bị`,
-    tagLive: 'Thời gian thực',
+    tagLive: 'Thời điểm làm mới',
     countUnit: 'máy',
     line: 'Chuyền sản xuất',
     allLines: 'Tất cả',
@@ -158,7 +158,7 @@ export const dashboard: Translated<typeof ko.dashboard> = {
 
   kpi: {
     none: '—',
-    tagLive: 'Thời gian thực',
+    tagLive: 'Thời điểm làm mới',
     tagToday: 'Hôm nay',
     tagPeriod: 'Khoảng đã chọn',
     runningOfTotal: 'Thiết bị đang chạy',
@@ -214,7 +214,7 @@ export const dashboard: Translated<typeof ko.dashboard> = {
     tagMonthTotal: 'Lũy kế tháng',
     tagToday: 'Hôm nay',
     tagPeriod: 'Khoảng đã chọn',
-    tagNow: 'Hiện tại',
+    tagNow: 'Thời điểm làm mới',
     passRateOf: (kind: string): string => `Tỷ lệ đạt ${kind}`,
     prevMonth: (rate: string): string => `Tháng trước ${rate}`,
     prevMissing: 'Không có dữ liệu tháng trước',

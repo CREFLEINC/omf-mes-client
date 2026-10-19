@@ -99,7 +99,8 @@ export const dashboard = {
     },
     boardTitle: '설비 가동 현황',
     boardSub: (count: number): string => `${String(count)}대 · 전체 설비`,
-    tagLive: '실시간',
+    /** ⭐ 「실시간」 · 「현재」를 「갱신 시점」으로 통일(사용자 지시 2026-10-19) — 마지막 갱신 시각의 상태. */
+    tagLive: '갱신 시점',
     countUnit: '대',
     line: '생산 라인',
     allLines: '전체',
@@ -193,7 +194,8 @@ export const dashboard = {
    */
   kpi: {
     none: '—',
-    tagLive: '실시간',
+    /** ⭐ 「실시간」 · 「현재」를 「갱신 시점」으로 통일(사용자 지시 2026-10-19) — 마지막 갱신 시각의 상태. */
+    tagLive: '갱신 시점',
     tagToday: '금일',
     tagPeriod: '선택 기간',
     runningOfTotal: '가동 설비',
@@ -266,7 +268,8 @@ export const dashboard = {
     tagToday: '금일',
     /** 이틀 이상 기간 — 「당월」 · 「당월 누계」 · 「금일」 자리(사용자 확정 2026-10-16). */
     tagPeriod: '선택 기간',
-    tagNow: '현재',
+    /** ⭐ 「실시간」 · 「현재」를 「갱신 시점」으로 통일(사용자 지시 2026-10-19) — 마지막 갱신 시각의 상태. */
+    tagNow: '갱신 시점',
     passRateOf: (kind: string): string => `${kind} 합격률`,
     prevMonth: (rate: string): string => `전월 ${rate}`,
     /** ⭐ 품질 종합 KPI(사용자 지시 2026-10-19) — 비교 값이 없으면 증감을 지어내지 않는다. %p 표기. */
