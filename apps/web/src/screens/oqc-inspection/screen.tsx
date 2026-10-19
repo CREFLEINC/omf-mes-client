@@ -377,10 +377,11 @@ export const OqcInspectionScreen = () => {
           isReinspecting={isReinspectingNow}
         />
 
-        {/* 검사 대상 이력(#61) — 회차가 늘면 다시 세워 새로 부른다. */}
+        {/* 검사 대상 이력(#61) — 회차를 저장·확정하면 새로 부른다. */}
         <InspectionHistoryPanel
           key={`${String(selectedId)}-${String(rounds.data?.length ?? 0)}`}
           inspectionRequestId={selectedId}
+          revision={`${String(rounds.data?.length ?? 0)}:${JSON.stringify(round ?? null)}`}
         />
       </>
     );

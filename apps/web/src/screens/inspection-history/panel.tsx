@@ -38,6 +38,11 @@ const detailOf = (event: InspectionHistoryEvent): string[] => {
 
 export interface InspectionHistoryPanelProps {
   inspectionRequestId: number;
+  /**
+   * 회차가 바뀐 표식(저장·확정·재검사) — 바뀌면 이력을 새로 부른다. 회차 «개수»만 보면 확정이나 같은 회차의
+   * 재저장이 이력에 뜨지 않는다.
+   */
+  revision?: string;
 }
 
 /**
@@ -46,10 +51,13 @@ export interface InspectionHistoryPanelProps {
  * ⭐ 앞 단계가 넘긴 문서(입하·작업지시·출하 지시 번호)와, 전달 → 회차 저장·확정 → LOT 상태 변경을 시간순으로 보인다.
  * ⛔ 읽기 전용이다. 같은 LOT 의 다른 일(보류·처분)은 LOT 현황 화면의 몫이라 담지 않는다.
  */
-export const InspectionHistoryPanel = ({ inspectionRequestId }: InspectionHistoryPanelProps) => {
+export const InspectionHistoryPanel = ({
+  inspectionRequestId,
+  revision = '',
+}: InspectionHistoryPanelProps) => {
   const { client } = useApiClient();
   const history = useQuery({
-    queryKey: inspectionHistoryKeys.one(inspectionRequestId),
+    queryKey: [...inspectionHistoryKeys.one(inspectionRequestId), revision],
     queryFn: (): Promise<InspectionHistory> =>
       runRequest(() =>
         client.GET('/quality/inspection-requests/{inspectionRequestId}/history', {
