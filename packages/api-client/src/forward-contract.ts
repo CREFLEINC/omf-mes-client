@@ -86,7 +86,62 @@ export type AttachmentTargetType =
 type AttachmentsPath = paths['/app/attachments'];
 type AttachmentsListQuery = NonNullable<AttachmentsPath['get']['parameters']['query']>;
 
+/** 서버 선행 P-55(omf-all-around#61) — 검사 대상 이력. */
+export interface InspectionHistoryEvent {
+  occurredAt: string;
+  eventTypeCode: 'REQUESTED' | 'RESULT_SAVED' | 'RESULT_CONFIRMED' | 'LOT_STATUS_CHANGED';
+  actorName?: string;
+  inspectionResultNo?: string;
+  inspectionRound?: number;
+  overallJudgmentCode?: string;
+  acceptedQty?: number;
+  rejectedQty?: number;
+  heldQty?: number;
+  previousStatusCode?: string;
+  newStatusCode?: string;
+  transitionCode?: string;
+  lotNo?: string;
+}
+
+export interface InspectionHistory {
+  inspectionRequestId: number;
+  inspectionRequestNo: string;
+  inspectionTypeCode: string;
+  source: { targetTypeCode: string; targetId: number; documentNo?: string; lotNo?: string };
+  events: InspectionHistoryEvent[];
+}
+
 export interface ForwardPaths {
+  '/quality/inspection-requests/{inspectionRequestId}/history': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: { inspectionRequestId: number };
+      cookie?: never;
+    };
+    get: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: { inspectionRequestId: number };
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        200: {
+          headers: { [name: string]: unknown };
+          content: { 'application/json': InspectionHistory };
+        };
+      };
+    };
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/app/attachments': Omit<AttachmentsPath, 'get'> & {
     get: Omit<AttachmentsPath['get'], 'parameters'> & {
       parameters: Omit<AttachmentsPath['get']['parameters'], 'query'> & {
