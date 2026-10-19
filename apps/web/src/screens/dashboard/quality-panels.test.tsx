@@ -79,6 +79,39 @@ describe('품질 탭', () => {
     q.iqc.fullReinspect = { inputQty: 80, restoredQty: 70 };
     rerender(<IqcTab quality={q} />);
     expect(screen.getByText(t.fullReinspectNote('80', '70'))).toBeInTheDocument();
+    /* 재검 OK 복원율 = 70 ÷ 80(사용자 결정 2026-10-19). */
+    expect(screen.getByText('87.5')).toBeInTheDocument();
+  });
+
+  it('IQC — 품목별 불량은 원형 그래프, 업체별 불량은 가로 막대, 입고 보류 줄은 누를 수 있다(사용자 지시 2026-10-19)', () => {
+    const q = quality();
+    q.iqc.receiptHoldLotCount = 2;
+    q.iqc.itemDefects = [
+      { itemId: 1, itemCode: 'ITEM-1', itemName: '품목 1', qty: 3 },
+      { itemId: 2, itemCode: 'ITEM-2', itemName: '품목 2', qty: 1 },
+    ];
+    const { container } = render(<IqcTab quality={q} />);
+
+    expect(screen.getByRole('img', { name: t.itemDefects })).toBeInTheDocument();
+    expect(container.querySelector('.dash-stack-bar')).toBeNull();
+    expect(screen.queryByRole('table', { name: t.vendorDefects })).not.toBeInTheDocument();
+    expect(container.querySelector('.dash-rank')).not.toBeNull();
+    expect(screen.getByRole('button', { name: new RegExp(t.receiptHold) })).toBeInTheDocument();
+  });
+
+  it('IQC — 최근 판정 줄을 누르면 검사결과 상세로, 권한이 없으면 링크 없음(사용자 지시 2026-10-19)', () => {
+    const { unmount } = render(
+      <MemoryRouter>
+        <IqcTab quality={quality()} allows={(path) => path === '/quality/inspection-results'} />
+      </MemoryRouter>,
+    );
+    expect(
+      screen.getByRole('link', { name: t.openInspectionResult('IQC', 'ITEM-1') }),
+    ).toHaveAttribute('href', expect.stringContaining('type=IQC&selected=1'));
+    unmount();
+
+    render(<IqcTab quality={quality()} />);
+    expect(screen.queryByRole('link')).not.toBeInTheDocument();
   });
 
   it('PQC — 최근 판정은 호기 열, 시안대로 LOT 열은 두지 않는다', () => {
@@ -86,6 +119,8 @@ describe('품질 탭', () => {
 
     const recent = screen.getByRole('table', { name: t.recentLotsOf('PQC') });
     expect(within(recent).getByText('EQ-01')).toBeInTheDocument();
+    /* 품질 종합이 아닌 탭은 날짜만. */
+    expect(within(recent).queryByText(/\d{2}:\d{2}$/)).not.toBeInTheDocument();
     expect(within(recent).queryByRole('columnheader', { name: 'LOT' })).not.toBeInTheDocument();
     expect(screen.getByText(t.reworkLine('1'))).toBeInTheDocument();
   });
@@ -275,6 +310,8 @@ describe('품질 탭', () => {
     expect(table.querySelectorAll('tbody .dash-recent-arrow')).toHaveLength(
       table.querySelectorAll('tbody .dash-recent-link').length,
     );
+    /* 일시는 시각까지 — 품질 종합만(사용자 지시 2026-10-19). */
+    expect(within(table).getByText('2026-10-16 08:00')).toBeInTheDocument();
     unmount();
 
     render(<QualityOverviewTab quality={data} allows={() => false} />);

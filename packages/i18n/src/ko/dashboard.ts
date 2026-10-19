@@ -330,9 +330,9 @@ export const dashboard = {
     itemDefects: '품목(CODE)별 불량 구성',
     receiptHold: '입고 보류 LOT',
     receiptHoldNote: '지금 보류 중인 입하 LOT',
-    fullReinspect: '전수 재검',
+    fullReinspect: '재검 OK 복원율',
     fullReinspectNote: (input: string, restored: string): string =>
-      `투입 ${input} · 양품 복원 ${restored}`,
+      `재검 투입 ${input} EA · OK 복원 ${restored} EA`,
     pendingLots: '검사 대기 LOT',
     pendingLotsNote: '판정 전 PQC 의뢰',
     reworkRequests: '재작업 의뢰',

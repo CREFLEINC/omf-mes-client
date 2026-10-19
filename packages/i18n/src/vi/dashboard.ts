@@ -274,9 +274,9 @@ export const dashboard: Translated<typeof ko.dashboard> = {
     itemDefects: 'Cơ cấu lỗi theo mặt hàng (CODE)',
     receiptHold: 'LOT tạm giữ nhập kho',
     receiptHoldNote: 'LOT nhận hàng đang bị tạm giữ',
-    fullReinspect: 'Kiểm tra lại toàn bộ',
+    fullReinspect: 'Tỷ lệ khôi phục OK khi kiểm tra lại',
     fullReinspectNote: (input: string, restored: string): string =>
-      `Đưa vào ${input} · Khôi phục hàng đạt ${restored}`,
+      `Đưa vào kiểm tra lại ${input} EA · Khôi phục OK ${restored} EA`,
     pendingLots: 'LOT chờ kiểm tra',
     pendingLotsNote: 'Yêu cầu PQC chưa phán định',
     reworkRequests: 'Yêu cầu làm lại',
