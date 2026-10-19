@@ -13683,9 +13683,10 @@ button.app-button-neutral {
   margin-top: var(--space-2);
 }
 
-/* 입고 정보 구획 — 구획 제목이 카드 맨 위면 위 여백·구분선을 두지 않는다. */
+/* 입고 정보 구획 — 구획 제목이 카드 맨 위면 위 여백·구분선을 두지 않는다. 아래 입고 대상과는 한 단계 띄운다. */
 .goods-receipt-section-title-first {
   margin-top: 0;
+  margin-bottom: var(--space-3);
   padding-top: 0;
   border-top: 0;
 }
@@ -13703,7 +13704,7 @@ button.app-button-neutral {
 .goods-receipt-post-form {
   display: grid;
   grid-template-columns: repeat(6, minmax(0, 1fr));
-  gap: var(--space-4);
+  gap: var(--space-4) var(--space-5);
   margin-bottom: var(--space-4);
 }
 
@@ -13794,9 +13795,15 @@ button.app-button-neutral {
  */
 .goods-receipt-post-actions {
   align-items: center;
-  margin-top: var(--space-4);
+  gap: var(--space-2);
+  margin-top: var(--space-5);
   padding-top: var(--space-4);
   border-top: 1px solid var(--outline-variant);
+}
+
+/* 주 동작(입고 확인)은 보조(취소)보다 넓게 — 우선순위가 크기로도 읽힌다. 두 단추 높이는 DS 기본(md) 그대로 같다. */
+.goods-receipt-post-actions > button:last-of-type {
+  min-width: 7.5rem;
 }
 
 /* 고를 수 없는 입하 라인의 사유 — 원인이 된 칸(자재 LOT·입하 수량) 안, 값 아래의 작은 보조 글자. 경고색 없음. */
@@ -13853,66 +13860,76 @@ button.app-button-neutral {
 }
 
 /*
- * 입고 대상(선별 뒤 양품·불량분) — 선택 버튼 묶음(담당자 결정). 입고 정보 격자 위 한 줄, 아래 칸과 격자 간격만큼 띄운다.
- * DS `Radio` 를 카드로 편다: 터치하기 좋은 높이(48px). 고른 카드는 짙은 회색 테두리 2px 와 라디오 점으로
- * 차분하게 표시한다 — 바탕은 바꾸지 않는다(담당자 지시 — 빨간 테두리·분홍 바탕은 오류처럼 강했다).
- * 대상 성격(양품·불량분)은 문구가 말한다 — 색 띠를 따로 두면 강조색(빨강)과 겹쳐 «고른 것»과 헷갈린다.
- * 좁으면 줄을 바꾸고, 긴 문구(LOT 번호 포함)는 카드 안에서 접는다.
+ * 입고 대상(선별 뒤 양품·불량분) — 선택 카드 묶음(담당자 결정). 기능은 DS `RadioGroup`·`Radio` 그대로다.
+ * 카드는 입력 칸과 같은 반경(--radius-sm)·옅은 테두리(--outline-variant)의 흰 면이고, 고른 카드만 테두리를
+ * 강조색 1px 로 바꾼다 — 라디오 점과 같은 색 한 가지로 «고른 것»을 말한다(검은 굵은 테두리·분홍 바탕 없이).
+ * 카드 안은 이름(본문, 보조색) 왼쪽 · 수량(제목 크기, 굵게, 고정폭 숫자) 오른쪽 — 두 카드의 수량이 같은 자리에서 비교된다.
+ * 카드 폭은 같게(격자), 묶음은 두 장이 편히 들어가는 폭까지만 — 화면 끝까지 늘이지 않는다. 좁으면 한 장씩 쌓는다.
  */
 .field-cell.goods-receipt-target {
-  margin-bottom: var(--space-4);
+  margin-bottom: var(--space-5);
 }
 
 .goods-receipt-target-options {
-  flex-wrap: wrap;
-  gap: var(--space-3);
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr));
+  gap: var(--space-2) var(--space-3);
+  max-width: 42rem;
 }
 
 .goods-receipt-target-option {
   box-sizing: border-box;
   min-height: var(--control-height-lg);
-  min-width: 16rem;
-  max-width: 100%;
-  padding: var(--space-2) var(--space-4);
-  border-radius: var(--radius-md);
+  padding: var(--space-2) var(--space-4) var(--space-2) var(--space-3);
+  border-radius: var(--radius-sm);
   background: var(--surface);
-  box-shadow: inset 0 0 0 1px var(--outline);
+  box-shadow: inset 0 0 0 1px var(--outline-variant);
   overflow-wrap: anywhere;
 }
 
 .goods-receipt-target-option:hover {
-  background: var(--state-hover-neutral);
+  box-shadow: inset 0 0 0 1px var(--outline);
 }
 
 .goods-receipt-target-option:has(input:checked) {
-  background: var(--surface);
-  box-shadow: inset 0 0 0 2px var(--on-surface-variant);
+  box-shadow: inset 0 0 0 1px var(--primary);
 }
 
 .goods-receipt-target-option:has(input:focus-visible) {
   box-shadow:
-    inset 0 0 0 2px var(--on-surface-variant),
+    inset 0 0 0 1px var(--primary),
     var(--focus-ring);
 }
 
-/* 카드 안: 이름은 왼쪽, 수량은 오른쪽 끝에 굵게 — 카드끼리 수량이 같은 자리에서 비교된다. */
+.goods-receipt-target-option:has(input:disabled) {
+  cursor: default;
+  background: var(--surface-container);
+  box-shadow: inset 0 0 0 1px var(--outline-variant);
+}
+
+/* 카드 안: 이름은 왼쪽, 수량은 오른쪽 끝 — 카드끼리 수량이 같은 자리에서 비교된다. */
 .goods-receipt-target-option > span:last-child {
   display: flex;
   flex: 1 1 auto;
   flex-wrap: wrap;
   align-items: baseline;
   justify-content: space-between;
-  gap: var(--space-1) var(--space-4);
+  gap: 0 var(--space-4);
+}
+
+.goods-receipt-target-name {
+  font: var(--type-body-sm);
+  letter-spacing: var(--type-body-sm-tracking);
+  color: var(--on-surface-variant);
 }
 
 .goods-receipt-target-qty {
+  font: var(--type-title-sm);
+  letter-spacing: var(--type-title-sm-tracking);
   font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--on-surface);
   white-space: nowrap;
-}
-
-.goods-receipt-target-option:has(input:disabled) {
-  cursor: default;
-  background: var(--surface-container);
 }
 
 /* 고른 대상의 LOT 번호 — 긴 번호(구분자 `|` · 공백 없음)는 칸 폭 안에서 접는다. 자르지 않는다. */
@@ -13921,10 +13938,30 @@ button.app-button-neutral {
   overflow-wrap: anywhere;
 }
 
-@media (max-width: 720px) {
-  .goods-receipt-target-option {
-    flex: 1 1 100%;
-  }
+/*
+ * 선별 안내 띠 — 한 줄(담당자 지시: 배너 비중 축소). 수량은 굵게 앞에, 할 일은 보조색으로 뒤에. 폭은 입고 정보와 같은
+ * 선(80rem)에서 끝낸다. DS 띠의 바탕·아이콘은 그대로 두고 높이만 내용에 맞춘다(제목이 없어 한 줄이다).
+ */
+.goods-receipt-split-banner {
+  margin-bottom: var(--space-4);
+}
+
+.goods-receipt-split-banner-qty {
+  margin-right: var(--space-3);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.goods-receipt-split-banner-body {
+  color: var(--on-surface-variant);
+}
+
+/*
+ * 입고 처리 페인의 내용 폭 — 안내 띠·입고 대상·입력 칸·버튼 줄이 같은 오른쪽 선(80rem)에서 끝난다.
+ * 아주 넓은 화면(1920)에서 칸이 800px 가까이 늘어나 투박해지는 것을 막는다(담당자 지시). 1440 이하에서는 페인이 더 좁아 영향이 없다.
+ */
+.goods-receipt-post-pane > * {
+  max-width: 80rem;
 }
 
 /*

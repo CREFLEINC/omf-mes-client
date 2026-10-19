@@ -802,13 +802,18 @@ export const GoodsReceiptScreen = () => {
           </div>
         )}
         {line.splitLots.length > 0 && receiptTarget !== null && (
-          <div className="banner-slot">
-            {/* 수량은 제목 한 줄로(한눈에), 다음 할 일은 본문 한 줄로(담당자 지시 — 간결하게). */}
-            <AlertBanner
-              variant="info"
-              title={t.notes.receiptTarget.noteTitle(goodQtyText, splitQtyText)}
-            >
-              {t.notes.receiptTarget.noteBody}
+          <div className="banner-slot goods-receipt-split-banner">
+            {/*
+             * 한 줄 띠로 낮춘다(담당자 지시 — 배너 비중 축소). 수량은 굵게 앞에, 할 일은 보조색으로 뒤에.
+             * 제목을 두면 띠가 두 줄 높이가 된다.
+             */}
+            <AlertBanner variant="info">
+              <strong className="goods-receipt-split-banner-qty">
+                {t.notes.receiptTarget.noteTitle(goodQtyText, splitQtyText)}
+              </strong>
+              <span className="goods-receipt-split-banner-body">
+                {t.notes.receiptTarget.noteBody}
+              </span>
             </AlertBanner>
           </div>
         )}
@@ -1170,7 +1175,7 @@ export const GoodsReceiptScreen = () => {
       </section>
 
       {postTarget !== null && (
-        <section className="pane" aria-label={t.panes.post}>
+        <section className="pane goods-receipt-post-pane" aria-label={t.panes.post}>
           {postPane(postTarget.inboundReceipt, postTarget.line)}
         </section>
       )}
