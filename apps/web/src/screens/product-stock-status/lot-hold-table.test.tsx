@@ -22,10 +22,10 @@ describe('LotHoldTable', () => {
     expect(screen.getAllByText('SAMPLE_HOLD_S_A')).toHaveLength(2);
   });
 
-  it('보류 시각을 MM-DD HH:mm으로 줄인다', () => {
+  it('보류 시각을 yyyy-MM-dd HH:mm으로 줄인다', () => {
     render(<LotHoldTable holds={heldLotDetail.holds} />);
 
-    expect(screen.getByText('08-06 09:12')).toBeInTheDocument();
+    expect(screen.getByText('2026-08-06 09:12')).toBeInTheDocument();
   });
 
   it('해제 조건이 없으면 대시로 낸다', () => {

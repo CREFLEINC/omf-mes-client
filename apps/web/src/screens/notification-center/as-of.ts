@@ -1,3 +1,5 @@
+import { formatLocalDateTime } from '../../patterns/date-display';
+
 /**
  * 기준 시각 — **지금 보이는 목록이 언제의 것인가**(공유계약 L-5).
  *
@@ -10,8 +12,6 @@
  *
  * 이 화면이 소유한다 — 다른 화면 슬라이스의 같은 이름 파일을 참조하지 않는다.
  */
-
-const pad = (value: number, length: number): string => String(value).padStart(length, '0');
 
 /**
  * 응답이 도착한 시각을 「YYYY-MM-DD HH:mm」으로 옮긴다.
@@ -30,11 +30,5 @@ const pad = (value: number, length: number): string => String(value).padStart(le
 export const formatAsOf = (updatedAt: number | null): string | null => {
   if (updatedAt === null || updatedAt === 0) return null;
 
-  const at = new Date(updatedAt);
-
-  const date = `${pad(at.getFullYear(), 4)}-${pad(at.getMonth() + 1, 2)}-${pad(at.getDate(), 2)}`;
-  /* 초를 내지 않는다 — 조회 시점의 정밀도가 초 단위로 읽힐 이유가 없다. */
-  const time = `${pad(at.getHours(), 2)}:${pad(at.getMinutes(), 2)}`;
-
-  return `${date} ${time}`;
+  return formatLocalDateTime(updatedAt);
 };

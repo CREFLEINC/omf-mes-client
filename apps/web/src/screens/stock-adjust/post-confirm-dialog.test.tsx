@@ -53,7 +53,7 @@ describe('PostConfirmDialog — 무엇을 확인시키는가', () => {
     expect(within(dialog()).getByText(t.dialog.postLead)).toBeInTheDocument();
     expect(within(dialog()).getByText('SAMPLE-IA-9301')).toBeInTheDocument();
     expect(within(dialog()).getByText('2026-08-18')).toBeInTheDocument();
-    expect(within(dialog()).getByText('2026-08-18T14:05')).toBeInTheDocument();
+    expect(within(dialog()).getByText('2026-08-18 14:05')).toBeInTheDocument();
   });
 
   /**

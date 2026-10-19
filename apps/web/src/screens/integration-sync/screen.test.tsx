@@ -289,13 +289,13 @@ describe('IntegrationSyncScreen — 목록 표시', () => {
   it('워커가 잡고 있는 행에는 처리 중 보조 문구가 붙는다', async () => {
     renderScreen([listRoute()]);
 
-    expect(await screen.findByText('09:20부터 처리 중')).toBeInTheDocument();
+    expect(await screen.findByText('2026-08-04 09:20부터 처리 중')).toBeInTheDocument();
   });
 
   it('다음 시도가 미래인 행에는 자동 재시도 보조 문구가 붙는다', async () => {
     renderScreen([listRoute()]);
 
-    expect(await screen.findByText('21:30 자동 재시도')).toBeInTheDocument();
+    expect(await screen.findByText('2099-12-31 21:30 자동 재시도')).toBeInTheDocument();
   });
 });
 
@@ -749,7 +749,7 @@ describe('IntegrationSyncScreen — 단건 재처리', () => {
 
     expect(
       await screen.findByText(
-        '이 건을 처리하는 작업이 09:20부터 진행 중입니다. 잠시 뒤 다시 시도하세요.',
+        '이 건을 처리하는 작업이 2026-08-04 09:20부터 진행 중입니다. 잠시 뒤 다시 시도하세요.',
       ),
     ).toBeInTheDocument();
     // 실패했으면 창을 닫지 않는다 — 사유를 보고 다음 행동을 정해야 한다.

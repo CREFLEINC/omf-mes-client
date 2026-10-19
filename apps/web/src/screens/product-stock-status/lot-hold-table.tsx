@@ -16,7 +16,7 @@ const t = messages.productStockStatus;
 const WIDTH = {
   reason: '160px',
   status: '120px',
-  heldAt: '140px',
+  heldAt: '168px',
   releaseCondition: '240px',
 } as const;
 

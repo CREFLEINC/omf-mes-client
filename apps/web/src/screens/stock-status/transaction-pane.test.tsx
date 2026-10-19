@@ -162,11 +162,11 @@ describe('TransactionPane — 표시', () => {
     expect(rows.length).toBeGreaterThan(marks.length);
   });
 
-  /* 25자 원본을 그대로 그리면 124px 열에서 여러 줄로 접힌다 — `as-of.ts`가 줄인 형태를 쓴다. */
-  it('발생 시각을 MM-DD HH:mm으로 줄여 낸다', () => {
+  /* 25자 원본을 그대로 그리면 좁은 열에서 여러 줄로 접힌다 — `as-of.ts`가 줄인 형태를 쓴다. */
+  it('발생 시각을 yyyy-MM-dd HH:mm으로 줄여 낸다', () => {
     renderPane();
 
-    expect(within(table()).getByText('08-06 09:12')).toBeInTheDocument();
+    expect(within(table()).getByText('2026-08-06 09:12')).toBeInTheDocument();
     expect(within(table()).queryByText('2026-08-06T09:12:00+09:00')).not.toBeInTheDocument();
   });
 

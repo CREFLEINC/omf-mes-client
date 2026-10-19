@@ -539,12 +539,12 @@ describe('BalanceTable — 수량 표시', () => {
    * 실행 환경에 따라 달라져, 기대값을 박으면 테스트가 실행 환경을 검사하게 된다.
    * 값의 정확도는 `as-of.test.ts`가 맡는다.
    */
-  it('최근 거래를 「MM-DD HH:mm」으로 줄여 낸다', () => {
+  it('최근 거래를 「yyyy-MM-dd HH:mm」으로 줄여 낸다', () => {
     const contractValue = '2026-08-06T09:12:00+09:00';
 
     renderTable({ view: 'item', rows: [balance({ lastTransactionAt: contractValue })] });
 
-    expect(within(table()).getByText(/^\d{2}-\d{2} \d{2}:\d{2}$/)).toBeInTheDocument();
+    expect(within(table()).getByText(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/)).toBeInTheDocument();
     expect(table()).not.toHaveTextContent(contractValue);
   });
 

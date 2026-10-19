@@ -3,7 +3,7 @@ import type { ApiError, ConflictCause } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
 
-import { formatTime } from './message-status';
+import { formatDateTime } from './message-status';
 
 const t = messages.integrationSync;
 
@@ -44,7 +44,7 @@ const BannerLines = ({ lines }: { lines: string[] }): ReactNode => {
 const describeConflict = (cause: ConflictCause, lockedAt: string | null | undefined): string => {
   switch (cause) {
     case 'workerLease': {
-      const at = formatTime(lockedAt);
+      const at = formatDateTime(lockedAt);
 
       return at === null ? t.retryError.workerLease : t.retryError.workerLeaseAt(at);
     }

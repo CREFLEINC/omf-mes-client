@@ -7,7 +7,8 @@ import { BasisBar } from './basis-bar';
 
 const t = messages.workOrderProgress.basis;
 
-const BASIS_AT = new Date('2026-07-15T09:00:00+09:00');
+/* 실행 환경 시간대의 벽시계로 만든다 — 표기는 보는 사람 시계 기준이다. */
+const BASIS_AT = new Date(2026, 6, 15, 9, 0, 30);
 
 const renderBar = (basisAt = BASIS_AT) => {
   const onRefresh = vi.fn();
@@ -22,15 +23,15 @@ describe('BasisBar', () => {
   it('받아 낸 시각을 보인다', () => {
     renderBar();
 
-    expect(screen.getByText(t.label(BASIS_AT.toLocaleString()))).toBeInTheDocument();
+    expect(screen.getByText(t.label('2026-07-15 09:00'))).toBeInTheDocument();
   });
 
   it('⛔ 다른 시각을 받으면 보이는 값도 바뀐다 — 굳어 있지 않다', () => {
-    const other = new Date('2026-07-16T10:30:00+09:00');
+    const other = new Date(2026, 6, 16, 10, 30);
     renderBar(other);
 
-    expect(screen.getByText(t.label(other.toLocaleString()))).toBeInTheDocument();
-    expect(screen.queryByText(t.label(BASIS_AT.toLocaleString()))).not.toBeInTheDocument();
+    expect(screen.getByText(t.label('2026-07-16 10:30'))).toBeInTheDocument();
+    expect(screen.queryByText(t.label('2026-07-15 09:00'))).not.toBeInTheDocument();
   });
 
   /*

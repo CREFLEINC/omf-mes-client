@@ -1,5 +1,7 @@
 import type { components } from '@omf-mes/api-client';
 
+import { formatDateRange, formatTimeOfDay } from '../../patterns/date-display';
+
 export type WorkCalendarDay = components['schemas']['WorkCalendarDay'];
 
 /**
@@ -46,5 +48,6 @@ export const partialHours = (day: WorkCalendarDay | undefined): string | null =>
   if (start === null || start === undefined || start === '') return null;
   if (end === null || end === undefined || end === '') return null;
 
-  return `${start}~${end}`;
+  /* `HH:mm ~ HH:mm`(⭐ 관리웹 날짜 표기 통일 · 사용자 지시 2026-10-19). */
+  return formatDateRange(formatTimeOfDay(start), formatTimeOfDay(end));
 };

@@ -2,6 +2,7 @@ import { AlertBanner, Button, SkeletonText, useToast } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 
+import { formatDateRange, formatTimeOfDay } from '../../patterns/date-display';
 import { selectableLookupOptions, type LookupSource } from '../../patterns/lookup-display';
 import { SaveErrorBanner } from '../../patterns/master';
 import {
@@ -187,7 +188,8 @@ export const WorkOrderAssignmentEditorSession = ({
       entry(
         item.shiftId,
         item.shiftCode,
-        `${item.shiftName} (${item.startTime}–${item.endTime})`,
+        /* 근무 시간은 `HH:mm ~ HH:mm`(⭐ 관리웹 날짜 표기 통일 · 사용자 지시 2026-10-19). */
+        `${item.shiftName} (${formatDateRange(formatTimeOfDay(item.startTime), formatTimeOfDay(item.endTime))})`,
         item.isActive,
       ),
   );
