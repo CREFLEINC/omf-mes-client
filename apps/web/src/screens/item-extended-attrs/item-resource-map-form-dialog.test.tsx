@@ -84,6 +84,26 @@ describe('ItemResourceMapFormDialog — 표시', () => {
   });
 });
 
+describe('ItemResourceMapFormDialog — 사용 중지한 줄의 기본', () => {
+  /* 서버가 기본 자리를 사용 중인 줄로만 센다 — 체크해 저장해도 기본이 되지 않는다. */
+  it('사용 중지한 줄을 고칠 때는 기본을 고를 수 없고 푸는 길을 안내한다', () => {
+    const row = itemResourceMapFixtures[2]!;
+    renderDialog({ row, initialValues: toItemResourceMapFormValues(row) });
+
+    const checkbox = screen.getByRole('checkbox', { name: '기본' });
+    expect(checkbox).toBeDisabled();
+    expect(checkbox).toHaveAccessibleDescription(
+      '기본으로 지정할 수 없습니다. 사용 중지한 줄입니다. 표에서 「다시 사용」한 뒤 지정하세요.',
+    );
+  });
+
+  it('사용 중인 줄과 새 줄은 기본을 고를 수 있다', () => {
+    renderDialog();
+
+    expect(screen.getByRole('checkbox', { name: '기본' })).toBeEnabled();
+  });
+});
+
 describe('ItemResourceMapFormDialog — 저장', () => {
   it('설비·금형이 둘 다 비면 저장하지 않고 설비 칸에 오류를 낸다', async () => {
     const { onSave, user } = renderDialog();

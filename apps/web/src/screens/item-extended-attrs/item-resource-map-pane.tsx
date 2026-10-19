@@ -22,8 +22,11 @@ export interface ItemResourceMapPaneProps {
   loadError: ReactNode;
   /** 줄 작업(기본 지정·사용 중지·다시 사용) 실패 배너 슬롯 */
   banner: ReactNode;
-  /** 줄 작업이 나가 있는 줄. 같은 줄을 두 번 누르지 못하게 한다 */
-  pendingRowId: number | null;
+  /**
+   * 줄 작업·수정을 모두 닫는다. 줄 작업이 나가 있거나 목록을 다시 받는 동안에는 표의 `versionNo`가
+   * 곧 낡으므로, 그 판으로 `If-Match`를 만들면 남이 아니라 내가 낸 충돌이 된다.
+   */
+  rowActionsLocked: boolean;
   onAdd: () => void;
   onEdit: (row: ItemResourceMap) => void;
   onSetDefault: (row: ItemResourceMap) => void;
@@ -49,9 +52,9 @@ export const resourceMapRowName = (row: ItemResourceMap): string =>
     .join(' / ');
 
 /**
- * 부속 정보 하위 탭④ — 설비·금형 매핑.
+ * 부속 정보 하위 탭 — 설비·금형 매핑.
  *
- * **줄마다 바로 저장한다.** 다른 세 하위 탭처럼 표 아래 저장·취소가 없다 — 계약이 전체 치환이
+ * **줄마다 바로 저장한다.** 다른 부속 하위 탭처럼 표 아래 저장·취소가 없다 — 계약이 전체 치환이
  * 아니라 줄 단위 `POST`·`PUT`이다.
  *
  * 삭제가 없다. 계약에 삭제 경로가 없고, 사용 중지한 줄도 유일 제약에 들어 같은 조합을 다시
@@ -66,7 +69,7 @@ export const ItemResourceMapPane = ({
   optionsNotice,
   loadError,
   banner,
-  pendingRowId,
+  rowActionsLocked,
   onAdd,
   onEdit,
   onSetDefault,
@@ -106,13 +109,13 @@ export const ItemResourceMapPane = ({
       width: '240px',
       render: (row) => {
         const name = resourceMapRowName(row);
-        const isPending = pendingRowId === row.itemResourceMapId;
 
         return (
           <>
             <IconButton
               icon="edit"
               size="sm"
+              disabled={rowActionsLocked}
               aria-label={t.actions.editRow(name)}
               onClick={() => onEdit(row)}
             />
@@ -121,7 +124,7 @@ export const ItemResourceMapPane = ({
               <Button
                 size="sm"
                 variant="text"
-                disabled={isPending}
+                disabled={rowActionsLocked}
                 aria-label={t.actions.setDefaultRow(name)}
                 onClick={() => onSetDefault(row)}
               >
@@ -131,7 +134,7 @@ export const ItemResourceMapPane = ({
             <Button
               size="sm"
               variant="text"
-              disabled={isPending}
+              disabled={rowActionsLocked}
               aria-label={
                 row.isActive ? t.actions.deactivateRow(name) : t.actions.reactivateRow(name)
               }
@@ -145,9 +148,11 @@ export const ItemResourceMapPane = ({
     },
   ];
 
+  const hasLoadError = loadError !== null && loadError !== undefined;
+
   /** 조회 실패 → 공장 미선택 → 로딩 → 표 순서로 하나만 낸다. */
   const listSlot = (): ReactNode => {
-    if (loadError !== null && loadError !== undefined) return loadError;
+    if (hasLoadError) return loadError;
 
     if (plantId === '') return <EmptyState size="sm" title={t.empty.noPlant} />;
 
@@ -192,7 +197,12 @@ export const ItemResourceMapPane = ({
           onChange={onChangePlant}
         />
         <div className="field-cell field-cell-unlabeled">
-          <Button variant="outlined" disabled={plantId === ''} onClick={onAdd}>
+          {/* 목록이 없으면 중복 판정의 근거가 없다 — 받는 중이거나 받지 못했으면 열지 않는다. */}
+          <Button
+            variant="outlined"
+            disabled={plantId === '' || isLoading || hasLoadError}
+            onClick={onAdd}
+          >
             {t.actions.add}
           </Button>
         </div>

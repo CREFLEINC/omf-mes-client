@@ -52,6 +52,17 @@ export const toOwnedResourceLookup = <T extends { plantId: number }>(
   };
 };
 
+/**
+ * 고른 값이 받은 목록에 없으면 따로 안 이름을 선택지 앞에 덧붙인다.
+ *
+ * 목록은 한 쪽만 받으므로 자동 배정·추천으로 들어온 값이 그 밖에 있을 수 있다 — 덧붙이지 않으면
+ * 정상 배정이 「알 수 없음」으로 보인다. 목록이 실패했으면 덧붙이지 않는다(실패를 감추지 않는다).
+ */
+export const withKeptEntry = (source: LookupSource, kept: LookupEntry | undefined): LookupSource =>
+  kept === undefined || source.isError || source.entries.some((item) => item.value === kept.value)
+    ? source
+    : { ...source, entries: [kept, ...source.entries] };
+
 export const isExactWorkOrderDetail = (
   requestedId: number,
   data: WorkOrderFact | undefined,

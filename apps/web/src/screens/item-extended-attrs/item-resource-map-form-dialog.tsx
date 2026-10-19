@@ -127,6 +127,10 @@ export const ItemResourceMapFormDialog = ({
   const plantId = useId();
   const priorityId = useId();
   const remarksId = useId();
+  const defaultNoteId = useId();
+
+  /* 서버가 기본 자리를 사용 중인 줄로만 세므로, 사용 중지한 줄을 기본으로 저장해도 기본이 되지 않는다. */
+  const isDefaultLocked = row !== null && !row.isActive;
 
   const editingId = row?.itemResourceMapId ?? null;
   const isDirty = row === null || !isSameItemResourceMapValues(values, initialValues);
@@ -139,7 +143,7 @@ export const ItemResourceMapFormDialog = ({
       const next = { ...prev };
       for (const field of Object.keys(patch)) delete next[field];
 
-      /* 공정·설비·금형은 함께 「하나는 있어야」와 중복을 만든다 — 하나를 고치면 셋 다 다시 본다. */
+      /* 공정·설비·금형은 함께 「하나는 있어야」와 중복을 만든다 — 하나를 고치면 함께 다시 본다. */
       if ('processId' in patch || 'equipmentId' in patch || 'moldId' in patch) {
         delete next.equipmentId;
         delete next.moldId;
@@ -233,11 +237,15 @@ export const ItemResourceMapFormDialog = ({
         <div className="field-cell field-cell-unlabeled">
           <Checkbox
             checked={values.isDefault}
+            disabled={isDefaultLocked}
+            aria-describedby={defaultNoteId}
             onChange={(event) => change({ isDefault: event.target.checked })}
           >
             {t.fields.isDefault}
           </Checkbox>
-          <span className="field-note">{t.notes.isDefault}</span>
+          <span id={defaultNoteId} className="field-note">
+            {isDefaultLocked ? t.notes.defaultNeedsActive : t.notes.isDefault}
+          </span>
         </div>
 
         <div className="field-cell">

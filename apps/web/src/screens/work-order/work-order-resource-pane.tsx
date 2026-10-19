@@ -152,7 +152,6 @@ const ResourceSelect = ({
               key={chip.value}
               size="sm"
               variant={chip.value === value ? 'filled' : 'outlined'}
-              aria-pressed={chip.value === value}
               disabled={disabled}
               onClick={() => {
                 onChange(
@@ -164,6 +163,15 @@ const ResourceSelect = ({
             >
               {`${t.recommendation.sources[chip.source]} · ${chip.label}`}
               {chip.warning !== null && ` (${t.recommendation[chip.warning]})`}
+              {/* 누르면 배정할 뿐 다시 눌러 풀지 않는다 — 켜고 끄는 단추로 읽히지 않게 상태를 말로 낸다. */}
+              {chip.value === value && (
+                <>
+                  {' '}
+                  <span className="work-order-assignment-visually-hidden">
+                    {`(${t.recommendation.assigned})`}
+                  </span>
+                </>
+              )}
             </Button>
           ))}
         </div>

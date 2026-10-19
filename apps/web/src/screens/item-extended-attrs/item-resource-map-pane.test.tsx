@@ -24,7 +24,7 @@ const renderPane = (overrides: Partial<Parameters<typeof ItemResourceMapPane>[0]
       optionsNotice={null}
       loadError={null}
       banner={null}
-      pendingRowId={null}
+      rowActionsLocked={false}
       {...handlers}
       {...overrides}
     />,
@@ -137,14 +137,28 @@ describe('ItemResourceMapPane — 줄 작업', () => {
     ).toBeInTheDocument();
   });
 
-  it('작업이 나가 있는 줄의 버튼은 닫힌다', () => {
-    renderPane({ pendingRowId: 6002 });
+  /* 목록의 판이 곧 낡는 동안 누르면 내 쓰기끼리 충돌한다 — 모든 줄의 작업과 수정을 닫는다. */
+  it('잠겨 있으면 모든 줄의 작업과 수정이 닫힌다', () => {
+    renderPane({ rowActionsLocked: true });
 
-    expect(
-      screen.getByRole('button', { name: '품목 공통 / SYN-MOLD-02 기본 지정' }),
-    ).toBeDisabled();
-    expect(
-      screen.getByRole('button', { name: '품목 공통 / SYN-MOLD-02 사용 중지' }),
-    ).toBeDisabled();
+    const rowButtons = screen
+      .getAllByRole('button')
+      .filter((button) =>
+        /매핑 수정|기본 지정|사용 중지|다시 사용/.test(button.getAttribute('aria-label') ?? ''),
+      );
+
+    expect(rowButtons.length).toBeGreaterThan(0);
+    for (const button of rowButtons) expect(button).toBeDisabled();
+  });
+
+  it('목록을 받는 중이면 매핑 추가가 닫힌다', () => {
+    renderPane({ isLoading: true });
+    expect(screen.getByRole('button', { name: '매핑 추가' })).toBeDisabled();
+  });
+
+  it('목록 조회가 실패했으면 매핑 추가가 닫힌다', () => {
+    renderPane({ loadError: <p>조회 실패</p> });
+
+    expect(screen.getByRole('button', { name: '매핑 추가' })).toBeDisabled();
   });
 });

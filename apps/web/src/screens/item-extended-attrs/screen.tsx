@@ -7,7 +7,7 @@ import {
   Tabs,
   useToast,
 } from '@crefle/web-ui';
-import type { components, ItemResourceMap, ItemResourceMapUpdate } from '@omf-mes/api-client';
+import type { components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router';
@@ -68,25 +68,12 @@ import { isSameItemAttrsValues, itemToAttrsFormValues, toItemUpdate } from './it
 import { ITEM_ATTRS_FORM_FIELDS, validateItemAttrsForm } from './item-attrs-validation';
 import { ItemListPane } from './item-list-pane';
 import { ItemOriginPane } from './item-origin-pane';
-import {
-  createItemResourceMapFormValues,
-  ITEM_RESOURCE_MAP_FORM_FIELDS,
-  toItemResourceMapCreate,
-  toItemResourceMapFormValues,
-  toItemResourceMapUpdate,
-  type ItemResourceMapFormValues,
-} from './item-resource-map-draft';
-import { ItemResourceMapFormDialog } from './item-resource-map-form-dialog';
-import { ItemResourceMapPane } from './item-resource-map-pane';
-import { restateItemResourceMapError } from './item-resource-map-validation';
+import { ItemResourceMapSection } from './item-resource-map-section';
 import { itemDetailPath, itemKeys, useItemDetail, useItemList, useItemNames } from './item-queries';
 import { LoadErrorBanner } from './load-error-banner';
 import {
   useBusinessUnitOptions,
-  useEquipmentOptions,
-  useMoldOptions,
   usePartnerOptions,
-  usePlantOptions,
   useProcessOptions,
   useRoutingOperationOptions,
   useUomOptions,
@@ -102,7 +89,6 @@ import {
   uomConversionsPath,
   useBuMaps,
   useExternalCodes,
-  useItemResourceMaps,
   useUomConversions,
 } from './subsidiary-queries';
 import {
@@ -196,20 +182,6 @@ interface ExternalCodeDraftState {
 interface EditingRow<TDraft> {
   draft: TDraft;
   isNew: boolean;
-}
-
-/** 설비·금형 매핑 저장 한 번이 들고 가는 것. 고치는 줄이 없으면 등록이다. */
-interface ItemResourceMapWriteVariables {
-  row: ItemResourceMap | null;
-  values: ItemResourceMapFormValues;
-  plantId: number;
-  itemId: number;
-}
-
-/** 표의 줄 작업(기본 지정·사용 중지·다시 사용). 바꾸는 칸만 싣는다 — 나머지는 서버가 유지한다. */
-interface ItemResourceMapRowActionVariables {
-  row: ItemResourceMap;
-  body: ItemResourceMapUpdate;
 }
 
 /**
@@ -538,105 +510,6 @@ export const ItemExtendedAttrsScreen = () => {
     setEditingExternalCode({ draft, isNew });
   };
 
-  /* ── 설비·금형 매핑 ───────────────────────────────────────────────────── */
-
-  const isResourceMapTab = isSubsidiaryTab && subTab.id === 'res';
-  const plantOptions = usePlantOptions(isResourceMapTab);
-
-  /**
-   * 고른 공장. 품목은 공장에 매이지 않아 화면이 따로 고른다.
-   * 고르지 않았으면 **사용 중인 첫 공장**으로 본다 — 공장이 하나뿐인 현장에서 매번 고르게 하지 않는다.
-   */
-  const [chosenResourcePlantId, setChosenResourcePlantId] = useState('');
-  const resourcePlantId =
-    chosenResourcePlantId !== ''
-      ? chosenResourcePlantId
-      : (plantOptions.entries.find((entry) => entry.isActive)?.value ?? '');
-  const resourcePlantNumber = resourcePlantId === '' ? null : Number(resourcePlantId);
-
-  const resourceMapList = useItemResourceMaps(
-    selectedItemId,
-    resourcePlantNumber,
-    isResourceMapTab,
-  );
-  const resourceMaps = resourceMapList.data?.items ?? [];
-
-  /** 열려 있는 편집 창. `row`가 `null`이면 등록 창이다. */
-  const [editingResourceMap, setEditingResourceMap] = useState<{
-    row: ItemResourceMap | null;
-  } | null>(null);
-
-  /* 선택 목록은 창을 열 때만 받는다 — 금형은 공장마다 수백 건이다. */
-  const isResourceMapDialogOpen = editingResourceMap !== null;
-  const resourceProcessOptions = useProcessOptions(isResourceMapDialogOpen);
-  const equipmentOptions = useEquipmentOptions(resourcePlantNumber, isResourceMapDialogOpen);
-  const moldOptions = useMoldOptions(resourcePlantNumber, isResourceMapDialogOpen);
-
-  const resourceMapWrite = useMasterWrite<ItemResourceMapWriteVariables, ItemResourceMap>({
-    request: ({ row, values, plantId, itemId }, headers) =>
-      row === null
-        ? client.POST('/mdm/item-resource-maps', {
-            params: { header: { 'Idempotency-Key': headers['Idempotency-Key'] } },
-            body: toItemResourceMapCreate(values, plantId, itemId),
-          })
-        : client.PUT('/mdm/item-resource-maps/{itemResourceMapId}', {
-            params: {
-              path: { itemResourceMapId: row.itemResourceMapId },
-              header: {
-                'Idempotency-Key': headers['Idempotency-Key'],
-                /* 목록이 줄마다 `versionNo`를 준다 — 창을 연 시점의 판으로 잠근다. */
-                'If-Match': String(row.versionNo),
-              },
-            },
-            body: toItemResourceMapUpdate(values),
-          }),
-    /* 토큰 보관소를 쓰지 않는다 — 목록 조회에 `ETag`가 없고 줄의 `versionNo`가 토큰이다. */
-    etagPath: null,
-    /* 기본을 세우면 서버가 다른 줄의 기본을 내리므로 목록 전체를 다시 받는다. */
-    invalidateKeys: [subsidiaryKeys.itemResourceMapsOfItem(selectedItemId ?? 0)],
-    knownFields: ITEM_RESOURCE_MAP_FORM_FIELDS,
-    restateFieldError: restateItemResourceMapError,
-    onSuccess: () => {
-      setEditingResourceMap(null);
-      toast.show({ variant: 'success', description: messages.common.saved });
-    },
-  });
-
-  /** 줄 작업이 나가 있는 줄. 쓰기 훅이 변수를 내주지 않아 보낼 때 적어 둔다. */
-  const [resourceMapActionRowId, setResourceMapActionRowId] = useState<number | null>(null);
-
-  const resourceMapRowWrite = useMasterWrite<ItemResourceMapRowActionVariables, ItemResourceMap>({
-    request: ({ row, body }, headers) =>
-      client.PUT('/mdm/item-resource-maps/{itemResourceMapId}', {
-        params: {
-          path: { itemResourceMapId: row.itemResourceMapId },
-          header: {
-            'Idempotency-Key': headers['Idempotency-Key'],
-            'If-Match': String(row.versionNo),
-          },
-        },
-        body,
-      }),
-    etagPath: null,
-    invalidateKeys: [subsidiaryKeys.itemResourceMapsOfItem(selectedItemId ?? 0)],
-    // 대응하는 입력칸이 없다 — 필드 오류도 배너로 올린다.
-    knownFields: [],
-    restateFieldError: restateItemResourceMapError,
-    onSuccess: () => {
-      toast.show({ variant: 'success', description: messages.common.saved });
-    },
-  });
-
-  const runResourceMapRowAction = (row: ItemResourceMap, body: ItemResourceMapUpdate) => {
-    setResourceMapActionRowId(row.itemResourceMapId);
-    resourceMapRowWrite.write({ row, body });
-  };
-
-  const openResourceMapDialog = (row: ItemResourceMap | null) => {
-    resourceMapWrite.reset();
-    setEditingResourceMap({ row });
-  };
-
   /* ── 자재 명세서 ────────────────────────────────────────────────────────── */
 
   const bomList = useBomList(selectedItemId, isBomTab);
@@ -808,10 +681,6 @@ export const ItemExtendedAttrsScreen = () => {
     externalCodeWrite.reset();
     setExternalCodeState(null);
     setEditingExternalCode(null);
-
-    resourceMapWrite.reset();
-    resourceMapRowWrite.reset();
-    setEditingResourceMap(null);
 
     setDefaultWrite.reset();
     setPendingDefaultBom(null);
@@ -1268,44 +1137,6 @@ export const ItemExtendedAttrsScreen = () => {
     />
   );
 
-  /** 하위 탭①-4 — 설비·금형 매핑. 줄마다 바로 저장한다. */
-  const renderItemResourceMapPane = (): ReactNode => (
-    <ItemResourceMapPane
-      rows={resourceMaps}
-      isLoading={resourceMapList.isPending}
-      plantOptions={selectableOptions(plantOptions, resourcePlantId)}
-      plantId={resourcePlantId}
-      onChangePlant={(plantId) => {
-        resourceMapRowWrite.reset();
-        setChosenResourcePlantId(plantId);
-      }}
-      optionsNotice={renderOptionsNotice([plantOptions])}
-      loadError={
-        resourceMapList.isError ? (
-          <LoadErrorBanner
-            error={resourceMapList.error}
-            onRetry={() => void resourceMapList.refetch()}
-          />
-        ) : null
-      }
-      /* 줄마다 `versionNo`로 잠그므로 충돌 갈래가 있다 — 다시 받으면 새 판으로 다시 누를 수 있다. */
-      banner={
-        <SaveErrorBanner
-          error={resourceMapRowWrite.error}
-          onReload={() => {
-            resourceMapRowWrite.reset();
-            void resourceMapList.refetch();
-          }}
-        />
-      }
-      pendingRowId={resourceMapRowWrite.isSaving ? resourceMapActionRowId : null}
-      onAdd={() => openResourceMapDialog(null)}
-      onEdit={(row) => openResourceMapDialog(row)}
-      onSetDefault={(row) => runResourceMapRowAction(row, { isDefault: true })}
-      onToggleActive={(row) => runResourceMapRowAction(row, { isActive: !row.isActive })}
-    />
-  );
-
   /**
    * 탭③ — 자재 명세서. 지금은 헤더 목록과 기본 지정만 있다.
    *
@@ -1404,7 +1235,10 @@ export const ItemExtendedAttrsScreen = () => {
     if (subTabId === 'bu') return renderBuMapPane();
     if (subTabId === 'uom') return renderUomConversionPane();
     if (subTabId === 'ext') return renderExternalCodePane();
-    if (subTabId === 'res') return renderItemResourceMapPane();
+    /* 품목 번호를 `key`로 준다 — 품목이 바뀌면 열린 창·쓰기 오류가 다음 품목에 따라가지 않는다. */
+    if (subTabId === 'res' && selectedItemId !== null) {
+      return <ItemResourceMapSection key={selectedItemId} itemId={selectedItemId} />;
+    }
 
     return null;
   };
@@ -1585,58 +1419,6 @@ export const ItemExtendedAttrsScreen = () => {
           onConfirm={(next) => {
             changeExternalCodeDrafts((drafts) => upsertExternalCodeDraft(drafts, next));
             setEditingExternalCode(null);
-          }}
-        />
-      )}
-
-      {editingResourceMap !== null && selectedItemId !== null && resourcePlantNumber !== null && (
-        <ItemResourceMapFormDialog
-          row={editingResourceMap.row}
-          initialValues={
-            editingResourceMap.row === null
-              ? createItemResourceMapFormValues()
-              : toItemResourceMapFormValues(editingResourceMap.row)
-          }
-          plantLabel={lookupLabel(
-            plantOptions.entries,
-            resourcePlantNumber,
-            plantOptions.isLoading,
-            plantOptions.isError,
-          )}
-          rows={resourceMaps}
-          processOptions={(selected) => selectableOptions(resourceProcessOptions, selected)}
-          equipmentOptions={(selected) => selectableOptions(equipmentOptions, selected)}
-          moldOptions={(selected) => selectableOptions(moldOptions, selected)}
-          fieldErrors={resourceMapWrite.fieldErrors}
-          banner={
-            <>
-              {renderOptionsNotice([resourceProcessOptions, equipmentOptions, moldOptions])}
-              {/*
-               * 충돌이면 창을 닫고 목록을 다시 받는다 — 창이 든 판(`versionNo`)이 낡았으므로
-               * 새 줄로 창을 다시 열어야 저장이 성립한다.
-               */}
-              <SaveErrorBanner
-                error={resourceMapWrite.error}
-                onReload={() => {
-                  resourceMapWrite.reset();
-                  setEditingResourceMap(null);
-                  void resourceMapList.refetch();
-                }}
-              />
-            </>
-          }
-          isSaving={resourceMapWrite.isSaving}
-          onClose={() => {
-            resourceMapWrite.reset();
-            setEditingResourceMap(null);
-          }}
-          onSave={(values) => {
-            resourceMapWrite.write({
-              row: editingResourceMap.row,
-              values,
-              plantId: resourcePlantNumber,
-              itemId: selectedItemId,
-            });
           }}
         />
       )}

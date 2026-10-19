@@ -91,17 +91,18 @@ describe('WorkOrderResourcePane', () => {
     const equipment = screen.getByRole('button', {
       name: `${t.recommendation.sources.DEFAULT} · SYN-EQ-REC (${t.recommendation.busy})`,
     });
-    expect(equipment).toHaveAttribute('aria-pressed', 'false');
+    expect(equipment).not.toHaveAttribute('aria-pressed');
     await user.click(equipment);
     expect(onChange).toHaveBeenLastCalledWith({
       productionLineId: '102',
       plannedEquipmentId: '302',
     });
 
+    /* 지금 칸의 값과 같은 후보는 켜고 끄는 단추가 아니라 「배정됨」으로 읽힌다. */
     const mold = screen.getByRole('button', {
-      name: `${t.recommendation.sources.MAPPED} · SYN-MOLD-REC`,
+      name: `${t.recommendation.sources.MAPPED} · SYN-MOLD-REC (${t.recommendation.assigned})`,
     });
-    expect(mold).toHaveAttribute('aria-pressed', 'true');
+    expect(mold).not.toHaveAttribute('aria-pressed');
     await user.click(mold);
     expect(onChange).toHaveBeenLastCalledWith({ plannedMoldId: '401' });
   });

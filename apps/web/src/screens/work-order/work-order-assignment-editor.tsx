@@ -3,7 +3,11 @@ import { messages } from '@omf-mes/i18n';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 
 import { formatDateRange, formatTimeOfDay } from '../../patterns/date-display';
-import { selectableLookupOptions, type LookupSource } from '../../patterns/lookup-display';
+import {
+  selectableLookupOptions,
+  type LookupEntry,
+  type LookupSource,
+} from '../../patterns/lookup-display';
 import { SaveErrorBanner } from '../../patterns/master';
 import {
   plannedWindowLocal,
@@ -17,12 +21,15 @@ import {
   isExactWorkOrderDetail,
   mergeWorkOrderAssignmentFieldErrors,
   toOwnedResourceLookup,
+  withKeptEntry,
 } from './editor-support';
 import { useUpdateWorkOrder } from './mutations';
 import {
+  useWorkOrderMold,
   useWorkOrderMolds,
   useWorkOrderWorker,
   useWorkOrderWorkers,
+  type WorkOrderMoldFact,
   type WorkOrderWorkerFact,
 } from './people-tool-queries';
 import {
@@ -33,11 +40,13 @@ import {
 } from './queries';
 import { toRecommendationChips } from './resource-recommendation';
 import {
+  useWorkOrderEquipment,
   useWorkOrderEquipments,
   LINE_LOCATION_WAREHOUSE_TYPES,
   useWorkOrderLocations,
   useWorkOrderProductionLines,
   useWorkOrderShifts,
+  type WorkOrderEquipmentFact,
 } from './resource-queries';
 import { workOrderDraftEquals, workOrderFieldErrorMessage } from './screen-model';
 import { WorkOrderAssignmentActions } from './work-order-assignment-actions';
@@ -133,6 +142,75 @@ export const WorkOrderAssignmentEditorSession = ({
   const locations = useWorkOrderLocations(plantId);
   const validationQuery = useWorkOrderValidation(workOrder.workOrderId);
   const recommendations = useWorkOrderResourceRecommendations(workOrder.workOrderId);
+  /*
+   * 설비·금형도 작업자와 같은 규칙이다 — 목록은 한 쪽(설비는 라인별)만 받는데 자동 배정·추천은
+   * 그 밖의 값을 넣는다. 본 것을 기억하고, 추천이 아는 이름을 쓰고, 그래도 모르면 한 건만 묻는다.
+   */
+  const seenEquipments = useRef(new Map<number, WorkOrderEquipmentFact>());
+  const seenMolds = useRef(new Map<number, WorkOrderMoldFact>());
+  useEffect(() => {
+    for (const item of equipments.data?.items ?? [])
+      seenEquipments.current.set(item.equipmentId, item);
+    for (const item of molds.data?.items ?? []) seenMolds.current.set(item.moldId, item);
+  });
+  const selectedEquipmentId = idOrNull(effectiveDraft.plannedEquipmentId);
+  const listedEquipment =
+    selectedEquipmentId === null
+      ? undefined
+      : (equipments.data?.items.find((item) => item.equipmentId === selectedEquipmentId) ??
+        seenEquipments.current.get(selectedEquipmentId));
+  const recommendedEquipment = recommendations.data?.equipments.find(
+    (item) => item.equipmentId === selectedEquipmentId,
+  );
+  const fetchedEquipment = useWorkOrderEquipment(
+    selectedEquipmentId !== null &&
+      equipments.data !== undefined &&
+      listedEquipment === undefined &&
+      recommendedEquipment === undefined
+      ? selectedEquipmentId
+      : null,
+  );
+  const selectedMoldId = idOrNull(effectiveDraft.plannedMoldId);
+  const listedMold =
+    selectedMoldId === null
+      ? undefined
+      : (molds.data?.items.find((item) => item.moldId === selectedMoldId) ??
+        seenMolds.current.get(selectedMoldId));
+  const recommendedMold = recommendations.data?.molds.find(
+    (item) => item.moldId === selectedMoldId,
+  );
+  const fetchedMold = useWorkOrderMold(
+    selectedMoldId !== null &&
+      molds.data !== undefined &&
+      listedMold === undefined &&
+      recommendedMold === undefined
+      ? selectedMoldId
+      : null,
+  );
+  /* 다른 공장의 것은 덧붙이지 않는다 — 목록과 같은 소유 규칙이다. */
+  const ownEquipment = (item: WorkOrderEquipmentFact | undefined): LookupEntry | undefined =>
+    item === undefined || item.plantId !== plantId
+      ? undefined
+      : entry(item.equipmentId, item.equipmentCode, item.equipmentName, item.isActive);
+  const ownMold = (item: WorkOrderMoldFact | undefined): LookupEntry | undefined =>
+    item === undefined || item.plantId !== plantId
+      ? undefined
+      : entry(item.moldId, item.moldCode, item.moldName, item.isActive);
+  const keptEquipment =
+    ownEquipment(listedEquipment) ??
+    (recommendedEquipment === undefined || plantId === null
+      ? ownEquipment(fetchedEquipment.data)
+      : entry(
+          recommendedEquipment.equipmentId,
+          recommendedEquipment.equipmentCode,
+          recommendedEquipment.equipmentName,
+          true,
+        ));
+  const keptMold =
+    ownMold(listedMold) ??
+    (recommendedMold === undefined || plantId === null
+      ? ownMold(fetchedMold.data)
+      : entry(recommendedMold.moldId, recommendedMold.moldCode, recommendedMold.moldName, true));
   const update = useUpdateWorkOrder({
     workOrderId: workOrder.workOrderId,
     onSuccess: (saved) => {
@@ -188,14 +266,17 @@ export const WorkOrderAssignmentEditorSession = ({
     { items: lines.data?.items ?? [], plantId, isPending: lines.isPending, isError: lines.isError },
     (item) => entry(item.productionLineId, item.lineCode, item.lineName, item.isActive),
   );
-  const equipmentSource = toOwnedResourceLookup(
-    {
-      items: equipments.data?.items ?? [],
-      plantId,
-      isPending: equipments.isPending,
-      isError: equipments.isError,
-    },
-    (item) => entry(item.equipmentId, item.equipmentCode, item.equipmentName, item.isActive),
+  const equipmentSource = withKeptEntry(
+    toOwnedResourceLookup(
+      {
+        items: equipments.data?.items ?? [],
+        plantId,
+        isPending: equipments.isPending,
+        isError: equipments.isError,
+      },
+      (item) => entry(item.equipmentId, item.equipmentCode, item.equipmentName, item.isActive),
+    ),
+    keptEquipment,
   );
   const workerItems = workers.data?.items ?? [];
   const workerSource = toOwnedResourceLookup(
@@ -212,9 +293,17 @@ export const WorkOrderAssignmentEditorSession = ({
     },
     (item) => entry(item.workerId, item.workerNo, item.workerName, item.isActive),
   );
-  const moldSource = toOwnedResourceLookup(
-    { items: molds.data?.items ?? [], plantId, isPending: molds.isPending, isError: molds.isError },
-    (item) => entry(item.moldId, item.moldCode, item.moldName, item.isActive),
+  const moldSource = withKeptEntry(
+    toOwnedResourceLookup(
+      {
+        items: molds.data?.items ?? [],
+        plantId,
+        isPending: molds.isPending,
+        isError: molds.isError,
+      },
+      (item) => entry(item.moldId, item.moldCode, item.moldName, item.isActive),
+    ),
+    keptMold,
   );
   const shiftSource = toOwnedResourceLookup(
     {

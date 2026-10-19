@@ -428,7 +428,7 @@ export interface DashboardQualityLotsQuery {
 type DashboardSummaryGet = paths['/app/dashboard-summary']['get'];
 
 /**
- * 서버 선행 P-61 — 품목–공정–설비–금형 매핑. 계획 확정 전개가 기본 매핑의 설비·금형을 W/O 에 배정하고
+ * 서버 선행 — 품목–공정–설비–금형 매핑. 계획 확정 전개가 기본 매핑의 설비·금형을 W/O 에 배정하고
  * 4M 추천이 읽는다. 공정이 null 이면 품목 공통(설비·금형이 필요한 공정에만 쓰인다).
  */
 export interface ItemResourceMap {
@@ -483,7 +483,7 @@ export interface ItemResourceMapListQuery {
   includeInactive?: boolean;
 }
 
-/** 서버 선행 P-61 — 4M 설비·금형 추천. 기본 매핑 → 그 밖의 매핑 → 같은 품목·공정의 최근 사용 순이다. */
+/** 서버 선행 — 4M 설비·금형 추천. 기본 매핑 → 그 밖의 매핑 → 같은 품목·공정의 최근 사용 순이다. */
 export type ResourceRecommendationSource = 'DEFAULT' | 'MAPPED' | 'RECENT';
 
 export interface EquipmentRecommendation {
@@ -677,18 +677,34 @@ export interface ForwardPaths {
   '/mdm/item-resource-maps': Unused & {
     parameters: NoParameters;
     get: {
-      parameters: { query?: ItemResourceMapListQuery; header?: never; path?: never; cookie?: never };
+      parameters: {
+        query?: ItemResourceMapListQuery;
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
       requestBody?: never;
       responses: {
-        200: { headers: { [name: string]: unknown }; content: { 'application/json': { items: ItemResourceMap[] } } };
+        200: {
+          headers: { [name: string]: unknown };
+          content: { 'application/json': { items: ItemResourceMap[] } };
+        };
       };
     };
     put?: never;
     post: {
-      parameters: { query?: never; header: { 'Idempotency-Key': string }; path?: never; cookie?: never };
+      parameters: {
+        query?: never;
+        header: { 'Idempotency-Key': string };
+        path?: never;
+        cookie?: never;
+      };
       requestBody: { content: { 'application/json': ItemResourceMapCreate } };
       responses: {
-        201: { headers: { [name: string]: unknown }; content: { 'application/json': ItemResourceMap } };
+        201: {
+          headers: { [name: string]: unknown };
+          content: { 'application/json': ItemResourceMap };
+        };
       };
     };
   };
@@ -704,7 +720,10 @@ export interface ForwardPaths {
       };
       requestBody: { content: { 'application/json': ItemResourceMapUpdate } };
       responses: {
-        200: { headers: { [name: string]: unknown }; content: { 'application/json': ItemResourceMap } };
+        200: {
+          headers: { [name: string]: unknown };
+          content: { 'application/json': ItemResourceMap };
+        };
       };
     };
     post?: never;
@@ -715,7 +734,10 @@ export interface ForwardPaths {
       parameters: { query?: never; header?: never; path: { workOrderId: number }; cookie?: never };
       requestBody?: never;
       responses: {
-        200: { headers: { [name: string]: unknown }; content: { 'application/json': ResourceRecommendations } };
+        200: {
+          headers: { [name: string]: unknown };
+          content: { 'application/json': ResourceRecommendations };
+        };
       };
     };
     put?: never;

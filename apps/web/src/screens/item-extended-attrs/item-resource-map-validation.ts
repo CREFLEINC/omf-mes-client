@@ -1,4 +1,4 @@
-import type { ErrorItem, ItemResourceMap } from '@omf-mes/api-client';
+import type { ApiError, ErrorItem, ItemResourceMap } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 
 import {
@@ -14,10 +14,10 @@ import {
  * | --- | --- |
  * | 설비·금형 중 하나 | `ck_item_resource_map_target` · 400 `equipmentId` `REQUIRED` |
  * | 우선순위 0 이상의 정수 | `priority_no >= 0` |
- * | 같은 공정·설비·금형 | `uq_item_resource_map` · 400 `moldId` `UNIQUE_VIOLATION` |
+ * | 같은 공정·설비·금형 | `uq_item_resource_map` · 400 화면 범위 `UNIQUE_VIOLATION` |
  *
- * 오류를 붙이는 칸은 **서버가 같은 오류를 붙이는 칸과 같다** — 로컬과 서버가 다른 칸을 짚으면
- * 같은 문제가 두 자리에서 다르게 보인다.
+ * 설비·금형 누락은 서버와 같은 칸(`equipmentId`)에 붙인다. 중복은 서버가 화면 범위로 내지만
+ * 로컬에서는 고칠 칸 옆(`moldId`)에 낸다 — 저장 전에 어느 칸을 바꿔야 하는지 보이는 편이 낫다.
  */
 
 const t = messages.itemExtendedAttrs.itemResourceMap.validation;
@@ -61,7 +61,22 @@ export const validateItemResourceMap = (
  */
 export const restateItemResourceMapError = (item: ErrorItem): string | undefined => {
   if (item.field === 'equipmentId' && item.code === 'REQUIRED') return t.equipmentOrMold;
-  if (item.field === 'moldId' && item.code === 'UNIQUE_VIOLATION') return t.duplicate;
+  if (item.code === 'UNIQUE_VIOLATION') return t.duplicate;
 
   return undefined;
 };
+
+/**
+ * 배너로 가는 오류(화면 범위)도 같은 말로 되말한다. 쓰기 훅의 되말하기는 칸 오류에만 닿아,
+ * 화면 범위로 오는 중복은 이 자리가 아니면 서버 문구 그대로 남는다.
+ */
+export const restateItemResourceMapApiError = (error: ApiError | null): ApiError | null =>
+  error?.kind === 'validation'
+    ? {
+        ...error,
+        errors: error.errors.map((item) => ({
+          ...item,
+          message: restateItemResourceMapError(item) ?? item.message,
+        })),
+      }
+    : error;

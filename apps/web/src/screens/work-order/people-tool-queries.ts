@@ -43,6 +43,7 @@ export const workOrderPeopleToolKeys = {
   workers: (plantId: number | null, page: number, term: string, size: number) =>
     ['work-order-people-tools', 'workers', plantId, page, term, size] as const,
   worker: (workerId: number | null) => ['work-order-people-tools', 'worker', workerId] as const,
+  mold: (moldId: number | null) => ['work-order-people-tools', 'mold', moldId] as const,
 };
 
 /** 계약 최대 쪽 크기. 넘는 작업자는 사번·성명 검색(`q`)으로 찾는다. */
@@ -165,6 +166,30 @@ export const useWorkOrderWorker = (
       );
 
       return toWorkOrderWorkerFact(detail.worker);
+    },
+  });
+};
+
+/**
+ * 금형 한 벌. 선택 목록은 첫 쪽만 받으므로 자동 배정된 금형이 그 밖에 있으면 이름을 풀지 못한다 —
+ * 그 한 벌만 따로 묻는다.
+ */
+export const useWorkOrderMold = (moldId: number | null): UseQueryResult<WorkOrderMoldFact> => {
+  const { client } = useApiClient();
+
+  return useQuery({
+    queryKey: workOrderPeopleToolKeys.mold(moldId),
+    enabled: moldId !== null,
+    queryFn: async () => {
+      if (moldId === null) {
+        throw new Error('A mold id is required to load the mold.');
+      }
+
+      const detail = await runRequest(() =>
+        client.GET('/mdm/molds/{moldId}', { params: { path: { moldId } } }),
+      );
+
+      return toWorkOrderMoldFact(detail.mold);
     },
   });
 };

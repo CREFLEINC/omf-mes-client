@@ -148,6 +148,8 @@ export const workOrder = {
       sources: { DEFAULT: '기본', MAPPED: '매핑', RECENT: '최근' },
       busy: '같은 시간대 배정 있음',
       outOfService: '비가동',
+      /* 지금 칸의 값과 같은 후보. 색만으로 알리지 않는다. */
+      assigned: '배정됨',
     },
     cards: { machine: 'Machine', man: 'Man', tool: 'Tool/Mold', material: 'Location' },
     fields: {

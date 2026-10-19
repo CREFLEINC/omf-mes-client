@@ -6,6 +6,7 @@ import {
   type ItemResourceMapFormValues,
 } from './item-resource-map-draft';
 import {
+  restateItemResourceMapApiError,
   restateItemResourceMapError,
   validateItemResourceMap,
 } from './item-resource-map-validation';
@@ -82,12 +83,33 @@ describe('restateItemResourceMapError', () => {
     ).toBe('설비나 금형 중 하나는 골라야 합니다.');
     expect(
       restateItemResourceMapError({
-        scope: 'field',
-        field: 'moldId',
+        scope: 'screen',
         code: 'UNIQUE_VIOLATION',
         message: '서버 문구',
       }),
     ).toMatch(/다시 사용으로 되살리세요/);
+  });
+
+  /* 서버가 중복을 화면 범위로 낸다 — 배너로 가는 오류도 화면의 말로 바뀌어야 한다. */
+  it('배너로 가는 화면 범위 중복도 되말하고 나머지는 그대로 둔다', () => {
+    const restated = restateItemResourceMapApiError({
+      kind: 'validation',
+      status: 400,
+      errors: [
+        { scope: 'screen', code: 'UNIQUE_VIOLATION', message: '서버 중복 문구' },
+        { scope: 'screen', code: 'SOMETHING_ELSE', message: '서버 다른 문구' },
+      ],
+    });
+
+    expect(restated).toMatchObject({
+      kind: 'validation',
+      status: 400,
+      errors: [
+        { code: 'UNIQUE_VIOLATION', message: expect.stringMatching(/다시 사용으로 되살리세요/) },
+        { code: 'SOMETHING_ELSE', message: '서버 다른 문구' },
+      ],
+    });
+    expect(restateItemResourceMapApiError(null)).toBeNull();
   });
 
   it('모르는 오류는 서버 문구를 그대로 둔다', () => {

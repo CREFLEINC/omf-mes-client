@@ -64,7 +64,7 @@ describe('resolveTab', () => {
  * 층이 다르다고 해석 규칙을 달리하면 주소를 읽는 사람이 두 가지를 외워야 한다.
  */
 describe('하위 탭 정의', () => {
-  it('부속 자원 넷이 들어 있다', () => {
+  it('부속 자원 하위 탭이 정해진 순서로 들어 있다', () => {
     expect(SUBSIDIARY_TABS.map((tab) => tab.id)).toEqual(['bu', 'uom', 'ext', 'res']);
   });
 

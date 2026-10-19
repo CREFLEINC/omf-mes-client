@@ -294,7 +294,7 @@ export const itemExtendedAttrs: Translated<typeof ko.itemExtendedAttrs> = {
         'Có dòng trùng cả hệ thống ngoài và đối tác. Các dòng để trống đối tác cũng được xem là trùng nhau nên hãy dọn các dòng trùng.',
     },
   },
-  /* 부속 하위 탭④ - 설비·금형 매핑. 다른 세 하위 탭과 달리 줄마다 바로 저장한다. */
+  /* 부속 하위 탭 - 설비·금형 매핑. 다른 부속 하위 탭과 달리 줄마다 바로 저장한다. */
   itemResourceMap: {
     paneTitle: 'Thiết bị · khuôn',
     fields: {
@@ -321,6 +321,8 @@ export const itemExtendedAttrs: Translated<typeof ko.itemExtendedAttrs> = {
       priorityNo: 'Số càng nhỏ càng được đề xuất trước.',
       isDefault: 'Mặc định cũ của cùng công đoạn sẽ tự động bị bỏ.',
       plantFixed: 'Không đổi được nhà máy. Nếu là nhà máy khác, hãy đăng ký mới.',
+      defaultNeedsActive:
+        'Không đặt làm mặc định được. Dòng này đã ngừng dùng. Hãy «Dùng lại» trong bảng rồi đặt.',
     },
     search: {
       equipment: 'Tìm thiết bị',
