@@ -111,7 +111,8 @@ export const toReceiptLines = (lines: readonly IrLineView[]): ReceiptLineInput[]
             inboundReceiptLineId: line.inboundReceiptLineId,
             itemId: line.itemId,
             lotId: line.lotId,
-            receiptQty: line.receivedQty,
+            // 입고 가능 수량(서버 선행 P-56 — 선별로 떼어 낸 불량분 제외)이 먼저다. 없으면(옛 서버) 입하 수량.
+            receiptQty: line.receivableQty ?? line.receivedQty,
             uomId: line.uomId,
           },
         ],

@@ -125,7 +125,9 @@ describe('DispositionDecisionScreen 조회', () => {
       expect(save).toBeEnabled();
     });
     const group = screen.getByRole('radiogroup', { name: t.fields.dispositionTypeCode });
-    expect(within(group).getAllByRole('radio')).toHaveLength(3);
+    // 고정 셋 + 서버 선행 선별(SORT · P-53).
+    expect(within(group).getAllByRole('radio')).toHaveLength(4);
+    expect(within(group).getByRole('radio', { name: '선별' })).toBeEnabled();
     expect(within(group).getByRole('radio', { name: '재작업' })).toBeEnabled();
     expect(screen.queryByText(t.dispositionPending)).toBeNull();
   });

@@ -13,6 +13,7 @@ import {
   type StubFetch,
   type StubRoute,
 } from '../../test/api-harness';
+import { pickDate } from '../../test/date-picker';
 import {
   goodsReceiptResponse,
   inboundReceiptFixtures,
@@ -1654,12 +1655,38 @@ const chooseRequiredCodes = async (user: ReturnType<typeof userEvent.setup>): Pr
   await chooseOption(user, t.fields.inventoryStatus, SAMPLE_INVENTORY);
 };
 
+/** 입고 일시를 넣는다 — 날짜는 달력에서, 시각은 시각 칸 팝오버의 시·분 두 열에서 고른다. */
+const fillReceiptDatetime = async (user: ReturnType<typeof userEvent.setup>): Promise<void> => {
+  await pickDate(user, screen.getByLabelText(t.fields.receiptDate), RECEIPT_DATETIME.slice(0, 10));
+  await user.click(screen.getByRole('button', { name: t.fields.receiptTime }));
+  await user.click(
+    within(screen.getByRole('listbox', { name: t.fields.receiptHour })).getByRole('option', {
+      name: RECEIPT_DATETIME.slice(11, 13),
+    }),
+  );
+  await user.click(
+    within(screen.getByRole('listbox', { name: t.fields.receiptMinute })).getByRole('option', {
+      name: RECEIPT_DATETIME.slice(14, 16),
+    }),
+  );
+};
+
+/** 입고 일시 두 칸(날짜·시각)이 보이는 값. 빈 값이면 두 칸이 다 자리표시다. */
+const expectReceiptDatetime = (value: string): void => {
+  expect(screen.getByLabelText(t.fields.receiptDate)).toHaveTextContent(
+    value === '' ? messages.common.selectDate : value.slice(0, 10),
+  );
+  expect(screen.getByRole('button', { name: t.fields.receiptTime })).toHaveTextContent(
+    value === '' ? t.values.receiptTimePlaceholder : value.slice(11, 16),
+  );
+};
+
 /** 보낼 수 있는 상태까지 채운다 — 창고·위치·코드 넷·입고 일시. */
 const fillDraft = async (user: ReturnType<typeof userEvent.setup>): Promise<void> => {
   await chooseOption(user, t.fields.warehouse, WAREHOUSE_LABEL);
   await chooseOption(user, t.fields.location, LOCATION_LABEL);
   await chooseRequiredCodes(user);
-  await user.type(screen.getByLabelText(t.fields.receiptDatetime), RECEIPT_DATETIME);
+  await fillReceiptDatetime(user);
 };
 
 const postButton = (): HTMLElement => screen.getByRole('button', { name: t.actions.post });
@@ -1712,6 +1739,17 @@ describe('GoodsReceiptScreen — 코드 목록이 확정되지 않은 지금', (
 
     expect(within(pane).getAllByText(t.filters.codePending)).toHaveLength(3);
   });
+
+  /* 영업일·공장은 고르는 칸이 없다 — 저절로 정해진다는 사실을 「입고 정보」 제목 옆 한 줄로 밝힌다. */
+  it('공장·영업일이 자동 적용된다는 사실을 밝힌다', async () => {
+    const { user } = renderScreen(allRoutes(), '?ir=9001');
+
+    await openPostPane(user);
+
+    const pane = screen.getByRole('region', { name: t.panes.post });
+
+    expect(within(pane).getByText(t.notes.autoApplied)).toBeInTheDocument();
+  });
 });
 
 /**
@@ -1756,17 +1794,6 @@ describe('GoodsReceiptScreen — 코드 목록이 채워지면', () => {
     expect(screen.getByRole('combobox', { name: t.fields.qualityStatus })).toHaveTextContent(
       SAMPLE_QUALITY,
     );
-  });
-
-  /* 공장은 고르는 칸이 아니다 — 「입고 정보」 제목 옆에서 밝힌다(사용자 지시). */
-  it('입고 정보에 공장이 입하 전표에서 온다는 안내가 있다', async () => {
-    const { user } = renderScreen(allRoutes(), '?ir=9001');
-
-    await openPostPane(user);
-
-    const pane = screen.getByRole('region', { name: t.panes.post });
-
-    expect(within(pane).getByText(t.notes.plantFromInboundReceipt)).toBeInTheDocument();
   });
 
   /* 한 칸을 채우면 다음 칸이 열리고 포커스가 그 칸으로 옮겨 간다(사용자 지시). */
@@ -1865,7 +1892,7 @@ describe('GoodsReceiptScreen — 창고와 적치 위치', () => {
     expect(screen.getByRole('combobox', { name: t.fields.receiptType })).toHaveTextContent(
       SAMPLE_RECEIPT_TYPE,
     );
-    expect(screen.getByLabelText(t.fields.receiptDatetime)).toHaveValue(RECEIPT_DATETIME);
+    expectReceiptDatetime(RECEIPT_DATETIME);
   });
 
   /* 새 창고에서 다시 고르면 **그 창고의 위치**가 요청에 실린다 — 앞 위치가 아니다. */
@@ -2204,7 +2231,7 @@ describe('GoodsReceiptScreen — 제출 확인 창', () => {
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     expect(postRequests(requests)).toHaveLength(0);
     /* 짝 방향 — 입력은 그대로 남아 있다. */
-    expect(screen.getByLabelText(t.fields.receiptDatetime)).toHaveValue(RECEIPT_DATETIME);
+    expectReceiptDatetime(RECEIPT_DATETIME);
   });
 });
 
@@ -2312,7 +2339,7 @@ describe('GoodsReceiptScreen — 실제로 나가는 요청', () => {
     await chooseOption(user, t.fields.sourceDocumentType, SAMPLE_SOURCE_TYPE);
     await chooseOption(user, t.fields.qualityStatus, SAMPLE_QUALITY);
     await chooseOption(user, t.fields.inventoryStatus, SAMPLE_INVENTORY);
-    await user.type(screen.getByLabelText(t.fields.receiptDatetime), RECEIPT_DATETIME);
+    await fillReceiptDatetime(user);
     await clickPost(user);
 
     expect(screen.getByText(t.errors.codeTooLong(50))).toBeInTheDocument();
@@ -2340,7 +2367,7 @@ describe('GoodsReceiptScreen — 실제로 나가는 요청', () => {
     await chooseOption(user, t.fields.sourceDocumentType, SAMPLE_SOURCE_TYPE);
     await chooseOption(user, t.fields.qualityStatus, SAMPLE_QUALITY);
     await chooseOption(user, t.fields.inventoryStatus, 'SAMPLE_INVENTORY_A');
-    await user.type(screen.getByLabelText(t.fields.receiptDatetime), RECEIPT_DATETIME);
+    await fillReceiptDatetime(user);
 
     await clickPost(user);
     /* 짝 양성 — 확인 창은 실제로 열린다. 화면이 막는 자리는 여기가 아니다. */
@@ -2384,7 +2411,7 @@ describe('GoodsReceiptScreen — 실제로 나가는 요청', () => {
     await chooseOption(user, t.fields.sourceDocumentType, SAMPLE_SOURCE_TYPE);
     await chooseOption(user, t.fields.qualityStatus, SAMPLE_QUALITY);
     await chooseOption(user, t.fields.inventoryStatus, 'SAMPLE_INVENTORY_A');
-    await user.type(screen.getByLabelText(t.fields.receiptDatetime), RECEIPT_DATETIME);
+    await fillReceiptDatetime(user);
 
     await clickPost(user);
     await confirmPost(user);
@@ -2516,7 +2543,7 @@ describe('GoodsReceiptScreen — 성공', () => {
     await succeed();
 
     expect(currentLocation()).toBe(`${ROUTE}?ir=9001&line=9401`);
-    expect(screen.getByLabelText(t.fields.receiptDatetime)).toHaveValue('');
+    expectReceiptDatetime('');
     expect(screen.getByRole('combobox', { name: t.fields.warehouse })).not.toHaveTextContent(
       WAREHOUSE_LABEL,
     );
@@ -2692,7 +2719,7 @@ describe('GoodsReceiptScreen — 실패 세 갈래', () => {
     );
 
     expect(await screen.findByText('합성 서버 오류')).toBeInTheDocument();
-    expect(screen.getByLabelText(t.fields.receiptDatetime)).toHaveValue(RECEIPT_DATETIME);
+    expectReceiptDatetime(RECEIPT_DATETIME);
     expect(screen.queryByRole('status', { name: t.result.label })).not.toBeInTheDocument();
   });
 
@@ -2791,7 +2818,7 @@ describe('GoodsReceiptScreen — 취소와 파기 확인', () => {
     );
 
     expect(currentLocation()).toContain('ir=9001');
-    expect(screen.getByLabelText(t.fields.receiptDatetime)).toHaveValue(RECEIPT_DATETIME);
+    expectReceiptDatetime(RECEIPT_DATETIME);
   });
 
   it('버리기를 고르면 대상이 바뀌고 초안이 사라진다', async () => {
@@ -2881,7 +2908,7 @@ describe('GoodsReceiptScreen — 초안이 사라지지 않는다', () => {
     /* 새 목록이 실제로 적용된 뒤에 본다 — 적용 전에 검사하면 늘 참인 단언이 된다. */
     await screen.findByText(t.pageNav.range(1, 3, 5));
 
-    expect(screen.getByLabelText(t.fields.receiptDatetime)).toHaveValue(RECEIPT_DATETIME);
+    expectReceiptDatetime(RECEIPT_DATETIME);
     expect(screen.getByRole('combobox', { name: t.fields.warehouse })).toHaveTextContent(
       WAREHOUSE_LABEL,
     );
@@ -2906,9 +2933,120 @@ describe('GoodsReceiptScreen — 초안이 사라지지 않는다', () => {
     /* 새 이름이 실제로 적용된 뒤에 본다 — 적용 전에 검사하면 늘 참인 단언이 된다. */
     await screen.findAllByText(CHANGED_ITEM_LABEL);
 
-    expect(screen.getByLabelText(t.fields.receiptDatetime)).toHaveValue(RECEIPT_DATETIME);
+    expectReceiptDatetime(RECEIPT_DATETIME);
     expect(screen.getByRole('combobox', { name: t.fields.warehouse })).toHaveTextContent(
       WAREHOUSE_LABEL,
     );
+  });
+});
+
+/* 서버 선행 P-56 · 3단계 검증 — 입고 전 선별로 불량분을 떼어 낸 줄은 양품만, 불량분은 따로(불량창고) 입고한다. */
+describe('GoodsReceiptScreen — 입고 전 선별(P-56)', () => {
+  const SPLIT = {
+    lotId: 9602,
+    lotNo: 'LOT-2026-900010-S1',
+    statusCode: 'DEFECTIVE',
+    receivableQty: 15,
+  };
+  const splitLines = inboundReceiptLineFixtures.map((line) =>
+    line.inboundReceiptLineId === 9401
+      ? { ...line, receivedQty: 50, receivableQty: 35, splitLots: [SPLIT] }
+      : line,
+  );
+  const splitLotRoute: StubRoute = {
+    match: (request) => isGet(request, '/trace/lots/9602'),
+    respond: () =>
+      jsonResponse({
+        ...lotDetailResponse('DEFECTIVE'),
+        lot: { ...lotDetailResponse('DEFECTIVE').lot, lotId: 9602, lotNo: SPLIT.lotNo },
+      }),
+  };
+  const defectWarehouseRoute = lookupRoute(WAREHOUSES_PATH, [
+    ...warehouseFixtures,
+    {
+      warehouseId: 9703,
+      warehouseCode: 'SAMPLE-WH-NG',
+      warehouseName: '합성 불량창고',
+      plantId: 9201,
+      isDefect: true,
+    },
+  ]);
+
+  it('기본은 양품(입고 가능 수량 35)을 입고한다 — 입하 수량 50 이 아니다', async () => {
+    const { user, requests } = await setupReadyToPost(
+      allRoutes([linesRoute(splitLines), splitLotRoute, defectWarehouseRoute]),
+    );
+
+    /* 수량은 줄의 단위 코드를 붙여(「35 SAMPLE-EA」) 안내 띠 제목 한 줄로 낸다. */
+    expect(
+      screen.getByText(
+        t.notes.receiptTarget.noteTitle(
+          t.lineTable.receivedQtyPair(35, 'SAMPLE-EA'),
+          t.lineTable.receivedQtyPair(15, 'SAMPLE-EA'),
+        ),
+      ),
+    ).toBeInTheDocument();
+    /* 입고 대상은 선택 버튼 묶음 — 기본은 양품(원 LOT)이 골라져 있다. */
+    expect(
+      within(screen.getByRole('radiogroup', { name: t.notes.receiptTarget.label })).getByRole(
+        'radio',
+        {
+          name: t.notes.receiptTarget.option(
+            t.notes.receiptTarget.goodName,
+            t.lineTable.receivedQtyPair(35, 'SAMPLE-EA'),
+          ),
+        },
+      ),
+    ).toBeChecked();
+    await clickPost(user);
+    await confirmPost(user);
+
+    await waitFor(() => {
+      expect(postRequests(requests)).toHaveLength(1);
+    });
+    expect(lastPostBody(requests).lines[0]).toMatchObject({ lotId: 9601, receiptQty: 35 });
+  });
+
+  it('선별 불량분을 고르면 그 LOT·수량으로 보내고, 불량창고만 고를 수 있다', async () => {
+    fillCodeLists();
+    const { user } = renderScreen(
+      allRoutes([linesRoute(splitLines), splitLotRoute, defectWarehouseRoute]),
+      '?ir=9001',
+    );
+    await openPostPane(user);
+
+    const splitOption = screen.getByRole('radio', {
+      name: t.notes.receiptTarget.option(
+        t.notes.receiptTarget.splitName,
+        t.lineTable.receivedQtyPair(15, 'SAMPLE-EA'),
+      ),
+    });
+    await user.click(splitOption);
+
+    expect(splitOption).toBeChecked();
+    /* 고른 대상의 LOT 번호는 버튼이 아니라 묶음 아래에 다 보인다. */
+    expect(
+      screen.getByRole('radiogroup', { name: t.notes.receiptTarget.label }),
+    ).toHaveAccessibleDescription(t.notes.receiptTarget.lot(SPLIT.lotNo));
+
+    const warehouseBox = screen.getByRole('combobox', { name: t.fields.warehouse });
+    await waitFor(() => {
+      expect(warehouseBox).toHaveAccessibleDescription(t.notes.defectWarehouseOnly);
+    });
+    await user.click(warehouseBox);
+    expect(
+      await screen.findByRole('option', { name: 'SAMPLE-WH-NG · 합성 불량창고' }),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole('option', { name: WAREHOUSE_LABEL })).not.toBeInTheDocument();
+  });
+
+  it('선별이 없는 줄에는 입고 대상 칸도 안내도 없다', async () => {
+    fillCodeLists();
+    const { user } = renderScreen(allRoutes(), '?ir=9001');
+    await openPostPane(user);
+
+    expect(
+      screen.queryByRole('radiogroup', { name: t.notes.receiptTarget.label }),
+    ).not.toBeInTheDocument();
   });
 });

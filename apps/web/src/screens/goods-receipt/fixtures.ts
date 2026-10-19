@@ -70,6 +70,8 @@ const BASE_LINE: IrLineView = {
   lotId: 9601,
   inspectionRequired: true,
   statusCode: 'SAMPLE_IR_LINE_STATUS_A',
+  receivableQty: null,
+  splitLots: [],
 };
 
 export const inboundReceiptLine = (overrides: Partial<IrLineView> = {}): IrLineView => ({

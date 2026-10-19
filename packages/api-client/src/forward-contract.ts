@@ -99,6 +99,58 @@ export interface DefectRecordCreate {
   occurredAt?: string | null;
 }
 
+/** 서버 선행 P-52(omf-all-around#108) — 자재 LOT 이 투입된 작업지시의 생산 LOT(작업지시 기준 추정). */
+export interface AffectedProductionLots {
+  basis: 'WORK_ORDER_ESTIMATE';
+  workOrders: { workOrderId: number; workOrderNo: string }[];
+  items: {
+    lotId: number;
+    lotNo: string;
+    itemId: number;
+    statusCode: string;
+    workOrderId: number;
+    workOrderNo: string;
+  }[];
+}
+
+/** 서버 선행 P-56(omf-all-around#108) — 입하 라인 LOT 에서 선별로 떼어 낸 자식 LOT(불량분). */
+export interface InboundReceiptSplitLot {
+  lotId: number;
+  lotNo: string;
+  statusCode: string;
+  receivableQty: number;
+}
+
+/**
+ * 서버 선행 P-56 — 입하 라인(`GET …/lines`)에 더해진 두 칸. 입고 가능 수량은 선별로 떼어 낸 불량분·이미 입고한 수량을 뺀
+ * 값이고 서버 입고 상한과 같다. 옛 서버는 싣지 않는다(그때 화면은 입하 수량을 쓴다).
+ */
+export interface InboundReceiptLineForward {
+  receivableQty?: number | null;
+  splitLots?: InboundReceiptSplitLot[];
+}
+
+/** 서버 선행 P-53(omf-all-around#108) — 처분 «선별». 양품은 정상, 불량분은 자식 LOT·새 부적합. */
+export type DispositionDecisionCreateForward = Omit<
+  components['schemas']['DispositionDecisionCreate'],
+  'dispositionTypeCode'
+> & {
+  dispositionTypeCode:
+    components['schemas']['DispositionDecisionCreate']['dispositionTypeCode'] | 'SORT';
+  acceptedQty?: number;
+  rejectedQty?: number;
+  businessDate?: string;
+};
+
+export interface DispositionSortResult {
+  splitLotId: number;
+  splitLotNo: string;
+  splitNonconformanceId: number;
+  splitNonconformanceNo: string;
+}
+
+type DecisionsPath = paths['/quality/nonconformances/{nonconformanceId}/disposition-decisions'];
+
 /** 서버 선행 P-47(omf-all-around#121) — 확정 본문의 IQC 불합격 사유 한 줄. */
 export interface InspectionDefectInput {
   defectCodeId: number;
@@ -570,6 +622,54 @@ interface Unused {
 }
 
 export interface ForwardPaths {
+  '/quality/nonconformances/{nonconformanceId}/disposition-decisions': Omit<
+    DecisionsPath,
+    'post'
+  > & {
+    post: Omit<DecisionsPath['post'], 'requestBody' | 'responses'> & {
+      requestBody: { content: { 'application/json': DispositionDecisionCreateForward } };
+      responses: Omit<DecisionsPath['post']['responses'], 201> & {
+        201: {
+          headers: { [name: string]: unknown };
+          content: {
+            'application/json': components['schemas']['DispositionDecision'] & {
+              sortResult?: DispositionSortResult | null;
+            };
+          };
+        };
+      };
+    };
+  };
+  '/trace/lots/{lotId}/affected-production-lots': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: { lotId: number };
+      cookie?: never;
+    };
+    get: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: { lotId: number };
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        200: {
+          headers: { [name: string]: unknown };
+          content: { 'application/json': AffectedProductionLots };
+        };
+      };
+    };
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/app/dashboard-quality-lots': {
     parameters: {
       query?: never;

@@ -118,6 +118,15 @@ export const dispositionDecision: Translated<typeof ko.dispositionDecision> = {
     reloadDetail: 'Kiểm tra lại trạng thái không phù hợp',
     irreversible: 'Đánh giá không thể hoàn tác',
     success: 'Đã lưu đánh giá',
+    acceptedQtyLabel: 'Số lượng đạt',
+    rejectedQtyLabel: 'Số lượng lỗi',
+    sortHelp:
+      'Phần đạt được giải phóng về bình thường; số lượng lỗi được tách thành LOT mới ở trạng thái lỗi và chuyển sang mục không phù hợp mới để quyết định hủy · làm lại riêng.',
+    sortSumMismatch: 'Tổng số lượng đạt và lỗi phải bằng số lượng xử lý',
+    sortWholeRemaining: (remaining: string): string =>
+      `Phân loại chỉ được quyết định với toàn bộ số lượng còn lại (${remaining})`,
+    sortSuccess: (lotNo: string, nonconformanceNo: string): string =>
+      `Đã lưu phân loại. Phần lỗi đã chuyển sang LOT ${lotNo} · không phù hợp ${nonconformanceNo}`,
   },
   loading: 'Đang tải danh sách chờ đánh giá',
   historyLoading: 'Đang tải lịch sử xử lý',
@@ -148,6 +157,7 @@ export const dispositionDecision: Translated<typeof ko.dispositionDecision> = {
       REWORK: 'Làm lại',
       SCRAP: 'Hủy',
       NORMAL: 'Bình thường',
+      SORT: 'Phân loại',
     },
     dispositionProgress: {
       NOT_STARTED: 'Chưa đánh giá',

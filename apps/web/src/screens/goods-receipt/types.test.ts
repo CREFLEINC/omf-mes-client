@@ -111,7 +111,27 @@ describe('toIrLineView', () => {
       lotId: 9601,
       inspectionRequired: true,
       statusCode: 'SAMPLE_IR_LINE_STATUS_A',
+      receivableQty: null,
+      splitLots: [],
     });
+  });
+
+  /* 서버 선행 P-56 — 입고 가능 수량과 선별 불량분을 그대로 옮긴다. 옛 서버(키 없음)는 null · 빈 배열이다. */
+  it('입고 가능 수량과 선별 불량분을 옮긴다', () => {
+    const split = {
+      lotId: 9602,
+      lotNo: 'SAMPLE-LOT-S1',
+      statusCode: 'DEFECTIVE',
+      receivableQty: 15,
+    };
+    const view = toIrLineView({
+      ...lineResponse({ lotId: 9601 }),
+      receivableQty: 35,
+      splitLots: [split],
+    });
+
+    expect(view.receivableQty).toBe(35);
+    expect(view.splitLots).toEqual([split]);
   });
 
   /*
@@ -147,7 +167,9 @@ describe('toIrLineView', () => {
       'itemId',
       'lineNo',
       'lotId',
+      'receivableQty',
       'receivedQty',
+      'splitLots',
       'statusCode',
       'uomId',
     ]);
