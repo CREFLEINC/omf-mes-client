@@ -12,8 +12,8 @@ export const materialDefect = {
     find: '조회',
     notFound: '이 번호의 LOT 이 없습니다.',
     loadFailed: 'LOT 을 불러오지 못했습니다. 연결을 확인한 뒤 다시 시도하세요.',
-    item: (itemLabel: string): string => `품목 ${itemLabel}`,
-    status: (statusLabel: string): string => `상태 ${statusLabel}`,
+    item: '품목',
+    status: '상태',
   },
 
   code: {

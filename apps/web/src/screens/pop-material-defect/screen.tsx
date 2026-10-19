@@ -238,7 +238,7 @@ export const PopMaterialDefectScreen = () => {
   };
 
   return (
-    <main className="pop-shell pop-ui" aria-labelledby={titleId}>
+    <main className="pop-shell pop-ui pop-material-defect" aria-labelledby={titleId}>
       <header className="pop-header">
         <h1 id={titleId} className="pop-title">
           {t.title}
@@ -256,14 +256,15 @@ export const PopMaterialDefectScreen = () => {
 
       <div className="pop-panes">
         <section className="pane" aria-label={t.lot.label}>
-          <form onSubmit={find} className="form-actions">
+          <form onSubmit={find} className="pop-material-defect-lot">
             <TextField
               label={t.lot.label}
               placeholder={t.lot.placeholder}
+              size="lg"
               value={lotNoDraft}
               onChange={(event) => setLotNoDraft(event.target.value)}
             />
-            <Button type="submit" variant="outlined">
+            <Button type="submit" variant="outlined" size="lg">
               {t.lot.find}
             </Button>
           </form>
@@ -271,14 +272,18 @@ export const PopMaterialDefectScreen = () => {
           {found.isError && <AlertBanner variant="error">{t.lot.loadFailed}</AlertBanner>}
           {found.data === null && <AlertBanner variant="warning">{t.lot.notFound}</AlertBanner>}
           {lot !== null && (
-            <dl className="pop-figures">
+            <dl className="pop-figures pop-material-defect-figures">
               <div>
                 <dt>{t.lot.label}</dt>
                 <dd>{lot.lotNo}</dd>
               </div>
               <div>
-                <dt>{t.lot.item(lot.itemLabel ?? '-')}</dt>
-                <dd>{t.lot.status(statuses.describe(lot.statusCode))}</dd>
+                <dt>{t.lot.item}</dt>
+                <dd>{lot.itemLabel ?? '-'}</dd>
+              </div>
+              <div>
+                <dt>{t.lot.status}</dt>
+                <dd>{statuses.describe(lot.statusCode)}</dd>
               </div>
             </dl>
           )}
@@ -317,6 +322,7 @@ export const PopMaterialDefectScreen = () => {
           )}
           <TextField
             label={t.description}
+            size="lg"
             value={description}
             disabled={disabled || lot === null}
             onChange={(event) => setDescription(event.target.value)}
@@ -325,8 +331,10 @@ export const PopMaterialDefectScreen = () => {
 
         <section className="pane" aria-label={t.qty.label}>
           <TextField
+            className="pop-material-defect-qty"
             label={t.qty.label}
             inputMode="decimal"
+            size="xl"
             value={qty}
             disabled={disabled || lot === null}
             error={record.fieldErrors.defectQty}
@@ -346,40 +354,42 @@ export const PopMaterialDefectScreen = () => {
             maxLength={QTY_MAX_LENGTH}
           />
 
-          <Checkbox
-            checked={hold}
-            disabled={disabled || lot === null || lot.versionNo === null}
-            onChange={(event) => setHold(event.target.checked)}
-          >
-            {t.hold.label}
-          </Checkbox>
-          {hold && (
-            <div className="field-cell">
-              <label className="field-label" htmlFor={reasonFieldId}>
-                {t.hold.reason}
-              </label>
-              <Select
-                id={reasonFieldId}
-                aria-label={t.hold.reason}
-                placeholder={t.hold.reasonPlaceholder}
-                options={(reasons.data ?? []).map((reason) => ({
-                  value: reason.code,
-                  label: reason.codeName,
-                }))}
-                value={holdReason === '' ? null : holdReason}
+          <div className="pop-material-defect-hold">
+            <Checkbox
+              checked={hold}
+              disabled={disabled || lot === null || lot.versionNo === null}
+              onChange={(event) => setHold(event.target.checked)}
+            >
+              {t.hold.label}
+            </Checkbox>
+            {hold && (
+              <div className="field-cell">
+                <label className="field-label" htmlFor={reasonFieldId}>
+                  {t.hold.reason}
+                </label>
+                <Select
+                  id={reasonFieldId}
+                  aria-label={t.hold.reason}
+                  placeholder={t.hold.reasonPlaceholder}
+                  options={(reasons.data ?? []).map((reason) => ({
+                    value: reason.code,
+                    label: reason.codeName,
+                  }))}
+                  value={holdReason === '' ? null : holdReason}
+                  disabled={disabled}
+                  onChange={setHoldReason}
+                />
+              </div>
+            )}
+            {hold && (
+              <TextField
+                label={t.hold.releaseCondition}
+                value={releaseCondition}
                 disabled={disabled}
-                onChange={setHoldReason}
+                onChange={(event) => setReleaseCondition(event.target.value)}
               />
-            </div>
-          )}
-          {hold && (
-            <TextField
-              label={t.hold.releaseCondition}
-              value={releaseCondition}
-              disabled={disabled}
-              onChange={(event) => setReleaseCondition(event.target.value)}
-            />
-          )}
+            )}
+          </div>
 
           <SaveErrorBanner error={record.error} />
           {outcome === 'recorded' && <AlertBanner variant="success">{t.recorded}</AlertBanner>}
@@ -400,7 +410,7 @@ export const PopMaterialDefectScreen = () => {
             </div>
             {holdOnly ? (
               <Button
-                variant="filled"
+                variant="outlined"
                 size="xl"
                 disabled={holdBlocked !== null || disabled}
                 onClick={() => void retryHold()}

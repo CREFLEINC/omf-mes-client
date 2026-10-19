@@ -8,8 +8,8 @@ export const materialDefect = {
     find: 'Tra cứu',
     notFound: 'Không có LOT với số này.',
     loadFailed: 'Không tải được LOT. Hãy kiểm tra kết nối rồi thử lại.',
-    item: (itemLabel: string): string => `Mặt hàng ${itemLabel}`,
-    status: (statusLabel: string): string => `Trạng thái ${statusLabel}`,
+    item: 'Mặt hàng',
+    status: 'Trạng thái',
   },
 
   code: {

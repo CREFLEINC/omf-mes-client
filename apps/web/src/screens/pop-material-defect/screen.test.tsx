@@ -156,9 +156,10 @@ describe('PopMaterialDefectScreen (P-02-14)', () => {
     await user.type(screen.getByRole('textbox', { name: t.lot.label }), LOT.lotNo);
     await user.click(screen.getByRole('button', { name: t.lot.find }));
 
-    expect(await screen.findByText(t.lot.item('RM-3001 · 볼트'))).toBeInTheDocument();
-    expect(await screen.findByText(t.lot.status('정상'))).toBeInTheDocument();
-    expect(screen.queryByText(t.lot.status('NORMAL'))).not.toBeInTheDocument();
+    expect(await screen.findByText('RM-3001 · 볼트', { selector: 'dd' })).toBeInTheDocument();
+    expect(await screen.findByText('정상', { selector: 'dd' })).toBeInTheDocument();
+    expect(screen.getByText(t.lot.item, { selector: 'dt' })).toBeInTheDocument();
+    expect(screen.queryByText('NORMAL')).not.toBeInTheDocument();
   });
 
   const chooseHold = async (user: ReturnType<typeof userEvent.setup>) => {

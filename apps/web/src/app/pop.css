@@ -8227,3 +8227,135 @@
   font: var(--type-body-sm);
   letter-spacing: var(--type-body-sm-tracking);
 }
+
+/*
+ * P-02-14 자재 불량 등록 — 담당자 UI 요청(omf-all-around#108 ②). ⛔ 동작·조건은 화면 코드 그대로이고, 이 절은
+ * 이 화면(`.pop-material-defect`)만 겨냥한다.
+ *
+ * ⚠ 이 화면의 칸 이름에 `action` 을 넣지 않는다 — `[class*='action']` 규칙(액션 줄)이 72 높이·8rem 폭을 준다.
+ *    LOT 조회 줄이 `form-actions` 였을 때 [조회] 가 그 규칙을 받아 입력 칸보다 두 배 높게 섰다.
+ */
+
+/*
+ * 두 구획은 «내용만큼» 선다 — 넓은 화면에서 카드 아래가 통째로 비지 않게(담당자 요청 3).
+ * ⚠ 위 「2단 구획은 행 높이만큼 선다」의 실측(내용이 칸보다 크면 잘린다)을 피하려 상한을 칸 높이로 건다 —
+ *    짧은 화면에서는 구획이 칸 높이에서 멈추고 자기 안에서 스크롤한다.
+ */
+.pop-ui.pop-material-defect > .pop-panes {
+  grid-template-rows: minmax(0, 1fr);
+  align-items: start;
+}
+
+.pop-ui.pop-material-defect > .pop-panes > .pane {
+  box-sizing: border-box;
+  max-height: 100%;
+}
+
+/* 구획 안 칸 사이 간격을 한 값으로 — 칸마다 다른 바깥 여백을 걷는다. */
+.pop-ui.pop-material-defect .pane {
+  align-items: stretch;
+  gap: var(--space-3);
+  padding: var(--space-4);
+}
+
+/* ⚠ 줄어들지 않는다 — 구획이 칸 높이에서 멈출 때 칸끼리 겹치지 않고 구획이 스크롤한다. */
+.pop-ui.pop-material-defect .pane > * {
+  flex-shrink: 0;
+  margin: 0;
+}
+
+/* LOT 입력과 [조회] — 한 줄, 같은 높이(DS `lg`), 입력이 남는 폭을 갖는다. */
+.pop-ui.pop-material-defect .pop-material-defect-lot {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: var(--space-2);
+}
+
+.pop-ui.pop-material-defect .pop-material-defect-lot > button {
+  min-width: 6rem;
+}
+
+/*
+ * 조회한 LOT — 이름·값 두 열. 테두리 없이 한 단 올린 면으로 아래 불량 입력과 가른다.
+ * 긴 LOT 번호·품목명은 줄을 바꿔 칸 폭을 넘지 않는다.
+ */
+.pop-ui.pop-material-defect .pop-material-defect-figures {
+  grid-template-columns: max-content minmax(0, 1fr);
+  row-gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-md);
+  background: var(--surface-container-high);
+}
+
+.pop-ui.pop-material-defect .pop-material-defect-figures dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+  font-weight: 600;
+  color: var(--on-surface);
+}
+
+/* 고르는 칸(대분류·상세·보류 사유) — 값 칸과 [선택] 이 입력 칸과 같은 높이(DS `lg`)로 선다. */
+.pop-ui.pop-material-defect .pop-select__value,
+.pop-ui.pop-material-defect .pop-select__trigger {
+  min-height: var(--control-height-lg);
+}
+
+/* ⚠ 공용 `.field-cell` 이 `align-self: start`·`justify-content: center` 라 그대로 두면 칸이 글자 폭으로 줄고 가운데로 몰린다. */
+.pop-ui.pop-material-defect .field-cell {
+  display: grid;
+  align-self: stretch;
+  justify-self: stretch;
+  justify-content: stretch;
+  gap: var(--space-1);
+}
+
+/* 불량 수량 — 이 화면의 첫째 숫자. 값을 크게, 키패드와 같은 오른쪽 정렬로. */
+.pop-ui.pop-material-defect input.pop-material-defect-qty {
+  font-size: 24px;
+  font-weight: 600;
+  text-align: end;
+  font-variant-numeric: tabular-nums;
+}
+
+/* 키패드 키 — 같은 크기·간격, 장갑 손가락이 닿는 높이. */
+.pop-ui.pop-material-defect .omf-numeric-keypad {
+  gap: var(--space-2);
+}
+
+.pop-ui.pop-material-defect .omf-numeric-keypad > button {
+  min-height: var(--control-height-lg);
+}
+
+/*
+ * 보류 — 체크와 그에 딸린 칸(사유·해제 조건)을 한 무리로. 키패드와는 간격으로 떼고, 딸린 칸은
+ * 체크 상자 폭만큼 들여 「체크하면 나오는 칸」임을 보인다.
+ */
+.pop-ui.pop-material-defect .pop-material-defect-hold {
+  display: grid;
+  gap: var(--space-3);
+  padding-block-start: var(--space-3);
+  border-block-start: 1px solid var(--outline-variant);
+}
+
+.pop-ui.pop-material-defect .pop-material-defect-hold > :first-child {
+  justify-self: start;
+}
+
+.pop-ui.pop-material-defect .pop-material-defect-hold > :not(:first-child) {
+  justify-self: stretch;
+  margin-inline-start: 28px;
+}
+
+/* 하단 단추 줄 — 구획 안의 또 하나의 상자로 세우지 않는다. 남는 높이 아래에 붙는다. */
+.pop-ui.pop-material-defect .pane > .pop-action-bar {
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+}
+
+/* 단추는 DS `xl`(60) — 액션 줄 공용 하한 72 를 이 화면에서는 걷어 1024×768 에서 구획이 스크롤하지 않게 한다. */
+.pop-ui.pop-material-defect .pane > .pop-action-bar button {
+  min-height: var(--control-height-xl);
+}
