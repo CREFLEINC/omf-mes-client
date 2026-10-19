@@ -223,6 +223,11 @@ export const iqcInspection = {
       required: '불합격이면 불량 코드를 골라야 확정할 수 있습니다.',
       minorRequired: '이 대분류에는 상세 코드가 있습니다. 상세 코드를 고르세요.',
       noCodes: '등록된 불량 코드가 없습니다. 기준정보 > 불량·원인 코드에서 먼저 등록하세요.',
+      selectPlaceholder: '선택하세요',
+      descriptionPlaceholder: '사유를 입력해 주세요.',
+      /** 칸 아래 필수 누락 표시 — 확정이 막힌 이유(required·minorRequired)는 확정 단추 곁에 그대로 둔다. */
+      majorMissing: '불량 대분류를 선택하세요.',
+      minorMissing: '불량 상세를 선택하세요.',
     },
     confirmBlockedByJudgment: '종합 판정을 선택해야 확정할 수 있습니다.',
     confirmBlockedByConfirmed: '이미 확정된 회차입니다.',

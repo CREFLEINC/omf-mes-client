@@ -328,7 +328,7 @@ export const ResultFormPane = ({
          * 목록이 비어도 **감추지 않고 사유를 밝힌다**(공유계약 G-2). 시드가 아직 안 들어가
          * 빌 수 있는데, 감추면 그 자리가 왜 없는지 사용자가 알 수 없다.
          */}
-        <div className="field-cell">
+        <div className="field-cell iqc-inspection-judgment-field">
           <FieldLabel htmlFor={judgmentId} label={t.judgment} required />
           <Select
             id={judgmentId}
