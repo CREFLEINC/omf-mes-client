@@ -40,6 +40,8 @@ export const materialDefect = {
     reasonPlaceholder: '보류 사유를 고르세요',
     releaseCondition: '해제 조건',
     releaseConditionDefault: '품질 판정 후 해제',
+    /** LOT 상세의 잠금 값(ETag)을 못 읽었을 때 — 보류를 보내지 않는다. */
+    noVersion: 'LOT 의 잠금 정보를 읽지 못해 보류할 수 없습니다. LOT 을 다시 조회하세요.',
     /** 관리웹에는 보류 입력이 같은 화면에 있다. */
     webNote: '보류가 필요하면 이 화면의 보류 입력에서 함께 실행하세요.',
   },

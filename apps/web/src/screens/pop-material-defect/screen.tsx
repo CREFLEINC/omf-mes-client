@@ -137,13 +137,20 @@ export const PopMaterialDefectScreen = () => {
   });
 
   const holdLot = async (target: FoundLot, worker: string): Promise<void> => {
+    /* 잠금 값을 못 읽었으면 보내지 않는다 — 0 을 실으면 서버가 버전 충돌로 거절하고 이유가 흐려진다(#108 리뷰 m5). */
+    if (target.versionNo === null) {
+      setHoldFailure(t.hold.noVersion);
+      setOutcome('holdFailed');
+      return;
+    }
+    const versionNo = target.versionNo;
     try {
       await runRequest(() =>
         client.POST('/quality/lot-holds', {
           params: { header: { 'Idempotency-Key': createIdempotencyKey() } },
           headers: { 'X-Worker-No': worker },
           body: {
-            lots: [{ lotId: target.lotId, versionNo: target.versionNo ?? 0 }],
+            lots: [{ lotId: target.lotId, versionNo }],
             reasonCode: holdReason,
             targetLotStatusCode: HOLD_TARGET_LOT_STATUS,
             releaseCondition: releaseCondition.trim(),
@@ -373,6 +380,9 @@ export const PopMaterialDefectScreen = () => {
             >
               {t.hold.label}
             </Checkbox>
+            {lot !== null && lot.versionNo === null && (
+              <p className="field-note">{t.hold.noVersion}</p>
+            )}
             {hold && (
               <div className="field-cell">
                 <label className="field-label" htmlFor={reasonFieldId}>

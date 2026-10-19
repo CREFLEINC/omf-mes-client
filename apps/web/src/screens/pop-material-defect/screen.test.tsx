@@ -41,7 +41,7 @@ const LOT_STATUSES = [
 const ITEM = { itemId: 3001, itemCode: 'RM-3001', itemName: '볼트', isActive: true };
 
 /** 보류 응답을 시험이 갈아 끼운다 — 차례대로 쓰고, 다 쓰면 성공이다. */
-const renderScreen = (workerNo: string | null, holdResponses: Response[] = []) => {
+const renderScreen = (workerNo: string | null, holdResponses: Response[] = [], withEtag = true) => {
   const writes: Request[] = [];
   let lotDetailCalls = 0;
 
@@ -56,7 +56,10 @@ const renderScreen = (workerNo: string | null, holdResponses: Response[] = []) =
       lotDetailCalls += 1;
       /* 다시 조회하면 잠금 값이 올라 있다 — 다른 곳에서 LOT 이 바뀐 뒤다. */
       const etag = lotDetailCalls === 1 ? '"7"' : '"8"';
-      return jsonResponse({ lot: LOT, externalReferences: [] }, { headers: { ETag: etag } });
+      return jsonResponse(
+        { lot: LOT, externalReferences: [] },
+        withEtag ? { headers: { ETag: etag } } : {},
+      );
     }
     if (path === '/mdm/items/3001') {
       return jsonResponse({ item: ITEM });
@@ -249,6 +252,20 @@ describe('PopMaterialDefectScreen (P-02-14)', () => {
     expect(
       await screen.findByText(`${t.holdFailed} ${t.holdFailure.alreadyHeld}`),
     ).toBeInTheDocument();
+  });
+
+  /* #108 리뷰 m5 — 잠금 값을 못 읽은 LOT 은 버전 0 으로 보류를 보내지 않는다. 이유를 밝힌다. */
+  it('LOT 상세에 잠금 값이 없으면 보류를 고를 수 없고 이유를 보인다', async () => {
+    const user = userEvent.setup();
+    const { writes } = renderScreen('900028', [], false);
+
+    await findAndFill(user);
+
+    expect(screen.getByRole('checkbox', { name: t.hold.label })).toBeDisabled();
+    expect(screen.getByText(t.hold.noVersion)).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: t.submit }));
+    await waitFor(() => expect(writes).toHaveLength(1));
+    expect(writes.map(pathOf)).toEqual(['/quality/defect-records']);
   });
 
   it('해제 조건은 고쳐서 보낼 수 있고, 비우면 기록을 막는다', async () => {

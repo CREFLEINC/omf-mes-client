@@ -36,6 +36,7 @@ export const materialDefect = {
     reasonPlaceholder: 'Chọn lý do tạm giữ',
     releaseCondition: 'Điều kiện gỡ',
     releaseConditionDefault: 'Gỡ sau khi có kết quả đánh giá chất lượng',
+    noVersion: 'Không đọc được thông tin khóa của LOT nên không thể tạm giữ. Hãy tra cứu lại LOT.',
     webNote: 'Nếu cần tạm giữ, hãy thực hiện ở phần nhập tạm giữ trên màn hình này.',
   },
 
