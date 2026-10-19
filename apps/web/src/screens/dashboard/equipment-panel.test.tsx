@@ -7,7 +7,7 @@ import { describe, expect, it } from 'vitest';
 import { toEquipmentView } from './equipment';
 import {
   EquipmentBoard,
-  STOPPED_GROUP_PREVIEW_COUNT,
+  STOPPED_GROUP_SHOWN,
   allocateRows,
   StoppedPanel,
   formatElapsed,
@@ -246,7 +246,7 @@ describe('EquipmentBoard', () => {
 });
 
 describe('StoppedPanel', () => {
-  it('정지 · 대기 · 교체 · 비가동 그룹별 대수, 줄은 호기(톤수) · 사유 · 경과 — 빈 그룹은 두지 않는다', () => {
+  it('정지 · 대기 · 교체 · 비가동 그룹별 대수, 줄은 호기(톤수) · 사유 · 경과 — 빈 그룹도 「0대」(사용자 지시 2026-10-19)', () => {
     render(<StoppedPanel view={view} isLoading={false} isFailed={false} />);
 
     const stoppedGroup = screen.getByRole('region', { name: t.status.STOPPED });
@@ -259,7 +259,9 @@ describe('StoppedPanel', () => {
     expect(within(row).getByText(formatElapsed(85))).toBeInTheDocument();
 
     expect(screen.getByRole('region', { name: t.status.WAITING })).toBeInTheDocument();
-    expect(screen.queryByRole('region', { name: t.status.CHANGEOVER })).not.toBeInTheDocument();
+    const empty = screen.getByRole('region', { name: t.status.CHANGEOVER });
+    expect(within(empty).getByText(`0${t.countUnit}`)).toBeInTheDocument();
+    expect(within(empty).queryByRole('listitem')).not.toBeInTheDocument();
   });
 
   it('제목 · 열 제목, 사유 미등록은 보조 글 · 사유는 말줄임 없이', () => {
@@ -281,7 +283,7 @@ describe('StoppedPanel', () => {
     expect(screen.getByRole('heading', { level: 2 })).toHaveTextContent('EQ-02');
   });
 
-  it(`그룹당 ${String(STOPPED_GROUP_PREVIEW_COUNT)}행 — 넘으면 오래 멈춘 순으로 자르고 「외 n대」는 숨겨진 설비만 창에 보인다`, async () => {
+  it(`그룹당 ${String(STOPPED_GROUP_SHOWN)}행 — 넘으면 오래 멈춘 순으로 자르고 「외 n대」는 숨겨진 설비만 창에 보인다`, async () => {
     const user = userEvent.setup();
     const five = toEquipmentView({
       asOf: '2026-10-16T03:00:00Z',
@@ -302,24 +304,26 @@ describe('StoppedPanel', () => {
     const group = screen.getByRole('region', { name: t.status.STOPPED });
     expect(within(group).getByText(`5${t.countUnit}`)).toBeInTheDocument();
     const rows = within(group).getAllByRole('listitem');
-    expect(rows).toHaveLength(STOPPED_GROUP_PREVIEW_COUNT);
+    expect(rows).toHaveLength(STOPPED_GROUP_SHOWN);
     expect(rows[0]).toHaveTextContent('S-5');
 
-    await user.click(within(group).getByRole('button', { name: t.stoppedMore('2') }));
+    await user.click(within(group).getByRole('button', { name: t.stoppedMore('4') }));
     const dialog = screen.getByRole('dialog', {
       name: new RegExp(`^${t.stoppedGroupCaption(t.status.STOPPED)}`),
     });
-    expect(dialog).toHaveTextContent(t.stoppedMoreCount('2'));
+    expect(dialog).toHaveTextContent(t.stoppedMoreCount('4'));
     const moreRows = within(dialog).getAllByRole('button', { name: /상세 보기/ });
-    /* 미리 보인 S-5 · S-4 · S-3 은 빠지고 덜 오래 멈춘 S-2 · S-1 만 — 목록 줄, 상태 배지는 되풀이하지 않는다. */
+    /* 미리 보인 S-5 는 빠지고 나머지 S-4 · S-3 · S-2 · S-1 만 — 목록 줄, 상태 배지는 되풀이하지 않는다. */
     expect(moreRows.map((row) => row.textContent)).toEqual([
+      expect.stringContaining('S-4'),
+      expect.stringContaining('S-3'),
       expect.stringContaining('S-2'),
       expect.stringContaining('S-1'),
     ]);
     expect(moreRows[0]).toHaveTextContent('합성 사유');
     expect(within(dialog).queryByText(t.status.STOPPED)).not.toBeInTheDocument();
 
-    await user.click(moreRows[1]!);
+    await user.click(moreRows[3]!);
     expect(screen.getByRole('heading', { level: 2, name: /S-1/ })).toBeInTheDocument();
   });
 

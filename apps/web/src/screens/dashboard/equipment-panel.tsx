@@ -482,7 +482,8 @@ const AllEquipmentDialog = ({
 );
 
 /** 가동 외 설비 현황 — 그룹마다 이만큼만 보이고 나머지는 「외 n대」로 전체 설비 보기 창(사용자 결정 2026-10-16). */
-export const STOPPED_GROUP_PREVIEW_COUNT = 3;
+/** 묶음마다 보이는 설비 수 — 나머지는 「외 n대」(사용자 지시 2026-10-19). */
+export const STOPPED_GROUP_SHOWN = 1;
 
 /**
  * 그룹마다 보일 줄 수(⭐ 사용자 지정 2026-10-16). 예산(카드 전체 줄 수 · 없으면 제한 없음) 안에서 **모든 그룹에 먼저
@@ -700,13 +701,16 @@ export const StoppedPanel = (props: EquipmentPanelProps) => {
       setOpenedId(target.equipmentId);
     };
     const groups = EQUIPMENT_STATUS_ORDER.filter((code) => code !== 'RUNNING')
-      .map((code) => ({ code, rows: stopped.filter((item) => item.statusCode === code) }))
-      .filter((group) => group.rows.length > 0);
-    /* 넓은 화면(행 높이를 따라감)이면 그룹당 제한 없이 높이가 허락하는 만큼, 1열이면 그룹당 3행. */
+      /* ⭐ 설비가 없는 상태도 「0대」로 묶음을 보인다(사용자 지시 2026-10-19 「비가동이라도 0대로」). */
+      .map((code) => ({ code, rows: stopped.filter((item) => item.statusCode === code) }));
+    /*
+     * ⭐ 묶음마다 첫 1대만, 나머지는 「외 n대」(사용자 지시 2026-10-19 「2대면 외 1대로 통일」) — 화면 높이에 따라
+     * 같은 대수가 다르게 보이지 않게 한다.
+     */
     const shownCounts = allocateRows(
       groups.map((group) => group.rows),
-      fitted && !tooTall ? Number.POSITIVE_INFINITY : STOPPED_GROUP_PREVIEW_COUNT,
-      fitted && !tooTall ? budget : null,
+      STOPPED_GROUP_SHOWN,
+      null,
     );
     shownTotalRef.current = shownCounts.reduce((sum, count) => sum + count, 0);
     groupCountRef.current = groups.length;
@@ -754,40 +758,42 @@ export const StoppedPanel = (props: EquipmentPanelProps) => {
                     </Button>
                   )}
                 </div>
-                <ul
-                  className="dash-stopped-list"
-                  aria-label={t.stoppedGroupCaption(t.status[code])}
-                >
-                  {rows.slice(0, shown).map((item) => (
-                    <li key={item.equipmentId} className="dash-stopped-row">
-                      <button
-                        type="button"
-                        className="dash-stopped-button"
-                        {...pointerFocusProps(pointerInput)}
-                        aria-label={`${t.openDetail(item.equipmentCode)} · ${describeReason(item)} · ${formatElapsed(item.elapsedMinutes)}`}
-                        onClick={() => {
-                          openTile(item);
-                        }}
-                      >
-                        {/* 4열 — 설비명 · 설비 종류 · 사유 · 경과 시간(사용자 지정 2026-10-16). */}
-                        <span className="dash-stopped-code">{item.equipmentCode}</span>
-                        <span className="dash-stopped-type">{item.tonnage ?? ''}</span>
-                        <span
-                          className={
-                            item.reasonName === null
-                              ? 'dash-stopped-reason dash-stopped-reason-none'
-                              : 'dash-stopped-reason'
-                          }
+                {rows.length > 0 && (
+                  <ul
+                    className="dash-stopped-list"
+                    aria-label={t.stoppedGroupCaption(t.status[code])}
+                  >
+                    {rows.slice(0, shown).map((item) => (
+                      <li key={item.equipmentId} className="dash-stopped-row">
+                        <button
+                          type="button"
+                          className="dash-stopped-button"
+                          {...pointerFocusProps(pointerInput)}
+                          aria-label={`${t.openDetail(item.equipmentCode)} · ${describeReason(item)} · ${formatElapsed(item.elapsedMinutes)}`}
+                          onClick={() => {
+                            openTile(item);
+                          }}
                         >
-                          {describeReason(item)}
-                        </span>
-                        <span className="dash-stopped-elapsed">
-                          {formatElapsed(item.elapsedMinutes)}
-                        </span>
-                      </button>
-                    </li>
-                  ))}
-                </ul>
+                          {/* 4열 — 설비명 · 설비 종류 · 사유 · 경과 시간(사용자 지정 2026-10-16). */}
+                          <span className="dash-stopped-code">{item.equipmentCode}</span>
+                          <span className="dash-stopped-type">{item.tonnage ?? ''}</span>
+                          <span
+                            className={
+                              item.reasonName === null
+                                ? 'dash-stopped-reason dash-stopped-reason-none'
+                                : 'dash-stopped-reason'
+                            }
+                          >
+                            {describeReason(item)}
+                          </span>
+                          <span className="dash-stopped-elapsed">
+                            {formatElapsed(item.elapsedMinutes)}
+                          </span>
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
               </section>
             );
           })}
