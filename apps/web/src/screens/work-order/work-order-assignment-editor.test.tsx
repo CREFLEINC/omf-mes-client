@@ -372,6 +372,16 @@ it('라인이 없는 추천 설비는 라인과 기본 위치를 건드리지 �
   );
 });
 
+it('추천 응답을 기다리는 동안은 받은 쪽 밖의 배정 금형을 따로 묻지 않는다', () => {
+  mocks.molds.mockReturnValue(
+    resources([{ moldId: 499, moldCode: 'M-9', moldName: '다른 금형', isActive: true }]),
+  );
+  mocks.recommendations.mockReturnValue(query(undefined, { isPending: true }));
+  render(<Harness />);
+
+  expect(mocks.mold).not.toHaveBeenCalledWith(401);
+});
+
 /* 금형 목록은 첫 쪽만 받는다 — 자동 배정된 금형이 그 밖이면 한 벌만 따로 물어 이름을 푼다. */
 it('배정된 금형이 받은 쪽에 없으면 그 금형만 따로 물어 이름을 낸다', () => {
   mocks.molds.mockReturnValue(

@@ -165,6 +165,8 @@ export const WorkOrderAssignmentEditorSession = ({
   const fetchedEquipment = useWorkOrderEquipment(
     selectedEquipmentId !== null &&
       equipments.data !== undefined &&
+      /* 추천에 실려 오면 따로 묻지 않는다 — 추천 응답을 기다린 뒤에 판단한다. */
+      !recommendations.isPending &&
       listedEquipment === undefined &&
       recommendedEquipment === undefined
       ? selectedEquipmentId
@@ -182,6 +184,7 @@ export const WorkOrderAssignmentEditorSession = ({
   const fetchedMold = useWorkOrderMold(
     selectedMoldId !== null &&
       molds.data !== undefined &&
+      !recommendations.isPending &&
       listedMold === undefined &&
       recommendedMold === undefined
       ? selectedMoldId
