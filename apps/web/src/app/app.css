@@ -8226,7 +8226,7 @@ button.app-button-neutral {
 /* 가장 많은 유형만 강조색(정보 파랑), 나머지는 중립 회색을 짙은 것부터 옅게 — 단계마다 명도 차이가 뚜렷하다. */
 .dash-donut-1 {
   background: var(--app-info);
-  fill: var(--semantic-info);
+  fill: var(--app-info);
 }
 
 .dash-donut-2 {
@@ -8904,7 +8904,7 @@ button.app-button-neutral {
 }
 
 .dash-tone-error {
-  color: var(--semantic-error-text);
+  color: var(--app-error-text);
 }
 
 .dash-tone-warning {
@@ -11457,7 +11457,7 @@ button.app-button-neutral {
 /* 칸 옆이 아니라 구획 안에 서는 오류 문장 — 어느 칸의 것인지는 바로 위 줄이 말한다. */
 .downtime-field-error {
   margin: 0;
-  color: var(--semantic-error-text);
+  color: var(--semantic-error);
 }
 
 /*
@@ -13141,7 +13141,7 @@ button.app-button-neutral {
  */
 .iqc-inspection-panes .iqc-inspection-queue-item-code {
   font-size: var(--font-size-xs, 0.75rem);
-  color: var(--on-surface-muted);
+  color: var(--color-text-secondary, #6b7280);
   overflow-wrap: anywhere;
 }
 
@@ -14777,18 +14777,25 @@ button.app-button-neutral {
 /*
  * ⭐ 다크 모드 보정(사용자 지시 2026-10-19) — 배경을 밝히지 않고 강조색 · 보조 글 대비만 올린다. DS 테마(themes.css)는
  * 표면 · 글자 사다리를 다크로 바꿔 주지만, 라이트 고정인 정보 파랑 · 오류 빨강 · 차트 1번(빨강)은 다크 표면
- * (#2A2D33) 위에서 3:1 에 못 미쳤다. 관리웹이 쓰는 그림 색만 앱 토큰으로 받아 다크에서 밝은 톤으로 바꾼다.
- * 라이트 값은 그대로(= DS 시맨틱).
+ * (#2A2D33) 위에서 3:1 에 못 미쳤다. 대시보드가 쓰는 그림 색만 앱 토큰으로 받아 다크에서 밝은 톤으로 바꾼다.
+ * 라이트 값은 그대로(= DS 시맨틱). DS 토큰(`--chart-1` · `--on-surface-muted`)은 대시보드 탭 안에서만 바꾼다 —
+ * 다른 화면 · POP 은 DS 다크 그대로.
  */
 :root {
   --app-info: var(--semantic-info);
   --app-error: var(--semantic-error);
+  --app-error-text: var(--semantic-error);
 }
 
 [data-theme='dark'] {
   /* 정보 파랑 · 오류 빨강 그림(점 · 막대 · 기준선 · 누적선) — #2A2D33 위 각 6.2:1 · 3.9:1. */
   --app-info: #8ab4f8;
   --app-error: #e5534b;
+  /* 오류 숫자 글 — DS 의 다크용 글자 빨강. */
+  --app-error-text: var(--semantic-error-text);
+}
+
+[data-theme='dark'] .dash-tabs {
   /* 차트 1번(생산 추이 선 등) — DS 다크에 빠져 있어 오류 빨강과 같은 밝은 톤으로. */
   --chart-1: #e5534b;
   /* 보조 글 — DS 다크 #8A8D94 는 카드(#2A2D33) 위 4.0:1 로 본문 기준(4.5:1)에 못 미쳤다 → 5.0:1. */

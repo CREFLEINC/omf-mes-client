@@ -1494,9 +1494,11 @@ const OpenNonconformancePanel = ({
   linked: boolean;
 }) => {
   const now = new Date();
-  /* 상태가 모두 같으면 열을 두지 않고 부제에 한 번 적는다(사용자 지시 2026-10-19 「상태 열 필요성 검토」). */
+  /* 상태가 모두 같으면 열을 두지 않고 부제에 한 번 적는다(사용자 지시 2026-10-19 「상태 열 필요성 검토」).
+   * 「모두」라고 말할 수 있는 건 전체가 다 보일 때뿐 — 보이지 않는 건이 있으면 열을 둔다. */
   const statuses = new Set(rows.map((row) => row.statusName ?? row.statusCode));
-  const sameStatus = rows.length > 0 && statuses.size === 1 ? [...statuses][0] : undefined;
+  const sameStatus =
+    rows.length > 0 && rows.length >= total && statuses.size === 1 ? [...statuses][0] : undefined;
 
   return (
     <Panel

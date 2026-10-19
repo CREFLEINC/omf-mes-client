@@ -324,14 +324,37 @@ describe('품질 탭', () => {
     expect(screen.getByText(t.ncOpenMore('7', '1'))).toBeInTheDocument();
     /* 보이는 수(1)와 전체(4)가 다르면 「상위 1개 / 전체 4개」. */
     expect(screen.getByText(t.ncRepeatedTopOf('1', '4'))).toBeInTheDocument();
-    /* 반복 품목 줄 → 처분 판정 처리(그 품목 조건). 상태가 모두 같으면 상태 열 대신 부제. */
+    /* 반복 품목 줄 → 처분 판정 처리(그 품목 조건). */
     expect(screen.getByRole('link', { name: t.openItemDisposition('ITEM-1') })).toHaveAttribute(
       'href',
       '/quality/dispositions?item=1',
     );
+    /* 보이는 1건만 같은 상태여도 안 보이는 6건이 있으면 「모두」라 하지 않고 상태 열을 둔다. */
+    expect(screen.getByRole('columnheader', { name: t.column.status })).toBeInTheDocument();
+    expect(screen.queryByText(t.ncOpenListSubStatus('의뢰 전'))).not.toBeInTheDocument();
+    expect(screen.getByRole('table', { name: t.ncRepeated })).toHaveTextContent('3건');
+  });
+
+  it('부적합 — 미종결 전체가 보이고 상태가 모두 같으면 상태 열 대신 부제', () => {
+    const q = quality();
+    q.nonconformance.openCount = 1;
+    q.nonconformance.openList = [
+      {
+        nonconformanceId: 31,
+        nonconformanceNo: 'NC-0031',
+        itemCode: 'ITEM-1',
+        itemName: '품목 1',
+        severityCode: 'MAJOR',
+        severityName: '중',
+        statusCode: 'OPEN',
+        statusName: '의뢰 전',
+        openedAt: '2026-10-01T01:00:00Z',
+      },
+    ];
+    render(<NonconformanceTab quality={q} />);
+
     expect(screen.queryByRole('columnheader', { name: t.column.status })).not.toBeInTheDocument();
     expect(screen.getByText(t.ncOpenListSubStatus('의뢰 전'))).toBeInTheDocument();
-    expect(screen.getByRole('table', { name: t.ncRepeated })).toHaveTextContent('3건');
   });
 
   it('부적합 — 미종결 0건 · 권한 없음이면 안내 문구, 링크 없음', () => {
