@@ -5,6 +5,7 @@ export const inspectionDocuments = {
   upload: '문서 올리기',
   uploading: '올리는 중…',
   open: '열기',
+  openFailed: '문서를 열지 못했습니다. 연결을 확인한 뒤 다시 시도하세요.',
   none: '첨부된 문서가 없습니다.',
   loading: '첨부 문서를 불러오는 중입니다.',
   loadFailed: '첨부 문서를 불러오지 못했습니다.',

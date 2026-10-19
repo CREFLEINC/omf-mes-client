@@ -5,6 +5,7 @@ export const inspectionDocuments = {
   upload: 'Tải tài liệu lên',
   uploading: 'Đang tải lên…',
   open: 'Mở',
+  openFailed: 'Không mở được tài liệu. Hãy kiểm tra kết nối rồi thử lại.',
   none: 'Chưa có tài liệu đính kèm.',
   loading: 'Đang tải tài liệu đính kèm.',
   loadFailed: 'Không tải được tài liệu đính kèm.',

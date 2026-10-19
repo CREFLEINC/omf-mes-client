@@ -110,19 +110,30 @@ export const AttachmentPanel = ({ targetTypeCode, targetId }: AttachmentPanelPro
     setSelectError(null);
   };
 
+  /** PDF 는 새 탭에서 바로 열고, 그 밖은 내려받는다. 받지 못하면 그 사실을 알린다. */
   const open = async (row: Attachment): Promise<void> => {
-    const blob = await runRequest(() =>
-      client.GET('/app/attachments/{attachmentId}/content', {
-        params: { path: { attachmentId: row.attachmentId } },
-        parseAs: 'blob',
-      }),
-    );
-    const url = URL.createObjectURL(blob as Blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = row.fileName;
-    link.click();
-    URL.revokeObjectURL(url);
+    setNotice(null);
+    try {
+      const blob = (await runRequest(() =>
+        client.GET('/app/attachments/{attachmentId}/content', {
+          params: { path: { attachmentId: row.attachmentId } },
+          parseAs: 'blob',
+        }),
+      )) as Blob;
+      const url = URL.createObjectURL(blob);
+      if (blob.type === 'application/pdf' && window.open(url, '_blank') !== null) {
+        // 새 탭이 다 읽기 전에 주소를 풀면 빈 화면이 된다 — 넉넉히 기다렸다 푼다.
+        window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
+        return;
+      }
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = row.fileName;
+      link.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      setNotice(t.openFailed);
+    }
   };
 
   const columns: Column<Attachment>[] = [
