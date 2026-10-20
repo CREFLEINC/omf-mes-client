@@ -37,7 +37,9 @@ describe('PlanActionBanner', () => {
       />,
     );
 
-    expect(screen.getByText('확정은 검사 항목을 1건 이상 저장해야 할 수 있습니다.')).toBeInTheDocument();
+    expect(
+      screen.getByText('확정은 검사 항목을 1건 이상 저장해야 할 수 있습니다.'),
+    ).toBeInTheDocument();
   });
 
   /* 삼키면 어디에도 보이지 않는 오류가 된다. */
@@ -47,7 +49,11 @@ describe('PlanActionBanner', () => {
         error={{
           kind: 'validation',
           errors: [
-            { scope: 'screen', code: 'CONFIRMED_VERSION_REQUIRED', message: '확정 버전이 없습니다.' },
+            {
+              scope: 'screen',
+              code: 'CONFIRMED_VERSION_REQUIRED',
+              message: '확정 버전이 없습니다.',
+            },
           ],
         }}
       />,
@@ -83,7 +89,10 @@ describe('PlanActionBanner', () => {
   it('충돌이면 원인 문구와 「최신 불러오기」를 낸다', async () => {
     const onReload = vi.fn<() => void>();
     render(
-      <PlanActionBanner error={{ kind: 'conflict', cause: 'user', message: '' }} onReload={onReload} />,
+      <PlanActionBanner
+        error={{ kind: 'conflict', cause: 'user', message: '' }}
+        onReload={onReload}
+      />,
     );
 
     expect(

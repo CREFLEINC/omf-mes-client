@@ -48,6 +48,14 @@ const DIRECTION_TEXT = {
   unknown: t.warning.directionUnknown,
 } as const;
 
+/** 대상 LOT 이 없는 의뢰 = 출하작업지시 OQC — 서버가 집은(피킹) LOT 에 판정을 남긴다(omf-all-around#119 · 서버 P-83). */
+const PICKED_DIRECTION_TEXT = {
+  release: t.warning.pickedDirectionRelease,
+  hold: t.warning.pickedDirectionHold,
+  pending: t.warning.pickedDirectionPending,
+  unknown: t.warning.directionUnknown,
+} as const;
+
 /** 판정 단추의 색 — 뜻이 정해진 코드만 색을 갖는다. 모르는 코드는 무채색이다. */
 const toneOf = (code: string): 'accepted' | 'rejected' | 'held' | 'neutral' =>
   code === 'ACCEPTED'
@@ -162,7 +170,7 @@ export interface PopJudgmentFormProps {
   onJudgmentChange: (code: string) => void;
   isSaving: boolean;
   fieldErrors: Record<string, string>;
-  /** 의뢰에 대상 LOT 이 있는가. 없으면 서버가 LOT 상태를 옮기지 않는다(확정만 한다). */
+  /** 의뢰에 대상 LOT 이 있는가. 없으면 출하작업지시 OQC 다 — 서버가 그 지시가 집은 LOT 에 판정을 남긴다(#119). */
   hasLot: boolean;
   /** 회차 이력 등 입력 구획 아래에 붙는 것. */
   children?: ReactNode;
@@ -360,7 +368,7 @@ export const PopJudgmentForm = ({
         <section className="pop-oqc-effect" aria-label={t.warning.title}>
           <p className="pop-oqc-effect__lead">
             <Icon name="warning" size={20} aria-hidden />
-            <span>{hasLot ? DIRECTION_TEXT[preview.direction] : t.warning.noLot}</span>
+            <span>{(hasLot ? DIRECTION_TEXT : PICKED_DIRECTION_TEXT)[preview.direction]}</span>
           </p>
           <p className="pop-oqc-effect__sub">{t.warning.noAmendment}</p>
         </section>
@@ -551,9 +559,9 @@ export const PopConfirmDialog = ({
         <h4>{t.confirm.effects}</h4>
         <ul>
           <li>
-            <strong>{hasLot ? DIRECTION_TEXT[preview.direction] : t.warning.noLot}</strong>
+            <strong>{(hasLot ? DIRECTION_TEXT : PICKED_DIRECTION_TEXT)[preview.direction]}</strong>
           </li>
-          {hasLot && <li>{t.warning.picking}</li>}
+          <li>{t.warning.picking}</li>
         </ul>
       </section>
     )}

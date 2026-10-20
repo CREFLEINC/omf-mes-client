@@ -152,6 +152,8 @@ export const lotStatusHistory: Translated<typeof ko.lotStatusHistory> = {
       C19: 'Xử lý bình thường',
       C20: 'Đăng ký lại tồn kho',
       C25: 'Áp dụng đặc cách',
+      C26: 'Bỏ qua PQC',
+      C27: 'Bỏ qua OQC',
     },
     initialStatus: 'Ban đầu',
     actorUnknown: 'Chưa xác định tên',

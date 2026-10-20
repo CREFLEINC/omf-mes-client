@@ -1042,6 +1042,58 @@ export interface ForwardPaths {
     put?: never;
     post?: never;
   };
+  /** 서버 선행 P-83(omf-all-around#119) — OQC 생략 요청(결재 상신). 202 승인 요청 id. */
+  '/logistics/shipment-requests/{shipmentRequestId}:request-oqc-skip': {
+    parameters: { query?: never; header?: never; path?: never; cookie?: never };
+    get?: never;
+    put?: never;
+    post: {
+      parameters: {
+        query?: never;
+        header: { 'Idempotency-Key': string };
+        path: { shipmentRequestId: number };
+        cookie?: never;
+      };
+      requestBody: { content: { 'application/json': { reason: string } } };
+      responses: {
+        202: {
+          headers: { [name: string]: unknown };
+          content: { 'application/json': { approvalRequestId: number } };
+        };
+      };
+    };
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  /** 서버 선행 P-83(omf-all-around#119) — 승인된 OQC 생략의 실행. 본문 없음 · 200 출하작업지시 상세. */
+  '/logistics/shipment-requests/{shipmentRequestId}:skip-oqc': {
+    parameters: { query?: never; header?: never; path?: never; cookie?: never };
+    get?: never;
+    put?: never;
+    post: {
+      parameters: {
+        query?: never;
+        header: { 'Idempotency-Key': string };
+        path: { shipmentRequestId: number };
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        200: {
+          headers: { [name: string]: unknown };
+          content: { 'application/json': components['schemas']['ShipmentRequest'] };
+        };
+      };
+    };
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   /** 서버 선행 P-36(omf-all-around#105) — 승인된 IQC 생략의 실행. 본문 없음 · 200 LOT 상세. */
   '/trace/lots/{lotId}:skip-iqc': {
     parameters: {

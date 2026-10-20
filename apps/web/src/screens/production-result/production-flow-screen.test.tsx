@@ -1867,6 +1867,27 @@ describe('ProductionFlowScreen — PQC 분할', () => {
     expect(screen.queryByText(t.pqc.notInspected)).not.toBeInTheDocument();
   });
 
+  /* omf-all-around#119 — 검사기준이 「PQC 생략 허용」이라 배포가 생략(SKIPPED)으로 만든 PQC 는 검사가 아니다. */
+  it('PQC 가 생략(SKIPPED)이면 나누지 않고 「PQC 생략」 칩을 단다', async () => {
+    renderScreen(
+      [],
+      [
+        {
+          match: (request) => pathOf(request) === '/quality/inspection-requests',
+          respond: () =>
+            jsonResponse({
+              items: [{ ...PQC_REQUEST, statusCode: 'SKIPPED' }],
+              page: { page: 1, size: 20, total: 1 },
+            }),
+        },
+      ],
+    );
+
+    expect(await screen.findByText(t.pqc.skipped)).toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: t.pqc.splitTitle })).not.toBeInTheDocument();
+    expect(screen.queryByText(t.pqc.notInspected)).not.toBeInTheDocument();
+  });
+
   it('검사 off(그 W/O 에 PQC 의뢰가 없음)면 나누지 않고 실적만 보인다', async () => {
     renderScreen([], []);
 
