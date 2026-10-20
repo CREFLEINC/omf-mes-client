@@ -22,7 +22,8 @@ export interface ResourceRecommendationChip {
   source: RecommendationChipSource | null;
   /** 설비의 라인 — 고르면 라인도 함께 맞춘다. 설비 목록이 라인으로 걸러지기 때문이다. */
   productionLineId: string | null;
-  warning: 'busy' | 'outOfService' | null;
+  /** `workerBusy` 는 작업자가 그 교대에 이미 담당인 것 — 설비의 「사용 중」과 다른 말로 짧게 보인다 */
+  warning: 'busy' | 'workerBusy' | 'outOfService' | null;
 }
 
 export type ResourceRecommendationChips = Record<
@@ -33,8 +34,26 @@ export type ResourceRecommendationChips = Record<
 const workerSource = (source: WorkerRecommendationSource): RecommendationChipSource =>
   source === 'QUALIFIED' ? 'QUALIFIED' : 'RECENT';
 
+export interface RecommendationChipOptions {
+  /**
+   * 편집 중인 설비·교대·계획 시작이 저장값과 다르다. 서버는 교대·작업자의 사용 중을 «저장된» W/O 로
+   * 판정하므로 그때는 표식을 떼어 낡은 경고를 보이지 않는다 — 칩은 그대로 누를 수 있다.
+   */
+  slotChanged?: boolean;
+}
+
+/** 같은 이름이 둘 이상이면 칩만으로 가를 수 없어 사번을 붙인다. */
+const workerChipText = (
+  workers: readonly { workerNo: string; workerName: string }[],
+  worker: { workerNo: string; workerName: string },
+): string =>
+  workers.filter((item) => item.workerName === worker.workerName).length > 1
+    ? `${worker.workerName} (${worker.workerNo})`
+    : worker.workerName;
+
 export const toRecommendationChips = (
   data: ResourceRecommendations | undefined,
+  { slotChanged = false }: RecommendationChipOptions = {},
 ): ResourceRecommendationChips => ({
   plannedEquipmentId: (data?.equipments ?? []).slice(0, CHIP_LIMIT).map((item) => ({
     value: String(item.equipmentId),
@@ -60,14 +79,14 @@ export const toRecommendationChips = (
     label: `${item.shiftCode} · ${item.shiftName} (${formatDateRange(formatTimeOfDay(item.startTime), formatTimeOfDay(item.endTime))})`,
     source: null,
     productionLineId: null,
-    warning: item.busy ? 'busy' : null,
+    warning: item.busy && !slotChanged ? 'busy' : null,
   })),
-  responsibleWorkerId: (data?.workers ?? []).map((item) => ({
+  responsibleWorkerId: (data?.workers ?? []).map((item, _index, workers) => ({
     value: String(item.workerId),
-    code: item.workerName,
+    code: workerChipText(workers, item),
     label: `${item.workerNo} · ${item.workerName}`,
     source: workerSource(item.source),
     productionLineId: null,
-    warning: item.busy ? 'busy' : null,
+    warning: item.busy && !slotChanged ? 'workerBusy' : null,
   })),
 });

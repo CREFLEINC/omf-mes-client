@@ -394,7 +394,12 @@ export const WorkOrderAssignmentEditorSession = ({
             effectiveDraft.defaultScrapLocationId,
           )}
           fieldErrors={fieldErrors}
-          recommendations={toRecommendationChips(recommendations.data)}
+          recommendations={toRecommendationChips(recommendations.data, {
+            slotChanged:
+              effectiveDraft.plannedEquipmentId !== baseline.plannedEquipmentId ||
+              effectiveDraft.plannedShiftId !== baseline.plannedShiftId ||
+              effectiveDraft.plannedStartAtLocal !== baseline.plannedStartAtLocal,
+          })}
           plantId={plantId}
           fieldNotes={{
             productionLineId: lookupNote(lineSource, lines.data?.truncated),

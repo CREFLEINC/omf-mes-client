@@ -90,7 +90,69 @@ describe('toRecommendationChips', () => {
       ['작업자0', 'W-0 · 작업자0', 'RECENT', null],
       ['작업자1', 'W-1 · 작업자1', 'RECENT', null],
       ['작업자2', 'W-2 · 작업자2', 'RECENT', null],
-      ['작업자3', 'W-3 · 작업자3', 'QUALIFIED', 'busy'],
+      ['작업자3', 'W-3 · 작업자3', 'QUALIFIED', 'workerBusy'],
+    ]);
+  });
+
+  it('편집 중인 설비·교대·계획 시작이 저장값과 다르면 교대·작업자의 사용 중 표식을 뗀다', () => {
+    const data = {
+      equipments: [
+        {
+          equipmentId: 1,
+          equipmentCode: 'EQ1',
+          equipmentName: '사출기',
+          productionLineId: 7,
+          source: 'MAPPED' as const,
+          inService: true,
+          busy: true,
+        },
+      ],
+      molds: [],
+      shifts: [
+        {
+          shiftId: 2,
+          shiftCode: 'N',
+          shiftName: '야간',
+          startTime: '20:00:00',
+          endTime: '08:00:00',
+          busy: true,
+        },
+      ],
+      workers: [
+        { workerId: 3, workerNo: 'W-3', workerName: '홍길동', source: 'LINE' as const, busy: true },
+      ],
+    };
+    const warnings = (slotChanged: boolean) => {
+      const chips = toRecommendationChips(data, { slotChanged });
+      return [
+        chips.plannedEquipmentId[0]?.warning,
+        chips.plannedShiftId[0]?.warning,
+        chips.responsibleWorkerId[0]?.warning,
+      ];
+    };
+
+    expect(warnings(false)).toEqual(['busy', 'busy', 'workerBusy']);
+    expect(warnings(true)).toEqual(['busy', null, null]);
+  });
+
+  it('이름이 같은 작업자 칩에만 사번을 붙인다', () => {
+    const worker = (workerId: number, workerName: string) => ({
+      workerId,
+      workerNo: `W-${String(workerId)}`,
+      workerName,
+      source: 'QUALIFIED' as const,
+      busy: false,
+    });
+    const chips = toRecommendationChips({
+      equipments: [],
+      molds: [],
+      workers: [worker(1, '김민수'), worker(2, '이영희'), worker(3, '김민수')],
+    });
+
+    expect(chips.responsibleWorkerId.map((chip) => chip.code)).toEqual([
+      '김민수 (W-1)',
+      '이영희',
+      '김민수 (W-3)',
     ]);
   });
 

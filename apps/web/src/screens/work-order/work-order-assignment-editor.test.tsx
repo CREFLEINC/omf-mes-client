@@ -3,7 +3,7 @@ import { messages } from '@omf-mes/i18n';
 import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useState } from 'react';
-import { beforeEach, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
   WorkOrderAssignmentEditor,
@@ -329,6 +329,63 @@ it('작업자 추천 칩을 누르면 받아 둔 목록에 없는 작업자도 �
   );
 
   expect(screen.getByLabelText(t.resourcePane.fields.worker)).toHaveValue('W-99 · 김자격');
+});
+
+describe('교대·작업자 추천의 사용 중 표식', () => {
+  const busyRecommendations = () =>
+    query({
+      equipments: [],
+      molds: [],
+      shifts: [
+        {
+          shiftId: 501,
+          shiftCode: 'D',
+          shiftName: '주간',
+          startTime: '08:00:00',
+          endTime: '20:00:00',
+          busy: true,
+        },
+      ],
+      workers: [
+        { workerId: 299, workerNo: 'W-99', workerName: '김자격', source: 'LINE', busy: true },
+      ],
+    });
+  const marks = () =>
+    [
+      screen.getByRole('button', { name: /^D · 주간/ }),
+      screen.getByRole('button', { name: /W-99 · 김자격/ }),
+    ].map((chip) => chip.textContent);
+  const short = t.resourcePane.recommendation.short;
+
+  it('저장값 그대로면 보이고, 계획 시작을 고치면 떼되 칩은 누를 수 있다', async () => {
+    const user = userEvent.setup();
+    mocks.recommendations.mockReturnValue(busyRecommendations());
+    render(<Harness />);
+
+    expect(marks()).toEqual([
+      `✓ 주간 · ${short.busy}`,
+      `${t.resourcePane.recommendation.sources.RECENT}김자격 · ${short.workerBusy}`,
+    ]);
+
+    const start = screen.getByLabelText(t.planFieldsPane.fields.plannedStartAtLocal);
+    await user.clear(start);
+    await user.type(start, '2026-10-21T08:00');
+
+    expect(marks()).toEqual(['✓ 주간', `${t.resourcePane.recommendation.sources.RECENT}김자격`]);
+    await user.click(screen.getByRole('button', { name: /W-99 · 김자격/ }));
+    expect(screen.getByLabelText(t.resourcePane.fields.worker)).toHaveValue('W-99 · 김자격');
+  });
+
+  it('교대를 바꿔도 뗀다', async () => {
+    const user = userEvent.setup();
+    mocks.recommendations.mockReturnValue(busyRecommendations());
+    render(<Harness />);
+
+    await user.click(screen.getByRole('combobox', { name: t.resourcePane.fields.shift }));
+    await user.click(screen.getByRole('option', { name: t.resourcePane.clearOption }));
+
+    expect(marks()).toEqual(['주간', `${t.resourcePane.recommendation.sources.RECENT}김자격`]);
+  });
 });
 
 it('라인을 바꾸면 기본 위치 셋을 그 라인 기본값으로 덮어쓰고, 칸마다 맞는 창고 유형만 고르게 한다', async () => {

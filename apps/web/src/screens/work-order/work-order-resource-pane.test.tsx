@@ -158,7 +158,7 @@ describe('WorkOrderResourcePane', () => {
             label: 'W-12 · 이최근',
             source: 'RECENT',
             productionLineId: null,
-            warning: 'busy',
+            warning: 'workerBusy',
           },
         ],
       },
@@ -189,7 +189,7 @@ describe('WorkOrderResourcePane', () => {
         .map((chip) => chip.textContent),
     ).toEqual([
       `${t.recommendation.sources.QUALIFIED}김자격`,
-      `${t.recommendation.sources.RECENT}이최근 · ${t.recommendation.short.busy}`,
+      `${t.recommendation.sources.RECENT}이최근 · ${t.recommendation.short.workerBusy}`,
     ]);
     const recent = within(workers).getByRole('button', {
       name: `${t.recommendation.sources.RECENT}, W-12 · 이최근, ${t.recommendation.busy}`,

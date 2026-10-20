@@ -149,7 +149,7 @@ export const workOrder = {
       busy: '같은 시간대 배정 있음',
       outOfService: '비가동',
       /* 칩 안에 넣는 짧은 말 — 긴 문장은 접근 이름이 말한다. */
-      short: { busy: '사용 중', outOfService: '비가동' },
+      short: { busy: '사용 중', workerBusy: '배정 있음', outOfService: '비가동' },
       /* 지금 칸의 값과 같은 후보. 색만으로 알리지 않는다. */
       assigned: '배정됨',
     },
