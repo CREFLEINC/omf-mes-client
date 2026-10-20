@@ -166,6 +166,14 @@ describe('P-02-01 작업 시작 — 단말 게이팅', () => {
       await screen.findByRole('button', { name: selectName(WORK_ORDER.workOrderNo) }),
     );
     await waitFor(() => expect(startButton()).toBeEnabled());
+
+    /* 선택 칸의 설비는 「확인 중」에 머물지 않고 미지정이라고 말한다. */
+    expect(
+      screen.getByText(new RegExp(`${t.selection.equipment} ${t.list.unassignedEquipmentBadge}`)),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText(new RegExp(`${t.selection.equipment} ${t.selection.unknown}`)),
+    ).toBeNull();
     await rendered.user.click(startButton());
 
     await waitFor(() => expect(sessionBodies(rendered.recorded.bodies)).toHaveLength(1));

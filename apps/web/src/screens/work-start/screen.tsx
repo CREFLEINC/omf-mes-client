@@ -715,7 +715,13 @@ export const WorkStartScreen = () => {
       <SelectionCard
         workOrder={selected}
         equipmentId={equipmentId}
-        equipmentCode={equipmentCode}
+        /* 설비 없는 단말은 이 시작이 쓸 W/O 의 설비를 보인다 — 그것도 없으면 「설비 미지정」. */
+        equipmentCode={
+          isEquipmentMissing && selected !== null
+            ? (selected.plannedEquipmentCode ??
+              (selected.plannedEquipmentId == null ? t.list.unassignedEquipmentBadge : null))
+            : equipmentCode
+        }
         uomCodeOf={uomCodeOf}
       />
 
