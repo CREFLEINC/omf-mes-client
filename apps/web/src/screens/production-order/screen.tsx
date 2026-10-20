@@ -159,7 +159,13 @@ export const ProductionOrderScreen = () => {
         />
       )}
 
-      <SaveErrorBanner error={autoPlan.error} />
+      <SaveErrorBanner
+        error={autoPlan.error}
+        onReload={() => {
+          void list.refetch();
+          void detail.refetch();
+        }}
+      />
       <div className="production-order-detail-grid">
         <ProductionOrderBasicPane
           isSelected={isSelected}

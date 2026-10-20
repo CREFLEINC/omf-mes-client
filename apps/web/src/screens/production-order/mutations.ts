@@ -24,7 +24,6 @@ export const useAutoPlanMutation = (options: AutoPlanOptions): MasterWriteResult
           path: { productionOrderId },
           header: { 'Idempotency-Key': headers['Idempotency-Key'] },
         },
-        body: {},
       }),
     etagPath: null,
     /* 계획·W/O 화면이 들고 있는 캐시도 이 P/O 의 계획이 바뀐 것을 봐야 한다. */

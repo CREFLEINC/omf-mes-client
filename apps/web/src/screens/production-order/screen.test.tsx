@@ -369,7 +369,7 @@ describe('ProductionOrderScreen', () => {
       expect(await screen.findByText(t.autoPlan.confirmed)).toBeInTheDocument();
       expect(posts).toHaveLength(1);
       expect(posts[0]?.headers.get('Idempotency-Key')).toMatch(/\S/);
-      expect(await posts[0]?.json()).toEqual({});
+      expect(await posts[0]?.text()).toBe('');
       await waitFor(() =>
         expect(screen.queryByRole('button', { name: t.actions.autoPlan })).not.toBeInTheDocument(),
       );
@@ -377,23 +377,56 @@ describe('ProductionOrderScreen', () => {
       expect(within(basic).queryByRole('listitem')).not.toBeInTheDocument();
     });
 
-    it.each([
-      ['DRAFT', ['LINE_UNKNOWN'], t.autoPlan.draft],
-      ['NOT_PLANNED', ['BOM_MISSING', 'ROUTING_AMBIGUOUS'], t.autoPlan.notPlanned],
-    ])('%s 결과를 알림으로 알린다', async (outcome, reasons, text) => {
-      const { routes } = autoPlanRoutes(() => result(outcome, reasons));
+    it('초안이면 라인을 정해 확정하라고 알린다', async () => {
+      const { routes } = autoPlanRoutes(() =>
+        result('DRAFT', ['LINE_UNKNOWN', 'PLAN_NOT_CONFIRMED']),
+      );
       const button = await openSelected(routes);
 
       await userEvent.setup().click(button);
 
-      expect(await screen.findByText(text)).toBeInTheDocument();
-      if (outcome === 'NOT_PLANNED') {
-        expect(
-          screen.getByText(
-            `${t.values.autoPlanReasons.BOM_MISSING} · ${t.values.autoPlanReasons.ROUTING_AMBIGUOUS}`,
-          ),
-        ).toBeInTheDocument();
-      }
+      expect(await screen.findByText(t.autoPlan.draft)).toBeInTheDocument();
+    });
+
+    it.each([
+      [
+        ['BOM_MISSING', 'ROUTING_AMBIGUOUS'],
+        `${t.values.autoPlanReasons.BOM_MISSING} · ${t.values.autoPlanReasons.ROUTING_AMBIGUOUS}`,
+      ],
+      /* 확정 계획이 수량을 다 덮지 못한 경우 — 남은 수량 계획을 만들지 않고 사유만 알린다. */
+      [['QTY_REMAINING'], t.values.autoPlanReasons.QTY_REMAINING],
+    ])('계획을 못 만들면 사유(%j)를 알린다', async (reasons, text) => {
+      const { routes } = autoPlanRoutes(() => result('NOT_PLANNED', reasons));
+      const button = await openSelected(routes);
+
+      await userEvent.setup().click(button);
+
+      expect(await screen.findByText(t.autoPlan.notPlanned)).toBeInTheDocument();
+      expect(screen.getByText(text)).toBeInTheDocument();
+    });
+
+    it('충돌(409)이면 공통 충돌 문구와 다시 불러오기를 낸다', async () => {
+      const { routes, reads } = autoPlanRoutes(() =>
+        jsonResponse(
+          {
+            code: 'VERSION_CONFLICT',
+            message: 'synthetic conflict',
+            conflictCause: 'erpSync',
+          },
+          { status: 409 },
+        ),
+      );
+      const button = await openSelected(routes);
+      const user = userEvent.setup();
+
+      await user.click(button);
+
+      expect(await screen.findByText(messages.conflict.erpSync)).toBeInTheDocument();
+      const readsBefore = reads.length;
+      await user.click(screen.getByRole('button', { name: messages.conflict.reloadAction }));
+      await waitFor(() =>
+        expect(reads.slice(readsBefore)).toEqual(expect.arrayContaining(['list', 'detail'])),
+      );
     });
 
     it('응답을 기다리는 동안 단추를 잠근다', async () => {

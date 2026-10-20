@@ -182,10 +182,19 @@ describe('ProductionOrderListPane 쪽과 상태', () => {
     );
   });
 
-  it('자동 계획 결과가 아직 없는 P/O 는 - 로 보인다', () => {
-    renderPane();
+  it('자동 계획 결과를 모르면 칸을 비우고, 사유 없는 확인 필요는 말풍선을 달지 않는다', () => {
+    renderPane({
+      rows: rows.map((row) => ({
+        ...row,
+        autoPlan:
+          row.productionOrderNo === 'SYNTH-PO-B' ? null : { status: 'NEEDS_REVIEW', reasons: [] },
+      })),
+    });
 
-    expect([...dataRow('SYNTH-PO-B').cells].at(-1)).toHaveTextContent(/^-$/);
+    expect([...dataRow('SYNTH-PO-B').cells].at(-1)).toBeEmptyDOMElement();
+    const cell = [...dataRow('SYNTH-PO-A').cells].at(-1);
+    expect(cell).toHaveTextContent(new RegExp(`^${t.values.autoPlanStatus.NEEDS_REVIEW}$`));
+    expect(cell?.querySelector('[title]')).toBeNull();
   });
 
   it('로딩은 표와 빈 상태를 대체한다', () => {

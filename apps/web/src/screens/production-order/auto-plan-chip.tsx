@@ -14,7 +14,7 @@ export interface AutoPlanChipProps {
 }
 
 export const AutoPlanChip = ({ autoPlan, withReasonHint = true }: AutoPlanChipProps) => {
-  if (autoPlan === null) return '-';
+  if (autoPlan === null) return null;
 
   const reasons = withReasonHint ? autoPlanReasonLabels(autoPlan.reasons).join(' · ') : '';
   return (

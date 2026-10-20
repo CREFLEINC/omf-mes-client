@@ -623,8 +623,8 @@ export interface ProductionOrderAutoPlan {
 }
 
 /**
- * 서버 선행 — P/O 에 자동 계획 결과를 싣는다. 계약 사본에 오르기 전의 서버·목 응답에는 칸이
- * 없으므로 선택으로 둔다.
+ * 서버 선행 — P/O 에 자동 계획 결과를 싣는다. 서버는 늘 싣지만 계약이 선택으로 두므로, 없으면
+ * 「모른다」로 읽고 아무것도 보이지 않는다. 기능 전에 받은 P/O 는 사유 없이 NEEDS_REVIEW 다.
  */
 export type ProductionOrderForward = components['schemas']['ProductionOrder'] & {
   autoPlan?: ProductionOrderAutoPlan;
@@ -1003,11 +1003,15 @@ export interface ForwardPaths {
         path: { productionOrderId: number };
         cookie?: never;
       };
-      requestBody: { content: { 'application/json': Record<string, never> } };
+      requestBody?: never;
       responses: {
         200: {
           headers: { [name: string]: unknown };
           content: { 'application/json': ProductionOrderAutoPlanResult };
+        };
+        409: {
+          headers: { [name: string]: unknown };
+          content: { 'application/json': components['schemas']['ProductionConflictResponse'] };
         };
       };
     };

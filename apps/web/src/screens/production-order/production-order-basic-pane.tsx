@@ -172,12 +172,16 @@ export const ProductionOrderBasicPane = ({
       value: describeReference(resolveReference(plants, data.plantId)),
       tier: 'secondary',
     },
-    {
-      key: 'autoPlan',
-      label: t.fields.autoPlan,
-      value: <AutoPlanChip autoPlan={data.autoPlan} withReasonHint={false} />,
-      tier: 'secondary',
-    },
+    ...(data.autoPlan === null
+      ? []
+      : [
+          {
+            key: 'autoPlan',
+            label: t.fields.autoPlan,
+            value: <AutoPlanChip autoPlan={data.autoPlan} withReasonHint={false} />,
+            tier: 'secondary' as const,
+          },
+        ]),
     ...(data.autoPlan === null || data.autoPlan.reasons.length === 0
       ? []
       : [
