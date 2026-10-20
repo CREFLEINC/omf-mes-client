@@ -237,6 +237,16 @@ export const iqcInspection = {
       majorMissing: '불량 대분류를 선택하세요.',
       minorMissing: '불량 상세를 선택하세요.',
     },
+    /** 합격판정개수 기준 자동 판정(omf-all-around#125) — 기준에 합격판정개수가 있을 때만 선다. */
+    judgmentChange: {
+      basis: (acceptanceNumber: number): string =>
+        `합격판정개수 ${String(acceptanceNumber)} 기준 자동 판정`,
+      expected: (judgment: string): string => `자동 판정: ${judgment}`,
+      reason: '판정 변경 사유',
+      reasonPlaceholder: '자동 판정과 다르게 확정하는 이유를 입력해 주세요.',
+      required: '자동 판정과 다른 판정은 변경 사유를 입력해야 확정할 수 있습니다.',
+      reasonMissing: '판정 변경 사유를 입력하세요.',
+    },
     confirmBlockedByJudgment: '종합 판정을 선택해야 확정할 수 있습니다.',
     confirmBlockedByConfirmed: '이미 확정된 회차입니다.',
     /*
