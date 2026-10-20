@@ -34,6 +34,7 @@ import {
   useInspectionRounds,
   useCodeValues,
   useConfirmResult,
+  useCauseCodes,
   useDefectCodes,
   useDraftRejectionRecords,
   useRejectedLotFollowUp,
@@ -206,6 +207,8 @@ export const IqcInspectionScreen = () => {
   const [changeReason, setChangeReason] = useState('');
   const isRejected = judgment === REJECTED_JUDGMENT;
   const defectCodes = useDefectCodes(isRejected);
+  /* 추정 원인(omf-all-around#130) — 선택 입력. 불합격일 때만 부른다. */
+  const causeCodes = useCauseCodes(isRejected);
   const resolvedDefect = resolveDefectCode(defectCodes.data ?? [], rejection);
   /* 확정된 불합격 회차면 LOT 이 불량인지 보고 처분·반품으로 잇는다(omf-all-around#106 후속 (나)). */
   const followUp = useRejectedLotFollowUp(
@@ -346,7 +349,8 @@ export const IqcInspectionScreen = () => {
     (isRejected &&
       (rejection.majorId !== savedRejection.majorId ||
         rejection.minorId !== savedRejection.minorId ||
-        rejection.description !== savedRejection.description));
+        rejection.description !== savedRejection.description ||
+        rejection.causeId !== savedRejection.causeId));
 
   const rows = queue.data?.rows ?? [];
   const pageView = toPageView(queue.data?.page ?? { page, size: 0, total: 0 }, rows.length);
@@ -488,6 +492,10 @@ export const IqcInspectionScreen = () => {
             defectQty: rejectedQty > 0 ? rejectedQty : inspected,
             defectDescription:
               rejection.description.trim() === '' ? null : rejection.description.trim(),
+            /* 추정 원인(omf-all-around#130) — 골랐을 때만 싣는다. 서버가 회차의 기록을 통째로 갈아 끼우므로 빼면 비워진다. */
+            ...(rejection.causeId === ''
+              ? {}
+              : { suspectedCauseCodeId: Number(rejection.causeId) }),
           },
         ];
 
@@ -631,6 +639,7 @@ export const IqcInspectionScreen = () => {
                 {isRejected && (
                   <RejectionReason
                     codes={defectCodes.data ?? []}
+                    causes={causeCodes.data ?? []}
                     draft={rejection}
                     onChange={setRejection}
                     disabled={confirm.isSaving}
