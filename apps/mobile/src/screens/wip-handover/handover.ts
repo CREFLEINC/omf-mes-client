@@ -31,7 +31,7 @@ const HANDOVER_LOT_STATUS = 'NORMAL';
  * 보류가 아니라 상태만 바꾸므로 홀드 판정으로는 걸리지 않는다(omf-all-around#127).
  *
  * 보류를 상태보다 먼저 본다 - 보류 등록이 LOT 을 검사 대기로 옮기므로, 원인이 보류인 검사 대기 LOT 에
- * 「PQC 판정을 먼저」라고 하면 안내가 어긋난다(#127 실검증 지적 · 서버 P-67 과 같은 순서).
+ * 「PQC 판정을 먼저」라고 하면 안내가 어긋난다(#127 실검증 지적 · 서버 P-68 과 같은 순서).
  */
 export const lotProblemOf = (lot: Lot): LotProblem | null => {
   if (lot.lotTypeCode !== PRODUCTION) {
