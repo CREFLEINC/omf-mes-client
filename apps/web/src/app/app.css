@@ -10701,6 +10701,12 @@ button.app-button-neutral {
   table-layout: fixed;
 }
 
+/* 줄 오류는 공정 이름 바로 아래 — 줄 높이만 늘고 열 폭은 그대로다. */
+.terminal-map-process-cell {
+  display: grid;
+  gap: var(--space-1);
+}
+
 /* 열이 열한 개라 칸 좌우 여백을 한 단계 줄여(12px → 8px) 1280 폭 카드 안에 들어오게 한다. */
 .terminal-map-matrix table th,
 .terminal-map-matrix table td {

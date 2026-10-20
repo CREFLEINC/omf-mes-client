@@ -1,4 +1,4 @@
-import type { components } from '@omf-mes/api-client';
+import type { ApiError, components } from '@omf-mes/api-client';
 
 import { ALL_CLOSED, FLAG_KEYS, type FlagKey } from './flags';
 import type { ProcessRowView } from './types';
@@ -26,11 +26,14 @@ export type GridDraft = ProcessRowView[];
 export const hasProcess = (draft: GridDraft, processId: number): boolean =>
   draft.some((row) => row.processId === processId);
 
-/** 공정 한 줄을 더한다. 새 줄은 **전부 닫힘**이다. */
+/**
+ * 공정 한 줄을 더한다. 새 줄은 「작업 시작」만 켠 채로 선다 — 기능이 하나도 없는 줄은 저장할 수 없어,
+ * 더하자마자 경고부터 보이지 않게 한다.
+ */
 export const addProcess = (draft: GridDraft, processId: number, processName: string): GridDraft => {
   if (hasProcess(draft, processId)) return draft;
 
-  return [...draft, { processId, processName, ...ALL_CLOSED }];
+  return [...draft, { processId, processName, ...ALL_CLOSED, canStartWork: true }];
 };
 
 export const removeProcess = (draft: GridDraft, processId: number): GridDraft =>
@@ -53,6 +56,43 @@ export const setRow = (draft: GridDraft, processId: number, open: boolean): Grid
 
 /** 한 줄이 전부 열려 있는가 — 「모두 열기」 칸의 상태다. */
 export const isRowOpen = (row: ProcessRowView): boolean => FLAG_KEYS.every((key) => row[key]);
+
+/** 아무 기능도 켜지 않은 줄 — 그 공정에서 할 수 있는 일이 없어 서버가 받지 않는다. */
+export const hasNoFlag = (row: ProcessRowView): boolean => FLAG_KEYS.every((key) => !row[key]);
+
+const ROW_FIELD = /^items\[(\d+)\]$/;
+
+export interface SplitRowErrors {
+  /** 공정 번호 → 그 줄에 붙일 서버 문구 */
+  rows: ReadonlyMap<number, string>;
+  /** 줄에 붙이지 못한 나머지 — 띠로 낸다 */
+  rest: ApiError | null;
+}
+
+/**
+ * 서버가 `items[i]` 로 짚은 오류를 줄에 붙인다. `i` 는 «보낸» 본문의 순서라, 보낼 때의 공정 순서
+ * (`sentProcessIds`)로 공정을 찾는다 — 그 뒤 표를 고쳐도 엉뚱한 줄에 붙지 않는다.
+ */
+export const splitRowErrors = (
+  error: ApiError | null,
+  sentProcessIds: readonly number[],
+): SplitRowErrors => {
+  if (error?.kind !== 'validation') return { rows: new Map(), rest: error };
+
+  const rows = new Map<number, string>();
+  const remaining = error.errors.filter((item) => {
+    const index = item.field === undefined ? null : ROW_FIELD.exec(item.field)?.[1];
+    const processId = index == null ? undefined : sentProcessIds[Number(index)];
+    if (processId === undefined || rows.has(processId)) return true;
+    rows.set(processId, item.message);
+    return false;
+  });
+
+  return {
+    rows,
+    rest: remaining.length === 0 ? null : { ...error, errors: remaining },
+  };
+};
 
 /**
  * 저장할 것이 있는가.

@@ -1,5 +1,6 @@
 import { messages } from '@omf-mes/i18n';
-import { screen, within } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -119,5 +120,125 @@ describe('TerminalProcessMapScreen 표시', () => {
 
     expect(await screen.findByRole('button', { name: t.grid.save })).toBeInTheDocument();
     expect(screen.getAllByText(t.grid.purpose)).toHaveLength(1);
+  });
+});
+
+describe('TerminalProcessMapScreen 기능 구성 저장', () => {
+  const processRow = (processId: number, processName: string, flags: Record<string, boolean>) => ({
+    terminalProcessId: processId + 1000,
+    terminalId: 701,
+    processId,
+    processName,
+    ...flags,
+  });
+  const renderWith = (rows: unknown[], put?: StubRoute['respond']) => {
+    const puts: unknown[] = [];
+    const extra: StubRoute[] = [
+      {
+        match: (request) =>
+          request.method === 'PUT' && path(request) === '/mdm/terminals/701/processes',
+        respond: async (request) => {
+          puts.push(await request.clone().json());
+          return put === undefined ? jsonResponse(page(rows)) : put(request);
+        },
+      },
+      {
+        match: (request) => path(request) === '/mdm/terminals/701/processes',
+        respond: () => jsonResponse(page(rows), { headers: { ETag: '"1"' } }),
+      },
+    ];
+    renderWithProviders(<TerminalProcessMapScreen />, {
+      fetch: createStubFetch([...extra, ...routes]),
+      route: '/system/terminal-process-map?terminal=701',
+      session: null,
+    });
+    return { puts, user: userEvent.setup() };
+  };
+  const flag = (processName: string, key: keyof typeof t.flags) =>
+    screen.getByRole('checkbox', { name: `${processName} ${t.flags[key]}` });
+
+  it('기능을 하나도 켜지 않은 줄을 짚고 저장을 막으며, 하나라도 켜면 풀린다', async () => {
+    const { user } = renderWith([
+      processRow(11, '합성 사출', { canStartWork: true }),
+      processRow(12, '합성 조립', {}),
+    ]);
+
+    const save = await screen.findByRole('button', { name: t.grid.save });
+    const row = screen.getByText('합성 조립').closest('tr');
+    if (row === null) throw new Error('행 없음');
+    expect(within(row).getByText(t.grid.noFlag)).toBeInTheDocument();
+    expect(screen.getAllByText(t.grid.noFlag)).toHaveLength(1);
+    await user.click(flag('합성 사출', 'canCompleteWork'));
+    expect(save).toBeDisabled();
+
+    await user.click(flag('합성 조립', 'canInputResult'));
+
+    expect(screen.queryByText(t.grid.noFlag)).not.toBeInTheDocument();
+    expect(save).toBeEnabled();
+  });
+
+  const rejectSecondRow = () =>
+    renderWith(
+      [
+        processRow(11, '합성 사출', { canStartWork: true }),
+        processRow(12, '합성 조립', { canPrintLabel: true }),
+      ],
+      () =>
+        jsonResponse(
+          {
+            errors: [
+              {
+                scope: 'field',
+                field: 'items[1]',
+                code: 'INVALID',
+                message: '합성 서버 문구 — 기능 없음',
+              },
+            ],
+          },
+          { status: 400 },
+        ),
+    );
+  const SERVER_MESSAGE = '합성 서버 문구 — 기능 없음';
+  const saveAndReject = async () => {
+    const rendered = rejectSecondRow();
+    await screen.findByRole('button', { name: t.grid.save });
+    await rendered.user.click(flag('합성 조립', 'canInputResult'));
+    await rendered.user.click(screen.getByRole('button', { name: t.grid.save }));
+    await waitFor(() => expect(rendered.puts).toHaveLength(1));
+    await screen.findByText(SERVER_MESSAGE);
+    return rendered;
+  };
+
+  it('서버가 줄을 짚어 거절하면 그 줄에 서버 문구를 붙인다', async () => {
+    const { user, puts } = rejectSecondRow();
+
+    await screen.findByRole('button', { name: t.grid.save });
+    await user.click(flag('합성 조립', 'canInputResult'));
+    await user.click(screen.getByRole('button', { name: t.grid.save }));
+
+    await waitFor(() => expect(puts).toHaveLength(1));
+    const row = (await screen.findByText('합성 서버 문구 — 기능 없음')).closest('tr');
+    expect(row).not.toBeNull();
+    expect(within(row as HTMLElement).getByText('합성 조립')).toBeInTheDocument();
+    /* 줄에 붙인 문구는 띠에 다시 내지 않는다. */
+    expect(screen.getAllByText('합성 서버 문구 — 기능 없음')).toHaveLength(1);
+  });
+
+  it('서버가 짚은 줄을 고치면 그 줄의 문구만 지운다', async () => {
+    const { user } = await saveAndReject();
+
+    await user.click(flag('합성 사출', 'canPrintLabel'));
+    expect(screen.getByText(SERVER_MESSAGE)).toBeInTheDocument();
+
+    await user.click(flag('합성 조립', 'canInputInspection'));
+    expect(screen.queryByText(SERVER_MESSAGE)).not.toBeInTheDocument();
+  });
+
+  it('「변경 취소」하면 서버가 짚은 문구도 지운다', async () => {
+    const { user } = await saveAndReject();
+
+    await user.click(screen.getByRole('button', { name: t.grid.reset }));
+
+    expect(screen.queryByText(SERVER_MESSAGE)).not.toBeInTheDocument();
   });
 });

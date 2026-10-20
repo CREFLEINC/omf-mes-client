@@ -119,6 +119,8 @@ export const workStart: Translated<typeof ko.workStart> = {
     checking: 'Đang kiểm tra cấu hình chức năng của máy trạm.',
     denied:
       'Máy trạm này không được bắt đầu công việc của công đoạn này. Hãy cấp quyền trong thiết lập máy trạm (Thiết lập ánh xạ máy quét - công đoạn).',
+    deniedProcess: (processName: string): string =>
+      `Máy trạm này chưa được ánh xạ bắt đầu công việc cho công đoạn ${processName}. Hãy yêu cầu quản trị viên ánh xạ máy trạm - công đoạn.`,
     unavailable: 'Không xác nhận được quyền của máy trạm này. Hãy thử lại.',
     retry: 'Kiểm tra lại',
 

@@ -70,6 +70,7 @@ export type {
   ProductionOrderAutoPlanResult,
   ProductionOrderForward,
   ProductionOrderListQueryForward,
+  WorkOrderForward,
   ResourceRecommendationSource,
   ResourceRecommendations,
   ShiftRecommendation,

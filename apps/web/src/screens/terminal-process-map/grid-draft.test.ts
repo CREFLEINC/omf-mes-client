@@ -3,11 +3,13 @@ import { describe, expect, it } from 'vitest';
 import { ALL_CLOSED, FLAG_KEYS } from './flags';
 import {
   addProcess,
+  hasNoFlag,
   hasProcess,
   isDirty,
   isRowOpen,
   removeProcess,
   setRow,
+  splitRowErrors,
   toggleFlag,
   toReplaceBody,
   type GridDraft,
@@ -29,11 +31,11 @@ const row = (processId: number, patch: Partial<ProcessRowView> = {}): ProcessRow
 });
 
 describe('addProcess', () => {
-  it('새 줄은 전부 닫힘이다 — 더하는 것과 여는 것은 다른 일이다', () => {
+  it('새 줄은 작업 시작만 켜고 나머지는 닫는다', () => {
     const [added] = addProcess([], 7, '사출');
 
     expect(added).toBeDefined();
-    expect(FLAG_KEYS.every((key) => added?.[key] === false)).toBe(true);
+    expect(FLAG_KEYS.filter((key) => added?.[key] === true)).toEqual(['canStartWork']);
   });
 
   it('이미 있는 공정은 두 줄로 두지 않는다', () => {
@@ -138,5 +140,38 @@ describe('toReplaceBody', () => {
 
   it('⛔ 승인 플래그를 만들지 않는다 — 계약에 없다', () => {
     expect('canApprove' in (toReplaceBody([row(7)]).items[0] ?? {})).toBe(false);
+  });
+});
+
+describe('기능 없는 줄과 서버의 줄 오류', () => {
+  it('여덟 칸이 모두 꺼진 줄만 기능 없음이다', () => {
+    expect(hasNoFlag(row(1))).toBe(true);
+    expect(hasNoFlag(row(1, { canReturnMaterial: true }))).toBe(false);
+  });
+
+  it('items[i] 는 보낸 순서로 공정을 찾고, 나머지는 띠로 남긴다', () => {
+    const split = splitRowErrors(
+      {
+        kind: 'validation',
+        status: 400,
+        errors: [
+          { scope: 'field', field: 'items[1]', code: 'INVALID', message: '둘째 줄' },
+          { scope: 'field', field: 'items[0].processId', code: 'DUPLICATE', message: '중복' },
+          { scope: 'field', field: 'items[9]', code: 'INVALID', message: '모르는 줄' },
+        ],
+      },
+      [31, 32],
+    );
+
+    expect([...split.rows]).toEqual([[32, '둘째 줄']]);
+    expect(split.rest).toEqual({
+      kind: 'validation',
+      status: 400,
+      errors: [
+        { scope: 'field', field: 'items[0].processId', code: 'DUPLICATE', message: '중복' },
+        { scope: 'field', field: 'items[9]', code: 'INVALID', message: '모르는 줄' },
+      ],
+    });
+    expect(splitRowErrors(null, [31]).rest).toBeNull();
   });
 });

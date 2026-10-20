@@ -684,6 +684,21 @@ export interface ProductionOrderAutoPlanResult {
   reasons: AutoPlanReason[];
 }
 
+/**
+ * 서버 선행 — W/O 가 자기 공정(라우팅 공정)을 싣는다. 단말 게이팅이 단말의 공정 대신 고른 W/O 의
+ * 공정으로 판정한다. 싣지 않는 서버가 있어 선택으로 둔다.
+ */
+export type WorkOrderForward = components['schemas']['WorkOrder'] & {
+  processId?: number;
+  processCode?: string;
+  processName?: string;
+};
+
+type WorkOrdersPath = paths['/production/work-orders'];
+type WorkOrdersGet = WorkOrdersPath['get'];
+type WorkOrderPath = paths['/production/work-orders/{workOrderId}'];
+type WorkOrderGet = WorkOrderPath['get'];
+
 type ProductionOrdersGet = paths['/planning/production-orders']['get'];
 type ProductionOrderGet = paths['/planning/production-orders/{productionOrderId}']['get'];
 
@@ -1003,6 +1018,29 @@ export interface ForwardPaths {
     head?: never;
     patch?: never;
     trace?: never;
+  };
+  '/production/work-orders': Omit<WorkOrdersPath, 'get'> & {
+    get: Omit<WorkOrdersGet, 'responses'> & {
+      responses: Omit<WorkOrdersGet['responses'], 200> & {
+        200: Omit<WorkOrdersGet['responses'][200], 'content'> & {
+          content: {
+            'application/json': Omit<
+              WorkOrdersGet['responses'][200]['content']['application/json'],
+              'items'
+            > & { items: WorkOrderForward[] };
+          };
+        };
+      };
+    };
+  };
+  '/production/work-orders/{workOrderId}': Omit<WorkOrderPath, 'get'> & {
+    get: Omit<WorkOrderGet, 'responses'> & {
+      responses: Omit<WorkOrderGet['responses'], 200> & {
+        200: Omit<WorkOrderGet['responses'][200], 'content'> & {
+          content: { 'application/json': WorkOrderForward };
+        };
+      };
+    };
   };
   '/planning/production-orders': Unused & {
     parameters: NoParameters;
