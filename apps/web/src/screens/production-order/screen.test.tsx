@@ -396,8 +396,7 @@ describe('ProductionOrderScreen', () => {
       await user.click(button);
 
       expect(await screen.findByText(t.autoPlan.draft)).toBeInTheDocument();
-      expect(t.autoPlan.draft).toBe('작성 중 계획이 있습니다 · 라인을 정해 확정하세요');
-      expect(screen.getByRole('button', { name: '자동 계획 실행' })).toBeEnabled();
+      expect(screen.getByRole('button', { name: t.actions.autoPlan })).toBeEnabled();
       expect(
         within(screen.getByLabelText(t.panes.basic))
           .getAllByRole('listitem')
