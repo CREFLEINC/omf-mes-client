@@ -169,7 +169,7 @@ describe('P-02-01 작업 시작 — 단말 게이팅', () => {
 
     /* 선택 칸의 설비는 「확인 중」에 머물지 않고 미지정이라고 말한다. */
     expect(
-      screen.getByText(new RegExp(`${t.selection.equipment} ${t.list.unassignedEquipmentBadge}`)),
+      screen.getByText(new RegExp(`^${t.list.unassignedEquipmentBadge} · ${t.selection.mold}`)),
     ).toBeInTheDocument();
     expect(
       screen.queryByText(new RegExp(`${t.selection.equipment} ${t.selection.unknown}`)),
