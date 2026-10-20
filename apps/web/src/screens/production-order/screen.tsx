@@ -1,6 +1,7 @@
 import { AlertBanner, Breadcrumb, Button, PageHeader, useToast } from '@crefle/web-ui';
 import type { ProductionOrderAutoPlanResult } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
+import { useQueryClient } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router';
 
@@ -24,7 +25,7 @@ import { ProductionOrderBasicPane } from './production-order-basic-pane';
 import { ProductionOrderDetailListPane } from './production-order-detail-list-pane';
 import { ProductionOrderFilterBar } from './production-order-filter-bar';
 import { ProductionOrderListPane } from './production-order-list-pane';
-import { useProductionOrderDetail, useProductionOrderList } from './queries';
+import { productionOrderKeys, useProductionOrderDetail, useProductionOrderList } from './queries';
 import {
   lookupNote,
   useBusinessUnitReferenceLookup,
@@ -66,6 +67,7 @@ export const ProductionOrderScreen = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
   const toast = useToast();
+  const queryClient = useQueryClient();
   const filters = useMemo(() => readFilters(searchParams), [searchParams]);
   const page = readPage(searchParams);
   const selectedId = readSelectedProductionOrderId(searchParams);
@@ -172,8 +174,8 @@ export const ProductionOrderScreen = () => {
       <SaveErrorBanner
         error={autoPlan.error}
         onReload={() => {
-          void list.refetch();
-          void detail.refetch();
+          autoPlan.reset();
+          void queryClient.invalidateQueries({ queryKey: productionOrderKeys.all });
         }}
       />
       <div className="production-order-detail-grid">

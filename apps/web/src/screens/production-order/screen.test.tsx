@@ -293,7 +293,10 @@ describe('ProductionOrderScreen', () => {
     /* 자동 계획이 성공하면 서버가 그 P/O 를 「완료」로 바꿔 내린다. */
     const autoPlanRoutes = (
       respond: (request: Request) => Response | Promise<Response>,
-      { initial = needsReview }: { initial?: object } = {},
+      {
+        initial = needsReview,
+        afterSuccess = done,
+      }: { initial?: object; afterSuccess?: object } = {},
     ) => {
       let current: object = initial;
       const posts: Request[] = [];
@@ -304,7 +307,7 @@ describe('ProductionOrderScreen', () => {
           respond: async (request) => {
             posts.push(request.clone());
             const response = await respond(request);
-            if (response.ok) current = done;
+            if (response.ok) current = afterSuccess;
             return response;
           },
         },
@@ -377,15 +380,32 @@ describe('ProductionOrderScreen', () => {
       expect(within(basic).queryByRole('listitem')).not.toBeInTheDocument();
     });
 
-    it('초안이면 라인을 정해 확정하라고 알린다', async () => {
-      const { routes } = autoPlanRoutes(() =>
-        result('DRAFT', ['LINE_UNKNOWN', 'PLAN_NOT_CONFIRMED']),
+    it('라인 미정 작성 중 계획이 이미 있으면 다시 눌러도 같은 상태를 알리고 단추를 남긴다', async () => {
+      const existingDraft = {
+        ...order,
+        statusCode: 'RECEIVED',
+        autoPlan: { status: 'NEEDS_REVIEW', reasons: ['LINE_UNKNOWN', 'PLAN_NOT_CONFIRMED'] },
+      };
+      const { routes } = autoPlanRoutes(
+        () => result('DRAFT', ['LINE_UNKNOWN', 'PLAN_NOT_CONFIRMED']),
+        { initial: existingDraft, afterSuccess: existingDraft },
       );
       const button = await openSelected(routes);
+      const user = userEvent.setup();
 
-      await userEvent.setup().click(button);
+      await user.click(button);
 
       expect(await screen.findByText(t.autoPlan.draft)).toBeInTheDocument();
+      expect(t.autoPlan.draft).toBe('작성 중 계획이 있습니다 · 라인을 정해 확정하세요');
+      expect(screen.getByRole('button', { name: '자동 계획 실행' })).toBeEnabled();
+      expect(
+        within(screen.getByLabelText(t.panes.basic))
+          .getAllByRole('listitem')
+          .map((node) => node.textContent),
+      ).toEqual([
+        t.values.autoPlanReasons.LINE_UNKNOWN,
+        t.values.autoPlanReasons.PLAN_NOT_CONFIRMED,
+      ]);
     });
 
     it.each([
@@ -427,6 +447,7 @@ describe('ProductionOrderScreen', () => {
       await waitFor(() =>
         expect(reads.slice(readsBefore)).toEqual(expect.arrayContaining(['list', 'detail'])),
       );
+      expect(screen.queryByText(messages.conflict.erpSync)).not.toBeInTheDocument();
     });
 
     it('응답을 기다리는 동안 단추를 잠근다', async () => {

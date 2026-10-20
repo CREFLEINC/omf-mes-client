@@ -44,7 +44,7 @@ export const productionOrder: Translated<typeof ko.productionOrder> = {
     nextPage: 'Sau',
     integrationSync: 'Xem tình trạng liên kết',
     productionPlan: 'Triển khai · lập W/O',
-    autoPlan: 'Lập kế hoạch tự động',
+    autoPlan: 'Chạy lập kế hoạch tự động',
   },
   values: {
     erpReadOnlyNotice:
@@ -77,7 +77,7 @@ export const productionOrder: Translated<typeof ko.productionOrder> = {
   },
   autoPlan: {
     confirmed: 'Đã xác nhận kế hoạch',
-    draft: 'Đã tạo kế hoạch · Hãy chọn dây chuyền rồi xác nhận',
+    draft: 'Có kế hoạch đang soạn · Hãy chọn dây chuyền rồi xác nhận',
     notPlanned: 'Không tạo được kế hoạch',
   },
   basic: {

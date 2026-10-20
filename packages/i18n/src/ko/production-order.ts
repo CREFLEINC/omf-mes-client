@@ -35,7 +35,7 @@ export const productionOrder = {
     nextPage: '다음',
     integrationSync: '연계 현황 보기',
     productionPlan: 'W/O 전개·편성',
-    autoPlan: '자동 계획',
+    autoPlan: '자동 계획 실행',
   },
   values: {
     erpReadOnlyNotice:
@@ -68,7 +68,7 @@ export const productionOrder = {
   },
   autoPlan: {
     confirmed: '계획을 확정했습니다',
-    draft: '계획을 만들었습니다 · 라인을 정해 확정하세요',
+    draft: '작성 중 계획이 있습니다 · 라인을 정해 확정하세요',
     notPlanned: '계획을 만들지 못했습니다',
   },
   basic: {
