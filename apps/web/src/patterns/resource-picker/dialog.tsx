@@ -142,13 +142,7 @@ export const ResourcePickerDialog = ({
             columns={columns}
             rows={rows}
             getRowId={(row) => String(row.id)}
-            empty={
-              search.isPending
-                  ? t.searching
-                  : search.isError
-                    ? ''
-                    : t.noResult
-            }
+            empty={search.isPending ? t.searching : search.isError ? '' : t.noResult}
           />
         </div>
 

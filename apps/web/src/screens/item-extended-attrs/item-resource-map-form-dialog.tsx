@@ -131,7 +131,9 @@ export const ItemResourceMapFormDialog = ({
             plantId={plantId}
             valueLabel={values.equipmentId === '' ? '' : labels.equipment}
             invalid={shownErrors.equipmentId !== undefined}
-            aria-describedby={shownErrors.equipmentId === undefined ? undefined : `${equipmentId}-error`}
+            aria-describedby={
+              shownErrors.equipmentId === undefined ? undefined : `${equipmentId}-error`
+            }
             onPick={(picked) => {
               setLabels((prev) => ({ ...prev, equipment: `${picked.code} · ${picked.name}` }));
               change({ equipmentId: String(picked.id) });

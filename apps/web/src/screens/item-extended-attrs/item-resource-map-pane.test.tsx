@@ -116,7 +116,9 @@ describe('ItemResourceMapPane — 줄 작업', () => {
 
     expect(screen.getAllByRole('button', { name: / 자동 배정 지정$/ })).toHaveLength(1);
 
-    await user.click(screen.getByRole('button', { name: '전체 공정 / SYN-MOLD-02 자동 배정 지정' }));
+    await user.click(
+      screen.getByRole('button', { name: '전체 공정 / SYN-MOLD-02 자동 배정 지정' }),
+    );
     expect(onSetDefault).toHaveBeenCalledWith(itemResourceMapFixtures[1]);
   });
 
