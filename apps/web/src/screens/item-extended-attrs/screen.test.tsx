@@ -4749,9 +4749,23 @@ describe('ItemExtendedAttrsScreen — 설비·금형 매핑의 판 갱신', () =
     );
 
     const pane = await findResourceMapPane();
-    await user.click(
-      await within(pane).findByRole('button', { name: '전체 공정 / SYN-MOLD-02 자동 배정 지정' }),
-    );
+    const setDefault = await within(pane).findByRole('button', {
+      name: '전체 공정 / SYN-MOLD-02 자동 배정 지정',
+    });
+    /* 자동 배정 줄이 맨 위로 뛰면 ★가 옮겨 간 것이 보이지 않는다 — 줄 순서는 그대로여야 한다. */
+    const rowOrder = (): string[] =>
+      within(pane)
+        .getAllByRole('row')
+        .slice(1)
+        .map((row) =>
+          within(row)
+            .getAllByRole('cell')
+            .slice(1, 4)
+            .map((cell) => cell.textContent)
+            .join(' | '),
+        );
+    const before = rowOrder();
+    await user.click(setDefault);
 
     await waitFor(() => {
       expect(listGets(requests)).toHaveLength(2);
@@ -4762,6 +4776,7 @@ describe('ItemExtendedAttrsScreen — 설비·금형 매핑의 판 갱신', () =
     expect(
       within(rowWithText(pane, 'SYN-MOLD-02 · 합성 금형 B')).getByText('★'),
     ).toBeInTheDocument();
+    expect(rowOrder()).toEqual(before);
   });
 
   it('편집 창의 저장이 충돌하면 창에 안내가 나고, 최신 불러오기가 창을 닫고 목록을 다시 받는다', async () => {

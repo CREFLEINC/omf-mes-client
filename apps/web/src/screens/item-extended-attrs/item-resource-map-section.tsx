@@ -83,7 +83,13 @@ export const ItemResourceMapSection = ({ itemId }: ItemResourceMapSectionProps) 
   const plantNumber = plantId === '' ? null : Number(plantId);
 
   const list = useItemResourceMaps(itemId, plantNumber, true);
-  const rows = list.data?.items ?? [];
+  /*
+   * 표는 추천 순서로 고정한다 — 서버는 자동 배정 줄을 맨 앞에 내므로 그대로 그리면 「자동 배정 지정」을 누른
+   * 줄이 맨 위로 뛰어올라 ★가 옮겨 간 것이 보이지 않는다.
+   */
+  const rows = [...(list.data?.items ?? [])].sort(
+    (a, b) => a.priorityNo - b.priorityNo || a.itemResourceMapId - b.itemResourceMapId,
+  );
 
   /** 열려 있는 편집 창. `row`가 `null`이면 등록 창이다. */
   const [editing, setEditing] = useState<{ row: ItemResourceMap | null } | null>(null);

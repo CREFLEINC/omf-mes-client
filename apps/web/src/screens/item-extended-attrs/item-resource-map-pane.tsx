@@ -10,7 +10,6 @@ const t = messages.itemExtendedAttrs.itemResourceMap;
 const shared = messages.itemExtendedAttrs;
 
 export interface ItemResourceMapPaneProps {
-  /** 서버 순서 그대로(기본 → 우선순위) — 추천·자동 배정이 읽는 순서와 같아야 한다 */
   rows: ItemResourceMap[];
   isLoading: boolean;
   plantOptions: SelectOption[];
