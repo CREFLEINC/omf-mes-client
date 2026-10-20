@@ -717,7 +717,61 @@ interface Unused {
   trace?: never;
 }
 
+/** 서버 선행 P-79(omf-all-around#84) — 특채 요청 본문. */
+export interface ConcessionCreate {
+  nonconformanceId: number;
+  lotId: number;
+  approvedQty: number;
+  uomId: number;
+  validFrom: string;
+  validTo?: string | null;
+  allowedWorkOrderId?: number | null;
+  allowedProcessId?: number | null;
+  allowedCustomerId?: number | null;
+  reason: string;
+}
+
+type ConcessionsPath = paths['/quality/concessions'];
+type ConcessionResponse = {
+  headers: { [name: string]: unknown };
+  content: { 'application/json': components['schemas']['Concession'] };
+};
+
 export interface ForwardPaths {
+  /** 특채 조회(GET)에 요청(POST)을 더한다 — 서버 선행 P-79. */
+  '/quality/concessions': Omit<ConcessionsPath, 'post'> & {
+    post: {
+      parameters: {
+        query?: never;
+        header: { 'Idempotency-Key': string };
+        path?: never;
+        cookie?: never;
+      };
+      requestBody: { content: { 'application/json': ConcessionCreate } };
+      responses: { 201: ConcessionResponse };
+    };
+  };
+  /** 특채 적용 — 서버 선행 P-79. */
+  '/quality/concessions/{concessionId}:apply': {
+    parameters: { query?: never; header?: never; path: { concessionId: number }; cookie?: never };
+    get?: never;
+    put?: never;
+    post: {
+      parameters: {
+        query?: never;
+        header: { 'Idempotency-Key': string };
+        path: { concessionId: number };
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: { 200: ConcessionResponse };
+    };
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/quality/nonconformances/{nonconformanceId}/disposition-decisions': Omit<
     DecisionsPath,
     'post'
