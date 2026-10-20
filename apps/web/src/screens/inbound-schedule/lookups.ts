@@ -49,7 +49,10 @@ export interface LookupResult extends ReferenceSource {
  * **어느 갈래에도 번호를 담지 않는다**(#44). 담을 자리가 없으면 화면으로 샐 경로도 없다.
  */
 export type ReferenceState =
-  { kind: 'named'; label: string } | { kind: 'unknown' } | { kind: 'loading' } | { kind: 'failed' };
+  | { kind: 'named'; label: string; code?: string; name?: string }
+  | { kind: 'unknown' }
+  | { kind: 'loading' }
+  | { kind: 'failed' };
 
 /**
  * 참조 하나를 표기 상태로 옮긴다.
@@ -67,9 +70,12 @@ export const toReference = (
   if (source.isLoading) return { kind: 'loading' };
   if (id === null || id === undefined) return { kind: 'unknown' };
 
-  const label = source.entries.find((entry) => entry.value === String(id))?.label;
+  const entry = source.entries.find((candidate) => candidate.value === String(id));
+  if (entry === undefined) return { kind: 'unknown' };
 
-  return label === undefined ? { kind: 'unknown' } : { kind: 'named', label };
+  return entry.code === undefined
+    ? { kind: 'named', label: entry.label }
+    : { kind: 'named', label: entry.label, code: entry.code, name: entry.name ?? '' };
 };
 
 /** 표기 상태를 화면 문구로 옮긴다. 네 갈래의 문구가 서로 달라야 뜻이 구분된다. */
@@ -85,6 +91,19 @@ export const describeReference = (state: ReferenceState): string => {
       return t.values.referenceFailed;
   }
 };
+
+/**
+ * 표의 **코드 열**. 이름 열과 짝이다 — 풀지 못한 갈래(불러오는 중·실패·알 수 없음)의 사유는
+ * 이 열 하나에만 낸다. 두 열에 같은 사유를 되풀이하면 한 줄이 사유로 덮인다.
+ */
+export const describeReferenceCode = (state: ReferenceState): string =>
+  state.kind === 'named' ? (state.code ?? state.label) : describeReference(state);
+
+/** 표의 **이름 열**. 풀지 못했으면 「—」다 — 사유는 코드 열이 밝힌다. */
+export const describeReferenceName = (state: ReferenceState): string =>
+  state.kind === 'named' && state.name !== undefined && state.name !== ''
+    ? state.name
+    : t.values.empty;
 
 /** 참조가 매 렌더 새로 만들어지면 이 값을 의존성에 둔 계산이 멈추지 않는다. */
 const EMPTY_ENTRIES: LookupEntry[] = [];
@@ -147,6 +166,8 @@ export const useSupplierOptions = (): LookupResult => {
         value: String(item.partnerId),
         label: `${item.partnerCode} · ${item.partnerName}`,
         isActive: item.isActive,
+        code: item.partnerCode,
+        name: item.partnerName,
       })) ?? EMPTY_ENTRIES,
     truncated: data?.truncated === true,
     isError: query.isError,
@@ -175,6 +196,8 @@ export const usePlantOptions = (): LookupResult => {
         value: String(item.plantId),
         label: `${item.plantCode} · ${item.plantName}`,
         isActive: item.isActive,
+        code: item.plantCode,
+        name: item.plantName,
       })) ?? EMPTY_ENTRIES,
     truncated: data !== undefined && isTruncated(data.page, data.items.length),
     isError: query.isError,
@@ -245,7 +268,12 @@ export interface ItemNameLookup {
 
 type Client = ReturnType<typeof useApiClient>['client'];
 
-const fetchItemName = async (client: Client, itemId: number): Promise<string> => {
+interface ItemName {
+  code: string;
+  name: string;
+}
+
+const fetchItemName = async (client: Client, itemId: number): Promise<ItemName> => {
   const data = await runRequest(() =>
     client.GET('/mdm/items/{itemId}', { params: { path: { itemId } } }),
   );
@@ -253,7 +281,7 @@ const fetchItemName = async (client: Client, itemId: number): Promise<string> =>
   /* 상세는 봉투로 온다 — 편집 가능 여부(`editability`)는 이 화면이 쓰지 않는다. */
   const item = data.item;
 
-  return `${item.itemCode} · ${masterName(item, item.itemName)}`;
+  return { code: item.itemCode, name: masterName(item, item.itemName) };
 };
 
 export const useItemNames = (itemIds: readonly number[]): ItemNameLookup => {
@@ -280,7 +308,12 @@ export const useItemNames = (itemIds: readonly number[]): ItemNameLookup => {
 
       return result.data === undefined
         ? { kind: 'loading' }
-        : { kind: 'named', label: result.data };
+        : {
+            kind: 'named',
+            label: `${result.data.code} · ${result.data.name}`,
+            code: result.data.code,
+            name: result.data.name,
+          };
     },
     isError: results.some((result) => result.isError && !isNotFound(result.error)),
     refetch: () => {

@@ -6352,11 +6352,45 @@ dl.filter-bar.approval-inbox-detail-facts {
 }
 
 /*
- * W-01-09 입하 예정 — 12열(P/O 라인 한 줄). 열별 폭의 도출 표는 screens/inbound-schedule/schedule-table.tsx에 있다
- * (지정 폭 1,128px + 흡수 열 「코드 · 이름」 둘 × 200px = 1,528px).
+ * W-01-09 입하 예정 — 14열(P/O 라인 한 줄). 열별 폭의 도출 표는 screens/inbound-schedule/schedule-table.tsx에 있다
+ * (지정 폭 1,360px + 흡수 열 공급사명·품목명 둘 × 176px = 1,712px).
+ *
+ * **행은 한 줄이다**(사용자 지시 2026-10-20). 고정 배치로 열 폭을 지키고 칸 안에서 줄을 바꾸지 않는다 —
+ * 자동 배치에서는 긴 이름 하나가 다른 열을 밀어낸다. 넘치는 이름은 `.inbound-schedule-one-line` 이 말줄임한다.
  */
 .wide-table.inbound-schedule-table table {
-  min-width: 96rem;
+  min-width: 107rem;
+  table-layout: fixed;
+}
+
+.inbound-schedule-table td {
+  white-space: nowrap;
+}
+
+.inbound-schedule-one-line {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 상태 칩과 지연 칩은 한 줄로 나란히 선다. */
+.inbound-schedule-status {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+/*
+ * 조건 칸의 글자를 목록 머리글과 같은 14px 로 맞춘다(사용자 지시 2026-10-20). 디자인 시스템 입력·선택·
+ * 확인란이 쓰는 본문 큰 글자 토큰(16px)을 이 구획 안에서만 본문 작은 글자 토큰(14px)으로 바꾼다 —
+ * 부품의 해시 클래스 이름을 고르면 디자인 시스템 판이 바뀔 때 조용히 어긋난다. 칸 이름표(12px)는 그대로다.
+ *
+ * ⛔ **품목 선택 창(`<dialog>`)은 뺀다.** 그 창은 조건 줄 안에 그려져, 구획 전체에 걸면 창의 글자까지 작아진다.
+ */
+.inbound-schedule-filter .filter-bar > :not(dialog) {
+  --type-body-lg: var(--type-body-sm);
+  --type-body-lg-tracking: var(--type-body-sm-tracking, 0);
 }
 
 /*

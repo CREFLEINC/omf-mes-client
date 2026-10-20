@@ -136,10 +136,9 @@ export const InboundScheduleScreen = () => {
     <>
       <PageHeader
         title={t.title}
-        description={t.description}
         breadcrumb={
           <Breadcrumb
-            items={[{ label: t.breadcrumbRoot }, { label: t.title }]}
+            items={[{ label: t.breadcrumbRoot }, { label: t.breadcrumbHub }, { label: t.title }]}
             aria-label={messages.common.shell.breadcrumb}
           />
         }
@@ -155,8 +154,11 @@ export const InboundScheduleScreen = () => {
         />
       )}
 
-      <section className="pane" aria-label={t.panes.list}>
-        {/* 결과가 없어도 조건 줄은 감추지 않는다 — 조건을 고칠 수단이 사라지면 안 된다. */}
+      {/*
+       * 조건과 목록을 다른 구획에 둔다 — 한 상자에 있으면 조건 줄의 끝과 표의 시작이 갈리지 않는다.
+       * 결과가 없어도 조건 구획은 감추지 않는다 — 조건을 고칠 수단이 사라지면 안 된다.
+       */}
+      <section className="pane inbound-schedule-filter" aria-label={t.panes.filter}>
         <ScheduleFilterBar
           appliedPeriod={period}
           appliedFilters={filters}
@@ -183,7 +185,9 @@ export const InboundScheduleScreen = () => {
             applyQuery({ from: '', to: '' }, DEFAULT_FILTERS);
           }}
         />
+      </section>
 
+      <section className="pane" aria-label={t.panes.list}>
         {!list.isError && (
           <>
             <ScheduleTable

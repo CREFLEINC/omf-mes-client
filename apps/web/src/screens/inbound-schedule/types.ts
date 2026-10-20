@@ -101,6 +101,12 @@ export interface LookupEntry {
   value: string;
   label: string;
   isActive: boolean;
+  /**
+   * 「코드 · 이름」을 따로 쓰는 자리(표의 코드 열·이름 열)를 위한 두 조각. 선택지는 `label` 을 쓴다.
+   * 코드만 있는 참조(단위)는 두지 않는다.
+   */
+  code?: string;
+  name?: string;
 }
 
 export interface SelectOption {

@@ -5,6 +5,8 @@ import { Link } from 'react-router';
 
 import {
   describeReference,
+  describeReferenceCode,
+  describeReferenceName,
   toReference,
   type ItemNameLookup,
   type ReferenceSource,
@@ -77,26 +79,44 @@ export interface ScheduleTableProps {
 }
 
 /**
+ * 칸 안 한 줄 — 넘치면 말줄임, 전체 값은 `title` 로 본다. 이름 열이 쓴다(공급사명·품목명).
+ * 「불러오는 중」 같은 사유 문구는 코드 열이 내므로 여기에는 실제 이름이나 「—」만 온다.
+ */
+const OneLine = ({ text }: { text: string }) => (
+  <span className="inbound-schedule-one-line" title={text}>
+    {text}
+  </span>
+);
+
+/**
  * 입하 예정 표 — P/O 라인 한 줄이 한 행이다. 정렬은 **서버가 정한 순서 그대로**다
  * (납기 → 발주번호 → 라인번호, 납기 없는 것은 뒤). 쪽을 넘어 같은 순서가 이어지므로 열 정렬을 두지 않는다.
+ *
+ * **행은 한 줄이다**(사용자 지시 2026-10-20). 칸 안에서 줄을 바꾸지 않고, 이름이 길면 말줄임한다.
+ * 그래서 「코드 · 이름」을 한 칸에 두지 않고 코드 열·이름 열로 나눈다. 발주번호 아래에 붙던
+ * ERP 발주번호는 뺐다 — MES 발주번호와 값이 같아 겹쳤다(검색 `q` 는 여전히 둘 다 찾는다).
+ *
+ * **상태가 첫 열이다.** 지연은 상태 칩 옆에 붙는다 — 「무엇이 늦었나」를 왼쪽 끝에서 바로 훑는다.
  *
  * 열 폭의 도출(`docs/layout-conventions.md`의 방식 — 흡수 열에도 예산을 잡는다):
  *
  * | 열 | 폭 | 근거 |
  * | --- | ---: | --- |
- * | 납기 | 120px | `YYYY-MM-DD` 75px + 아래에 쌓이는 「지연」 칩 + 셀 여백 32px |
- * | 발주번호 | 168px | 14자 ASCII 105px + 32px. ERP 발주번호가 아래 줄에 붙는다 |
- * | 라인 | 64px | 세 자리 숫자 + 32px |
- * | **공급사** | **미지정** | 「코드 · 이름」 — 남는 폭을 품목과 나눠 흡수한다 |
- * | **품목** | **미지정** | 「코드 · 이름」 |
+ * | 상태 | 168px | 칩 「부분 입하」 76px + 칩 「지연」 40px + 간격 8px + 셀 여백 32px |
+ * | 납기 | 112px | `YYYY-MM-DD` 75px + 32px |
+ * | 발주번호 | 136px | 12자 ASCII 90px + 32px |
+ * | 라인 | 56px | 세 자리 숫자 + 32px |
+ * | 공급사 코드 | 120px | 머리글 6자 84px + 32px |
+ * | **공급사명** | **미지정** | 남는 폭을 품목명과 나눠 흡수한다. 넘치면 말줄임 |
+ * | 품목코드 | 136px | 12자 ASCII 90px + 32px |
+ * | **품목명** | **미지정** | |
  * | 발주·입하·남은 수량 | 104px × 3 | 천 단위 구분 9자 68px + 32px |
- * | 단위 | 72px | 코드 4자 + 32px |
- * | 진행 | 120px | 칩(한글 5자 70px + 안쪽 여백 24px) + 32px |
- * | 창고 | 136px | 창고 이름 한글 6자 + 32px |
+ * | 단위 | 64px | 코드 4자 + 32px |
+ * | 창고 | 120px | 창고 이름 한글 6자 + 32px |
  * | 바로가기 | 136px | 「초과 입하 분리」 7자 + 32px |
- * | 지정 폭 합 | 1,128px | |
- * | 흡수 열 예산 | 2 × 200px | 「코드 · 이름」이 접히지 않고 읽히는 하한 |
- * | **합** | **1,528px** | `.inbound-schedule-table` 최소 폭 `96rem`(1,536px) 안에 들어간다 |
+ * | 지정 폭 합 | 1,360px | |
+ * | 흡수 열 예산 | 2 × 176px | 이름이 말줄임 없이 읽히는 흔한 길이 |
+ * | **합** | **1,712px** | `.inbound-schedule-table` 최소 폭 `107rem`(1,712px) |
  *
  * **행 바로가기는 「초과 입하 분리」 하나다.** 「자재 입고 처리」는 발주를 주소로 받지 않아
  * (그 화면의 주소 키는 입하 전표 `ir`·`line` 뿐이다) 열어도 그 발주가 고른 채로 서지 않는다 —
@@ -117,46 +137,55 @@ export const ScheduleTable = ({
 }: ScheduleTableProps) => {
   const columns: Column<InboundScheduleLine>[] = [
     {
-      key: 'expectedReceiptDate',
-      header: t.table.expectedReceiptDate,
-      width: '120px',
+      key: 'receiptStatusCode',
+      header: t.table.receiptStatus,
+      width: '168px',
+      /* 취소(라인 ERP 취소 · 헤더 취소)도 서버가 진행 값으로 준다(`CANCELLED`) — 따로 판정하지 않는다. */
       render: (row) => (
-        <div className="field-cell">
-          <span>{row.expectedReceiptDate ?? t.values.noDueDate}</span>
+        <span className="inbound-schedule-status">
+          <Chip variant="status" status={receiptTone(row.receiptStatusCode)} size="sm">
+            {receiptLabel(row.receiptStatusCode)}
+          </Chip>
           {isOverdue(row, today) && (
             <Chip variant="status" status="warning" size="sm">
               {t.values.overdue}
             </Chip>
           )}
-        </div>
+        </span>
       ),
     },
     {
-      key: 'purchaseOrderNo',
-      header: t.table.purchaseOrderNo,
-      width: '168px',
+      key: 'expectedReceiptDate',
+      header: t.table.expectedReceiptDate,
+      width: '112px',
+      render: (row) => row.expectedReceiptDate ?? t.values.noDueDate,
+    },
+    { key: 'purchaseOrderNo', header: t.table.purchaseOrderNo, width: '136px' },
+    { key: 'lineNo', header: t.table.lineNo, width: '56px', align: 'end' },
+    /* **번호를 문자열로 바꾸는 자리가 없다**(#44). 풀 수 없는 갈래의 사유는 코드 열이 낸다. */
+    {
+      key: 'supplierCode',
+      header: t.table.supplierCode,
+      width: '120px',
+      render: (row) => describeReferenceCode(toReference(supplierLookup, row.supplierId)),
+    },
+    {
+      key: 'supplierName',
+      header: t.table.supplierName,
       render: (row) => (
-        <div className="field-cell">
-          <span>{row.purchaseOrderNo}</span>
-          {row.erpPurchaseOrderNo !== null && (
-            <span className="field-note">
-              {t.values.erpPurchaseOrderNo(row.erpPurchaseOrderNo)}
-            </span>
-          )}
-        </div>
+        <OneLine text={describeReferenceName(toReference(supplierLookup, row.supplierId))} />
       ),
     },
-    { key: 'lineNo', header: t.table.lineNo, width: '64px', align: 'end' },
     {
-      key: 'supplier',
-      header: t.table.supplier,
-      /* **번호를 문자열로 바꾸는 자리가 없다**(#44). 풀 수 없는 세 갈래는 전부 문구로 갈린다. */
-      render: (row) => describeReference(toReference(supplierLookup, row.supplierId)),
+      key: 'itemCode',
+      header: t.table.itemCode,
+      width: '136px',
+      render: (row) => describeReferenceCode(itemNames.of(row.itemId)),
     },
     {
-      key: 'item',
-      header: t.table.item,
-      render: (row) => describeReference(itemNames.of(row.itemId)),
+      key: 'itemName',
+      header: t.table.itemName,
+      render: (row) => <OneLine text={describeReferenceName(itemNames.of(row.itemId))} />,
     },
     {
       key: 'orderedQty',
@@ -182,24 +211,13 @@ export const ScheduleTable = ({
     {
       key: 'uom',
       header: t.table.uom,
-      width: '72px',
+      width: '64px',
       render: (row) => describeReference(toReference(uomLookup, row.uomId)),
-    },
-    {
-      key: 'receiptStatusCode',
-      header: t.table.receiptStatus,
-      width: '120px',
-      /* 취소(라인 ERP 취소 · 헤더 취소)도 서버가 진행 값으로 준다(`CANCELLED`) — 따로 판정하지 않는다. */
-      render: (row) => (
-        <Chip variant="status" status={receiptTone(row.receiptStatusCode)} size="sm">
-          {receiptLabel(row.receiptStatusCode)}
-        </Chip>
-      ),
     },
     {
       key: 'erpStorageLocationCode',
       header: t.table.storageLocation,
-      width: '136px',
+      width: '120px',
       render: (row) => storageLocationNameOf(row.erpStorageLocationCode),
     },
     {

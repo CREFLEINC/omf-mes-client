@@ -4,7 +4,7 @@
  * **입하 예정 = 아직 다 들어오지 않은 구매발주(P/O) 라인이다**(omf-mes-server#741) — 고객사가 ASN 을
  * 쓰지 않는다. 「ASN」·「입하예정번호」를 사용자 문구에 쓰지 않는다.
  *
- * 입하 진행(미착수·부분 입하·입하 완료)과 지연은 **서버가 준 수량으로 판정한다** — 남은 수량이 있고
+ * 입하 상태(미착수·부분 입하·입하 완료)와 지연은 **서버가 준 수량으로 판정한다** — 남은 수량이 있고
  * 납기가 공장 현지 오늘보다 앞서면 「지연」이다.
  *
  * **참조 값(공급사·공장·품목·단위)의 표기가 세 갈래다** — 아직 오지 않음 · 목록에 없음 · 불러오기 실패.
@@ -12,9 +12,11 @@
  */
 export const inboundSchedule = {
   title: '입하 예정 조회',
-  description: '구매발주 중 아직 다 들어오지 않은 라인을 납기 순으로 봅니다.',
   breadcrumbRoot: '구매 / 자재 관리',
+  /** 사이드바의 탭 묶음 이름(`nav-tree.ts` 「입고 관리」). 이 화면은 그 묶음의 첫 탭이다. */
+  breadcrumbHub: '입고 관리',
   panes: {
+    filter: '조회 조건',
     list: '입하 예정 목록',
   },
   fields: {
@@ -52,16 +54,18 @@ export const inboundSchedule = {
   },
   /** 표의 머리글. 열 구성과 폭의 근거는 screens/inbound-schedule/schedule-table.tsx에 있다. */
   table: {
+    receiptStatus: '상태',
     expectedReceiptDate: '납기',
     purchaseOrderNo: '발주번호',
     lineNo: '라인',
-    supplier: '공급사',
-    item: '품목',
+    supplierCode: '공급사 코드',
+    supplierName: '공급사명',
+    itemCode: '품목코드',
+    itemName: '품목명',
     orderedQty: '발주 수량',
     receivedQty: '입하 수량',
     remainingQty: '남은 수량',
     uom: '단위',
-    receiptStatus: '진행',
     storageLocation: '창고',
     actions: '바로가기',
   },
@@ -74,9 +78,6 @@ export const inboundSchedule = {
   },
   filters: {
     all: '전체',
-    /* 기간이 필수가 아니라는 사실은 화면에서 읽혀야 한다 — 비워 두면 「빠뜨렸다」로 읽힌다. */
-    periodNote:
-      '납기 기간은 비워 두어도 조회됩니다. 「미완료만」을 끄면 다 들어온 라인과 취소된 라인도 보입니다.',
     itemPlaceholder: '품목을 고르세요',
     itemClear: '품목 조건 지우기',
     itemPick: '이 품목으로 조회',
@@ -124,8 +125,6 @@ export const inboundSchedule = {
     overdue: '지연',
     /** 납기가 없는 발주. 목록 맨 뒤로 간다. */
     noDueDate: '납기 없음',
-    /** 발주번호 아래에 붙는 ERP 발주번호. */
-    erpPurchaseOrderNo: (value: string): string => `ERP ${value}`,
     /*
      * 미사용 참조에 붙이는 표식. **선택지에서 빼지 않는다** — 지금은 쓰지 않는 거래처·공장을
      * 참조하는 과거 발주가 있다. 빼면 그 발주들을 조건으로 찾을 방법이 사라진다.

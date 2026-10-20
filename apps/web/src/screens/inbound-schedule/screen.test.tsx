@@ -178,6 +178,12 @@ const currentLocation = (): string => screen.getByTestId('location').textContent
 
 const listTable = (): HTMLElement => screen.getByRole('table');
 
+/** 그 행의 칸 글자를 열 순서대로 낸다. 코드 열·이름 열이 나뉘어 있어 칸 단위로 봐야 읽힌다. */
+const cellsOf = (row: HTMLElement): (string | null)[] =>
+  within(row)
+    .getAllByRole('cell')
+    .map((cell) => cell.textContent);
+
 /** 발주번호로 그 행을 찾는다. */
 const rowOf = (purchaseOrderNo: string): HTMLElement => {
   const row = within(listTable()).getByText(purchaseOrderNo).closest('tr');
@@ -218,11 +224,37 @@ describe('InboundScheduleScreen — 첫 진입 조회', () => {
     expect(currentLocation()).toBe(ROUTE);
   });
 
-  it('제목 아래에 화면이 무엇을 보이는지 밝힌다', async () => {
+  it('경로는 그룹 › 탭 묶음 › 화면이고, 제목 아래·조건 아래에 안내 문장을 두지 않는다', async () => {
     renderScreen([listRoute(), ...lookupRoutes()]);
 
-    expect(await screen.findByText(t.description)).toBeInTheDocument();
+    await screen.findByText('SAMPLE-PO-0001');
+
     expect(screen.getByRole('heading', { name: t.title })).toBeInTheDocument();
+    const trail = screen.getByRole('navigation', { name: messages.common.shell.breadcrumb });
+    expect(
+      within(trail)
+        .getAllByRole('listitem')
+        .map((item) => item.textContent),
+    ).toEqual([
+      expect.stringContaining(t.breadcrumbRoot),
+      expect.stringContaining(t.breadcrumbHub),
+      expect.stringContaining(t.title),
+    ]);
+    // 사용자 지시(2026-10-20)로 걷어 낸 두 문장이 되살아나지 않게 지킨다.
+    expect(screen.queryByText(/납기 순으로 봅니다/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/비워 두어도 조회됩니다/)).not.toBeInTheDocument();
+  });
+
+  it('조회 조건과 목록은 서로 다른 구획이다', async () => {
+    renderScreen([listRoute(), ...lookupRoutes()]);
+
+    await screen.findByText('SAMPLE-PO-0001');
+
+    const filterPane = screen.getByRole('region', { name: t.panes.filter });
+    const listPane = screen.getByRole('region', { name: t.panes.list });
+    expect(within(filterPane).getByRole('button', { name: messages.common.search })).toBeVisible();
+    expect(within(filterPane).queryByRole('table')).not.toBeInTheDocument();
+    expect(within(listPane).getByRole('table')).toBeInTheDocument();
   });
 
   it('라인마다 한 행이 그려지고 배너가 없다', async () => {
@@ -416,15 +448,39 @@ describe('InboundScheduleScreen — 조건과 주소', () => {
 });
 
 describe('InboundScheduleScreen — 표의 칸', () => {
-  it('발주번호 아래에 ERP 발주번호가 붙고, 없으면 붙지 않는다', async () => {
+  it('상태가 첫 열이고 공급사·품목은 코드 열과 이름 열로 나뉜다', async () => {
     renderScreen([listRoute(), ...lookupRoutes()]);
 
     await screen.findByText('SAMPLE-PO-0001');
 
-    expect(rowOf('SAMPLE-PO-0001')).toHaveTextContent(
-      t.values.erpPurchaseOrderNo('SAMPLE-ERP-0001'),
-    );
-    expect(rowOf('SAMPLE-PO-0002')).not.toHaveTextContent('ERP ');
+    const headers = within(listTable())
+      .getAllByRole('columnheader')
+      .map((cell) => cell.textContent);
+    expect(headers).toEqual([
+      t.table.receiptStatus,
+      t.table.expectedReceiptDate,
+      t.table.purchaseOrderNo,
+      t.table.lineNo,
+      t.table.supplierCode,
+      t.table.supplierName,
+      t.table.itemCode,
+      t.table.itemName,
+      t.table.orderedQty,
+      t.table.receivedQty,
+      t.table.remainingQty,
+      t.table.uom,
+      t.table.storageLocation,
+      t.table.actions,
+    ]);
+  });
+
+  it('발주번호 칸에는 발주번호만 있다 — ERP 발주번호를 덧붙이지 않는다', async () => {
+    renderScreen([listRoute(), ...lookupRoutes()]);
+
+    await screen.findByText('SAMPLE-PO-0001');
+
+    expect(rowOf('SAMPLE-PO-0001')).not.toHaveTextContent('SAMPLE-ERP-0001');
+    expect(cellsOf(rowOf('SAMPLE-PO-0001'))[2]).toBe('SAMPLE-PO-0001');
   });
 
   it('진행은 미착수·부분 입하·입하 완료로 보인다', async () => {
@@ -462,7 +518,10 @@ describe('InboundScheduleScreen — 표의 칸', () => {
     await screen.findByText('SAMPLE-PO-0001');
 
     expect(within(listTable()).getAllByText(t.values.overdue)).toHaveLength(1);
-    expect(rowOf('SAMPLE-PO-0001')).toHaveTextContent(t.values.overdue);
+    // 지연은 첫 열(상태)에 상태 칩과 나란히 붙는다.
+    expect(cellsOf(rowOf('SAMPLE-PO-0001'))[0]).toBe(
+      `${t.receiptStatus.NOT_STARTED}${t.values.overdue}`,
+    );
   });
 
   it('취소된 라인에는 취소 표식이 붙는다', async () => {
@@ -501,7 +560,10 @@ describe('InboundScheduleScreen — 표의 칸', () => {
 
     await screen.findByText('SAMPLE-PO-0001');
     await waitFor(() => {
-      expect(rowOf('SAMPLE-PO-0001')).toHaveTextContent(ITEM_LABEL);
+      expect(cellsOf(rowOf('SAMPLE-PO-0001')).slice(6, 8)).toEqual([
+        'SAMPLE-ITEM-01',
+        '합성 품목 가',
+      ]);
     });
 
     const itemPaths = requests
@@ -630,7 +692,10 @@ describe('InboundScheduleScreen — 참조 값', () => {
     await screen.findByText('SAMPLE-PO-0001');
 
     await waitFor(() => {
-      expect(rowOf('SAMPLE-PO-0001')).toHaveTextContent(SUPPLIER_LABEL);
+      expect(cellsOf(rowOf('SAMPLE-PO-0001')).slice(4, 6)).toEqual([
+        'SAMPLE-SUP-01',
+        '합성 공급사 가',
+      ]);
     });
     // 7302의 공급사 번호는 참조 목록에 없다.
     expect(rowOf('SAMPLE-PO-0002')).toHaveTextContent(t.values.unknown);

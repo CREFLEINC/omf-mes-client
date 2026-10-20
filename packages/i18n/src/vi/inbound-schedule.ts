@@ -7,9 +7,10 @@ import type { Translated } from './translated';
  */
 export const inboundSchedule: Translated<typeof ko.inboundSchedule> = {
   title: 'Tra cứu kế hoạch nhập hàng',
-  description: 'Xem các dòng đơn đặt hàng chưa nhận đủ, theo thứ tự hạn giao.',
   breadcrumbRoot: 'Quản lý mua hàng / vật tư',
+  breadcrumbHub: 'Quản lý nhập kho',
   panes: {
+    filter: 'Điều kiện tra cứu',
     list: 'Danh sách kế hoạch nhập hàng',
   },
   fields: {
@@ -40,16 +41,18 @@ export const inboundSchedule: Translated<typeof ko.inboundSchedule> = {
     list: 'Đang tải danh sách kế hoạch nhập hàng',
   },
   table: {
+    receiptStatus: 'Trạng thái',
     expectedReceiptDate: 'Hạn giao',
     purchaseOrderNo: 'Số đơn đặt hàng',
     lineNo: 'Dòng',
-    supplier: 'Nhà cung cấp',
-    item: 'Mặt hàng',
+    supplierCode: 'Mã nhà cung cấp',
+    supplierName: 'Tên nhà cung cấp',
+    itemCode: 'Mã mặt hàng',
+    itemName: 'Tên mặt hàng',
     orderedQty: 'Số lượng đặt',
     receivedQty: 'Số lượng đã nhận',
     remainingQty: 'Còn lại',
     uom: 'Đơn vị',
-    receiptStatus: 'Tiến độ',
     storageLocation: 'Kho',
     actions: 'Đi tới',
   },
@@ -61,8 +64,6 @@ export const inboundSchedule: Translated<typeof ko.inboundSchedule> = {
   },
   filters: {
     all: 'Tất cả',
-    periodNote:
-      'Khoảng hạn giao có thể để trống vẫn tra cứu được. Bỏ chọn 「Chỉ dòng chưa nhận đủ」 để xem cả dòng đã nhận đủ và dòng đã hủy.',
     itemPlaceholder: 'Tìm và chọn mặt hàng',
     itemClear: 'Xóa điều kiện mặt hàng',
     itemPick: 'Tra cứu theo mặt hàng này',
@@ -99,7 +100,6 @@ export const inboundSchedule: Translated<typeof ko.inboundSchedule> = {
     referenceFailed: 'Không tải được tên',
     overdue: 'Trễ hạn',
     noDueDate: 'Chưa có hạn giao',
-    erpPurchaseOrderNo: (value: string): string => `ERP ${value}`,
     inactiveSuffix: ' (không dùng)',
   },
 };

@@ -91,8 +91,8 @@ export interface ScheduleFilterBarProps {
  * 반쯤 지운 기간으로 요청이 나간다. 「조회」를 누를 때만 주소가 바뀌고 그때 조회된다.
  * 두 켜짐 표시(미완료만·납기 지난 것만)도 같다. 조건 칩의 ×는 해제라 즉시 반영한다.
  *
- * **기간이 필수가 아니다.** 비운 채로도 조회가 열려 있고, 그 사실을 안내 한 줄이 밝힌다.
- * 잠그는 것은 보내면 반드시 400이 되는 값(없는 날짜·뒤집힌 기간)뿐이다.
+ * **기간이 필수가 아니다.** 비운 채로도 조회가 열려 있다. 잠그는 것은 보내면 반드시 400이 되는
+ * 값(없는 날짜·뒤집힌 기간)뿐이다. 안내 문장은 두지 않는다 — 조건 칸만으로 읽히는 화면이다(사용자 결정 2026-10-20).
  */
 export const ScheduleFilterBar = ({
   appliedPeriod,
@@ -250,9 +250,6 @@ export const ScheduleFilterBar = ({
           )}
         </div>
       </div>
-
-      {/* 기간이 필수가 아니고 미완료만이 기본이라는 사실은 화면에서 읽혀야 한다. */}
-      <p className="field-note">{t.filters.periodNote}</p>
 
       {chips.length > 0 && (
         <div className="filter-bar">
