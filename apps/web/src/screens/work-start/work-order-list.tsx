@@ -200,7 +200,7 @@ export const WorkOrderList = ({
                               </Chip>{' '}
                             </>
                           )}
-                          {/* 어느 설비의 W/O 인지 — 설비 없는 단말·「전체 보기」에서 가를 수 있게. */}
+                          {/* 「이 설비」 목록은 모두 같은 설비라 코드를 되풀이하지 않는다. */}
                           {row.plannedEquipmentId == null ? (
                             <>
                               <Chip status="info" size="md">
@@ -208,6 +208,7 @@ export const WorkOrderList = ({
                               </Chip>{' '}
                             </>
                           ) : (
+                            (isShowingAll || isEquipmentMissing) &&
                             row.plannedEquipmentCode != null && (
                               <>
                                 <Chip status="idle" size="md">

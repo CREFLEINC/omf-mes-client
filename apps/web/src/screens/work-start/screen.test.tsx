@@ -336,27 +336,39 @@ describe('P-02-01 작업 시작 — 목록 조회 축', () => {
     expect(last).not.toContain('includeUnplannedEquipment');
   });
 
-  it('계획 설비가 있는 지시는 그 설비 코드를, 없는 지시는 「설비 미지정」을 단다', async () => {
+  it('「이 설비」 목록은 설비 미지정만 표시하고, 「전체 보기」에서는 계획 설비 코드도 단다', async () => {
     const { plannedEquipmentId: _ignored, ...withoutEquipment } = WORK_ORDER;
-    renderScreen({
+    const { user } = renderScreen({
       workOrders: [
         { ...withoutEquipment, workOrderId: 8102, workOrderNo: 'SYN-WO-0102' },
         { ...WORK_ORDER, plannedEquipmentCode: 'SYN-PRS-01' },
       ],
     });
+    const card = (workOrderNo: string) =>
+      screen.getByRole('button', { name: selectName(workOrderNo) });
 
-    const unassigned = await screen.findByRole('button', { name: selectName('SYN-WO-0102') });
-    expect(within(unassigned).getByText(t.list.unassignedEquipmentBadge)).toBeInTheDocument();
+    await screen.findByRole('button', { name: selectName('SYN-WO-0102') });
     expect(
-      within(screen.getByRole('button', { name: selectName(WORK_ORDER.workOrderNo) })).getByText(
-        'SYN-PRS-01',
-      ),
+      within(card('SYN-WO-0102')).getByText(t.list.unassignedEquipmentBadge),
     ).toBeInTheDocument();
+    expect(within(card(WORK_ORDER.workOrderNo)).queryByText('SYN-PRS-01')).toBeNull();
     expect(
-      within(screen.getByRole('button', { name: selectName(WORK_ORDER.workOrderNo) })).queryByText(
-        t.list.unassignedEquipmentBadge,
-      ),
-    ).not.toBeInTheDocument();
+      within(card(WORK_ORDER.workOrderNo)).queryByText(t.list.unassignedEquipmentBadge),
+    ).toBeNull();
+
+    await user.click(screen.getByRole('button', { name: t.list.showAll }));
+
+    expect(await within(card(WORK_ORDER.workOrderNo)).findByText('SYN-PRS-01')).toBeInTheDocument();
+  });
+
+  it('설비 없는 단말의 목록에는 계획 설비 코드를 단다', async () => {
+    renderScreen({
+      terminal: { ...TERMINAL, equipmentId: null, equipmentCode: null, equipmentName: null },
+      workOrders: [{ ...WORK_ORDER, plannedEquipmentCode: 'SYN-PRS-01' }],
+    });
+
+    const card = await screen.findByRole('button', { name: selectName(WORK_ORDER.workOrderNo) });
+    expect(within(card).getByText('SYN-PRS-01')).toBeInTheDocument();
   });
 
   /** ⚠ 설비를 모르는 것은 「지시가 없다」와 다른 사실이다. */
