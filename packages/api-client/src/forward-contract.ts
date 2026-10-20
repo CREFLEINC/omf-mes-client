@@ -601,9 +601,34 @@ export interface MoldRecommendation {
   inService: boolean;
 }
 
+/** 공장의 사용 중인 교대. busy = 같은 설비에 같은 근무일 이 교대의 W/O 가 이미 있다. */
+export interface ShiftRecommendation {
+  shiftId: number;
+  shiftCode: string;
+  shiftName: string;
+  startTime: string;
+  endTime: string;
+  busy: boolean;
+}
+
+/** 작업자를 고른 근거 — 같은 설비·라인·공정에서 일한 이력이거나 자격 보유. */
+export type WorkerRecommendationSource = 'EQUIPMENT' | 'LINE' | 'PROCESS' | 'QUALIFIED';
+
+/** busy = 같은 근무일 같은 교대에 이미 담당자다. */
+export interface WorkerRecommendation {
+  workerId: number;
+  workerNo: string;
+  workerName: string;
+  source: WorkerRecommendationSource;
+  busy: boolean;
+}
+
 export interface ResourceRecommendations {
   equipments: EquipmentRecommendation[];
   molds: MoldRecommendation[];
+  /** 서버 선행 — 교대·작업자 추천. 이를 싣지 않는 서버가 있어 선택으로 둔다(없으면 후보 없음). */
+  shifts?: ShiftRecommendation[];
+  workers?: WorkerRecommendation[];
 }
 
 /** 서버 선행 — 오더 수신 때 계획을 자동으로 만들지 못했거나 확정하지 못한 이유. */

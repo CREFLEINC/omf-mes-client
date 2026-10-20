@@ -1,6 +1,5 @@
 import {
   AlertBanner,
-  Button,
   Card,
   EmptyState,
   SearchInput,
@@ -13,6 +12,7 @@ import { useId, useState } from 'react';
 
 import { ResourcePickerInput, type ResourceKind } from '../../patterns/resource-picker';
 import { REQUIRED_ASSIGNMENT_FIELDS, type WorkOrderAssignmentDraft } from './assignment-model';
+import { RecommendationChips } from './recommendation-chips';
 import type {
   ResourceRecommendationChip,
   ResourceRecommendationChips,
@@ -179,60 +179,19 @@ const ResourceSelect = ({
           {description}
         </span>
       )}
-      {recommendations.length > 0 && (
-        <div
-          className="work-order-recommendations"
-          role="group"
-          aria-label={`${label} ${t.recommendation.label}`}
-        >
-          <span className="field-note">{t.recommendation.label}</span>
-          {recommendations.map((chip) => {
-            const isAssigned = chip.value === value;
-            const name = [
-              t.recommendation.sources[chip.source],
-              chip.label,
-              chip.warning === null ? null : t.recommendation[chip.warning],
-              isAssigned ? t.recommendation.assigned : null,
-            ]
-              .filter((part) => part !== null)
-              .join(', ');
-
-            return (
-              <Button
-                key={chip.value}
-                size="sm"
-                variant="outlined"
-                className={`work-order-recommendation${isAssigned ? ' is-assigned' : ''}`}
-                title={chip.label}
-                aria-label={name}
-                disabled={disabled}
-                onClick={() => {
-                  onChange(
-                    chip.productionLineId === null
-                      ? { [field]: chip.value }
-                      : { productionLineId: chip.productionLineId, [field]: chip.value },
-                  );
-                }}
-              >
-                {/* 기호는 매핑 화면의 ★(자동 배정)와 같게 둔다. 뜻은 접근 이름이 말한다. */}
-                {isAssigned && <span aria-hidden="true">✓ </span>}
-                {chip.source === 'DEFAULT' && <span aria-hidden="true">★ </span>}
-                {chip.source === 'RECENT' && (
-                  <span aria-hidden="true" className="work-order-recommendation-tag">
-                    {t.recommendation.sources.RECENT}
-                  </span>
-                )}
-                <span aria-hidden="true">{chip.code}</span>
-                {chip.warning !== null && (
-                  <span aria-hidden="true" className="work-order-recommendation-warning">
-                    {` · ${t.recommendation.short[chip.warning]}`}
-                  </span>
-                )}
-              </Button>
-            );
-          })}
-        </div>
-      )}
+      <RecommendationChips
+        label={label}
+        chips={recommendations}
+        value={value}
+        disabled={disabled}
+        onPick={(chip) => {
+          onChange(
+            chip.productionLineId === null
+              ? { [field]: chip.value }
+              : { productionLineId: chip.productionLineId, [field]: chip.value },
+          );
+        }}
+      />
     </div>
   );
 };
@@ -258,13 +217,16 @@ export const WorkOrderResourcePane = ({
 }: WorkOrderResourcePaneProps) => {
   const workerFieldId = useId();
   const [isWorkerPickerOpen, setIsWorkerPickerOpen] = useState(false);
-  /** 창에서 방금 고른 작업자의 이름표 — 선택지 목록에 없어도 칸에 선다. */
+  /** 창·추천 칩에서 방금 고른 작업자의 이름표 — 선택지 목록에 없어도 칸에 선다. */
   const [pickedWorker, setPickedWorker] = useState<WorkOrderResourceOption | null>(null);
+  /* 방금 고른 이름을 먼저 쓴다 — 받아 둔 목록에 없는 값은 이름을 풀기 전까지 「알 수 없음」으로 채워져 있다. */
   const workerLabel =
     draft.responsibleWorkerId === ''
       ? ''
-      : (responsibleWorkerOptions.find((option) => option.value === draft.responsibleWorkerId)
-          ?.label ?? (pickedWorker?.value === draft.responsibleWorkerId ? pickedWorker.label : ''));
+      : pickedWorker?.value === draft.responsibleWorkerId
+        ? pickedWorker.label
+        : (responsibleWorkerOptions.find((option) => option.value === draft.responsibleWorkerId)
+            ?.label ?? '');
 
   if (selectedWorkOrderNo === null) {
     return (
@@ -288,7 +250,7 @@ export const WorkOrderResourcePane = ({
       disabledReason={disabledReason}
       required={REQUIRED_FIELDS.includes(field)}
       recommendations={
-        field === 'plannedEquipmentId' || field === 'plannedMoldId'
+        field === 'plannedEquipmentId' || field === 'plannedMoldId' || field === 'plannedShiftId'
           ? recommendations?.[field]
           : undefined
       }
@@ -354,6 +316,17 @@ export const WorkOrderResourcePane = ({
               {fieldErrors.responsibleWorkerId !== undefined && (
                 <p className="field-error">{fieldErrors.responsibleWorkerId}</p>
               )}
+              <RecommendationChips
+                label={t.fields.worker}
+                chips={recommendations?.responsibleWorkerId ?? []}
+                value={draft.responsibleWorkerId}
+                disabled={disabled}
+                onPick={(chip) => {
+                  /* 찾기 창에서 고른 것과 같게 이름표를 붙든다 — 받아 둔 작업자 목록에 없을 수 있다. */
+                  setPickedWorker({ value: chip.value, label: chip.label });
+                  onChange({ responsibleWorkerId: chip.value });
+                }}
+              />
             </div>
             {isWorkerPickerOpen && (
               <WorkerPickerDialog

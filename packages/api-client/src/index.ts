@@ -70,6 +70,9 @@ export type {
   ProductionOrderListQueryForward,
   ResourceRecommendationSource,
   ResourceRecommendations,
+  ShiftRecommendation,
+  WorkerRecommendation,
+  WorkerRecommendationSource,
   TerminalRegistrationConfirmation,
   TerminalRegistrationStatusCode,
 } from './forward-contract';
