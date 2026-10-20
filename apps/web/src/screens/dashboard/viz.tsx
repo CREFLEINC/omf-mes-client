@@ -927,6 +927,12 @@ export const MultiLineChart = ({
 };
 
 /**
+ * 파레토 막대 굵기 상한(px) — 다른 세로 막대(`.dash-dayout-bar` 의 `min(56%, 1.75rem)`)와 같은 28px.
+ * 항목이 하나뿐이면 칸 폭의 60% 가 차트 폭 대부분이라 막대가 지나치게 굵었다(omf-all-around#128). 칸 가운데 그대로다.
+ */
+const PARETO_BAR_MAX_W = 28;
+
+/**
  * 파레토 — 막대(많은 순) + 누적 비율 선 + 80% 기준선. 누적 80%에 닿는 막대까지 진하게.
  * 왼쪽 축은 수량, 오른쪽 축은 누적 비율.
  */
@@ -949,7 +955,7 @@ export const ParetoChart = ({
   const rows = toParetoRows(entries);
   const max = Math.max(...rows.map((row) => row.value), 1);
   const slot = plotW / rows.length;
-  const barW = slot * 0.6;
+  const barW = Math.min(slot * 0.6, PARETO_BAR_MAX_W);
   const yQty = (value: number): number => PAD.top + plotH - (value / max) * plotH;
   const yPct = (value: number): number => PAD.top + plotH - (value / 100) * plotH;
   const cx = (index: number): number => PAD.left + slot * index + slot / 2;
