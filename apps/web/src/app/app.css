@@ -14861,6 +14861,8 @@ body:has(.goods-receipt-post-form) > [role='listbox'] {
   inset-inline-start: 50%;
   z-index: 2;
   transform: translate(-50%, calc(-100% - var(--space-2)));
+  /* 카드 · 화면 밖으로 나가면 안쪽으로 민 만큼(`useTipInside`, omf-all-around#128). */
+  translate: var(--tip-shift, 0) 0;
   padding: var(--space-1) var(--space-2);
   border: 1px solid var(--outline-variant);
   border-radius: var(--radius-sm, 6px);
@@ -15214,6 +15216,7 @@ body:has(.goods-receipt-post-form) > [role='listbox'] {
   inset-block-start: 50%;
   z-index: 3;
   transform: translateY(-50%);
+  translate: var(--tip-shift, 0) 0;
   padding: var(--space-1) var(--space-2);
   border: 1px solid var(--outline-variant);
   border-radius: var(--radius-sm, 6px);
@@ -15225,15 +15228,21 @@ body:has(.goods-receipt-post-form) > [role='listbox'] {
   pointer-events: none;
 }
 
-/* 툴팁 자리 — 기본은 칸 · 막대 오른쪽(막대 끝 수량 뒤), 자리가 없으면 왼쪽(사용자 지시 2026-10-19). */
+/*
+ * 툴팁 자리 — 기본은 칸 · 막대 오른쪽(막대 끝 수량 뒤), 자리가 없으면 왼쪽(사용자 지시 2026-10-19).
+ * 막대가 칸보다 좁으면 칸 끝이 아니라 막대 옆에 붙는다(`--tip-inset` = 칸 끝 ~ 막대 끝, omf-all-around#128).
+ */
 .dash-tip-right[data-tip]::after {
-  inset-inline-start: calc(100% + var(--space-2));
+  inset-inline-start: calc(100% - var(--tip-inset, 0px) + var(--space-2));
 }
 
 /* 원인 구분 툴팁 — 막대 끝 숫자 바로 뒤에 붙는다(숫자 폭이 달라도 늘 숫자 옆 · 사용자 지시 2026-10-19). */
 .dash-axisbars-bar:hover .dash-axisbars-value[data-tip]::after,
 .dash-axisbars-bar:focus-visible .dash-axisbars-value[data-tip]::after {
   content: attr(data-tip);
+  /* 안쪽으로 밀 수 있게 상자로 세운다(`translate` 는 글 흐름 조각에 듣지 않는다). */
+  display: inline-block;
+  translate: var(--tip-shift, 0) 0;
   margin-inline-start: var(--space-2);
   padding: var(--space-1) var(--space-2);
   border: 1px solid var(--outline-variant);
@@ -15247,7 +15256,7 @@ body:has(.goods-receipt-post-form) > [role='listbox'] {
 }
 
 .dash-tip-left[data-tip]::after {
-  inset-inline-end: calc(100% + var(--space-2));
+  inset-inline-end: calc(100% - var(--tip-inset, 0px) + var(--space-2));
 }
 
 .dash-axisbars-bar:hover,
@@ -15273,8 +15282,13 @@ body:has(.goods-receipt-post-form) > [role='listbox'] {
   grid-template-rows: minmax(0, 1fr) auto;
 }
 
+/*
+ * 줄 높이 상한 3rem — 항목이 적으면 줄이 카드 높이만큼 늘어나 막대 줄이 듬성듬성 굵게 보였다(omf-all-around#128).
+ * 늘어나지 않은 줄 묶음은 가운데에 둔다. 항목이 많아 줄이 3rem 보다 작아지는 때는 종전과 같다.
+ */
 .dash-axisbars-panel .dash-axisbars-rows {
-  grid-auto-rows: minmax(1.75rem, 1fr);
+  grid-auto-rows: minmax(1.75rem, 3rem);
+  align-content: center;
   align-items: stretch;
 }
 
