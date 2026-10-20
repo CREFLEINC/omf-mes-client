@@ -39,8 +39,6 @@ const lookupKeys = {
   partners: ['item-extended-attrs-lookups', 'partners'] as const,
   processes: ['item-extended-attrs-lookups', 'processes'] as const,
   plants: ['item-extended-attrs-lookups', 'plants'] as const,
-  equipments: (plantId: number) => ['item-extended-attrs-lookups', 'equipments', plantId] as const,
-  molds: (plantId: number) => ['item-extended-attrs-lookups', 'molds', plantId] as const,
   routings: (itemId: number) => ['item-extended-attrs-lookups', 'routings', itemId] as const,
   routingOperations: (routingId: number) =>
     ['item-extended-attrs-lookups', 'routing-operations', routingId] as const,
@@ -204,80 +202,6 @@ export const usePlantOptions = (enabled: boolean): LookupResult => {
         isActive: item.isActive,
       })) ?? EMPTY_ENTRIES,
     truncated: data !== undefined && isTruncated(data.page, data.items.length),
-    isError: query.isError,
-    isLoading: query.isPending,
-  };
-};
-
-/**
- * 설비 — 설비·금형 매핑의 「설비」. **그 공장의 것만** 받는다 — 서버가 다른 공장 설비를 거부한다.
- *
- * 끝까지 받는다. 편집 창이 받은 목록 안에서 검색어로 좁히므로 첫 쪽만 받으면 찾는 설비가 없다.
- */
-export const useEquipmentOptions = (plantId: number | null, enabled: boolean): LookupResult => {
-  const { client } = useApiClient();
-
-  const query = useQuery({
-    queryKey: lookupKeys.equipments(plantId ?? 0),
-    enabled: enabled && plantId !== null,
-    queryFn: () => {
-      if (plantId === null) throw new Error('공장을 고르기 전에는 설비를 조회하지 않습니다.');
-
-      return fetchAllPages((page, size) =>
-        runRequest(() =>
-          client.GET('/mdm/equipments', {
-            params: { query: { plantId, includeInactive: true, page, size } },
-          }),
-        ),
-      );
-    },
-  });
-
-  const data = query.data;
-
-  return {
-    entries:
-      data?.items.map((item) => ({
-        value: String(item.equipmentId),
-        label: `${item.equipmentCode} · ${item.equipmentName}`,
-        isActive: item.isActive,
-      })) ?? EMPTY_ENTRIES,
-    truncated: data?.truncated === true,
-    isError: query.isError,
-    isLoading: query.isPending,
-  };
-};
-
-/** 금형 — 설비·금형 매핑의 「금형」. 설비와 같은 규칙이다. */
-export const useMoldOptions = (plantId: number | null, enabled: boolean): LookupResult => {
-  const { client } = useApiClient();
-
-  const query = useQuery({
-    queryKey: lookupKeys.molds(plantId ?? 0),
-    enabled: enabled && plantId !== null,
-    queryFn: () => {
-      if (plantId === null) throw new Error('공장을 고르기 전에는 금형을 조회하지 않습니다.');
-
-      return fetchAllPages((page, size) =>
-        runRequest(() =>
-          client.GET('/mdm/molds', {
-            params: { query: { plantId, includeInactive: true, page, size } },
-          }),
-        ),
-      );
-    },
-  });
-
-  const data = query.data;
-
-  return {
-    entries:
-      data?.items.map((item) => ({
-        value: String(item.moldId),
-        label: `${item.moldCode} · ${item.moldName}`,
-        isActive: item.isActive,
-      })) ?? EMPTY_ENTRIES,
-    truncated: data?.truncated === true,
     isError: query.isError,
     isLoading: query.isPending,
   };

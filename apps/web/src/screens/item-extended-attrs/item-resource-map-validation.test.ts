@@ -38,7 +38,7 @@ describe('validateItemResourceMap', () => {
     for (const bad of ['-1', '1.5', 'abc']) {
       expect(
         validateItemResourceMap(values({ ...base, priorityNo: bad }), [], null).priorityNo,
-      ).toBe('우선순위는 0 이상의 정수로 입력하세요.');
+      ).toBe('0 이상의 정수로 입력하세요.');
     }
     expect(validateItemResourceMap(values({ ...base, priorityNo: '0' }), [], null)).toEqual({});
   });
@@ -51,7 +51,7 @@ describe('validateItemResourceMap', () => {
       null,
     );
 
-    expect(errors.moldId).toMatch(/같은 공정·설비·금형 매핑이 이미 있습니다/);
+    expect(errors.moldId).toMatch(/같은 공정·설비·금형 줄이 이미 있습니다/);
   });
 
   it('빈 공정끼리도 같은 조합으로 센다', () => {
@@ -87,7 +87,7 @@ describe('restateItemResourceMapError', () => {
         code: 'UNIQUE_VIOLATION',
         message: '서버 문구',
       }),
-    ).toMatch(/다시 사용으로 되살리세요/);
+    ).toMatch(/같은 공정·설비·금형 줄이 이미 있습니다/);
   });
 
   /* 서버가 중복을 화면 범위로 낸다 — 배너로 가는 오류도 화면의 말로 바뀌어야 한다. */
@@ -105,7 +105,10 @@ describe('restateItemResourceMapError', () => {
       kind: 'validation',
       status: 400,
       errors: [
-        { code: 'UNIQUE_VIOLATION', message: expect.stringMatching(/다시 사용으로 되살리세요/) },
+        {
+          code: 'UNIQUE_VIOLATION',
+          message: expect.stringMatching(/같은 공정·설비·금형 줄이 이미 있습니다/),
+        },
         { code: 'SOMETHING_ELSE', message: '서버 다른 문구' },
       ],
     });

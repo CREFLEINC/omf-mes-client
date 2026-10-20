@@ -171,14 +171,7 @@ export const ItemResourceMapPane = ({
           columns={columns}
           rows={rows}
           getRowId={(row) => String(row.itemResourceMapId)}
-          empty={
-            <EmptyState
-              size="sm"
-              live
-              title={t.empty.noneTitle}
-              description={t.empty.noneDescription}
-            />
-          }
+          empty={<EmptyState size="sm" live title={t.empty.noneTitle} />}
         />
       </div>
     );

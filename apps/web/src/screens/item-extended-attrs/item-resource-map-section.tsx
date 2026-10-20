@@ -20,13 +20,7 @@ import {
   restateItemResourceMapError,
 } from './item-resource-map-validation';
 import { LoadErrorBanner } from './load-error-banner';
-import {
-  useEquipmentOptions,
-  useMoldOptions,
-  usePlantOptions,
-  useProcessOptions,
-  type LookupResult,
-} from './lookups';
+import { usePlantOptions, useProcessOptions, type LookupResult } from './lookups';
 import { lookupLabel, selectableOptions } from './options';
 import { subsidiaryKeys, useItemResourceMaps } from './subsidiary-queries';
 
@@ -94,11 +88,8 @@ export const ItemResourceMapSection = ({ itemId }: ItemResourceMapSectionProps) 
   /** 열려 있는 편집 창. `row`가 `null`이면 등록 창이다. */
   const [editing, setEditing] = useState<{ row: ItemResourceMap | null } | null>(null);
 
-  /* 선택 목록은 창을 열 때만 받는다 — 금형은 공장마다 수백 건이다. */
-  const isDialogOpen = editing !== null;
-  const processOptions = useProcessOptions(isDialogOpen);
-  const equipmentOptions = useEquipmentOptions(plantNumber, isDialogOpen);
-  const moldOptions = useMoldOptions(plantNumber, isDialogOpen);
+  /* 공정 선택지는 창을 열 때만 받는다. 설비·금형은 창 안의 찾기 창이 서버에서 찾는다. */
+  const processOptions = useProcessOptions(editing !== null);
 
   /* 기본을 세우면 서버가 다른 줄의 기본을 내리므로 목록 전체를 다시 받는다. */
   const invalidateKeys = [subsidiaryKeys.itemResourceMapsOfItem(itemId)];
@@ -206,6 +197,7 @@ export const ItemResourceMapSection = ({ itemId }: ItemResourceMapSectionProps) 
               ? createItemResourceMapFormValues()
               : toItemResourceMapFormValues(editing.row)
           }
+          plantId={plantNumber}
           plantLabel={lookupLabel(
             plantOptions.entries,
             plantNumber,
@@ -214,12 +206,10 @@ export const ItemResourceMapSection = ({ itemId }: ItemResourceMapSectionProps) 
           )}
           rows={rows}
           processOptions={(selected) => selectableOptions(processOptions, selected)}
-          equipmentOptions={(selected) => selectableOptions(equipmentOptions, selected)}
-          moldOptions={(selected) => selectableOptions(moldOptions, selected)}
           fieldErrors={formWrite.fieldErrors}
           banner={
             <>
-              {optionsNoticeOf([processOptions, equipmentOptions, moldOptions])}
+              {optionsNoticeOf([processOptions])}
               {/*
                * 충돌이면 창을 닫고 목록을 다시 받는다 — 창이 든 판(`versionNo`)이 낡았으므로
                * 새 줄로 창을 다시 열어야 저장이 성립한다.
