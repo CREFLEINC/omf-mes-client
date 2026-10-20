@@ -1,0 +1,16 @@
+.step-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3, 12px);
+  /* 작업 헤더가 위에 붙어 있다. 머리를 화면에 들일 때 그 밑에 깔리지 않게 비운다. */
+  scroll-margin-block-start: 96px;
+}
+
+/* 몇 번째 단계인가. 지시보다 앞에 서되 지시보다 약하게. */
+.step-section__count {
+  margin: 0;
+  font: var(--type-label-lg);
+  letter-spacing: var(--type-label-lg-tracking);
+  color: var(--on-surface-variant);
+  font-variant-numeric: tabular-nums;
+}

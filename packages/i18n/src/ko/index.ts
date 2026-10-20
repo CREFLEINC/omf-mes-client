@@ -132,6 +132,7 @@ import { recycleEntry } from './recycle-entry';
 import { inboundVariance } from './inbound-variance';
 import { temporaryPutaway } from './temporary-putaway';
 import { shellHome } from './shell-home';
+import { taskFlow } from './task-flow';
 import { shellNav } from './shell-nav';
 import { wipHandover } from './wip-handover';
 import { workerAssignment } from './worker-assignment';
@@ -273,6 +274,7 @@ export const ko = {
   temporaryPutaway,
   poChangeReview,
   shellHome,
+  taskFlow,
   shellNav,
   wipHandover,
   workerAssignment,

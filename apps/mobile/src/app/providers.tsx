@@ -8,6 +8,7 @@ import { DeviceRegistrationProvider } from '../patterns/device-registration';
 import { LocalNetworkProvider } from '../patterns/local-network';
 import { OutboxProvider } from '../patterns/outbox';
 import { useRefetchOnRegain } from '../patterns/refetch-on-regain';
+import { TaskDraftProvider } from '../patterns/task-draft';
 import { WorkerSessionProvider } from '../patterns/worker-session';
 import { createOutboxTransport } from './outbox-transport';
 import { apiClient } from './api';
@@ -58,11 +59,17 @@ export const AppProviders = ({ children }: AppProvidersProps) => {
           <LocalNetworkProvider>
             <OutboxProvider send={sendOutboxEntry}>
               <WorkerSessionProvider>
-                <ThemeProvider defaultTheme="system">
-                  <ToastProvider label={messages.common.shell.notifications} position="top-center">
-                    {children}
-                  </ToastProvider>
-                </ThemeProvider>
+                {/* 적던 작업은 사번에 딸린다. 사번이 바뀌면 함께 버린다. */}
+                <TaskDraftProvider>
+                  <ThemeProvider defaultTheme="system">
+                    <ToastProvider
+                      label={messages.common.shell.notifications}
+                      position="top-center"
+                    >
+                      {children}
+                    </ToastProvider>
+                  </ThemeProvider>
+                </TaskDraftProvider>
               </WorkerSessionProvider>
             </OutboxProvider>
           </LocalNetworkProvider>

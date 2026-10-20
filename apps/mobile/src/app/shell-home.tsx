@@ -1,103 +1,92 @@
-import { Card } from '@crefle/web-ui';
+import { Icon } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { Link } from 'react-router';
 
+import { useOutbox } from '../patterns/outbox';
+import { useResumableTasks } from '../patterns/task-draft';
+import { homeGroups } from './home-menu';
 import './shell-home.css';
 
 const t = messages.shellHome;
 
 /**
- * 화면 목록.
+ * 작업 목록.
  *
  * 관리웹은 좌측 레일로 옮겨 다니지만 이 셸은 그 자리를 두지 않는다 - 폭이 좁고 한 손으로
  * 장갑을 낀 채 쓰므로, 설계가 세 셸의 IA 를 각각 다르게 정했다. 관리웹은 메뉴 트리, POP 은
  * 태스크 모드, 모바일은 스캔 퍼스트 홈 타일이다.
  *
- * 묶음과 그 안의 차례는 설계 IA 의 타일을 그대로 따른다 - 우리가 다시 묶으면 화면이 늘 때
- * 어디에 넣을지가 매번 판단이 되고, 설계가 정한 자리와 조금씩 어긋난다.
+ * 타일은 두 줄로 세운다. 한 줄 카드로 두었을 때는 한 화면에 일곱 장만 들어가 아래 묶음은
+ * 스크롤해야 보였다. 묶음 순서는 설계 IA 그대로다(`home-menu.ts`).
+ *
+ * 맨 위에는 지금 이 사람에게 걸린 것만 선다 - 적다가 나간 작업과 아직 못 보낸 기록. 없으면 서지
+ * 않는다. 늘 세워 두면 0 이 자리만 차지한다.
  *
  * 글자 링크로 두지 않는다 - 기본 링크는 글자 높이만큼만 눌리고 그 높이는 손가락보다 작다.
  */
-const tiles = [
-  {
-    label: t.tiles.inbound,
-    screens: [
-      { to: '/inbound-receipt', label: messages.inboundReceipt.title },
-      { to: '/material-lot-scan', label: messages.materialLotScan.title },
-      { to: '/inbound-variance', label: messages.inboundVariance.title },
-      { to: '/recycle-entry', label: messages.recycleEntry.title },
-    ],
-  },
-  {
-    label: t.tiles.putaway,
-    screens: [
-      { to: '/stock-transfer', label: messages.stockTransfer.title },
-      { to: '/material-location', label: messages.materialLocation.title },
-      { to: '/putaway', label: messages.putaway.title },
-      { to: '/temporary-putaway', label: messages.temporaryPutaway.title },
-    ],
-  },
-  {
-    label: t.tiles.picking,
-    screens: [
-      { to: '/material-picking', label: messages.materialPicking.title },
-      { to: '/shopfloor-receipt', label: messages.shopfloorReceipt.title },
-    ],
-  },
-  {
-    label: t.tiles.urgent,
-    screens: [{ to: '/iqc-skip-request', label: messages.iqcSkipRequest.title }],
-  },
-  {
-    label: t.tiles.stocktaking,
-    screens: [{ to: '/physical-count', label: messages.physicalCount.title }],
-  },
-  {
-    label: t.tiles.productionMove,
-    screens: [
-      { to: '/wip-handover', label: messages.wipHandover.title },
-      { to: '/repair-roundtrip', label: messages.repairRoundtrip.title },
-    ],
-  },
-  {
-    label: t.tiles.shipment,
-    screens: [
-      { to: '/product-receipt', label: messages.productReceipt.title },
-      { to: '/product-picking', label: messages.productPicking.title },
-      { to: '/packing-repack', label: messages.packingRepack.title },
-    ],
-  },
-  {
-    label: t.tiles.equipment,
-    screens: [
-      { to: '/equipment-inspection', label: messages.equipmentInspection.title },
-      { to: '/equipment-failure', label: messages.equipmentFailureReport.title },
-    ],
-  },
-  {
-    label: t.shell,
-    screens: [
-      { to: '/outbox', label: messages.outboxPending.title },
-      { to: '/rejections', label: messages.outboxRejections.title },
-    ],
-  },
-];
-
 export const ShellHome = () => {
+  const resumable = useResumableTasks();
+  const { pending, rejected } = useOutbox();
+
   return (
     <nav aria-label={t.label} className="shell-home">
-      {tiles.map((tile) => (
-        <section key={tile.label} className="shell-home__group">
-          <h2>{tile.label}</h2>
+      {resumable.length === 0 ? null : (
+        <section className="shell-home__group">
+          <h2>{t.resume.label}</h2>
+          <ul className="shell-home__resume">
+            {resumable.map((task) => (
+              <li key={task.to}>
+                <Link
+                  to={task.to}
+                  className="shell-home__resume-card"
+                  aria-label={t.resume.open(task.title)}
+                >
+                  <strong>{task.title}</strong>
+                  <span>{task.summary}</span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      {pending === 0 && rejected.length === 0 ? null : (
+        <section className="shell-home__group">
+          <h2>{t.status.label}</h2>
+          <ul className="shell-home__status">
+            <li>
+              <Link to="/outbox" className="shell-home__stat">
+                <span>{t.status.pending}</span>
+                <strong>{t.status.count(pending)}</strong>
+              </Link>
+            </li>
+            <li>
+              {/* 0 건을 경고색으로 그리면 문제가 없는데도 눈이 그리로 간다. */}
+              <Link
+                to="/rejections"
+                className={
+                  rejected.length === 0
+                    ? 'shell-home__stat'
+                    : 'shell-home__stat shell-home__stat--rejected'
+                }
+              >
+                <span>{t.status.rejected}</span>
+                <strong>{t.status.count(rejected.length)}</strong>
+              </Link>
+            </li>
+          </ul>
+        </section>
+      )}
+
+      {homeGroups.map((group) => (
+        <section key={group.label} className="shell-home__group">
+          <h2>{group.label}</h2>
           <ul className="shell-home__tiles">
-            {tile.screens.map((screen) => (
+            {group.screens.map((screen) => (
               <li key={screen.to}>
                 <Link to={screen.to} className="shell-home__tile">
-                  <Card bordered>
-                    <Card.Body className="card-body">
-                      <strong>{screen.label}</strong>
-                    </Card.Body>
-                  </Card>
+                  <Icon name={screen.icon} size={28} className="shell-home__icon" />
+                  <strong>{screen.label}</strong>
                 </Link>
               </li>
             ))}

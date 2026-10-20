@@ -1,7 +1,7 @@
 .shell-home {
   display: flex;
   flex-direction: column;
-  gap: var(--space-4, 16px);
+  gap: var(--space-5, 20px);
   padding: var(--space-4, 16px);
 }
 
@@ -11,24 +11,110 @@
   gap: var(--space-2, 8px);
 }
 
-.shell-home__tiles {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2, 8px);
+.shell-home__tiles,
+.shell-home__resume,
+.shell-home__status {
   margin: 0;
   padding: 0;
   list-style: none;
 }
 
-/* 카드 전체가 누르는 자리다. 글자만 눌리면 장갑 낀 손이 빗나간다. */
+/*
+ * 두 줄로 세운다. 한 칸이 150px 아래로 줄어드는 화면에서는 한 줄로 내려간다 - 베트남어 이름이
+ * 길어 좁은 칸에서는 세 줄로 접힌다.
+ */
+.shell-home__tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: var(--space-2, 8px);
+}
+
+/* 타일 전체가 누르는 자리다. 글자만 눌리면 장갑 낀 손이 빗나간다. */
 .shell-home__tile {
-  display: block;
+  box-sizing: border-box;
+  height: 100%;
+  min-height: 88px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: var(--space-2, 8px);
+  padding: var(--space-3, 12px);
+  border: 1px solid var(--outline-variant, #d7d7dd);
+  border-radius: var(--radius-md, 12px);
+  background: var(--surface-container-low, #f7f7f9);
   color: inherit;
   text-decoration: none;
 }
 
-.shell-home__tile:focus-visible {
+.shell-home__tile strong {
+  font: var(--type-title-sm);
+  letter-spacing: var(--type-title-sm-tracking);
+  font-weight: 600;
+}
+
+.shell-home__icon {
+  color: var(--primary-text);
+}
+
+.shell-home__tile:focus-visible,
+.shell-home__resume-card:focus-visible,
+.shell-home__stat:focus-visible {
   outline: 2px solid var(--primary, currentColor);
   outline-offset: 2px;
+}
+
+.shell-home__resume {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2, 8px);
+}
+
+/* 이어서 할 작업. 다른 타일보다 먼저 눈에 걸리게 테두리를 강조색으로 준다. */
+.shell-home__resume-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1, 4px);
+  min-height: 72px;
+  box-sizing: border-box;
+  padding: var(--space-3, 12px) var(--space-4, 16px);
+  border: 2px solid var(--primary, currentColor);
   border-radius: var(--radius-md, 12px);
+  background: var(--surface, #fff);
+  color: inherit;
+  text-decoration: none;
+}
+
+.shell-home__resume-card span {
+  font: var(--type-body-sm);
+  letter-spacing: var(--type-body-sm-tracking);
+  color: var(--on-surface-variant);
+}
+
+.shell-home__status {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-2, 8px);
+}
+
+.shell-home__stat {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1, 4px);
+  min-height: 72px;
+  box-sizing: border-box;
+  padding: var(--space-3, 12px);
+  border-radius: var(--radius-md, 12px);
+  background: var(--surface-container, #eee);
+  color: inherit;
+  text-decoration: none;
+}
+
+.shell-home__stat strong {
+  font: var(--type-title-lg);
+  letter-spacing: var(--type-title-lg-tracking);
+  font-variant-numeric: tabular-nums;
+}
+
+.shell-home__stat--rejected strong {
+  color: var(--semantic-error-text);
 }

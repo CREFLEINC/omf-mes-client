@@ -17,4 +17,14 @@ export const shellHome: Translated<typeof ko.shellHome> = {
     equipment: 'Thiết bị',
   },
   shell: 'Trạng thái gửi',
+  resume: {
+    label: 'Làm tiếp',
+    open: (title: string) => `Làm tiếp ${title}`,
+  },
+  status: {
+    label: 'Tình trạng gửi',
+    pending: 'Chờ gửi',
+    rejected: 'Gửi thất bại',
+    count: (count: number) => `${String(count)} bản ghi`,
+  },
 };
