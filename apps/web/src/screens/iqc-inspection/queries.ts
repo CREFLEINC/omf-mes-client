@@ -559,6 +559,25 @@ export const useDefectCodes = (enabled: boolean) => {
 };
 
 /**
+ * 불합격 사유의 추정 원인 마스터(omf-all-around#130) — 사용 중지 포함으로 받는다. 고를 수 있는 것은 사용 중인
+ * 것뿐이지만, 임시 저장한 원인이 그 뒤 사용 중지돼도 이름으로 보여야 한다(`causeOptionsOf`).
+ */
+export const useCauseCodes = (enabled: boolean) => {
+  const { client } = useApiClient();
+
+  return useQuery({
+    queryKey: [...ALL_KEY, 'cause-codes'] as const,
+    queryFn: () =>
+      runRequest(() =>
+        client.GET('/quality/cause-codes', {
+          params: { query: { includeInactive: true, page: 1, size: DEFECT_CODE_PAGE_SIZE } },
+        }),
+      ).then((response) => response.items),
+    enabled,
+  });
+};
+
+/**
  * 작성중 회차에 임시 저장된 불합격 사유(omf-all-around#122 · 서버 P-48). 다시 열었을 때 사유 칸을 채운다.
  * 결과 하나로 좁히면 기간이 필요 없다 — 한 회차의 사유는 많아야 몇 줄이다.
  */

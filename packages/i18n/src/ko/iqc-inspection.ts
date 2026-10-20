@@ -236,6 +236,13 @@ export const iqcInspection = {
       /** 칸 아래 필수 누락 표시 — 확정이 막힌 이유(required·minorRequired)는 확정 단추 곁에 그대로 둔다. */
       majorMissing: '불량 대분류를 선택하세요.',
       minorMissing: '불량 상세를 선택하세요.',
+      /**
+       * 추정 원인(omf-all-around#130 · 담당자 결정 안 B) — 선택 입력이다(계약 `suspectedCauseCodeId` 와 같다).
+       * 고르면 통합 대시보드 › 부적합 현황 「원인 구분별 구성」에 원인 대분류로 잡힌다.
+       */
+      cause: '추정 원인',
+      causeNone: '선택 안 함',
+      causeInactive: (label: string): string => `${label} (사용 중지)`,
     },
     /** 합격판정개수 기준 자동 판정(omf-all-around#125) — 기준에 합격판정개수가 있을 때만 선다. */
     judgmentChange: {

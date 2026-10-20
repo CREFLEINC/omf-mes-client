@@ -12,7 +12,9 @@ const codes = [
 ];
 
 const renderReason = (draft: RejectionDraft) =>
-  render(<RejectionReason codes={codes} draft={draft} onChange={vi.fn()} disabled={false} />);
+  render(
+    <RejectionReason codes={codes} causes={[]} draft={draft} onChange={vi.fn()} disabled={false} />,
+  );
 
 /* 3단계 검증 — 대분류·상세 2열 + 사유 전체 폭, 라벨은 입력 위, 필수 누락은 그 칸 아래(omf-all-around#106). */
 describe('RejectionReason 배치', () => {
@@ -26,7 +28,9 @@ describe('RejectionReason 배치', () => {
     expect(screen.getByLabelText(t.description)).toHaveAttribute(
       'placeholder',
       t.descriptionPlaceholder,
-    );
+    ); /* 추정 원인(#130)은 선택 입력 — 필수 표시도 누락 안내도 없다. */
+    expect(screen.getByLabelText(t.cause)).toHaveTextContent(t.causeNone);
+    expect(screen.getByLabelText(t.cause)).not.toHaveAccessibleDescription();
   });
 
   it('상세가 있는 대분류를 고르면 상세가 열리고 그 칸 아래에 누락을 말한다', () => {

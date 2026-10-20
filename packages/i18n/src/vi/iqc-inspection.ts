@@ -128,6 +128,9 @@ export const iqcInspection: Translated<typeof ko.iqcInspection> = {
       descriptionPlaceholder: 'Hãy nhập lý do.',
       majorMissing: 'Hãy chọn nhóm lỗi.',
       minorMissing: 'Hãy chọn mã lỗi chi tiết.',
+      cause: 'Nguyên nhân dự đoán',
+      causeNone: 'Không chọn',
+      causeInactive: (label: string): string => `${label} (ngừng sử dụng)`,
     },
     judgmentChange: {
       basis: (acceptanceNumber: number): string =>

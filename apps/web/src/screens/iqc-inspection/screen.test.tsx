@@ -125,6 +125,25 @@ const renderScreen = (
               page: { page: 1, size: 500, total: 2 },
             }),
         },
+        /* 원인 코드 마스터 — 추정 원인(omf-all-around#130). 대분류 1 · 상세 1 · 사용 중지 1. */
+        {
+          match: (request) => new URL(request.url).pathname === '/quality/cause-codes',
+          respond: () =>
+            jsonResponse({
+              items: [
+                { causeCodeId: 8001, causeCode: 'SUP', causeName: '공급사', isActive: true },
+                {
+                  causeCodeId: 8002,
+                  causeCode: 'SUP-PRC',
+                  causeName: '공급사 공정',
+                  parentCauseCodeId: 8001,
+                  isActive: true,
+                },
+                { causeCodeId: 8009, causeCode: 'OLD', causeName: '옛 원인', isActive: false },
+              ],
+              page: { page: 1, size: 500, total: 3 },
+            }),
+        },
         /* 작성중 회차에 임시 저장된 사유(#122 · P-48) — 시험이 `draftRecordsForTest` 로 채운다. */
         {
           match: (request) =>
@@ -260,6 +279,7 @@ let draftRecordsForTest: {
   defectRecordId: number;
   defectCodeId: number;
   defectDescription?: string;
+  suspectedCauseCodeId?: number;
 }[] = [];
 /** 작성중 사유 조회를 실패시킨다(#122 리뷰 M2). */
 let draftRecordsFailForTest = false;
@@ -1168,6 +1188,61 @@ describe('IqcInspectionScreen — 불합격 사유 임시 저장', () => {
     expect(await bodyOf(writes[0] as Request)).toMatchObject({
       overallJudgmentCode: 'REJECTED',
       defects: [{ defectCodeId: 7002, defectQty: 15, defectDescription: '찍힘' }],
+    });
+  });
+
+  /* omf-all-around#130 — 추정 원인을 고르면 저장 본문에 싣고, 다시 열면 되살린다. */
+  it('추정 원인을 고르면 임시 저장 본문에 원인이 실린다', async () => {
+    draftRecordsForTest = [
+      { defectRecordId: 1, defectCodeId: 7002, defectDescription: '표면 긁힘' },
+    ];
+    const { writes } = renderScreen('/?ir=1001', () => jsonResponse(queueResponse()), [
+      rejectedDraft,
+    ]);
+    await waitFor(() =>
+      expect(screen.getByLabelText(t.result.rejection.description)).toHaveValue('표면 긁힘'),
+    );
+    expect(screen.getByLabelText(t.result.rejection.cause)).toHaveTextContent(
+      t.result.rejection.causeNone,
+    );
+
+    await userEvent.click(screen.getByLabelText(t.result.rejection.cause));
+    await userEvent.click(
+      await screen.findByRole('option', { name: 'SUP-PRC · 공급사 공정 (공급사)' }),
+    );
+    /* 사용 중지된 원인은 고를 수 없다. */
+    expect(screen.queryByRole('option', { name: /OLD · 옛 원인/ })).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: t.result.save }));
+    await waitFor(() => expect(writes).toHaveLength(1));
+
+    expect(await bodyOf(writes[0] as Request)).toMatchObject({
+      defects: [{ defectCodeId: 7002, defectQty: 15, suspectedCauseCodeId: 8002 }],
+    });
+  });
+
+  it('임시 저장된 원인을 되살리고, 사용 중지된 원인도 표시를 붙여 그대로 다시 보낸다', async () => {
+    draftRecordsForTest = [
+      {
+        defectRecordId: 1,
+        defectCodeId: 7002,
+        defectDescription: '표면 긁힘',
+        suspectedCauseCodeId: 8009,
+      },
+    ];
+    const { writes } = renderScreen('/?ir=1001', () => jsonResponse(queueResponse()), [
+      rejectedDraft,
+    ]);
+    await waitFor(() =>
+      expect(screen.getByLabelText(t.result.rejection.cause)).toHaveTextContent(
+        t.result.rejection.causeInactive('OLD · 옛 원인'),
+      ),
+    );
+    await editQuantity();
+    await userEvent.click(screen.getByRole('button', { name: t.result.save }));
+    await waitFor(() => expect(writes).toHaveLength(1));
+
+    expect(await bodyOf(writes[0] as Request)).toMatchObject({
+      defects: [{ defectCodeId: 7002, suspectedCauseCodeId: 8009 }],
     });
   });
 
