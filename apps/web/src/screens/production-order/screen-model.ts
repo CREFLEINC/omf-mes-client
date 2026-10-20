@@ -47,6 +47,7 @@ export const toProductionOrderRows = (
     isExpanded,
     expandedWorkOrderCount: order.expandedWorkOrderCount,
     plannedWorkOrderCount: order.plannedWorkOrderCount,
+    autoPlan: order.autoPlan,
   }));
 };
 

@@ -25,6 +25,7 @@ const rows: ProductionOrderRow[] = [
     isExpanded: false,
     expandedWorkOrderCount: 3,
     plannedWorkOrderCount: 5,
+    autoPlan: null,
   },
   {
     productionOrderId: 17,
@@ -39,6 +40,7 @@ const rows: ProductionOrderRow[] = [
     isExpanded: false,
     expandedWorkOrderCount: 0,
     plannedWorkOrderCount: 0,
+    autoPlan: null,
   },
 ];
 
@@ -84,6 +86,7 @@ describe('ProductionOrderListPane 목록', () => {
       /* 열 이름 옆에 도움말 단추가 붙는다. */
       `${t.fields.workOrderProgress}help`,
       t.fields.statusCode,
+      t.fields.autoPlan,
     ]);
     /* 두 숫자의 뜻은 열 이름 옆 말풍선이 말한다 — 표 밖으로 떠서 잘리지 않는다. */
     const help = screen.getByRole('button', { name: t.basic.workOrderProgressHelp });
@@ -154,6 +157,35 @@ describe('ProductionOrderListPane 쪽과 상태', () => {
     await user.click(screen.getByRole('button', { name: t.actions.prevPage }));
     await user.click(screen.getByRole('button', { name: t.actions.nextPage }));
     expect(onChangePage.mock.calls).toEqual([[1], [2], [4]]);
+  });
+
+  it('자동 계획 열은 완료 · 확인 필요를 상태 표식으로, 사유는 말풍선·읽어 주기로만 낸다', () => {
+    renderPane({
+      rows: rows.map((row) => ({
+        ...row,
+        autoPlan:
+          row.productionOrderNo === 'SYNTH-PO-B'
+            ? { status: 'DONE', reasons: [] }
+            : { status: 'NEEDS_REVIEW', reasons: ['ROUTING_MISSING'] },
+      })),
+    });
+    const lastCell = (orderNo: string) => [...dataRow(orderNo).cells].at(-1);
+
+    expect(lastCell('SYNTH-PO-B')).toHaveTextContent(t.values.autoPlanStatus.DONE);
+    expect(lastCell('SYNTH-PO-B')?.querySelector('[title]')).toBeNull();
+    expect(lastCell('SYNTH-PO-A')).toHaveTextContent(
+      `${t.values.autoPlanStatus.NEEDS_REVIEW}: ${t.values.autoPlanReasons.ROUTING_MISSING}`,
+    );
+    expect(lastCell('SYNTH-PO-A')?.querySelector('[title]')).toHaveAttribute(
+      'title',
+      t.values.autoPlanReasons.ROUTING_MISSING,
+    );
+  });
+
+  it('자동 계획 결과가 아직 없는 P/O 는 - 로 보인다', () => {
+    renderPane();
+
+    expect([...dataRow('SYNTH-PO-B').cells].at(-1)).toHaveTextContent(/^-$/);
   });
 
   it('로딩은 표와 빈 상태를 대체한다', () => {

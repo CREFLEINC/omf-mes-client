@@ -1051,6 +1051,18 @@ main > * + * {
   margin-inline-start: auto;
 }
 
+.production-order-pane-actions {
+  display: flex;
+  gap: var(--space-2);
+  margin-inline-start: auto;
+}
+
+.production-order-reason-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
 .production-order-pane-description {
   margin: 0;
   color: var(--on-surface-muted);
@@ -1072,7 +1084,8 @@ main > * + * {
 .production-order-list-table td:nth-child(4),
 .production-order-list-table td:nth-child(5),
 .production-order-list-table td:nth-child(6),
-.production-order-list-table td:nth-child(7) {
+.production-order-list-table td:nth-child(7),
+.production-order-list-table td:nth-child(8) {
   white-space: nowrap;
 }
 
@@ -1180,7 +1193,8 @@ main > * + * {
   margin-block-start: 0;
 }
 
-.production-order-table-caption {
+.production-order-table-caption,
+.production-order-visually-hidden {
   position: fixed;
   width: 1px;
   height: 1px;

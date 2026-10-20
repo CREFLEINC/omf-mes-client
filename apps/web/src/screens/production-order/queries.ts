@@ -1,4 +1,4 @@
-import type { components } from '@omf-mes/api-client';
+import type { ProductionOrderForward } from '@omf-mes/api-client';
 import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
@@ -10,7 +10,7 @@ import {
 } from './filters';
 import type { ProductionOrderFact, ProductionOrderListResponse } from './types';
 
-type ProductionOrder = components['schemas']['ProductionOrder'];
+type ProductionOrder = ProductionOrderForward;
 
 export const productionOrderKeys = {
   all: ['production-orders'] as const,
@@ -36,6 +36,7 @@ export const toProductionOrderFact = (order: ProductionOrder): ProductionOrderFa
   remarks: order.remarks ?? null,
   expandedWorkOrderCount: order.expandedWorkOrderCount ?? null,
   plannedWorkOrderCount: order.plannedWorkOrderCount ?? null,
+  autoPlan: order.autoPlan ?? null,
 });
 
 const toListResponse = (response: {

@@ -25,6 +25,8 @@ export const productionOrder: Translated<typeof ko.productionOrder> = {
     status: 'Trạng thái',
     q: 'Tìm kiếm',
     remarks: 'Ghi chú',
+    autoPlan: 'Kế hoạch tự động',
+    autoPlanReasons: 'Mục cần kiểm tra',
   },
   panes: {
     filters: 'Điều kiện tra cứu ERP W/O',
@@ -42,6 +44,7 @@ export const productionOrder: Translated<typeof ko.productionOrder> = {
     nextPage: 'Sau',
     integrationSync: 'Xem tình trạng liên kết',
     productionPlan: 'Triển khai · lập W/O',
+    autoPlan: 'Lập kế hoạch tự động',
   },
   values: {
     erpReadOnlyNotice:
@@ -59,6 +62,23 @@ export const productionOrder: Translated<typeof ko.productionOrder> = {
     itemUnknown: 'Không tìm thấy tên mặt hàng.',
     itemFailed: 'Không tải được tên mặt hàng.',
     missingRemarks: 'Không có ghi chú',
+    autoPlanStatus: {
+      DONE: 'Hoàn tất',
+      NEEDS_REVIEW: 'Cần kiểm tra',
+    },
+    autoPlanReasons: {
+      BOM_MISSING: 'Không có BOM mặc định',
+      ROUTING_MISSING: 'Không có Routing khả dụng',
+      ROUTING_AMBIGUOUS: 'Nhiều Routing',
+      LINE_UNKNOWN: 'Chưa xác định dây chuyền',
+      PLAN_NOT_CONFIRMED: 'Có kế hoạch chưa xác nhận',
+      QTY_REMAINING: 'Thiếu số lượng kế hoạch',
+    },
+  },
+  autoPlan: {
+    confirmed: 'Đã xác nhận kế hoạch',
+    draft: 'Đã tạo kế hoạch · Hãy chọn dây chuyền rồi xác nhận',
+    notPlanned: 'Không tạo được kế hoạch',
   },
   basic: {
     heading: 'Thông tin cơ bản',

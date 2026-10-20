@@ -81,6 +81,7 @@ describe('useProductionOrderList', () => {
               versionNo: 7,
               expandedWorkOrderCount: 4,
               plannedWorkOrderCount: 5,
+              autoPlan: { status: 'NEEDS_REVIEW', reasons: ['LINE_UNKNOWN'] },
             },
             productionOrder(101),
           ],
@@ -114,6 +115,7 @@ describe('useProductionOrderList', () => {
           statusCode: 'RELEASED',
           expandedWorkOrderCount: 4,
           plannedWorkOrderCount: 5,
+          autoPlan: { status: 'NEEDS_REVIEW', reasons: ['LINE_UNKNOWN'] },
         },
         {
           productionOrderId: 101,
@@ -131,6 +133,7 @@ describe('useProductionOrderList', () => {
           statusCode: 'RELEASED',
           expandedWorkOrderCount: 2,
           plannedWorkOrderCount: 3,
+          autoPlan: null,
         },
       ],
       page: { page: 1, size: 25, total: 47 },
@@ -153,6 +156,7 @@ describe('useProductionOrderList', () => {
             status: 'RELEASED',
             dueFrom: '2026-08-01',
             dueTo: '2026-08-31',
+            autoPlan: '',
           },
           3,
         ),
@@ -258,6 +262,7 @@ describe('useProductionOrderDetail', () => {
       statusCode: 'RELEASED',
       expandedWorkOrderCount: 4,
       plannedWorkOrderCount: 5,
+      autoPlan: null,
     });
     expect(productionOrderKeys.detail(202)).not.toEqual(productionOrderKeys.detail(203));
   });

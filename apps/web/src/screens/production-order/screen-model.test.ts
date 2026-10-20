@@ -25,6 +25,7 @@ const order = (id: number, overrides: Partial<ProductionOrderFact> = {}): Produc
   remarks: null,
   expandedWorkOrderCount: 2,
   plannedWorkOrderCount: 3,
+  autoPlan: null,
   ...overrides,
 });
 const entry = (
@@ -78,6 +79,7 @@ describe('toProductionOrderRows', () => {
         isExpanded: true,
         expandedWorkOrderCount: 2,
         plannedWorkOrderCount: 3,
+        autoPlan: null,
       },
       expect.objectContaining({
         productionOrderId: 2,

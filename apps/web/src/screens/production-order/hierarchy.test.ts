@@ -19,6 +19,7 @@ const order = (id: number, parent: number | null = null): ProductionOrderFact =>
   remarks: null,
   expandedWorkOrderCount: null,
   plannedWorkOrderCount: null,
+  autoPlan: null,
 });
 
 const ids = (rows: ReturnType<typeof toVisibleProductionOrderHierarchy>): number[] =>

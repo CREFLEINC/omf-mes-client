@@ -28,6 +28,7 @@ const detail = (overrides: Partial<ProductionOrderFact> = {}): ProductionOrderFa
   expandedWorkOrderCount: 3,
   plannedWorkOrderCount: 5,
   remarks: 'Synthetic note',
+  autoPlan: null,
   ...overrides,
 });
 const reference = (value: string, label: string, overrides: Partial<ReferenceSource> = {}) => ({
@@ -83,7 +84,7 @@ describe('ProductionOrderBasicPane', () => {
     expect(pane).toHaveClass('production-order-pane', 'production-order-basic-pane');
     expect(heading.parentElement).toHaveClass('production-order-pane-heading');
     expect(pane.querySelector('.production-order-detail-fields')).not.toBeNull();
-    expect(pane.querySelectorAll('.production-order-detail-field')).toHaveLength(10);
+    expect(pane.querySelectorAll('.production-order-detail-field')).toHaveLength(11);
     const expected = [
       [t.fields.productionOrderNo, 'SYN-PO-701'],
       [t.fields.erpProductionOrderNo, 'SYN-ERP-701'],
@@ -97,7 +98,7 @@ describe('ProductionOrderBasicPane', () => {
       [t.fields.remarks, 'Synthetic note'],
     ] as const;
     for (const [label, value] of expected) expect(valueFor(label)).toHaveTextContent(value);
-    /* 선택 직후 읽는 값·참조·비고를 글자 무게로만 가른다 — 5열 × 2행, 읽는 순서는 1행이 먼저다. */
+    /* 선택 직후 읽는 값·참조·비고를 글자 무게로만 가른다 — 5열 격자, 읽는 순서는 1행이 먼저다. */
     expect(
       [...pane.querySelectorAll('.production-order-detail-field dt')].map(
         (node) => node.textContent,
@@ -112,6 +113,7 @@ describe('ProductionOrderBasicPane', () => {
       t.fields.erpProductionOrderNo,
       t.fields.businessUnit,
       t.fields.plant,
+      t.fields.autoPlan,
       t.fields.remarks,
     ]);
     expect(valueFor(t.fields.remarks).parentElement).toHaveAttribute('data-tier', 'note');

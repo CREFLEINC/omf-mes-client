@@ -2,6 +2,7 @@ import { AlertBanner, Card, Chip, IconButton, SkeletonText, Tooltip } from '@cre
 import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
 
+import { AutoPlanChip, autoPlanReasonLabels } from './auto-plan-chip';
 import type { CodeNameOf } from './code-names';
 import type { ProductionOrderItemName } from './item-lookups';
 import { productionOrderStatusTone } from './status-tone';
@@ -102,7 +103,7 @@ export const ProductionOrderBasicPane = ({
 
   const { data } = detailState;
   const unit = describeReference(resolveReference(uoms, data.uomId));
-  /* 1행은 선택 직후 확인하는 값, 2행은 진행 집계·참조·비고 — 5열 × 2행 구조는 그대로다. */
+  /* 1행은 선택 직후 확인하는 값, 2행부터는 진행 집계·참조·자동 계획·비고 — 5열 격자다. */
   const fields: DetailField[] = [
     {
       key: 'productionOrderNo',
@@ -171,6 +172,28 @@ export const ProductionOrderBasicPane = ({
       value: describeReference(resolveReference(plants, data.plantId)),
       tier: 'secondary',
     },
+    {
+      key: 'autoPlan',
+      label: t.fields.autoPlan,
+      value: <AutoPlanChip autoPlan={data.autoPlan} withReasonHint={false} />,
+      tier: 'secondary',
+    },
+    ...(data.autoPlan === null || data.autoPlan.reasons.length === 0
+      ? []
+      : [
+          {
+            key: 'autoPlanReasons',
+            label: t.fields.autoPlanReasons,
+            value: (
+              <ul className="production-order-reason-list">
+                {autoPlanReasonLabels(data.autoPlan.reasons).map((reason) => (
+                  <li key={reason}>{reason}</li>
+                ))}
+              </ul>
+            ),
+            tier: 'secondary' as const,
+          },
+        ]),
     {
       key: 'remarks',
       label: t.fields.remarks,

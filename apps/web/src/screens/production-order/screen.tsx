@@ -1,8 +1,11 @@
-import { AlertBanner, Breadcrumb, Button, PageHeader } from '@crefle/web-ui';
+import { AlertBanner, Breadcrumb, Button, PageHeader, useToast } from '@crefle/web-ui';
+import type { ProductionOrderAutoPlanResult } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useMemo, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router';
 
+import { SaveErrorBanner } from '../../patterns/master';
+import { autoPlanReasonLabels } from './auto-plan-chip';
 import { useProductionOrderCodeNames } from './code-names';
 import { useProductionOrderPlans, useProductionOrderWorkOrders } from './detail-queries';
 import {
@@ -15,6 +18,7 @@ import {
 } from './filters';
 import { defaultExpandedProductionOrderIds, toVisibleProductionOrderHierarchy } from './hierarchy';
 import { useProductionOrderItemNames } from './item-lookups';
+import { useAutoPlanMutation } from './mutations';
 import { toPageView } from './pagination';
 import { ProductionOrderBasicPane } from './production-order-basic-pane';
 import { ProductionOrderDetailListPane } from './production-order-detail-list-pane';
@@ -33,9 +37,25 @@ import type { ProductionOrderFact, SelectOption } from './types';
 const t = messages.productionOrder;
 const EMPTY_FACTS: ProductionOrderFact[] = [];
 
+const autoPlanToast = (result: ProductionOrderAutoPlanResult) => {
+  switch (result.outcome) {
+    case 'CONFIRMED':
+      return { variant: 'success', description: t.autoPlan.confirmed } as const;
+    case 'DRAFT':
+      return { variant: 'info', description: t.autoPlan.draft } as const;
+    case 'NOT_PLANNED':
+      return {
+        variant: 'warning',
+        title: t.autoPlan.notPlanned,
+        description: autoPlanReasonLabels(result.reasons).join(' · '),
+      } as const;
+  }
+};
+
 export const ProductionOrderScreen = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
+  const toast = useToast();
   const filters = useMemo(() => readFilters(searchParams), [searchParams]);
   const page = readPage(searchParams);
   const selectedId = readSelectedProductionOrderId(searchParams);
@@ -48,6 +68,9 @@ export const ProductionOrderScreen = () => {
   const plants = usePlantReferenceLookup();
   const uoms = useUomReferenceLookup();
   const codeNames = useProductionOrderCodeNames();
+  const autoPlan = useAutoPlanMutation({
+    onSuccess: (result) => toast.show(autoPlanToast(result)),
+  });
   const facts = list.data?.items ?? EMPTY_FACTS;
   const itemIds = useMemo(() => {
     const ids = facts.map((order) => order.itemId);
@@ -120,7 +143,10 @@ export const ProductionOrderScreen = () => {
           page={pageView}
           selectedProductionOrderId={selectedId}
           statusNameOf={codeNames.productionOrderStatus}
-          onSelect={(id) => setSearchParams(toSelectionSearchParams(searchParams, id))}
+          onSelect={(id) => {
+            autoPlan.reset();
+            setSearchParams(toSelectionSearchParams(searchParams, id));
+          }}
           onToggleExpanded={(id) => {
             setCollapsedIds((current) => {
               const next = new Set(current);
@@ -133,6 +159,7 @@ export const ProductionOrderScreen = () => {
         />
       )}
 
+      <SaveErrorBanner error={autoPlan.error} />
       <div className="production-order-detail-grid">
         <ProductionOrderBasicPane
           isSelected={isSelected}
@@ -144,17 +171,28 @@ export const ProductionOrderScreen = () => {
           statusNameOf={codeNames.productionOrderStatus}
           action={
             selectedId === null ? undefined : (
-              /* 「초기화」와 같은 DS 테두리 단추. 누르면 W/O 전개·편성 화면으로 이동만 한다. */
-              <Button
-                variant="outlined"
-                onClick={() => {
-                  void navigate(
-                    `/production/production-plans?productionOrderId=${String(selectedId)}`,
-                  );
-                }}
-              >
-                {t.actions.productionPlan}
-              </Button>
+              <div className="production-order-pane-actions">
+                {detail.data?.autoPlan?.status === 'NEEDS_REVIEW' && (
+                  <Button
+                    variant="outlined"
+                    disabled={autoPlan.isSaving}
+                    onClick={() => autoPlan.write(selectedId)}
+                  >
+                    {t.actions.autoPlan}
+                  </Button>
+                )}
+                {/* 「초기화」와 같은 DS 테두리 단추. 누르면 W/O 전개·편성 화면으로 이동만 한다. */}
+                <Button
+                  variant="outlined"
+                  onClick={() => {
+                    void navigate(
+                      `/production/production-plans?productionOrderId=${String(selectedId)}`,
+                    );
+                  }}
+                >
+                  {t.actions.productionPlan}
+                </Button>
+              </div>
             )
           }
         />
