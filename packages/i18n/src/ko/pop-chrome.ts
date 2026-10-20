@@ -44,6 +44,29 @@ export const popChrome = {
    *    말이어야 한다(목록에서 누른 이름과 열린 화면의 이름이 다르면 작업자가 의심한다).
    */
   console: {
+    /** 업무 영역(부서) — 홈·작업 메뉴의 묶음 이름이자 상태바의 위치(`patterns/pop-screen-catalog` `PopArea`). */
+    areas: {
+      production: '생산',
+      material: '구매·자재',
+      quality: '품질',
+      shipping: '출하',
+      equipment: '설비',
+    },
+    /** 상태바 왼쪽의 길잡이 — 어느 화면에서든 돌아갈 곳이 있다(`nav-trail`). */
+    nav: {
+      label: '화면 길잡이',
+      home: '홈',
+      back: '이전',
+      location: '현재 위치',
+    },
+    home: {
+      title: '홈',
+      recent: '최근 화면',
+      /** 최근 화면이 작업지시를 달고 있으면 함께 적는다 — 같은 화면이라도 어느 지시였는지가 다르다. */
+      recentWithWorkOrder: (name: string, workOrderId: number): string =>
+        `${name} · W/O #${String(workOrderId)}`,
+      screens: '업무 화면',
+    },
     statusBar: {
       equipmentNone: '설비 미지정',
       workOrderNone: '작업지시 미선택',
@@ -88,12 +111,6 @@ export const popChrome = {
     menu: {
       title: '작업 메뉴',
       close: '닫기',
-      groups: {
-        materials: '자재·창고',
-        production: '생산',
-        shipping: '출하',
-        equipment: '설비',
-      },
       loading: '이동할 수 있는 화면을 확인하는 중…',
       unknown: '이동할 수 있는 화면을 확인하지 못했습니다',
       empty: '이동할 수 있는 화면이 없습니다',

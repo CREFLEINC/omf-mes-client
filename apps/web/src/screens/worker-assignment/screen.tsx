@@ -12,6 +12,7 @@ import { WorkerCard } from './worker-card';
 import { PopDevScreenNav } from '../../patterns/pop-dev-screen-nav';
 import { usePopIdentity } from '../../patterns/pop-identity';
 import { usePopRegistration } from '../../patterns/pop-registration';
+import { POP_HOME_PATH } from '../../patterns/pop-screen-catalog';
 import { setWorkerSession, useWorkerSession } from '../../patterns/worker-session';
 
 /**
@@ -306,11 +307,14 @@ export const WorkerAssignmentScreen = () => {
             setWorkerNo('');
           }}
           /*
-           * 제품 동작은 작업 시작 화면(P-02-01)으로 이어진다(§5-8). 현재 작업자 귀속은
-           * 화면 밖 `worker-session`에 있으므로 이동 뒤에도 그대로 유지된다.
+           * 제품 동작은 **홈**으로 이어진다. 스펙(§5-8)은 작업 시작 화면(P-02-01)으로 보냈지만,
+           * 그 화면은 생산 단말의 것이다 — 구매·자재·품질 단말의 작업자는 쓰지 않는 화면에 서서
+           * 자기 화면을 찾아 나가야 했다(현장 지적 2026-10-20). 홈은 이 단말에 허용된 화면만
+           * 부서별로 보인다(`screens/pop-home`). 현재 작업자 귀속은 화면 밖 `worker-session`에
+           * 있으므로 이동 뒤에도 그대로 유지된다.
            */
           onGoToWork={() => {
-            void navigate('/pop/work-start');
+            void navigate(POP_HOME_PATH);
           }}
           /*
            * ⚠ **개발 서버에서만** 그 자리에 화면 이동 셀렉터를 세운다 — 버튼이 아직

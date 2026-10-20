@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { popRoutes } from './pop';
-import { POP_ENTRY_SCREEN_PATH, POP_SCREENS } from '../patterns/pop-screen-catalog';
+import { POP_ENTRY_SCREEN_PATH, POP_HOME_PATH, POP_SCREENS } from '../patterns/pop-screen-catalog';
 
 /**
  * 업무용 [화면 이동](G-34)의 후보 목록이 라우트 표와 어긋나지 않는지 잰다.
@@ -15,10 +15,11 @@ import { POP_ENTRY_SCREEN_PATH, POP_SCREENS } from '../patterns/pop-screen-catal
  * 거스른다(`.dependency-cruiser.cjs`). 부르는 것이 허용되는 쪽에서 대조한다.
  */
 describe('POP 화면 이름표', () => {
-  it('진입 화면을 뺀 POP 라우트를 하나도 빠뜨리지 않는다', () => {
+  it('진입 화면·홈을 뺀 POP 라우트를 하나도 빠뜨리지 않는다', () => {
+    /* 진입 화면과 홈은 업무 화면이 아니라 셸의 자리다 — 화면 코드가 없고 권한으로 막지 않는다. */
     const routed = popRoutes
       .map((route) => route.path)
-      .filter((path) => path !== POP_ENTRY_SCREEN_PATH)
+      .filter((path) => path !== POP_ENTRY_SCREEN_PATH && path !== POP_HOME_PATH)
       .sort();
     const listed = POP_SCREENS.map((screen) => screen.path).sort();
 
@@ -36,6 +37,12 @@ describe('POP 화면 이름표', () => {
   it('진입 화면은 담지 않는다', () => {
     expect(popRoutes.map((route) => route.path)).toContain(POP_ENTRY_SCREEN_PATH);
     expect(POP_SCREENS.map((screen) => screen.path)).not.toContain(POP_ENTRY_SCREEN_PATH);
+  });
+
+  /* 홈은 [홈] 단추가 늘 가는 자리라, 목록에 두어 권한으로 거르면 돌아갈 곳이 사라질 수 있다. */
+  it('홈은 라우트에 있고 화면 목록에는 담지 않는다', () => {
+    expect(popRoutes.map((route) => route.path)).toContain(POP_HOME_PATH);
+    expect(POP_SCREENS.map((screen) => screen.path)).not.toContain(POP_HOME_PATH);
   });
 
   /* 화면 코드가 권한 대조의 열쇠다 — 겹치면 한 권한이 두 화면을 열고, 비면 아무것도 못 연다. */

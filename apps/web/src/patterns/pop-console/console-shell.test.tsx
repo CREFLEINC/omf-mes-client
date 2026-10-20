@@ -1,12 +1,14 @@
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Route, Routes, useLocation } from 'react-router';
-import { describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 
 import { createStubFetch, jsonResponse, renderWithProviders } from '../../test/api-harness';
 import { PopIdentityProvider, type PopIdentity } from '../pop-identity';
+import { popShellLayoutOf } from './console-routes';
 import { PopConsoleShell } from './console-shell';
 import { usePopFeedback } from './feedback';
+import { clearTrail } from './nav-trail';
 
 const IDENTITY: PopIdentity = {
   terminalId: 7,
@@ -79,11 +81,19 @@ const ScanBody = () => {
   );
 };
 
+/** 셸이 하는 대로 주소에 따라 모양을 고른다(`app/pop-main` 의 `PopChrome`). */
+const ShellUnderTest = () => {
+  const { pathname } = useLocation();
+  const layout = popShellLayoutOf(pathname);
+
+  return <PopConsoleShell layout={layout === 'none' ? 'task' : layout} />;
+};
+
 const renderShell = (route: string, screenCodes = ['P-02-01', 'P-02-03', 'P-02-10', 'P-05-02']) =>
   renderWithProviders(
     <PopIdentityProvider value={IDENTITY}>
       <Routes>
-        <Route element={<PopConsoleShell />}>
+        <Route element={<ShellUnderTest />}>
           <Route path="/pop/work-start" element={<Here />} />
           <Route path="/pop/material-input" element={<ScanBody />} />
           <Route path="*" element={<Here />} />
@@ -93,13 +103,18 @@ const renderShell = (route: string, screenCodes = ['P-02-01', 'P-02-03', 'P-02-1
     { fetch: stub(screenCodes), route },
   );
 
+beforeEach(() => {
+  clearTrail();
+});
+
 describe('작업장 콘솔', () => {
   it('상태바가 설비·작업지시·사번·세션 상태를 한 줄에 보인다', async () => {
     renderShell('/pop/material-input?workOrderId=42');
 
     const bar = screen.getByRole('banner');
 
-    expect(within(bar).getByText('INJ-01 사출 1호기')).toBeInTheDocument();
+    expect(within(bar).getByText('사출 1호기')).toBeInTheDocument();
+    expect(within(bar).getByLabelText('현재 위치')).toHaveTextContent(/생산\s*›\s*자재 투입/u);
     expect(within(bar).getByText('사번 20231234')).toBeInTheDocument();
     expect(await within(bar).findByText('작업지시 WO-1023')).toBeInTheDocument();
     expect(await within(bar).findByText('가동 중')).toBeInTheDocument();
@@ -191,5 +206,58 @@ describe('작업장 콘솔', () => {
     await waitFor(() => {
       expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     });
+  });
+});
+
+describe('작업장 콘솔 — 돌아갈 길', () => {
+  it('생산 흐름 밖의 업무 화면은 패널·단계 없이 길잡이와 위치만 선다', () => {
+    renderShell('/pop/downtime');
+
+    expect(screen.getByLabelText('현재 위치')).toHaveTextContent(/설비\s*›\s*비가동 실적 입력/u);
+    expect(screen.getByRole('button', { name: '홈' })).toBeEnabled();
+    expect(screen.queryByRole('navigation', { name: '작업 단계' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('complementary', { name: '현재 작업' })).not.toBeInTheDocument();
+  });
+
+  it('[이전]은 방금 있던 화면으로 작업지시째 돌아간다', async () => {
+    const user = userEvent.setup();
+
+    renderShell('/pop/material-input?workOrderId=42');
+
+    await user.click(await screen.findByRole('button', { name: '작업 중단' }));
+    expect(screen.getByText('지금: /pop/work-hold?workOrderId=42')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: '이전' }));
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: '막힌 스캔' })).toBeInTheDocument();
+    });
+    expect(screen.getByLabelText('현재 위치')).toHaveTextContent(/생산\s*›\s*자재 투입/u);
+  });
+
+  it('지나온 화면이 없으면 [이전]은 홈으로 간다 — 진입 화면·앱 밖으로 떨어지지 않는다', async () => {
+    const user = userEvent.setup();
+
+    renderShell('/pop/downtime');
+
+    await user.click(screen.getByRole('button', { name: '이전' }));
+
+    await waitFor(() => {
+      expect(screen.getByText('지금: /pop/home')).toBeInTheDocument();
+    });
+    expect(screen.getByLabelText('현재 위치')).toHaveTextContent('홈');
+  });
+
+  it('[홈]은 어느 화면에서나 홈으로 가고, 홈에서는 지금 자리로 표시된다', async () => {
+    const user = userEvent.setup();
+
+    renderShell('/pop/material-input?workOrderId=42');
+
+    await user.click(screen.getByRole('button', { name: '홈' }));
+
+    await waitFor(() => {
+      expect(screen.getByText('지금: /pop/home')).toBeInTheDocument();
+    });
+    expect(screen.getByRole('button', { name: '홈' })).toHaveAttribute('aria-current', 'page');
   });
 });

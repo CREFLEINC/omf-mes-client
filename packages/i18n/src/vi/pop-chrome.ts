@@ -22,6 +22,26 @@ export const popChrome: Translated<typeof ko.popChrome> = {
   },
 
   console: {
+    areas: {
+      production: 'Sản xuất',
+      material: 'Mua hàng · Vật tư',
+      quality: 'Chất lượng',
+      shipping: 'Xuất hàng',
+      equipment: 'Thiết bị',
+    },
+    nav: {
+      label: 'Điều hướng màn hình',
+      home: 'Trang chủ',
+      back: 'Quay lại',
+      location: 'Vị trí hiện tại',
+    },
+    home: {
+      title: 'Trang chủ',
+      recent: 'Màn hình gần đây',
+      recentWithWorkOrder: (name: string, workOrderId: number): string =>
+        `${name} · W/O #${String(workOrderId)}`,
+      screens: 'Màn hình công việc',
+    },
     statusBar: {
       equipmentNone: 'Chưa gán thiết bị',
       workOrderNone: 'Chưa chọn lệnh SX',
@@ -65,12 +85,6 @@ export const popChrome: Translated<typeof ko.popChrome> = {
     menu: {
       title: 'Menu công việc',
       close: 'Đóng',
-      groups: {
-        materials: 'Vật tư · Kho',
-        production: 'Sản xuất',
-        shipping: 'Xuất hàng',
-        equipment: 'Thiết bị',
-      },
       loading: 'Đang kiểm tra các màn hình có thể chuyển…',
       unknown: 'Không kiểm tra được các màn hình có thể chuyển',
       empty: 'Không có màn hình nào để chuyển',

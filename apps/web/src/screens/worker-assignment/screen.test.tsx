@@ -167,7 +167,8 @@ describe('WorkerAssignmentScreen — 현재 작업자', () => {
     expect(screen.getByRole('button', { name: t.current.toWork })).toBeDisabled();
   });
 
-  it('제품 모드에서 현재 작업자가 있으면 작업 시작 화면으로 이동한다', async () => {
+  /* ⭐ 부서마다 쓰는 화면이 달라 작업 시작이 아니라 홈으로 간다(현장 지적 2026-10-20). */
+  it('제품 모드에서 현재 작업자가 있으면 홈으로 이동한다', async () => {
     renderScreen();
 
     await typeWorkerNo('900028');
@@ -176,7 +177,7 @@ describe('WorkerAssignmentScreen — 현재 작업자', () => {
 
     await userEvent.click(screen.getByRole('button', { name: t.current.toWork }));
 
-    expect(screen.getByRole('status', { name: '현재 경로' })).toHaveTextContent('/pop/work-start');
+    expect(screen.getByRole('status', { name: '현재 경로' })).toHaveTextContent('/pop/home');
   });
 
   it('교대하면 현재 작업자가 비워진다', async () => {

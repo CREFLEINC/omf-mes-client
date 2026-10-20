@@ -8948,6 +8948,11 @@
   font-size: var(--pop-console-text);
 }
 
+/* 업무 화면(`task`)은 패널·단계·액션바가 없다 — 상태바 아래를 본문이 다 쓴다. */
+.pop-console[data-layout='task'] {
+  grid-template-rows: var(--pop-console-status-h) minmax(0, 1fr);
+}
+
 /* ── 상태바 ─────────────────────────────────────────────────────────────── */
 
 .pop-console-status {
@@ -8959,17 +8964,38 @@
   border-bottom: 1px solid var(--outline-variant);
 }
 
-.pop-console-status__equipment {
+/* 길잡이 — [홈] · [이전] · 「부서 › 화면」. 어느 화면에서든 같은 자리다. */
+.pop-console-status__nav {
   display: flex;
+  flex: 0 1 auto;
   align-items: center;
   gap: var(--space-3);
   min-width: 0;
 }
 
-.pop-console-status__equipment > strong {
+.pop-console-status__location {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  min-width: 0;
+  margin: 0 0 0 var(--space-2);
   overflow: hidden;
+  color: var(--on-surface-variant);
+  white-space: nowrap;
+}
+
+.pop-console-status__location > strong {
+  overflow: hidden;
+  color: var(--on-surface);
   font-size: 24px;
   text-overflow: ellipsis;
+}
+
+.pop-console-status__equipment {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-width: 0;
   white-space: nowrap;
 }
 
@@ -9165,8 +9191,7 @@
  */
 .pop-console-status button,
 .pop-console-steps button,
-.pop-console-actions button,
-.pop-console-menu button {
+.pop-console-actions button {
   font-size: var(--pop-console-text, 20px);
 }
 
@@ -9218,27 +9243,78 @@
   margin-inline-start: auto;
 }
 
-/* ── 작업 메뉴 ───────────────────────────────────────────────────────────── */
+/* ── 부서별 화면 타일 — 작업 메뉴와 홈이 같은 것을 쓴다 ─────────────────────── */
 
-.pop-console-menu {
+.pop-console-tiles {
   display: grid;
   gap: var(--space-5);
 }
 
-.pop-console-menu__group > h3 {
+.pop-console-tiles__group > h3 {
   margin: 0 0 var(--space-3);
   color: var(--on-surface-variant);
-  font-size: var(--pop-console-text);
+  font-size: 18px;
 }
 
-.pop-console-menu__tiles {
+.pop-console-tiles__grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: var(--space-3);
 }
 
+/*
+ * 타일은 큰 누름 자리다 — 홈에서는 본문 밀도(`.pop-ui` 의 md 수렴) 안에 서므로 높이를 직접 준다.
+ * 터치 등급(`pop-touch-*`)과는 다른 것이다: 등급은 «잘못 눌렀을 때의 무게»이고 이것은 메뉴 타일이다.
+ */
+.pop-console-tiles .pop-console-tile {
+  min-height: 80px;
+  font-size: 18px;
+  white-space: normal;
+}
+
 .pop-console-menu__reason {
   margin: 0;
+}
+
+/* 창 바닥의 [닫기] — DS 창 바닥줄은 골격 밖이라 글자 크기를 직접 준다. */
+.pop-console-dialog-action {
+  min-height: 56px;
+  font-size: 20px;
+}
+
+/* ── 홈 ─────────────────────────────────────────────────────────────────── */
+
+.pop-ui.pop-home {
+  overflow-y: auto;
+}
+
+.pop-ui.pop-home > section {
+  padding-inline: var(--pop-pad);
+}
+
+.pop-home-recent > h2 {
+  margin: 0 0 var(--space-3);
+  color: var(--on-surface-variant);
+  font-size: 16px;
+}
+
+.pop-home-recent__list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+
+.pop-home-screens {
+  min-height: 0;
+}
+
+/* 홈은 본문 폭이 넓다(1920 ÷ 1.25) — 네 칸으로 두어 부서 묶음이 한 화면에 들어오게 한다. */
+.pop-home-screens .pop-console-tiles__grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.pop-home-screens .pop-console-tiles .pop-console-tile {
+  min-height: 64px;
 }
 
 /* ── 피드백 층 ───────────────────────────────────────────────────────────── */

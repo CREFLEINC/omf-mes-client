@@ -41,10 +41,8 @@ import { createRoot } from 'react-dom/client';
 import { Navigate, Outlet, RouterProvider, createBrowserRouter, useLocation } from 'react-router';
 
 import { popRoutes } from '../routes/pop';
-import { isPopConsolePath, PopConsoleShell } from '../patterns/pop-console';
+import { clearTrail, PopConsoleShell, popShellLayoutOf } from '../patterns/pop-console';
 import { applyPopFit, setPopFitDesign } from '../patterns/pop-fit';
-import { PopLogoutButton } from '../patterns/pop-logout';
-import { PopScreenNavButton } from '../patterns/pop-screen-nav';
 import {
   PopRegistrationProvider,
   usePopRegistration,
@@ -166,39 +164,37 @@ function virtualPrinterShell() {
 const POP_ENTRY_PATH = '/pop/worker-assignment';
 
 /**
- * 화면 위에 늘 서 있는 것 — **화면 이동**과 **사용자 전환** 두 자리다(공유계약 G-34).
+ * 화면 위에 늘 서 있는 것 — **작업장 콘솔**(`patterns/pop-console`).
  *
- * ⭐ **길 위에 두어야 길을 안다.** 라우터 «안» 겹이라 지금 어느 화면인지 알 수 있고, 그래야
- * 진입 화면에서 스스로 빠질 수 있다. 라우터 밖에 두면 주소를 직접 읽어야 하고, 화면을 옮겨도
- * 다시 그려지지 않는다.
+ * ⭐ **진입 화면을 뺀 모든 화면이 같은 골격 안에 선다.** 상태바의 [홈]·[이전]·위치·[작업 메뉴]·
+ *    [사용자 전환]이 어느 화면에서나 같은 자리에 있어, 부서마다 쓰는 화면이 달라도 화면을 옮기다
+ *    돌아갈 길을 잃지 않는다(현장 지적 2026-10-20). 생산 흐름 화면만 현재작업 패널·단계·액션바를
+ *    더 갖는다(`popShellLayoutOf`).
+ *
+ * ⭐ **길 위에 두어야 길을 안다.** 라우터 «안» 겹이라 지금 어느 화면인지 알 수 있다.
+ *
+ * ⛔ **진입 화면(사번 입력)은 골격 없이 선다.** 아직 누구인지 모르는 자리라 홈·메뉴로 갈 수
+ *    없어야 하고, 그 자리에 서면 지나온 화면 기록을 비운다 — 다음 사람에게 앞 사람의 작업지시가
+ *    「최근 화면」으로 보이면 안 된다.
  */
 const PopChrome = () => {
   /* ⭐ 관리웹에서 바꾼 단말 공정·설비가 단말을 다시 켜지 않아도 보이게 한다(#1202). */
   useRefreshPopTerminalOnScreenEntry();
 
   const { pathname } = useLocation();
-  const isConsole = isPopConsolePath(pathname);
+  const layout = popShellLayoutOf(pathname);
 
   /*
-   * ⭐ **작업장 콘솔로 옮긴 화면은 콘솔 골격이 감싼다**(`patterns/pop-console`). 상태바가 [작업
-   *    메뉴]·[사용자 전환]을 제자리에 품으므로 떠 있는 두 버튼은 세우지 않는다 — 세우면 같은
-   *    조작이 두 자리에 선다. 옮기지 않은 화면은 지금 모양 그대로다.
-   *
-   * ⚠ 배율 기준도 함께 바꾼다 — 콘솔은 1920×1080, 나머지는 1024×768(`pop-fit`).
+   * ⚠ 배율 기준도 함께 바꾼다 — 콘솔은 1920×1080, 진입 화면은 1024×768(`pop-fit`).
    */
   useLayoutEffect(() => {
-    setPopFitDesign(isConsole ? 'console' : 'legacy');
-  }, [isConsole]);
+    setPopFitDesign(layout === 'none' ? 'legacy' : 'console');
+    if (layout === 'none') clearTrail();
+  }, [layout]);
 
-  if (isConsole) return <PopConsoleShell />;
+  if (layout === 'none') return <Outlet />;
 
-  return (
-    <>
-      <Outlet />
-      <PopScreenNavButton />
-      <PopLogoutButton />
-    </>
-  );
+  return <PopConsoleShell layout={layout} />;
 };
 
 const popRouter = createBrowserRouter([

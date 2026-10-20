@@ -12,6 +12,8 @@ import { PopMaterialLotLabelScreen } from '../screens/pop-material-lot-label/scr
 import { PopMaterialDefectScreen } from '../screens/pop-material-defect/screen';
 import { PopOqcInspectionScreen } from '../screens/pop-oqc-inspection/screen';
 import { PqcInspectionScreen } from '../screens/pqc-inspection/screen';
+import { PopHomeScreen } from '../screens/pop-home/screen';
+import { POP_HOME_PATH } from '../patterns/pop-screen-catalog';
 import { RepackLabelIssueScreen } from '../screens/repack-label-issue/screen';
 import { ProductionFlowScreen } from '../screens/production-result/screen';
 import { ReworkResultRegisterScreen } from '../screens/rework-result-register/screen';
@@ -60,6 +62,12 @@ export const popRoutes: RouteObject[] = [
    * 여전히 셸의 `patterns/pop-identity` 몫이라, 사번 지정만으로 그 두 값까지 채워지지는 않는다.
    */
   { path: '/pop/worker-assignment', element: <WorkerAssignmentScreen /> },
+  /*
+   * **홈** — 사번을 확인한 뒤 서는 자리이자 어느 화면에서든 [홈]이 데려가는 자리다. 이 단말에
+   * 허용된 화면을 부서(업무 영역)별로 보인다. 화면 코드가 없는 셸의 자리라 화면 목록
+   * (`pop-screen-catalog`)에는 담지 않는다 — 권한으로 막으면 돌아갈 곳이 사라진다.
+   */
+  { path: POP_HOME_PATH, element: <PopHomeScreen /> },
   /*
    * P-02-03 — **POP(현장 단말) 화면의 첫 라우트다.** 로그인과 같이 관리웹 셸 배열의 형제로
    * 서서 `AppLayout`을 지나지 않는다.

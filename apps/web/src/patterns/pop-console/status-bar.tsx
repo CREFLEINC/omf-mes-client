@@ -3,64 +3,120 @@ import { messages } from '@omf-mes/i18n';
 import { useNavigate } from 'react-router';
 
 import { usePopIdentity } from '../pop-identity';
-import { POP_ENTRY_SCREEN_PATH } from '../pop-screen-catalog';
+import { POP_ENTRY_SCREEN_PATH, POP_HOME_PATH, popScreenAt } from '../pop-screen-catalog';
 import { setWorkerSession, useWorkerSession } from '../worker-session';
 import type { ConsoleWorkOrder, SessionLight } from './current-work';
 import { clockText, useIsOnline, useMinuteClock, usePendingOutboxCount } from './device-state';
+import { clearTrail, previousOf, usePopTrail } from './nav-trail';
 
 const t = messages.popChrome.console;
 
 export interface PopConsoleStatusBarProps {
-  light: SessionLight;
+  pathname: string;
+  search: string;
+  /** 생산 흐름 화면이면 세션 상태등을 보인다. 그 밖의 화면에서는 뜻이 없다. */
+  light: SessionLight | null;
   /** 지금 주소의 작업지시. 아직 모르거나 없으면 `null`. */
   workOrder: ConsoleWorkOrder | null;
   onOpenMenu: () => void;
 }
 
 /**
- * 작업장 콘솔 맨 위 **상태바** — 어느 설비 앞에서 · 무슨 작업지시를 · 누구로 기록하며 · 연결과
- * 전송이 어떤가 · 지금 몇 시인가.
+ * 작업장 콘솔 맨 위 **상태바** — 모든 업무 화면이 같은 것을 쓴다.
  *
- * ⭐ **모든 화면에서 같은 자리다.** 지금까지는 화면마다 머리줄을 손으로 써서(약 22벌) 같은
- *    정보가 화면마다 다른 곳에 있었다. 상용 단말(Plex·HYDRA)은 이 줄을 고정하고 화면은 그 아래만
- *    바꾼다.
+ * 왼쪽부터 **길잡이**([홈] · [이전] · 「부서 › 화면」) → 무엇 앞에서(설비·상태등) → 무슨
+ * 작업지시를 → 오른쪽에 누구로(사번) · 연결 · 전송 대기 · 시각 · [작업 메뉴] · [사용자 전환].
  *
- * ⭐ **[작업 메뉴]·[사용자 전환]이 여기 앉는다.** 떠 있는 버튼(`pop-screen-nav`·`pop-logout`)은
- *    화면 머리줄의 오른쪽을 비워 받아야 했다 — 상태바가 자기 자리를 가지므로 그럴 필요가 없다.
+ * ⭐ **길잡이가 맨 앞이다.** 부서마다 쓰는 화면이 달라 작업자가 자기 영역 밖 화면에 들어가는 일이
+ *    잦다(품질 담당이 생산 화면을, 자재 담당이 품질 화면을). 어디서든 [홈] 한 번이면 자기 부서의
+ *    화면 묶음으로, [이전] 한 번이면 방금 있던 화면(그 작업지시 그대로)으로 돌아간다.
  *
- * ⛔ **모르는 것을 빈칸으로 두지 않는다**(`work-start/pop-header` 와 같은 규율). 설비·사번이
- *    비면 단말이 하나뿐인 것처럼, 누구로 기록되는지 모르는 채로 읽힌다.
+ * ⛔ **모르는 것을 빈칸으로 두지 않는다**(`work-start/pop-header` 와 같은 규율). 사번이 비면 누구로
+ *    기록되는지 모르는 채로 읽힌다. ⚠ 설비는 «붙어 있을 때만» 적는다 — 창고·품질 단말처럼 설비가
+ *    없는 것이 정상인 단말이 있다(`pop-identity` `equipment`).
  */
-export const PopConsoleStatusBar = ({ light, workOrder, onOpenMenu }: PopConsoleStatusBarProps) => {
+export const PopConsoleStatusBar = ({
+  pathname,
+  search,
+  light,
+  workOrder,
+  onOpenMenu,
+}: PopConsoleStatusBarProps) => {
   const identity = usePopIdentity();
   const workerSession = useWorkerSession();
   const navigate = useNavigate();
   const isOnline = useIsOnline();
   const pending = usePendingOutboxCount();
   const now = useMinuteClock();
+  const trail = usePopTrail();
+
+  const here = `${pathname}${search}`;
+  const back = previousOf(trail);
+  const screen = popScreenAt(pathname);
+  const isHome = pathname === POP_HOME_PATH;
 
   const workerNo = identity.workerNo ?? workerSession?.worker.workerNo ?? null;
   const equipment = identity.equipment;
   const equipmentText =
     equipment === null
-      ? t.statusBar.equipmentNone
-      : [equipment.equipmentCode, equipment.equipmentName]
-          .filter((part): part is string => part !== null && part.trim() !== '')
-          .join(' ') || String(equipment.equipmentId);
+      ? null
+      : (equipment.equipmentName ?? equipment.equipmentCode ?? String(equipment.equipmentId));
 
   return (
     <header className="pop-console-status">
-      <div className="pop-console-status__equipment">
-        <span className="pop-console-light" data-light={light} aria-hidden="true" />
-        <strong>{equipmentText}</strong>
-        <span className="pop-console-status__session">{t.session[light]}</span>
-      </div>
+      <nav className="pop-console-status__nav" aria-label={t.nav.label}>
+        <Button
+          variant={isHome ? 'filled' : 'tonal'}
+          size="xl"
+          aria-current={isHome ? 'page' : undefined}
+          onClick={() => {
+            if (!isHome) void navigate(POP_HOME_PATH);
+          }}
+        >
+          {t.nav.home}
+        </Button>
+        <Button
+          variant="outlined"
+          size="xl"
+          disabled={back === here}
+          onClick={() => {
+            void navigate(back);
+          }}
+        >
+          {t.nav.back}
+        </Button>
+        <p className="pop-console-status__location" aria-label={t.nav.location}>
+          {screen === null ? (
+            <strong>{t.home.title}</strong>
+          ) : (
+            <>
+              <span>{t.areas[screen.area]}</span>
+              <span aria-hidden="true">›</span>
+              <strong>{screen.name}</strong>
+            </>
+          )}
+        </p>
+      </nav>
 
-      <div className="pop-console-status__work">
-        {workOrder === null
-          ? t.statusBar.workOrderNone
-          : t.statusBar.workOrder(workOrder.workOrderNo)}
-      </div>
+      {(equipmentText !== null || light !== null) && (
+        <div className="pop-console-status__equipment">
+          {light !== null && (
+            <span className="pop-console-light" data-light={light} aria-hidden="true" />
+          )}
+          {equipmentText !== null && (
+            <span title={equipment?.equipmentCode ?? undefined}>{equipmentText}</span>
+          )}
+          {light !== null && (
+            <span className="pop-console-status__session">{t.session[light]}</span>
+          )}
+        </div>
+      )}
+
+      {workOrder !== null && (
+        <div className="pop-console-status__work">
+          {t.statusBar.workOrder(workOrder.workOrderNo)}
+        </div>
+      )}
 
       <div className="pop-console-status__right">
         <span className="pop-console-status__worker">
@@ -81,13 +137,15 @@ export const PopConsoleStatusBar = ({ light, workOrder, onOpenMenu }: PopConsole
         </Button>
         {/*
          * ⚠ **사번만 놓는다** — 세션을 끊지 않는다(`pop-logout` 머리말과 같은 이유). 잠깐 자리를
-         *   비우려던 사람이 작업을 끝내 버리면 안 된다.
+         *   비우려던 사람이 작업을 끝내 버리면 안 된다. 지나온 화면 기록은 비운다 — 다음 사람에게
+         *   앞 사람의 작업지시가 「최근 화면」으로 보이면 안 된다.
          */}
         <Button
           variant="outlined"
           size="xl"
           onClick={() => {
             setWorkerSession(null);
+            clearTrail();
             void navigate(POP_ENTRY_SCREEN_PATH, { replace: true });
           }}
         >
