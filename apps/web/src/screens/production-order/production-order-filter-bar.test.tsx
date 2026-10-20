@@ -60,6 +60,21 @@ describe('ProductionOrderFilterBar', () => {
     expect(props.onSearch).toHaveBeenCalledWith(DEFAULT_PRODUCTION_ORDER_FILTERS);
   });
 
+  it('자동 계획을 전체 · 확인 필요 · 완료 중에서 골라 조회한다', async () => {
+    const { props, user } = renderBar();
+    const select = screen.getByRole('combobox', { name: '자동 계획' });
+
+    await user.click(select);
+    const options = screen.getAllByRole('option');
+    expect(options).toHaveLength(3);
+    ['전체', '확인 필요', '완료'].forEach((name, index) =>
+      expect(options[index]).toHaveAccessibleName(name),
+    );
+    await user.click(screen.getByRole('option', { name: '확인 필요' }));
+    await user.click(screen.getByRole('button', { name: '조회' }));
+    expect(props.onSearch).toHaveBeenCalledWith(applied({ autoPlan: 'NEEDS_REVIEW' }));
+  });
+
   it('delegates Reset', async () => {
     const { props, user } = renderBar();
 

@@ -1055,6 +1055,18 @@ main > * + * {
   margin-inline-start: auto;
 }
 
+.production-order-pane-actions {
+  display: flex;
+  gap: var(--space-2);
+  margin-inline-start: auto;
+}
+
+.production-order-reason-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
 .production-order-pane-description {
   margin: 0;
   color: var(--on-surface-muted);
@@ -1076,7 +1088,8 @@ main > * + * {
 .production-order-list-table td:nth-child(4),
 .production-order-list-table td:nth-child(5),
 .production-order-list-table td:nth-child(6),
-.production-order-list-table td:nth-child(7) {
+.production-order-list-table td:nth-child(7),
+.production-order-list-table td:nth-child(8) {
   white-space: nowrap;
 }
 
@@ -1201,7 +1214,8 @@ main > * + * {
   border: 0;
 }
 
-.production-order-table-caption {
+.production-order-table-caption,
+.production-order-visually-hidden {
   position: fixed;
   width: 1px;
   height: 1px;
@@ -1853,6 +1867,21 @@ main > * + * {
   align-items: center;
   gap: var(--space-1);
   margin-top: var(--space-1);
+}
+
+/* 지금 배정된 후보 — 채운 빨강은 오류로 읽혀 테두리만 굵게 한다. */
+.work-order-recommendation.is-assigned {
+  border-width: 2px;
+  font-weight: 600;
+}
+
+.work-order-recommendation-tag {
+  margin-right: var(--space-1);
+  opacity: 0.75;
+}
+
+.work-order-recommendation-warning {
+  color: var(--semantic-warning);
 }
 
 /* 안내 상자와 바로 아래 라벨 사이를 띄운다. */

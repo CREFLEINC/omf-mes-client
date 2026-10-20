@@ -60,6 +60,7 @@ import { iqcSkipApproval } from './iqc-skip-approval';
 import { iqcSkipRequest } from './iqc-skip-request';
 import { itemExtendedAttrs } from './item-extended-attrs';
 import { itemPicker } from './item-picker';
+import { resourcePicker } from './resource-picker';
 import { judgmentCode } from './judgment-code';
 import { login } from './login';
 import { lotStatusHistory } from './lot-status-history';
@@ -202,6 +203,7 @@ export const vi: Translated<Messages> = {
   iqcSkipRequest,
   itemExtendedAttrs,
   itemPicker,
+  resourcePicker,
   judgmentCode,
   login,
   lotStatusHistory,

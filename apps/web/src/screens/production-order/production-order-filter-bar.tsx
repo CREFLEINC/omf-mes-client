@@ -6,6 +6,10 @@ import { type ProductionOrderFilters } from './filters';
 import type { SelectOption } from './types';
 
 const t = messages.productionOrder;
+const AUTO_PLAN_OPTIONS: SelectOption[] = [
+  { value: 'NEEDS_REVIEW', label: t.values.autoPlanStatus.NEEDS_REVIEW },
+  { value: 'DONE', label: t.values.autoPlanStatus.DONE },
+];
 
 interface FilterSelectProps {
   label: string;
@@ -65,11 +69,11 @@ export const ProductionOrderFilterBar = ({
   onReset,
 }: ProductionOrderFilterBarProps) => {
   const [draft, setDraft] = useState(appliedFilters);
-  const { q, businessUnit, plant, item, status, dueFrom, dueTo } = appliedFilters;
+  const { q, businessUnit, plant, item, status, dueFrom, dueTo, autoPlan } = appliedFilters;
   const reasonId = useId();
   useEffect(
-    () => setDraft({ q, businessUnit, plant, item, status, dueFrom, dueTo }),
-    [q, businessUnit, plant, item, status, dueFrom, dueTo],
+    () => setDraft({ q, businessUnit, plant, item, status, dueFrom, dueTo, autoPlan }),
+    [q, businessUnit, plant, item, status, dueFrom, dueTo, autoPlan],
   );
 
   const reversed = draft.dueFrom !== '' && draft.dueTo !== '' && draft.dueFrom > draft.dueTo;
@@ -121,6 +125,12 @@ export const ProductionOrderFilterBar = ({
         options={statusOptions.map((value) => ({ value, label: value }))}
         value={draft.status}
         onChange={(value) => update('status', value)}
+      />
+      <FilterSelect
+        label={t.fields.autoPlan}
+        options={AUTO_PLAN_OPTIONS}
+        value={draft.autoPlan}
+        onChange={(value) => update('autoPlan', value)}
       />
       <SearchInput
         fullWidth

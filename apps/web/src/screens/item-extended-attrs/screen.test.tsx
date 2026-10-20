@@ -4730,8 +4730,10 @@ const resourceMapRoutes = (rows = itemResourceMapFixtures): StubRoute[] => [
         paged([
           {
             equipmentId: 8001,
+            plantId: 9001,
             equipmentCode: 'SYN-EQ-01',
             equipmentName: '합성 설비 A',
+            productionLineId: null,
             isActive: true,
           },
         ]),
@@ -4742,8 +4744,20 @@ const resourceMapRoutes = (rows = itemResourceMapFixtures): StubRoute[] => [
     respond: () =>
       jsonResponse(
         paged([
-          { moldId: 8501, moldCode: 'SYN-MOLD-01', moldName: '합성 금형 A', isActive: true },
-          { moldId: 8503, moldCode: 'SYN-MOLD-03', moldName: '합성 금형 C', isActive: true },
+          {
+            moldId: 8501,
+            plantId: 9001,
+            moldCode: 'SYN-MOLD-01',
+            moldName: '합성 금형 A',
+            isActive: true,
+          },
+          {
+            moldId: 8503,
+            plantId: 9001,
+            moldCode: 'SYN-MOLD-03',
+            moldName: '합성 금형 C',
+            isActive: true,
+          },
         ]),
       ),
   },
@@ -4770,6 +4784,18 @@ const resourceMapWrites = (requests: RecordedRequest[], method: 'POST' | 'PUT') 
   );
 
 const findResourceMapPane = () => screen.findByRole('region', { name: '설비·금형' });
+
+/** 금형 칸을 눌러 찾기 창을 열고 한 줄을 골라 확인한다. */
+const pickMold = async (
+  user: ReturnType<typeof userEvent.setup>,
+  dialog: HTMLElement,
+  code: string,
+): Promise<void> => {
+  await user.click(within(dialog).getByLabelText('금형'));
+  const picker = await screen.findByRole('dialog', { name: '금형 선택' });
+  await user.click(await within(picker).findByRole('checkbox', { name: code }));
+  await user.click(within(picker).getByRole('button', { name: '선택' }));
+};
 
 describe('ItemExtendedAttrsScreen — 설비·금형 매핑', () => {
   it('하위 탭에 「설비·금형」이 있다', async () => {
@@ -4805,12 +4831,18 @@ describe('ItemExtendedAttrsScreen — 설비·금형 매핑', () => {
     const { requests, user } = renderScreen(resourceMapRoutes([]), '?item=1001&tab=sub&sub=res');
 
     const pane = await findResourceMapPane();
-    await within(pane).findByText('등록된 설비·금형 매핑이 없습니다');
-    await user.click(within(pane).getByRole('button', { name: '매핑 추가' }));
+    await within(pane).findByText('등록된 설비·금형이 없습니다');
+    await user.click(within(pane).getByRole('button', { name: '추가' }));
 
-    const dialog = await screen.findByRole('dialog', { name: '설비·금형 매핑 추가' });
-    await user.click(within(dialog).getByLabelText('금형'));
-    await user.click(await screen.findByRole('option', { name: 'SYN-MOLD-03 · 합성 금형 C' }));
+    const dialog = await screen.findByRole('dialog', {
+      name: '설비·금형 추가 · SYN-PLANT-01 · 합성 공장',
+    });
+    /* 창을 열기만 해서는 설비·금형 목록을 받지 않는다 — 찾기 창을 열어야 서버에 묻는다. */
+    expect(
+      requests.some((request) => ['/mdm/equipments', '/mdm/molds'].includes(request.url.pathname)),
+    ).toBe(false);
+
+    await pickMold(user, dialog, 'SYN-MOLD-03');
     await user.click(within(dialog).getByRole('button', { name: '저장' }));
 
     await waitFor(() => {
@@ -4861,16 +4893,17 @@ describe('ItemExtendedAttrsScreen — 설비·금형 매핑', () => {
     );
 
     const pane = await findResourceMapPane();
-    await within(pane).findByText('등록된 설비·금형 매핑이 없습니다');
-    await user.click(within(pane).getByRole('button', { name: '매핑 추가' }));
+    await within(pane).findByText('등록된 설비·금형이 없습니다');
+    await user.click(within(pane).getByRole('button', { name: '추가' }));
 
-    const dialog = await screen.findByRole('dialog', { name: '설비·금형 매핑 추가' });
-    await user.click(within(dialog).getByLabelText('금형'));
-    await user.click(await screen.findByRole('option', { name: 'SYN-MOLD-03 · 합성 금형 C' }));
+    const dialog = await screen.findByRole('dialog', {
+      name: '설비·금형 추가 · SYN-PLANT-01 · 합성 공장',
+    });
+    await pickMold(user, dialog, 'SYN-MOLD-03');
     await user.click(within(dialog).getByRole('button', { name: '저장' }));
 
     expect(
-      await within(dialog).findByText(/사용 중지한 줄이면 다시 사용으로 되살리세요/),
+      await within(dialog).findByText('같은 공정·설비·금형 줄이 이미 있습니다.'),
     ).toBeInTheDocument();
     expect(within(dialog).queryByText('같은 품목·공정·설비·금형 매핑이 이미 있습니다.')).toBeNull();
   });
@@ -4881,11 +4914,13 @@ describe('ItemExtendedAttrsScreen — 설비·금형 매핑', () => {
     const pane = await findResourceMapPane();
     await user.click(
       await within(pane).findByRole('button', {
-        name: 'SYN-PROC-01 · 합성 공정 가 / SYN-EQ-01 / SYN-MOLD-01 매핑 수정',
+        name: 'SYN-PROC-01 · 합성 공정 가 / SYN-EQ-01 / SYN-MOLD-01 수정',
       }),
     );
 
-    const dialog = await screen.findByRole('dialog', { name: '설비·금형 매핑 수정' });
+    const dialog = await screen.findByRole('dialog', {
+      name: '설비·금형 수정 · SYN-PLANT-01 · 합성 공장',
+    });
     await user.clear(within(dialog).getByLabelText('비고'));
     await user.click(within(dialog).getByRole('button', { name: '저장' }));
 
@@ -4906,12 +4941,12 @@ describe('ItemExtendedAttrsScreen — 설비·금형 매핑', () => {
     });
   });
 
-  it('기본 지정은 바꾸는 칸만 싣고 그 줄의 versionNo로 잠근다', async () => {
+  it('자동 배정은 바꾸는 칸만 싣고 그 줄의 versionNo로 잠근다', async () => {
     const { requests, user } = renderScreen(resourceMapRoutes(), '?item=1001&tab=sub&sub=res');
 
     const pane = await findResourceMapPane();
     await user.click(
-      await within(pane).findByRole('button', { name: '품목 공통 / SYN-MOLD-02 기본 지정' }),
+      await within(pane).findByRole('button', { name: '전체 공정 / SYN-MOLD-02 자동 배정 지정' }),
     );
 
     await waitFor(() => {
@@ -5003,7 +5038,7 @@ describe('ItemExtendedAttrsScreen — 설비·금형 매핑의 판 갱신', () =
     return row;
   };
 
-  it('기본 지정 뒤 목록을 다시 받고 앞의 기본 표시가 사라진다', async () => {
+  it('자동 배정 뒤 목록을 다시 받고 앞의 ★ 표시가 사라진다', async () => {
     const afterSetDefault = [
       { ...commonRow, isDefault: true, versionNo: commonRow.versionNo + 1 },
       { ...defaultRow, isDefault: false, versionNo: defaultRow.versionNo + 1 },
@@ -5015,19 +5050,34 @@ describe('ItemExtendedAttrsScreen — 설비·금형 매핑의 판 갱신', () =
     );
 
     const pane = await findResourceMapPane();
-    await user.click(
-      await within(pane).findByRole('button', { name: '품목 공통 / SYN-MOLD-02 기본 지정' }),
-    );
+    const setDefault = await within(pane).findByRole('button', {
+      name: '전체 공정 / SYN-MOLD-02 자동 배정 지정',
+    });
+    /* 자동 배정 줄이 맨 위로 뛰면 ★가 옮겨 간 것이 보이지 않는다 — 줄 순서는 그대로여야 한다. */
+    const rowOrder = (): string[] =>
+      within(pane)
+        .getAllByRole('row')
+        .slice(1)
+        .map((row) =>
+          within(row)
+            .getAllByRole('cell')
+            .slice(1, 4)
+            .map((cell) => cell.textContent)
+            .join(' | '),
+        );
+    const before = rowOrder();
+    await user.click(setDefault);
 
     await waitFor(() => {
       expect(listGets(requests)).toHaveLength(2);
     });
     await waitFor(() => {
-      expect(within(rowWithText(pane, 'SYN-EQ-01 · 합성 설비 A')).queryByText('기본')).toBeNull();
+      expect(within(rowWithText(pane, 'SYN-EQ-01 · 합성 설비 A')).queryByText('★')).toBeNull();
     });
     expect(
-      within(rowWithText(pane, 'SYN-MOLD-02 · 합성 금형 B')).getByText('기본'),
+      within(rowWithText(pane, 'SYN-MOLD-02 · 합성 금형 B')).getByText('★'),
     ).toBeInTheDocument();
+    expect(rowOrder()).toEqual(before);
   });
 
   it('편집 창의 저장이 충돌하면 창에 안내가 나고, 최신 불러오기가 창을 닫고 목록을 다시 받는다', async () => {
@@ -5039,11 +5089,13 @@ describe('ItemExtendedAttrsScreen — 설비·금형 매핑의 판 갱신', () =
     const pane = await findResourceMapPane();
     await user.click(
       await within(pane).findByRole('button', {
-        name: 'SYN-PROC-01 · 합성 공정 가 / SYN-EQ-01 / SYN-MOLD-01 매핑 수정',
+        name: 'SYN-PROC-01 · 합성 공정 가 / SYN-EQ-01 / SYN-MOLD-01 수정',
       }),
     );
 
-    const dialog = await screen.findByRole('dialog', { name: '설비·금형 매핑 수정' });
+    const dialog = await screen.findByRole('dialog', {
+      name: '설비·금형 수정 · SYN-PLANT-01 · 합성 공장',
+    });
     await user.clear(within(dialog).getByLabelText('비고'));
     await user.click(within(dialog).getByRole('button', { name: '저장' }));
 
@@ -5076,7 +5128,7 @@ describe('ItemExtendedAttrsScreen — 설비·금형 매핑의 판 갱신', () =
     );
 
     const pane = await findResourceMapPane();
-    const setDefaultName = '품목 공통 / SYN-MOLD-02 기본 지정';
+    const setDefaultName = '전체 공정 / SYN-MOLD-02 자동 배정 지정';
     await user.click(await within(pane).findByRole('button', { name: setDefaultName }));
 
     expect(

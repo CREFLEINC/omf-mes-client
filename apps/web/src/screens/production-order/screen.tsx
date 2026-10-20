@@ -1,8 +1,12 @@
-import { AlertBanner, Breadcrumb, Button, PageHeader } from '@crefle/web-ui';
+import { AlertBanner, Breadcrumb, Button, PageHeader, useToast } from '@crefle/web-ui';
+import type { ProductionOrderAutoPlanResult } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
+import { useQueryClient } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router';
 
+import { SaveErrorBanner } from '../../patterns/master';
+import { autoPlanReasonLabels } from './auto-plan-chip';
 import { useProductionOrderCodeNames } from './code-names';
 import { useProductionOrderPlans, useProductionOrderWorkOrders } from './detail-queries';
 import {
@@ -15,12 +19,13 @@ import {
 } from './filters';
 import { defaultExpandedProductionOrderIds, toVisibleProductionOrderHierarchy } from './hierarchy';
 import { useProductionOrderItemNames } from './item-lookups';
+import { useAutoPlanMutation } from './mutations';
 import { toPageView } from './pagination';
 import { ProductionOrderBasicPane } from './production-order-basic-pane';
 import { ProductionOrderDetailListPane } from './production-order-detail-list-pane';
 import { ProductionOrderFilterBar } from './production-order-filter-bar';
 import { ProductionOrderListPane } from './production-order-list-pane';
-import { useProductionOrderDetail, useProductionOrderList } from './queries';
+import { productionOrderKeys, useProductionOrderDetail, useProductionOrderList } from './queries';
 import {
   lookupNote,
   useBusinessUnitReferenceLookup,
@@ -33,9 +38,36 @@ import type { ProductionOrderFact, SelectOption } from './types';
 const t = messages.productionOrder;
 const EMPTY_FACTS: ProductionOrderFact[] = [];
 
+/**
+ * 자동 계획을 한 번도 하지 않은(`autoPlan === null`) P/O 는 계획이 없으므로, 아직 수신 상태면
+ * 수량 전부가 남은 것이다 — 지난 납기·옛 P/O 도 필요할 때 계획할 수 있게 단추를 낸다.
+ */
+const canAutoPlan = (order: ProductionOrderFact | undefined): boolean =>
+  order !== undefined &&
+  (order.autoPlan === null
+    ? order.statusCode === 'RECEIVED'
+    : order.autoPlan.status === 'NEEDS_REVIEW');
+
+const autoPlanToast = (result: ProductionOrderAutoPlanResult) => {
+  switch (result.outcome) {
+    case 'CONFIRMED':
+      return { variant: 'success', description: t.autoPlan.confirmed } as const;
+    case 'DRAFT':
+      return { variant: 'info', description: t.autoPlan.draft } as const;
+    case 'NOT_PLANNED':
+      return {
+        variant: 'warning',
+        title: t.autoPlan.notPlanned,
+        description: autoPlanReasonLabels(result.reasons).join(' · '),
+      } as const;
+  }
+};
+
 export const ProductionOrderScreen = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
+  const toast = useToast();
+  const queryClient = useQueryClient();
   const filters = useMemo(() => readFilters(searchParams), [searchParams]);
   const page = readPage(searchParams);
   const selectedId = readSelectedProductionOrderId(searchParams);
@@ -48,6 +80,9 @@ export const ProductionOrderScreen = () => {
   const plants = usePlantReferenceLookup();
   const uoms = useUomReferenceLookup();
   const codeNames = useProductionOrderCodeNames();
+  const autoPlan = useAutoPlanMutation({
+    onSuccess: (result) => toast.show(autoPlanToast(result)),
+  });
   const facts = list.data?.items ?? EMPTY_FACTS;
   const itemIds = useMemo(() => {
     const ids = facts.map((order) => order.itemId);
@@ -120,7 +155,10 @@ export const ProductionOrderScreen = () => {
           page={pageView}
           selectedProductionOrderId={selectedId}
           statusNameOf={codeNames.productionOrderStatus}
-          onSelect={(id) => setSearchParams(toSelectionSearchParams(searchParams, id))}
+          onSelect={(id) => {
+            autoPlan.reset();
+            setSearchParams(toSelectionSearchParams(searchParams, id));
+          }}
           onToggleExpanded={(id) => {
             setCollapsedIds((current) => {
               const next = new Set(current);
@@ -133,6 +171,21 @@ export const ProductionOrderScreen = () => {
         />
       )}
 
+      {/* 같은 P/O 의 자동 계획이 이미 도는 중이면 서버가 충돌 봉투로 알린다 — 누가 고친 것이 아니라
+          기다리면 풀리므로 공통 충돌 문구(「최신 불러오기」)로 내지 않는다. */}
+      {autoPlan.error?.kind === 'conflict' && autoPlan.error.code === 'INVALID_STATE' ? (
+        <div className="banner-slot">
+          <AlertBanner variant="warning">{t.autoPlan.running}</AlertBanner>
+        </div>
+      ) : (
+        <SaveErrorBanner
+          error={autoPlan.error}
+          onReload={() => {
+            autoPlan.reset();
+            void queryClient.invalidateQueries({ queryKey: productionOrderKeys.all });
+          }}
+        />
+      )}
       <div className="production-order-detail-grid">
         <ProductionOrderBasicPane
           isSelected={isSelected}
@@ -144,17 +197,28 @@ export const ProductionOrderScreen = () => {
           statusNameOf={codeNames.productionOrderStatus}
           action={
             selectedId === null ? undefined : (
-              /* 「초기화」와 같은 DS 테두리 단추. 누르면 W/O 전개·편성 화면으로 이동만 한다. */
-              <Button
-                variant="outlined"
-                onClick={() => {
-                  void navigate(
-                    `/production/production-plans?productionOrderId=${String(selectedId)}`,
-                  );
-                }}
-              >
-                {t.actions.productionPlan}
-              </Button>
+              <div className="production-order-pane-actions">
+                {canAutoPlan(detail.data) && (
+                  <Button
+                    variant="outlined"
+                    disabled={autoPlan.isSaving}
+                    onClick={() => autoPlan.write(selectedId)}
+                  >
+                    {t.actions.autoPlan}
+                  </Button>
+                )}
+                {/* 「초기화」와 같은 DS 테두리 단추. 누르면 W/O 전개·편성 화면으로 이동만 한다. */}
+                <Button
+                  variant="outlined"
+                  onClick={() => {
+                    void navigate(
+                      `/production/production-plans?productionOrderId=${String(selectedId)}`,
+                    );
+                  }}
+                >
+                  {t.actions.productionPlan}
+                </Button>
+              </div>
             )
           }
         />

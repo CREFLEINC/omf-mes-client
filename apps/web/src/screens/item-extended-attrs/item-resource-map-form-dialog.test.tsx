@@ -1,7 +1,9 @@
-import { render, screen } from '@testing-library/react';
+import { messages } from '@omf-mes/i18n';
+import { screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
+import { createStubFetch, jsonResponse, renderWithProviders } from '../../test/api-harness';
 import { itemResourceMapFixtures } from './fixtures';
 import {
   createItemResourceMapFormValues,
@@ -11,30 +13,59 @@ import {
 import { ItemResourceMapFormDialog } from './item-resource-map-form-dialog';
 import type { SelectOption } from './types';
 
+const picker = messages.resourcePicker;
+
 const PROCESSES: SelectOption[] = [{ value: '3001', label: 'SYN-PROC-01 · 합성 공정 가' }];
-const EQUIPMENTS: SelectOption[] = [
-  { value: '8001', label: 'SYN-EQ-01 · 합성 설비 A' },
-  { value: '8003', label: 'SYN-EQ-03 · 합성 설비 C' },
-];
-const MOLDS: SelectOption[] = [
-  { value: '8501', label: 'SYN-MOLD-01 · 합성 금형 A' },
-  { value: '8503', label: 'SYN-MOLD-03 · 합성 금형 C' },
-  { value: '8504', label: 'SYN-MOLD-04 · 합성 금형 D' },
-];
+
+const page = (items: unknown[]) => ({ items, page: { page: 1, size: 20, total: items.length } });
+
+/** 찾기 창이 서버에 묻는 설비·금형. 창 밖에서는 아무것도 받지 않는다. */
+const resourceFetch = createStubFetch([
+  {
+    match: (request) => new URL(request.url).pathname === '/mdm/equipments',
+    respond: () =>
+      jsonResponse(
+        page([
+          {
+            equipmentId: 8003,
+            plantId: 9001,
+            equipmentCode: 'SYN-EQ-03',
+            equipmentName: '합성 설비 C',
+            productionLineId: null,
+            isActive: true,
+          },
+        ]),
+      ),
+  },
+  {
+    match: (request) => new URL(request.url).pathname === '/mdm/molds',
+    respond: () =>
+      jsonResponse(
+        page([
+          {
+            moldId: 8503,
+            plantId: 9001,
+            moldCode: 'SYN-MOLD-03',
+            moldName: '합성 금형 C',
+            isActive: true,
+          },
+        ]),
+      ),
+  },
+]);
 
 const renderDialog = (overrides: Partial<Parameters<typeof ItemResourceMapFormDialog>[0]> = {}) => {
   const onClose = vi.fn<() => void>();
   const onSave = vi.fn<(values: ItemResourceMapFormValues) => void>();
 
-  render(
+  renderWithProviders(
     <ItemResourceMapFormDialog
       row={null}
       initialValues={createItemResourceMapFormValues()}
+      plantId={9001}
       plantLabel="SYN-PLANT-01 · 합성 공장"
       rows={itemResourceMapFixtures}
       processOptions={() => PROCESSES}
-      equipmentOptions={() => EQUIPMENTS}
-      moldOptions={() => MOLDS}
       fieldErrors={{}}
       banner={null}
       isSaving={false}
@@ -42,65 +73,149 @@ const renderDialog = (overrides: Partial<Parameters<typeof ItemResourceMapFormDi
       onSave={onSave}
       {...overrides}
     />,
+    { fetch: resourceFetch, route: '/' },
   );
 
   return { onClose, onSave, user: userEvent.setup() };
 };
 
+/** 칸을 눌러 찾기 창을 열고 한 줄을 골라 확인한다. */
+const pickFrom = async (
+  user: ReturnType<typeof userEvent.setup>,
+  field: '설비' | '금형',
+  code: string,
+): Promise<void> => {
+  await user.click(screen.getByLabelText(field));
+  const dialog = within(
+    screen.getByRole('dialog', {
+      name: field === '설비' ? picker.title.equipment : picker.title.mold,
+    }),
+  );
+  await user.click(await dialog.findByRole('checkbox', { name: code }));
+  await user.click(dialog.getByRole('button', { name: picker.pick }));
+};
+
 describe('ItemResourceMapFormDialog — 표시', () => {
-  it('등록·수정 제목이 갈린다', () => {
+  /* 공장은 창에서 바꾸지 않는다 — 어느 공장의 줄인지는 제목이 말한다. */
+  it('등록 제목에 공장이 들어가고 공장 칸은 없다', () => {
     renderDialog();
-    expect(screen.getByRole('dialog', { name: '설비·금형 매핑 추가' })).toBeInTheDocument();
+
+    expect(
+      screen.getByRole('dialog', { name: '설비·금형 추가 · SYN-PLANT-01 · 합성 공장' }),
+    ).toBeInTheDocument();
+    expect(screen.queryByLabelText('공장')).not.toBeInTheDocument();
   });
 
-  it('수정 창은 수정 제목이다', () => {
+  it('수정 창은 수정 제목이고 지금 설비·금형을 코드와 이름으로 보인다', () => {
     const row = itemResourceMapFixtures[0]!;
     renderDialog({ row, initialValues: toItemResourceMapFormValues(row) });
 
-    expect(screen.getByRole('dialog', { name: '설비·금형 매핑 수정' })).toBeInTheDocument();
-  });
-
-  it('공장은 읽기 전용이고 바꿀 수 없다는 안내가 있다', () => {
-    renderDialog();
-
-    expect(screen.getByLabelText('공장')).toHaveAttribute('readonly');
     expect(
-      screen.getByText('공장은 바꿀 수 없습니다. 다른 공장이면 새로 등록하세요.'),
+      screen.getByRole('dialog', { name: '설비·금형 수정 · SYN-PLANT-01 · 합성 공장' }),
     ).toBeInTheDocument();
+    expect(screen.getByLabelText('설비')).toHaveValue('SYN-EQ-01 · 합성 설비 A');
+    expect(screen.getByLabelText('금형')).toHaveValue('SYN-MOLD-01 · 합성 금형 A');
   });
 
-  /* 공정을 비운 것이 정상 값(품목 공통)이다 — 자리표시가 아니라 값으로 보인다. */
-  it('공정을 비우면 「품목 공통」으로 보이고 그 뜻을 안내한다', () => {
+  /* 공정을 비운 것이 정상 값(전체 공정)이다 — 자리표시가 아니라 값으로 보인다. */
+  it('공정을 비우면 「전체 공정」으로 보인다', () => {
     renderDialog();
 
-    expect(screen.getByLabelText('공정')).toHaveTextContent('품목 공통');
-    expect(screen.getByText(/비우면 품목 공통입니다/)).toBeInTheDocument();
+    expect(screen.getByLabelText('공정')).toHaveTextContent('전체 공정');
   });
 
-  it('우선순위의 처음 값은 서버 기본값과 같다', () => {
+  it('추천 순서의 처음 값은 서버 기본값과 같다', () => {
     renderDialog();
 
-    expect(screen.getByLabelText(/우선순위/)).toHaveValue(100);
+    expect(screen.getByLabelText(/추천 순서/)).toHaveValue(100);
+  });
+
+  /* 열기만 해서는 설비·금형을 받지 않는다 — 금형은 공장마다 수백 건이다. */
+  it('설비·금형 칸은 비어 있고 창을 열기 전에는 찾기 창이 없다', () => {
+    renderDialog();
+
+    expect(screen.getByLabelText('설비')).toHaveValue('');
+    expect(screen.getByLabelText('금형')).toHaveValue('');
+    expect(screen.getAllByRole('dialog')).toHaveLength(1);
   });
 });
 
-describe('ItemResourceMapFormDialog — 사용 중지한 줄의 기본', () => {
-  /* 서버가 기본 자리를 사용 중인 줄로만 센다 — 체크해 저장해도 기본이 되지 않는다. */
-  it('사용 중지한 줄을 고칠 때는 기본을 고를 수 없고 푸는 길을 안내한다', () => {
+describe('ItemResourceMapFormDialog — 사용 중지한 줄의 자동 배정', () => {
+  /* 서버가 자동 배정 자리를 사용 중인 줄로만 센다 — 체크해 저장해도 자동 배정이 되지 않는다. */
+  it('사용 중지한 줄을 고칠 때는 자동 배정 칸이 없다', () => {
     const row = itemResourceMapFixtures[2]!;
     renderDialog({ row, initialValues: toItemResourceMapFormValues(row) });
 
-    const checkbox = screen.getByRole('checkbox', { name: '기본' });
-    expect(checkbox).toBeDisabled();
-    expect(checkbox).toHaveAccessibleDescription(
-      '기본으로 지정할 수 없습니다. 사용 중지한 줄입니다. 표에서 「다시 사용」한 뒤 지정하세요.',
+    expect(screen.queryByRole('checkbox', { name: '자동 배정' })).not.toBeInTheDocument();
+  });
+
+  it('사용 중인 줄과 새 줄은 자동 배정을 고를 수 있다', () => {
+    renderDialog();
+
+    expect(screen.getByRole('checkbox', { name: '자동 배정' })).toBeEnabled();
+  });
+});
+
+describe('ItemResourceMapFormDialog — 찾기 창으로 고르기', () => {
+  it('설비를 고르면 칸에 코드와 이름이 서고 그 설비로 저장한다', async () => {
+    const { onSave, user } = renderDialog();
+
+    await pickFrom(user, '설비', 'SYN-EQ-03');
+
+    expect(screen.getAllByRole('dialog')).toHaveLength(1);
+    expect(screen.getByLabelText('설비')).toHaveValue('SYN-EQ-03 · 합성 설비 C');
+
+    await user.click(screen.getByRole('button', { name: '저장' }));
+    expect(onSave).toHaveBeenCalledWith(
+      expect.objectContaining({ equipmentId: '8003', moldId: '' }),
     );
   });
 
-  it('사용 중인 줄과 새 줄은 기본을 고를 수 있다', () => {
-    renderDialog();
+  it('지우기는 칸을 비우고 저장 값에서도 뺀다', async () => {
+    const row = itemResourceMapFixtures[0]!;
+    const { onSave, user } = renderDialog({ row, initialValues: toItemResourceMapFormValues(row) });
 
-    expect(screen.getByRole('checkbox', { name: '기본' })).toBeEnabled();
+    await user.click(screen.getByRole('button', { name: picker.clear.mold }));
+
+    expect(screen.getByLabelText('금형')).toHaveValue('');
+
+    await user.click(screen.getByRole('button', { name: '저장' }));
+    expect(onSave).toHaveBeenCalledWith(
+      expect.objectContaining({ equipmentId: '8001', moldId: '' }),
+    );
+  });
+
+  /* 찾기 창을 닫아도 바깥 창은 남는다 — 고르던 줄을 잃지 않는다. */
+  it('찾기 창을 취소하면 값이 그대로다', async () => {
+    const { onClose, user } = renderDialog();
+
+    await user.click(screen.getByLabelText('금형'));
+    await user.click(
+      within(screen.getByRole('dialog', { name: picker.title.mold })).getByRole('button', {
+        name: picker.cancel,
+      }),
+    );
+
+    expect(onClose).not.toHaveBeenCalled();
+    expect(screen.getAllByRole('dialog')).toHaveLength(1);
+    expect(screen.getByLabelText('금형')).toHaveValue('');
+  });
+
+  it('찾기 창의 검색칸에서 엔터를 쳐도 저장하지 않는다', async () => {
+    const { onSave, user } = renderDialog({
+      initialValues: { ...createItemResourceMapFormValues(), moldId: '8503' },
+    });
+
+    await user.click(screen.getByLabelText('금형'));
+    await user.type(
+      within(screen.getByRole('dialog', { name: picker.title.mold })).getByLabelText(
+        picker.keywordLabel,
+      ),
+      'x{Enter}',
+    );
+
+    expect(onSave).not.toHaveBeenCalled();
+    expect(screen.getByRole('dialog', { name: picker.title.mold })).toBeInTheDocument();
   });
 });
 
@@ -117,8 +232,7 @@ describe('ItemResourceMapFormDialog — 저장', () => {
   it('금형만 골라도 저장한다', async () => {
     const { onSave, user } = renderDialog();
 
-    await user.click(screen.getByLabelText('금형'));
-    await user.click(screen.getByRole('option', { name: 'SYN-MOLD-03 · 합성 금형 C' }));
+    await pickFrom(user, '금형', 'SYN-MOLD-03');
     await user.click(screen.getByRole('button', { name: '저장' }));
 
     expect(onSave).toHaveBeenCalledWith(
@@ -130,8 +244,7 @@ describe('ItemResourceMapFormDialog — 저장', () => {
     const { user } = renderDialog();
 
     await user.click(screen.getByRole('button', { name: '저장' }));
-    await user.click(screen.getByLabelText('설비'));
-    await user.click(screen.getByRole('option', { name: 'SYN-EQ-03 · 합성 설비 C' }));
+    await pickFrom(user, '설비', 'SYN-EQ-03');
 
     expect(screen.queryByText('설비나 금형 중 하나는 골라야 합니다.')).not.toBeInTheDocument();
   });
@@ -139,13 +252,12 @@ describe('ItemResourceMapFormDialog — 저장', () => {
   it('이미 있는 조합이면 저장하지 않는다', async () => {
     const { onSave, user } = renderDialog({
       initialValues: { ...createItemResourceMapFormValues(), moldId: '8502' },
-      moldOptions: () => [{ value: '8502', label: 'SYN-MOLD-02 · 합성 금형 B' }],
     });
 
     await user.click(screen.getByRole('button', { name: '저장' }));
 
     expect(onSave).not.toHaveBeenCalled();
-    expect(screen.getByText(/같은 공정·설비·금형 매핑이 이미 있습니다/)).toBeInTheDocument();
+    expect(screen.getByText(/같은 공정·설비·금형 줄이 이미 있습니다/)).toBeInTheDocument();
   });
 
   it('수정 창은 고친 것이 없으면 저장이 닫혀 있다', async () => {
@@ -162,48 +274,5 @@ describe('ItemResourceMapFormDialog — 저장', () => {
     renderDialog({ fieldErrors: { equipmentId: '이 공장의 설비가 아닙니다.' } });
 
     expect(screen.getByText('이 공장의 설비가 아닙니다.')).toBeInTheDocument();
-  });
-});
-
-describe('ItemResourceMapFormDialog — 검색어로 좁히기', () => {
-  it('검색어에 맞는 금형만 선택지에 남는다', async () => {
-    const { user } = renderDialog();
-
-    await user.type(screen.getByLabelText('금형 검색'), 'mold-04');
-    await user.click(screen.getByLabelText('금형'));
-
-    expect(screen.getByRole('option', { name: 'SYN-MOLD-04 · 합성 금형 D' })).toBeInTheDocument();
-    expect(
-      screen.queryByRole('option', { name: 'SYN-MOLD-03 · 합성 금형 C' }),
-    ).not.toBeInTheDocument();
-    expect(screen.getByRole('option', { name: '(없음)' })).toBeInTheDocument();
-  });
-
-  it('고른 값은 검색어에 맞지 않아도 남는다', async () => {
-    const { user } = renderDialog({
-      initialValues: { ...createItemResourceMapFormValues(), moldId: '8501' },
-    });
-
-    await user.type(screen.getByLabelText('금형 검색'), 'mold-04');
-
-    expect(screen.getByLabelText('금형')).toHaveTextContent('SYN-MOLD-01 · 합성 금형 A');
-  });
-
-  it('맞는 것이 없으면 그렇다고 알린다', async () => {
-    const { user } = renderDialog();
-
-    await user.type(screen.getByLabelText('설비 검색'), 'zzz');
-
-    expect(screen.getByText('검색어에 맞는 항목이 없습니다.')).toBeInTheDocument();
-  });
-
-  it('검색칸에서 엔터를 쳐도 저장하지 않는다', async () => {
-    const { onSave, user } = renderDialog({
-      initialValues: { ...createItemResourceMapFormValues(), moldId: '8503' },
-    });
-
-    await user.type(screen.getByLabelText('금형 검색'), 'x{Enter}');
-
-    expect(onSave).not.toHaveBeenCalled();
   });
 });

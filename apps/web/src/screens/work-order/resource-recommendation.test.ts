@@ -31,7 +31,14 @@ describe('toRecommendationChips', () => {
       ['3', null, '7'],
     ]);
     expect(chips.plannedMoldId).toEqual([
-      { value: '9', label: 'M9 · 금형', source: 'DEFAULT', productionLineId: null, warning: null },
+      {
+        value: '9',
+        code: 'M9',
+        label: 'M9 · 금형',
+        source: 'DEFAULT',
+        productionLineId: null,
+        warning: null,
+      },
     ]);
   });
 
