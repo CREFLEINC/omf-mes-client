@@ -200,12 +200,21 @@ export const WorkOrderList = ({
                               </Chip>{' '}
                             </>
                           )}
-                          {row.plannedEquipmentId == null && (
+                          {/* 어느 설비의 W/O 인지 — 설비 없는 단말·「전체 보기」에서 가를 수 있게. */}
+                          {row.plannedEquipmentId == null ? (
                             <>
                               <Chip status="info" size="md">
                                 {t.unassignedEquipmentBadge}
                               </Chip>{' '}
                             </>
+                          ) : (
+                            row.plannedEquipmentCode != null && (
+                              <>
+                                <Chip status="idle" size="md">
+                                  {row.plannedEquipmentCode}
+                                </Chip>{' '}
+                              </>
+                            )
                           )}
                           {row.workOrderNo} · {itemText(row)}
                         </p>

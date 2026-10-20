@@ -125,6 +125,35 @@ describe('P-02-01 작업 시작 — 단말 게이팅', () => {
     ]);
   });
 
+  it('단말에 설비가 없으면 점검 창의 머리글도 W/O 의 계획 설비로 보인다', async () => {
+    const rendered = renderScreen({
+      terminal: { ...TERMINAL, equipmentId: null, equipmentCode: null, equipmentName: null },
+      workOrders: [
+        {
+          ...WORK_ORDER,
+          plannedEquipmentCode: 'SYN-PRS-09',
+          plannedEquipmentName: '합성 프레스 9호기',
+        },
+      ],
+      /* 합격 이력이 없어 차단 — 점검 창이 선다. */
+      inspections: [],
+    });
+
+    await enterWorkerNo(rendered.user, WORKER.workerNo);
+    await rendered.user.click(
+      await screen.findByRole('button', { name: selectName(WORK_ORDER.workOrderNo) }),
+    );
+    await waitFor(() => expect(startButton()).toBeEnabled());
+    await rendered.user.click(startButton());
+
+    expect(
+      await screen.findByText(
+        messages.workPrecheckGate.header.equipmentLabel('SYN-PRS-09', '합성 프레스 9호기'),
+      ),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(messages.workPrecheckGate.header.equipmentUnknown)).toBeNull();
+  });
+
   it('단말에도 W/O 에도 설비가 없으면 점검 없이 바로 시작한다', async () => {
     const { plannedEquipmentId: _ignored, ...withoutEquipment } = WORK_ORDER;
     const rendered = renderScreen({
@@ -307,17 +336,22 @@ describe('P-02-01 작업 시작 — 목록 조회 축', () => {
     expect(last).not.toContain('includeUnplannedEquipment');
   });
 
-  it('설비 미지정 지시에만 「설비 미지정」 표식을 단다', async () => {
+  it('계획 설비가 있는 지시는 그 설비 코드를, 없는 지시는 「설비 미지정」을 단다', async () => {
     const { plannedEquipmentId: _ignored, ...withoutEquipment } = WORK_ORDER;
     renderScreen({
       workOrders: [
         { ...withoutEquipment, workOrderId: 8102, workOrderNo: 'SYN-WO-0102' },
-        WORK_ORDER,
+        { ...WORK_ORDER, plannedEquipmentCode: 'SYN-PRS-01' },
       ],
     });
 
     const unassigned = await screen.findByRole('button', { name: selectName('SYN-WO-0102') });
     expect(within(unassigned).getByText(t.list.unassignedEquipmentBadge)).toBeInTheDocument();
+    expect(
+      within(screen.getByRole('button', { name: selectName(WORK_ORDER.workOrderNo) })).getByText(
+        'SYN-PRS-01',
+      ),
+    ).toBeInTheDocument();
     expect(
       within(screen.getByRole('button', { name: selectName(WORK_ORDER.workOrderNo) })).queryByText(
         t.list.unassignedEquipmentBadge,

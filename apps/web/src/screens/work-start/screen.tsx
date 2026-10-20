@@ -764,8 +764,13 @@ export const WorkStartScreen = () => {
           workOrderNo={attempt.workOrder.workOrderNo}
           workOrderTypeCode={attempt.workOrder.workOrderTypeCode}
           equipmentId={workEquipmentIdOf(attempt.workOrder)}
-          equipmentCode={equipmentCode}
-          equipmentName={equipmentName}
+          /* 단말에 설비가 없으면 W/O 의 설비로 점검한다 — 머리글·이력도 그 설비로 보인다. */
+          equipmentCode={
+            equipmentId === null ? (attempt.workOrder.plannedEquipmentCode ?? null) : equipmentCode
+          }
+          equipmentName={
+            equipmentId === null ? (attempt.workOrder.plannedEquipmentName ?? null) : equipmentName
+          }
           plantId={terminal.data?.plantId ?? null}
           processId={attempt.workOrder.processId ?? soleProcessIdOf(identity.processes)}
           workerNo={confirmedNo}

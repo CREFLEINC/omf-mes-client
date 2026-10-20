@@ -692,6 +692,9 @@ export type WorkOrderForward = components['schemas']['WorkOrder'] & {
   processId?: number;
   processCode?: string;
   processName?: string;
+  /** 계획 설비의 코드·이름 — 설비 없는 단말이 W/O 의 설비로 점검·시작할 때 그 설비를 보인다. */
+  plannedEquipmentCode?: string | null;
+  plannedEquipmentName?: string | null;
 };
 
 type WorkOrdersPath = paths['/production/work-orders'];
