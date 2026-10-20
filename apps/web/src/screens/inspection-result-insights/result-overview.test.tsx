@@ -58,7 +58,7 @@ const route = (path: string, respond: StubRoute['respond']): StubRoute => ({
 });
 
 describe('검사 결과 요약·목록', () => {
-  it('같은 모집단의 5카드와 서버 순서의 7열 평면 목록을 표시한다', async () => {
+  it('같은 모집단의 5카드와 서버 순서의 8열 평면 목록(검사자 열 · omf-all-around#85)을 표시한다', async () => {
     const user = userEvent.setup();
     const onSortChange = vi.fn();
     const onPageChange = vi.fn();
@@ -104,7 +104,7 @@ describe('검사 결과 요약·목록', () => {
 
     expect(await screen.findByText('SAMPLE-REQ-B')).toBeInTheDocument();
     const table = screen.getByRole('table', { name: '검사 결과 목록' });
-    expect(within(table).getAllByRole('columnheader')).toHaveLength(7);
+    expect(within(table).getAllByRole('columnheader')).toHaveLength(8);
     expect(within(table).getAllByRole('row')[1]).toHaveTextContent('SAMPLE-REQ-B');
     expect(within(table).getAllByRole('row')[2]).toHaveTextContent('SAMPLE-REQ-A');
     expect(within(table).getByRole('columnheader', { name: /검사시각\/회차/ })).toHaveAttribute(

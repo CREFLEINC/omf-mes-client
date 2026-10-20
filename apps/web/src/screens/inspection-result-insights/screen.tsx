@@ -37,6 +37,7 @@ const FILTER_KEYS = [
   ['itemId', 'item'],
   ['processId', 'process'],
   ['overallJudgmentCode', 'judgment'],
+  ['lotNo', 'lot'],
   ['calibrationExpired', 'calibration'],
 ] as const;
 
@@ -46,7 +47,7 @@ const withFilters = (
 ): URLSearchParams => {
   const next = new URLSearchParams(current);
   for (const [field, key] of FILTER_KEYS) {
-    const value = filters[field];
+    const value = filters[field].trim();
     if (value === '') next.delete(key);
     else next.set(key, value);
   }

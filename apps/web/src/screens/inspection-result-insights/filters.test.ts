@@ -5,6 +5,7 @@ import {
   readInspectionInsightFilters,
   readInspectionResultPage,
   readInspectionResultSort,
+  periodProblem,
 } from './filters';
 
 const ALLOWED = {
@@ -27,6 +28,7 @@ describe('검사 실적 조회 조건', () => {
         itemId: '101',
         processId: '202',
         overallJudgmentCode: 'REJECTED',
+        lotNo: '',
         finalRoundOnly: true,
         calibrationExpired: 'only',
       },
@@ -109,5 +111,23 @@ describe('검사 실적 조회 조건', () => {
     ['9007199254740992', 1],
   ])('page=%s를 %i로 읽는다', (raw, expected) => {
     expect(readInspectionResultPage(new URLSearchParams({ page: raw }))).toBe(expected);
+  });
+});
+
+describe('기간 규칙 — LOT 번호가 있으면 기간을 비울 수 있다 (omf-all-around#85)', () => {
+  it.each([
+    [{ from: '', to: '', lotNo: '' }, 'REQUIRED'],
+    [{ from: '', to: '', lotNo: 'LOT-1' }, null],
+    [{ from: '2026-08-01', to: '', lotNo: 'LOT-1' }, 'PAIR'],
+    [{ from: '2026-08-31', to: '2026-08-01', lotNo: 'LOT-1' }, 'REVERSED'],
+    [{ from: '2026-08-01', to: '2026-08-31', lotNo: '' }, null],
+  ] as const)('%o → %s', (filters, expected) => {
+    expect(periodProblem(filters)).toBe(expected);
+  });
+
+  it('주소의 lot 키를 앞뒤 공백 없이 읽는다', () => {
+    expect(
+      readInspectionInsightFilters(new URLSearchParams('lot=%20LOT-1%20'), ALLOWED).filters.lotNo,
+    ).toBe('LOT-1');
   });
 });

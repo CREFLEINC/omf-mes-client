@@ -1,4 +1,4 @@
-import type { ApiClient, components } from '@omf-mes/api-client';
+import type { ApiClient, components, InspectionResultForward } from '@omf-mes/api-client';
 import { keepPreviousData, useQuery, type UseQueryResult } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
@@ -13,7 +13,8 @@ import {
 } from './request-queries';
 
 type Client = ApiClient['client'];
-export type InspectionResult = components['schemas']['InspectionResult'];
+/** 서버 선행 P-76 — 검사자 이름(`inspectorName`)을 함께 받는다(omf-all-around#85). */
+export type InspectionResult = InspectionResultForward;
 export type InspectionRequest = components['schemas']['InspectionRequest'];
 export type InspectionSummary = components['schemas']['InspectionSummary'];
 export type DefectRateTrend = components['schemas']['DefectRateTrend'];
@@ -48,15 +49,16 @@ export const useInspectionResults = (
   sort: InspectionResultSort,
   page: number,
   isEnabled = true,
+  lotId?: number,
 ): UseQueryResult<InspectionResultList> => {
   const { client } = useApiClient();
-  const query = toInspectionListQuery(filters, sort, page);
+  const query = toInspectionListQuery(filters, sort, page, lotId);
   return useQuery({
-    queryKey: ['inspection-result-insights', 'list', filters, sort, page],
+    queryKey: ['inspection-result-insights', 'list', filters, sort, page, lotId],
     enabled: isEnabled && query !== null,
     placeholderData: keepPreviousData,
     queryFn: () => {
-      if (query === null) throw new Error('기간과 검사유형 전에는 목록을 조회하지 않습니다.');
+      if (query === null) throw new Error('기간(또는 LOT) 전에는 목록을 조회하지 않습니다.');
       return fetchInspectionResults(client, query);
     },
   });

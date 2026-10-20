@@ -177,7 +177,8 @@ describe('검사 결과 상세 Dialog', () => {
     ]);
 
     const dialog = await screen.findByRole('dialog', { name: '검사 결과 상세' });
-    expect(await within(dialog).findByText('기준 없음')).toBeInTheDocument();
+    // 기준 버전·샘플링 방식(omf-all-around#85) 두 칸 모두 「기준 없음」이다.
+    expect(await within(dialog).findAllByText('기준 없음')).toHaveLength(2);
   });
 
   it('의뢰를 못 읽으면 「기준 없음」이 아니라 모르는 값으로 그린다', async () => {

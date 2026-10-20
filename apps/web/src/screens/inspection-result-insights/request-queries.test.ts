@@ -26,6 +26,7 @@ const FILTERS: InspectionInsightFilters = {
   itemId: '101',
   processId: '202',
   overallJudgmentCode: 'REJECTED',
+  lotNo: '',
   finalRoundOnly: true,
   calibrationExpired: 'exclude',
 };
@@ -116,5 +117,44 @@ describe('불량 분포 모집단', () => {
       groupBy: 'occurrenceProcess',
       sourceCode: 'PQC',
     });
+  });
+});
+
+describe('LOT 번호 목록 질의 (omf-all-around#85 · 서버 P-76)', () => {
+  const lotFilters = { ...FILTERS, from: '', to: '', lotNo: 'LOT-1' };
+
+  it('LOT id 가 풀리기 전에는 목록을 세우지 않는다', () => {
+    expect(toInspectionListQuery(lotFilters, 'inspectedAt,desc', 1)).toBeNull();
+  });
+
+  it('기간이 비면 기간 없이 lotId 와 나머지 조건만 싣는다', () => {
+    expect(toInspectionListQuery(lotFilters, 'inspectedAt,desc', 1, 7)).toEqual({
+      inspectionTypeCode: 'PQC',
+      itemId: 101,
+      processId: 202,
+      overallJudgmentCode: 'REJECTED',
+      finalRoundOnly: true,
+      calibrationExpired: 'exclude',
+      lotId: 7,
+      sort: 'inspectedAt,desc',
+    });
+  });
+
+  it('기간이 있으면 기간과 lotId 를 함께 싣는다', () => {
+    expect(
+      toInspectionListQuery({ ...FILTERS, lotNo: 'LOT-1' }, 'inspectedAt,desc', 1, 7),
+    ).toMatchObject({ inspectedFrom: FROM_AT, inspectedTo: TO_AT, lotId: 7 });
+  });
+
+  it('⛔ 기간을 한쪽만 고르면 LOT 이 있어도 세우지 않는다', () => {
+    expect(
+      toInspectionListQuery({ ...lotFilters, from: '2026-08-01' }, 'inspectedAt,desc', 1, 7),
+    ).toBeNull();
+  });
+
+  it('LOT 번호가 없으면 종전대로 기간이 필수다', () => {
+    expect(
+      toInspectionListQuery({ ...FILTERS, from: '', to: '' }, 'inspectedAt,desc', 1),
+    ).toBeNull();
   });
 });

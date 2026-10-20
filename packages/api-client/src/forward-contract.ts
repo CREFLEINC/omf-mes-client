@@ -183,6 +183,17 @@ export type InspectionResultUpdateForward = components['schemas']['InspectionRes
 
 type InspectionResultsPath = paths['/quality/inspection-results'];
 type InspectionResultPath = paths['/quality/inspection-results/{inspectionResultId}'];
+type InspectionResultsGet = InspectionResultsPath['get'];
+
+/** 서버 선행 P-76(omf-all-around#85) — 응답이 검사자(작업자) 이름을 함께 내린다. */
+export type InspectionResultForward = components['schemas']['InspectionResult'] & {
+  inspectorName?: string;
+};
+
+/** 서버 선행 P-76(omf-all-around#85) — LOT 하나로 좁히면(`lotId`) 기간이 필요 없다(그 LOT 의 전 이력). */
+export type InspectionResultListQueryForward = NonNullable<
+  InspectionResultsGet['parameters']['query']
+> & { lotId?: number };
 type DefectRecordsGet = paths['/quality/defect-records']['get'];
 
 /**
@@ -814,8 +825,13 @@ export interface ForwardPaths {
       requestBody: { content: { 'application/json': InspectionResultConfirmForward } };
     };
   };
-  /** 작성중 저장 본문에 불합격 사유(`defects`)를 더한다 — 서버 선행 P-48. */
-  '/quality/inspection-results': Omit<InspectionResultsPath, 'post'> & {
+  /** 작성중 저장 본문에 불합격 사유(`defects`)를 더한다 — 서버 선행 P-48. 조회는 `lotId` 질의를 더한다 — P-76. */
+  '/quality/inspection-results': Omit<InspectionResultsPath, 'get' | 'post'> & {
+    get: Omit<InspectionResultsGet, 'parameters'> & {
+      parameters: Omit<InspectionResultsGet['parameters'], 'query'> & {
+        query?: InspectionResultListQueryForward;
+      };
+    };
     post: Omit<InspectionResultsPath['post'], 'requestBody'> & {
       requestBody: { content: { 'application/json': InspectionResultCreateForward } };
     };
