@@ -112,6 +112,7 @@ import { toolPmResult } from './tool-pm-result';
 import { materialIssueRequest } from './material-issue-request';
 import { deviceRegistration } from './device-registration';
 import { equipmentFailureReport } from './equipment-failure-report';
+import { outboxPending } from './outbox-pending';
 import { outboxRejections } from './outbox-rejections';
 import { iqcSkipRequest } from './iqc-skip-request';
 import { equipmentInspection } from './equipment-inspection';
@@ -252,6 +253,7 @@ export const ko = {
   materialIssueRequest,
   deviceRegistration,
   equipmentFailureReport,
+  outboxPending,
   outboxRejections,
   iqcSkipRequest,
   equipmentInspection,

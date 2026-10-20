@@ -67,12 +67,18 @@ export const DockedNumberPad = ({
     );
   }, [head]);
 
-  useEffect(
-    () => () => {
+  /*
+   * 판이 떠 있다는 표시. 화면 바닥의 확정 바(`BottomActionBar`)가 이것을 보고 숨는다 - 둘이
+   * 겹치면 판을 누른 손이 바를 누른다.
+   */
+  useEffect(() => {
+    document.documentElement.setAttribute('data-docked-pad', '');
+
+    return () => {
       document.documentElement.style.removeProperty('--docked-pad-height');
-    },
-    [],
-  );
+      document.documentElement.removeAttribute('data-docked-pad');
+    };
+  }, []);
 
   /*
    * 확인 키를 못 찾은 사람은 화면을 눌러 닫으려 한다. 누름의 시작에서 닫는다 - 끝난 뒤에

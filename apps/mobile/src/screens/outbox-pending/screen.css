@@ -1,0 +1,34 @@
+.outbox-pending {
+  gap: var(--space-4, 16px);
+  padding: var(--space-4, 16px);
+}
+
+.outbox-pending p {
+  margin: 0;
+}
+
+.outbox-pending__lead,
+.outbox-pending__meta {
+  color: var(--on-surface-muted, inherit);
+}
+
+.outbox-pending__list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3, 12px);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.outbox-pending__item {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1, 4px);
+}
+
+.outbox-pending__label {
+  margin: 0;
+  font: inherit;
+  font-weight: 600;
+}

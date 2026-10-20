@@ -201,4 +201,17 @@ describe('화면 아래 숫자판', () => {
 
     expect(keyboard.hide).toHaveBeenCalled();
   });
+
+  /* 하단 확정 바가 이 표시를 보고 숨는다. 남아 있으면 판을 닫은 뒤에도 바가 돌아오지 않는다. */
+  it('떠 있는 동안만 문서에 표시를 남긴다', () => {
+    const { unmount } = render(
+      <DockedNumberPad head="수량" value="" onChange={vi.fn()} onClose={vi.fn()} />,
+    );
+
+    expect(document.documentElement.hasAttribute('data-docked-pad')).toBe(true);
+
+    unmount();
+
+    expect(document.documentElement.hasAttribute('data-docked-pad')).toBe(false);
+  });
 });

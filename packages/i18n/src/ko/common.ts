@@ -38,6 +38,8 @@ export const common = {
     mainMenu: '주 메뉴',
     /** 표제 위 경로의 접근명. 관리웹에만 선다. */
     breadcrumb: '탐색 경로',
+    /** 모바일 앱바의 홈 단추 이름. 작업 화면에서 작업 목록으로 돌아간다. */
+    home: '작업 목록',
   },
   connection: {
     online: '온라인',

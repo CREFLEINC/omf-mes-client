@@ -66,6 +66,12 @@ export interface Outbox {
    * 하는 자리가 있다 - 그러지 않으면 같은 것을 다시 적고 큐에 두 건이 쌓인다.
    */
   pendingOf: (label: string) => OutboxEntry[];
+  /**
+   * 담겨 있는 건 전부. 담긴 차례대로다.
+   *
+   * 건수만 보여서는 무엇이 아직 못 갔는지 작업자가 알 수 없다 - 「전송 대기」 목록이 이것을 그린다.
+   */
+  pendingEntries: OutboxEntry[];
   /** 담고 곧바로 돌아온다. 통신을 기다리지 않는다. */
   enqueue: (draft: OutboxDraft) => Promise<void>;
   /** 보낼 수 있는 만큼 보낸다. 거부된 건을 돌려준다. */
@@ -84,6 +90,9 @@ export interface Outbox {
 }
 
 const OutboxContext = createContext<Outbox | null>(null);
+
+/* 읽기 전에 돌려줄 빈 목록. 매번 새 배열을 만들면 받는 쪽의 의존 비교가 늘 바뀐 것으로 본다. */
+const EMPTY_ENTRIES: OutboxEntry[] = [];
 
 export interface OutboxProviderProps {
   send: OutboxTransport;
@@ -355,6 +364,7 @@ export const OutboxProvider = ({ send, children }: OutboxProviderProps) => {
       pendingBytes,
       countPending,
       pendingOf,
+      pendingEntries: loaded ? entries : EMPTY_ENTRIES,
       rejected,
       isRejected,
       enqueue,
@@ -369,7 +379,7 @@ export const OutboxProvider = ({ send, children }: OutboxProviderProps) => {
       dismissRejected,
       enqueue,
       isRejected,
-      entries.length,
+      entries,
       flush,
       loaded,
       pendingBytes,
