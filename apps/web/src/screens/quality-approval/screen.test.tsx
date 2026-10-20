@@ -273,9 +273,11 @@ const findRequest = () =>
 describe('QualityApprovalScreen query and disclosure', () => {
   it('assignedToMe와 적용된 URL만 보내고 미확정 코드·선택·무관 키는 보내지 않는다', async () => {
     const recorded = recordingFetch(listRoute());
+    /* 기준값이 비었을 때의 규율을 잰다 — 기본값에는 특채(CONCESSION · #84)가 들어 있어 비운 채로 세운다. */
     renderScreen(
       recorded.fetch,
       '/quality/approvals?ty=UNCONFIRMED&st=UNKNOWN&q=SYNTH&page=2&approvalRequestId=31&view=compact',
+      [],
     );
 
     expect(await findRequest()).toBeInTheDocument();
