@@ -1,14 +1,14 @@
-import type { paths } from '@omf-mes/api-client';
+import type { InspectionResultListQueryForward, paths } from '@omf-mes/api-client';
 
 import {
   isCalendarDate,
+  periodProblem,
   type InspectionInsightFilters,
   type InspectionResultSort,
 } from './filters';
 
-export type InspectionListQuery = NonNullable<
-  NonNullable<paths['/quality/inspection-results']['get']>['parameters']['query']
->;
+/** 서버 선행 P-76 — `lotId` 질의를 더한 목록 질의(omf-all-around#85). */
+export type InspectionListQuery = InspectionResultListQueryForward;
 export type InspectionSummaryQuery = NonNullable<
   NonNullable<paths['/quality/inspection-results/summary']['get']>['parameters']['query']
 >;
@@ -82,15 +82,40 @@ export const toDefectRateTrendQuery = (
   filters: InspectionInsightFilters,
 ): DefectRateTrendQuery | null => toCommonQuery(filters, true);
 
+/**
+ * 목록 질의. ⭐ LOT 번호가 있으면(omf-all-around#85) 그 LOT 의 id(`lotId`)가 풀린 뒤에야 서고, 기간이 비면
+ * 기간 없이 그 LOT 의 전 이력을 묻는다(서버 P-76). LOT 번호가 없으면 종전대로 기간이 필수다.
+ * `lotId` — LOT 번호를 풀어 얻은 id. 아직 못 풀었으면 `undefined`(조회를 세우지 않는다).
+ */
 export const toInspectionListQuery = (
   filters: InspectionInsightFilters,
   sort: InspectionResultSort,
   page: number,
+  lotId?: number,
 ): InspectionListQuery | null => {
-  const common = toCommonQuery(filters, false);
+  const hasLot = filters.lotNo.trim() !== '';
+  if (hasLot && lotId === undefined) return null;
+  if (periodProblem(filters) !== null) return null;
+  // 기간이 있으면 종전 공통 질의(형식까지 본다), 비었으면(LOT 조회) 기간만 뺀 질의다.
+  const common: InspectionListQuery | null =
+    filters.from === '' ? withoutPeriod(filters) : toCommonQuery(filters, false);
   if (common === null) return null;
   const query: InspectionListQuery = { ...common, sort };
+  if (hasLot) query.lotId = lotId;
   if (Number.isSafeInteger(page) && page > 1) query.page = page;
+  return query;
+};
+
+/** 기간 없는 LOT 조회 — 기간 둘만 빼고 나머지 조건은 그대로 싣는다. */
+const withoutPeriod = (filters: InspectionInsightFilters): InspectionListQuery => {
+  const query: InspectionListQuery = { finalRoundOnly: filters.finalRoundOnly };
+  if (filters.inspectionTypeCode !== '') query.inspectionTypeCode = filters.inspectionTypeCode;
+  const itemId = toIdentifier(filters.itemId);
+  const processId = toIdentifier(filters.processId);
+  if (itemId !== undefined) query.itemId = itemId;
+  if (processId !== undefined) query.processId = processId;
+  if (filters.overallJudgmentCode !== '') query.overallJudgmentCode = filters.overallJudgmentCode;
+  if (filters.calibrationExpired !== '') query.calibrationExpired = filters.calibrationExpired;
   return query;
 };
 

@@ -26,6 +26,8 @@ export type {
   InspectionResultConfirmForward,
   InspectionResultCreateForward,
   InspectionResultUpdateForward,
+  InspectionResultForward,
+  InspectionResultListQueryForward,
   DefectRecordListQueryForward,
   InboundReceiptLineForward,
   InboundReceiptSplitLot,

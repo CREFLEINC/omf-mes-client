@@ -79,6 +79,7 @@ describe('검사 결과 공통 필터', () => {
       itemId: '101',
       processId: '501',
       overallJudgmentCode: 'REJECTED',
+      lotNo: '',
       finalRoundOnly: false,
       calibrationExpired: 'only',
     });
