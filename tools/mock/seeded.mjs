@@ -326,6 +326,8 @@ const APP_PERMISSIONS = [
   { code: 'W-06-07', name: '창고·Location 마스터', groupCode: '06' },
   /* ⭐ 설계보다 앞서 만든 화면이다 — 화면 코드도 클라이언트가 부여했다(결정 16 · #1312). */
   { code: 'P-06-01', name: '창고 적재 위치 라벨 발행', groupCode: '06' },
+  /* ⭐ 설계보다 앞서 만든 화면이다 — 화면 코드는 사용자 결정(omf-all-around#109 · 서버 장부 P-80). */
+  { code: 'P-04-06', name: 'OQC 출하검사 판정', groupCode: '04' },
   { code: 'W-06-08', name: '예비품 마스터', groupCode: '06' },
   { code: 'W-06-09', name: 'ERP-MES I/F 연계정의 관리', groupCode: '06' },
   { code: 'W-06-10', name: '연계 동기화 현황·실패 재처리', groupCode: '06' },
@@ -577,6 +579,7 @@ const POP_FIXED_PERMISSIONS = [
   'P-04-01',
   'P-04-03',
   'P-04-04',
+  'P-04-06',
   'P-05-01',
   'P-05-02',
   'P-06-01',
@@ -1439,6 +1442,7 @@ on('GET', '/mdm/terminals/{terminalId}/accessible-screens', () => ({
     'P-04-01',
     'P-04-03',
     'P-04-04',
+    'P-04-06',
     'P-05-01',
     'P-05-02',
     'P-06-01',

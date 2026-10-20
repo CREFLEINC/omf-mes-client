@@ -289,6 +289,11 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
 export const useSaveInspectionResult = (
   inspectionRequestId: number | null,
   onSaved: () => void,
+  /**
+   * POP(P-04-06)의 귀속 사번. ⭐ 단말 토큰으로 쓰는 판정은 서버가 이 헤더로 작업자를 정한다(PQC 와
+   * 같은 규칙) — 관리웹은 계정 세션이 주체라 넘기지 않는다(`undefined`).
+   */
+  workerNo?: string,
 ): MasterWriteResult<SaveResultVariables> => {
   const { client } = useApiClient();
 
@@ -299,6 +304,7 @@ export const useSaveInspectionResult = (
     ): Promise<ApiCallResult<InspectionResultResponse>> => {
       const result = await client.POST('/quality/inspection-results', {
         params: { header: { 'Idempotency-Key': headers['Idempotency-Key'] } },
+        ...(workerNo === undefined ? {} : { headers: { 'X-Worker-No': workerNo } }),
         body: toResultCreateBody(variables),
       });
 

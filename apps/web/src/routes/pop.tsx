@@ -10,6 +10,7 @@ import { PackingWorkScreen } from '../screens/packing-work/screen';
 import { PopLocationLabelScreen } from '../screens/pop-location-label/screen';
 import { PopMaterialLotLabelScreen } from '../screens/pop-material-lot-label/screen';
 import { PopMaterialDefectScreen } from '../screens/pop-material-defect/screen';
+import { PopOqcInspectionScreen } from '../screens/pop-oqc-inspection/screen';
 import { PqcInspectionScreen } from '../screens/pqc-inspection/screen';
 import { RepackLabelIssueScreen } from '../screens/repack-label-issue/screen';
 import { ProductionFlowScreen } from '../screens/production-result/screen';
@@ -257,4 +258,12 @@ export const popRoutes: RouteObject[] = [
    * 자리를 이미 갖고 있고, 이쪽은 프린터가 붙은 단말에서 찍는 자리다.
    */
   { path: '/pop/location-label', element: <PopLocationLabelScreen /> },
+  /*
+   * P-04-06 — OQC 출하검사 판정(omf-all-around#109 · 설계보다 앞선 화면, 서버 장부 P-80).
+   * 관리웹 W-04-03 과 같은 판정을 현장 단말에서 낸다. 화면 코드도 사용자 결정으로 부여했다.
+   *
+   * ⚠ **진입에 질의 문자열이 없다** — 판정 대기 목록에서 의뢰를 고른다. 메뉴에는 검사 입력
+   * 공정 단말에만 뜬다(서버 `can_input_inspection`).
+   */
+  { path: '/pop/oqc-inspection', element: <PopOqcInspectionScreen /> },
 ];
