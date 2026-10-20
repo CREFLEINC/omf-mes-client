@@ -437,17 +437,17 @@ export const WorkStartScreen = () => {
   }, [writeError]);
 
   /**
-   * 점검 통제가 볼 설비. 설비가 없는 단말은 고른 W/O 의 계획 설비로 점검한다 — 서버도 같은
-   * 설비로 판정 기록을 받는다. 세션 본문의 설비는 그대로 단말의 것이다.
+   * 이 시작이 쓰는 설비. 설비가 없는 단말은 고른 W/O 의 계획 설비를 쓴다 — 점검한 설비와 실적이
+   * 남는 설비가 같아야 해서 점검 판정 기록과 세션 본문이 같은 값을 싣는다.
    */
-  const precheckEquipmentIdOf = (workOrder: WorkOrder): number | null =>
+  const workEquipmentIdOf = (workOrder: WorkOrder): number | null =>
     equipmentId ?? workOrder.plannedEquipmentId ?? null;
 
   const writeSession = (target: WorkOrder, at: string, override: ControlOverride | null) => {
     startWork.write(
       toSessionRequest({
         workOrder: target,
-        equipmentId,
+        equipmentId: workEquipmentIdOf(target),
         startedAt: at,
         controlOverride: override,
       }),
@@ -471,7 +471,7 @@ export const WorkStartScreen = () => {
     }
 
     /* 단말에도 W/O 에도 설비가 없으면 점검할 설비가 없다 — 게이트 없이 바로 연다. */
-    if (precheckEquipmentIdOf(selected) === null) {
+    if (workEquipmentIdOf(selected) === null) {
       writeSession(selected, at, null);
 
       return;
@@ -763,7 +763,7 @@ export const WorkStartScreen = () => {
           workOrderId={attempt.workOrder.workOrderId}
           workOrderNo={attempt.workOrder.workOrderNo}
           workOrderTypeCode={attempt.workOrder.workOrderTypeCode}
-          equipmentId={precheckEquipmentIdOf(attempt.workOrder)}
+          equipmentId={workEquipmentIdOf(attempt.workOrder)}
           equipmentCode={equipmentCode}
           equipmentName={equipmentName}
           plantId={terminal.data?.plantId ?? null}

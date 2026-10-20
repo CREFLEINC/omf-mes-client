@@ -116,8 +116,10 @@ describe('P-02-01 작업 시작 — 단말 게이팅', () => {
     await rendered.user.click(startButton());
 
     await waitFor(() => expect(sessionBodies(rendered.recorded.bodies)).toHaveLength(1));
-    expect(sessionBodies(rendered.recorded.bodies)[0]?.body).not.toHaveProperty('equipmentId');
-    /* 점검 통제는 W/O 의 계획 설비로 판정해 기록한다. */
+    /* 점검한 설비와 실적이 남는 설비가 같다 — 둘 다 W/O 의 계획 설비다. */
+    expect(sessionBodies(rendered.recorded.bodies)[0]?.body).toEqual(
+      expect.objectContaining({ equipmentId: EQUIPMENT_ID }),
+    );
     expect(decisionBodies(rendered.recorded.bodies).map((sent) => sent.body)).toEqual([
       expect.objectContaining({ equipmentId: EQUIPMENT_ID }),
     ]);
@@ -142,7 +144,7 @@ describe('P-02-01 작업 시작 — 단말 게이팅', () => {
     expect(sessionBodies(rendered.recorded.bodies)[0]?.body).not.toHaveProperty('equipmentId');
   });
 
-  it('단말에 설비가 있으면 W/O 계획 설비가 달라도 단말 설비로 점검한다', async () => {
+  it('단말에 설비가 있으면 W/O 계획 설비가 달라도 단말 설비로 점검하고 시작한다', async () => {
     const rendered = renderScreen({
       workOrders: [{ ...WORK_ORDER, plannedEquipmentId: EQUIPMENT_ID + 7 }],
     });
@@ -158,6 +160,9 @@ describe('P-02-01 작업 시작 — 단말 게이팅', () => {
     expect(decisionBodies(rendered.recorded.bodies).map((sent) => sent.body)).toEqual([
       expect.objectContaining({ equipmentId: EQUIPMENT_ID }),
     ]);
+    expect(sessionBodies(rendered.recorded.bodies)[0]?.body).toEqual(
+      expect.objectContaining({ equipmentId: EQUIPMENT_ID }),
+    );
   });
 
   it('공정이 없거나 여럿이면 등록 실패가 아니라 공정 매핑을 사유로 말한다', async () => {
