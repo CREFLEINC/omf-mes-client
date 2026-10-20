@@ -17,6 +17,7 @@ import {
   type DecisionCreateBody,
   type DecisionFormValue,
 } from './decision-form';
+import { ConcessionPane } from './concession-pane';
 import { DecisionFormPane } from './decision-form-pane';
 import { toDecisionLock } from './decision-lock';
 import { DetailSlot } from './detail-slot';
@@ -426,6 +427,18 @@ export const DispositionDecisionScreen = ({
                       onRetry={() => void detail.refetch()}
                     />
                   </section>
+                  {/* 특채(omf-all-around#84) — 요청·적용. 승인은 W-03-09 의 결재가 한다. */}
+                  {selectedId !== null && detail.data !== undefined && (
+                    <section className="pane disposition-pane" aria-label={t.concession.heading}>
+                      <h2 className="pane-title">{t.concession.heading}</h2>
+                      <ConcessionPane
+                        nonconformanceId={selectedId}
+                        lots={toDetailView(detail.data).lots}
+                        isClosed={detail.data.statusCode === 'DECIDED'}
+                        today={today}
+                      />
+                    </section>
+                  )}
                   <section className="pane disposition-pane" aria-label={t.panes.decision}>
                     <h2 className="pane-title">{t.panes.decision}</h2>
                     <DecisionFormPane
