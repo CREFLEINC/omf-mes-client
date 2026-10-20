@@ -76,6 +76,7 @@ import { materialPicking } from './material-picking';
 import { notice } from './notice';
 import { notificationCenter } from './notification-center';
 import { oqcInspection } from './oqc-inspection';
+import { outboxPending } from './outbox-pending';
 import { outboxRejections } from './outbox-rejections';
 import { overReceiptSplit } from './over-receipt-split';
 import { packingLabelReprint } from './packing-label-reprint';
@@ -220,6 +221,7 @@ export const vi: Translated<Messages> = {
   notice,
   notificationCenter,
   oqcInspection,
+  outboxPending,
   outboxRejections,
   overReceiptSplit,
   packingLabelReprint,

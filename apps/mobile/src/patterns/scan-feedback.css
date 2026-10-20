@@ -1,0 +1,42 @@
+/*
+ * 결과를 화면 가장자리 테두리로 알린다. 본문을 덮지 않아 읽던 값과 단추가 그대로 보이고,
+ * 화면 어디를 보고 있든 눈 가장자리에 걸린다.
+ */
+.scan-flash {
+  position: fixed;
+  /* 시스템 바 밑으로 들어가면 그 쪽 테두리가 보이지 않는다. 셸과 같은 여백 안에 그린다. */
+  top: var(--safe-area-inset-top, env(safe-area-inset-top, 0px));
+  right: var(--safe-area-inset-right, env(safe-area-inset-right, 0px));
+  bottom: var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px));
+  left: var(--safe-area-inset-left, env(safe-area-inset-left, 0px));
+  z-index: 30;
+  pointer-events: none;
+  border: 8px solid transparent;
+  animation: scan-flash-fade 400ms ease-out forwards;
+}
+
+.scan-flash--confirm {
+  border-color: var(--semantic-success-text);
+}
+
+.scan-flash--reject {
+  border-color: var(--semantic-error);
+  animation-duration: 700ms;
+}
+
+@keyframes scan-flash-fade {
+  from {
+    opacity: 1;
+  }
+
+  to {
+    opacity: 0;
+  }
+}
+
+/* 움직임을 줄여 달라는 설정이면 흐려지지 않고 정해진 시간 동안 그대로 섰다가 사라진다. */
+@media (prefers-reduced-motion: reduce) {
+  .scan-flash {
+    animation: none;
+  }
+}

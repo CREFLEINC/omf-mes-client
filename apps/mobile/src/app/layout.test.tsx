@@ -1,13 +1,13 @@
 import { render, screen } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import userEvent from '@testing-library/user-event';
-import { MemoryRouter } from 'react-router';
+import { MemoryRouter, Route, Routes } from 'react-router';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { noteServerSilent } from '../patterns/online-status';
 import { ApiRequestError } from '../patterns/request';
 import { useScreenTitle } from '../patterns/screen-title';
-import { OutboxProvider, useOutbox } from '../patterns/outbox';
+import { OutboxProvider, useOutbox, type OutboxTransport } from '../patterns/outbox';
 import { WorkerSessionProvider, useWorkerSession } from '../patterns/worker-session';
 import { AppLayout } from './layout';
 
@@ -56,13 +56,27 @@ const EnqueueScreen = () => {
   );
 };
 
-/* 셸이 읽는 것들을 한 자리에 모은다. 여기가 늘면 화면마다 다시 쌓지 않아도 된다. */
-const Shell = ({ children }: { children: ReactNode }) => (
-  <OutboxProvider send={() => Promise.resolve()}>
-    <WorkerSessionProvider>
-      <AppLayout>{children}</AppLayout>
-    </WorkerSessionProvider>
-  </OutboxProvider>
+/*
+ * 셸이 읽는 것들을 한 자리에 모은다. 여기가 늘면 화면마다 다시 쌓지 않아도 된다.
+ *
+ * 셸은 늘 라우터 안에 선다 - 홈 단추가 지금 주소를 읽는다. 기본 주소는 작업 화면 하나다.
+ */
+const Shell = ({
+  children,
+  path = '/inbound-receipt',
+  send = () => Promise.resolve(),
+}: {
+  children: ReactNode;
+  path?: string;
+  send?: OutboxTransport;
+}) => (
+  <MemoryRouter initialEntries={[path]}>
+    <OutboxProvider send={send}>
+      <WorkerSessionProvider>
+        <AppLayout>{children}</AppLayout>
+      </WorkerSessionProvider>
+    </OutboxProvider>
+  </MemoryRouter>
 );
 
 const renderLayout = (children: string) => {
@@ -234,17 +248,9 @@ describe('AppLayout', () => {
   it('되돌아온 건수를 상단 바에 보이고 목록으로 가는 길을 낸다', async () => {
     const user = userEvent.setup();
     render(
-      <MemoryRouter>
-        <OutboxProvider
-          send={() => Promise.reject(new ApiRequestError({ kind: 'http', status: 422 }))}
-        >
-          <WorkerSessionProvider>
-            <AppLayout>
-              <EnqueueScreen />
-            </AppLayout>
-          </WorkerSessionProvider>
-        </OutboxProvider>
-      </MemoryRouter>,
+      <Shell send={() => Promise.reject(new ApiRequestError({ kind: 'http', status: 422 }))}>
+        <EnqueueScreen />
+      </Shell>,
     );
 
     expect(screen.getByRole('banner')).not.toHaveTextContent('전송 실패');
@@ -257,5 +263,45 @@ describe('AppLayout', () => {
       'href',
       '/rejections',
     );
+  });
+
+  /* 건수만으로는 무엇이 묶여 있는지 모른다. 그 목록과 「지금 보내기」로 가는 길이어야 한다. */
+  it('보내지 못한 건수가 전송 대기 목록으로 가는 길이다', async () => {
+    const user = userEvent.setup();
+    render(
+      <Shell send={() => Promise.reject(new ApiRequestError({ kind: 'network' }))}>
+        <EnqueueScreen />
+      </Shell>,
+    );
+
+    await user.click(screen.getByRole('button', { name: '담기' }));
+
+    expect(await screen.findByRole('link', { name: '전송 대기 1' })).toHaveAttribute(
+      'href',
+      '/outbox',
+    );
+  });
+
+  /* 단계가 깊은 화면에서 뒤로가기 키를 여러 번 누르지 않고 작업 목록으로 돌아간다. */
+  it('작업 화면에서 홈 단추를 누르면 작업 목록으로 간다', async () => {
+    const user = userEvent.setup();
+    render(
+      <Shell path="/inbound-receipt">
+        <Routes>
+          <Route path="/inbound-receipt" element={<p>입하 화면</p>} />
+          <Route path="/screens" element={<p>작업 목록 화면</p>} />
+        </Routes>
+      </Shell>,
+    );
+
+    await user.click(screen.getByRole('button', { name: '작업 목록' }));
+
+    expect(await screen.findByText('작업 목록 화면')).toBeInTheDocument();
+  });
+
+  it.each(['/screens', '/'])('%s 에는 홈 단추를 두지 않는다', (path) => {
+    render(<Shell path={path}>본문 자리</Shell>);
+
+    expect(screen.queryByRole('button', { name: '작업 목록' })).toBeNull();
   });
 });

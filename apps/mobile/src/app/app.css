@@ -105,10 +105,21 @@ body {
 
 .mobile-shell__titlebar > .mobile-shell__title,
 .mobile-shell__titlebar > strong {
+  /* 홈 단추가 앞에 서도 제목이 남는 폭을 다 가져 상태 칩이 오른쪽 끝에 머문다. */
+  flex: 1 1 auto;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/*
+ * 작업 목록으로 가는 단추. 제목 앞에 둔다 - 안드로이드 앱바의 «위로» 자리와 같아 손이 먼저 간다.
+ * 단추 안쪽 여백이 이미 있어 앱바 가장자리 여백만큼 당겨 제목 줄 첫 글자와 맞춘다.
+ */
+.mobile-shell__home {
+  flex: 0 0 auto;
+  margin-inline-start: calc(-1 * var(--space-2, 8px));
 }
 
 .mobile-shell__status {
