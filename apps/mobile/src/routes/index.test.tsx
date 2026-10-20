@@ -39,38 +39,42 @@ describe('모바일 라우트', () => {
     expect(await screen.findByRole('heading', { name: '사번 확인' })).toBeInTheDocument();
   });
 
-  it('셸 홈에서 자재 위치 확인으로 갈 수 있다', async () => {
+  it('셸 홈에서 업무를 거쳐 자재 위치 확인으로 갈 수 있다', async () => {
     const user = userEvent.setup();
     renderAt('/screens');
 
+    await user.click(await screen.findByRole('link', { name: /^창고/ }));
     await user.click(await screen.findByRole('link', { name: '자재 위치 확인' }));
 
     expect(screen.getByRole('heading', { name: '자재 위치 확인' })).toBeInTheDocument();
   });
 
-  /* 되돌아온 것을 볼 자리가 없으면 되돌아왔다는 사실만 알고 무엇이었는지는 알 수 없다. */
-  it('셸 홈에서 전송 실패한 기록으로 갈 수 있다', async () => {
-    const user = userEvent.setup();
-    renderAt('/screens');
-
-    await user.click(await screen.findByRole('link', { name: '전송 실패한 기록' }));
+  /*
+   * 되돌아온 것을 볼 자리가 없으면 되돌아왔다는 사실만 알고 무엇이었는지는 알 수 없다.
+   * 업무가 아니라 작업 목록에는 걸지 않는다 - 앱바의 「전송 실패 N」 칩과 홈의 전송 현황이 길이다
+   * (layout · shell-home 시험).
+   */
+  it('전송 실패한 기록 화면이 선다', async () => {
+    renderAt('/rejections');
 
     expect(await screen.findByText('전송 실패한 기록이 없습니다.')).toBeInTheDocument();
   });
 
-  it('셸 홈에서 설비 점검으로 갈 수 있다', async () => {
+  it('셸 홈에서 업무를 거쳐 설비 점검으로 갈 수 있다', async () => {
     const user = userEvent.setup();
     renderAt('/screens');
 
+    await user.click(await screen.findByRole('link', { name: /^생산 현장/ }));
     await user.click(await screen.findByRole('link', { name: '설비 점검' }));
 
     expect(await screen.findByLabelText('설비 스캔')).toBeInTheDocument();
   });
 
-  it('셸 홈에서 긴급 IQC 생략 요청으로 갈 수 있다', async () => {
+  it('셸 홈에서 업무를 거쳐 긴급 IQC 생략 요청으로 갈 수 있다', async () => {
     const user = userEvent.setup();
     renderAt('/screens');
 
+    await user.click(await screen.findByRole('link', { name: /^입고/ }));
     await user.click(await screen.findByRole('link', { name: '긴급 IQC 생략 요청' }));
 
     expect(await screen.findByLabelText('입하 LOT 스캔')).toBeInTheDocument();

@@ -12,6 +12,7 @@
 }
 
 .shell-home__tiles,
+.shell-home__areas,
 .shell-home__resume,
 .shell-home__status {
   margin: 0;
@@ -54,6 +55,57 @@
 
 .shell-home__icon {
   color: var(--primary-text);
+}
+
+/*
+ * 네 업무는 두 줄 두 칸으로 한 화면에 다 선다. 작업 타일보다 크게 두고 무엇이 들었는지 한 줄을
+ * 함께 적는다 - 업무 이름만으로는 어느 쪽인지 헷갈리는 작업이 있다.
+ */
+.shell-home__areas {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: var(--space-2, 8px);
+}
+
+.shell-home__area {
+  box-sizing: border-box;
+  height: 100%;
+  min-height: 132px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1, 4px);
+  padding: var(--space-4, 16px) var(--space-3, 12px);
+  border: 1px solid var(--outline, #c9c7cf);
+  border-radius: var(--radius-lg, 16px);
+  background: var(--surface, #fff);
+  color: inherit;
+  text-decoration: none;
+}
+
+.shell-home__area strong {
+  margin-top: var(--space-1, 4px);
+  font: var(--type-title-lg);
+  letter-spacing: var(--type-title-lg-tracking);
+}
+
+/* 태그로 고르지 않는다 - 아이콘도 span 이라, 글꼴이 덮이면 아이콘 이름이 글자로 샌다. */
+.shell-home__area-summary {
+  font: var(--type-body-sm);
+  letter-spacing: var(--type-body-sm-tracking);
+  color: var(--on-surface-variant);
+}
+
+/* 몇 개가 들었는지는 맨 아래에 붙인다. 요약이 두 줄로 접혀도 같은 자리에 선다. */
+.shell-home__area-count {
+  margin-top: auto;
+  font: var(--type-label-lg);
+  letter-spacing: var(--type-label-lg-tracking);
+  color: var(--primary-text);
+}
+
+.shell-home__area:focus-visible {
+  outline: 2px solid var(--primary, currentColor);
+  outline-offset: 2px;
 }
 
 .shell-home__tile:focus-visible,

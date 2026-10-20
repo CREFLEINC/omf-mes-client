@@ -2,7 +2,7 @@ import { Outlet, createBrowserRouter, type RouteObject } from 'react-router';
 
 import { AppLayout } from '../app/layout';
 import { ShellGate } from '../app/shell-gate';
-import { ShellHome } from '../app/shell-home';
+import { HomeAreaScreen, ShellHome } from '../app/shell-home';
 import { WorkerSignInScreen } from '../screens/device-registration/sign-in';
 import { EquipmentFailureScreen } from '../screens/equipment-failure/screen';
 import { EquipmentInspectionScreen } from '../screens/equipment-inspection/screen';
@@ -39,6 +39,7 @@ export const appRoutes: RouteObject[] = [
     children: [
       { index: true, element: <WorkerSignInScreen /> },
       { path: 'screens', element: <ShellHome /> },
+      { path: 'screens/:area', element: <HomeAreaScreen /> },
       { path: 'inbound-receipt', element: <InboundReceiptScreen /> },
       { path: 'inbound-variance', element: <InboundVarianceScreen /> },
       { path: 'putaway', element: <PutawayScreen /> },

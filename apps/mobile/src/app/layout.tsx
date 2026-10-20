@@ -14,6 +14,8 @@ import {
 } from '../patterns/screen-title';
 import { useOutbox } from '../patterns/outbox';
 import { useWorkerSession } from '../patterns/worker-session';
+import { useRecordScreenVisit } from './frequent-screens';
+import { screenOf } from './home-menu';
 
 interface AppLayoutProps {
   children: ReactNode;
@@ -109,6 +111,15 @@ const ShellTopbar = () => {
 export const AppLayout = ({ children }: AppLayoutProps) => {
   /* 단말의 뒤로가기를 화면 안 단계가 먼저 받는다. 없으면 이력으로 넘어간다. */
   useEffect(() => listenBackButton(), []);
+
+  /* 작업 화면에 들어갈 때마다 센다. 홈의 「자주 쓰는 작업」이 이것으로 선다. */
+  const { pathname } = useLocation();
+  const recordVisit = useRecordScreenVisit();
+  useEffect(() => {
+    if (screenOf(pathname) !== undefined) {
+      recordVisit(pathname);
+    }
+  }, [pathname, recordVisit]);
   /* 드롭다운 목록은 셸 밖에 그려져 시스템 바 여백을 못 받는다. 바 안쪽으로 다시 놓는다. */
   useEffect(() => keepListboxesInSafeArea(), []);
 
