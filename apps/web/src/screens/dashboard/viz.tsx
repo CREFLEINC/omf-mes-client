@@ -5,6 +5,7 @@ import {
   useRef,
   useState,
   type ButtonHTMLAttributes,
+  type CSSProperties,
   type MouseEvent,
   type ReactNode,
 } from 'react';
@@ -927,10 +928,12 @@ export const MultiLineChart = ({
 };
 
 /**
- * 파레토 막대 굵기 상한(px) — 다른 세로 막대(`.dash-dayout-bar` 의 `min(56%, 1.75rem)`)와 같은 28px.
+ * 파레토 막대 굵기 상한(px) — 48px(3rem).
  * 항목이 하나뿐이면 칸 폭의 60% 가 차트 폭 대부분이라 막대가 지나치게 굵었다(omf-all-around#128). 칸 가운데 그대로다.
+ * 28px(좁은 「일별 반품 출고」 막대와 같은 값)은 넓은 파레토 카드에서 선처럼 보였다(담당자 확인 2026-10-20).
+ * 항목이 많아 칸이 좁아지면 칸 폭 60% 가 먼저 걸려 예전 굵기 그대로다.
  */
-const PARETO_BAR_MAX_W = 28;
+const PARETO_BAR_MAX_W = 48;
 
 /**
  * 파레토 — 막대(많은 순) + 누적 비율 선 + 80% 기준선. 누적 80%에 닿는 막대까지 진하게.
@@ -1071,12 +1074,16 @@ export const ParetoChart = ({
               formatFigure(row.value),
               formatShare(row.cumulative),
             )}
-            style={{
-              left: `${String(((cx(index) - slot / 2) / W) * 100)}%`,
-              width: `${String((slot / W) * 100)}%`,
-              top: PAD.top,
-              height: plotH,
-            }}
+            style={
+              {
+                left: `${String(((cx(index) - slot / 2) / W) * 100)}%`,
+                width: `${String((slot / W) * 100)}%`,
+                top: PAD.top,
+                height: plotH,
+                /* 툴팁이 칸 끝이 아니라 막대 옆에 붙게 — 칸 끝에서 막대 끝까지(omf-all-around#128). */
+                '--tip-inset': `${String((slot - barW) / 2)}px`,
+              } as CSSProperties
+            }
           />
         ))}
       </div>

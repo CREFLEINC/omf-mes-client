@@ -37,6 +37,7 @@ import { toWebAccess } from '../../patterns/web-access';
 import { useDashboardSummary } from './queries';
 import { TrendPanel } from './trend-panel';
 import { useFillHeight } from './use-fill-height';
+import { useTipInside } from './use-tip-inside';
 import type { DashboardAlertView, DashboardCardView, SelectOption } from './types';
 import { Panel } from './viz';
 
@@ -117,6 +118,7 @@ export const DashboardScreen = () => {
   /* 2 · 3행이 화면 아래까지 남은 높이를 나눠 갖는다(3행 생산 추이가 먼저 · `.dash-overview`). */
   const [overviewEl, setOverviewEl] = useState<HTMLDivElement | null>(null);
   const fillHeight = useFillHeight(overviewEl);
+  useTipInside();
   /* 서버가 기간을 거절한 이유(400 field dateFrom · dateTo) — 배너 대신 날짜 칸 옆에 둔다. */
   const periodError = periodErrorOf(summary.error);
   /* 알림 이름 풀이 — 알림센터와 같은 유형 목록을 쓴다(코드 원문을 보이지 않는다). */

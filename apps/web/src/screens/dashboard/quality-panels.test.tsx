@@ -649,8 +649,8 @@ describe('품질 탭', () => {
     expect(line.compareDocumentPosition(first) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
-  /* omf-all-around#128 — 항목이 하나뿐이어도 막대가 칸 폭만큼 굵어지지 않는다(상한 28px · 칸 가운데). */
-  it('부적합 파레토 — 항목이 하나면 막대 굵기가 28px 상한이고 칸 가운데에 선다', () => {
+  /* omf-all-around#128 — 항목이 하나뿐이어도 막대가 칸 폭만큼 굵어지지 않는다(상한 48px · 칸 가운데). */
+  it('부적합 파레토 — 항목이 하나면 막대 굵기가 48px 상한이고 칸 가운데에 선다', () => {
     const data = quality();
     data.nonconformance = {
       ...data.nonconformance,
@@ -663,8 +663,26 @@ describe('품질 탭', () => {
     );
     if (bar === null || label === null) throw new Error('파레토 막대가 없다');
     const width = Number(bar.getAttribute('width'));
-    expect(width).toBe(28);
+    expect(width).toBe(48);
     expect(Number(bar.getAttribute('x')) + width / 2).toBeCloseTo(Number(label.getAttribute('x')));
+  });
+
+  it('부적합 파레토 — 툴팁이 칸 끝이 아니라 막대 옆에 붙는다(칸 끝 ~ 막대 끝 거리)', () => {
+    const data = quality();
+    data.nonconformance = {
+      ...data.nonconformance,
+      phenomena: [{ defectCodeId: 1, defectCode: 'D01', defectName: '스크래치', qty: 3 }],
+    };
+    const { container } = render(<NonconformanceTab quality={data} />);
+    const svg = container.querySelector('.dash-tab-quality-detail svg');
+    const bar = container.querySelector('.dash-tab-quality-detail svg rect.dash-bar');
+    const hit = container.querySelector<HTMLElement>('.dash-tab-quality-detail .dash-hit');
+    if (svg === null || bar === null || hit === null) throw new Error('파레토 막대가 없다');
+    const W = Number(svg.getAttribute('viewBox')?.split(' ')[2]);
+    const hitLeft = (Number.parseFloat(hit.style.left) / 100) * W;
+    expect(Number.parseFloat(hit.style.getPropertyValue('--tip-inset'))).toBeCloseTo(
+      Number(bar.getAttribute('x')) - hitLeft,
+    );
   });
 
   it('부적합 파레토 — 항목이 많아 칸이 좁으면 종전대로 칸 폭의 60% 다', () => {
@@ -681,6 +699,6 @@ describe('품질 탭', () => {
     const { container } = render(<NonconformanceTab quality={data} />);
     const bars = container.querySelectorAll('.dash-tab-quality-detail svg rect.dash-bar');
     expect(bars).toHaveLength(12);
-    expect(Number(bars[0]?.getAttribute('width'))).toBeLessThan(28);
+    expect(Number(bars[0]?.getAttribute('width'))).toBeLessThan(48);
   });
 });
