@@ -39,6 +39,11 @@ export interface PlanFormValues {
   processId: string;
   /** 품목을 고른 뒤에만 고를 수 있다 — 계약의 라우팅 조회가 품목을 필수로 둔다. */
   routingId: string;
+  /**
+   * PQC 생략 허용(omf-all-around#119) — 켜면 이 기준으로 배포한 W/O 의 PQC 가 «생략»으로 서고 실적이 곧 정상이다.
+   * PQC 기준에만 뜻이 있다 — 다른 유형으로 저장하면 끈 채로 보낸다.
+   */
+  pqcSkipAllowed: boolean;
 }
 
 /** 버전 헤더 폼 값. 마찬가지로 전부 문자열이며 변환은 `version-mappers.ts`가 맡는다. */

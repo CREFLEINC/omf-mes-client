@@ -65,6 +65,8 @@ import { useUomLookup } from './uom-lookup';
 import { isEmergency } from './work-order-type';
 
 const t = messages.productionResult;
+/** 생략 허용 기준으로 배포가 만든 PQC 의뢰 상태(#119 · 서버 장부 P-82). */
+const PQC_SKIPPED = 'SKIPPED';
 
 /**
  * ⛔ **`IDENTIFICATION_TAG` 발행은 서버가 항상 422 `STATE_LOCKED` 로 거부한다**(대응표 P1
@@ -190,7 +192,9 @@ export const ProductionFlowScreen = () => {
    * (omf-all-around#107 · 사용자 결정 2026-10-19). 닫는 단추가 없다.
    */
   const workOrderPqc = useWorkOrderPqc(entry.workOrderId);
-  const pqcTargetId = workOrderPqc.data?.inspectionRequestId ?? null;
+  /* 생략(SKIPPED · #119)된 PQC 는 검사가 아니다 — 나누지 않고 「PQC 생략」 칩만 단다. */
+  const isPqcSkipped = workOrderPqc.data?.statusCode === PQC_SKIPPED;
+  const pqcTargetId = isPqcSkipped ? null : (workOrderPqc.data?.inspectionRequestId ?? null);
   const item = useItem(currentLot.data?.itemId ?? workOrder.data?.itemId ?? null);
   const lotPrinters = usePrinters('PRODUCTION_LOT_LABEL');
   const tagPrinters = usePrinters('IDENTIFICATION_TAG');
@@ -1028,7 +1032,15 @@ export const ProductionFlowScreen = () => {
 
       <PqcSplit
         inspectionRequestId={pqcTargetId}
-        isInspectionOff={workOrderPqc.isSuccess && workOrderPqc.data === null}
+        inspectionOff={
+          !workOrderPqc.isSuccess
+            ? null
+            : workOrderPqc.data === null
+              ? 'notInspected'
+              : isPqcSkipped
+                ? 'skipped'
+                : null
+        }
         workOrderId={entry.workOrderId}
         workerNo={entry.workerNo}
       >

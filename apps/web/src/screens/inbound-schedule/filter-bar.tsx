@@ -1,31 +1,86 @@
-import { Button, Chip, SearchInput, TextField } from '@crefle/web-ui';
+import { Button, Checkbox, Chip, SearchInput, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useId, useState } from 'react';
 
-import { toFilterChips, type AsnFilters, type FilterChipNames } from './filters';
+import { ItemPickerDialog } from '../../patterns/item-picker';
+import { toFilterChips, type ChipKey, type FilterChipNames, type ScheduleFilters } from './filters';
+import { describeReference, useItemNames } from './lookups';
 import { validatePeriod, type PeriodInput } from './period';
 import { SelectField } from './select-field';
 import type { SelectOption } from './types';
 
 const t = messages.inboundSchedule;
 
-export interface AsnFilterBarProps {
+interface ItemFieldProps {
+  value: string;
+  onChange: (value: string) => void;
+}
+
+const NO_ITEM_IDS: readonly number[] = [];
+
+/**
+ * 품목 조건 — 품목 마스터가 수천 건이라 선택칸이 아니라 공용 「품목 선택」 창으로 고른다
+ * (`patterns/item-picker` · 전례 W-02 ERP W/O 조회). 지난 발주를 찾는 조건이라 사용 중지 품목까지
+ * 찾고, 재고와 상관없어 가용 재고 열은 뺀다.
+ *
+ * 고른 품목의 이름은 **품목 상세로 이 칸이 직접 푼다** — 창에서 막 고른(아직 조회하지 않은) 품목도,
+ * 주소로 들어와 창을 거치지 않은 품목도 이름이 선다. 표와 같은 캐시 열쇠라 요청이 겹치지 않는다.
+ */
+const ItemField = ({ value, onChange }: ItemFieldProps) => {
+  const [isPickerOpen, setIsPickerOpen] = useState(false);
+  const open = (): void => setIsPickerOpen(true);
+  const itemId = Number(value);
+  const hasItem = value !== '' && Number.isSafeInteger(itemId) && itemId > 0;
+  const names = useItemNames(hasItem ? [itemId] : NO_ITEM_IDS);
+  const shown = hasItem ? describeReference(names.of(itemId)) : '';
+
+  return (
+    <>
+      <SearchInput
+        label={t.fields.item}
+        value={shown}
+        readOnly
+        title={shown === '' ? undefined : shown}
+        placeholder={t.filters.itemPlaceholder}
+        aria-haspopup="dialog"
+        clearLabel={t.filters.itemClear}
+        onClick={open}
+        onSearch={open}
+        onChange={() => undefined}
+        onClear={() => onChange('')}
+      />
+      {isPickerOpen && (
+        <ItemPickerDialog
+          multiple={false}
+          includeInactive
+          showAvailability={false}
+          confirmLabel={t.filters.itemPick}
+          onClose={() => setIsPickerOpen(false)}
+          onConfirm={([item]) => {
+            if (item !== undefined) onChange(String(item.itemId));
+            setIsPickerOpen(false);
+          }}
+        />
+      )}
+    </>
+  );
+};
+
+export interface ScheduleFilterBarProps {
   /** 주소에 반영된(= 조회에 쓰인) 기간. 편집 중인 값은 이 부품 안에만 있다. */
   appliedPeriod: PeriodInput;
-  appliedFilters: AsnFilters;
+  appliedFilters: ScheduleFilters;
   /** 참조 선택지 2종. 화면이 이름으로 풀어 넘긴다 — 번호를 사용자가 칠 일이 없다. */
   supplierOptions: SelectOption[];
-  itemOptions: SelectOption[];
-  /** 상태 선택지. 값 목록이 확정되지 않아 조회 결과에서 만든다. */
-  statusOptions: readonly string[];
+  plantOptions: SelectOption[];
   /** 조건 칩에 실을 참조 이름. 번호를 문구로 만드는 자리를 두지 않기 위한 것이다(#44). */
   chipNames: FilterChipNames;
   /** 참조 선택지의 한계(잘림·실패) 안내. 밝히지 않으면 값이 사라진 것으로 읽힌다. */
   supplierNote?: string;
-  itemNote?: string;
-  onSearch: (period: PeriodInput, filters: AsnFilters) => void;
+  plantNote?: string;
+  onSearch: (period: PeriodInput, filters: ScheduleFilters) => void;
   /** 조건 칩의 ×. 그 조건 하나만 풀고 곧바로 다시 조회한다. */
-  onRemoveFilter: (key: keyof AsnFilters) => void;
+  onRemoveFilter: (key: ChipKey) => void;
   onReset: () => void;
 }
 
@@ -34,28 +89,27 @@ export interface AsnFilterBarProps {
  *
  * 트리거 모델은 「모아서 적용, 해제는 즉시」다 — 날짜나 조건을 고치는 동안 조회가 나가면
  * 반쯤 지운 기간으로 요청이 나간다. 「조회」를 누를 때만 주소가 바뀌고 그때 조회된다.
- * 조건 칩의 ×는 해제라 즉시 반영한다.
+ * 두 켜짐 표시(미완료만·납기 지난 것만)도 같다. 조건 칩의 ×는 해제라 즉시 반영한다.
  *
  * **기간이 필수가 아니다.** 비운 채로도 조회가 열려 있고, 그 사실을 안내 한 줄이 밝힌다.
  * 잠그는 것은 보내면 반드시 400이 되는 값(없는 날짜·뒤집힌 기간)뿐이다.
  */
-export const AsnFilterBar = ({
+export const ScheduleFilterBar = ({
   appliedPeriod,
   appliedFilters,
   supplierOptions,
-  itemOptions,
-  statusOptions,
+  plantOptions,
   chipNames,
   supplierNote,
-  itemNote,
+  plantNote,
   onSearch,
   onRemoveFilter,
   onReset,
-}: AsnFilterBarProps) => {
+}: ScheduleFilterBarProps) => {
   const reasonId = useId();
 
   const [period, setPeriod] = useState<PeriodInput>(appliedPeriod);
-  const [filters, setFilters] = useState<AsnFilters>(appliedFilters);
+  const [filters, setFilters] = useState<ScheduleFilters>(appliedFilters);
 
   /*
    * 주소가 정본이다 — 뒤로가기·초기화로 주소가 **바뀌면** 편집 중인 값도 그 값으로 되돌아간다.
@@ -63,28 +117,17 @@ export const AsnFilterBar = ({
    * **되돌림을 참조가 아니라 값으로 판정한다.** 부모는 렌더할 때마다 주소에서 값을 새로 읽으므로
    * 내용이 같아도 참조가 달라질 수 있고(조회 응답이 도착해 다시 그려질 때가 그렇다),
    * 참조로 판정하면 그때마다 사용자가 치던 값이 사라진다(#43).
-   * 값이 실제로 달라졌을 때만 되돌린다.
    */
   const { from: appliedFrom, to: appliedTo } = appliedPeriod;
-  const {
-    supplier: appliedSupplier,
-    status: appliedStatus,
-    item: appliedItem,
-    q: appliedQ,
-  } = appliedFilters;
+  const { supplier, plant, item, q, openOnly, overdueOnly } = appliedFilters;
 
   useEffect(() => {
     setPeriod({ from: appliedFrom, to: appliedTo });
   }, [appliedFrom, appliedTo]);
 
   useEffect(() => {
-    setFilters({
-      supplier: appliedSupplier,
-      status: appliedStatus,
-      item: appliedItem,
-      q: appliedQ,
-    });
-  }, [appliedSupplier, appliedStatus, appliedItem, appliedQ]);
+    setFilters({ supplier, plant, item, q, openOnly, overdueOnly });
+  }, [supplier, plant, item, q, openOnly, overdueOnly]);
 
   /** 보내면 반드시 400이 되는 기간만 막는다. 비어 있는 것은 잘못이 아니다. */
   const searchReason = validatePeriod(period);
@@ -123,10 +166,7 @@ export const AsnFilterBar = ({
           }}
         />
 
-        {/*
-         * 규범 3-2 — 세 선택칸 모두 「코드 · 이름」이나 코드값을 고른다. 최소 폭을 주지 않으면
-         * 선택지 목록이 트리거 폭에 갇혀 잘리고, 무엇을 고르는지 읽을 수 없다.
-         */}
+        {/* 규범 3-2 — 「코드 · 이름」을 고르는 칸이라 최소 폭을 준다(선택지 목록이 잘리지 않게). */}
         <SelectField
           wide
           label={t.fields.supplier}
@@ -139,20 +179,16 @@ export const AsnFilterBar = ({
         />
         <SelectField
           wide
-          label={t.fields.status}
-          options={withAll(statusOptions.map((code) => ({ value: code, label: code })))}
-          value={filters.status}
-          note={t.filters.statusNote}
+          label={t.fields.plant}
+          options={withAll(plantOptions)}
+          value={filters.plant}
+          note={plantNote}
           onChange={(value) => {
-            setFilters((prev) => ({ ...prev, status: value }));
+            setFilters((prev) => ({ ...prev, plant: value }));
           }}
         />
-        <SelectField
-          wide
-          label={t.fields.item}
-          options={withAll(itemOptions)}
+        <ItemField
           value={filters.item}
-          note={itemNote}
           onChange={(value) => {
             setFilters((prev) => ({ ...prev, item: value }));
           }}
@@ -169,10 +205,30 @@ export const AsnFilterBar = ({
           clearLabel={messages.common.clear}
         />
 
+        <div className="field-cell field-cell-unlabeled">
+          <div className="check-group">
+            <Checkbox
+              checked={filters.openOnly}
+              onChange={(event) => {
+                setFilters((prev) => ({ ...prev, openOnly: event.target.checked }));
+              }}
+            >
+              {t.fields.openOnly}
+            </Checkbox>
+            <Checkbox
+              checked={filters.overdueOnly}
+              onChange={(event) => {
+                setFilters((prev) => ({ ...prev, overdueOnly: event.target.checked }));
+              }}
+            >
+              {t.fields.overdueOnly}
+            </Checkbox>
+          </div>
+        </div>
+
         {/*
          * 조회와 초기화는 짝이라 함께 줄바꿈되게 묶고(배치 규범 2-1), 비활성 사유는 그 아래에 둔다.
-         * 사유는 감추지 않고 항상 보이는 DOM 텍스트로 렌더해 aria-describedby로 잇는다 —
-         * 비활성 컨트롤은 포커스를 받지 못해 툴팁만으로는 키보드·보조기술 사용자가 닿을 수 없다.
+         * 사유는 감추지 않고 항상 보이는 DOM 텍스트로 렌더해 aria-describedby로 잇는다.
          */}
         <div className="field-cell field-cell-unlabeled">
           <div className="filter-actions">
@@ -195,7 +251,7 @@ export const AsnFilterBar = ({
         </div>
       </div>
 
-      {/* 기간이 필수가 아니라는 사실은 화면에서 읽혀야 한다 — 비워 두면 「빠뜨렸다」로 읽힌다. */}
+      {/* 기간이 필수가 아니고 미완료만이 기본이라는 사실은 화면에서 읽혀야 한다. */}
       <p className="field-note">{t.filters.periodNote}</p>
 
       {chips.length > 0 && (

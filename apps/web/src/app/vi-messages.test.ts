@@ -137,6 +137,7 @@ const TRANSLATED = [
   'inspectionHistory',
   'pqcInspectionRegister',
   'materialDefect',
+  'popOqcInspection',
   'popMaterialLotLabel',
   'popPageNav',
   'pqcInspection',

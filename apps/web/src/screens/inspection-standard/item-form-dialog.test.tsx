@@ -113,7 +113,9 @@ describe('ItemFormDialog — 차단과 경고', () => {
       fieldErrors: validateItemDraft(values, []),
     });
 
-    expect(screen.getByText('목표값이 하한~상한 밖입니다. 의도한 값인지 확인하세요.')).toBeInTheDocument();
+    expect(
+      screen.getByText('목표값이 하한~상한 밖입니다. 의도한 값인지 확인하세요.'),
+    ).toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: '확인' }));
 

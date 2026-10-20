@@ -1,18 +1,19 @@
 import { messages } from '@omf-mes/i18n';
-import { useQuery } from '@tanstack/react-query';
+import { useQueries, useQuery } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
 import { fetchAllPages } from '../../patterns/fetch-all-pages';
-import { runRequest } from '../../patterns/request';
+import { masterName } from '../../patterns/master-name';
+import { runRequest, toApiError } from '../../patterns/request';
 import type { LookupEntry, PageMeta } from './types';
 
 /**
- * 내부 번호(FK)로 이어진 값을 이름으로 푸는 선택 목록 넷 — 공급사·공장·품목·단위.
+ * 내부 번호(FK)·코드로 이어진 값을 이름으로 푼다 — 공급사·공장·품목·단위, 그리고 창고 코드.
  *
- * **지어내는 것이 아니라 실제로 조회한다.** 자리표시로 두는 것은 값 목록이 확정되지 않은
- * 상태 코드뿐이다(`status-options.ts`).
+ * **넷은 목록으로 받고 품목만 번호로 하나씩 푼다.** 가름의 잣대는 마스터의 크기다 —
+ * 품목은 수천 건이라 목록 한 쪽으로는 이름 대부분이 「알 수 없음」으로 선다(omf-all-around#37).
  *
- * 전부 `includeInactive=true`로 한 번 받아 둔다. 기본 조회는 사용 중인 것만 내려주므로,
+ * 목록으로 받는 것은 `includeInactive=true`로 한 번 받아 둔다. 기본 조회는 사용 중인 것만 내려주므로,
  * 미사용 값을 참조하는 행이 오면 이름이 비어 보인다 — ERP 수신본이라 그런 행이 실제로 온다.
  *
  * 이 화면이 소유한다 — 다른 화면 슬라이스의 같은 이름 파일을 참조하지 않는다.
@@ -112,12 +113,13 @@ export const lookupNote = (lookup: LookupResult): string | undefined => {
 export const lookupKeys = {
   suppliers: ['inbound-schedule-lookups', 'suppliers'] as const,
   plants: ['inbound-schedule-lookups', 'plants'] as const,
-  items: ['inbound-schedule-lookups', 'items'] as const,
   uoms: ['inbound-schedule-lookups', 'uoms'] as const,
+  itemName: (itemId: number) => ['inbound-schedule-lookups', 'item', itemId] as const,
+  storageLocations: ['inbound-schedule-lookups', 'code', 'SL_TYPE'] as const,
 };
 
 /**
- * 공급사 — 목록 표의 공급사 칸과 조건 줄의 공급사 선택지가 함께 쓴다.
+ * 공급사 — 표의 공급사 칸과 조건 줄의 공급사 선택지가 함께 쓴다.
  *
  * 계약이 거래처를 공급사·고객으로 가르는 조건을 주지 않으므로 전체 거래처를 받는다.
  * 좁혀 받을 근거가 생기면 그때 쿼리를 더한다 — 지금 지어내면 고를 수 있는 값이 사라진다.
@@ -155,7 +157,7 @@ export const useSupplierOptions = (): LookupResult => {
   };
 };
 
-/** 공장 — 고른 건의 제목줄이 쓴다. 조건에는 없다(계약에 있으나 화면 조건으로 두지 않았다). */
+/** 공장 — 조건 줄의 공장 선택지와 조건 칩이 쓴다. 표에는 공장 열이 없다(폭 예산). */
 export const usePlantOptions = (): LookupResult => {
   const { client } = useApiClient();
 
@@ -183,48 +185,21 @@ export const usePlantOptions = (): LookupResult => {
   };
 };
 
-/** 품목 — 라인 표의 품목 칸과 조건 줄의 품목 선택지가 함께 쓴다. */
-export const useItemOptions = (): LookupResult => {
-  const { client } = useApiClient();
-
-  const query = useQuery({
-    queryKey: lookupKeys.items,
-    queryFn: () =>
-      runRequest(() => client.GET('/mdm/items', { params: { query: { includeInactive: true } } })),
-  });
-
-  const data = query.data;
-
-  return {
-    entries:
-      data?.items.map((item) => ({
-        value: String(item.itemId),
-        label: `${item.itemCode} · ${item.itemName}`,
-        isActive: item.isActive,
-      })) ?? EMPTY_ENTRIES,
-    truncated: data !== undefined && isTruncated(data.page, data.items.length),
-    isError: query.isError,
-    isLoading: query.isPending,
-    refetch: () => {
-      void query.refetch();
-    },
-  };
-};
-
 /**
- * 단위 — 라인 표만 쓴다.
- *
- * **건을 고르기 전에는 부르지 않는다**(`enabled`). 쓰지 않는 상태에서 부르면
- * 어느 요청이 무엇을 위한 것인지 가릴 수 없고, 첫 진입의 요청 수가 이유 없이 는다.
+ * 단위 — 표의 단위 칸이 쓴다. **코드만 낸다**(`EA`·`KG`) — 수량 옆 좁은 칸이라 「코드 · 이름」은
+ * 접힌다. 끝까지 받는다 — 첫 쪽 밖의 단위가 「알 수 없음」으로 서지 않게.
  */
-export const useUomOptions = (enabled: boolean): LookupResult => {
+export const useUomOptions = (): LookupResult => {
   const { client } = useApiClient();
 
   const query = useQuery({
     queryKey: lookupKeys.uoms,
-    enabled,
     queryFn: () =>
-      runRequest(() => client.GET('/mdm/uoms', { params: { query: { includeInactive: true } } })),
+      fetchAllPages((page, size) =>
+        runRequest(() =>
+          client.GET('/mdm/uoms', { params: { query: { includeInactive: true, page, size } } }),
+        ),
+      ),
   });
 
   const data = query.data;
@@ -233,14 +208,117 @@ export const useUomOptions = (enabled: boolean): LookupResult => {
     entries:
       data?.items.map((item) => ({
         value: String(item.uomId),
-        label: `${item.uomCode} · ${item.uomName}`,
+        label: item.uomCode,
         isActive: item.isActive,
       })) ?? EMPTY_ENTRIES,
-    truncated: data !== undefined && isTruncated(data.page, data.items.length),
+    truncated: data?.truncated === true,
     isError: query.isError,
     isLoading: query.isPending,
     refetch: () => {
       void query.refetch();
     },
+  };
+};
+
+/** 그 번호의 품목이 없다(404). **못 받은 것과 다르다** — 다시 부를 이유가 없다. */
+const isNotFound = (error: unknown): boolean => {
+  const apiError = toApiError(error);
+
+  return apiError.kind === 'http' && apiError.status === 404;
+};
+
+/**
+ * 품목 이름 — 표의 품목 칸과 품목 조건 칩이 쓴다. **번호로 하나씩 푼다**(`GET /mdm/items/{itemId}`).
+ *
+ * ⛔ **목록 첫 쪽으로 풀지 않는다.** 종전에는 `GET /mdm/items`를 `size` 없이 한 번 받아
+ *    그 안에서 이름을 찾았다 — 기본 쪽 크기 밖의 품목이 전부 「알 수 없음」으로 섰다.
+ * ⛔ **쪽을 돌며 다 받는 것으로 바꾸지 않는다.** 마스터가 9,000건인 곳이 있다.
+ * ⭐ 부르는 횟수는 **이 쪽에 실제로 뜬 품목 수**다. 같은 품목이면 요청도 하나다(같은 캐시 열쇠).
+ */
+export interface ItemNameLookup {
+  /** 품목 하나의 표기 상태. 404 는 「목록에 없음」, 그 밖의 실패는 「실패」로 가른다. */
+  of: (itemId: number) => ReferenceState;
+  /** 하나라도 실패했는가. 실패 안내와 「다시 시도」가 이것을 본다. */
+  isError: boolean;
+  refetch: () => void;
+}
+
+type Client = ReturnType<typeof useApiClient>['client'];
+
+const fetchItemName = async (client: Client, itemId: number): Promise<string> => {
+  const data = await runRequest(() =>
+    client.GET('/mdm/items/{itemId}', { params: { path: { itemId } } }),
+  );
+
+  /* 상세는 봉투로 온다 — 편집 가능 여부(`editability`)는 이 화면이 쓰지 않는다. */
+  const item = data.item;
+
+  return `${item.itemCode} · ${masterName(item, item.itemName)}`;
+};
+
+export const useItemNames = (itemIds: readonly number[]): ItemNameLookup => {
+  const { client } = useApiClient();
+
+  const uniqueIds = [...new Set(itemIds)];
+
+  const results = useQueries({
+    queries: uniqueIds.map((itemId) => ({
+      queryKey: lookupKeys.itemName(itemId),
+      queryFn: () => fetchItemName(client, itemId),
+    })),
+  });
+
+  return {
+    of: (itemId) => {
+      const index = uniqueIds.indexOf(itemId);
+      const result = index === -1 ? undefined : results[index];
+
+      if (result === undefined) return { kind: 'loading' };
+      /* 없는 품목은 실패가 아니다 — 다시 불러도 같은 답이 온다. */
+      if (result.isError)
+        return isNotFound(result.error) ? { kind: 'unknown' } : { kind: 'failed' };
+
+      return result.data === undefined
+        ? { kind: 'loading' }
+        : { kind: 'named', label: result.data };
+    },
+    isError: results.some((result) => result.isError && !isNotFound(result.error)),
+    refetch: () => {
+      for (const result of results) void result.refetch();
+    },
+  };
+};
+
+/**
+ * 창고 이름 — 공통코드 `SL_TYPE`(ERP `SL_CD`). W-01 ERP P/O 조회(`erp-purchase-order`)와 같은 그룹이다.
+ *
+ * **이름을 못 찾으면 코드를 그대로 낸다.** 창고 코드는 사람이 읽는 값이라 「알 수 없음」으로
+ * 가리면 정보가 준다. 목록을 못 받았을 때도 같다 — 실패 안내를 따로 세우지 않는다.
+ * 끝까지 받는다 — ERP 수신이 만든 그룹은 한 쪽을 넘을 수 있다.
+ */
+export const useStorageLocationNames = (): ((code: string | null) => string) => {
+  const { client } = useApiClient();
+
+  const query = useQuery({
+    queryKey: lookupKeys.storageLocations,
+    queryFn: async () => {
+      const data = await fetchAllPages((page, size) =>
+        runRequest(() =>
+          client.GET('/mdm/code-values', {
+            params: { query: { codeGroupCode: 'SL_TYPE', includeInactive: true, page, size } },
+          }),
+        ),
+      );
+
+      return new Map(data.items.map((value) => [value.code, masterName(value, value.codeName)]));
+    },
+  });
+
+  const names = query.data;
+
+  return (code) => {
+    if (code === null || code.trim() === '') return t.values.empty;
+
+    return names?.get(code) ?? code;
   };
 };

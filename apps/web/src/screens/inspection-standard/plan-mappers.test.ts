@@ -18,6 +18,7 @@ const filled: PlanFormValues = {
   itemId: '5001',
   processId: '9001',
   routingId: '7003',
+  pqcSkipAllowed: false,
 };
 
 describe('planToFormValues', () => {
@@ -29,6 +30,7 @@ describe('planToFormValues', () => {
       itemId: '5001',
       processId: '9001',
       routingId: '7003',
+      pqcSkipAllowed: true,
     });
   });
 
@@ -51,6 +53,7 @@ describe('emptyPlanFormValues', () => {
       itemId: '',
       processId: '',
       routingId: '',
+      pqcSkipAllowed: false,
     });
   });
 });
@@ -64,7 +67,18 @@ describe('toPlanUpdate', () => {
       itemId: 5001,
       processId: 9001,
       routingId: 7003,
+      pqcSkipAllowed: false,
     });
+  });
+
+  /* #119 — 생략 허용은 PQC 기준에만 뜻이 있다. 다른 유형으로 바꿔 저장하면 끈 채로 보낸다. */
+  it('PQC 생략 허용은 PQC 기준일 때만 싣고, 다른 유형이면 끈다', () => {
+    expect(
+      toPlanUpdate({ ...filled, inspectionTypeCode: 'PQC', pqcSkipAllowed: true }).pqcSkipAllowed,
+    ).toBe(true);
+    expect(
+      toPlanUpdate({ ...filled, inspectionTypeCode: 'IQC', pqcSkipAllowed: true }).pqcSkipAllowed,
+    ).toBe(false);
   });
 
   it('비운 선택 값은 널로 보낸다', () => {

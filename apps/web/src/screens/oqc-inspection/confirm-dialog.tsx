@@ -30,6 +30,8 @@ export interface ConfirmDialogProps {
   judgmentLabel: string;
   /** 전이 경고 본문에 실을 값. `null` 이면 경고 문장을 빼고 나머지만 낸다 */
   preview: TransitionPreview | null;
+  /** 의뢰에 대상 LOT 이 있는가 — 없으면 집은 LOT 의 방향을 말한다(`TransitionWarningProps`). */
+  hasLot?: boolean;
   /** 저장 실패 배너 — 창 안에 낸다. 밖에 내면 창에 가려 보이지 않는다 */
   banner: ReactNode;
   isSaving: boolean;
@@ -41,6 +43,7 @@ export const ConfirmDialog = ({
   inspectionRequestNo,
   judgmentLabel,
   preview,
+  hasLot = true,
   banner,
   isSaving,
   onClose,
@@ -73,7 +76,7 @@ export const ConfirmDialog = ({
      * ⛔ **수량 셋을 따로 한 줄 더 내지 않는다.** 경고 본문의 첫 규칙이 이미 그 세 값이라,
      * 따로 내면 같은 문장이 두 줄 연달아 서고 사용자는 둘이 다른 값인지 확인하려 다시 읽는다.
      */}
-    <TransitionWarningBody preview={preview} />
+    <TransitionWarningBody preview={preview} hasLot={hasLot} />
     <p>{t.irreversible}</p>
   </Dialog>
 );

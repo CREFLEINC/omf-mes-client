@@ -162,7 +162,7 @@ export interface InspectionDefectInput {
 /** 서버 선행 P-47 — 사유를 실으면 서버가 확정과 한 트랜잭션에서 그 회차의 불량 기록을 이 값으로 갈아 끼운다. */
 export type InspectionResultConfirmForward = components['schemas']['InspectionResultConfirm'] & {
   defects?: InspectionDefectInput[];
-  /** 서버 선행 P-70(omf-all-around#125) — IQC 판정이 합격판정개수 기준 자동 판정과 다르면 필수(maxLength 500). */
+  /** 서버 선행 P-70(omf-all-around#125·#126) — IQC·OQC 판정이 합격판정개수 기준 자동 판정과 다르면 필수(maxLength 500). */
   judgmentChangeReason?: string;
 };
 
@@ -174,7 +174,7 @@ type InspectionConfirmPath = paths['/quality/inspection-results/{inspectionResul
  */
 export type InspectionResultCreateForward = components['schemas']['InspectionResultCreate'] & {
   defects?: InspectionDefectInput[];
-  /** 서버 선행 P-70(omf-all-around#125) — statusCode=CONFIRMED 저장의 판정 변경 사유. `:confirm` 과 같은 규칙. */
+  /** 서버 선행 P-70(omf-all-around#125·#126) — statusCode=CONFIRMED 저장의 판정 변경 사유(IQC·OQC). `:confirm` 과 같은 규칙. */
   judgmentChangeReason?: string;
 };
 export type InspectionResultUpdateForward = components['schemas']['InspectionResultUpdate'] & {
@@ -720,7 +720,61 @@ interface Unused {
   trace?: never;
 }
 
+/** 서버 선행 P-79(omf-all-around#84) — 특채 요청 본문. */
+export interface ConcessionCreate {
+  nonconformanceId: number;
+  lotId: number;
+  approvedQty: number;
+  uomId: number;
+  validFrom: string;
+  validTo?: string | null;
+  allowedWorkOrderId?: number | null;
+  allowedProcessId?: number | null;
+  allowedCustomerId?: number | null;
+  reason: string;
+}
+
+type ConcessionsPath = paths['/quality/concessions'];
+type ConcessionResponse = {
+  headers: { [name: string]: unknown };
+  content: { 'application/json': components['schemas']['Concession'] };
+};
+
 export interface ForwardPaths {
+  /** 특채 조회(GET)에 요청(POST)을 더한다 — 서버 선행 P-79. */
+  '/quality/concessions': Omit<ConcessionsPath, 'post'> & {
+    post: {
+      parameters: {
+        query?: never;
+        header: { 'Idempotency-Key': string };
+        path?: never;
+        cookie?: never;
+      };
+      requestBody: { content: { 'application/json': ConcessionCreate } };
+      responses: { 201: ConcessionResponse };
+    };
+  };
+  /** 특채 적용 — 서버 선행 P-79. */
+  '/quality/concessions/{concessionId}:apply': {
+    parameters: { query?: never; header?: never; path: { concessionId: number }; cookie?: never };
+    get?: never;
+    put?: never;
+    post: {
+      parameters: {
+        query?: never;
+        header: { 'Idempotency-Key': string };
+        path: { concessionId: number };
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: { 200: ConcessionResponse };
+    };
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/quality/nonconformances/{nonconformanceId}/disposition-decisions': Omit<
     DecisionsPath,
     'post'
@@ -990,6 +1044,58 @@ export interface ForwardPaths {
     };
     put?: never;
     post?: never;
+  };
+  /** 서버 선행 P-83(omf-all-around#119) — OQC 생략 요청(결재 상신). 202 승인 요청 id. */
+  '/logistics/shipment-requests/{shipmentRequestId}:request-oqc-skip': {
+    parameters: { query?: never; header?: never; path?: never; cookie?: never };
+    get?: never;
+    put?: never;
+    post: {
+      parameters: {
+        query?: never;
+        header: { 'Idempotency-Key': string };
+        path: { shipmentRequestId: number };
+        cookie?: never;
+      };
+      requestBody: { content: { 'application/json': { reason: string } } };
+      responses: {
+        202: {
+          headers: { [name: string]: unknown };
+          content: { 'application/json': { approvalRequestId: number } };
+        };
+      };
+    };
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  /** 서버 선행 P-83(omf-all-around#119) — 승인된 OQC 생략의 실행. 본문 없음 · 200 출하작업지시 상세. */
+  '/logistics/shipment-requests/{shipmentRequestId}:skip-oqc': {
+    parameters: { query?: never; header?: never; path?: never; cookie?: never };
+    get?: never;
+    put?: never;
+    post: {
+      parameters: {
+        query?: never;
+        header: { 'Idempotency-Key': string };
+        path: { shipmentRequestId: number };
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        200: {
+          headers: { [name: string]: unknown };
+          content: { 'application/json': components['schemas']['ShipmentRequest'] };
+        };
+      };
+    };
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
   };
   /** 서버 선행 P-36(omf-all-around#105) — 승인된 IQC 생략의 실행. 본문 없음 · 200 LOT 상세. */
   '/trace/lots/{lotId}:skip-iqc': {

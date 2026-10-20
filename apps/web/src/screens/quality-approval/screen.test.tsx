@@ -273,9 +273,11 @@ const findRequest = () =>
 describe('QualityApprovalScreen query and disclosure', () => {
   it('assignedToMe와 적용된 URL만 보내고 미확정 코드·선택·무관 키는 보내지 않는다', async () => {
     const recorded = recordingFetch(listRoute());
+    /* 기준값이 비었을 때의 규율을 잰다 — 기본값에는 특채(CONCESSION · #84)·OQC 생략(OQC_SKIP · #119)이 들어 있어 비운 채로 세운다. */
     renderScreen(
       recorded.fetch,
       '/quality/approvals?ty=UNCONFIRMED&st=UNKNOWN&q=SYNTH&page=2&approvalRequestId=31&view=compact',
+      [],
     );
 
     expect(await findRequest()).toBeInTheDocument();
@@ -722,6 +724,30 @@ describe('QualityApprovalScreen conditions', () => {
     expect(within(group).queryByText('SYNTH-WO-1201')).toBeNull();
   });
 
+  it('OQC 생략 결재는 연결 조건 대신 「실제 생략은 OQC 출하검사 판정에서」를 알리고 그 화면으로 잇는다(#119 · J-8)', async () => {
+    const oqcSkip = {
+      ...requests[0]!,
+      approvalTypeCode: 'OQC_SKIP',
+      target: {
+        targetTypeCode: 'SHIPMENT_REQUEST',
+        targetId: 21,
+        displayName: '출하작업지시',
+        openable: false,
+      },
+    } as unknown as ApprovalRequest;
+    renderScreen(
+      approvalFetch([listRoute(), detailRoute(31, () => jsonResponse(detailBody(oqcSkip)))]),
+      '/quality/approvals?approvalRequestId=31',
+    );
+
+    expect(await screen.findByText(t.detail.oqcSkipNote)).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: t.detail.openOqcInspection })).toHaveAttribute(
+      'href',
+      '/shipment/oqc-inspection',
+    );
+    expect(screen.queryByRole('group', { name: t.condition.title })).not.toBeInTheDocument();
+  });
+
   it('⭐ 특채면 「부적합 열기」가 처분 판정 화면의 진입 주소를 가리킨다', async () => {
     renderScreen(
       approvalFetch([
@@ -1033,6 +1059,40 @@ describe('QualityApprovalScreen decision action', () => {
   const requestButton = (requestNo: string) =>
     screen.getByRole('button', { name: t.actions.selectRow(requestNo) });
   const reloadTargetButton = () => screen.findByRole('button', { name: t.approval.reloadTarget });
+
+  it('⭐ OQC 생략 결재는 연결 조건(특채) 없이 승인·반려할 수 있고 특채를 묻지 않는다(#119)', async () => {
+    const oqcSkip = {
+      ...requests[0]!,
+      approvalTypeCode: 'OQC_SKIP',
+      target: {
+        targetTypeCode: 'SHIPMENT_REQUEST',
+        targetId: 21,
+        displayName: 'SHIPMENT_REQUEST #21',
+        openable: false,
+      },
+    } as unknown as ApprovalRequest;
+    const recorded = recordingFetch(
+      listRoute(),
+      detailRoute(31, () => jsonResponse(actionDetail(oqcSkip), { headers: { ETag: '"9"' } })),
+      {
+        match: (request) => new URL(request.url).pathname === APPROVE_PATH,
+        respond: () => jsonResponse(actionDetail({ ...oqcSkip, statusCode: 'APPROVED' })),
+      },
+    );
+    const { user } = renderScreen(recorded.fetch, '/quality/approvals?approvalRequestId=31');
+    const input = await screen.findByRole('textbox', { name: '결재 사유' });
+
+    expect(input).toBeEnabled();
+    expect(input).not.toHaveAccessibleDescription(/안전하게 확인된 연결 조건 1건이 필요합니다/);
+    expect(screen.getByRole('button', { name: '승인' })).toBeEnabled();
+    expect(screen.getByRole('button', { name: '반려' })).toBeEnabled();
+
+    await confirmApproval(user, '출하 생략 승인');
+    await waitFor(() =>
+      expect(recorded.urls.some((url) => url.pathname === APPROVE_PATH)).toBe(true),
+    );
+    expect(recorded.urls.some((url) => url.pathname === CONCESSIONS_PATH)).toBe(false);
+  });
 
   it('선택 없음·내 차례 아님·안전한 연결 조건 없음·공백 사유에서는 보내지 않는다', async () => {
     const noSelection = renderScreen(approvalFetch([listRoute()]));
