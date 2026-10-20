@@ -73,15 +73,15 @@ export const PopCurrentWorkPanel = ({ workOrderId, current }: PopCurrentWorkPane
       </dl>
 
       <dl className="pop-console-work-panel__numbers">
-        <div data-kind="target">
+        <div>
           <dt>{t.target}</dt>
           <dd>{quantity.format(order.orderQty)}</dd>
         </div>
-        <div data-kind="good">
+        <div>
           <dt>{t.good}</dt>
           <dd>{progress === undefined ? '—' : quantity.format(progress.goodQty)}</dd>
         </div>
-        <div data-kind="defect" data-tone={(progress?.defectQty ?? 0) > 0 ? 'error' : undefined}>
+        <div data-tone={(progress?.defectQty ?? 0) > 0 ? 'error' : undefined}>
           <dt>{t.defect}</dt>
           <dd>{progress?.defectQty === undefined ? '—' : quantity.format(progress.defectQty)}</dd>
         </div>

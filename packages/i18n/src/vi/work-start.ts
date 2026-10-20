@@ -29,6 +29,22 @@ export const workStart: Translated<typeof ko.workStart> = {
     disconnected: common.connection.offline,
   },
 
+  worker: {
+    title: 'Mã nhân viên',
+    fieldLabel: 'Mã nhân viên',
+    keypadLabel: 'Bàn phím số nhập mã nhân viên',
+    backspace: 'Xóa một ký tự',
+    clear: 'Xóa hết',
+    confirm: 'Xác nhận',
+    change: 'Nhập lại',
+    checking: 'Đang kiểm tra',
+
+    unknown: 'Mã nhân viên chưa được đăng ký.',
+    inactive: 'Mã nhân viên này không còn làm việc.',
+    lookupFailed: 'Không xác nhận được mã nhân viên. Hãy thử lại.',
+    retry: 'Thử lại',
+  },
+
   list: {
     title: 'Lệnh sản xuất',
     scopeEquipment: 'Thiết bị này',

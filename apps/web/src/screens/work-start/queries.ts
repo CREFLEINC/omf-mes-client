@@ -3,7 +3,13 @@ import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
 import { runRequest } from '../../patterns/request';
-import type { InspectionRequest, Terminal, WorkOrderListResponse, WorkSession } from './types';
+import type {
+  InspectionRequest,
+  Terminal,
+  WorkOrderListResponse,
+  WorkSession,
+  Worker,
+} from './types';
 
 /**
  * 이 화면이 부르는 조회.
@@ -12,6 +18,7 @@ import type { InspectionRequest, Terminal, WorkOrderListResponse, WorkSession } 
  * GET /mdm/terminals/{terminalId}                 이 설비가 무엇인가 (equipmentId·Code·Name)
  * GET /production/work-orders                     작업지시 목록 (이 설비 / 전체)
  * GET /production/work-sessions?workOrderId&open  재개할 «열린» 세션 찾기
+ * GET /mdm/workers?workerNo                       사번 확인 (공통 계약 · 귀속이지 인증이 아니다)
  * GET /quality/inspection-requests?workOrderId     끝나지 않은 PQC 검사 의뢰 (진입 단추의 조건)
  * ```
  *
@@ -40,6 +47,7 @@ export const workStartKeys = {
   workOrders: (equipmentId: number | null, page: number) =>
     [...ALL_KEY, 'work-orders', equipmentId, page] as const,
   openSession: (workOrderId: number) => [...ALL_KEY, 'open-session', workOrderId] as const,
+  worker: (workerNo: string) => [...ALL_KEY, 'worker', workerNo] as const,
   /** 고른 지시의 끝나지 않은 PQC 의뢰. 지시마다 다른 목록이라 키에 지시를 넣는다. */
   pendingPqc: (workOrderId: number) => [...ALL_KEY, 'pending-pqc', workOrderId] as const,
   uoms: () => [...ALL_KEY, 'uoms'] as const,
@@ -164,6 +172,37 @@ export const useOpenSession = (
       );
 
       return data.items[0] ?? null;
+    },
+  });
+};
+
+/**
+ * 사번 확인 — **존재와 재직만 본다.** 이 화면도 인증이 아니라 **귀속**이다(공유계약 D-5).
+ *
+ * ⭐ `includeInactive` 를 켠다 — 끄면 퇴사자가 「미등록」과 같은 모양(0건)으로 와서 문구가
+ * 뒤바뀐다. 둘은 사용자가 할 일이 다르다.
+ *
+ * ⛔ **누르기 전에는 부르지 않는다** — 치는 동안 매 글자마다 조회하면 아직 다 치지도 않은
+ * 사번으로 「등록되지 않았다」가 뜬다.
+ */
+export const useWorkerLookup = (workerNo: string | null): UseQueryResult<Worker[]> => {
+  const { client } = useApiClient();
+
+  return useQuery({
+    queryKey: workStartKeys.worker(workerNo ?? ''),
+    enabled: workerNo !== null,
+    queryFn: async () => {
+      if (workerNo === null) throw new Error('사번 없이 조회하지 않습니다.');
+
+      const data = await runRequest(() =>
+        client.GET('/mdm/workers', {
+          params: {
+            query: { workerNo: workerNo.trim(), includeInactive: true, page: 1, size: 2 },
+          },
+        }),
+      );
+
+      return data.items;
     },
   });
 };

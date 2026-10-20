@@ -12,9 +12,8 @@ import { PopMaterialLotLabelScreen } from '../screens/pop-material-lot-label/scr
 import { PopMaterialDefectScreen } from '../screens/pop-material-defect/screen';
 import { PopOqcInspectionScreen } from '../screens/pop-oqc-inspection/screen';
 import { PqcInspectionScreen } from '../screens/pqc-inspection/screen';
-import { PopAreaScreen } from '../screens/pop-area/screen';
 import { PopHomeScreen } from '../screens/pop-home/screen';
-import { POP_AREA_PATH_PREFIX, POP_HOME_PATH } from '../patterns/pop-screen-catalog';
+import { POP_HOME_PATH } from '../patterns/pop-screen-catalog';
 import { RepackLabelIssueScreen } from '../screens/repack-label-issue/screen';
 import { ProductionFlowScreen } from '../screens/production-result/screen';
 import { ReworkResultRegisterScreen } from '../screens/rework-result-register/screen';
@@ -58,11 +57,6 @@ export const popRoutes: RouteObject[] = [
    *    `patterns/worker-session` 에 있어 태스크 화면들이 귀속값으로 읽는다.
    */
   { path: POP_HOME_PATH, element: <PopHomeScreen /> },
-  /*
-   * **부서 화면** — 한 부서의 업무 묶음과 화면 타일. 왼쪽 부서 레일과 홈의 부서 카드가 데려온다.
-   * 홈처럼 셸의 자리라 화면 목록에 담지 않고 권한으로 막지 않는다(#147).
-   */
-  { path: `${POP_AREA_PATH_PREFIX}:area`, element: <PopAreaScreen /> },
   /*
    * P-02-03 — **POP(현장 단말) 화면의 첫 라우트다.** 로그인과 같이 관리웹 셸 배열의 형제로
    * 서서 `AppLayout`을 지나지 않는다.

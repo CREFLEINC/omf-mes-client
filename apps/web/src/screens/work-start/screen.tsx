@@ -1,12 +1,12 @@
 import { AlertBanner, Button } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { useEffect, useId, useRef, useState } from 'react';
+import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router';
 
 import { soleProcessIdOf, usePopIdentity } from '../../patterns/pop-identity';
 import { PopWorkerMissingBanner } from '../../patterns/pop-worker-missing-banner';
 import { PrecheckGate } from '../work-precheck-gate/gate';
-import { useWorkerSession } from '../../patterns/worker-session';
+import { setWorkerSession, useWorkerSession } from '../../patterns/worker-session';
 import { ActionBar } from './action-bar';
 import { useIsOnline } from './connection';
 import { useStartGate } from './gating';
@@ -20,13 +20,16 @@ import {
   useTerminal,
   useUomCodes,
   useWorkOrders,
+  useWorkerLookup,
 } from './queries';
 import { SessionEntryActions } from './session-entry-actions';
 import { toSessionRequest } from './session-request';
-import { terminalNow } from './terminal-clock';
+import { assignedAtText, terminalNow } from './terminal-clock';
 import type { ControlOverride, WorkOrder } from './types';
 import { WorkOrderList } from './work-order-list';
 import { isHeld } from './work-order-status';
+import { WorkerPanel } from './worker-panel';
+import { verifyWorker } from './worker-verify';
 
 /**
  * `P-02-01` 작업 시작(작업지시 선택).
@@ -73,15 +76,69 @@ export const WorkStartScreen = () => {
   const isEquipmentMissing = terminal.isSuccess && equipmentId === null;
 
   /*
-   * ⭐ **사번은 단말이 들고 있는 자리를 읽기만 한다.** 사번은 상단 바의 [작업자 확인] 창
-   *    (`screens/worker-assignment/sign-in-dialog`)이 정해 `patterns/worker-session` 에 둔다 —
-   *    이 화면이 따로 묻지 않는다(#147 · 한때 여기 키패드가 있어 같은 것을 두 군데서 물었다).
-   *    사번이 없으면 맨 위 공용 띠가 그 창을 여는 단추와 함께 선다.
+   * ⭐ **사번은 단말이 이미 들고 있을 수 있다.** 사번 경량 인증(`P-CO-01`)이 정한 값이
+   *    `patterns/worker-session` 에 있고, 그 자리는 처음부터 「읽을 곳은 그 화면 밖」으로
+   *    세워졌다. 지나온 작업자에게 같은 것을 두 번 묻지 않는다 — **이 화면은 그 자리를
+   *    읽고, 여기서 확인한 사번도 같은 자리에 넣는다.** 두 벌을 만들지 않는다.
    *
    * ⚠ 셸이 채울 `pop-identity` 가 먼저다 — 단말 토큰에서 온 값이 있으면 그것이 정본이다.
    */
   const workerSession = useWorkerSession();
   const confirmedNo = identity.workerNo ?? workerSession?.worker.workerNo ?? null;
+
+  const [draft, setDraft] = useState('');
+  /** 눌렀을 때만 조회한다 — 치는 동안 매 글자마다 물으면 아직 다 치지도 않은 사번으로 「없다」가 뜬다. */
+  const [submittedNo, setSubmittedNo] = useState<string | null>(null);
+  const lookup = useWorkerLookup(submittedNo);
+
+  /** 다른 공장 사번인지 견줄 기준. 단말이 선 공장이다 — 못 받았으면 견주지 않는다. */
+  const homePlantId = terminal.data?.plantId ?? null;
+
+  /*
+   * ⚠ **다시 만들지 않는다.** 이 값은 아래 효과의 의존이라, 렌더마다 새 객체가 되면 효과가
+   * 매 렌더 돈다 — 사번을 정하는 효과가 화면 밖 저장소를 건드리므로 그 소음이 곧 재렌더가 된다.
+   */
+  const verified = useMemo(
+    () =>
+      submittedNo !== null && lookup.data !== undefined
+        ? verifyWorker(lookup.data, submittedNo, homePlantId)
+        : null,
+    [lookup.data, submittedNo, homePlantId],
+  );
+
+  const workerError = ((): string | null => {
+    if (submittedNo === null || confirmedNo !== null) return null;
+    if (lookup.isError) return t.worker.lookupFailed;
+    if (verified === null) return null;
+    if (verified.kind === 'unknown') return t.worker.unknown;
+    if (verified.kind === 'inactive') return t.worker.inactive;
+
+    return null;
+  })();
+
+  /*
+   * 확인이 끝나면 단말의 「현재 작업자」를 정한다 — 이 값은 화면 지역 상태가 아니라 단말이
+   * 들고 있는 것이라, 다음 화면으로 넘어가도 남아야 한다(`worker-session` 머리 주석).
+   *
+   * ⛔ **렌더 도중에 쓰지 않는다.** 화면 밖 저장소를 렌더에서 쓰면 「썼으니 다시 그린다 →
+   * 아직 조건이 참이다 → 또 쓴다」가 성립할 수 있다 — 실제로 그 고리를 만들어 화면이 멈추는
+   * 것을 봤다. 사번 경량 인증 화면(`P-CO-01`)도 같은 이유로 확인을 효과에서 매듭짓는다.
+   *
+   * ⚠ **한 번 확인한 사번은 다시 쓰지 않는다** — 어떤 사번을 이미 반영했는지 기억해 둔다.
+   */
+  const [appliedNo, setAppliedNo] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (verified === null || verified.kind !== 'ok') return;
+    if (submittedNo === null || appliedNo === submittedNo) return;
+
+    setAppliedNo(submittedNo);
+    setWorkerSession({
+      worker: verified.worker,
+      assignedAt: assignedAtText(new Date()),
+      isOtherPlant: verified.isOtherPlant,
+    });
+  }, [verified, submittedNo, appliedNo]);
 
   const [isShowingAll, setShowingAll] = useState(false);
   const [selectedId, setSelectedId] = useState<number | null>(null);
@@ -583,6 +640,44 @@ export const WorkStartScreen = () => {
             {bannerText}
           </AlertBanner>
         </div>
+      )}
+
+      {/*
+       * ⛔ **사번을 이미 아는 자리에서는 이 구획을 세우지 않는다**(사용자 지시 2026-09-08).
+       *
+       * 스펙 §4 ① 은 사번 구획을 96px 로 그려 두었지만, 그것은 **진입 화면이 없던 때**의
+       * 그림이다. 지금은 `P-CO-01`(사번 경량 인증)이 사번을 정해 `worker-session` 에 두고
+       * 오므로, 여기서 다시 묻는 것은 같은 것을 두 번 묻는 것이다 — 작업자가 사번을 두 번
+       * 친다.
+       *
+       * ⚠ **못 받았을 때는 남긴다.** 셸도 세션도 사번을 못 준 상태에서 자리까지 없애면
+       *   작업자가 되돌아갈 길이 없다. 그때만 키패드를 세운다.
+       *
+       * 작업자를 바꾸는 길은 머리줄의 **로그아웃**이다 — 사번을 놓고 진입 화면으로 돌아간다.
+       */}
+      {confirmedNo === null && (
+        <WorkerPanel
+          draft={draft}
+          confirmed={confirmedNo}
+          onChange={setDraft}
+          onSubmit={() => {
+            setSubmittedNo(draft.trim());
+          }}
+          onReset={() => {
+            /* 작업자를 바꾼다 — 단말이 들고 있던 사번을 비운다. */
+            setWorkerSession(null);
+            setAppliedNo(null);
+            setSubmittedNo(null);
+            setDraft('');
+            setSelectedId(null);
+          }}
+          canChange={identity.workerNo === null}
+          onRetry={() => {
+            void lookup.refetch();
+          }}
+          isChecking={submittedNo !== null && confirmedNo === null && lookup.isFetching}
+          error={workerError}
+        />
       )}
 
       <WorkOrderList

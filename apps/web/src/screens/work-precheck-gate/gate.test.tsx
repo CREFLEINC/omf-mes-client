@@ -31,21 +31,18 @@ afterEach(() => {
   setWorkerSession(null);
 });
 
-/**
- * 사번 확인 → 작업지시 선택 → 시작. 게이트가 뜨는 자리까지 데려간다.
- *
- * 사번은 상단 바의 [작업자 확인] 창이 단말 자리(`worker-session`)에 넣는 값이라, 그 자리에 바로 둔다.
- */
+/** 사번 확인 → 작업지시 선택 → 시작. 게이트가 뜨는 자리까지 데려간다. */
 const pressStart = async (options: StubOptions = {}) => {
-  setWorkerSession({
-    worker: WORKER,
-    assignedAt: '2026-09-02 09:00',
-    isOtherPlant: false,
-  } as never);
-
   const rendered = renderScreen(options);
   const { user } = rendered;
 
+  await screen.findByRole('button', { name: selectName(WORK_ORDER.workOrderNo) });
+
+  for (const digit of WORKER.workerNo) {
+    await user.click(screen.getByRole('button', { name: digit }));
+  }
+
+  await user.click(screen.getByRole('button', { name: w.worker.confirm }));
   await user.click(await screen.findByRole('button', { name: selectName(WORK_ORDER.workOrderNo) }));
 
   const start = () => screen.getByRole('button', { name: w.actions.start });

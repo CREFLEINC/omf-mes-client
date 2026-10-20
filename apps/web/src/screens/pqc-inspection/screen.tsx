@@ -551,8 +551,7 @@ export const PqcInspectionScreen = () => {
         onRetry={outbox.retryNow}
         workerNo={workerNo}
       >
-        {/* `pop-fixed` — 한 줄 안내가 남는 높이 나눔에 끼면 눌려 글자가 위아래로 잘린다(실측). */}
-        <p className="field-note pop-fixed">{t.detail.nothingSelected}</p>
+        <p className="field-note">{t.detail.nothingSelected}</p>
         <PqcLockedBody>{renderInspect(true, undefined, null)}</PqcLockedBody>
       </PqcFrame>
     );

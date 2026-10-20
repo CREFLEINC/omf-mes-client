@@ -1,5 +1,5 @@
 import { messages } from '@omf-mes/i18n';
-import { act, screen, waitFor, within } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { setWorkerSession } from '../../patterns/worker-session';
@@ -20,18 +20,13 @@ const t = messages.workStart;
 /** 줄 전체가 누를 자리라, 카드의 이름으로 고른다. */
 const selectName = (workOrderNo: string): string => `${t.list.select} ${workOrderNo}`;
 
-/**
- * 사번을 정한다 — 상단 바의 [작업자 확인] 창(`worker-assignment/sign-in-dialog`)이 하는 일을 단말
- * 자리에 바로 넣는다. 이 화면은 그 자리를 읽기만 한다.
- */
-const signIn = (): void => {
-  act(() => {
-    setWorkerSession({
-      worker: WORKER,
-      assignedAt: '2026-09-02 09:00',
-      isOtherPlant: false,
-    } as never);
-  });
+/** 사번을 키패드로 넣고 확인까지 누른다 — 이 화면의 모든 쓰기가 이 앞에 선다. */
+const enterWorkerNo = async (user: ReturnType<typeof renderScreen>['user'], workerNo: string) => {
+  for (const digit of workerNo) {
+    await user.click(screen.getByRole('button', { name: digit }));
+  }
+
+  await user.click(screen.getByRole('button', { name: t.worker.confirm }));
 };
 
 const startButton = () => screen.getByRole('button', { name: t.actions.start });
@@ -113,7 +108,7 @@ describe('P-02-01 작업 시작 — 단말 게이팅', () => {
     expect(screen.queryByText(t.list.scopeNoteEquipment)).not.toBeInTheDocument();
     expect(screen.queryByText(t.list.equipmentUnknown)).not.toBeInTheDocument();
 
-    signIn();
+    await enterWorkerNo(rendered.user, WORKER.workerNo);
     await rendered.user.click(
       await screen.findByRole('button', { name: selectName(WORK_ORDER.workOrderNo) }),
     );
@@ -144,7 +139,7 @@ describe('P-02-01 작업 시작 — 단말 게이팅', () => {
       inspections: [],
     });
 
-    signIn();
+    await enterWorkerNo(rendered.user, WORKER.workerNo);
     await rendered.user.click(
       await screen.findByRole('button', { name: selectName(WORK_ORDER.workOrderNo) }),
     );
@@ -166,7 +161,7 @@ describe('P-02-01 작업 시작 — 단말 게이팅', () => {
       workOrders: [withoutEquipment],
     });
 
-    signIn();
+    await enterWorkerNo(rendered.user, WORKER.workerNo);
     await rendered.user.click(
       await screen.findByRole('button', { name: selectName(WORK_ORDER.workOrderNo) }),
     );
@@ -191,7 +186,7 @@ describe('P-02-01 작업 시작 — 단말 게이팅', () => {
       workOrders: [{ ...WORK_ORDER, plannedEquipmentId: EQUIPMENT_ID + 7 }],
     });
 
-    signIn();
+    await enterWorkerNo(rendered.user, WORKER.workerNo);
     await rendered.user.click(
       await screen.findByRole('button', { name: selectName(WORK_ORDER.workOrderNo) }),
     );
@@ -218,7 +213,7 @@ describe('P-02-01 작업 시작 — 단말 게이팅', () => {
       processes: [{ processId: PROCESS_ID }, { processId: PROCESS_ID + 1 }],
     };
     const pick = async (rendered: ReturnType<typeof renderScreen>) => {
-      signIn();
+      await enterWorkerNo(rendered.user, WORKER.workerNo);
       await rendered.user.click(
         await screen.findByRole('button', { name: selectName(WORK_ORDER.workOrderNo) }),
       );
@@ -434,31 +429,132 @@ describe('P-02-01 작업 시작 — 사번', () => {
     expect(card).toHaveAttribute('aria-disabled', 'true');
     expect(card).toHaveAttribute('tabindex', '-1');
   });
+
+  it('미등록과 퇴사를 다른 문구로 가른다', async () => {
+    const { user } = renderScreen({ workers: [] });
+
+    await enterWorkerNo(user, WORKER.workerNo);
+
+    expect(await screen.findByText(t.worker.unknown)).toBeInTheDocument();
+  });
+
+  it('퇴사한 사번은 「재직 중이 아니다」로 말한다', async () => {
+    const { user } = renderScreen({ workers: [{ ...WORKER, isActive: false }] });
+
+    await enterWorkerNo(user, WORKER.workerNo);
+
+    expect(await screen.findByText(t.worker.inactive)).toBeInTheDocument();
+  });
+});
+
+describe('P-02-01 작업 시작 — 사번 조회가 실패했을 때', () => {
+  /**
+   * ⛔ **「다시 시도해 주세요」라고 적었으면 수단이 있어야 한다.** 이 저장소는 자동 재조회를
+   * 꺼 두었고, 같은 사번을 다시 제출해도 값이 같아 조회가 다시 일어나지 않는다 — 버튼이
+   * 없으면 사번을 못 넣고, 사번이 없으면 이 화면의 모든 것이 막혀 단말을 새로 켜야 한다.
+   */
+  it('실패 문구와 함께 다시 시도할 경로를 준다', async () => {
+    const { user } = renderScreen({ workersStatus: 500 });
+
+    await enterWorkerNo(user, WORKER.workerNo);
+
+    expect(await screen.findByText(t.worker.lookupFailed)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: t.worker.retry })).toBeInTheDocument();
+  });
+
+  it('「다시 시도」가 실제로 다시 묻고, 이번에 성공하면 그 사번으로 선다', async () => {
+    const { user } = renderScreen({ workersFailFirst: true });
+
+    await enterWorkerNo(user, WORKER.workerNo);
+    await user.click(await screen.findByRole('button', { name: t.worker.retry }));
+
+    expect(await screen.findAllByText(t.header.workerLabel(WORKER.workerNo))).not.toHaveLength(0);
+  });
+
+  /** ⛔ 미등록·퇴사는 다시 물어도 답이 같다 — 없는 사람을 계속 찾게 하지 않는다. */
+  it('미등록 사번에는 「다시 시도」를 주지 않는다', async () => {
+    const { user } = renderScreen({ workers: [] });
+
+    await enterWorkerNo(user, WORKER.workerNo);
+
+    expect(await screen.findByText(t.worker.unknown)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: t.worker.retry })).not.toBeInTheDocument();
+  });
+});
+
+describe('P-02-01 작업 시작 — 사번을 바꿀 수 있는 자리인가', () => {
+  /**
+   * ⛔ **눌러도 아무 일이 없는 버튼을 세우지 않는다.** 단말 토큰이 정한 사번(`pop-identity`)은
+   * 이 화면이 비워도 그대로 돌아온다 — 「다시 입력」이 영구 무동작이 된다.
+   */
+  it('단말 토큰이 사번을 들고 있으면 「다시 입력」을 주지 않는다', async () => {
+    renderScreen({ identity: { ...IDENTITY, workerNo: WORKER.workerNo } });
+
+    expect(await screen.findAllByText(t.header.workerLabel(WORKER.workerNo))).not.toHaveLength(0);
+    expect(screen.queryByRole('button', { name: t.worker.change })).not.toBeInTheDocument();
+  });
+
+  /*
+   * ⛔ **사번을 알고 나면 구획을 통째로 걷는다**(사용자 지시 2026-09-08). 진입 화면
+   *    (`P-CO-01`)이 사번을 정해 오므로 여기서 다시 묻는 것은 같은 것을 두 번 묻는 것이다.
+   *    작업자를 바꾸는 길은 머리줄의 **로그아웃**이다.
+   */
+  it('사번이 확인되면 사번 구획을 세우지 않는다', async () => {
+    const { user } = renderScreen();
+
+    await enterWorkerNo(user, WORKER.workerNo);
+    await screen.findAllByText(t.header.workerLabel(WORKER.workerNo));
+
+    expect(screen.queryByRole('button', { name: t.worker.change })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: t.worker.confirm })).not.toBeInTheDocument();
+  });
 });
 
 describe('P-02-01 작업 시작 — 사번은 단말이 들고 있는 자리를 쓴다', () => {
   /**
-   * ⭐ **두 벌을 만들지 않는다.** 상단 바의 [작업자 확인] 창이 정한 값이 `worker-session` 에
-   * 있고, 이 화면은 그 자리를 읽는다 — 같은 것을 두 군데서 묻지 않는다.
+   * ⭐ **두 벌을 만들지 않는다.** 사번 경량 인증(`P-CO-01`)이 정한 값이 `worker-session` 에
+   * 있고, 이 화면은 그 자리를 읽는다 — 지나온 작업자에게 같은 것을 두 번 묻지 않는다.
    */
-  it('이미 지정된 사번이 있으면 그 사번으로 선다', async () => {
-    signIn();
+  it('이미 지정된 사번이 있으면 키패드를 보이지 않고 그 사번으로 선다', async () => {
+    setWorkerSession({
+      worker: WORKER,
+      assignedAt: '2026-09-02 09:00',
+      isOtherPlant: false,
+    } as never);
+
+    renderScreen();
+
+    /* 머리띠와 ① 구획 둘 다 사번을 말한다 — 「하나만 있어야 한다」가 아니라 「선다」를 잰다. */
+    expect(await screen.findAllByText(t.header.workerLabel(WORKER.workerNo))).not.toHaveLength(0);
+    expect(screen.queryByRole('button', { name: t.worker.confirm })).not.toBeInTheDocument();
+  });
+
+  /**
+   * 이 화면에서 확인한 사번도 같은 자리에 넣는다 — 다음 화면이 이어받는다.
+   *
+   * ⭐ **화면을 지웠다 다시 세워 확인한다.** 값이 화면 «안»에 있으면 지우는 순간 사라진다 —
+   * 다시 세운 화면이 그 사번으로 서면 그 자리는 화면 밖이라는 뜻이다.
+   */
+  it('여기서 확인한 사번을 단말이 들고 간다', async () => {
+    const first = renderScreen();
+
+    await enterWorkerNo(first.user, WORKER.workerNo);
+    await screen.findAllByText(t.header.workerLabel(WORKER.workerNo));
+
+    first.unmount();
     renderScreen();
 
     expect(await screen.findAllByText(t.header.workerLabel(WORKER.workerNo))).not.toHaveLength(0);
   });
 
   /*
-   * ⛔ **화면 안에 사번 키패드를 세우지 않는다**(#147). 사번이 없으면 맨 위 공용 띠가 [작업자 확인]
-   *    창으로 가는 길을 말한다 — 한때 여기에도 키패드가 있어 같은 것을 두 군데서 물었다.
+   * ⚠ **사번을 못 받았을 때만 키패드가 선다.** 자리까지 없애면 되돌아갈 길이 없다 —
+   *   그 예외를 여기서 지킨다.
    */
-  it('사번이 없어도 화면 안에 사번 키패드를 세우지 않는다', async () => {
+  it('사번이 없으면 키패드를 세운다', () => {
     renderScreen();
 
-    await screen.findByRole('button', { name: selectName(WORK_ORDER.workOrderNo) });
-
-    expect(screen.getByText(messages.popChrome.workerMissing)).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: '0' })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: t.worker.confirm })).toBeInTheDocument();
   });
 });
 
@@ -467,7 +563,7 @@ describe('P-02-01 작업 시작 — 세션 열기', () => {
     const rendered = renderScreen();
 
     await screen.findByRole('button', { name: selectName(WORK_ORDER.workOrderNo) });
-    signIn();
+    await enterWorkerNo(rendered.user, WORKER.workerNo);
     await rendered.user.click(
       await screen.findByRole('button', { name: selectName(WORK_ORDER.workOrderNo) }),
     );
@@ -533,7 +629,7 @@ describe('P-02-01 작업 시작 — 세션 열기', () => {
     const rendered = renderScreen({ startStatus: 500 });
 
     await screen.findByRole('button', { name: selectName(WORK_ORDER.workOrderNo) });
-    signIn();
+    await enterWorkerNo(rendered.user, WORKER.workerNo);
     await rendered.user.click(
       await screen.findByRole('button', { name: selectName(WORK_ORDER.workOrderNo) }),
     );
@@ -580,7 +676,7 @@ describe('P-02-01 작업 시작 — 세션 열기', () => {
     const rendered = renderScreen({ startStatus: 500, workOrders: [WORK_ORDER, other] });
 
     await screen.findByRole('button', { name: selectName(WORK_ORDER.workOrderNo) });
-    signIn();
+    await enterWorkerNo(rendered.user, WORKER.workerNo);
     await rendered.user.click(
       await screen.findByRole('button', { name: selectName(WORK_ORDER.workOrderNo) }),
     );
@@ -616,7 +712,7 @@ describe('P-02-01 작업 시작 — 세션 열기', () => {
     const rendered = renderScreen({ startStatus: 500 });
 
     await screen.findByRole('button', { name: selectName(WORK_ORDER.workOrderNo) });
-    signIn();
+    await enterWorkerNo(rendered.user, WORKER.workerNo);
     await rendered.user.click(
       await screen.findByRole('button', { name: selectName(WORK_ORDER.workOrderNo) }),
     );
@@ -633,7 +729,7 @@ describe('P-02-01 작업 시작 — 세션 열기', () => {
     const rendered = renderScreen({ startStatus: 409 });
 
     await screen.findByRole('button', { name: selectName(WORK_ORDER.workOrderNo) });
-    signIn();
+    await enterWorkerNo(rendered.user, WORKER.workerNo);
     await rendered.user.click(
       await screen.findByRole('button', { name: selectName(WORK_ORDER.workOrderNo) }),
     );
@@ -673,7 +769,7 @@ describe('P-02-01 작업 시작 — 세션 열기', () => {
     });
 
     await screen.findByRole('button', { name: selectName(WORK_ORDER.workOrderNo) });
-    signIn();
+    await enterWorkerNo(rendered.user, WORKER.workerNo);
     await rendered.user.click(
       await screen.findByRole('button', { name: selectName(WORK_ORDER.workOrderNo) }),
     );
@@ -694,7 +790,7 @@ describe('P-02-01 작업 시작 — 오프라인', () => {
     const rendered = renderScreen();
 
     await screen.findByRole('button', { name: selectName(WORK_ORDER.workOrderNo) });
-    signIn();
+    await enterWorkerNo(rendered.user, WORKER.workerNo);
 
     expect(await screen.findByText(t.blocked.offline)).toBeInTheDocument();
     expect(startButton()).toBeDisabled();
@@ -709,7 +805,7 @@ describe('P-02-01 작업 시작 — 계획 밖 설비', () => {
     });
 
     await screen.findByRole('button', { name: selectName(WORK_ORDER.workOrderNo) });
-    signIn();
+    await enterWorkerNo(rendered.user, WORKER.workerNo);
     await rendered.user.click(
       await screen.findByRole('button', { name: selectName(WORK_ORDER.workOrderNo) }),
     );
@@ -729,7 +825,7 @@ describe('P-02-01 작업 시작 — 계획 밖 설비', () => {
     const rendered = renderScreen({ workOrders: [withoutEquipment] });
 
     await screen.findByRole('button', { name: selectName(WORK_ORDER.workOrderNo) });
-    signIn();
+    await enterWorkerNo(rendered.user, WORKER.workerNo);
     await rendered.user.click(
       await screen.findByRole('button', { name: selectName(WORK_ORDER.workOrderNo) }),
     );
@@ -750,7 +846,7 @@ describe('P-02-01 작업 시작 — 선택 확인의 긴급 표식', () => {
     });
 
     await screen.findByRole('button', { name: selectName(WORK_ORDER.workOrderNo) });
-    signIn();
+    await enterWorkerNo(rendered.user, WORKER.workerNo);
     await rendered.user.click(
       await screen.findByRole('button', { name: selectName(WORK_ORDER.workOrderNo) }),
     );
@@ -762,7 +858,7 @@ describe('P-02-01 작업 시작 — 선택 확인의 긴급 표식', () => {
     const rendered = renderScreen();
 
     await screen.findByRole('button', { name: selectName(WORK_ORDER.workOrderNo) });
-    signIn();
+    await enterWorkerNo(rendered.user, WORKER.workerNo);
     await rendered.user.click(
       await screen.findByRole('button', { name: selectName(WORK_ORDER.workOrderNo) }),
     );
@@ -792,7 +888,7 @@ describe('P-02-01 작업 시작 — 누르면 반드시 무언가 말한다(#114
   /** 고른 뒤 시작을 누를 수 있는 상태까지 간다. */
   const selectWorkOrder = async (rendered: ReturnType<typeof renderScreen>) => {
     await screen.findByRole('button', { name: selectName(WORK_ORDER.workOrderNo) });
-    signIn();
+    await enterWorkerNo(rendered.user, WORKER.workerNo);
     await rendered.user.click(
       await screen.findByRole('button', { name: selectName(WORK_ORDER.workOrderNo) }),
     );
@@ -949,7 +1045,7 @@ describe('P-02-01 작업 시작 — 지시 수량을 채운 작업지시(#45)', 
 
   const selectWorkOrder = async (rendered: ReturnType<typeof renderScreen>) => {
     await screen.findByRole('button', { name: selectName(WORK_ORDER.workOrderNo) });
-    signIn();
+    await enterWorkerNo(rendered.user, WORKER.workerNo);
     await rendered.user.click(
       await screen.findByRole('button', { name: selectName(WORK_ORDER.workOrderNo) }),
     );
@@ -1041,7 +1137,7 @@ describe('P-02-01 작업 시작 — 다음 작업 화면으로 가는 길(omf-al
 
   const selectWorkOrder = async (rendered: ReturnType<typeof renderScreen>) => {
     await screen.findByRole('button', { name: selectName(WORK_ORDER.workOrderNo) });
-    signIn();
+    await enterWorkerNo(rendered.user, WORKER.workerNo);
     await rendered.user.click(
       await screen.findByRole('button', { name: selectName(WORK_ORDER.workOrderNo) }),
     );
