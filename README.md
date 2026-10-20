@@ -34,9 +34,9 @@ UI는 `@crefle/web-ui`와 디자인 시스템의 컴포넌트 인벤토리를 �
 
 ```bash
 pnpm install
-gh repo clone CREFLEINC/omf-mes .client-dev/design/omf-mes -- --single-branch --branch main
-pnpm design:pin    # 설계 클론의 현재 커밋을 계약 정본으로 고정 (.client-dev/state.json)
-pnpm design:check  # 고정 커밋과 클론 HEAD가 같은지 확인
+pnpm contracts:pin    # API 계약 정본(서버 저장소 contracts/)의 커밋 고정 — 기본: ../omf-mes-server 의 origin/main
+pnpm contracts:check  # 고정 커밋이 서버 클론에 있는지 확인
+pnpm gen:api          # 고정 커밋의 계약으로 API 타입 생성
 pnpm typecheck     # 전 패키지 타입 검사
 pnpm mock          # 목 서버 (고정한 설계 참조본 사용 — tools/mock/README.md)
 pnpm mock:smoke    # 목 서버 smoke 테스트
