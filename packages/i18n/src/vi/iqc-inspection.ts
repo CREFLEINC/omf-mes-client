@@ -129,6 +129,15 @@ export const iqcInspection: Translated<typeof ko.iqcInspection> = {
       majorMissing: 'Hãy chọn nhóm lỗi.',
       minorMissing: 'Hãy chọn mã lỗi chi tiết.',
     },
+    judgmentChange: {
+      basis: (acceptanceNumber: number): string =>
+        `Tự động đánh giá theo số chấp nhận ${String(acceptanceNumber)}`,
+      expected: (judgment: string): string => `Đánh giá tự động: ${judgment}`,
+      reason: 'Lý do thay đổi đánh giá',
+      reasonPlaceholder: 'Hãy nhập lý do xác nhận khác với đánh giá tự động.',
+      required: 'Đánh giá khác với đánh giá tự động phải nhập lý do thay đổi mới xác nhận được.',
+      reasonMissing: 'Hãy nhập lý do thay đổi đánh giá.',
+    },
     confirmBlockedByJudgment: 'Phải chọn đánh giá tổng hợp mới xác nhận được.',
     confirmBlockedByConfirmed: 'Lượt này đã được xác nhận.',
     confirmBlockedByUnsaved: 'Sau khi lưu tạm mới có thể xác nhận đánh giá.',

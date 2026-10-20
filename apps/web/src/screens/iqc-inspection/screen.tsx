@@ -40,6 +40,7 @@ import {
   useMeasurements,
   useSaveDraft,
 } from './queries';
+import { expectedJudgmentOf, JudgmentChange, needsJudgmentChangeReason } from './judgment-change';
 import { RejectedLotGuide } from './rejected-lot-guide';
 import {
   EMPTY_REJECTION,
@@ -201,6 +202,8 @@ export const IqcInspectionScreen = () => {
    * 다시 눌러도 사유는 그때 입력 1벌이고, 합격·보류로 확정하면 서버가 그 회차의 기록을 지운다.
    */
   const [rejection, setRejection] = useState<RejectionDraft>(EMPTY_REJECTION);
+  /* 판정 변경 사유(omf-all-around#125) — 확정 요청에만 싣는다. 임시 저장은 받지 않으므로 의뢰가 바뀔 때 비운다. */
+  const [changeReason, setChangeReason] = useState('');
   const isRejected = judgment === REJECTED_JUDGMENT;
   const defectCodes = useDefectCodes(isRejected);
   const resolvedDefect = resolveDefectCode(defectCodes.data ?? [], rejection);
@@ -291,6 +294,7 @@ export const IqcInspectionScreen = () => {
   useEffect(() => {
     setRejection(EMPTY_REJECTION);
     setSavedRejection(EMPTY_REJECTION);
+    setChangeReason('');
     restoredFor.current = null;
     restoredTextOnly.current = false;
     skipRestoreOfCreated.current = false;
@@ -409,6 +413,21 @@ export const IqcInspectionScreen = () => {
   const samplingRule = useSamplingRule(detail.data?.inspectionPlanVersionId ?? null);
   const inspectedQty =
     round?.inspectedQty ?? sampleQtyOf(detail.data?.targetQty ?? 0, samplingRule.data ?? null);
+
+  /*
+   * 합격판정개수 기준 자동 판정(omf-all-around#125) — 기준에 합격판정개수가 있을 때만. 수량을 고치면 판정을 채우고
+   * (사용자가 다시 바꿀 수 있다), 다르게 고르면 변경 사유를 받아야 확정된다. 확정된 회차에는 걸지 않는다.
+   * ⚠ 자동 채움은 불합격 사유 칸을 비우지 않는다 — 수량을 치는 도중 판정이 잠깐 바뀌어도 친 사유가 남는다.
+   */
+  const acceptanceNumber = samplingRule.data?.acceptanceNumber ?? null;
+  const isOpenRound = isReinspectingNow || round?.statusCode !== 'CONFIRMED';
+  const expectedJudgment = isOpenRound ? expectedJudgmentOf(draft, acceptanceNumber) : null;
+  const needsChangeReason = needsJudgmentChangeReason(judgment, expectedJudgment);
+  const changeDraftAndJudge = (next: QuantityDraft): void => {
+    changeDraft(next);
+    const expected = isOpenRound ? expectedJudgmentOf(next, acceptanceNumber) : null;
+    if (expected !== null) setJudgment(expected);
+  };
   /* 수량 옆 단위 코드(표시 전용). 회차는 의뢰의 단위로 저장되므로(저장 요청의 `uomId`) 의뢰 단위 하나를 쓴다. */
   const uoms = useUomLookup();
 
@@ -566,7 +585,7 @@ export const IqcInspectionScreen = () => {
             uomCode={uomCode}
             hasChanges={hasChanges}
             draft={draft}
-            onChange={changeDraft}
+            onChange={changeDraftAndJudge}
             onSave={() => {
               saveDraft(selectedId, inspectedQty, detail.data.uomId);
             }}
@@ -584,23 +603,40 @@ export const IqcInspectionScreen = () => {
             }}
             onConfirm={() => {
               const defects = rejectionRows(round?.rejectedQty ?? 0, inspectedQty);
-              confirm.write(
-                defects.length === 0
-                  ? { overallJudgmentCode: judgment }
-                  : { overallJudgmentCode: judgment, defects },
-              );
+              confirm.write({
+                overallJudgmentCode: judgment,
+                ...(defects.length === 0 ? {} : { defects }),
+                ...(needsChangeReason ? { judgmentChangeReason: changeReason.trim() } : {}),
+              });
             }}
             isConfirming={confirm.isSaving}
             confirmError={confirm.error}
             judgmentDetail={
-              isRejected ? (
-                <RejectionReason
-                  codes={defectCodes.data ?? []}
-                  draft={rejection}
-                  onChange={setRejection}
-                  disabled={confirm.isSaving}
-                />
-              ) : null
+              <>
+                {acceptanceNumber !== null && isOpenRound && (
+                  <JudgmentChange
+                    acceptanceNumber={acceptanceNumber}
+                    expectedLabel={
+                      expectedJudgment === null
+                        ? null
+                        : (judgmentOptions.find((option) => option.value === expectedJudgment)
+                            ?.label ?? expectedJudgment)
+                    }
+                    needsReason={needsChangeReason}
+                    reason={changeReason}
+                    onReasonChange={setChangeReason}
+                    disabled={confirm.isSaving}
+                  />
+                )}
+                {isRejected && (
+                  <RejectionReason
+                    codes={defectCodes.data ?? []}
+                    draft={rejection}
+                    onChange={setRejection}
+                    disabled={confirm.isSaving}
+                  />
+                )}
+              </>
             }
             reinspectReplacement={
               followUp.data?.isDefective === true ? (
@@ -608,7 +644,11 @@ export const IqcInspectionScreen = () => {
               ) : null
             }
             confirmOnlyBlockedReason={
-              isRejected && 'blocked' in resolvedDefect ? resolvedDefect.blocked : null
+              isRejected && 'blocked' in resolvedDefect
+                ? resolvedDefect.blocked
+                : needsChangeReason && changeReason.trim() === ''
+                  ? t.result.judgmentChange.required
+                  : null
             }
             isJustConfirmed={isJustConfirmed}
             isReinspecting={isReinspectingNow}
@@ -619,6 +659,7 @@ export const IqcInspectionScreen = () => {
               setJudgment('');
               setRejection(EMPTY_REJECTION);
               setSavedRejection(EMPTY_REJECTION);
+              setChangeReason('');
               setIsReinspecting(true);
             }}
             onCancelReinspection={() => {

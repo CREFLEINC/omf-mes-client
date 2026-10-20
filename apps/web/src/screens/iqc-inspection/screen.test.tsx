@@ -241,7 +241,11 @@ const bodyOf = async (request: Request): Promise<Record<string, unknown>> =>
  */
 let confirmResponder: ((request: Request) => Response) | null = null;
 /** 검사기준 버전 단건 응답의 샘플링 칸. 샘플 검사수량을 재는 시험만 채운다. */
-let samplingVersion: { samplingMethodCode: string; samplingRatio: number | null } | null = null;
+let samplingVersion: {
+  samplingMethodCode: string;
+  samplingRatio: number | null;
+  acceptanceNumber?: number | null;
+} | null = null;
 
 /** 세션 — 기본은 작업자가 연결된 계정이다(검사자를 풀 수 있다 · omf-all-around#104). */
 const LINKED_SESSION: Session = {
@@ -677,6 +681,85 @@ describe('IqcInspectionScreen', () => {
     expect(request.headers.get('If-Match')).toBe('W/"7"');
     expect(request.headers.get('Idempotency-Key')).not.toBeNull();
     expect(await bodyOf(request)).toEqual({ overallJudgmentCode: 'ACCEPTED' });
+  });
+
+  /*
+   * omf-all-around#125 — 기준에 합격판정개수가 있으면 수량으로 판정을 채우고, 다르게 고르면 변경 사유를 받아야 확정된다.
+   * 작성중 회차(draftRound)는 합격 480 · 불합격 15 · 보류 5 · 판정 합격이다.
+   */
+  it('합격판정개수 5 · 불합격 15 인데 합격이면 변경 사유 칸이 서고, 사유를 넣어야 확정되며 사유가 실린다', async () => {
+    samplingVersion = {
+      samplingMethodCode: 'FULL_INSPECTION',
+      samplingRatio: null,
+      acceptanceNumber: 5,
+    };
+    const { writes } = renderScreen('/?ir=1001');
+
+    await screen.findByText(t.result.round(1));
+    expect(
+      await screen.findByText(new RegExp(t.result.judgmentChange.basis(5))),
+    ).toBeInTheDocument();
+    const reason = await screen.findByLabelText(new RegExp(t.result.judgmentChange.reason));
+    expect(screen.getByText(t.result.judgmentChange.required)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: t.result.confirm })).toBeDisabled();
+
+    await userEvent.type(reason, '  재확인 결과 사용 가능 ');
+    await userEvent.click(screen.getByRole('button', { name: t.result.confirm }));
+
+    await waitFor(() => expect(writes).toHaveLength(1));
+    expect(await bodyOf(writes[0] as Request)).toEqual({
+      overallJudgmentCode: 'ACCEPTED',
+      judgmentChangeReason: '재확인 결과 사용 가능',
+    });
+  });
+
+  it('수량을 고치면 판정을 자동으로 채운다 — 자동 판정과 같으면 사유 칸이 없다', async () => {
+    samplingVersion = {
+      samplingMethodCode: 'FULL_INSPECTION',
+      samplingRatio: null,
+      acceptanceNumber: 20,
+    };
+    const { writes } = renderScreen('/?ir=1001');
+
+    await screen.findByText(t.result.round(1));
+    /* 보류 5 가 있어 자동 판정은 보류다 — 저장된 합격과 다르다. */
+    expect(
+      await screen.findByLabelText(new RegExp(t.result.judgmentChange.reason)),
+    ).toBeInTheDocument();
+
+    const held = screen.getByLabelText(t.result.fields.held);
+    await userEvent.clear(held);
+    await userEvent.type(held, '0');
+    await userEvent.type(screen.getByLabelText(t.result.fields.accepted), '5');
+
+    await waitFor(() =>
+      expect(screen.queryByLabelText(new RegExp(t.result.judgmentChange.reason))).toBeNull(),
+    );
+    const rejected = screen.getByLabelText(t.result.fields.rejected);
+    await userEvent.clear(rejected);
+    await userEvent.type(rejected, '25');
+    /* 불합격 25 > 20 — 자동으로 불합격이 되고 불합격 사유 칸이 선다. */
+    expect(await screen.findByText(t.result.rejection.heading)).toBeInTheDocument();
+    expect(screen.queryByLabelText(new RegExp(t.result.judgmentChange.reason))).toBeNull();
+    expect(writes).toHaveLength(0);
+  });
+
+  it('합격판정개수가 없는 기준이면 자동 판정·사유 칸이 없다(종전 그대로)', async () => {
+    samplingVersion = {
+      samplingMethodCode: 'FULL_INSPECTION',
+      samplingRatio: null,
+      acceptanceNumber: null,
+    };
+    const { writes } = renderScreen('/?ir=1001');
+
+    await screen.findByText(t.result.round(1));
+    await userEvent.click(await screen.findByRole('button', { name: t.result.confirm }));
+
+    await waitFor(() => expect(writes).toHaveLength(1));
+    expect(
+      screen.queryByText(new RegExp(t.result.judgmentChange.basis(0).replace('0', '\\d+'))),
+    ).toBeNull();
+    expect(await bodyOf(writes[0] as Request)).toEqual({ overallJudgmentCode: 'ACCEPTED' });
   });
 
   /*

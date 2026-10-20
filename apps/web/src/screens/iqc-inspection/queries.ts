@@ -13,7 +13,7 @@ import { useMasterWrite, type MasterWriteResult, type WriteHeaders } from '../..
 import { runRequest, type ApiCallResult } from '../../patterns/request';
 import type { CodeValueResponse } from './code-options';
 import type { QueueListQuery } from './filters';
-import type { SamplingRule } from './sample-qty';
+import type { PlanVersionRule } from './judgment-change';
 import type { InspectionItemSpecResponse, InspectionMeasurementResponse } from './measurement-rows';
 import {
   toInspectionQueueResult,
@@ -381,11 +381,12 @@ const fetchItemSpecs = (
 
 /**
  * 검사기준 버전의 샘플링 규칙을 부른다 — 검사수량 기본값이 이것으로 정해진다(omf-all-around#102).
+ * 합격판정개수도 함께 읽는다 — 있으면 수량으로 종합 판정을 자동으로 채운다(omf-all-around#125).
  * 항목 규격과 같이 **의뢰가 준 버전 그대로** 부른다.
  */
 export const useSamplingRule = (
   inspectionPlanVersionId: number | null,
-): UseQueryResult<SamplingRule> => {
+): UseQueryResult<PlanVersionRule> => {
   const { client } = useApiClient();
 
   return useQuery({
@@ -398,6 +399,7 @@ export const useSamplingRule = (
       ).then(({ inspectionPlanVersion }) => ({
         samplingMethodCode: inspectionPlanVersion.samplingMethodCode,
         samplingRatio: inspectionPlanVersion.samplingRatio ?? null,
+        acceptanceNumber: inspectionPlanVersion.acceptanceNumber ?? null,
       })),
     enabled: inspectionPlanVersionId !== null,
   });
@@ -483,6 +485,8 @@ export interface ConfirmVariables {
    * 그 회차의 불량 기록을 이 값으로 갈아 끼우므로, 확정이 실패해 다시 눌러도 사유는 그때 입력 1벌만 남는다.
    */
   defects?: InspectionDefectInput[];
+  /** 자동 판정(합격판정개수 기준)과 다르게 확정할 때의 변경 사유(omf-all-around#125 · 서버 P-70). */
+  judgmentChangeReason?: string;
 }
 
 /**
@@ -518,6 +522,9 @@ export const useConfirmResult = (
         body: {
           overallJudgmentCode: variables.overallJudgmentCode,
           ...(variables.defects === undefined ? {} : { defects: variables.defects }),
+          ...(variables.judgmentChangeReason === undefined
+            ? {}
+            : { judgmentChangeReason: variables.judgmentChangeReason }),
         } satisfies InspectionResultConfirmForward,
       }),
     etagPath: inspectionResultId === null ? null : roundPath(inspectionResultId),
