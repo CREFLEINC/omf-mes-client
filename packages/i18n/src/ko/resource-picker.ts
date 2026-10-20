@@ -3,13 +3,12 @@
  */
 export const resourcePicker = {
   title: { equipment: '설비 선택', mold: '금형 선택' },
-  open: '코드·이름으로 찾기',
+  open: '눌러서 찾기',
   clear: { equipment: '설비 지우기', mold: '금형 지우기' },
   keywordLabel: '검색어',
   keywordPlaceholder: '코드 또는 이름',
   search: '찾기',
   columns: { select: '선택', code: '코드', name: '이름' },
-  inactive: '미사용',
   noResult: '검색 결과가 없습니다.',
   searchFailed: '목록을 불러오지 못했습니다.',
   searching: '찾는 중입니다…',

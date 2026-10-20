@@ -159,6 +159,7 @@ const ResourceSelect = ({
           lineId={picker.lineId}
           valueLabel={valueLabel}
           disabled={disabled}
+          invalid={error !== undefined}
           aria-describedby={describedBy}
           onPick={(row) => {
             const next = String(row.id);

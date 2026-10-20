@@ -71,7 +71,7 @@ export const ResourcePickerDialog = ({
     {
       key: 'name',
       header: t.columns.name,
-      render: (row) => `${row.name}${row.isActive ? '' : ` · ${t.inactive}`}`,
+      render: (row) => row.name,
     },
   ];
 
@@ -105,7 +105,7 @@ export const ResourcePickerDialog = ({
       }
     >
       <div className="item-picker-body">
-        <div className="item-picker-controls work-order-worker-picker-controls">
+        <div className="item-picker-controls">
           <div className="field-cell">
             <label className="field-label" htmlFor={keywordId}>
               {t.keywordLabel}
@@ -143,9 +143,7 @@ export const ResourcePickerDialog = ({
             rows={rows}
             getRowId={(row) => String(row.id)}
             empty={
-              plantId === null
-                ? t.searchFailed
-                : search.isPending
+              search.isPending
                   ? t.searching
                   : search.isError
                     ? ''

@@ -316,11 +316,11 @@ export const itemExtendedAttrs: Translated<typeof ko.itemExtendedAttrs> = {
     },
     actions: {
       add: 'Thêm',
-      setDefault: 'Tự động phân bổ',
+      setDefault: 'Đặt tự động phân bổ',
       deactivate: 'Ngừng dùng',
       reactivate: 'Dùng lại',
       editRow: (name: string): string => `Sửa ${name}`,
-      setDefaultRow: (name: string): string => `Tự động phân bổ ${name}`,
+      setDefaultRow: (name: string): string => `Đặt tự động phân bổ cho ${name}`,
       deactivateRow: (name: string): string => `Ngừng dùng ${name}`,
       reactivateRow: (name: string): string => `Dùng lại ${name}`,
     },

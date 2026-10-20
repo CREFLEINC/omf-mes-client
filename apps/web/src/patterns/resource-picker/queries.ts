@@ -34,6 +34,7 @@ export const resourcePickerKeys = {
 };
 
 /**
+ * 사용 중인 것만 낸다 — 사용 중지한 설비·금형을 새로 배정하는 길을 열지 않는다.
  * 서버가 찾는다(`q`) — 금형은 공장마다 수백 건이라 다 받아 화면에서 거르지 않는다.
  * 설비는 라인을 주면 그 라인 것만 낸다(4M 은 라인으로 설비를 좁혀 왔다).
  */
@@ -61,7 +62,6 @@ export const useResourceSearch = (
                 plantId,
                 ...(lineId === null ? {} : { productionLineId: lineId }),
                 ...q,
-                includeInactive: true,
                 page,
                 size: RESOURCE_PAGE_SIZE,
               },
@@ -88,7 +88,6 @@ export const useResourceSearch = (
               plantId,
               toolTypeCode: 'MOLD',
               ...q,
-              includeInactive: true,
               page,
               size: RESOURCE_PAGE_SIZE,
             },

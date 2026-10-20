@@ -15,7 +15,9 @@ export interface ResourcePickerInputProps {
   lineId?: number | null;
   /** 고른 값의 「코드 · 이름」. 비었으면 빈 칸이다 */
   valueLabel: string;
+  /** 공장이 없어도 잠근다 — 찾을 범위가 없다 */
   disabled?: boolean;
+  invalid?: boolean;
   'aria-describedby'?: string;
   onPick: (row: ResourceRow) => void;
   onClear: () => void;
@@ -31,12 +33,14 @@ export const ResourcePickerInput = ({
   plantId,
   lineId = null,
   valueLabel,
-  disabled = false,
+  disabled: lockedByCaller = false,
+  invalid = false,
   'aria-describedby': describedBy,
   onPick,
   onClear,
 }: ResourcePickerInputProps) => {
   const [isOpen, setIsOpen] = useState(false);
+  const disabled = lockedByCaller || plantId === null;
   const open = (): void => {
     if (!disabled) setIsOpen(true);
   };
@@ -45,13 +49,13 @@ export const ResourcePickerInput = ({
     <>
       <SearchInput
         id={id}
-        containerClassName="work-order-worker-field"
         value={valueLabel}
         readOnly
         title={valueLabel === '' ? undefined : valueLabel}
         placeholder={t.open}
         aria-haspopup="dialog"
         aria-describedby={describedBy}
+        aria-invalid={invalid || undefined}
         clearLabel={t.clear[kind]}
         disabled={disabled}
         onClick={open}

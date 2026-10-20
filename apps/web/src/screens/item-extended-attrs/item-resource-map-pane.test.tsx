@@ -114,9 +114,9 @@ describe('ItemResourceMapPane — 줄 작업', () => {
   it('자동 배정이 아닌 사용 중인 줄에만 자동 배정 버튼이 있다', async () => {
     const { onSetDefault, user } = renderPane();
 
-    expect(screen.getAllByRole('button', { name: / 자동 배정$/ })).toHaveLength(1);
+    expect(screen.getAllByRole('button', { name: / 자동 배정 지정$/ })).toHaveLength(1);
 
-    await user.click(screen.getByRole('button', { name: '전체 공정 / SYN-MOLD-02 자동 배정' }));
+    await user.click(screen.getByRole('button', { name: '전체 공정 / SYN-MOLD-02 자동 배정 지정' }));
     expect(onSetDefault).toHaveBeenCalledWith(itemResourceMapFixtures[1]);
   });
 

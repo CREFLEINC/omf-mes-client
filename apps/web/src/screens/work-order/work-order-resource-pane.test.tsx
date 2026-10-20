@@ -219,7 +219,7 @@ describe('WorkOrderResourcePane', () => {
   });
 
   it('지우기 단추는 그 칸만 비운다', async () => {
-    const { onChange, user } = renderPane();
+    const { onChange, user } = renderPane({ plantId: 9001 });
 
     await user.click(screen.getByRole('button', { name: picker.clear.equipment }));
     await user.click(screen.getByRole('button', { name: picker.clear.mold }));

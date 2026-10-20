@@ -373,11 +373,11 @@ export const itemExtendedAttrs = {
     },
     actions: {
       add: '추가',
-      setDefault: '자동 배정',
+      setDefault: '자동 배정 지정',
       deactivate: '사용 중지',
       reactivate: '다시 사용',
       editRow: (name: string): string => `${name} 수정`,
-      setDefaultRow: (name: string): string => `${name} 자동 배정`,
+      setDefaultRow: (name: string): string => `${name} 자동 배정 지정`,
       deactivateRow: (name: string): string => `${name} 사용 중지`,
       reactivateRow: (name: string): string => `${name} 다시 사용`,
     },

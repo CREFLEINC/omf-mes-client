@@ -124,7 +124,7 @@ describe('ResourcePickerDialog — 조회', () => {
   });
 
   /* 사용 중지한 설비도 고칠 줄에 남아 있을 수 있어 함께 받는다. */
-  it('설비는 공장·라인으로 좁히고 사용 중지한 것까지 한 쪽씩 받는다', async () => {
+  it('설비는 공장·라인으로 좁히고 사용 중인 것만 한 쪽씩 받는다', async () => {
     const searches: URL[] = [];
     renderDialog({ lineId: 7001 }, { searches });
 
@@ -136,7 +136,7 @@ describe('ResourcePickerDialog — 조회', () => {
     expect(sent?.pathname).toBe(EQUIPMENTS_PATH);
     expect(sent?.searchParams.get('plantId')).toBe('9001');
     expect(sent?.searchParams.get('productionLineId')).toBe('7001');
-    expect(sent?.searchParams.get('includeInactive')).toBe('true');
+    expect(sent?.searchParams.has('includeInactive')).toBe(false);
     expect(sent?.searchParams.get('size')).toBe(String(RESOURCE_PAGE_SIZE));
   });
 
@@ -162,7 +162,7 @@ describe('ResourcePickerDialog — 조회', () => {
     expect(sent?.pathname).toBe(MOLDS_PATH);
     expect(sent?.searchParams.get('toolTypeCode')).toBe('MOLD');
     expect(sent?.searchParams.get('plantId')).toBe('9001');
-    expect(sent?.searchParams.get('includeInactive')).toBe('true');
+    expect(sent?.searchParams.has('includeInactive')).toBe(false);
   });
 });
 
@@ -196,12 +196,6 @@ describe('ResourcePickerDialog — 고르기', () => {
 
     await user.click(dialog().getByRole('button', { name: t.pick }));
     expect(onConfirm).toHaveBeenCalledWith(expect.objectContaining({ id: 8002 }));
-  });
-
-  it('사용 중지한 것은 이름 옆에 밝힌다', async () => {
-    renderDialog();
-
-    expect(await dialog().findByText(`합성 설비 B · ${t.inactive}`)).toBeInTheDocument();
   });
 
   it('취소는 고르지 않고 닫는다', async () => {

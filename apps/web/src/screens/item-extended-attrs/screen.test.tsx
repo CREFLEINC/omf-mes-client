@@ -4645,7 +4645,7 @@ describe('ItemExtendedAttrsScreen — 설비·금형 매핑', () => {
 
     const pane = await findResourceMapPane();
     await user.click(
-      await within(pane).findByRole('button', { name: '전체 공정 / SYN-MOLD-02 자동 배정' }),
+      await within(pane).findByRole('button', { name: '전체 공정 / SYN-MOLD-02 자동 배정 지정' }),
     );
 
     await waitFor(() => {
@@ -4750,7 +4750,7 @@ describe('ItemExtendedAttrsScreen — 설비·금형 매핑의 판 갱신', () =
 
     const pane = await findResourceMapPane();
     await user.click(
-      await within(pane).findByRole('button', { name: '전체 공정 / SYN-MOLD-02 자동 배정' }),
+      await within(pane).findByRole('button', { name: '전체 공정 / SYN-MOLD-02 자동 배정 지정' }),
     );
 
     await waitFor(() => {
@@ -4812,7 +4812,7 @@ describe('ItemExtendedAttrsScreen — 설비·금형 매핑의 판 갱신', () =
     );
 
     const pane = await findResourceMapPane();
-    const setDefaultName = '전체 공정 / SYN-MOLD-02 자동 배정';
+    const setDefaultName = '전체 공정 / SYN-MOLD-02 자동 배정 지정';
     await user.click(await within(pane).findByRole('button', { name: setDefaultName }));
 
     expect(

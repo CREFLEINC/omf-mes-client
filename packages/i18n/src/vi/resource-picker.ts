@@ -5,13 +5,12 @@ import type { Translated } from './translated';
 /** Chọn thiết bị · khuôn — bộ phận dùng chung. */
 export const resourcePicker: Translated<typeof ko.resourcePicker> = {
   title: { equipment: 'Chọn thiết bị', mold: 'Chọn khuôn' },
-  open: 'Tìm theo mã · tên',
+  open: 'Bấm để tìm',
   clear: { equipment: 'Xóa thiết bị', mold: 'Xóa khuôn' },
   keywordLabel: 'Từ khóa',
   keywordPlaceholder: 'Mã hoặc tên',
   search: 'Tìm',
   columns: { select: 'Chọn', code: 'Mã', name: 'Tên' },
-  inactive: 'Ngừng dùng',
   noResult: 'Không có kết quả.',
   searchFailed: 'Không tải được danh sách.',
   searching: 'Đang tìm…',

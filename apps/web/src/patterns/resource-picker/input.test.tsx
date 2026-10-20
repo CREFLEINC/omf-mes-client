@@ -76,6 +76,24 @@ describe('ResourcePickerInput', () => {
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   });
 
+  /* 읽기 전용 칸이라 키보드 사용자에게는 엔터가 유일한 입구다. */
+  it('칸에서 엔터를 치면 찾기 창이 열린다', async () => {
+    const { user } = renderInput();
+
+    screen.getByLabelText('금형').focus();
+    await user.keyboard('{Enter}');
+
+    expect(screen.getByRole('dialog', { name: t.title.mold })).toBeInTheDocument();
+  });
+
+  it('공장이 없으면 잠겨 창을 열지 않는다', async () => {
+    const { user } = renderInput({ plantId: null });
+
+    expect(screen.getByLabelText('금형')).toBeDisabled();
+    await user.click(screen.getByLabelText('금형'));
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
+
   it('지우기 단추는 값을 비운다', async () => {
     const { onClear, user } = renderInput({ valueLabel: 'SYN-MOLD-01 · 합성 금형 A' });
 

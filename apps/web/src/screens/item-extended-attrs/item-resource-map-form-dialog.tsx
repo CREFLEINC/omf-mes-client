@@ -130,6 +130,8 @@ export const ItemResourceMapFormDialog = ({
             kind="equipment"
             plantId={plantId}
             valueLabel={values.equipmentId === '' ? '' : labels.equipment}
+            invalid={shownErrors.equipmentId !== undefined}
+            aria-describedby={shownErrors.equipmentId === undefined ? undefined : `${equipmentId}-error`}
             onPick={(picked) => {
               setLabels((prev) => ({ ...prev, equipment: `${picked.code} · ${picked.name}` }));
               change({ equipmentId: String(picked.id) });
@@ -137,7 +139,9 @@ export const ItemResourceMapFormDialog = ({
             onClear={() => change({ equipmentId: '' })}
           />
           {shownErrors.equipmentId !== undefined && (
-            <span className="field-error">{shownErrors.equipmentId}</span>
+            <span id={`${equipmentId}-error`} className="field-error">
+              {shownErrors.equipmentId}
+            </span>
           )}
         </div>
 
@@ -148,6 +152,8 @@ export const ItemResourceMapFormDialog = ({
             kind="mold"
             plantId={plantId}
             valueLabel={values.moldId === '' ? '' : labels.mold}
+            invalid={shownErrors.moldId !== undefined}
+            aria-describedby={shownErrors.moldId === undefined ? undefined : `${moldId}-error`}
             onPick={(picked) => {
               setLabels((prev) => ({ ...prev, mold: `${picked.code} · ${picked.name}` }));
               change({ moldId: String(picked.id) });
@@ -155,7 +161,9 @@ export const ItemResourceMapFormDialog = ({
             onClear={() => change({ moldId: '' })}
           />
           {shownErrors.moldId !== undefined && (
-            <span className="field-error">{shownErrors.moldId}</span>
+            <span id={`${moldId}-error`} className="field-error">
+              {shownErrors.moldId}
+            </span>
           )}
         </div>
 
