@@ -1,4 +1,4 @@
-import type { ApiClient, components } from '@omf-mes/api-client';
+import type { ApiClient, components, InspectionResultCreateForward } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 
@@ -75,6 +75,9 @@ export const oqcInspectionKeys = {
   rounds: (inspectionRequestId: number) => [...ALL_KEY, 'rounds', inspectionRequestId] as const,
   /** 공통코드 값 목록. **그룹 이름이 곧 열쇠다** — 화면이 정수 id 를 알지 않는다. */
   codeValues: (codeGroupCode: string) => [...ALL_KEY, 'code-values', codeGroupCode] as const,
+  /** 의뢰에 고정된 검사기준 버전의 합격판정개수(omf-all-around#126). */
+  acceptance: (inspectionPlanVersionId: number) =>
+    [...ALL_KEY, 'acceptance', inspectionPlanVersionId] as const,
 };
 
 const fetchQueue = (client: Client, query: QueueListQuery): Promise<InspectionQueueResult> =>
@@ -179,7 +182,8 @@ export const useCodeValues = (codeGroupCode: string): UseQueryResult<CodeValueRe
   });
 };
 
-type InspectionResultCreate = components['schemas']['InspectionResultCreate'];
+/** 서버 선행 P-70 의 `judgmentChangeReason` 을 싣는 몸통(omf-all-around#126). */
+type InspectionResultCreate = InspectionResultCreateForward;
 type InspectionResultResponse = components['schemas']['InspectionResult'];
 
 /**
@@ -221,6 +225,11 @@ export interface SaveResultVariables {
    * 재검사를 열었을 때 같은 번호를 만들고, 그 표에는 `UNIQUE(의뢰, 회차)` 가 걸려 있다.
    */
   previousResultId: number | null;
+  /**
+   * 합격판정개수 기준 자동 판정과 다르게 저장할 때의 변경 사유(omf-all-around#126 · 서버 P-70).
+   * 같으면 싣지 않는다 — 서버도 같으면 버린다.
+   */
+  judgmentChangeReason?: string;
 }
 
 /**
@@ -253,6 +262,7 @@ export const toResultCreateBody = (v: SaveResultVariables): InspectionResultCrea
   statusCode: CONFIRMED_STATUS,
   ...judgmentOf(v.overallJudgmentCode),
   ...previousOf(v.previousResultId),
+  ...(v.judgmentChangeReason === undefined ? {} : { judgmentChangeReason: v.judgmentChangeReason }),
 });
 
 /** 이 화면이 소유한 입력칸 — 서버 필드 오류를 인라인으로 낼지 배너로 올릴지 가르는 기준이다. */
@@ -353,5 +363,28 @@ export const useSaveInspectionResult = (
     knownFields: SAVE_FIELDS,
     keyLifetime: 'until-applied',
     onSuccess: onSaved,
+  });
+};
+
+/**
+ * 의뢰에 고정된 검사기준 버전의 합격판정개수를 부른다(omf-all-around#126). 있으면 수량으로 종합 판정을 자동으로 채운다.
+ *
+ * ⚠ **검사 시점에 고정된 버전으로 부른다** — 의뢰가 준 `inspectionPlanVersionId` 를 그대로 쓴다. 서버 규칙도 같은 버전을 본다.
+ * 기준이 없는 의뢰(`null`)는 부르지 않는다 — 자동 판정이 없다(종전처럼 사람이 고른다).
+ */
+export const useAcceptanceNumber = (
+  inspectionPlanVersionId: number | null,
+): UseQueryResult<number | null> => {
+  const { client } = useApiClient();
+
+  return useQuery({
+    queryKey: oqcInspectionKeys.acceptance(inspectionPlanVersionId ?? 0),
+    queryFn: () =>
+      runRequest(() =>
+        client.GET('/quality/inspection-plan-versions/{inspectionPlanVersionId}', {
+          params: { path: { inspectionPlanVersionId: inspectionPlanVersionId as number } },
+        }),
+      ).then(({ inspectionPlanVersion }) => inspectionPlanVersion.acceptanceNumber ?? null),
+    enabled: inspectionPlanVersionId !== null,
   });
 };

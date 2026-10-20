@@ -162,7 +162,7 @@ export interface InspectionDefectInput {
 /** 서버 선행 P-47 — 사유를 실으면 서버가 확정과 한 트랜잭션에서 그 회차의 불량 기록을 이 값으로 갈아 끼운다. */
 export type InspectionResultConfirmForward = components['schemas']['InspectionResultConfirm'] & {
   defects?: InspectionDefectInput[];
-  /** 서버 선행 P-70(omf-all-around#125) — IQC 판정이 합격판정개수 기준 자동 판정과 다르면 필수(maxLength 500). */
+  /** 서버 선행 P-70(omf-all-around#125·#126) — IQC·OQC 판정이 합격판정개수 기준 자동 판정과 다르면 필수(maxLength 500). */
   judgmentChangeReason?: string;
 };
 
@@ -174,7 +174,7 @@ type InspectionConfirmPath = paths['/quality/inspection-results/{inspectionResul
  */
 export type InspectionResultCreateForward = components['schemas']['InspectionResultCreate'] & {
   defects?: InspectionDefectInput[];
-  /** 서버 선행 P-70(omf-all-around#125) — statusCode=CONFIRMED 저장의 판정 변경 사유. `:confirm` 과 같은 규칙. */
+  /** 서버 선행 P-70(omf-all-around#125·#126) — statusCode=CONFIRMED 저장의 판정 변경 사유(IQC·OQC). `:confirm` 과 같은 규칙. */
   judgmentChangeReason?: string;
 };
 export type InspectionResultUpdateForward = components['schemas']['InspectionResultUpdate'] & {

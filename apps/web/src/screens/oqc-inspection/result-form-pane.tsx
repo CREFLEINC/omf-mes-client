@@ -9,6 +9,7 @@ import { SaveErrorBanner } from '../../patterns/master';
 import { isKnownCode, labelOfCode, type CodeOption } from './code-options';
 import { ConfirmDialog } from './confirm-dialog';
 import { FieldLabel } from './field-label';
+import { JudgmentChange } from './judgment-change';
 import {
   canConfirm,
   formatMicro,
@@ -32,8 +33,9 @@ import type { InspectionResultRound } from './types';
  * 수정」은 ⛔ 두지 않는다로 명시) 관리웹에는 오프라인 갈래가 없다. 그래서 「판정 저장」은
  * 확인 창을 열고, 쓰기는 그 창의 버튼에서만 나간다.
  *
- * ⛔ **자동 계산을 만들지 않는다** — 보류와 불합격은 후속이 다르다. 자동으로 정하면 엉뚱한
- * 후속이 돈다.
+ * ⭐ **합격판정개수가 있는 기준이면 종합 판정을 수량으로 채운다**(omf-all-around#126 · IQC #125 와 같은 규칙).
+ * 채운 판정은 바꿀 수 있지만, 바꾸면 「판정 변경 사유」를 넣어야 저장된다 — 서버도 같은 규칙으로 막는다(P-70).
+ * 합격판정개수가 없으면 종전처럼 사람이 고른다.
  *
  * ⛔ **확정된 회차는 고칠 수 있는 것처럼 보이지 않게 한다.** 판정은 정정하지 않고 재검사로 새
  * 회차를 쌓는다(§5-3). 잠근 이유를 사유로 함께 밝히고, **거기서 할 수 있는 일(재검사)을 낸다.**
@@ -68,6 +70,18 @@ export interface ResultFormPaneProps {
   judgmentOptions: CodeOption[];
   judgment: string;
   onJudgmentChange: (code: string) => void;
+
+  /**
+   * 합격판정개수 기준 자동 판정(omf-all-around#126). 기준에 합격판정개수가 없으면 `acceptanceNumber` 가 `null` 이고
+   * 아래 넷은 쓰이지 않는다.
+   */
+  acceptanceNumber: number | null;
+  /** 자동 판정의 표시명. 셀 수 없으면 `null` */
+  expectedJudgmentLabel: string | null;
+  /** 고른 판정이 자동 판정과 달라 변경 사유가 필요한가 */
+  needsChangeReason: boolean;
+  changeReason: string;
+  onChangeReasonChange: (reason: string) => void;
 
   /**
    * 확인 창의 「판정 저장」이 부른다. **검사한 시각을 함께 넘긴다** — 아래 `openedAt` 주석 참조.
@@ -105,6 +119,11 @@ export const ResultFormPane = ({
   judgmentOptions,
   judgment,
   onJudgmentChange,
+  acceptanceNumber,
+  expectedJudgmentLabel,
+  needsChangeReason,
+  changeReason,
+  onChangeReasonChange,
   onSave,
   isSaving,
   isJustSaved,
@@ -171,7 +190,9 @@ export const ResultFormPane = ({
         ? t.blockedByJudgmentOptions
         : judgment === ''
           ? t.blockedByJudgment
-          : null;
+          : needsChangeReason && changeReason.trim() === ''
+            ? t.judgmentChange.required
+            : null;
 
   /** 저장을 누른다 — **여는 것뿐이다.** 쓰기는 확인 창의 버튼에서 나간다. */
   const submit = (event: FormEvent<HTMLFormElement>): void => {
@@ -313,6 +334,18 @@ export const ResultFormPane = ({
           <p className="field-note">{t.judgmentUnknown(judgment)}</p>
         )}
       </div>
+
+      {/* 합격판정개수 기준 자동 판정과 변경 사유(omf-all-around#126) — 기준에 합격판정개수가 있고 열린 회차일 때만. */}
+      {acceptanceNumber !== null && !isLocked && (
+        <JudgmentChange
+          acceptanceNumber={acceptanceNumber}
+          expectedLabel={expectedJudgmentLabel}
+          needsReason={needsChangeReason}
+          reason={changeReason}
+          onReasonChange={onChangeReasonChange}
+          disabled={isSaving}
+        />
+      )}
 
       {/*
        * ⛔ **되돌릴 수 없는 쓰기가 무엇을 하는지 누르기 «전»에 보인다.** 확인 창에도 같은 본문이
