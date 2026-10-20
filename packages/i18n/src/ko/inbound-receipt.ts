@@ -49,6 +49,8 @@ export const inboundReceipt = {
   po: {
     legend: '자재 P/O 선택',
     selectLabel: '자재 P/O 번호',
+    /** 발주 카드의 둘째 줄. 같은 공급사의 발주가 여럿이면 날짜로 가른다. */
+    orderDate: (date: string) => `발주일 ${date}`,
     loading: '미마감 자재 P/O를 불러오는 중입니다',
     loadFailed: '자재 P/O를 확인할 수 없습니다. 연결을 확인하세요.',
     none: '미마감 자재 P/O가 없습니다',
@@ -204,8 +206,11 @@ export const inboundReceipt = {
       remaining: '남은',
     },
     underAsk: '더 들어올 물량이 있습니까?',
-    /** 임시 입고가 아니다. 평범한 입하 등록이고 발주는 열린 채 남는다. */
-    underContinue: '계속 등록',
+    /**
+     * 임시 입고가 아니다. 평범한 입하 등록이고 발주는 열린 채 남는다. 누르면 곧바로 등록한다 —
+     * 「계속」만으로는 누른 뒤 무엇이 되는지 알 수 없었다.
+     */
+    underContinue: '분할 납품으로 등록',
     underContinueNote: '분할 납품이면 그대로 등록합니다. 자재 P/O는 열린 채 남습니다.',
     underVariance: '보류로 받고 오류 등록',
     /** 받아 두는 것이 먼저다. 등록하지 않고 떠나면 오류를 붙일 입하 라인이 없다. */
@@ -288,4 +293,31 @@ export const inboundReceipt = {
   },
   noWorker: '사번을 먼저 확인하세요',
   another: '다음 입하',
+  /** 단계마다 지시 하나. 동사로 끝난다 — 무엇을 할지가 제목이다. */
+  steps: {
+    scan: '자재 LOT 라벨을 스캔하세요',
+    line: '자재 P/O 라인을 고르세요',
+    unordered: '발주 없이 받을 품목과 수량을 적으세요',
+    /* 칸 이름(「실입하 수량」)과 겹치지 않게 짧게 쓴다 — 겹치면 낭독기가 두 자리를 같은 이름으로 읽는다. */
+    qty: '수량을 확인하세요',
+  },
+  /** 작업 헤더 — 처리 중인 값. 이름은 낭독기에만 준다. */
+  header: {
+    item: '품목 코드',
+    itemName: '품목명',
+    purchaseOrder: '자재 P/O',
+    lot: '공급사 LOT',
+    tolerance: '허용',
+    lineOf: (purchaseOrderNo: string, lineNo: string) => `${purchaseOrderNo} · ${lineNo}번 라인`,
+    changeLine: '자재 P/O 라인 바꾸기',
+  },
+  /** 고를 것이 하나뿐이라 알아서 골랐다는 것. 조용히 건너뛰면 무엇을 골랐는지 모른다. */
+  auto: {
+    picked: (purchaseOrderNo: string, lineNo: string) =>
+      `${purchaseOrderNo} · ${lineNo}번 라인을 골랐습니다`,
+  },
+  /** 미리 채운 잔여 수량. 다르면 숫자를 누르면 새로 적힌다. */
+  plannedQty: '잔여 수량을 채워 두었습니다. 다르면 숫자를 누르세요.',
+  /** 결과 화면에서 다음 라벨을 읽으면 그 자리에서 다음 입하가 시작된다. */
+  nextScan: '다음 라벨을 스캔하면 바로 다음 입하를 시작합니다',
 } as const;

@@ -2,8 +2,11 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-3, 12px);
-  /* 작업 헤더가 위에 붙어 있다. 머리를 화면에 들일 때 그 밑에 깔리지 않게 비운다. */
-  scroll-margin-block-start: 96px;
+  /*
+   * 작업 헤더가 위에 붙어 있다. 머리를 화면에 들일 때 그 밑에 깔리지 않게 비운다. 헤더는 값이
+   * 두세 줄로 접히고 「자세히」 단추가 붙어 실기에서 130px 남짓이었다.
+   */
+  scroll-margin-block-start: 152px;
 }
 
 /* 몇 번째 단계인가. 지시보다 앞에 서되 지시보다 약하게. */

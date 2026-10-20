@@ -40,6 +40,7 @@ export const inboundReceipt: Translated<typeof ko.inboundReceipt> = {
   po: {
     legend: 'Chọn P/O vật tư',
     selectLabel: 'Số P/O vật tư',
+    orderDate: (date: string) => `Ngày đặt ${date}`,
     loading: 'Đang tải các P/O vật tư chưa chốt',
     loadFailed: 'Không xác nhận được P/O vật tư. Hãy kiểm tra kết nối.',
     none: 'Không có P/O vật tư nào chưa chốt',
@@ -162,7 +163,7 @@ export const inboundReceipt: Translated<typeof ko.inboundReceipt> = {
       remaining: 'Còn lại',
     },
     underAsk: 'Còn hàng sẽ về thêm không?',
-    underContinue: 'Vẫn đăng ký',
+    underContinue: 'Đăng ký giao từng phần',
     underContinueNote: 'Nếu là giao nhiều đợt thì cứ đăng ký. P/O vật tư vẫn để mở.',
     underVariance: 'Nhận vào diện tạm giữ và đăng ký sai lệch',
     underVarianceNote: 'Nhận vào diện tạm giữ trước rồi mới ghi nội dung sai lệch.',
@@ -226,4 +227,25 @@ export const inboundReceipt: Translated<typeof ko.inboundReceipt> = {
   },
   noWorker: 'Hãy xác nhận mã nhân viên trước',
   another: 'Lần nhập hàng tiếp theo',
+  steps: {
+    scan: 'Hãy quét nhãn LOT vật tư',
+    line: 'Hãy chọn dòng P/O vật tư',
+    unordered: 'Hãy nhập vật tư và số lượng nhận không theo đơn',
+    qty: 'Hãy kiểm tra số lượng',
+  },
+  header: {
+    item: 'Mã vật tư',
+    itemName: 'Tên vật tư',
+    purchaseOrder: 'P/O vật tư',
+    lot: 'LOT nhà cung cấp',
+    tolerance: 'Dung sai',
+    lineOf: (purchaseOrderNo: string, lineNo: string) => `${purchaseOrderNo} · dòng ${lineNo}`,
+    changeLine: 'Đổi dòng P/O vật tư',
+  },
+  auto: {
+    picked: (purchaseOrderNo: string, lineNo: string) =>
+      `Đã chọn ${purchaseOrderNo} · dòng ${lineNo}`,
+  },
+  plannedQty: 'Đã điền sẵn số lượng còn lại. Nếu khác, hãy bấm số.',
+  nextScan: 'Quét nhãn tiếp theo để bắt đầu ngay lần nhập hàng mới',
 };

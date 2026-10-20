@@ -707,3 +707,64 @@ export const toSplitOutboxDraft = (
     confirmation: 'pending',
   };
 };
+
+/**
+ * 입하 등록의 단계. 입력 상태에서 정한다 — 따로 들고 다니면 상태와 단계가 어긋난다.
+ *
+ * - scan: 라벨을 아직 받지 않았다
+ * - line: 라벨은 받았고 자재 P/O 라인을 고를 차례다(라인을 바꾸러 돌아온 때도)
+ * - unordered: 발주 없이 받는다 — 공급사·품목·단위·예외를 적고 같은 자리에서 수량까지 적는다
+ * - qty: 라인을 골랐고 수량을 확인할 차례다
+ */
+export type ReceiptStep = 'scan' | 'line' | 'unordered' | 'qty';
+
+export const stepOf = (draft: ReceiptDraft, changingLine: boolean): ReceiptStep => {
+  if (draft.supplierLotNo === '' && !draft.supplierLotMissing) return 'scan';
+  if (draft.unordered) return 'unordered';
+  if (draft.purchaseOrderLine === null || changingLine) return 'line';
+
+  return 'qty';
+};
+
+/**
+ * 고를 것이 하나뿐이면 그것을 고른다.
+ *
+ * 라벨 품목으로 좁힌 후보에서만 한다 — 좁히지 않은 목록(라벨 미부착·품목을 확인하지 못함)에서
+ * 하나를 고르면 라벨과 무관한 발주가 고른 것처럼 선다(omf-all-around#25 와 같은 원칙).
+ */
+export const autoOrderOf = (
+  orders: readonly PurchaseOrder[] | undefined,
+  narrowed: boolean,
+): PurchaseOrder | null =>
+  narrowed && orders !== undefined && orders.length === 1 ? (orders[0] ?? null) : null;
+
+/**
+ * 고른 발주에서 라벨 품목의 받을 것이 남은 라인이 하나뿐이면 그 라인이다.
+ *
+ * 다 받은 라인은 세지 않는다 — 그 라인에 초과로 받을 수도 있지만, 그것을 알아서 고르면 남은
+ * 라인이 있는데도 초과 판정부터 선다.
+ */
+export const autoLineOf = (
+  lines: readonly PurchaseOrderLine[] | undefined,
+  itemId: number | null,
+  queuedFor: (purchaseOrderLineId: number) => number,
+): PurchaseOrderLine | null => {
+  if (lines === undefined || itemId === null) return null;
+
+  const open = lines.filter(
+    (line) =>
+      line.itemId === itemId && remainingQtyOf(line, queuedFor(line.purchaseOrderLineId)) > 0,
+  );
+
+  return open.length === 1 ? (open[0] ?? null) : null;
+};
+
+/**
+ * 미리 채운 수량 위에서 친 값.
+ *
+ * 미리 채운 것은 «예정»이다. 그 뒤에 숫자를 이어 붙이면 500 위에 300 을 친 사람이 500300 을
+ * 받는다 - 미리 채운 값 위의 첫 숫자는 새로 치기 시작한 것으로 본다. 지운 것(짧아짐)은 고친 것으로
+ * 두고 그대로 받는다.
+ */
+export const typedOverPlanned = (planned: string, next: string): string =>
+  next.length > planned.length && next.startsWith(planned) ? next.slice(planned.length) : next;
