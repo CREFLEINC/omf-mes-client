@@ -4,7 +4,6 @@ import { createElement, type ReactNode } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { createStubFetch, jsonResponse, renderHookWithProviders } from '../../test/api-harness';
-import { appQueryDefaults } from '../../app/providers';
 import { ApiClientProvider } from '../../patterns/api-context';
 import { toApiError } from '../../patterns/request';
 import { DASHBOARD_REFRESH_INTERVAL_MS, useDashboardSummary } from './queries';
@@ -86,7 +85,10 @@ describe('useDashboardSummary — 화면에 다시 들어올 때', () => {
 
     const first = renderHookWithProviders(() => useDashboardSummary({}), { fetch });
     const { queryClient, apiClient } = first;
-    queryClient.setDefaultOptions(appQueryDefaults);
+    // 앱 기본 신선도(app/providers.tsx 의 30초) — screens 는 app 을 참조하지 못해(dep:check) 값만 맞춘다.
+    queryClient.setDefaultOptions({
+      queries: { ...queryClient.getDefaultOptions().queries, staleTime: 30_000 },
+    });
     await waitFor(() => expect(first.result.current.isSuccess).toBe(true));
     first.unmount();
 
@@ -94,7 +96,7 @@ describe('useDashboardSummary — 화면에 다시 들어올 때', () => {
       createElement(
         QueryClientProvider,
         { client: queryClient },
-        createElement(ApiClientProvider, { client: apiClient }, children),
+        createElement(ApiClientProvider, { client: apiClient, children }),
       );
     renderHook(() => useDashboardSummary({}), { wrapper });
 
