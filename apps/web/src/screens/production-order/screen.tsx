@@ -171,13 +171,21 @@ export const ProductionOrderScreen = () => {
         />
       )}
 
-      <SaveErrorBanner
-        error={autoPlan.error}
-        onReload={() => {
-          autoPlan.reset();
-          void queryClient.invalidateQueries({ queryKey: productionOrderKeys.all });
-        }}
-      />
+      {/* 같은 P/O 의 자동 계획이 이미 도는 중이면 서버가 충돌 봉투로 알린다 — 누가 고친 것이 아니라
+          기다리면 풀리므로 공통 충돌 문구(「최신 불러오기」)로 내지 않는다. */}
+      {autoPlan.error?.kind === 'conflict' && autoPlan.error.code === 'INVALID_STATE' ? (
+        <div className="banner-slot">
+          <AlertBanner variant="warning">{t.autoPlan.running}</AlertBanner>
+        </div>
+      ) : (
+        <SaveErrorBanner
+          error={autoPlan.error}
+          onReload={() => {
+            autoPlan.reset();
+            void queryClient.invalidateQueries({ queryKey: productionOrderKeys.all });
+          }}
+        />
+      )}
       <div className="production-order-detail-grid">
         <ProductionOrderBasicPane
           isSelected={isSelected}

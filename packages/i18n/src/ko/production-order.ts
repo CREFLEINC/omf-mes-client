@@ -70,6 +70,7 @@ export const productionOrder = {
     confirmed: '계획을 확정했습니다',
     draft: '작성 중 계획이 있습니다 · 라인을 정해 확정하세요',
     notPlanned: '계획을 만들지 못했습니다',
+    running: '자동 계획이 진행 중입니다 · 잠시 뒤 다시 실행하세요',
   },
   basic: {
     heading: '기본 정보',

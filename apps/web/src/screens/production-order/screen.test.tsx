@@ -449,6 +449,49 @@ describe('ProductionOrderScreen', () => {
       expect(screen.queryByText(messages.conflict.erpSync)).not.toBeInTheDocument();
     });
 
+    it('자동 계획이 이미 진행 중(409 INVALID_STATE)이면 충돌 문구 대신 잠시 뒤 다시 실행하라고 한다', async () => {
+      const { routes } = autoPlanRoutes(() =>
+        jsonResponse(
+          { code: 'INVALID_STATE', message: 'synthetic running', conflictCause: 'user' },
+          { status: 409 },
+        ),
+      );
+      const button = await openSelected(routes);
+
+      await userEvent.setup().click(button);
+
+      expect(await screen.findByText(t.autoPlan.running)).toBeInTheDocument();
+      expect(screen.queryByText(messages.conflict.user)).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole('button', { name: messages.conflict.reloadAction }),
+      ).not.toBeInTheDocument();
+      expect(button).toBeEnabled();
+    });
+
+    it('취소된 P/O(400 STATE_LOCKED)면 서버 사유를 잠김 띠로 낸다', async () => {
+      const { routes } = autoPlanRoutes(() =>
+        jsonResponse(
+          {
+            errors: [
+              {
+                scope: 'screen',
+                code: 'STATE_LOCKED',
+                message: '취소된 P/O 는 계획할 수 없습니다',
+              },
+            ],
+          },
+          { status: 400 },
+        ),
+      );
+      const button = await openSelected(routes);
+
+      await userEvent.setup().click(button);
+
+      expect(await screen.findByText('취소된 P/O 는 계획할 수 없습니다')).toBeInTheDocument();
+      expect(screen.getByText(messages.stateLocked.title)).toBeInTheDocument();
+      expect(screen.queryByText(t.autoPlan.running)).not.toBeInTheDocument();
+    });
+
     it('응답을 기다리는 동안 단추를 잠근다', async () => {
       let release: (response: Response) => void = () => undefined;
       const { routes, posts } = autoPlanRoutes(

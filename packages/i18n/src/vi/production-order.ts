@@ -79,6 +79,7 @@ export const productionOrder: Translated<typeof ko.productionOrder> = {
     confirmed: 'Đã xác nhận kế hoạch',
     draft: 'Có kế hoạch đang soạn · Hãy chọn dây chuyền rồi xác nhận',
     notPlanned: 'Không tạo được kế hoạch',
+    running: 'Đang lập kế hoạch tự động · Hãy chạy lại sau giây lát',
   },
   basic: {
     heading: 'Thông tin cơ bản',
