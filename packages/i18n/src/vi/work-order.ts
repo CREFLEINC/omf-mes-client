@@ -152,7 +152,7 @@ export const workOrder: Translated<typeof ko.workOrder> = {
     clearOption: 'Không phân bổ',
     recommendation: {
       label: 'Gợi ý',
-      sources: { DEFAULT: 'Mặc định', MAPPED: 'Đã gán', RECENT: 'Gần đây' },
+      sources: { DEFAULT: 'Mặc định', MAPPED: 'Đã gán', RECENT: 'Gần đây', QUALIFIED: 'Chứng chỉ' },
       busy: 'Đã phân bổ cùng khung giờ',
       outOfService: 'Không hoạt động',
       short: { busy: 'Đang dùng', outOfService: 'Dừng' },

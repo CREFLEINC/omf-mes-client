@@ -255,6 +255,82 @@ it('교대를 바꾸면 계획일과 교대 시각으로 계획 시작·종료�
   expect(end()).toHaveValue('2026-10-20T20:00');
 });
 
+it('교대 추천 칩을 누르면 선택칸에서 고른 것과 같이 계획 시작·종료를 다시 채운다', async () => {
+  const user = userEvent.setup();
+  mocks.shifts.mockReturnValue(
+    resources([
+      {
+        shiftId: 501,
+        shiftCode: 'D',
+        shiftName: '주간',
+        startTime: '08:00:00',
+        endTime: '20:00:00',
+        isActive: true,
+      },
+      {
+        shiftId: 502,
+        shiftCode: 'N',
+        shiftName: '야간',
+        startTime: '20:00:00',
+        endTime: '08:00:00',
+        crossesMidnight: true,
+        isActive: true,
+      },
+    ]),
+  );
+  mocks.recommendations.mockReturnValue(
+    query({
+      equipments: [],
+      molds: [],
+      shifts: [
+        {
+          shiftId: 502,
+          shiftCode: 'N',
+          shiftName: '야간',
+          startTime: '20:00:00',
+          endTime: '08:00:00',
+          busy: false,
+        },
+      ],
+    }),
+  );
+  render(<Harness />);
+
+  await user.click(screen.getByRole('button', { name: /^N · 야간/ }));
+
+  expect(screen.getByRole('combobox', { name: t.resourcePane.fields.shift })).toHaveTextContent(
+    'N · 야간',
+  );
+  expect(screen.getByLabelText(t.planFieldsPane.fields.plannedStartAtLocal)).toHaveValue(
+    '2026-10-20T20:00',
+  );
+  expect(screen.getByLabelText(t.planFieldsPane.fields.plannedEndAtLocal)).toHaveValue(
+    '2026-10-21T08:00',
+  );
+});
+
+it('작업자 추천 칩을 누르면 받아 둔 목록에 없는 작업자도 칸에 이름이 바로 선다', async () => {
+  const user = userEvent.setup();
+  mocks.recommendations.mockReturnValue(
+    query({
+      equipments: [],
+      molds: [],
+      workers: [
+        { workerId: 299, workerNo: 'W-99', workerName: '김자격', source: 'QUALIFIED', busy: false },
+      ],
+    }),
+  );
+  render(<Harness />);
+
+  await user.click(
+    screen.getByRole('button', {
+      name: `${t.resourcePane.recommendation.sources.QUALIFIED}, W-99 · 김자격`,
+    }),
+  );
+
+  expect(screen.getByLabelText(t.resourcePane.fields.worker)).toHaveValue('W-99 · 김자격');
+});
+
 it('라인을 바꾸면 기본 위치 셋을 그 라인 기본값으로 덮어쓰고, 칸마다 맞는 창고 유형만 고르게 한다', async () => {
   const user = userEvent.setup();
   render(<Harness />);

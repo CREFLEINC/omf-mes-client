@@ -90,6 +90,8 @@ describe('WorkOrderResourcePane', () => {
             warning: null,
           },
         ],
+        plannedShiftId: [],
+        responsibleWorkerId: [],
       },
     });
 
@@ -115,6 +117,99 @@ describe('WorkOrderResourcePane', () => {
     expect(mold).toHaveTextContent('✓ SYN-MOLD-REC');
     await user.click(mold);
     expect(onChange).toHaveBeenLastCalledWith({ plannedMoldId: '401' });
+  });
+
+  it('교대·작업자 후보는 이름만 칩에 두고, 근거·사용 중은 짧게, 누르면 그 칸에 배정한다', async () => {
+    const { onChange, user } = renderPane({
+      draft: { ...draft(), plannedShiftId: '502', responsibleWorkerId: '' },
+      recommendations: {
+        plannedEquipmentId: [],
+        plannedMoldId: [],
+        plannedShiftId: [
+          {
+            value: '501',
+            code: '주간',
+            label: 'D · 주간 (08:00 ~ 20:00)',
+            source: null,
+            productionLineId: null,
+            warning: null,
+          },
+          {
+            value: '502',
+            code: '야간',
+            label: 'N · 야간 (20:00 ~ 08:00)',
+            source: null,
+            productionLineId: null,
+            warning: 'busy',
+          },
+        ],
+        responsibleWorkerId: [
+          {
+            value: '211',
+            code: '김자격',
+            label: 'W-11 · 김자격',
+            source: 'QUALIFIED',
+            productionLineId: null,
+            warning: null,
+          },
+          {
+            value: '212',
+            code: '이최근',
+            label: 'W-12 · 이최근',
+            source: 'RECENT',
+            productionLineId: null,
+            warning: 'busy',
+          },
+        ],
+      },
+    });
+
+    const shifts = screen.getByRole('group', {
+      name: `${t.fields.shift} ${t.recommendation.label}`,
+    });
+    expect(
+      within(shifts)
+        .getAllByRole('button')
+        .map((chip) => chip.textContent),
+    ).toEqual(['주간', `✓ 야간 · ${t.recommendation.short.busy}`]);
+    expect(
+      within(shifts).getByRole('button', {
+        name: `N · 야간 (20:00 ~ 08:00), ${t.recommendation.busy}, ${t.recommendation.assigned}`,
+      }),
+    ).toHaveAttribute('title', 'N · 야간 (20:00 ~ 08:00)');
+    await user.click(within(shifts).getByRole('button', { name: /^D · 주간/ }));
+    expect(onChange).toHaveBeenLastCalledWith({ plannedShiftId: '501' });
+
+    const workers = screen.getByRole('group', {
+      name: `${t.fields.worker} ${t.recommendation.label}`,
+    });
+    expect(
+      within(workers)
+        .getAllByRole('button')
+        .map((chip) => chip.textContent),
+    ).toEqual([
+      `${t.recommendation.sources.QUALIFIED}김자격`,
+      `${t.recommendation.sources.RECENT}이최근 · ${t.recommendation.short.busy}`,
+    ]);
+    const recent = within(workers).getByRole('button', {
+      name: `${t.recommendation.sources.RECENT}, W-12 · 이최근, ${t.recommendation.busy}`,
+    });
+    expect(recent).toHaveAttribute('title', 'W-12 · 이최근');
+    await user.click(recent);
+    expect(onChange).toHaveBeenLastCalledWith({ responsibleWorkerId: '212' });
+  });
+
+  it('교대·작업자 후보가 없으면 묶음을 그리지 않는다', () => {
+    renderPane({
+      recommendations: {
+        plannedEquipmentId: [],
+        plannedMoldId: [],
+        plannedShiftId: [],
+        responsibleWorkerId: [],
+      },
+    });
+
+    expect(screen.queryByRole('group', { name: new RegExp(t.recommendation.label) })).toBeNull();
   });
 
   it('isolates no-selection state from stale assignment data', () => {
