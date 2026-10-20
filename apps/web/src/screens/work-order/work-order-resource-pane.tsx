@@ -186,33 +186,51 @@ const ResourceSelect = ({
           aria-label={`${label} ${t.recommendation.label}`}
         >
           <span className="field-note">{t.recommendation.label}</span>
-          {recommendations.map((chip) => (
-            <Button
-              key={chip.value}
-              size="sm"
-              variant={chip.value === value ? 'filled' : 'outlined'}
-              disabled={disabled}
-              onClick={() => {
-                onChange(
-                  chip.productionLineId === null
-                    ? { [field]: chip.value }
-                    : { productionLineId: chip.productionLineId, [field]: chip.value },
-                );
-              }}
-            >
-              {`${t.recommendation.sources[chip.source]} · ${chip.label}`}
-              {chip.warning !== null && ` (${t.recommendation[chip.warning]})`}
-              {/* 누르면 배정할 뿐 다시 눌러 풀지 않는다 — 켜고 끄는 단추로 읽히지 않게 상태를 말로 낸다. */}
-              {chip.value === value && (
-                <>
-                  {' '}
-                  <span className="work-order-assignment-visually-hidden">
-                    {`(${t.recommendation.assigned})`}
+          {recommendations.map((chip) => {
+            const isAssigned = chip.value === value;
+            const name = [
+              t.recommendation.sources[chip.source],
+              chip.label,
+              chip.warning === null ? null : t.recommendation[chip.warning],
+              isAssigned ? t.recommendation.assigned : null,
+            ]
+              .filter((part) => part !== null)
+              .join(', ');
+
+            return (
+              <Button
+                key={chip.value}
+                size="sm"
+                variant="outlined"
+                className={`work-order-recommendation${isAssigned ? ' is-assigned' : ''}`}
+                title={chip.label}
+                aria-label={name}
+                disabled={disabled}
+                onClick={() => {
+                  onChange(
+                    chip.productionLineId === null
+                      ? { [field]: chip.value }
+                      : { productionLineId: chip.productionLineId, [field]: chip.value },
+                  );
+                }}
+              >
+                {/* 기호는 매핑 화면의 ★(자동 배정)와 같게 둔다. 뜻은 접근 이름이 말한다. */}
+                {isAssigned && <span aria-hidden="true">✓ </span>}
+                {chip.source === 'DEFAULT' && <span aria-hidden="true">★ </span>}
+                {chip.source === 'RECENT' && (
+                  <span aria-hidden="true" className="work-order-recommendation-tag">
+                    {t.recommendation.sources.RECENT}
                   </span>
-                </>
-              )}
-            </Button>
-          ))}
+                )}
+                <span aria-hidden="true">{chip.code}</span>
+                {chip.warning !== null && (
+                  <span aria-hidden="true" className="work-order-recommendation-warning">
+                    {` · ${t.recommendation.short[chip.warning]}`}
+                  </span>
+                )}
+              </Button>
+            );
+          })}
         </div>
       )}
     </div>

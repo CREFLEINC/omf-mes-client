@@ -73,7 +73,8 @@ describe('WorkOrderResourcePane', () => {
         plannedEquipmentId: [
           {
             value: '302',
-            label: 'SYN-EQ-REC',
+            code: 'SYN-EQ-REC',
+            label: 'SYN-EQ-REC · 추천 설비',
             source: 'DEFAULT',
             productionLineId: '102',
             warning: 'busy',
@@ -82,7 +83,8 @@ describe('WorkOrderResourcePane', () => {
         plannedMoldId: [
           {
             value: '401',
-            label: 'SYN-MOLD-REC',
+            code: 'SYN-MOLD-REC',
+            label: 'SYN-MOLD-REC · 추천 금형',
             source: 'MAPPED',
             productionLineId: null,
             warning: null,
@@ -92,9 +94,12 @@ describe('WorkOrderResourcePane', () => {
     });
 
     const equipment = screen.getByRole('button', {
-      name: `${t.recommendation.sources.DEFAULT} · SYN-EQ-REC (${t.recommendation.busy})`,
+      name: `${t.recommendation.sources.DEFAULT}, SYN-EQ-REC · 추천 설비, ${t.recommendation.busy}`,
     });
     expect(equipment).not.toHaveAttribute('aria-pressed');
+    /* 칩에는 코드와 짧은 상태만 보인다 — 긴 이름은 툴팁으로 둔다. */
+    expect(equipment).toHaveTextContent(`★ SYN-EQ-REC · ${t.recommendation.short.busy}`);
+    expect(equipment).toHaveAttribute('title', 'SYN-EQ-REC · 추천 설비');
     await user.click(equipment);
     expect(onChange).toHaveBeenLastCalledWith({
       productionLineId: '102',
@@ -103,9 +108,11 @@ describe('WorkOrderResourcePane', () => {
 
     /* 지금 칸의 값과 같은 후보는 켜고 끄는 단추가 아니라 「배정됨」으로 읽힌다. */
     const mold = screen.getByRole('button', {
-      name: `${t.recommendation.sources.MAPPED} · SYN-MOLD-REC (${t.recommendation.assigned})`,
+      name: `${t.recommendation.sources.MAPPED}, SYN-MOLD-REC · 추천 금형, ${t.recommendation.assigned}`,
     });
     expect(mold).not.toHaveAttribute('aria-pressed');
+    expect(mold).toHaveClass('is-assigned');
+    expect(mold).toHaveTextContent('✓ SYN-MOLD-REC');
     await user.click(mold);
     expect(onChange).toHaveBeenLastCalledWith({ plannedMoldId: '401' });
   });

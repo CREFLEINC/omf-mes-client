@@ -309,7 +309,7 @@ it('추천 설비를 누르면 그 설비의 라인과 라인 기본 위치까�
 
   await user.click(
     screen.getByRole('button', {
-      name: `${t.resourcePane.recommendation.sources.DEFAULT} · EQ-2 · 2호기`,
+      name: new RegExp(`^${t.resourcePane.recommendation.sources.DEFAULT}, EQ-2 · 2호기`),
     }),
   );
 
@@ -343,7 +343,7 @@ it('추천 설비의 라인이 지금 라인과 같으면 기본 위치를 덮�
 
   await user.click(
     screen.getByRole('button', {
-      name: `${t.resourcePane.recommendation.sources.MAPPED} · EQ-2 · 2호기`,
+      name: new RegExp(`^${t.resourcePane.recommendation.sources.MAPPED}, EQ-2 · 2호기`),
     }),
   );
 
@@ -362,7 +362,7 @@ it('라인이 없는 추천 설비는 라인과 기본 위치를 건드리지 �
 
   await user.click(
     screen.getByRole('button', {
-      name: `${t.resourcePane.recommendation.sources.MAPPED} · EQ-2 · 2호기`,
+      name: new RegExp(`^${t.resourcePane.recommendation.sources.MAPPED}, EQ-2 · 2호기`),
     }),
   );
 
@@ -469,7 +469,7 @@ it('목록에 없는 추천 금형을 누르면 그 이름이 칸에 보인다',
 
   await user.click(
     screen.getByRole('button', {
-      name: `${t.resourcePane.recommendation.sources.RECENT} · OA-SYN-455 · 추천 금형`,
+      name: new RegExp(`^${t.resourcePane.recommendation.sources.RECENT}, OA-SYN-455 · 추천 금형`),
     }),
   );
 
