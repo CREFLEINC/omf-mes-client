@@ -1,8 +1,11 @@
-import { focusManager } from '@tanstack/react-query';
-import { act, waitFor } from '@testing-library/react';
+import { focusManager, QueryClientProvider } from '@tanstack/react-query';
+import { act, renderHook, waitFor } from '@testing-library/react';
+import { createElement, type ReactNode } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { createStubFetch, jsonResponse, renderHookWithProviders } from '../../test/api-harness';
+import { appQueryDefaults } from '../../app/providers';
+import { ApiClientProvider } from '../../patterns/api-context';
 import { toApiError } from '../../patterns/request';
 import { DASHBOARD_REFRESH_INTERVAL_MS, useDashboardSummary } from './queries';
 
@@ -68,6 +71,34 @@ describe('useDashboardSummary', () => {
     await waitFor(() => expect(result.current.isError).toBe(true));
 
     expect(toApiError(result.current.error)).toMatchObject({ kind: 'http', status: 500 });
+  });
+});
+
+/**
+ * 다른 화면에서 판정을 확정하고 메뉴로 돌아오면 그 결과가 바로 보여야 한다(omf-all-around#124).
+ * 앱 기본 신선도(30초) 안에 돌아와도 캐시만 보이고 끝나면 F5 전까지 옛 숫자가 남는다.
+ */
+describe('useDashboardSummary — 화면에 다시 들어올 때', () => {
+  it('앱 기본 신선도 안이어도 다시 부른다', async () => {
+    const fetch = vi.fn(
+      createStubFetch([{ match: isSummaryRequest, respond: () => jsonResponse(summaryBody) }]),
+    );
+
+    const first = renderHookWithProviders(() => useDashboardSummary({}), { fetch });
+    const { queryClient, apiClient } = first;
+    queryClient.setDefaultOptions(appQueryDefaults);
+    await waitFor(() => expect(first.result.current.isSuccess).toBe(true));
+    first.unmount();
+
+    const wrapper = ({ children }: { children: ReactNode }) =>
+      createElement(
+        QueryClientProvider,
+        { client: queryClient },
+        createElement(ApiClientProvider, { client: apiClient }, children),
+      );
+    renderHook(() => useDashboardSummary({}), { wrapper });
+
+    await waitFor(() => expect(fetch).toHaveBeenCalledTimes(2));
   });
 });
 
