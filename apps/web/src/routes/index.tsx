@@ -23,6 +23,14 @@ import { GoodsReceiptScreen } from '../screens/goods-receipt/screen';
 import { InboundScheduleScreen } from '../screens/inbound-schedule/screen';
 import { InspectionStandardScreen } from '../screens/inspection-standard/screen';
 import { IntegrationSyncScreen } from '../screens/integration-sync/screen';
+import { ErpBomScreen } from '../screens/erp-bom/screen';
+import { ErpCommonCodeScreen } from '../screens/erp-common-code/screen';
+import { ErpEmployeeScreen } from '../screens/erp-employee/screen';
+import { ErpItemScreen } from '../screens/erp-item/screen';
+import { ErpPartnerScreen } from '../screens/erp-partner/screen';
+import { ErpProductionOrderScreen } from '../screens/erp-production-order/screen';
+import { ErpPurchaseOrderScreen } from '../screens/erp-purchase-order/screen';
+import { ErpSalesOrderScreen } from '../screens/erp-sales-order/screen';
 import { InspectionMeasurementRoutePage } from '../screens/inspection-result-insights/measurement-route-page';
 import { InspectionResultInsightsPage } from '../screens/inspection-result-insights/page';
 import { CollectionChannelScreen } from '../screens/collection-channel/screen';
@@ -57,6 +65,7 @@ import { ProductionOrderScreen } from '../screens/production-order/screen';
 import { ProductionPlanScreen } from '../screens/production-plan/screen';
 import { PutawayRuleScreen } from '../screens/putaway-rule/screen';
 import { DispositionDecisionScreen } from '../screens/disposition-decision/screen';
+import { PqcInspectionRegisterScreen } from '../screens/pqc-inspection-register/screen';
 import { ProductStockStatusScreen } from '../screens/product-stock-status/screen';
 import { QualityApprovalScreen } from '../screens/quality-approval/screen';
 import { RoutingScreen } from '../screens/routing/screen';
@@ -124,6 +133,18 @@ export const appRouter = createBrowserRouter([
       /* W-06-04 — 전용 자원이 아니라 공통코드의 코드값 편집기를 한 그룹으로 고정해 여는 진입점이다. */
       { path: 'master-data/judgment-code', element: <JudgmentCodeScreen /> },
       { path: 'master-data/integration-sync', element: <IntegrationSyncScreen /> },
+      /*
+       * ERP 에서 받은 데이터 조회(W-06-16~23) — 「ERP 연동 현황·이력」 묶음의 탭이다
+       * (`app/nav-tree.ts`). 앞머리는 그 묶음이 선 「시스템 관리」를 따른다.
+       */
+      { path: 'system/erp-data/common-codes', element: <ErpCommonCodeScreen /> },
+      { path: 'system/erp-data/employees', element: <ErpEmployeeScreen /> },
+      { path: 'system/erp-data/items', element: <ErpItemScreen /> },
+      { path: 'system/erp-data/partners', element: <ErpPartnerScreen /> },
+      { path: 'system/erp-data/boms', element: <ErpBomScreen /> },
+      { path: 'system/erp-data/purchase-orders', element: <ErpPurchaseOrderScreen /> },
+      { path: 'system/erp-data/sales-orders', element: <ErpSalesOrderScreen /> },
+      { path: 'system/erp-data/production-orders', element: <ErpProductionOrderScreen /> },
       { path: 'master-data/item-extended-attrs', element: <ItemExtendedAttrsScreen /> },
       { path: 'master-data/master-change', element: <MasterChangeScreen /> },
       /* W-CO-02 — 기준정보가 아니라 시스템 운영이라 경로 앞머리를 가른다. */
@@ -138,10 +159,10 @@ export const appRouter = createBrowserRouter([
        */
       { path: 'system/approval-route', element: <ApprovalRouteScreen /> },
       /*
-       * W-CO-10 — 앞머리는 같은 규칙(사이드바 섹션)을 따른다. 다만 **이 섹션에서 성격이 다른
-       * 첫 화면**이다: 앞의 둘은 관리자가 남을 설정하는 자리이고, 이것은 **누구나 자기 것을
-       * 바꾸는 자리**다. 그래서 메뉴 권한이 붙는 날 이 항목은 **감추면 안 된다**(`app/nav-tree.ts`의
-       * 같은 자리와 `docs/decisions.md`에 함께 적었다).
+       * W-CO-10 — 앞머리는 옛 사이드바 섹션(시스템 관리)을 따른다. **누구나 자기 것을 바꾸는
+       * 자리**라 사이드바가 아니라 **상단 바의 사용자 자리**에서 연다(`app/layout.tsx`
+       * `SessionActions` · 사용자 2026-10-20). 상단 바는 권한 판정 없이 늘 서므로, 관리자가 아닌
+       * 사용자도 바꿀 길이 있어야 한다는 원칙(`docs/decisions.md` #9)이 그대로 지켜진다.
        *
        * **세 PR이 함께 여는 자리다.** 세 칸과 규칙(①)·요청과 성공(②)이 다 선 뒤에 이 줄을 둔다 —
        * 보낼 수 없는 비밀번호 변경 화면을 노출하면 사용자는 바꿨다고 믿고 떠난다
@@ -346,6 +367,11 @@ export const appRouter = createBrowserRouter([
        * 앞머리는 계약 경로가 아니라 사이드바 업무 섹션(품질관리)을 따른다.
        */
       { path: 'quality/dispositions', element: <DispositionDecisionScreen /> },
+      /*
+       * W-03-11 — PQC 검사 등록·조회(omf-all-around#107 · 설계보다 앞선 화면). 현장 POP 의 PQC 와
+       * 같은 판정을 관리웹에서 등록하고 지난 의뢰를 본다.
+       */
+      { path: 'quality/pqc-inspections', element: <PqcInspectionRegisterScreen /> },
       /* W-04-11 — 품질에서 정상 판정된 반품 LOT을 출하 가능 재고로 되돌린다. */
       { path: 'shipment/stock-reinstatements', element: <StockReinstatementScreen /> },
       /*

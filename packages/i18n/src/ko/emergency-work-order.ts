@@ -52,7 +52,7 @@ export const emergencyWorkOrder = {
     materialRequest: {
       label: '자재 출고요청',
       value: '자동 발행하지 않음',
-      note: '필요한 자재는 「추가 자재 출고 요청」에서 요청하세요.',
+      note: '필요한 자재는 「자재 불출 요청」에서 요청하세요.',
     },
     resource: {
       label: '자원 배정',

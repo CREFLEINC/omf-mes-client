@@ -23,8 +23,9 @@ import {
   isNavEntryAllowed,
   matchesNavEntry,
 } from './nav-filter';
+import { HubTabs } from './hub-tabs';
 import { NavGroup } from './nav-group';
-import { NAV_GROUPS, NAV_LEAD } from './nav-tree';
+import { NAV_GROUPS, NAV_LEAD, navEntryPaths, type NavEntry, type NavTab } from './nav-tree';
 import { SHELL_BRAND } from './shell-label';
 
 /** 사이드바 **조작** 문구. 화면 이름은 `nav-tree.ts` 가 갖는다. */
@@ -45,32 +46,62 @@ const shell = messages.common.shell;
 const isPathActive = (pathname: string, to: string): boolean =>
   pathname === to || pathname.startsWith(`${to}/`);
 
+/** 이 항목이 켜졌는가 — 탭 묶음이면 **어느 탭이든** 보고 있으면 켜진다. */
+const isEntryActive = (pathname: string, entry: NavEntry): boolean =>
+  navEntryPaths(entry).some((path) => isPathActive(pathname, path));
+
+/**
+ * 지금 보고 있는 화면이 든 **탭 묶음**과 그 안에서 켜진 탭. 묶음 밖 화면이면 `null`.
+ *
+ * ⚠ **권한으로 걸러진 묶음에서 찾는다**(`allowedGroups`). 탭 막대에 볼 수 없는 탭을 세우면
+ * 누르는 순간 막힌 화면이 선다.
+ */
+const findActiveHub = (
+  groups: readonly { items: readonly NavEntry[] }[],
+  pathname: string,
+): { hub: NavEntry & { tabs: readonly NavTab[] }; activePath: string } | null => {
+  for (const group of groups) {
+    for (const item of group.items) {
+      const tabs = item.tabs;
+      const activeTab = tabs?.find((tab) => isPathActive(pathname, tab.to));
+
+      if (tabs !== undefined && activeTab !== undefined) {
+        return { hub: { ...item, tabs }, activePath: activeTab.to };
+      }
+    }
+  }
+
+  return null;
+};
+
 interface NavItemProps {
   to: string;
+  /** 이 항목을 켜는 주소들. 생략하면 `to` 하나다 — 탭 묶음은 탭 주소 전부를 넘긴다. */
+  paths?: readonly string[];
   icon: string;
   children: ReactNode;
   /**
    * DS 항목 요소에 그대로 실리는 앱 소유 클래스.
    *
-   * ⭐ **갈래를 하나로 못 박는다.** 지금 합법인 값이 하나뿐이어서가 아니라, 이 자리가
-   * 서식을 덮는 문으로 자라지 않게 하려는 것이다 — 서식은 DS 가 정하고, 덮기 시작하면
-   * 메뉴 항목의 모양이 두 곳에서 정해진다. 배치를 바로잡는 우회만 여기로 들어온다(#1077).
+   * ⭐ **갈래를 둘로 못 박는다.** 이 자리가 아무 서식이나 덮는 문으로 자라지 않게 하려는 것이다.
+   * `sidebar-lead` 는 배치를 바로잡는 우회(#1077)이고, `nav-child` 는 **묶음 아래 항목**의 모양
+   * (아이콘 없이 들여 쓰고 세로 안내선에 매단다)이다 — 그 모양은 DS 에 없어 앱이 갖는다.
    *
    * ⚠ 상류(design-system-v2-webui#103)가 반영돼 우회를 걷어내는 날, 이 타입이 남은
    * 사용처를 `typecheck` 에서 짚어 준다. 넓은 `string` 이면 조용히 남는다.
    */
-  className?: 'sidebar-lead';
+  className?: 'sidebar-lead' | 'nav-child';
 }
 
 /**
  * DS `SidebarItem`을 라우터에 잇는 어댑터.
  * `href`는 `useHref`로 만들고, 클릭은 `useLinkClickHandler`로 가로채 전체 새로고침 없이 이동한다.
  */
-const NavItem = ({ to, icon, children, className }: NavItemProps) => {
+const NavItem = ({ to, paths = [to], icon, children, className }: NavItemProps) => {
   const href = useHref(to);
   const handleClick = useLinkClickHandler(to);
   const location = useLocation();
-  const isActive = isPathActive(location.pathname, to);
+  const isActive = paths.some((path) => isPathActive(location.pathname, path));
 
   return (
     <SidebarItem
@@ -94,7 +125,7 @@ const NavItem = ({ to, icon, children, className }: NavItemProps) => {
  * 쓰이므로 언어를 타면 안 된다 — 타면 언어를 바꾼 뒤 열어 둔 묶음이 다른 키가 되어 닫힌다.
  */
 const findActiveGroupLabel = (pathname: string): string | null =>
-  NAV_GROUPS.find((group) => group.items.some((item) => isPathActive(pathname, item.to)))?.label ??
+  NAV_GROUPS.find((group) => group.items.some((item) => isEntryActive(pathname, item)))?.label ??
   null;
 
 /**
@@ -126,6 +157,9 @@ const AppVersionBadge = () => {
   );
 };
 
+/** 비밀번호 변경 화면 주소(W-CO-10). 라우트 표(`routes/index.tsx`)와 같은 값이다. */
+const PASSWORD_CHANGE_PATH = '/system/password-change';
+
 interface AppLayoutProps {
   children: ReactNode;
 }
@@ -145,10 +179,20 @@ interface AppLayoutProps {
  */
 const SessionActions = ({ userName }: { userName: string }) => {
   const { signOut, isSigningOut } = useSignOut();
+  const passwordHref = useHref(PASSWORD_CHANGE_PATH);
+  const handlePasswordClick = useLinkClickHandler(PASSWORD_CHANGE_PATH);
 
   return (
     <div className="topbar-session">
       <span>{userName}</span>
+      {/*
+       * W-CO-10 — **사이드바가 아니라 여기다**(사용자 2026-10-20 · `docs/decisions.md` #9).
+       * 누구나 자기 것을 바꾸는 자리라 「지금 누구로 있는가」 바로 옆이 맞고, 상단 바는 권한
+       * 판정 없이 늘 서므로 관리자가 아닌 사용자도 바꿀 길이 남는다.
+       */}
+      <a className="topbar-link" href={passwordHref} onClick={handlePasswordClick}>
+        {messages.session.actions.changePassword}
+      </a>
       <LocaleSelect />
       <Button variant="text" size="sm" onClick={signOut} disabled={isSigningOut}>
         {messages.session.actions.signOut}
@@ -281,6 +325,16 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
   ];
 
   const visibleGroups = filterNavGroups(allowedGroups, activeQuery);
+
+  /*
+   * 탭 막대는 **볼 수 있는 탭이 둘 이상일 때만** 선다 — 하나뿐이면 오갈 곳이 없는 막대가 화면
+   * 제목 위에 한 줄을 먹는다.
+   */
+  const activeHub = findActiveHub(allowedGroups, pathname);
+  const hubTabs =
+    activeHub !== null && activeHub.hub.tabs.length > 1 ? (
+      <HubTabs hub={activeHub.hub} activePath={activeHub.activePath} />
+    ) : null;
   const isLeadVisible = isLeadAllowed && matchesNavEntry(NAV_LEAD, activeQuery);
 
   return (
@@ -354,7 +408,12 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
               visibleGroups.map((group) => (
                 <SidebarSection key={group.label} label={localizedLabel(group)}>
                   {group.items.map((item) => (
-                    <NavItem key={item.to} to={item.to} icon={item.icon}>
+                    <NavItem
+                      key={item.to}
+                      to={item.to}
+                      paths={navEntryPaths(item)}
+                      icon={item.icon}
+                    >
                       {localizedLabel(item)}
                     </NavItem>
                   ))}
@@ -372,7 +431,12 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
                   <NavGroup
                     key={group.label}
                     label={localizedLabel(group)}
-                    count={group.items.length}
+                    icon={group.icon}
+                    /*
+                     * 손잡이는 「화면 N개」라고 읽어 준다 — 탭 묶음은 한 줄이지만 **화면은 탭 수만큼**이다.
+                     * 권한으로 걸러진 뒤의 묶음이라 볼 수 없는 탭은 세지 않는다.
+                     */
+                    count={group.items.reduce((sum, item) => sum + navEntryPaths(item).length, 0)}
                     isOpen={isOpen}
                     /*
                      * ⛔ **검색 중에는 잠근다.** 강제로 펼쳐 둔 상태라 눌러도 화면이 바뀌지 않는데,
@@ -384,7 +448,13 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
                     onToggle={() => toggleGroup(group.label)}
                   >
                     {group.items.map((item) => (
-                      <NavItem key={item.to} to={item.to} icon={item.icon}>
+                      <NavItem
+                        key={item.to}
+                        to={item.to}
+                        paths={navEntryPaths(item)}
+                        icon={item.icon}
+                        className="nav-child"
+                      >
                         {localizedLabel(item)}
                       </NavItem>
                     ))}
@@ -401,6 +471,7 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
         </Sidebar>
       }
     >
+      {hubTabs}
       {children}
     </AppShell>
   );

@@ -5,6 +5,7 @@ import {
   useRef,
   useState,
   type ButtonHTMLAttributes,
+  type CSSProperties,
   type MouseEvent,
   type ReactNode,
 } from 'react';
@@ -639,6 +640,7 @@ export const MultiLineChart = ({
   niceTicks = false,
   gapMarks = false,
   gapDetail = false,
+  gapBridge = true,
 }: {
   series: LineSeries[];
   caption: string;
@@ -664,6 +666,8 @@ export const MultiLineChart = ({
    * 검사 없는 날에 옅은 띠와 「검사 없음」, 끊긴 앞뒤 점을 점선으로 잇고, 혼자 남은 점은 속이 빈 원 + 값을 점 바로 위에.
    */
   gapDetail?: boolean;
+  /** `gapDetail` 의 끊긴 앞뒤 잇는 점선 — OQC 는 끊어 둔다(사용자 지시 2026-10-19 「연결선을 끊어」). 기본 그대로. */
+  gapBridge?: boolean;
 }) => {
   const [figureRef, W] = useChartWidth<HTMLElement>();
   const H = height ?? CHART_H;
@@ -803,6 +807,7 @@ export const MultiLineChart = ({
             return (
               <g key={entry.name} className={`dash-line-${String(entry.tone)}`}>
                 {gapDetail &&
+                  gapBridge &&
                   segments.slice(1).map((segment, segIndex) => {
                     const from = segments[segIndex]?.at(-1);
                     const to = segment[0];
@@ -923,6 +928,14 @@ export const MultiLineChart = ({
 };
 
 /**
+ * 파레토 막대 굵기 상한(px) — 48px(3rem).
+ * 항목이 하나뿐이면 칸 폭의 60% 가 차트 폭 대부분이라 막대가 지나치게 굵었다(omf-all-around#128). 칸 가운데 그대로다.
+ * 28px(좁은 「일별 반품 출고」 막대와 같은 값)은 넓은 파레토 카드에서 선처럼 보였다(담당자 확인 2026-10-20).
+ * 항목이 많아 칸이 좁아지면 칸 폭 60% 가 먼저 걸려 예전 굵기 그대로다.
+ */
+const PARETO_BAR_MAX_W = 48;
+
+/**
  * 파레토 — 막대(많은 순) + 누적 비율 선 + 80% 기준선. 누적 80%에 닿는 막대까지 진하게.
  * 왼쪽 축은 수량, 오른쪽 축은 누적 비율.
  */
@@ -945,13 +958,13 @@ export const ParetoChart = ({
   const rows = toParetoRows(entries);
   const max = Math.max(...rows.map((row) => row.value), 1);
   const slot = plotW / rows.length;
-  const barW = slot * 0.6;
+  const barW = Math.min(slot * 0.6, PARETO_BAR_MAX_W);
   const yQty = (value: number): number => PAD.top + plotH - (value / max) * plotH;
   const yPct = (value: number): number => PAD.top + plotH - (value / 100) * plotH;
   const cx = (index: number): number => PAD.left + slot * index + slot / 2;
 
   return (
-    <figure className="dash-figure" ref={figureRef}>
+    <figure className="dash-figure dash-figure-pareto" ref={figureRef}>
       <ul className="dash-legend-inline" aria-hidden="true">
         <li>
           <span className="dash-swatch dash-stack-1" />
@@ -973,15 +986,27 @@ export const ParetoChart = ({
         aria-label={caption}
       >
         <line className="dash-grid" x1={PAD.left} x2={W - PAD.right} y1={yPct(0)} y2={yPct(0)} />
+        {/* ⭐ 80% 기준을 더 분명하게(사용자 지시 2026-10-19) — 기준 위 영역을 옅게 칠하고 선 · 이름표를 진하게. */}
+        <rect
+          className="dash-threshold-zone"
+          x={PAD.left}
+          y={PAD.top}
+          width={plotW}
+          height={yPct(PARETO_THRESHOLD) - PAD.top}
+        />
         <line
-          className="dash-threshold"
+          className="dash-threshold dash-threshold-strong"
           x1={PAD.left}
           x2={W - PAD.right}
           y1={yPct(PARETO_THRESHOLD)}
           y2={yPct(PARETO_THRESHOLD)}
         />
-        <text className="dash-axis" x={W - PAD.right + 6} y={yPct(PARETO_THRESHOLD) + 4}>
-          {`${String(PARETO_THRESHOLD)}%`}
+        <text
+          className="dash-axis dash-threshold-label"
+          x={W - PAD.right + 6}
+          y={yPct(PARETO_THRESHOLD) + 4}
+        >
+          {t.paretoThresholdLabel(String(PARETO_THRESHOLD))}
         </text>
         {rows.map((row, index) => (
           <g key={row.key}>
@@ -1030,6 +1055,38 @@ export const ParetoChart = ({
           </text>
         ))}
       </svg>
+      {/*
+       * 막대 칸 툴팁(⭐ 사용자 지시 2026-10-19 「그래프에 마우스 올리면 상세 정보」) — 그림 위 칸마다 투명한 칸을
+       * 겹치고 이름 · 수량 · 누적 비율을 보인다. 키보드로도 닿는다.
+       */}
+      <div className="dash-hit-layer" style={{ height: H }}>
+        {rows.map((row, index) => (
+          <span
+            key={row.key}
+            /* 툴팁은 막대 칸 오른쪽, 오른쪽 끝 칸들은 왼쪽(⭐ 사용자 지시 2026-10-19 「그래프 우측」). */
+            className={
+              index >= rows.length - 2 ? 'dash-hit dash-tip-left' : 'dash-hit dash-tip-right'
+            }
+            tabIndex={0}
+            data-tip={t.paretoTip(row.label, formatFigure(row.value), formatShare(row.cumulative))}
+            aria-label={t.paretoTip(
+              row.label,
+              formatFigure(row.value),
+              formatShare(row.cumulative),
+            )}
+            style={
+              {
+                left: `${String(((cx(index) - slot / 2) / W) * 100)}%`,
+                width: `${String((slot / W) * 100)}%`,
+                top: PAD.top,
+                height: plotH,
+                /* 툴팁이 칸 끝이 아니라 막대 옆에 붙게 — 칸 끝에서 막대 끝까지(omf-all-around#128). */
+                '--tip-inset': `${String((slot - barW) / 2)}px`,
+              } as CSSProperties
+            }
+          />
+        ))}
+      </div>
       {/* 숨김 표는 감싼 상자로 줄인다 — 표는 높이 1px 를 받지 않아 행 수만큼 페이지 아래에 빈 스크롤을 만들었다. */}
       <div className="dash-sr-only">
         <table>

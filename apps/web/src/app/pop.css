@@ -2405,10 +2405,35 @@
   font-weight: 600;
 }
 
-/* 현재 작업자 — 지금 누구로 기록되는지가 화면 밖에서도 보여야 한다(§5-4). */
+/*
+ * 현재 작업자 — 지금 누구로 기록되는지가 화면 밖에서도 보여야 한다(§5-4). 이 화면의 답이라
+ * 본문(16)보다 크게 세운다(omf-all-around#109 담당자 지시서 C — 이름·사번을 쉽게 확인).
+ */
 .pop-ui .worker-card__name {
-  font-size: var(--pop-value-lg);
-  line-height: 40px;
+  margin: 0;
+  font: 700 24px / 32px var(--font-sans);
+}
+
+/* 작업자 미지정 — 지정된 상태(이름 카드)와 한눈에 갈리게 점선 상자로 비워 둔다. */
+.pop-ui .worker-card__none {
+  margin: 0;
+  padding: var(--space-5) var(--space-4);
+  border: 2px dashed var(--outline-variant);
+  border-radius: var(--radius-md);
+  font: 600 18px / 28px var(--font-sans);
+  color: var(--on-surface-variant);
+  text-align: center;
+}
+
+/*
+ * 큰 화면에서 사번 칸·키패드가 구획 폭(실측 1538 에서 ≈ 750)만큼 늘어나지 않게 상한을 둔다
+ * (담당자 지시서 6 — 지나치게 긴 입력창 금지). 1024 단말에서는 구획이 상한보다 좁아 그대로다.
+ */
+.pop-ui.pop-screen > .pop-assign > .pop-pane:first-child > :not(.field-label) {
+  box-sizing: border-box;
+  width: 100%;
+  max-inline-size: 560px;
+  align-self: center;
 }
 
 /*
@@ -4086,7 +4111,7 @@
   margin-block-start: var(--space-1);
 }
 
-/* ── P-02-04 생산 실적 등록 ─────────────────────────────────────────────── */
+/* ── P-02-04 생산 작업 ─────────────────────────────────────────────── */
 
 /*
  * 실제 생산수량 — **이름 옆에 칸이 선다**(사용자 지시 2026-09-10). 위아래로 쌓으면 이름 한
@@ -4164,6 +4189,205 @@
    */
   align-content: stretch;
   grid-auto-rows: minmax(max-content, auto);
+}
+
+/*
+ * 생산 실적 ↔ PQC 분할(omf-all-around#107) — 본문을 **반씩** 나눈다. 왼쪽 실적 카드는 한 줄로 쌓고
+ * 양쪽이 각자 굴린다. 1024 단말에서 한쪽이 약 500 이라 카드 두 칸은 서지 않는다.
+ *
+ * ⚠ 나누지 않을 때는 이 틀이 아예 없다(`pqc-split.tsx`) — 위 격자 규칙이 그대로 걸린다.
+ */
+.pop-ui > .pop-fixed.production-flow-split {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: var(--space-3);
+}
+
+.pop-ui .production-flow-split .production-flow-grid {
+  min-height: 0;
+  overflow-y: auto;
+  grid-template-columns: minmax(0, 1fr);
+  align-content: start;
+}
+
+.pop-ui .production-flow-split .production-flow-pqc {
+  display: flex;
+  min-height: 0;
+  flex-direction: column;
+  gap: var(--space-3);
+  overflow-y: auto;
+}
+
+/*
+ * 「생산 작업」의 두 구획(사용자 지시 2026-10-19 · 예시 배치) — 구획 머리(이름 · 하는 일) 아래에 내용이 서고,
+ * 내용만 각자 굴러간다. 검사 off 면 「생산 실적」 머리 하나가 격자 위에 선다.
+ */
+.pop-ui .production-flow-zone {
+  display: flex;
+  min-height: 0;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.pop-ui .production-flow-zone > .production-flow-grid {
+  flex: 1 1 auto;
+}
+
+.pop-ui .production-flow-zone > .production-flow-pqc {
+  flex: 0 1 auto;
+}
+
+.pop-ui .production-flow-zone-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-1) var(--space-3);
+  padding-inline: var(--space-1);
+}
+
+.pop-ui .production-flow-zone-head > * {
+  margin: 0;
+}
+
+.pop-ui .production-flow-zone-head__status {
+  margin-inline-start: auto;
+  align-self: center;
+}
+
+/* 검사 off — 머리가 격자 바로 위에 서므로 격자 안쪽 여백(--space-3)과 왼쪽 선을 맞춘다. */
+.pop-ui > .production-flow-zone-head {
+  padding: var(--space-3) var(--space-3) 0;
+}
+
+/*
+ * 분할 화면 UI/UX(omf-all-around#107 · 담당자 요청서) — 왼쪽은 카드가 «제 높이»로 서고 열 하나가 통째로 굴러간다.
+ *
+ * ⚠ 위 `.pop-ui > .pop-fixed.production-flow-grid` 의 줄 규칙은 격자가 `.pop-ui` 바로 아래일 때만 걸린다. 분할 틀 안에서는
+ *   줄이 높이를 나눠 가지며 카드가 눌려, 카드마다 스크롤이 생기고 키패드가 가려졌다(실측 1920 · 1280).
+ */
+.pop-ui .production-flow-split .production-flow-grid {
+  grid-auto-rows: max-content;
+  align-content: start;
+  padding: 0;
+}
+
+.pop-ui .production-flow-split .production-flow-grid > .pop-section {
+  overflow: visible;
+}
+
+/* 긴 LOT 번호는 줄을 넘기지 않고 칸 안에서 끝까지 보인다 — 끊으면 번호를 잘못 읽는다. */
+.pop-ui .production-flow-split .production-flow-grid dd {
+  overflow-wrap: anywhere;
+}
+
+/*
+ * 오른쪽 PQC — 상자 안 상자를 걷는다. 패널 구획은 테두리 없이 간격·구분선으로만 나눈다.
+ * 저장·확정 줄은 열 아래에 붙어 굴려도 늘 보인다.
+ */
+.pop-ui .production-flow-split .production-flow-pqc {
+  gap: var(--space-2);
+}
+
+.pop-ui .pqc-panel > .pane {
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+
+.pop-ui .production-flow-pqc .pqc-panel > .pop-action-bar {
+  position: sticky;
+  inset-block-end: calc(-1 * var(--space-3));
+  margin: 0;
+  padding: var(--space-3) 0;
+  border: 0;
+  border-block-start: 1px solid var(--outline-variant);
+  border-radius: 0;
+  /* 굴러 올라오는 칸이 비쳐 보이지 않게 구획 바탕색을 칠한다(1024 실측 — 처분 안내와 겹쳤다). */
+  background: var(--surface-container-low);
+}
+
+.pop-ui .pqc-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.pop-ui .pqc-panel-noitems {
+  margin: 0;
+}
+
+/* 《결과 입력》 — 수량 넷(검사·합격·불합격·보류)은 늘 한 줄에 같은 폭·같은 단위로 선다(1024 단말의 반쪽에서도 들어간다 · 실측). */
+.pop-ui .pqc-panel-result {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.pop-ui .pqc-panel-qty {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--space-3);
+  align-items: end;
+}
+
+.pop-ui .pqc-panel-qty > * {
+  min-width: 0;
+}
+
+.pop-ui .pqc-panel-totals {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1) var(--space-3);
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-sm);
+  background: var(--surface-container-high);
+}
+
+.pop-ui .pqc-panel-totals__value {
+  font-size: var(--pop-value);
+  font-weight: 700;
+}
+
+.pop-ui .pqc-panel-totals__note {
+  margin-inline-start: auto;
+  font-size: var(--pop-label);
+}
+
+/*
+ * 종합 판정 → 불합격 처분을 한 묶음으로 나란히 둔다 — 처분은 판정(불합격 수량)에 딸린 선택이다. 판정 칸이
+ * 「종합 판정을 선택하세요」와 [선택]을 다 담을 폭이 안 되면 위아래로 쌓는다(1280 실측).
+ */
+.pop-ui .pqc-panel-verdict {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(20rem, 1fr));
+  gap: var(--space-3) var(--space-4);
+  align-items: start;
+}
+
+.pop-ui .pqc-panel-verdict .pop-select {
+  inline-size: 100%;
+}
+
+/* 패널 칸도 POP 터치 규격(칸 72 · [선택] 9rem)을 지킨다 — 단독 화면 P-02-13 과 같은 값이다. */
+.pop-ui .pqc-panel-qty [class*='inputWrap'] {
+  min-block-size: 72px;
+  padding-inline: var(--space-2);
+  gap: var(--space-1);
+}
+
+.pop-ui .pqc-panel-verdict .pop-select {
+  grid-template-columns: minmax(0, 1fr) 9rem;
+  column-gap: var(--space-3);
+}
+
+.pop-ui .pqc-panel-verdict .pop-select__value,
+.pop-ui .pqc-panel-verdict .pop-select [role='combobox'],
+.pop-ui .pqc-panel-verdict .pqc-disposition > * {
+  min-block-size: 72px;
 }
 
 /*
@@ -5417,7 +5641,8 @@
  */
 .pop-registration__guide {
   margin: 0;
-  font-size: 16px;
+  font-size: 18px;
+  line-height: 28px;
 }
 
 /*
@@ -5733,7 +5958,7 @@
 }
 
 /*
- * 마쳤다는 띠 아래의 [ 생산 실적 등록으로 ] — **[ 투입 확정 ]과 같은 모양으로 세운다**
+ * 마쳤다는 띠 아래의 [ 생산 작업으로 ] — **[ 투입 확정 ]과 같은 모양으로 세운다**
  * (사용자 지시 2026-09-16). 같은 자리에서 이어지는 조작이라 폭·높이가 갈리면 다른 무게로 읽힌다.
  */
 .pop-ui .confirm-next-step {
@@ -8027,4 +8252,661 @@
 .rework-result-planned-note {
   font: var(--type-body-sm);
   letter-spacing: var(--type-body-sm-tracking);
+}
+
+/*
+ * P-02-14 자재 불량 등록 — 담당자 UI 요청(omf-all-around#108 ②). ⛔ 동작·조건은 화면 코드 그대로이고, 이 절은
+ * 이 화면(`.pop-material-defect`)만 겨냥한다.
+ *
+ * ⚠ 이 화면의 칸 이름에 `action` 을 넣지 않는다 — `[class*='action']` 규칙(액션 줄)이 72 높이·8rem 폭을 준다.
+ *    LOT 조회 줄이 `form-actions` 였을 때 [조회] 가 그 규칙을 받아 입력 칸보다 두 배 높게 섰다.
+ */
+
+/*
+ * 두 구획은 «내용만큼» 선다 — 넓은 화면에서 카드 아래가 통째로 비지 않게(담당자 요청 3).
+ * ⚠ 위 「2단 구획은 행 높이만큼 선다」의 실측(내용이 칸보다 크면 잘린다)을 피하려 상한을 칸 높이로 건다 —
+ *    짧은 화면에서는 구획이 칸 높이에서 멈추고 자기 안에서 스크롤한다.
+ */
+.pop-ui.pop-material-defect > .pop-panes {
+  grid-template-rows: minmax(0, 1fr);
+  align-items: start;
+}
+
+.pop-ui.pop-material-defect > .pop-panes > .pane {
+  box-sizing: border-box;
+  max-height: 100%;
+}
+
+/* 구획 안 칸 사이 간격을 한 값으로 — 칸마다 다른 바깥 여백을 걷는다. */
+.pop-ui.pop-material-defect .pane {
+  align-items: stretch;
+  gap: var(--space-3);
+  padding: var(--space-4);
+}
+
+/* ⚠ 줄어들지 않는다 — 구획이 칸 높이에서 멈출 때 칸끼리 겹치지 않고 구획이 스크롤한다. */
+.pop-ui.pop-material-defect .pane > * {
+  flex-shrink: 0;
+  margin: 0;
+}
+
+/* LOT 입력과 [조회] — 한 줄, 같은 높이(DS `lg`), 입력이 남는 폭을 갖는다. */
+.pop-ui.pop-material-defect .pop-material-defect-lot {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: var(--space-2);
+}
+
+.pop-ui.pop-material-defect .pop-material-defect-lot > button {
+  min-width: 6rem;
+}
+
+/*
+ * 조회한 LOT — 이름·값 두 열. 테두리 없이 한 단 올린 면으로 아래 불량 입력과 가른다.
+ * 긴 LOT 번호·품목명은 줄을 바꿔 칸 폭을 넘지 않는다.
+ */
+.pop-ui.pop-material-defect .pop-material-defect-figures {
+  grid-template-columns: max-content minmax(0, 1fr);
+  row-gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-md);
+  background: var(--surface-container-high);
+}
+
+.pop-ui.pop-material-defect .pop-material-defect-figures dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+  font-weight: 600;
+  color: var(--on-surface);
+}
+
+/* 고르는 칸(대분류·상세·보류 사유) — 값 칸과 [선택] 이 입력 칸과 같은 높이(DS `lg`)로 선다. */
+.pop-ui.pop-material-defect .pop-select__value,
+.pop-ui.pop-material-defect .pop-select__trigger {
+  min-height: var(--control-height-lg);
+}
+
+/* ⚠ 공용 `.field-cell` 이 `align-self: start`·`justify-content: center` 라 그대로 두면 칸이 글자 폭으로 줄고 가운데로 몰린다. */
+.pop-ui.pop-material-defect .field-cell {
+  display: grid;
+  align-self: stretch;
+  justify-self: stretch;
+  justify-content: stretch;
+  gap: var(--space-1);
+}
+
+/* 불량 수량 — 이 화면의 첫째 숫자. 값을 크게, 키패드와 같은 오른쪽 정렬로. */
+.pop-ui.pop-material-defect input.pop-material-defect-qty {
+  font-size: 24px;
+  font-weight: 600;
+  text-align: end;
+  font-variant-numeric: tabular-nums;
+}
+
+/* 키패드 키 — 같은 크기·간격, 장갑 손가락이 닿는 높이. */
+.pop-ui.pop-material-defect .omf-numeric-keypad {
+  gap: var(--space-2);
+}
+
+.pop-ui.pop-material-defect .omf-numeric-keypad > button {
+  min-height: var(--control-height-lg);
+}
+
+/*
+ * 보류 — 체크와 그에 딸린 칸(사유·해제 조건)을 한 무리로. 키패드와는 간격으로 떼고, 딸린 칸은
+ * 체크 상자 폭만큼 들여 「체크하면 나오는 칸」임을 보인다.
+ */
+.pop-ui.pop-material-defect .pop-material-defect-hold {
+  display: grid;
+  gap: var(--space-3);
+  padding-block-start: var(--space-3);
+  border-block-start: 1px solid var(--outline-variant);
+}
+
+.pop-ui.pop-material-defect .pop-material-defect-hold > :first-child {
+  justify-self: start;
+}
+
+.pop-ui.pop-material-defect .pop-material-defect-hold > :not(:first-child) {
+  justify-self: stretch;
+  margin-inline-start: 28px;
+}
+
+/* 하단 단추 줄 — 구획 안의 또 하나의 상자로 세우지 않는다. 남는 높이 아래에 붙는다. */
+.pop-ui.pop-material-defect .pane > .pop-action-bar {
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+}
+
+/* 단추는 DS `xl`(60) — 액션 줄 공용 하한 72 를 이 화면에서는 걷어 1024×768 에서 구획이 스크롤하지 않게 한다. */
+.pop-ui.pop-material-defect .pane > .pop-action-bar button {
+  min-height: var(--control-height-xl);
+}
+
+/* ── P-04-06 OQC 출하검사 판정 (omf-all-around#109 UI/UX 개선 · 담당자 지시서) ──────────────── */
+
+/*
+ * 목록:판정 = 5:7. 목록은 네 칸뿐이라 판정 쪽(수량 세 칸이 한 줄)에 폭을 더 준다.
+ * ⚠ 목록 하한 430 — 1024 에서 네 칸(의뢰번호가 17자)이 가로 스크롤 없이 서는 폭이다(실측: 400 이면
+ *   표가 459 로 넘쳐 「상태」 칸이 잘렸다). 1024 에서 목록 430 · 판정 ≈ 520.
+ */
+.pop-ui.pop-oqc > .pop-oqc-panes {
+  grid-template-columns: minmax(430px, 5fr) 7fr;
+}
+
+.pop-ui .pop-oqc-pane-head {
+  display: flex;
+  flex: none;
+  align-items: baseline;
+  gap: var(--space-2);
+  margin-block-end: var(--space-4);
+}
+
+.pop-ui .pop-oqc-pane-head > .pane-title {
+  margin: 0;
+}
+
+.pop-ui.pop-oqc .pop-oqc-count {
+  font: 400 var(--pop-text) / 24px var(--font-sans);
+  color: var(--on-surface-variant);
+}
+
+.pop-ui.pop-oqc .pop-oqc-num {
+  font-variant-numeric: tabular-nums;
+}
+
+/* 표 이름은 읽어 주기만 한다 — 구획 제목(「판정 대기」)이 이미 같은 말을 한다. */
+.pop-ui .pop-oqc-queue caption {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.pop-ui .pop-oqc-queue .pop-row-select {
+  padding-inline: 0;
+  font-weight: 600;
+}
+
+/* 칸 안쪽 여백을 줄여 좁은 목록 칸에서도 네 칸이 한 화면에 선다. */
+.pop-ui .pop-oqc-queue th,
+.pop-ui .pop-oqc-queue td {
+  padding-inline: var(--space-2);
+}
+
+/*
+ * 고른 줄 — 왼쪽 강조선 + 절제된 빨강 바탕(담당자 지시). 공용 규칙의 진한 바탕(`--primary-container`)을
+ * 이 목록에서만 옅게 덮는다. 색만으로 가르지 않도록 강조선을 함께 둔다.
+ */
+.pop-ui .pop-oqc-queue tbody tr[data-parity]:has(.pop-row-select-on) > td {
+  background: color-mix(in srgb, var(--primary) 14%, var(--surface-container));
+}
+
+.pop-ui .pop-oqc-queue tbody tr:has(.pop-row-select-on) > td:first-child {
+  box-shadow: inset 4px 0 0 var(--primary);
+}
+
+.pop-ui .pop-oqc-queue ~ .pop-page-nav {
+  margin-block-start: var(--space-4);
+}
+
+.pop-ui .pop-oqc-detail-pane {
+  gap: var(--space-4);
+}
+
+.pop-ui .pop-oqc-idle {
+  display: flex;
+  flex: 1 1 auto;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ── 의뢰 요약 ── */
+.pop-ui .pop-oqc-summary {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding-block-end: var(--space-3);
+  border-block-end: 1px solid var(--outline-variant);
+}
+
+.pop-ui .pop-oqc-summary__key {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-3) var(--space-6);
+}
+
+.pop-ui .pop-oqc-summary__no {
+  margin: 0;
+  font: 700 24px / 32px var(--font-sans);
+  letter-spacing: -0.01em;
+}
+
+.pop-ui .pop-oqc-summary__figures {
+  display: flex;
+  gap: var(--space-6);
+  margin: 0;
+}
+
+.pop-ui .pop-oqc-summary dt {
+  font-size: var(--pop-label);
+  line-height: 20px;
+  color: var(--on-surface-variant);
+}
+
+.pop-ui .pop-oqc-summary dd {
+  margin: 0;
+}
+
+.pop-ui .pop-oqc-summary__figures dd {
+  font: 700 24px / 32px var(--font-sans);
+  font-variant-numeric: tabular-nums;
+}
+
+.pop-ui .pop-oqc-summary__ref {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-6);
+  margin: 0;
+}
+
+.pop-ui .pop-oqc-summary__ref > div {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+}
+
+.pop-ui .pop-oqc-summary__ref dd {
+  font-weight: 600;
+}
+
+.pop-ui .pop-oqc-summary > .field-note {
+  margin: 0;
+}
+
+/* ── 판정 입력 ── */
+.pop-ui .pop-oqc-form {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.pop-ui .pop-oqc-form__head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.pop-ui .pop-oqc-form__head > h3 {
+  margin: 0;
+  font: 600 20px / 28px var(--font-sans);
+}
+
+.pop-ui .pop-oqc-round {
+  padding: 2px var(--space-3);
+  border-radius: var(--radius-full);
+  background: var(--surface-container-high);
+  font: 600 var(--pop-label) / 22px var(--font-sans);
+  color: var(--on-surface-variant);
+}
+
+.pop-ui .pop-oqc-form > .field-note {
+  margin: 0;
+}
+
+.pop-ui .pop-oqc-lock {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  margin: 0;
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-md);
+  background: var(--surface-container);
+}
+
+.pop-ui .pop-oqc-step {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.pop-ui .pop-oqc-step__title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0;
+  font: 600 18px / 26px var(--font-sans);
+}
+
+.pop-ui .pop-oqc-step__no {
+  display: inline-grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--on-surface);
+  color: var(--surface);
+  font: 700 15px / 1 var(--font-sans);
+}
+
+.pop-ui .pop-oqc-step__hint {
+  margin-inline-start: var(--space-2);
+  font: 400 var(--pop-label) / 22px var(--font-sans);
+  color: var(--on-surface-variant);
+}
+
+/*
+ * 수량 세 칸 — 한 줄. 칸 높이는 이 화면에서만 64 로 올린다(POP 공용은 모든 크기를 md 로 묶는다 ·
+ * 맨 위 `.pop-ui` 토큰). 숫자는 오른쪽 정렬·고정폭으로 세워 자리를 맞춘다.
+ */
+/*
+ * ⭐ 수량 칸의 포커스만 파랑(정보색)이다(담당자 지시 — 빨강 테두리가 오류처럼 읽힌다). DS 입력칸은
+ *    포커스 테두리를 `--primary` 로 그리므로 이 묶음 안에서만 바꾼다. 저장 단추·고른 줄은 기본 주 색(빨강).
+ *    `--focus-ring` 은 `:root` 에서 이미 풀린 값이라 여기서 다시 적어야 따라온다.
+ */
+.pop-ui .pop-oqc-qty {
+  --primary: var(--semantic-info);
+  --focus-ring: 0 0 0 2px var(--surface), 0 0 0 4px var(--semantic-info);
+  --control-height-xl: 64px;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-3);
+}
+
+.pop-ui .pop-oqc-qty input {
+  font-size: 24px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  text-align: end;
+}
+
+.pop-ui .pop-oqc-total {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2) var(--space-5);
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--outline-variant);
+  border-inline-start: 4px solid var(--outline);
+  border-radius: var(--radius-md);
+  background: var(--surface-container);
+}
+
+.pop-ui .pop-oqc-total > dl {
+  display: flex;
+  gap: var(--space-6);
+  margin: 0;
+}
+
+.pop-ui .pop-oqc-total dt {
+  font-size: var(--pop-label);
+  line-height: 20px;
+  color: var(--on-surface-variant);
+}
+
+.pop-ui .pop-oqc-total dd {
+  margin: 0;
+  font: 700 22px / 30px var(--font-sans);
+}
+
+.pop-ui .pop-oqc-total > p {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0;
+  font-weight: 600;
+}
+
+.pop-ui .pop-oqc-total--short,
+.pop-ui .pop-oqc-total--uncountable {
+  border-inline-start-color: var(--semantic-warning);
+}
+
+.pop-ui .pop-oqc-total--matched {
+  border-inline-start-color: var(--semantic-success);
+}
+
+.pop-ui .pop-oqc-total--matched > p {
+  color: var(--semantic-success-text);
+}
+
+.pop-ui .pop-oqc-total--over {
+  border-inline-start-color: var(--semantic-error);
+}
+
+.pop-ui .pop-oqc-total--over > p {
+  color: var(--semantic-error-text);
+}
+
+/*
+ * 판정 단추 — 고른 것은 뜻의 색 바탕 + 굵은 테두리 + 체크 표시. 고르기 전에는 모두 같은 바탕이고,
+ * 뜻은 왼쪽 점의 색으로만 미리 보인다. ⛔ 주 버튼(빨강) 모양을 쓰지 않는다 — 저장처럼 보인다.
+ */
+.pop-ui .pop-oqc-judge-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: var(--space-3);
+}
+
+.pop-ui .pop-oqc-judge {
+  --pop-oqc-tone: var(--outline);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  min-height: 72px;
+  padding: 0 var(--space-4);
+  border: 2px solid var(--outline-variant);
+  border-radius: var(--radius-md);
+  background: var(--surface-container);
+  color: var(--on-surface);
+  font: 700 20px / 28px var(--font-sans);
+  cursor: pointer;
+}
+
+.pop-ui .pop-oqc-judge::before {
+  content: '';
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--pop-oqc-tone);
+}
+
+.pop-ui .pop-oqc-judge[aria-pressed='true']::before {
+  display: none;
+}
+
+.pop-ui .pop-oqc-judge--accepted {
+  --pop-oqc-tone: var(--semantic-success);
+}
+
+.pop-ui .pop-oqc-judge--rejected {
+  --pop-oqc-tone: var(--semantic-error);
+}
+
+.pop-ui .pop-oqc-judge--held {
+  --pop-oqc-tone: var(--semantic-warning);
+}
+
+.pop-ui .pop-oqc-judge[aria-pressed='true'] {
+  border-color: var(--pop-oqc-tone);
+  border-width: 3px;
+}
+
+.pop-ui .pop-oqc-judge--accepted[aria-pressed='true'] {
+  background: var(--semantic-success-container);
+  color: var(--semantic-success-text);
+}
+
+.pop-ui .pop-oqc-judge--rejected[aria-pressed='true'] {
+  background: var(--semantic-error-container);
+  color: var(--semantic-error-text);
+}
+
+.pop-ui .pop-oqc-judge--held[aria-pressed='true'] {
+  background: var(--semantic-warning-container);
+}
+
+.pop-ui .pop-oqc-judge--neutral[aria-pressed='true'] {
+  border-color: var(--primary);
+  background: var(--primary-container);
+  color: var(--on-primary-container);
+}
+
+/* 하나를 고르면 나머지는 한 단 물러선다 — 무엇이 골라졌는지가 먼저 읽힌다. */
+.pop-ui .pop-oqc-judge-row:has([aria-pressed='true']) .pop-oqc-judge[aria-pressed='false'] {
+  color: var(--on-surface-variant);
+  font-weight: 600;
+}
+
+.pop-ui .pop-oqc-judge:focus-visible {
+  outline: 3px solid var(--primary);
+  outline-offset: 2px;
+}
+
+.pop-ui .pop-oqc-judge:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+/* 저장 전 안내 — 강한 바탕 대신 왼쪽 띠. LOT 이 어떻게 되는지 한 줄 + 짧은 보조 한 줄. */
+.pop-ui .pop-oqc-effect {
+  padding: var(--space-2) var(--space-4);
+  border: 1px solid var(--outline-variant);
+  border-inline-start: 4px solid var(--semantic-warning);
+  border-radius: var(--radius-md);
+  background: var(--surface-container-low);
+}
+
+.pop-ui .pop-oqc-effect__lead {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0;
+  font-weight: 700;
+}
+
+.pop-ui .pop-oqc-effect__lead > :first-child {
+  color: var(--semantic-warning);
+}
+
+.pop-ui .pop-oqc-effect__sub {
+  margin: 0;
+  padding-inline-start: 28px;
+  font-size: var(--pop-label);
+  line-height: 22px;
+  color: var(--on-surface-variant);
+}
+
+.pop-ui .pop-oqc-confirm ul {
+  margin: var(--space-1) 0 0;
+  padding-inline-start: var(--space-5);
+}
+
+/* 검사성적서 — 잠긴 보조 조작. 바닥 띠의 저장 단추 왼쪽에 「준비 중」과 함께 선다. */
+.pop-ui .pop-oqc-coa__note {
+  margin-inline-start: var(--space-2);
+  font-size: var(--pop-label);
+  font-weight: 400;
+}
+
+.pop-ui .pop-oqc-coa__note::before {
+  content: '· ';
+}
+
+/* ── 바닥 저장 띠 ── */
+.pop-ui .pop-oqc-bar-note {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0;
+  font: 600 17px / 24px var(--font-sans);
+}
+
+.pop-ui .pop-oqc-bar-note--blocked > :first-child {
+  color: var(--semantic-warning);
+}
+
+.pop-ui .pop-oqc-bar-note--ready,
+.pop-ui .pop-oqc-bar-note--success {
+  color: var(--semantic-success-text);
+}
+
+/* ── 저장 확인 창 ── */
+.pop-ui .pop-oqc-confirm__facts {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-4);
+  margin: 0 0 var(--space-4);
+}
+
+.pop-ui .pop-oqc-confirm dt {
+  font-size: var(--pop-label);
+  line-height: 20px;
+  color: var(--on-surface-variant);
+}
+
+.pop-ui .pop-oqc-confirm dd {
+  margin: 0;
+  font: 700 22px / 30px var(--font-sans);
+}
+
+.pop-ui .pop-oqc-confirm__judgment--accepted {
+  color: var(--semantic-success-text);
+}
+
+.pop-ui .pop-oqc-confirm__judgment--rejected {
+  color: var(--semantic-error-text);
+}
+
+/* 확인 창 — 창 높이를 넘으면 본문만 굴린다(작은 화면에서 단추가 화면 밖으로 나가지 않게). */
+.pop-ui .pop-oqc-confirm {
+  max-block-size: calc(100% - 32px);
+}
+
+.pop-ui .pop-oqc-confirm__qty > div:first-child {
+  border-inline-end: 1px solid var(--outline-variant);
+}
+
+.pop-ui .pop-oqc-confirm__qty {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  text-align: center;
+  gap: var(--space-3);
+  margin: 0 0 var(--space-4);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-md);
+  background: var(--surface-container);
+}
+
+.pop-ui .pop-oqc-confirm__block {
+  margin-block-start: var(--space-3);
+}
+
+.pop-ui .pop-oqc-confirm__block > h4 {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0;
+  font: 600 var(--pop-text) / 24px var(--font-sans);
+}
+
+.pop-ui .pop-oqc-confirm__block--caution {
+  padding-inline-start: var(--space-3);
+  border-inline-start: 4px solid var(--semantic-warning);
+}
+
+.pop-ui .pop-oqc-confirm__block--caution > h4 > :first-child {
+  color: var(--semantic-warning);
 }

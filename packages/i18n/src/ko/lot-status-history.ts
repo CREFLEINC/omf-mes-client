@@ -1,7 +1,7 @@
 /** Lot Status 현황·변경이력 조회 화면. LOT의 현재 상태를 찾고 보류 사건 이력을 되짚는다. */
 export const lotStatusHistory = {
   title: 'Lot Status 현황·변경이력 조회',
-  breadcrumbRoot: '품질관리',
+  breadcrumbRoot: '품질 관리',
   modes: {
     label: 'Lot Status 조회 모드',
     lot: 'LOT으로 찾기',
@@ -156,6 +156,9 @@ export const lotStatusHistory = {
       C18: '처분 폐기',
       C19: '처분 정상',
       C20: '재고 재등록',
+      C25: '특채 적용',
+      C26: 'PQC 생략',
+      C27: 'OQC 생략',
     },
     /** 최초 등록 전이는 이전 상태가 없다. */
     initialStatus: '최초',

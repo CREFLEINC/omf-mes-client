@@ -9,8 +9,8 @@
  * 충돌·상태 잠금·권한 문구도 공통 규약 문구(`conflict.*`·`stateLocked.*`·`httpError.*`)를 그대로 쓴다.
  */
 export const itemExtendedAttrs = {
-  title: '품목·자재 명세서',
-  breadcrumbRoot: '기준정보',
+  title: '품목·BOM 정보',
+  breadcrumbRoot: '기준정보 관리',
   /** 탭 라벨. **만든 탭만 둔다** — 없는 탭의 라벨을 미리 두면 무엇이 렌더되는지 흐려진다. */
   tabs: {
     label: '품목 상세 구획',
@@ -32,6 +32,7 @@ export const itemExtendedAttrs = {
     buMap: '사업부 매핑',
     uomConversion: '단위 환산',
     externalCode: '외부 코드',
+    resourceMap: '설비·금형',
   },
   panes: {
     item: '품목',
@@ -57,6 +58,11 @@ export const itemExtendedAttrs = {
     chipKeyword: (value: string): string => `검색어: ${value}`,
     chipRemoveKeyword: '검색어 조건 제거',
     chipRemoveIncludeInactive: '미사용 포함 조건 제거',
+    /** 품목 유형 선택. 선택지 이름은 코드 그룹 `ITEM_TYPE`이 준다 — 화면이 짓지 않는다 */
+    itemTypeLabel: '품목유형',
+    itemTypeAll: '전체',
+    chipItemType: (value: string): string => `품목유형: ${value}`,
+    chipRemoveItemType: '품목유형 조건 제거',
   },
   loading: {
     items: '품목 목록을 불러오는 중',
@@ -110,10 +116,13 @@ export const itemExtendedAttrs = {
     fields: {
       itemCode: '품목코드',
       itemName: '품목명',
-      /** 값 목록이 미정이라 코드 문자열을 그대로 낸다 — 이름을 지어내지 않는다. */
+      /** 이름은 코드 그룹 `ITEM_TYPE`이 준다 — 받기 전이거나 목록에 없으면 코드 그대로다. */
       itemType: '품목유형',
       baseUom: '기준 단위',
     },
+    /** 원본과 확장의 소유 경계를 한 줄로 밝힌다 — 어느 값을 어디서 고치는지 */
+    ownershipNote:
+      'ERP 원본 정보는 ERP에서 받아 오며 ERP에서 수정합니다. 아래 확장 속성은 MES가 관리합니다.',
   },
   /**
    * 확장 구획 — 이쪽이 소유해 편집하는 값. **원본 구획과 말이 갈려 있어야 한다.**
@@ -144,6 +153,8 @@ export const itemExtendedAttrs = {
       storageCondition: '보관 조건',
       openedShelfLifeHours: '개봉 후 유효시간(시간)',
       isActive: '사용 여부',
+      /** 신재·재생재. 이름은 코드 그룹 `MES_CATEGORY`가 준다 — 화면이 짓지 않는다 */
+      mesCategory: 'MES 구분',
     },
     values: {
       active: '사용 중',
@@ -155,6 +166,11 @@ export const itemExtendedAttrs = {
      * 값만 있고 바꿀 수단이 없으면 사용자가 화면이 빠뜨린 것으로 읽는다.
      */
     isActiveNote: '사용 여부는 이 화면에서 바꾸지 않습니다. 저장해도 지금 값이 그대로 유지됩니다.',
+    /**
+     * MES 구분에 컨트롤을 두지 않는 이유. 시스템이 소유하는 값이고 편집 본문(`ItemUpdate`)에 자리가 없다 —
+     * 같은 품목코드의 신재·재생재를 두 행으로 가르는 유일 키의 일부다.
+     */
+    mesCategoryNote: 'MES 구분은 시스템이 정하는 값이라 이 화면에서 바꾸지 않습니다.',
     validation: {
       required: '필수 입력 항목입니다.',
       codeTooLong: '코드는 50자를 넘을 수 없습니다.',
@@ -345,13 +361,71 @@ export const itemExtendedAttrs = {
     },
   },
   /**
+   * 부속 하위 탭 — 설비·금형 매핑. 계획 확정이 기본 매핑으로 설비·금형을 배정하고 4M 점검이 추천한다.
+   *
+   * **다른 부속 하위 탭과 저장 방식이 다르다** — 전체 치환이 아니라 줄마다 바로 저장한다.
+   * 그래서 「확인을 눌러도 저장되지 않는다」는 안내가 없다.
+   */
+  itemResourceMap: {
+    paneTitle: '설비·금형',
+    fields: {
+      plant: '공장',
+      isDefault: '자동 배정',
+      process: '공정',
+      equipment: '설비',
+      mold: '금형',
+      priorityNo: '추천 순서',
+      isActive: '사용 여부',
+      remarks: '비고',
+      actions: '작업',
+    },
+    values: {
+      /* 공정을 비운 줄. 빈 칸으로 두면 빠뜨린 것으로 읽힌다. */
+      allProcesses: '전체 공정',
+      isDefault: '★',
+      active: '사용',
+      inactive: '미사용',
+    },
+    actions: {
+      add: '추가',
+      setDefault: '자동 배정 지정',
+      deactivate: '사용 중지',
+      reactivate: '다시 사용',
+      editRow: (name: string): string => `${name} 수정`,
+      setDefaultRow: (name: string): string => `${name} 자동 배정 지정`,
+      deactivateRow: (name: string): string => `${name} 사용 중지`,
+      reactivateRow: (name: string): string => `${name} 다시 사용`,
+    },
+    loading: {
+      list: '설비·금형을 불러오는 중',
+    },
+    empty: {
+      noneTitle: '등록된 설비·금형이 없습니다',
+      /* 공장이 없으면 설비·금형 목록도 매핑 조회도 성립하지 않는다. */
+      noPlant: '공장을 고르세요',
+    },
+    dialog: {
+      addTitle: (plant: string): string => `설비·금형 추가 · ${plant}`,
+      editTitle: (plant: string): string => `설비·금형 수정 · ${plant}`,
+    },
+    validation: {
+      required: '필수 입력 항목입니다.',
+      /* 계약 ck_item_resource_map_target */
+      equipmentOrMold: '설비나 금형 중 하나는 골라야 합니다.',
+      /* 계약 priority_no >= 0 */
+      priorityNoInvalid: '0 이상의 정수로 입력하세요.',
+      /* 계약 uq_item_resource_map — 사용 중지한 줄도 이 키에 든다. */
+      duplicate: '같은 공정·설비·금형 줄이 이미 있습니다.',
+    },
+  },
+  /**
    * 탭③ — 자재 명세서(BOM). **헤더는 전부 원본이다.**
    *
    * 이 탭에서 바꿀 수 있는 것은 둘뿐이다 — 어느 자재 명세서가 기본인가(`:set-default`)와
    * 구성품의 확장 열 넷. 나머지는 외부 시스템이 소유하므로 원본 구획과 같은 말을 쓴다.
    *
-   * **상태 문구를 만들지 않는다.** 상태 코드의 값 목록이 확정되지 않아 화면이 이름을 지어내면
-   * 그 이름으로 읽힌 판단이 남는다 — 품목유형과 같은 처리로 코드 문자열을 그대로 낸다.
+   * **상태 문구를 만들지 않는다.** 상태 이름은 코드 그룹 `MASTER_VERSION_STATUS`가 준다 —
+   * 목록을 받기 전이거나 목록에 없는 코드면 코드 문자열을 그대로 낸다.
    */
   bom: {
     paneTitle: '자재 명세서 목록',
@@ -392,6 +466,16 @@ export const itemExtendedAttrs = {
       noneDescription:
         '자재 명세서는 외부 시스템에서 받아옵니다. 원본 시스템에 자료가 있는지 확인하세요.',
       notSelected: '위에서 자재 명세서를 고르면 여기에 그 내용과 구성품이 보입니다',
+      /* 조건이 걸린 0건 — 「등록된 것이 없다」로 내면 사실과 다른 안내가 된다. */
+      noMatchTitle: '조건에 맞는 자재 명세서가 없습니다',
+      noMatchDescription: '조건을 풀거나 바꾼 뒤 다시 조회하세요.',
+    },
+    /** 헤더 목록의 조건. 고른 품목의 자재 명세서 안에서만 좁힌다 */
+    filters: {
+      codeSearchLabel: 'BOM 코드 검색',
+      codeSearchPlaceholder: 'BOM 코드',
+      chipCode: (value: string): string => `BOM 코드: ${value}`,
+      chipRemoveCode: 'BOM 코드 조건 제거',
     },
     dialog: {
       setDefaultTitle: '기본 자재 명세서 지정',

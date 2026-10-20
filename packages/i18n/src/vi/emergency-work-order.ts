@@ -33,7 +33,7 @@ export const emergencyWorkOrder: Translated<typeof ko.emergencyWorkOrder> = {
     materialRequest: {
       label: 'Yêu cầu xuất kho vật tư',
       value: 'Không tự phát hành',
-      note: 'Vật tư cần thiết hãy yêu cầu ở «Yêu cầu xuất kho vật tư bổ sung».',
+      note: 'Vật tư cần thiết hãy yêu cầu ở «Yêu cầu cấp phát vật tư».',
     },
     resource: {
       label: 'Phân bổ nguồn lực',

@@ -11,7 +11,8 @@ import { messages } from '@omf-mes/i18n';
 
 import { lookupDisplayLabelWithInactive, type LookupSource } from '../../patterns/lookup-display';
 import type { InspectionInsightFilters, InspectionResultSort } from './filters';
-import { useInspectionResults, type InspectionResult } from './queries';
+import { useLotIdByNo } from './history-queries';
+import { useInspectionResults } from './queries';
 import { toInspectionResultTreeRows, type InspectionResultTreeRow } from './reinspection-chain';
 import { toInspectionListQuery } from './request-queries';
 import { SummaryPanels } from './summary-panels';
@@ -76,8 +77,52 @@ export const ResultOverview = ({
   onSelectResult,
   onViewExpiredCalibration,
 }: ResultOverviewProps) => {
-  const list = useInspectionResults(filters, sort, page, queriesEnabled);
-  const isBlocked = !queriesEnabled || toInspectionListQuery(filters, sort, page) === null;
+  /* LOT 번호 → id(omf-all-around#85). 못 풀면 목록을 세우지 않고 그 사유를 말한다. */
+  const lotNo = filters.lotNo.trim();
+  const hasLot = lotNo !== '';
+  const lot = useLotIdByNo(queriesEnabled ? lotNo : '');
+  const lotId = hasLot ? (lot.data ?? undefined) : undefined;
+  const list = useInspectionResults(filters, sort, page, queriesEnabled, lotId);
+  const hasPeriod = filters.from !== '' && filters.to !== '';
+  const isBlocked =
+    !queriesEnabled ||
+    toInspectionListQuery(filters, sort, page, hasLot ? (lotId ?? 0) : undefined) === null;
+
+  if (!isBlocked && hasLot && (lot.isPending || lot.isError || lot.data === null)) {
+    return (
+      <section
+        className="pane inspection-results-pane inspection-results-empty-pane"
+        aria-labelledby="inspection-results-title"
+      >
+        <h2 className="pane-title" id="inspection-results-title">
+          {t.pane}
+        </h2>
+        {lot.isPending && (
+          <div role="status" aria-label={t.lotChecking}>
+            <SkeletonText lines={1} />
+          </div>
+        )}
+        {lot.isError && (
+          <AlertBanner
+            variant="error"
+            title={t.lotFailed}
+            action={
+              <Button size="sm" variant="outlined" onClick={() => void lot.refetch()}>
+                {t.retry}
+              </Button>
+            }
+          />
+        )}
+        {lot.data === null && (
+          <EmptyState
+            size="sm"
+            title={t.lotNotFound(lotNo)}
+            description={t.lotNotFoundDescription}
+          />
+        )}
+      </section>
+    );
+  }
 
   if (isBlocked) {
     return (
@@ -154,6 +199,11 @@ export const ResultOverview = ({
         lookupDisplayLabelWithInactive(labels.judgment, row.result.overallJudgmentCode),
     },
     {
+      key: 'inspector',
+      header: t.columns.inspector,
+      render: (row) => row.result.inspectorName ?? EMPTY,
+    },
+    {
       key: 'inspectedAt',
       header: t.columns.inspectedAt,
       sortable: true,
@@ -167,11 +217,17 @@ export const ResultOverview = ({
         {t.pane}
       </h2>
       <p className="field-note">{filters.finalRoundOnly ? t.finalRoundNote : t.allRoundsNote}</p>
-      <SummaryPanels
-        filters={filters}
-        queriesEnabled={queriesEnabled}
-        onViewExpiredCalibration={onViewExpiredCalibration}
-      />
+      {hasLot && <p className="field-note">{t.lotOnlyListNote}</p>}
+      {/* 집계는 기간이 필수다 — LOT 만으로 조회하면 요약을 비워 두고 그렇다고 말한다. */}
+      {hasPeriod ? (
+        <SummaryPanels
+          filters={filters}
+          queriesEnabled={queriesEnabled}
+          onViewExpiredCalibration={onViewExpiredCalibration}
+        />
+      ) : (
+        <p className="field-note">{t.summaryNeedsPeriod}</p>
+      )}
       <h3 className="inspection-results-subtitle">{t.listTitle}</h3>
       {(list.isPending || list.isPlaceholderData) && (
         <div role="status" aria-label={t.loading}>

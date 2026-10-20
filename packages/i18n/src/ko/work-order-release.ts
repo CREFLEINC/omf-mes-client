@@ -1,6 +1,6 @@
 export const workOrderRelease = {
   title: 'W/O 확정·배포·생산LOT 선발행',
-  breadcrumbRoot: '생산',
+  breadcrumbRoot: '생산 관리',
   filter: {
     pane: '배포 후보 조회 조건',
     productionLine: '생산 라인',

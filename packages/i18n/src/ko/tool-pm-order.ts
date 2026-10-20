@@ -9,7 +9,7 @@
  */
 export const toolPmOrder = {
   title: '툴 보전오더 생성',
-  breadcrumbRoot: '설비/툴',
+  breadcrumbRoot: '설비 보전 관리',
 
   panes: {
     filters: '조회 조건',

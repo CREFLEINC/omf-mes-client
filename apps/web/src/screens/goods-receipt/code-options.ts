@@ -115,6 +115,3 @@ export const isRequiredCodeListPending = (sets: CodeOptionSets): boolean =>
 /** 선택지가 왜 비어 있는지 밝히는 안내. **차면 거둔다** — 남으면 화면이 거짓말을 한다. */
 export const codeNote = (options: readonly SelectOption[]): string | undefined =>
   options.length === 0 ? messages.pendingCode.note : undefined;
-
-/** 선택칸 트리거에 보이는 자리표시 문구. */
-export const codePlaceholder = (): string => messages.pendingCode.placeholder;

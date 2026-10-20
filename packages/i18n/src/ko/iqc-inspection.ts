@@ -7,8 +7,8 @@
 export const iqcInspection = {
   /* 스펙 §3 머리와 IA 가 부르는 이름 그대로다 — 사이드바 항목과 같은 글자여야 길을 잃지 않는다. */
   title: 'IQC 수입검사·판정',
-  /** 화면 스펙 §3 의 머리 — 「자재창고 > IQC 수입검사·판정」. */
-  breadcrumbRoot: '자재창고',
+  /** 머리는 관리웹 사이드바 묶음을 따른다 — 「품질 관리 > IQC 수입검사·판정」. */
+  breadcrumbRoot: '품질 관리',
 
   queue: {
     heading: '검사 대기',
@@ -236,6 +236,23 @@ export const iqcInspection = {
       /** 칸 아래 필수 누락 표시 — 확정이 막힌 이유(required·minorRequired)는 확정 단추 곁에 그대로 둔다. */
       majorMissing: '불량 대분류를 선택하세요.',
       minorMissing: '불량 상세를 선택하세요.',
+      /**
+       * 추정 원인(omf-all-around#130 · 담당자 결정 안 B) — 선택 입력이다(계약 `suspectedCauseCodeId` 와 같다).
+       * 고르면 통합 대시보드 › 부적합 현황 「원인 구분별 구성」에 원인 대분류로 잡힌다.
+       */
+      cause: '추정 원인',
+      causeNone: '선택 안 함',
+      causeInactive: (label: string): string => `${label} (사용 중지)`,
+    },
+    /** 합격판정개수 기준 자동 판정(omf-all-around#125) — 기준에 합격판정개수가 있을 때만 선다. */
+    judgmentChange: {
+      basis: (acceptanceNumber: number): string =>
+        `합격판정개수 ${String(acceptanceNumber)} 기준 자동 판정`,
+      expected: (judgment: string): string => `자동 판정: ${judgment}`,
+      reason: '판정 변경 사유',
+      reasonPlaceholder: '자동 판정과 다르게 확정하는 이유를 입력해 주세요.',
+      required: '자동 판정과 다른 판정은 변경 사유를 입력해야 확정할 수 있습니다.',
+      reasonMissing: '판정 변경 사유를 입력하세요.',
     },
     confirmBlockedByJudgment: '종합 판정을 선택해야 확정할 수 있습니다.',
     confirmBlockedByConfirmed: '이미 확정된 회차입니다.',

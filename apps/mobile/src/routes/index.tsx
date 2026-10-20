@@ -12,6 +12,7 @@ import { InboundVarianceScreen } from '../screens/inbound-variance/screen';
 import { MaterialLocationScreen } from '../screens/material-location/screen';
 import { MaterialLotScanScreen } from '../screens/material-lot-scan/screen';
 import { MaterialPickingScreen } from '../screens/material-picking/screen';
+import { OutboxPendingScreen } from '../screens/outbox-pending/screen';
 import { OutboxRejectionsScreen } from '../screens/outbox-rejections/screen';
 import { PackingRepackScreen } from '../screens/packing-repack/screen';
 import { PhysicalCountScreen } from '../screens/physical-count/screen';
@@ -57,6 +58,7 @@ export const appRoutes: RouteObject[] = [
       { path: 'product-picking', element: <ProductPickingScreen /> },
       { path: 'product-receipt', element: <ProductReceiptScreen /> },
       { path: 'packing-repack', element: <PackingRepackScreen /> },
+      { path: 'outbox', element: <OutboxPendingScreen /> },
       { path: 'rejections', element: <OutboxRejectionsScreen /> },
     ],
   },

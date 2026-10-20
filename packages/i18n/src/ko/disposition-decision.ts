@@ -1,6 +1,6 @@
 export const dispositionDecision = {
   title: '처분 판정 처리',
-  breadcrumbRoot: '품질',
+  breadcrumbRoot: '품질 관리',
   tabs: {
     label: '처분 판정 보기',
     pending: '판정 대기',
@@ -87,6 +87,42 @@ export const dispositionDecision = {
     unknown: '남은 수량을 계산할 수 없습니다',
     settled: '남은 수량이 없습니다. 이 부적합은 판정이 끝났습니다',
   },
+  /** 특채(omf-all-around#84 · 서버 선행 P-79) — 불합격 LOT 을 결재 뒤 조건부로 쓴다. */
+  concession: {
+    heading: '특채',
+    help: '불합격 LOT 을 관리자 승인을 받아 조건부로 사용합니다. 요청 → 「특채·한도승인 승인 처리」에서 결재 → 여기서 적용 순서입니다.',
+    none: '이 부적합의 특채가 없습니다.',
+    loading: '특채를 불러오는 중입니다.',
+    loadFailed: '특채를 불러오지 못했습니다.',
+    request: '특채 요청',
+    requesting: '요청하는 중…',
+    apply: '특채 적용',
+    applying: '적용하는 중…',
+    lot: 'LOT',
+    qty: '사용 가능 수량',
+    validFrom: '유효 시작일',
+    validTo: '유효 종료일(비우면 끝없음)',
+    reason: '특채 사유',
+    closedNote: '종결된 부적합은 특채를 요청할 수 없습니다.',
+    requested: '특채를 요청했습니다. 결재가 끝나면 적용하세요.',
+    applied: '특채를 적용했습니다. LOT 이 정상으로 풀렸습니다.',
+    rejected: '결재가 반려되어 특채를 닫았습니다.',
+    blocked: {
+      lot: 'LOT 을 고르세요.',
+      qty: '사용 가능 수량은 0보다 큰 수여야 합니다.',
+      date: '유효 기간을 확인하세요.',
+      reason: '특채 사유를 입력하세요.',
+    },
+    status: { PENDING: '결재 대기', APPROVED: '적용됨', REJECTED: '반려' },
+    columns: {
+      concessionNo: '특채 번호',
+      lotNo: 'LOT',
+      qty: '수량',
+      period: '유효 기간',
+      status: '상태',
+    },
+    caption: '특채 목록',
+  },
   form: {
     dispositionLabel: '처분',
     qtyLabel: '수량',
@@ -138,6 +174,16 @@ export const dispositionDecision = {
     reloadDetail: '부적합 상태 다시 확인',
     irreversible: '판정은 되돌릴 수 없습니다',
     success: '판정을 저장했습니다',
+    /** 선별(omf-all-around#108) — 양품은 정상, 불량분은 새 LOT·새 부적합으로 넘어간다. */
+    acceptedQtyLabel: '양품 수량',
+    rejectedQtyLabel: '불량 수량',
+    sortHelp:
+      '양품은 정상으로 풀리고, 불량 수량은 새 LOT 으로 나뉘어 불량이 됩니다. 불량분은 새 부적합으로 넘어가 폐기·재작업을 따로 정합니다.',
+    sortSumMismatch: '양품과 불량 수량의 합이 처분 수량과 같아야 합니다',
+    sortWholeRemaining: (remaining: string): string =>
+      `선별은 남은 수량 전체(${remaining})로만 판정할 수 있습니다`,
+    sortSuccess: (lotNo: string, nonconformanceNo: string): string =>
+      `선별을 저장했습니다. 불량분은 LOT ${lotNo} · 부적합 ${nonconformanceNo} 로 넘어갔습니다`,
   },
   loading: '판정 대기 목록 불러오는 중',
   historyLoading: '처리 이력 불러오는 중',
@@ -177,6 +223,8 @@ export const dispositionDecision = {
       REWORK: '재작업',
       SCRAP: '폐기',
       NORMAL: '정상',
+      SORT: '선별',
+      CONCESSION: '특채',
     },
     /** 「판정 진행」 열의 값 셋. 계약이 값을 열거했으므로(G-2 예외) 코드로 갈라도 된다. */
     dispositionProgress: {

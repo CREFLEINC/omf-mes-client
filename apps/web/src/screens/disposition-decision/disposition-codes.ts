@@ -8,17 +8,25 @@ export interface CodeOption {
   label: string;
 }
 
-/** 고정 OpenAPI가 닫은 처분 유형. 선별(sorting)은 계약 값에 없으므로 추가하지 않는다. */
-export const DISPOSITION_TYPE_CODES = ['REWORK', 'SCRAP', 'NORMAL'] as const;
+/** 고정 OpenAPI가 닫은 처분 유형 셋에 선별(`SORT`)을 더한다 — 선별은 서버 선행이다(omf-all-around#108 · P-53). */
+export const DISPOSITION_TYPE_CODES = ['REWORK', 'SCRAP', 'NORMAL', 'SORT'] as const;
 export type DispositionTypeCode = (typeof DISPOSITION_TYPE_CODES)[number];
 
 /**
  * 처분 셋은 **계약이 `enum` 으로 닫았다** — 공통코드 등록부에 없고 `/mdm/code-values` 를 부르지
  * 않는다(스펙 §4 row 104). 그래서 표시명은 화면이 갖는다(G-33). 모르는 값은 코드 그대로(G-9).
  */
+/**
+ * 특채(`CONCESSION`)는 이 화면에서 «고르는» 처분이 아니다 — 결재 뒤 특채 적용이 남긴다(#84 · P-79).
+ * 그래서 선택지에는 없고 이력의 표시명에만 있다.
+ */
+export const CONCESSION_DISPOSITION = 'CONCESSION';
+type LabeledDispositionCode = DispositionTypeCode | typeof CONCESSION_DISPOSITION;
+const LABELED_CODES: readonly string[] = [...DISPOSITION_TYPE_CODES, CONCESSION_DISPOSITION];
+
 export const dispositionTypeLabel = (code: string): string =>
-  (DISPOSITION_TYPE_CODES as readonly string[]).includes(code)
-    ? messages.dispositionDecision.values.dispositionType[code as DispositionTypeCode]
+  LABELED_CODES.includes(code)
+    ? messages.dispositionDecision.values.dispositionType[code as LabeledDispositionCode]
     : code;
 
 export const dispositionTypeOptions = (codes: readonly string[]): CodeOption[] =>

@@ -1615,3 +1615,286 @@ describe('ProductionFlowScreen · 자동 종료는 한 번만 나간다', () => 
     expect(writes.some((request) => pathOf(request) === END_PATH)).toBe(false);
   });
 });
+
+/*
+ * 생산 실적 ↔ PQC 분할(omf-all-around#107). 남은 PQC 가 있으면 오른쪽에 PQC 를 띄운다. 업무 순서는
+ * «실적 입력 → PQC» 다(사용자 결정 2026-10-19) — 실적을 막지 않고, 실적이 없으면 PQC 쪽이 잠긴다.
+ */
+describe('ProductionFlowScreen — PQC 분할', () => {
+  const pqc = messages.pqcInspection;
+  const PQC_REQUEST = {
+    inspectionRequestId: 7001,
+    inspectionRequestNo: 'IR-PQC-7001',
+    inspectionTypeCode: 'PQC',
+    /* 기준이 없는 의뢰 — 항목 없이 판정만으로 확정한다(P-02-13 §5-2). */
+    inspectionPlanVersionId: null,
+    targetTypeCode: 'WORK_ORDER',
+    targetId: WORK_ORDER_ID,
+    itemId: 101,
+    lotId: null,
+    workOrderId: WORK_ORDER_ID,
+    targetQty: 5,
+    uomId: 1,
+    statusCode: 'REQUESTED',
+    requestedAt: '2026-10-16T09:00:00+09:00',
+    versionNo: 1,
+  };
+  const JUDGMENTS = [
+    { codeValueId: 1, code: 'ACCEPTED', codeName: '합격', displayOrder: 1, isActive: true },
+    { codeValueId: 2, code: 'REJECTED', codeName: '불합격', displayOrder: 2, isActive: true },
+  ];
+
+  /** 그 W/O 의 진척 — 실적이 있으면 양품 누계가 0 보다 크다. */
+  const producedWorkOrder = (goodQty: number): StubRoute => ({
+    match: (request) => pathOf(request) === `/production/work-orders/${String(WORK_ORDER_ID)}`,
+    respond: () =>
+      jsonResponse({
+        workOrderId: WORK_ORDER_ID,
+        workOrderNo: 'WO-SYN-001',
+        productionPlanId: 1,
+        routingOperationId: 1,
+        itemId: 101,
+        itemCode: 'ITEM-SYN-01',
+        orderQty: 12,
+        uomId: 1,
+        workOrderTypeCode: 'NORMAL',
+        statusCode: 'IN_PROGRESS',
+        priorityNo: 1,
+        progress: { goodQty, varianceQty: 12 - goodQty },
+      }),
+  });
+
+  const pqcRoutes = (
+    state: { confirmed: boolean },
+    writes: Request[],
+    rounds: object[] = [],
+  ): StubRoute[] => [
+    {
+      match: (request) =>
+        request.method === 'GET' && pathOf(request) === '/quality/inspection-results',
+      respond: () =>
+        jsonResponse({ items: rounds, page: { page: 1, size: 100, total: rounds.length } }),
+    },
+    {
+      match: (request) => pathOf(request) === '/quality/inspection-requests',
+      respond: () =>
+        jsonResponse({
+          items: [{ ...PQC_REQUEST, statusCode: state.confirmed ? 'COMPLETED' : 'REQUESTED' }],
+          page: { page: 1, size: 20, total: 1 },
+        }),
+    },
+    {
+      match: (request) => pathOf(request) === '/quality/inspection-requests/7001',
+      respond: () =>
+        jsonResponse({ ...PQC_REQUEST, statusCode: state.confirmed ? 'COMPLETED' : 'REQUESTED' }),
+    },
+    {
+      match: (request) => pathOf(request) === '/mdm/code-values',
+      respond: () => jsonResponse({ items: JUDGMENTS, page: { page: 1, size: 200, total: 2 } }),
+    },
+    {
+      match: (request) =>
+        request.method === 'POST' && pathOf(request) === '/quality/inspection-results',
+      respond: (request) => {
+        writes.push(request.clone());
+        state.confirmed = true;
+        return jsonResponse({ inspectionResultId: 9001 }, { status: 201 });
+      },
+    },
+  ];
+
+  beforeEach(() => {
+    globalThis.localStorage.clear();
+  });
+
+  it('실적이 있으면 오른쪽 PQC 에서 확정한다 — 닫는 단추가 없다', async () => {
+    const writes: Request[] = [];
+    const state = { confirmed: false };
+    const user = userEvent.setup();
+    renderScreen(writes, [producedWorkOrder(5), ...pqcRoutes(state, writes)]);
+
+    const panel = within(await screen.findByRole('region', { name: t.pqc.splitTitle }));
+    expect(panel.queryByRole('button', { name: /닫기/ })).not.toBeInTheDocument();
+    expect(screen.getByText(t.zone.title)).toBeInTheDocument();
+    expect(screen.getByText(t.zone.note)).toBeInTheDocument();
+    expect(screen.getByText(t.pqc.splitNote)).toBeInTheDocument();
+    expect(screen.queryByText(t.pqc.notInspected)).not.toBeInTheDocument();
+
+    await user.type(await panel.findByRole('textbox', { name: pqc.result.fields.accepted }), '5');
+    await user.type(panel.getByRole('textbox', { name: pqc.result.fields.rejected }), '0');
+    await user.type(panel.getByRole('textbox', { name: pqc.result.fields.held }), '0');
+    await user.click(panel.getByRole('combobox', { name: pqc.result.judgment }));
+    await user.click(await screen.findByRole('option', { name: '합격' }));
+    await waitFor(() =>
+      expect(panel.getByRole('button', { name: pqc.result.confirm })).toBeEnabled(),
+    );
+    await user.click(panel.getByRole('button', { name: pqc.result.confirm }));
+
+    await waitFor(() => expect(writes.map(pathOf)).toContain('/quality/inspection-results'));
+    const [sent] = writes.filter((request) => pathOf(request) === '/quality/inspection-results');
+    expect(sent?.headers.get('X-Worker-No')).toBe('100029');
+    expect(((await sent?.json()) as { statusCode: string }).statusCode).toBe('CONFIRMED');
+  });
+
+  it('⛔ 실적이 아직 없으면 PQC 저장·확정이 잠기고 이유를 PQC 맨 위에 한 번 말한다', async () => {
+    const writes: Request[] = [];
+    renderScreen(writes, [producedWorkOrder(0), ...pqcRoutes({ confirmed: false }, writes)]);
+
+    const panel = within(await screen.findByRole('region', { name: t.pqc.splitTitle }));
+    expect(await panel.findAllByText(pqc.result.noProductionResult)).toHaveLength(1);
+    expect(panel.getByRole('button', { name: pqc.result.save })).toBeDisabled();
+    expect(panel.getByRole('button', { name: pqc.result.confirm })).toBeDisabled();
+  });
+
+  it.each([
+    ['그대로', false],
+    ['StrictMode — 초기화가 두 번 돌아도', true],
+  ])('⭐ 작성중 회차가 있으면 수량·판정을 되살린다(%s)', async (_label, strict) => {
+    renderScreen(
+      [],
+      [
+        producedWorkOrder(5),
+        ...pqcRoutes(
+          { confirmed: false },
+          [],
+          [
+            {
+              inspectionResultId: 9001,
+              inspectionResultNo: 'IRS-9001',
+              inspectionRequestId: 7001,
+              inspectionRound: 1,
+              inspectedQty: 5,
+              acceptedQty: 3,
+              rejectedQty: 0,
+              heldQty: 2,
+              uomId: 1,
+              overallJudgmentCode: 'ACCEPTED',
+              inspectorId: 1,
+              inspectedAt: '2026-10-16T09:00:00+09:00',
+              statusCode: 'DRAFT',
+              versionNo: 1,
+            },
+          ],
+        ),
+      ],
+      { strict },
+    );
+
+    const panel = within(await screen.findByRole('region', { name: t.pqc.splitTitle }));
+    await waitFor(() =>
+      expect(panel.getByRole('textbox', { name: pqc.result.fields.accepted })).toHaveValue('3'),
+    );
+    expect(panel.getByRole('textbox', { name: pqc.result.fields.held })).toHaveValue('2');
+    expect(panel.getByRole('textbox', { name: pqc.result.fields.rejected })).toHaveValue('0');
+    // 고른 값은 단추 옆 표시 칸에 선다(`pop-select__value`).
+    await waitFor(() =>
+      expect(
+        panel.getByRole('combobox', { name: pqc.result.judgment }).closest('.pop-select'),
+      ).toHaveTextContent('합격'),
+    );
+  });
+
+  it('⭐ 확정된 뒤에도 나뉜 채로 확정 결과를 읽기 전용으로 보인다', async () => {
+    const round = {
+      inspectionResultId: 9001,
+      inspectionResultNo: 'IRS-9001',
+      inspectionRequestId: 7001,
+      inspectionRound: 1,
+      inspectedQty: 5,
+      acceptedQty: 5,
+      rejectedQty: 0,
+      heldQty: 0,
+      uomId: 1,
+      overallJudgmentCode: 'ACCEPTED',
+      inspectorId: 1,
+      inspectedAt: '2026-10-16T09:00:00+09:00',
+      statusCode: 'CONFIRMED',
+      versionNo: 2,
+    };
+    renderScreen([], [producedWorkOrder(5), ...pqcRoutes({ confirmed: true }, [], [round])]);
+
+    const panel = within(await screen.findByRole('region', { name: t.pqc.splitTitle }));
+    await waitFor(() =>
+      expect(panel.getByRole('textbox', { name: pqc.result.fields.accepted })).toHaveValue('5'),
+    );
+    expect(panel.getByRole('textbox', { name: pqc.result.fields.accepted })).toBeDisabled();
+    expect(panel.getByRole('button', { name: pqc.result.confirm })).toBeDisabled();
+  });
+
+  it('분할 패널에는 시작·종료 시각 칸이 없다 — 서버가 저장하지 않는 값이다', async () => {
+    renderScreen([], [producedWorkOrder(5), ...pqcRoutes({ confirmed: false }, [])]);
+
+    const panel = within(await screen.findByRole('region', { name: t.pqc.splitTitle }));
+    await panel.findByRole('textbox', { name: pqc.result.fields.accepted });
+    expect(panel.queryByText(pqc.coverage.note)).not.toBeInTheDocument();
+    expect(
+      panel.queryByLabelText(`${pqc.coverage.from} ${pqc.coverage.date}`),
+    ).not.toBeInTheDocument();
+  });
+
+  it('⛔ 저장된 회차를 못 읽으면 PQC 저장·확정을 잠근다(리뷰 M1)', async () => {
+    renderScreen(
+      [],
+      [
+        producedWorkOrder(5),
+        {
+          match: (request) =>
+            request.method === 'GET' && pathOf(request) === '/quality/inspection-results',
+          respond: () => jsonResponse({ message: '조회 실패' }, { status: 500 }),
+        },
+        ...pqcRoutes({ confirmed: false }, []),
+      ],
+    );
+
+    const panel = within(await screen.findByRole('region', { name: t.pqc.splitTitle }));
+    expect(await panel.findByText(messages.httpError.description)).toBeInTheDocument();
+    expect(panel.getByRole('button', { name: pqc.result.save })).toBeDisabled();
+    expect(panel.getByRole('button', { name: pqc.result.confirm })).toBeDisabled();
+  });
+
+  it('PQC 의뢰 조회가 실패하면 조용히 실적만 보이지 않고 오류를 알린다(리뷰 m6)', async () => {
+    renderScreen(
+      [],
+      [
+        {
+          match: (request) => pathOf(request) === '/quality/inspection-requests',
+          respond: () => jsonResponse({ message: '조회 실패' }, { status: 500 }),
+        },
+      ],
+    );
+
+    expect(await screen.findByText(t.pqc.loadFailed)).toBeInTheDocument();
+    expect(screen.queryByText(t.pqc.notInspected)).not.toBeInTheDocument();
+  });
+
+  /* omf-all-around#119 — 검사기준이 「PQC 생략 허용」이라 배포가 생략(SKIPPED)으로 만든 PQC 는 검사가 아니다. */
+  it('PQC 가 생략(SKIPPED)이면 나누지 않고 「PQC 생략」 칩을 단다', async () => {
+    renderScreen(
+      [],
+      [
+        {
+          match: (request) => pathOf(request) === '/quality/inspection-requests',
+          respond: () =>
+            jsonResponse({
+              items: [{ ...PQC_REQUEST, statusCode: 'SKIPPED' }],
+              page: { page: 1, size: 20, total: 1 },
+            }),
+        },
+      ],
+    );
+
+    expect(await screen.findByText(t.pqc.skipped)).toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: t.pqc.splitTitle })).not.toBeInTheDocument();
+    expect(screen.queryByText(t.pqc.notInspected)).not.toBeInTheDocument();
+  });
+
+  it('검사 off(그 W/O 에 PQC 의뢰가 없음)면 나누지 않고 실적만 보인다', async () => {
+    renderScreen([], []);
+
+    expect(await screen.findByText(t.flow.output.printer, { exact: false })).toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: t.pqc.splitTitle })).not.toBeInTheDocument();
+    expect(screen.getByText(t.zone.title)).toBeInTheDocument();
+    expect(screen.queryByText(t.pqc.splitNote)).not.toBeInTheDocument();
+    expect(await screen.findByText(t.pqc.notInspected)).toBeInTheDocument();
+  });
+});

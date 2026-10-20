@@ -10,7 +10,7 @@
  */
 export const shipmentConfirm = {
   title: '출하 확정·취소',
-  breadcrumbRoot: '출하',
+  breadcrumbRoot: '영업 / 출하 관리',
   panes: {
     summary: '미확정 현황',
     list: '미확정 출하',

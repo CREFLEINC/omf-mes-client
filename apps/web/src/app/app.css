@@ -39,14 +39,18 @@
  * .login-shell   셸 밖에 서는 화면의 본문 — 내용을 뷰포트 한가운데 세운다(규범 8)
  * .session-gate  로그인 판정 중·판정 실패 때 서는 본문 — 같은 배치를 쓴다(규범 8)
  * .topbar-session 상단 바 오른쪽의 이름과 로그아웃
+ * .topbar-link    그 자리의 글자 링크(비밀번호 변경) — 로그아웃 단추와 같은 무게
+ * .hub-tabs       탭 묶음의 탭 막대 — 본문 맨 위, 화면 제목 위에 선다
+ * .hub-tab        그 막대의 탭 하나(링크) — 지금 화면은 aria-current
  * .sidebar-lead  섹션 밖에 홀로 선 메뉴 항목이 목록의 넘침에 줄어드는 것을 막는다
  *               임시 우회 — design-system-v2-webui#103
  * .nav-group        접을 수 있는 사이드바 묶음 — DS SidebarSection 을 대신한다
  * .nav-group-toggle 그 묶음의 손잡이(펼치기·접기) — 섹션 라벨 자리에 선다
- * .nav-group-chevron 손잡이의 펼침 화살표 — 자리를 항목 아이콘과 같은 24px 로 잡는다
+ * .nav-group-icon   손잡이의 묶음 아이콘 — 묶음을 눈으로 가르는 단서
  * .nav-group-label  손잡이 안의 묶음 이름 — 남는 폭을 쓰고 길면 줄인다
- * .nav-group-count  접혀 있을 때 안에 몇 개가 있는지
- * .nav-group-items  그 묶음의 항목들 — 열렸을 때만 내용이 있다
+ * .nav-group-chevron 손잡이 오른쪽 끝의 펼침 화살표
+ * .nav-group-items  그 묶음의 항목들 — 열렸을 때만 내용이 있고, 세로 안내선이 그것들을 묶는다
+ * .nav-child        묶음 아래 항목 — 아이콘 없이 들여 쓰고 세로 안내선(끝은 갈고리)에 매단다
  * .nav-search-empty 검색에 맞는 화면이 없다는 안내
  * .topbar-brand   탑바의 시스템 이름 줄 — 이름과 버전 뱃지를 한 줄에 놓는다
  * .topbar-version 그 줄의 버전 뱃지
@@ -1051,6 +1055,18 @@ main > * + * {
   margin-inline-start: auto;
 }
 
+.production-order-pane-actions {
+  display: flex;
+  gap: var(--space-2);
+  margin-inline-start: auto;
+}
+
+.production-order-reason-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
 .production-order-pane-description {
   margin: 0;
   color: var(--on-surface-muted);
@@ -1072,7 +1088,8 @@ main > * + * {
 .production-order-list-table td:nth-child(4),
 .production-order-list-table td:nth-child(5),
 .production-order-list-table td:nth-child(6),
-.production-order-list-table td:nth-child(7) {
+.production-order-list-table td:nth-child(7),
+.production-order-list-table td:nth-child(8) {
   white-space: nowrap;
 }
 
@@ -1180,7 +1197,25 @@ main > * + * {
   margin-block-start: 0;
 }
 
-.production-order-table-caption {
+/*
+ * ERP 조회 탭(시스템 관리 > ERP 연동 현황·이력)의 표 캡션 — **보조기술에만 남긴다.** 바로 위에 같은
+ * 말의 구획 제목이 서 있어, 눈에도 보이면 「목록」이 두 번 읽힌다. `production-order-table-caption`
+ * 과 같은 값이다.
+ */
+.erp-data-table-caption {
+  position: fixed;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.production-order-table-caption,
+.production-order-visually-hidden {
   position: fixed;
   width: 1px;
   height: 1px;
@@ -1823,6 +1858,30 @@ main > * + * {
   color: var(--semantic-error-text);
   font: var(--type-label-sm);
   letter-spacing: var(--type-label-sm-tracking);
+}
+
+/* 추천 후보는 칸 바로 아래 한 줄 — 넘치면 접어 내린다. */
+.work-order-recommendations {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1);
+  margin-top: var(--space-1);
+}
+
+/* 지금 배정된 후보 — 채운 빨강은 오류로 읽혀 테두리만 굵게 한다. */
+.work-order-recommendation.is-assigned {
+  border-width: 2px;
+  font-weight: 600;
+}
+
+.work-order-recommendation-tag {
+  margin-right: var(--space-1);
+  opacity: 0.75;
+}
+
+.work-order-recommendation-warning {
+  color: var(--semantic-warning);
 }
 
 /* 안내 상자와 바로 아래 라벨 사이를 띄운다. */
@@ -6293,6 +6352,14 @@ dl.filter-bar.approval-inbox-detail-facts {
 }
 
 /*
+ * W-01-09 입하 예정 — 12열(P/O 라인 한 줄). 열별 폭의 도출 표는 screens/inbound-schedule/schedule-table.tsx에 있다
+ * (지정 폭 1,128px + 흡수 열 「코드 · 이름」 둘 × 200px = 1,528px).
+ */
+.wide-table.inbound-schedule-table table {
+  min-width: 96rem;
+}
+
+/*
  * 값이 긴 코드를 고르는 선택칸 — **옵트인이다.** 붙인 칸만 넓어진다.
  * 셀 클래스 전체에 걸면 값이 짧은 선택칸까지 함께 넓어져 줄이 쓸데없이 넘친다.
  *
@@ -8225,8 +8292,8 @@ button.app-button-neutral {
 
 /* 가장 많은 유형만 강조색(정보 파랑), 나머지는 중립 회색을 짙은 것부터 옅게 — 단계마다 명도 차이가 뚜렷하다. */
 .dash-donut-1 {
-  background: var(--semantic-info);
-  fill: var(--semantic-info);
+  background: var(--app-info);
+  fill: var(--app-info);
 }
 
 .dash-donut-2 {
@@ -8486,14 +8553,6 @@ button.app-button-neutral {
 .dash-panel-head .dash-panel-action {
   margin-block: calc(var(--space-1) * -1);
   color: var(--on-surface-variant);
-}
-
-/* 상자 머리 오른쪽 단위 표시(생산 추이 「단위 EA」). */
-.dash-panel-unit {
-  font: var(--type-label-sm);
-  letter-spacing: var(--type-label-sm-tracking);
-  color: var(--on-surface-muted);
-  white-space: nowrap;
 }
 
 /* 생산 추이 — y축 글자가 그림 왼쪽 밖으로 넘친 만큼 보이게 한다(값은 그대로). */
@@ -8912,7 +8971,7 @@ button.app-button-neutral {
 }
 
 .dash-tone-error {
-  color: var(--semantic-error);
+  color: var(--app-error-text);
 }
 
 .dash-tone-warning {
@@ -9039,7 +9098,7 @@ button.app-button-neutral {
  */
 .dash-eq-stopped {
   background: color-mix(in srgb, var(--semantic-error-container) 35%, var(--surface));
-  border-inline-start: 3px solid var(--semantic-error);
+  border-inline-start: 3px solid var(--app-error);
 }
 
 .dash-eq-waiting {
@@ -9049,7 +9108,7 @@ button.app-button-neutral {
 
 .dash-eq-changeover {
   background: color-mix(in srgb, var(--semantic-info-container) 35%, var(--surface));
-  border-inline-start: 3px solid var(--semantic-info);
+  border-inline-start: 3px solid var(--app-info);
 }
 
 .dash-eq-idle {
@@ -9224,112 +9283,136 @@ button.app-button-neutral {
  */
 .dash-stopped {
   display: grid;
-  /* 설비명 · 설비 종류 · 사유 · 경과 시간 — 모든 줄이 같은 열 위치(사용자 지정 2026-10-16). */
-  grid-template-columns: max-content max-content minmax(0, 1fr) max-content;
-  column-gap: var(--space-3);
 }
 
-.dash-stopped-colhead,
-.dash-stopped-group,
-.dash-stopped-list,
-.dash-stopped-row,
-.dash-stopped-button {
-  display: grid;
-  grid-column: 1 / -1;
-  grid-template-columns: subgrid;
+/*
+ * ⭐ 가동 외 설비 현황(사용자 지시 2026-10-19 예시) — 묶음 머리(배지 + 대수), 줄은 왼쪽 「설비 / 종류 · 사유」,
+ * 오른쪽 「경과 시간 / 다른 설비 n대 보기」. 묶음 사이는 얇은 선. 사유는 말줄임 없이 자연 줄바꿈(2026-10-16 유지).
+ */
+.dash-stopped-colhead {
+  display: flex;
+  justify-content: flex-end;
 }
 
-/* 열 제목 「경과 시간」 — 목록 위 오른쪽에 한 번. */
 .dash-stopped-colhead span {
-  grid-column: -2 / -1;
   font: var(--type-label-sm);
   letter-spacing: var(--type-label-sm-tracking);
   color: var(--on-surface-muted);
-  text-align: end;
 }
 
 .dash-stopped-group {
-  padding-block: var(--space-2);
+  padding-block: var(--space-3);
 }
 
 .dash-stopped-group + .dash-stopped-group {
   border-top: 1px solid var(--outline-variant);
 }
 
+.dash-stopped-group:first-of-type {
+  padding-top: var(--space-1);
+}
+
 .dash-stopped-group:last-child {
   padding-bottom: 0;
 }
 
-/* 그룹 머리 — 배지 + 대수 한 줄(「정지 2대」). */
+/* 묶음 머리 — 배지 + 대수 한 줄(「정지 2대」). */
 .dash-stopped-head {
   display: flex;
-  grid-column: 1 / -1;
   align-items: center;
   gap: var(--space-2);
-  margin-bottom: var(--space-1);
 }
 
 .dash-stopped-count {
-  font: var(--type-label-lg);
-  letter-spacing: var(--type-label-lg-tracking);
+  font: var(--type-title-sm);
+  letter-spacing: var(--type-title-sm-tracking);
   font-weight: 600;
 }
 
 .dash-stopped-list {
-  margin: 0;
+  display: grid;
+  gap: var(--space-2);
+  margin: var(--space-2) 0 0;
   padding: 0;
   list-style: none;
-  font: var(--type-body-sm);
-  letter-spacing: var(--type-body-sm-tracking);
 }
 
-/* 줄 전체가 단추 — 누르면 상세 창. */
-.dash-stopped-button {
-  align-items: baseline;
-  padding: var(--space-1) 0;
-  border: 0;
+/*
+ * 설비 줄(⭐ 사용자 지시 2026-10-19) — 왼쪽 「설비 / 종류 · 사유」 | 오른쪽 「경과 시간 / 다른 설비 n대 보기」를 한 줄
+ * 칸 안에 둔다(따로 줄을 늘리지 않는다). 줄 전체가 상세 단추(`::after` 덮개), 펼치기 단추만 그 위에 올라온다.
+ */
+.dash-stopped-row {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) max-content;
+  grid-template-rows: auto auto;
+  column-gap: var(--space-3);
+  align-items: center;
+  padding: var(--space-1);
   border-radius: var(--radius-sm);
+}
+
+.dash-stopped-row:has(.dash-stopped-button:hover) {
+  background: var(--state-hover-neutral);
+}
+
+.dash-stopped-button {
+  display: grid;
+  grid-column: 1;
+  grid-row: 1 / span 2;
+  gap: 2px;
+  min-width: 0;
+  padding: 0;
+  border: 0;
   background: transparent;
   color: var(--on-surface);
-  font: inherit;
-  letter-spacing: inherit;
+  font: var(--type-body-sm);
+  letter-spacing: var(--type-body-sm-tracking);
   text-align: start;
   cursor: pointer;
 }
 
-.dash-stopped-button:hover {
-  background: var(--state-hover-neutral);
+.dash-stopped-button::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
 }
 
 .dash-stopped-button:focus-visible {
   outline: none;
+}
+
+.dash-stopped-row:has(.dash-stopped-button:focus-visible) {
   box-shadow: var(--focus-ring);
 }
 
 /* 포인터로 연 상세를 닫아 포커스만 돌아온 경우 — 링을 그리지 않는다(설비 타일과 같은 규칙). */
-.dash-stopped-button[data-pointer-focus]:focus-visible {
+.dash-stopped-row:has(.dash-stopped-button[data-pointer-focus]:focus-visible) {
   box-shadow: none;
 }
 
-/* 설비명은 굵게, 설비 종류는 작은 회색 — 원칙(a) 코드 · 종류는 줄을 바꾸지 않는다. */
 .dash-stopped-code {
-  font-weight: 600;
+  font: var(--type-label-lg);
+  letter-spacing: var(--type-label-lg-tracking);
+  font-weight: 700;
   white-space: nowrap;
+}
+
+.dash-stopped-meta {
+  color: var(--on-surface-muted);
+  font: var(--type-label-sm);
+  letter-spacing: var(--type-label-sm-tracking);
+  word-break: keep-all;
+  overflow-wrap: break-word;
 }
 
 .dash-stopped-type {
-  font: var(--type-label-sm);
-  letter-spacing: var(--type-label-sm-tracking);
-  color: var(--on-surface-muted);
   white-space: nowrap;
 }
 
-/* 사유 — 말줄임 없이 자연 줄바꿈(사용자 지시 2026-10-16 — 앞의 「최대 2줄 + 말줄임」 대체). */
 .dash-stopped-reason {
-  min-width: 0;
   color: var(--on-surface-variant);
-  word-break: keep-all;
-  overflow-wrap: break-word;
 }
 
 /* 「사유 미등록」 — 오류 · 경고가 아니라 차분한 보조 글. */
@@ -9338,16 +9421,31 @@ button.app-button-neutral {
 }
 
 .dash-stopped-elapsed {
-  color: var(--on-surface);
+  grid-column: 2;
+  grid-row: 1;
+  font: var(--type-label-lg);
+  letter-spacing: var(--type-label-lg-tracking);
+  font-weight: 700;
   font-variant-numeric: tabular-nums;
   text-align: end;
   white-space: nowrap;
 }
 
-/* 「외 n대」 — 그룹 머리 오른쪽 끝. 머리줄 높이를 늘리지 않게 위아래를 당긴다. */
-.dash-stopped-head .dash-stopped-more {
-  margin-block: calc(var(--space-1) * -1);
-  margin-inline-start: auto;
+/* 「다른 설비 n대 보기」 — 경과 시간 바로 아래(같은 줄 칸의 둘째 줄), 덮개 위로 올려 누를 수 있게. */
+.dash-stopped-row .dash-stopped-more {
+  position: relative;
+  z-index: 1;
+  grid-column: 2;
+  grid-row: 2;
+  justify-self: end;
+  min-height: 0;
+  margin-inline-end: calc(var(--space-2) * -1);
+  padding-block: 0;
+}
+
+/* 넘치면 이 카드 안에서만 세로 스크롤(행 높이는 옆 카드를 따른다 · 사용자 지시 2026-10-19). */
+.dash-overview > .dash-fit.dash-stopped-panel > .dash-panel-body {
+  overflow-y: auto;
 }
 
 /*
@@ -9495,8 +9593,9 @@ button.app-button-neutral {
 .dash-more-list {
   container-type: inline-size;
   display: grid;
-  grid-template-columns: minmax(6rem, max-content) minmax(0, 1fr) max-content;
-  column-gap: var(--space-4);
+  /* 각 열 폭을 넉넉히 — 설비명 · 사유 · 경과 시간 사이를 벌린다(사용자 지시 2026-10-19). */
+  grid-template-columns: minmax(9rem, max-content) minmax(16rem, 1fr) minmax(7rem, max-content);
+  column-gap: var(--space-6);
   font: var(--type-body-sm);
   letter-spacing: var(--type-body-sm-tracking);
 }
@@ -9528,8 +9627,9 @@ button.app-button-neutral {
   color: var(--on-surface-muted);
 }
 
+/* 경과 시간도 왼쪽 정렬(사용자 지시 2026-10-19). */
 .dash-more-colhead span:last-child {
-  text-align: end;
+  text-align: start;
 }
 
 /* 줄 전체가 단추 — 누르면 상세 창. */
@@ -9579,7 +9679,7 @@ button.app-button-neutral {
 
 .dash-more-elapsed {
   font-variant-numeric: tabular-nums;
-  text-align: end;
+  text-align: start;
   white-space: nowrap;
 }
 
@@ -9615,36 +9715,6 @@ button.app-button-neutral {
     grid-column: 1 / -1;
     grid-row: 2;
     margin-top: var(--space-1);
-  }
-}
-
-/*
- * 패널이 좁으면(오른쪽 열 · 1440 이하) 사유를 설비 아래 줄로 내린다 — 세 열로 두면 사유 열이 좁아 긴 고장
- * 사유가 여섯 줄로 꺾였다. 1줄 = 설비(종류는 옆에 작게) · 오른쪽 경과 시간, 2줄 = 사유(줄 전체 폭).
- */
-@container (max-width: 380px) {
-  .dash-stopped {
-    grid-template-columns: max-content minmax(0, 1fr) max-content;
-  }
-
-  .dash-stopped-code {
-    grid-column: 1;
-    grid-row: 1;
-  }
-
-  .dash-stopped-type {
-    grid-column: 2;
-    grid-row: 1;
-  }
-
-  .dash-stopped-elapsed {
-    grid-column: 3;
-    grid-row: 1;
-  }
-
-  .dash-stopped-reason {
-    grid-column: 1 / -1;
-    grid-row: 2;
   }
 }
 
@@ -9755,7 +9825,7 @@ button.app-button-neutral {
 }
 
 .dash-dot-error {
-  background: var(--semantic-error);
+  background: var(--app-error);
 }
 
 .dash-dot-warning {
@@ -9763,7 +9833,7 @@ button.app-button-neutral {
 }
 
 .dash-dot-info {
-  background: var(--semantic-info);
+  background: var(--app-info);
 }
 
 .dash-swatch {
@@ -9942,7 +10012,7 @@ button.app-button-neutral {
 }
 
 .dash-lot-key-rejected {
-  background: var(--semantic-error);
+  background: var(--app-error);
 }
 
 .dash-lot-key-held {
@@ -9958,7 +10028,7 @@ button.app-button-neutral {
 }
 
 .dash-minibar-ng {
-  background: var(--semantic-error);
+  background: var(--app-error);
 }
 
 /* 현재 현황 목록 */
@@ -10166,7 +10236,7 @@ button.app-button-neutral {
 }
 
 .dash-threshold {
-  stroke: var(--semantic-info);
+  stroke: var(--app-info);
   stroke-width: 1;
   stroke-dasharray: 4 4;
 }
@@ -10274,7 +10344,7 @@ button.app-button-neutral {
 }
 
 .dash-line-3 {
-  color: var(--semantic-info);
+  color: var(--app-info);
 }
 
 .dash-table-wrap {
@@ -10637,6 +10707,12 @@ button.app-button-neutral {
   width: 100%;
   min-width: 57.5rem;
   table-layout: fixed;
+}
+
+/* 줄 오류는 공정 이름 바로 아래 — 줄 높이만 늘고 열 폭은 그대로다. */
+.terminal-map-process-cell {
+  display: grid;
+  gap: var(--space-1);
 }
 
 /* 열이 열한 개라 칸 좌우 여백을 한 단계 줄여(12px → 8px) 1280 폭 카드 안에 들어오게 한다. */
@@ -12847,6 +12923,65 @@ button.app-button-neutral {
 }
 
 /*
+ * 상단 바의 글자 링크 — **로그아웃(DS text 단추 sm)과 같은 무게로 선다.** 링크라 DS 단추를 쓰지
+ * 않았다(단추는 문서를 바꾸지 않는 동작의 어휘다). 색·글꼴은 그 단추의 값을 가져왔다.
+ */
+.topbar-link {
+  border-radius: var(--radius-sm);
+  color: var(--primary-text);
+  font: var(--type-label-lg);
+  letter-spacing: var(--type-label-lg-tracking);
+  text-decoration: none;
+}
+
+.topbar-link:hover {
+  text-decoration: underline;
+}
+
+.topbar-link:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+/*
+ * 탭 묶음의 탭 막대(`hub-tabs.tsx`). **화면 제목 위의 한 줄**이라 제목보다 가볍게 읽혀야 한다 —
+ * 밑줄 하나와 보조 글자색으로 서고, 지금 화면만 진한 글자와 굵은 밑줄을 갖는다.
+ *
+ * 줄이 넘치면 가로로 스크롤한다 — 탭이 둘째 줄로 내려가면 어느 줄이 지금 묶음인지 흐려진다.
+ */
+.hub-tabs {
+  display: flex;
+  gap: var(--space-1);
+  overflow-x: auto;
+  box-shadow: inset 0 -1px 0 var(--outline-variant);
+}
+
+.hub-tab {
+  flex: none;
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-md) var(--radius-md) 0 0;
+  color: var(--on-surface-variant);
+  font: var(--type-label-lg);
+  letter-spacing: var(--type-label-lg-tracking);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.hub-tab:hover {
+  background: var(--state-hover-neutral);
+}
+
+.hub-tab:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.hub-tab[aria-current='page'] {
+  color: var(--primary-text);
+  box-shadow: inset 0 -2px 0 var(--primary-text);
+}
+
+/*
  * 섹션 밖에 홀로 선 메뉴 항목 — **목록이 넘쳐도 줄어들지 않는다**(#1077).
  *
  * 사이드바 목록은 세로 flex 이고 내용이 상자를 5배 넘는다. 넘치는 만큼을 스크롤로 넘기기
@@ -12862,16 +12997,17 @@ button.app-button-neutral {
 }
 
 /*
- * 접을 수 있는 사이드바 묶음 — **DS 섹션 라벨이 서던 자리를 손잡이가 대신한다**(#1079).
+ * 사이드바 묶음 — **묶음이 아이콘을 갖고, 항목은 아이콘 없이 그 아래 세로선에 매달린다**
+ * (사용자 2026-10-20 · 참고 시안). 전에는 묶음 이름이 작은 회색 라벨이고 항목마다 아이콘이 서서,
+ * 일흔 개의 아이콘 사이에서 묶음이 어디서 갈리는지 보이지 않았다.
  *
- * 값은 DS 섹션(`_section_`·`_sectionLabel_`)에서 그대로 가져왔다 — 묶음 사이 간격 `--space-2`,
- * 라벨의 글자·색·안쪽 여백. 접히는 것 말고는 **전과 같이 보여야** 하므로 새 값을 만들지 않는다.
- */
-/*
- * ⛔ **여기에 `gap` 을 주지 않는다.** 닫힌 묶음의 항목 그릇은 높이 0 으로 남는데(`aria-controls` 가
- * 가리키므로 지울 수 없다), 부모가 `gap` 을 가지면 **빈 그릇 앞의 간격이 그대로 계산돼** 접힌
- * 묶음마다 8px 죽은 자리가 생긴다. 간격은 사라질 쪽(항목 그릇)이 자기 위에 얹는다.
- * 묶음 **사이**의 간격은 DS 목록(`_list_` 의 `gap`)이 이미 준다.
+ * 위계는 **글자 무게와 색**으로 세운다 — 묶음은 항목 글꼴(`--type-label-lg`)에 진한 색,
+ * 항목은 한 단계 작은 본문 글꼴에 보조 색이다. 들여쓰기는 묶음 이름의 시작(12+24+12=48px)에
+ * 맞춘다.
+ *
+ * ⛔ **`.nav-group` 에 `gap` 을 주지 않는다.** 닫힌 묶음의 항목 그릇은 높이 0 으로 남는데
+ * (`aria-controls` 가 가리키므로 지울 수 없다), 부모가 `gap` 을 가지면 빈 그릇 앞의 간격이
+ * 그대로 계산돼 접힌 묶음마다 죽은 자리가 생긴다. 간격은 사라질 쪽(항목 그릇)이 자기 위에 얹는다.
  */
 .nav-group {
   display: flex;
@@ -12879,23 +13015,23 @@ button.app-button-neutral {
 }
 
 /*
- * 묶음 손잡이. **이름의 왼쪽 끝을 항목 이름과 맞춘다** — 아이콘 자리를 항목과 같은 24px 로 잡고
- * 간격도 항목과 같은 `--space-3` 를 쓴다(12+24+12=48px). 글자는 20px 짜리 화살표라 **제목이 항목
- * 보다 가볍게 읽히고**, 그게 의도다(제목이 무거워지면 분류가 내용을 가린다). 색·글자·안쪽 여백은
- * DS 섹션 라벨에서, 모서리·hover·초점 링은 DS 항목에서 가져왔다.
+ * 묶음 손잡이 — 모서리·hover·초점 링은 DS 항목에서 가져왔다.
+ *
+ * ⛔ **높이를 적지 않는다**(#1077 · `sidebar-sizing.test.ts`). 위아래 여백 12px + 아이콘 24px 로
+ * DS 항목과 같은 48px 이 되고, 내용 최소 크기가 목록 넘침에 의한 축소를 막는다.
  */
 .nav-group-toggle {
   display: flex;
   align-items: center;
   gap: var(--space-3);
   width: 100%;
-  padding: var(--space-2) var(--space-3);
+  padding: var(--space-3);
   border: 0;
   border-radius: var(--radius-md);
   background: none;
-  color: var(--on-surface-muted);
-  font: var(--type-label-sm);
-  letter-spacing: var(--type-label-sm-tracking);
+  color: var(--on-surface);
+  font: var(--type-label-lg);
+  letter-spacing: var(--type-label-lg-tracking);
   text-align: left;
   cursor: pointer;
 }
@@ -12909,15 +13045,12 @@ button.app-button-neutral {
   box-shadow: var(--focus-ring);
 }
 
-/* 화살표 자리를 항목 아이콘과 같은 24px 로 잡는다 — 글자는 20px 이라 가운데 선다. */
-.nav-group-chevron {
+.nav-group-icon {
   flex: none;
-  display: inline-flex;
-  justify-content: center;
-  width: 24px;
+  color: var(--on-surface);
 }
 
-/* 이름이 남는 폭을 먹고, 좁아지면 숫자를 밀어내지 않고 자기가 줄어든다. */
+/* 이름이 남는 폭을 먹고, 좁아지면 화살표를 밀어내지 않고 자기가 줄어든다. */
 .nav-group-label {
   flex: 1;
   min-width: 0;
@@ -12926,25 +13059,86 @@ button.app-button-neutral {
   white-space: nowrap;
 }
 
-/*
- * 접혀 있을 때 **안에 몇 개가 있는지**. 접힌 묶음은 이름만 남아 누르기 전에는 안이 비었는지
- * 열셋인지 알 수 없다. 숫자는 이름보다 약하게 읽혀야 한다 — 찾는 단서는 이름이다.
- */
-.nav-group-count {
+.nav-group-chevron {
   flex: none;
-  color: var(--on-surface-variant);
-  font-variant-numeric: tabular-nums;
+  color: var(--on-surface-muted);
 }
 
 /*
- * 항목 그릇. **비면 자기 위 간격까지 함께 사라진다** — 부모가 `gap` 을 갖지 않는 이유다.
- * 항목 사이 간격은 DS 목록과 같은 `--space-2` 다.
+ * 항목 그릇 — **세로 안내선이 묶음 아이콘의 가운데(12+12=24px)에서 내려와, 마지막 항목 앞에서
+ * 갈고리(「↳」)로 꺾여 끝난다.** 묶음이 어디서 끝나는지를 선이 보여 준다 — 다음 묶음 손잡이와
+ * 마지막 항목이 붙어 서도 경계가 읽힌다. 선택 표시와는 무관하다(선택은 배경만 바꾼다).
+ * 비면 자기 위 간격까지 함께 사라진다 — 부모가 `gap` 을 갖지 않는 이유다.
  */
 .nav-group-items:not(:empty) {
+  position: relative;
   display: flex;
   flex-direction: column;
-  gap: var(--space-2);
-  margin-top: var(--space-2);
+  gap: var(--space-1);
+  margin-top: var(--space-1);
+}
+
+.nav-group-items:not(:empty)::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: calc(var(--control-height-md) / 2);
+  left: calc(var(--space-3) + 12px);
+  /* 항목 위에 그린다 — 선택된 항목의 배경이 선을 덮어 끊기지 않게 한다. */
+  z-index: 1;
+  width: var(--space-3);
+  border-bottom: 1px solid var(--outline-variant);
+  border-left: 1px solid var(--outline-variant);
+  border-bottom-left-radius: var(--radius-sm);
+  pointer-events: none;
+}
+
+/*
+ * 묶음 아래 항목. DS 항목(`_item_`)을 그대로 쓰고 **아이콘만 감추고 들여 쓴다** — 초점 순회
+ * (`data-sidebar-item`)·`aria-current`·레일의 숨김 처리는 DS 것을 그대로 받는다.
+ *
+ * ⚠ DS 클래스 이름은 해시라 고를 수 없다. 그래서 **구조**로 고른다 — 아이콘은 DS 항목의 첫
+ * 자식이다(`SidebarItem` 렌더 순서: 아이콘 → 라벨 → 배지). 레일에서는 이 클래스를 붙이지 않는다
+ * (`layout.tsx`) — 아이콘만 남는 폭에서 아이콘을 감추면 항목이 빈칸이 된다.
+ */
+.nav-group-items .nav-child {
+  height: var(--control-height-md);
+  padding: 0 var(--space-3) 0 calc(var(--space-3) * 2 + 24px);
+  color: var(--on-surface-variant);
+  font: var(--type-body-sm);
+  letter-spacing: var(--type-body-sm-tracking);
+}
+
+.nav-group-items .nav-child > :first-child {
+  display: none;
+}
+
+/*
+ * 선택된 항목 — **배경과 글자색만 바꾼다.** DS 의 왼쪽 표시선(2px)은 지운다 — 안내선이 이미 왼쪽에
+ * 서 있어 겹치면 선이 두 줄로 읽힌다. 따로 선을 긋지 않는다(사용자 2026-10-20).
+ */
+.nav-group-items .nav-child[aria-current='page'] {
+  background: var(--surface-container-high);
+  box-shadow: none;
+}
+
+.nav-group-items .nav-child[aria-current='page']:focus-visible {
+  box-shadow: var(--focus-ring);
+}
+
+.nav-group-items .nav-child[aria-current='page'] > :nth-child(2) {
+  color: var(--primary-text);
+}
+
+/* 섹션 밖 맨 위 항목(대시보드)도 같은 선택 표시를 쓴다 — 한 사이드바에 선택 모양이 둘이면 안 된다. */
+.sidebar-lead[aria-current='page'] {
+  background: var(--surface-container-high);
+  box-shadow: none;
+}
+
+.sidebar-lead[aria-current='page'] > :first-child,
+.sidebar-lead[aria-current='page'] > :nth-child(2) {
+  color: var(--primary-text);
 }
 
 /*
@@ -13671,26 +13865,28 @@ button.app-button-neutral {
   margin-top: var(--space-2);
 }
 
-/* 입고 정보 구획 — 구획 제목이 카드 맨 위면 위 여백·구분선을 두지 않는다. */
+/* 입고 정보 구획 — 구획 제목이 카드 맨 위면 위 여백·구분선을 두지 않는다. 아래 입고 대상과는 한 단계 띄운다. */
 .goods-receipt-section-title-first {
   margin-top: 0;
+  margin-bottom: var(--space-3);
   padding-top: 0;
   border-top: 0;
 }
 
 /*
- * 입고 정보 폼 — 12칸 격자에 칸마다 데이터에 맞는 폭을 준다(사용자 지시 — 모두 같은 폭이 아니다).
- * 넓은 화면(1400px 이상):
- *   창고 4 · 위치 4 · 입고 유형 2 · 원천 문서 유형 2
- *   품질 상태 2 · 재고 상태 2 · 사유 4
- *   입고 일시 3 · 비고 6
- * 좁으면 두 칸(각 6)이고 비고만 줄 전체다. 짝(창고↔위치 · 품질↔재고 · 일시↔비고)은 이웃 칸이다.
- * 안쪽 묶음의 `.form-grid` 는 풀어 칸이 이 격자에 바로 선다. 안내·재시도 같은 칸 아닌 것은 줄 전체를 쓴다.
+ * 입고 정보 폼 — 입력 순서대로 묶음마다 한 줄(담당자 지시):
+ *   입고 창고 · 적치 위치            (3 · 3)
+ *   입고 유형 · 원천 문서 유형        (3 · 3)
+ *   품질 상태 · 재고 상태 · 사유      (2 · 2 · 2)
+ *   입고 일시(날짜+시각) · 비고       (3 · 3)
+ * 6칸 격자라 모든 줄이 페인 끝까지 차고(오른쪽 빈 공간 없음), 칸 사이 세로선이 줄마다 맞는다.
+ * 900px 이하는 두 칸, 600px 이하는 한 칸.
+ * 안쪽 묶음의 `.form-grid` 는 풀어(`display: contents`) 칸이 이 격자에 바로 선다 — DOM 차례 = 입력 순서 = 보이는 차례.
  */
 .goods-receipt-post-form {
   display: grid;
-  grid-template-columns: repeat(12, minmax(0, 1fr));
-  gap: var(--space-4);
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: var(--space-4) var(--space-5);
   margin-bottom: var(--space-4);
 }
 
@@ -13703,49 +13899,55 @@ button.app-button-neutral {
 }
 
 .goods-receipt-post-form .field-cell {
-  grid-column: span 6;
+  grid-column: span 3;
 }
 
-/* 비고는 자유 입력이라 좁은 화면에서도 줄 전체. */
-.goods-receipt-post-form
-  .goods-receipt-post-grid
-  > .field-cell:last-child:not([class*='goods-receipt-step-']) {
-  grid-column: span 12;
+.goods-receipt-post-form .goods-receipt-step-qualityStatus,
+.goods-receipt-post-form .goods-receipt-step-inventoryStatus,
+.goods-receipt-post-form .goods-receipt-step-reason {
+  grid-column: span 2;
 }
 
-@media (min-width: 1400px) {
-  .goods-receipt-post-form .goods-receipt-step-warehouse,
-  .goods-receipt-post-form .goods-receipt-step-location,
-  .goods-receipt-post-form .goods-receipt-step-reason {
-    grid-column: span 4;
-  }
+/* 입고 일시 — 한 라벨 아래 [날짜] [시각] 두 칸을 나란히. 날짜 칸이 조금 더 넓다. */
+.goods-receipt-datetime-pair {
+  display: grid;
+  grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+  gap: var(--space-2);
+  align-items: start;
+}
 
-  .goods-receipt-post-form .goods-receipt-step-receiptType,
-  .goods-receipt-post-form .goods-receipt-step-sourceDocumentType,
+.goods-receipt-datetime-pair > * {
+  min-width: 0;
+}
+
+@media (max-width: 900px) {
+  .goods-receipt-post-form .field-cell,
   .goods-receipt-post-form .goods-receipt-step-qualityStatus,
   .goods-receipt-post-form .goods-receipt-step-inventoryStatus {
-    grid-column: span 2;
+    grid-column: span 3;
   }
 
-  .goods-receipt-post-form .goods-receipt-step-receiptDatetime {
-    grid-column: 1 / span 3;
+  .goods-receipt-post-form .goods-receipt-step-reason,
+  .goods-receipt-post-form .goods-receipt-remarks {
+    grid-column: 1 / -1;
   }
+}
 
-  .goods-receipt-post-form
-    .goods-receipt-post-grid
-    > .field-cell:last-child:not([class*='goods-receipt-step-']) {
-    grid-column: span 6;
+@media (max-width: 600px) {
+  .goods-receipt-post-form .field-cell,
+  .goods-receipt-post-form .goods-receipt-step-qualityStatus,
+  .goods-receipt-post-form .goods-receipt-step-inventoryStatus {
+    grid-column: 1 / -1;
   }
 }
 
 /*
- * 순서대로 입력 — 아직 열리지 않은 칸은 라벨까지 흐리게, 지금 채울 칸은 라벨을 강조색으로(사용자 지시).
- * 공용 선택칸의 비활성 모양이 옅어 켜진 칸과 구분이 잘 안 되는 것을 라벨로 보탠다.
+ * 순서대로 입력 — 아직 열리지 않은 칸은 라벨을 보조색으로, 지금 채울 칸은 라벨을 강조색 굵게(사용자 지시).
+ * 흐리게만 하면(투명도) 라벨을 읽기 어렵다(담당자 지시) — 투명도 없이 색만 한 단계 낮춘다. 칸 자체는 회색 바탕이다.
  */
 .goods-receipt-post-form .field-cell:has(:disabled) .field-label,
 .goods-receipt-post-form .field-cell:has(input:disabled) label {
   color: var(--on-surface-muted);
-  opacity: 0.6;
 }
 
 .goods-receipt-post-form[data-current-step='warehouse'] .goods-receipt-step-warehouse .field-label,
@@ -13764,17 +13966,26 @@ button.app-button-neutral {
   .field-label,
 .goods-receipt-post-form[data-current-step='receiptDatetime']
   .goods-receipt-step-receiptDatetime
-  label {
+  .field-label {
   color: var(--primary-text);
   font-weight: 600;
 }
 
-/* 하단 액션 줄 — 구분선 아래 오른쪽 끝, 막힌 이유는 단추 바로 왼쪽. */
+/*
+ * 하단 액션 줄 — 구분선 아래 폼 오른쪽 끝(마지막 칸의 오른쪽 선과 같은 선)에 [취소][입고 확인].
+ * 주 동작(입고 확인, 채운 단추)이 맨 오른쪽 — 되돌릴 수 없는 것이 손 가까이 있지 않게 취소가 앞에 선다.
+ */
 .goods-receipt-post-actions {
   align-items: center;
-  margin-top: var(--space-4);
+  gap: var(--space-2);
+  margin-top: var(--space-5);
   padding-top: var(--space-4);
   border-top: 1px solid var(--outline-variant);
+}
+
+/* 주 동작(입고 확인)은 보조(취소)보다 넓게 — 우선순위가 크기로도 읽힌다. 두 단추 높이는 DS 기본(md) 그대로 같다. */
+.goods-receipt-post-actions > button:last-of-type {
+  min-width: 7.5rem;
 }
 
 /* 고를 수 없는 입하 라인의 사유 — 원인이 된 칸(자재 LOT·입하 수량) 안, 값 아래의 작은 보조 글자. 경고색 없음. */
@@ -13828,6 +14039,291 @@ button.app-button-neutral {
 .goods-receipt-note-emphasis {
   font-weight: 600;
   color: var(--on-surface);
+}
+
+/*
+ * 입고 대상(선별 뒤 양품·불량분) — 선택 카드 묶음(담당자 결정). 기능은 DS `RadioGroup`·`Radio` 그대로다.
+ * 카드는 입력 칸과 같은 반경(--radius-sm)·옅은 테두리(--outline-variant)의 흰 면이고, 고른 카드만 테두리를
+ * 강조색 1px 로 바꾼다 — 라디오 점과 같은 색 한 가지로 «고른 것»을 말한다(검은 굵은 테두리·분홍 바탕 없이).
+ * 카드 안은 이름(본문, 보조색) 왼쪽 · 수량(제목 크기, 굵게, 고정폭 숫자) 오른쪽 — 두 카드의 수량이 같은 자리에서 비교된다.
+ * 카드 폭은 같게(격자), 묶음은 두 장이 편히 들어가는 폭까지만 — 화면 끝까지 늘이지 않는다. 좁으면 한 장씩 쌓는다.
+ */
+.field-cell.goods-receipt-target {
+  margin-bottom: var(--space-5);
+}
+
+.goods-receipt-target-options {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr));
+  gap: var(--space-2) var(--space-3);
+  max-width: 42rem;
+}
+
+.goods-receipt-target-option {
+  box-sizing: border-box;
+  min-height: var(--control-height-lg);
+  padding: var(--space-2) var(--space-4) var(--space-2) var(--space-3);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  box-shadow: inset 0 0 0 1px var(--outline-variant);
+  overflow-wrap: anywhere;
+}
+
+.goods-receipt-target-option:hover {
+  box-shadow: inset 0 0 0 1px var(--outline);
+}
+
+.goods-receipt-target-option:has(input:checked) {
+  box-shadow: inset 0 0 0 1px var(--primary);
+}
+
+.goods-receipt-target-option:has(input:focus-visible) {
+  box-shadow:
+    inset 0 0 0 1px var(--primary),
+    var(--focus-ring);
+}
+
+.goods-receipt-target-option:has(input:disabled) {
+  cursor: default;
+  background: var(--surface-container);
+  box-shadow: inset 0 0 0 1px var(--outline-variant);
+}
+
+/* 카드 안: 이름은 왼쪽, 수량은 오른쪽 끝 — 카드끼리 수량이 같은 자리에서 비교된다. */
+.goods-receipt-target-option > span:last-child {
+  display: flex;
+  flex: 1 1 auto;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0 var(--space-4);
+}
+
+.goods-receipt-target-name {
+  font: var(--type-body-sm);
+  letter-spacing: var(--type-body-sm-tracking);
+  color: var(--on-surface-variant);
+}
+
+.goods-receipt-target-qty {
+  font: var(--type-title-sm);
+  letter-spacing: var(--type-title-sm-tracking);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--on-surface);
+  white-space: nowrap;
+}
+
+/*
+ * 입고 시각 선택칸(`time-field.tsx`) — 트리거는 DS `Select` 와 같은 높이·반경·테두리·글자, 팝오버는 DS 목록과 같은
+ * 바탕·반경·그림자. 팝오버 안은 시·분 두 열이 나란히, 열마다 6행 높이에서 구른다. 고른 칸은 DS 목록처럼 강조색 글자.
+ */
+.goods-receipt-time {
+  position: relative;
+  min-width: 0;
+}
+
+.goods-receipt-time-trigger {
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  width: 100%;
+  height: var(--control-height-md);
+  padding: 0 var(--space-3) 0 var(--space-4);
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  box-shadow: inset 0 0 0 1px var(--outline);
+  color: var(--on-surface);
+  font: var(--type-body-lg);
+  letter-spacing: var(--type-body-lg-tracking);
+  font-variant-numeric: tabular-nums;
+  text-align: left;
+  cursor: pointer;
+}
+
+.goods-receipt-time-trigger:hover:not(:disabled) {
+  background: var(--state-hover-neutral);
+}
+
+.goods-receipt-time-trigger:focus-visible {
+  outline: none;
+  box-shadow:
+    inset 0 0 0 1px var(--outline),
+    var(--focus-ring);
+}
+
+.goods-receipt-time-trigger[data-open] {
+  box-shadow: inset 0 0 0 2px var(--primary);
+}
+
+.goods-receipt-time-trigger[data-invalid] {
+  box-shadow: inset 0 0 0 1px var(--semantic-error);
+}
+
+.goods-receipt-time-trigger:disabled {
+  cursor: default;
+  color: var(--state-disabled-text);
+  box-shadow: inset 0 0 0 1px var(--state-disabled-fill);
+}
+
+.goods-receipt-time-placeholder {
+  color: var(--on-surface-muted);
+}
+
+.goods-receipt-time-popup {
+  position: absolute;
+  top: calc(100% + var(--space-1));
+  left: 0;
+  z-index: 20;
+  display: grid;
+  grid-template-columns: repeat(2, 4.5rem);
+  gap: var(--space-1);
+  padding: var(--space-2);
+  border-radius: var(--radius-md);
+  background: var(--surface-container-high);
+  box-shadow: var(--elevation-3);
+  outline: 1px solid var(--outline-variant);
+}
+
+.goods-receipt-time-popup[data-placement='up'] {
+  top: auto;
+  bottom: calc(100% + var(--space-1));
+}
+
+.goods-receipt-time-column-label {
+  display: block;
+  padding: 0 0 var(--space-1);
+  font: var(--type-label-sm);
+  letter-spacing: var(--type-label-sm-tracking);
+  color: var(--on-surface-muted);
+  text-align: center;
+}
+
+.goods-receipt-time-column {
+  display: flex;
+  flex-direction: column;
+  max-height: calc(var(--control-height-md) * 6);
+  overflow-y: auto;
+  position: relative;
+}
+
+.goods-receipt-time-option {
+  flex: none;
+  height: var(--control-height-md);
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--on-surface);
+  font: var(--type-body-lg);
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+}
+
+.goods-receipt-time-option:hover:not([aria-disabled='true']) {
+  background: var(--state-hover-neutral);
+}
+
+.goods-receipt-time-option:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: -2px;
+}
+
+.goods-receipt-time-option[aria-selected='true'] {
+  color: var(--primary-text);
+  font-weight: 600;
+  background: var(--surface);
+}
+
+.goods-receipt-time-option[aria-disabled='true'] {
+  cursor: default;
+  color: var(--state-disabled-text);
+}
+
+/* 고른 대상의 LOT 번호 — 긴 번호(구분자 `|` · 공백 없음)는 칸 폭 안에서 접는다. 자르지 않는다. */
+.goods-receipt-target .field-note {
+  max-width: none;
+  overflow-wrap: anywhere;
+}
+
+/*
+ * 선별 안내 띠 — 한 줄(담당자 지시: 배너 비중 축소). 수량은 굵게 앞에, 할 일은 보조색으로 뒤에. 폭은 입고 정보와 같은
+ * 선(80rem)에서 끝낸다. DS 띠의 바탕·아이콘은 그대로 두고 높이만 내용에 맞춘다(제목이 없어 한 줄이다).
+ */
+.goods-receipt-split-banner {
+  margin-bottom: var(--space-4);
+}
+
+.goods-receipt-split-banner-qty {
+  margin-right: var(--space-3);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.goods-receipt-split-banner-body {
+  color: var(--on-surface-variant);
+}
+
+/*
+ * 입고 처리 페인의 내용 폭 — 안내 띠·입고 대상·입력 칸·버튼 줄이 같은 오른쪽 선(80rem)에서 끝난다.
+ * 아주 넓은 화면(1920)에서 칸이 800px 가까이 늘어나 투박해지는 것을 막는다(담당자 지시). 1440 이하에서는 페인이 더 좁아 영향이 없다.
+ */
+.goods-receipt-post-pane > * {
+  max-width: 80rem;
+}
+
+/*
+ * 입고 정보 칸의 라벨 줄 — 라벨 옆 안내(고른 창고의 공장)는 세로 구분선으로 라벨과 떼고, 좁은 칸에서 넘치면
+ * 말줄임(전체 문구는 툴팁·칸 설명으로 남는다). 줄을 바꾸면 그 칸만 라벨 층이 높아져 같은 행의 윗선이 어긋난다.
+ */
+.goods-receipt-post-form .field-label {
+  display: flex;
+  align-items: baseline;
+  min-width: 0;
+  white-space: nowrap;
+}
+
+.goods-receipt-post-form .goods-receipt-label-hint {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  padding-left: var(--space-2);
+  border-left: 1px solid var(--outline-variant);
+}
+
+/*
+ * 칸 상태를 모양으로 가른다(담당자 지시) — 필수는 라벨의 `*`, 아직 열리지 않은 칸은 흐린 라벨 + 채운 회색 바탕,
+ * 고를 값이 없는 칸은 점선 테두리 + 칸 안 「등록된 코드 없음」. 셋이 겹쳐도 서로 다른 단서로 읽힌다.
+ */
+/* 글자 칸은 입력 요소를 감싼 상자가 테두리를 그린다 — 입력 요소가 아니라 그 상자를 칠한다. */
+.goods-receipt-post-form .field-cell button:disabled,
+.goods-receipt-post-form .field-cell div:has(> input:disabled) {
+  background: var(--surface-container);
+}
+
+/*
+ * 비고는 선택 항목이어도 입력란은 흰색이다(담당자 지시) — 아직 열리지 않았을 때도 회색으로 칠하지 않는다.
+ * DS 글자 칸 상자는 바탕이 투명해 페인의 회색이 비치므로 흰 바탕을 직접 준다. 열림·잠금 조건과 라벨 표시는 그대로다.
+ */
+.goods-receipt-post-form .field-cell.goods-receipt-remarks div:has(> input) {
+  background: var(--surface);
+}
+
+.goods-receipt-post-form .goods-receipt-code-empty button[role='combobox'] {
+  box-shadow: none;
+  outline: 1px dashed var(--outline);
+  outline-offset: -1px;
+}
+
+/*
+ * 이 화면에서 연 선택 목록의 테두리 — 디자인 시스템 목록(`body` 로 띄운 `role=listbox`)은 불투명하지만 바탕
+ * (`--surface-container-high`)이 페인 바탕과 거의 같은 회색이고 그림자가 옅어, 아래 칸을 일부 덮을 때 목록 경계가
+ * 흐려 아래 칸이 «비쳐» 보인다(브라우저 실측). 이 화면이 떠 있을 때만 목록에 윤곽선을 더한다. 공용 부품은 그대로다.
+ */
+body:has(.goods-receipt-post-form) > [role='listbox'] {
+  outline: 1px solid var(--outline-variant);
 }
 
 /*
@@ -14258,4 +14754,600 @@ button.app-button-neutral {
 
 .shipment-schedule-plant-body > * {
   margin-block: 0;
+}
+
+/*
+ * OQC 일별 반출 수량(⭐ 사용자 지시 2026-10-19 UI/UX) — 세로축(0 부터) | 막대 영역. 막대는 중립 단색, 값은 막대 위,
+ * 날짜는 바닥선 아래. 카드는 옆 최근 판정 카드 높이를 따라 늘어나고 막대 영역이 남는 높이를 쓴다.
+ */
+.dash-dayout-panel {
+  display: flex;
+  flex-direction: column;
+}
+
+.dash-dayout-panel > .dash-panel-body {
+  display: flex;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.dash-dayout {
+  display: grid;
+  flex: 1 1 auto;
+  grid-template-columns: auto minmax(0, 1fr);
+  column-gap: var(--space-2);
+  min-height: 11rem;
+  padding-block: var(--space-4) var(--space-5);
+}
+
+.dash-dayout-axis {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  color: var(--on-surface-muted);
+  font: var(--type-label-sm);
+  letter-spacing: var(--type-label-sm-tracking);
+  font-variant-numeric: tabular-nums;
+  text-align: end;
+}
+
+.dash-dayout-axis > li {
+  line-height: 0;
+}
+
+.dash-dayout-plot {
+  position: relative;
+  border-block-end: 1px solid var(--outline-variant);
+}
+
+.dash-dayout-cols {
+  position: relative;
+  height: 100%;
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
+  column-gap: var(--space-2);
+  align-items: end;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.dash-dayout-grid {
+  position: absolute;
+  inset-inline: 0;
+  border-block-start: 1px solid color-mix(in srgb, var(--outline-variant) 60%, transparent);
+  pointer-events: none;
+}
+
+.dash-dayout-col {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  align-items: flex-end;
+  height: 100%;
+  border-radius: 2px;
+}
+
+.dash-dayout-col:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.dash-dayout-bar {
+  position: relative;
+  width: min(56%, 1.75rem);
+  min-height: 1px;
+  border-radius: 2px 2px 0 0;
+  background: var(--chart-2);
+}
+
+.dash-dayout-value {
+  position: absolute;
+  inset-block-end: 100%;
+  inset-inline-start: 50%;
+  transform: translate(-50%, -2px);
+  font: var(--type-label-sm);
+  letter-spacing: var(--type-label-sm-tracking);
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.dash-dayout-label {
+  position: absolute;
+  inset-block-start: 100%;
+  margin-block-start: var(--space-1);
+  color: var(--on-surface-muted);
+  font: var(--type-label-sm);
+  letter-spacing: var(--type-label-sm-tracking);
+  white-space: nowrap;
+}
+
+/* 툴팁 — 날짜 · 정확한 수량(마우스 올림 · 포커스). 막대 칸 위 가운데, 다른 카드 툴팁과 같은 생김새. */
+.dash-dayout-col[data-tip]:hover::after,
+.dash-dayout-col[data-tip]:focus-visible::after {
+  content: attr(data-tip);
+  position: absolute;
+  inset-block-start: 0;
+  inset-inline-start: 50%;
+  z-index: 2;
+  transform: translate(-50%, calc(-100% - var(--space-2)));
+  /* 카드 · 화면 밖으로 나가면 안쪽으로 민 만큼(`useTipInside`, omf-all-around#128). */
+  translate: var(--tip-shift, 0) 0;
+  padding: var(--space-1) var(--space-2);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-sm, 6px);
+  background: var(--surface);
+  box-shadow: var(--elevation-1, 0 1px 3px rgb(0 0 0 / 12%));
+  color: var(--on-surface);
+  font: var(--type-label-sm);
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+/* PQC 설비별 불량률 TOP 8(사용자 지시 2026-10-19) — 설비 | 막대(남는 폭) | 불량률 | 불량 수량, 열 폭 고정 · 줄 높이 같게. */
+.dash-eqrate {
+  display: grid;
+  grid-template-columns: minmax(4.5rem, max-content) minmax(2rem, 1fr) 3.5rem 5.5rem;
+  column-gap: var(--space-3);
+  row-gap: var(--space-2);
+  align-items: center;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font: var(--type-body-sm);
+}
+
+.dash-eqrate-row {
+  display: grid;
+  grid-column: 1 / -1;
+  grid-template-columns: subgrid;
+  align-items: center;
+  min-height: 1.5rem;
+}
+
+.dash-eqrate-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dash-eqrate-track {
+  height: 0.625rem;
+  border-radius: 2px;
+  background: color-mix(in srgb, var(--on-surface) 6%, transparent);
+}
+
+.dash-eqrate-bar {
+  display: block;
+  height: 100%;
+  border-radius: 2px;
+  background: var(--chart-5);
+}
+
+.dash-eqrate-bar-top {
+  background: var(--chart-2);
+}
+
+.dash-eqrate-rate {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  text-align: end;
+}
+
+.dash-eqrate-qty {
+  color: var(--on-surface-muted);
+  font-variant-numeric: tabular-nums;
+  text-align: end;
+  white-space: nowrap;
+}
+
+/*
+ * PQC 불량 구성 보기 전환(사용자 지시 2026-10-19) — 화면 탭(빨간 밑줄)과 구분되는 작은 버튼 묶음 + 그 아래 집계 기준.
+ */
+.dash-breakdown-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+  margin-block-end: var(--space-3);
+}
+
+.dash-seg {
+  display: inline-flex;
+  padding: 2px;
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-sm, 6px);
+  background: var(--surface);
+}
+
+.dash-seg-button {
+  padding: var(--space-1) var(--space-3);
+  border: 0;
+  border-radius: calc(var(--radius-sm, 6px) - 2px);
+  background: transparent;
+  color: var(--on-surface-muted);
+  font: var(--type-label-md, var(--type-label-sm));
+  cursor: pointer;
+}
+
+.dash-seg-button[aria-pressed='true'] {
+  background: var(--surface-container-high, var(--surface-container));
+  color: var(--on-surface);
+  font-weight: 700;
+}
+
+.dash-seg-button:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.dash-breakdown-basis {
+  font: var(--type-label-sm);
+  letter-spacing: var(--type-label-sm-tracking);
+  color: var(--on-surface-muted);
+}
+
+/* OQC 3행(사용자 지시 2026-10-19) — 반출 일별 수량 | 최근 판정, 같은 높이. 반출 실적이 없으면 최근 판정만 한 줄. */
+.dash-oqc-bottom {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr);
+  gap: var(--space-4);
+  align-items: stretch;
+}
+
+.dash-oqc-bottom-single {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+@container (max-width: 860px) {
+  .dash-oqc-bottom {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* 오른쪽 묶음에 카드가 하나뿐이면(OQC 고객별 불합격 · 사용자 지시 2026-10-19) 그 카드가 행 높이를 채운다. 둘이면 그대로. */
+.dash-qo-side:has(> :only-child) {
+  grid-template-rows: minmax(0, 1fr);
+}
+
+/* 툴팁이 뜬 막대는 위 숫자를 숨긴다 — 같은 값이 겹쳐 보이지 않게. */
+.dash-dayout-col[data-tip]:hover .dash-dayout-value,
+.dash-dayout-col[data-tip]:focus-visible .dash-dayout-value {
+  visibility: hidden;
+}
+
+/* 패널 아래 한 줄 안내(미종결 부적합 「전체 n건 중 오래된 5건」 · 사용자 지시 2026-10-19). */
+.dash-panel-foot {
+  margin: var(--space-2) 0 0;
+  color: var(--on-surface-muted);
+  font: var(--type-label-sm);
+  letter-spacing: var(--type-label-sm-tracking);
+}
+
+/* 패널 머리 한 줄(반복 부적합 품목 「n개 품목」 · 사용자 지시 2026-10-19). */
+.dash-panel-lead {
+  margin: 0 0 var(--space-2);
+  font: var(--type-label-md, var(--type-label-sm));
+  font-weight: 700;
+}
+
+/*
+ * 부적합 원인 구분별 구성 — 가로 막대 + 가로축(사용자 지시 2026-10-19). 이름 칸 | 막대 칸, 아래 같은 칸 나눔으로 눈금.
+ * 막대 끝 수량은 막대 오른쪽 바깥, 칸 끝에서 잘리지 않게 오른쪽 여백을 둔다.
+ */
+.dash-axisbars {
+  --dash-axisbars-name: minmax(4rem, max-content);
+  display: grid;
+  gap: var(--space-1);
+  margin: 0;
+  padding-inline-end: 3rem;
+  font: var(--type-body-sm);
+}
+
+.dash-axisbars-rows {
+  display: grid;
+  grid-template-columns: var(--dash-axisbars-name) minmax(0, 1fr);
+  row-gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.dash-axisbars-row {
+  display: grid;
+  grid-column: 1 / -1;
+  grid-template-columns: subgrid;
+  column-gap: var(--space-3);
+  align-items: center;
+}
+
+.dash-axisbars-name {
+  overflow: hidden;
+  text-align: end;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dash-axisbars-track {
+  position: relative;
+  height: 1.375rem;
+  border-inline-start: 1px solid var(--outline-variant);
+}
+
+.dash-axisbars-grid {
+  position: absolute;
+  inset-block: calc(-1 * var(--space-2));
+  border-inline-start: 1px solid color-mix(in srgb, var(--outline-variant) 60%, transparent);
+  pointer-events: none;
+}
+
+.dash-axisbars-bar {
+  position: relative;
+  display: block;
+  height: 100%;
+  min-width: 1px;
+  background: var(--chart-2);
+}
+
+.dash-axisbars-value {
+  position: absolute;
+  inset-block: 0;
+  inset-inline-start: calc(100% + var(--space-2));
+  display: flex;
+  align-items: center;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.dash-axisbars-axis {
+  display: grid;
+  grid-template-columns: var(--dash-axisbars-name) minmax(0, 1fr);
+  column-gap: var(--space-3);
+}
+
+.dash-axisbars-ticks {
+  position: relative;
+  height: 1.25rem;
+  border-block-start: 1px solid var(--outline-variant);
+  color: var(--on-surface-muted);
+  font: var(--type-label-sm);
+  letter-spacing: var(--type-label-sm-tracking);
+  font-variant-numeric: tabular-nums;
+}
+
+.dash-axisbars-ticks > span {
+  position: absolute;
+  inset-block-start: var(--space-1);
+  transform: translateX(-50%);
+  white-space: nowrap;
+}
+
+/* 미종결 부적합 번호 — 긴 번호는 말줄임(전체는 마우스 올림), 카드 폭 안에 열이 다 들어오게(2026-10-19 화면 확인). */
+.dash-nc-no {
+  display: inline-block;
+  max-width: 11.5rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+.dash-nc-open .dash-cell-item {
+  max-width: 7.5rem;
+}
+
+/* 미종결 목록은 오른쪽 좁은 카드(약 420px) — 칸 여백을 줄이고, 판정 칩용 마지막 열 최소 폭(4.5rem)을 풀어
+ * 화살표 폭만 남긴다. 열이 카드 밖으로 잘리지 않게(사용자 지시 2026-10-19). */
+.dash-nc-open th:not(:last-child),
+.dash-nc-open td:not(:last-child) {
+  padding-inline: var(--space-2);
+}
+
+.dash-tab-quality-detail .dash-nc-open td:last-child > * {
+  min-width: 0;
+}
+
+/* 번호 열이 남는 폭을 받고, 카드가 더 좁으면 번호만 말줄임(전체는 마우스 올림) — 다른 열은 그대로 보인다. */
+.dash-nc-open td:first-child {
+  width: 100%;
+  max-width: 0;
+}
+
+.dash-nc-open .dash-nc-no {
+  max-width: 100%;
+}
+
+/* 상태가 섞일 때 번호 아래 붙는 상태 한 줄(열 대신 — 카드 폭에 열 6개가 안 들어간다). */
+.dash-nc-no-cell {
+  display: flex;
+  max-width: 100%;
+  flex-direction: column;
+  min-width: 0;
+  vertical-align: middle;
+}
+
+.dash-nc-status {
+  font-size: var(--font-size-xs, 0.75rem);
+  color: var(--on-surface-muted);
+  white-space: nowrap;
+}
+
+/* 파레토 80% 기준(사용자 지시 2026-10-19) — 기준 위를 옅게 칠하고 선 · 이름표를 진하게. */
+.dash-threshold-zone {
+  fill: color-mix(in srgb, var(--app-info) 7%, transparent);
+}
+
+.dash-threshold.dash-threshold-strong {
+  stroke-width: 1.5;
+  stroke-dasharray: 6 3;
+}
+
+.dash-axis.dash-threshold-label {
+  fill: var(--app-info);
+  font-weight: 700;
+}
+
+/*
+ * 그래프 칸 툴팁(부적합 파레토 · 원인 구분 · 사용자 지시 2026-10-19) — 마우스 올림 · 포커스로 이름 · 수량 · 비율.
+ * 생김새는 일별 반출 수량 툴팁과 같다. 파레토는 그림(svg) 위에 같은 높이의 층을 겹친다.
+ */
+.dash-figure-pareto {
+  position: relative;
+}
+
+.dash-figure-pareto > .dash-svg-wrap,
+.dash-figure-pareto > svg {
+  position: relative;
+}
+
+.dash-hit-layer {
+  position: absolute;
+  inset-inline: 0;
+  inset-block-end: 0;
+  pointer-events: none;
+}
+
+.dash-hit {
+  position: absolute;
+  pointer-events: auto;
+  border-radius: 2px;
+}
+
+.dash-hit:hover,
+.dash-hit:focus-visible {
+  background: color-mix(in srgb, var(--on-surface) 5%, transparent);
+  outline: none;
+}
+
+.dash-hit[data-tip]:hover::after,
+.dash-hit[data-tip]:focus-visible::after {
+  content: attr(data-tip);
+  position: absolute;
+  inset-block-start: 50%;
+  z-index: 3;
+  transform: translateY(-50%);
+  translate: var(--tip-shift, 0) 0;
+  padding: var(--space-1) var(--space-2);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-sm, 6px);
+  background: var(--surface);
+  box-shadow: var(--elevation-1, 0 1px 3px rgb(0 0 0 / 12%));
+  color: var(--on-surface);
+  font: var(--type-label-sm);
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+/*
+ * 툴팁 자리 — 기본은 칸 · 막대 오른쪽(막대 끝 수량 뒤), 자리가 없으면 왼쪽(사용자 지시 2026-10-19).
+ * 막대가 칸보다 좁으면 칸 끝이 아니라 막대 옆에 붙는다(`--tip-inset` = 칸 끝 ~ 막대 끝, omf-all-around#128).
+ */
+.dash-tip-right[data-tip]::after {
+  inset-inline-start: calc(100% - var(--tip-inset, 0px) + var(--space-2));
+}
+
+/* 원인 구분 툴팁 — 막대 끝 숫자 바로 뒤에 붙는다(숫자 폭이 달라도 늘 숫자 옆 · 사용자 지시 2026-10-19). */
+.dash-axisbars-bar:hover .dash-axisbars-value[data-tip]::after,
+.dash-axisbars-bar:focus-visible .dash-axisbars-value[data-tip]::after {
+  content: attr(data-tip);
+  /* 안쪽으로 밀 수 있게 상자로 세운다(`translate` 는 글 흐름 조각에 듣지 않는다). */
+  display: inline-block;
+  translate: var(--tip-shift, 0) 0;
+  margin-inline-start: var(--space-2);
+  padding: var(--space-1) var(--space-2);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-sm, 6px);
+  background: var(--surface);
+  box-shadow: var(--elevation-1, 0 1px 3px rgb(0 0 0 / 12%));
+  color: var(--on-surface);
+  font: var(--type-label-sm);
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.dash-tip-left[data-tip]::after {
+  inset-inline-end: calc(100% - var(--tip-inset, 0px) + var(--space-2));
+}
+
+.dash-axisbars-bar:hover,
+.dash-axisbars-bar:focus-visible {
+  outline: none;
+  filter: brightness(1.25);
+}
+
+/* 원인 구분별 구성 — 카드 높이를 그래프가 채운다(아래 빈 공간 줄임 · 사용자 지시 2026-10-19). */
+.dash-axisbars-panel {
+  display: flex;
+  flex-direction: column;
+}
+
+.dash-axisbars-panel > .dash-panel-body {
+  display: flex;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.dash-axisbars-panel .dash-axisbars {
+  flex: 1 1 auto;
+  grid-template-rows: minmax(0, 1fr) auto;
+}
+
+/*
+ * 줄 높이 상한 3rem — 항목이 적으면 줄이 카드 높이만큼 늘어나 막대 줄이 듬성듬성 굵게 보였다(omf-all-around#128).
+ * 늘어나지 않은 줄 묶음은 가운데에 둔다. 항목이 많아 줄이 3rem 보다 작아지는 때는 종전과 같다.
+ */
+.dash-axisbars-panel .dash-axisbars-rows {
+  grid-auto-rows: minmax(1.75rem, 3rem);
+  align-content: center;
+  align-items: stretch;
+}
+
+.dash-axisbars-panel .dash-axisbars-track {
+  display: flex;
+  align-items: center;
+  height: auto;
+}
+
+.dash-axisbars-panel .dash-axisbars-bar {
+  flex: none;
+  height: 1.5rem;
+}
+
+/*
+ * ⭐ 다크 모드 보정(사용자 지시 2026-10-19) — 배경을 밝히지 않고 강조색 · 보조 글 대비만 올린다. DS 테마(themes.css)는
+ * 표면 · 글자 사다리를 다크로 바꿔 주지만, 라이트 고정인 정보 파랑 · 오류 빨강 · 차트 1번(빨강)은 다크 표면
+ * (#2A2D33) 위에서 3:1 에 못 미쳤다. 대시보드가 쓰는 그림 색만 앱 토큰으로 받아 다크에서 밝은 톤으로 바꾼다.
+ * 라이트 값은 그대로(= DS 시맨틱). DS 토큰(`--chart-1` · `--on-surface-muted`)은 대시보드 탭 안에서만 바꾼다 —
+ * 다른 화면 · POP 은 DS 다크 그대로.
+ */
+:root {
+  --app-info: var(--semantic-info);
+  --app-error: var(--semantic-error);
+  --app-error-text: var(--semantic-error);
+}
+
+[data-theme='dark'] {
+  /* 정보 파랑 · 오류 빨강 그림(점 · 막대 · 기준선 · 누적선) — #2A2D33 위 각 6.2:1 · 3.9:1. */
+  --app-info: #8ab4f8;
+  --app-error: #e5534b;
+  /* 오류 숫자 글 — DS 의 다크용 글자 빨강. */
+  --app-error-text: var(--semantic-error-text);
+}
+
+[data-theme='dark'] .dash-tabs {
+  /* 차트 1번(생산 추이 선 등) — DS 다크에 빠져 있어 오류 빨강과 같은 밝은 톤으로. */
+  --chart-1: #e5534b;
+  /* 보조 글 — DS 다크 #8A8D94 는 카드(#2A2D33) 위 4.0:1 로 본문 기준(4.5:1)에 못 미쳤다 → 5.0:1. */
+  --on-surface-muted: #a2a5ac;
+}
+
+/* 대시보드 증감 표시(좋음 · 나쁨 · 같음) — 라이트 진한 톤은 다크 카드 위 3:1 안팎이었다(`.dash-delta` 에서 정의돼 거기서 바꾼다). */
+[data-theme='dark'] .dash-delta {
+  --dash-delta-good: #81c995;
+  --dash-delta-bad: #f2a65a;
+  --dash-delta-flat: #a2a5ac;
 }

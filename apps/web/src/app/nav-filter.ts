@@ -17,7 +17,7 @@ import type { WebAccess } from '../patterns/web-access';
 const normalize = (value: string): string => value.trim().toLowerCase();
 
 /**
- * 이 항목이 검색어에 걸리는가. 비교하는 것은 **이름 하나**다.
+ * 이 항목이 검색어에 걸리는가. 비교하는 것은 **그 항목의 이름 하나**다(탭 이름은 `searchNavEntry` 가 따로 잰다).
  *
  * ⭐ **보이는 이름으로 잰다**(#1113). 두 언어를 다 보면 베트남어 화면에서 한국어를 쳐도 걸리는데,
  * 그러면 **화면에 없는 글자가 결과를 만든다** — 걸린 까닭을 화면에서 읽을 수 없다. 반대로 늘
@@ -25,6 +25,41 @@ const normalize = (value: string): string => value.trim().toLowerCase();
  */
 const matches = (entry: NavEntry, needle: string): boolean =>
   normalize(localizedLabel(entry)).includes(needle);
+
+/**
+ * 펼친 탭의 보이는 이름 — **묶음 이름을 앞에 붙인다**(「ERP 연동 현황·이력 › ERP W/O」).
+ *
+ * ⭐ 탭 이름은 묶음 안에서만 홀로 설 수 있다 — 「사원」·「BOM」은 묶음 밖에서 무엇의 사원인지
+ * 모르고, 「ERP W/O」는 생산 관리의 묶음 이름과 같아 검색 결과에 **같은 글자의 두 줄이 다른
+ * 곳으로 간다.** 걸린 글자(탭 이름)는 그대로 보이므로 「왜 걸렸는가」도 읽힌다.
+ */
+const SPREAD_SEPARATOR = ' › ';
+
+/**
+ * 검색에 걸린 결과로 **이 항목 자리에 설 것들**.
+ *
+ * ⭐ **탭 묶음은 탭 이름으로도 찾는다.** 「타발수」를 치는 사람은 그 화면이 「툴·금형」 묶음에
+ * 들어간 것을 모른다 — 묶음 이름만 재면 옛 화면 이름으로 찾던 길이 끊긴다.
+ *
+ * ⛔ **탭 이름으로 걸렸으면 묶음이 아니라 그 탭을 세운다.** 묶음 이름(「툴·금형」)만 서면 걸린
+ * 글자가 화면에 없어 **왜 걸렸는지 읽을 수 없다**(위 `matches` 의 원칙과 같다). 묶음 이름으로
+ * 걸렸으면 묶음 그대로 선다.
+ */
+const searchNavEntry = (entry: NavEntry, needle: string): readonly NavEntry[] => {
+  if (matches(entry, needle)) return [entry];
+
+  return (
+    (entry.tabs ?? [])
+      /* 거르기는 **탭 이름 자체**로 한다 — 묶음 이름으로 걸렸으면 위에서 묶음이 이미 섰다. */
+      .filter((tab) => matches({ ...tab, icon: entry.icon }, needle))
+      .map((tab) => ({
+        to: tab.to,
+        icon: entry.icon,
+        label: `${entry.label}${SPREAD_SEPARATOR}${tab.label}`,
+        labelVi: `${entry.labelVi}${SPREAD_SEPARATOR}${tab.labelVi}`,
+      }))
+  );
+};
 
 /**
  * 검색어에 맞는 항목만 남긴 묶음 목록. **맞는 항목이 없는 묶음은 빠진다.**
@@ -43,7 +78,10 @@ export const filterNavGroups = (
   return (
     groups
       /* ⛔ 필드를 손으로 다시 적지 않는다 — `NavGroup` 에 무언가 늘면 조용히 떨어진다. */
-      .map((group) => ({ ...group, items: group.items.filter((item) => matches(item, needle)) }))
+      .map((group) => ({
+        ...group,
+        items: group.items.flatMap((item) => searchNavEntry(item, needle)),
+      }))
       .filter((group) => group.items.length > 0)
   );
 };
@@ -72,7 +110,7 @@ export const matchesNavEntry = (entry: NavEntry, query: string): boolean => {
 export const hasNoNavMatch = (entries: readonly NavEntry[], query: string): boolean => {
   const needle = normalize(query);
 
-  return needle !== '' && !entries.some((entry) => matches(entry, needle));
+  return needle !== '' && !entries.some((entry) => searchNavEntry(entry, needle).length > 0);
 };
 
 /**
@@ -95,9 +133,32 @@ export const filterNavGroupsByAccess = (
   return (
     groups
       /* ⛔ 필드를 손으로 다시 적지 않는다 — `NavGroup` 에 무언가 늘면 조용히 떨어진다. */
-      .map((group) => ({ ...group, items: group.items.filter((item) => access.allows(item.to)) }))
+      .map((group) => ({
+        ...group,
+        items: group.items.flatMap((item) => {
+          const allowed = narrowNavEntryByAccess(item, access);
+
+          return allowed === null ? [] : [allowed];
+        }),
+      }))
       .filter((group) => group.items.length > 0)
   );
+};
+
+/**
+ * 항목 하나를 권한으로 좁힌다 — 볼 수 없으면 `null`.
+ *
+ * 탭 묶음은 **볼 수 있는 탭만 남기고, 그 첫 탭으로 건다.** 탭이 하나도 남지 않으면 묶음째
+ * 감춘다. 첫 탭을 못 보는 사람에게 묶음 주소(첫 탭)를 그대로 걸면 누르는 순간 막힌 화면이
+ * 선다.
+ */
+const narrowNavEntryByAccess = (entry: NavEntry, access: WebAccess): NavEntry | null => {
+  if (entry.tabs === undefined) return access.allows(entry.to) ? entry : null;
+
+  const tabs = entry.tabs.filter((tab) => access.allows(tab.to));
+  const [first] = tabs;
+
+  return first === undefined ? null : { ...entry, to: first.to, tabs };
 };
 
 /**

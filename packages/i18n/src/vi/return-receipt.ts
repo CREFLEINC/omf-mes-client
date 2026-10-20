@@ -4,7 +4,7 @@ import type { Translated } from './translated';
 /** W-04-06 반품·클레임 입고 등록. 이 화면은 입고만 한다 — 판정은 다른 화면 몫이다. */
 export const returnReceipt: Translated<typeof ko.returnReceipt> = {
   title: 'Đăng ký nhập kho hàng trả và khiếu nại',
-  breadcrumbRoot: 'Xuất hàng',
+  breadcrumbRoot: 'Quản lý bán hàng / xuất hàng',
   scopeNotice:
     'Hàng trả và khiếu nại của lô xuất hàng đã xác nhận được nhập kho ở đây. Hàng trả vào ở trạng thái tạm giữ (Hold), còn đánh giá làm lại hoặc hủy thì làm ở màn hình yêu cầu đánh giá.',
   panes: {

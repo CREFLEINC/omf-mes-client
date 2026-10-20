@@ -1,9 +1,9 @@
 import type { ko } from '../ko';
 import type { Translated } from './translated';
 
-/** P-02-06 생산 실적 등록. */
+/** P-02-04 생산 작업. */
 export const productionResult: Translated<typeof ko.productionResult> = {
-  title: 'Đăng ký kết quả sản xuất',
+  title: 'Công việc sản xuất',
   flow: {
     header: {
       /* ⚠ ERP 쪽 번호와 나란히 서는 자리라 어느 쪽 번호인지 밝힌다(사용자 지시 2026-09-10). */
@@ -142,10 +142,16 @@ export const productionResult: Translated<typeof ko.productionResult> = {
     pending: (count: number) => `Chờ gửi ${String(count)} mục`,
   },
   pqc: {
-    blockedTitle: 'Còn kiểm tra PQC chưa xong',
-    blockedBody: 'Phải hoàn tất kiểm tra sản phẩm của lệnh sản xuất này mới đăng ký được kết quả.',
     goInspect: 'Đến màn hình kiểm tra',
-    loadFailed: 'Không xác nhận được yêu cầu kiểm tra nên chưa mở nhập kết quả.',
+    splitTitle: 'Kiểm tra sản phẩm PQC',
+    splitNote: 'Số lượng kiểm tra · Đánh giá · Xác nhận kết quả',
+    notInspected: 'Không kiểm tra PQC',
+    skipped: 'Bỏ qua PQC',
+    loadFailed: 'Không tải được thông tin PQC. Hãy thử lại.',
+  },
+  zone: {
+    title: 'Kết quả sản xuất',
+    note: 'Tiến độ LOT · Nhập số lượng · In nhãn',
   },
   lot: {
     sectionLabel: 'LOT đối tượng',

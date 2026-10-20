@@ -20,7 +20,7 @@ import { useNavigate } from 'react-router';
  * 아니라 확정이 가리키는 길이라 성격이 다르다 — 막힌 것만 알리고 길을 안 내주면 사람이
  * 화면 밖에서 임의로 처리한다(G-3). 나머지 셋에는 갈 곳이 없으므로 두지 않는다.
  */
-/** W-02-10 추가 자재 출고 요청(수동). 주소는 `patterns/web-screen-catalog.ts` 의 그 화면 자리다. */
+/** W-02-10 자재 불출 요청(설계명 「추가 자재 출고 요청(수동)」). 주소는 `patterns/web-screen-catalog.ts` 의 그 화면 자리다. */
 const MATERIAL_ISSUE_REQUEST_PATH = '/production/material-issue-requests';
 
 export const FixedTermsPane = () => {

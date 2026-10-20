@@ -8,7 +8,7 @@ import type { Translated } from './translated';
 export const toolMaster: Translated<typeof ko.toolMaster> = {
   title: 'Dữ liệu gốc công cụ / khuôn / đồ gá',
   paneTitle: 'Danh sách công cụ',
-  breadcrumbRoot: 'Thiết bị / Công cụ',
+  breadcrumbRoot: 'Quản lý dữ liệu gốc',
   actions: {
     addTool: 'Tạo công cụ',
     importTools: 'Tải lên Excel',

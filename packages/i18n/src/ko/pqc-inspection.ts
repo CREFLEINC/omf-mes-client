@@ -144,6 +144,22 @@ export const pqcInspection = {
     confirmBlockedByTerminal:
       '이 단말은 이 공정의 검사 입력 권한이 없습니다. 단말 설정에서 권한을 부여하세요.',
     confirmSucceeded: '검사를 확정했습니다.',
+    /** 분할 패널(omf-all-around#107) — 업무 순서가 «실적 입력 → PQC» 다. 서버도 같은 문구로 막는다(장부 P-49). */
+    noProductionResult: '이 작업지시의 생산 실적이 아직 없습니다. 실적을 먼저 등록하세요.',
+  },
+
+  /**
+   * POP 생산 작업 분할 패널(P-02-04 반쪽)의 말(omf-all-around#107 UI/UX). 단독 화면 P-02-13 과 관리웹 W-03-11 은 위 말을 그대로 쓴다.
+   * 현장 작업자가 한 번에 읽도록 짧게 — 상태·원인·행동만.
+   */
+  panel: {
+    noItems: '등록된 검사 항목이 없습니다. 관리자에게 문의하세요.',
+    short: (remaining: string): string => `미입력 ${remaining}`,
+    over: (over: string): string => `${over} 초과`,
+    judgmentPlaceholder: '종합 판정을 선택하세요',
+    dispositionNote: '불합격 수량이 있을 때 고릅니다. 불량창고 입고 후 확정됩니다.',
+    /** 저장된 회차를 다 읽기 전에는 저장·확정을 잠근다(리뷰 M1 · 관리웹 W-03-11 도 쓴다). 실패는 오류 띠가 이유와 [다시 시도]를 낸다. */
+    roundLoading: '저장된 검사 결과를 불러오는 중입니다.',
   },
 
   /**

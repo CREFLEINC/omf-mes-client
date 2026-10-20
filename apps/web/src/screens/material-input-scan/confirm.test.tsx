@@ -616,7 +616,7 @@ describe('MaterialInputScanScreen — 목록 닫기', () => {
    *
    * ⛔ **작업지시를 주소로 싣는다** — 실적 화면은 그 값을 주소에서만 읽는다.
    */
-  it('닫은 뒤 같은 작업지시의 생산 실적 등록으로 가는 길을 준다', async () => {
+  it('닫은 뒤 같은 작업지시의 생산 작업으로 가는 길을 준다', async () => {
     const user = userEvent.setup();
     renderScreen([lot()], okRoute([consumption(7301)]));
 

@@ -13,7 +13,7 @@
  */
 export const stocktaking = {
   title: '재고실사',
-  breadcrumbRoot: '자재창고',
+  breadcrumbRoot: '구매 / 자재 관리',
   panes: {
     list: '실사 목록',
     open: '실사 개시',

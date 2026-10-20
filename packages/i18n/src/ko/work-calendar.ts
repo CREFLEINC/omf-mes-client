@@ -6,7 +6,7 @@
 export const workCalendar = {
   title: '작업 캘린더 설정',
   listTitle: '작업 캘린더 목록',
-  breadcrumbRoot: '설비/툴',
+  breadcrumbRoot: '기준정보 관리',
   actions: {
     addCalendar: '캘린더 등록',
     editCalendar: '캘린더 수정',

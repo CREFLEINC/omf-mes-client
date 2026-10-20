@@ -2,7 +2,7 @@ import { messages } from '@omf-mes/i18n';
 import { describe, expect, it } from 'vitest';
 
 import type { LookupSource } from '../../patterns/lookup-display';
-import { ensureOption, lookupLabel, selectableOptions } from './options';
+import { codeValueName, ensureOption, lookupLabel, selectableOptions } from './options';
 import type { LookupEntry, SelectOption } from './types';
 
 const entries: LookupEntry[] = [
@@ -108,5 +108,25 @@ describe('lookupLabel', () => {
 
   it('조회가 실패하면 실패 문구를 내고 번호를 숨긴다', () => {
     expect(lookupLabel([], 7001, false, true)).toBe(messages.common.reference.failed);
+  });
+});
+
+describe('codeValueName', () => {
+  const options = [
+    { code: 'FINISHED', codeName: '완제품' },
+    { code: 'SYN-BLANK', codeName: '' },
+  ];
+
+  it('코드 그룹이 준 이름으로 옮긴다', () => {
+    expect(codeValueName(options, 'FINISHED')).toBe('완제품');
+  });
+
+  it('목록을 받기 전이면 코드 그대로 낸다', () => {
+    expect(codeValueName(undefined, 'FINISHED')).toBe('FINISHED');
+  });
+
+  it('목록에 없거나 이름이 비어 있으면 코드 그대로 낸다', () => {
+    expect(codeValueName(options, 'SYN-OTHER')).toBe('SYN-OTHER');
+    expect(codeValueName(options, 'SYN-BLANK')).toBe('SYN-BLANK');
   });
 });

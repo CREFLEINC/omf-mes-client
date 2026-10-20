@@ -6,7 +6,7 @@
  */
 export const dispositionRequest = {
   title: '재작업/폐기 판정 의뢰',
-  breadcrumbRoot: '출하',
+  breadcrumbRoot: '영업 / 출하 관리',
   /** 상단 상시 안내 — 이 화면에서 «하지 않는 것»을 먼저 말한다. 안 적으면 판정 버튼을 찾는다. */
   scopeNotice: '판정은 품질 화면에서 합니다. 여기서는 부적합을 등록하고 판정을 의뢰합니다.',
   /**

@@ -1,6 +1,6 @@
 import { Breadcrumb, PageHeader, Tabs } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router';
 
 import { AlertCenterButton, AlertPanel } from './alert-panel';
@@ -22,7 +22,7 @@ import { LoadErrorBanner, periodErrorOf } from './load-error-banner';
 import { OverviewKpis } from './overview-kpis';
 import { FilterQueryContext, PeriodRangeContext, SingleDayContext } from './period';
 import { ShipmentPanel } from './shipment-panel';
-import { plantNote, usePlantOptions } from './lookups';
+import { plantNote, usePlantOptions, type DataScope } from './lookups';
 import {
   IqcTab,
   NonconformanceTab,
@@ -37,6 +37,7 @@ import { toWebAccess } from '../../patterns/web-access';
 import { useDashboardSummary } from './queries';
 import { TrendPanel } from './trend-panel';
 import { useFillHeight } from './use-fill-height';
+import { useTipInside } from './use-tip-inside';
 import type { DashboardAlertView, DashboardCardView, SelectOption } from './types';
 import { Panel } from './viz';
 
@@ -102,6 +103,8 @@ const EMPTY_ALERTS: DashboardAlertView[] = [];
  * 낸다. 쪽 개념도 선택 개념도 없어 다른 화면들의 「조건이 바뀌면 쪽을 되돌린다」가 성립하지
  * 않는다. 조건이 바뀌면 주소가 통째로 다시 쓰인다.
  */
+const NO_SCOPES: readonly DataScope[] = [];
+
 export const DashboardScreen = () => {
   const [searchParams, setSearchParams] = useSearchParams();
 
@@ -115,6 +118,7 @@ export const DashboardScreen = () => {
   /* 2 · 3행이 화면 아래까지 남은 높이를 나눠 갖는다(3행 생산 추이가 먼저 · `.dash-overview`). */
   const [overviewEl, setOverviewEl] = useState<HTMLDivElement | null>(null);
   const fillHeight = useFillHeight(overviewEl);
+  useTipInside();
   /* 서버가 기간을 거절한 이유(400 field dateFrom · dateTo) — 배너 대신 날짜 칸 옆에 둔다. */
   const periodError = periodErrorOf(summary.error);
   /* 알림 이름 풀이 — 알림센터와 같은 유형 목록을 쓴다(코드 원문을 보이지 않는다). */
@@ -123,7 +127,18 @@ export const DashboardScreen = () => {
   const { session } = useSession();
   const access = toWebAccess(session?.permissions);
   const tab = readTab(searchParams);
-  const plants = usePlantOptions();
+  const scopes = session?.scopes ?? NO_SCOPES;
+  const plants = usePlantOptions(scopes);
+  /* 데이터 범위가 공장 하나뿐이면 그 공장을 기본으로 고른다(omf-all-around#120) — 주소에 적어 조회·공유가 같은 공장을 본다. */
+  const onlyPlant =
+    scopes.length > 0 && plants.entries.length === 1 ? plants.entries[0]?.value : undefined;
+  useEffect(() => {
+    if (onlyPlant !== undefined && filters.plant === '') {
+      setSearchParams(withTab(toSearchParams({ ...filters, plant: onlyPlant }), tab), {
+        replace: true,
+      });
+    }
+  }, [onlyPlant, filters, tab, setSearchParams]);
 
   const view = summary.data;
   const cards = view?.cards ?? EMPTY_CARDS;
@@ -197,14 +212,22 @@ export const DashboardScreen = () => {
           isLoading={summary.isPending}
           isFailed={isFailed}
         />
-        {/* 「단위 EA」는 그래프 안이 아니라 상자 머리 오른쪽(사용자 지시 2026-10-16). */}
+        {/*
+         * ⭐ 「단위 EA」는 제목 아래 부제로, 오른쪽 위는 기간 이름표 「최근 9일」(기간 조회면 「선택 기간」 ·
+         * 사용자 지시 2026-10-19 — 다른 카드와 같은 머리 구성).
+         */}
         <Panel
           title={t.panes.trend}
           className="dash-fit"
-          action={
-            view?.trend?.unit === null || view?.trend?.unit === undefined ? undefined : (
-              <span className="dash-panel-unit">{t.trend.unitSuffix(view.trend.unit)}</span>
-            )
+          sub={
+            view?.trend?.unit === null || view?.trend?.unit === undefined
+              ? undefined
+              : t.trend.unitSuffix(view.trend.unit)
+          }
+          tag={
+            isSingleDay(filters)
+              ? messages.dashboard.quality.dailyRecent
+              : messages.dashboard.quality.tagPeriod
           }
         >
           <TrendPanel
@@ -255,6 +278,7 @@ export const DashboardScreen = () => {
           <DashboardFilterBar
             filters={filters}
             plantOptions={plantOptions}
+            allowAllPlants={onlyPlant === undefined}
             plantNote={plantNote(plants)}
             isRefreshing={summary.isFetching}
             lastUpdatedText={lastUpdatedText}
@@ -314,8 +338,14 @@ export const DashboardScreen = () => {
                     ) : value === 'iqc' ? (
                       /* 최근 IQC 판정 줄 → 검사결과 상세(사용자 지시 2026-10-19) — 그 화면 권한을 본다. */
                       <IqcTab quality={quality} allows={access.allows} />
+                    ) : value === 'pqc' ? (
+                      /* PQC · OQC 도 IQC 와 같이 최근 판정 줄 → 검사결과 상세(사용자 지시 2026-10-19). */
+                      <PqcTab quality={quality} allows={access.allows} />
+                    ) : value === 'oqc' ? (
+                      <OqcTab quality={quality} allows={access.allows} />
                     ) : (
-                      <TabBody quality={quality} />
+                      /* 부적합 — 미종결 부적합 줄 → 처분 판정 처리(사용자 지시 2026-10-19) · 그 화면 권한을 본다. */
+                      <NonconformanceTab quality={quality} allows={access.allows} />
                     )
                   }
                 </QualityGate>

@@ -125,6 +125,39 @@ const renderScreen = (
               page: { page: 1, size: 500, total: 2 },
             }),
         },
+        /* 원인 코드 마스터 — 추정 원인(omf-all-around#130). 대분류 1 · 상세 1 · 사용 중지 1. */
+        {
+          match: (request) => new URL(request.url).pathname === '/quality/cause-codes',
+          respond: () =>
+            jsonResponse({
+              items: [
+                { causeCodeId: 8001, causeCode: 'SUP', causeName: '공급사', isActive: true },
+                {
+                  causeCodeId: 8002,
+                  causeCode: 'SUP-PRC',
+                  causeName: '공급사 공정',
+                  parentCauseCodeId: 8001,
+                  isActive: true,
+                },
+                { causeCodeId: 8009, causeCode: 'OLD', causeName: '옛 원인', isActive: false },
+              ],
+              page: { page: 1, size: 500, total: 3 },
+            }),
+        },
+        /* 작성중 회차에 임시 저장된 사유(#122 · P-48) — 시험이 `draftRecordsForTest` 로 채운다. */
+        {
+          match: (request) =>
+            new URL(request.url).pathname === '/quality/defect-records' && request.method === 'GET',
+          respond: (request) => {
+            sent.push(new URL(request.url));
+            if (draftRecordsFailForTest)
+              return jsonResponse({ message: '서버 오류' }, { status: 500 });
+            return jsonResponse({
+              items: draftRecordsForTest,
+              page: { page: 1, size: 20, total: draftRecordsForTest.length },
+            });
+          },
+        },
         /* 불량 기록 등록 — ⛔ 확정이 사유를 싣는 뒤로는 나가지 않는다(#121 · P-47). 나가면 `writes` 에 잡힌다. */
         {
           match: (request) =>
@@ -227,7 +260,11 @@ const bodyOf = async (request: Request): Promise<Record<string, unknown>> =>
  */
 let confirmResponder: ((request: Request) => Response) | null = null;
 /** 검사기준 버전 단건 응답의 샘플링 칸. 샘플 검사수량을 재는 시험만 채운다. */
-let samplingVersion: { samplingMethodCode: string; samplingRatio: number | null } | null = null;
+let samplingVersion: {
+  samplingMethodCode: string;
+  samplingRatio: number | null;
+  acceptanceNumber?: number | null;
+} | null = null;
 
 /** 세션 — 기본은 작업자가 연결된 계정이다(검사자를 풀 수 있다 · omf-all-around#104). */
 const LINKED_SESSION: Session = {
@@ -237,10 +274,21 @@ const LINKED_SESSION: Session = {
 let testSession: Session = LINKED_SESSION;
 /** LOT 상세의 품질 상태. `null` 이면 LOT 상세에 답하지 않는다(종전 시험들). */
 let lotStatusForTest: string | null = null;
+/** 작성중 회차의 불량 기록(#122). 기본은 없음이다. */
+let draftRecordsForTest: {
+  defectRecordId: number;
+  defectCodeId: number;
+  defectDescription?: string;
+  suspectedCauseCodeId?: number;
+}[] = [];
+/** 작성중 사유 조회를 실패시킨다(#122 리뷰 M2). */
+let draftRecordsFailForTest = false;
 
 beforeEach(() => {
   testSession = LINKED_SESSION;
   lotStatusForTest = null;
+  draftRecordsForTest = [];
+  draftRecordsFailForTest = false;
   confirmResponder = null;
   samplingVersion = null;
 });
@@ -656,6 +704,85 @@ describe('IqcInspectionScreen', () => {
   });
 
   /*
+   * omf-all-around#125 — 기준에 합격판정개수가 있으면 수량으로 판정을 채우고, 다르게 고르면 변경 사유를 받아야 확정된다.
+   * 작성중 회차(draftRound)는 합격 480 · 불합격 15 · 보류 5 · 판정 합격이다.
+   */
+  it('합격판정개수 5 · 불합격 15 인데 합격이면 변경 사유 칸이 서고, 사유를 넣어야 확정되며 사유가 실린다', async () => {
+    samplingVersion = {
+      samplingMethodCode: 'FULL_INSPECTION',
+      samplingRatio: null,
+      acceptanceNumber: 5,
+    };
+    const { writes } = renderScreen('/?ir=1001');
+
+    await screen.findByText(t.result.round(1));
+    expect(
+      await screen.findByText(new RegExp(t.result.judgmentChange.basis(5))),
+    ).toBeInTheDocument();
+    const reason = await screen.findByLabelText(new RegExp(t.result.judgmentChange.reason));
+    expect(screen.getByText(t.result.judgmentChange.required)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: t.result.confirm })).toBeDisabled();
+
+    await userEvent.type(reason, '  재확인 결과 사용 가능 ');
+    await userEvent.click(screen.getByRole('button', { name: t.result.confirm }));
+
+    await waitFor(() => expect(writes).toHaveLength(1));
+    expect(await bodyOf(writes[0] as Request)).toEqual({
+      overallJudgmentCode: 'ACCEPTED',
+      judgmentChangeReason: '재확인 결과 사용 가능',
+    });
+  });
+
+  it('수량을 고치면 판정을 자동으로 채운다 — 자동 판정과 같으면 사유 칸이 없다', async () => {
+    samplingVersion = {
+      samplingMethodCode: 'FULL_INSPECTION',
+      samplingRatio: null,
+      acceptanceNumber: 20,
+    };
+    const { writes } = renderScreen('/?ir=1001');
+
+    await screen.findByText(t.result.round(1));
+    /* 보류 5 가 있어 자동 판정은 보류다 — 저장된 합격과 다르다. */
+    expect(
+      await screen.findByLabelText(new RegExp(t.result.judgmentChange.reason)),
+    ).toBeInTheDocument();
+
+    const held = screen.getByLabelText(t.result.fields.held);
+    await userEvent.clear(held);
+    await userEvent.type(held, '0');
+    await userEvent.type(screen.getByLabelText(t.result.fields.accepted), '5');
+
+    await waitFor(() =>
+      expect(screen.queryByLabelText(new RegExp(t.result.judgmentChange.reason))).toBeNull(),
+    );
+    const rejected = screen.getByLabelText(t.result.fields.rejected);
+    await userEvent.clear(rejected);
+    await userEvent.type(rejected, '25');
+    /* 불합격 25 > 20 — 자동으로 불합격이 되고 불합격 사유 칸이 선다. */
+    expect(await screen.findByText(t.result.rejection.heading)).toBeInTheDocument();
+    expect(screen.queryByLabelText(new RegExp(t.result.judgmentChange.reason))).toBeNull();
+    expect(writes).toHaveLength(0);
+  });
+
+  it('합격판정개수가 없는 기준이면 자동 판정·사유 칸이 없다(종전 그대로)', async () => {
+    samplingVersion = {
+      samplingMethodCode: 'FULL_INSPECTION',
+      samplingRatio: null,
+      acceptanceNumber: null,
+    };
+    const { writes } = renderScreen('/?ir=1001');
+
+    await screen.findByText(t.result.round(1));
+    await userEvent.click(await screen.findByRole('button', { name: t.result.confirm }));
+
+    await waitFor(() => expect(writes).toHaveLength(1));
+    expect(
+      screen.queryByText(new RegExp(t.result.judgmentChange.basis(0).replace('0', '\\d+'))),
+    ).toBeNull();
+    expect(await bodyOf(writes[0] as Request)).toEqual({ overallJudgmentCode: 'ACCEPTED' });
+  });
+
+  /*
    * ⭐ 확정은 되돌릴 수 없는 쓰기다 — 이 순간 LOT 상태가 전이하고 보류 해제가 기록된다.
    * 통신이 끊기거나 5xx 가 온 뒤 다시 누를 때 «새 키»가 나가면 서버가 그것을 다른 쓰기로
    * 보고 두 번 실행할 수 있다. 그래서 수명을 until-applied 로 고른다(#263).
@@ -1006,6 +1133,223 @@ describe('IqcInspectionScreen — 불합격 사유', () => {
     expect(new URL(confirmed.url).pathname).toContain(':confirm');
     expect(await bodyOf(confirmed)).toMatchObject({
       defects: [{ defectCodeId: 7002, defectDescription: '표면 긁힘' }],
+    });
+  });
+});
+
+/* omf-all-around#122 — 임시 저장이 불합격 사유를 싣고, 다시 열면 저장된 사유가 칸에 돌아온다. */
+describe('IqcInspectionScreen — 불합격 사유 임시 저장', () => {
+  const rejectedDraft = {
+    ...draftRound,
+    acceptedQty: 485,
+    rejectedQty: 15,
+    heldQty: 0,
+    overallJudgmentCode: 'REJECTED',
+  };
+
+  it('다시 연 작성중 회차의 사유를 대분류·상세·사유 칸에 되살린다', async () => {
+    draftRecordsForTest = [
+      { defectRecordId: 1, defectCodeId: 7002, defectDescription: '표면 긁힘' },
+    ];
+    const { sent } = renderScreen('/?ir=1001', () => jsonResponse(queueResponse()), [
+      rejectedDraft,
+    ]);
+
+    await waitFor(() =>
+      expect(screen.getByLabelText(t.result.rejection.description)).toHaveValue('표면 긁힘'),
+    );
+    expect(screen.getByLabelText(t.result.rejection.major)).toHaveTextContent('APP · 외관');
+    expect(screen.getByLabelText(t.result.rejection.minor)).toHaveTextContent('APP-SCR · 스크래치');
+    const lookup = sent.find((url) => url.pathname === '/quality/defect-records');
+    expect(lookup?.searchParams.get('inspectionResultId')).toBe(
+      String(draftRound.inspectionResultId),
+    );
+    /* 되살린 값은 저장된 값이다 — 바꾼 것이 없으니 [임시 저장]은 꺼져 있다. */
+    expect(screen.getByRole('button', { name: t.result.save })).toBeDisabled();
+  });
+
+  it('사유만 고쳐도 [임시 저장]이 켜지고, 저장 본문에 고친 사유가 실린다', async () => {
+    draftRecordsForTest = [
+      { defectRecordId: 1, defectCodeId: 7002, defectDescription: '표면 긁힘' },
+    ];
+    const { writes } = renderScreen('/?ir=1001', () => jsonResponse(queueResponse()), [
+      rejectedDraft,
+    ]);
+    await waitFor(() =>
+      expect(screen.getByLabelText(t.result.rejection.description)).toHaveValue('표면 긁힘'),
+    );
+
+    await userEvent.clear(screen.getByLabelText(t.result.rejection.description));
+    await userEvent.type(screen.getByLabelText(t.result.rejection.description), '찍힘');
+    await userEvent.click(screen.getByRole('button', { name: t.result.save }));
+    await waitFor(() => expect(writes).toHaveLength(1));
+
+    expect((writes[0] as Request).method).toBe('PUT');
+    expect(await bodyOf(writes[0] as Request)).toMatchObject({
+      overallJudgmentCode: 'REJECTED',
+      defects: [{ defectCodeId: 7002, defectQty: 15, defectDescription: '찍힘' }],
+    });
+  });
+
+  /* omf-all-around#130 — 추정 원인을 고르면 저장 본문에 싣고, 다시 열면 되살린다. */
+  it('추정 원인을 고르면 임시 저장 본문에 원인이 실린다', async () => {
+    draftRecordsForTest = [
+      { defectRecordId: 1, defectCodeId: 7002, defectDescription: '표면 긁힘' },
+    ];
+    const { writes } = renderScreen('/?ir=1001', () => jsonResponse(queueResponse()), [
+      rejectedDraft,
+    ]);
+    await waitFor(() =>
+      expect(screen.getByLabelText(t.result.rejection.description)).toHaveValue('표면 긁힘'),
+    );
+    expect(screen.getByLabelText(t.result.rejection.cause)).toHaveTextContent(
+      t.result.rejection.causeNone,
+    );
+
+    await userEvent.click(screen.getByLabelText(t.result.rejection.cause));
+    await userEvent.click(
+      await screen.findByRole('option', { name: 'SUP-PRC · 공급사 공정 (공급사)' }),
+    );
+    /* 사용 중지된 원인은 고를 수 없다. */
+    expect(screen.queryByRole('option', { name: /OLD · 옛 원인/ })).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: t.result.save }));
+    await waitFor(() => expect(writes).toHaveLength(1));
+
+    expect(await bodyOf(writes[0] as Request)).toMatchObject({
+      defects: [{ defectCodeId: 7002, defectQty: 15, suspectedCauseCodeId: 8002 }],
+    });
+  });
+
+  it('임시 저장된 원인을 되살리고, 사용 중지된 원인도 표시를 붙여 그대로 다시 보낸다', async () => {
+    draftRecordsForTest = [
+      {
+        defectRecordId: 1,
+        defectCodeId: 7002,
+        defectDescription: '표면 긁힘',
+        suspectedCauseCodeId: 8009,
+      },
+    ];
+    const { writes } = renderScreen('/?ir=1001', () => jsonResponse(queueResponse()), [
+      rejectedDraft,
+    ]);
+    await waitFor(() =>
+      expect(screen.getByLabelText(t.result.rejection.cause)).toHaveTextContent(
+        t.result.rejection.causeInactive('OLD · 옛 원인'),
+      ),
+    );
+    await editQuantity();
+    await userEvent.click(screen.getByRole('button', { name: t.result.save }));
+    await waitFor(() => expect(writes).toHaveLength(1));
+
+    expect(await bodyOf(writes[0] as Request)).toMatchObject({
+      defects: [{ defectCodeId: 7002, suspectedCauseCodeId: 8009 }],
+    });
+  });
+
+  /* #122 리뷰 M2 — 서버의 사유를 모르는 채로 빈 배열을 보내면 서버가 사유를 지운다. */
+  it('사유 조회가 실패하면 저장 본문에 사유 키를 싣지 않는다', async () => {
+    draftRecordsFailForTest = true;
+    const { writes, sent } = renderScreen('/?ir=1001', () => jsonResponse(queueResponse()), [
+      rejectedDraft,
+    ]);
+    await waitFor(() =>
+      expect(sent.some((url) => url.pathname === '/quality/defect-records')).toBe(true),
+    );
+    await editQuantity();
+    await userEvent.click(screen.getByRole('button', { name: t.result.save }));
+    await waitFor(() => expect(writes).toHaveLength(1));
+
+    expect((writes[0] as Request).method).toBe('PUT');
+    expect(await bodyOf(writes[0] as Request)).not.toHaveProperty('defects');
+  });
+
+  it('코드 마스터에 없는 코드라 사유 글만 되살렸으면 코드를 고르기 전 저장은 사유 키를 싣지 않는다', async () => {
+    draftRecordsForTest = [
+      { defectRecordId: 1, defectCodeId: 9999, defectDescription: '옛 코드 사유' },
+    ];
+    const { writes } = renderScreen('/?ir=1001', () => jsonResponse(queueResponse()), [
+      rejectedDraft,
+    ]);
+    await waitFor(() =>
+      expect(screen.getByLabelText(t.result.rejection.description)).toHaveValue('옛 코드 사유'),
+    );
+    await editQuantity();
+    await userEvent.click(screen.getByRole('button', { name: t.result.save }));
+    await waitFor(() => expect(writes).toHaveLength(1));
+
+    expect(await bodyOf(writes[0] as Request)).not.toHaveProperty('defects');
+  });
+
+  /* #122 리뷰 m1 — 첫 저장(POST)이 만든 회차를 되살리면 그새 고친 사유를 덮는다. */
+  it('첫 저장으로 회차가 생겨도 사유를 서버 값으로 덮지 않는다', async () => {
+    draftRecordsForTest = [{ defectRecordId: 1, defectCodeId: 7001, defectDescription: '서버 값' }];
+    const { writes } = renderScreen(
+      '/?ir=1002',
+      () => jsonResponse(queueResponse()),
+      [],
+      [],
+      itemSpecsResponse(),
+      [rejectedDraft],
+    );
+    await screen.findByText(t.result.confirmBlockedByUnsaved);
+    await editQuantity();
+    await userEvent.click(screen.getByLabelText(t.result.judgment));
+    await userEvent.click(await screen.findByRole('option', { name: '불합격' }));
+    await userEvent.click(await screen.findByLabelText(t.result.rejection.major));
+    await userEvent.click(await screen.findByRole('option', { name: 'APP · 외관' }));
+    await userEvent.click(screen.getByLabelText(t.result.rejection.minor));
+    await userEvent.click(await screen.findByRole('option', { name: 'APP-SCR · 스크래치' }));
+    await userEvent.type(screen.getByLabelText(t.result.rejection.description), '내 사유');
+    await userEvent.click(screen.getByRole('button', { name: t.result.save }));
+    await waitFor(() => expect(writes).toHaveLength(1));
+    expect((writes[0] as Request).method).toBe('POST');
+
+    /* 저장 응답 뒤 회차가 생겨 고칠 회차가 바뀐 것 — 확정이 풀리는 것이 그 신호다. */
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: t.result.confirm })).toBeEnabled(),
+    );
+    expect(screen.getByLabelText(t.result.rejection.description)).toHaveValue('내 사유');
+    expect(screen.getByLabelText(t.result.rejection.minor)).toHaveTextContent('APP-SCR · 스크래치');
+  });
+
+  it('합격으로 바꿨다가 다시 불합격을 고르면 사유 칸이 비어 있다', async () => {
+    draftRecordsForTest = [
+      { defectRecordId: 1, defectCodeId: 7002, defectDescription: '표면 긁힘' },
+    ];
+    renderScreen('/?ir=1001', () => jsonResponse(queueResponse()), [rejectedDraft]);
+    await waitFor(() =>
+      expect(screen.getByLabelText(t.result.rejection.description)).toHaveValue('표면 긁힘'),
+    );
+
+    await userEvent.click(screen.getByLabelText(t.result.judgment));
+    await userEvent.click(await screen.findByRole('option', { name: '합격' }));
+    await userEvent.click(screen.getByLabelText(t.result.judgment));
+    await userEvent.click(await screen.findByRole('option', { name: '불합격' }));
+
+    expect(await screen.findByLabelText(t.result.rejection.description)).toHaveValue('');
+    expect(screen.getByLabelText(t.result.rejection.major)).not.toHaveTextContent('APP · 외관');
+    expect(screen.getByText(t.result.rejection.required)).toBeInTheDocument();
+  });
+
+  it('합격으로 바꿔 저장하면 빈 사유를 실어 앞서 저장한 사유를 지운다', async () => {
+    draftRecordsForTest = [
+      { defectRecordId: 1, defectCodeId: 7002, defectDescription: '표면 긁힘' },
+    ];
+    const { writes } = renderScreen('/?ir=1001', () => jsonResponse(queueResponse()), [
+      rejectedDraft,
+    ]);
+    await waitFor(() =>
+      expect(screen.getByLabelText(t.result.rejection.description)).toHaveValue('표면 긁힘'),
+    );
+
+    await userEvent.click(screen.getByLabelText(t.result.judgment));
+    await userEvent.click(await screen.findByRole('option', { name: '합격' }));
+    await userEvent.click(screen.getByRole('button', { name: t.result.save }));
+    await waitFor(() => expect(writes).toHaveLength(1));
+
+    expect(await bodyOf(writes[0] as Request)).toMatchObject({
+      overallJudgmentCode: 'ACCEPTED',
+      defects: [],
     });
   });
 });

@@ -16,7 +16,7 @@ import type { Translated } from './translated';
  */
 export const approvalInbox: Translated<typeof ko.approvalInbox> = {
   title: 'Hộp phê duyệt',
-  breadcrumbRoot: 'Phê duyệt',
+  breadcrumbRoot: 'Hộp công việc',
   panes: {
     list: 'Danh sách yêu cầu phê duyệt',
     detail: 'Yêu cầu đã chọn',

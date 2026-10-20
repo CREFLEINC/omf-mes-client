@@ -4,12 +4,14 @@ import {
   Button,
   EmptyState,
   PageHeader,
+  Radio,
+  RadioGroup,
   SkeletonText,
 } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
-import { useSearchParams } from 'react-router';
+import { Link, useSearchParams } from 'react-router';
 
 import { SaveErrorBanner } from '../../patterns/master';
 import { CodeFields } from './code-fields';
@@ -38,6 +40,12 @@ import { IrFilterBar } from './ir-filter-bar';
 import { IrLineTable } from './ir-line-table';
 import { IrTable } from './ir-table';
 import { findSelectedLine, nextSelectedLineId } from './line-select';
+import {
+  chooseReceiptTarget,
+  receiptTargetsOf,
+  splitQtyOf,
+  type ReceiptTarget,
+} from './receipt-target';
 import { LoadErrorBanner } from './load-error-banner';
 import {
   describeReference,
@@ -149,6 +157,10 @@ const toSelectOptions = (lookup: LookupResult): SelectOption[] =>
 export const GoodsReceiptScreen = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const blockReasonId = `${useId()}-post-reason`;
+  /* 입고 대상 선택 버튼 묶음의 이름(라벨)과 설명(LOT 번호). */
+  const targetId = useId();
+  const targetLabelId = `${targetId}-target-label`;
+  const targetNoteId = `${targetId}-target-note`;
 
   /**
    * **무엇이 바뀔 때 무엇을 비우는가 — 수명 표**(계획 결정 6).
@@ -266,6 +278,14 @@ export const GoodsReceiptScreen = () => {
    * 여기서는 아니거나 그 반대인 어긋남을 만들지 않는다.
    */
   const selectedLine = findSelectedLine(lineRows, selectedLineId);
+  /*
+   * 입고 대상(서버 선행 P-56) — 입고 전 선별로 불량분을 떼어 낸 줄은 원 LOT(양품)과 선별 불량분 중 하나를 골라 입고한다.
+   * 고르지 않았으면 수량이 남은 첫 대상(보통 원 LOT 의 양품)이다.
+   */
+  const [pickedTargetLotId, setPickedTargetLotId] = useState<number | null>(null);
+  const receiptTargets = selectedLine === null ? [] : receiptTargetsOf(selectedLine);
+  const receiptTarget = chooseReceiptTarget(receiptTargets, pickedTargetLotId);
+  const receiptLotId = receiptTarget?.lotId ?? selectedLine?.lotId ?? null;
 
   /**
    * 확정 입력. **주소에 싣지 않는다** — 글자마다 뒤로가기 기록이 쌓이고, 화면이 조회 조건과
@@ -345,6 +365,7 @@ export const GoodsReceiptScreen = () => {
     setLocalFieldErrors(NO_FIELD_ERRORS);
     setConfirmOpen(false);
     setPendingDiscard(null);
+    setPickedTargetLotId(null);
   }, [selectedIrId, selectedLineId]);
 
   const warehouses = useWarehouseOptions(selectedIrId !== null);
@@ -355,11 +376,11 @@ export const GoodsReceiptScreen = () => {
    * 입고 처리에 **성공한 뒤에만** 자재 LOT을 다시 읽는다 — 응답에 LOT 상태가 없어(실측)
    * 화면 이름의 「Release」를 값으로 확인할 방법이 이것뿐이다.
    */
-  const recheckLotId = result === null ? null : (selectedLine?.lotId ?? null);
+  const recheckLotId = result === null ? null : receiptLotId;
   const lotStatus = useLotStatus(recheckLotId);
   /* IQC 대상 줄만 고를 때 LOT 상태를 읽는다 — 불합격(불량) LOT 은 불량창고로만 입고된다(omf-all-around#84). */
   const selectedLotStatus = useLotStatus(
-    selectedLine?.inspectionRequired === true ? (selectedLine.lotId ?? null) : null,
+    selectedLine?.inspectionRequired === true ? receiptLotId : null,
     'select',
   );
   const isDefectiveLot = selectedLotStatus.statusCode === 'DEFECTIVE';
@@ -638,13 +659,25 @@ export const GoodsReceiptScreen = () => {
     });
 
     const itemName = describeReference(items.of(line.itemId));
-    const lotName = describeReference(toReference(lots, line.lotId));
+    const lotName = receiptTarget?.splitLotNo ?? describeReference(toReference(lots, receiptLotId));
     /* 단위는 코드만(「1 EA」) — 「코드 · 이름」은 같은 뜻을 두 번 적는다(라인 표와 같다). */
-    const receiptQty = t.lineTable.receivedQtyPair(
-      line.receivedQty,
+    const uomCode =
       uoms.entries.find((entry) => entry.value === String(line.uomId))?.code ??
-        describeReference(toReference(uoms, line.uomId)),
+      describeReference(toReference(uoms, line.uomId));
+    const qtyText = (qty: number): string => t.lineTable.receivedQtyPair(qty, uomCode);
+    const receiptQty = qtyText(receiptTarget?.qty ?? line.receivedQty);
+    const splitTargetCount = receiptTargets.filter((target) => target.splitLotNo !== null).length;
+    /** 입고 대상 카드의 이름 — 선별 불량분이 둘 이상이면 LOT 번호로 구분한다. */
+    const targetName = (target: ReceiptTarget): string =>
+      target.splitLotNo === null
+        ? t.notes.receiptTarget.goodName
+        : splitTargetCount > 1
+          ? t.notes.receiptTarget.splitNameWithLot(target.splitLotNo)
+          : t.notes.receiptTarget.splitName;
+    const goodQtyText = qtyText(
+      receiptTargets.find((target) => target.splitLotNo === null)?.qty ?? 0,
     );
+    const splitQtyText = qtyText(splitQtyOf(line));
     /**
      * 확인 창의 코드 표시 이름 — 공통코드 조회가 준 이름(`nameKo` → `codeName`)을 쓴다. 조회하지 않는
      * 코드(원천 문서 유형·사유)나 이름이 없으면 코드 그대로다. 보내는 값은 코드 그대로다.
@@ -727,7 +760,9 @@ export const GoodsReceiptScreen = () => {
 
       const body = toGoodsReceiptRequest({
         inboundReceipt,
-        lines: toReceiptLines([line]),
+        lines: toReceiptLines([
+          { ...line, lotId: receiptLotId, receivableQty: receiptTarget?.qty ?? null },
+        ]),
         draft,
         /* 발생 시각은 **제출 순간**이다. 순수 함수에 넘겨 그 사실이 인자로 드러나게 한다. */
         now: new Date(),
@@ -760,23 +795,88 @@ export const GoodsReceiptScreen = () => {
                   : t.notes.iqcGate.otherTitle(gatedLotStatus)
               }
             >
-              {gatedLotStatus === 'INSPECTION_PENDING'
-                ? t.notes.iqcGate.pendingBody
-                : t.notes.iqcGate.otherBody}
+              {gatedLotStatus === 'INSPECTION_PENDING' ? (
+                <>
+                  {t.notes.iqcGate.pendingBody}{' '}
+                  {/*
+                   * IQC 는 「품질 관리」 묶음에 있다(아키텍처가 품질을 독립 영역으로 둠). 입고 담당이
+                   * 메뉴를 옮겨 다니지 않게 막힌 자리에서 바로 잇는다(사용자 2026-10-20 · 1단계).
+                   */}
+                  <Link to="/logistics/iqc-inspection">{t.notes.iqcGate.goToIqc}</Link>
+                </>
+              ) : (
+                t.notes.iqcGate.otherBody
+              )}
+            </AlertBanner>
+          </div>
+        )}
+        {line.splitLots.length > 0 && receiptTarget !== null && (
+          <div className="banner-slot goods-receipt-split-banner">
+            {/*
+             * 한 줄 띠로 낮춘다(담당자 지시 — 배너 비중 축소). 수량은 굵게 앞에, 할 일은 보조색으로 뒤에.
+             * 제목을 두면 띠가 두 줄 높이가 된다.
+             */}
+            <AlertBanner variant="info">
+              <strong className="goods-receipt-split-banner-qty">
+                {t.notes.receiptTarget.noteTitle(goodQtyText, splitQtyText)}
+              </strong>
+              <span className="goods-receipt-split-banner-body">
+                {t.notes.receiptTarget.noteBody}
+              </span>
             </AlertBanner>
           </div>
         )}
         <h3 className="goods-receipt-section-title goods-receipt-section-title-first">
           {t.postTitle}
-          {/* 공장은 고르는 칸이 아니다 — 입력 칸처럼 보이지 않게 제목 옆 보조 글자로 밝힌다(사용자 지시). */}
-          <span className="goods-receipt-section-hint">{t.notes.plantFromInboundReceipt}</span>
+          {/*
+           * 공장·영업일은 고르는 칸이 없다 — 저절로 정해진다는 사실만 제목 옆 짧은 한 줄로(담당자 지시: 간소화).
+           * 공장은 위 「고른 입하 전표」 제목줄에 보이고, 창고의 공장이 다르면 창고 칸이 따로 알린다.
+           */}
+          <span className="goods-receipt-section-hint">{t.notes.autoApplied}</span>
         </h3>
 
-        {/*
-         * 입고 정보 입력 칸을 한 격자로 모은다 — 넓은 화면은 네 칸(입력 순서대로 왼쪽→오른쪽), 좁으면 두 칸.
-         * 안쪽 세 묶음의 격자는 풀어(`display: contents`) 칸이 이 격자에 바로 선다. 짝(창고↔위치 등)은 이웃 칸이다.
-         */}
-        {/* 지금 채울 칸 — `app.css` 가 이 칸의 라벨을 강조한다(순서대로 입력 · 사용자 지시). */}
+        {receiptTargets.length > 1 && receiptTarget !== null && (
+          /*
+           * 입고 대상은 선택 버튼 묶음(담당자 결정) — 대상이 보통 둘·셋이라 한눈에 보이고, 열린 목록이 아래 칸을
+           * 덮지 않는다. 디자인 시스템 `RadioGroup`·`Radio` 를 카드 모양으로 편다(`app.css`). 좁으면 줄을 바꾼다.
+           * 고른 대상의 LOT 번호는 버튼에 싣지 않고(길다) 묶음 아래에 다 보인다.
+           */
+          <div className="field-cell goods-receipt-target">
+            <span id={targetLabelId} className="field-label">
+              {t.notes.receiptTarget.label}
+            </span>
+            <RadioGroup
+              name="goods-receipt-target"
+              orientation="horizontal"
+              className="goods-receipt-target-options"
+              aria-labelledby={targetLabelId}
+              aria-describedby={targetNoteId}
+              value={String(receiptTarget.lotId)}
+              disabled={isLocked}
+              onChange={(value) => {
+                setPickedTargetLotId(Number(value));
+                // 대상이 바뀌면 고를 수 있는 창고가 달라진다(불량분은 불량창고만) — 고른 창고·위치를 비운다.
+                changeWarehouse('');
+              }}
+            >
+              {receiptTargets.map((target) => (
+                /* 이름은 왼쪽, 수량은 오른쪽 끝에 굵게 — 두 카드의 수량이 같은 자리에서 비교된다. */
+                <Radio
+                  key={target.lotId}
+                  value={String(target.lotId)}
+                  className="goods-receipt-target-option"
+                  aria-label={t.notes.receiptTarget.option(targetName(target), qtyText(target.qty))}
+                >
+                  <span className="goods-receipt-target-name">{targetName(target)}</span>
+                  <span className="goods-receipt-target-qty">{qtyText(target.qty)}</span>
+                </Radio>
+              ))}
+            </RadioGroup>
+            <span id={targetNoteId} className="field-note">
+              {t.notes.receiptTarget.lot(lotName)}
+            </span>
+          </div>
+        )}
         <div className="goods-receipt-post-form" data-current-step={nextPostStep ?? 'done'}>
           <WarehouseLocationFields
             warehouses={warehouses}
@@ -804,6 +904,21 @@ export const GoodsReceiptScreen = () => {
             isOpen={(key) =>
               key === 'reason' ? isOptionalPostFieldOpen(draft) : isPostStepOpen(draft, key)
             }
+            listState={(key) => {
+              const lookup =
+                key === 'receiptType'
+                  ? receiptTypes
+                  : key === 'qualityStatus'
+                    ? qualityStatuses
+                    : key === 'inventoryStatus'
+                      ? inventoryStatuses
+                      : null;
+
+              if (lookup === null) return 'ready';
+              if (lookup.isError) return 'failed';
+
+              return lookup.isPending ? 'loading' : 'ready';
+            }}
             onChange={changeCode}
           />
 
@@ -1069,7 +1184,7 @@ export const GoodsReceiptScreen = () => {
       </section>
 
       {postTarget !== null && (
-        <section className="pane" aria-label={t.panes.post}>
+        <section className="pane goods-receipt-post-pane" aria-label={t.panes.post}>
           {postPane(postTarget.inboundReceipt, postTarget.line)}
         </section>
       )}

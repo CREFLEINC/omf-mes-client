@@ -55,7 +55,7 @@ export const WorkerCard = ({
     <h2 className="field-label">{t.heading}</h2>
 
     {worker === null ? (
-      <p className="field-note">{t.none}</p>
+      <p className="worker-card__none">{t.none}</p>
     ) : (
       <>
         {/*

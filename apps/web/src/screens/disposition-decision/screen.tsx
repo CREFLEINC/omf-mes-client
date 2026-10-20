@@ -1,3 +1,4 @@
+import type { DispositionSortResult } from '@omf-mes/api-client';
 import { Breadcrumb, PageHeader, Tabs, useToast } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useQueryClient } from '@tanstack/react-query';
@@ -16,6 +17,7 @@ import {
   type DecisionCreateBody,
   type DecisionFormValue,
 } from './decision-form';
+import { ConcessionPane } from './concession-pane';
 import { DecisionFormPane } from './decision-form-pane';
 import { toDecisionLock } from './decision-lock';
 import { DetailSlot } from './detail-slot';
@@ -188,7 +190,10 @@ export const DispositionDecisionScreen = ({
    * 중복을 걸러내면 두 번째 판정은 기록되지 않는데 화면은 성공으로 읽는다 — 되돌릴 수 없는
    * 원장 위의 조용한 유실이다(공유계약 C-1).
    */
-  const write = useMasterWrite<DecisionWriteVariables, unknown>({
+  const write = useMasterWrite<
+    DecisionWriteVariables,
+    { sortResult?: DispositionSortResult | null }
+  >({
     request: async (variables, headers) => {
       const result = await client.POST(
         '/quality/nonconformances/{nonconformanceId}/disposition-decisions',
@@ -237,11 +242,26 @@ export const DispositionDecisionScreen = ({
     etagPath: selectedId === null ? null : nonconformanceDetailPath(selectedId),
     /* ⚠ 참조 이름 조회는 뿌리 키가 갈려 있어 여기 걸리지 않는다 — 판정으로 바뀌지 않는 값이다. */
     invalidateKeys: [dispositionKeys.all],
-    knownFields: ['dispositionTypeCode', 'decisionQty', 'uomId', 'reason'],
+    knownFields: [
+      'dispositionTypeCode',
+      'decisionQty',
+      'uomId',
+      'reason',
+      'acceptedQty',
+      'rejectedQty',
+    ],
     /* 되돌릴 수 없는 쓰기다 — 취소 API가 없고 LOT 상태 전이를 함께 부른다(공유계약 B-8). */
     keyLifetime: 'until-applied',
-    onSuccess: () => {
-      toast.show({ variant: 'success', description: t.form.success });
+    onSuccess: (data) => {
+      /* 선별은 불량분이 어디로 갔는지 밝힌다 — 다음 처분은 그 새 부적합에서 한다(P-53). */
+      const sorted = data.sortResult;
+      toast.show({
+        variant: 'success',
+        description:
+          sorted === undefined || sorted === null
+            ? t.form.success
+            : t.form.sortSuccess(sorted.splitLotNo, sorted.splitNonconformanceNo),
+      });
       setForm(EMPTY_DECISION_FORM);
       setShowErrors(false);
       setPendingTarget(null);
@@ -254,7 +274,7 @@ export const DispositionDecisionScreen = ({
   }, [selectedId]);
 
   /* 서버가 되돌린 필드 오류가 화면 검증을 덮는다 — 계약이 정본이다. */
-  const errors = { ...validateDecisionForm(form), ...write.fieldErrors };
+  const errors = { ...validateDecisionForm(form, remaining.value), ...write.fieldErrors };
   const isOtherTarget = pendingTarget !== null && pendingTarget.nonconformanceId !== selectedId;
   const lock = toDecisionLock({
     selectedId,
@@ -407,6 +427,18 @@ export const DispositionDecisionScreen = ({
                       onRetry={() => void detail.refetch()}
                     />
                   </section>
+                  {/* 특채(omf-all-around#84) — 요청·적용. 승인은 W-03-09 의 결재가 한다. */}
+                  {selectedId !== null && detail.data !== undefined && (
+                    <section className="pane disposition-pane" aria-label={t.concession.heading}>
+                      <h2 className="pane-title">{t.concession.heading}</h2>
+                      <ConcessionPane
+                        nonconformanceId={selectedId}
+                        lots={toDetailView(detail.data).lots}
+                        isClosed={detail.data.statusCode === 'DECIDED'}
+                        today={today}
+                      />
+                    </section>
+                  )}
                   <section className="pane disposition-pane" aria-label={t.panes.decision}>
                     <h2 className="pane-title">{t.panes.decision}</h2>
                     <DecisionFormPane

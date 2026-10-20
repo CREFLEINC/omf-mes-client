@@ -109,6 +109,20 @@ export const WEB_SCREENS: readonly WebScreen[] = [
     name: '수신본 확장속성 편집(품목·BOM)',
   },
   { path: '/master-data/master-change', code: 'W-06-11', name: '마스터 변경관리(신규 Rev 발행)' },
+  /*
+   * ⚠ **ERP 조회 화면 여덟은 설계 IA 밖에서 생긴 코드다**(사용자 2026-10-20). 서버가 ERP 수신 8종을
+   * 갖추면서 받은 것을 보는 자리가 필요해졌고, 「시스템 관리 > ERP 연동 현황·이력」(`W-06-10`)의
+   * 탭으로 선다. 설계 저장소에 스펙(`design/wiki/screens/06/W-06-16~23`)을, 서버 권한 목록
+   * (`src/common/permissions/permissions.ts`)에 같은 코드를 함께 세웠다.
+   */
+  { path: '/system/erp-data/employees', code: 'W-06-16', name: '사원정보 조회(ERP)' },
+  { path: '/system/erp-data/items', code: 'W-06-17', name: '품목정보 조회(ERP)' },
+  { path: '/system/erp-data/boms', code: 'W-06-18', name: 'BOM 조회(ERP)' },
+  { path: '/system/erp-data/partners', code: 'W-06-19', name: '거래처 조회(ERP)' },
+  { path: '/system/erp-data/common-codes', code: 'W-06-20', name: '공통코드 조회(ERP)' },
+  { path: '/system/erp-data/purchase-orders', code: 'W-06-21', name: '구매발주 조회(ERP)' },
+  { path: '/system/erp-data/sales-orders', code: 'W-06-22', name: '수주정보 조회(ERP)' },
+  { path: '/system/erp-data/production-orders', code: 'W-06-23', name: 'ERP W/O 조회(ERP)' },
 
   /* ── 자재창고 ─────────────────────────────────────────────────────────── */
   /*
@@ -215,6 +229,8 @@ export const WEB_SCREENS: readonly WebScreen[] = [
   },
   { path: '/quality/approvals', code: 'W-03-09', name: '특채·한도승인 승인 처리' },
   { path: '/quality/dispositions', code: 'W-03-10', name: '처분 판정 처리(재작업/폐기/정상)' },
+  /* ⭐ 설계보다 앞선 화면이다(omf-all-around#107) — 화면 코드는 사용자 결정으로 부여했다. */
+  { path: '/quality/pqc-inspections', code: 'W-03-11', name: 'PQC 검사 등록·조회' },
 
   /* ── 설비/툴 ──────────────────────────────────────────────────────────── */
   /*

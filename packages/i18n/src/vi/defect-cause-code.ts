@@ -9,7 +9,7 @@ import type { Translated } from './translated';
  */
 export const defectCauseCode: Translated<typeof ko.defectCauseCode> = {
   title: 'Mã lỗi · mã nguyên nhân',
-  breadcrumbRoot: 'Dữ liệu gốc',
+  breadcrumbRoot: 'Quản lý chất lượng',
   tabs: {
     defect: 'Mã lỗi',
     cause: 'Mã nguyên nhân',

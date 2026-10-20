@@ -5,15 +5,18 @@ import {
   type Column,
   EmptyState,
   SearchInput,
+  Select,
   SkeletonText,
   Table,
 } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { type ReactNode, useEffect, useState } from 'react';
+import { type ReactNode, useEffect, useId, useState } from 'react';
 
 import { EMPTY_ITEM_FILTERS, clearFilter, hasAnyFilter, toFilterChips } from './filters';
 import { PageNav } from './page-nav';
 import type { PageView } from './pagination';
+import type { ItemTypeOption } from './item-queries';
+import { codeValueName } from './options';
 import type { Item, ItemFilters } from './types';
 
 const t = messages.itemExtendedAttrs;
@@ -28,7 +31,11 @@ export interface ItemListPaneProps {
   selectedItemId: number | null;
   onSelect: (itemId: number) => void;
   loadError: ReactNode;
+  /** 품목 유형 선택지. 받기 전·실패 시에는 비어 있고 「전체」만 고를 수 있다 */
+  itemTypeOptions?: ItemTypeOption[];
 }
+
+const NO_ITEM_TYPES: ItemTypeOption[] = [];
 
 /**
  * 좌 페인 — 품목을 찾아 고르는 자리. **탭 밖에 있다.**
@@ -42,8 +49,8 @@ export interface ItemListPaneProps {
  * **열은 둘뿐이다**(품목코드·품목명). 「사용 여부」는 이름 뒤 접미로 붙인다 —
  * 좁은 좌 페인에서 열 하나를 더 두면 이름 열이 짓눌린다(결정 11).
  *
- * **품목 유형 필터를 두지 않는다** — 값 목록이 미정이라 선택지를 만들 수 없고,
- * 자유 입력 필터는 바로 옆 검색어 칸과 구분되지 않는다.
+ * **품목 유형 선택지는 코드 그룹 `ITEM_TYPE`에서 받는다.** 주소에 그 밖의 코드가 실려 오면
+ * 그 코드도 선택지에 더해 보인다 — 걸린 조건이 사라진 것처럼 보이지 않게.
  */
 export const ItemListPane = ({
   items,
@@ -55,14 +62,28 @@ export const ItemListPane = ({
   selectedItemId,
   onSelect,
   loadError,
+  itemTypeOptions = NO_ITEM_TYPES,
 }: ItemListPaneProps) => {
+  const itemTypeId = useId();
   /* 트리거 모델: 편집은 모아서 적용, 해제는 즉시. */
   const [draft, setDraft] = useState<ItemFilters>(appliedFilters);
-  const { q: appliedQ, includeInactive: appliedIncludeInactive } = appliedFilters;
+  const {
+    q: appliedQ,
+    itemType: appliedItemType,
+    includeInactive: appliedIncludeInactive,
+  } = appliedFilters;
 
   useEffect(() => {
-    setDraft({ q: appliedQ, includeInactive: appliedIncludeInactive });
-  }, [appliedQ, appliedIncludeInactive]);
+    setDraft({ q: appliedQ, itemType: appliedItemType, includeInactive: appliedIncludeInactive });
+  }, [appliedQ, appliedItemType, appliedIncludeInactive]);
+
+  const typeOptions = itemTypeOptions.map((option) => ({
+    value: option.code,
+    label: codeValueName(itemTypeOptions, option.code),
+  }));
+  if (draft.itemType !== '' && !itemTypeOptions.some((option) => option.code === draft.itemType)) {
+    typeOptions.push({ value: draft.itemType, label: draft.itemType });
+  }
 
   const columns: Column<Item>[] = [
     {
@@ -158,7 +179,7 @@ export const ItemListPane = ({
     );
   };
 
-  const chips = toFilterChips(appliedFilters);
+  const chips = toFilterChips(appliedFilters, itemTypeOptions);
 
   return (
     <section className="pane" aria-labelledby="item-list-title">
@@ -174,6 +195,20 @@ export const ItemListPane = ({
           onSearch={(value) => onApplyFilters({ ...draft, q: value })}
           clearLabel={messages.common.clear}
         />
+
+        {/* 좁히는 축이라 검색어와 함께 「조회」로 적용한다. */}
+        <div className="field-cell">
+          <label className="field-label" htmlFor={itemTypeId}>
+            {t.filters.itemTypeLabel}
+          </label>
+          <Select
+            id={itemTypeId}
+            value={draft.itemType}
+            placeholder={t.filters.itemTypeAll}
+            options={[{ value: '', label: t.filters.itemTypeAll }, ...typeOptions]}
+            onChange={(value) => setDraft((prev) => ({ ...prev, itemType: value }))}
+          />
+        </div>
 
         {/* 해제 축이라 변경 즉시 적용한다. */}
         <div className="field-cell field-cell-unlabeled">

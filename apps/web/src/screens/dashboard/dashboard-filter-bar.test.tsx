@@ -118,4 +118,14 @@ describe('DashboardFilterBar — 기간', () => {
 
     expect(screen.getByRole('alert')).toHaveTextContent('기간이 너무 깁니다.');
   });
+
+  it('데이터 범위가 공장 하나뿐이면 「전체 공장」을 두지 않는다(omf-all-around#120)', async () => {
+    const user = userEvent.setup();
+    renderBar({ plantOptions: [{ value: '11', label: 'PL11 · 부품' }], allowAllPlants: false });
+
+    await user.click(screen.getByRole('combobox', { name: t.plant }));
+    expect(screen.getAllByRole('option')).toHaveLength(1);
+    expect(screen.getByRole('option', { name: /PL11 · 부품/ })).toBeInTheDocument();
+    expect(screen.queryByRole('option', { name: t.allPlants })).not.toBeInTheDocument();
+  });
 });

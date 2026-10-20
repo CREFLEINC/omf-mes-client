@@ -1,7 +1,7 @@
 /**
  * 관리웹 주 메뉴의 **차례와 묶음** — 셸이 그대로 읽어 그린다.
  *
- * ⭐ **JSX 가 아니라 데이터다.** 항목이 67개·묶음이 9개인데 화면 검색과 섹션 접기는 이 목록을
+ * ⭐ **JSX 가 아니라 데이터다.** 사이드바 항목이 44개(탭을 펴면 화면 75개)·묶음이 8개인데 화면 검색과 섹션 접기는 이 목록을
  * **훑어야** 하고, 트리가 JSX 로만 있으면 훑을 대상이 없다(#1079). 그리는 일은 `layout.tsx`가,
  * 무엇을 어느 차례로 그릴지는 이 파일이 갖는다.
  *
@@ -24,10 +24,27 @@
 
 import type { LocalizedLabel } from '../patterns/localized-label';
 
+/**
+ * 탭 묶음 안의 화면 하나 — 주소와 두 언어의 탭 이름. 아이콘은 묶음의 것을 쓴다.
+ *
+ * 탭 이름은 **그 화면의 원래 메뉴 이름**이다. 화면 제목·브레드크럼·검색이 같은 말을 해야
+ * 사람이 「이 탭이 그 화면」임을 알아본다.
+ */
+export interface NavTab extends LocalizedLabel {
+  readonly to: string;
+}
+
 /** 메뉴 항목 하나 — 주소 · 아이콘(Material Symbols 리가처) · 두 언어의 보이는 이름. */
 export interface NavEntry extends LocalizedLabel {
+  /** 탭 묶음이면 **첫 탭의 주소**다(`nav-tree.test.ts` 가 그 짝을 잰다). 권한으로 탭이 걸러지면 셸이 볼 수 있는 첫 탭으로 바꿔 건다. */
   readonly to: string;
   readonly icon: string;
+  /**
+   * 있으면 **탭 묶음**이다 — 짝을 이루는 화면 여럿을 사이드바 한 줄로 세우고, 본문 위의 탭
+   * 막대로 오간다(`hub-tabs.tsx`). 탭 하나가 기존 화면 하나라 주소·화면 코드·권한은 탭마다
+   * 그대로다. 탭은 둘 이상이다 — 하나뿐이면 묶음이 아니다.
+   */
+  readonly tabs?: readonly NavTab[];
 }
 
 /**
@@ -38,6 +55,14 @@ export interface NavEntry extends LocalizedLabel {
  * 따라 갈리는 것은 **그리는 글자**뿐이다(`layout.tsx`).
  */
 export interface NavGroup extends LocalizedLabel {
+  /**
+   * 묶음 손잡이의 아이콘(Material Symbols 리가처).
+   *
+   * ⭐ **아이콘은 묶음이 갖고 항목은 그리지 않는다.** 묶음 아래 항목들은 아이콘 없이 들여 써서
+   * 세로 안내선으로 묶는다 — 아이콘이 일흔 개 서 있으면 눈이 아이콘을 훑느라 이름을 놓친다.
+   * 항목의 `icon` 은 레일(아이콘 전용 폭)에서만 그린다.
+   */
+  readonly icon: string;
   readonly items: readonly NavEntry[];
 }
 
@@ -63,123 +88,151 @@ export const NAV_LEAD: NavEntry = {
   labelVi: 'Bảng điều khiển tổng hợp',
 };
 
-/** 묶음들 — **배열 순서가 사이드바 순서다.** */
+/**
+ * 묶음들 — **배열 순서가 사이드바 순서다.**
+ *
+ * ⭐ **묶음의 뼈대는 「MES 메뉴 아키텍처」이고, 차례는 「매일 일하는 순서」다**(사용자 2026-10-20).
+ * 매일 여는 업무 묶음(구매/자재 → 품질 → 생산 → 영업/출하)과 자기에게 온 것을 보는 업무함을
+ * 앞에 두고, **정해 두고 가끔 여는 묶음**(기준정보 관리 → 설비 보전 관리 → 시스템 관리)을 뒤에
+ * 둔다. 아키텍처는 기준정보를 맨 앞에 두었으나, 자주 열지 않는 마스터가 첫 줄을 차지하면 매일
+ * 쓰는 묶음이 아래로 밀린다.
+ *
+ * ⭐ **짝을 이루는 화면은 탭 묶음 한 줄로 선다**(`tabs` · 사용자 2026-10-20). 같은 데이터를 나눠
+ * 갖거나 한 흐름의 앞뒤인 화면들이고, 대부분 자주 열지 않는 설정·마스터라 한 줄씩 차지하면
+ * 매일 쓰는 화면이 그 사이에 묻힌다. 탭 하나가 기존 화면 하나이므로 주소·화면 코드·권한은
+ * 화면마다 그대로다.
+ *
+ * ⚠ **주소는 옮기지 않았다.** 항목이 묶음을 옮겨도 `to` 의 앞머리(`/equipment` · `/master-data`
+ * …)는 그대로다 — 주소는 화면 코드·권한·북마크가 붙잡고 있는 열쇠이고 묶음은 보이는 자리일
+ * 뿐이라, 묶음을 바꿀 때마다 주소를 바꾸면 그 셋이 함께 흔들린다.
+ *
+ * ⭐ **ERP 에서 받은 것을 보기만 하는 화면은 업무 묶음에 두지 않는다** — 「시스템 관리 > ERP
+ * 연동 현황·이력」의 탭으로 모았다(사용자 2026-10-20). 업무 묶음에는 MES 가 일하는 화면만 선다.
+ */
 export const NAV_GROUPS: readonly NavGroup[] = [
+  /*
+   * 구매 / 자재 관리 — **입고 → 재고 → 출고 3축이다**(사용자 2026-10-20 · 1단계). 상용 MES·WMS 가
+   * 자재를 나누는 축이고, 사이드바 한 줄이 「대상」 하나다(동작 이름은 탭으로 내렸다). 흐름이 남긴
+   * 전표를 가로질러 보는 물류 전표 조회가 끝에 선다.
+   *
+   * ⚠ **입하와 입고를 가른다.** 입하는 «도착»이고 입고는 «창고로 받아들임»이다 — 아키텍처가
+   * 둘을 따로 세웠다. 그래서 W-01-10 의 이름이 「자재 입고 처리」다(옛 이름 「정상품 입하 처리」).
+   * IQC 수입검사는 「품질 관리」에 있다 — 입고 처리 화면이 판정 전 LOT 을 막는 안내에서 IQC 로
+   * 바로 잇는다.
+   *
+   * ⭐ 2단계(입고 작업대 — 상태 탭 하나로 예정·입하·검사 대기·입고 대기를 오가는 한 화면)는 사용자가
+   * 1단계를 써 본 뒤 정한다.
+   */
   {
-    label: '기준정보',
-    labelVi: 'Dữ liệu gốc',
+    label: '구매 / 자재 관리',
+    labelVi: 'Quản lý mua hàng / vật tư',
+    icon: 'inventory_2',
     items: [
-      {
-        to: '/master-data/warehouse-location',
-        icon: 'warehouse',
-        label: '창고·Location',
-        labelVi: 'Kho · Vị trí',
-      },
       /*
-       * W-06-14 — **창고·Location 바로 뒤다.** 적치 규칙은 창고와 위치를 참조해야
-       * 성립하고 그 마스터에서 이어지는 화면이라, 인접이 관계를 드러낸다. 계약 경로는
-       * `/logistics/**`이지만 주소 앞머리는 **이 섹션을 따른다** — 어디에 둘지 미리
-       * 정해 두는 일이라 물건이 오가는 「자재창고」가 아니라 기준정보다.
+       * 입고 관리 — 들어올 것(아직 다 들어오지 않은 P/O 라인)을 보고 → 도착한 것 중 초과분을 떼어 내고 → 창고로 받아들인다.
+       * 같은 입고 건을 따라가는 한 흐름이라, 한 건을 처리하려고 메뉴를 세 번 오가지 않게 묶었다.
        */
       {
-        to: '/master-data/putaway-rule',
-        icon: 'shelves',
-        label: '적치 규칙',
-        labelVi: 'Quy tắc cất hàng',
+        to: '/logistics/inbound-schedule',
+        icon: 'local_shipping',
+        label: '입고 관리',
+        labelVi: 'Quản lý nhập kho',
+        tabs: [
+          {
+            to: '/logistics/inbound-schedule',
+            label: '입하 예정 조회',
+            labelVi: 'Tra cứu kế hoạch nhập hàng',
+          },
+          {
+            to: '/logistics/over-receipt-split',
+            label: '초과 입하 분리',
+            labelVi: 'Tách phần nhập vượt',
+          },
+          {
+            to: '/logistics/goods-receipt',
+            label: '자재 입고 처리',
+            labelVi: 'Xử lý nhập kho vật tư',
+          },
+        ],
       },
       /*
-       * W-CO-08 — 창고 계열의 끝에 둔다. 창고·Location 이 만든 위치를 여기서 도면에
-       * 얹으므로 그 뒤이고, 적치 규칙과 창고·Location 의 인접은 흔들지 않는다.
+       * 재고 관리 — **가장 자주 여는 재고 현황이 첫 탭이다**(사이드바 한 번에 그 화면). 실사로 장부와
+       * 실물을 맞추고, 어긋난 것을 조정으로 고친다. 조정은 직접 등록도 정상 경로라(착수 이슈 §6)
+       * 탭으로 바로 연다.
        */
       {
-        to: '/master-data/warehouse-layout',
-        icon: 'map',
-        label: '창고 배치도',
-        labelVi: 'Sơ đồ bố trí kho',
+        to: '/logistics/stock-status',
+        icon: 'inventory',
+        label: '재고 관리',
+        labelVi: 'Quản lý tồn kho',
+        tabs: [
+          {
+            to: '/logistics/stock-status',
+            label: '재고 현황·상태 조회',
+            labelVi: 'Tra cứu tồn kho · trạng thái',
+          },
+          { to: '/logistics/stocktaking', label: '재고실사', labelVi: 'Kiểm kê tồn kho' },
+          { to: '/logistics/stock-adjust', label: '재고조정', labelVi: 'Điều chỉnh tồn kho' },
+        ],
       },
+      /*
+       * 출고 관리 — 셋 다 **출고 전표를 만든다**: 생산으로 내보내고(자재 불출) · 공급사로 되돌려
+       * 보내고(반품) · 장부에서 덜어낸다(폐기·기타출고).
+       *
+       * ⚠ **자재 불출 요청(W-02-10)은 생산 관리에서 옮겨 왔다**(사용자 2026-10-20). 요청하는 사람은
+       * 생산 담당이지만 결과는 자재 출고이고, 아키텍처의 「자재 불출 / 재고 관리」 자리도 여기다.
+       * 상용 제품도 불출을 자재 쪽에 둔다. 화면 이름도 「추가 자재 출고 요청」에서 「자재 불출 요청」
+       * 으로 바꿨다 — 출고 관리 안에서 「출고」를 되풀이하지 않고, 생산으로 내보내는 출고임을 말한다.
+       */
       {
-        to: '/master-data/routing',
-        icon: 'account_tree',
-        label: 'Routing(공정)',
-        labelVi: 'Routing (công đoạn)',
+        to: '/production/material-issue-requests',
+        icon: 'outbox',
+        label: '출고 관리',
+        labelVi: 'Quản lý xuất kho',
+        tabs: [
+          {
+            to: '/production/material-issue-requests',
+            label: '자재 불출 요청',
+            labelVi: 'Yêu cầu cấp phát vật tư',
+          },
+          {
+            to: '/logistics/supplier-return',
+            label: '공급사 반품 처리',
+            labelVi: 'Xử lý trả hàng nhà cung cấp',
+          },
+          {
+            to: '/logistics/disposal-issue',
+            label: '폐기 품의·기타출고',
+            labelVi: 'Đề nghị hủy · xuất khác',
+          },
+        ],
       },
+      /*
+       * W-01-13 — **섹션 맨 뒤다.** 입하·입고·출고·이동 전표를 가로질러 찾고 되돌리는 자리라 세 축
+       * 어디에도 들지 않는다. 이름을 「물류 전표 조회·취소」로 바꿨다 — 「진행현황」보다 무엇을
+       * 하는 곳인지(전표를 찾는다)가 먼저 읽힌다. 취소가 승인을 타지만 하는 일은 결재가 아니라
+       * 상신과 실행이라 결재함이 아니다.
+       */
       {
-        to: '/master-data/inspection-standard',
-        icon: 'fact_check',
-        label: '검사기준',
-        labelVi: 'Tiêu chuẩn kiểm tra',
-      },
-      {
-        to: '/master-data/defect-cause-code',
-        icon: 'rule',
-        label: '불량·원인코드',
-        labelVi: 'Mã lỗi · nguyên nhân',
-      },
-      {
-        to: '/master-data/common-code',
-        icon: 'list_alt',
-        label: '공통코드·조직·작업자',
-        labelVi: 'Mã chung · tổ chức · nhân viên',
-      },
-      /* 같은 코드값 편집기를 여는 화면이라 공통코드 바로 뒤에 둔다 — 인접이 관계를 드러낸다. */
-      {
-        to: '/master-data/judgment-code',
-        icon: 'verified',
-        label: '판정유형 코드',
-        labelVi: 'Mã loại đánh giá',
-      },
-      {
-        to: '/master-data/integration-sync',
-        icon: 'sync_alt',
-        label: '연계 동기화 현황',
-        labelVi: 'Tình trạng đồng bộ liên kết',
-      },
-      {
-        to: '/master-data/item-extended-attrs',
-        icon: 'inventory_2',
-        label: '품목 확장속성',
-        labelVi: 'Thuộc tính mở rộng mặt hàng',
-      },
-      /* 특정 마스터에 속하지 않는 횡단 조회라 마스터 항목들 뒤에 둔다. */
-      {
-        to: '/master-data/master-change',
-        icon: 'history',
-        label: '마스터 변경관리',
-        labelVi: 'Quản lý thay đổi dữ liệu gốc',
+        to: '/logistics/document-progress',
+        icon: 'manage_search',
+        label: '물류 전표 조회·취소',
+        labelVi: 'Tra cứu · hủy chứng từ logistics',
       },
     ],
   },
   /*
-   * 입하 예정은 기준정보도 시스템 운영도 아닌 **현장 물류**다 —
-   * 도메인 01(자재창고)의 첫 화면이고, 뒤따르는 W-01 화면들이 이 섹션에 들어온다.
+   * 품질 관리 — **독립 영역이다.** 검사를 IQC(입하) → PQC(공정) → OQC(출하) 흐름 차례로 세우고,
+   * 검사기준·코드, 이력, 그리고 LOT 상태·보류·승인·처분의 판정 갈래가 뒤따른다.
+   *
+   * ⚠ IQC 는 자재 쪽에서, OQC 는 출하 쪽에서 옮겨 왔다 — 아키텍처가 검사를 업무 흐름이 아니라
+   * 품질 한 곳에 모았다. 검사기준·불량코드·판정코드도 같은 이유로 기준정보에서 옮겼다.
    */
   {
-    label: '자재창고',
-    labelVi: 'Kho vật tư',
+    label: '품질 관리',
+    labelVi: 'Quản lý chất lượng',
+    icon: 'verified',
     items: [
-      {
-        to: '/logistics/inbound-schedule',
-        icon: 'local_shipping',
-        label: '입하 예정 조회',
-        labelVi: 'Tra cứu kế hoạch nhập hàng',
-      },
-      /*
-       * W-01-03 — **차례가 업무 순서다.** 도착 예정을 보고(입하 예정) 도착을 처리한 뒤
-       * (초과 입하 분리) 그 결과를 재고에서 확인한다. 이 도메인의 첫 쓰기 화면이다.
-       */
-      {
-        to: '/logistics/over-receipt-split',
-        icon: 'call_split',
-        label: '초과 입하 분리',
-        labelVi: 'Tách phần nhập vượt',
-      },
-      /*
-       * W-01-01 — **차례가 업무 순서다.** 도착을 처리한 뒤(초과 입하 분리) 받아들여도
-       * 되는지를 먼저 판정하고, 그 다음 창고로 받아들인다(정상품 입하 처리).
-       *
-       * ⛔ **「품질」 섹션을 새로 만들지 않는다.** 통합 IA 가 이 화면을 「자재/창고 >
-       * 입하·검사」에 두었고 형제 화면(W-01-02)이 이미 이 섹션에 있다.
-       */
       {
         to: '/logistics/iqc-inspection',
         icon: 'troubleshoot',
@@ -187,84 +240,8 @@ export const NAV_GROUPS: readonly NavGroup[] = [
         labelVi: 'IQC kiểm tra đầu vào · đánh giá',
       },
       /*
-       * W-01-10 — **차례가 업무 순서다.** 도착을 처리한 뒤(초과 입하 분리) 창고로
-       * 받아들이고(정상품 입하 처리) 그 결과를 재고에서 확인한다.
-       */
-      {
-        to: '/logistics/goods-receipt',
-        icon: 'inventory_2',
-        label: '정상품 입하 처리',
-        labelVi: 'Xử lý nhập hàng đạt',
-      },
-      /*
-       * W-01-07 — 같은 도메인이라 **섹션을 새로 만들지 않는다.** 계약 경로가
-       * `/inventory/**`·`/trace/**`이지만 주소 앞머리는 이 섹션을 따른다.
-       */
-      {
-        to: '/logistics/stock-status',
-        icon: 'inventory',
-        label: '재고 현황·상태 조회',
-        labelVi: 'Tra cứu tồn kho · trạng thái',
-      },
-      /*
-       * W-01-04 — **차례가 업무 순서다.** 예정을 보고 · 도착을 처리하고 · 창고로
-       * 받아들이고 · 재고를 확인한 뒤 **장부와 실물을 맞춘다.** 실사가 그 끝에 서는
-       * 것은 앞의 넷이 남긴 결과를 대상으로 삼기 때문이다.
-       */
-      {
-        to: '/logistics/stocktaking',
-        icon: 'checklist',
-        label: '재고실사',
-        labelVi: 'Kiểm kê tồn kho',
-      },
-      /*
-       * W-01-12 — **차례가 업무 순서다.** 재고를 확인하고(재고 현황) 장부와 실물을
-       * 맞춘 뒤(재고실사) **어긋난 것을 고친다.** 실사 바로 뒤가 그 자리이며, 반품·폐기보다
-       * 앞이다 — 저 둘은 물건을 내보내는 일이고 이것은 장부를 실물에 맞추는 일이다.
-       *
-       * **메뉴에 둔다**(W-01-11과 갈리는 자리). 그쪽은 맥락 없는 진입이 곧 요구사항 위반이라
-       * 라우트만 열었는데, 이 화면은 세 원천 중 **직접 등록**이 다른 화면을 거치지 않고
-       * 들어오는 정상 경로다(착수 이슈 §6). 재고실사 마감 결과의 링크는 그 위의 한 갈래일 뿐이다.
-       */
-      {
-        to: '/logistics/stock-adjust',
-        icon: 'tune',
-        label: '재고조정',
-        labelVi: 'Điều chỉnh tồn kho',
-      },
-      /*
-       * W-01-05 — **차례가 업무 순서다.** 예정 → 도착 → 입고 → 재고 확인 → 실사 뒤에
-       * **되돌려 보내기**가 선다. 반품은 앞의 다섯이 남긴 결과(입고된 자재)를 대상으로
-       * 삼으므로 그것들보다 앞에 둘 자리가 없다.
-       */
-      {
-        to: '/logistics/supplier-return',
-        icon: 'assignment_return',
-        label: '공급사 반품 처리',
-        labelVi: 'Xử lý trả hàng nhà cung cấp',
-      },
-      /*
-       * W-01-06 — **차례가 업무 순서다.** 예정 → 초과 분리 → 입고 → 재고 확인 → 실사 →
-       * 반품 뒤에 **폐기**가 선다. 못 쓰게 된 자재를 장부에서 덜어내는 일이라 앞의 여섯이
-       * 남긴 결과를 대상으로 삼고, 그것들보다 앞에 둘 자리가 없다.
-       *
-       * **승인 성격의 화면(긴급 IQC 생략)보다는 앞이다** — 이 화면은 물건이 오가는 흐름의
-       * 한 갈래이고, 그 뒤엣것은 흐름 위에서 예외를 허가하는 일이라 축이 다르다.
-       */
-      {
-        to: '/logistics/disposal-issue',
-        icon: 'delete_forever',
-        label: '폐기 품의·기타출고',
-        labelVi: 'Đề nghị hủy · xuất khác',
-      },
-      /*
-       * W-01-02 — **자재창고 업무의 승인 자리**다. 결재라는 일 때문에 「승인」 섹션이
-       * 떠오르지만, 이 화면이 판정하는 것은 **자재 입하 검사를 생략할 것인가**이고
-       * 그 판단의 맥락(입하·재고·입고)이 이 섹션에 다 있다. 설계 스펙의 breadcrumb도
-       * 「자재창고」다 — 결재함은 **올라온 결재를 두루 처리하는 자리**라 축이 다르다.
-       *
-       * **기존 항목 뒤에 둔다.** 앞의 여섯이 물건이 오가는 순서이고, 이것은 그 흐름
-       * 위에서 예외를 허가하는 일이라 순서에 끼워 넣을 자리가 없다.
+       * W-01-02 — IQC 를 «생략할 것인가»를 판정하는 자리라 IQC 바로 뒤다. ⛔ IQC 와 탭으로 묶지
+       * 않는다 — 검사하는 사람과 승인하는 사람이 다르다.
        */
       {
         to: '/logistics/iqc-skip-approval',
@@ -272,247 +249,77 @@ export const NAV_GROUPS: readonly NavGroup[] = [
         label: '긴급 IQC 생략 한도승인',
         labelVi: 'Phê duyệt hạn mức bỏ qua IQC khẩn',
       },
-      /*
-       * W-01-13 — **섹션 맨 뒤다.** 앞의 여덟이 물건이 오가는 순서이고(예정 → 초과 분리 →
-       * 입고 → 재고 확인 → 실사 → 조정 → 반품 → 폐기) 「긴급 IQC 생략」이 그 흐름 위에서
-       * 예외를 허가하는 자리인데, 이 화면은 그 흐름이 **남긴 문서들을 가로질러 보고
-       * 되돌리는** 일이라 순서에 끼워 넣을 자리가 없다. 기준정보의 「마스터 변경관리」가
-       * 같은 이유(횡단 조회)로 마스터 항목들 뒤에 섰다.
-       *
-       * ⛔ **「승인」 섹션이 아니다.** 취소가 승인을 타지만 이 화면이 하는 일은 결재가
-       * 아니라 **상신과 실행**이다 — 결재함은 올라온 결재를 두루 처리하는 자리라 축이
-       * 다르다(W-01-02가 같은 자리에서 같은 판정을 했다).
-       *
-       * **다섯 PR이 함께 여는 자리다.** 목록·상세·취소 요청·승인 진행·취소 실행이 다 서기
-       * 전에는 이 항목을 두지 않았다 — 취소는 반드시 승인을 타는데 실행할 자리가 없으면
-       * 사용자가 **승인을 받아 놓고 아무것도 할 수 없다**(정책 §5.2 — 접근 불가능한 경계).
-       */
       {
-        to: '/logistics/document-progress',
-        icon: 'manage_search',
-        label: '물류 문서 진행현황·취소',
-        labelVi: 'Tiến độ · hủy chứng từ logistics',
+        to: '/quality/pqc-inspections',
+        icon: 'fact_check',
+        label: 'PQC 검사 등록·조회',
+        labelVi: 'Đăng ký · tra cứu kiểm tra PQC',
       },
-    ],
-  },
-  /*
-   * W-04-02 — **출하(도메인 04)의 첫 화면이고 그래서 새 섹션을 연다.** 착수 이슈 §1의
-   * IA 위치가 「관리웹 > 출하 > 출하 지시·확정」이라 「자재창고」에 넣지 않는다 —
-   * 입고 중심의 그 섹션과 축이 다르다. 자재창고 바로 뒤·생산 앞이다: 물류 흐름상
-   * 입고를 처리한 뒤(자재창고) 출하를 다루고, 그 결과가 생산과는 독립이다.
-   */
-  {
-    label: '출하',
-    labelVi: 'Xuất hàng',
-    items: [
-      /*
-       * W-04-01 — 출하지시서 Import·작업지시 생성. 「출하 예정 목록」(W-04-02)이 먼저
-       * 이 섹션을 열었으나, 업무 순서로는 지시서를 편성해야 예정이 생긴다 — 그래서
-       * 목록보다 앞자리에 둔다.
-       */
-      {
-        to: '/shipment/shipment-request-create',
-        icon: 'assignment',
-        label: '출하지시서 Import·작업지시 생성',
-        labelVi: 'Import lệnh xuất hàng · tạo lệnh sản xuất',
-      },
-      {
-        to: '/shipment/shipment-schedule',
-        icon: 'local_shipping',
-        label: '출하 예정 목록',
-        labelVi: 'Danh sách kế hoạch xuất hàng',
-      },
-      /*
-       * W-04-03 — 예정 목록에서 출하 대상이 정해진 뒤, 상차하기 «전»에 출하검사를 판정한다.
-       * 그래서 예정 목록 뒤·출하 처리 앞이다: 편성 → 예정 → **OQC 판정** → 출하 처리.
-       */
       {
         to: '/shipment/oqc-inspection',
-        icon: 'fact_check',
+        icon: 'local_shipping',
         label: 'OQC 출하검사 판정',
         labelVi: 'OQC đánh giá kiểm tra xuất hàng',
       },
-      /*
-       * W-04-04 — 예정 목록(W-04-02)에서 피킹까지 끝난 후보를 상차·실물 출고 처리하므로
-       * 그 바로 뒤에 둔다. 되돌릴 수 없는 쓰기(재고 차감·genealogy 종결)이지만 출하 자체는
-       * 미확정 상태로 남는다 — 확정·취소는 W-04-12(미착수) 소관이다.
-       */
       {
-        to: '/shipment/shipment-processing',
-        icon: 'outbound',
-        label: '출하 처리(상차·실물 출고)',
-        labelVi: 'Xử lý xuất hàng (lên xe · xuất thực tế)',
+        to: '/master-data/inspection-standard',
+        icon: 'rule_settings',
+        label: '검사기준',
+        labelVi: 'Tiêu chuẩn kiểm tra',
       },
-      /*
-       * W-04-05 — 같은 출하 생성 경로를 쓰되 창고 경유·피킹·포장을 건너뛰는 예외 흐름이라
-       * 정상 흐름 바로 뒤에 둔다. 앞에 두면 예외가 기본으로 읽힌다.
-       */
+      /* 품질 코드 — 불량·원인과 판정유형은 둘 다 판정에 붙이는 코드 마스터다. */
       {
-        to: '/shipment/expedited-shipment',
-        icon: 'bolt',
-        label: '긴급 직행 출하 처리',
-        labelVi: 'Xử lý xuất hàng thẳng khẩn',
+        to: '/master-data/defect-cause-code',
+        icon: 'rule',
+        label: '품질 코드',
+        labelVi: 'Mã chất lượng',
+        tabs: [
+          {
+            to: '/master-data/defect-cause-code',
+            label: '불량·원인코드',
+            labelVi: 'Mã lỗi · nguyên nhân',
+          },
+          {
+            to: '/master-data/judgment-code',
+            label: '판정유형 코드',
+            labelVi: 'Mã loại đánh giá',
+          },
+        ],
       },
-      /*
-       * W-04-12 — 앞의 두 화면이 만든 미확정 출하를 확정·취소한다. 되돌릴 수 있는 구간이
-       * 여기서 끝나므로 두 화면 뒤에 둔다.
-       */
-      {
-        to: '/shipment/shipment-confirm',
-        icon: 'task_alt',
-        label: '출하 확정·취소',
-        labelVi: 'Xác nhận · hủy xuất hàng',
-      },
-      /*
-       * W-04-06 — 출하 섹션의 «반품·재고» 갈래 첫 화면이다. 확정된 출하는 취소되지 않고 여기로
-       * 돌아오므로 확정·취소 바로 뒤에 둔다. 반품은 보류로 들어오고 판정은 다음 화면 몫이다.
-       */
-      {
-        to: '/shipment/return-receipts',
-        icon: 'keyboard_return',
-        label: '반품·클레임 입고 등록',
-        labelVi: 'Đăng ký nhập kho hàng trả · khiếu nại',
-      },
-      /*
-       * W-04-07 — 반품·재고 갈래의 둘째 화면이다. 앞 화면이 들인 반품과 불합격품의 판정을
-       * 의뢰한다. 판정은 품질 화면 몫이고 여기서는 부적합 등록과 판정 의뢰까지다.
-       */
-      {
-        to: '/shipment/disposition-requests',
-        icon: 'assignment_return',
-        label: '재작업/폐기 판정 의뢰',
-        labelVi: 'Yêu cầu quyết định làm lại / hủy',
-      },
-      /* W-04-11 — 판정이 끝난 반품 LOT을 원 LOT 그대로 판매 가능 재고로 되돌린다. */
-      {
-        to: '/shipment/stock-reinstatements',
-        icon: 'move_to_inbox',
-        label: '재고 재등록',
-        labelVi: 'Đăng ký lại tồn kho',
-      },
-      /*
-       * W-04-10 — 처분 판정이 선행이고 결재를 타는 화면이라 출하 흐름 넷 뒤에 둔다.
-       * 나가는 일이 아니라 «버리는» 일이다.
-       */
-      {
-        to: '/shipment/product-disposal-request',
-        icon: 'delete_sweep',
-        label: '제품 폐기 요청',
-        labelVi: 'Yêu cầu hủy thành phẩm',
-      },
-    ],
-  },
-  /* W-02-01 — 생산의 계획·지시 첫 화면이며 현재 생산 블록의 첫 항목으로 둔다. */
-  {
-    label: '생산',
-    labelVi: 'Sản xuất',
-    items: [
-      {
-        to: '/production/production-orders',
-        icon: 'account_tree',
-        label: 'ERP W/O 수신·조회',
-        labelVi: 'Nhận · tra cứu ERP W/O',
-      },
-      /*
-       * W-02-06 — 받은 P/O 가 «바뀌었을 때» 판정하는 자리라 수신·조회 바로 뒤다.
-       * 그 화면이 만든 목록 위에서 이어진다.
-       */
-      {
-        to: '/production/po-change-review',
-        icon: 'published_with_changes',
-        label: 'P/O 변경 관리자 확인',
-        labelVi: 'Quản trị xác nhận thay đổi P/O',
-      },
-      /*
-       * ⛔ `W-02-02`(W/O 전개·편성)와 `W-02-03`(4M 자원배정)은 **메뉴에 두지 않는다**
-       * (omf-all-around#41 · 사용자 2026-09-21). 두 화면은 주소의 `?productionOrderId=` ·
-       * `?productionPlanId=` 로 대상을 받아 그린다 — 메뉴의 맨 주소로 열면 본문이 없고
-       * 「먼저 선택하세요」만 선다. 들어가는 길은 앞 화면의 이동 버튼이다
-       * (`production-order/screen.tsx` → 전개·편성 → `production-plan/work-order-result-pane.tsx` → 4M).
-       * route 는 그대로 둔다 — 주소가 살아 있어야 그 버튼이 산다. 화면 목록
-       * (`web-screen-catalog.ts`)에도 남기고 그 자리에 「메뉴에 없다」를 적었다.
-       */
-      /* W-02-04 — 4M 배정을 통과한 W/O를 배포하므로 조회 뒤·마감 앞에 둔다. */
-      {
-        to: '/production/work-order-release',
-        icon: 'rocket_launch',
-        label: 'W/O 확정·배포·생산LOT 선발행',
-        labelVi: 'Chốt · phát hành W/O · phát trước LOT sản xuất',
-      },
-      /* W-02-05 — 같은 생산 섹션의 마감·모니터링 화면이다. */
-      {
-        to: '/production/work-order-close',
-        icon: 'archive',
-        label: 'W/O 마감·ERP 실적 송신',
-        labelVi: 'Đóng W/O · gửi kết quả sang ERP',
-      },
-      /* W-02-07 — 계획을 거치지 않고 직접 발행한다. 갈래가 달라 정규 흐름 뒤에 둔다. */
-      {
-        to: '/production/emergency-work-orders',
-        icon: 'bolt',
-        label: '긴급 W/O 발행',
-        labelVi: 'Phát hành W/O khẩn',
-      },
-      /* W-02-10 — 긴급 W/O 의 부족 자재를 정식 출고로 경유시킨다. 긴급 발행 바로 뒤가 흐름이다. */
-      {
-        to: '/production/material-issue-requests',
-        icon: 'playlist_add',
-        label: '추가 자재 출고 요청',
-        labelVi: 'Yêu cầu xuất kho vật tư bổ sung',
-      },
-      /* W-02-08 — 발행한 W/O 가 지금 어디까지 왔는지 본다. 만드는 화면들 뒤, 조회 자리다. */
-      {
-        to: '/production/work-order-progress',
-        icon: 'monitoring',
-        label: 'W/O 진행현황 조회',
-        labelVi: 'Tra cứu tiến độ W/O',
-      },
-    ],
-  },
-  /*
-   * W-03-01 — Lot Status 계열의 첫 화면이 독립된 「품질관리」 섹션을 연다.
-   * IQC 수입검사는 입하 흐름의 판정이라 자재창고에 남고, 여기서는
-   * 자재·생산 LOT의 상태와 보류 사건을 품질 관점에서 횡단한다.
-   */
-  {
-    label: '품질관리',
-    labelVi: 'Quản lý chất lượng',
-    items: [
-      {
-        to: '/quality/lot-status',
-        icon: 'history',
-        label: 'Lot Status 현황·변경이력 조회',
-        labelVi: 'Tra cứu Lot Status · lịch sử thay đổi',
-      },
-      /* W-03-02 — 현황에서 찾은 LOT을 판정·전이하므로 W-03-01 바로 뒤에 둔다. */
-      {
-        to: '/quality/lot-status-transition',
-        icon: 'published_with_changes',
-        label: 'Lot Status 판정·전이 처리',
-        labelVi: 'Xử lý đánh giá · chuyển đổi Lot Status',
-      },
-      /* W-03-03 — 판정할 의심 LOT을 먼저 보류하므로 W-03-02 바로 뒤에 둔다. */
-      {
-        to: '/quality/suspicious-material-hold',
-        icon: 'report_problem',
-        label: '의심자재 등록',
-        labelVi: 'Đăng ký vật tư nghi ngờ',
-      },
-      /* W-03-05 — 보류 등록 뒤에 검사 결과를 조회하고, 승인 처리 전에 판단 근거를 본다. */
       {
         to: '/quality/inspection-results',
         icon: 'analytics',
         label: '검사실적·검사결과 조회',
         labelVi: 'Tra cứu thực hiện · kết quả kiểm tra',
       },
-      /* W-03-09 — Lot Status 조회·판정·의심자재 등록 다음에 서는 품질 승인 화면이다. */
+      /* LOT 상태 — 조회에서 찾은 LOT 을 판정·전이한다. */
+      {
+        to: '/quality/lot-status',
+        icon: 'history',
+        label: 'LOT 상태',
+        labelVi: 'Trạng thái LOT',
+        tabs: [
+          { to: '/quality/lot-status', label: 'LOT 상태 조회', labelVi: 'Tra cứu trạng thái LOT' },
+          {
+            to: '/quality/lot-status-transition',
+            label: 'LOT 상태 판정',
+            labelVi: 'Đánh giá trạng thái LOT',
+          },
+        ],
+      },
+      {
+        to: '/quality/suspicious-material-hold',
+        icon: 'report_problem',
+        label: '의심자재 등록',
+        labelVi: 'Đăng ký vật tư nghi ngờ',
+      },
       {
         to: '/quality/approvals',
         icon: 'approval',
         label: '특채·한도승인 승인 처리',
         labelVi: 'Xử lý phê duyệt đặc cách · hạn mức',
       },
-      /* W-03-10 — 승인 처리 다음이다. 여기서 정한 처분이 폐기·재등록·재작업 화면의 진입을 연다. */
+      /* W-03-10 — 여기서 정한 처분이 폐기·재등록·재작업 화면의 진입을 연다. */
       {
         to: '/quality/dispositions',
         icon: 'gavel',
@@ -522,197 +329,176 @@ export const NAV_GROUPS: readonly NavGroup[] = [
     ],
   },
   /*
-   * W-05-12 — **도메인 05(설비/툴)의 첫 섹션이다.** 통합 IA 의 최상위 그룹이며,
-   * 뒤따르는 W-05 화면들(툴 마스터·계측기·작업 캘린더·수집 채널…)이 여기 들어온다.
-   *
-   * **자재창고 뒤·승인 앞이다** — 업무 도메인 섹션들을 붙여 두고, 그 위를 가로지르는
-   * 것(승인·알림)과 운영 설정(시스템 관리)을 끝에 남긴다. 자재창고가 도메인 01,
-   * 이것이 도메인 05라 번호 차례이기도 하다.
-   *
-   * 주소 앞머리는 `/equipment` 다 — 계약 경로(`/mdm/**`)가 아니라 이 섹션을 따른다.
+   * 생산 관리 — ERP W/O 를 받아 보고(바뀐 것은 같은 자리에서 확인) → MES W/O 로 확정·배포하고 →
+   * (예외로 긴급 발행) → 진행을 보고 → 마감한다. 긴급 W/O 의 부족 자재는 「구매 / 자재 관리 > 출고
+   * 관리」의 자재 불출 요청으로 잇는다.
    */
   {
-    label: '설비/툴',
-    labelVi: 'Thiết bị / Công cụ',
+    label: '생산 관리',
+    labelVi: 'Quản lý sản xuất',
+    icon: 'factory',
     items: [
-      {
-        to: '/equipment/master',
-        icon: 'precision_manufacturing',
-        label: '설비·설비그룹 마스터',
-        labelVi: 'Dữ liệu gốc thiết bị · nhóm thiết bị',
-      },
       /*
-       * W-05-13 — 설비 **다음**이다. 이 섹션의 주어가 설비이고 툴은 그 옆 축이라,
-       * 한정어 없는 이름(설비 마스터)이 먼저 서고 자기 이름을 붙인 것들이 뒤따른다.
-       * 화면 번호 차례(12 → 13)이기도 하다.
-       */
-      {
-        to: '/equipment/tool-master',
-        icon: 'handyman',
-        label: '툴/금형/지그 마스터',
-        labelVi: 'Dữ liệu gốc công cụ / khuôn / đồ gá',
-      },
-      /*
-       * W-05-09 — 마스터 셋 **뒤**다. 앞의 둘이 「무엇이 있는가」를 정하고 이것은
-       * 「언제 도는가」를 정한다 — 대상이 있어야 달력을 붙일 자리가 생긴다.
-       */
-      {
-        to: '/equipment/work-calendar',
-        icon: 'calendar_month',
-        label: '작업 캘린더 설정',
-        labelVi: 'Thiết lập lịch làm việc',
-      },
-      /*
-       * W-05-07 — 섹션 **맨 뒤**다. 앞의 셋이 「무엇이 있고 언제 도는가」를 정하고,
-       * 이것은 그 설비가 **보내오는 것을 어디에 담을지**를 정한다 — 설비가 먼저 있어야
-       * 채널을 붙일 자리가 생긴다.
+       * ERP W/O — 받은 ERP W/O 를 보고, 그것이 «바뀌었을 때» 판정한다(W-02-06). 옛 이름의
+       * 「P/O」는 서버 용어 정리로 구매오더만 뜻하게 되었다(서버 `CONTEXT.md` 「오더」 · #731 —
+       * P/O = 구매오더 · ERP W/O = ERP 에서 받은 생산 오더 · 맨 「W/O」 = MES W/O). 「작업지시」·
+       * 「생산오더」로 부르지 않는다.
        *
-       * IA 는 이 화면을 「설비/툴 > 비가동·계측」 아래 두었으나, 그 하위 묶음은 아직
-       * 이 화면 하나뿐이라 **묶음을 만들지 않는다** — 항목 하나짜리 묶음은 층만 늘리고
-       * 찾는 길을 길게 한다. 형제(W-05-06·W-05-08)가 서면 그때 묶는다.
+       * ⛔ `W-02-02`(W/O 전개·편성)와 `W-02-03`(4M 자원배정)은 **메뉴에도 탭에도 두지 않는다**
+       * (omf-all-around#41 · 사용자 2026-09-21). 두 화면은 주소의 `?productionOrderId=` ·
+       * `?productionPlanId=` 로 대상을 받아 그린다 — 맨 주소로 열면 본문이 없고 「먼저
+       * 선택하세요」만 선다. 들어가는 길은 앞 화면의 이동 버튼이다(`production-order/screen.tsx`
+       * → 전개·편성 → `production-plan/work-order-result-pane.tsx` → 4M). route 는 그대로 둔다.
        */
       {
-        to: '/equipment/collection-channels',
-        icon: 'sensors',
-        label: '수집 채널 매핑 관리',
-        labelVi: 'Quản lý ánh xạ kênh thu thập',
+        to: '/production/production-orders',
+        icon: 'account_tree',
+        label: 'ERP W/O',
+        labelVi: 'ERP W/O',
+        tabs: [
+          {
+            to: '/production/production-orders',
+            label: 'ERP W/O 조회',
+            labelVi: 'Tra cứu ERP W/O',
+          },
+          {
+            to: '/production/po-change-review',
+            label: 'ERP W/O 변경 확인',
+            labelVi: 'Xác nhận thay đổi ERP W/O',
+          },
+        ],
       },
-      /*
-       * W-05-01 — 섹션 **맨 뒤**다. 앞의 넷이 「무엇이 있고 언제 도는가」와 「무엇을
-       * 받는가」를 정하고, 이것은 **받은 것을 어떻게 세는가**를 정한다 — 세는 규칙은
-       * 셀 대상이 다 선 뒤에 온다.
-       *
-       * ⭐ **툴 마스터와 짝이다** — 캐비티 수는 그쪽이 갖고 비율은 여기가 갖는다.
-       * 두 화면이 한 계산의 입력을 나눠 갖는다.
-       */
       {
-        to: '/equipment/shot-conversion',
-        icon: 'calculate',
-        label: '타발수 환산 파라미터 설정',
-        labelVi: 'Thiết lập tham số quy đổi số nhát dập',
+        to: '/production/work-order-release',
+        icon: 'rocket_launch',
+        label: 'W/O 확정·배포·생산LOT 선발행',
+        labelVi: 'Chốt · phát hành W/O · phát trước LOT sản xuất',
       },
-      /*
-       * W-05-11 — **섹션 맨 뒤다.** 라우트는 진작 열려 있었고 메뉴만 미뤄 두었던
-       * 화면이라(설계 질의 `omf-mes#195`), 형제들이 자리를 잡은 뒤에 붙는다.
-       *
-       * ⭐ **미루던 이유가 없어졌다** — 유형 값 목록이 확정돼(회신 · 시드 `omf-mes#182`)
-       * 사용자가 실제로 계측기만 골라 볼 수 있으므로 「계측기 마스터」라는 이름이
-       * 더는 거짓이 아니다.
-       */
+      /* W-02-07 — 계획을 거치지 않고 직접 발행한다. 갈래가 달라 정규 흐름 뒤에 둔다. */
       {
-        to: '/equipment/gauge-master',
-        icon: 'straighten',
-        label: '계측기 마스터 관리',
-        labelVi: 'Quản lý dữ liệu gốc thiết bị đo',
+        to: '/production/emergency-work-orders',
+        icon: 'bolt',
+        label: '긴급 W/O 발행',
+        labelVi: 'Phát hành W/O khẩn',
       },
-      /*
-       * W-05-10 — **계측기 마스터 바로 뒤다.** 이력은 그 마스터가 있어야 적을 수 있고,
-       * 인접이 그 관계를 드러낸다. 비가동 집계보다 앞인 것은 이쪽이 계측기라는 같은
-       * 대상을 다루기 때문이다.
-       */
       {
-        to: '/equipment/gauge-calibration',
-        icon: 'event_available',
-        label: '계측기 검교정 이력',
-        labelVi: 'Lịch sử hiệu chuẩn thiết bị đo',
+        to: '/production/work-order-progress',
+        icon: 'monitoring',
+        label: 'W/O 진행현황 조회',
+        labelVi: 'Tra cứu tiến độ W/O',
       },
-      /*
-       * W-05-04 — 마스터·이력 뒤, 집계 앞이다. 고장 처리는 **일하는 화면**이라 정해 두는
-       * 화면들과 결과를 보는 화면 사이에 선다.
-       */
+      /* W-02-05 — 진행을 본 뒤 닫는다. 생산 흐름의 끝이다. */
       {
-        to: '/equipment/failures',
-        icon: 'build',
-        label: '설비고장 상세처리',
-        labelVi: 'Xử lý chi tiết sự cố thiết bị',
-      },
-      /*
-       * W-05-05 — **고장 처리 바로 뒤다.** 고장이 트리거의 한 원천이라 앞선 화면이 만든
-       * 것을 이 화면이 묶는다.
-       */
-      {
-        to: '/equipment/maintenance-orders',
-        icon: 'assignment',
-        label: '보전지시 발행',
-        labelVi: 'Phát hành lệnh bảo trì',
-      },
-      /* W-05-06 — 지시가 이 실적의 대상이라 발행 바로 뒤다. */
-      {
-        to: '/equipment/maintenance-results',
-        icon: 'task_alt',
-        label: '보전 실적·예비품',
-        labelVi: 'Kết quả bảo trì · phụ tùng',
-      },
-      /* W-05-02 — 설비 보전 실적 뒤다. 「설비 보전 → 툴 보전」 차례를 만든다. */
-      {
-        to: '/equipment/tool-pm-order',
-        icon: 'schedule',
-        label: '툴 보전오더 생성',
-        labelVi: 'Tạo lệnh bảo trì công cụ',
-      },
-      /* W-05-03 — 오더 생성 바로 뒤다. 오더가 이 실적의 대상이다. */
-      {
-        to: '/equipment/tool-pm-result',
-        icon: 'restart_alt',
-        label: '툴 PM 실적 등록',
-        labelVi: 'Đăng ký kết quả PM công cụ',
-      },
-      /*
-       * W-05-08 — 마스터·설정 항목들 **뒤**다. 앞의 것들은 설비를 어떻게 다룰지 정해 두는
-       * 자리이고 이것은 그렇게 돌아간 결과를 보는 자리라, 정하는 것과 보는 것을 섞지 않는다.
-       */
-      {
-        to: '/equipment/downtime-summary',
-        icon: 'timelapse',
-        label: '비가동 집계 조회',
-        labelVi: 'Tra cứu tổng hợp dừng máy',
+        to: '/production/work-order-close',
+        icon: 'archive',
+        label: 'W/O 마감·ERP 실적 송신',
+        labelVi: 'Đóng W/O · gửi kết quả sang ERP',
       },
     ],
   },
   /*
-   * W-CO-09 — 결재함은 기준정보도 시스템 운영도 아니라 **일하는 자리**다.
-   * 결재선 정의(W-06-15)가 「시스템 관리」에 든 것은 그것이 **운영 설정**이기
-   * 때문이고, 올라온 결재를 처리하는 일은 그것과 축이 다르다.
-   *
-   * **자재창고 뒤·시스템 관리 앞이다** — 업무를 하는 섹션들을 붙여 두고 운영 설정을
-   * 끝에 남긴다. 뒤따르는 승인 화면들이 이 섹션에 들어온다.
+   * 영업 / 출하 관리 — 출하지시 편성 → 예정 → 출하 처리(정상·긴급 직행) → 확정·취소,
+   * 그리고 확정된 출하가 되돌아오는 반품·클레임 갈래가 뒤따른다. OQC 판정은 「품질 관리」로 옮겼다.
    */
   {
-    label: '승인',
-    labelVi: 'Phê duyệt',
-    items: [{ to: '/approval/inbox', icon: 'inbox', label: '결재함', labelVi: 'Hộp phê duyệt' }],
+    label: '영업 / 출하 관리',
+    labelVi: 'Quản lý bán hàng / xuất hàng',
+    icon: 'local_shipping',
+    items: [
+      {
+        to: '/shipment/shipment-request-create',
+        icon: 'assignment',
+        label: '출하지시서 Import·작업지시 생성',
+        labelVi: 'Import lệnh xuất hàng · tạo lệnh sản xuất',
+      },
+      {
+        to: '/shipment/shipment-schedule',
+        icon: 'event_note',
+        label: '출하 예정 목록',
+        labelVi: 'Danh sách kế hoạch xuất hàng',
+      },
+      /*
+       * 출하 처리 — 정상 흐름(상차·실물 출고)과 창고 경유·피킹·포장을 건너뛰는 긴급 직행은 **같은
+       * 출하 생성 경로**다. 정상을 첫 탭에 두어 예외가 기본으로 읽히지 않게 한다.
+       */
+      {
+        to: '/shipment/shipment-processing',
+        icon: 'outbound',
+        label: '출하 처리',
+        labelVi: 'Xử lý xuất hàng',
+        tabs: [
+          {
+            to: '/shipment/shipment-processing',
+            label: '출하 처리(상차·실물 출고)',
+            labelVi: 'Xử lý xuất hàng (lên xe · xuất thực tế)',
+          },
+          {
+            to: '/shipment/expedited-shipment',
+            label: '긴급 직행 출하 처리',
+            labelVi: 'Xử lý xuất hàng thẳng khẩn',
+          },
+        ],
+      },
+      {
+        to: '/shipment/shipment-confirm',
+        icon: 'task_alt',
+        label: '출하 확정·취소',
+        labelVi: 'Xác nhận · hủy xuất hàng',
+      },
+      /*
+       * 반품·클레임 — 확정된 출하가 되돌아오는 한 흐름이다: 입고 등록 → 판정 의뢰(판정은 품질의
+       * 처분 판정 처리 W-03-10 몫) → 판정 결과에 따라 재고 재등록 또는 제품 폐기 요청.
+       */
+      {
+        to: '/shipment/return-receipts',
+        icon: 'keyboard_return',
+        label: '반품·클레임',
+        labelVi: 'Hàng trả · khiếu nại',
+        tabs: [
+          {
+            to: '/shipment/return-receipts',
+            label: '반품·클레임 입고 등록',
+            labelVi: 'Đăng ký nhập kho hàng trả · khiếu nại',
+          },
+          {
+            to: '/shipment/disposition-requests',
+            label: '재작업/폐기 판정 의뢰',
+            labelVi: 'Yêu cầu quyết định làm lại / hủy',
+          },
+          {
+            to: '/shipment/stock-reinstatements',
+            label: '재고 재등록',
+            labelVi: 'Đăng ký lại tồn kho',
+          },
+          {
+            to: '/shipment/product-disposal-request',
+            label: '제품 폐기 요청',
+            labelVi: 'Yêu cầu hủy thành phẩm',
+          },
+        ],
+      },
+    ],
   },
   /*
-   * W-CO-03 — **알림은 자기 섹션을 갖는다.** 설계의 IA가 「시스템/공통 > 알림」으로
-   * 별도 그룹을 두었고, 뒤따르는 알람 수신자 설정·공지가 이 섹션에 들어온다 —
-   * 지금 열어 두면 그 둘이 항목 한 줄씩만 더한다.
-   *
-   * ⛔ **「시스템 관리」에 넣지 않는다.** 그 섹션은 **관리자가 남을 설정하는 자리**인데
-   * (사용자·역할·권한 · 결재선 정의) 알림센터는 **누구나 자기가 받은 것을 보는 자리**다.
-   * 뒤의 둘까지 들어오면 그 섹션이 성격이 다른 다섯을 담게 된다.
-   *
-   * **승인 뒤·시스템 관리 앞이다** — 일하는 섹션들을 붙여 두고 운영 설정을 끝에 남긴다
-   * (「승인」 섹션이 같은 이유로 그 자리에 섰다).
+   * 업무함 — **누구나 자기에게 온 것을 보는 자리**다(W-CO-09 결재함 · W-CO-03 알림센터 ·
+   * W-CO-04 공지). 「승인」(결재함 하나)과 「알림」을 따로 두었다가 합쳤다 — 항목 하나짜리 묶음은
+   * 제목이 항목보다 무겁다. 관리자가 남을 설정하는 알림 수신자 설정은 「시스템 관리」로 옮겼다.
    *
    * ⛔ **상단 바에 종 배지를 만들지 않는다**(결정 ②). 배지는 셸의 책임이고 갱신 주기가
    * 아직 정해지지 않았다 — 요청이 하나도 없는 이 파일에 조회를 들이면 **모든 화면이**
    * 라우트 전환마다 그 요청을 지고, 미인증 실패가 전 화면의 상단 바에 나타난다.
    */
   {
-    label: '알림',
-    labelVi: 'Thông báo',
+    label: '업무함',
+    labelVi: 'Hộp công việc',
+    icon: 'inbox',
     items: [
+      { to: '/approval/inbox', icon: 'inbox', label: '결재함', labelVi: 'Hộp phê duyệt' },
       {
         to: '/notification/center',
         icon: 'notifications',
         label: '알림센터',
         labelVi: 'Trung tâm thông báo',
-      },
-      {
-        to: '/notification/recipient-settings',
-        icon: 'notifications_active',
-        label: '알람 수신자 설정',
-        labelVi: 'Thiết lập người nhận cảnh báo',
       },
       /* W-CO-04 — 알림센터가 받는 자리이고 이쪽이 보내는 자리다. */
       {
@@ -724,28 +510,265 @@ export const NAV_GROUPS: readonly NavGroup[] = [
     ],
   },
   /*
-   * 사용자·역할·권한은 기준정보가 아니라 **시스템 운영**이다 —
-   * 기준정보 섹션에 넣으면 「창고·Location」 옆에 서서 분류가 무너진다.
+   * 기준정보 관리 — 품목·BOM(ERP 원본 위에 MES 확장속성)을 앞에 두고, MES 가 직접 세우는
+   * 마스터(공정 → 설비 → 툴·금형 → 계측기 → 창고)를 뒤에 둔다. 횡단 조회인 마스터
+   * 변경관리가 끝이다. ERP 에서 받은 원본만 보는 표는 「시스템 관리 > ERP 연동 현황·이력」에 있다.
+   */
+  {
+    label: '기준정보 관리',
+    labelVi: 'Quản lý dữ liệu gốc',
+    icon: 'database',
+    items: [
+      /*
+       * W-06-05 — **품목·BOM 의 ERP 조회와 확장속성 편집이 한 화면이다**(사용자 2026-10-20).
+       * 아키텍처의 「품목정보 조회 (ERP)」·「BOM 조회 (ERP)」를 따로 세웠다가, 이 화면이 이미
+       * ERP 원본 정보와 BOM 구역을 갖고 있어 합쳤다 — 같은 품목을 두 화면에서 고르게 하지 않는다.
+       * 이름에 「(ERP)」를 붙이지 않은 것은 확장속성을 MES 가 고치기 때문이다.
+       */
+      {
+        to: '/master-data/item-extended-attrs',
+        icon: 'category',
+        label: '품목·BOM 정보',
+        labelVi: 'Thông tin mặt hàng · BOM',
+      },
+      {
+        to: '/master-data/routing',
+        icon: 'account_tree',
+        label: '공정(Routing)',
+        labelVi: 'Công đoạn (Routing)',
+      },
+      /*
+       * 설비 — 설비를 세우고(마스터) 그 설비가 언제 돌고(작업 캘린더) 무엇을 보내오는지(수집
+       * 채널)를 정한다. 셋 다 **설비에 붙는 설정**이라 한 묶음이다.
+       */
+      {
+        to: '/equipment/master',
+        icon: 'precision_manufacturing',
+        label: '설비',
+        labelVi: 'Thiết bị',
+        tabs: [
+          {
+            to: '/equipment/master',
+            label: '설비·설비그룹 마스터',
+            labelVi: 'Dữ liệu gốc thiết bị · nhóm thiết bị',
+          },
+          {
+            to: '/equipment/work-calendar',
+            label: '작업 캘린더 설정',
+            labelVi: 'Thiết lập lịch làm việc',
+          },
+          {
+            to: '/equipment/collection-channels',
+            label: '수집 채널 매핑 관리',
+            labelVi: 'Quản lý ánh xạ kênh thu thập',
+          },
+        ],
+      },
+      /* ⭐ 툴·금형 — 캐비티 수는 툴 마스터가, 환산 비율은 타발수 환산이 갖는 **한 계산의 두 입력**이다. */
+      {
+        to: '/equipment/tool-master',
+        icon: 'handyman',
+        label: '툴·금형',
+        labelVi: 'Công cụ · khuôn',
+        tabs: [
+          {
+            to: '/equipment/tool-master',
+            label: '툴/금형/지그 마스터',
+            labelVi: 'Dữ liệu gốc công cụ / khuôn / đồ gá',
+          },
+          {
+            to: '/equipment/shot-conversion',
+            label: '타발수 환산 파라미터 설정',
+            labelVi: 'Thiết lập tham số quy đổi số nhát dập',
+          },
+        ],
+      },
+      /*
+       * 계측기 — 마스터와 검교정 이력이 **같은 계측기를 다룬다**. 검교정은 보전 묶음에 있었으나
+       * 이력이 마스터 없이는 적힐 수 없어 마스터 옆으로 옮겼다.
+       */
+      {
+        to: '/equipment/gauge-master',
+        icon: 'straighten',
+        label: '계측기',
+        labelVi: 'Thiết bị đo',
+        tabs: [
+          {
+            to: '/equipment/gauge-master',
+            label: '계측기 마스터 관리',
+            labelVi: 'Quản lý dữ liệu gốc thiết bị đo',
+          },
+          {
+            to: '/equipment/gauge-calibration',
+            label: '계측기 검교정 이력',
+            labelVi: 'Lịch sử hiệu chuẩn thiết bị đo',
+          },
+        ],
+      },
+      /*
+       * 창고·위치 — 창고·Location → 적치 규칙(위치를 참조) → 창고 배치도(위치를 도면에 얹음).
+       * 물건이 오가는 「구매 / 자재 관리」가 아니라 어디에 둘지 **정해 두는** 일이라 기준정보다.
+       */
+      {
+        to: '/master-data/warehouse-location',
+        icon: 'warehouse',
+        label: '창고·위치',
+        labelVi: 'Kho · vị trí',
+        tabs: [
+          {
+            to: '/master-data/warehouse-location',
+            label: '창고·Location',
+            labelVi: 'Kho · Vị trí',
+          },
+          { to: '/master-data/putaway-rule', label: '적치 규칙', labelVi: 'Quy tắc cất hàng' },
+          {
+            to: '/master-data/warehouse-layout',
+            label: '창고 배치도',
+            labelVi: 'Sơ đồ bố trí kho',
+          },
+        ],
+      },
+      /* 특정 마스터에 속하지 않는 횡단 조회라 마스터 항목들 뒤에 둔다. */
+      {
+        to: '/master-data/master-change',
+        icon: 'history',
+        label: '마스터 변경관리',
+        labelVi: 'Quản lý thay đổi dữ liệu gốc',
+      },
+    ],
+  },
+  /*
+   * 설비 보전 관리 — 아키텍처에 없는 묶음이다. 기준정보 관리 뒤·시스템 관리 앞이다(사용자 2026-10-20). 설비·툴·
+   * 계측기 마스터는 「기준정보 관리」로 갔고 여기에는 **일하는 화면**만 남았다: 설비 보전(고장
+   * → 지시 → 실적) · 툴 보전(오더 → 실적) · 결과를 보는 비가동 집계.
+   */
+  {
+    label: '설비 보전 관리',
+    labelVi: 'Quản lý bảo trì thiết bị',
+    icon: 'build',
+    items: [
+      /* 설비 보전 — 고장이 보전지시의 한 원천이고, 지시가 실적의 대상이다. 한 흐름의 세 단계다. */
+      {
+        to: '/equipment/failures',
+        icon: 'build',
+        label: '설비 보전',
+        labelVi: 'Bảo trì thiết bị',
+        tabs: [
+          {
+            to: '/equipment/failures',
+            label: '설비고장 상세처리',
+            labelVi: 'Xử lý chi tiết sự cố thiết bị',
+          },
+          {
+            to: '/equipment/maintenance-orders',
+            label: '보전지시 발행',
+            labelVi: 'Phát hành lệnh bảo trì',
+          },
+          {
+            to: '/equipment/maintenance-results',
+            label: '보전 실적·예비품',
+            labelVi: 'Kết quả bảo trì · phụ tùng',
+          },
+        ],
+      },
+      /* 툴 보전 — 오더가 실적의 대상이다. */
+      {
+        to: '/equipment/tool-pm-order',
+        icon: 'schedule',
+        label: '툴 보전',
+        labelVi: 'Bảo trì công cụ',
+        tabs: [
+          {
+            to: '/equipment/tool-pm-order',
+            label: '툴 보전오더 생성',
+            labelVi: 'Tạo lệnh bảo trì công cụ',
+          },
+          {
+            to: '/equipment/tool-pm-result',
+            label: '툴 PM 실적 등록',
+            labelVi: 'Đăng ký kết quả PM công cụ',
+          },
+        ],
+      },
+      /* 돌아간 결과를 보는 자리라 일하는 화면들 뒤다. */
+      {
+        to: '/equipment/downtime-summary',
+        icon: 'timelapse',
+        label: '비가동 집계 조회',
+        labelVi: 'Tra cứu tổng hợp dừng máy',
+      },
+    ],
+  },
+  /*
+   * 시스템 관리 — **관리자가 남을 설정하고 연동을 지켜보는 자리**다. ERP 연동 현황(받은 데이터 조회 포함) → 사용자·권한 → 결재·알림
+   * 설정 → 공통 설정 차례다(아키텍처).
+   *
+   * ⚠ **비밀번호 변경은 여기 없다** — 상단 바의 사용자 자리로 옮겼다(`layout.tsx`
+   * `SessionActions`). 누구나 자기 것을 바꾸는 자리라 관리자 묶음에 둘 이유가 없고, 상단 바는
+   * 권한 판정 없이 늘 서므로 「관리자가 아닌 사용자도 바꿀 길이 있어야 한다」(W-CO-10)가
+   * 그대로 지켜진다.
    */
   {
     label: '시스템 관리',
     labelVi: 'Quản trị hệ thống',
+    icon: 'settings',
     items: [
+      /*
+       * ERP 연동 현황·이력 — **ERP 에서 받은 것을 보기만 하는 자리를 한 묶음에 모았다**(사용자
+       * 2026-10-20). 첫 탭은 연동 실행 로그와 실패 재처리(W-06-10 · 옛 「연계 동기화 현황」)이고,
+       * 나머지는 받은 데이터를 **종류별 표**로 본다(W-06-16~23) — 기준 데이터(공통코드·사원·품목·
+       * 거래처·BOM) 다음 전표(구매발주·수주·ERP W/O) 차례다.
+       *
+       * ⛔ **MES 가 고치거나 이어서 일하는 화면은 여기 두지 않는다.** 품목 확장속성(「품목·BOM
+       * 정보」 W-06-05)과 ERP W/O 전개(「ERP W/O」 W-02-01 → 전개·편성)는 같은 데이터를 다루지만
+       * MES 의 일이라 업무 묶음에 남는다. 이 묶음은 「ERP 가 무엇을 보냈는가」만 답한다.
+       */
+      {
+        to: '/master-data/integration-sync',
+        icon: 'sync_alt',
+        label: 'ERP 연동 현황·이력',
+        labelVi: 'Tình trạng · lịch sử liên kết ERP',
+        tabs: [
+          {
+            to: '/master-data/integration-sync',
+            label: '연동 현황·이력',
+            labelVi: 'Tình trạng · lịch sử liên kết',
+          },
+          { to: '/system/erp-data/common-codes', label: '공통코드', labelVi: 'Mã chung' },
+          { to: '/system/erp-data/employees', label: '사원', labelVi: 'Nhân viên' },
+          { to: '/system/erp-data/items', label: '품목', labelVi: 'Mặt hàng' },
+          { to: '/system/erp-data/partners', label: '거래처', labelVi: 'Đối tác' },
+          { to: '/system/erp-data/boms', label: 'BOM', labelVi: 'BOM' },
+          { to: '/system/erp-data/purchase-orders', label: '구매발주', labelVi: 'Đơn mua hàng' },
+          { to: '/system/erp-data/sales-orders', label: '수주', labelVi: 'Đơn bán hàng' },
+          { to: '/system/erp-data/production-orders', label: 'ERP W/O', labelVi: 'ERP W/O' },
+        ],
+      },
       {
         to: '/system/users-roles',
         icon: 'manage_accounts',
         label: '사용자·역할·권한',
         labelVi: 'Người dùng · vai trò · quyền',
       },
-      /*
-       * W-06-15 — **차례가 순서다.** 승인자를 정할 수 있게 된 다음에 결재선을 세운다.
-       * 결재선은 마스터이지만 업무 기준정보가 아니라 운영 설정이라 이 섹션에 든다.
-       */
+      /* W-06-15 — 승인자를 정할 수 있게 된 다음에 결재선을 세운다. */
       {
         to: '/system/approval-route',
         icon: 'approval',
         label: '결재선 정의',
         labelVi: 'Định nghĩa luồng phê duyệt',
+      },
+      /* W-CO-11 — 결재선처럼 **누가 받을지**를 관리자가 정한다. 그래서 결재선 바로 뒤다. */
+      {
+        to: '/notification/recipient-settings',
+        icon: 'notifications_active',
+        label: '알림 수신자 설정',
+        labelVi: 'Thiết lập người nhận thông báo',
+      },
+      {
+        to: '/master-data/common-code',
+        icon: 'list_alt',
+        label: '공통코드·조직·작업자',
+        labelVi: 'Mã chung · tổ chức · nhân viên',
       },
       /* W-CO-06 — 단말은 시스템 관리의 자원이다. */
       {
@@ -754,32 +777,29 @@ export const NAV_GROUPS: readonly NavGroup[] = [
         label: '단말기-공정 매핑',
         labelVi: 'Ánh xạ máy quét - công đoạn',
       },
-      /*
-       * W-CO-10 — **섹션 맨 끝이다.** 앞의 둘은 관리자가 남을 설정하는 자리이고 이것은
-       * 누구나 자기 것을 바꾸는 자리라, 앞의 순서(권한 → 결재선)를 흔들지 않고 뒤에 붙인다.
-       *
-       * ⛔ **메뉴 권한이 붙어도 이 항목은 감추지 않는다.** 지금은 권한에 따른 감춤이 없어
-       * 문제가 드러나지 않지만, 감추는 날 비밀번호를 바꿀 길이 사라지는 것은 **관리자가 아닌
-       * 모든 사용자**다. 같은 사실을 `routes/index.tsx`와 `docs/decisions.md`에 함께 적었다.
-       */
-      {
-        to: '/system/password-change',
-        icon: 'password',
-        label: '비밀번호 변경',
-        labelVi: 'Đổi mật khẩu',
-      },
     ],
   },
 ];
 
+/** 항목이 닿는 주소 전부 — 탭 묶음이면 탭들의 주소, 아니면 자기 주소 하나. */
+export const navEntryPaths = (entry: NavEntry): readonly string[] =>
+  entry.tabs === undefined ? [entry.to] : entry.tabs.map((tab) => tab.to);
+
 /**
- * `NAV_LEAD` 를 포함한 **전 항목**.
+ * 사이드바로 닿는 **화면 전부** — `NAV_LEAD` 와, 탭 묶음은 탭 하나하나를 한 화면으로 편다.
  *
  * ⭐ **훑는 쪽이 합치기를 잊지 않게 여기서 합친다.** `NAV_GROUPS` 만 훑으면 섹션 밖 항목이
- * 조용히 빠진다 — 검색창에 「대시보드」를 쳤을 때 결과가 0건이 되는 식이고, 그 빠짐은 전체
- * 렌더를 재는 감지기에 걸리지 않는다(그쪽은 검색을 거치지 않는다).
+ * 조용히 빠진다 — 검색창에 「대시보드」를 쳤을 때 결과가 0건이 되는 식이다.
+ *
+ * ⚠ **탭 묶음 자신은 담지 않는다.** 묶음 이름(「툴·금형」)은 화면이 아니라 화면 코드가 없다 —
+ * 화면 목록 대조(`routes/web-screen-catalog.test.ts`)가 재는 것은 탭 하나하나다. 펼친 탭은
+ * 묶음의 아이콘을 물려받는다(레일·검색 결과에서 같은 아이콘으로 선다).
  */
 export const NAV_ENTRIES: readonly NavEntry[] = [
   NAV_LEAD,
-  ...NAV_GROUPS.flatMap((group) => group.items),
+  ...NAV_GROUPS.flatMap((group) =>
+    group.items.flatMap((item) =>
+      item.tabs === undefined ? [item] : item.tabs.map((tab) => ({ ...tab, icon: item.icon })),
+    ),
+  ),
 ];

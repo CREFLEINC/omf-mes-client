@@ -1,6 +1,6 @@
 export const qualityApproval = {
   title: '특채·한도승인 승인 처리',
-  breadcrumbRoot: '품질',
+  breadcrumbRoot: '품질 관리',
   scopeWarning:
     '승인 유형 기준값이 준비되지 않아 나에게 배정된 모든 유형의 요청을 표시합니다. 승인 유형 원문을 확인하세요.',
   fields: {
@@ -38,6 +38,10 @@ export const qualityApproval = {
     loading: '승인 요청 상세 불러오는 중',
     notFound: '요청을 찾을 수 없습니다',
     notFoundDescription: '목록을 새로 조회한 뒤 다른 요청을 선택하세요.',
+    /** OQC 생략 결재(omf-all-around#119) — 승인은 잠금만 푼다. 실행은 대상 화면 몫이다(공유계약 J-8). */
+    oqcSkipNote:
+      '승인만으로는 생략되지 않습니다. 실제 생략은 OQC 출하검사 판정 화면에서 실행합니다.',
+    openOqcInspection: 'OQC 출하검사 판정 열기',
   },
   condition: {
     title: '연결 조건',

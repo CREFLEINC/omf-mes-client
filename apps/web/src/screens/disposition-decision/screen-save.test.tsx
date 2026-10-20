@@ -328,3 +328,69 @@ describe('DispositionDecisionScreen 판정 저장', () => {
     });
   });
 });
+
+/** 선별(omf-all-around#108 · 서버 선행 P-53) — 양품은 정상, 불량분은 자식 LOT·새 부적합. */
+describe('DispositionDecisionScreen 선별', () => {
+  const renderSort = (options: Parameters<typeof dispositionStub>[0] = {}): { user: User } => {
+    renderWithProviders(
+      <DispositionDecisionScreen
+        today={TODAY}
+        offsetMinutes={KST}
+        dispositionTypeCodes={['REWORK', 'SORT']}
+      />,
+      { fetch: dispositionStub(options), route: '/quality/dispositions?nonconformanceId=41' },
+    );
+    return { user: userEvent.setup() };
+  };
+
+  const fillSort = async (user: User, accepted: string, rejected: string): Promise<void> => {
+    await screen.findByText('LOT-TEST-0088');
+    await user.click(screen.getByRole('radio', { name: '선별' }));
+    await user.type(screen.getByLabelText(`${t.form.qtyLabel} (EA)`), '100');
+    await user.type(screen.getByLabelText(t.form.acceptedQtyLabel), accepted);
+    await user.type(screen.getByLabelText(t.form.rejectedQtyLabel), rejected);
+    await user.type(screen.getByLabelText(t.form.reasonLabel), '외관 선별');
+  };
+
+  it('양품·불량 수량과 업무 일자를 싣고, 불량분이 넘어간 곳을 알린다', async () => {
+    const { user } = renderSort({
+      saveResponse: () =>
+        jsonResponse(
+          {
+            sortResult: {
+              splitLotId: 91,
+              splitLotNo: 'LOT-TEST-0088-S1',
+              splitNonconformanceId: 52,
+              splitNonconformanceNo: 'NC-0052',
+            },
+          },
+          { status: 201 },
+        ),
+    });
+    await fillSort(user, '70', '30');
+    await save(user);
+
+    await waitFor(() => {
+      expect(posted()).toBeDefined();
+    });
+    await expect(posted()?.json()).resolves.toMatchObject({
+      dispositionTypeCode: 'SORT',
+      decisionQty: 100,
+      acceptedQty: 70,
+      rejectedQty: 30,
+      businessDate: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/) as unknown,
+    });
+    expect(
+      await screen.findByText(t.form.sortSuccess('LOT-TEST-0088-S1', 'NC-0052')),
+    ).toBeInTheDocument();
+  });
+
+  it('양품 + 불량이 처분 수량과 다르면 보내지 않는다', async () => {
+    const { user } = renderSort();
+    await fillSort(user, '70', '20');
+    await save(user);
+
+    expect(await screen.findByText(t.form.sortSumMismatch)).toBeInTheDocument();
+    expect(allPosted()).toHaveLength(0);
+  });
+});

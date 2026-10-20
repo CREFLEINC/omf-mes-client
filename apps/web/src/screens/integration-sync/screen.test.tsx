@@ -28,7 +28,7 @@ const createRecordingFetch = (
   routes: StubRoute[],
 ): { fetch: StubFetch; requests: RecordedRequest[] } => {
   const requests: RecordedRequest[] = [];
-  const stub = createStubFetch(routes);
+  const stub = createStubFetch([...routes, syncTablesRoute]);
 
   const fetch: StubFetch = async (request) => {
     requests.push({
@@ -46,6 +46,18 @@ const createRecordingFetch = (
 
 const isGet = (request: Request, pathname: string): boolean =>
   request.method === 'GET' && new URL(request.url).pathname === pathname;
+
+const SYNC_TABLES_PATH = '/integration/erp-sync/tables';
+
+/**
+ * 화면 위의 ERP 받기 상태(`sync-table-panel.tsx`)가 들어오자마자 읽는 경로. 이 파일의 시험은 연계 메시지
+ * 목록을 보므로 **맨 뒤에** 빈 상태로 깔아 둔다 — 앞에 놓인 규칙이 먼저 걸리므로 시험이 덮을 수 있다.
+ * 패널 자체의 시험은 `sync-table-panel.test.tsx` 에 있다.
+ */
+const syncTablesRoute: StubRoute = {
+  match: (request) => isGet(request, SYNC_TABLES_PATH),
+  respond: () => jsonResponse({ enabled: true, items: [] }),
+};
 
 const listBody = (
   items: unknown[],
@@ -114,6 +126,9 @@ const narrowedRequests = (requests: RecordedRequest[]): RecordedRequest[] =>
 
 const plainRequests = (requests: RecordedRequest[]): RecordedRequest[] =>
   requestsTo(requests, LIST_PATH).filter((request) => !isNarrowed(request));
+
+/** 연계 메시지 목록 구획. 위의 ERP 받기 상태도 표라서 표·행·글자는 이 안에서 찾는다. */
+const messageList = () => within(screen.getByRole('region', { name: '연계 동기화 현황' }));
 
 const currentLocation = (): string => screen.getByTestId('location').textContent ?? '';
 
@@ -244,7 +259,7 @@ describe('IntegrationSyncScreen — 목록 표시', () => {
 
     expect(await screen.findByText('SAMPLE-KEY-0001')).toBeInTheDocument();
 
-    const table = screen.getByRole('table');
+    const table = messageList().getByRole('table');
     const headers = within(table)
       .getAllByRole('columnheader')
       .map((cell) => cell.textContent);
@@ -267,7 +282,7 @@ describe('IntegrationSyncScreen — 목록 표시', () => {
     renderScreen([listRoute([messageRow({ lastErrorMessage: null })])]);
     await screen.findByText('SAMPLE-KEY-0001');
 
-    const row = screen.getAllByRole('row')[1];
+    const row = messageList().getAllByRole('row')[1];
     expect(within(row as HTMLElement).getByText('—')).toBeInTheDocument();
   });
 
@@ -283,7 +298,7 @@ describe('IntegrationSyncScreen — 목록 표시', () => {
 
     expect(await screen.findByText('ERROR')).toBeInTheDocument();
     // 확인된 코드에만 화면 문구를 붙인다. 픽스처의 FAILED 두 건이 그 문구로 나온다.
-    expect(screen.getAllByText('실패')).toHaveLength(2);
+    expect(messageList().getAllByText('실패')).toHaveLength(2);
   });
 
   it('워커가 잡고 있는 행에는 처리 중 보조 문구가 붙는다', async () => {
@@ -311,7 +326,7 @@ describe('IntegrationSyncScreen — 빈 상태와 실패', () => {
 
     expect(await screen.findByText('목록을 불러오지 못했습니다')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: '다시 시도' })).toBeInTheDocument();
-    expect(screen.queryByRole('table')).not.toBeInTheDocument();
+    expect(messageList().queryByRole('table')).not.toBeInTheDocument();
     expect(screen.queryByText('조건에 맞는 기록이 없습니다')).not.toBeInTheDocument();
     // 서버가 빈 message를 줘도 배너에 제목만 남으면 안 된다 — 무엇을 하라는 안내가 사라진다.
     expect(
@@ -630,7 +645,7 @@ describe('IntegrationSyncScreen — 상세', () => {
     await openFirstDetail(user);
 
     expect(await screen.findByText('목록을 불러오지 못했습니다')).toBeInTheDocument();
-    expect(screen.getByRole('table')).toBeInTheDocument();
+    expect(messageList().getByRole('table')).toBeInTheDocument();
     expect(screen.getByText('SAMPLE-KEY-0002')).toBeInTheDocument();
   });
 
@@ -1375,8 +1390,10 @@ describe('IntegrationSyncScreen — 조회를 기다리는 동안의 선택', ()
     });
     let calls = 0;
 
-    const stub = createStubFetch([listRoute()]);
+    const stub = createStubFetch([listRoute(), syncTablesRoute]);
     const fetch: StubFetch = async (request) => {
+      // 목록 조회만 센다 — ERP 받기 상태 조회는 이 시험이 붙잡을 대상이 아니다.
+      if (isGet(request, SYNC_TABLES_PATH)) return stub(request);
       calls += 1;
       // 두 번째 조회부터 붙잡아 둔다 — 결과를 기다리는 순간을 관찰할 수 있게 한다.
       if (calls > 1) await gate;

@@ -15,6 +15,8 @@ export interface InspectionInsightFilters {
   itemId: string;
   processId: string;
   overallJudgmentCode: string;
+  /** MES LOT 번호(정확히) — 있으면 기간 없이 그 LOT 의 전 이력을 본다(omf-all-around#85). 목록에만 건다. */
+  lotNo: string;
   finalRoundOnly: boolean;
   calibrationExpired: CalibrationFilter;
 }
@@ -40,8 +42,21 @@ export const EMPTY_INSPECTION_INSIGHT_FILTERS: InspectionInsightFilters = {
   itemId: '',
   processId: '',
   overallJudgmentCode: '',
+  lotNo: '',
   finalRoundOnly: true,
   calibrationExpired: '',
+};
+
+/** 기간이 조회를 막는 사유 — LOT 번호가 있으면 기간을 비워 둘 수 있다. 짝이 맞지 않거나 거꾸로면 막는다. */
+export type PeriodProblem = 'REQUIRED' | 'PAIR' | 'REVERSED' | null;
+
+export const periodProblem = (
+  filters: Pick<InspectionInsightFilters, 'from' | 'to' | 'lotNo'>,
+): PeriodProblem => {
+  const { from, to } = filters;
+  if (from === '' && to === '') return filters.lotNo.trim() === '' ? 'REQUIRED' : null;
+  if (from === '' || to === '') return 'PAIR';
+  return from > to ? 'REVERSED' : null;
 };
 
 const SORTS: readonly InspectionResultSort[] = [
@@ -93,6 +108,7 @@ export const readInspectionInsightFilters = (
     processId: readIdentifier(params.get('process')),
     overallJudgmentCode:
       judgment !== '' && (!judgmentReady || allowed.judgmentCodes.has(judgment)) ? judgment : '',
+    lotNo: (params.get('lot') ?? '').trim(),
     finalRoundOnly: true,
     calibrationExpired: calibration === 'only' || calibration === 'exclude' ? calibration : '',
   };

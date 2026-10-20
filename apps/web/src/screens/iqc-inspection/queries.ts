@@ -3,6 +3,8 @@ import type {
   components,
   InspectionDefectInput,
   InspectionResultConfirmForward,
+  InspectionResultCreateForward,
+  InspectionResultUpdateForward,
 } from '@omf-mes/api-client';
 import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 
@@ -11,7 +13,7 @@ import { useMasterWrite, type MasterWriteResult, type WriteHeaders } from '../..
 import { runRequest, type ApiCallResult } from '../../patterns/request';
 import type { CodeValueResponse } from './code-options';
 import type { QueueListQuery } from './filters';
-import type { SamplingRule } from './sample-qty';
+import type { PlanVersionRule } from './judgment-change';
 import type { InspectionItemSpecResponse, InspectionMeasurementResponse } from './measurement-rows';
 import {
   toInspectionQueueResult,
@@ -219,8 +221,6 @@ export const useInspectionRoundLock = (
   });
 };
 
-type InspectionResultCreate = components['schemas']['InspectionResultCreate'];
-type InspectionResultUpdate = components['schemas']['InspectionResultUpdate'];
 type InspectionResultResponse = components['schemas']['InspectionResult'];
 
 /**
@@ -257,6 +257,12 @@ export interface SaveDraftVariables {
    * 값이 아니다. 실으면 이미 쌓인 회차의 앞뒤를 뒤바꾸는 길이 열린다.
    */
   previousResultId: number | null;
+  /**
+   * IQC 불합격 사유(omf-all-around#122 · 서버 P-48) — 임시 저장도 싣는다. 서버가 그 회차의 불량 기록을 이 값으로
+   * 갈아 끼우고(빈 배열 = 지움) 다시 열면 화면이 그 기록으로 사유 칸을 채운다. 확정은 #121 그대로 다시 싣는다.
+   * `undefined` 면 키를 싣지 않는다 — 서버가 기존 기록에 손대지 않는다(아직 되살리지 못한 회차).
+   */
+  defects: InspectionDefectInput[] | undefined;
 }
 
 /** 계약이 못박은 두 값 중 임시 저장이 쓰는 쪽. 확정은 다음 회차가 다룬다. */
@@ -338,7 +344,7 @@ const judgmentOf = (code: string): { overallJudgmentCode?: string } =>
 const previousOf = (previousResultId: number | null): { previousResultId?: number } =>
   previousResultId === null ? {} : { previousResultId };
 
-const toCreateBody = (v: SaveDraftVariables): InspectionResultCreate => ({
+const toCreateBody = (v: SaveDraftVariables): InspectionResultCreateForward => ({
   inspectionRequestId: v.inspectionRequestId,
   inspectedQty: v.inspectedQty,
   acceptedQty: v.acceptedQty,
@@ -349,14 +355,18 @@ const toCreateBody = (v: SaveDraftVariables): InspectionResultCreate => ({
   statusCode: DRAFT_STATUS,
   ...judgmentOf(v.overallJudgmentCode),
   ...previousOf(v.previousResultId),
+  /* 새 회차에 빈 배열은 실을 까닭이 없다 — 지울 기록이 없다. */
+  ...(v.defects === undefined || v.defects.length === 0 ? {} : { defects: v.defects }),
 });
 
-const toUpdateBody = (v: SaveDraftVariables): InspectionResultUpdate => ({
+const toUpdateBody = (v: SaveDraftVariables): InspectionResultUpdateForward => ({
   acceptedQty: v.acceptedQty,
   rejectedQty: v.rejectedQty,
   heldQty: v.heldQty,
   inspectedAt: v.inspectedAt,
   ...judgmentOf(v.overallJudgmentCode),
+  /* ⭐ 빈 배열도 싣는다 — 불합격을 풀고 저장하면 앞서 임시 저장한 사유를 지워야 한다. `undefined` 는 키를 뺀다. */
+  ...(v.defects === undefined ? {} : { defects: v.defects }),
 });
 
 const fetchItemSpecs = (
@@ -371,11 +381,12 @@ const fetchItemSpecs = (
 
 /**
  * 검사기준 버전의 샘플링 규칙을 부른다 — 검사수량 기본값이 이것으로 정해진다(omf-all-around#102).
+ * 합격판정개수도 함께 읽는다 — 있으면 수량으로 종합 판정을 자동으로 채운다(omf-all-around#125).
  * 항목 규격과 같이 **의뢰가 준 버전 그대로** 부른다.
  */
 export const useSamplingRule = (
   inspectionPlanVersionId: number | null,
-): UseQueryResult<SamplingRule> => {
+): UseQueryResult<PlanVersionRule> => {
   const { client } = useApiClient();
 
   return useQuery({
@@ -388,6 +399,7 @@ export const useSamplingRule = (
       ).then(({ inspectionPlanVersion }) => ({
         samplingMethodCode: inspectionPlanVersion.samplingMethodCode,
         samplingRatio: inspectionPlanVersion.samplingRatio ?? null,
+        acceptanceNumber: inspectionPlanVersion.acceptanceNumber ?? null,
       })),
     enabled: inspectionPlanVersionId !== null,
   });
@@ -473,6 +485,8 @@ export interface ConfirmVariables {
    * 그 회차의 불량 기록을 이 값으로 갈아 끼우므로, 확정이 실패해 다시 눌러도 사유는 그때 입력 1벌만 남는다.
    */
   defects?: InspectionDefectInput[];
+  /** 자동 판정(합격판정개수 기준)과 다르게 확정할 때의 변경 사유(omf-all-around#125 · 서버 P-70). */
+  judgmentChangeReason?: string;
 }
 
 /**
@@ -508,6 +522,9 @@ export const useConfirmResult = (
         body: {
           overallJudgmentCode: variables.overallJudgmentCode,
           ...(variables.defects === undefined ? {} : { defects: variables.defects }),
+          ...(variables.judgmentChangeReason === undefined
+            ? {}
+            : { judgmentChangeReason: variables.judgmentChangeReason }),
         } satisfies InspectionResultConfirmForward,
       }),
     etagPath: inspectionResultId === null ? null : roundPath(inspectionResultId),
@@ -538,6 +555,46 @@ export const useDefectCodes = (enabled: boolean) => {
         }),
       ).then((response) => response.items),
     enabled,
+  });
+};
+
+/**
+ * 불합격 사유의 추정 원인 마스터(omf-all-around#130) — 사용 중지 포함으로 받는다. 고를 수 있는 것은 사용 중인
+ * 것뿐이지만, 임시 저장한 원인이 그 뒤 사용 중지돼도 이름으로 보여야 한다(`causeOptionsOf`).
+ */
+export const useCauseCodes = (enabled: boolean) => {
+  const { client } = useApiClient();
+
+  return useQuery({
+    queryKey: [...ALL_KEY, 'cause-codes'] as const,
+    queryFn: () =>
+      runRequest(() =>
+        client.GET('/quality/cause-codes', {
+          params: { query: { includeInactive: true, page: 1, size: DEFECT_CODE_PAGE_SIZE } },
+        }),
+      ).then((response) => response.items),
+    enabled,
+  });
+};
+
+/**
+ * 작성중 회차에 임시 저장된 불합격 사유(omf-all-around#122 · 서버 P-48). 다시 열었을 때 사유 칸을 채운다.
+ * 결과 하나로 좁히면 기간이 필요 없다 — 한 회차의 사유는 많아야 몇 줄이다.
+ */
+export const useDraftRejectionRecords = (inspectionResultId: number | null) => {
+  const { client } = useApiClient();
+
+  return useQuery({
+    queryKey: [...ALL_KEY, 'draft-rejection', inspectionResultId ?? 0] as const,
+    enabled: inspectionResultId !== null,
+    queryFn: () =>
+      runRequest(() =>
+        client.GET('/quality/defect-records', {
+          params: {
+            query: { inspectionResultId: inspectionResultId as number, page: 1, size: 20 },
+          },
+        }),
+      ).then((response) => response.items),
   });
 };
 

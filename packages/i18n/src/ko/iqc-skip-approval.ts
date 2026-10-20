@@ -15,8 +15,8 @@ export const iqcSkipApproval = {
    * (그릴 값이 요청에 없다 — `omf-mes#88`) 이름을 고칠 권한은 클라이언트에 없다.
    */
   title: '긴급 IQC 생략 한도승인',
-  /** 스펙의 breadcrumb가 정본이다 — 이 화면은 자재창고 업무의 승인 자리다. */
-  breadcrumbRoot: '자재창고',
+  /** 머리는 관리웹 사이드바 묶음을 따른다 — 이 화면은 품질 관리 묶음에 선다. */
+  breadcrumbRoot: '품질 관리',
   panes: {
     list: '승인 요청 목록',
     detail: '고른 요청',

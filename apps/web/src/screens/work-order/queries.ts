@@ -1,4 +1,4 @@
-import type { components } from '@omf-mes/api-client';
+import type { ResourceRecommendations, components } from '@omf-mes/api-client';
 import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
@@ -54,6 +54,8 @@ export const workOrderKeys = {
     ['work-orders', 'list', productionPlanId, page] as const,
   detail: (workOrderId: number | null) => ['work-orders', 'detail', workOrderId] as const,
   validation: (workOrderId: number | null) => ['work-orders', 'validation', workOrderId] as const,
+  recommendations: (workOrderId: number | null) =>
+    ['work-orders', 'recommendations', workOrderId] as const,
 };
 
 export const workOrderDetailPath = (workOrderId: number): string =>
@@ -158,6 +160,29 @@ export const useWorkOrderValidation = (
             params: { path: { workOrderId } },
           }),
         ),
+      );
+    },
+  });
+};
+
+/** 설비·금형 추천 — 못 받아도 배정은 손으로 할 수 있으니 실패를 화면에 막지 않는다. */
+export const useWorkOrderResourceRecommendations = (
+  workOrderId: number | null,
+): UseQueryResult<ResourceRecommendations> => {
+  const { client } = useApiClient();
+
+  return useQuery({
+    queryKey: workOrderKeys.recommendations(workOrderId),
+    enabled: workOrderId !== null,
+    queryFn: async () => {
+      if (workOrderId === null) {
+        throw new Error('A work order is required to load recommendations.');
+      }
+
+      return runRequest(() =>
+        client.GET('/production/work-orders/{workOrderId}/resource-recommendations', {
+          params: { path: { workOrderId } },
+        }),
       );
     },
   });

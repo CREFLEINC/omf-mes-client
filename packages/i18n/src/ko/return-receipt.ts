@@ -6,7 +6,7 @@
  */
 export const returnReceipt = {
   title: '반품·클레임 입고 등록',
-  breadcrumbRoot: '출하',
+  breadcrumbRoot: '영업 / 출하 관리',
   /** 상단 상시 안내 — 확정된 출하는 취소되지 않고 이 화면으로 돌아온다. */
   scopeNotice:
     '확정된 출하의 반품·클레임은 여기서 입고합니다. 반품은 보류(Hold)로 들어오고, 재작업/폐기 판정은 판정 의뢰 화면에서 합니다.',

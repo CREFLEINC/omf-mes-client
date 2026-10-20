@@ -1,6 +1,7 @@
 import { Chip, type Column, EmptyState, IconButton, SkeletonText, Table } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 
+import { AutoPlanChip } from './auto-plan-chip';
 import { HelpBubble } from './help-bubble';
 import { PageNav } from './page-nav';
 import type { CodeNameOf } from './code-names';
@@ -114,6 +115,11 @@ export const ProductionOrderListPane = ({
           {statusNameOf(row.statusCode)}
         </Chip>
       ),
+    },
+    {
+      key: 'autoPlan',
+      header: t.fields.autoPlan,
+      render: (row) => <AutoPlanChip autoPlan={row.autoPlan} />,
     },
   ];
 

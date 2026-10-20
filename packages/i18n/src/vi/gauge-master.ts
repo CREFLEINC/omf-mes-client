@@ -8,7 +8,7 @@ import type { Translated } from './translated';
 export const gaugeMaster: Translated<typeof ko.gaugeMaster> = {
   title: 'Quản lý dữ liệu gốc thiết bị đo',
   paneTitle: 'Danh sách thiết bị đo',
-  breadcrumbRoot: 'Thiết bị / Công cụ',
+  breadcrumbRoot: 'Quản lý dữ liệu gốc',
   actions: {
     addGauge: 'Đăng ký thiết bị đo',
   },

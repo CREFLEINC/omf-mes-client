@@ -7,7 +7,7 @@
  */
 export const defectCauseCode = {
   title: '불량·원인코드',
-  breadcrumbRoot: '기준정보',
+  breadcrumbRoot: '품질 관리',
   tabs: {
     defect: '불량코드',
     cause: '원인코드',

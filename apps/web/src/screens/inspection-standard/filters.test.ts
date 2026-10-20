@@ -55,8 +55,9 @@ describe('readPage', () => {
 
 describe('toSearchParams', () => {
   it('빈 조건은 키 자체를 두지 않는다', () => {
-    expect(toSearchParams({ q: '', inspectionTypeCode: '', includeInactive: false }, 1).toString())
-      .toBe('');
+    expect(
+      toSearchParams({ q: '', inspectionTypeCode: '', includeInactive: false }, 1).toString(),
+    ).toBe('');
   });
 
   it('채운 조건만 싣는다', () => {
@@ -111,13 +112,10 @@ describe('toListQuery', () => {
   });
 
   it('첫 쪽이면 page를 싣지 않고 둘째 쪽부터 싣는다', () => {
-    expect('page' in toListQuery(
-      { q: '', inspectionTypeCode: '', includeInactive: false },
-      1,
-    )).toBe(false);
     expect(
-      toListQuery({ q: '', inspectionTypeCode: '', includeInactive: false }, 4).page,
-    ).toBe(4);
+      'page' in toListQuery({ q: '', inspectionTypeCode: '', includeInactive: false }, 1),
+    ).toBe(false);
+    expect(toListQuery({ q: '', inspectionTypeCode: '', includeInactive: false }, 4).page).toBe(4);
   });
 
   it('검사 유형은 계약 이름으로 옮긴다', () => {

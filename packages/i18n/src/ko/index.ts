@@ -27,10 +27,15 @@ import { warehouseLocation } from './warehouse-location';
 import { routing } from './routing';
 import { defectCauseCode } from './defect-cause-code';
 import { integrationSync } from './integration-sync';
+import { erpBom } from './erp-bom';
+import { erpEmployee } from './erp-employee';
+import { erpItem } from './erp-item';
+import { erpProductionOrder } from './erp-production-order';
 import { inspectionStandard } from './inspection-standard';
 import { commonCode } from './common-code';
 import { itemExtendedAttrs } from './item-extended-attrs';
 import { itemPicker } from './item-picker';
+import { resourcePicker } from './resource-picker';
 import { masterChange } from './master-change';
 import { judgmentCode } from './judgment-code';
 import { usersRoles } from './users-roles';
@@ -60,6 +65,10 @@ import { productionResult } from './production-result';
 import { equipmentMaster } from './equipment-master';
 import { qualityApproval } from './quality-approval';
 import { productionOrder } from './production-order';
+import { erpPurchaseOrder } from './erp-purchase-order';
+import { erpSalesOrder } from './erp-sales-order';
+import { erpPartner } from './erp-partner';
+import { erpCommonCode } from './erp-common-code';
 import { gaugeMaster } from './gauge-master';
 import { toolMaster } from './tool-master';
 import { workCalendar } from './work-calendar';
@@ -103,6 +112,7 @@ import { toolPmResult } from './tool-pm-result';
 import { materialIssueRequest } from './material-issue-request';
 import { deviceRegistration } from './device-registration';
 import { equipmentFailureReport } from './equipment-failure-report';
+import { outboxPending } from './outbox-pending';
 import { outboxRejections } from './outbox-rejections';
 import { iqcSkipRequest } from './iqc-skip-request';
 import { equipmentInspection } from './equipment-inspection';
@@ -128,6 +138,9 @@ import { workerAssignment } from './worker-assignment';
 import { popLocationLabel } from './pop-location-label';
 import { inspectionDocuments } from './inspection-documents';
 import { inspectionHistory } from './inspection-history';
+import { pqcInspectionRegister } from './pqc-inspection-register';
+import { materialDefect } from './material-defect';
+import { popOqcInspection } from './pop-oqc-inspection';
 import { popMaterialLotLabel } from './pop-material-lot-label';
 import { reworkResultRegister } from './rework-result-register';
 import { packingLabelReprint } from './packing-label-reprint';
@@ -158,10 +171,15 @@ export const ko = {
   routing,
   defectCauseCode,
   integrationSync,
+  erpBom,
+  erpEmployee,
+  erpItem,
+  erpProductionOrder,
   inspectionStandard,
   commonCode,
   itemExtendedAttrs,
   itemPicker,
+  resourcePicker,
   masterChange,
   judgmentCode,
   usersRoles,
@@ -191,6 +209,10 @@ export const ko = {
   equipmentMaster,
   qualityApproval,
   productionOrder,
+  erpPurchaseOrder,
+  erpSalesOrder,
+  erpPartner,
+  erpCommonCode,
   gaugeMaster,
   toolMaster,
   workCalendar,
@@ -231,6 +253,7 @@ export const ko = {
   materialIssueRequest,
   deviceRegistration,
   equipmentFailureReport,
+  outboxPending,
   outboxRejections,
   iqcSkipRequest,
   equipmentInspection,
@@ -256,6 +279,9 @@ export const ko = {
   popLocationLabel,
   inspectionDocuments,
   inspectionHistory,
+  pqcInspectionRegister,
+  materialDefect,
+  popOqcInspection,
   popMaterialLotLabel,
   workStart,
   workPrecheckGate,

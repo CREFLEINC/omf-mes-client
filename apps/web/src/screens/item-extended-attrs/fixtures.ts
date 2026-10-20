@@ -1,4 +1,4 @@
-import type { components } from '@omf-mes/api-client';
+import type { components, ItemResourceMap } from '@omf-mes/api-client';
 
 import type { Item } from './types';
 
@@ -55,6 +55,7 @@ export const itemFixtures: Item[] = [
     storageConditionCode: 'SYN-STORAGE-01',
     openedShelfLifeHours: 48,
     isActive: true,
+    mesCategoryCode: 'SYN-MES-CAT-A',
   },
   {
     itemId: 1002,
@@ -433,5 +434,75 @@ export const processFixtures: Process[] = [
     processName: '합성 공정 나',
     processTypeCode: 'SYN-PROC-TYPE-A',
     isActive: false,
+  },
+];
+
+/**
+ * 설비·금형 매핑(품목 1001 · 공장 9001). 서버 순서(기본 → 우선순위) 그대로다.
+ *
+ * - 6001 — 공정 지정 · 설비+금형 · **기본**
+ * - 6002 — **품목 공통**(공정 없음) · 금형만
+ * - 6003 — **사용 중지**한 줄 · 설비만. 유일 제약에는 여전히 든다
+ */
+export const itemResourceMapFixtures: ItemResourceMap[] = [
+  {
+    itemResourceMapId: 6001,
+    plantId: 9001,
+    itemId: 1001,
+    processId: 3001,
+    processCode: 'SYN-PROC-01',
+    processName: '합성 공정 가',
+    equipmentId: 8001,
+    equipmentCode: 'SYN-EQ-01',
+    equipmentName: '합성 설비 A',
+    productionLineId: null,
+    moldId: 8501,
+    moldCode: 'SYN-MOLD-01',
+    moldName: '합성 금형 A',
+    isDefault: true,
+    priorityNo: 10,
+    isActive: true,
+    remarks: '합성 비고',
+    versionNo: 3,
+  },
+  {
+    itemResourceMapId: 6002,
+    plantId: 9001,
+    itemId: 1001,
+    processId: null,
+    processCode: null,
+    processName: null,
+    equipmentId: null,
+    equipmentCode: null,
+    equipmentName: null,
+    productionLineId: null,
+    moldId: 8502,
+    moldCode: 'SYN-MOLD-02',
+    moldName: '합성 금형 B',
+    isDefault: false,
+    priorityNo: 100,
+    isActive: true,
+    remarks: null,
+    versionNo: 1,
+  },
+  {
+    itemResourceMapId: 6003,
+    plantId: 9001,
+    itemId: 1001,
+    processId: 3001,
+    processCode: 'SYN-PROC-01',
+    processName: '합성 공정 가',
+    equipmentId: 8002,
+    equipmentCode: 'SYN-EQ-02',
+    equipmentName: '합성 설비 B',
+    productionLineId: null,
+    moldId: null,
+    moldCode: null,
+    moldName: null,
+    isDefault: false,
+    priorityNo: 200,
+    isActive: false,
+    remarks: null,
+    versionNo: 5,
   },
 ];

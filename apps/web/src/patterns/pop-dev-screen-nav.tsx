@@ -142,6 +142,10 @@ export const POP_DEV_SCREENS: readonly PopDevScreen[] = [
    * 이 비었을 때만 주소를 본다.
    */
   { path: '/pop/location-label', label: 'P-06-01 창고 적재 위치 라벨 발행' },
+  /* ⚠ 진입값이 없다 — LOT 스캔부터 시작한다. */
+  { path: '/pop/material-defect', label: 'P-02-14 자재 불량 등록' },
+  /* ⚠ 진입값이 없다 — 판정 대기 목록에서 의뢰를 고른다. */
+  { path: '/pop/oqc-inspection', label: 'P-04-06 OQC 출하검사 판정' },
 ];
 
 /** 진입 화면 — 이 셀렉터가 서 있는 자리라 목록에서 뺀다. 감지기가 이 예외를 안다. */

@@ -8,6 +8,9 @@ import { runRequest } from '../../patterns/request';
 
 export const INSPECTION_TYPE_GROUP = 'QUALITY_INSPECTION_TYPE';
 export const OVERALL_JUDGMENT_GROUP = 'INSPECTION_RESULT_OVERALL_JUDGMENT';
+/** 상세 창(omf-all-around#85) — 검사기준의 샘플링 방식·부적합 상태 이름. */
+export const SAMPLING_METHOD_GROUP = 'INSPECTION_SAMPLING_METHOD';
+export const NONCONFORMANCE_STATUS_GROUP = 'NONCONFORMANCE_STATUS';
 type Client = ApiClient['client'];
 type PageMeta = components['schemas']['PageMeta'];
 
@@ -63,6 +66,11 @@ export const useInspectionTypeLookup = (): InspectionLookup => useCodeLookup(INS
 
 export const useOverallJudgmentLookup = (): InspectionLookup =>
   useCodeLookup(OVERALL_JUDGMENT_GROUP);
+
+export const useSamplingMethodLookup = (): InspectionLookup => useCodeLookup(SAMPLING_METHOD_GROUP);
+
+export const useNonconformanceStatusLookup = (): InspectionLookup =>
+  useCodeLookup(NONCONFORMANCE_STATUS_GROUP);
 
 export const useInspectionItemLookup = (): InspectionLookup => {
   const { client } = useApiClient();

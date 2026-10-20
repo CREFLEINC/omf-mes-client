@@ -664,8 +664,8 @@ describe('생산창고 입고 화면', () => {
     expect((field as HTMLInputElement).value).toBe('13');
     expect(await screen.findByText('출고 수량 12 보다 많이 받을 수 없습니다')).toBeTruthy();
     expect(await screen.findByText('출고 수량보다 많이 받을 수 없습니다')).toBeTruthy();
-    expect(await screen.findByText(/물류 문서 진행현황·취소/)).toBeTruthy();
-    expect(await screen.findByText(/추가 자재 출고 요청/)).toBeTruthy();
+    expect(await screen.findByText(/물류 전표 조회·취소/)).toBeTruthy();
+    expect(await screen.findByText(/자재 불출 요청/)).toBeTruthy();
   });
 
   /*

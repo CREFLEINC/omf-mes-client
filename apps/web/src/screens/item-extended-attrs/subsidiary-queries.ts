@@ -1,4 +1,4 @@
-import type { components } from '@omf-mes/api-client';
+import type { components, ItemResourceMap } from '@omf-mes/api-client';
 import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
@@ -38,6 +38,11 @@ export const subsidiaryKeys = {
   buMaps: (itemId: number) => ['item-extended-attrs-bu-maps', itemId] as const,
   uomConversions: (itemId: number) => ['item-extended-attrs-uom-conversions', itemId] as const,
   externalCodes: (itemId: number) => ['item-extended-attrs-external-codes', itemId] as const,
+  itemResourceMaps: (itemId: number, plantId: number) =>
+    ['item-extended-attrs-item-resource-maps', itemId, plantId] as const,
+  /** 무효화용 앞부분 — 공장을 바꿔 가며 본 목록까지 함께 낡는다. */
+  itemResourceMapsOfItem: (itemId: number) =>
+    ['item-extended-attrs-item-resource-maps', itemId] as const,
 };
 
 /**
@@ -125,6 +130,39 @@ export const useExternalCodes = (
 
       return runRequest(() =>
         client.GET('/mdm/items/{itemId}/external-codes', { params: { path: { itemId } } }),
+      );
+    },
+  });
+};
+
+/**
+ * 설비·금형 매핑 목록.
+ *
+ * **사용 중지한 줄도 받는다.** 유일 제약이 사용 중지한 줄까지 세므로, 감추면 같은 조합을 다시
+ * 등록하려다 이유를 모른 채 막힌다 — 그 줄을 「다시 사용」으로 되살리는 것이 정상 경로다.
+ *
+ * 다른 부속 자원과 달리 **이 하위 탭을 볼 때만** 켠다. 줄마다 바로 저장해 되감길 초안이 없다.
+ * 줄마다 `versionNo`가 와서 `If-Match`를 목록에서 바로 만든다 — 응답에 `ETag`가 없다.
+ */
+export const useItemResourceMaps = (
+  itemId: number | null,
+  plantId: number | null,
+  enabled: boolean,
+): UseQueryResult<{ items: ItemResourceMap[] }> => {
+  const { client } = useApiClient();
+
+  return useQuery({
+    queryKey: subsidiaryKeys.itemResourceMaps(itemId ?? 0, plantId ?? 0),
+    enabled: enabled && itemId !== null && plantId !== null,
+    queryFn: () => {
+      if (itemId === null || plantId === null) {
+        throw new Error('품목과 공장을 고르기 전에는 설비·금형 매핑을 조회하지 않습니다.');
+      }
+
+      return runRequest(() =>
+        client.GET('/mdm/item-resource-maps', {
+          params: { query: { itemId, plantId, includeInactive: true } },
+        }),
       );
     },
   });

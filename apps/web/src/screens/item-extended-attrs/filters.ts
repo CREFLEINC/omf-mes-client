@@ -8,6 +8,7 @@ import {
   type ItemExtendedAttrsTabId,
   type SubsidiaryTabId,
 } from './tabs';
+import { codeValueName, type CodeValueOption } from './options';
 import type { ItemFilters } from './types';
 
 /**
@@ -22,6 +23,7 @@ const t = messages.itemExtendedAttrs;
 /** 주소 키는 짧게 쓰고 계약 이름과 분리한다 — 주소는 사람이 읽고 고치는 자리다. */
 const URL_KEYS = {
   q: 'q',
+  itemType: 'type',
   includeInactive: 'inactive',
   page: 'page',
 } as const;
@@ -38,15 +40,29 @@ export const ITEM_KEY = 'item';
  */
 export const BOM_KEY = 'bom';
 
+/**
+ * 자재 명세서 목록의 BOM 코드 조건 주소 키.
+ *
+ * **고른 품목 아래에 매달린 조건이다** — `bom`과 같은 수명을 갖는다. 품목 조건·쪽이 바뀌면
+ * `toSearchParams`가 주소를 통째로 다시 만들어 사라지고, 품목을 직접 고를 때는 그 갱신이 함께 지운다.
+ * 조건을 걸거나 풀면 보이는 줄이 달라지므로 `bom` 선택도 함께 떨군다.
+ */
+export const BOM_CODE_KEY = 'bomq';
+
+/** 주소가 들고 있는 BOM 코드 조건. 앞뒤 공백은 조건이 아니다 */
+export const readBomCodeFilter = (params: URLSearchParams): string =>
+  (params.get(BOM_CODE_KEY) ?? '').trim();
+
 /** 켜짐을 나타내는 유일한 값. 다른 값은 꺼진 것으로 본다 — 주소를 손으로 고쳐도 뜻이 흔들리지 않는다. */
 const ON = '1';
 
 const POSITIVE_INTEGER = /^\d+$/;
 
-export const EMPTY_ITEM_FILTERS: ItemFilters = { q: '', includeInactive: false };
+export const EMPTY_ITEM_FILTERS: ItemFilters = { q: '', itemType: '', includeInactive: false };
 
 export const readItemFilters = (params: URLSearchParams): ItemFilters => ({
   q: params.get(URL_KEYS.q) ?? '',
+  itemType: params.get(URL_KEYS.itemType) ?? '',
   includeInactive: params.get(URL_KEYS.includeInactive) === ON,
 });
 
@@ -94,6 +110,7 @@ export const toSearchParams = (
   if (tabId !== DEFAULT_TAB_ID) next.set(TAB_KEY, tabId);
   if (subTabId !== DEFAULT_SUBSIDIARY_TAB_ID) next.set(SUBSIDIARY_TAB_KEY, subTabId);
   if (filters.q !== '') next.set(URL_KEYS.q, filters.q);
+  if (filters.itemType !== '') next.set(URL_KEYS.itemType, filters.itemType);
   if (filters.includeInactive) next.set(URL_KEYS.includeInactive, ON);
   if (page > 1) next.set(URL_KEYS.page, String(page));
 
@@ -103,6 +120,7 @@ export const toSearchParams = (
 /** 계약이 쓰는 쿼리 이름. 값이 없는 조건은 키 자체를 넣지 않는다. */
 export interface ItemListQuery {
   q?: string;
+  itemTypeCode?: string;
   includeInactive?: boolean;
   page?: number;
 }
@@ -114,11 +132,12 @@ export interface ItemListQuery {
  * 끈 상태를 값으로 실어 보내면 「보내지 않음」과 「false를 보냄」 두 상태가 생겨 캐시 키가 갈린다.
  * 첫 쪽도 같은 이유로 싣지 않는다.
  *
- * **`itemTypeCode`·`hasRouting`을 싣지 않는다** — 화면에 그 조건이 없다.
+ * **`hasRouting`을 싣지 않는다** — 화면에 그 조건이 없다.
  * 화면에 없는 조건을 요청에 실으면 사용자가 되돌릴 수단이 없다.
  */
 export const toItemListQuery = (filters: ItemFilters, page: number): ItemListQuery => ({
   ...(filters.q === '' ? {} : { q: filters.q }),
+  ...(filters.itemType === '' ? {} : { itemTypeCode: filters.itemType }),
   ...(filters.includeInactive ? { includeInactive: true } : {}),
   ...(page > 1 ? { page } : {}),
 });
@@ -130,8 +149,16 @@ export interface FilterChip {
   removeLabel: string;
 }
 
-/** 적용된 조건마다 칩 하나. 순서는 조건 줄의 컨트롤 순서와 같다. */
-export const toFilterChips = (filters: ItemFilters): FilterChip[] => {
+/**
+ * 적용된 조건마다 칩 하나. 순서는 조건 줄의 컨트롤 순서와 같다.
+ *
+ * 품목 유형은 **선택칸과 같은 이름**으로 낸다 — 선택칸은 「제품」인데 칩이 코드를 내면 같은 조건이
+ * 두 이름으로 읽힌다. 유형 목록을 아직 받지 못했거나 목록에 없는 코드면 코드 그대로다.
+ */
+export const toFilterChips = (
+  filters: ItemFilters,
+  itemTypeOptions?: readonly CodeValueOption[],
+): FilterChip[] => {
   const chips: FilterChip[] = [];
 
   if (filters.q !== '') {
@@ -139,6 +166,14 @@ export const toFilterChips = (filters: ItemFilters): FilterChip[] => {
       key: 'q',
       label: t.filters.chipKeyword(filters.q),
       removeLabel: t.filters.chipRemoveKeyword,
+    });
+  }
+
+  if (filters.itemType !== '') {
+    chips.push({
+      key: 'itemType',
+      label: t.filters.chipItemType(codeValueName(itemTypeOptions, filters.itemType)),
+      removeLabel: t.filters.chipRemoveItemType,
     });
   }
 
@@ -154,7 +189,7 @@ export const toFilterChips = (filters: ItemFilters): FilterChip[] => {
 };
 
 export const hasAnyFilter = (filters: ItemFilters): boolean =>
-  filters.q !== '' || filters.includeInactive;
+  filters.q !== '' || filters.itemType !== '' || filters.includeInactive;
 
 /**
  * 조건 하나만 푼다. 칩의 제거 버튼이 쓴다.

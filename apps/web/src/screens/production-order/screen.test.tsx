@@ -1,5 +1,5 @@
 import { messages } from '@omf-mes/i18n';
-import { screen, waitFor } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useLocation } from 'react-router';
 import { describe, expect, it } from 'vitest';
@@ -277,5 +277,308 @@ describe('ProductionOrderScreen', () => {
     expect(requests.some((url) => url.pathname.includes('/planning/production-orders/'))).toBe(
       false,
     );
+  });
+
+  describe('자동 계획', () => {
+    const needsReview = {
+      ...order,
+      autoPlan: { status: 'NEEDS_REVIEW', reasons: ['BOM_MISSING', 'LINE_UNKNOWN'] },
+    };
+    const done = { ...order, autoPlan: { status: 'DONE', reasons: [] } };
+    const isAutoPlan = (request: Request): boolean =>
+      request.method === 'POST' &&
+      decodeURIComponent(new URL(request.url).pathname) ===
+        '/planning/production-orders/701:auto-plan';
+
+    /* 자동 계획이 성공하면 서버가 그 P/O 를 「완료」로 바꿔 내린다. */
+    const autoPlanRoutes = (
+      respond: (request: Request) => Response | Promise<Response>,
+      {
+        initial = needsReview,
+        afterSuccess = done,
+      }: { initial?: object; afterSuccess?: object } = {},
+    ) => {
+      let current: object = initial;
+      const posts: Request[] = [];
+      const reads: string[] = [];
+      const routes: StubRoute[] = [
+        {
+          match: isAutoPlan,
+          respond: async (request) => {
+            posts.push(request.clone());
+            const response = await respond(request);
+            if (response.ok) current = afterSuccess;
+            return response;
+          },
+        },
+        {
+          match: (request) => exact(request, '/planning/production-orders'),
+          respond: () => {
+            reads.push('list');
+            return jsonResponse(page([current]));
+          },
+        },
+        {
+          match: (request) => exact(request, '/planning/production-orders/701'),
+          respond: () => {
+            reads.push('detail');
+            return jsonResponse(current);
+          },
+        },
+        ...normalRoutes,
+      ];
+      return { routes, posts, reads };
+    };
+    const result = (outcome: string, reasons: string[] = []) =>
+      jsonResponse({ productionOrderId: 701, outcome, productionPlanId: 501, reasons });
+
+    const openSelected = async (routes: StubRoute[]) => {
+      renderWithProviders(<ProductionOrderScreen />, {
+        fetch: createStubFetch(routes),
+        route: '/?sel=701',
+      });
+      return screen.findByRole('button', { name: t.actions.autoPlan });
+    };
+
+    it('목록 열은 상태만, 사유는 마우스 올림과 읽어 주기로 낸다', async () => {
+      const { routes } = autoPlanRoutes(() => result('CONFIRMED'));
+      renderWithProviders(<ProductionOrderScreen />, { fetch: createStubFetch(routes) });
+
+      const table = await screen.findByRole('table', { name: t.panes.list });
+      const label = await within(table).findByText(t.values.autoPlanStatus.NEEDS_REVIEW);
+      const chip = label.closest('[title]');
+      const reasons = `${t.values.autoPlanReasons.BOM_MISSING} · ${t.values.autoPlanReasons.LINE_UNKNOWN}`;
+      expect(chip).toHaveAttribute('title', reasons);
+      expect(chip).toHaveTextContent(`${t.values.autoPlanStatus.NEEDS_REVIEW}: ${reasons}`);
+    });
+
+    it('확인 필요면 사유를 한 줄씩 보이고, 누르면 멱등 키로 요청한 뒤 다시 읽는다', async () => {
+      const { routes, posts, reads } = autoPlanRoutes(() => result('CONFIRMED'));
+      const button = await openSelected(routes);
+      const user = userEvent.setup();
+
+      const basic = screen.getByLabelText(t.panes.basic);
+      const reasons = within(basic)
+        .getAllByRole('listitem')
+        .map((node) => node.textContent);
+      expect(reasons).toEqual([
+        t.values.autoPlanReasons.BOM_MISSING,
+        t.values.autoPlanReasons.LINE_UNKNOWN,
+      ]);
+      const readsBefore = reads.length;
+
+      await user.click(button);
+
+      expect(await screen.findByText(t.autoPlan.confirmed)).toBeInTheDocument();
+      expect(posts).toHaveLength(1);
+      expect(posts[0]?.headers.get('Idempotency-Key')).toMatch(/\S/);
+      expect(await posts[0]?.text()).toBe('');
+      await waitFor(() =>
+        expect(screen.queryByRole('button', { name: t.actions.autoPlan })).not.toBeInTheDocument(),
+      );
+      expect(reads.slice(readsBefore)).toEqual(expect.arrayContaining(['list', 'detail']));
+      expect(within(basic).queryByRole('listitem')).not.toBeInTheDocument();
+    });
+
+    it('라인 미정 작성 중 계획이 이미 있으면 다시 눌러도 같은 상태를 알리고 단추를 남긴다', async () => {
+      const existingDraft = {
+        ...order,
+        statusCode: 'RECEIVED',
+        autoPlan: { status: 'NEEDS_REVIEW', reasons: ['LINE_UNKNOWN', 'PLAN_NOT_CONFIRMED'] },
+      };
+      const { routes } = autoPlanRoutes(
+        () => result('DRAFT', ['LINE_UNKNOWN', 'PLAN_NOT_CONFIRMED']),
+        { initial: existingDraft, afterSuccess: existingDraft },
+      );
+      const button = await openSelected(routes);
+      const user = userEvent.setup();
+
+      await user.click(button);
+
+      expect(await screen.findByText(t.autoPlan.draft)).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: t.actions.autoPlan })).toBeEnabled();
+      expect(
+        within(screen.getByLabelText(t.panes.basic))
+          .getAllByRole('listitem')
+          .map((node) => node.textContent),
+      ).toEqual([
+        t.values.autoPlanReasons.LINE_UNKNOWN,
+        t.values.autoPlanReasons.PLAN_NOT_CONFIRMED,
+      ]);
+    });
+
+    it.each([
+      [
+        ['BOM_MISSING', 'ROUTING_AMBIGUOUS'],
+        `${t.values.autoPlanReasons.BOM_MISSING} · ${t.values.autoPlanReasons.ROUTING_AMBIGUOUS}`,
+      ],
+      /* 확정 계획이 수량을 다 덮지 못한 경우 — 남은 수량 계획을 만들지 않고 사유만 알린다. */
+      [['QTY_REMAINING'], t.values.autoPlanReasons.QTY_REMAINING],
+    ])('계획을 못 만들면 사유(%j)를 알린다', async (reasons, text) => {
+      const { routes } = autoPlanRoutes(() => result('NOT_PLANNED', reasons));
+      const button = await openSelected(routes);
+
+      await userEvent.setup().click(button);
+
+      expect(await screen.findByText(t.autoPlan.notPlanned)).toBeInTheDocument();
+      expect(screen.getByText(text)).toBeInTheDocument();
+    });
+
+    it('충돌(409)이면 공통 충돌 문구와 다시 불러오기를 낸다', async () => {
+      const { routes, reads } = autoPlanRoutes(() =>
+        jsonResponse(
+          {
+            code: 'VERSION_CONFLICT',
+            message: 'synthetic conflict',
+            conflictCause: 'erpSync',
+          },
+          { status: 409 },
+        ),
+      );
+      const button = await openSelected(routes);
+      const user = userEvent.setup();
+
+      await user.click(button);
+
+      expect(await screen.findByText(messages.conflict.erpSync)).toBeInTheDocument();
+      const readsBefore = reads.length;
+      await user.click(screen.getByRole('button', { name: messages.conflict.reloadAction }));
+      await waitFor(() =>
+        expect(reads.slice(readsBefore)).toEqual(expect.arrayContaining(['list', 'detail'])),
+      );
+      expect(screen.queryByText(messages.conflict.erpSync)).not.toBeInTheDocument();
+    });
+
+    it('자동 계획이 이미 진행 중(409 INVALID_STATE)이면 충돌 문구 대신 잠시 뒤 다시 실행하라고 한다', async () => {
+      let attempts = 0;
+      const { routes } = autoPlanRoutes(() => {
+        attempts += 1;
+        return attempts === 1
+          ? jsonResponse(
+              { code: 'INVALID_STATE', message: 'synthetic running', conflictCause: 'user' },
+              { status: 409 },
+            )
+          : result('CONFIRMED');
+      });
+      const button = await openSelected(routes);
+      const user = userEvent.setup();
+
+      await user.click(button);
+
+      expect(await screen.findByText(t.autoPlan.running)).toBeInTheDocument();
+      expect(screen.queryByText(messages.conflict.user)).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole('button', { name: messages.conflict.reloadAction }),
+      ).not.toBeInTheDocument();
+      expect(button).toBeEnabled();
+
+      await user.click(button);
+
+      expect(await screen.findByText(t.autoPlan.confirmed)).toBeInTheDocument();
+      expect(screen.queryByText(t.autoPlan.running)).not.toBeInTheDocument();
+    });
+
+    it('취소된 P/O(400 STATE_LOCKED)면 서버 사유를 잠김 띠로 낸다', async () => {
+      const { routes } = autoPlanRoutes(() =>
+        jsonResponse(
+          {
+            errors: [
+              {
+                scope: 'screen',
+                code: 'STATE_LOCKED',
+                message: '취소된 P/O 는 계획할 수 없습니다',
+              },
+            ],
+          },
+          { status: 400 },
+        ),
+      );
+      const button = await openSelected(routes);
+
+      await userEvent.setup().click(button);
+
+      expect(await screen.findByText('취소된 P/O 는 계획할 수 없습니다')).toBeInTheDocument();
+      expect(screen.getByText(messages.stateLocked.title)).toBeInTheDocument();
+      expect(screen.queryByText(t.autoPlan.running)).not.toBeInTheDocument();
+    });
+
+    it('응답을 기다리는 동안 단추를 잠근다', async () => {
+      let release: (response: Response) => void = () => undefined;
+      const { routes, posts } = autoPlanRoutes(
+        () =>
+          new Promise<Response>((resolve) => {
+            release = resolve;
+          }),
+      );
+      const button = await openSelected(routes);
+      const user = userEvent.setup();
+
+      await user.click(button);
+      await waitFor(() => expect(button).toBeDisabled());
+      await user.click(button);
+      expect(posts).toHaveLength(1);
+
+      release(result('CONFIRMED'));
+      expect(await screen.findByText(t.autoPlan.confirmed)).toBeInTheDocument();
+    });
+
+    it('권한이 없으면(403) 권한 문구를 띄우고 성공 알림을 내지 않는다', async () => {
+      const { routes } = autoPlanRoutes(() =>
+        jsonResponse({ message: 'synthetic forbidden' }, { status: 403 }),
+      );
+      const button = await openSelected(routes);
+
+      await userEvent.setup().click(button);
+
+      expect(await screen.findByText(messages.httpError.forbidden)).toBeInTheDocument();
+      expect(screen.queryByText(t.autoPlan.confirmed)).not.toBeInTheDocument();
+      expect(button).toBeEnabled();
+    });
+
+    it('자동 계획을 한 적 없는 수신 P/O 는 단추로 필요할 때 계획한다', async () => {
+      const { routes, posts } = autoPlanRoutes(() => result('CONFIRMED'), {
+        initial: { ...order, statusCode: 'RECEIVED', autoPlan: null },
+      });
+      const button = await openSelected(routes);
+
+      const basic = screen.getByLabelText(t.panes.basic);
+      expect(within(basic).queryByText(t.fields.autoPlan, { selector: 'dt' })).toBeNull();
+      await userEvent.setup().click(button);
+
+      expect(await screen.findByText(t.autoPlan.confirmed)).toBeInTheDocument();
+      expect(posts).toHaveLength(1);
+    });
+
+    it('자동 계획을 한 적 없어도 수신 상태가 아니면 단추가 없다', async () => {
+      const { routes } = autoPlanRoutes(() => result('CONFIRMED'), {
+        initial: { ...order, statusCode: 'CANCELLED', autoPlan: null },
+      });
+      renderWithProviders(<ProductionOrderScreen />, {
+        fetch: createStubFetch(routes),
+        route: '/?sel=701',
+      });
+
+      expect(await screen.findByRole('button', { name: t.actions.productionPlan })).toBeEnabled();
+      await waitFor(() =>
+        expect(screen.getByLabelText(t.panes.basic)).toHaveTextContent('SYN-PO-701'),
+      );
+      expect(screen.queryByRole('button', { name: t.actions.autoPlan })).not.toBeInTheDocument();
+    });
+
+    it('완료된 P/O 에는 자동 계획 단추가 없다', async () => {
+      const { routes } = autoPlanRoutes(() => result('CONFIRMED'), { initial: done });
+      renderWithProviders(<ProductionOrderScreen />, {
+        fetch: createStubFetch(routes),
+        route: '/?sel=701',
+      });
+
+      expect(await screen.findByRole('button', { name: t.actions.productionPlan })).toBeEnabled();
+      await waitFor(() =>
+        expect(screen.getByLabelText(t.panes.basic)).toHaveTextContent(
+          t.values.autoPlanStatus.DONE,
+        ),
+      );
+      expect(screen.queryByRole('button', { name: t.actions.autoPlan })).not.toBeInTheDocument();
+    });
   });
 });

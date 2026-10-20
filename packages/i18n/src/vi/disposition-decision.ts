@@ -9,7 +9,7 @@ import type { Translated } from './translated';
  */
 export const dispositionDecision: Translated<typeof ko.dispositionDecision> = {
   title: 'Ra quyết định xử lý',
-  breadcrumbRoot: 'Chất lượng',
+  breadcrumbRoot: 'Quản lý chất lượng',
   tabs: {
     label: 'Xem đánh giá quyết định xử lý',
     pending: 'Chờ đánh giá',
@@ -87,6 +87,41 @@ export const dispositionDecision: Translated<typeof ko.dispositionDecision> = {
     unknown: 'Không tính được số lượng còn lại',
     settled: 'Không còn số lượng nào. Mục không phù hợp này đã đánh giá xong',
   },
+  concession: {
+    heading: 'Đặc cách',
+    help: 'Sử dụng có điều kiện LOT không đạt sau khi quản lý phê duyệt. Thứ tự: yêu cầu → phê duyệt tại «Xử lý phê duyệt đặc cách · hạn mức» → áp dụng tại đây.',
+    none: 'Mục không phù hợp này chưa có đặc cách.',
+    loading: 'Đang tải đặc cách.',
+    loadFailed: 'Không tải được đặc cách.',
+    request: 'Yêu cầu đặc cách',
+    requesting: 'Đang yêu cầu…',
+    apply: 'Áp dụng đặc cách',
+    applying: 'Đang áp dụng…',
+    lot: 'LOT',
+    qty: 'Số lượng được dùng',
+    validFrom: 'Ngày bắt đầu hiệu lực',
+    validTo: 'Ngày kết thúc hiệu lực (để trống là không giới hạn)',
+    reason: 'Lý do đặc cách',
+    closedNote: 'Không thể yêu cầu đặc cách cho mục không phù hợp đã kết thúc.',
+    requested: 'Đã yêu cầu đặc cách. Hãy áp dụng sau khi phê duyệt xong.',
+    applied: 'Đã áp dụng đặc cách. LOT đã được giải phóng về bình thường.',
+    rejected: 'Phê duyệt bị từ chối nên đã đóng đặc cách.',
+    blocked: {
+      lot: 'Hãy chọn LOT.',
+      qty: 'Số lượng được dùng phải lớn hơn 0.',
+      date: 'Hãy kiểm tra thời hạn hiệu lực.',
+      reason: 'Hãy nhập lý do đặc cách.',
+    },
+    status: { PENDING: 'Chờ phê duyệt', APPROVED: 'Đã áp dụng', REJECTED: 'Bị từ chối' },
+    columns: {
+      concessionNo: 'Số đặc cách',
+      lotNo: 'LOT',
+      qty: 'Số lượng',
+      period: 'Thời hạn',
+      status: 'Trạng thái',
+    },
+    caption: 'Danh sách đặc cách',
+  },
   form: {
     dispositionLabel: 'Quyết định xử lý',
     qtyLabel: 'Số lượng',
@@ -118,6 +153,15 @@ export const dispositionDecision: Translated<typeof ko.dispositionDecision> = {
     reloadDetail: 'Kiểm tra lại trạng thái không phù hợp',
     irreversible: 'Đánh giá không thể hoàn tác',
     success: 'Đã lưu đánh giá',
+    acceptedQtyLabel: 'Số lượng đạt',
+    rejectedQtyLabel: 'Số lượng lỗi',
+    sortHelp:
+      'Phần đạt được giải phóng về bình thường; số lượng lỗi được tách thành LOT mới ở trạng thái lỗi và chuyển sang mục không phù hợp mới để quyết định hủy · làm lại riêng.',
+    sortSumMismatch: 'Tổng số lượng đạt và lỗi phải bằng số lượng xử lý',
+    sortWholeRemaining: (remaining: string): string =>
+      `Phân loại chỉ được quyết định với toàn bộ số lượng còn lại (${remaining})`,
+    sortSuccess: (lotNo: string, nonconformanceNo: string): string =>
+      `Đã lưu phân loại. Phần lỗi đã chuyển sang LOT ${lotNo} · không phù hợp ${nonconformanceNo}`,
   },
   loading: 'Đang tải danh sách chờ đánh giá',
   historyLoading: 'Đang tải lịch sử xử lý',
@@ -148,6 +192,8 @@ export const dispositionDecision: Translated<typeof ko.dispositionDecision> = {
       REWORK: 'Làm lại',
       SCRAP: 'Hủy',
       NORMAL: 'Bình thường',
+      SORT: 'Phân loại',
+      CONCESSION: 'Đặc cách',
     },
     dispositionProgress: {
       NOT_STARTED: 'Chưa đánh giá',

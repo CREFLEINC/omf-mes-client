@@ -4,7 +4,7 @@ import type { Translated } from './translated';
 /** W-01-01 IQC 수입검사·판정. 검사자가 쓰는 말로 쓰고, 확정이 되돌릴 수 없다는 것을 먼저 말한다. */
 export const iqcInspection: Translated<typeof ko.iqcInspection> = {
   title: 'IQC kiểm tra đầu vào · đánh giá',
-  breadcrumbRoot: 'Kho vật tư',
+  breadcrumbRoot: 'Quản lý chất lượng',
 
   queue: {
     heading: 'Chờ kiểm tra',
@@ -128,6 +128,18 @@ export const iqcInspection: Translated<typeof ko.iqcInspection> = {
       descriptionPlaceholder: 'Hãy nhập lý do.',
       majorMissing: 'Hãy chọn nhóm lỗi.',
       minorMissing: 'Hãy chọn mã lỗi chi tiết.',
+      cause: 'Nguyên nhân dự đoán',
+      causeNone: 'Không chọn',
+      causeInactive: (label: string): string => `${label} (ngừng sử dụng)`,
+    },
+    judgmentChange: {
+      basis: (acceptanceNumber: number): string =>
+        `Tự động đánh giá theo số chấp nhận ${String(acceptanceNumber)}`,
+      expected: (judgment: string): string => `Đánh giá tự động: ${judgment}`,
+      reason: 'Lý do thay đổi đánh giá',
+      reasonPlaceholder: 'Hãy nhập lý do xác nhận khác với đánh giá tự động.',
+      required: 'Đánh giá khác với đánh giá tự động phải nhập lý do thay đổi mới xác nhận được.',
+      reasonMissing: 'Hãy nhập lý do thay đổi đánh giá.',
     },
     confirmBlockedByJudgment: 'Phải chọn đánh giá tổng hợp mới xác nhận được.',
     confirmBlockedByConfirmed: 'Lượt này đã được xác nhận.',

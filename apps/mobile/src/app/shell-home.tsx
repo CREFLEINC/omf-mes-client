@@ -76,7 +76,10 @@ const tiles = [
   },
   {
     label: t.shell,
-    screens: [{ to: '/rejections', label: messages.outboxRejections.title }],
+    screens: [
+      { to: '/outbox', label: messages.outboxPending.title },
+      { to: '/rejections', label: messages.outboxRejections.title },
+    ],
   },
 ];
 

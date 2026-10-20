@@ -7,7 +7,7 @@ import type { Translated } from './translated';
  */
 export const disposalIssue: Translated<typeof ko.disposalIssue> = {
   title: 'Đề nghị hủy · xuất khác',
-  breadcrumbRoot: 'Kho vật tư',
+  breadcrumbRoot: 'Quản lý mua hàng / vật tư',
   panes: {
     list: 'Danh sách phiếu nhập kho có thể hủy',
     lines: 'Phiếu nhập kho đã chọn',

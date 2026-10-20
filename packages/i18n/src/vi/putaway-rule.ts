@@ -8,7 +8,7 @@ import type { Translated } from './translated';
  */
 export const putawayRule: Translated<typeof ko.putawayRule> = {
   title: 'Quy tắc cất hàng',
-  breadcrumbRoot: 'Dữ liệu gốc',
+  breadcrumbRoot: 'Quản lý dữ liệu gốc',
   panes: {
     list: 'Danh sách quy tắc cất hàng',
     uncovered: 'Mặt hàng chưa có quy tắc',

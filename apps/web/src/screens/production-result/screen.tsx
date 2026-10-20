@@ -58,12 +58,15 @@ import {
   parseGoodQty,
   remainingQty,
 } from './quantity-draft';
-import { usePendingPqc, useWorkOrder } from './queries';
+import { useWorkOrder, useWorkOrderPqc } from './queries';
+import { PqcSplit } from './pqc-split';
 import { buildSaveBody } from './save-request';
 import { useUomLookup } from './uom-lookup';
 import { isEmergency } from './work-order-type';
 
 const t = messages.productionResult;
+/** 생략 허용 기준으로 배포가 만든 PQC 의뢰 상태(#119 · 서버 장부 P-82). */
+const PQC_SKIPPED = 'SKIPPED';
 
 /**
  * ⛔ **`IDENTIFICATION_TAG` 발행은 서버가 항상 422 `STATE_LOCKED` 로 거부한다**(대응표 P1
@@ -184,7 +187,14 @@ export const ProductionFlowScreen = () => {
   const identity = usePopIdentity();
   const workOrder = useWorkOrder(entry.workOrderId);
   const currentLot = useCurrentLot(entry.workOrderId);
-  const pendingPqc = usePendingPqc(entry.workOrderId);
+  /*
+   * ⭐ 검사 on(그 W/O 에 PQC 의뢰가 있음)이면 늘 실적과 PQC 를 반씩, off 면 실적만 전체 폭이다
+   * (omf-all-around#107 · 사용자 결정 2026-10-19). 닫는 단추가 없다.
+   */
+  const workOrderPqc = useWorkOrderPqc(entry.workOrderId);
+  /* 생략(SKIPPED · #119)된 PQC 는 검사가 아니다 — 나누지 않고 「PQC 생략」 칩만 단다. */
+  const isPqcSkipped = workOrderPqc.data?.statusCode === PQC_SKIPPED;
+  const pqcTargetId = isPqcSkipped ? null : (workOrderPqc.data?.inspectionRequestId ?? null);
   const item = useItem(currentLot.data?.itemId ?? workOrder.data?.itemId ?? null);
   const lotPrinters = usePrinters('PRODUCTION_LOT_LABEL');
   const tagPrinters = usePrinters('IDENTIFICATION_TAG');
@@ -676,8 +686,6 @@ export const ProductionFlowScreen = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tagPrint.state.phase, pendingTagDocuments, pendingSerialQuantity, lot?.lotId]);
 
-  const hasPendingPqc =
-    pendingPqc.isPending || pendingPqc.isError || (pendingPqc.data?.length ?? 0) > 0;
   const hasTagCountMatch =
     isTagTarget !== true ||
     (parsedQty !== null &&
@@ -723,7 +731,6 @@ export const ProductionFlowScreen = () => {
     entry.workerNo !== null &&
     gates.input === 'allowed' &&
     gates.print === 'allowed' &&
-    !hasPendingPqc &&
     isTagTarget !== null &&
     hasTagCountMatch &&
     hasTagDocuments &&
@@ -1012,16 +1019,9 @@ export const ProductionFlowScreen = () => {
           <AlertBanner variant="info" title={t.flow.currentLot.none} />
         </div>
       )}
-      {pendingPqc.isError && (
+      {workOrderPqc.isError && (
         <div className="banner-slot">
           <AlertBanner variant="error" title={t.pqc.loadFailed} />
-        </div>
-      )}
-      {(pendingPqc.data?.length ?? 0) > 0 && (
-        <div className="banner-slot">
-          <AlertBanner variant="warning" title={t.pqc.blockedTitle}>
-            {t.pqc.blockedBody}
-          </AlertBanner>
         </div>
       )}
       {item.isError && (
@@ -1030,409 +1030,427 @@ export const ProductionFlowScreen = () => {
         </div>
       )}
 
-      <div
-        /*
-         * ⚠ 두 칸 배치는 **태그 카드가 서지 않을 때 전부**다(#1147). 대상 여부를 아직 모르는
-         *    동안(작업지시·품목을 못 받음)에도 카드는 없는데, `false` 일 때만 두 칸으로 두어
-         *    빈 셋째 칸이 생기고 수량·라벨 카드가 좁아졌다(실측 312px · 두 칸이면 474px).
-         */
-        className={`production-flow-grid pop-fixed${
-          isTagTarget === true ? '' : ' production-flow-grid-no-tags'
-        }`}
+      <PqcSplit
+        inspectionRequestId={pqcTargetId}
+        inspectionOff={
+          !workOrderPqc.isSuccess
+            ? null
+            : workOrderPqc.data === null
+              ? 'notInspected'
+              : isPqcSkipped
+                ? 'skipped'
+                : null
+        }
+        workOrderId={entry.workOrderId}
+        workerNo={entry.workerNo}
       >
-        <Card bordered className="pop-section production-flow-progress">
-          <Card.Body>
-            <div className="production-flow-section-head">
-              <h2 className="pane-title">{t.flow.currentLot.title}</h2>
-              <Button
-                variant="outlined"
-                onClick={() => {
-                  setCompletedPage(1);
-                  setIsCompletedOpen(true);
-                }}
-              >
-                {t.flow.currentLot.completed}
-              </Button>
-            </div>
-            <dl className="pop-figures">
-              <div>
-                <dt>{t.flow.currentLot.current}</dt>
-                <dd>{lot?.lotNo ?? '—'}</dd>
-              </div>
-              <div>
-                <dt>{t.flow.currentLot.title}</dt>
-                <dd>
-                  {/*
-                   * ⛔⛔ **`Lot.workOrderSequenceNo`·`workOrderLotCount` 가 계약에서 빠졌다**
-                   * (생성 타입 `components['schemas']['Lot']` · 2026-09-11 전달본 — 두 필드
-                   * 모두 어느 스키마에도 없다). 지어낸 값으로 채우지 않는다(추측 금지) —
-                   * `sequence()` 가 이미 갖고 있는 「모른다」 표시(`—`)를 그대로 쓴다. 서버가
-                   * 다시 값을 주면 이 자리만 되돌리면 된다.
-                   */}
-                  {t.flow.currentLot.sequence(null, null)}
-                </dd>
-              </div>
-            </dl>
-          </Card.Body>
-        </Card>
-
-        <Card bordered className="pop-section production-flow-quantity">
-          <Card.Body>
-            <h2 className="pane-title">{t.flow.quantity.title}</h2>
-            <dl className="pop-figures production-flow-target-qty">
-              <div>
-                <dt>{t.flow.quantity.target}</dt>
-                <dd>{lot === null ? '—' : `${formatQty(lot.initialQty)} ${uomLabel}`}</dd>
-              </div>
-              {/*
-               * ⭐ **잔여수량을 세운다**(스펙 §3-2 「잔여수량 380 / 500」). 아래 초과 알림이
-               *    「잔여보다 얼마 많다」로 말하므로, 그 잔여가 같은 화면에 보여야 한다.
-               * ⚠ 받지 못했으면 **「확인할 수 없습니다」로 적는다** — 0 으로 그리면 잔여가
-               *    없다는 뜻이 되어, 모든 입력이 초과로 보인다.
-               */}
-              <div>
-                <dt>{t.quantity.remaining}</dt>
-                <dd>
-                  {remaining === null
-                    ? remainingUnknownLabel
-                    : `${formatQty(remaining)} ${t.quantity.orderedSuffix(
-                        formatQty(workOrder.data?.orderQty ?? 0),
-                        uomLabel === '' ? null : uomLabel,
-                      )}`}
-                </dd>
-              </div>
-            </dl>
-            <TextField
-              id={actualQtyId}
-              label={t.flow.quantity.actual}
-              value={actualQty}
-              disabled={isQuantityLocked}
-              inputMode="decimal"
-              trailingIcon={uomLabel}
-              /*
-               * ⛔ **LOT 이 없을 때는 수량을 나무라지 않는다**(사용자 지시 2026-09-16). 「0보다
-               *    큰 수량을 입력하세요」는 «넣을 수 있는데 잘못 넣었다»는 말인데, 그 상태는
-               *    애초에 넣을 곳이 없다 — 위 배너가 이미 진짜 할 일을 말하고 있다.
-               */
-              error={
-                lot !== null && (parsedQty === null || parsedQty <= 0)
-                  ? t.flow.quantity.invalid
-                  : undefined
-              }
-              onChange={(event) => setActualQty(quantityInput(event.target.value))}
-            />
-            {/*
-             * 초과를 **친 자리에서 바로 말한다**(#1040). 저장 직전에 되묻지 않으므로, 작업자가
-             * 수를 고칠 수 있는 동안 눈에 들어와야 한다.
-             *
-             * ⛔ 막지 않는다 — 초과 생산은 허용이다(✓확정 QA #27 · `P-02-06` §5-4).
-             * ⚠ 잔여를 모르면 넘었는지도 모른다 — `isOverrun` 이 그때 `false` 라 서지 않는다.
-             */}
-            {isOverrun && parsedQty !== null && remaining !== null && (
-              <div className="production-flow-inline-note">
-                <AlertBanner
-                  variant="warning"
-                  title={
-                    remaining > 0
-                      ? t.overrun.notice(
-                          `${formatQty(parsedQty - remaining)} ${uomLabel}`.trim(),
-                          `${formatQty(remaining)} ${uomLabel}`.trim(),
-                        )
-                      : t.overrun.noticeNoRemaining
-                  }
-                />
-              </div>
-            )}
-            <NumericKeypad
-              value={actualQty}
-              /* 수를 받는 칸이다 — 앞자리 0 을 쌓지 않는다(사번 칸은 켜지 않는다). */
-              dropLeadingZero
-              disabled={isQuantityLocked}
-              label={t.quantity.keypadLabel}
-              backspaceLabel={t.quantity.backspace}
-              clearLabel={t.quantity.clearGlyph}
-              maxLength={GOOD_QTY_MAX_LENGTH}
-              /*
-               * ⛔ **정수 단위에는 소수점 키를 세우지 않는다**(사용자 지시 2026-09-10). 「개(EA)」에
-               *    소수를 주면 넣을 수 없는 값을 넣게 되고, 실적은 되돌릴 수 없다. 무게 단위처럼
-               *    계약이 소수를 허용하는 단위에서는 그대로 연다 — 자매 화면(`P-04-03`)이 같은
-               *    규칙을 쓴다.
-               */
-              allowDecimal={uom.decimalScaleOf(lot?.uomId ?? workOrder.data?.uomId) > 0}
-              decimalLabel={t.quantity.decimalKey}
-              onChange={setActualQty}
-            />
-          </Card.Body>
-        </Card>
-
-        {isTagTarget === true && (
-          <Card bordered className="pop-section production-flow-tags">
+        <div
+          /*
+           * ⚠ 두 칸 배치는 **태그 카드가 서지 않을 때 전부**다(#1147). 대상 여부를 아직 모르는
+           *    동안(작업지시·품목을 못 받음)에도 카드는 없는데, `false` 일 때만 두 칸으로 두어
+           *    빈 셋째 칸이 생기고 수량·라벨 카드가 좁아졌다(실측 312px · 두 칸이면 474px).
+           */
+          className={`production-flow-grid pop-fixed${
+            isTagTarget === true ? '' : ' production-flow-grid-no-tags'
+          }`}
+        >
+          <Card bordered className="pop-section production-flow-progress">
             <Card.Body>
-              <h2 className="pane-title">{t.flow.tag.title}</h2>
-              {serials.isError ? (
-                <p className="field-error">{t.flow.tag.loadFailed}</p>
-              ) : (
-                <>
-                  <p className="production-flow-count">
-                    {t.flow.tag.issued}: {t.flow.tag.count(serialCount ?? 0)}
-                  </p>
-                  <div className="production-flow-serials" aria-label={t.flow.tag.issued}>
-                    {issuedSerials.map((serial) => {
-                      const summary = summaryBySerialId.get(serial.serialNumberId);
-                      const outcome = summary?.lastPrintOutcome ?? 'PENDING';
+              <div className="production-flow-section-head">
+                <h2 className="pane-title">{t.flow.currentLot.title}</h2>
+                <Button
+                  variant="outlined"
+                  onClick={() => {
+                    setCompletedPage(1);
+                    setIsCompletedOpen(true);
+                  }}
+                >
+                  {t.flow.currentLot.completed}
+                </Button>
+              </div>
+              <dl className="pop-figures">
+                <div>
+                  <dt>{t.flow.currentLot.current}</dt>
+                  <dd>{lot?.lotNo ?? '—'}</dd>
+                </div>
+                <div>
+                  <dt>{t.flow.currentLot.title}</dt>
+                  <dd>
+                    {/*
+                     * ⛔⛔ **`Lot.workOrderSequenceNo`·`workOrderLotCount` 가 계약에서 빠졌다**
+                     * (생성 타입 `components['schemas']['Lot']` · 2026-09-11 전달본 — 두 필드
+                     * 모두 어느 스키마에도 없다). 지어낸 값으로 채우지 않는다(추측 금지) —
+                     * `sequence()` 가 이미 갖고 있는 「모른다」 표시(`—`)를 그대로 쓴다. 서버가
+                     * 다시 값을 주면 이 자리만 되돌리면 된다.
+                     */}
+                    {t.flow.currentLot.sequence(null, null)}
+                  </dd>
+                </div>
+              </dl>
+            </Card.Body>
+          </Card>
 
-                      return (
-                        <Checkbox
-                          key={serial.serialNumberId}
-                          checked={selectedTagIds.includes(serial.serialNumberId)}
-                          onChange={(event) =>
-                            setSelectedTagIds((current) =>
-                              event.target.checked
-                                ? [...new Set([...current, serial.serialNumberId])]
-                                : current.filter((id) => id !== serial.serialNumberId),
-                            )
-                          }
-                        >
-                          {`${serial.serialNo} · ${t.flow.tag.printOutcome[outcome]}`}
-                        </Checkbox>
-                      );
-                    })}
-                  </div>
-                  {tagIssueSummary.isError && (
-                    <p className="field-error">{t.flow.tag.summaryFailed}</p>
-                  )}
-                  {unissuedSerials.length > 0 && (
-                    <Button
-                      variant="outlined"
-                      disabled={
-                        IDENTIFICATION_TAG_ISSUE_LOCKED ||
-                        tagDocumentIssue.isSaving ||
-                        tagPrinter === null
-                      }
-                      onClick={restoreTagDocuments}
-                    >
-                      {t.flow.tag.restoreDocuments(unissuedSerials.length)}
-                    </Button>
-                  )}
-                  {parsedQty !== null && serialCount !== null && serialCount > parsedQty && (
-                    <p className="field-error">{t.flow.tag.tooMany}</p>
-                  )}
-                  {tagMissing === 0 && <p className="field-note">{t.flow.tag.matched}</p>}
-                  {retryableSerials.length > 0 && (
-                    <p className="field-error">
-                      {t.flow.tag.printIncomplete(retryableSerials.length)}
-                    </p>
-                  )}
-                  <Button
-                    disabled={
-                      IDENTIFICATION_TAG_ISSUE_LOCKED ||
-                      tagMissing === null ||
-                      tagMissing <= 0 ||
-                      !Number.isInteger(tagMissing) ||
-                      gates.print !== 'allowed' ||
-                      entry.workerNo === null ||
-                      serialIssue.isSaving ||
-                      tagDocumentIssue.isSaving ||
-                      tagPrint.state.phase === 'sending' ||
-                      tagPrinter === null
+          <Card bordered className="pop-section production-flow-quantity">
+            <Card.Body>
+              <h2 className="pane-title">{t.flow.quantity.title}</h2>
+              <dl className="pop-figures production-flow-target-qty">
+                <div>
+                  <dt>{t.flow.quantity.target}</dt>
+                  <dd>{lot === null ? '—' : `${formatQty(lot.initialQty)} ${uomLabel}`}</dd>
+                </div>
+                {/*
+                 * ⭐ **잔여수량을 세운다**(스펙 §3-2 「잔여수량 380 / 500」). 아래 초과 알림이
+                 *    「잔여보다 얼마 많다」로 말하므로, 그 잔여가 같은 화면에 보여야 한다.
+                 * ⚠ 받지 못했으면 **「확인할 수 없습니다」로 적는다** — 0 으로 그리면 잔여가
+                 *    없다는 뜻이 되어, 모든 입력이 초과로 보인다.
+                 */}
+                <div>
+                  <dt>{t.quantity.remaining}</dt>
+                  <dd>
+                    {remaining === null
+                      ? remainingUnknownLabel
+                      : `${formatQty(remaining)} ${t.quantity.orderedSuffix(
+                          formatQty(workOrder.data?.orderQty ?? 0),
+                          uomLabel === '' ? null : uomLabel,
+                        )}`}
+                  </dd>
+                </div>
+              </dl>
+              <TextField
+                id={actualQtyId}
+                label={t.flow.quantity.actual}
+                value={actualQty}
+                disabled={isQuantityLocked}
+                inputMode="decimal"
+                trailingIcon={uomLabel}
+                /*
+                 * ⛔ **LOT 이 없을 때는 수량을 나무라지 않는다**(사용자 지시 2026-09-16). 「0보다
+                 *    큰 수량을 입력하세요」는 «넣을 수 있는데 잘못 넣었다»는 말인데, 그 상태는
+                 *    애초에 넣을 곳이 없다 — 위 배너가 이미 진짜 할 일을 말하고 있다.
+                 */
+                error={
+                  lot !== null && (parsedQty === null || parsedQty <= 0)
+                    ? t.flow.quantity.invalid
+                    : undefined
+                }
+                onChange={(event) => setActualQty(quantityInput(event.target.value))}
+              />
+              {/*
+               * 초과를 **친 자리에서 바로 말한다**(#1040). 저장 직전에 되묻지 않으므로, 작업자가
+               * 수를 고칠 수 있는 동안 눈에 들어와야 한다.
+               *
+               * ⛔ 막지 않는다 — 초과 생산은 허용이다(✓확정 QA #27 · `P-02-06` §5-4).
+               * ⚠ 잔여를 모르면 넘었는지도 모른다 — `isOverrun` 이 그때 `false` 라 서지 않는다.
+               */}
+              {isOverrun && parsedQty !== null && remaining !== null && (
+                <div className="production-flow-inline-note">
+                  <AlertBanner
+                    variant="warning"
+                    title={
+                      remaining > 0
+                        ? t.overrun.notice(
+                            `${formatQty(parsedQty - remaining)} ${uomLabel}`.trim(),
+                            `${formatQty(remaining)} ${uomLabel}`.trim(),
+                          )
+                        : t.overrun.noticeNoRemaining
                     }
-                    onClick={issueTags}
-                  >
-                    {tagMissing === null ? t.flow.tag.title : t.flow.tag.issueMissing(tagMissing)}
-                  </Button>
-                  {(tagPrint.state.phase === 'renditionFailed' ||
-                    tagPrint.state.phase === 'printFailed') &&
-                    tagPrintTargets.length > 0 && (
-                      <Button variant="outlined" onClick={() => void tagPrint.run(tagPrintTargets)}>
-                        {t.flow.output.retryPrint}
+                  />
+                </div>
+              )}
+              <NumericKeypad
+                value={actualQty}
+                /* 수를 받는 칸이다 — 앞자리 0 을 쌓지 않는다(사번 칸은 켜지 않는다). */
+                dropLeadingZero
+                disabled={isQuantityLocked}
+                label={t.quantity.keypadLabel}
+                backspaceLabel={t.quantity.backspace}
+                clearLabel={t.quantity.clearGlyph}
+                maxLength={GOOD_QTY_MAX_LENGTH}
+                /*
+                 * ⛔ **정수 단위에는 소수점 키를 세우지 않는다**(사용자 지시 2026-09-10). 「개(EA)」에
+                 *    소수를 주면 넣을 수 없는 값을 넣게 되고, 실적은 되돌릴 수 없다. 무게 단위처럼
+                 *    계약이 소수를 허용하는 단위에서는 그대로 연다 — 자매 화면(`P-04-03`)이 같은
+                 *    규칙을 쓴다.
+                 */
+                allowDecimal={uom.decimalScaleOf(lot?.uomId ?? workOrder.data?.uomId) > 0}
+                decimalLabel={t.quantity.decimalKey}
+                onChange={setActualQty}
+              />
+            </Card.Body>
+          </Card>
+
+          {isTagTarget === true && (
+            <Card bordered className="pop-section production-flow-tags">
+              <Card.Body>
+                <h2 className="pane-title">{t.flow.tag.title}</h2>
+                {serials.isError ? (
+                  <p className="field-error">{t.flow.tag.loadFailed}</p>
+                ) : (
+                  <>
+                    <p className="production-flow-count">
+                      {t.flow.tag.issued}: {t.flow.tag.count(serialCount ?? 0)}
+                    </p>
+                    <div className="production-flow-serials" aria-label={t.flow.tag.issued}>
+                      {issuedSerials.map((serial) => {
+                        const summary = summaryBySerialId.get(serial.serialNumberId);
+                        const outcome = summary?.lastPrintOutcome ?? 'PENDING';
+
+                        return (
+                          <Checkbox
+                            key={serial.serialNumberId}
+                            checked={selectedTagIds.includes(serial.serialNumberId)}
+                            onChange={(event) =>
+                              setSelectedTagIds((current) =>
+                                event.target.checked
+                                  ? [...new Set([...current, serial.serialNumberId])]
+                                  : current.filter((id) => id !== serial.serialNumberId),
+                              )
+                            }
+                          >
+                            {`${serial.serialNo} · ${t.flow.tag.printOutcome[outcome]}`}
+                          </Checkbox>
+                        );
+                      })}
+                    </div>
+                    {tagIssueSummary.isError && (
+                      <p className="field-error">{t.flow.tag.summaryFailed}</p>
+                    )}
+                    {unissuedSerials.length > 0 && (
+                      <Button
+                        variant="outlined"
+                        disabled={
+                          IDENTIFICATION_TAG_ISSUE_LOCKED ||
+                          tagDocumentIssue.isSaving ||
+                          tagPrinter === null
+                        }
+                        onClick={restoreTagDocuments}
+                      >
+                        {t.flow.tag.restoreDocuments(unissuedSerials.length)}
                       </Button>
                     )}
-                  {tagPrint.state.phase === 'reportFailed' && (
-                    <>
-                      <p className="field-error">{t.flow.tag.reportFailed}</p>
-                      <Button variant="outlined" onClick={() => void tagPrint.retryReport()}>
-                        {t.flow.output.retryReport}
-                      </Button>
-                    </>
-                  )}
-                  {issuedSerials.length > 0 && (
+                    {parsedQty !== null && serialCount !== null && serialCount > parsedQty && (
+                      <p className="field-error">{t.flow.tag.tooMany}</p>
+                    )}
+                    {tagMissing === 0 && <p className="field-note">{t.flow.tag.matched}</p>}
+                    {retryableSerials.length > 0 && (
+                      <p className="field-error">
+                        {t.flow.tag.printIncomplete(retryableSerials.length)}
+                      </p>
+                    )}
                     <Button
-                      variant="outlined"
                       disabled={
                         IDENTIFICATION_TAG_ISSUE_LOCKED ||
-                        selectedTagIds.length === 0 ||
+                        tagMissing === null ||
+                        tagMissing <= 0 ||
+                        !Number.isInteger(tagMissing) ||
+                        gates.print !== 'allowed' ||
+                        entry.workerNo === null ||
+                        serialIssue.isSaving ||
+                        tagDocumentIssue.isSaving ||
+                        tagPrint.state.phase === 'sending' ||
                         tagPrinter === null
                       }
-                      onClick={() => setIsTagReissueOpen(true)}
+                      onClick={issueTags}
                     >
-                      {t.flow.tag.reissue}
+                      {tagMissing === null ? t.flow.tag.title : t.flow.tag.issueMissing(tagMissing)}
                     </Button>
-                  )}
-                  {tagPrinter === null && !tagPrinters.isPending && (
-                    <p className="field-error">{t.flow.tag.printerUnavailable}</p>
-                  )}
-                  {tagDocumentIssue.error !== null && pendingTagIssue !== null && (
-                    <Button variant="outlined" onClick={retryTagDocumentIssue}>
-                      {t.flow.retry}
-                    </Button>
-                  )}
-                </>
+                    {(tagPrint.state.phase === 'renditionFailed' ||
+                      tagPrint.state.phase === 'printFailed') &&
+                      tagPrintTargets.length > 0 && (
+                        <Button
+                          variant="outlined"
+                          onClick={() => void tagPrint.run(tagPrintTargets)}
+                        >
+                          {t.flow.output.retryPrint}
+                        </Button>
+                      )}
+                    {tagPrint.state.phase === 'reportFailed' && (
+                      <>
+                        <p className="field-error">{t.flow.tag.reportFailed}</p>
+                        <Button variant="outlined" onClick={() => void tagPrint.retryReport()}>
+                          {t.flow.output.retryReport}
+                        </Button>
+                      </>
+                    )}
+                    {issuedSerials.length > 0 && (
+                      <Button
+                        variant="outlined"
+                        disabled={
+                          IDENTIFICATION_TAG_ISSUE_LOCKED ||
+                          selectedTagIds.length === 0 ||
+                          tagPrinter === null
+                        }
+                        onClick={() => setIsTagReissueOpen(true)}
+                      >
+                        {t.flow.tag.reissue}
+                      </Button>
+                    )}
+                    {tagPrinter === null && !tagPrinters.isPending && (
+                      <p className="field-error">{t.flow.tag.printerUnavailable}</p>
+                    )}
+                    {tagDocumentIssue.error !== null && pendingTagIssue !== null && (
+                      <Button variant="outlined" onClick={retryTagDocumentIssue}>
+                        {t.flow.retry}
+                      </Button>
+                    )}
+                  </>
+                )}
+              </Card.Body>
+            </Card>
+          )}
+
+          <Card bordered className="pop-section production-flow-output">
+            <Card.Body>
+              <h2 className="pane-title">{t.flow.output.title}</h2>
+              <dl className="pop-figures">
+                <div>
+                  <dt>{t.flow.currentLot.current}</dt>
+                  <dd>{lot?.lotNo ?? '—'}</dd>
+                </div>
+                <div>
+                  <dt>{t.flow.header.item}</dt>
+                  <dd>{item.data?.itemCode ?? workOrder.data?.itemCode ?? '—'}</dd>
+                </div>
+                <div>
+                  <dt>{t.flow.quantity.actual}</dt>
+                  <dd>{parsedQty === null ? '—' : `${formatQty(parsedQty)} ${uomLabel}`}</dd>
+                </div>
+                <div>
+                  <dt>{t.flow.output.printer}</dt>
+                  <dd>{lotPrinter?.displayName ?? t.flow.output.printerUnknown}</dd>
+                </div>
+              </dl>
+
+              {outputPhase === 'legacyMismatch' ? (
+                <Button disabled>{t.flow.output.mismatchBlocked}</Button>
+              ) : outputPhase === 'issueFailed' ? (
+                /*
+                 * ⛔ **눌러도 안 되면 비활성으로 보인다**(#1093 · 사용자 지시). 처리기가 LOT ·
+                 *    사번 없이는 조용히 되돌아온다 — 단추가 열린 채면 눌리고 아무 말이 없다.
+                 */
+                <Button disabled={lot === null || entry.workerNo === null} onClick={retryLotIssue}>
+                  {t.flow.output.retryIssue}
+                </Button>
+              ) : outputPhase === 'reportFailed' ? (
+                <Button onClick={() => void lotPrint.retryReport()}>
+                  {t.flow.output.retryReport}
+                </Button>
+              ) : outputPhase === 'renditionFailed' ||
+                outputPhase === 'printFailed' ||
+                (outputPhase === 'idle' && currentIssue !== null) ? (
+                <Button onClick={retryLotPrint}>{t.flow.output.retryPrint}</Button>
+              ) : (
+                <Button
+                  disabled={!canOutput}
+                  /*
+                   * ⛔ **초과라고 단추를 끄지도, 되묻지도 않는다** — 초과 생산은 허용이고
+                   *    (✓확정 QA #27), 화면이 하는 일은 **말하는 것**이다(사용자 결정
+                   *    2026-09-11). 초과는 수량 칸 아래에서 이미 말했고, 여기서 한 번 더
+                   *    멈춰 세우면 허용된 작업마다 손짓이 하나씩 는다.
+                   */
+                  onClick={queueOutput}
+                >
+                  {t.flow.output.issue}
+                </Button>
+              )}
+
+              {/*
+               * 저장·발행·인쇄가 어떻게 됐는지는 **[생산 라벨 출력] 바로 아래에서 말한다**
+               * (사용자 지시 2026-09-10). 누른 자리와 그 답이 한 자리에 모인다 — 화면 맨 위
+               * 띠에 두었더니 눌러 놓고 눈이 위로 올라갔다.
+               *
+               * 두 소식이 같은 자리에 선다: 실적 저장이 먼저이고 발행·인쇄가 그다음이다.
+               */}
+              {outbox.rejection !== null && (
+                <div className="banner-slot">
+                  <AlertBanner variant="error" title={t.save.failTitle} />
+                </div>
+              )}
+
+              {outputStatus !== null && (
+                <div className="banner-slot">
+                  <AlertBanner
+                    variant={
+                      outputPhase === 'issueFailed' ||
+                      outputPhase === 'renditionFailed' ||
+                      outputPhase === 'printFailed' ||
+                      outputPhase === 'reportFailed' ||
+                      outputPhase === 'legacyMismatch'
+                        ? 'error'
+                        : 'info'
+                    }
+                    title={outputStatus}
+                  />
+                </div>
+              )}
+
+              {lotPrinter === null && !lotPrinters.isPending && (
+                <p className="field-error">{t.flow.output.printerUnavailable}</p>
+              )}
+              {!lotPrint.isShellAvailable && (
+                <p className="field-error">{t.flow.output.shellUnavailable}</p>
               )}
             </Card.Body>
           </Card>
-        )}
 
-        <Card bordered className="pop-section production-flow-output">
-          <Card.Body>
-            <h2 className="pane-title">{t.flow.output.title}</h2>
-            <dl className="pop-figures">
-              <div>
-                <dt>{t.flow.currentLot.current}</dt>
-                <dd>{lot?.lotNo ?? '—'}</dd>
-              </div>
-              <div>
-                <dt>{t.flow.header.item}</dt>
-                <dd>{item.data?.itemCode ?? workOrder.data?.itemCode ?? '—'}</dd>
-              </div>
-              <div>
-                <dt>{t.flow.quantity.actual}</dt>
-                <dd>{parsedQty === null ? '—' : `${formatQty(parsedQty)} ${uomLabel}`}</dd>
-              </div>
-              <div>
-                <dt>{t.flow.output.printer}</dt>
-                <dd>{lotPrinter?.displayName ?? t.flow.output.printerUnknown}</dd>
-              </div>
-            </dl>
-
-            {outputPhase === 'legacyMismatch' ? (
-              <Button disabled>{t.flow.output.mismatchBlocked}</Button>
-            ) : outputPhase === 'issueFailed' ? (
-              /*
-               * ⛔ **눌러도 안 되면 비활성으로 보인다**(#1093 · 사용자 지시). 처리기가 LOT ·
-               *    사번 없이는 조용히 되돌아온다 — 단추가 열린 채면 눌리고 아무 말이 없다.
-               */
-              <Button disabled={lot === null || entry.workerNo === null} onClick={retryLotIssue}>
-                {t.flow.output.retryIssue}
-              </Button>
-            ) : outputPhase === 'reportFailed' ? (
-              <Button onClick={() => void lotPrint.retryReport()}>
-                {t.flow.output.retryReport}
-              </Button>
-            ) : outputPhase === 'renditionFailed' ||
-              outputPhase === 'printFailed' ||
-              (outputPhase === 'idle' && currentIssue !== null) ? (
-              <Button onClick={retryLotPrint}>{t.flow.output.retryPrint}</Button>
-            ) : (
-              <Button
-                disabled={!canOutput}
+          <Card bordered className="pop-section production-flow-scan">
+            <Card.Body>
+              <h2 className="pane-title">{t.flow.scan.title}</h2>
+              <TextField
+                id={scanId}
+                label={t.flow.scan.label}
                 /*
-                 * ⛔ **초과라고 단추를 끄지도, 되묻지도 않는다** — 초과 생산은 허용이고
-                 *    (✓확정 QA #27), 화면이 하는 일은 **말하는 것**이다(사용자 결정
-                 *    2026-09-11). 초과는 수량 칸 아래에서 이미 말했고, 여기서 한 번 더
-                 *    멈춰 세우면 허용된 작업마다 손짓이 하나씩 는다.
+                 * ⭐ **칸이 구획 폭을 다 쓴다**(사용자 지시 2026-09-10). LOT 번호는 서른 자리를
+                 * 넘길 수 있어, 기본 폭에서는 읽은 값이 칸 밖으로 밀려 눈으로 대조할 수 없다.
                  */
-                onClick={queueOutput}
-              >
-                {t.flow.output.issue}
-              </Button>
-            )}
-
-            {/*
-             * 저장·발행·인쇄가 어떻게 됐는지는 **[생산 라벨 출력] 바로 아래에서 말한다**
-             * (사용자 지시 2026-09-10). 누른 자리와 그 답이 한 자리에 모인다 — 화면 맨 위
-             * 띠에 두었더니 눌러 놓고 눈이 위로 올라갔다.
-             *
-             * 두 소식이 같은 자리에 선다: 실적 저장이 먼저이고 발행·인쇄가 그다음이다.
-             */}
-            {outbox.rejection !== null && (
-              <div className="banner-slot">
-                <AlertBanner variant="error" title={t.save.failTitle} />
-              </div>
-            )}
-
-            {outputStatus !== null && (
-              <div className="banner-slot">
-                <AlertBanner
-                  variant={
-                    outputPhase === 'issueFailed' ||
-                    outputPhase === 'renditionFailed' ||
-                    outputPhase === 'printFailed' ||
-                    outputPhase === 'reportFailed' ||
-                    outputPhase === 'legacyMismatch'
-                      ? 'error'
-                      : 'info'
-                  }
-                  title={outputStatus}
-                />
-              </div>
-            )}
-
-            {lotPrinter === null && !lotPrinters.isPending && (
-              <p className="field-error">{t.flow.output.printerUnavailable}</p>
-            )}
-            {!lotPrint.isShellAvailable && (
-              <p className="field-error">{t.flow.output.shellUnavailable}</p>
-            )}
-          </Card.Body>
-        </Card>
-
-        <Card bordered className="pop-section production-flow-scan">
-          <Card.Body>
-            <h2 className="pane-title">{t.flow.scan.title}</h2>
-            <TextField
-              id={scanId}
-              label={t.flow.scan.label}
-              /*
-               * ⭐ **칸이 구획 폭을 다 쓴다**(사용자 지시 2026-09-10). LOT 번호는 서른 자리를
-               * 넘길 수 있어, 기본 폭에서는 읽은 값이 칸 밖으로 밀려 눈으로 대조할 수 없다.
-               */
-              fullWidth
-              value={scanValue}
-              disabled={outputPhase !== 'scanReady' || gates.complete !== 'allowed'}
-              error={scanMismatch && lot !== null ? t.flow.scan.mismatch : undefined}
-              onChange={(event) => changeScan(event.target.value)}
-            />
-            {/*
-             * ⚠ **한 번에 한 줄만 낸다**(사용자 지시 2026-09-10). 스캔이 어긋난 것과 마감이
-             * 실패한 것이 함께 서면, 다음에 무엇을 해야 하는지가 두 문장으로 갈린다. 어긋남은
-             * 칸이 이미 말하고 있으므로 마감 실패는 그때만 선다.
-             */}
-            {complete.error !== null && !scanMismatch && (
-              <p className="field-error">{t.flow.scan.failed}</p>
-            )}
-            {/*
-             * 작업 세션 자동 종료가 **어긋났을 때만** 선다.
-             *
-             * ⭐ **스캔 구획 바닥에 둔다**(사용자 지시 2026-09-16). 머리의 배너 자리에 세웠더니
-             *    「생산할 LOT이 없습니다」 바로 아래 같은 크기의 줄이 하나 더 붙어 둘 중 어느
-             *    것이 지금 할 일인지 흐려졌다. 세션을 닫는 것은 **마감 흐름의 끝**이라 그 흐름이
-             *    끝나는 자리에 선다.
-             *
-             * ⛔ **잘 닫힌 것은 말하지 않는다**(같은 지시). 성공 안내를 얹으면 같은 사건이 두 번
-             *    말해진다.
-             *
-             * ⛔ **서버 오류 원문을 싣지 않는다.** 작업자에게는 다음 행동만 말한다.
-             */}
-            {(sessionPhase === 'failed' || sessionPhase === 'denied') && (
-              <div className="production-flow-inline-note production-flow-session-note">
-                {/*
-                 * ⭐ **노란 띠로 낸다**(사용자 지시 2026-09-16). 빨간 글씨는 «방금 친 값이
-                 *    틀렸다»는 말이라 이 자리와 뜻이 다르다 — 값은 멀쩡하고, 뒤에서 하나가
-                 *    덜 끝났을 뿐이다. 크기만 한 급 낮춘다(`pop.css`).
-                 */}
-                <AlertBanner variant="warning" title={sessionStatusTitle}>
-                  {sessionPhase === 'failed' && canRetrySessionEnd && (
-                    /* 채운 단추로 낸다(사용자 지시 2026-09-16) — POP 기본 채움이 빨강이다. */
-                    <Button onClick={retrySessionEnd} disabled={sessionEnd.isSaving}>
-                      {t.flow.session.retry}
-                    </Button>
-                  )}
-                </AlertBanner>
-              </div>
-            )}
-          </Card.Body>
-        </Card>
-      </div>
+                fullWidth
+                value={scanValue}
+                disabled={outputPhase !== 'scanReady' || gates.complete !== 'allowed'}
+                error={scanMismatch && lot !== null ? t.flow.scan.mismatch : undefined}
+                onChange={(event) => changeScan(event.target.value)}
+              />
+              {/*
+               * ⚠ **한 번에 한 줄만 낸다**(사용자 지시 2026-09-10). 스캔이 어긋난 것과 마감이
+               * 실패한 것이 함께 서면, 다음에 무엇을 해야 하는지가 두 문장으로 갈린다. 어긋남은
+               * 칸이 이미 말하고 있으므로 마감 실패는 그때만 선다.
+               */}
+              {complete.error !== null && !scanMismatch && (
+                <p className="field-error">{t.flow.scan.failed}</p>
+              )}
+              {/*
+               * 작업 세션 자동 종료가 **어긋났을 때만** 선다.
+               *
+               * ⭐ **스캔 구획 바닥에 둔다**(사용자 지시 2026-09-16). 머리의 배너 자리에 세웠더니
+               *    「생산할 LOT이 없습니다」 바로 아래 같은 크기의 줄이 하나 더 붙어 둘 중 어느
+               *    것이 지금 할 일인지 흐려졌다. 세션을 닫는 것은 **마감 흐름의 끝**이라 그 흐름이
+               *    끝나는 자리에 선다.
+               *
+               * ⛔ **잘 닫힌 것은 말하지 않는다**(같은 지시). 성공 안내를 얹으면 같은 사건이 두 번
+               *    말해진다.
+               *
+               * ⛔ **서버 오류 원문을 싣지 않는다.** 작업자에게는 다음 행동만 말한다.
+               */}
+              {(sessionPhase === 'failed' || sessionPhase === 'denied') && (
+                <div className="production-flow-inline-note production-flow-session-note">
+                  {/*
+                   * ⭐ **노란 띠로 낸다**(사용자 지시 2026-09-16). 빨간 글씨는 «방금 친 값이
+                   *    틀렸다»는 말이라 이 자리와 뜻이 다르다 — 값은 멀쩡하고, 뒤에서 하나가
+                   *    덜 끝났을 뿐이다. 크기만 한 급 낮춘다(`pop.css`).
+                   */}
+                  <AlertBanner variant="warning" title={sessionStatusTitle}>
+                    {sessionPhase === 'failed' && canRetrySessionEnd && (
+                      /* 채운 단추로 낸다(사용자 지시 2026-09-16) — POP 기본 채움이 빨강이다. */
+                      <Button onClick={retrySessionEnd} disabled={sessionEnd.isSaving}>
+                        {t.flow.session.retry}
+                      </Button>
+                    )}
+                  </AlertBanner>
+                </div>
+              )}
+            </Card.Body>
+          </Card>
+        </div>
+      </PqcSplit>
 
       <Dialog
         open={isCompletedOpen}

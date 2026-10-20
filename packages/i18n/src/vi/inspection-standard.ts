@@ -7,7 +7,7 @@ import type { Translated } from './translated';
  */
 export const inspectionStandard: Translated<typeof ko.inspectionStandard> = {
   title: 'Đăng ký tiêu chuẩn kiểm tra',
-  breadcrumbRoot: 'Dữ liệu gốc',
+  breadcrumbRoot: 'Quản lý chất lượng',
   panes: {
     plan: 'Tiêu chuẩn kiểm tra',
     version: 'Danh sách phiên bản',
@@ -163,6 +163,7 @@ export const inspectionStandard: Translated<typeof ko.inspectionStandard> = {
     item: 'Mặt hàng',
     process: 'Công đoạn',
     routing: 'Routing',
+    pqcSkipAllowed: 'Cho phép bỏ qua PQC',
     approval: 'Phê duyệt',
     active: 'Sử dụng',
     planVersion: 'Phiên bản',
@@ -200,6 +201,8 @@ export const inspectionStandard: Translated<typeof ko.inspectionStandard> = {
     automaticJudgment: 'Đánh giá tự động',
   },
   values: {
+    pqcSkipAllowedNote:
+      'Khi bật, PQC của lệnh sản xuất phát hành theo tiêu chuẩn này sẽ được bỏ qua. Khi đăng ký kết quả, LOT trở thành bình thường ngay.',
     /** 값이 없는 칸. 빈 칸으로 두면 자료가 없는 것인지 화면이 빠뜨린 것인지 구분되지 않는다. */
     empty: '—',
     inactiveSuffix: ' (ngừng dùng)',

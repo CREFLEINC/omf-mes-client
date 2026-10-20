@@ -77,6 +77,8 @@ export const useDashboardSummary = (
     queryFn: () => fetchSummary(client, query),
     /* 지난 기간(끝이 오늘 전)은 값이 바뀌지 않아 자동 갱신을 걸지 않는다(사용자 확정 2026-10-16). */
     refetchInterval: live ? DASHBOARD_REFRESH_INTERVAL_MS : false,
+    // 다른 화면에서 판정·처리를 확정하고 돌아오면 바로 반영돼야 한다 — 앱 기본 신선도(30초) 안이어도 다시 읽는다(#124).
+    staleTime: 0,
   });
 };
 
@@ -108,5 +110,7 @@ export const useDashboardQualityLots = (
         }),
       ),
     enabled: status !== null,
+    // 위 요약과 같은 까닭 — 다른 화면에서 처리하고 돌아와 다시 열면 지금 목록을 읽는다(#124).
+    staleTime: 0,
   });
 };

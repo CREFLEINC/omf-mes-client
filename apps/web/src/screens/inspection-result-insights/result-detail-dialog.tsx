@@ -8,6 +8,13 @@ import {
   useMeasurementSummary,
   type MeasurementItemSummary,
 } from './queries';
+import { useInspectionPlanVersion } from './history-queries';
+import { useSamplingMethodLookup } from './lookups';
+import {
+  DefectReasonSection,
+  LotHistorySection,
+  RejectionSection,
+} from './result-history-sections';
 import type { ResultLabels } from './result-overview';
 import { formatPlantDateTime } from '../../patterns/plant-time';
 
@@ -83,6 +90,19 @@ export const ResultDetailDialog = ({
   const detail = useInspectionResultDetail(inspectionResultId);
   const request = useInspectionRequestDetail(detail.data?.inspectionRequestId ?? null);
   const summary = useMeasurementSummary(inspectionResultId);
+  /* 그 회차 검사기준의 샘플링 방식(omf-all-around#85) — 기준이 없는 의뢰는 「기준 없음」이다. */
+  const planVersionId = request.data?.inspectionPlanVersionId ?? null;
+  const plan = useInspectionPlanVersion(planVersionId);
+  const samplingMethods = useSamplingMethodLookup();
+  const samplingMethod =
+    request.data === undefined
+      ? EMPTY
+      : planVersionId === null
+        ? NO_PLAN_VERSION
+        : plan.data === undefined
+          ? EMPTY
+          : lookupDisplayLabelWithInactive(samplingMethods, plan.data.samplingMethodCode);
+  const lotId = detail.data?.lotId ?? null;
   const planVersion =
     request.data === undefined
       ? EMPTY
@@ -105,6 +125,7 @@ export const ResultDetailDialog = ({
       : [
           [t.fields.inspectionRequestNo, detail.data.inspectionRequestNo ?? EMPTY],
           [t.fields.planVersion, planVersion],
+          [t.fields.samplingMethod, samplingMethod],
           [t.fields.item, lookupDisplayLabelWithInactive(labels.item, detail.data.itemId)],
           [t.fields.lotNo, detail.data.lotNo ?? EMPTY],
           [t.fields.process, detail.data.processName ?? EMPTY],
@@ -120,6 +141,7 @@ export const ResultDetailDialog = ({
             t.fields.inspectedAt,
             t.inspectedAtWithRound(dateTime(detail.data.inspectedAt), detail.data.inspectionRound),
           ],
+          [t.fields.inspector, detail.data.inspectorName ?? EMPTY],
         ];
 
   return (
@@ -157,6 +179,7 @@ export const ResultDetailDialog = ({
           ))}
         </dl>
       )}
+      <DefectReasonSection inspectionResultId={inspectionResultId} />
       <h3>{t.summaryTitle}</h3>
       {summary.isPending && <SkeletonText lines={3} />}
       {summary.isError && (
@@ -179,6 +202,12 @@ export const ResultDetailDialog = ({
         ))}
       {!summary.isError && summary.data !== undefined && (
         <p className="field-note">{t.asOf(dateTime(summary.data.asOf))}</p>
+      )}
+      {detail.data !== undefined && (
+        <>
+          <RejectionSection lotId={lotId} />
+          <LotHistorySection lotId={lotId} />
+        </>
       )}
     </Dialog>
   );

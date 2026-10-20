@@ -8,6 +8,7 @@ import type { SelectedLotSnapshot } from './candidate-model';
 import { SuspiciousMaterialCandidatePane } from './candidate-pane';
 import { SuspiciousMaterialHoldExecution } from './hold-execution';
 import { type HoldInputLot, SuspiciousMaterialHoldInputPane } from './hold-input-pane';
+import { MaterialDefectPane } from './material-defect-pane';
 
 type Body = components['schemas']['LotHoldCreate'];
 const t = messages.suspiciousMaterialHold;
@@ -67,6 +68,8 @@ export const SuspiciousMaterialHoldFlow = ({
         onApplied={clear}
         onReload={clear}
       />
+      {/* omf-all-around#108 — 고른 LOT 하나의 자재 불량 기록과 영향 생산 LOT(작업지시 기준 추정). */}
+      <MaterialDefectPane selection={candidateReady ? selection : []} isLocked={pinned} />
     </div>
   );
 };

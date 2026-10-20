@@ -7,7 +7,7 @@ import type { Translated } from './translated';
  */
 export const toolPmResult: Translated<typeof ko.toolPmResult> = {
   title: 'Đăng ký kết quả PM công cụ',
-  breadcrumbRoot: 'Thiết bị / Công cụ',
+  breadcrumbRoot: 'Quản lý bảo trì thiết bị',
 
   panes: {
     tool: 'Công cụ đối tượng',

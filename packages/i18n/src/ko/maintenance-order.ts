@@ -7,7 +7,7 @@
  */
 export const maintenanceOrder = {
   title: '보전지시 발행',
-  breadcrumbRoot: '설비/툴',
+  breadcrumbRoot: '설비 보전 관리',
 
   panes: {
     triggers: '발행 대상',

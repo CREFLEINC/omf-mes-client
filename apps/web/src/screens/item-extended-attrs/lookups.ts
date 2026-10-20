@@ -38,6 +38,7 @@ const lookupKeys = {
   businessUnits: ['item-extended-attrs-lookups', 'business-units'] as const,
   partners: ['item-extended-attrs-lookups', 'partners'] as const,
   processes: ['item-extended-attrs-lookups', 'processes'] as const,
+  plants: ['item-extended-attrs-lookups', 'plants'] as const,
   routings: (itemId: number) => ['item-extended-attrs-lookups', 'routings', itemId] as const,
   routingOperations: (routingId: number) =>
     ['item-extended-attrs-lookups', 'routing-operations', routingId] as const,
@@ -172,6 +173,32 @@ export const useProcessOptions = (enabled: boolean): LookupResult => {
       data?.items.map((item) => ({
         value: String(item.processId),
         label: `${item.processCode} · ${item.processName}`,
+        isActive: item.isActive,
+      })) ?? EMPTY_ENTRIES,
+    truncated: data !== undefined && isTruncated(data.page, data.items.length),
+    isError: query.isError,
+    isLoading: query.isPending,
+  };
+};
+
+/** 공장 — 설비·금형 매핑의 공장. 품목은 공장에 매이지 않아 화면이 따로 고른다. */
+export const usePlantOptions = (enabled: boolean): LookupResult => {
+  const { client } = useApiClient();
+
+  const query = useQuery({
+    queryKey: lookupKeys.plants,
+    enabled,
+    queryFn: () =>
+      runRequest(() => client.GET('/mdm/plants', { params: { query: { includeInactive: true } } })),
+  });
+
+  const data = query.data;
+
+  return {
+    entries:
+      data?.items.map((item) => ({
+        value: String(item.plantId),
+        label: `${item.plantCode} · ${item.plantName}`,
         isActive: item.isActive,
       })) ?? EMPTY_ENTRIES,
     truncated: data !== undefined && isTruncated(data.page, data.items.length),

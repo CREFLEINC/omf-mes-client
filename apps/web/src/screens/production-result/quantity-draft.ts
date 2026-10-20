@@ -61,8 +61,7 @@ export const remainingQty = (workOrder: WorkOrder | undefined): number | null =>
  *
  * ⛔ 잔여 초과는 여기 넣지 않는다 — 초과 생산은 허용이라 저장을 막는 사유가 아니다.
  */
-export type BlockReason =
-  'gate' | 'noWorkOrder' | 'noWorker' | 'noLot' | 'pendingPqc' | 'emptyQty' | 'zeroQty';
+export type BlockReason = 'gate' | 'noWorkOrder' | 'noWorker' | 'noLot' | 'emptyQty' | 'zeroQty';
 
 export interface SaveGuard {
   /** 게이팅이 열려 있는가 — `canInputResult === true` 일 때만 참이다. */
@@ -70,8 +69,6 @@ export interface SaveGuard {
   hasWorkOrder: boolean;
   hasWorker: boolean;
   hasLot: boolean;
-  /** 아직 끝나지 않은 PQC 의뢰가 있는가(R54). 있으면 실적을 먼저 넣을 수 없다. */
-  hasPendingPqc: boolean;
   draft: ResultDraft;
 }
 
@@ -85,7 +82,6 @@ export const saveBlockReason = (guard: SaveGuard): BlockReason | null => {
   if (!guard.isGateAllowed) return 'gate';
   if (!guard.hasWorkOrder) return 'noWorkOrder';
   if (!guard.hasWorker) return 'noWorker';
-  if (guard.hasPendingPqc) return 'pendingPqc';
   if (!guard.hasLot) return 'noLot';
 
   const qty = parseGoodQty(guard.draft.goodQty);

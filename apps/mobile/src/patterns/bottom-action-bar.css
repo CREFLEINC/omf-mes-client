@@ -1,0 +1,52 @@
+/*
+ * 본문 칸(main) 바닥에 붙는다. 셸이 이미 시스템 바 여백을 두므로 여기서 다시 두지 않는다.
+ *
+ * 화면 뿌리는 좌우 16px 을 둔다. 바를 그만큼 밖으로 늘려야 그 틈으로 뒤에 흐르는 내용이
+ * 비치지 않는다.
+ */
+.bottom-action-bar {
+  position: sticky;
+  bottom: 0;
+  z-index: 5;
+  margin-top: auto;
+  margin-inline: calc(-1 * var(--space-4, 16px));
+  padding: var(--space-3, 12px) var(--space-4, 16px);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2, 8px);
+  background: var(--surface, #fff);
+  border-top: 1px solid var(--outline-variant, #d7d7dd);
+}
+
+.bottom-action-bar__button {
+  width: 100%;
+}
+
+/* 잠긴 이유. 단추 바로 위에 두어 단추를 보는 눈에 함께 걸린다. */
+.bottom-action-bar__reason {
+  margin: 0;
+  font: var(--type-body-sm);
+  letter-spacing: var(--type-body-sm-tracking);
+  color: var(--on-surface-variant);
+  text-align: center;
+}
+
+/*
+ * 숫자판이 열린 동안은 판이 화면 아래를 쓴다. 바가 남아 있으면 판의 아랫줄과 겹쳐, 판을
+ * 누른 손이 바를 누른다.
+ */
+:root[data-docked-pad] .bottom-action-bar {
+  display: none;
+}
+
+/*
+ * 바가 바닥에 붙으려면 화면 뿌리가 본문 칸 높이만큼 서 있어야 한다. 화면 뿌리에 이 클래스를
+ * 더한다.
+ */
+.with-bottom-action-bar {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+  box-sizing: border-box;
+  padding-bottom: 0;
+}

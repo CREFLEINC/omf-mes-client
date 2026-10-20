@@ -7,7 +7,7 @@
  */
 export const inspectionStandard = {
   title: '검사기준 등록',
-  breadcrumbRoot: '기준정보',
+  breadcrumbRoot: '품질 관리',
   panes: {
     plan: '검사기준',
     version: '버전 목록',
@@ -171,6 +171,8 @@ export const inspectionStandard = {
     item: '품목',
     process: '공정',
     routing: '라우팅',
+    /** omf-all-around#119 — PQC 기준에만 선다. */
+    pqcSkipAllowed: 'PQC 생략 허용',
     approval: '승인',
     active: '사용',
     planVersion: '버전',
@@ -210,6 +212,8 @@ export const inspectionStandard = {
     automaticJudgment: '자동판정',
   },
   values: {
+    pqcSkipAllowedNote:
+      '켜면 이 기준으로 배포한 작업지시의 PQC 를 생략합니다. 실적을 등록하면 LOT 이 바로 정상이 됩니다.',
     /** 값이 없는 칸. 빈 칸으로 두면 자료가 없는 것인지 화면이 빠뜨린 것인지 구분되지 않는다. */
     empty: '—',
     inactiveSuffix: ' (미사용)',

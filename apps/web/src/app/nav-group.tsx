@@ -6,7 +6,13 @@ const t = messages.shellNav;
 
 export interface NavGroupProps {
   label: string;
-  /** 이 묶음이 가진 화면 수. 접혀 있을 때 **안에 무엇이 얼마나 있는지** 알리는 유일한 값이다. */
+  /** 묶음 아이콘. 항목은 아이콘 없이 서므로 **묶음을 눈으로 가르는 단서**가 이것이다. */
+  icon: string;
+  /**
+   * 이 묶음이 가진 화면 수. 접혀 있을 때 **안에 무엇이 얼마나 있는지** 알리는 값이다 —
+   * 접근명에만 싣는다(아래 `aria-label`). 눈으로는 그리지 않는다: 숫자 아홉 줄이 이름 옆에 서면
+   * 묶음 이름보다 먼저 읽힌다.
+   */
   count: number;
   isOpen: boolean;
   /**
@@ -39,6 +45,7 @@ export interface NavGroupProps {
  */
 export const NavGroup = ({
   label,
+  icon,
   count,
   isOpen,
   isLocked = false,
@@ -69,17 +76,18 @@ export const NavGroup = ({
         disabled={isLocked}
         onClick={onToggle}
       >
+        {/* 장식이다 — 이름이 접근명을 진다. DS `Icon` 은 `label` 이 없으면 스스로 `aria-hidden` 이 된다. */}
+        <Icon name={icon} size={24} className="nav-group-icon" />
+        <span className="nav-group-label">{label}</span>
         {/*
-         * 장식이다 — 펼침 여부는 `aria-expanded` 가 말하므로 읽어 주면 같은 말을 두 번 한다.
-         * DS `Icon` 은 `label` 이 없으면 스스로 `aria-hidden` 이 되므로 따로 적지 않는다.
+         * 펼침 화살표는 **오른쪽 끝**이다 — 왼쪽은 묶음 아이콘이 서서 이름의 시작을 항목들과 맞춘다.
+         * 펼침 여부는 `aria-expanded` 가 말하므로 이것도 장식이다.
          */}
         <Icon
-          name={isOpen ? 'expand_more' : 'chevron_right'}
+          name={isOpen ? 'expand_less' : 'expand_more'}
           size={20}
           className="nav-group-chevron"
         />
-        <span className="nav-group-label">{label}</span>
-        <span className="nav-group-count">{count}</span>
       </button>
       {/*
        * ⚠ **닫혀 있어도 이 그릇은 남긴다.** `aria-controls` 가 가리키는 요소가 사라지면 끊긴

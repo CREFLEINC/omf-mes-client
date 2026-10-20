@@ -16,7 +16,7 @@ import type { Translated } from './translated';
  */
 export const notice: Translated<typeof ko.notice> = {
   title: 'Thông cáo · truyền đạt',
-  breadcrumbRoot: 'Thông báo',
+  breadcrumbRoot: 'Hộp công việc',
 
   panes: {
     list: 'Danh sách thông cáo',

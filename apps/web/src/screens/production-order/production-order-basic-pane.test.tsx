@@ -1,5 +1,5 @@
 import { messages } from '@omf-mes/i18n';
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 
@@ -28,6 +28,7 @@ const detail = (overrides: Partial<ProductionOrderFact> = {}): ProductionOrderFa
   expandedWorkOrderCount: 3,
   plannedWorkOrderCount: 5,
   remarks: 'Synthetic note',
+  autoPlan: null,
   ...overrides,
 });
 const reference = (value: string, label: string, overrides: Partial<ReferenceSource> = {}) => ({
@@ -97,7 +98,7 @@ describe('ProductionOrderBasicPane', () => {
       [t.fields.remarks, 'Synthetic note'],
     ] as const;
     for (const [label, value] of expected) expect(valueFor(label)).toHaveTextContent(value);
-    /* 선택 직후 읽는 값·참조·비고를 글자 무게로만 가른다 — 5열 × 2행, 읽는 순서는 1행이 먼저다. */
+    /* 선택 직후 읽는 값·참조·비고를 글자 무게로만 가른다 — 5열 격자, 읽는 순서는 1행이 먼저다. */
     expect(
       [...pane.querySelectorAll('.production-order-detail-field dt')].map(
         (node) => node.textContent,
@@ -125,6 +126,44 @@ describe('ProductionOrderBasicPane', () => {
     for (const rawId of ['701', '2101', '3101', '7101', '8101']) {
       expect(screen.queryByText(rawId)).not.toBeInTheDocument();
     }
+  });
+
+  it('자동 계획 결과를 모르면 그 칸을 내지 않는다', () => {
+    render(<ProductionOrderBasicPane {...baseProps()} />);
+
+    expect(screen.queryByText(t.fields.autoPlan, { selector: 'dt' })).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(t.fields.autoPlanReasons, { selector: 'dt' }),
+    ).not.toBeInTheDocument();
+  });
+
+  it('확인 필요인데 사유가 없으면 상태만, 사유가 있으면 한 줄씩 보인다', () => {
+    const props = baseProps();
+    const withAutoPlan = (autoPlan: ProductionOrderFact['autoPlan']) => (
+      <ProductionOrderBasicPane
+        {...props}
+        detailState={{ kind: 'DATA', data: detail({ autoPlan }) }}
+      />
+    );
+    const { rerender } = render(withAutoPlan({ status: 'NEEDS_REVIEW', reasons: [] }));
+
+    expect(valueFor(t.fields.autoPlan)).toHaveTextContent(t.values.autoPlanStatus.NEEDS_REVIEW);
+    expect(
+      screen.queryByText(t.fields.autoPlanReasons, { selector: 'dt' }),
+    ).not.toBeInTheDocument();
+
+    rerender(
+      withAutoPlan({ status: 'NEEDS_REVIEW', reasons: ['LINE_UNKNOWN', 'PLAN_NOT_CONFIRMED'] }),
+    );
+    expect(
+      within(valueFor(t.fields.autoPlanReasons))
+        .getAllByRole('listitem')
+        .map((node) => node.textContent),
+    ).toEqual([t.values.autoPlanReasons.LINE_UNKNOWN, t.values.autoPlanReasons.PLAN_NOT_CONFIRMED]);
+    /* 사유를 따로 보이는 자리라 상태 표식은 사유를 다시 읽어 주지 않는다. */
+    expect(valueFor(t.fields.autoPlan)).toHaveTextContent(
+      new RegExp(`^${t.values.autoPlanStatus.NEEDS_REVIEW}$`),
+    );
   });
 
   it('참조 loading/failed/truncated와 품목 상태를 내부 ID 없이 구분한다', () => {

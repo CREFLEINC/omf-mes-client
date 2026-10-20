@@ -30,14 +30,15 @@ const entries = [
 ];
 
 describe('처분 유형 — 계약이 닫은 셋이라 표시명은 화면이 갖는다(G-33)', () => {
-  it('고정 OpenAPI의 처분 유형 3종을 담는다', () => {
-    expect(DISPOSITION_TYPE_CODES).toEqual(['REWORK', 'SCRAP', 'NORMAL']);
+  it('고정 OpenAPI의 처분 유형 3종에 서버 선행 선별(SORT · P-53)을 더한다', () => {
+    expect(DISPOSITION_TYPE_CODES).toEqual(['REWORK', 'SCRAP', 'NORMAL', 'SORT']);
   });
 
   it.each([
     ['REWORK', '재작업'],
     ['SCRAP', '폐기'],
     ['NORMAL', '정상'],
+    ['SORT', '선별'],
   ])('%s → %s', (code, label) => {
     expect(dispositionTypeLabel(code)).toBe(label);
   });

@@ -79,6 +79,8 @@ export const workOrderResourceKeys = {
     ['work-order-resources', 'production-lines', plantId, page] as const,
   equipments: (plantId: number | null, productionLineId: number | null, page: number) =>
     ['work-order-resources', 'equipments', plantId, productionLineId, page] as const,
+  equipment: (equipmentId: number | null) =>
+    ['work-order-resources', 'equipment', equipmentId] as const,
   shifts: (plantId: number | null, page: number) =>
     ['work-order-resources', 'shifts', plantId, page] as const,
   warehouses: ['work-order-resources', 'warehouses'] as const,
@@ -188,6 +190,32 @@ export const useWorkOrderProductionLines = (
         ),
         toWorkOrderProductionLineFact,
       );
+    },
+  });
+};
+
+/**
+ * 설비 한 대. 고른 설비가 받은 쪽에 없을 때(다른 라인·다음 쪽) 이름을 풀려고 따로 묻는다 —
+ * 풀지 못하면 배정된 값이 「알 수 없음」으로 보여 잘못 담긴 자료로 읽힌다.
+ */
+export const useWorkOrderEquipment = (
+  equipmentId: number | null,
+): UseQueryResult<WorkOrderEquipmentFact> => {
+  const { client } = useApiClient();
+
+  return useQuery({
+    queryKey: workOrderResourceKeys.equipment(equipmentId),
+    enabled: equipmentId !== null,
+    queryFn: async () => {
+      if (equipmentId === null) {
+        throw new Error('An equipment id is required to load the equipment.');
+      }
+
+      const detail = await runRequest(() =>
+        client.GET('/mdm/equipments/{equipmentId}', { params: { path: { equipmentId } } }),
+      );
+
+      return toWorkOrderEquipmentFact(detail.equipment);
     },
   });
 };

@@ -51,11 +51,16 @@ import { inboundVariance } from './inbound-variance';
 import { inspectionResultInsights } from './inspection-result-insights';
 import { inspectionStandard } from './inspection-standard';
 import { integrationSync } from './integration-sync';
+import { erpBom } from './erp-bom';
+import { erpEmployee } from './erp-employee';
+import { erpItem } from './erp-item';
+import { erpProductionOrder } from './erp-production-order';
 import { iqcInspection } from './iqc-inspection';
 import { iqcSkipApproval } from './iqc-skip-approval';
 import { iqcSkipRequest } from './iqc-skip-request';
 import { itemExtendedAttrs } from './item-extended-attrs';
 import { itemPicker } from './item-picker';
+import { resourcePicker } from './resource-picker';
 import { judgmentCode } from './judgment-code';
 import { login } from './login';
 import { lotStatusHistory } from './lot-status-history';
@@ -71,6 +76,7 @@ import { materialPicking } from './material-picking';
 import { notice } from './notice';
 import { notificationCenter } from './notification-center';
 import { oqcInspection } from './oqc-inspection';
+import { outboxPending } from './outbox-pending';
 import { outboxRejections } from './outbox-rejections';
 import { overReceiptSplit } from './over-receipt-split';
 import { packingLabelReprint } from './packing-label-reprint';
@@ -85,6 +91,9 @@ import { poRegister } from './po-register';
 import { popLocationLabel } from './pop-location-label';
 import { inspectionDocuments } from './inspection-documents';
 import { inspectionHistory } from './inspection-history';
+import { pqcInspectionRegister } from './pqc-inspection-register';
+import { materialDefect } from './material-defect';
+import { popOqcInspection } from './pop-oqc-inspection';
 import { popMaterialLotLabel } from './pop-material-lot-label';
 import { popChrome } from './pop-chrome';
 import { popPageNav } from './pop-page-nav';
@@ -94,6 +103,10 @@ import { productPicking } from './product-picking';
 import { productReceipt } from './product-receipt';
 import { productStockStatus } from './product-stock-status';
 import { productionOrder } from './production-order';
+import { erpPurchaseOrder } from './erp-purchase-order';
+import { erpSalesOrder } from './erp-sales-order';
+import { erpPartner } from './erp-partner';
+import { erpCommonCode } from './erp-common-code';
 import { productionPlan } from './production-plan';
 import { productionResult } from './production-result';
 import { putaway } from './putaway';
@@ -183,11 +196,16 @@ export const vi: Translated<Messages> = {
   inspectionResultInsights,
   inspectionStandard,
   integrationSync,
+  erpBom,
+  erpEmployee,
+  erpItem,
+  erpProductionOrder,
   iqcInspection,
   iqcSkipApproval,
   iqcSkipRequest,
   itemExtendedAttrs,
   itemPicker,
+  resourcePicker,
   judgmentCode,
   login,
   lotStatusHistory,
@@ -203,6 +221,7 @@ export const vi: Translated<Messages> = {
   notice,
   notificationCenter,
   oqcInspection,
+  outboxPending,
   outboxRejections,
   overReceiptSplit,
   packingLabelReprint,
@@ -216,6 +235,9 @@ export const vi: Translated<Messages> = {
   popLocationLabel,
   inspectionDocuments,
   inspectionHistory,
+  pqcInspectionRegister,
+  materialDefect,
+  popOqcInspection,
   popMaterialLotLabel,
   popChrome,
   popPageNav,
@@ -223,6 +245,10 @@ export const vi: Translated<Messages> = {
   pqcInspection,
   productDisposalRequest,
   productionOrder,
+  erpPurchaseOrder,
+  erpSalesOrder,
+  erpPartner,
+  erpCommonCode,
   productionPlan,
   productionResult,
   productPicking,

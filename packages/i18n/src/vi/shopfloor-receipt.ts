@@ -66,7 +66,7 @@ export const shopfloorReceipt: Translated<typeof ko.shopfloorReceipt> = {
     reasonRequired: 'Mặt hàng bị thiếu thì phải chọn lý do',
     overIssuedTitle: 'Không nhận được nhiều hơn số lượng xuất kho',
     overIssuedGuide:
-      'Nếu hàng thực tế đến nhiều hơn số lượng xuất kho thì phải đính chính phiếu xuất kho trước. Hãy yêu cầu hủy phiếu xuất kho đó tại màn hình Tiến độ và hủy chứng từ logistics trên web quản trị, hoặc nếu chỉ xử lý riêng phần vượt thì phát hành thêm phiếu xuất bằng Yêu cầu xuất kho vật tư bổ sung.',
+      'Nếu hàng thực tế đến nhiều hơn số lượng xuất kho thì phải đính chính phiếu xuất kho trước. Hãy yêu cầu hủy phiếu xuất kho đó tại màn hình Tra cứu · hủy chứng từ logistics trên web quản trị, hoặc nếu chỉ xử lý riêng phần vượt thì phát hành thêm phiếu xuất bằng Yêu cầu cấp phát vật tư.',
   },
   hopper: {
     legend: 'Lượng còn lại trong phễu',

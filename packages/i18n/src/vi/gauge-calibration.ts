@@ -7,7 +7,7 @@ import type { Translated } from './translated';
  */
 export const gaugeCalibration: Translated<typeof ko.gaugeCalibration> = {
   title: 'Lịch sử hiệu chuẩn thiết bị đo',
-  breadcrumbRoot: 'Thiết bị / Công cụ',
+  breadcrumbRoot: 'Quản lý dữ liệu gốc',
 
   panes: {
     filters: 'Điều kiện tra cứu',

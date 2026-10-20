@@ -1,7 +1,7 @@
 /** 검사실적·검사결과 조회 화면. 검사 결과 목록·요약·불량률 추이·불량 분포와 측정치 전체 보기를 담는다. */
 export const inspectionResultInsights = {
   title: '검사실적·검사결과 조회',
-  breadcrumbRoot: '품질관리',
+  breadcrumbRoot: '품질 관리',
   /* 검사유형은 모집단을 가르는 축이다 — 목록의 유형 열과 요약·추이의 모집단 이름이 같은 말을 쓴다. */
   inspectionTypes: {
     IQC: '수입검사',
@@ -26,6 +26,8 @@ export const inspectionResultInsights = {
     item: '품목',
     process: '공정',
     judgment: '종합판정',
+    lotNo: 'LOT 번호',
+    lotNoPlaceholder: 'MES LOT 번호 전체',
     calibration: '교정 상태',
     all: '전체',
     select: '선택',
@@ -34,6 +36,10 @@ export const inspectionResultInsights = {
     finalRoundOnly: '최종 회차만',
     periodRequired: '기간을 선택하세요.',
     periodReversed: '종료일은 시작일보다 빠를 수 없습니다.',
+    periodPair: '기간은 시작일과 종료일을 함께 선택하세요.',
+    /* omf-all-around#85 — LOT 하나의 이력은 기간 없이 본다. 집계는 LOT 조건을 받지 않는다. */
+    lotNote:
+      'LOT 번호가 있으면 기간 없이 그 LOT 의 전 이력을 조회합니다. LOT 조건은 검사 결과 목록에만 적용됩니다.',
     allTypesNote: '전체 선택 시 요약·추이는 검사유형별로 분리합니다.',
     finalRoundNote: '최종 검사 회차만 조회합니다.',
     allRoundsNote: '재검 사슬 전체를 회차 순서로 조회합니다.',
@@ -44,7 +50,7 @@ export const inspectionResultInsights = {
   overview: {
     pane: '검사실적 요약',
     blockedPeriod: '기간을 선택하세요',
-    blockedPeriodDescription: '조회 기간은 필수입니다.',
+    blockedPeriodDescription: '조회 기간은 필수입니다. LOT 번호를 넣으면 기간 없이 조회합니다.',
     blockedPending: '조회 조건 이름을 확인하는 중입니다',
     blockedPendingDescription: '준비가 끝날 때까지 조회 요청을 보내지 않습니다.',
     blockedInvalid: '주소의 날짜 또는 코드 조건이 유효하지 않습니다',
@@ -59,9 +65,17 @@ export const inspectionResultInsights = {
       lotNo: 'LOT',
       quantities: '검사/합격/불합격',
       judgment: '종합판정',
+      inspector: '검사자',
       inspectedAt: '검사시각/회차',
     },
     unknown: '미확인',
+    lotOnlyListNote:
+      'LOT 조건은 아래 검사 결과 목록에만 적용됩니다. 요약은 기간과 다른 조건으로 집계합니다.',
+    summaryNeedsPeriod: '기간을 정하면 검사실적 요약이 보입니다.',
+    lotChecking: 'LOT 번호를 확인하는 중',
+    lotNotFound: (lotNo: string): string => `LOT ${lotNo} 을(를) 찾을 수 없습니다`,
+    lotNotFoundDescription: 'MES LOT 번호 전체를 정확히 입력하세요.',
+    lotFailed: 'LOT 번호를 확인하지 못했습니다.',
     detailOf: (inspectionRequestNo: string): string => `${inspectionRequestNo} 상세 보기`,
     inspectedAtWithRound: (inspectedAt: string, round: number): string =>
       `${inspectedAt} / ${String(round)}회`,
@@ -124,7 +138,7 @@ export const inspectionResultInsights = {
   tabs: {
     pane: '검사 결과 분석',
     paneTitle: '결과 분석',
-    notReady: '조회 조건을 적용하면 불량률 추이와 분포를 확인할 수 있습니다.',
+    notReady: '기간을 정해 조회하면 불량률 추이와 분포를 확인할 수 있습니다.',
     label: '검사 결과 인사이트',
     trend: '불량률 추이',
     distribution: '불량 분포',
@@ -167,9 +181,46 @@ export const inspectionResultInsights = {
       quantities: '검사/합격/불합격/보류',
       judgment: '종합판정',
       inspectedAt: '검사시각/회차',
+      inspector: '검사자',
+      samplingMethod: '샘플링 방식',
     },
     inspectedAtWithRound: (inspectedAt: string, round: number): string =>
       `${inspectedAt} / ${String(round)}회`,
+    /* omf-all-around#85 — 그 회차의 불량 기록. */
+    defects: {
+      title: '불량 사유',
+      loading: '불량 사유를 불러오는 중',
+      failed: '불량 사유를 불러오지 못했습니다.',
+      retryTarget: '불량 사유',
+      empty: '이 회차의 불량 기록이 없습니다',
+      caption: '이 회차의 불량 사유',
+      columns: {
+        defectCode: '불량 코드',
+        qty: '수량',
+        cause: '추정 원인',
+        description: '설명',
+      },
+    },
+    /* omf-all-around#85 — 그 LOT 의 부적합과 처분 판정 이력. */
+    rejections: {
+      title: '불합격 처리',
+      loading: '불합격 처리 이력을 불러오는 중',
+      failed: '불합격 처리 이력을 불러오지 못했습니다.',
+      retryTarget: '불합격 처리',
+      empty: '이 LOT 의 부적합이 없습니다',
+      noLot: 'LOT 이 없는 검사라 표시할 이력이 없습니다.',
+      nonconformance: (no: string, status: string, openedAt: string): string =>
+        `${no} · ${status} · 발생 ${openedAt}`,
+      decisionsEmpty: '아직 처분 판정이 없습니다',
+      caption: (no: string): string => `${no} 처분 판정 이력`,
+      columns: {
+        dispositionType: '처분',
+        qty: '수량',
+        decidedAt: '판정 시각',
+        reason: '사유',
+      },
+    },
+    lotHistoryNoLot: 'LOT 이 없는 검사라 LOT 상태 이력이 없습니다.',
     failed: '검사 상세를 불러오지 못했습니다.',
     failedRetryTarget: '검사 상세',
     retry: '다시 시도',

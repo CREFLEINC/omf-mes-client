@@ -4,7 +4,7 @@ import type { Translated } from './translated';
 /** W-01-03 초과 입하 분리. 「정량분」과 「초과분」 두 낱말로 말하고, 그것이 화면이 만든 값임을 밝힌다. */
 export const overReceiptSplit: Translated<typeof ko.overReceiptSplit> = {
   title: 'Tách phần nhập vượt',
-  breadcrumbRoot: 'Kho vật tư',
+  breadcrumbRoot: 'Quản lý mua hàng / vật tư',
   panes: {
     list: 'Danh sách đơn đặt hàng',
     lines: 'Các dòng của đơn đã chọn',

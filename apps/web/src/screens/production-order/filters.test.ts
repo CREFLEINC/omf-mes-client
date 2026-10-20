@@ -30,6 +30,7 @@ describe('production-order URL filter codec', () => {
       status: 'RAW',
       dueFrom: '2028-02-29',
       dueTo: '',
+      autoPlan: '',
     });
     expect(readPage(params)).toBe(3);
     expect(readSelectedProductionOrderId(params)).toBe(7);
@@ -72,6 +73,19 @@ describe('production-order URL filter codec', () => {
     );
     expect(toSearchParams(filters(), 1).toString()).toBe('');
     expect(toFilterQuery(filters(), 1)).toEqual({ includeChildren: true });
+  });
+
+  it('자동 계획 상태는 두 값만 URL 과 질의로 옮긴다', () => {
+    expect(readFilters(new URLSearchParams('autoPlan=NEEDS_REVIEW')).autoPlan).toBe('NEEDS_REVIEW');
+    expect(readFilters(new URLSearchParams('autoPlan=needs_review')).autoPlan).toBe('');
+    expect(toSearchParams(filters({ autoPlan: 'DONE' }), 1).toString()).toBe('autoPlan=DONE');
+    expect(toFilterQuery(filters({ autoPlan: 'NEEDS_REVIEW' }), 1)).toEqual({
+      autoPlanStatus: 'NEEDS_REVIEW',
+      includeChildren: true,
+    });
+    expect(toSelectionSearchParams(new URLSearchParams('autoPlan=DONE&page=2'), 7).toString()).toBe(
+      'autoPlan=DONE&page=2&sel=7',
+    );
   });
 
   it('clears selection for filters and preserves canonical filters and page for selection only', () => {

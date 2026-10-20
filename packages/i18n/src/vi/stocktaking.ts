@@ -7,7 +7,7 @@ import type { Translated } from './translated';
  */
 export const stocktaking: Translated<typeof ko.stocktaking> = {
   title: 'Kiểm kê tồn kho',
-  breadcrumbRoot: 'Kho vật tư',
+  breadcrumbRoot: 'Quản lý mua hàng / vật tư',
   panes: {
     list: 'Danh sách kiểm kê',
     open: 'Mở kiểm kê',

@@ -19,15 +19,15 @@ export const workerAssignment = {
    */
   registration: {
     title: '단말 등록',
-    guide: '관리웹에서 복사한 단말 토큰을 붙여넣으세요.',
+    guide: '관리웹에서 발급한 단말 토큰을 붙여넣고 [등록 확인]을 누르세요.',
     tokenLabel: '단말 토큰',
-    tokenPlaceholder: '관리웹 발급 창에서 복사한 값',
+    tokenPlaceholder: '여기에 단말 토큰 붙여넣기',
     paste: '붙여넣기',
-    clear: '지움',
+    clear: '입력 지우기',
     verify: '등록 확인',
     verifying: '확인하는 중…',
     /** 검증 200 뒤 — 설치 담당자가 **단말 코드를 눈으로 확인**하고 누른다. */
-    confirmTitle: '이 단말이 맞습니까?',
+    confirmTitle: '등록할 단말이 맞는지 확인하세요.',
     apply: '등록 적용',
     restart: '다시 입력',
     /**
@@ -128,8 +128,8 @@ export const workerAssignment = {
     workerNo: '사번',
     keypad: '사번 숫자 키패드',
     backspace: '한 자 지움',
-    clear: '지움',
-    submit: '확인',
+    clear: '전체 지움',
+    submit: '사번 확인',
     checking: '확인 중',
     /**
      * ⚠ **경고일 뿐 막지 않는다**(§5-2). 확인된 표본이 매우 적어 자릿수를 강제하면 다른
@@ -146,14 +146,14 @@ export const workerAssignment = {
   current: {
     heading: '현재 작업자',
     /** 아직 아무도 지정되지 않았다. 무엇을 해야 하는지 말한다. */
-    none: '사번을 입력해 작업자를 지정하세요.',
-    assignedAt: '지정',
+    none: '지정된 작업자가 없습니다. 왼쪽에서 사번을 입력하세요.',
+    assignedAt: '지정 시각',
     /**
      * ⭐ **도용 위험을 수용한 설계에서 화면이 할 수 있는 유일한 방어**다(§5-4) — 지금 누구로
      * 기록되는지가 늘 보여야 한다.
      */
-    note: '이 단말에서 하는 기록은 이 사번으로 남습니다',
-    shift: '교대 (사번 바꾸기)',
+    note: '이 단말에서 하는 기록은 현재 작업자의 사번으로 남습니다.',
+    shift: '작업자 교대',
     /**
      * ⚠ **큐의 사번을 바꾸지 않는다**(§6 · B-3 이력 불변). 이미 쌓인 기록은 그때 그 사람의
      * 것이므로 그대로 두고, 교대하는 사람에게 **사실만** 알린다.
