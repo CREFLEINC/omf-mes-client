@@ -59,7 +59,9 @@ describe('POP 진입점 배선', () => {
    */
   it('배포 셸에 업무용 화면 이동을 싣는다', () => {
     expect(source).toContain('PopConsoleShell');
-    expect(source).toMatch(/if \(layout === 'none'\) return <Outlet \/>;/u);
+    /* ⭐ 사번 입력은 페이지가 아니라 상태바의 창이다 — 셸이 그 창을 골격에 넘긴다(#147). */
+    expect(source).toContain('renderWorkerSignIn');
+    expect(entryPath).toBe('/pop/home');
   });
 
   it('진입 문서가 이 파일을 가리킨다', () => {

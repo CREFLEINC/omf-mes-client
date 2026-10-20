@@ -11367,23 +11367,6 @@ button.app-button-neutral {
   min-width: 0;
 }
 
-/* 단말 이름과 연결 상태 — 도면의 머리줄이다. */
-.pop-terminal-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-3);
-  min-height: 64px;
-  padding: 0 var(--space-4);
-}
-
-/*
- * 제품 이름 — 헤더 왼쪽 끝. 관리웹 상단 바의 상표 자리와 같은 무게로 세운다.
- */
-.pop-terminal-header__brand {
-  font-size: var(--font-size-lg, 1.125rem);
-}
-
 /*
  * 사번 표시 — **글자를 크게 한다.** 「큰 글자」는 글자 크기 요구이지 높이 요구가 아니라
  * (§7) 칸 높이는 그대로 두고 글자만 키운다.

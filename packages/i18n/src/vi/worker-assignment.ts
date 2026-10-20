@@ -52,6 +52,9 @@ export const workerAssignment: Translated<typeof ko.workerAssignment> = {
         'Còn {count} bản ghi chưa gửi lên máy chủ nên không đổi sang máy trạm khác được. Hãy khôi phục kết nối, chờ gửi xong rồi thử lại.',
     },
   },
+  dialog: {
+    title: 'Xác nhận người làm việc',
+  },
   header: {
     brand: 'OMF-MES POP',
     label: 'Máy trạm',

@@ -3,7 +3,7 @@ import { screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
-import { createStubFetch, jsonResponse, renderWithProviders } from '../test/api-harness';
+import { renderWithProviders } from '../test/api-harness';
 
 /**
  * POP 공통 조작 문구가 **고른 언어를 따르는지**를 베트남어로 잰다.
@@ -18,15 +18,13 @@ const viMessages = LOCALES.vi;
 
 /* ⭐ 부품 모듈은 언어를 고른 «뒤에» 싣는다 — 모듈 최상위에서 문구를 붙잡는 자리가 있다. */
 let PopSelect: typeof import('../patterns/pop-select').PopSelect;
-let PopScreenNavButton: typeof import('../patterns/pop-screen-nav').PopScreenNavButton;
-let PopLogoutButton: typeof import('../patterns/pop-logout').PopLogoutButton;
+let PopConsoleStatusBar: typeof import('../patterns/pop-console/status-bar').PopConsoleStatusBar;
 let toDurationLabel: typeof import('../screens/downtime-register/formatting').toDurationLabel;
 
 beforeAll(async () => {
   setLocale('vi');
   ({ PopSelect } = await import('../patterns/pop-select'));
-  ({ PopScreenNavButton } = await import('../patterns/pop-screen-nav'));
-  ({ PopLogoutButton } = await import('../patterns/pop-logout'));
+  ({ PopConsoleStatusBar } = await import('../patterns/pop-console/status-bar'));
   ({ toDurationLabel } = await import('../screens/downtime-register/formatting'));
 });
 
@@ -41,31 +39,27 @@ const OPTIONS = Array.from({ length: 7 }, (_, index) => ({
 }));
 
 describe('POP 공통 조작 문구 — 베트남어', () => {
-  it('머리줄의 화면 이동·사용자 전환 단추가 베트남어로 선다', async () => {
+  it('상태바의 홈·이전·작업자·작업 메뉴와 위치가 베트남어로 선다', () => {
     renderWithProviders(
-      <>
-        <PopScreenNavButton />
-        <PopLogoutButton />
-      </>,
-      {
-        route: '/pop/work-start',
-        fetch: createStubFetch([
-          {
-            match: (request: Request) => request.url.endsWith('/app/sessions/current'),
-            respond: () => jsonResponse({ userId: 1, permissions: ['P-02-01', 'P-05-02'] }),
-          },
-        ]),
-      },
+      <PopConsoleStatusBar
+        pathname="/pop/downtime"
+        search=""
+        light={null}
+        workOrder={null}
+        onOpenMenu={() => undefined}
+        onOpenWorkerSignIn={() => undefined}
+      />,
+      { route: '/pop/downtime' },
     );
 
-    expect(
-      await screen.findByRole('combobox', { name: viMessages.popChrome.screenNav }),
-    ).toHaveTextContent(viMessages.popChrome.screenNav);
-    expect(
-      screen.getByRole('button', { name: viMessages.popChrome.userSwitch }),
-    ).toBeInTheDocument();
-    expect(screen.queryByText('화면 이동')).not.toBeInTheDocument();
-    expect(screen.queryByText('사용자 전환')).not.toBeInTheDocument();
+    const t = viMessages.popChrome.console;
+
+    expect(screen.getByRole('button', { name: t.nav.home })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: t.nav.back })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: t.statusBar.signIn })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: t.statusBar.menu })).toBeInTheDocument();
+    expect(screen.getByText(t.areas.equipment)).toBeInTheDocument();
+    expect(screen.queryByText(/^홈$|^이전$|작업 메뉴|작업자 확인/u)).not.toBeInTheDocument();
   });
 
   it('선택 단추와 선택 팝업의 문구가 베트남어로 선다', async () => {

@@ -21,7 +21,6 @@ import { RunningChangeScreen } from '../screens/running-change/screen';
 import { PackingResultScreen } from '../screens/packing-result/screen';
 import { ToolUsageScreen } from '../screens/tool-usage/screen';
 import { WorkHoldRegisterScreen } from '../screens/work-hold-register/screen';
-import { WorkerAssignmentScreen } from '../screens/worker-assignment/screen';
 import { WorkStartScreen } from '../screens/work-start/screen';
 
 /**
@@ -49,23 +48,13 @@ import { WorkStartScreen } from '../screens/work-start/screen';
  */
 export const popRoutes: RouteObject[] = [
   /*
-   * P-CO-01 — **POP 셸의 진입 화면이다.** 스펙 §1 이 IA 위치를 「POP > 진입(셸 공통)」으로
-   * 못박았다: 메뉴로 찾아 들어가는 화면이 아니라 **단말을 켰을 때 맨 처음 서는 화면**이다.
-   * 그래서 이 배열의 첫 자리에 둔다 — 아래 태스크 화면들은 이 화면이 사번을 정한 «뒤»에 선다.
+   * **홈** — **POP 셸의 진입 화면이다.** 단말을 켜면 맨 처음 서고, 어느 화면에서든 [홈]이 데려가는
+   * 자리다. 이 단말에 허용된 화면을 부서 → 업무 묶음으로 보인다. 화면 코드가 없는 셸의 자리라 화면
+   * 목록(`pop-screen-catalog`)에는 담지 않는다 — 권한으로 막으면 돌아갈 곳이 사라진다.
    *
-   * ⛔ **세로 예산이 셸 밖에 서는 이유다.** §3/E-1 은 헤더 64 + 본문 704 = 768 이고 「슬랙이
-   * 0」이라, 관리웹 셸의 상단 바와 본문 여백이 위에 얹히면 1024×768 단말에서 본문 아래가
-   * 잘린다.
-   *
-   * ⭐ **이 화면이 정한 사번은 태스크 화면이 읽는다.** 단말 메모리의
-   * `patterns/worker-session`을 `P-02-01`과 POP 쓰기 화면들이 귀속값으로 사용한다. 단말·공정은
-   * 여전히 셸의 `patterns/pop-identity` 몫이라, 사번 지정만으로 그 두 값까지 채워지지는 않는다.
-   */
-  { path: '/pop/worker-assignment', element: <WorkerAssignmentScreen /> },
-  /*
-   * **홈** — 사번을 확인한 뒤 서는 자리이자 어느 화면에서든 [홈]이 데려가는 자리다. 이 단말에
-   * 허용된 화면을 부서(업무 영역)별로 보인다. 화면 코드가 없는 셸의 자리라 화면 목록
-   * (`pop-screen-catalog`)에는 담지 않는다 — 권한으로 막으면 돌아갈 곳이 사라진다.
+   * ⭐ **사번 입력(P-CO-01)은 페이지가 아니다**(현장 지적 2026-10-20). 상태바의 [작업자]가 여는
+   *    창이고(`screens/worker-assignment/sign-in-dialog`), 그 창이 정한 사번은 지금처럼 단말 메모리의
+   *    `patterns/worker-session` 에 있어 태스크 화면들이 귀속값으로 읽는다.
    */
   { path: POP_HOME_PATH, element: <PopHomeScreen /> },
   /*

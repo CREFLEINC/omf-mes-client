@@ -5,6 +5,8 @@ import { beforeEach, describe, expect, it } from 'vitest';
 
 import { createStubFetch, jsonResponse, renderWithProviders } from '../../test/api-harness';
 import { PopIdentityProvider, type PopIdentity } from '../pop-identity';
+import { PopRegistrationProvider } from '../pop-registration';
+import { PopWorkerMissingBanner } from '../pop-worker-missing-banner';
 import { popShellLayoutOf } from './console-routes';
 import { PopConsoleShell } from './console-shell';
 import { usePopFeedback } from './feedback';
@@ -81,25 +83,48 @@ const ScanBody = () => {
   );
 };
 
-/** 셸이 하는 대로 주소에 따라 모양을 고른다(`app/pop-main` 의 `PopChrome`). */
+/**
+ * 셸이 하는 대로 주소에 따라 모양을 고르고 작업자 확인 창을 넘긴다(`app/pop-main` 의 `PopChrome`).
+ * 창은 화면 슬라이스의 것 대신 닫기만 하는 대역이다 — 골격이 창을 «여닫는지»만 잰다.
+ */
 const ShellUnderTest = () => {
   const { pathname } = useLocation();
-  const layout = popShellLayoutOf(pathname);
 
-  return <PopConsoleShell layout={layout === 'none' ? 'task' : layout} />;
+  return (
+    <PopConsoleShell
+      layout={popShellLayoutOf(pathname)}
+      renderWorkerSignIn={(onClose) => (
+        <div role="dialog" aria-label="작업자 확인 창">
+          <button type="button" onClick={onClose}>
+            창 닫기
+          </button>
+        </div>
+      )}
+    />
+  );
 };
 
-const renderShell = (route: string, screenCodes = ['P-02-01', 'P-02-03', 'P-02-10', 'P-05-02']) =>
+const renderShell = (
+  route: string,
+  screenCodes = ['P-02-01', 'P-02-03', 'P-02-10', 'P-05-02'],
+  identity: PopIdentity = IDENTITY,
+) =>
   renderWithProviders(
-    <PopIdentityProvider value={IDENTITY}>
-      <Routes>
-        <Route element={<ShellUnderTest />}>
-          <Route path="/pop/work-start" element={<Here />} />
-          <Route path="/pop/material-input" element={<ScanBody />} />
-          <Route path="*" element={<Here />} />
-        </Route>
-      </Routes>
-    </PopIdentityProvider>,
+    <PopRegistrationProvider>
+      <PopIdentityProvider value={identity}>
+        <Routes>
+          <Route element={<ShellUnderTest />}>
+            <Route path="/pop/work-start" element={<Here />} />
+            <Route path="/pop/material-input" element={<ScanBody />} />
+            <Route
+              path="/pop/material-defect"
+              element={<PopWorkerMissingBanner workerNo={null} />}
+            />
+            <Route path="*" element={<Here />} />
+          </Route>
+        </Routes>
+      </PopIdentityProvider>
+    </PopRegistrationProvider>,
     { fetch: stub(screenCodes), route },
   );
 
@@ -115,7 +140,7 @@ describe('작업장 콘솔', () => {
 
     expect(within(bar).getByText('사출 1호기')).toBeInTheDocument();
     expect(within(bar).getByLabelText('현재 위치')).toHaveTextContent(/생산\s*›\s*자재 투입/u);
-    expect(within(bar).getByText('사번 20231234')).toBeInTheDocument();
+    expect(within(bar).getByRole('button', { name: '사번 20231234' })).toBeInTheDocument();
     expect(await within(bar).findByText('작업지시 WO-1023')).toBeInTheDocument();
     expect(await within(bar).findByText('가동 중')).toBeInTheDocument();
   });
@@ -166,26 +191,49 @@ describe('작업장 콘솔', () => {
     expect(within(group).queryByRole('button', { name: '자재 불량 등록' })).not.toBeInTheDocument();
   });
 
-  it('작업 메뉴는 허용된 화면을 업무별로 묶어 보이고 누르면 간다', async () => {
+  it('작업 메뉴는 허용된 화면을 부서 탭·업무 묶음으로 보이고 누르면 간다', async () => {
     const user = userEvent.setup();
 
+    localStorage.clear();
     renderShell('/pop/work-start');
 
     await user.click(screen.getByRole('button', { name: '작업 메뉴' }));
 
     const dialog = await screen.findByRole('dialog', { name: '작업 메뉴' });
-    const production = await within(dialog).findByRole('region', { name: '생산' });
-    const equipment = within(dialog).getByRole('region', { name: '설비' });
+    const run = await within(dialog).findByRole('region', { name: '작업 진행' });
 
-    expect(within(production).getByRole('button', { name: '작업 시작' })).toHaveAttribute(
+    expect(within(run).getByRole('button', { name: '작업 시작' })).toHaveAttribute(
       'aria-current',
       'page',
     );
+    expect(within(dialog).getByRole('region', { name: '중단·교체' })).toBeInTheDocument();
+
+    await user.click(within(dialog).getByRole('tab', { name: '설비' }));
+    const equipment = within(dialog).getByRole('region', { name: '설비 실적' });
     await user.click(within(equipment).getByRole('button', { name: '비가동 실적 입력' }));
 
     await waitFor(() => {
       expect(screen.getByText('지금: /pop/downtime')).toBeInTheDocument();
     });
+  });
+
+  it('사번이 없으면 [작업자 확인]이 서고, 상태바·띠 어디서든 작업자 확인 창을 연다', async () => {
+    const user = userEvent.setup();
+
+    renderShell('/pop/material-defect', undefined, { ...IDENTITY, workerNo: null });
+
+    /* 상태바의 단추와 본문 맨 위 띠의 단추 — 둘 다 같은 창을 연다. */
+    const [fromBar, fromBanner] = screen.getAllByRole('button', { name: '작업자 확인' });
+
+    if (fromBar === undefined || fromBanner === undefined) throw new Error('단추가 둘이어야 한다');
+
+    await user.click(fromBar);
+    expect(screen.getByRole('dialog', { name: '작업자 확인 창' })).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: '창 닫기' }));
+    expect(screen.queryByRole('dialog', { name: '작업자 확인 창' })).not.toBeInTheDocument();
+
+    await user.click(fromBanner);
+    expect(screen.getByRole('dialog', { name: '작업자 확인 창' })).toBeInTheDocument();
   });
 
   it('막힌 스캔은 확인을 눌러야 닫히는 창으로 선다', async () => {

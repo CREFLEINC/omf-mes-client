@@ -1,11 +1,10 @@
 import { messages } from '@omf-mes/i18n';
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { useLocation } from 'react-router';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { createStubFetch, jsonResponse, renderWithProviders } from '../../test/api-harness';
-import { WorkerAssignmentScreen } from './screen';
+import { WorkerSignInDialog } from './sign-in-dialog';
 import type { WorkerResponse } from './verify';
 import { PopRegistrationProvider } from '../../patterns/pop-registration';
 import { setWorkerSession } from '../../patterns/worker-session';
@@ -31,13 +30,6 @@ const workerOf = (over: Partial<WorkerResponse> = {}): WorkerResponse => ({
   ...over,
 });
 
-/** 제품 버튼의 실제 이동 결과를 라우터 위치로 확인한다. */
-const LocationProbe = () => {
-  const location = useLocation();
-
-  return <output aria-label="현재 경로">{location.pathname}</output>;
-};
-
 const renderScreen = (items: WorkerResponse[] = [workerOf()]) => {
   const queries: URL[] = [];
 
@@ -52,19 +44,19 @@ const renderScreen = (items: WorkerResponse[] = [workerOf()]) => {
   ]);
 
   /*
-   * ⭐ **등록 공급자를 함께 세운다**(#999). 이 화면은 재등록으로 들어가는 유일한 입구라
-   *    등록 상태를 읽는다 — 셸에서는 언제나 그 안에 서므로, 시험도 같은 조합으로 잰다.
-   *    공급자는 스스로 요청을 내지 않아 이 시험들이 보는 요청 수는 달라지지 않는다.
+   * ⭐ **등록 공급자를 함께 세운다**(#999). 셸에서는 창이 언제나 그 안에 서므로, 시험도 같은
+   *    조합으로 잰다. 공급자는 스스로 요청을 내지 않아 이 시험들이 보는 요청 수는 달라지지 않는다.
    */
+  const onClose = vi.fn();
+
   renderWithProviders(
     <PopRegistrationProvider>
-      <WorkerAssignmentScreen />
-      <LocationProbe />
+      <WorkerSignInDialog onClose={onClose} />
     </PopRegistrationProvider>,
-    { fetch, route: '/pop/worker-assignment' },
+    { fetch, route: '/pop/home' },
   );
 
-  return { queries };
+  return { queries, onClose };
 };
 
 /** 키패드로 사번을 친다 — 이 화면에는 손으로 칠 수 있는 입력칸이 없다. */
@@ -167,9 +159,9 @@ describe('WorkerAssignmentScreen — 현재 작업자', () => {
     expect(screen.getByRole('button', { name: t.current.toWork })).toBeDisabled();
   });
 
-  /* ⭐ 부서마다 쓰는 화면이 달라 작업 시작이 아니라 홈으로 간다(현장 지적 2026-10-20). */
-  it('제품 모드에서 현재 작업자가 있으면 홈으로 이동한다', async () => {
-    renderScreen();
+  /* ⭐ 창이라 화면을 옮기지 않는다 — 확인을 마치면 닫혀 하던 화면으로 돌아간다(#147). */
+  it('현재 작업자가 있으면 [작업 화면으로]가 창을 닫는다', async () => {
+    const { onClose } = renderScreen();
 
     await typeWorkerNo('900028');
     await userEvent.click(screen.getByRole('button', { name: t.input.submit }));
@@ -177,7 +169,7 @@ describe('WorkerAssignmentScreen — 현재 작업자', () => {
 
     await userEvent.click(screen.getByRole('button', { name: t.current.toWork }));
 
-    expect(screen.getByRole('status', { name: '현재 경로' })).toHaveTextContent('/pop/home');
+    expect(onClose).toHaveBeenCalledTimes(1);
   });
 
   it('교대하면 현재 작업자가 비워진다', async () => {
@@ -194,27 +186,15 @@ describe('WorkerAssignmentScreen — 현재 작업자', () => {
   });
 });
 
-/**
- * 헤더 — 스펙 §3 도면이 세 조각을 세운다: 제품 이름 · 단말(코드·설치 위치) · 연결 상태.
- * 현장 단말은 이 화면 하나만 띄운 채 하루를 나므로 셋 다 이 줄에서만 알 수 있다.
+/*
+ * ⚠ 단말 이름·연결 상태 머리줄은 창에 두지 않는다 — 상태바가 늘 말한다(#147). 그 시험은
+ *   상태바 쪽(`patterns/pop-console/console-shell.test.tsx`)으로 옮겼다.
  */
-describe('헤더', () => {
-  it('제품 이름·단말·연결 상태를 세운다', async () => {
+describe('창', () => {
+  it('작업자 확인 창으로 선다', () => {
     renderScreen();
 
-    const header = await screen.findByRole('region', { name: t.header.label });
-
-    expect(within(header).getByText(t.header.brand)).toBeInTheDocument();
-    expect(within(header).getByText(t.header.online)).toBeInTheDocument();
-    /*
-     * ⚠ 단말을 지목할 값이 없어 코드가 서지 않는다 — 지어내지 않고 없음 표시를 낸다.
-     *
-     * ⛔ **`단말` 만으로 찾지 않는다.** 머리줄에는 [단말 재등록] 도 서 있어 「단말」 을
-     *    품은 글이 둘이다 — 값까지 함께 재야 «단말 줄» 을 집는다.
-     */
-    expect(
-      within(header).getByText(`${t.header.label} ${t.header.emptyValue}`),
-    ).toBeInTheDocument();
+    expect(screen.getByRole('dialog', { name: t.dialog.title })).toBeInTheDocument();
   });
 });
 
@@ -286,11 +266,11 @@ describe('오프라인', () => {
     delete (globalThis as { pop?: unknown }).pop;
   });
 
-  it('헤더가 오프라인이라고 밝힌다', async () => {
+  it('오프라인이면 미리 받아 둔 목록으로 확인한다고 밝힌다', async () => {
     goOffline();
     renderScreen();
 
-    expect(await screen.findByText(t.header.offline)).toBeInTheDocument();
+    expect(await screen.findByText(t.offline.note)).toBeInTheDocument();
   });
 
   /** ⛔ C-11 — 확인할 근거가 없으면 통과시키지 않는다. */

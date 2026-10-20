@@ -86,6 +86,10 @@ export const workerAssignment = {
         '아직 서버로 보내지 못한 기록이 {count}건 남아 있어 다른 단말로 바꿀 수 없습니다. 연결을 회복해 전송이 끝난 뒤에 다시 시도하세요.',
     },
   },
+  /** 상태바의 [작업자]가 여는 창(`screens/worker-assignment/sign-in-dialog`). */
+  dialog: {
+    title: '작업자 확인',
+  },
   header: {
     /**
      * 제품 이름 — 스펙 §3 도면의 헤더 **왼쪽 끝**이다. 도면이 적은 문자열을 그대로 쓴다.

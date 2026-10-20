@@ -1,6 +1,5 @@
 import { AlertBanner, Button, Card } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import type { ReactNode } from 'react';
 
 import { POP_TOUCH_SIZE } from './touch-spec';
 import type { WorkerResponse } from './verify';
@@ -33,13 +32,8 @@ export interface WorkerCardProps {
    */
   pendingQueue: number;
   onShift: () => void;
+  /** 확인을 마치고 하던 화면으로 돌아간다 — 창을 닫는다. */
   onGoToWork: () => void;
-  /**
-   * ⚠ **개발 빌드에서만 채워지는 자리다.** 주면 「작업 화면으로 이동」 버튼 «대신» 선다
-   * (`patterns/pop-dev-screen-nav`). 배포 번들에서는 호출부의 조건이 상수로 접혀 이 값이
-   * 늘 `undefined`이므로 버튼이 그대로 남는다 — 화면의 제품 동작은 바뀌지 않는다.
-   */
-  devScreenNav?: ReactNode;
 }
 
 export const WorkerCard = ({
@@ -49,7 +43,6 @@ export const WorkerCard = ({
   pendingQueue,
   onShift,
   onGoToWork,
-  devScreenNav,
 }: WorkerCardProps) => (
   <section className="pane pop-pane" aria-label={t.heading}>
     <h2 className="field-label">{t.heading}</h2>
@@ -110,17 +103,15 @@ export const WorkerCard = ({
       >
         {t.shift}
       </Button>
-      {devScreenNav ?? (
-        <Button
-          type="button"
-          variant="filled"
-          size={POP_TOUCH_SIZE}
-          disabled={worker === null}
-          onClick={onGoToWork}
-        >
-          {t.toWork}
-        </Button>
-      )}
+      <Button
+        type="button"
+        variant="filled"
+        size={POP_TOUCH_SIZE}
+        disabled={worker === null}
+        onClick={onGoToWork}
+      >
+        {t.toWork}
+      </Button>
     </div>
   </section>
 );

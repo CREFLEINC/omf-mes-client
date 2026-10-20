@@ -40,7 +40,44 @@ export interface PopScreen {
   acceptsWorkOrderId?: true;
   /** 이 화면을 쓰는 **업무 영역(부서)** — 홈·작업 메뉴가 이 값으로 묶고, 상태바가 위치로 보인다. */
   area: PopArea;
+  /** 영역 안의 **업무 묶음** — 홈이 관련 화면을 한 카드에 모은다(`POP_TASK_GROUPS`). */
+  group: PopTaskGroup;
+  /**
+   * **생산 흐름 안에서만 들어가는 화면** — 홈·메뉴에 따로 세우지 않는다.
+   *
+   * ⭐ 자재 투입·생산 작업은 작업지시를 고른 «뒤» 단계 표시줄·[다음]으로 들어가는 화면이다. 홈에
+   *    따로 세우면 작업지시 없이 들어가 「작업 시작에서 고르라」로 막히는 단추가 된다. 하던 일로
+   *    돌아가는 길은 홈의 「최근 화면」이 맡는다.
+   */
+  flowOnly?: true;
 }
+
+/**
+ * 영역 안의 **업무 묶음** — 관련 화면을 한 카드에 모은다.
+ *
+ * ⭐ **왜 묶는가.** 홈에 화면 20개를 나란히 세우니 작업자가 자기 일을 찾지 못했다(현장 지적
+ *    2026-10-20). 「포장 + 포장 라벨 재출력」, 「작업 중단 + 부품 교체」처럼 같은 순간에 찾는 화면을
+ *    한 카드에 두면, 부서 탭 하나에 카드 두세 장만 남는다.
+ */
+export type PopTaskGroup =
+  | 'run'
+  | 'packing'
+  | 'change'
+  | 'materialFlow'
+  | 'inspect'
+  | 'defect'
+  | 'shipPrep'
+  | 'rework'
+  | 'equipmentLog';
+
+/** 영역별 묶음 순서. 앞의 것일수록 자주 쓴다. */
+export const POP_TASK_GROUPS: Readonly<Record<PopArea, readonly PopTaskGroup[]>> = {
+  production: ['run', 'packing', 'change'],
+  material: ['materialFlow'],
+  quality: ['inspect', 'defect'],
+  shipping: ['shipPrep', 'rework'],
+  equipment: ['equipmentLog'],
+};
 
 /**
  * POP 화면을 쓰는 **업무 영역** — 생산 · 구매·자재 · 품질 · 출하 · 설비.
@@ -67,11 +104,11 @@ export const POP_AREAS: readonly PopArea[] = [
 /**
  * 갈 수 있는 POP 화면.
  *
- * ⛔ **진입 화면(`P-CO-01` · `/pop/worker-assignment`)은 담지 않는다.** 그 화면으로 가는 길은
- * [사용자 전환]이고, 여기에 두면 사번을 지우지 않은 채 진입 화면이 열려 두 길이 어긋난다.
+ * ⛔ **홈은 담지 않는다**(`POP_HOME_PATH`). 셸의 자리라 권한으로 거르면 돌아갈 곳이 사라진다.
+ *    사번 입력(`P-CO-01`)은 페이지가 아니라 상태바가 여는 창이라 주소가 없다.
  *
  * ⛔ **통합·폐지된 화면을 남겨 두지 않는다**(G-34). 라우트가 걷힌 화면이 목록에 남으면 눌러도
- * 진입 화면으로 되돌아가, 작업자에게는 「눌리지 않는 버튼」으로 보인다.
+ * 홈으로 되돌아가, 작업자에게는 「눌리지 않는 버튼」으로 보인다.
  */
 export const POP_SCREENS: readonly PopScreen[] = [
   {
@@ -79,15 +116,24 @@ export const POP_SCREENS: readonly PopScreen[] = [
     code: 'P-01-01',
     name: '자재LOT 등록·라벨 발행',
     area: 'material',
+    group: 'materialFlow',
   },
-  { path: '/pop/goods-issue-qr', code: 'P-01-02', name: '자재 출고 QR 발행', area: 'material' },
-  { path: '/pop/work-start', code: 'P-02-01', name: '작업 시작', area: 'production' },
+  {
+    path: '/pop/goods-issue-qr',
+    code: 'P-01-02',
+    name: '자재 출고 QR 발행',
+    area: 'material',
+    group: 'materialFlow',
+  },
+  { path: '/pop/work-start', code: 'P-02-01', name: '작업 시작', area: 'production', group: 'run' },
   {
     path: '/pop/material-input',
     code: 'P-02-03',
     name: '자재 투입',
     acceptsWorkOrderId: true,
     area: 'production',
+    group: 'run',
+    flowOnly: true,
   },
   {
     path: '/pop/production-result',
@@ -95,6 +141,8 @@ export const POP_SCREENS: readonly PopScreen[] = [
     name: '생산 작업',
     acceptsWorkOrderId: true,
     area: 'production',
+    group: 'run',
+    flowOnly: true,
   },
   /*
    * ⭐ 아래 셋은 작업지시를 주소로 받는다 — 작업 시작 화면이 이미 `?workOrderId=` 를 실어 보내고
@@ -107,12 +155,14 @@ export const POP_SCREENS: readonly PopScreen[] = [
     name: '생산 포장',
     acceptsWorkOrderId: true,
     area: 'production',
+    group: 'packing',
   },
   {
     path: '/pop/packing-label-reprint',
     code: 'P-02-09',
     name: '포장 라벨 재출력',
     area: 'production',
+    group: 'packing',
   },
   {
     path: '/pop/work-hold',
@@ -120,6 +170,7 @@ export const POP_SCREENS: readonly PopScreen[] = [
     name: '작업 중단',
     acceptsWorkOrderId: true,
     area: 'production',
+    group: 'change',
   },
   {
     path: '/pop/running-change',
@@ -127,28 +178,78 @@ export const POP_SCREENS: readonly PopScreen[] = [
     name: '러닝체인지 부품 교체',
     acceptsWorkOrderId: true,
     area: 'production',
+    group: 'change',
   },
-  { path: '/pop/emergency-work-orders', code: 'P-02-12', name: '긴급 W/O', area: 'production' },
+  {
+    path: '/pop/emergency-work-orders',
+    code: 'P-02-12',
+    name: '긴급 W/O',
+    area: 'production',
+    group: 'run',
+  },
   /* ⭐ 생산 번호지만 품질 담당이 쓴다(공정 검사) — 영역은 품질이다. */
-  { path: '/pop/pqc-inspection', code: 'P-02-13', name: 'PQC 제품 검사', area: 'quality' },
+  {
+    path: '/pop/pqc-inspection',
+    code: 'P-02-13',
+    name: 'PQC 제품 검사',
+    area: 'quality',
+    group: 'inspect',
+  },
   /* ⭐ 설계보다 앞선 화면이다(omf-all-around#108) — 화면 코드는 사용자 결정으로 부여했다. */
-  { path: '/pop/material-defect', code: 'P-02-14', name: '자재 불량 등록', area: 'quality' },
-  { path: '/pop/packing', code: 'P-04-01', name: '출하 포장', area: 'shipping' },
-  { path: '/pop/rework-results', code: 'P-04-03', name: '재작업 실적 등록', area: 'shipping' },
+  {
+    path: '/pop/material-defect',
+    code: 'P-02-14',
+    name: '자재 불량 등록',
+    area: 'quality',
+    group: 'defect',
+  },
+  { path: '/pop/packing', code: 'P-04-01', name: '출하 포장', area: 'shipping', group: 'shipPrep' },
+  {
+    path: '/pop/rework-results',
+    code: 'P-04-03',
+    name: '재작업 실적 등록',
+    area: 'shipping',
+    group: 'rework',
+  },
   {
     path: '/pop/repack-label-issue',
     code: 'P-04-04',
     name: '재구성 신규 라벨 발행',
     area: 'shipping',
+    group: 'shipPrep',
   },
-  { path: '/pop/shipping-units', code: 'P-04-05', name: '출하 단위 구성', area: 'shipping' },
+  {
+    path: '/pop/shipping-units',
+    code: 'P-04-05',
+    name: '출하 단위 구성',
+    area: 'shipping',
+    group: 'shipPrep',
+  },
   /*
    * ⭐ 설계보다 앞선 화면이다(omf-all-around#109) — 화면 코드는 사용자 결정으로 부여했다.
    *    출하 번호지만 판정은 품질 담당이 한다 — 영역은 품질이다.
    */
-  { path: '/pop/oqc-inspection', code: 'P-04-06', name: 'OQC 출하검사 판정', area: 'quality' },
-  { path: '/pop/tool-usage', code: 'P-05-01', name: '툴 사용실적 입력', area: 'equipment' },
-  { path: '/pop/downtime', code: 'P-05-02', name: '비가동 실적 입력', area: 'equipment' },
+  {
+    path: '/pop/oqc-inspection',
+    code: 'P-04-06',
+    name: 'OQC 출하검사 판정',
+    area: 'quality',
+    group: 'inspect',
+  },
+  {
+    path: '/pop/tool-usage',
+    code: 'P-05-01',
+    name: '툴 사용실적 입력',
+    area: 'equipment',
+    group: 'equipmentLog',
+  },
+  {
+    path: '/pop/downtime',
+    code: 'P-05-02',
+    name: '비가동 실적 입력',
+    area: 'equipment',
+    group: 'equipmentLog',
+  },
   /*
    * ⭐ **설계보다 앞선 화면이다**(`docs/decisions.md` 결정 16) — 화면 코드도 클라이언트가
    *    부여했다. 도메인 06(기준정보연계)에 POP 화면이 없어 번호 체계를 그대로 이었다.
@@ -158,20 +259,19 @@ export const POP_SCREENS: readonly PopScreen[] = [
     code: 'P-06-01',
     name: '창고 적재 위치 라벨 발행',
     area: 'material',
+    group: 'materialFlow',
   },
 ];
 
-/** 진입 화면. 목록에서 빠지는 것이 정상이라는 사실을 감지기가 이 값으로 확인한다. */
-export const POP_ENTRY_SCREEN_PATH = '/pop/worker-assignment';
-
 /**
- * **홈** — 사번을 확인한 뒤 서는 자리이자, 어느 화면에서든 [홈]이 데려가는 자리.
+ * **홈** — 단말을 켜면 서는 진입 화면이자, 어느 화면에서든 [홈]이 데려가는 자리.
  *
  * ⭐ **업무 화면이 아니라 셸의 자리다.** 화면 코드가 없고 권한으로 막지 않는다 — 홈이 막히면
- *    돌아갈 곳이 사라진다. 그래서 이 목록(`POP_SCREENS`)에 담지 않는다.
+ *    돌아갈 곳이 사라진다. 그래서 이 목록(`POP_SCREENS`)에 담지 않는다. 목록에서 빠지는 것이
+ *    정상이라는 사실을 감지기가 이 값으로 확인한다.
  */
 export const POP_HOME_PATH = '/pop/home';
 
-/** 주소의 화면. 홈·진입 화면처럼 목록에 없는 주소는 `null`. */
+/** 주소의 화면. 홈처럼 목록에 없는 주소는 `null`. */
 export const popScreenAt = (pathname: string): PopScreen | null =>
   POP_SCREENS.find((screen) => screen.path === pathname) ?? null;

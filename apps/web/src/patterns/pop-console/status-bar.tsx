@@ -3,11 +3,11 @@ import { messages } from '@omf-mes/i18n';
 import { useNavigate } from 'react-router';
 
 import { usePopIdentity } from '../pop-identity';
-import { POP_ENTRY_SCREEN_PATH, POP_HOME_PATH, popScreenAt } from '../pop-screen-catalog';
-import { setWorkerSession, useWorkerSession } from '../worker-session';
+import { POP_HOME_PATH, popScreenAt } from '../pop-screen-catalog';
+import { useWorkerSession } from '../worker-session';
 import type { ConsoleWorkOrder, SessionLight } from './current-work';
 import { clockText, useIsOnline, useMinuteClock, usePendingOutboxCount } from './device-state';
-import { clearTrail, previousOf, usePopTrail } from './nav-trail';
+import { previousOf, usePopTrail } from './nav-trail';
 
 const t = messages.popChrome.console;
 
@@ -19,13 +19,19 @@ export interface PopConsoleStatusBarProps {
   /** 지금 주소의 작업지시. 아직 모르거나 없으면 `null`. */
   workOrder: ConsoleWorkOrder | null;
   onOpenMenu: () => void;
+  /** 작업자 확인 창을 연다. 셸이 창을 받지 못했으면 `null` — 단추가 눌리지 않는다. */
+  onOpenWorkerSignIn: (() => void) | null;
 }
 
 /**
- * 작업장 콘솔 맨 위 **상태바** — 모든 업무 화면이 같은 것을 쓴다.
+ * 작업장 콘솔 맨 위 **상태바** — 모든 화면이 같은 것을 쓴다.
  *
  * 왼쪽부터 **길잡이**([홈] · [이전] · 「부서 › 화면」) → 무엇 앞에서(설비·상태등) → 무슨
- * 작업지시를 → 오른쪽에 누구로(사번) · 연결 · 전송 대기 · 시각 · [작업 메뉴] · [사용자 전환].
+ * 작업지시를 → 오른쪽에 [작업자](누구로 기록하는가) · 연결 · 전송 대기 · 시각 · [작업 메뉴].
+ *
+ * ⭐ **[작업자]가 사번 입력·교대를 맡는다.** 진입 페이지였던 사번 입력(P-CO-01)을 창으로 옮겼다
+ *    — 단말을 켜면 홈이 서고, 누구로 기록할지는 여기서 필요할 때 정한다. 사번이 없으면 단추가
+ *    「작업자 확인」으로 눈에 띄게 선다.
  *
  * ⭐ **길잡이가 맨 앞이다.** 부서마다 쓰는 화면이 달라 작업자가 자기 영역 밖 화면에 들어가는 일이
  *    잦다(품질 담당이 생산 화면을, 자재 담당이 품질 화면을). 어디서든 [홈] 한 번이면 자기 부서의
@@ -41,6 +47,7 @@ export const PopConsoleStatusBar = ({
   light,
   workOrder,
   onOpenMenu,
+  onOpenWorkerSignIn,
 }: PopConsoleStatusBarProps) => {
   const identity = usePopIdentity();
   const workerSession = useWorkerSession();
@@ -119,9 +126,21 @@ export const PopConsoleStatusBar = ({
       )}
 
       <div className="pop-console-status__right">
-        <span className="pop-console-status__worker">
-          {workerNo === null ? t.statusBar.workerUnknown : t.statusBar.worker(workerNo)}
-        </span>
+        {/*
+         * ⭐ 사번이 없으면 «채운» 단추로 눈에 띄게 선다 — 기록하는 화면은 사번이 없으면 쓰기를
+         *    잠그므로, 무엇을 눌러야 풀리는지가 한눈에 보여야 한다.
+         */}
+        <Button
+          className="pop-console-status__worker"
+          variant={workerNo === null ? 'filled' : 'outlined'}
+          size="xl"
+          disabled={onOpenWorkerSignIn === null}
+          onClick={() => {
+            onOpenWorkerSignIn?.();
+          }}
+        >
+          {workerNo === null ? t.statusBar.signIn : t.statusBar.worker(workerNo)}
+        </Button>
         <span className="pop-console-pill" data-state={isOnline ? 'ok' : 'error'}>
           {isOnline ? t.statusBar.online : t.statusBar.offline}
         </span>
@@ -134,22 +153,6 @@ export const PopConsoleStatusBar = ({
         </time>
         <Button variant="tonal" size="xl" onClick={onOpenMenu}>
           {t.statusBar.menu}
-        </Button>
-        {/*
-         * ⚠ **사번만 놓는다** — 세션을 끊지 않는다(`pop-logout` 머리말과 같은 이유). 잠깐 자리를
-         *   비우려던 사람이 작업을 끝내 버리면 안 된다. 지나온 화면 기록은 비운다 — 다음 사람에게
-         *   앞 사람의 작업지시가 「최근 화면」으로 보이면 안 된다.
-         */}
-        <Button
-          variant="outlined"
-          size="xl"
-          onClick={() => {
-            setWorkerSession(null);
-            clearTrail();
-            void navigate(POP_ENTRY_SCREEN_PATH, { replace: true });
-          }}
-        >
-          {messages.popChrome.userSwitch}
         </Button>
       </div>
     </header>

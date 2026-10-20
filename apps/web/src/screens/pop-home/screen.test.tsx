@@ -15,9 +15,9 @@ const Here = () => {
   return <p>지금: {`${pathname}${search}`}</p>;
 };
 
-const renderHome = (screenCodes: string[]) =>
+const renderHome = (screenCodes: string[], workerNo: string | null = '900028') =>
   renderWithProviders(
-    <PopIdentityProvider value={{ ...UNKNOWN_POP_IDENTITY, terminalId: 7 }}>
+    <PopIdentityProvider value={{ ...UNKNOWN_POP_IDENTITY, terminalId: 7, workerNo }}>
       <PopHomeScreen />
       <Here />
     </PopIdentityProvider>,
@@ -34,31 +34,72 @@ const renderHome = (screenCodes: string[]) =>
 
 beforeEach(() => {
   clearTrail();
+  localStorage.clear();
 });
 
-describe('POP 홈', () => {
-  it('품질 단말에는 품질 화면만 서고, 영역이 하나면 묶음 머리말을 세우지 않는다', async () => {
+describe('POP 홈 — 부서 탭과 업무 묶음', () => {
+  it('품질 단말에는 품질 카드만 서고, 부서가 하나면 탭을 세우지 않는다', async () => {
     renderHome(['P-02-13', 'P-02-14', 'P-04-06']);
 
-    expect(await screen.findByRole('button', { name: 'PQC 제품 검사' })).toBeVisible();
-    expect(screen.getByRole('button', { name: 'OQC 출하검사 판정' })).toBeVisible();
+    const inspect = await screen.findByRole('region', { name: '검사' });
+
+    expect(within(inspect).getByRole('button', { name: 'PQC 제품 검사' })).toBeVisible();
+    expect(within(inspect).getByRole('button', { name: 'OQC 출하검사 판정' })).toBeVisible();
+    expect(screen.getByRole('region', { name: '불량 등록' })).toBeInTheDocument();
+    expect(screen.queryByRole('tablist')).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: '작업 시작' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('heading', { name: '품질' })).not.toBeInTheDocument();
   });
 
-  it('여러 부서 화면이 허용되면 부서별로 묶어 보인다', async () => {
-    renderHome(['P-02-01', 'P-02-13', 'P-01-01']);
+  it('여러 부서가 허용되면 탭으로 가르고, 고른 탭을 다음에도 연다', async () => {
+    const user = userEvent.setup();
 
-    const production = await screen.findByRole('region', { name: '생산' });
-    const material = screen.getByRole('region', { name: '구매·자재' });
-    const quality = screen.getByRole('region', { name: '품질' });
+    const first = renderHome(['P-02-01', 'P-02-03', 'P-02-13', 'P-01-01']);
 
-    expect(within(production).getByRole('button', { name: '작업 시작' })).toBeVisible();
-    expect(within(material).getByRole('button', { name: '자재LOT 등록·라벨 발행' })).toBeVisible();
-    expect(within(quality).getByRole('button', { name: 'PQC 제품 검사' })).toBeVisible();
+    const tabs = await screen.findByRole('tablist', { name: '업무 영역' });
+    expect(
+      within(tabs)
+        .getAllByRole('tab')
+        .map((tab) => tab.textContent),
+    ).toEqual(['생산', '구매·자재', '품질']);
+    expect(within(tabs).getByRole('tab', { name: '생산' })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    );
+
+    await user.click(within(tabs).getByRole('tab', { name: '품질' }));
+    expect(screen.getByRole('button', { name: 'PQC 제품 검사' })).toBeVisible();
+    expect(screen.queryByRole('button', { name: '작업 시작' })).not.toBeInTheDocument();
+
+    first.unmount();
+    renderHome(['P-02-01', 'P-02-03', 'P-02-13', 'P-01-01']);
+
+    expect(await screen.findByRole('tab', { name: '품질' })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    );
   });
 
-  it('최근 화면으로 작업지시째 돌아간다', async () => {
+  /* 자재 투입은 작업지시를 고른 뒤 단계로 들어가는 화면이다 — 홈에 따로 세우면 막히는 단추가 된다. */
+  it('생산 탭은 작업 시작을 크게 세우고 흐름 안의 화면은 감춘다', async () => {
+    renderHome(['P-02-01', 'P-02-03', 'P-02-04', 'P-02-10']);
+
+    const run = await screen.findByRole('region', { name: '작업 진행' });
+
+    expect(within(run).getByRole('button', { name: '작업 시작' })).toBeVisible();
+    expect(screen.queryByRole('button', { name: '자재 투입' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '생산 작업' })).not.toBeInTheDocument();
+    expect(screen.getByRole('region', { name: '중단·교체' })).toBeInTheDocument();
+  });
+});
+
+describe('POP 홈 — 작업자·이어서 하기', () => {
+  it('사번이 없으면 작업자를 확인하라고 맨 위에 알린다', async () => {
+    renderHome(['P-02-01'], null);
+
+    expect(await screen.findByRole('region', { name: '작업자를 확인하세요' })).toBeVisible();
+  });
+
+  it('이어서 하기로 작업지시째 돌아간다', async () => {
     const user = userEvent.setup();
 
     recordVisit('/pop/material-input?workOrderId=42');

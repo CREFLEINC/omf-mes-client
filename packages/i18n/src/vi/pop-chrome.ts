@@ -3,9 +3,8 @@ import type { Translated } from './translated';
 
 /** POP 화면 위에 늘 서 있는 공통 조작 문구 — 모든 POP 화면이 함께 쓴다. */
 export const popChrome: Translated<typeof ko.popChrome> = {
-  screenNav: 'Chuyển màn hình',
-  userSwitch: 'Đổi người dùng',
-  workerMissing: 'Chưa xác nhận mã nhân viên. Hãy xác thực mã nhân viên trước.',
+  workerMissing:
+    'Chưa xác nhận người làm việc nên không thể ghi nhận. Hãy nhập mã nhân viên bằng [Xác nhận người làm việc].',
   select: 'Chọn',
 
   selectDialog: {
@@ -35,9 +34,24 @@ export const popChrome: Translated<typeof ko.popChrome> = {
       back: 'Quay lại',
       location: 'Vị trí hiện tại',
     },
+    groups: {
+      run: 'Tiến hành công việc',
+      packing: 'Đóng gói',
+      change: 'Dừng · Thay thế',
+      materialFlow: 'Nhập xuất vật tư · Nhãn',
+      inspect: 'Kiểm tra',
+      defect: 'Đăng ký lỗi',
+      shipPrep: 'Chuẩn bị xuất hàng',
+      rework: 'Làm lại',
+      equipmentLog: 'Ghi nhận thiết bị',
+    },
     home: {
       title: 'Trang chủ',
-      recent: 'Màn hình gần đây',
+      areas: 'Lĩnh vực công việc',
+      signInTitle: 'Hãy xác nhận người làm việc',
+      signInBody:
+        'Chọn người được ghi nhận để dùng các màn hình ghi nhận. Bây giờ vẫn có thể tra cứu.',
+      recent: 'Tiếp tục',
       recentWithWorkOrder: (name: string, workOrderId: number): string =>
         `${name} · W/O #${String(workOrderId)}`,
       screens: 'Màn hình công việc',
@@ -46,7 +60,7 @@ export const popChrome: Translated<typeof ko.popChrome> = {
       equipmentNone: 'Chưa gán thiết bị',
       workOrderNone: 'Chưa chọn lệnh SX',
       workOrder: (workOrderNo: string): string => `Lệnh SX ${workOrderNo}`,
-      workerUnknown: 'Chưa xác nhận mã NV',
+      signIn: 'Xác nhận người làm việc',
       worker: (workerNo: string): string => `Mã NV ${workerNo}`,
       online: 'Đã kết nối',
       offline: 'Mất kết nối',

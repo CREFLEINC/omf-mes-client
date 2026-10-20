@@ -36,19 +36,20 @@ import './pop.css';
 /* ⛔ 화면을 싣는 import 보다 위에 둔다 — 아래 import 들이 문구를 붙잡기 전에 언어를 정한다. */
 import './pop-locale';
 
-import { StrictMode, useEffect, useLayoutEffect, useRef, type ReactNode } from 'react';
+import { StrictMode, useEffect, useRef, type ReactNode } from 'react';
 import { createRoot } from 'react-dom/client';
-import { Navigate, Outlet, RouterProvider, createBrowserRouter, useLocation } from 'react-router';
+import { Navigate, RouterProvider, createBrowserRouter, useLocation } from 'react-router';
 
 import { popRoutes } from '../routes/pop';
-import { clearTrail, PopConsoleShell, popShellLayoutOf } from '../patterns/pop-console';
-import { applyPopFit, setPopFitDesign } from '../patterns/pop-fit';
+import { PopConsoleShell, popShellLayoutOf } from '../patterns/pop-console';
+import { applyPopFit } from '../patterns/pop-fit';
 import {
   PopRegistrationProvider,
   usePopRegistration,
   useRefreshPopTerminalOnScreenEntry,
 } from '../patterns/pop-registration';
 import { RegistrationPanel } from '../screens/worker-assignment/registration-panel';
+import { WorkerSignInDialog } from '../screens/worker-assignment/sign-in-dialog';
 import { printSampleLotLabel } from '../screens/pop-material-lot-label/sample-print';
 import { currentTerminalToken, readTerminalToken } from '../patterns/pop-terminal-token';
 import { AppProviders } from './providers';
@@ -156,45 +157,42 @@ function virtualPrinterShell() {
 }
 
 /**
- * 단말을 켰을 때 맨 처음 서는 화면 — 사번 경량 인증(P-CO-01).
+ * 단말을 켰을 때 맨 처음 서는 화면 — **홈**(`screens/pop-home`).
+ *
+ * ⭐ **사번 입력 페이지가 아니다**(현장 지적 2026-10-20). 상용 MES 단말은 켜면 작업장 홈이 서고,
+ *    누구로 기록할지는 상태바의 [작업자]가 여는 창에서 필요할 때 정한다. 단말 토큰이 이미 인증을
+ *    마쳤으므로(등록 게이트) 사번을 «먼저» 받을 까닭이 없다.
  *
  * ⛔ **주소를 여기서 지어내지 않는다.** 라우트 표에 실제로 있는 경로여야 하고, 아래 시험이
  * 그것을 지킨다 — 화면이 옮겨지면 이 상수도 함께 고쳐야 한다.
  */
-const POP_ENTRY_PATH = '/pop/worker-assignment';
+const POP_ENTRY_PATH = '/pop/home';
 
 /**
  * 화면 위에 늘 서 있는 것 — **작업장 콘솔**(`patterns/pop-console`).
  *
- * ⭐ **진입 화면을 뺀 모든 화면이 같은 골격 안에 선다.** 상태바의 [홈]·[이전]·위치·[작업 메뉴]·
- *    [사용자 전환]이 어느 화면에서나 같은 자리에 있어, 부서마다 쓰는 화면이 달라도 화면을 옮기다
- *    돌아갈 길을 잃지 않는다(현장 지적 2026-10-20). 생산 흐름 화면만 현재작업 패널·단계·액션바를
- *    더 갖는다(`popShellLayoutOf`).
+ * ⭐ **모든 화면이 같은 골격 안에 선다.** 상태바의 [홈]·[이전]·위치·[작업자]·[작업 메뉴]가 어느
+ *    화면에서나 같은 자리에 있어, 부서마다 쓰는 화면이 달라도 화면을 옮기다 돌아갈 길을 잃지
+ *    않는다(현장 지적 2026-10-20). 생산 흐름 화면만 현재작업 패널·단계·액션바를 더 갖는다
+ *    (`popShellLayoutOf`).
  *
  * ⭐ **길 위에 두어야 길을 안다.** 라우터 «안» 겹이라 지금 어느 화면인지 알 수 있다.
  *
- * ⛔ **진입 화면(사번 입력)은 골격 없이 선다.** 아직 누구인지 모르는 자리라 홈·메뉴로 갈 수
- *    없어야 하고, 그 자리에 서면 지나온 화면 기록을 비운다 — 다음 사람에게 앞 사람의 작업지시가
- *    「최근 화면」으로 보이면 안 된다.
+ * ⭐ **작업자 확인 창은 여기서 넘긴다.** 골격은 `patterns` 라 화면 슬라이스의 창을 부를 수 없다 —
+ *    둘을 다 볼 수 있는 셸이 이어 준다.
  */
 const PopChrome = () => {
   /* ⭐ 관리웹에서 바꾼 단말 공정·설비가 단말을 다시 켜지 않아도 보이게 한다(#1202). */
   useRefreshPopTerminalOnScreenEntry();
 
   const { pathname } = useLocation();
-  const layout = popShellLayoutOf(pathname);
 
-  /*
-   * ⚠ 배율 기준도 함께 바꾼다 — 콘솔은 1920×1080, 진입 화면은 1024×768(`pop-fit`).
-   */
-  useLayoutEffect(() => {
-    setPopFitDesign(layout === 'none' ? 'legacy' : 'console');
-    if (layout === 'none') clearTrail();
-  }, [layout]);
-
-  if (layout === 'none') return <Outlet />;
-
-  return <PopConsoleShell layout={layout} />;
+  return (
+    <PopConsoleShell
+      layout={popShellLayoutOf(pathname)}
+      renderWorkerSignIn={(onClose) => <WorkerSignInDialog onClose={onClose} />}
+    />
+  );
 };
 
 const popRouter = createBrowserRouter([
@@ -204,47 +202,13 @@ const popRouter = createBrowserRouter([
       { path: '/', element: <Navigate to={POP_ENTRY_PATH} replace /> },
       ...popRoutes,
       /*
-       * 알 수 없는 주소는 진입 화면으로 되돌린다. 키오스크에는 주소창도 뒤로가기도 없어,
+       * 알 수 없는 주소는 홈으로 되돌린다. 키오스크에는 주소창도 뒤로가기도 없어,
        * 여기서 되돌리지 않으면 빈 화면 앞에서 단말이 멈춘다.
        */
       { path: '*', element: <Navigate to={POP_ENTRY_PATH} replace /> },
     ],
   },
 ]);
-
-/*
- * ⚠ **개발 빌드에서만 듣는 되돌림 단축키(`Ctrl+Alt+H`).** 화면 이동 선택기는 진입 화면
- * 안에만 있어, 다른 화면으로 나가면 사번 입력 화면으로 돌아올 길이 없다 — 키오스크에는
- * 주소창도 뒤로가기도 없기 때문이다.
- *
- * ⛔ **화면에 버튼을 두지 않는다.** 처음에는 떠 있는 버튼으로 두었는데 어느 자리에 놓아도
- * 화면마다 다른 조작 버튼을 가렸다(실측). 단축키는 무엇도 가리지 않는다.
- *
- * ⛔ **`MODE`로 가른다.** 빌드 시점에 상수로 접혀 배포 번들에서 이 가지째 걷힌다 —
- * 현장 단말에서 이 손짓이 통하면 작업자가 작업 중에 세션을 버릴 수 있다.
- *
- * ⭐ **사번은 놓지 않는다**(사용자 지시 2026-09-08). 사번을 비우는 것은 이제 머리줄의
- *    **로그아웃**이 맡는다 — 이 손짓은 「사번 확인을 마친 그 화면으로 돌아간다」이지
- *    「작업자를 바꾼다」가 아니다. 그래서 문서를 다시 열지 않고 **라우터로만** 옮긴다.
- */
-const PopDevHomeShortcut = () => {
-  useEffect(() => {
-    const onKeyDown = (event: KeyboardEvent) => {
-      // `event.key` 는 배열(레이아웃)에 따라 달라지므로 물리 키(`code`)로 판정한다.
-      if (!event.ctrlKey || !event.altKey || event.code !== 'KeyH') return;
-
-      event.preventDefault();
-      window.history.pushState(null, '', POP_ENTRY_PATH);
-      window.dispatchEvent(new PopStateEvent('popstate'));
-    };
-
-    window.addEventListener('keydown', onKeyDown);
-
-    return () => window.removeEventListener('keydown', onKeyDown);
-  }, []);
-
-  return null;
-};
 
 /*
  * 화면을 단말 크기에 맞춘다. **라우터를 세우기 전에 건다** — 첫 그림부터 맞은 크기로 서야
@@ -264,7 +228,6 @@ const mount = () => {
         <PopRegistrationProvider>
           <PopRegistrationGate>
             <RouterProvider router={popRouter} />
-            {import.meta.env.MODE === 'development' ? <PopDevHomeShortcut /> : null}
           </PopRegistrationGate>
         </PopRegistrationProvider>
       </AppProviders>

@@ -1,7 +1,6 @@
-import { Button, Chip } from '@crefle/web-ui';
+import { Dialog } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useCallback, useEffect, useState } from 'react';
-import { useNavigate } from 'react-router';
 
 import { useIsOnline } from './connection';
 import { KeypadPanel } from './keypad-panel';
@@ -9,20 +8,24 @@ import { readOutboxSize, readWorkerDirectory, writeWorkerDirectory } from './pop
 import { useTerminal, useWorkerDirectory, useWorkerLookup } from './queries';
 import { pickExact, verifyWorker, type WorkerResponse } from './verify';
 import { WorkerCard } from './worker-card';
-import { PopDevScreenNav } from '../../patterns/pop-dev-screen-nav';
+import { clearTrail } from '../../patterns/pop-console';
 import { usePopIdentity } from '../../patterns/pop-identity';
-import { usePopRegistration } from '../../patterns/pop-registration';
-import { POP_HOME_PATH } from '../../patterns/pop-screen-catalog';
 import { setWorkerSession, useWorkerSession } from '../../patterns/worker-session';
 
 /**
- * P-CO-01 작업자 지정 — **POP 진입점**이다(스펙 §3).
+ * P-CO-01 작업자 지정 — **상태바의 [작업자]가 여는 창**이다.
  *
  * ```
- * 헤더 64      단말 이름 · 설치 위치            ● 연결됨
- * 본문 704     좌 《사번 입력》 512 │ 우 《현재 작업자》 512
+ * 좌 《사번 입력》 키패드 │ 우 《현재 작업자》 교대 · 닫기
  * ```
- * 액션바가 없다 — 확인은 키패드 옆에 둔다.
+ *
+ * ⭐ **진입 페이지였던 것을 창으로 옮겼다**(현장 지적 2026-10-20 — 「첫 페이지가 로그인 화면인
+ *    것이 어색하다」). 상용 MES 단말(Plex·HYDRA·Tulip)은 켜면 작업장 홈이 서고, 작업자는 상태바에서
+ *    필요할 때 확인한다. 단말 토큰이 이미 인증을 마쳤으므로(아래 ⭐⭐) 사번을 «먼저» 받을 까닭이
+ *    없다 — 기록하는 화면은 사번이 없으면 쓰기를 잠그고 맨 위 띠로 이 창을 부른다.
+ *
+ * ⚠ 확인 절차(서버 조회 · 오프라인 명부 · 다른 공장 표시 · 교대 시 미전송 경고)는 진입 페이지
+ *   때와 같다. 바뀐 것은 자리뿐이다 — 단말 이름·연결은 상태바가, 단말 재등록은 작업 메뉴가 맡는다.
  *
  * ⭐⭐ **이 화면은 인증이 아니라 귀속이다**(§5-1). 인증은 단말 토큰이 이 화면 «전»에 이미
  * 통과시켰고, 여기서는 「누가 한 일로 기록할 것인가」만 정한다.
@@ -66,8 +69,11 @@ const formatAssignedAt = (now: Date): string =>
     hour12: false,
   });
 
-export const WorkerAssignmentScreen = () => {
-  const navigate = useNavigate();
+export interface WorkerSignInDialogProps {
+  onClose: () => void;
+}
+
+export const WorkerSignInDialog = ({ onClose }: WorkerSignInDialogProps) => {
   /** 키패드가 채우는 값. 확인을 누르기 전에는 조회하지 않는다. */
   const [workerNo, setWorkerNo] = useState('');
   /** 확인을 누른 사번. 이 값이 있어야 조회가 돈다 */
@@ -90,7 +96,6 @@ export const WorkerAssignmentScreen = () => {
    * ⛔ **주소에서 받지 않는다.** 신원은 서버가 확인해 준 것만 쓴다(공유계약 F-4).
    */
   const { terminalId } = usePopIdentity();
-  const { restart } = usePopRegistration();
   const terminal = useTerminal(terminalId);
 
   const isOnline = useIsOnline();
@@ -215,127 +220,57 @@ export const WorkerAssignmentScreen = () => {
   }, [submitted, lookup.isError]);
 
   return (
-    <div className="pop-screen pop-ui">
-      {/*
-       * ⛔ **머리글·이동 경로를 두지 않는다.** 스펙 §3/E-1 의 세로 예산은 헤더 64 + 본문 704
-       * = 768 이고 「슬랙이 0」이라, 도면에 없는 줄을 얹을 자리가 없다. 관리웹 화면의 전례를
-       * 따르지 않는 자리다.
-       *
-       * ⭐ **그래서 이 라우트는 관리웹 셸 밖에 선다**(`routes/pop.tsx`의 `popRoutes`). 셸 안에 두면
-       * 상단 바와 본문 여백이 768 «위에» 얹혀 단말에서 본문 아래가 잘린다 — 스펙 §1 이
-       * 이 화면의 IA 위치를 「POP > 진입」으로 둔 것과도 어긋난다.
-       */}
-      {/*
-       * 헤더 — 단말 이름·설치 위치와 연결 상태(§3). ⚠ 단말 조회가 서지 않는 동안에는
-       * 이름을 지어내지 않고 없음 표시를 낸다.
-       */}
-      <section className="pop-terminal-header" aria-label={t.header.label}>
-        {/*
-         * 왼쪽 끝 — 제품 이름(§3 도면). 현장 단말은 이 화면 하나만 띄운 채 하루를 나므로
-         * 「지금 보고 있는 것이 무엇인가」를 말하는 자리가 여기뿐이다.
-         */}
-        <strong className="pop-terminal-header__brand">{t.header.brand}</strong>
+    <Dialog
+      open
+      size="lg"
+      onClose={onClose}
+      /* ⛔ 스치는 손에 닫히지 않는다 — POP 창 공통 규칙(#1005). X·[작업 화면으로]로 닫는다. */
+      closeOnBackdropClick={false}
+      title={t.dialog.title}
+      /*
+       * ⭐ 닫는 길은 오른쪽 위 X 와 [작업 화면으로 →] 둘이다 — 사번 없이 닫아도 된다. 기록하는
+       *    화면이 사번 없음을 띠로 말하고 쓰기를 잠근다(`pop-worker-missing-banner`).
+       */
+    >
+      {/* `pop-screen` — 키패드·현재 작업자 2단 배치(`.pop-ui.pop-screen > .pop-assign`)를 그대로 쓴다. */}
+      <div className="pop-ui pop-screen pop-sign-in">
+        {/* ⭐ 오프라인이어도 «막지 않는다»(§6) — 키패드 아래 안내가 지금 상태를 밝힌다. */}
+        <div className="pop-assign">
+          <KeypadPanel
+            workerNo={workerNo}
+            onChange={setWorkerNo}
+            onSubmit={() => {
+              setError(null);
+              /* 누르는 «순간»의 연결 상태를 함께 담는다 — 그 경로로 끝까지 간다. */
+              setSubmitted({ workerNo, offline: !isOnline });
+            }}
+            isChecking={submitted !== null && (submitted.offline || lookup.isFetching)}
+            error={error}
+            offlineNote={isOnline ? null : t.offline.note}
+          />
 
-        {/*
-         * 가운데 — 단말 코드와 설치 위치. ⚠ **설치 위치는 아직 낼 수 없다**: 단말을 지목할
-         * 값을 얻을 경로가 이 저장소에 없어 조회가 서지 않는다. ⛔ 지어내지 않고 없음
-         * 표시를 낸다 — 모르는 값과 없는 값을 같은 모양으로 그리지 않는다(G-9).
-         */}
-        <p className="field-note">
-          {t.header.label} {terminal.data?.terminalCode ?? t.header.emptyValue}
-        </p>
-        {/* ⭐ 오프라인이어도 «막지 않는다»(§6) — 지금 어느 상태인지만 밝힌다. */}
-        <Chip variant="status" size="md" status={isOnline ? 'success' : 'warning'}>
-          {isOnline ? t.header.online : t.header.offline}
-        </Chip>
+          <WorkerCard
+            worker={session?.worker ?? null}
+            assignedAt={session?.assignedAt ?? null}
+            isOtherPlant={session?.isOtherPlant ?? false}
+            pendingQueue={pendingQueue}
+            onShift={() => {
+              /*
+               * ⛔ **큐의 사번을 바꾸지 않는다**(B-3 이력 불변). 이미 쌓인 기록은 그때 그
+               * 사람의 것이다 — 세어서 알리기만 하고 손대지 않는다(§6).
+               */
+              void readOutboxSize().then(setPendingQueue);
 
-        {/*
-         * 재등록 — **설치 담당자용**이라 작업자 단추들과 성격이 다르다(사용자 지시
-         * 2026-09-12). 구획 바닥의 [교대]·[작업 시작] 과 한 줄에 세워 두었더니 작업자가
-         * 늘 쓰는 두 단추 옆에 하루 한 번 쓸까 말까 한 것이 같은 크기로 붙어 있었다 —
-         * [사용자 전환]·[화면 이동] 과 같은 **머리줄의 보조 조작**으로 옮긴다.
-         *
-         * ⭐ **재등록으로 들어가는 유일한 길**(P-CO-01 §5-1 · 공유계약 F-4). 등록을 마치면
-         *    게이트가 업무 화면을 내주므로, 이 단추가 없으면 잘못된 단말로 등록된 현장
-         *    단말을 **자격증명 저장소를 사람이 지우지 않고는** 되돌릴 수 없다.
-         *
-         * ⛔ 큐가 남은 채 다른 단말로 바꾸는 것은 적용 단계가 막는다 — 여기서 막지 않는다.
-         *    여기서 막으면 「같은 단말 재등록」까지 함께 잠긴다.
-         *
-         * ⛔ 사번이 없어도 눌릴 수 있어야 한다 — 잘못된 단말로 등록되면 사번부터 막히는데,
-         *    그 상태에서 되돌릴 길이 없으면 단말이 잠긴다.
-         */}
-        <Button
-          type="button"
-          /* ⚠ [사용자 전환]과 «같은» 변형·크기다 — 생김새를 한 벌로 두기로 했다. */
-          variant="filled"
-          size="md"
-          className="pop-terminal-header__reregister"
-          onClick={restart}
-        >
-          {messages.workerAssignment.registration.reRegister}
-        </Button>
-      </section>
-
-      <div className="pop-assign">
-        <KeypadPanel
-          workerNo={workerNo}
-          onChange={setWorkerNo}
-          onSubmit={() => {
-            setError(null);
-            /* 누르는 «순간»의 연결 상태를 함께 담는다 — 그 경로로 끝까지 간다. */
-            setSubmitted({ workerNo, offline: !isOnline });
-          }}
-          isChecking={submitted !== null && (submitted.offline || lookup.isFetching)}
-          error={error}
-          offlineNote={isOnline ? null : t.offline.note}
-        />
-
-        <WorkerCard
-          worker={session?.worker ?? null}
-          assignedAt={session?.assignedAt ?? null}
-          isOtherPlant={session?.isOtherPlant ?? false}
-          pendingQueue={pendingQueue}
-          onShift={() => {
-            /*
-             * ⛔ **큐의 사번을 바꾸지 않는다**(B-3 이력 불변). 이미 쌓인 기록은 그때 그
-             * 사람의 것이다 — 세어서 알리기만 하고 손대지 않는다(§6).
-             */
-            void readOutboxSize().then(setPendingQueue);
-
-            setWorkerSession(null);
-            setWorkerNo('');
-          }}
-          /*
-           * 제품 동작은 **홈**으로 이어진다. 스펙(§5-8)은 작업 시작 화면(P-02-01)으로 보냈지만,
-           * 그 화면은 생산 단말의 것이다 — 구매·자재·품질 단말의 작업자는 쓰지 않는 화면에 서서
-           * 자기 화면을 찾아 나가야 했다(현장 지적 2026-10-20). 홈은 이 단말에 허용된 화면만
-           * 부서별로 보인다(`screens/pop-home`). 현재 작업자 귀속은 화면 밖 `worker-session`에
-           * 있으므로 이동 뒤에도 그대로 유지된다.
-           */
-          onGoToWork={() => {
-            void navigate(POP_HOME_PATH);
-          }}
-          /*
-           * ⚠ **개발 서버에서만** 그 자리에 화면 이동 셀렉터를 세운다 — 버튼이 아직
-           * 가리키는 제품 경로 외의 POP 화면도 손으로 확인할 경로가 단말 셸에 없기 때문이다
-           * (주소창이 없다). 제품 모드에서는 위 이동 버튼이 그대로 선다.
-           *
-           * ⛔ **`DEV`가 아니라 `MODE`로 가른다.** `DEV`는 시험 실행에서도 참이라, 개발용
-           * 대체물이 이 화면의 제품 시험 안으로 들어와 「이동 버튼이 있다」는 §5-8 단언을
-           * 무너뜨린다(실측 — 3건이 깨졌다). 시험은 제품 동작을 봐야 한다.
-           *
-           * ⛔ **조건을 런타임 값으로 바꾸지 않는다.** `MODE`는 빌드 시점에 상수로 치환되어
-           * 배포 번들에서 이 가지째 걷힌다(실측). 런타임 조회로 바꾸면 걷히지 않고 현장
-           * 단말에 개발용 조작이 남는다.
-           */
-          devScreenNav={
-            import.meta.env.MODE === 'development' ? (
-              <PopDevScreenNav disabled={session === null} />
-            ) : undefined
-          }
-        />
+              setWorkerSession(null);
+              /* 지나온 화면·최근 화면도 비운다 — 다음 사람에게 앞 사람의 작업지시가 보이면 안 된다. */
+              clearTrail();
+              setWorkerNo('');
+            }}
+            /* 확인을 마치면 하던 화면으로 돌아간다 — 창을 닫을 뿐 화면을 옮기지 않는다. */
+            onGoToWork={onClose}
+          />
+        </div>
       </div>
-    </div>
+    </Dialog>
   );
 };

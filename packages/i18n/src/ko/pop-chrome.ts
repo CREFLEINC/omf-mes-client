@@ -4,15 +4,11 @@
  * ⚠ 화면마다 다른 말을 만들지 않는다. 같은 조작이 화면마다 다르게 읽히면 작업자가 헷갈린다.
  */
 export const popChrome = {
-  /** 머리줄의 화면 이동 선택 단추. */
-  screenNav: '화면 이동',
-  /** 머리줄의 사번 놓기 단추. */
-  userSwitch: '사용자 전환',
   /**
    * 사번을 확인하지 못했을 때 맨 위 경고 띠(`patterns/pop-worker-missing-banner`). 모든 POP 화면이
    * 같은 말을 쓴다(사용자 지시 2026-09-17).
    */
-  workerMissing: '사번이 확인되지 않았습니다. 사번 인증을 먼저 진행해주세요.',
+  workerMissing: '작업자가 확인되지 않아 기록할 수 없습니다. [작업자 확인]으로 사번을 넣어 주세요.',
   /** 선택 단추가 따로 이름을 받지 않았을 때의 기본 이름. */
   select: '선택',
 
@@ -59,9 +55,25 @@ export const popChrome = {
       back: '이전',
       location: '현재 위치',
     },
+    /** 영역 안의 업무 묶음 — 홈·작업 메뉴의 카드 이름(`pop-screen-catalog` `PopTaskGroup`). */
+    groups: {
+      run: '작업 진행',
+      packing: '포장',
+      change: '중단·교체',
+      materialFlow: '자재 입출고·라벨',
+      inspect: '검사',
+      defect: '불량 등록',
+      shipPrep: '출하 준비',
+      rework: '재작업',
+      equipmentLog: '설비 실적',
+    },
     home: {
       title: '홈',
-      recent: '최근 화면',
+      /** 부서 탭 줄의 이름(스크린 리더). */
+      areas: '업무 영역',
+      signInTitle: '작업자를 확인하세요',
+      signInBody: '누구로 기록할지 정하면 기록하는 화면을 쓸 수 있습니다. 조회는 지금도 됩니다.',
+      recent: '이어서 하기',
       /** 최근 화면이 작업지시를 달고 있으면 함께 적는다 — 같은 화면이라도 어느 지시였는지가 다르다. */
       recentWithWorkOrder: (name: string, workOrderId: number): string =>
         `${name} · W/O #${String(workOrderId)}`,
@@ -71,7 +83,8 @@ export const popChrome = {
       equipmentNone: '설비 미지정',
       workOrderNone: '작업지시 미선택',
       workOrder: (workOrderNo: string): string => `작업지시 ${workOrderNo}`,
-      workerUnknown: '사번 미확인',
+      /** 사번이 없을 때 [작업자] 단추 — 누르면 작업자 확인 창이 열린다. */
+      signIn: '작업자 확인',
       worker: (workerNo: string): string => `사번 ${workerNo}`,
       online: '연결됨',
       offline: '연결 끊김',
