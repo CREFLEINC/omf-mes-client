@@ -188,6 +188,8 @@ export const productionResult = {
     splitNote: '검사 수량 · 판정 · 결과 확정',
     /** 검사 off(그 W/O 에 PQC 의뢰 없음)일 때 「생산 실적」 머리 오른쪽 칩. */
     notInspected: 'PQC 미검사',
+    /** 검사기준이 「PQC 생략 허용」이라 PQC 를 생략한 W/O(omf-all-around#119). */
+    skipped: 'PQC 생략',
     /** 검사 on/off 를 묻는 조회가 실패했다(리뷰 m6) — 조용히 실적만 보이지 않게 알린다. */
     loadFailed: 'PQC 정보를 불러오지 못했습니다. 다시 시도하세요.',
   },

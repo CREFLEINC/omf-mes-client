@@ -130,14 +130,17 @@ export const oqcInspection: Translated<typeof ko.oqcInspection> = {
 
   transition: {
     title: 'Chốt xong thì trạng thái LOT sẽ đổi',
-    noLotTitle: 'Hãy kiểm tra trước khi chốt',
-    noLot: 'Không có LOT đối tượng nên trạng thái LOT không thay đổi.',
     quantities: (accepted: string, rejected: string, held: string): string =>
       `Đạt ${accepted} · Không đạt ${rejected} · Tạm giữ ${held}`,
     directionRelease:
       "Chốt xong thì LOT này chuyển sang trạng thái 'Bình thường' (khi không còn tạm giữ khác).",
     directionHold: "Chốt xong thì LOT này chuyển sang trạng thái 'Lỗi'.",
     directionPending: "Chốt xong thì LOT này chuyển sang trạng thái 'Chờ kiểm tra'.",
+    pickedDirectionRelease: 'Chốt xong thì LOT này được gỡ sang trạng thái xuất hàng được.',
+    pickedDirectionHold:
+      'Chốt xong thì các LOT mà lệnh xuất hàng này đã lấy (picking) sẽ chuyển sang trạng thái lỗi.',
+    pickedDirectionPending:
+      'Tạm giữ không thay đổi trạng thái LOT. Lệnh xuất hàng này không xuất được cho đến khi đánh giá xong.',
     directionUnknown: 'Chốt xong thì trạng thái LOT sẽ đổi.',
     pickingImpact: 'Các lượt lấy hàng đang làm dở dùng LOT này cũng bị chặn theo.',
     pickedNotReturned: 'Phần đã lấy hàng rồi thì không được thu hồi lại bằng lần chuyển này.',
@@ -177,5 +180,25 @@ export const oqcInspection: Translated<typeof ko.oqcInspection> = {
   save: {
     duplicateRound: 'Cùng lượt đó đã được lưu rồi. Hãy tải nội dung mới nhất rồi kiểm tra.',
     invalidState: 'Đánh giá không sửa được — hãy tiến hành bằng kiểm tra lại.',
+  },
+
+  skip: {
+    heading: 'Bỏ qua OQC',
+    help: 'Để xuất hàng mà không kiểm tra, hãy yêu cầu bỏ qua. Sau khi phê duyệt ở «Xử lý phê duyệt đặc cách · hạn mức», thực hiện tại đây. Khi thực hiện, mọi yêu cầu OQC đang mở của lệnh xuất hàng này sẽ được bỏ qua và kiểm tra xuất hàng chuyển sang đạt.',
+    reason: 'Lý do bỏ qua',
+    reasonRequired: 'Hãy nhập lý do bỏ qua.',
+    request: 'Yêu cầu bỏ qua OQC',
+    requesting: 'Đang yêu cầu…',
+    execute: 'Thực hiện bỏ qua OQC',
+    executing: 'Đang thực hiện…',
+    requested: 'Đã yêu cầu bỏ qua OQC. Khi phê duyệt xong, hãy thực hiện tại đây.',
+    pending: 'Phê duyệt vẫn đang tiến hành.',
+    approved:
+      'Việc bỏ qua đã được phê duyệt. Khi thực hiện, OQC của lệnh xuất hàng này sẽ được bỏ qua.',
+    rejected: 'Yêu cầu bỏ qua trước đó đã bị từ chối. Có thể yêu cầu lại.',
+    executed: 'Đã bỏ qua OQC. Kiểm tra xuất hàng đã chuyển sang đạt.',
+    skipped: 'Yêu cầu này đã đóng do bỏ qua OQC.',
+    loading: 'Đang tải trạng thái phê duyệt bỏ qua.',
+    loadFailed: 'Không tải được trạng thái phê duyệt bỏ qua.',
   },
 };

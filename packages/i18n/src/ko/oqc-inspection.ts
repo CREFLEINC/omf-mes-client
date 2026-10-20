@@ -240,12 +240,6 @@ export const oqcInspection = {
    */
   transition: {
     title: '확정하면 LOT 상태가 바뀝니다',
-    /**
-     * 대상 LOT 이 없는 의뢰 — 서버가 LOT 전이 없이 확정만 한다(`inspection-confirm.service.ts`
-     * moveTargetLot). LOT 이 바뀐다고 말하면 거짓이다. POP P-04-06 과 같은 말이다.
-     */
-    noLotTitle: '확정 전에 확인하세요',
-    noLot: '대상 LOT 이 없어 LOT 상태는 바뀌지 않습니다.',
     /** ① 대상 규모를 숫자로 — 지금 친 값을 그대로 되읽는다. */
     quantities: (accepted: string, rejected: string, held: string): string =>
       `합격 ${accepted} · 불합격 ${rejected} · 보류 ${held}`,
@@ -253,10 +247,21 @@ export const oqcInspection = {
      * 아는 판정일 때만 방향을 말한다. ⛔ 모르는 코드에 방향을 지어내지 않는다.
      * ⭐ 상태 이름은 서버 전이표(`core/document-state/transitions.ts` C4·C5·C6)와 같다 — 합격 → 정상
      *    (다른 보류가 남아 있으면 그대로) · 불합격 → 불량 · 보류 → 검사 대기. POP P-04-06 과 같은 말이다.
+     *    대상 LOT 이 있는 의뢰(`lotId`)의 말이다.
      */
     directionRelease: "확정하면 이 LOT 이 '정상' 상태가 됩니다(다른 보류가 없을 때).",
     directionHold: "확정하면 이 LOT 이 '불량' 상태가 됩니다.",
     directionPending: "확정하면 이 LOT 이 '검사 대기' 상태가 됩니다.",
+    /**
+     * 대상 LOT 이 없는 의뢰 = 출하작업지시(헤더) OQC — 서버가 그 품목 검사 대상 라인이 집은(피킹) LOT 에
+     * 판정을 남긴다(`inspection-confirm.service.ts` movePickedOqcLots · omf-all-around#119 · 서버 P-83).
+     */
+    pickedDirectionRelease: '확정하면 이 LOT 이 출하할 수 있는 상태로 풀립니다.',
+    /** 불합격 — 서버가 피킹 LOT 을 불량(C6)으로 옮긴다(omf-all-around#119 D6-c · 서버 P-83). */
+    pickedDirectionHold: '확정하면 이 출하작업지시가 집은 LOT 이 불량 상태가 됩니다.',
+    /** 보류 — LOT 을 옮기지 않는다(omf-all-around#119 · 2026-10-20 결정 (A) · 서버 P-83). 출하는 관문이 막는다. */
+    pickedDirectionPending:
+      '보류는 LOT 상태를 바꾸지 않습니다. 이 출하작업지시는 판정이 끝날 때까지 출하할 수 없습니다.',
     /** 모르는 판정 코드 — 방향을 빼고 사실만 남긴다. */
     directionUnknown: '확정하면 LOT 상태가 바뀝니다.',
     /** ② 다른 화면에 미치는 영향. ⚠ 건수를 쓰지 않는다 — 셀 자리가 이 화면에 없다. */
@@ -323,5 +328,28 @@ export const oqcInspection = {
   save: {
     duplicateRound: '이미 같은 회차가 저장돼 있습니다. 최신 내용을 불러온 뒤 확인하세요.',
     invalidState: '판정은 수정할 수 없습니다 — 재검사로 진행하세요.',
+  },
+
+  /**
+   * OQC 생략(omf-all-around#119 · 서버 선행 P-83) — 요청 → 「특채·한도승인 승인 처리」 결재 → 여기서 실행.
+   * ⭐ 단위는 출하작업지시 하나다 — 실행하면 그 출하작업지시의 열린 OQC 의뢰가 함께 생략된다.
+   */
+  skip: {
+    heading: 'OQC 생략',
+    help: '검사를 하지 않고 출하하려면 생략을 요청합니다. 「특채·한도승인 승인 처리」에서 결재한 뒤 여기서 실행합니다. 실행하면 이 출하작업지시의 열린 OQC 의뢰가 모두 생략되고 출하검사가 통과로 바뀝니다.',
+    reason: '생략 사유',
+    reasonRequired: '생략 사유를 입력하세요.',
+    request: 'OQC 생략 요청',
+    requesting: '요청하는 중…',
+    execute: 'OQC 생략 실행',
+    executing: '실행하는 중…',
+    requested: 'OQC 생략을 요청했습니다. 결재가 끝나면 여기서 실행하세요.',
+    pending: '결재가 아직 진행 중입니다.',
+    approved: '생략이 승인됐습니다. 실행하면 이 출하작업지시의 OQC 가 생략됩니다.',
+    rejected: '직전 생략 요청이 반려됐습니다. 다시 요청할 수 있습니다.',
+    executed: 'OQC 를 생략했습니다. 출하검사가 통과로 바뀌었습니다.',
+    skipped: '이 의뢰는 OQC 생략으로 닫혔습니다.',
+    loading: '생략 결재 상태를 불러오는 중입니다.',
+    loadFailed: '생략 결재 상태를 불러오지 못했습니다.',
   },
 } as const;

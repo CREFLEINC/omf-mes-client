@@ -34,6 +34,7 @@ import { QueueTable } from './queue-table';
 import { RequestDetailPane } from './request-detail-pane';
 import { ResultFormPane } from './result-form-pane';
 import { RoundHistory } from './round-history';
+import { SkipPane } from './skip-pane';
 import { InspectionHistoryPanel } from '../inspection-history/panel';
 import { latestRound } from './types';
 import { targetSignatureOf, type WriteTargetSignature } from './write-target';
@@ -339,6 +340,16 @@ export const OqcInspectionScreen = () => {
     ) : (
       <>
         <RequestDetailPane detail={detail.data} />
+
+        {/* OQC 생략(#119) — 출하작업지시 대상이고 판정이 아직 없을 때만. 확정 회차가 있으면 생략으로 덮지 않는다. */}
+        {detail.data.targetTypeCode === 'SHIPMENT_REQUEST' &&
+          rounds.data !== undefined &&
+          rounds.data.every((row) => row.statusCode !== 'CONFIRMED') && (
+            <SkipPane
+              shipmentRequestId={detail.data.targetId}
+              requestStatusCode={detail.data.statusCode}
+            />
+          )}
 
         {rounds.isError ? (
           /* 회차를 모르는 채로 저장을 열지 않는다 — 몇 회차인지 모르면 재검사인지도 모른다. */

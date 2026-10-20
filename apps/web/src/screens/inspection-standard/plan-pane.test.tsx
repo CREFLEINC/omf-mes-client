@@ -1,3 +1,4 @@
+import { messages } from '@omf-mes/i18n';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
@@ -91,6 +92,7 @@ describe('PlanPane — 표시', () => {
         itemId: '',
         processId: '',
         routingId: '',
+        pqcSkipAllowed: false,
       },
     });
 
@@ -177,5 +179,27 @@ describe('PlanPane — 편집', () => {
     renderPane({ fieldErrors: { inspectionPlanCode: '이미 사용 중인 코드입니다.' } });
 
     expect(screen.getByText('이미 사용 중인 코드입니다.')).toBeInTheDocument();
+  });
+});
+
+describe('PlanPane — PQC 생략 허용(omf-all-around#119)', () => {
+  const t = messages.inspectionStandard;
+
+  it('PQC 기준이면 체크가 서고 저장된 값으로 켜져 있으며, 누르면 그 값을 바꾼다', async () => {
+    const pqc = inspectionPlanFixtures[1]!;
+    const { onChange, user } = renderPane({ plan: pqc, values: planToFormValues(pqc) });
+
+    const box = screen.getByRole('checkbox', { name: t.fields.pqcSkipAllowed });
+    expect(box).toBeChecked();
+    expect(screen.getByText(t.values.pqcSkipAllowedNote)).toBeInTheDocument();
+    await user.click(box);
+    expect(onChange).toHaveBeenCalledWith({ pqcSkipAllowed: false });
+  });
+
+  it('PQC 가 아닌 기준에는 체크가 없다', () => {
+    renderPane();
+    expect(
+      screen.queryByRole('checkbox', { name: t.fields.pqcSkipAllowed }),
+    ).not.toBeInTheDocument();
   });
 });
