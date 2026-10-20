@@ -64,7 +64,6 @@ export const WorkStartScreen = () => {
   const uomCodeOf = (uomId: number | undefined): string | null =>
     uomId === undefined ? null : (uoms.data?.get(uomId) ?? null);
 
-  const gate = useStartGate(identity.terminalId, soleProcessIdOf(identity.processes));
   const terminal = useTerminal(identity.terminalId);
 
   const equipmentId = terminal.data?.equipmentId ?? null;
@@ -162,6 +161,13 @@ export const WorkStartScreen = () => {
    */
   const selected = (rows ?? []).find((row) => row.workOrderId === selectedId) ?? null;
   const isResume = selected !== null && isHeld(selected);
+
+  /*
+   * ⭐ 시작할 수 있는지는 «고른 W/O 의 공정»으로 판정한다 — 단말에 공정이 여럿이어도 W/O 가 어느
+   *    공정의 일인지 안다. 공정을 싣지 않는 서버면 단말의 유일한 공정으로 판정한다.
+   */
+  const gateProcessId = selected?.processId ?? soleProcessIdOf(identity.processes);
+  const gate = useStartGate(identity.terminalId, gateProcessId);
 
   /*
    * ⭐ **고른 지시의 «열린» 세션을 늘 확인한다** — 재개할 세션을 찾기 위해서만이 아니다.
@@ -322,17 +328,25 @@ export const WorkStartScreen = () => {
     /* ⭐ 사유별로 가른다(사용자 지시 2026-09-13) — 매핑이 비어 있는 것은 등록 실패가 아니다. */
     if (isEquipmentMissing) return other(t.blocked.equipmentMissing);
     if (gate.verdict === 'unidentified') {
-      if (identity.terminalId !== null && identity.processes !== null) {
-        return other(
-          identity.processes.length === 0 ? t.blocked.processNone : t.blocked.processMultiple,
-        );
+      if (identity.terminalId === null || identity.processes === null) {
+        return other(t.blocked.unidentified);
       }
-
-      return other(t.blocked.unidentified);
+      if (identity.processes.length === 0) return other(t.blocked.processNone);
+      /*
+       * 공정이 여럿인 단말은 W/O 를 고르기 전에는 판정할 공정이 없다 — 막지 않고 고르게 둔다.
+       * 고른 W/O 가 공정을 싣지 않는 서버에서만 여기서 막힌다.
+       */
+      if (selected !== null) return other(t.blocked.processMultiple);
     }
     if (gate.verdict === 'checking') return other(t.blocked.checking);
     if (gate.verdict === 'unavailable') return other(t.blocked.unavailable);
-    if (gate.verdict === 'denied') return other(t.blocked.denied);
+    if (gate.verdict === 'denied') {
+      return other(
+        selected?.processName === undefined
+          ? t.blocked.denied
+          : t.blocked.deniedProcess(selected.processName),
+      );
+    }
     /* ⛔ 오프라인은 큐가 아니라 거부다 — 사유와 다음 행동을 함께 보인다. */
     if (!isOnline) return other(t.blocked.offline);
     /* ⭐ 사번 사유는 이 띠에 적지 않는다 — 맨 위 공용 띠가 말한다(사용자 지시 2026-09-17). 잠금은 그대로. */
@@ -736,7 +750,7 @@ export const WorkStartScreen = () => {
           equipmentCode={equipmentCode}
           equipmentName={equipmentName}
           plantId={terminal.data?.plantId ?? null}
-          processId={soleProcessIdOf(identity.processes)}
+          processId={attempt.workOrder.processId ?? soleProcessIdOf(identity.processes)}
           workerNo={confirmedNo}
           decidedAt={attempt.at}
           /* 단말 시각의 «날짜»다 — 주기 창이 이 값을 기준으로 열린다. */

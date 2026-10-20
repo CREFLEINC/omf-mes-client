@@ -107,15 +107,54 @@ describe('P-02-01 작업 시작 — 단말 게이팅', () => {
     expect(await screen.findByText(t.blocked.processNone)).toBeInTheDocument();
   });
 
-  it('공정이 여럿이면 권한을 확인할 수 없다고 말한다', async () => {
-    renderScreen({
-      identity: {
-        ...IDENTITY,
-        processes: [{ processId: PROCESS_ID }, { processId: PROCESS_ID + 1 }],
-      },
+  describe('고른 W/O 의 공정으로 판정한다', () => {
+    const MULTI = {
+      ...IDENTITY,
+      processes: [{ processId: PROCESS_ID }, { processId: PROCESS_ID + 1 }],
+    };
+    const pick = async (rendered: ReturnType<typeof renderScreen>) => {
+      await enterWorkerNo(rendered.user, WORKER.workerNo);
+      await rendered.user.click(
+        await screen.findByRole('button', { name: selectName(WORK_ORDER.workOrderNo) }),
+      );
+    };
+
+    it('공정이 여럿인 단말도 W/O 공정의 시작이 열려 있으면 시작이 열린다', async () => {
+      const rendered = renderScreen({
+        identity: MULTI,
+        workOrders: [{ ...WORK_ORDER, processId: PROCESS_ID, processName: '합성 사출' }],
+      });
+      /* 고르기 전에는 판정할 공정이 없을 뿐이다 — 막지 않는다. */
+      await screen.findByRole('button', { name: selectName(WORK_ORDER.workOrderNo) });
+      expect(screen.queryByText(t.blocked.processMultiple)).not.toBeInTheDocument();
+
+      await pick(rendered);
+
+      await waitFor(() => expect(startButton()).toBeEnabled());
+      expect(screen.queryByText(t.blocked.processMultiple)).not.toBeInTheDocument();
     });
-    expect(await screen.findByText(t.blocked.processMultiple)).toBeInTheDocument();
-    expect(screen.queryByText(t.blocked.unidentified)).not.toBeInTheDocument();
+
+    it('W/O 공정의 시작이 매핑되지 않았으면 그 공정 이름으로 막는다', async () => {
+      const rendered = renderScreen({
+        identity: MULTI,
+        workOrders: [{ ...WORK_ORDER, processId: PROCESS_ID + 1, processName: '합성 조립' }],
+      });
+
+      await pick(rendered);
+
+      expect(await screen.findByText(t.blocked.deniedProcess('합성 조립'))).toBeInTheDocument();
+      expect(startButton()).toBeDisabled();
+    });
+
+    it('W/O 가 공정을 싣지 않는 서버면 단말 공정이 여럿일 때 판정할 수 없다고 말한다', async () => {
+      const rendered = renderScreen({ identity: MULTI });
+
+      await pick(rendered);
+
+      expect(await screen.findByText(t.blocked.processMultiple)).toBeInTheDocument();
+      expect(screen.queryByText(t.blocked.unidentified)).not.toBeInTheDocument();
+      expect(startButton()).toBeDisabled();
+    });
   });
 
   /** ⭐ 사용자 지시 2026-09-14 — 설비는 타이틀 옆, 단말은 오른쪽. */
