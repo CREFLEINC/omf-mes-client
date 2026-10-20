@@ -105,6 +105,16 @@ export const oqcInspection: Translated<typeof ko.oqcInspection> = {
     blockedByJudgmentOptions:
       'Lưu đánh giá — danh sách giá trị đánh giá chưa sẵn sàng nên không lưu được. Hãy hỏi người phụ trách.',
     blockedByJudgment: 'Lưu đánh giá — phải chọn đánh giá tổng hợp thì mới lưu được.',
+    judgmentChange: {
+      basis: (acceptanceNumber: number): string =>
+        `Tự động đánh giá theo số chấp nhận ${String(acceptanceNumber)}`,
+      expected: (judgment: string): string => `Đánh giá tự động: ${judgment}`,
+      reason: 'Lý do thay đổi đánh giá',
+      reasonPlaceholder: 'Hãy nhập lý do lưu khác với đánh giá tự động.',
+      required:
+        'Lưu đánh giá — đánh giá khác với đánh giá tự động phải nhập lý do thay đổi thì mới lưu được.',
+      reasonMissing: 'Hãy nhập lý do thay đổi đánh giá.',
+    },
 
     reinspect: 'Thêm lượt kiểm tra lại',
     reinspectCancel: 'Thôi không kiểm tra lại',

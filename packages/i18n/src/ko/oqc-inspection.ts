@@ -198,6 +198,16 @@ export const oqcInspection = {
     blockedByJudgmentOptions:
       '판정 저장 — 판정 값 목록이 준비되지 않아 저장할 수 없습니다. 담당자에게 문의하세요.',
     blockedByJudgment: '판정 저장 — 종합 판정을 골라야 저장할 수 있습니다.',
+    /** 합격판정개수 기준 자동 판정(omf-all-around#126) — 기준에 합격판정개수가 있을 때만 선다. IQC(#125)와 같은 규칙이다. */
+    judgmentChange: {
+      basis: (acceptanceNumber: number): string =>
+        `합격판정개수 ${String(acceptanceNumber)} 기준 자동 판정`,
+      expected: (judgment: string): string => `자동 판정: ${judgment}`,
+      reason: '판정 변경 사유',
+      reasonPlaceholder: '자동 판정과 다르게 저장하는 이유를 입력해 주세요.',
+      required: '판정 저장 — 자동 판정과 다른 판정은 변경 사유를 입력해야 저장할 수 있습니다.',
+      reasonMissing: '판정 변경 사유를 입력하세요.',
+    },
 
     /*
      * 재검사 — ⭐ 앞 회차를 고치는 것이 «아니라» 새 회차를 쌓는 일이라는 사실을 문면이 먼저

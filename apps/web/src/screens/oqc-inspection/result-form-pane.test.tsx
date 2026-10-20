@@ -30,6 +30,11 @@ const renderPane = (overrides: Partial<ResultFormPaneProps> = {}) => {
     judgmentOptions: options,
     judgment: '',
     onJudgmentChange: vi.fn(),
+    acceptanceNumber: null,
+    expectedJudgmentLabel: null,
+    needsChangeReason: false,
+    changeReason: '',
+    onChangeReasonChange: vi.fn(),
     onSave,
     isSaving: false,
     isJustSaved: false,
@@ -275,5 +280,69 @@ describe('ResultFormPane — 확인 창', () => {
 
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     expect(onSave).not.toHaveBeenCalled();
+  });
+});
+
+/* omf-all-around#126 — 합격판정개수 기준 자동 판정과 변경 사유(IQC #125 와 같은 규칙). */
+describe('ResultFormPane — 합격판정개수 기준 자동 판정', () => {
+  const change = t.judgmentChange;
+
+  it('합격판정개수가 없으면 자동 판정 줄도 사유 칸도 없다(종전 그대로)', () => {
+    renderPane({ draft: MATCHING, judgment: 'ACCEPTED' });
+
+    expect(screen.queryByText(change.basis(5))).toBeNull();
+    expect(screen.queryByLabelText(change.reason)).toBeNull();
+  });
+
+  it('합격판정개수가 있으면 기준과 자동 판정을 한 줄로 말한다', () => {
+    renderPane({
+      draft: MATCHING,
+      judgment: 'REJECTED',
+      acceptanceNumber: 5,
+      expectedJudgmentLabel: '불합격',
+    });
+
+    expect(screen.getByText(`${change.basis(5)} · ${change.expected('불합격')}`)).toBeTruthy();
+    expect(screen.queryByLabelText(change.reason)).toBeNull();
+  });
+
+  it('자동 판정과 다르게 고르면 사유 칸이 서고, 비어 있으면 저장이 막힌다', () => {
+    renderPane({
+      draft: MATCHING,
+      judgment: 'ACCEPTED',
+      acceptanceNumber: 5,
+      expectedJudgmentLabel: '불합격',
+      needsChangeReason: true,
+    });
+
+    expect(screen.getByText(change.reasonMissing)).toBeTruthy();
+    expect(screen.getByText(change.required)).toBeTruthy();
+    expect((screen.getByRole('button', { name: t.save }) as HTMLButtonElement).disabled).toBe(true);
+  });
+
+  it('사유를 넣으면 저장이 열린다', () => {
+    renderPane({
+      draft: MATCHING,
+      judgment: 'ACCEPTED',
+      acceptanceNumber: 5,
+      expectedJudgmentLabel: '불합격',
+      needsChangeReason: true,
+      changeReason: '고객 승인 — 출하 허용',
+    });
+
+    expect(screen.queryByText(change.required)).toBeNull();
+    expect((screen.getByRole('button', { name: t.save }) as HTMLButtonElement).disabled).toBe(
+      false,
+    );
+  });
+
+  it('확정된 회차에는 자동 판정 줄을 내지 않는다', () => {
+    renderPane({
+      round: toInspectionResultRound(confirmedRound),
+      acceptanceNumber: 5,
+      expectedJudgmentLabel: null,
+    });
+
+    expect(screen.queryByText(change.basis(5))).toBeNull();
   });
 });
