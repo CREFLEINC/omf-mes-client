@@ -6352,6 +6352,14 @@ dl.filter-bar.approval-inbox-detail-facts {
 }
 
 /*
+ * W-01-09 입하 예정 — 12열(P/O 라인 한 줄). 열별 폭의 도출 표는 screens/inbound-schedule/schedule-table.tsx에 있다
+ * (지정 폭 1,128px + 흡수 열 「코드 · 이름」 둘 × 200px = 1,528px).
+ */
+.wide-table.inbound-schedule-table table {
+  min-width: 96rem;
+}
+
+/*
  * 값이 긴 코드를 고르는 선택칸 — **옵트인이다.** 붙인 칸만 넓어진다.
  * 셀 클래스 전체에 걸면 값이 짧은 선택칸까지 함께 넓어져 줄이 쓸데없이 넘친다.
  *

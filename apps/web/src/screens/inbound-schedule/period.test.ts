@@ -67,8 +67,8 @@ describe('validatePeriod', () => {
 describe('toPeriodQuery', () => {
   it('두 날짜를 계약 쿼리 이름으로 옮긴다', () => {
     expect(toPeriodQuery({ from: '2026-08-01', to: '2026-08-31' })).toEqual({
-      expectedArrivalDateFrom: '2026-08-01',
-      expectedArrivalDateTo: '2026-08-31',
+      expectedReceiptDateFrom: '2026-08-01',
+      expectedReceiptDateTo: '2026-08-31',
     });
   });
 
@@ -78,10 +78,10 @@ describe('toPeriodQuery', () => {
    */
   it('비어 있는 쪽은 키를 만들지 않는다', () => {
     expect(toPeriodQuery({ from: '2026-08-01', to: '' })).toEqual({
-      expectedArrivalDateFrom: '2026-08-01',
+      expectedReceiptDateFrom: '2026-08-01',
     });
     expect(toPeriodQuery({ from: '', to: '2026-08-31' })).toEqual({
-      expectedArrivalDateTo: '2026-08-31',
+      expectedReceiptDateTo: '2026-08-31',
     });
   });
 
