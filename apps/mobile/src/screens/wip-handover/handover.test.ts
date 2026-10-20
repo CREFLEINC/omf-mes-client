@@ -67,9 +67,24 @@ describe('넘길 수 있는 LOT 인가', () => {
     expect(lotProblemOf(lot({ held: true }))).toBe('held');
   });
 
+  /* omf-all-around#127 - PQC 불합격으로 검사 대기가 된 LOT · 불량 LOT 은 보류가 아니어도 막는다. */
+  it('품질 상태가 정상이 아니면 막는다', () => {
+    expect(lotProblemOf(lot({ statusCode: 'INSPECTION_PENDING' }))).toBe('inspectionPending');
+    expect(lotProblemOf(lot({ statusCode: 'DEFECTIVE' }))).toBe('defective');
+    expect(lotProblemOf(lot({ statusCode: 'SCRAPPED' }))).toBe('notNormal');
+    expect(fromWorkOrderIdOf(lot({ statusCode: 'INSPECTION_PENDING' }))).toBeNull();
+  });
+
+  /* 보류 등록이 LOT 을 검사 대기로 옮긴다 - 원인이 보류면 보류로 말한다(#127 실검증 지적). */
+  it('보류가 있으면 상태보다 먼저 보류로 막는다', () => {
+    expect(lotProblemOf(lot({ held: true, statusCode: 'INSPECTION_PENDING' }))).toBe('held');
+    expect(lotProblemOf(lot({ held: true, statusCode: 'DEFECTIVE' }))).toBe('held');
+  });
+
   /* W/O 마감 여부는 보지 않는다 - 마감 전이라도 완료된 LOT 은 넘어간다. */
   it('완료된 LOT 이면 W/O 상태를 보지 않는다', () => {
-    expect(lotProblemOf(lot({ statusCode: '무엇이든' }))).toBeNull();
+    // LOT 품질 상태(statusCode)는 #127 부터 본다 - 정상이면 생명주기 값과 상관없이 넘어간다.
+    expect(lotProblemOf(lot({ lifecycleStatusCode: '무엇이든' }))).toBeNull();
   });
 });
 
@@ -142,9 +157,9 @@ describe('확정 가능 여부', () => {
 
   /* 서버도 막지만 눌러 보고 알게 두지 않는다. */
   it('같은 W/O 로는 넘기지 못한다', () => {
-    expect(canConfirm(lot({ sourceId: 27 }), workOrder({ workOrderId: 27 }), '100', true, 480)).toBe(
-      false,
-    );
+    expect(
+      canConfirm(lot({ sourceId: 27 }), workOrder({ workOrderId: 27 }), '100', true, 480),
+    ).toBe(false);
   });
 
   it('수량이 어긋나면 확정할 수 없다', () => {
@@ -173,8 +188,14 @@ describe('확정 가능 여부', () => {
 
 describe('완료 수량', () => {
   it('진척의 양품 합계가 상한이다', () => {
-    expect(completedQtyOf({ goodQty: 430, achievementRate: 0.86, varianceQty: -70,
-      completionJudgmentCode: 'UNDER' })).toBe(430);
+    expect(
+      completedQtyOf({
+        goodQty: 430,
+        achievementRate: 0.86,
+        varianceQty: -70,
+        completionJudgmentCode: 'UNDER',
+      }),
+    ).toBe(430);
   });
 
   it('진척을 못 받았으면 모른다고 답한다', () => {

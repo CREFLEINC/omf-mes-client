@@ -43,6 +43,10 @@ export const wipHandover = {
     problem: {
       notProduction: '생산LOT이 아닙니다. 공정 인계는 생산LOT만 넘깁니다.',
       notCompleted: '생산 완료 처리가 필요합니다',
+      /** PQC 불합격으로 검사 대기가 된 LOT 이다. PQC 판정이 끝난 정상 LOT 만 넘긴다(omf-all-around#127). */
+      inspectionPending: '검사 대기 LOT입니다. PQC 판정을 먼저 마치세요.',
+      defective: '불량 LOT입니다. 불량 LOT은 다음 공정으로 넘길 수 없습니다.',
+      notNormal: '정상 LOT이 아닙니다. 정상 LOT만 넘길 수 있습니다.',
       /** 재고 이동에서는 허용되지만 공정 인계에서는 막는다. 근거를 함께 적는다. */
       held: '보류 중인 LOT입니다',
       heldWhy: '보류 중인 물건을 다음 공정에 넣으면 불량이 퍼집니다. 보류를 먼저 푸세요.',

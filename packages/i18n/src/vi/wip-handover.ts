@@ -30,6 +30,9 @@ export const wipHandover: Translated<typeof ko.wipHandover> = {
     problem: {
       notProduction: 'Đây không phải LOT sản xuất. Bàn giao công đoạn chỉ nhận LOT sản xuất.',
       notCompleted: 'Cần xử lý hoàn thành sản xuất trước',
+      inspectionPending: 'LOT đang chờ kiểm tra. Hãy hoàn tất phán định PQC trước.',
+      defective: 'LOT lỗi. LOT lỗi không thể chuyển sang công đoạn sau.',
+      notNormal: 'LOT không ở trạng thái bình thường. Chỉ bàn giao được LOT bình thường.',
       held: 'LOT đang bị tạm giữ',
       heldWhy:
         'Đưa hàng đang tạm giữ sang công đoạn sau sẽ làm lỗi lan rộng. Hãy gỡ tạm giữ trước.',
