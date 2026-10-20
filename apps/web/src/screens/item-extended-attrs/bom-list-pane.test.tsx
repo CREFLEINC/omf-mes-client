@@ -8,6 +8,7 @@ import { bomFixtures } from './fixtures';
 const renderPane = (overrides: Partial<Parameters<typeof BomListPane>[0]> = {}) => {
   const onRequestSetDefault = vi.fn<(bom: (typeof bomFixtures)[number]) => void>();
   const onSelect = vi.fn<(bomId: number) => void>();
+  const onApplyBomCodeFilter = vi.fn<(bomCode: string) => void>();
 
   render(
     <BomListPane
@@ -17,11 +18,13 @@ const renderPane = (overrides: Partial<Parameters<typeof BomListPane>[0]> = {}) 
       selectedBomId={null}
       onSelect={onSelect}
       onRequestSetDefault={onRequestSetDefault}
+      bomCodeFilter=""
+      onApplyBomCodeFilter={onApplyBomCodeFilter}
       {...overrides}
     />,
   );
 
-  return { onRequestSetDefault, onSelect, user: userEvent.setup() };
+  return { onRequestSetDefault, onSelect, onApplyBomCodeFilter, user: userEvent.setup() };
 };
 
 const pane = (): HTMLElement => screen.getByRole('region', { name: '자재 명세서 목록' });
@@ -94,11 +97,19 @@ describe('BomListPane — 표기', () => {
     expect(within(pane()).getByText('SYN-BOM-02')).toBeInTheDocument();
   });
 
-  /* 값 목록이 확정되지 않아 이름을 지어내지 않는다 — 품목유형과 같은 처리다. */
-  it('상태 코드를 이름으로 바꾸지 않는다', () => {
+  /* 상태 목록을 받기 전·실패 시에는 이름을 지어내지 않고 코드 그대로 낸다. */
+  it('상태 목록이 없으면 상태 코드를 그대로 낸다', () => {
     renderPane();
 
     expect(within(pane()).getByText('SYN-BOM-STATUS-A')).toBeInTheDocument();
+  });
+
+  it('상태를 코드 그룹의 이름으로 낸다 — 목록에 없는 코드는 그대로다', () => {
+    renderPane({ statusOptions: [{ code: 'SYN-BOM-STATUS-A', codeName: '합성 상태 A' }] });
+
+    expect(within(pane()).getByText('합성 상태 A')).toBeInTheDocument();
+    expect(within(pane()).queryByText('SYN-BOM-STATUS-A')).not.toBeInTheDocument();
+    expect(within(pane()).getByText('SYN-BOM-STATUS-B')).toBeInTheDocument();
   });
 
   it('기본인 줄에만 표식이 붙는다', () => {
@@ -189,5 +200,50 @@ describe('BomListPane — 기본 지정 (M22)', () => {
     renderPane();
 
     expect(screen.getByText(/기본을 옮기려면 다른 줄에서 지정하세요/)).toBeInTheDocument();
+  });
+});
+
+describe('BomListPane — BOM 코드 조건', () => {
+  it('검색하면 앞뒤 공백을 걷어 조건을 건다', async () => {
+    const { onApplyBomCodeFilter, user } = renderPane();
+
+    await user.type(screen.getByRole('searchbox', { name: 'BOM 코드 검색' }), '  SYN-BOM {Enter}');
+
+    expect(onApplyBomCodeFilter).toHaveBeenLastCalledWith('SYN-BOM');
+  });
+
+  it('조건이 없으면 칩이 없다', () => {
+    renderPane();
+
+    expect(screen.queryByRole('button', { name: 'BOM 코드 조건 제거' })).not.toBeInTheDocument();
+  });
+
+  it('걸린 조건을 칩으로 보이고 칩을 지우면 조건을 푼다', async () => {
+    const { onApplyBomCodeFilter, user } = renderPane({ bomCodeFilter: 'SYN-BOM' });
+
+    expect(within(pane()).getByText('BOM 코드: SYN-BOM')).toBeInTheDocument();
+    expect(screen.getByRole('searchbox', { name: 'BOM 코드 검색' })).toHaveValue('SYN-BOM');
+
+    await user.click(screen.getByRole('button', { name: 'BOM 코드 조건 제거' }));
+
+    expect(onApplyBomCodeFilter).toHaveBeenLastCalledWith('');
+  });
+
+  /* 조건이 걸린 0건은 「등록된 것이 없다」가 아니다 — 뭉치면 사실과 다른 안내가 된다. */
+  it('조건이 걸린 0건과 조건 없는 0건을 가른다', async () => {
+    const { onApplyBomCodeFilter, user } = renderPane({ boms: [], bomCodeFilter: 'NOPE' });
+
+    expect(within(pane()).getByText('조건에 맞는 자재 명세서가 없습니다')).toBeInTheDocument();
+    expect(within(pane()).queryByText('등록된 자재 명세서가 없습니다')).not.toBeInTheDocument();
+
+    await user.click(within(pane()).getByRole('button', { name: '초기화' }));
+
+    expect(onApplyBomCodeFilter).toHaveBeenLastCalledWith('');
+  });
+
+  it('조건이 없는 0건은 등록된 것이 없다고 밝힌다', () => {
+    renderPane({ boms: [] });
+
+    expect(within(pane()).getByText('등록된 자재 명세서가 없습니다')).toBeInTheDocument();
   });
 });

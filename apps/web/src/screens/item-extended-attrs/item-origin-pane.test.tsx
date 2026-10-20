@@ -109,9 +109,25 @@ describe('ItemOriginPane — 원본 4열의 값 표기', () => {
     expect(screen.getByLabelText('품목유형')).toHaveTextContent('—');
   });
 
-  /* 값 목록이 미정이라 이름을 지어내지 않는다. */
-  it('품목유형은 코드 문자열을 그대로 낸다', () => {
+  /* 유형 목록을 받기 전·실패 시에는 이름을 지어내지 않는다. */
+  it('유형 목록이 없으면 품목유형 코드를 그대로 낸다', () => {
     renderPane({ item: itemFixtures[2]! });
+
+    expect(screen.getByLabelText('품목유형')).toHaveTextContent('SYN-TYPE-B');
+  });
+
+  /* 좌 목록의 선택칸·칩과 같은 이름이어야 같은 유형이 두 이름으로 읽히지 않는다. */
+  it('품목유형을 코드 그룹의 이름으로 낸다', () => {
+    renderPane({ itemTypeOptions: [{ code: 'SYN-TYPE-A', codeName: '합성 유형 A' }] });
+
+    expect(screen.getByLabelText('품목유형')).toHaveTextContent('합성 유형 A');
+  });
+
+  it('유형 목록에 없는 코드는 코드 그대로 낸다', () => {
+    renderPane({
+      item: itemFixtures[2]!,
+      itemTypeOptions: [{ code: 'SYN-TYPE-A', codeName: '합성 유형 A' }],
+    });
 
     expect(screen.getByLabelText('품목유형')).toHaveTextContent('SYN-TYPE-B');
   });

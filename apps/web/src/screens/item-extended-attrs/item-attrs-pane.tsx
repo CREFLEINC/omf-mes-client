@@ -14,6 +14,11 @@ export interface ItemAttrsPaneProps {
   values: ItemAttrsFormValues;
   /** 조회한 사용 여부. 저장할 때 이 값을 그대로 되돌려 싣는다. */
   isActive: boolean;
+  /**
+   * MES 구분(`mesCategoryCode`)의 표시명. **값 표기만 있다** — 시스템이 소유하는 값이라
+   * 편집 본문(`ItemUpdate`)에 자리가 없다. 빈 문자열이면 값 없음 표기다.
+   */
+  mesCategoryName: string;
   uomOptions: SelectOption[];
   onChange: (patch: Partial<ItemAttrsFormValues>) => void;
   fieldErrors: Record<string, string>;
@@ -28,6 +33,7 @@ export interface ItemAttrsPaneProps {
 export const ItemAttrsPane = ({
   values,
   isActive,
+  mesCategoryName,
   uomOptions,
   onChange,
   fieldErrors,
@@ -219,6 +225,13 @@ export const ItemAttrsPane = ({
               />
             </div>
 
+            <div className="field-cell">
+              <ValueField
+                label={t.attrs.fields.mesCategory}
+                value={mesCategoryName === '' ? t.values.empty : mesCategoryName}
+              />
+              <span className="field-note">{t.attrs.mesCategoryNote}</span>
+            </div>
             <div className="field-cell">
               <ValueField
                 label={t.attrs.fields.isActive}

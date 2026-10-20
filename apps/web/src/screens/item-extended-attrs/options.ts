@@ -47,3 +47,25 @@ export const lookupLabel = (
   isLoading = false,
   isError = false,
 ): string => lookupDisplayLabel({ entries, isLoading, isError }, id);
+
+/** 코드값 하나. 코드 그룹(`/mdm/code-values`)이 주는 형태에서 화면이 쓰는 두 열만 남긴다. */
+export interface CodeValueOption {
+  code: string;
+  codeName: string;
+}
+
+/**
+ * 코드를 코드 그룹이 준 표시명으로 옮긴다. 읽기 전용 표기·조건 칩이 쓴다.
+ *
+ * **목록을 아직 받지 못했거나 그 코드가 목록에 없으면 코드를 그대로 낸다** — 이름을 지어내지
+ * 않는다. 코드는 사람이 읽을 수 있는 문자열이라(번호가 아니다) 그대로 내도 자료로 읽힌다.
+ * 표시명이 빈 문자열인 코드값도 코드로 물러난다 — 빈 칸은 값이 사라진 것처럼 보인다.
+ */
+export const codeValueName = (
+  options: readonly CodeValueOption[] | undefined,
+  code: string,
+): string => {
+  const found = options?.find((option) => option.code === code);
+
+  return found === undefined || found.codeName === '' ? code : found.codeName;
+};

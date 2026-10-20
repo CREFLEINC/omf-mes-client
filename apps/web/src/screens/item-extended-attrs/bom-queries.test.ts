@@ -36,6 +36,13 @@ describe('bomKeys', () => {
   it('헤더 목록 키가 품목마다 갈린다', () => {
     expect(bomKeys.list(1001)).not.toEqual(bomKeys.list(1002));
   });
+
+  /* 기본 지정은 `list`로 무효화한다 — BOM 코드 조건이 걸린 목록도 함께 다시 받아야 표가 낡지 않는다. */
+  it('헤더 목록 키가 그 품목의 조건 걸린 목록을 덮는다', () => {
+    expect(isPrefixOf(bomKeys.list(1001), bomKeys.filteredList(1001, ''))).toBe(true);
+    expect(isPrefixOf(bomKeys.list(1001), bomKeys.filteredList(1001, 'SYN-BOM'))).toBe(true);
+    expect(isPrefixOf(bomKeys.list(1001), bomKeys.filteredList(1002, 'SYN-BOM'))).toBe(false);
+  });
 });
 
 /**

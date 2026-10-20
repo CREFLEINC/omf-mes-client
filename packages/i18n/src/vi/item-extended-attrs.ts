@@ -6,8 +6,8 @@ import type { Translated } from './translated';
  * 옮긴 말에서도 그 경계가 살아 있어야 한다. 원본 안내·충돌·상태 잠금은 공통 문구를 그대로 쓴다.
  */
 export const itemExtendedAttrs: Translated<typeof ko.itemExtendedAttrs> = {
-  title: 'Mặt hàng · BOM',
-  breadcrumbRoot: 'Dữ liệu gốc',
+  title: 'Thông tin mặt hàng · BOM',
+  breadcrumbRoot: 'Quản lý dữ liệu gốc',
   tabs: {
     label: 'Khu vực chi tiết mặt hàng',
     attrs: 'Thuộc tính mở rộng',
@@ -50,6 +50,10 @@ export const itemExtendedAttrs: Translated<typeof ko.itemExtendedAttrs> = {
     chipKeyword: (value: string): string => `Từ khóa: ${value}`,
     chipRemoveKeyword: 'Bỏ điều kiện từ khóa',
     chipRemoveIncludeInactive: 'Bỏ điều kiện gồm cả mục ngừng dùng',
+    itemTypeLabel: 'Loại mặt hàng',
+    itemTypeAll: 'Tất cả',
+    chipItemType: (value: string): string => `Loại mặt hàng: ${value}`,
+    chipRemoveItemType: 'Bỏ điều kiện loại mặt hàng',
   },
   loading: {
     items: 'Đang tải danh sách mặt hàng',
@@ -84,10 +88,12 @@ export const itemExtendedAttrs: Translated<typeof ko.itemExtendedAttrs> = {
     fields: {
       itemCode: 'Mã mặt hàng',
       itemName: 'Tên mặt hàng',
-      /** 값 목록이 미정이라 코드 문자열을 그대로 낸다 - 이름을 지어내지 않는다. */
+      /** 이름은 코드 그룹 `ITEM_TYPE`이 준다 - 받기 전이거나 목록에 없으면 코드 그대로다. */
       itemType: 'Loại mặt hàng',
       baseUom: 'Đơn vị cơ sở',
     },
+    ownershipNote:
+      'Thông tin gốc ERP được nhận từ ERP và chỉnh sửa trên ERP. Thuộc tính mở rộng bên dưới do MES quản lý.',
   },
   /* 확장 구획 - 이쪽이 소유해 고치는 값. 원본 구획과 말이 갈려 있어야 한다. */
   attrs: {
@@ -113,6 +119,7 @@ export const itemExtendedAttrs: Translated<typeof ko.itemExtendedAttrs> = {
       storageCondition: 'Điều kiện bảo quản',
       openedShelfLifeHours: 'Thời hạn sau khi mở (giờ)',
       isActive: 'Trạng thái sử dụng',
+      mesCategory: 'Phân loại MES',
     },
     values: {
       active: 'Đang dùng',
@@ -122,6 +129,8 @@ export const itemExtendedAttrs: Translated<typeof ko.itemExtendedAttrs> = {
     /* 바꿀 수단이 없는 자리는 감추지 않고 밝힌다 - 감추면 화면이 빠뜨린 것으로 읽힌다. */
     isActiveNote:
       'Trạng thái sử dụng không đổi được ở màn hình này. Dù lưu thì giá trị hiện tại vẫn giữ nguyên.',
+    /* 시스템 소유 값이라 편집 본문에 자리가 없다 - 바꿀 수 없는 이유를 밝힌다. */
+    mesCategoryNote: 'Phân loại MES do hệ thống xác định nên không đổi ở màn hình này.',
     validation: {
       required: 'Đây là mục bắt buộc.',
       codeTooLong: 'Mã không được vượt quá 50 ký tự.',
@@ -362,7 +371,7 @@ export const itemExtendedAttrs: Translated<typeof ko.itemExtendedAttrs> = {
   },
   /*
    * 탭③ - BOM. 헤더는 전부 원본이고 바꿀 수 있는 것은 둘뿐이다(기본 지정·구성품 확장 열 넷).
-   * 상태는 값 목록이 미정이라 이름을 지어내지 않고 코드 문자열을 그대로 낸다.
+   * 상태 이름은 코드 그룹 `MASTER_VERSION_STATUS`가 준다 - 받기 전이거나 목록에 없으면 코드 그대로다.
    */
   bom: {
     paneTitle: 'Danh sách BOM',
@@ -403,6 +412,14 @@ export const itemExtendedAttrs: Translated<typeof ko.itemExtendedAttrs> = {
       noneDescription:
         'BOM được nhận từ hệ thống ngoài. Hãy kiểm tra xem hệ thống gốc có dữ liệu hay không.',
       notSelected: 'Chọn BOM ở trên thì nội dung và thành phần của BOM đó hiện ở đây',
+      noMatchTitle: 'Không có BOM phù hợp với điều kiện',
+      noMatchDescription: 'Hãy bỏ hoặc đổi điều kiện rồi tra cứu lại.',
+    },
+    filters: {
+      codeSearchLabel: 'Tìm mã BOM',
+      codeSearchPlaceholder: 'Mã BOM',
+      chipCode: (value: string): string => `Mã BOM: ${value}`,
+      chipRemoveCode: 'Bỏ điều kiện mã BOM',
     },
     dialog: {
       setDefaultTitle: 'Đặt BOM mặc định',

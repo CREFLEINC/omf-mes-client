@@ -35,14 +35,16 @@ export interface SelectOption {
 /**
  * 좌 페인의 조회 조건. URL이 소유하며 화면 상태로 복제하지 않는다.
  *
- * **품목 유형 조건을 두지 않는다** — 계약에 `itemTypeCode` 쿼리가 있으나 값 목록이 미정이라
- * 선택지를 만들 수 없고, 자유 입력 필터는 바로 옆 검색어 칸과 구분되지 않는다.
+ * 품목 유형(`itemTypeCode`)의 선택지는 화면이 적지 않고 코드 그룹 `ITEM_TYPE`에서 받는다 —
+ * 고객이 유형을 늘릴 수 있어 닫힌 목록이 아니다. 빈 문자열은 「전체」다.
  *
  * `includeInactive`는 **켜졌을 때만** 서버로 보낸다. 계약의 기본값이 false라
  * 끈 상태를 값으로 실어 보내면 「보내지 않음」과 「false를 보냄」 두 상태가 생겨 캐시 키가 갈린다.
  */
 export interface ItemFilters {
   q: string;
+  /** 품목 유형 코드. 비면 전체 */
+  itemType: string;
   includeInactive: boolean;
 }
 

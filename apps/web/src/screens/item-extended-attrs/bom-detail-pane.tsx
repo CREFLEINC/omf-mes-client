@@ -3,7 +3,8 @@ import type { components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 
 import { requiredQtyText } from './bom-component-format';
-import { lookupLabel } from './options';
+import { bomStatusName } from './bom-list-pane';
+import { lookupLabel, type CodeValueOption } from './options';
 import type { LookupEntry } from './types';
 import { ValueField } from './value-field';
 
@@ -18,6 +19,8 @@ export interface BomDetailPaneProps {
   uomEntries: LookupEntry[];
   isUomLoading: boolean;
   isUomError?: boolean;
+  /** 상태 코드 → 이름(코드 그룹 `MASTER_VERSION_STATUS`). 받기 전·실패 시에는 코드 그대로 낸다 */
+  statusOptions?: readonly CodeValueOption[];
 }
 
 /** 값이 없는 칸을 비워 두면 자료가 없는 것인지 화면이 빠뜨린 것인지 구분되지 않는다. */
@@ -33,8 +36,8 @@ const orEmptyMark = (value: string): string => (value === '' ? shared.values.emp
  * **`isDefault`도 여기서 바꾸지 않는다.** 그것만은 바꿀 수 있으나 `:set-default` 전용이고
  * 그 액션은 위 목록의 줄마다 있다 — 같은 조작을 두 자리에 두면 어느 것이 정본인지 흐려진다.
  *
- * **상태 코드를 이름으로 옮기지 않는다.** 값 목록이 확정되지 않아 이름을 지어내면
- * 그 이름으로 읽힌 판단이 남는다(품목유형과 같은 처리).
+ * **상태 이름은 위 목록과 같은 규칙으로 옮긴다**(`bomStatusName`) — 두 자리가 다른 이름을 내면
+ * 같은 줄이 두 상태로 읽힌다.
  *
  * 안내는 품목 원본 구획과 **같은 공통 문구**를 쓴다 — 이 화면 전용 문구를 만들지 않는다.
  */
@@ -43,6 +46,7 @@ export const BomDetailPane = ({
   uomEntries,
   isUomLoading,
   isUomError,
+  statusOptions,
 }: BomDetailPaneProps) => (
   <section className="pane" aria-labelledby="bom-detail-title">
     <h2 id="bom-detail-title" className="pane-title">
@@ -55,7 +59,7 @@ export const BomDetailPane = ({
     <div className="form-grid">
       <ValueField label={t.fields.bomCode} value={orEmptyMark(bom.bomCode)} />
       <ValueField label={t.fields.bomVersion} value={t.values.revision(bom.bomVersion)} />
-      <ValueField label={t.fields.status} value={orEmptyMark(bom.statusCode)} />
+      <ValueField label={t.fields.status} value={bomStatusName(bom.statusCode, statusOptions)} />
       <ValueField
         label={t.fields.isDefault}
         value={bom.isDefault ? t.values.isDefault : shared.values.empty}

@@ -347,8 +347,41 @@ const RouterProbe = () => {
   return null;
 };
 
+const CODE_VALUES_PATH = '/mdm/code-values';
+
+/**
+ * 코드 그룹별 값 목록. 그룹은 **이름으로** 가리킨다(`codeGroupCode`) — 채번 식별자는 환경마다 다르다.
+ * 상태·MES 구분은 합성 코드(`fixtures.ts`)에 합성 이름을 붙인다 — 실제 코드값을 지어내지 않는다.
+ */
+const CODE_VALUES: Record<string, { code: string; codeName: string }[]> = {
+  ITEM_TYPE: [
+    { code: 'RAW_MATERIAL', codeName: '원자재' },
+    { code: 'FINISHED', codeName: '완제품' },
+    { code: 'SYN-TYPE-A', codeName: '합성 유형 A' },
+  ],
+  MASTER_VERSION_STATUS: [{ code: 'SYN-BOM-STATUS-A', codeName: '합성 상태 A' }],
+  MES_CATEGORY: [{ code: 'SYN-MES-CAT-A', codeName: '합성 구분 A' }],
+};
+
+/** 코드값 — 좌 목록이 어느 시험이든 부르므로 규칙 맨 뒤에 늘 둔다. 모르는 그룹은 빈 목록이다 */
+const codeValuesRoute = (): StubRoute => ({
+  match: (request) => isGet(request, CODE_VALUES_PATH),
+  respond: (request) => {
+    const items = CODE_VALUES[new URL(request.url).searchParams.get('codeGroupCode') ?? ''] ?? [];
+
+    return jsonResponse({ items, page: { page: 1, size: 100, total: items.length } });
+  },
+});
+
+const codeValueGets = (requests: RecordedRequest[], codeGroupCode: string): RecordedRequest[] =>
+  requests.filter(
+    (request) =>
+      request.url.pathname === CODE_VALUES_PATH &&
+      request.url.searchParams.get('codeGroupCode') === codeGroupCode,
+  );
+
 const renderScreen = (routes: StubRoute[], search = '') => {
-  const { fetch, requests } = createRecordingFetch(routes);
+  const { fetch, requests } = createRecordingFetch([...routes, codeValuesRoute()]);
 
   probeNavigate = null;
   probeSearch = '';
@@ -407,7 +440,7 @@ describe('ItemExtendedAttrsScreen — 좌 목록', () => {
   it('제목과 탐색경로를 낸다', async () => {
     renderScreen([itemListRoute()]);
 
-    expect(await screen.findByRole('heading', { name: '품목·자재 명세서' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: '품목·BOM 정보' })).toBeInTheDocument();
   });
 
   it('주소의 조건을 그대로 서버에 싣는다 — 새로고침에 살아남는다', async () => {
@@ -3515,6 +3548,232 @@ describe('ItemExtendedAttrsScreen — 자재 명세서 헤더에 쓰기 수단�
 });
 
 /**
+ * 상태 이름 — 코드 그룹 `MASTER_VERSION_STATUS`에서 받는다. 목록에 없는 코드는 코드 그대로다.
+ */
+describe('ItemExtendedAttrsScreen — 자재 명세서 상태 이름', () => {
+  it('목록과 헤더 구획이 상태를 코드 그룹의 이름으로 낸다', async () => {
+    const { requests, user } = renderScreen(bomDetailRoutes(), '?item=1001&tab=bom');
+
+    const pane = await findBomListPane();
+    expect(await within(pane).findByText('합성 상태 A')).toBeInTheDocument();
+    // 목록에 없는 코드는 지어내지 않는다.
+    expect(within(pane).getByText('SYN-BOM-STATUS-B')).toBeInTheDocument();
+    expect(codeValueGets(requests, 'MASTER_VERSION_STATUS')).toHaveLength(1);
+    // 이미 그 상태인 헤더가 이름을 잃지 않게 미사용 코드값도 받는다.
+    expect(
+      codeValueGets(requests, 'MASTER_VERSION_STATUS')[0]?.url.searchParams.get('includeInactive'),
+    ).toBe('true');
+
+    await openFirstBom(user);
+    await findBomDetailPane();
+    expect(screen.getByLabelText('상태')).toHaveTextContent('합성 상태 A');
+  });
+
+  it('자재 명세서 탭이 아니면 상태 목록을 받지 않는다', async () => {
+    const { requests } = renderScreen(bomRoutes(), '?item=1001');
+
+    await findOriginContent();
+
+    expect(codeValueGets(requests, 'MASTER_VERSION_STATUS')).toHaveLength(0);
+  });
+});
+
+/** 서버처럼 `bomCode`로 거르는 헤더 목록 — 화면이 조건을 실제로 실어 보내는지 결과로 확인한다. */
+const bomListByCodeRoute = (): StubRoute => ({
+  match: (request) => isGet(request, BOMS_PATH),
+  respond: (request) => {
+    const bomCode = new URL(request.url).searchParams.get('bomCode');
+
+    return jsonResponse({
+      items:
+        bomCode === null ? bomFixtures : bomFixtures.filter((row) => row.bomCode.includes(bomCode)),
+    });
+  },
+});
+
+/**
+ * BOM 코드 조건 — 주소(`bomq`)가 정본이고 서버의 `bomCode` 쿼리로 나간다.
+ * 고른 품목 아래의 조건이라 품목이 바뀌면 함께 떨어진다.
+ */
+describe('ItemExtendedAttrsScreen — BOM 코드 조건', () => {
+  it('주소의 조건을 bomCode 로 보내고 칩으로 보인다', async () => {
+    const { requests } = renderScreen(
+      bomRoutes({ bomList: bomListByCodeRoute() }),
+      '?item=1001&tab=bom&bomq=BOM-02',
+    );
+
+    const pane = await findBomListPane();
+
+    expect(bomListGets(requests)[0]?.url.searchParams.get('bomCode')).toBe('BOM-02');
+    expect(within(pane).getByText('BOM 코드: BOM-02')).toBeInTheDocument();
+    expect(
+      within(pane).getByRole('button', { name: 'SYN-BOM-02 · Rev 2 구성품 보기' }),
+    ).toBeInTheDocument();
+    expect(
+      within(pane).queryByRole('button', { name: 'SYN-BOM-01 · Rev 1 구성품 보기' }),
+    ).not.toBeInTheDocument();
+  });
+
+  it('조건이 없으면 bomCode 를 싣지 않는다', async () => {
+    const { requests } = renderScreen(bomRoutes(), '?item=1001&tab=bom');
+
+    await findBomListPane();
+
+    expect(bomListGets(requests)[0]?.url.searchParams.has('bomCode')).toBe(false);
+  });
+
+  it('검색하면 주소에 조건을 싣고 고른 자재 명세서를 떨군다', async () => {
+    const { requests, history, user } = renderScreen(
+      [...bomDetailRoutes({ bomList: bomListByCodeRoute() }), bomComponentsRoute([], 2002)],
+      '?item=1001&tab=bom&bom=2001',
+    );
+
+    await findBomComponentPane();
+
+    await user.type(screen.getByRole('searchbox', { name: 'BOM 코드 검색' }), ' BOM-02 {Enter}');
+
+    await waitFor(() => {
+      expect(new URLSearchParams(history.search()).get('bomq')).toBe('BOM-02');
+    });
+    expect(new URLSearchParams(history.search()).has('bom')).toBe(false);
+    await waitFor(() => {
+      expect(bomListGets(requests).at(-1)?.url.searchParams.get('bomCode')).toBe('BOM-02');
+    });
+    expect(
+      await screen.findByText('위에서 자재 명세서를 고르면 여기에 그 내용과 구성품이 보입니다'),
+    ).toBeInTheDocument();
+  });
+
+  it('칩을 지우면 조건이 풀린다', async () => {
+    const { history, user } = renderScreen(
+      bomRoutes({ bomList: bomListByCodeRoute() }),
+      '?item=1001&tab=bom&bomq=BOM-02',
+    );
+
+    const pane = await findBomListPane();
+    await user.click(within(pane).getByRole('button', { name: 'BOM 코드 조건 제거' }));
+
+    await waitFor(() => {
+      expect(new URLSearchParams(history.search()).has('bomq')).toBe(false);
+    });
+    expect(
+      await within(pane).findByRole('button', { name: 'SYN-BOM-01 · Rev 1 구성품 보기' }),
+    ).toBeInTheDocument();
+  });
+
+  /* 조건이 걸린 0건은 「등록된 것이 없다」가 아니다. */
+  it('조건에 맞는 것이 없으면 조건을 풀 수단과 함께 그렇게 밝힌다', async () => {
+    const { history, user } = renderScreen(
+      bomRoutes({ bomList: bomListByCodeRoute() }),
+      '?item=1001&tab=bom&bomq=NOPE',
+    );
+
+    const pane = await findBomListPane();
+    expect(within(pane).getByText('조건에 맞는 자재 명세서가 없습니다')).toBeInTheDocument();
+    expect(within(pane).queryByText('등록된 자재 명세서가 없습니다')).not.toBeInTheDocument();
+
+    await user.click(within(pane).getByRole('button', { name: '초기화' }));
+
+    await waitFor(() => {
+      expect(new URLSearchParams(history.search()).has('bomq')).toBe(false);
+    });
+  });
+
+  it('다른 품목을 고르면 조건이 함께 떨어진다', async () => {
+    const { history, user } = renderScreen(
+      [...bomRoutes({ bomList: bomListByCodeRoute() }), itemDetailRoute(1002)],
+      '?item=1001&tab=bom&bomq=BOM-02',
+    );
+
+    await findBomListPane();
+    await user.click(screen.getByRole('button', { name: 'SYN-ITEM-02' }));
+
+    await waitFor(() => {
+      expect(new URLSearchParams(history.search()).get('item')).toBe('1002');
+    });
+    expect(new URLSearchParams(history.search()).has('bomq')).toBe(false);
+  });
+});
+
+/**
+ * 원본 구획의 품목유형 — 좌 목록과 같은 코드 그룹 `ITEM_TYPE`의 이름을 낸다.
+ * 고르는 자리가 아니라 표시하는 자리라 미사용 유형도 받는다.
+ */
+describe('ItemExtendedAttrsScreen — 원본 구획의 품목유형 이름', () => {
+  it('품목유형을 코드 그룹의 이름으로 내고 미사용 유형도 받는다', async () => {
+    const { requests } = renderScreen(
+      [itemListRoute(), itemDetailRoute(), uomsRoute()],
+      '?item=1001',
+    );
+
+    await findOriginContent();
+
+    await waitFor(() => {
+      expect(within(itemOriginPane()).getByLabelText('품목유형')).toHaveTextContent('합성 유형 A');
+    });
+    expect(
+      codeValueGets(requests, 'ITEM_TYPE').some(
+        (request) => request.url.searchParams.get('includeInactive') === 'true',
+      ),
+    ).toBe(true);
+  });
+
+  it('유형 목록 조회가 실패하면 코드 그대로 낸다', async () => {
+    const { requests } = renderScreen(
+      [itemListRoute(), itemDetailRoute(), uomsRoute(), errorRoute(CODE_VALUES_PATH)],
+      '?item=1001',
+    );
+
+    await findOriginContent();
+    // 원본 구획용(미사용 포함) 조회가 실패로 끝난 뒤에 잰다.
+    await waitFor(() => {
+      expect(
+        codeValueGets(requests, 'ITEM_TYPE').some(
+          (request) => request.url.searchParams.get('includeInactive') === 'true',
+        ),
+      ).toBe(true);
+    });
+
+    expect(within(itemOriginPane()).getByLabelText('품목유형')).toHaveTextContent('SYN-TYPE-A');
+  });
+});
+
+/**
+ * MES 구분(`mesCategoryCode`) — 시스템 소유 값이라 편집 본문에 자리가 없다.
+ * 확장 속성 구획에 값 표기로 두고 이름은 코드 그룹 `MES_CATEGORY`에서 받는다.
+ */
+describe('ItemExtendedAttrsScreen — MES 구분', () => {
+  it('확장 속성 구획에 코드 그룹의 이름으로 낸다', async () => {
+    const { requests } = renderScreen(
+      [itemListRoute(), itemDetailRoute(), uomsRoute()],
+      '?item=1001',
+    );
+
+    const pane = await findAttrsPane();
+
+    await waitFor(() => {
+      expect(within(pane).getByLabelText('MES 구분')).toHaveTextContent('합성 구분 A');
+    });
+    expect(codeValueGets(requests, 'MES_CATEGORY')).toHaveLength(1);
+  });
+
+  it('저장 본문에 싣지 않는다 — 편집 계약에 자리가 없다', async () => {
+    const { requests, user } = renderScreen(
+      [itemListRoute(), itemDetailRoute(), uomsRoute(), itemSaveRoute()],
+      '?item=1001',
+    );
+
+    await findAttrsPane();
+    await editAndSave(user);
+
+    await waitFor(() => {
+      expect(savedBodies(requests)).toHaveLength(1);
+    });
+    expect(savedBodies(requests)[0]).not.toHaveProperty('mesCategoryCode');
+  });
+});
+
+/**
  * M32 — **등록 공정 선택지가 Rev를 평탄화한다.**
  * 최신 Rev만 받으면 옛 Rev의 줄을 가리키는 구성품이 이름을 잃는다.
  */
@@ -4170,6 +4429,48 @@ describe('ItemExtendedAttrsScreen — 화면 전체', () => {
     /* 고른 탭·자재 명세서가 그대로 열려 있다. */
     expect(screen.getByRole('tab', { name: 'BOM' })).toHaveAttribute('aria-selected', 'true');
     expect(screen.getByLabelText('BOM 코드')).toHaveTextContent('SYN-BOM-01');
+  });
+
+  /* 품목 유형 조건 — 주소의 `type`이 서버의 `itemTypeCode`로 나가고, 선택지는 코드 그룹에서 받는다. */
+  it('주소의 품목 유형을 itemTypeCode 로 보내고 칩은 선택칸과 같은 이름으로 보인다', async () => {
+    const { requests } = renderScreen([itemListRoute()], '?type=FINISHED');
+
+    await screen.findByRole('button', { name: 'SYN-ITEM-01' });
+
+    const list = requestsTo(requests, ITEMS_PATH)[0]!;
+    expect(list.url.searchParams.get('itemTypeCode')).toBe('FINISHED');
+    await waitFor(() => {
+      expect(codeValueGets(requests, 'ITEM_TYPE')).toHaveLength(1);
+    });
+    expect(await within(itemListPane()).findByText('품목유형: 완제품')).toBeInTheDocument();
+    expect(within(itemListPane()).queryByText('품목유형: FINISHED')).not.toBeInTheDocument();
+  });
+
+  /* 고객이 지운 유형처럼 목록에 없는 코드가 주소에 실려 오면 지어내지 않고 코드 그대로 낸다. */
+  it('유형 목록에 없는 코드는 칩에 코드 그대로 낸다', async () => {
+    const { requests } = renderScreen([itemListRoute()], '?type=SYN-TYPE-X');
+
+    await screen.findByRole('button', { name: 'SYN-ITEM-01' });
+    await waitFor(() => {
+      expect(codeValueGets(requests, 'ITEM_TYPE')).toHaveLength(1);
+    });
+
+    expect(within(itemListPane()).getByText('품목유형: SYN-TYPE-X')).toBeInTheDocument();
+  });
+
+  /* 유형 목록을 받지 못해도 걸린 조건은 보여야 한다 — 코드로 물러난다. */
+  it('유형 목록 조회가 실패하면 칩에 코드 그대로 낸다', async () => {
+    const { requests } = renderScreen(
+      [itemListRoute(), errorRoute(CODE_VALUES_PATH)],
+      '?type=FINISHED',
+    );
+
+    await screen.findByRole('button', { name: 'SYN-ITEM-01' });
+    await waitFor(() => {
+      expect(codeValueGets(requests, 'ITEM_TYPE')).toHaveLength(1);
+    });
+
+    expect(within(itemListPane()).getByText('품목유형: FINISHED')).toBeInTheDocument();
   });
 
   /* 하위 탭은 자재 명세서 탭에 있는 동안에도 주소에 남아야 돌아왔을 때 그 자리를 낸다. */

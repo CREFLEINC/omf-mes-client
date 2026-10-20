@@ -56,8 +56,10 @@ import {
 import { ExternalCodeFormDialog } from './external-code-form-dialog';
 import { ExternalCodePane } from './external-code-pane';
 import {
+  BOM_CODE_KEY,
   BOM_KEY,
   ITEM_KEY,
+  readBomCodeFilter,
   readItemFilters,
   readPage,
   readSelectedId,
@@ -69,7 +71,14 @@ import { ITEM_ATTRS_FORM_FIELDS, validateItemAttrsForm } from './item-attrs-vali
 import { ItemListPane } from './item-list-pane';
 import { ItemOriginPane } from './item-origin-pane';
 import { ItemResourceMapSection } from './item-resource-map-section';
-import { itemDetailPath, itemKeys, useItemDetail, useItemList, useItemNames } from './item-queries';
+import {
+  itemDetailPath,
+  itemKeys,
+  useItemDetail,
+  useItemList,
+  useItemNames,
+  useItemTypeOptions,
+} from './item-queries';
 import { LoadErrorBanner } from './load-error-banner';
 import {
   useBusinessUnitOptions,
@@ -79,7 +88,8 @@ import {
   useUomOptions,
   type LookupResult,
 } from './lookups';
-import { lookupLabel, selectableOptions } from './options';
+import { codeValueName, lookupLabel, selectableOptions } from './options';
+import { CODE_GROUPS, useCodeValueOptions } from './code-values';
 import { toPageView } from './pagination';
 import { SetDefaultDialog } from './set-default-dialog';
 import {
@@ -236,6 +246,8 @@ export const ItemExtendedAttrsScreen = () => {
 
   const itemList = useItemList(filters, page);
   const items = itemList.data?.items ?? [];
+  // 유형 선택지를 못 받아도 목록은 그대로 쓴다 — 「전체」와 주소에 실린 코드만 고를 수 있다.
+  const itemTypes = useItemTypeOptions();
 
   /*
    * 서버가 준 쪽 정보를 정본으로 쓴다. 주소의 쪽 번호를 쓰면 서버가 다른 쪽을 돌려줬을 때
@@ -250,6 +262,24 @@ export const ItemExtendedAttrsScreen = () => {
    * 목록만 훑는 동안 쓰지 않을 목록을 받아 둘 이유가 없다.
    */
   const uomOptions = useUomOptions(selectedItemId !== null);
+
+  /*
+   * MES 구분(신재·재생재)의 이름. 확장 속성 구획에만 보이므로 그 탭에서 품목을 골랐을 때만 받는다.
+   * 표시에만 쓰므로 미사용 코드값도 받는다 — 받지 못하면 코드 그대로 낸다.
+   */
+  const mesCategories = useCodeValueOptions(CODE_GROUPS.mesCategory, {
+    enabled: tab.id === 'attrs' && selectedItemId !== null,
+    includeInactive: true,
+  });
+
+  /*
+   * 원본 구획의 품목유형 이름. 좌 목록의 선택지(사용 중인 것만)와 달리 **미사용 유형도 받는다** —
+   * 고객이 사용을 멈춘 유형을 들고 있는 품목이 이름을 잃으면 안 된다. 품목을 고른 뒤에만 받는다.
+   */
+  const itemTypeNames = useCodeValueOptions(CODE_GROUPS.itemType, {
+    enabled: selectedItemId !== null,
+    includeInactive: true,
+  });
 
   const [formState, setFormState] = useState<ItemAttrsFormState | null>(null);
 
@@ -512,8 +542,19 @@ export const ItemExtendedAttrsScreen = () => {
 
   /* ── 자재 명세서 ────────────────────────────────────────────────────────── */
 
-  const bomList = useBomList(selectedItemId, isBomTab);
+  /** BOM 코드 조건. 고른 품목 아래에 매달린 조건이라 품목이 바뀌면 함께 떨어진다(`filters.ts`) */
+  const bomCodeFilter = readBomCodeFilter(searchParams);
+  const bomList = useBomList(selectedItemId, isBomTab, bomCodeFilter);
   const boms = bomList.data?.items ?? [];
+
+  /*
+   * 상태 이름은 표시에만 쓴다 — 미사용 코드값도 받아 이미 그 상태인 헤더가 이름을 잃지 않게 한다.
+   * 받지 못하면 코드 그대로 낸다(`codeValueName`). 탭을 볼 때만 받는다.
+   */
+  const bomStatuses = useCodeValueOptions(CODE_GROUPS.masterVersionStatus, {
+    enabled: isBomTab,
+    includeInactive: true,
+  });
 
   /**
    * 고른 자재 명세서. **주소의 번호가 아니라 목록에서 찾은 헤더가 정본이다.**
@@ -776,8 +817,10 @@ export const ItemExtendedAttrsScreen = () => {
        * 고른 자재 명세서는 **품목 아래에 매달린 선택**이다(§5.4 3행). 함께 지우지 않으면
        * 다른 품목의 번호가 주소에 남고, 그것을 지운 뒤에야 목록이 비어 보이는 순간이 생긴다.
        * 같은 갱신 안에서 지운다 — 나눠 부르면 뒤로가기가 중간 상태로 떨어진다.
+       * BOM 코드 조건도 같은 수명이다 — 앞 품목의 조건으로 다음 품목의 목록을 거르지 않는다.
        */
       next.delete(BOM_KEY);
+      next.delete(BOM_CODE_KEY);
     });
   };
 
@@ -792,6 +835,22 @@ export const ItemExtendedAttrsScreen = () => {
    * 뒤로가기 한 번을 헛돌게 만든다. (`patchSearchParams`가 같은 주소를 이미 걸러 내므로
    * 이 가드는 지금 중복 방어다 — 열린 창을 지키는 것은 위 효과의 의존성 배열이다.)
    */
+  /**
+   * BOM 코드 조건을 걸거나 푼다. **고른 자재 명세서를 함께 떨군다** — 보이는 줄이 달라지는데
+   * 선택이 남으면 목록에 없는 자재 명세서의 구성품이 아래에 남는다(품목 조건과 같은 규칙).
+   * 주소 갱신 한 번으로 끝낸다.
+   */
+  const applyBomCodeFilter = (bomCode: string) => {
+    patchSearchParams((next) => {
+      if (bomCode === '') {
+        next.delete(BOM_CODE_KEY);
+      } else {
+        next.set(BOM_CODE_KEY, bomCode);
+      }
+      next.delete(BOM_KEY);
+    });
+  };
+
   const handleSelectBom = (bomId: number) => {
     if (bomId === selectedBomId) return;
 
@@ -950,6 +1009,7 @@ export const ItemExtendedAttrsScreen = () => {
         uomEntries={uomOptions.entries}
         isUomLoading={uomOptions.isLoading}
         isUomError={uomOptions.isError}
+        itemTypeOptions={itemTypeNames.data}
       />
     );
   };
@@ -968,6 +1028,10 @@ export const ItemExtendedAttrsScreen = () => {
         values={formState.values}
         /* 되돌려 싣는 값과 화면에 내는 값이 **같은 출처**여야 한다. */
         isActive={formState.source.item.isActive}
+        mesCategoryName={codeValueName(
+          mesCategories.data,
+          formState.source.item.mesCategoryCode ?? '',
+        )}
         uomOptions={selectableOptions(uomOptions, formState.values.defaultLotStorageUomId)}
         onChange={changeAttrsValues}
         // 로컬 검증 결과가 서버 오류를 덮는다 — 지금 고칠 수 있는 것을 먼저 보인다.
@@ -1159,6 +1223,9 @@ export const ItemExtendedAttrsScreen = () => {
          */
         selectedBomId={selectedBomId}
         onSelect={handleSelectBom}
+        statusOptions={bomStatuses.data}
+        bomCodeFilter={bomCodeFilter}
+        onApplyBomCodeFilter={applyBomCodeFilter}
         onRequestSetDefault={(bom) => {
           setDefaultWrite.reset();
           setPendingDefaultBom(bom);
@@ -1180,6 +1247,7 @@ export const ItemExtendedAttrsScreen = () => {
         <>
           <BomDetailPane
             bom={selectedBom}
+            statusOptions={bomStatuses.data}
             uomEntries={uomOptions.entries}
             isUomLoading={uomOptions.isLoading}
             isUomError={uomOptions.isError}
@@ -1283,6 +1351,7 @@ export const ItemExtendedAttrsScreen = () => {
       onChangePage={changePage}
       selectedItemId={selectedItemId}
       onSelect={handleSelectItem}
+      itemTypeOptions={itemTypes.data}
       loadError={
         itemList.isError ? (
           <LoadErrorBanner error={itemList.error} onRetry={() => void itemList.refetch()} />
