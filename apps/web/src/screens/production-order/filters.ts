@@ -1,3 +1,5 @@
+import type { AutoPlanStatus } from '@omf-mes/api-client';
+
 export interface ProductionOrderFilters {
   q: string;
   businessUnit: string;
@@ -6,6 +8,7 @@ export interface ProductionOrderFilters {
   status: string;
   dueFrom: string;
   dueTo: string;
+  autoPlan: AutoPlanStatus | '';
 }
 
 export const DEFAULT_PRODUCTION_ORDER_FILTERS: ProductionOrderFilters = {
@@ -16,6 +19,7 @@ export const DEFAULT_PRODUCTION_ORDER_FILTERS: ProductionOrderFilters = {
   status: '',
   dueFrom: '',
   dueTo: '',
+  autoPlan: '',
 };
 
 const keys = {
@@ -26,6 +30,7 @@ const keys = {
   status: 'status',
   dueFrom: 'dueFrom',
   dueTo: 'dueTo',
+  autoPlan: 'autoPlan',
   page: 'page',
   selection: 'sel',
 } as const;
@@ -46,6 +51,9 @@ const date = (value: string): string => {
 
 const text = (value: string): string => value.trim();
 
+const autoPlanStatus = (value: string): AutoPlanStatus | '' =>
+  value === 'DONE' || value === 'NEEDS_REVIEW' ? value : '';
+
 export const readFilters = (params: URLSearchParams): ProductionOrderFilters => ({
   q: text(params.get(keys.q) ?? ''),
   businessUnit: id(params.get(keys.businessUnit) ?? ''),
@@ -54,6 +62,7 @@ export const readFilters = (params: URLSearchParams): ProductionOrderFilters => 
   status: text(params.get(keys.status) ?? ''),
   dueFrom: date(params.get(keys.dueFrom) ?? ''),
   dueTo: date(params.get(keys.dueTo) ?? ''),
+  autoPlan: autoPlanStatus(params.get(keys.autoPlan) ?? ''),
 });
 
 export const readPage = (params: URLSearchParams): number => {
@@ -76,6 +85,7 @@ export const toSearchParams = (filters: ProductionOrderFilters, page: number): U
     [keys.status, text(filters.status)],
     [keys.dueFrom, date(filters.dueFrom)],
     [keys.dueTo, date(filters.dueTo)],
+    [keys.autoPlan, autoPlanStatus(filters.autoPlan)],
   ] as const;
   entries.forEach(([key, value]) => value !== '' && next.set(key, value));
   if (Number.isSafeInteger(page) && page > 1) next.set(keys.page, String(page));
@@ -90,6 +100,7 @@ export interface ProductionOrderFilterQuery {
   statusCode?: string;
   dueDateFrom?: string;
   dueDateTo?: string;
+  autoPlanStatus?: AutoPlanStatus;
   page?: number;
   includeChildren: true;
 }
@@ -107,6 +118,7 @@ export const toFilterQuery = (
     ...(valid.status === '' ? {} : { statusCode: valid.status }),
     ...(valid.dueFrom === '' ? {} : { dueDateFrom: valid.dueFrom }),
     ...(valid.dueTo === '' ? {} : { dueDateTo: valid.dueTo }),
+    ...(valid.autoPlan === '' ? {} : { autoPlanStatus: valid.autoPlan }),
     includeChildren: true,
     ...(Number.isSafeInteger(page) && page > 1 ? { page } : {}),
   };

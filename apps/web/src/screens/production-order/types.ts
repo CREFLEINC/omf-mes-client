@@ -1,3 +1,5 @@
+import type { ProductionOrderAutoPlan } from '@omf-mes/api-client';
+
 export interface ProductionOrderRow {
   productionOrderId: number;
   productionOrderNo: string;
@@ -11,6 +13,7 @@ export interface ProductionOrderRow {
   isExpanded: boolean;
   expandedWorkOrderCount: number | null;
   plannedWorkOrderCount: number | null;
+  autoPlan: ProductionOrderAutoPlan | null;
 }
 
 export interface PageMeta {
@@ -37,6 +40,7 @@ export interface ProductionOrderFact {
   remarks: string | null;
   expandedWorkOrderCount: number | null;
   plannedWorkOrderCount: number | null;
+  autoPlan: ProductionOrderAutoPlan | null;
 }
 
 export interface ProductionOrderListResponse {

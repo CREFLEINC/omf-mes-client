@@ -16,6 +16,8 @@ export const productionOrder = {
     status: '상태',
     q: '검색',
     remarks: '비고',
+    autoPlan: '자동 계획',
+    autoPlanReasons: '확인 사항',
   },
   panes: {
     filters: 'ERP W/O 조회 조건',
@@ -33,6 +35,7 @@ export const productionOrder = {
     nextPage: '다음',
     integrationSync: '연계 현황 보기',
     productionPlan: 'W/O 전개·편성',
+    autoPlan: '자동 계획 실행',
   },
   values: {
     erpReadOnlyNotice:
@@ -50,6 +53,24 @@ export const productionOrder = {
     itemUnknown: '품목 이름을 찾을 수 없습니다.',
     itemFailed: '품목 이름을 불러오지 못했습니다.',
     missingRemarks: '비고 없음',
+    autoPlanStatus: {
+      DONE: '완료',
+      NEEDS_REVIEW: '확인 필요',
+    },
+    autoPlanReasons: {
+      BOM_MISSING: '기본 BOM 없음',
+      ROUTING_MISSING: '사용 가능한 Routing 없음',
+      ROUTING_AMBIGUOUS: 'Routing 여러 개',
+      LINE_UNKNOWN: '라인 미정',
+      PLAN_NOT_CONFIRMED: '확정 전 계획 있음',
+      QTY_REMAINING: '계획 수량 부족',
+    },
+  },
+  autoPlan: {
+    confirmed: '계획을 확정했습니다',
+    draft: '작성 중 계획이 있습니다 · 라인을 정해 확정하세요',
+    notPlanned: '계획을 만들지 못했습니다',
+    running: '자동 계획이 진행 중입니다 · 잠시 뒤 다시 실행하세요',
   },
   basic: {
     heading: '기본 정보',

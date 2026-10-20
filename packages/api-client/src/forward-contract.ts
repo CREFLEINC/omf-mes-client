@@ -606,6 +606,47 @@ export interface ResourceRecommendations {
   molds: MoldRecommendation[];
 }
 
+/** 서버 선행 — 오더 수신 때 계획을 자동으로 만들지 못했거나 확정하지 못한 이유. */
+export type AutoPlanReason =
+  | 'BOM_MISSING'
+  | 'ROUTING_MISSING'
+  | 'ROUTING_AMBIGUOUS'
+  | 'LINE_UNKNOWN'
+  | 'PLAN_NOT_CONFIRMED'
+  | 'QTY_REMAINING';
+
+export type AutoPlanStatus = 'DONE' | 'NEEDS_REVIEW';
+
+export interface ProductionOrderAutoPlan {
+  status: AutoPlanStatus;
+  reasons: AutoPlanReason[];
+}
+
+/**
+ * 서버 선행 — P/O 에 자동 계획 결과를 싣는다. `null` 은 자동 계획을 한 번도 하지 않은 P/O 다
+ * (기능 전에 받았거나, 받을 때 납기가 지났거나 수신 상태가 아니라 건너뛰었다) — 계획도 없다.
+ */
+export type ProductionOrderForward = components['schemas']['ProductionOrder'] & {
+  autoPlan?: ProductionOrderAutoPlan | null;
+};
+
+export type ProductionOrderListQueryForward = NonNullable<
+  ProductionOrdersGet['parameters']['query']
+> & {
+  autoPlanStatus?: AutoPlanStatus;
+};
+
+/** 서버 선행 — `POST /planning/production-orders/{id}:auto-plan` 의 결과. */
+export interface ProductionOrderAutoPlanResult {
+  productionOrderId: number;
+  outcome: 'CONFIRMED' | 'DRAFT' | 'NOT_PLANNED';
+  productionPlanId: number | null;
+  reasons: AutoPlanReason[];
+}
+
+type ProductionOrdersGet = paths['/planning/production-orders']['get'];
+type ProductionOrderGet = paths['/planning/production-orders/{productionOrderId}']['get'];
+
 interface NoParameters {
   query?: never;
   header?: never;
@@ -917,6 +958,63 @@ export interface ForwardPaths {
     head?: never;
     patch?: never;
     trace?: never;
+  };
+  '/planning/production-orders': Unused & {
+    parameters: NoParameters;
+    get: Omit<ProductionOrdersGet, 'parameters' | 'responses'> & {
+      parameters: Omit<ProductionOrdersGet['parameters'], 'query'> & {
+        query?: ProductionOrderListQueryForward;
+      };
+      responses: Omit<ProductionOrdersGet['responses'], 200> & {
+        200: {
+          headers: { [name: string]: unknown };
+          content: {
+            'application/json': {
+              items: ProductionOrderForward[];
+              page: components['schemas']['PageMeta'];
+            };
+          };
+        };
+      };
+    };
+    put?: never;
+    post?: never;
+  };
+  '/planning/production-orders/{productionOrderId}': Unused & {
+    parameters: NoParameters;
+    get: Omit<ProductionOrderGet, 'responses'> & {
+      responses: Omit<ProductionOrderGet['responses'], 200> & {
+        200: Omit<ProductionOrderGet['responses'][200], 'content'> & {
+          content: { 'application/json': ProductionOrderForward };
+        };
+      };
+    };
+    put?: never;
+    post?: never;
+  };
+  '/planning/production-orders/{productionOrderId}:auto-plan': Unused & {
+    parameters: NoParameters;
+    get?: never;
+    put?: never;
+    post: {
+      parameters: {
+        query?: never;
+        header: { 'Idempotency-Key': string };
+        path: { productionOrderId: number };
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        200: {
+          headers: { [name: string]: unknown };
+          content: { 'application/json': ProductionOrderAutoPlanResult };
+        };
+        409: {
+          headers: { [name: string]: unknown };
+          content: { 'application/json': components['schemas']['ProductionConflictResponse'] };
+        };
+      };
+    };
   };
   '/mdm/terminals/{terminalId}/accessible-screens': {
     parameters: {
