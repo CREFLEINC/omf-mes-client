@@ -125,6 +125,7 @@ export const terminalProcessMap: Translated<typeof ko.terminalProcessMap> = {
     saving: 'Đang lưu.',
     reset: 'Hủy thay đổi',
     duplicate: 'Công đoạn này đã được thêm.',
+    noFlag: 'Hãy bật ít nhất một chức năng',
     selectTerminalTitle: 'Vui lòng chọn máy quét',
     selectTerminal:
       'Chọn máy quét trong danh sách bên trái để xem thông tin chi tiết và chức năng theo công đoạn.',

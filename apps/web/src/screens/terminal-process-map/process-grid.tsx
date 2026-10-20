@@ -9,6 +9,10 @@ const t = messages.terminalProcessMap;
 
 export interface ProcessGridProps {
   rows: ProcessRowView[];
+  /** 공정 번호 → 그 줄의 오류 문구 */
+  rowErrors: ReadonlyMap<number, string>;
+  /** 오류 문구에 붙일 id — 저장 단추가 막힌 이유로 가리킨다 */
+  rowErrorId: (processId: number) => string;
   disabled: boolean;
   onToggle: (processId: number, key: FlagKey) => void;
   onToggleRow: (processId: number, open: boolean) => void;
@@ -26,6 +30,8 @@ export interface ProcessGridProps {
  */
 export const ProcessGrid = ({
   rows,
+  rowErrors,
+  rowErrorId,
   disabled,
   onToggle,
   onToggleRow,
@@ -49,7 +55,23 @@ export const ProcessGrid = ({
         />
       ),
     },
-    { key: 'process', header: t.grid.process, render: (row) => row.processName },
+    {
+      key: 'process',
+      header: t.grid.process,
+      render: (row) => {
+        const error = rowErrors.get(row.processId);
+        return error === undefined ? (
+          row.processName
+        ) : (
+          <span className="terminal-map-process-cell">
+            {row.processName}
+            <span id={rowErrorId(row.processId)} className="field-error">
+              {error}
+            </span>
+          </span>
+        );
+      },
+    },
     ...FLAG_KEYS.map((key): Column<ProcessRowView> => ({
       key,
       header: flagLabel(key),

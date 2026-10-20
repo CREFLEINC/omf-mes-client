@@ -13,7 +13,7 @@ import {
   type Column,
 } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { useEffect, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router';
 
 import { SaveErrorBanner } from '../../patterns/master';
@@ -21,10 +21,12 @@ import { EMPTY_FILTERS, readFilters, readSelected, toSearchParams } from './filt
 import type { FlagKey } from './flags';
 import {
   addProcess,
+  hasNoFlag,
   hasProcess,
   isDirty,
   removeProcess,
   setRow,
+  splitRowErrors,
   toggleFlag,
   toReplaceBody,
   type GridDraft,
@@ -112,6 +114,9 @@ export const TerminalProcessMapScreen = () => {
   const [token, setToken] = useState<TokenView | null>(null);
   const [isDeactivating, setDeactivating] = useState(false);
   const [savedNotice, setSavedNotice] = useState<string | null>(null);
+  const rowErrorPrefix = useId();
+  /** 서버 오류의 `items[i]` 를 공정으로 되짚을 «보낸» 순서 */
+  const sentProcessIds = useRef<number[]>([]);
 
   const plants = usePlantOptions();
   const equipments = useEquipmentOptions();
@@ -295,9 +300,19 @@ export const TerminalProcessMapScreen = () => {
     },
   ];
 
+  const serverRowErrors = splitRowErrors(replace.error, sentProcessIds.current);
+  const noFlagIds = grid.filter(hasNoFlag).map((row) => row.processId);
+  const rowErrors = new Map(serverRowErrors.rows);
+  for (const processId of noFlagIds) rowErrors.set(processId, t.grid.noFlag);
+  const rowErrorId = (processId: number) => `${rowErrorPrefix}-${String(processId)}`;
+
   /* 잠금 토큰이 아직 없으면 구성을 보내도 막힌다 — 누르기 전에 잠근다. */
   const canSaveGrid =
-    selectedId !== null && !processRows.isPending && !processRows.isError && !replace.isSaving;
+    selectedId !== null &&
+    !processRows.isPending &&
+    !processRows.isError &&
+    !replace.isSaving &&
+    noFlagIds.length === 0;
 
   return (
     <>
@@ -524,7 +539,7 @@ export const TerminalProcessMapScreen = () => {
           <Skeleton variant="rect" height="10rem" />
         ) : (
           <>
-            <SaveErrorBanner error={replace.error} />
+            <SaveErrorBanner error={serverRowErrors.rest} />
             {processes.isError ? (
               <LoadErrorBanner error={processes.error} onRetry={processes.refetch} />
             ) : null}
@@ -550,6 +565,8 @@ export const TerminalProcessMapScreen = () => {
               <div className="terminal-map-grid-table">
                 <ProcessGrid
                   rows={grid}
+                  rowErrors={rowErrors}
+                  rowErrorId={rowErrorId}
                   disabled={replace.isSaving}
                   onToggle={(processId, key: FlagKey) => {
                     setGrid(toggleFlag(grid, processId, key));
@@ -580,7 +597,11 @@ export const TerminalProcessMapScreen = () => {
               </Button>
               <Button
                 disabled={!canSaveGrid || !isDirty(grid, original)}
+                aria-describedby={
+                  noFlagIds.length === 0 ? undefined : noFlagIds.map(rowErrorId).join(' ')
+                }
                 onClick={() => {
+                  sentProcessIds.current = grid.map((row) => row.processId);
                   replace.write(toReplaceBody(grid));
                 }}
               >
