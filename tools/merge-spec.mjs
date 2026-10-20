@@ -8,7 +8,7 @@ const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..'
 /**
  * 병합본이 놓이는 자리.
  *
- * 저장소에 커밋하지 않는다 — 계약 정본은 비공개 설계 저장소에 있고 이 저장소는 공개다.
+ * 저장소에 커밋하지 않는다 — 계약 정본은 비공개 서버 저장소에 있고 이 저장소는 공개다.
  * `node_modules/` 는 이미 .gitignore 에 있어 실수로 커밋될 경로가 아니고,
  * 매 실행마다 다시 쓰므로 낡을 수 없다. OS 임시 폴더 대신 여기를 쓰는 이유는
  * 병합 결과가 이상할 때 사람이 열어 볼 수 있어야 하기 때문이다.
@@ -103,7 +103,7 @@ const readDocument = (specPath) => {
 /**
  * 경로는 겹치면 멈춘다.
  *
- * 같은 경로를 두 계약이 각각 정의한 것은 계약끼리의 모순이며 설계 저장소가 풀 문제다.
+ * 같은 경로를 두 계약이 각각 정의한 것은 계약끼리의 모순이며 서버 저장소의 계약 정본에서 풀 문제다.
  * 여기서 한쪽을 골라 접으면 어느 쪽이 살았는지 모르는 채로 타입이 만들어진다.
  */
 const mergePathsInto = (merged, next, nextSpecPath) => {
@@ -117,7 +117,7 @@ const mergePathsInto = (merged, next, nextSpecPath) => {
         `계약 병합 중단 — 경로가 겹칩니다 (${collisions.length}건): ${nextSpecPath}`,
         ...collisions.map((key) => `  ${key}`),
         '',
-        '같은 경로를 두 계약이 각각 정의했습니다. 어느 쪽이 정본인지는 설계 저장소가 정합니다.',
+        '같은 경로를 두 계약이 각각 정의했습니다. 어느 쪽이 맞는지는 서버 저장소의 계약 정본에서 정합니다.',
         '정보 요청서를 만들어 사용자에게 전달을 부탁하세요.',
       ].join('\n'),
     );

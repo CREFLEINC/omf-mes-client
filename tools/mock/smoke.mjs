@@ -84,7 +84,11 @@ const checkPath = async (path) => {
     return { path, ok: false, detail: '계약에 GET이 없음 — 대표 경로 목록을 갱신하라' };
   }
   const url = `${baseUrl}${path}${requiredQueryString(path)}`;
-  const response = await fetch(url, { signal: AbortSignal.timeout(10_000) });
+  // 계약이 세션 쿠키(omfSession)를 요구하므로 Prism 은 쿠키 없는 요청을 401 로 막는다. 값은 보지 않는다.
+  const response = await fetch(url, {
+    headers: { Cookie: 'omf_session=mock' },
+    signal: AbortSignal.timeout(10_000),
+  });
   if (!response.ok) {
     return { path, ok: false, detail: `HTTP ${response.status}` };
   }
