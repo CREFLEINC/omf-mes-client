@@ -7,7 +7,7 @@
  */
 export const equipmentMaster = {
   title: '설비·설비그룹 마스터',
-  breadcrumbRoot: '설비/툴',
+  breadcrumbRoot: '기준정보 관리',
   actions: {
     addGroup: '그룹 추가',
     addEquipment: '설비 추가',

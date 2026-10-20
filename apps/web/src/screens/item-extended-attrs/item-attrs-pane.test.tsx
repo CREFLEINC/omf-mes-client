@@ -29,6 +29,7 @@ const renderPane = (overrides: Partial<Parameters<typeof ItemAttrsPane>[0]> = {}
     <ItemAttrsPane
       values={itemToAttrsFormValues(itemFixtures[0]!)}
       isActive
+      mesCategoryName=""
       uomOptions={[
         { value: '7001', label: '합성 단위 A' },
         { value: '7003', label: '합성 단위 C' },
@@ -148,6 +149,29 @@ describe('ItemAttrsPane — 사용 여부는 값 표기다', () => {
     // 스위치는 개발품을 포함한 다섯 확장 불리언뿐이다.
     expect(switches).toHaveLength(5);
     expect(screen.queryByRole('switch', { name: '사용 여부' })).not.toBeInTheDocument();
+  });
+});
+
+/** MES 구분은 시스템 소유 값이다 — 편집 본문에 자리가 없어 값 표기로만 둔다. */
+describe('ItemAttrsPane — MES 구분은 값 표기다', () => {
+  it('받은 이름을 값으로 낸다', () => {
+    renderPane({ mesCategoryName: '합성 구분 A' });
+
+    expect(screen.getByLabelText('MES 구분')).toHaveTextContent('합성 구분 A');
+  });
+
+  it('값이 없으면 값 없음 표기를 낸다', () => {
+    renderPane({ mesCategoryName: '' });
+
+    expect(screen.getByLabelText('MES 구분')).toHaveTextContent('—');
+  });
+
+  it('바꾸지 않는다는 사실을 함께 밝힌다', () => {
+    renderPane();
+
+    expect(
+      screen.getByText('MES 구분은 시스템이 정하는 값이라 이 화면에서 바꾸지 않습니다.'),
+    ).toBeInTheDocument();
   });
 });
 

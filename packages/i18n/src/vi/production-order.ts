@@ -9,7 +9,7 @@ import type { Translated } from './translated';
  */
 export const productionOrder: Translated<typeof ko.productionOrder> = {
   title: 'Nhận · tra cứu ERP W/O',
-  breadcrumbRoot: 'Sản xuất',
+  breadcrumbRoot: 'Quản lý sản xuất',
   fields: {
     productionOrderNo: 'Số ERP W/O',
     erpProductionOrderNo: 'Số gốc ERP',

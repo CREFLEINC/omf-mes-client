@@ -7,7 +7,7 @@ import type { Translated } from './translated';
  */
 export const toolPmOrder: Translated<typeof ko.toolPmOrder> = {
   title: 'Tạo lệnh bảo trì công cụ',
-  breadcrumbRoot: 'Thiết bị / Công cụ',
+  breadcrumbRoot: 'Quản lý bảo trì thiết bị',
 
   panes: {
     filters: 'Điều kiện tra cứu',

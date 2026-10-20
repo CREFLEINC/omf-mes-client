@@ -7,7 +7,7 @@ import type { Translated } from './translated';
  */
 export const downtimeSummary: Translated<typeof ko.downtimeSummary> = {
   title: 'Tra cứu tổng hợp dừng máy',
-  breadcrumbRoot: 'Thiết bị / Công cụ',
+  breadcrumbRoot: 'Quản lý bảo trì thiết bị',
 
   panes: {
     filters: 'Điều kiện tra cứu',

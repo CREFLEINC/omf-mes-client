@@ -4,7 +4,7 @@ import type { Translated } from './translated';
 /** W-04-10 제품 폐기 요청. 요청 → 승인 → 기타출고 3단이고 결재는 결재함 몫이다. */
 export const productDisposalRequest: Translated<typeof ko.productDisposalRequest> = {
   title: 'Yêu cầu hủy thành phẩm',
-  breadcrumbRoot: 'Xuất hàng',
+  breadcrumbRoot: 'Quản lý bán hàng / xuất hàng',
   headerNotice: 'Việc phê duyệt làm ở hộp phê duyệt. Màn hình này lo phần yêu cầu và xuất kho.',
   tabs: {
     request: 'Yêu cầu hủy',

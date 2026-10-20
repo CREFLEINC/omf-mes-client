@@ -10,8 +10,8 @@
 export const oqcInspection = {
   /* 화면 스펙 §1 의 이름 그대로다 — 사이드바 항목과 같은 글자여야 길을 잃지 않는다. */
   title: 'OQC 출하검사 판정',
-  /** 화면 스펙 §1 의 IA — 「관리웹 > 출하 > OQC 출하검사 판정」. */
-  breadcrumbRoot: '출하',
+  /** 머리는 관리웹 사이드바 묶음을 따른다 — 「품질 관리 > OQC 출하검사 판정」. */
+  breadcrumbRoot: '품질 관리',
 
   queue: {
     heading: '검사 대상',

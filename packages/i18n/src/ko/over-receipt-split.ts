@@ -16,7 +16,7 @@
  */
 export const overReceiptSplit = {
   title: '초과 입하 분리',
-  breadcrumbRoot: '자재창고',
+  breadcrumbRoot: '구매 / 자재 관리',
   panes: {
     list: '대상 발주 목록',
     lines: '고른 발주의 라인',

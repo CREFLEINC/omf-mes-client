@@ -93,7 +93,7 @@ describe('ItemListPane — 조회 조건', () => {
     await user.type(screen.getByRole('searchbox', { name: '품목 검색' }), 'SYN');
     await user.click(screen.getByRole('button', { name: '조회' }));
 
-    expect(onApplyFilters).toHaveBeenCalledWith({ q: 'SYN', includeInactive: false });
+    expect(onApplyFilters).toHaveBeenCalledWith({ q: 'SYN', itemType: '', includeInactive: false });
   });
 
   /* 해제 축이라 변경 즉시 적용한다 — 「조회」를 한 번 더 누르게 하지 않는다. */
@@ -102,12 +102,12 @@ describe('ItemListPane — 조회 조건', () => {
 
     await user.click(screen.getByRole('checkbox', { name: '미사용 포함' }));
 
-    expect(onApplyFilters).toHaveBeenCalledWith({ q: '', includeInactive: true });
+    expect(onApplyFilters).toHaveBeenCalledWith({ q: '', itemType: '', includeInactive: true });
   });
 
   it('초기화는 조건을 통째로 푼다', async () => {
     const { onApplyFilters, user } = renderPane({
-      appliedFilters: { q: 'SYN', includeInactive: true },
+      appliedFilters: { q: 'SYN', itemType: '', includeInactive: true },
     });
 
     await user.click(screen.getByRole('button', { name: '초기화' }));
@@ -116,7 +116,7 @@ describe('ItemListPane — 조회 조건', () => {
   });
 
   it('걸린 조건을 칩으로 낸다', () => {
-    renderPane({ appliedFilters: { q: 'SYN', includeInactive: true } });
+    renderPane({ appliedFilters: { q: 'SYN', itemType: '', includeInactive: true } });
 
     expect(screen.getByText('검색어: SYN')).toBeInTheDocument();
     // 「미사용 포함」은 확인칸 라벨에도 있다 — 칩은 제거 버튼으로 가린다.
@@ -125,20 +125,29 @@ describe('ItemListPane — 조회 조건', () => {
 
   it('칩을 제거하면 그 조건만 풀린다', async () => {
     const { onApplyFilters, user } = renderPane({
-      appliedFilters: { q: 'SYN', includeInactive: true },
+      appliedFilters: { q: 'SYN', itemType: '', includeInactive: true },
     });
 
     await user.click(screen.getByRole('button', { name: '검색어 조건 제거' }));
 
-    expect(onApplyFilters).toHaveBeenCalledWith({ q: '', includeInactive: true });
+    expect(onApplyFilters).toHaveBeenCalledWith({ q: '', itemType: '', includeInactive: true });
   });
 
-  /* 값 목록이 미정이라 선택지를 만들 수 없고, 자유 입력 필터는 검색어 칸과 구분되지 않는다. */
-  it('품목 유형 필터를 두지 않는다', () => {
-    renderPane();
+  /* 선택지 이름은 코드 그룹이 준다. 목록 밖 코드가 주소에 실려 와도 사라지지 않는다. */
+  it('품목 유형 선택지를 코드 그룹 이름으로 낸다', () => {
+    renderPane({
+      itemTypeOptions: [{ code: 'FINISHED', codeName: '완제품' }],
+      appliedFilters: { q: '', itemType: 'FINISHED', includeInactive: false },
+    });
 
-    expect(screen.queryByLabelText('품목유형')).not.toBeInTheDocument();
-    expect(screen.queryAllByRole('combobox')).toHaveLength(0);
+    expect(screen.getByRole('combobox', { name: '품목유형' })).toHaveTextContent('완제품');
+  });
+
+  it('선택지에 없는 유형 코드도 그대로 보인다', () => {
+    renderPane({ appliedFilters: { q: '', itemType: 'CUSTOM', includeInactive: false } });
+
+    expect(screen.getByRole('combobox', { name: '품목유형' })).toHaveTextContent('CUSTOM');
+    expect(screen.getByText('품목유형: CUSTOM')).toBeInTheDocument();
   });
 });
 
@@ -157,7 +166,7 @@ describe('ItemListPane — 빈 상태 세 갈래', () => {
   it('조건이 걸린 0건이면 조건을 줄이라고 한다', () => {
     renderPane({
       items: [],
-      appliedFilters: { q: 'SYN', includeInactive: false },
+      appliedFilters: { q: 'SYN', itemType: '', includeInactive: false },
       pageView: pageView(1, 0, 0),
     });
 

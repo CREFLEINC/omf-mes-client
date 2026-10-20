@@ -7,7 +7,7 @@ import type { Translated } from './translated';
  */
 export const equipmentFailure: Translated<typeof ko.equipmentFailure> = {
   title: 'Xử lý chi tiết sự cố thiết bị',
-  breadcrumbRoot: 'Thiết bị / Công cụ',
+  breadcrumbRoot: 'Quản lý bảo trì thiết bị',
 
   panes: {
     filters: 'Điều kiện tra cứu',

@@ -27,6 +27,10 @@ import { warehouseLocation } from './warehouse-location';
 import { routing } from './routing';
 import { defectCauseCode } from './defect-cause-code';
 import { integrationSync } from './integration-sync';
+import { erpBom } from './erp-bom';
+import { erpEmployee } from './erp-employee';
+import { erpItem } from './erp-item';
+import { erpProductionOrder } from './erp-production-order';
 import { inspectionStandard } from './inspection-standard';
 import { commonCode } from './common-code';
 import { itemExtendedAttrs } from './item-extended-attrs';
@@ -61,6 +65,10 @@ import { productionResult } from './production-result';
 import { equipmentMaster } from './equipment-master';
 import { qualityApproval } from './quality-approval';
 import { productionOrder } from './production-order';
+import { erpPurchaseOrder } from './erp-purchase-order';
+import { erpSalesOrder } from './erp-sales-order';
+import { erpPartner } from './erp-partner';
+import { erpCommonCode } from './erp-common-code';
 import { gaugeMaster } from './gauge-master';
 import { toolMaster } from './tool-master';
 import { workCalendar } from './work-calendar';
@@ -161,6 +169,10 @@ export const ko = {
   routing,
   defectCauseCode,
   integrationSync,
+  erpBom,
+  erpEmployee,
+  erpItem,
+  erpProductionOrder,
   inspectionStandard,
   commonCode,
   itemExtendedAttrs,
@@ -195,6 +207,10 @@ export const ko = {
   equipmentMaster,
   qualityApproval,
   productionOrder,
+  erpPurchaseOrder,
+  erpSalesOrder,
+  erpPartner,
+  erpCommonCode,
   gaugeMaster,
   toolMaster,
   workCalendar,

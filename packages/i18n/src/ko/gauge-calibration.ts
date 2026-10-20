@@ -6,7 +6,7 @@
  */
 export const gaugeCalibration = {
   title: '계측기 검교정 이력',
-  breadcrumbRoot: '설비/툴',
+  breadcrumbRoot: '기준정보 관리',
 
   panes: {
     filters: '조회 조건',

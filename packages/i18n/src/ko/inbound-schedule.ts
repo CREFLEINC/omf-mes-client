@@ -11,7 +11,7 @@
  */
 export const inboundSchedule = {
   title: '입하 예정 조회',
-  breadcrumbRoot: '자재창고',
+  breadcrumbRoot: '구매 / 자재 관리',
   panes: {
     list: '입하 예정 목록',
     lines: '선택한 건의 라인',

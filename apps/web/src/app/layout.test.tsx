@@ -107,51 +107,111 @@ const groupToggle = (label: string): HTMLElement => {
 };
 
 describe('AppLayout', () => {
-  it('사이드바에 기준정보 섹션의 창고·Location 메뉴가 보인다', () => {
-    renderLayout('본문 내용');
-
-    const sidebar = screen.getByRole('navigation', { name: '주 메뉴' });
-
-    expect(within(sidebar).getByText('기준정보')).toBeInTheDocument();
-    expect(within(sidebar).getByRole('link', { name: '창고·Location' })).toHaveAttribute(
-      'href',
-      '/master-data/warehouse-location',
-    );
-  });
-
-  /*
-   * **W-06-14 · C5-2** — 같은 「기준정보」 섹션의 **창고·Location 바로 뒤**다. 적치 규칙은
-   * 창고와 위치를 참조해야 성립하고 그 마스터에서 이어지는 화면이라, **인접이 관계를 드러낸다.**
-   *
-   * **앞뒤를 둘 다 잰다** — 창고·Location 다음 칸이면서 Routing(공정)보다 앞이다. 한쪽만
-   * 재면 반대편으로 밀려나도 통과한다(맨 뒤로 밀리면 창고와의 관계가 자리에서 읽히지 않는다).
+  /**
+   * 사이드바 링크의 주소를 **보이는 차례대로** 읽는다. 차례를 재는 감지기들이 같은 일을 되풀이한다.
    */
-  it('사이드바 기준정보 섹션에 적치 규칙 메뉴가 창고·Location 바로 뒤에 있다', () => {
-    renderLayout('본문 내용');
-
-    const sidebar = screen.getByRole('navigation', { name: '주 메뉴' });
-    const links = within(sidebar)
+  const sidebarHrefs = (): (string | null)[] =>
+    within(navSidebar())
       .getAllByRole('link')
       .map((link) => link.getAttribute('href'));
 
-    expect(within(sidebar).getByRole('link', { name: '적치 규칙' })).toHaveAttribute(
+  /**
+   * 탭 막대(`hub-tabs.tsx`)의 주소를 **보이는 차례대로** 읽는다. 탭 막대는 묶음 이름을 접근명으로
+   * 가진 `navigation` 이다 — 묶음 안 화면의 차례는 사이드바가 아니라 여기서 잰다.
+   */
+  const hubTabHrefs = (hubLabel: string): (string | null)[] =>
+    within(screen.getByRole('navigation', { name: hubLabel }))
+      .getAllByRole('link')
+      .map((link) => link.getAttribute('href'));
+
+  /*
+   * 창고·Location 은 이제 「창고·위치」 탭 묶음의 첫 탭이다 — 사이드바에는 묶음 한 줄이 서고 그
+   * 줄이 첫 탭의 주소를 건다(`nav-tree.ts` `tabs`).
+   */
+  it('사이드바에 기준정보 관리 섹션의 창고·위치 묶음이 창고·Location 주소로 보인다', () => {
+    renderLayout('본문 내용');
+
+    const sidebar = screen.getByRole('navigation', { name: '주 메뉴' });
+
+    expect(within(sidebar).getByText('기준정보 관리')).toBeInTheDocument();
+    expect(within(sidebar).getByRole('link', { name: '창고·위치' })).toHaveAttribute(
+      'href',
+      '/master-data/warehouse-location',
+    );
+    /* 탭 이름은 사이드바에 서지 않는다 — 묶음 한 줄로 줄이는 것이 탭 묶음의 목적이다. */
+    expect(within(sidebar).queryByRole('link', { name: '창고·Location' })).toBeNull();
+  });
+
+  /*
+   * **W-06-14 · C5-2** — 같은 「창고·위치」 묶음의 **창고·Location 바로 뒤**다. 적치 규칙은
+   * 창고와 위치를 참조해야 성립하고 그 마스터에서 이어지는 화면이라, **인접이 관계를 드러낸다.**
+   * 묶음 안의 차례는 탭 막대의 차례다.
+   *
+   * **앞뒤를 둘 다 잰다** — 창고·Location 다음 칸이면서 창고 배치도보다 앞이다(창고 계열은
+   * 창고·Location → 적치 규칙 → 창고 배치도 차례다). 한쪽만 재면 반대편으로 밀려나도 통과한다.
+   */
+  it('창고·위치 탭 막대에서 적치 규칙이 창고·Location 바로 뒤에 있다', () => {
+    renderLayout('본문 내용', { route: '/master-data/putaway-rule' });
+
+    const tabs = screen.getByRole('navigation', { name: '창고·위치' });
+    const links = hubTabHrefs('창고·위치');
+
+    expect(within(tabs).getByRole('link', { name: '적치 규칙' })).toHaveAttribute(
       'href',
       '/master-data/putaway-rule',
     );
     expect(links.indexOf('/master-data/putaway-rule')).toBe(
       links.indexOf('/master-data/warehouse-location') + 1,
     );
-    expect(links.indexOf('/master-data/putaway-rule')).toBeLessThan(
-      links.indexOf('/master-data/routing'),
+    expect(links.indexOf('/master-data/warehouse-layout')).toBe(
+      links.indexOf('/master-data/putaway-rule') + 1,
     );
   });
 
-  it('사이드바에 Routing(공정) 메뉴가 보인다', () => {
+  /*
+   * 기준정보 관리 — 품목·BOM 정보(ERP 원본과 확장속성 편집이 한 화면이다)가 앞에 서고, 그 다음에
+   * MES 가 직접 세우는 마스터(공정 → 설비 → 툴·금형 → 계측기 → 창고·위치)가 온다. 횡단 조회인
+   * 마스터 변경관리는 섹션 맨 뒤다.
+   *
+   * ⛔ ERP 에서 받은 것을 보기만 하는 「사원정보 조회 (ERP)」는 여기 없다 — 「시스템 관리」의
+   * 「ERP 연동 현황·이력」 묶음의 탭으로 옮겼다(ERP 데이터 조회를 한 묶음에 모았다).
+   */
+  it('기준정보 관리 섹션이 품목·BOM 정보 → 공정·설비 → 창고 → 마스터 변경관리 차례다', () => {
+    renderLayout('본문 내용');
+
+    const sidebar = screen.getByRole('navigation', { name: '주 메뉴' });
+    const links = sidebarHrefs();
+
+    expect(within(sidebar).queryByRole('link', { name: '사원정보 조회 (ERP)' })).toBeNull();
+    /* 섹션 첫 항목 — 업무함의 끝(공지·전달) 바로 뒤다. 가끔 여는 묶음들이 업무함 뒤에 선다. */
+    expect(links.indexOf('/master-data/item-extended-attrs')).toBe(
+      links.indexOf('/notification/notices') + 1,
+    );
+    /* 공정이 먼저 서고 그 공정을 도는 설비가 뒤따른다. */
+    expect(links.indexOf('/master-data/routing')).toBe(
+      links.indexOf('/master-data/item-extended-attrs') + 1,
+    );
+    expect(links.indexOf('/equipment/master')).toBe(links.indexOf('/master-data/routing') + 1);
+    /* 설비 → 툴·금형 → 계측기 묶음이 차례로 서고, 창고·위치 묶음이 바로 뒤에 선다. */
+    expect(links.indexOf('/equipment/tool-master')).toBe(links.indexOf('/equipment/master') + 1);
+    expect(links.indexOf('/equipment/gauge-master')).toBe(
+      links.indexOf('/equipment/tool-master') + 1,
+    );
+    expect(links.indexOf('/master-data/warehouse-location')).toBe(
+      links.indexOf('/equipment/gauge-master') + 1,
+    );
+    /* 횡단 조회라 마스터 항목들 뒤 — 섹션 끝이다. */
+    expect(links.indexOf('/master-data/master-change')).toBe(
+      links.indexOf('/master-data/warehouse-location') + 1,
+    );
+  });
+
+  it('사이드바에 공정(Routing) 메뉴가 보인다', () => {
     renderLayout('본문 내용');
 
     const sidebar = screen.getByRole('navigation', { name: '주 메뉴' });
 
-    expect(within(sidebar).getByRole('link', { name: 'Routing(공정)' })).toHaveAttribute(
+    expect(within(sidebar).getByRole('link', { name: '공정(Routing)' })).toHaveAttribute(
       'href',
       '/master-data/routing',
     );
@@ -168,12 +228,13 @@ describe('AppLayout', () => {
     );
   });
 
-  it('사이드바에 불량·원인코드 메뉴가 보인다', () => {
+  /* 불량·원인코드는 「품질 코드」 묶음의 첫 탭이다 — 사이드바의 묶음 줄이 그 주소를 건다. */
+  it('사이드바에 품질 코드 묶음이 불량·원인코드 주소로 보인다', () => {
     renderLayout('본문 내용');
 
     const sidebar = screen.getByRole('navigation', { name: '주 메뉴' });
 
-    expect(within(sidebar).getByRole('link', { name: '불량·원인코드' })).toHaveAttribute(
+    expect(within(sidebar).getByRole('link', { name: '품질 코드' })).toHaveAttribute(
       'href',
       '/master-data/defect-cause-code',
     );
@@ -190,34 +251,42 @@ describe('AppLayout', () => {
     );
   });
 
-  it('사이드바에 판정유형 코드 메뉴가 보인다', () => {
-    renderLayout('본문 내용');
+  /* 판정유형 코드는 「품질 코드」 묶음의 둘째 탭이다 — 탭 막대에서 불량·원인코드 바로 뒤에 선다. */
+  it('품질 코드 탭 막대에 판정유형 코드가 불량·원인코드 뒤에 보인다', () => {
+    renderLayout('본문 내용', { route: '/master-data/judgment-code' });
 
-    const sidebar = screen.getByRole('navigation', { name: '주 메뉴' });
+    const tabs = screen.getByRole('navigation', { name: '품질 코드' });
 
-    expect(within(sidebar).getByRole('link', { name: '판정유형 코드' })).toHaveAttribute(
+    expect(within(tabs).getByRole('link', { name: '판정유형 코드' })).toHaveAttribute(
       'href',
       '/master-data/judgment-code',
     );
+    expect(hubTabHrefs('품질 코드')).toEqual([
+      '/master-data/defect-cause-code',
+      '/master-data/judgment-code',
+    ]);
   });
 
-  it('사이드바에 연계 동기화 현황 메뉴가 보인다', () => {
+  /* 옛 「연계 동기화 현황」 — 지금 그 연계가 ERP 하나라 이름에 대상을 적었다. */
+  it('사이드바에 ERP 연동 현황·이력 메뉴가 보인다', () => {
     renderLayout('본문 내용');
 
     const sidebar = screen.getByRole('navigation', { name: '주 메뉴' });
 
-    expect(within(sidebar).getByRole('link', { name: '연계 동기화 현황' })).toHaveAttribute(
+    expect(within(sidebar).getByRole('link', { name: 'ERP 연동 현황·이력' })).toHaveAttribute(
       'href',
       '/master-data/integration-sync',
     );
   });
 
-  it('사이드바에 품목 확장속성 메뉴가 보인다', () => {
+  it('사이드바에 품목·BOM 정보 메뉴가 보인다 — 품목·BOM 의 ERP 조회와 확장속성이 한 화면이다', () => {
     renderLayout('본문 내용');
 
     const sidebar = screen.getByRole('navigation', { name: '주 메뉴' });
 
-    expect(within(sidebar).getByRole('link', { name: '품목 확장속성' })).toHaveAttribute(
+    expect(within(sidebar).queryByRole('link', { name: '품목정보 조회 (ERP)' })).toBeNull();
+    expect(within(sidebar).queryByRole('link', { name: 'BOM 조회 (ERP)' })).toBeNull();
+    expect(within(sidebar).getByRole('link', { name: '품목·BOM 정보' })).toHaveAttribute(
       'href',
       '/master-data/item-extended-attrs',
     );
@@ -235,231 +304,254 @@ describe('AppLayout', () => {
   });
 
   /*
-   * 현장 물류 화면이라 기준정보·시스템 관리 어느 쪽도 아니다 —
-   * 도메인 01(자재창고)의 첫 화면이고 뒤따르는 W-01 화면들이 이 섹션에 들어온다.
+   * 구매 / 자재 관리 — **입고 → 재고 → 출고 3축이다**(`nav-tree.ts`). 사이드바 한 줄이 「대상」
+   * 하나이고 동작 이름은 탭으로 내렸다. 흐름이 남긴 전표를 가로질러 보는 물류 전표 조회가 끝에
+   * 선다. ERP 구매발주 조회는 「ERP 연동 현황·이력」 묶음의 탭으로 옮겼다(보기만 하는 ERP 데이터를
+   * 한 묶음에 모았다).
+   *
+   * **앞뒤를 둘 다 잰다** — 첫 줄은 섹션 밖 대시보드 바로 뒤이고, 끝 줄 바로 뒤가 다음 섹션(품질
+   * 관리)의 첫 항목이다. 한쪽만 재면 반대편으로 밀려나도 통과한다.
    */
-  it('사이드바에 자재창고 섹션의 입하 예정 조회 메뉴가 보인다', () => {
+  it('사이드바 구매 / 자재 관리 섹션이 입고 관리 → 재고 관리 → 출고 관리 → 물류 전표 조회·취소 차례다', () => {
     renderLayout('본문 내용');
 
     const sidebar = screen.getByRole('navigation', { name: '주 메뉴' });
+    const section = within(sidebar).getByRole('group', { name: '구매 / 자재 관리' });
+    const links = sidebarHrefs();
 
-    expect(within(sidebar).getByText('자재창고')).toBeInTheDocument();
-    expect(within(sidebar).getByRole('link', { name: '입하 예정 조회' })).toHaveAttribute(
-      'href',
-      '/logistics/inbound-schedule',
+    expect(within(sidebar).queryByRole('link', { name: '구매발주 조회 (ERP)' })).toBeNull();
+    const rows: [string, string][] = [
+      ['입고 관리', '/logistics/inbound-schedule'],
+      ['재고 관리', '/logistics/stock-status'],
+      ['출고 관리', '/production/material-issue-requests'],
+      ['물류 전표 조회·취소', '/logistics/document-progress'],
+    ];
+
+    for (const [name, href] of rows) {
+      expect(within(section).getByRole('link', { name })).toHaveAttribute('href', href);
+    }
+    expect(
+      within(section)
+        .getAllByRole('link')
+        .map((link) => link.getAttribute('href')),
+    ).toEqual(rows.map(([, href]) => href));
+    /* 섹션 밖 대시보드 바로 뒤 — 매일 일하는 묶음의 첫 줄이 사이드바 첫 묶음의 첫 줄이다. */
+    expect(links.indexOf('/logistics/inbound-schedule')).toBe(links.indexOf('/dashboard') + 1);
+    expect(links.indexOf('/logistics/iqc-inspection')).toBe(
+      links.indexOf('/logistics/document-progress') + 1,
     );
   });
 
   /*
-   * W-01-03 — 이 도메인의 **첫 쓰기 화면**이다. 조회 화면들과 같은 섹션·같은 앞머리를 쓰고,
-   * 차례는 업무 순서(예정 → 도착 처리 → 재고)를 따른다.
+   * 입고 관리 — 도착 예정(ASN)을 보고 → 도착한 것 중 초과분을 떼어 내고(W-01-03 · 이 도메인의 첫
+   * 쓰기 화면) → 창고로 받아들인다(W-01-10). 같은 입고 건을 따라가는 한 흐름이라 한 줄로 묶었고,
+   * 탭 이름은 사이드바에 서지 않는다.
+   *
+   * ⚠ 옛 이름 「정상품 입하 처리」는 입고 화면을 입하라 불렀다 — 입하는 «도착»이고 입고는
+   * «창고로 받아들임»이다(`nav-tree.ts`).
    */
-  it('사이드바 자재창고 섹션에 초과 입하 분리 메뉴가 있다', () => {
-    renderLayout('본문 내용');
+  it('입고 관리 탭 막대가 입하 예정 조회 → 초과 입하 분리 → 자재 입고 처리 차례다', () => {
+    renderLayout('본문 내용', { route: '/logistics/over-receipt-split' });
 
-    const sidebar = screen.getByRole('navigation', { name: '주 메뉴' });
+    const sidebar = navSidebar();
+    const tabs = screen.getByRole('navigation', { name: '입고 관리' });
 
-    expect(within(sidebar).getByRole('link', { name: '초과 입하 분리' })).toHaveAttribute(
+    expect(within(tabs).getByRole('link', { name: '초과 입하 분리' })).toHaveAttribute(
       'href',
       '/logistics/over-receipt-split',
     );
-  });
-
-  /*
-   * W-01-10 — 이 도메인의 **둘째 쓰기 화면**이다. 차례는 업무 순서를 따른다 —
-   * 도착을 처리한 뒤(초과 입하 분리) 창고로 받아들이고(정상품 입하 처리) 재고에서 확인한다.
-   */
-  it('사이드바 자재창고 섹션에 정상품 입하 처리 메뉴가 있다', () => {
-    renderLayout('본문 내용');
-
-    const sidebar = screen.getByRole('navigation', { name: '주 메뉴' });
-
-    expect(within(sidebar).getByRole('link', { name: '정상품 입하 처리' })).toHaveAttribute(
+    expect(within(tabs).getByRole('link', { name: '자재 입고 처리' })).toHaveAttribute(
       'href',
       '/logistics/goods-receipt',
     );
+    expect(hubTabHrefs('입고 관리')).toEqual([
+      '/logistics/inbound-schedule',
+      '/logistics/over-receipt-split',
+      '/logistics/goods-receipt',
+    ]);
+    expect(within(sidebar).queryByRole('link', { name: '입하 예정 조회' })).toBeNull();
+    expect(within(sidebar).queryByRole('link', { name: '자재 입고 처리' })).toBeNull();
+    expect(screen.queryByRole('link', { name: '정상품 입하 처리' })).toBeNull();
   });
 
   /*
-   * W-01-07은 같은 도메인이라 **섹션을 새로 만들지 않고** 「자재창고」에 항목만 더한다.
-   * 계약 경로는 `/inventory/**`·`/trace/**`이지만 주소 앞머리는 **사이드바 섹션을 따른다** —
-   * 한 섹션 안의 화면들이 서로 다른 앞머리를 가지면 섹션과 주소를 대응시킬 수 없다.
+   * 재고 관리 — **가장 자주 여는 재고 현황(W-01-07)이 첫 탭이다**(사이드바 한 번에 그 화면).
+   * 차례가 업무 순서다 — 재고를 확인하고, 장부와 실물을 맞추고(재고실사 W-01-04), **어긋난 것을
+   * 고친다**(재고조정 W-01-12 · C46 · D-19). 옛 「재고실사·조정」 묶음을 이 묶음이 대신한다.
+   *
+   * **W-01-11과 갈리는 자리다** — 그 화면은 맥락 없는 진입이 요구사항 위반이라 메뉴에 두지
+   * 않았는데, 재고조정은 직접 등록이 정상 경로라 탭으로 바로 연다.
    */
-  it('사이드바 자재창고 섹션에 재고 현황·상태 조회 메뉴가 함께 있다', () => {
-    renderLayout('본문 내용');
+  it('재고 관리 탭 막대가 재고 현황·상태 조회 → 재고실사 → 재고조정 차례다', () => {
+    renderLayout('본문 내용', { route: '/logistics/stock-adjust' });
 
-    const sidebar = screen.getByRole('navigation', { name: '주 메뉴' });
+    const sidebar = navSidebar();
+    const tabs = screen.getByRole('navigation', { name: '재고 관리' });
 
-    expect(within(sidebar).getByRole('link', { name: '재고 현황·상태 조회' })).toHaveAttribute(
+    expect(within(tabs).getByRole('link', { name: '재고 현황·상태 조회' })).toHaveAttribute(
       'href',
       '/logistics/stock-status',
     );
-  });
-
-  /*
-   * W-01-04도 같은 「자재창고」 섹션에 항목만 더한다. **차례가 업무 순서다** — 재고를 확인한
-   * 뒤(재고 현황·상태 조회) 장부와 실물을 맞춘다(재고실사). 계약 경로는 `/inventory/**`이지만
-   * 주소 앞머리는 여기서도 **섹션을 따른다.**
-   */
-  it('사이드바 자재창고 섹션에 재고실사 메뉴가 함께 있다', () => {
-    renderLayout('본문 내용');
-
-    const sidebar = screen.getByRole('navigation', { name: '주 메뉴' });
-
-    expect(within(sidebar).getByRole('link', { name: '재고실사' })).toHaveAttribute(
-      'href',
-      '/logistics/stocktaking',
-    );
-  });
-
-  /*
-   * **W-01-12 · C46 · D-19** — 같은 「자재창고」 섹션의 **재고실사 바로 뒤**다. 차례가 업무
-   * 순서다: 재고를 확인하고(재고 현황) 장부와 실물을 맞춘 뒤(재고실사) **어긋난 것을 고친다.**
-   *
-   * **앞뒤를 둘 다 잰다** — 실사 다음 칸이면서 반품보다 앞이다. 한쪽만 재면 반대편으로 밀려나도
-   * 통과한다(반품·폐기는 물건을 내보내는 일이라 장부를 맞추는 이 화면보다 뒤여야 한다).
-   *
-   * **W-01-11과 갈리는 자리다** — 그 화면은 맥락 없는 진입이 요구사항 위반이라 메뉴에 두지
-   * 않았는데, 이 화면은 직접 등록이 정상 경로라 메뉴에 선다.
-   */
-  it('사이드바 자재창고 섹션에 재고조정 메뉴가 재고실사 바로 뒤에 있다', () => {
-    renderLayout('본문 내용');
-
-    const sidebar = screen.getByRole('navigation', { name: '주 메뉴' });
-    const links = within(sidebar)
-      .getAllByRole('link')
-      .map((link) => link.getAttribute('href'));
-
-    expect(within(sidebar).getByRole('link', { name: '재고조정' })).toHaveAttribute(
+    expect(within(tabs).getByRole('link', { name: '재고조정' })).toHaveAttribute(
       'href',
       '/logistics/stock-adjust',
     );
-    expect(links.indexOf('/logistics/stock-adjust')).toBe(
-      links.indexOf('/logistics/stocktaking') + 1,
-    );
-    expect(links.indexOf('/logistics/stock-adjust')).toBeLessThan(
-      links.indexOf('/logistics/supplier-return'),
-    );
+    expect(hubTabHrefs('재고 관리')).toEqual([
+      '/logistics/stock-status',
+      '/logistics/stocktaking',
+      '/logistics/stock-adjust',
+    ]);
+    expect(within(sidebar).queryByRole('link', { name: '재고실사·조정' })).toBeNull();
+    expect(screen.queryByRole('navigation', { name: '재고실사·조정' })).toBeNull();
   });
 
   /*
-   * W-01-05도 같은 「자재창고」 섹션에 항목만 더한다. **차례가 업무 순서다** — 실사로 장부와
-   * 실물을 맞춘 뒤 **되돌려 보낸다.** 반품은 앞의 다섯이 남긴 결과를 대상으로 삼는다.
+   * 출고 관리 — 셋 다 **출고 전표를 만든다**: 생산으로 내보내고(자재 불출 W-02-10) · 공급사로
+   * 되돌려 보내고(반품 W-01-05) · 못 쓰게 된 것을 장부에서 덜어낸다(폐기 W-01-06).
    */
-  it('사이드바 자재창고 섹션에 공급사 반품 처리 메뉴가 함께 있다', () => {
-    renderLayout('본문 내용');
+  it('출고 관리 탭 막대가 자재 불출 요청 → 공급사 반품 처리 → 폐기 품의·기타출고 차례다', () => {
+    renderLayout('본문 내용', { route: '/logistics/disposal-issue' });
 
-    const sidebar = screen.getByRole('navigation', { name: '주 메뉴' });
+    const tabs = screen.getByRole('navigation', { name: '출고 관리' });
 
-    expect(within(sidebar).getByRole('link', { name: '공급사 반품 처리' })).toHaveAttribute(
+    expect(within(tabs).getByRole('link', { name: '공급사 반품 처리' })).toHaveAttribute(
       'href',
       '/logistics/supplier-return',
     );
-  });
-
-  /*
-   * W-01-06도 같은 「자재창고」 섹션에 항목만 더한다. **차례가 업무 순서다** — 되돌려 보낸
-   * 뒤(반품) 못 쓰게 된 것을 **장부에서 덜어낸다**(폐기). 반품과 같은 계약 경로를 쓰지만
-   * 주소는 **화면**을 가리킨다.
-   */
-  it('사이드바 자재창고 섹션에 폐기 품의·기타출고 메뉴가 공급사 반품 처리 뒤에 있다', () => {
-    renderLayout('본문 내용');
-
-    const sidebar = screen.getByRole('navigation', { name: '주 메뉴' });
-    const links = within(sidebar)
-      .getAllByRole('link')
-      .map((link) => link.getAttribute('href'));
-
-    expect(within(sidebar).getByRole('link', { name: '폐기 품의·기타출고' })).toHaveAttribute(
+    expect(within(tabs).getByRole('link', { name: '폐기 품의·기타출고' })).toHaveAttribute(
       'href',
       '/logistics/disposal-issue',
     );
-    expect(links.indexOf('/logistics/disposal-issue')).toBe(
-      links.indexOf('/logistics/supplier-return') + 1,
-    );
+    expect(hubTabHrefs('출고 관리')).toEqual([
+      '/production/material-issue-requests',
+      '/logistics/supplier-return',
+      '/logistics/disposal-issue',
+    ]);
   });
 
   /*
-   * W-01-02도 같은 「자재창고」 섹션에 항목만 더한다. 계약 경로는 결재함과 같은 `/app/**`
-   * 인데 주소 앞머리는 여기서도 **섹션을 따른다** — 판정하는 것이 자재 입하 검사의 생략이라
-   * 그 판단의 맥락(입하·재고·입고)이 이 섹션에 있다.
+   * ⚠ **자재 불출 요청(W-02-10)은 생산 관리에서 옮겨 왔다**(`nav-tree.ts` · 사용자 2026-10-20).
+   * 요청하는 사람은 생산 담당이지만 결과는 자재 출고다. 옛 이름 「추가 자재 출고 요청」은 출고
+   * 관리 안에서 「출고」를 되풀이해 「자재 불출 요청」으로 바꿨다.
    *
-   * **물건이 오가는 항목들 뒤다.** 앞의 것들이 오가는 순서이고 이것은 그 흐름 위에서
-   * 예외를 허가하는 일이라, 순서 사이에 끼워 넣을 자리가 없다.
-   *
-   * ⚠ **더는 섹션의 끝이 아니다**(W-01-13이 뒤에 섰다). 이 시험이 재는 것은 처음부터 「끝」이
-   * 아니라 **폐기 바로 뒤 · 「승인」 섹션보다 앞**이었으므로 단언은 그대로 두고 이름만 사실로 고친다.
+   * **양쪽을 다 잰다** — 출고 관리의 첫 탭이면서 생산 관리에는 없다. 한쪽만 재면 두 곳에 함께
+   * 서도 통과한다.
    */
-  it('사이드바 자재창고 섹션에 긴급 IQC 생략 한도승인 메뉴가 폐기 품의·기타출고 뒤에 있다', () => {
-    renderLayout('본문 내용');
+  it('자재 불출 요청은 생산 관리에 없고 출고 관리의 첫 탭이다', () => {
+    renderLayout('본문 내용', { route: '/production/material-issue-requests' });
 
-    const sidebar = screen.getByRole('navigation', { name: '주 메뉴' });
-    const links = within(sidebar)
-      .getAllByRole('link')
-      .map((link) => link.getAttribute('href'));
+    const sidebar = navSidebar();
+    const production = within(sidebar).getByRole('group', { name: '생산 관리' });
+    const purchase = within(sidebar).getByRole('group', { name: '구매 / 자재 관리' });
+    const tabs = screen.getByRole('navigation', { name: '출고 관리' });
 
-    expect(within(sidebar).getByRole('link', { name: '긴급 IQC 생략 한도승인' })).toHaveAttribute(
+    /* 짝 양성 — 생산 관리 섹션은 실제로 펼쳐져 항목이 서 있다. */
+    expect(within(production).getAllByRole('link').length).toBeGreaterThan(0);
+    expect(
+      within(production)
+        .getAllByRole('link')
+        .map((link) => link.getAttribute('href')),
+    ).not.toContain('/production/material-issue-requests');
+    expect(within(sidebar).queryByRole('link', { name: '자재 불출 요청' })).toBeNull();
+    expect(screen.queryByRole('link', { name: '추가 자재 출고 요청' })).toBeNull();
+
+    expect(within(purchase).getByRole('link', { name: '출고 관리' })).toHaveAttribute(
       'href',
-      '/logistics/iqc-skip-approval',
+      '/production/material-issue-requests',
     );
-    expect(links.indexOf('/logistics/iqc-skip-approval')).toBe(
-      links.indexOf('/logistics/disposal-issue') + 1,
-    );
-    /* 「승인」 섹션이 아니다 — 결재함과 같은 자리에 서면 두 화면의 축이 흐려진다. */
-    expect(links.indexOf('/logistics/iqc-skip-approval')).toBeLessThan(
-      links.indexOf('/approval/inbox'),
-    );
+    const first = within(tabs).getAllByRole('link')[0];
+
+    expect(first).toHaveTextContent('자재 불출 요청');
+    expect(first).toHaveAttribute('href', '/production/material-issue-requests');
+    expect(first).toHaveAttribute('aria-current', 'page');
   });
 
   /*
-   * **W-01-13 · C5-2** — 같은 「자재창고」 섹션의 **맨 뒤**다. 앞의 여덟이 물건이 오가는 순서이고
-   * (예정 → 초과 분리 → 입고 → 재고 확인 → 실사 → 조정 → 반품 → 폐기) 「긴급 IQC 생략」이 그
-   * 흐름 위에서 예외를 허가하는 자리인데, 이 화면은 그 흐름이 **남긴 문서들을 가로질러 보고
-   * 되돌리는** 일이라 순서에 끼워 넣을 자리가 없다. 기준정보의 「마스터 변경관리」가 같은
-   * 이유(횡단 조회)로 마스터 항목들 뒤에 섰다.
+   * **W-01-13 · C5-2** — 「구매 / 자재 관리」 섹션의 **맨 뒤**다. 앞의 세 축은 물건이 오가는
+   * 순서이고, 이 화면은 그 흐름이 **남긴 전표들을 가로질러 찾고 되돌리는** 일이라 세 축 어디에도
+   * 들지 않는다. 옛 이름 「물류 문서 진행현황·취소」를 「물류 전표 조회·취소」로 바꿨다.
    *
-   * **앞뒤를 둘 다 잰다** — 긴급 IQC 생략 다음 칸이면서 「승인」 섹션의 결재함보다 앞이다.
-   * 한쪽만 재면 반대편으로 밀려나도 통과한다: 앞으로 밀리면 업무 순서 사슬을 끊고, 뒤로 밀리면
-   * 섹션을 넘어가 **자재창고 항목이 아니게 된다.**
+   * **앞뒤를 둘 다 잰다** — 출고 관리 줄 다음 칸이면서 다음 섹션(품질 관리)의 첫 항목 바로 앞이다.
+   * 한쪽만 재면 반대편으로 밀려나도 통과한다: 앞으로 밀리면 세 축 사이에 끼고, 뒤로 밀리면
+   * 섹션을 넘어가 **자재 관리 항목이 아니게 된다.**
    *
-   * ⛔ **「승인」 섹션에 두지 않는다.** 취소가 승인을 타지만 이 화면이 하는 일은 결재가 아니라
-   * **상신과 실행**이다 — W-01-02가 같은 자리에서 같은 판정을 했다.
+   * ⛔ **「업무함」에 두지 않는다.** 취소가 승인을 타지만 이 화면이 하는 일은 결재가 아니라
+   * **상신과 실행**이다.
    */
-  it('사이드바 자재창고 섹션의 맨 뒤에 물류 문서 진행현황·취소 메뉴가 있다', () => {
+  it('사이드바 구매 / 자재 관리 섹션의 맨 뒤에 물류 전표 조회·취소 메뉴가 있다', () => {
     renderLayout('본문 내용');
 
     const sidebar = screen.getByRole('navigation', { name: '주 메뉴' });
-    const links = within(sidebar)
-      .getAllByRole('link')
-      .map((link) => link.getAttribute('href'));
+    const links = sidebarHrefs();
 
-    expect(within(sidebar).getByRole('link', { name: '물류 문서 진행현황·취소' })).toHaveAttribute(
+    expect(within(sidebar).getByRole('link', { name: '물류 전표 조회·취소' })).toHaveAttribute(
       'href',
       '/logistics/document-progress',
     );
+    expect(within(sidebar).queryByRole('link', { name: '물류 문서 진행현황·취소' })).toBeNull();
     expect(links.indexOf('/logistics/document-progress')).toBe(
-      links.indexOf('/logistics/iqc-skip-approval') + 1,
+      links.indexOf('/production/material-issue-requests') + 1,
+    );
+    expect(links.indexOf('/logistics/iqc-inspection')).toBe(
+      links.indexOf('/logistics/document-progress') + 1,
     );
     expect(links.indexOf('/logistics/document-progress')).toBeLessThan(
       links.indexOf('/approval/inbox'),
     );
   });
 
-  it('품질관리 섹션의 공개 화면이 W-03-01 < W-03-02 < W-03-03 < W-03-05 < W-03-09 순서다', () => {
+  /*
+   * W-01-02 — IQC 를 «생략할 것인가»를 판정하는 자리라 **IQC 수입검사 바로 뒤**다. IQC 가
+   * 「품질 관리」로 옮겨 가면서 이 화면도 그 옆을 따라갔다.
+   *
+   * ⛔ 「승인」 섹션이 아니다 — 결재함은 올라온 결재를 두루 처리하는 자리라 축이 다르다.
+   */
+  it('사이드바 품질 관리 섹션에 긴급 IQC 생략 한도승인 메뉴가 IQC 수입검사·판정 바로 뒤에 있다', () => {
     renderLayout('본문 내용');
 
     const sidebar = screen.getByRole('navigation', { name: '주 메뉴' });
-    const links = within(sidebar)
-      .getAllByRole('link')
-      .map((link) => link.getAttribute('href'));
+    const links = sidebarHrefs();
 
-    expect(within(sidebar).getByText('품질관리')).toBeInTheDocument();
-    expect(
-      within(sidebar).getByRole('link', { name: 'Lot Status 현황·변경이력 조회' }),
-    ).toHaveAttribute('href', '/quality/lot-status');
-    expect(
-      within(sidebar).getByRole('link', { name: 'Lot Status 판정·전이 처리' }),
-    ).toHaveAttribute('href', '/quality/lot-status-transition');
+    expect(within(sidebar).getByRole('link', { name: '긴급 IQC 생략 한도승인' })).toHaveAttribute(
+      'href',
+      '/logistics/iqc-skip-approval',
+    );
+    expect(links.indexOf('/logistics/iqc-skip-approval')).toBe(
+      links.indexOf('/logistics/iqc-inspection') + 1,
+    );
+    expect(links.indexOf('/logistics/iqc-skip-approval')).toBeLessThan(
+      links.indexOf('/approval/inbox'),
+    );
+  });
+
+  /*
+   * 품질 관리 — **독립 영역이다.** 검사를 IQC(입하) → PQC(공정) → OQC(출하) 흐름 차례로 세우고,
+   * 검사기준·코드, 검사 이력, 그리고 LOT 상태 → 보류 → 승인 → 처분의 판정 갈래가 뒤따른다.
+   * 불량·원인코드와 판정유형 코드는 「품질 코드」, LOT 조회와 판정은 「LOT 상태」 묶음 한 줄이다.
+   */
+  it('품질 관리 섹션이 IQC → PQC → OQC → 검사기준·코드 → 검사실적 → LOT 상태·보류·승인·처분 순서다', () => {
+    renderLayout('본문 내용');
+
+    const sidebar = screen.getByRole('navigation', { name: '주 메뉴' });
+    const links = sidebarHrefs();
+
+    expect(within(sidebar).getByText('품질 관리')).toBeInTheDocument();
+    expect(within(sidebar).getByRole('link', { name: 'IQC 수입검사·판정' })).toHaveAttribute(
+      'href',
+      '/logistics/iqc-inspection',
+    );
+    expect(within(sidebar).getByRole('link', { name: 'PQC 검사 등록·조회' })).toHaveAttribute(
+      'href',
+      '/quality/pqc-inspections',
+    );
+    expect(within(sidebar).getByRole('link', { name: 'OQC 출하검사 판정' })).toHaveAttribute(
+      'href',
+      '/shipment/oqc-inspection',
+    );
+    expect(within(sidebar).getByRole('link', { name: 'LOT 상태' })).toHaveAttribute(
+      'href',
+      '/quality/lot-status',
+    );
     expect(within(sidebar).getByRole('link', { name: '의심자재 등록' })).toHaveAttribute(
       'href',
       '/quality/suspicious-material-hold',
@@ -472,40 +564,64 @@ describe('AppLayout', () => {
       'href',
       '/quality/approvals',
     );
-    expect(links.indexOf('/quality/lot-status')).toBeGreaterThan(
-      links.indexOf('/production/work-order-close'),
-    );
-    expect(links.indexOf('/quality/lot-status-transition')).toBeGreaterThan(
-      links.indexOf('/quality/lot-status'),
-    );
-    expect(links.indexOf('/quality/suspicious-material-hold')).toBeGreaterThan(
-      links.indexOf('/quality/lot-status-transition'),
-    );
-    expect(links.indexOf('/quality/inspection-results')).toBeGreaterThan(
-      links.indexOf('/quality/suspicious-material-hold'),
-    );
-    expect(links.indexOf('/quality/approvals')).toBeGreaterThan(
-      links.indexOf('/quality/inspection-results'),
-    );
     expect(within(sidebar).getByRole('link', { name: '처분 판정 처리' })).toHaveAttribute(
       'href',
       '/quality/dispositions',
     );
-    expect(links.indexOf('/quality/dispositions')).toBeGreaterThan(
-      links.indexOf('/quality/approvals'),
-    );
-    expect(links.indexOf('/quality/approvals')).toBeLessThan(links.indexOf('/approval/inbox'));
+
+    const qualityOrder = [
+      '/logistics/iqc-inspection',
+      '/logistics/iqc-skip-approval',
+      '/quality/pqc-inspections',
+      '/shipment/oqc-inspection',
+      '/master-data/inspection-standard',
+      /* 「품질 코드」 묶음 — 불량·원인코드 → 판정유형 코드. */
+      '/master-data/defect-cause-code',
+      '/quality/inspection-results',
+      /* 「LOT 상태」 묶음 — 조회 → 판정(W-03-02 는 조회에서 찾은 LOT 을 판정·전이한다). */
+      '/quality/lot-status',
+      '/quality/suspicious-material-hold',
+      '/quality/approvals',
+      /* W-03-10 — 여기서 정한 처분이 폐기·재등록·재작업 화면의 진입을 연다. */
+      '/quality/dispositions',
+    ];
+    const start = links.indexOf(qualityOrder[0] ?? '');
+
+    expect(links.slice(start, start + qualityOrder.length)).toEqual(qualityOrder);
+    /* 구매 / 자재 관리 뒤 · 생산 관리 앞이다. */
+    expect(start).toBe(links.indexOf('/logistics/document-progress') + 1);
+    expect(links.indexOf('/production/production-orders')).toBe(start + qualityOrder.length);
   });
 
-  it('출하 섹션(출하지시서 Import·작업지시 생성 · 출하 예정 목록 · OQC 출하검사 판정 · 출하 처리)이 자재창고 뒤·생산 앞에 있다', () => {
+  /* W-03-02 — LOT 판정은 조회에서 찾은 LOT 을 판정·전이하므로 「LOT 상태」 묶음의 조회 바로 뒤 탭이다. */
+  it('LOT 상태 탭 막대가 LOT 상태 조회 → LOT 상태 판정 차례다', () => {
+    renderLayout('본문 내용', { route: '/quality/lot-status' });
+
+    const tabs = screen.getByRole('navigation', { name: 'LOT 상태' });
+
+    expect(within(tabs).getByRole('link', { name: 'LOT 상태 조회' })).toHaveAttribute(
+      'href',
+      '/quality/lot-status',
+    );
+    expect(within(tabs).getByRole('link', { name: 'LOT 상태 판정' })).toHaveAttribute(
+      'href',
+      '/quality/lot-status-transition',
+    );
+    expect(hubTabHrefs('LOT 상태')).toEqual([
+      '/quality/lot-status',
+      '/quality/lot-status-transition',
+    ]);
+  });
+
+  it('영업 / 출하 관리 섹션(출하지시 → 예정 → 출하 처리 → 확정 → 반품 갈래)이 생산 관리 뒤·업무함 앞에 있다', () => {
     renderLayout('본문 내용');
 
     const sidebar = screen.getByRole('navigation', { name: '주 메뉴' });
-    const links = within(sidebar)
-      .getAllByRole('link')
-      .map((link) => link.getAttribute('href'));
+    const links = sidebarHrefs();
 
-    expect(within(sidebar).getByText('출하')).toBeInTheDocument();
+    expect(within(sidebar).getByText('영업 / 출하 관리')).toBeInTheDocument();
+    /* ERP 수주정보 조회는 「ERP 연동 현황·이력」 묶음의 탭으로 옮겼다. */
+    expect(within(sidebar).queryByRole('link', { name: '수주정보 조회 (ERP)' })).toBeNull();
     expect(
       within(sidebar).getByRole('link', { name: '출하지시서 Import·작업지시 생성' }),
     ).toHaveAttribute('href', '/shipment/shipment-request-create');
@@ -513,103 +629,117 @@ describe('AppLayout', () => {
       'href',
       '/shipment/shipment-schedule',
     );
-    expect(within(sidebar).getByRole('link', { name: 'OQC 출하검사 판정' })).toHaveAttribute(
+    /* 정상·긴급 직행 출하는 「출하 처리」 묶음 한 줄이다 — 줄은 정상 흐름(첫 탭)을 건다. */
+    expect(within(sidebar).getByRole('link', { name: '출하 처리' })).toHaveAttribute(
       'href',
-      '/shipment/oqc-inspection',
-    );
-    expect(
-      within(sidebar).getByRole('link', { name: '출하 처리(상차·실물 출고)' }),
-    ).toHaveAttribute('href', '/shipment/shipment-processing');
-    expect(within(sidebar).getByRole('link', { name: '긴급 직행 출하 처리' })).toHaveAttribute(
-      'href',
-      '/shipment/expedited-shipment',
+      '/shipment/shipment-processing',
     );
     expect(within(sidebar).getByRole('link', { name: '출하 확정·취소' })).toHaveAttribute(
       'href',
       '/shipment/shipment-confirm',
     );
-    /* W-04-06 — 반품·재고 갈래의 첫 화면. 확정된 출하는 취소되지 않고 여기로 돌아오므로 확정·취소 바로 뒤다. */
-    expect(within(sidebar).getByRole('link', { name: '반품·클레임 입고 등록' })).toHaveAttribute(
+    /* 반품·재고 갈래는 「반품·클레임」 묶음 한 줄이다 — 줄은 입고 등록(첫 탭)을 건다. */
+    expect(within(sidebar).getByRole('link', { name: '반품·클레임' })).toHaveAttribute(
       'href',
       '/shipment/return-receipts',
     );
-    expect(links.indexOf('/shipment/return-receipts')).toBe(
-      links.indexOf('/shipment/shipment-confirm') + 1,
-    );
-    /* W-04-07 — 반품 입고 뒤에 판정 의뢰가 온다(업무 순서). */
-    expect(within(sidebar).getByRole('link', { name: '재작업/폐기 판정 의뢰' })).toHaveAttribute(
-      'href',
-      '/shipment/disposition-requests',
-    );
-    expect(links.indexOf('/shipment/disposition-requests')).toBe(
-      links.indexOf('/shipment/return-receipts') + 1,
-    );
-    /* W-04-11 — 판정 결과를 재고에 반영하므로 판정 의뢰 뒤에 둔다. */
-    expect(within(sidebar).getByRole('link', { name: '재고 재등록' })).toHaveAttribute(
-      'href',
-      '/shipment/stock-reinstatements',
-    );
-    expect(links.indexOf('/shipment/stock-reinstatements')).toBe(
-      links.indexOf('/shipment/disposition-requests') + 1,
-    );
-    /* W-04-10 — 처분 판정이 선행이고 결재를 탄다. 재고 재등록 뒤다. */
-    expect(links.indexOf('/shipment/product-disposal-request')).toBe(
-      links.indexOf('/shipment/stock-reinstatements') + 1,
-    );
-    expect(within(sidebar).getByRole('link', { name: '제품 폐기 요청' })).toHaveAttribute(
-      'href',
-      '/shipment/product-disposal-request',
+
+    /* 섹션 첫 항목 — 생산 관리의 끝(W/O 마감) 바로 뒤다. */
+    expect(links.indexOf('/shipment/shipment-request-create')).toBe(
+      links.indexOf('/production/work-order-close') + 1,
     );
     /* 편성이 예정보다 먼저다 — 지시서를 편성해야 예정이 생긴다(업무 순서). */
-    expect(links.indexOf('/shipment/shipment-request-create')).toBe(
-      links.indexOf('/logistics/document-progress') + 1,
-    );
     expect(links.indexOf('/shipment/shipment-schedule')).toBe(
       links.indexOf('/shipment/shipment-request-create') + 1,
     );
-    /* 상차 전에 출하검사를 판정하므로 예정 목록 뒤·출하 처리 앞이다(업무 순서). */
-    expect(links.indexOf('/shipment/oqc-inspection')).toBe(
+    /*
+     * OQC 판정이 「품질 관리」로 옮겨 가서 예정 목록 바로 뒤가 출하 처리다. OQC 는 이 섹션에
+     * 없다 — 검사는 품질 한 곳에 모았다.
+     */
+    expect(links.indexOf('/shipment/shipment-processing')).toBe(
       links.indexOf('/shipment/shipment-schedule') + 1,
     );
-    /* 예정 목록에서 피킹까지 끝난 후보를 처리하므로 판정 바로 뒤다(업무 순서). */
-    expect(links.indexOf('/shipment/shipment-processing')).toBe(
-      links.indexOf('/shipment/oqc-inspection') + 1,
+    expect(links.indexOf('/shipment/oqc-inspection')).toBeLessThan(
+      links.indexOf('/shipment/shipment-request-create'),
     );
-    /*
-     * ⭐ 예외 흐름은 정상 흐름 «뒤»다 — 앞에 두면 창고 경유·피킹·포장을 건너뛰는 화면이
-     * 기본으로 읽힌다(W-04-05).
-     */
-    expect(links.indexOf('/shipment/expedited-shipment')).toBe(
+    /* 확정은 «만드는» 묶음 뒤다 — 되돌릴 수 있는 구간이 여기서 끝난다(W-04-12). */
+    expect(links.indexOf('/shipment/shipment-confirm')).toBe(
       links.indexOf('/shipment/shipment-processing') + 1,
     );
-    /* 확정은 «만드는» 두 화면 뒤다 — 되돌릴 수 있는 구간이 여기서 끝난다(W-04-12). */
-    expect(links.indexOf('/shipment/shipment-confirm')).toBe(
-      links.indexOf('/shipment/expedited-shipment') + 1,
+    /* W-04-06 — 반품·재고 갈래. 확정된 출하는 취소되지 않고 여기로 돌아오므로 확정·취소 바로 뒤다. */
+    expect(links.indexOf('/shipment/return-receipts')).toBe(
+      links.indexOf('/shipment/shipment-confirm') + 1,
     );
-    /*
-     * 버리는 일은 만드는·확정하는 일 «그리고 반품·재고 갈래» 뒤다(W-04-10).
-     *
-     * ⚠ 이 단언이 한때 확정 바로 뒤를 가리켰다 — 그 사이에 W-04-06·W-04-07·W-04-11 이 들어오며
-     * 자리가 밀렸다. 앞 화면을 이름으로 잡아 두어야 다음에 또 끼어들 때 여기가 울린다.
-     */
-    expect(links.indexOf('/shipment/product-disposal-request')).toBe(
-      links.indexOf('/shipment/stock-reinstatements') + 1,
-    );
-    expect(links.indexOf('/shipment/shipment-processing')).toBeLessThan(
-      links.indexOf('/production/work-order-close'),
-    );
+    /* 섹션 끝 — 바로 뒤가 「업무함」의 결재함이다. */
+    expect(links.indexOf('/approval/inbox')).toBe(links.indexOf('/shipment/return-receipts') + 1);
   });
 
-  it('생산 섹션의 P/O 조회·배포·W/O 마감이 업무 순서대로 있다', () => {
+  /*
+   * ⭐ 예외 흐름은 정상 흐름 «뒤»다 — 앞에 두면 창고 경유·피킹·포장을 건너뛰는 화면이 기본으로
+   * 읽힌다(W-04-05). 그래서 정상 출하가 첫 탭이고 묶음 줄이 그 주소를 건다.
+   */
+  it('출하 처리 탭 막대가 정상 출하 → 긴급 직행 출하 차례다', () => {
+    renderLayout('본문 내용', { route: '/shipment/expedited-shipment' });
+
+    const tabs = screen.getByRole('navigation', { name: '출하 처리' });
+
+    expect(within(tabs).getByRole('link', { name: '출하 처리(상차·실물 출고)' })).toHaveAttribute(
+      'href',
+      '/shipment/shipment-processing',
+    );
+    expect(within(tabs).getByRole('link', { name: '긴급 직행 출하 처리' })).toHaveAttribute(
+      'href',
+      '/shipment/expedited-shipment',
+    );
+    expect(hubTabHrefs('출하 처리')).toEqual([
+      '/shipment/shipment-processing',
+      '/shipment/expedited-shipment',
+    ]);
+  });
+
+  /*
+   * 반품·클레임 — 입고 등록(W-04-06) → 판정 의뢰(W-04-07) → 재고 재등록(W-04-11) → 제품 폐기
+   * 요청(W-04-10). 버리는 일은 반품·재고 갈래 «뒤»다 — 앞 탭을 이름으로 잡아 두어야 다음에 또
+   * 끼어들 때 여기가 울린다.
+   */
+  it('반품·클레임 탭 막대가 입고 등록 → 판정 의뢰 → 재고 재등록 → 제품 폐기 요청 차례다', () => {
+    renderLayout('본문 내용', { route: '/shipment/return-receipts' });
+
+    const tabs = screen.getByRole('navigation', { name: '반품·클레임' });
+
+    expect(within(tabs).getByRole('link', { name: '반품·클레임 입고 등록' })).toHaveAttribute(
+      'href',
+      '/shipment/return-receipts',
+    );
+    expect(within(tabs).getByRole('link', { name: '재작업/폐기 판정 의뢰' })).toHaveAttribute(
+      'href',
+      '/shipment/disposition-requests',
+    );
+    expect(within(tabs).getByRole('link', { name: '재고 재등록' })).toHaveAttribute(
+      'href',
+      '/shipment/stock-reinstatements',
+    );
+    expect(within(tabs).getByRole('link', { name: '제품 폐기 요청' })).toHaveAttribute(
+      'href',
+      '/shipment/product-disposal-request',
+    );
+    expect(hubTabHrefs('반품·클레임')).toEqual([
+      '/shipment/return-receipts',
+      '/shipment/disposition-requests',
+      '/shipment/stock-reinstatements',
+      '/shipment/product-disposal-request',
+    ]);
+  });
+
+  it('생산 관리 섹션의 ERP W/O·배포·진행·마감이 업무 순서대로 있다', () => {
     renderLayout('본문 내용');
 
     const sidebar = screen.getByRole('navigation', { name: '주 메뉴' });
-    const links = within(sidebar)
-      .getAllByRole('link')
-      .map((link) => link.getAttribute('href'));
+    const links = sidebarHrefs();
 
-    expect(within(sidebar).getByText('생산')).toBeInTheDocument();
-    expect(within(sidebar).getByRole('link', { name: 'ERP W/O 수신·조회' })).toHaveAttribute(
+    expect(within(sidebar).getByText('생산 관리')).toBeInTheDocument();
+    /* 조회와 변경 확인은 「ERP W/O」 묶음 한 줄이다 — 줄은 조회(첫 탭)를 건다. */
+    expect(within(sidebar).getByRole('link', { name: 'ERP W/O' })).toHaveAttribute(
       'href',
       '/production/production-orders',
     );
@@ -626,38 +756,63 @@ describe('AppLayout', () => {
       'href',
       '/production/work-order-close',
     );
-    expect(within(sidebar).getByRole('link', { name: 'P/O 변경 관리자 확인' })).toHaveAttribute(
-      'href',
-      '/production/po-change-review',
-    );
     expect(within(sidebar).getByRole('link', { name: '긴급 W/O 발행' })).toHaveAttribute(
       'href',
       '/production/emergency-work-orders',
-    );
-    expect(within(sidebar).getByRole('link', { name: '추가 자재 출고 요청' })).toHaveAttribute(
-      'href',
-      '/production/material-issue-requests',
     );
     expect(within(sidebar).getByRole('link', { name: 'W/O 진행현황 조회' })).toHaveAttribute(
       'href',
       '/production/work-order-progress',
     );
+    /* 품질 관리의 끝(처분 판정) 바로 뒤가 섹션의 시작이다. */
     expect(links.indexOf('/production/production-orders')).toBe(
-      links.indexOf('/shipment/product-disposal-request') + 1,
-    );
-    /* 변경 판정은 수신·조회 바로 뒤다 — 그 화면이 만든 목록 위에서 이어진다(W-02-06). */
-    expect(links.indexOf('/production/po-change-review')).toBe(
-      links.indexOf('/production/production-orders') + 1,
+      links.indexOf('/quality/dispositions') + 1,
     );
     expect(links.indexOf('/production/work-order-release')).toBe(
-      links.indexOf('/production/po-change-review') + 1,
+      links.indexOf('/production/production-orders') + 1,
     );
-    expect(links.indexOf('/production/work-order-close')).toBe(
+    /* W-02-07 — 계획을 거치지 않는 갈래라 정규 흐름(배포) 뒤다. */
+    expect(links.indexOf('/production/emergency-work-orders')).toBe(
       links.indexOf('/production/work-order-release') + 1,
     );
-    expect(links.indexOf('/production/work-order-close')).toBeLessThan(
-      links.indexOf('/quality/lot-status'),
+    /*
+     * W-02-10 자재 불출 요청은 「구매 / 자재 관리 > 출고 관리」로 옮겼다 — 긴급 발행 바로 뒤가
+     * 진행현황이다(그쪽 자리는 「자재 불출 요청은 생산 관리에 없고 …」 감지기가 잰다).
+     */
+    expect(links.indexOf('/production/work-order-progress')).toBe(
+      links.indexOf('/production/emergency-work-orders') + 1,
     );
+    /* W-02-05 — 진행을 본 뒤 닫는다. 생산 흐름의 끝이다. */
+    expect(links.indexOf('/production/work-order-close')).toBe(
+      links.indexOf('/production/work-order-progress') + 1,
+    );
+    /* 영업 / 출하 관리가 생산 바로 뒤에 선다 — 매일 일하는 묶음끼리 붙어 있다. */
+    expect(links.indexOf('/shipment/shipment-request-create')).toBe(
+      links.indexOf('/production/work-order-close') + 1,
+    );
+  });
+
+  /*
+   * 변경 판정은 조회 바로 뒤 탭이다 — 그 화면이 만든 목록 위에서 이어진다(W-02-06).
+   * 옛 「P/O 변경 관리자 확인」 — 「P/O」는 구매오더만 뜻하게 되어 「ERP W/O」로 바꿨다.
+   */
+  it('ERP W/O 탭 막대가 ERP W/O 조회 → ERP W/O 변경 확인 차례다', () => {
+    renderLayout('본문 내용', { route: '/production/po-change-review' });
+
+    const tabs = screen.getByRole('navigation', { name: 'ERP W/O' });
+
+    expect(within(tabs).getByRole('link', { name: 'ERP W/O 조회' })).toHaveAttribute(
+      'href',
+      '/production/production-orders',
+    );
+    expect(within(tabs).getByRole('link', { name: 'ERP W/O 변경 확인' })).toHaveAttribute(
+      'href',
+      '/production/po-change-review',
+    );
+    expect(hubTabHrefs('ERP W/O')).toEqual([
+      '/production/production-orders',
+      '/production/po-change-review',
+    ]);
   });
 
   /*
@@ -665,43 +820,45 @@ describe('AppLayout', () => {
    * 생기면 그 안의 링크가 이 합집합 밖으로 나와 곧바로 걸린다 — 분류를 늘리는 일은
    * 화면 하나를 더하는 일과 무게가 다르므로 **말없이 지나가지 않게** 한다.
    *
-   * W-03-01이 Lot Status 계열의 첫 화면으로 「품질관리」를 열어 이제 여섯이다. 결재함은
-   * 기준정보(무엇을 정해 두는가)도 자재창고(물건이 오가는 일)도 시스템 관리(운영 설정)도
-   * 아닌, **올라온 결재를 처리하는 일**이라 기존 「승인」 섹션에 그대로 남는다.
+   * 메뉴 IA 개편(기준정보 관리 · 구매 / 자재 관리 · 품질 관리 · 생산 관리 · 설비 보전 관리 ·
+   * 영업 / 출하 관리 · 업무함 · 시스템 관리)으로 묶음이 여덟이 됐다. 「승인」(결재함 하나)과
+   * 「알림」을 「업무함」 하나로 합쳤다 — 누구나 자기에게 온 것을 보는 자리다.
    *
-   * W-04-02가 출하(도메인 04)의 첫 화면으로 「출하」를 열어 이제 아홉이다.
-   *
-   * ⭐ **섹션 밖에 서는 항목이 하나 생겼다** — W-CO-05 통합 대시보드다. 그 화면은 어느 업무
+   * ⭐ **섹션 밖에 서는 항목은 하나다** — W-CO-05 통합 대시보드다. 그 화면은 어느 업무
    * 묶음에도 속하지 않고 **모든 묶음의 숫자를 모아** 보이므로, 어느 섹션에 넣어도 그 섹션의
-   * 분류가 무너진다. 항목 하나짜리 섹션을 만들면 제목이 항목보다 무거워진다.
+   * 분류가 무너진다.
    *
    * ⚠ **그래서 이 감지기는 「전부 섹션 안」이 아니라 「섹션 밖은 이것 하나」를 잰다.**
    * 느슨해진 것이 아니다 — 섹션 밖에 항목이 하나 더 늘면 그때도 여기서 걸린다.
    */
   const UNSECTIONED_LINKS = ['/dashboard'];
 
-  it('사이드바 섹션이 아홉이고 섹션 밖 항목은 통합 대시보드 하나다', () => {
+  /* 매일 일하는 묶음과 업무함이 앞, 정해 두고 가끔 여는 묶음이 뒤다(`nav-tree.ts` 머리 주석). */
+  const SECTION_LABELS = [
+    '구매 / 자재 관리',
+    '품질 관리',
+    '생산 관리',
+    '영업 / 출하 관리',
+    '업무함',
+    '기준정보 관리',
+    '설비 보전 관리',
+    '시스템 관리',
+  ];
+
+  it('사이드바 섹션이 여덟이고 섹션 밖 항목은 통합 대시보드 하나다', () => {
     renderLayout('본문 내용');
 
     const sidebar = screen.getByRole('navigation', { name: '주 메뉴' });
 
     /*
-     * **묶음을 역할로 집는다.** 전에는 이름 글자의 `parentElement` 를 썼는데, 그것은 라벨이 묶음
-     * 그릇의 **직계 자식**이라는 DS 의 구조에 기대는 것이었다 — 손잡이가 선 뒤로는 라벨의 부모가
-     * 버튼이라 그릇을 찾지 못하고 69개가 전부 「섹션 밖」으로 셌다. 묶음은 자기 이름을 접근명으로
-     * 내놓으므로(`role="group"` + `aria-label`) 이름 목록은 그대로 쓰면서 구조 의존만 끊는다.
+     * **묶음을 역할로 집는다.** 묶음은 자기 이름을 접근명으로 내놓으므로(`role="group"` +
+     * `aria-label`) 이름 목록은 그대로 쓰면서 DS 의 구조 의존을 끊는다.
      */
-    const sections = [
-      '기준정보',
-      '자재창고',
-      '출하',
-      '생산',
-      '품질관리',
-      '설비/툴',
-      '승인',
-      '알림',
-      '시스템 관리',
-    ].map((label) => within(sidebar).getByRole('group', { name: label }));
+    const sections = SECTION_LABELS.map((label) =>
+      within(sidebar).getByRole('group', { name: label }),
+    );
+
+    expect(within(sidebar).getAllByRole('group')).toHaveLength(SECTION_LABELS.length);
 
     const grouped = sections.flatMap((section) => [...section.querySelectorAll('a')]);
     const all = within(sidebar).getAllByRole('link');
@@ -713,7 +870,7 @@ describe('AppLayout', () => {
 
   /*
    * 시스템 운영 화면이라 기준정보와 다른 섹션에 둔다 —
-   * 같은 섹션에 넣으면 「창고·Location」 옆에 서서 분류가 무너진다.
+   * 같은 섹션에 넣으면 「창고·위치」 옆에 서서 분류가 무너진다.
    */
   it('사이드바에 시스템 관리 섹션의 사용자·역할·권한 메뉴가 보인다', () => {
     renderLayout('본문 내용');
@@ -728,6 +885,34 @@ describe('AppLayout', () => {
   });
 
   /**
+   * 시스템 관리 — **ERP 연동 현황 → 사용자·권한 → 결재·알림 설정 → 공통 설정** 차례다(아키텍처).
+   * 운영 설정이라 맨 끝 섹션이고(설비 보전 관리 뒤), 그 첫 항목이 ERP 연동 현황·이력이다.
+   */
+  it('시스템 관리 섹션이 설비 보전 관리 뒤 맨 끝에 서고 ERP 연동 현황·이력으로 시작한다', () => {
+    renderLayout('본문 내용');
+
+    const links = sidebarHrefs();
+
+    expect(links.indexOf('/master-data/integration-sync')).toBe(
+      links.indexOf('/equipment/downtime-summary') + 1,
+    );
+    expect(links.indexOf('/system/users-roles')).toBe(
+      links.indexOf('/master-data/integration-sync') + 1,
+    );
+    /* W-CO-11 — 결재선처럼 **누가 받을지**를 관리자가 정한다. 그래서 결재선 바로 뒤다. */
+    expect(links.indexOf('/notification/recipient-settings')).toBe(
+      links.indexOf('/system/approval-route') + 1,
+    );
+    /* 시스템 공통 설정 — 결재·알림 설정 뒤에 공통코드·조직, 그리고 단말 매핑이 선다. */
+    expect(links.indexOf('/master-data/common-code')).toBe(
+      links.indexOf('/notification/recipient-settings') + 1,
+    );
+    expect(links.indexOf('/system/terminal-process-map')).toBe(
+      links.indexOf('/master-data/common-code') + 1,
+    );
+  });
+
+  /**
    * **차례가 순서다** — 승인자를 정할 수 있게 된 다음에 결재선을 세운다.
    * 결재선은 마스터이지만 창고·품목 같은 업무 기준정보가 아니라 운영 설정이라 이 섹션에 든다.
    */
@@ -735,9 +920,7 @@ describe('AppLayout', () => {
     renderLayout('본문 내용');
 
     const sidebar = screen.getByRole('navigation', { name: '주 메뉴' });
-    const links = within(sidebar)
-      .getAllByRole('link')
-      .map((link) => link.getAttribute('href'));
+    const links = sidebarHrefs();
 
     expect(within(sidebar).getByRole('link', { name: '결재선 정의' })).toHaveAttribute(
       'href',
@@ -747,176 +930,216 @@ describe('AppLayout', () => {
   });
 
   /**
-   * ⛔ **이 항목은 「관리자 화면」이 아니다.** 앞의 둘은 관리자가 남을 설정하는 자리이고 이것은
-   * 누구나 자기 것을 바꾸는 자리라 **섹션 맨 끝**에 붙인다 — 앞의 순서(권한 → 결재선)를 흔들지
-   * 않기 위해서이기도 하다. 메뉴 권한이 붙는 날 **감추면 안 되는 항목**임을 코드 주석과
-   * `docs/decisions.md`가 함께 적는다.
+   * ⛔ **비밀번호 변경은 사이드바에 없다** — 상단 바의 사용자 자리로 옮겼다(W-CO-10 · 사용자
+   * 2026-10-20). 누구나 자기 것을 바꾸는 자리라 관리자 묶음에 둘 이유가 없다. 상단 바 쪽은
+   * 「상단 바의 비밀번호 변경」 감지기가 잰다.
    */
-  it('사이드바에 시스템 관리 섹션의 비밀번호 변경 메뉴가 맨 끝에 보인다', () => {
+  it('사이드바에 비밀번호 변경 메뉴가 없다', () => {
     renderLayout('본문 내용');
 
     const sidebar = screen.getByRole('navigation', { name: '주 메뉴' });
-    const links = within(sidebar)
-      .getAllByRole('link')
-      .map((link) => link.getAttribute('href'));
 
-    expect(within(sidebar).getByRole('link', { name: '비밀번호 변경' })).toHaveAttribute(
-      'href',
-      '/system/password-change',
-    );
-    /*
-     * ⭐ 견주는 것은 **맨 끝인가**이지 「결재선 다음인가」가 아니다. 관리자 설정 항목은 앞으로도
-     * 더 붙으므로, 인접으로 못 박으면 항목이 늘 때마다 뜻과 무관하게 시험이 깨진다.
-     */
-    expect(links.indexOf('/system/password-change')).toBeGreaterThan(
-      links.indexOf('/system/approval-route'),
-    );
-    expect(links.indexOf('/system/password-change')).toBe(links.length - 1);
+    /* 짝 양성 — 시스템 관리 섹션은 실제로 펼쳐져 항목이 서 있다. */
+    expect(within(sidebar).getByRole('link', { name: '사용자·역할·권한' })).toBeInTheDocument();
+    expect(
+      within(sidebar).queryByRole('link', { name: messages.session.actions.changePassword }),
+    ).toBeNull();
+    expect(sidebarHrefs()).not.toContain('/system/password-change');
   });
 
   /**
-   * **결재함은 자기 섹션을 갖는다** — 기준정보도 시스템 운영도 아니라 일하는 자리다.
-   * 결재선 정의(운영 설정)와 같은 섹션에 넣으면 「설정하는 화면」과 「일하는 화면」이 섞인다.
+   * **결재함은 「업무함」에 선다** — 기준정보도 시스템 운영도 아니라 일하는 자리다. 결재선
+   * 정의(운영 설정)와 같은 섹션에 넣으면 「설정하는 화면」과 「일하는 화면」이 섞인다.
    */
-  it('사이드바에 승인 섹션의 결재함 메뉴가 시스템 관리 앞에 보인다', () => {
+  it('사이드바에 업무함 섹션의 결재함 메뉴가 시스템 관리 앞에 보인다', () => {
     renderLayout('본문 내용');
 
     const sidebar = screen.getByRole('navigation', { name: '주 메뉴' });
-    const links = within(sidebar)
-      .getAllByRole('link')
-      .map((link) => link.getAttribute('href'));
+    const links = sidebarHrefs();
 
-    expect(within(sidebar).getByText('승인')).toBeInTheDocument();
+    expect(within(sidebar).getByRole('group', { name: '업무함' })).toBeInTheDocument();
     expect(within(sidebar).getByRole('link', { name: '결재함' })).toHaveAttribute(
       'href',
       '/approval/inbox',
     );
     expect(links.indexOf('/approval/inbox')).toBeLessThan(links.indexOf('/system/users-roles'));
+    expect(links.indexOf('/approval/inbox')).toBeLessThan(
+      links.indexOf('/master-data/integration-sync'),
+    );
   });
 
   /*
    * 새 섹션·새 항목을 더하면서 기존 구성이 흔들리지 않았는지 함께 본다.
    *
-   * ⚠ **이 감지기는 기준정보만 재지 않는다 — 사이드바 전체의 차례를 잰다.** 이름이
-   * 「기준정보 섹션」이던 동안 다른 섹션에 항목을 더한 회차가 이 감지기를 갱신하지 않고
-   * 지나가 `main` 이 붉은 채로 남았다. 어느 섹션에 무엇을 더하든 여기를 함께 고친다.
+   * ⚠ **이 감지기는 사이드바 전체의 차례를 잰다.** 어느 섹션에 무엇을 더하든 여기를 함께
+   * 고친다. 배치 근거는 `nav-tree.ts` 의 항목마다 적혀 있다. 탭 묶음은 **첫 탭의 주소**로 한 줄
+   * 서고(「← 묶음」 표시), 묶음 안의 차례는 아래 「탭 묶음마다 탭 차례가 그대로다」가 잰다.
    */
   it('사이드바 전체의 항목 순서와 경로가 그대로다', () => {
     renderLayout('본문 내용');
 
-    const sidebar = screen.getByRole('navigation', { name: '주 메뉴' });
-
-    expect(
-      within(sidebar)
-        .getAllByRole('link')
-        .map((link) => link.getAttribute('href')),
-    ).toEqual([
+    expect(sidebarHrefs()).toEqual([
       /* W-CO-05 — 섹션 밖 맨 위. 로그인 직후 첫 화면이라 모든 묶음 위에 선다. */
       '/dashboard',
-      '/master-data/warehouse-location',
-      '/master-data/putaway-rule',
-      '/master-data/warehouse-layout',
-      '/master-data/routing',
-      '/master-data/inspection-standard',
-      '/master-data/defect-cause-code',
-      '/master-data/common-code',
-      '/master-data/judgment-code',
-      '/master-data/integration-sync',
-      '/master-data/item-extended-attrs',
-      '/master-data/master-change',
-      '/logistics/inbound-schedule',
-      '/logistics/over-receipt-split',
-      '/logistics/iqc-inspection',
-      '/logistics/goods-receipt',
-      '/logistics/stock-status',
-      '/logistics/stocktaking',
-      '/logistics/stock-adjust',
-      '/logistics/supplier-return',
-      '/logistics/disposal-issue',
-      '/logistics/iqc-skip-approval',
+      /* 구매 / 자재 관리 — 매일 일하는 묶음이 앞이다. 입고 → 재고 → 출고 3축, 끝에 물류 전표 조회. */
+      '/logistics/inbound-schedule' /* ← 입고 관리 */,
+      '/logistics/stock-status' /* ← 재고 관리 */,
+      '/production/material-issue-requests' /* ← 출고 관리 */,
       '/logistics/document-progress',
-      '/shipment/shipment-request-create',
-      '/shipment/shipment-schedule',
-      /* W-04-03 — 상차 전에 판정한다. 예정 목록 뒤·출하 처리 앞이다(업무 순서). */
+      /* 품질 관리 — IQC → PQC → OQC → 기준·코드 → 이력 → LOT 판정 갈래. */
+      '/logistics/iqc-inspection',
+      '/logistics/iqc-skip-approval',
+      '/quality/pqc-inspections',
       '/shipment/oqc-inspection',
-      '/shipment/shipment-processing',
-      /* W-04-05 — 같은 출하 생성 경로의 예외 흐름이라 정상 흐름 바로 뒤다. */
-      '/shipment/expedited-shipment',
-      /* W-04-12 — 되돌릴 수 있는 구간이 여기서 끝난다. 만드는 두 화면 뒤다. */
-      '/shipment/shipment-confirm',
-      /* W-04-06 — 반품·재고 갈래의 첫 화면. 확정된 출하가 돌아오는 유일한 입구다. */
-      '/shipment/return-receipts',
-      /* W-04-07 — 반품 입고 뒤에 판정 의뢰가 온다. */
-      '/shipment/disposition-requests',
-      /* W-04-11 — 정상 판정된 반품 LOT을 출하 가능 재고로 되돌린다. */
-      '/shipment/stock-reinstatements',
-      /* W-04-10 — 처분 판정이 선행이고 결재를 탄다. 출하 흐름 넷 뒤다. */
-      '/shipment/product-disposal-request',
-      '/production/production-orders',
-      /* W-02-06 — 받은 P/O 가 «바뀌었을 때» 판정하는 자리라 수신·조회 바로 뒤다. */
-      '/production/po-change-review',
-      '/production/work-order-release',
-      '/production/work-order-close',
-      '/production/emergency-work-orders',
-      /* W-02-10 — 긴급 발행이 만든 W/O 의 부족 자재를 잇는 자리라 그 바로 뒤다. */
-      '/production/material-issue-requests',
-      '/production/work-order-progress',
-      '/quality/lot-status',
-      '/quality/lot-status-transition',
-      '/quality/suspicious-material-hold',
+      '/master-data/inspection-standard',
+      '/master-data/defect-cause-code' /* ← 품질 코드 */,
       '/quality/inspection-results',
+      '/quality/lot-status' /* ← LOT 상태 */,
+      '/quality/suspicious-material-hold',
       '/quality/approvals',
       '/quality/dispositions',
-      '/quality/pqc-inspections',
-      '/equipment/master',
-      '/equipment/tool-master',
-      '/equipment/work-calendar',
-      '/equipment/collection-channels',
-      '/equipment/shot-conversion',
-      '/equipment/gauge-master',
-      '/equipment/gauge-calibration',
-      '/equipment/failures',
-      '/equipment/maintenance-orders',
-      '/equipment/maintenance-results',
-      '/equipment/tool-pm-order',
-      '/equipment/tool-pm-result',
-      '/equipment/downtime-summary',
+      /* 생산 관리 — ERP W/O(조회·변경 확인) → 배포 → (긴급) → 진행 → 마감. */
+      '/production/production-orders' /* ← ERP W/O */,
+      '/production/work-order-release',
+      '/production/emergency-work-orders',
+      '/production/work-order-progress',
+      '/production/work-order-close',
+      /* 영업 / 출하 관리 — 편성 → 예정 → 출하 처리 → 확정 → 반품·클레임. */
+      '/shipment/shipment-request-create',
+      '/shipment/shipment-schedule',
+      '/shipment/shipment-processing' /* ← 출하 처리 */,
+      '/shipment/shipment-confirm',
+      '/shipment/return-receipts' /* ← 반품·클레임 */,
+      /* 업무함 — 결재함 → 알림센터(받는 자리) → 공지·전달(보내는 자리). */
       '/approval/inbox',
       '/notification/center',
-      '/notification/recipient-settings',
       '/notification/notices',
+      /* 기준정보 관리 — 품목·BOM 정보 먼저, MES 가 세우는 마스터가 뒤. */
+      '/master-data/item-extended-attrs',
+      '/master-data/routing',
+      '/equipment/master' /* ← 설비 */,
+      '/equipment/tool-master' /* ← 툴·금형 */,
+      '/equipment/gauge-master' /* ← 계측기 */,
+      '/master-data/warehouse-location' /* ← 창고·위치 */,
+      '/master-data/master-change',
+      /* 설비 보전 관리 — 일하는 화면만: 설비 보전 → 툴 보전 → 비가동. */
+      '/equipment/failures' /* ← 설비 보전 */,
+      '/equipment/tool-pm-order' /* ← 툴 보전 */,
+      '/equipment/downtime-summary',
+      /* 시스템 관리 — ERP 연동 현황 → 사용자·권한 → 결재·알림 설정 → 공통 설정. */
+      '/master-data/integration-sync' /* ← ERP 연동 현황·이력 */,
       '/system/users-roles',
       '/system/approval-route',
+      '/notification/recipient-settings',
+      '/master-data/common-code',
       '/system/terminal-process-map',
-      '/system/password-change',
     ]);
   });
 
-  /**
-   * W-CO-03 — **알림은 자기 섹션을 갖는다**(설계 IA). 「시스템 관리」에 넣으면 **관리자가
-   * 남을 설정하는 자리**에 **누구나 자기 것을 보는 화면**이 섞인다.
+  /*
+   * 탭 묶음 열다섯 개의 **탭 차례와 경로**. 사이드바 전체 감지기가 묶음 줄만 재므로, 묶음 안의
+   * 차례는 여기서 얼린다 — 묶음 줄을 **실제로 눌러** 첫 탭에 들어가고 그 자리의 탭 막대를 읽는다.
+   * 줄을 누르면 첫 탭에 닿는다는 것(`to` = 첫 탭)도 함께 재진다.
    */
-  it('사이드바에 알림 섹션의 알림센터 메뉴가 승인 뒤·시스템 관리 앞에 있다', () => {
+  it('탭 묶음마다 탭 차례와 경로가 그대로다', async () => {
+    const { user } = renderLayout('본문 내용');
+
+    const HUBS: Record<string, string[]> = {
+      설비: ['/equipment/master', '/equipment/work-calendar', '/equipment/collection-channels'],
+      '툴·금형': ['/equipment/tool-master', '/equipment/shot-conversion'],
+      계측기: ['/equipment/gauge-master', '/equipment/gauge-calibration'],
+      '창고·위치': [
+        '/master-data/warehouse-location',
+        '/master-data/putaway-rule',
+        '/master-data/warehouse-layout',
+      ],
+      '입고 관리': [
+        '/logistics/inbound-schedule',
+        '/logistics/over-receipt-split',
+        '/logistics/goods-receipt',
+      ],
+      '재고 관리': ['/logistics/stock-status', '/logistics/stocktaking', '/logistics/stock-adjust'],
+      '출고 관리': [
+        '/production/material-issue-requests',
+        '/logistics/supplier-return',
+        '/logistics/disposal-issue',
+      ],
+      '품질 코드': ['/master-data/defect-cause-code', '/master-data/judgment-code'],
+      'LOT 상태': ['/quality/lot-status', '/quality/lot-status-transition'],
+      'ERP W/O': ['/production/production-orders', '/production/po-change-review'],
+      '설비 보전': [
+        '/equipment/failures',
+        '/equipment/maintenance-orders',
+        '/equipment/maintenance-results',
+      ],
+      '툴 보전': ['/equipment/tool-pm-order', '/equipment/tool-pm-result'],
+      '출하 처리': ['/shipment/shipment-processing', '/shipment/expedited-shipment'],
+      '반품·클레임': [
+        '/shipment/return-receipts',
+        '/shipment/disposition-requests',
+        '/shipment/stock-reinstatements',
+        '/shipment/product-disposal-request',
+      ],
+      /* 연동 로그가 첫 탭, 그 뒤가 받은 데이터 — 기준 데이터 다음 전표 차례다. */
+      'ERP 연동 현황·이력': [
+        '/master-data/integration-sync',
+        '/system/erp-data/common-codes',
+        '/system/erp-data/employees',
+        '/system/erp-data/items',
+        '/system/erp-data/partners',
+        '/system/erp-data/boms',
+        '/system/erp-data/purchase-orders',
+        '/system/erp-data/sales-orders',
+        '/system/erp-data/production-orders',
+      ],
+    };
+
+    const actual: Record<string, (string | null)[]> = {};
+
+    for (const hubLabel of Object.keys(HUBS)) {
+      await user.click(within(navSidebar()).getByRole('link', { name: hubLabel }));
+
+      actual[hubLabel] = hubTabHrefs(hubLabel);
+
+      /* 줄을 누르면 **첫 탭**에 닿는다. */
+      expect(
+        within(screen.getByRole('navigation', { name: hubLabel })).getAllByRole('link')[0],
+      ).toHaveAttribute('aria-current', 'page');
+    }
+
+    expect(actual).toEqual(HUBS);
+  });
+
+  /**
+   * W-CO-03 — **알림센터는 「업무함」에 선다.** 결재함과 함께 누구나 자기에게 온 것을 보는
+   * 자리다. 관리자가 남을 설정하는 **알림 수신자 설정은 「시스템 관리」에 있다** — 「업무함」에
+   * 두면 일하는 자리에 설정 화면이 섞인다.
+   */
+  it('사이드바에 업무함 섹션의 알림센터 메뉴가 결재함 뒤에 있고 업무함이 기준정보 관리 앞에 선다', () => {
     renderLayout('본문 내용');
 
     const sidebar = screen.getByRole('navigation', { name: '주 메뉴' });
+    const inbox = within(sidebar).getByRole('group', { name: '업무함' });
+    const system = within(sidebar).getByRole('group', { name: '시스템 관리' });
 
-    expect(within(sidebar).getByText('알림')).toBeInTheDocument();
-
-    const item = within(sidebar).getByRole('link', { name: /알림센터/ });
+    const item = within(inbox).getByRole('link', { name: /알림센터/ });
     expect(item).toHaveAttribute('href', '/notification/center');
+    expect(within(system).getByRole('link', { name: '알림 수신자 설정' })).toHaveAttribute(
+      'href',
+      '/notification/recipient-settings',
+    );
+    expect(within(inbox).queryByRole('link', { name: '알림 수신자 설정' })).toBeNull();
 
-    /* 전체 차례는 업무 도메인 → 승인 → 알림 → 시스템 관리까지 이어진다. */
-    const labels = [
-      '기준정보',
-      '자재창고',
-      '생산',
-      '품질관리',
-      '설비/툴',
-      '승인',
-      '알림',
-      '시스템 관리',
-    ].map((label) => within(sidebar).getByText(label));
+    expect(
+      within(inbox)
+        .getAllByRole('link')
+        .map((link) => link.getAttribute('href')),
+    ).toEqual(['/approval/inbox', '/notification/center', '/notification/notices']);
+
+    /* 전체 차례는 업무 묶음 → 업무함 → 가끔 여는 묶음(기준정보·설비 보전) → 시스템 관리다. */
+    const labels = SECTION_LABELS.map((label) =>
+      within(sidebar).getByRole('group', { name: label }),
+    );
     const ordered = [...labels].sort((left, right) =>
       left.compareDocumentPosition(right) & Node.DOCUMENT_POSITION_FOLLOWING ? -1 : 1,
     );
@@ -1172,13 +1395,13 @@ describe('AppLayout — 셸 치수', () => {
  */
 describe('AppLayout — 묶음 접기', () => {
   /**
-   * 처음 열 때 보이는 것이 **묶음 9줄 + 섹션 밖 1개**다. 69개가 한꺼번에 펼쳐져 있던 것이
+   * 처음 열 때 보이는 것이 **묶음 8줄 + 섹션 밖 1개**다. 항목 44줄(탭을 펴면 화면 75개)이 한꺼번에 펼쳐져 있던 것이
    * 이 작업의 출발점이다.
    */
   it('처음에는 어느 묶음도 펼쳐져 있지 않다 — 현재 화면이 어느 묶음에도 없을 때', () => {
     renderLayout('본문 내용', { expandGroups: false });
 
-    expect(within(navSidebar()).getAllByRole('group')).toHaveLength(9);
+    expect(within(navSidebar()).getAllByRole('group')).toHaveLength(8);
     /* 섹션 밖 항목 하나만 남는다 — 묶음 안 항목은 DOM 에 없다. */
     expect(within(navSidebar()).getAllByRole('link')).toHaveLength(1);
   });
@@ -1203,15 +1426,15 @@ describe('AppLayout — 묶음 접기', () => {
   it('묶음을 누르면 펼쳐지고 다시 누르면 접힌다', async () => {
     const { user } = renderLayout('본문 내용', { expandGroups: false });
 
-    await user.click(groupToggle('기준정보'));
+    await user.click(groupToggle('기준정보 관리'));
 
-    expect(within(navSidebar()).getByRole('link', { name: '창고·Location' })).toBeInTheDocument();
-    expect(groupToggle('기준정보')).toHaveAttribute('aria-expanded', 'true');
+    expect(within(navSidebar()).getByRole('link', { name: '창고·위치' })).toBeInTheDocument();
+    expect(groupToggle('기준정보 관리')).toHaveAttribute('aria-expanded', 'true');
 
-    await user.click(groupToggle('기준정보'));
+    await user.click(groupToggle('기준정보 관리'));
 
-    expect(within(navSidebar()).queryByRole('link', { name: '창고·Location' })).toBeNull();
-    expect(groupToggle('기준정보')).toHaveAttribute('aria-expanded', 'false');
+    expect(within(navSidebar()).queryByRole('link', { name: '창고·위치' })).toBeNull();
+    expect(groupToggle('기준정보 관리')).toHaveAttribute('aria-expanded', 'false');
   });
 
   /**
@@ -1221,17 +1444,32 @@ describe('AppLayout — 묶음 접기', () => {
   it('한 묶음을 열어도 다른 묶음은 그대로 닫혀 있다', async () => {
     const { user } = renderLayout('본문 내용', { expandGroups: false });
 
-    await user.click(groupToggle('기준정보'));
+    await user.click(groupToggle('기준정보 관리'));
 
-    expect(groupToggle('자재창고')).toHaveAttribute('aria-expanded', 'false');
+    expect(groupToggle('구매 / 자재 관리')).toHaveAttribute('aria-expanded', 'false');
   });
 
   /** 접힌 묶음은 이름만 남아, **안에 몇 개가 있는지**를 함께 보여야 누를지 말지 판단할 수 있다. */
   it('손잡이가 묶음의 화면 수를 알린다', () => {
     renderLayout('본문 내용', { expandGroups: false });
 
-    /* 「기준정보」는 화면 11개다 — `nav-tree.ts` 가 정본이고 전수 순서 감지기가 그 수를 못 박는다. */
-    expect(groupToggle('기준정보')).toHaveAccessibleName('기준정보 (화면 11개)');
+    /*
+     * 「기준정보 관리」는 사이드바 줄 7개에 **화면 13개**다 — 손잡이는 「화면」을 세므로 탭 묶음은
+     * 탭 수만큼 센다(설비 3 · 툴·금형 2 · 계측기 2 · 창고·위치 3 + 단독 3). `nav-tree.ts` 가 정본이다.
+     */
+    expect(groupToggle('기준정보 관리')).toHaveAccessibleName('기준정보 관리 (화면 13개)');
+  });
+
+  /*
+   * 묶음 손잡이가 아이콘을 갖는다 — 항목이 아이콘 없이 서므로 **묶음을 눈으로 가르는 단서**가
+   * 이것이다. 수는 접근명에만 싣고 눈으로는 그리지 않는다(`nav-group.tsx`).
+   */
+  it('손잡이가 묶음 아이콘을 그리고, 화면 수는 글자로 그리지 않는다', () => {
+    renderLayout('본문 내용', { expandGroups: false });
+
+    const toggle = groupToggle('기준정보 관리');
+    expect(toggle.querySelector('.nav-group-icon')).toHaveTextContent('database');
+    expect(toggle).not.toHaveTextContent('7');
   });
 });
 
@@ -1257,7 +1495,7 @@ describe('AppLayout — 화면 검색', () => {
 
     /* 아이콘 리가처가 링크의 글자에 함께 들어오므로 이름이 **포함**되는지로 본다. */
     expect(visibleLinkNames().filter((name) => name.includes('재고실사'))).toHaveLength(1);
-    expect(visibleLinkNames().filter((name) => name.includes('창고·Location'))).toHaveLength(0);
+    expect(visibleLinkNames().filter((name) => name.includes('창고·위치'))).toHaveLength(0);
   });
 
   /**
@@ -1267,11 +1505,14 @@ describe('AppLayout — 화면 검색', () => {
   it('접힌 묶음 안에서 맞아도 보인다', async () => {
     const { user } = renderLayout('본문 내용', { expandGroups: false });
 
-    expect(within(navSidebar()).queryByRole('link', { name: '재고실사' })).toBeNull();
+    expect(within(navSidebar()).queryByRole('link', { name: '재고 관리' })).toBeNull();
 
     await user.type(searchBox(), '실사');
 
-    expect(within(navSidebar()).getByRole('link', { name: '재고실사' })).toBeInTheDocument();
+    /* 탭 이름으로 걸렸으므로 묶음 이름을 앞에 단 탭 한 줄로 선다(`nav-filter.ts`). */
+    expect(
+      within(navSidebar()).getByRole('link', { name: '재고 관리 › 재고실사' }),
+    ).toHaveAttribute('href', '/logistics/stocktaking');
   });
 
   /** 맞는 항목이 하나도 없는 묶음은 **이름도 서지 않는다** — 눌러도 빌 묶음을 남기지 않는다. */
@@ -1284,7 +1525,7 @@ describe('AppLayout — 화면 검색', () => {
       .getAllByRole('group')
       .map((group) => group.getAttribute('aria-label'));
 
-    expect(groupNames).toEqual(['자재창고']);
+    expect(groupNames).toEqual(['구매 / 자재 관리']);
   });
 
   /** 섹션 밖 항목도 검색 대상이다 — `NAV_GROUPS` 만 훑으면 이것이 조용히 빠진다. */
@@ -1323,15 +1564,15 @@ describe('AppLayout — 화면 검색', () => {
   it('검색어를 지우면 그 전 접힘 상태로 돌아온다', async () => {
     const { user } = renderLayout('본문 내용', { expandGroups: false });
 
-    await user.click(groupToggle('기준정보'));
-    expect(within(navSidebar()).getByRole('link', { name: '창고·Location' })).toBeInTheDocument();
+    await user.click(groupToggle('기준정보 관리'));
+    expect(within(navSidebar()).getByRole('link', { name: '창고·위치' })).toBeInTheDocument();
 
     await user.type(searchBox(), '실사');
     await user.clear(searchBox());
 
-    /* 기준정보는 내가 열어 둔 채로, 자재창고는 닫힌 채로 돌아와야 한다. */
-    expect(within(navSidebar()).getByRole('link', { name: '창고·Location' })).toBeInTheDocument();
-    expect(within(navSidebar()).queryByRole('link', { name: '재고실사' })).toBeNull();
+    /* 기준정보 관리는 내가 열어 둔 채로, 구매 / 자재 관리는 닫힌 채로 돌아와야 한다. */
+    expect(within(navSidebar()).getByRole('link', { name: '창고·위치' })).toBeInTheDocument();
+    expect(within(navSidebar()).queryByRole('link', { name: '재고 관리' })).toBeNull();
   });
 
   /** 대소문자를 고른다 — 라벨에 `IQC`·`P/O` 처럼 영문이 섞여 있어 고르지 않으면 못 찾는다. */
@@ -1356,15 +1597,15 @@ describe('AppLayout — 현재 묶음', () => {
   it('들어온 화면이 속한 묶음은 처음부터 펼쳐져 있다', () => {
     renderLayout('본문 내용', { expandGroups: false, route: '/logistics/stocktaking' });
 
-    expect(groupToggle('자재창고')).toHaveAttribute('aria-expanded', 'true');
-    expect(within(navSidebar()).getByRole('link', { name: '재고실사' })).toBeInTheDocument();
+    expect(groupToggle('구매 / 자재 관리')).toHaveAttribute('aria-expanded', 'true');
+    expect(within(navSidebar()).getByRole('link', { name: '재고 관리' })).toBeInTheDocument();
   });
 
   /** 다른 묶음은 여전히 접혀 있다 — 하나가 열리는 것이 전부 열리는 것이 되면 소용이 없다. */
   it('다른 묶음은 그대로 접혀 있다', () => {
     renderLayout('본문 내용', { expandGroups: false, route: '/logistics/stocktaking' });
 
-    expect(groupToggle('기준정보')).toHaveAttribute('aria-expanded', 'false');
+    expect(groupToggle('기준정보 관리')).toHaveAttribute('aria-expanded', 'false');
   });
 
   /**
@@ -1377,10 +1618,10 @@ describe('AppLayout — 현재 묶음', () => {
       route: '/logistics/stocktaking',
     });
 
-    await user.click(groupToggle('자재창고'));
+    await user.click(groupToggle('구매 / 자재 관리'));
 
-    expect(groupToggle('자재창고')).toHaveAttribute('aria-expanded', 'false');
-    expect(within(navSidebar()).queryByRole('link', { name: '재고실사' })).toBeNull();
+    expect(groupToggle('구매 / 자재 관리')).toHaveAttribute('aria-expanded', 'false');
+    expect(within(navSidebar()).queryByRole('link', { name: '재고 관리' })).toBeNull();
   });
 });
 
@@ -1411,7 +1652,28 @@ describe('AppLayout — 레일', () => {
 
     await collapseRail(user);
 
-    expect(within(navSidebar()).getAllByRole('link')).toHaveLength(68);
+    expect(within(navSidebar()).getAllByRole('link')).toHaveLength(45);
+  });
+
+  /*
+   * 묶음 아래 항목의 모양(아이콘 없이 들여 쓰고 세로 안내선에 매단다 — `app.css` `.nav-child`)은
+   * **펼친 사이드바에서만** 붙는다. 레일에서 붙으면 아이콘이 감춰져 72px 폭에 빈칸만 선다.
+   */
+  it('펼친 사이드바의 묶음 항목은 `nav-child` 로 서고, 레일에서는 붙지 않는다', async () => {
+    const { user } = renderLayout('본문 내용');
+
+    const link = within(navSidebar()).getByRole('link', { name: '재고 관리' });
+    expect(link).toHaveClass('nav-child');
+    /* 섹션 밖 맨 위 항목은 묶음 아래가 아니다 — 아이콘을 그대로 둔다. */
+    expect(within(navSidebar()).getByRole('link', { name: '통합 대시보드' })).not.toHaveClass(
+      'nav-child',
+    );
+
+    await collapseRail(user);
+
+    expect(within(navSidebar()).getByRole('link', { name: '재고 관리' })).not.toHaveClass(
+      'nav-child',
+    );
   });
 });
 
@@ -1440,7 +1702,7 @@ describe('AppLayout — 레일과 검색', () => {
     await typeQuery(user, '실사');
     await collapseRail(user);
 
-    expect(within(navSidebar()).getAllByRole('link')).toHaveLength(68);
+    expect(within(navSidebar()).getAllByRole('link')).toHaveLength(45);
   });
 
   /** 섹션 밖 항목이 빠지면 레일에서 대시보드로 갈 길이 사라진다. */
@@ -1483,23 +1745,23 @@ describe('AppLayout — 검색 중 손잡이', () => {
 
     await typeQuery(user, '실사');
 
-    expect(groupToggle('자재창고')).toBeDisabled();
+    expect(groupToggle('구매 / 자재 관리')).toBeDisabled();
   });
 
   /** 누를 수 없으니 접힘 상태도 뒤집히지 않는다 — 지운 뒤 내가 둔 모양 그대로다. */
   it('검색 중 손잡이를 눌러도 접힘 상태가 뒤집히지 않는다', async () => {
     const { user } = renderLayout('본문 내용', { expandGroups: false });
 
-    await user.click(groupToggle('기준정보'));
-    expect(groupToggle('기준정보')).toHaveAttribute('aria-expanded', 'true');
+    await user.click(groupToggle('기준정보 관리'));
+    expect(groupToggle('기준정보 관리')).toHaveAttribute('aria-expanded', 'true');
 
     await typeQuery(user, '규칙');
-    await user.click(groupToggle('기준정보')).catch(() => undefined);
+    await user.click(groupToggle('기준정보 관리')).catch(() => undefined);
     await user.clear(
       within(navSidebar()).getByRole('searchbox', { name: messages.shellNav.search.label }),
     );
 
-    expect(groupToggle('기준정보')).toHaveAttribute('aria-expanded', 'true');
+    expect(groupToggle('기준정보 관리')).toHaveAttribute('aria-expanded', 'true');
   });
 });
 
@@ -1591,7 +1853,16 @@ describe('셸 — 기능 권한으로 사이드바 거르기', () => {
     );
   };
 
-  const renderWithPermissions = async (permissions?: string[]) => {
+  /**
+   * ⚠ **`route` 를 주면 묶음을 펼치지 않는다.** 그 주소의 묶음은 셸이 처음부터 펼치고, 권한으로
+   * 걸러 묶음이 그것 하나만 남으면 펼칠 것이 없어 `expandAllNavGroups` 가 (옳게) 운다. 남는 묶음이
+   * 하나도 없을 때도 같다(`expandGroups: false`).
+   */
+  const renderWithPermissions = async (
+    permissions?: string[],
+    options: { route?: string; expandGroups?: boolean } = {},
+  ) => {
+    const { route } = options;
     const user = userEvent.setup();
 
     renderWithProviders(
@@ -1599,11 +1870,11 @@ describe('셸 — 기능 권한으로 사이드바 거르기', () => {
         <SignInWithPermissions {...(permissions === undefined ? {} : { permissions })} />
         <AppLayout>본문 내용</AppLayout>
       </SessionProvider>,
-      { session: null },
+      { session: null, ...(route === undefined ? {} : { route }) },
     );
 
     await user.click(screen.getByRole('button', { name: '권한 담기' }));
-    expandAllNavGroups();
+    if (options.expandGroups ?? route === undefined) expandAllNavGroups();
 
     return { user };
   };
@@ -1621,25 +1892,28 @@ describe('셸 — 기능 권한으로 사이드바 거르기', () => {
     await renderWithPermissions(['W-CO-02']);
 
     expect(hasMenu('사용자·역할·권한')).toBe(true);
-    expect(hasMenu('창고·Location')).toBe(false);
+    expect(hasMenu('창고·위치')).toBe(false);
   });
 
   /** 항목이 하나도 남지 않은 묶음은 제목만 남는다 — 빼야 한다. */
   it('남은 항목이 없는 묶음은 통째로 빠진다', async () => {
     await renderWithPermissions(['W-CO-02']);
 
-    expect(within(navSidebar()).queryByText('기준정보')).toBeNull();
+    expect(within(navSidebar()).queryByText('기준정보 관리')).toBeNull();
   });
 
   /**
    * ⛔ **막으면 되돌릴 수 없는 자리 둘.** 대시보드는 로그인이 착지하는 곳이고, 비밀번호 변경은
-   * 자기 계정 화면이라 막으면 본인이 비밀번호를 바꿀 길이 없다.
+   * 자기 계정 화면이라 막으면 본인이 비밀번호를 바꿀 길이 없다. 비밀번호 변경은 이제 사이드바가
+   * 아니라 **상단 바**에 서고, 상단 바는 권한 판정 없이 늘 선다.
    */
-  it('권한이 하나도 없어도 대시보드와 비밀번호 변경은 남는다', async () => {
-    await renderWithPermissions([]);
+  it('권한이 하나도 없어도 대시보드가 메뉴에 남고 비밀번호 변경은 상단 바에 남는다', async () => {
+    await renderWithPermissions([], { expandGroups: false });
 
     expect(hasMenu('통합 대시보드')).toBe(true);
-    expect(hasMenu('비밀번호 변경')).toBe(true);
+    expect(
+      within(topbar()).getByRole('link', { name: messages.session.actions.changePassword }),
+    ).toHaveAttribute('href', '/system/password-change');
     expect(hasMenu('사용자·역할·권한')).toBe(false);
   });
 
@@ -1651,7 +1925,7 @@ describe('셸 — 기능 권한으로 사이드바 거르기', () => {
     await renderWithPermissions();
 
     expect(hasMenu('사용자·역할·권한')).toBe(true);
-    expect(hasMenu('창고·Location')).toBe(true);
+    expect(hasMenu('창고·위치')).toBe(true);
   });
 
   /**
@@ -1663,7 +1937,268 @@ describe('셸 — 기능 권한으로 사이드바 거르기', () => {
 
     await user.type(screen.getByRole('searchbox', { name: '화면 검색' }), '창고');
 
+    expect(within(navSidebar()).queryByText('창고·위치')).toBeNull();
     expect(within(navSidebar()).queryByText('창고·Location')).toBeNull();
     expect(screen.getByText(messages.shellNav.search.empty)).toBeInTheDocument();
+  });
+
+  /**
+   * ⭐ **탭 묶음은 볼 수 있는 탭만 남기고 그 첫 탭으로 건다.** 첫 탭(창고·Location · W-06-07)을
+   * 못 보는 사람에게 묶음 주소를 그대로 걸면 누르는 순간 막힌 화면이 선다.
+   */
+  it('탭 묶음의 첫 탭을 볼 수 없으면 묶음 줄이 볼 수 있는 첫 탭을 건다', async () => {
+    await renderWithPermissions(['W-06-14', 'W-CO-08']);
+
+    expect(within(navSidebar()).getByRole('link', { name: '창고·위치' })).toHaveAttribute(
+      'href',
+      '/master-data/putaway-rule',
+    );
+  });
+
+  /** 탭 막대에도 볼 수 없는 탭은 서지 않는다 — 누르는 순간 막힌 화면이 서는 탭을 두지 않는다. */
+  it('탭 막대에는 볼 수 있는 탭만 선다', async () => {
+    await renderWithPermissions(['W-06-14', 'W-CO-08'], { route: '/master-data/putaway-rule' });
+
+    expect(hubTabHrefsOf('창고·위치')).toEqual([
+      '/master-data/putaway-rule',
+      '/master-data/warehouse-layout',
+    ]);
+  });
+
+  /**
+   * 볼 수 있는 탭이 **하나뿐이면 탭 막대를 세우지 않는다** — 오갈 곳이 없는 막대가 화면 제목 위에
+   * 한 줄을 먹는다. 묶음 줄은 그 한 탭을 건 채 남는다.
+   */
+  it('볼 수 있는 탭이 하나뿐이면 탭 막대가 서지 않는다', async () => {
+    await renderWithPermissions(['W-06-14'], { route: '/master-data/putaway-rule' });
+
+    /* 짝 양성 — 묶음 줄은 남아 그 한 탭을 건다. */
+    expect(within(navSidebar()).getByRole('link', { name: '창고·위치' })).toHaveAttribute(
+      'href',
+      '/master-data/putaway-rule',
+    );
+    expect(screen.queryByRole('navigation', { name: '창고·위치' })).toBeNull();
+  });
+
+  /** 탭이 하나도 남지 않은 묶음은 줄째 빠진다 — 누를 곳이 없는 줄을 세우지 않는다. */
+  it('볼 수 있는 탭이 없는 탭 묶음은 메뉴에서 빠진다', async () => {
+    await renderWithPermissions(['W-06-01']);
+
+    /* 짝 양성 — 같은 섹션의 다른 항목은 서 있다(섹션째 빠진 것이 아니다). */
+    expect(within(navSidebar()).getByText('기준정보 관리')).toBeInTheDocument();
+    expect(hasMenu('창고·위치')).toBe(false);
+  });
+});
+
+/** 탭 막대의 주소를 보이는 차례대로 읽는다(`hub-tabs.tsx` — 묶음 이름을 접근명으로 가진 `navigation`). */
+const hubTabHrefsOf = (hubLabel: string): (string | null)[] =>
+  within(screen.getByRole('navigation', { name: hubLabel }))
+    .getAllByRole('link')
+    .map((link) => link.getAttribute('href'));
+
+/**
+ * 셸 — **탭 묶음의 탭 막대**(`hub-tabs.tsx`).
+ *
+ * 짝을 이루는 화면 여럿이 사이드바 한 줄로 서고, 그 안의 화면은 본문 위 탭 막대로 오간다. 탭은
+ * **주소**다 — 링크 목록이고 지금 화면은 `aria-current="page"` 로 알린다(사이드바 항목과 같은 말).
+ */
+describe('AppLayout — 탭 막대', () => {
+  it('탭 묶음 안 화면에서는 본문 위에 그 묶음의 탭 막대가 서고 지금 탭이 표시된다', () => {
+    renderLayout('본문 내용', { route: '/equipment/work-calendar' });
+
+    const tabs = screen.getByRole('navigation', { name: '설비' });
+    const links = within(tabs).getAllByRole('link');
+
+    expect(links.map((link) => [link.textContent, link.getAttribute('href')])).toEqual([
+      ['설비·설비그룹 마스터', '/equipment/master'],
+      ['작업 캘린더 설정', '/equipment/work-calendar'],
+      ['수집 채널 매핑 관리', '/equipment/collection-channels'],
+    ]);
+    /* 지금 화면의 탭 **하나만** 표시된다. */
+    expect(links.map((link) => link.getAttribute('aria-current'))).toEqual([null, 'page', null]);
+    /* 셸이 본문 자리에 그린다 — 사이드바 안이 아니다. */
+    expect(within(screen.getByRole('main')).getByRole('navigation', { name: '설비' })).toBe(tabs);
+  });
+
+  /** 탭 막대는 묶음 안 화면의 것이다 — 묶음이 아닌 화면 위에 한 줄을 먹지 않는다. */
+  it('탭 묶음이 아닌 화면에서는 탭 막대가 서지 않는다', () => {
+    renderLayout('본문 내용', { route: '/master-data/routing' });
+
+    /* 짝 양성 — 본문은 섰다. */
+    expect(within(screen.getByRole('main')).getByText('본문 내용')).toBeInTheDocument();
+    expect(within(screen.getByRole('main')).queryAllByRole('navigation')).toEqual([]);
+  });
+
+  /**
+   * ⭐ **묶음 줄은 어느 탭을 보고 있든 켜진다.** 둘째 탭으로 옮겨 갔는데 사이드바에서 자기 자리가
+   * 꺼지면, 사람은 지금 어느 묶음에 있는지를 잃는다.
+   */
+  it('묶음의 둘째 탭 화면에서도 사이드바의 묶음 줄이 지금 자리로 표시된다', () => {
+    renderLayout('본문 내용', { route: '/equipment/work-calendar' });
+
+    expect(within(navSidebar()).getByRole('link', { name: '설비' })).toHaveAttribute(
+      'aria-current',
+      'page',
+    );
+    /* 다른 묶음 줄은 꺼져 있다 — 전부 켜지는 것이 아니다. */
+    expect(within(navSidebar()).getByRole('link', { name: '툴·금형' })).not.toHaveAttribute(
+      'aria-current',
+    );
+  });
+
+  /** 들어온 화면이 묶음의 둘째 탭이어도 그 묶음이 든 섹션은 처음부터 펼쳐져 있다. */
+  it('묶음의 둘째 탭으로 들어오면 그 섹션이 처음부터 펼쳐져 있다', () => {
+    renderLayout('본문 내용', { expandGroups: false, route: '/logistics/stocktaking' });
+
+    expect(groupToggle('구매 / 자재 관리')).toHaveAttribute('aria-expanded', 'true');
+    expect(within(navSidebar()).getByRole('link', { name: '재고 관리' })).toHaveAttribute(
+      'aria-current',
+      'page',
+    );
+  });
+
+  /** 탭은 주소다 — 누르면 그 화면으로 옮기고, 표시가 따라 옮긴다. 묶음 줄은 그대로 켜져 있다. */
+  it('탭을 누르면 그 화면으로 옮기고 지금 탭 표시가 따라온다', async () => {
+    const { user } = renderLayout('본문 내용', { route: '/equipment/master' });
+
+    const tabs = screen.getByRole('navigation', { name: '설비' });
+
+    await user.click(within(tabs).getByRole('link', { name: '수집 채널 매핑 관리' }));
+
+    expect(within(tabs).getByRole('link', { name: '수집 채널 매핑 관리' })).toHaveAttribute(
+      'aria-current',
+      'page',
+    );
+    expect(within(tabs).getByRole('link', { name: '설비·설비그룹 마스터' })).not.toHaveAttribute(
+      'aria-current',
+    );
+    expect(within(navSidebar()).getByRole('link', { name: '설비' })).toHaveAttribute(
+      'aria-current',
+      'page',
+    );
+  });
+
+  /** 사이드바의 묶음 줄을 누르면 **첫 탭**에 닿는다(`nav-tree.ts` — 묶음의 `to` 는 첫 탭이다). */
+  it('사이드바의 묶음 줄을 누르면 첫 탭 화면에 들어가 탭 막대가 선다', async () => {
+    const { user } = renderLayout('본문 내용');
+
+    expect(screen.queryByRole('navigation', { name: '툴·금형' })).toBeNull();
+
+    await user.click(within(navSidebar()).getByRole('link', { name: '툴·금형' }));
+
+    const tabs = screen.getByRole('navigation', { name: '툴·금형' });
+
+    expect(within(tabs).getByRole('link', { name: '툴/금형/지그 마스터' })).toHaveAttribute(
+      'aria-current',
+      'page',
+    );
+    expect(hubTabHrefsOf('툴·금형')).toEqual([
+      '/equipment/tool-master',
+      '/equipment/shot-conversion',
+    ]);
+  });
+});
+
+/**
+ * 셸 — **탭 묶음과 화면 검색**(`nav-filter.ts`).
+ *
+ * 「타발수」를 치는 사람은 그 화면이 「툴·금형」 묶음에 들어간 것을 모른다 — 탭 이름으로도 찾고,
+ * 걸린 **탭**을 세운다(묶음 이름만 서면 걸린 글자가 화면에 없어 왜 걸렸는지 읽을 수 없다).
+ */
+describe('AppLayout — 탭 묶음 검색', () => {
+  const searchBox = (): HTMLElement =>
+    within(navSidebar()).getByRole('searchbox', { name: messages.shellNav.search.label });
+
+  it('탭 이름으로 찾으면 걸린 탭이 제 주소로 선다', async () => {
+    const { user } = renderLayout('본문 내용', { expandGroups: false });
+
+    await user.type(searchBox(), '타발수');
+
+    /* 펼친 탭은 「묶음 › 탭」으로 선다 — 탭 이름만으로는 묶음 밖에서 무엇인지 모른다. */
+    expect(
+      within(navSidebar()).getByRole('link', { name: '툴·금형 › 타발수 환산 파라미터 설정' }),
+    ).toHaveAttribute('href', '/equipment/shot-conversion');
+    /* 묶음 줄도, 걸리지 않은 형제 탭도 서지 않는다. */
+    expect(within(navSidebar()).queryByRole('link', { name: '툴·금형' })).toBeNull();
+    expect(within(navSidebar()).queryByRole('link', { name: '툴/금형/지그 마스터' })).toBeNull();
+  });
+
+  /*
+   * 같은 이름의 탭이 다른 묶음 이름과 겹쳐도 검색 결과에서 갈린다 — 생산 관리의 「ERP W/O」 묶음과
+   * ERP 연동 현황·이력의 「ERP W/O」 탭이 같은 글자의 두 줄로 서지 않는다.
+   */
+  it('같은 이름의 묶음과 탭이 검색 결과에서 묶음 이름으로 갈린다', async () => {
+    const { user } = renderLayout('본문 내용', { expandGroups: false });
+
+    await user.type(searchBox(), 'ERP W/O');
+
+    expect(within(navSidebar()).getByRole('link', { name: 'ERP W/O' })).toHaveAttribute(
+      'href',
+      '/production/production-orders',
+    );
+    expect(
+      within(navSidebar()).getByRole('link', { name: 'ERP 연동 현황·이력 › ERP W/O' }),
+    ).toHaveAttribute('href', '/system/erp-data/production-orders');
+  });
+
+  it('묶음 이름으로 찾으면 묶음 줄이 그대로 선다', async () => {
+    const { user } = renderLayout('본문 내용', { expandGroups: false });
+
+    await user.type(searchBox(), '툴·금형');
+
+    expect(within(navSidebar()).getByRole('link', { name: '툴·금형' })).toHaveAttribute(
+      'href',
+      '/equipment/tool-master',
+    );
+    expect(within(navSidebar()).queryByRole('link', { name: '툴/금형/지그 마스터' })).toBeNull();
+  });
+});
+
+/**
+ * 셸 — **상단 바의 비밀번호 변경**(W-CO-10 · 사용자 2026-10-20).
+ *
+ * 누구나 자기 것을 바꾸는 자리라 「지금 누구로 있는가」 바로 옆이 맞고, 상단 바는 권한 판정 없이
+ * 늘 서므로 관리자가 아닌 사용자도 바꿀 길이 남는다.
+ */
+describe('AppLayout — 상단 바의 비밀번호 변경', () => {
+  it('세션이 있으면 이름 옆에 비밀번호 변경 링크가 선다', async () => {
+    const { user } = renderLayout('본문 내용');
+
+    await user.click(screen.getByRole('button', { name: '세션 담기' }));
+
+    const actions = within(topbar()).getByText(SYNTHETIC_USER_NAME).parentElement;
+
+    if (actions === null) throw new Error('이름을 담은 자리를 찾지 못했습니다');
+
+    expect(
+      within(actions).getByRole('link', { name: messages.session.actions.changePassword }),
+    ).toHaveAttribute('href', '/system/password-change');
+    /* 사이드바에는 없다 — 같은 길을 두 자리에 두지 않는다. */
+    expect(
+      within(navSidebar()).queryByRole('link', { name: messages.session.actions.changePassword }),
+    ).toBeNull();
+  });
+
+  it('비밀번호 변경 링크를 누르면 그 화면 주소로 간다', async () => {
+    const { user } = renderLayout('본문 내용', { route: '/dashboard' });
+
+    await user.click(screen.getByRole('button', { name: '세션 담기' }));
+    await user.click(
+      within(topbar()).getByRole('link', { name: messages.session.actions.changePassword }),
+    );
+
+    /* 셸이 주소를 읽어 대시보드 줄을 끈다 — 주소가 실제로 옮겨 갔다는 표시다. */
+    expect(within(navSidebar()).getByRole('link', { name: '통합 대시보드' })).not.toHaveAttribute(
+      'aria-current',
+    );
+  });
+
+  /** 세션이 없으면 이름 자리를 비우는 것과 같은 까닭으로 이 링크도 서지 않는다. */
+  it('세션이 없으면 비밀번호 변경 링크도 없다', () => {
+    renderLayout('본문 내용');
+
+    expect(
+      within(topbar()).queryByRole('link', { name: messages.session.actions.changePassword }),
+    ).toBeNull();
   });
 });

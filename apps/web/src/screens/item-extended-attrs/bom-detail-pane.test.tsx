@@ -69,11 +69,17 @@ describe('BomDetailPane — 표기', () => {
     expect(screen.getByLabelText('유효기간')).toHaveTextContent('2026-01-01 ~ 2026-12-31');
   });
 
-  /* 값 목록이 확정되지 않아 이름을 지어내지 않는다. */
-  it('상태 코드를 이름으로 바꾸지 않는다', () => {
+  /* 상태 목록을 받기 전·실패 시에는 이름을 지어내지 않는다. */
+  it('상태 목록이 없으면 상태 코드를 그대로 낸다', () => {
     renderPane();
 
     expect(screen.getByLabelText('상태')).toHaveTextContent('SYN-BOM-STATUS-A');
+  });
+
+  it('상태를 코드 그룹의 이름으로 낸다', () => {
+    renderPane({ statusOptions: [{ code: 'SYN-BOM-STATUS-A', codeName: '합성 상태 A' }] });
+
+    expect(screen.getByLabelText('상태')).toHaveTextContent('합성 상태 A');
   });
 
   it('기본이 아니면 값 없음 표기를 낸다', () => {

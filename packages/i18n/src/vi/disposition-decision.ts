@@ -9,7 +9,7 @@ import type { Translated } from './translated';
  */
 export const dispositionDecision: Translated<typeof ko.dispositionDecision> = {
   title: 'Ra quyết định xử lý',
-  breadcrumbRoot: 'Chất lượng',
+  breadcrumbRoot: 'Quản lý chất lượng',
   tabs: {
     label: 'Xem đánh giá quyết định xử lý',
     pending: 'Chờ đánh giá',

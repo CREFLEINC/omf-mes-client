@@ -122,7 +122,7 @@ describe('검사실적·검사결과 공개 페이지 셸', () => {
       await screen.findByRole('heading', { level: 1, name: '검사실적·검사결과 조회' }),
     ).toBeInTheDocument();
     const breadcrumb = screen.getByRole('navigation', { name: '탐색 경로' });
-    expect(within(breadcrumb).getByText('품질관리')).toBeVisible();
+    expect(within(breadcrumb).getByText('품질 관리')).toBeVisible();
     expect(await screen.findByText('일부 조회 조건 이름을 불러오지 못했습니다.')).toBeVisible();
     expect(await screen.findByText('이름을 불러오지 못했습니다')).toBeVisible();
     expect(screen.queryByText('101')).not.toBeInTheDocument();

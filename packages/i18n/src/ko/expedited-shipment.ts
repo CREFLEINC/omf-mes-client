@@ -10,7 +10,7 @@
  */
 export const expeditedShipment = {
   title: '긴급 직행 출하 처리',
-  breadcrumbRoot: '출하',
+  breadcrumbRoot: '영업 / 출하 관리',
   /** 화면 머리에 상시 붙는다 — 이 화면의 «성격»이지 오류가 아니다. */
   headerNotice: '정상 흐름을 건너뜁니다. 창고 경유·피킹·포장 없이 곧바로 출하합니다.',
   panes: {

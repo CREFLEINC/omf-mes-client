@@ -1,6 +1,6 @@
 export const dispositionDecision = {
   title: '처분 판정 처리',
-  breadcrumbRoot: '품질',
+  breadcrumbRoot: '품질 관리',
   tabs: {
     label: '처분 판정 보기',
     pending: '판정 대기',

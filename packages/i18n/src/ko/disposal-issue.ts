@@ -14,7 +14,7 @@
  */
 export const disposalIssue = {
   title: '폐기 품의·기타출고',
-  breadcrumbRoot: '자재창고',
+  breadcrumbRoot: '구매 / 자재 관리',
   panes: {
     list: '폐기 대상 입고 전표 목록',
     /** 고른 전표의 제목줄과 라인 표가 함께 서는 구획. 폐기 정보 구획은 뒤 회차에 생긴다. */

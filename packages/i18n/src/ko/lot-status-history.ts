@@ -1,7 +1,7 @@
 /** Lot Status 현황·변경이력 조회 화면. LOT의 현재 상태를 찾고 보류 사건 이력을 되짚는다. */
 export const lotStatusHistory = {
   title: 'Lot Status 현황·변경이력 조회',
-  breadcrumbRoot: '품질관리',
+  breadcrumbRoot: '품질 관리',
   modes: {
     label: 'Lot Status 조회 모드',
     lot: 'LOT으로 찾기',

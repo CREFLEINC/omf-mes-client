@@ -55,6 +55,7 @@ export const itemFixtures: Item[] = [
     storageConditionCode: 'SYN-STORAGE-01',
     openedShelfLifeHours: 48,
     isActive: true,
+    mesCategoryCode: 'SYN-MES-CAT-A',
   },
   {
     itemId: 1002,

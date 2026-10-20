@@ -12,7 +12,7 @@ import type { Translated } from './translated';
  */
 export const workOrderProgress: Translated<typeof ko.workOrderProgress> = {
   title: 'Tiến độ W/O',
-  breadcrumbRoot: 'Thực thi sản xuất',
+  breadcrumbRoot: 'Quản lý sản xuất',
 
   filters: {
     legend: 'Điều kiện tra cứu',

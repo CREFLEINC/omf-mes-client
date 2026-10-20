@@ -4,7 +4,7 @@ import type { Translated } from './translated';
 /** W-04-01 출하지시서 Import·작업지시 생성. 지시서 경유와 단독 생성이 한 폼을 나눠 쓴다. */
 export const shipmentRequestCreate: Translated<typeof ko.shipmentRequestCreate> = {
   title: 'Nhập phiếu chỉ thị xuất hàng và tạo lệnh xuất hàng',
-  breadcrumbRoot: 'Xuất hàng',
+  breadcrumbRoot: 'Quản lý bán hàng / xuất hàng',
   panes: {
     source: 'Danh sách phiếu chỉ thị xuất hàng',
     header: 'Thông tin lệnh xuất hàng',

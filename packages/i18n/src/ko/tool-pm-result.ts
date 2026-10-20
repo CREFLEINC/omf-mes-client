@@ -9,7 +9,7 @@
  */
 export const toolPmResult = {
   title: '툴 PM 실적 등록',
-  breadcrumbRoot: '설비/툴',
+  breadcrumbRoot: '설비 보전 관리',
 
   panes: {
     tool: '대상 툴',

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { NAV_ENTRIES, NAV_GROUPS, NAV_LEAD } from './nav-tree';
+import { NAV_ENTRIES, NAV_GROUPS, NAV_LEAD, navEntryPaths, type NavEntry } from './nav-tree';
 
 /**
  * ⚠ **중복은 `indexOf`로 잰다 — `Set.add` 의 반환값으로 가르지 않는다.** 이 감지기의 첫 판은
@@ -88,12 +88,118 @@ describe('주 메뉴 트리', () => {
   });
 
   /**
-   * 아이콘 69개의 **회귀 그물**(#1079 검토).
+   * 탭 묶음(`tabs`)의 불변식 — 사이드바 한 줄이 화면 여럿을 품게 되면서 생긴 사고 경로다.
+   *
+   * ⚠ **탭 묶음 자신은 `NAV_ENTRIES` 에 없다**(화면이 아니라 화면 코드가 없다). 그래서 위의
+   * 이름·주소 감지기가 묶음 줄을 보지 못한다 — 묶음 줄은 여기서 따로 잰다.
+   */
+  describe('탭 묶음', () => {
+    const rows: readonly NavEntry[] = NAV_GROUPS.flatMap((group) => group.items);
+    const hubs = rows.filter(
+      (row): row is NavEntry & { tabs: NonNullable<NavEntry['tabs']> } => row.tabs !== undefined,
+    );
+
+    /* ⛔ 빈 통과를 막는다 — 묶음이 하나도 없으면 아래 감지기가 전부 초록이다. */
+    it('탭 묶음이 있다 — 아래 불변식이 무언가를 재고 있다', () => {
+      expect(hubs.length).toBeGreaterThan(0);
+    });
+
+    /** 탭 하나짜리 묶음은 묶음이 아니다 — 오갈 곳이 없는 탭 막대가 화면 제목 위에 한 줄을 먹는다. */
+    it('탭 묶음은 탭이 둘 이상이다', () => {
+      expect(hubs.filter((hub) => hub.tabs.length < 2).map((hub) => hub.label)).toEqual([]);
+    });
+
+    /**
+     * ⭐ **묶음 줄은 첫 탭으로 건다.** 다른 주소를 걸면 사이드바를 누른 사람이 탭 막대의 첫 탭이
+     * 아닌 자리에 떨어지고, 그 주소가 탭에 없으면 탭 막대도 서지 않는다.
+     */
+    it('탭 묶음의 주소는 첫 탭의 주소다', () => {
+      expect(
+        hubs.filter((hub) => hub.to !== hub.tabs[0]?.to).map((hub) => `${hub.label} → ${hub.to}`),
+      ).toEqual([]);
+    });
+
+    /**
+     * ⛔ **한 주소는 사이드바 전체에서 한 번만 닿는다** — 줄로도 탭으로도. 같은 주소가 묶음의 탭이면서
+     * 따로 한 줄로도 서면 두 줄이 동시에 켜지고, 탭 막대는 그 화면을 어느 묶음의 것으로 그릴지
+     * 고를 수 없다(`layout.tsx` `findActiveHub` 는 처음 만난 묶음을 고른다).
+     */
+    it('사이드바 줄과 탭을 통틀어 주소가 겹치지 않는다', () => {
+      const paths = [NAV_LEAD, ...rows].flatMap((entry) => navEntryPaths(entry));
+
+      expect(paths.filter((path, index) => paths.indexOf(path) !== index)).toEqual([]);
+      /* 짝 양성 — 탭이 실제로 펼쳐져 줄 수보다 많다. */
+      expect(paths.length).toBeGreaterThan(rows.length + 1);
+    });
+
+    /** 묶음 줄도 사람이 누르는 줄이다 — 이름·아이콘이 비면 무엇인지 알 수 없다. */
+    it('탭 묶음 줄에 아이콘과 두 언어 이름이 있다', () => {
+      expect(
+        hubs.filter(
+          (hub) => hub.icon.trim() === '' || hub.label.trim() === '' || hub.labelVi.trim() === '',
+        ),
+      ).toEqual([]);
+    });
+
+    /**
+     * 묶음 이름은 탭 막대의 **접근명**이다(`hub-tabs.tsx` `<nav aria-label>`). 겹치면 보조기술이
+     * 어느 묶음의 막대인지 가를 수 없고, 섹션 이름과 겹치면 `role="group"` 과 이름이 같아진다.
+     */
+    it('탭 묶음 이름이 서로와도, 섹션 이름과도 겹치지 않는다', () => {
+      const names = [...hubs.map((hub) => hub.label), ...NAV_GROUPS.map((group) => group.label)];
+
+      expect(names.filter((name, index) => names.indexOf(name) !== index)).toEqual([]);
+    });
+
+    /** 한 막대 안에서 탭 이름이 겹치면 어느 탭이 어느 화면인지 읽을 수 없다. */
+    it('한 묶음 안에서 탭 이름이 겹치지 않는다', () => {
+      const clashes = hubs.flatMap((hub) => {
+        const labels = hub.tabs.map((tab) => tab.label);
+
+        return labels.filter((label, index) => labels.indexOf(label) !== index);
+      });
+
+      expect(clashes).toEqual([]);
+    });
+
+    /**
+     * `NAV_ENTRIES` 는 묶음을 탭으로 펴서 담는다 — 묶음 자신은 빠지고 탭이 묶음의 자리·아이콘을
+     * 물려받는다. 펴는 일을 놓치면 검색·화면 목록 대조가 탭 화면을 못 본다.
+     */
+    it('NAV_ENTRIES 는 묶음 대신 그 탭들을 묶음의 자리에 묶음의 아이콘으로 담는다', () => {
+      const expected = [NAV_LEAD, ...rows].flatMap((entry) =>
+        navEntryPaths(entry).map((path) => `${path} → ${entry.icon}`),
+      );
+
+      expect(allEntries.map((entry) => `${entry.to} → ${entry.icon}`)).toEqual(expected);
+      expect(allEntries.some((entry) => entry.tabs !== undefined)).toBe(false);
+    });
+  });
+
+  it('navEntryPaths — 묶음이면 탭 주소 전부, 아니면 자기 주소 하나', () => {
+    expect(navEntryPaths({ to: '/a', icon: 'x', label: '가', labelVi: 'A' })).toEqual(['/a']);
+    expect(
+      navEntryPaths({
+        to: '/b',
+        icon: 'x',
+        label: '나',
+        labelVi: 'B',
+        tabs: [
+          { to: '/b', label: '다', labelVi: 'C' },
+          { to: '/c', label: '라', labelVi: 'D' },
+        ],
+      }),
+    ).toEqual(['/b', '/c']);
+  });
+
+  /**
+   * 아이콘의 **회귀 그물**(#1079 검토).
    *
    * ⚠ **이 값들을 재는 곳이 저장소에 없었다.** 전수 순서 감지기는 `href` 만 재고 섹션별 감지기는
-   * 이름만 잰다 — 아이콘 둘을 맞바꿔도 전부 초록이었다. 69개를 손으로 옮기는 회차라 여기서
-   * 얼린다. 아래 목록은 **옮기기 전 JSX**(`9cb13e97`)에서 뽑았고, 그 쪽과 데이터가 같다는 것은
-   * 삼중항 대조로 따로 확인했다.
+   * 이름만 잰다 — 아이콘 둘을 맞바꿔도 전부 초록이었다. 그래서 여기서 얼린다.
+   *
+   * ⭐ **탭 묶음의 탭은 묶음의 아이콘을 물려받는다**(`NAV_ENTRIES` — 레일·검색 결과에서 같은
+   * 아이콘으로 선다). 그래서 한 묶음의 탭들은 같은 아이콘이 이어진다.
    *
    * 아이콘을 **바꾸는 것 자체는 자유다** — 바꿀 때 이 목록을 함께 고치면 된다. 막는 것은
    * 「모르는 채로 바뀌는 것」이다.
@@ -101,73 +207,80 @@ describe('주 메뉴 트리', () => {
   it('항목마다 정해진 아이콘을 쓴다', () => {
     expect(allEntries.map((entry) => `${entry.to} → ${entry.icon}`)).toEqual([
       '/dashboard → dashboard',
-      '/master-data/warehouse-location → warehouse',
-      '/master-data/putaway-rule → shelves',
-      '/master-data/warehouse-layout → map',
-      '/master-data/routing → account_tree',
-      '/master-data/inspection-standard → fact_check',
-      '/master-data/defect-cause-code → rule',
-      '/master-data/common-code → list_alt',
-      '/master-data/judgment-code → verified',
-      '/master-data/integration-sync → sync_alt',
-      '/master-data/item-extended-attrs → inventory_2',
-      '/master-data/master-change → history',
       '/logistics/inbound-schedule → local_shipping',
-      '/logistics/over-receipt-split → call_split',
-      '/logistics/iqc-inspection → troubleshoot',
-      '/logistics/goods-receipt → inventory_2',
+      '/logistics/over-receipt-split → local_shipping',
+      '/logistics/goods-receipt → local_shipping',
       '/logistics/stock-status → inventory',
-      '/logistics/stocktaking → checklist',
-      '/logistics/stock-adjust → tune',
-      '/logistics/supplier-return → assignment_return',
-      '/logistics/disposal-issue → delete_forever',
-      '/logistics/iqc-skip-approval → approval',
+      '/logistics/stocktaking → inventory',
+      '/logistics/stock-adjust → inventory',
+      '/production/material-issue-requests → outbox',
+      '/logistics/supplier-return → outbox',
+      '/logistics/disposal-issue → outbox',
       '/logistics/document-progress → manage_search',
-      '/shipment/shipment-request-create → assignment',
-      '/shipment/shipment-schedule → local_shipping',
-      '/shipment/oqc-inspection → fact_check',
-      '/shipment/shipment-processing → outbound',
-      '/shipment/expedited-shipment → bolt',
-      '/shipment/shipment-confirm → task_alt',
-      '/shipment/return-receipts → keyboard_return',
-      '/shipment/disposition-requests → assignment_return',
-      '/shipment/stock-reinstatements → move_to_inbox',
-      '/shipment/product-disposal-request → delete_sweep',
-      '/production/production-orders → account_tree',
-      '/production/po-change-review → published_with_changes',
-      '/production/work-order-release → rocket_launch',
-      '/production/work-order-close → archive',
-      '/production/emergency-work-orders → bolt',
-      '/production/material-issue-requests → playlist_add',
-      '/production/work-order-progress → monitoring',
-      '/quality/lot-status → history',
-      '/quality/lot-status-transition → published_with_changes',
-      '/quality/suspicious-material-hold → report_problem',
+      '/logistics/iqc-inspection → troubleshoot',
+      '/logistics/iqc-skip-approval → approval',
+      '/quality/pqc-inspections → fact_check',
+      '/shipment/oqc-inspection → local_shipping',
+      '/master-data/inspection-standard → rule_settings',
+      '/master-data/defect-cause-code → rule',
+      '/master-data/judgment-code → rule',
       '/quality/inspection-results → analytics',
+      '/quality/lot-status → history',
+      '/quality/lot-status-transition → history',
+      '/quality/suspicious-material-hold → report_problem',
       '/quality/approvals → approval',
       '/quality/dispositions → gavel',
-      '/quality/pqc-inspections → fact_check',
-      '/equipment/master → precision_manufacturing',
-      '/equipment/tool-master → handyman',
-      '/equipment/work-calendar → calendar_month',
-      '/equipment/collection-channels → sensors',
-      '/equipment/shot-conversion → calculate',
-      '/equipment/gauge-master → straighten',
-      '/equipment/gauge-calibration → event_available',
-      '/equipment/failures → build',
-      '/equipment/maintenance-orders → assignment',
-      '/equipment/maintenance-results → task_alt',
-      '/equipment/tool-pm-order → schedule',
-      '/equipment/tool-pm-result → restart_alt',
-      '/equipment/downtime-summary → timelapse',
+      '/production/production-orders → account_tree',
+      '/production/po-change-review → account_tree',
+      '/production/work-order-release → rocket_launch',
+      '/production/emergency-work-orders → bolt',
+      '/production/work-order-progress → monitoring',
+      '/production/work-order-close → archive',
+      '/shipment/shipment-request-create → assignment',
+      '/shipment/shipment-schedule → event_note',
+      '/shipment/shipment-processing → outbound',
+      '/shipment/expedited-shipment → outbound',
+      '/shipment/shipment-confirm → task_alt',
+      '/shipment/return-receipts → keyboard_return',
+      '/shipment/disposition-requests → keyboard_return',
+      '/shipment/stock-reinstatements → keyboard_return',
+      '/shipment/product-disposal-request → keyboard_return',
       '/approval/inbox → inbox',
       '/notification/center → notifications',
-      '/notification/recipient-settings → notifications_active',
       '/notification/notices → campaign',
+      '/master-data/item-extended-attrs → category',
+      '/master-data/routing → account_tree',
+      '/equipment/master → precision_manufacturing',
+      '/equipment/work-calendar → precision_manufacturing',
+      '/equipment/collection-channels → precision_manufacturing',
+      '/equipment/tool-master → handyman',
+      '/equipment/shot-conversion → handyman',
+      '/equipment/gauge-master → straighten',
+      '/equipment/gauge-calibration → straighten',
+      '/master-data/warehouse-location → warehouse',
+      '/master-data/putaway-rule → warehouse',
+      '/master-data/warehouse-layout → warehouse',
+      '/master-data/master-change → history',
+      '/equipment/failures → build',
+      '/equipment/maintenance-orders → build',
+      '/equipment/maintenance-results → build',
+      '/equipment/tool-pm-order → schedule',
+      '/equipment/tool-pm-result → schedule',
+      '/equipment/downtime-summary → timelapse',
+      '/master-data/integration-sync → sync_alt',
+      '/system/erp-data/common-codes → sync_alt',
+      '/system/erp-data/employees → sync_alt',
+      '/system/erp-data/items → sync_alt',
+      '/system/erp-data/partners → sync_alt',
+      '/system/erp-data/boms → sync_alt',
+      '/system/erp-data/purchase-orders → sync_alt',
+      '/system/erp-data/sales-orders → sync_alt',
+      '/system/erp-data/production-orders → sync_alt',
       '/system/users-roles → manage_accounts',
       '/system/approval-route → approval',
+      '/notification/recipient-settings → notifications_active',
+      '/master-data/common-code → list_alt',
       '/system/terminal-process-map → tablet_android',
-      '/system/password-change → password',
     ]);
   });
 });

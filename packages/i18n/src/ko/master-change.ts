@@ -8,7 +8,7 @@
  */
 export const masterChange = {
   title: '마스터 변경관리',
-  breadcrumbRoot: '기준정보',
+  breadcrumbRoot: '기준정보 관리',
   fields: {
     /*
      * 기간은 **한 컨트롤**이다(변경 통지 #63) — 시작·종료 두 칸이 `DatePicker mode="range"`

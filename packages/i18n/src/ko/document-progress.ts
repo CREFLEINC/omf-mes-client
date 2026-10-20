@@ -9,8 +9,8 @@
  * 코드 문자열을 그대로 낸다 — 화면이 뜻을 붙이면 값이 늘 때 조용히 틀린다(공유계약 G-2).
  */
 export const documentProgress = {
-  title: '물류 문서 진행현황·취소',
-  breadcrumbRoot: '자재창고',
+  title: '물류 전표 조회·취소',
+  breadcrumbRoot: '구매 / 자재 관리',
   /** 구획 이름. 목록 구획은 화면 이름을 그대로 쓴다 — 이 화면의 본체가 목록이다. */
   panes: {
     detail: '고른 문서',

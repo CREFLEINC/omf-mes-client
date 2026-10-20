@@ -7,7 +7,7 @@ import type { Translated } from './translated';
  */
 export const inspectionStandard: Translated<typeof ko.inspectionStandard> = {
   title: 'Đăng ký tiêu chuẩn kiểm tra',
-  breadcrumbRoot: 'Dữ liệu gốc',
+  breadcrumbRoot: 'Quản lý chất lượng',
   panes: {
     plan: 'Tiêu chuẩn kiểm tra',
     version: 'Danh sách phiên bản',

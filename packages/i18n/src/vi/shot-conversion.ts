@@ -7,7 +7,7 @@ import type { Translated } from './translated';
  */
 export const shotConversion: Translated<typeof ko.shotConversion> = {
   title: 'Thiết lập tham số quy đổi số nhát dập',
-  breadcrumbRoot: 'Thiết bị / Công cụ',
+  breadcrumbRoot: 'Quản lý dữ liệu gốc',
   optionsTruncated:
     'Danh sách lựa chọn chỉ hiển thị một phần. Không thấy giá trị cần tìm thì hãy báo người phụ trách.',
   optionsLoadFailed: 'Không tải được danh sách lựa chọn. Chỉ hiển thị giá trị đang lưu.',

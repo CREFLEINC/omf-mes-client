@@ -4,7 +4,7 @@ import type { Translated } from './translated';
 /** W-04-07 재작업/폐기 판정 의뢰. 이 화면은 의뢰만 한다 — 판정은 품질 화면 몫이다. */
 export const dispositionRequest: Translated<typeof ko.dispositionRequest> = {
   title: 'Yêu cầu đánh giá làm lại hoặc hủy',
-  breadcrumbRoot: 'Xuất hàng',
+  breadcrumbRoot: 'Quản lý bán hàng / xuất hàng',
   scopeNotice:
     'Việc đánh giá làm ở màn hình chất lượng. Ở đây chỉ đăng ký điểm không phù hợp và yêu cầu đánh giá.',
   periodContractBlocked:

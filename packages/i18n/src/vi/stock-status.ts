@@ -9,7 +9,7 @@ import type { Translated } from './translated';
  */
 export const stockStatus: Translated<typeof ko.stockStatus> = {
   title: 'Tra cứu tồn kho · trạng thái',
-  breadcrumbRoot: 'Kho vật tư',
+  breadcrumbRoot: 'Quản lý mua hàng / vật tư',
   panes: {
     list: 'Danh sách số dư tồn kho',
     detail: 'Chi tiết LOT',

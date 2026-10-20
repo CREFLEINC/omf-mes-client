@@ -6,8 +6,8 @@
  * 발행은 되돌릴 수 없다 — 이 화면에 취소 경로가 없다.
  */
 export const materialIssueRequest = {
-  title: '추가 자재 출고 요청',
-  breadcrumbRoot: '생산',
+  title: '자재 불출 요청',
+  breadcrumbRoot: '구매 / 자재 관리',
   /**
    * ⭐ **규칙을 알리는 문장이다.** 앞 문장이 「금지」를 그대로 말하고, 뒤 문장이 그 대신 무엇을
    * 하면 되는지를 말한다. 결과 설명(「재고가 어긋난다」)으로 바꾸면 규범 선언이 사라진다 —
@@ -120,7 +120,7 @@ export const materialIssueRequest = {
     warehouseAutoFilled: 'W/O 의 기본 재공 위치로 채웠습니다. 필요하면 바꿀 수 있습니다.',
   },
   result: {
-    title: '추가 자재 출고 요청을 발행했습니다',
+    title: '자재 불출 요청을 발행했습니다',
     issueRequestNo: (no: string): string => `요청번호: ${no}`,
     statusCode: (code: string): string => `상태: ${code}`,
     lineCount: (count: number): string => `품목 ${String(count)}건`,

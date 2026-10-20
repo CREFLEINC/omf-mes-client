@@ -10,7 +10,7 @@
  */
 export const putawayRule = {
   title: '적치 규칙',
-  breadcrumbRoot: '기준정보',
+  breadcrumbRoot: '기준정보 관리',
   panes: {
     list: '적치 규칙 목록',
     uncovered: '규칙 없는 품목',

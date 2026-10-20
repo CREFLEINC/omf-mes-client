@@ -7,8 +7,8 @@
 export const iqcInspection = {
   /* 스펙 §3 머리와 IA 가 부르는 이름 그대로다 — 사이드바 항목과 같은 글자여야 길을 잃지 않는다. */
   title: 'IQC 수입검사·판정',
-  /** 화면 스펙 §3 의 머리 — 「자재창고 > IQC 수입검사·판정」. */
-  breadcrumbRoot: '자재창고',
+  /** 머리는 관리웹 사이드바 묶음을 따른다 — 「품질 관리 > IQC 수입검사·판정」. */
+  breadcrumbRoot: '품질 관리',
 
   queue: {
     heading: '검사 대기',

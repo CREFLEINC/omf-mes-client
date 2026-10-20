@@ -8,7 +8,7 @@ import type { Translated } from './translated';
 export const workCalendar: Translated<typeof ko.workCalendar> = {
   title: 'Thiết lập lịch làm việc',
   listTitle: 'Danh sách lịch làm việc',
-  breadcrumbRoot: 'Thiết bị / Công cụ',
+  breadcrumbRoot: 'Quản lý dữ liệu gốc',
   actions: {
     addCalendar: 'Đăng ký lịch',
     editCalendar: 'Sửa lịch',

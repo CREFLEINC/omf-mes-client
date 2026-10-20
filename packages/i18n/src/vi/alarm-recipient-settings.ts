@@ -13,7 +13,7 @@ import type { Translated } from './translated';
  */
 export const alarmRecipientSettings: Translated<typeof ko.alarmRecipientSettings> = {
   title: 'Thiết lập người nhận cảnh báo',
-  breadcrumbRoot: 'Thông báo',
+  breadcrumbRoot: 'Quản trị hệ thống',
   description: 'Chỉ định tổ chức · vai trò hoặc người dùng sẽ nhận theo từng loại thông báo.',
   panes: {
     events: 'Loại thông báo',

@@ -4,7 +4,7 @@ import type { Translated } from './translated';
 /** W-01-01 IQC 수입검사·판정. 검사자가 쓰는 말로 쓰고, 확정이 되돌릴 수 없다는 것을 먼저 말한다. */
 export const iqcInspection: Translated<typeof ko.iqcInspection> = {
   title: 'IQC kiểm tra đầu vào · đánh giá',
-  breadcrumbRoot: 'Kho vật tư',
+  breadcrumbRoot: 'Quản lý chất lượng',
 
   queue: {
     heading: 'Chờ kiểm tra',

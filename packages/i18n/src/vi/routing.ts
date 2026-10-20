@@ -9,7 +9,7 @@ import type { Translated } from './translated';
  */
 export const routing: Translated<typeof ko.routing> = {
   title: 'Routing (công đoạn)',
-  breadcrumbRoot: 'Dữ liệu gốc',
+  breadcrumbRoot: 'Quản lý dữ liệu gốc',
   tabs: {
     label: 'Routing · Danh mục công đoạn',
     routing: 'Routing',

@@ -9,7 +9,7 @@ import type { Translated } from './translated';
  */
 export const qualityApproval: Translated<typeof ko.qualityApproval> = {
   title: 'Xử lý phê duyệt đặc cách · hạn mức',
-  breadcrumbRoot: 'Chất lượng',
+  breadcrumbRoot: 'Quản lý chất lượng',
   scopeWarning:
     'Giá trị gốc của loại phê duyệt chưa sẵn sàng nên hiển thị mọi loại yêu cầu được giao cho tôi. Hãy kiểm tra nguyên văn loại phê duyệt.',
   fields: {

@@ -5,6 +5,7 @@ import {
   ITEM_KEY,
   clearFilter,
   hasAnyFilter,
+  readBomCodeFilter,
   readItemFilters,
   readPage,
   readSelectedId,
@@ -32,8 +33,13 @@ describe('readItemFilters', () => {
   it('검색어와 미사용 포함을 읽는다', () => {
     expect(readItemFilters(params('q=SYN&inactive=1'))).toEqual({
       q: 'SYN',
+      itemType: '',
       includeInactive: true,
     });
+  });
+
+  it('품목 유형을 type 키에서 읽는다', () => {
+    expect(readItemFilters(params('type=FINISHED')).itemType).toBe('FINISHED');
   });
 
   /* 켜짐을 나타내는 값은 `1` 하나뿐이다 — 주소를 손으로 고쳐도 뜻이 흔들리지 않는다. */
@@ -91,7 +97,7 @@ describe('toSearchParams', () => {
       toSearchParams(
         DEFAULT_TAB_ID,
         DEFAULT_SUBSIDIARY_TAB_ID,
-        { q: 'SYN', includeInactive: true },
+        { q: 'SYN', itemType: '', includeInactive: true },
         3,
       ).toString(),
     ).toBe('q=SYN&inactive=1&page=3');
@@ -103,7 +109,7 @@ describe('toSearchParams', () => {
       toSearchParams(
         DEFAULT_TAB_ID,
         DEFAULT_SUBSIDIARY_TAB_ID,
-        { q: 'SYN', includeInactive: false },
+        { q: 'SYN', itemType: '', includeInactive: false },
         2,
       ).has(ITEM_KEY),
     ).toBe(false);
@@ -128,16 +134,21 @@ describe('toSearchParams', () => {
    */
   it('기본이 아닌 탭은 조건이 바뀌어도 남는다', () => {
     expect(
-      toSearchParams('sub', DEFAULT_SUBSIDIARY_TAB_ID, { q: 'SYN', includeInactive: false }, 1).get(
-        TAB_KEY,
-      ),
+      toSearchParams(
+        'sub',
+        DEFAULT_SUBSIDIARY_TAB_ID,
+        { q: 'SYN', itemType: '', includeInactive: false },
+        1,
+      ).get(TAB_KEY),
     ).toBe('sub');
   });
 
   /* 하위 탭도 같은 규칙이다 — 층이 다르다고 규칙을 달리하면 주소가 두 가지 말을 한다. */
   it('기본이 아닌 하위 탭도 조건이 바뀌어도 남는다', () => {
     expect(
-      toSearchParams('sub', 'ext', { q: 'SYN', includeInactive: false }, 1).get(SUBSIDIARY_TAB_KEY),
+      toSearchParams('sub', 'ext', { q: 'SYN', itemType: '', includeInactive: false }, 1).get(
+        SUBSIDIARY_TAB_KEY,
+      ),
     ).toBe('ext');
   });
 });
@@ -149,9 +160,9 @@ describe('toSearchParams', () => {
 describe('주소 왕복 (M13)', () => {
   const cases: { filters: ItemFilters; page: number }[] = [
     { filters: EMPTY_ITEM_FILTERS, page: 1 },
-    { filters: { q: 'SYN-ITEM', includeInactive: false }, page: 1 },
-    { filters: { q: '', includeInactive: true }, page: 4 },
-    { filters: { q: '합성 품목', includeInactive: true }, page: 12 },
+    { filters: { q: 'SYN-ITEM', itemType: '', includeInactive: false }, page: 1 },
+    { filters: { q: '', itemType: '', includeInactive: true }, page: 4 },
+    { filters: { q: '합성 품목', itemType: '', includeInactive: true }, page: 12 },
   ];
 
   it.each(cases)('$filters / $page 쪽이 왕복해도 같다', ({ filters, page }) => {
@@ -188,28 +199,59 @@ describe('toItemListQuery', () => {
   });
 
   it('걸린 조건만 싣는다', () => {
-    expect(toItemListQuery({ q: 'SYN', includeInactive: true }, 2)).toEqual({
+    expect(toItemListQuery({ q: 'SYN', itemType: '', includeInactive: true }, 2)).toEqual({
       q: 'SYN',
       includeInactive: true,
       page: 2,
     });
   });
 
-  /* 화면에 없는 조건을 요청에 실으면 사용자가 되돌릴 수단이 없다. */
-  it('화면에 없는 품목유형·Routing 보유 조건을 싣지 않는다', () => {
-    const query = toItemListQuery({ q: 'SYN', includeInactive: true }, 2);
+  it('품목 유형은 걸렸을 때만 itemTypeCode 로 싣는다', () => {
+    expect(toItemListQuery({ q: '', itemType: 'FINISHED', includeInactive: false }, 1)).toEqual({
+      itemTypeCode: 'FINISHED',
+    });
+    expect(toItemListQuery(EMPTY_ITEM_FILTERS, 1)).not.toHaveProperty('itemTypeCode');
+  });
 
-    expect(query).not.toHaveProperty('itemTypeCode');
+  /* 화면에 없는 조건을 요청에 실으면 사용자가 되돌릴 수단이 없다. */
+  it('화면에 없는 Routing 보유 조건을 싣지 않는다', () => {
+    const query = toItemListQuery({ q: 'SYN', itemType: '', includeInactive: true }, 2);
+
     expect(query).not.toHaveProperty('hasRouting');
   });
 });
 
 describe('조건 칩', () => {
   it('걸린 조건마다 칩 하나가 난다', () => {
-    const chips = toFilterChips({ q: 'SYN', includeInactive: true });
+    const chips = toFilterChips({ q: 'SYN', itemType: '', includeInactive: true });
 
     expect(chips.map((chip) => chip.key)).toEqual(['q', 'includeInactive']);
     expect(chips[0]?.label).toBe('검색어: SYN');
+  });
+
+  it('품목 유형 칩은 검색어 뒤, 미사용 포함 앞에 난다', () => {
+    const chips = toFilterChips({ q: 'SYN', itemType: 'FINISHED', includeInactive: true });
+
+    expect(chips.map((chip) => chip.key)).toEqual(['q', 'itemType', 'includeInactive']);
+    expect(chips[1]?.label).toBe('품목유형: FINISHED');
+  });
+
+  /* 선택칸이 「완제품」인데 칩이 코드를 내면 같은 조건이 두 이름으로 읽힌다. */
+  it('품목 유형 칩은 코드 그룹이 준 이름을 낸다', () => {
+    const chips = toFilterChips({ q: '', itemType: 'FINISHED', includeInactive: false }, [
+      { code: 'RAW_MATERIAL', codeName: '원자재' },
+      { code: 'FINISHED', codeName: '완제품' },
+    ]);
+
+    expect(chips[0]?.label).toBe('품목유형: 완제품');
+  });
+
+  it('목록에 없는 코드는 코드 그대로 낸다 — 이름을 지어내지 않는다', () => {
+    const chips = toFilterChips({ q: '', itemType: 'SYN-TYPE-X', includeInactive: false }, [
+      { code: 'FINISHED', codeName: '완제품' },
+    ]);
+
+    expect(chips[0]?.label).toBe('품목유형: SYN-TYPE-X');
   });
 
   it('조건이 없으면 칩도 없다', () => {
@@ -218,23 +260,46 @@ describe('조건 칩', () => {
 
   /* 「제거」가 둘이면 어느 조건을 푸는 것인지 알 수 없다. */
   it('제거 버튼의 이름이 조건마다 다르다', () => {
-    const chips = toFilterChips({ q: 'SYN', includeInactive: true });
+    const chips = toFilterChips({ q: 'SYN', itemType: '', includeInactive: true });
 
     expect(new Set(chips.map((chip) => chip.removeLabel)).size).toBe(chips.length);
+  });
+});
+
+describe('readBomCodeFilter', () => {
+  it('주소의 BOM 코드 조건을 읽는다', () => {
+    expect(readBomCodeFilter(params('bomq=SYN-BOM'))).toBe('SYN-BOM');
+  });
+
+  it('없거나 공백뿐이면 조건이 없다', () => {
+    expect(readBomCodeFilter(params(''))).toBe('');
+    expect(readBomCodeFilter(params('bomq=%20%20'))).toBe('');
+  });
+
+  /* 품목 조건·쪽이 바뀌면 고른 품목과 함께 그 아래의 조건도 떨어진다. */
+  it('주소를 다시 만들면 BOM 코드 조건이 남지 않는다', () => {
+    const next = toSearchParams(DEFAULT_TAB_ID, DEFAULT_SUBSIDIARY_TAB_ID, EMPTY_ITEM_FILTERS, 1);
+
+    expect(readBomCodeFilter(next)).toBe('');
   });
 });
 
 describe('hasAnyFilter · clearFilter', () => {
   it('조건이 하나라도 걸리면 참이다', () => {
     expect(hasAnyFilter(EMPTY_ITEM_FILTERS)).toBe(false);
-    expect(hasAnyFilter({ q: 'SYN', includeInactive: false })).toBe(true);
-    expect(hasAnyFilter({ q: '', includeInactive: true })).toBe(true);
+    expect(hasAnyFilter({ q: 'SYN', itemType: '', includeInactive: false })).toBe(true);
+    expect(hasAnyFilter({ q: '', itemType: '', includeInactive: true })).toBe(true);
   });
 
   it('키마다 「비었다」의 표현이 달라도 하나만 푼다', () => {
-    const filters: ItemFilters = { q: 'SYN', includeInactive: true };
+    const filters: ItemFilters = { q: 'SYN', itemType: '', includeInactive: true };
 
-    expect(clearFilter(filters, 'q')).toEqual({ q: '', includeInactive: true });
-    expect(clearFilter(filters, 'includeInactive')).toEqual({ q: 'SYN', includeInactive: false });
+    expect(clearFilter(filters, 'q')).toEqual({ q: '', itemType: '', includeInactive: true });
+    expect(clearFilter(filters, 'includeInactive')).toEqual({
+      q: 'SYN',
+      itemType: '',
+      includeInactive: false,
+    });
+    expect(clearFilter({ ...filters, itemType: 'FINISHED' }, 'itemType')).toEqual(filters);
   });
 });

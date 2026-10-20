@@ -6,7 +6,7 @@
  */
 export const maintenanceResult = {
   title: '보전 실적·예비품',
-  breadcrumbRoot: '설비/툴',
+  breadcrumbRoot: '설비 보전 관리',
 
   panes: {
     filters: '조회 조건',

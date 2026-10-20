@@ -17,6 +17,7 @@ export const session: Translated<typeof ko.session> = {
   },
   actions: {
     signOut: 'Đăng xuất',
+    changePassword: 'Đổi mật khẩu',
   },
   signOutFailure: {
     title: 'Chưa đăng xuất được',

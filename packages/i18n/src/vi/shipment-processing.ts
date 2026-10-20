@@ -4,7 +4,7 @@ import type { Translated } from './translated';
 /** W-04-04 출하 처리(상차·실물 출고). 관문을 다 지나야 처리하고, 확정은 다른 화면 몫이다. */
 export const shipmentProcessing: Translated<typeof ko.shipmentProcessing> = {
   title: 'Xử lý xuất hàng (lên xe và xuất kho thực tế)',
-  breadcrumbRoot: 'Xuất hàng',
+  breadcrumbRoot: 'Quản lý bán hàng / xuất hàng',
   panes: {
     list: 'Danh sách lệnh xuất hàng chờ xác nhận',
     lines: 'Nội dung xuất hàng',

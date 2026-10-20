@@ -11,7 +11,7 @@ import type { Translated } from './translated';
  */
 export const workOrderRelease: Translated<typeof ko.workOrderRelease> = {
   title: 'Chốt · phát hành W/O · phát trước LOT sản xuất',
-  breadcrumbRoot: 'Sản xuất',
+  breadcrumbRoot: 'Quản lý sản xuất',
   filter: {
     pane: 'Điều kiện tra cứu ứng viên phát hành',
     productionLine: 'Dòng sản xuất',

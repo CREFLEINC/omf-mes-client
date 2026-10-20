@@ -7,7 +7,7 @@ import type { Translated } from './translated';
  */
 export const iqcSkipApproval: Translated<typeof ko.iqcSkipApproval> = {
   title: 'Phê duyệt hạn mức bỏ qua IQC khẩn',
-  breadcrumbRoot: 'Kho vật tư',
+  breadcrumbRoot: 'Quản lý chất lượng',
   panes: {
     list: 'Danh sách yêu cầu phê duyệt',
     detail: 'Yêu cầu đã chọn',

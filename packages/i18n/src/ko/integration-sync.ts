@@ -8,7 +8,7 @@
  */
 export const integrationSync = {
   title: '연계 동기화 현황',
-  breadcrumbRoot: '기준정보',
+  breadcrumbRoot: '시스템 관리',
   fields: {
     periodFrom: '기간 시작',
     periodTo: '기간 종료',

@@ -6,7 +6,7 @@
  */
 export const downtimeSummary = {
   title: '비가동 집계 조회',
-  breadcrumbRoot: '설비/툴',
+  breadcrumbRoot: '설비 보전 관리',
 
   panes: {
     filters: '조회 조건',

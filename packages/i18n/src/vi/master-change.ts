@@ -9,7 +9,7 @@ import type { Translated } from './translated';
  */
 export const masterChange: Translated<typeof ko.masterChange> = {
   title: 'Quản lý thay đổi dữ liệu gốc',
-  breadcrumbRoot: 'Dữ liệu gốc',
+  breadcrumbRoot: 'Quản lý dữ liệu gốc',
   fields: {
     /* 기간은 한 컨트롤이다(변경 통지 #63) — 시작·종료가 한 칸으로 합쳐져 라벨도 하나다. */
     period: 'Kỳ tra cứu',

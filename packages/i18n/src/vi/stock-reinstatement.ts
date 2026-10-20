@@ -4,7 +4,7 @@ import type { Translated } from './translated';
 /** W-04-11 재고 재등록. 새 LOT 을 만들지 않고 보류를 풀어 완제품창고로 되돌린다. */
 export const stockReinstatement: Translated<typeof ko.stockReinstatement> = {
   title: 'Đăng ký lại tồn kho',
-  breadcrumbRoot: 'Xuất hàng',
+  breadcrumbRoot: 'Quản lý bán hàng / xuất hàng',
   scopeNotice: 'Đăng ký lại không tạo LOT mới. LOT gốc và lịch sử trả hàng vẫn được giữ nguyên.',
   panes: {
     candidates: 'Chờ đăng ký lại',

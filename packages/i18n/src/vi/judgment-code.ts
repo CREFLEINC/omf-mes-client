@@ -7,7 +7,7 @@ import type { Translated } from './translated';
  */
 export const judgmentCode: Translated<typeof ko.judgmentCode> = {
   title: 'Mã loại đánh giá',
-  breadcrumbRoot: 'Dữ liệu gốc',
+  breadcrumbRoot: 'Quản lý chất lượng',
   loading: {
     group: 'Đang xác nhận nhóm mã loại đánh giá',
   },

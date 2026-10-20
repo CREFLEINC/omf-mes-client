@@ -3,8 +3,10 @@ import { useQueries, useQuery, type UseQueryResult } from '@tanstack/react-query
 
 import { useApiClient } from '../../patterns/api-context';
 import { runRequest } from '../../patterns/request';
+import { CODE_GROUPS, useCodeValueOptions } from './code-values';
 import { toItemListQuery } from './filters';
 import type { LookupResult } from './lookups';
+import type { CodeValueOption } from './options';
 import type { Item, ItemFilters, LookupEntry, PageMeta } from './types';
 
 type ItemDetailResponse = components['schemas']['ItemDetailResponse'];
@@ -49,6 +51,18 @@ export const itemKeys = {
   /** 품목 고르기의 검색. 좌 목록과 조건 축이 달라 키를 나눈다 */
   search: (keyword: string) => ['item-extended-attrs-items', 'search', keyword] as const,
 };
+
+export type ItemTypeOption = CodeValueOption;
+
+/**
+ * 품목 유형 선택지(코드 그룹 `ITEM_TYPE`). 좌 목록의 선택칸과 조건 칩이 같은 목록을 쓴다.
+ *
+ * **값 목록을 화면이 적지 않는다** — 계약이 `itemTypeCode`를 「고객이 늘릴 수 있는 초기값」이라
+ * 적었다. 화면에 넷을 박아 두면 고객이 늘린 유형이 조용히 사라진다.
+ * 고르는 자리라 미사용 유형은 받지 않는다 — 주소에 실린 미사용 코드는 코드 그대로 보인다.
+ */
+export const useItemTypeOptions = (): UseQueryResult<ItemTypeOption[]> =>
+  useCodeValueOptions(CODE_GROUPS.itemType);
 
 /**
  * 품목 목록. 조건은 서버로 보낸다 — 클라이언트에서 거르면 서버가 자른 뒤의 결과만 걸러진다.

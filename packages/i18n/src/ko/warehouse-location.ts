@@ -1,6 +1,6 @@
 export const warehouseLocation = {
   title: '창고·Location',
-  breadcrumbRoot: '기준정보',
+  breadcrumbRoot: '기준정보 관리',
   tabs: {
     warehouse: '창고 정보',
     location: 'Location',

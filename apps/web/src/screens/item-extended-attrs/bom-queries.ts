@@ -42,7 +42,11 @@ type BomComponentDetailResponse = components['schemas']['BomComponentDetailRespo
  */
 export const bomKeys = {
   all: ['item-extended-attrs-boms'] as const,
+  /** 한 품목의 헤더 목록 전부. 기본 지정이 이 앞부분으로 무효화해 조건이 걸린 목록까지 함께 다시 받는다 */
   list: (parentItemId: number) => ['item-extended-attrs-boms', 'list', parentItemId] as const,
+  /** BOM 코드 조건이 걸린 목록. 빈 조건도 같은 형태로 둔다 — 키 모양이 조건 유무로 갈리지 않게 */
+  filteredList: (parentItemId: number, bomCode: string) =>
+    ['item-extended-attrs-boms', 'list', parentItemId, bomCode] as const,
   components: (bomId: number) => ['item-extended-attrs-boms', 'components', bomId] as const,
   component: (bomId: number, bomComponentId: number) =>
     ['item-extended-attrs-boms', 'components', bomId, bomComponentId] as const,
@@ -59,15 +63,20 @@ export const bomKeys = {
  * 쓰기 경로를 두지 않기로 한 이상(결정 1) 읽을 자리가 없다. 더해 **목록에서 고른 헤더를 쓰면
  * 「주소의 번호가 이 품목의 것이 아니다」가 저절로 걸러진다** — 상세를 따로 부르면
  * 다른 품목의 자재 명세서를 그려 버린다.
+ *
+ * **BOM 코드 조건은 서버로 보낸다**(계약의 `bomCode` 쿼리). 맞춤 방식(일치·포함)은 서버가 정한다 —
+ * 화면이 받은 목록을 다시 거르면 두 규칙이 겹쳐 서버가 낸 줄이 이유 없이 사라질 수 있다.
+ * 빈 조건은 키 자체를 싣지 않는다.
  */
 export const useBomList = (
   parentItemId: number | null,
   enabled: boolean,
+  bomCode = '',
 ): UseQueryResult<BomListResponse> => {
   const { client } = useApiClient();
 
   return useQuery({
-    queryKey: bomKeys.list(parentItemId ?? 0),
+    queryKey: bomKeys.filteredList(parentItemId ?? 0, bomCode),
     enabled: enabled && parentItemId !== null,
     queryFn: () => {
       if (parentItemId === null) {
@@ -75,7 +84,9 @@ export const useBomList = (
       }
 
       return runRequest(() =>
-        client.GET('/planning/boms', { params: { query: { parentItemId } } }),
+        client.GET('/planning/boms', {
+          params: { query: { parentItemId, ...(bomCode === '' ? {} : { bomCode }) } },
+        }),
       );
     },
   });

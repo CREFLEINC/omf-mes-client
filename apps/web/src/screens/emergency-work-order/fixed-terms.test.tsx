@@ -71,9 +71,7 @@ describe('FixedTermsPane', () => {
   it('자재가 부족할 때 갈 길을 함께 적는다 — 막힌 것만 알리면 화면 밖에서 처리한다', () => {
     const region = pane();
 
-    expect(within(region).getByText(t.materialRequest.note)).toHaveTextContent(
-      '추가 자재 출고 요청',
-    );
+    expect(within(region).getByText(t.materialRequest.note)).toHaveTextContent('자재 불출 요청');
   });
 
   it('내부 관리번호가 생긴다는 것과 ERP 발주와 무관하다는 것을 함께 알린다', () => {

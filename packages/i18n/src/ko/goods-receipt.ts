@@ -10,7 +10,7 @@
  */
 export const goodsReceipt = {
   title: '정상품 입하 처리',
-  breadcrumbRoot: '자재창고',
+  breadcrumbRoot: '구매 / 자재 관리',
   panes: {
     list: '대상 입하 전표 목록',
     lines: '고른 전표의 라인',
@@ -298,6 +298,7 @@ export const goodsReceipt = {
         'IQC 수입검사·판정에서 먼저 판정하세요. 합격하면 입고할 수 있고, 불합격이면 처분 판정 뒤 진행합니다.',
       otherTitle: (status: string) => `LOT 상태가 「${status}」라 입고할 수 없습니다.`,
       otherBody: '처분 판정에서 LOT 을 정상으로 되돌린 뒤 입고하세요.',
+      goToIqc: 'IQC 수입검사·판정으로 이동',
     },
     /*
      * 한 줄만 고를 수 있다는 사실. 밝히지 않으면 둘째 줄을 골랐을 때 앞 선택이 풀리는 것이

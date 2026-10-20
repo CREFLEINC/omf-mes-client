@@ -10,7 +10,7 @@ import type { Translated } from './translated';
  */
 export const commonCode: Translated<typeof ko.commonCode> = {
   title: 'Mã chung · Tổ chức · Công nhân',
-  breadcrumbRoot: 'Dữ liệu gốc',
+  breadcrumbRoot: 'Quản trị hệ thống',
   /** 탭 라벨. 만든 탭만 둔다. */
   tabs: {
     label: 'Mã chung · Tổ chức · Công nhân',

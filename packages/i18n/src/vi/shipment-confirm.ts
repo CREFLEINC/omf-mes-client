@@ -4,7 +4,7 @@ import type { Translated } from './translated';
 /** W-04-12 출하 확정·취소. 확정은 되돌릴 수 없고 취소는 확정 전에만 된다. */
 export const shipmentConfirm: Translated<typeof ko.shipmentConfirm> = {
   title: 'Xác nhận và hủy xuất hàng',
-  breadcrumbRoot: 'Xuất hàng',
+  breadcrumbRoot: 'Quản lý bán hàng / xuất hàng',
   panes: {
     summary: 'Tình hình chưa xác nhận',
     list: 'Lô xuất hàng chưa xác nhận',
