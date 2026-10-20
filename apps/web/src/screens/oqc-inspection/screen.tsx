@@ -336,6 +336,7 @@ export const OqcInspectionScreen = () => {
             round={isReinspectingNow ? null : round}
             inspectionRequestNo={detail.data.inspectionRequestNo}
             inspectedQty={inspectedQty}
+            hasLot={detail.data.lotId !== null}
             draft={draft}
             onChange={setDraft}
             judgmentOptions={judgmentOptions}

@@ -212,6 +212,23 @@ describe('ResultFormPane — 전이 경고', () => {
     expect(within(banner).getByText(transition.dispositionPath)).toBeInTheDocument();
   });
 
+  it('대상 LOT 이 없는 의뢰는 LOT 이 바뀌지 않는다고 말한다 — 경고와 확인 창 모두(서버가 전이 없이 확정만 한다)', async () => {
+    const user = userEvent.setup();
+    renderPane({ draft: MATCHING, judgment: 'REJECTED', hasLot: false });
+
+    const banner = screen.getByRole('alert');
+    expect(within(banner).getByText(transition.noLotTitle)).toBeInTheDocument();
+    expect(within(banner).getByText(transition.noLot)).toBeInTheDocument();
+    expect(within(banner).queryByText(transition.directionHold)).not.toBeInTheDocument();
+    expect(within(banner).queryByText(transition.pickingImpact)).not.toBeInTheDocument();
+    expect(screen.queryByText(transition.title)).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: t.save }));
+    const dialog = screen.getByRole('dialog');
+    expect(within(dialog).getByText(transition.noLot)).toBeInTheDocument();
+    expect(within(dialog).queryByText(transition.directionHold)).not.toBeInTheDocument();
+  });
+
   it('모르는 판정 코드에는 방향을 지어내지 않는다', () => {
     renderPane({ draft: MATCHING, judgment: 'SOMETHING_NEW' });
 

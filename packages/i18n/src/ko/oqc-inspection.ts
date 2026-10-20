@@ -230,13 +230,23 @@ export const oqcInspection = {
    */
   transition: {
     title: '확정하면 LOT 상태가 바뀝니다',
+    /**
+     * 대상 LOT 이 없는 의뢰 — 서버가 LOT 전이 없이 확정만 한다(`inspection-confirm.service.ts`
+     * moveTargetLot). LOT 이 바뀐다고 말하면 거짓이다. POP P-04-06 과 같은 말이다.
+     */
+    noLotTitle: '확정 전에 확인하세요',
+    noLot: '대상 LOT 이 없어 LOT 상태는 바뀌지 않습니다.',
     /** ① 대상 규모를 숫자로 — 지금 친 값을 그대로 되읽는다. */
     quantities: (accepted: string, rejected: string, held: string): string =>
       `합격 ${accepted} · 불합격 ${rejected} · 보류 ${held}`,
-    /** 아는 판정일 때만 방향을 말한다. ⛔ 모르는 코드에 방향을 지어내지 않는다. */
-    directionRelease: '확정하면 이 LOT 이 출하할 수 있는 상태로 풀립니다.',
-    directionHold: '확정하면 이 LOT 이 보류 상태로 묶입니다.',
-    directionPending: '확정하면 이 LOT 이 검사 대기 상태가 됩니다.',
+    /**
+     * 아는 판정일 때만 방향을 말한다. ⛔ 모르는 코드에 방향을 지어내지 않는다.
+     * ⭐ 상태 이름은 서버 전이표(`core/document-state/transitions.ts` C4·C5·C6)와 같다 — 합격 → 정상
+     *    (다른 보류가 남아 있으면 그대로) · 불합격 → 불량 · 보류 → 검사 대기. POP P-04-06 과 같은 말이다.
+     */
+    directionRelease: "확정하면 이 LOT 이 '정상' 상태가 됩니다(다른 보류가 없을 때).",
+    directionHold: "확정하면 이 LOT 이 '불량' 상태가 됩니다.",
+    directionPending: "확정하면 이 LOT 이 '검사 대기' 상태가 됩니다.",
     /** 모르는 판정 코드 — 방향을 빼고 사실만 남긴다. */
     directionUnknown: '확정하면 LOT 상태가 바뀝니다.',
     /** ② 다른 화면에 미치는 영향. ⚠ 건수를 쓰지 않는다 — 셀 자리가 이 화면에 없다. */

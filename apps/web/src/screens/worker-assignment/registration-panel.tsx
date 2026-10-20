@@ -152,9 +152,11 @@ export const RegistrationPanel = () => {
               </dd>
             </dl>
             <div className="pop-registration__actions">
-              <Button onClick={() => void registration.apply()}>{t.apply}</Button>
-              <Button variant="outlined" onClick={registration.restart}>
+              <Button size="xl" variant="outlined" onClick={registration.restart}>
                 {t.restart}
+              </Button>
+              <Button size="xl" onClick={() => void registration.apply()}>
+                {t.apply}
               </Button>
             </div>
           </>
@@ -165,9 +167,11 @@ export const RegistrationPanel = () => {
             <AlertBanner variant="warning">{t.prepareFailedTitle}</AlertBanner>
             <p className="pop-registration__guide">{t.prepareFailedBody}</p>
             <div className="pop-registration__actions">
-              <Button onClick={() => void registration.retryPrepare()}>{t.retryPrepare}</Button>
-              <Button variant="outlined" onClick={registration.restart}>
+              <Button size="xl" variant="outlined" onClick={registration.restart}>
                 {t.restart}
+              </Button>
+              <Button size="xl" onClick={() => void registration.retryPrepare()}>
+                {t.retryPrepare}
               </Button>
             </div>
           </>
@@ -184,6 +188,8 @@ export const RegistrationPanel = () => {
              */}
             <TextField
               ref={tokenRef}
+              size="xl"
+              fullWidth
               label={t.tokenLabel}
               placeholder={t.tokenPlaceholder}
               value={token}
@@ -194,17 +200,24 @@ export const RegistrationPanel = () => {
               }}
               disabled={busy}
             />
+            {/* 보조(지우기)는 왼쪽, 주 조작(등록 확인)은 오른쪽 끝 — 확인·적용 단계와 같은 순서다. */}
             <div className="pop-registration__actions">
               <Button
+                size="xl"
+                variant="text"
+                onClick={() => setToken('')}
+                disabled={busy || token === ''}
+              >
+                {t.clear}
+              </Button>
+              <Button
+                size="xl"
                 onClick={() => {
                   scanner.submit(token);
                 }}
                 disabled={busy || token.trim() === ''}
               >
                 {phase === 'verifying' ? t.verifying : t.verify}
-              </Button>
-              <Button variant="outlined" onClick={() => setToken('')} disabled={busy}>
-                {t.clear}
               </Button>
             </div>
           </>

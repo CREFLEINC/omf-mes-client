@@ -120,11 +120,14 @@ export const oqcInspection: Translated<typeof ko.oqcInspection> = {
 
   transition: {
     title: 'Chốt xong thì trạng thái LOT sẽ đổi',
+    noLotTitle: 'Hãy kiểm tra trước khi chốt',
+    noLot: 'Không có LOT đối tượng nên trạng thái LOT không thay đổi.',
     quantities: (accepted: string, rejected: string, held: string): string =>
       `Đạt ${accepted} · Không đạt ${rejected} · Tạm giữ ${held}`,
-    directionRelease: 'Chốt xong thì LOT này được gỡ sang trạng thái xuất hàng được.',
-    directionHold: 'Chốt xong thì LOT này bị giữ ở trạng thái tạm giữ.',
-    directionPending: 'Chốt xong thì LOT này chuyển sang trạng thái chờ kiểm tra.',
+    directionRelease:
+      "Chốt xong thì LOT này chuyển sang trạng thái 'Bình thường' (khi không còn tạm giữ khác).",
+    directionHold: "Chốt xong thì LOT này chuyển sang trạng thái 'Lỗi'.",
+    directionPending: "Chốt xong thì LOT này chuyển sang trạng thái 'Chờ kiểm tra'.",
     directionUnknown: 'Chốt xong thì trạng thái LOT sẽ đổi.',
     pickingImpact: 'Các lượt lấy hàng đang làm dở dùng LOT này cũng bị chặn theo.',
     pickedNotReturned: 'Phần đã lấy hàng rồi thì không được thu hồi lại bằng lần chuyển này.',

@@ -59,6 +59,8 @@ export interface ResultFormPaneProps {
    * 의뢰이기 때문이다(`screen.tsx` 의 `inspectedQty` 주석).
    */
   inspectedQty: number;
+  /** 의뢰에 대상 LOT 이 있는가 — 전이 경고·확인 창의 문장만 가른다(저장 조건과 무관). 기본 있음. */
+  hasLot?: boolean;
   draft: QuantityDraft;
   onChange: (draft: QuantityDraft) => void;
 
@@ -97,6 +99,7 @@ export const ResultFormPane = ({
   round,
   inspectionRequestNo,
   inspectedQty,
+  hasLot = true,
   draft,
   onChange,
   judgmentOptions,
@@ -315,7 +318,7 @@ export const ResultFormPane = ({
        * ⛔ **되돌릴 수 없는 쓰기가 무엇을 하는지 누르기 «전»에 보인다.** 확인 창에도 같은 본문이
        * 다시 서지만, 창을 열기 전에 이미 보고 판단할 수 있어야 한다.
        */}
-      {!isLocked && <TransitionWarning preview={preview} />}
+      {!isLocked && <TransitionWarning preview={preview} hasLot={hasLot} />}
 
       {/* 창이 열려 있는 동안에는 배너를 창 안에서 낸다 — 밖에 내면 창에 가려 보이지 않는다. */}
       {openedAt === null && banner}
@@ -395,6 +398,7 @@ export const ResultFormPane = ({
           inspectionRequestNo={inspectionRequestNo}
           judgmentLabel={labelOfCode(judgmentOptions, judgment)}
           preview={preview}
+          hasLot={hasLot}
           banner={banner}
           isSaving={isSaving}
           onClose={() => {

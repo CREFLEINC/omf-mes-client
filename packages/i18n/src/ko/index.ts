@@ -139,6 +139,7 @@ import { inspectionDocuments } from './inspection-documents';
 import { inspectionHistory } from './inspection-history';
 import { pqcInspectionRegister } from './pqc-inspection-register';
 import { materialDefect } from './material-defect';
+import { popOqcInspection } from './pop-oqc-inspection';
 import { popMaterialLotLabel } from './pop-material-lot-label';
 import { reworkResultRegister } from './rework-result-register';
 import { packingLabelReprint } from './packing-label-reprint';
@@ -278,6 +279,7 @@ export const ko = {
   inspectionHistory,
   pqcInspectionRegister,
   materialDefect,
+  popOqcInspection,
   popMaterialLotLabel,
   workStart,
   workPrecheckGate,

@@ -36,34 +36,45 @@ const DIRECTION_TEXT = {
 export interface TransitionWarningProps {
   /** `null` 이면 아무것도 그리지 않는다 — 셀 수 없는 동안 숫자가 거짓이 된다 */
   preview: TransitionPreview | null;
+  /**
+   * 의뢰에 대상 LOT 이 있는가. **없으면 서버가 LOT 을 옮기지 않는다**(전이 없이 확정만) — 그때는
+   * 방향·피킹 문장을 내지 않고 「바뀌지 않는다」고 말한다. 표시만 바뀌고 저장 조건은 그대로다.
+   */
+  hasLot?: boolean;
 }
 
 /**
  * 경고의 **본문만**. 확인 창이 같은 문장을 다시 써야 하는데, 배너째로 겹치면 같은 알림이 두 번
  * 읽힌다(둘 다 `role="alert"` 이다) — 그래서 본문을 따로 갖는다.
  */
-export const TransitionWarningBody = ({ preview }: TransitionWarningProps) => {
+export const TransitionWarningBody = ({ preview, hasLot = true }: TransitionWarningProps) => {
   if (preview === null) return null;
 
   return (
     <>
       <p>{t.quantities(preview.accepted, preview.rejected, preview.held)}</p>
-      <p>{DIRECTION_TEXT[preview.direction]}</p>
-      <p>{t.pickingImpact}</p>
-      <p>{t.pickedNotReturned}</p>
+      {hasLot ? (
+        <>
+          <p>{DIRECTION_TEXT[preview.direction]}</p>
+          <p>{t.pickingImpact}</p>
+          <p>{t.pickedNotReturned}</p>
+        </>
+      ) : (
+        <p>{t.noLot}</p>
+      )}
       <p>{t.noAmendment}</p>
       <p>{t.dispositionPath}</p>
     </>
   );
 };
 
-export const TransitionWarning = ({ preview }: TransitionWarningProps) => {
+export const TransitionWarning = ({ preview, hasLot = true }: TransitionWarningProps) => {
   if (preview === null) return null;
 
   return (
     <div className="banner-slot">
-      <AlertBanner variant="warning" title={t.title}>
-        <TransitionWarningBody preview={preview} />
+      <AlertBanner variant="warning" title={hasLot ? t.title : t.noLotTitle}>
+        <TransitionWarningBody preview={preview} hasLot={hasLot} />
       </AlertBanner>
     </div>
   );
