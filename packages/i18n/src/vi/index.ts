@@ -51,6 +51,10 @@ import { inboundVariance } from './inbound-variance';
 import { inspectionResultInsights } from './inspection-result-insights';
 import { inspectionStandard } from './inspection-standard';
 import { integrationSync } from './integration-sync';
+import { erpBom } from './erp-bom';
+import { erpEmployee } from './erp-employee';
+import { erpItem } from './erp-item';
+import { erpProductionOrder } from './erp-production-order';
 import { iqcInspection } from './iqc-inspection';
 import { iqcSkipApproval } from './iqc-skip-approval';
 import { iqcSkipRequest } from './iqc-skip-request';
@@ -96,6 +100,10 @@ import { productPicking } from './product-picking';
 import { productReceipt } from './product-receipt';
 import { productStockStatus } from './product-stock-status';
 import { productionOrder } from './production-order';
+import { erpPurchaseOrder } from './erp-purchase-order';
+import { erpSalesOrder } from './erp-sales-order';
+import { erpPartner } from './erp-partner';
+import { erpCommonCode } from './erp-common-code';
 import { productionPlan } from './production-plan';
 import { productionResult } from './production-result';
 import { putaway } from './putaway';
@@ -185,6 +193,10 @@ export const vi: Translated<Messages> = {
   inspectionResultInsights,
   inspectionStandard,
   integrationSync,
+  erpBom,
+  erpEmployee,
+  erpItem,
+  erpProductionOrder,
   iqcInspection,
   iqcSkipApproval,
   iqcSkipRequest,
@@ -227,6 +239,10 @@ export const vi: Translated<Messages> = {
   pqcInspection,
   productDisposalRequest,
   productionOrder,
+  erpPurchaseOrder,
+  erpSalesOrder,
+  erpPartner,
+  erpCommonCode,
   productionPlan,
   productionResult,
   productPicking,
