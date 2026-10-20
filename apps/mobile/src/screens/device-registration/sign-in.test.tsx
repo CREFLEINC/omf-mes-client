@@ -3,7 +3,7 @@ import { join } from 'node:path';
 
 import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { MemoryRouter } from 'react-router';
+import { MemoryRouter, Route, Routes } from 'react-router';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { DeviceExpiredNotice } from '../../patterns/device-expired-notice';
@@ -132,12 +132,24 @@ const queuedEntry = (id: string) => ({
   confirmation: 'pending',
 });
 
+/* 명부의 사번을 끝까지 누르면 「확인」 없이 들어간다. 이 시험들은 라우트를 두지 않아 화면이 남는다. */
 const signedIn = async (user: ReturnType<typeof userEvent.setup>) => {
   await screen.findByRole('group', { name: '사번 입력' });
   await press(user, '900028');
-  await user.click(screen.getByRole('button', { name: '확인' }));
   await screen.findByText('작업자 1 · 900028');
 };
+
+/* 들어간 뒤 어디로 가는지 보려면 작업 목록 자리를 함께 세운다. */
+const mountWithHome = () =>
+  renderWithProviders(
+    <MemoryRouter>
+      <Routes>
+        <Route path="/" element={<WorkerSignInScreen />} />
+        <Route path="/screens" element={<p>작업 목록 화면</p>} />
+      </Routes>
+    </MemoryRouter>,
+    { fetch: createStubFetch([]) },
+  );
 
 beforeEach(async () => {
   reads.gate = null;
@@ -160,10 +172,41 @@ describe('사번 확인 화면', () => {
 
     await screen.findByRole('group', { name: '사번 입력' });
     await press(user, '900028');
-    await user.click(screen.getByRole('button', { name: '확인' }));
 
     expect(await screen.findByText('작업자 1 · 900028')).toBeInTheDocument();
     expect(screen.getByText('이 기기의 기록은 이 사번으로 남습니다.')).toBeInTheDocument();
+  });
+
+  /* 전에는 확인 · 확인 카드 · 「작업 목록으로」를 거쳤다. 누구로 기록되는지는 앱바가 보인다. */
+  it('사번을 끝까지 누르면 확인 없이 작업 목록으로 간다', async () => {
+    const user = userEvent.setup();
+    mountWithHome();
+
+    await screen.findByRole('group', { name: '사번 입력' });
+    expect(screen.getByText('사번을 끝까지 누르면 바로 작업 목록으로 갑니다')).toBeInTheDocument();
+
+    await press(user, '900028');
+
+    expect(await screen.findByText('작업 목록 화면')).toBeInTheDocument();
+  });
+
+  /* 더 긴 사번이 있으면 짧은 쪽에서 넘기지 않는다. 그 사람은 「확인」으로 들어간다. */
+  it('더 쳐서 될 사번이 남아 있으면 기다렸다가 확인으로 들어간다', async () => {
+    store.set(
+      'worker-directory',
+      JSON.stringify([...DIRECTORY, { workerNo: '9000', workerName: '짧은 사번' }]),
+    );
+    const user = userEvent.setup();
+    mountWithHome();
+
+    await screen.findByRole('group', { name: '사번 입력' });
+    await press(user, '9000');
+
+    expect(screen.queryByText('작업 목록 화면')).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: '확인' }));
+
+    expect(await screen.findByText('작업 목록 화면')).toBeInTheDocument();
   });
 
   it('없는 사번은 그렇게 말하고 현재 작업자를 세우지 않는다', async () => {
@@ -224,7 +267,6 @@ describe('사번 확인 화면', () => {
 
     await screen.findByRole('group', { name: '사번 입력' });
     await press(user, '900028');
-    await user.click(screen.getByRole('button', { name: '확인' }));
     await screen.findByText('작업자 1 · 900028');
 
     await user.click(screen.getByRole('button', { name: '사번 바꾸기' }));

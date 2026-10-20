@@ -9,12 +9,15 @@ import { useDeviceTokenState } from '../../patterns/load-failure';
 import { LocalNetworkNotice } from '../../patterns/local-network';
 import { useOutbox } from '../../patterns/outbox';
 import { useScreenTitle } from '../../patterns/screen-title';
-import { useWorkerSession } from '../../patterns/worker-session';
+import { useWorkerSession, type Worker } from '../../patterns/worker-session';
 import { loadWorkerDirectory, type WorkerEntry } from './directory';
-import { verifyWorkerNo, type SignInResult } from './verify';
+import { autoSignInOf, verifyWorkerNo, type SignInResult } from './verify';
 import './sign-in.css';
 
 const t = messages.deviceRegistration.signIn;
+
+/** 작업 목록. 사번을 확인하면 이리 간다. */
+const HOME_PATH = '/screens';
 
 /*
  * 계약 Worker.workerNo 의 상한이다. 화면이 더 좁히지 않는다 - 계약이 형식을 강제하지 않기로
@@ -93,13 +96,22 @@ export const WorkerSignInScreen = () => {
     };
   }, []);
 
+  /*
+   * 확인되면 곧바로 작업 목록으로 간다. 전에는 확인 카드를 한 번 더 보이고 「작업 목록으로」를
+   * 눌러야 했다 - 누구로 기록되는지는 앱바의 사번 칩이 늘 보인다.
+   */
+  const enter = (next: Worker) => {
+    signIn(next);
+    setEntry('');
+    setRejected(null);
+    void navigate(HOME_PATH);
+  };
+
   const confirm = () => {
     const result = verifyWorkerNo(directory ?? null, entry);
 
     if (result.kind === 'ok') {
-      signIn(result.worker);
-      setEntry('');
-      setRejected(null);
+      enter(result.worker);
       return;
     }
 
@@ -211,7 +223,7 @@ export const WorkerSignInScreen = () => {
           size="2xl"
           disabled={expired}
           onClick={() => {
-            void navigate('/screens');
+            void navigate(HOME_PATH);
           }}
         >
           {t.toWork}
@@ -259,6 +271,7 @@ export const WorkerSignInScreen = () => {
         readOnly
         size="xl"
         fullWidth
+        helperText={t.hint}
         error={rejected?.kind === 'unknown' ? t.unknown : undefined}
       />
 
@@ -267,6 +280,13 @@ export const WorkerSignInScreen = () => {
         onChange={(next) => {
           setEntry(next);
           setRejected(null);
+
+          /* 명부의 사번 하나로 정해지면 「확인」을 누르지 않아도 들어간다. */
+          const matched = autoSignInOf(directory ?? null, next);
+
+          if (matched !== null) {
+            enter(matched);
+          }
         }}
         maxLength={MAX_WORKER_NO_LENGTH}
         label={t.keypad.label}
