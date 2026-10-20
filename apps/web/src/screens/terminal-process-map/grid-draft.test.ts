@@ -31,11 +31,11 @@ const row = (processId: number, patch: Partial<ProcessRowView> = {}): ProcessRow
 });
 
 describe('addProcess', () => {
-  it('새 줄은 전부 닫힘이다 — 더하는 것과 여는 것은 다른 일이다', () => {
+  it('새 줄은 작업 시작만 켜고 나머지는 닫는다', () => {
     const [added] = addProcess([], 7, '사출');
 
     expect(added).toBeDefined();
-    expect(FLAG_KEYS.every((key) => added?.[key] === false)).toBe(true);
+    expect(FLAG_KEYS.filter((key) => added?.[key] === true)).toEqual(['canStartWork']);
   });
 
   it('이미 있는 공정은 두 줄로 두지 않는다', () => {

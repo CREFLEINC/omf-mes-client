@@ -32,7 +32,7 @@ export type FlagKey = (typeof FLAG_KEYS)[number];
 
 export const flagLabel = (key: FlagKey): string => t.flags[key];
 
-/** 기본은 **닫힘**이다 — 새 행을 더할 때 아무것도 열려 있지 않다. */
+/** 기본은 **닫힘**이다 — 서버가 값을 주지 않은 플래그는 열지 않는다. */
 export const ALL_CLOSED: Record<FlagKey, boolean> = {
   canStartWork: false,
   canCompleteWork: false,

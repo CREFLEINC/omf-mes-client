@@ -26,11 +26,14 @@ export type GridDraft = ProcessRowView[];
 export const hasProcess = (draft: GridDraft, processId: number): boolean =>
   draft.some((row) => row.processId === processId);
 
-/** 공정 한 줄을 더한다. 새 줄은 **전부 닫힘**이다. */
+/**
+ * 공정 한 줄을 더한다. 새 줄은 「작업 시작」만 켠 채로 선다 — 기능이 하나도 없는 줄은 저장할 수 없어,
+ * 더하자마자 경고부터 보이지 않게 한다.
+ */
 export const addProcess = (draft: GridDraft, processId: number, processName: string): GridDraft => {
   if (hasProcess(draft, processId)) return draft;
 
-  return [...draft, { processId, processName, ...ALL_CLOSED }];
+  return [...draft, { processId, processName, ...ALL_CLOSED, canStartWork: true }];
 };
 
 export const removeProcess = (draft: GridDraft, processId: number): GridDraft =>

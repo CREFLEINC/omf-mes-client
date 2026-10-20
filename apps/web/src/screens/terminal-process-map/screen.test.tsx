@@ -170,7 +170,6 @@ describe('TerminalProcessMapScreen 기능 구성 저장', () => {
     expect(screen.getAllByText(t.grid.noFlag)).toHaveLength(1);
     await user.click(flag('합성 사출', 'canCompleteWork'));
     expect(save).toBeDisabled();
-    expect(save).toHaveAccessibleDescription(t.grid.noFlag);
 
     await user.click(flag('합성 조립', 'canInputResult'));
 
@@ -178,8 +177,8 @@ describe('TerminalProcessMapScreen 기능 구성 저장', () => {
     expect(save).toBeEnabled();
   });
 
-  it('서버가 줄을 짚어 거절하면 그 줄에 서버 문구를 붙인다', async () => {
-    const { user, puts } = renderWith(
+  const rejectSecondRow = () =>
+    renderWith(
       [
         processRow(11, '합성 사출', { canStartWork: true }),
         processRow(12, '합성 조립', { canPrintLabel: true }),
@@ -199,6 +198,19 @@ describe('TerminalProcessMapScreen 기능 구성 저장', () => {
           { status: 400 },
         ),
     );
+  const SERVER_MESSAGE = '합성 서버 문구 — 기능 없음';
+  const saveAndReject = async () => {
+    const rendered = rejectSecondRow();
+    await screen.findByRole('button', { name: t.grid.save });
+    await rendered.user.click(flag('합성 조립', 'canInputResult'));
+    await rendered.user.click(screen.getByRole('button', { name: t.grid.save }));
+    await waitFor(() => expect(rendered.puts).toHaveLength(1));
+    await screen.findByText(SERVER_MESSAGE);
+    return rendered;
+  };
+
+  it('서버가 줄을 짚어 거절하면 그 줄에 서버 문구를 붙인다', async () => {
+    const { user, puts } = rejectSecondRow();
 
     await screen.findByRole('button', { name: t.grid.save });
     await user.click(flag('합성 조립', 'canInputResult'));
@@ -210,5 +222,23 @@ describe('TerminalProcessMapScreen 기능 구성 저장', () => {
     expect(within(row as HTMLElement).getByText('합성 조립')).toBeInTheDocument();
     /* 줄에 붙인 문구는 띠에 다시 내지 않는다. */
     expect(screen.getAllByText('합성 서버 문구 — 기능 없음')).toHaveLength(1);
+  });
+
+  it('서버가 짚은 줄을 고치면 그 줄의 문구만 지운다', async () => {
+    const { user } = await saveAndReject();
+
+    await user.click(flag('합성 사출', 'canPrintLabel'));
+    expect(screen.getByText(SERVER_MESSAGE)).toBeInTheDocument();
+
+    await user.click(flag('합성 조립', 'canInputInspection'));
+    expect(screen.queryByText(SERVER_MESSAGE)).not.toBeInTheDocument();
+  });
+
+  it('「변경 취소」하면 서버가 짚은 문구도 지운다', async () => {
+    const { user } = await saveAndReject();
+
+    await user.click(screen.getByRole('button', { name: t.grid.reset }));
+
+    expect(screen.queryByText(SERVER_MESSAGE)).not.toBeInTheDocument();
   });
 });

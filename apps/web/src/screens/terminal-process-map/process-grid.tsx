@@ -11,8 +11,6 @@ export interface ProcessGridProps {
   rows: ProcessRowView[];
   /** 공정 번호 → 그 줄의 오류 문구 */
   rowErrors: ReadonlyMap<number, string>;
-  /** 오류 문구에 붙일 id — 저장 단추가 막힌 이유로 가리킨다 */
-  rowErrorId: (processId: number) => string;
   disabled: boolean;
   onToggle: (processId: number, key: FlagKey) => void;
   onToggleRow: (processId: number, open: boolean) => void;
@@ -31,7 +29,6 @@ export interface ProcessGridProps {
 export const ProcessGrid = ({
   rows,
   rowErrors,
-  rowErrorId,
   disabled,
   onToggle,
   onToggleRow,
@@ -65,9 +62,7 @@ export const ProcessGrid = ({
         ) : (
           <span className="terminal-map-process-cell">
             {row.processName}
-            <span id={rowErrorId(row.processId)} className="field-error">
-              {error}
-            </span>
+            <span className="field-error">{error}</span>
           </span>
         );
       },
