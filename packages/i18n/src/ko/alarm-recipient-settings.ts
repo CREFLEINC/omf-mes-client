@@ -1,6 +1,6 @@
 export const alarmRecipientSettings = {
   title: '알람 수신자 설정',
-  breadcrumbRoot: '알림',
+  breadcrumbRoot: '시스템 관리',
   description: '알림 유형마다 받을 조직·역할 또는 사용자를 지정합니다.',
   panes: { events: '알림 유형', recipients: '수신 규칙', preview: '실제 수신자 미리보기' },
   fields: {

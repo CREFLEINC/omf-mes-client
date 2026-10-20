@@ -7,7 +7,7 @@ import type { Translated } from './translated';
  */
 export const maintenanceResult: Translated<typeof ko.maintenanceResult> = {
   title: 'Kết quả bảo trì · phụ tùng',
-  breadcrumbRoot: 'Thiết bị / Công cụ',
+  breadcrumbRoot: 'Quản lý bảo trì thiết bị',
 
   panes: {
     filters: 'Điều kiện tra cứu',

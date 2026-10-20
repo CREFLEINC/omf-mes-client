@@ -6,7 +6,7 @@
  */
 export const warehouseLayout = {
   title: '창고 배치도',
-  breadcrumbRoot: '기준정보',
+  breadcrumbRoot: '기준정보 관리',
 
   panes: {
     map: '배치도',

@@ -9,7 +9,7 @@ import type { Translated } from './translated';
  */
 export const integrationSync: Translated<typeof ko.integrationSync> = {
   title: 'Tình hình đồng bộ liên kết',
-  breadcrumbRoot: 'Dữ liệu gốc',
+  breadcrumbRoot: 'Quản trị hệ thống',
   fields: {
     periodFrom: 'Bắt đầu kỳ',
     periodTo: 'Kết thúc kỳ',

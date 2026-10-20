@@ -6,8 +6,8 @@ import type { Translated } from './translated';
  * 그 밖의 코드는 그대로 낸다. 취소 요청은 승인을 타고, 실행은 사람이 다시 누른다.
  */
 export const documentProgress: Translated<typeof ko.documentProgress> = {
-  title: 'Tiến độ · hủy chứng từ logistics',
-  breadcrumbRoot: 'Kho vật tư',
+  title: 'Tra cứu · hủy chứng từ logistics',
+  breadcrumbRoot: 'Quản lý mua hàng / vật tư',
   panes: {
     detail: 'Chứng từ đã chọn',
   },

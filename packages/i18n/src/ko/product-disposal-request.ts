@@ -14,7 +14,7 @@
  */
 export const productDisposalRequest = {
   title: '제품 폐기 요청',
-  breadcrumbRoot: '출하',
+  breadcrumbRoot: '영업 / 출하 관리',
   /** ⛔ 승인·반려는 이 화면에 없다 — 결재함 소관이다(J-10). 어디서 하는지를 머리에 적는다. */
   headerNotice: '결재는 결재함에서 합니다. 이 화면은 요청과 출고를 맡습니다.',
   /** §3 — 탭 둘. **차례가 곧 업무 차례다**: 요청을 올리고, 올라간 요청을 나중에 본다. */

@@ -8,7 +8,7 @@
  */
 export const notice = {
   title: '공지·전달',
-  breadcrumbRoot: '알림',
+  breadcrumbRoot: '업무함',
 
   panes: {
     list: '공지 목록',

@@ -7,7 +7,7 @@ import type { Translated } from './translated';
  */
 export const goodsReceipt: Translated<typeof ko.goodsReceipt> = {
   title: 'Xử lý nhập hàng đạt',
-  breadcrumbRoot: 'Kho vật tư',
+  breadcrumbRoot: 'Quản lý mua hàng / vật tư',
   panes: {
     list: 'Danh sách phiếu nhập hàng',
     lines: 'Các dòng của phiếu đã chọn',
@@ -198,6 +198,7 @@ export const goodsReceipt: Translated<typeof ko.goodsReceipt> = {
         'Hãy đánh giá ở màn hình kiểm tra đầu vào IQC trước. Đạt thì nhập kho được; không đạt thì xử lý xong mới tiếp tục.',
       otherTitle: (status: string) => `LOT đang ở trạng thái 「${status}」 nên không thể nhập kho.`,
       otherBody: 'Hãy đưa LOT về bình thường ở màn hình xử lý rồi nhập kho.',
+      goToIqc: 'Đi tới kiểm tra đầu vào IQC',
     },
     singleLineSelect: 'Mỗi lần chỉ chọn được một dòng nhập hàng.',
     autoApplied: 'Nhà máy và ngày nghiệp vụ được tự động áp dụng.',

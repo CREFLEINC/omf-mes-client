@@ -7,7 +7,7 @@
  */
 export const approvalInbox = {
   title: '결재함',
-  breadcrumbRoot: '승인',
+  breadcrumbRoot: '업무함',
   panes: {
     list: '승인 요청 목록',
     detail: '고른 요청',

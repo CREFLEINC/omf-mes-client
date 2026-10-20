@@ -7,7 +7,7 @@
  */
 export const commonCode = {
   title: '공통코드·조직·작업자',
-  breadcrumbRoot: '기준정보',
+  breadcrumbRoot: '시스템 관리',
   /** 탭 라벨. **만든 탭만 둔다** — 없는 탭의 라벨을 미리 두면 무엇이 렌더되는지 흐려진다. */
   tabs: {
     label: '공통코드·조직·작업자',

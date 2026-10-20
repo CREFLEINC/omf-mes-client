@@ -7,7 +7,7 @@ import type { Translated } from './translated';
  */
 export const maintenanceOrder: Translated<typeof ko.maintenanceOrder> = {
   title: 'Phát hành lệnh bảo trì',
-  breadcrumbRoot: 'Thiết bị / Công cụ',
+  breadcrumbRoot: 'Quản lý bảo trì thiết bị',
 
   panes: {
     triggers: 'Đối tượng phát hành',

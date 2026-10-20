@@ -16,7 +16,7 @@
  */
 export const stockStatus = {
   title: '재고 현황·상태 조회',
-  breadcrumbRoot: '자재창고',
+  breadcrumbRoot: '구매 / 자재 관리',
   panes: {
     list: '재고 잔액 목록',
     /*

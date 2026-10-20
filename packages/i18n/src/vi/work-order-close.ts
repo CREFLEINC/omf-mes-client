@@ -14,7 +14,7 @@ import type { Translated } from './translated';
  */
 export const workOrderClose: Translated<typeof ko.workOrderClose> = {
   title: 'Đóng W/O · gửi kết quả sang ERP',
-  breadcrumbRoot: 'Thực thi sản xuất',
+  breadcrumbRoot: 'Quản lý sản xuất',
   detailSummary: {
     pane: 'Tóm tắt chi tiết đóng lệnh sản xuất',
     heading: 'Chi tiết đóng lệnh sản xuất',

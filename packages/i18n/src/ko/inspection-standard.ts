@@ -7,7 +7,7 @@
  */
 export const inspectionStandard = {
   title: '검사기준 등록',
-  breadcrumbRoot: '기준정보',
+  breadcrumbRoot: '품질 관리',
   panes: {
     plan: '검사기준',
     version: '버전 목록',

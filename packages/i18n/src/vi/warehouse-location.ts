@@ -7,7 +7,7 @@ import type { Translated } from './translated';
  */
 export const warehouseLocation: Translated<typeof ko.warehouseLocation> = {
   title: 'Kho · Location',
-  breadcrumbRoot: 'Dữ liệu gốc',
+  breadcrumbRoot: 'Quản lý dữ liệu gốc',
   tabs: {
     warehouse: 'Thông tin kho',
     location: 'Location',

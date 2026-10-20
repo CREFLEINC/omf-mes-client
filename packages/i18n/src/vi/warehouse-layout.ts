@@ -9,7 +9,7 @@ import type { Translated } from './translated';
  */
 export const warehouseLayout: Translated<typeof ko.warehouseLayout> = {
   title: 'Sơ đồ bố trí kho',
-  breadcrumbRoot: 'Dữ liệu gốc',
+  breadcrumbRoot: 'Quản lý dữ liệu gốc',
 
   panes: {
     map: 'Sơ đồ bố trí',

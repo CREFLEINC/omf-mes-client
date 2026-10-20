@@ -11,7 +11,7 @@ import {
 import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
-import { useSearchParams } from 'react-router';
+import { Link, useSearchParams } from 'react-router';
 
 import { SaveErrorBanner } from '../../patterns/master';
 import { CodeFields } from './code-fields';
@@ -795,9 +795,18 @@ export const GoodsReceiptScreen = () => {
                   : t.notes.iqcGate.otherTitle(gatedLotStatus)
               }
             >
-              {gatedLotStatus === 'INSPECTION_PENDING'
-                ? t.notes.iqcGate.pendingBody
-                : t.notes.iqcGate.otherBody}
+              {gatedLotStatus === 'INSPECTION_PENDING' ? (
+                <>
+                  {t.notes.iqcGate.pendingBody}{' '}
+                  {/*
+                   * IQC 는 「품질 관리」 묶음에 있다(아키텍처가 품질을 독립 영역으로 둠). 입고 담당이
+                   * 메뉴를 옮겨 다니지 않게 막힌 자리에서 바로 잇는다(사용자 2026-10-20 · 1단계).
+                   */}
+                  <Link to="/logistics/iqc-inspection">{t.notes.iqcGate.goToIqc}</Link>
+                </>
+              ) : (
+                t.notes.iqcGate.otherBody
+              )}
             </AlertBanner>
           </div>
         )}

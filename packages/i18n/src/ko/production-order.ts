@@ -1,6 +1,6 @@
 export const productionOrder = {
   title: 'ERP W/O 수신·조회',
-  breadcrumbRoot: '생산',
+  breadcrumbRoot: '생산 관리',
   fields: {
     productionOrderNo: 'ERP W/O 번호',
     erpProductionOrderNo: 'ERP 원번호',

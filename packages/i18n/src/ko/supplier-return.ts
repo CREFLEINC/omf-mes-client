@@ -14,7 +14,7 @@
  */
 export const supplierReturn = {
   title: '공급사 반품 처리',
-  breadcrumbRoot: '자재창고',
+  breadcrumbRoot: '구매 / 자재 관리',
   panes: {
     list: '대상 입고 전표 목록',
     lines: '고른 입고 전표의 라인',

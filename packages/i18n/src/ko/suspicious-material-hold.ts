@@ -1,6 +1,6 @@
 export const suspiciousMaterialHold = {
   title: '의심자재 등록',
-  breadcrumbRoot: '품질관리',
+  breadcrumbRoot: '품질 관리',
   candidate: {
     pane: '의심자재 후보',
     fields: {

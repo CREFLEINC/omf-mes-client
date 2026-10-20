@@ -4,7 +4,7 @@ import type { Translated } from './translated';
 /** W-04-02 출하 예정 목록. 조회 전용이라 쓰기 어휘가 하나도 없다. */
 export const shipmentSchedule: Translated<typeof ko.shipmentSchedule> = {
   title: 'Danh sách kế hoạch xuất hàng',
-  breadcrumbRoot: 'Xuất hàng',
+  breadcrumbRoot: 'Quản lý bán hàng / xuất hàng',
   panes: {
     list: 'Danh sách kế hoạch xuất hàng',
     fulfillmentPlant: 'Chỉ định nhà máy xuất hàng',

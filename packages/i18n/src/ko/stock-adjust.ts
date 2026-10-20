@@ -11,7 +11,7 @@
  */
 export const stockAdjust = {
   title: '재고조정',
-  breadcrumbRoot: '자재창고',
+  breadcrumbRoot: '구매 / 자재 관리',
   panes: {
     source: '조정 원천',
     lines: '조정 대상',

@@ -234,16 +234,30 @@ describe('베트남어 문구 — 관리웹', () => {
 });
 
 /**
- * 사이드바 76개와 셸의 제 이름은 `@omf-mes/i18n` 이 아니라 `nav-tree.ts`·`shell-label.ts`·
- * `patterns/locale-select.tsx` 가
- * 갖는다(그 규칙의 근거는 `nav-tree.ts` 머리말에 있다). **그래서 여기서 따로 잰다** — 위
- * 감지기는 문구 묶음만 훑어 이 76개를 보지 못한다.
+ * 사이드바의 이름(화면·탭 묶음·섹션)과 셸의 제 이름은 `@omf-mes/i18n` 이 아니라 `nav-tree.ts`·
+ * `shell-label.ts`·`patterns/locale-select.tsx` 가 갖는다(그 규칙의 근거는 `nav-tree.ts` 머리말에
+ * 있다). **그래서 여기서 따로 잰다** — 위 감지기는 문구 묶음만 훑어 이 이름들을 보지 못한다.
+ *
+ * ⚠ **탭 묶음 줄의 이름은 `NAV_ENTRIES` 에 없다**(묶음은 화면이 아니라 탭으로 펴서 담는다). 묶음
+ * 이름도 사이드바와 탭 막대의 접근명으로 그려지는 이름이라 따로 더한다. 탭 이름은 `NAV_ENTRIES` 에
+ * 펴서 들어 있다.
  */
 describe('베트남어 이름 — 셸이 제 손으로 드는 것', () => {
-  const named: LocalizedLabel[] = [...NAV_ENTRIES, ...NAV_GROUPS, SHELL_BRAND, LOCALE_CHOICE];
+  const hubs: LocalizedLabel[] = NAV_GROUPS.flatMap((group) => group.items).filter(
+    (item) => item.tabs !== undefined,
+  );
+  const named: LocalizedLabel[] = [
+    ...NAV_ENTRIES,
+    ...hubs,
+    ...NAV_GROUPS,
+    SHELL_BRAND,
+    LOCALE_CHOICE,
+  ];
 
-  it('잴 이름이 있다 — 항목 68 · 묶음 9 · 제품 이름 · 언어칸', () => {
-    expect(named).toHaveLength(79);
+  it(`잴 이름이 있다 — 화면 ${NAV_ENTRIES.length} · 탭 묶음 ${hubs.length} · 섹션 ${NAV_GROUPS.length} · 제품 이름 · 언어칸`, () => {
+    /* 빈 통과를 막는다 — 탭 묶음이 실제로 들어왔다. */
+    expect(hubs.length).toBeGreaterThan(0);
+    expect(named).toHaveLength(NAV_ENTRIES.length + hubs.length + NAV_GROUPS.length + 2);
   });
 
   /** 빈 `labelVi` 는 베트남어 화면에서 **아무것도 안 보이는 줄**이 된다. 공백만 있는 것도 빈 것이다. */
@@ -264,10 +278,19 @@ describe('베트남어 이름 — 셸이 제 손으로 드는 것', () => {
    * ⛔ **한국어를 그대로 베껴 두지 않는다.** 위 두 감지기는 `labelVi: 'Routing(공정)'` 같은
    * 것을 잡지만, 한국어가 하나도 없는 이름(`P/O 수신·조회` → `P/O`)을 그대로 복사하면 **찬
    * 것처럼 보인다.** 두 값이 같다는 것은 옮기지 않았다는 뜻이다.
+   *
+   * ⚠ **예외는 두 언어에서 같은 말인 약어뿐이고, 이름째 적는다.** `BOM`·`ERP W/O` 는 베트남어 화면도
+   * 그대로 쓰는 업무 약어라 옮길 말이 없다(`nav-tree.ts` 의 ERP 데이터 탭·생산 묶음). 규칙(「한글이
+   * 없으면 통과」)으로 풀면 위의 `P/O` 사고가 그대로 지나가므로 **값을 하나하나** 적는다.
    */
+  const SAME_IN_BOTH_LANGUAGES = new Set(['BOM', 'ERP W/O']);
+
   it('베트남어 이름이 한국어 이름을 베끼지 않았다', () => {
     expect(
-      named.filter((entry) => entry.labelVi === entry.label).map((entry) => entry.label),
+      named
+        .filter((entry) => entry.labelVi === entry.label)
+        .filter((entry) => !SAME_IN_BOTH_LANGUAGES.has(entry.label))
+        .map((entry) => entry.label),
     ).toEqual([]);
   });
 });

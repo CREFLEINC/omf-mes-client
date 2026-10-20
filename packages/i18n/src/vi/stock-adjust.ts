@@ -8,7 +8,7 @@ import type { Translated } from './translated';
  */
 export const stockAdjust: Translated<typeof ko.stockAdjust> = {
   title: 'Điều chỉnh tồn kho',
-  breadcrumbRoot: 'Kho vật tư',
+  breadcrumbRoot: 'Quản lý mua hàng / vật tư',
   panes: {
     source: 'Nguồn điều chỉnh',
     lines: 'Đối tượng điều chỉnh',

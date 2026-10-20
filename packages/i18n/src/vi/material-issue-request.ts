@@ -8,8 +8,8 @@ import type { Translated } from './translated';
  * 말한다. 결과 설명으로 무르게 옮기면 이 화면의 존재 이유가 사라진다.
  */
 export const materialIssueRequest: Translated<typeof ko.materialIssueRequest> = {
-  title: 'Yêu cầu xuất kho vật tư bổ sung',
-  breadcrumbRoot: 'Sản xuất',
+  title: 'Yêu cầu cấp phát vật tư',
+  breadcrumbRoot: 'Quản lý mua hàng / vật tư',
   policyNotice: {
     title: 'Cấm mang vật tư ra khỏi kho mà không theo quy trình',
     description:
@@ -121,7 +121,7 @@ export const materialIssueRequest: Translated<typeof ko.materialIssueRequest> = 
     warehouseAutoFilled: 'Đã điền theo vị trí bán thành phẩm mặc định của W/O. Cần thì đổi được.',
   },
   result: {
-    title: 'Đã phát hành yêu cầu xuất kho vật tư bổ sung',
+    title: 'Đã phát hành yêu cầu cấp phát vật tư',
     issueRequestNo: (no: string) => `Số yêu cầu: ${no}`,
     statusCode: (code: string) => `Trạng thái: ${code}`,
     lineCount: (count: number) => `${String(count)} mặt hàng`,

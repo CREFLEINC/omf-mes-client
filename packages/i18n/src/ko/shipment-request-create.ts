@@ -8,7 +8,7 @@
  */
 export const shipmentRequestCreate = {
   title: '출하지시서 Import·작업지시 생성',
-  breadcrumbRoot: '출하',
+  breadcrumbRoot: '영업 / 출하 관리',
   panes: {
     source: '출하지시서 목록',
     header: '출하작업지시 정보',

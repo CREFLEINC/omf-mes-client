@@ -7,7 +7,7 @@ import type { Translated } from './translated';
  */
 export const supplierReturn: Translated<typeof ko.supplierReturn> = {
   title: 'Xử lý trả hàng nhà cung cấp',
-  breadcrumbRoot: 'Kho vật tư',
+  breadcrumbRoot: 'Quản lý mua hàng / vật tư',
   panes: {
     list: 'Danh sách phiếu nhập kho',
     lines: 'Các dòng của phiếu nhập kho đã chọn',

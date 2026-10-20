@@ -4,7 +4,7 @@ import type { Translated } from './translated';
 /** W-01-09 입하 예정 조회. 조회 전용이고, 참조 이름의 세 갈래(미도착·목록에 없음·실패)를 가른다. */
 export const inboundSchedule: Translated<typeof ko.inboundSchedule> = {
   title: 'Tra cứu kế hoạch nhập hàng',
-  breadcrumbRoot: 'Kho vật tư',
+  breadcrumbRoot: 'Quản lý mua hàng / vật tư',
   panes: {
     list: 'Danh sách kế hoạch nhập hàng',
     lines: 'Các dòng của phiếu đã chọn',

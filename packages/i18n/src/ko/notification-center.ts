@@ -12,7 +12,7 @@
  */
 export const notificationCenter = {
   title: '알림센터',
-  breadcrumbRoot: '알림',
+  breadcrumbRoot: '업무함',
   panes: {
     list: '알림 목록',
   },

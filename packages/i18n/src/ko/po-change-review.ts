@@ -9,7 +9,7 @@
  */
 export const poChangeReview = {
   title: 'P/O 변경 관리자 확인',
-  breadcrumbRoot: '생산',
+  breadcrumbRoot: '생산 관리',
   panes: {
     list: '변경 알림 목록',
     diff: '무엇이 바뀌었나',

@@ -1990,6 +1990,23 @@ describe('GoodsReceiptScreen — 창고와 적치 위치', () => {
       expect(postRequests(requests)).toHaveLength(0);
     });
 
+    /*
+     * IQC 는 「품질 관리」 묶음에 있다 — 입고 담당이 메뉴를 옮겨 다니지 않게 막힌 자리에서 판정
+     * 화면으로 바로 잇는다(사용자 2026-10-20 · 1단계).
+     */
+    it('검사 대기 안내가 IQC 수입검사·판정 화면으로 가는 링크를 함께 건다', async () => {
+      fillCodeLists();
+      const { user } = renderScreen(withDefectWarehouse('INSPECTION_PENDING'), '?ir=9001');
+
+      await openPostPane(user);
+
+      expect(await screen.findByText(t.notes.iqcGate.pendingTitle)).toBeInTheDocument();
+      expect(screen.getByRole('link', { name: t.notes.iqcGate.goToIqc })).toHaveAttribute(
+        'href',
+        '/logistics/iqc-inspection',
+      );
+    });
+
     it('⛔ 그 밖의 입고 불가 상태도 잠그고 그 상태를 말한다', async () => {
       fillCodeLists();
       const { user } = renderScreen(withDefectWarehouse('SCRAPPED'), '?ir=9001');

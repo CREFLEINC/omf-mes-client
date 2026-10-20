@@ -4,7 +4,7 @@ import type { Translated } from './translated';
 /** W-04-05 긴급 직행 출하 처리. 문구의 중심은 「일어나지 않는 것」이다. */
 export const expeditedShipment: Translated<typeof ko.expeditedShipment> = {
   title: 'Xử lý xuất hàng thẳng khẩn cấp',
-  breadcrumbRoot: 'Xuất hàng',
+  breadcrumbRoot: 'Quản lý bán hàng / xuất hàng',
   headerNotice:
     'Bỏ qua luồng thông thường. Xuất hàng thẳng, không qua kho, không lấy hàng, không đóng gói.',
   panes: {

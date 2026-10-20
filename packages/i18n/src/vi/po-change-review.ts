@@ -12,7 +12,7 @@ import type { Translated } from './translated';
  */
 export const poChangeReview: Translated<typeof ko.poChangeReview> = {
   title: 'Quản trị xác nhận thay đổi P/O',
-  breadcrumbRoot: 'Sản xuất',
+  breadcrumbRoot: 'Quản lý sản xuất',
   panes: {
     list: 'Danh sách thông báo thay đổi',
     diff: 'Đã thay đổi những gì',

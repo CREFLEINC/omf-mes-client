@@ -12,7 +12,7 @@
  */
 export const judgmentCode = {
   title: '판정유형 코드',
-  breadcrumbRoot: '기준정보',
+  breadcrumbRoot: '품질 관리',
   loading: {
     group: '판정유형 코드 그룹을 확인하는 중',
   },

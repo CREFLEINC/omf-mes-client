@@ -6,7 +6,7 @@
  */
 export const routing = {
   title: 'Routing(공정)',
-  breadcrumbRoot: '기준정보',
+  breadcrumbRoot: '기준정보 관리',
   tabs: {
     label: 'Routing·공정 마스터',
     routing: 'Routing',

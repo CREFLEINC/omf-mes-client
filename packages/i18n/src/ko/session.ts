@@ -24,6 +24,7 @@ export const session = {
   },
   actions: {
     signOut: '로그아웃',
+    changePassword: '비밀번호 변경',
   },
   signOutFailure: {
     /**

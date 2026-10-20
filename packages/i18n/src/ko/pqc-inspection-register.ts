@@ -6,7 +6,7 @@
  */
 export const pqcInspectionRegister = {
   title: 'PQC 검사 등록·조회',
-  breadcrumbRoot: '품질관리',
+  breadcrumbRoot: '품질 관리',
 
   queue: {
     heading: '검사 의뢰',

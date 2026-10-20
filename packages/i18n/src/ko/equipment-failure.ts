@@ -7,7 +7,7 @@
  */
 export const equipmentFailure = {
   title: '설비고장 상세처리',
-  breadcrumbRoot: '설비/툴',
+  breadcrumbRoot: '설비 보전 관리',
 
   panes: {
     filters: '조회 조건',

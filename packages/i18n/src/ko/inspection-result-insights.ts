@@ -1,7 +1,7 @@
 /** 검사실적·검사결과 조회 화면. 검사 결과 목록·요약·불량률 추이·불량 분포와 측정치 전체 보기를 담는다. */
 export const inspectionResultInsights = {
   title: '검사실적·검사결과 조회',
-  breadcrumbRoot: '품질관리',
+  breadcrumbRoot: '품질 관리',
   /* 검사유형은 모집단을 가르는 축이다 — 목록의 유형 열과 요약·추이의 모집단 이름이 같은 말을 쓴다. */
   inspectionTypes: {
     IQC: '수입검사',

@@ -1,7 +1,7 @@
 /** W-04-04 출하 처리(상차·실물 출고). */
 export const shipmentProcessing = {
   title: '출하 처리(상차·실물 출고)',
-  breadcrumbRoot: '출하',
+  breadcrumbRoot: '영업 / 출하 관리',
   panes: {
     list: '확정 대기 출하작업지시 목록',
     lines: '출하 내역',

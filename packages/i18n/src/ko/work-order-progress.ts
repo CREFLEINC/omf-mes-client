@@ -13,7 +13,7 @@
  */
 export const workOrderProgress = {
   title: 'W/O 진행현황',
-  breadcrumbRoot: '생산실행',
+  breadcrumbRoot: '생산 관리',
 
   /** 조회 조건. */
   filters: {
