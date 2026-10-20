@@ -450,15 +450,20 @@ describe('ProductionOrderScreen', () => {
     });
 
     it('자동 계획이 이미 진행 중(409 INVALID_STATE)이면 충돌 문구 대신 잠시 뒤 다시 실행하라고 한다', async () => {
-      const { routes } = autoPlanRoutes(() =>
-        jsonResponse(
-          { code: 'INVALID_STATE', message: 'synthetic running', conflictCause: 'user' },
-          { status: 409 },
-        ),
-      );
+      let attempts = 0;
+      const { routes } = autoPlanRoutes(() => {
+        attempts += 1;
+        return attempts === 1
+          ? jsonResponse(
+              { code: 'INVALID_STATE', message: 'synthetic running', conflictCause: 'user' },
+              { status: 409 },
+            )
+          : result('CONFIRMED');
+      });
       const button = await openSelected(routes);
+      const user = userEvent.setup();
 
-      await userEvent.setup().click(button);
+      await user.click(button);
 
       expect(await screen.findByText(t.autoPlan.running)).toBeInTheDocument();
       expect(screen.queryByText(messages.conflict.user)).not.toBeInTheDocument();
@@ -466,6 +471,11 @@ describe('ProductionOrderScreen', () => {
         screen.queryByRole('button', { name: messages.conflict.reloadAction }),
       ).not.toBeInTheDocument();
       expect(button).toBeEnabled();
+
+      await user.click(button);
+
+      expect(await screen.findByText(t.autoPlan.confirmed)).toBeInTheDocument();
+      expect(screen.queryByText(t.autoPlan.running)).not.toBeInTheDocument();
     });
 
     it('취소된 P/O(400 STATE_LOCKED)면 서버 사유를 잠김 띠로 낸다', async () => {
