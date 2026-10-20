@@ -355,3 +355,35 @@ export const useStorageLocationNames = (): ((code: string | null) => string) => 
     return names?.get(code) ?? code;
   };
 };
+
+/** 스캔·입력 한 번에 찾아볼 품목 수. 정확히 맞는 것을 고르는 데 쓰므로 많을 필요가 없다. */
+const SCAN_LOOKUP_SIZE = 20;
+
+export type ScannedItem =
+  { kind: 'found'; itemId: number } | { kind: 'ambiguous' } | { kind: 'none' };
+
+/**
+ * 바코드·품목번호 한 번으로 품목을 정한다(빠른 조회 「품목코드」).
+ *
+ * ⚠ **바코드 값이 품목코드라고 본다.** 다른 체계(공급사 품번·라벨 바코드)면 서버의 바코드 → 품목 조회가
+ * 들어온 뒤 이 함수만 바꾼다.
+ *
+ * 품목코드가 정확히 같은 것(대소문자 무시)이 있으면 그것, 없고 찾은 것이 하나뿐이면 그것이다.
+ * 둘 다 아니면 사람이 고른다(`ambiguous` → 품목 선택 창).
+ */
+export const resolveScannedItem = async (client: Client, raw: string): Promise<ScannedItem> => {
+  const value = raw.trim();
+  const data = await runRequest(() =>
+    client.GET('/mdm/items', {
+      params: { query: { q: value, includeInactive: true, size: SCAN_LOOKUP_SIZE } },
+    }),
+  );
+  const exact = data.items.find((item) => item.itemCode.toLowerCase() === value.toLowerCase());
+
+  if (exact !== undefined) return { kind: 'found', itemId: exact.itemId };
+  if (data.items.length === 1 && data.items[0] !== undefined) {
+    return { kind: 'found', itemId: data.items[0].itemId };
+  }
+
+  return data.items.length === 0 ? { kind: 'none' } : { kind: 'ambiguous' };
+};

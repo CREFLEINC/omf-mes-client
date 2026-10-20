@@ -72,7 +72,7 @@ export interface InboundScheduleListResult {
  *
  * - `openOnly` — 서버 기본이 `true` 라 **끌 때만** 싣는다
  * - `overdueOnly` — 서버 기본이 `false` 라 **켤 때만** 싣는다. 켜면 미완료 조건이 함께 걸린다
- * - `size` — 싣지 않는다. 서버 기본(50)을 그대로 쓴다
+ * - `size` — 늘 20 을 싣는다(사용자 지시 2026-10-20)
  */
 export interface InboundScheduleQuery {
   expectedReceiptDateFrom?: string;
@@ -86,7 +86,7 @@ export interface InboundScheduleQuery {
   overdueOnly?: boolean;
   /** 첫 쪽이면 싣지 않는다 — 서버 기본값이 1이다. */
   page?: number;
-  /** 서버 상한 200. 화면은 싣지 않는다(기본 50). */
+  /** 서버 상한 200. 화면은 늘 20 을 싣는다(`screen.tsx` `LIST_PAGE_SIZE`). */
   size?: number;
 }
 

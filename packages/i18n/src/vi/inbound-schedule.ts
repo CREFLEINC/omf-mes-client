@@ -62,6 +62,18 @@ export const inboundSchedule: Translated<typeof ko.inboundSchedule> = {
     COMPLETED: 'Đã nhận đủ',
     CANCELLED: 'Đã hủy',
   },
+  quick: {
+    supplier: 'Nhà cung cấp',
+    supplierPlaceholder: 'Nhập tên hoặc ID nhà cung cấp',
+    item: 'Mã mặt hàng',
+    itemPlaceholder: 'Nhập mã mặt hàng',
+    scanNotFound: (value: string): string => `Không có mặt hàng khớp với 「${value}」.`,
+    scanFailed: 'Không tìm được mặt hàng. Hãy quét lại sau giây lát.',
+    today: 'Đến hôm nay',
+    overdue: 'Trễ hạn',
+    detailOpen: 'Mở điều kiện chi tiết',
+    detailClose: 'Thu gọn điều kiện chi tiết',
+  },
   filters: {
     all: 'Tất cả',
     itemPlaceholder: 'Tìm và chọn mặt hàng',

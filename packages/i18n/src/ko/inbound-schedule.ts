@@ -76,6 +76,19 @@ export const inboundSchedule = {
     COMPLETED: '입하 완료',
     CANCELLED: '취소',
   },
+  /** 빠른 조회 줄 — 공급업체 · 품목/바코드 · 오늘 도착 · 지연(사용자 결정 2026-10-20). 누르거나 고르는 즉시 조회한다. */
+  quick: {
+    supplier: '공급업체',
+    supplierPlaceholder: '공급업체명 또는 ID 입력',
+    item: '품목코드',
+    itemPlaceholder: '품목코드 입력',
+    scanNotFound: (value: string): string => `「${value}」에 맞는 품목이 없습니다.`,
+    scanFailed: '품목을 찾지 못했습니다. 잠시 뒤 다시 스캔하세요.',
+    today: '오늘 도착',
+    overdue: '지연',
+    detailOpen: '상세 조건 펼치기',
+    detailClose: '상세 조건 접기',
+  },
   filters: {
     all: '전체',
     itemPlaceholder: '품목을 고르세요',

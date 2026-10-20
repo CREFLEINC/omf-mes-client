@@ -26,6 +26,7 @@ import {
   type LookupResult,
 } from './lookups';
 import { PageNav } from './page-nav';
+import { QuickLookupBar } from './quick-lookup-bar';
 import { toPageView } from './pagination';
 import { readPeriod, toPeriodQuery, validatePeriod, type PeriodInput } from './period';
 import { useInboundSchedule } from './queries';
@@ -36,6 +37,9 @@ const t = messages.inboundSchedule;
 
 /** 참조가 매 렌더 새로 만들어지면 이 값을 의존성에 둔 계산이 멈추지 않는다. */
 const EMPTY_ROWS: InboundScheduleLine[] = [];
+
+/** 한 쪽 20줄(사용자 지시 2026-10-20). 서버 기본(50)보다 작게 실어 보낸다 — 상한은 200. */
+export const LIST_PAGE_SIZE = 20;
 
 /**
  * 참조 목록을 선택지로 옮긴다.
@@ -84,7 +88,12 @@ export const InboundScheduleScreen = () => {
   const periodReason = validatePeriod(period);
   const listQuery: InboundScheduleQuery | null =
     periodReason === null
-      ? { ...toPeriodQuery(period), ...toFilterQuery(filters), ...(page > 1 ? { page } : {}) }
+      ? {
+          ...toPeriodQuery(period),
+          ...toFilterQuery(filters),
+          ...(page > 1 ? { page } : {}),
+          size: LIST_PAGE_SIZE,
+        }
       : null;
 
   const list = useInboundSchedule(listQuery);
@@ -159,10 +168,19 @@ export const InboundScheduleScreen = () => {
        * 결과가 없어도 조건 구획은 감추지 않는다 — 조건을 고칠 수단이 사라지면 안 된다.
        */}
       <section className="pane inbound-schedule-filter" aria-label={t.panes.filter}>
+        <QuickLookupBar
+          appliedPeriod={period}
+          appliedFilters={filters}
+          today={today}
+          supplierOptions={toSelectOptions(suppliers)}
+          supplierNote={lookupNote(suppliers)}
+          onApply={(nextPeriod, nextFilters) => {
+            applyQuery(nextPeriod, nextFilters);
+          }}
+        />
         <ScheduleFilterBar
           appliedPeriod={period}
           appliedFilters={filters}
-          supplierOptions={toSelectOptions(suppliers)}
           plantOptions={toSelectOptions(plants)}
           chipNames={{
             supplier: describeReference(
@@ -173,7 +191,6 @@ export const InboundScheduleScreen = () => {
             ),
             item: appliedItemId === null ? '' : describeReference(itemNames.of(appliedItemId)),
           }}
-          supplierNote={lookupNote(suppliers)}
           plantNote={lookupNote(plants)}
           onSearch={(nextPeriod, nextFilters) => {
             applyQuery(nextPeriod, nextFilters);

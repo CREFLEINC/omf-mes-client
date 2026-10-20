@@ -178,6 +178,11 @@ const currentLocation = (): string => screen.getByTestId('location').textContent
 
 const listTable = (): HTMLElement => screen.getByRole('table');
 
+/** 상세 조건(기간·공장·발주번호·미완료만·조회 단추)은 접혀 있다 — 그 칸을 쓰는 시험은 먼저 편다. */
+const openDetail = async (user: ReturnType<typeof userEvent.setup>): Promise<void> => {
+  await user.click(screen.getByRole('button', { name: t.quick.detailOpen }));
+};
+
 /** 그 행의 칸 글자를 열 순서대로 낸다. 코드 열·이름 열이 나뉘어 있어 칸 단위로 봐야 읽힌다. */
 const cellsOf = (row: HTMLElement): (string | null)[] =>
   within(row)
@@ -204,7 +209,8 @@ describe('InboundScheduleScreen — 첫 진입 조회', () => {
     const list = requestsTo(requests, LIST_PATH);
 
     expect(list).toHaveLength(1);
-    expect(list[0]?.url.search).toBe('');
+    // 조건은 없고 쪽 크기만 실린다 — 한 쪽 20줄(사용자 지시 2026-10-20).
+    expect(list[0]?.url.search).toBe('?size=20');
   });
 
   /* ASN 경로는 고객사가 쓰지 않아 늘 비어 있었다(server #741) — 더는 부르지 않는다. */
@@ -246,9 +252,10 @@ describe('InboundScheduleScreen — 첫 진입 조회', () => {
   });
 
   it('조회 조건과 목록은 서로 다른 구획이다', async () => {
-    renderScreen([listRoute(), ...lookupRoutes()]);
+    const { user } = renderScreen([listRoute(), ...lookupRoutes()]);
 
     await screen.findByText('SAMPLE-PO-0001');
+    await openDetail(user);
 
     const filterPane = screen.getByRole('region', { name: t.panes.filter });
     const listPane = screen.getByRole('region', { name: t.panes.list });
@@ -288,6 +295,7 @@ describe('InboundScheduleScreen — 조건과 주소', () => {
     const query = requestsTo(requests, LIST_PATH)[0]?.url.searchParams;
 
     expect(Object.fromEntries(query ?? [])).toEqual({
+      size: '20',
       expectedReceiptDateFrom: '2026-10-01',
       expectedReceiptDateTo: '2026-10-31',
       supplierId: '8101',
@@ -303,6 +311,7 @@ describe('InboundScheduleScreen — 조건과 주소', () => {
     const { requests, user } = renderScreen([listRoute(), ...lookupRoutes()]);
 
     await screen.findByText('SAMPLE-PO-0001');
+    await openDetail(user);
     await user.type(screen.getByLabelText(t.fields.q), 'SAMPLE-PO-0002');
     await user.click(screen.getByRole('button', { name: messages.common.search }));
 
@@ -319,6 +328,7 @@ describe('InboundScheduleScreen — 조건과 주소', () => {
     const { requests, user } = renderScreen([listRoute(), ...lookupRoutes()]);
 
     await screen.findByText('SAMPLE-PO-0001');
+    await openDetail(user);
     await user.click(screen.getByRole('checkbox', { name: t.fields.overdueOnly }));
 
     expect(requestsTo(requests, LIST_PATH)).toHaveLength(1);
@@ -337,6 +347,7 @@ describe('InboundScheduleScreen — 조건과 주소', () => {
     const { requests, user } = renderScreen([listRoute(), ...lookupRoutes()]);
 
     await screen.findByText('SAMPLE-PO-0001');
+    await openDetail(user);
 
     const openOnly = screen.getByRole('checkbox', { name: t.fields.openOnly });
     expect(openOnly).toBeChecked();
@@ -357,6 +368,7 @@ describe('InboundScheduleScreen — 조건과 주소', () => {
     const { user } = renderScreen([listRoute(ROWS, { total: 120 }), ...lookupRoutes()], '?page=2');
 
     await screen.findByText('SAMPLE-PO-0001');
+    await openDetail(user);
     await user.type(screen.getByLabelText(t.fields.q), 'SAMPLE');
     await user.click(screen.getByRole('button', { name: messages.common.search }));
 
@@ -380,7 +392,7 @@ describe('InboundScheduleScreen — 조건과 주소', () => {
 
     await screen.findByText('SAMPLE-PO-0001');
 
-    expect(requestsTo(requests, LIST_PATH)[0]?.url.search).toBe('');
+    expect(requestsTo(requests, LIST_PATH)[0]?.url.search).toBe('?size=20');
   });
 
   /*
@@ -666,7 +678,8 @@ describe('InboundScheduleScreen — 조회 실패', () => {
 
     expect(screen.queryByText(t.empty.noResultTitle)).not.toBeInTheDocument();
     // 조건을 고칠 수단은 남는다.
-    expect(screen.getByRole('button', { name: messages.common.search })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: t.quick.detailOpen })).toBeInTheDocument();
+    expect(screen.getByLabelText(t.quick.item)).toBeInTheDocument();
 
     const before = requestsTo(requests, LIST_PATH).length;
     await user.click(screen.getByRole('button', { name: messages.common.retry }));
@@ -741,5 +754,130 @@ describe('InboundScheduleScreen — 참조 값', () => {
     for (const id of ['8101', '8102', '8201', '8301', '8302', '8501', '7101', '7301']) {
       expect(text).not.toContain(id);
     }
+  });
+});
+
+describe('InboundScheduleScreen — 빠른 조회', () => {
+  const ITEMS_PATH = '/mdm/items';
+
+  /** 품목 검색(`GET /mdm/items?q=`) — 스캔 값이 품목코드라고 보고 찾는다. */
+  const itemSearchRoute = (items: unknown[]): StubRoute => ({
+    match: (request) => isGet(request, ITEMS_PATH),
+    respond: () => jsonResponse(listBody(items)),
+  });
+
+  const itemRow = (itemId: number, itemCode: string) => ({
+    itemId,
+    itemCode,
+    itemName: '합성 품목',
+    itemTypeCode: 'RAW',
+    isActive: true,
+  });
+
+  it('들어오자마자 품목코드 칸에 커서가 있다', async () => {
+    renderScreen([listRoute(), ...lookupRoutes()]);
+
+    await screen.findByText('SAMPLE-PO-0001');
+
+    expect(screen.getByLabelText(t.quick.item)).toHaveFocus();
+  });
+
+  it('스캔한 값이 품목코드와 정확히 맞으면 그 품목으로 바로 조회하고 칸을 비운다', async () => {
+    const { requests, user } = renderScreen([
+      listRoute(),
+      itemSearchRoute([itemRow(8302, 'SAMPLE-ITEM-012'), itemRow(8301, 'SAMPLE-ITEM-01')]),
+      ...lookupRoutes(),
+    ]);
+
+    await screen.findByText('SAMPLE-PO-0001');
+    await user.type(screen.getByLabelText(t.quick.item), 'sample-item-01{Enter}');
+
+    await waitFor(() => {
+      expect(currentLocation()).toBe(`${ROUTE}?item=8301`);
+    });
+    expect(requestsTo(requests, LIST_PATH).at(-1)?.url.searchParams.get('itemId')).toBe('8301');
+    expect(screen.getByLabelText(t.quick.item)).toHaveValue('');
+  });
+
+  it('맞는 품목이 없으면 칸 아래에 알리고 조회하지 않는다', async () => {
+    const { user } = renderScreen([listRoute(), itemSearchRoute([]), ...lookupRoutes()]);
+
+    await screen.findByText('SAMPLE-PO-0001');
+    await user.type(screen.getByLabelText(t.quick.item), 'NOPE{Enter}');
+
+    expect(await screen.findByText(t.quick.scanNotFound('NOPE'))).toBeInTheDocument();
+    expect(currentLocation()).toBe(ROUTE);
+  });
+
+  it('여럿이 걸리면 그 값으로 찾아 둔 품목 선택 창을 연다', async () => {
+    const { user } = renderScreen([
+      listRoute(),
+      itemSearchRoute([itemRow(8301, 'SAMPLE-ITEM-01A'), itemRow(8302, 'SAMPLE-ITEM-01B')]),
+      ...lookupRoutes(),
+    ]);
+
+    await screen.findByText('SAMPLE-PO-0001');
+    await user.type(screen.getByLabelText(t.quick.item), 'SAMPLE-ITEM{Enter}');
+
+    const dialog = await screen.findByRole('dialog');
+    expect(within(dialog).getByDisplayValue('SAMPLE-ITEM')).toBeInTheDocument();
+  });
+
+  it('공급업체 후보를 고르면 바로 그 공급사로 조회한다', async () => {
+    const { user } = renderScreen([listRoute(), ...lookupRoutes()]);
+
+    await screen.findByText('SAMPLE-PO-0001');
+    // 후보 목록에서 고른 것은 칸 글자가 후보 하나와 같아지는 것으로 온다.
+    await user.type(screen.getByLabelText(t.quick.supplier), SUPPLIER_LABEL);
+
+    await waitFor(() => {
+      expect(currentLocation()).toBe(`${ROUTE}?supplier=8101`);
+    });
+  });
+
+  it('「오늘 도착」은 납기를 오늘 하루로 걸고, 다시 누르면 푼다', async () => {
+    const { user } = renderScreen([listRoute(), ...lookupRoutes()]);
+
+    await screen.findByText('SAMPLE-PO-0001');
+    const today = screen.getByRole('button', { name: t.quick.today });
+    await user.click(today);
+
+    await waitFor(() => {
+      expect(currentLocation()).toBe(`${ROUTE}?from=${TODAY}&to=${TODAY}`);
+    });
+    expect(screen.getByRole('button', { name: t.quick.today })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+
+    await user.click(screen.getByRole('button', { name: t.quick.today }));
+    await waitFor(() => {
+      expect(currentLocation()).toBe(ROUTE);
+    });
+  });
+
+  it('「지연」은 누르는 즉시 지연만 조회한다', async () => {
+    const { requests, user } = renderScreen([listRoute(), ...lookupRoutes()]);
+
+    await screen.findByText('SAMPLE-PO-0001');
+    await user.click(screen.getByRole('button', { name: t.quick.overdue }));
+
+    await waitFor(() => {
+      expect(requestsTo(requests, LIST_PATH).at(-1)?.url.searchParams.get('overdueOnly')).toBe(
+        'true',
+      );
+    });
+  });
+
+  it('상세 조건은 접혀 있고, 걸린 상세 조건이 있으면 펼친 채로 들어온다', async () => {
+    renderScreen([listRoute(), ...lookupRoutes()], `?q=SAMPLE`);
+
+    await screen.findByText('SAMPLE-PO-0001');
+
+    expect(screen.getByRole('button', { name: t.quick.detailClose })).toHaveAttribute(
+      'aria-expanded',
+      'true',
+    );
+    expect(screen.getByLabelText(t.fields.q)).toBeVisible();
   });
 });

@@ -6388,6 +6388,11 @@ dl.filter-bar.approval-inbox-detail-facts {
  *
  * ⛔ **품목 선택 창(`<dialog>`)은 뺀다.** 그 창은 조건 줄 안에 그려져, 구획 전체에 걸면 창의 글자까지 작아진다.
  */
+/* 품목코드 칸 — 스캔한 긴 코드가 잘리지 않는 폭. */
+.inbound-schedule-scan {
+  min-width: 20rem;
+}
+
 .inbound-schedule-filter .filter-bar > :not(dialog) {
   --type-body-lg: var(--type-body-sm);
   --type-body-lg-tracking: var(--type-body-sm-tracking, 0);
