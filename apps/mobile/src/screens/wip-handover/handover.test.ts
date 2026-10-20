@@ -75,6 +75,12 @@ describe('넘길 수 있는 LOT 인가', () => {
     expect(fromWorkOrderIdOf(lot({ statusCode: 'INSPECTION_PENDING' }))).toBeNull();
   });
 
+  /* 보류 등록이 LOT 을 검사 대기로 옮긴다 - 원인이 보류면 보류로 말한다(#127 실검증 지적). */
+  it('보류가 있으면 상태보다 먼저 보류로 막는다', () => {
+    expect(lotProblemOf(lot({ held: true, statusCode: 'INSPECTION_PENDING' }))).toBe('held');
+    expect(lotProblemOf(lot({ held: true, statusCode: 'DEFECTIVE' }))).toBe('held');
+  });
+
   /* W/O 마감 여부는 보지 않는다 - 마감 전이라도 완료된 LOT 은 넘어간다. */
   it('완료된 LOT 이면 W/O 상태를 보지 않는다', () => {
     // LOT 품질 상태(statusCode)는 #127 부터 본다 - 정상이면 생명주기 값과 상관없이 넘어간다.
