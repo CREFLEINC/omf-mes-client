@@ -100,6 +100,10 @@ export const usePendingOutboxCount = (): number => {
 export const clockText = (now: Date): string =>
   `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
 
+/** 시계 위 날짜 — `10.20 (화)`. 요일 이름은 문구 묶음이 준다(일요일부터). */
+export const dateText = (now: Date, weekdays: readonly string[]): string =>
+  `${String(now.getMonth() + 1).padStart(2, '0')}.${String(now.getDate()).padStart(2, '0')} (${weekdays[now.getDay()] ?? ''})`;
+
 /** 분이 바뀔 때마다 다시 그린다. */
 export const useMinuteClock = (): Date => {
   const [now, setNow] = useState(() => new Date());

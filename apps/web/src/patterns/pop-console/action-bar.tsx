@@ -1,4 +1,4 @@
-import { Button } from '@crefle/web-ui';
+import { Icon } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useNavigate } from 'react-router';
 
@@ -61,29 +61,31 @@ export const PopConsoleActionBar = ({
     <footer className="pop-console-actions">
       <div className="pop-console-actions__exceptions" role="group" aria-label={t.label}>
         {exceptions.map((screen) => (
-          <Button
+          <button
             key={screen.path}
-            variant="outlined"
-            size="xl"
+            type="button"
+            className="pop-console-action"
             onClick={() => {
               void navigate(destinationOf(screen, search));
             }}
           >
+            <Icon name={screen.icon} size={32} />
             {screen.name}
-          </Button>
+          </button>
         ))}
       </div>
 
       {next !== null && nextDestination !== null && (
-        <Button
+        <button
+          type="button"
           className="pop-console-actions__next"
-          size="2xl"
           onClick={() => {
             void navigate(nextDestination);
           }}
         >
           {t.next(next.screen.name)}
-        </Button>
+          <Icon name="arrow_forward" size={32} />
+        </button>
       )}
     </footer>
   );

@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { readWorkOrderIdParam } from './current-work';
-import { clockText, countPendingOutbox } from './device-state';
+import { clockText, countPendingOutbox, dateText } from './device-state';
 
 afterEach(() => {
   localStorage.clear();
@@ -27,6 +27,13 @@ describe('전송 대기 합계', () => {
 describe('단말 시각', () => {
   it('시:분 두 자리로 쓴다', () => {
     expect(clockText(new Date(2026, 9, 20, 7, 5))).toBe('07:05');
+  });
+
+  it('날짜는 월.일 (요일)로 쓴다', () => {
+    const weekdays = ['일', '월', '화', '수', '목', '금', '토'];
+
+    expect(dateText(new Date(2026, 9, 20, 7, 5), weekdays)).toBe('10.20 (화)');
+    expect(dateText(new Date(2026, 0, 4), weekdays)).toBe('01.04 (일)');
   });
 });
 

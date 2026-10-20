@@ -43,6 +43,13 @@ export interface PopScreen {
   /** 영역 안의 **업무 묶음** — 홈이 관련 화면을 한 카드에 모은다(`POP_TASK_GROUPS`). */
   group: PopTaskGroup;
   /**
+   * 부서 화면의 타일·액션바 단추에 서는 **아이콘**(Material Symbols 이름 — DS `Icon`).
+   *
+   * ⭐ 글보다 먼저 읽힌다. 현장에서는 화면을 이름보다 모양으로 찾는다 — 같은 화면이 어디서나 같은
+   *    아이콘으로 서야 한다. ⚠ 폰트는 DS 번들에 실려 있어 오프라인에서도 그려진다.
+   */
+  icon: string;
+  /**
    * **생산 흐름 안에서만 들어가는 화면** — 홈·메뉴에 따로 세우지 않는다.
    *
    * ⭐ 자재 투입·생산 작업은 작업지시를 고른 «뒤» 단계 표시줄·[다음]으로 들어가는 화면이다. 홈에
@@ -92,6 +99,15 @@ export const POP_TASK_GROUPS: Readonly<Record<PopArea, readonly PopTaskGroup[]>>
  */
 export type PopArea = 'production' | 'material' | 'quality' | 'shipping' | 'equipment';
 
+/** 부서의 아이콘 — 왼쪽 부서 레일·홈의 부서 카드가 같은 것을 쓴다. */
+export const POP_AREA_ICONS: Readonly<Record<PopArea, string>> = {
+  production: 'factory',
+  material: 'warehouse',
+  quality: 'verified',
+  shipping: 'local_shipping',
+  equipment: 'precision_manufacturing',
+};
+
 /** 영역을 보이는 순서. 현장 단말 대다수가 생산이라 먼저 둔다. */
 export const POP_AREAS: readonly PopArea[] = [
   'production',
@@ -117,6 +133,7 @@ export const POP_SCREENS: readonly PopScreen[] = [
     name: '자재LOT 등록·라벨 발행',
     area: 'material',
     group: 'materialFlow',
+    icon: 'new_label',
   },
   {
     path: '/pop/goods-issue-qr',
@@ -124,8 +141,16 @@ export const POP_SCREENS: readonly PopScreen[] = [
     name: '자재 출고 QR 발행',
     area: 'material',
     group: 'materialFlow',
+    icon: 'qr_code_2',
   },
-  { path: '/pop/work-start', code: 'P-02-01', name: '작업 시작', area: 'production', group: 'run' },
+  {
+    path: '/pop/work-start',
+    code: 'P-02-01',
+    name: '작업 시작',
+    area: 'production',
+    group: 'run',
+    icon: 'play_circle',
+  },
   {
     path: '/pop/material-input',
     code: 'P-02-03',
@@ -133,6 +158,7 @@ export const POP_SCREENS: readonly PopScreen[] = [
     acceptsWorkOrderId: true,
     area: 'production',
     group: 'run',
+    icon: 'move_to_inbox',
     flowOnly: true,
   },
   {
@@ -142,6 +168,7 @@ export const POP_SCREENS: readonly PopScreen[] = [
     acceptsWorkOrderId: true,
     area: 'production',
     group: 'run',
+    icon: 'precision_manufacturing',
     flowOnly: true,
   },
   /*
@@ -156,6 +183,7 @@ export const POP_SCREENS: readonly PopScreen[] = [
     acceptsWorkOrderId: true,
     area: 'production',
     group: 'packing',
+    icon: 'package_2',
   },
   {
     path: '/pop/packing-label-reprint',
@@ -163,6 +191,7 @@ export const POP_SCREENS: readonly PopScreen[] = [
     name: '포장 라벨 재출력',
     area: 'production',
     group: 'packing',
+    icon: 'print',
   },
   {
     path: '/pop/work-hold',
@@ -171,6 +200,7 @@ export const POP_SCREENS: readonly PopScreen[] = [
     acceptsWorkOrderId: true,
     area: 'production',
     group: 'change',
+    icon: 'pause_circle',
   },
   {
     path: '/pop/running-change',
@@ -179,6 +209,7 @@ export const POP_SCREENS: readonly PopScreen[] = [
     acceptsWorkOrderId: true,
     area: 'production',
     group: 'change',
+    icon: 'published_with_changes',
   },
   {
     path: '/pop/emergency-work-orders',
@@ -186,6 +217,7 @@ export const POP_SCREENS: readonly PopScreen[] = [
     name: '긴급 W/O',
     area: 'production',
     group: 'run',
+    icon: 'bolt',
   },
   /* ⭐ 생산 번호지만 품질 담당이 쓴다(공정 검사) — 영역은 품질이다. */
   {
@@ -194,6 +226,7 @@ export const POP_SCREENS: readonly PopScreen[] = [
     name: 'PQC 제품 검사',
     area: 'quality',
     group: 'inspect',
+    icon: 'fact_check',
   },
   /* ⭐ 설계보다 앞선 화면이다(omf-all-around#108) — 화면 코드는 사용자 결정으로 부여했다. */
   {
@@ -202,14 +235,23 @@ export const POP_SCREENS: readonly PopScreen[] = [
     name: '자재 불량 등록',
     area: 'quality',
     group: 'defect',
+    icon: 'report',
   },
-  { path: '/pop/packing', code: 'P-04-01', name: '출하 포장', area: 'shipping', group: 'shipPrep' },
+  {
+    path: '/pop/packing',
+    code: 'P-04-01',
+    name: '출하 포장',
+    area: 'shipping',
+    group: 'shipPrep',
+    icon: 'inventory',
+  },
   {
     path: '/pop/rework-results',
     code: 'P-04-03',
     name: '재작업 실적 등록',
     area: 'shipping',
     group: 'rework',
+    icon: 'build',
   },
   {
     path: '/pop/repack-label-issue',
@@ -217,6 +259,7 @@ export const POP_SCREENS: readonly PopScreen[] = [
     name: '재구성 신규 라벨 발행',
     area: 'shipping',
     group: 'shipPrep',
+    icon: 'label',
   },
   {
     path: '/pop/shipping-units',
@@ -224,6 +267,7 @@ export const POP_SCREENS: readonly PopScreen[] = [
     name: '출하 단위 구성',
     area: 'shipping',
     group: 'shipPrep',
+    icon: 'pallet',
   },
   /*
    * ⭐ 설계보다 앞선 화면이다(omf-all-around#109) — 화면 코드는 사용자 결정으로 부여했다.
@@ -235,6 +279,7 @@ export const POP_SCREENS: readonly PopScreen[] = [
     name: 'OQC 출하검사 판정',
     area: 'quality',
     group: 'inspect',
+    icon: 'verified',
   },
   {
     path: '/pop/tool-usage',
@@ -242,6 +287,7 @@ export const POP_SCREENS: readonly PopScreen[] = [
     name: '툴 사용실적 입력',
     area: 'equipment',
     group: 'equipmentLog',
+    icon: 'handyman',
   },
   {
     path: '/pop/downtime',
@@ -249,6 +295,7 @@ export const POP_SCREENS: readonly PopScreen[] = [
     name: '비가동 실적 입력',
     area: 'equipment',
     group: 'equipmentLog',
+    icon: 'timer_off',
   },
   /*
    * ⭐ **설계보다 앞선 화면이다**(`docs/decisions.md` 결정 16) — 화면 코드도 클라이언트가
@@ -260,6 +307,7 @@ export const POP_SCREENS: readonly PopScreen[] = [
     name: '창고 적재 위치 라벨 발행',
     area: 'material',
     group: 'materialFlow',
+    icon: 'shelves',
   },
 ];
 
@@ -271,6 +319,25 @@ export const POP_SCREENS: readonly PopScreen[] = [
  *    정상이라는 사실을 감지기가 이 값으로 확인한다.
  */
 export const POP_HOME_PATH = '/pop/home';
+
+/**
+ * **부서 화면** — 한 부서의 업무 묶음과 화면 타일. 왼쪽 부서 레일과 홈의 부서 카드가 데려간다.
+ *
+ * ⭐ 홈처럼 셸의 자리라 목록(`POP_SCREENS`)에 담지 않고 권한으로 막지 않는다 — 이 단말에 허용된
+ *    화면이 없는 부서는 레일에 서지 않을 뿐이다.
+ */
+export const POP_AREA_PATH_PREFIX = '/pop/area/';
+
+export const popAreaPath = (area: PopArea): string => `${POP_AREA_PATH_PREFIX}${area}`;
+
+/** 주소의 부서 화면. 부서 화면이 아니거나 모르는 부서면 `null`. */
+export const popAreaAt = (pathname: string): PopArea | null => {
+  if (!pathname.startsWith(POP_AREA_PATH_PREFIX)) return null;
+
+  const slug = pathname.slice(POP_AREA_PATH_PREFIX.length);
+
+  return POP_AREAS.find((area) => area === slug) ?? null;
+};
 
 /** 주소의 화면. 홈처럼 목록에 없는 주소는 `null`. */
 export const popScreenAt = (pathname: string): PopScreen | null =>

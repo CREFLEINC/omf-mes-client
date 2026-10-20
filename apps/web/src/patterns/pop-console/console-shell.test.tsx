@@ -191,29 +191,52 @@ describe('작업장 콘솔', () => {
     expect(within(group).queryByRole('button', { name: '자재 불량 등록' })).not.toBeInTheDocument();
   });
 
-  it('작업 메뉴는 허용된 화면을 부서 탭·업무 묶음으로 보이고 누르면 간다', async () => {
+  it('부서 레일은 이 단말의 부서만 세우고, 누르면 그 부서 화면으로 간다', async () => {
     const user = userEvent.setup();
 
-    localStorage.clear();
     renderShell('/pop/work-start');
 
-    await user.click(screen.getByRole('button', { name: '작업 메뉴' }));
+    const rail = screen.getByRole('navigation', { name: '부서' });
 
-    const dialog = await screen.findByRole('dialog', { name: '작업 메뉴' });
-    const run = await within(dialog).findByRole('region', { name: '작업 진행' });
-
-    expect(within(run).getByRole('button', { name: '작업 시작' })).toHaveAttribute(
+    /* 생산(P-02-*)·설비(P-05-02)만 허용됐다 — 품질·출하·구매·자재는 서지 않는다. */
+    expect(await within(rail).findByRole('button', { name: '설비' })).toBeInTheDocument();
+    expect(within(rail).getByRole('button', { name: '생산' })).toHaveAttribute(
       'aria-current',
       'page',
     );
-    expect(within(dialog).getByRole('region', { name: '중단·교체' })).toBeInTheDocument();
+    expect(within(rail).queryByRole('button', { name: '품질' })).not.toBeInTheDocument();
+    expect(within(rail).queryByRole('button', { name: '구매·자재' })).not.toBeInTheDocument();
 
-    await user.click(within(dialog).getByRole('tab', { name: '설비' }));
-    const equipment = within(dialog).getByRole('region', { name: '설비 실적' });
-    await user.click(within(equipment).getByRole('button', { name: '비가동 실적 입력' }));
+    await user.click(within(rail).getByRole('button', { name: '설비' }));
 
     await waitFor(() => {
-      expect(screen.getByText('지금: /pop/downtime')).toBeInTheDocument();
+      expect(screen.getByText('지금: /pop/area/equipment')).toBeInTheDocument();
+    });
+    expect(within(rail).getByRole('button', { name: '설비' })).toHaveAttribute(
+      'aria-current',
+      'page',
+    );
+  });
+
+  it('레일 바닥의 [단말]이 단말 정보 창을 열고, 거기서 재등록으로 간다', async () => {
+    const user = userEvent.setup();
+
+    renderShell('/pop/work-start');
+
+    await user.click(screen.getByRole('button', { name: '단말' }));
+
+    const dialog = await screen.findByRole('dialog', { name: '단말 정보' });
+
+    expect(within(dialog).getByRole('button', { name: '단말 재등록' })).toBeInTheDocument();
+
+    /* 창 머리의 ✕ 도 「닫기」다 — 바닥줄의 단추를 누른다. */
+    const close = within(dialog).getAllByRole('button', { name: '닫기' }).at(-1);
+
+    if (close === undefined) throw new Error('닫기 단추가 있어야 한다');
+    await user.click(close);
+
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog', { name: '단말 정보' })).not.toBeInTheDocument();
     });
   });
 
