@@ -398,9 +398,10 @@ export const WorkOrderAssignmentEditorSession = ({
           plantId={plantId}
           fieldNotes={{
             productionLineId: lookupNote(lineSource, lines.data?.truncated),
-            plannedEquipmentId: lookupNote(equipmentSource, equipments.data?.truncated),
+            /* 설비·금형은 찾기 창이 서버에서 찾는다 — 받아 둔 목록이 잘렸다는 안내는 맞지 않는다. */
+            plannedEquipmentId: lookupNote(equipmentSource, false),
             responsibleWorkerId: workerNote(),
-            plannedMoldId: lookupNote(moldSource, molds.data?.truncated),
+            plannedMoldId: lookupNote(moldSource, false),
             plannedShiftId: lookupNote(shiftSource, shifts.data?.truncated),
             defaultWipLocationId: lookupNote(
               locationSource('defaultWipLocationId'),

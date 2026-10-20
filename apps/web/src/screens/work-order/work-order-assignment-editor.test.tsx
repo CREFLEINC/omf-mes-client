@@ -1,6 +1,6 @@
 import { ToastProvider } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { act, render, screen, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useState } from 'react';
 import { beforeEach, expect, it, vi } from 'vitest';
@@ -26,6 +26,7 @@ const mocks = vi.hoisted(() => ({
   shifts: vi.fn(),
   locations: vi.fn(),
   write: vi.fn(),
+  resourceSearch: vi.fn(),
 }));
 vi.mock('./queries', () => ({
   useWorkOrderDetail: mocks.detail,
@@ -47,6 +48,11 @@ vi.mock('./people-tool-queries', async (importOriginal) => ({
   useWorkOrderWorker: mocks.worker,
   useWorkOrderMolds: mocks.molds,
   useWorkOrderMold: mocks.mold,
+}));
+
+vi.mock('../../patterns/resource-picker/queries', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../patterns/resource-picker/queries')>()),
+  useResourceSearch: mocks.resourceSearch,
 }));
 
 const t = messages.workOrder;
@@ -169,6 +175,7 @@ beforeEach(() => {
     isError: false,
   });
   mocks.update.mockReturnValue(updateState());
+  mocks.resourceSearch.mockReturnValue(query({ items: [], total: 0 }));
 });
 
 const Harness = ({ blockedReason = null }: { blockedReason?: string | null }) => {
@@ -210,19 +217,14 @@ it('joins resource lookups, clears line-bound equipment, and saves exact owned f
   expect(
     screen.getByLabelText(t.planFieldsPane.fields.plannedStartAtLocal),
   ).toHaveAccessibleDescription('SYN-SERVER-START');
-  expect(screen.getByRole('combobox', { name: t.resourcePane.fields.equipment })).toHaveTextContent(
-    messages.common.reference.unknown,
-  );
+  const equipment = () => screen.getByLabelText(t.resourcePane.fields.equipment);
+  expect(equipment()).toHaveValue(messages.common.reference.unknown);
   await user.click(screen.getByRole('combobox', { name: t.resourcePane.fields.productionLine }));
   await user.click(screen.getByRole('option', { name: 'L-1 · 1호선' }));
-  expect(screen.getByRole('combobox', { name: t.resourcePane.fields.equipment })).toHaveTextContent(
-    messages.common.reference.unknown,
-  );
+  expect(equipment()).toHaveValue(messages.common.reference.unknown);
   await user.click(screen.getByRole('combobox', { name: t.resourcePane.fields.productionLine }));
   await user.click(screen.getByRole('option', { name: 'L-2 · 2호선' }));
-  expect(screen.getByRole('combobox', { name: t.resourcePane.fields.equipment })).toHaveTextContent(
-    t.resourcePane.clearOption,
-  );
+  expect(equipment()).toHaveValue('');
   await user.click(screen.getByRole('button', { name: t.assignmentActions.actions.save }));
   expect(mocks.write).toHaveBeenCalledWith(
     expect.objectContaining({
@@ -307,12 +309,12 @@ it('추천 설비를 누르면 그 설비의 라인과 라인 기본 위치까�
 
   await user.click(
     screen.getByRole('button', {
-      name: `${t.resourcePane.recommendation.sources.DEFAULT} · EQ-2 · 2호기`,
+      name: new RegExp(`^${t.resourcePane.recommendation.sources.DEFAULT}, EQ-2 · 2호기`),
     }),
   );
 
   expect(field(t.resourcePane.fields.productionLine)).toHaveTextContent('L-2 · 2호선');
-  expect(field(t.resourcePane.fields.equipment)).toHaveTextContent('EQ-2 · 2호기');
+  expect(screen.getByLabelText(t.resourcePane.fields.equipment)).toHaveValue('EQ-2 · 2호기');
   expect(field(t.resourcePane.fields.defaultWipLocation)).toHaveTextContent('WIP · WIP 위치');
 });
 
@@ -341,12 +343,12 @@ it('추천 설비의 라인이 지금 라인과 같으면 기본 위치를 덮�
 
   await user.click(
     screen.getByRole('button', {
-      name: `${t.resourcePane.recommendation.sources.MAPPED} · EQ-2 · 2호기`,
+      name: new RegExp(`^${t.resourcePane.recommendation.sources.MAPPED}, EQ-2 · 2호기`),
     }),
   );
 
   expect(field(t.resourcePane.fields.productionLine)).toHaveTextContent('L-1 · 1호선');
-  expect(field(t.resourcePane.fields.equipment)).toHaveTextContent('EQ-2 · 2호기');
+  expect(screen.getByLabelText(t.resourcePane.fields.equipment)).toHaveValue('EQ-2 · 2호기');
   /* L-1 에는 기본 위치가 없다 — 덮어썼다면 비었을 것이다. */
   expect(field(t.resourcePane.fields.defaultWipLocation)).toHaveTextContent('WIP · WIP 위치');
   expect(field(t.resourcePane.fields.defaultFgLocation)).toHaveTextContent('FG · 완제품 위치');
@@ -360,12 +362,12 @@ it('라인이 없는 추천 설비는 라인과 기본 위치를 건드리지 �
 
   await user.click(
     screen.getByRole('button', {
-      name: `${t.resourcePane.recommendation.sources.MAPPED} · EQ-2 · 2호기`,
+      name: new RegExp(`^${t.resourcePane.recommendation.sources.MAPPED}, EQ-2 · 2호기`),
     }),
   );
 
   expect(field(t.resourcePane.fields.productionLine)).toHaveTextContent('L-1 · 1호선');
-  expect(field(t.resourcePane.fields.equipment)).toHaveTextContent('EQ-2 · 2호기');
+  expect(screen.getByLabelText(t.resourcePane.fields.equipment)).toHaveValue('EQ-2 · 2호기');
   expect(field(t.resourcePane.fields.defaultWipLocation)).toHaveTextContent('WIP · WIP 위치');
   expect(field(t.resourcePane.fields.defaultScrapLocation)).toHaveTextContent(
     'SCRAP · 스크랩 위치',
@@ -403,9 +405,7 @@ it('배정된 금형이 받은 쪽에 없으면 그 금형만 따로 물어 이�
   render(<Harness />);
 
   expect(mocks.mold).toHaveBeenLastCalledWith(401);
-  expect(screen.getByRole('combobox', { name: t.resourcePane.fields.mold })).toHaveTextContent(
-    'OA-SYN-401 · 배정 금형',
-  );
+  expect(screen.getByLabelText(t.resourcePane.fields.mold)).toHaveValue('OA-SYN-401 · 배정 금형');
 });
 
 it('다른 공장의 금형은 이름으로 덧붙이지 않는다', () => {
@@ -421,9 +421,9 @@ it('다른 공장의 금형은 이름으로 덧붙이지 않는다', () => {
   );
   render(<Harness />);
 
-  expect(screen.getByRole('combobox', { name: t.resourcePane.fields.mold })).not.toHaveTextContent(
-    '남의 금형',
-  );
+  expect(
+    (screen.getByLabelText(t.resourcePane.fields.mold) as HTMLInputElement).value,
+  ).not.toContain('남의 금형');
 });
 
 it('배정된 설비가 받은 목록에 없으면 그 설비만 따로 물어 이름을 낸다', () => {
@@ -443,7 +443,7 @@ it('배정된 설비가 받은 목록에 없으면 그 설비만 따로 물어 �
   );
   render(<Harness />);
 
-  expect(screen.getByRole('combobox', { name: t.resourcePane.fields.equipment })).toHaveTextContent(
+  expect(screen.getByLabelText(t.resourcePane.fields.equipment)).toHaveValue(
     'EQ-SYN-301 · 배정 설비',
   );
 });
@@ -469,14 +469,73 @@ it('목록에 없는 추천 금형을 누르면 그 이름이 칸에 보인다',
 
   await user.click(
     screen.getByRole('button', {
-      name: `${t.resourcePane.recommendation.sources.RECENT} · OA-SYN-455 · 추천 금형`,
+      name: new RegExp(`^${t.resourcePane.recommendation.sources.RECENT}, OA-SYN-455 · 추천 금형`),
     }),
   );
 
-  expect(screen.getByRole('combobox', { name: t.resourcePane.fields.mold })).toHaveTextContent(
-    'OA-SYN-455 · 추천 금형',
-  );
+  expect(screen.getByLabelText(t.resourcePane.fields.mold)).toHaveValue('OA-SYN-455 · 추천 금형');
   expect(mocks.mold).not.toHaveBeenCalledWith(455);
+});
+
+/* 찾기 창은 받아 둔 쪽 밖의 설비도 낸다 — 그 설비의 라인으로 함께 옮기고, 이름은 한 건만 물어 푼다. */
+it('찾기 창에서 받은 쪽 밖의 설비를 고르면 라인·라인 기본 위치까지 맞추고 그 이름을 낸다', async () => {
+  const user = userEvent.setup();
+  mocks.resourceSearch.mockReturnValue(
+    query({
+      items: [
+        {
+          id: 388,
+          plantId: 501,
+          code: 'EQ-SYN-388',
+          name: '찾은 설비',
+          productionLineId: 102,
+          isActive: true,
+        },
+      ],
+      total: 1,
+    }),
+  );
+  mocks.equipment.mockImplementation((equipmentId: number | null) =>
+    query(
+      equipmentId === 388
+        ? {
+            equipmentId: 388,
+            plantId: 501,
+            equipmentCode: 'EQ-SYN-388',
+            equipmentName: '찾은 설비',
+            productionLineId: 102,
+            isActive: true,
+          }
+        : undefined,
+    ),
+  );
+  render(<Harness />);
+  const field = (name: string) => screen.getByRole('combobox', { name });
+
+  await user.click(screen.getByLabelText(t.resourcePane.fields.equipment));
+  /* 설비 찾기는 지금 라인으로 좁힌다. */
+  expect(mocks.resourceSearch).toHaveBeenLastCalledWith('equipment', 501, 101, '', 1);
+
+  const dialog = screen.getByRole('dialog', { name: messages.resourcePicker.title.equipment });
+  await user.click(within(dialog).getByRole('checkbox', { name: 'EQ-SYN-388' }));
+  await user.click(within(dialog).getByRole('button', { name: messages.resourcePicker.pick }));
+
+  expect(screen.getByLabelText(t.resourcePane.fields.equipment)).toHaveValue(
+    'EQ-SYN-388 · 찾은 설비',
+  );
+  expect(field(t.resourcePane.fields.productionLine)).toHaveTextContent('L-2 · 2호선');
+  expect(field(t.resourcePane.fields.defaultWipLocation)).toHaveTextContent('WIP · WIP 위치');
+});
+
+/* 설비·금형은 찾기 창이 서버에서 찾는다 — 받아 둔 목록이 잘렸다는 안내는 그 두 칸에 맞지 않는다. */
+it('설비·금형 목록이 잘려도 두 칸에는 잘림 안내를 내지 않는다', () => {
+  mocks.equipments.mockReturnValue(resources([], true));
+  mocks.molds.mockReturnValue(
+    resources([{ moldId: 401, moldCode: 'M-1', moldName: 'A금형', isActive: true }], true),
+  );
+  render(<Harness />);
+
+  expect(screen.queryByText(t.editor.lookup.truncated)).not.toBeInTheDocument();
 });
 
 it('rejects a successful write response owned by another work order', () => {

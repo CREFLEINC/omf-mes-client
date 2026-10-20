@@ -1848,6 +1848,21 @@ main > * + * {
   margin-top: var(--space-1);
 }
 
+/* 지금 배정된 후보 — 채운 빨강은 오류로 읽혀 테두리만 굵게 한다. */
+.work-order-recommendation.is-assigned {
+  border-width: 2px;
+  font-weight: 600;
+}
+
+.work-order-recommendation-tag {
+  margin-right: var(--space-1);
+  opacity: 0.75;
+}
+
+.work-order-recommendation-warning {
+  color: var(--semantic-warning);
+}
+
 /* 안내 상자와 바로 아래 라벨 사이를 띄운다. */
 .work-order-resource-rule {
   margin-bottom: var(--space-2);

@@ -10,7 +10,6 @@ const t = messages.itemExtendedAttrs.itemResourceMap;
 const shared = messages.itemExtendedAttrs;
 
 export interface ItemResourceMapPaneProps {
-  /** 서버 순서 그대로(기본 → 우선순위) — 추천·자동 배정이 읽는 순서와 같아야 한다 */
   rows: ItemResourceMap[];
   isLoading: boolean;
   plantOptions: SelectOption[];
@@ -80,7 +79,16 @@ export const ItemResourceMapPane = ({
       key: 'isDefault',
       header: t.fields.isDefault,
       width: '64px',
-      render: (row) => (row.isDefault ? t.values.isDefault : ''),
+      /* 기호만 두면 보조기술이 「별」로 읽는다 — 뜻은 숨김 글로 낸다. */
+      render: (row) =>
+        row.isDefault ? (
+          <>
+            <span aria-hidden="true">{t.values.isDefault}</span>
+            <span className="work-order-assignment-visually-hidden">{t.fields.isDefault}</span>
+          </>
+        ) : (
+          ''
+        ),
     },
     { key: 'process', header: t.fields.process, render: processLabel },
     { key: 'equipment', header: t.fields.equipment, render: equipmentLabel },
@@ -171,14 +179,7 @@ export const ItemResourceMapPane = ({
           columns={columns}
           rows={rows}
           getRowId={(row) => String(row.itemResourceMapId)}
-          empty={
-            <EmptyState
-              size="sm"
-              live
-              title={t.empty.noneTitle}
-              description={t.empty.noneDescription}
-            />
-          }
+          empty={<EmptyState size="sm" live title={t.empty.noneTitle} />}
         />
       </div>
     );

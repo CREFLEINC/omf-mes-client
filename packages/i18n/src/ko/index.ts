@@ -31,6 +31,7 @@ import { inspectionStandard } from './inspection-standard';
 import { commonCode } from './common-code';
 import { itemExtendedAttrs } from './item-extended-attrs';
 import { itemPicker } from './item-picker';
+import { resourcePicker } from './resource-picker';
 import { masterChange } from './master-change';
 import { judgmentCode } from './judgment-code';
 import { usersRoles } from './users-roles';
@@ -164,6 +165,7 @@ export const ko = {
   commonCode,
   itemExtendedAttrs,
   itemPicker,
+  resourcePicker,
   masterChange,
   judgmentCode,
   usersRoles,
