@@ -462,6 +462,36 @@ describe('ProductionOrderScreen', () => {
       expect(button).toBeEnabled();
     });
 
+    it('자동 계획을 한 적 없는 수신 P/O 는 단추로 필요할 때 계획한다', async () => {
+      const { routes, posts } = autoPlanRoutes(() => result('CONFIRMED'), {
+        initial: { ...order, statusCode: 'RECEIVED', autoPlan: null },
+      });
+      const button = await openSelected(routes);
+
+      const basic = screen.getByLabelText(t.panes.basic);
+      expect(within(basic).queryByText(t.fields.autoPlan, { selector: 'dt' })).toBeNull();
+      await userEvent.setup().click(button);
+
+      expect(await screen.findByText(t.autoPlan.confirmed)).toBeInTheDocument();
+      expect(posts).toHaveLength(1);
+    });
+
+    it('자동 계획을 한 적 없어도 수신 상태가 아니면 단추가 없다', async () => {
+      const { routes } = autoPlanRoutes(() => result('CONFIRMED'), {
+        initial: { ...order, statusCode: 'CANCELLED', autoPlan: null },
+      });
+      renderWithProviders(<ProductionOrderScreen />, {
+        fetch: createStubFetch(routes),
+        route: '/?sel=701',
+      });
+
+      expect(await screen.findByRole('button', { name: t.actions.productionPlan })).toBeEnabled();
+      await waitFor(() =>
+        expect(screen.getByLabelText(t.panes.basic)).toHaveTextContent('SYN-PO-701'),
+      );
+      expect(screen.queryByRole('button', { name: t.actions.autoPlan })).not.toBeInTheDocument();
+    });
+
     it('완료된 P/O 에는 자동 계획 단추가 없다', async () => {
       const { routes } = autoPlanRoutes(() => result('CONFIRMED'), { initial: done });
       renderWithProviders(<ProductionOrderScreen />, {

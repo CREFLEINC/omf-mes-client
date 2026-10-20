@@ -37,6 +37,16 @@ import type { ProductionOrderFact, SelectOption } from './types';
 const t = messages.productionOrder;
 const EMPTY_FACTS: ProductionOrderFact[] = [];
 
+/**
+ * 자동 계획을 한 번도 하지 않은(`autoPlan === null`) P/O 는 계획이 없으므로, 아직 수신 상태면
+ * 수량 전부가 남은 것이다 — 지난 납기·옛 P/O 도 필요할 때 계획할 수 있게 단추를 낸다.
+ */
+const canAutoPlan = (order: ProductionOrderFact | undefined): boolean =>
+  order !== undefined &&
+  (order.autoPlan === null
+    ? order.statusCode === 'RECEIVED'
+    : order.autoPlan.status === 'NEEDS_REVIEW');
+
 const autoPlanToast = (result: ProductionOrderAutoPlanResult) => {
   switch (result.outcome) {
     case 'CONFIRMED':
@@ -178,7 +188,7 @@ export const ProductionOrderScreen = () => {
           action={
             selectedId === null ? undefined : (
               <div className="production-order-pane-actions">
-                {detail.data?.autoPlan?.status === 'NEEDS_REVIEW' && (
+                {canAutoPlan(detail.data) && (
                   <Button
                     variant="outlined"
                     disabled={autoPlan.isSaving}
