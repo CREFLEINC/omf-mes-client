@@ -8910,3 +8910,373 @@
 .pop-ui .pop-oqc-confirm__block--caution > h4 > :first-child {
   color: var(--semantic-warning);
 }
+
+/*
+ * ══ 작업장 콘솔 — `patterns/pop-console` ══════════════════════════════════════
+ *
+ * 콘솔로 옮긴 화면(`console-routes`)을 감싸는 공통 골격이다. 기준은 1920×1080 이고
+ * (`pop-fit` 의 `console`), 표시 배율 125·150% 단말에서는 문서 전체가 같은 비율로 줄어든다.
+ *
+ * ## 크기
+ *
+ * 골격의 글자·단추는 1920 기준으로 직접 잡는다. 화면 본문(`.pop-console-screen`)은 1024 기준
+ * 밀도(E-3 관리웹 토큰)로 서 있으므로 **본문만 배율을 건다.** E-3 이 현장 테스트로 확정한 것은
+ * 15″ 1366 패널 위의 «물리 크기»라, 1920 패널에서 같은 물리 크기에 가까워지도록 키운다.
+ *
+ * ⚠ 배율 1.25 는 물리 크기(≈1.4)와 세로 예산 사이의 타협이다. 1.4 로 두면 본문 세로가
+ *   571px 로 줄어 1024×768 예산으로 선 화면들이 구획마다 스크롤한다. 실기 패널 인치를 받으면
+ *   이 값 하나만 고친다.
+ *
+ * ## 색
+ *
+ * 바탕은 회색 계열, 색은 상태에만 쓴다(ISA-101). 가동=success · 중단=warning · 없음/확인 중=idle.
+ */
+.pop-console {
+  --pop-console-status-h: 72px;
+  --pop-console-actions-h: 96px;
+  --pop-console-panel-w: 400px;
+  --pop-console-text: 20px;
+  --pop-console-screen-zoom: 1.25;
+
+  box-sizing: border-box;
+  display: grid;
+  grid-template-rows: var(--pop-console-status-h) minmax(0, 1fr) var(--pop-console-actions-h);
+  height: 100%;
+  overflow: hidden;
+  background: var(--surface-container-low);
+  color: var(--on-surface);
+  font-size: var(--pop-console-text);
+}
+
+/* ── 상태바 ─────────────────────────────────────────────────────────────── */
+
+.pop-console-status {
+  display: flex;
+  align-items: center;
+  gap: var(--space-6);
+  padding: 0 var(--space-5);
+  background: var(--surface-container-high);
+  border-bottom: 1px solid var(--outline-variant);
+}
+
+.pop-console-status__equipment {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.pop-console-status__equipment > strong {
+  overflow: hidden;
+  font-size: 24px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pop-console-status__session,
+.pop-console-status__work {
+  color: var(--on-surface-variant);
+  white-space: nowrap;
+}
+
+.pop-console-status__right {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: var(--space-4);
+  margin-inline-start: auto;
+}
+
+.pop-console-status__worker,
+.pop-console-status__clock {
+  white-space: nowrap;
+}
+
+.pop-console-status__clock {
+  font-size: 24px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* 상태등 — 세션 상태다(`current-work` 의 `sessionLightOf`). 설비 PLC 상태가 아니다. */
+.pop-console-light {
+  flex: 0 0 auto;
+  width: 20px;
+  height: 20px;
+  border-radius: var(--radius-full);
+  background: var(--semantic-idle);
+}
+
+.pop-console-light[data-light='running'] {
+  background: var(--semantic-success);
+}
+
+.pop-console-light[data-light='stopped'] {
+  background: var(--semantic-warning);
+}
+
+.pop-console-pill {
+  padding: var(--space-1) var(--space-3);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-full);
+  white-space: nowrap;
+}
+
+.pop-console-pill[data-state='warning'] {
+  border-color: var(--semantic-warning);
+  background: var(--semantic-warning-container);
+}
+
+.pop-console-pill[data-state='error'] {
+  border-color: var(--semantic-error);
+  background: var(--semantic-error-container);
+  color: var(--semantic-error-text);
+}
+
+/* ── 몸통: 현재작업 패널 + 단계 + 본문 ─────────────────────────────────────── */
+
+.pop-console-body {
+  display: grid;
+  grid-template-columns: var(--pop-console-panel-w) minmax(0, 1fr);
+  min-height: 0;
+}
+
+.pop-console-work-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  min-height: 0;
+  padding: var(--space-5);
+  overflow-y: auto;
+  border-right: 1px solid var(--outline-variant);
+  background: var(--surface);
+}
+
+.pop-console-work-panel__title {
+  margin: 0;
+  color: var(--on-surface-variant);
+  font-size: var(--pop-console-text);
+  font-weight: 600;
+}
+
+.pop-console-work-panel__order {
+  margin: 0;
+  font-size: 28px;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.pop-console-work-panel__empty,
+.pop-console-work-panel__session {
+  margin: 0;
+  color: var(--on-surface-variant);
+}
+
+.pop-console-work-panel__facts,
+.pop-console-work-panel__numbers {
+  display: grid;
+  gap: var(--space-3);
+  margin: 0;
+}
+
+.pop-console-work-panel__facts > div {
+  display: grid;
+  grid-template-columns: 96px minmax(0, 1fr);
+  gap: var(--space-3);
+}
+
+.pop-console-work-panel__facts dt,
+.pop-console-work-panel__numbers dt {
+  color: var(--on-surface-variant);
+}
+
+.pop-console-work-panel__facts dd,
+.pop-console-work-panel__numbers dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.pop-console-work-panel__numbers > div {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  padding-block: var(--space-2);
+  border-bottom: 1px solid var(--outline-variant);
+}
+
+/* 큰 숫자 — 멀리서도 읽혀야 한다. 색은 불량이 있을 때만. */
+.pop-console-work-panel__numbers dd {
+  font-size: 44px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.pop-console-work-panel__numbers > div[data-tone='error'] dd {
+  color: var(--semantic-error-text);
+}
+
+.pop-console-work-panel__progress {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.pop-console-work-panel__progress > p {
+  margin: 0;
+}
+
+.pop-console-progress {
+  height: 16px;
+  overflow: hidden;
+  border-radius: var(--radius-full);
+  background: var(--surface-container-high);
+}
+
+.pop-console-progress > span {
+  display: block;
+  height: 100%;
+  background: var(--semantic-success);
+}
+
+.pop-console-work {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  min-width: 0;
+  min-height: 0;
+}
+
+/* ── 단계 표시줄 ─────────────────────────────────────────────────────────── */
+
+.pop-console-steps {
+  padding: var(--space-3) var(--space-5);
+  border-bottom: 1px solid var(--outline-variant);
+  background: var(--surface);
+}
+
+.pop-console-steps > ol {
+  display: flex;
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/*
+ * 골격 단추의 글자 — DS 는 높이를 키워도 글자를 14 로 둔다. 1920 기준에서 그 글자는 단추
+ * 안에서 너무 작다(실측 2026-10-20). 골격 단추만 본문 글자 크기로 올린다.
+ */
+.pop-console-status button,
+.pop-console-steps button,
+.pop-console-actions button,
+.pop-console-menu button {
+  font-size: var(--pop-console-text, 20px);
+}
+
+.pop-console-actions__next {
+  font-size: 24px;
+  font-weight: 700;
+}
+
+.pop-console-steps__no {
+  margin-inline-end: var(--space-2);
+  font-weight: 700;
+}
+
+/* ── 화면 본문 ───────────────────────────────────────────────────────────── */
+
+.pop-console-screen {
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  zoom: var(--pop-console-screen-zoom);
+  background: var(--surface);
+}
+
+/* 작업 시작 머리줄의 단말·사번·연결은 상태바가 이미 말한다 — 같은 것을 두 줄에 세우지 않는다. */
+.pop-console-screen .work-start-screen > .pop-header .pop-context-right {
+  display: none;
+}
+
+/* ── 액션바 ─────────────────────────────────────────────────────────────── */
+
+.pop-console-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  padding: 0 var(--space-5);
+  border-top: 1px solid var(--outline-variant);
+  background: var(--surface-container-high);
+}
+
+.pop-console-actions__exceptions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+
+.pop-console-actions__next {
+  min-width: 360px;
+  margin-inline-start: auto;
+}
+
+/* ── 작업 메뉴 ───────────────────────────────────────────────────────────── */
+
+.pop-console-menu {
+  display: grid;
+  gap: var(--space-5);
+}
+
+.pop-console-menu__group > h3 {
+  margin: 0 0 var(--space-3);
+  color: var(--on-surface-variant);
+  font-size: var(--pop-console-text);
+}
+
+.pop-console-menu__tiles {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-3);
+}
+
+.pop-console-menu__reason {
+  margin: 0;
+}
+
+/* ── 피드백 층 ───────────────────────────────────────────────────────────── */
+
+.pop-console-notices {
+  position: fixed;
+  right: var(--space-5);
+  bottom: calc(96px + var(--space-4));
+  z-index: 20;
+  display: grid;
+  gap: var(--space-2);
+  max-width: 640px;
+  pointer-events: none;
+}
+
+.pop-console-notice {
+  margin: 0;
+  padding: var(--space-4) var(--space-5);
+  border-left: 8px solid var(--semantic-info);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  box-shadow: 0 2px 8px rgb(0 0 0 / 0.16);
+  font-size: 22px;
+}
+
+.pop-console-notice[data-tone='success'] {
+  border-left-color: var(--semantic-success);
+}
+
+.pop-console-notice[data-tone='warning'] {
+  border-left-color: var(--semantic-warning);
+}
+
+.pop-console-notice[data-tone='error'] {
+  border-left-color: var(--semantic-error);
+}
+
+.pop-console-block-detail {
+  margin: 0;
+  font-size: 20px;
+}

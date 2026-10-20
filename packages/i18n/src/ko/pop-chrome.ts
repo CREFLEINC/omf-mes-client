@@ -36,4 +36,72 @@ export const popChrome = {
     position: (page: number, totalPages: number, count: number): string =>
       `${String(page)} / ${String(totalPages)} · 전체 ${String(count)}건`,
   },
+
+  /**
+   * 작업장 콘솔(`patterns/pop-console`) — 상태바 · 현재작업 패널 · 단계 표시줄 · 액션바 · 작업 메뉴.
+   *
+   * ⭐ 화면 이름은 여기 다시 적지 않는다 — 단계·메뉴의 이름은 `pop-screen-catalog` 의 이름과 같은
+   *    말이어야 한다(목록에서 누른 이름과 열린 화면의 이름이 다르면 작업자가 의심한다).
+   */
+  console: {
+    statusBar: {
+      equipmentNone: '설비 미지정',
+      workOrderNone: '작업지시 미선택',
+      workOrder: (workOrderNo: string): string => `작업지시 ${workOrderNo}`,
+      workerUnknown: '사번 미확인',
+      worker: (workerNo: string): string => `사번 ${workerNo}`,
+      online: '연결됨',
+      offline: '연결 끊김',
+      synced: '전송 완료',
+      unsynced: (count: number): string => `전송 대기 ${String(count)}건`,
+      menu: '작업 메뉴',
+    },
+    /** 설비 상태등 옆 글자 — 단말이 아는 것은 «세션» 상태다. 설비 PLC 상태를 지어내지 않는다. */
+    session: {
+      running: '가동 중',
+      stopped: '중단',
+      none: '세션 없음',
+      unknown: '확인 중',
+    },
+    currentWork: {
+      title: '현재 작업',
+      empty: '작업지시를 고르면 목표·양품·불량이 여기에 보입니다.',
+      loading: '작업지시를 불러오는 중…',
+      failed: '작업지시를 확인하지 못했습니다.',
+      item: '품목',
+      operation: '공정',
+      target: '목표',
+      good: '양품',
+      defect: '불량',
+      rate: (rate: string): string => `달성률 ${rate}%`,
+      progressUnknown: '실적 누계를 받지 못했습니다.',
+      sessionStarted: (time: string): string => `${time} 시작`,
+    },
+    steps: {
+      label: '작업 단계',
+      needWorkOrder: '작업지시를 먼저 고르세요',
+    },
+    actions: {
+      label: '이상 보고',
+      next: (step: string): string => `다음: ${step}`,
+    },
+    menu: {
+      title: '작업 메뉴',
+      close: '닫기',
+      groups: {
+        materials: '자재·창고',
+        production: '생산',
+        shipping: '출하',
+        equipment: '설비',
+      },
+      loading: '이동할 수 있는 화면을 확인하는 중…',
+      unknown: '이동할 수 있는 화면을 확인하지 못했습니다',
+      empty: '이동할 수 있는 화면이 없습니다',
+    },
+    feedback: {
+      acknowledge: '확인',
+      region: '알림',
+      blockedTitle: '확인이 필요합니다',
+    },
+  },
 };

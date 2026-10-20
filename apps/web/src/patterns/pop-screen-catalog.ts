@@ -60,10 +60,20 @@ export const POP_SCREENS: readonly PopScreen[] = [
     name: '생산 작업',
     acceptsWorkOrderId: true,
   },
-  { path: '/pop/packing-work', code: 'P-02-08', name: '생산 포장' },
+  /*
+   * ⭐ 아래 셋은 작업지시를 주소로 받는다 — 작업 시작 화면이 이미 `?workOrderId=` 를 실어 보내고
+   *    있었고(#42) 각 화면의 주소 읽기(`entry-context`·`screen-params`)가 그 값을 읽는다.
+   *    작업장 콘솔의 이상 보고 단추가 같은 값을 실어 가려면 여기 표기가 있어야 한다.
+   */
+  { path: '/pop/packing-work', code: 'P-02-08', name: '생산 포장', acceptsWorkOrderId: true },
   { path: '/pop/packing-label-reprint', code: 'P-02-09', name: '포장 라벨 재출력' },
-  { path: '/pop/work-hold', code: 'P-02-10', name: '작업 중단' },
-  { path: '/pop/running-change', code: 'P-02-11', name: '러닝체인지 부품 교체' },
+  { path: '/pop/work-hold', code: 'P-02-10', name: '작업 중단', acceptsWorkOrderId: true },
+  {
+    path: '/pop/running-change',
+    code: 'P-02-11',
+    name: '러닝체인지 부품 교체',
+    acceptsWorkOrderId: true,
+  },
   { path: '/pop/emergency-work-orders', code: 'P-02-12', name: '긴급 W/O' },
   { path: '/pop/pqc-inspection', code: 'P-02-13', name: 'PQC 제품 검사' },
   /* ⭐ 설계보다 앞선 화면이다(omf-all-around#108) — 화면 코드는 사용자 결정으로 부여했다. */

@@ -36,12 +36,13 @@ import './pop.css';
 /* ⛔ 화면을 싣는 import 보다 위에 둔다 — 아래 import 들이 문구를 붙잡기 전에 언어를 정한다. */
 import './pop-locale';
 
-import { StrictMode, useEffect, useRef, type ReactNode } from 'react';
+import { StrictMode, useEffect, useLayoutEffect, useRef, type ReactNode } from 'react';
 import { createRoot } from 'react-dom/client';
-import { Navigate, Outlet, RouterProvider, createBrowserRouter } from 'react-router';
+import { Navigate, Outlet, RouterProvider, createBrowserRouter, useLocation } from 'react-router';
 
 import { popRoutes } from '../routes/pop';
-import { applyPopFit } from '../patterns/pop-fit';
+import { isPopConsolePath, PopConsoleShell } from '../patterns/pop-console';
+import { applyPopFit, setPopFitDesign } from '../patterns/pop-fit';
 import { PopLogoutButton } from '../patterns/pop-logout';
 import { PopScreenNavButton } from '../patterns/pop-screen-nav';
 import {
@@ -174,6 +175,22 @@ const POP_ENTRY_PATH = '/pop/worker-assignment';
 const PopChrome = () => {
   /* ⭐ 관리웹에서 바꾼 단말 공정·설비가 단말을 다시 켜지 않아도 보이게 한다(#1202). */
   useRefreshPopTerminalOnScreenEntry();
+
+  const { pathname } = useLocation();
+  const isConsole = isPopConsolePath(pathname);
+
+  /*
+   * ⭐ **작업장 콘솔로 옮긴 화면은 콘솔 골격이 감싼다**(`patterns/pop-console`). 상태바가 [작업
+   *    메뉴]·[사용자 전환]을 제자리에 품으므로 떠 있는 두 버튼은 세우지 않는다 — 세우면 같은
+   *    조작이 두 자리에 선다. 옮기지 않은 화면은 지금 모양 그대로다.
+   *
+   * ⚠ 배율 기준도 함께 바꾼다 — 콘솔은 1920×1080, 나머지는 1024×768(`pop-fit`).
+   */
+  useLayoutEffect(() => {
+    setPopFitDesign(isConsole ? 'console' : 'legacy');
+  }, [isConsole]);
+
+  if (isConsole) return <PopConsoleShell />;
 
   return (
     <>

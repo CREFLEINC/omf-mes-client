@@ -19,9 +19,22 @@
  *   되레 생긴다. `zoom` 은 레이아웃 계산에 함께 들어가므로 예산이 그대로 줄어든다.
  */
 
-/** 화면 스펙이 잡은 예산. 이 값이 바뀌면 스펙이 바뀐 것이다. */
-const DESIGN_WIDTH = 1024;
-const DESIGN_HEIGHT = 768;
+/**
+ * 화면이 그려진 기준. **두 벌이다** — 작업장 콘솔로 옮긴 화면과 아직 옮기지 않은 화면.
+ *
+ * - `legacy` 화면 스펙이 잡은 1024×768 예산(공유계약 E-1). 옮기지 않은 화면은 여기 그대로 선다.
+ * - `console` 작업장 콘솔(`patterns/pop-console`)의 1920×1080. 현장 패널(1920×1080 가로 터치)을
+ *   그대로 기준으로 삼고, 표시 배율 125·150% 단말에서는 같은 비율로 줄어든다.
+ *
+ * ⚠ 이 값이 바뀌면 스펙이 바뀐 것이다 — `console` 기준은 E-1 개정 제안과 함께 간다
+ *   (「POP UX/UI 개편 제안」 이행 계획).
+ */
+export type PopFitDesign = 'legacy' | 'console';
+
+const DESIGNS: Record<PopFitDesign, { width: number; height: number }> = {
+  legacy: { width: 1024, height: 768 },
+  console: { width: 1920, height: 1080 },
+};
 
 /** 배율 하한 — 이보다 작아지면 글자가 현장에서 읽히지 않는다. 그때는 스크롤을 받아들인다. */
 const MIN_SCALE = 0.6;
@@ -35,12 +48,34 @@ const MIN_SCALE = 0.6;
  */
 const HEADROOM = 1;
 
-export const fitScale = (width: number, height: number): number => {
+export const fitScale = (
+  width: number,
+  height: number,
+  design: PopFitDesign = 'legacy',
+): number => {
   if (width <= 0 || height <= 0) return 1;
 
-  const scale = Math.min(width / DESIGN_WIDTH, height / DESIGN_HEIGHT) * HEADROOM;
+  const { width: designWidth, height: designHeight } = DESIGNS[design];
+  const scale = Math.min(width / designWidth, height / designHeight) * HEADROOM;
 
   return Math.min(1, Math.max(MIN_SCALE, scale));
+};
+
+/**
+ * 지금 화면의 기준. 셸이 화면을 옮길 때마다 바꾼다(`setPopFitDesign`).
+ *
+ * ⚠ **모듈에 하나만 둔다.** 배율은 문서 전체(`html`)에 걸리는 값이라 화면이 둘 동시에 설 수
+ *   없다 — 기준도 하나다.
+ */
+let currentDesign: PopFitDesign = 'legacy';
+let reapply: (() => void) | null = null;
+
+/** 기준을 바꾸고 배율을 다시 건다. 같은 값이면 아무것도 하지 않는다. */
+export const setPopFitDesign = (design: PopFitDesign): void => {
+  if (design === currentDesign) return;
+
+  currentDesign = design;
+  reapply?.();
 };
 
 /**
@@ -54,17 +89,19 @@ export const applyPopFit = (): (() => void) => {
   const root = document.documentElement;
 
   const apply = (): void => {
-    const scale = fitScale(window.innerWidth, window.innerHeight);
+    const scale = fitScale(window.innerWidth, window.innerHeight, currentDesign);
 
     /* 1 이면 손대지 않는다 — 배율이 걸린 흔적을 남기지 않는다. */
     root.style.zoom = scale === 1 ? '' : String(scale);
   };
 
   apply();
+  reapply = apply;
   window.addEventListener('resize', apply);
 
   return () => {
     window.removeEventListener('resize', apply);
+    reapply = null;
     root.style.zoom = '';
   };
 };

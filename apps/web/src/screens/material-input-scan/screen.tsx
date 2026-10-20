@@ -4,6 +4,7 @@ import { useEffect, useId, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
 
 import { OutboxStallBanner } from '../../patterns/outbox-stall-banner';
+import { usePopFeedback } from '../../patterns/pop-console';
 import { soleProcessIdOf, usePopIdentity } from '../../patterns/pop-identity';
 import { PopWorkerMissingBanner } from '../../patterns/pop-worker-missing-banner';
 
@@ -122,6 +123,8 @@ export const MaterialInputScanScreen = () => {
   const scan = useScanLookup();
   /* 표시용 이름 풀이. 어느 판정에도 쓰이지 않는다 — 읽을 수 있게 하는 데만 쓴다. */
   const statusLabels = useLotStatusLabels();
+  /* 작업장 콘솔 밖(시험·옮기기 전 셸)에서는 아무 일도 하지 않는다 — 스캔 칸이 그대로 말한다. */
+  const feedback = usePopFeedback();
   /* 단말 게이팅 — 스펙 §5-1. 화면의 잠금은 오조작을 줄이는 장치이지 집행이 아니다. */
   const gate = useTerminalGate(terminalId, processId);
   /*
@@ -167,6 +170,21 @@ export const MaterialInputScanScreen = () => {
           setDraft((prev) => applyScan(prev, outcome));
           /* 새로 담기 시작하면 앞 회차의 「마쳤습니다」는 사실이 아니게 된다. */
           setClosedCount(null);
+
+          /*
+           * ⭐ **결과를 귀로도 알린다**(작업장 콘솔 피드백 층). 작업자는 손과 눈이 자재에 가 있어
+           *    스캔 칸의 색을 못 볼 때가 많다. 담기지 «못한» 스캔(못 찾음·투입 불가 상태)은
+           *    확인을 눌러야 닫히는 창으로 세운다 — 그냥 넘어가면 담긴 줄 알고 다음 자재로 간다.
+           *
+           * ⚠ 결과 문구는 스캔 칸과 같은 것이다 — 창이 다른 말을 하지 않는다.
+           */
+          const view = describeOutcome(outcome, statusLabels.describe);
+
+          if (view.tone === 'error') feedback.block(view.text);
+          else feedback.cue(view.tone);
+        },
+        onError: () => {
+          feedback.cue('error');
         },
       },
     );

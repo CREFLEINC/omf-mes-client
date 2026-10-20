@@ -59,7 +59,7 @@ const REASONS = {
  * ⛔ **받는다고 표기된 화면에만 싣는다.** 모르는 화면에 실으면 그 화면이 쓰지 않는 값이 주소에
  *    남고, 뒤에 같은 이름을 쓰게 되면 남이 남긴 값으로 조회가 선다. 표기는 `pop-screen-catalog`.
  */
-const destinationOf = (screen: PopScreen, search: string): string => {
+export const destinationOf = (screen: PopScreen, search: string): string => {
   if (screen.acceptsWorkOrderId !== true) return screen.path;
 
   const workOrderId = new URLSearchParams(search).get('workOrderId');
