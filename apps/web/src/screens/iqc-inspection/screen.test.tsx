@@ -1208,7 +1208,7 @@ describe('IqcInspectionScreen — 불합격 사유 임시 저장', () => {
 
     await userEvent.click(screen.getByLabelText(t.result.rejection.cause));
     await userEvent.click(
-      await screen.findByRole('option', { name: '공급사 › SUP-PRC · 공급사 공정' }),
+      await screen.findByRole('option', { name: 'SUP-PRC · 공급사 공정 (공급사)' }),
     );
     /* 사용 중지된 원인은 고를 수 없다. */
     expect(screen.queryByRole('option', { name: /OLD · 옛 원인/ })).not.toBeInTheDocument();

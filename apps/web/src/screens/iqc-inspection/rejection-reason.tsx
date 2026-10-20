@@ -56,8 +56,8 @@ export const rejectionDraftOf = (
 };
 
 /**
- * 추정 원인 선택지(omf-all-around#130) — 「선택 안 함」 + 사용 중인 원인. 대분류 뒤에 그 상세를 «대분류 › 상세»로
- * 잇는다(대시보드가 원인 대분류로 묶는다). 지금 고른 원인이 사용 중지됐으면 사라지지 않게 표시를 붙여 남긴다.
+ * 추정 원인 선택지(omf-all-around#130) — 「선택 안 함」 + 사용 중인 원인. 대분류 뒤에 그 상세를 «상세 (대분류)»로
+ * 잇는다 — 칸이 좁아 잘려도 고른 상세가 먼저 보인다(대시보드는 원인 대분류로 묶는다). 지금 고른 원인이 사용 중지됐으면 사라지지 않게 표시를 붙여 남긴다.
  */
 export const causeOptionsOf = (causes: readonly CauseCode[], selectedId: string) => {
   const label = (cause: CauseCode) => `${cause.causeCode} · ${cause.causeName}`;
@@ -70,7 +70,7 @@ export const causeOptionsOf = (causes: readonly CauseCode[], selectedId: string)
     for (const minor of active.filter((cause) => cause.parentCauseCodeId === major.causeCodeId)) {
       options.push({
         value: String(minor.causeCodeId),
-        label: `${major.causeName} › ${label(minor)}`,
+        label: `${label(minor)} (${major.causeName})`,
       });
     }
   }
@@ -194,9 +194,7 @@ export const RejectionReason = ({
             </span>
           )}
         </div>
-      </div>
-      {/* 추정 원인 — 선택 입력(omf-all-around#130). 대분류·상세와 같은 폭의 왼쪽 칸에 선다. */}
-      <div className="form-grid iqc-inspection-rejection-codes">
+        {/* 추정 원인 — 선택 입력(omf-all-around#130). 같은 2열의 다음 줄 왼쪽 칸에 선다. */}
         <div className="field-cell">
           <FieldLabel htmlFor={causeId} label={t.cause} />
           <Select
