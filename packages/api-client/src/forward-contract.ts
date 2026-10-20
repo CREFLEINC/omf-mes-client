@@ -1020,7 +1020,16 @@ export interface ForwardPaths {
     trace?: never;
   };
   '/production/work-orders': Omit<WorkOrdersPath, 'get'> & {
-    get: Omit<WorkOrdersGet, 'responses'> & {
+    get: Omit<WorkOrdersGet, 'parameters' | 'responses'> & {
+      /**
+       * 서버 선행 — `includeUnplannedEquipment` 를 `plannedEquipmentId` 와 함께 보내면 「그 설비 또는
+       * 설비 미지정」이다.
+       */
+      parameters: Omit<WorkOrdersGet['parameters'], 'query'> & {
+        query?: NonNullable<WorkOrdersGet['parameters']['query']> & {
+          includeUnplannedEquipment?: boolean;
+        };
+      };
       responses: Omit<WorkOrdersGet['responses'], 200> & {
         200: Omit<WorkOrdersGet['responses'][200], 'content'> & {
           content: {

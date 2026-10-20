@@ -108,8 +108,13 @@ const fetchWorkOrders = (
            *    이 화면이 본 것만 더하면 늘 실제보다 적다 — 서버가 낸 합계만 쓴다.
            */
           withProgress: true,
-          /* 「전체 보기」는 이 축만 뺀다 — 다른 조건은 그대로다(§5-5). */
-          ...(equipmentId === null ? {} : { plannedEquipmentId: equipmentId }),
+          /*
+           * 「전체 보기」는 이 축만 뺀다 — 다른 조건은 그대로다(§5-5). 「이 설비」는 설비를 아직
+           * 정하지 않은 지시도 함께 받는다 — 그 지시를 시작할 단말이 따로 없다.
+           */
+          ...(equipmentId === null
+            ? {}
+            : { plannedEquipmentId: equipmentId, includeUnplannedEquipment: true }),
           page,
           size: LIST_SIZE,
         },

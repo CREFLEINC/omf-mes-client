@@ -42,6 +42,11 @@ const sessionBodies = (
 ): ReturnType<typeof renderScreen>['recorded']['bodies'] =>
   bodies.filter((sent) => sent.url === '/production/work-sessions');
 
+const decisionBodies = (
+  bodies: ReturnType<typeof renderScreen>['recorded']['bodies'],
+): ReturnType<typeof renderScreen>['recorded']['bodies'] =>
+  bodies.filter((sent) => sent.url === '/production/precheck-decisions');
+
 /* 단말이 들고 있는 사번은 화면 밖 «단일 자리»다 — 감지기가 서로의 상태 위에서 서지 않게 한다. */
 beforeEach(() => {
   setWorkerSession(null);
@@ -88,18 +93,71 @@ describe('P-02-01 작업 시작 — 단말 게이팅', () => {
     expect(startButton()).toBeDisabled();
   });
 
-  /** ⭐ 사용자 지시 2026-09-13 — 매핑이 비어 있는 것은 「단말을 확인하지 못했다」가 아니다. */
-  it('설비가 매핑되지 않은 단말은 그 사유를 말하고 목록을 묻지 않는다', async () => {
-    const { recorded } = renderScreen({
+  it('설비가 매핑되지 않은 단말도 설비 축 없이 목록을 받고 시작할 수 있다', async () => {
+    const rendered = renderScreen({
       terminal: { ...TERMINAL, equipmentId: null, equipmentCode: null, equipmentName: null },
     });
 
-    expect(await screen.findByText(t.blocked.equipmentMissing)).toBeInTheDocument();
-    expect(screen.getByText(t.list.equipmentMissing)).toBeInTheDocument();
-    expect(screen.queryByText(t.blocked.unidentified)).not.toBeInTheDocument();
-    expect(screen.queryByText(t.list.equipmentUnknown)).not.toBeInTheDocument();
+    await screen.findByRole('button', { name: selectName(WORK_ORDER.workOrderNo) });
+    const [first] = listUrls(rendered.recorded.urls);
+    expect(first).toContain('open=true');
+    expect(first).not.toContain('plannedEquipmentId');
+    expect(first).not.toContain('includeUnplannedEquipment');
+    /* 좁힐 설비가 없으니 범위를 바꾸는 단추와 범위 안내가 없다. */
     expect(screen.queryByRole('button', { name: t.list.showAll })).not.toBeInTheDocument();
-    expect(listUrls(recorded.urls)).toHaveLength(0);
+    expect(screen.queryByText(t.list.scopeNoteEquipment)).not.toBeInTheDocument();
+    expect(screen.queryByText(t.list.equipmentUnknown)).not.toBeInTheDocument();
+
+    await enterWorkerNo(rendered.user, WORKER.workerNo);
+    await rendered.user.click(
+      await screen.findByRole('button', { name: selectName(WORK_ORDER.workOrderNo) }),
+    );
+    await waitFor(() => expect(startButton()).toBeEnabled());
+    await rendered.user.click(startButton());
+
+    await waitFor(() => expect(sessionBodies(rendered.recorded.bodies)).toHaveLength(1));
+    expect(sessionBodies(rendered.recorded.bodies)[0]?.body).not.toHaveProperty('equipmentId');
+    /* 점검 통제는 W/O 의 계획 설비로 판정해 기록한다. */
+    expect(decisionBodies(rendered.recorded.bodies).map((sent) => sent.body)).toEqual([
+      expect.objectContaining({ equipmentId: EQUIPMENT_ID }),
+    ]);
+  });
+
+  it('단말에도 W/O 에도 설비가 없으면 점검 없이 바로 시작한다', async () => {
+    const { plannedEquipmentId: _ignored, ...withoutEquipment } = WORK_ORDER;
+    const rendered = renderScreen({
+      terminal: { ...TERMINAL, equipmentId: null, equipmentCode: null, equipmentName: null },
+      workOrders: [withoutEquipment],
+    });
+
+    await enterWorkerNo(rendered.user, WORKER.workerNo);
+    await rendered.user.click(
+      await screen.findByRole('button', { name: selectName(WORK_ORDER.workOrderNo) }),
+    );
+    await waitFor(() => expect(startButton()).toBeEnabled());
+    await rendered.user.click(startButton());
+
+    await waitFor(() => expect(sessionBodies(rendered.recorded.bodies)).toHaveLength(1));
+    expect(decisionBodies(rendered.recorded.bodies)).toHaveLength(0);
+    expect(sessionBodies(rendered.recorded.bodies)[0]?.body).not.toHaveProperty('equipmentId');
+  });
+
+  it('단말에 설비가 있으면 W/O 계획 설비가 달라도 단말 설비로 점검한다', async () => {
+    const rendered = renderScreen({
+      workOrders: [{ ...WORK_ORDER, plannedEquipmentId: EQUIPMENT_ID + 7 }],
+    });
+
+    await enterWorkerNo(rendered.user, WORKER.workerNo);
+    await rendered.user.click(
+      await screen.findByRole('button', { name: selectName(WORK_ORDER.workOrderNo) }),
+    );
+    await waitFor(() => expect(startButton()).toBeEnabled());
+    await rendered.user.click(startButton());
+
+    await waitFor(() => expect(sessionBodies(rendered.recorded.bodies)).toHaveLength(1));
+    expect(decisionBodies(rendered.recorded.bodies).map((sent) => sent.body)).toEqual([
+      expect.objectContaining({ equipmentId: EQUIPMENT_ID }),
+    ]);
   });
 
   it('공정이 없거나 여럿이면 등록 실패가 아니라 공정 매핑을 사유로 말한다', async () => {
@@ -171,7 +229,7 @@ describe('P-02-01 작업 시작 — 단말 게이팅', () => {
     renderScreen({
       terminal: { ...TERMINAL, equipmentId: null, equipmentCode: null, equipmentName: null },
     });
-    await screen.findByText(t.blocked.equipmentMissing);
+    await screen.findByRole('button', { name: selectName(WORK_ORDER.workOrderNo) });
 
     expect(document.querySelector('.pop-header .pop-context:not(.pop-context-right)')).toBeNull();
   });
@@ -195,6 +253,8 @@ describe('P-02-01 작업 시작 — 목록 조회 축', () => {
     const [first] = listUrls(recorded.urls);
     expect(first).toContain('open=true');
     expect(first).toContain(`plannedEquipmentId=${String(EQUIPMENT_ID)}`);
+    /* 설비를 아직 정하지 않은 지시도 이 설비 목록에 함께 온다. */
+    expect(first).toContain('includeUnplannedEquipment=true');
     /* ⛔ 확정된 적 없는 상태 문자열을 조회 조건으로 싣지 않는다. */
     expect(first).not.toContain('statusCode=');
   });
@@ -239,6 +299,25 @@ describe('P-02-01 작업 시작 — 목록 조회 축', () => {
     const last = listUrls(recorded.urls).at(-1) ?? '';
     expect(last).toContain('open=true');
     expect(last).not.toContain('plannedEquipmentId');
+    expect(last).not.toContain('includeUnplannedEquipment');
+  });
+
+  it('설비 미지정 지시에만 「설비 미지정」 표식을 단다', async () => {
+    const { plannedEquipmentId: _ignored, ...withoutEquipment } = WORK_ORDER;
+    renderScreen({
+      workOrders: [
+        { ...withoutEquipment, workOrderId: 8102, workOrderNo: 'SYN-WO-0102' },
+        WORK_ORDER,
+      ],
+    });
+
+    const unassigned = await screen.findByRole('button', { name: selectName('SYN-WO-0102') });
+    expect(within(unassigned).getByText(t.list.unassignedEquipmentBadge)).toBeInTheDocument();
+    expect(
+      within(screen.getByRole('button', { name: selectName(WORK_ORDER.workOrderNo) })).queryByText(
+        t.list.unassignedEquipmentBadge,
+      ),
+    ).not.toBeInTheDocument();
   });
 
   /** ⚠ 설비를 모르는 것은 「지시가 없다」와 다른 사실이다. */

@@ -70,8 +70,8 @@ export const WorkStartScreen = () => {
   const equipmentCode = terminal.data?.equipmentCode ?? null;
   const equipmentName = terminal.data?.equipmentName ?? null;
   /*
-   * ⭐ **설비가 매핑되지 않은 단말**(사용자 지시 2026-09-13). 조회가 실패해 «모르는» 것과
-   *    가른다 — 서버가 답했고 그 답이 「설비 없음」이다. 서버는 이 단말의 목록 조회를 거부한다.
+   * ⭐ **설비가 매핑되지 않은 단말.** 조회가 실패해 «모르는» 것과 가른다 — 서버가 답했고 그 답이
+   *    「설비 없음」이다. 이 단말은 설비 축 없이 목록을 받는다(서버가 단말의 공정으로 거른다).
    */
   const isEquipmentMissing = terminal.isSuccess && equipmentId === null;
 
@@ -149,7 +149,7 @@ export const WorkStartScreen = () => {
    * ⚠ 설비를 모르는 채로 기본 목록을 열지 않는다 — 축 없이 물으면 「이 설비 배포분」이라고
    *    그린 화면에 다른 설비의 지시가 실린다. 그 상태는 목록 구획이 사유와 함께 말한다.
    */
-  const isListAsked = isShowingAll || equipmentId !== null;
+  const isListAsked = isShowingAll || equipmentId !== null || isEquipmentMissing;
   /* 쪽 번호. 축(설비·전체 보기)이 바뀌면 첫 쪽으로 되돌린다 — 아래 전환 자리에서 함께 맞춘다. */
   const [listPage, setListPage] = useState(1);
   const list = useWorkOrders(listEquipmentId, isListAsked, listPage);
@@ -326,7 +326,6 @@ export const WorkStartScreen = () => {
     const other = (text: string) => ({ code: 'other' as const, text });
 
     /* ⭐ 사유별로 가른다(사용자 지시 2026-09-13) — 매핑이 비어 있는 것은 등록 실패가 아니다. */
-    if (isEquipmentMissing) return other(t.blocked.equipmentMissing);
     if (gate.verdict === 'unidentified') {
       if (identity.terminalId === null || identity.processes === null) {
         return other(t.blocked.unidentified);
@@ -437,6 +436,24 @@ export const WorkStartScreen = () => {
     /* eslint-disable-next-line react-hooks/exhaustive-deps -- 조회 객체는 렌더마다 새로 생긴다. */
   }, [writeError]);
 
+  /**
+   * 점검 통제가 볼 설비. 설비가 없는 단말은 고른 W/O 의 계획 설비로 점검한다 — 서버도 같은
+   * 설비로 판정 기록을 받는다. 세션 본문의 설비는 그대로 단말의 것이다.
+   */
+  const precheckEquipmentIdOf = (workOrder: WorkOrder): number | null =>
+    equipmentId ?? workOrder.plannedEquipmentId ?? null;
+
+  const writeSession = (target: WorkOrder, at: string, override: ControlOverride | null) => {
+    startWork.write(
+      toSessionRequest({
+        workOrder: target,
+        equipmentId,
+        startedAt: at,
+        controlOverride: override,
+      }),
+    );
+  };
+
   const submit = () => {
     if (selected === null || confirmedNo === null) return;
 
@@ -449,6 +466,13 @@ export const WorkStartScreen = () => {
 
     if (isResume) {
       resumeWork.write(toResumeBody(at));
+
+      return;
+    }
+
+    /* 단말에도 W/O 에도 설비가 없으면 점검할 설비가 없다 — 게이트 없이 바로 연다. */
+    if (precheckEquipmentIdOf(selected) === null) {
+      writeSession(selected, at, null);
 
       return;
     }
@@ -482,14 +506,7 @@ export const WorkStartScreen = () => {
       return;
     }
 
-    startWork.write(
-      toSessionRequest({
-        workOrder: target,
-        equipmentId,
-        startedAt: attempt?.at ?? submitAtRef.current ?? terminalNow(new Date()),
-        controlOverride: override,
-      }),
-    );
+    writeSession(target, attempt?.at ?? submitAtRef.current ?? terminalNow(new Date()), override);
   };
 
   /**
@@ -746,7 +763,7 @@ export const WorkStartScreen = () => {
           workOrderId={attempt.workOrder.workOrderId}
           workOrderNo={attempt.workOrder.workOrderNo}
           workOrderTypeCode={attempt.workOrder.workOrderTypeCode}
-          equipmentId={equipmentId}
+          equipmentId={precheckEquipmentIdOf(attempt.workOrder)}
           equipmentCode={equipmentCode}
           equipmentName={equipmentName}
           plantId={terminal.data?.plantId ?? null}
