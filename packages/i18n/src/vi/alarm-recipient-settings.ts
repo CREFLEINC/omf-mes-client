@@ -4,7 +4,7 @@ import type { Translated } from './translated';
 /**
  * 알람 수신자 설정 — 부서 × 이벤트마다 받을 사람을 정한다(001 재설계).
  *
- * ⚠ **화면 이름은 사이드바와 글자가 같아야 한다**(`Thiết lập người nhận cảnh báo`). 사이드바
+ * ⚠ **화면 이름은 사이드바와 글자가 같아야 한다**(`Thiết lập người nhận thông báo`). 사이드바
  * 라벨은 `apps/web/src/app/nav-tree.ts` 가 들고 있어 이 파일과 갈릴 수 있다 — 메뉴에서 누른
  * 이름과 열린 화면의 제목이 다르면 사용자는 다른 자리에 왔다고 읽는다.
  *
@@ -12,7 +12,7 @@ import type { Translated } from './translated';
  * 가는 것은 알림이다 — 용어집이 가른 두 말을 그대로 지킨다.
  */
 export const alarmRecipientSettings: Translated<typeof ko.alarmRecipientSettings> = {
-  title: 'Thiết lập người nhận cảnh báo',
+  title: 'Thiết lập người nhận thông báo',
   breadcrumbRoot: 'Quản trị hệ thống',
   description:
     'Bật hoặc tắt từng sự kiện thông báo theo phòng ban, chọn có gửi thêm qua Zalo và người nhận.',
@@ -34,6 +34,7 @@ export const alarmRecipientSettings: Translated<typeof ko.alarmRecipientSettings
     inactive: 'Ngừng sử dụng',
     hasPhone: 'Có',
     alreadyAdded: 'Đã thêm',
+    selectRow: (userName: string): string => `Chọn ${userName}`,
     noDepartment: '—',
   },
   actions: {
@@ -52,6 +53,8 @@ export const alarmRecipientSettings: Translated<typeof ko.alarmRecipientSettings
   state: {
     selectDepartment: 'Chọn phòng ban để xem thiết lập sự kiện của phòng ban đó.',
     noDepartments: 'Không có phòng ban',
+    departmentsTruncated:
+      'Danh sách phòng ban chỉ hiển thị một phần. Nếu không thấy phòng ban cần tìm, hãy báo cho người phụ trách.',
     noEvents: 'Không có sự kiện để thiết lập.',
     noRecipients: 'Chưa chỉ định người nhận.',
     noRecipientsWarning: 'Không có người nhận nên thông báo sẽ không được gửi',
