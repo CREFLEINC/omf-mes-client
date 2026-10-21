@@ -1,4 +1,3 @@
-import type { ZaloConnection } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -6,6 +5,7 @@ import { describe, expect, it } from 'vitest';
 
 import { createStubFetch, jsonResponse, renderWithProviders } from '../../test/api-harness';
 import { ZaloConnectionScreen } from './screen';
+import type { Connection as ZaloConnection } from './types';
 
 const t = messages.zaloConnection;
 

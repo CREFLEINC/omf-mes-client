@@ -1,6 +1,5 @@
-import type { NotificationDispatchQuery } from '@omf-mes/api-client';
-
 import type { PeriodInput } from './period';
+import type { DispatchQuery } from './types';
 
 /** 조회 조건 — **주소가 정본이다.** 빈 조건은 키를 두지 않는다. */
 export interface DispatchFilters {
@@ -52,12 +51,10 @@ export const toSearchParams = (
   return next;
 };
 
-export const toFilterQuery = (
-  filters: DispatchFilters,
-): Omit<NotificationDispatchQuery, 'from' | 'to'> => ({
+export const toFilterQuery = (filters: DispatchFilters): Omit<DispatchQuery, 'from' | 'to'> => ({
   ...(filters.event === '' ? {} : { eventCode: filters.event }),
   ...(filters.department === '' ? {} : { departmentId: Number(filters.department) }),
   ...(filters.result === ''
     ? {}
-    : { status: filters.result as NonNullable<NotificationDispatchQuery['status']> }),
+    : { status: filters.result as NonNullable<DispatchQuery['status']> }),
 });

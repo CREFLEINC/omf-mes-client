@@ -1,25 +1,21 @@
-import type {
-  NotificationDispatch,
-  NotificationDispatchQuery,
-  NotificationEventForward,
-  ZaloDelivery,
-  components,
-} from '@omf-mes/api-client';
 import { keepPreviousData, useQuery, type UseQueryResult } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
 import { runRequest } from '../../patterns/request';
-
-type PageMeta = components['schemas']['PageMeta'];
-type Department = components['schemas']['Department'];
+import type {
+  DeliveryPage,
+  Department,
+  DispatchPage,
+  DispatchQuery,
+  NotificationEvent,
+} from './types';
 
 export const PAGE_SIZE = 50;
 /** 한 이벤트의 Zalo 발송은 그 부서 수신자 수만큼이다 — 한 번에 받는다. */
 const DELIVERY_SIZE = 200;
 
 export const dispatchHistoryKeys = {
-  dispatches: (query: NotificationDispatchQuery | null) =>
-    ['dispatch-history', 'dispatches', query] as const,
+  dispatches: (query: DispatchQuery | null) => ['dispatch-history', 'dispatches', query] as const,
   deliveries: (notificationEventId: number | null, period: { from: string; to: string } | null) =>
     ['dispatch-history', 'deliveries', notificationEventId ?? 0, period] as const,
   events: ['dispatch-history', 'events'] as const,
@@ -27,9 +23,7 @@ export const dispatchHistoryKeys = {
 };
 
 /** 기간이 맞지 않으면(`null`) 부르지 않는다 — 서버가 400 을 낸다. */
-export const useDispatches = (
-  query: NotificationDispatchQuery | null,
-): UseQueryResult<{ items: NotificationDispatch[]; page: PageMeta }> => {
+export const useDispatches = (query: DispatchQuery | null): UseQueryResult<DispatchPage> => {
   const { client } = useApiClient();
   return useQuery({
     queryKey: dispatchHistoryKeys.dispatches(query),
@@ -51,7 +45,7 @@ export const useDispatches = (
 export const useDeliveries = (
   notificationEventId: number | null,
   period: { from: string; to: string } | null,
-): UseQueryResult<{ items: ZaloDelivery[]; page: PageMeta }> => {
+): UseQueryResult<DeliveryPage> => {
   const { client } = useApiClient();
   return useQuery({
     queryKey: dispatchHistoryKeys.deliveries(notificationEventId, period),
@@ -71,7 +65,7 @@ export const useDeliveries = (
   });
 };
 
-export const useEvents = (): UseQueryResult<NotificationEventForward[]> => {
+export const useEvents = (): UseQueryResult<NotificationEvent[]> => {
   const { client } = useApiClient();
   return useQuery({
     queryKey: dispatchHistoryKeys.events,

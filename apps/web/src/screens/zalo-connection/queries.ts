@@ -1,4 +1,4 @@
-import type { NotificationEventForward } from '@omf-mes/api-client';
+import type { components } from '@omf-mes/api-client';
 import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
@@ -22,7 +22,7 @@ export const useConnection = (): UseQueryResult<Connection> => {
 };
 
 /** 템플릿 행의 이벤트 이름 — 카탈로그가 정본이다. */
-export const useEventNames = (): UseQueryResult<NotificationEventForward[]> => {
+export const useEventNames = (): UseQueryResult<components['schemas']['NotificationEvent'][]> => {
   const { client } = useApiClient();
   return useQuery({
     queryKey: zaloConnectionKeys.events,

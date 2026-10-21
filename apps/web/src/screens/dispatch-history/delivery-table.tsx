@@ -1,15 +1,15 @@
 import { Chip, EmptyState, Table, type ChipStatus, type Column } from '@crefle/web-ui';
-import type { ZaloDelivery, ZaloDeliveryStatus } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 
 import { formatPlantDateTime } from '../../patterns/plant-time';
+import type { Delivery, DeliveryStatus } from './types';
 
 const t = messages.dispatchHistory;
 
 /** 화면이 보이는 네 상태. `SENDING` 은 러너가 보내는 중인 짧은 내부 상태라 「대기」로 합친다. */
 export type DeliveryView = keyof typeof t.deliveryStatus;
 
-export const toDeliveryView = (status: ZaloDeliveryStatus): DeliveryView =>
+export const toDeliveryView = (status: DeliveryStatus): DeliveryView =>
   status === 'SENDING' ? 'PENDING' : status;
 
 const CHIP: Record<DeliveryView, ChipStatus> = {
@@ -19,8 +19,8 @@ const CHIP: Record<DeliveryView, ChipStatus> = {
   EXPIRED: 'idle',
 };
 
-export const DeliveryTable = ({ rows }: { rows: ZaloDelivery[] }) => {
-  const columns: Column<ZaloDelivery>[] = [
+export const DeliveryTable = ({ rows }: { rows: Delivery[] }) => {
+  const columns: Column<Delivery>[] = [
     { key: 'recipient', header: t.columns.recipient, render: (row) => row.recipientName },
     { key: 'phone', header: t.columns.phone, render: (row) => row.phoneMasked },
     {

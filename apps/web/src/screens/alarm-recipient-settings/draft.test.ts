@@ -31,14 +31,13 @@ const draft = (overrides: Partial<SettingDraft> = {}): SettingDraft => ({
 });
 
 describe('isApproverEvent', () => {
-  it('결재 이벤트만 결재자 수신이다 — 칸이 없으면 수신자를 정하는 쪽으로 읽는다', () => {
+  it('결재 이벤트만 결재자 수신이다', () => {
     expect(isApproverEvent({ eventCode: 'A', eventName: 'a', recipientMode: 'APPROVER' })).toBe(
       true,
     );
     expect(isApproverEvent({ eventCode: 'B', eventName: 'b', recipientMode: 'CONFIGURED' })).toBe(
       false,
     );
-    expect(isApproverEvent({ eventCode: 'C', eventName: 'c' })).toBe(false);
     expect(isApproverEvent(undefined)).toBe(false);
   });
 });

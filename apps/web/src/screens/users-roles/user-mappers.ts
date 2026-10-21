@@ -1,12 +1,11 @@
-import type { AppUserPhone, components } from '@omf-mes/api-client';
+import type { components } from '@omf-mes/api-client';
 
 import { defaultInitialPassword } from './initial-password';
 import type { AppUser, UserFormValues } from './types';
 import { formatPhone, normalizePhone } from './user-validation';
 
-/* 휴대폰 번호는 생성 타입에 없어 덧댄다 — `AppUserPhone` 을 지울 때 함께 지운다. */
-type AppUserCreate = components['schemas']['AppUserCreate'] & AppUserPhone;
-type AppUserUpdate = components['schemas']['AppUserUpdate'] & AppUserPhone;
+type AppUserCreate = components['schemas']['AppUserCreate'];
+type AppUserUpdate = components['schemas']['AppUserUpdate'];
 
 /** 비면 널(삭제), 아니면 표준형. 형식이 틀린 값은 검증이 먼저 막으므로 친 값을 그대로 둔다. */
 const phoneToBody = (value: string): string | null =>
@@ -39,7 +38,7 @@ export const appUserToFormValues = (appUser: AppUser): UserFormValues => ({
       : String(appUser.departmentId),
   email: appUser.email ?? '',
   /* 서버는 표준형(`84…`)을 주고 화면은 국내 표기(`0912 345 678`)로 보인다. */
-  phoneNumber: formatPhone((appUser as AppUserPhone).phoneNumber),
+  phoneNumber: formatPhone(appUser.phoneNumber),
   /* 공통코드 선택값. 목록에 없는 기존 값도 초안에서 지우지 않는다. */
   statusCode: appUser.statusCode,
 });

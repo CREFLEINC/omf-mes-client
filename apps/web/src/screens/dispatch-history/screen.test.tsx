@@ -1,4 +1,3 @@
-import type { NotificationDispatch, ZaloDelivery } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -7,6 +6,7 @@ import { describe, expect, it } from 'vitest';
 import { createStubFetch, jsonResponse, renderWithProviders } from '../../test/api-harness';
 import { defaultPeriod, toPeriodQuery, validatePeriod } from './period';
 import { DispatchHistoryScreen } from './screen';
+import type { Delivery as ZaloDelivery, Dispatch as NotificationDispatch } from './types';
 
 const t = messages.dispatchHistory;
 

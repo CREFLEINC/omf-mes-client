@@ -8,7 +8,6 @@ import {
   TextField,
   type ChipStatus,
 } from '@crefle/web-ui';
-import type { ZaloConnectionStatus } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState, type ReactNode } from 'react';
@@ -17,12 +16,12 @@ import { SaveErrorBanner } from '../../patterns/master';
 import { formatPlantDateTime } from '../../patterns/plant-time';
 import { useConnection, useEventNames, useReplaceConnection, zaloConnectionKeys } from './queries';
 import { paramsOf } from './template-params';
-import type { ConnectionFormValues } from './types';
+import type { Connection, ConnectionFormValues } from './types';
 import { sameValues, toFormValues, toReplaceBody, validateConnection } from './validation';
 
 const t = messages.zaloConnection;
 
-const STATUS_CHIP: Record<ZaloConnectionStatus, ChipStatus> = {
+const STATUS_CHIP: Record<Connection['status'], ChipStatus> = {
   ACTIVE: 'success',
   NOT_CONFIGURED: 'idle',
   REAUTH_REQUIRED: 'error',
