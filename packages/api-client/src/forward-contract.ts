@@ -827,11 +827,10 @@ export interface RecipientCandidate {
   hasPhone: boolean;
 }
 
+/** 저장소 공통 페이지 모양(서버 `pagedResponse`) — `{ items, page: PageMeta }`. */
 export interface RecipientCandidatePage {
   items: RecipientCandidate[];
-  page: number;
-  size: number;
-  total: number;
+  page: components['schemas']['PageMeta'];
 }
 
 export interface RecipientCandidateQuery {
