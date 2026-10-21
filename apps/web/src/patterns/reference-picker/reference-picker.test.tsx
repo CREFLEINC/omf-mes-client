@@ -7,6 +7,7 @@ import { renderWithProviders } from '../../test/api-harness';
 import { ReferenceField, type ReferenceSource } from './reference-picker';
 
 const t = messages.screenPatterns.referencePicker;
+const nav = messages.screenPatterns.pageNav;
 
 const source = (search = vi.fn()): ReferenceSource => ({
   title: '생산 라인 선택',
@@ -62,5 +63,49 @@ describe('ReferenceField와 PickerDialog(C-12)', () => {
     const dialog = await screen.findByRole('dialog');
     await user.type(within(dialog).getByLabelText(t.keyword), '조립{Enter}');
     expect(search).toHaveBeenLastCalledWith('조립', 1, '');
+  });
+
+  it('쪽을 넘기면 고른 행을 풀어 보이지 않는 행이 선택되지 않는다', async () => {
+    const user = userEvent.setup();
+    const search = vi.fn().mockImplementation((_term: string, page: number) =>
+      Promise.resolve({
+        items: [{ id: page, code: `LN-${String(page)}`, name: `라인 ${String(page)}` }],
+        total: 40,
+      }),
+    );
+    renderWithProviders(
+      <ReferenceField
+        label="생산 라인"
+        valueLabel=""
+        source={{ ...source(), search }}
+        onPick={vi.fn()}
+        onClear={vi.fn()}
+      />,
+    );
+    await user.click(screen.getByLabelText('생산 라인'));
+    const dialog = await screen.findByRole('dialog', { name: '생산 라인 선택' });
+    await user.click(await within(dialog).findByText('라인 1'));
+    expect(within(dialog).getByRole('button', { name: t.pick })).toBeEnabled();
+    await user.click(within(dialog).getByRole('button', { name: nav.next }));
+    await within(dialog).findByText('라인 2');
+    expect(within(dialog).getByRole('button', { name: t.pick })).toBeDisabled();
+  });
+
+  it('조회에 실패하면 「결과 없음」이 아니라 실패를 알린다', async () => {
+    const user = userEvent.setup();
+    const search = vi.fn().mockRejectedValue(new Error('조회 실패'));
+    renderWithProviders(
+      <ReferenceField
+        label="생산 라인"
+        valueLabel=""
+        source={{ ...source(), search }}
+        onPick={vi.fn()}
+        onClear={vi.fn()}
+      />,
+    );
+    await user.click(screen.getByLabelText('생산 라인'));
+    const dialog = await screen.findByRole('dialog', { name: '생산 라인 선택' });
+    expect(await within(dialog).findByText(t.failed)).toBeVisible();
+    expect(within(dialog).queryByText(t.empty(''))).toBeNull();
   });
 });

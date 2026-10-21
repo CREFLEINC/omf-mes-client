@@ -1,5 +1,4 @@
 import {
-  AlertBanner,
   Button,
   Dialog,
   EmptyState,
@@ -104,6 +103,12 @@ export const PickerDialog = ({ source, onClose, onPick }: PickerDialogProps) => 
   const submit = () => {
     setPage(1);
     setTerm(keyword.trim());
+    setPicked(null);
+  };
+  /* 쪽을 넘기면 고른 행이 보이지 않으므로 고름을 푼다. */
+  const changePage = (next: number) => {
+    setPage(next);
+    setPicked(null);
   };
 
   return (
@@ -179,7 +184,6 @@ export const PickerDialog = ({ source, onClose, onPick }: PickerDialogProps) => 
             </Button>
           </div>
         </div>
-        {result.isError && <AlertBanner variant="warning">{t.failed}</AlertBanner>}
         <SelectableTable
           columns={columns}
           rows={rows}
@@ -187,11 +191,17 @@ export const PickerDialog = ({ source, onClose, onPick }: PickerDialogProps) => 
           activeId={picked === null ? null : String(picked.id)}
           rowLabel={(row) => named(row.name, row.code)}
           onActivate={setPicked}
-          empty={<EmptyState size="sm" title={result.isPending ? t.searching : t.empty(term)} />}
+          empty={
+            /* 조회 실패를 「결과 없음」으로 보이지 않는다. */
+            <EmptyState
+              size="sm"
+              title={result.isError ? t.failed : result.isPending ? t.searching : t.empty(term)}
+            />
+          }
         />
         <PageNav
           meta={{ page, size: REFERENCE_PAGE_SIZE, total: result.data?.total ?? 0 }}
-          onChangePage={setPage}
+          onChangePage={changePage}
         />
       </div>
     </Dialog>
