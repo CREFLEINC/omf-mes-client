@@ -30,10 +30,10 @@ export interface DefectMajor {
  * ⚠ 저장은 상세만 받는다 — 대분류는 묶음 이름일 뿐이라, 상세가 없는 대분류는 내지 않는다.
  */
 export const groupDefectCodes = (codes: readonly ProcessDefectCode[]): DefectMajor[] => {
-  const active = codes.filter((code) => code.isActive);
   const majors = new Map<number, DefectMajor>();
 
-  for (const code of active) {
+  /* 대분류는 묶음 머리라 쓰지 않는 대분류여도 이름을 빌린다 — 고르는 것은 상세다. */
+  for (const code of codes) {
     if (code.parentDefectCodeId == null && !majors.has(code.defectCodeId)) {
       majors.set(code.defectCodeId, {
         majorId: code.defectCodeId,
@@ -42,9 +42,9 @@ export const groupDefectCodes = (codes: readonly ProcessDefectCode[]): DefectMaj
       });
     }
   }
-  for (const code of active) {
+  for (const code of codes) {
     const parentId = code.parentDefectCodeId;
-    if (parentId == null) continue;
+    if (parentId == null || !code.isActive) continue;
     const major = majors.get(parentId) ?? {
       majorId: parentId,
       name: code.parentDefectName ?? code.parentDefectCode ?? code.defectName,

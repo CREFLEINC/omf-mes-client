@@ -30,6 +30,9 @@ describe('groupDefectCodes', () => {
       code(11, '긁힘', 1),
       code(12, '찍힘', 1, { isActive: false }),
       code(2, '치수'),
+      /* 쓰지 않는 대분류도 상세가 있으면 머리 이름이 된다. */
+      code(4, '포장', null, { isActive: false }),
+      code(41, '오염', 4),
       /* 대분류 줄 없이 상세만 오면 상세에 실린 대분류 이름을 쓴다. */
       code(31, '미성형', 3, { parentDefectName: '성형' }),
     ]);
@@ -38,6 +41,7 @@ describe('groupDefectCodes', () => {
       majors.map((major) => [major.name, major.minors.map((minor) => minor.defectName)]),
     ).toEqual([
       ['외관', ['긁힘']],
+      ['포장', ['오염']],
       ['성형', ['미성형']],
     ]);
     expect(defectLabelOf(majors, 31)).toBe('성형 › 미성형');
