@@ -26,6 +26,8 @@ export interface ScannedListProps {
   /** 품목·단위 번호를 코드로 옮긴다. 못 옮기면 번호가, 단위는 빈 자리가 선다. */
   describeItem: (itemId: number) => string;
   describeUom: (uomId: number) => string;
+  /** 4M 변경 종류 코드를 표시명으로(omf-all-around#63). 없으면 원문 코드. */
+  describeFourMType?: (code: string) => string;
   qtyDrafts: QtyDrafts;
   /** 서버가 통과시키되 기록만 한 것(§5-3). 기록된 줄에만 붙는다. */
   notes: readonly RecordedNote[];
@@ -61,6 +63,7 @@ export const ScannedList = ({
   draft,
   statusLabels,
   describeItem,
+  describeFourMType = (code) => code,
   describeUom,
   qtyDrafts,
   notes,
@@ -138,6 +141,22 @@ export const ScannedList = ({
                   <Chip variant="status" size="md" status="warning">
                     {t.scanned.heldMark}
                   </Chip>
+                )}
+                {/* IQC 에서 적은 4M 변경품 — 투입은 막지 않고 알린다(omf-all-around#63). */}
+                {material.fourMChange !== null && (
+                  <>
+                    <Chip variant="status" size="md" status="warning">
+                      {t.scanned.fourMChangeMark}
+                    </Chip>
+                    <span className="field-note">
+                      {[
+                        describeFourMType(material.fourMChange.changeTypeCode),
+                        material.fourMChange.remarks,
+                      ]
+                        .filter((part) => part !== undefined && part !== '')
+                        .join(' · ')}
+                    </span>
+                  </>
                 )}
 
                 {/*

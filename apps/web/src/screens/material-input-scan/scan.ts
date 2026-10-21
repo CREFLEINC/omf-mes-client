@@ -1,4 +1,4 @@
-import type { components } from '@omf-mes/api-client';
+import type { components, FourMChangeForward, LotForward } from '@omf-mes/api-client';
 
 /**
  * 스캔 한 번이 무엇을 낳는가.
@@ -9,7 +9,7 @@ import type { components } from '@omf-mes/api-client';
  * 이 파일은 이 화면이 소유한다 — 다른 화면 슬라이스의 같은 이름 파일을 참조하지 않는다.
  */
 
-type LotResponse = components['schemas']['Lot'];
+type LotResponse = LotForward;
 type MoldResponse = components['schemas']['Mold'];
 
 /**
@@ -59,6 +59,8 @@ export interface ScannedMaterial {
   statusCode: string;
   /** 지금 보류 중인지. 역시 표시만 한다. */
   isHeld: boolean;
+  /** IQC 에서 적은 4M 변경품(omf-all-around#63) — 투입을 막지 않고 알리기만 한다. 아니면 `null`. */
+  fourMChange: FourMChangeForward | null;
 }
 
 export const toScannedMaterial = (lot: LotResponse): ScannedMaterial => ({
@@ -68,6 +70,7 @@ export const toScannedMaterial = (lot: LotResponse): ScannedMaterial => ({
   uomId: lot.uomId,
   statusCode: lot.statusCode,
   isHeld: lot.held ?? false,
+  fourMChange: lot.fourMChange ?? null,
 });
 
 /** 담긴 금형. **한 번에 하나다**(스펙 §3의 투입 목록에 금형 줄이 하나다). */

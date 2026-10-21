@@ -25,12 +25,16 @@ const LOT_STATUS_GROUP = 'LOT_STATUS';
 
 export const lotStatusKeys = {
   labels: ['material-input-scan', 'lot-status-labels'] as const,
+  fourMChangeTypes: ['material-input-scan', 'four-m-change-type-labels'] as const,
 };
 
-const fetchLotStatusLabels = async (client: Client): Promise<Map<string, string>> => {
+/** 4M 변경품의 변경 종류(omf-all-around#63 · 서버 선행 P-86). */
+const FOUR_M_CHANGE_TYPE_GROUP = 'FOUR_M_CHANGE_TYPE';
+
+const fetchCodeLabels = async (client: Client, group: string): Promise<Map<string, string>> => {
   const data = await runRequest(() =>
     client.GET('/mdm/code-values', {
-      params: { query: { codeGroupCode: LOT_STATUS_GROUP, includeInactive: true } },
+      params: { query: { codeGroupCode: group, includeInactive: true } },
     }),
   );
 
@@ -62,7 +66,7 @@ export const useLotStatusLabels = (): LotStatusLabels => {
 
   const query = useQuery({
     queryKey: lotStatusKeys.labels,
-    queryFn: () => fetchLotStatusLabels(client),
+    queryFn: () => fetchCodeLabels(client, LOT_STATUS_GROUP),
   });
 
   const labels = query.data;
@@ -75,4 +79,15 @@ export const useLotStatusLabels = (): LotStatusLabels => {
      */
     isUnavailable: query.isError,
   };
+};
+
+/** 4M 변경 종류 표시명 — 모르면 원문 코드. 실패해도 표시만 원문으로 남는다(omf-all-around#63). */
+export const useFourMChangeTypeLabels = (): ((code: string) => string) => {
+  const { client } = useApiClient();
+  const query = useQuery({
+    queryKey: lotStatusKeys.fourMChangeTypes,
+    queryFn: () => fetchCodeLabels(client, FOUR_M_CHANGE_TYPE_GROUP),
+  });
+
+  return (code) => query.data?.get(code) ?? code;
 };

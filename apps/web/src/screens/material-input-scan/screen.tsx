@@ -10,7 +10,7 @@ import { PopWorkerMissingBanner } from '../../patterns/pop-worker-missing-banner
 import { confirmBlockReason } from './block-reason';
 import { ConfirmPanel } from './confirm-panel';
 import { LoadErrorBanner } from './load-error-banner';
-import { useLotStatusLabels } from './lot-status-labels';
+import { useFourMChangeTypeLabels, useLotStatusLabels } from './lot-status-labels';
 import { useReceiptLines, useWorkOrderTypeCode } from './queries';
 import { ReceiptSummary } from './receipt-summary';
 import { useReferenceLabels } from './reference-labels';
@@ -122,6 +122,7 @@ export const MaterialInputScanScreen = () => {
   const scan = useScanLookup();
   /* 표시용 이름 풀이. 어느 판정에도 쓰이지 않는다 — 읽을 수 있게 하는 데만 쓴다. */
   const statusLabels = useLotStatusLabels();
+  const describeFourMType = useFourMChangeTypeLabels();
   /* 단말 게이팅 — 스펙 §5-1. 화면의 잠금은 오조작을 줄이는 장치이지 집행이 아니다. */
   const gate = useTerminalGate(terminalId, processId);
   /*
@@ -470,6 +471,7 @@ export const MaterialInputScanScreen = () => {
             statusLabels={statusLabels}
             describeItem={labels.describeItem}
             describeUom={labels.describeUom}
+            describeFourMType={describeFourMType}
             qtyDrafts={qtyDrafts}
             notes={notes}
             recordedLotIds={recordedLotIdsSeen}

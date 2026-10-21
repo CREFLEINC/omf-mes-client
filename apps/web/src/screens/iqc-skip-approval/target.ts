@@ -1,7 +1,7 @@
 import { messages } from '@omf-mes/i18n';
 
 import { screenPathOf, type ScreenRouteTable } from './screen-routes';
-import { readableName, type ApprovalTarget } from './types';
+import { targetNameOf, type ApprovalTarget } from './types';
 
 /**
  * 대상 「열기」의 판정과 대상 이름.
@@ -80,15 +80,12 @@ export const describeOpenBlock = (block: TargetOpenBlock): string => {
 };
 
 /**
- * 대상 이름 — **서버가 만든 표시명 그대로다.**
+ * 대상 이름 — 서버 표시명에서 앞머리 유형 코드만 사용자 용어로 읽는다(omf-all-around#134).
  *
- * 비어 오면 사실을 적는다. **`targetId`도 `targetTypeCode`도 대신 내지 않는다**(`omf-mes#44`) —
- * 번호는 사용자에게 아무 뜻이 없고, 유형 코드로 이름을 지어내면 그것이 곧 금지된 매핑표다.
- *
- * 「비어 있다」의 판정은 이 슬라이스의 이름 자리가 함께 쓰는 것 하나다(`readableName`).
+ * 비어 오면 사실을 적는다. **`targetId`를 대신 내지 않는다**(`omf-mes#44`). 판정은 목록과 같은
+ * 하나다(`targetNameOf`).
  */
-export const describeTargetName = (target: ApprovalTarget): string =>
-  readableName(target.displayName, t.values.unknownTarget);
+export const describeTargetName = (target: ApprovalTarget): string => targetNameOf(target);
 
 /** 결재 요청 상태 — 승인 완료(시드 `APPROVAL_REQUEST_STATUS`). */
 const APPROVED_STATUS = 'APPROVED';

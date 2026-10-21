@@ -200,6 +200,7 @@ export const lotStatusHistory = {
       initialQty: '초기 수량',
       expiryDate: '유효기한',
       manufacturedAt: '제조 시각',
+      fourMChange: '4M 변경품',
     },
     transition: '판정·전이 처리',
     /** 화면 코드 대신 메뉴에 보이는 화면 이름으로 안내한다(사용자 지시 2026-09-19). */

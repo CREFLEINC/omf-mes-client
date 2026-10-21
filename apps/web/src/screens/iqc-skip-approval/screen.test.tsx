@@ -433,7 +433,7 @@ describe('첫 진입', () => {
    * 확정 열 구성을 화면 수준에서도 고정한다 — 부품 시험만으로는 컨테이너가 다른 표를
    * 끼워 넣어도 드러나지 않는다.
    */
-  it('목록이 확정된 여섯 열로만 그려진다', async () => {
+  it('목록이 일곱 열(상태 포함)로 그려진다', async () => {
     renderScreen([listRoute()]);
 
     await waitForList();
@@ -448,6 +448,7 @@ describe('첫 진입', () => {
       t.fields.target,
       t.fields.reason,
       t.fields.requestedByName,
+      t.fields.status,
       t.fields.requestedAt,
     ]);
   });
@@ -1400,16 +1401,20 @@ describe('고른 요청의 아래 구획', () => {
 
     expect(finishedDetail.steps[1]?.isCurrent).toBe(true);
     expect(finishedDetail.steps[1]?.isMine).toBe(true);
-    expect(await pane.findByText(t.progress.notMyTurn)).toBeVisible();
+    /* 진행 구획과 결재 단추 줄 아래 — 두 자리에 선다(#134: 단추 셋의 되풀이를 한 줄로 모았다). */
+    const notMyTurn = await pane.findAllByText(t.progress.notMyTurn);
+    expect(notMyTurn[0]).toBeVisible();
     expect(pane.getByText(t.progress.finished(2))).toBeVisible();
   });
 
-  it('결재 결과 코드가 응답 값 그대로 서고 결재된 단계의 노드가 서버 단계 번호다', async () => {
+  it('결재 결과가 사용자 용어로 서고 결재된 단계의 노드가 서버 단계 번호다', async () => {
     renderScreen(defaultRoutes(), '?rq=9001');
 
     const pane = await detailPane();
+    const progress = within(await pane.findByRole('group', { name: t.panes.progress }));
 
-    expect(await pane.findByText(SAMPLE_DECISION_CODE_A)).toBeVisible();
+    expect(progress.getByText(t.labels.status.APPROVED)).toBeVisible();
+    expect(progress.queryByText(SAMPLE_DECISION_CODE_A)).toBeNull();
     expect(pane.getByText('2026-08-06 13:02')).toBeVisible();
     expect(pane.getByText('합성 결재 의견 하나')).toBeVisible();
   });
@@ -1617,9 +1622,7 @@ describe('결재 — 내 차례 판정(첫째 겹)', () => {
 
     expect(approveButton()).toBeDisabled();
     expect(rejectButton()).toBeDisabled();
-    expect(approveButton()).toHaveAccessibleDescription(
-      t.decision.blockedNotMyTurn(t.decision.approve),
-    );
+    expect(approveButton()).toHaveAccessibleDescription(t.progress.notMyTurn);
 
     await user.click(approveButton());
     await user.click(rejectButton());
@@ -1640,9 +1643,7 @@ describe('결재 — 내 차례 판정(첫째 겹)', () => {
     await renderDecision(decisionRoutes(), '?rq=9003');
 
     expect(within(decisionPane()).queryByRole('alert')).toBeNull();
-    expect(rejectButton()).toHaveAccessibleDescription(
-      t.decision.blockedNotMyTurn(t.decision.reject),
-    );
+    expect(rejectButton()).toHaveAccessibleDescription(t.progress.notMyTurn);
   });
 });
 
@@ -1813,7 +1814,7 @@ describe('결재 — 확인 창', () => {
 
     /* 창이 열린 채 상세가 다시 온다 — 그 사이 앞 단계가 움직였다. */
     await user.click(screen.getByRole('button', { name: t.actions.reload }));
-    await screen.findByText(t.progress.notMyTurn);
+    await screen.findAllByText(t.progress.notMyTurn);
 
     await user.click(confirmButton(t.decision.approve));
 

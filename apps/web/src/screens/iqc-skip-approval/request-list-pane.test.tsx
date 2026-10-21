@@ -13,10 +13,10 @@ import {
 } from './fixtures';
 import { toPageView } from './pagination';
 import {
-  REASON_COLUMN_BUDGET_PX,
+  REASON_COLUMN_MIN_PX,
   REQUEST_COLUMN_WIDTH,
   RequestListPane,
-  WIDE_TABLE_MIN_WIDTH_PX,
+  TABLE_MIN_WIDTH_PX,
 } from './request-list-pane';
 import type { RequestRow } from './types';
 
@@ -78,7 +78,7 @@ const renderedColumnWidths = (container: HTMLElement): (string | null)[] =>
 
 /**
  * 열 정의가 가져야 할 폭 — **차례까지 포함해** 상수에서 만든다.
- * 가운데 `null`이 흡수 열(사유)이다 — 확정 열 차례가 사유를 넷째에 두었다.
+ * 가운데 `null`이 흡수 열(사유)이다 — 열 차례가 사유를 넷째에 두었다.
  */
 const EXPECTED_COLUMN_WIDTHS: (string | null)[] = [
   REQUEST_COLUMN_WIDTH.approvalRequestNo,
@@ -86,6 +86,7 @@ const EXPECTED_COLUMN_WIDTHS: (string | null)[] = [
   REQUEST_COLUMN_WIDTH.target,
   null,
   REQUEST_COLUMN_WIDTH.requester,
+  REQUEST_COLUMN_WIDTH.status,
   REQUEST_COLUMN_WIDTH.requestedAt,
 ];
 
@@ -99,23 +100,25 @@ describe('열 폭 예산 — 선언(상수)', () => {
       'approvalTypeCode',
       'target',
       'requester',
+      'status',
       'requestedAt',
     ]);
   });
 
-  it('지정 폭과 흡수 예산의 합이 표 최소 폭 안이다', () => {
+  /** 1024 폭 창(사이드바를 뺀 본문)에서도 가로로 넘치지 않는 폭이다(#134). */
+  it('지정 폭과 사유 하한의 합이 표 최소 폭과 같다', () => {
     const specified = Object.values(REQUEST_COLUMN_WIDTH).reduce(
       (sum, width) => sum + pxOf(width),
       0,
     );
 
-    expect(specified).toBe(728);
-    expect(specified + REASON_COLUMN_BUDGET_PX).toBeLessThanOrEqual(WIDE_TABLE_MIN_WIDTH_PX);
+    expect(specified).toBe(612);
+    expect(specified + REASON_COLUMN_MIN_PX).toBe(TABLE_MIN_WIDTH_PX);
   });
 
   /** 일시 칸은 `2026-08-06 14:20`이 한 줄에 들어가야 한다 — 접히면 행 높이가 무너진다. */
   it('상신 일시 칸이 열여섯 자 표기를 담을 폭을 갖는다', () => {
-    expect(pxOf(REQUEST_COLUMN_WIDTH.requestedAt)).toBeGreaterThanOrEqual(148);
+    expect(pxOf(REQUEST_COLUMN_WIDTH.requestedAt)).toBeGreaterThanOrEqual(136);
   });
 });
 
@@ -128,8 +131,8 @@ describe('열 폭 예산 — 산출물(열 정의)', () => {
   it('표가 받은 폭이 열마다·차례대로 선언과 같다', () => {
     const { container } = renderPane();
 
-    /* 선행 단언 — 열이 실제로 여섯이어야 폭 목록을 견주는 것이 뜻을 갖는다. */
-    expect(screen.getAllByRole('columnheader')).toHaveLength(6);
+    /* 선행 단언 — 열이 실제로 일곱이어야 폭 목록을 견주는 것이 뜻을 갖는다. */
+    expect(screen.getAllByRole('columnheader')).toHaveLength(7);
     expect(renderedColumnWidths(container)).toEqual(EXPECTED_COLUMN_WIDTHS);
   });
 
@@ -137,24 +140,24 @@ describe('열 폭 예산 — 산출물(열 정의)', () => {
     const { container } = renderPane();
     const widths = renderedColumnWidths(container);
 
-    expect(widths).toHaveLength(6);
+    expect(widths).toHaveLength(7);
     expect(widths.filter((width) => width === null)).toHaveLength(1);
     /* 흡수 열은 **넷째**(사유)다 — 자리가 바뀌면 확정 열 차례가 어긋난 것이다. */
     expect(widths[3]).toBeNull();
   });
 
-  it('표가 받은 지정 폭의 합과 흡수 예산이 표 최소 폭 안이다', () => {
+  it('표가 받은 지정 폭의 합과 사유 하한이 표 최소 폭과 같다', () => {
     const { container } = renderPane();
     const specified = renderedColumnWidths(container)
       .filter((width): width is string => width !== null)
       .reduce((sum, width) => sum + pxOf(width), 0);
 
-    expect(specified).toBe(728);
-    expect(specified + REASON_COLUMN_BUDGET_PX).toBeLessThanOrEqual(WIDE_TABLE_MIN_WIDTH_PX);
+    expect(specified).toBe(612);
+    expect(specified + REASON_COLUMN_MIN_PX).toBe(TABLE_MIN_WIDTH_PX);
   });
 });
 
-describe('RequestListPane — 확정된 여섯 열', () => {
+describe('RequestListPane — 일곱 열', () => {
   /**
    * 열 구성은 계획이 확정했고 화면이 바꾸지 않는다. 이 단언이 그 목록을 **차례까지** 고정한다 —
    * 열 하나를 더하거나 다른 값으로 갈아 끼우면 여기서 멈춘다.
@@ -168,6 +171,7 @@ describe('RequestListPane — 확정된 여섯 열', () => {
       t.fields.target,
       t.fields.reason,
       t.fields.requestedByName,
+      t.fields.status,
       t.fields.requestedAt,
     ]);
   });
@@ -210,18 +214,34 @@ describe('RequestListPane — 확정된 여섯 열', () => {
     expect(screen.getByText('합성 대상 문서 나')).toBeInTheDocument();
   });
 
-  it('상태 열도 진행 단계 열도 두지 않는다 — 열은 늘리는 것보다 줄이는 것이 먼저다', () => {
+  /**
+   * 「결재 대기만 보기」를 끄면 대기·승인·반려가 섞인다 — 상태 열이 그것을 가른다(#134).
+   * 픽스처의 상태는 표에 없는 코드라 그대로 선다. 진행 단계는 여전히 상세가 말한다.
+   */
+  it('상태 열이 서고, 진행 단계 열은 두지 않는다', () => {
     const { container } = renderPane();
     const text = container.textContent ?? '';
 
-    /* 선행 단언 — 열이 실제로 서 있어야 「그 값이 없다」가 뜻을 갖는다. */
-    expect(screen.getAllByRole('columnheader')).toHaveLength(6);
-    expect(text).toContain('GOODS_ISSUE_DISPOSAL');
-
+    expect(screen.getByRole('columnheader', { name: t.fields.status })).toBeInTheDocument();
     for (const request of requestFixtures) {
-      expect(text).not.toContain(request.statusCode);
+      expect(text).toContain(request.statusCode);
     }
     expect(text).not.toContain('2 / 3');
+  });
+
+  it('아는 상태는 사용자 용어 배지로 낸다', () => {
+    renderPane({
+      rows: [
+        { ...requestRowFixtures[0]!, statusCode: 'PENDING' },
+        { ...requestRowFixtures[1]!, statusCode: 'APPROVED' },
+        { ...requestRowFixtures[2]!, statusCode: 'REJECTED' },
+      ],
+    });
+
+    expect(screen.getByText(t.labels.status.PENDING)).toBeInTheDocument();
+    expect(screen.getByText(t.labels.status.APPROVED)).toBeInTheDocument();
+    expect(screen.getByText(t.labels.status.REJECTED)).toBeInTheDocument();
+    expect(screen.queryByText('PENDING')).toBeNull();
   });
 });
 
