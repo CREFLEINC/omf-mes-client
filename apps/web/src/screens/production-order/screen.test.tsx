@@ -2,6 +2,7 @@ import { messages } from '@omf-mes/i18n';
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useLocation } from 'react-router';
+import { useState } from 'react';
 import { describe, expect, it } from 'vitest';
 
 import { jsonResponse, renderWithProviders, type StubFetch } from '../../test/api-harness';
@@ -284,5 +285,37 @@ describe('ERP W/O 처리 작업함', () => {
     const row = screen.getByRole('link', { name: t.list.openRow('SYN-PO-705') });
     expect(within(row).getByText(t.list.pendingUnknown)).toBeVisible();
     expect(within(row).queryByText(t.status.RELEASED)).toBeNull();
+  });
+
+  it('일괄 배포 중에 다른 화면으로 갔다 돌아와도 결과가 남는다', async () => {
+    const user = userEvent.setup();
+    const harness = stub({ orders: [DONE_READY] });
+    const Toggle = () => {
+      const [shown, setShown] = useState(true);
+      return (
+        <>
+          <button type="button" onClick={() => setShown((value) => !value)}>
+            화면 전환
+          </button>
+          {shown && <ProductionOrderScreen />}
+        </>
+      );
+    };
+    renderWithProviders(<Toggle />, {
+      fetch: harness.fetch,
+      route: '/production/production-orders?autoPlan=DONE',
+    });
+
+    const ready = await screen.findByRole('link', { name: t.list.openRow('SYN-PO-703') });
+    await user.click(within(ready).getByRole('checkbox'));
+    await user.click(screen.getByRole('button', { name: t.bulk.release }));
+    const dialog = screen.getByRole('dialog', { name: t.bulk.releaseDialog.title });
+    await within(dialog).findByText(t.bulk.releaseDialog.forecast(1, 0, 0, 1));
+    await user.click(within(dialog).getByRole('button', { name: t.bulk.releaseDialog.confirm }));
+    await user.click(screen.getByRole('button', { name: '화면 전환' }));
+    await waitFor(() => expect(harness.requests.some((r) => /:release$/.test(r.url))).toBe(true));
+    await user.click(screen.getByRole('button', { name: '화면 전환' }));
+
+    expect(await screen.findByRole('region', { name: t.bulk.resultTitle.release })).toBeVisible();
   });
 });

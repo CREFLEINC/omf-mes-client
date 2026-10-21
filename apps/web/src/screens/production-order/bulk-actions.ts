@@ -1,7 +1,7 @@
 import { createIdempotencyKey } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
-import { useQueryClient } from '@tanstack/react-query';
-import { useCallback, useState } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useCallback } from 'react';
 
 import { useApiClient } from '../../patterns/api-context';
 import type { BulkOutcome } from '../../patterns/bulk-result';
@@ -56,6 +56,19 @@ export const forecastStatus = (entry: ForecastEntry): BulkOutcome['status'] => {
   return entry.forecast.ready < entry.forecast.total ? 'partial' : 'processed';
 };
 
+interface BulkState {
+  run: BulkRun | null;
+  isRunning: boolean;
+}
+
+const IDLE: BulkState = { run: null, isRunning: false };
+
+/**
+ * 실행 상태와 결과는 화면 상태가 아니라 쿼리 캐시에 둔다. 실행 중에 다른 화면으로 갔다 돌아와도 진행과 결과가
+ * 남는다. `production-orders` 접두를 쓰지 않아 배포 뒤 무효화가 결과를 지우지 않는다.
+ */
+const BULK_STATE_KEY = ['worklist-bulk-state'] as const;
+
 /**
  * 작업함 일괄 동작(C-17, C-18). 고른 ERP W/O마다 차례로 실행하고, 한 건이 실패해도 나머지를 계속한다.
  * 결과는 ERP W/O 단위로 세고, W/O 일부만 배포되면 「일부 처리」다.
@@ -63,8 +76,17 @@ export const forecastStatus = (entry: ForecastEntry): BulkOutcome['status'] => {
 export const useWorklistBulk = () => {
   const { client } = useApiClient();
   const queryClient = useQueryClient();
-  const [run, setRun] = useState<BulkRun | null>(null);
-  const [isRunning, setIsRunning] = useState(false);
+  const { data: state } = useQuery({
+    queryKey: BULK_STATE_KEY,
+    queryFn: () => queryClient.getQueryData<BulkState>(BULK_STATE_KEY) ?? IDLE,
+    initialData: IDLE,
+    staleTime: Infinity,
+    gcTime: Infinity,
+  });
+  const setState = useCallback(
+    (next: BulkState) => queryClient.setQueryData(BULK_STATE_KEY, next),
+    [queryClient],
+  );
 
   const forecast = useCallback(
     async (targets: readonly BulkTarget[]): Promise<ForecastEntry[]> => {
@@ -144,8 +166,7 @@ export const useWorklistBulk = () => {
 
   const start = useCallback(
     async (kind: BulkKind, targets: readonly BulkTarget[]) => {
-      setIsRunning(true);
-      setRun(null);
+      setState({ run: null, isRunning: true });
       const outcomes: BulkOutcome[] = [];
       for (const target of targets) {
         outcomes.push(
@@ -153,11 +174,16 @@ export const useWorklistBulk = () => {
         );
       }
       await invalidateFlow(queryClient);
-      setRun({ kind, outcomes });
-      setIsRunning(false);
+      setState({ run: { kind, outcomes }, isRunning: false });
     },
-    [autoPlanOrder, queryClient, releaseOrder],
+    [autoPlanOrder, queryClient, releaseOrder, setState],
   );
 
-  return { run, isRunning, start, forecast, clear: () => setRun(null) };
+  return {
+    run: state.run,
+    isRunning: state.isRunning,
+    start,
+    forecast,
+    clear: () => setState(IDLE),
+  };
 };
