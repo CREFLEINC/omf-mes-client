@@ -21,7 +21,6 @@ const scan: OqcSerialScan = {
   itemName: '오토 리와인더',
   lotId: 50,
   lotNo: 'L-50',
-  sheetStandardReady: true,
   pickedRequests: [
     {
       inspectionRequestId: 1,

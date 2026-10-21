@@ -208,7 +208,7 @@ export const oqcInspection: Translated<typeof ko.oqcInspection> = {
     scanPlaceholder: 'Quét hoặc nhập số serial rồi nhấn Enter',
     scanning: 'Đang kiểm tra serial…',
     heading: 'Serial đã kiểm tra',
-    help: 'Quét serial đã kiểm tra và chọn OK/NG. Lưu cùng với đánh giá và ghi vào dòng kiểm tra xuất hàng của phiếu kiểm tra sản phẩm.',
+    help: 'Quét serial đã kiểm tra và chọn OK/NG. Lưu cùng với đánh giá và ghi thành hồ sơ kiểm tra xuất hàng theo từng serial.',
     notFound: (serialNo: string): string => `Không có số serial: ${serialNo}`,
     noOpenRequest: (serialNo: string): string =>
       `Không có yêu cầu OQC đang mở đã lấy hàng LOT của serial ${serialNo}.`,
@@ -218,10 +218,6 @@ export const oqcInspection: Translated<typeof ko.oqcInspection> = {
       `Serial ${serialNo} không thuộc mã hàng của yêu cầu này.`,
     notPicked: (serialNo: string): string =>
       `LOT của serial ${serialNo} không phải LOT mà lệnh xuất hàng này đã lấy hàng.`,
-    noStandard:
-      'Model này chưa có tiêu chuẩn phiếu kiểm tra đã xác nhận có bước kiểm tra xuất hàng nên không ghi được kiểm tra xuất hàng theo serial. Chỉ lưu đánh giá LOT.',
-    sheetOwned: (serialNo: string): string =>
-      `Serial ${serialNo} đã được ghi kiểm tra xuất hàng trên màn hình phiếu kiểm tra sản phẩm.`,
     lookupFailed: 'Không kiểm tra được serial. Hãy quét lại.',
     columns: { serialNo: 'Serial', lotNo: 'LOT', previous: 'Ghi trước', judgment: 'Đánh giá' },
     previous: (first: string, final: string): string => `Lần 1 ${first} → Cuối ${final}`,

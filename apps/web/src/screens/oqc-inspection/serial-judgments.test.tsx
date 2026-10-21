@@ -10,7 +10,7 @@ import { toResultCreateBody } from './queries';
 import { SerialJudgments } from './serial-judgments';
 import { checkScannedSerial, serialBlockedReason, toSerialRow, type SerialRow } from './serials';
 
-/** 시리얼 OQC(omf-all-around#68 · 서버 선행 P-89) — 「검사한 시리얼」 구획. */
+/** 시리얼 OQC(omf-all-around#68 · 서버 선행 P-101) — 「검사한 시리얼」 구획. */
 
 const t = messages.oqcInspection.serials;
 
@@ -22,7 +22,6 @@ const scanOf = (overrides: Partial<OqcSerialScan> = {}): OqcSerialScan => ({
   itemName: '오토 리와인더',
   lotId: 50,
   lotNo: 'L-50',
-  sheetStandardReady: true,
   pickedRequests: [
     {
       inspectionRequestId: 1,
@@ -76,15 +75,10 @@ describe('검사한 시리얼', () => {
     expect(screen.getByText(t.count(1, 1))).toBeInTheDocument();
   });
 
-  it('없는 시리얼 · 기준 없는 모델은 줄을 붙이지 않고 이유를 보인다', async () => {
-    renderSection({
-      'SN-0012': scanOf({ serialNumberId: 12, serialNo: 'SN-0012', sheetStandardReady: false }),
-    });
+  it('없는 시리얼은 줄을 붙이지 않고 이유를 보인다', async () => {
+    renderSection({});
     await scanInto('SN-0099');
     expect(await screen.findByText(t.notFound('SN-0099'))).toBeInTheDocument();
-
-    await scanInto('SN-0012');
-    expect(await screen.findByText(t.noStandard)).toBeInTheDocument();
     expect(screen.getByText(t.empty)).toBeInTheDocument();
   });
 
@@ -94,7 +88,6 @@ describe('검사한 시리얼', () => {
         shipmentStep: {
           firstJudgmentCode: 'OK',
           finalJudgmentCode: 'OK',
-          sourceCode: 'OQC',
           inspectedAt: '2026-10-21T03:00:00Z',
         },
       }),
@@ -107,22 +100,13 @@ describe('검사한 시리얼', () => {
 });
 
 describe('시리얼 규칙', () => {
-  it('다른 품목 · 이 의뢰가 피킹하지 않은 LOT · 중복 · 검사표 화면이 쓴 줄을 막는다', () => {
+  it('다른 품목 · 이 의뢰가 피킹하지 않은 LOT · 중복을 막는다', () => {
     const target = { inspectionRequestId: 1, itemId: 7, rows: [] as SerialRow[] };
     expect(checkScannedSerial(scanOf({ itemId: 8 }), target)).toBe(t.otherItem('SN-0011'));
     expect(checkScannedSerial(scanOf({ pickedRequests: [] }), target)).toBe(t.notPicked('SN-0011'));
     expect(checkScannedSerial(scanOf(), { ...target, rows: [toSerialRow(scanOf())] })).toBe(
       t.duplicate('SN-0011'),
     );
-    const sheet = scanOf({
-      shipmentStep: {
-        firstJudgmentCode: 'NG',
-        finalJudgmentCode: 'OK',
-        sourceCode: 'SHEET',
-        inspectedAt: '',
-      },
-    });
-    expect(checkScannedSerial(sheet, target)).toBe(t.sheetOwned('SN-0011'));
     expect(checkScannedSerial(scanOf(), target)).toBeNull();
     // 재검(Q4) — 1회차 확정으로 의뢰가 완료여도 그 의뢰가 피킹한 LOT 이면 받는다.
     const completed = scanOf({

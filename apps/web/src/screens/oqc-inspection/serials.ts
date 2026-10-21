@@ -4,7 +4,7 @@ import { messages } from '@omf-mes/i18n';
 import { toSendableNumber } from './quantity-draft';
 
 /**
- * 시리얼 OQC(omf-all-around#68 · 서버 선행 P-89) — 「검사한 시리얼」 표의 줄과 그 규칙.
+ * 시리얼 OQC(omf-all-around#68 · 서버 선행 P-101) — 「검사한 시리얼」 표의 줄과 그 규칙.
  *
  * 서버가 같은 규칙으로 다시 막는다(400 `serials`). 화면은 스캔하는 순간 알려 주려고 먼저 막을 뿐이다.
  */
@@ -37,13 +37,10 @@ export const checkScannedSerial = (
   ) {
     return t.notPicked(scan.serialNo);
   }
-  if (!scan.sheetStandardReady) return t.noStandard;
-  if (scan.shipmentStep !== undefined && scan.shipmentStep.sourceCode !== 'OQC')
-    return t.sheetOwned(scan.serialNo);
   return null;
 };
 
-/** 1차가 OK 로 남은 시리얼은 NG 로 바꿀 수 없다(서버 · 검사표 규칙). */
+/** 1차가 OK 로 남은 시리얼은 NG 로 바꿀 수 없다(서버와 같은 규칙). */
 export const isNgLocked = (row: SerialRow): boolean => row.previous?.firstJudgmentCode === 'OK';
 
 /** 새 줄은 OK 로 시작한다 — 대부분이 OK 이고, NG 는 골라서 바꾼다. */

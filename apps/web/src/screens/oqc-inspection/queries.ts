@@ -240,7 +240,7 @@ export interface SaveResultVariables {
    * 같으면 싣지 않는다 — 서버도 같으면 버린다.
    */
   judgmentChangeReason?: string;
-  /** 검사한 시리얼별 판정(omf-all-around#68 · 서버 P-89). 비어 있으면 싣지 않는다 — LOT 판정만 저장한다. */
+  /** 검사한 시리얼별 판정(omf-all-around#68 · 서버 P-101). 비어 있으면 싣지 않는다 — LOT 판정만 저장한다. */
   serials?: OqcSerialJudgmentInput[];
 }
 
@@ -411,7 +411,7 @@ export type SerialLookup =
 const NOT_FOUND = 404;
 
 /**
- * 시리얼을 스캔한다(omf-all-around#68 · 서버 선행 P-89). 캐시에 두지 않는다 — 스캔마다 지금의 피킹·기록을 본다.
+ * 시리얼을 스캔한다(omf-all-around#68 · 서버 선행 P-101). 캐시에 두지 않는다 — 스캔마다 지금의 피킹·기록을 본다.
  */
 export const useSerialLookup = (): ((serialNo: string) => Promise<SerialLookup>) => {
   const { client } = useApiClient();
