@@ -6,6 +6,7 @@ import { ApprovalInboxScreen } from '../screens/approval-inbox/screen';
 import { ApprovalRouteScreen } from '../screens/approval-route/screen';
 import { AlarmRecipientSettingsScreen } from '../screens/alarm-recipient-settings/screen';
 import { ZaloConnectionScreen } from '../screens/zalo-connection/screen';
+import { DispatchHistoryScreen } from '../screens/dispatch-history/screen';
 import { JudgmentCodeScreen } from '../screens/common-code/judgment-code-screen';
 import { CommonCodeScreen } from '../screens/common-code/screen';
 import { DefectCauseCodeScreen } from '../screens/defect-cause-code/screen';
@@ -554,6 +555,8 @@ export const appRouter = createBrowserRouter([
       { path: 'notification/recipient-settings', element: <AlarmRecipientSettingsScreen /> },
       /* W-CO-12 — Zalo 연결 정보(001). */
       { path: 'notification/zalo-connection', element: <ZaloConnectionScreen /> },
+      /* W-CO-13 — 이벤트 처리 결과와 Zalo 발송 이력(001). */
+      { path: 'notification/dispatch-history', element: <DispatchHistoryScreen /> },
       /* W-CO-04 — 알림 묶음이다. 알림센터가 받는 자리이고 이쪽이 보내는 자리다. */
       { path: 'notification/notices', element: <NoticeScreen /> },
       /*

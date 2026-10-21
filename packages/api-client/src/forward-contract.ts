@@ -765,7 +765,6 @@ interface Unused {
   trace?: never;
 }
 
-
 /* ── 001(omf-all-around#160) 부서×이벤트 알림 설정 — W-CO-11. 계약 사본(P-85·P-86)에 실리면 지운다. ── */
 
 /** 수신자를 정하는 방식. `APPROVER` 는 그 차례의 결재자가 받아 수신자 목록이 없다(FR-010). */
@@ -867,13 +866,78 @@ export interface ZaloConnectionReplace {
   templates: { eventCode: string; templateId: string | null }[];
 }
 
+/** 001 P-87 — 알림 발송 이력(W-CO-13). 알리지 않은 이유는 이벤트 단위다(data-model §5). */
+export type NotificationSkipReason =
+  | 'DEPARTMENT_UNRESOLVED'
+  | 'EVENT_DISABLED'
+  | 'NO_RECIPIENTS'
+  | 'REPORTER_OPTED_OUT'
+  | 'APPROVER_INACTIVE';
+
+export interface NotificationDispatch {
+  notificationEventId: number;
+  eventCode: string;
+  occurredAt: string;
+  departmentId: number | null;
+  departmentName: string | null;
+  targetTypeCode: string;
+  targetId: number | null;
+  /** 예: WO 번호, 설비 코드, 결재 요청 번호 */
+  targetLabel: string | null;
+  dispatchStatus: 'NOTIFIED' | 'SKIPPED';
+  skipReasonCode: NotificationSkipReason | null;
+  notificationCount: number;
+  zalo: { pending: number; sent: number; failed: number; expired: number; skippedNoPhone: number };
+}
+
+export interface NotificationDispatchQuery {
+  from: string;
+  to: string;
+  eventCode?: string;
+  departmentId?: number;
+  status?: 'NOTIFIED' | 'SKIPPED';
+  page?: number;
+  size?: number;
+}
+
+export type ZaloDeliveryStatus = 'PENDING' | 'SENDING' | 'SENT' | 'FAILED' | 'EXPIRED';
+
+export interface ZaloDelivery {
+  zaloDeliveryId: number;
+  notificationEventId: number;
+  eventCode: string;
+  occurredAt: string;
+  departmentName: string | null;
+  targetLabel: string | null;
+  recipientUserId: number;
+  recipientName: string;
+  /** 가운데를 가린 번호(예 `091*****78`) — 원문은 오지 않는다 */
+  phoneMasked: string;
+  status: ZaloDeliveryStatus;
+  attemptCount: number;
+  lastErrorCode: string | null;
+  lastErrorMessage: string | null;
+  sentAt: string | null;
+  trackingId: string;
+}
+
+export interface ZaloDeliveryQuery {
+  from?: string;
+  to?: string;
+  eventCode?: string;
+  departmentId?: number;
+  status?: ZaloDeliveryStatus;
+  notificationEventId?: number;
+  page?: number;
+  size?: number;
+}
+
 type NotificationEventsGet = paths['/app/notification-events']['get'];
 
 interface JsonResponse<T> {
   headers: { [name: string]: unknown };
   content: { 'application/json': T };
 }
-
 
 /** 서버 선행 P-79(omf-all-around#84) — 특채 요청 본문. */
 export interface ConcessionCreate {
@@ -992,6 +1056,38 @@ export interface ForwardPaths {
       requestBody: { content: { 'application/json': ZaloConnectionReplace } };
       responses: { 200: JsonResponse<ZaloConnection> };
     };
+    post?: never;
+  };
+  /** 001 P-87 — 이벤트 단위 처리 결과. 기간 필수, 최대 31일. 페이지는 서버 `pagedResponse` 모양. */
+  '/app/notification-dispatches': Unused & {
+    parameters: NoParameters;
+    get: {
+      parameters: {
+        query: NotificationDispatchQuery;
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: { 200: JsonResponse<{ items: NotificationDispatch[]; page: PageMeta }> };
+    };
+    put?: never;
+    post?: never;
+  };
+  /** 001 P-87 — 수신자 단위 Zalo 발송 이력. */
+  '/app/zalo-deliveries': Unused & {
+    parameters: NoParameters;
+    get: {
+      parameters: {
+        query?: ZaloDeliveryQuery;
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: { 200: JsonResponse<{ items: ZaloDelivery[]; page: PageMeta }> };
+    };
+    put?: never;
     post?: never;
   };
   /** 001 P-86 — 한 부서의 6개 이벤트 요약. ETag 없음. */
