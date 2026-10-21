@@ -85,10 +85,10 @@ export const notificationListBody = (
  * 시험이 가리지 못한다.
  */
 export const notificationEventFixtures: NotificationEvent[] = [
-  { eventCode: 'WORK_SESSION_STARTED', eventName: '생산 실행' },
-  { eventCode: 'WORK_ORDER_CLOSED', eventName: '생산 마감' },
+  { eventCode: 'WORK_SESSION_STARTED', eventName: '생산 실행', recipientMode: 'CONFIGURED' },
+  { eventCode: 'WORK_ORDER_CLOSED', eventName: '생산 마감', recipientMode: 'CONFIGURED' },
   /* 이름이 빈 항목 — 빈 제목을 그리지 않고 코드로 낙하하는지 재는 자리다. */
-  { eventCode: 'APPROVAL_ACTION_REQUIRED', eventName: '   ' },
+  { eventCode: 'APPROVAL_ACTION_REQUIRED', eventName: '   ', recipientMode: 'APPROVER' },
 ];
 
 export const notificationEventListBody = (

@@ -80,6 +80,8 @@ export interface PopJudgmentInput {
   isSaving: boolean;
   isJustSaved: boolean;
   workerNo: string | null;
+  /** 시리얼이 수량과 모순되면 그 이유(omf-all-around#68 · W-04-03 과 같은 규칙). */
+  serialBlockedReason?: string | null;
 }
 
 export interface PopJudgmentState {
@@ -99,7 +101,7 @@ export interface PopJudgmentState {
 
 export const usePopJudgment = (input: PopJudgmentInput): PopJudgmentState => {
   const { active, idleReason, resetKey, round, inspectedQty, draft } = input;
-  const { judgmentOptions, judgment, isJustSaved, workerNo } = input;
+  const { judgmentOptions, judgment, isJustSaved, workerNo, serialBlockedReason = null } = input;
 
   /* 회차가 있다는 사실이 잠그는 근거다(W-04-03 과 같다 — 이 화면은 어떤 회차도 고치지 않는다). */
   const isLocked = round !== null;
@@ -134,7 +136,7 @@ export const usePopJudgment = (input: PopJudgmentInput): PopJudgmentState => {
             ? t.bar.blocked.judgmentOptions
             : judgment === ''
               ? t.bar.blocked.judgment
-              : null;
+              : serialBlockedReason;
 
   return {
     isLocked,
@@ -172,6 +174,8 @@ export interface PopJudgmentFormProps {
   fieldErrors: Record<string, string>;
   /** 의뢰에 대상 LOT 이 있는가. 없으면 출하작업지시 OQC 다 — 서버가 그 지시가 집은 LOT 에 판정을 남긴다(#119). */
   hasLot: boolean;
+  /** 「검사한 시리얼」 단계(omf-all-around#68) — 출하작업지시 의뢰의 열린 회차에서만 부모가 넘긴다. */
+  serialStep?: ReactNode;
   /** 회차 이력 등 입력 구획 아래에 붙는 것. */
   children?: ReactNode;
 }
@@ -190,6 +194,7 @@ export const PopJudgmentForm = ({
   isSaving,
   fieldErrors,
   hasLot,
+  serialStep,
   children,
 }: PopJudgmentFormProps) => {
   const { isLocked, isConfirmed, errors, totals, preview, showErrors } = state;
@@ -359,6 +364,8 @@ export const PopJudgmentForm = ({
           <p className="field-note">{t.result.judgmentUnknown(judgment)}</p>
         )}
       </section>
+
+      {!isLocked && serialStep}
 
       {/*
        * 저장 전에 LOT 이 어떻게 되는지 한 줄로 보인다 — 조건은 W-04-03 의 전이 경고와 같다(잠기지 않았고

@@ -43,6 +43,7 @@ export const alarmRecipientSettings: Translated<typeof ko.alarmRecipientSettings
     revert: 'Hoàn tác',
     save: 'Lưu',
     reload: 'Tải lại',
+    openConnection: 'Mở thiết lập kết nối thông báo',
     cancel: 'Hủy',
     discard: 'Bỏ thay đổi và chuyển',
     search: 'Tìm',

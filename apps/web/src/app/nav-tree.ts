@@ -267,6 +267,13 @@ export const NAV_GROUPS: readonly NavGroup[] = [
         label: '검사기준',
         labelVi: 'Tiêu chuẩn kiểm tra',
       },
+      /* W-06-24 — OA 제품 검사표의 모델별 단계·항목(omf-all-around#89). 검사기준 바로 뒤 — 같은 「기준」 갈래다. */
+      {
+        to: '/master-data/inspection-sheet-template',
+        icon: 'checklist',
+        label: '검사표 기준',
+        labelVi: 'Tiêu chuẩn phiếu kiểm tra',
+      },
       /* 품질 코드 — 불량·원인과 판정유형은 둘 다 판정에 붙이는 코드 마스터다. */
       {
         to: '/master-data/defect-cause-code',
@@ -291,6 +298,13 @@ export const NAV_GROUPS: readonly NavGroup[] = [
         icon: 'analytics',
         label: '검사실적·검사결과 조회',
         labelVi: 'Tra cứu thực hiện · kết quả kiểm tra',
+      },
+      /* W-03-13 — OA 제품 검사표(시리얼별) 조회·서명(omf-all-around#89). 검사실적 조회 바로 뒤 — 같은 「조회」 갈래다. */
+      {
+        to: '/quality/inspection-sheets',
+        icon: 'assignment',
+        label: '제품 검사표 조회',
+        labelVi: 'Tra cứu phiếu kiểm tra sản phẩm',
       },
       /* LOT 상태 — 조회에서 찾은 LOT 을 판정·전이한다. */
       {
@@ -351,11 +365,9 @@ export const NAV_GROUPS: readonly NavGroup[] = [
        * P/O = 구매오더 · ERP W/O = ERP 에서 받은 생산 오더 · 맨 「W/O」 = MES W/O). 「작업지시」·
        * 「생산오더」로 부르지 않는다.
        *
-       * ⛔ `W-02-02`(W/O 전개·편성)와 `W-02-03`(4M 자원배정)은 **메뉴에도 탭에도 두지 않는다**
-       * (omf-all-around#41 · 사용자 2026-09-21). 두 화면은 주소의 `?productionOrderId=` ·
-       * `?productionPlanId=` 로 대상을 받아 그린다 — 맨 주소로 열면 본문이 없고 「먼저
-       * 선택하세요」만 선다. 들어가는 길은 앞 화면의 이동 버튼이다(`production-order/screen.tsx`
-       * → 전개·편성 → `production-plan/work-order-result-pane.tsx` → 4M). route 는 그대로 둔다.
+       * 「ERP W/O 처리」(W-02-01)는 작업함과 처리 화면이다. 옛 W-02-02(W/O 전개와 편성)와 W-02-03(4M 자원배정)은
+       * 처리 화면의 단계로 합쳐 메뉴에도 탭에도 두지 않는다. 옛 주소는 `?productionOrderId=`, `?productionPlanId=`로
+       * 대상을 찾아 처리 화면으로 넘긴다(`production-order/process/legacy-redirects.tsx`, omf-all-around#129).
        */
       {
         to: '/production/production-orders',
@@ -365,8 +377,8 @@ export const NAV_GROUPS: readonly NavGroup[] = [
         tabs: [
           {
             to: '/production/production-orders',
-            label: 'ERP W/O 조회',
-            labelVi: 'Tra cứu ERP W/O',
+            label: 'ERP W/O 처리',
+            labelVi: 'Xử lý ERP W/O',
           },
           {
             to: '/production/po-change-review',
@@ -375,12 +387,10 @@ export const NAV_GROUPS: readonly NavGroup[] = [
           },
         ],
       },
-      {
-        to: '/production/work-order-release',
-        icon: 'rocket_launch',
-        label: 'W/O 확정·배포·생산LOT 선발행',
-        labelVi: 'Chốt · phát hành W/O · phát trước LOT sản xuất',
-      },
+      /*
+       * W-02-04(W/O 확정, 배포)는 메뉴에서 뺐다. 배포는 「ERP W/O 처리」 작업함의 일괄 배포와 처리 화면 마지막 단계가
+       * 맡는다(화면 구성 규범 C-17, T-W-C). 옛 주소는 작업함의 「자동 계획 완료」 조건으로 넘어간다.
+       */
       /* W-02-07 — 계획을 거치지 않고 직접 발행한다. 갈래가 달라 정규 흐름 뒤에 둔다. */
       {
         to: '/production/emergency-work-orders',
@@ -770,6 +780,20 @@ export const NAV_GROUPS: readonly NavGroup[] = [
         icon: 'notifications_active',
         label: '알림 수신자 설정',
         labelVi: 'Thiết lập người nhận thông báo',
+      },
+      /* W-CO-12 — 알림이 «어디로» 나가는지. 받을 사람을 정한 다음이다(001). */
+      {
+        to: '/notification/zalo-connection',
+        icon: 'link',
+        label: '알림 연결 설정',
+        labelVi: 'Thiết lập kết nối thông báo',
+      },
+      /* W-CO-13 — 나간 결과를 본다. 연결 설정 다음이다(001). */
+      {
+        to: '/notification/dispatch-history',
+        icon: 'history',
+        label: '알림 발송 이력',
+        labelVi: 'Lịch sử gửi thông báo',
       },
       {
         to: '/master-data/common-code',

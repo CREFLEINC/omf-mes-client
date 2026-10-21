@@ -53,6 +53,7 @@ describe('toProductionPlanFact', () => {
       plannedLineId: null,
       confirmedAt: null,
       remarks: null,
+      versionNo: null,
     });
   });
 
@@ -79,6 +80,7 @@ describe('toProductionPlanFact', () => {
       statusCode: 'DRAFT',
       confirmedAt: '2026-08-22T09:15:00+09:00',
       remarks: 'Synthetic plan remark',
+      versionNo: 7,
     });
   });
 });

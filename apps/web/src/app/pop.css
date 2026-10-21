@@ -8803,6 +8803,36 @@
   color: var(--semantic-error-text);
 }
 
+/* 검사한 시리얼(omf-all-around#68) — 한 줄에 시리얼 · OK/NG · 빼기. */
+.pop-ui .pop-oqc-serials {
+  display: grid;
+  gap: var(--space-2);
+  margin: var(--space-3) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.pop-ui .pop-oqc-serial {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.pop-ui .pop-oqc-serial__judge {
+  grid-template-columns: repeat(2, 104px);
+}
+
+.pop-ui .pop-oqc-serial__judge .pop-oqc-judge {
+  min-height: 56px;
+}
+
+.pop-ui .pop-oqc-serial__no {
+  display: grid;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
 .pop-ui .pop-oqc-judge--held[aria-pressed='true'] {
   background: var(--semantic-warning-container);
 }
@@ -8958,4 +8988,133 @@
 
 .pop-ui .pop-oqc-confirm__block--caution > h4 > :first-child {
   color: var(--semantic-warning);
+}
+
+/*
+ * P-02-15 제품 검사표 입력(omf-all-around#89). 시리얼 스캔 줄 · 단계 탭 · 항목 OK/NG 줄.
+ * 이 화면(`.pop-inspection-sheet`)만 겨냥한다.
+ */
+.pop-ui.pop-inspection-sheet .pop-inspection-sheet-serial {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: var(--space-2);
+}
+
+/* 요약 여섯 칸은 세 쌍씩 두 줄 — 아래 입력 칸의 높이를 덜 먹게. */
+.pop-ui.pop-inspection-sheet .pop-inspection-sheet-summary {
+  grid-template-columns: repeat(3, max-content minmax(0, 1fr));
+  row-gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-md);
+  background: var(--surface-container-high);
+}
+
+/* 단계 탭 — 줄을 넘기면 다음 줄로. 각 탭에 단계 이름과 판정 상태가 함께 보인다. */
+.pop-ui.pop-inspection-sheet .pop-inspection-sheet-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+}
+
+/* 항목 한 줄 — 번호 · 이름 · 전수/발취 · OK · NG. 손가락으로 누르는 단추라 줄 높이를 넉넉히 둔다. */
+.pop-ui.pop-inspection-sheet .pop-inspection-sheet-items {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.pop-ui.pop-inspection-sheet .pop-inspection-sheet-items > li {
+  display: grid;
+  grid-template-columns: 6rem minmax(0, 1fr) auto 6rem 6rem;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) 0;
+  border-bottom: 1px solid var(--outline-variant);
+}
+
+.pop-ui.pop-inspection-sheet .pop-inspection-sheet-item-code {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+
+.pop-ui.pop-inspection-sheet .pop-inspection-sheet-judgment {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+}
+
+/* NG 블록 — 한 건씩 테두리로 묶는다. 날짜 칸은 옆에 「지금」 단추를 둔다(키오스크에 날짜 고르개를 열기 번거롭다). */
+.pop-ui.pop-inspection-sheet .pop-inspection-sheet-ng {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0 0 var(--space-3);
+  padding: var(--space-3);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-md);
+}
+
+.pop-ui.pop-inspection-sheet .pop-inspection-sheet-when {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: var(--space-2);
+}
+
+/* 시리얼 칸 · 오류 안내 · 요약이 서로 붙지 않게. */
+.pop-ui.pop-inspection-sheet .pop-inspection-sheet-top {
+  gap: var(--space-3);
+}
+
+/*
+ * 머리 값 · NG 기록 — 왼쪽 한 기둥에 위아래로 선다. 기둥이 스크롤하므로 구획은 자기 높이대로 서고
+ * 따로 스크롤하지 않는다(스크롤 안의 스크롤이 되면 손가락으로 밀 때 어느 쪽이 움직일지 모른다).
+ */
+.pop-ui.pop-inspection-sheet .pop-inspection-sheet-header,
+.pop-ui.pop-inspection-sheet .pop-inspection-sheet-ngs {
+  overflow-y: visible;
+}
+
+/* 두 구획 사이 — 좌우 구획 간격(`.pop-panes` gap)과 같게. */
+.pop-ui.pop-inspection-sheet .pop-inspection-sheet-header {
+  margin-block-end: var(--space-4);
+}
+
+/* 단계 구획 — 좁은 창에서 항목 줄이 구획 밖으로 밀려나지 않게. */
+.pop-ui.pop-inspection-sheet .pop-inspection-sheet-steps {
+  min-width: 0;
+}
+
+/* 고른 단계 — 안내 · 항목 · 1차 판정 · 저장 줄 사이 간격. */
+.pop-ui.pop-inspection-sheet .pop-inspection-sheet-step {
+  display: grid;
+  gap: var(--space-2);
+}
+
+/* NG 이력 한 줄 — 저장된 기록은 상태 · 발견 공정 · 항목 · 내용만 보이고 [수정]으로 연다. */
+.pop-ui.pop-inspection-sheet .pop-inspection-sheet-ng-summary {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-3);
+  margin: 0 0 var(--space-2);
+  padding: var(--space-3);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-md);
+}
+
+.pop-ui.pop-inspection-sheet .pop-inspection-sheet-ng-summary p {
+  margin: var(--space-1) 0 0;
+  overflow-wrap: anywhere;
+}
+
+/* 항목 이름은 줄을 바꿔 OK/NG 단추 자리를 밀어내지 않는다(띄어쓰기 없는 긴 이름 포함). */
+.pop-ui.pop-inspection-sheet .pop-inspection-sheet-item-name {
+  min-width: 0;
+  overflow-wrap: anywhere;
 }

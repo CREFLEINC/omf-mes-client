@@ -9,7 +9,7 @@ import type {
 
 /**
  * 결재 이벤트는 그 차례의 결재자가 받는다 — 수신자를 정할 수 없다(FR-010).
- * 카탈로그가 칸을 아직 싣지 않으면 정할 수 있는 쪽(`CONFIGURED`)으로 읽는다.
+ * 이벤트를 아직 못 찾았으면(카탈로그 조회 전) 정할 수 있는 쪽으로 읽는다.
  */
 export const isApproverEvent = (event: NotificationEvent | undefined): boolean =>
   event?.recipientMode === 'APPROVER';

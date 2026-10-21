@@ -1,0 +1,4709 @@
+{
+  "version": 2,
+  "fingerprints": {
+    "C-1|apps/web/src/screens/disposal-issue/gi-table.tsx|01a9300dcf21": {
+      "n": 1,
+      "text": "key: 'select' (선택 버튼 열)"
+    },
+    "C-1|apps/web/src/screens/disposal-issue/gr-table.tsx|0742c816f301": {
+      "n": 1,
+      "text": "key: 'select' (선택 버튼 열)"
+    },
+    "C-1|apps/web/src/screens/document-progress/progress-table.tsx|72a139326b73": {
+      "n": 1,
+      "text": "key: 'select' (선택 버튼 열)"
+    },
+    "C-1|apps/web/src/screens/goods-issue-qr/line-list-pane.tsx|69b6451abe1a": {
+      "n": 1,
+      "text": "key: 'pick' (선택 버튼 열)"
+    },
+    "C-1|apps/web/src/screens/goods-issue-qr/pending-pane.tsx|1318f57e9afc": {
+      "n": 1,
+      "text": "key: 'pick' (선택 버튼 열)"
+    },
+    "C-1|apps/web/src/screens/goods-receipt/ir-line-table.tsx|b87cfcb4d4fe": {
+      "n": 1,
+      "text": "key: 'select' (선택 버튼 열)"
+    },
+    "C-1|apps/web/src/screens/goods-receipt/ir-table.tsx|c729b1d987b8": {
+      "n": 1,
+      "text": "key: 'select' (선택 버튼 열)"
+    },
+    "C-1|apps/web/src/screens/lot-status-transition/transition-preparation.tsx|dc9c66812df8": {
+      "n": 1,
+      "text": "key: 'select' (선택 버튼 열)"
+    },
+    "C-1|apps/web/src/screens/maintenance-order/trigger-picker.tsx|2f90de93fb0c": {
+      "n": 1,
+      "text": "key: 'pick' (선택 버튼 열)"
+    },
+    "C-1|apps/web/src/screens/maintenance-order/trigger-picker.tsx|b7e9f48951f0": {
+      "n": 1,
+      "text": "key: 'pick' (선택 버튼 열)"
+    },
+    "C-1|apps/web/src/screens/over-receipt-split/po-table.tsx|f1f073a9c90e": {
+      "n": 1,
+      "text": "key: 'select' (선택 버튼 열)"
+    },
+    "C-1|apps/web/src/screens/po-register/source-receipt-pane.tsx|31d681202bc0": {
+      "n": 1,
+      "text": "key: 'choose' (선택 버튼 열)"
+    },
+    "C-1|apps/web/src/screens/pop-location-label/screen.tsx|935c8b6c3b6a": {
+      "n": 1,
+      "text": "key: 'pick' (선택 버튼 열)"
+    },
+    "C-1|apps/web/src/screens/product-stock-status/balance-table.tsx|ab1f78c2c854": {
+      "n": 1,
+      "text": "key: 'select' (선택 버튼 열)"
+    },
+    "C-1|apps/web/src/screens/repack-label-issue/pending-pane.tsx|fd14166b3fa7": {
+      "n": 1,
+      "text": "key: 'pick' (선택 버튼 열)"
+    },
+    "C-1|apps/web/src/screens/stock-adjust/history-table.tsx|0ad11cef9ddc": {
+      "n": 1,
+      "text": "key: 'select' (선택 버튼 열)"
+    },
+    "C-1|apps/web/src/screens/stock-status/balance-table.tsx|22aa81b2fcc0": {
+      "n": 1,
+      "text": "key: 'select' (선택 버튼 열)"
+    },
+    "C-1|apps/web/src/screens/stock-status/transaction-pane.tsx|5b6c41ea2f8d": {
+      "n": 1,
+      "text": "key: 'select' (선택 버튼 열)"
+    },
+    "C-1|apps/web/src/screens/stocktaking/count-table.tsx|0bab92e1e26e": {
+      "n": 1,
+      "text": "key: 'select' (선택 버튼 열)"
+    },
+    "C-1|apps/web/src/screens/supplier-return/gr-table.tsx|1b7a7eba005d": {
+      "n": 1,
+      "text": "key: 'select' (선택 버튼 열)"
+    },
+    "C-12|apps/mobile/src/screens/equipment-failure/screen.tsx|4479db5fdf1f": {
+      "n": 1,
+      "text": "type=\"time\""
+    },
+    "C-12|apps/mobile/src/screens/inbound-receipt/screen.tsx|386dffa088a0": {
+      "n": 2,
+      "text": "type=\"date\""
+    },
+    "C-12|apps/web/src/screens/dispatch-history/screen.tsx|386dffa088a0": {
+      "n": 2,
+      "text": "type=\"date\""
+    },
+    "C-12|apps/web/src/screens/disposal-issue/disposal-form.tsx|4479db5fdf1f": {
+      "n": 1,
+      "text": "type=\"time\""
+    },
+    "C-12|apps/web/src/screens/disposition-decision/concession-pane.tsx|386dffa088a0": {
+      "n": 2,
+      "text": "type=\"date\""
+    },
+    "C-12|apps/web/src/screens/downtime-register/interval-fields.tsx|386dffa088a0": {
+      "n": 2,
+      "text": "type=\"date\""
+    },
+    "C-12|apps/web/src/screens/downtime-register/interval-fields.tsx|4479db5fdf1f": {
+      "n": 2,
+      "text": "type=\"time\""
+    },
+    "C-12|apps/web/src/screens/emergency-work-order/issue-form-pane.tsx|386dffa088a0": {
+      "n": 1,
+      "text": "type=\"date\""
+    },
+    "C-12|apps/web/src/screens/equipment-master/inspection-assign-dialog.tsx|386dffa088a0": {
+      "n": 1,
+      "text": "type=\"date\""
+    },
+    "C-12|apps/web/src/screens/erp-production-order/filter-bar.tsx|386dffa088a0": {
+      "n": 2,
+      "text": "type=\"date\""
+    },
+    "C-12|apps/web/src/screens/erp-purchase-order/filter-bar.tsx|386dffa088a0": {
+      "n": 2,
+      "text": "type=\"date\""
+    },
+    "C-12|apps/web/src/screens/erp-sales-order/filter-bar.tsx|386dffa088a0": {
+      "n": 2,
+      "text": "type=\"date\""
+    },
+    "C-12|apps/web/src/screens/goods-receipt/ir-filter-bar.tsx|386dffa088a0": {
+      "n": 2,
+      "text": "type=\"date\""
+    },
+    "C-12|apps/web/src/screens/inbound-schedule/filter-bar.tsx|386dffa088a0": {
+      "n": 2,
+      "text": "type=\"date\""
+    },
+    "C-12|apps/web/src/screens/inspection-result-insights/filter-bar.tsx|386dffa088a0": {
+      "n": 2,
+      "text": "type=\"date\""
+    },
+    "C-12|apps/web/src/screens/integration-sync/message-filter-bar.tsx|386dffa088a0": {
+      "n": 2,
+      "text": "type=\"date\""
+    },
+    "C-12|apps/web/src/screens/material-issue-request/target-pane.tsx|4479db5fdf1f": {
+      "n": 1,
+      "text": "type=\"time\""
+    },
+    "C-12|apps/web/src/screens/over-receipt-split/receipt-header-form.tsx|333a299c07b7": {
+      "n": 1,
+      "text": "type=\"datetime-local\""
+    },
+    "C-12|apps/web/src/screens/pqc-inspection/result-panel.tsx|386dffa088a0": {
+      "n": 1,
+      "text": "type=\"date\""
+    },
+    "C-12|apps/web/src/screens/pqc-inspection/result-panel.tsx|4479db5fdf1f": {
+      "n": 1,
+      "text": "type=\"time\""
+    },
+    "C-12|apps/web/src/screens/routing/header-pane.tsx|386dffa088a0": {
+      "n": 2,
+      "text": "type=\"date\""
+    },
+    "C-12|apps/web/src/screens/shipment-processing/filter-bar.tsx|386dffa088a0": {
+      "n": 2,
+      "text": "type=\"date\""
+    },
+    "C-12|apps/web/src/screens/shot-conversion/end-policy-dialog.tsx|386dffa088a0": {
+      "n": 1,
+      "text": "type=\"date\""
+    },
+    "C-12|apps/web/src/screens/shot-conversion/ratio-form-dialog.tsx|386dffa088a0": {
+      "n": 2,
+      "text": "type=\"date\""
+    },
+    "C-12|apps/web/src/screens/shot-conversion/ratio-list-pane.tsx|386dffa088a0": {
+      "n": 1,
+      "text": "type=\"date\""
+    },
+    "C-12|apps/web/src/screens/stock-adjust/post-pane.tsx|333a299c07b7": {
+      "n": 1,
+      "text": "type=\"datetime-local\""
+    },
+    "C-12|apps/web/src/screens/stock-adjust/post-pane.tsx|386dffa088a0": {
+      "n": 1,
+      "text": "type=\"date\""
+    },
+    "C-12|apps/web/src/screens/stock-status/transaction-pane.tsx|386dffa088a0": {
+      "n": 2,
+      "text": "type=\"date\""
+    },
+    "C-12|apps/web/src/screens/stocktaking/count-filter-bar.tsx|386dffa088a0": {
+      "n": 2,
+      "text": "type=\"date\""
+    },
+    "C-12|apps/web/src/screens/stocktaking/open-form.tsx|386dffa088a0": {
+      "n": 1,
+      "text": "type=\"date\""
+    },
+    "C-12|apps/web/src/screens/supplier-return/return-form.tsx|4479db5fdf1f": {
+      "n": 1,
+      "text": "type=\"time\""
+    },
+    "C-12|apps/web/src/screens/work-order-close/filter-bar.tsx|386dffa088a0": {
+      "n": 2,
+      "text": "type=\"date\""
+    },
+    "C-12|apps/web/src/screens/work-order-progress/filter-bar.tsx|386dffa088a0": {
+      "n": 2,
+      "text": "type=\"date\""
+    },
+    "C-13|apps/mobile/src/app/layout.tsx|2e44056a79b7": {
+      "n": 1,
+      "text": "가운뎃점: <Chip>{`${worker.workerName} · ${worker.workerNo}`}</Chip>"
+    },
+    "C-13|apps/mobile/src/screens/device-registration/screen.tsx|011ae369e9bc": {
+      "n": 1,
+      "text": "가운뎃점: <p>{parts.length === 0 ? t.device.unknown : parts.join(' · ')}</p>"
+    },
+    "C-13|apps/mobile/src/screens/device-registration/sign-in.tsx|2e44056a79b7": {
+      "n": 1,
+      "text": "가운뎃점: <Card.Header>{`${worker.workerName} · ${worker.workerNo}`}</Card.Header>"
+    },
+    "C-13|apps/mobile/src/screens/inbound-receipt/screen.tsx|011ae369e9bc": {
+      "n": 1,
+      "text": "가운뎃점: {' · '}"
+    },
+    "C-13|apps/mobile/src/screens/inbound-receipt/screen.tsx|b42b51e532c7": {
+      "n": 1,
+      "text": "가운뎃점: ? `${t.recorded.lotMissing} · ${displayNameOf("
+    },
+    "C-13|apps/mobile/src/screens/inbound-receipt/screen.tsx|faf1ac55d421": {
+      "n": 1,
+      "text": "가운뎃점: : `${recorded.purchaseOrderNo} · ${t.recorded.line(String(recorded.lineNo))}`}"
+    },
+    "C-13|apps/mobile/src/screens/material-location/screen.tsx|dad8699dcd17": {
+      "n": 1,
+      "text": "가운뎃점: : ` · ${t.hold.releaseCondition(hold.releaseCondition)}`}"
+    },
+    "C-13|apps/mobile/src/screens/material-picking/screen.tsx|011ae369e9bc": {
+      "n": 1,
+      "text": "가운뎃점: <span className=\"picking-out__line-note\">{place.join(' · ')}</span>"
+    },
+    "C-13|apps/mobile/src/screens/material-picking/screen.tsx|1472e3535f28": {
+      "n": 1,
+      "text": "가운뎃점: : ` · ${heldReasonTextOf(each.holdReasonCode)}`"
+    },
+    "C-13|apps/mobile/src/screens/material-picking/screen.tsx|bc4aa48d5e06": {
+      "n": 1,
+      "text": "가운뎃점: {held === 0 ? '' : ` · ${t.lines.heldCount(String(held))}`}"
+    },
+    "C-13|apps/mobile/src/screens/outbox-pending/screen.tsx|44e7ca3099ed": {
+      "n": 1,
+      "text": "가운뎃점: {entry.workerNo === undefined ? null : ` · ${t.worker(entry.workerNo)}`}"
+    },
+    "C-13|apps/mobile/src/screens/packing-repack/screen.tsx|011ae369e9bc": {
+      "n": 2,
+      "text": "가운뎃점: units.map((unit) => unit.handlingUnit.handlingUnitNo).join(' · ');"
+    },
+    "C-13|apps/mobile/src/screens/packing-repack/screen.tsx|0e3f3f5c9142": {
+      "n": 1,
+      "text": "가운뎃점: {`${t.history.type[event.repackTypeCode]} · ${stamp(event.occurredAt)}`}"
+    },
+    "C-13|apps/mobile/src/screens/packing-repack/screen.tsx|b26f60ac9fc0": {
+      "n": 1,
+      "text": "가운뎃점: `${nameOf(content)} · ${String(content.qty)} ${uomOf(content.uomId)}`;"
+    },
+    "C-13|apps/mobile/src/screens/physical-count/screen.tsx|011ae369e9bc": {
+      "n": 2,
+      "text": "가운뎃점: ? t.plan.remaining(remaining.data.join(' · '))"
+    },
+    "C-13|apps/mobile/src/screens/product-picking/screen.tsx|3d2232f06407": {
+      "n": 1,
+      "text": "가운뎃점: : ` · ${t.lot.heldRelease(hold.releaseCondition)}`}"
+    },
+    "C-13|apps/mobile/src/screens/product-picking/screen.tsx|f72c303808e2": {
+      "n": 1,
+      "text": "가운뎃점: remaining === null ? '' : ` · ${t.candidates.remainingDays(remaining)}`"
+    },
+    "C-13|apps/mobile/src/screens/stock-transfer/screen.tsx|011ae369e9bc": {
+      "n": 1,
+      "text": "가운뎃점: title={t.hold.title(held.map((each) => each.lotNo).join(' · '))}"
+    },
+    "C-13|apps/web/src/app/nav-tree.ts|029264f471f4": {
+      "n": 1,
+      "text": "가운뎃점: label: '특채·한도승인 승인 처리',"
+    },
+    "C-13|apps/web/src/app/nav-tree.ts|07ce96ae0f67": {
+      "n": 1,
+      "text": "가운뎃점: labelVi: 'Hàng trả · khiếu nại',"
+    },
+    "C-13|apps/web/src/app/nav-tree.ts|07f1adfbcfa1": {
+      "n": 1,
+      "text": "가운뎃점: label: '출하지시서 Import·작업지시 생성',"
+    },
+    "C-13|apps/web/src/app/nav-tree.ts|0dc7d7f5ccb4": {
+      "n": 1,
+      "text": "가운뎃점: labelVi: 'Tra cứu thực hiện · kết quả kiểm tra',"
+    },
+    "C-13|apps/web/src/app/nav-tree.ts|0e22b2de8a36": {
+      "n": 1,
+      "text": "가운뎃점: label: '툴·금형',"
+    },
+    "C-13|apps/web/src/app/nav-tree.ts|15ea84b11986": {
+      "n": 1,
+      "text": "가운뎃점: labelVi: 'Đăng ký · tra cứu kiểm tra PQC',"
+    },
+    "C-13|apps/web/src/app/nav-tree.ts|16653d59ce7c": {
+      "n": 1,
+      "text": "가운뎃점: label: '물류 전표 조회·취소',"
+    },
+    "C-13|apps/web/src/app/nav-tree.ts|18cb67fd1f9e": {
+      "n": 1,
+      "text": "가운뎃점: labelVi: 'Kết quả bảo trì · phụ tùng',"
+    },
+    "C-13|apps/web/src/app/nav-tree.ts|25800f88f278": {
+      "n": 1,
+      "text": "가운뎃점: labelVi: 'Mã lỗi · nguyên nhân',"
+    },
+    "C-13|apps/web/src/app/nav-tree.ts|2eb9e00d8410": {
+      "n": 1,
+      "text": "가운뎃점: label: 'PQC 검사 등록·조회',"
+    },
+    "C-13|apps/web/src/app/nav-tree.ts|395c29c9e0da": {
+      "n": 1,
+      "text": "가운뎃점: label: '불량·원인코드',"
+    },
+    "C-13|apps/web/src/app/nav-tree.ts|450db08cab42": {
+      "n": 1,
+      "text": "가운뎃점: label: '설비·설비그룹 마스터',"
+    },
+    "C-13|apps/web/src/app/nav-tree.ts|4cfc81a7f1cd": {
+      "n": 1,
+      "text": "가운뎃점: labelVi: 'Tình trạng · lịch sử liên kết',"
+    },
+    "C-13|apps/web/src/app/nav-tree.ts|51264ff9c138": {
+      "n": 1,
+      "text": "가운뎃점: label: '공통코드·조직·작업자',"
+    },
+    "C-13|apps/web/src/app/nav-tree.ts|5ca7836aff21": {
+      "n": 1,
+      "text": "가운뎃점: labelVi: 'Người dùng · vai trò · quyền',"
+    },
+    "C-13|apps/web/src/app/nav-tree.ts|608719157668": {
+      "n": 1,
+      "text": "가운뎃점: labelVi: 'Dữ liệu gốc thiết bị · nhóm thiết bị',"
+    },
+    "C-13|apps/web/src/app/nav-tree.ts|6b549c59dc38": {
+      "n": 1,
+      "text": "가운뎃점: labelVi: 'Tình trạng · lịch sử liên kết ERP',"
+    },
+    "C-13|apps/web/src/app/nav-tree.ts|6ec65d95855b": {
+      "n": 1,
+      "text": "가운뎃점: label: 'W/O 마감·ERP 실적 송신',"
+    },
+    "C-13|apps/web/src/app/nav-tree.ts|6ed6005fe5f0": {
+      "n": 1,
+      "text": "가운뎃점: label: '창고·위치',"
+    },
+    "C-13|apps/web/src/app/nav-tree.ts|742b9259ecfe": {
+      "n": 1,
+      "text": "가운뎃점: label: 'IQC 수입검사·판정',"
+    },
+    "C-13|apps/web/src/app/nav-tree.ts|75af7977b2ce": {
+      "n": 1,
+      "text": "가운뎃점: label: '공지·전달',"
+    },
+    "C-13|apps/web/src/app/nav-tree.ts|7739a4493a51": {
+      "n": 1,
+      "text": "가운뎃점: labelVi: 'Xác nhận · hủy xuất hàng',"
+    },
+    "C-13|apps/web/src/app/nav-tree.ts|796a0f22c8ec": {
+      "n": 1,
+      "text": "가운뎃점: label: '품목·BOM 정보',"
+    },
+    "C-13|apps/web/src/app/nav-tree.ts|7e34148a4c7b": {
+      "n": 1,
+      "text": "가운뎃점: label: '반품·클레임 입고 등록',"
+    },
+    "C-13|apps/web/src/app/nav-tree.ts|821c74dca67f": {
+      "n": 1,
+      "text": "가운뎃점: labelVi: 'Xử lý phê duyệt đặc cách · hạn mức',"
+    },
+    "C-13|apps/web/src/app/nav-tree.ts|849afd5939e9": {
+      "n": 1,
+      "text": "가운뎃점: label: '보전 실적·예비품',"
+    },
+    "C-13|apps/web/src/app/nav-tree.ts|8c57f490826f": {
+      "n": 1,
+      "text": "가운뎃점: labelVi: 'Thông tin mặt hàng · BOM',"
+    },
+    "C-13|apps/web/src/app/nav-tree.ts|911b32b4c4c7": {
+      "n": 1,
+      "text": "가운뎃점: labelVi: 'Công cụ · khuôn',"
+    },
+    "C-13|apps/web/src/app/nav-tree.ts|a8aa3c5f3cc8": {
+      "n": 1,
+      "text": "가운뎃점: labelVi: 'Kho · Vị trí',"
+    },
+    "C-13|apps/web/src/app/nav-tree.ts|ac119a0e7159": {
+      "n": 1,
+      "text": "가운뎃점: labelVi: 'IQC kiểm tra đầu vào · đánh giá',"
+    },
+    "C-13|apps/web/src/app/nav-tree.ts|b27f821a8427": {
+      "n": 1,
+      "text": "가운뎃점: label: '출하 확정·취소',"
+    },
+    "C-13|apps/web/src/app/nav-tree.ts|b6f0e40e49ad": {
+      "n": 1,
+      "text": "가운뎃점: labelVi: 'Đăng ký nhập kho hàng trả · khiếu nại',"
+    },
+    "C-13|apps/web/src/app/nav-tree.ts|b8542e1c0f00": {
+      "n": 1,
+      "text": "가운뎃점: labelVi: 'Tra cứu · hủy chứng từ logistics',"
+    },
+    "C-13|apps/web/src/app/nav-tree.ts|c133727b3e85": {
+      "n": 1,
+      "text": "가운뎃점: label: '반품·클레임',"
+    },
+    "C-13|apps/web/src/app/nav-tree.ts|c1ac3f2b147b": {
+      "n": 1,
+      "text": "가운뎃점: label: '폐기 품의·기타출고',"
+    },
+    "C-13|apps/web/src/app/nav-tree.ts|c61c67ed941f": {
+      "n": 1,
+      "text": "가운뎃점: label: '재고 현황·상태 조회',"
+    },
+    "C-13|apps/web/src/app/nav-tree.ts|ce26d51e186c": {
+      "n": 1,
+      "text": "가운뎃점: label: 'ERP 연동 현황·이력',"
+    },
+    "C-13|apps/web/src/app/nav-tree.ts|ce9152f42e75": {
+      "n": 1,
+      "text": "가운뎃점: labelVi: 'Xử lý xuất hàng (lên xe · xuất thực tế)',"
+    },
+    "C-13|apps/web/src/app/nav-tree.ts|d0dc71cb1854": {
+      "n": 1,
+      "text": "가운뎃점: label: '출하 처리(상차·실물 출고)',"
+    },
+    "C-13|apps/web/src/app/nav-tree.ts|d12d81383869": {
+      "n": 1,
+      "text": "가운뎃점: labelVi: 'Kho · vị trí',"
+    },
+    "C-13|apps/web/src/app/nav-tree.ts|d20788433ba8": {
+      "n": 1,
+      "text": "가운뎃점: labelVi: 'Đóng W/O · gửi kết quả sang ERP',"
+    },
+    "C-13|apps/web/src/app/nav-tree.ts|d797b937baf0": {
+      "n": 1,
+      "text": "가운뎃점: labelVi: 'Import lệnh xuất hàng · tạo lệnh sản xuất',"
+    },
+    "C-13|apps/web/src/app/nav-tree.ts|dc2a397ceee1": {
+      "n": 1,
+      "text": "가운뎃점: label: '사용자·역할·권한',"
+    },
+    "C-13|apps/web/src/app/nav-tree.ts|dcdabd7d1162": {
+      "n": 1,
+      "text": "가운뎃점: label: '창고·Location',"
+    },
+    "C-13|apps/web/src/app/nav-tree.ts|e06abeb89443": {
+      "n": 1,
+      "text": "가운뎃점: labelVi: 'Tra cứu tồn kho · trạng thái',"
+    },
+    "C-13|apps/web/src/app/nav-tree.ts|e145c2eedcb6": {
+      "n": 1,
+      "text": "가운뎃점: labelVi: 'Thông cáo · truyền đạt',"
+    },
+    "C-13|apps/web/src/app/nav-tree.ts|eb65b42b90d2": {
+      "n": 1,
+      "text": "가운뎃점: labelVi: 'Mã chung · tổ chức · nhân viên',"
+    },
+    "C-13|apps/web/src/app/nav-tree.ts|f0049035e3e9": {
+      "n": 1,
+      "text": "가운뎃점: label: '연동 현황·이력',"
+    },
+    "C-13|apps/web/src/app/nav-tree.ts|f4523425eba5": {
+      "n": 1,
+      "text": "가운뎃점: label: '검사실적·검사결과 조회',"
+    },
+    "C-13|apps/web/src/app/nav-tree.ts|f650171f1ad5": {
+      "n": 1,
+      "text": "가운뎃점: labelVi: 'Đề nghị hủy · xuất khác',"
+    },
+    "C-13|apps/web/src/patterns/item-picker/dialog.tsx|26ca021c6660": {
+      "n": 1,
+      "text": "가운뎃점: {addedItemIds.includes(row.itemId) ? ` · ${t.alreadyAdded}` : ''}"
+    },
+    "C-13|apps/web/src/patterns/item-picker/dialog.tsx|62ca1375c0b4": {
+      "n": 1,
+      "text": "가운뎃점: {row.isActive ? '' : ` · ${t.inactive}`}"
+    },
+    "C-13|apps/web/src/patterns/pop-dev-screen-nav.tsx|23a123d9cd83": {
+      "n": 1,
+      "text": "가운뎃점: label: 'P-02-09 포장 라벨·인식표 재출력',"
+    },
+    "C-13|apps/web/src/patterns/pop-dev-screen-nav.tsx|2829c1c445ab": {
+      "n": 1,
+      "text": "가운뎃점: label: 'P-02-04 생산 실적·라벨·LOT 마감',"
+    },
+    "C-13|apps/web/src/patterns/pop-dev-screen-nav.tsx|b67bc924eb03": {
+      "n": 1,
+      "text": "가운뎃점: { path: '/pop/material-lot-label', label: 'P-01-01 자재LOT 등록·라벨' },"
+    },
+    "C-13|apps/web/src/patterns/pop-screen-catalog.ts|d698551fc8ab": {
+      "n": 1,
+      "text": "가운뎃점: { path: '/pop/material-lot-label', code: 'P-01-01', name: '자재LOT 등록·라벨 발행' },"
+    },
+    "C-13|apps/web/src/patterns/web-screen-catalog.ts|029264f471f4": {
+      "n": 1,
+      "text": "가운뎃점: { path: '/quality/approvals', code: 'W-03-09', name: '특채·한도승인 승인 처리' },"
+    },
+    "C-13|apps/web/src/patterns/web-screen-catalog.ts|06f827183835": {
+      "n": 1,
+      "text": "가운뎃점: name: '공통코드·조직·작업자 마스터(다국어)',"
+    },
+    "C-13|apps/web/src/patterns/web-screen-catalog.ts|07f1adfbcfa1": {
+      "n": 1,
+      "text": "가운뎃점: name: '출하지시서 Import·작업지시 생성',"
+    },
+    "C-13|apps/web/src/patterns/web-screen-catalog.ts|1d7463da5e13": {
+      "n": 1,
+      "text": "가운뎃점: name: '재고 현황·상태 조회(위치별 분포 포함)',"
+    },
+    "C-13|apps/web/src/patterns/web-screen-catalog.ts|2eb9e00d8410": {
+      "n": 1,
+      "text": "가운뎃점: { path: '/quality/pqc-inspections', code: 'W-03-11', name: 'PQC 검사 등록·조회' },"
+    },
+    "C-13|apps/web/src/patterns/web-screen-catalog.ts|32d18e49a551": {
+      "n": 1,
+      "text": "가운뎃점: { path: '/equipment/failures', code: 'W-05-04', name: '설비 고장 상세·처리' },"
+    },
+    "C-13|apps/web/src/patterns/web-screen-catalog.ts|3984c7d375c6": {
+      "n": 1,
+      "text": "가운뎃점: { path: '/equipment/maintenance-results', code: 'W-05-06', name: '보전 실적·예비품 출고 등록' },"
+    },
+    "C-13|apps/web/src/patterns/web-screen-catalog.ts|450db08cab42": {
+      "n": 1,
+      "text": "가운뎃점: { path: '/equipment/master', code: 'W-05-12', name: '설비·설비그룹 마스터' },"
+    },
+    "C-13|apps/web/src/patterns/web-screen-catalog.ts|4dc4158b6b79": {
+      "n": 1,
+      "text": "가운뎃점: { path: '/logistics/document-progress', code: 'W-01-13', name: '물류 문서 진행현황·취소' },"
+    },
+    "C-13|apps/web/src/patterns/web-screen-catalog.ts|5ee4ad04f106": {
+      "n": 1,
+      "text": "가운뎃점: name: '정상품 입하 처리(입고 확정·Release·G/R 송신)',"
+    },
+    "C-13|apps/web/src/patterns/web-screen-catalog.ts|6ec65d95855b": {
+      "n": 1,
+      "text": "가운뎃점: { path: '/production/work-order-close', code: 'W-02-05', name: 'W/O 마감·ERP 실적 송신' },"
+    },
+    "C-13|apps/web/src/patterns/web-screen-catalog.ts|742b9259ecfe": {
+      "n": 1,
+      "text": "가운뎃점: { path: '/logistics/iqc-inspection', code: 'W-01-01', name: 'IQC 수입검사·판정' },"
+    },
+    "C-13|apps/web/src/patterns/web-screen-catalog.ts|7b1fd76facd8": {
+      "n": 1,
+      "text": "가운뎃점: { path: '/master-data/routing', code: 'W-06-01', name: 'Routing(공정) 등록·관리' },"
+    },
+    "C-13|apps/web/src/patterns/web-screen-catalog.ts|7e34148a4c7b": {
+      "n": 1,
+      "text": "가운뎃점: { path: '/shipment/return-receipts', code: 'W-04-06', name: '반품·클레임 입고 등록' },"
+    },
+    "C-13|apps/web/src/patterns/web-screen-catalog.ts|805ac1c12f70": {
+      "n": 1,
+      "text": "가운뎃점: { path: '/dashboard', code: 'W-CO-05', name: '통합 대시보드(경영·생산)' },"
+    },
+    "C-13|apps/web/src/patterns/web-screen-catalog.ts|833f71b14bdd": {
+      "n": 1,
+      "text": "가운뎃점: name: '검사실적·검사결과 조회(불량률·불량코드 분포 집계 포함)',"
+    },
+    "C-13|apps/web/src/patterns/web-screen-catalog.ts|85e99341c5ff": {
+      "n": 1,
+      "text": "가운뎃점: name: '불량·원인코드 2계층 마스터',"
+    },
+    "C-13|apps/web/src/patterns/web-screen-catalog.ts|86d91a5c32af": {
+      "n": 1,
+      "text": "가운뎃점: { path: '/master-data/warehouse-location', code: 'W-06-07', name: '창고·Location 마스터' },"
+    },
+    "C-13|apps/web/src/patterns/web-screen-catalog.ts|8d8ac52c7b58": {
+      "n": 1,
+      "text": "가운뎃점: { path: '/logistics/disposal-issue', code: 'W-01-06', name: '폐기 요청·기타출고' },"
+    },
+    "C-13|apps/web/src/patterns/web-screen-catalog.ts|8f83078f1bae": {
+      "n": 1,
+      "text": "가운뎃점: { path: '/master-data/integration-sync', code: 'W-06-10', name: '연계 동기화 현황·실패 재처리' },"
+    },
+    "C-13|apps/web/src/patterns/web-screen-catalog.ts|93dd739fafb1": {
+      "n": 1,
+      "text": "가운뎃점: name: '수신본 확장속성 편집(품목·BOM)',"
+    },
+    "C-13|apps/web/src/patterns/web-screen-catalog.ts|9f9c8cb46805": {
+      "n": 1,
+      "text": "가운뎃점: { path: '/system/users-roles', code: 'W-CO-02', name: '사용자·역할·권한 관리' },"
+    },
+    "C-13|apps/web/src/patterns/web-screen-catalog.ts|ab3958bca688": {
+      "n": 1,
+      "text": "가운뎃점: { path: '/equipment/downtime-summary', code: 'W-05-08', name: '비가동 집계·조회' },"
+    },
+    "C-13|apps/web/src/patterns/web-screen-catalog.ts|b27f821a8427": {
+      "n": 1,
+      "text": "가운뎃점: { path: '/shipment/shipment-confirm', code: 'W-04-12', name: '출하 확정·취소' },"
+    },
+    "C-13|apps/web/src/patterns/web-screen-catalog.ts|cba9c748d0f0": {
+      "n": 1,
+      "text": "가운뎃점: name: 'Lot Status 현황·변경이력 조회',"
+    },
+    "C-13|apps/web/src/patterns/web-screen-catalog.ts|d0dc71cb1854": {
+      "n": 1,
+      "text": "가운뎃점: { path: '/shipment/shipment-processing', code: 'W-04-04', name: '출하 처리(상차·실물 출고)' },"
+    },
+    "C-13|apps/web/src/patterns/web-screen-catalog.ts|e1996541c0df": {
+      "n": 1,
+      "text": "가운뎃점: { path: '/notification/notices', code: 'W-CO-04', name: '공지·전달 게시/조회' },"
+    },
+    "C-13|apps/web/src/patterns/web-screen-catalog.ts|e465b690d62e": {
+      "n": 1,
+      "text": "가운뎃점: { path: '/quality/lot-status-transition', code: 'W-03-02', name: 'Lot Status 판정·전이 처리' },"
+    },
+    "C-13|apps/web/src/screens/alarm-recipient-settings/screen.tsx|515be9cc1529": {
+      "n": 1,
+      "text": "가운뎃점: label: `${item.departmentCode} · ${item.departmentName}`,"
+    },
+    "C-13|apps/web/src/screens/approval-route/approver-options.ts|a5d5454dc233": {
+      "n": 1,
+      "text": "가운뎃점: label: user.userName === '' ? user.loginId : `${approverName} · ${user.loginId}`,"
+    },
+    "C-13|apps/web/src/screens/approval-route/fixtures.ts|27f793ec7ef3": {
+      "n": 1,
+      "text": "가운뎃점: export const INACTIVE_BUSINESS_UNIT_LABEL = 'SAMPLE-BU-02 · 합성사업부 나';"
+    },
+    "C-13|apps/web/src/screens/approval-route/fixtures.ts|4f38ba48410a": {
+      "n": 1,
+      "text": "가운뎃점: export const BUSINESS_UNIT_LABEL = 'SAMPLE-BU-01 · 합성사업부 가';"
+    },
+    "C-13|apps/web/src/screens/approval-route/fixtures.ts|5c3f2fe60077": {
+      "n": 1,
+      "text": "가운뎃점: export const APPROVER_OPTION_LABEL = '합성 승인자4 · sample.user4';"
+    },
+    "C-13|apps/web/src/screens/approval-route/lookups.ts|11fe140fef7e": {
+      "n": 1,
+      "text": "가운뎃점: : `${step.approverName} · ${step.approverDepartmentName}`;"
+    },
+    "C-13|apps/web/src/screens/approval-route/lookups.ts|1a3da3ed7182": {
+      "n": 1,
+      "text": "가운뎃점: label: `${item.businessUnitCode} · ${item.businessUnitName}`,"
+    },
+    "C-13|apps/web/src/screens/collection-channel/item-picker.tsx|dc3d5b5a539d": {
+      "n": 1,
+      "text": "가운뎃점: label: `${spec.inspectionItemCode} · ${spec.inspectionItemName}`,"
+    },
+    "C-13|apps/web/src/screens/collection-channel/item-picker.tsx|e9fa2b563480": {
+      "n": 1,
+      "text": "가운뎃점: label: `${plan.inspectionPlanCode} · ${plan.inspectionPlanName}`,"
+    },
+    "C-13|apps/web/src/screens/collection-channel/queries.ts|ad92d70faf73": {
+      "n": 1,
+      "text": "가운뎃점: label: `${row.itemCode} · ${row.itemName}`,"
+    },
+    "C-13|apps/web/src/screens/collection-channel/queries.ts|ed0d7168d85d": {
+      "n": 1,
+      "text": "가운뎃점: label: `${uom.uomCode} · ${uom.uomName}`,"
+    },
+    "C-13|apps/web/src/screens/collection-channel/queries.ts|f32838542fe3": {
+      "n": 1,
+      "text": "가운뎃점: label: `${row.processCode} · ${row.processName}`,"
+    },
+    "C-13|apps/web/src/screens/common-code/lookups.ts|1a3da3ed7182": {
+      "n": 1,
+      "text": "가운뎃점: label: `${item.businessUnitCode} · ${item.businessUnitName}`,"
+    },
+    "C-13|apps/web/src/screens/common-code/lookups.ts|47ec745c0d02": {
+      "n": 1,
+      "text": "가운뎃점: label: `${item.loginId} · ${item.userName}`,"
+    },
+    "C-13|apps/web/src/screens/common-code/lookups.ts|515be9cc1529": {
+      "n": 1,
+      "text": "가운뎃점: label: `${item.departmentCode} · ${item.departmentName}`,"
+    },
+    "C-13|apps/web/src/screens/dashboard/dashboard-filter-bar.tsx|011ae369e9bc": {
+      "n": 1,
+      "text": "가운뎃점: ].join(' · ')}"
+    },
+    "C-13|apps/web/src/screens/dashboard/defect-types-panel.tsx|3f93b706d2b8": {
+      "n": 1,
+      "text": "가운뎃점: {`${formatFigure(tip.slice.value)} ${t.qtyUnit} · ${formatShare(tip.slice)}`}"
+    },
+    "C-13|apps/web/src/screens/dashboard/equipment-panel.tsx|011ae369e9bc": {
+      "n": 2,
+      "text": "가운뎃점: .join(' · ');"
+    },
+    "C-13|apps/web/src/screens/dashboard/equipment-panel.tsx|77cd714513b7": {
+      "n": 1,
+      "text": "가운뎃점: ? `${t.ngLine(formatFigure(item.todayNgQty), formatDefectRate(item.defectRate))} · ${t.cycleLine(formatCycleTime(i"
+    },
+    "C-13|apps/web/src/screens/dashboard/equipment-panel.tsx|bca8ae8ba303": {
+      "n": 2,
+      "text": "가운뎃점: aria-label={`${t.openDetail(item.equipmentCode)} · ${describeReason(item)} · ${formatElapsed(item.elapsedMinutes)}"
+    },
+    "C-13|apps/web/src/screens/dashboard/equipment.ts|335a026ea162": {
+      "n": 1,
+      "text": "가운뎃점: label: (nameCount.get(name) ?? 0) > 1 ? `${name} · ${String(id)}` : name,"
+    },
+    "C-13|apps/web/src/screens/dashboard/lookups.ts|46391c2f6acf": {
+      "n": 1,
+      "text": "가운뎃점: label: `${item.plantCode} · ${item.plantName}`,"
+    },
+    "C-13|apps/web/src/screens/dashboard/overview-kpis.tsx|f42d58bfc961": {
+      "n": 1,
+      "text": "가운뎃점: : `${k.availabilityBasis} · ${k.workedEquipment(count)}`;"
+    },
+    "C-13|apps/web/src/screens/dashboard/quality-lots-dialog.tsx|011ae369e9bc": {
+      "n": 1,
+      "text": "가운뎃점: .join(' · ');"
+    },
+    "C-13|apps/web/src/screens/dashboard/quality-panels.tsx|011ae369e9bc": {
+      "n": 1,
+      "text": "가운뎃점: {' · '}"
+    },
+    "C-13|apps/web/src/screens/dashboard/shipment-panel.tsx|011ae369e9bc": {
+      "n": 1,
+      "text": "가운뎃점: {index > 0 && ' · '}"
+    },
+    "C-13|apps/web/src/screens/dashboard/viz.tsx|011ae369e9bc": {
+      "n": 1,
+      "text": "가운뎃점: ].join(' · ');"
+    },
+    "C-13|apps/web/src/screens/defect-cause-code/process-mapping-pane.tsx|af865ca9a5de": {
+      "n": 1,
+      "text": "가운뎃점: ariaLabel: `${defect.code} · ${process.processName} · ${"
+    },
+    "C-13|apps/web/src/screens/defect-cause-code/process-mapping-pane.tsx|cd9bcb6f15c1": {
+      "n": 1,
+      "text": "가운뎃점: label: `${process.processCode} · ${process.processName}`,"
+    },
+    "C-13|apps/web/src/screens/defect-cause-code/process-mapping-pane.tsx|f7b9f5b0cd20": {
+      "n": 1,
+      "text": "가운뎃점: label: `${categories.get(defect.parentId ?? 0)?.name ?? t.groupHeaderOrphan} / ${defect.code} · ${defect.name}`,"
+    },
+    "C-13|apps/web/src/screens/dispatch-history/screen.tsx|515be9cc1529": {
+      "n": 1,
+      "text": "가운뎃점: label: `${item.departmentCode} · ${item.departmentName}`,"
+    },
+    "C-13|apps/web/src/screens/disposal-issue/fixtures.ts|1f5c94c4553c": {
+      "n": 1,
+      "text": "가운뎃점: export const PARTNER_LABEL = 'SAMPLE-PT-01 · 합성 폐기업체 가';"
+    },
+    "C-13|apps/web/src/screens/disposal-issue/lookups.ts|24a3f5d8d2ef": {
+      "n": 2,
+      "text": "가운뎃점: label: `${item.partnerCode} · ${item.partnerName}`,"
+    },
+    "C-13|apps/web/src/screens/disposal-issue/lookups.ts|33b257507ffc": {
+      "n": 1,
+      "text": "가운뎃점: label: `${item.uomCode} · ${item.uomName}`,"
+    },
+    "C-13|apps/web/src/screens/disposal-issue/lookups.ts|3d604e1512bf": {
+      "n": 1,
+      "text": "가운뎃점: return `${item.itemCode} · ${masterName(item, item.itemName)}`;"
+    },
+    "C-13|apps/web/src/screens/disposal-issue/lookups.ts|bf1633609103": {
+      "n": 1,
+      "text": "가운뎃점: label: `${item.locationCode} · ${item.locationName}`,"
+    },
+    "C-13|apps/web/src/screens/disposal-issue/lookups.ts|e0419041a666": {
+      "n": 1,
+      "text": "가운뎃점: label: `${item.warehouseCode} · ${item.warehouseName}`,"
+    },
+    "C-13|apps/web/src/screens/disposition-decision/lookups.ts|164692c68549": {
+      "n": 1,
+      "text": "가운뎃점: label: `${item.itemCode} · ${nameOr(item.itemName)}`,"
+    },
+    "C-13|apps/web/src/screens/disposition-request/fixtures.ts|98a9964f0f54": {
+      "n": 1,
+      "text": "가운뎃점: description: '외관 스크래치 · 상단 모서리 · 300개 중 60개 육안 확인',"
+    },
+    "C-13|apps/web/src/screens/disposition-request/lookups.ts|36c1b2ad5136": {
+      "n": 1,
+      "text": "가운뎃점: label: `${warehouse.warehouseCode} · ${nameOr(warehouse.warehouseName)}`,"
+    },
+    "C-13|apps/web/src/screens/disposition-request/result-pane.tsx|488ac2e194f0": {
+      "n": 1,
+      "text": "가운뎃점: row.hasApproval ? `${row.decidedAtText} · ${t.result.approvalPending}` : row.decidedAtText,"
+    },
+    "C-13|apps/web/src/screens/disposition-request/target-header.tsx|011ae369e9bc": {
+      "n": 1,
+      "text": "가운뎃점: .join(' · ');"
+    },
+    "C-13|apps/web/src/screens/disposition-request/target-list.tsx|b4f017bff10d": {
+      "n": 1,
+      "text": "가운뎃점: : `${row.receiptNo}${row.receivedAtText === null ? '' : ` · ${row.receivedAtText}`}`,"
+    },
+    "C-13|apps/web/src/screens/disposition-request/types.ts|011ae369e9bc": {
+      "n": 1,
+      "text": "가운뎃점: return parts.length === 0 ? messages.dispositionRequest.values.notAvailable : parts.join(' · ');"
+    },
+    "C-13|apps/web/src/screens/document-progress/document-types.ts|011ae369e9bc": {
+      "n": 1,
+      "text": "가운뎃점: return blocked.map((entry) => `${entry.label}: ${entry.disabledReason ?? ''}`).join(' · ');"
+    },
+    "C-13|apps/web/src/screens/downtime-register/reason-fields.tsx|7bbd924fa465": {
+      "n": 1,
+      "text": "가운뎃점: label: `${one.breakdownNo ?? String(one.breakdownId)} · ${one.symptom}`,"
+    },
+    "C-13|apps/web/src/screens/downtime-register/terminal-gating.ts|7e176a98f3f3": {
+      "n": 1,
+      "text": "가운뎃점: throw new Error('단말·공정을 모르면 게이팅을 조회하지 않습니다.');"
+    },
+    "C-13|apps/web/src/screens/downtime-summary/lookups.ts|1fa07a7ef867": {
+      "n": 1,
+      "text": "가운뎃점: label: `${item.equipmentCode} · ${item.equipmentName}`,"
+    },
+    "C-13|apps/web/src/screens/downtime-summary/lookups.ts|46391c2f6acf": {
+      "n": 1,
+      "text": "가운뎃점: label: `${item.plantCode} · ${item.plantName}`,"
+    },
+    "C-13|apps/web/src/screens/downtime-summary/lookups.ts|70dcc90f8fa2": {
+      "n": 1,
+      "text": "가운뎃점: label: `${item.groupCode} · ${item.groupName}`,"
+    },
+    "C-13|apps/web/src/screens/downtime-summary/types.ts|92e6a176502f": {
+      "n": 1,
+      "text": "가운뎃점: : `${row.equipmentCode} · ${row.equipmentName}`,"
+    },
+    "C-13|apps/web/src/screens/emergency-work-order/expansion-pane.tsx|023035cb67aa": {
+      "n": 1,
+      "text": "가운뎃점: label: `${routing.routingCode} ${t.revision} ${String(routing.routingVersion)} · ${t.revisionStatus(routing.status"
+    },
+    "C-13|apps/web/src/screens/emergency-work-order/issue-form-pane.tsx|fff28782881e": {
+      "n": 1,
+      "text": "가운뎃점: <strong>{item === null ? '—' : `${item.itemCode} · ${item.itemName}`}</strong>"
+    },
+    "C-13|apps/web/src/screens/emergency-work-order/item-picker.tsx|c75d0102290c": {
+      "n": 1,
+      "text": "가운뎃점: const label = selected === null ? '' : `${selected.itemCode} · ${selected.itemName}`;"
+    },
+    "C-13|apps/web/src/screens/equipment-failure/detail-pane.tsx|f1f4a4a60e58": {
+      "n": 1,
+      "text": "가운뎃점: : `${t.detail.photoCount(detail.attachmentCount)} · ${t.detail.photosNotViewable}`"
+    },
+    "C-13|apps/web/src/screens/equipment-failure/lookups.ts|1fa07a7ef867": {
+      "n": 1,
+      "text": "가운뎃점: label: `${item.equipmentCode} · ${item.equipmentName}`,"
+    },
+    "C-13|apps/web/src/screens/equipment-master/inspection-assign-dialog.tsx|381d6de55b6f": {
+      "n": 1,
+      "text": "가운뎃점: {row.itemCode} · {row.itemName}"
+    },
+    "C-13|apps/web/src/screens/equipment-master/inspection-assign-dialog.tsx|fff28782881e": {
+      "n": 1,
+      "text": "가운뎃점: label: `${item.itemCode} · ${item.itemName}`,"
+    },
+    "C-13|apps/web/src/screens/equipment-master/queries.ts|515be9cc1529": {
+      "n": 1,
+      "text": "가운뎃점: label: `${item.departmentCode} · ${item.departmentName}`,"
+    },
+    "C-13|apps/web/src/screens/equipment-master/screen.tsx|0264be111051": {
+      "n": 1,
+      "text": "가운뎃점: `${disposeTarget.equipmentCode} · ${disposeTarget.equipmentName}`,"
+    },
+    "C-13|apps/web/src/screens/equipment-master/screen.tsx|1872562a31aa": {
+      "n": 1,
+      "text": "가운뎃점: `${deactivateTarget.equipmentCode} · ${deactivateTarget.equipmentName}`,"
+    },
+    "C-13|apps/web/src/screens/equipment-master/screen.tsx|1dac91533765": {
+      "n": 2,
+      "text": "가운뎃점: `${detail.data.equipmentGroup.groupCode} · ${detail.data.equipmentGroup.groupName}`,"
+    },
+    "C-13|apps/web/src/screens/equipment-master/screen.tsx|50329a558e4e": {
+      "n": 3,
+      "text": "가운뎃점: const name = `${group.groupCode} · ${group.groupName}`;"
+    },
+    "C-13|apps/web/src/screens/equipment-master/screen.tsx|8b9bac167aa8": {
+      "n": 1,
+      "text": "가운뎃점: label: `[${item.warehouseCode ?? ''} ${item.warehouseName ?? ''}] ${item.locationCode} · ${item.locationName}`,"
+    },
+    "C-13|apps/web/src/screens/equipment-master/screen.tsx|b64f5813302c": {
+      "n": 1,
+      "text": "가운뎃점: targetLabel={`${inspectionTarget.equipmentCode} · ${inspectionTarget.equipmentName}`}"
+    },
+    "C-13|apps/web/src/screens/erp-bom/queries.ts|2f775747658d": {
+      "n": 1,
+      "text": "가운뎃점: return [itemId, `${itemCode} · ${itemName}`];"
+    },
+    "C-13|apps/web/src/screens/erp-production-order/lookups.ts|1a3da3ed7182": {
+      "n": 1,
+      "text": "가운뎃점: label: `${item.businessUnitCode} · ${item.businessUnitName}`,"
+    },
+    "C-13|apps/web/src/screens/erp-production-order/lookups.ts|2f775747658d": {
+      "n": 1,
+      "text": "가운뎃점: return [itemId, `${itemCode} · ${itemName}`];"
+    },
+    "C-13|apps/web/src/screens/erp-production-order/lookups.ts|46391c2f6acf": {
+      "n": 1,
+      "text": "가운뎃점: label: `${item.plantCode} · ${item.plantName}`,"
+    },
+    "C-13|apps/web/src/screens/erp-production-order/lookups.ts|7748c73bef7e": {
+      "n": 1,
+      "text": "가운뎃점: return name === code ? code : `${code} · ${name}`;"
+    },
+    "C-13|apps/web/src/screens/erp-purchase-order/lookups.ts|24a3f5d8d2ef": {
+      "n": 1,
+      "text": "가운뎃점: label: `${item.partnerCode} · ${item.partnerName}`,"
+    },
+    "C-13|apps/web/src/screens/erp-purchase-order/lookups.ts|2f775747658d": {
+      "n": 1,
+      "text": "가운뎃점: return [itemId, `${itemCode} · ${itemName}`];"
+    },
+    "C-13|apps/web/src/screens/erp-purchase-order/lookups.ts|46391c2f6acf": {
+      "n": 1,
+      "text": "가운뎃점: label: `${item.plantCode} · ${item.plantName}`,"
+    },
+    "C-13|apps/web/src/screens/erp-sales-order/lookups.ts|24a3f5d8d2ef": {
+      "n": 1,
+      "text": "가운뎃점: label: `${item.partnerCode} · ${item.partnerName}`,"
+    },
+    "C-13|apps/web/src/screens/erp-sales-order/lookups.ts|2f775747658d": {
+      "n": 1,
+      "text": "가운뎃점: return [itemId, `${itemCode} · ${itemName}`];"
+    },
+    "C-13|apps/web/src/screens/expedited-shipment/lookups.ts|33b4b1832f89": {
+      "n": 1,
+      "text": "가운뎃점: label: `${item.itemCode} · ${nameOr(masterName(item, item.itemName))}`,"
+    },
+    "C-13|apps/web/src/screens/expedited-shipment/lookups.ts|e0419041a666": {
+      "n": 1,
+      "text": "가운뎃점: label: `${item.warehouseCode} · ${item.warehouseName}`,"
+    },
+    "C-13|apps/web/src/screens/expedited-shipment/lot-pane.tsx|809266af615e": {
+      "n": 1,
+      "text": "가운뎃점: label: `${lot.lotNo} · ${lookupDisplayLabel(items.of(lot.itemId), lot.itemId)} · ${formatQty(lot.initialQty)}`,"
+    },
+    "C-13|apps/web/src/screens/expedited-shipment/target-pane.tsx|c1a427533456": {
+      "n": 1,
+      "text": "가운뎃점: label: `${target.shipmentRequestNo} · ${target.requestedShipDate}`,"
+    },
+    "C-13|apps/web/src/screens/gauge-calibration/lookups.ts|1fa07a7ef867": {
+      "n": 1,
+      "text": "가운뎃점: label: `${item.equipmentCode} · ${item.equipmentName}`,"
+    },
+    "C-13|apps/web/src/screens/gauge-calibration/save-confirm-dialog.tsx|011ae369e9bc": {
+      "n": 1,
+      "text": "가운뎃점: return parts.filter((part) => part.trim() !== '').join(' · ');"
+    },
+    "C-13|apps/web/src/screens/gauge-master/screen.tsx|874ecee09a31": {
+      "n": 2,
+      "text": "가운뎃점: ? t.retire.disposeTarget(`${gauge.equipmentCode} · ${gauge.equipmentName}`)"
+    },
+    "C-13|apps/web/src/screens/goods-issue-qr/label-fields.ts|e8c6a4b58239": {
+      "n": 1,
+      "text": "가운뎃점: '품목 코드·LOT 번호를 불러오지 못했습니다. 연결을 확인한 뒤 다시 발행하세요.';"
+    },
+    "C-13|apps/web/src/screens/goods-issue-qr/lookups.ts|e4ec2606fa75": {
+      "n": 1,
+      "text": "가운뎃점: label: `${result.data.item.itemCode} · ${result.data.item.itemName}`,"
+    },
+    "C-13|apps/web/src/screens/goods-issue-qr/target-pane.tsx|011ae369e9bc": {
+      "n": 1,
+      "text": "가운뎃점: .join(' · ');"
+    },
+    "C-13|apps/web/src/screens/goods-receipt/location-options.ts|20f4d9690e26": {
+      "n": 1,
+      "text": "가운뎃점: `${location.locationCode} · ${location.locationName}`;"
+    },
+    "C-13|apps/web/src/screens/goods-receipt/lookups.ts|24a3f5d8d2ef": {
+      "n": 1,
+      "text": "가운뎃점: label: `${item.partnerCode} · ${item.partnerName}`,"
+    },
+    "C-13|apps/web/src/screens/goods-receipt/lookups.ts|33b257507ffc": {
+      "n": 1,
+      "text": "가운뎃점: label: `${item.uomCode} · ${item.uomName}`,"
+    },
+    "C-13|apps/web/src/screens/goods-receipt/lookups.ts|3d604e1512bf": {
+      "n": 1,
+      "text": "가운뎃점: return `${item.itemCode} · ${masterName(item, item.itemName)}`;"
+    },
+    "C-13|apps/web/src/screens/goods-receipt/lookups.ts|46391c2f6acf": {
+      "n": 1,
+      "text": "가운뎃점: label: `${item.plantCode} · ${item.plantName}`,"
+    },
+    "C-13|apps/web/src/screens/goods-receipt/screen.tsx|0dd71020cd7f": {
+      "n": 1,
+      "text": "가운뎃점: : `${selectedWarehouse.warehouseCode} · ${selectedWarehouse.warehouseName}`,"
+    },
+    "C-13|apps/web/src/screens/goods-receipt/screen.tsx|ed6d51099a9c": {
+      "n": 1,
+      "text": "가운뎃점: return found === undefined ? '' : `${found.locationCode} · ${found.locationName}`;"
+    },
+    "C-13|apps/web/src/screens/goods-receipt/warehouse-location-fields.tsx|e43f950eee15": {
+      "n": 1,
+      "text": "가운뎃점: label: `${warehouse.warehouseCode} · ${warehouse.warehouseName}`,"
+    },
+    "C-13|apps/web/src/screens/inbound-schedule/lookups.ts|24a3f5d8d2ef": {
+      "n": 1,
+      "text": "가운뎃점: label: `${item.partnerCode} · ${item.partnerName}`,"
+    },
+    "C-13|apps/web/src/screens/inbound-schedule/lookups.ts|3d604e1512bf": {
+      "n": 1,
+      "text": "가운뎃점: return `${item.itemCode} · ${masterName(item, item.itemName)}`;"
+    },
+    "C-13|apps/web/src/screens/inbound-schedule/lookups.ts|46391c2f6acf": {
+      "n": 1,
+      "text": "가운뎃점: label: `${item.plantCode} · ${item.plantName}`,"
+    },
+    "C-13|apps/web/src/screens/inspection-history/panel.tsx|011ae369e9bc": {
+      "n": 1,
+      "text": "가운뎃점: <span className=\"field-note\"> {detailOf(event).join(' · ')}</span>"
+    },
+    "C-13|apps/web/src/screens/inspection-history/panel.tsx|381d6de55b6f": {
+      "n": 1,
+      "text": "가운뎃점: {formatAt(event.occurredAt)} · {t.events[event.eventTypeCode]}"
+    },
+    "C-13|apps/web/src/screens/inspection-level/level-dialog.tsx|fff28782881e": {
+      "n": 1,
+      "text": "가운뎃점: <p>{item === null ? '—' : `${item.itemCode} · ${item.itemName}`}</p>"
+    },
+    "C-13|apps/web/src/screens/inspection-level/screen.tsx|ad92d70faf73": {
+      "n": 1,
+      "text": "가운뎃점: render: (row) => `${row.itemCode} · ${row.itemName}`,"
+    },
+    "C-13|apps/web/src/screens/inspection-result-insights/history-queries.ts|7748c73bef7e": {
+      "n": 1,
+      "text": "가운뎃점: const codeLabel = (code: string, name: string): string => `${code} · ${name}`;"
+    },
+    "C-13|apps/web/src/screens/inspection-result-insights/lookups.ts|cd9bcb6f15c1": {
+      "n": 1,
+      "text": "가운뎃점: label: `${process.processCode} · ${process.processName}`,"
+    },
+    "C-13|apps/web/src/screens/inspection-result-insights/lookups.ts|fff28782881e": {
+      "n": 1,
+      "text": "가운뎃점: label: `${item.itemCode} · ${item.itemName}`,"
+    },
+    "C-13|apps/web/src/screens/inspection-result-insights/result-detail-dialog.tsx|011ae369e9bc": {
+      "n": 1,
+      "text": "가운뎃점: ? t.outOfSpecRemaining(outOfSpecValues.length > 0 ? ' · ' : '', remaining)"
+    },
+    "C-13|apps/web/src/screens/inspection-standard/item-pane.tsx|011ae369e9bc": {
+      "n": 2,
+      "text": "가운뎃점: return parts.join(' · ');"
+    },
+    "C-13|apps/web/src/screens/inspection-standard/queries.ts|ed0d7168d85d": {
+      "n": 1,
+      "text": "가운뎃점: label: `${uom.uomCode} · ${uom.uomName}`,"
+    },
+    "C-13|apps/web/src/screens/inspection-standard/queries.ts|fff28782881e": {
+      "n": 1,
+      "text": "가운뎃점: label: `${item.itemCode} · ${item.itemName}`,"
+    },
+    "C-13|apps/web/src/screens/iqc-inspection/judgment-change.tsx|a50074833a31": {
+      "n": 1,
+      "text": "가운뎃점: {expectedLabel !== null && ` · ${t.expected(expectedLabel)}`}"
+    },
+    "C-13|apps/web/src/screens/iqc-inspection/measurement-grid.tsx|011ae369e9bc": {
+      "n": 1,
+      "text": "가운뎃점: return parts.length === 0 ? t.notMeasured : parts.join(' · ');"
+    },
+    "C-13|apps/web/src/screens/iqc-inspection/reference-lookup.ts|150efb83cd58": {
+      "n": 1,
+      "text": "가운뎃점: return describe(result, parts === undefined ? undefined : `${parts.code} · ${parts.name}`);"
+    },
+    "C-13|apps/web/src/screens/iqc-inspection/reference-lookup.ts|f9d112d315c9": {
+      "n": 1,
+      "text": "가운뎃점: label: `${partner.partnerCode} · ${partner.partnerName}`,"
+    },
+    "C-13|apps/web/src/screens/iqc-inspection/rejection-reason.tsx|48addffc325a": {
+      "n": 1,
+      "text": "가운뎃점: label: `${code.defectCode} · ${code.defectName}`,"
+    },
+    "C-13|apps/web/src/screens/iqc-inspection/rejection-reason.tsx|ab69a936710c": {
+      "n": 1,
+      "text": "가운뎃점: const label = (cause: CauseCode) => `${cause.causeCode} · ${cause.causeName}`;"
+    },
+    "C-13|apps/web/src/screens/iqc-inspection/screen.tsx|011ae369e9bc": {
+      "n": 1,
+      "text": "가운뎃점: .join(' · ')"
+    },
+    "C-13|apps/web/src/screens/item-extended-attrs/bu-map-pane.tsx|193b8e873ae4": {
+      "n": 1,
+      "text": "가운뎃점: `${businessUnitLabel(draft.fromBusinessUnitId)} → ${businessUnitLabel("
+    },
+    "C-13|apps/web/src/screens/item-extended-attrs/item-queries.ts|fff28782881e": {
+      "n": 1,
+      "text": "가운뎃점: label: `${item.itemCode} · ${item.itemName}`,"
+    },
+    "C-13|apps/web/src/screens/item-extended-attrs/item-resource-map-form-dialog.tsx|6db303767027": {
+      "n": 2,
+      "text": "가운뎃점: setLabels((prev) => ({ ...prev, equipment: `${picked.code} · ${picked.name}` }));"
+    },
+    "C-13|apps/web/src/screens/item-extended-attrs/item-resource-map-form-dialog.tsx|b8876e4382ef": {
+      "n": 1,
+      "text": "가운뎃점: code === null ? '' : `${code} · ${name ?? ''}`;"
+    },
+    "C-13|apps/web/src/screens/item-extended-attrs/item-resource-map-pane.tsx|b8876e4382ef": {
+      "n": 1,
+      "text": "가운뎃점: code === null ? null : `${code} · ${name ?? ''}`;"
+    },
+    "C-13|apps/web/src/screens/item-extended-attrs/lookups.ts|1a3da3ed7182": {
+      "n": 1,
+      "text": "가운뎃점: label: `${item.businessUnitCode} · ${item.businessUnitName}`,"
+    },
+    "C-13|apps/web/src/screens/item-extended-attrs/lookups.ts|24a3f5d8d2ef": {
+      "n": 1,
+      "text": "가운뎃점: label: `${item.partnerCode} · ${item.partnerName}`,"
+    },
+    "C-13|apps/web/src/screens/item-extended-attrs/lookups.ts|33b257507ffc": {
+      "n": 1,
+      "text": "가운뎃점: label: `${item.uomCode} · ${item.uomName}`,"
+    },
+    "C-13|apps/web/src/screens/item-extended-attrs/lookups.ts|46391c2f6acf": {
+      "n": 1,
+      "text": "가운뎃점: label: `${item.plantCode} · ${item.plantName}`,"
+    },
+    "C-13|apps/web/src/screens/item-extended-attrs/lookups.ts|4e1fef6e2df6": {
+      "n": 1,
+      "text": "가운뎃점: label: `${item.processCode} · ${item.processName}`,"
+    },
+    "C-13|apps/web/src/screens/item-extended-attrs/subsidiary-queries.ts|1065d741e217": {
+      "n": 1,
+      "text": "가운뎃점: throw new Error('품목과 공장을 고르기 전에는 설비·금형 매핑을 조회하지 않습니다.');"
+    },
+    "C-13|apps/web/src/screens/lot-status-history/lot-detail-dialog.tsx|011ae369e9bc": {
+      "n": 1,
+      "text": "가운뎃점: .join(' · ')}"
+    },
+    "C-13|apps/web/src/screens/lot-status-history/lot-hold-documents.tsx|4e9fb5a6e6b3": {
+      "n": 1,
+      "text": "가운뎃점: actorId === null ? at : `${at} · ${actorName(actorId)}`;"
+    },
+    "C-13|apps/web/src/screens/lot-status-history/lot-timeline-table.tsx|c438911a74df": {
+      "n": 1,
+      "text": "가운뎃점: return entry.event.reason === null ? transition : `${transition} · ${entry.event.reason}`;"
+    },
+    "C-13|apps/web/src/screens/lot-status-history/reference-options.ts|2803128c5d43": {
+      "n": 1,
+      "text": "가운뎃점: label: `${value.locationCode} · ${value.locationName}`,"
+    },
+    "C-13|apps/web/src/screens/lot-status-history/reference-options.ts|7cff968558aa": {
+      "n": 1,
+      "text": "가운뎃점: label: `${value.warehouseCode} · ${value.warehouseName}`,"
+    },
+    "C-13|apps/web/src/screens/lot-status-history/reference-options.ts|ed1445649d93": {
+      "n": 1,
+      "text": "가운뎃점: label: `${value.itemCode} · ${value.itemName}`,"
+    },
+    "C-13|apps/web/src/screens/lot-status-history/reference-options.ts|fff28782881e": {
+      "n": 1,
+      "text": "가운뎃점: label: `${item.itemCode} · ${item.itemName}`,"
+    },
+    "C-13|apps/web/src/screens/maintenance-order/lookups.ts|1fa07a7ef867": {
+      "n": 1,
+      "text": "가운뎃점: label: `${item.equipmentCode} · ${item.equipmentName}`,"
+    },
+    "C-13|apps/web/src/screens/maintenance-order/lookups.ts|47ec745c0d02": {
+      "n": 1,
+      "text": "가운뎃점: label: `${item.loginId} · ${item.userName}`,"
+    },
+    "C-13|apps/web/src/screens/maintenance-order/lookups.ts|fff28782881e": {
+      "n": 1,
+      "text": "가운뎃점: label: `${item.itemCode} · ${item.itemName}`,"
+    },
+    "C-13|apps/web/src/screens/maintenance-order/screen.tsx|011ae369e9bc": {
+      "n": 1,
+      "text": "가운뎃점: .join(' · ')}"
+    },
+    "C-13|apps/web/src/screens/maintenance-order/trigger-picker.tsx|0a727ee8be88": {
+      "n": 1,
+      "text": "가운뎃점: label: `${t.triggers.breakdownTab} · ${optional(row.breakdownNo)}`,"
+    },
+    "C-13|apps/web/src/screens/maintenance-order/trigger-picker.tsx|aea70b1e8fa2": {
+      "n": 1,
+      "text": "가운뎃점: label: `${t.triggers.pmDueAdded} · ${option?.label ?? pmDueEquipment}`,"
+    },
+    "C-13|apps/web/src/screens/maintenance-order/trigger-picker.tsx|b02dc596e25b": {
+      "n": 1,
+      "text": "가운뎃점: label: `${t.triggers.inspectionTab} · ${optional(row.inspectionNo)}`,"
+    },
+    "C-13|apps/web/src/screens/maintenance-result/lookups.ts|1fa07a7ef867": {
+      "n": 1,
+      "text": "가운뎃점: label: `${item.equipmentCode} · ${item.equipmentName}`,"
+    },
+    "C-13|apps/web/src/screens/maintenance-result/lookups.ts|47ec745c0d02": {
+      "n": 1,
+      "text": "가운뎃점: label: `${item.loginId} · ${item.userName}`,"
+    },
+    "C-13|apps/web/src/screens/maintenance-result/lookups.ts|93729af7fe3a": {
+      "n": 1,
+      "text": "가운뎃점: label: `${item.sparePartCode} · ${item.sparePartName}`,"
+    },
+    "C-13|apps/web/src/screens/material-defect/defect-code.ts|48addffc325a": {
+      "n": 1,
+      "text": "가운뎃점: label: `${code.defectCode} · ${code.defectName}`,"
+    },
+    "C-13|apps/web/src/screens/material-input-scan/scanned-list.tsx|011ae369e9bc": {
+      "n": 1,
+      "text": "가운뎃점: .join(' · ')}"
+    },
+    "C-13|apps/web/src/screens/material-input-scan/scanned-list.tsx|381d6de55b6f": {
+      "n": 2,
+      "text": "가운뎃점: {t.scanned.statusLabel} · {statusLabels.describe(material.statusCode)}"
+    },
+    "C-13|apps/web/src/screens/material-input-scan/terminal-gating.ts|7e176a98f3f3": {
+      "n": 1,
+      "text": "가운뎃점: throw new Error('단말·공정을 모르면 게이팅을 조회하지 않습니다.');"
+    },
+    "C-13|apps/web/src/screens/material-issue-request/lookups.ts|33b257507ffc": {
+      "n": 1,
+      "text": "가운뎃점: label: `${item.uomCode} · ${item.uomName}`,"
+    },
+    "C-13|apps/web/src/screens/material-issue-request/lookups.ts|bf1633609103": {
+      "n": 1,
+      "text": "가운뎃점: label: `${item.locationCode} · ${item.locationName}`,"
+    },
+    "C-13|apps/web/src/screens/material-issue-request/lookups.ts|e0419041a666": {
+      "n": 1,
+      "text": "가운뎃점: label: `${item.warehouseCode} · ${item.warehouseName}`,"
+    },
+    "C-13|apps/web/src/screens/material-issue-request/lookups.ts|fff28782881e": {
+      "n": 2,
+      "text": "가운뎃점: label: `${item.itemCode} · ${item.itemName}`,"
+    },
+    "C-13|apps/web/src/screens/material-issue-request/result-pane.tsx|381d6de55b6f": {
+      "n": 2,
+      "text": "가운뎃점: {t.result.issueRequestNo(created.issueRequestNo)} ·{' '}"
+    },
+    "C-13|apps/web/src/screens/notice/screen.tsx|8eb9939224fe": {
+      "n": 1,
+      "text": "가운뎃점: ? ` · ${selected.targetWorkOrderNo}`"
+    },
+    "C-13|apps/web/src/screens/oqc-inspection/judgment-change.tsx|a50074833a31": {
+      "n": 1,
+      "text": "가운뎃점: {expectedLabel !== null && ` · ${t.expected(expectedLabel)}`}"
+    },
+    "C-13|apps/web/src/screens/over-receipt-split/lookups.ts|24a3f5d8d2ef": {
+      "n": 1,
+      "text": "가운뎃점: label: `${item.partnerCode} · ${item.partnerName}`,"
+    },
+    "C-13|apps/web/src/screens/over-receipt-split/lookups.ts|33b257507ffc": {
+      "n": 1,
+      "text": "가운뎃점: label: `${item.uomCode} · ${item.uomName}`,"
+    },
+    "C-13|apps/web/src/screens/over-receipt-split/lookups.ts|3d604e1512bf": {
+      "n": 1,
+      "text": "가운뎃점: return `${item.itemCode} · ${masterName(item, item.itemName)}`;"
+    },
+    "C-13|apps/web/src/screens/over-receipt-split/lookups.ts|46391c2f6acf": {
+      "n": 1,
+      "text": "가운뎃점: label: `${item.plantCode} · ${item.plantName}`,"
+    },
+    "C-13|apps/web/src/screens/packing-label-reprint/terminal-gating.ts|7e176a98f3f3": {
+      "n": 1,
+      "text": "가운뎃점: throw new Error('단말·공정을 모르면 게이팅을 조회하지 않습니다.');"
+    },
+    "C-13|apps/web/src/screens/packing-result/contents-table.tsx|011ae369e9bc": {
+      "n": 1,
+      "text": "가운뎃점: return parts.join(' · ');"
+    },
+    "C-13|apps/web/src/screens/packing-result/terminal-gating.ts|7e176a98f3f3": {
+      "n": 1,
+      "text": "가운뎃점: throw new Error('단말·공정을 모르면 게이팅을 조회하지 않습니다.');"
+    },
+    "C-13|apps/web/src/screens/po-change-review/types.ts|011ae369e9bc": {
+      "n": 1,
+      "text": "가운뎃점: .join(' · ');"
+    },
+    "C-13|apps/web/src/screens/po-register/lookups.ts|1a3da3ed7182": {
+      "n": 1,
+      "text": "가운뎃점: label: `${item.businessUnitCode} · ${item.businessUnitName}`,"
+    },
+    "C-13|apps/web/src/screens/po-register/lookups.ts|24a3f5d8d2ef": {
+      "n": 1,
+      "text": "가운뎃점: label: `${item.partnerCode} · ${item.partnerName}`,"
+    },
+    "C-13|apps/web/src/screens/po-register/lookups.ts|33b257507ffc": {
+      "n": 1,
+      "text": "가운뎃점: label: `${item.uomCode} · ${item.uomName}`,"
+    },
+    "C-13|apps/web/src/screens/po-register/lookups.ts|46391c2f6acf": {
+      "n": 1,
+      "text": "가운뎃점: label: `${item.plantCode} · ${item.plantName}`,"
+    },
+    "C-13|apps/web/src/screens/po-register/lookups.ts|fff28782881e": {
+      "n": 1,
+      "text": "가운뎃점: label: `${item.itemCode} · ${item.itemName}`,"
+    },
+    "C-13|apps/web/src/screens/pop-location-label/screen.tsx|e43f950eee15": {
+      "n": 1,
+      "text": "가운뎃점: label: `${warehouse.warehouseCode} · ${warehouse.warehouseName}`,"
+    },
+    "C-13|apps/web/src/screens/pop-material-defect/screen.tsx|3d604e1512bf": {
+      "n": 1,
+      "text": "가운뎃점: itemLabel: item === null ? null : `${item.itemCode} · ${masterName(item, item.itemName)}`,"
+    },
+    "C-13|apps/web/src/screens/pop-material-lot-label/lookups.ts|377dada9a213": {
+      "n": 1,
+      "text": "가운뎃점: export const itemLabel = (item: ItemName): string => `${item.code} · ${item.name}`;"
+    },
+    "C-13|apps/web/src/screens/pqc-inspection/item-panel.tsx|011ae369e9bc": {
+      "n": 2,
+      "text": "가운뎃점: return uomCode === null ? parts.join(' · ') : `${parts.join(' · ')} ${uomCode}`;"
+    },
+    "C-13|apps/web/src/screens/pqc-inspection/target-header.tsx|011ae369e9bc": {
+      "n": 1,
+      "text": "가운뎃점: {items.map((item) => `${item.label} ${item.value}`).join(' · ')}"
+    },
+    "C-13|apps/web/src/screens/pqc-panel/panel.tsx|525a7158418b": {
+      "n": 1,
+      "text": "가운뎃점: : `${t.detail.planLabel(planVersion.data.planCode, planVersion.data.planVersion)} · ${t.panel.noItems}`}"
+    },
+    "C-13|apps/web/src/screens/pqc-panel/target-header.tsx|011ae369e9bc": {
+      "n": 1,
+      "text": "가운뎃점: {items.map((entry) => `${entry.label} ${entry.value ?? empty}`).join(' · ')}"
+    },
+    "C-13|apps/web/src/screens/product-disposal-request/lookups.ts|33b4b1832f89": {
+      "n": 1,
+      "text": "가운뎃점: label: `${item.itemCode} · ${nameOr(masterName(item, item.itemName))}`,"
+    },
+    "C-13|apps/web/src/screens/product-disposal-request/types.ts|c66633d2ca97": {
+      "n": 1,
+      "text": "가운뎃점: label: `${data.partnerCode} · ${data.partnerName}`,"
+    },
+    "C-13|apps/web/src/screens/product-stock-status/lookups.ts|bf1633609103": {
+      "n": 1,
+      "text": "가운뎃점: label: `${item.locationCode} · ${item.locationName}`,"
+    },
+    "C-13|apps/web/src/screens/product-stock-status/lookups.ts|e0419041a666": {
+      "n": 1,
+      "text": "가운뎃점: label: `${item.warehouseCode} · ${item.warehouseName}`,"
+    },
+    "C-13|apps/web/src/screens/product-stock-status/lookups.ts|fff28782881e": {
+      "n": 1,
+      "text": "가운뎃점: label: `${item.itemCode} · ${item.itemName}`,"
+    },
+    "C-13|apps/web/src/screens/production-result/defect-picker.tsx|c25bf7d6079a": {
+      "n": 1,
+      "text": "가운뎃점: title={major === null ? t.pickerTitle : `${t.pickerTitle} · ${major.name}`}"
+    },
+    "C-13|apps/web/src/screens/production-result/flow-gating.ts|ebdf7662a399": {
+      "n": 1,
+      "text": "가운뎃점: throw new Error('단말·공정을 모르면 기능 구성을 조회하지 않습니다.');"
+    },
+    "C-13|apps/web/src/screens/production-result/screen.tsx|2c63ae6670e6": {
+      "n": 1,
+      "text": "가운뎃점: {`${t.flow.header.erpWorkOrder} ${workOrder.data.productionOrderNo ?? '—'} · ${t.flow.header.workOrder} ${workOrde"
+    },
+    "C-13|apps/web/src/screens/production-result/screen.tsx|6e774ceac997": {
+      "n": 1,
+      "text": "가운뎃점: {`${serial.serialNo} · ${t.flow.tag.printOutcome[outcome]}`}"
+    },
+    "C-13|apps/web/src/screens/production-result/session.ts|8353813ef506": {
+      "n": 1,
+      "text": "가운뎃점: throw new Error('작업지시·단말을 모르면 세션을 조회하지 않습니다.');"
+    },
+    "C-13|apps/web/src/screens/putaway-rule/fixtures.ts|031a19d980f1": {
+      "n": 1,
+      "text": "가운뎃점: export const WAREHOUSE_LABEL = 'SYN-WH-01 · 합성창고 가';"
+    },
+    "C-13|apps/web/src/screens/putaway-rule/fixtures.ts|33532e6ca7c1": {
+      "n": 1,
+      "text": "가운뎃점: export const INACTIVE_LOCATION_LABEL = 'SYN-LOC-02 · 합성위치 나';"
+    },
+    "C-13|apps/web/src/screens/putaway-rule/fixtures.ts|7d0f04caba78": {
+      "n": 1,
+      "text": "가운뎃점: export const UOM_LABEL = 'SYN-UOM-01 · 합성단위 가';"
+    },
+    "C-13|apps/web/src/screens/putaway-rule/fixtures.ts|8fd8bd4fddd8": {
+      "n": 1,
+      "text": "가운뎃점: export const LOCATION_LABEL = 'SYN-LOC-01 · 합성위치 가';"
+    },
+    "C-13|apps/web/src/screens/putaway-rule/fixtures.ts|92b52747881b": {
+      "n": 1,
+      "text": "가운뎃점: export const ITEM_LABEL = 'SYN-ITEM-01 · 합성품목 가';"
+    },
+    "C-13|apps/web/src/screens/putaway-rule/item-picker-dialog.tsx|ad92d70faf73": {
+      "n": 1,
+      "text": "가운뎃점: aria-label={t.actions.chooseItem(`${row.itemCode} · ${row.itemName}`)}"
+    },
+    "C-13|apps/web/src/screens/putaway-rule/lookups.ts|33b257507ffc": {
+      "n": 1,
+      "text": "가운뎃점: label: `${item.uomCode} · ${item.uomName}`,"
+    },
+    "C-13|apps/web/src/screens/putaway-rule/lookups.ts|bf1633609103": {
+      "n": 1,
+      "text": "가운뎃점: label: `${item.locationCode} · ${item.locationName}`,"
+    },
+    "C-13|apps/web/src/screens/putaway-rule/lookups.ts|e0419041a666": {
+      "n": 1,
+      "text": "가운뎃점: label: `${item.warehouseCode} · ${item.warehouseName}`,"
+    },
+    "C-13|apps/web/src/screens/putaway-rule/lookups.ts|fff28782881e": {
+      "n": 1,
+      "text": "가운뎃점: label: `${item.itemCode} · ${item.itemName}`,"
+    },
+    "C-13|apps/web/src/screens/putaway-rule/screen.tsx|02b5fe2ffbc8": {
+      "n": 1,
+      "text": "가운뎃점: pickedItemLabel: `${picked.itemCode} · ${picked.itemName}`,"
+    },
+    "C-13|apps/web/src/screens/quality-approval/condition-pane.tsx|ed0d7168d85d": {
+      "n": 1,
+      "text": "가운뎃점: : `${uom.uomCode} · ${uom.uomName}`,"
+    },
+    "C-13|apps/web/src/screens/quality-approval/request-list.tsx|381d6de55b6f": {
+      "n": 2,
+      "text": "가운뎃점: {row.approvalTypeCode} · {row.approvalRequestNo}"
+    },
+    "C-13|apps/web/src/screens/repack-label-issue/history-pane.tsx|73388f4a4528": {
+      "n": 1,
+      "text": "가운뎃점: description: `${issue.issuedByName} · ${localDateTimeText(issue.issuedAt, t.unknownAt)} · ${t.outcome[issue.printO"
+    },
+    "C-13|apps/web/src/screens/repack-label-issue/terminal-gating.ts|7e176a98f3f3": {
+      "n": 1,
+      "text": "가운뎃점: throw new Error('단말·공정을 모르면 게이팅을 조회하지 않습니다.');"
+    },
+    "C-13|apps/web/src/screens/return-receipt/location-options.ts|20f4d9690e26": {
+      "n": 1,
+      "text": "가운뎃점: `${location.locationCode} · ${location.locationName}`;"
+    },
+    "C-13|apps/web/src/screens/return-receipt/lookups.ts|33b4b1832f89": {
+      "n": 1,
+      "text": "가운뎃점: label: `${item.itemCode} · ${nameOr(masterName(item, item.itemName))}`,"
+    },
+    "C-13|apps/web/src/screens/return-receipt/lookups.ts|65046c48e3af": {
+      "n": 1,
+      "text": "가운뎃점: label: `${partner.partnerCode} · ${nameOr(partner.partnerName)}`,"
+    },
+    "C-13|apps/web/src/screens/return-receipt/outcome-pane.tsx|bcbc72132ab2": {
+      "n": 1,
+      "text": "가운뎃점: {`${t.outcome.receiptNo} ${outcome.receiptNo} · ${t.outcome.lines(outcome.lines.length)} · ${outcome.warehouse.war"
+    },
+    "C-13|apps/web/src/screens/return-receipt/receipt-form.tsx|e43f950eee15": {
+      "n": 1,
+      "text": "가운뎃점: `${warehouse.warehouseCode} · ${warehouse.warehouseName}`;"
+    },
+    "C-13|apps/web/src/screens/return-receipt/shipment-list.tsx|0428e998d655": {
+      "n": 1,
+      "text": "가운뎃점: <span key={lot.lotId}>{`${lot.lotNo} · ${formatQty(lot.qty)}`}</span>"
+    },
+    "C-13|apps/web/src/screens/return-receipt/types.ts|3210efb8f569": {
+      "n": 1,
+      "text": "가운뎃점: return `${code} · ${formatQty(line.shippedQty)}`;"
+    },
+    "C-13|apps/web/src/screens/rework-result-register/screen.tsx|381d6de55b6f": {
+      "n": 1,
+      "text": "가운뎃점: {t.resultLot.good(drafts.goodQty === '' ? '0' : drafts.goodQty)} ·{' '}"
+    },
+    "C-13|apps/web/src/screens/rework-result-register/screen.tsx|87241da1a5e1": {
+      "n": 1,
+      "text": "가운뎃점: valueText={`${t.progress.line("
+    },
+    "C-13|apps/web/src/screens/routing/operations-pane.tsx|011ae369e9bc": {
+      "n": 1,
+      "text": "가운뎃점: return enabled.length === 0 ? t.values.none : enabled.join(' · ');"
+    },
+    "C-13|apps/web/src/screens/routing/screen.tsx|256c27e25a8b": {
+      "n": 1,
+      "text": "가운뎃점: selectedItem === null ? t.values.empty : `${selectedItem.itemCode} · ${selectedItem.itemName}`;"
+    },
+    "C-13|apps/web/src/screens/running-change/terminal-gating.ts|7e176a98f3f3": {
+      "n": 1,
+      "text": "가운뎃점: throw new Error('단말·공정을 모르면 게이팅을 조회하지 않습니다.');"
+    },
+    "C-13|apps/web/src/screens/shipment-processing/loading-info-pane.tsx|e0419041a666": {
+      "n": 1,
+      "text": "가운뎃점: label: `${item.warehouseCode} · ${item.warehouseName}`,"
+    },
+    "C-13|apps/web/src/screens/shipment-processing/lookups.ts|24a3f5d8d2ef": {
+      "n": 1,
+      "text": "가운뎃점: label: `${item.partnerCode} · ${item.partnerName}`,"
+    },
+    "C-13|apps/web/src/screens/shipment-processing/lookups.ts|300230b95d63": {
+      "n": 1,
+      "text": "가운뎃점: label: `${item.workerNo} · ${item.workerName}`,"
+    },
+    "C-13|apps/web/src/screens/shipment-processing/shipment-lines-pane.tsx|18a0ae35475b": {
+      "n": 1,
+      "text": "가운뎃점: aria-label={`${t.fields.lot} · ${t.fields.line} ${String(row.lineNo)}`}"
+    },
+    "C-13|apps/web/src/screens/shipment-processing/shipment-lines-pane.tsx|381d6de55b6f": {
+      "n": 2,
+      "text": "가운뎃점: {t.fields.line} {line.lineNo} · {t.values.itemLabel(line.itemId)} ·{' '}"
+    },
+    "C-13|apps/web/src/screens/shipment-processing/shipment-lines-pane.tsx|98139f7826f1": {
+      "n": 1,
+      "text": "가운뎃점: aria-label={`${t.fields.qty} · ${t.fields.line} ${String(row.lineNo)}`}"
+    },
+    "C-13|apps/web/src/screens/shipment-request-create/header-actions.tsx|381d6de55b6f": {
+      "n": 1,
+      "text": "가운뎃점: {t.result.shipmentRequestNo(created.shipmentRequestNo)} ·{' '}"
+    },
+    "C-13|apps/web/src/screens/shipment-request-create/lookups.ts|24a3f5d8d2ef": {
+      "n": 1,
+      "text": "가운뎃점: label: `${item.partnerCode} · ${item.partnerName}`,"
+    },
+    "C-13|apps/web/src/screens/shipment-request-create/lookups.ts|33b257507ffc": {
+      "n": 1,
+      "text": "가운뎃점: label: `${item.uomCode} · ${item.uomName}`,"
+    },
+    "C-13|apps/web/src/screens/shipment-request-create/lookups.ts|9c8cd30074da": {
+      "n": 1,
+      "text": "가운뎃점: label: `${plant.plantCode} · ${plant.plantName}`,"
+    },
+    "C-13|apps/web/src/screens/shipment-request-create/lookups.ts|e4d158376f8a": {
+      "n": 1,
+      "text": "가운뎃점: return `${data.item.itemCode} · ${data.item.itemName}`;"
+    },
+    "C-13|apps/web/src/screens/shipment-schedule/lookups.ts|24a3f5d8d2ef": {
+      "n": 1,
+      "text": "가운뎃점: label: `${item.partnerCode} · ${item.partnerName}`,"
+    },
+    "C-13|apps/web/src/screens/shipment-schedule/lookups.ts|9c8cd30074da": {
+      "n": 1,
+      "text": "가운뎃점: label: `${plant.plantCode} · ${plant.plantName}`,"
+    },
+    "C-13|apps/web/src/screens/shipping-packing-label/preview-dialog.tsx|381d6de55b6f": {
+      "n": 1,
+      "text": "가운뎃점: {label.issue.displayName} · {label.issue.issueSeq}"
+    },
+    "C-13|apps/web/src/screens/shipping-unit/screen.tsx|149198eee36c": {
+      "n": 1,
+      "text": "가운뎃점: label: `${shipment.shipmentNo} · ${t.entry.boxes(shipment.unassignedPackedBoxCount)}`,"
+    },
+    "C-13|apps/web/src/screens/shipping-unit/screen.tsx|6efaa48aa9d4": {
+      "n": 1,
+      "text": "가운뎃점: return `${issued} · ${t.close.printFailed(outcome.reason)}`;"
+    },
+    "C-13|apps/web/src/screens/shipping-unit/screen.tsx|ca2e71abc9ab": {
+      "n": 1,
+      "text": "가운뎃점: if (outcome.kind === 'noBridge') return `${issued} · ${t.close.noBridge}`;"
+    },
+    "C-13|apps/web/src/screens/shipping-unit/screen.tsx|cba9fd7c725e": {
+      "n": 1,
+      "text": "가운뎃점: if (outcome.kind === 'printed') return `${issued} · ${t.close.printed}`;"
+    },
+    "C-13|apps/web/src/screens/shot-conversion/preview-pane.tsx|f360f6eec405": {
+      "n": 1,
+      "text": "가운뎃점: cavity === null ? '' : ` · ${t.cavityNote(cavity)}`"
+    },
+    "C-13|apps/web/src/screens/shot-conversion/queries.ts|ad92d70faf73": {
+      "n": 1,
+      "text": "가운뎃점: label: `${row.itemCode} · ${row.itemName}`,"
+    },
+    "C-13|apps/web/src/screens/shot-conversion/queries.ts|f32838542fe3": {
+      "n": 1,
+      "text": "가운뎃점: label: `${row.processCode} · ${row.processName}`,"
+    },
+    "C-13|apps/web/src/screens/shot-conversion/screen.tsx|06740fb80d79": {
+      "n": 1,
+      "text": "가운뎃점: label: `${mold.moldCode} · ${mold.moldName}`,"
+    },
+    "C-13|apps/web/src/screens/stock-adjust/lookups.ts|33b257507ffc": {
+      "n": 1,
+      "text": "가운뎃점: label: `${item.uomCode} · ${item.uomName}`,"
+    },
+    "C-13|apps/web/src/screens/stock-adjust/lookups.ts|bf1633609103": {
+      "n": 1,
+      "text": "가운뎃점: label: `${item.locationCode} · ${item.locationName}`,"
+    },
+    "C-13|apps/web/src/screens/stock-adjust/lookups.ts|e0419041a666": {
+      "n": 1,
+      "text": "가운뎃점: label: `${item.warehouseCode} · ${item.warehouseName}`,"
+    },
+    "C-13|apps/web/src/screens/stock-adjust/lookups.ts|fff28782881e": {
+      "n": 1,
+      "text": "가운뎃점: label: `${item.itemCode} · ${item.itemName}`,"
+    },
+    "C-13|apps/web/src/screens/stock-adjust/reason-options.ts|30fe57ef4f1d": {
+      "n": 1,
+      "text": "가운뎃점: label: `${item.code} · ${item.codeName}`,"
+    },
+    "C-13|apps/web/src/screens/stock-adjust/screen.tsx|1f0edd259ce1": {
+      "n": 2,
+      "text": "가운뎃점: label: `${count.inventoryCountNo} · ${count.plannedDate}`,"
+    },
+    "C-13|apps/web/src/screens/stock-reinstatement/screen.tsx|20f4d9690e26": {
+      "n": 1,
+      "text": "가운뎃점: label: `${location.locationCode} · ${location.locationName}`,"
+    },
+    "C-13|apps/web/src/screens/stock-reinstatement/screen.tsx|2c7177637507": {
+      "n": 1,
+      "text": "가운뎃점: description: `${formatDateTime(hold.heldAt)} · ${hold.reasonCode}`,"
+    },
+    "C-13|apps/web/src/screens/stock-reinstatement/screen.tsx|3d8b65fab98b": {
+      "n": 1,
+      "text": "가운뎃점: label: `${hold.reasonCode} · ${formatDateTime(hold.heldAt)}`,"
+    },
+    "C-13|apps/web/src/screens/stock-reinstatement/screen.tsx|5fec62e5d400": {
+      "n": 1,
+      "text": "가운뎃점: : ` · ${days >= 0 ? t.values.remainingDays(days) : t.values.expiredDays(Math.abs(days))}`}"
+    },
+    "C-13|apps/web/src/screens/stock-reinstatement/screen.tsx|7748c73bef7e": {
+      "n": 1,
+      "text": "가운뎃점: const warehouseLabel = (code: string, name: string): string => `${code} · ${name}`;"
+    },
+    "C-13|apps/web/src/screens/stock-reinstatement/screen.tsx|b6870ff503ae": {
+      "n": 1,
+      "text": "가운뎃점: description: `${formatDateTime(nonconformance.data.openedAt)} · ${nonconformance.data.description}`,"
+    },
+    "C-13|apps/web/src/screens/stock-reinstatement/screen.tsx|c0945033efb3": {
+      "n": 1,
+      "text": "가운뎃점: description: `${formatDateTime(rawDecision.decidedAt)} · ${rawDecision.reason}`,"
+    },
+    "C-13|apps/web/src/screens/stock-reinstatement/types.ts|011ae369e9bc": {
+      "n": 1,
+      "text": "가운뎃점: .join(' · ') || '—';"
+    },
+    "C-13|apps/web/src/screens/stock-status/lookups.ts|24a3f5d8d2ef": {
+      "n": 1,
+      "text": "가운뎃점: label: `${item.partnerCode} · ${item.partnerName}`,"
+    },
+    "C-13|apps/web/src/screens/stock-status/lookups.ts|bf1633609103": {
+      "n": 1,
+      "text": "가운뎃점: label: `${item.locationCode} · ${item.locationName}`,"
+    },
+    "C-13|apps/web/src/screens/stock-status/lookups.ts|e0419041a666": {
+      "n": 1,
+      "text": "가운뎃점: label: `${item.warehouseCode} · ${item.warehouseName}`,"
+    },
+    "C-13|apps/web/src/screens/stock-status/lookups.ts|fff28782881e": {
+      "n": 2,
+      "text": "가운뎃점: label: `${item.itemCode} · ${item.itemName}`,"
+    },
+    "C-13|apps/web/src/screens/stocktaking/lookups.ts|33b257507ffc": {
+      "n": 1,
+      "text": "가운뎃점: label: `${item.uomCode} · ${item.uomName}`,"
+    },
+    "C-13|apps/web/src/screens/stocktaking/lookups.ts|3d604e1512bf": {
+      "n": 1,
+      "text": "가운뎃점: return `${item.itemCode} · ${masterName(item, item.itemName)}`;"
+    },
+    "C-13|apps/web/src/screens/stocktaking/lookups.ts|bf1633609103": {
+      "n": 1,
+      "text": "가운뎃점: label: `${item.locationCode} · ${item.locationName}`,"
+    },
+    "C-13|apps/web/src/screens/stocktaking/lookups.ts|e0419041a666": {
+      "n": 1,
+      "text": "가운뎃점: label: `${item.warehouseCode} · ${item.warehouseName}`,"
+    },
+    "C-13|apps/web/src/screens/supplier-return/fixtures.ts|18a301a71a2d": {
+      "n": 1,
+      "text": "가운뎃점: export const PARTNER_LABEL = 'SAMPLE-SUP-01 · (주)합성부품';"
+    },
+    "C-13|apps/web/src/screens/supplier-return/lookups.ts|24a3f5d8d2ef": {
+      "n": 1,
+      "text": "가운뎃점: label: `${item.partnerCode} · ${item.partnerName}`,"
+    },
+    "C-13|apps/web/src/screens/supplier-return/lookups.ts|33b257507ffc": {
+      "n": 1,
+      "text": "가운뎃점: label: `${item.uomCode} · ${item.uomName}`,"
+    },
+    "C-13|apps/web/src/screens/supplier-return/lookups.ts|3d604e1512bf": {
+      "n": 1,
+      "text": "가운뎃점: return `${item.itemCode} · ${masterName(item, item.itemName)}`;"
+    },
+    "C-13|apps/web/src/screens/supplier-return/lookups.ts|bf1633609103": {
+      "n": 1,
+      "text": "가운뎃점: label: `${item.locationCode} · ${item.locationName}`,"
+    },
+    "C-13|apps/web/src/screens/supplier-return/lookups.ts|e0419041a666": {
+      "n": 1,
+      "text": "가운뎃점: label: `${item.warehouseCode} · ${item.warehouseName}`,"
+    },
+    "C-13|apps/web/src/screens/suspicious-material-hold/hold-input-pane.tsx|381d6de55b6f": {
+      "n": 1,
+      "text": "가운뎃점: {lot.uomLabel ?? t.uomUnknown} · {lot.locationLabel ?? t.locationUnknown}"
+    },
+    "C-13|apps/web/src/screens/terminal-process-map/lookups.ts|1fa07a7ef867": {
+      "n": 1,
+      "text": "가운뎃점: label: `${item.equipmentCode} · ${item.equipmentName}`,"
+    },
+    "C-13|apps/web/src/screens/terminal-process-map/lookups.ts|46391c2f6acf": {
+      "n": 1,
+      "text": "가운뎃점: label: `${item.plantCode} · ${item.plantName}`,"
+    },
+    "C-13|apps/web/src/screens/terminal-process-map/lookups.ts|4e1fef6e2df6": {
+      "n": 1,
+      "text": "가운뎃점: label: `${item.processCode} · ${item.processName}`,"
+    },
+    "C-13|apps/web/src/screens/terminal-process-map/types.ts|7748c73bef7e": {
+      "n": 1,
+      "text": "가운뎃점: return `${code} · ${name}`;"
+    },
+    "C-13|apps/web/src/screens/tool-master/screen.tsx|afb55654af9d": {
+      "n": 2,
+      "text": "가운뎃점: ? t.retire.disposeTarget(`${tool.moldCode} · ${tool.moldName}`)"
+    },
+    "C-13|apps/web/src/screens/tool-pm-order/lookups.ts|46391c2f6acf": {
+      "n": 1,
+      "text": "가운뎃점: label: `${item.plantCode} · ${item.plantName}`,"
+    },
+    "C-13|apps/web/src/screens/tool-pm-order/lookups.ts|47ec745c0d02": {
+      "n": 1,
+      "text": "가운뎃점: label: `${item.loginId} · ${item.userName}`,"
+    },
+    "C-13|apps/web/src/screens/tool-pm-result/lookups.ts|47ec745c0d02": {
+      "n": 1,
+      "text": "가운뎃점: label: `${item.loginId} · ${item.userName}`,"
+    },
+    "C-13|apps/web/src/screens/tool-pm-result/lookups.ts|5fa8b1750f6d": {
+      "n": 1,
+      "text": "가운뎃점: label: `${item.moldCode} · ${item.moldName}`,"
+    },
+    "C-13|apps/web/src/screens/tool-usage/screen.tsx|011ae369e9bc": {
+      "n": 1,
+      "text": "가운뎃점: .join(' · ');"
+    },
+    "C-13|apps/web/src/screens/users-roles/lookups.ts|1a3da3ed7182": {
+      "n": 1,
+      "text": "가운뎃점: label: `${item.businessUnitCode} · ${item.businessUnitName}`,"
+    },
+    "C-13|apps/web/src/screens/users-roles/lookups.ts|46391c2f6acf": {
+      "n": 1,
+      "text": "가운뎃점: label: `${item.plantCode} · ${item.plantName}`,"
+    },
+    "C-13|apps/web/src/screens/users-roles/lookups.ts|515be9cc1529": {
+      "n": 1,
+      "text": "가운뎃점: label: `${item.departmentCode} · ${item.departmentName}`,"
+    },
+    "C-13|apps/web/src/screens/users-roles/permission-grid-pane.tsx|4ca081d6ca60": {
+      "n": 1,
+      "text": "가운뎃점: aria-label={`${roleLabel} · ${row.label} · ${"
+    },
+    "C-13|apps/web/src/screens/users-roles/worker-link-field.tsx|5db29855ad68": {
+      "n": 1,
+      "text": "가운뎃점: : t.linkedToast(`${saved.workerNo ?? ''} · ${saved.workerName ?? ''}`),"
+    },
+    "C-13|apps/web/src/screens/users-roles/worker-link-field.tsx|9b31312b0a03": {
+      "n": 1,
+      "text": "가운뎃점: <WorkerBlock name={linkedName} meta={[`${linkedNo} · ${department}`]} />"
+    },
+    "C-13|apps/web/src/screens/warehouse-layout/lookups.ts|e0419041a666": {
+      "n": 1,
+      "text": "가운뎃점: label: `${item.warehouseCode} · ${item.warehouseName}`,"
+    },
+    "C-13|apps/web/src/screens/warehouse-location/screen.tsx|0dd71020cd7f": {
+      "n": 1,
+      "text": "가운뎃점: : `${selectedWarehouse.warehouseCode} · ${selectedWarehouse.warehouseName}`;"
+    },
+    "C-13|apps/web/src/screens/warehouse-location/screen.tsx|4e507ca4b609": {
+      "n": 1,
+      "text": "가운뎃점: label: `${row.location.locationCode} · ${row.location.locationName}`,"
+    },
+    "C-13|apps/web/src/screens/work-calendar/screen.tsx|c05102653422": {
+      "n": 1,
+      "text": "가운뎃점: targetNote={t.retire.target(`${calendar.calendarCode} · ${calendar.calendarName}`)}"
+    },
+    "C-13|apps/web/src/screens/work-order-close/candidate-references.ts|2f775747658d": {
+      "n": 1,
+      "text": "가운뎃점: return { itemId, status: 'named', label: `${itemCode} · ${itemName}` };"
+    },
+    "C-13|apps/web/src/screens/work-order-close/candidate-references.ts|ed0d7168d85d": {
+      "n": 1,
+      "text": "가운뎃점: label: `${uom.uomCode} · ${uom.uomName}`,"
+    },
+    "C-13|apps/web/src/screens/work-order-progress/lookups.ts|3d604e1512bf": {
+      "n": 1,
+      "text": "가운뎃점: [[String(itemId), `${item.itemCode} · ${masterName(item, item.itemName)}`] as const];"
+    },
+    "C-13|apps/web/src/screens/work-order-progress/lookups.ts|cec0207f8643": {
+      "n": 1,
+      "text": "가운뎃점: label: `${line.lineCode} · ${line.lineName}`,"
+    },
+    "C-13|apps/web/src/screens/work-precheck-gate/gate.tsx|011ae369e9bc": {
+      "n": 1,
+      "text": "가운뎃점: codes.map((code) => typeLabel(names, code)).join(' · ');"
+    },
+    "C-13|apps/web/src/screens/work-start/gating.ts|7e176a98f3f3": {
+      "n": 1,
+      "text": "가운뎃점: throw new Error('단말·공정을 모르면 게이팅을 조회하지 않습니다.');"
+    },
+    "C-13|apps/web/src/screens/work-start/selection-card.tsx|381d6de55b6f": {
+      "n": 2,
+      "text": "가운뎃점: {workOrder.workOrderNo} · {itemText(workOrder)} ·{' '}"
+    },
+    "C-13|apps/web/src/screens/work-start/selection-card.tsx|af1eb26a5685": {
+      "n": 1,
+      "text": "가운뎃점: {`${"
+    },
+    "C-13|apps/web/src/screens/work-start/work-order-list.tsx|381d6de55b6f": {
+      "n": 1,
+      "text": "가운뎃점: {row.workOrderNo} · {itemText(row)}"
+    },
+    "C-13|apps/web/src/screens/work-start/work-order-list.tsx|4517966a565a": {
+      "n": 1,
+      "text": "가운뎃점: {`${qtyText(row.orderQty, uomCodeOf(row.uomId))} · ${t.columns.plannedStart} ${dateTimeText("
+    },
+    "C-13|apps/web/src/screens/work-start/work-order-list.tsx|890365e35604": {
+      "n": 1,
+      "text": "가운뎃점: : `${t.title} · ${isShowingAll ? t.scopeAll : t.scopeEquipment}`}"
+    },
+    "C-13|apps/web/src/screens/worker-assignment/worker-card.tsx|2e44056a79b7": {
+      "n": 1,
+      "text": "가운뎃점: <p className=\"worker-card__name\">{`${worker.workerName} · ${worker.workerNo}`}</p>"
+    },
+    "C-13|packages/i18n/src/ko/approval-inbox.ts|9a587266d47b": {
+      "n": 1,
+      "text": "가운뎃점: lockNote: '승인은 자물쇠를 풀 뿐 실행하지 않습니다. 전기·출고는 대상 화면에서 따로 합니다.',"
+    },
+    "C-13|packages/i18n/src/ko/approval-inbox.ts|bc8c280201f4": {
+      "n": 1,
+      "text": "가운뎃점: finished: (total: number): string => `결재 종료 · 전체 ${String(total)}단계`,"
+    },
+    "C-13|packages/i18n/src/ko/approval-route.ts|1095da0d0f63": {
+      "n": 1,
+      "text": "가운뎃점: '다시 사용: 같은 승인 유형·사업부로 사용 중인 결재선이 이미 있습니다. 그 결재선을 먼저 중지하세요.',"
+    },
+    "C-13|packages/i18n/src/ko/approval-route.ts|876709106f79": {
+      "n": 1,
+      "text": "가운뎃점: '역할·부서 승인자는 1차에서 열지 않습니다 — 승인자는 사용자만 고를 수 있습니다.',"
+    },
+    "C-13|packages/i18n/src/ko/approval-route.ts|a972d36d97aa": {
+      "n": 1,
+      "text": "가운뎃점: '같은 승인 유형·사업부로 사용 중인 결재선이 이미 있습니다. 기존 결재선을 수정하세요.',"
+    },
+    "C-13|packages/i18n/src/ko/approval-route.ts|ae4da982796f": {
+      "n": 1,
+      "text": "가운뎃점: '같은 승인 유형·사업부로 사용 중인 결재선이 있는지 확인하지 못했습니다. 저장은 할 수 있으며 서버가 다시 검사합니다.',"
+    },
+    "C-13|packages/i18n/src/ko/approval-route.ts|d2676e4e15d9": {
+      "n": 1,
+      "text": "가운뎃점: `${approvalTypeCode} · ${businessUnitLabel} 선택`,"
+    },
+    "C-13|packages/i18n/src/ko/collection-channel.ts|17dd64467ec0": {
+      "n": 1,
+      "text": "가운뎃점: `Rev ${String(planVersion)} · ${statusLabel}`,"
+    },
+    "C-13|packages/i18n/src/ko/collection-channel.ts|362552edcd9a": {
+      "n": 1,
+      "text": "가운뎃점: `이 설비의 ${channelKey} 채널에 품목·공정 조건이 같은 매핑이 이미 있습니다. 조건을 다르게 하거나 그 매핑을 고치세요.`,"
+    },
+    "C-13|packages/i18n/src/ko/collection-channel.ts|61ad6317f7eb": {
+      "n": 1,
+      "text": "가운뎃점: paneOf: (code: string, name: string): string => `${code} · ${name}의 수집 채널`,"
+    },
+    "C-13|packages/i18n/src/ko/collection-channel.ts|daa2c29163db": {
+      "n": 2,
+      "text": "가운뎃점: itemLabel: (code: string, name: string): string => `${code} · ${name}`,"
+    },
+    "C-13|packages/i18n/src/ko/common-code.ts|34f6176f7e0c": {
+      "n": 2,
+      "text": "가운뎃점: title: '공통코드·조직·작업자',"
+    },
+    "C-13|packages/i18n/src/ko/common-code.ts|65006ff9c91d": {
+      "n": 1,
+      "text": "가운뎃점: paneTitle: '자격·인증',"
+    },
+    "C-13|packages/i18n/src/ko/common-code.ts|80212cf3c9b9": {
+      "n": 1,
+      "text": "가운뎃점: notSelected: '좌측에서 작업자를 고르면 그 작업자의 자격·인증이 보입니다',"
+    },
+    "C-13|packages/i18n/src/ko/common-code.ts|b002377e90bd": {
+      "n": 1,
+      "text": "개발 사정 표현: '임시 목록입니다. 코드 체계가 확정되면 여기 보이는 코드그룹의 구성이 바뀔 수 있습니다.',"
+    },
+    "C-13|packages/i18n/src/ko/common-code.ts|daa2c29163db": {
+      "n": 1,
+      "text": "가운뎃점: groupHeader: (code: string, name: string): string => `${code} · ${name}`,"
+    },
+    "C-13|packages/i18n/src/ko/common-code.ts|e76cc52ec866": {
+      "n": 1,
+      "text": "가운뎃점: list: '자격·인증을 불러오는 중',"
+    },
+    "C-13|packages/i18n/src/ko/common-code.ts|e8b5160720c6": {
+      "n": 1,
+      "text": "가운뎃점: noneTitle: '등록된 자격·인증이 없습니다',"
+    },
+    "C-13|packages/i18n/src/ko/dashboard.ts|05230b4c1bd3": {
+      "n": 1,
+      "text": "가운뎃점: dailyTitleAll: 'IQC · PQC · OQC 일별 합격률',"
+    },
+    "C-13|packages/i18n/src/ko/dashboard.ts|09a2b24d798a": {
+      "n": 1,
+      "text": "가운뎃점: countLotsRecords: (lots: string, records: string): string => `${lots} LOT · ${records}건`,"
+    },
+    "C-13|packages/i18n/src/ko/dashboard.ts|0e3b882b20f7": {
+      "n": 1,
+      "text": "가운뎃점: returnByReasonSub: '반품 입고 사유 · 공급사 반품 출고',"
+    },
+    "C-13|packages/i18n/src/ko/dashboard.ts|2ba2a7a6a453": {
+      "n": 1,
+      "text": "가운뎃점: pendingReturnKpiNote: (records: string): string => `${records}건 · 처분 판정 전`,"
+    },
+    "C-13|packages/i18n/src/ko/dashboard.ts|394b16dbcc4b": {
+      "n": 1,
+      "text": "가운뎃점: boardSub: (count: number): string => `${String(count)}대 · 전체 설비`,"
+    },
+    "C-13|packages/i18n/src/ko/dashboard.ts|3b75659f8f79": {
+      "n": 1,
+      "text": "개발 사정 표현: absent: '출하 현황이 이 응답에 오지 않았습니다.',"
+    },
+    "C-13|packages/i18n/src/ko/dashboard.ts|4bd27cc5a254": {
+      "n": 1,
+      "text": "가운뎃점: ncCauseSub: 'EA · 수량 순',"
+    },
+    "C-13|packages/i18n/src/ko/dashboard.ts|4ffcf228ff6c": {
+      "n": 1,
+      "text": "가운뎃점: lotColumn: 'LOT · 품목',"
+    },
+    "C-13|packages/i18n/src/ko/dashboard.ts|5467d34e85dc": {
+      "n": 1,
+      "text": "가운뎃점: qtyColumn: '수량 · 시각',"
+    },
+    "C-13|packages/i18n/src/ko/dashboard.ts|57c9bbcc7eb8": {
+      "n": 1,
+      "text": "가운뎃점: ngLine: (ng: string, rate: string): string => `NG ${ng} · ${rate}`,"
+    },
+    "C-13|packages/i18n/src/ko/dashboard.ts|5c3769d14b4b": {
+      "n": 1,
+      "text": "개발 사정 표현: absent: '품질 현황이 이 응답에 오지 않았습니다.',"
+    },
+    "C-13|packages/i18n/src/ko/dashboard.ts|5d10cc09b79b": {
+      "n": 1,
+      "text": "가운뎃점: `${name} ${qty} EA · 누적 ${cum}`,"
+    },
+    "C-13|packages/i18n/src/ko/dashboard.ts|610ca489a86c": {
+      "n": 1,
+      "text": "가운뎃점: dailyReturnOutSub: '공급사 반품 출고 · EA',"
+    },
+    "C-13|packages/i18n/src/ko/dashboard.ts|74afc8a6799d": {
+      "n": 1,
+      "text": "가운뎃점: waitingNote: '기준일까지 요청 · 미출하',"
+    },
+    "C-13|packages/i18n/src/ko/dashboard.ts|7f912a7ca7eb": {
+      "n": 1,
+      "text": "가운뎃점: causeTip: (name: string, qty: string, share: string): string => `${name} ${qty} EA · ${share}`,"
+    },
+    "C-13|packages/i18n/src/ko/dashboard.ts|9237fa7007ad": {
+      "n": 1,
+      "text": "가운뎃점: `투입 ${input} EA · OK 복원 ${restored} EA`,"
+    },
+    "C-13|packages/i18n/src/ko/dashboard.ts|aa9c850d73d1": {
+      "n": 1,
+      "text": "개발 사정 표현: absent: '설비 현황이 이 응답에 오지 않았습니다.',"
+    },
+    "C-13|packages/i18n/src/ko/dashboard.ts|aec1135b77f0": {
+      "n": 1,
+      "text": "가운뎃점: dailyReturnOutEmpty: '공급사 반품 출고 · EA · 조회 기간 출고 없음',"
+    },
+    "C-13|packages/i18n/src/ko/dashboard.ts|b020f7adeb9c": {
+      "n": 1,
+      "text": "개발 사정 표현: absent: '생산실적 추이가 이 응답에 오지 않았습니다.',"
+    },
+    "C-13|packages/i18n/src/ko/dashboard.ts|ba48920a9180": {
+      "n": 1,
+      "text": "가운뎃점: ncOpenListSubStatus: (status: string): string => `오래된 순 · 모두 ${status}`,"
+    },
+    "C-13|packages/i18n/src/ko/dashboard.ts|bb373c7c576c": {
+      "n": 1,
+      "text": "가운뎃점: overdueNote: '납기 경과 · 출하 잔량 있음',"
+    },
+    "C-13|packages/i18n/src/ko/dashboard.ts|c5a7acb9da66": {
+      "n": 1,
+      "text": "가운뎃점: ncRepeatedSub: '같은 품목 2건 이상 · 건수 순',"
+    },
+    "C-13|packages/i18n/src/ko/dashboard.ts|cc77aeeb7ae0": {
+      "n": 1,
+      "text": "가운뎃점: qtyShareSub: 'EA · 비중',"
+    },
+    "C-13|packages/i18n/src/ko/dashboard.ts|de5cd23a20bb": {
+      "n": 1,
+      "text": "가운뎃점: dailySub: '% · 최종 판정 기준 · 검사 보류 제외',"
+    },
+    "C-13|packages/i18n/src/ko/dashboard.ts|de68ad085106": {
+      "n": 1,
+      "text": "가운뎃점: pqcDailySub: '최종 판정 기준 · 검사 보류 제외',"
+    },
+    "C-13|packages/i18n/src/ko/dashboard.ts|f306dbc1fd04": {
+      "n": 1,
+      "text": "가운뎃점: paretoSub: 'EA · 막대 = 수량, 선 = 누적 비율(파레토)',"
+    },
+    "C-13|packages/i18n/src/ko/dashboard.ts|fc3cb4179db4": {
+      "n": 1,
+      "text": "가운뎃점: autoRefreshOff: '지난 기간 · 자동 갱신 안 함',"
+    },
+    "C-13|packages/i18n/src/ko/defect-cause-code.ts|33ba4ac3f6c6": {
+      "n": 1,
+      "text": "가운뎃점: form: (tab: string): string => `${tab} 등록·편집`,"
+    },
+    "C-13|packages/i18n/src/ko/defect-cause-code.ts|daa2c29163db": {
+      "n": 1,
+      "text": "가운뎃점: groupHeader: (code: string, name: string): string => `${code} · ${name}`,"
+    },
+    "C-13|packages/i18n/src/ko/defect-cause-code.ts|f825a8186b83": {
+      "n": 1,
+      "text": "가운뎃점: title: '불량·원인코드',"
+    },
+    "C-13|packages/i18n/src/ko/dispatch-history.ts|20361bb74342": {
+      "n": 1,
+      "text": "가운뎃점: `성공 ${String(sent)} · 실패 ${String(failed)} · 대기 ${String(pending)} · 만료 ${String(expired)} · 번호없음 ${String(noPhone"
+    },
+    "C-13|packages/i18n/src/ko/disposal-issue.ts|3bc40293eb1a": {
+      "n": 1,
+      "text": "가운뎃점: '품목·단위·자재 LOT·위치 이름을 불러오지 못했습니다. 이름 자리에 사유가 표시됩니다.',"
+    },
+    "C-13|packages/i18n/src/ko/disposal-issue.ts|47c72efb79ec": {
+      "n": 1,
+      "text": "가운뎃점: `고른 ${String(count)}줄 · 폐기 수량 합계 ${String(totalQty)} ${uom}`,"
+    },
+    "C-13|packages/i18n/src/ko/disposal-issue.ts|703eb12bc34f": {
+      "n": 2,
+      "text": "가운뎃점: linePair: (item: string, lot: string, qty: string): string => `${item} · ${lot} · ${qty}`,"
+    },
+    "C-13|packages/i18n/src/ko/disposal-issue.ts|75b519f65094": {
+      "n": 1,
+      "text": "가운뎃점: '첫 줄이 결재함 목록의 요약이 됩니다. 무엇을·얼마나·왜 폐기하는지 첫 줄에 적으세요.',"
+    },
+    "C-13|packages/i18n/src/ko/disposal-issue.ts|7ddfd1d3b5d1": {
+      "n": 1,
+      "text": "가운뎃점: lineMissingValues: '이 줄에는 폐기에 필요한 값(품목·자재 LOT·단위·위치)이 빠져 있습니다.',"
+    },
+    "C-13|packages/i18n/src/ko/disposal-issue.ts|b309cfffb465": {
+      "n": 1,
+      "text": "가운뎃점: `고른 ${String(count)}줄 · 단위가 섞여 합계를 내지 않습니다`,"
+    },
+    "C-13|packages/i18n/src/ko/disposal-issue.ts|bc8c280201f4": {
+      "n": 1,
+      "text": "가운뎃점: finished: (total: number): string => `결재 종료 · 전체 ${String(total)}단계`,"
+    },
+    "C-13|packages/i18n/src/ko/disposal-issue.ts|e24a0d473e5a": {
+      "n": 1,
+      "text": "가운뎃점: title: '폐기 품의·기타출고',"
+    },
+    "C-13|packages/i18n/src/ko/disposal-issue.ts|ea94025c21f9": {
+      "n": 1,
+      "text": "가운뎃점: label: '폐기 요청·처리 이력',"
+    },
+    "C-13|packages/i18n/src/ko/disposal-issue.ts|fdcba8b932bb": {
+      "n": 1,
+      "text": "가운뎃점: '품목·단위·자재 LOT·위치 이름 목록이 일부만 왔습니다. 이름 자리의 「알 수 없음」은 값이 잘못된 것이 아니라 이 목록에 아직 없다는 뜻일 수 있습니다.',"
+    },
+    "C-13|packages/i18n/src/ko/disposition-decision.ts|0e3f09df1c1d": {
+      "n": 1,
+      "text": "가운뎃점: qtyTooLong: '수량이 너무 깁니다. 정수 12자리·소수 6자리까지 입력하세요',"
+    },
+    "C-13|packages/i18n/src/ko/disposition-decision.ts|3a71f2c5c673": {
+      "n": 1,
+      "text": "가운뎃점: help: '불합격 LOT 을 관리자 승인을 받아 조건부로 사용합니다. 요청 → 「특채·한도승인 승인 처리」에서 결재 → 여기서 적용 순서입니다.',"
+    },
+    "C-13|packages/i18n/src/ko/disposition-decision.ts|58670dcf62b1": {
+      "n": 1,
+      "text": "개발 사정 표현: codePlaceholder: '기준값 준비 중',"
+    },
+    "C-13|packages/i18n/src/ko/disposition-decision.ts|7760414c2ffc": {
+      "n": 1,
+      "text": "가운뎃점: '양품은 정상으로 풀리고, 불량 수량은 새 LOT 으로 나뉘어 불량이 됩니다. 불량분은 새 부적합으로 넘어가 폐기·재작업을 따로 정합니다.',"
+    },
+    "C-13|packages/i18n/src/ko/disposition-decision.ts|8070e8bc2dcb": {
+      "n": 1,
+      "text": "가운뎃점: `선별을 저장했습니다. 불량분은 LOT ${lotNo} · 부적합 ${nonconformanceNo} 로 넘어갔습니다`,"
+    },
+    "C-13|packages/i18n/src/ko/disposition-decision.ts|f2c0590963d4": {
+      "n": 1,
+      "text": "가운뎃점: sourceNote: '제품·반품 두 갈래만 옵니다. 수리·자재 부적합은 이 목록으로 들어오지 않습니다.',"
+    },
+    "C-13|packages/i18n/src/ko/disposition-request.ts|58670dcf62b1": {
+      "n": 1,
+      "text": "개발 사정 표현: codePlaceholder: '기준값 준비 중',"
+    },
+    "C-13|packages/i18n/src/ko/disposition-request.ts|9257a8554510": {
+      "n": 1,
+      "text": "가운뎃점: keywordPlaceholder: 'LOT 번호·입고번호·품목',"
+    },
+    "C-13|packages/i18n/src/ko/disposition-request.ts|a30dc263df85": {
+      "n": 1,
+      "text": "가운뎃점: stageSourceNote: '의뢰 전·판정 대기·판정 완료는 등록된 부적합 기준으로 조회합니다.',"
+    },
+    "C-13|packages/i18n/src/ko/disposition-request.ts|cbf6de87fc58": {
+      "n": 1,
+      "text": "가운뎃점: '무엇이 · 어디가 · 얼마나 잘못됐는지 적어 주세요. 예) 외관 스크래치 · 상단 모서리 · 200개 중 40개 육안 확인',"
+    },
+    "C-13|packages/i18n/src/ko/document-progress.ts|2a5c02ee7070": {
+      "n": 1,
+      "text": "가운뎃점: `${transactionNo} · 영업일을 받지 못해 원장을 찾을 수 없습니다`,"
+    },
+    "C-13|packages/i18n/src/ko/document-progress.ts|4ae974ef81c2": {
+      "n": 1,
+      "text": "가운뎃점: `${successorNo} · ${typeCode}`,"
+    },
+    "C-13|packages/i18n/src/ko/document-progress.ts|4c19d9c191c2": {
+      "n": 1,
+      "text": "가운뎃점: `${transactionNo} · 영업일 ${businessDate}`,"
+    },
+    "C-13|packages/i18n/src/ko/document-progress.ts|659ac840f2fc": {
+      "n": 1,
+      "text": "가운뎃점: idNote: '품목·자재 LOT·창고는 번호로 좁힙니다. 번호가 아닌 값은 조건에서 빠집니다.',"
+    },
+    "C-13|packages/i18n/src/ko/document-progress.ts|7ba26826a859": {
+      "n": 1,
+      "text": "가운뎃점: title: '물류 전표 조회·취소',"
+    },
+    "C-13|packages/i18n/src/ko/document-progress.ts|9cfcbaf19b82": {
+      "n": 1,
+      "text": "개발 사정 표현: typesPendingTitle: '문서 유형 선택지가 준비 중입니다',"
+    },
+    "C-13|packages/i18n/src/ko/document-progress.ts|a520a65b974c": {
+      "n": 1,
+      "text": "가운뎃점: `영업일 ${businessDate} · 원장 번호를 받지 못했습니다`,"
+    },
+    "C-13|packages/i18n/src/ko/document-progress.ts|bc8c280201f4": {
+      "n": 1,
+      "text": "가운뎃점: finished: (total: number): string => `결재 종료 · 전체 ${String(total)}단계`,"
+    },
+    "C-13|packages/i18n/src/ko/downtime-register.ts|6f3b564268c8": {
+      "n": 1,
+      "text": "가운뎃점: `비가동 ${String(count)}건 · 합계 ${totalLabel}`,"
+    },
+    "C-13|packages/i18n/src/ko/downtime-register.ts|aeb86e0ab0ef": {
+      "n": 1,
+      "text": "가운뎃점: localOnlyDescription: '다른 단말·관리웹 입력분은 반영되지 않았습니다.',"
+    },
+    "C-13|packages/i18n/src/ko/downtime-summary.ts|46522bafbf84": {
+      "n": 1,
+      "text": "가운뎃점: '보전 지시 없이 완료된 고장 건수입니다. 비율의 분모는 사후·예방 보전 건수의 합입니다.',"
+    },
+    "C-13|packages/i18n/src/ko/downtime-summary.ts|cbb4d58cdc24": {
+      "n": 1,
+      "text": "가운뎃점: '이 목록은 공장·설비 그룹 조건으로 좁혀지지 않습니다. 위 요약의 건수보다 많이 보일 수 있습니다.',"
+    },
+    "C-13|packages/i18n/src/ko/emergency-work-order-field.ts|4097ed4a215c": {
+      "n": 1,
+      "text": "가운뎃점: bypassTitle: '배정 없음 · 점검 통제 우회',"
+    },
+    "C-13|packages/i18n/src/ko/emergency-work-order.ts|1bbd817c89b6": {
+      "n": 1,
+      "text": "가운뎃점: inputIncomplete: '품목·수량·발행 사유를 채우세요.',"
+    },
+    "C-13|packages/i18n/src/ko/emergency-work-order.ts|3408454ddcf4": {
+      "n": 1,
+      "text": "가운뎃점: '긴급 발행은 아직 사용할 수 없습니다. 준비가 끝나면 안내드립니다. 급한 지시는 「W/O 전개·편성」에서 만들어 주세요.',"
+    },
+    "C-13|packages/i18n/src/ko/emergency-work-order.ts|5e0c6e784996": {
+      "n": 1,
+      "text": "가운뎃점: action: '발행·배포',"
+    },
+    "C-13|packages/i18n/src/ko/emergency-work-order.ts|817171166866": {
+      "n": 1,
+      "text": "가운뎃점: qtyTooLong: '수량은 정수 12자리·소수 6자리까지 입력할 수 있습니다.',"
+    },
+    "C-13|packages/i18n/src/ko/emergency-work-order.ts|c1e4064adf85": {
+      "n": 1,
+      "text": "가운뎃점: expansionError: 'BOM·Routing 을 받지 못했습니다. 다시 시도하세요.',"
+    },
+    "C-13|packages/i18n/src/ko/emergency-work-order.ts|fab599bfc5ed": {
+      "n": 1,
+      "text": "가운뎃점: expansionLoading: 'BOM·Routing 을 받는 중입니다.',"
+    },
+    "C-13|packages/i18n/src/ko/equipment-failure-report.ts|0983717d32ab": {
+      "n": 1,
+      "text": "가운뎃점: placeholder: '유압 누유 · 실린더 하부',"
+    },
+    "C-13|packages/i18n/src/ko/equipment-failure.ts|c223f426590f": {
+      "n": 1,
+      "text": "가운뎃점: '증상·발생 상태·정지 시각·사진은 현장이 적은 것이라 여기서 고칠 수 없습니다. 바로잡을 것이 있으면 처리 내역에 덧붙이세요.',"
+    },
+    "C-13|packages/i18n/src/ko/equipment-inspection.ts|2e424feb5a69": {
+      "n": 1,
+      "text": "가운뎃점: counts: (ok: number, ng: number) => `합격 ${String(ok)} · NG ${String(ng)}`,"
+    },
+    "C-13|packages/i18n/src/ko/equipment-master.ts|1c3249207c13": {
+      "n": 1,
+      "text": "가운뎃점: : `설비·설비 그룹 ${count}곳에 부여돼 있습니다.`,"
+    },
+    "C-13|packages/i18n/src/ko/equipment-master.ts|341a80c86106": {
+      "n": 1,
+      "text": "가운뎃점: assets: '설비·설비그룹',"
+    },
+    "C-13|packages/i18n/src/ko/equipment-master.ts|42f1975d879e": {
+      "n": 1,
+      "text": "가운뎃점: title: '설비·설비그룹 마스터',"
+    },
+    "C-13|packages/i18n/src/ko/equipment-master.ts|5ea24731f967": {
+      "n": 1,
+      "text": "가운뎃점: emptyDescription: '점검 항목을 만들면 설비·설비 그룹에 부여할 수 있습니다.',"
+    },
+    "C-13|packages/i18n/src/ko/equipment-master.ts|94507a36e814": {
+      "n": 1,
+      "text": "가운뎃점: measurementNote: '판정 방식이 「측정값」이면 단위와 상·하한이 함께 필요합니다.',"
+    },
+    "C-13|packages/i18n/src/ko/erp-common-code.ts|c7a48eb0f4a9": {
+      "n": 1,
+      "text": "가운뎃점: q: '코드·코드명',"
+    },
+    "C-13|packages/i18n/src/ko/erp-employee.ts|5263feb39f82": {
+      "n": 1,
+      "text": "가운뎃점: q: '사번·성명',"
+    },
+    "C-13|packages/i18n/src/ko/erp-item.ts|7e973b0749f0": {
+      "n": 1,
+      "text": "가운뎃점: q: '품목코드·품목명',"
+    },
+    "C-13|packages/i18n/src/ko/erp-partner.ts|0daf17017132": {
+      "n": 1,
+      "text": "가운뎃점: q: '거래처 코드·명',"
+    },
+    "C-13|packages/i18n/src/ko/erp-purchase-order.ts|ddf50c79a73c": {
+      "n": 1,
+      "text": "가운뎃점: searchPlaceholder: 'P/O · ERP 발주번호',"
+    },
+    "C-13|packages/i18n/src/ko/erp-sales-order.ts|1d460e20678d": {
+      "n": 1,
+      "text": "가운뎃점: searchPlaceholder: '수주번호 · ERP 원번호',"
+    },
+    "C-13|packages/i18n/src/ko/expedited-shipment.ts|07cd1a086d4e": {
+      "n": 1,
+      "text": "가운뎃점: skipped: '창고 경유·피킹·포장을 건너뜁니다.',"
+    },
+    "C-13|packages/i18n/src/ko/expedited-shipment.ts|09174b1d6227": {
+      "n": 1,
+      "text": "가운뎃점: `LOT 수량 ${lotQty} · 배정 잔여 ${remainingQty} 이하로 입력하세요`,"
+    },
+    "C-13|packages/i18n/src/ko/expedited-shipment.ts|0e3f09df1c1d": {
+      "n": 1,
+      "text": "가운뎃점: tooLong: '수량이 너무 깁니다. 정수 12자리·소수 6자리까지 입력하세요',"
+    },
+    "C-13|packages/i18n/src/ko/expedited-shipment.ts|9f5529a76cd8": {
+      "n": 1,
+      "text": "가운뎃점: '출하는 미확정 상태로 남습니다 — 이 화면은 확정하지 않으며, 확정·취소는 별도 화면에서 진행합니다.',"
+    },
+    "C-13|packages/i18n/src/ko/expedited-shipment.ts|d213185c436c": {
+      "n": 1,
+      "text": "가운뎃점: headerNotice: '정상 흐름을 건너뜁니다. 창고 경유·피킹·포장 없이 곧바로 출하합니다.',"
+    },
+    "C-13|packages/i18n/src/ko/gauge-master.ts|e99fb0e6161f": {
+      "n": 1,
+      "text": "가운뎃점: statusOwnedElsewhere: '운용상태는 사용 중지·폐기 처리로 바뀝니다.',"
+    },
+    "C-13|packages/i18n/src/ko/goods-issue-qr.ts|1a2b4f17af6a": {
+      "n": 1,
+      "text": "가운뎃점: `최근 ${String(days)}일 · 최대 ${String(limit)}건의 QR을 조회합니다`,"
+    },
+    "C-13|packages/i18n/src/ko/goods-issue-qr.ts|9d7480dec93b": {
+      "n": 1,
+      "text": "가운뎃점: issue: '발행·인쇄',"
+    },
+    "C-13|packages/i18n/src/ko/goods-issue-qr.ts|ad06cf8e5e62": {
+      "n": 1,
+      "text": "가운뎃점: `${String(lineCount)}라인 · ${quantityText}`,"
+    },
+    "C-13|packages/i18n/src/ko/goods-issue-qr.ts|bb0d3d9463f8": {
+      "n": 1,
+      "text": "가운뎃점: statusPrintFailed: (issueCount: number): string => `인쇄 실패 · 회차 ${String(issueCount)}`,"
+    },
+    "C-13|packages/i18n/src/ko/goods-receipt.ts|3ca393eda9c8": {
+      "n": 1,
+      "text": "가운뎃점: autoApplied: '공장·영업일은 자동 적용됩니다.',"
+    },
+    "C-13|packages/i18n/src/ko/goods-receipt.ts|463ca45570e0": {
+      "n": 1,
+      "text": "가운뎃점: '품목·단위·자재 LOT·공장 이름을 불러오지 못했습니다. 이름 자리에 사유가 표시됩니다.',"
+    },
+    "C-13|packages/i18n/src/ko/goods-receipt.ts|48a4e92057d8": {
+      "n": 1,
+      "text": "개발 사정 표현: erpUnknown: 'ERP 송신 대기열 적재 여부를 알 수 없습니다. 응답에 그 값이 오지 않았습니다.',"
+    },
+    "C-13|packages/i18n/src/ko/goods-receipt.ts|48c8ae6fd720": {
+      "n": 1,
+      "text": "개발 사정 표현: ledgerNone: '응답에 수불 원장 라인이 담기지 않았습니다.',"
+    },
+    "C-13|packages/i18n/src/ko/goods-receipt.ts|5199b7333b14": {
+      "n": 1,
+      "text": "개발 사정 표현: '원천 문서 보기: 원천 문서 유형과 대상의 대응 규약이 아직 정해지지 않아 문서를 열 수 없습니다. 유형 코드와 입하번호만 보입니다.',"
+    },
+    "C-13|packages/i18n/src/ko/goods-receipt.ts|5ca935994f42": {
+      "n": 1,
+      "text": "가운뎃점: option: (name: string, qty: string) => `${name} · ${qty}`,"
+    },
+    "C-13|packages/i18n/src/ko/goods-receipt.ts|7686cba7a8c0": {
+      "n": 1,
+      "text": "가운뎃점: postOptionsFailed: '입고 창고·적치 위치 선택지를 불러오지 못했습니다.',"
+    },
+    "C-13|packages/i18n/src/ko/goods-receipt.ts|8e46a0efb422": {
+      "n": 1,
+      "text": "가운뎃점: `${typeCode} · ${inboundReceiptNo}`,"
+    },
+    "C-13|packages/i18n/src/ko/goods-receipt.ts|91157642dc62": {
+      "n": 1,
+      "text": "개발 사정 표현: '입고 처리 뒤 자재 LOT을 다시 조회해 받은 값입니다. 화면은 이 값을 해석하지 않고 그대로 보입니다.',"
+    },
+    "C-13|packages/i18n/src/ko/goods-receipt.ts|92756e76026f": {
+      "n": 1,
+      "text": "가운뎃점: 'IQC 수입검사·판정에서 먼저 판정하세요. 합격하면 입고할 수 있고, 불합격이면 처분 판정 뒤 진행합니다.',"
+    },
+    "C-13|packages/i18n/src/ko/goods-receipt.ts|9b3f83126d9e": {
+      "n": 1,
+      "text": "가운뎃점: postCodeListPending: '입고 확인: 입고 유형·품질 상태 코드가 없어 지금은 입고할 수 없습니다.',"
+    },
+    "C-13|packages/i18n/src/ko/goods-receipt.ts|b2daf1a8f3b0": {
+      "n": 1,
+      "text": "가운뎃점: q: '입하번호·거래명세서번호 검색',"
+    },
+    "C-13|packages/i18n/src/ko/goods-receipt.ts|b7f77945c3e9": {
+      "n": 1,
+      "text": "가운뎃점: goToIqc: 'IQC 수입검사·판정으로 이동',"
+    },
+    "C-13|packages/i18n/src/ko/goods-receipt.ts|c0de3b0cb09a": {
+      "n": 1,
+      "text": "가운뎃점: noteTitle: (good: string, split: string) => `선별 완료: 양품 ${good} · 불량 ${split}`,"
+    },
+    "C-13|packages/i18n/src/ko/goods-receipt.ts|d1b12b814d48": {
+      "n": 1,
+      "text": "가운뎃점: '선택한 라인의 품목·수량·단위·자재 LOT이 그대로 입고되며, 수량을 나누어 입고할 수 없습니다.',"
+    },
+    "C-13|packages/i18n/src/ko/goods-receipt.ts|e8cd75a2dba9": {
+      "n": 1,
+      "text": "가운뎃점: '입고 전표 생성·전기, 자재 LOT 상태 변경, 수불 원장 기록, 재고 잔액 반영, ERP 송신 대기열 적재가 함께 처리됩니다.',"
+    },
+    "C-13|packages/i18n/src/ko/inbound-receipt.ts|e0f67b112220": {
+      "n": 1,
+      "text": "가운뎃점: externalTaken: (lotNo: string) => `라벨 미부착 · 공급사 LOT ${lotNo}`,"
+    },
+    "C-13|packages/i18n/src/ko/inbound-receipt.ts|faa31bb4d445": {
+      "n": 1,
+      "text": "가운뎃점: legend: '품목·수량 확인',"
+    },
+    "C-13|packages/i18n/src/ko/inbound-schedule.ts|c6d753cf800a": {
+      "n": 1,
+      "text": "가운뎃점: referencesFailed: '공급사·품목·단위 이름을 불러오지 못했습니다. 이름 자리에 사유가 표시됩니다.',"
+    },
+    "C-13|packages/i18n/src/ko/inbound-variance.ts|11eff7ff79bb": {
+      "n": 1,
+      "text": "가운뎃점: chosen: (no: number, qty: string) => `고른 라인 ${String(no)}번 · 실입하 ${qty}`,"
+    },
+    "C-13|packages/i18n/src/ko/inbound-variance.ts|1930f319eee4": {
+      "n": 1,
+      "text": "가운뎃점: lineLabel: (no: number, qty: string) => `${String(no)}번 라인 · 실입하 ${qty}`,"
+    },
+    "C-13|packages/i18n/src/ko/inspection-documents.ts|af245db93198": {
+      "n": 1,
+      "text": "가운뎃점: '올릴 수 없는 형식입니다. PDF·이미지·엑셀/워드/파워포인트·CSV·TXT 만 올릴 수 있습니다.',"
+    },
+    "C-13|packages/i18n/src/ko/inspection-documents.ts|c64bbf3c471e": {
+      "n": 1,
+      "text": "가운뎃점: help: '시험성적서·측정 엑셀 등 볼 수 있는 문서(PDF·이미지·엑셀/워드/파워포인트·CSV)만 올릴 수 있습니다. 한 파일 10MB 까지입니다.',"
+    },
+    "C-13|packages/i18n/src/ko/inspection-history.ts|9f34b56ab951": {
+      "n": 1,
+      "text": "가운뎃점: `합격 ${String(accepted)} · 불합격 ${String(rejected)} · 보류 ${String(held)}`,"
+    },
+    "C-13|packages/i18n/src/ko/inspection-level.ts|69ca4d4ec3f4": {
+      "n": 1,
+      "text": "가운뎃점: keyword: '품목 코드·이름',"
+    },
+    "C-13|packages/i18n/src/ko/inspection-result-insights.ts|0f3523857853": {
+      "n": 1,
+      "text": "가운뎃점: title: '검사실적·검사결과 조회',"
+    },
+    "C-13|packages/i18n/src/ko/inspection-result-insights.ts|4dd43175399a": {
+      "n": 1,
+      "text": "가운뎃점: `총 ${total}건 · ${String(page)} / ${String(totalPages)}쪽`,"
+    },
+    "C-13|packages/i18n/src/ko/inspection-result-insights.ts|569ac161d82a": {
+      "n": 1,
+      "text": "가운뎃점: `${no} · ${status} · 발생 ${openedAt}`,"
+    },
+    "C-13|packages/i18n/src/ko/inspection-result-insights.ts|797c7ef69cf8": {
+      "n": 1,
+      "text": "가운뎃점: allTypesNote: '전체 선택 시 요약·추이는 검사유형별로 분리합니다.',"
+    },
+    "C-13|packages/i18n/src/ko/inspection-result-insights.ts|7e9a5eea8c4a": {
+      "n": 1,
+      "text": "가운뎃점: blockedInvalidDescription: '날짜를 확인하고 준비된 검사유형·판정 코드로 다시 조회하세요.',"
+    },
+    "C-13|packages/i18n/src/ko/inspection-result-insights.ts|a17c8c37311f": {
+      "n": 1,
+      "text": "가운뎃점: populationNote: '목록·요약·추이와 다른 모집단이며 두 수가 다른 것이 정상입니다.',"
+    },
+    "C-13|packages/i18n/src/ko/inspection-result-insights.ts|b7d508692f1f": {
+      "n": 1,
+      "text": "가운뎃점: `측정 ${measured}건 · 합격 ${accepted}건 · 불합격 ${rejected}건 · 미측정 ${unmeasured}건`,"
+    },
+    "C-13|packages/i18n/src/ko/inspection-result-insights.ts|cded0a2b5658": {
+      "n": 1,
+      "text": "가운뎃점: calibrationExpiredWithDue: (dueDate: string): string => `검교정 만료 · 예정일 ${dueDate}`,"
+    },
+    "C-13|packages/i18n/src/ko/inspection-standard.ts|9d131e834ecc": {
+      "n": 1,
+      "text": "가운뎃점: transitionNeedsVersion: '확정·폐기는 버전을 먼저 등록해야 할 수 있습니다.',"
+    },
+    "C-13|packages/i18n/src/ko/inspection-standard.ts|bb6a962d2e44": {
+      "n": 1,
+      "text": "가운뎃점: approvedAt: (at: string): string => `승인됨 · ${at}`,"
+    },
+    "C-13|packages/i18n/src/ko/inspection-standard.ts|bb731b2f570e": {
+      "n": 1,
+      "text": "가운뎃점: routingOption: (code: string, version: number): string => `${code} · Rev ${String(version)}`,"
+    },
+    "C-13|packages/i18n/src/ko/inspection-standard.ts|daa2c29163db": {
+      "n": 1,
+      "text": "가운뎃점: itemLabel: (code: string, name: string): string => `${code} · ${name}`,"
+    },
+    "C-13|packages/i18n/src/ko/inspection-standard.ts|f7a99b313a7c": {
+      "n": 1,
+      "text": "가운뎃점: targetRange: '목표·범위',"
+    },
+    "C-13|packages/i18n/src/ko/integration-sync.ts|22186884133d": {
+      "n": 1,
+      "text": "가운뎃점: targetValue: (typeCode: string, id: number): string => `${typeCode} · ${String(id)}`,"
+    },
+    "C-13|packages/i18n/src/ko/iqc-inspection.ts|5b5443b880f7": {
+      "n": 1,
+      "text": "개발 사정 표현: partialReceiptPending: '부분 입고 허용은 업데이트 예정입니다.',"
+    },
+    "C-13|packages/i18n/src/ko/iqc-inspection.ts|5f3ba9bcc17a": {
+      "n": 1,
+      "text": "가운뎃점: title: 'IQC 수입검사·판정',"
+    },
+    "C-13|packages/i18n/src/ko/iqc-inspection.ts|6987ccbe5f2c": {
+      "n": 1,
+      "text": "가운뎃점: `${item} · 검사 의뢰 ${inspectionRequestNo} 열기`,"
+    },
+    "C-13|packages/i18n/src/ko/iqc-inspection.ts|ade47fb7a0d1": {
+      "n": 1,
+      "text": "가운뎃점: hint: '공급사가 사람·설비·자재·방법을 바꿔 보낸 자재면 체크하세요.',"
+    },
+    "C-13|packages/i18n/src/ko/iqc-inspection.ts|af225263061b": {
+      "n": 1,
+      "text": "가운뎃점: noCodes: '등록된 불량 코드가 없습니다. 기준정보 > 불량·원인 코드에서 먼저 등록하세요.',"
+    },
+    "C-13|packages/i18n/src/ko/iqc-inspection.ts|e2ddcdd1cbfa": {
+      "n": 1,
+      "text": "가운뎃점: body: '불합격으로 확정된 LOT 은 재검사 회차를 확정할 수 없습니다. 처분 판정에서 재작업(재검)·폐기·정상을 고르거나, 공급사로 반품하세요.',"
+    },
+    "C-13|packages/i18n/src/ko/iqc-skip-approval.ts|bc8c280201f4": {
+      "n": 1,
+      "text": "가운뎃점: finished: (total: number): string => `결재 종료 · 전체 ${String(total)}단계`,"
+    },
+    "C-13|packages/i18n/src/ko/iqc-skip-request.ts|6495da05daea": {
+      "n": 1,
+      "text": "가운뎃점: placeholder: '라인 정지 임박 · 대체 자재 없음',"
+    },
+    "C-13|packages/i18n/src/ko/item-extended-attrs.ts|0ca5316f758b": {
+      "n": 1,
+      "text": "가운뎃점: lot: 'LOT 기본값·식별',"
+    },
+    "C-13|packages/i18n/src/ko/item-extended-attrs.ts|12d7dabd4cad": {
+      "n": 1,
+      "text": "가운뎃점: title: '품목·BOM 정보',"
+    },
+    "C-13|packages/i18n/src/ko/item-extended-attrs.ts|132e3265d6fa": {
+      "n": 1,
+      "text": "가운뎃점: label: '품목·자재 명세서 구분',"
+    },
+    "C-13|packages/i18n/src/ko/item-extended-attrs.ts|18b50b2050a2": {
+      "n": 1,
+      "text": "가운뎃점: list: '설비·금형을 불러오는 중',"
+    },
+    "C-13|packages/i18n/src/ko/item-extended-attrs.ts|2c806db723f8": {
+      "n": 1,
+      "text": "가운뎃점: duplicateKey: '변환 전·변환 후·유효 시작이 같은 줄이 이미 있습니다.',"
+    },
+    "C-13|packages/i18n/src/ko/item-extended-attrs.ts|41f0a1fbd98a": {
+      "n": 1,
+      "text": "가운뎃점: duplicate: '같은 공정·설비·금형 줄이 이미 있습니다.',"
+    },
+    "C-13|packages/i18n/src/ko/item-extended-attrs.ts|43b027d9645b": {
+      "n": 1,
+      "text": "가운뎃점: editTitle: (plant: string): string => `설비·금형 수정 · ${plant}`,"
+    },
+    "C-13|packages/i18n/src/ko/item-extended-attrs.ts|72c520840a10": {
+      "n": 1,
+      "text": "가운뎃점: duplicateInList: '변환 전·변환 후·유효 시작이 같은 줄이 있습니다. 겹친 줄을 정리하세요.',"
+    },
+    "C-13|packages/i18n/src/ko/item-extended-attrs.ts|74f96499d653": {
+      "n": 1,
+      "text": "가운뎃점: inventory: '검사·재고·보관',"
+    },
+    "C-13|packages/i18n/src/ko/item-extended-attrs.ts|8faf2eb52ba8": {
+      "n": 1,
+      "text": "가운뎃점: shelfLife: '유효기한·선출',"
+    },
+    "C-13|packages/i18n/src/ko/item-extended-attrs.ts|94f3ff1d17d5": {
+      "n": 1,
+      "text": "가운뎃점: '저장할 수 없습니다. 변환 전·변환 후·유효 시작이 같은 줄이 둘 이상 있습니다. 겹친 줄을 고치거나 지운 뒤 저장하세요.',"
+    },
+    "C-13|packages/i18n/src/ko/item-extended-attrs.ts|9d19bfaf97e9": {
+      "n": 1,
+      "text": "가운뎃점: process: (registered: string, actual: string): string => `${registered} · ${actual}`,"
+    },
+    "C-13|packages/i18n/src/ko/item-extended-attrs.ts|aac83f7e5595": {
+      "n": 2,
+      "text": "가운뎃점: resourceMap: '설비·금형',"
+    },
+    "C-13|packages/i18n/src/ko/item-extended-attrs.ts|bb731b2f570e": {
+      "n": 1,
+      "text": "가운뎃점: name: (code: string, version: number): string => `${code} · Rev ${String(version)}`,"
+    },
+    "C-13|packages/i18n/src/ko/item-extended-attrs.ts|cdf227885bf1": {
+      "n": 1,
+      "text": "가운뎃점: noneTitle: '등록된 설비·금형이 없습니다',"
+    },
+    "C-13|packages/i18n/src/ko/item-extended-attrs.ts|dafe06a0c6c4": {
+      "n": 1,
+      "text": "가운뎃점: `Rev ${String(version)} · ${String(position)}. ${name}`,"
+    },
+    "C-13|packages/i18n/src/ko/item-extended-attrs.ts|e85deab9ddf3": {
+      "n": 1,
+      "text": "가운뎃점: addTitle: (plant: string): string => `설비·금형 추가 · ${plant}`,"
+    },
+    "C-13|packages/i18n/src/ko/judgment-code.ts|02ae1ff470a8": {
+      "n": 1,
+      "text": "개발 사정 표현: '판정유형은 아직 확정되지 않은 임시 목록입니다. 지금 보이는 값이 전부가 아닐 수 있고, 확정되면 달라질 수 있습니다.',"
+    },
+    "C-13|packages/i18n/src/ko/lot-status-history.ts|17cd3910448c": {
+      "n": 1,
+      "text": "가운뎃점: times: '등록·해제',"
+    },
+    "C-13|packages/i18n/src/ko/lot-status-history.ts|2a25074149de": {
+      "n": 1,
+      "text": "가운뎃점: title: 'Lot Status 현황·변경이력 조회',"
+    },
+    "C-13|packages/i18n/src/ko/lot-status-history.ts|59261ca76c3d": {
+      "n": 1,
+      "text": "가운뎃점: description: '조회 기간을 모두 적용하면 보류 등록·해제와 상태 변경 이력이 표시됩니다.',"
+    },
+    "C-13|packages/i18n/src/ko/lot-status-history.ts|67c66d9a80d8": {
+      "n": 1,
+      "text": "가운뎃점: transition: '판정·전이 처리',"
+    },
+    "C-13|packages/i18n/src/ko/lot-status-history.ts|7bf4922269db": {
+      "n": 1,
+      "text": "가운뎃점: C9: '클레임·리콜',"
+    },
+    "C-13|packages/i18n/src/ko/lot-status-history.ts|90ce0247ff9a": {
+      "n": 1,
+      "text": "가운뎃점: '이 창에서는 사용할 수 없습니다. 「Lot Status 판정·전이 처리」 화면에서 진행하세요.',"
+    },
+    "C-13|packages/i18n/src/ko/lot-status-history.ts|fff47e4135cf": {
+      "n": 1,
+      "text": "가운뎃점: itemPlaceholder: '코드·이름으로 검색',"
+    },
+    "C-13|packages/i18n/src/ko/lot-status-transition.ts|1981f09cc791": {
+      "n": 1,
+      "text": "가운뎃점: description: 'Hold는 대상 수량의 출고·출하 및 피킹을 막습니다.',"
+    },
+    "C-13|packages/i18n/src/ko/lot-status-transition.ts|3ffb0e41a544": {
+      "n": 1,
+      "text": "가운뎃점: title: 'Lot Status 판정·전이 처리',"
+    },
+    "C-13|packages/i18n/src/ko/lot-status-transition.ts|6eda827fe16e": {
+      "n": 1,
+      "text": "가운뎃점: `창고 ${warehouse} · 위치 ${location}`,"
+    },
+    "C-13|packages/i18n/src/ko/lot-status-transition.ts|6f57eb9d05b5": {
+      "n": 1,
+      "text": "가운뎃점: 'LOT을 찾아 선택하면 현재 품질 상태를 확인하고, 보류 등록·해제로 상태를 바꿀 수 있습니다.',"
+    },
+    "C-13|packages/i18n/src/ko/lot-status-transition.ts|fa035131ec9f": {
+      "n": 1,
+      "text": "가운뎃점: description: '보류를 해제하면 해당 수량의 출고·출하 및 피킹 제한이 해제됩니다.',"
+    },
+    "C-13|packages/i18n/src/ko/maintenance-order.ts|8738d463f4ca": {
+      "n": 1,
+      "text": "가운뎃점: '설비 보전은 점검·보전 항목 마스터에서 고릅니다. 마스터에 없는 것은 지시 내용에 적으세요.',"
+    },
+    "C-13|packages/i18n/src/ko/maintenance-result.ts|4de0a732b10b": {
+      "n": 1,
+      "text": "가운뎃점: title: '보전 실적·예비품',"
+    },
+    "C-13|packages/i18n/src/ko/maintenance-result.ts|878e73c58c1d": {
+      "n": 1,
+      "text": "가운뎃점: '항목·부위별 결과의 값 목록이 아직 등록되지 않아 항목을 적을 수 없습니다. 값이 등록되면 열립니다.',"
+    },
+    "C-13|packages/i18n/src/ko/maintenance-result.ts|e0fc42513c3d": {
+      "n": 1,
+      "text": "가운뎃점: partsMasterNote: '예비품 마스터에 규격·재고 기준이 아직 없어 코드와 명칭만 보입니다.',"
+    },
+    "C-13|packages/i18n/src/ko/master-change.ts|7761e44acca6": {
+      "n": 1,
+      "text": "개발 사정 표현: '대상 종류·사건 종류는 아직 확정되지 않은 임시 목록입니다. 조회한 기간의 기록에서 만들어, 한 번도 기록되지 않았거나 이 기간에 없는 값은 목록에 없습니다.',"
+    },
+    "C-13|packages/i18n/src/ko/material-input-scan.ts|05688d566d61": {
+      "n": 1,
+      "text": "가운뎃점: shortAllowed: '부족·미수령이 있어도 수령한 양으로 투입할 수 있습니다.',"
+    },
+    "C-13|packages/i18n/src/ko/material-input-scan.ts|44c76ee51258": {
+      "n": 1,
+      "text": "가운뎃점: uom === '' ? `${item} · ${qty}` : `${item} · ${qty} ${uom}`,"
+    },
+    "C-13|packages/i18n/src/ko/material-input-scan.ts|5a8db673c947": {
+      "n": 1,
+      "text": "가운뎃점: label: '부족·미수령',"
+    },
+    "C-13|packages/i18n/src/ko/material-input-scan.ts|908e6dcdf143": {
+      "n": 1,
+      "text": "가운뎃점: `타발 ${current.toLocaleString('ko-KR')} · 적정 타수 없음`,"
+    },
+    "C-13|packages/i18n/src/ko/material-input-scan.ts|9a39f88c10c1": {
+      "n": 1,
+      "text": "가운뎃점: uom === '' ? `${item} · ${qty}` : `${item} · ${qty} ${uom}`,"
+    },
+    "C-13|packages/i18n/src/ko/material-issue-request.ts|0face1a340c5": {
+      "n": 1,
+      "text": "가운뎃점: `${workOrderNo} · ${operation} · ${itemCode}`,"
+    },
+    "C-13|packages/i18n/src/ko/material-issue-request.ts|389eac755eb9": {
+      "n": 1,
+      "text": "가운뎃점: `${issueRequestNo} · ${statusCode} · ${requiredAt}`,"
+    },
+    "C-13|packages/i18n/src/ko/material-issue-request.ts|5e4443872b11": {
+      "n": 1,
+      "text": "가운뎃점: shortageColumnsReadOnly: 'BOM 소요·기출고·부족은 시스템이 낸 값이라 고칠 수 없습니다.',"
+    },
+    "C-13|packages/i18n/src/ko/material-lot-scan.ts|204cd4425e3b": {
+      "n": 1,
+      "text": "가운뎃점: item: (lineNo: string, itemCode: string, qty: string) => `#${lineNo} · ${itemCode} · ${qty}`,"
+    },
+    "C-13|packages/i18n/src/ko/material-lot-scan.ts|47fcc8142409": {
+      "n": 1,
+      "text": "가운뎃점: item: (no: string, date: string) => `${no} · ${date}`,"
+    },
+    "C-13|packages/i18n/src/ko/material-lot-scan.ts|485a4b8737c3": {
+      "n": 1,
+      "text": "가운뎃점: title: '자재LOT 스캔·등록',"
+    },
+    "C-13|packages/i18n/src/ko/material-lot-scan.ts|e234eeb048c5": {
+      "n": 1,
+      "text": "가운뎃점: `라인 #${lineNo} · ${itemCode} · ${qty}`,"
+    },
+    "C-13|packages/i18n/src/ko/material-picking.ts|d63d0dd80669": {
+      "n": 1,
+      "text": "가운뎃점: title: '자재 출고·피킹',"
+    },
+    "C-13|packages/i18n/src/ko/notice.ts|494bce053f72": {
+      "n": 1,
+      "text": "가운뎃점: title: '공지·전달',"
+    },
+    "C-13|packages/i18n/src/ko/oqc-inspection.ts|36b7dc60ca18": {
+      "n": 2,
+      "text": "가운뎃점: `합격 ${accepted} · 불합격 ${rejected} · 보류 ${held}`,"
+    },
+    "C-13|packages/i18n/src/ko/oqc-inspection.ts|83a1937d0525": {
+      "n": 1,
+      "text": "가운뎃점: help: '검사를 하지 않고 출하하려면 생략을 요청합니다. 「특채·한도승인 승인 처리」에서 결재한 뒤 여기서 실행합니다. 실행하면 이 출하작업지시의 열린 OQC 의뢰가 모두 생략되고 출하검사가 통과로 바"
+    },
+    "C-13|packages/i18n/src/ko/oqc-inspection.ts|a9dd37fc7650": {
+      "n": 1,
+      "text": "가운뎃점: '불합격분의 처분(재작업·폐기)은 이 화면에서 정하지 않습니다 — 처분 의뢰 화면이 열리면 그곳에서 합니다.',"
+    },
+    "C-13|packages/i18n/src/ko/oqc-inspection.ts|b38bbaeed6cf": {
+      "n": 1,
+      "text": "가운뎃점: pendingOnly: '대기·진행만 보기',"
+    },
+    "C-13|packages/i18n/src/ko/oqc-inspection.ts|c3181eb571bd": {
+      "n": 1,
+      "text": "개발 사정 표현: coaPending: '검사성적서 발행은 아직 열리지 않았습니다 — 출력물 발행 계약이 준비되면 열립니다.',"
+    },
+    "C-13|packages/i18n/src/ko/over-receipt-split.ts|14493f034904": {
+      "n": 1,
+      "text": "가운뎃점: '정량 · 초과는 이 화면이 계산한 값입니다. 잔량에 초과 허용치(+)를 더한 값까지가 정량분이고, 그보다 많이 도착한 몫이 초과분입니다.',"
+    },
+    "C-13|packages/i18n/src/ko/over-receipt-split.ts|5e96b46d2172": {
+      "n": 1,
+      "text": "가운뎃점: `정량 ${String(normalQty)} · 초과 ${String(excessQty)}`,"
+    },
+    "C-13|packages/i18n/src/ko/over-receipt-split.ts|9a41517ea457": {
+      "n": 1,
+      "text": "가운뎃점: split: '정량 · 초과',"
+    },
+    "C-13|packages/i18n/src/ko/over-receipt-split.ts|a9cd4079ca84": {
+      "n": 1,
+      "text": "가운뎃점: headerSharedByBoth: '입하 일시·거래명세서번호·비고는 만들어지는 전표 모두에 같이 실립니다.',"
+    },
+    "C-13|packages/i18n/src/ko/over-receipt-split.ts|c504f0bd675e": {
+      "n": 1,
+      "text": "가운뎃점: '품목·단위·공장 이름을 불러오지 못했습니다. 이름 자리에 사유가 표시됩니다.',"
+    },
+    "C-13|packages/i18n/src/ko/over-receipt-split.ts|e78dae880caa": {
+      "n": 1,
+      "text": "가운뎃점: `발주 ${String(orderedQty)} · 기입하 ${String(receivedQty)}`,"
+    },
+    "C-13|packages/i18n/src/ko/over-receipt-split.ts|ee3c3aba9db2": {
+      "n": 1,
+      "text": "가운뎃점: ordered: '발주 · 기입하',"
+    },
+    "C-13|packages/i18n/src/ko/over-receipt-split.ts|f74ce3b7f338": {
+      "n": 1,
+      "text": "가운뎃점: remaining: '잔량 · 허용',"
+    },
+    "C-13|packages/i18n/src/ko/packing-label-reprint.ts|ef18f0dce06a": {
+      "n": 1,
+      "text": "가운뎃점: namesFailed: 'LOT·품목 이름을 불러오지 못해 일부 칸이 비어 있습니다.',"
+    },
+    "C-13|packages/i18n/src/ko/packing-repack.ts|dd7c28fe6127": {
+      "n": 1,
+      "text": "가운뎃점: lot: (item: string, lotNo: string) => (item === '' ? lotNo : `${item} · ${lotNo}`),"
+    },
+    "C-13|packages/i18n/src/ko/packing-result.ts|8e79efb1fc15": {
+      "n": 1,
+      "text": "가운뎃점: `${shipmentRequestNo} · ${customerName}`,"
+    },
+    "C-13|packages/i18n/src/ko/packing-result.ts|929d03718b30": {
+      "n": 1,
+      "text": "가운뎃점: lotCountWithQty: (count: number, qty: string): string => `LOT ${count}건 · 수량 ${qty}`,"
+    },
+    "C-13|packages/i18n/src/ko/packing-result.ts|b4c0a1af7e89": {
+      "n": 1,
+      "text": "가운뎃점: gateDenied: '이 단말·공정에는 실적 입력 권한이 없습니다',"
+    },
+    "C-13|packages/i18n/src/ko/packing-result.ts|be6fce2cc639": {
+      "n": 1,
+      "text": "가운뎃점: gateUnidentified: '단말·공정이 확인되지 않았습니다',"
+    },
+    "C-13|packages/i18n/src/ko/packing-result.ts|ccad6473ee03": {
+      "n": 1,
+      "text": "가운뎃점: labels: '라벨 상태·재출력',"
+    },
+    "C-13|packages/i18n/src/ko/packing-work.ts|11726633ba0d": {
+      "n": 1,
+      "text": "가운뎃점: `LOT ${lotNo} · 품목 ${itemCode} · 수량 ${qty}`,"
+    },
+    "C-13|packages/i18n/src/ko/pending-code.ts|00a96a4bc1ec": {
+      "n": 1,
+      "text": "개발 사정 표현: note: '선택지 준비 중입니다. 코드 목록이 확정되면 이 항목에서 고를 수 있습니다.',"
+    },
+    "C-13|packages/i18n/src/ko/pending-code.ts|d218e4251739": {
+      "n": 1,
+      "text": "개발 사정 표현: placeholder: '선택지 준비 중',"
+    },
+    "C-13|packages/i18n/src/ko/po-change-review.ts|1ec1ed8d20a5": {
+      "n": 1,
+      "text": "가운뎃점: '조정 수량을 적지 않은 작업지시는 그대로 두고, 그 W/O에는 P/O 불일치 표식이 남습니다. 중단·취소 반영처럼 조정할 수량이 없으면 그대로 진행해도 됩니다.',"
+    },
+    "C-13|packages/i18n/src/ko/po-change-review.ts|d2f480550f77": {
+      "n": 1,
+      "text": "가운뎃점: '중단·취소를 반영한 뒤 작업지시를 취소하는 일은 이 화면에 두지 않았습니다. 취소는 선발행 LOT 슬롯을 함께 폐번하므로 건별로 확인하고 진행합니다.',"
+    },
+    "C-13|packages/i18n/src/ko/po-register.ts|45bb50766a1a": {
+      "n": 1,
+      "text": "가운뎃점: '공급사·사업부·공장·품목·단위 이름을 불러오지 못했습니다. 이름 자리에 사유가 표시됩니다.',"
+    },
+    "C-13|packages/i18n/src/ko/pop-chrome.ts|80488a82dc80": {
+      "n": 1,
+      "text": "가운뎃점: `${String(page)} / ${String(totalPages)} · 전체 ${String(count)}건`,"
+    },
+    "C-13|packages/i18n/src/ko/pop-location-label.ts|d00f945c2cab": {
+      "n": 1,
+      "text": "가운뎃점: `인쇄 성공 ${String(printed)}건 · 실패 ${String(failed)}건`,"
+    },
+    "C-13|packages/i18n/src/ko/pop-material-lot-label.ts|0e446f6c1b0b": {
+      "n": 1,
+      "text": "가운뎃점: lotNo === '' ? `인쇄했습니다. ${seq}회차` : `인쇄했습니다. LOT 번호 ${lotNo} · ${seq}회차`,"
+    },
+    "C-13|packages/i18n/src/ko/pop-material-lot-label.ts|19b321b3fa5d": {
+      "n": 1,
+      "text": "가운뎃점: `입하 ${receiptNo} · 품목 ${itemName} · 수량 ${qty} 선택`,"
+    },
+    "C-13|packages/i18n/src/ko/pop-material-lot-label.ts|1eab07481199": {
+      "n": 1,
+      "text": "가운뎃점: '불량·폐기 LOT 은 라벨을 발행하지 않습니다. 처분 판정으로 정상이 되면 발행할 수 있습니다.',"
+    },
+    "C-13|packages/i18n/src/ko/pop-material-lot-label.ts|3fc66a795032": {
+      "n": 1,
+      "text": "가운뎃점: title: '자재LOT 등록·라벨 발행',"
+    },
+    "C-13|packages/i18n/src/ko/pop-material-lot-label.ts|407d3c4a106a": {
+      "n": 1,
+      "text": "가운뎃점: '자재LOT 은 만들어졌습니다. 같은 자재의 「등록·인쇄」를 다시 누르면 LOT 을 새로 만들지 않고 인쇄만 합니다.',"
+    },
+    "C-13|packages/i18n/src/ko/pop-material-lot-label.ts|44e58d829acf": {
+      "n": 2,
+      "text": "가운뎃점: issue: '등록·인쇄',"
+    },
+    "C-13|packages/i18n/src/ko/pop-material-lot-label.ts|5a0cfd38e309": {
+      "n": 1,
+      "text": "가운뎃점: iqcPlanMissing: '유효한 IQC 검사기준이 없어 등록·인쇄가 불가합니다.',"
+    },
+    "C-13|packages/i18n/src/ko/pop-material-lot-label.ts|db16c5eccedd": {
+      "n": 1,
+      "text": "가운뎃점: failed: '등록·인쇄를 끝내지 못했습니다.',"
+    },
+    "C-13|packages/i18n/src/ko/pop-material-lot-label.ts|e32196be2ccb": {
+      "n": 1,
+      "text": "가운뎃점: registerConflict: '지금은 등록을 끝내지 못했습니다. 잠시 뒤 「등록·인쇄」를 다시 누르세요.',"
+    },
+    "C-13|packages/i18n/src/ko/pop-material-lot-label.ts|ea7ee9d56e57": {
+      "n": 1,
+      "text": "가운뎃점: `입하 ${receiptNo} · 품목 ${itemName} · 수량 ${qty} 선택 해제`,"
+    },
+    "C-13|packages/i18n/src/ko/pop-oqc-inspection.ts|1f7c71025c9f": {
+      "n": 1,
+      "text": "개발 사정 표현: coaPending: '준비 중',"
+    },
+    "C-13|packages/i18n/src/ko/pop-oqc-inspection.ts|4acfd36baa73": {
+      "n": 1,
+      "text": "가운뎃점: dispositionPath: '불합격 수량의 처분(재작업·폐기)은 이 화면에서 정하지 않습니다.',"
+    },
+    "C-13|packages/i18n/src/ko/pop-oqc-inspection.ts|4bad26d4155e": {
+      "n": 1,
+      "text": "가운뎃점: reinspectRound: '재검사 · 새 회차',"
+    },
+    "C-13|packages/i18n/src/ko/pop-oqc-inspection.ts|a8a1205c562e": {
+      "n": 1,
+      "text": "가운뎃점: planValue: (id: number): string => `#${String(id)} · 검사 시점 고정`,"
+    },
+    "C-13|packages/i18n/src/ko/pop-oqc-inspection.ts|ab57328598d2": {
+      "n": 1,
+      "text": "개발 사정 표현: reinspectReasonPending: '재검사 사유 선택은 아직 준비 중입니다.',"
+    },
+    "C-13|packages/i18n/src/ko/pqc-inspection-register.ts|b38bbaeed6cf": {
+      "n": 1,
+      "text": "가운뎃점: pendingOnly: '대기·진행만 보기',"
+    },
+    "C-13|packages/i18n/src/ko/pqc-inspection-register.ts|b9dc16da74f1": {
+      "n": 1,
+      "text": "가운뎃점: title: 'PQC 검사 등록·조회',"
+    },
+    "C-13|packages/i18n/src/ko/pqc-inspection.ts|54ed0dfcd4fb": {
+      "n": 2,
+      "text": "개발 사정 표현: judgmentUnavailable: '판정 값 목록 준비 중',"
+    },
+    "C-13|packages/i18n/src/ko/pqc-inspection.ts|a442f3b67707": {
+      "n": 1,
+      "text": "가운뎃점: note: '검사 시작·종료 시각이 자동으로 입력되며, 필요하면 수정할 수 있습니다.',"
+    },
+    "C-13|packages/i18n/src/ko/pqc-inspection.ts|b0762638ca1f": {
+      "n": 1,
+      "text": "가운뎃점: extraKeysLabel: '부호·소수점',"
+    },
+    "C-13|packages/i18n/src/ko/product-disposal-request.ts|6ed2c1842294": {
+      "n": 1,
+      "text": "가운뎃점: selected: (count: number, qty: string): string => `선택 ${String(count)}건 · 합계 ${qty}`,"
+    },
+    "C-13|packages/i18n/src/ko/product-disposal-request.ts|c2a0347d6165": {
+      "n": 1,
+      "text": "가운뎃점: `대상 ${String(count)}건 · 합계 ${qty}을(를) 폐기 요청합니다.`,"
+    },
+    "C-13|packages/i18n/src/ko/product-picking.ts|a625f4eae2b0": {
+      "n": 1,
+      "text": "가운뎃점: progress: (allocated: string, picked: string) => `배정 ${allocated} · 피킹 ${picked}`,"
+    },
+    "C-13|packages/i18n/src/ko/product-receipt.ts|6950b637fbc5": {
+      "n": 1,
+      "text": "가운뎃점: notReleased: '이 LOT 은 아직 검사 대기입니다. 입고는 되지만 피킹·출하는 막힙니다.',"
+    },
+    "C-13|packages/i18n/src/ko/product-receipt.ts|cbe69907c7d7": {
+      "n": 1,
+      "text": "가운뎃점: description: '적치 완료는 적치·입고 완료 화면에서 잇습니다.',"
+    },
+    "C-13|packages/i18n/src/ko/product-receipt.ts|dd7c28fe6127": {
+      "n": 1,
+      "text": "가운뎃점: name: (item: string, lotNo: string) => (item === '' ? lotNo : `${item} · ${lotNo}`),"
+    },
+    "C-13|packages/i18n/src/ko/product-receipt.ts|e868355fe2b3": {
+      "n": 1,
+      "text": "가운뎃점: title: '제품 입고·적치',"
+    },
+    "C-13|packages/i18n/src/ko/product-receipt.ts|ee198fce00e3": {
+      "n": 1,
+      "text": "가운뎃점: submit: '입고·적치 완료',"
+    },
+    "C-13|packages/i18n/src/ko/product-stock-status.ts|163d8906f718": {
+      "n": 1,
+      "text": "가운뎃점: '품목·LOT·위치 이름을 불러오지 못했습니다. 이름 자리에 사유가 표시됩니다.',"
+    },
+    "C-13|packages/i18n/src/ko/product-stock-status.ts|43091a0dc078": {
+      "n": 1,
+      "text": "가운뎃점: title: '완제품 재고·Lot Status 조회',"
+    },
+    "C-13|packages/i18n/src/ko/product-stock-status.ts|450f9ec4c3a4": {
+      "n": 1,
+      "text": "개발 사정 표현: '품목수·LOT수·보유·가용·보류 합계는 지금 이 화면이 받을 수 없습니다. 계약이 정한 요약 집계가 이 화면의 조회에는 아직 연결되지 않았습니다.',"
+    },
+    "C-13|packages/i18n/src/ko/product-stock-status.ts|66df9fcd432f": {
+      "n": 1,
+      "text": "가운뎃점: '창고·품목 이름을 불러오지 못했습니다. 선택지 자리에 사유가 표시됩니다.',"
+    },
+    "C-13|packages/i18n/src/ko/production-result.ts|2ec29c116ab2": {
+      "n": 1,
+      "text": "가운뎃점: printing: '생산 실적 저장 완료 · 라벨 인쇄 중',"
+    },
+    "C-13|packages/i18n/src/ko/production-result.ts|36fef52a0810": {
+      "n": 1,
+      "text": "가운뎃점: issuing: '생산 실적 저장 완료 · 라벨 발행 중',"
+    },
+    "C-13|packages/i18n/src/ko/production-result.ts|666a31e0cb76": {
+      "n": 1,
+      "text": "가운뎃점: completed: 'LOT 마감 완료 · 다음 LOT으로 전환합니다.',"
+    },
+    "C-13|packages/i18n/src/ko/production-result.ts|668f11b810d7": {
+      "n": 1,
+      "text": "가운뎃점: queued: '불량을 저장했습니다 · 연결되면 보냅니다.',"
+    },
+    "C-13|packages/i18n/src/ko/production-result.ts|709d2cf5dc62": {
+      "n": 1,
+      "text": "가운뎃점: splitNote: '검사 수량 · 판정 · 결과 확정',"
+    },
+    "C-13|packages/i18n/src/ko/production-result.ts|733697ddc4a9": {
+      "n": 1,
+      "text": "가운뎃점: note: 'LOT 진행 · 수량 입력 · 라벨 발행',"
+    },
+    "C-13|packages/i18n/src/ko/production-result.ts|c8cfff05f44c": {
+      "n": 1,
+      "text": "가운뎃점: mismatchBlocked: '실적·라벨 상태 확인 필요',"
+    },
+    "C-13|packages/i18n/src/ko/production-result.ts|d1009391f930": {
+      "n": 1,
+      "text": "가운뎃점: printed: '생산 LOT 라벨 인쇄 완료 · 부착한 라벨을 스캔하세요.',"
+    },
+    "C-13|packages/i18n/src/ko/putaway-rule.ts|18c6896b38bb": {
+      "n": 1,
+      "text": "가운뎃점: `${itemLabel} · ${locationLabel} 규칙을 다시 사용합니다.`,"
+    },
+    "C-13|packages/i18n/src/ko/putaway-rule.ts|2367b7c23cc3": {
+      "n": 1,
+      "text": "가운뎃점: '이 창고는 위치를 관리하지 않습니다. 창고·Location 화면에서 관리수준을 변경할 수 있습니다.',"
+    },
+    "C-13|packages/i18n/src/ko/putaway-rule.ts|36ac27150a88": {
+      "n": 2,
+      "text": "가운뎃점: `같은 품목·창고·위치·우선순위의 사용 중인 규칙이 이미 ${String(count)}건 있습니다. 지금 보는 쪽에 없을 수 있습니다.`,"
+    },
+    "C-13|packages/i18n/src/ko/putaway-rule.ts|749ada643b41": {
+      "n": 1,
+      "text": "가운뎃점: `${qty} ${uomLabel} · ${percent}%`,"
+    },
+    "C-13|packages/i18n/src/ko/putaway-rule.ts|7e973b0749f0": {
+      "n": 1,
+      "text": "가운뎃점: keywordLabel: '품목코드·품목명',"
+    },
+    "C-13|packages/i18n/src/ko/putaway-rule.ts|840f3c454806": {
+      "n": 1,
+      "text": "가운뎃점: '보내는 중인 요청이 끝날 때까지 다른 규칙으로 옮기거나 새 저장·사용 전환을 시작할 수 없습니다.',"
+    },
+    "C-13|packages/i18n/src/ko/putaway-rule.ts|ce6504f2cb0c": {
+      "n": 1,
+      "text": "가운뎃점: `${itemLabel} · ${locationLabel} 규칙을 사용 중지합니다.`,"
+    },
+    "C-13|packages/i18n/src/ko/putaway-rule.ts|eb09e0f1570a": {
+      "n": 1,
+      "text": "가운뎃점: `${itemLabel} · ${locationLabel} 선택`,"
+    },
+    "C-13|packages/i18n/src/ko/putaway.ts|73db23f6a870": {
+      "n": 1,
+      "text": "가운뎃점: `수용량 ${capacity} · 현재 ${held} + ${adding}`,"
+    },
+    "C-13|packages/i18n/src/ko/putaway.ts|8d8a8f3ee30b": {
+      "n": 1,
+      "text": "가운뎃점: title: '적치·입고 완료',"
+    },
+    "C-13|packages/i18n/src/ko/putaway.ts|daa2c29163db": {
+      "n": 1,
+      "text": "가운뎃점: scanned: (code: string, name: string) => `${code} · ${name}`,"
+    },
+    "C-13|packages/i18n/src/ko/quality-approval.ts|58670dcf62b1": {
+      "n": 1,
+      "text": "개발 사정 표현: codePlaceholder: '기준값 준비 중',"
+    },
+    "C-13|packages/i18n/src/ko/quality-approval.ts|814e2cc024e3": {
+      "n": 1,
+      "text": "가운뎃점: title: '특채·한도승인 승인 처리',"
+    },
+    "C-13|packages/i18n/src/ko/quality-approval.ts|bc8c280201f4": {
+      "n": 1,
+      "text": "가운뎃점: finished: (total: number): string => `결재 종료 · 전체 ${String(total)}단계`,"
+    },
+    "C-13|packages/i18n/src/ko/recycle-entry.ts|cadcf5e4690e": {
+      "n": 1,
+      "text": "가운뎃점: legend: '창고·위치',"
+    },
+    "C-13|packages/i18n/src/ko/repack-label-issue.ts|784849f68dca": {
+      "n": 1,
+      "text": "가운뎃점: remainderNumberNote: '기존 번호 유지 · 수량 변경 시에만 재출력',"
+    },
+    "C-13|packages/i18n/src/ko/repack-label-issue.ts|c5ff56a0ca5d": {
+      "n": 1,
+      "text": "가운뎃점: `잔량 라벨 재출력 · ${handlingUnitNo} (기존 ${String(issueCount)}회)`,"
+    },
+    "C-13|packages/i18n/src/ko/repack-label-issue.ts|ca8f8483e7c7": {
+      "n": 1,
+      "text": "가운뎃점: `${sourceText} · 새 포장 ${handlingUnitNo} 선택`,"
+    },
+    "C-13|packages/i18n/src/ko/repack-label-issue.ts|d69a897fe3eb": {
+      "n": 1,
+      "text": "가운뎃점: noEvent: (handlingUnitNo: string): string => `${handlingUnitNo} · 재구성 이력 없음`,"
+    },
+    "C-13|packages/i18n/src/ko/repack-label-issue.ts|d8e1b4160169": {
+      "n": 1,
+      "text": "가운뎃점: submit: '발번·인쇄',"
+    },
+    "C-13|packages/i18n/src/ko/repack-label-issue.ts|ee4a27a9c83c": {
+      "n": 1,
+      "text": "가운뎃점: newLabel: (handlingUnitNo: string): string => `새 포장 라벨 · ${handlingUnitNo}`,"
+    },
+    "C-13|packages/i18n/src/ko/repack-label-issue.ts|ef18f0dce06a": {
+      "n": 1,
+      "text": "가운뎃점: namesFailed: 'LOT·품목 이름을 불러오지 못해 일부 칸이 비어 있습니다.',"
+    },
+    "C-13|packages/i18n/src/ko/repack-label-issue.ts|f611687d8d78": {
+      "n": 1,
+      "text": "가운뎃점: unknownEvent: (handlingUnitNo: string): string => `${handlingUnitNo} · 재구성 이력 확인 불가`,"
+    },
+    "C-13|packages/i18n/src/ko/return-receipt.ts|19cb5690a68b": {
+      "n": 1,
+      "text": "가운뎃점: qualityFixedNote: '반품 LOT은 판정이 끝날 때까지 출하·피킹이 막힙니다.',"
+    },
+    "C-13|packages/i18n/src/ko/return-receipt.ts|1fc2a68bed06": {
+      "n": 1,
+      "text": "가운뎃점: '확정된 출하의 반품·클레임은 여기서 입고합니다. 반품은 보류(Hold)로 들어오고, 재작업/폐기 판정은 판정 의뢰 화면에서 합니다.',"
+    },
+    "C-13|packages/i18n/src/ko/return-receipt.ts|4c2c0aa2b0be": {
+      "n": 1,
+      "text": "가운뎃점: remarksHelp: '고객이 말한 내용·상태를 적어 두면 판정에 도움이 됩니다.',"
+    },
+    "C-13|packages/i18n/src/ko/return-receipt.ts|58670dcf62b1": {
+      "n": 1,
+      "text": "개발 사정 표현: codePlaceholder: '기준값 준비 중',"
+    },
+    "C-13|packages/i18n/src/ko/return-receipt.ts|6db3ae260bfe": {
+      "n": 1,
+      "text": "가운뎃점: title: '반품·클레임 입고 등록',"
+    },
+    "C-13|packages/i18n/src/ko/return-receipt.ts|8adc5e7d6451": {
+      "n": 1,
+      "text": "가운뎃점: keywordPlaceholder: '출하번호·LOT 번호',"
+    },
+    "C-13|packages/i18n/src/ko/return-receipt.ts|fa4c9e0d4b4e": {
+      "n": 1,
+      "text": "가운뎃점: effectHold: 'Lot Status는 보류(Hold)로 들어옵니다 — 출하·피킹이 막힙니다',"
+    },
+    "C-13|packages/i18n/src/ko/rework-result-register.ts|3fb07e1516a7": {
+      "n": 1,
+      "text": "가운뎃점: nonconformanceValue: (no: string, description: string): string => `부적합 ${no} · ${description}`,"
+    },
+    "C-13|packages/i18n/src/ko/rework-result-register.ts|a1905f260a8a": {
+      "n": 1,
+      "text": "가운뎃점: headerContext: (workOrderNo: string, itemCode: string): string => `${workOrderNo} · ${itemCode}`,"
+    },
+    "C-13|packages/i18n/src/ko/rework-result-register.ts|c56d528392ac": {
+      "n": 1,
+      "text": "가운뎃점: `불량 ${defect} · 보류 ${hold} → 원 LOT 에 남고 상태가 갈립니다`,"
+    },
+    "C-13|packages/i18n/src/ko/routing.ts|4dd7bb22b315": {
+      "n": 1,
+      "text": "가운뎃점: transitionNeedsRouting: '확정·폐기는 Routing을 먼저 등록해야 할 수 있습니다.',"
+    },
+    "C-13|packages/i18n/src/ko/routing.ts|70b003b879f8": {
+      "n": 1,
+      "text": "가운뎃점: label: 'Routing·공정 마스터',"
+    },
+    "C-13|packages/i18n/src/ko/routing.ts|b4f7ad29da8e": {
+      "n": 1,
+      "text": "가운뎃점: processForm: '공정 등록·편집',"
+    },
+    "C-13|packages/i18n/src/ko/running-change.ts|b8d672a7f9d4": {
+      "n": 1,
+      "text": "가운뎃점: progressUnknown: (targetQty: number) => `목표 ${targetQty} · 진행 확인 불가`,"
+    },
+    "C-13|packages/i18n/src/ko/shipment-confirm.ts|a900d6d53fac": {
+      "n": 1,
+      "text": "가운뎃점: title: '출하 확정·취소',"
+    },
+    "C-13|packages/i18n/src/ko/shipment-confirm.ts|b5f1cc39b1b0": {
+      "n": 1,
+      "text": "가운뎃점: `선택 ${String(count)}건 · 합계 ${quantity}`,"
+    },
+    "C-13|packages/i18n/src/ko/shipment-confirm.ts|c29d34282d2f": {
+      "n": 1,
+      "text": "가운뎃점: `${String(confirmed)}건 확정 · ${String(failed)}건 실패`,"
+    },
+    "C-13|packages/i18n/src/ko/shipment-processing.ts|06c7705235d9": {
+      "n": 1,
+      "text": "가운뎃점: title: '출하 처리(상차·실물 출고)',"
+    },
+    "C-13|packages/i18n/src/ko/shipment-processing.ts|75fa39085402": {
+      "n": 1,
+      "text": "가운뎃점: '이 처리는 출하를 미확정 상태로 만듭니다 — 이 화면은 확정하지 않으며, 확정·취소는 별도 화면에서 진행합니다.',"
+    },
+    "C-13|packages/i18n/src/ko/shipment-request-create.ts|83886cf250ab": {
+      "n": 1,
+      "text": "가운뎃점: title: '출하지시서 Import·작업지시 생성',"
+    },
+    "C-13|packages/i18n/src/ko/shipment-request-create.ts|bd560895e42f": {
+      "n": 1,
+      "text": "가운뎃점: lineIncomplete: '라인의 품목·단위·요청 수량을 채우세요.',"
+    },
+    "C-13|packages/i18n/src/ko/shipment-request-create.ts|ec4f818b4d25": {
+      "n": 1,
+      "text": "가운뎃점: fromOrderLocked: '지시서 경유 편성이라 고객·납품처와 라인 품목·수량은 고칠 수 없습니다.',"
+    },
+    "C-13|packages/i18n/src/ko/shipment-schedule.ts|49df84855c39": {
+      "n": 1,
+      "text": "개발 사정 표현: summaryNote: '집계는 준비 중입니다.',"
+    },
+    "C-13|packages/i18n/src/ko/shipment-schedule.ts|cf480b077ead": {
+      "n": 1,
+      "text": "가운뎃점: referencesFailed: '고객·납품처 이름을 불러오지 못했습니다. 이름 자리에 사유가 표시됩니다.',"
+    },
+    "C-13|packages/i18n/src/ko/shipping-packing-label.ts|9d7480dec93b": {
+      "n": 1,
+      "text": "가운뎃점: issue: '발행·인쇄',"
+    },
+    "C-13|packages/i18n/src/ko/shipping-packing-label.ts|ccad6473ee03": {
+      "n": 1,
+      "text": "가운뎃점: title: '라벨 상태·재출력',"
+    },
+    "C-13|packages/i18n/src/ko/shipping-unit.ts|9e0511a8d415": {
+      "n": 1,
+      "text": "가운뎃점: `${itemCode} · ${lotNo} · ${qty}`,"
+    },
+    "C-13|packages/i18n/src/ko/shipping-unit.ts|baeefabdba8b": {
+      "n": 1,
+      "text": "가운뎃점: issued: (seq: number): string => `납품 라벨 1건 발행 · 회차 ${String(seq)}`,"
+    },
+    "C-13|packages/i18n/src/ko/shopfloor-receipt.ts|62b7d0df6058": {
+      "n": 1,
+      "text": "가운뎃점: summary: (no: string, count: number) => `${no} · ${String(count)}라인`,"
+    },
+    "C-13|packages/i18n/src/ko/shopfloor-receipt.ts|c927b88aa249": {
+      "n": 1,
+      "text": "가운뎃점: '도착한 실물이 출고 수량보다 많으면 출고 전표를 먼저 정정해야 합니다. 관리웹 물류 전표 조회·취소에서 해당 전표의 취소를 요청하거나, 초과분은 자재 불출 요청으로 출고 전표를 새로 발행합니다.',"
+    },
+    "C-13|packages/i18n/src/ko/shopfloor-receipt.ts|dd7c28fe6127": {
+      "n": 2,
+      "text": "가운뎃점: name: (item: string, lotNo: string) => (item === '' ? lotNo : `${item} · ${lotNo}`),"
+    },
+    "C-13|packages/i18n/src/ko/shot-conversion.ts|2945491cf880": {
+      "n": 1,
+      "text": "가운뎃점: overlapNote: '범위가 겹치면 더 좁은 것이 이깁니다 — 품목 · 공정 · 공장 · 사업부 차례입니다.',"
+    },
+    "C-13|packages/i18n/src/ko/shot-conversion.ts|4ab8758e8724": {
+      "n": 1,
+      "text": "가운뎃점: '고르지 않은 축은 전체를 뜻합니다. 좁게 지정할수록 겹칠 때 먼저 적용됩니다 — 품목 · 공정 · 공장 · 사업부 차례입니다.',"
+    },
+    "C-13|packages/i18n/src/ko/shot-conversion.ts|a214fb25c549": {
+      "n": 1,
+      "text": "가운뎃점: '툴·품목·공정을 고르면 그 조합에 실제로 적용되는 정책과 그것으로 계산한 타발수를 보입니다.',"
+    },
+    "C-13|packages/i18n/src/ko/stock-adjust.ts|04b0c6c0ca7e": {
+      "n": 1,
+      "text": "가운뎃점: directNote: '현장 실측·직접 등록에는 대상 실사가 없습니다.',"
+    },
+    "C-13|packages/i18n/src/ko/stock-adjust.ts|4f08fe2de45b": {
+      "n": 1,
+      "text": "가운뎃점: bookQtyStale: '위 표의 장부·실물은 등록할 때 받은 값이고 전기 뒤에 다시 부르지 않습니다.',"
+    },
+    "C-13|packages/i18n/src/ko/stock-adjust.ts|83ac10d4ab30": {
+      "n": 1,
+      "text": "개발 사정 표현: '상신 응답에 실려 온 승인 요청 값이 조회할 수 있는 값이 아닙니다. 결재함에서 확인하거나 담당자에게 알려 주세요.',"
+    },
+    "C-13|packages/i18n/src/ko/stock-adjust.ts|b26ab7686a96": {
+      "n": 1,
+      "text": "가운뎃점: '품목·단위·자재 LOT 이름을 불러오지 못했습니다. 이름 자리에 사유가 표시됩니다.',"
+    },
+    "C-13|packages/i18n/src/ko/stock-adjust.ts|b345faa46904": {
+      "n": 1,
+      "text": "가운뎃점: '위치·품목·단위·자재 LOT 이름을 불러오지 못했습니다. 이름 자리에 사유가 표시됩니다.',"
+    },
+    "C-13|packages/i18n/src/ko/stock-adjust.ts|bc8c280201f4": {
+      "n": 1,
+      "text": "가운뎃점: finished: (total: number): string => `결재 종료 · 전체 ${String(total)}단계`,"
+    },
+    "C-13|packages/i18n/src/ko/stock-reinstatement.ts|2bb3f738e2d6": {
+      "n": 1,
+      "text": "가운뎃점: noUndo: '되돌리기 버튼은 없습니다. 다시 막으려면 판정·보류 절차를 거쳐야 합니다.',"
+    },
+    "C-13|packages/i18n/src/ko/stock-status.ts|1c9feada7588": {
+      "n": 1,
+      "text": "가운뎃점: referencesFailed: '단위·발급처 이름을 불러오지 못했습니다. 이름 자리에 사유가 표시됩니다.',"
+    },
+    "C-13|packages/i18n/src/ko/stock-status.ts|24187482f6c2": {
+      "n": 1,
+      "text": "가운뎃점: '품목·LOT·창고·위치·단위 이름을 불러오지 못했습니다. 이름 자리에 사유가 표시됩니다.',"
+    },
+    "C-13|packages/i18n/src/ko/stock-status.ts|32ced748fac4": {
+      "n": 1,
+      "text": "개발 사정 표현: '아직 확정되지 않은 임시 목록입니다. 이번 조회 결과에 나온 값으로 만들어, 결과에 없는 값은 목록에 없습니다.',"
+    },
+    "C-13|packages/i18n/src/ko/stock-status.ts|80f831536073": {
+      "n": 1,
+      "text": "가운뎃점: '창고·위치·품목·LOT 이름을 불러오지 못했습니다. 이름 자리에 사유가 표시됩니다.',"
+    },
+    "C-13|packages/i18n/src/ko/stock-status.ts|ce1aaf4d4663": {
+      "n": 1,
+      "text": "가운뎃점: listReferencesFailed: '단위·소유처 이름을 불러오지 못했습니다. 이름 자리에 사유가 표시됩니다.',"
+    },
+    "C-13|packages/i18n/src/ko/stock-status.ts|ea2d10fc4dd7": {
+      "n": 1,
+      "text": "가운뎃점: title: '재고 현황·상태 조회',"
+    },
+    "C-13|packages/i18n/src/ko/stock-transfer.ts|62b7d0df6058": {
+      "n": 1,
+      "text": "가운뎃점: item: (no: string, count: number) => `${no} · ${String(count)}라인`,"
+    },
+    "C-13|packages/i18n/src/ko/stock-transfer.ts|dd7c28fe6127": {
+      "n": 1,
+      "text": "가운뎃점: name: (item: string, lotNo: string) => (item === '' ? lotNo : `${item} · ${lotNo}`),"
+    },
+    "C-13|packages/i18n/src/ko/stocktaking.ts|7e8e1ccb2140": {
+      "n": 1,
+      "text": "개발 사정 표현: '실물 수량 수정 이력: 이력의 표시 규약이 아직 정해지지 않아 지금은 볼 수 없습니다. 규약이 정해지면 이 자리에서 볼 수 있습니다.',"
+    },
+    "C-13|packages/i18n/src/ko/stocktaking.ts|bfc3ec6ddb8e": {
+      "n": 1,
+      "text": "가운뎃점: '블라인드 실사에서는 장부 수량이 내려오지 않아 장부·차이 수량이 보이지 않습니다. 개시한 뒤에는 바꿀 수 없습니다.',"
+    },
+    "C-13|packages/i18n/src/ko/stocktaking.ts|f59afe7bf712": {
+      "n": 1,
+      "text": "가운뎃점: '품목·단위·자재 LOT의 이름을 불러오지 못했습니다. 이름 자리에 사유가 표시됩니다.',"
+    },
+    "C-13|packages/i18n/src/ko/supplier-return.ts|2419ece81310": {
+      "n": 1,
+      "text": "개발 사정 표현: '재고가 얼마나 줄었는지와 전기가 실제로 끝났는지는 이 화면이 확인하지 않았습니다 — 응답에 그 정보가 없습니다.',"
+    },
+    "C-13|packages/i18n/src/ko/supplier-return.ts|3bc40293eb1a": {
+      "n": 1,
+      "text": "가운뎃점: '품목·단위·자재 LOT·위치 이름을 불러오지 못했습니다. 이름 자리에 사유가 표시됩니다.',"
+    },
+    "C-13|packages/i18n/src/ko/supplier-return.ts|703eb12bc34f": {
+      "n": 2,
+      "text": "가운뎃점: linePair: (item: string, lot: string, qty: string): string => `${item} · ${lot} · ${qty}`,"
+    },
+    "C-13|packages/i18n/src/ko/supplier-return.ts|aff227168f3e": {
+      "n": 1,
+      "text": "가운뎃점: lineMissingValues: '이 줄에는 반품에 필요한 값(품목·자재 LOT·단위·위치)이 빠져 있습니다.',"
+    },
+    "C-13|packages/i18n/src/ko/supplier-return.ts|b309cfffb465": {
+      "n": 1,
+      "text": "가운뎃점: `고른 ${String(count)}줄 · 단위가 섞여 합계를 내지 않습니다`,"
+    },
+    "C-13|packages/i18n/src/ko/supplier-return.ts|dfe857f5b12c": {
+      "n": 1,
+      "text": "가운뎃점: '출고 유형·원천 문서 유형·도착지 유형·반품 사유의 값 목록이 아직 정해지지 않아 반품을 처리할 수 없습니다. 대상 조회와 줄·수량 입력까지는 지금도 쓸 수 있습니다.',"
+    },
+    "C-13|packages/i18n/src/ko/supplier-return.ts|e9ce9671dd1a": {
+      "n": 1,
+      "text": "가운뎃점: `고른 ${String(count)}줄 · 반품 수량 합계 ${String(totalQty)} ${uom}`,"
+    },
+    "C-13|packages/i18n/src/ko/supplier-return.ts|fdcba8b932bb": {
+      "n": 1,
+      "text": "가운뎃점: '품목·단위·자재 LOT·위치 이름 목록이 일부만 왔습니다. 이름 자리의 「알 수 없음」은 값이 잘못된 것이 아니라 이 목록에 아직 없다는 뜻일 수 있습니다.',"
+    },
+    "C-13|packages/i18n/src/ko/suspicious-material-hold.ts|0392a22f998e": {
+      "n": 1,
+      "text": "가운뎃점: `${String(count)}개 LOT의 출고·출하·피킹을 막습니다. 해제는 W-03-02에서 별도로 처리하며 이미 출고된 수량은 회수되지 않습니다.`,"
+    },
+    "C-13|packages/i18n/src/ko/suspicious-material-hold.ts|0af204dc96f4": {
+      "n": 1,
+      "text": "가운뎃점: quantity: '보유 수량·단위',"
+    },
+    "C-13|packages/i18n/src/ko/suspicious-material-hold.ts|0b111652bfd4": {
+      "n": 1,
+      "text": "가운뎃점: factsUnavailable: '위치·단위 또는 도착 상태를 확인할 때까지 등록할 수 없습니다.',"
+    },
+    "C-13|packages/i18n/src/ko/suspicious-material-hold.ts|1605bac18c8c": {
+      "n": 1,
+      "text": "가운뎃점: successNext: 'Lot Status 판정·전이 처리에서 후속 처리하세요.',"
+    },
+    "C-13|packages/i18n/src/ko/suspicious-material-hold.ts|458c4d86c639": {
+      "n": 1,
+      "text": "가운뎃점: statusAndTransition: 'Lot Status·최근 전이',"
+    },
+    "C-13|packages/i18n/src/ko/suspicious-material-hold.ts|635c12047d05": {
+      "n": 1,
+      "text": "가운뎃점: `총 ${total}건 · ${String(page)} / ${String(pages)}쪽`,"
+    },
+    "C-13|packages/i18n/src/ko/suspicious-material-hold.ts|7a79a9c0ddbe": {
+      "n": 1,
+      "text": "가운뎃점: fullyHeld: (lotNo: string): string => `${lotNo} · 이미 전량 보류되어 선택할 수 없습니다.`,"
+    },
+    "C-13|packages/i18n/src/ko/suspicious-material-hold.ts|dc171fb5e7b4": {
+      "n": 1,
+      "text": "가운뎃점: `${String(count)}개 LOT을 출고·출하·피킹할 수 없게 합니다.`,"
+    },
+    "C-13|packages/i18n/src/ko/temporary-putaway.ts|425d42ef3ee8": {
+      "n": 1,
+      "text": "가운뎃점: action: '적치·입고 완료로 가기',"
+    },
+    "C-13|packages/i18n/src/ko/temporary-putaway.ts|b0b836432709": {
+      "n": 1,
+      "text": "가운뎃점: description: '적치·입고 완료 화면에서 지시를 고른 뒤에 오세요.',"
+    },
+    "C-13|packages/i18n/src/ko/tool-master.ts|987359991af1": {
+      "n": 1,
+      "text": "가운뎃점: typeOptionsEmpty: '도구 유형 값이 없습니다 · 공통코드에서 등록하세요',"
+    },
+    "C-13|packages/i18n/src/ko/users-roles.ts|2159f3cb4fd7": {
+      "n": 1,
+      "text": "가운뎃점: '05': '설비·툴',"
+    },
+    "C-13|packages/i18n/src/ko/users-roles.ts|2253f9594b6a": {
+      "n": 1,
+      "text": "가운뎃점: roles: '역할·권한',"
+    },
+    "C-13|packages/i18n/src/ko/users-roles.ts|65e26fcbbfed": {
+      "n": 2,
+      "text": "가운뎃점: title: '사용자·역할·권한',"
+    },
+    "C-13|packages/i18n/src/ko/users-roles.ts|b0a6a4f44d44": {
+      "n": 1,
+      "text": "가운뎃점: '01': '자재·창고',"
+    },
+    "C-13|packages/i18n/src/ko/users-roles.ts|d94e86af999a": {
+      "n": 1,
+      "text": "가운뎃점: pair: (businessUnit: string, plant: string): string => `${businessUnit} · ${plant}`,"
+    },
+    "C-13|packages/i18n/src/ko/users-roles.ts|f605aef482a7": {
+      "n": 1,
+      "text": "가운뎃점: '「사용자·역할·권한 관리」 권한을 가진 사람이 한 명도 남지 않아 저장하지 않았습니다. 다른 역할에 이 권한을 먼저 준 뒤 다시 거두세요.',"
+    },
+    "C-13|packages/i18n/src/ko/warehouse-layout.ts|182351eafd18": {
+      "n": 1,
+      "text": "가운뎃점: empty: '이 창고에 등록된 위치가 없습니다. 창고·Location 화면에서 먼저 등록하세요.',"
+    },
+    "C-13|packages/i18n/src/ko/warehouse-location.ts|4f55aa0e9918": {
+      "n": 1,
+      "text": "가운뎃점: `이미지 성공 ${String(success)}건 · 실패 ${String(failed)}건 · 불러오는 중 ${String(pending)}건`,"
+    },
+    "C-13|packages/i18n/src/ko/warehouse-location.ts|4ffc1b3f9075": {
+      "n": 1,
+      "text": "가운뎃점: `${locationCode} · ${String(issueSeq)}회`,"
+    },
+    "C-13|packages/i18n/src/ko/warehouse-location.ts|562bafa7b136": {
+      "n": 1,
+      "text": "가운뎃점: title: '창고·Location',"
+    },
+    "C-13|packages/i18n/src/ko/wip-handover.ts|eab6235e6964": {
+      "n": 1,
+      "text": "가운뎃점: return status === '' ? head : `${head} · ${status}`;"
+    },
+    "C-13|packages/i18n/src/ko/work-calendar.ts|627954b335e0": {
+      "n": 1,
+      "text": "가운뎃점: pickDay: (date: string, status: string): string => `${date} · ${status} — 일자 설정 고치기`,"
+    },
+    "C-13|packages/i18n/src/ko/work-order-close.ts|4dd34acb2edf": {
+      "n": 1,
+      "text": "가운뎃점: title: 'W/O 마감·ERP 실적 송신',"
+    },
+    "C-13|packages/i18n/src/ko/work-order-close.ts|7b4243abe9a9": {
+      "n": 1,
+      "text": "가운뎃점: '생산 실적 부속 항목(투입자재·공수·설비시간·비가동)의 선택은 항목 코드가 정해지면 열립니다.',"
+    },
+    "C-13|packages/i18n/src/ko/work-order-progress.ts|4f9421d0067b": {
+      "n": 1,
+      "text": "가운뎃점: crewLoadError: '작업 세션·작업자별 실적을 받지 못했습니다.',"
+    },
+    "C-13|packages/i18n/src/ko/work-order-progress.ts|a742c12475b4": {
+      "n": 1,
+      "text": "가운뎃점: historyUnavailable: '실적 이력·생산LOT은 아직 이 창에서 보이지 않습니다.',"
+    },
+    "C-13|packages/i18n/src/ko/work-order-progress.ts|adcc28e41e50": {
+      "n": 1,
+      "text": "개발 사정 표현: '상태별 건수·수량 합계·달성률은 서버가 아직 내려 주지 않습니다. 전체 건수만 정확합니다.',"
+    },
+    "C-13|packages/i18n/src/ko/work-order-progress.ts|be40ed17c32a": {
+      "n": 1,
+      "text": "가운뎃점: roles: { MAIN: '정', SUB: '부', BOTH: '정·부' },"
+    },
+    "C-13|packages/i18n/src/ko/work-order-progress.ts|cd37f855d660": {
+      "n": 1,
+      "text": "가운뎃점: crewLoading: '작업 세션·작업자별 실적을 받는 중입니다.',"
+    },
+    "C-13|packages/i18n/src/ko/work-precheck-gate.ts|42f166d43778": {
+      "n": 1,
+      "text": "가운뎃점: ? `${inspectedAt} · ${result}`"
+    },
+    "C-13|packages/i18n/src/ko/work-precheck-gate.ts|8fef299e3932": {
+      "n": 1,
+      "text": "가운뎃점: : `${inspectedAt} · 사번 ${workerNo} · ${result}`,"
+    },
+    "C-13|packages/i18n/src/ko/work-precheck-gate.ts|d6a55e734e0f": {
+      "n": 1,
+      "text": "가운뎃점: columnDetail: '언제 · 누가',"
+    },
+    "C-13|packages/i18n/src/ko/work-precheck-gate.ts|e0b7e4a5811e": {
+      "n": 1,
+      "text": "가운뎃점: scope: (equipment: string, from: string): string => `설비 ${equipment} · 주기 내(${from}~)`,"
+    },
+    "C-13|packages/i18n/src/ko/work-start.ts|5f89e520ad35": {
+      "n": 1,
+      "text": "가운뎃점: '이 단말에 매핑된 공정이 없습니다. 관리웹 단말·공정 매핑에서 공정을 지정해 주세요.',"
+    },
+    "C-13|packages/i18n/src/ko/worker-assignment.ts|7e4a9c311fc8": {
+      "n": 1,
+      "text": "개발 사정 표현: preparing: '단말 등록 확인 및 업무 준비 중…',"
+    },
+    "C-13|packages/i18n/src/ko/zalo-connection.ts|46c02f069166": {
+      "n": 1,
+      "text": "가운뎃점: templateId: '템플릿 ID는 영문·숫자 1~40자이거나 비워 둡니다.',"
+    },
+    "C-4|apps/mobile/src/screens/device-registration/screen.tsx|241a8f22210a": {
+      "n": 1,
+      "text": "<Button type=\"submit\" disabled={code.trim() === '' || phase === 'offline'}>"
+    },
+    "C-4|apps/mobile/src/screens/device-registration/sign-in.tsx|5aa4b07e5993": {
+      "n": 1,
+      "text": "<Button variant=\"filled\" size=\"2xl\" disabled={entry === '' || directory === null}"
+    },
+    "C-4|apps/mobile/src/screens/device-registration/sign-in.tsx|7803b56c5ec3": {
+      "n": 1,
+      "text": "<Button variant=\"filled\" size=\"2xl\" disabled={expired} onClick={() =>"
+    },
+    "C-4|apps/mobile/src/screens/device-registration/sign-in.tsx|929b07dd1484": {
+      "n": 1,
+      "text": "<Button variant=\"filled\" size=\"xl\" disabled={!loaded}"
+    },
+    "C-4|apps/mobile/src/screens/equipment-failure/screen.tsx|e1e79a215209": {
+      "n": 1,
+      "text": "<Button className=\"equipment-failure__wide\" variant=\"filled\" size=\"xl\""
+    },
+    "C-4|apps/mobile/src/screens/equipment-inspection/screen.tsx|0fb64f9fbd7b": {
+      "n": 1,
+      "text": "<Button className=\"inspection__wide\" variant=\"filled\" size=\"2xl\""
+    },
+    "C-4|apps/mobile/src/screens/inbound-receipt/screen.tsx|1e1cd20b5e6b": {
+      "n": 1,
+      "text": "<Button className=\"receipt__wide\" variant=\"filled\" size=\"2xl\""
+    },
+    "C-4|apps/mobile/src/screens/inbound-receipt/screen.tsx|8a0158c3d4fc": {
+      "n": 1,
+      "text": "<Button variant=\"filled\" size=\"xl\""
+    },
+    "C-4|apps/mobile/src/screens/inbound-variance/screen.tsx|31b34fe9b947": {
+      "n": 1,
+      "text": "<Button className=\"variance__wide\" variant=\"filled\" size=\"2xl\""
+    },
+    "C-4|apps/mobile/src/screens/iqc-skip-request/screen.tsx|5d208bb28706": {
+      "n": 1,
+      "text": "<Button className=\"iqc-skip__wide\" variant=\"filled\" size=\"2xl\" disable"
+    },
+    "C-4|apps/mobile/src/screens/material-lot-scan/screen.tsx|4a1c1d8670f4": {
+      "n": 1,
+      "text": "<Button className=\"material-lot-scan__wide\" variant=\"filled\" size=\"2"
+    },
+    "C-4|apps/mobile/src/screens/material-picking/screen.tsx|52d7fd5f6cbe": {
+      "n": 1,
+      "text": "<Button variant=\"filled\" size=\"2xl\" className=\"picking-out__wide\" disa"
+    },
+    "C-4|apps/mobile/src/screens/material-picking/screen.tsx|53f03cc7cfd4": {
+      "n": 1,
+      "text": "<Button variant=\"filled\" size=\"2xl\" className=\"picking-out__wi"
+    },
+    "C-4|apps/mobile/src/screens/packing-repack/screen.tsx|565742730869": {
+      "n": 1,
+      "text": "<Button className=\"repack__wide\" variant=\"filled\" size=\"2xl\""
+    },
+    "C-4|apps/mobile/src/screens/physical-count/screen.tsx|5232b6fc96d3": {
+      "n": 1,
+      "text": "<Button className=\"physical-count__wide\" variant=\"filled\" size=\"2xl\""
+    },
+    "C-4|apps/mobile/src/screens/product-receipt/screen.tsx|fb007eb45fda": {
+      "n": 1,
+      "text": "<Button className=\"product-receipt__wide\" variant=\"filled\" siz"
+    },
+    "C-4|apps/mobile/src/screens/putaway/screen.tsx|d3b1138f4c52": {
+      "n": 1,
+      "text": "<Button className=\"putaway__wide\" variant=\"filled\" size=\"2xl\""
+    },
+    "C-4|apps/mobile/src/screens/recycle-entry/screen.tsx|c0eded038efe": {
+      "n": 1,
+      "text": "<Button className=\"recycle__wide\" variant=\"filled\" size=\"2xl\""
+    },
+    "C-4|apps/mobile/src/screens/shopfloor-receipt/screen.tsx|ead431ac0e51": {
+      "n": 1,
+      "text": "<Button className=\"shopfloor-receipt__wide\" variant=\"filled\" size=\"2"
+    },
+    "C-4|apps/mobile/src/screens/stock-transfer/screen.tsx|6ce1af4e2f80": {
+      "n": 1,
+      "text": "<Button className=\"stock-transfer__wide\" variant=\"filled\" size=\"2xl\""
+    },
+    "C-4|apps/mobile/src/screens/stock-transfer/screen.tsx|d1bffeb6d0b8": {
+      "n": 1,
+      "text": "<Button className=\"stock-transfer__wide\" variant=\"filled\" size=\"2xl\""
+    },
+    "C-4|apps/mobile/src/screens/temporary-putaway/screen.tsx|60e16b40e87c": {
+      "n": 1,
+      "text": "<Button className=\"temporary__wide\" variant=\"filled\" size=\"2xl\" disabl"
+    },
+    "C-4|apps/web/src/ds-candidates/numeric-keypad.tsx|93da827721f1": {
+      "n": 1,
+      "text": "<Button type=\"button\" variant=\"filled\" size=\"xl\" className=\"pop-touch-target n"
+    },
+    "C-4|apps/web/src/patterns/item-picker/dialog.tsx|334aa3d6ecaf": {
+      "n": 1,
+      "text": "<Button variant=\"filled\" disabled={picked.length === 0} onClick={() => {"
+    },
+    "C-4|apps/web/src/patterns/resource-picker/dialog.tsx|b0b100ce199d": {
+      "n": 1,
+      "text": "<Button variant=\"filled\" disabled={picked === null} onClick={() => {"
+    },
+    "C-4|apps/web/src/screens/alarm-recipient-settings/recipient-picker.tsx|161e7e1b7fb5": {
+      "n": 1,
+      "text": "<Button disabled={picked.size === 0} onClick={() => { onAdd([...picked.v"
+    },
+    "C-4|apps/web/src/screens/approval-inbox/decision-pane.tsx|c98617546d25": {
+      "n": 1,
+      "text": "<Button variant=\"filled\" disabled={isLocked} onClick={onApprove}>"
+    },
+    "C-4|apps/web/src/screens/common-code/code-group-form-pane.tsx|a4258bd2d5e0": {
+      "n": 1,
+      "text": "<Button disabled={!isDirty} onClick={onSave}>"
+    },
+    "C-4|apps/web/src/screens/common-code/department-form-pane.tsx|a4258bd2d5e0": {
+      "n": 1,
+      "text": "<Button disabled={!isDirty} onClick={onSave}>"
+    },
+    "C-4|apps/web/src/screens/common-code/qualification-pane.tsx|a4258bd2d5e0": {
+      "n": 1,
+      "text": "<Button disabled={!isDirty} onClick={onSave}>"
+    },
+    "C-4|apps/web/src/screens/dispatch-history/screen.tsx|8f50b1600bbc": {
+      "n": 1,
+      "text": "<Button disabled={draftReason !== null} onClick={search}>"
+    },
+    "C-4|apps/web/src/screens/disposal-issue/gi-filter-bar.tsx|24b95f1cb120": {
+      "n": 1,
+      "text": "<Button disabled={isLocked} onClick={search}>"
+    },
+    "C-4|apps/web/src/screens/disposal-issue/gr-filter-bar.tsx|24b95f1cb120": {
+      "n": 1,
+      "text": "<Button disabled={isLocked} onClick={search}>"
+    },
+    "C-4|apps/web/src/screens/disposition-decision/concession-pane.tsx|fdc8667233ae": {
+      "n": 1,
+      "text": "<Button disabled={blocked !== null || isSaving} onClick={submit}>"
+    },
+    "C-4|apps/web/src/screens/downtime-register/action-bar.tsx|b9cbcb84d6a8": {
+      "n": 1,
+      "text": "<Button variant=\"filled\" size=\"2xl\" disabled={block !== null || isIncomplete}"
+    },
+    "C-4|apps/web/src/screens/downtime-register/ongoing-panel.tsx|7f7e9060a513": {
+      "n": 1,
+      "text": "<Button variant=\"filled\" size=\"2xl\" disabled={!canClose} onClick={onClose}>"
+    },
+    "C-4|apps/web/src/screens/emergency-work-order-field/detail-pane.tsx|8f294033dc31": {
+      "n": 2,
+      "text": "<Button size=\"2xl\" variant=\"filled\" disabled>"
+    },
+    "C-4|apps/web/src/screens/equipment-failure/detail-pane.tsx|5078d2501faf": {
+      "n": 1,
+      "text": "<Button onClick={onComplete} disabled={isSaving || completeReason !== null}>"
+    },
+    "C-4|apps/web/src/screens/equipment-failure/screen.tsx|0b5c86e965ca": {
+      "n": 1,
+      "text": "<Button onClick={confirmPending} disabled={isSaving}>"
+    },
+    "C-4|apps/web/src/screens/equipment-master/inspection-assign-dialog.tsx|526c11de9988": {
+      "n": 1,
+      "text": "<Button onClick={onSave} disabled={isSaving}>"
+    },
+    "C-4|apps/web/src/screens/equipment-master/inspection-item-dialog.tsx|526c11de9988": {
+      "n": 1,
+      "text": "<Button onClick={onSave} disabled={isSaving}>"
+    },
+    "C-4|apps/web/src/screens/erp-bom/screen.tsx|e3d256fd96f3": {
+      "n": 1,
+      "text": "<Button type=\"submit\" disabled={applied.parentItemId === null}>"
+    },
+    "C-4|apps/web/src/screens/expedited-shipment/screen.tsx|5a4a11bcdd67": {
+      "n": 1,
+      "text": "<Button disabled={lockReason !== undefined} onClick={() => { setShowErro"
+    },
+    "C-4|apps/web/src/screens/gauge-calibration/history-form.tsx|86aa4a1a795a": {
+      "n": 1,
+      "text": "<Button onClick={onSubmit} disabled={isSaving || resultBlocked}>"
+    },
+    "C-4|apps/web/src/screens/gauge-calibration/save-confirm-dialog.tsx|3c185b1c3e80": {
+      "n": 1,
+      "text": "<Button onClick={onConfirm} disabled={isSaving}>"
+    },
+    "C-4|apps/web/src/screens/gauge-master/gauge-form-dialog.tsx|1635e29a559f": {
+      "n": 1,
+      "text": "<Button disabled={isSaving} onClick={onSave}>"
+    },
+    "C-4|apps/web/src/screens/goods-receipt/ir-filter-bar.tsx|24b95f1cb120": {
+      "n": 1,
+      "text": "<Button disabled={isLocked} onClick={search}>"
+    },
+    "C-4|apps/web/src/screens/inspection-result-insights/filter-bar.tsx|dd048b46fa20": {
+      "n": 1,
+      "text": "<Button disabled={reason !== null} onClick={() => onSearch(draft)}>"
+    },
+    "C-4|apps/web/src/screens/iqc-inspection/result-form-pane.tsx|fe5d9aee68d0": {
+      "n": 1,
+      "text": "<Button type=\"button\" variant=\"filled\" size="
+    },
+    "C-4|apps/web/src/screens/iqc-skip-approval/decision-pane.tsx|c98617546d25": {
+      "n": 1,
+      "text": "<Button variant=\"filled\" disabled={isLocked} onClick={onApprove}>"
+    },
+    "C-4|apps/web/src/screens/lot-status-transition/candidate-screen.tsx|2332dc000ffd": {
+      "n": 1,
+      "text": "<Button disabled={confirmationPinned || periodError !== null} onClick={apply}>"
+    },
+    "C-4|apps/web/src/screens/lot-status-transition/create-hold-execution.tsx|1b2ac0dc9c0f": {
+      "n": 1,
+      "text": "<Button disabled={write.isSaving || validation.body === null} onClick={() => {"
+    },
+    "C-4|apps/web/src/screens/lot-status-transition/release-hold-execution.tsx|1b2ac0dc9c0f": {
+      "n": 1,
+      "text": "<Button disabled={write.isSaving || validation.body === null} onClick={() => {"
+    },
+    "C-4|apps/web/src/screens/maintenance-order/order-form.tsx|dd21f41e4f7b": {
+      "n": 1,
+      "text": "<Button onClick={onSubmit} disabled={isSaving}>"
+    },
+    "C-4|apps/web/src/screens/maintenance-order/screen.tsx|064c1b665dc0": {
+      "n": 1,
+      "text": "<Button onClick={() => { create.write(toCreateBody(draft, triggers));"
+    },
+    "C-4|apps/web/src/screens/maintenance-order/screen.tsx|b8d3ab0a8a6b": {
+      "n": 1,
+      "text": "<Button onClick={() => { cancel.write(undefined); }}"
+    },
+    "C-4|apps/web/src/screens/maintenance-result/screen.tsx|7236f8379533": {
+      "n": 1,
+      "text": "<Button onClick={submit} disabled={create.isSaving}>"
+    },
+    "C-4|apps/web/src/screens/notice/notice-form.tsx|5e64c47e10a0": {
+      "n": 1,
+      "text": "<Button disabled={isSaving} onClick={onSubmit}>"
+    },
+    "C-4|apps/web/src/screens/notice/screen.tsx|06dab196421f": {
+      "n": 1,
+      "text": "<Button disabled={!isPublishable(selected.statusCode) || publish.isSaving} onC"
+    },
+    "C-4|apps/web/src/screens/notice/screen.tsx|7460dd507124": {
+      "n": 1,
+      "text": "<Button disabled={publish.isSaving || close.isSaving} onClick={() => {"
+    },
+    "C-4|apps/web/src/screens/oqc-inspection/result-form-pane.tsx|0c972636caab": {
+      "n": 1,
+      "text": "<Button type=\"submit\" variant=\"filled\" size=\"sm\" disabled={sav"
+    },
+    "C-4|apps/web/src/screens/oqc-inspection/skip-pane.tsx|251c841181ce": {
+      "n": 1,
+      "text": "<Button variant=\"filled\" disabled={isSaving} onClick={() => {"
+    },
+    "C-4|apps/web/src/screens/over-receipt-split/po-filter-bar.tsx|24b95f1cb120": {
+      "n": 1,
+      "text": "<Button disabled={isLocked} onClick={search}>"
+    },
+    "C-4|apps/web/src/screens/packing-label-reprint/reprint-pane.tsx|c517b156ada4": {
+      "n": 1,
+      "text": "<Button size=\"2xl\" className=\"pop-reprint-submit\" disabled={!canSubmit} onClick={onSubmit}>"
+    },
+    "C-4|apps/web/src/screens/packing-result/screen.tsx|050d52ca950a": {
+      "n": 1,
+      "text": "<Button disabled={lockReason !== undefined || confirm.isPending} onClick={() => {"
+    },
+    "C-4|apps/web/src/screens/packing-result/screen.tsx|4efa79c2a98a": {
+      "n": 1,
+      "text": "<Button type=\"button\" variant=\"filled\" size=\"2xl\" disa"
+    },
+    "C-4|apps/web/src/screens/packing-result/screen.tsx|a8a8d667bdfb": {
+      "n": 1,
+      "text": "<Button type=\"button\" variant=\"filled\" size=\"2xl\""
+    },
+    "C-4|apps/web/src/screens/packing-work/packing-pane.tsx|89c8834fe3d7": {
+      "n": 1,
+      "text": "<Button type=\"button\" variant=\"filled\" size=\"xl\" className={popTouchCl"
+    },
+    "C-4|apps/web/src/screens/packing-work/scan-pane.tsx|7b11da60c700": {
+      "n": 1,
+      "text": "<Button type=\"button\" variant=\"filled\" size=\"xl\" className={popTouchCl"
+    },
+    "C-4|apps/web/src/screens/po-change-review/screen.tsx|cc4e27c10ee4": {
+      "n": 1,
+      "text": "<Button disabled={lock !== undefined || detail.isPending} onClick={() => {"
+    },
+    "C-4|apps/web/src/screens/pop-material-defect/screen.tsx|fbd629e7ff37": {
+      "n": 1,
+      "text": "<Button variant=\"filled\" size=\"xl\" disabled={blocked !== null"
+    },
+    "C-4|apps/web/src/screens/pop-material-lot-label/reissue-dialog.tsx|eaf39b7b7d22": {
+      "n": 1,
+      "text": "<Button className={`${popTouchClass('critical')} pop-reissue-action`} size=\"xl\""
+    },
+    "C-4|apps/web/src/screens/pop-material-lot-label/target-card.tsx|04c8ed410b71": {
+      "n": 1,
+      "text": "<Button className={popTouchClass('critical')} variant=\"filled\" size=\"xl\""
+    },
+    "C-4|apps/web/src/screens/pop-material-lot-label/target-card.tsx|66aee5237517": {
+      "n": 1,
+      "text": "<Button /* ⭐ [재인쇄]도 [등록·인쇄]와 같은 채운 단추다(사용자 지시 2026-09-21) — 두 보기에서 같은 자리·같은 무게의 주 조"
+    },
+    "C-4|apps/web/src/screens/pop-oqc-inspection/judgment.tsx|2f163c572bf4": {
+      "n": 1,
+      "text": "<Button type=\"submit\" form={formId} size=\"2xl\" variant=\"filled\" disabled={!canSave}>"
+    },
+    "C-4|apps/web/src/screens/pqc-inspection/action-bar.tsx|27b77761d5f1": {
+      "n": 1,
+      "text": "<Button type=\"button\" variant=\"filled\" size=\"xl\" className={popTouchClass('destructive"
+    },
+    "C-4|apps/web/src/screens/pqc-inspection/item-panel.tsx|535ac7cf3f65": {
+      "n": 1,
+      "text": "<Button key={option.value} type=\"button\" size=\"xl\""
+    },
+    "C-4|apps/web/src/screens/pqc-inspection/screen.tsx|25f15a57ee50": {
+      "n": 1,
+      "text": "<Button type=\"button\" variant=\"filled\" size=\"xl\" className={popTouchClass('des"
+    },
+    "C-4|apps/web/src/screens/pqc-panel/panel-actions.tsx|9d50a4da507d": {
+      "n": 1,
+      "text": "<Button type=\"button\" variant=\"filled\" size=\"xl\" className={popTouchClass('des"
+    },
+    "C-4|apps/web/src/screens/product-disposal-request/history-pane.tsx|4a339be26193": {
+      "n": 1,
+      "text": "<Button disabled={post.lock !== undefined} onClick={post.onPost}>"
+    },
+    "C-4|apps/web/src/screens/product-disposal-request/screen.tsx|89323fa22976": {
+      "n": 1,
+      "text": "<Button disabled={submitLock !== undefined} /* ⭐ 되돌릴 수 없는 쓰기라 «누르기 전»에 한 겹을 둔다 — 창이 무엇"
+    },
+    "C-4|apps/web/src/screens/production-result/screen.tsx|8e876326ddab": {
+      "n": 1,
+      "text": "<Button disabled={lot === null || entry.workerNo === null} onClick={retryLotIssue}>"
+    },
+    "C-4|apps/web/src/screens/production-result/screen.tsx|a6922078522a": {
+      "n": 1,
+      "text": "<Button disabled={ IDENTIFICATION_TAG_ISSUE_LOCKED || tagReissue"
+    },
+    "C-4|apps/web/src/screens/production-result/screen.tsx|be1c872850b3": {
+      "n": 1,
+      "text": "<Button disabled={!canOutput} /* * ⛔ **초과라고 단추를 끄지도, 되묻"
+    },
+    "C-4|apps/web/src/screens/production-result/screen.tsx|bf89ce998ea7": {
+      "n": 1,
+      "text": "<Button disabled>"
+    },
+    "C-4|apps/web/src/screens/production-result/screen.tsx|e5d1db9686f1": {
+      "n": 1,
+      "text": "<Button disabled={ IDENTIFICATION_TAG_ISSUE_LOCKED ||"
+    },
+    "C-4|apps/web/src/screens/production-result/screen.tsx|fcacf1b55b68": {
+      "n": 1,
+      "text": "<Button onClick={retrySessionEnd} disabled={sessionEnd.isSaving}>"
+    },
+    "C-4|apps/web/src/screens/repack-label-issue/pending-pane.tsx|e7341b2a9a88": {
+      "n": 1,
+      "text": "<Button type=\"button\" variant={selected ? 'filled' : 'outlined'} size=\"2xl"
+    },
+    "C-4|apps/web/src/screens/return-receipt/search-pane.tsx|f1247d967498": {
+      "n": 1,
+      "text": "<Button disabled={!isUsable(draft)} onClick={() => onApply(draft)}>"
+    },
+    "C-4|apps/web/src/screens/rework-result-register/screen.tsx|ee2745d24cdb": {
+      "n": 1,
+      "text": "<Button size=\"2xl\" disabled={!canSave} onClick={save}>"
+    },
+    "C-4|apps/web/src/screens/running-change/replace-panel.tsx|4c549850ed5c": {
+      "n": 1,
+      "text": "<Button variant=\"filled\" size=\"xl\" className={`${popTouchClass('critical')} pop-"
+    },
+    "C-4|apps/web/src/screens/running-change/replace-panel.tsx|525d0e856bb1": {
+      "n": 1,
+      "text": "<Button variant=\"filled\" size=\"2xl\" className=\"pop-rc-submit-button\" d"
+    },
+    "C-4|apps/web/src/screens/shipment-confirm/filter-bar.tsx|f1247d967498": {
+      "n": 1,
+      "text": "<Button disabled={!isUsable(draft)} onClick={() => onApply(draft)}>"
+    },
+    "C-4|apps/web/src/screens/shipment-confirm/screen.tsx|8f9b7426503a": {
+      "n": 1,
+      "text": "<Button disabled={confirmLock !== undefined} onClick={() => { runner.res"
+    },
+    "C-4|apps/web/src/screens/shipment-processing/candidate-screen.tsx|73c79d8bb269": {
+      "n": 1,
+      "text": "<Button disabled={!canSubmit || write.isSaving} onClick={() => { i"
+    },
+    "C-4|apps/web/src/screens/shipment-schedule/screen.tsx|89e6e6ac0299": {
+      "n": 1,
+      "text": "<Button /* 상세를 받기 전에는 잠근다 — 최신본 표가 없으면 요청이 나가지도 않는다. */ disabled={"
+    },
+    "C-4|apps/web/src/screens/shipping-packing-label/screen.tsx|025575b1d686": {
+      "n": 1,
+      "text": "<Button className={popTouchClass('critical')} size=\"xl\""
+    },
+    "C-4|apps/web/src/screens/shipping-unit/screen.tsx|08fa57afdde5": {
+      "n": 1,
+      "text": "<Button variant=\"filled\" size=\"xl\" className=\"pop-touch-target\" disabl"
+    },
+    "C-4|apps/web/src/screens/shipping-unit/screen.tsx|c40895e30092": {
+      "n": 1,
+      "text": "<Button variant=\"filled\" size=\"xl\" className=\"pop-touch-target\" disabl"
+    },
+    "C-4|apps/web/src/screens/stock-adjust/history-filter-bar.tsx|24b95f1cb120": {
+      "n": 1,
+      "text": "<Button disabled={isLocked} onClick={search}>"
+    },
+    "C-4|apps/web/src/screens/stock-reinstatement/screen.tsx|d86bee252759": {
+      "n": 1,
+      "text": "<Button disabled={ lotStatus.data === null ||"
+    },
+    "C-4|apps/web/src/screens/stocktaking/count-filter-bar.tsx|24b95f1cb120": {
+      "n": 1,
+      "text": "<Button disabled={isLocked} onClick={search}>"
+    },
+    "C-4|apps/web/src/screens/supplier-return/gr-filter-bar.tsx|24b95f1cb120": {
+      "n": 1,
+      "text": "<Button disabled={isLocked} onClick={search}>"
+    },
+    "C-4|apps/web/src/screens/suspicious-material-hold/candidate-pane.tsx|c61360fb4918": {
+      "n": 1,
+      "text": "<Button disabled={isLocked} onClick={apply}>"
+    },
+    "C-4|apps/web/src/screens/suspicious-material-hold/hold-execution.tsx|b465ef49ecc5": {
+      "n": 1,
+      "text": "<Button disabled={body === null || confirmation !== null} onClick={() => { if"
+    },
+    "C-4|apps/web/src/screens/suspicious-material-hold/material-defect-pane.tsx|b4ef9bb0a50b": {
+      "n": 1,
+      "text": "<Button variant=\"filled\" size=\"sm\" disabled={blocked !== null || disabled} onClick={submit}>"
+    },
+    "C-4|apps/web/src/screens/terminal-process-map/screen.tsx|5990a563c69f": {
+      "n": 1,
+      "text": "<Button disabled={!canSaveGrid || !isDirty(grid, original)} onClick={() => {"
+    },
+    "C-4|apps/web/src/screens/terminal-process-map/screen.tsx|5bfe3c9ac07d": {
+      "n": 1,
+      "text": "<Button disabled={deactivate.isSaving} onClick={() => { deactivate"
+    },
+    "C-4|apps/web/src/screens/terminal-process-map/screen.tsx|daf2fbe3550b": {
+      "n": 1,
+      "text": "<Button disabled={issueToken.isSaving} onClick={() => {"
+    },
+    "C-4|apps/web/src/screens/terminal-process-map/terminal-form.tsx|5e64c47e10a0": {
+      "n": 1,
+      "text": "<Button disabled={isSaving} onClick={onSubmit}>"
+    },
+    "C-4|apps/web/src/screens/tool-master/tool-form-dialog.tsx|1635e29a559f": {
+      "n": 1,
+      "text": "<Button disabled={isSaving} onClick={onSave}>"
+    },
+    "C-4|apps/web/src/screens/tool-pm-order/screen.tsx|7236f8379533": {
+      "n": 1,
+      "text": "<Button onClick={submit} disabled={create.isSaving}>"
+    },
+    "C-4|apps/web/src/screens/tool-pm-result/screen.tsx|a89dd2fa6c2d": {
+      "n": 1,
+      "text": "<Button onClick={requestSave} /* 잠금 토큰이 아직 없으면 보내도 막힌다 — 누르기 전에 잠근다. */ di"
+    },
+    "C-4|apps/web/src/screens/tool-usage/screen.tsx|22e17e633f7f": {
+      "n": 1,
+      "text": "<Button variant=\"filled\" size=\"xl\" className={`${p"
+    },
+    "C-4|apps/web/src/screens/users-roles/data-scope-form-dialog.tsx|5dbe706e5b05": {
+      "n": 1,
+      "text": "<Button disabled={blockReason !== null} onClick={() => { onConfirm"
+    },
+    "C-4|apps/web/src/screens/warehouse-layout/screen.tsx|5f8958ac38c7": {
+      "n": 1,
+      "text": "<Button disabled={!canSave || drawing.isBusy || !draftDirty} onClick={"
+    },
+    "C-4|apps/web/src/screens/work-calendar/calendar-form-dialog.tsx|1635e29a559f": {
+      "n": 1,
+      "text": "<Button disabled={isSaving} onClick={onSave}>"
+    },
+    "C-4|apps/web/src/screens/work-calendar/day-form-dialog.tsx|1635e29a559f": {
+      "n": 1,
+      "text": "<Button disabled={isSaving} onClick={onSave}>"
+    },
+    "C-4|apps/web/src/screens/work-hold-register/screen.tsx|bb254fff2400": {
+      "n": 1,
+      "text": "<Button size=\"2xl\" disabled={inputDisabled || workerNo === null || !canStop} onC"
+    },
+    "C-4|apps/web/src/screens/work-order-close/close-execution.tsx|9097236826cb": {
+      "n": 1,
+      "text": "<Button disabled={request === null || write.isSaving} onClick={() => { if (req"
+    },
+    "C-4|apps/web/src/screens/work-order-close/result-correction-workspace.tsx|9ec902139b4d": {
+      "n": 1,
+      "text": "<Button disabled={selected === null} onClick={() => { if (selected"
+    },
+    "C-4|apps/web/src/screens/work-precheck-gate/gate.tsx|26ffa46b6842": {
+      "n": 1,
+      "text": "<Button type=\"button\" variant=\"filled\" size={POP_TOUCH_SIZE} d"
+    },
+    "C-4|apps/web/src/screens/work-precheck-gate/gate.tsx|3b5eeb040201": {
+      "n": 1,
+      "text": "<Button type=\"button\" variant=\"filled\" size={POP_TOUCH_SIZE} d"
+    },
+    "C-4|apps/web/src/screens/work-precheck-gate/gate.tsx|513f5b920173": {
+      "n": 1,
+      "text": "<Button type=\"button\" variant=\"filled\" size={POP_TOUCH_SIZE} d"
+    },
+    "C-4|apps/web/src/screens/work-start/action-bar.tsx|47acf2c41427": {
+      "n": 1,
+      "text": "<Button type=\"button\" variant=\"filled\" size={POP_TOUCH_SIZE} disabled={isBlock"
+    },
+    "C-4|apps/web/src/screens/work-start/crew-panel.tsx|029ccd7b5519": {
+      "n": 1,
+      "text": "<Button size={POP_TOUCH_SIZE} disabled={draft.trim() === '' || isChecking}"
+    },
+    "C-4|apps/web/src/screens/work-start/worker-panel.tsx|f014290beb01": {
+      "n": 1,
+      "text": "<Button type=\"button\" variant=\"filled\" size={POP_TOUCH_SIZE} disabled="
+    },
+    "C-4|apps/web/src/screens/worker-assignment/keypad-panel.tsx|cbb446075c64": {
+      "n": 1,
+      "text": "<Button type=\"button\" variant=\"filled\" size={POP_TOUCH_SIZE} className=\"worker-no-subm"
+    },
+    "C-4|apps/web/src/screens/worker-assignment/registration-panel.tsx|39a0b50184b3": {
+      "n": 1,
+      "text": "<Button size=\"xl\" onClick={() => { scanner.submit(token);"
+    },
+    "C-4|apps/web/src/screens/worker-assignment/worker-card.tsx|426803d7dc26": {
+      "n": 1,
+      "text": "<Button type=\"button\" variant=\"filled\" size={POP_TOUCH_SIZE} disabled="
+    },
+    "C-8|apps/web/src/screens/alarm-recipient-settings/select-field.tsx|7925b44059cd": {
+      "n": 1,
+      "text": "select-field.tsx"
+    },
+    "C-8|apps/web/src/screens/approval-inbox/load-error-banner.tsx|da6b22b0db5e": {
+      "n": 1,
+      "text": "load-error-banner.tsx"
+    },
+    "C-8|apps/web/src/screens/approval-inbox/page-nav.tsx|578be1d8b21c": {
+      "n": 1,
+      "text": "page-nav.tsx"
+    },
+    "C-8|apps/web/src/screens/approval-inbox/pagination.ts|21542e9d817f": {
+      "n": 1,
+      "text": "pagination.ts"
+    },
+    "C-8|apps/web/src/screens/approval-inbox/select-field.tsx|7925b44059cd": {
+      "n": 1,
+      "text": "select-field.tsx"
+    },
+    "C-8|apps/web/src/screens/approval-route/load-error-banner.tsx|da6b22b0db5e": {
+      "n": 1,
+      "text": "load-error-banner.tsx"
+    },
+    "C-8|apps/web/src/screens/approval-route/page-nav.tsx|578be1d8b21c": {
+      "n": 1,
+      "text": "page-nav.tsx"
+    },
+    "C-8|apps/web/src/screens/approval-route/pagination.ts|21542e9d817f": {
+      "n": 1,
+      "text": "pagination.ts"
+    },
+    "C-8|apps/web/src/screens/approval-route/select-field.tsx|7925b44059cd": {
+      "n": 1,
+      "text": "select-field.tsx"
+    },
+    "C-8|apps/web/src/screens/collection-channel/load-error-banner.tsx|da6b22b0db5e": {
+      "n": 1,
+      "text": "load-error-banner.tsx"
+    },
+    "C-8|apps/web/src/screens/collection-channel/select-field.tsx|7925b44059cd": {
+      "n": 1,
+      "text": "select-field.tsx"
+    },
+    "C-8|apps/web/src/screens/common-code/load-error-banner.tsx|da6b22b0db5e": {
+      "n": 1,
+      "text": "load-error-banner.tsx"
+    },
+    "C-8|apps/web/src/screens/common-code/page-nav.tsx|578be1d8b21c": {
+      "n": 1,
+      "text": "page-nav.tsx"
+    },
+    "C-8|apps/web/src/screens/common-code/pagination.ts|21542e9d817f": {
+      "n": 1,
+      "text": "pagination.ts"
+    },
+    "C-8|apps/web/src/screens/common-code/select-field.tsx|7925b44059cd": {
+      "n": 1,
+      "text": "select-field.tsx"
+    },
+    "C-8|apps/web/src/screens/dashboard/load-error-banner.tsx|da6b22b0db5e": {
+      "n": 1,
+      "text": "load-error-banner.tsx"
+    },
+    "C-8|apps/web/src/screens/dashboard/select-field.tsx|7925b44059cd": {
+      "n": 1,
+      "text": "select-field.tsx"
+    },
+    "C-8|apps/web/src/screens/disposal-issue/load-error-banner.tsx|da6b22b0db5e": {
+      "n": 1,
+      "text": "load-error-banner.tsx"
+    },
+    "C-8|apps/web/src/screens/disposal-issue/page-nav.tsx|578be1d8b21c": {
+      "n": 1,
+      "text": "page-nav.tsx"
+    },
+    "C-8|apps/web/src/screens/disposal-issue/pagination.ts|21542e9d817f": {
+      "n": 1,
+      "text": "pagination.ts"
+    },
+    "C-8|apps/web/src/screens/disposal-issue/select-field.tsx|7925b44059cd": {
+      "n": 1,
+      "text": "select-field.tsx"
+    },
+    "C-8|apps/web/src/screens/disposition-decision/page-nav.tsx|578be1d8b21c": {
+      "n": 1,
+      "text": "page-nav.tsx"
+    },
+    "C-8|apps/web/src/screens/disposition-decision/pagination.ts|21542e9d817f": {
+      "n": 1,
+      "text": "pagination.ts"
+    },
+    "C-8|apps/web/src/screens/disposition-request/page-nav.tsx|578be1d8b21c": {
+      "n": 1,
+      "text": "page-nav.tsx"
+    },
+    "C-8|apps/web/src/screens/disposition-request/pagination.ts|21542e9d817f": {
+      "n": 1,
+      "text": "pagination.ts"
+    },
+    "C-8|apps/web/src/screens/document-progress/load-error-banner.tsx|da6b22b0db5e": {
+      "n": 1,
+      "text": "load-error-banner.tsx"
+    },
+    "C-8|apps/web/src/screens/document-progress/page-nav.tsx|578be1d8b21c": {
+      "n": 1,
+      "text": "page-nav.tsx"
+    },
+    "C-8|apps/web/src/screens/document-progress/pagination.ts|21542e9d817f": {
+      "n": 1,
+      "text": "pagination.ts"
+    },
+    "C-8|apps/web/src/screens/document-progress/select-field.tsx|7925b44059cd": {
+      "n": 1,
+      "text": "select-field.tsx"
+    },
+    "C-8|apps/web/src/screens/downtime-register/load-error-banner.tsx|da6b22b0db5e": {
+      "n": 1,
+      "text": "load-error-banner.tsx"
+    },
+    "C-8|apps/web/src/screens/downtime-summary/load-error-banner.tsx|da6b22b0db5e": {
+      "n": 1,
+      "text": "load-error-banner.tsx"
+    },
+    "C-8|apps/web/src/screens/downtime-summary/select-field.tsx|7925b44059cd": {
+      "n": 1,
+      "text": "select-field.tsx"
+    },
+    "C-8|apps/web/src/screens/equipment-failure/load-error-banner.tsx|da6b22b0db5e": {
+      "n": 1,
+      "text": "load-error-banner.tsx"
+    },
+    "C-8|apps/web/src/screens/equipment-failure/page-nav.tsx|578be1d8b21c": {
+      "n": 1,
+      "text": "page-nav.tsx"
+    },
+    "C-8|apps/web/src/screens/equipment-failure/pagination.ts|21542e9d817f": {
+      "n": 1,
+      "text": "pagination.ts"
+    },
+    "C-8|apps/web/src/screens/equipment-failure/select-field.tsx|7925b44059cd": {
+      "n": 1,
+      "text": "select-field.tsx"
+    },
+    "C-8|apps/web/src/screens/equipment-master/load-error-banner.tsx|da6b22b0db5e": {
+      "n": 1,
+      "text": "load-error-banner.tsx"
+    },
+    "C-8|apps/web/src/screens/equipment-master/select-field.tsx|7925b44059cd": {
+      "n": 1,
+      "text": "select-field.tsx"
+    },
+    "C-8|apps/web/src/screens/erp-production-order/page-nav.tsx|578be1d8b21c": {
+      "n": 1,
+      "text": "page-nav.tsx"
+    },
+    "C-8|apps/web/src/screens/erp-production-order/pagination.ts|21542e9d817f": {
+      "n": 1,
+      "text": "pagination.ts"
+    },
+    "C-8|apps/web/src/screens/erp-purchase-order/page-nav.tsx|578be1d8b21c": {
+      "n": 1,
+      "text": "page-nav.tsx"
+    },
+    "C-8|apps/web/src/screens/erp-purchase-order/pagination.ts|21542e9d817f": {
+      "n": 1,
+      "text": "pagination.ts"
+    },
+    "C-8|apps/web/src/screens/erp-sales-order/page-nav.tsx|578be1d8b21c": {
+      "n": 1,
+      "text": "page-nav.tsx"
+    },
+    "C-8|apps/web/src/screens/erp-sales-order/pagination.ts|21542e9d817f": {
+      "n": 1,
+      "text": "pagination.ts"
+    },
+    "C-8|apps/web/src/screens/gauge-calibration/load-error-banner.tsx|da6b22b0db5e": {
+      "n": 1,
+      "text": "load-error-banner.tsx"
+    },
+    "C-8|apps/web/src/screens/gauge-calibration/page-nav.tsx|578be1d8b21c": {
+      "n": 1,
+      "text": "page-nav.tsx"
+    },
+    "C-8|apps/web/src/screens/gauge-calibration/pagination.ts|21542e9d817f": {
+      "n": 1,
+      "text": "pagination.ts"
+    },
+    "C-8|apps/web/src/screens/gauge-calibration/select-field.tsx|7925b44059cd": {
+      "n": 1,
+      "text": "select-field.tsx"
+    },
+    "C-8|apps/web/src/screens/gauge-master/load-error-banner.tsx|da6b22b0db5e": {
+      "n": 1,
+      "text": "load-error-banner.tsx"
+    },
+    "C-8|apps/web/src/screens/gauge-master/select-field.tsx|7925b44059cd": {
+      "n": 1,
+      "text": "select-field.tsx"
+    },
+    "C-8|apps/web/src/screens/goods-receipt/load-error-banner.tsx|da6b22b0db5e": {
+      "n": 1,
+      "text": "load-error-banner.tsx"
+    },
+    "C-8|apps/web/src/screens/goods-receipt/page-nav.tsx|578be1d8b21c": {
+      "n": 1,
+      "text": "page-nav.tsx"
+    },
+    "C-8|apps/web/src/screens/goods-receipt/pagination.ts|21542e9d817f": {
+      "n": 1,
+      "text": "pagination.ts"
+    },
+    "C-8|apps/web/src/screens/goods-receipt/select-field.tsx|7925b44059cd": {
+      "n": 1,
+      "text": "select-field.tsx"
+    },
+    "C-8|apps/web/src/screens/inbound-schedule/load-error-banner.tsx|da6b22b0db5e": {
+      "n": 1,
+      "text": "load-error-banner.tsx"
+    },
+    "C-8|apps/web/src/screens/inbound-schedule/page-nav.tsx|578be1d8b21c": {
+      "n": 1,
+      "text": "page-nav.tsx"
+    },
+    "C-8|apps/web/src/screens/inbound-schedule/pagination.ts|21542e9d817f": {
+      "n": 1,
+      "text": "pagination.ts"
+    },
+    "C-8|apps/web/src/screens/inbound-schedule/select-field.tsx|7925b44059cd": {
+      "n": 1,
+      "text": "select-field.tsx"
+    },
+    "C-8|apps/web/src/screens/inspection-standard/load-error-banner.tsx|da6b22b0db5e": {
+      "n": 1,
+      "text": "load-error-banner.tsx"
+    },
+    "C-8|apps/web/src/screens/inspection-standard/page-nav.tsx|578be1d8b21c": {
+      "n": 1,
+      "text": "page-nav.tsx"
+    },
+    "C-8|apps/web/src/screens/inspection-standard/pagination.ts|21542e9d817f": {
+      "n": 1,
+      "text": "pagination.ts"
+    },
+    "C-8|apps/web/src/screens/inspection-standard/select-field.tsx|7925b44059cd": {
+      "n": 1,
+      "text": "select-field.tsx"
+    },
+    "C-8|apps/web/src/screens/integration-sync/load-error-banner.tsx|da6b22b0db5e": {
+      "n": 1,
+      "text": "load-error-banner.tsx"
+    },
+    "C-8|apps/web/src/screens/integration-sync/page-nav.tsx|578be1d8b21c": {
+      "n": 1,
+      "text": "page-nav.tsx"
+    },
+    "C-8|apps/web/src/screens/integration-sync/pagination.ts|21542e9d817f": {
+      "n": 1,
+      "text": "pagination.ts"
+    },
+    "C-8|apps/web/src/screens/iqc-inspection/load-error-banner.tsx|da6b22b0db5e": {
+      "n": 1,
+      "text": "load-error-banner.tsx"
+    },
+    "C-8|apps/web/src/screens/iqc-inspection/page-nav.tsx|578be1d8b21c": {
+      "n": 1,
+      "text": "page-nav.tsx"
+    },
+    "C-8|apps/web/src/screens/iqc-inspection/pagination.ts|21542e9d817f": {
+      "n": 1,
+      "text": "pagination.ts"
+    },
+    "C-8|apps/web/src/screens/iqc-skip-approval/load-error-banner.tsx|da6b22b0db5e": {
+      "n": 1,
+      "text": "load-error-banner.tsx"
+    },
+    "C-8|apps/web/src/screens/iqc-skip-approval/page-nav.tsx|578be1d8b21c": {
+      "n": 1,
+      "text": "page-nav.tsx"
+    },
+    "C-8|apps/web/src/screens/iqc-skip-approval/pagination.ts|21542e9d817f": {
+      "n": 1,
+      "text": "pagination.ts"
+    },
+    "C-8|apps/web/src/screens/iqc-skip-approval/select-field.tsx|7925b44059cd": {
+      "n": 1,
+      "text": "select-field.tsx"
+    },
+    "C-8|apps/web/src/screens/item-extended-attrs/load-error-banner.tsx|da6b22b0db5e": {
+      "n": 1,
+      "text": "load-error-banner.tsx"
+    },
+    "C-8|apps/web/src/screens/item-extended-attrs/page-nav.tsx|578be1d8b21c": {
+      "n": 1,
+      "text": "page-nav.tsx"
+    },
+    "C-8|apps/web/src/screens/item-extended-attrs/pagination.ts|21542e9d817f": {
+      "n": 1,
+      "text": "pagination.ts"
+    },
+    "C-8|apps/web/src/screens/item-extended-attrs/select-field.tsx|7925b44059cd": {
+      "n": 1,
+      "text": "select-field.tsx"
+    },
+    "C-8|apps/web/src/screens/maintenance-order/load-error-banner.tsx|da6b22b0db5e": {
+      "n": 1,
+      "text": "load-error-banner.tsx"
+    },
+    "C-8|apps/web/src/screens/maintenance-order/page-nav.tsx|578be1d8b21c": {
+      "n": 1,
+      "text": "page-nav.tsx"
+    },
+    "C-8|apps/web/src/screens/maintenance-order/pagination.ts|21542e9d817f": {
+      "n": 1,
+      "text": "pagination.ts"
+    },
+    "C-8|apps/web/src/screens/maintenance-order/select-field.tsx|7925b44059cd": {
+      "n": 1,
+      "text": "select-field.tsx"
+    },
+    "C-8|apps/web/src/screens/maintenance-result/load-error-banner.tsx|da6b22b0db5e": {
+      "n": 1,
+      "text": "load-error-banner.tsx"
+    },
+    "C-8|apps/web/src/screens/maintenance-result/page-nav.tsx|578be1d8b21c": {
+      "n": 1,
+      "text": "page-nav.tsx"
+    },
+    "C-8|apps/web/src/screens/maintenance-result/pagination.ts|21542e9d817f": {
+      "n": 1,
+      "text": "pagination.ts"
+    },
+    "C-8|apps/web/src/screens/maintenance-result/select-field.tsx|7925b44059cd": {
+      "n": 1,
+      "text": "select-field.tsx"
+    },
+    "C-8|apps/web/src/screens/master-change/page-nav.tsx|578be1d8b21c": {
+      "n": 1,
+      "text": "page-nav.tsx"
+    },
+    "C-8|apps/web/src/screens/master-change/pagination.ts|21542e9d817f": {
+      "n": 1,
+      "text": "pagination.ts"
+    },
+    "C-8|apps/web/src/screens/material-input-scan/load-error-banner.tsx|da6b22b0db5e": {
+      "n": 1,
+      "text": "load-error-banner.tsx"
+    },
+    "C-8|apps/web/src/screens/material-issue-request/load-error-banner.tsx|da6b22b0db5e": {
+      "n": 1,
+      "text": "load-error-banner.tsx"
+    },
+    "C-8|apps/web/src/screens/material-issue-request/select-field.tsx|7925b44059cd": {
+      "n": 1,
+      "text": "select-field.tsx"
+    },
+    "C-8|apps/web/src/screens/notice/load-error-banner.tsx|da6b22b0db5e": {
+      "n": 1,
+      "text": "load-error-banner.tsx"
+    },
+    "C-8|apps/web/src/screens/notice/page-nav.tsx|578be1d8b21c": {
+      "n": 1,
+      "text": "page-nav.tsx"
+    },
+    "C-8|apps/web/src/screens/notice/pagination.ts|21542e9d817f": {
+      "n": 1,
+      "text": "pagination.ts"
+    },
+    "C-8|apps/web/src/screens/notice/select-field.tsx|7925b44059cd": {
+      "n": 1,
+      "text": "select-field.tsx"
+    },
+    "C-8|apps/web/src/screens/notification-center/load-error-banner.tsx|da6b22b0db5e": {
+      "n": 1,
+      "text": "load-error-banner.tsx"
+    },
+    "C-8|apps/web/src/screens/notification-center/page-nav.tsx|578be1d8b21c": {
+      "n": 1,
+      "text": "page-nav.tsx"
+    },
+    "C-8|apps/web/src/screens/notification-center/pagination.ts|21542e9d817f": {
+      "n": 1,
+      "text": "pagination.ts"
+    },
+    "C-8|apps/web/src/screens/notification-center/select-field.tsx|7925b44059cd": {
+      "n": 1,
+      "text": "select-field.tsx"
+    },
+    "C-8|apps/web/src/screens/oqc-inspection/load-error-banner.tsx|da6b22b0db5e": {
+      "n": 1,
+      "text": "load-error-banner.tsx"
+    },
+    "C-8|apps/web/src/screens/oqc-inspection/page-nav.tsx|578be1d8b21c": {
+      "n": 1,
+      "text": "page-nav.tsx"
+    },
+    "C-8|apps/web/src/screens/oqc-inspection/pagination.ts|21542e9d817f": {
+      "n": 1,
+      "text": "pagination.ts"
+    },
+    "C-8|apps/web/src/screens/over-receipt-split/load-error-banner.tsx|da6b22b0db5e": {
+      "n": 1,
+      "text": "load-error-banner.tsx"
+    },
+    "C-8|apps/web/src/screens/over-receipt-split/page-nav.tsx|578be1d8b21c": {
+      "n": 1,
+      "text": "page-nav.tsx"
+    },
+    "C-8|apps/web/src/screens/over-receipt-split/pagination.ts|21542e9d817f": {
+      "n": 1,
+      "text": "pagination.ts"
+    },
+    "C-8|apps/web/src/screens/over-receipt-split/select-field.tsx|7925b44059cd": {
+      "n": 1,
+      "text": "select-field.tsx"
+    },
+    "C-8|apps/web/src/screens/po-register/load-error-banner.tsx|da6b22b0db5e": {
+      "n": 1,
+      "text": "load-error-banner.tsx"
+    },
+    "C-8|apps/web/src/screens/po-register/select-field.tsx|7925b44059cd": {
+      "n": 1,
+      "text": "select-field.tsx"
+    },
+    "C-8|apps/web/src/screens/pop-material-lot-label/page-nav.tsx|578be1d8b21c": {
+      "n": 1,
+      "text": "page-nav.tsx"
+    },
+    "C-8|apps/web/src/screens/pop-material-lot-label/pagination.ts|21542e9d817f": {
+      "n": 1,
+      "text": "pagination.ts"
+    },
+    "C-8|apps/web/src/screens/pqc-inspection/load-error-banner.tsx|da6b22b0db5e": {
+      "n": 1,
+      "text": "load-error-banner.tsx"
+    },
+    "C-8|apps/web/src/screens/product-stock-status/load-error-banner.tsx|da6b22b0db5e": {
+      "n": 1,
+      "text": "load-error-banner.tsx"
+    },
+    "C-8|apps/web/src/screens/product-stock-status/page-nav.tsx|578be1d8b21c": {
+      "n": 1,
+      "text": "page-nav.tsx"
+    },
+    "C-8|apps/web/src/screens/product-stock-status/pagination.ts|21542e9d817f": {
+      "n": 1,
+      "text": "pagination.ts"
+    },
+    "C-8|apps/web/src/screens/product-stock-status/select-field.tsx|7925b44059cd": {
+      "n": 1,
+      "text": "select-field.tsx"
+    },
+    "C-8|apps/web/src/screens/putaway-rule/load-error-banner.tsx|da6b22b0db5e": {
+      "n": 1,
+      "text": "load-error-banner.tsx"
+    },
+    "C-8|apps/web/src/screens/putaway-rule/page-nav.tsx|578be1d8b21c": {
+      "n": 1,
+      "text": "page-nav.tsx"
+    },
+    "C-8|apps/web/src/screens/putaway-rule/pagination.ts|21542e9d817f": {
+      "n": 1,
+      "text": "pagination.ts"
+    },
+    "C-8|apps/web/src/screens/putaway-rule/select-field.tsx|7925b44059cd": {
+      "n": 1,
+      "text": "select-field.tsx"
+    },
+    "C-8|apps/web/src/screens/quality-approval/page-nav.tsx|578be1d8b21c": {
+      "n": 1,
+      "text": "page-nav.tsx"
+    },
+    "C-8|apps/web/src/screens/quality-approval/pagination.ts|21542e9d817f": {
+      "n": 1,
+      "text": "pagination.ts"
+    },
+    "C-8|apps/web/src/screens/return-receipt/page-nav.tsx|578be1d8b21c": {
+      "n": 1,
+      "text": "page-nav.tsx"
+    },
+    "C-8|apps/web/src/screens/return-receipt/pagination.ts|21542e9d817f": {
+      "n": 1,
+      "text": "pagination.ts"
+    },
+    "C-8|apps/web/src/screens/return-receipt/select-field.tsx|7925b44059cd": {
+      "n": 1,
+      "text": "select-field.tsx"
+    },
+    "C-8|apps/web/src/screens/running-change/load-error-banner.tsx|da6b22b0db5e": {
+      "n": 1,
+      "text": "load-error-banner.tsx"
+    },
+    "C-8|apps/web/src/screens/shipment-processing/page-nav.tsx|578be1d8b21c": {
+      "n": 1,
+      "text": "page-nav.tsx"
+    },
+    "C-8|apps/web/src/screens/shipment-processing/pagination.ts|21542e9d817f": {
+      "n": 1,
+      "text": "pagination.ts"
+    },
+    "C-8|apps/web/src/screens/shipment-request-create/load-error-banner.tsx|da6b22b0db5e": {
+      "n": 1,
+      "text": "load-error-banner.tsx"
+    },
+    "C-8|apps/web/src/screens/shipment-request-create/page-nav.tsx|578be1d8b21c": {
+      "n": 1,
+      "text": "page-nav.tsx"
+    },
+    "C-8|apps/web/src/screens/shipment-request-create/pagination.ts|21542e9d817f": {
+      "n": 1,
+      "text": "pagination.ts"
+    },
+    "C-8|apps/web/src/screens/shipment-request-create/select-field.tsx|7925b44059cd": {
+      "n": 1,
+      "text": "select-field.tsx"
+    },
+    "C-8|apps/web/src/screens/shipment-schedule/load-error-banner.tsx|da6b22b0db5e": {
+      "n": 1,
+      "text": "load-error-banner.tsx"
+    },
+    "C-8|apps/web/src/screens/shipment-schedule/page-nav.tsx|578be1d8b21c": {
+      "n": 1,
+      "text": "page-nav.tsx"
+    },
+    "C-8|apps/web/src/screens/shipment-schedule/pagination.ts|21542e9d817f": {
+      "n": 1,
+      "text": "pagination.ts"
+    },
+    "C-8|apps/web/src/screens/shipment-schedule/select-field.tsx|7925b44059cd": {
+      "n": 1,
+      "text": "select-field.tsx"
+    },
+    "C-8|apps/web/src/screens/shot-conversion/load-error-banner.tsx|da6b22b0db5e": {
+      "n": 1,
+      "text": "load-error-banner.tsx"
+    },
+    "C-8|apps/web/src/screens/shot-conversion/select-field.tsx|7925b44059cd": {
+      "n": 1,
+      "text": "select-field.tsx"
+    },
+    "C-8|apps/web/src/screens/stock-adjust/load-error-banner.tsx|da6b22b0db5e": {
+      "n": 1,
+      "text": "load-error-banner.tsx"
+    },
+    "C-8|apps/web/src/screens/stock-adjust/page-nav.tsx|578be1d8b21c": {
+      "n": 1,
+      "text": "page-nav.tsx"
+    },
+    "C-8|apps/web/src/screens/stock-adjust/select-field.tsx|7925b44059cd": {
+      "n": 1,
+      "text": "select-field.tsx"
+    },
+    "C-8|apps/web/src/screens/stock-status/load-error-banner.tsx|da6b22b0db5e": {
+      "n": 1,
+      "text": "load-error-banner.tsx"
+    },
+    "C-8|apps/web/src/screens/stock-status/page-nav.tsx|578be1d8b21c": {
+      "n": 1,
+      "text": "page-nav.tsx"
+    },
+    "C-8|apps/web/src/screens/stock-status/pagination.ts|21542e9d817f": {
+      "n": 1,
+      "text": "pagination.ts"
+    },
+    "C-8|apps/web/src/screens/stock-status/select-field.tsx|7925b44059cd": {
+      "n": 1,
+      "text": "select-field.tsx"
+    },
+    "C-8|apps/web/src/screens/stocktaking/load-error-banner.tsx|da6b22b0db5e": {
+      "n": 1,
+      "text": "load-error-banner.tsx"
+    },
+    "C-8|apps/web/src/screens/stocktaking/page-nav.tsx|578be1d8b21c": {
+      "n": 1,
+      "text": "page-nav.tsx"
+    },
+    "C-8|apps/web/src/screens/stocktaking/pagination.ts|21542e9d817f": {
+      "n": 1,
+      "text": "pagination.ts"
+    },
+    "C-8|apps/web/src/screens/stocktaking/select-field.tsx|7925b44059cd": {
+      "n": 1,
+      "text": "select-field.tsx"
+    },
+    "C-8|apps/web/src/screens/supplier-return/load-error-banner.tsx|da6b22b0db5e": {
+      "n": 1,
+      "text": "load-error-banner.tsx"
+    },
+    "C-8|apps/web/src/screens/supplier-return/page-nav.tsx|578be1d8b21c": {
+      "n": 1,
+      "text": "page-nav.tsx"
+    },
+    "C-8|apps/web/src/screens/supplier-return/pagination.ts|21542e9d817f": {
+      "n": 1,
+      "text": "pagination.ts"
+    },
+    "C-8|apps/web/src/screens/supplier-return/select-field.tsx|7925b44059cd": {
+      "n": 1,
+      "text": "select-field.tsx"
+    },
+    "C-8|apps/web/src/screens/terminal-process-map/load-error-banner.tsx|da6b22b0db5e": {
+      "n": 1,
+      "text": "load-error-banner.tsx"
+    },
+    "C-8|apps/web/src/screens/terminal-process-map/page-nav.tsx|578be1d8b21c": {
+      "n": 1,
+      "text": "page-nav.tsx"
+    },
+    "C-8|apps/web/src/screens/terminal-process-map/pagination.ts|21542e9d817f": {
+      "n": 1,
+      "text": "pagination.ts"
+    },
+    "C-8|apps/web/src/screens/terminal-process-map/select-field.tsx|7925b44059cd": {
+      "n": 1,
+      "text": "select-field.tsx"
+    },
+    "C-8|apps/web/src/screens/tool-master/load-error-banner.tsx|da6b22b0db5e": {
+      "n": 1,
+      "text": "load-error-banner.tsx"
+    },
+    "C-8|apps/web/src/screens/tool-master/select-field.tsx|7925b44059cd": {
+      "n": 1,
+      "text": "select-field.tsx"
+    },
+    "C-8|apps/web/src/screens/tool-pm-order/load-error-banner.tsx|da6b22b0db5e": {
+      "n": 1,
+      "text": "load-error-banner.tsx"
+    },
+    "C-8|apps/web/src/screens/tool-pm-order/page-nav.tsx|578be1d8b21c": {
+      "n": 1,
+      "text": "page-nav.tsx"
+    },
+    "C-8|apps/web/src/screens/tool-pm-order/pagination.ts|21542e9d817f": {
+      "n": 1,
+      "text": "pagination.ts"
+    },
+    "C-8|apps/web/src/screens/tool-pm-order/select-field.tsx|7925b44059cd": {
+      "n": 1,
+      "text": "select-field.tsx"
+    },
+    "C-8|apps/web/src/screens/tool-pm-result/load-error-banner.tsx|da6b22b0db5e": {
+      "n": 1,
+      "text": "load-error-banner.tsx"
+    },
+    "C-8|apps/web/src/screens/tool-pm-result/page-nav.tsx|578be1d8b21c": {
+      "n": 1,
+      "text": "page-nav.tsx"
+    },
+    "C-8|apps/web/src/screens/tool-pm-result/pagination.ts|21542e9d817f": {
+      "n": 1,
+      "text": "pagination.ts"
+    },
+    "C-8|apps/web/src/screens/tool-pm-result/select-field.tsx|7925b44059cd": {
+      "n": 1,
+      "text": "select-field.tsx"
+    },
+    "C-8|apps/web/src/screens/users-roles/load-error-banner.tsx|da6b22b0db5e": {
+      "n": 1,
+      "text": "load-error-banner.tsx"
+    },
+    "C-8|apps/web/src/screens/users-roles/page-nav.tsx|578be1d8b21c": {
+      "n": 1,
+      "text": "page-nav.tsx"
+    },
+    "C-8|apps/web/src/screens/users-roles/pagination.ts|21542e9d817f": {
+      "n": 1,
+      "text": "pagination.ts"
+    },
+    "C-8|apps/web/src/screens/users-roles/select-field.tsx|7925b44059cd": {
+      "n": 1,
+      "text": "select-field.tsx"
+    },
+    "C-8|apps/web/src/screens/warehouse-layout/load-error-banner.tsx|da6b22b0db5e": {
+      "n": 1,
+      "text": "load-error-banner.tsx"
+    },
+    "C-8|apps/web/src/screens/warehouse-layout/select-field.tsx|7925b44059cd": {
+      "n": 1,
+      "text": "select-field.tsx"
+    },
+    "C-8|apps/web/src/screens/work-calendar/load-error-banner.tsx|da6b22b0db5e": {
+      "n": 1,
+      "text": "load-error-banner.tsx"
+    },
+    "C-8|apps/web/src/screens/work-calendar/select-field.tsx|7925b44059cd": {
+      "n": 1,
+      "text": "select-field.tsx"
+    },
+    "C-8|apps/web/src/screens/work-hold-register/load-error-banner.tsx|da6b22b0db5e": {
+      "n": 1,
+      "text": "load-error-banner.tsx"
+    },
+    "C-8|apps/web/src/screens/work-order-progress/page-nav.tsx|578be1d8b21c": {
+      "n": 1,
+      "text": "page-nav.tsx"
+    },
+    "C-8|apps/web/src/screens/work-order-progress/pagination.ts|21542e9d817f": {
+      "n": 1,
+      "text": "pagination.ts"
+    },
+    "C-8|apps/web/src/screens/work-order/page-nav.tsx|578be1d8b21c": {
+      "n": 1,
+      "text": "page-nav.tsx"
+    },
+    "C-8|apps/web/src/screens/work-order/pagination.ts|21542e9d817f": {
+      "n": 1,
+      "text": "pagination.ts"
+    },
+    "COLOR|apps/web/src/app/pop.css|1953b9ad8785": {
+      "n": 1,
+      "text": "background: rgb(220 80 70 / 18%);"
+    },
+    "COLOR|apps/web/src/app/pop.css|7479a1ebe10c": {
+      "n": 1,
+      "text": "background: #b3261e;"
+    },
+    "COLOR|apps/web/src/app/pop.css|8aa19e5952e9": {
+      "n": 1,
+      "text": "background: #8f1d17;"
+    },
+    "COLOR|apps/web/src/app/pop.css|f949b42b61a6": {
+      "n": 2,
+      "text": "color: #fff;"
+    },
+    "TOKEN|apps/web/src/app/app.css|0854cc647aa0": {
+      "n": 1,
+      "text": "border-bottom: 1px solid var(--outline-subtle, rgb(0 0 0 / 8%));"
+    },
+    "TOKEN|apps/web/src/app/app.css|2429a9e34100": {
+      "n": 2,
+      "text": "font-size: var(--font-size-2xl, 2rem);"
+    },
+    "TOKEN|apps/web/src/app/app.css|2acb8b1a4ac8": {
+      "n": 1,
+      "text": "font-size: var(--font-size-lg, 1.125rem);"
+    },
+    "TOKEN|apps/web/src/app/app.css|32ead85cee22": {
+      "n": 1,
+      "text": "font-size: var(--type-title-md, 1.25rem);"
+    },
+    "TOKEN|apps/web/src/app/app.css|3d9c80d31f99": {
+      "n": 8,
+      "text": "letter-spacing: var(--type-body-md-tracking);"
+    },
+    "TOKEN|apps/web/src/app/app.css|7b4a3950940a": {
+      "n": 8,
+      "text": "font: var(--type-body-md);"
+    },
+    "TOKEN|apps/web/src/app/app.css|7cf8c736bdd4": {
+      "n": 1,
+      "text": "font-size: var(--font-size-sm);"
+    },
+    "TOKEN|apps/web/src/app/app.css|7d2cd1ac411f": {
+      "n": 2,
+      "text": "font-size: var(--font-size-xs, 0.75rem);"
+    },
+    "TOKEN|apps/web/src/app/app.css|8ce053828340": {
+      "n": 3,
+      "text": "font: var(--type-label-md);"
+    },
+    "TOKEN|apps/web/src/app/app.css|b6601986e388": {
+      "n": 20,
+      "text": "font: var(--type-title-md);"
+    },
+    "TOKEN|apps/web/src/app/app.css|bdf18158bcbc": {
+      "n": 2,
+      "text": "font: var(--type-label-md, var(--type-label-sm));"
+    },
+    "TOKEN|apps/web/src/app/app.css|d2bfdc12991e": {
+      "n": 18,
+      "text": "letter-spacing: var(--type-title-md-tracking);"
+    },
+    "TOKEN|apps/web/src/app/app.css|ebf5c4c707d9": {
+      "n": 1,
+      "text": "color: var(--color-text-secondary, #6b7280);"
+    },
+    "TOKEN|apps/web/src/app/app.css|f7e6689810c8": {
+      "n": 1,
+      "text": "letter-spacing: var(--type-label-md-tracking);"
+    },
+    "TOKEN|apps/web/src/app/pop.css|1a1763a963f2": {
+      "n": 2,
+      "text": "color: var(--color-success, rgb(120 200 140));"
+    },
+    "TOKEN|apps/web/src/app/pop.css|2c9b5b88c6e2": {
+      "n": 1,
+      "text": "color: var(--pop-muted, #5f6368);"
+    },
+    "TOKEN|apps/web/src/app/pop.css|b741de1ed0f9": {
+      "n": 1,
+      "text": "border-inline-start-color: var(--color-danger, rgb(220 80 70));"
+    },
+    "TOKEN|apps/web/src/app/pop.css|cc5efc716a9b": {
+      "n": 1,
+      "text": "grid-auto-rows: minmax(var(--pop-touch-min, 48px), 1fr);"
+    },
+    "TOKEN|packages/ui/src/ds-candidates/marker-overlay.css|22cb8c648609": {
+      "n": 1,
+      "text": "border-radius: var(--radius-2, 8px);"
+    },
+    "TOKEN|packages/ui/src/ds-candidates/marker-overlay.css|467c1d1086c4": {
+      "n": 1,
+      "text": "background: var(--surface-1, #fff);"
+    },
+    "TOKEN|packages/ui/src/ds-candidates/marker-overlay.css|b3b06c0d4d45": {
+      "n": 1,
+      "text": "background: var(--surface-2, #f5f6f8);"
+    }
+  }
+}
