@@ -3,7 +3,8 @@
  * 수신자는 개인 지정만 남았고 미리보기는 없앴다(결정 #19).
  */
 export const alarmRecipientSettings = {
-  title: '알람 수신자 설정',
+  /* 설계 W-CO-11·사이드바와 같은 글자다. */
+  title: '알림 수신자 설정',
   breadcrumbRoot: '시스템 관리',
   description: '부서마다 알림 이벤트를 켜고 끄며, Zalo 부가 전달 여부와 받을 사람을 정합니다.',
   panes: { events: '이벤트', setting: (eventName: string): string => `설정: ${eventName}` },
@@ -23,6 +24,7 @@ export const alarmRecipientSettings = {
     /** 후보 표의 전화번호 칸 */
     hasPhone: '있음',
     alreadyAdded: '이미 추가됨',
+    selectRow: (userName: string): string => `${userName} 선택`,
     noDepartment: '—',
   },
   actions: {
@@ -42,6 +44,8 @@ export const alarmRecipientSettings = {
   state: {
     selectDepartment: '부서를 고르면 그 부서의 이벤트 설정이 보입니다.',
     noDepartments: '부서가 없습니다',
+    departmentsTruncated:
+      '부서 목록이 일부만 표시됩니다. 찾는 부서가 없으면 담당자에게 알려 주세요.',
     noEvents: '설정할 이벤트가 없습니다.',
     noRecipients: '지정한 수신자가 없습니다.',
     /** US4-4 — 켜 두었는데 받을 사람이 없다. 저장은 막지 않는다. */
@@ -55,8 +59,7 @@ export const alarmRecipientSettings = {
     saved: '저장했습니다',
     /** US4-6 — 409. */
     conflict: '다른 사람이 먼저 저장했습니다. 다시 불러온 뒤 저장하세요',
-    zaloNotActive:
-      'Zalo 연결이 설정되지 않아 지금은 알림센터로만 갑니다 — 알림 연결 설정(W-CO-12)',
+    zaloNotActive: 'Zalo 연결이 설정되지 않아 지금은 알림센터로만 갑니다 — 알림 연결 설정(W-CO-12)',
     unsavedTitle: '저장하지 않은 변경이 있습니다',
     unsavedBody: '이동하면 고친 내용이 사라집니다. 버리고 이동할까요?',
     candidatesEmpty: '검색 결과 없음',

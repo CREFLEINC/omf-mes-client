@@ -9,6 +9,7 @@ import {
   Skeleton,
   Switch,
   Table,
+  useToast,
   type Column,
 } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
@@ -74,6 +75,7 @@ interface Move {
 export const AlarmRecipientSettingsScreen = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const queryClient = useQueryClient();
+  const toast = useToast();
   const zaloNoteId = useId();
   const { session } = useSession();
   /* W-CO-12 권한이 있을 때만 연결 설정으로 가는 길을 단다 — 사이드바와 같은 판정이다. */
@@ -95,7 +97,6 @@ export const AlarmRecipientSettingsScreen = () => {
 
   const [draft, setDraft] = useState<SettingDraft | null>(null);
   const [baseline, setBaseline] = useState<SettingDraft | null>(null);
-  const [flash, setFlash] = useState<string | null>(null);
   const [inlineError, setInlineError] = useState<string | null>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [pendingMove, setPendingMove] = useState<Move | null>(null);
@@ -120,13 +121,12 @@ export const AlarmRecipientSettingsScreen = () => {
   const replace = useReplaceSetting(departmentId, selectedCode, (saved) => {
     queryClient.setQueryData(alarmRecipientKeys.detail(departmentId, selectedCode), saved);
     seed(toDraft(saved));
-    setFlash(t.state.saved);
+    toast.show({ variant: 'success', description: t.state.saved });
   });
 
   const isDirty = draft !== null && baseline !== null && !sameDraft(draft, baseline);
 
   const go = (move: Move): void => {
-    setFlash(null);
     setInlineError(null);
     replace.reset();
     setSearchParams(
@@ -141,7 +141,6 @@ export const AlarmRecipientSettingsScreen = () => {
 
   const change = (next: SettingDraft): void => {
     setDraft(next);
-    setFlash(null);
     setInlineError(null);
     replace.reset();
   };
@@ -216,7 +215,7 @@ export const AlarmRecipientSettingsScreen = () => {
   ];
 
   const departmentOptions =
-    departments.data?.map((item) => ({
+    departments.data?.items.map((item) => ({
       value: String(item.departmentId),
       label: `${item.departmentCode} · ${item.departmentName}`,
     })) ?? [];
@@ -262,11 +261,6 @@ export const AlarmRecipientSettingsScreen = () => {
         {inlineError !== null && (
           <div className="banner-slot">
             <AlertBanner variant="error">{inlineError}</AlertBanner>
-          </div>
-        )}
-        {flash !== null && (
-          <div className="banner-slot">
-            <AlertBanner variant="success">{flash}</AlertBanner>
           </div>
         )}
 
@@ -442,7 +436,7 @@ export const AlarmRecipientSettingsScreen = () => {
       <div className="alarm-department-bar">
         {departments.isError ? (
           loadError(() => void departments.refetch())
-        ) : departments.data !== undefined && departments.data.length === 0 ? (
+        ) : departments.data !== undefined && departments.data.items.length === 0 ? (
           <EmptyState size="sm" title={t.state.noDepartments} />
         ) : (
           <SelectField
@@ -451,6 +445,7 @@ export const AlarmRecipientSettingsScreen = () => {
             value={departmentId === null ? '' : String(departmentId)}
             placeholder={t.fields.department}
             disabled={departments.isPending}
+            note={departments.data?.truncated === true ? t.state.departmentsTruncated : undefined}
             onChange={(value) => {
               if (value === String(departmentId)) return;
               requestMove({ department: value, event: selectedCode });

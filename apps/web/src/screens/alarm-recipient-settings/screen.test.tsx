@@ -57,6 +57,8 @@ interface SetupOptions {
   /** 이벤트별 상세. 없으면 미설정 기본값(끔·끔·0) */
   settings?: Record<string, Partial<Setting>>;
   respondPut?: (request: Request) => Response;
+  /** 부서 목록의 서버 전체 건수 — 받은 건수보다 크면 잘린 것이다 */
+  departmentTotal?: number;
   candidates?: Array<{
     appUserId: number;
     loginId: string;
@@ -97,7 +99,7 @@ const setup = (options: SetupOptions = {}) => {
               isActive: true,
             },
           ],
-          page: { page: 1, size: 100, total: 1 },
+          page: { page: 1, size: 100, total: options.departmentTotal ?? 1 },
         }),
     },
     {
@@ -298,6 +300,30 @@ describe('AlarmRecipientSettingsScreen — 부서 × 이벤트', () => {
     expect(pane.getByText(t.fields.recipients(2))).toBeInTheDocument();
   });
 
+  it('이미 수신자인 후보는 체크박스가 잠겨 다시 고를 수 없다', async () => {
+    const user = userEvent.setup();
+    setup({
+      settings: {
+        WORK_ORDER_CLOSED: { enabled: true, recipients: [person(51, { userName: '후보 가' })] },
+      },
+    });
+
+    const pane = await openEvent(user, '생산 마감');
+    await user.click(await pane.findByRole('button', { name: `+ ${t.actions.add}` }));
+    const dialog = within(await screen.findByRole('dialog', { name: t.picker.title }));
+
+    const existing = await dialog.findByRole('checkbox', { name: t.values.selectRow('후보 가') });
+    expect(existing).toBeDisabled();
+    expect(existing).toBeChecked();
+    expect(dialog.getByRole('checkbox', { name: t.values.selectRow('후보 나') })).toBeEnabled();
+  });
+
+  it('부서 목록이 잘리면 잘림 안내를 보인다', async () => {
+    setup({ departmentTotal: 150 });
+
+    expect(await screen.findByText(t.state.departmentsTruncated)).toBeInTheDocument();
+  });
+
   it('후보 검색은 입력한 말을 keyword 로 실어 첫 쪽부터 다시 부른다', async () => {
     const user = userEvent.setup();
     const { candidateQueries } = setup();
@@ -334,7 +360,8 @@ describe('AlarmRecipientSettingsScreen — 부서 × 이벤트', () => {
       zaloEnabled: true,
       recipientUserIds: [42],
     });
-    expect(await pane.findByText(t.state.saved)).toBeInTheDocument();
+    /* 저장 완료는 토스트다(설계 W-CO-11) — 패널 밖에 선다. */
+    expect(await screen.findByText(t.state.saved)).toBeInTheDocument();
   });
 
   it('결재 이벤트 저장은 수신자를 싣지 않는다', async () => {
