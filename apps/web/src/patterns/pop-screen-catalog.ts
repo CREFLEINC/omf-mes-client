@@ -68,6 +68,8 @@ export const POP_SCREENS: readonly PopScreen[] = [
   { path: '/pop/pqc-inspection', code: 'P-02-13', name: 'PQC 제품 검사' },
   /* ⭐ 설계보다 앞선 화면이다(omf-all-around#108) — 화면 코드는 사용자 결정으로 부여했다. */
   { path: '/pop/material-defect', code: 'P-02-14', name: '자재 불량 등록' },
+  /* ⭐ 설계보다 앞선 화면이다(omf-all-around#89 · 서버 장부 P-88). */
+  { path: '/pop/inspection-sheet', code: 'P-02-15', name: '제품 검사표 입력' },
   { path: '/pop/packing', code: 'P-04-01', name: '출하 포장' },
   { path: '/pop/rework-results', code: 'P-04-03', name: '재작업 실적 등록' },
   { path: '/pop/repack-label-issue', code: 'P-04-04', name: '재구성 신규 라벨 발행' },

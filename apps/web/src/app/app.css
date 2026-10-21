@@ -16233,6 +16233,244 @@ body:has(.goods-receipt-post-form) > [role='listbox'] {
   display: grid;
   gap: var(--space-1);
   margin: var(--space-2) 0 0;
+
+/*
+ * 제품 검사표 조회(W-03-13 · omf-all-around#89) — 요약·머리 값은 이름·값 두 쌍씩 한 줄.
+ */
+.inspection-sheet-summary {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr) max-content minmax(0, 1fr);
+  gap: var(--space-1) var(--space-3);
+  margin: 0 0 var(--space-3);
+}
+
+.inspection-sheet-summary dt {
+  color: var(--on-surface-variant);
+}
+
+.inspection-sheet-summary dd {
+  margin: 0;
+}
+
+/* 목록 — 1024 폭 창(표 약 690px)에서 가로로 넘치지 않게 칸 폭을 고정하고 긴 값은 말줄임(#133·#134 와 같은 방식). */
+.inspection-sheet-list table {
+  min-width: 690px;
+  table-layout: fixed;
+}
+
+.inspection-sheet-list th,
+.inspection-sheet-list td {
+  padding-inline: var(--space-2);
+}
+
+.inspection-sheet-list th {
+  white-space: nowrap;
+}
+
+/* 숫자 두 칸(입력 단계 · NG 단계)은 칸이 좁아 머리글만 두 줄로 꺾는다. */
+.inspection-sheet-list th:nth-child(3),
+.inspection-sheet-list th:nth-child(4) {
+  white-space: normal;
+  line-height: 1.2;
+}
+
+.inspection-sheet-ellipsis {
+  display: block;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.inspection-sheet-muted {
+  color: var(--on-surface-muted);
+  font: var(--type-body-sm);
+}
+
+/* 출력 언어 — 한국어 / 베트남어를 골라 A4 출력(또는 PDF 저장)한다. */
+.inspection-sheet-print-lang {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.inspection-sheet-events {
+  margin: 0;
+  padding-left: var(--space-4);
+}
+
+/*
+ * 검사표 기준(W-06-24 · omf-all-around#89) — 목록|상세 두 칸(1280 아래는 위아래).
+ * ⛔ 상세 안에 스크롤 상자를 두지 않는다 — 페이지 스크롤 하나로 마지막 항목까지 닿고, 저장·확정 줄은
+ *    상세 맨 아래에 붙어 따라온다(끝까지 내리면 제자리에 서서 항목을 가리지 않는다).
+ * 고른 행은 옅은 중립 배경 + 첫 칸 막대(선례 `.warehouse-location-list-table`).
+ */
+.inspection-sheet-template-rule {
+  max-width: none;
+  margin: 0;
+}
+
+.two-pane.inspection-sheet-template-layout {
+  grid-template-columns: minmax(22rem, 28rem) minmax(0, 1fr);
+}
+
+@media (max-width: 1280px) {
+  .two-pane.inspection-sheet-template-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.inspection-sheet-template-filter {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+}
+
+.inspection-sheet-template-add {
+  margin-left: auto;
+}
+
+.inspection-sheet-template-caption {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.inspection-sheet-template-list table {
+  table-layout: fixed;
+}
+
+.inspection-sheet-template-list th {
+  white-space: nowrap;
+}
+
+/* 모델 칸 — 코드는 한 줄, 이름은 흐리게 한 줄 말줄임. */
+.inspection-sheet-template-model {
+  display: grid;
+  min-width: 0;
+}
+
+.inspection-sheet-template-list .link-cell {
+  justify-self: start;
+  max-width: 100%;
+  overflow: hidden;
+  text-align: left;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.inspection-sheet-template-list tbody tr:has(.link-cell[aria-current='true']) > td {
+  background: var(--state-hover-neutral);
+}
+
+.inspection-sheet-template-list tbody tr:has(.link-cell[aria-current='true']) > td:first-child {
+  box-shadow: inset 3px 0 0 var(--primary);
+}
+
+.inspection-sheet-template-list .link-cell[aria-current='true'] {
+  font-weight: 600;
+}
+
+.inspection-sheet-template-detail {
+  min-width: 0;
+}
+
+/* 상세 — 구획 사이 간격 하나로 정보 묶음을 가른다(구분선·상자를 더하지 않는다). */
+.inspection-sheet-template-editor {
+  display: grid;
+  gap: var(--space-3);
+  padding-bottom: 0;
+}
+
+.inspection-sheet-template-editor > .pane-subtitle {
+  margin: var(--space-4) 0 0;
+}
+
+.inspection-sheet-template-editor > .field-note {
+  margin: 0;
+}
+
+.inspection-sheet-template-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.inspection-sheet-template-head > .pane-title {
+  margin: 0;
+}
+
+.inspection-sheet-template-muted {
+  color: var(--on-surface-variant);
+}
+
+.inspection-sheet-template-required {
+  margin-left: var(--space-1);
+  color: var(--semantic-error-text);
+  font: var(--type-body-sm);
+}
+
+/* 기본 정보와 상단 정보가 같은 칸 폭으로 선다. */
+.inspection-sheet-template-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-3);
+  align-items: start;
+}
+
+@media (max-width: 720px) {
+  .inspection-sheet-template-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.inspection-sheet-template-readonly {
+  box-sizing: border-box;
+  margin: 0;
+  padding: var(--space-2) 0;
+  color: var(--on-surface);
+  overflow-wrap: anywhere;
+}
+
+.inspection-sheet-template-pick {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+/* RoHS 체크는 입력칸 줄에 맞춰 선다(라벨 높이만큼 내린다). */
+.inspection-sheet-template-check {
+  padding-top: calc(var(--space-5) + var(--space-1));
+}
+
+.inspection-sheet-template-lots {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.inspection-sheet-template-lot-row {
+  display: grid;
+  grid-template-columns: 9rem minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.inspection-sheet-template-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+  min-width: 0;
+  margin: 0;
   padding: 0;
   list-style: none;
 }
@@ -16259,6 +16497,8 @@ body:has(.goods-receipt-post-form) > [role='listbox'] {
 
 .reference-field > *,
 .assign-group > * {
+
+.inspection-sheet-template-chips > li {
   min-width: 0;
   max-width: 100%;
 }
@@ -16348,6 +16588,163 @@ body:has(.goods-receipt-post-form) > [role='listbox'] {
 }
 
 .erp-wo-bulk-actions {
+
+.inspection-sheet-template-chip {
+  display: inline-flex;
+  gap: var(--space-1);
+  max-width: 18rem;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.inspection-sheet-template-chip > .inspection-sheet-template-muted {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 검사 단계 — 왼쪽 단계 목록은 필요한 폭만, 오른쪽 항목 편집이 나머지를 다 쓴다. */
+.inspection-sheet-template-steps {
+  display: grid;
+  grid-template-columns: minmax(9rem, max-content) minmax(0, 1fr);
+  gap: var(--space-4);
+  align-items: start;
+}
+
+/* 좁은 화면 — 단계 목록을 항목 위 한 줄(넘치면 다음 줄)로 올려 항목 표가 폭을 다 쓰게 한다. */
+@media (max-width: 1280px) {
+  .inspection-sheet-template-steps {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .inspection-sheet-template-steps > .inspection-sheet-template-step-list {
+    position: static;
+    display: flex;
+    flex-wrap: wrap;
+  }
+
+  .inspection-sheet-template-steps > .inspection-sheet-template-step-list button {
+    width: auto;
+  }
+}
+
+/* 항목이 많아 길게 내려도 단계 목록은 보이는 자리에 남는다. */
+.inspection-sheet-template-step-list {
+  position: sticky;
+  top: var(--space-4);
+  display: grid;
+  gap: var(--space-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.inspection-sheet-template-step-list button {
+  display: grid;
+  gap: 2px;
+  width: 100%;
+  min-height: 44px;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--on-surface);
+  font: var(--type-body-md);
+  text-align: left;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.inspection-sheet-template-step-list button:hover {
+  background: var(--state-hover-neutral);
+}
+
+.inspection-sheet-template-step-list
+  button[data-enabled='false']
+  .inspection-sheet-template-step-name {
+  color: var(--on-surface-variant);
+}
+
+.inspection-sheet-template-step-list button[aria-current='true'] {
+  border-color: var(--outline-variant);
+  background: var(--state-hover-neutral);
+  box-shadow: inset 3px 0 0 var(--primary);
+}
+
+.inspection-sheet-template-step-list
+  button[aria-current='true']
+  .inspection-sheet-template-step-name {
+  font-weight: 600;
+}
+
+.inspection-sheet-template-step-list .inspection-sheet-template-muted,
+.inspection-sheet-template-step-list .field-error {
+  font: var(--type-body-sm);
+}
+
+.inspection-sheet-template-step {
+  display: grid;
+  gap: var(--space-3);
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.inspection-sheet-template-step > legend {
+  float: left;
+  padding: 0;
+}
+
+.inspection-sheet-template-step-fields {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
+  gap: var(--space-3);
+  align-items: center;
+}
+
+@media (max-width: 720px) {
+  .inspection-sheet-template-step-fields {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.inspection-sheet-template-items-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.inspection-sheet-template-items table {
+  table-layout: fixed;
+  width: 100%;
+}
+
+.inspection-sheet-template-items td {
+  vertical-align: top;
+  overflow-wrap: anywhere;
+}
+
+.inspection-sheet-template-items td > *,
+.inspection-sheet-template-items textarea {
+  box-sizing: border-box;
+  width: 100%;
+}
+
+.inspection-sheet-template-items textarea {
+  resize: none;
+}
+
+.inspection-sheet-template-items td:last-child button {
+  white-space: nowrap;
+}
+
+/* 저장·확정 줄 — 상세 맨 아래에 붙어 따라온다. 상세 패딩까지 덮어 뒤 내용이 비치지 않게 한다. */
+.inspection-sheet-template-actions {
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -16617,4 +17014,220 @@ body:has(.goods-receipt-post-form) > [role='listbox'] {
 .erp-wo-table td:first-child,
 .erp-wo-table th:first-child {
   padding-inline: var(--space-2);
+
+  margin: var(--space-2) calc(var(--space-4) * -1) 0;
+  padding: var(--space-3) var(--space-4);
+  border-top: 1px solid var(--outline-variant);
+  border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+  background: var(--surface-container-low);
+}
+
+.inspection-sheet-template-status {
+  flex: 1 1 12rem;
+  margin: 0;
+  color: var(--on-surface-variant);
+  font: var(--type-body-sm);
+}
+
+/*
+ * 제품 검사표 A4 출력(omf-all-around#89 C5) — 고객 종이 양식 B-05-101 과 같은 배치. 화면에는 그리지 않고 인쇄 때만
+ * 이 장만 보인다. 양식이 A4 가로라 그대로 맞춘다.
+ */
+.sheet-print-root {
+  display: none;
+}
+
+@media print {
+  @page {
+    size: A4 landscape;
+    margin: 6mm;
+  }
+
+  body > *:not(.sheet-print-root) {
+    display: none !important;
+  }
+
+  .sheet-print-root {
+    display: block;
+    color: #000;
+    background: #fff;
+  }
+}
+
+/* A4 가로 한 장(297 × 210 − 여백 6mm)을 양식처럼 위아래 끝까지 채운다 — 표 줄이 남는 높이를 나눠 갖는다. */
+.sheet-print {
+  display: grid;
+  grid-template-columns: 42% 29% 29%;
+  grid-template-rows: minmax(0, 1fr) auto;
+  height: 196mm;
+  column-gap: 2mm;
+  width: 285mm;
+  font-family: 'Noto Sans KR', 'Malgun Gothic', sans-serif;
+  font-size: 7.5pt;
+  line-height: 1.25;
+  color: #000;
+  break-after: page;
+}
+
+.sheet-print table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+
+.sheet-print th,
+.sheet-print td {
+  padding: 0.6mm 1mm;
+  border: 0.2mm solid #000;
+  text-align: left;
+  vertical-align: middle;
+  overflow-wrap: anywhere;
+}
+
+.sheet-print th {
+  font-weight: 600;
+  background: #f2f2f2;
+}
+
+.sheet-print__left {
+  display: flex;
+  flex-direction: column;
+  gap: 2mm;
+  min-height: 0;
+}
+
+/* 머리 — 이름 칸 · 값 칸 · 제목 칸 · 서명 네 칸(양식 A~I 열). */
+.sheet-print__col-label {
+  width: 17%;
+}
+
+.sheet-print__col-title {
+  width: 27%;
+}
+
+.sheet-print__title-cell {
+  text-align: center !important;
+  background: #dbe6f4;
+  print-color-adjust: exact;
+  -webkit-print-color-adjust: exact;
+}
+
+.sheet-print__sign-head,
+.sheet-print__sign {
+  text-align: center !important;
+}
+
+.sheet-print__sign {
+  height: 9mm;
+}
+
+.sheet-print__serial {
+  height: 9mm;
+  font-size: 13pt !important;
+  font-weight: 700;
+  text-align: center !important;
+}
+
+/* 왼쪽 표(머리·NG·단계 판정) — 베트남어 칸 이름이 길어 PP 양식에서 넘치지 않게 조금 줄인다. */
+.sheet-print__left th,
+.sheet-print__left td {
+  padding: 0.4mm 0.8mm;
+  font-size: 7pt;
+}
+
+.sheet-print__title {
+  margin: 0;
+  font-size: 13pt;
+}
+
+/* NG 블록 · 단계 판정 — 머리 아래 남은 높이를 다 쓴다. */
+.sheet-print__middle {
+  display: grid;
+  flex: 1 1 auto;
+  grid-template-columns: 62% 38%;
+  gap: 2mm;
+  min-height: 0;
+}
+
+.sheet-print__middle > table {
+  height: 100%;
+}
+
+.sheet-print__boxes {
+  font-weight: 400 !important;
+  text-align: left !important;
+  white-space: pre-line;
+}
+
+/* PP 양식 — NG 블록이 5칸이라 왼쪽을 넓히고 항목 칸을 좁힌다(양식의 열 비율). */
+.sheet-print--pp {
+  grid-template-columns: 50% 25% 25%;
+}
+
+.sheet-print--pp .sheet-print__middle {
+  grid-template-columns: 68% 32%;
+}
+
+.sheet-print__ngs th:first-child {
+  width: 26%;
+}
+
+/*
+ * 항목 표 — 양식처럼 한 칸 한 줄. 49줄이 A4 가로 한 장에 들어가야 해서 글자를 줄이고 넘치는 이름은 말줄임으로 둔다.
+ * 단계 이름 칸(여러 줄을 묶는 칸)만 줄을 바꾼다.
+ */
+.sheet-print__col-step,
+.sheet-print__col-code {
+  width: 13%;
+}
+
+.sheet-print__col-mark {
+  width: 10%;
+}
+
+.sheet-print__items th,
+.sheet-print__items td {
+  height: 3.1mm;
+  padding: 0.15mm 0.6mm;
+  font-size: 6pt;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sheet-print__items {
+  height: 100%;
+}
+
+.sheet-print__items thead th {
+  white-space: normal;
+  text-align: center;
+}
+
+.sheet-print__items .sheet-print__step {
+  white-space: normal;
+  text-align: center;
+}
+
+.sheet-print__mark {
+  text-align: center;
+  font-weight: 600;
+}
+
+.sheet-print__more {
+  margin: 1mm 0 0;
+  font-weight: 600;
+}
+
+.sheet-print__footer {
+  grid-column: 1 / -1;
+  display: flex;
+  justify-content: space-between;
+  gap: 4mm;
+  margin-top: 2mm;
+  font-size: 6.5pt;
+}
+
+.sheet-print__footer p {
+  margin: 0;
 }

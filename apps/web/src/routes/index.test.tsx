@@ -1723,7 +1723,19 @@ describe('appRouter — 물류 전표 조회·취소의 진입 경로', () => {
     ).toBeInTheDocument();
     expect(screen.getByText(docProgress.empty.noDocumentTypeTitle)).toBeInTheDocument();
 
-    expect(requests).toHaveLength(0);
+    /*
+     * 셸의 OA 공장 판단(메뉴의 OA 전용 화면 감춤 · omf-all-around#89)이 공장·공통코드를 한 번 읽는다 — 화면의 조회가
+     * 아니라 빼고 센다.
+     */
+    const isOaLookup = (request: Request) => {
+      const url = new URL(request.url);
+      return (
+        url.pathname.endsWith('/mdm/plants') ||
+        (url.pathname.endsWith('/mdm/code-values') &&
+          url.searchParams.get('codeGroupCode') === 'INSPECTION_SHEET_PLANT')
+      );
+    };
+    expect(requests.filter((request) => !isOaLookup(request))).toHaveLength(0);
   });
 
   /*

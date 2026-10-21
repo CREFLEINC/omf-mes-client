@@ -143,6 +143,10 @@ import { inspectionHistory } from './inspection-history';
 import { fourMInputs } from './four-m-inputs';
 import { pqcInspectionRegister } from './pqc-inspection-register';
 import { inspectionLevel } from './inspection-level';
+import { inspectionSheet } from './inspection-sheet';
+import { inspectionSheetPrint } from './inspection-sheet-print';
+import { inspectionSheetTemplate } from './inspection-sheet-template';
+import { popInspectionSheet } from './pop-inspection-sheet';
 import { materialDefect } from './material-defect';
 import { popOqcInspection } from './pop-oqc-inspection';
 import { popMaterialLotLabel } from './pop-material-lot-label';
@@ -290,6 +294,10 @@ export const ko = {
   fourMInputs,
   pqcInspectionRegister,
   inspectionLevel,
+  inspectionSheet,
+  inspectionSheetPrint,
+  inspectionSheetTemplate,
+  popInspectionSheet,
   materialDefect,
   popOqcInspection,
   popMaterialLotLabel,

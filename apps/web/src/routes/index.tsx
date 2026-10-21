@@ -21,6 +21,8 @@ import { MaterialIssueRequestScreen } from '../screens/material-issue-request/sc
 import { WorkOrderProgressScreen } from '../screens/work-order-progress/screen';
 import { GoodsReceiptScreen } from '../screens/goods-receipt/screen';
 import { InboundScheduleScreen } from '../screens/inbound-schedule/screen';
+import { InspectionSheetScreen } from '../screens/inspection-sheet/screen';
+import { InspectionSheetTemplateScreen } from '../screens/inspection-sheet-template/screen';
 import { InspectionStandardScreen } from '../screens/inspection-standard/screen';
 import { IntegrationSyncScreen } from '../screens/integration-sync/screen';
 import { ErpBomScreen } from '../screens/erp-bom/screen';
@@ -134,6 +136,8 @@ export const appRouter = createBrowserRouter([
       { path: 'master-data/putaway-rule', element: <PutawayRuleScreen /> },
       { path: 'master-data/routing', element: <RoutingScreen /> },
       { path: 'master-data/inspection-standard', element: <InspectionStandardScreen /> },
+      /* W-06-24 — 검사표 기준(omf-all-around#89 · 설계보다 앞선 화면). OA 제품 검사표의 모델별 단계·항목. */
+      { path: 'master-data/inspection-sheet-template', element: <InspectionSheetTemplateScreen /> },
       { path: 'master-data/defect-cause-code', element: <DefectCauseCodeScreen /> },
       { path: 'master-data/common-code', element: <CommonCodeScreen /> },
       /* W-06-04 — 전용 자원이 아니라 공통코드의 코드값 편집기를 한 그룹으로 고정해 여는 진입점이다. */
@@ -385,6 +389,8 @@ export const appRouter = createBrowserRouter([
       { path: 'quality/pqc-inspections', element: <PqcInspectionRegisterScreen /> },
       /* W-03-12 — 검사 수준 관리(omf-all-around#64 · 설계보다 앞선 화면). 품목별 IQC 검사 수준과 전환 이력. */
       { path: 'quality/inspection-levels', element: <InspectionLevelScreen /> },
+      /* W-03-13 — 제품 검사표 조회(omf-all-around#89 · 설계보다 앞선 화면). 시리얼별 OA 제품 검사표 조회·서명·승인. */
+      { path: 'quality/inspection-sheets', element: <InspectionSheetScreen /> },
       /* W-04-11 — 품질에서 정상 판정된 반품 LOT을 출하 가능 재고로 되돌린다. */
       { path: 'shipment/stock-reinstatements', element: <StockReinstatementScreen /> },
       /*

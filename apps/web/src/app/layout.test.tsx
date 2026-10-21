@@ -575,9 +575,13 @@ describe('AppLayout', () => {
       '/quality/pqc-inspections',
       '/shipment/oqc-inspection',
       '/master-data/inspection-standard',
+      /* W-06-24 — OA 제품 검사표 기준(설계보다 앞선 화면). */
+      '/master-data/inspection-sheet-template',
       /* 「품질 코드」 묶음 — 불량·원인코드 → 판정유형 코드. */
       '/master-data/defect-cause-code',
       '/quality/inspection-results',
+      /* W-03-13 — OA 제품 검사표 조회·서명(설계보다 앞선 화면). */
+      '/quality/inspection-sheets',
       /* 「LOT 상태」 묶음 — 조회 → 판정(W-03-02 는 조회에서 찾은 LOT 을 판정·전이한다). */
       '/quality/lot-status',
       '/quality/suspicious-material-hold',
@@ -997,8 +1001,10 @@ describe('AppLayout', () => {
       '/quality/pqc-inspections',
       '/shipment/oqc-inspection',
       '/master-data/inspection-standard',
+      '/master-data/inspection-sheet-template',
       '/master-data/defect-cause-code' /* ← 품질 코드 */,
       '/quality/inspection-results',
+      '/quality/inspection-sheets',
       '/quality/lot-status' /* ← LOT 상태 */,
       '/quality/suspicious-material-hold',
       '/quality/approvals',
@@ -1659,7 +1665,7 @@ describe('AppLayout — 레일', () => {
 
     await collapseRail(user);
 
-    expect(within(navSidebar()).getAllByRole('link')).toHaveLength(47);
+    expect(within(navSidebar()).getAllByRole('link')).toHaveLength(49);
   });
 
   /*
@@ -1709,7 +1715,7 @@ describe('AppLayout — 레일과 검색', () => {
     await typeQuery(user, '실사');
     await collapseRail(user);
 
-    expect(within(navSidebar()).getAllByRole('link')).toHaveLength(47);
+    expect(within(navSidebar()).getAllByRole('link')).toHaveLength(49);
   });
 
   /** 섹션 밖 항목이 빠지면 레일에서 대시보드로 갈 길이 사라진다. */
