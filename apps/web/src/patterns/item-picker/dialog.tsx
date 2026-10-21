@@ -179,18 +179,16 @@ export const ItemPickerDialog = ({
         />
       ),
     },
-    /* ⭐ `compact` 인 창만 가운데 정렬이다 — 코드·유형이 짧아 왼쪽에 붙으면 열이 흩어져 보인다. */
+    /* 글자 열은 왼쪽 정렬이다 — 머리줄과 값이 같은 줄에 선다(검사기준 검색 창과 같은 모양 · #133). */
     {
       key: 'itemCode',
       header: t.columns.itemCode,
-      ...(compact ? { align: 'center' as const } : {}),
       width: '160px',
       render: (row) => row.itemCode,
     },
     {
       key: 'itemName',
       header: t.columns.itemName,
-      ...(compact ? { align: 'center' as const } : {}),
       render: (row) => (
         <span>
           {row.itemName}
@@ -203,7 +201,6 @@ export const ItemPickerDialog = ({
     {
       key: 'itemTypeCode',
       header: t.columns.itemType,
-      ...(compact ? { align: 'center' as const } : {}),
       width: '128px',
       /* 서버가 준 코드 그대로다 — 이름은 유형 목록이 갖고, 없으면 지어내지 않는다. */
       render: (row) =>

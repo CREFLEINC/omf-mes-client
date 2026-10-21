@@ -69,7 +69,7 @@ export const iqcInspection = {
     item: '품목',
     /** 창을 여는 칸이다 — 「치세요」가 아니라 「고르세요」로 적는다. */
     itemPlaceholder: '품목 선택',
-    itemPick: '이 품목으로',
+    itemPick: '선택',
     itemClear: '품목 조건 지우기',
     supplier: '공급사',
     supplierPlaceholder: '공급사 선택',

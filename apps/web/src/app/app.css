@@ -14096,10 +14096,10 @@ button.app-button-neutral {
  * W-01-01 IQC 수입검사 판정 — 이 화면의 모든 표(대기 목록·검사 항목·회차 이력)는 머리줄과 모든 열을
  * 가운데로. DS 의 열별 정렬([data-align])보다 앞선다(단말기-공정 매핑·ERP W/O 와 같은 풀이).
  */
-.iqc-inspection-panes thead th,
-.iqc-inspection-panes thead th[data-align],
-.iqc-inspection-panes td,
-.iqc-inspection-panes td[data-align] {
+.iqc-inspection-panes thead th:not(dialog *),
+.iqc-inspection-panes thead th[data-align]:not(dialog *),
+.iqc-inspection-panes td:not(dialog *),
+.iqc-inspection-panes td[data-align]:not(dialog *) {
   text-align: center;
 }
 
@@ -14122,15 +14122,15 @@ button.app-button-neutral {
  * 대기 목록(왼쪽 창의 표) — 글자 칸은 왼쪽, 상태는 가운데, 일시는 오른쪽. 머리줄도 같은 기준이다.
  * 상세 창의 표(측정·회차)는 위 가운데 정렬 그대로 둔다.
  */
-.iqc-inspection-queue-pane th:nth-child(1),
-.iqc-inspection-queue-pane td:nth-child(1),
-.iqc-inspection-queue-pane th:nth-child(2),
-.iqc-inspection-queue-pane td:nth-child(2) {
+.iqc-inspection-queue-rows th:nth-child(1),
+.iqc-inspection-queue-rows td:nth-child(1),
+.iqc-inspection-queue-rows th:nth-child(2),
+.iqc-inspection-queue-rows td:nth-child(2) {
   text-align: left;
 }
 
-.iqc-inspection-queue-pane th:nth-child(4),
-.iqc-inspection-queue-pane td:nth-child(4) {
+.iqc-inspection-queue-rows th:nth-child(4),
+.iqc-inspection-queue-rows td:nth-child(4) {
   text-align: right;
 }
 
@@ -14138,48 +14138,48 @@ button.app-button-neutral {
  * 열 폭을 내용이 아니라 지정 폭(품목 36% · 상태 5rem · 일시 10rem)으로 잡는다 — 내용 폭으로 잡으면 긴 LOT 번호가
  * 표를 창 밖으로 밀어 일시가 잘린다(1024 폭). 남는 폭은 LOT 칸이 받고, 모자라면 말줄임이다.
  */
-.iqc-inspection-queue-pane table {
+.iqc-inspection-queue-rows table {
   table-layout: fixed;
   width: 100%;
 }
 
-.iqc-inspection-queue-pane th {
+.iqc-inspection-queue-rows th {
   color: var(--on-surface-muted);
   font: var(--type-label-sm);
   letter-spacing: var(--type-label-sm-tracking);
   border-bottom: 1px solid var(--outline-variant);
 }
 
-.iqc-inspection-queue-pane td {
+.iqc-inspection-queue-rows td {
   padding-block: var(--space-2);
   vertical-align: middle;
 }
 
 /* 줄무늬 바탕을 지운다 — 구분은 얇은 선으로, 강조는 고른 줄에만. */
-.iqc-inspection-queue-pane tbody tr,
-.iqc-inspection-queue-pane tbody tr:nth-child(even) {
+.iqc-inspection-queue-rows tbody tr,
+.iqc-inspection-queue-rows tbody tr:nth-child(even) {
   background: transparent;
 }
 
 /* 줄 — 마우스를 올리면 옅게, 고른 줄은 바탕 + 왼쪽 강조선으로 확실히 가른다. */
-.iqc-inspection-queue-pane tbody tr {
+.iqc-inspection-queue-rows tbody tr {
   transition: background-color 0.12s ease;
   /* 줄 아무 곳이나 눌러 고른다(queue-table.tsx). */
   cursor: pointer;
 }
 
-.iqc-inspection-queue-pane tbody tr:nth-child(n):hover {
+.iqc-inspection-queue-rows tbody tr:nth-child(n):hover {
   background: var(--state-hover-neutral);
 }
 
-.iqc-inspection-queue-pane
+.iqc-inspection-queue-rows
   tbody
   tr:nth-child(n):has(.iqc-inspection-queue-item[aria-current='true']) {
   background: var(--surface-container-high);
 }
 
 /* 표 줄(tr)에는 그림자가 안 그려진다 — 강조선은 첫 칸에 긋는다. */
-.iqc-inspection-queue-pane
+.iqc-inspection-queue-rows
   tbody
   tr:has(.iqc-inspection-queue-item[aria-current='true'])
   > td:first-child {
@@ -14481,6 +14481,37 @@ button.app-button-neutral {
     bottom: 0;
     z-index: 1;
   }
+}
+
+/*
+ * 목록 화면 — 쪽 머리 · 검색 줄 · 쪽 넘김은 제자리에 두고 표만 안에서 구른다(#133). 카드 높이를 창 높이에 맞춘다
+ * (앱 머리 64px · 쪽 머리 · 본문 아래 여백만큼 뺀 값). 표 머리줄은 구를 때 위에 붙어 있다.
+ */
+.iqc-inspection-queue-pane {
+  display: flex;
+  flex-direction: column;
+  height: calc(100dvh - 15rem);
+  min-height: 18rem;
+}
+
+.iqc-inspection-queue-pane > .iqc-inspection-queue-rows {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+}
+
+/* DS 표가 자기 감싸개(가로 넘침용)를 두므로, 세로로 구르는 상자도 그 감싸개가 맡아야 머리줄이 붙는다. */
+.iqc-inspection-queue-pane > .iqc-inspection-queue-rows > div {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.iqc-inspection-queue-rows thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
 }
 
 /* 상세 맨 위 「← 목록」 줄 — 저장 안 한 입력이 있으면 같은 줄에서 한 번 묻는다. */
