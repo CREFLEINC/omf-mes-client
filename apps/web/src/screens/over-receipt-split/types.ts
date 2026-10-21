@@ -19,14 +19,6 @@ type InboundReceiptResponse = components['schemas']['InboundReceipt'];
 export type PageMeta = components['schemas']['PageMeta'];
 
 /**
- * 저장 갈래. **계약에서 끌어온다** — 손으로 적은 유니온은 계약이 갈래를 늘려도 조용히 남는다.
- *
- * **기본값을 두지 않는다**(이슈 §6). 세 갈래는 각각 다른 버튼이고, 무엇을 저장하는지는
- * 누르기 전에 정해져야 한다.
- */
-export type SplitMode = components['schemas']['InboundReceiptSplitRequest']['mode'];
-
-/**
  * 화면이 다루는 발주 한 건.
  *
  * **계약 응답을 통째로 넓히지 않고 쓰는 값만 옮긴다.** 응답에는 사업부·ERP 발주번호·
@@ -117,7 +109,7 @@ export interface SelectOption {
 }
 
 /**
- * 라인 바깥의 초안 — **두 전표에 함께 실리는 머리 입력과 초과분에만 실리는 두 칸**이다.
+ * 라인 바깥의 초안 — **전표 머리 입력**이다.
  *
  * 라인 초안과 갈라 두는 이유는 되돌아가는 신호가 다르기 때문이다. 라인 초안은 라인 응답이
  * 오면 그 응답으로 새로 만들어지지만, 머리 입력은 **고른 발주가 바뀔 때만** 비워진다 —
@@ -131,75 +123,48 @@ export interface HeaderDraft {
   receiptDatetime: string;
   deliveryNoteNo: string;
   remarks: string;
-  /** 값 목록이 확정되지 않아 선택지가 비어 있다 — 지금은 늘 빈 문자열이다(계획 결정 14) */
-  exceptionTypeCode: string;
-  exceptionReason: string;
 }
 
 export const EMPTY_HEADER_DRAFT: HeaderDraft = {
   receiptDatetime: '',
   deliveryNoteNo: '',
   remarks: '',
-  exceptionTypeCode: '',
-  exceptionReason: '',
 };
 
 /**
  * 버릴 것이 있는가. 대상을 바꾸거나 취소할 때 확인을 받을지 정한다(계획 결정 10).
  *
- * **다섯 칸을 모두 본다.** 한 칸만 보면 나머지 넷에 친 값이 확인 없이 사라진다.
+ * **세 칸을 모두 본다.** 한 칸만 보면 나머지에 친 값이 확인 없이 사라진다.
  * 공백만 친 칸은 버릴 값이 아니다 — 라인 수량(`hasAnyQty`)과 같은 기준이다.
  */
 export const hasAnyHeaderValue = (header: HeaderDraft): boolean =>
   Object.values(header).some((text) => text.trim() !== '');
 
 /**
- * 만들어진 전표 한 건 — **화면이 내는 값과 다음 화면으로 넘길 열쇠를 담는다.**
- *
- * `inboundReceiptNo`는 사용자가 나중에 이 전표를 찾을 때 쓰는 **업무 번호**라 내는 것이 맞다.
- *
- * `inboundReceiptId`는 내부 번호(FK)다. 앞 회차에는 **자리 자체를 두지 않았다** — 자리가 없으면
- * 결과 구획으로 샐 경로도 없다는 이유였다(#44). 지금 자리를 여는 근거는 그 값이 **다음 화면
- * (W-01-11 신규 P/O 등록)으로 무엇을 정산할지 넘기는 열쇠**가 됐다는 것이다. 계약이 그 화면의
- * 진입을 내부 번호로 받으므로(`GET /logistics/inbound-receipts/{inboundReceiptId}`)
- * 업무 번호로는 주소를 만들 수 없다.
- *
- * **#44의 본뜻은 그대로 지킨다 — 사람에게 보이지 않는다.** 이 값은 **링크의 질의값에만** 실리고
- * 표시 경로(전표번호·상태·접근 이름)에는 넣지 않는다. 그 사실은 결과 구획 렌더 결과에 이 번호가
- * 글자로 나타나지 않는다는 감지기가 지킨다(`created-receipts-pane.test.tsx`).
+ * 만들어진 전표 한 건 — **화면이 내는 값만 담는다.** `inboundReceiptNo`는 사용자가 나중에 이 전표를 찾을 때
+ * 쓰는 **업무 번호**라 내는 것이 맞다. 내부 번호는 들이지 않는다(#44) — 자리가 없으면 샐 경로도 없다.
  *
  * `statusCode`는 값으로 분기하지 않고 그대로 보인다(공유계약 G-2).
  */
 export interface CreatedReceiptView {
-  /** 다음 화면으로 넘길 열쇠. **표시하지 않는다** — 링크 질의값 한 자리에만 쓴다 */
-  inboundReceiptId: number;
   inboundReceiptNo: string;
   statusCode: string;
-  /** 초과분 전표에만 실린다 — 등록 결과에서 어느 전표가 초과분인지 가르는 단서다. */
-  exceptionTypeCode: string | null;
 }
 
 /** 등록 응답 한 건을 화면 타입으로 옮기는 **유일한 지점**이다. */
 export const toCreatedReceiptView = (data: InboundReceiptResponse): CreatedReceiptView => ({
-  inboundReceiptId: data.inboundReceiptId,
   inboundReceiptNo: data.inboundReceiptNo,
   statusCode: data.statusCode,
-  exceptionTypeCode: data.exceptionTypeCode ?? null,
 });
 
 /**
- * 한 번의 등록이 남긴 것 — **만들어진 전표와 「초과분이 실렸는가」**.
+ * 한 번의 등록이 남긴 것 — **만들어진 전표와 P/O 에 넣지 않은 초과 몫.**
  *
- * 갈래(`mode`)를 그대로 들지 않고 **판정 결과 한 값만** 든다. 갈래를 들면 결과 구획이 「어느
- * 갈래로 등록했는지」를 표시 값으로 쓸 길이 생기는데, 그것은 「어느 전표가 초과분인지」를
- * 지어내는 것과 한 걸음 차이다(계획 결정 3). 여기서 필요한 것은 **다음 화면으로 가는 길을
- * 세울 것인가** 하나뿐이다.
- *
- * `false`인 갈래(정량분만 저장)의 전표는 **정의상 초과분이 아니다** — 그 사실의 근거는 응답이
- * 아니라 사용자가 방금 누른 버튼이라, 화면이 지어내는 것이 아니라 이미 아는 것이다.
+ * 초과 몫은 화면이 보낸 값이다(응답 줄을 다시 읽지 않는다) — 결과 구획이 「무엇이 추가 P/O 를 기다리는가」를
+ * 말하고 잇는 자리로 가는 길을 세우는 데 쓴다.
  */
 export interface CreatedResult {
-  /** 제출한 갈래 — 결과에서 어느 전표가 초과분인지 가르는 단서의 하나다. */
-  mode: SplitMode;
   receipts: CreatedReceiptView[];
+  /** 초과 몫이 실린 줄 — 줄번호와 수량. 비었으면 이을 것이 없다. */
+  excessLines: { lineNo: number; excessQty: number }[];
 }

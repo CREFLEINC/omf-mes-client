@@ -14,7 +14,6 @@ import {
   type StubRoute,
 } from '../../test/api-harness';
 import {
-  exceptionTypeFixtures,
   itemFixtures,
   LABEL_9301,
   lotReasonFixtures,
@@ -24,6 +23,7 @@ import {
   purchaseOrderLineFixtures,
   uomFixtures,
 } from './fixtures';
+import { excessLinkPath } from './created-receipts-pane';
 import { poKeys } from './queries';
 import { OverReceiptSplitScreen } from './screen';
 import { DELIVERY_NOTE_NO_MAX } from './validation';
@@ -220,15 +220,13 @@ const pagedPartnersRoute = (items: unknown[], serverSize = 1): StubRoute => ({
 });
 
 /** 참조 목록 넷. 화면이 이름으로 풀 수 있는 정상 상태다. */
-/** 코드 사전 둘 — 그룹 코드로 가른다. */
+/** 코드 사전 — 이 화면이 부르는 것은 대체 LOT 사유 하나다. 다른 그룹은 빈 목록으로 답한다. */
 const codeValuesRoute = (): StubRoute => ({
   match: (request) => isGet(request, CODE_VALUES_PATH),
   respond: (request) => {
     const group = new URL(request.url).searchParams.get('codeGroupCode');
 
-    return jsonResponse(
-      listBody(group === 'SUBSTITUTE_LOT_REASON' ? lotReasonFixtures : exceptionTypeFixtures),
-    );
+    return jsonResponse(listBody(group === 'SUBSTITUTE_LOT_REASON' ? lotReasonFixtures : []));
   },
 });
 
@@ -321,26 +319,17 @@ const detailRoute = (): StubRoute => ({
  * **내부 번호를 함께 담는다** — 화면이 그것을 내지 않는다는 것을 검사하려면
  * 응답에 실제로 들어 있어야 한다. 담지 않으면 그 단언이 늘 참이 된다.
  */
-const createdReceipt = (
-  inboundReceiptId: number,
-  inboundReceiptNo: string,
-  exceptionTypeCode: string | null = null,
-) => ({
+const createdReceipt = (inboundReceiptId: number, inboundReceiptNo: string) => ({
   inboundReceiptId,
   inboundReceiptNo,
   supplierId: 9101,
   plantId: 9201,
   receiptDatetime: '2026-08-06T09:12:00+09:00',
   statusCode: 'SAMPLE_IR_STATUS_A',
-  exceptionTypeCode,
 });
 
+/* 전표는 늘 한 건이다(서버 장부 P-100) — 초과 몫은 그 전표 줄의 `excessQty` 로 실린다. */
 const CREATED_ONE = [createdReceipt(9601, 'IR-2026-900010')];
-/* 둘째가 초과분이다 — 서버는 초과분 전표에만 예외 유형을 싣는다. */
-const CREATED_TWO = [
-  createdReceipt(9601, 'IR-2026-900010'),
-  createdReceipt(9602, 'IR-2026-900011', 'OVER_DELIVERY'),
-];
 
 const isSplitPost = (request: Request): boolean =>
   request.method === 'POST' && new URL(request.url).pathname === SPLIT_PATH;
@@ -1249,7 +1238,19 @@ describe('OverReceiptSplitScreen — 도착 수량과 가르기', () => {
     expect(within(lineTable()).getAllByText(t.values.notSplit)).toHaveLength(4);
   });
 
-  /* 전 라인이 정량 안쪽인 경우와 전 라인이 초과뿐인 경우가 둘 다 정상 입력이다. */
+  /*
+   * 다 받은 줄(9402 — 허용치 0)에 넣은 수량은 전부 초과 몫이다. 초과 몫만으로 된 줄은 서버가 받지 않아
+   * 수량 칸에 사유가 붙는다 — 추가 P/O 가 오면 그 발주로 받는다.
+   */
+  it('다 받은 줄에 수량을 넣으면 받을 수 없다는 사유가 붙는다', async () => {
+    const { user } = renderScreen(allRoutes());
+
+    await selectAndWait(user);
+    await user.type(qtyInput(2), '12');
+
+    expect(await screen.findByText(t.errors.qtyNoRoom)).toBeInTheDocument();
+  });
+
   it('세 줄을 모두 채우면 세 줄이 모두 갈린다', async () => {
     const { user } = renderScreen(allRoutes());
 
@@ -1260,8 +1261,8 @@ describe('OverReceiptSplitScreen — 도착 수량과 가르기', () => {
 
     expect(splitCellsOf(1)).toEqual(['10', '0']);
     expect(splitCellsOf(2)).toEqual(['0', '3']);
-    // 잔량이 음수인 줄이다 — 허용치 5까지가 정량분이다.
-    expect(splitCellsOf(3)).toEqual(['5', '3']);
+    // 누적 입하가 발주를 넘긴 줄이다 — 서버 한도(발주 + 허용 − 누적 = 3)까지가 P/O 몫이다.
+    expect(splitCellsOf(3)).toEqual(['3', '5']);
     expect(within(lineTable()).queryByText(t.values.notSplit)).not.toBeInTheDocument();
   });
 
@@ -1574,22 +1575,19 @@ const labelFor = (lineNo: number): string =>
     ? 'SAMPLE-ITEM-02|12|260806|SAMPLE-SUP-01|0001'
     : `SAMPLE-ITEM-01|66|260806|SAMPLE-SUP-01|000${String(lineNo)}`;
 
-/** 초과분 LOT 은 「라벨 없음 · 기타」로 — 같은 LOT 번호를 두 전표에 쓸 수 없다. */
+/** LOT 을 「라벨 없음 · 기타」로 — 번호 없이 대체 사유를 고른다. */
 const markLotMissing = async (
   user: ReturnType<typeof userEvent.setup>,
   lineNo: number,
-  part: 'normal' | 'excess',
 ): Promise<void> => {
-  await user.click(screen.getByLabelText(t.lineTable.lotMissingLabel(lineNo, part)));
-  await user.click(
-    screen.getByRole('combobox', { name: t.lineTable.lotReasonLabel(lineNo, part) }),
-  );
+  await user.click(screen.getByLabelText(t.lineTable.lotMissingLabel(lineNo)));
+  await user.click(screen.getByRole('combobox', { name: t.lineTable.lotReasonLabel(lineNo) }));
   await user.click(screen.getByRole('option', { name: '기타' }));
 };
 
 /**
- * 라인 수량·LOT 과 입하 일시·초과 사유를 채운다. 고르는 절차와 갈라 둔다 — 등록 뒤에는 다시 고르지 않는다.
- * 수량이 갈린 뒤에 서는 LOT 줄에 정량분은 라벨, 초과분은 「라벨 없음」을 넣는다.
+ * 라인 수량·LOT 과 입하 일시를 채운다. 고르는 절차와 갈라 둔다 — 등록 뒤에는 다시 고르지 않는다.
+ * 수량을 넣은 뒤에 서는 LOT 줄(줄마다 하나)에 그 줄 품목의 라벨을 넣는다.
  */
 const fillDraft = async (
   user: ReturnType<typeof userEvent.setup>,
@@ -1599,23 +1597,13 @@ const fillDraft = async (
     await user.type(qtyInput(Number(lineNo)), text);
   }
   for (const lineNo of Object.keys(qty).map(Number)) {
-    const normalLot = screen.queryByLabelText(t.lineTable.lotNoLabel(lineNo, 'normal'));
-    if (normalLot !== null) {
-      /* 정량분 라벨을 넣으면 초과분 LOT 은 그 라벨에서 파생된다 — 손대지 않는다. */
-      await user.type(normalLot, labelFor(lineNo));
-    } else {
-      /* 전부 초과인 줄은 파생할 라벨이 없다 — 초과분 LOT 에 라벨을 넣는다. */
-      const excessLot = screen.queryByLabelText(t.lineTable.lotNoLabel(lineNo, 'excess'));
-      if (excessLot !== null) await user.type(excessLot, labelFor(lineNo));
-    }
+    const lot = screen.queryByLabelText(t.lineTable.lotNoLabel(lineNo));
+    if (lot !== null) await user.type(lot, labelFor(lineNo));
   }
 
   /* 입하 일시는 공장 현지 지금이 미리 들어 있다 — 비우고 고정값을 친다. */
   await user.clear(screen.getByLabelText(t.fields.receiptDatetime));
   await user.type(screen.getByLabelText(t.fields.receiptDatetime), RECEIPT_DATETIME);
-  /* 초과분이 갈린 줄이 있을 때만 초과분 정보가 선다 — 예외 유형(초과입하)이 기본이라 사유만 적는다. */
-  const reason = screen.queryByLabelText(t.fields.exceptionReason);
-  if (reason !== null) await user.type(reason, '합성 사유');
 };
 
 const setupRegister = async (
@@ -1628,25 +1616,13 @@ const setupRegister = async (
   await fillDraft(user, qty);
 };
 
-/**
- * 「입하 등록」을 누르고, 확인 창이 열리면 「등록」까지 누른다. 검증에 막히면 창이 열리지 않는다.
- * `only` 는 창의 「만들어지는 전표」에서 나머지 하나를 끈다 — 계약의 한쪽 갈래는 그 선택에서 나온다.
- */
-const clickRegister = async (
-  user: ReturnType<typeof userEvent.setup>,
-  options: { only?: 'normal' | 'excess' } = {},
-): Promise<void> => {
+/** 「입하 등록」을 누르고, 확인 창이 열리면 「등록」까지 누른다. 검증에 막히면 창이 열리지 않는다. */
+const clickRegister = async (user: ReturnType<typeof userEvent.setup>): Promise<void> => {
   await user.click(screen.getByRole('button', { name: t.actions.register }));
 
   const dialog = screen.queryByRole('dialog');
   if (dialog === null) return;
 
-  if (options.only === 'normal') {
-    await user.click(within(dialog).getByRole('checkbox', { name: /초과분 전표/ }));
-  }
-  if (options.only === 'excess') {
-    await user.click(within(dialog).getByRole('checkbox', { name: /정량분 전표/ }));
-  }
   await user.click(within(dialog).getByRole('button', { name: t.actions.confirmRegister }));
 };
 
@@ -1662,29 +1638,17 @@ const lastSplitBody = (requests: RecordedRequest[]): SplitRequestBody => {
   return sent[sent.length - 1]?.body as SplitRequestBody;
 };
 
-describe('OverReceiptSplitScreen — 세 갈래 등록', () => {
+/** 등록 본문의 줄 하나 — `excessQty` 는 계약 사본 밖이라 생성 타입에 없다(서버 장부 P-100). */
+type SentLine = NonNullable<SplitRequestBody['normal']>['lines'][number] & { excessQty?: number };
+
+const sentLines = (body: SplitRequestBody): SentLine[] => (body.normal?.lines ?? []) as SentLine[];
+
+describe('OverReceiptSplitScreen — 등록 본문', () => {
   /*
-   * **M25** — 버튼과 갈래가 1:1이다. 늘 `BOTH`를 보내면 「정량분만 받기로 했다」는
-   * 판단이 요청에서 사라져 받지 않기로 한 초과분까지 전표가 된다.
+   * **전표는 늘 한 건이다**(서버 장부 P-100). 초과 몫이 있어도 초과분 part 를 만들지 않는다 —
+   * 갈래는 늘 `NORMAL_ONLY` 다.
    */
-  it.each([
-    ['둘 다 두면', undefined, 'BOTH'],
-    ['초과분을 끄면', 'normal', 'NORMAL_ONLY'],
-    ['정량분을 끄면', 'excess', 'EXCESS_ONLY'],
-  ] as const)('확인 창에서 %s %s가 실린다', async (_name, only, mode) => {
-    const { requests, user } = renderScreen(allRoutes());
-
-    await setupRegister(user);
-    await clickRegister(user, only === undefined ? {} : { only });
-
-    await waitFor(() => {
-      expect(splitRequests(requests)).toHaveLength(1);
-    });
-
-    expect(lastSplitBody(requests).mode).toBe(mode);
-  });
-
-  it('분리 등록은 두 part를 함께 보낸다', async () => {
+  it('초과 몫이 있어도 정량분 part 하나만 NORMAL_ONLY 로 보낸다', async () => {
     const { requests, user } = renderScreen(allRoutes());
 
     await setupRegister(user);
@@ -1696,35 +1660,39 @@ describe('OverReceiptSplitScreen — 세 갈래 등록', () => {
 
     const body = lastSplitBody(requests);
 
-    /* 9401은 잔량 60 · 허용 5라 한도가 65다 — 66은 정량 65 · 초과 1로 갈린다. */
-    expect(body.normal?.lines).toEqual([
+    expect(body.mode).toBe('NORMAL_ONLY');
+    expect(Object.keys(body)).not.toContain('excess');
+  });
+
+  /*
+   * 9401은 잔량 60 · 허용 5라 한도가 65다 — 66은 **줄 하나 · LOT 하나**로 받고 그중 1을 초과 몫으로 싣는다.
+   * 서버가 P/O 라인에는 `receivedQty − excessQty`(65)만 더한다.
+   */
+  it('한 줄에 도착 수량 전체와 초과 몫, 라벨 하나를 싣는다', async () => {
+    const { requests, user } = renderScreen(allRoutes());
+
+    await setupRegister(user);
+    await clickRegister(user);
+
+    await waitFor(() => {
+      expect(splitRequests(requests)).toHaveLength(1);
+    });
+
+    expect(sentLines(lastSplitBody(requests))).toEqual([
       {
         purchaseOrderLineId: 9401,
         itemId: 9301,
-        receivedQty: 65,
+        receivedQty: 66,
         uomId: 9501,
+        excessQty: 1,
         supplierLotNo: labelFor(1),
         supplierLotMissing: false,
       },
     ]);
-    /* 초과분 LOT 은 정량분 라벨에서 파생한 번호다 — 라벨에 없는 번호라 부착 아님으로 실린다. */
-    expect(body.excess?.lines).toEqual([
-      {
-        itemId: 9301,
-        receivedQty: 1,
-        uomId: 9501,
-        supplierLotNo: `${labelFor(1)}-OVER`,
-        supplierLotMissing: false,
-        supplierLotLabelAttached: false,
-      },
-    ]);
   });
 
-  /*
-   * **M23의 화면 몫** — 이슈 §6이 금지한 경로다. 단위 검사만으로는 화면이 다른 값을
-   * 조립해 보내는 경우를 잡을 수 없어 **실제로 나간 본문**으로 본다.
-   */
-  it('초과분 라인에는 발주 라인 번호가 실리지 않는다', async () => {
+  /* 「-OVER」 파생 번호나 「라벨 없음」 우회 없이 사람이 넣은 라벨 그대로다. */
+  it('초과 몫이 있어도 LOT 을 파생하거나 라벨 없음으로 바꾸지 않는다', async () => {
     const { requests, user } = renderScreen(allRoutes());
 
     await setupRegister(user);
@@ -1734,15 +1702,32 @@ describe('OverReceiptSplitScreen — 세 갈래 등록', () => {
       expect(splitRequests(requests)).toHaveLength(1);
     });
 
-    const body = lastSplitBody(requests);
+    const [line] = sentLines(lastSplitBody(requests));
 
-    expect(Object.keys(body.excess?.lines[0] ?? {})).not.toContain('purchaseOrderLineId');
-    /* 짝 방향 — 정량분에는 실린다. 「양쪽에서 뺐다」로 통과하지 않게 한다. */
-    expect(body.normal?.lines[0]?.purchaseOrderLineId).toBe(9401);
+    expect(line?.supplierLotNo).toBe(labelFor(1));
+    expect(Object.keys(line ?? {})).not.toContain('supplierLotLabelAttached');
+    expect(JSON.stringify(lastSplitBody(requests))).not.toContain('-OVER');
   });
 
-  /* 같은 도착을 나눈 것이라 머리 값이 갈리면 안 된다. 예외 사유만 초과분에 붙는다. */
-  it('머리 값은 두 part에 같이 실리고 초과 사유는 초과분에만 실린다', async () => {
+  /* 한도 안의 줄에는 `excessQty` 키가 없다 — 「0」을 싣지 않는다. */
+  it('한도 안의 줄에는 초과 몫이 실리지 않는다', async () => {
+    const { requests, user } = renderScreen(allRoutes());
+
+    await setupRegister(user, { 1: '10' });
+    await clickRegister(user);
+
+    await waitFor(() => {
+      expect(splitRequests(requests)).toHaveLength(1);
+    });
+
+    const [line] = sentLines(lastSplitBody(requests));
+
+    expect(line?.receivedQty).toBe(10);
+    expect(Object.keys(line ?? {})).not.toContain('excessQty');
+  });
+
+  /* 초과 몫이 있어도 이 전표는 발주에 묶인 정상 입하다 — 예외 유형·사유를 싣지 않는다. */
+  it('머리 값이 실리고 예외 유형·사유는 실리지 않는다', async () => {
     const { requests, user } = renderScreen(allRoutes());
 
     await setupRegister(user);
@@ -1759,9 +1744,8 @@ describe('OverReceiptSplitScreen — 세 갈래 등록', () => {
     const body = lastSplitBody(requests);
 
     expect(body.normal?.deliveryNoteNo).toBe('SAMPLE-DN-01');
-    expect(body.excess?.deliveryNoteNo).toBe('SAMPLE-DN-01');
-    expect(body.normal?.supplierId).toBe(body.excess?.supplierId);
-    expect(body.excess?.exceptionReason).toBe('합성 사유');
+    expect(body.normal?.supplierId).toBe(9101);
+    expect(Object.keys(body.normal ?? {})).not.toContain('exceptionTypeCode');
     expect(Object.keys(body.normal ?? {})).not.toContain('exceptionReason');
   });
 
@@ -1784,7 +1768,7 @@ describe('OverReceiptSplitScreen — 세 갈래 등록', () => {
     expect(body.businessDate).toBe('2026-08-06');
     expect(body.occurredAt).toMatch(/[+-]\d{2}:\d{2}$/);
     expect(Object.keys(body.normal ?? {})).not.toContain('businessDate');
-    expect(Object.keys(body.excess ?? {})).not.toContain('occurredAt');
+    expect(Object.keys(body.normal ?? {})).not.toContain('occurredAt');
   });
 
   /* 계약이 전 쓰기에 멱등 키를 요구한다. 없으면 서버가 400으로 되돌린다. */
@@ -1802,8 +1786,8 @@ describe('OverReceiptSplitScreen — 세 갈래 등록', () => {
   });
 });
 
-describe('OverReceiptSplitScreen — 만들어지는 전표는 수량이 정한다', () => {
-  /* 라인이 하나도 없으면 어느 갈래로도 보낼 수 없다(계약: 최소 1행) — 단추 하나가 잠기고 사유를 낸다. */
+describe('OverReceiptSplitScreen — 만들어지는 전표는 늘 한 건이다', () => {
+  /* 라인이 하나도 없으면 보낼 수 없다(계약: 최소 1행) — 단추 하나가 잠기고 사유를 낸다. */
   it('수량을 넣지 않으면 등록 단추가 잠기고 사유를 낸다', async () => {
     const { requests, user } = renderScreen(allRoutes());
 
@@ -1820,61 +1804,61 @@ describe('OverReceiptSplitScreen — 만들어지는 전표는 수량이 정한�
     expect(splitRequests(requests)).toHaveLength(0);
   });
 
-  /*
-   * 초과분이 없는데 `excess` 없는 `BOTH`가 나가면 안 된다 — 사람이 갈래를 고르지 않아도 화면이
-   * 수량에서 정량분 전표 하나만 만든다. 확인 창에는 고를 것이 없다.
-   */
-  it('초과분이 없으면 정량분 전표 하나만 만들고 고를 것이 없다', async () => {
+  /* 한도 안쪽만 있으면 초과 안내가 없다 — 확인 창에도 고를 것이 없다. */
+  it('초과 몫이 없으면 전표 한 건 요약만 서고 확인 창에 고를 것이 없다', async () => {
     const { requests, user } = renderScreen(allRoutes());
 
-    /* 한도(65) 안쪽이라 전부 정량분이다. */
     await setupRegister(user, { 1: '10' });
 
-    expect(screen.getByText(t.totals.normal(1))).toBeInTheDocument();
-    expect(screen.queryByLabelText(t.fields.exceptionReason)).not.toBeInTheDocument();
+    expect(screen.getByText(t.totals.receipt(1))).toBeInTheDocument();
+    expect(screen.queryByText(t.totals.excess(1))).not.toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: t.actions.register }));
 
     const dialog = await screen.findByRole('dialog', { name: t.dialog.registerTitle });
 
-    expect(within(dialog).getByText(t.dialog.registerReceiptNormal(1))).toBeInTheDocument();
+    expect(within(dialog).getByText(t.dialog.registerLead(1, 0))).toBeInTheDocument();
     expect(within(dialog).queryAllByRole('checkbox')).toHaveLength(0);
-    expect(within(dialog).getByText(t.dialog.registerLead('NORMAL_ONLY'))).toBeInTheDocument();
+    expect(within(dialog).queryByText(t.dialog.registerExcessNext)).not.toBeInTheDocument();
 
     await user.click(within(dialog).getByRole('button', { name: t.actions.confirmRegister }));
 
     await waitFor(() => {
       expect(lastSplitBody(requests).mode).toBe('NORMAL_ONLY');
     });
-    expect(Object.keys(lastSplitBody(requests))).not.toContain('excess');
   });
 
-  /* 반대쪽 — 9402는 꼭 맞게 받았고 허용치가 0이라 도착한 전부가 초과분이다. */
-  it('정량분이 없으면 초과분 전표 하나만 만든다', async () => {
-    const { requests, user } = renderScreen(allRoutes());
-
-    await setupRegister(user, { 2: '12' });
-
-    expect(screen.getByText(t.totals.excess(1))).toBeInTheDocument();
-
-    await clickRegister(user);
-
-    await waitFor(() => {
-      expect(lastSplitBody(requests).mode).toBe('EXCESS_ONLY');
-    });
-  });
-
-  it('확인 창에서 둘 다 끄면 등록할 수 없다', async () => {
-    const { requests, user } = renderScreen(allRoutes());
+  /* 초과 몫이 있으면 요약과 확인 창이 그 사실과 다음 일(잇기)을 말한다 — 그래도 전표는 한 건이다. */
+  it('초과 몫이 있으면 요약과 확인 창이 그 줄과 다음 일을 밝힌다', async () => {
+    const { user } = renderScreen(allRoutes());
 
     await setupRegister(user);
+
+    expect(screen.getByText(t.totals.receipt(1))).toBeInTheDocument();
+    expect(screen.getByText(t.totals.excess(1))).toBeInTheDocument();
+
     await user.click(screen.getByRole('button', { name: t.actions.register }));
 
     const dialog = await screen.findByRole('dialog', { name: t.dialog.registerTitle });
-    await user.click(within(dialog).getByRole('checkbox', { name: /정량분 전표/ }));
-    await user.click(within(dialog).getByRole('checkbox', { name: /초과분 전표/ }));
 
-    expect(within(dialog).getByRole('button', { name: t.actions.confirmRegister })).toBeDisabled();
+    expect(within(dialog).getByText(t.dialog.registerLead(1, 1))).toBeInTheDocument();
+    expect(within(dialog).getByText(t.dialog.excessOf('65', '1'))).toBeInTheDocument();
+    expect(within(dialog).getByText(t.dialog.registerExcessNext)).toBeInTheDocument();
+    expect(within(dialog).queryAllByRole('checkbox')).toHaveLength(0);
+  });
+
+  /*
+   * 다 받은 줄(9402 — 한도 0)에 넣은 수량은 전부 초과 몫이라 서버가 받지 않는다. 보내기 전에 막고
+   * 그 줄을 짚는다 — 「초과분만 전표」는 더 이상 없다.
+   */
+  it('다 받은 줄에 수량을 넣었으면 보내지 않고 그 줄을 짚는다', async () => {
+    const { requests, user } = renderScreen(allRoutes());
+
+    await setupRegister(user, { 2: '12' });
+    await clickRegister(user);
+
+    expect(await screen.findByText(t.errors.lineInvalidBlocked('2'))).toBeInTheDocument();
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     expect(splitRequests(requests)).toHaveLength(0);
   });
 });
@@ -2104,27 +2088,17 @@ describe('OverReceiptSplitScreen — 전송 중', () => {
 
 describe('OverReceiptSplitScreen — 등록 성공', () => {
   /* 만들어질 전표를 스텁 한 벌에 실어 넘긴다 — 같은 경로 규칙을 두 벌 두지 않는다. */
-  const renderSuccess = (created: unknown[] = CREATED_TWO) => renderScreen(allRoutes(created));
+  const renderSuccess = (created: unknown[] = CREATED_ONE) => renderScreen(allRoutes(created));
 
-  /* **M42의 화면 몫** — 두 건이 만들어졌다는 것이 이 화면의 요점이다. */
-  it('만들어진 전표 번호가 전부 보이고 건수가 밝혀진다', async () => {
+  /* **M42의 화면 몫** — 나중에 조회할 업무 번호와 건수가 결과 자리에 남는다. */
+  it('만들어진 전표 번호와 건수가 보인다', async () => {
     const { user } = renderSuccess();
 
     await setupRegister(user);
     await clickRegister(user);
 
-    expect(await screen.findByText(t.result.count(2))).toBeInTheDocument();
-    expect(screen.getByText('IR-2026-900010')).toBeInTheDocument();
-    expect(screen.getByText('IR-2026-900011')).toBeInTheDocument();
-  });
-
-  it('한 건만 만들어져도 건수를 밝힌다', async () => {
-    const { user } = renderSuccess(CREATED_ONE);
-
-    await setupRegister(user);
-    await clickRegister(user, { only: 'normal' });
-
     expect(await screen.findByText(t.result.count(1))).toBeInTheDocument();
+    expect(screen.getByText('IR-2026-900010')).toBeInTheDocument();
   });
 
   /*
@@ -2141,7 +2115,7 @@ describe('OverReceiptSplitScreen — 등록 성공', () => {
 
     const result = screen.getByRole('status', { name: t.panes.result });
 
-    for (const id of ['9601', '9602']) {
+    for (const id of ['9601', '9101', '9201', '9401']) {
       expect(result.textContent ?? '').not.toContain(id);
     }
   });
@@ -2161,16 +2135,16 @@ describe('OverReceiptSplitScreen — 등록 성공', () => {
     expect(screen.getByLabelText(t.fields.receiptDatetime)).toHaveValue(RECEIPT_DATETIME);
 
     await clickRegister(user);
-    await screen.findByText(t.result.count(2));
+    await screen.findByText(t.result.count(1));
 
     await waitFor(() => {
       expect(qtyInput(1)).toHaveValue(null);
     });
 
-    /* 머리는 기본값으로 돌아간다 — 입하 일시는 공장 현지 지금이라 친 값과 다르고, 초과 사유는 빈다. */
+    /* 머리는 기본값으로 돌아간다 — 입하 일시는 공장 현지 지금이라 친 값과 다르다. */
     expect(screen.getByLabelText(t.fields.receiptDatetime)).not.toHaveValue(RECEIPT_DATETIME);
-    /* 초안이 비면 초과분도 없다 — 초과분 정보 구획이 접힌다. */
-    expect(screen.queryByLabelText(t.fields.exceptionReason)).not.toBeInTheDocument();
+    /* 초안이 비면 LOT 줄도 접힌다. */
+    expect(screen.queryByLabelText(t.lineTable.lotNoLabel(1))).not.toBeInTheDocument();
     expect(currentLocation()).toContain('po=9001');
     expect(screen.getByLabelText(t.lineTable.arrivedQtyLabel(1))).toBeInTheDocument();
   });
@@ -2187,7 +2161,7 @@ describe('OverReceiptSplitScreen — 등록 성공', () => {
     const before = requestsTo(requests, LINES_PATH).length;
 
     await clickRegister(user);
-    await screen.findByText(t.result.count(2));
+    await screen.findByText(t.result.count(1));
 
     await waitFor(() => {
       expect(requestsTo(requests, LINES_PATH).length).toBeGreaterThan(before);
@@ -2377,14 +2351,14 @@ describe('OverReceiptSplitScreen — 등록 실패 3갈래', () => {
         respond: () =>
           shouldFail
             ? jsonResponse(VALIDATION_BODY, { status: 400 })
-            : jsonResponse({ created: CREATED_TWO }, { status: 201 }),
+            : jsonResponse({ created: CREATED_ONE }, { status: 201 }),
       },
       ...allRoutes(),
     ]);
 
     await setupRegister(user);
     await clickRegister(user);
-    await screen.findByText(t.result.count(2));
+    await screen.findByText(t.result.count(1));
 
     shouldFail = true;
 
@@ -2537,170 +2511,110 @@ describe('OverReceiptSplitScreen — 취소와 초안 파기 확인', () => {
 });
 
 /**
- * **M48 · C34·C35·C36·C37** — 이 화면에서 신규 P/O 등록으로 가는 길.
+ * **초과분 잇기로 가는 길** — 초과 몫은 P/O 에 들어가지 않고 ERP 가 만들 추가 P/O 를 기다린다(서버 장부 P-100).
+ * 잇는 일은 「입하 예정 조회」가 한다 — 이 화면은 등록 결과에서 그 사실을 밝히고 그리로 가는 길만 세운다.
  *
- * 앞 회차의 판정은 「잠겨 있고 사유가 보이며 **어떤 경로로도 이동하지 않는다**」였다. 갈 화면이
- * 없었기 때문이다. 그 화면이 선 지금 판정은 **「등록 전에는 이동 경로가 없고, 등록 결과에는
- * 전표마다 링크가 선다」**로 다시 선다 — 잣대가 사라지는 것이 아니라 **새 사실을 잰다.**
- *
- * 「등록 전 0건」은 그대로 남는다. 맥락 없이 여는 경로를 막는 것이 이 화면의 요구사항이고
- * (착수 이슈 §6 ①), 이제는 **등록 뒤에만 길이 있다**는 것까지 함께 재야 그 요구가 지켜진다.
+ * 등록 전에는 길이 없다 — 이을 초과분이 아직 없다. 초과 몫을 실은 등록 뒤에만 선다.
  */
-describe('OverReceiptSplitScreen — 신규 P/O 등록', () => {
-  /* 앞에 둔 규칙이 먼저 맞는다 — 기본 등록 스텁을 가린다. */
-  const renderWithCreated = (created: unknown[] = CREATED_TWO) => renderScreen(allRoutes(created));
+describe('OverReceiptSplitScreen — 초과분 잇기로 가는 길', () => {
+  const resultPane = (): HTMLElement => screen.getByRole('status', { name: t.panes.result });
 
-  /*
-   * **C34의 갈래 한정 · 화면 몫**(계획 D-14 ② 개정 · 리뷰 R-33) — 「정량분만 저장」으로 만든
-   * 전표에는 다음 화면으로 가는 길이 **서지 않는다.**
-   *
-   * 그 전표는 이미 발주가 있는 수량이라 거기서 P/O를 또 만들면 **중복 발주**가 되고, 취소는
-   * 승인을 타서 이 화면이 되돌릴 수 없다. 이 갈래에서는 요청에 초과분을 싣지 않았다는 사실을
-   * **화면이 1차로 안다** — 응답을 보고 지어내는 것이 아니다.
-   *
-   * 이 경로는 이미 다른 시험이 지나고 있었으나(같은 파일 「한 건만 만들어져도 건수를 밝힌다」)
-   * 결과 구획의 이동 경로를 보는 단언이 없어 잣대 밖이었다.
-   */
-  it('정량분만 저장한 결과에는 이동 경로가 없다', async () => {
-    const { user } = renderWithCreated(CREATED_ONE);
+  /* 한도 안의 등록은 이을 것이 없다 — 길이 서면 할 일이 남은 것처럼 읽힌다. */
+  it('초과 몫이 없는 등록 결과에는 이동 경로가 없다', async () => {
+    const { user } = renderScreen(allRoutes());
 
-    await setupRegister(user);
-    await clickRegister(user, { only: 'normal' });
+    expect(screen.queryByRole('link', { name: t.result.goLinkExcess })).not.toBeInTheDocument();
+
+    await setupRegister(user, { 1: '10' });
+    await clickRegister(user);
 
     await screen.findByText(t.result.count(1));
 
-    const result = screen.getByRole('status', { name: t.panes.result });
-
     /* 짝 양성 — 결과 구획은 실제로 섰고 전표번호도 그대로 보인다. */
-    expect(within(result).getByText('IR-2026-900010')).toBeInTheDocument();
-    expect(within(result).queryAllByRole('link')).toHaveLength(0);
+    expect(within(resultPane()).getByText('IR-2026-900010')).toBeInTheDocument();
+    expect(within(resultPane()).queryAllByRole('link')).toHaveLength(0);
+  });
+
+  /* 초과 몫을 실었으면 어느 줄에 얼마가 남았는지와 이을 자리가 결과에 선다. */
+  it('초과 몫을 실은 등록 결과에는 그 몫과 잇기로 가는 링크가 선다', async () => {
+    const { user } = renderScreen(allRoutes());
+
+    await setupRegister(user);
+    await clickRegister(user);
+
+    await screen.findByText(t.result.count(1));
+
+    expect(
+      within(resultPane()).getByText(t.result.excessWaiting(t.result.excessLine(1, '1'))),
+    ).toBeInTheDocument();
+    expect(within(resultPane()).getByRole('link', { name: t.result.goLinkExcess })).toHaveAttribute(
+      'href',
+      excessLinkPath('IR-2026-900010'),
+    );
   });
 
   /*
-   * **겨눈 갈래가 앞 등록에서 눌어붙지 않는다.**
-   *
-   * 화면은 성공한 뒤에도 그 자리에 남으므로(초안만 비운다) **한 화면에서 갈래를 바꿔 두 번
-   * 등록하는 것**은 실제 조작이다. 겨눈 갈래를 매 제출마다 새로 적지 않고 한 번이라도 참이면
-   * 참으로 두면(`||=` 형태), 앞의 초과분 등록이 뒤의 정량분 전표에 **진입로를 되살린다** —
-   * R-33이 고친 바로 그 결함이 다른 문으로 돌아오는 경로다.
-   *
-   * 링크가 실제로 섰다가 **사라지는 것**까지 한 시험에서 본다. 두 시험으로 가르면 「둘 다
-   * 링크 없음」인 상태가 뒤 시험만 통과시킨다.
+   * **실은 초과 몫이 앞 등록에서 눌어붙지 않는다.** 화면은 성공한 뒤에도 그 자리에 남으므로 한 화면에서
+   * 두 번 등록하는 것은 실제 조작이다. 앞의 초과 몫을 매 제출마다 새로 적지 않으면 뒤의 한도 안 등록에
+   * 잇기 길이 되살아난다. 링크가 섰다가 **사라지는 것**까지 한 시험에서 본다.
    */
-  it('초과분 갈래로 등록한 뒤 정량분만 저장하면 이동 경로가 사라진다', async () => {
-    const { user } = renderWithCreated(CREATED_ONE);
+  it('초과 몫을 실은 뒤 한도 안으로 다시 등록하면 이동 경로가 사라진다', async () => {
+    const { user } = renderScreen(allRoutes());
 
     await setupRegister(user);
-    await clickRegister(user, { only: 'excess' });
+    await clickRegister(user);
 
     await screen.findByText(t.result.count(1));
 
     /* 짝 양성 — 첫 등록에서는 길이 실제로 섰다. */
-    expect(
-      within(screen.getByRole('status', { name: t.panes.result })).getAllByRole('link'),
-    ).toHaveLength(1);
+    expect(within(resultPane()).getAllByRole('link')).toHaveLength(1);
 
     /* 성공하면 초안이 비므로 같은 화면에서 다시 채워 넣는다(수명 표 8행). */
-    await fillDraft(user, { 1: '66' });
-    await clickRegister(user, { only: 'normal' });
+    await fillDraft(user, { 1: '10' });
+    await clickRegister(user);
 
     await waitFor(() => {
-      expect(
-        within(screen.getByRole('status', { name: t.panes.result })).queryAllByRole('link'),
-      ).toHaveLength(0);
+      expect(within(resultPane()).queryAllByRole('link')).toHaveLength(0);
     });
 
     /* 짝 양성 — 둘째 등록의 결과 구획도 실제로 서 있다(「구획이 사라져서 통과」를 막는다). */
-    expect(
-      within(screen.getByRole('status', { name: t.panes.result })).getByText('IR-2026-900010'),
-    ).toBeInTheDocument();
+    expect(within(resultPane()).getByText('IR-2026-900010')).toBeInTheDocument();
   });
 
-  /*
-   * 짝 방향 — **한 건짜리 초과분 갈래**에서는 그 한 건에 길이 선다. 이것이 없으면
-   * 「두 건일 때만 링크」 같은 잘못된 게이트가 위 시험과 아래 시험을 함께 통과한다.
-   */
-  it('초과분만 저장한 결과에는 그 전표에 링크가 선다', async () => {
-    const { user } = renderWithCreated(CREATED_ONE);
+  /* **C36** — 결과 구획 글자에 내부 번호가 없다. 응답에는 들어 있다(`createdReceipt`). */
+  it('링크가 선 뒤에도 결과 구획 글자에 내부 번호가 없다', async () => {
+    const { user } = renderScreen(allRoutes());
 
     await setupRegister(user);
-    await clickRegister(user, { only: 'excess' });
+    await clickRegister(user);
 
     await screen.findByText(t.result.count(1));
 
-    const result = screen.getByRole('status', { name: t.panes.result });
-
-    expect(within(result).getAllByRole('link')).toHaveLength(1);
-    expect(
-      within(result).getByRole('link', { name: t.result.registerPo('IR-2026-900010') }),
-    ).toHaveAttribute('href', '/logistics/po-register?receipt=9601');
-  });
-
-  /*
-   * **C34** — 초과분이 실린 갈래 안에서는 **전표마다** 길이 선다. 두 건일 때 하나로 합치면
-   * 어느 전표를 정산하는지 화면이 지어내야 하는데, 응답은 그것을 알려 주지 않는다(계획 결정 3).
-   */
-  it('등록 결과에는 초과분 전표에 링크가 서고 주소에 그 전표가 실린다', async () => {
-    const { user } = renderWithCreated();
-
-    await setupRegister(user);
-    await clickRegister(user);
-
-    await screen.findByText(t.result.count(2));
-
-    const result = screen.getByRole('status', { name: t.panes.result });
-
-    /* 정산할 것은 초과분이다 — 예외 유형이 실린 둘째 전표에만 길이 선다. */
-    expect(within(result).getAllByRole('link')).toHaveLength(1);
-    expect(
-      within(result).getByRole('link', { name: t.result.registerPo('IR-2026-900011') }),
-    ).toHaveAttribute('href', '/logistics/po-register?receipt=9602');
-    expect(within(result).getByText(t.values.partNormal)).toBeInTheDocument();
-    expect(within(result).getByText(t.values.partExcess)).toBeInTheDocument();
-  });
-
-  /*
-   * **C36** — 링크가 생기면서 내부 번호가 화면 자료로 들어왔다. **주소에만 실리고 글자로는
-   * 나오지 않는다**(#44의 본뜻) — 이 단언은 이제 실제로 값이 흐르는 자리를 잰다.
-   */
-  it('링크가 선 뒤에도 결과 구획 글자에 내부 번호가 없다', async () => {
-    const { user } = renderWithCreated();
-
-    await setupRegister(user);
-    await clickRegister(user);
-
-    await screen.findByText(t.result.count(2));
-
-    const result = screen.getByRole('status', { name: t.panes.result });
-
     /* 짝 양성 — 업무 번호는 실제로 보인다. */
-    expect(within(result).getByText('IR-2026-900010')).toBeInTheDocument();
+    expect(within(resultPane()).getByText('IR-2026-900010')).toBeInTheDocument();
 
-    for (const id of ['9601', '9602']) {
-      expect(result.textContent ?? '').not.toContain(id);
+    for (const id of ['9601', '9101', '9201', '9401']) {
+      expect(resultPane().textContent ?? '').not.toContain(id);
     }
   });
 
   /*
-   * **C37의 화면 몫** — 누르면 그 전표의 맥락을 실은 주소로 이동하고 **뒤로가기 한 번**으로
-   * 이 결과 화면에 돌아온다. 히스토리가 두 칸 늘면 사용자는 같은 결과 화면을 두 번 지나야 한다.
-   *
-   * 도착한 화면이 그 맥락으로 서는지는 **라우트 표를 실제로 태우는 자리**가 잰다
-   * (`routes/index.test.tsx`) — 이 슬라이스의 하네스에는 그 화면의 라우트가 없다.
+   * **C37의 화면 몫** — 누르면 잇기 창을 여는 주소로 가고 **뒤로가기 한 번**으로 이 결과 화면에 돌아온다.
+   * 도착한 화면의 라우트가 실재하는지는 `routes/index.test.tsx` 가 잰다.
    */
-  it('링크를 누르면 그 전표의 주소로 가고 뒤로가기 한 번에 돌아온다', async () => {
-    const { user } = renderWithCreated();
+  it('링크를 누르면 입하 예정 조회의 잇기 주소로 가고 뒤로가기 한 번에 돌아온다', async () => {
+    const { user } = renderScreen(allRoutes());
 
     await setupRegister(user);
     await clickRegister(user);
 
-    await screen.findByText(t.result.count(2));
+    await screen.findByText(t.result.count(1));
 
     const before = currentLocation();
 
-    await user.click(screen.getByRole('link', { name: t.result.registerPo('IR-2026-900011') }));
+    await user.click(screen.getByRole('link', { name: t.result.goLinkExcess }));
 
-    expect(currentLocation()).toBe('/logistics/po-register?receipt=9602');
+    expect(currentLocation()).toBe(excessLinkPath('IR-2026-900010'));
 
     await user.click(screen.getByRole('button', { name: '뒤로' }));
 
@@ -2732,9 +2646,28 @@ describe('OverReceiptSplitScreen — 라벨 스캔과 LOT', () => {
     await user.type(scanBox(), `${LABEL_9301}{Enter}`);
 
     expect(qtyInput(1)).toHaveValue(66);
-    expect(screen.getByLabelText(t.lineTable.lotNoLabel(1, 'normal'))).toHaveValue(LABEL_9301);
+    expect(screen.getByLabelText(t.lineTable.lotNoLabel(1))).toHaveValue(LABEL_9301);
     expect(scanBox()).toHaveValue('');
-    expect(screen.getByText(t.scan.added(1, '66', 'normal'))).toBeInTheDocument();
+    expect(screen.getByText(t.scan.added(1, '66'))).toBeInTheDocument();
+  });
+
+  /* 줄 하나에 라벨 하나다 — 같은 품목의 빈 줄(9403)을 채운 뒤에는 더 담지 않고 그 사실을 말한다. */
+  it('같은 품목의 줄이 모두 LOT 을 가졌으면 다음 라벨은 담지 않는다', async () => {
+    const { user } = renderScreen(allRoutes());
+
+    await openLines(user);
+    await user.type(scanBox(), `${LABEL_9301}{Enter}`);
+    await user.type(scanBox(), 'SAMPLE-ITEM-01|2|260806|SAMPLE-SUP-01|0002{Enter}');
+
+    expect(screen.getByLabelText(t.lineTable.lotNoLabel(3))).toHaveValue(
+      'SAMPLE-ITEM-01|2|260806|SAMPLE-SUP-01|0002',
+    );
+
+    await user.type(scanBox(), 'SAMPLE-ITEM-01|5|260806|SAMPLE-SUP-01|0003{Enter}');
+
+    expect(screen.getByText(t.scan.lotFilled(1))).toBeInTheDocument();
+    expect(qtyInput(1)).toHaveValue(66);
+    expect(screen.getByLabelText(t.lineTable.lotNoLabel(1))).toHaveValue(LABEL_9301);
   });
 
   it('라벨이 아니면 담지 않고 칸 아래에 사유를 낸다', async () => {
@@ -2773,29 +2706,64 @@ describe('OverReceiptSplitScreen — 라벨 스캔과 LOT', () => {
     expect(qtyInput(3)).toHaveValue(8);
   });
 
-  it('예외 유형은 초과입하가 기본으로 서고, 초과분을 등록하려면 초과 사유가 필요하다', async () => {
+  /*
+   * 초과 몫이 있어도 예외 유형·초과 사유를 묻지 않는다 — 이 전표는 발주에 묶인 정상 입하이고, 초과 몫은
+   * 뒤에 추가 P/O 에 잇는다. 예외 유형 사전도 부르지 않는다.
+   */
+  it('초과 몫이 있어도 예외 유형·초과 사유 칸이 없고 그 사전을 부르지 않는다', async () => {
     const { requests, user } = renderScreen(allRoutes());
 
     await openLines(user);
-    /* 초과분 정보는 초과분이 갈린 뒤에만 선다. */
-    expect(screen.queryByLabelText(t.fields.exceptionReason)).not.toBeInTheDocument();
+    await user.type(qtyInput(1), '66');
 
-    await user.type(qtyInput(2), '12');
-    await markLotMissing(user, 2, 'excess');
-    await waitFor(() => {
-      expect(screen.getByRole('combobox', { name: t.fields.exceptionType })).toHaveTextContent(
-        '초과입하',
-      );
-    });
+    expect(screen.queryByRole('combobox', { name: /예외 유형/ })).not.toBeInTheDocument();
+    expect(screen.queryByLabelText(/초과 사유/)).not.toBeInTheDocument();
+    expect(
+      requestsTo(requests, CODE_VALUES_PATH).map((request) =>
+        request.url.searchParams.get('codeGroupCode'),
+      ),
+    ).not.toContain('INBOUND_RECEIPT_EXCEPTION_TYPE');
+  });
+
+  /* 라벨 없음을 켜면 대체 사유를 첫 선택지(라벨 없음)로 미리 채운다 — 어차피 하나를 골라야 한다. */
+  it('라벨 없음을 켜면 대체 사유가 첫 선택지로 미리 찬다', async () => {
+    const { user } = renderScreen(allRoutes());
+
+    await openLines(user);
+    await user.type(qtyInput(1), '66');
+    await user.click(screen.getByLabelText(t.lineTable.lotMissingLabel(1)));
+
+    expect(screen.getByRole('combobox', { name: t.lineTable.lotReasonLabel(1) })).toHaveTextContent(
+      '라벨 없음',
+    );
+  });
+
+  /* 라벨 없이 받은 줄도 보낼 수 있다 — 번호 없음 + 대체 사유로 실린다. */
+  it('라벨 없음 · 대체 사유로 등록하면 그 모양으로 실린다', async () => {
+    const { requests, user } = renderScreen(allRoutes());
+
+    await openLines(user);
+    await user.type(qtyInput(1), '66');
+    await markLotMissing(user, 1);
+    await user.clear(screen.getByLabelText(t.fields.receiptDatetime));
+    await user.type(screen.getByLabelText(t.fields.receiptDatetime), RECEIPT_DATETIME);
     await clickRegister(user);
 
-    expect(await screen.findByText(t.errors.exceptionReasonRequired)).toBeInTheDocument();
-    expect(splitRequests(requests)).toHaveLength(0);
+    await waitFor(() => {
+      expect(splitRequests(requests)).toHaveLength(1);
+    });
+
+    expect(sentLines(lastSplitBody(requests))[0]).toMatchObject({
+      receivedQty: 66,
+      excessQty: 1,
+      supplierLotMissing: true,
+      substituteLotReasonCode: 'OTHER',
+    });
   });
 });
 
 describe('OverReceiptSplitScreen — 등록 확인 창', () => {
-  it('갈래 단추는 바로 보내지 않고 무엇이 나가는지 보이는 창을 연다', async () => {
+  it('등록 단추는 바로 보내지 않고 무엇이 나가는지 보이는 창을 연다', async () => {
     const { requests, user } = renderScreen(allRoutes());
 
     await setupRegister(user);
@@ -2803,12 +2771,11 @@ describe('OverReceiptSplitScreen — 등록 확인 창', () => {
 
     const dialog = await screen.findByRole('dialog', { name: t.dialog.registerTitle });
 
-    expect(within(dialog).getByText(t.dialog.registerLead('BOTH'))).toBeInTheDocument();
-    expect(within(dialog).getByText(t.dialog.lotOf('normal', labelFor(1)))).toBeInTheDocument();
-    expect(
-      within(dialog).getByText(t.dialog.lotOf('excess', `${labelFor(1)}-OVER`)),
-    ).toBeInTheDocument();
-    expect(within(dialog).getByText('초과입하')).toBeInTheDocument();
+    expect(within(dialog).getByText(t.dialog.registerLead(1, 1))).toBeInTheDocument();
+    /* 줄 하나에 LOT 하나 — 파생 번호 없이 넣은 라벨 그대로다. */
+    expect(within(dialog).getByText(t.dialog.lotOf(labelFor(1)))).toBeInTheDocument();
+    expect(within(dialog).queryByText(/-OVER/)).not.toBeInTheDocument();
+    expect(within(dialog).getByText(t.dialog.excessOf('65', '1'))).toBeInTheDocument();
     expect(within(dialog).getByText(t.dialog.registerIrreversible)).toBeInTheDocument();
     expect(splitRequests(requests)).toHaveLength(0);
   });
@@ -2825,17 +2792,17 @@ describe('OverReceiptSplitScreen — 등록 확인 창', () => {
     expect(qtyInput(1)).toHaveValue(66);
   });
 
-  it('누르기 전 요약이 정량분·초과분 줄 수와 전표 건수를 말한다', async () => {
+  it('누르기 전 요약이 전표 한 건의 줄 수와 초과분이 있는 줄 수를 말한다', async () => {
     const { user } = renderScreen(allRoutes());
 
     await setupRegister(user);
 
-    expect(screen.getByText(t.totals.normal(1))).toBeInTheDocument();
+    expect(screen.getByText(t.totals.receipt(1))).toBeInTheDocument();
     expect(screen.getByText(t.totals.excess(1))).toBeInTheDocument();
   });
 });
 
-describe('OverReceiptSplitScreen — 단계 안내와 파생 LOT', () => {
+describe('OverReceiptSplitScreen — 단계 안내', () => {
   const hint = (): HTMLElement =>
     within(screen.getByRole('navigation', { name: t.guide.label })).getByText(/./, {
       selector: '.ors-guide-hint',
@@ -2855,35 +2822,26 @@ describe('OverReceiptSplitScreen — 단계 안내와 파생 LOT', () => {
     /* 수량은 들어갔지만 LOT 이 비어 있다 — 아직 수량·LOT 단계다. */
     expect(hint()).toHaveTextContent(t.guide.hints.lines);
 
-    await user.type(screen.getByLabelText(t.lineTable.lotNoLabel(1, 'normal')), labelFor(1));
-    /* 초과분이 있어 초과 사유가 모자라다 — 입하 정보 단계. */
+    /* 입하 일시를 비워 두면 머리 입력이 모자라다 — 입하 정보 단계. */
+    await user.clear(screen.getByLabelText(t.fields.receiptDatetime));
+    await user.type(screen.getByLabelText(t.lineTable.lotNoLabel(1)), labelFor(1));
     expect(hint()).toHaveTextContent(t.guide.hints.info);
 
-    await user.type(screen.getByLabelText(t.fields.exceptionReason), '합성 사유');
+    /* 초과 몫이 있어도 더 적을 것이 없다 — 입하 일시만 채우면 등록 단계다. */
+    await user.type(screen.getByLabelText(t.fields.receiptDatetime), RECEIPT_DATETIME);
     expect(hint()).toHaveTextContent(t.guide.hints.register);
   });
 
-  it('정량분 라벨을 넣으면 초과분 LOT 이 파생되고, 그 사실을 칸 아래에 밝힌다', async () => {
+  /* 입하 일시는 공장 현지 지금이 미리 들어 있다 — 수량과 LOT 만 넣으면 곧바로 등록 단계다. */
+  it('수량과 LOT 만 넣으면 곧바로 등록 단계다', async () => {
     const { user } = renderScreen(allRoutes());
 
     await screen.findByText('PO-2026-900001');
     await selectPo(user, 'PO-2026-900001');
     await screen.findByLabelText(t.lineTable.arrivedQtyLabel(1));
     await user.type(qtyInput(1), '66');
-    await user.type(screen.getByLabelText(t.lineTable.lotNoLabel(1, 'normal')), labelFor(1));
+    await user.type(screen.getByLabelText(t.lineTable.lotNoLabel(1)), labelFor(1));
 
-    expect(screen.getByLabelText(t.lineTable.lotNoLabel(1, 'excess'))).toHaveValue(
-      `${labelFor(1)}-OVER`,
-    );
-    expect(screen.getByText(t.lineTable.lotDerivedNote)).toBeInTheDocument();
-
-    /* 「라벨 없음으로」 — 파생을 버리고 대체 사유가 첫 선택지로 미리 찬다. */
-    await user.click(screen.getByRole('button', { name: t.actions.excessLotAsMissing }));
-
-    expect(screen.getByLabelText(t.lineTable.lotNoLabel(1, 'excess'))).toHaveValue('');
-    expect(screen.getByLabelText(t.lineTable.lotMissingLabel(1, 'excess'))).toBeChecked();
-    expect(
-      screen.getByRole('combobox', { name: t.lineTable.lotReasonLabel(1, 'excess') }),
-    ).toHaveTextContent('라벨 없음');
+    expect(hint()).toHaveTextContent(t.guide.hints.register);
   });
 });

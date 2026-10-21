@@ -1,6 +1,6 @@
 import { messages } from '@omf-mes/i18n';
 
-import { readDraft, setDraftLot, setDraftQty, type LineDrafts, type LotPart } from './line-draft';
+import { readDraft, setDraftLot, setDraftQty, type LineDrafts } from './line-draft';
 import { parseMaterialLotNo } from './lot-format';
 import type { ItemCodeResolver } from './split-calc';
 import type { PoLineView } from './types';
@@ -11,11 +11,11 @@ import type { PoLineView } from './types';
  *
  * | 그 줄의 상태 | 담는 곳 |
  * | --- | --- |
- * | 정량분 LOT 이 비어 있다 | 정량분 LOT. 수량이 비어 있으면 라벨 수량을 넣는다 |
- * | 정량분은 찼고 초과분 LOT 이 비어 있다 | 초과분 LOT. **라벨 수량을 더한다** — 둘째 라벨은 더 온 꾸러미다 |
- * | 둘 다 찼다 | 담지 않는다 — 칸을 비우고 다시 스캔하라고 말한다 |
+ * | LOT 이 비어 있다 | 그 줄의 LOT. 수량이 비어 있으면 라벨 수량을 넣는다 |
+ * | LOT 이 찼다 | 담지 않는다 — 줄 하나에 라벨 하나다(서버 장부 P-100). 칸을 비우고 다시 스캔하라고 말한다 |
  *
- * 같은 품목의 줄이 여럿이면 **정량분 LOT 이 빈 첫 줄**부터 채운다.
+ * 같은 품목의 줄이 여럿이면 **LOT 이 빈 첫 줄**부터 채운다. 발주보다 많이 온 몫은 수량에서 화면이 가른다 —
+ * 라벨을 둘로 나누지 않는다.
  */
 
 const t = messages.overReceiptSplit;
@@ -29,12 +29,6 @@ export interface ScanResult {
 }
 
 const formatQty = (value: number): string => value.toLocaleString();
-
-const addQtyText = (current: string, add: number): string => {
-  const base = Number(current.trim());
-
-  return Number.isFinite(base) && base > 0 ? String(base + add) : String(add);
-};
 
 export const applyLotScan = (
   text: string,
@@ -57,43 +51,27 @@ export const applyLotScan = (
   }
 
   const lotNo = text.trim();
-  const place = (line: PoLineView, part: LotPart): ScanResult => {
-    const draft = readDraft(drafts, line.purchaseOrderLineId);
-    const qtyText =
-      part === 'normal' && draft.qtyText.trim() !== ''
-        ? draft.qtyText
-        : part === 'normal'
-          ? String(parsed.qty)
-          : addQtyText(draft.qtyText, parsed.qty);
-    const next = setDraftLot(
-      setDraftQty(drafts, line.purchaseOrderLineId, qtyText),
-      line.purchaseOrderLineId,
-      part,
-      { lotNo, labelMissing: false, reasonCode: '' },
-    );
-
-    return {
-      drafts: next,
-      note: t.scan.added(line.lineNo, formatQty(parsed.qty), part),
-      applied: true,
-    };
-  };
-
-  const normalOpen = candidates.find(
+  const open = candidates.find(
     (line) => readDraft(drafts, line.purchaseOrderLineId).lot.lotNo.trim() === '',
   );
-  if (normalOpen !== undefined) return place(normalOpen, 'normal');
 
-  const excessOpen = candidates.find(
-    (line) => readDraft(drafts, line.purchaseOrderLineId).excessLot.lotNo.trim() === '',
+  if (open === undefined) {
+    const first = candidates[0];
+
+    return {
+      drafts,
+      note: first === undefined ? t.scan.invalid : t.scan.lotFilled(first.lineNo),
+      applied: false,
+    };
+  }
+
+  const draft = readDraft(drafts, open.purchaseOrderLineId);
+  const qtyText = draft.qtyText.trim() !== '' ? draft.qtyText : String(parsed.qty);
+  const next = setDraftLot(
+    setDraftQty(drafts, open.purchaseOrderLineId, qtyText),
+    open.purchaseOrderLineId,
+    { lotNo, labelMissing: false, reasonCode: '' },
   );
-  if (excessOpen !== undefined) return place(excessOpen, 'excess');
 
-  const first = candidates[0];
-
-  return {
-    drafts,
-    note: first === undefined ? t.scan.invalid : t.scan.bothFilled(first.lineNo),
-    applied: false,
-  };
+  return { drafts: next, note: t.scan.added(open.lineNo, formatQty(parsed.qty)), applied: true };
 };

@@ -1,18 +1,18 @@
 /**
  * W-01-03 초과 입하 분리. **자재창고 도메인의 첫 쓰기 화면**이다.
  *
- * 대상 발주를 고르고, 라인마다 이번 도착 수량과 공급사 LOT 을 넣어, 정량분과 초과분으로 갈라
- * 한 트랜잭션으로 등록한다(`POST /logistics/inbound-receipts:split`).
+ * 대상 발주를 고르고, 라인마다 이번 도착 수량과 공급사 LOT 을 넣어 입하 전표 한 건으로 등록한다
+ * (`POST /logistics/inbound-receipts:split` · `NORMAL_ONLY`).
  *
- * **「정량분」과 「초과분」이 이 화면의 두 낱말이다.** 계약의 `normal`·`excess`를 그대로
- * 옮기지 않고 업무 낱말로 말한다 — 사용자가 만드는 것은 두 건의 입하 전표이지
- * 요청 본문의 두 갈래가 아니다.
+ * **줄 하나 · LOT 하나다**(서버 장부 P-100 · 사용자 결정 2026-10-21). 발주보다 많이 와도 줄을 가르지 않고,
+ * 「P/O 반영」과 「초과분」 두 몫으로 나눠 보인다 — 초과분은 그 줄의 `excessQty` 로 실려 P/O 에 넣지 않고,
+ * ERP 가 만든 추가 P/O 에 뒤에 잇는다(「입하 예정 조회」의 초과분 잇기).
  *
- * **정량·초과는 화면이 만든 값이다.** 잔량에 초과 허용치를 더한 값까지가 정량분, 그보다 많이
+ * **두 몫은 화면이 만든 값이다.** 발주 + 초과 허용치 − 누적 입하까지가 P/O 반영, 그보다 많이
  * 도착한 몫이 초과분이다 — 요청 조립도 같은 계산을 받는다(`split-calc.ts`).
  *
  * **LOT 은 전표 줄마다 하나다**(계약 `InboundReceiptLineUpsert`). 서버가 LOT 번호 없는 줄을
- * 받지 않으므로(없으면 「라벨 없음」과 사유가 필수) 정량분·초과분 각각에 LOT 칸이 선다.
+ * 받지 않으므로(없으면 「라벨 없음」과 사유가 필수) 수량을 넣은 줄마다 LOT 칸이 선다.
  *
  * **참조 값(공급사·공장·품목·단위)의 표기가 네 갈래다** — 아직 오지 않음 · 목록에 없음 ·
  * 불러오기 실패 · 정상. 넷을 뭉개면 정상 값이 「알 수 없음」으로 보여 뜻이 반대로 읽힌다.
@@ -24,7 +24,6 @@ export const overReceiptSplit = {
     filter: '조회 조건',
     list: '대상 발주 목록',
     lines: '고른 발주의 라인',
-    /** 두 전표에 함께 실리는 머리 입력과 초과분에만 실리는 값이 한 구획에 있다. */
     register: '등록 정보',
     result: '등록 결과',
   },
@@ -33,13 +32,10 @@ export const overReceiptSplit = {
     q: '발주번호 검색',
     /** 계약의 `openOnly`를 업무 낱말로 옮긴다 — 「아직 입하가 끝나지 않은 발주만」이다. */
     openOnly: '미완료 발주만',
-    /** 계약 필수. 두 전표에 같은 값이 실리고, 영업일도 이 값의 날짜에서 나온다. */
+    /** 계약 필수. 영업일도 이 값의 날짜에서 나온다. */
     receiptDatetime: '입하 일시',
     deliveryNoteNo: '거래명세서번호',
     remarks: '비고',
-    /** 예외 유형·초과 사유는 **초과분 전표에만** 실린다(계약 설명). 초과분이 있으면 유형이 필수다. */
-    exceptionType: '예외 유형',
-    exceptionReason: '초과 사유',
   },
   actions: {
     prevPage: '이전',
@@ -47,17 +43,11 @@ export const overReceiptSplit = {
     goFirstPage: '첫 쪽으로',
     select: '선택',
     deselect: '선택 해제',
-    /**
-     * 등록 단추는 **하나다**(사용자 지시 2026-10-21 — 절차를 몰라도 진행할 수 있게). 어느 전표를
-     * 만들지는 화면이 수량에서 정하고, 확인 창에서 「만들어지는 전표」로 보이며 거기서 뺄 수 있다.
-     * 계약의 세 갈래(BOTH·NORMAL_ONLY·EXCESS_ONLY)는 그 선택에서 나온다.
-     */
+    /** 등록 단추는 **하나다**(사용자 지시 2026-10-21 — 절차를 몰라도 진행할 수 있게). 전표는 늘 한 건이다. */
     register: '입하 등록',
     /** 등록 확인 창의 두 단추. 「확인/취소」로 두면 무엇을 누르는지 창을 다시 읽어야 한다. */
     confirmRegister: '등록',
     backToEdit: '돌아가기',
-    /** 파생된 초과분 LOT 을 버리고 「라벨 없음」으로 바꾼다. */
-    excessLotAsMissing: '라벨 없음으로',
     /** 초안 파기 확인 창의 확인 버튼. */
     discardDraft: '입력을 버린다',
     keepEditing: '계속 입력',
@@ -100,8 +90,8 @@ export const overReceiptSplit = {
       select: '왼쪽 목록에서 도착한 자재의 발주를 누르세요.',
       lines:
         '라벨을 스캔하거나 「이번 도착」 칸에 수량을 넣으세요. 발주보다 많이 온 몫은 화면이 초과분으로 가릅니다.',
-      info: '입하 일시를 확인하고, 초과분이 있으면 초과 사유를 적으세요.',
-      register: '「입하 등록」을 누르면 만들어질 전표를 확인한 뒤 등록합니다.',
+      info: '입하 일시를 확인하세요. 거래명세서번호와 비고는 있으면 적습니다.',
+      register: '「입하 등록」을 누르면 실릴 내용을 확인한 뒤 등록합니다.',
     },
   },
   loading: {
@@ -130,8 +120,10 @@ export const overReceiptSplit = {
     remaining: '잔량 (+허용)',
     arrivedQty: '이번 도착',
     uom: '단위',
-    normal: '정량',
-    excess: '초과',
+    /** 이번 도착 중 P/O 라인에 넣는 몫. */
+    normal: 'P/O 반영',
+    /** P/O 에 넣지 않고 추가 P/O 를 기다리는 몫(`excessQty`). */
+    excess: '초과분',
     /** 「60 (+5)」 */
     remainingPair: (remainingQty: string, toleranceOverQty: string): string =>
       `${remainingQty} (+${toleranceOverQty})`,
@@ -143,41 +135,32 @@ export const overReceiptSplit = {
     /** 수입검사 대상 품목의 표식. 서버가 품목 기준정보로 정한다 — 화면이 보내는 값이 아니다. */
     iqc: 'IQC',
     iqcTitle: '수입검사 대상 품목입니다. 등록하면 검사 의뢰가 함께 만들어집니다.',
-    /** LOT 줄의 머리 — 어느 전표의 LOT 인지. */
-    lotNormal: '정량분 LOT',
-    lotExcess: '초과분 LOT',
-    lotNoLabel: (lineNo: number, part: 'normal' | 'excess'): string =>
-      `${String(lineNo)}번 줄 ${part === 'normal' ? '정량분' : '초과분'} 공급사 LOT 번호`,
-    lotMissingLabel: (lineNo: number, part: 'normal' | 'excess'): string =>
-      `${String(lineNo)}번 줄 ${part === 'normal' ? '정량분' : '초과분'} 라벨 없음`,
-    lotReasonLabel: (lineNo: number, part: 'normal' | 'excess'): string =>
-      `${String(lineNo)}번 줄 ${part === 'normal' ? '정량분' : '초과분'} 대체 LOT 사유`,
+    /** LOT 줄의 머리. 줄 하나에 LOT 하나다 — 초과분도 같은 LOT 이다. */
+    lotHead: '공급사 LOT',
+    lotNoLabel: (lineNo: number): string => `${String(lineNo)}번 줄 공급사 LOT 번호`,
+    lotMissingLabel: (lineNo: number): string => `${String(lineNo)}번 줄 라벨 없음`,
+    lotReasonLabel: (lineNo: number): string => `${String(lineNo)}번 줄 대체 LOT 사유`,
     lotNoPlaceholder: '라벨을 스캔하거나 LOT 번호 입력',
     lotMissing: '라벨 없음',
     lotReasonPlaceholder: '사유 선택',
-    /**
-     * 초과분 LOT 을 정량분 라벨에서 파생했다. 서버가 같은 LOT 번호를 두 전표에 허용하지 않아
-     * (`uq_lot`) 번호를 하나 더 만들어야 하는데, 그것을 사람에게 매번 시키지 않는다.
-     */
-    lotDerivedNote:
-      '정량분 라벨에서 파생한 번호입니다. 초과분 꾸러미에 라벨이 따로 있으면 그 라벨을 스캔하거나 번호를 넣으세요.',
     /** 표 위의 설명 — 두 낱말의 뜻을 표가 있는 자리에서 바로 읽는다. */
     legend:
-      '정량분은 발주 수량과 허용치 안에서 받는 몫으로 발주에 채워집니다. 초과분은 그보다 많이 온 몫으로 별도 전표가 되고, 뒤에 「신규 자재 P/O 등록」으로 정산합니다.',
+      '도착한 수량은 LOT 하나로 받습니다. 그중 발주 수량과 허용치 안의 몫은 P/O 에 반영되고, 넘는 몫은 초과분으로 남아 ERP 가 추가 P/O 를 만들면 「입하 예정 조회」에서 잇습니다.',
   },
   /** 라벨 스캔 칸 — 라벨의 품목코드로 줄을 찾아 수량과 LOT 을 채운다. */
   scan: {
     label: '라벨 스캔',
     placeholder: '공급사 LOT 라벨을 스캔하세요',
     hint: '스캐너가 없으면 「이번 도착」 칸에 수량을 넣고, LOT 줄에서 번호를 치거나 「라벨 없음」을 고르세요.',
-    /** 「3번 줄에 담았습니다 — 수량 5,000 · 정량분 LOT」 */
-    added: (lineNo: number, qty: string, part: 'normal' | 'excess'): string =>
-      `${String(lineNo)}번 줄에 담았습니다 — 수량 ${qty} · ${part === 'normal' ? '정량분' : '초과분'} LOT`,
+    /** 「3번 줄에 담았습니다 — 수량 5,000」 */
+    added: (lineNo: number, qty: string): string =>
+      `${String(lineNo)}번 줄에 담았습니다 — 수량 ${qty}`,
     notFound: (itemCode: string): string => `「${itemCode}」 품목은 이 발주에 없습니다.`,
     invalid: '라벨 형식이 아닙니다. 품목코드·수량·날짜·공급사·번호 다섯 칸이어야 합니다.',
     itemsPending: '품목 정보를 아직 불러오지 못했습니다. 잠시 뒤 다시 스캔하세요.',
-    bothFilled: (lineNo: number): string =>
-      `${String(lineNo)}번 줄은 정량분·초과분 LOT 이 모두 차 있습니다. 칸을 비운 뒤 다시 스캔하세요.`,
+    /** 줄 하나에 라벨 하나다 — 같은 품목의 빈 줄이 없으면 담지 않는다. */
+    lotFilled: (lineNo: number): string =>
+      `${String(lineNo)}번 줄은 LOT 이 이미 들어 있습니다. 라벨을 바꾸려면 칸을 비운 뒤 다시 스캔하세요.`,
   },
   /** 고른 발주의 제목줄. **목록 표에 두지 않은 값(공장)이 여기서 보인다.** */
   summary: {
@@ -188,20 +171,18 @@ export const overReceiptSplit = {
     orderDate: '발주일',
     expectedReceiptDate: '입고 예정일',
   },
-  /** 등록 단추 위의 요약 — 누르기 전에 무엇이 몇 건 만들어지는지 읽힌다. */
+  /** 등록 단추 위의 요약 — 누르기 전에 무엇이 만들어지는지 읽힌다. */
   totals: {
     label: '만들어질 전표',
-    normal: (lines: number): string => `정량분 전표 1건 (${String(lines)}줄)`,
-    excess: (lines: number): string => `초과분 전표 1건 (${String(lines)}줄)`,
+    receipt: (lines: number): string => `입하 전표 1건 (${String(lines)}줄)`,
+    excess: (lines: number): string => `그중 초과분이 있는 줄 ${String(lines)}개`,
     none: '아직 넣은 도착 수량이 없습니다',
   },
   /** 입력 구획의 제목과 보조 표식. */
   form: {
     linesTitle: '도착 수량과 LOT',
     headerTitle: '입하 정보',
-    excessTitle: '초과분 정보',
     optional: '(선택)',
-    exceptionReasonPlaceholder: '예: 공급사 포장 단위로 더 들어옴',
   },
   filters: {
     all: '전체',
@@ -251,9 +232,6 @@ export const overReceiptSplit = {
       CANCEL_REQUESTED: string;
       CANCELLED: string;
     },
-    /** 등록 결과의 전표 구분. */
-    partNormal: '정량분',
-    partExcess: '초과분',
   },
   errors: {
     qtyNotNumber: '수량은 숫자로 넣으세요.',
@@ -261,9 +239,12 @@ export const overReceiptSplit = {
     receiptDatetimeRequired: '입하 일시를 넣으세요.',
     deliveryNoteNoTooLong: (max: number): string =>
       `거래명세서번호는 ${String(max)}자를 넘을 수 없습니다.`,
-    exceptionReasonRequired: '예외 유형을 골랐으면 초과 사유를 함께 넣으세요.',
-    /** 초과분 줄은 발주에 묶이지 않아 서버가 예외 유형을 요구한다. */
-    exceptionTypeRequired: '초과분을 등록하려면 예외 유형을 고르세요.',
+    /**
+     * 이미 다 받은 줄(발주 + 허용치 − 누적 입하 = 0)에 수량을 넣었다 — 전부 초과분인 줄은 서버가 받지 않는다
+     * (`excessQty` 는 `receivedQty` 보다 작아야 한다). 추가 P/O 가 오면 그 발주로 받는다.
+     */
+    qtyNoRoom:
+      '이미 다 받은 줄이라 이 줄로는 받을 수 없습니다. 추가 P/O 가 생기면 그 발주에서 받으세요.',
     /** LOT — 서버가 LOT 번호 없는 줄을 받지 않는다. 번호가 없으면 「라벨 없음」과 사유가 선다. */
     lotRequired: 'LOT 번호를 넣거나 「라벨 없음」을 고르세요.',
     lotReasonRequired: '라벨이 없으면 대체 LOT 사유를 고르세요.',
@@ -271,8 +252,6 @@ export const overReceiptSplit = {
       '라벨 형식이 아닙니다. 번호를 받아 적은 것이면 「라벨 없음」을 켜고 번호를 넣으세요.',
     lotItemMismatch: (itemCode: string): string =>
       `라벨의 품목코드가 이 줄의 품목(${itemCode})과 다릅니다.`,
-    lotDuplicate:
-      '정량분과 초과분에 같은 LOT 번호를 쓸 수 없습니다. 초과분은 다른 LOT 이어야 합니다.',
     /*
      * 사유가 붙은 줄을 그대로 두고 등록하면 **그 줄만 빠진 전표**가 만들어진다.
      * 되돌릴 수 없는 쓰기라 빠뜨린 줄을 나중에 알아채면 고칠 방법이 없다.
@@ -287,9 +266,7 @@ export const overReceiptSplit = {
       `발주 수량의 ${times}배입니다. 자릿수를 확인하세요.`,
   },
   notes: {
-    headerSharedByBoth:
-      '입하 일시·거래명세서번호·비고는 만들어지는 전표 모두에 같이 실리고, 영업일은 입하 일시의 날짜입니다.',
-    excessOnlyFields: '예외 유형과 초과 사유는 초과분 전표에만 실립니다.',
+    headerShared: '영업일은 입하 일시의 날짜입니다.',
     /** 수입검사 여부는 품목 기준정보가 정한다 — 줄의 IQC 표식이 그 사실이다. */
     iqcByItem: 'IQC 표식이 붙은 품목은 등록하면 수입검사 의뢰가 함께 만들어집니다.',
     registerRecheck:
@@ -300,32 +277,31 @@ export const overReceiptSplit = {
     count: (count: number): string => `전표 ${String(count)}건을 만들었습니다.`,
     receiptNo: '전표번호',
     status: '상태',
-    part: '구분',
-    /** 다음 화면(W-01-11)으로 가는 길. 초과분 전표에만 선다. */
-    registerPo: (inboundReceiptNo: string): string => `${inboundReceiptNo} 입하로 자재 P/O 등록`,
+    /** 초과분을 실었으면 그 몫이 아직 P/O 에 들어가지 않았다는 사실과 이을 자리. */
+    excessLine: (lineNo: number, qty: string): string => `${String(lineNo)}번 줄 ${qty}`,
+    excessWaiting: (lines: string): string =>
+      `초과분(${lines})은 P/O 에 넣지 않았습니다. ERP 가 추가 P/O 를 만들면 잇습니다.`,
+    goLinkExcess: '입하 예정 조회에서 초과분 잇기',
   },
   dialog: {
     discardTitle: '입력한 도착 수량을 버립니다',
     /** 등록 확인 — 되돌릴 수 없는 쓰기라 보내기 전에 무엇이 나가는지 한 번 더 보인다. */
     registerTitle: '입하를 등록합니다',
-    registerLead: (mode: 'BOTH' | 'NORMAL_ONLY' | 'EXCESS_ONLY'): string =>
-      mode === 'BOTH'
-        ? '정량분 전표와 초과분 전표, 두 건을 함께 만듭니다.'
-        : mode === 'NORMAL_ONLY'
-          ? '정량분 전표 한 건만 만듭니다. 초과분은 등록하지 않습니다.'
-          : '초과분 전표 한 건만 만듭니다. 정량분은 등록하지 않습니다.',
-    registerGroupReceipts: '만들어지는 전표',
-    registerReceiptNormal: (lines: number): string => `정량분 전표 — ${String(lines)}줄`,
-    registerReceiptExcess: (lines: number): string => `초과분 전표 — ${String(lines)}줄`,
-    registerReceiptHint: '만들지 않을 전표는 체크를 푸세요. 하나는 남아야 합니다.',
+    registerLead: (lines: number, excessLines: number): string =>
+      excessLines === 0
+        ? `입하 전표 한 건에 ${String(lines)}줄을 싣습니다.`
+        : `입하 전표 한 건에 ${String(lines)}줄을 싣습니다. 그중 ${String(excessLines)}줄은 초과분이 있어 그 몫은 P/O 에 넣지 않습니다.`,
     registerGroupLines: '실리는 줄',
-    registerGroupHeader: '전표 머리',
+    registerGroupHeader: '입하 정보',
     registerIrreversible: '등록한 전표는 이 화면에서 되돌릴 수 없습니다. 취소는 승인을 거칩니다.',
     registerEffects:
       '발주 라인의 누적 입하가 늘고, 수입검사 대상 품목은 검사 의뢰가 함께 만들어집니다.',
-    lotOf: (part: 'normal' | 'excess', lotNo: string): string =>
-      `${part === 'normal' ? '정량분' : '초과분'} LOT ${lotNo}`,
-    lotMissingOf: (part: 'normal' | 'excess', reason: string): string =>
-      `${part === 'normal' ? '정량분' : '초과분'} 라벨 없음 (${reason})`,
+    /** 「P/O 반영 4,500 · 초과분 500」 */
+    excessOf: (normalQty: string, excessQty: string): string =>
+      `P/O 반영 ${normalQty} · 초과분 ${excessQty}`,
+    registerExcessNext:
+      '초과분은 재고로는 바로 쓰이고, ERP 가 추가 P/O 를 만들면 「입하 예정 조회」에서 그 P/O 에 잇습니다.',
+    lotOf: (lotNo: string): string => `LOT ${lotNo}`,
+    lotMissingOf: (reason: string): string => `라벨 없음 (${reason})`,
   },
 } as const;

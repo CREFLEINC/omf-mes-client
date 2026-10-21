@@ -12,7 +12,7 @@ import type { SplitCounts } from './validation';
  * | --- | --- |
  * | 발주 선택 | 고른 발주가 없다 |
  * | 도착 수량 · LOT | 실릴 줄이 없거나, 수량·LOT 에 고칠 것이 있다 |
- * | 입하 정보 | 머리 입력(입하 일시 · 초과분이면 예외 유형·사유)이 아직 모자라다 |
+ * | 입하 정보 | 머리 입력(입하 일시 등)이 아직 모자라다 |
  * | 등록 | 다 찼다 — 누르면 된다 |
  */
 
@@ -32,8 +32,7 @@ export interface GuideInput {
 
 export const guideStep = (input: GuideInput): GuideStep => {
   if (!input.hasOrder) return 'select';
-  if (input.counts.normalLines + input.counts.excessLines === 0 || input.hasLineError)
-    return 'lines';
+  if (input.counts.lines === 0 || input.hasLineError) return 'lines';
   if (input.headerErrorCount > 0) return 'info';
 
   return 'register';

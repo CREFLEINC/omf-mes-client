@@ -5,7 +5,7 @@ import { GUIDE_STEPS, guideHint, guideStatuses, guideStep } from './guide';
 
 const t = messages.overReceiptSplit;
 
-const counts = (normalLines: number, excessLines: number) => ({ normalLines, excessLines });
+const counts = (lines: number, excessLines: number) => ({ lines, excessLines });
 
 describe('guideStep — 화면 상태에서 지금 할 일을 정한다', () => {
   const base = { hasOrder: true, counts: counts(1, 1), hasLineError: false, headerErrorCount: 0 };
@@ -16,6 +16,7 @@ describe('guideStep — 화면 상태에서 지금 할 일을 정한다', () => 
 
   it('실릴 줄이 없거나 수량·LOT 에 고칠 것이 있으면 수량·LOT 단계다', () => {
     expect(guideStep({ ...base, counts: counts(0, 0) })).toBe('lines');
+    expect(guideStep({ ...base, counts: counts(1, 0) })).toBe('register');
     expect(guideStep({ ...base, hasLineError: true })).toBe('lines');
   });
 

@@ -110,8 +110,6 @@ describe('머리 초안', () => {
       receiptDatetime: '',
       deliveryNoteNo: '',
       remarks: '',
-      exceptionTypeCode: '',
-      exceptionReason: '',
     });
   });
 
@@ -119,13 +117,11 @@ describe('머리 초안', () => {
     expect(hasAnyHeaderValue(EMPTY_HEADER_DRAFT)).toBe(false);
   });
 
-  /* 다섯 칸 중 **어느 하나라도** 채웠으면 버릴 값이 있다 — 한 칸만 보면 나머지가 조용히 사라진다. */
+  /* 세 칸 중 **어느 하나라도** 채웠으면 버릴 값이 있다 — 한 칸만 보면 나머지가 조용히 사라진다. */
   it.each([
     ['receiptDatetime', '2026-08-06T09:12'],
     ['deliveryNoteNo', 'SAMPLE-DN-01'],
     ['remarks', '합성 비고'],
-    ['exceptionTypeCode', 'SAMPLE_EXCEPTION'],
-    ['exceptionReason', '합성 사유'],
   ] as const)('%s만 채워도 버릴 값이 있다고 본다', (field, value) => {
     expect(hasAnyHeaderValue({ ...EMPTY_HEADER_DRAFT, [field]: value })).toBe(true);
   });
@@ -147,37 +143,22 @@ describe('toCreatedReceiptView — 만들어진 전표', () => {
   };
 
   /*
-   * **내부 번호는 다음 화면으로 넘길 열쇠로만 들인다**(#44의 본뜻 유지).
+   * **화면이 내는 값만 옮긴다**(#44). 내부 번호는 들이지 않는다 — 다음 화면으로 넘길 링크 열쇠로 열었던
+   * 자리였으나, 초과 몫이 줄의 `excessQty` 로 실리면서(서버 장부 P-100) 그 링크가 사라졌다.
    *
-   * 앞 회차의 판정은 「전표번호와 상태만 옮기고 내부 번호를 들이지 않는다」였다. P/O 등록
-   * 화면이 서면서 그 번호가 **링크 질의값**이 됐으므로 자리를 연다 — 다만 #44가 막으려던 것은
-   * 「내부 번호가 **사람에게 보이는** 것」이라, 지금 판정은 **「세 값을 옮기되 표시 값과
-   * 갈라 둔다」**로 다시 선다. 표시 금지는 결과 구획 렌더 감지기가 따로 잰다.
-   *
-   * `toEqual`이라 키가 하나라도 늘면 여전히 실패한다 — 사업부·입하일시처럼 화면이 쓰지 않는
-   * 값이 슬그머니 따라 들어오는 경로는 그대로 막혀 있다.
+   * `toEqual`이라 키가 하나라도 늘면 실패한다 — 사업부·입하일시처럼 화면이 쓰지 않는 값이 슬그머니
+   * 따라 들어오는 경로를 막는다.
    */
-  it('전표번호·상태·예외 유형과 링크 열쇠만 옮긴다', () => {
+  it('전표번호와 상태만 옮긴다', () => {
     expect(toCreatedReceiptView(CREATED)).toEqual({
-      inboundReceiptId: 9601,
       inboundReceiptNo: 'IR-2026-900010',
       statusCode: 'SAMPLE_IR_STATUS_A',
-      exceptionTypeCode: null,
     });
   });
 
-  /* 초과분 전표에만 실리는 값이다 — 결과 구획이 이것으로 전표를 가른다. */
-  it('예외 유형이 있으면 그대로 옮긴다', () => {
+  it('응답에 예외 유형이 실려 와도 옮기지 않는다', () => {
     expect(
-      toCreatedReceiptView({ ...CREATED, exceptionTypeCode: 'OVER_DELIVERY' }).exceptionTypeCode,
-    ).toBe('OVER_DELIVERY');
-  });
-
-  /*
-   * **열쇠는 숫자 그대로 든다.** 문자열로 옮기면 주소를 만드는 자리에서 다시 형을 맞춰야 하고,
-   * 그 자리가 둘 이상이면 한쪽만 고쳐진 채 남는다.
-   */
-  it('링크 열쇠를 숫자로 옮긴다', () => {
-    expect(toCreatedReceiptView(CREATED).inboundReceiptId).toBe(9601);
+      Object.keys(toCreatedReceiptView({ ...CREATED, exceptionTypeCode: 'OVER_DELIVERY' })),
+    ).not.toContain('exceptionTypeCode');
   });
 });

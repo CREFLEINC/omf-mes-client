@@ -75,14 +75,11 @@ describe('ReceiptHeaderForm', () => {
     expect(screen.getByLabelText(t.fields.receiptDatetime)).toHaveAttribute('aria-invalid', 'true');
   });
 
-  /*
-   * **머리 값 한 벌이 두 전표에 함께 실린다**는 사실은 화면에서 읽혀야 한다 —
-   * 밝히지 않으면 초과분 전표에는 따로 적어야 하는 줄 안다.
-   */
-  it('두 전표에 같이 실린다는 사실을 밝힌다', () => {
+  /* 영업일이 입하 일시의 날짜라는 사실을 밝힌다 — 입력칸이 없어 다른 자리에서는 읽을 수 없다. */
+  it('영업일이 입하 일시에서 나온다는 사실을 밝힌다', () => {
     renderForm();
 
-    expect(screen.getByText(t.notes.headerSharedByBoth)).toBeInTheDocument();
+    expect(screen.getByText(t.notes.headerShared)).toBeInTheDocument();
   });
 
   /*

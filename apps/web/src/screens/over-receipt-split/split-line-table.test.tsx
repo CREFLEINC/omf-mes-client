@@ -11,7 +11,6 @@ import {
   setDraftQty,
   type LineDrafts,
   type LotDraft,
-  type LotPart,
 } from './line-draft';
 import type { ItemDetail, ItemNameLookup, ReferenceSource, ReferenceState } from './lookups';
 import { toSplitLines, type SplitLineView } from './split-calc';
@@ -85,25 +84,19 @@ const columnsWith = (names: ItemNameLookup = ITEMS): Column<LineTableRow>[] =>
 
 const draftsWith = (
   texts: Record<number, string> = {},
-  lots: Record<number, Partial<Record<LotPart, Partial<LotDraft>>>> = {},
-): LineDrafts => {
-  let drafts = Object.entries(texts).reduce<LineDrafts>(
-    (acc, [lineId, text]) => setDraftQty(acc, Number(lineId), text),
-    createDrafts(purchaseOrderLineFixtures),
+  lots: Record<number, Partial<LotDraft>> = {},
+): LineDrafts =>
+  Object.entries(lots).reduce<LineDrafts>(
+    (acc, [lineId, patch]) => setDraftLot(acc, Number(lineId), patch),
+    Object.entries(texts).reduce<LineDrafts>(
+      (acc, [lineId, text]) => setDraftQty(acc, Number(lineId), text),
+      createDrafts(purchaseOrderLineFixtures),
+    ),
   );
-  for (const [lineId, parts] of Object.entries(lots)) {
-    for (const part of ['normal', 'excess'] as const) {
-      const patch = parts[part];
-      if (patch !== undefined) drafts = setDraftLot(drafts, Number(lineId), part, patch);
-    }
-  }
-
-  return drafts;
-};
 
 const rowsWith = (
   texts: Record<number, string> = {},
-  lots: Record<number, Partial<Record<LotPart, Partial<LotDraft>>>> = {},
+  lots: Record<number, Partial<LotDraft>> = {},
 ): SplitLineView[] =>
   toSplitLines(purchaseOrderLineFixtures, draftsWith(texts, lots), (itemId) =>
     itemId === 9301 ? 'SAMPLE-ITEM-01' : null,
@@ -111,8 +104,7 @@ const rowsWith = (
 
 const renderTable = (overrides: Partial<SplitLineTableProps> = {}) => {
   const onChangeQty = vi.fn<(purchaseOrderLineId: number, text: string) => void>();
-  const onChangeLot =
-    vi.fn<(purchaseOrderLineId: number, part: LotPart, patch: Partial<LotDraft>) => void>();
+  const onChangeLot = vi.fn<(purchaseOrderLineId: number, patch: Partial<LotDraft>) => void>();
   const onRetryReferences = vi.fn<() => void>();
 
   render(
@@ -178,22 +170,16 @@ describe('buildSplitLineColumns — 열 구성과 폭', () => {
   });
 });
 
-describe('toLineTableRows — LOT 줄은 수량이 갈린 뒤에만 선다', () => {
+describe('toLineTableRows — LOT 줄은 수량을 넣은 뒤에만 선다', () => {
   it('수량이 없으면 발주 라인 줄만 있다', () => {
     expect(toLineTableRows(rowsWith()).map((row) => row.kind)).toEqual(['line', 'line', 'line']);
   });
 
-  it('정량분·초과분이 갈리면 그 줄 아래 LOT 줄이 하나씩 선다', () => {
-    const rows = toLineTableRows(rowsWith({ 9401: '66', 9402: '12' }));
+  /* 줄 하나에 LOT 하나다(서버 장부 P-100) — 초과 몫이 있어도 LOT 줄은 하나다. */
+  it('수량을 넣은 줄 아래에 LOT 줄이 하나씩 선다 — 초과 몫이 있어도 하나다', () => {
+    const rows = toLineTableRows(rowsWith({ 9401: '66', 9403: '2' }));
 
-    expect(rows.map((row) => (row.kind === 'lot' ? `lot:${row.part}` : 'line'))).toEqual([
-      'line',
-      'lot:normal',
-      'lot:excess',
-      'line',
-      'lot:excess',
-      'line',
-    ]);
+    expect(rows.map((row) => row.kind)).toEqual(['line', 'lot', 'line', 'line', 'lot']);
   });
 });
 
@@ -204,11 +190,14 @@ describe('SplitLineTable — 발주 라인의 수치', () => {
     expect(cellsOf(bodyRows()[0] as HTMLElement).slice(3, 6)).toEqual(['100', '40', '60 (+5)']);
   });
 
-  /* 누적 입하가 발주를 넘긴 줄이다 — 잔량을 음수로 그리면 사용자가 뜻을 알 수 없다. */
-  it('누적 입하가 발주를 넘긴 줄의 잔량은 0으로 보인다', () => {
+  /*
+   * 누적 입하가 발주를 넘긴 줄이다 — 잔량을 음수로 그리면 사용자가 뜻을 알 수 없다. 괄호 안은 **남은 허용치**다 —
+   * 허용 5 중 2 를 이미 받았으니 3 이다(서버 한도 `발주 + 허용 − 누적`과 같다).
+   */
+  it('누적 입하가 발주를 넘긴 줄의 잔량은 0, 허용은 남은 몫만 보인다', () => {
     renderTable();
 
-    expect(cellsOf(bodyRows()[2] as HTMLElement).slice(3, 6)).toEqual(['30', '45', '0 (+5)']);
+    expect(cellsOf(bodyRows()[2] as HTMLElement).slice(3, 6)).toEqual(['30', '32', '0 (+3)']);
   });
 
   it('천 단위를 구분한다', () => {
@@ -291,28 +280,44 @@ describe('SplitLineTable — 표 안의 도착 수량 입력칸', () => {
   });
 });
 
-describe('SplitLineTable — 정량과 초과', () => {
+describe('SplitLineTable — P/O 반영과 초과분', () => {
   const splitCells = (row: HTMLElement): string[] => cellsOf(row).slice(8, 10);
 
-  /* 한도(잔량 60 + 허용 5)와 꼭 같은 도착은 전부 정량분이다. */
-  it('한도와 같은 수량은 전부 정량분으로 보인다', () => {
+  it('두 몫의 머리글이 「P/O 반영」·「초과분」이다', () => {
+    renderTable();
+
+    const headers = within(table())
+      .getAllByRole('columnheader')
+      .map((cell) => cell.textContent ?? '');
+
+    expect(headers.slice(8, 10)).toEqual([t.lineTable.normal, t.lineTable.excess]);
+  });
+
+  /* 한도(잔량 60 + 허용 5)와 꼭 같은 도착은 전부 P/O 에 넣는다. */
+  it('한도와 같은 수량은 전부 P/O 반영으로 보인다', () => {
     renderTable({ rows: rowsWith({ 9401: '65' }) });
 
     expect(splitCells(bodyRows()[0] as HTMLElement)).toEqual(['65', '0']);
   });
 
-  it('한도를 넘으면 넘은 몫만 초과분으로 보인다', () => {
+  it('한도를 넘으면 넘은 몫만 초과분으로 보이고 눈에 띄게 표시된다', () => {
     renderTable({ rows: rowsWith({ 9401: '66' }) });
 
-    expect(splitCells(bodyRows()[0] as HTMLElement)).toEqual(['65', '1']);
+    const line = bodyRows()[0] as HTMLElement;
+    expect(splitCells(line)).toEqual(['65', '1']);
+    expect(line.querySelector('[data-excess="true"]')).not.toBeNull();
   });
 
-  /* 잔량도 허용치도 없는 줄이다 — 도착한 전부가 초과분이다. */
-  it('받을 것이 남지 않은 줄은 전부 초과분으로 보인다', () => {
+  /*
+   * 잔량도 허용치도 없는 줄이다 — 넣은 수량이 전부 초과 몫이라 서버가 받지 않는다. 몫은 그대로 보이고
+   * 수량 칸에 사유가 붙는다.
+   */
+  it('다 받은 줄에 수량을 넣으면 전부 초과분으로 보이고 수량 칸에 사유가 붙는다', () => {
     renderTable({ rows: rowsWith({ 9402: '12' }) });
 
     const line = bodyRows().find((row) => cellsOf(row)[0] === '2') as HTMLElement;
     expect(splitCells(line)).toEqual(['0', '12']);
+    expect(within(line).getByText(t.errors.qtyNoRoom)).toBeInTheDocument();
   });
 
   it('수량을 넣지 않은 줄은 가를 것이 없다고 낸다', () => {
@@ -330,75 +335,64 @@ describe('SplitLineTable — 정량과 초과', () => {
 });
 
 describe('SplitLineTable — LOT 줄', () => {
-  const lotInput = (lineNo: number, part: LotPart): HTMLElement =>
-    screen.getByLabelText(t.lineTable.lotNoLabel(lineNo, part));
-  const missingBox = (lineNo: number, part: LotPart): HTMLElement =>
-    screen.getByLabelText(t.lineTable.lotMissingLabel(lineNo, part));
+  const lotInput = (lineNo: number): HTMLElement =>
+    screen.getByLabelText(t.lineTable.lotNoLabel(lineNo));
+  const missingBox = (lineNo: number): HTMLElement =>
+    screen.getByLabelText(t.lineTable.lotMissingLabel(lineNo));
 
-  it('정량분·초과분 LOT 줄이 그 발주 라인 아래에 선다', () => {
+  /* 초과 몫이 있어도 LOT 은 하나다 — 「초과분 LOT」 줄이 따로 서지 않는다. */
+  it('수량을 넣은 줄 아래에 공급사 LOT 줄 하나가 선다', () => {
     renderTable({ rows: rowsWith({ 9401: '66' }) });
 
     const rows = bodyRows();
-    expect(rows).toHaveLength(5);
-    expect(cellsOf(rows[1] as HTMLElement)[1]).toBe(t.lineTable.lotNormal);
-    expect(cellsOf(rows[2] as HTMLElement)[1]).toBe(t.lineTable.lotExcess);
-    expect(lotInput(1, 'normal')).toBeInTheDocument();
-    expect(lotInput(1, 'excess')).toBeInTheDocument();
+    expect(rows).toHaveLength(4);
+    expect(cellsOf(rows[1] as HTMLElement)[1]).toBe(t.lineTable.lotHead);
+    expect(screen.getAllByLabelText(t.lineTable.lotNoLabel(1))).toHaveLength(1);
   });
 
-  it('LOT 줄은 그 쪽의 수량을 함께 낸다', () => {
+  it('LOT 줄의 수량 칸은 비어 있다 — 몫은 발주 라인 줄이 말한다', () => {
     renderTable({ rows: rowsWith({ 9401: '66' }) });
 
-    const rows = bodyRows();
-    expect(cellsOf(rows[1] as HTMLElement).slice(8, 10)).toEqual(['65', '']);
-    expect(cellsOf(rows[2] as HTMLElement).slice(8, 10)).toEqual(['', '1']);
+    expect(cellsOf(bodyRows()[1] as HTMLElement).slice(8, 10)).toEqual(['', '']);
   });
 
-  it('번호를 치면 그 줄·그 쪽으로 올린다', async () => {
+  it('번호를 치면 그 줄로 올린다', async () => {
     const { onChangeLot, user } = renderTable({ rows: rowsWith({ 9401: '66' }) });
 
-    await user.type(lotInput(1, 'excess'), 'L');
+    await user.type(lotInput(1), 'L');
 
-    expect(onChangeLot).toHaveBeenCalledWith(9401, 'excess', { lotNo: 'L' });
+    expect(onChangeLot).toHaveBeenCalledWith(9401, { lotNo: 'L' });
   });
 
   it('「라벨 없음」을 켜면 올리고, 끄면 사유도 함께 비운다', async () => {
     const { onChangeLot, user } = renderTable({
-      rows: rowsWith(
-        { 9401: '10' },
-        { 9401: { normal: { labelMissing: true, reasonCode: 'OTHER' } } },
-      ),
+      rows: rowsWith({ 9401: '10' }, { 9401: { labelMissing: true, reasonCode: 'OTHER' } }),
     });
 
-    await user.click(missingBox(1, 'normal'));
+    await user.click(missingBox(1));
 
-    expect(onChangeLot).toHaveBeenCalledWith(9401, 'normal', {
-      labelMissing: false,
-      reasonCode: '',
-    });
+    expect(onChangeLot).toHaveBeenCalledWith(9401, { labelMissing: false, reasonCode: '' });
   });
 
   it('라벨 없음이고 번호가 없을 때만 대체 사유 칸이 선다', () => {
-    renderTable({
-      rows: rowsWith({ 9401: '10' }, { 9401: { normal: { labelMissing: true } } }),
-    });
+    renderTable({ rows: rowsWith({ 9401: '10' }, { 9401: { labelMissing: true } }) });
 
     expect(
-      screen.getByRole('combobox', { name: t.lineTable.lotReasonLabel(1, 'normal') }),
+      screen.getByRole('combobox', { name: t.lineTable.lotReasonLabel(1) }),
     ).toBeInTheDocument();
   });
 
   it('번호를 받아 적었으면 사유 칸이 없다', () => {
     renderTable({
-      rows: rowsWith({ 9401: '10' }, { 9401: { normal: { labelMissing: true, lotNo: 'DN-7' } } }),
+      rows: rowsWith({ 9401: '10' }, { 9401: { labelMissing: true, lotNo: 'DN-7' } }),
     });
 
     expect(
-      screen.queryByRole('combobox', { name: t.lineTable.lotReasonLabel(1, 'normal') }),
+      screen.queryByRole('combobox', { name: t.lineTable.lotReasonLabel(1) }),
     ).not.toBeInTheDocument();
   });
 
-  it('LOT 사유가 그 칸 아래에 붙고, 붙이지 말라고 하면 붙지 않는다', () => {
+  it('LOT 사유가 그 칸 아래에 붙는다', () => {
     renderTable({ rows: rowsWith({ 9401: '10' }) });
 
     expect(screen.getByText(t.errors.lotRequired)).toBeInTheDocument();
@@ -409,30 +403,22 @@ describe('SplitLineTable — LOT 줄', () => {
     renderTable({ rows: rowsWith({ 9401: '10' }), showLotErrors: false });
 
     expect(screen.queryByText(t.errors.lotRequired)).not.toBeInTheDocument();
-    expect(lotInput(1, 'normal')).toBeInTheDocument();
+    expect(lotInput(1)).toBeInTheDocument();
   });
 
-  /* 정량분 라벨에서 파생한 초과분 LOT — 번호 칸과 그 사실, 「라벨 없음으로」만 있고 확인칸·사유는 없다. */
-  it('파생된 초과분 LOT 은 번호와 사실을 보이고 라벨 없음으로 바꿀 수 있다', async () => {
-    const { onChangeLot, user } = renderTable({
-      rows: rowsWith({ 9401: '66' }, { 9401: { normal: { lotNo: LABEL_9301 } } }),
-    });
+  /* 「-OVER」 파생 번호도 「라벨 없음으로」 단추도 없다 — 초과 몫은 같은 LOT 이다. */
+  it('초과 몫이 있어도 파생 번호나 「라벨 없음으로」 단추가 없다', () => {
+    renderTable({ rows: rowsWith({ 9401: '66' }, { 9401: { lotNo: LABEL_9301 } }) });
 
-    expect(lotInput(1, 'excess')).toHaveValue(`${LABEL_9301}-OVER`);
-    expect(screen.getByText(t.lineTable.lotDerivedNote)).toBeInTheDocument();
-    expect(
-      screen.queryByLabelText(t.lineTable.lotMissingLabel(1, 'excess')),
-    ).not.toBeInTheDocument();
-
-    await user.click(screen.getByRole('button', { name: t.actions.excessLotAsMissing }));
-
-    expect(onChangeLot).toHaveBeenCalledWith(9401, 'excess', { lotNo: '', labelMissing: true });
+    expect(lotInput(1)).toHaveValue(LABEL_9301);
+    expect(screen.queryByDisplayValue(`${LABEL_9301}-OVER`)).not.toBeInTheDocument();
+    expect(within(table()).queryAllByRole('button')).toHaveLength(0);
   });
 
   it('초안의 번호가 칸에 그대로 보인다', () => {
-    renderTable({ rows: rowsWith({ 9401: '10' }, { 9401: { normal: { lotNo: LABEL_9301 } } }) });
+    renderTable({ rows: rowsWith({ 9401: '10' }, { 9401: { lotNo: LABEL_9301 } }) });
 
-    expect(lotInput(1, 'normal')).toHaveValue(LABEL_9301);
+    expect(lotInput(1)).toHaveValue(LABEL_9301);
   });
 });
 

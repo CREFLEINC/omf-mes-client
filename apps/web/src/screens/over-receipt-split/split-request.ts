@@ -2,13 +2,17 @@ import type { components } from '@omf-mes/api-client';
 
 import type { LotDraft } from './line-draft';
 import type { SplitLineView } from './split-calc';
-import type { HeaderDraft, PoView, SplitMode } from './types';
+import type { HeaderDraft, PoView } from './types';
 
 /**
  * 요청 조립 — **화면의 초안을 계약의 본문으로 옮기는 유일한 자리.**
  *
- * 정량·초과는 `split-calc.ts`가 가른 결과를 그대로 받는다. 여기서 다시 계산하면 표가 보여 준 값과
+ * P/O 몫·초과 몫은 `split-calc.ts`가 가른 결과를 그대로 받는다. 여기서 다시 계산하면 표가 보여 준 값과
  * 보내는 값이 갈린다.
+ *
+ * **늘 `NORMAL_ONLY` 다**(서버 장부 P-100). 초과 몫은 따로 전표를 만들지 않고 줄의 `excessQty` 로 실린다 —
+ * 줄 하나 · LOT 하나 · P/O 라인 하나다. `:split` 경로를 쓰는 까닭은 권한이다 — 초과분을 잇는 경로들이
+ * 이 화면(W-01-03)의 권한으로 열린다.
  */
 
 type SplitRequest = components['schemas']['InboundReceiptSplitRequest'];
@@ -19,6 +23,11 @@ type SplitPart = components['schemas']['InboundReceiptSplitPart'];
  */
 type LineUpsert = components['schemas']['InboundReceiptLineUpsert'] & {
   supplierLotLabelAttached?: boolean;
+  /**
+   * 서버 장부 P-100 — `receivedQty` 중 `purchaseOrderLineId` 에 넣지 않는 몫. 계약 사본 밖이라 생성 타입에 없다.
+   * 생략·0 은 「없음」이고, `receivedQty` 이상이면 400 `RANGE` 다.
+   */
+  excessQty?: number;
 };
 
 export interface SplitInput {
@@ -27,11 +36,6 @@ export interface SplitInput {
   header: HeaderDraft;
   /** 발생 시각의 기준. **제출 순간**을 인자로 받아 순수 함수로 둔다. */
   now: Date;
-}
-
-export interface SplitParts {
-  normal: LineUpsert[];
-  excess: LineUpsert[];
 }
 
 const pad = (value: number, length: number): string => String(value).padStart(length, '0');
@@ -79,43 +83,27 @@ const lotFields = (lot: LotDraft): Partial<LineUpsert> & { supplierLotMissing: b
 };
 
 /**
- * 가른 결과를 두 갈래의 라인으로 나눈다. **세는 자리와 보내는 자리가 같다** — 버튼의 활성 조건이
+ * 수량이 든 줄을 전표 줄로 옮긴다. **세는 자리와 보내는 자리가 같다** — 등록 단추의 활성 조건이
  * 이 결과의 길이를 쓴다.
+ *
+ * `receivedQty` 는 **도착한 수량 전체**다 — LOT 의 처음 수량이고 IQC 한 단위다. P/O 라인에는 그중
+ * `receivedQty − excessQty` 만 오른다(서버가 계산한다).
  */
-export const toSplitParts = (rows: readonly SplitLineView[]): SplitParts => {
-  const normal: LineUpsert[] = [];
-  const excess: LineUpsert[] = [];
+export const toReceiptLines = (rows: readonly SplitLineView[]): LineUpsert[] =>
+  rows.flatMap((row): LineUpsert[] => {
+    if (row.split === null) return [];
 
-  for (const row of rows) {
-    if (row.split === null) continue;
-
-    if (row.split.normalQty > 0) {
-      normal.push({
-        /* **정량분이 원 발주의 어느 줄을 채우는지 밝히는 것**이 정량분의 정의다. */
+    return [
+      {
         purchaseOrderLineId: row.line.purchaseOrderLineId,
         itemId: row.line.itemId,
-        receivedQty: row.split.normalQty,
+        receivedQty: row.split.arrivedQty,
         uomId: row.line.uomId,
+        ...(row.split.excessQty > 0 ? { excessQty: row.split.excessQty } : {}),
         ...lotFields(row.lot),
-      });
-    }
-
-    if (row.split.excessQty > 0) {
-      excess.push({
-        /*
-         * 초과분에는 발주 라인을 **붙이지 않는다**(이슈 §6). 붙이면 초과분이 원 발주에 더해져
-         * 「발주보다 많이 받았다」는 사실 자체가 사라진다.
-         */
-        itemId: row.line.itemId,
-        receivedQty: row.split.excessQty,
-        uomId: row.line.uomId,
-        ...lotFields(row.excessLot),
-      });
-    }
-  }
-
-  return { normal, excess };
-};
+      },
+    ];
+  });
 
 const optionalText = <TKey extends string>(
   key: TKey,
@@ -126,7 +114,7 @@ const optionalText = <TKey extends string>(
   return text === '' ? {} : ({ [key]: text } as Record<TKey, string>);
 };
 
-const toSharedPart = (input: SplitInput, lines: LineUpsert[]): SplitPart => ({
+const toPart = (input: SplitInput, lines: LineUpsert[]): SplitPart => ({
   supplierId: input.purchaseOrder.supplierId,
   plantId: input.purchaseOrder.plantId,
   receiptDatetime: toOffsetDateTime(input.header.receiptDatetime, input.now),
@@ -135,35 +123,10 @@ const toSharedPart = (input: SplitInput, lines: LineUpsert[]): SplitPart => ({
   lines,
 });
 
-/** 예외 유형·초과 사유는 **초과분 전표에만** 실린다(계약 설명). */
-const toExcessPart = (input: SplitInput, lines: LineUpsert[]): SplitPart => ({
-  ...toSharedPart(input, lines),
-  ...optionalText('exceptionTypeCode', input.header.exceptionTypeCode),
-  ...optionalText('exceptionReason', input.header.exceptionReason),
+export const toSplitRequest = (input: SplitInput): SplitRequest => ({
+  /* 계약이 「영업일과 발생 시각은 바깥에서 한 번만 받는다」고 적었다 — part에 넣지 않는다. */
+  businessDate: toBusinessDate(input.header.receiptDatetime),
+  occurredAt: toOccurredAt(input.now),
+  mode: 'NORMAL_ONLY',
+  normal: toPart(input, toReceiptLines(input.rows)),
 });
-
-export const includesExcess = (mode: SplitMode): boolean => mode !== 'NORMAL_ONLY';
-
-export const toSplitRequest = (mode: SplitMode, input: SplitInput): SplitRequest => {
-  const parts = toSplitParts(input.rows);
-  const shared = {
-    /* 계약이 「영업일과 발생 시각은 바깥에서 한 번만 받는다」고 적었다 — part에 넣지 않는다. */
-    businessDate: toBusinessDate(input.header.receiptDatetime),
-    occurredAt: toOccurredAt(input.now),
-  };
-
-  if (mode === 'BOTH') {
-    return {
-      ...shared,
-      mode,
-      normal: toSharedPart(input, parts.normal),
-      excess: toExcessPart(input, parts.excess),
-    };
-  }
-
-  if (mode === 'NORMAL_ONLY') {
-    return { ...shared, mode, normal: toSharedPart(input, parts.normal) };
-  }
-
-  return { ...shared, mode, excess: toExcessPart(input, parts.excess) };
-};

@@ -154,28 +154,26 @@ describe('hasAnyQty — 버릴 것이 있는가', () => {
   });
 });
 
-describe('setDraftLot — 정량분·초과분 LOT 을 따로 든다', () => {
-  it('한 쪽만 바뀌고 수량과 다른 쪽은 그대로다', () => {
-    const drafts = setDraftLot(setDraftQty(createDrafts(LINES), 9401, '12'), 9401, 'excess', {
+describe('setDraftLot — 줄 하나에 LOT 하나', () => {
+  it('그 줄의 LOT 만 바뀌고 수량과 다른 줄은 그대로다', () => {
+    const drafts = setDraftLot(setDraftQty(createDrafts(LINES), 9401, '12'), 9401, {
       lotNo: 'L-2',
     });
 
     expect(readDraft(drafts, 9401)).toEqual({
       qtyText: '12',
-      lot: EMPTY_LOT_DRAFT,
-      excessLot: { lotNo: 'L-2', labelMissing: false, reasonCode: '' },
+      lot: { lotNo: 'L-2', labelMissing: false, reasonCode: '' },
     });
-    expect(readDraft(drafts, 9402).qtyText).toBe('');
+    expect(readDraft(drafts, 9402)).toEqual({ qtyText: '', lot: EMPTY_LOT_DRAFT });
   });
 
   it('조각만 고쳐도 나머지 칸은 남는다', () => {
     const drafts = setDraftLot(
-      setDraftLot(createDrafts(LINES), 9401, 'normal', {
+      setDraftLot(createDrafts(LINES), 9401, {
         labelMissing: true,
         reasonCode: 'NO_LABEL',
       }),
       9401,
-      'normal',
       { lotNo: 'L-1' },
     );
 
@@ -189,16 +187,14 @@ describe('setDraftLot — 정량분·초과분 LOT 을 따로 든다', () => {
 
 describe('hasAnyLineInput — LOT 만 손대도 버릴 것이다', () => {
   it('수량 없이 LOT 번호만 넣어도 참이다', () => {
-    expect(hasAnyLineInput(setDraftLot(createDrafts(LINES), 9401, 'normal', { lotNo: 'L' }))).toBe(
-      true,
-    );
-    expect(hasAnyQty(setDraftLot(createDrafts(LINES), 9401, 'normal', { lotNo: 'L' }))).toBe(false);
+    expect(hasAnyLineInput(setDraftLot(createDrafts(LINES), 9401, { lotNo: 'L' }))).toBe(true);
+    expect(hasAnyQty(setDraftLot(createDrafts(LINES), 9401, { lotNo: 'L' }))).toBe(false);
   });
 
   it('라벨 없음만 켜도 참이다', () => {
-    expect(
-      hasAnyLineInput(setDraftLot(createDrafts(LINES), 9402, 'excess', { labelMissing: true })),
-    ).toBe(true);
+    expect(hasAnyLineInput(setDraftLot(createDrafts(LINES), 9402, { labelMissing: true }))).toBe(
+      true,
+    );
   });
 
   it('아무것도 손대지 않았으면 거짓이다', () => {

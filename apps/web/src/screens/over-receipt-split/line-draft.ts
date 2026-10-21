@@ -8,9 +8,8 @@ import type { PoLineView } from './types';
  * 사용자가 치는 도중의 값(「6」·「6.」·「abc」)을 수량으로 강제하면 지우는 중간에 값이 튄다.
  * 수량으로 읽는 것은 `parseQty`가 **읽는 자리에서** 한 번 한다.
  *
- * **LOT 은 전표 줄마다 하나다**(계약 `InboundReceiptLineUpsert`). 한 발주 라인이 정량분·초과분으로
- * 갈리면 전표 줄이 둘이고, 서버가 같은 공장의 두 전표에 같은 LOT 번호를 허용하지 않으므로
- * (`uq_lot`) LOT 칸도 둘이다 — 정량분 LOT · 초과분 LOT.
+ * **발주 라인 하나에 전표 줄 하나 · LOT 하나다**(서버 장부 P-100). 발주보다 많이 와도 줄을 가르지 않는다 —
+ * LOT 은 IQC 검사 단위라 한 라벨을 둘로 나누지 않고, 그 줄의 초과 몫(`excessQty`)만 P/O 에 넣지 않는다.
  */
 
 const t = messages.overReceiptSplit;
@@ -33,16 +32,9 @@ export const EMPTY_LOT_DRAFT: LotDraft = { lotNo: '', labelMissing: false, reaso
 export interface LineDraft {
   qtyText: string;
   lot: LotDraft;
-  excessLot: LotDraft;
 }
 
-export const EMPTY_LINE_DRAFT: LineDraft = {
-  qtyText: '',
-  lot: EMPTY_LOT_DRAFT,
-  excessLot: EMPTY_LOT_DRAFT,
-};
-
-export type LotPart = 'normal' | 'excess';
+export const EMPTY_LINE_DRAFT: LineDraft = { qtyText: '', lot: EMPTY_LOT_DRAFT };
 
 /** 발주 라인 번호 → 초안. 없는 번호는 빈 초안으로 읽는다. */
 export type LineDrafts = Readonly<Record<number, LineDraft>>;
@@ -89,16 +81,11 @@ export const setDraftQty = (
 export const setDraftLot = (
   drafts: LineDrafts,
   purchaseOrderLineId: number,
-  part: LotPart,
   patch: Partial<LotDraft>,
 ): LineDrafts => {
   const draft = readDraft(drafts, purchaseOrderLineId);
-  const key = part === 'normal' ? 'lot' : 'excessLot';
 
-  return {
-    ...drafts,
-    [purchaseOrderLineId]: { ...draft, [key]: { ...draft[key], ...patch } },
-  };
+  return { ...drafts, [purchaseOrderLineId]: { ...draft, lot: { ...draft.lot, ...patch } } };
 };
 
 /** 수량을 하나라도 넣었는가. */
@@ -110,7 +97,4 @@ const hasLotInput = (lot: LotDraft): boolean =>
 
 /** 버릴 것이 있는가 — 수량이든 LOT 이든 한 칸이라도 손댔으면 참이다. */
 export const hasAnyLineInput = (drafts: LineDrafts): boolean =>
-  Object.values(drafts).some(
-    (draft) =>
-      draft.qtyText.trim() !== '' || hasLotInput(draft.lot) || hasLotInput(draft.excessLot),
-  );
+  Object.values(drafts).some((draft) => draft.qtyText.trim() !== '' || hasLotInput(draft.lot));

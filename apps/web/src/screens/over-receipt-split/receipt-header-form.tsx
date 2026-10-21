@@ -55,7 +55,7 @@ export const ReceiptHeaderForm = ({
     />
 
     <div className="field-cell">
-      <span className="field-note">{t.notes.headerSharedByBoth}</span>
+      <span className="field-note">{t.notes.headerShared}</span>
     </div>
   </div>
 );

@@ -13,7 +13,7 @@ import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
 
 import { formatDotDate, OneLine } from '../../patterns/po-board';
-import type { LotDraft, LotPart } from './line-draft';
+import type { LotDraft } from './line-draft';
 import {
   describeReference,
   toReference,
@@ -30,28 +30,28 @@ export const formatQty = (value: number): string => value.toLocaleString();
 /**
  * 표의 한 줄 — 발주 라인이거나, 그 아래 붙는 LOT 줄이다.
  *
- * **LOT 줄은 수량이 갈린 뒤에만 선다** — 정량분이 있으면 정량분 LOT 줄, 초과분이 있으면 초과분 LOT 줄.
- * 받지 않는 줄은 한 줄로 남아 표가 길어지지 않는다. 표 부품에 하위 줄이 없어 같은 열에 평평하게 편다.
+ * **LOT 줄은 수량을 넣은 뒤에만 선다** — 줄 하나에 LOT 하나다(서버 장부 P-100). 발주보다 많이 와도
+ * LOT 은 하나이고, 초과 몫은 같은 줄의 「초과분」 칸이 말한다. 받지 않는 줄은 한 줄로 남아 표가 길어지지 않는다.
+ * 표 부품에 하위 줄이 없어 같은 열에 평평하게 편다.
  */
 export type LineTableRow =
-  { kind: 'line'; view: SplitLineView } | { kind: 'lot'; view: SplitLineView; part: LotPart };
+  { kind: 'line'; view: SplitLineView } | { kind: 'lot'; view: SplitLineView };
 
 export const toLineTableRows = (rows: readonly SplitLineView[]): LineTableRow[] =>
-  rows.flatMap((view): LineTableRow[] => {
-    const out: LineTableRow[] = [{ kind: 'line', view }];
-    if (view.split !== null && view.split.normalQty > 0)
-      out.push({ kind: 'lot', view, part: 'normal' });
-    if (view.split !== null && view.split.excessQty > 0)
-      out.push({ kind: 'lot', view, part: 'excess' });
-
-    return out;
-  });
+  rows.flatMap((view): LineTableRow[] =>
+    view.split === null
+      ? [{ kind: 'line', view }]
+      : [
+          { kind: 'line', view },
+          { kind: 'lot', view },
+        ],
+  );
 
 /** React key — 화면에 나오지 않는다. */
 export const lineTableRowId = (row: LineTableRow): string =>
   row.kind === 'line'
     ? String(row.view.line.purchaseOrderLineId)
-    : `${String(row.view.line.purchaseOrderLineId)}:${row.part}`;
+    : `${String(row.view.line.purchaseOrderLineId)}:lot`;
 
 export interface SplitLineColumnsInput {
   itemNames: ItemNameLookup;
@@ -66,15 +66,12 @@ export interface SplitLineColumnsInput {
    */
   showLotErrors?: boolean;
   onChangeQty: (purchaseOrderLineId: number, text: string) => void;
-  onChangeLot: (purchaseOrderLineId: number, part: LotPart, patch: Partial<LotDraft>) => void;
+  onChangeLot: (purchaseOrderLineId: number, patch: Partial<LotDraft>) => void;
 }
 
 interface LotEditorProps {
   lineNo: number;
-  part: LotPart;
   lot: LotDraft;
-  /** 정량분 라벨에서 파생한 값이다 — 번호 칸만 두고 그 사실을 밝힌다. 치면 사람의 값이 된다. */
-  derived: boolean;
   error: string | null;
   reasonOptions: SelectOption[];
   isLocked: boolean;
@@ -85,60 +82,37 @@ interface LotEditorProps {
  * 한 전표 줄의 LOT 입력 — 번호 칸 · 「라벨 없음」 · (번호가 없을 때만) 대체 사유.
  * 세 상태의 뜻은 `lot-format.ts` 의 표에 있다.
  */
-const LotEditor = ({
-  lineNo,
-  part,
-  lot,
-  derived,
-  error,
-  reasonOptions,
-  isLocked,
-  onChange,
-}: LotEditorProps) => (
-  <div className="ors-lot-editor" data-lot-row={part}>
+const LotEditor = ({ lineNo, lot, error, reasonOptions, isLocked, onChange }: LotEditorProps) => (
+  <div className="ors-lot-editor">
     <TextField
       size="sm"
-      aria-label={t.lineTable.lotNoLabel(lineNo, part)}
+      aria-label={t.lineTable.lotNoLabel(lineNo)}
       placeholder={t.lineTable.lotNoPlaceholder}
       value={lot.lotNo}
       error={error ?? undefined}
-      helperText={derived ? t.lineTable.lotDerivedNote : undefined}
       disabled={isLocked}
       autoComplete="off"
       onChange={(event) => {
         onChange({ lotNo: event.target.value });
       }}
     />
-    {derived ? (
-      <Button
-        variant="text"
-        size="sm"
-        disabled={isLocked}
-        onClick={() => {
-          onChange({ lotNo: '', labelMissing: true });
-        }}
-      >
-        {t.actions.excessLotAsMissing}
-      </Button>
-    ) : (
-      <Checkbox
-        checked={lot.labelMissing}
-        disabled={isLocked}
-        aria-label={t.lineTable.lotMissingLabel(lineNo, part)}
-        onChange={(event) => {
-          onChange({
-            labelMissing: event.target.checked,
-            ...(event.target.checked ? {} : { reasonCode: '' }),
-          });
-        }}
-      >
-        {t.lineTable.lotMissing}
-      </Checkbox>
-    )}
-    {!derived && lot.labelMissing && lot.lotNo.trim() === '' && (
+    <Checkbox
+      checked={lot.labelMissing}
+      disabled={isLocked}
+      aria-label={t.lineTable.lotMissingLabel(lineNo)}
+      onChange={(event) => {
+        onChange({
+          labelMissing: event.target.checked,
+          ...(event.target.checked ? {} : { reasonCode: '' }),
+        });
+      }}
+    >
+      {t.lineTable.lotMissing}
+    </Checkbox>
+    {lot.labelMissing && lot.lotNo.trim() === '' && (
       <Select
         size="sm"
-        aria-label={t.lineTable.lotReasonLabel(lineNo, part)}
+        aria-label={t.lineTable.lotReasonLabel(lineNo)}
         options={reasonOptions}
         value={lot.reasonCode === '' ? null : lot.reasonCode}
         placeholder={t.lineTable.lotReasonPlaceholder}
@@ -157,13 +131,13 @@ const LotEditor = ({
  * | 열 | 폭 | 근거 |
  * | --- | ---: | --- |
  * | No. | 48px | 세 자리 + 여백 |
- * | 품목코드 | 120px | 13자 ASCII + 여백. LOT 줄에서는 「정량분 LOT」 머리다 |
+ * | 품목코드 | 120px | 13자 ASCII + 여백. LOT 줄에서는 「공급사 LOT」 머리다 |
  * | **품목명** | **미지정** | 남는 폭을 흡수한다. LOT 줄에서는 LOT 입력이 이 칸에서 시작해 빈 수량 칸 위로 이어진다 |
  * | 발주 · 기입하 | 88px × 2 | 천 단위 7자 + 여백 |
  * | 잔량 (+허용) | 104px | 「5,000 (+0)」 |
  * | 이번 도착 | 112px | 입력칸 + 인라인 사유 |
  * | 단위 | 88px | 「EA · 개」 + 여백 |
- * | 정량 · 초과 | 88px × 2 | 천 단위 7자 + 여백 |
+ * | P/O 반영 · 초과분 | 88px × 2 | 천 단위 7자 + 여백. 둘의 합이 이번 도착이다 |
  * | 합 | 824px + 흡수 ≥ 160px | `.ors-lines` 최소 폭 `62rem`(992px) |
  */
 export const buildSplitLineColumns = ({
@@ -187,13 +161,7 @@ export const buildSplitLineColumns = ({
     header: t.lineTable.itemCode,
     width: '120px',
     render: (row) => {
-      if (row.kind === 'lot') {
-        return (
-          <span className="ors-lot-part">
-            {row.part === 'normal' ? t.lineTable.lotNormal : t.lineTable.lotExcess}
-          </span>
-        );
-      }
+      if (row.kind === 'lot') return <span className="ors-lot-part">{t.lineTable.lotHead}</span>;
       const detail = itemNames.detail(row.view.line.itemId);
 
       /* 상세가 아직이면 그 사정(불러오는 중 · 실패 · 없음)을 코드 자리에 낸다 — 번호는 내지 않는다. */
@@ -207,24 +175,15 @@ export const buildSplitLineColumns = ({
     header: t.lineTable.itemName,
     render: (row) => {
       if (row.kind === 'lot') {
-        const lot = row.part === 'normal' ? row.view.lot : row.view.excessLot;
-        const error = showLotErrors
-          ? row.part === 'normal'
-            ? row.view.lotError
-            : row.view.excessLotError
-          : null;
-
         return (
           <LotEditor
             lineNo={row.view.line.lineNo}
-            part={row.part}
-            lot={lot}
-            derived={row.part === 'excess' && row.view.excessLotDerived}
-            error={error}
+            lot={row.view.lot}
+            error={showLotErrors ? row.view.lotError : null}
             reasonOptions={lotReasonOptions}
             isLocked={isLocked}
             onChange={(patch) => {
-              onChangeLot(row.view.line.purchaseOrderLineId, row.part, patch);
+              onChangeLot(row.view.line.purchaseOrderLineId, patch);
             }}
           />
         );
@@ -263,12 +222,16 @@ export const buildSplitLineColumns = ({
     header: t.lineTable.remaining,
     align: 'end',
     width: '104px',
-    /* 잔량은 **화면이 만든 값이다** — 계약이 내려주는 것은 발주 수량과 누적 입하뿐이다. */
+    /*
+     * 잔량은 **화면이 만든 값이다** — 계약이 내려주는 것은 발주 수량과 누적 입하뿐이다. 괄호 안은 **아직 쓸 수 있는
+     * 허용치**다(한도 − 잔량) — 허용치 안에서 이미 더 받은 줄에 처음 허용치를 그대로 보이면 받을 수 없는 수량이
+     * 받을 수 있는 것처럼 읽힌다.
+     */
     render: (row) =>
       row.kind === 'line'
         ? t.lineTable.remainingPair(
             formatQty(row.view.remainingQty),
-            formatQty(row.view.line.toleranceOverQty),
+            formatQty(Math.max(row.view.normalLimit - row.view.remainingQty, 0)),
           )
         : '',
   },
@@ -318,8 +281,7 @@ export const buildSplitLineColumns = ({
     width: '88px',
     /* **이 칸의 값을 여기서 계산하지 않는다.** `split-calc.ts`가 가른 결과를 그린다. */
     render: (row) => {
-      if (row.kind === 'lot')
-        return row.part === 'normal' ? formatQty(row.view.split?.normalQty ?? 0) : '';
+      if (row.kind === 'lot') return '';
 
       return row.view.split === null ? t.values.notSplit : formatQty(row.view.split.normalQty);
     },
@@ -330,11 +292,10 @@ export const buildSplitLineColumns = ({
     align: 'end',
     width: '88px',
     render: (row) => {
-      if (row.kind === 'lot')
-        return row.part === 'excess' ? formatQty(row.view.split?.excessQty ?? 0) : '';
+      if (row.kind === 'lot') return '';
       if (row.view.split === null) return t.values.notSplit;
 
-      /* 초과가 있는 줄은 눈에 띄어야 한다 — 이 화면이 있는 까닭이 그 줄이다. */
+      /* 초과 몫이 있는 줄은 눈에 띄어야 한다 — 이 몫은 P/O 에 넣지 않고 추가 P/O 를 기다린다. */
       return row.view.split.excessQty > 0 ? (
         <Chip variant="status" status="warning" size="sm" data-excess="true">
           {formatQty(row.view.split.excessQty)}

@@ -72,13 +72,14 @@ export const purchaseOrderLine = (overrides: Partial<PoLineView> = {}): PoLineVi
 });
 
 /**
- * 9001의 라인 세 줄. **정량/초과 가르기의 까다로운 자리를 셋이 나눠 갖는다.**
+ * 9001의 라인 세 줄. **P/O 몫·초과 몫 가르기의 까다로운 자리를 셋이 나눠 갖는다.**
  *
- * - 9401 — 잔량 60 · 허용 5 → **정량 한도 65.** 65는 전부 정량분, 66은 1만 초과분이다
- * - 9402 — 꼭 맞게 받았고 **초과 허용치가 0**이다 → 한도 0. 도착한 전부가 초과분이다.
+ * - 9401 — 잔량 60 · 허용 5 → **정량 한도 65.** 65는 전부 P/O 몫, 66은 1만 초과 몫이다
+ * - 9402 — 꼭 맞게 받았고 **초과 허용치가 0**이다 → 한도 0. 이 줄에 넣은 수량은 받을 수 없다
+ *   (초과 몫만으로 된 줄은 서버가 막는다 — `qtyNoRoom`).
  *   품목이 9401·9403과 **다르다** — 품목을 번호마다 묻는지(같은 품목이면 한 번)를 드러낸다
- * - 9403 — **누적 입하가 발주를 넘겼다**(45 > 30). 잔량을 음수로 쓰면 한도가 0이 되어
- *   허용치 안쪽 도착까지 초과분으로 갈린다
+ * - 9403 — **누적 입하가 발주를 넘겼다**(32 > 30). 한도는 서버 식(`발주 + 허용 − 누적`)으로 3 이다 —
+ *   잔량(0)에 허용치(5)를 통째로 더하면 서버가 막을 수량까지 P/O 몫으로 잡는다
  */
 export const purchaseOrderLineFixtures: PoLineView[] = [
   purchaseOrderLine(),
@@ -94,7 +95,7 @@ export const purchaseOrderLineFixtures: PoLineView[] = [
     purchaseOrderLineId: 9403,
     lineNo: 3,
     orderedQty: 30,
-    receivedQty: 45,
+    receivedQty: 32,
     toleranceOverQty: 5,
   }),
 ];
@@ -147,33 +148,6 @@ export const uomFixtures = [
 ];
 
 /** 코드 사전 — 서버 시드 그대로(2026-09-03 등재). 이름은 합성이다. */
-export const exceptionTypeFixtures = [
-  {
-    codeValueId: 9701,
-    codeGroupId: 97,
-    code: 'CUSTOMER_SUPPLY',
-    codeName: '고객 사급',
-    isActive: true,
-    displayOrder: 10,
-  },
-  {
-    codeValueId: 9702,
-    codeGroupId: 97,
-    code: 'OVER_DELIVERY',
-    codeName: '초과입하',
-    isActive: true,
-    displayOrder: 40,
-  },
-  {
-    codeValueId: 9703,
-    codeGroupId: 97,
-    code: 'URGENT_RECEIPT',
-    codeName: '긴급 입하',
-    isActive: false,
-    displayOrder: 30,
-  },
-];
-
 export const lotReasonFixtures = [
   {
     codeValueId: 9801,

@@ -6803,11 +6803,14 @@ body.po-board-resizing {
   gap: var(--space-3);
 }
 
+/*
+ * 한 줄 = 품목(위) · 수량(가운데) · LOT(아래)를 세로로 쌓는다 — 수량 문구에 「P/O 반영 · 초과분」이 붙으면
+ * 옆에 두었을 때 품목 칸이 눌려 글자가 한 자씩 꺾였다.
+ */
 .ors-confirm-line {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: var(--space-1) var(--space-4);
-  align-items: baseline;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-1);
 }
 
 .ors-confirm-line-head {
@@ -6824,8 +6827,9 @@ body.po-board-resizing {
 
 .ors-confirm-line-qty {
   display: flex;
-  gap: var(--space-3);
-  white-space: nowrap;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-3);
+  padding-left: var(--space-5);
 }
 
 .ors-confirm-excess {
@@ -6833,7 +6837,7 @@ body.po-board-resizing {
 }
 
 .ors-confirm-line-lots {
-  grid-column: 1 / -1;
+  padding-left: var(--space-5);
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-1) var(--space-4);

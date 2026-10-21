@@ -14,17 +14,9 @@ import { useSearchParams } from 'react-router';
 import { SaveErrorBanner } from '../../patterns/master';
 import { plantNowLocal } from '../../patterns/plant-time';
 import { useFitToViewport } from '../../patterns/po-board';
-import {
-  codeLabel,
-  defaultExceptionType,
-  EXCEPTION_TYPE_GROUP,
-  SUBSTITUTE_LOT_REASON_GROUP,
-  toCodeOptions,
-  type CodeListState,
-} from './code-options';
+import { codeLabel, SUBSTITUTE_LOT_REASON_GROUP, toCodeOptions } from './code-options';
 import { CreatedReceiptsPane } from './created-receipts-pane';
 import { DiscardConfirmDialog } from './discard-confirm-dialog';
-import { ExcessForm } from './excess-form';
 import {
   DEFAULT_FILTERS,
   readFilters,
@@ -42,7 +34,6 @@ import {
   setDraftQty,
   type LineDrafts,
   type LotDraft,
-  type LotPart,
 } from './line-draft';
 import { LoadErrorBanner } from './load-error-banner';
 import {
@@ -71,7 +62,7 @@ import {
   useSplitRegister,
 } from './queries';
 import { hasLineError, toSplitLines, type ItemCodeResolver } from './split-calc';
-import { toSplitParts, toSplitRequest } from './split-request';
+import { toReceiptLines, toSplitRequest } from './split-request';
 import { SplitLineTable } from './split-line-table';
 import {
   EMPTY_HEADER_DRAFT,
@@ -81,7 +72,6 @@ import {
   type PoLineView,
   type PoView,
   type SelectOption,
-  type SplitMode,
 } from './types';
 import { lineErrorReason, registerBlockReason, validateHeader } from './validation';
 
@@ -121,12 +111,7 @@ const toSelectOptions = (lookup: LookupResult): SelectOption[] =>
 const isSameHeader = (left: HeaderDraft, right: HeaderDraft): boolean =>
   left.receiptDatetime === right.receiptDatetime &&
   left.deliveryNoteNo === right.deliveryNoteNo &&
-  left.remarks === right.remarks &&
-  left.exceptionTypeCode === right.exceptionTypeCode &&
-  left.exceptionReason === right.exceptionReason;
-
-const codeStateOf = (query: { isPending: boolean; isError: boolean }): CodeListState =>
-  query.isError ? 'failed' : query.isPending ? 'loading' : 'ready';
+  left.remarks === right.remarks;
 
 /**
  * W-01-03 컨테이너 — **자재창고 도메인의 첫 쓰기 화면**이다.
@@ -136,12 +121,15 @@ const codeStateOf = (query: { isPending: boolean; isError: boolean }): CodeListS
  * 조회 조건과 고른 발주는 전부 주소가 소유한다 — 새로고침·뒤로가기·공유가 같은 결과를 낸다.
  * **초안은 주소에 싣지 않는다.**
  *
+ * **전표는 늘 한 건이다**(서버 장부 P-100 · 사용자 결정 2026-10-21). 발주보다 많이 와도 줄을 가르지 않고,
+ * 줄 하나 · LOT 하나로 받아 P/O 에 넣지 않는 몫을 그 줄의 `excessQty` 로 싣는다. 그 몫은 ERP 가 추가 P/O 를
+ * 만들면 「입하 예정 조회」의 초과분 잇기에서 잇는다.
+ *
  * **되돌릴 수 없는 쓰기다.** 계약의 입하 취소는 승인을 타므로(실측) 잘못 만들어진 전표를
  * 이 화면이 되돌릴 수 없다. 그래서 보내기 전에 네 겹으로 막는다 —
- * ① 갈래별 활성 조건(계약의 조건부 필수) ② 머리 입력 검증 ③ 고치지 않은 줄(수량·LOT)
- * ④ 무엇이 몇 건 나가는지 보이는 확인 창.
+ * ① 실릴 줄이 있는가 ② 머리 입력 검증 ③ 고치지 않은 줄(수량·LOT) ④ 무엇이 나가는지 보이는 확인 창.
  *
- * **보내는 중에는 화면 전체를 잠근다**(계획 결정 13). 등록 세 갈래와 취소·입력칸뿐 아니라
+ * **보내는 중에는 화면 전체를 잠근다**(계획 결정 13). 등록·취소·입력칸뿐 아니라
  * **대상을 바꾸는 길**(목록의 선택 · 조건 조회·초기화 · 쪽 이동)도 함께 닫는다 —
  * 열어 두면 사용자가 초안을 버리고 다른 발주로 옮긴 뒤 **앞 발주의 등록 결과가 지금 보는
  * 발주의 맥락에 나타난다.**
@@ -192,14 +180,8 @@ export const OverReceiptSplitScreen = () => {
   const plants = usePlantOptions();
   /* 단위·코드 사전은 아래 구획만 쓴다 — 고르기 전에 부르면 첫 진입의 요청 수가 이유 없이 는다. */
   const uoms = useUomOptions(selectedPoId !== null);
-  const exceptionTypes = useCodeValues(EXCEPTION_TYPE_GROUP, selectedPoId !== null);
   const lotReasons = useCodeValues(SUBSTITUTE_LOT_REASON_GROUP, selectedPoId !== null);
-  const exceptionTypeOptions = useMemo(
-    () => toCodeOptions(exceptionTypes.data),
-    [exceptionTypes.data],
-  );
   const lotReasonOptions = useMemo(() => toCodeOptions(lotReasons.data), [lotReasons.data]);
-  const defaultExceptionCode = defaultExceptionType(exceptionTypeOptions);
 
   const lines = usePurchaseOrderLines(selectedPoId);
   const lineData = lines.data;
@@ -222,20 +204,20 @@ export const OverReceiptSplitScreen = () => {
   /**
    * 라인 바깥의 초안. **라인 응답에 반응하지 않는다.** 되돌아가는 신호는 **고른 발주가 바뀌는 것**뿐이다.
    *
-   * `baseline` 은 화면이 채운 기본값(입하 일시 = 공장 현지 지금 · 예외 유형 = 초과입하)이다 —
+   * `baseline` 은 화면이 채운 기본값(입하 일시 = 공장 현지 지금)이다 —
    * 「버릴 것이 있는가」는 기본값과 **다른지**로 잰다. 기본값만 있는 상태는 버릴 것이 없다.
    */
   const [header, setHeader] = useState<HeaderDraft>(EMPTY_HEADER_DRAFT);
   const [baseline, setBaseline] = useState<HeaderDraft>(EMPTY_HEADER_DRAFT);
 
-  /** 만들어진 전표와 그 갈래. `null`이면 아직 등록하지 않았거나 마지막 시도가 실패했다. */
+  /** 만들어진 전표와 실린 초과 몫. `null`이면 아직 등록하지 않았거나 마지막 시도가 실패했다. */
   const [created, setCreated] = useState<CreatedResult | null>(null);
 
   /**
-   * 방금 제출한 갈래. 되먹임(`onSuccess`)에서 읽는다 — **`savingMode` 상태로는 읽을 수 없다.**
-   * 되먹임은 제출한 렌더의 닫힘을 들고 있어 그 렌더의 옛 값을 본다.
+   * 방금 보낸 초과 몫. 되먹임(`onSuccess`)에서 읽는다 — 되먹임은 제출한 렌더의 닫힘을 들고 있어
+   * 그 렌더의 옛 값을 보므로 상태가 아니라 ref 에 적는다. 성공하면 초안이 비워져 다시 셀 수 없다.
    */
-  const submittedModeRef = useRef<SplitMode>('BOTH');
+  const submittedExcessRef = useRef<CreatedResult['excessLines']>([]);
 
   /** 보내기 전에 화면이 잡은 오류. **등록을 누른 뒤에만 세운다.** */
   const [localFieldErrors, setLocalFieldErrors] = useState<Record<string, string>>(NO_FIELD_ERRORS);
@@ -243,13 +225,10 @@ export const OverReceiptSplitScreen = () => {
   /** 고치지 않은 줄 때문에 막았다는 사실. 사용자가 고치면 조건이 풀려 저절로 사라진다 */
   const [isLineBlockShown, setLineBlockShown] = useState(false);
 
-  /** 지금 보내는 갈래. 어느 버튼을 눌렀는지 그 버튼이 밝히는 데 쓴다 */
-  const [savingMode, setSavingMode] = useState<SplitMode | null>(null);
-
   /** 확인을 기다리는 조작. `null`이면 확인 창이 없다 */
   const [pendingDiscard, setPendingDiscard] = useState<DiscardIntent | null>(null);
 
-  /** 확인 창이 열려 있는가(④). 검증을 통과한 뒤에만 선다 — 갈래는 창 안에서 고른 전표로 정해진다. */
+  /** 확인 창이 열려 있는가(④). 검증을 통과한 뒤에만 선다. */
   const [isConfirmOpen, setConfirmOpen] = useState(false);
 
   /** 라벨 스캔 칸. 결과 한 줄은 칸 아래 산다. */
@@ -276,20 +255,6 @@ export const OverReceiptSplitScreen = () => {
     setScanNote(null);
   }, [selectedPoId]);
 
-  /*
-   * 예외 유형의 기본값은 코드 사전이 온 뒤에 채운다 — 아직 고르지 않았을 때만. 초과분은 정의상
-   * 「초과입하」라 사람이 매번 고를 까닭이 없다. 기본값은 버릴 것으로 세지 않는다(baseline 도 함께).
-   */
-  useEffect(() => {
-    if (defaultExceptionCode === '') return;
-    setHeader((prev) =>
-      prev.exceptionTypeCode === '' ? { ...prev, exceptionTypeCode: defaultExceptionCode } : prev,
-    );
-    setBaseline((prev) =>
-      prev.exceptionTypeCode === '' ? { ...prev, exceptionTypeCode: defaultExceptionCode } : prev,
-    );
-  }, [selectedPoId, defaultExceptionCode]);
-
   /** 고른 발주. **목록 응답에서 찾는다** — 제목줄에 필요한 값이 그 행에 이미 들어 있다. */
   const selectedRow = rows.find((row) => row.purchaseOrderId === selectedPoId) ?? null;
 
@@ -297,8 +262,8 @@ export const OverReceiptSplitScreen = () => {
     purchaseOrderId: selectedPoId,
     onSuccess: (data) => {
       setCreated({
-        mode: submittedModeRef.current,
         receipts: data.created.map(toCreatedReceiptView),
+        excessLines: submittedExcessRef.current,
       });
       /* **초안을 비운다**(수명 표 8행 · 이중 제출 완화의 한 층). 머리는 기본값으로 돌아간다. */
       setDrafts(EMPTY_DRAFTS);
@@ -395,21 +360,16 @@ export const OverReceiptSplitScreen = () => {
    * LOT 칸. 「라벨 없음」을 켜면 대체 사유를 **첫 선택지로 미리 채운다** — 사유 없이는 보낼 수 없어 어차피
    * 하나를 골라야 하고, 가장 흔한 사유(라벨 없음)가 첫째다. 다른 사유면 바꾼다.
    */
-  const changeLot = (
-    purchaseOrderLineId: number,
-    part: LotPart,
-    patch: Partial<LotDraft>,
-  ): void => {
+  const changeLot = (purchaseOrderLineId: number, patch: Partial<LotDraft>): void => {
     const defaultReason = lotReasonOptions[0]?.value ?? '';
     setDrafts((prev) => {
-      const draft = readDraft(prev, purchaseOrderLineId);
-      const current = part === 'normal' ? draft.lot : draft.excessLot;
+      const current = readDraft(prev, purchaseOrderLineId).lot;
       const filled =
         patch.labelMissing === true && (patch.reasonCode ?? current.reasonCode) === ''
           ? { ...patch, reasonCode: defaultReason }
           : patch;
 
-      return setDraftLot(prev, purchaseOrderLineId, part, filled);
+      return setDraftLot(prev, purchaseOrderLineId, filled);
     });
   };
 
@@ -437,9 +397,12 @@ export const OverReceiptSplitScreen = () => {
     }
   };
 
-  /** 실제로 요청에 실릴 라인 수. **세는 자리와 보내는 자리가 같다** — 갈리면 빈 part가 나간다. */
-  const parts = toSplitParts(splitLines);
-  const counts = { normalLines: parts.normal.length, excessLines: parts.excess.length };
+  /** 실제로 요청에 실릴 줄 수. **세는 자리와 보내는 자리가 같다** — 갈리면 빈 전표가 나간다. */
+  const receiptLines = toReceiptLines(splitLines);
+  const counts = {
+    lines: receiptLines.length,
+    excessLines: receiptLines.filter((line) => (line.excessQty ?? 0) > 0).length,
+  };
 
   /* 사용자가 고치면 조건이 풀려 안내가 저절로 사라진다 — 지워 주는 절차를 따로 두지 않는다. */
   const lineBlockReason = isLineBlockShown ? lineErrorReason(splitLines) : null;
@@ -449,7 +412,7 @@ export const OverReceiptSplitScreen = () => {
    * 막히면 **요청을 만들지 않는다** — 되돌릴 수 없는 쓰기라 「보내 보고 서버가 막아 주기」를 기대할 수 없다.
    */
   const requestSubmit = (): void => {
-    const headerErrors = validateHeader(header, { needsExceptionType: counts.excessLines > 0 });
+    const headerErrors = validateHeader(header);
     const lineBlocked = lineErrorReason(splitLines) !== null;
 
     setLocalFieldErrors(headerErrors);
@@ -461,15 +424,18 @@ export const OverReceiptSplitScreen = () => {
   };
 
   /** 확인 창의 「등록」. 요청을 만들어 보낸다. */
-  const submit = (purchaseOrder: PoView, mode: SplitMode): void => {
+  const submit = (purchaseOrder: PoView): void => {
     /* 실패하면 결과 구획이 비어 있어야 한다(수명 표 9행) — 앞 성공의 번호가 남으면 오해한다. */
     setCreated(null);
-    setSavingMode(mode);
     /* 요청을 만들기 전에 적는다 — 되먹임이 이 값을 읽는다(위 ref 주석). 매 제출마다 새로 적는다. */
-    submittedModeRef.current = mode;
+    submittedExcessRef.current = splitLines.flatMap((row) =>
+      row.split !== null && row.split.excessQty > 0
+        ? [{ lineNo: row.line.lineNo, excessQty: row.split.excessQty }]
+        : [],
+    );
 
     register.write(
-      toSplitRequest(mode, {
+      toSplitRequest({
         purchaseOrder,
         rows: splitLines,
         header,
@@ -638,9 +604,7 @@ export const OverReceiptSplitScreen = () => {
     hasOrder: registerTarget !== null,
     counts,
     hasLineError: hasLineError(splitLines),
-    headerErrorCount: Object.keys(
-      validateHeader(header, { needsExceptionType: counts.excessLines > 0 }),
-    ).length,
+    headerErrorCount: Object.keys(validateHeader(header)).length,
   });
   const statuses = guideStatuses(step);
   const guideItems: StepperItem[] = GUIDE_STEPS.map((key) => ({
@@ -659,7 +623,7 @@ export const OverReceiptSplitScreen = () => {
 
   /**
    * 등록 구획. **라인 표가 실제로 그려질 때만 낸다** — 라인을 못 받았는데 등록 폼을 열면
-   * 무엇을 등록하는지 없는 채로 입력만 받게 된다. 초과분 정보는 **초과분이 갈린 뒤에만** 선다.
+   * 무엇을 등록하는지 없는 채로 입력만 받게 된다.
    */
   const registerPane = (purchaseOrder: PoView): ReactNode => (
     <>
@@ -670,20 +634,6 @@ export const OverReceiptSplitScreen = () => {
         isSaving={register.isSaving}
         onChange={changeHeader}
       />
-
-      {counts.excessLines > 0 && (
-        <>
-          <h3 className="ors-section-title">{t.form.excessTitle}</h3>
-          <ExcessForm
-            values={header}
-            fieldErrors={fieldErrors}
-            isSaving={register.isSaving}
-            exceptionTypeOptions={exceptionTypeOptions}
-            exceptionTypeState={codeStateOf(exceptionTypes)}
-            onChange={changeHeader}
-          />
-        </>
-      )}
 
       {/* 저장 실패는 **세 갈래**다(계획 결정 9) — 검증 실패(400)·권한 없음(403)·응답 없음(네트워크). */}
       <SaveErrorBanner error={register.error} />
@@ -697,12 +647,12 @@ export const OverReceiptSplitScreen = () => {
 
       {/* 누르기 전에 무엇이 만들어지는지 — 「등록」 하나가 무엇을 하는지 이 줄에서 읽힌다. */}
       <p className="ors-totals" aria-live="polite">
-        {counts.normalLines + counts.excessLines === 0 ? (
+        {counts.lines === 0 ? (
           t.totals.none
         ) : (
           <>
             <span>{t.totals.label}:</span>
-            {counts.normalLines > 0 && <strong>{t.totals.normal(counts.normalLines)}</strong>}
+            <strong>{t.totals.receipt(counts.lines)}</strong>
             {counts.excessLines > 0 && <strong>{t.totals.excess(counts.excessLines)}</strong>}
           </>
         )}
@@ -723,14 +673,13 @@ export const OverReceiptSplitScreen = () => {
           purchaseOrderNo={purchaseOrder.purchaseOrderNo}
           supplierName={describeReference(toReference(suppliers, purchaseOrder.supplierId))}
           header={header}
-          exceptionTypeLabel={codeLabel(exceptionTypeOptions, header.exceptionTypeCode)}
           lotReasonLabel={(code) => codeLabel(lotReasonOptions, code)}
           rows={splitLines.filter((row) => row.split !== null)}
           itemLabelOf={(itemId) => describeReference(items.of(itemId))}
           uomLabelOf={(uomId) => describeReference(toReference(uoms, uomId))}
-          onConfirm={(mode) => {
+          onConfirm={() => {
             setConfirmOpen(false);
-            submit(purchaseOrder, mode);
+            submit(purchaseOrder);
           }}
           onClose={() => {
             setConfirmOpen(false);
@@ -819,7 +768,7 @@ export const OverReceiptSplitScreen = () => {
           {/* 결과는 **따로 선 자리**다 — 다음 등록을 준비하는 입력과 방금 만들어진 번호가 섞이지 않게. */}
           {created !== null && (
             <div className="po-board-register">
-              <CreatedReceiptsPane receipts={created.receipts} mode={created.mode} />
+              <CreatedReceiptsPane result={created} />
             </div>
           )}
         </section>

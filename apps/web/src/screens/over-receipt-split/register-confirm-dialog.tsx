@@ -1,30 +1,26 @@
-import { Button, Checkbox, Dialog, Icon } from '@crefle/web-ui';
+import { Button, Dialog, Icon } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { useState } from 'react';
 
 import { formatPlantDateTime } from '../../patterns/plant-time';
-import type { LotDraft, LotPart } from './line-draft';
+import type { LotDraft } from './line-draft';
 import type { SplitLineView } from './split-calc';
-import type { HeaderDraft, SplitMode } from './types';
-import { defaultSelection, modeFor, type SplitCounts } from './validation';
+import type { HeaderDraft } from './types';
+import type { SplitCounts } from './validation';
 
 const t = messages.overReceiptSplit;
 
 export interface RegisterConfirmDialogProps {
-  /** 실릴 줄 수 — 만들어지는 전표를 여기서 정한다. */
+  /** 실릴 줄 수와 그중 초과 몫을 가진 줄 수. */
   counts: SplitCounts;
   purchaseOrderNo: string;
   supplierName: string;
   header: HeaderDraft;
-  /** 코드 → 이름. 창 안에 코드를 그대로 두지 않는다. */
-  exceptionTypeLabel: string;
   lotReasonLabel: (code: string) => string;
   /** 수량이 든 줄만. */
   rows: readonly SplitLineView[];
   itemLabelOf: (itemId: number) => string;
   uomLabelOf: (uomId: number) => string;
-  /** 고른 전표로 정해진 갈래를 넘긴다. */
-  onConfirm: (mode: SplitMode) => void;
+  onConfirm: () => void;
   onClose: () => void;
 }
 
@@ -33,18 +29,16 @@ const formatQty = (value: number): string => value.toLocaleString();
 const orEmpty = (value: string): string => (value.trim() === '' ? t.values.empty : value);
 
 /**
- * 등록 확인 — **되돌릴 수 없는 쓰기 앞의 마지막 자리.** 무엇이 몇 건 만들어지는지, 어느 줄이 어느
- * 전표에 얼마나 실리는지, LOT 은 무엇인지 한 창에서 읽고 누른다.
+ * 등록 확인 — **되돌릴 수 없는 쓰기 앞의 마지막 자리.** 전표 한 건에 어느 줄이 얼마나 실리고, 그중 얼마가
+ * P/O 에 들어가며 얼마가 추가 P/O 를 기다리는지, LOT 은 무엇인지 한 창에서 읽고 누른다.
  *
- * **만들어지는 전표는 여기서 고른다.** 수량이 있는 전표는 모두 켜진 채로 열리고, 만들지 않을 것만 끈다 —
- * 계약의 세 갈래를 사람이 고르는 대신 「무엇을 만들까」에 답한다. 둘 다 끄면 등록할 수 없다.
+ * 고를 것이 없다 — 전표는 늘 한 건이다(서버 장부 P-100). 초과 몫은 같은 줄에 실리고 뒤에 잇는다.
  */
 export const RegisterConfirmDialog = ({
   counts,
   purchaseOrderNo,
   supplierName,
   header,
-  exceptionTypeLabel,
   lotReasonLabel,
   rows,
   itemLabelOf,
@@ -52,18 +46,12 @@ export const RegisterConfirmDialog = ({
   onConfirm,
   onClose,
 }: RegisterConfirmDialogProps) => {
-  const [selection, setSelection] = useState(() => defaultSelection(counts));
-  const mode = modeFor(selection);
-  const hasBoth = counts.normalLines > 0 && counts.excessLines > 0;
-  const sendsNormal = selection.normal;
-  const sendsExcess = selection.excess;
-
-  const lotText = (part: LotPart, lot: LotDraft): string => {
+  const lotText = (lot: LotDraft): string => {
     const lotNo = lot.lotNo.trim();
 
     return lotNo === ''
-      ? t.dialog.lotMissingOf(part, lotReasonLabel(lot.reasonCode))
-      : t.dialog.lotOf(part, lotNo);
+      ? t.dialog.lotMissingOf(lotReasonLabel(lot.reasonCode))
+      : t.dialog.lotOf(lotNo);
   };
 
   return (
@@ -80,14 +68,7 @@ export const RegisterConfirmDialog = ({
           <Button variant="outlined" autoFocus onClick={onClose}>
             {t.actions.backToEdit}
           </Button>
-          <Button
-            disabled={mode === null}
-            onClick={() => {
-              if (mode !== null) onConfirm(mode);
-            }}
-          >
-            {t.actions.confirmRegister}
-          </Button>
+          <Button onClick={onConfirm}>{t.actions.confirmRegister}</Button>
         </>
       }
     >
@@ -95,46 +76,9 @@ export const RegisterConfirmDialog = ({
         <p className="ors-confirm-target">
           <strong>{purchaseOrderNo}</strong> · {supplierName}
         </p>
-        {mode !== null && <p className="ors-confirm-lead">{t.dialog.registerLead(mode)}</p>}
-
-        <section className="ors-confirm-group" aria-label={t.dialog.registerGroupReceipts}>
-          <h3 className="ors-confirm-group-title">{t.dialog.registerGroupReceipts}</h3>
-          <ul className="ors-confirm-receipts">
-            {counts.normalLines > 0 && (
-              <li>
-                {hasBoth ? (
-                  <Checkbox
-                    checked={selection.normal}
-                    onChange={(event) => {
-                      setSelection((prev) => ({ ...prev, normal: event.target.checked }));
-                    }}
-                  >
-                    {t.dialog.registerReceiptNormal(counts.normalLines)}
-                  </Checkbox>
-                ) : (
-                  <span>{t.dialog.registerReceiptNormal(counts.normalLines)}</span>
-                )}
-              </li>
-            )}
-            {counts.excessLines > 0 && (
-              <li>
-                {hasBoth ? (
-                  <Checkbox
-                    checked={selection.excess}
-                    onChange={(event) => {
-                      setSelection((prev) => ({ ...prev, excess: event.target.checked }));
-                    }}
-                  >
-                    {t.dialog.registerReceiptExcess(counts.excessLines)}
-                  </Checkbox>
-                ) : (
-                  <span>{t.dialog.registerReceiptExcess(counts.excessLines)}</span>
-                )}
-              </li>
-            )}
-          </ul>
-          {hasBoth && <p className="ors-confirm-hint">{t.dialog.registerReceiptHint}</p>}
-        </section>
+        <p className="ors-confirm-lead">
+          {t.dialog.registerLead(counts.lines, counts.excessLines)}
+        </p>
 
         <section className="ors-confirm-group" aria-label={t.dialog.registerGroupLines}>
           <h3 className="ors-confirm-group-title">{t.dialog.registerGroupLines}</h3>
@@ -143,9 +87,6 @@ export const RegisterConfirmDialog = ({
               const split = row.split;
               if (split === null) return null;
               const uom = uomLabelOf(row.line.uomId);
-              const showNormal = sendsNormal && split.normalQty > 0;
-              const showExcess = sendsExcess && split.excessQty > 0;
-              if (!showNormal && !showExcess) return null;
 
               return (
                 <li key={row.line.purchaseOrderLineId} className="ors-confirm-line">
@@ -154,20 +95,17 @@ export const RegisterConfirmDialog = ({
                     <span className="ors-confirm-line-item">{itemLabelOf(row.line.itemId)}</span>
                   </span>
                   <span className="ors-confirm-line-qty">
-                    {showNormal && (
-                      <span>
-                        {t.lineTable.normal} <strong>{formatQty(split.normalQty)}</strong> {uom}
-                      </span>
-                    )}
-                    {showExcess && (
+                    <span>
+                      {t.lineTable.arrivedQty} <strong>{formatQty(split.arrivedQty)}</strong> {uom}
+                    </span>
+                    {split.excessQty > 0 && (
                       <span className="ors-confirm-excess">
-                        {t.lineTable.excess} <strong>{formatQty(split.excessQty)}</strong> {uom}
+                        {t.dialog.excessOf(formatQty(split.normalQty), formatQty(split.excessQty))}
                       </span>
                     )}
                   </span>
                   <span className="ors-confirm-line-lots">
-                    {showNormal && <span>{lotText('normal', row.lot)}</span>}
-                    {showExcess && <span>{lotText('excess', row.excessLot)}</span>}
+                    <span>{lotText(row.lot)}</span>
                   </span>
                 </li>
               );
@@ -192,18 +130,6 @@ export const RegisterConfirmDialog = ({
               <dt>{t.fields.remarks}</dt>
               <dd>{orEmpty(header.remarks)}</dd>
             </div>
-            {sendsExcess && (
-              <>
-                <div>
-                  <dt>{t.fields.exceptionType}</dt>
-                  <dd>{orEmpty(exceptionTypeLabel)}</dd>
-                </div>
-                <div>
-                  <dt>{t.fields.exceptionReason}</dt>
-                  <dd>{orEmpty(header.exceptionReason)}</dd>
-                </div>
-              </>
-            )}
           </dl>
         </section>
 
@@ -213,6 +139,9 @@ export const RegisterConfirmDialog = ({
             <strong>{t.dialog.registerIrreversible}</strong>
           </p>
           <p className="ors-confirm-effects">{t.dialog.registerEffects}</p>
+          {counts.excessLines > 0 && (
+            <p className="ors-confirm-effects">{t.dialog.registerExcessNext}</p>
+          )}
         </div>
       </div>
     </Dialog>
