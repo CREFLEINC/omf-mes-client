@@ -50,6 +50,7 @@ const renderDialog = (overrides: Partial<DetailDialogProps> = {}) => {
         data: {
           sessions: [],
           workerResults: [],
+          defectTypes: [],
           sessionsTruncated: false,
           resultsTruncated: false,
         },

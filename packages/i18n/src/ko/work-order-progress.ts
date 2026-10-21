@@ -224,6 +224,11 @@ export const workOrderProgress = {
         minutes: '참여 분',
       },
     },
+    defectTypes: {
+      heading: '불량 유형별',
+      empty: '불량 기록이 없습니다.',
+      columns: { type: '불량 유형', qty: '수량' },
+    },
     workerResults: {
       heading: '작업자별 실적',
       empty: '실적이 없습니다.',

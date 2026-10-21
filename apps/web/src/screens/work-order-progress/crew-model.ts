@@ -74,6 +74,44 @@ export const toSessionViews = (
         .sort(byJoinedAt),
     }));
 
+export interface DefectTypeRow {
+  defectCodeId: number;
+  /** 「대분류 › 상세」 — 대분류를 모르면 상세 이름만 */
+  label: string;
+  qty: number;
+}
+
+/** 정정되지 않은 잎 실적 — 정정은 덧붙는 레코드라 원본과 정정본이 둘 다 온다. */
+const leafResults = (
+  results: readonly ProductionResultForward[],
+): readonly ProductionResultForward[] => {
+  const corrected = new Set(
+    results.flatMap((result) =>
+      result.correctsProductionResultId === undefined ? [] : [result.correctsProductionResultId],
+    ),
+  );
+  return results.filter((result) => !corrected.has(result.productionResultId));
+};
+
+/** 이 W/O 의 불량을 유형별로 합친다. 정정된 원본은 세지 않는다. */
+export const toDefectTypes = (results: readonly ProductionResultForward[]): DefectTypeRow[] => {
+  const rows = new Map<number, DefectTypeRow>();
+  for (const result of leafResults(results)) {
+    for (const defect of result.defects ?? []) {
+      const current = rows.get(defect.defectCodeId);
+      rows.set(defect.defectCodeId, {
+        defectCodeId: defect.defectCodeId,
+        label:
+          defect.parentDefectName === null
+            ? defect.defectName
+            : `${defect.parentDefectName} › ${defect.defectName}`,
+        qty: (current?.qty ?? 0) + defect.qty,
+      });
+    }
+  }
+  return [...rows.values()];
+};
+
 /**
  * 이 W/O 의 실적을 작업자별로 합친다.
  *
@@ -86,11 +124,6 @@ export const toWorkerResults = (
   results: readonly ProductionResultForward[],
   known: readonly ParticipantRow[],
 ): WorkerResultRow[] => {
-  const corrected = new Set(
-    results.flatMap((result) =>
-      result.correctsProductionResultId === undefined ? [] : [result.correctsProductionResultId],
-    ),
-  );
   const rows = new Map<number, WorkerResultRow>();
   const add = (
     workerId: number,
@@ -118,9 +151,7 @@ export const toWorkerResults = (
     rows.set(workerId, row);
   };
 
-  for (const result of results) {
-    if (corrected.has(result.productionResultId)) continue;
-
+  for (const result of leafResults(results)) {
     const allocations = result.workerAllocations ?? [];
     if (allocations.length === 0) {
       const person = known.find((participant) => participant.workerId === result.workerId);
