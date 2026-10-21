@@ -179,8 +179,8 @@ export const WEB_SCREENS: readonly WebScreen[] = [
   { path: '/production/production-orders', code: 'W-02-01', name: 'ERP W/O 처리' },
   { path: '/production/po-change-review', code: 'W-02-06', name: 'ERP W/O 변경 관리자 확인' },
   /*
-   * ⛔ 아래 둘은 **사이드바에 없다**(omf-all-around#41) — 주소에 대상이 실려야 그리는 화면이라
-   * 맨 주소로 열면 안내만 선다. 앞 화면의 이동 버튼으로 들어간다. 머리말의 예외 둘이 이것이다.
+   * 아래 셋은 사이드바에 없는 옛 주소다. 화면은 「ERP W/O 처리」로 합쳤고, 주소는 대상을 찾아 처리 화면이나
+   * 작업함으로 넘긴다(`production-order/process/legacy-redirects.tsx`, omf-all-around#129).
    */
   { path: '/production/production-plans', code: 'W-02-02', name: 'ERP W/O 처리 생산계획' },
   {

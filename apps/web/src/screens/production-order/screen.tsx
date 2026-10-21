@@ -2,7 +2,7 @@
  * W-02-01 ERP W/O 처리 작업함
  * 유형: T-W-C 처리형 (작업함: ProductionOrderScreen, 처리 화면: ProductionOrderProcessScreen)
  * 이탈: C-17 「자동 계획 완료」는 배포 가능을 뜻하지 않는다. 서버가 배포 가능 여부로 거르고 세지 못해(계약 대기,
- *       .client-dev/requests/w02-requests.md) 잠정 규칙대로 조건, 건수, 행 칩을 서버 자동 계획 결과로 두고
+ *       omf-all-around#129) 잠정 규칙대로 조건, 건수, 행 칩을 서버 자동 계획 결과로 두고
  *       막힘(라인 미정)은 사유 칩으로만 보인다. C-12 기간 칸의 「시작일부터」 적용은 DS 기간 선택이 지원하지 않아 미구현.
  */
 import {

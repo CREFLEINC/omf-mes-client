@@ -76,7 +76,7 @@ export const useUnreleasedWorkOrders = (productionOrderId: number | null) =>
  * 배포 전 W/O마다 배포 가능 여부. 상세(라인, 기본 위치 셋)와 점검 결과(차단 지적)로 판정한다. 배포 요청이 실제로 막는 조건과 같다.
  *
  * 목록 필터 `releasable`은 쓰지 않는다. 실측에서 라인과 위치를 모두 채운 W/O를 `releasable=false`로 돌려주면서
- * 배포 요청은 성공했다(요청 목록 .client-dev/requests/w02-requests.md). 대상 하나의 하위 W/O라 W/O 수만큼 부른다.
+ * 배포 요청은 성공했다(omf-all-around#129). 대상 하나의 하위 W/O라 W/O 수만큼 부른다.
  */
 export interface WorkOrderReadiness {
   workOrderId: number;

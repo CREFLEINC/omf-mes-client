@@ -351,11 +351,9 @@ export const NAV_GROUPS: readonly NavGroup[] = [
        * P/O = 구매오더 · ERP W/O = ERP 에서 받은 생산 오더 · 맨 「W/O」 = MES W/O). 「작업지시」·
        * 「생산오더」로 부르지 않는다.
        *
-       * ⛔ `W-02-02`(W/O 전개·편성)와 `W-02-03`(4M 자원배정)은 **메뉴에도 탭에도 두지 않는다**
-       * (omf-all-around#41 · 사용자 2026-09-21). 두 화면은 주소의 `?productionOrderId=` ·
-       * `?productionPlanId=` 로 대상을 받아 그린다 — 맨 주소로 열면 본문이 없고 「먼저
-       * 선택하세요」만 선다. 들어가는 길은 앞 화면의 이동 버튼이다(`production-order/screen.tsx`
-       * → 전개·편성 → `production-plan/work-order-result-pane.tsx` → 4M). route 는 그대로 둔다.
+       * 「ERP W/O 처리」(W-02-01)는 작업함과 처리 화면이다. 옛 W-02-02(W/O 전개와 편성)와 W-02-03(4M 자원배정)은
+       * 처리 화면의 단계로 합쳐 메뉴에도 탭에도 두지 않는다. 옛 주소는 `?productionOrderId=`, `?productionPlanId=`로
+       * 대상을 찾아 처리 화면으로 넘긴다(`production-order/process/legacy-redirects.tsx`, omf-all-around#129).
        */
       {
         to: '/production/production-orders',
@@ -366,7 +364,7 @@ export const NAV_GROUPS: readonly NavGroup[] = [
           {
             to: '/production/production-orders',
             label: 'ERP W/O 처리',
-            labelVi: 'Tra cứu ERP W/O',
+            labelVi: 'Xử lý ERP W/O',
           },
           {
             to: '/production/po-change-review',
