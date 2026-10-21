@@ -1,4 +1,4 @@
-import type { components } from '@omf-mes/api-client';
+import type { components, FourMChangeForward, LotForward } from '@omf-mes/api-client';
 
 type LotQualityStatusResponse = components['schemas']['LotQualityStatus'];
 type LotDetailResponse = components['schemas']['LotDetailResponse'];
@@ -56,6 +56,11 @@ export interface LotDetailView {
   initialQty: number;
   manufacturedAt: string | null;
   expiryDate: string | null;
+  /** 생산 LOT 이면 `WORK_ORDER` 와 그 W/O id — 4M 변경 자재 투입(W/O 단위 추정)을 부른다(omf-all-around#63). */
+  sourceTypeCode: string;
+  sourceId: number;
+  /** IQC 에서 적은 4M 변경품(서버 선행 P-86). 아니면 `null`. */
+  fourMChange: FourMChangeForward | null;
 }
 
 export const toLotDetailView = ({ lot }: LotDetailResponse): LotDetailView => ({
@@ -66,6 +71,9 @@ export const toLotDetailView = ({ lot }: LotDetailResponse): LotDetailView => ({
   initialQty: lot.initialQty,
   manufacturedAt: lot.manufacturedAt ?? null,
   expiryDate: lot.expiryDate ?? null,
+  sourceTypeCode: lot.sourceTypeCode,
+  sourceId: lot.sourceId,
+  fourMChange: (lot as LotForward).fourMChange ?? null,
 });
 
 export interface LotStatusCountView {

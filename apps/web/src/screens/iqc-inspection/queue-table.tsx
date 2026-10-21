@@ -93,7 +93,17 @@ const columnsOf = (
      * 없는 것이 정상이다(작업지시 대상 검사 등) — 빈 칸으로 두면 못 불러온 것과 구분되지 않아
      * 풀이가 네 갈래를 서로 다른 글자로 낸다.
      */
-    render: (row) => <span className="iqc-inspection-lot">{lotNumbers.labelOf(row.lotId)}</span>,
+    /* 4M 변경품이면 번호 오른쪽에 작게 붙인다 — 번호가 줄을 바꿔도 표시는 남는다(omf-all-around#63). */
+    render: (row) => (
+      <span className="iqc-inspection-lot-cell">
+        <span className="iqc-inspection-lot">{lotNumbers.labelOf(row.lotId)}</span>
+        {row.isFourMChange && (
+          <Chip variant="status" size="sm" status="warning" title={t.fourMBadgeTitle}>
+            {t.fourMBadge}
+          </Chip>
+        )}
+      </span>
+    ),
   },
   {
     key: 'statusCode',

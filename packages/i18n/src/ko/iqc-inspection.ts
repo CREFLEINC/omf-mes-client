@@ -29,6 +29,9 @@ export const iqcInspection = {
     },
     /** 값이 없는 칸. 빈 칸으로 두면 「없음」인지 「못 불러왔는지」 구분되지 않는다. */
     emptyValue: '—',
+    /* 대기 목록 LOT 옆 표시(omf-all-around#63). */
+    fourMBadge: '4M',
+    fourMBadgeTitle: '4M 변경품',
     /**
      * 이 줄을 여는 버튼의 접근 이름.
      *
@@ -154,6 +157,7 @@ export const iqcInspection = {
       finalJudgment: '최종 판정',
       round: '회차',
       confirmedAt: '확정 시각',
+      fourMChange: '4M 변경품',
     },
     fields: {
       inspectedQty: '검사수량',
@@ -245,6 +249,19 @@ export const iqcInspection = {
       causeInactive: (label: string): string => `${label} (사용 중지)`,
     },
     /** 합격판정개수 기준 자동 판정(omf-all-around#125) — 기준에 합격판정개수가 있을 때만 선다. */
+    /* 4M 변경품(omf-all-around#63) — 공급사가 사람·설비·자재·방법을 바꿔 보낸 자재 LOT. 내부 「4M 자원배정」과 다른 말이다. */
+    fourMChange: {
+      label: '4M 변경품',
+      hint: '공급사가 사람·설비·자재·방법을 바꿔 보낸 자재면 체크하세요.',
+      changeType: '변경 종류',
+      changeTypePlaceholder: '변경 종류 선택',
+      changeTypeMissing: '변경 종류를 선택하세요.',
+      noChangeTypes:
+        '변경 종류 목록이 비어 있습니다. 기준정보에서 「4M 변경 종류」를 등록해 주세요.',
+      remarks: '변경 내용',
+      remarksPlaceholder: '무엇이 바뀌었는지 입력(선택)',
+      blocked: '4M 변경품은 변경 종류를 선택해야 저장할 수 있습니다.',
+    },
     judgmentChange: {
       basis: (acceptanceNumber: number): string =>
         `합격판정개수 ${String(acceptanceNumber)} 기준 자동 판정`,

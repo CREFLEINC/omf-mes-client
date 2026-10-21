@@ -1,8 +1,9 @@
 import { messages } from '@omf-mes/i18n';
-import { render, screen, within } from '@testing-library/react';
+import { screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
+import { createStubFetch, jsonResponse, renderWithProviders } from '../../test/api-harness';
 import { DetailDialog, type DetailDialogProps } from './detail-dialog';
 import type { WorkOrder } from './types';
 
@@ -23,10 +24,21 @@ const workOrder = (overrides: Partial<WorkOrder> = {}): WorkOrder => ({
   ...overrides,
 });
 
+/* 4M 변경 자재 투입 구획(omf-all-around#63)이 부르는 조회 — 이 시험들은 투입이 없는 W/O 를 본다. */
+const EMPTY_PAGE = { items: [], page: { page: 1, size: 200, total: 0 } };
+const stubFetch = createStubFetch([
+  {
+    match: (request) =>
+      request.url.includes('/production/material-consumptions') ||
+      request.url.includes('/mdm/code-values'),
+    respond: () => jsonResponse(EMPTY_PAGE),
+  },
+]);
+
 const renderDialog = (overrides: Partial<DetailDialogProps> = {}) => {
   const onClose = vi.fn();
 
-  render(
+  renderWithProviders(
     <DetailDialog
       workOrder={workOrder()}
       isLoading={false}
@@ -37,6 +49,7 @@ const renderDialog = (overrides: Partial<DetailDialogProps> = {}) => {
       onClose={onClose}
       {...overrides}
     />,
+    { fetch: stubFetch, session: null },
   );
 
   return { onClose, user: userEvent.setup() };
