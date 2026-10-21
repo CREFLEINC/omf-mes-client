@@ -1,4 +1,4 @@
-import type { components } from '@omf-mes/api-client';
+import type { components, FourMChangeForward, InspectionRequestForward } from '@omf-mes/api-client';
 import { formatPlantDateTime } from '../../patterns/plant-time';
 
 /**
@@ -16,7 +16,7 @@ import { formatPlantDateTime } from '../../patterns/plant-time';
  * 이 화면이 소유한다 — 다른 화면 슬라이스의 같은 이름 파일을 참조하지 않는다.
  */
 
-export type InspectionRequestResponse = components['schemas']['InspectionRequest'];
+export type InspectionRequestResponse = InspectionRequestForward;
 export type InspectionResultResponse = components['schemas']['InspectionResult'];
 export type PageMetaResponse = components['schemas']['PageMeta'];
 
@@ -34,6 +34,8 @@ export interface InspectionQueueRow {
   targetQty: number;
   /** RFC3339. 표시 형식은 그리는 쪽이 정한다 — 여기서 문자열을 깎지 않는다. */
   requestedAt: string;
+  /** 의뢰 LOT 이 4M 변경품인가(omf-all-around#63 · 서버 선행 P-86). */
+  isFourMChange: boolean;
 }
 
 export interface InspectionQueueResult {
@@ -56,6 +58,7 @@ export const toInspectionQueueRow = (item: InspectionRequestResponse): Inspectio
   itemId: item.itemId,
   targetQty: item.targetQty,
   requestedAt: item.requestedAt,
+  isFourMChange: item.fourMChange !== undefined,
 });
 
 export const toInspectionQueueResult = (response: {
@@ -108,6 +111,8 @@ export interface InspectionRequestDetail {
   uomId: number;
   statusCode: string;
   requestedAt: string;
+  /** 의뢰 LOT 의 4M 변경품 기록. 변경품이 아니면 `null`(omf-all-around#63 · 서버 선행 P-86). */
+  fourMChange: FourMChangeForward | null;
 }
 
 export const toInspectionRequestDetail = (
@@ -123,6 +128,7 @@ export const toInspectionRequestDetail = (
   uomId: item.uomId,
   statusCode: item.statusCode,
   requestedAt: item.requestedAt,
+  fourMChange: item.fourMChange ?? null,
 });
 
 /**

@@ -15,6 +15,8 @@ export const iqcInspection: Translated<typeof ko.iqcInspection> = {
       requestedAt: 'Thời điểm yêu cầu',
     },
     emptyValue: '—',
+    fourMBadge: '4M',
+    fourMBadgeTitle: 'Hàng thay đổi 4M',
     openRow: (item: string, inspectionRequestNo: string): string =>
       `${item} · Mở yêu cầu kiểm tra ${inspectionRequestNo}`,
     caption: 'Danh sách chờ kiểm tra',
@@ -76,6 +78,7 @@ export const iqcInspection: Translated<typeof ko.iqcInspection> = {
       finalJudgment: 'Đánh giá cuối cùng',
       round: 'Lượt',
       confirmedAt: 'Thời điểm xác nhận',
+      fourMChange: 'Hàng thay đổi 4M',
     },
     fields: {
       inspectedQty: 'Số lượng kiểm tra',
@@ -131,6 +134,18 @@ export const iqcInspection: Translated<typeof ko.iqcInspection> = {
       cause: 'Nguyên nhân dự đoán',
       causeNone: 'Không chọn',
       causeInactive: (label: string): string => `${label} (ngừng sử dụng)`,
+    },
+    fourMChange: {
+      label: 'Hàng thay đổi 4M',
+      hint: 'Đánh dấu nếu nhà cung cấp đã thay đổi con người, thiết bị, vật liệu hoặc phương pháp.',
+      changeType: 'Loại thay đổi',
+      changeTypePlaceholder: 'Chọn loại thay đổi',
+      changeTypeMissing: 'Hãy chọn loại thay đổi.',
+      noChangeTypes:
+        'Danh sách loại thay đổi trống. Hãy đăng ký «Loại thay đổi 4M» trong dữ liệu chuẩn.',
+      remarks: 'Nội dung thay đổi',
+      remarksPlaceholder: 'Nhập nội dung thay đổi (tùy chọn)',
+      blocked: 'Hàng thay đổi 4M phải chọn loại thay đổi mới lưu được.',
     },
     judgmentChange: {
       basis: (acceptanceNumber: number): string =>

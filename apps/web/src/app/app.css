@@ -15632,3 +15632,35 @@ body:has(.goods-receipt-post-form) > [role='listbox'] {
   color: var(--semantic-success-text);
   font-weight: 600;
 }
+
+/* IQC 대기 목록 LOT 칸 — 번호와 4M 표시를 한 줄에. 표시는 줄지 않고 번호가 줄을 바꾼다(omf-all-around#63). */
+.iqc-inspection-panes .iqc-inspection-lot-cell {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.iqc-inspection-panes .iqc-inspection-lot-cell > .iqc-inspection-lot {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.iqc-inspection-panes .iqc-inspection-lot-cell > :last-child:not(.iqc-inspection-lot) {
+  flex: none;
+}
+
+/* 4M 변경품(omf-all-around#63) — 판정 아래 체크 한 줄, 체크하면 종류·내용 두 칸. */
+.iqc-inspection-four-m {
+  display: grid;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+}
+
+.iqc-inspection-four-m > .field-note {
+  margin: 0;
+}
+
+.iqc-inspection-four-m-fields {
+  grid-template-columns: minmax(0, 12rem) minmax(0, 1fr);
+}

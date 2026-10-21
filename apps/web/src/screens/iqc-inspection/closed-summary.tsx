@@ -11,6 +11,8 @@ export interface ClosedSummaryProps {
   round: InspectionResultRound;
   judgmentOptions: readonly CodeOption[];
   uomCode: string | null;
+  /** 의뢰 LOT 의 4M 변경품 「변경 종류 · 내용」(omf-all-around#63). 변경품이 아니면 `null` — 줄을 두지 않는다. */
+  fourMChangeLabel?: string | null;
   /** 불량 LOT 이면 처분·반품 안내(omf-all-around#106 후속 (나)) — 요약 아래에 그대로 둔다. */
   followUp?: ReactNode;
 }
@@ -26,6 +28,7 @@ export const ClosedSummary = ({
   round,
   judgmentOptions,
   uomCode,
+  fourMChangeLabel = null,
   followUp = null,
 }: ClosedSummaryProps) => {
   const judgment =
@@ -66,6 +69,12 @@ export const ClosedSummary = ({
           <dt className="field-label">{t.closed.confirmedAt}</dt>
           <dd>{round.confirmedAt === null ? '—' : formatDateTime(round.confirmedAt)}</dd>
         </div>
+        {fourMChangeLabel !== null && (
+          <div>
+            <dt className="field-label">{t.closed.fourMChange}</dt>
+            <dd>{fourMChangeLabel}</dd>
+          </div>
+        )}
       </dl>
       {followUp}
     </section>

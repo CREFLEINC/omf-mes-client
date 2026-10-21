@@ -41,6 +41,15 @@ import {
   useMeasurements,
   useSaveDraft,
 } from './queries';
+import {
+  EMPTY_FOUR_M_CHANGE,
+  FourMChange,
+  fourMBodyOf,
+  fourMDraftOf,
+  isFourMIncomplete,
+  isSameFourM,
+  type FourMChangeDraft,
+} from './four-m-change';
 import { expectedJudgmentOf, JudgmentChange, needsJudgmentChangeReason } from './judgment-change';
 import { RejectedLotGuide } from './rejected-lot-guide';
 import {
@@ -205,6 +214,23 @@ export const IqcInspectionScreen = () => {
   const [rejection, setRejection] = useState<RejectionDraft>(EMPTY_REJECTION);
   /* 판정 변경 사유(omf-all-around#125) — 확정 요청에만 싣는다. 임시 저장은 받지 않으므로 의뢰가 바뀔 때 비운다. */
   const [changeReason, setChangeReason] = useState('');
+  /*
+   * 4M 변경품(omf-all-around#63) — LOT 의 성질이라 회차가 아니라 의뢰 LOT 에 붙는다. 서버 기록이 바뀌면(의뢰를
+   * 바꾸거나 저장 뒤 재조회) 그 값으로 되돌린다. 자재 LOT 이 없는 의뢰는 칸을 두지 않고 요청에도 싣지 않는다.
+   */
+  const fourMTypes = useCodeValues(CODE_GROUPS.fourMChangeType);
+  const fourMOptions = toCodeOptions(fourMTypes.data ?? []);
+  const hasFourMTarget = detail.data?.lotId != null;
+  const storedFourM = fourMDraftOf(detail.data?.fourMChange ?? null);
+  const storedFourMKey = JSON.stringify(storedFourM);
+  const [fourM, setFourM] = useState<FourMChangeDraft>(EMPTY_FOUR_M_CHANGE);
+  useEffect(() => {
+    setFourM(JSON.parse(storedFourMKey) as FourMChangeDraft);
+  }, [selectedId, storedFourMKey]);
+  /* 서버 기록과 같으면 싣지 않는다 — 생략은 «그대로»라 다른 회차·경로가 남긴 기록을 덮지 않는다. */
+  const fourMChanged = hasFourMTarget && !isSameFourM(fourM, storedFourM);
+  const fourMValue = fourMChanged ? fourMBodyOf(fourM) : undefined;
+  const fourMBlocked = hasFourMTarget && isFourMIncomplete(fourM);
   const isRejected = judgment === REJECTED_JUDGMENT;
   const defectCodes = useDefectCodes(isRejected);
   /* 추정 원인(omf-all-around#130) — 선택 입력. 불합격일 때만 부른다. */
@@ -350,7 +376,8 @@ export const IqcInspectionScreen = () => {
       (rejection.majorId !== savedRejection.majorId ||
         rejection.minorId !== savedRejection.minorId ||
         rejection.description !== savedRejection.description ||
-        rejection.causeId !== savedRejection.causeId));
+        rejection.causeId !== savedRejection.causeId)) ||
+    fourMChanged;
 
   const rows = queue.data?.rows ?? [];
   const pageView = toPageView(queue.data?.page ?? { page, size: 0, total: 0 }, rows.length);
@@ -537,6 +564,7 @@ export const IqcInspectionScreen = () => {
        */
       previousResultId: reinspectingFrom,
       defects,
+      fourMChange: fourMValue,
     });
   };
 
@@ -573,6 +601,18 @@ export const IqcInspectionScreen = () => {
         ) : isClosed && round !== null ? (
           <ClosedSummary
             round={round}
+            fourMChangeLabel={
+              detail.data.fourMChange === null
+                ? null
+                : [
+                    fourMOptions.find(
+                      (option) => option.value === detail.data.fourMChange?.changeTypeCode,
+                    )?.label ?? detail.data.fourMChange.changeTypeCode,
+                    detail.data.fourMChange.remarks,
+                  ]
+                    .filter((part) => part !== undefined && part !== '')
+                    .join(' · ')
+            }
             judgmentOptions={judgmentOptions}
             uomCode={uomCode}
             followUp={
@@ -589,7 +629,13 @@ export const IqcInspectionScreen = () => {
              */
             round={isReinspectingNow ? null : round}
             inspectedQty={inspectedQty}
-            saveBlockedReason={session?.worker === null ? t.result.workerNotLinked : null}
+            saveBlockedReason={
+              session?.worker === null
+                ? t.result.workerNotLinked
+                : fourMBlocked
+                  ? t.result.fourMChange.blocked
+                  : null
+            }
             uomCode={uomCode}
             hasChanges={hasChanges}
             draft={draft}
@@ -615,6 +661,7 @@ export const IqcInspectionScreen = () => {
                 overallJudgmentCode: judgment,
                 ...(defects.length === 0 ? {} : { defects }),
                 ...(needsChangeReason ? { judgmentChangeReason: changeReason.trim() } : {}),
+                ...(fourMValue === undefined ? {} : { fourMChange: fourMValue }),
               });
             }}
             isConfirming={confirm.isSaving}
@@ -633,6 +680,17 @@ export const IqcInspectionScreen = () => {
                     needsReason={needsChangeReason}
                     reason={changeReason}
                     onReasonChange={setChangeReason}
+                    disabled={confirm.isSaving}
+                  />
+                )}
+                {hasFourMTarget && isOpenRound && (
+                  <FourMChange
+                    draft={fourM}
+                    options={fourMOptions}
+                    onChange={(next) => {
+                      setIsSaved(false);
+                      setFourM(next);
+                    }}
                     disabled={confirm.isSaving}
                   />
                 )}
@@ -657,7 +715,9 @@ export const IqcInspectionScreen = () => {
                 ? resolvedDefect.blocked
                 : needsChangeReason && changeReason.trim() === ''
                   ? t.result.judgmentChange.required
-                  : null
+                  : fourMBlocked
+                    ? t.result.fourMChange.blocked
+                    : null
             }
             isJustConfirmed={isJustConfirmed}
             isReinspecting={isReinspectingNow}

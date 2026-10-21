@@ -160,10 +160,30 @@ export interface InspectionDefectInput {
 }
 
 /** 서버 선행 P-47 — 사유를 실으면 서버가 확정과 한 트랜잭션에서 그 회차의 불량 기록을 이 값으로 갈아 끼운다. */
+/**
+ * 서버 선행 P-86(omf-all-around#63) — IQC 판정 때 자재 LOT 의 4M 변경품(변경 종류 = 공통코드 `FOUR_M_CHANGE_TYPE`).
+ * 쓰기 본문에서 생략하면 그대로, `null` 이면 변경품 아님. 조회(의뢰·LOT 목록)는 변경품일 때만 키가 있다.
+ */
+export interface FourMChangeForward {
+  changeTypeCode: string;
+  remarks?: string;
+}
+
+/** 서버 선행 P-86(omf-all-around#63) — 의뢰 LOT 의 4M 변경품. */
+export type InspectionRequestForward = components['schemas']['InspectionRequest'] & {
+  fourMChange?: FourMChangeForward;
+};
+
+/** 서버 선행 P-86(omf-all-around#63) — LOT 목록(`GET /trace/lots`)만 4M 변경품을 싣는다. */
+export type LotForward = components['schemas']['Lot'] & {
+  fourMChange?: FourMChangeForward;
+};
+
 export type InspectionResultConfirmForward = components['schemas']['InspectionResultConfirm'] & {
   defects?: InspectionDefectInput[];
   /** 서버 선행 P-70(omf-all-around#125·#126) — IQC·OQC 판정이 합격판정개수 기준 자동 판정과 다르면 필수(maxLength 500). */
   judgmentChangeReason?: string;
+  fourMChange?: FourMChangeForward | null;
 };
 
 type InspectionConfirmPath = paths['/quality/inspection-results/{inspectionResultId}:confirm'];
@@ -176,9 +196,11 @@ export type InspectionResultCreateForward = components['schemas']['InspectionRes
   defects?: InspectionDefectInput[];
   /** 서버 선행 P-70(omf-all-around#125·#126) — statusCode=CONFIRMED 저장의 판정 변경 사유(IQC·OQC). `:confirm` 과 같은 규칙. */
   judgmentChangeReason?: string;
+  fourMChange?: FourMChangeForward | null;
 };
 export type InspectionResultUpdateForward = components['schemas']['InspectionResultUpdate'] & {
   defects?: InspectionDefectInput[];
+  fourMChange?: FourMChangeForward | null;
 };
 
 type InspectionResultsPath = paths['/quality/inspection-results'];
