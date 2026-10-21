@@ -1,6 +1,6 @@
 import { messages } from '@omf-mes/i18n';
 
-import { hasLineError, type SplitLineView } from './split-calc';
+import type { SplitLineView } from './split-calc';
 import type { HeaderDraft, SplitMode } from './types';
 
 /**
@@ -28,35 +28,29 @@ export interface SplitCounts {
   excessLines: number;
 }
 
-/** 계약의 조건부 필수 — 갈래가 요구하는 part 에 라인이 1행 이상 있어야 한다. */
-export const canSubmit = (mode: SplitMode, counts: SplitCounts): boolean => {
-  switch (mode) {
-    case 'BOTH':
-      return counts.normalLines > 0 && counts.excessLines > 0;
-    case 'NORMAL_ONLY':
-      return counts.normalLines > 0;
-    case 'EXCESS_ONLY':
-      return counts.excessLines > 0;
-  }
+/** 확인 창에서 고른 「만들어지는 전표」. 수량이 있는 전표는 처음에 모두 켜져 있다. */
+export interface ReceiptSelection {
+  normal: boolean;
+  excess: boolean;
+}
+
+export const defaultSelection = (counts: SplitCounts): ReceiptSelection => ({
+  normal: counts.normalLines > 0,
+  excess: counts.excessLines > 0,
+});
+
+/** 고른 전표 → 계약의 갈래. 둘 다 끄면 보낼 것이 없다(`null`). */
+export const modeFor = (selection: ReceiptSelection): SplitMode | null => {
+  if (selection.normal && selection.excess) return 'BOTH';
+  if (selection.normal) return 'NORMAL_ONLY';
+  if (selection.excess) return 'EXCESS_ONLY';
+
+  return null;
 };
 
-export const modeBlockReason = (mode: SplitMode, counts: SplitCounts): string | null => {
-  if (canSubmit(mode, counts)) return null;
-
-  if (counts.normalLines === 0 && counts.excessLines === 0) return t.actionReasons.noQty;
-
-  switch (mode) {
-    case 'BOTH':
-      /* 나눌 수 없는 이유가 둘이고 **사용자가 할 조치가 다르다** — 각기 다른 버튼을 가리킨다. */
-      return counts.excessLines === 0
-        ? t.actionReasons.bothNeedsExcess
-        : t.actionReasons.bothNeedsNormal;
-    case 'NORMAL_ONLY':
-      return t.actionReasons.normalOnlyNeedsNormal;
-    case 'EXCESS_ONLY':
-      return t.actionReasons.excessOnlyNeedsExcess;
-  }
-};
+/** 「입하 등록」이 잠긴 사유 — 실릴 줄이 하나도 없을 때뿐이다. 나머지 검증은 누른 뒤에 칸을 짚는다. */
+export const registerBlockReason = (counts: SplitCounts): string | null =>
+  counts.normalLines + counts.excessLines === 0 ? t.actionReasons.noQty : null;
 
 export interface HeaderRules {
   /** 초과분이 실리는 갈래인가. 초과분 줄은 발주에 묶이지 않아 서버가 예외 유형을 요구한다. */
@@ -78,18 +72,28 @@ export const validateHeader = (
     errors.deliveryNoteNo = t.errors.deliveryNoteNoTooLong(DELIVERY_NOTE_NO_MAX);
   }
 
-  if (rules.needsExceptionType && header.exceptionTypeCode === '') {
-    errors.exceptionTypeCode = t.errors.exceptionTypeRequired;
-  }
-
-  /* 계약 — 「exceptionTypeCode 가 있으면 필수」. */
-  if (header.exceptionTypeCode !== '' && header.exceptionReason.trim() === '') {
-    errors.exceptionReason = t.errors.exceptionReasonRequired;
+  /*
+   * 예외 유형·초과 사유는 **초과분이 실릴 때만** 본다 — 초과분 전표에만 실리는 값이라 초과분이 없으면
+   * 기본값(초과입하)이 서 있어도 사유를 묻지 않는다. 계약 — 「exceptionTypeCode 가 있으면 사유 필수」.
+   */
+  if (rules.needsExceptionType) {
+    if (header.exceptionTypeCode === '') {
+      errors.exceptionTypeCode = t.errors.exceptionTypeRequired;
+    } else if (header.exceptionReason.trim() === '') {
+      errors.exceptionReason = t.errors.exceptionReasonRequired;
+    }
   }
 
   return errors;
 };
 
-/** 사유가 붙은 줄(수량·LOT)을 그대로 두고 등록하면 그 줄만 빠진 전표가 만들어진다 — 막는다. */
-export const lineErrorReason = (rows: readonly SplitLineView[]): string | null =>
-  hasLineError(rows) ? t.errors.lineInvalidBlocked : null;
+/**
+ * 사유가 붙은 줄(수량·LOT)을 그대로 두고 등록하면 그 줄만 빠진 전표가 만들어진다 — 막고, **어느 줄인지** 짚는다.
+ */
+export const lineErrorReason = (rows: readonly SplitLineView[]): string | null => {
+  const lineNos = rows
+    .filter((row) => row.qtyError !== null || row.lotError !== null || row.excessLotError !== null)
+    .map((row) => String(row.line.lineNo));
+
+  return lineNos.length === 0 ? null : t.errors.lineInvalidBlocked(lineNos.join('·'));
+};

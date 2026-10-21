@@ -1547,14 +1547,14 @@ describe('OverReceiptSplitScreen — 누르기 전에는 쓰기가 없다', () =
 
     await screen.findByText('PO-2026-900001');
 
-    expect(screen.queryByRole('button', { name: t.actions.registerBoth })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: t.actions.register })).not.toBeInTheDocument();
     expect(screen.queryByLabelText(t.fields.receiptDatetime)).not.toBeInTheDocument();
 
     /* 짝 방향 — 고르면 실제로 열린다. 「늘 없다」로 통과하지 않게 한다. */
     await selectPo(user, 'PO-2026-900001');
     await screen.findByLabelText(t.lineTable.arrivedQtyLabel(1));
 
-    expect(screen.getByRole('button', { name: t.actions.registerBoth })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: t.actions.register })).toBeInTheDocument();
     expect(screen.getByLabelText(t.fields.receiptDatetime)).toBeInTheDocument();
   });
 });
@@ -1600,17 +1600,22 @@ const fillDraft = async (
   }
   for (const lineNo of Object.keys(qty).map(Number)) {
     const normalLot = screen.queryByLabelText(t.lineTable.lotNoLabel(lineNo, 'normal'));
-    if (normalLot !== null) await user.type(normalLot, labelFor(lineNo));
-    if (screen.queryByLabelText(t.lineTable.lotMissingLabel(lineNo, 'excess')) !== null) {
-      await markLotMissing(user, lineNo, 'excess');
+    if (normalLot !== null) {
+      /* 정량분 라벨을 넣으면 초과분 LOT 은 그 라벨에서 파생된다 — 손대지 않는다. */
+      await user.type(normalLot, labelFor(lineNo));
+    } else {
+      /* 전부 초과인 줄은 파생할 라벨이 없다 — 초과분 LOT 에 라벨을 넣는다. */
+      const excessLot = screen.queryByLabelText(t.lineTable.lotNoLabel(lineNo, 'excess'));
+      if (excessLot !== null) await user.type(excessLot, labelFor(lineNo));
     }
   }
 
   /* 입하 일시는 공장 현지 지금이 미리 들어 있다 — 비우고 고정값을 친다. */
   await user.clear(screen.getByLabelText(t.fields.receiptDatetime));
   await user.type(screen.getByLabelText(t.fields.receiptDatetime), RECEIPT_DATETIME);
-  /* 예외 유형(초과입하)이 기본으로 서 있어 초과 사유가 필수다. */
-  await user.type(screen.getByLabelText(t.fields.exceptionReason), '합성 사유');
+  /* 초과분이 갈린 줄이 있을 때만 초과분 정보가 선다 — 예외 유형(초과입하)이 기본이라 사유만 적는다. */
+  const reason = screen.queryByLabelText(t.fields.exceptionReason);
+  if (reason !== null) await user.type(reason, '합성 사유');
 };
 
 const setupRegister = async (
@@ -1623,15 +1628,26 @@ const setupRegister = async (
   await fillDraft(user, qty);
 };
 
-/** 갈래 단추를 누르고, 확인 창이 열리면 「등록」까지 누른다. 검증에 막히면 창이 열리지 않는다. */
+/**
+ * 「입하 등록」을 누르고, 확인 창이 열리면 「등록」까지 누른다. 검증에 막히면 창이 열리지 않는다.
+ * `only` 는 창의 「만들어지는 전표」에서 나머지 하나를 끈다 — 계약의 한쪽 갈래는 그 선택에서 나온다.
+ */
 const clickRegister = async (
   user: ReturnType<typeof userEvent.setup>,
-  label: string = t.actions.registerBoth,
+  options: { only?: 'normal' | 'excess' } = {},
 ): Promise<void> => {
-  await user.click(screen.getByRole('button', { name: label }));
+  await user.click(screen.getByRole('button', { name: t.actions.register }));
 
-  const confirm = screen.queryByRole('button', { name: t.actions.confirmRegister });
-  if (confirm !== null) await user.click(confirm);
+  const dialog = screen.queryByRole('dialog');
+  if (dialog === null) return;
+
+  if (options.only === 'normal') {
+    await user.click(within(dialog).getByRole('checkbox', { name: /초과분 전표/ }));
+  }
+  if (options.only === 'excess') {
+    await user.click(within(dialog).getByRole('checkbox', { name: /정량분 전표/ }));
+  }
+  await user.click(within(dialog).getByRole('button', { name: t.actions.confirmRegister }));
 };
 
 const splitRequests = (requests: RecordedRequest[]): RecordedRequest[] =>
@@ -1652,14 +1668,14 @@ describe('OverReceiptSplitScreen — 세 갈래 등록', () => {
    * 판단이 요청에서 사라져 받지 않기로 한 초과분까지 전표가 된다.
    */
   it.each([
-    [t.actions.registerBoth, 'BOTH'],
-    [t.actions.registerNormalOnly, 'NORMAL_ONLY'],
-    [t.actions.registerExcessOnly, 'EXCESS_ONLY'],
-  ])('%s를 누르면 %s가 실린다', async (label, mode) => {
+    ['둘 다 두면', undefined, 'BOTH'],
+    ['초과분을 끄면', 'normal', 'NORMAL_ONLY'],
+    ['정량분을 끄면', 'excess', 'EXCESS_ONLY'],
+  ] as const)('확인 창에서 %s %s가 실린다', async (_name, only, mode) => {
     const { requests, user } = renderScreen(allRoutes());
 
     await setupRegister(user);
-    await clickRegister(user, label);
+    await clickRegister(user, only === undefined ? {} : { only });
 
     await waitFor(() => {
       expect(splitRequests(requests)).toHaveLength(1);
@@ -1691,13 +1707,15 @@ describe('OverReceiptSplitScreen — 세 갈래 등록', () => {
         supplierLotMissing: false,
       },
     ]);
+    /* 초과분 LOT 은 정량분 라벨에서 파생한 번호다 — 라벨에 없는 번호라 부착 아님으로 실린다. */
     expect(body.excess?.lines).toEqual([
       {
         itemId: 9301,
         receivedQty: 1,
         uomId: 9501,
-        supplierLotMissing: true,
-        substituteLotReasonCode: 'OTHER',
+        supplierLotNo: `${labelFor(1)}-OVER`,
+        supplierLotMissing: false,
+        supplierLotLabelAttached: false,
       },
     ]);
   });
@@ -1728,7 +1746,10 @@ describe('OverReceiptSplitScreen — 세 갈래 등록', () => {
     const { requests, user } = renderScreen(allRoutes());
 
     await setupRegister(user);
-    await user.type(screen.getByLabelText(t.fields.deliveryNoteNo), 'SAMPLE-DN-01');
+    await user.type(
+      screen.getByLabelText(`${t.fields.deliveryNoteNo} ${t.form.optional}`),
+      'SAMPLE-DN-01',
+    );
     await clickRegister(user);
 
     await waitFor(() => {
@@ -1781,21 +1802,18 @@ describe('OverReceiptSplitScreen — 세 갈래 등록', () => {
   });
 });
 
-describe('OverReceiptSplitScreen — 보낼 수 없는 조합', () => {
-  const blockedButton = (label: string): HTMLElement => screen.getByRole('button', { name: label });
-
-  /* **M29의 화면 몫** — 라인이 하나도 없으면 어느 갈래로도 보낼 수 없다(계약: 최소 1행). */
-  it('수량을 넣지 않으면 세 버튼이 모두 잠기고 같은 사유를 낸다', async () => {
+describe('OverReceiptSplitScreen — 만들어지는 전표는 수량이 정한다', () => {
+  /* 라인이 하나도 없으면 어느 갈래로도 보낼 수 없다(계약: 최소 1행) — 단추 하나가 잠기고 사유를 낸다. */
+  it('수량을 넣지 않으면 등록 단추가 잠기고 사유를 낸다', async () => {
     const { requests, user } = renderScreen(allRoutes());
 
     await screen.findByText('PO-2026-900001');
     await selectPo(user, 'PO-2026-900001');
     await screen.findByLabelText(t.lineTable.arrivedQtyLabel(1));
 
-    expect(blockedButton(t.actions.registerBoth)).toBeDisabled();
-    expect(blockedButton(t.actions.registerNormalOnly)).toBeDisabled();
-    expect(blockedButton(t.actions.registerExcessOnly)).toBeDisabled();
-    expect(screen.getAllByText(t.actionReasons.noQty)).toHaveLength(3);
+    expect(screen.getByRole('button', { name: t.actions.register })).toBeDisabled();
+    expect(screen.getByText(t.actionReasons.noQty)).toBeInTheDocument();
+    expect(screen.getByText(t.totals.none)).toBeInTheDocument();
 
     await clickRegister(user);
 
@@ -1803,44 +1821,60 @@ describe('OverReceiptSplitScreen — 보낼 수 없는 조합', () => {
   });
 
   /*
-   * **M27의 화면 몫** — 초과분이 없는데 분리 등록이 열리면 `excess` 없는 `BOTH`가 나간다.
-   * 목 서버는 그것을 201로 통과시키므로(실측) 막는 곳은 화면뿐이다.
+   * 초과분이 없는데 `excess` 없는 `BOTH`가 나가면 안 된다 — 사람이 갈래를 고르지 않아도 화면이
+   * 수량에서 정량분 전표 하나만 만든다. 확인 창에는 고를 것이 없다.
    */
-  it('초과분이 없으면 초과분을 싣는 두 갈래가 잠긴다', async () => {
+  it('초과분이 없으면 정량분 전표 하나만 만들고 고를 것이 없다', async () => {
     const { requests, user } = renderScreen(allRoutes());
 
     /* 한도(65) 안쪽이라 전부 정량분이다. */
     await setupRegister(user, { 1: '10' });
 
-    expect(blockedButton(t.actions.registerBoth)).toBeDisabled();
-    expect(screen.getByText(t.actionReasons.bothNeedsExcess)).toBeInTheDocument();
-    /*
-     * **초과분만 저장도 함께 잠긴다** — 초과분을 싣는 갈래는 둘이다. 이 잠금이 곧
-     * 「초과분이 실렸다고 말하는 등록에는 실을 줄이 있다」는 불변식이고, 등록 결과의
-     * 신규 P/O 등록 진입로가 그 불변식 위에 선다(`validation.ts`의 `canSubmit`).
-     */
-    expect(blockedButton(t.actions.registerExcessOnly)).toBeDisabled();
-    expect(screen.getByText(t.actionReasons.excessOnlyNeedsExcess)).toBeInTheDocument();
-    /* 짝 방향 — 정량분만 저장은 열려 있다. 「전부 잠갔다」로 통과하지 않게 한다. */
-    expect(blockedButton(t.actions.registerNormalOnly)).toBeEnabled();
+    expect(screen.getByText(t.totals.normal(1))).toBeInTheDocument();
+    expect(screen.queryByLabelText(t.fields.exceptionReason)).not.toBeInTheDocument();
 
-    await clickRegister(user);
+    await user.click(screen.getByRole('button', { name: t.actions.register }));
 
-    expect(splitRequests(requests)).toHaveLength(0);
+    const dialog = await screen.findByRole('dialog', { name: t.dialog.registerTitle });
+
+    expect(within(dialog).getByText(t.dialog.registerReceiptNormal(1))).toBeInTheDocument();
+    expect(within(dialog).queryAllByRole('checkbox')).toHaveLength(0);
+    expect(within(dialog).getByText(t.dialog.registerLead('NORMAL_ONLY'))).toBeInTheDocument();
+
+    await user.click(within(dialog).getByRole('button', { name: t.actions.confirmRegister }));
+
+    await waitFor(() => {
+      expect(lastSplitBody(requests).mode).toBe('NORMAL_ONLY');
+    });
+    expect(Object.keys(lastSplitBody(requests))).not.toContain('excess');
   });
 
   /* 반대쪽 — 9402는 꼭 맞게 받았고 허용치가 0이라 도착한 전부가 초과분이다. */
-  it('정량분이 없으면 정량분만 저장이 잠긴다', async () => {
+  it('정량분이 없으면 초과분 전표 하나만 만든다', async () => {
     const { requests, user } = renderScreen(allRoutes());
 
     await setupRegister(user, { 2: '12' });
 
-    expect(blockedButton(t.actions.registerNormalOnly)).toBeDisabled();
-    expect(screen.getByText(t.actionReasons.normalOnlyNeedsNormal)).toBeInTheDocument();
-    expect(blockedButton(t.actions.registerExcessOnly)).toBeEnabled();
+    expect(screen.getByText(t.totals.excess(1))).toBeInTheDocument();
 
-    await clickRegister(user, t.actions.registerNormalOnly);
+    await clickRegister(user);
 
+    await waitFor(() => {
+      expect(lastSplitBody(requests).mode).toBe('EXCESS_ONLY');
+    });
+  });
+
+  it('확인 창에서 둘 다 끄면 등록할 수 없다', async () => {
+    const { requests, user } = renderScreen(allRoutes());
+
+    await setupRegister(user);
+    await user.click(screen.getByRole('button', { name: t.actions.register }));
+
+    const dialog = await screen.findByRole('dialog', { name: t.dialog.registerTitle });
+    await user.click(within(dialog).getByRole('checkbox', { name: /정량분 전표/ }));
+    await user.click(within(dialog).getByRole('checkbox', { name: /초과분 전표/ }));
+
+    expect(within(dialog).getByRole('button', { name: t.actions.confirmRegister })).toBeDisabled();
     expect(splitRequests(requests)).toHaveLength(0);
   });
 });
@@ -1871,7 +1905,7 @@ describe('OverReceiptSplitScreen — 머리 입력과 수량을 고치기 전에
     const { requests, user } = renderScreen(allRoutes());
 
     await setupRegister(user);
-    await user.click(screen.getByLabelText(t.fields.deliveryNoteNo));
+    await user.click(screen.getByLabelText(`${t.fields.deliveryNoteNo} ${t.form.optional}`));
     await user.paste('A'.repeat(101));
 
     await clickRegister(user);
@@ -1887,7 +1921,7 @@ describe('OverReceiptSplitScreen — 머리 입력과 수량을 고치기 전에
     const { requests, user } = renderScreen(allRoutes());
 
     await setupRegister(user);
-    await user.click(screen.getByLabelText(t.fields.deliveryNoteNo));
+    await user.click(screen.getByLabelText(`${t.fields.deliveryNoteNo} ${t.form.optional}`));
     await user.paste('A'.repeat(100));
 
     await clickRegister(user);
@@ -1910,11 +1944,11 @@ describe('OverReceiptSplitScreen — 머리 입력과 수량을 고치기 전에
     await setupRegister(user, { 1: '66', 2: '0' });
 
     /* 짝 방향 — 1번 줄이 갈려 있어 버튼 자체는 열려 있다. */
-    expect(screen.getByRole('button', { name: t.actions.registerBoth })).toBeEnabled();
+    expect(screen.getByRole('button', { name: t.actions.register })).toBeEnabled();
 
     await clickRegister(user);
 
-    expect(await screen.findByText(t.errors.lineInvalidBlocked)).toBeInTheDocument();
+    expect(await screen.findByText(t.errors.lineInvalidBlocked('2'))).toBeInTheDocument();
     expect(splitRequests(requests)).toHaveLength(0);
   });
 
@@ -1925,12 +1959,12 @@ describe('OverReceiptSplitScreen — 머리 입력과 수량을 고치기 전에
     await setupRegister(user, { 1: '66', 2: '0' });
     await clickRegister(user);
 
-    expect(await screen.findByText(t.errors.lineInvalidBlocked)).toBeInTheDocument();
+    expect(await screen.findByText(t.errors.lineInvalidBlocked('2'))).toBeInTheDocument();
 
     await user.clear(qtyInput(2));
 
     await waitFor(() => {
-      expect(screen.queryByText(t.errors.lineInvalidBlocked)).not.toBeInTheDocument();
+      expect(screen.queryByText(t.errors.lineInvalidBlocked('2'))).not.toBeInTheDocument();
     });
   });
 });
@@ -1968,9 +2002,7 @@ describe('OverReceiptSplitScreen — 전송 중', () => {
       expect(splitRequests(requests)).toHaveLength(1);
     });
 
-    expect(screen.getByRole('button', { name: t.actions.registerBoth })).toBeDisabled();
-    expect(screen.getByRole('button', { name: t.actions.registerNormalOnly })).toBeDisabled();
-    expect(screen.getByRole('button', { name: t.actions.registerExcessOnly })).toBeDisabled();
+    expect(screen.getByRole('button', { name: t.actions.register })).toBeDisabled();
     expect(screen.getByRole('button', { name: messages.common.cancel })).toBeDisabled();
 
     release();
@@ -2090,7 +2122,7 @@ describe('OverReceiptSplitScreen — 등록 성공', () => {
     const { user } = renderSuccess(CREATED_ONE);
 
     await setupRegister(user);
-    await clickRegister(user, t.actions.registerNormalOnly);
+    await clickRegister(user, { only: 'normal' });
 
     expect(await screen.findByText(t.result.count(1))).toBeInTheDocument();
   });
@@ -2137,7 +2169,8 @@ describe('OverReceiptSplitScreen — 등록 성공', () => {
 
     /* 머리는 기본값으로 돌아간다 — 입하 일시는 공장 현지 지금이라 친 값과 다르고, 초과 사유는 빈다. */
     expect(screen.getByLabelText(t.fields.receiptDatetime)).not.toHaveValue(RECEIPT_DATETIME);
-    expect(screen.getByLabelText(t.fields.exceptionReason)).toHaveValue('');
+    /* 초안이 비면 초과분도 없다 — 초과분 정보 구획이 접힌다. */
+    expect(screen.queryByLabelText(t.fields.exceptionReason)).not.toBeInTheDocument();
     expect(currentLocation()).toContain('po=9001');
     expect(screen.getByLabelText(t.lineTable.arrivedQtyLabel(1))).toBeInTheDocument();
   });
@@ -2198,7 +2231,7 @@ describe('OverReceiptSplitScreen — 등록 실패 3갈래', () => {
 
     await screen.findByText('합성 서버 문구');
 
-    const field = screen.getByLabelText(t.fields.deliveryNoteNo);
+    const field = screen.getByLabelText(`${t.fields.deliveryNoteNo} ${t.form.optional}`);
 
     expect(field).toHaveAccessibleDescription(/합성 서버 문구/);
     expect(field).toHaveAttribute('aria-invalid', 'true');
@@ -2245,10 +2278,9 @@ describe('OverReceiptSplitScreen — 등록 실패 3갈래', () => {
     const banner = await screen.findByRole('alert');
 
     expect(banner).toHaveTextContent('합성 라인 문구');
-    expect(screen.getByLabelText(t.fields.deliveryNoteNo)).not.toHaveAttribute(
-      'aria-invalid',
-      'true',
-    );
+    expect(
+      screen.getByLabelText(`${t.fields.deliveryNoteNo} ${t.form.optional}`),
+    ).not.toHaveAttribute('aria-invalid', 'true');
   });
 
   /*
@@ -2263,16 +2295,15 @@ describe('OverReceiptSplitScreen — 등록 실패 3갈래', () => {
 
     await screen.findByText('합성 서버 문구');
 
-    await user.type(screen.getByLabelText(t.fields.deliveryNoteNo), 'A');
+    await user.type(screen.getByLabelText(`${t.fields.deliveryNoteNo} ${t.form.optional}`), 'A');
 
     await waitFor(() => {
       expect(screen.queryByText('합성 서버 문구')).not.toBeInTheDocument();
     });
 
-    expect(screen.getByLabelText(t.fields.deliveryNoteNo)).not.toHaveAttribute(
-      'aria-invalid',
-      'true',
-    );
+    expect(
+      screen.getByLabelText(`${t.fields.deliveryNoteNo} ${t.form.optional}`),
+    ).not.toHaveAttribute('aria-invalid', 'true');
   });
 
   /*
@@ -2287,7 +2318,7 @@ describe('OverReceiptSplitScreen — 등록 실패 3갈래', () => {
 
     await screen.findByText('합성 서버 문구');
 
-    await user.type(screen.getByLabelText(t.fields.remarks), '합성 비고');
+    await user.type(screen.getByLabelText(`${t.fields.remarks} ${t.form.optional}`), '합성 비고');
 
     expect(screen.getByText('합성 서버 문구')).toBeInTheDocument();
   });
@@ -2438,7 +2469,7 @@ describe('OverReceiptSplitScreen — 취소와 초안 파기 확인', () => {
     await screen.findByText('PO-2026-900001');
     await selectPo(user, 'PO-2026-900001');
     await screen.findByLabelText(t.lineTable.arrivedQtyLabel(1));
-    await user.type(screen.getByLabelText(t.fields.remarks), '합성 비고');
+    await user.type(screen.getByLabelText(`${t.fields.remarks} ${t.form.optional}`), '합성 비고');
 
     await user.click(screen.getByRole('button', { name: messages.common.cancel }));
 
@@ -2534,7 +2565,7 @@ describe('OverReceiptSplitScreen — 신규 P/O 등록', () => {
     const { user } = renderWithCreated(CREATED_ONE);
 
     await setupRegister(user);
-    await clickRegister(user, t.actions.registerNormalOnly);
+    await clickRegister(user, { only: 'normal' });
 
     await screen.findByText(t.result.count(1));
 
@@ -2560,7 +2591,7 @@ describe('OverReceiptSplitScreen — 신규 P/O 등록', () => {
     const { user } = renderWithCreated(CREATED_ONE);
 
     await setupRegister(user);
-    await clickRegister(user, t.actions.registerExcessOnly);
+    await clickRegister(user, { only: 'excess' });
 
     await screen.findByText(t.result.count(1));
 
@@ -2571,7 +2602,7 @@ describe('OverReceiptSplitScreen — 신규 P/O 등록', () => {
 
     /* 성공하면 초안이 비므로 같은 화면에서 다시 채워 넣는다(수명 표 8행). */
     await fillDraft(user, { 1: '66' });
-    await clickRegister(user, t.actions.registerNormalOnly);
+    await clickRegister(user, { only: 'normal' });
 
     await waitFor(() => {
       expect(
@@ -2593,7 +2624,7 @@ describe('OverReceiptSplitScreen — 신규 P/O 등록', () => {
     const { user } = renderWithCreated(CREATED_ONE);
 
     await setupRegister(user);
-    await clickRegister(user, t.actions.registerExcessOnly);
+    await clickRegister(user, { only: 'excess' });
 
     await screen.findByText(t.result.count(1));
 
@@ -2722,9 +2753,9 @@ describe('OverReceiptSplitScreen — 라벨 스캔과 LOT', () => {
 
     await openLines(user);
     await user.type(qtyInput(1), '10');
-    await clickRegister(user, t.actions.registerNormalOnly);
+    await clickRegister(user);
 
-    expect(await screen.findByText(t.errors.lineInvalidBlocked)).toBeInTheDocument();
+    expect(await screen.findByText(t.errors.lineInvalidBlocked('1'))).toBeInTheDocument();
     expect(screen.getByText(t.errors.lotRequired)).toBeInTheDocument();
     expect(splitRequests(requests)).toHaveLength(0);
   });
@@ -2746,15 +2777,17 @@ describe('OverReceiptSplitScreen — 라벨 스캔과 LOT', () => {
     const { requests, user } = renderScreen(allRoutes());
 
     await openLines(user);
+    /* 초과분 정보는 초과분이 갈린 뒤에만 선다. */
+    expect(screen.queryByLabelText(t.fields.exceptionReason)).not.toBeInTheDocument();
+
+    await user.type(qtyInput(2), '12');
+    await markLotMissing(user, 2, 'excess');
     await waitFor(() => {
       expect(screen.getByRole('combobox', { name: t.fields.exceptionType })).toHaveTextContent(
         '초과입하',
       );
     });
-
-    await user.type(qtyInput(2), '12');
-    await markLotMissing(user, 2, 'excess');
-    await clickRegister(user, t.actions.registerExcessOnly);
+    await clickRegister(user);
 
     expect(await screen.findByText(t.errors.exceptionReasonRequired)).toBeInTheDocument();
     expect(splitRequests(requests)).toHaveLength(0);
@@ -2766,13 +2799,15 @@ describe('OverReceiptSplitScreen — 등록 확인 창', () => {
     const { requests, user } = renderScreen(allRoutes());
 
     await setupRegister(user);
-    await user.click(screen.getByRole('button', { name: t.actions.registerBoth }));
+    await user.click(screen.getByRole('button', { name: t.actions.register }));
 
     const dialog = await screen.findByRole('dialog', { name: t.dialog.registerTitle });
 
     expect(within(dialog).getByText(t.dialog.registerLead('BOTH'))).toBeInTheDocument();
     expect(within(dialog).getByText(t.dialog.lotOf('normal', labelFor(1)))).toBeInTheDocument();
-    expect(within(dialog).getByText(t.dialog.lotMissingOf('excess', '기타'))).toBeInTheDocument();
+    expect(
+      within(dialog).getByText(t.dialog.lotOf('excess', `${labelFor(1)}-OVER`)),
+    ).toBeInTheDocument();
     expect(within(dialog).getByText('초과입하')).toBeInTheDocument();
     expect(within(dialog).getByText(t.dialog.registerIrreversible)).toBeInTheDocument();
     expect(splitRequests(requests)).toHaveLength(0);
@@ -2782,7 +2817,7 @@ describe('OverReceiptSplitScreen — 등록 확인 창', () => {
     const { requests, user } = renderScreen(allRoutes());
 
     await setupRegister(user);
-    await user.click(screen.getByRole('button', { name: t.actions.registerBoth }));
+    await user.click(screen.getByRole('button', { name: t.actions.register }));
     await user.click(await screen.findByRole('button', { name: t.actions.backToEdit }));
 
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
@@ -2795,8 +2830,60 @@ describe('OverReceiptSplitScreen — 등록 확인 창', () => {
 
     await setupRegister(user);
 
-    expect(screen.getByText(t.totals.normalLines(1))).toBeInTheDocument();
-    expect(screen.getByText(t.totals.excessLines(1))).toBeInTheDocument();
-    expect(screen.getByText(t.totals.receipts(2))).toBeInTheDocument();
+    expect(screen.getByText(t.totals.normal(1))).toBeInTheDocument();
+    expect(screen.getByText(t.totals.excess(1))).toBeInTheDocument();
+  });
+});
+
+describe('OverReceiptSplitScreen — 단계 안내와 파생 LOT', () => {
+  const hint = (): HTMLElement =>
+    within(screen.getByRole('navigation', { name: t.guide.label })).getByText(/./, {
+      selector: '.ors-guide-hint',
+    });
+
+  it('단계 안내가 화면 상태를 따라 발주 선택 → 수량 → 입하 정보 → 등록으로 간다', async () => {
+    const { user } = renderScreen(allRoutes());
+
+    await screen.findByText('PO-2026-900001');
+    expect(hint()).toHaveTextContent(t.guide.hints.select);
+
+    await selectPo(user, 'PO-2026-900001');
+    await screen.findByLabelText(t.lineTable.arrivedQtyLabel(1));
+    expect(hint()).toHaveTextContent(t.guide.hints.lines);
+
+    await user.type(qtyInput(1), '66');
+    /* 수량은 들어갔지만 LOT 이 비어 있다 — 아직 수량·LOT 단계다. */
+    expect(hint()).toHaveTextContent(t.guide.hints.lines);
+
+    await user.type(screen.getByLabelText(t.lineTable.lotNoLabel(1, 'normal')), labelFor(1));
+    /* 초과분이 있어 초과 사유가 모자라다 — 입하 정보 단계. */
+    expect(hint()).toHaveTextContent(t.guide.hints.info);
+
+    await user.type(screen.getByLabelText(t.fields.exceptionReason), '합성 사유');
+    expect(hint()).toHaveTextContent(t.guide.hints.register);
+  });
+
+  it('정량분 라벨을 넣으면 초과분 LOT 이 파생되고, 그 사실을 칸 아래에 밝힌다', async () => {
+    const { user } = renderScreen(allRoutes());
+
+    await screen.findByText('PO-2026-900001');
+    await selectPo(user, 'PO-2026-900001');
+    await screen.findByLabelText(t.lineTable.arrivedQtyLabel(1));
+    await user.type(qtyInput(1), '66');
+    await user.type(screen.getByLabelText(t.lineTable.lotNoLabel(1, 'normal')), labelFor(1));
+
+    expect(screen.getByLabelText(t.lineTable.lotNoLabel(1, 'excess'))).toHaveValue(
+      `${labelFor(1)}-OVER`,
+    );
+    expect(screen.getByText(t.lineTable.lotDerivedNote)).toBeInTheDocument();
+
+    /* 「라벨 없음으로」 — 파생을 버리고 대체 사유가 첫 선택지로 미리 찬다. */
+    await user.click(screen.getByRole('button', { name: t.actions.excessLotAsMissing }));
+
+    expect(screen.getByLabelText(t.lineTable.lotNoLabel(1, 'excess'))).toHaveValue('');
+    expect(screen.getByLabelText(t.lineTable.lotMissingLabel(1, 'excess'))).toBeChecked();
+    expect(
+      screen.getByRole('combobox', { name: t.lineTable.lotReasonLabel(1, 'excess') }),
+    ).toHaveTextContent('라벨 없음');
   });
 });

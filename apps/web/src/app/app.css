@@ -6564,6 +6564,38 @@ dl.filter-bar.approval-inbox-detail-facts {
   margin-top: var(--space-2);
 }
 
+/* 단계 안내 — 오른쪽 구획 맨 위. 지금 단계와 그 단계에서 할 일 한 줄. */
+.ors-guide {
+  display: grid;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-md);
+  background: var(--surface-container);
+}
+
+.ors-guide-hint {
+  margin: 0;
+  font: var(--type-body-sm);
+  color: var(--on-surface);
+}
+
+/* 입력 구획의 제목과 설명. */
+.ors-section-head {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.ors-section-title {
+  margin: 0;
+  font: var(--type-title-sm);
+}
+
+.ors-legend {
+  margin: 0;
+  font: var(--type-body-sm);
+  color: var(--on-surface-variant);
+}
+
 /* 표 위 도구 — 라벨 스캔 칸과 「잔량으로 채우기」. */
 .ors-toolbar {
   display: flex;
@@ -6649,6 +6681,19 @@ dl.filter-bar.approval-inbox-detail-facts {
 .ors-confirm-group-title {
   margin: 0;
   font: var(--type-label-lg);
+  color: var(--on-surface-variant);
+}
+
+.ors-confirm-receipts {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-2);
+}
+
+.ors-confirm-hint {
+  font: var(--type-body-sm);
   color: var(--on-surface-variant);
 }
 

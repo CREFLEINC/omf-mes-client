@@ -73,6 +73,8 @@ interface LotEditorProps {
   lineNo: number;
   part: LotPart;
   lot: LotDraft;
+  /** 정량분 라벨에서 파생한 값이다 — 번호 칸만 두고 그 사실을 밝힌다. 치면 사람의 값이 된다. */
+  derived: boolean;
   error: string | null;
   reasonOptions: SelectOption[];
   isLocked: boolean;
@@ -87,6 +89,7 @@ const LotEditor = ({
   lineNo,
   part,
   lot,
+  derived,
   error,
   reasonOptions,
   isLocked,
@@ -99,26 +102,40 @@ const LotEditor = ({
       placeholder={t.lineTable.lotNoPlaceholder}
       value={lot.lotNo}
       error={error ?? undefined}
+      helperText={derived ? t.lineTable.lotDerivedNote : undefined}
       disabled={isLocked}
       autoComplete="off"
       onChange={(event) => {
         onChange({ lotNo: event.target.value });
       }}
     />
-    <Checkbox
-      checked={lot.labelMissing}
-      disabled={isLocked}
-      aria-label={t.lineTable.lotMissingLabel(lineNo, part)}
-      onChange={(event) => {
-        onChange({
-          labelMissing: event.target.checked,
-          ...(event.target.checked ? {} : { reasonCode: '' }),
-        });
-      }}
-    >
-      {t.lineTable.lotMissing}
-    </Checkbox>
-    {lot.labelMissing && lot.lotNo.trim() === '' && (
+    {derived ? (
+      <Button
+        variant="text"
+        size="sm"
+        disabled={isLocked}
+        onClick={() => {
+          onChange({ lotNo: '', labelMissing: true });
+        }}
+      >
+        {t.actions.excessLotAsMissing}
+      </Button>
+    ) : (
+      <Checkbox
+        checked={lot.labelMissing}
+        disabled={isLocked}
+        aria-label={t.lineTable.lotMissingLabel(lineNo, part)}
+        onChange={(event) => {
+          onChange({
+            labelMissing: event.target.checked,
+            ...(event.target.checked ? {} : { reasonCode: '' }),
+          });
+        }}
+      >
+        {t.lineTable.lotMissing}
+      </Checkbox>
+    )}
+    {!derived && lot.labelMissing && lot.lotNo.trim() === '' && (
       <Select
         size="sm"
         aria-label={t.lineTable.lotReasonLabel(lineNo, part)}
@@ -202,6 +219,7 @@ export const buildSplitLineColumns = ({
             lineNo={row.view.line.lineNo}
             part={row.part}
             lot={lot}
+            derived={row.part === 'excess' && row.view.excessLotDerived}
             error={error}
             reasonOptions={lotReasonOptions}
             isLocked={isLocked}
@@ -420,6 +438,14 @@ export const SplitLineTable = ({
           ))}
         </dl>
       </header>
+
+      <div className="ors-section-head">
+        <h3 className="ors-section-title">{t.form.linesTitle}</h3>
+        {/* 두 낱말의 뜻을 표가 있는 자리에서 바로 읽는다 — 절차를 몰라도 표가 무엇을 가르는지 안다. */}
+        <p className="ors-legend">
+          {t.lineTable.legend} {t.notes.iqcByItem}
+        </p>
+      </div>
 
       {toolbar}
 

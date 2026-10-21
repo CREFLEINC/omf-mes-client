@@ -1,4 +1,11 @@
-import { Button, EmptyState, SkeletonText, TextField } from '@crefle/web-ui';
+import {
+  Button,
+  EmptyState,
+  SkeletonText,
+  Stepper,
+  TextField,
+  type StepperItem,
+} from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -48,13 +55,14 @@ import {
   useUomOptions,
   type LookupResult,
 } from './lookups';
+import { guideHint, guideStatuses, guideStep, GUIDE_STEPS } from './guide';
 import { applyLotScan } from './lot-scan';
-import { ModeActions } from './mode-actions';
 import { PageNav } from './page-nav';
 import { toPageView } from './pagination';
 import { PoFilterBar } from './po-filter-bar';
 import { PoTable } from './po-table';
 import { ReceiptHeaderForm } from './receipt-header-form';
+import { RegisterActions } from './register-actions';
 import { RegisterConfirmDialog } from './register-confirm-dialog';
 import {
   useCodeValues,
@@ -62,8 +70,8 @@ import {
   usePurchaseOrders,
   useSplitRegister,
 } from './queries';
-import { toSplitLines, type ItemCodeResolver } from './split-calc';
-import { includesExcess, toSplitParts, toSplitRequest } from './split-request';
+import { hasLineError, toSplitLines, type ItemCodeResolver } from './split-calc';
+import { toSplitParts, toSplitRequest } from './split-request';
 import { SplitLineTable } from './split-line-table';
 import {
   EMPTY_HEADER_DRAFT,
@@ -75,7 +83,7 @@ import {
   type SelectOption,
   type SplitMode,
 } from './types';
-import { lineErrorReason, modeBlockReason, validateHeader } from './validation';
+import { lineErrorReason, registerBlockReason, validateHeader } from './validation';
 
 const t = messages.overReceiptSplit;
 
@@ -241,8 +249,8 @@ export const OverReceiptSplitScreen = () => {
   /** 확인을 기다리는 조작. `null`이면 확인 창이 없다 */
   const [pendingDiscard, setPendingDiscard] = useState<DiscardIntent | null>(null);
 
-  /** 확인 창을 기다리는 등록 갈래(④). 검증을 통과한 뒤에만 선다. */
-  const [pendingSubmit, setPendingSubmit] = useState<SplitMode | null>(null);
+  /** 확인 창이 열려 있는가(④). 검증을 통과한 뒤에만 선다 — 갈래는 창 안에서 고른 전표로 정해진다. */
+  const [isConfirmOpen, setConfirmOpen] = useState(false);
 
   /** 라벨 스캔 칸. 결과 한 줄은 칸 아래 산다. */
   const scanRef = useRef<HTMLInputElement>(null);
@@ -383,12 +391,26 @@ export const OverReceiptSplitScreen = () => {
     setDrafts((prev) => setDraftQty(prev, purchaseOrderLineId, text));
   };
 
+  /**
+   * LOT 칸. 「라벨 없음」을 켜면 대체 사유를 **첫 선택지로 미리 채운다** — 사유 없이는 보낼 수 없어 어차피
+   * 하나를 골라야 하고, 가장 흔한 사유(라벨 없음)가 첫째다. 다른 사유면 바꾼다.
+   */
   const changeLot = (
     purchaseOrderLineId: number,
     part: LotPart,
     patch: Partial<LotDraft>,
   ): void => {
-    setDrafts((prev) => setDraftLot(prev, purchaseOrderLineId, part, patch));
+    const defaultReason = lotReasonOptions[0]?.value ?? '';
+    setDrafts((prev) => {
+      const draft = readDraft(prev, purchaseOrderLineId);
+      const current = part === 'normal' ? draft.lot : draft.excessLot;
+      const filled =
+        patch.labelMissing === true && (patch.reasonCode ?? current.reasonCode) === ''
+          ? { ...patch, reasonCode: defaultReason }
+          : patch;
+
+      return setDraftLot(prev, purchaseOrderLineId, part, filled);
+    });
   };
 
   /** 잔량이 남은 줄 중 아직 비운 줄에 잔량을 넣는다 — 「전부 왔다」가 이 화면의 흔한 출발점이다. */
@@ -426,8 +448,8 @@ export const OverReceiptSplitScreen = () => {
    * 등록 단추 — **보내기 전에 두 겹을 본다**(머리 입력 · 고치지 않은 줄). 통과하면 확인 창을 연다(④).
    * 막히면 **요청을 만들지 않는다** — 되돌릴 수 없는 쓰기라 「보내 보고 서버가 막아 주기」를 기대할 수 없다.
    */
-  const requestSubmit = (mode: SplitMode): void => {
-    const headerErrors = validateHeader(header, { needsExceptionType: includesExcess(mode) });
+  const requestSubmit = (): void => {
+    const headerErrors = validateHeader(header, { needsExceptionType: counts.excessLines > 0 });
     const lineBlocked = lineErrorReason(splitLines) !== null;
 
     setLocalFieldErrors(headerErrors);
@@ -435,7 +457,7 @@ export const OverReceiptSplitScreen = () => {
 
     if (Object.keys(headerErrors).length > 0 || lineBlocked) return;
 
-    setPendingSubmit(mode);
+    setConfirmOpen(true);
   };
 
   /** 확인 창의 「등록」. 요청을 만들어 보낸다. */
@@ -524,7 +546,9 @@ export const OverReceiptSplitScreen = () => {
             }
           }}
         />
-        {scanNote !== null && (
+        {scanNote === null ? (
+          <span className="field-note">{t.scan.hint}</span>
+        ) : (
           <span className="field-note" role="status">
             {scanNote}
           </span>
@@ -606,14 +630,40 @@ export const OverReceiptSplitScreen = () => {
     );
   };
 
-  const receiptCount = (counts.normalLines > 0 ? 1 : 0) + (counts.excessLines > 0 ? 1 : 0);
+  /**
+   * 단계 안내(`guide.ts`) — 화면 상태에서 지금 할 일을 정한다. 머리 입력은 **지금** 검증해 보되 붉은 글씨는
+   * 내지 않는다(그것은 등록을 누른 뒤의 일). 단계는 안내일 뿐 아무 단추도 잠그지 않는다.
+   */
+  const step = guideStep({
+    hasOrder: registerTarget !== null,
+    counts,
+    hasLineError: hasLineError(splitLines),
+    headerErrorCount: Object.keys(
+      validateHeader(header, { needsExceptionType: counts.excessLines > 0 }),
+    ).length,
+  });
+  const statuses = guideStatuses(step);
+  const guideItems: StepperItem[] = GUIDE_STEPS.map((key) => ({
+    label: t.guide.steps[key],
+    status: statuses[key],
+  }));
+
+  const guide = (
+    <nav className="ors-guide" aria-label={t.guide.label}>
+      <Stepper size="sm" steps={guideItems} />
+      <p className="ors-guide-hint" aria-live="polite">
+        {guideHint(step)}
+      </p>
+    </nav>
+  );
 
   /**
    * 등록 구획. **라인 표가 실제로 그려질 때만 낸다** — 라인을 못 받았는데 등록 폼을 열면
-   * 무엇을 등록하는지 없는 채로 입력만 받게 된다.
+   * 무엇을 등록하는지 없는 채로 입력만 받게 된다. 초과분 정보는 **초과분이 갈린 뒤에만** 선다.
    */
   const registerPane = (purchaseOrder: PoView): ReactNode => (
     <>
+      <h3 className="ors-section-title">{t.form.headerTitle}</h3>
       <ReceiptHeaderForm
         values={header}
         fieldErrors={fieldErrors}
@@ -621,14 +671,19 @@ export const OverReceiptSplitScreen = () => {
         onChange={changeHeader}
       />
 
-      <ExcessForm
-        values={header}
-        fieldErrors={fieldErrors}
-        isSaving={register.isSaving}
-        exceptionTypeOptions={exceptionTypeOptions}
-        exceptionTypeState={codeStateOf(exceptionTypes)}
-        onChange={changeHeader}
-      />
+      {counts.excessLines > 0 && (
+        <>
+          <h3 className="ors-section-title">{t.form.excessTitle}</h3>
+          <ExcessForm
+            values={header}
+            fieldErrors={fieldErrors}
+            isSaving={register.isSaving}
+            exceptionTypeOptions={exceptionTypeOptions}
+            exceptionTypeState={codeStateOf(exceptionTypes)}
+            onChange={changeHeader}
+          />
+        </>
+      )}
 
       {/* 저장 실패는 **세 갈래**다(계획 결정 9) — 검증 실패(400)·권한 없음(403)·응답 없음(네트워크). */}
       <SaveErrorBanner error={register.error} />
@@ -640,36 +695,31 @@ export const OverReceiptSplitScreen = () => {
 
       {lineBlockReason !== null && <p className="field-error">{lineBlockReason}</p>}
 
-      {/* 누르기 전에 무엇이 몇 건 만들어지는지 — 세 단추의 뜻이 이 숫자에서 읽힌다. */}
+      {/* 누르기 전에 무엇이 만들어지는지 — 「등록」 하나가 무엇을 하는지 이 줄에서 읽힌다. */}
       <p className="ors-totals" aria-live="polite">
-        {receiptCount === 0 ? (
+        {counts.normalLines + counts.excessLines === 0 ? (
           t.totals.none
         ) : (
           <>
-            <span>{t.totals.normalLines(counts.normalLines)}</span>
-            <span>{t.totals.excessLines(counts.excessLines)}</span>
-            <strong>{t.totals.receipts(receiptCount)}</strong>
+            <span>{t.totals.label}:</span>
+            {counts.normalLines > 0 && <strong>{t.totals.normal(counts.normalLines)}</strong>}
+            {counts.excessLines > 0 && <strong>{t.totals.excess(counts.excessLines)}</strong>}
           </>
         )}
       </p>
 
-      <ModeActions
-        blockReasons={{
-          BOTH: modeBlockReason('BOTH', counts),
-          NORMAL_ONLY: modeBlockReason('NORMAL_ONLY', counts),
-          EXCESS_ONLY: modeBlockReason('EXCESS_ONLY', counts),
-        }}
+      <RegisterActions
+        blockReason={registerBlockReason(counts)}
         isSaving={register.isSaving}
-        savingMode={register.isSaving ? savingMode : null}
         onSubmit={requestSubmit}
         onCancel={() => {
           requestIntent({ kind: 'cancel' });
         }}
       />
 
-      {pendingSubmit !== null && (
+      {isConfirmOpen && (
         <RegisterConfirmDialog
-          mode={pendingSubmit}
+          counts={counts}
           purchaseOrderNo={purchaseOrder.purchaseOrderNo}
           supplierName={describeReference(toReference(suppliers, purchaseOrder.supplierId))}
           header={header}
@@ -678,13 +728,12 @@ export const OverReceiptSplitScreen = () => {
           rows={splitLines.filter((row) => row.split !== null)}
           itemLabelOf={(itemId) => describeReference(items.of(itemId))}
           uomLabelOf={(uomId) => describeReference(toReference(uoms, uomId))}
-          onConfirm={() => {
-            const mode = pendingSubmit;
-            setPendingSubmit(null);
+          onConfirm={(mode) => {
+            setConfirmOpen(false);
             submit(purchaseOrder, mode);
           }}
           onClose={() => {
-            setPendingSubmit(null);
+            setConfirmOpen(false);
           }}
         />
       )}
@@ -758,6 +807,7 @@ export const OverReceiptSplitScreen = () => {
          * 넘치면 이 구획이 통째로 스크롤한다(등록 단추가 표 아래에 있어 표만 스크롤하면 단추가 멀어진다).
          */}
         <section className="pane po-board-pane po-board-scroll" aria-label={t.panes.lines}>
+          {guide}
           {linePane()}
 
           {registerTarget !== null && (

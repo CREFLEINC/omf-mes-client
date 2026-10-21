@@ -412,6 +412,23 @@ describe('SplitLineTable — LOT 줄', () => {
     expect(lotInput(1, 'normal')).toBeInTheDocument();
   });
 
+  /* 정량분 라벨에서 파생한 초과분 LOT — 번호 칸과 그 사실, 「라벨 없음으로」만 있고 확인칸·사유는 없다. */
+  it('파생된 초과분 LOT 은 번호와 사실을 보이고 라벨 없음으로 바꿀 수 있다', async () => {
+    const { onChangeLot, user } = renderTable({
+      rows: rowsWith({ 9401: '66' }, { 9401: { normal: { lotNo: LABEL_9301 } } }),
+    });
+
+    expect(lotInput(1, 'excess')).toHaveValue(`${LABEL_9301}-OVER`);
+    expect(screen.getByText(t.lineTable.lotDerivedNote)).toBeInTheDocument();
+    expect(
+      screen.queryByLabelText(t.lineTable.lotMissingLabel(1, 'excess')),
+    ).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: t.actions.excessLotAsMissing }));
+
+    expect(onChangeLot).toHaveBeenCalledWith(9401, 'excess', { lotNo: '', labelMissing: true });
+  });
+
   it('초안의 번호가 칸에 그대로 보인다', () => {
     renderTable({ rows: rowsWith({ 9401: '10' }, { 9401: { normal: { lotNo: LABEL_9301 } } }) });
 

@@ -8,9 +8,10 @@ import { EMPTY_HEADER_DRAFT, type SplitMode } from './types';
 import {
   DELIVERY_NOTE_NO_MAX,
   RECEIPT_FORM_FIELDS,
-  canSubmit,
-  modeBlockReason,
+  defaultSelection,
   lineErrorReason,
+  modeFor,
+  registerBlockReason,
   validateHeader,
 } from './validation';
 
@@ -19,89 +20,31 @@ const t = messages.overReceiptSplit;
 const counts = (normalLines: number, excessLines: number) => ({ normalLines, excessLines });
 
 /**
- * **계약의 조건부 필수를 화면이 막는다.**
- *
- * 계약은 「`mode`가 `EXCESS_ONLY`가 아니면 `normal` 필수」를 설명으로만 적었고 `oneOf`로
- * 표현하지 않았다. 목 서버도 어긋난 조합을 201로 통과시킨다(실측) — 막는 곳은 화면뿐이다.
+ * **계약의 조건부 필수를 화면이 막는다** — 「`mode`가 `EXCESS_ONLY`가 아니면 `normal` 필수」. 사람은
+ * 갈래를 고르지 않는다. 수량이 있는 전표가 기본으로 켜지고, 켜진 전표가 갈래가 된다.
  */
-describe('canSubmit — 모드별 조건부 필수', () => {
-  /* **M27** — 초과분이 없는데 분리 등록을 허용하면 `excess` 없는 `BOTH`가 나간다. */
-  it('분리 등록은 정량분과 초과분이 모두 있어야 한다', () => {
-    expect(canSubmit('BOTH', counts(1, 1))).toBe(true);
-    expect(canSubmit('BOTH', counts(1, 0))).toBe(false);
-    expect(canSubmit('BOTH', counts(0, 1))).toBe(false);
-    expect(canSubmit('BOTH', counts(0, 0))).toBe(false);
+describe('defaultSelection · modeFor — 만들어지는 전표가 갈래를 정한다', () => {
+  it('수량이 있는 전표는 모두 켜진 채로 시작한다', () => {
+    expect(defaultSelection(counts(1, 1))).toEqual({ normal: true, excess: true });
+    expect(defaultSelection(counts(1, 0))).toEqual({ normal: true, excess: false });
+    expect(defaultSelection(counts(0, 1))).toEqual({ normal: false, excess: true });
+    expect(defaultSelection(counts(0, 0))).toEqual({ normal: false, excess: false });
   });
 
-  /* **M28** — 정량분이 하나도 없는데 「정량분만 저장」이 열리면 빈 `normal`이 나간다. */
-  it('정량분만 저장은 정량분이 있어야 한다', () => {
-    expect(canSubmit('NORMAL_ONLY', counts(1, 0))).toBe(true);
-    /* 초과분이 함께 있어도 정량분만 저장할 수 있다 — 초과분을 받지 않기로 한 경우다. */
-    expect(canSubmit('NORMAL_ONLY', counts(1, 1))).toBe(true);
-    expect(canSubmit('NORMAL_ONLY', counts(0, 1))).toBe(false);
-    expect(canSubmit('NORMAL_ONLY', counts(0, 0))).toBe(false);
-  });
-
-  it('초과분만 저장은 초과분이 있어야 한다', () => {
-    expect(canSubmit('EXCESS_ONLY', counts(0, 1))).toBe(true);
-    expect(canSubmit('EXCESS_ONLY', counts(1, 1))).toBe(true);
-    expect(canSubmit('EXCESS_ONLY', counts(1, 0))).toBe(false);
-    expect(canSubmit('EXCESS_ONLY', counts(0, 0))).toBe(false);
-  });
-
-  /* **M29** — 라인이 한 줄도 없으면 어느 갈래로도 보낼 수 없다(계약: `lines` 최소 1행). */
-  it('라인이 하나도 없으면 세 갈래가 모두 막힌다', () => {
-    const modes: SplitMode[] = ['BOTH', 'NORMAL_ONLY', 'EXCESS_ONLY'];
-
-    for (const mode of modes) {
-      expect(canSubmit(mode, counts(0, 0))).toBe(false);
-    }
+  it('켜진 전표 조합이 곧 갈래다', () => {
+    expect(modeFor({ normal: true, excess: true })).toBe('BOTH');
+    expect(modeFor({ normal: true, excess: false })).toBe('NORMAL_ONLY');
+    expect(modeFor({ normal: false, excess: true })).toBe('EXCESS_ONLY');
+    expect(modeFor({ normal: false, excess: false })).toBeNull();
   });
 });
 
-describe('modeBlockReason — 왜 막혔는지', () => {
-  /* 짝 방향 — 보낼 수 있는 상태에서는 사유를 내지 않는다. 늘 사유를 내면 늘 잠긴 것처럼 보인다. */
-  it('보낼 수 있으면 사유가 없다', () => {
-    expect(modeBlockReason('BOTH', counts(1, 1))).toBeNull();
-    expect(modeBlockReason('NORMAL_ONLY', counts(2, 0))).toBeNull();
-    expect(modeBlockReason('EXCESS_ONLY', counts(0, 3))).toBeNull();
-  });
-
-  /*
-   * 아직 아무 수량도 넣지 않은 상태는 **세 버튼이 함께 잠긴다.** 버튼마다 「정량분이 없다」
-   * 「초과분이 없다」를 따로 말하면 같은 사정을 세 번 되풀이하게 된다.
-   */
-  it('수량을 하나도 넣지 않았으면 세 버튼이 같은 사유를 낸다', () => {
-    expect(modeBlockReason('BOTH', counts(0, 0))).toBe(t.actionReasons.noQty);
-    expect(modeBlockReason('NORMAL_ONLY', counts(0, 0))).toBe(t.actionReasons.noQty);
-    expect(modeBlockReason('EXCESS_ONLY', counts(0, 0))).toBe(t.actionReasons.noQty);
-  });
-
-  /* 분리 등록이 막히는 두 갈래는 **사용자가 할 조치가 다르다** — 다른 버튼을 가리킨다. */
-  it('분리 등록은 어느 쪽이 없는지에 따라 다른 버튼을 가리킨다', () => {
-    expect(modeBlockReason('BOTH', counts(2, 0))).toBe(t.actionReasons.bothNeedsExcess);
-    expect(modeBlockReason('BOTH', counts(0, 2))).toBe(t.actionReasons.bothNeedsNormal);
-  });
-
-  it('한쪽만 저장하는 두 버튼은 자기 몫이 없다고 말한다', () => {
-    expect(modeBlockReason('NORMAL_ONLY', counts(0, 2))).toBe(
-      t.actionReasons.normalOnlyNeedsNormal,
-    );
-    expect(modeBlockReason('EXCESS_ONLY', counts(2, 0))).toBe(
-      t.actionReasons.excessOnlyNeedsExcess,
-    );
-  });
-
-  /* 규범 4-5 — 사유는 그 버튼의 이름으로 시작한다. 시각적으로 끊겨도 소유가 복원된다. */
-  it('버튼별 사유가 그 버튼 이름으로 시작한다', () => {
-    expect(t.actionReasons.bothNeedsExcess.startsWith(t.actions.registerBoth)).toBe(true);
-    expect(t.actionReasons.bothNeedsNormal.startsWith(t.actions.registerBoth)).toBe(true);
-    expect(t.actionReasons.normalOnlyNeedsNormal.startsWith(t.actions.registerNormalOnly)).toBe(
-      true,
-    );
-    expect(t.actionReasons.excessOnlyNeedsExcess.startsWith(t.actions.registerExcessOnly)).toBe(
-      true,
-    );
+describe('registerBlockReason — 등록 단추가 잠기는 사유', () => {
+  it('실릴 줄이 하나도 없을 때만 잠긴다', () => {
+    expect(registerBlockReason(counts(0, 0))).toBe(t.actionReasons.noQty);
+    expect(registerBlockReason(counts(1, 0))).toBeNull();
+    expect(registerBlockReason(counts(0, 1))).toBeNull();
+    expect(registerBlockReason(counts(1, 1))).toBeNull();
   });
 });
 
@@ -145,15 +88,25 @@ describe('validateHeader — 머리 입력', () => {
   });
 
   /* **M32** — 짝 제약. 계약이 「`exceptionTypeCode`가 있으면 필수」로 정했다. */
-  it('예외 유형을 골랐으면 초과 사유가 필수다', () => {
-    expect(validateHeader(header({ exceptionTypeCode: 'SAMPLE_EXCEPTION' }))).toEqual({
+  const EXCESS = { needsExceptionType: true };
+
+  it('초과분이 실릴 때 예외 유형을 골랐으면 초과 사유가 필수다', () => {
+    expect(validateHeader(header({ exceptionTypeCode: 'SAMPLE_EXCEPTION' }), EXCESS)).toEqual({
       exceptionReason: t.errors.exceptionReasonRequired,
     });
   });
 
+  /* 초과분 전표에만 실리는 값이다 — 초과분이 없으면 기본 유형이 서 있어도 사유를 묻지 않는다. */
+  it('초과분이 실리지 않으면 예외 유형·사유를 보지 않는다', () => {
+    expect(validateHeader(header({ exceptionTypeCode: 'SAMPLE_EXCEPTION' }))).toEqual({});
+  });
+
   it('공백만 친 초과 사유는 넣지 않은 것으로 본다', () => {
     expect(
-      validateHeader(header({ exceptionTypeCode: 'SAMPLE_EXCEPTION', exceptionReason: '   ' })),
+      validateHeader(
+        header({ exceptionTypeCode: 'SAMPLE_EXCEPTION', exceptionReason: '   ' }),
+        EXCESS,
+      ),
     ).toEqual({ exceptionReason: t.errors.exceptionReasonRequired });
   });
 
@@ -161,6 +114,7 @@ describe('validateHeader — 머리 입력', () => {
     expect(
       validateHeader(
         header({ exceptionTypeCode: 'SAMPLE_EXCEPTION', exceptionReason: '합성 사유' }),
+        EXCESS,
       ),
     ).toEqual({});
   });
@@ -168,6 +122,12 @@ describe('validateHeader — 머리 입력', () => {
   /* 그 반대 — 유형 없이 사유만 채우는 것은 막지 않는다. 계약이 사유를 선택으로 두었다. */
   it('예외 유형 없이 사유만 채우는 것은 오류가 아니다', () => {
     expect(validateHeader(header({ exceptionReason: '초과가 온 사정' }))).toEqual({});
+  });
+
+  it('초과분이 실리는데 유형이 없으면 유형만 묻는다', () => {
+    expect(validateHeader(header(), EXCESS)).toEqual({
+      exceptionTypeCode: t.errors.exceptionTypeRequired,
+    });
   });
 
   /* 초과분 줄은 발주에 묶이지 않아 서버가 예외 유형을 요구한다 — 초과분이 실리는 갈래에서만 필수다. */
@@ -186,11 +146,14 @@ describe('validateHeader — 머리 입력', () => {
   /* 여러 칸이 동시에 잘못됐으면 **전부** 낸다 — 하나씩 고치게 하면 저장을 여러 번 눌러야 한다. */
   it('여러 오류를 한 번에 낸다', () => {
     expect(
-      validateHeader({
-        ...EMPTY_HEADER_DRAFT,
-        deliveryNoteNo: 'A'.repeat(DELIVERY_NOTE_NO_MAX + 1),
-        exceptionTypeCode: 'SAMPLE_EXCEPTION',
-      }),
+      validateHeader(
+        {
+          ...EMPTY_HEADER_DRAFT,
+          deliveryNoteNo: 'A'.repeat(DELIVERY_NOTE_NO_MAX + 1),
+          exceptionTypeCode: 'SAMPLE_EXCEPTION',
+        },
+        EXCESS,
+      ),
     ).toEqual({
       receiptDatetime: t.errors.receiptDatetimeRequired,
       deliveryNoteNo: t.errors.deliveryNoteNoTooLong(DELIVERY_NOTE_NO_MAX),
@@ -247,15 +210,15 @@ describe('lineErrorReason — 고치지 않은 줄', () => {
   const rowsWith = (texts: Record<number, string>, lotNo?: string) =>
     toSplitLines(purchaseOrderLineFixtures, draftsWith(texts, lotNo));
 
-  it('수량에 사유가 붙은 줄이 있으면 등록을 막을 사유를 낸다', () => {
-    expect(lineErrorReason(rowsWith({ 9401: '0' }))).toBe(t.errors.lineInvalidBlocked);
+  it('수량에 사유가 붙은 줄이 있으면 그 줄번호를 짚어 막는다', () => {
+    expect(lineErrorReason(rowsWith({ 9401: '0' }))).toBe(t.errors.lineInvalidBlocked('1'));
     expect(lineErrorReason(rowsWith({ 9401: '66', 9402: 'abc' }))).toBe(
-      t.errors.lineInvalidBlocked,
+      t.errors.lineInvalidBlocked('2'),
     );
   });
 
   it('LOT 에 사유가 붙은 줄이 있어도 막는다', () => {
-    expect(lineErrorReason(rowsWith({ 9401: '66' }, ''))).toBe(t.errors.lineInvalidBlocked);
+    expect(lineErrorReason(rowsWith({ 9401: '66' }, ''))).toBe(t.errors.lineInvalidBlocked('1'));
   });
 
   it('정상 입력과 빈 칸에는 사유가 없다', () => {

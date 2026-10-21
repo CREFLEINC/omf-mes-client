@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 
 import { createDrafts, setDraftLot, setDraftQty, type LineDrafts } from './line-draft';
 import {
+  DERIVED_EXCESS_LOT_SUFFIX,
   FAR_OVER_ORDERED_TIMES,
   hasLineError,
   normalLimit,
@@ -210,12 +211,39 @@ describe('toSplitLines — LOT 사유는 그 쪽이 실릴 때만 센다', () =>
     expect(hasLineError(rows)).toBe(true);
   });
 
-  it('초과분이 갈리면 초과분 LOT 도 따로 본다', () => {
+  /* 정량분 라벨이 있으면 초과분 LOT 은 그 라벨에서 파생된다 — 사람이 번호를 하나 더 만들지 않는다. */
+  it('초과분이 갈리면 초과분 LOT 을 정량분 라벨에서 파생한다', () => {
     const drafts = setDraftLot(draftsFor(lines, { 9401: '66' }), 9401, 'normal', { lotNo: LABEL });
     const rows = toSplitLines(lines, drafts, codeOf);
 
     expect(rows[0]?.lotError).toBeNull();
+    expect(rows[0]?.excessLotError).toBeNull();
+    expect(rows[0]?.excessLotDerived).toBe(true);
+    expect(rows[0]?.excessLot).toEqual({
+      lotNo: `${LABEL}${DERIVED_EXCESS_LOT_SUFFIX}`,
+      labelMissing: true,
+      reasonCode: '',
+    });
+  });
+
+  it('정량분 라벨이 없으면 초과분 LOT 을 따로 받는다', () => {
+    const rows = toSplitLines(lines, draftsFor(lines, { 9401: '66' }), codeOf);
+
+    expect(rows[0]?.excessLotDerived).toBe(false);
     expect(rows[0]?.excessLotError).toBe(t.errors.lotRequired);
+  });
+
+  it('초과분 LOT 에 손대면 파생하지 않는다', () => {
+    const drafts = setDraftLot(
+      setDraftLot(draftsFor(lines, { 9401: '66' }), 9401, 'normal', { lotNo: LABEL }),
+      9401,
+      'excess',
+      { labelMissing: true, reasonCode: 'NO_LABEL' },
+    );
+    const rows = toSplitLines(lines, drafts, codeOf);
+
+    expect(rows[0]?.excessLotDerived).toBe(false);
+    expect(rows[0]?.excessLot.reasonCode).toBe('NO_LABEL');
   });
 
   /* 서버가 같은 공장의 두 전표에 같은 LOT 번호를 허용하지 않는다(`uq_lot`) — 초과분 쪽에 사유를 붙인다. */

@@ -27,11 +27,10 @@ export const overReceiptSplit: Translated<typeof ko.overReceiptSplit> = {
     goFirstPage: 'Về trang đầu',
     select: 'Chọn',
     deselect: 'Bỏ chọn',
-    registerBoth: 'Đăng ký tách',
-    registerNormalOnly: 'Chỉ lưu phần định lượng',
-    registerExcessOnly: 'Chỉ lưu phần vượt',
+    register: 'Đăng ký nhập hàng',
     confirmRegister: 'Đăng ký',
     backToEdit: 'Quay lại',
+    excessLotAsMissing: 'Chuyển thành không có nhãn',
     discardDraft: 'Bỏ nội dung đã nhập',
     keepEditing: 'Nhập tiếp',
     fillRemaining: 'Điền bằng số còn lại',
@@ -46,14 +45,22 @@ export const overReceiptSplit: Translated<typeof ko.overReceiptSplit> = {
   actionReasons: {
     noQty:
       'Chưa nhập số lượng đến nào. Hãy nhập số lượng đến lần này ở các dòng thì mới đăng ký được.',
-    bothNeedsExcess:
-      'Đăng ký tách không có phần vượt nên không có gì để tách. Hãy đăng ký bằng 「Chỉ lưu phần định lượng」.',
-    bothNeedsNormal:
-      'Đăng ký tách không có phần định lượng nên không có gì để tách. Hãy đăng ký bằng 「Chỉ lưu phần vượt」.',
-    normalOnlyNeedsNormal:
-      'Chỉ lưu phần định lượng không có phần định lượng nào để nhận. Khi có số lượng đến nằm trong số lượng còn lại và dung sai thì dùng được nút này.',
-    excessOnlyNeedsExcess:
-      'Chỉ lưu phần vượt không có phần vượt nào. Khi có số lượng đến vượt quá hạn mức định lượng thì dùng được nút này.',
+  },
+  guide: {
+    label: 'Các bước',
+    steps: {
+      select: 'Chọn đơn',
+      lines: 'Số lượng đến · LOT',
+      info: 'Thông tin nhập hàng',
+      register: 'Đăng ký',
+    },
+    hints: {
+      select: 'Hãy bấm vào đơn đặt hàng của vật tư vừa đến ở danh sách bên trái.',
+      lines:
+        'Hãy quét nhãn hoặc nhập số lượng vào ô 「Đến lần này」. Phần đến nhiều hơn đơn đặt sẽ được màn hình tự tách thành phần vượt.',
+      info: 'Hãy kiểm tra thời điểm nhập hàng và nếu có phần vượt thì ghi lý do vượt.',
+      register: 'Bấm 「Đăng ký nhập hàng」 để xem các phiếu sẽ tạo rồi đăng ký.',
+    },
   },
   loading: {
     purchaseOrders: 'Đang tải danh sách đơn đặt hàng',
@@ -93,10 +100,15 @@ export const overReceiptSplit: Translated<typeof ko.overReceiptSplit> = {
     lotNoPlaceholder: 'Quét nhãn hoặc nhập số LOT',
     lotMissing: 'Không có nhãn',
     lotReasonPlaceholder: 'Chọn lý do',
+    lotDerivedNote:
+      'Số này được tạo từ nhãn phần định lượng. Nếu kiện phần vượt có nhãn riêng, hãy quét nhãn đó hoặc nhập số.',
+    legend:
+      'Phần định lượng là phần nhận trong số lượng đặt và dung sai, được ghi vào đơn đặt hàng. Phần vượt là phần đến nhiều hơn thế, thành phiếu riêng và sau đó được quyết toán bằng 「Đăng ký P/O vật tư mới」.',
   },
   scan: {
     label: 'Quét nhãn',
     placeholder: 'Hãy quét nhãn LOT của nhà cung cấp',
+    hint: 'Không có máy quét thì nhập số lượng vào ô 「Đến lần này」, rồi ở dòng LOT nhập số hoặc chọn 「Không có nhãn」.',
     added: (lineNo: number, qty: string, part: 'normal' | 'excess'): string =>
       `Đã đưa vào dòng ${String(lineNo)} — số lượng ${qty} · LOT ${part === 'normal' ? 'phần định lượng' : 'phần vượt'}`,
     notFound: (itemCode: string): string => `Mặt hàng 「${itemCode}」 không có trong đơn này.`,
@@ -115,10 +127,17 @@ export const overReceiptSplit: Translated<typeof ko.overReceiptSplit> = {
     expectedReceiptDate: 'Ngày dự kiến nhập kho',
   },
   totals: {
-    normalLines: (count: number): string => `${String(count)} dòng định lượng`,
-    excessLines: (count: number): string => `${String(count)} dòng vượt`,
-    receipts: (count: number): string => `${String(count)} phiếu`,
+    label: 'Phiếu sẽ tạo',
+    normal: (lines: number): string => `1 phiếu phần định lượng (${String(lines)} dòng)`,
+    excess: (lines: number): string => `1 phiếu phần vượt (${String(lines)} dòng)`,
     none: 'Chưa nhập số lượng đến nào',
+  },
+  form: {
+    linesTitle: 'Số lượng đến và LOT',
+    headerTitle: 'Thông tin nhập hàng',
+    excessTitle: 'Thông tin phần vượt',
+    optional: '(tùy chọn)',
+    exceptionReasonPlaceholder: 'VD: nhà cung cấp giao theo đơn vị đóng gói nên dư',
   },
   filters: {
     all: 'Tất cả',
@@ -181,21 +200,18 @@ export const overReceiptSplit: Translated<typeof ko.overReceiptSplit> = {
       `Mã mặt hàng trên nhãn khác với mặt hàng của dòng này (${itemCode}).`,
     lotDuplicate:
       'Không thể dùng cùng một số LOT cho phần định lượng và phần vượt. Phần vượt phải là LOT khác.',
-    lineInvalidBlocked:
-      'Còn dòng chưa sửa nên chưa đăng ký. Hãy sửa các ô số lượng·LOT đang kèm lý do rồi đăng ký lại.',
+    lineInvalidBlocked: (lineNos: string): string =>
+      `Dòng ${lineNos} còn chỗ cần sửa nên chưa đăng ký. Hãy sửa các ô số lượng·LOT đang kèm lý do rồi đăng ký lại.`,
   },
   warnings: {
     qtyFarOverOrdered: (times: string): string =>
       `Gấp ${times} lần số lượng đặt. Hãy kiểm tra lại số chữ số.`,
   },
   notes: {
-    businessDateDerived:
-      'Ngày làm việc được gửi kèm theo ngày của thời điểm nhập hàng. Nếu vật tư nhận ban đêm cần ngày làm việc khác, hãy báo người phụ trách.',
     headerSharedByBoth:
-      'Thời điểm nhập hàng, số phiếu giao hàng và ghi chú được ghi giống nhau lên mọi phiếu được tạo.',
+      'Thời điểm nhập hàng, số phiếu giao hàng và ghi chú được ghi giống nhau lên mọi phiếu được tạo; ngày làm việc là ngày của thời điểm nhập hàng.',
     excessOnlyFields: 'Loại ngoại lệ và lý do vượt chỉ được ghi lên phiếu phần vượt.',
-    iqcByItem:
-      'Việc có thuộc diện kiểm tra đầu vào hay không do máy chủ quyết định theo thông tin chuẩn của mặt hàng. Dòng thuộc diện sẽ có dấu IQC.',
+    iqcByItem: 'Mặt hàng có dấu IQC sẽ được tạo kèm yêu cầu kiểm tra đầu vào khi đăng ký.',
     registerRecheck:
       'Hãy kiểm tra xem đã đăng ký chưa rồi mới thử lại. Gửi lại mà không kiểm tra thì cùng một lần nhập hàng có thể bị đăng ký hai lần.',
   },
@@ -216,6 +232,11 @@ export const overReceiptSplit: Translated<typeof ko.overReceiptSplit> = {
         : mode === 'NORMAL_ONLY'
           ? 'Chỉ tạo một phiếu phần định lượng. Không đăng ký phần vượt.'
           : 'Chỉ tạo một phiếu phần vượt. Không đăng ký phần định lượng.',
+    registerGroupReceipts: 'Phiếu sẽ tạo',
+    registerReceiptNormal: (lines: number): string =>
+      `Phiếu phần định lượng — ${String(lines)} dòng`,
+    registerReceiptExcess: (lines: number): string => `Phiếu phần vượt — ${String(lines)} dòng`,
+    registerReceiptHint: 'Bỏ chọn phiếu không muốn tạo. Phải giữ lại ít nhất một phiếu.',
     registerGroupLines: 'Các dòng được ghi',
     registerGroupHeader: 'Đầu phiếu',
     registerIrreversible:

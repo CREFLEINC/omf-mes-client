@@ -18,8 +18,8 @@ export interface ExcessFormProps {
 }
 
 /**
- * 초과분 전표에만 실리는 두 값. 예외 유형은 초과분이 실릴 때 **필수**다 — 초과분 줄은 발주에 묶이지
- * 않아 서버가 유형을 요구한다. 기본값(초과입하)은 화면이 채우고, 사유만 사람이 적는다.
+ * 초과분 전표에만 실리는 두 값. **초과분이 갈린 뒤에만 선다**(화면이 가린다) — 초과분 줄은 발주에
+ * 묶이지 않아 서버가 유형을 요구한다. 기본값(초과입하)은 화면이 채우고, 사유만 사람이 적는다.
  */
 export const ExcessForm = ({
   values,
@@ -44,6 +44,7 @@ export const ExcessForm = ({
 
     <TextField
       label={t.fields.exceptionReason}
+      placeholder={t.form.exceptionReasonPlaceholder}
       value={values.exceptionReason}
       error={fieldErrors.exceptionReason}
       disabled={isSaving}
@@ -54,7 +55,6 @@ export const ExcessForm = ({
 
     <div className="field-cell">
       <span className="field-note">{t.notes.excessOnlyFields}</span>
-      <span className="field-note">{t.notes.iqcByItem}</span>
     </div>
   </div>
 );

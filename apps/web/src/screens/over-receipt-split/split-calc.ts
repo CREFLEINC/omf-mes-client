@@ -28,6 +28,25 @@ import type { PoLineView } from './types';
 
 const t = messages.overReceiptSplit;
 
+/**
+ * 초과분 LOT 의 파생 접미. 서버가 같은 공장의 두 전표에 같은 LOT 번호를 허용하지 않아(`uq_lot`) 한 라벨이
+ * 정량분·초과분으로 갈리면 번호가 하나 더 필요하다 — 사람에게 매번 시키지 않고 정량분 라벨에서 만든다.
+ * 라벨에 없는 번호라 **부착 아님**(`supplierLotLabelAttached=false`)으로 보낸다. 서버 「문의 029」가 정해지면 뺀다.
+ */
+export const DERIVED_EXCESS_LOT_SUFFIX = '-OVER';
+
+/** 아무것도 손대지 않은 LOT 칸. */
+export const isEmptyLot = (lot: LotDraft): boolean =>
+  lot.lotNo.trim() === '' && !lot.labelMissing && lot.reasonCode === '';
+
+export const deriveExcessLot = (normal: LotDraft): LotDraft | null => {
+  const lotNo = normal.lotNo.trim();
+
+  return lotNo === ''
+    ? null
+    : { lotNo: `${lotNo}${DERIVED_EXCESS_LOT_SUFFIX}`, labelMissing: true, reasonCode: '' };
+};
+
 /** 발주의 이 배수를 넘는 도착은 자릿수 실수일 가능성이 크다 — 막지 않고 한 번 더 보게 한다. */
 export const FAR_OVER_ORDERED_TIMES = 2;
 
@@ -72,7 +91,9 @@ export interface SplitLineView {
   /** 수량이 없거나 잘못됐으면 `null` — 가를 것이 없다. */
   split: SplitQty | null;
   lot: LotDraft;
+  /** 초과분 LOT — 사람이 손대지 않았으면 정량분 라벨에서 파생한 값이다(`excessLotDerived`). */
   excessLot: LotDraft;
+  excessLotDerived: boolean;
   /** 정량분이 실릴 때만 잰다. 실리지 않는 쪽의 LOT 칸은 비어 있어도 잘못이 아니다. */
   lotError: string | null;
   excessLotError: string | null;
@@ -115,18 +136,20 @@ export const toSplitLines = (
           })
         : null;
     const itemCode = itemCodeOf(line.itemId);
+    const derived = isEmptyLot(draft.excessLot) ? deriveExcessLot(draft.lot) : null;
+    const excessLot = derived ?? draft.excessLot;
 
     const lotError =
       split !== null && split.normalQty > 0 ? lotDraftError(draft.lot, itemCode) : null;
     let excessLotError =
-      split !== null && split.excessQty > 0 ? lotDraftError(draft.excessLot, itemCode) : null;
+      split !== null && split.excessQty > 0 ? lotDraftError(excessLot, itemCode) : null;
     if (
       excessLotError === null &&
       split !== null &&
       split.normalQty > 0 &&
       split.excessQty > 0 &&
       draft.lot.lotNo.trim() !== '' &&
-      draft.lot.lotNo.trim() === draft.excessLot.lotNo.trim()
+      draft.lot.lotNo.trim() === excessLot.lotNo.trim()
     ) {
       excessLotError = t.errors.lotDuplicate;
     }
@@ -140,7 +163,8 @@ export const toSplitLines = (
       normalLimit: normalLimit(line.orderedQty, line.receivedQty, line.toleranceOverQty),
       split,
       lot: draft.lot,
-      excessLot: draft.excessLot,
+      excessLot,
+      excessLotDerived: derived !== null,
       lotError,
       excessLotError,
     };

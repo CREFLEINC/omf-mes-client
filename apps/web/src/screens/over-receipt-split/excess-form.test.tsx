@@ -62,10 +62,13 @@ describe('ExcessForm', () => {
    * **초과분의 수입검사 대상 여부는 보내지 않는다** — 계약의 분리 등록 요청에 그 자리가 없다.
    * 지어내지 않고 안내만 남긴다(계획 결정 14).
    */
-  it('수입검사 여부는 품목 기준정보가 정한다는 안내를 낸다', () => {
+  it('초과 사유 칸에 보기가 적혀 있다', () => {
     renderForm();
 
-    expect(screen.getByText(t.notes.iqcByItem)).toBeInTheDocument();
+    expect(screen.getByLabelText(t.fields.exceptionReason)).toHaveAttribute(
+      'placeholder',
+      t.form.exceptionReasonPlaceholder,
+    );
   });
 
   it('코드 사전에서 받은 선택지를 이름으로 낸다', async () => {
