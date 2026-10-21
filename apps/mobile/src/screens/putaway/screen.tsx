@@ -1,4 +1,4 @@
-import { AlertBanner, Chip, Select, TextField } from '@crefle/web-ui';
+import { AlertBanner, Chip, Icon, IconButton, Select } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
@@ -6,14 +6,17 @@ import { Link, useNavigate } from 'react-router';
 
 import { useAdvanceTo } from '../../patterns/advance-to';
 import { useBackStep } from '../../patterns/back-step';
+import { BottomActionBar } from '../../patterns/bottom-action-bar';
 import { Button } from '../../patterns/button';
-import { Card } from '../../patterns/card';
 import { playErrorTone } from '../../patterns/error-tone';
 import { displayNameOf, useCodeValues } from '../../patterns/code-values';
 import { uomLabelOf, useItemCodes, useItemLabels, useUomCodes } from '../../patterns/masters';
 import { referenceLabel } from '../../patterns/reference';
 import { useOutbox } from '../../patterns/outbox';
 import { useScanField } from '../../patterns/use-scan-field';
+import { ScanZone } from '../../patterns/scan-zone';
+import { TASK_FACTS, TaskRoute } from '../../patterns/task-facts';
+import { TaskHeader } from '../../patterns/task-header';
 import { useScreenTitle } from '../../patterns/screen-title';
 import { useWorkerSession } from '../../patterns/worker-session';
 import { useWorkerId } from '../../patterns/workers';
@@ -318,19 +321,25 @@ export const PutawayScreen = () => {
   };
 
   /*
-   * 세 값에 이름을 붙여 세로로 세운다. 한 줄에 늘어놓으면 어느 것이 품목이고 어느 것이 지시
-   * 번호인지 형식을 아는 사람만 읽고, 360dp 에서 접히면 그 경계마저 흐려진다.
+   * 네 값에 이름을 붙인다. 값만 늘어놓으면 어느 것이 품목이고 어느 것이 지시 번호인지 형식을 아는
+   * 사람만 읽는다. 한 줄에 하나씩 쌓던 것을 두 칸씩 접어 카드가 절반 높이가 된다(개편 제안 v2).
    */
   const taskFields = (each: PutawayTask, extra?: ReactNode) => (
-    <dl className="putaway__task-fields">
-      <dt>{t.tasks.itemLabel}</dt>
-      <dd>
-        <strong>{referenceLabel(itemCode(each.itemId))}</strong>
-      </dd>
-      <dt>{t.tasks.taskNoLabel}</dt>
-      <dd>{each.putawayTaskNo}</dd>
-      <dt>{t.tasks.qtyLabel}</dt>
-      <dd>{`${String(each.taskQty)} ${uomOf(each.uomId)}`}</dd>
+    <dl className={`putaway__task-fields ${TASK_FACTS}`}>
+      <div>
+        <dt>{t.tasks.itemLabel}</dt>
+        <dd>
+          <strong>{referenceLabel(itemCode(each.itemId))}</strong>
+        </dd>
+      </div>
+      <div>
+        <dt>{t.tasks.taskNoLabel}</dt>
+        <dd>{each.putawayTaskNo}</dd>
+      </div>
+      <div>
+        <dt>{t.tasks.qtyLabel}</dt>
+        <dd>{`${String(each.taskQty)} ${uomOf(each.uomId)}`}</dd>
+      </div>
       {extra}
     </dl>
   );
@@ -340,18 +349,53 @@ export const PutawayScreen = () => {
    * 번호가 권장 위치인 척한다 - 있고 없고만 말한다.
    */
   const ruleField = (each: PutawayTask) => (
-    <>
+    <div>
       <dt>{t.tasks.ruleLabel}</dt>
       <dd>
         {each.recommendedLocationId === null || each.recommendedLocationId === undefined
           ? t.tasks.ruleNo
           : t.tasks.ruleYes}
       </dd>
-    </>
+    </div>
+  );
+
+  /*
+   * 「이 지시 적치」가 잠긴 이유(공유계약 G-1). 위치가 통과해야 LOT 을 묻는 순서대로, 처음 비어
+   * 있는 것 하나만.
+   */
+  const recordLock =
+    task === null || ready
+      ? undefined
+      : !locationSettled
+        ? verdict === NO_RULE && mixProblem === null && !confirmedNoRule
+          ? t.locked.noRule
+          : t.locked.location
+        : !lotMatched
+          ? t.locked.lot
+          : undefined;
+
+  /* 건별로 이미 저장됐다. 마치는 것은 이 화면을 닫는 일이라 서버를 부르지 않는다. */
+  const finish = {
+    label: t.done.submit,
+    disabled: registered.length === 0,
+    onClick: () => {
+      void navigate(WORK_LIST_PATH);
+    },
+  };
+
+  /* 스캐너가 못 읽는 라벨이 있다. 손으로 넣는 길을 늘 연다(공유계약 D-3). */
+  const manualButton = (field: typeof locationField, open: string, submitLabel: string) => (
+    <IconButton
+      className="putaway__zone-button"
+      icon={field.manual ? 'keyboard_return' : 'keyboard'}
+      size="lg"
+      aria-label={field.manual ? submitLabel : open}
+      onClick={field.manual ? field.submitManual : field.openManual}
+    />
   );
 
   return (
-    <div className="putaway">
+    <div className="putaway with-bottom-action-bar">
       {task === null ? (
         <section className="putaway__section">
           <h2>{t.tasks.legend}</h2>
@@ -386,58 +430,92 @@ export const PutawayScreen = () => {
             <p className="putaway__note">{t.tasks.count(String(tasks.data.length))}</p>
           ) : null}
 
+          {/* 카드 전체가 누르는 곳이다. 오른쪽 끝 › 가 고르는 카드임을 말한다. */}
           <ul className="putaway__tasks">
             {(tasks.data ?? []).map((each) => (
               <li key={each.putawayTaskId}>
-                <Card
-                  bordered
-                  interactive
+                <button
+                  type="button"
+                  className="putaway__task"
                   onClick={() => {
                     setTask(each);
                     clearScans();
                   }}
                 >
-                  <Card.Body className="card-body putaway__task">
-                    {taskFields(each, ruleField(each))}
-                  </Card.Body>
-                </Card>
+                  {taskFields(each, ruleField(each))}
+                  <Icon name="chevron_right" size={24} className="putaway__chevron" />
+                </button>
               </li>
             ))}
           </ul>
         </section>
       ) : (
         <>
-          <section className="putaway__section">
-            <h2>{t.tasks.legend}</h2>
-            <Card bordered>
-              <Card.Body className="card-body putaway__card">
-                {taskFields(task)}
-                {lotNo.data === undefined ? null : (
-                  <p className="putaway__scanned">{t.lot.expected(lotNo.data)}</p>
-                )}
-                <p className="putaway__note">{t.tasks.from(codeOf(task.fromLocationId))}</p>
-                {task.recommendedLocationId === null || task.recommendedLocationId === undefined ? (
-                  <Chip status="warning">{t.tasks.noRule}</Chip>
-                ) : (
-                  <Chip>{t.tasks.recommended(codeOf(task.recommendedLocationId))}</Chip>
-                )}
+          {/*
+           * 지금 처리 중인 지시. 계기판 아래 흰 작업 카드로 붙어 있어, 위치 · LOT 을 스캔하러
+           * 내려가도 무엇을 어디로 옮기는지가 화면에 남는다.
+           */}
+          <TaskHeader
+            /*
+             * 품목은 코드를 제목으로, 이름을 그 옆 작은 글씨로 - 「이름(코드)」 한 덩어리를 24px 로 세우면
+             * 두 줄로 접혀 카드가 커진다. 품목을 아직 못 받았으면 목록과 같은 글로 둔다. 지시 번호는
+             * 「자세히」에 둔다 - 손에 든 것과 대조하는 값이 아니다.
+             */
+            fields={[
+              {
+                label: t.tasks.itemLabel,
+                value:
+                  itemLabels.get(task.itemId)?.itemCode ?? referenceLabel(itemCode(task.itemId)),
+                strong: true,
+              },
+              ...(itemLabels.get(task.itemId) === undefined
+                ? []
+                : [
+                    {
+                      label: t.tasks.itemNameLabel,
+                      value: itemLabels.get(task.itemId)?.itemName ?? '',
+                      caption: true,
+                    },
+                  ]),
+              { label: t.tasks.qtyLabel, value: `${String(task.taskQty)} ${uomOf(task.uomId)}` },
+              ...(lotNo.data === undefined
+                ? []
+                : [{ label: t.lot.legend, value: t.lot.expected(lotNo.data), code: true }]),
+            ]}
+            step={{ index: locationSettled ? 2 : 1, total: 2 }}
+            action={{
+              icon: 'list',
+              label: t.tasks.change,
+              onClick: () => {
+                setTask(null);
+                clearScans();
+              },
+            }}
+            details={
+              <>
+                <p className="putaway__note">{`${t.tasks.taskNoLabel} ${task.putawayTaskNo}`}</p>
                 {/* 왜 이 자리인지를 함께 보이면 사람에게 판단할 근거가 생긴다. */}
                 {rule.data === undefined ? null : (
                   <p className="putaway__note">{t.tasks.rule(String(rule.data.priorityNo))}</p>
                 )}
-              </Card.Body>
-            </Card>
-            <Button
-              variant="text"
-              size="lg"
-              onClick={() => {
-                setTask(null);
-                clearScans();
-              }}
-            >
-              {t.tasks.change}
-            </Button>
-          </section>
+              </>
+            }
+          >
+            {/* 어디서 어디로. 가야 할 곳이 어두운 칸이라 위치 라벨을 찾는 눈이 먼저 간다. */}
+            <TaskRoute
+              from={
+                codeOf(task.fromLocationId) === ''
+                  ? undefined
+                  : t.tasks.from(codeOf(task.fromLocationId))
+              }
+              to={
+                task.recommendedLocationId === null || task.recommendedLocationId === undefined
+                  ? undefined
+                  : t.tasks.recommended(codeOf(task.recommendedLocationId))
+              }
+              missing={t.tasks.noRule}
+            />
+          </TaskHeader>
 
           <section className="putaway__section" ref={locationSection}>
             {/*
@@ -468,17 +546,20 @@ export const PutawayScreen = () => {
             {scansLocation(task) ? (
               scanResolved ? null : (
                 <>
-                  <TextField
-                    ref={locationField.ref}
+                  <ScanZone
+                    field={locationField}
                     label={required(t.location.scanLabel)}
-                    placeholder={t.location.scanPlaceholder}
-                    size="xl"
-                    fullWidth
+                    prompt={t.location.scanPlaceholder}
                     error={
                       scanned !== null && byCode.isSuccess && byCode.data === null
                         ? t.location.notFound(scanned)
                         : undefined
                     }
+                    trailing={manualButton(
+                      locationField,
+                      t.location.manual,
+                      t.location.manualSubmit,
+                    )}
                   />
                   {byCode.isError ? (
                     <FailureBanner
@@ -486,17 +567,6 @@ export const PutawayScreen = () => {
                       title={failureText(byCode.error, t.location.loadFailed)}
                     />
                   ) : null}
-                  {/* 스캐너가 못 읽는 라벨이 있다. 손으로 넣는 길을 늘 연다(공유계약 D-3). */}
-                  <Button
-                    className="putaway__wide"
-                    variant={locationField.manual ? 'outlined' : 'text'}
-                    size="xl"
-                    onClick={
-                      locationField.manual ? locationField.submitManual : locationField.openManual
-                    }
-                  >
-                    {locationField.manual ? t.location.manualSubmit : t.location.manual}
-                  </Button>
                 </>
               )
             ) : locations.data === undefined ? null : (
@@ -648,23 +718,12 @@ export const PutawayScreen = () => {
                *   곧바로 다시 읽어야 하므로 칸을 남긴다.
                */}
               {lotMatched ? null : (
-                <>
-                  <TextField
-                    ref={lotField.ref}
-                    label={required(t.lot.scanLabel)}
-                    placeholder={t.lot.scanPlaceholder}
-                    size="xl"
-                    fullWidth
-                  />
-                  <Button
-                    className="putaway__wide"
-                    variant={lotField.manual ? 'outlined' : 'text'}
-                    size="xl"
-                    onClick={lotField.manual ? lotField.submitManual : lotField.openManual}
-                  >
-                    {lotField.manual ? t.lot.manualSubmit : t.lot.manual}
-                  </Button>
-                </>
+                <ScanZone
+                  field={lotField}
+                  label={required(t.lot.scanLabel)}
+                  prompt={t.lot.scanPlaceholder}
+                  trailing={manualButton(lotField, t.lot.manual, t.lot.manualSubmit)}
+                />
               )}
 
               {scannedLot === null ? null : lotMatched ? (
@@ -694,23 +753,16 @@ export const PutawayScreen = () => {
             </section>
           )}
 
-          <section className="putaway__section">
-            {saveFailed ? (
-              <AlertBanner variant="error" title={t.saveFailed.title}>
-                {t.saveFailed.description}
-              </AlertBanner>
-            ) : null}
-            {worker === null ? <p className="putaway__note">{t.noWorker}</p> : null}
-            <Button
-              className="putaway__wide"
-              variant="filled"
-              size="2xl"
-              disabled={!ready}
-              onClick={() => void complete()}
-            >
-              {t.record1}
-            </Button>
-          </section>
+          {saveFailed || worker === null ? (
+            <section className="putaway__section">
+              {saveFailed ? (
+                <AlertBanner variant="error" title={t.saveFailed.title}>
+                  {t.saveFailed.description}
+                </AlertBanner>
+              ) : null}
+              {worker === null ? <p className="putaway__note">{t.noWorker}</p> : null}
+            </section>
+          ) : null}
         </>
       )}
 
@@ -720,6 +772,11 @@ export const PutawayScreen = () => {
           <ul className="putaway__done">
             {registered.map((each) => (
               <li key={each.key}>
+                <Icon
+                  name={each.outcome === 'rejected' ? 'error' : 'check_circle'}
+                  size={20}
+                  className="putaway__done-icon"
+                />
                 <span className="putaway__scanned">
                   {t.done.row(each.lotNo, each.locationCode, each.qty)}
                 </span>
@@ -742,20 +799,29 @@ export const PutawayScreen = () => {
         </section>
       )}
 
-      {/* 건별로 이미 저장됐다. 마치는 것은 이 화면을 닫는 일이라 서버를 부르지 않는다. */}
-      <div className="action-bar">
-        <Button
-          className="putaway__wide"
-          variant="outlined"
-          size="2xl"
-          disabled={registered.length === 0}
-          onClick={() => {
-            void navigate(WORK_LIST_PATH);
+      {/*
+       * 지시를 처리하는 동안은 「이 지시 적치」가 주 단추이고 「적치 완료」는 그 아래 낮은 길이다.
+       * 목록에서는 마치는 것이 할 일이라 그것이 주 단추다.
+       */}
+      {task === null ? (
+        <BottomActionBar
+          primary={{
+            ...finish,
+            lockReason: registered.length === 0 ? t.done.locked : undefined,
           }}
-        >
-          {t.done.submit}
-        </Button>
-      </div>
+        />
+      ) : (
+        <BottomActionBar
+          primary={{
+            label: t.record1,
+            disabled: !ready,
+            lockReason: recordLock,
+            onClick: () => void complete(),
+          }}
+          /* 마칠 것이 생겨야 마치는 길을 세운다. 그 전에는 잠긴 단추 하나만큼 화면이 짧다. */
+          secondary={registered.length === 0 ? undefined : finish}
+        />
+      )}
     </div>
   );
 };

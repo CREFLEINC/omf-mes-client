@@ -41,9 +41,11 @@ export const temporaryPutaway: Translated<typeof ko.temporaryPutaway> = {
     chosen: (code: string, name: string) => `${code} ${name}`,
     unfiltered: 'Không có chỗ nào đăng ký là vị trí tạm nên hiện toàn bộ vị trí',
     pickAction: 'Chọn từ danh sách',
+    standby: 'Vị trí khác: quét lại',
     manual: 'Nhập tay',
     manualSubmit: 'Dùng vị trí đã nhập',
     capacity: (qty: string) => `Sức chứa ${qty} — là vị trí tạm nên không chặn`,
+    locked: 'Quét hoặc chọn vị trí tạm trong danh sách để tiếp tục',
   },
   reason: {
     legend: 'Lý do cất hàng',

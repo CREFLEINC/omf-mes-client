@@ -34,6 +34,12 @@ export interface TaskHeaderProps {
    * 카드에 붙인다 - 본문 끝에 단추로 두면 그만큼 화면이 길어진다.
    */
   action?: { icon: string; label: string; onClick: () => void };
+  /**
+   * 화면이 직접 그리는 카드 내용. 제목 값(`strong`)이 있으면 값 줄 아래에 덧붙고(어디서 어디로
+   * 같은 줄), 없으면 카드 본문을 대신한다(값에 이름을 붙여 칸으로 세우는 화면) - 계기판 띠 · 카드 ·
+   * 붙어 있는 자리는 같다.
+   */
+  children?: ReactNode;
 }
 
 /** 늘 보이는 값의 한도. 넘친 값은 그리지 않는다 - 「자세히」로 보낸다. */
@@ -65,7 +71,14 @@ const kindOf = (field: TaskHeaderField, index: number, fields: TaskHeaderField[]
  * 나머지 값은 「자세히」로 연다. 세로 720dp 에서 앱바·이 헤더·하단 확정 바를 빼면 본문이
  * 그리 넓지 않다.
  */
-export const TaskHeader = ({ fields, progress, step, details, action }: TaskHeaderProps) => {
+export const TaskHeader = ({
+  fields,
+  progress,
+  step,
+  details,
+  action,
+  children,
+}: TaskHeaderProps) => {
   const [open, setOpen] = useState(false);
   const detailsId = useId();
   const shown = fields.slice(0, MAX_FIELDS);
@@ -104,10 +117,14 @@ export const TaskHeader = ({ fields, progress, step, details, action }: TaskHead
 
       <div className="task-header__card">
         <div className="task-header__head">
-          <dl className="task-header__title">
-            {pick('title').map((field) => item(field, 'task-header__code', false))}
-            {pick('caption').map((field) => item(field, 'task-header__caption', false))}
-          </dl>
+          {children === undefined || pick('title').length > 0 ? (
+            <dl className="task-header__title">
+              {pick('title').map((field) => item(field, 'task-header__code', false))}
+              {pick('caption').map((field) => item(field, 'task-header__caption', false))}
+            </dl>
+          ) : (
+            <div className="task-header__body">{children}</div>
+          )}
           {progress === undefined ? null : (
             <p className="task-header__progress">{t.progress(progress.done, progress.total)}</p>
           )}
@@ -139,6 +156,10 @@ export const TaskHeader = ({ fields, progress, step, details, action }: TaskHead
           <dl className="task-header__values">
             {pick('value').map((field) => item(field, 'task-header__value', true))}
           </dl>
+        )}
+
+        {children === undefined || pick('title').length === 0 ? null : (
+          <div className="task-header__extra">{children}</div>
         )}
 
         {pick('code').length === 0 ? null : (

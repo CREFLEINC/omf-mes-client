@@ -19,6 +19,7 @@ export const putaway: Translated<typeof ko.putaway> = {
     from: (code: string) => `Hiện tại ${code}`,
     recommended: (code: string) => `Vị trí đề xuất ${code}`,
     itemLabel: 'Mặt hàng',
+    itemNameLabel: 'Tên mặt hàng',
     taskNoLabel: 'Số lệnh',
     qtyLabel: 'Số lượng',
     ruleLabel: 'Vị trí đề xuất',
@@ -79,10 +80,16 @@ export const putaway: Translated<typeof ko.putaway> = {
   storageMismatch: (itemCondition: string, locationCondition: string) =>
     `Mặt hàng cần bảo quản ${itemCondition} nhưng chỗ này là ${locationCondition}`,
   record1: 'Cất hàng theo lệnh này',
+  locked: {
+    location: 'Quét nhãn vị trí để tiếp tục',
+    noRule: 'Nếu mặt hàng không có vị trí quản lý, hãy bấm xác nhận cất tại đây',
+    lot: 'Quét nhãn LOT vật tư để tiếp tục',
+  },
   done: {
     count: (count: string) => `Đã cất ${count} lượt`,
     row: (lotNo: string, code: string, qty: string) => `${lotNo} → ${code} ${qty}`,
     submit: 'Xong cất hàng',
+    locked: 'Cất ít nhất một lệnh thì mới hoàn tất được',
   },
   sent: {
     title: 'Đã ghi nhận cất hàng',

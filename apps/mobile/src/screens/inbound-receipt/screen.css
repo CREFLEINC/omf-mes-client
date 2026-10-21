@@ -355,11 +355,14 @@
   margin-inline-start: var(--space-2);
 }
 
-/* 초과 분리는 한 장의 흰 판이다. 그 안의 단추가 이 경우의 확정 단추다. */
+/*
+ * 초과 분리는 판 없이 본문에 바로 선다. 판의 안쪽 여백만큼 화면이 길어지고, 단추는 이미 확정 바에
+ * 있어 묶어 둘 까닭이 없다.
+ */
 .receipt__split {
+  padding: 0;
   border: 0;
-  background: var(--surface);
-  box-shadow: var(--elevation-1);
+  background: none;
 }
 
 /* 수량 판 안의 펼침 단추. 판 안이라 안쪽 여백을 줄여 수와 단위가 설 자리를 남긴다. */
@@ -414,4 +417,29 @@
 
 .receipt__split-actions > :first-child {
   grid-column: 1 / -1;
+}
+
+/*
+ * 고를 것이 몇 개뿐인 유형은 두 칸씩 서는 선택 단추다 - 장갑 낀 손이 짚을 48px, 고른 칸은 굵은 차콜
+ * 테두리. 라디오는 그대로 두고 생김새만 바꾼다(낭독기 · 키보드는 라디오로 다룬다).
+ */
+.receipt__choices [role='radiogroup'] {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-2);
+}
+
+.receipt__choices label:has(> input[type='radio']) {
+  box-sizing: border-box;
+  min-height: 48px;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+}
+
+.receipt__choices label:has(> input[type='radio']:checked) {
+  border: 2px solid var(--on-surface);
+  padding: calc(var(--space-2) - 1px) calc(var(--space-3) - 1px);
+  font-weight: 600;
 }
