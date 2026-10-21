@@ -771,7 +771,11 @@ export const IqcInspectionScreen = () => {
         {historyRounds.length > 0 && (
           <details className="iqc-inspection-fold">
             <summary>{messages.iqcInspection.history.heading}</summary>
-            <RoundHistory rounds={historyRounds} uomCode={uomCode} />
+            <RoundHistory
+              rounds={historyRounds}
+              uomCode={uomCode}
+              judgmentOptions={judgmentOptions}
+            />
           </details>
         )}
 
