@@ -714,8 +714,8 @@ main > * + * {
 }
 
 /* 비고 열도 머리글과 값이 같은 기준으로 선다 — 둘 다 가운데. */
-.production-plan-editor-table th:nth-child(8),
-.production-plan-editor-table td:nth-child(8) {
+.production-plan-editor-table th:nth-child(6),
+.production-plan-editor-table td:nth-child(6) {
   text-align: center;
 }
 
@@ -809,8 +809,16 @@ main > * + * {
   overflow-x: auto;
 }
 
+/* C-16 가로 넘침 금지 — BOM과 Routing을 마스터 점검 단계로 옮겨 한 행 입력 칸을 4개로 줄였다. 행 동작은 오른쪽 고정. */
 .wide-table.production-plan-table table {
-  min-width: 100rem;
+  min-width: 0;
+}
+
+.production-plan-table td:last-child,
+.production-plan-table th:last-child {
+  position: sticky;
+  right: 0;
+  background: var(--surface-container-low);
 }
 
 .production-plan-table th {
@@ -15746,4 +15754,783 @@ body:has(.goods-receipt-post-form) > [role='listbox'] {
   clip: rect(0 0 0 0);
   white-space: nowrap;
   border: 0;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+ * 공용 부품 — 화면 구성 규범(docs/screen-composition.md) 6장. 부품 이름 접두로 둔다.
+ * 화면 CSS가 이 클래스를 덮어쓰지 않는다. 값은 DS 토큰으로만 정한다(C-19).
+ * ───────────────────────────────────────────────────────────────────────── */
+
+/* 화면 낭독기에만 읽히는 글 */
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+/* C-19 제목 2단계(구획 제목, 단계 본문 제목)와 3단계(구획 안 소제목) */
+.section-title {
+  margin: 0;
+  font: var(--type-title-lg);
+  letter-spacing: var(--type-title-lg-tracking);
+}
+
+.subsection-title {
+  margin: 0;
+  font: var(--type-title-sm);
+  letter-spacing: var(--type-title-sm-tracking);
+}
+
+.section-heading-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-bottom: var(--space-3);
+}
+
+.pane > .section-title {
+  margin-bottom: var(--space-3);
+}
+
+.dialog-text {
+  margin: 0;
+  font: var(--type-body-sm);
+}
+
+/* 배치 클래스 제안(C-19 조회 조건 칸 폭): 좁음, 보통, 넓음. 칸 폭은 값에 따라 바뀌지 않는다. */
+.filter-field-sm,
+.filter-field-md,
+.filter-field-lg {
+  flex: 0 0 auto;
+  min-width: 0;
+}
+
+.filter-field-sm {
+  width: 160px;
+}
+
+.filter-field-md {
+  width: 240px;
+}
+
+.filter-field-lg {
+  width: 320px;
+}
+
+.filter-field-sm > *,
+.filter-field-md > *,
+.filter-field-lg > *,
+.filter-field-sm > * > button,
+.filter-field-md > * > button,
+.filter-field-lg > * > button {
+  width: 100%;
+  max-width: 100%;
+}
+
+.filter-field-sm [role='combobox'],
+.filter-field-sm button[aria-haspopup],
+.filter-field-md button[aria-haspopup] {
+  width: 100%;
+}
+
+.filter-actions-end {
+  margin-left: auto;
+}
+
+/* C-16 표 셀은 한 줄. 긴 텍스트 열 하나만 말줄임으로 남는 폭을 가져간다. */
+.nowrap-cell {
+  white-space: nowrap;
+}
+
+.mono-cell {
+  font-family: var(--font-mono);
+}
+
+.ellipsis-cell {
+  display: block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chip-row {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  white-space: nowrap;
+}
+
+/* C-1 SelectableTable. C-19 표: 셀은 세로 가운데, 머리 배경은 모든 열이 같다. */
+.selectable-table {
+  overflow-x: auto;
+}
+
+.selectable-table table {
+  width: 100%;
+}
+
+.selectable-table th {
+  white-space: nowrap;
+}
+
+.selectable-table td {
+  vertical-align: middle;
+}
+
+.selectable-table.is-clickable tbody > tr.selectable-table-row {
+  cursor: pointer;
+}
+
+.selectable-table.is-clickable tbody > tr.selectable-table-row:hover > td {
+  background: var(--state-hover-neutral);
+}
+
+.selectable-table tbody > tr.selectable-table-row:focus-visible {
+  outline: 2px solid var(--state-focus);
+  outline-offset: -2px;
+}
+
+.selectable-table tbody > tr.is-active > td {
+  background: var(--primary-container);
+}
+
+.selectable-table tbody > tr.is-active > td:first-child {
+  box-shadow: inset 3px 0 0 var(--primary);
+}
+
+.selectable-table.has-sticky-last td:last-child {
+  position: sticky;
+  right: 0;
+  background: var(--surface);
+}
+
+.selectable-table.has-sticky-last th:last-child {
+  position: sticky;
+  right: 0;
+}
+
+.row-chevron {
+  color: var(--on-surface-muted);
+}
+
+/* C-8 PageNav */
+.page-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-top: var(--space-3);
+}
+
+.page-nav-left,
+.page-nav-right {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.page-nav-total,
+.page-nav-position {
+  font: var(--type-body-sm);
+  color: var(--on-surface-variant);
+  white-space: nowrap;
+}
+
+/* T-W-C ProcessPage. 처리 머리는 제목 줄과 요약 줄 두 줄로 고정한다. */
+.process-page {
+  display: flex;
+  flex-direction: column;
+  min-height: calc(100vh - 8rem);
+  gap: var(--space-2);
+}
+
+.process-page-head {
+  display: grid;
+  gap: var(--space-1);
+  justify-items: start;
+}
+
+.process-page-title-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+  min-height: var(--control-height-md);
+}
+
+.process-page-title {
+  margin: 0;
+  font: var(--type-headline-lg);
+  letter-spacing: var(--type-headline-lg-tracking);
+  font-family: var(--font-mono);
+  white-space: nowrap;
+}
+
+.process-page-badges {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.process-page-summary {
+  width: 100%;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.process-page-head-actions {
+  margin-left: auto;
+}
+
+/* C-19 색: 완료 단계는 중립 색 이름과 체크, 마우스를 올리면 밑줄 */
+.process-stepper-return {
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  color: var(--on-surface);
+  cursor: pointer;
+}
+
+.process-stepper-return:hover,
+.process-stepper-return:focus-visible {
+  text-decoration: underline;
+}
+
+.process-page-past {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: baseline;
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+  border: 1px dashed var(--outline);
+  border-radius: var(--radius-md);
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+/* 지난 단계 요약: 단계별 묶음, 묶음 앞 단계 이름, 묶음 안 「라벨 값」 쌍(T-W-C 지난 단계 요약 형식). 한 줄에 넘치면 묶음마다 한 줄. */
+.process-page-past.is-stacked {
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.process-past-group {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-3);
+}
+
+.process-page-past:not(.is-stacked) > .process-past-group + .process-past-group {
+  margin-left: var(--space-3);
+  padding-left: var(--space-3);
+  border-left: 1px solid var(--outline-variant);
+}
+
+.process-past-step,
+.process-past-pair > dt {
+  font: var(--type-label-sm);
+  color: var(--on-surface-variant);
+}
+
+.process-past-pairs {
+  display: flex;
+  gap: var(--space-4);
+  margin: 0;
+}
+
+.process-past-pair {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-1);
+}
+
+.process-past-pair > dd {
+  margin: 0;
+  font: var(--type-body-sm);
+  color: var(--on-surface);
+}
+
+.process-past-pair > dd.is-unset {
+  color: var(--semantic-warning);
+}
+
+.process-page-body {
+  flex: 1;
+  display: grid;
+  gap: var(--space-3);
+  align-content: start;
+  min-width: 0;
+}
+
+/* C-3, C-5 ActionBar — 화면 아래 고정, 본문 스크롤과 따로 */
+.action-bar {
+  position: sticky;
+  bottom: calc(-1 * var(--space-6));
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  margin: 0 calc(-1 * var(--space-6)) calc(-1 * var(--space-6));
+  padding: var(--space-3) var(--space-6);
+  border-top: 1px solid var(--outline-variant);
+  background: var(--surface);
+}
+
+.action-bar-left {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.action-bar-remaining {
+  margin: 0;
+  min-width: 0;
+  font: var(--type-body-sm);
+  color: var(--on-surface-variant);
+}
+
+.action-bar-link {
+  margin-left: var(--space-2);
+}
+
+.action-bar-actions {
+  display: flex;
+  gap: var(--space-2);
+  flex-shrink: 0;
+}
+
+/* C-9 EffectList */
+.effect-list ul {
+  margin: var(--space-1) 0 0;
+  padding-left: var(--space-5);
+  font: var(--type-body-sm);
+}
+
+.effect-list-title {
+  margin: 0;
+  font: var(--type-title-sm);
+  letter-spacing: var(--type-title-sm-tracking);
+}
+
+.effect-list li.is-excluded {
+  color: var(--on-surface-muted);
+}
+
+.effect-list-excluded {
+  margin-left: var(--space-2);
+}
+
+/* C-18 BulkResult */
+.bulk-result-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.bulk-result-actions .is-pressed {
+  border-width: 2px;
+}
+
+.bulk-result-items {
+  margin: var(--space-1) 0 0;
+  font: var(--type-body-sm);
+}
+
+.bulk-result-lines {
+  display: grid;
+  gap: var(--space-1);
+  margin: var(--space-2) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.bulk-result-lines li {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.bulk-result-label {
+  font-family: var(--font-mono);
+}
+
+.bulk-result-reason {
+  color: var(--on-surface-variant);
+}
+
+/* C-12 ReferenceField, PickerDialog, DateTimeField */
+.reference-field {
+  align-items: stretch;
+  min-width: 0;
+}
+
+.reference-field > *,
+.assign-group > * {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.reference-field-label {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.reference-picker-body {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.reference-picker-search {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+}
+
+.date-time-field {
+  align-items: stretch;
+  min-width: 0;
+}
+
+.date-time-field-controls {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.date-time-field-controls > :first-child {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.date-time-field-time {
+  flex: 0 0 5rem;
+  min-width: 0;
+}
+
+.info-mark {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--on-surface-variant);
+  cursor: help;
+}
+
+/* ── W-02-01 ERP W/O 처리 ─────────────────────────────────────────────── */
+.erp-wo-counts {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.erp-wo-counts-label {
+  color: var(--on-surface-variant);
+}
+
+/* C-19 조건 칩: 선택과 관계없이 같은 모양, 선택된 것만 테두리가 굵다. 색은 상태 칩과 같다. */
+.count-chip {
+  padding: 0 var(--space-3);
+  min-height: var(--control-height-sm);
+  border: 1px solid var(--outline);
+  border-radius: var(--radius-full);
+  background: var(--surface);
+  color: var(--on-surface);
+  font: var(--type-label-sm);
+  cursor: pointer;
+}
+
+.count-chip-warning {
+  background: var(--semantic-warning-container);
+  color: var(--on-semantic-warning-container);
+}
+
+.count-chip-success {
+  background: var(--semantic-success-container);
+  color: var(--on-semantic-success-container);
+}
+
+.count-chip.is-selected {
+  border-width: 2px;
+  border-color: var(--on-surface);
+}
+
+.erp-wo-bulk-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-2);
+}
+
+.erp-wo-bulk-reason {
+  flex-basis: 100%;
+  text-align: right;
+  font: var(--type-body-sm);
+  color: var(--on-surface-variant);
+}
+
+.filter-bar.erp-wo-filter-bar {
+  flex-wrap: nowrap;
+  gap: var(--space-3);
+  margin-bottom: 0;
+}
+
+.erp-wo-table .ellipsis-cell {
+  max-width: 6rem;
+}
+
+.erp-wo-table td:last-child,
+.erp-wo-table th:last-child {
+  padding-inline: 0 var(--space-1);
+}
+
+.erp-wo-table .reason-chips {
+  gap: 2px;
+}
+
+.reason-chips {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  white-space: nowrap;
+}
+
+.erp-wo-summary {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  margin: 0;
+  font: var(--type-body-sm);
+}
+
+.erp-wo-summary > div {
+  display: flex;
+  gap: var(--space-1);
+}
+
+.erp-wo-summary dt {
+  color: var(--on-surface-variant);
+}
+
+.erp-wo-summary dd {
+  margin: 0;
+}
+
+.erp-wo-master-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-4);
+}
+
+.erp-wo-master-field {
+  align-items: stretch;
+}
+
+.erp-wo-master-value {
+  margin: 0;
+}
+
+.erp-wo-master-note {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-top: var(--space-1);
+  font: var(--type-body-sm);
+  color: var(--on-surface-variant);
+}
+
+.plan-table .plan-qty-field {
+  width: 7rem;
+}
+
+.plan-table tfoot td {
+  text-align: right;
+}
+
+.erp-wo-assign-layout {
+  display: grid;
+  grid-template-columns: 13rem minmax(0, 1fr);
+  gap: var(--space-3);
+  align-items: start;
+}
+
+.erp-wo-assign-editor {
+  min-width: 0;
+  padding: var(--space-2) var(--space-3);
+  box-sizing: border-box;
+  overflow-y: auto;
+}
+
+/* 편집 영역 안에서 스크롤할 때 머리(W/O 번호와 공정, 저장)는 고정한다(T-W-C 높이가 모자랄 때 ②). */
+.erp-wo-assign-editor .assign-editor-head {
+  position: sticky;
+  top: calc(-1 * var(--space-2));
+  z-index: 1;
+  background: var(--surface-container-low);
+}
+
+/* 4M 편집 영역: 묶음 줄(설비와 금형, 작업자와 교대, 위치, 계획)과 두 칸. 묶음 안 칸 폭은 같고, 묶음 소제목은 묶음 위에 한 줄로 둔다(C-19 소제목 위치, T-W-C 편집 영역 칸 배치 ①). */
+.assign-editor {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.assign-editor-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.assign-editor-actions {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.assign-check {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  margin: 0;
+  font: var(--type-body-sm);
+}
+
+.assign-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: var(--space-1) var(--space-3);
+  align-items: end;
+}
+
+.assign-form > .assign-group-title {
+  grid-column: 1 / -1;
+  margin: 0;
+  font: var(--type-title-sm);
+  letter-spacing: var(--type-title-sm-tracking);
+}
+
+/* 묶음 사이는 소제목과 간격으로 나눈다(C-19). 간격은 격자 줄 간격(--space-1)을 포함해 --space-6이다. */
+.assign-form > .assign-group-title:not(:first-child) {
+  margin-top: calc(var(--space-6) - var(--space-1));
+}
+
+.assign-form > .assign-plan-row {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 2fr) minmax(0, 1fr);
+  gap: var(--space-3);
+  align-items: end;
+}
+
+.assign-form .field-label {
+  margin-bottom: 0;
+}
+
+/* 접힌 묶음의 요약과 [변경](T-W-C 높이가 모자랄 때 ①). 첫 요약은 앞 묶음과 소제목 간격만큼 띄우고(C-19), 이어지는 요약은 줄 간격만 둔다.
+   값은 「라벨 값」 쌍이고, 넘치면 쌍 단위로 줄을 바꾼다(지난 단계 요약 형식과 같다). */
+.assign-form > .assign-fold {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-width: 0;
+  margin-top: calc(var(--space-6) - var(--space-1));
+}
+
+.assign-form > .assign-fold + .assign-fold {
+  margin-top: 0;
+}
+
+.assign-fold-label {
+  flex: none;
+  font: var(--type-label-sm);
+  color: var(--on-surface-variant);
+}
+
+.assign-fold-pairs {
+  flex: 1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 var(--space-4);
+  min-width: 0;
+  margin: 0;
+}
+
+.assign-fold-pair {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-1);
+  white-space: nowrap;
+}
+
+.assign-fold-pair > dt {
+  font: var(--type-label-sm);
+  color: var(--on-surface-variant);
+}
+
+.assign-fold-pair > dd {
+  margin: 0;
+  font: var(--type-body-sm);
+  color: var(--on-surface);
+}
+
+.assign-fold-pair > dd.is-unset {
+  color: var(--semantic-warning);
+}
+
+.assign-recommend {
+  display: inline-flex;
+  gap: var(--space-1);
+  margin-left: auto;
+}
+
+.erp-wo-release-layout {
+  display: grid;
+  grid-template-columns: 3fr 2fr;
+  gap: var(--space-3);
+  align-items: start;
+}
+
+.erp-wo-release-effects {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.erp-wo-plain-list {
+  margin: 0;
+  padding-left: var(--space-5);
+  font: var(--type-body-sm);
+}
+
+.bulk-dialog-body {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.bulk-dialog-target {
+  margin: 0;
+  font: var(--type-title-sm);
+}
+
+.done-lead {
+  margin: 0 0 var(--space-2);
+}
+
+.empty-line {
+  margin: 0;
+  color: var(--on-surface-variant);
+}
+
+.erp-wo-table td:first-child,
+.erp-wo-table th:first-child {
+  padding-inline: var(--space-2);
 }

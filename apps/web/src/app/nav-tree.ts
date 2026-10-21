@@ -365,7 +365,7 @@ export const NAV_GROUPS: readonly NavGroup[] = [
         tabs: [
           {
             to: '/production/production-orders',
-            label: 'ERP W/O 조회',
+            label: 'ERP W/O 처리',
             labelVi: 'Tra cứu ERP W/O',
           },
           {
@@ -375,12 +375,10 @@ export const NAV_GROUPS: readonly NavGroup[] = [
           },
         ],
       },
-      {
-        to: '/production/work-order-release',
-        icon: 'rocket_launch',
-        label: 'W/O 확정·배포·생산LOT 선발행',
-        labelVi: 'Chốt · phát hành W/O · phát trước LOT sản xuất',
-      },
+      /*
+       * W-02-04(W/O 확정, 배포)는 메뉴에서 뺐다. 배포는 「ERP W/O 처리」 작업함의 일괄 배포와 처리 화면 마지막 단계가
+       * 맡는다(화면 구성 규범 C-17, T-W-C). 옛 주소는 작업함의 「자동 계획 완료」 조건으로 넘어간다.
+       */
       /* W-02-07 — 계획을 거치지 않고 직접 발행한다. 갈래가 달라 정규 흐름 뒤에 둔다. */
       {
         to: '/production/emergency-work-orders',

@@ -751,9 +751,8 @@ describe('AppLayout', () => {
      */
     expect(links).not.toContain('/production/production-plans');
     expect(links).not.toContain('/production/work-order-assignments');
-    expect(
-      within(sidebar).getByRole('link', { name: 'W/O 확정·배포·생산LOT 선발행' }),
-    ).toHaveAttribute('href', '/production/work-order-release');
+    /* W-02-04(확정, 배포)는 「ERP W/O 처리」 작업함의 일괄 배포와 처리 화면 마지막 단계로 합쳐 메뉴에 «없다». */
+    expect(links).not.toContain('/production/work-order-release');
     expect(within(sidebar).getByRole('link', { name: 'W/O 마감·ERP 실적 송신' })).toHaveAttribute(
       'href',
       '/production/work-order-close',
@@ -770,12 +769,9 @@ describe('AppLayout', () => {
     expect(links.indexOf('/production/production-orders')).toBe(
       links.indexOf('/quality/inspection-levels') + 1,
     );
-    expect(links.indexOf('/production/work-order-release')).toBe(
-      links.indexOf('/production/production-orders') + 1,
-    );
-    /* W-02-07 — 계획을 거치지 않는 갈래라 정규 흐름(배포) 뒤다. */
+    /* W-02-07 — 계획을 거치지 않는 갈래라 정규 흐름(ERP W/O 처리) 뒤다. */
     expect(links.indexOf('/production/emergency-work-orders')).toBe(
-      links.indexOf('/production/work-order-release') + 1,
+      links.indexOf('/production/production-orders') + 1,
     );
     /*
      * W-02-10 자재 불출 요청은 「구매 / 자재 관리 > 출고 관리」로 옮겼다 — 긴급 발행 바로 뒤가
@@ -798,12 +794,12 @@ describe('AppLayout', () => {
    * 변경 판정은 조회 바로 뒤 탭이다 — 그 화면이 만든 목록 위에서 이어진다(W-02-06).
    * 옛 「P/O 변경 관리자 확인」 — 「P/O」는 구매오더만 뜻하게 되어 「ERP W/O」로 바꿨다.
    */
-  it('ERP W/O 탭 막대가 ERP W/O 조회 → ERP W/O 변경 확인 차례다', () => {
+  it('ERP W/O 탭 막대가 ERP W/O 처리 → ERP W/O 변경 확인 차례다', () => {
     renderLayout('본문 내용', { route: '/production/po-change-review' });
 
     const tabs = screen.getByRole('navigation', { name: 'ERP W/O' });
 
-    expect(within(tabs).getByRole('link', { name: 'ERP W/O 조회' })).toHaveAttribute(
+    expect(within(tabs).getByRole('link', { name: 'ERP W/O 처리' })).toHaveAttribute(
       'href',
       '/production/production-orders',
     );
@@ -1001,9 +997,8 @@ describe('AppLayout', () => {
       '/quality/approvals',
       '/quality/dispositions',
       '/quality/inspection-levels',
-      /* 생산 관리 — ERP W/O(조회·변경 확인) → 배포 → (긴급) → 진행 → 마감. */
+      /* 생산 관리 — ERP W/O(처리, 변경 확인) → (긴급) → 진행 → 마감. */
       '/production/production-orders' /* ← ERP W/O */,
-      '/production/work-order-release',
       '/production/emergency-work-orders',
       '/production/work-order-progress',
       '/production/work-order-close',
@@ -1655,7 +1650,7 @@ describe('AppLayout — 레일', () => {
 
     await collapseRail(user);
 
-    expect(within(navSidebar()).getAllByRole('link')).toHaveLength(46);
+    expect(within(navSidebar()).getAllByRole('link')).toHaveLength(45);
   });
 
   /*
@@ -1705,7 +1700,7 @@ describe('AppLayout — 레일과 검색', () => {
     await typeQuery(user, '실사');
     await collapseRail(user);
 
-    expect(within(navSidebar()).getAllByRole('link')).toHaveLength(46);
+    expect(within(navSidebar()).getAllByRole('link')).toHaveLength(45);
   });
 
   /** 섹션 밖 항목이 빠지면 레일에서 대시보드로 갈 길이 사라진다. */

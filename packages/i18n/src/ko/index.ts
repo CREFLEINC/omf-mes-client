@@ -158,6 +158,8 @@ import { lotStatusHistory } from './lot-status-history';
 import { inspectionResultInsights } from './inspection-result-insights';
 import { productDisposalRequest } from './product-disposal-request';
 import { productionPlan } from './production-plan';
+import { screenPatterns } from './screen-patterns';
+import { erpWorkOrderFlow } from './erp-work-order-flow';
 
 export const ko = {
   popChrome,
@@ -302,6 +304,8 @@ export const ko = {
   physicalCount,
   productDisposalRequest,
   productionPlan,
+  screenPatterns,
+  erpWorkOrderFlow,
   lotStatusHistory,
   inspectionResultInsights,
 } as const;

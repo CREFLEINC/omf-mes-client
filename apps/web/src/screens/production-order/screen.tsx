@@ -1,118 +1,224 @@
-import { AlertBanner, Breadcrumb, Button, PageHeader, useToast } from '@crefle/web-ui';
-import type { ProductionOrderAutoPlanResult } from '@omf-mes/api-client';
-import { messages } from '@omf-mes/i18n';
-import { useQueryClient } from '@tanstack/react-query';
-import { useMemo, useState } from 'react';
-import { Link, useNavigate, useSearchParams } from 'react-router';
-
-import { SaveErrorBanner } from '../../patterns/master';
-import { autoPlanReasonLabels } from './auto-plan-chip';
-import { useProductionOrderCodeNames } from './code-names';
-import { useProductionOrderPlans, useProductionOrderWorkOrders } from './detail-queries';
-import {
-  DEFAULT_PRODUCTION_ORDER_FILTERS,
-  readFilters,
-  readPage,
-  readSelectedProductionOrderId,
-  toSearchParams,
-  toSelectionSearchParams,
-} from './filters';
-import { defaultExpandedProductionOrderIds, toVisibleProductionOrderHierarchy } from './hierarchy';
-import { useProductionOrderItemNames } from './item-lookups';
-import { useAutoPlanMutation } from './mutations';
-import { toPageView } from './pagination';
-import { ProductionOrderBasicPane } from './production-order-basic-pane';
-import { ProductionOrderDetailListPane } from './production-order-detail-list-pane';
-import { ProductionOrderFilterBar } from './production-order-filter-bar';
-import { ProductionOrderListPane } from './production-order-list-pane';
-import { productionOrderKeys, useProductionOrderDetail, useProductionOrderList } from './queries';
-import {
-  lookupNote,
-  useBusinessUnitReferenceLookup,
-  usePlantReferenceLookup,
-  useUomReferenceLookup,
-} from './reference-lookups';
-import { toBasicDetailState, toDetailListState, toProductionOrderRows } from './screen-model';
-import type { ProductionOrderFact, SelectOption } from './types';
-
-const t = messages.productionOrder;
-const EMPTY_FACTS: ProductionOrderFact[] = [];
-
 /**
- * 자동 계획을 한 번도 하지 않은(`autoPlan === null`) P/O 는 계획이 없으므로, 아직 수신 상태면
- * 수량 전부가 남은 것이다 — 지난 납기·옛 P/O 도 필요할 때 계획할 수 있게 단추를 낸다.
+ * W-02-01 ERP W/O 처리 작업함
+ * 유형: T-W-C 처리형 (작업함: ProductionOrderScreen, 처리 화면: ProductionOrderProcessScreen)
+ * 이탈: C-17 「자동 계획 완료」는 배포 가능을 뜻하지 않는다. 서버가 배포 가능 여부로 거르고 세지 못해(계약 대기,
+ *       .client-dev/requests/w02-requests.md) 잠정 규칙대로 조건, 건수, 행 칩을 서버 자동 계획 결과로 두고
+ *       막힘(라인 미정)은 사유 칩으로만 보인다. C-12 기간 칸의 「시작일부터」 적용은 DS 기간 선택이 지원하지 않아 미구현.
  */
-const canAutoPlan = (order: ProductionOrderFact | undefined): boolean =>
-  order !== undefined &&
-  (order.autoPlan === null
-    ? order.statusCode === 'RECEIVED'
-    : order.autoPlan.status === 'NEEDS_REVIEW');
+import {
+  AlertBanner,
+  Breadcrumb,
+  Button,
+  EmptyState,
+  PageHeader,
+  SkeletonText,
+  type Column,
+} from '@crefle/web-ui';
+import { messages } from '@omf-mes/i18n';
+import { useId, useMemo, useState } from 'react';
+import { useNavigate, useSearchParams } from 'react-router';
 
-const autoPlanToast = (result: ProductionOrderAutoPlanResult) => {
-  switch (result.outcome) {
-    case 'CONFIRMED':
-      return { variant: 'success', description: t.autoPlan.confirmed } as const;
-    case 'DRAFT':
-      return { variant: 'info', description: t.autoPlan.draft } as const;
-    case 'NOT_PLANNED':
-      return {
-        variant: 'warning',
-        title: t.autoPlan.notPlanned,
-        description: autoPlanReasonLabels(result.reasons).join(' · '),
-      } as const;
-  }
-};
+import {
+  BulkOutcomeChip,
+  BulkResult,
+  type BulkOutcome,
+  type BulkResultFilter,
+} from '../../patterns/bulk-result';
+import { PageNav } from '../../patterns/page-nav';
+import { SelectableTable } from '../../patterns/selectable-table';
+import { useWorklistBulk, type BulkKind, type BulkTarget } from './bulk-actions';
+import { WorklistBulkDialog } from './bulk-dialog';
+import { useProductionOrderCodeNames } from './code-names';
+import { useItemCodeNames } from './item-lookups';
+import { useUomReferenceLookup } from './reference-lookups';
+import type { ProductionOrderFact } from './types';
+import {
+  DEFAULT_WORKLIST_FILTERS,
+  processPath,
+  readWorklistFilters,
+  rememberWorklistSearch,
+  toWorklistSearchParams,
+} from './worklist-filters';
+import { WorklistFilterBar } from './worklist-filter-bar';
+import { deriveWorklistState, type WorklistDerived } from './worklist-model';
+import {
+  useReleaseBacklog,
+  useWorklist,
+  useWorklistCount,
+  type WorklistFilters,
+} from './worklist-queries';
+import { CountChip, ProcessStateChip, ReasonChips } from './worklist-chips';
+
+const t = messages.erpWorkOrderFlow;
+const quantity = (value: number): string =>
+  new Intl.NumberFormat('ko-KR', { maximumFractionDigits: 6 }).format(value);
+
+export interface WorklistRow {
+  fact: ProductionOrderFact;
+  derived: WorklistDerived;
+  pending: number | null;
+  itemCode: string;
+  itemName: string;
+  qtyLabel: string;
+  outcome: BulkOutcome | undefined;
+}
 
 export const ProductionOrderScreen = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
-  const toast = useToast();
-  const queryClient = useQueryClient();
-  const filters = useMemo(() => readFilters(searchParams), [searchParams]);
-  const page = readPage(searchParams);
-  const selectedId = readSelectedProductionOrderId(searchParams);
-
-  const list = useProductionOrderList(filters, page);
-  const detail = useProductionOrderDetail(selectedId);
-  const plans = useProductionOrderPlans(selectedId);
-  const workOrders = useProductionOrderWorkOrders(selectedId);
-  const businessUnits = useBusinessUnitReferenceLookup();
-  const plants = usePlantReferenceLookup();
-  const uoms = useUomReferenceLookup();
+  const filters = useMemo(() => readWorklistFilters(searchParams), [searchParams]);
+  const list = useWorklist(filters);
+  const backlog = useReleaseBacklog();
+  const needsReviewCount = useWorklistCount('NEEDS_REVIEW');
+  const doneCount = useWorklistCount('DONE');
+  const allCount = useWorklistCount('ALL');
   const codeNames = useProductionOrderCodeNames();
-  const autoPlan = useAutoPlanMutation({
-    onSuccess: (result) => toast.show(autoPlanToast(result)),
-  });
-  const facts = list.data?.items ?? EMPTY_FACTS;
-  const itemIds = useMemo(() => {
-    const ids = facts.map((order) => order.itemId);
-    if (filters.item !== '') ids.push(Number(filters.item));
-    if (detail.data !== undefined) ids.push(detail.data.itemId);
-    return ids;
-  }, [detail.data, facts, filters.item]);
-  const itemNames = useProductionOrderItemNames(itemIds);
-  const [collapsedIds, setCollapsedIds] = useState<ReadonlySet<number>>(new Set());
-  const expandedIds = useMemo(() => {
-    const expanded = new Set(defaultExpandedProductionOrderIds(facts));
-    collapsedIds.forEach((id) => expanded.delete(id));
-    return expanded;
-  }, [collapsedIds, facts]);
-  const rows = toProductionOrderRows(
-    toVisibleProductionOrderHierarchy(facts, expandedIds),
-    itemNames.items,
-    uoms,
+  const uoms = useUomReferenceLookup();
+  const bulk = useWorklistBulk();
+  const [checked, setChecked] = useState<string[]>([]);
+  const [dialog, setDialog] = useState<{ kind: BulkKind; targets: BulkTarget[] } | null>(null);
+  const [resultFilter, setResultFilter] = useState<BulkResultFilter>(null);
+  /* 실행 당시의 행. 결과로 목록을 좁힐 때 다음 조회에서 빠진 건도 보이게 한다(C-18). */
+  const [runRows, setRunRows] = useState<WorklistRow[]>([]);
+  const bulkReasonId = useId();
+
+  const facts = list.data?.items ?? [];
+  const itemNames = useItemCodeNames(facts.map((fact) => fact.itemId));
+  const outcomes = new Map((bulk.run?.outcomes ?? []).map((item) => [item.id, item]));
+  const toRow = (fact: ProductionOrderFact): WorklistRow => {
+    const entry =
+      backlog.data === undefined
+        ? undefined
+        : (backlog.data.get(fact.productionOrderId) ?? { pending: 0, blocked: 0 });
+    const item = itemNames.get(fact.itemId);
+    const uom = uoms.entries.find((option) => option.value === String(fact.uomId))?.label ?? '';
+    return {
+      fact,
+      derived: deriveWorklistState(fact, entry),
+      pending: entry?.pending ?? null,
+      itemCode: item?.itemCode ?? '',
+      itemName: item?.itemName ?? '',
+      qtyLabel: `${quantity(fact.orderQty)} ${uom}`.trim(),
+      outcome: outcomes.get(String(fact.productionOrderId)),
+    };
+  };
+  const liveRows = facts.map(toRow);
+  const rows =
+    resultFilter === null
+      ? liveRows
+      : runRows
+          .filter(
+            (row) => outcomes.get(String(row.fact.productionOrderId))?.status === resultFilter,
+          )
+          .map(
+            (row) =>
+              liveRows.find(
+                (live) => live.fact.productionOrderId === row.fact.productionOrderId,
+              ) ?? {
+                ...row,
+                outcome: outcomes.get(String(row.fact.productionOrderId)),
+              },
+          );
+
+  const apply = (next: WorklistFilters) => {
+    bulk.clear();
+    setResultFilter(null);
+    setChecked([]);
+    const params = toWorklistSearchParams(next);
+    rememberWorklistSearch(params);
+    setSearchParams(params);
+  };
+  const checkedRows = liveRows.filter((row) =>
+    checked.includes(String(row.fact.productionOrderId)),
   );
-  const pageView = toPageView(list.data?.page ?? { page, size: 25, total: 0 }, facts.length);
-  const itemOptions: SelectOption[] = itemNames.items.flatMap((item) =>
-    item.status === 'named' && item.label !== null
-      ? [{ value: String(item.itemId), label: item.label }]
-      : [],
-  );
-  const selectedItemName =
-    detail.data === undefined
-      ? null
-      : (itemNames.items.find((item) => item.itemId === detail.data?.itemId) ?? null);
-  const isSelected = selectedId !== null;
+  const targets: BulkTarget[] = checkedRows.map((row) => ({
+    productionOrderId: row.fact.productionOrderId,
+    productionOrderNo: row.fact.productionOrderNo,
+  }));
+  /* 두 일괄 동작이 같은 사유로 잠긴다. 사유는 버튼 아래 한 줄로 보이고 두 버튼이 함께 가리킨다(C-4). */
+  const bulkReason = bulk.isRunning
+    ? t.bulk.reasons.running
+    : targets.length === 0
+      ? t.bulk.reasons.noneChecked
+      : null;
+
+  const columns: Column<WorklistRow>[] = [
+    {
+      key: 'orderNo',
+      header: t.list.columns.orderNo,
+      render: (row) => <span className="nowrap-cell mono-cell">{row.fact.productionOrderNo}</span>,
+    },
+    {
+      key: 'itemCode',
+      header: t.list.columns.itemCode,
+      render: (row) => <span className="nowrap-cell">{row.itemCode}</span>,
+    },
+    {
+      key: 'itemName',
+      header: t.list.columns.itemName,
+      render: (row) => (
+        <span className="ellipsis-cell" title={row.itemName}>
+          {row.itemName}
+        </span>
+      ),
+    },
+    {
+      key: 'orderQty',
+      header: t.list.columns.orderQty,
+      align: 'end',
+      render: (row) => <span className="nowrap-cell">{row.qtyLabel}</span>,
+    },
+    {
+      key: 'dueDate',
+      header: t.list.columns.dueDate,
+      render: (row) => <span className="nowrap-cell">{row.fact.dueDate ?? ''}</span>,
+    },
+    {
+      key: 'pending',
+      header: t.list.columns.pendingWorkOrders,
+      align: 'end',
+      render: (row) =>
+        row.pending === null ? (
+          ''
+        ) : (
+          <span className="nowrap-cell">
+            {t.list.pendingWorkOrders(row.pending, row.fact.expandedWorkOrderCount ?? 0)}
+          </span>
+        ),
+    },
+    {
+      key: 'status',
+      header: t.list.columns.status,
+      /*
+       * 일괄 결과가 있는 행은 결과 칩을 상태 칩 자리에 보인다. 칩을 둘 놓으면 칸이 넓어져 이동 표시 열이 밀린다(C-16, G-49).
+       * 결과를 닫으면 상태 칩으로 돌아간다.
+       */
+      render: (row) =>
+        row.outcome !== undefined ? (
+          <BulkOutcomeChip outcome={row.outcome} />
+        ) : (
+          <ProcessStateChip
+            state={row.derived.state}
+            cancelledName={codeNames.productionOrderStatus('CANCELLED')}
+          />
+        ),
+    },
+    {
+      key: 'reasons',
+      header: t.list.columns.reasons,
+      render: (row) => <ReasonChips reasons={row.derived.reasons} />,
+    },
+    {
+      key: 'open',
+      header: <span className="visually-hidden">{t.list.columns.open}</span>,
+      align: 'end',
+      render: () => (
+        <span className="row-chevron" aria-hidden="true">
+          ›
+        </span>
+      ),
+    },
+  ];
 
   return (
     <>
@@ -124,125 +230,149 @@ export const ProductionOrderScreen = () => {
             aria-label={messages.common.shell.breadcrumb}
           />
         }
+        description={
+          <span className="erp-wo-counts">
+            <span className="erp-wo-counts-label">{t.counts.label}</span>
+            <CountChip
+              state="NEEDS_REVIEW"
+              label={t.counts.needsReview(needsReviewCount.data ?? 0)}
+              selected={filters.autoPlan === 'NEEDS_REVIEW'}
+              onSelect={() => apply({ ...filters, autoPlan: 'NEEDS_REVIEW', page: 1 })}
+            />
+            <CountChip
+              state="DONE"
+              label={t.counts.done(doneCount.data ?? 0)}
+              selected={filters.autoPlan === 'DONE'}
+              onSelect={() => apply({ ...filters, autoPlan: 'DONE', page: 1 })}
+            />
+            <CountChip
+              state="NOT_PLANNED"
+              label={t.counts.all(allCount.data ?? 0)}
+              selected={filters.autoPlan === 'ALL'}
+              onSelect={() => apply({ ...filters, autoPlan: 'ALL', page: 1 })}
+            />
+          </span>
+        }
+        actions={
+          <div className="erp-wo-bulk-actions">
+            <Button
+              variant="outlined"
+              disabled={bulkReason !== null}
+              aria-describedby={bulkReason === null ? undefined : bulkReasonId}
+              onClick={() => setDialog({ kind: 'autoPlan', targets })}
+            >
+              {t.bulk.autoPlan}
+            </Button>
+            <Button
+              disabled={bulkReason !== null}
+              loading={bulk.isRunning}
+              aria-describedby={bulkReason === null ? undefined : bulkReasonId}
+              onClick={() => setDialog({ kind: 'release', targets })}
+            >
+              {t.bulk.release}
+            </Button>
+            <span id={bulkReasonId} className="erp-wo-bulk-reason">
+              {bulkReason}
+            </span>
+          </div>
+        }
       />
-      <section
-        className="pane production-order-pane production-order-filter-pane"
-        aria-label={t.panes.filters}
-      >
-        <h2>{t.panes.filters}</h2>
-        <ProductionOrderFilterBar
-          appliedFilters={filters}
-          businessUnitOptions={[...businessUnits.entries]}
-          plantOptions={[...plants.entries]}
-          itemOptions={itemOptions}
-          statusOptions={filters.status === '' ? [] : [filters.status]}
-          businessUnitNote={lookupNote(businessUnits)}
-          plantNote={lookupNote(plants)}
-          itemNote={itemNames.isLoading ? t.values.itemLoading : undefined}
-          onSearch={(next) => setSearchParams(toSearchParams(next, 1))}
-          onReset={() => setSearchParams(toSearchParams(DEFAULT_PRODUCTION_ORDER_FILTERS, 1))}
+      <section className="pane erp-wo-filter-pane" aria-label={t.filters.pane}>
+        <WorklistFilterBar
+          applied={filters}
+          onSearch={(draft) => apply({ ...filters, ...draft, page: 1 })}
+          onReset={() => apply(DEFAULT_WORKLIST_FILTERS)}
         />
       </section>
-
-      {list.isError ? (
-        <AlertBanner variant="error" title={t.listLoadFailedTitle}>
-          {t.listLoadFailedDescription}
-        </AlertBanner>
-      ) : (
-        <ProductionOrderListPane
-          rows={rows}
-          isLoading={list.isPending}
-          page={pageView}
-          selectedProductionOrderId={selectedId}
-          statusNameOf={codeNames.productionOrderStatus}
-          onSelect={(id) => {
-            autoPlan.reset();
-            setSearchParams(toSelectionSearchParams(searchParams, id));
-          }}
-          onToggleExpanded={(id) => {
-            setCollapsedIds((current) => {
-              const next = new Set(current);
-              if (expandedIds.has(id)) next.add(id);
-              else next.delete(id);
-              return next;
-            });
-          }}
-          onChangePage={(nextPage) => setSearchParams(toSearchParams(filters, nextPage))}
-        />
-      )}
-
-      {/* 같은 P/O 의 자동 계획이 이미 도는 중이면 서버가 충돌 봉투로 알린다 — 누가 고친 것이 아니라
-          기다리면 풀리므로 공통 충돌 문구(「최신 불러오기」)로 내지 않는다. */}
-      {autoPlan.error?.kind === 'conflict' && autoPlan.error.code === 'INVALID_STATE' ? (
-        <div className="banner-slot">
-          <AlertBanner variant="warning">{t.autoPlan.running}</AlertBanner>
-        </div>
-      ) : (
-        <SaveErrorBanner
-          error={autoPlan.error}
-          onReload={() => {
-            autoPlan.reset();
-            void queryClient.invalidateQueries({ queryKey: productionOrderKeys.all });
+      {bulk.run !== null && (
+        <BulkResult
+          title={t.bulk.resultTitle[bulk.run.kind]}
+          itemName={bulk.run.kind === 'release' ? t.bulk.itemName : undefined}
+          outcomes={bulk.run.outcomes}
+          filter={resultFilter}
+          onFilterChange={setResultFilter}
+          onClose={() => {
+            bulk.clear();
+            setResultFilter(null);
           }}
         />
       )}
-      <div className="production-order-detail-grid">
-        <ProductionOrderBasicPane
-          isSelected={isSelected}
-          detailState={toBasicDetailState(selectedId, detail)}
-          itemName={selectedItemName}
-          businessUnits={businessUnits}
-          plants={plants}
-          uoms={uoms}
-          statusNameOf={codeNames.productionOrderStatus}
-          action={
-            selectedId === null ? undefined : (
-              <div className="production-order-pane-actions">
-                {canAutoPlan(detail.data) && (
-                  <Button
-                    variant="outlined"
-                    disabled={autoPlan.isSaving}
-                    onClick={() => autoPlan.write(selectedId)}
-                  >
-                    {t.actions.autoPlan}
-                  </Button>
-                )}
-                {/* 「초기화」와 같은 DS 테두리 단추. 누르면 W/O 전개·편성 화면으로 이동만 한다. */}
-                <Button
-                  variant="outlined"
-                  onClick={() => {
-                    void navigate(
-                      `/production/production-plans?productionOrderId=${String(selectedId)}`,
-                    );
-                  }}
-                >
-                  {t.actions.productionPlan}
-                </Button>
-              </div>
-            )
-          }
+      {backlog.isError && <AlertBanner variant="info">{t.list.readinessFailed}</AlertBanner>}
+      <section className="pane erp-wo-list-pane" aria-label={t.list.pane}>
+        {list.isError ? (
+          <AlertBanner
+            variant="error"
+            title={t.list.loadFailed}
+            action={
+              <Button size="sm" variant="outlined" onClick={() => void list.refetch()}>
+                {messages.common.retry}
+              </Button>
+            }
+          >
+            {t.list.loadFailedDescription}
+          </AlertBanner>
+        ) : list.isPending ? (
+          <div role="status" aria-label={t.list.loading}>
+            <SkeletonText lines={5} />
+          </div>
+        ) : (
+          <>
+            <SelectableTable
+              className="erp-wo-table"
+              caption={<span className="visually-hidden">{t.list.caption}</span>}
+              columns={columns}
+              rows={rows}
+              getRowId={(row) => String(row.fact.productionOrderId)}
+              rowLabel={(row) => t.list.openRow(row.fact.productionOrderNo)}
+              rowRole="link"
+              checkLabel={(row) => t.list.checkRow(row.fact.productionOrderNo)}
+              onActivate={(row) => {
+                rememberWorklistSearch(searchParams);
+                void navigate(processPath(row.fact.productionOrderNo));
+              }}
+              checkedIds={checked}
+              onCheckedChange={setChecked}
+              empty={
+                <EmptyState
+                  size="sm"
+                  title={
+                    filters.autoPlan === 'NEEDS_REVIEW'
+                      ? t.list.emptyNeedsReviewTitle
+                      : t.list.emptyTitle
+                  }
+                  description={
+                    filters.autoPlan === 'NEEDS_REVIEW'
+                      ? t.list.emptyNeedsReviewDescription
+                      : t.list.emptyDescription
+                  }
+                />
+              }
+            />
+            {resultFilter === null && (
+              <PageNav
+                meta={list.data.page}
+                onChangePage={(page) => apply({ ...filters, page })}
+                onChangeSize={(size) => apply({ ...filters, size, page: 1 })}
+              />
+            )}
+          </>
+        )}
+      </section>
+      {dialog !== null && (
+        <WorklistBulkDialog
+          kind={dialog.kind}
+          targets={dialog.targets}
+          forecast={bulk.forecast}
+          onCancel={() => setDialog(null)}
+          onConfirm={() => {
+            const { kind, targets: chosen } = dialog;
+            setDialog(null);
+            setRunRows(checkedRows);
+            setResultFilter(null);
+            void bulk.start(kind, chosen).then(() => setChecked([]));
+          }}
         />
-        <ProductionOrderDetailListPane
-          kind="plans"
-          isSelected={isSelected}
-          state={toDetailListState(plans)}
-          uoms={uoms}
-          codeNames={codeNames}
-        />
-        <ProductionOrderDetailListPane
-          kind="workOrders"
-          isSelected={isSelected}
-          state={toDetailListState(workOrders)}
-          uoms={uoms}
-          codeNames={codeNames}
-        />
-      </div>
-      <AlertBanner className="production-order-erp-notice" variant="info">
-        {t.values.erpReadOnlyNotice}
-        <br />
-        {t.values.erpSyncHint}{' '}
-        <Link to="/master-data/integration-sync">{t.actions.integrationSync}</Link>
-      </AlertBanner>
+      )}
     </>
   );
 };

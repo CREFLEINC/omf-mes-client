@@ -1,7 +1,6 @@
 import type { components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 
-import type { ProductionPlanEditorRow } from './editor-pane';
 import {
   buildProductionPlanCreate,
   buildProductionPlanUpdate,
@@ -16,6 +15,18 @@ import type { ProductionPlanFact } from './types';
 
 type ProductionPlanCreate = components['schemas']['ProductionPlanCreate'];
 type ProductionPlanUpdate = components['schemas']['ProductionPlanUpdate'];
+
+/** 생산계획 편집 줄 하나(처리 화면 생산계획 단계). */
+export interface ProductionPlanEditorRow {
+  key: string;
+  displayNo: number;
+  planNo: string | null;
+  statusCode: string;
+  confirmed: boolean;
+  isPending: boolean;
+  draft: ProductionPlanDraft;
+  errors: ProductionPlanDraftErrors;
+}
 
 export interface ProductionPlanEditorStateRow extends ProductionPlanEditorRow {
   productionPlanId: number | null;
