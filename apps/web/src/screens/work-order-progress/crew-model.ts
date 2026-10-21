@@ -1,3 +1,4 @@
+import { masterName } from '../../patterns/master-name';
 import type {
   ProductionResultForward,
   WorkSessionWorkerForward,
@@ -75,9 +76,10 @@ export const toSessionViews = (
     }));
 
 export interface DefectTypeRow {
-  defectCodeId: number;
-  /** 「대분류 › 상세」 — 대분류를 모르면 상세 이름만 */
-  label: string;
+  /** 유형 없이 수량만 남은 불량은 `null` 한 줄로 모은다 */
+  defectCodeId: number | null;
+  /** 「대분류 › 상세」 — 대분류를 모르면 상세 이름만. 유형 없음이면 `null` */
+  label: string | null;
   qty: number;
 }
 
@@ -93,23 +95,34 @@ const leafResults = (
   return results.filter((result) => !corrected.has(result.productionResultId));
 };
 
-/** 이 W/O 의 불량을 유형별로 합친다. 정정된 원본은 세지 않는다. */
+/**
+ * 이 W/O 의 불량을 유형별로 합친다. 정정된 원본은 세지 않는다.
+ *
+ * ⚠ 서버는 유형 없이 불량 수량만 받기도 한다 — 실적의 불량 수량에서 유형별 합을 뺀 나머지를
+ *   「유형 없음」 한 줄로 모아, 합계가 「작업자별 실적」의 불량과 맞게 한다.
+ */
 export const toDefectTypes = (results: readonly ProductionResultForward[]): DefectTypeRow[] => {
-  const rows = new Map<number, DefectTypeRow>();
+  const rows = new Map<number | null, DefectTypeRow>();
+  const add = (defectCodeId: number | null, label: string | null, qty: number) => {
+    rows.set(defectCodeId, { defectCodeId, label, qty: (rows.get(defectCodeId)?.qty ?? 0) + qty });
+  };
   for (const result of leafResults(results)) {
-    for (const defect of result.defects ?? []) {
-      const current = rows.get(defect.defectCodeId);
-      rows.set(defect.defectCodeId, {
-        defectCodeId: defect.defectCodeId,
-        label:
-          defect.parentDefectName == null
-            ? defect.defectName
-            : `${defect.parentDefectName} › ${defect.defectName}`,
-        qty: (current?.qty ?? 0) + defect.qty,
-      });
+    const defects = result.defects ?? [];
+    for (const defect of defects) {
+      const name = masterName(defect, defect.defectName);
+      add(
+        defect.defectCodeId,
+        defect.parentDefectName == null ? name : `${defect.parentDefectName} › ${name}`,
+        defect.qty,
+      );
     }
+    const untyped = result.defectQty - defects.reduce((sum, defect) => sum + defect.qty, 0);
+    if (untyped > 0) add(null, null, untyped);
   }
-  return [...rows.values()];
+  /* 「유형 없음」은 맨 끝 — 유형별 줄을 다 읽은 뒤의 나머지다. */
+  return [...rows.values()].sort(
+    (left, right) => Number(left.defectCodeId === null) - Number(right.defectCodeId === null),
+  );
 };
 
 /**

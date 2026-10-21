@@ -227,6 +227,7 @@ export const workOrderProgress = {
     defectTypes: {
       heading: '불량 유형별',
       empty: '불량 기록이 없습니다.',
+      untyped: '유형 없음',
       columns: { type: '불량 유형', qty: '수량' },
     },
     workerResults: {

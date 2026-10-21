@@ -109,6 +109,15 @@ describe('CrewSections', () => {
     expect(section().getByText('외관 › 긁힘')).toBeInTheDocument();
     expect(section().getByText('4')).toBeInTheDocument();
 
+    rerender(
+      <CrewSections
+        crew={crew({ defectTypes: [{ defectCodeId: null, label: null, qty: 2 }] })}
+        isLoading={false}
+        isError={false}
+      />,
+    );
+    expect(section().getByText(t.defectTypes.untyped)).toBeInTheDocument();
+
     rerender(<CrewSections crew={crew({ defectTypes: [] })} isLoading={false} isError={false} />);
     expect(section().getByText(t.defectTypes.empty)).toBeInTheDocument();
   });

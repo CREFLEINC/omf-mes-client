@@ -51,7 +51,11 @@ const participantColumns: Column<ParticipantRow>[] = [
 ];
 
 const defectTypeColumns: Column<DefectTypeRow>[] = [
-  { key: 'type', header: t.defectTypes.columns.type, render: (row) => row.label },
+  {
+    key: 'type',
+    header: t.defectTypes.columns.type,
+    render: (row) => row.label ?? t.defectTypes.untyped,
+  },
   {
     key: 'qty',
     header: t.defectTypes.columns.qty,
@@ -163,7 +167,7 @@ export const CrewSections = ({ crew, isLoading, isError }: CrewSectionsProps) =>
           density="compact"
           columns={defectTypeColumns}
           rows={crew.defectTypes}
-          getRowId={(row) => String(row.defectCodeId)}
+          getRowId={(row) => (row.defectCodeId === null ? 'untyped' : String(row.defectCodeId))}
           empty={<p className="field-note">{t.defectTypes.empty}</p>}
         />
       </section>

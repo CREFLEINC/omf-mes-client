@@ -4167,6 +4167,11 @@
   gap: var(--space-3);
 }
 
+.pop-ui .production-flow-defect-type {
+  display: grid;
+  gap: var(--space-1);
+}
+
 .pop-ui .production-flow-defect-actions {
   display: flex;
   gap: var(--space-3);

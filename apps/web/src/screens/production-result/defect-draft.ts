@@ -1,5 +1,6 @@
 import type { ProductionResultDefectInput, components } from '@omf-mes/api-client';
 
+import { masterName } from '../../patterns/master-name';
 import { parseGoodQty } from './quantity-draft';
 
 /**
@@ -37,7 +38,7 @@ export const groupDefectCodes = (codes: readonly ProcessDefectCode[]): DefectMaj
     if (code.parentDefectCodeId == null && !majors.has(code.defectCodeId)) {
       majors.set(code.defectCodeId, {
         majorId: code.defectCodeId,
-        name: code.defectName,
+        name: masterName(code, code.defectName),
         minors: [],
       });
     }
@@ -65,12 +66,16 @@ export const defectLabelOf = (
   if (defectCodeId === null) return null;
   for (const major of majors) {
     const minor = major.minors.find((code) => code.defectCodeId === defectCodeId);
-    if (minor !== undefined) return `${major.name} › ${minor.defectName}`;
+    if (minor !== undefined) return `${major.name} › ${masterName(minor, minor.defectName)}`;
   }
   return null;
 };
 
 export interface DefectRowCheck {
+  /** 유형을 아직 고르지 않았다 */
+  typeMissing: boolean;
+  /** 수량을 아직 치지 않았다 */
+  qtyMissing: boolean;
   /** 같은 유형이 앞 줄에 이미 있다 */
   duplicate: boolean;
   /** 수량을 쳤는데 0 이하거나 숫자가 아니다 */
@@ -88,6 +93,8 @@ export const checkDefectRows = (rows: readonly DefectRowDraft[]): Map<string, De
     if (row.defectCodeId !== null) seen.add(row.defectCodeId);
     const qtyInvalid = row.qty !== '' && (qty === null || qty <= 0);
     checks.set(row.key, {
+      typeMissing: row.defectCodeId === null,
+      qtyMissing: row.qty === '',
       duplicate,
       qtyInvalid,
       complete: row.defectCodeId !== null && qty !== null && qty > 0 && !duplicate,

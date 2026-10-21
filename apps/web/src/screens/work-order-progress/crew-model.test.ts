@@ -144,7 +144,9 @@ describe('toDefectTypes', () => {
     const rows = toDefectTypes([
       result(1, 101, 10, { defects: [defect(11, 5)] }),
       result(2, 101, 10, { correctsProductionResultId: 1, defects: [defect(11, 3)] }),
-      result(3, 101, 0, { defects: [defect(11, 2), defect(12, 1, null)] }),
+      result(3, 101, 0, { defectQty: 3, defects: [defect(11, 2), defect(12, 1, null)] }),
+      /* 유형 없이 수량만 남은 불량 — 「유형 없음」으로 모은다. */
+      result(6, 101, 0, { defectQty: 4, defects: [defect(11, 1)] }),
       result(4, 101, 5),
       /* 대분류로 단 옛 기록 — 대분류 칸이 아예 없다. */
       result(5, 101, 0, {
@@ -155,9 +157,10 @@ describe('toDefectTypes', () => {
     ]);
 
     expect(rows).toEqual([
-      { defectCodeId: 11, label: '외관 › 긁힘', qty: 5 },
+      { defectCodeId: 11, label: '외관 › 긁힘', qty: 6 },
       { defectCodeId: 12, label: '찍힘', qty: 1 },
       { defectCodeId: 1, label: '외관', qty: 6 },
+      { defectCodeId: null, label: null, qty: 3 },
     ]);
   });
 });

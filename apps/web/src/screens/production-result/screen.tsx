@@ -227,10 +227,12 @@ export const ProductionFlowScreen = () => {
   const [defectRows, setDefectRows] = useState<DefectRowDraft[]>([]);
   const [activeQty, setActiveQty] = useState<string>('good');
   const [pickingRowKey, setPickingRowKey] = useState<string | null>(null);
-  /** 불량만 보낸 저장이 큐에 있다 — 라벨로 이어지지 않는다 */
-  const [isDefectOnlyPending, setDefectOnlyPending] = useState(false);
-  const [isDefectSaved, setDefectSaved] = useState(false);
+  /** 불량만 적은 저장의 결과 — 큐에 넣는 것이 곧 성공이라 넣자마자 알린다 */
+  const [defectNotice, setDefectNotice] = useState<'saved' | 'queued' | null>(null);
   const nextDefectKey = useRef(1);
+  const noProcessId = useId();
+  /** 라벨로 이어지는 저장에 실린 불량 줄 — 그 항목이 적용될 때 그 줄만 비운다(멱등 키 → 줄 키) */
+  const sentDefectRowKeys = useRef(new Map<string, string[]>());
   const defectCodes = useProcessDefectCodes(workOrder.data?.processId ?? null);
   const defectMajors = useMemo(() => groupDefectCodes(defectCodes.data ?? []), [defectCodes.data]);
   const [outputPhase, setOutputPhase] = useState<OutputPhase>('idle');
@@ -560,16 +562,17 @@ export const ProductionFlowScreen = () => {
   };
 
   const onResultApplied = (outboxEntry: OutboxEntry): void => {
-    /* 실린 불량은 이 실적과 함께 적혔다 — 줄을 비운다. */
-    setDefectRows([]);
-    setActiveQty('good');
+    /* 이 저장에 실린 불량 줄만 비운다 — 앞서 쌓인 다른 항목이 적용될 때 지금 치는 줄을 지우지 않게. */
+    const sentKeys = sentDefectRowKeys.current.get(outboxEntry.idempotencyKey);
+    if (sentKeys !== undefined) {
+      sentDefectRowKeys.current.delete(outboxEntry.idempotencyKey);
+      setDefectRows((rows) => rows.filter((row) => !sentKeys.includes(row.key)));
+      setActiveQty((current) => (sentKeys.includes(current) ? 'good' : current));
+    }
     const allocation = outboxEntry.body.lotAllocations?.[0];
     const lotId = allocation?.lotId;
     if (lotId === undefined) {
-      /* 불량만 적은 실적이다 — 라벨로 이어지지 않고 처음 상태로 돌아간다. */
-      setDefectOnlyPending(false);
-      setDefectSaved(true);
-      setOutputPhase('idle');
+      /* 불량만 적은 실적이다 — 라벨로 이어지지 않는다. 잔여만 다시 읽는다. */
       void workOrder.refetch();
       return;
     }
@@ -648,10 +651,7 @@ export const ProductionFlowScreen = () => {
   }, [complete.error, outputPhase]);
 
   useEffect(() => {
-    if (outbox.rejection !== null && outputPhase === 'queued') {
-      setOutputPhase('idle');
-      setDefectOnlyPending(false);
-    }
+    if (outbox.rejection !== null && outputPhase === 'queued') setOutputPhase('idle');
   }, [outbox.rejection, outputPhase]);
 
   useEffect(() => {
@@ -816,17 +816,17 @@ export const ProductionFlowScreen = () => {
     gates.input === 'allowed' &&
     outputPhase === 'idle' &&
     (lot?.uomId ?? workOrder.data?.uomId) !== undefined;
-  /** 불량 줄을 고칠 수 있는가 — 저장이 나간 뒤에는 그 실적에 실린 값이라 잠근다. */
+  /** 불량 줄을 고칠 수 있는가 — 라벨로 이어지는 저장이 나간 뒤에는 그 실적에 실린 값이라 잠근다. */
   const areDefectsLocked = outputPhase !== 'idle' || entry.workOrderId === null;
+  /** 공정이 없는 W/O 는 고를 불량 유형이 없다 — 받은 뒤에야 안다. */
+  const hasNoProcess = workOrder.data !== undefined && workOrder.data.processId == null;
 
   const queueDefectsOnly = (): void => {
     const uomId = lot?.uomId ?? workOrder.data?.uomId;
     if (!canSaveDefectsOnly || entry.workerNo === null || entry.workOrderId === null) return;
     if (uomId === undefined) return;
 
-    setDefectSaved(false);
-    setDefectOnlyPending(true);
-    setOutputPhase('queued');
+    /* 큐에 넣는 것이 곧 성공이다(아웃박스 규칙) — 줄을 비우고 바로 다음 입력을 받는다. */
     outbox.enqueue(
       entry.workerNo,
       buildSaveBody({
@@ -839,12 +839,15 @@ export const ProductionFlowScreen = () => {
         defects: defectInputs,
       }),
     );
+    setDefectRows([]);
+    setActiveQty('good');
+    setDefectNotice(outbox.isOnline ? 'saved' : 'queued');
   };
 
   const addDefectRow = (): void => {
     const key = `defect-${String(nextDefectKey.current)}`;
     nextDefectKey.current += 1;
-    setDefectSaved(false);
+    setDefectNotice(null);
     setDefectRows((rows) => [...rows, { key, defectCodeId: null, qty: '' }]);
     setActiveQty(key);
     setPickingRowKey(key);
@@ -866,7 +869,7 @@ export const ProductionFlowScreen = () => {
     if (entry.workerNo === null) return;
 
     setOutputPhase('queued');
-    outbox.enqueue(
+    const sentKey = outbox.enqueue(
       entry.workerNo,
       buildSaveBody({
         workOrderId: entry.workOrderId,
@@ -878,6 +881,12 @@ export const ProductionFlowScreen = () => {
         defects: defectInputs,
       }),
     );
+    if (defectRows.length > 0) {
+      sentDefectRowKeys.current.set(
+        sentKey,
+        defectRows.map((row) => row.key),
+      );
+    }
   };
 
   const issueTags = (): void => {
@@ -989,7 +998,7 @@ export const ProductionFlowScreen = () => {
   const outputStatus = (() => {
     switch (outputPhase) {
       case 'queued':
-        return outbox.isOnline || isDefectOnlyPending ? t.flow.output.saving : t.flow.output.queued;
+        return outbox.isOnline ? t.flow.output.saving : t.flow.output.queued;
       case 'issuing':
         return t.flow.output.issuing;
       case 'printing':
@@ -1279,21 +1288,28 @@ export const ProductionFlowScreen = () => {
                           className="production-flow-defect-row"
                           aria-label={rowName}
                         >
-                          <Button
-                            type="button"
-                            variant="outlined"
-                            size="lg"
-                            disabled={areDefectsLocked}
-                            aria-label={`${t.flow.defects.type}: ${
-                              defectLabelOf(defectMajors, row.defectCodeId) ?? t.flow.defects.choose
-                            }`}
-                            onClick={() => {
-                              setActiveQty(row.key);
-                              setPickingRowKey(row.key);
-                            }}
-                          >
-                            {defectLabelOf(defectMajors, row.defectCodeId) ?? t.flow.defects.choose}
-                          </Button>
+                          <div className="production-flow-defect-type">
+                            <Button
+                              type="button"
+                              variant="outlined"
+                              size="lg"
+                              disabled={areDefectsLocked}
+                              aria-label={`${t.flow.defects.type}: ${
+                                defectLabelOf(defectMajors, row.defectCodeId) ??
+                                t.flow.defects.choose
+                              }`}
+                              onClick={() => {
+                                setActiveQty(row.key);
+                                setPickingRowKey(row.key);
+                              }}
+                            >
+                              {defectLabelOf(defectMajors, row.defectCodeId) ??
+                                t.flow.defects.choose}
+                            </Button>
+                            {check?.typeMissing === true && (
+                              <span className="field-error">{t.flow.defects.typeMissing}</span>
+                            )}
+                          </div>
                           <TextField
                             label={t.flow.defects.qty}
                             value={row.qty}
@@ -1310,7 +1326,9 @@ export const ProductionFlowScreen = () => {
                                 ? t.flow.defects.duplicate
                                 : check?.qtyInvalid === true
                                   ? t.flow.quantity.invalid
-                                  : undefined
+                                  : check?.qtyMissing === true && check.typeMissing === false
+                                    ? t.flow.defects.qtyMissing
+                                    : undefined
                             }
                             onFocus={() => setActiveQty(row.key)}
                             onChange={(event) =>
@@ -1334,7 +1352,8 @@ export const ProductionFlowScreen = () => {
                     type="button"
                     variant="outlined"
                     size="lg"
-                    disabled={areDefectsLocked}
+                    disabled={areDefectsLocked || hasNoProcess}
+                    aria-describedby={hasNoProcess ? noProcessId : undefined}
                     onClick={addDefectRow}
                   >
                     {t.flow.defects.add}
@@ -1351,16 +1370,26 @@ export const ProductionFlowScreen = () => {
                     </Button>
                   )}
                 </div>
-                {isDefectSaved && (
+                {hasNoProcess && (
+                  <p id={noProcessId} className="field-note">
+                    {t.flow.defects.noProcess}
+                  </p>
+                )}
+                {defectNotice !== null && (
                   <div className="banner-slot">
-                    <AlertBanner variant="success" title={t.flow.defects.saved} />
+                    <AlertBanner
+                      variant={defectNotice === 'saved' ? 'success' : 'info'}
+                      title={
+                        defectNotice === 'saved' ? t.flow.defects.saved : t.flow.defects.queued
+                      }
+                    />
                   </div>
                 )}
               </section>
               <DefectPicker
                 open={pickingRowKey !== null}
                 majors={defectMajors}
-                isLoading={defectCodes.isPending}
+                isLoading={defectCodes.isLoading}
                 isError={defectCodes.isError}
                 onPick={(defectCodeId) => {
                   if (pickingRowKey !== null) updateDefectRow(pickingRowKey, { defectCodeId });
@@ -1373,7 +1402,15 @@ export const ProductionFlowScreen = () => {
                 /* 수를 받는 칸이다 — 앞자리 0 을 쌓지 않는다(사번 칸은 켜지 않는다). */
                 dropLeadingZero
                 disabled={activeDefectRow === null ? isQuantityLocked : areDefectsLocked}
-                label={t.quantity.keypadLabel}
+                /* 키패드가 어느 칸에 들어가는지 이름으로도 말한다 — 테두리만으로는 보조기술에 닿지 않는다. */
+                label={
+                  activeDefectRow === null
+                    ? t.flow.defects.keypadGood
+                    : t.flow.defects.keypadFor(
+                        defectLabelOf(defectMajors, activeDefectRow.defectCodeId) ??
+                          t.flow.defects.row(defectRows.indexOf(activeDefectRow) + 1),
+                      )
+                }
                 backspaceLabel={t.quantity.backspace}
                 clearLabel={t.quantity.clearGlyph}
                 maxLength={GOOD_QTY_MAX_LENGTH}

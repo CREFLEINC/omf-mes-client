@@ -54,6 +54,12 @@ export const productionResult = {
       qty: '불량 수량',
       remove: (label: string): string => `${label} 빼기`,
       duplicate: '이미 있는 불량 유형입니다.',
+      typeMissing: '유형을 고르세요',
+      qtyMissing: '수량을 넣으세요',
+      noProcess: '공정이 없는 W/O라 불량 유형을 고를 수 없습니다.',
+      /* 키패드 이름 — 지금 어느 칸에 치는지 말한다. 칸 이름과 겹치지 않게 「키패드」를 붙인다. */
+      keypadGood: '양품 수량 키패드',
+      keypadFor: (target: string): string => `불량 수량 — ${target} 키패드`,
       pickerTitle: '불량 유형',
       back: '← 대분류',
       cancel: '취소',
@@ -62,6 +68,7 @@ export const productionResult = {
       empty: '이 공정에 정해진 불량 유형이 없습니다.',
       saveOnly: '불량 저장',
       saved: '불량을 기록했습니다.',
+      queued: '불량을 저장했습니다 · 연결되면 보냅니다.',
     },
     tag: {
       title: '인식표',

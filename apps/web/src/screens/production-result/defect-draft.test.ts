@@ -59,7 +59,16 @@ describe('불량 줄 검사', () => {
     ];
     const checks = checkDefectRows(rows);
 
-    expect(checks.get('a')).toEqual({ duplicate: false, qtyInvalid: false, complete: true });
+    expect(checks.get('a')).toEqual({
+      typeMissing: false,
+      qtyMissing: false,
+      duplicate: false,
+      qtyInvalid: false,
+      complete: true,
+    });
+    expect(checks.get('d')).toEqual(
+      expect.objectContaining({ typeMissing: true, qtyMissing: true }),
+    );
     expect(checks.get('b')?.duplicate).toBe(true);
     expect(checks.get('c')?.qtyInvalid).toBe(true);
     expect(checks.get('d')?.complete).toBe(false);

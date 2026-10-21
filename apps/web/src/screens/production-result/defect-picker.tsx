@@ -2,6 +2,7 @@ import { AlertBanner, Button, Dialog } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useState } from 'react';
 
+import { masterName } from '../../patterns/master-name';
 import type { DefectMajor } from './defect-draft';
 
 const t = messages.productionResult.flow.defects;
@@ -84,7 +85,7 @@ export const DefectPicker = ({
                     onPick(code.defectCodeId);
                   }}
                 >
-                  {code.defectName}
+                  {masterName(code, code.defectName)}
                 </Button>
               ))}
         </div>
