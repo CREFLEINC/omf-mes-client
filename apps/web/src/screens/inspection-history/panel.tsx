@@ -19,11 +19,19 @@ const formatAt = (iso: string): string => {
   return `${String(at.getFullYear())}-${pad(at.getMonth() + 1)}-${pad(at.getDate())} ${pad(at.getHours())}:${pad(at.getMinutes())}`;
 };
 
-/** 한 줄의 설명 — 무엇이 일어났는지는 제목이, 무엇이 바뀌었는지는 이 줄이 말한다. */
-const detailOf = (event: InspectionHistoryEvent): string[] => {
+/**
+ * 한 줄의 설명 — 무엇이 일어났는지는 제목이, 무엇이 바뀌었는지는 이 줄이 말한다.
+ * 판정은 부르는 화면이 준 이름으로 보인다 — 주지 않았거나 모르는 코드는 코드 그대로다(지어내지 않는다).
+ */
+export const detailLines = (
+  event: InspectionHistoryEvent,
+  judgmentLabelOf: (code: string) => string = (code) => code,
+): string[] => {
   const parts: string[] = [];
   if (event.inspectionRound !== undefined) parts.push(t.round(event.inspectionRound));
-  if (event.overallJudgmentCode !== undefined) parts.push(t.judgment(event.overallJudgmentCode));
+  if (event.overallJudgmentCode !== undefined) {
+    parts.push(t.judgment(judgmentLabelOf(event.overallJudgmentCode)));
+  }
   if (event.eventTypeCode !== 'LOT_STATUS_CHANGED' && event.acceptedQty !== undefined) {
     parts.push(t.quantities(event.acceptedQty, event.rejectedQty ?? 0, event.heldQty ?? 0));
   }
@@ -43,6 +51,8 @@ export interface InspectionHistoryPanelProps {
    * 재저장이 이력에 뜨지 않는다.
    */
   revision?: string;
+  /** 종합 판정 코드 → 화면 이름. 부르는 화면이 이미 가진 선택지로 준다. */
+  judgmentLabelOf?: (code: string) => string;
 }
 
 /**
@@ -54,7 +64,9 @@ export interface InspectionHistoryPanelProps {
 export const InspectionHistoryPanel = ({
   inspectionRequestId,
   revision = '',
+  judgmentLabelOf,
 }: InspectionHistoryPanelProps) => {
+  const detailOf = (event: InspectionHistoryEvent): string[] => detailLines(event, judgmentLabelOf);
   const { client } = useApiClient();
   const history = useQuery({
     queryKey: [...inspectionHistoryKeys.one(inspectionRequestId), revision],

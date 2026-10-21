@@ -251,6 +251,7 @@ export const PopOqcInspectionScreen = () => {
               rounds={rounds.data ?? []}
               currentResultId={isReinspectingNow ? null : roundId}
               isReinspecting={isReinspectingNow}
+              judgmentOptions={judgmentOptions}
             />
           </PopJudgmentForm>
         )}

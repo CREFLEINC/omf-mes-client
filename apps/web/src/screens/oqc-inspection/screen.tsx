@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router';
 
 import { toApiError } from '../../patterns/request';
-import { CODE_GROUPS, toCodeOptions } from './code-options';
+import { CODE_GROUPS, labelOfCode, toCodeOptions } from './code-options';
 import {
   EMPTY_FILTERS,
   readFilters,
@@ -480,6 +480,7 @@ export const OqcInspectionScreen = () => {
           rounds={rounds.data ?? []}
           currentResultId={isReinspectingNow ? null : roundId}
           isReinspecting={isReinspectingNow}
+          judgmentOptions={judgmentOptions}
         />
 
         {/* 시리얼 출하검사(#68) — 출하작업지시 의뢰만. 저장하면 새로 부른다. */}
@@ -491,6 +492,7 @@ export const OqcInspectionScreen = () => {
         <InspectionHistoryPanel
           key={`${String(selectedId)}-${String(rounds.data?.length ?? 0)}`}
           inspectionRequestId={selectedId}
+          judgmentLabelOf={(code) => labelOfCode(judgmentOptions, code)}
           revision={`${String(rounds.data?.length ?? 0)}:${JSON.stringify(round ?? null)}`}
         />
       </>
