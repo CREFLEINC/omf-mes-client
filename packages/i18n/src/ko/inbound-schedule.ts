@@ -15,6 +15,8 @@ export const inboundSchedule = {
   breadcrumbRoot: '구매 / 자재 관리',
   /** 사이드바의 탭 묶음 이름(`nav-tree.ts` 「입고 관리」). 이 화면은 그 묶음의 첫 탭이다. */
   breadcrumbHub: '입고 관리',
+  /** 두 표 사이 끌기 막대(키보드 ←·→ 로도 움직인다). */
+  splitter: '끌어서 목록·상세 폭 조절',
   panes: {
     filter: '조회 조건',
     list: '입하 예정 목록',
@@ -67,6 +69,7 @@ export const inboundSchedule = {
     receivedQty: '입하 수량',
     remainingQty: '남은 수량',
     uom: '단위',
+    orderDate: '발주일',
     storageLocation: '창고',
   },
   /** 발주 상세(오른쪽) 머리의 이름표. */
@@ -75,6 +78,7 @@ export const inboundSchedule = {
     supplierCode: '공급사 코드',
     supplierName: '공급사명',
     expectedReceiptDate: '납기',
+    orderDate: '발주일',
   },
   /** 입하 진행(`receiptStatusCode`). 서버가 정한다 — 취소는 라인 ERP 취소 · 헤더 취소 둘 다다. */
   receiptStatus: {

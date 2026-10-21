@@ -34,7 +34,8 @@ export interface OrderTableProps {
  * | 발주번호 | 120px | 10자 ASCII 80px + 여백. 이 칸이 고르는 단추다 |
  * | **공급사명** | **미지정** | 남는 폭을 흡수한다. 넘치면 말줄임 |
  * | 미입고 품목 | 96px | 「99 / 99」 + 여백 |
- * | 합 | 384px + 흡수 | `.po-board-orders` 최소 폭 `36rem`(576px) |
+ * | 발주일 | 104px | `YYYY.MM.DD` + 여백 |
+ * | 합 | 488px + 흡수 | `.po-board-orders` 최소 폭 `38rem`(608px) | `.po-board-orders` 최소 폭 `36rem`(576px) |
  */
 export const OrderTable = ({
   rows,
@@ -93,6 +94,12 @@ export const OrderTable = ({
         typeof row.openLineCount === 'number' && typeof row.lineCount === 'number'
           ? t.values.lineRatio(row.openLineCount, row.lineCount)
           : t.values.empty,
+    },
+    {
+      key: 'orderDate',
+      header: t.table.orderDate,
+      width: '104px',
+      render: (row) => formatDate(row.orderDate),
     },
   ];
 

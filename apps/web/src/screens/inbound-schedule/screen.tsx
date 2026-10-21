@@ -3,7 +3,7 @@ import { useMemo, useRef } from 'react';
 import { useSearchParams } from 'react-router';
 
 import { plantToday } from '../../patterns/plant-time';
-import { useFitToViewport } from '../../patterns/po-board';
+import { PaneSplitter, useFitToViewport, usePaneSplit } from '../../patterns/po-board';
 import { ScheduleFilterBar } from './filter-bar';
 import {
   DEFAULT_FILTERS,
@@ -86,6 +86,7 @@ const toSelectOptions = (lookup: LookupResult): SelectOption[] =>
 export const InboundScheduleScreen = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const { splitRef, aboveRef } = useFitToViewport();
+  const split = usePaneSplit('omf-mes:inbound-schedule:split', 0.4);
   const quickRef = useRef<QuickLookupHandle>(null);
 
   /*
@@ -222,7 +223,7 @@ export const InboundScheduleScreen = () => {
         />
       </section>
 
-      <div ref={splitRef} className="po-board-split">
+      <div ref={splitRef} className="po-board-split" style={split.style}>
         <section className="pane po-board-pane" aria-label={t.panes.orders}>
           {!list.isError && (
             <>
@@ -249,6 +250,8 @@ export const InboundScheduleScreen = () => {
             </>
           )}
         </section>
+
+        <PaneSplitter label={t.splitter} ratio={split.ratio} onChange={split.commit} />
 
         <section className="pane po-board-pane" aria-label={t.panes.lines}>
           {lines.isError ? (

@@ -163,6 +163,10 @@ export const LineTable = ({
             </dd>
           </div>
           <div>
+            <dt>{t.detail.orderDate}</dt>
+            <dd>{formatDate(order.orderDate)}</dd>
+          </div>
+          <div>
             <dt>{t.table.openLines}</dt>
             <dd>
               {typeof order.openLineCount === 'number' && typeof order.lineCount === 'number'

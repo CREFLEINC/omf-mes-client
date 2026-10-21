@@ -9,6 +9,8 @@ export const inboundSchedule: Translated<typeof ko.inboundSchedule> = {
   title: 'Tra cứu kế hoạch nhập hàng',
   breadcrumbRoot: 'Quản lý mua hàng / vật tư',
   breadcrumbHub: 'Quản lý nhập kho',
+  /** 두 표 사이 끌기 막대(키보드 ←·→ 로도 움직인다). */
+  splitter: 'Kéo để điều chỉnh độ rộng danh sách·chi tiết',
   panes: {
     filter: 'Điều kiện tra cứu',
     list: 'Danh sách kế hoạch nhập hàng',
@@ -56,6 +58,7 @@ export const inboundSchedule: Translated<typeof ko.inboundSchedule> = {
     receivedQty: 'Số lượng đã nhận',
     remainingQty: 'Còn lại',
     uom: 'Đơn vị',
+    orderDate: 'Ngày đặt hàng',
     storageLocation: 'Kho',
   },
   detail: {
@@ -63,6 +66,7 @@ export const inboundSchedule: Translated<typeof ko.inboundSchedule> = {
     supplierCode: 'Mã nhà cung cấp',
     supplierName: 'Tên nhà cung cấp',
     expectedReceiptDate: 'Ngày giao',
+    orderDate: 'Ngày đặt hàng',
   },
   receiptStatus: {
     NOT_STARTED: 'Chưa nhận',

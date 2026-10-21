@@ -656,8 +656,9 @@ describe('InboundScheduleScreen — 두 표', () => {
       t.table.purchaseOrderNo,
       t.table.supplierName,
       t.table.openLines,
+      t.table.orderDate,
     ]);
-    expect(cellsOf(rowOf('SAMPLE-PO-0002')).slice(3)).toEqual(['합성 공급사 다', '1 / 3']);
+    expect(cellsOf(rowOf('SAMPLE-PO-0002')).slice(3, 5)).toEqual(['합성 공급사 다', '1 / 3']);
     // 납기는 YYYY.MM.DD(사용자 지시 2026-10-21).
     expect(cellsOf(rowOf('SAMPLE-PO-0002'))[1]).toMatch(/^\d{4}\.\d{2}\.\d{2}$/);
   });
@@ -680,7 +681,7 @@ describe('InboundScheduleScreen — 두 표', () => {
 
     const cells = cellsOf(rowOf('SAMPLE-PO-0001'));
     expect(cells[0]).toBe(t.values.empty);
-    expect(cells.slice(3)).toEqual([t.values.empty, t.values.empty]);
+    expect(cells.slice(3, 5)).toEqual([t.values.empty, t.values.empty]);
     const lineTable = await within(linesPane()).findByRole('table');
     expect(cellsOf(within(lineTable).getAllByRole('row')[1] as HTMLElement).slice(2, 4)).toEqual([
       t.values.empty,
@@ -966,5 +967,32 @@ describe('InboundScheduleScreen — 빠른 조회', () => {
       'true',
     );
     expect(screen.getByLabelText(t.fields.q)).toBeVisible();
+  });
+});
+
+describe('InboundScheduleScreen — 발주일과 폭 조절', () => {
+  it('발주 목록 마지막 열과 상세 머리에 발주일이 YYYY.MM.DD 로 보인다', async () => {
+    const { user } = renderScreen([listRoute(), linesRoute(), ...lookupRoutes()]);
+
+    await screen.findByText('SAMPLE-PO-0002');
+    expect(cellsOf(rowOf('SAMPLE-PO-0002')).at(-1)).toMatch(/^\d{4}\.\d{2}\.\d{2}$/);
+
+    await user.click(within(rowOf('SAMPLE-PO-0002')).getByText('합성 공급사 다'));
+
+    const head = await within(linesPane()).findByText(t.detail.orderDate);
+    expect(head.nextElementSibling?.textContent).toMatch(/^\d{4}\.\d{2}\.\d{2}$/);
+  });
+
+  it('두 표 사이 막대를 키보드로 옮기면 비율이 바뀐다', async () => {
+    const { user } = renderScreen([listRoute(), ...lookupRoutes()]);
+
+    await screen.findByText('SAMPLE-PO-0001');
+    const splitter = screen.getByRole('separator', { name: t.splitter });
+    const before = Number(splitter.getAttribute('aria-valuenow'));
+
+    splitter.focus();
+    await user.keyboard('{ArrowRight}{ArrowRight}');
+
+    expect(Number(splitter.getAttribute('aria-valuenow'))).toBe(before + 4);
   });
 });

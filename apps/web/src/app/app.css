@@ -6363,7 +6363,7 @@ dl.filter-bar.approval-inbox-detail-facts {
 
 /* 두 표(server #762) — 열별 폭의 도출 표는 order-table.tsx · line-table.tsx 에 있다. */
 .wide-table.po-board-orders table {
-  min-width: 32rem;
+  min-width: 38rem;
 }
 
 .wide-table.po-board-lines table {
@@ -6415,16 +6415,86 @@ dl.filter-bar.approval-inbox-detail-facts {
     overflow: visible;
   }
 
-  .po-board-table thead th {
-    position: sticky;
-    top: 0;
-    z-index: 1;
-    background: var(--surface-container);
+  .po-board-split {
+    /*
+     * 발주 목록 : 상세 — 기본 1 : 2, 가운데 막대를 끌어 바꾼다(사용자 지시 2026-10-21).
+     * 비율은 `usePaneSplit` 이 `--split-left`·`--split-right` 로 싣는다. 막대가 없는 화면은 기본값이다.
+     */
+    grid-template-columns: minmax(0, var(--split-left, 1fr)) minmax(0, var(--split-right, 2fr));
   }
 
-  .po-board-split {
-    /* 발주 목록 : 상세 = 1 : 2(사용자 지시 2026-10-21). 목록은 칸이 다섯이라 좁아도 된다. */
-    grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
+  .po-board-split:has(> .po-board-splitter) {
+    grid-template-columns:
+      minmax(0, var(--split-left, 1fr)) var(--space-5)
+      minmax(0, var(--split-right, 2fr));
+    column-gap: 0;
+  }
+
+  /*
+   * 끌기 막대 — **늘 보인다**(사용자 지시 2026-10-21). 가는 세로선 가운데에 잡는 손잡이(점 세 개)를 둬
+   * 끌어서 폭을 바꿀 수 있다는 것이 마우스를 올리기 전에도 읽힌다. 올리거나 초점이 오면 진해진다.
+   */
+  .po-board-split > .po-board-splitter {
+    position: relative;
+    display: block;
+    align-self: stretch;
+    margin: 0 auto;
+    width: var(--space-4);
+    cursor: col-resize;
+    touch-action: none;
+  }
+
+  .po-board-split > .po-board-splitter::before {
+    content: '';
+    position: absolute;
+    top: var(--space-2);
+    bottom: var(--space-2);
+    left: 50%;
+    width: 2px;
+    transform: translateX(-50%);
+    border-radius: var(--radius-full);
+    background: var(--outline-variant);
+  }
+
+  .po-board-split > .po-board-splitter::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 12px;
+    height: 40px;
+    transform: translate(-50%, -50%);
+    border: 1px solid var(--outline);
+    border-radius: var(--radius-full);
+    background:
+      radial-gradient(circle, var(--on-surface-variant) 1.5px, transparent 2px) center / 4px 8px
+        repeat-y,
+      var(--surface);
+    box-shadow: var(--elevation-1);
+  }
+
+  .po-board-split > .po-board-splitter:hover::before,
+  .po-board-split > .po-board-splitter:focus-visible::before {
+    width: 4px;
+    background: var(--semantic-info);
+  }
+
+  .po-board-split > .po-board-splitter:hover::after,
+  .po-board-split > .po-board-splitter:focus-visible::after {
+    border-color: var(--semantic-info);
+  }
+
+  .po-board-split > .po-board-splitter:focus-visible {
+    outline: none;
+  }
+
+  .po-board-split > .po-board-splitter:focus-visible::after {
+    box-shadow: var(--focus-ring);
+  }
+
+  .po-board-split > .po-board-splitter:focus-visible {
+    box-shadow: var(--focus-ring);
+    outline: none;
   }
 }
 
@@ -6497,6 +6567,34 @@ dl.filter-bar.approval-inbox-detail-facts {
   margin-left: auto;
   font: var(--type-label-lg);
   color: var(--primary-text);
+}
+
+/*
+ * 표 머리줄은 늘 위에 고정(사용자 지시 2026-10-21). 디자인 시스템 표는 자기 안에 스크롤 상자를 두는데,
+ * 그 상자는 세로로 스크롤하지 않아 머리줄이 거기에 붙으면 고정되지 않는다 — 그 상자의 넘침을 풀어
+ * 머리줄이 **실제로 스크롤하는 자리**(나란히: 각 표 상자 · 쌓임: 본문)에 붙게 한다. 가로 넘침은
+ * 나란히 설 때 바깥 표 상자가 받는다.
+ */
+.po-board-table > :has(> table) {
+  overflow: visible;
+}
+
+.po-board-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--surface-container);
+}
+
+/* 끌기 막대는 두 표가 나란히 설 때만 — 위아래로 쌓이면 감춘다. */
+.po-board-splitter {
+  display: none;
+}
+
+/* 끄는 동안 글자가 선택되거나 커서가 바뀌지 않게. */
+body.po-board-resizing {
+  cursor: col-resize;
+  user-select: none;
 }
 
 /* 초과 입하 분리 — 등록 정보·결과는 라인 표 아래에 가는 선으로 나눈다. */

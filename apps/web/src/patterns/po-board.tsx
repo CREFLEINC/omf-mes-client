@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef, useState } from 'react';
+import { useLayoutEffect, useRef, useState, type CSSProperties } from 'react';
 
 /**
  * 발주 목록 · 발주 상세 두 표 배치(W-01-09 입하 예정 · W-01-03 초과 입하 분리)가 함께 쓰는 조각.
@@ -75,3 +75,98 @@ export const OneLine = ({ text }: { text: string }) => {
     </span>
   );
 };
+
+/** 왼쪽 표가 차지하는 비율의 한계 — 어느 쪽도 읽을 수 없을 만큼 좁아지지 않게. */
+const SPLIT_MIN = 0.2;
+const SPLIT_MAX = 0.75;
+const SPLIT_STEP = 0.02;
+
+const clampRatio = (value: number): number => Math.min(SPLIT_MAX, Math.max(SPLIT_MIN, value));
+
+/**
+ * 두 표 사이를 끌어 폭을 나눈다(사용자 지시 2026-10-21). 비율은 화면마다 브라우저에 남긴다 —
+ * 다시 들어와도 고른 폭이 유지된다. 저장소가 막혀 있으면 기본 비율로 동작한다.
+ */
+export const usePaneSplit = (storageKey: string, initial = 1 / 3) => {
+  const [ratio, setRatio] = useState<number>(() => {
+    try {
+      const saved = Number(window.localStorage.getItem(storageKey));
+
+      return saved > 0 ? clampRatio(saved) : initial;
+    } catch {
+      return initial;
+    }
+  });
+
+  const commit = (next: number): void => {
+    const value = clampRatio(next);
+    setRatio(value);
+    try {
+      window.localStorage.setItem(storageKey, String(value));
+    } catch {
+      /* 저장하지 못해도 이번 화면에서는 그대로 쓴다. */
+    }
+  };
+
+  /** 나란히 설 때의 열 비율 — `.po-board-split` 이 읽는다. */
+  const style = {
+    '--split-left': `${String(ratio)}fr`,
+    '--split-right': `${String(1 - ratio)}fr`,
+  } as CSSProperties;
+
+  return { ratio, commit, style };
+};
+
+/**
+ * 끌기 막대 — 두 구획 사이의 세로 막대. 마우스·터치로 끌고, 초점을 두고 ←·→ 로도 옮긴다.
+ * 창이 좁아 위아래로 쌓일 때는 CSS 가 감춘다.
+ */
+export const PaneSplitter = ({
+  label,
+  ratio,
+  onChange,
+}: {
+  label: string;
+  ratio: number;
+  onChange: (ratio: number) => void;
+}) => (
+  <div
+    className="po-board-splitter"
+    role="separator"
+    aria-orientation="vertical"
+    aria-label={label}
+    /* 마우스를 올리면 무엇을 하는 막대인지 글로도 읽힌다. */
+    title={label}
+    aria-valuemin={Math.round(SPLIT_MIN * 100)}
+    aria-valuemax={Math.round(SPLIT_MAX * 100)}
+    aria-valuenow={Math.round(ratio * 100)}
+    tabIndex={0}
+    onPointerDown={(event) => {
+      const container = event.currentTarget.parentElement;
+      if (container === null) return;
+      event.preventDefault();
+      const rect = container.getBoundingClientRect();
+      const move = (moveEvent: PointerEvent): void => {
+        onChange((moveEvent.clientX - rect.left) / rect.width);
+      };
+      const up = (): void => {
+        window.removeEventListener('pointermove', move);
+        window.removeEventListener('pointerup', up);
+        document.body.classList.remove('po-board-resizing');
+      };
+      document.body.classList.add('po-board-resizing');
+      window.addEventListener('pointermove', move);
+      window.addEventListener('pointerup', up);
+    }}
+    onKeyDown={(event) => {
+      if (event.key === 'ArrowLeft') {
+        event.preventDefault();
+        onChange(ratio - SPLIT_STEP);
+      }
+      if (event.key === 'ArrowRight') {
+        event.preventDefault();
+        onChange(ratio + SPLIT_STEP);
+      }
+    }}
+  />
+);
