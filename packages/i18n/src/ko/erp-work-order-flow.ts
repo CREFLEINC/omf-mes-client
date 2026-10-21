@@ -69,6 +69,9 @@ export const erpWorkOrderFlow = {
     loadFailedDescription: '잠시 후 다시 조회하세요.',
     readinessFailed:
       '배포 대기 W/O를 불러오지 못해 라인 미정 사유를 표시하지 못했습니다. 다시 조회하세요.',
+    readinessTruncated:
+      '배포 대기 W/O가 너무 많아 일부만 받았습니다. 받지 못한 ERP W/O는 배포 대기를 「확인 불가」로 표시합니다.',
+    pendingUnknown: '확인 불가',
     emptyTitle: '조건에 맞는 ERP W/O가 없습니다',
     emptyDescription: '조회 조건을 바꿔 다시 조회하세요.',
     emptyNeedsReviewTitle: '확인 필요한 ERP W/O가 없습니다',

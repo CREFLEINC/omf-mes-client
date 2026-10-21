@@ -71,17 +71,25 @@ export const useWorklistCount = (status: AutoPlanFilter) => {
   });
 };
 
+/** 배포 대기 집계와 그 완전성. `complete`가 false면 목록이 잘려 없는 ERP W/O를 「배포 대기 0」으로 읽으면 안 된다. */
+export interface ReleaseBacklogResult {
+  byOrder: Map<number, ReleaseBacklog>;
+  complete: boolean;
+}
+
 /**
- * 배포 대기 W/O 집계. 배포 전 W/O 목록 하나를 끝까지 받아 ERP W/O별로 묶는다(작업함 행 수와 무관한 고정 호출, C-15 2).
+ * 배포 대기 W/O 집계. 배포 전 W/O 목록 하나를 받아 ERP W/O별로 묶는다(작업함 행 수와 무관한 고정 호출, C-15 2).
+ * 목록 API의 `productionOrderId` 필터는 한 건만 받아 현재 쪽의 ERP W/O로 좁히면 행마다 부르게 되므로 쓰지 않는다
+ * (여러 건 필터는 서버 요청 대상, omf-all-around#129). 상한에 걸려 잘리면 `complete`를 false로 두고, 화면은 목록에
+ * 없는 ERP W/O를 「배포 완료」가 아니라 판정 불가로 보인다.
  * 목록에 실린 칸으로 판정할 수 있는 배포 불가는 「생산 라인 미정」뿐이다. 기본 위치와 점검 차단은 W/O 상세에만 있어
- * 행마다 불러야 하므로 작업함에서는 판정하지 않는다(요청 목록 .client-dev/requests/w02-requests.md).
- * 목록 필터 `releasable`은 실측에서 배포 요청 결과와 달라 쓰지 않는다.
+ * 행마다 불러야 하므로 작업함에서는 판정하지 않는다. 목록 필터 `releasable`은 실측에서 배포 요청 결과와 달라 쓰지 않는다.
  */
 export const useReleaseBacklog = () => {
   const { client } = useApiClient();
   return useQuery({
     queryKey: worklistKeys.backlog,
-    queryFn: async (): Promise<Map<number, ReleaseBacklog>> => {
+    queryFn: async (): Promise<ReleaseBacklogResult> => {
       const pending = await fetchAllPages((page, size) =>
         runRequest(() =>
           client.GET('/production/work-orders', {
@@ -99,10 +107,13 @@ export const useReleaseBacklog = () => {
               },
             ],
       );
-      return toReleaseBacklog(
-        items,
-        items.filter((item) => item.lineMissing),
-      );
+      return {
+        byOrder: toReleaseBacklog(
+          items,
+          items.filter((item) => item.lineMissing),
+        ),
+        complete: !pending.truncated,
+      };
     },
   });
 };

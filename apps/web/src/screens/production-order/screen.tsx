@@ -86,10 +86,12 @@ export const ProductionOrderScreen = () => {
   const itemNames = useItemCodeNames(facts.map((fact) => fact.itemId));
   const outcomes = new Map((bulk.run?.outcomes ?? []).map((item) => [item.id, item]));
   const toRow = (fact: ProductionOrderFact): WorklistRow => {
+    /* 목록이 잘렸거나 받지 못했으면 목록에 없는 건은 판정 불가(undefined)로 둔다. 「배포 완료」로 읽지 않는다. */
     const entry =
       backlog.data === undefined
         ? undefined
-        : (backlog.data.get(fact.productionOrderId) ?? { pending: 0, blocked: 0 });
+        : (backlog.data.byOrder.get(fact.productionOrderId) ??
+          (backlog.data.complete ? { pending: 0, blocked: 0 } : undefined));
     const item = itemNames.get(fact.itemId);
     const uom = uoms.entries.find((option) => option.value === String(fact.uomId))?.label ?? '';
     return {
@@ -179,7 +181,13 @@ export const ProductionOrderScreen = () => {
       align: 'end',
       render: (row) =>
         row.pending === null ? (
-          ''
+          !backlog.isPending &&
+          row.derived.state === 'DONE' &&
+          (row.fact.expandedWorkOrderCount ?? 0) > 0 ? (
+            <span className="nowrap-cell">{t.list.pendingUnknown}</span>
+          ) : (
+            ''
+          )
         ) : (
           <span className="nowrap-cell">
             {t.list.pendingWorkOrders(row.pending, row.fact.expandedWorkOrderCount ?? 0)}
@@ -298,6 +306,9 @@ export const ProductionOrderScreen = () => {
         />
       )}
       {backlog.isError && <AlertBanner variant="info">{t.list.readinessFailed}</AlertBanner>}
+      {backlog.data?.complete === false && (
+        <AlertBanner variant="info">{t.list.readinessTruncated}</AlertBanner>
+      )}
       <section className="pane erp-wo-list-pane" aria-label={t.list.pane}>
         {list.isError ? (
           <AlertBanner

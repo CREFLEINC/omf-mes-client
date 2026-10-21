@@ -267,4 +267,22 @@ describe('ERP W/O 처리 작업함', () => {
       within(row).getByRole('checkbox', { name: t.list.checkRow('SYN-PO-704') }),
     ).toBeVisible();
   });
+
+  it('배포 대기 목록이 상한에 걸려 잘리면 목록에 없는 건을 「배포 완료」로 보이지 않고 「확인 불가」로 둔다', async () => {
+    const UNKNOWN = order(705, 'SYN-PO-705', { status: 'DONE', reasons: [] }, 1);
+    const harness = stub({ orders: [UNKNOWN] });
+    const fetch: StubFetch = async (request) =>
+      path(request) === '/production/work-orders'
+        ? jsonResponse({ items: [], page: { page: 1, size: 200, total: 100000 } })
+        : harness.fetch(request);
+    renderWithProviders(<ProductionOrderScreen />, {
+      fetch,
+      route: '/production/production-orders?autoPlan=DONE',
+    });
+
+    expect(await screen.findByText(t.list.readinessTruncated)).toBeVisible();
+    const row = screen.getByRole('link', { name: t.list.openRow('SYN-PO-705') });
+    expect(within(row).getByText(t.list.pendingUnknown)).toBeVisible();
+    expect(within(row).queryByText(t.status.RELEASED)).toBeNull();
+  });
 });
