@@ -1,8 +1,9 @@
 import { messages } from '@omf-mes/i18n';
+import type { ReactNode } from 'react';
 
 import { formatDateTime, type InspectionRequestDetail } from './types';
 import { withUom } from './uom-lookup';
-import type { NameLookup } from './reference-lookup';
+import type { ItemNameLookup, NameLookup } from './reference-lookup';
 
 /**
  * 고른 의뢰의 상세 — **스펙 §4-A 의 여섯 항목이다.**
@@ -25,8 +26,8 @@ export interface RequestDetailPaneProps {
   detail: InspectionRequestDetail;
   /** 수량 옆에 붙일 단위 코드. 모르면 `null` — 숫자만 둔다 */
   uomCode: string | null;
-  /** 품목 이름 풀이. **번호가 아니라 「코드 · 이름」을 보인다**(omf-all-around#40). */
-  itemNames: NameLookup;
+  /** 품목 이름 풀이. **번호가 아니라 이름(위)·코드(아래)를 보인다** — 대기 목록과 같은 모양(omf-all-around#40·#133). */
+  itemNames: ItemNameLookup;
   /** 자재 LOT 번호 풀이. 검사자가 손에 든 라벨과 대조하는 값이다. */
   lotNumbers: NameLookup;
 }
@@ -37,8 +38,18 @@ export const RequestDetailPane = ({
   itemNames,
   lotNumbers,
 }: RequestDetailPaneProps) => {
+  const itemParts = itemNames.partsOf(detail.itemId);
+  const itemLabel = itemNames.labelOf(detail.itemId);
+  const lotNo = lotNumbers.labelOf(detail.lotId);
+
   /* 식별에 쓰이는 넷(의뢰번호·품목·대상 LOT·검사수량)은 값을 조금 굵게 — 먼저 눈에 들어오게. */
-  const items = [
+  const items: {
+    key: string;
+    label: string;
+    value: ReactNode;
+    emphasized?: boolean;
+    hint?: string;
+  }[] = [
     {
       key: 'no',
       label: t.fields.inspectionRequestNo,
@@ -49,13 +60,30 @@ export const RequestDetailPane = ({
     {
       key: 'item',
       label: t.fields.itemId,
-      value: itemNames.labelOf(detail.itemId),
+      /* 못 푼 갈래는 줄이 하나뿐이라 풀이가 사유를 그 자리에 낸다. */
+      value:
+        itemParts === null ? (
+          itemLabel
+        ) : (
+          <span
+            className="iqc-inspection-fact-item"
+            title={`${itemParts.name} · ${itemParts.code}`}
+          >
+            <span className="iqc-inspection-fact-item-name">{itemParts.name}</span>
+            <span className="iqc-inspection-fact-item-code">{itemParts.code}</span>
+          </span>
+        ),
       emphasized: true,
     },
     {
       key: 'lot',
       label: t.fields.lotId,
-      value: lotNumbers.labelOf(detail.lotId),
+      /* 구분자가 많은 번호라 칸 안에서 끊기면 읽기 어렵다 — 한 줄 말줄임, 전체는 title. */
+      value: (
+        <span className="iqc-inspection-lot" title={lotNo}>
+          {lotNo}
+        </span>
+      ),
       emphasized: true,
     },
     {

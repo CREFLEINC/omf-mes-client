@@ -14114,7 +14114,12 @@ button.app-button-neutral {
  */
 @media (min-width: 1281px) {
   .two-pane.iqc-inspection-panes {
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    /*
+     * 상세(작업 영역)를 넓힌다 — 넓은 화면에서 수량·판정이 두 칸으로 서고(#133 스크롤 줄이기), 목록은 LOT 번호를
+     * 말줄임(전체는 마우스 올림)으로 담는다.
+     */
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr);
+    align-items: start;
   }
 }
 
@@ -14123,43 +14128,240 @@ button.app-button-neutral {
   margin-left: auto;
 }
 
-/* 대기 목록 — 품목은 두 줄, 의뢰 일시는 한 줄, 자재 LOT 은 좁은 칸 안에서 줄을 바꾼다. */
+.iqc-inspection-panes .iqc-inspection-requested-at {
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
 
 /*
- * 첫 칸의 품목 — **이름과 코드를 두 줄로** 세운다(사용자 지시 2026-09-21). 좁은 칸에서
- * 한 줄로 붙이면 이름이 잘려 무엇인지 알 수 없다. 칸 전체가 이 줄을 여는 단추이므로
- * 글자를 왼쪽에 맞추고 줄 간격만 좁힌다.
+ * 대기 목록(왼쪽 창의 표) — 글자 칸은 왼쪽, 상태는 가운데, 일시는 오른쪽. 머리줄도 같은 기준이다.
+ * 상세 창의 표(측정·회차)는 위 가운데 정렬 그대로 둔다.
+ */
+.iqc-inspection-panes > .pane:first-child th:nth-child(1),
+.iqc-inspection-panes > .pane:first-child td:nth-child(1),
+.iqc-inspection-panes > .pane:first-child th:nth-child(2),
+.iqc-inspection-panes > .pane:first-child td:nth-child(2) {
+  text-align: left;
+}
+
+.iqc-inspection-panes > .pane:first-child th:nth-child(4),
+.iqc-inspection-panes > .pane:first-child td:nth-child(4) {
+  text-align: right;
+}
+
+/*
+ * 열 폭을 내용이 아니라 지정 폭(품목 30% · 상태 64px · 일시 136px)으로 잡는다 — 내용 폭으로 잡으면 긴 LOT 번호가
+ * 표를 창 밖으로 밀어 일시가 잘린다(1024 폭). 남는 폭은 LOT 칸이 받고, 모자라면 말줄임이다.
+ */
+.iqc-inspection-panes > .pane:first-child table {
+  table-layout: fixed;
+  width: 100%;
+}
+
+.iqc-inspection-panes > .pane:first-child th {
+  color: var(--on-surface-muted);
+  font: var(--type-label-sm);
+  letter-spacing: var(--type-label-sm-tracking);
+  border-bottom: 1px solid var(--outline-variant);
+}
+
+.iqc-inspection-panes > .pane:first-child td {
+  padding-block: var(--space-3);
+  vertical-align: middle;
+}
+
+/* 줄무늬 바탕을 지운다 — 구분은 얇은 선으로, 강조는 고른 줄에만. */
+.iqc-inspection-panes > .pane:first-child tbody tr,
+.iqc-inspection-panes > .pane:first-child tbody tr:nth-child(even) {
+  background: transparent;
+}
+
+/* 줄 — 마우스를 올리면 옅게, 고른 줄은 바탕 + 왼쪽 강조선으로 확실히 가른다. */
+.iqc-inspection-panes > .pane:first-child tbody tr {
+  transition: background-color 0.12s ease;
+  /* 줄 아무 곳이나 눌러 고른다(queue-table.tsx). */
+  cursor: pointer;
+}
+
+.iqc-inspection-panes > .pane:first-child tbody tr:nth-child(n):hover {
+  background: var(--state-hover-neutral);
+}
+
+.iqc-inspection-panes
+  > .pane:first-child
+  tbody
+  tr:nth-child(n):has(.iqc-inspection-queue-item[aria-current='true']) {
+  background: var(--surface-container-high);
+}
+
+/* 표 줄(tr)에는 그림자가 안 그려진다 — 강조선은 첫 칸에 긋는다. */
+.iqc-inspection-panes
+  > .pane:first-child
+  tbody
+  tr:has(.iqc-inspection-queue-item[aria-current='true'])
+  > td:first-child {
+  box-shadow: inset 3px 0 0 var(--primary);
+}
+
+/*
+ * 첫 칸의 품목 — 이름(주)과 코드(보조)를 두 줄로. 칸 전체가 이 줄을 여는 단추다.
+ * 이름은 강조색 밑줄 링크 대신 본문색·굵게 — 누를 수 있다는 것은 커서와 줄 바탕으로 보인다.
  */
 .iqc-inspection-panes .iqc-inspection-queue-item {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
   gap: 2px;
+  width: 100%;
+  min-width: 0;
   text-align: left;
-  line-height: 1.3;
+  line-height: 1.35;
+  color: var(--on-surface);
+  text-decoration: none;
 }
 
-/* 이름이 먼저 눈에 들어와야 한다 — 검사자가 찾는 것은 코드가 아니라 무엇인지다. */
+.iqc-inspection-panes .iqc-inspection-queue-item:hover {
+  background: none;
+}
+
+.iqc-inspection-panes .iqc-inspection-queue-item:hover .iqc-inspection-queue-item-name {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.iqc-inspection-panes .iqc-inspection-queue-item-name,
+.iqc-inspection-panes .iqc-inspection-queue-item-code {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .iqc-inspection-panes .iqc-inspection-queue-item-name {
-  overflow-wrap: anywhere;
+  font-weight: 600;
+}
+
+/* 코드는 라벨과 눈으로 맞춰 보는 대조용 — 이름보다 한 단 낮춘다. */
+.iqc-inspection-panes .iqc-inspection-queue-item-code {
+  font: var(--type-body-sm);
+  color: var(--on-surface-muted);
+}
+
+/* 대기 목록 LOT — 앞 마디만 줄이고 끝 마디(일련번호)는 남긴다(queue-table.tsx). */
+.iqc-inspection-panes .iqc-inspection-lot:has(> .iqc-inspection-lot-tail) {
+  display: flex;
+  min-width: 0;
+}
+
+.iqc-inspection-lot-head {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.iqc-inspection-lot-tail {
+  flex: none;
+}
+
+/* LOT 칸 — 번호(말줄임)와 4M 표시를 한 줄에. 표시는 줄지 않아 번호가 먼저 줄어든다(omf-all-around#63). */
+.iqc-inspection-panes .iqc-inspection-lot-cell {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.iqc-inspection-panes .iqc-inspection-lot-cell > :last-child:not(.iqc-inspection-lot) {
+  flex: none;
+}
+
+/* 자재 LOT — 한 줄 말줄임(전체는 title). 구분자가 많은 번호라 고정폭 숫자로. */
+.iqc-inspection-panes .iqc-inspection-lot {
+  display: block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
 }
 
 /*
- * 코드는 **대조용**이다 — 라벨에 찍힌 글자와 눈으로 맞춰 보는 값이라 지우지 않고,
- * 이름보다 한 단 낮춰 둘의 층을 가른다.
+ * 검색 묶음 — LOT 스캔(첫 줄 전체)과 조회 조건(품목 · 공급사 · 의뢰번호 · 조회/초기화)을
+ * 같은 격자·같은 높이로 세운다. 좁아지면 조건 칸이 줄을 바꾸고 단추 묶음은 그 줄 오른쪽 끝에 남는다.
  */
-.iqc-inspection-panes .iqc-inspection-queue-item-code {
-  font-size: var(--font-size-xs, 0.75rem);
-  color: var(--color-text-secondary, #6b7280);
-  overflow-wrap: anywhere;
+.iqc-inspection-search {
+  display: grid;
+  gap: var(--space-3);
+  padding-bottom: var(--space-4);
+  margin-bottom: var(--space-2);
+  border-bottom: 1px solid var(--outline-variant);
 }
 
-.iqc-inspection-panes .iqc-inspection-lot {
-  overflow-wrap: anywhere;
+.iqc-inspection-search > form.form-actions {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  justify-content: stretch;
+  gap: var(--space-1) var(--space-3);
+  margin: 0;
 }
 
-.iqc-inspection-panes .iqc-inspection-requested-at {
-  white-space: nowrap;
+.iqc-inspection-search > form.form-actions > .field-note {
+  grid-column: 1 / -1;
+  margin: 0;
+}
+
+.iqc-inspection-search > .filter-bar {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) minmax(0, 1fr) auto;
+  align-items: end;
+  gap: var(--space-3);
+  margin: 0;
+}
+
+.iqc-inspection-search > .filter-bar > * {
+  min-width: 0;
+}
+
+.iqc-inspection-search .iqc-inspection-filter-actions {
+  display: flex;
+  gap: var(--space-2);
+  margin: 0;
+}
+
+/* 칸·단추 높이를 한 값으로 — LOT 스캔의 [찾기] 도 조건 줄 단추와 같은 높이. */
+.iqc-inspection-search button {
+  height: var(--control-height-md);
+  min-height: var(--control-height-md);
+}
+
+/* [찾기] 도 조건 줄 단추와 같은 글자 크기·여백. */
+.iqc-inspection-search > form.form-actions button {
+  padding-inline: var(--space-4);
+  font: var(--type-label-lg);
+  letter-spacing: var(--type-label-lg-tracking);
+}
+
+/* 선택칸(공급사)도 칸 폭을 다 쓴다 — 글자 길이만큼 줄어들어 줄이 들쭉날쭉하지 않게. */
+.iqc-inspection-search .field-cell > * {
+  width: 100%;
+}
+
+@media (max-width: 1100px) {
+  .iqc-inspection-search > .filter-bar {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+
+  .iqc-inspection-search .iqc-inspection-filter-actions {
+    grid-column: 1 / -1;
+    justify-content: flex-end;
+  }
+}
+
+/* 상세 창 — 고르기 전 안내는 카드 안 제목 아래 한 줄. */
+.iqc-inspection-panes > .pane:last-child > .iqc-inspection-section:only-child > .field-note {
+  color: var(--on-surface-variant);
 }
 
 /*
@@ -14203,6 +14405,109 @@ button.app-button-neutral {
 
 .iqc-inspection-panes > .pane > .iqc-inspection-section:last-child {
   padding-bottom: 0;
+}
+
+/*
+ * 스크롤 줄이기(omf-all-around#133) — 두 칸 배치(1281px 이상)에서 목록 카드는 화면에 붙어 있고 표만 안에서 구른다.
+ * 상세를 아래로 읽어 내려가도 목록이 따라 사라지지 않는다. 쌓이는 배치(1280px 이하)는 종전 그대로다.
+ */
+@media (min-width: 1281px) {
+  .iqc-inspection-panes > .iqc-inspection-queue-pane {
+    position: sticky;
+    top: var(--space-4);
+    display: flex;
+    flex-direction: column;
+    max-height: calc(100vh - 7.5rem);
+  }
+
+  .iqc-inspection-queue-pane > .iqc-inspection-queue-rows {
+    flex: 1 1 auto;
+    min-height: 8rem;
+    overflow-y: auto;
+  }
+}
+
+/* 쌓이는 배치(1280px 이하) — 목록이 길어도 상세가 멀리 밀리지 않게 표만 안에서 구른다(약 5줄). */
+@media (max-width: 1280px) {
+  .iqc-inspection-queue-pane > .iqc-inspection-queue-rows {
+    max-height: 22rem;
+    overflow-y: auto;
+  }
+}
+
+/* 상세 카드 — 칸 폭으로 배치를 고른다(창 폭이 아니라 카드 폭이 정한다). */
+.iqc-inspection-detail {
+  container-type: inline-size;
+}
+
+/* 수량 · 판정 — 넓으면 두 칸, 가운데 얇은 세로 구분선. 좁으면 위아래. */
+.iqc-inspection-work {
+  display: grid;
+}
+
+@container (min-width: 40rem) {
+  .iqc-inspection-work {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    column-gap: var(--space-5);
+  }
+
+  .iqc-inspection-work > .iqc-inspection-section + .iqc-inspection-section {
+    padding-inline-start: var(--space-5);
+    border-inline-start: 1px solid var(--outline-variant);
+  }
+
+  /* 수량 칸이 반 폭이라 합격·불합격·보류 세 칸이 좁다 — 두 칸 배치에서만 단위를 칸 아래로 내리지 않고 줄인다. */
+  .iqc-inspection-work .iqc-inspection-qty {
+    gap: var(--space-2);
+  }
+}
+
+/*
+ * 저장 · 확정 — 판정 카드 아래 한 줄로 떼고, 창을 내려도 화면 아래에 붙어 있다(판정 카드가 화면에 있는 동안).
+ * 바탕을 카드 색으로 채워 아래 내용이 비치지 않게 한다. 화면 높이가 낮으면(1024×768 등) 붙이지 않는다 —
+ * 붙은 줄이 수량 칸을 가린다.
+ */
+.iqc-inspection-detail form > .iqc-inspection-action-area {
+  margin-inline: calc(-1 * var(--space-4));
+  padding: var(--space-3) var(--space-4);
+  background: var(--surface-container-low);
+}
+
+@media (min-height: 800px) {
+  .iqc-inspection-detail form > .iqc-inspection-action-area {
+    position: sticky;
+    bottom: 0;
+    z-index: 1;
+  }
+}
+
+/* 참고 정보 — 측정치 · 이전 회차는 한 줄씩, 첨부 문서 · 검사 이력은 넓으면 두 칸. */
+.iqc-inspection-aux {
+  display: grid;
+  margin-top: var(--space-5);
+  padding-top: var(--space-2);
+  border-top: 1px solid var(--outline-variant);
+}
+
+.iqc-inspection-panes .iqc-inspection-aux > * {
+  min-width: 0;
+  padding-block: var(--space-4);
+}
+
+.iqc-inspection-panes .iqc-inspection-aux > .iqc-inspection-section:first-child {
+  border-top: 0;
+}
+
+@container (min-width: 40rem) {
+  .iqc-inspection-aux {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    column-gap: var(--space-5);
+  }
+
+  /* 측정치 · 이전 회차는 표가 넓어 한 줄을 다 쓰고, 첨부 문서 · 검사 이력이 나란히 선다. */
+  .iqc-inspection-aux > .iqc-inspection-section {
+    grid-column: 1 / -1;
+  }
 }
 
 /* 검사 문서 첨부(omf-all-around#58) — 고른 파일 한 줄: 이름 · 크기 · [제거], 사전 검사 오류는 그 아래. */
@@ -14337,6 +14642,50 @@ button.app-button-neutral {
 
 .iqc-inspection-fact-key {
   font-weight: 600;
+}
+
+/* 값 칸도 줄어들 수 있어야 말줄임이 선다(격자 항목의 기본 최소 폭은 내용 폭이다). */
+.iqc-inspection-fact > dd {
+  min-width: 0;
+}
+
+/* 대상 LOT — 구분자가 많은 긴 번호라 두 칸을 써서 되도록 끝까지 보이게 한다. */
+.iqc-inspection-fact:has(.iqc-inspection-lot) {
+  grid-column: span 2;
+}
+
+/* 4M 변경품(omf-all-around#63) — 판정 아래 체크 한 줄, 체크하면 종류·내용 두 칸. */
+.iqc-inspection-four-m {
+  display: grid;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+}
+
+.iqc-inspection-four-m > .field-note {
+  margin: 0;
+}
+
+.iqc-inspection-four-m-fields {
+  grid-template-columns: minmax(0, 12rem) minmax(0, 1fr);
+}
+
+/* 기본 정보의 품목 — 대기 목록과 같은 층: 이름(굵게) 위 · 코드(보조) 아래, 길면 말줄임(전체는 title). */
+.iqc-inspection-fact-item {
+  display: grid;
+  min-width: 0;
+}
+
+.iqc-inspection-fact-item-name,
+.iqc-inspection-fact-item-code {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.iqc-inspection-fact-item-code {
+  font: var(--type-body-sm);
+  font-weight: 400;
+  color: var(--on-surface-muted);
 }
 
 /* 검사 결과 수량 — 기준값(검사수량)은 따로, 합격·불합격·보류 세 칸은 한 줄에 같은 폭으로. */
@@ -16478,38 +16827,6 @@ body:has(.goods-receipt-post-form) > [role='listbox'] {
   margin: 0;
   color: var(--semantic-success-text);
   font-weight: 600;
-}
-
-/* IQC 대기 목록 LOT 칸 — 번호와 4M 표시를 한 줄에. 표시는 줄지 않고 번호가 줄을 바꾼다(omf-all-around#63). */
-.iqc-inspection-panes .iqc-inspection-lot-cell {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  min-width: 0;
-}
-
-.iqc-inspection-panes .iqc-inspection-lot-cell > .iqc-inspection-lot {
-  flex: 1 1 auto;
-  min-width: 0;
-}
-
-.iqc-inspection-panes .iqc-inspection-lot-cell > :last-child:not(.iqc-inspection-lot) {
-  flex: none;
-}
-
-/* 4M 변경품(omf-all-around#63) — 판정 아래 체크 한 줄, 체크하면 종류·내용 두 칸. */
-.iqc-inspection-four-m {
-  display: grid;
-  gap: var(--space-2);
-  margin-top: var(--space-3);
-}
-
-.iqc-inspection-four-m > .field-note {
-  margin: 0;
-}
-
-.iqc-inspection-four-m-fields {
-  grid-template-columns: minmax(0, 12rem) minmax(0, 1fr);
 }
 
 /* 4M 변경 자재 투입(omf-all-around#63 2단계) — 작업지시 진행 상세·LOT 상태 상세가 함께 쓰는 구획. */

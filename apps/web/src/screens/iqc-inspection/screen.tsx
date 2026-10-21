@@ -744,40 +744,45 @@ export const IqcInspectionScreen = () => {
           />
         )}
 
-        {/* ⛔ 읽기 전용이다 — 앞 회차는 정정하지 않고 새 회차를 쌓는다(§5-3). */}
-        <RoundHistory rounds={historyRounds} uomCode={uomCode} />
-
-        {/* LOT 별 시험성적서 등 검사 문서(#58) — 대상 LOT 이 있을 때만. */}
-        {detail.data.lotId !== null && (
-          <AttachmentPanel
-            key={detail.data.lotId}
-            targetTypeCode="LOT"
-            targetId={detail.data.lotId}
-          />
-        )}
-
-        {/* 검사 대상 이력(#61) — 회차를 저장·확정하면 새로 부른다. */}
-        {selectedId !== null && (
-          <InspectionHistoryPanel
-            key={`${String(selectedId)}-${String(historyRounds.length)}`}
-            inspectionRequestId={selectedId}
-            judgmentLabelOf={(code) =>
-              judgmentOptions.find((option) => option.value === code)?.label ?? code
-            }
-            revision={`${String(rounds.data?.length ?? 0)}:${JSON.stringify(round ?? null)}`}
-          />
-        )}
-
         {/*
-         * ⚠ **`isPending` 이 아니라 `isLoading` 이다.** 측정치 조회는 회차가 없을 때
-         * 비활성이고, 비활성이면 `isPending` 이 계속 참이라 아직 시작하지 않은 의뢰의
-         * 그리드가 영영 「불러오는 중」이 된다. `isLoading`(= pending && fetching)만
-         * 실제로 부르는 중을 잡는다.
+         * 참고 정보 — 판정 작업과 떼어 한 묶음으로(omf-all-around#133). 측정치는 검사와 가장 가까워 맨 위,
+         * 이전 회차가 그 아래 한 줄씩 서고, 첨부 문서·검사 이력은 넓으면 나란히 선다. 내용과 동작은 그대로다.
          */}
-        <MeasurementGrid
-          rows={measurementRows}
-          isLoading={itemSpecs.isLoading || measurements.isLoading}
-        />
+        <div className="iqc-inspection-aux">
+          {/*
+           * ⚠ **`isPending` 이 아니라 `isLoading` 이다.** 측정치 조회는 회차가 없을 때
+           * 비활성이고, 비활성이면 `isPending` 이 계속 참이라 아직 시작하지 않은 의뢰의
+           * 그리드가 영영 「불러오는 중」이 된다. `isLoading`(= pending && fetching)만
+           * 실제로 부르는 중을 잡는다.
+           */}
+          <MeasurementGrid
+            rows={measurementRows}
+            isLoading={itemSpecs.isLoading || measurements.isLoading}
+          />
+          {/* ⛔ 읽기 전용이다 — 앞 회차는 정정하지 않고 새 회차를 쌓는다(§5-3). */}
+          <RoundHistory rounds={historyRounds} uomCode={uomCode} />
+
+          {/* LOT 별 시험성적서 등 검사 문서(#58) — 대상 LOT 이 있을 때만. */}
+          {detail.data.lotId !== null && (
+            <AttachmentPanel
+              key={detail.data.lotId}
+              targetTypeCode="LOT"
+              targetId={detail.data.lotId}
+            />
+          )}
+
+          {/* 검사 대상 이력(#61) — 회차를 저장·확정하면 새로 부른다. */}
+          {selectedId !== null && (
+            <InspectionHistoryPanel
+              key={`${String(selectedId)}-${String(historyRounds.length)}`}
+              inspectionRequestId={selectedId}
+              judgmentLabelOf={(code) =>
+                judgmentOptions.find((option) => option.value === code)?.label ?? code
+              }
+              revision={`${String(rounds.data?.length ?? 0)}:${JSON.stringify(round ?? null)}`}
+            />
+          )}
+        </div>
       </>
     );
 
@@ -794,14 +799,17 @@ export const IqcInspectionScreen = () => {
       />
 
       <div className="two-pane iqc-inspection-panes">
-        <section className="pane" aria-label={t.queue.heading}>
-          {/* LOT 바코드로 대기 의뢰를 바로 연다(#58) — 목록 조건은 그대로 두고 선택만 한다. */}
-          <LotScan inspectionTypeCode="IQC" onFound={select} />
-          <QueueFilterBar
-            appliedFilters={filters}
-            onSearch={applyFilters}
-            onReset={() => applyFilters(EMPTY_FILTERS)}
-          />
+        <section className="pane iqc-inspection-queue-pane" aria-label={t.queue.heading}>
+          {/* 검색 묶음 — LOT 스캔과 조회 조건이 같은 격자·높이로 선다. */}
+          <div className="iqc-inspection-search">
+            {/* LOT 바코드로 대기 의뢰를 바로 연다(#58) — 목록 조건은 그대로 두고 선택만 한다. */}
+            <LotScan inspectionTypeCode="IQC" onFound={select} />
+            <QueueFilterBar
+              appliedFilters={filters}
+              onSearch={applyFilters}
+              onReset={() => applyFilters(EMPTY_FILTERS)}
+            />
+          </div>
 
           {queue.isError && (
             <QueueLoadErrorBanner
@@ -826,7 +834,7 @@ export const IqcInspectionScreen = () => {
           {queue.data !== undefined && <PageNav view={pageView} onChange={goToPage} />}
         </section>
 
-        <section className="pane" aria-label={t.detail.heading}>
+        <section className="pane iqc-inspection-detail" aria-label={t.detail.heading}>
           {detailContent}
         </section>
       </div>

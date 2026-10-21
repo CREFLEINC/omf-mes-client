@@ -27,15 +27,15 @@ export const iqcInspection: Translated<typeof ko.iqcInspection> = {
 
   filters: {
     item: 'Mặt hàng',
-    itemPlaceholder: 'Hãy chọn mặt hàng',
+    itemPlaceholder: 'Chọn mặt hàng',
     itemPick: 'Chọn mặt hàng này',
     itemClear: 'Xóa điều kiện mặt hàng',
     supplier: 'Nhà cung cấp',
-    supplierPlaceholder: 'Hãy chọn nhà cung cấp',
+    supplierPlaceholder: 'Chọn nhà cung cấp',
     all: 'Tất cả',
     supplierLoadFailed: 'Không tải được danh sách nhà cung cấp.',
     keyword: 'Số yêu cầu',
-    keywordPlaceholder: 'Tìm theo số yêu cầu',
+    keywordPlaceholder: 'Nhập số yêu cầu',
     apply: 'Tra cứu',
     reset: 'Đặt lại',
     identifierInvalid: 'Hãy nhập số là số nguyên từ 1 trở lên.',
@@ -49,7 +49,7 @@ export const iqcInspection: Translated<typeof ko.iqcInspection> = {
   detail: {
     heading: 'Đối tượng',
     sectionTitle: 'Thông tin kiểm tra cơ bản',
-    nothingSelected: 'Hãy chọn yêu cầu cần kiểm tra ở danh sách bên trái.',
+    nothingSelected: 'Hãy chọn mục cần kiểm tra ở danh sách bên trái.',
     loading: 'Đang tải yêu cầu.',
     fields: {
       inspectionRequestNo: 'Số yêu cầu',

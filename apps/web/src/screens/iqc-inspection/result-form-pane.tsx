@@ -255,201 +255,205 @@ export const ResultFormPane = ({
 
   return (
     <form aria-label={t.heading} onSubmit={submit}>
-      {/* ── 검사 결과 수량 — 검사수량을 합격·불합격·보류로 나눈 결과와 그 입력 현황 ── */}
-      <section className="iqc-inspection-section">
-        <div className="iqc-inspection-section-head">
-          <h3>{t.sectionTitle}</h3>
-          {/* 회차 상태 — 회차가 아직 없으면 아무것도 보이지 않는다(막힌 이유는 판정 단추 아래가 말한다). */}
-          {isReinspecting ? (
-            <p className="field-note">{t.reinspectRound}</p>
-          ) : round !== null ? (
-            <p className="field-note">{t.round(round.inspectionRound)}</p>
-          ) : null}
-        </div>
-
-        {/*
-         * ⭐ **저장해야 회차가 생긴다.** 「검사 시작」 액션을 두지 않고 첫 임시 저장을 검사
-         * 시작으로 삼은 규율과 같다(omf-mes 확정 2026-08-21 §1.2) — 열어 두고 떠난 사람이
-         * 빈 회차를 남기지 않는다.
-         *
-         * ⛔ **사유 칸을 지어내지 않는다.** 계약이 재검사 사유를 선택으로 받지만 고를 값
-         * 목록이 정해지지 않았다. 감추지 않고 왜 없는지 밝힌다(omf-mes#179).
-         */}
-        {isReinspecting && (
-          <>
-            <p className="field-note">{t.reinspectNote}</p>
-            <p className="field-note">{t.reinspectReasonPending}</p>
-          </>
-        )}
-
-        {/* 기준값(검사수량)은 입력 줄 밖에 따로 — 세 칸은 이 값을 나눈 결과다. */}
-        <dl className="iqc-inspection-qty-base">
-          <dt className="field-label">{t.fields.inspectedQty}</dt>
-          <dd>{inspectedText}</dd>
-        </dl>
-
-        <div className="iqc-inspection-qty">
-          {field('accepted', t.fields.accepted, errors.accepted)}
-          {field('rejected', t.fields.rejected, errors.rejected)}
-          {field('held', t.fields.held, errors.held)}
-        </div>
-
-        {/* 잠근 이유는 세 칸마다 되풀이하지 않고 수량 줄 아래 한 번만 밝힌다. */}
-        {isConfirmed && <p className="field-note">{t.confirmed}</p>}
-
-        {/* 입력 현황 — 「합계 / 검사수량」 · 잔여 · 막대 · 한 줄 안내. 계산은 그대로다. */}
-        <div className="iqc-inspection-progress">
-          <span className="field-label">{t.progressTitle}</span>
-          <div className="iqc-inspection-progress-row">
-            <span className="iqc-inspection-progress-sum">
-              <span className="iqc-inspection-visually-hidden">{t.sum} </span>
-              {totals.kind === 'counted' ? `${sumText} / ${inspectedText}` : sumText}
-            </span>
-            <span>
-              {t.remaining} {remainingText}
-            </span>
+      {/*
+       * 수량과 판정은 한 작업이라 나란히 둔다 — 상세 창이 넓으면 두 칸, 좁으면 위아래(omf-all-around#133).
+       * 저장·확정은 그 아래 한 줄로 떼어, 창을 내려도 화면 아래에 붙어 있게 한다.
+       */}
+      <div className="iqc-inspection-work">
+        {/* ── 검사 결과 수량 — 검사수량을 합격·불합격·보류로 나눈 결과와 그 입력 현황 ── */}
+        <section className="iqc-inspection-section">
+          <div className="iqc-inspection-section-head">
+            <h3>{t.sectionTitle}</h3>
+            {/* 회차 상태 — 회차가 아직 없으면 아무것도 보이지 않는다(막힌 이유는 판정 단추 아래가 말한다). */}
+            {isReinspecting ? (
+              <p className="field-note">{t.reinspectRound}</p>
+            ) : round !== null ? (
+              <p className="field-note">{t.round(round.inspectionRound)}</p>
+            ) : null}
           </div>
-          <Progress
-            value={progress.value}
-            tone={progress.tone}
-            label={t.progressLabel}
-            valueText={`${sumText} / ${inspectedText}`}
-          />
-          {totalsNote !== null && <p className="field-note">{totalsNote}</p>}
-        </div>
-      </section>
 
-      {/* ── 판정 — 종합 판정을 고르고, 임시 저장 뒤 확정한다 ── */}
-      <section className="iqc-inspection-section">
-        <h3>{t.judgmentSectionTitle}</h3>
-
-        {/*
-         * 종합 판정 — ⛔ **값 목록을 화면에 고정하지 않는다.** 공통코드 조회로 채우고,
-         * 목록이 비어도 **감추지 않고 사유를 밝힌다**(공유계약 G-2). 시드가 아직 안 들어가
-         * 빌 수 있는데, 감추면 그 자리가 왜 없는지 사용자가 알 수 없다.
-         */}
-        <div className="field-cell iqc-inspection-judgment-field">
-          <FieldLabel htmlFor={judgmentId} label={t.judgment} required />
-          <Select
-            id={judgmentId}
-            options={judgmentOptions}
-            value={judgment}
-            placeholder={t.judgmentPlaceholder}
-            disabled={isConfirmed || judgmentOptions.length === 0}
-            onChange={onJudgmentChange}
-          />
-          {judgmentOptions.length === 0 && <p className="field-note">{t.judgmentUnavailable}</p>}
           {/*
-           * ⚠ 저장된 판정이 목록에서 사라졌다(사용 중지된 코드일 수 있다). 조용히 비우면
-           * 사용자가 고르지 않았는데 고른 것이 지워진다 — 그 사실을 밝힌다.
+           * ⭐ **저장해야 회차가 생긴다.** 「검사 시작」 액션을 두지 않고 첫 임시 저장을 검사
+           * 시작으로 삼은 규율과 같다(omf-mes 확정 2026-08-21 §1.2) — 열어 두고 떠난 사람이
+           * 빈 회차를 남기지 않는다.
+           *
+           * ⛔ **사유 칸을 지어내지 않는다.** 계약이 재검사 사유를 선택으로 받지만 고를 값
+           * 목록이 정해지지 않았다. 감추지 않고 왜 없는지 밝힌다(omf-mes#179).
            */}
-          {!isKnownCode(judgmentOptions, judgment) && (
-            <p className="field-note">{t.judgmentUnknown(judgment)}</p>
+          {isReinspecting && (
+            <>
+              <p className="field-note">{t.reinspectNote}</p>
+              <p className="field-note">{t.reinspectReasonPending}</p>
+            </>
           )}
-        </div>
-        {judgmentDetail}
 
-        <SaveErrorBanner error={saveError ?? confirmError} onReload={onReload} />
+          {/* 기준값(검사수량)은 입력 줄 밖에 따로 — 세 칸은 이 값을 나눈 결과다. */}
+          <dl className="iqc-inspection-qty-base">
+            <dt className="field-label">{t.fields.inspectedQty}</dt>
+            <dd>{inspectedText}</dd>
+          </dl>
 
-        {/*
-         * ⛔ **되돌릴 수 없는 쓰기가 끝난 것을 말한다.** 확정 여부와 무관하게 쓰기가 성공한
-         * «그 순간» 낸다 — 확정 상태는 회차를 다시 부른 «뒤에» 참이 된다.
-         */}
-        {isJustConfirmed && <p className="field-note">{t.confirmSucceeded}</p>}
+          <div className="iqc-inspection-qty">
+            {field('accepted', t.fields.accepted, errors.accepted)}
+            {field('rejected', t.fields.rejected, errors.rejected)}
+            {field('held', t.fields.held, errors.held)}
+          </div>
 
-        {/*
-         * 종합 판정 아래 — 왼쪽 좁은 칸(부분 입고)과 오른쪽 넓은 칸(저장 및 확정), 가운데 얇은 세로
-         * 구분선. 좁은 폭에서는 위(부분 입고)·아래(저장 및 확정)로 쌓인다.
-         * ⛔ 확정된 회차에서 유일하게 할 수 있는 일이 재검사다 — 저장 자리·부분 입고를 두지 않는다(G-23).
-         */}
-        <div className="iqc-inspection-action-area">
-          <div className="iqc-inspection-action-grid">
+          {/* 잠근 이유는 세 칸마다 되풀이하지 않고 수량 줄 아래 한 번만 밝힌다. */}
+          {isConfirmed && <p className="field-note">{t.confirmed}</p>}
+
+          {/* 입력 현황 — 「합계 / 검사수량」 · 잔여 · 막대 · 한 줄 안내. 계산은 그대로다. */}
+          <div className="iqc-inspection-progress">
+            <span className="field-label">{t.progressTitle}</span>
+            <div className="iqc-inspection-progress-row">
+              <span className="iqc-inspection-progress-sum">
+                <span className="iqc-inspection-visually-hidden">{t.sum} </span>
+                {totals.kind === 'counted' ? `${sumText} / ${inspectedText}` : sumText}
+              </span>
+              <span>
+                {t.remaining} {remainingText}
+              </span>
+            </div>
+            <Progress
+              value={progress.value}
+              tone={progress.tone}
+              label={t.progressLabel}
+              valueText={`${sumText} / ${inspectedText}`}
+            />
+            {totalsNote !== null && <p className="field-note">{totalsNote}</p>}
+          </div>
+        </section>
+
+        {/* ── 판정 — 종합 판정을 고르고, 임시 저장 뒤 확정한다 ── */}
+        <section className="iqc-inspection-section">
+          <h3>{t.judgmentSectionTitle}</h3>
+
+          {/*
+           * 종합 판정 — ⛔ **값 목록을 화면에 고정하지 않는다.** 공통코드 조회로 채우고,
+           * 목록이 비어도 **감추지 않고 사유를 밝힌다**(공유계약 G-2). 시드가 아직 안 들어가
+           * 빌 수 있는데, 감추면 그 자리가 왜 없는지 사용자가 알 수 없다.
+           */}
+          <div className="field-cell iqc-inspection-judgment-field">
+            <FieldLabel htmlFor={judgmentId} label={t.judgment} required />
+            <Select
+              id={judgmentId}
+              options={judgmentOptions}
+              value={judgment}
+              placeholder={t.judgmentPlaceholder}
+              disabled={isConfirmed || judgmentOptions.length === 0}
+              onChange={onJudgmentChange}
+            />
+            {judgmentOptions.length === 0 && <p className="field-note">{t.judgmentUnavailable}</p>}
             {/*
-             * 부분 입고 허용 — ⚠ **자리를 두되 비활성으로 시작한다**(스펙 §8 #2). 기능(단추)과
-             * 상태 안내를 붙여 둔다.
+             * ⚠ 저장된 판정이 목록에서 사라졌다(사용 중지된 코드일 수 있다). 조용히 비우면
+             * 사용자가 고르지 않았는데 고른 것이 지워진다 — 그 사실을 밝힌다.
              */}
-            {!isConfirmed && (
-              <div className="iqc-inspection-partial">
-                <span className="field-label">{t.partialTitle}</span>
-                <div className="iqc-inspection-partial-row">
-                  <Button type="button" variant="outlined" size="md" disabled>
-                    {t.partialReceipt}
-                  </Button>
-                  <p className="field-note">{t.partialReceiptPending}</p>
-                </div>
-              </div>
+            {!isKnownCode(judgmentOptions, judgment) && (
+              <p className="field-note">{t.judgmentUnknown(judgment)}</p>
             )}
+          </div>
+          {judgmentDetail}
 
-            <div className="iqc-inspection-submit">
-              <span className="field-label">{t.submitTitle}</span>
-              {isConfirmed && reinspectReplacement !== null ? (
-                reinspectReplacement
-              ) : isConfirmed ? (
+          <SaveErrorBanner error={saveError ?? confirmError} onReload={onReload} />
+
+          {/*
+           * ⛔ **되돌릴 수 없는 쓰기가 끝난 것을 말한다.** 확정 여부와 무관하게 쓰기가 성공한
+           * «그 순간» 낸다 — 확정 상태는 회차를 다시 부른 «뒤에» 참이 된다.
+           */}
+          {isJustConfirmed && <p className="field-note">{t.confirmSucceeded}</p>}
+        </section>
+      </div>
+
+      {/*
+       * 종합 판정 아래 — 왼쪽 좁은 칸(부분 입고)과 오른쪽 넓은 칸(저장 및 확정), 가운데 얇은 세로
+       * 구분선. 좁은 폭에서는 위(부분 입고)·아래(저장 및 확정)로 쌓인다.
+       * ⛔ 확정된 회차에서 유일하게 할 수 있는 일이 재검사다 — 저장 자리·부분 입고를 두지 않는다(G-23).
+       */}
+      <div className="iqc-inspection-action-area">
+        <div className="iqc-inspection-action-grid">
+          {/*
+           * 부분 입고 허용 — ⚠ **자리를 두되 비활성으로 시작한다**(스펙 §8 #2). 기능(단추)과
+           * 상태 안내를 붙여 둔다.
+           */}
+          {!isConfirmed && (
+            <div className="iqc-inspection-partial">
+              <span className="field-label">{t.partialTitle}</span>
+              <div className="iqc-inspection-partial-row">
+                <Button type="button" variant="outlined" size="md" disabled>
+                  {t.partialReceipt}
+                </Button>
+                <p className="field-note">{t.partialReceiptPending}</p>
+              </div>
+            </div>
+          )}
+
+          <div className="iqc-inspection-submit">
+            <span className="field-label">{t.submitTitle}</span>
+            {isConfirmed && reinspectReplacement !== null ? (
+              reinspectReplacement
+            ) : isConfirmed ? (
+              <div className="form-actions">
+                <Button type="button" variant="outlined" size="md" onClick={onStartReinspection}>
+                  {t.reinspect}
+                </Button>
+              </div>
+            ) : (
+              <>
                 <div className="form-actions">
-                  <Button type="button" variant="outlined" size="md" onClick={onStartReinspection}>
-                    {t.reinspect}
-                  </Button>
-                </div>
-              ) : (
-                <>
-                  <div className="form-actions">
-                    {/* 그만두는 길을 함께 둔다 — 열고 나서 되돌아갈 데가 없으면 갇힌다. */}
-                    {isReinspecting && (
-                      <Button
-                        type="button"
-                        variant="text"
-                        size="md"
-                        disabled={isSaving || isConfirming}
-                        onClick={onCancelReinspection}
-                      >
-                        {t.reinspectCancel}
-                      </Button>
-                    )}
-                    {/* 바뀐 것이 없으면 끈다 — 입력하면 켜지고 저장 뒤 다시 꺼진다. */}
-                    <Button
-                      type="submit"
-                      variant="outlined"
-                      size="md"
-                      disabled={
-                        !hasChanges || isSaving || isConfirming || saveBlockedReason !== null
-                      }
-                    >
-                      {isSaving ? t.saving : t.save}
-                    </Button>
+                  {/* 그만두는 길을 함께 둔다 — 열고 나서 되돌아갈 데가 없으면 갇힌다. */}
+                  {isReinspecting && (
                     <Button
                       type="button"
-                      variant="filled"
+                      variant="text"
                       size="md"
-                      disabled={confirmBlockedReason !== null || isSaving || isConfirming}
-                      onClick={onConfirm}
+                      disabled={isSaving || isConfirming}
+                      onClick={onCancelReinspection}
                     >
-                      {isConfirming ? t.confirming : t.confirm}
+                      {t.reinspectCancel}
                     </Button>
-                    {/* 눌렀는데 아무 일도 없어 보이지 않게 결과를 한 줄로 알린다. */}
-                    {isSaved && <p className="field-note">{t.saved}</p>}
-                    {showErrors && hasQuantityError(errors) && (
-                      <p className="field-note">{t.saveBlockedByInvalid}</p>
-                    )}
-                  </div>
-                  {/* 막혔으면 «무엇이» 막혔는지 단추 바로 아래 정보 띠로 밝힌다(공유계약 G-23). */}
-                  {confirmBlockedReason !== null && (
-                    <AlertBanner className="iqc-inspection-submit-banner" variant="info">
-                      {confirmBlockedReason}
-                    </AlertBanner>
                   )}
-                  {/*
-                   * ⛔ **확정은 되돌릴 수 없다** — 누르기 전에 그 사실을 알린다. 이 순간 LOT 상태가
-                   * 전이하고 보류 해제가 기록된다. 흐린 보조 글이 아니라 DS 경고 띠로 둔다.
-                   */}
-                  <AlertBanner className="iqc-inspection-submit-banner" variant="warning">
-                    {t.confirmNote}
+                  {/* 바뀐 것이 없으면 끈다 — 입력하면 켜지고 저장 뒤 다시 꺼진다. */}
+                  <Button
+                    type="submit"
+                    variant="outlined"
+                    size="md"
+                    disabled={!hasChanges || isSaving || isConfirming || saveBlockedReason !== null}
+                  >
+                    {isSaving ? t.saving : t.save}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="filled"
+                    size="md"
+                    disabled={confirmBlockedReason !== null || isSaving || isConfirming}
+                    onClick={onConfirm}
+                  >
+                    {isConfirming ? t.confirming : t.confirm}
+                  </Button>
+                  {/* 눌렀는데 아무 일도 없어 보이지 않게 결과를 한 줄로 알린다. */}
+                  {isSaved && <p className="field-note">{t.saved}</p>}
+                  {showErrors && hasQuantityError(errors) && (
+                    <p className="field-note">{t.saveBlockedByInvalid}</p>
+                  )}
+                </div>
+                {/* 막혔으면 «무엇이» 막혔는지 단추 바로 아래 정보 띠로 밝힌다(공유계약 G-23). */}
+                {confirmBlockedReason !== null && (
+                  <AlertBanner className="iqc-inspection-submit-banner" variant="info">
+                    {confirmBlockedReason}
                   </AlertBanner>
-                </>
-              )}
-            </div>
+                )}
+                {/*
+                 * ⛔ **확정은 되돌릴 수 없다** — 누르기 전에 그 사실을 알린다. 이 순간 LOT 상태가
+                 * 전이하고 보류 해제가 기록된다. 흐린 보조 글이 아니라 DS 경고 띠로 둔다.
+                 */}
+                <AlertBanner className="iqc-inspection-submit-banner" variant="warning">
+                  {t.confirmNote}
+                </AlertBanner>
+              </>
+            )}
           </div>
         </div>
-      </section>
+      </div>
     </form>
   );
 };

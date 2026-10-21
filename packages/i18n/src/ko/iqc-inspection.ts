@@ -68,11 +68,11 @@ export const iqcInspection = {
   filters: {
     item: '품목',
     /** 창을 여는 칸이다 — 「치세요」가 아니라 「고르세요」로 적는다. */
-    itemPlaceholder: '품목을 고르세요',
+    itemPlaceholder: '품목 선택',
     itemPick: '이 품목으로',
     itemClear: '품목 조건 지우기',
     supplier: '공급사',
-    supplierPlaceholder: '공급사를 고르세요',
+    supplierPlaceholder: '공급사 선택',
     /** 조건 줄의 「전체」 — 좁히지 않는다는 뜻이다(빈 값과 같은 자리). */
     all: '전체',
     /**
@@ -81,7 +81,7 @@ export const iqcInspection = {
      */
     supplierLoadFailed: '공급사 선택지를 불러오지 못했습니다.',
     keyword: '의뢰번호',
-    keywordPlaceholder: '의뢰번호로 검색',
+    keywordPlaceholder: '의뢰번호 입력',
     apply: '조회',
     reset: '초기화',
     /**
@@ -106,7 +106,7 @@ export const iqcInspection = {
     /** 상세 카드 첫 구획의 제목 — 참고 정보(읽기 전용)임을 입력 구획과 가른다. */
     sectionTitle: '검사 기본 정보',
     /** 아무것도 고르지 않았다. 무엇을 해야 하는지 말한다. */
-    nothingSelected: '왼쪽 목록에서 검사할 의뢰를 선택하세요.',
+    nothingSelected: '왼쪽 목록에서 검사할 항목을 선택해 주세요.',
     loading: '의뢰를 불러오는 중입니다.',
     fields: {
       inspectionRequestNo: '의뢰번호',

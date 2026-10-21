@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 
 import { renderWithProviders } from '../../test/api-harness';
 import { requestWithoutLot, requestWithoutPlanVersion, waitingRequest } from './fixtures';
-import type { NameLookup } from './reference-lookup';
+import type { ItemNameLookup, NameLookup } from './reference-lookup';
 import { RequestDetailPane } from './request-detail-pane';
 import { toInspectionRequestDetail } from './types';
 
@@ -15,8 +15,10 @@ const ITEM_LABEL = 'SAMPLE-ITEM-01 · 합성 품목 가';
 /* 번호가 라벨에 섞이지 않게 둔다 — 「번호가 남지 않는다」를 재는 단언이 제 꼬리를 물면 안 된다. */
 const LOT_NO = 'SAMPLE-LOT|AAA|BBB|CCC';
 
-const itemNames: NameLookup = {
+/* 이름·코드로 못 푼 갈래(`partsOf` 가 null) — 줄 하나에 풀이가 낸 글자를 둔다. */
+const itemNames: ItemNameLookup = {
   labelOf: (id) => (id === null || id === undefined ? '—' : ITEM_LABEL),
+  partsOf: () => null,
 };
 const lotNumbers: NameLookup = {
   labelOf: (id) => (id === null || id === undefined ? '—' : LOT_NO),
@@ -157,5 +159,25 @@ describe('RequestDetailPane', () => {
     );
 
     expect(screen.getByText('—')).toBeInTheDocument();
+  });
+
+  /** omf-all-around#133 — 대기 목록과 같은 층으로: 이름(위)·코드(아래), 전체는 title 로. */
+  it('품목이 풀리면 이름과 코드를 나눠 보이고, 대상 LOT 은 한 줄로 두고 전체를 title 에 둔다', () => {
+    const parts = { code: 'SAMPLE-ITEM-01', name: '합성 품목 가' };
+    const resolved: ItemNameLookup = { labelOf: () => ITEM_LABEL, partsOf: () => parts };
+
+    renderWithProviders(
+      <RequestDetailPane
+        detail={toInspectionRequestDetail(waitingRequest)}
+        uomCode={null}
+        itemNames={resolved}
+        lotNumbers={lotNumbers}
+      />,
+    );
+
+    expect(screen.getByText(parts.name)).toHaveClass('iqc-inspection-fact-item-name');
+    expect(screen.getByText(parts.code)).toHaveClass('iqc-inspection-fact-item-code');
+    expect(screen.getByTitle(`${parts.name} · ${parts.code}`)).toBeInTheDocument();
+    expect(screen.getByText(LOT_NO)).toHaveAttribute('title', LOT_NO);
   });
 });
