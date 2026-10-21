@@ -116,9 +116,7 @@ describe('PopScreenNavButton — G-34 화면 이동', () => {
     await user.click(trigger);
     await user.click(screen.getByRole('option', { name: '생산 작업' }));
 
-    expect(
-      screen.getByText('지금: /pop/production-result?workOrderId=7801'),
-    ).toBeInTheDocument();
+    expect(screen.getByText('지금: /pop/production-result?workOrderId=7801')).toBeInTheDocument();
   });
 
   /*

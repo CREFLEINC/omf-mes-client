@@ -9,7 +9,8 @@ import { foldRows } from './fold';
  *   경계(자리에 딱 맞음 · 하나 넘침)를 빠짐없이 밟는다.
  */
 
-const rows = (count: number): string[] => Array.from({ length: count }, (_, index) => `r${String(index)}`);
+const rows = (count: number): string[] =>
+  Array.from({ length: count }, (_, index) => `r${String(index)}`);
 
 describe('줄 접기', () => {
   it('자리보다 적으면 그대로 싣는다', () => {

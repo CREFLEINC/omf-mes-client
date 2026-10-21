@@ -357,7 +357,10 @@ export const PopRegistrationProvider = ({ children }: { children: ReactNode }) =
       try {
         await confirmRegistration(client, terminal.terminalId);
         // 같은 단말에 새 토큰 세대를 적용해도 이전 화면 정책을 재사용하지 않는다.
-        queryClient.removeQueries({ queryKey: popAccessKeys.terminal(terminal.terminalId), exact: true });
+        queryClient.removeQueries({
+          queryKey: popAccessKeys.terminal(terminal.terminalId),
+          exact: true,
+        });
         const processes = await fetchProcesses(client, terminal.terminalId);
 
         setRegistered(terminal);

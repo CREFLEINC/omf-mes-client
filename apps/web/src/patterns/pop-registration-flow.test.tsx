@@ -10,7 +10,12 @@ import {
 } from './pop-registration';
 import { forgetTerminalToken } from './pop-terminal-token';
 import { popAccessKeys } from './pop-access';
-import { createStubFetch, jsonResponse, renderWithProviders, type StubFetch } from '../test/api-harness';
+import {
+  createStubFetch,
+  jsonResponse,
+  renderWithProviders,
+  type StubFetch,
+} from '../test/api-harness';
 
 /**
  * 등록 상태 기계가 **갈래마다 다르게 움직이는지** 잰다.
@@ -34,14 +39,20 @@ interface TerminalRow {
 }
 
 /** 단말 단건→등록 완료 확인→자기 공정 목록의 실제 요청 순서를 받는다. */
-const stubFor = (rows: TerminalRow[], confirm?: (request: Request) => Response | Promise<Response>) =>
+const stubFor = (
+  rows: TerminalRow[],
+  confirm?: (request: Request) => Response | Promise<Response>,
+) =>
   createStubFetch([
     {
       match: (request) =>
-        request.method === 'POST' && /\/mdm\/terminals\/\d+:confirm-registration(\?|$)/.test(request.url),
+        request.method === 'POST' &&
+        /\/mdm\/terminals\/\d+:confirm-registration(\?|$)/.test(request.url),
       respond: (request) => {
         if (confirm !== undefined) return confirm(request);
-        const terminalId = Number(/\/mdm\/terminals\/(\d+):confirm-registration/.exec(request.url)?.[1]);
+        const terminalId = Number(
+          /\/mdm\/terminals\/(\d+):confirm-registration/.exec(request.url)?.[1],
+        );
         return jsonResponse({
           terminalId,
           tokenVersion: 1,
@@ -91,7 +102,10 @@ const putShell = (pendingCount: number): void => {
 const openRegistration = (
   rows: TerminalRow[],
   fetch: StubFetch = stubFor(rows),
-): { current: PopRegistration; queryClient: ReturnType<typeof renderWithProviders>['queryClient'] } => {
+): {
+  current: PopRegistration;
+  queryClient: ReturnType<typeof renderWithProviders>['queryClient'];
+} => {
   const box = { current: null as PopRegistration | null };
 
   const Probe = () => {
@@ -152,7 +166,9 @@ describe('POP 단말 등록 — 상태 전이', () => {
     (globalThis as { pop?: unknown }).pop = {
       deviceToken: {
         get: async () => undefined,
-        set: async () => { order.push('stored'); },
+        set: async () => {
+          order.push('stored');
+        },
       },
       outbox: { size: async () => 0 },
     };
@@ -179,7 +195,10 @@ describe('POP 단말 등록 — 상태 전이', () => {
     const fetch = stubFor([{ terminalId: 1001, plantId: 10 }], () => {
       confirmations += 1;
       return confirmations === 1
-        ? jsonResponse({ errors: [{ scope: 'screen', code: 'UNAVAILABLE', message: '점검 중' }] }, { status: 503 })
+        ? jsonResponse(
+            { errors: [{ scope: 'screen', code: 'UNAVAILABLE', message: '점검 중' }] },
+            { status: 503 },
+          )
         : jsonResponse({
             terminalId: 1001,
             tokenVersion: 1,
@@ -194,12 +213,18 @@ describe('POP 단말 등록 — 상태 전이', () => {
     putShell(0);
     const registration = openRegistration([{ terminalId: 1001, plantId: 10 }], observed);
 
-    await act(async () => { await registration.current.verify(TOKEN_A); });
-    await act(async () => { await registration.current.apply(); });
+    await act(async () => {
+      await registration.current.verify(TOKEN_A);
+    });
+    await act(async () => {
+      await registration.current.apply();
+    });
     expect(registration.current.phase).toBe('prepare-failed');
     expect(processReads).toBe(0);
 
-    await act(async () => { await registration.current.retryPrepare(); });
+    await act(async () => {
+      await registration.current.retryPrepare();
+    });
     expect(registration.current.phase).toBe('ready');
     expect(confirmations).toBe(2);
     expect(processReads).toBe(1);
@@ -221,7 +246,9 @@ describe('POP 단말 등록 — 상태 전이', () => {
       }),
     );
 
-    await act(async () => { await registration.current.verify(TOKEN_A, 'stored'); });
+    await act(async () => {
+      await registration.current.verify(TOKEN_A, 'stored');
+    });
     expect(registration.current.phase).toBe('ready');
     expect(confirmations).toBe(1);
   });
@@ -582,13 +609,15 @@ describe('POP 단말 등록 — 화면 진입 시 다시 받기', () => {
     const fetch = createStubFetch([
       {
         match: (request) =>
-          request.method === 'POST' && /\/mdm\/terminals\/\d+:confirm-registration(\?|$)/.test(request.url),
-        respond: () => jsonResponse({
-          terminalId: 1001,
-          tokenVersion: 1,
-          registrationStatusCode: 'REGISTERED',
-          registrationConfirmedAt: '2026-09-14T00:00:00.000Z',
-        }),
+          request.method === 'POST' &&
+          /\/mdm\/terminals\/\d+:confirm-registration(\?|$)/.test(request.url),
+        respond: () =>
+          jsonResponse({
+            terminalId: 1001,
+            tokenVersion: 1,
+            registrationStatusCode: 'REGISTERED',
+            registrationConfirmedAt: '2026-09-14T00:00:00.000Z',
+          }),
       },
       {
         match: (request) => /\/mdm\/terminals\/\d+\/processes(\?|$)/.test(request.url),
