@@ -767,6 +767,75 @@ type ConcessionResponse = {
   content: { 'application/json': components['schemas']['Concession'] };
 };
 
+/** 서버 선행 P-85(omf-all-around#64) — IQC 검사 수준. 무검사·수월·보통·엄격. */
+export type InspectionLevelCode = 'NONE' | 'REDUCED' | 'NORMAL' | 'TIGHTENED';
+
+/** 서버 선행 P-85 — 품목별 검사 수준과 자동 전환 상태. */
+export interface ItemInspectionLevel {
+  itemInspectionLevelId: number;
+  itemId: number;
+  itemCode: string;
+  itemName: string;
+  inspectionLevelCode: InspectionLevelCode;
+  autoSwitchEnabled: boolean;
+  /** 지금 수준에서의 연속 합격 LOT 수. */
+  consecutiveAcceptCount: number;
+  updatedAt: string;
+  /** 수정의 If-Match 값 — 목록 행마다 실린다. */
+  versionNo: number;
+}
+
+export interface ItemInspectionLevelCreate {
+  itemId: number;
+  inspectionLevelCode: InspectionLevelCode;
+  autoSwitchEnabled?: boolean;
+  reason: string;
+}
+
+/** 생략 = 유지. 수준이 바뀌면 사유 필수. */
+export interface ItemInspectionLevelUpdate {
+  inspectionLevelCode?: InspectionLevelCode;
+  autoSwitchEnabled?: boolean;
+  reason?: string;
+}
+
+export interface ItemInspectionLevelListQuery {
+  itemId?: number;
+  inspectionLevelCode?: InspectionLevelCode;
+  q?: string;
+  page?: number;
+  size?: number;
+}
+
+/** 서버 선행 P-85 — 전환 이력. 자동은 연속 합격 수 또는 불합격 의뢰, 수동은 사유를 싣는다. */
+export interface ItemInspectionLevelHistory {
+  itemInspectionLevelHistoryId: number;
+  itemId: number;
+  itemCode: string;
+  itemName: string;
+  /** 최초 지정이면 null. */
+  fromLevelCode: InspectionLevelCode | null;
+  toLevelCode: InspectionLevelCode;
+  changeTypeCode: 'AUTO' | 'MANUAL';
+  consecutiveAcceptCount: number | null;
+  inspectionRequestId: number | null;
+  inspectionRequestNo: string | null;
+  reason: string | null;
+  changedAt: string;
+  changedByName: string | null;
+}
+
+export interface ItemInspectionLevelHistoryQuery {
+  itemId?: number;
+  changeTypeCode?: 'AUTO' | 'MANUAL';
+  from?: string;
+  to?: string;
+  page?: number;
+  size?: number;
+}
+
+type PageMeta = components['schemas']['PageMeta'];
+
 export interface ForwardPaths {
   /** 특채 조회(GET)에 요청(POST)을 더한다 — 서버 선행 P-79. */
   '/quality/concessions': Omit<ConcessionsPath, 'post'> & {
@@ -1302,6 +1371,83 @@ export interface ForwardPaths {
     head?: never;
     patch?: never;
     trace?: never;
+  };
+  /** 서버 선행 P-85(omf-all-around#64) — 품목 검사 수준 목록·지정. */
+  '/quality/item-inspection-levels': Unused & {
+    parameters: NoParameters;
+    get: {
+      parameters: {
+        query?: ItemInspectionLevelListQuery;
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        200: {
+          headers: { [name: string]: unknown };
+          content: { 'application/json': { items: ItemInspectionLevel[]; page: PageMeta } };
+        };
+      };
+    };
+    put?: never;
+    post: {
+      parameters: {
+        query?: never;
+        header: { 'Idempotency-Key': string };
+        path?: never;
+        cookie?: never;
+      };
+      requestBody: { content: { 'application/json': ItemInspectionLevelCreate } };
+      responses: {
+        201: {
+          headers: { [name: string]: unknown };
+          content: { 'application/json': ItemInspectionLevel };
+        };
+      };
+    };
+  };
+  /** 서버 선행 P-85 — 수동 변경. */
+  '/quality/item-inspection-levels/{itemInspectionLevelId}': Unused & {
+    parameters: NoParameters;
+    get?: never;
+    put: {
+      parameters: {
+        query?: never;
+        header: { 'Idempotency-Key': string; 'If-Match': string };
+        path: { itemInspectionLevelId: number };
+        cookie?: never;
+      };
+      requestBody: { content: { 'application/json': ItemInspectionLevelUpdate } };
+      responses: {
+        200: {
+          headers: { [name: string]: unknown };
+          content: { 'application/json': ItemInspectionLevel };
+        };
+      };
+    };
+    post?: never;
+  };
+  /** 서버 선행 P-85 — 전환 이력. */
+  '/quality/item-inspection-level-histories': Unused & {
+    parameters: NoParameters;
+    get: {
+      parameters: {
+        query?: ItemInspectionLevelHistoryQuery;
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        200: {
+          headers: { [name: string]: unknown };
+          content: { 'application/json': { items: ItemInspectionLevelHistory[]; page: PageMeta } };
+        };
+      };
+    };
+    put?: never;
+    post?: never;
   };
 }
 
