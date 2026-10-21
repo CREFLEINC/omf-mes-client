@@ -213,7 +213,7 @@ export const oqcInspection: Translated<typeof ko.oqcInspection> = {
     notFound: (serialNo: string): string => `Không có số serial: ${serialNo}`,
     noPickedRequest: (serialNo: string): string =>
       `Không có yêu cầu OQC đã lấy hàng LOT của serial ${serialNo}.`,
-    completedRequest: (requestNo: string): string => `${requestNo} (đã hoàn thành · kiểm tra lại)`,
+    completedRequest: (requestNo: string): string => `${requestNo} (đã hoàn thành, kiểm tra lại)`,
     pickRequest: 'Có nhiều yêu cầu OQC đã lấy hàng LOT của serial này. Hãy chọn yêu cầu cần mở.',
     duplicate: (serialNo: string): string => `Serial đã có trong danh sách: ${serialNo}`,
     otherItem: (serialNo: string): string =>
@@ -230,7 +230,7 @@ export const oqcInspection: Translated<typeof ko.oqcInspection> = {
     empty: 'Chưa quét serial nào. Cũng có thể chỉ lưu đánh giá LOT mà không có serial.',
     tooMany: 'Số serial đã kiểm tra nhiều hơn số lượng kiểm tra.',
     tooManyNg: 'Số serial NG nhiều hơn số lượng không đạt. Hãy kiểm tra số lượng không đạt.',
-    count: (total: number, ng: number): string => `${total} serial · NG ${ng}`,
+    count: (total: number, ng: number): string => `${total} serial, NG ${ng}`,
     recordHeading: 'Kiểm tra xuất hàng theo serial',
     recordHelp:
       'Với mỗi serial, đánh giá lần 1 giữ nguyên như lần ghi đầu; lượt kiểm tra lại chỉ đổi đánh giá cuối.',

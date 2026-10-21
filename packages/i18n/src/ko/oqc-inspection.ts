@@ -359,7 +359,7 @@ export const oqcInspection = {
   serials: {
     openByScan: '시리얼로 의뢰 열기',
     openByScanHelp:
-      '시리얼을 스캔하면 그 LOT 을 피킹한 OQC 의뢰를 엽니다. 대기·진행 의뢰가 없으면 완료된 의뢰를 열어 재검사 회차를 더할 수 있습니다.',
+      '시리얼을 스캔하면 그 LOT 을 피킹한 OQC 의뢰를 엽니다. 대기 또는 진행 중인 의뢰가 없으면 완료된 의뢰를 열어 재검사 회차를 더할 수 있습니다.',
     scanLabel: '시리얼 스캔',
     scanPlaceholder: '시리얼 번호를 스캔하거나 입력 후 Enter',
     scanning: '시리얼을 확인하는 중…',
@@ -368,7 +368,7 @@ export const oqcInspection = {
     notFound: (serialNo: string): string => `없는 시리얼입니다: ${serialNo}`,
     noPickedRequest: (serialNo: string): string =>
       `시리얼 ${serialNo} 의 LOT 을 피킹한 OQC 의뢰가 없습니다.`,
-    completedRequest: (requestNo: string): string => `${requestNo} (완료 · 재검사)`,
+    completedRequest: (requestNo: string): string => `${requestNo} (완료, 재검사)`,
     pickRequest: '이 시리얼의 LOT 을 피킹한 OQC 의뢰가 여럿입니다. 열 의뢰를 고르세요.',
     duplicate: (serialNo: string): string => `이미 목록에 있는 시리얼입니다: ${serialNo}`,
     otherItem: (serialNo: string): string => `시리얼 ${serialNo} 은 이 의뢰의 품목이 아닙니다.`,
@@ -384,7 +384,7 @@ export const oqcInspection = {
     empty: '스캔한 시리얼이 없습니다. 시리얼 없이 LOT 판정만 저장할 수도 있습니다.',
     tooMany: '검사한 시리얼 수가 검사 수량보다 많습니다.',
     tooManyNg: 'NG 시리얼 수가 불합격 수량보다 많습니다. 불합격 수량을 확인하세요.',
-    count: (total: number, ng: number): string => `시리얼 ${total}대 · NG ${ng}대`,
+    count: (total: number, ng: number): string => `시리얼 ${total}대, NG ${ng}대`,
     recordHeading: '시리얼 출하검사',
     recordHelp: '시리얼마다 1차 판정은 처음 기록 그대로이고, 재검 회차는 최종 판정만 바꿉니다.',
     recordEmpty: '기록된 시리얼이 없습니다.',

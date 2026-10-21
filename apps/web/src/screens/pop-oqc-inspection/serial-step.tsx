@@ -105,12 +105,12 @@ export const PopSerialStep = ({
             <li key={row.serialNumberId} className="pop-oqc-serial">
               <span className="pop-oqc-serial__no">
                 <strong>{row.serialNo}</strong>
-                <span className="field-note">
-                  {row.lotNo}
-                  {row.previous === undefined
-                    ? ''
-                    : ` · ${t.previous(row.previous.firstJudgmentCode, row.previous.finalJudgmentCode)}`}
-                </span>
+                <span className="field-note">{row.lotNo}</span>
+                {row.previous !== undefined && (
+                  <span className="field-note">
+                    {t.previous(row.previous.firstJudgmentCode, row.previous.finalJudgmentCode)}
+                  </span>
+                )}
               </span>
               <span
                 role="group"

@@ -1,6 +1,6 @@
 import { Button, Table, type Column } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { useState } from 'react';
+import { useId, useState } from 'react';
 
 import { useSerialLookup } from './queries';
 import { SerialScanField } from './serial-scan-field';
@@ -37,6 +37,10 @@ export const SerialJudgments = ({
   disabled,
 }: SerialJudgmentsProps) => {
   const lookup = useSerialLookup();
+  /* 1차 OK 로 잠긴 NG 버튼의 사유 — 그 줄의 「이전 기록」 칸(C-4). */
+  const idPrefix = useId();
+  const previousIdOf = (serialNumberId: number): string =>
+    `${idPrefix}-previous-${String(serialNumberId)}`;
   const [scanError, setScanError] = useState<string | null>(null);
 
   const scan = async (serialNo: string): Promise<void> => {
@@ -60,9 +64,13 @@ export const SerialJudgments = ({
       key: 'previous',
       header: t.columns.previous,
       render: (row) =>
-        row.previous === undefined
-          ? ''
-          : t.previous(row.previous.firstJudgmentCode, row.previous.finalJudgmentCode),
+        row.previous === undefined ? (
+          ''
+        ) : (
+          <span id={previousIdOf(row.serialNumberId)}>
+            {t.previous(row.previous.firstJudgmentCode, row.previous.finalJudgmentCode)}
+          </span>
+        ),
     },
     {
       key: 'judgment',
@@ -79,6 +87,9 @@ export const SerialJudgments = ({
               aria-pressed={row.judgment === code}
               disabled={disabled || (code === 'NG' && isNgLocked(row))}
               title={code === 'NG' && isNgLocked(row) ? t.firstOkLocked : undefined}
+              aria-describedby={
+                code === 'NG' && isNgLocked(row) ? previousIdOf(row.serialNumberId) : undefined
+              }
               onClick={() => setJudgment(row.serialNumberId, code)}
             >
               {code === 'OK' ? t.ok : t.ng}
