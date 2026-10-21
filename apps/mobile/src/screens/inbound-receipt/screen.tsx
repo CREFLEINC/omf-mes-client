@@ -1,17 +1,20 @@
-import { AlertBanner, Chip, Select, TextField } from '@crefle/web-ui';
+import { AlertBanner, Chip, Icon, IconButton, Select, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { Fragment, type ReactNode } from 'react';
 import { Link, useNavigate } from 'react-router';
 
 import { BottomActionBar } from '../../patterns/bottom-action-bar';
 import { Button } from '../../patterns/button';
-import { Card } from '../../patterns/card';
+import { ChoiceCard } from '../../patterns/choice-card';
 import { ScanReplaceDialog } from '../../patterns/scan-replace-dialog';
 import { useScreenTitle } from '../../patterns/screen-title';
 import { displayNameOf } from '../../patterns/code-values';
 import { DockedNumberPad } from '../../patterns/docked-number-pad';
 import { FailureBanner } from '../../patterns/failure-banner';
 import { useLoadFailure } from '../../patterns/load-failure';
+import { QtyPanel } from '../../patterns/qty-panel';
+import { ResultHead } from '../../patterns/result-head';
+import { ScanZone } from '../../patterns/scan-zone';
 import { StepSection } from '../../patterns/step-flow';
 import { TaskHeader, type TaskHeaderField } from '../../patterns/task-header';
 import {
@@ -172,20 +175,76 @@ export const InboundReceiptScreen = () => {
     );
   }
 
-  /* 스캔 칸. 결과 화면과 단계마다 같은 칸이 단말 스캐너의 입력을 받는다. */
-  const scanInput = (placeholder: string) => (
-    <TextField
-      ref={scanField.ref}
+  /* 받을 수 없는 값. 구역 아래 한 줄로 선다. */
+  const scanError =
+    malformed !== null
+      ? t.scan.malformed(malformed)
+      : registeredLotNo !== null
+        ? t.scan.registered(registeredLotNo)
+        : undefined;
+
+  /*
+   * 손으로 넣는 길. 혼자 설 때는 스캔 구역 오른쪽 끝의 키보드 단추이고, 되돌리기와 함께 설 때는
+   * 글자를 단 단추가 된다 - 둘이 아이콘뿐이면 어느 것이 되돌리기인지 갈리지 않는다.
+   */
+  const manualControl = (withText: boolean) => {
+    const label = scanField.manual ? t.scan.manualSubmit : t.scan.manualLabel;
+    const icon = scanField.manual ? 'keyboard_return' : 'keyboard';
+    const onClick = scanField.manual ? scanField.submitManual : scanField.openManual;
+
+    return withText ? (
+      <Button
+        variant="outlined"
+        size="lg"
+        leadingIcon={<Icon name={icon} size={20} />}
+        onClick={onClick}
+      >
+        {label}
+      </Button>
+    ) : (
+      <IconButton
+        className="receipt__zone-button"
+        icon={icon}
+        size="lg"
+        aria-label={label}
+        onClick={onClick}
+      />
+    );
+  };
+
+  /*
+   * 스캔 구역. 결과 화면과 단계마다 같은 칸이 단말 스캐너의 입력을 받는다. 라벨을 받은 뒤에는
+   * 얇은 대기 줄로 접힌다 - 손으로 넣는 중이면 다시 펼친다.
+   *
+   * ⭐ **직접 입력과 되돌리기를 한 줄에 나란히 둔다**(사용자 지시 2026-09-19 ·
+   *    omf-all-around#34). 둘이 함께 설 때는 구역 안 아래 한 줄이다.
+   */
+  const scanZone = ({
+    prompt,
+    hint,
+    standby = false,
+    back,
+  }: {
+    prompt: string;
+    hint?: string;
+    standby?: boolean;
+    back?: ReactNode;
+  }) => (
+    <ScanZone
+      field={scanField}
       label={t.scan.label}
-      placeholder={placeholder}
-      size="xl"
-      fullWidth
-      error={
-        malformed !== null
-          ? t.scan.malformed(malformed)
-          : registeredLotNo !== null
-            ? t.scan.registered(registeredLotNo)
-            : undefined
+      prompt={prompt}
+      hint={hint}
+      error={scanError}
+      standby={standby && !scanField.manual}
+      trailing={back === undefined ? manualControl(false) : undefined}
+      actions={
+        back === undefined ? undefined : (
+          <div className="receipt__row">
+            {manualControl(true)}
+            {back}
+          </div>
+        )
       }
     />
   );
@@ -193,16 +252,19 @@ export const InboundReceiptScreen = () => {
   if (outcome !== null) {
     return (
       <div className="receipt with-bottom-action-bar">
+        {/*
+         * 「됐다」가 화면의 첫 글자다. 띠 하나로는 같은 크기의 다른 띠들과 갈리지 않았다 - 원 안의
+         * 표시와 제목이 먼저 읽히고, 적은 값이 그 아래 선다.
+         */}
         {outcome === 'sent' ? (
-          <AlertBanner variant="success" title={t.sent.title}>
-            {t.sent.description}
-          </AlertBanner>
+          <ResultHead tone="success" title={t.sent.title} description={t.sent.description} />
         ) : null}
         {outcome === 'queued' ? (
-          <AlertBanner variant="warning" title={t.queued.title}>
-            {t.queued.description}
-            {varianceNext ? ` ${t.queued.varianceLater}` : ''}
-          </AlertBanner>
+          <ResultHead
+            tone="pending"
+            title={t.queued.title}
+            description={`${t.queued.description}${varianceNext ? ` ${t.queued.varianceLater}` : ''}`}
+          />
         ) : null}
         {outcome === 'rejected' ? (
           <AlertBanner variant="error" title={t.rejected.title}>
@@ -220,8 +282,8 @@ export const InboundReceiptScreen = () => {
          */}
         {recorded === null || outcome === 'rejected' ? null : (
           <section className="receipt__section">
-            <h2>{t.recorded.legend}</h2>
-            <dl className="receipt__counts">
+            <h2 className="receipt__hidden">{t.recorded.legend}</h2>
+            <dl className="receipt__summary">
               {recorded.purchaseOrderNo === null ? null : (
                 <>
                   <dt>{t.recorded.purchaseOrder}</dt>
@@ -282,7 +344,9 @@ export const InboundReceiptScreen = () => {
         )}
 
         {/* 다음 라벨을 읽으면 「다음 입하」를 누르지 않아도 그 자리에서 다음 입하가 선다. */}
-        <section className="receipt__section">{scanInput(t.nextScan)}</section>
+        <section className="receipt__section">
+          {scanZone({ prompt: t.nextScanPrompt, hint: t.nextScanHint })}
+        </section>
 
         {/* 오류는 입하 라인에 달린다. 받아 둔 뒤에야 붙일 자리가 생긴다. */}
         <BottomActionBar
@@ -365,45 +429,35 @@ export const InboundReceiptScreen = () => {
 
         return (
           <li key={each.purchaseOrderLineId}>
-            <Card
-              bordered
-              interactive
+            <ChoiceCard
+              icon="inventory_2"
+              selected={draft.purchaseOrderLine?.purchaseOrderLineId === each.purchaseOrderLineId}
+              muted={remaining <= 0}
               onClick={() => {
                 pickLine(each);
               }}
+              /* ⭐ 코드와 이름을 각자의 줄에 적는다(사용자 지시 2026-09-19). */
+              title={parts === null ? t.po.itemUnknown : t.po.lineItemCode(parts.code)}
             >
-              <Card.Body className="card-body receipt__line">
-                {/* ⭐ 코드와 이름을 각자의 줄에 적는다(사용자 지시 2026-09-19). */}
-                {parts === null ? (
-                  <strong>{t.po.itemUnknown}</strong>
-                ) : (
+              {parts === null ? null : <span>{t.po.lineItemName(parts.name)}</span>}
+              {/*
+               * 받을 것과 허용치를 한 줄로 줄인다. 카드 하나가 여섯 줄이라 두 장이면 화면이 찼다.
+               * ⭐ 발주량과 같으면 남은 수를 따로 세우지 않는다 — 그때는 발주량이 곧 받을 것이다.
+               */}
+              <span>
+                {remaining === each.orderedQty
+                  ? t.po.lineOrdered(String(each.orderedQty), uomOf(each.uomId))
+                  : t.po.lineRemaining(String(remaining))}
+                {' · '}
+                {t.po.tolerance(String(each.toleranceOverQty), String(each.toleranceUnderQty))}
+                {remaining > 0 ? null : (
                   <>
-                    <strong>{t.po.lineItemCode(parts.code)}</strong>
-                    <p>{t.po.lineItemName(parts.name)}</p>
+                    {' · '}
+                    <strong>{t.po.lineClosed}</strong>
                   </>
                 )}
-                {/*
-                 * 받을 것과 허용치를 한 줄로 줄인다. 카드 하나가 여섯 줄이라 두 장이면 화면이 찼다.
-                 * ⭐ 발주량과 같으면 남은 수를 따로 세우지 않는다 — 그때는 발주량이 곧 받을 것이다.
-                 */}
-                <p>
-                  {remaining === each.orderedQty
-                    ? t.po.lineOrdered(String(each.orderedQty), uomOf(each.uomId))
-                    : t.po.lineRemaining(String(remaining))}
-                  {' · '}
-                  {t.po.tolerance(String(each.toleranceOverQty), String(each.toleranceUnderQty))}
-                  {remaining > 0 ? null : (
-                    <>
-                      {' · '}
-                      <strong>{t.po.lineClosed}</strong>
-                    </>
-                  )}
-                </p>
-                {draft.purchaseOrderLine?.purchaseOrderLineId === each.purchaseOrderLineId ? (
-                  <Chip status="success">{t.po.linePicked}</Chip>
-                ) : null}
-              </Card.Body>
-            </Card>
+              </span>
+            </ChoiceCard>
           </li>
         );
       })}
@@ -469,18 +523,15 @@ export const InboundReceiptScreen = () => {
         <ul className="receipt__lines" aria-label={t.po.selectLabel}>
           {orders.data.map((each) => (
             <li key={each.purchaseOrderId}>
-              <Card
-                bordered
-                interactive
+              <ChoiceCard
+                icon="receipt_long"
+                title={each.purchaseOrderNo}
                 onClick={() => {
                   pickOrder(each);
                 }}
               >
-                <Card.Body className="card-body receipt__line">
-                  <strong>{each.purchaseOrderNo}</strong>
-                  <p>{t.po.orderDate(each.orderDate)}</p>
-                </Card.Body>
-              </Card>
+                <span>{t.po.orderDate(each.orderDate)}</span>
+              </ChoiceCard>
             </li>
           ))}
         </ul>
@@ -524,11 +575,12 @@ export const InboundReceiptScreen = () => {
        * 좁힌 것이 틀릴 수 있다. 번호 양식이 다르거나 다른 품목으로 들어온 물건이면
        * 후보에 없다 - 막지 않고 전체로 넓힐 길을 둔다(화면 스펙 §3 · §6).
        */}
-      <div className="receipt__links">
+      <div className="receipt__acts">
         {narrowedWithCandidates ? (
           <Button
-            variant="text"
-            size="xl"
+            variant="outlined"
+            size="lg"
+            leadingIcon={<Icon name="list" size={20} />}
             onClick={() => {
               setShowAllOrders(true);
               patch({ purchaseOrder: null, purchaseOrderLine: null, ...LINE_SCOPED_BLANK });
@@ -539,8 +591,9 @@ export const InboundReceiptScreen = () => {
         ) : null}
         {draft.purchaseOrder === null ? null : (
           <Button
-            variant="text"
-            size="xl"
+            variant="outlined"
+            size="lg"
+            leadingIcon={<Icon name="close" size={20} />}
             onClick={() => {
               setChangingLine(false);
               patch({ purchaseOrder: null, purchaseOrderLine: null, ...LINE_SCOPED_BLANK });
@@ -551,8 +604,9 @@ export const InboundReceiptScreen = () => {
         )}
         {/* 발주가 없으면 승계할 곳이 없어 담당자가 고른다. 고르지 않은 것과는 다른 상태다. */}
         <Button
-          variant="text"
-          size="xl"
+          variant="outlined"
+          size="lg"
+          leadingIcon={<Icon name="block" size={20} />}
           onClick={() => {
             setChangingLine(false);
             patch({
@@ -684,8 +738,9 @@ export const InboundReceiptScreen = () => {
       <p className="receipt__note">{t.exception.noVerdict}</p>
 
       <Button
-        variant="text"
-        size="xl"
+        variant="outlined"
+        size="lg"
+        leadingIcon={<Icon name="undo" size={20} />}
         onClick={() => {
           patch({
             unordered: false,
@@ -704,11 +759,7 @@ export const InboundReceiptScreen = () => {
 
   /* 판정. 정상은 칩 하나로 — 띠로 세우면 아무 일 없는 것이 가장 크게 보인다. */
   const verdictView: ReactNode =
-    verdict === null || line === null ? null : verdict === NORMAL ? (
-      <div className="receipt__verdict">
-        <Chip status="success">{t.verdict.normal}</Chip>
-      </div>
-    ) : verdict === OVER ? (
+    verdict === null || line === null || verdict === NORMAL ? null : verdict === OVER ? (
       <>
         <AlertBanner
           variant="warning"
@@ -813,9 +864,10 @@ export const InboundReceiptScreen = () => {
        * 네 수는 위의 「자세히」에 있다.
        */
       <div className="receipt__under" role="group" aria-label={t.verdict.underAsk}>
-        <Chip status="warning">
-          {t.verdict.under(String(remainingQtyOf(line, queuedQty)), String(received))}
-        </Chip>
+        <p className="receipt__under-verdict">
+          <Icon name="warning" size={20} />
+          <span>{t.verdict.under(String(remainingQtyOf(line, queuedQty)), String(received))}</span>
+        </p>
         <p className="receipt__under-ask">{t.verdict.underAsk}</p>
         <dl className="receipt__counts">
           <dt>{t.verdict.counts.arrived}</dt>
@@ -828,6 +880,48 @@ export const InboundReceiptScreen = () => {
       </div>
     );
 
+  /*
+   * 수량 판의 칩. 정상은 초록 칩 하나다 - 띠로 세우면 아무 일 없는 것이 가장 크게 보인다. 초과와
+   * 부족은 칩이 판정을 먼저 말하고, 무엇을 할지는 아래(분리 구획 · 물음)가 말한다.
+   */
+  const verdictChip: ReactNode =
+    verdict === null || line === null ? undefined : verdict === NORMAL ? (
+      <Chip status="success">{t.verdict.normal}</Chip>
+    ) : (
+      <Chip status="warning">
+        {verdict === OVER
+          ? `+${String(received - remainingQtyOf(line, queuedQty))} ${uom}`
+          : `-${String(remainingQtyOf(line, queuedQty) - received)} ${uom}`}
+      </Chip>
+    );
+
+  /*
+   * 이미 받음 · 이번 · 발주. 이번이 마지막 분량인지, 모자라는지가 수를 견주기 전에 보인다. 발주
+   * 없이 받는 입하는 견줄 예정이 없어 막대를 그리지 않는다.
+   */
+  const before = line === null || lineRemaining === null ? 0 : line.orderedQty - lineRemaining;
+  const qtyMeter =
+    line === null || lineRemaining === null
+      ? undefined
+      : { before, now: received, total: line.orderedQty };
+  const qtyLegend =
+    line === null || lineRemaining === null ? undefined : (
+      <>
+        <span>
+          {`${t.verdict.counts.received} `}
+          <b>{String(before)}</b>
+        </span>
+        <span>
+          {`${t.verdict.counts.arrived} `}
+          <b>{String(received)}</b>
+        </span>
+        <span>
+          {`${t.verdict.counts.ordered} `}
+          <b>{String(line.orderedQty)}</b>
+        </span>
+      </>
+    );
+
   /* 3단계(및 발주 없이 받기)의 수량. */
   const qtyFields = (
     <>
@@ -837,25 +931,24 @@ export const InboundReceiptScreen = () => {
        * 화면 밖으로 민다.
        */}
       <div className="receipt__keypad-group">
-        <div className="receipt__qty-field">
-          <TextField
-            id="receipt-received-qty"
-            label={required(t.qty.received)}
-            inputMode="none"
-            size="xl"
-            fullWidth
-            value={draft.receivedQty}
-            onChange={(event) => {
-              editReceivedQty(event.target.value);
-            }}
-            onFocus={() => {
-              setKeypadFor('received');
-            }}
-            /* 미리 채운 값은 예정이다. 그대로인 동안 그렇다고 칸 아래에 적는다. */
-            helperText={qtyPlanned ? t.plannedQty : undefined}
-            error={qtyMessage()}
-          />
-        </div>
+        <QtyPanel
+          id="receipt-received-qty"
+          label={required(t.qty.received)}
+          value={draft.receivedQty}
+          unit={uom}
+          padLabel={t.qty.pad}
+          onChange={editReceivedQty}
+          onFocus={() => {
+            setKeypadFor('received');
+          }}
+          /* 판정은 판 머리의 칩 하나다. 정상이면 초록, 모자라거나 넘치면 노랑. */
+          status={verdictChip}
+          meter={qtyMeter}
+          legend={qtyLegend}
+          /* 미리 채운 값은 예정이다. 그대로인 동안 그렇다고 판 아래에 적는다. */
+          note={qtyPlanned ? t.plannedQty : undefined}
+          error={qtyMessage()}
+        />
 
         <div className="receipt__qty-field">
           <TextField
@@ -1027,24 +1120,10 @@ export const InboundReceiptScreen = () => {
        */}
       {step === 'scan' ? (
         <StepSection title={t.steps.scan} index={1} total={STEP_COUNT}>
-          {scanInput(t.scan.placeholder)}
-          {/*
-           * ⭐ **직접 입력과 되돌리기를 한 줄에 나란히 둔다**(사용자 지시 2026-09-19 ·
-           *    omf-all-around#34). 세로로 쌓으면 스캔 칸과 아래 구획 사이가 단추로 메워진다.
-           */}
-          <div className="receipt__row">
-            {scanField.manual ? (
-              <Button variant="outlined" size="xl" onClick={scanField.submitManual}>
-                {t.scan.manualSubmit}
-              </Button>
-            ) : (
-              <Button variant="text" size="xl" onClick={scanField.openManual}>
-                {t.scan.manualLabel}
-              </Button>
-            )}
-          </div>
+          {scanZone({ prompt: t.scan.prompt, hint: t.scan.hint })}
 
-          {/* 라벨이 없을 때의 두 길. 스캔이 기본이라 그 아래에 둔다. */}
+          {/* 라벨이 없을 때의 두 길. 스캔이 기본이라 그 아래에 낮게 둔다. */}
+          <p className="receipt__group-label">{t.scan.noLabel}</p>
           {externalLotInput ? (
             <div className="receipt__field">
               <TextField
@@ -1072,7 +1151,8 @@ export const InboundReceiptScreen = () => {
             <Button
               className="receipt__wide"
               variant="outlined"
-              size="xl"
+              size="lg"
+              leadingIcon={<Icon name="description" size={20} />}
               onClick={() => {
                 setMalformed(null);
                 setRegisteredLotNo(null);
@@ -1086,7 +1166,8 @@ export const InboundReceiptScreen = () => {
           <Button
             className="receipt__wide"
             variant="outlined"
-            size="xl"
+            size="lg"
+            leadingIcon={<Icon name="label_off" size={20} />}
             onClick={() => {
               setMalformed(null);
               setRegisteredLotNo(null);
@@ -1104,32 +1185,17 @@ export const InboundReceiptScreen = () => {
         </StepSection>
       ) : (
         <section className="receipt__section receipt__section--scan">
-          {scanInput(t.scan.placeholder)}
-          {/*
-           * 손으로 넣은 납품서 번호는 라벨이 아니라는 것을 말한다 — 제품코드 대조도 자동 고르기도
-           * 하지 않는 번호라, 헤더의 번호만 보고는 라벨을 읽은 것과 가리지 못한다.
-           */}
-          {draft.supplierLotLabelAttached || draft.supplierLotNo === '' ? null : (
-            <p className="receipt__note">{t.scan.externalTaken(draft.supplierLotNo)}</p>
-          )}
           {/*
            * ⛔ **「공급사 LOT 번호가 없습니다」 띠를 세우지 않는다**(사용자 지시 2026-09-19).
            *    고른 사람이 방금 누른 것을 되풀이해 말할 뿐이다 — 되돌리기 단추만 둔다.
            */}
-          <div className="receipt__row">
-            {scanField.manual ? (
-              <Button variant="outlined" size="xl" onClick={scanField.submitManual}>
-                {t.scan.manualSubmit}
-              </Button>
-            ) : (
-              <Button variant="text" size="xl" onClick={scanField.openManual}>
-                {t.scan.manualLabel}
-              </Button>
-            )}
-            {draft.supplierLotMissing ? (
+          {scanZone({
+            prompt: t.scan.standby,
+            standby: true,
+            back: draft.supplierLotMissing ? (
               <Button
-                variant="text"
-                size="xl"
+                variant="tonal"
+                size="lg"
                 onClick={() => {
                   patch({
                     supplierLotMissing: false,
@@ -1140,8 +1206,15 @@ export const InboundReceiptScreen = () => {
               >
                 {t.scan.back}
               </Button>
-            ) : null}
-          </div>
+            ) : undefined,
+          })}
+          {/*
+           * 손으로 넣은 납품서 번호는 라벨이 아니라는 것을 말한다 — 제품코드 대조도 자동 고르기도
+           * 하지 않는 번호라, 헤더의 번호만 보고는 라벨을 읽은 것과 가리지 못한다.
+           */}
+          {draft.supplierLotLabelAttached || draft.supplierLotNo === '' ? null : (
+            <p className="receipt__note">{t.scan.externalTaken(draft.supplierLotNo)}</p>
+          )}
         </section>
       )}
 
@@ -1159,8 +1232,9 @@ export const InboundReceiptScreen = () => {
           {qtyFields}
           {/* 다른 라인으로 받을 것이면 돌아간다. 적은 값은 같은 라인을 다시 고를 때까지 남는다. */}
           <Button
-            variant="text"
-            size="xl"
+            variant="outlined"
+            size="lg"
+            leadingIcon={<Icon name="swap_horiz" size={20} />}
             onClick={() => {
               setKeypadFor(null);
               setChangingLine(true);

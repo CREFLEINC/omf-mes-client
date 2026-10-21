@@ -1,0 +1,111 @@
+/* 카드 전체가 누르는 곳이다. 글자만 눌리면 장갑 낀 손이 빗나간다. */
+.choice-card {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  min-height: 72px;
+  box-sizing: border-box;
+  margin: 0;
+  padding: var(--space-3) var(--space-2) var(--space-3) var(--space-3);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  color: var(--on-surface);
+  font: var(--type-body-sm);
+  letter-spacing: var(--type-body-sm-tracking);
+  text-align: start;
+  /* 셸이 단추 글자를 접지 않게 해 두었다. 카드는 줄이 여럿이라 접어야 한다. */
+  white-space: normal;
+  cursor: pointer;
+}
+
+.choice-card:active {
+  background: var(--surface-container-low);
+}
+
+.choice-card:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+.choice-card__tile {
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-sm);
+  background: var(--surface-container);
+  color: var(--on-surface-variant);
+}
+
+.choice-card__body {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  color: var(--on-surface-muted);
+}
+
+/* 보조 줄은 한 덩어리씩 한 줄로 선다. */
+.choice-card__body > span {
+  display: block;
+}
+
+.choice-card__title {
+  font: var(--type-title-sm);
+  letter-spacing: var(--type-title-sm-tracking);
+  font-weight: 700;
+  color: var(--on-surface);
+}
+
+.choice-card__aside {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  text-align: end;
+}
+
+.choice-card__aside b {
+  font: var(--type-title-sm);
+  letter-spacing: var(--type-title-sm-tracking);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.choice-card__aside small {
+  font: var(--type-label-sm);
+  letter-spacing: var(--type-label-sm-tracking);
+  color: var(--on-surface-muted);
+}
+
+.choice-card__chevron {
+  flex: 0 0 auto;
+  color: var(--on-surface-muted);
+}
+
+/* 고른 것 — 굵은 차콜 테두리, 아이콘 칸을 채워 확인 표시로. 테두리가 굵어진 만큼 안쪽을 줄인다. */
+.choice-card--selected {
+  border: 2px solid var(--on-surface);
+  padding: calc(var(--space-3) - 1px) calc(var(--space-2) - 1px) calc(var(--space-3) - 1px)
+    calc(var(--space-3) - 1px);
+}
+
+.choice-card--selected .choice-card__tile {
+  background: var(--on-surface);
+  color: var(--surface);
+}
+
+/* 할 일이 없는 것. 고를 수는 있게 두되 눈이 먼저 가지 않게 물린다. */
+.choice-card--muted {
+  background: var(--surface-container-low);
+}
+
+.choice-card--muted .choice-card__title,
+.choice-card--muted .choice-card__aside b {
+  color: var(--on-surface-variant);
+}

@@ -1,0 +1,42 @@
+.result-head {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-2) 0;
+  text-align: center;
+}
+
+.result-head__mark {
+  display: grid;
+  place-items: center;
+  width: 72px;
+  height: 72px;
+  margin-bottom: var(--space-2);
+  border-radius: var(--radius-full);
+}
+
+.result-head--success .result-head__mark {
+  background: var(--semantic-success-container);
+  color: var(--semantic-success);
+}
+
+/* 아직 서버에 닿지 않았다. 실패가 아니라 기다리는 중이라 노랑이 아니라 정보색이다. */
+.result-head--pending .result-head__mark {
+  background: var(--semantic-info-container);
+  color: var(--on-semantic-info-container);
+}
+
+.result-head__title {
+  margin: 0;
+  font: var(--type-headline-sm);
+  letter-spacing: var(--type-headline-sm-tracking);
+  text-wrap: balance;
+}
+
+.result-head__description {
+  margin: 0;
+  font: var(--type-body-sm);
+  letter-spacing: var(--type-body-sm-tracking);
+  color: var(--on-surface-muted);
+}
