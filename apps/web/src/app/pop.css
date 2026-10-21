@@ -8803,6 +8803,28 @@
   color: var(--semantic-error-text);
 }
 
+/* 검사한 시리얼(omf-all-around#68) — 한 줄에 시리얼 · OK/NG · 빼기. */
+.pop-ui .pop-oqc-serials {
+  display: grid;
+  gap: var(--space-2);
+  margin: var(--space-3) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.pop-ui .pop-oqc-serial {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(240px, auto) auto;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.pop-ui .pop-oqc-serial__no {
+  display: grid;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
 .pop-ui .pop-oqc-judge--held[aria-pressed='true'] {
   background: var(--semantic-warning-container);
 }
