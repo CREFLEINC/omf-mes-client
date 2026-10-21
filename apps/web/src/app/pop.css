@@ -8814,9 +8814,17 @@
 
 .pop-ui .pop-oqc-serial {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(240px, auto) auto;
+  grid-template-columns: minmax(0, 1fr) auto auto;
   align-items: center;
   gap: var(--space-3);
+}
+
+.pop-ui .pop-oqc-serial__judge {
+  grid-template-columns: repeat(2, 104px);
+}
+
+.pop-ui .pop-oqc-serial__judge .pop-oqc-judge {
+  min-height: 56px;
 }
 
 .pop-ui .pop-oqc-serial__no {

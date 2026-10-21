@@ -112,7 +112,11 @@ export const PopSerialStep = ({
                     : ` · ${t.previous(row.previous.firstJudgmentCode, row.previous.finalJudgmentCode)}`}
                 </span>
               </span>
-              <span role="group" aria-label={t.columns.judgment} className="pop-oqc-judge-row">
+              <span
+                role="group"
+                aria-label={t.columns.judgment}
+                className="pop-oqc-judge-row pop-oqc-serial__judge"
+              >
                 {(['OK', 'NG'] as const).map((code) => (
                   <button
                     key={code}

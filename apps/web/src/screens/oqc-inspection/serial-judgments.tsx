@@ -54,7 +54,7 @@ export const SerialJudgments = ({
     );
 
   const columns: Column<SerialRow>[] = [
-    { key: 'serialNo', header: t.columns.serialNo },
+    { key: 'serialNo', header: t.columns.serialNo, width: '168px' },
     { key: 'lotNo', header: t.columns.lotNo },
     {
       key: 'previous',
