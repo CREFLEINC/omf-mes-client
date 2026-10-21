@@ -130,7 +130,8 @@ export interface Outbox {
   /** 지금 연결돼 있는가. 건수와 함께 낸다 — 끊긴 것과 밀리는 것은 다르다. */
   isOnline: boolean;
   /** 큐에 담는다. **이것이 곧 성공이다** — 통신을 기다리지 않는다(C-1 #2). */
-  enqueue: (workerNo: string, body: ProductionResultCreate) => void;
+  /** 담은 항목의 멱등 키를 돌려준다 — 적용 알림에서 그 항목을 알아본다. */
+  enqueue: (workerNo: string, body: ProductionResultCreate) => string;
   /** 서버가 거부한 것 — 인라인용·배너용으로 갈라 둔다. 없으면 `null`. */
   rejection: SplitError | null;
   clearRejection: () => void;
@@ -284,14 +285,17 @@ export const useOutbox = (options: OutboxOptions = {}): Outbox => {
     })();
   }, [client, entries, isOnline, isStalled, retryTick]);
 
-  const enqueue = useCallback((workerNo: string, body: ProductionResultCreate): void => {
+  const enqueue = useCallback((workerNo: string, body: ProductionResultCreate): string => {
     setRejection(null);
+    const idempotencyKey = createIdempotencyKey();
     setEntries((prev) => {
-      const next = [...prev, { idempotencyKey: createIdempotencyKey(), workerNo, body }];
+      const next = [...prev, { idempotencyKey, workerNo, body }];
       writeStored(next);
 
       return next;
     });
+
+    return idempotencyKey;
   }, []);
 
   const clearRejection = useCallback((): void => {
