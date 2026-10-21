@@ -129,6 +129,8 @@ export const inboundReceipt: Translated<typeof ko.inboundReceipt> = {
     previousField: 'Ô trước',
     nextField: 'Ô sau',
     pad: 'Mở bàn phím số',
+    extras: 'Số kiện · Ngày SX · Hạn dùng',
+    extrasShort: 'Thêm',
     manufactured: 'Ngày sản xuất',
     expiry: 'Hạn dùng',
     empty: 'Hãy ghi số lượng thực nhận',

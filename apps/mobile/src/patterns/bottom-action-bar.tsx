@@ -1,5 +1,5 @@
 import { Icon } from '@crefle/web-ui';
-import { useId } from 'react';
+import { useId, type ReactNode } from 'react';
 
 import { Button } from './button';
 import './bottom-action-bar.css';
@@ -24,6 +24,16 @@ export interface BottomActionBarProps {
   primary: PrimaryBottomAction;
   /** 같은 무게의 두 번째 길. 부족 납품의 「분할 / 보류」처럼 둘 중 하나를 고르는 자리다. */
   secondary?: BottomAction;
+  /**
+   * 주 단추 아래 한 줄에 반씩 서는 낮은 두 길(48px). 초과 입하의 「정량분만 / 초과분만」처럼
+   * 기본 길이 아닌 대안이다.
+   */
+  alternatives?: [BottomAction, BottomAction];
+  /**
+   * 단추 위의 물음. 고르는 단추가 곧 등록인 자리(부족 납품)에서, 무엇을 고르는지를 단추와 같은
+   * 눈높이에 둔다 - 본문에 두면 그 물음 하나 때문에 화면이 한 화면을 넘었다.
+   */
+  prompt?: ReactNode;
 }
 
 /**
@@ -38,12 +48,18 @@ export interface BottomActionBarProps {
  * 숫자판(`DockedNumberPad`)이 열린 동안은 숨는다 - 판의 「확인」이 그 자리를 쓰고, 둘이
  * 겹치면 판의 아랫줄이 가린다. 판을 닫으면 돌아온다.
  */
-export const BottomActionBar = ({ primary, secondary }: BottomActionBarProps) => {
+export const BottomActionBar = ({
+  primary,
+  secondary,
+  alternatives,
+  prompt,
+}: BottomActionBarProps) => {
   const reasonId = useId();
   const locked = primary.disabled === true && primary.lockReason !== undefined;
 
   return (
     <div className="bottom-action-bar">
+      {prompt === undefined ? null : <div className="bottom-action-bar__prompt">{prompt}</div>}
       {locked ? (
         <p id={reasonId} className="bottom-action-bar__reason">
           <Icon name="lock" size={16} />
@@ -76,6 +92,23 @@ export const BottomActionBar = ({ primary, secondary }: BottomActionBarProps) =>
         >
           {secondary.label}
         </Button>
+      )}
+      {alternatives === undefined ? null : (
+        <div className="bottom-action-bar__alternatives">
+          {alternatives.map((each) => (
+            <Button
+              key={each.label}
+              variant="outlined"
+              size="lg"
+              className="bottom-action-bar__button"
+              disabled={each.disabled}
+              loading={each.busy}
+              onClick={each.onClick}
+            >
+              {each.label}
+            </Button>
+          ))}
+        </div>
       )}
     </div>
   );

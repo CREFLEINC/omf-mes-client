@@ -10,7 +10,7 @@
   z-index: 5;
   margin-top: auto;
   margin-inline: calc(-1 * var(--space-4, 16px));
-  padding: var(--space-3, 12px) var(--space-4, 16px);
+  padding: var(--space-2) var(--space-4) var(--space-3);
   display: flex;
   flex-direction: column;
   gap: var(--space-2, 8px);
@@ -78,4 +78,21 @@
  */
 .with-bottom-action-bar.with-bottom-action-bar {
   padding-bottom: 0;
+}
+
+/* 단추 위의 물음. 단추를 보는 눈에 함께 걸리도록 바 안 맨 위에 둔다. */
+.bottom-action-bar__prompt {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.bottom-action-bar__alternatives {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-2);
+}
+
+.bottom-action-bar__button.pda-button--lg {
+  min-height: var(--control-height-lg);
 }

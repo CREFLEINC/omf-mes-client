@@ -120,8 +120,8 @@
  * 한 줄로 접는다.
  */
 .scan-zone--standby .scan-zone__box {
-  min-height: 56px;
-  padding-block: var(--space-1);
+  min-height: 48px;
+  padding-block: 2px;
   border-width: 1px;
   background: var(--surface-container);
   box-shadow: none;
@@ -133,8 +133,8 @@
 }
 
 .scan-zone--standby .scan-zone__tile {
-  width: 36px;
-  height: 36px;
+  width: 32px;
+  height: 32px;
   border-radius: var(--radius-sm);
   background: var(--surface);
   color: var(--on-surface-variant);

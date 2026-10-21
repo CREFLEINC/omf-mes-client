@@ -1,8 +1,8 @@
 .qty-panel {
   display: flex;
   flex-direction: column;
-  gap: var(--space-3);
-  padding: var(--space-4);
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
   border-radius: var(--radius-lg);
   background: var(--surface);
   box-shadow: var(--elevation-1);
@@ -54,11 +54,21 @@
   border-bottom-color: var(--on-surface);
 }
 
+.qty-panel__extra + .qty-panel__pad {
+  margin-inline-start: 0;
+}
+
 .qty-panel__unit {
   flex: 0 0 auto;
   font: var(--type-title-sm);
   letter-spacing: var(--type-title-sm-tracking);
   color: var(--on-surface-muted);
+}
+
+/* 수 옆의 단추 자리. 오른쪽 끝 숫자판 단추와 붙어 선다. */
+.qty-panel__extra {
+  flex: 0 0 auto;
+  margin-inline-start: auto;
 }
 
 .qty-panel__pad {

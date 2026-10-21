@@ -11,7 +11,7 @@
   z-index: 5;
   margin-inline: calc(-1 * var(--space-4));
   margin-top: calc(-1 * var(--space-4));
-  padding-bottom: var(--space-2);
+  padding-bottom: var(--space-1);
   display: flex;
   flex-direction: column;
   background: var(--surface-container-low);
@@ -51,10 +51,10 @@
 .task-header__card {
   position: relative;
   margin: calc(-1 * var(--space-4)) var(--space-4) 0;
-  padding: var(--space-3) var(--space-3) var(--space-3) var(--space-4);
+  padding: var(--space-2) var(--space-2) var(--space-3) var(--space-4);
   display: flex;
   flex-direction: column;
-  gap: var(--space-2);
+  gap: var(--space-1);
   border-radius: var(--radius-lg);
   background: var(--surface);
   box-shadow: var(--elevation-2);
@@ -66,15 +66,25 @@
   gap: var(--space-2);
 }
 
+/* 코드와 이름은 한 줄에 잇는다. 이름이 길면 다음 줄로 접힌다 - 카드가 한 줄 짧아진다. */
 .task-header__title {
   flex: 1 1 auto;
   min-width: 0;
   margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  column-gap: var(--space-2);
 }
 
 .task-header__title dd,
 .task-header__values dd,
 .task-header__codes dd {
+  margin: 0;
+}
+
+/* 브라우저 기본 dl 여백(위아래 1em)이 카드 아래에 빈 줄을 남겼다. */
+.task-header__codes {
   margin: 0;
 }
 

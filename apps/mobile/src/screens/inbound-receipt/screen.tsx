@@ -1,6 +1,6 @@
 import { AlertBanner, Chip, Icon, IconButton, Select, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { Fragment, type ReactNode } from 'react';
+import { Fragment, useState, type ReactNode } from 'react';
 import { Link, useNavigate } from 'react-router';
 
 import { BottomActionBar } from '../../patterns/bottom-action-bar';
@@ -151,6 +151,9 @@ export const InboundReceiptScreen = () => {
     restart,
     submit,
   } = useReceiptFlow();
+
+  /* 접어 둔 선택 입력(포장 수 · 날짜)을 손으로 펼쳤는가. 화면의 겉 상태라 흐름에 두지 않는다. */
+  const [extrasShown, setExtrasShown] = useState(false);
 
   /*
    * 찾는 동안에는 폼을 접고 화면을 내준다. 스캔한 번호와 고른 자재 P/O 는 이 화면의 상태라
@@ -402,8 +405,8 @@ export const InboundReceiptScreen = () => {
    * 견주는 수는 「자세히」에 둔다. 판정이 견주는 것은 발주 총량이 아니라 남은 예정이다.
    * ⭐ 남은 수량은 발주량과 다를 때만 세운다(사용자 지시 2026-09-19) — 같은 수를 두 번 말할 뿐이다.
    */
-  const headerDetails =
-    line === null || lineRemaining === null ? undefined : (
+  const headerCounts =
+    line === null || lineRemaining === null ? null : (
       <dl className="receipt__counts">
         <dt>{t.verdict.counts.ordered}</dt>
         <dd>{`${String(line.orderedQty)} ${uom}`}</dd>
@@ -761,16 +764,18 @@ export const InboundReceiptScreen = () => {
   const verdictView: ReactNode =
     verdict === null || line === null || verdict === NORMAL ? null : verdict === OVER ? (
       <>
-        <AlertBanner
-          variant="warning"
-          title={t.verdict.over(String(remainingQtyOf(line, queuedQty)), String(received))}
-        >
-          {t.verdict.overNext}
-        </AlertBanner>
+        {/*
+         * 판정은 수량 판의 칩(+N)이 말한다. 같은 말을 띠로 한 번 더 세우면 분리 구획이 화면 밖으로
+         * 밀린다 - 문장은 낭독기에 남긴다.
+         */}
+        <p className="receipt__hidden">
+          <span>{t.verdict.over(String(remainingQtyOf(line, queuedQty)), String(received))}</span>{' '}
+          <span>{t.verdict.overNext}</span>
+        </p>
         {splitQuantities === null ? null : (
           <section className="receipt__split">
             <h2>{t.verdict.split.legend}</h2>
-            <dl className="receipt__counts">
+            <dl className="receipt__counts receipt__tiles">
               <dt>{t.verdict.split.remaining}</dt>
               <dd>{`${String(splitQuantities.remaining)} ${uom}`}</dd>
               <dt>{t.verdict.split.normal}</dt>
@@ -786,7 +791,7 @@ export const InboundReceiptScreen = () => {
               <Select
                 id="receipt-split-exception-type"
                 placeholder={t.verdict.split.exceptionTypePlaceholder}
-                size="xl"
+                size="lg"
                 value={splitExceptionType === '' ? null : splitExceptionType}
                 onChange={(value) => {
                   setSplitExceptionType(String(value));
@@ -803,80 +808,38 @@ export const InboundReceiptScreen = () => {
 
             <TextField
               label={required(t.verdict.split.exceptionReason)}
-              size="xl"
+              size="lg"
               fullWidth
               value={splitExceptionReason}
               onChange={(event) => {
                 setSplitExceptionReason(event.target.value);
               }}
             />
-
-            {/* 세 길은 대등하지 않다 — 정량·초과를 함께 받는 것이 기본이라 그것만 채워 세운다. */}
-            <div className="receipt__split-actions">
-              <Button
-                variant="filled"
-                size="2xl"
-                disabled={
-                  !splitReady ||
-                  splitQuantities.normal <= 0 ||
-                  splitQuantities.excess <= 0 ||
-                  splitExceptionType === '' ||
-                  splitExceptionReason.trim() === ''
-                }
-                onClick={() => void submit('BOTH')}
-              >
-                {t.verdict.split.both}
-              </Button>
-              <Button
-                variant="outlined"
-                size="xl"
-                disabled={!splitReady || splitQuantities.normal <= 0}
-                onClick={() => void submit('NORMAL_ONLY')}
-              >
-                {t.verdict.split.normalOnly}
-              </Button>
-              <Button
-                variant="outlined"
-                size="xl"
-                disabled={
-                  !splitReady ||
-                  splitQuantities.excess <= 0 ||
-                  splitExceptionType === '' ||
-                  splitExceptionReason.trim() === ''
-                }
-                onClick={() => void submit('EXCESS_ONLY')}
-              >
-                {t.verdict.split.excessOnly}
-              </Button>
-            </div>
-            {/* 비활성은 사유를 함께 보인다(공유계약 G-1). 왜 못 누르는지 알아야 한다. */}
-            {splitExceptionType === '' || splitExceptionReason.trim() === '' ? (
-              <p className="receipt__note">{t.verdict.split.excessLocked}</p>
-            ) : null}
-            <p className="receipt__note">{t.verdict.split.atomic}</p>
           </section>
         )}
       </>
     ) : (
-      /*
-       * 부족 — 물음 하나와 하단의 두 단추. 전에는 띠 하나에 네 수·물음·단추 둘·설명 둘이 들어
-       * 있었고, 고른 뒤에도 등록 단추를 한 번 더 눌러야 했다. 이제 고르는 단추가 곧 등록이다.
-       * 네 수는 위의 「자세히」에 있다.
-       */
+      /* 부족은 물음과 두 길이 확정 바에 선다(`underAsk`). 본문에는 판정 문장만 낭독기에 남긴다. */
+      <p className="receipt__hidden">
+        {t.verdict.under(String(remainingQtyOf(line, queuedQty)), String(received))}
+      </p>
+    );
+
+  /*
+   * 부족 — 물음 하나와 하단의 두 단추. 전에는 띠 하나에 네 수·물음·단추 둘·설명 둘이 들어
+   * 있었고, 고른 뒤에도 등록 단추를 한 번 더 눌러야 했다. 이제 고르는 단추가 곧 등록이다.
+   * 물음과 남는 몫은 단추 바로 위(확정 바)에 둔다. 발주·누적은 위의 「자세히」에 있다.
+   */
+  const underAsk =
+    verdict !== UNDER || line === null ? undefined : (
       <div className="receipt__under" role="group" aria-label={t.verdict.underAsk}>
-        <p className="receipt__under-verdict">
-          <Icon name="warning" size={20} />
-          <span>{t.verdict.under(String(remainingQtyOf(line, queuedQty)), String(received))}</span>
-        </p>
         <p className="receipt__under-ask">{t.verdict.underAsk}</p>
-        <dl className="receipt__counts">
+        <dl className="receipt__counts receipt__tiles">
           <dt>{t.verdict.counts.arrived}</dt>
           <dd>{`${String(received)} ${uom}`}</dd>
           <dt>{t.verdict.counts.remaining}</dt>
           <dd>{`${String(remainingAfterOf(line, received, queuedQty))} ${uom}`}</dd>
         </dl>
-        <p className="receipt__note">{t.verdict.underContinueNote}</p>
-        <p className="receipt__note">{t.verdict.underVarianceNote}</p>
       </div>
     );
 
@@ -922,6 +885,39 @@ export const InboundReceiptScreen = () => {
       </>
     );
 
+  /*
+   * 작업 카드 「자세히」. 본문에 두면 수량 단계가 한 화면을 넘는 설명 줄들을 이리 모은다 - 등록을
+   * 막는 것(잠금 사유)은 본문과 바닥에 그대로 남는다.
+   */
+  const showQtyNow = step === 'qty' || (step === 'unordered' && draft.itemId !== null);
+  const headerNotes = (
+    [
+      verdict === UNDER ? t.verdict.underContinueNote : null,
+      verdict === UNDER ? t.verdict.underVarianceNote : null,
+      verdict === OVER && splitQuantities !== null ? t.verdict.split.atomic : null,
+      showQtyNow ? t.inspectionNote : null,
+    ] as (string | null)[]
+  ).filter((note): note is string => note !== null);
+  const headerDetails =
+    headerCounts === null && headerNotes.length === 0 ? undefined : (
+      <>
+        {headerCounts}
+        {headerNotes.map((note) => (
+          <p key={note} className="receipt__note">
+            {note}
+          </p>
+        ))}
+      </>
+    );
+
+  /* 접어 둔 선택 입력을 펼칠 때 — 누가 펼쳤거나, 값 · 오류가 있거나, 숫자판이 그리로 옮겨 갔을 때. */
+  const extrasOpen =
+    extrasShown ||
+    keypadFor === 'package' ||
+    draft.packageCount !== '' ||
+    draft.manufacturedDate !== '' ||
+    draft.expiryDate !== '';
+
   /* 3단계(및 발주 없이 받기)의 수량. */
   const qtyFields = (
     <>
@@ -930,26 +926,45 @@ export const InboundReceiptScreen = () => {
        * 보인다. 늘 띄워 두면 그것이 흐려지고, 칸마다 하나씩 두면 큰 판이 둘이 되어 아래 칸을
        * 화면 밖으로 민다.
        */}
-      <div className="receipt__keypad-group">
-        <QtyPanel
-          id="receipt-received-qty"
-          label={required(t.qty.received)}
-          value={draft.receivedQty}
-          unit={uom}
-          padLabel={t.qty.pad}
-          onChange={editReceivedQty}
-          onFocus={() => {
-            setKeypadFor('received');
-          }}
-          /* 판정은 판 머리의 칩 하나다. 정상이면 초록, 모자라거나 넘치면 노랑. */
-          status={verdictChip}
-          meter={qtyMeter}
-          legend={qtyLegend}
-          /* 미리 채운 값은 예정이다. 그대로인 동안 그렇다고 판 아래에 적는다. */
-          note={qtyPlanned ? t.plannedQty : undefined}
-          error={qtyMessage()}
-        />
+      <QtyPanel
+        id="receipt-received-qty"
+        label={required(t.qty.received)}
+        value={draft.receivedQty}
+        unit={uom}
+        padLabel={t.qty.pad}
+        onChange={editReceivedQty}
+        onFocus={() => {
+          setKeypadFor('received');
+        }}
+        /* 판정은 판 머리의 칩 하나다. 정상이면 초록, 모자라거나 넘치면 노랑. */
+        status={verdictChip}
+        meter={qtyMeter}
+        legend={qtyLegend}
+        extra={
+          <Button
+            variant="tonal"
+            size="lg"
+            className="receipt__extras-button"
+            aria-expanded={extrasOpen}
+            aria-controls="receipt-extras"
+            title={t.qty.extras}
+            leadingIcon={<Icon name={extrasOpen ? 'expand_less' : 'add'} size={20} />}
+            onClick={() => {
+              setExtrasShown((current) => !current);
+            }}
+          >
+            {t.qty.extrasShort}
+          </Button>
+        }
+        /* 미리 채운 값은 예정이다. 그대로인 동안 그렇다고 판 아래에 적는다. */
+        note={qtyPlanned ? t.plannedQty : undefined}
+        error={qtyMessage()}
+      />
 
+      {verdictView}
+
+      {/* 접어 둔 선택 입력. 칸마다 제 이름이 있어 묶음에는 이름을 따로 달지 않는다. */}
+      <div id="receipt-extras" className="receipt__extras" hidden={!extrasOpen}>
         <div className="receipt__qty-field">
           <TextField
             id="receipt-package-count"
@@ -969,44 +984,41 @@ export const InboundReceiptScreen = () => {
             }
           />
         </div>
-      </div>
 
-      {verdictView}
-
-      <div className="receipt__row receipt__row--split">
-        <TextField
-          type="date"
-          label={optional(t.qty.manufactured)}
-          size="xl"
-          fullWidth
-          value={draft.manufacturedDate}
-          onChange={(event) => {
-            patch({ manufacturedDate: event.target.value });
-          }}
-        />
-        <TextField
-          type="date"
-          label={optional(t.qty.expiry)}
-          size="xl"
-          fullWidth
-          value={draft.expiryDate}
-          onChange={(event) => {
-            patch({ expiryDate: event.target.value });
-          }}
-          error={
-            isExpiryBeforeManufactured(draft.manufacturedDate, draft.expiryDate)
-              ? t.qty.expiryBeforeManufactured
-              : undefined
-          }
-        />
+        <div className="receipt__row receipt__row--split">
+          <TextField
+            type="date"
+            label={optional(t.qty.manufactured)}
+            size="xl"
+            fullWidth
+            value={draft.manufacturedDate}
+            onChange={(event) => {
+              patch({ manufacturedDate: event.target.value });
+            }}
+          />
+          <TextField
+            type="date"
+            label={optional(t.qty.expiry)}
+            size="xl"
+            fullWidth
+            value={draft.expiryDate}
+            onChange={(event) => {
+              patch({ expiryDate: event.target.value });
+            }}
+            error={
+              isExpiryBeforeManufactured(draft.manufacturedDate, draft.expiryDate)
+                ? t.qty.expiryBeforeManufactured
+                : undefined
+            }
+          />
+        </div>
       </div>
 
       {item.isError ? <p className="receipt__note">{t.qty.itemLoadFailed}</p> : null}
-      <p className="receipt__note">{t.inspectionNote}</p>
     </>
   );
 
-  const showQty = step === 'qty' || (step === 'unordered' && draft.itemId !== null);
+  const showQty = showQtyNow;
 
   /*
    * 등록 바로 앞의 확인들 — 라벨 대조·저장 실패·사번. 단추 가까이에 두어야 왜 막혔는지가 보인다.
@@ -1061,42 +1073,76 @@ export const InboundReceiptScreen = () => {
    * - 초과: 분리 구획이 자기 단추를 가진다. 바를 세우지 않는다.
    * - 부족: 「분할 납품으로 등록」 · 「보류로 받고 오류 등록」 두 길.
    */
-  const bar =
-    !showQty || verdict === OVER ? null : verdict === UNDER ? (
+  const splitLocked = splitExceptionType === '' || splitExceptionReason.trim() === '';
+  const bar = !showQty ? null : verdict === OVER ? (
+    splitQuantities === null ? null : (
+      /*
+       * 초과 — 세 길은 대등하지 않다. 정량·초과를 함께 받는 것이 기본이라 그것만 채워 세우고, 나머지
+       * 둘은 그 아래 한 줄에 낮게 나란히. 바에 두면 분리 구획을 다 채운 손이 단추를 찾아 내려가지
+       * 않는다.
+       */
       <BottomActionBar
         primary={{
-          label: t.verdict.underContinue,
-          onClick: submitContinueUnder,
-          disabled: underLock !== null,
-          lockReason: underLock === null ? undefined : t.locked[underLock],
+          label: t.verdict.split.both,
+          onClick: () => void submit('BOTH'),
+          disabled:
+            !splitReady ||
+            splitQuantities.normal <= 0 ||
+            splitQuantities.excess <= 0 ||
+            splitLocked,
+          /* 비활성은 사유를 함께 보인다(공유계약 G-1). 왜 못 누르는지 알아야 한다. */
+          lockReason: splitLocked ? t.verdict.split.excessLocked : undefined,
         }}
-        secondary={{
-          label: t.verdict.underVariance,
-          disabled: !varianceReady,
-          onClick: () => {
-            if (!varianceReady) {
-              return;
-            }
-
-            setVarianceNext(true);
-            void submit();
+        alternatives={[
+          {
+            label: t.verdict.split.normalOnly,
+            disabled: !splitReady || splitQuantities.normal <= 0,
+            onClick: () => void submit('NORMAL_ONLY'),
           },
-        }}
+          {
+            label: t.verdict.split.excessOnly,
+            disabled: !splitReady || splitQuantities.excess <= 0 || splitLocked,
+            onClick: () => void submit('EXCESS_ONLY'),
+          },
+        ]}
       />
-    ) : (
-      <BottomActionBar
-        primary={{
-          label: t.submit,
-          onClick: () => void submit(),
-          disabled: !ready,
-          /*
-           * 위에서부터 처음 비어 있는 것 하나만 말한다 - 다 늘어놓으면 무엇부터 할지가 흐려진다.
-           * 다음 것은 이것을 채우면 그 자리에 선다.
-           */
-          lockReason: lock === null ? undefined : t.locked[lock],
-        }}
-      />
-    );
+    )
+  ) : verdict === UNDER ? (
+    <BottomActionBar
+      prompt={underAsk}
+      primary={{
+        label: t.verdict.underContinue,
+        onClick: submitContinueUnder,
+        disabled: underLock !== null,
+        lockReason: underLock === null ? undefined : t.locked[underLock],
+      }}
+      secondary={{
+        label: t.verdict.underVariance,
+        disabled: !varianceReady,
+        onClick: () => {
+          if (!varianceReady) {
+            return;
+          }
+
+          setVarianceNext(true);
+          void submit();
+        },
+      }}
+    />
+  ) : (
+    <BottomActionBar
+      primary={{
+        label: t.submit,
+        onClick: () => void submit(),
+        disabled: !ready,
+        /*
+         * 위에서부터 처음 비어 있는 것 하나만 말한다 - 다 늘어놓으면 무엇부터 할지가 흐려진다.
+         * 다음 것은 이것을 채우면 그 자리에 선다.
+         */
+        lockReason: lock === null ? undefined : t.locked[lock],
+      }}
+    />
+  );
 
   return (
     <div
@@ -1111,6 +1157,19 @@ export const InboundReceiptScreen = () => {
           fields={headerFields}
           step={{ index: STEP_INDEX[step], total: STEP_COUNT }}
           details={headerDetails}
+          /* 다른 라인으로 받을 것이면 돌아간다. 적은 값은 같은 라인을 다시 고를 때까지 남는다. */
+          action={
+            step === 'qty'
+              ? {
+                  icon: 'swap_horiz',
+                  label: t.header.changeLine,
+                  onClick: () => {
+                    setKeypadFor(null);
+                    setChangingLine(true);
+                  },
+                }
+              : undefined
+          }
         />
       ) : null}
 
@@ -1230,18 +1289,6 @@ export const InboundReceiptScreen = () => {
       {step === 'qty' ? (
         <StepSection title={t.steps.qty} index={3} total={STEP_COUNT}>
           {qtyFields}
-          {/* 다른 라인으로 받을 것이면 돌아간다. 적은 값은 같은 라인을 다시 고를 때까지 남는다. */}
-          <Button
-            variant="outlined"
-            size="lg"
-            leadingIcon={<Icon name="swap_horiz" size={20} />}
-            onClick={() => {
-              setKeypadFor(null);
-              setChangingLine(true);
-            }}
-          >
-            {t.header.changeLine}
-          </Button>
         </StepSection>
       ) : null}
 

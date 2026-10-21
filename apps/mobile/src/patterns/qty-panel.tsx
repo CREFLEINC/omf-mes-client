@@ -29,6 +29,11 @@ export interface QtyPanelProps {
   meter?: QtyPanelMeter;
   /** 막대 아래 범례. 수 몇 개를 이름과 함께 늘어놓는다. */
   legend?: ReactNode;
+  /**
+   * 수 옆, 숫자판 단추 앞에 서는 단추 하나. 접어 둔 선택 입력을 여는 자리다 - 판 밖에 한 줄로 두면
+   * 그 줄만큼 화면이 길어진다.
+   */
+  extra?: ReactNode;
   /** 칸 아래 안내. 오류가 있으면 그것이 대신 선다. */
   note?: string;
   error?: string;
@@ -56,6 +61,7 @@ export const QtyPanel = ({
   status,
   meter,
   legend,
+  extra,
   note,
   error,
 }: QtyPanelProps) => {
@@ -88,6 +94,7 @@ export const QtyPanel = ({
           onFocus={onFocus}
         />
         <span className="qty-panel__unit">{unit}</span>
+        {extra === undefined ? null : <span className="qty-panel__extra">{extra}</span>}
         <IconButton
           className="qty-panel__pad"
           icon="dialpad"
