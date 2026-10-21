@@ -112,7 +112,12 @@ export const toDefectTypes = (results: readonly ProductionResultForward[]): Defe
       const name = masterName(defect, defect.defectName);
       add(
         defect.defectCodeId,
-        defect.parentDefectName == null ? name : `${defect.parentDefectName} › ${name}`,
+        defect.parentDefectName == null
+          ? name
+          : `${masterName(
+              { nameKo: defect.parentNameKo, nameVi: defect.parentNameVi },
+              defect.parentDefectName,
+            )} › ${name}`,
         defect.qty,
       );
     }

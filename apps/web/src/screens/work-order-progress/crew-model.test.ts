@@ -1,3 +1,4 @@
+import { setLocale } from '@omf-mes/i18n';
 import { describe, expect, it } from 'vitest';
 
 import { toDefectTypes, toSessionViews, toWorkerResults, type ParticipantRow } from './crew-model';
@@ -162,5 +163,45 @@ describe('toDefectTypes', () => {
       { defectCodeId: 1, label: '외관', qty: 6 },
       { defectCodeId: null, label: null, qty: 3 },
     ]);
+  });
+});
+
+describe('toDefectTypes 이름 언어', () => {
+  it('대분류·상세 모두 화면 언어 이름을 쓰고, 없으면 기본 이름이다', () => {
+    setLocale('vi');
+    try {
+      const rows = toDefectTypes([
+        result(1, 101, 0, {
+          defects: [
+            {
+              defectRecordId: 1,
+              defectCodeId: 11,
+              defectCode: 'A01',
+              defectName: '긁힘',
+              nameVi: 'Trầy xước',
+              parentDefectCodeId: 1,
+              parentDefectCode: 'A',
+              parentDefectName: '외관',
+              parentNameVi: 'Ngoại quan',
+              qty: 2,
+            },
+            {
+              defectRecordId: 2,
+              defectCodeId: 12,
+              defectCode: 'A02',
+              defectName: '찍힘',
+              parentDefectCodeId: 1,
+              parentDefectCode: 'A',
+              parentDefectName: '외관',
+              qty: 1,
+            },
+          ],
+        }),
+      ]);
+
+      expect(rows.map((row) => row.label)).toEqual(['Ngoại quan › Trầy xước', '외관 › 찍힘']);
+    } finally {
+      setLocale('ko');
+    }
   });
 });

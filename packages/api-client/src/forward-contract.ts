@@ -769,6 +769,8 @@ export interface ProductionResultDefect {
   parentDefectCodeId?: number | null;
   parentDefectCode?: string | null;
   parentDefectName?: string | null;
+  parentNameKo?: string | null;
+  parentNameVi?: string | null;
   qty: number;
 }
 
