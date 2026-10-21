@@ -218,7 +218,12 @@ const routes = (writes: Request[]): StubRoute[] => [
 const renderScreen = (
   writes: Request[],
   extraRoutes: StubRoute[] = [],
-  options: { workerNo?: string | null; route?: string; strict?: boolean } = {},
+  options: {
+    workerNo?: string | null;
+    route?: string;
+    strict?: boolean;
+    processes?: { processId: number }[];
+  } = {},
 ) => {
   /*
    * ⚠ **`StrictMode` 는 선택으로 둔다.** POP 앱은 실제로 `StrictMode` 아래서 돌고
@@ -229,7 +234,7 @@ const renderScreen = (
     <PopIdentityProvider
       value={{
         terminalId: 10,
-        processes: [{ processId: 20 }],
+        processes: options.processes ?? [{ processId: 20 }],
         equipment: null,
         workerNo: options.workerNo === undefined ? '100029' : options.workerNo,
       }}
@@ -1896,5 +1901,426 @@ describe('ProductionFlowScreen — PQC 분할', () => {
     expect(screen.getByText(t.zone.title)).toBeInTheDocument();
     expect(screen.queryByText(t.pqc.splitNote)).not.toBeInTheDocument();
     expect(await screen.findByText(t.pqc.notInspected)).toBeInTheDocument();
+  });
+});
+
+describe('ProductionFlowScreen 불량', () => {
+  beforeEach(() => {
+    globalThis.localStorage.clear();
+    Object.defineProperty(window, 'pop', {
+      configurable: true,
+      value: { rendition: { save: vi.fn().mockResolvedValue('/tmp/lot.prn') } },
+    });
+  });
+
+  afterEach(() => {
+    globalThis.localStorage.clear();
+    Reflect.deleteProperty(window, 'pop');
+  });
+
+  const defectRoutes: StubRoute[] = [
+    {
+      match: (request) => pathOf(request) === `/production/work-orders/${String(WORK_ORDER_ID)}`,
+      respond: () =>
+        jsonResponse({
+          workOrderId: WORK_ORDER_ID,
+          workOrderNo: 'WO-SYN-001',
+          productionPlanId: 1,
+          routingOperationId: 1,
+          itemId: 101,
+          itemCode: 'ITEM-SYN-01',
+          orderQty: 12,
+          uomId: 1,
+          workOrderTypeCode: 'NORMAL',
+          statusCode: 'IN_PROGRESS',
+          priorityNo: 1,
+          processId: 20,
+          progress: { goodQty: 0, varianceQty: 12 },
+        }),
+    },
+    {
+      match: (request) =>
+        pathOf(request) === '/quality/defect-codes' &&
+        new URL(request.url).searchParams.get('processId') === '20',
+      respond: () =>
+        jsonResponse({
+          items: [
+            { defectCodeId: 1, defectCode: 'A', defectName: '외관', isActive: true },
+            {
+              defectCodeId: 11,
+              defectCode: 'A01',
+              defectName: '긁힘',
+              parentDefectCodeId: 1,
+              isActive: true,
+            },
+            {
+              defectCodeId: 12,
+              defectCode: 'A02',
+              defectName: '찍힘',
+              parentDefectCodeId: 1,
+              isActive: true,
+            },
+          ],
+          page: { page: 1, size: 200, total: 3 },
+        }),
+    },
+  ];
+
+  const pickDefect = async (user: ReturnType<typeof userEvent.setup>, minor: string) => {
+    const dialog = await screen.findByRole('dialog', { name: t.flow.defects.pickerTitle });
+    await user.click(await within(dialog).findByRole('button', { name: '외관' }));
+    await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: minor }));
+  };
+  const defectSection = () => screen.getByRole('region', { name: t.flow.defects.title });
+  const savedBody = async (writes: Request[]) => {
+    const request = writes.find((write) => pathOf(write) === '/production/production-results');
+    return (await request?.clone().json()) as Record<string, unknown>;
+  };
+
+  it('양품과 함께 유형별 불량을 한 번에 저장한다', async () => {
+    const writes: Request[] = [];
+    const user = userEvent.setup();
+    renderScreen(writes, defectRoutes);
+    await screen.findByRole('button', { name: t.flow.output.issue });
+
+    await user.click(within(defectSection()).getByRole('button', { name: t.flow.defects.add }));
+    await pickDefect(user, '긁힘');
+    const row = within(defectSection()).getByRole('listitem', { name: t.flow.defects.row(1) });
+    expect(
+      within(row).getByRole('button', { name: `${t.flow.defects.type}: 외관 › 긁힘` }),
+    ).toBeInTheDocument();
+    /* 줄을 더하면 키패드가 그 줄의 수량 칸에 친다. */
+    await user.click(screen.getByRole('button', { name: '3' }));
+    expect(within(row).getByLabelText(t.flow.defects.qty)).toHaveValue('3');
+
+    const output = screen.getByRole('button', { name: t.flow.output.issue });
+    await waitFor(() => expect(output).toBeEnabled());
+    await user.click(output);
+
+    await waitFor(() =>
+      expect(writes.some((write) => pathOf(write) === '/production/production-results')).toBe(true),
+    );
+    const body = await savedBody(writes);
+    expect(body).toEqual(
+      expect.objectContaining({
+        goodQty: 12,
+        lotAllocations: [{ lotId: LOT_ID, allocatedQty: 12 }],
+        defects: [{ defectCodeId: 11, qty: 3 }],
+        workSessionId: WORK_SESSION_ID,
+      }),
+    );
+    expect(body).not.toHaveProperty('defectQty');
+  });
+
+  it('양품 0 이면 라벨 없이 불량만 저장하고 줄을 비운다', async () => {
+    const writes: Request[] = [];
+    const user = userEvent.setup();
+    renderScreen(writes, defectRoutes);
+    await screen.findByRole('button', { name: t.flow.output.issue });
+
+    const good = screen.getByLabelText(t.flow.quantity.actual);
+    await waitFor(() => expect(good).toBeEnabled());
+    await user.clear(good);
+    await user.type(good, '0');
+    await user.click(within(defectSection()).getByRole('button', { name: t.flow.defects.add }));
+    await pickDefect(user, '찍힘');
+    await user.type(within(defectSection()).getByLabelText(t.flow.defects.qty), '2');
+
+    expect(screen.getByRole('button', { name: t.flow.output.issue })).toBeDisabled();
+    const saveOnly = within(defectSection()).getByRole('button', { name: t.flow.defects.saveOnly });
+    await waitFor(() => expect(saveOnly).toBeEnabled());
+    await user.click(saveOnly);
+
+    expect(await screen.findByText(t.flow.defects.saved)).toBeInTheDocument();
+    const body = await savedBody(writes);
+    expect(body).toEqual(
+      expect.objectContaining({ goodQty: 0, defects: [{ defectCodeId: 12, qty: 2 }] }),
+    );
+    expect(body).not.toHaveProperty('lotAllocations');
+    expect(writes.some((write) => pathOf(write) === '/app/document-issues')).toBe(false);
+    expect(within(defectSection()).queryByRole('listitem')).toBeNull();
+  });
+
+  it('같은 불량 유형을 두 줄에 두면 그 줄을 짚고 저장을 막는다', async () => {
+    const user = userEvent.setup();
+    renderScreen([], defectRoutes);
+    await screen.findByRole('button', { name: t.flow.output.issue });
+
+    for (const _ of [1, 2]) {
+      await user.click(within(defectSection()).getByRole('button', { name: t.flow.defects.add }));
+      await pickDefect(user, '긁힘');
+      await user.click(screen.getByRole('button', { name: '1' }));
+    }
+
+    const second = within(defectSection()).getByRole('listitem', { name: t.flow.defects.row(2) });
+    expect(within(second).getByText(t.flow.defects.duplicate)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: t.flow.output.issue })).toBeDisabled();
+  });
+
+  it('연결이 끊겨도 불량만 저장은 큐에 넣는 즉시 끝나고 다음 입력을 받는다', async () => {
+    vi.spyOn(globalThis.navigator, 'onLine', 'get').mockReturnValue(false);
+    const writes: Request[] = [];
+    const user = userEvent.setup();
+    renderScreen(writes, defectRoutes);
+    const good = await screen.findByLabelText(t.flow.quantity.actual);
+    await waitFor(() => expect(good).toBeEnabled());
+
+    await user.clear(good);
+    await user.type(good, '0');
+    await user.click(within(defectSection()).getByRole('button', { name: t.flow.defects.add }));
+    await pickDefect(user, '긁힘');
+    await user.type(within(defectSection()).getByLabelText(t.flow.defects.qty), '2');
+    await user.click(
+      within(defectSection()).getByRole('button', { name: t.flow.defects.saveOnly }),
+    );
+
+    expect(await screen.findByText(t.flow.defects.queued)).toBeInTheDocument();
+    expect(within(defectSection()).queryByRole('listitem')).toBeNull();
+    expect(writes.some((write) => pathOf(write) === '/production/production-results')).toBe(false);
+    /* 잠그지 않는다 — 바로 다음 불량을 넣을 수 있다. */
+    expect(within(defectSection()).getByRole('button', { name: t.flow.defects.add })).toBeEnabled();
+    expect(JSON.parse(globalThis.localStorage.getItem(STORAGE_KEY) ?? '[]')).toHaveLength(1);
+    vi.restoreAllMocks();
+  });
+
+  it('키패드는 고른 칸에 치고, 그 칸을 이름으로 말한다', async () => {
+    const user = userEvent.setup();
+    renderScreen([], defectRoutes);
+    const good = await screen.findByLabelText(t.flow.quantity.actual);
+    await waitFor(() => expect(good).toBeEnabled());
+
+    await user.click(within(defectSection()).getByRole('button', { name: t.flow.defects.add }));
+    await pickDefect(user, '긁힘');
+    expect(
+      screen.getByRole('group', { name: t.flow.defects.keypadFor('외관 › 긁힘') }),
+    ).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: '5' }));
+    expect(within(defectSection()).getByLabelText(t.flow.defects.qty)).toHaveValue('5');
+
+    await user.click(good);
+    expect(screen.getByRole('group', { name: t.flow.defects.keypadGood })).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: '1' }));
+    expect(good).toHaveValue('121');
+    expect(within(defectSection()).getByLabelText(t.flow.defects.qty)).toHaveValue('5');
+  });
+
+  it('덜 채운 불량 줄은 무엇이 빠졌는지 그 줄에 말한다', async () => {
+    const user = userEvent.setup();
+    renderScreen([], defectRoutes);
+    await screen.findByRole('button', { name: t.flow.output.issue });
+
+    await user.click(within(defectSection()).getByRole('button', { name: t.flow.defects.add }));
+    await user.click(
+      within(await screen.findByRole('dialog')).getByRole('button', {
+        name: t.flow.defects.cancel,
+      }),
+    );
+    const row = within(defectSection()).getByRole('listitem', { name: t.flow.defects.row(1) });
+    expect(within(row).getByText(t.flow.defects.typeMissing)).toBeInTheDocument();
+
+    await user.click(within(row).getByRole('button', { name: new RegExp(t.flow.defects.type) }));
+    await pickDefect(user, '긁힘');
+    expect(within(row).getByText(t.flow.defects.qtyMissing)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: t.flow.output.issue })).toBeDisabled();
+  });
+
+  it('W/O 에 공정이 없으면 「+ 불량」을 잠그고 까닭을 말한다', async () => {
+    const [workOrderRoute, ...rest] = defectRoutes;
+    if (workOrderRoute === undefined) throw new Error('경로 없음');
+    renderScreen(
+      [],
+      [
+        {
+          match: workOrderRoute.match,
+          respond: async (request) => {
+            const body = (await (await workOrderRoute.respond(request)).json()) as Record<
+              string,
+              unknown
+            >;
+            return jsonResponse({ ...body, processId: undefined });
+          },
+        },
+        ...rest,
+      ],
+    );
+
+    expect(await within(defectSection()).findByText(t.flow.defects.noProcess)).toBeInTheDocument();
+    expect(
+      within(defectSection()).getByRole('button', { name: t.flow.defects.add }),
+    ).toBeDisabled();
+  });
+
+  it('앞서 쌓인 다른 저장이 적용돼도 지금 치는 불량 줄은 남는다', async () => {
+    let release: () => void = () => undefined;
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    globalThis.localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify([
+        {
+          idempotencyKey: 'earlier-defect-only',
+          workerNo: '100029',
+          body: {
+            workOrderId: WORK_ORDER_ID,
+            goodQty: 0,
+            uomId: 1,
+            occurredAt: '2026-10-21T09:00:00+09:00',
+            resultSourceCode: 'MANUAL',
+            defects: [{ defectCodeId: 12, qty: 1 }],
+          },
+        },
+      ]),
+    );
+    const writes: Request[] = [];
+    const user = userEvent.setup();
+    renderScreen(writes, [
+      {
+        match: (request) =>
+          request.method === 'POST' && pathOf(request) === '/production/production-results',
+        respond: async (request) => {
+          await gate;
+          writes.push(request.clone());
+          return jsonResponse({ productionResultId: 777 }, { status: 201 });
+        },
+      },
+      ...defectRoutes,
+    ]);
+    await screen.findByRole('button', { name: t.flow.output.issue });
+
+    await user.click(within(defectSection()).getByRole('button', { name: t.flow.defects.add }));
+    await pickDefect(user, '긁힘');
+    release();
+
+    await waitFor(() =>
+      expect(writes.some((write) => pathOf(write) === '/production/production-results')).toBe(true),
+    );
+    expect(
+      within(defectSection()).getByRole('listitem', { name: t.flow.defects.row(1) }),
+    ).toBeInTheDocument();
+  });
+
+  it('불량만 저장이 서버에서 거부되면 「기록했습니다」를 지우고 거부 띠만 남긴다', async () => {
+    const user = userEvent.setup();
+    renderScreen(
+      [],
+      [
+        {
+          match: (request) =>
+            request.method === 'POST' && pathOf(request) === '/production/production-results',
+          respond: () =>
+            jsonResponse(
+              {
+                errors: [
+                  {
+                    scope: 'field',
+                    field: 'defects[0].defectCodeId',
+                    code: 'INVALID',
+                    message: '합성 거부',
+                  },
+                ],
+              },
+              { status: 400 },
+            ),
+        },
+        ...defectRoutes,
+      ],
+    );
+    const good = await screen.findByLabelText(t.flow.quantity.actual);
+    await waitFor(() => expect(good).toBeEnabled());
+    await user.clear(good);
+    await user.type(good, '0');
+    await user.click(within(defectSection()).getByRole('button', { name: t.flow.defects.add }));
+    await pickDefect(user, '긁힘');
+    await user.type(within(defectSection()).getByLabelText(t.flow.defects.qty), '2');
+    await user.click(
+      within(defectSection()).getByRole('button', { name: t.flow.defects.saveOnly }),
+    );
+
+    expect(await screen.findByText(t.save.failTitle)).toBeInTheDocument();
+    await waitFor(() => expect(screen.queryByText(t.flow.defects.saved)).toBeNull());
+  });
+
+  const sessionWithResources: StubRoute = {
+    match: (request) => request.method === 'GET' && pathOf(request) === '/production/work-sessions',
+    respond: () =>
+      jsonResponse({
+        items: [
+          {
+            workSessionId: WORK_SESSION_ID,
+            workOrderId: WORK_ORDER_ID,
+            sessionNo: 1,
+            terminalId: 10,
+            equipmentId: 3301,
+            moldId: 4401,
+            startedAt: '2026-09-16T09:00:00+09:00',
+            statusCode: 'RUNNING',
+          },
+        ],
+        page: { page: 1, size: 20, total: 1 },
+      }),
+  };
+  const enterDefectOnly = async (user: ReturnType<typeof userEvent.setup>) => {
+    const good = await screen.findByLabelText(t.flow.quantity.actual);
+    await waitFor(() => expect(good).toBeEnabled());
+    await user.clear(good);
+    await user.type(good, '0');
+    await user.click(within(defectSection()).getByRole('button', { name: t.flow.defects.add }));
+    await pickDefect(user, '긁힘');
+    await user.type(within(defectSection()).getByLabelText(t.flow.defects.qty), '2');
+  };
+
+  it('불량만 저장도 열린 세션과 그 세션의 설비·금형을 싣는다', async () => {
+    const writes: Request[] = [];
+    const user = userEvent.setup();
+    renderScreen(writes, [sessionWithResources, ...defectRoutes]);
+
+    await enterDefectOnly(user);
+    const saveOnly = within(defectSection()).getByRole('button', { name: t.flow.defects.saveOnly });
+    await waitFor(() => expect(saveOnly).toBeEnabled());
+    await user.click(saveOnly);
+
+    await waitFor(() =>
+      expect(writes.some((write) => pathOf(write) === '/production/production-results')).toBe(true),
+    );
+    expect(await savedBody(writes)).toEqual(
+      expect.objectContaining({ workSessionId: WORK_SESSION_ID, equipmentId: 3301, moldId: 4401 }),
+    );
+  });
+
+  it('공정이 여럿인 단말도 W/O 공정으로 판정해 불량 저장을 연다', async () => {
+    const user = userEvent.setup();
+    renderScreen([], defectRoutes, { processes: [{ processId: 20 }, { processId: 21 }] });
+
+    await enterDefectOnly(user);
+
+    await waitFor(() =>
+      expect(
+        within(defectSection()).getByRole('button', { name: t.flow.defects.saveOnly }),
+      ).toBeEnabled(),
+    );
+  });
+
+  it('불량 저장이 꺼지면 까닭을 그 단추에 잇는다', async () => {
+    const user = userEvent.setup();
+    renderScreen(
+      [],
+      [
+        {
+          match: (request) => pathOf(request) === '/mdm/terminals/10/processes',
+          respond: () =>
+            jsonResponse({
+              items: [{ processId: 20, canInputResult: false, canPrintLabel: true }],
+            }),
+        },
+        ...defectRoutes,
+      ],
+    );
+
+    await enterDefectOnly(user);
+
+    const saveOnly = within(defectSection()).getByRole('button', { name: t.flow.defects.saveOnly });
+    expect(saveOnly).toBeDisabled();
+    await waitFor(() => expect(saveOnly).toHaveAccessibleDescription(t.gate.denied));
   });
 });

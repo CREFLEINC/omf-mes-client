@@ -4,8 +4,10 @@ import { useApiClient } from '../../patterns/api-context';
 import { fetchAllPages } from '../../patterns/fetch-all-pages';
 import { runRequest } from '../../patterns/request';
 import {
+  toDefectTypes,
   toSessionViews,
   toWorkerResults,
+  type DefectTypeRow,
   type SessionView,
   type WorkerResultRow,
 } from './crew-model';
@@ -74,6 +76,7 @@ export const useWorkOrderDetail = (workOrderId: number | null): UseQueryResult<W
 export interface WorkOrderCrew {
   sessions: SessionView[];
   workerResults: WorkerResultRow[];
+  defectTypes: DefectTypeRow[];
   /** 다 받지 못한 것 — 무엇이 빠졌는지 말하려고 갈라 둔다 */
   sessionsTruncated: boolean;
   resultsTruncated: boolean;
@@ -155,6 +158,7 @@ export const useWorkOrderCrew = (workOrderId: number | null): UseQueryResult<Wor
       return {
         sessions: views,
         workerResults: named,
+        defectTypes: toDefectTypes(results.items),
         sessionsTruncated: openSessions.truncated || closedSessions.truncated,
         resultsTruncated: results.truncated,
       };

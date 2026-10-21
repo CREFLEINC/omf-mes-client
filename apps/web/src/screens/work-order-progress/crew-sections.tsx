@@ -5,6 +5,7 @@ import { formatPlantDateTime } from '../../patterns/plant-time';
 import {
   QTY_KEYS,
   type CrewRoleLabel,
+  type DefectTypeRow,
   type ParticipantRow,
   type QtyKey,
   type WorkerResultRow,
@@ -46,6 +47,20 @@ const participantColumns: Column<ParticipantRow>[] = [
     header: t.sessions.columns.minutes,
     align: 'end',
     render: (row) => minutesText(row.participatedMinutes),
+  },
+];
+
+const defectTypeColumns: Column<DefectTypeRow>[] = [
+  {
+    key: 'type',
+    header: t.defectTypes.columns.type,
+    render: (row) => row.label ?? t.defectTypes.untyped,
+  },
+  {
+    key: 'qty',
+    header: t.defectTypes.columns.qty,
+    align: 'end',
+    render: (row) => String(row.qty),
   },
 ];
 
@@ -142,6 +157,18 @@ export const CrewSections = ({ crew, isLoading, isError }: CrewSectionsProps) =>
           rows={crew.workerResults}
           getRowId={(row) => String(row.workerId)}
           empty={<p className="field-note">{t.workerResults.empty}</p>}
+        />
+      </section>
+
+      <section className="work-order-progress-crew" aria-label={t.defectTypes.heading}>
+        <h3>{t.defectTypes.heading}</h3>
+        <Table
+          caption={t.defectTypes.heading}
+          density="compact"
+          columns={defectTypeColumns}
+          rows={crew.defectTypes}
+          getRowId={(row) => (row.defectCodeId === null ? 'untyped' : String(row.defectCodeId))}
+          empty={<p className="field-note">{t.defectTypes.empty}</p>}
         />
       </section>
     </>
