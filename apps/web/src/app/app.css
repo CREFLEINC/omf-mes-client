@@ -15381,3 +15381,20 @@ body:has(.goods-receipt-post-form) > [role='listbox'] {
   --dash-delta-bad: #f2a65a;
   --dash-delta-flat: #a2a5ac;
 }
+
+/* W/O 상세 창의 작업 세션·작업자별 실적 — 구획끼리, 세션 블록끼리 띄운다. */
+.work-order-progress-crew {
+  display: grid;
+  gap: var(--space-3);
+  margin-block: var(--space-4);
+}
+
+.work-order-progress-crew > h3,
+.work-order-progress-session > h4 {
+  margin: 0;
+}
+
+.work-order-progress-session {
+  display: grid;
+  gap: var(--space-2);
+}

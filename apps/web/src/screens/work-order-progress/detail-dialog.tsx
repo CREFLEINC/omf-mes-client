@@ -1,6 +1,8 @@
 import { AlertBanner, Dialog } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 
+import { CrewSections } from './crew-sections';
+import type { WorkOrderCrew } from './queries';
 import type { WorkOrder } from './types';
 import { formatPlantDateTime } from '../../patterns/plant-time';
 
@@ -14,6 +16,7 @@ export interface DetailDialogProps {
   itemLabel: (itemIdText: string) => string;
   /** 표의 상태 열과 같은 표시명 — 상세만 코드 원문을 찍지 않는다. */
   statusLabel: (statusCode: string) => string;
+  crew: { data: WorkOrderCrew | undefined; isLoading: boolean; isError: boolean };
   onClose: () => void;
 }
 
@@ -52,6 +55,7 @@ export const DetailDialog = ({
   isOpen,
   itemLabel,
   statusLabel,
+  crew,
   onClose,
 }: DetailDialogProps) => (
   <Dialog
@@ -89,6 +93,8 @@ export const DetailDialog = ({
             </div>
           ))}
         </dl>
+
+        <CrewSections crew={crew.data} isLoading={crew.isLoading} isError={crew.isError} />
 
         {/* ⛔ 없다는 사실을 적지 않으면 「이 W/O 는 실적이 없구나」로 읽힌다. */}
         <div className="banner-slot">

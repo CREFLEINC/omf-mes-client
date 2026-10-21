@@ -3,7 +3,12 @@ import { describe, expect, it } from 'vitest';
 
 import { jsonResponse, renderHookWithProviders, type StubFetch } from '../../test/api-harness';
 import { type ProgressFilters, toProgressListQuery } from './filters';
-import { useWorkOrderDetail, useWorkOrderProgressList, workOrderProgressKeys } from './queries';
+import {
+  useWorkOrderCrew,
+  useWorkOrderDetail,
+  useWorkOrderProgressList,
+  workOrderProgressKeys,
+} from './queries';
 import { DEFAULT_SORT } from './sort';
 
 const KST = 540;
@@ -152,5 +157,64 @@ describe('useWorkOrderDetail', () => {
     await waitFor(() => {
       expect(urls).toEqual(['/production/work-orders/7001']);
     });
+  });
+});
+
+describe('useWorkOrderCrew', () => {
+  it('열린·끝난 세션과 남은·떠난 참여자를 모두 받아 합친다', async () => {
+    const urls: string[] = [];
+    const fetch: StubFetch = async (request) => {
+      const url = new URL(request.url);
+      urls.push(`${decodeURIComponent(url.pathname)}${url.search}`);
+      const page = (items: unknown[]) => ({
+        items,
+        page: { page: 1, size: 200, total: items.length },
+      });
+
+      if (url.pathname === '/production/work-sessions') {
+        const open = url.searchParams.get('open') === 'true';
+        return jsonResponse(
+          page([
+            {
+              workSessionId: open ? 1 : 2,
+              workOrderId: 7001,
+              sessionNo: open ? 2 : 1,
+              terminalId: 1,
+              startedAt: '2026-10-20T08:00:00+09:00',
+              statusCode: 'SYN',
+            },
+          ]),
+        );
+      }
+      if (url.pathname.endsWith('/workers')) {
+        const active = url.searchParams.get('active') === 'true';
+        return jsonResponse([
+          {
+            workSessionWorkerId: active ? 11 : 12,
+            workerId: active ? 101 : 102,
+            workerRoleCode: active ? 'MAIN' : 'SUB',
+            joinedAt: '2026-10-20T08:00:00+09:00',
+          },
+        ]);
+      }
+      return jsonResponse(page([]));
+    };
+
+    const { result } = renderHookWithProviders(() => useWorkOrderCrew(7001), { fetch });
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+
+    expect(result.current.data?.sessions.map((session) => session.sessionNo)).toEqual([1, 2]);
+    expect(
+      result.current.data?.sessions[0]?.participants.map((row) => row.workSessionWorkerId),
+    ).toEqual([11, 12]);
+    expect(urls).toEqual(
+      expect.arrayContaining([
+        expect.stringMatching(/^\/production\/work-sessions\?.*open=true/),
+        expect.stringMatching(/^\/production\/work-sessions\?.*open=false/),
+        expect.stringMatching(/^\/production\/production-results\?.*workOrderId=7001/),
+        '/production/work-sessions/1/workers?active=true',
+        '/production/work-sessions/1/workers?active=false',
+      ]),
+    );
   });
 });

@@ -34,6 +34,11 @@ const renderDialog = (overrides: Partial<DetailDialogProps> = {}) => {
       isOpen
       itemLabel={(id) => `품목 ${id}`}
       statusLabel={(code) => `상태 ${code}`}
+      crew={{
+        data: { sessions: [], workerResults: [], truncated: false },
+        isLoading: false,
+        isError: false,
+      }}
       onClose={onClose}
       {...overrides}
     />,
@@ -91,7 +96,7 @@ describe('DetailDialog', () => {
    * ⛔ 없다는 사실을 적지 않으면 「이 W/O 는 실적이 없구나」로 읽힌다 — 실제로는 아직
    * 받아 오지 않은 것이다(A-11).
    */
-  it('⛔ 실적 이력·생산LOT·세션이 아직 없다는 것을 적는다', () => {
+  it('⛔ 실적 이력·생산LOT이 아직 없다는 것을 적는다', () => {
     renderDialog();
 
     expect(within(dialog()).getByText(t.historyUnavailable)).toBeInTheDocument();
