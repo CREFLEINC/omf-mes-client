@@ -45,7 +45,7 @@ export const zaloConnection = {
   errors: {
     appId: '앱 ID는 숫자 1~40자입니다.',
     secretRequired: '새 값을 입력하세요. 바꾸지 않으려면 [바꾸지 않기]를 누르세요.',
-    secretTooLong: '500자를 넘을 수 없습니다.',
+    secretTooLong: (max: number): string => `${String(max)}자를 넘을 수 없습니다.`,
     paramMaxLength: '20~400 사이의 정수를 입력하세요.',
     templateId: '템플릿 ID는 영문·숫자 1~40자이거나 비워 둡니다.',
   },

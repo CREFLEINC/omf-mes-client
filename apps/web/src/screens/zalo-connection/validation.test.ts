@@ -43,6 +43,12 @@ describe('toFormValues', () => {
 });
 
 describe('validateConnection', () => {
+  it('상한 그 자체는 허용한다 — 비밀 키 200자, 갱신 토큰 2000자(서버 계약)', () => {
+    expect(
+      validateConnection(values({ secretKey: 'x'.repeat(200), refreshToken: 'x'.repeat(2000) })),
+    ).toEqual({});
+  });
+
   it('맞는 값이면 오류가 없다 — 앱 ID 와 템플릿은 비워 둘 수 있다', () => {
     expect(validateConnection(values())).toEqual({});
     expect(validateConnection(values({ appId: '' }))).toEqual({});
@@ -52,7 +58,8 @@ describe('validateConnection', () => {
     ['앱 ID 숫자 아님', { appId: '12ab' }, 'appId', t.appId],
     ['앱 ID 41자', { appId: '1'.repeat(41) }, 'appId', t.appId],
     ['비밀 키를 열고 비움', { secretKey: '' }, 'secretKey', t.secretRequired],
-    ['갱신 토큰 501자', { refreshToken: 'x'.repeat(501) }, 'refreshToken', t.secretTooLong],
+    ['비밀 키 201자', { secretKey: 'x'.repeat(201) }, 'secretKey', t.secretTooLong(200)],
+    ['갱신 토큰 2001자', { refreshToken: 'x'.repeat(2001) }, 'refreshToken', t.secretTooLong(2000)],
     ['길이 19', { paramMaxLength: '19' }, 'paramMaxLength', t.paramMaxLength],
     ['길이 401', { paramMaxLength: '401' }, 'paramMaxLength', t.paramMaxLength],
     ['길이 소수', { paramMaxLength: '20.5' }, 'paramMaxLength', t.paramMaxLength],
