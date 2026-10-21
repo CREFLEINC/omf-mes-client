@@ -24,13 +24,17 @@ export const materialLotScan: Translated<typeof ko.materialLotScan> = {
     pick: 'Dòng nhập hàng',
     pickPlaceholder: 'Hãy chọn dòng',
     item: (lineNo: string, itemCode: string, qty: string) => `#${lineNo} · ${itemCode} · ${qty}`,
+    change: 'Chọn dòng khác',
+    itemLabel: 'Mặt hàng',
+    itemNameLabel: 'Tên mặt hàng',
     pickedLine: (lineNo: string, itemCode: string, qty: string) =>
       `Dòng #${lineNo} · ${itemCode} · ${qty}`,
   },
   scan: {
     legend: 'Quét',
     scanLabel: 'Quét LOT vật tư',
-    scanPlaceholder: 'Hãy quét nhãn LOT vật tư',
+    prompt: 'Nhấn nút máy quét',
+    hint: 'Chỉ nhận nhãn của mặt hàng dòng này',
     manualLabel: 'Nhập tay',
     manualSubmit: 'Đưa vào',
     problem: {
@@ -49,6 +53,10 @@ export const materialLotScan: Translated<typeof ko.materialLotScan> = {
   qtyDiffers: (labelQty: string, lineQty: string) =>
     `Số lượng trên nhãn ${labelQty} khác số lượng của dòng ${lineQty}`,
   register: 'Đăng ký dòng này',
+  locked: {
+    scan: 'Quét nhãn LOT vật tư để đăng ký',
+    problem: 'Hãy quét lại nhãn hợp lệ',
+  },
   registered: {
     legend: (count: string) => `Đã đăng ký (${count})`,
     lotNoLabel: 'Số LOT',

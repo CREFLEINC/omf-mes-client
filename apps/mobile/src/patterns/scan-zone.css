@@ -108,6 +108,11 @@
   opacity: 1;
 }
 
+/* 지시가 칸보다 길면(베트남어) 글자가 칸 끝에서 잘린 채 서지 않게 말줄임한다. */
+.scan-zone__input {
+  text-overflow: ellipsis;
+}
+
 .scan-zone__hint {
   font: var(--type-label-sm);
   letter-spacing: var(--type-label-sm-tracking);

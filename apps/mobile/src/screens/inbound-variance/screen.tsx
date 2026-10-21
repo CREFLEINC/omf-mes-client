@@ -1,4 +1,13 @@
-import { AlertBanner, Chip, Dialog, Radio, RadioGroup, Select, TextField } from '@crefle/web-ui';
+import {
+  AlertBanner,
+  Chip,
+  Dialog,
+  Icon,
+  Radio,
+  RadioGroup,
+  Select,
+  TextField,
+} from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useRef, useState } from 'react';
 import { Link } from 'react-router';
@@ -8,9 +17,13 @@ import { Button } from '../../patterns/button';
 import { Card } from '../../patterns/card';
 import { DockedNumberPad } from '../../patterns/docked-number-pad';
 import { useBackStep } from '../../patterns/back-step';
+import { BottomActionBar } from '../../patterns/bottom-action-bar';
 import { useCodeValues } from '../../patterns/code-values';
 import { uomLabelOf, useItem, useUomCodes } from '../../patterns/masters';
 import { useOutbox } from '../../patterns/outbox';
+import { QtyPanel } from '../../patterns/qty-panel';
+import { ResultHead } from '../../patterns/result-head';
+import { TaskHeader } from '../../patterns/task-header';
 import { useScreenTitle } from '../../patterns/screen-title';
 import { useWorkerSession } from '../../patterns/worker-session';
 import { FailureBanner } from '../../patterns/failure-banner';
@@ -157,14 +170,10 @@ export const InboundVarianceScreen = () => {
     return (
       <div className="variance">
         {outcome === 'sent' ? (
-          <AlertBanner variant="success" title={t.sent.title}>
-            {t.sent.description}
-          </AlertBanner>
+          <ResultHead tone="success" title={t.sent.title} description={t.sent.description} />
         ) : null}
         {outcome === 'queued' ? (
-          <AlertBanner variant="warning" title={t.queued.title}>
-            {t.queued.description}
-          </AlertBanner>
+          <ResultHead tone="pending" title={t.queued.title} description={t.queued.description} />
         ) : null}
         {outcome === 'rejected' ? (
           <AlertBanner variant="error" title={t.rejected.title}>
@@ -172,12 +181,25 @@ export const InboundVarianceScreen = () => {
             <Link to="/rejections">{t.rejected.action}</Link>
           </AlertBanner>
         ) : null}
-        <Button className="variance__wide" variant="filled" size="2xl" onClick={restart}>
-          {t.another}
-        </Button>
+        <BottomActionBar primary={{ label: t.another, onClick: restart }} />
       </div>
     );
   }
+
+  /*
+   * 「오류 등록」이 잠긴 이유(공유계약 G-1). 위에서부터 처음 비어 있는 것 하나 - 유형, 그다음 수량.
+   * 사유는 비워도 된다.
+   */
+  const submitLock = ready
+    ? undefined
+    : draft.varianceTypeCode === ''
+      ? t.form.typeRequired
+      : qtyProblem(draft.varianceQty) !== null
+        ? /* 무엇이 틀렸는지는 수량 판 아래가 말한다. 바에서 같은 말을 되풀이하지 않는다. */
+          draft.varianceQty === ''
+          ? t.form.empty
+          : t.form.qtyFix
+        : undefined;
 
   /*
    * 칸을 담은 구획이 사라지면 판도 함께 진다. 열린 채로 두면 다음 회차에 판이 계속 mount 라
@@ -186,115 +208,142 @@ export const InboundVarianceScreen = () => {
   const padOpen = keypadOpen && draft.line !== null;
 
   return (
-    <div className={padOpen ? 'variance docked-pad-open' : 'variance'}>
-      <section className="variance__section">
-        <h2>{t.receipt.legend}</h2>
-        <TextField
-          label={t.receipt.searchLabel}
-          placeholder={t.receipt.searchPlaceholder}
-          size="xl"
-          fullWidth
-          value={search}
-          onChange={(event) => {
-            setSearch(event.target.value);
-            setReceipt(null);
-            setDraft(emptyDraft);
+    <div
+      className={
+        padOpen
+          ? 'variance with-bottom-action-bar docked-pad-open'
+          : 'variance with-bottom-action-bar'
+      }
+    >
+      {/*
+       * 대상 라인을 고르면 입하 찾기를 걷고 계기판 작업 카드로 올린다. 오류를 적는 동안 어느 입하의
+       * 어느 라인인지가 늘 같은 자리에 있고, 찾기 구획만큼 화면이 짧아진다. 다른 대상은 카드 아이콘.
+       */}
+      {draft.line === null ? null : (
+        <TaskHeader
+          fields={[]}
+          action={{
+            icon: 'swap_horiz',
+            label: t.receipt.change,
+            onClick: () => {
+              setDraft(emptyDraft);
+            },
           }}
-        />
-        {receipts.isPending ? <p role="status">{t.receipt.loading}</p> : null}
-        {/* 확인하지 못한 것을 입하가 없는 것으로 말하지 않는다. */}
-        {receipts.isError ? (
-          <FailureBanner
-            variant="error"
-            title={failureText(receipts.error, t.receipt.loadFailed)}
-          />
-        ) : null}
-        {receipts.isSuccess && receipts.data.length === 0 ? (
-          <p className="variance__note">{t.receipt.none}</p>
-        ) : null}
-        {receipts.data === undefined ? null : (
-          <div className="variance__field">
-            <label htmlFor="variance-receipt">{t.receipt.pickLabel}</label>
-            <Select
-              id="variance-receipt"
-              placeholder={t.receipt.pickPlaceholder}
-              size="xl"
-              value={receipt === null ? null : String(receipt.inboundReceiptId)}
-              onChange={(value) => {
-                setReceipt(
-                  receipts.data.find((each) => each.inboundReceiptId === Number(value)) ?? null,
-                );
-                setDraft(emptyDraft);
-              }}
-              options={receipts.data.map((each) => ({
-                value: String(each.inboundReceiptId),
-                label: each.inboundReceiptNo,
-              }))}
-            />
+          /* 적는 법과 이 화면이 못 하는 것. 등록을 막지 않는 설명이라 「자세히」에 둔다. */
+          details={
+            <>
+              <p className="variance__note">{t.form.qtyNote}</p>
+              {/* 예정 수량이 이 화면에 오지 않아 차이와 견주지 못한다. 감추지 않는다. */}
+              <p className="variance__note">{t.form.noExpectedQty}</p>
+              {/* 사유가 비어도 기록은 막히지 않는다. 모를 때 적지 못하면 오류가 남지 않는다. */}
+              <p className="variance__note">{t.form.reasonOptional}</p>
+            </>
+          }
+        >
+          <div className="variance__card">
+            <strong className="variance__item">
+              {item.data === undefined
+                ? String(draft.line.itemId)
+                : `${item.data.itemCode} ${item.data.itemName}`}
+            </strong>
+            {item.isError ? <p className="variance__note">{t.receipt.itemLoadFailed}</p> : null}
+            <p className="variance__chosen">
+              {t.receipt.chosen(draft.line.lineNo, `${String(draft.line.receivedQty)} ${uom}`)}
+            </p>
+            {receipt === null ? null : (
+              <p className="variance__receipt">{receipt.inboundReceiptNo}</p>
+            )}
           </div>
-        )}
+        </TaskHeader>
+      )}
 
-        {receipt === null ? null : (
-          <>
-            {lines.isPending ? <p role="status">{t.receipt.linesLoading}</p> : null}
-            {lines.isError ? (
-              <AlertBanner variant="error" title={t.receipt.linesLoadFailed} />
-            ) : null}
-            {lines.isSuccess && lines.data.length === 0 ? (
-              <AlertBanner variant="warning" title={t.receipt.linesNone} />
-            ) : null}
-            <ul className="variance__lines">
-              {(lines.data ?? []).map((line: InboundReceiptLine) => (
-                <li key={line.inboundReceiptLineId}>
-                  <Card
-                    bordered
-                    interactive
-                    onClick={() => {
-                      patch({ line });
-                    }}
-                  >
-                    <Card.Body className="card-body variance__line">
-                      <strong>{t.receipt.lineNo(line.lineNo)}</strong>
-                      <p>{t.receipt.lineQty(`${String(line.receivedQty)} ${uomOf(line.uomId)}`)}</p>
-                      {draft.line?.inboundReceiptLineId === line.inboundReceiptLineId ? (
-                        <Chip status="success">{t.receipt.linePicked}</Chip>
-                      ) : null}
-                    </Card.Body>
-                  </Card>
-                </li>
-              ))}
-            </ul>
-          </>
-        )}
-      </section>
+      {draft.line !== null ? null : (
+        <section className="variance__section">
+          <h2>{t.receipt.legend}</h2>
+          <TextField
+            label={t.receipt.searchLabel}
+            placeholder={t.receipt.searchPlaceholder}
+            size="xl"
+            fullWidth
+            value={search}
+            onChange={(event) => {
+              setSearch(event.target.value);
+              setReceipt(null);
+              setDraft(emptyDraft);
+            }}
+          />
+          {receipts.isPending ? <p role="status">{t.receipt.loading}</p> : null}
+          {/* 확인하지 못한 것을 입하가 없는 것으로 말하지 않는다. */}
+          {receipts.isError ? (
+            <FailureBanner
+              variant="error"
+              title={failureText(receipts.error, t.receipt.loadFailed)}
+            />
+          ) : null}
+          {receipts.isSuccess && receipts.data.length === 0 ? (
+            <p className="variance__note">{t.receipt.none}</p>
+          ) : null}
+          {receipts.data === undefined ? null : (
+            <div className="variance__field">
+              <label htmlFor="variance-receipt">{t.receipt.pickLabel}</label>
+              <Select
+                id="variance-receipt"
+                placeholder={t.receipt.pickPlaceholder}
+                size="xl"
+                value={receipt === null ? null : String(receipt.inboundReceiptId)}
+                onChange={(value) => {
+                  setReceipt(
+                    receipts.data.find((each) => each.inboundReceiptId === Number(value)) ?? null,
+                  );
+                  setDraft(emptyDraft);
+                }}
+                options={receipts.data.map((each) => ({
+                  value: String(each.inboundReceiptId),
+                  label: each.inboundReceiptNo,
+                }))}
+              />
+            </div>
+          )}
+
+          {receipt === null ? null : (
+            <>
+              {lines.isPending ? <p role="status">{t.receipt.linesLoading}</p> : null}
+              {lines.isError ? (
+                <AlertBanner variant="error" title={t.receipt.linesLoadFailed} />
+              ) : null}
+              {lines.isSuccess && lines.data.length === 0 ? (
+                <AlertBanner variant="warning" title={t.receipt.linesNone} />
+              ) : null}
+              <ul className="variance__lines">
+                {(lines.data ?? []).map((line: InboundReceiptLine) => (
+                  <li key={line.inboundReceiptLineId}>
+                    <Card
+                      bordered
+                      interactive
+                      onClick={() => {
+                        patch({ line });
+                      }}
+                    >
+                      <Card.Body className="card-body variance__line">
+                        <strong>{t.receipt.lineNo(line.lineNo)}</strong>
+                        <p>
+                          {t.receipt.lineQty(`${String(line.receivedQty)} ${uomOf(line.uomId)}`)}
+                        </p>
+                        {draft.line?.inboundReceiptLineId === line.inboundReceiptLineId ? (
+                          <Chip status="success">{t.receipt.linePicked}</Chip>
+                        ) : null}
+                      </Card.Body>
+                    </Card>
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
+        </section>
+      )}
 
       {draft.line === null ? null : (
         <>
-          <section className="variance__section">
-            <Card bordered>
-              <Card.Body className="card-body variance__card">
-                <strong>
-                  {item.data === undefined
-                    ? String(draft.line.itemId)
-                    : `${item.data.itemCode} ${item.data.itemName}`}
-                </strong>
-                {item.isError ? <p className="variance__note">{t.receipt.itemLoadFailed}</p> : null}
-                <p>
-                  {t.receipt.chosen(draft.line.lineNo, `${String(draft.line.receivedQty)} ${uom}`)}
-                </p>
-              </Card.Body>
-            </Card>
-            <Button
-              variant="text"
-              size="lg"
-              onClick={() => {
-                setDraft(emptyDraft);
-              }}
-            >
-              {t.receipt.change}
-            </Button>
-          </section>
-
           <section className="variance__section">
             <h2>{t.known.legend}</h2>
             {known.isPending ? <p role="status">{t.known.loading}</p> : null}
@@ -320,50 +369,50 @@ export const InboundVarianceScreen = () => {
           </section>
 
           <section className="variance__section" ref={formSection}>
-            <h2>{t.form.legend}</h2>
+            {/* 무엇에 대한 오류인지는 위 작업 카드가, 무엇을 적는지는 칸 이름이 말한다. */}
+            <h2 className="variance__hidden">{t.form.legend}</h2>
             {/* 세 값 고정 그룹이다. 펼침 목록은 열고 고르고 닫는 세 동작이라 장갑에 불리하다. */}
-            <p id="variance-type-label">{required(t.form.typeLabel)}</p>
-            <RadioGroup
-              name="variance-type"
-              aria-labelledby="variance-type-label"
-              value={draft.varianceTypeCode === '' ? undefined : draft.varianceTypeCode}
-              onChange={(value) => {
-                patch({ varianceTypeCode: value });
-              }}
-            >
-              {(types.data ?? []).map((each) => (
-                <Radio key={each.code} value={each.code}>
-                  {each.name}
-                </Radio>
-              ))}
-            </RadioGroup>
+            <div className="variance__choices">
+              <p id="variance-type-label">{required(t.form.typeLabel)}</p>
+              <RadioGroup
+                name="variance-type"
+                aria-labelledby="variance-type-label"
+                value={draft.varianceTypeCode === '' ? undefined : draft.varianceTypeCode}
+                onChange={(value) => {
+                  patch({ varianceTypeCode: value });
+                }}
+              >
+                {(types.data ?? []).map((each) => (
+                  <Radio key={each.code} value={each.code}>
+                    {each.name}
+                  </Radio>
+                ))}
+              </RadioGroup>
+            </div>
             {types.isError ? <p className="variance__note">{t.form.typeLoadFailed}</p> : null}
 
-            <TextField
+            {/* 방향은 유형이 말한다. 사람에게는 얼마인지만 묻는다(적는 법은 「자세히」). */}
+            <QtyPanel
+              id="variance-qty"
               label={required(t.form.qtyLabel)}
-              inputMode="none"
-              size="xl"
-              fullWidth
               value={draft.varianceQty}
-              onChange={(event) => {
-                patch({ varianceQty: event.target.value });
+              unit={uom}
+              padLabel={t.form.pad}
+              onChange={(value) => {
+                patch({ varianceQty: value });
               }}
               onFocus={() => {
                 setKeypadOpen(true);
               }}
               error={qtyMessage()}
             />
-            {/* 방향은 유형이 말한다. 사람에게는 얼마인지만 묻는다. */}
-            <p className="variance__note">{t.form.qtyNote}</p>
-            {/* 예정 수량이 이 화면에 오지 않아 차이와 견주지 못한다. 감추지 않는다. */}
-            <p className="variance__note">{t.form.noExpectedQty}</p>
 
             <div className="variance__field">
               <label htmlFor="variance-reason">{t.form.reasonLabel}</label>
               <Select
                 id="variance-reason"
                 placeholder={t.form.reasonPlaceholder}
-                size="xl"
+                size="lg"
                 value={draft.reasonCode === '' ? null : draft.reasonCode}
                 onChange={(value) => {
                   patch({ reasonCode: String(value) });
@@ -373,8 +422,6 @@ export const InboundVarianceScreen = () => {
                   label: each.name,
                 }))}
               />
-              {/* 사유를 모를 때 기록 자체가 막히면 안 된다. */}
-              <p className="variance__note">{t.form.reasonOptional}</p>
               {reasons.isError ? <p className="variance__note">{t.form.reasonLoadFailed}</p> : null}
             </div>
 
@@ -384,20 +431,25 @@ export const InboundVarianceScreen = () => {
               </AlertBanner>
             ) : null}
             {worker === null ? <p className="variance__note">{t.noWorker}</p> : null}
-            <div className="action-bar">
-              <Button
-                className="variance__wide"
-                variant="filled"
-                size="2xl"
-                disabled={!ready}
-                onClick={() => {
-                  setAsking(true);
-                }}
-              >
-                {t.submit}
-              </Button>
-            </div>
           </section>
+
+          {/* 수정도 삭제도 없다. 단추 바로 위에 늘 적어 두고, 누르면 한 번 더 묻는다. */}
+          <BottomActionBar
+            prompt={
+              <p className="variance__irreversible">
+                <Icon name="info" size={16} />
+                <span>{t.form.irreversible}</span>
+              </p>
+            }
+            primary={{
+              label: t.submit,
+              disabled: !ready,
+              lockReason: submitLock,
+              onClick: () => {
+                setAsking(true);
+              },
+            }}
+          />
         </>
       )}
 
@@ -411,16 +463,20 @@ export const InboundVarianceScreen = () => {
         closeOnBackdropClick={false}
         footer={
           <>
+            {/*
+             * 되돌릴 수 없는 등록의 마지막 단추라 핵심 액션 규격(72px)이다. 두 단추가 나란히 서므로
+             * 높이를 맞춘다.
+             */}
             <Button
               variant="outlined"
-              size="xl"
+              size="2xl"
               onClick={() => {
                 setAsking(false);
               }}
             >
               {t.confirm.cancel}
             </Button>
-            <Button variant="filled" size="xl" onClick={() => void submit()}>
+            <Button variant="filled" size="2xl" onClick={() => void submit()}>
               {t.confirm.proceed}
             </Button>
           </>
@@ -432,6 +488,7 @@ export const InboundVarianceScreen = () => {
       {!padOpen ? null : (
         <DockedNumberPad
           head={t.form.qtyLabel}
+          fieldId="variance-qty"
           value={draft.varianceQty}
           onChange={(value) => {
             patch({ varianceQty: value });

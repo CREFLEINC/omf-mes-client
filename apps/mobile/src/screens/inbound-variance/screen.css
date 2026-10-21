@@ -56,3 +56,83 @@
   align-items: flex-start;
   gap: var(--space-1, 4px);
 }
+
+/* 작업 카드 안 — 품목(굵게) · 고른 라인 · 입하 번호(고정폭). */
+.variance__card {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.variance__item {
+  font: var(--type-title-lg);
+  letter-spacing: var(--type-title-lg-tracking);
+  font-weight: 700;
+  color: var(--on-surface);
+}
+
+.variance__chosen {
+  font: var(--type-body-sm);
+  letter-spacing: var(--type-body-sm-tracking);
+  font-weight: 600;
+  color: var(--on-surface-variant);
+}
+
+.variance__receipt {
+  font: var(--type-label-sm);
+  font-family: var(--font-mono);
+  color: var(--on-surface-muted);
+}
+
+/*
+ * 유형은 세 값 고정 그룹이라 두 칸씩 서는 선택 단추다 - 장갑 낀 손이 짚을 48px, 고른 칸은 굵은 차콜
+ * 테두리. 라디오는 그대로 두고 생김새만 바꾼다.
+ */
+.variance__choices {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.variance__choices [role='radiogroup'] {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-2);
+}
+
+.variance__choices label:has(> input[type='radio']) {
+  box-sizing: border-box;
+  min-height: 48px;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+}
+
+.variance__choices label:has(> input[type='radio']:checked) {
+  border: 2px solid var(--on-surface);
+  padding: calc(var(--space-2) - 1px) calc(var(--space-3) - 1px);
+  font-weight: 600;
+}
+
+/* 되돌릴 수 없다는 줄. 오류가 아니라 이 일의 성격이라 빨강이 아니다. */
+.variance__irreversible {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-1);
+  font: var(--type-label-lg);
+  letter-spacing: var(--type-label-lg-tracking);
+  font-weight: 600;
+  color: var(--on-surface-variant);
+}
+
+.variance__hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
