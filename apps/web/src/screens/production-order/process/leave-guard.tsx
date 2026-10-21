@@ -1,7 +1,7 @@
 import { Button, Dialog } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { useContext } from 'react';
-import { UNSAFE_DataRouterContext, useBlocker } from 'react-router';
+import { useEffect } from 'react';
+import { useBlocker } from 'react-router';
 
 const t = messages.erpWorkOrderFlow.process.assign.discard;
 
@@ -29,17 +29,19 @@ export const DiscardDialog = ({ onCancel, onConfirm }: DiscardDialogProps) => (
   </Dialog>
 );
 
-const RouterLeaveGuard = ({ when }: { when: boolean }) => {
-  const blocker = useBlocker(when);
-  if (blocker.state !== 'blocked') return null;
-  return <DiscardDialog onCancel={() => blocker.reset()} onConfirm={() => blocker.proceed()} />;
-};
-
 /**
- * 화면을 떠나는 이동([← 작업함], 브라우저 뒤로가기, 다른 메뉴)을 막고 확인한다. 데이터 라우터에서만 막을 수 있어
- * 그 밖(시험의 메모리 라우터)에서는 그리지 않는다.
+ * 저장하지 않은 변경이 있는 동안 화면을 떠나는 이동([← ERP W/O 처리], 브라우저 뒤로가기, 다른 메뉴)을 막고 확인한다.
+ * 새로 고침과 탭 닫기는 브라우저 확인(`beforeunload`)으로 막는다. 데이터 라우터(앱의 `createBrowserRouter`,
+ * 시험의 `createMemoryRouter`) 안에서만 쓴다.
  */
 export const LeaveGuard = ({ when }: { when: boolean }) => {
-  const dataRouter = useContext(UNSAFE_DataRouterContext);
-  return dataRouter === null ? null : <RouterLeaveGuard when={when} />;
+  const blocker = useBlocker(when);
+  useEffect(() => {
+    if (!when) return;
+    const onBeforeUnload = (event: BeforeUnloadEvent) => event.preventDefault();
+    window.addEventListener('beforeunload', onBeforeUnload);
+    return () => window.removeEventListener('beforeunload', onBeforeUnload);
+  }, [when]);
+  if (blocker.state !== 'blocked') return null;
+  return <DiscardDialog onCancel={() => blocker.reset()} onConfirm={() => blocker.proceed()} />;
 };

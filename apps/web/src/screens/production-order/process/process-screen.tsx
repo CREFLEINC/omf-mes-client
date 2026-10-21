@@ -171,6 +171,7 @@ const ProcessWorkspace = ({ order }: { order: ProductionOrderFact }) => {
     },
     stepName('assign'),
   );
+  const planDirty = unconfirmedRows.some((row) => row.productionPlanId === null || row.isDirty);
   const [planBusy, setPlanBusy] = useState(false);
   const [planFailures, setPlanFailures] = useState<string[]>([]);
   /* 불러온 뒤 서버 계획이 바뀌어 저장이 409로 돌아온 경우. 덮어쓰지 않고 다시 불러오기를 안내한다. */
@@ -412,6 +413,7 @@ const ProcessWorkspace = ({ order }: { order: ProductionOrderFact }) => {
     setReleasing(false);
     const problems = attempts.filter((attempt) => attempt.status !== 'released');
     if (problems.length === 0) {
+      setLotSizeTexts({});
       setReleasedCount(attempts.length);
       setStep('done');
     } else {
@@ -478,14 +480,29 @@ const ProcessWorkspace = ({ order }: { order: ProductionOrderFact }) => {
       <Link to="/master-data/routing">{tp.links.routing}</Link>
     ) : undefined;
 
-  /* 4M 단계에 저장하지 않은 변경이 있으면 단계 표시와 [이전]으로 떠날 때 확인한다(T-W-C 저장하지 않은 변경). */
-  const leaving = step === 'assign' && assignDirty;
+  /*
+   * 저장하지 않은 변경(T-W-C 저장하지 않은 변경): 생산계획의 고친 줄, 4M 편집, 배포 확인의 LOT 크기.
+   * 단계 표시와 [이전]은 지금 단계의 변경을, 화면을 떠나는 이동은 모든 변경을 확인한다.
+   */
+  const lotDirty = Object.entries(lotSizeTexts).some(
+    ([workOrderId, text]) => text !== String(defaultLots.get(Number(workOrderId)) ?? ''),
+  );
+  const unsavedIn = (key: ScreenStep): boolean =>
+    key === 'plan' ? planDirty : key === 'assign' ? assignDirty : key === 'release' && lotDirty;
   const goTo = (key: string) => {
-    if (leaving && key !== step) {
+    if (key !== step && unsavedIn(step)) {
       setPendingStep(key as ProcessStepKey);
       return;
     }
     setStep(key as ProcessStepKey);
+  };
+  const discardStep = (key: ScreenStep) => {
+    if (key === 'plan') {
+      setPlanFailures([]);
+      setPlanConflict(null);
+      editor.discard();
+    } else if (key === 'assign') setAssignDirty(false);
+    else if (key === 'release') setLotSizeTexts({});
   };
 
   const body = (() => {
@@ -689,9 +706,7 @@ const ProcessWorkspace = ({ order }: { order: ProductionOrderFact }) => {
     );
   })();
 
-  const dirtyPlans =
-    step === 'plan' &&
-    editor.rows.some((row) => !row.confirmed && (row.productionPlanId === null || row.isDirty));
+  const dirtyPlans = step === 'plan' && planDirty;
   const canRerun = derived.state === 'NEEDS_REVIEW' || derived.state === 'NOT_PLANNED';
 
   return (
@@ -772,14 +787,14 @@ const ProcessWorkspace = ({ order }: { order: ProductionOrderFact }) => {
         </AlertBanner>
       )}
       {body}
-      <LeaveGuard when={leaving} />
+      <LeaveGuard when={planDirty || assignDirty || lotDirty} />
       {pendingStep !== null && (
         <DiscardDialog
           onCancel={() => setPendingStep(null)}
           onConfirm={() => {
             const next = pendingStep;
             setPendingStep(null);
-            setAssignDirty(false);
+            discardStep(step);
             setStep(next);
           }}
         />
