@@ -63,7 +63,7 @@ export const iqcInspection: Translated<typeof ko.iqcInspection> = {
       targetQty: 'Số lượng kiểm tra',
       requestedAt: 'Thời điểm yêu cầu',
     },
-    planVersionNote: 'Cố định theo phiên bản tiêu chuẩn tại thời điểm yêu cầu.',
+    planVersionNote: 'Cố định tại thời điểm yêu cầu',
     noPlanVersion: 'Không có tiêu chuẩn',
   },
 
@@ -110,7 +110,6 @@ export const iqcInspection: Translated<typeof ko.iqcInspection> = {
     confirm: 'Xác nhận đánh giá',
     confirming: 'Đang xác nhận',
     confirmNote: 'Khi xác nhận đánh giá, trạng thái LOT sẽ thay đổi, sau đó không thể hoàn tác.',
-    submitTitle: 'Lưu và xác nhận',
     confirmBlockedByTotals: 'Tổng đã nhập phải bằng số lượng kiểm tra mới xác nhận được.',
     workerNotLinked:
       'Tài khoản này chưa liên kết người lao động nên không lưu được phán định. Hãy liên kết người lao động trong Quản lý người dùng.',
@@ -165,7 +164,6 @@ export const iqcInspection: Translated<typeof ko.iqcInspection> = {
     confirmSucceeded: 'Đã xác nhận đánh giá.',
 
     partialReceipt: 'Cho phép nhập kho một phần',
-    partialTitle: 'Nhập kho một phần',
     partialReceiptPending: 'Chức năng cho phép nhập kho một phần sẽ được cập nhật.',
 
     reinspect: 'Thêm lượt kiểm tra lại',

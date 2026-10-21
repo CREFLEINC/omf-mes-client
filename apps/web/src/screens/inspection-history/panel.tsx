@@ -100,11 +100,11 @@ export const InspectionHistoryPanel = ({
           <ol className="inspection-history-events">
             {history.data.events.map((event, index) => (
               <li key={`${event.eventTypeCode}-${event.occurredAt}-${String(index)}`}>
-                <span className="field-label">
-                  {formatAt(event.occurredAt)} · {t.events[event.eventTypeCode]}
-                </span>
+                {/* 일시 · 작업 · 처리 결과를 각각 한 칸에 — 줄끼리 세로로 맞춰 읽힌다(app.css). */}
+                <span className="inspection-history-at">{formatAt(event.occurredAt)}</span>
+                <span className="field-label">{t.events[event.eventTypeCode]}</span>
                 {detailOf(event).length > 0 && (
-                  <span className="field-note"> {detailOf(event).join(' · ')}</span>
+                  <span className="field-note">{detailOf(event).join(' · ')}</span>
                 )}
               </li>
             ))}

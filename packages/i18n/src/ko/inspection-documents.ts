@@ -1,7 +1,7 @@
 /** 검사 문서 첨부·LOT 스캔(omf-all-around#58) — IQC 판정 화면 등이 함께 쓴다. */
 export const inspectionDocuments = {
   heading: '첨부 문서',
-  help: '시험성적서·측정 엑셀 등 볼 수 있는 문서(PDF·이미지·엑셀/워드/파워포인트·CSV)만 올릴 수 있습니다. 한 파일 10MB 까지입니다.',
+  help: 'PDF·이미지·엑셀/워드/파워포인트·CSV, 파일당 10MB까지',
   upload: '문서 올리기',
   uploading: '올리는 중…',
   open: '열기',

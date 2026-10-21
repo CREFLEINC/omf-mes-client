@@ -42,7 +42,10 @@ export const RequestDetailPane = ({
   const itemLabel = itemNames.labelOf(detail.itemId);
   const lotNo = lotNumbers.labelOf(detail.lotId);
 
-  /* 식별에 쓰이는 넷(의뢰번호·품목·대상 LOT·검사수량)은 값을 조금 굵게 — 먼저 눈에 들어오게. */
+  /*
+   * 첫 줄은 검사 대상을 가리키는 넷(의뢰번호·품목·대상 LOT·검사수량) — 값을 굵게, 먼저 눈에 들어오게.
+   * 둘째 줄은 의뢰의 부가 정보다. 순서가 곧 격자 자리다(4열 · app.css `.iqc-inspection-facts`).
+   */
   const items: {
     key: string;
     label: string;
@@ -56,7 +59,6 @@ export const RequestDetailPane = ({
       value: detail.inspectionRequestNo,
       emphasized: true,
     },
-    { key: 'type', label: t.fields.inspectionTypeCode, value: detail.inspectionTypeCode },
     {
       key: 'item',
       label: t.fields.itemId,
@@ -92,6 +94,8 @@ export const RequestDetailPane = ({
       value: withUom(String(detail.targetQty), uomCode),
       emphasized: true,
     },
+    /* 둘째 줄 — 의뢰의 부가 정보(검사 유형 · 기준 버전 · 의뢰 일시). 값은 굵게 하지 않는다(#133). */
+    { key: 'type', label: t.fields.inspectionTypeCode, value: detail.inspectionTypeCode },
     {
       key: 'plan',
       label: t.fields.inspectionPlanVersionId,

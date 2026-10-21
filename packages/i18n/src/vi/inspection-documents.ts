@@ -1,7 +1,7 @@
 /** Đính kèm tài liệu kiểm tra · quét LOT (omf-all-around#58). */
 export const inspectionDocuments = {
   heading: 'Tài liệu đính kèm',
-  help: 'Chỉ tải lên được tài liệu có thể xem (PDF · hình ảnh · Excel/Word/PowerPoint · CSV) như phiếu kết quả thử nghiệm, file đo. Mỗi file tối đa 10MB.',
+  help: 'PDF · hình ảnh · Excel/Word/PowerPoint · CSV, mỗi file tối đa 10MB',
   upload: 'Tải tài liệu lên',
   uploading: 'Đang tải lên…',
   open: 'Mở',

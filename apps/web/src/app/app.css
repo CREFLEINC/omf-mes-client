@@ -14403,9 +14403,9 @@ button.app-button-neutral {
   align-content: start;
 }
 
-/* 입력 현황 아래 안내 한 줄(「검사수량과 일치합니다」 등)의 자리를 늘 비워 둔다 — 줄이 생겨도 아래가 밀리지 않는다. */
+/* 입력 현황 아래 안내 한 줄(「검사수량과 일치합니다」 등)의 자리만 늘 비워 둔다 — 줄이 생겨도 아래가 밀리지 않는다. */
 .iqc-inspection-work .iqc-inspection-progress {
-  min-height: 96px;
+  grid-template-rows: auto auto auto minmax(1lh, auto);
   align-content: start;
 }
 
@@ -14415,6 +14415,8 @@ button.app-button-neutral {
  */
 .iqc-inspection-judgment-detail {
   display: grid;
+  /* 높이 상한이 걸린 격자라 줄이 내용보다 작아져 칸끼리 겹치지 않게 — 줄은 늘 내용 높이, 넘치면 구른다. */
+  grid-auto-rows: max-content;
   align-content: start;
   gap: var(--space-3);
   max-height: 18rem;
@@ -14427,8 +14429,9 @@ button.app-button-neutral {
 }
 
 @container (min-width: 40rem) {
+  /* 수량 칸(세 입력)이 판정 칸(선택 하나)보다 넓다. */
   .iqc-inspection-work {
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
     column-gap: var(--space-5);
   }
 
@@ -14438,24 +14441,12 @@ button.app-button-neutral {
   }
 
   /*
-   * 두 칸 배치에서는 판정 칸 높이를 수량 칸에 맞춘다 — 판정 칸은 줄 높이 계산에서 빠지고(`contain: size`)
-   * 수량 칸이 정한 높이만큼 늘어나, 사유 칸이 열려도 저장 · 확정 줄이 제자리에 있다. 넘치면 칸 안에서 구른다.
+   * 두 칸 배치에서 판정 칸은 제 내용 높이대로 선다 — 조건부 칸이 없으면 수량 칸과 비슷한 높이라 빈 자리가 없고,
+   * 사유 · 4M 칸이 열려도 그 칸들은 `.iqc-inspection-judgment-detail` 의 상한(아래) 안에서 구르므로 저장 · 확정 줄은
+   * 그 상한만큼만 내려간다(#133).
    */
-  .iqc-inspection-work {
-    align-items: stretch;
-  }
-
-  .iqc-inspection-work > .iqc-inspection-section:last-child {
-    contain: size;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-  }
-
   .iqc-inspection-work .iqc-inspection-judgment-detail {
-    flex: 1 1 auto;
-    min-height: 0;
-    max-height: none;
+    max-height: 14rem;
   }
 
   /* 판정 칸이 반 폭이라 4M 종류 · 내용을 위아래로 둔다(나란히 두면 내용 칸이 잘린다). */
@@ -14581,6 +14572,96 @@ button.app-button-neutral {
   white-space: nowrap;
 }
 
+/* 접은 구획 안 — 표 제목(caption)은 접는 줄이 이미 말하므로 감추고, 빈 표는 안내 한 줄 높이만 쓴다(#133). */
+.iqc-inspection-fold caption {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+.iqc-inspection-fold [class*='_emptyCell'] > td {
+  height: auto;
+  padding-block: var(--space-3);
+}
+
+/* 첨부 문서 — 안내는 한 줄로 길게(폭 제한 없이), 올리기 단추는 표 바로 아래 오른쪽 끝. */
+.iqc-inspection-fold .inspection-documents {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.iqc-inspection-fold .inspection-documents > .field-note {
+  max-width: none;
+  margin: 0;
+}
+
+.iqc-inspection-fold .inspection-documents > .form-actions {
+  margin-top: 0;
+}
+
+/* 검사 이력 — 전달 문서 · 대상 LOT 은 항목명 위 · 값 아래 두 칸, 그 아래 사건 목록. */
+.iqc-inspection-fold .inspection-history {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.iqc-inspection-fold .inspection-history > dl {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-6);
+  margin: 0;
+}
+
+.iqc-inspection-fold .inspection-history dd {
+  margin: 0;
+}
+
+/*
+ * 검사 이력 사건 목록(inspection-history/panel.tsx · IQC · OQC 공용) — 일시 · 작업 · 처리 결과를 세 칸으로 맞춰
+ * 줄끼리 세로로 읽힌다. 번호 대신 얇은 줄로 가른다.
+ */
+.inspection-history-events {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.inspection-history-events > li {
+  display: grid;
+  grid-template-columns: 9rem minmax(6rem, max-content) minmax(0, 1fr);
+  align-items: baseline;
+  gap: var(--space-3);
+  padding-block: var(--space-2);
+  border-top: 1px solid var(--outline-variant);
+}
+
+.inspection-history-events > li > .field-note {
+  max-width: none;
+  margin: 0;
+}
+
+/* 작업 이름은 본문 크기로 — 일시 · 결과와 같은 높이에서 읽힌다. */
+.inspection-history-events > li > .field-label {
+  color: var(--on-surface);
+  font: var(--type-body-md);
+}
+
+.inspection-history-at {
+  color: var(--on-surface-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+@media (max-width: 600px) {
+  .inspection-history-events > li {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-1);
+  }
+}
+
 /* 검사 문서 첨부(omf-all-around#58) — 고른 파일 한 줄: 이름 · 크기 · [제거], 사전 검사 오류는 그 아래. */
 .inspection-documents-selected {
   display: flex;
@@ -14628,6 +14709,26 @@ button.app-button-neutral {
   align-items: stretch;
   width: 100%;
   max-width: 20rem;
+}
+
+/* 고른 종합 판정을 바로 알아보게 — 합격 초록 · 불합격 빨강 · 보류 주황(판정 칸만, 다른 선택칸은 그대로). */
+/* 고른 판정의 선택칸 — 테두리는 판정 색, 글자는 본문색 그대로 굵게(색만으로 뜻을 전하지 않는다). */
+.iqc-inspection-judgment-field[data-judgment] button {
+  border-color: var(--judgment-tone);
+  box-shadow: inset 3px 0 0 var(--judgment-tone);
+  font-weight: 600;
+}
+
+.iqc-inspection-judgment-field[data-judgment='ACCEPTED'] {
+  --judgment-tone: var(--semantic-success);
+}
+
+.iqc-inspection-judgment-field[data-judgment='REJECTED'] {
+  --judgment-tone: var(--semantic-error);
+}
+
+.iqc-inspection-judgment-field[data-judgment='HELD'] {
+  --judgment-tone: var(--semantic-warning);
 }
 
 .iqc-inspection-rejection {
@@ -14684,12 +14785,21 @@ button.app-button-neutral {
   gap: var(--space-3);
 }
 
-/* 기본 정보 — 항목명(위)·값(아래)의 격자. 넓으면 한 줄에 여럿, 좁으면 줄을 바꾼다. */
+/*
+ * 기본 정보 — 항목명(위)·값(아래)의 4열 격자. 첫 줄은 검사 대상(의뢰번호 · 품목 · 대상 LOT · 검사수량), 둘째 줄은
+ * 같은 열에 맞춰 부가 정보(검사 유형 · 기준 버전 · 의뢰 일시)가 선다. LOT 열이 가장 넓고 길면 말줄임이다(#133).
+ * 카드가 좁으면 두 열.
+ */
 .iqc-inspection-facts {
   display: grid;
-  /* 가장 긴 값(의뢰번호)이 한 줄로 서는 폭. */
-  grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr));
-  gap: var(--space-4) var(--space-5);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-3) var(--space-5);
+}
+
+@container (min-width: 48rem) {
+  .iqc-inspection-facts {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.5fr) minmax(0, 2fr) minmax(0, 0.8fr);
+  }
 }
 
 .iqc-inspection-fact {
@@ -14700,11 +14810,6 @@ button.app-button-neutral {
   overflow-wrap: anywhere;
 }
 
-/* 안내가 붙은 항목(검사기준 버전)은 두 칸을 써서 항목명·안내가 한 줄로 읽히게 한다. */
-.iqc-inspection-fact:has(.iqc-inspection-label-hint) {
-  grid-column: span 2;
-}
-
 /* 항목명 오른쪽 같은 줄의 짧은 안내 — 단말기-공정 매핑 폼의 라벨 옆 안내와 같은 모양(보조색). */
 .iqc-inspection-label-hint {
   margin-left: var(--space-2);
@@ -14712,17 +14817,13 @@ button.app-button-neutral {
 }
 
 .iqc-inspection-fact-key {
-  font-weight: 600;
+  font: var(--type-title-sm);
+  letter-spacing: var(--type-title-sm-tracking);
 }
 
 /* 값 칸도 줄어들 수 있어야 말줄임이 선다(격자 항목의 기본 최소 폭은 내용 폭이다). */
 .iqc-inspection-fact > dd {
   min-width: 0;
-}
-
-/* 대상 LOT — 구분자가 많은 긴 번호라 두 칸을 써서 되도록 끝까지 보이게 한다. */
-.iqc-inspection-fact:has(.iqc-inspection-lot) {
-  grid-column: span 2;
 }
 
 /* 4M 변경품(omf-all-around#63) — 판정 아래 체크 한 줄, 체크하면 종류·내용 두 칸. */
@@ -14759,14 +14860,17 @@ button.app-button-neutral {
   color: var(--on-surface-muted);
 }
 
-/* 검사 결과 수량 — 기준값(검사수량)은 따로, 합격·불합격·보류 세 칸은 한 줄에 같은 폭으로. */
-.iqc-inspection-qty-base {
-  display: grid;
-  gap: var(--space-1);
+/* 검사 결과 수량 — 기준값(검사수량)은 제목 줄 오른쪽 끝에 「검사수량 20 EA」, 세 칸은 한 줄에 같은 폭으로. */
+.iqc-inspection-panes .iqc-inspection-section-head > .iqc-inspection-qty-base {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  margin-inline-start: auto;
 }
 
 .iqc-inspection-qty-base > dd {
-  font-weight: 600;
+  font: var(--type-title-sm);
+  letter-spacing: var(--type-title-sm-tracking);
 }
 
 .iqc-inspection-qty {
@@ -14798,59 +14902,42 @@ button.app-button-neutral {
 }
 
 /*
- * 판정 — 종합 판정 아래 구분선, 그 아래 왼쪽 좁은 칸(부분 입고)·오른쪽 넓은 칸(저장 및 확정)과
- * 가운데 얇은 세로 구분선. 카드가 좁으면(칸 폭 기준) 위·아래로 쌓인다.
+ * 저장 · 확정 줄 — 왼쪽 부분 입고, 가운데 안내(늘어나는 칸), 오른쪽 끝 단추 묶음. 좁으면 안내가 한 줄을 다 쓰고
+ * 단추는 그 아래 오른쪽 끝에 남는다(#133).
  */
 .iqc-inspection-action-area {
-  container-type: inline-size;
-  padding-top: var(--space-4);
+  padding-top: var(--space-3);
   border-top: 1px solid var(--outline-variant);
 }
 
-.iqc-inspection-partial,
-.iqc-inspection-submit {
-  display: grid;
-  align-content: start;
-  gap: var(--space-2);
-  min-width: 0;
-}
-
-.iqc-inspection-submit {
-  margin-top: var(--space-4);
-}
-
-@container (min-width: 36rem) {
-  .iqc-inspection-action-grid:has(> .iqc-inspection-partial) {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
-  }
-
-  .iqc-inspection-action-grid > .iqc-inspection-partial {
-    padding-inline-end: var(--space-4);
-    border-inline-end: 1px solid var(--outline-variant);
-  }
-
-  .iqc-inspection-action-grid > .iqc-inspection-partial + .iqc-inspection-submit {
-    margin-top: 0;
-    padding-inline-start: var(--space-4);
-  }
-}
-
-.iqc-inspection-action-grid > .iqc-inspection-submit:only-child {
-  margin-top: 0;
-}
-
-.iqc-inspection-partial-row {
+.iqc-inspection-action-row {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: var(--space-2) var(--space-3);
 }
 
-.iqc-inspection-submit > .form-actions {
-  justify-content: flex-start;
+.iqc-inspection-action-notes {
+  display: flex;
+  flex: 1 1 16rem;
+  flex-wrap: wrap;
   align-items: center;
-  margin-top: 0;
+  gap: var(--space-2) var(--space-3);
+  min-width: 0;
+}
+
+.iqc-inspection-action-notes > .field-note {
+  margin: 0;
+}
+
+.iqc-inspection-action-notes > .iqc-inspection-submit-banner {
+  flex: 1 1 auto;
+}
+
+.iqc-inspection-action-buttons {
+  display: flex;
+  gap: var(--space-2);
+  margin-inline-start: auto;
 }
 
 /*
