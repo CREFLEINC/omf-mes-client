@@ -174,6 +174,7 @@ export const RecipientPicker = ({ open, existingIds, onAdd, onClose }: Recipient
           onChange={(event) => setKeyword(event.target.value)}
           onSearch={applySearch}
           onClear={() => applySearch('')}
+          clearLabel={messages.common.clear}
           fullWidth
         />
         {body}
