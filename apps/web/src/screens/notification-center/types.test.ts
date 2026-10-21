@@ -39,7 +39,7 @@ describe('toNotificationView', () => {
     const view = toNotificationView(notificationFixture());
 
     expect(view.notificationId).toBe(7101);
-    expect(view.eventCode).toBe('SYN-EVENT-01');
+    expect(view.eventCode).toBe('WORK_SESSION_STARTED');
     expect(view.message).toBe('합성 알림 문구 가입니다.');
     expect(view.occurredAt).toBe('2026-08-17T14:05:00+09:00');
     expect(view.read).toBe(false);

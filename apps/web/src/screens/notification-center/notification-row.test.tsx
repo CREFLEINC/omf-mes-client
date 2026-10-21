@@ -39,7 +39,7 @@ const BackProbe = () => {
 const APPROVAL = { targetTypeCode: 'APPROVAL_REQUEST', targetId: 7201 } as const;
 
 /** 카드 제목 — 풀린 이름이다. 링크 이름이 이것을 쓰는지가 이 파일의 한 축이다. */
-const TITLE = '합성 이벤트 가';
+const TITLE = '생산 실행';
 
 const renderRow = (overrides: Parameters<typeof notificationFixture>[0] = {}, title = TITLE) => {
   const onRead = vi.fn();
@@ -226,18 +226,20 @@ describe('NotificationRow — 목록에 여럿일 때', () => {
 
     render(
       <MemoryRouter initialEntries={['/notification/center']}>
-        {rowOf(7101, '합성 이벤트 가')}
-        {rowOf(7102, '합성 이벤트 나')}
+        {rowOf(7101, '생산 실행')}
+        {rowOf(7102, '생산 마감')}
       </MemoryRouter>,
     );
 
     /* 짝 양성 — 링크가 실제로 둘이다. 그래야 이름 단언이 뜻을 갖는다. */
     expect(screen.getAllByRole('link')).toHaveLength(2);
-    expect(
-      screen.getByRole('link', { name: t.actions.openTarget('합성 이벤트 가') }),
-    ).toHaveAttribute('href', '/approval/inbox?rq=7101');
-    expect(
-      screen.getByRole('link', { name: t.actions.openTarget('합성 이벤트 나') }),
-    ).toHaveAttribute('href', '/approval/inbox?rq=7102');
+    expect(screen.getByRole('link', { name: t.actions.openTarget('생산 실행') })).toHaveAttribute(
+      'href',
+      '/approval/inbox?rq=7101',
+    );
+    expect(screen.getByRole('link', { name: t.actions.openTarget('생산 마감') })).toHaveAttribute(
+      'href',
+      '/approval/inbox?rq=7102',
+    );
   });
 });

@@ -1,30 +1,37 @@
-import { messages } from '@omf-mes/i18n';
-import { useQuery, type UseQueryResult } from '@tanstack/react-query';
+import { keepPreviousData, useQuery, type UseQueryResult } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
 import { requireIfMatch, useMasterWrite, type MasterWriteResult } from '../../patterns/master';
 import { runRequest } from '../../patterns/request';
 import type {
-  AppUser,
-  BusinessUnit,
+  CandidatePage,
+  Department,
   NotificationEvent,
-  NotificationSubscription,
-  NotificationSubscriptionReplace,
-  PreviewResult,
-  Role,
+  Setting,
+  SettingReplace,
+  SettingSummary,
 } from './types';
 
-export const subscriptionPath = '/app/notification-subscriptions';
+/** 후보 표 한 쪽의 줄 수. */
+export const CANDIDATE_PAGE_SIZE = 20;
+
+/**
+ * 한 행의 상세 경로. **경로형이다** — ETag 보관소가 경로(pathname)만 키로 쓰므로 부서·이벤트를
+ * 질의 문자열에 두면 모든 행이 같은 ETag 칸을 나눠 쓴다. 상세 GET 과 저장 PUT 이 이 경로를 함께 쓴다.
+ */
+export const settingPath = (departmentId: number, eventCode: string): string =>
+  `/app/notification-settings/${String(departmentId)}/${encodeURIComponent(eventCode)}`;
 
 export const alarmRecipientKeys = {
   all: ['alarm-recipient-settings'] as const,
   events: ['alarm-recipient-settings', 'events'] as const,
-  subscriptions: ['alarm-recipient-settings', 'subscriptions'] as const,
-  detail: (eventCode: string | null) =>
-    ['alarm-recipient-settings', 'detail', eventCode ?? ''] as const,
-  businessUnits: ['alarm-recipient-settings', 'business-units'] as const,
-  roles: ['alarm-recipient-settings', 'roles'] as const,
-  users: ['alarm-recipient-settings', 'users'] as const,
+  departments: ['alarm-recipient-settings', 'departments'] as const,
+  summary: (departmentId: number | null) =>
+    ['alarm-recipient-settings', 'summary', departmentId ?? 0] as const,
+  detail: (departmentId: number | null, eventCode: string | null) =>
+    ['alarm-recipient-settings', 'detail', departmentId ?? 0, eventCode ?? ''] as const,
+  candidates: (keyword: string, page: number) =>
+    ['alarm-recipient-settings', 'candidates', keyword, page] as const,
 };
 
 export const useEvents = (): UseQueryResult<NotificationEvent[]> => {
@@ -35,113 +42,94 @@ export const useEvents = (): UseQueryResult<NotificationEvent[]> => {
   });
 };
 
-export const useSubscriptions = (): UseQueryResult<NotificationSubscription[]> => {
+/**
+ * 부서 선택지 — 사용 중인 부서만 받는다(설계 W-CO-11 표시 항목). 미사용 부서의 설정은
+ * 고칠 일이 없고, 지금 보던 부서가 미사용이 되면 URL 값은 남지만 선택지에서 빠진다.
+ */
+export const useDepartments = (): UseQueryResult<Department[]> => {
   const { client } = useApiClient();
   return useQuery({
-    queryKey: alarmRecipientKeys.subscriptions,
-    queryFn: async () => (await runRequest(() => client.GET(subscriptionPath))).items,
+    queryKey: alarmRecipientKeys.departments,
+    queryFn: async () =>
+      (
+        await runRequest(() =>
+          client.GET('/mdm/departments', {
+            params: { query: { includeInactive: false, size: 100 } },
+          }),
+        )
+      ).items,
   });
 };
 
-export const useSubscription = (
+export const useSettingSummary = (departmentId: number | null): UseQueryResult<SettingSummary> => {
+  const { client } = useApiClient();
+  return useQuery({
+    queryKey: alarmRecipientKeys.summary(departmentId),
+    enabled: departmentId !== null,
+    queryFn: () =>
+      runRequest(() =>
+        client.GET('/app/notification-settings', {
+          params: { query: { departmentId: departmentId ?? 0 } },
+        }),
+      ),
+  });
+};
+
+export const useSettingDetail = (
+  departmentId: number | null,
   eventCode: string | null,
-): UseQueryResult<NotificationSubscription | null> => {
+): UseQueryResult<Setting> => {
   const { client } = useApiClient();
   return useQuery({
-    queryKey: alarmRecipientKeys.detail(eventCode),
-    enabled: eventCode !== null,
-    queryFn: async () => {
-      if (eventCode === null) return null;
-      const response = await runRequest(() =>
-        client.GET(subscriptionPath, { params: { query: { eventCode } } }),
-      );
-      return response.items.find((item) => item.eventCode === eventCode) ?? null;
-    },
+    queryKey: alarmRecipientKeys.detail(departmentId, eventCode),
+    enabled: departmentId !== null && eventCode !== null,
+    queryFn: () =>
+      runRequest(() =>
+        client.GET('/app/notification-settings/{departmentId}/{eventCode}', {
+          params: { path: { departmentId: departmentId ?? 0, eventCode: eventCode ?? '' } },
+        }),
+      ),
   });
 };
 
-type PagedItem = BusinessUnit | Role | AppUser;
-
-const loadAll = async <T extends PagedItem>(
-  getPage: (page: number) => Promise<{ items: T[]; page: { total: number } }>,
-): Promise<T[]> => {
-  const result: T[] = [];
-  let page = 1;
-  let total = 0;
-  do {
-    const response = await getPage(page);
-    total = response.page.total;
-    result.push(...response.items);
-    page += 1;
-    if (response.items.length === 0) break;
-    if (result.length >= response.page.total) break;
-  } while (page <= 100);
-  if (result.length < total)
-    throw new Error(messages.alarmRecipientSettings.errors.lookupIncomplete);
-  return result;
-};
-
-export const useReferenceLists = (): {
-  businessUnits: UseQueryResult<BusinessUnit[]>;
-  roles: UseQueryResult<Role[]>;
-  users: UseQueryResult<AppUser[]>;
-} => {
+/** 수신자 후보 — 활성 사용자 전체. 창이 열려 있을 때만 부른다. */
+export const useRecipientCandidates = (
+  keyword: string,
+  page: number,
+  enabled: boolean,
+): UseQueryResult<CandidatePage> => {
   const { client } = useApiClient();
-  const query = { includeInactive: true, size: 100 };
-  return {
-    businessUnits: useQuery({
-      queryKey: alarmRecipientKeys.businessUnits,
-      queryFn: () =>
-        loadAll((page) =>
-          runRequest(() =>
-            client.GET('/mdm/business-units', { params: { query: { ...query, page } } }),
-          ),
-        ),
-    }),
-    roles: useQuery({
-      queryKey: alarmRecipientKeys.roles,
-      queryFn: () =>
-        loadAll((page) =>
-          runRequest(() => client.GET('/app/roles', { params: { query: { ...query, page } } })),
-        ),
-    }),
-    users: useQuery({
-      queryKey: alarmRecipientKeys.users,
-      queryFn: () =>
-        loadAll((page) =>
-          runRequest(() => client.GET('/app/users', { params: { query: { ...query, page } } })),
-        ),
-    }),
-  };
+  return useQuery({
+    queryKey: alarmRecipientKeys.candidates(keyword, page),
+    enabled,
+    /* 쪽을 넘길 때 표가 비었다 차는 깜박임을 막는다. */
+    placeholderData: keepPreviousData,
+    queryFn: () =>
+      runRequest(() =>
+        client.GET('/app/notification-settings/recipient-candidates', {
+          params: {
+            query: {
+              ...(keyword === '' ? {} : { keyword }),
+              page,
+              size: CANDIDATE_PAGE_SIZE,
+            },
+          },
+        }),
+      ),
+  });
 };
 
-export const usePreview = (
-  onSuccess: (data: PreviewResult) => void,
-): MasterWriteResult<NotificationSubscriptionReplace> => {
+export const useReplaceSetting = (
+  departmentId: number | null,
+  eventCode: string | null,
+  onSuccess: (data: Setting) => void,
+): MasterWriteResult<SettingReplace> => {
   const { client } = useApiClient();
   return useMasterWrite({
     request: (body, headers) =>
-      client.POST('/app/notification-subscriptions/recipients:preview', {
-        params: { header: { 'Idempotency-Key': headers['Idempotency-Key'] } },
-        body,
-      }),
-    etagPath: null,
-    invalidateKeys: [],
-    knownFields: ['recipients'],
-    onSuccess,
-  });
-};
-
-export const useReplaceSubscription = (
-  eventCode: string | null,
-  onSuccess: (data: NotificationSubscription) => void,
-): MasterWriteResult<NotificationSubscriptionReplace> => {
-  const { client } = useApiClient();
-  return useMasterWrite({
-    request: (body, headers) =>
-      client.PUT(subscriptionPath, {
+      client.PUT('/app/notification-settings/{departmentId}/{eventCode}', {
         params: {
-          query: { eventCode: eventCode ?? '' },
+          path: { departmentId: departmentId ?? 0, eventCode: eventCode ?? '' },
           header: {
             'Idempotency-Key': headers['Idempotency-Key'],
             'If-Match': requireIfMatch(headers),
@@ -149,9 +137,10 @@ export const useReplaceSubscription = (
         },
         body,
       }),
-    etagPath: eventCode === null ? null : subscriptionPath,
-    invalidateKeys: [alarmRecipientKeys.subscriptions, alarmRecipientKeys.detail(eventCode)],
-    knownFields: ['recipients'],
+    etagPath:
+      departmentId === null || eventCode === null ? null : settingPath(departmentId, eventCode),
+    invalidateKeys: [alarmRecipientKeys.summary(departmentId)],
+    knownFields: [],
     onSuccess,
   });
 };

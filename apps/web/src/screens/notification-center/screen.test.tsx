@@ -24,9 +24,9 @@ import { NotificationCenterScreen, describeMarkAllReadReason } from './screen';
 
 const t = messages.notificationCenter;
 
-/** 픽스처가 푸는 이름 둘. 셋째(`SYN-EVENT-03`)는 유형 목록에 없어 원문으로 낙하한다. */
-const EVENT_NAME_01 = '합성 이벤트 가';
-const EVENT_NAME_02 = '합성 이벤트 나';
+/** 픽스처가 푸는 이름 둘. 셋째(`EQUIPMENT_BREAKDOWN_OCCURRED`)는 유형 목록에 없어 원문으로 낙하한다. */
+const EVENT_NAME_01 = '생산 실행';
+const EVENT_NAME_02 = '생산 마감';
 
 const LIST_PATH = '/app/notifications';
 const EVENTS_PATH = '/app/notification-events';
@@ -481,7 +481,9 @@ describe('NotificationCenterScreen — 목록', () => {
     ).toHaveLength(3);
     expect(screen.getByRole('button', { name: EVENT_NAME_02 })).toBeInTheDocument();
     /* 유형 목록에 없는 코드는 원문 그대로가 이름이다. */
-    expect(screen.getByRole('button', { name: 'SYN-EVENT-03' })).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'EQUIPMENT_BREAKDOWN_OCCURRED' }),
+    ).toBeInTheDocument();
   });
 
   /**
@@ -645,18 +647,18 @@ describe('NotificationCenterScreen — 조건 두 축', () => {
     await user.click(await screen.findByRole('option', { name: EVENT_NAME_02 }));
 
     await waitFor(() => {
-      expect(listUrls(urls).at(-1)?.searchParams.get('eventCode')).toBe('SYN-EVENT-02');
+      expect(listUrls(urls).at(-1)?.searchParams.get('eventCode')).toBe('WORK_ORDER_CLOSED');
     });
-    expect(currentLocation()).toContain('ev=SYN-EVENT-02');
+    expect(currentLocation()).toContain('ev=WORK_ORDER_CLOSED');
   });
 
   it('「전체」로 되돌리면 유형 키가 요청에서 빠진다', async () => {
-    const { urls, user } = renderScreen('/?from=2026-08-01&to=2026-08-07&ev=SYN-EVENT-02');
+    const { urls, user } = renderScreen('/?from=2026-08-01&to=2026-08-07&ev=WORK_ORDER_CLOSED');
 
     await waitForCards();
 
     /* 짝 양성 — 처음에는 실제로 실려 있었다. */
-    expect(listUrls(urls)[0]?.searchParams.get('eventCode')).toBe('SYN-EVENT-02');
+    expect(listUrls(urls)[0]?.searchParams.get('eventCode')).toBe('WORK_ORDER_CLOSED');
 
     await user.click(screen.getByRole('combobox', { name: t.fields.eventCode }));
     await user.click(await screen.findByRole('option', { name: t.filters.all }));
@@ -685,7 +687,7 @@ describe('NotificationCenterScreen — 조건 두 축', () => {
   it('유형 목록 조회가 실패해도 목록은 그려지고 제목이 코드로 낙하한다', async () => {
     renderScreen('/?from=2026-08-01&to=2026-08-07', [listRoute(), failingEventsRoute]);
 
-    expect(await screen.findByRole('button', { name: 'SYN-EVENT-01' })).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: 'WORK_SESSION_STARTED' })).toBeInTheDocument();
     expect(
       within(screen.getByRole('region', { name: t.panes.list })).getAllByRole('listitem'),
     ).toHaveLength(3);
@@ -764,7 +766,7 @@ describe('NotificationCenterScreen — 쪽 이동', () => {
 
   it('기간을 바꿔도 쪽이 1로 돌아간다', async () => {
     const { urls, user } = renderScreen(
-      '/?from=2026-08-01&to=2026-08-07&ev=SYN-EVENT-02&page=3',
+      '/?from=2026-08-01&to=2026-08-07&ev=WORK_ORDER_CLOSED&page=3',
       routesWith(paged(3)),
     );
 
@@ -926,7 +928,7 @@ describe('NotificationCenterScreen — 화면과 조건 줄의 이음매', () =>
    * 상태로 보이는** 것으로 나타난다. 컨트롤이 현재 조건을 거짓으로 말하는 상태다.
    */
   it('조건이 걸린 주소로 들어오면 조건 줄이 그 값을 되비춘다', async () => {
-    renderScreen('/?from=2026-08-01&to=2026-08-07&unread=0&ev=SYN-EVENT-02');
+    renderScreen('/?from=2026-08-01&to=2026-08-07&unread=0&ev=WORK_ORDER_CLOSED');
 
     await waitForCards();
 
@@ -959,7 +961,7 @@ describe('NotificationCenterScreen — 화면과 조건 줄의 이음매', () =>
 });
 
 describe('NotificationCenterScreen — 쪽 이동은 쪽만 바꾼다', () => {
-  const CONDITIONED = '/?from=2026-08-01&to=2026-08-07&unread=0&ev=SYN-EVENT-02&page=2';
+  const CONDITIONED = '/?from=2026-08-01&to=2026-08-07&unread=0&ev=WORK_ORDER_CLOSED&page=2';
 
   const pagedRoute = (): StubRoute =>
     listRoute(notificationFixtures, { page: 2, size: 50, total: 137 });
@@ -982,7 +984,7 @@ describe('NotificationCenterScreen — 쪽 이동은 쪽만 바꾼다', () => {
      * 유형은 값이 실린 것이 그 반영이다. 둘의 모양이 다르므로 각각 그 모양으로 잰다.
      */
     expect(listUrls(urls)[0]?.searchParams.has('unreadOnly')).toBe(false);
-    expect(listUrls(urls)[0]?.searchParams.get('eventCode')).toBe('SYN-EVENT-02');
+    expect(listUrls(urls)[0]?.searchParams.get('eventCode')).toBe('WORK_ORDER_CLOSED');
 
     await user.click(screen.getByRole('button', { name: t.actions.nextPage }));
 
@@ -991,7 +993,7 @@ describe('NotificationCenterScreen — 쪽 이동은 쪽만 바꾼다', () => {
     });
 
     const last = listUrls(urls).at(-1);
-    expect(last?.searchParams.get('eventCode')).toBe('SYN-EVENT-02');
+    expect(last?.searchParams.get('eventCode')).toBe('WORK_ORDER_CLOSED');
     expect(last?.searchParams.has('unreadOnly')).toBe(false);
   });
 
@@ -1006,7 +1008,7 @@ describe('NotificationCenterScreen — 쪽 이동은 쪽만 바꾼다', () => {
     });
 
     const last = listUrls(urls).at(-1);
-    expect(last?.searchParams.get('eventCode')).toBe('SYN-EVENT-02');
+    expect(last?.searchParams.get('eventCode')).toBe('WORK_ORDER_CLOSED');
     expect(last?.searchParams.has('unreadOnly')).toBe(false);
   });
 
@@ -1021,13 +1023,13 @@ describe('NotificationCenterScreen — 쪽 이동은 쪽만 바꾼다', () => {
     });
 
     expect(currentLocation()).toContain('unread=0');
-    expect(currentLocation()).toContain('ev=SYN-EVENT-02');
+    expect(currentLocation()).toContain('ev=WORK_ORDER_CLOSED');
   });
 
   /** 6행 — 「첫 쪽으로」도 조건을 건드리지 않는다. 쪽만 되돌린다. */
   it('첫 쪽으로 되돌려도 두 조건이 남는다', async () => {
     const { user } = renderScreen(
-      '/?from=2026-08-01&to=2026-08-07&unread=0&ev=SYN-EVENT-02&page=9',
+      '/?from=2026-08-01&to=2026-08-07&unread=0&ev=WORK_ORDER_CLOSED&page=9',
       routesWith(listRoute([], { page: 9, size: 50, total: 137 })),
     );
 
@@ -1039,7 +1041,7 @@ describe('NotificationCenterScreen — 쪽 이동은 쪽만 바꾼다', () => {
     });
 
     expect(currentLocation()).toContain('unread=0');
-    expect(currentLocation()).toContain('ev=SYN-EVENT-02');
+    expect(currentLocation()).toContain('ev=WORK_ORDER_CLOSED');
   });
 });
 
@@ -1166,9 +1168,9 @@ describe('NotificationCenterScreen — 읽음 처리', () => {
     });
 
     /* 다른 카드는 잠기지 않는다 — 불리언 하나로 두면 여기가 함께 잠긴다. */
-    expect(screen.getByRole('button', { name: 'SYN-EVENT-03' })).not.toHaveAttribute(
-      'aria-disabled',
-    );
+    expect(
+      screen.getByRole('button', { name: 'EQUIPMENT_BREAKDOWN_OCCURRED' }),
+    ).not.toHaveAttribute('aria-disabled');
 
     release();
   });
@@ -1485,7 +1487,7 @@ describe('NotificationCenterScreen — 앞 조회에 매인 진술의 수명', (
     expect(await screen.findByText(t.writeError.readTitle)).toBeInTheDocument();
 
     /* 다른 카드를 눌러도 조회는 그대로다 — 배너가 사라지면 사용자가 실패를 놓친다. */
-    await user.click(screen.getByRole('button', { name: 'SYN-EVENT-03' }));
+    await user.click(screen.getByRole('button', { name: 'EQUIPMENT_BREAKDOWN_OCCURRED' }));
 
     expect(await screen.findByText(t.writeError.readTitle)).toBeInTheDocument();
   });
@@ -1580,11 +1582,11 @@ describe('NotificationCenterScreen — 여러 장을 동시에 처리한다', ()
       );
     });
     /* 다른 카드는 잠기지 않았다 — 그러니 눌리면 나가야 한다. */
-    expect(screen.getByRole('button', { name: 'SYN-EVENT-03' })).not.toHaveAttribute(
-      'aria-disabled',
-    );
+    expect(
+      screen.getByRole('button', { name: 'EQUIPMENT_BREAKDOWN_OCCURRED' }),
+    ).not.toHaveAttribute('aria-disabled');
 
-    await user.click(screen.getByRole('button', { name: 'SYN-EVENT-03' }));
+    await user.click(screen.getByRole('button', { name: 'EQUIPMENT_BREAKDOWN_OCCURRED' }));
 
     await waitFor(() => {
       expect(requests.filter(isMarkRead)).toHaveLength(2);
@@ -1603,10 +1605,10 @@ describe('NotificationCenterScreen — 여러 장을 동시에 처리한다', ()
 
     await waitForCards();
     await user.click(screen.getByRole('button', { name: EVENT_NAME_01 }));
-    await user.click(screen.getByRole('button', { name: 'SYN-EVENT-03' }));
+    await user.click(screen.getByRole('button', { name: 'EQUIPMENT_BREAKDOWN_OCCURRED' }));
 
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: 'SYN-EVENT-03' })).toHaveAttribute(
+      expect(screen.getByRole('button', { name: 'EQUIPMENT_BREAKDOWN_OCCURRED' })).toHaveAttribute(
         'aria-disabled',
         'true',
       );
@@ -1634,7 +1636,7 @@ describe('NotificationCenterScreen — 여러 장을 동시에 처리한다', ()
       expect(requests.filter(isMarkRead)).toHaveLength(1);
     });
 
-    await user.click(screen.getByRole('button', { name: 'SYN-EVENT-03' }));
+    await user.click(screen.getByRole('button', { name: 'EQUIPMENT_BREAKDOWN_OCCURRED' }));
     await waitFor(() => {
       expect(requests.filter(isMarkRead)).toHaveLength(2);
     });
@@ -1653,7 +1655,7 @@ describe('NotificationCenterScreen — 여러 장을 동시에 처리한다', ()
 
     await waitForCards();
     await user.click(screen.getByRole('button', { name: EVENT_NAME_01 }));
-    await user.click(screen.getByRole('button', { name: 'SYN-EVENT-03' }));
+    await user.click(screen.getByRole('button', { name: 'EQUIPMENT_BREAKDOWN_OCCURRED' }));
 
     /* 실패한 쪽은 배너가 서고 안 읽음으로 남는다. */
     expect(await screen.findByText(t.writeError.readTitle)).toBeInTheDocument();
@@ -1796,7 +1798,7 @@ describe('NotificationCenterScreen — 실패 진술은 그 알림의 것이다'
     await user.click(screen.getByRole('button', { name: EVENT_NAME_01 }));
     expect(await screen.findByText(t.writeError.readTitle)).toBeInTheDocument();
 
-    await user.click(screen.getByRole('button', { name: 'SYN-EVENT-03' }));
+    await user.click(screen.getByRole('button', { name: 'EQUIPMENT_BREAKDOWN_OCCURRED' }));
 
     /* 성공한 쪽이 반영된 뒤에도 앞 실패는 그 자리에 있다. */
     await waitFor(() => {
@@ -1877,9 +1879,9 @@ describe('NotificationCenterScreen — 거둠은 나가는 중에도 진술을 �
     expect(await screen.findByText(t.writeError.readTitle)).toBeInTheDocument();
 
     /* 다른 카드의 쓰기를 띄워 나가는 중으로 만든다. */
-    await user.click(screen.getByRole('button', { name: 'SYN-EVENT-03' }));
+    await user.click(screen.getByRole('button', { name: 'EQUIPMENT_BREAKDOWN_OCCURRED' }));
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: 'SYN-EVENT-03' })).toHaveAttribute(
+      expect(screen.getByRole('button', { name: 'EQUIPMENT_BREAKDOWN_OCCURRED' })).toHaveAttribute(
         'aria-disabled',
         'true',
       );
