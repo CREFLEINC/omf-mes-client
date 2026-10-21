@@ -767,10 +767,10 @@ type ConcessionResponse = {
   content: { 'application/json': components['schemas']['Concession'] };
 };
 
-/** 서버 선행 P-85(omf-all-around#64) — IQC 검사 수준. 무검사·수월·보통·엄격. */
+/** 서버 선행 P-87(omf-all-around#64) — IQC 검사 수준. 무검사·수월·보통·엄격. */
 export type InspectionLevelCode = 'NONE' | 'REDUCED' | 'NORMAL' | 'TIGHTENED';
 
-/** 서버 선행 P-85 — 품목별 검사 수준과 자동 전환 상태. */
+/** 서버 선행 P-87 — 품목별 검사 수준과 자동 전환 상태. */
 export interface ItemInspectionLevel {
   itemInspectionLevelId: number;
   itemId: number;
@@ -808,7 +808,7 @@ export interface ItemInspectionLevelListQuery {
   size?: number;
 }
 
-/** 서버 선행 P-85 — 전환 이력. 자동은 연속 합격 수 또는 불합격 의뢰, 수동은 사유를 싣는다. */
+/** 서버 선행 P-87 — 전환 이력. 자동은 연속 합격 수 또는 불합격 의뢰, 수동은 사유를 싣는다. */
 export interface ItemInspectionLevelHistory {
   itemInspectionLevelHistoryId: number;
   itemId: number;
@@ -1373,7 +1373,7 @@ export interface ForwardPaths {
     patch?: never;
     trace?: never;
   };
-  /** 서버 선행 P-85(omf-all-around#64) — 품목 검사 수준 목록·지정. */
+  /** 서버 선행 P-87(omf-all-around#64) — 품목 검사 수준 목록·지정. */
   '/quality/item-inspection-levels': Unused & {
     parameters: NoParameters;
     get: {
@@ -1408,7 +1408,7 @@ export interface ForwardPaths {
       };
     };
   };
-  /** 서버 선행 P-85 — 수동 변경. */
+  /** 서버 선행 P-87 — 수동 변경. */
   '/quality/item-inspection-levels/{itemInspectionLevelId}': Unused & {
     parameters: NoParameters;
     get?: never;
@@ -1429,7 +1429,7 @@ export interface ForwardPaths {
     };
     post?: never;
   };
-  /** 서버 선행 P-85 — 전환 이력. */
+  /** 서버 선행 P-87 — 전환 이력. */
   '/quality/item-inspection-level-histories': Unused & {
     parameters: NoParameters;
     get: {

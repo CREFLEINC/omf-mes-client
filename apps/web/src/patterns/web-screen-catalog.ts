@@ -231,7 +231,7 @@ export const WEB_SCREENS: readonly WebScreen[] = [
   { path: '/quality/dispositions', code: 'W-03-10', name: '처분 판정 처리(재작업/폐기/정상)' },
   /* ⭐ 설계보다 앞선 화면이다(omf-all-around#107) — 화면 코드는 사용자 결정으로 부여했다. */
   { path: '/quality/pqc-inspections', code: 'W-03-11', name: 'PQC 검사 등록·조회' },
-  /* ⭐ 설계보다 앞선 화면이다(omf-all-around#64 · 서버 장부 P-85) — 다음 빈 번호로 받았다. */
+  /* ⭐ 설계보다 앞선 화면이다(omf-all-around#64 · 서버 장부 P-87) — 다음 빈 번호로 받았다. */
   { path: '/quality/inspection-levels', code: 'W-03-12', name: '검사 수준 관리' },
 
   /* ── 설비/툴 ──────────────────────────────────────────────────────────── */
