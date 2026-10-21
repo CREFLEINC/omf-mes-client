@@ -15351,3 +15351,284 @@ body:has(.goods-receipt-post-form) > [role='listbox'] {
   --dash-delta-bad: #f2a65a;
   --dash-delta-flat: #a2a5ac;
 }
+
+/*
+ * 긴급 IQC 생략 한도승인(omf-all-around#134) — IQC 수입검사·판정(#133)과 같은 기준.
+ * 이 화면 클래스(.iqc-skip-approval-*) 아래에서만 적용한다.
+ */
+
+/* 검색 줄 — 격자로 칸 윗선·높이를 맞춘다. 좁으면 두 줄, 단추 짝은 오른쪽. */
+.filter-bar.iqc-skip-approval-filter {
+  display: grid;
+  grid-template-columns: minmax(10rem, 1fr) minmax(12rem, 1.2fr) minmax(12rem, 1.4fr) auto auto;
+  align-items: start;
+  gap: var(--space-3);
+}
+
+.iqc-skip-approval-filter > * {
+  min-width: 0;
+}
+
+.iqc-skip-approval-filter .field-cell {
+  align-items: stretch;
+}
+
+.iqc-skip-approval-filter .field-cell > * {
+  width: 100%;
+}
+
+.iqc-skip-approval-filter .field-cell-unlabeled {
+  align-self: start;
+}
+
+.iqc-skip-approval-filter .filter-actions {
+  justify-content: flex-end;
+}
+
+@media (max-width: 1280px) {
+  .filter-bar.iqc-skip-approval-filter {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .iqc-skip-approval-filter > .field-cell-unlabeled:has(.check-group) {
+    grid-column: 1 / 3;
+    margin-top: 0;
+  }
+
+  .iqc-skip-approval-filter > .field-cell-unlabeled:has(.filter-actions) {
+    grid-column: 3;
+    margin-top: 0;
+  }
+}
+
+/* 목록 표 — 1024 폭 창에서도 가로로 넘치지 않게 칸 폭을 고정하고 긴 값은 말줄임. */
+.iqc-skip-approval-table table {
+  min-width: 686px;
+  table-layout: fixed;
+}
+
+/* 칸 좌우 여백 8px — 일곱 열이 1024 폭 창(표 686px)에 들어가는 값이다. */
+.iqc-skip-approval-list th,
+.iqc-skip-approval-list td {
+  padding-inline: var(--space-2);
+}
+
+.iqc-skip-approval-list th {
+  color: var(--on-surface-muted);
+  font: var(--type-label-sm);
+  letter-spacing: var(--type-label-sm-tracking);
+  border-bottom: 1px solid var(--outline-variant);
+  white-space: nowrap;
+}
+
+.iqc-skip-approval-list td {
+  padding-block: var(--space-3);
+  vertical-align: middle;
+}
+
+.iqc-skip-approval-list td:last-child {
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.iqc-skip-approval-ellipsis {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 줄무늬 바탕을 지운다 — 마우스를 올리면 옅게, 고른 줄은 바탕 + 첫 칸 강조선. */
+.iqc-skip-approval-list tbody tr,
+.iqc-skip-approval-list tbody tr:nth-child(even) {
+  background: transparent;
+  transition: background-color 0.12s ease;
+}
+
+.iqc-skip-approval-list tbody tr:nth-child(n):hover {
+  background: var(--state-hover-neutral);
+}
+
+.iqc-skip-approval-list
+  tbody
+  tr:nth-child(n):has(.iqc-skip-approval-request-no[aria-current='true']) {
+  background: var(--surface-container-high);
+}
+
+/* 표 줄(tr)에는 그림자가 안 그려진다 — 강조선은 첫 칸에 긋는다. */
+.iqc-skip-approval-list
+  tbody
+  tr:has(.iqc-skip-approval-request-no[aria-current='true'])
+  > td:first-child {
+  box-shadow: inset 3px 0 0 var(--primary);
+}
+
+/* 요청번호 — 한 줄, 본문색·굵게. 누를 수 있다는 것은 커서와 마우스 올림 밑줄로 보인다. */
+.iqc-skip-approval-list .iqc-skip-approval-request-no {
+  color: var(--on-surface);
+  font-weight: 600;
+  white-space: nowrap;
+  text-decoration: none;
+  font-variant-numeric: tabular-nums;
+}
+
+.iqc-skip-approval-list .iqc-skip-approval-request-no:hover {
+  background: none;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+/*
+ * 상세의 안내 글은 단추 사유가 아니라 문단이다 — 공용 20rem 가둠을 풀어 좁은 폭에 몰려
+ * 줄줄이 꺾이지 않게 한다(읽기 좋은 줄 길이 48rem까지).
+ */
+.iqc-skip-approval-detail .field-note {
+  max-width: 48rem;
+}
+
+/* 상세 — 구획마다 소제목과 얇은 구분선. */
+.iqc-skip-approval-detail {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.iqc-skip-approval-section {
+  display: grid;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.iqc-skip-approval-detail > .iqc-skip-approval-section + .iqc-skip-approval-section {
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--outline-variant);
+}
+
+.iqc-skip-approval-heading {
+  margin: 0;
+  color: var(--on-surface);
+  font: var(--type-title-sm);
+  letter-spacing: var(--type-title-sm-tracking);
+}
+
+/* 요약 격자 — 라벨(작게) 위, 값 아래. 값이 라벨보다 들여 서지 않는다. */
+.iqc-skip-approval-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(9.5rem, 1fr));
+  gap: var(--space-3) var(--space-4);
+  margin: 0;
+}
+
+.iqc-skip-approval-summary .field-cell {
+  gap: var(--space-1);
+  min-height: 0;
+  min-width: 0;
+}
+
+.iqc-skip-approval-summary dd {
+  margin: 0;
+  color: var(--on-surface);
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+
+.iqc-skip-approval-reason {
+  display: grid;
+  gap: var(--space-1);
+  padding-top: var(--space-2);
+}
+
+.iqc-skip-approval-reason p {
+  margin: 0;
+  color: var(--on-surface);
+  overflow-wrap: anywhere;
+}
+
+/* 대상 — 「열기」·잠긴 사유·안내를 한 줄로. */
+.iqc-skip-approval-target-open {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+}
+
+.iqc-skip-approval-target-open .field-cell {
+  flex-direction: row;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 0;
+}
+
+.iqc-skip-approval-target-open .field-note {
+  margin: 0;
+}
+
+/* 결재 진행 — 단계마다 결과 배지, 시각·의견은 그 아래 보조 글. */
+.iqc-skip-approval-position {
+  margin: 0;
+  font-weight: 600;
+}
+
+.iqc-skip-approval-section > p {
+  margin: 0;
+}
+
+.iqc-skip-approval-step {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-1);
+}
+
+.iqc-skip-approval-step-badges {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+}
+
+/* 결재 — 승인 시 결과는 한 안내 상자, 의견칸은 넓게, 단추 줄은 의견칸 바로 아래 오른쪽. */
+.iqc-skip-approval-outcome {
+  display: grid;
+  gap: var(--space-1);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-md);
+  background: var(--semantic-info-container);
+}
+
+.iqc-skip-approval-outcome p {
+  margin: 0;
+}
+
+.iqc-skip-approval-comment {
+  align-items: stretch;
+  max-width: 48rem;
+}
+
+.iqc-skip-approval-comment > * {
+  width: 100%;
+}
+
+.iqc-skip-approval-comment > .field-note {
+  margin: 0;
+}
+
+.form-actions.iqc-skip-approval-actions {
+  justify-content: flex-end;
+  align-items: flex-start;
+  margin: 0;
+}
+
+.iqc-skip-approval-turn-note {
+  margin: 0;
+  text-align: right;
+}
+
+/* IQC 생략 실행 — 겹 테두리 없이 한 구획. 완료는 초록 글자. */
+.iqc-skip-approval-execute > button {
+  justify-self: start;
+}
+
+.iqc-skip-approval-done {
+  margin: 0;
+  color: var(--semantic-success-text);
+  font-weight: 600;
+}

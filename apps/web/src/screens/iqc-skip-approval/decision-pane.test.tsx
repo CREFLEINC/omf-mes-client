@@ -107,17 +107,15 @@ describe('DecisionPane', () => {
   });
 
   describe('내 차례가 아닐 때 — 첫째 겹', () => {
-    it('승인과 반려가 모두 잠기고 각자 사유가 붙는다', () => {
+    /** 같은 사유를 되풀이하지 않는다 — 단추 줄 아래 한 줄을 두 단추가 함께 설명으로 잇는다(#134). */
+    it('승인과 반려가 모두 잠기고 사유 한 줄을 함께 잇는다', () => {
       renderPane({ isMyTurn: false, comment: '합성 의견' });
 
       expect(approveButton()).toBeDisabled();
       expect(rejectButton()).toBeDisabled();
-      expect(approveButton()).toHaveAccessibleDescription(
-        t.decision.blockedNotMyTurn(t.decision.approve),
-      );
-      expect(rejectButton()).toHaveAccessibleDescription(
-        t.decision.blockedNotMyTurn(t.decision.reject),
-      );
+      expect(screen.getAllByText(t.progress.notMyTurn)).toHaveLength(1);
+      expect(approveButton()).toHaveAccessibleDescription(t.progress.notMyTurn);
+      expect(rejectButton()).toHaveAccessibleDescription(t.progress.notMyTurn);
     });
 
     /** 보낼 수 없는 말을 적어 두는 자리가 아니다 — 입력칸도 함께 잠근다. */
@@ -125,7 +123,10 @@ describe('DecisionPane', () => {
       renderPane({ isMyTurn: false });
 
       expect(commentBox()).toBeDisabled();
-      expect(screen.getByText(t.decision.commentDisabledReason)).toBeVisible();
+      expect(screen.getByText(t.progress.notMyTurn)).toBeVisible();
+      expect(commentBox()).toHaveAccessibleDescription(
+        expect.stringContaining(t.progress.notMyTurn),
+      );
     });
 
     /** 잠긴 버튼은 눌러도 아무 일이 없어야 한다 — 첫째 겹이 실제로 막는지 잰다. */
@@ -237,7 +238,7 @@ describe('DecisionPane', () => {
       renderPane({ isLocked: true, comment: '합성 반려 사유' });
 
       expect(screen.getByText(t.decision.commentSendingReason)).toBeVisible();
-      expect(screen.queryByText(t.decision.commentDisabledReason)).toBeNull();
+      expect(screen.queryByText(t.progress.notMyTurn)).toBeNull();
     });
 
     it('눌러도 창을 다시 열지 않는다', async () => {
