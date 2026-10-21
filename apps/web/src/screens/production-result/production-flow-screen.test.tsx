@@ -218,7 +218,12 @@ const routes = (writes: Request[]): StubRoute[] => [
 const renderScreen = (
   writes: Request[],
   extraRoutes: StubRoute[] = [],
-  options: { workerNo?: string | null; route?: string; strict?: boolean } = {},
+  options: {
+    workerNo?: string | null;
+    route?: string;
+    strict?: boolean;
+    processes?: { processId: number }[];
+  } = {},
 ) => {
   /*
    * ⚠ **`StrictMode` 는 선택으로 둔다.** POP 앱은 실제로 `StrictMode` 아래서 돌고
@@ -229,7 +234,7 @@ const renderScreen = (
     <PopIdentityProvider
       value={{
         terminalId: 10,
-        processes: [{ processId: 20 }],
+        processes: options.processes ?? [{ processId: 20 }],
         equipment: null,
         workerNo: options.workerNo === undefined ? '100029' : options.workerNo,
       }}
@@ -2001,6 +2006,7 @@ describe('ProductionFlowScreen 불량', () => {
         goodQty: 12,
         lotAllocations: [{ lotId: LOT_ID, allocatedQty: 12 }],
         defects: [{ defectCodeId: 11, qty: 3 }],
+        workSessionId: WORK_SESSION_ID,
       }),
     );
     expect(body).not.toHaveProperty('defectQty');
@@ -2233,5 +2239,88 @@ describe('ProductionFlowScreen 불량', () => {
 
     expect(await screen.findByText(t.save.failTitle)).toBeInTheDocument();
     await waitFor(() => expect(screen.queryByText(t.flow.defects.saved)).toBeNull());
+  });
+
+  const sessionWithResources: StubRoute = {
+    match: (request) => request.method === 'GET' && pathOf(request) === '/production/work-sessions',
+    respond: () =>
+      jsonResponse({
+        items: [
+          {
+            workSessionId: WORK_SESSION_ID,
+            workOrderId: WORK_ORDER_ID,
+            sessionNo: 1,
+            terminalId: 10,
+            equipmentId: 3301,
+            moldId: 4401,
+            startedAt: '2026-09-16T09:00:00+09:00',
+            statusCode: 'RUNNING',
+          },
+        ],
+        page: { page: 1, size: 20, total: 1 },
+      }),
+  };
+  const enterDefectOnly = async (user: ReturnType<typeof userEvent.setup>) => {
+    const good = await screen.findByLabelText(t.flow.quantity.actual);
+    await waitFor(() => expect(good).toBeEnabled());
+    await user.clear(good);
+    await user.type(good, '0');
+    await user.click(within(defectSection()).getByRole('button', { name: t.flow.defects.add }));
+    await pickDefect(user, '긁힘');
+    await user.type(within(defectSection()).getByLabelText(t.flow.defects.qty), '2');
+  };
+
+  it('불량만 저장도 열린 세션과 그 세션의 설비·금형을 싣는다', async () => {
+    const writes: Request[] = [];
+    const user = userEvent.setup();
+    renderScreen(writes, [sessionWithResources, ...defectRoutes]);
+
+    await enterDefectOnly(user);
+    const saveOnly = within(defectSection()).getByRole('button', { name: t.flow.defects.saveOnly });
+    await waitFor(() => expect(saveOnly).toBeEnabled());
+    await user.click(saveOnly);
+
+    await waitFor(() =>
+      expect(writes.some((write) => pathOf(write) === '/production/production-results')).toBe(true),
+    );
+    expect(await savedBody(writes)).toEqual(
+      expect.objectContaining({ workSessionId: WORK_SESSION_ID, equipmentId: 3301, moldId: 4401 }),
+    );
+  });
+
+  it('공정이 여럿인 단말도 W/O 공정으로 판정해 불량 저장을 연다', async () => {
+    const user = userEvent.setup();
+    renderScreen([], defectRoutes, { processes: [{ processId: 20 }, { processId: 21 }] });
+
+    await enterDefectOnly(user);
+
+    await waitFor(() =>
+      expect(
+        within(defectSection()).getByRole('button', { name: t.flow.defects.saveOnly }),
+      ).toBeEnabled(),
+    );
+  });
+
+  it('불량 저장이 꺼지면 까닭을 그 단추에 잇는다', async () => {
+    const user = userEvent.setup();
+    renderScreen(
+      [],
+      [
+        {
+          match: (request) => pathOf(request) === '/mdm/terminals/10/processes',
+          respond: () =>
+            jsonResponse({
+              items: [{ processId: 20, canInputResult: false, canPrintLabel: true }],
+            }),
+        },
+        ...defectRoutes,
+      ],
+    );
+
+    await enterDefectOnly(user);
+
+    const saveOnly = within(defectSection()).getByRole('button', { name: t.flow.defects.saveOnly });
+    expect(saveOnly).toBeDisabled();
+    await waitFor(() => expect(saveOnly).toHaveAccessibleDescription(t.gate.denied));
   });
 });

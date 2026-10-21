@@ -20,6 +20,11 @@ export interface SaveInput {
   occurredAt: string;
   /** 유형별 불량. 비면 키를 싣지 않는다. */
   defects?: readonly ProductionResultDefectInput[];
+  /**
+   * 이 W/O 의 열린 작업 세션과 그 세션의 설비·금형. 모르면 키를 싣지 않는다.
+   * ⚠ 서버는 본문에서만 세션을 읽는다 — 빠지면 참여자 배분이 비고 실적이 설비에 붙지 않는다.
+   */
+  session?: { workSessionId: number; equipmentId?: number; moldId?: number } | null;
 }
 
 /**
@@ -59,6 +64,15 @@ export const buildSaveBody = (input: SaveInput): ProductionResultCreate => {
     ...(input.defects === undefined || input.defects.length === 0
       ? {}
       : { defects: [...input.defects] }),
+    ...(input.session == null
+      ? {}
+      : {
+          workSessionId: input.session.workSessionId,
+          ...(input.session.equipmentId === undefined
+            ? {}
+            : { equipmentId: input.session.equipmentId }),
+          ...(input.session.moldId === undefined ? {} : { moldId: input.session.moldId }),
+        }),
     /* 빈 비고는 «안 적은 것»이다. 빈 문자열을 보내면 「빈 값을 적었다」가 된다. */
     ...(remarks === '' ? {} : { remarks }),
     resultSourceCode: 'MANUAL',

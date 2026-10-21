@@ -216,7 +216,14 @@ export const ProductionFlowScreen = () => {
   const item = useItem(currentLot.data?.itemId ?? workOrder.data?.itemId ?? null);
   const lotPrinters = usePrinters('PRODUCTION_LOT_LABEL');
   const tagPrinters = usePrinters('IDENTIFICATION_TAG');
-  const gates = useFlowGates(identity.terminalId, soleProcessIdOf(identity.processes));
+  /*
+   * 기능 구성은 «이 W/O 의 공정»으로 판정한다 — 단말에 공정이 여럿이어도 W/O 가 어느 공정의 일인지
+   * 안다(작업 시작과 같은 규칙). 공정을 싣지 않는 서버면 단말의 유일한 공정으로 판정한다.
+   */
+  const gates = useFlowGates(
+    identity.terminalId,
+    workOrder.data?.processId ?? soleProcessIdOf(identity.processes),
+  );
   const uom = useUomLookup();
 
   const [actualQty, setActualQty] = useState('');
@@ -231,6 +238,7 @@ export const ProductionFlowScreen = () => {
   const [defectNotice, setDefectNotice] = useState<'saved' | 'queued' | null>(null);
   const nextDefectKey = useRef(1);
   const noProcessId = useId();
+  const defectSaveBlockedId = useId();
   /** 라벨로 이어지는 저장에 실린 불량 줄 — 그 항목이 적용될 때 그 줄만 비운다(멱등 키 → 줄 키) */
   const sentDefectRowKeys = useRef(new Map<string, string[]>());
   const defectCodes = useProcessDefectCodes(workOrder.data?.processId ?? null);
@@ -821,6 +829,15 @@ export const ProductionFlowScreen = () => {
     gates.input === 'allowed' &&
     outputPhase === 'idle' &&
     (lot?.uomId ?? workOrder.data?.uomId) !== undefined;
+  /** 「불량 저장」이 꺼진 까닭 — 줄은 다 찼는데 못 누르는 경우만 말한다. */
+  const defectSaveBlockedReason =
+    !isDefectOnly || !areDefectsReady
+      ? null
+      : entry.workerNo === null
+        ? t.entry.missingWorker
+        : gates.input === 'allowed'
+          ? null
+          : t.gate[gates.input];
   /** 불량 줄을 고칠 수 있는가 — 라벨로 이어지는 저장이 나간 뒤에는 그 실적에 실린 값이라 잠근다. */
   const areDefectsLocked = outputPhase !== 'idle' || entry.workOrderId === null;
   /** 공정이 없는 W/O 는 고를 불량 유형이 없다 — 받은 뒤에야 안다. */
@@ -842,6 +859,7 @@ export const ProductionFlowScreen = () => {
         draft: { goodQty: '0', remarks: '' },
         occurredAt: new Date().toISOString(),
         defects: defectInputs,
+        session: openSession.session,
       }),
     );
     setDefectRows([]);
@@ -884,6 +902,7 @@ export const ProductionFlowScreen = () => {
         draft: { goodQty: actualQty, remarks: '' },
         occurredAt: new Date().toISOString(),
         defects: defectInputs,
+        session: openSession.session,
       }),
     );
     if (defectRows.length > 0) {
@@ -1373,10 +1392,18 @@ export const ProductionFlowScreen = () => {
                       type="button"
                       size="lg"
                       disabled={!canSaveDefectsOnly}
+                      aria-describedby={
+                        defectSaveBlockedReason === null ? undefined : defectSaveBlockedId
+                      }
                       onClick={queueDefectsOnly}
                     >
                       {t.flow.defects.saveOnly}
                     </Button>
+                  )}
+                  {defectSaveBlockedReason !== null && (
+                    <span id={defectSaveBlockedId} className="field-error">
+                      {defectSaveBlockedReason}
+                    </span>
                   )}
                 </div>
                 {hasNoProcess && (
