@@ -46,7 +46,7 @@ const columnsOf = (
     key: 'item',
     header: t.columns.item,
     /* 「이름 / 코드」 두 줄. 긴 이름은 한 줄 말줄임이고 전체 값은 마우스를 올리면 보인다. */
-    width: '30%',
+    width: '36%',
     /*
      * **첫 칸이 곧 「이 줄을 연다」다** — 저장소의 목록 창들과 같은 관용구다. 종전에는 그 자리가
      * 의뢰번호였는데, 고르는 데 필요한 값이 아니고 고른 뒤 우측 창이 먼저 보여 주므로
@@ -127,7 +127,7 @@ const columnsOf = (
   {
     key: 'statusCode',
     header: t.columns.statusCode,
-    width: '64px',
+    width: '5rem',
     render: (row) => {
       const badge = toStatusBadge(row.statusCode);
 
@@ -142,7 +142,7 @@ const columnsOf = (
     key: 'requestedAt',
     header: t.columns.requestedAt,
     /* 날짜·시각이 한 줄로 보이는 폭. */
-    width: '136px',
+    width: '10rem',
     sortable: true,
     /* 정렬은 원문(RFC3339)으로 한다 — 표기용 문자열로 정렬하면 형식이 아닌 값이 섞일 때 어긋난다. */
     sortAccessor: (row) => row.requestedAt,

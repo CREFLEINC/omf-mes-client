@@ -14135,7 +14135,7 @@ button.app-button-neutral {
 }
 
 /*
- * 열 폭을 내용이 아니라 지정 폭(품목 30% · 상태 64px · 일시 136px)으로 잡는다 — 내용 폭으로 잡으면 긴 LOT 번호가
+ * 열 폭을 내용이 아니라 지정 폭(품목 36% · 상태 5rem · 일시 10rem)으로 잡는다 — 내용 폭으로 잡으면 긴 LOT 번호가
  * 표를 창 밖으로 밀어 일시가 잘린다(1024 폭). 남는 폭은 LOT 칸이 받고, 모자라면 말줄임이다.
  */
 .iqc-inspection-queue-pane table {
@@ -14151,7 +14151,7 @@ button.app-button-neutral {
 }
 
 .iqc-inspection-queue-pane td {
-  padding-block: var(--space-3);
+  padding-block: var(--space-2);
   vertical-align: middle;
 }
 
