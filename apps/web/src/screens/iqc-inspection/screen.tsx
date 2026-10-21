@@ -761,6 +761,9 @@ export const IqcInspectionScreen = () => {
           <InspectionHistoryPanel
             key={`${String(selectedId)}-${String(historyRounds.length)}`}
             inspectionRequestId={selectedId}
+            judgmentLabelOf={(code) =>
+              judgmentOptions.find((option) => option.value === code)?.label ?? code
+            }
             revision={`${String(rounds.data?.length ?? 0)}:${JSON.stringify(round ?? null)}`}
           />
         )}

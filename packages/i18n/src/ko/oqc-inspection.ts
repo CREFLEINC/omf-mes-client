@@ -352,4 +352,53 @@ export const oqcInspection = {
     loading: '생략 결재 상태를 불러오는 중입니다.',
     loadFailed: '생략 결재 상태를 불러오지 못했습니다.',
   },
+  /**
+   * 시리얼 OQC(omf-all-around#68 · 서버 선행 P-101) — 검사한 시리얼과 OK/NG 를 판정과 함께 저장한다.
+   * 시리얼 판정은 시리얼당 한 줄로 남는다. 재검 회차는 1차를 그대로 두고 최종만 바꾼다.
+   */
+  serials: {
+    openByScan: '시리얼로 의뢰 열기',
+    openByScanHelp:
+      '시리얼을 스캔하면 그 LOT 을 피킹한 OQC 의뢰를 엽니다. 대기 또는 진행 중인 의뢰가 없으면 완료된 의뢰를 열어 재검사 회차를 더할 수 있습니다.',
+    scanLabel: '시리얼 스캔',
+    scanPlaceholder: '시리얼 번호를 스캔하거나 입력 후 Enter',
+    scanning: '시리얼을 확인하는 중…',
+    heading: '검사한 시리얼',
+    help: '검사한 시리얼을 스캔하고 OK/NG 를 고릅니다. 판정과 함께 저장되고 시리얼별 출하검사 기록으로 남습니다.',
+    notFound: (serialNo: string): string => `없는 시리얼입니다: ${serialNo}`,
+    noPickedRequest: (serialNo: string): string =>
+      `시리얼 ${serialNo} 의 LOT 을 피킹한 OQC 의뢰가 없습니다.`,
+    completedRequest: (requestNo: string): string => `${requestNo} (완료, 재검사)`,
+    pickRequest: '이 시리얼의 LOT 을 피킹한 OQC 의뢰가 여럿입니다. 열 의뢰를 고르세요.',
+    duplicate: (serialNo: string): string => `이미 목록에 있는 시리얼입니다: ${serialNo}`,
+    otherItem: (serialNo: string): string => `시리얼 ${serialNo} 은 이 의뢰의 품목이 아닙니다.`,
+    notPicked: (serialNo: string): string =>
+      `시리얼 ${serialNo} 의 LOT 은 이 출하작업지시가 피킹한 LOT 이 아닙니다.`,
+    lookupFailed: '시리얼을 확인하지 못했습니다. 다시 스캔하세요.',
+    columns: { serialNo: '시리얼', lotNo: 'LOT', previous: '이전 기록', judgment: '판정' },
+    previous: (first: string, final: string): string => `1차 ${first} → 최종 ${final}`,
+    firstOkLocked: '1차 OK — NG 로 바꿀 수 없습니다',
+    remove: '빼기',
+    ok: 'OK',
+    ng: 'NG',
+    empty: '스캔한 시리얼이 없습니다. 시리얼 없이 LOT 판정만 저장할 수도 있습니다.',
+    tooMany: '검사한 시리얼 수가 검사 수량보다 많습니다.',
+    tooManyNg: 'NG 시리얼 수가 불합격 수량보다 많습니다. 불합격 수량을 확인하세요.',
+    count: (total: number, ng: number): string => `시리얼 ${total}대, NG ${ng}대`,
+    recordHeading: '시리얼 출하검사',
+    recordHelp: '시리얼마다 1차 판정은 처음 기록 그대로이고, 재검 회차는 최종 판정만 바꿉니다.',
+    recordEmpty: '기록된 시리얼이 없습니다.',
+    recordLoading: '시리얼 출하검사를 불러오는 중입니다.',
+    recordFailed: '시리얼 출하검사를 불러오지 못했습니다.',
+    recordColumns: {
+      serialNo: '시리얼',
+      lotNo: 'LOT',
+      first: '1차',
+      final: '최종',
+      round: '마지막 회차',
+      inspector: '검사자',
+      inspectedAt: '검사 시각',
+    },
+    round: (round: number): string => `${round}회차`,
+  },
 } as const;

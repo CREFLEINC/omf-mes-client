@@ -1,7 +1,14 @@
 import { Button, Select, TextField } from '@crefle/web-ui';
 import type { ApiError } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
-import { useEffect, useId, useState, type FormEvent, type ReactElement } from 'react';
+import {
+  useEffect,
+  useId,
+  useState,
+  type FormEvent,
+  type ReactElement,
+  type ReactNode,
+} from 'react';
 
 import { CONFIRMED_STATUS } from './inspection-status';
 import { SaveErrorBanner } from '../../patterns/master';
@@ -100,6 +107,11 @@ export interface ResultFormPaneProps {
   isReinspecting: boolean;
   onStartReinspection: () => void;
   onCancelReinspection: () => void;
+
+  /** 「검사한 시리얼」 구획(omf-all-around#68) — 출하작업지시 의뢰의 열린 회차에서만 부모가 넘긴다. */
+  serialSection?: ReactNode;
+  /** 시리얼이 수량과 모순되면 그 이유(담당자 결정 Q3). */
+  serialBlockedReason?: string | null;
 }
 
 /** 계약이 짚어 줄 수 있는 칸 이름 ↔ 화면의 초안 칸. */
@@ -133,6 +145,8 @@ export const ResultFormPane = ({
   isReinspecting,
   onStartReinspection,
   onCancelReinspection,
+  serialSection,
+  serialBlockedReason = null,
 }: ResultFormPaneProps) => {
   const judgmentId = useId();
   const lockNoteId = useId();
@@ -192,7 +206,7 @@ export const ResultFormPane = ({
           ? t.blockedByJudgment
           : needsChangeReason && changeReason.trim() === ''
             ? t.judgmentChange.required
-            : null;
+            : serialBlockedReason;
 
   /** 저장을 누른다 — **여는 것뿐이다.** 쓰기는 확인 창의 버튼에서 나간다. */
   const submit = (event: FormEvent<HTMLFormElement>): void => {
@@ -351,6 +365,8 @@ export const ResultFormPane = ({
        * ⛔ **되돌릴 수 없는 쓰기가 무엇을 하는지 누르기 «전»에 보인다.** 확인 창에도 같은 본문이
        * 다시 서지만, 창을 열기 전에 이미 보고 판단할 수 있어야 한다.
        */}
+      {!isLocked && serialSection}
+
       {!isLocked && <TransitionWarning preview={preview} hasLot={hasLot} />}
 
       {/* 창이 열려 있는 동안에는 배너를 창 안에서 낸다 — 밖에 내면 창에 가려 보이지 않는다. */}
