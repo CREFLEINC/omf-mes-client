@@ -160,6 +160,7 @@ import { workOrderRelease } from './work-order-release';
 import { workPrecheckGate } from './work-precheck-gate';
 import { workStart } from './work-start';
 import { workerAssignment } from './worker-assignment';
+import { zaloConnection } from './zalo-connection';
 
 export const vi: Translated<Messages> = {
   ...ko,
@@ -307,4 +308,5 @@ export const vi: Translated<Messages> = {
   workOrderRelease,
   workPrecheckGate,
   workStart,
+  zaloConnection,
 };
