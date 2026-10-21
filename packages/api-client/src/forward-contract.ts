@@ -202,6 +202,58 @@ export type InspectionResultCreateForward = components['schemas']['InspectionRes
   /** 서버 선행 P-70(omf-all-around#125·#126) — statusCode=CONFIRMED 저장의 판정 변경 사유(IQC·OQC). `:confirm` 과 같은 규칙. */
   judgmentChangeReason?: string;
   fourMChange?: FourMChangeForward | null;
+  /** 서버 선행 P-89(omf-all-around#68) — 출하작업지시 OQC 확정 저장의 시리얼별 판정. 검사표 「출하검사」 줄로 남는다. */
+  serials?: OqcSerialJudgmentInput[];
+};
+
+/** 서버 선행 P-89(omf-all-around#68) — 시리얼 한 대의 출하검사 판정. */
+export interface OqcSerialJudgmentInput {
+  serialNumberId: number;
+  judgmentCode: 'OK' | 'NG';
+}
+
+/**
+ * 서버 선행 P-89 — 시리얼의 「출하검사」 줄. ⚠ 시리얼당 하나라 재검 회차가 덮는다: 1차는 처음 값, 최종과 마지막 회차만 바뀐다.
+ */
+export interface OqcSerialStep {
+  firstJudgmentCode: 'OK' | 'NG';
+  finalJudgmentCode: 'OK' | 'NG';
+  /** `OQC`(출하검사 판정) · `SHEET`(제품 검사표 입력). */
+  sourceCode: string;
+  inspectedAt: string;
+  inspectorName?: string;
+  inspectionResultId?: number;
+  inspectionRound?: number;
+}
+
+/** 서버 선행 P-89 — `GET /quality/oqc-serials/{serialNo}` 스캔 한 번의 답. */
+export interface OqcSerialScan {
+  serialNumberId: number;
+  serialNo: string;
+  itemId: number;
+  itemCode: string;
+  itemName: string;
+  lotId: number;
+  lotNo: string;
+  producedAt?: string;
+  workOrderId?: number;
+  /** 모델의 확정 검사표 기준에 출하검사 단계가 있다 — false 면 시리얼 판정을 저장할 수 없다. */
+  sheetStandardReady: boolean;
+  shipmentStep?: OqcSerialStep;
+  /** 이 시리얼의 LOT 을 피킹한 열린 OQC 의뢰. */
+  openRequests: {
+    inspectionRequestId: number;
+    inspectionRequestNo: string;
+    shipmentRequestId: number;
+  }[];
+}
+
+/** 서버 선행 P-89 — 의뢰 하나의 시리얼 판정 한 줄. */
+export type OqcSerialRecord = OqcSerialStep & {
+  serialNumberId: number;
+  serialNo: string;
+  lotId: number;
+  lotNo: string;
 };
 export type InspectionResultUpdateForward = components['schemas']['InspectionResultUpdate'] & {
   defects?: InspectionDefectInput[];
@@ -1101,6 +1153,58 @@ export interface ForwardPaths {
         };
       };
     };
+  };
+  /** 시리얼 OQC 스캔 — 서버 선행 P-89. */
+  '/quality/oqc-serials/{serialNo}': {
+    parameters: { query?: never; header?: never; path: { serialNo: string }; cookie?: never };
+    get: {
+      parameters: { query?: never; header?: never; path: { serialNo: string }; cookie?: never };
+      requestBody?: never;
+      responses: {
+        200: {
+          headers: { [name: string]: unknown };
+          content: { 'application/json': OqcSerialScan };
+        };
+      };
+    };
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  /** 의뢰의 시리얼 판정 — 서버 선행 P-89. */
+  '/quality/inspection-requests/{inspectionRequestId}/oqc-serials': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: { inspectionRequestId: number };
+      cookie?: never;
+    };
+    get: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: { inspectionRequestId: number };
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        200: {
+          headers: { [name: string]: unknown };
+          content: { 'application/json': { items: OqcSerialRecord[] } };
+        };
+      };
+    };
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
   };
   '/quality/inspection-requests/{inspectionRequestId}/history': {
     parameters: {

@@ -1,11 +1,18 @@
-import type { ApiClient, components, InspectionResultCreateForward } from '@omf-mes/api-client';
+import type {
+  ApiClient,
+  components,
+  InspectionResultCreateForward,
+  OqcSerialJudgmentInput,
+  OqcSerialRecord,
+  OqcSerialScan,
+} from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 
 import { CONFIRMED_STATUS } from './inspection-status';
 import { useApiClient } from '../../patterns/api-context';
 import { useMasterWrite, type MasterWriteResult, type WriteHeaders } from '../../patterns/master';
-import { runRequest, type ApiCallResult } from '../../patterns/request';
+import { runRequest, toApiError, type ApiCallResult } from '../../patterns/request';
 import type { CodeValueResponse } from './code-options';
 import type { QueueListQuery } from './filters';
 import {
@@ -78,6 +85,9 @@ export const oqcInspectionKeys = {
   /** 의뢰에 고정된 검사기준 버전의 합격판정개수(omf-all-around#126). */
   acceptance: (inspectionPlanVersionId: number) =>
     [...ALL_KEY, 'acceptance', inspectionPlanVersionId] as const,
+  /** 그 의뢰의 시리얼 출하검사 줄(omf-all-around#68). 저장이 바꾸므로 저장 뒤 무효화 대상이다. */
+  serialRecords: (inspectionRequestId: number) =>
+    [...ALL_KEY, 'serial-records', inspectionRequestId] as const,
 };
 
 const fetchQueue = (client: Client, query: QueueListQuery): Promise<InspectionQueueResult> =>
@@ -230,6 +240,8 @@ export interface SaveResultVariables {
    * 같으면 싣지 않는다 — 서버도 같으면 버린다.
    */
   judgmentChangeReason?: string;
+  /** 검사한 시리얼별 판정(omf-all-around#68 · 서버 P-89). 비어 있으면 싣지 않는다 — LOT 판정만 저장한다. */
+  serials?: OqcSerialJudgmentInput[];
 }
 
 /**
@@ -263,6 +275,7 @@ export const toResultCreateBody = (v: SaveResultVariables): InspectionResultCrea
   ...judgmentOf(v.overallJudgmentCode),
   ...previousOf(v.previousResultId),
   ...(v.judgmentChangeReason === undefined ? {} : { judgmentChangeReason: v.judgmentChangeReason }),
+  ...(v.serials === undefined || v.serials.length === 0 ? {} : { serials: v.serials }),
 });
 
 /** 이 화면이 소유한 입력칸 — 서버 필드 오류를 인라인으로 낼지 배너로 올릴지 가르는 기준이다. */
@@ -272,6 +285,7 @@ export const SAVE_FIELDS = [
   'heldQty',
   'overallJudgmentCode',
   'uomId',
+  'serials',
 ] as const;
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
@@ -359,6 +373,7 @@ export const useSaveInspectionResult = (
       oqcInspectionKeys.rounds(inspectionRequestId ?? 0),
       oqcInspectionKeys.detail(inspectionRequestId ?? 0),
       oqcInspectionKeys.queues(),
+      oqcInspectionKeys.serialRecords(inspectionRequestId ?? 0),
     ],
     knownFields: SAVE_FIELDS,
     keyLifetime: 'until-applied',
@@ -386,5 +401,51 @@ export const useAcceptanceNumber = (
         }),
       ).then(({ inspectionPlanVersion }) => inspectionPlanVersion.acceptanceNumber ?? null),
     enabled: inspectionPlanVersionId !== null,
+  });
+};
+
+/** 스캔 한 번의 결과 — 없는 시리얼(404)은 실패와 갈라 말한다. */
+export type SerialLookup =
+  { kind: 'found'; scan: OqcSerialScan } | { kind: 'notFound' } | { kind: 'failed' };
+
+const NOT_FOUND = 404;
+
+/**
+ * 시리얼을 스캔한다(omf-all-around#68 · 서버 선행 P-89). 캐시에 두지 않는다 — 스캔마다 지금의 피킹·기록을 본다.
+ */
+export const useSerialLookup = (): ((serialNo: string) => Promise<SerialLookup>) => {
+  const { client } = useApiClient();
+
+  return async (serialNo) => {
+    try {
+      const scan = await runRequest(() =>
+        client.GET('/quality/oqc-serials/{serialNo}', { params: { path: { serialNo } } }),
+      );
+      return { kind: 'found', scan };
+    } catch (error) {
+      const apiError = toApiError(error);
+      return 'status' in apiError && apiError.status === NOT_FOUND
+        ? { kind: 'notFound' }
+        : { kind: 'failed' };
+    }
+  };
+};
+
+/** 그 의뢰의 시리얼 출하검사 줄. 출하작업지시 의뢰에서만 부른다. */
+export const useOqcSerialRecords = (
+  inspectionRequestId: number | null,
+  enabled: boolean,
+): UseQueryResult<OqcSerialRecord[]> => {
+  const { client } = useApiClient();
+
+  return useQuery({
+    queryKey: oqcInspectionKeys.serialRecords(inspectionRequestId ?? 0),
+    queryFn: () =>
+      runRequest(() =>
+        client.GET('/quality/inspection-requests/{inspectionRequestId}/oqc-serials', {
+          params: { path: { inspectionRequestId: inspectionRequestId as number } },
+        }),
+      ).then((response) => response.items),
+    enabled: inspectionRequestId !== null && enabled,
   });
 };

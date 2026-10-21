@@ -201,4 +201,53 @@ export const oqcInspection: Translated<typeof ko.oqcInspection> = {
     loading: 'Đang tải trạng thái phê duyệt bỏ qua.',
     loadFailed: 'Không tải được trạng thái phê duyệt bỏ qua.',
   },
+  serials: {
+    openByScan: 'Mở yêu cầu bằng số serial',
+    openByScanHelp: 'Quét số serial để mở yêu cầu OQC đang mở đã lấy hàng LOT đó.',
+    scanLabel: 'Quét serial',
+    scanPlaceholder: 'Quét hoặc nhập số serial rồi nhấn Enter',
+    scanning: 'Đang kiểm tra serial…',
+    heading: 'Serial đã kiểm tra',
+    help: 'Quét serial đã kiểm tra và chọn OK/NG. Lưu cùng với đánh giá và ghi vào dòng kiểm tra xuất hàng của phiếu kiểm tra sản phẩm.',
+    notFound: (serialNo: string): string => `Không có số serial: ${serialNo}`,
+    noOpenRequest: (serialNo: string): string =>
+      `Không có yêu cầu OQC đang mở đã lấy hàng LOT của serial ${serialNo}.`,
+    pickRequest: 'Có nhiều yêu cầu OQC đã lấy hàng LOT của serial này. Hãy chọn yêu cầu cần mở.',
+    duplicate: (serialNo: string): string => `Serial đã có trong danh sách: ${serialNo}`,
+    otherItem: (serialNo: string): string =>
+      `Serial ${serialNo} không thuộc mã hàng của yêu cầu này.`,
+    notPicked: (serialNo: string): string =>
+      `LOT của serial ${serialNo} không phải LOT mà lệnh xuất hàng này đã lấy hàng.`,
+    noStandard:
+      'Model này chưa có tiêu chuẩn phiếu kiểm tra đã xác nhận có bước kiểm tra xuất hàng nên không ghi được kiểm tra xuất hàng theo serial. Chỉ lưu đánh giá LOT.',
+    sheetOwned: (serialNo: string): string =>
+      `Serial ${serialNo} đã được ghi kiểm tra xuất hàng trên màn hình phiếu kiểm tra sản phẩm.`,
+    lookupFailed: 'Không kiểm tra được serial. Hãy quét lại.',
+    columns: { serialNo: 'Serial', lotNo: 'LOT', previous: 'Ghi trước', judgment: 'Đánh giá' },
+    previous: (first: string, final: string): string => `Lần 1 ${first} → Cuối ${final}`,
+    firstOkLocked: 'Lần 1 OK — không đổi sang NG được',
+    remove: 'Bỏ',
+    ok: 'OK',
+    ng: 'NG',
+    empty: 'Chưa quét serial nào. Cũng có thể chỉ lưu đánh giá LOT mà không có serial.',
+    tooMany: 'Số serial đã kiểm tra nhiều hơn số lượng kiểm tra.',
+    tooManyNg: 'Số serial NG nhiều hơn số lượng không đạt. Hãy kiểm tra số lượng không đạt.',
+    count: (total: number, ng: number): string => `${total} serial · NG ${ng}`,
+    recordHeading: 'Kiểm tra xuất hàng theo serial',
+    recordHelp:
+      'Với mỗi serial, đánh giá lần 1 giữ nguyên như lần ghi đầu; lượt kiểm tra lại chỉ đổi đánh giá cuối.',
+    recordEmpty: 'Chưa có serial nào được ghi.',
+    recordLoading: 'Đang tải kiểm tra xuất hàng theo serial.',
+    recordFailed: 'Không tải được kiểm tra xuất hàng theo serial.',
+    recordColumns: {
+      serialNo: 'Serial',
+      lotNo: 'LOT',
+      first: 'Lần 1',
+      final: 'Cuối',
+      round: 'Lượt cuối',
+      inspector: 'Người kiểm tra',
+      inspectedAt: 'Thời điểm kiểm tra',
+    },
+    round: (round: number): string => `Lượt ${round}`,
+  },
 };
