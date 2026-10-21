@@ -7698,10 +7698,21 @@ button.app-button-neutral {
 }
 
 .alarm-recipient-layout {
-  grid-template-columns: minmax(24rem, 3fr) minmax(28rem, 4fr);
+  grid-template-columns: minmax(0, 3fr) minmax(0, 4fr);
+}
+
+/*
+ * 좁으면 위아래로 쌓는다 — 이 규칙이 `.two-pane` 보다 뒤에 있어 공용 접힘(1280px)을 덮으므로
+ * 같은 기준점을 여기서 다시 건다. 고정 하한을 두면 사이드바가 펼쳐진 1024px 에서 가로로 넘친다.
+ */
+@media (max-width: 1280px) {
+  .alarm-recipient-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 
 .alarm-recipient-pane {
+  min-width: 0;
   display: grid;
   align-content: start;
   gap: var(--space-4);

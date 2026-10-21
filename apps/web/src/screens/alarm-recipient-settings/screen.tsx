@@ -378,7 +378,8 @@ export const AlarmRecipientSettingsScreen = () => {
               rows={events.data}
               getRowId={(event) => event.eventCode}
               density="compact"
-              caption={t.panes.events}
+              /* 표 이름은 바로 위 패널 제목이 맡는다 — 캡션을 또 두면 「이벤트」가 두 번 보인다. */
+              aria-labelledby="alarm-events-title"
               empty={<EmptyState size="sm" title={t.state.noEvents} />}
             />
           )}
