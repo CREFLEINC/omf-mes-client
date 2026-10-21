@@ -71,6 +71,24 @@ export const workStart = {
     retry: '다시 시도',
   },
 
+  /** 함께 일하는 작업자 — 사번을 확인한 사람이 정, 더한 사람은 부다. */
+  coWorkers: {
+    title: '작업자',
+    count: (count: number, max: number): string => `${String(count)}/${String(max)}`,
+    main: '정',
+    sub: '부',
+    name: (workerName: string, workerNo: string): string => `${workerName} (${workerNo})`,
+    add: '+ 부 작업자',
+    remove: (name: string): string => `${name} 빼기`,
+    dialogTitle: '부 작업자 추가',
+    cancel: '취소',
+    confirm: '추가',
+    duplicate: '이미 들어간 작업자입니다.',
+    otherPlant: '다른 공장 작업자는 넣을 수 없습니다.',
+    failed: '처리하지 못했습니다. 다시 시도해 주세요.',
+    loadFailed: '작업자를 불러오지 못했습니다.',
+  },
+
   /** ② 작업지시 목록 구획. */
   list: {
     /** 기본은 「이 설비 배포분」이고 토글이 그 축을 뺀다. */

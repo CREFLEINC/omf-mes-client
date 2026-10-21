@@ -155,6 +155,10 @@ export interface StubOptions {
   workOrdersAfter?: Record<string, unknown>[];
   /** 점검 유형의 표시 이름(코드 사전). 기본은 일상·정기 두 값. */
   inspectionTypeNames?: Record<string, unknown>[];
+  /** 열린 세션의 지금 참여자. 참여·이탈이 성공하면 이 목록이 따라 바뀐다. */
+  sessionWorkers?: Record<string, unknown>[];
+  /** 참여·이탈 응답을 실패로 둔다. */
+  crewWriteError?: { status: number; body: unknown };
 }
 
 export interface Recorded {
@@ -166,6 +170,8 @@ const stub = (options: StubOptions = {}): { recorded: Recorded; fetch: StubFetch
   const recorded: Recorded = { urls: [], bodies: [] };
   let workerCalls = 0;
   let listCalls = 0;
+  let crew = [...(options.sessionWorkers ?? [])];
+  let nextCrewId = 8801;
 
   const fetch: StubFetch = async (request) => {
     const url = new URL(request.url);
@@ -208,6 +214,51 @@ const stub = (options: StubOptions = {}): { recorded: Recorded; fetch: StubFetch
           : (options.workOrders ?? [WORK_ORDER]);
 
       return jsonResponse({ items, page: { page: 1, size: 20, total: items.length } });
+    }
+
+    const crewPath = /^\/production\/work-sessions\/\d+\/workers$/;
+    const leavePath = /^\/production\/work-sessions\/\d+\/workers\/(\d+):leave$/;
+    const pathname = decodeURIComponent(url.pathname);
+
+    if (crewPath.test(pathname) && request.method === 'GET') return jsonResponse(crew);
+
+    if (
+      (crewPath.test(pathname) || leavePath.test(pathname)) &&
+      request.method === 'POST' &&
+      options.crewWriteError !== undefined
+    ) {
+      return jsonResponse(options.crewWriteError.body, { status: options.crewWriteError.status });
+    }
+
+    if (crewPath.test(pathname) && request.method === 'POST') {
+      const body = (await request.clone().json()) as { workerId: number; joinedAt: string };
+      const worker = (options.workers ?? [WORKER]).find(
+        (item) => (item as { workerId: number }).workerId === body.workerId,
+      ) as { workerNo?: string; workerName?: string } | undefined;
+      const joined = {
+        workSessionWorkerId: nextCrewId,
+        workerId: body.workerId,
+        workerNo: worker?.workerNo,
+        workerName: worker?.workerName,
+        workerRoleCode: 'SUB',
+        joinedAt: body.joinedAt,
+        participatedMinutes: 0,
+      };
+      nextCrewId += 1;
+      crew = [...crew, joined];
+
+      return jsonResponse(joined, { status: 201 });
+    }
+
+    const leaving = leavePath.exec(pathname);
+    if (leaving !== null && request.method === 'POST') {
+      const id = Number(leaving[1]);
+      const left = crew.find(
+        (item) => (item as { workSessionWorkerId: number }).workSessionWorkerId === id,
+      );
+      crew = crew.filter((item) => item !== left);
+
+      return jsonResponse({ ...left, leftAt: '2026-09-02T10:00:00+09:00' });
     }
 
     if (url.pathname === '/production/work-sessions' && request.method === 'GET') {

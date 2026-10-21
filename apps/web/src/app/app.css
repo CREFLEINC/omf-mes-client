@@ -11710,6 +11710,36 @@ button.app-button-neutral {
   letter-spacing: var(--type-body-lg-tracking);
 }
 
+/* 함께 일하는 작업자 — 한 줄에 사람을 늘어놓고 끝에 더하기 단추를 둔다. */
+.work-start-crew {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.work-start-crew-head {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-3);
+}
+
+.work-start-crew-list {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.work-start-crew-member {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font: var(--type-body-lg);
+  letter-spacing: var(--type-body-lg-tracking);
+}
+
 .work-start-list-head {
   display: flex;
   align-items: center;
