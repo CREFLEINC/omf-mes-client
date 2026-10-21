@@ -73,7 +73,7 @@ describe('toCodeOptions', () => {
 
 describe('선택칸 안내', () => {
   it('선택지가 비면 왜 비었는지 밝힌다', () => {
-    expect(codeNote([])).toBe(messages.pendingCode.note);
+    expect(codeNote([])).toBe(messages.iqcSkipApproval.filters.statusPendingNote);
     expect(codePlaceholder()).toBe(messages.pendingCode.placeholder);
   });
 

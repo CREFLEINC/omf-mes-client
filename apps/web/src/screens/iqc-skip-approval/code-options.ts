@@ -43,9 +43,12 @@ export const typePendingNote = (approvalTypeCode: string | null): string | undef
 export const toCodeOptions = (values: readonly string[]): SelectOption[] =>
   values.map((code) => ({ value: code, label: code }));
 
-/** 선택지가 왜 비어 있는지 밝히는 안내. **차면 거둔다** — 남으면 화면이 거짓말을 한다. */
+/**
+ * 선택지가 왜 비어 있는지 밝히는 안내. **차면 거둔다** — 남으면 화면이 거짓말을 한다.
+ * 칸 아래 한 줄이라 공용 문구보다 짧은 이 화면 문구를 쓴다(omf-all-around#134).
+ */
 export const codeNote = (options: readonly SelectOption[]): string | undefined =>
-  options.length === 0 ? messages.pendingCode.note : undefined;
+  options.length === 0 ? messages.iqcSkipApproval.filters.statusPendingNote : undefined;
 
 /** 선택칸 트리거에 보이는 자리표시 문구. */
 export const codePlaceholder = (): string => messages.pendingCode.placeholder;

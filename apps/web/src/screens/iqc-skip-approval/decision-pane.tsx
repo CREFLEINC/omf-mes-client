@@ -52,12 +52,16 @@ export interface DecisionPaneProps {
  *
  * | 겹 | 여기서 |
  * | :-: | --- |
- * | ① 상시 구획 | 《승인 시 결과》가 **버튼 바로 위 상시 자리**에 선다. 버튼이 잠겨 있어도 보인다 |
+ * | ① 상시 구획 | 《승인 시 결과》가 **의견칸·버튼 위 상시 자리**에 선다. 버튼이 잠겨 있어도 보인다 |
  * | ② 확인 창 | 버튼은 창을 열 뿐이다 — 이 부품은 요청을 보내지 않는다 |
  * | ③ 전면 잠금 | `isLocked`가 입력칸과 버튼을 함께 잠근다(첫째 겹) |
  *
  * **잠금 사유가 갈린다.** 「내 차례가 아니다」는 서버가 준 사실이고 「보내는 중이다」는 지금
  * 이 화면의 상태다 — 한 문구로 뭉개면 사용자가 기다려야 할지 물어봐야 할지 알 수 없다.
+ *
+ * **「내 차례가 아니다」는 단추 줄 아래 한 번만 적는다**(omf-all-around#134). 의견칸·반려·승인이
+ * 같은 문장을 세 번 되풀이하던 것을 한 줄로 모으고, 세 컨트롤이 모두 그 줄을 설명으로 잇는다.
+ * 잠김 조건은 그대로다(`decisionBlockedReason`).
  *
  * 이 화면 슬라이스가 소유한다 — 다른 화면 슬라이스의 같은 이름 부품을 참조하지 않는다.
  */
@@ -77,13 +81,32 @@ export const DecisionPane = ({
   const state = { isMyTurn, comment };
   const approveBlocked = decisionBlockedReason('approve', state);
   const rejectBlocked = decisionBlockedReason('reject', state);
-  const isCommentDisabled = !isMyTurn || isLocked;
+  const turnNoteId = useId();
+  const isNotMyTurn = !isMyTurn;
+  const isCommentDisabled = isNotMyTurn || isLocked;
 
   return (
-    <div role="group" aria-label={t.panes.decision}>
+    <div role="group" aria-label={t.panes.decision} className="iqc-skip-approval-section">
+      <h3 className="iqc-skip-approval-heading">{t.panes.decision}</h3>
       {banner}
 
-      <div className="field-cell">
+      {/*
+       * **상시 구획이다.** 버튼의 상태와 무관하게 늘 선다 — 승인이 무엇을 하고 무엇을 하지
+       * 않는지는 누를 수 있는지와 상관없이 참인 사실이다.
+       *
+       * 이름을 **보이는 글자로** 두고 그것으로 구획 이름을 삼는다. 감춘 이름만 두면 화면에서는
+       * 문장 셋이 근거 없이 떠 있는 것으로 보이고, 그 셋이 무엇에 대한 말인지 읽는 사람이 짐작해야 한다.
+       */}
+      <div className="iqc-skip-approval-outcome" role="group" aria-labelledby={outcomeHeadingId}>
+        <p id={outcomeHeadingId} className="field-label">
+          {t.panes.approvalOutcome}
+        </p>
+        <p className="field-note">{t.decision.outcome.statusOnly}</p>
+        <p className="field-note">{t.decision.outcome.noErpDocument}</p>
+        <p className="field-note">{t.decision.outcome.inspectionPending}</p>
+      </div>
+
+      <div className="field-cell iqc-skip-approval-comment">
         <TextField
           id={commentId}
           label={t.decision.commentLabel}
@@ -94,14 +117,12 @@ export const DecisionPane = ({
            * 형식 유도 문구를 **입력칸의 설명으로 잇는다.** 디자인 시스템이 넘겨받은
            * `aria-describedby`를 자기 것과 합쳐 주므로 도움말·오류·잠금 사유가 밀려나지 않는다.
            */
-          aria-describedby={rejectGuideId}
+          aria-describedby={isNotMyTurn ? `${rejectGuideId} ${turnNoteId}` : rejectGuideId}
           /*
-           * 잠긴 이유를 갈라 낸다 — 보내는 중이면 기다리면 되고, 내 차례가 아니면 기다려도
-           * 이 화면에서는 열리지 않는다. 디자인 시스템이 잠겼을 때만 이 글자를 낸다.
+           * 잠긴 이유를 갈라 낸다 — 보내는 중이면 여기 적고, 내 차례가 아니면 단추 줄 아래
+           * 한 줄(`turnNoteId`)이 말한다. 디자인 시스템이 잠겼을 때만 이 글자를 낸다.
            */
-          disabledReason={
-            isLocked ? t.decision.commentSendingReason : t.decision.commentDisabledReason
-          }
+          disabledReason={isLocked ? t.decision.commentSendingReason : undefined}
           error={commentError}
           onChange={(event) => {
             onChangeComment(event.target.value);
@@ -117,40 +138,42 @@ export const DecisionPane = ({
         </p>
       </div>
 
-      {/*
-       * **상시 구획이다.** 버튼의 상태와 무관하게 늘 선다 — 승인이 무엇을 하고 무엇을 하지
-       * 않는지는 누를 수 있는지와 상관없이 참인 사실이다.
-       *
-       * 이름을 **보이는 글자로** 두고 그것으로 구획 이름을 삼는다. 감춘 이름만 두면 화면에서는
-       * 문장 셋이 근거 없이 떠 있는 것으로 보이고, 그 셋이 무엇에 대한 말인지 읽는 사람이 짐작해야 한다.
-       */}
-      <div className="field-cell" role="group" aria-labelledby={outcomeHeadingId}>
-        <p id={outcomeHeadingId} className="field-label">
-          {t.panes.approvalOutcome}
-        </p>
-        <p className="field-note">{t.decision.outcome.statusOnly}</p>
-        <p className="field-note">{t.decision.outcome.noErpDocument}</p>
-        <p className="field-note">{t.decision.outcome.inspectionPending}</p>
-      </div>
-
-      <div className="form-actions">
+      <div className="form-actions iqc-skip-approval-actions">
         {/* 되돌리기 쪽(반려)이 왼쪽, 흔한 길(승인)이 오른쪽 — 이 저장소의 액션 줄 차례 그대로다. */}
-        {rejectBlocked === null ? (
-          <Button variant="outlined" disabled={isLocked} onClick={onReject}>
-            {t.decision.reject}
-          </Button>
+        {isNotMyTurn ? (
+          <>
+            <Button variant="outlined" disabled aria-describedby={turnNoteId}>
+              {t.decision.reject}
+            </Button>
+            <Button variant="filled" disabled aria-describedby={turnNoteId}>
+              {t.decision.approve}
+            </Button>
+          </>
         ) : (
-          <DisabledAction label={t.decision.reject} reason={rejectBlocked} />
-        )}
+          <>
+            {rejectBlocked === null ? (
+              <Button variant="outlined" disabled={isLocked} onClick={onReject}>
+                {t.decision.reject}
+              </Button>
+            ) : (
+              <DisabledAction label={t.decision.reject} reason={rejectBlocked} />
+            )}
 
-        {approveBlocked === null ? (
-          <Button variant="filled" disabled={isLocked} onClick={onApprove}>
-            {t.decision.approve}
-          </Button>
-        ) : (
-          <DisabledAction variant="filled" label={t.decision.approve} reason={approveBlocked} />
+            {approveBlocked === null ? (
+              <Button variant="filled" disabled={isLocked} onClick={onApprove}>
+                {t.decision.approve}
+              </Button>
+            ) : (
+              <DisabledAction variant="filled" label={t.decision.approve} reason={approveBlocked} />
+            )}
+          </>
         )}
       </div>
+      {isNotMyTurn && (
+        <p id={turnNoteId} className="field-note iqc-skip-approval-turn-note">
+          {t.progress.notMyTurn}
+        </p>
+      )}
     </div>
   );
 };

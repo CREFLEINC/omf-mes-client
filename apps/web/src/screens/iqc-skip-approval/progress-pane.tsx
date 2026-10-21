@@ -1,7 +1,8 @@
-import { Stepper, type StepperItem } from '@crefle/web-ui';
+import { Chip, Stepper, type StepperItem } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
 
+import { statusBadgeOf, type StatusBadge } from './labels';
 import type { RequestProgressView, StepProgressView } from './progress';
 
 const t = messages.iqcSkipApproval;
@@ -13,21 +14,38 @@ const t = messages.iqcSkipApproval;
  * 시각적으로는 색과 아이콘뿐이다. 색으로만 말하면 색을 구분하지 못하는 사용자에게 이 구획은
  * 아무 말도 하지 않는다 — 그래서 결과 코드·시각·의견·내 단계 표식이 전부 이 자리에 선다.
  *
- * **결재 결과는 코드 그대로다.** 값 목록이 공통코드 소관이라 화면이 「승인」·「반려」로 옮기면
- * 그 뜻을 화면이 지어낸 것이 된다.
+ * **결재 결과는 배지다**(omf-all-around#134) — 승인 초록 · 반려 빨강 · 기다리는 단계 주황,
+ * 아직 오지 않은 단계는 회색. 표에 없는 결과 코드는 회색에 코드 그대로다(`labels.ts`).
  */
-const describeStep = (step: StepProgressView): ReactNode => (
-  <>
-    {step.decisionCode === null ? (
-      <span className="field-note">{step.waitingText}</span>
-    ) : (
-      <span className="field-note">{step.decisionCode}</span>
-    )}
-    {step.decisionAtText !== null && <span className="field-note">{step.decisionAtText}</span>}
-    {step.decisionComment !== null && <span className="field-note">{step.decisionComment}</span>}
-    {step.isMine && <span className="field-note">{t.progress.mine}</span>}
-  </>
-);
+const stepBadgeOf = (step: StepProgressView): StatusBadge => {
+  if (step.decisionCode !== null) return statusBadgeOf(step.decisionCode);
+  /* 결재 결과가 없으면 `progress.ts`가 대기 문구를 늘 채운다 — `??`는 타입을 좁히는 몫이다. */
+  return {
+    label: step.waitingText ?? t.progress.waitingPending,
+    tone: step.status === 'current' ? 'warning' : 'idle',
+  };
+};
+
+const describeStep = (step: StepProgressView): ReactNode => {
+  const badge = stepBadgeOf(step);
+
+  return (
+    <span className="iqc-skip-approval-step">
+      <span className="iqc-skip-approval-step-badges">
+        <Chip variant="status" size="sm" status={badge.tone}>
+          {badge.label}
+        </Chip>
+        {step.isMine && (
+          <Chip variant="status" size="sm" status="info">
+            {t.progress.mine}
+          </Chip>
+        )}
+      </span>
+      {step.decisionAtText !== null && <span className="field-note">{step.decisionAtText}</span>}
+      {step.decisionComment !== null && <span className="field-note">{step.decisionComment}</span>}
+    </span>
+  );
+};
 
 export interface ProgressPaneProps {
   view: RequestProgressView;
@@ -68,8 +86,9 @@ export const ProgressPane = ({ view }: ProgressPaneProps) => {
   }));
 
   return (
-    <div role="group" aria-label={t.panes.progress}>
-      <p>{view.positionText}</p>
+    <div role="group" aria-label={t.panes.progress} className="iqc-skip-approval-section">
+      <h3 className="iqc-skip-approval-heading">{t.panes.progress}</h3>
+      <p className="iqc-skip-approval-position">{view.positionText}</p>
       {/*
        * **왜 내 차례가 아닌지는 말하지 않는다.** 앞 단계가 안 끝난 것인지, 내가 승인자가
        * 아닌 것인지, 이미 끝난 요청인지 화면은 판정할 수 없다 — 아는 것만 말한다.
