@@ -11774,6 +11774,36 @@ button.app-button-neutral {
   letter-spacing: var(--type-body-lg-tracking);
 }
 
+/* 함께 일하는 작업자 — 한 줄에 사람을 늘어놓고 끝에 더하기 단추를 둔다. */
+.work-start-crew {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.work-start-crew-head {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-3);
+}
+
+.work-start-crew-list {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.work-start-crew-member {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font: var(--type-body-lg);
+  letter-spacing: var(--type-body-lg-tracking);
+}
+
 .work-start-list-head {
   display: flex;
   align-items: center;
@@ -15414,6 +15444,35 @@ body:has(.goods-receipt-post-form) > [role='listbox'] {
   --dash-delta-good: #81c995;
   --dash-delta-bad: #f2a65a;
   --dash-delta-flat: #a2a5ac;
+}
+
+/* W/O 상세 창의 작업 세션·작업자별 실적 — 구획끼리, 세션 블록끼리 띄운다. */
+.work-order-progress-crew {
+  display: grid;
+  gap: var(--space-3);
+  margin-block: var(--space-4);
+}
+
+.work-order-progress-crew > h3,
+.work-order-progress-session > h4 {
+  margin: 0;
+}
+
+.work-order-progress-session {
+  display: grid;
+  gap: var(--space-2);
+}
+
+/* 세션의 시작·종료 — 항목명 위, 값 아래로 두 칸을 나란히 둔다. */
+.work-order-progress-session-times {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-5);
+  margin: 0;
+}
+
+.work-order-progress-session-times dd {
+  margin: 0;
 }
 
 /*

@@ -8,6 +8,7 @@ import type {
   Terminal,
   WorkOrderListResponse,
   WorkSession,
+  WorkSessionWorker,
   Worker,
 } from './types';
 
@@ -19,6 +20,7 @@ import type {
  * GET /production/work-orders                     작업지시 목록 (이 설비 / 전체)
  * GET /production/work-sessions?workOrderId&open  재개할 «열린» 세션 찾기
  * GET /mdm/workers?workerNo                       사번 확인 (공통 계약 · 귀속이지 인증이 아니다)
+ * GET /production/work-sessions/{id}/workers      열린 세션의 지금 참여자
  * GET /quality/inspection-requests?workOrderId     끝나지 않은 PQC 검사 의뢰 (진입 단추의 조건)
  * ```
  *
@@ -51,6 +53,8 @@ export const workStartKeys = {
   /** 고른 지시의 끝나지 않은 PQC 의뢰. 지시마다 다른 목록이라 키에 지시를 넣는다. */
   pendingPqc: (workOrderId: number) => [...ALL_KEY, 'pending-pqc', workOrderId] as const,
   uoms: () => [...ALL_KEY, 'uoms'] as const,
+  sessionWorkers: (workSessionId: number) =>
+    [...ALL_KEY, 'session-workers', workSessionId] as const,
 };
 
 /** PQC 대기 조회의 검사 유형. 요구서 §3-12 가 이 값을 그대로 적었다(자매 화면 `P-02-09` 와 같다). */
@@ -176,6 +180,38 @@ export const useOpenSession = (
   });
 };
 
+/** 사번으로 작업자를 찾는다. 퇴사자도 받아야 「미등록」과 「퇴사」를 가른다. */
+export const fetchWorkersByNo = async (client: Client, workerNo: string): Promise<Worker[]> => {
+  const data = await runRequest(() =>
+    client.GET('/mdm/workers', {
+      params: { query: { workerNo: workerNo.trim(), includeInactive: true, page: 1, size: 2 } },
+    }),
+  );
+
+  return data.items;
+};
+
+/** 열린 세션에 아직 남아 있는 참여자 — 참여 순이다. */
+export const useSessionWorkers = (
+  workSessionId: number | null,
+): UseQueryResult<WorkSessionWorker[]> => {
+  const { client } = useApiClient();
+
+  return useQuery({
+    queryKey: workStartKeys.sessionWorkers(workSessionId ?? 0),
+    enabled: workSessionId !== null,
+    queryFn: () => {
+      if (workSessionId === null) throw new Error('세션을 모르면 참여자를 조회하지 않습니다.');
+
+      return runRequest(() =>
+        client.GET('/production/work-sessions/{workSessionId}/workers', {
+          params: { path: { workSessionId }, query: { active: true } },
+        }),
+      );
+    },
+  });
+};
+
 /**
  * 사번 확인 — **존재와 재직만 본다.** 이 화면도 인증이 아니라 **귀속**이다(공유계약 D-5).
  *
@@ -191,18 +227,10 @@ export const useWorkerLookup = (workerNo: string | null): UseQueryResult<Worker[
   return useQuery({
     queryKey: workStartKeys.worker(workerNo ?? ''),
     enabled: workerNo !== null,
-    queryFn: async () => {
+    queryFn: () => {
       if (workerNo === null) throw new Error('사번 없이 조회하지 않습니다.');
 
-      const data = await runRequest(() =>
-        client.GET('/mdm/workers', {
-          params: {
-            query: { workerNo: workerNo.trim(), includeInactive: true, page: 1, size: 2 },
-          },
-        }),
-      );
-
-      return data.items;
+      return fetchWorkersByNo(client, workerNo);
     },
   });
 };

@@ -3,20 +3,31 @@ import { messages } from '@omf-mes/i18n';
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router';
 
+import { useApiClient } from '../../patterns/api-context';
+
 import { soleProcessIdOf, usePopIdentity } from '../../patterns/pop-identity';
 import { PopWorkerMissingBanner } from '../../patterns/pop-worker-missing-banner';
 import { PrecheckGate } from '../work-precheck-gate/gate';
 import { setWorkerSession, useWorkerSession } from '../../patterns/worker-session';
 import { ActionBar } from './action-bar';
+import { CrewPanel, type CrewMember } from './crew-panel';
 import { useIsOnline } from './connection';
 import { useStartGate } from './gating';
-import { useResumeWork, useStartWork, toResumeBody } from './mutations';
+import {
+  useJoinSession,
+  useLeaveSession,
+  useResumeWork,
+  useStartWork,
+  toResumeBody,
+} from './mutations';
 import { PopHeader } from './pop-header';
 import { isOrderQtyFulfilled } from './quantity-fulfilled';
 import { SelectionCard } from './selection-card';
 import {
+  fetchWorkersByNo,
   useOpenSession,
   usePendingPqcRequests,
+  useSessionWorkers,
   useTerminal,
   useUomCodes,
   useWorkOrders,
@@ -25,7 +36,7 @@ import {
 import { SessionEntryActions } from './session-entry-actions';
 import { toSessionRequest } from './session-request';
 import { assignedAtText, terminalNow } from './terminal-clock';
-import type { ControlOverride, WorkOrder } from './types';
+import type { ControlOverride, WorkOrder, Worker } from './types';
 import { WorkOrderList } from './work-order-list';
 import { isHeld } from './work-order-status';
 import { WorkerPanel } from './worker-panel';
@@ -189,6 +200,125 @@ export const WorkStartScreen = () => {
     selected !== null && openSession.data != null,
   );
 
+  /*
+   * 함께 일하는 작업자. 열린 세션을 고른 동안은 그 세션의 지금 참여자를 넣고 빼고(즉시 반영),
+   * 그 밖에서는 시작할 때 함께 보낼 부 작업자를 모은다.
+   */
+  const { client } = useApiClient();
+  const crewSessionId = selected === null ? null : (openSession.data?.workSessionId ?? null);
+  const sessionCrew = useSessionWorkers(crewSessionId);
+  const [pendingCrew, setPendingCrew] = useState<Worker[]>([]);
+  const joinCrew = useJoinSession({
+    workSessionId: crewSessionId,
+    workerNo: confirmedNo ?? '',
+    onSuccess: () => undefined,
+  });
+  const leaveCrew = useLeaveSession({
+    workSessionId: crewSessionId,
+    workerNo: confirmedNo ?? '',
+    onSuccess: () => undefined,
+  });
+  const mainWorker = verified?.kind === 'ok' ? verified.worker : (workerSession?.worker ?? null);
+  const mainWorkerName = mainWorker?.workerName ?? null;
+  const mainWorkerId = mainWorker?.workerId ?? 0;
+  const crew: CrewMember[] =
+    crewSessionId === null
+      ? [
+          ...(confirmedNo === null
+            ? []
+            : [
+                {
+                  key: 'main',
+                  workerId: mainWorkerId,
+                  workerNo: confirmedNo,
+                  workerName: mainWorkerName,
+                  role: 'MAIN' as const,
+                  workSessionWorkerId: null,
+                },
+              ]),
+          ...pendingCrew.map((worker) => ({
+            key: `pending-${String(worker.workerId)}`,
+            workerId: worker.workerId,
+            workerNo: worker.workerNo,
+            workerName: worker.workerName,
+            role: 'SUB' as const,
+            workSessionWorkerId: null,
+          })),
+        ]
+      : (sessionCrew.data ?? []).map((member) => ({
+          key: `session-${String(member.workSessionWorkerId)}`,
+          workerId: member.workerId,
+          workerNo: member.workerNo ?? null,
+          workerName: member.workerName ?? null,
+          /* 옛 행의 `OPERATOR` 는 부다 — 정은 `MAIN` 하나뿐이다. */
+          role: member.workerRoleCode === 'MAIN' ? ('MAIN' as const) : ('SUB' as const),
+          workSessionWorkerId: member.workSessionWorkerId,
+        }));
+  const crewWriteError = joinCrew.error ?? leaveCrew.error;
+
+  /* 다른 세션으로 옮기면 앞 세션의 실패를 남기지 않는다. */
+  useEffect(() => {
+    joinCrew.reset();
+    leaveCrew.reset();
+    /* eslint-disable-next-line react-hooks/exhaustive-deps -- 쓰기 객체는 렌더마다 새로 생긴다. */
+  }, [crewSessionId]);
+
+  /* 실패하면 지금 참여자를 다시 받는다 — 남이 먼저 바꿨을 수 있다. */
+  useEffect(() => {
+    if (crewWriteError !== null) void sessionCrew.refetch();
+    /* eslint-disable-next-line react-hooks/exhaustive-deps -- 조회 객체는 렌더마다 새로 생긴다. */
+  }, [crewWriteError]);
+  const crewError =
+    crewSessionId !== null && sessionCrew.isError
+      ? t.coWorkers.loadFailed
+      : crewWriteError === null
+        ? null
+        : crewWriteError.kind === 'validation' || crewWriteError.kind === 'stateLocked'
+          ? (crewWriteError.errors[0]?.message ?? t.coWorkers.failed)
+          : t.coWorkers.failed;
+
+  const addCrew = async (workerNo: string): Promise<string | null> => {
+    if (crew.some((member) => member.workerNo === workerNo)) return t.coWorkers.duplicate;
+
+    let found: Worker[];
+    try {
+      found = await fetchWorkersByNo(client, workerNo);
+    } catch {
+      return t.worker.lookupFailed;
+    }
+
+    const result = verifyWorker(found, workerNo, homePlantId);
+    if (result.kind === 'unknown') return t.worker.unknown;
+    if (result.kind === 'inactive') return t.worker.inactive;
+    /* 서버가 단말 공장의 작업자만 받는다 — 보내기 전에 막는다. */
+    if (result.isOtherPlant) return t.coWorkers.otherPlant;
+    if (crew.some((member) => member.workerId === result.worker.workerId)) {
+      return t.coWorkers.duplicate;
+    }
+
+    if (crewSessionId === null) {
+      setPendingCrew((current) => [...current, result.worker]);
+    } else {
+      leaveCrew.reset();
+      joinCrew.write({ workerId: result.worker.workerId, joinedAt: terminalNow(new Date()) });
+    }
+
+    return null;
+  };
+
+  const removeCrew = (member: CrewMember) => {
+    if (member.workSessionWorkerId === null) {
+      setPendingCrew((current) => current.filter((worker) => worker.workerId !== member.workerId));
+      return;
+    }
+
+    joinCrew.reset();
+    leaveCrew.write({
+      workSessionWorkerId: member.workSessionWorkerId,
+      leftAt: terminalNow(new Date()),
+    });
+  };
+
   /**
    * 이 시도가 언제 일어났는가. **한 번 정하면 성공할 때까지 붙든다.**
    *
@@ -279,6 +409,7 @@ export const WorkStartScreen = () => {
     workerNo: confirmedNo ?? '',
     onSuccess: () => {
       submitAtRef.current = null;
+      setPendingCrew([]);
       setOutcome(t.result.started(selected?.workOrderNo ?? ''));
       setSelectedId(null);
 
@@ -450,6 +581,7 @@ export const WorkStartScreen = () => {
         equipmentId: workEquipmentIdOf(target),
         startedAt: at,
         controlOverride: override,
+        coWorkerIds: pendingCrew.map((worker) => worker.workerId),
       }),
     );
   };
@@ -655,7 +787,7 @@ export const WorkStartScreen = () => {
        *
        * 작업자를 바꾸는 길은 머리줄의 **로그아웃**이다 — 사번을 놓고 진입 화면으로 돌아간다.
        */}
-      {confirmedNo === null && (
+      {confirmedNo === null ? (
         <WorkerPanel
           draft={draft}
           confirmed={confirmedNo}
@@ -677,6 +809,14 @@ export const WorkStartScreen = () => {
           }}
           isChecking={submittedNo !== null && confirmedNo === null && lookup.isFetching}
           error={workerError}
+        />
+      ) : (
+        <CrewPanel
+          members={crew}
+          disabled={!isOnline || joinCrew.isSaving || leaveCrew.isSaving}
+          error={crewError}
+          onAdd={addCrew}
+          onRemove={removeCrew}
         />
       )}
 
