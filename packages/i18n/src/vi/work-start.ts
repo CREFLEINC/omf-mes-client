@@ -60,6 +60,7 @@ export const workStart: Translated<typeof ko.workStart> = {
     otherPlant: 'Không thể thêm người của nhà máy khác.',
     failed: 'Không xử lý được. Hãy thử lại.',
     loadFailed: 'Không tải được danh sách người làm.',
+    unknown: 'Không rõ',
   },
 
   list: {

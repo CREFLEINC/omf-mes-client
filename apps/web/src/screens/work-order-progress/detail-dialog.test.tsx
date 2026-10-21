@@ -47,7 +47,12 @@ const renderDialog = (overrides: Partial<DetailDialogProps> = {}) => {
       itemLabel={(id) => `품목 ${id}`}
       statusLabel={(code) => `상태 ${code}`}
       crew={{
-        data: { sessions: [], workerResults: [], truncated: false },
+        data: {
+          sessions: [],
+          workerResults: [],
+          sessionsTruncated: false,
+          resultsTruncated: false,
+        },
         isLoading: false,
         isError: false,
       }}

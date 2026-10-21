@@ -140,7 +140,9 @@ export const workOrderProgress: Translated<typeof ko.workOrderProgress> = {
 
     crewLoading: 'Đang nhận phiên làm việc và kết quả theo người làm.',
     crewLoadError: 'Chưa nhận được phiên làm việc và kết quả theo người làm.',
-    crewTruncated: 'Chỉ nhận được một phần.',
+    sessionsTruncated: 'Không tải được một phần phiên làm việc.',
+    resultsTruncated: 'Không tải được một phần kết quả.',
+    unknownWorker: 'Không rõ',
     roles: { MAIN: 'Chính', SUB: 'Phụ', BOTH: 'Chính·Phụ' },
     workerLabel: (workerName: string, workerNo: string): string => `${workerName} (${workerNo})`,
     sessions: {

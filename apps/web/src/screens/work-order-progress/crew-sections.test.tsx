@@ -41,7 +41,8 @@ const crew = (overrides: Partial<WorkOrderCrew> = {}): WorkOrderCrew => ({
       reworkQty: 0,
     },
   ],
-  truncated: false,
+  sessionsTruncated: false,
+  resultsTruncated: false,
   ...overrides,
 });
 
@@ -93,6 +94,35 @@ describe('CrewSections', () => {
     );
     expect(headers()).toContain(t.workerResults.columns.scrapQty);
     expect(headers()).not.toContain(t.workerResults.columns.holdQty);
+  });
+
+  it('이름·사번을 모르면 내부 번호 대신 「알 수 없음」이다', () => {
+    const [first] = crew().workerResults;
+    if (first === undefined) throw new Error('행 없음');
+    render(
+      <CrewSections
+        crew={crew({ workerResults: [{ ...first, workerNo: null, workerName: null }] })}
+        isLoading={false}
+        isError={false}
+      />,
+    );
+
+    const table = within(screen.getByRole('region', { name: t.workerResults.heading }));
+    expect(table.getByText(t.unknownWorker)).toBeInTheDocument();
+    expect(table.queryByText(/#101/)).toBeNull();
+  });
+
+  it('무엇을 다 받지 못했는지 갈라 말한다', () => {
+    const { rerender } = render(
+      <CrewSections crew={crew({ sessionsTruncated: true })} isLoading={false} isError={false} />,
+    );
+    expect(screen.getByText(t.sessionsTruncated)).toBeInTheDocument();
+    expect(screen.queryByText(t.resultsTruncated)).toBeNull();
+
+    rerender(
+      <CrewSections crew={crew({ resultsTruncated: true })} isLoading={false} isError={false} />,
+    );
+    expect(screen.getByText(t.resultsTruncated)).toBeInTheDocument();
   });
 
   it('세션이 없으면 그 사실을 적고, 실패하면 오류 띠를 낸다', () => {

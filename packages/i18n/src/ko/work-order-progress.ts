@@ -203,7 +203,9 @@ export const workOrderProgress = {
 
     crewLoading: '작업 세션·작업자별 실적을 받는 중입니다.',
     crewLoadError: '작업 세션·작업자별 실적을 받지 못했습니다.',
-    crewTruncated: '일부만 받았습니다.',
+    sessionsTruncated: '작업 세션 일부를 불러오지 못했습니다.',
+    resultsTruncated: '실적 일부를 불러오지 못했습니다.',
+    unknownWorker: '알 수 없음',
     roles: { MAIN: '정', SUB: '부', BOTH: '정·부' },
     workerLabel: (workerName: string, workerNo: string): string => `${workerName} (${workerNo})`,
     sessions: {

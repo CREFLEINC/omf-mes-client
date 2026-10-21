@@ -197,6 +197,33 @@ describe('useWorkOrderCrew', () => {
           },
         ]);
       }
+      if (url.pathname === '/production/production-results') {
+        /* 배분 없는 실적 — 적은 사람 이름은 작업자 상세로 푼다. */
+        return jsonResponse(
+          page([
+            {
+              productionResultId: 1,
+              productionResultNo: 'PR-1',
+              workOrderId: 7001,
+              resultSequence: 1,
+              goodQty: 5,
+              defectQty: 0,
+              holdQty: 0,
+              scrapQty: 0,
+              reworkQty: 0,
+              uomId: 1,
+              resultSourceCode: 'MANUAL',
+              occurredAt: '2026-10-20T09:00:00+09:00',
+              workerId: 309,
+              statusCode: 'SYN',
+              workerAllocations: [],
+            },
+          ]),
+        );
+      }
+      if (url.pathname === '/mdm/workers/309') {
+        return jsonResponse({ worker: { workerId: 309, workerNo: 'W309', workerName: '실적자' } });
+      }
       return jsonResponse(page([]));
     };
 
@@ -207,6 +234,9 @@ describe('useWorkOrderCrew', () => {
     expect(
       result.current.data?.sessions[0]?.participants.map((row) => row.workSessionWorkerId),
     ).toEqual([11, 12]);
+    expect(result.current.data?.workerResults.map((row) => [row.workerId, row.workerName])).toEqual(
+      [[309, '실적자']],
+    );
     expect(urls).toEqual(
       expect.arrayContaining([
         expect.stringMatching(/^\/production\/work-sessions\?.*open=true/),

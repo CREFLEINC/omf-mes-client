@@ -218,10 +218,9 @@ export const WorkStartScreen = () => {
     workerNo: confirmedNo ?? '',
     onSuccess: () => undefined,
   });
-  const mainWorkerName =
-    verified?.kind === 'ok'
-      ? verified.worker.workerName
-      : (workerSession?.worker.workerName ?? null);
+  const mainWorker = verified?.kind === 'ok' ? verified.worker : (workerSession?.worker ?? null);
+  const mainWorkerName = mainWorker?.workerName ?? null;
+  const mainWorkerId = mainWorker?.workerId ?? 0;
   const crew: CrewMember[] =
     crewSessionId === null
       ? [
@@ -230,6 +229,7 @@ export const WorkStartScreen = () => {
             : [
                 {
                   key: 'main',
+                  workerId: mainWorkerId,
                   workerNo: confirmedNo,
                   workerName: mainWorkerName,
                   role: 'MAIN' as const,
@@ -238,6 +238,7 @@ export const WorkStartScreen = () => {
               ]),
           ...pendingCrew.map((worker) => ({
             key: `pending-${String(worker.workerId)}`,
+            workerId: worker.workerId,
             workerNo: worker.workerNo,
             workerName: worker.workerName,
             role: 'SUB' as const,
@@ -246,13 +247,27 @@ export const WorkStartScreen = () => {
         ]
       : (sessionCrew.data ?? []).map((member) => ({
           key: `session-${String(member.workSessionWorkerId)}`,
-          workerNo: member.workerNo ?? String(member.workerId),
+          workerId: member.workerId,
+          workerNo: member.workerNo ?? null,
           workerName: member.workerName ?? null,
           /* 옛 행의 `OPERATOR` 는 부다 — 정은 `MAIN` 하나뿐이다. */
           role: member.workerRoleCode === 'MAIN' ? ('MAIN' as const) : ('SUB' as const),
           workSessionWorkerId: member.workSessionWorkerId,
         }));
   const crewWriteError = joinCrew.error ?? leaveCrew.error;
+
+  /* 다른 세션으로 옮기면 앞 세션의 실패를 남기지 않는다. */
+  useEffect(() => {
+    joinCrew.reset();
+    leaveCrew.reset();
+    /* eslint-disable-next-line react-hooks/exhaustive-deps -- 쓰기 객체는 렌더마다 새로 생긴다. */
+  }, [crewSessionId]);
+
+  /* 실패하면 지금 참여자를 다시 받는다 — 남이 먼저 바꿨을 수 있다. */
+  useEffect(() => {
+    if (crewWriteError !== null) void sessionCrew.refetch();
+    /* eslint-disable-next-line react-hooks/exhaustive-deps -- 조회 객체는 렌더마다 새로 생긴다. */
+  }, [crewWriteError]);
   const crewError =
     crewSessionId !== null && sessionCrew.isError
       ? t.coWorkers.loadFailed
@@ -277,6 +292,9 @@ export const WorkStartScreen = () => {
     if (result.kind === 'inactive') return t.worker.inactive;
     /* 서버가 단말 공장의 작업자만 받는다 — 보내기 전에 막는다. */
     if (result.isOtherPlant) return t.coWorkers.otherPlant;
+    if (crew.some((member) => member.workerId === result.worker.workerId)) {
+      return t.coWorkers.duplicate;
+    }
 
     if (crewSessionId === null) {
       setPendingCrew((current) => [...current, result.worker]);
@@ -290,7 +308,7 @@ export const WorkStartScreen = () => {
 
   const removeCrew = (member: CrewMember) => {
     if (member.workSessionWorkerId === null) {
-      setPendingCrew((current) => current.filter((worker) => worker.workerNo !== member.workerNo));
+      setPendingCrew((current) => current.filter((worker) => worker.workerId !== member.workerId));
       return;
     }
 

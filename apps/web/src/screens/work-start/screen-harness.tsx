@@ -159,6 +159,8 @@ export interface StubOptions {
   sessionWorkers?: Record<string, unknown>[];
   /** 참여·이탈 응답을 실패로 둔다. */
   crewWriteError?: { status: number; body: unknown };
+  /** 참여·이탈 응답을 붙들어 둔다 — 「보내는 중」의 화면을 재려면 그 사이가 있어야 한다. */
+  crewWriteGate?: Promise<unknown>;
 }
 
 export interface Recorded {
@@ -221,6 +223,10 @@ const stub = (options: StubOptions = {}): { recorded: Recorded; fetch: StubFetch
     const pathname = decodeURIComponent(url.pathname);
 
     if (crewPath.test(pathname) && request.method === 'GET') return jsonResponse(crew);
+
+    if ((crewPath.test(pathname) || leavePath.test(pathname)) && request.method === 'POST') {
+      if (options.crewWriteGate !== undefined) await options.crewWriteGate;
+    }
 
     if (
       (crewPath.test(pathname) || leavePath.test(pathname)) &&

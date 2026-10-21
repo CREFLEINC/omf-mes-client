@@ -74,8 +74,9 @@ export const useWorkOrderDetail = (workOrderId: number | null): UseQueryResult<W
 export interface WorkOrderCrew {
   sessions: SessionView[];
   workerResults: WorkerResultRow[];
-  /** 세션·실적 중 하나라도 다 받지 못했다 */
-  truncated: boolean;
+  /** 다 받지 못한 것 — 무엇이 빠졌는지 말하려고 갈라 둔다 */
+  sessionsTruncated: boolean;
+  resultsTruncated: boolean;
 }
 
 /**
@@ -129,14 +130,33 @@ export const useWorkOrderCrew = (workOrderId: number | null): UseQueryResult<Wor
         }),
       );
       const views = toSessionViews(sessions, new Map(workers));
+      const workerResults = toWorkerResults(
+        results.items,
+        views.flatMap((view) => view.participants),
+      );
+
+      /* 배분이 없던 실적은 이름을 모를 수 있다 — 작업자 상세로 풀고, 못 풀면 「알 수 없음」으로 둔다. */
+      const named = await Promise.all(
+        workerResults.map(async (row) => {
+          if (row.workerName !== null) return row;
+          try {
+            const { worker } = await runRequest(() =>
+              client.GET('/mdm/workers/{workerId}', {
+                params: { path: { workerId: row.workerId } },
+              }),
+            );
+            return { ...row, workerNo: worker.workerNo, workerName: worker.workerName };
+          } catch {
+            return row;
+          }
+        }),
+      );
 
       return {
         sessions: views,
-        workerResults: toWorkerResults(
-          results.items,
-          views.flatMap((view) => view.participants),
-        ),
-        truncated: openSessions.truncated || closedSessions.truncated || results.truncated,
+        workerResults: named,
+        sessionsTruncated: openSessions.truncated || closedSessions.truncated,
+        resultsTruncated: results.truncated,
       };
     },
   });

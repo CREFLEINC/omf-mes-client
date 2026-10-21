@@ -15399,6 +15399,18 @@ body:has(.goods-receipt-post-form) > [role='listbox'] {
   gap: var(--space-2);
 }
 
+/* 세션의 시작·종료 — 항목명 위, 값 아래로 두 칸을 나란히 둔다. */
+.work-order-progress-session-times {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-5);
+  margin: 0;
+}
+
+.work-order-progress-session-times dd {
+  margin: 0;
+}
+
 /*
  * 긴급 IQC 생략 한도승인(omf-all-around#134) — IQC 수입검사·판정(#133)과 같은 기준.
  * 이 화면 클래스(.iqc-skip-approval-*) 아래에서만 적용한다.

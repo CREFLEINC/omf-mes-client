@@ -87,6 +87,7 @@ export const workStart = {
     otherPlant: '다른 공장 작업자는 넣을 수 없습니다.',
     failed: '처리하지 못했습니다. 다시 시도해 주세요.',
     loadFailed: '작업자를 불러오지 못했습니다.',
+    unknown: '알 수 없음',
   },
 
   /** ② 작업지시 목록 구획. */

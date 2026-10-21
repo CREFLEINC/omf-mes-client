@@ -24,7 +24,7 @@ const workerText = (row: {
 }) =>
   row.workerName !== null && row.workerNo !== null
     ? t.workerLabel(row.workerName, row.workerNo)
-    : (row.workerNo ?? row.workerName ?? `#${String(row.workerId)}`);
+    : (row.workerName ?? row.workerNo ?? t.unknownWorker);
 
 const roleText = (role: CrewRoleLabel): string => t.roles[role];
 
@@ -85,9 +85,14 @@ export const CrewSections = ({ crew, isLoading, isError }: CrewSectionsProps) =>
 
   return (
     <>
-      {crew.truncated && (
+      {crew.sessionsTruncated && (
         <div className="banner-slot">
-          <AlertBanner variant="warning">{t.crewTruncated}</AlertBanner>
+          <AlertBanner variant="warning">{t.sessionsTruncated}</AlertBanner>
+        </div>
+      )}
+      {crew.resultsTruncated && (
+        <div className="banner-slot">
+          <AlertBanner variant="warning">{t.resultsTruncated}</AlertBanner>
         </div>
       )}
 
@@ -103,7 +108,7 @@ export const CrewSections = ({ crew, isLoading, isError }: CrewSectionsProps) =>
               aria-label={t.sessions.session(session.sessionNo)}
             >
               <h4>{t.sessions.session(session.sessionNo)}</h4>
-              <dl className="filter-bar">
+              <dl className="work-order-progress-session-times">
                 <div className="field-cell">
                   <dt className="field-label">{t.sessions.startedAt}</dt>
                   <dd>{timeText(session.startedAt)}</dd>

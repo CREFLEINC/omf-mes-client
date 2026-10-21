@@ -13,7 +13,8 @@ export const CREW_MAX = 4;
 
 export interface CrewMember {
   key: string;
-  workerNo: string;
+  workerId: number;
+  workerNo: string | null;
   workerName: string | null;
   role: 'MAIN' | 'SUB';
   /** 열린 세션의 참여 행. 시작 전에 모으는 중이면 `null` */
@@ -32,7 +33,9 @@ export interface CrewPanelProps {
 }
 
 const nameOf = (member: CrewMember): string =>
-  member.workerName === null ? member.workerNo : t.name(member.workerName, member.workerNo);
+  member.workerName !== null && member.workerNo !== null
+    ? t.name(member.workerName, member.workerNo)
+    : (member.workerName ?? member.workerNo ?? t.unknown);
 
 /**
  * 함께 일하는 작업자 — 사번을 확인한 사람이 정(맨 앞, 뺄 수 없음)이고 나머지는 부다.

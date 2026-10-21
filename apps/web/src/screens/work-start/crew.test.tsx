@@ -1,6 +1,6 @@
 import { messages } from '@omf-mes/i18n';
 import { screen, waitFor, within } from '@testing-library/react';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { setWorkerSession } from '../../patterns/worker-session';
 import { TERMINAL_ID, WORKER, WORK_ORDER, renderScreen } from './screen-harness';
@@ -63,6 +63,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  vi.restoreAllMocks();
   setWorkerSession(null);
 });
 
@@ -218,5 +219,87 @@ describe('P-02-01 작업자 — 진행 중인 세션', () => {
     await addByKeypad(user, SUB_B.workerNo);
 
     expect(await within(crewPanel()).findByText(message)).toBeInTheDocument();
+  });
+
+  it('실패하면 참여자를 다시 받고, 고른 것을 놓으면 실패 띠를 지운다', async () => {
+    const message = '이미 참여 중인 작업자입니다.';
+    const { user, recorded } = renderScreen({
+      workers: WORKERS,
+      openSessions: [OPEN_SESSION],
+      sessionWorkers: sessionCrew,
+      crewWriteError: {
+        status: 400,
+        body: { errors: [{ scope: 'field', field: 'workerId', code: 'STATE_LOCKED', message }] },
+      },
+    });
+    const crewReads = () =>
+      recorded.urls.filter((url) => url.startsWith('/production/work-sessions/9801/workers'))
+        .length;
+
+    await pick(user);
+    await within(crewPanel()).findByText(nameOf(SUB_A));
+    const before = crewReads();
+    await addByKeypad(user, SUB_B.workerNo);
+
+    expect(await within(crewPanel()).findByText(message)).toBeInTheDocument();
+    await waitFor(() => expect(crewReads()).toBeGreaterThan(before));
+
+    await pick(user);
+    expect(within(crewPanel()).queryByText(message)).toBeNull();
+  });
+
+  it('보내는 동안은 더하기·빼기를 잠근다', async () => {
+    let release: (value: unknown) => void = () => undefined;
+    const { user } = renderScreen({
+      workers: WORKERS,
+      openSessions: [OPEN_SESSION],
+      sessionWorkers: sessionCrew,
+      crewWriteGate: new Promise((resolve) => {
+        release = resolve;
+      }),
+    });
+
+    await pick(user);
+    await within(crewPanel()).findByText(nameOf(SUB_A));
+    await addByKeypad(user, SUB_B.workerNo);
+
+    await waitFor(() =>
+      expect(within(crewPanel()).getByRole('button', { name: c.add })).toBeDisabled(),
+    );
+    expect(
+      within(crewPanel()).getByRole('button', { name: c.remove(nameOf(SUB_A)) }),
+    ).toBeDisabled();
+
+    release(null);
+    await waitFor(() =>
+      expect(within(crewPanel()).getByRole('button', { name: c.add })).toBeEnabled(),
+    );
+  });
+});
+
+describe('P-02-01 작업자 — 이름을 모를 때', () => {
+  it('사번·이름이 없는 참여자는 내부 번호 대신 「알 수 없음」이다', async () => {
+    const { user } = renderScreen({
+      workers: WORKERS,
+      openSessions: [OPEN_SESSION],
+      sessionWorkers: [
+        sessionMember(8701, WORKER, 'MAIN'),
+        { ...sessionMember(8703, SUB_C, 'SUB'), workerNo: undefined, workerName: undefined },
+      ],
+    });
+
+    await pick(user);
+    expect(await within(crewPanel()).findByText(c.unknown)).toBeInTheDocument();
+    expect(within(crewPanel()).queryByText(String(SUB_C.workerId))).toBeNull();
+  });
+});
+
+describe('P-02-01 작업자 — 오프라인', () => {
+  it('연결이 끊기면 더하기를 잠근다', async () => {
+    vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(false);
+    renderScreen({ workers: WORKERS });
+
+    const panel = await screen.findByRole('region', { name: c.title });
+    expect(within(panel).getByRole('button', { name: c.add })).toBeDisabled();
   });
 });
