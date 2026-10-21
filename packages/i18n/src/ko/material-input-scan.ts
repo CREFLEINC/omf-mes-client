@@ -228,6 +228,8 @@ export const materialInputScan = {
     statusLabel: '상태',
     /** 품질 판정과 **다른 축**이다. 나란히 두면 모순처럼 읽혀 줄을 나눈다. */
     heldMark: '보류 중',
+    /* IQC 에서 적은 4M 변경품(omf-all-around#63) — 투입을 막지 않고 알린다. */
+    fourMChangeMark: '4M 변경품',
     /** 표시명을 못 받았을 때. 원문 코드를 그대로 보이므로 담당자에게 전할 단서는 남는다. */
     statusLabelUnavailable: '상태 이름을 불러오지 못해 코드로 표시합니다.',
     shotCount: (current: number, guaranteed: number): string =>

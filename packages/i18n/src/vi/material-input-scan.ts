@@ -94,6 +94,7 @@ export const materialInputScan: Translated<typeof ko.materialInputScan> = {
     moldEmpty: 'Chưa chỉ định khuôn nào.',
     statusLabel: 'Trạng thái',
     heldMark: 'Đang tạm giữ',
+    fourMChangeMark: 'Hàng thay đổi 4M',
     statusLabelUnavailable: 'Không tải được tên trạng thái nên hiển thị bằng mã.',
     shotCount: (current: number, guaranteed: number): string =>
       `Nhát dập ${current.toLocaleString('ko-KR')} / ${guaranteed.toLocaleString('ko-KR')}`,
