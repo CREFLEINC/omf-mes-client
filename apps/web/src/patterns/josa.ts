@@ -18,9 +18,12 @@ const DIGIT_HAS_FINAL: Record<string, boolean> = {
   '9': false,
 };
 
+/** 낱말 뒤에 붙어 읽지 않는 닫는 부호. 판단은 그 앞 글자로 한다(「BOM」을, (라인)을). */
+const TRAILING_MARKS = /[」』)\]"'”’》〉]+$/u;
+
 /** 마지막 글자의 받침 종류. 없음 0, ㄹ 받침 8(으로/로 판단용), 그 밖의 받침은 그 번호. */
 const finalConsonant = (word: string): number => {
-  const last = word.trim().slice(-1);
+  const last = word.trim().replace(TRAILING_MARKS, '').trimEnd().slice(-1);
   if (last === '') return 0;
   const code = last.charCodeAt(0);
   if (code >= 0xac00 && code <= 0xd7a3) return (code - 0xac00) % 28;
