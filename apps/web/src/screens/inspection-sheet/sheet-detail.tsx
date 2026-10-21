@@ -101,7 +101,7 @@ export const SheetDetail = ({
       header: d.stepColumns.sign,
       render: (step) =>
         step.result?.signedAt
-          ? `${step.result.signedByName ?? ''} · ${when(step.result.signedAt)}`
+          ? `${step.result.signedByName ?? ''}, ${when(step.result.signedAt)}`
           : d.none,
     },
     {
@@ -154,7 +154,7 @@ export const SheetDetail = ({
           ng.checkItemCode,
         ]
           .filter(Boolean)
-          .join(' · ') || d.none,
+          .join(', ') || d.none,
     },
     {
       key: 'content',
@@ -179,7 +179,7 @@ export const SheetDetail = ({
           ng.repairedAt && when(ng.repairedAt),
         ]
           .filter(Boolean)
-          .join(' · ') || d.none,
+          .join(', ') || d.none,
     },
     {
       key: 'recheck',
@@ -187,7 +187,7 @@ export const SheetDetail = ({
       render: (ng) =>
         [ng.recheckResultCode, ng.recheckWorkerName, ng.recheckedAt && when(ng.recheckedAt)]
           .filter(Boolean)
-          .join(' · ') || d.none,
+          .join(', ') || d.none,
     },
   ];
 
@@ -196,7 +196,7 @@ export const SheetDetail = ({
       <h3 className="pane-subtitle">{d.summary}</h3>
       <dl className="inspection-sheet-summary">
         <dt>{d.model}</dt>
-        <dd>{`${sheet.itemCode} · ${sheet.itemName}`}</dd>
+        <dd>{`${sheet.itemName} (${sheet.itemCode})`}</dd>
         <dt>{d.lot}</dt>
         <dd>{sheet.lotNo}</dd>
         <dt>{d.workOrder}</dt>
@@ -211,12 +211,10 @@ export const SheetDetail = ({
         <dd>{when(sheet.createdAt)}</dd>
         <dt>{d.approved}</dt>
         <dd>
-          {sheet.approvedByName ? `${sheet.approvedByName} · ${when(sheet.approvedAt)}` : d.none}
+          {sheet.approvedByName ? `${sheet.approvedByName}, ${when(sheet.approvedAt)}` : d.none}
         </dd>
         <dt>{d.checked}</dt>
-        <dd>
-          {sheet.checkedByName ? `${sheet.checkedByName} · ${when(sheet.checkedAt)}` : d.none}
-        </dd>
+        <dd>{sheet.checkedByName ? `${sheet.checkedByName}, ${when(sheet.checkedAt)}` : d.none}</dd>
       </dl>
 
       <h3 className="pane-subtitle">{d.header}</h3>
@@ -241,8 +239,8 @@ export const SheetDetail = ({
         <ul className="inspection-sheet-events">
           {sheet.fourMChanges.map((change) => (
             <li key={change.lotNo}>
-              {`${changeTypeLabel(change.changeTypeCode)} · ${change.itemCode} ${change.itemName} · ${change.lotNo}`}
-              {change.remarks && ` · ${change.remarks}`}
+              {`${changeTypeLabel(change.changeTypeCode)}, ${change.itemName} (${change.itemCode}), ${change.lotNo}`}
+              {change.remarks && `, ${change.remarks}`}
             </li>
           ))}
         </ul>
@@ -318,11 +316,11 @@ export const SheetDetail = ({
         <ul className="inspection-sheet-events">
           {sheet.events.map((event, index) => (
             <li key={`${event.actedAt}-${index}`}>
-              {`${when(event.actedAt)} · ${d.eventLabels[event.eventCode] ?? event.eventCode}`}
+              {`${when(event.actedAt)}, ${d.eventLabels[event.eventCode] ?? event.eventCode}`}
               {event.stepCode &&
-                ` · ${sheet.steps.find((s) => s.stepCode === event.stepCode)?.nameKo ?? event.stepCode}`}
-              {` · ${event.actedByName ?? d.none}`}
-              {event.reason && ` · ${event.reason}`}
+                `, ${sheet.steps.find((s) => s.stepCode === event.stepCode)?.nameKo ?? event.stepCode}`}
+              {`, ${event.actedByName ?? d.none}`}
+              {event.reason && `, ${event.reason}`}
             </li>
           ))}
         </ul>

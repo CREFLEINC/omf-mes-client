@@ -52,10 +52,12 @@ export const TemplateStatusChip = ({ statusCode }: { statusCode: string }) => (
   </Chip>
 );
 
-/** 자재 표시 `코드 · 이름` 을 코드와 이름으로 나눈다 — 코드에는 ` · ` 가 들어가지 않는다. */
+/** 자재 표시 `이름 (코드)`(C-10)를 코드와 이름으로 나눈다 — 코드는 끝 괄호 안이다. */
 const splitLabel = (label: string): [string, string] => {
-  const at = label.indexOf(' · ');
-  return at < 0 ? [label, ''] : [label.slice(0, at), label.slice(at + 3)];
+  const at = label.lastIndexOf(' (');
+  return at < 0 || !label.endsWith(')')
+    ? [label, '']
+    : [label.slice(at + 2, -1), label.slice(0, at)];
 };
 
 const Required = () => (
@@ -85,6 +87,7 @@ export const TemplateEditor = ({
   const { client } = useApiClient();
   const toast = useToast();
   const ids = {
+    status: useId(),
     model: useId(),
     bu: useId(),
     layout: useId(),
@@ -436,7 +439,7 @@ export const TemplateEditor = ({
       </div>
 
       <div className="inspection-sheet-template-actions">
-        <p className="inspection-sheet-template-status" role="status">
+        <p className="inspection-sheet-template-status" id={ids.status} role="status">
           {!readOnly && dirty && t.editor.dirty}
           {template !== null && !readOnly && dirty && ` ${t.editor.confirmBlocked}`}
         </p>
@@ -471,7 +474,11 @@ export const TemplateEditor = ({
           </Button>
         )}
         {template !== null && !readOnly && (
-          <Button disabled={saving || dirty} onClick={() => setConfirming(true)}>
+          <Button
+            aria-describedby={ids.status}
+            disabled={saving || dirty}
+            onClick={() => setConfirming(true)}
+          >
             {t.editor.confirm}
           </Button>
         )}
@@ -510,7 +517,7 @@ export const TemplateEditor = ({
           onConfirm={([picked]) => {
             setPicking(null);
             if (picked === undefined) return;
-            const label = `${picked.itemCode} · ${picked.itemName}`;
+            const label = `${picked.itemName} (${picked.itemCode})`;
             if (picking.kind === 'model') {
               patch({ itemId: picked.itemId, itemLabel: label });
               setErrors((prev) => ({ ...prev, item: '' }));

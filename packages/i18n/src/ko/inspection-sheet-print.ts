@@ -4,12 +4,12 @@
  */
 export const inspectionSheetPrint = {
   title: '제품 검사표',
-  model: 'Model',
+  model: '모델',
   spec: '사양(仕向)',
   destination: '발송지',
   serial: '기기 시리얼 번호',
   material: '재료',
-  structure: '구조·중량',
+  structure: '구조 및 중량',
   productName: '제품명',
   power: '전압 V / 주파수 HZ',
   motor: '전동기 수량',

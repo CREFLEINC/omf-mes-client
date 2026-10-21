@@ -48,7 +48,7 @@ export const StepList = ({ steps, selected, isInvalid, onSelect }: StepListProps
                       ? t.editor.noItemsShort
                       : t.editor.itemCount(step.items.length),
                     ...(step.signRequired ? [t.editor.signShort] : []),
-                  ].join(' · ')
+                  ].join(', ')
                 : t.editor.stepUnused}
             </span>
             {step.enabled && isInvalid(step) && (

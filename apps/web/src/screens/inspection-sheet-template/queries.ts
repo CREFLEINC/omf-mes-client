@@ -68,7 +68,7 @@ export const useBusinessUnitNames = () => {
       return new Map(
         page.items.map((unit) => [
           unit.businessUnitId,
-          `${unit.businessUnitCode} · ${unit.businessUnitName}`,
+          `${unit.businessUnitName} (${unit.businessUnitCode})`,
         ]),
       );
     },

@@ -114,7 +114,7 @@ export const PopInspectionSheetScreen = () => {
             </div>
             <div>
               <dt>{t.summary.model}</dt>
-              <dd>{`${data.itemCode} · ${data.itemName}`}</dd>
+              <dd>{`${data.itemName} (${data.itemCode})`}</dd>
             </div>
             <div>
               <dt>{t.summary.lot}</dt>

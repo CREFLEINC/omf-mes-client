@@ -1,7 +1,7 @@
 import { AlertBanner, Button, Checkbox, Chip } from '@crefle/web-ui';
 import type { InspectionSheetJudgment, InspectionSheetStep } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
-import { useState } from 'react';
+import { useId, useState } from 'react';
 
 import { masterName } from '../../patterns/master-name';
 import type { StepWriteVariables } from './queries';
@@ -56,7 +56,7 @@ export const StepPanel = ({ steps, disabled, isSaving, onSave }: StepPanelProps)
             aria-pressed={row.stepCode === selected}
             onClick={() => setSelected(row.stepCode)}
           >
-            {`${nameOf(row)} · ${stateLabel(row)}${row.result?.signedAt ? ` · ${t.signed}` : ''}`}
+            {`${nameOf(row)} (${stateLabel(row)}${row.result?.signedAt ? `, ${t.signed}` : ''})`}
           </Button>
         ))}
       </div>
@@ -92,6 +92,7 @@ const StepForm = ({ step, disabled, isSaving, onSave }: StepFormProps) => {
     step.result.finalJudgmentCode === 'OK';
   const [recheckOk, setRecheckOk] = useState(savedRecheckOk);
 
+  const noteId = useId();
   const oqcLocked = step.result?.sourceCode === 'OQC';
   const first = step.items.length === 0 ? manualFirst : firstFromItems(step, judgments);
   const plan = stepSave(step, judgments, manualFirst);
@@ -144,6 +145,7 @@ const StepForm = ({ step, disabled, isSaving, onSave }: StepFormProps) => {
                 </span>
                 <Chip size="sm">{t.method[item.methodCode] ?? item.methodCode}</Chip>
                 {(['OK', 'NG'] as const).map((option) => (
+                  /* ui-check-ignore: C-4 완료된 검사표이거나 출하검사 화면이 기록한 단계라 잠긴다 — 사유는 위 안내 띠 */
                   <Button
                     key={option}
                     size="lg"
@@ -166,6 +168,7 @@ const StepForm = ({ step, disabled, isSaving, onSave }: StepFormProps) => {
         <span className="field-label">{t.first}</span>
         {step.items.length === 0 ? (
           (['OK', 'NG'] as const).map((option) => (
+            /* ui-check-ignore: C-4 완료된 검사표이거나 출하검사 화면이 기록한 단계라 잠긴다 — 사유는 위 안내 띠 */
             <Button
               key={option}
               size="lg"
@@ -193,7 +196,7 @@ const StepForm = ({ step, disabled, isSaving, onSave }: StepFormProps) => {
       )}
 
       <div className="pop-action-bar">
-        <div className="pop-action-note">
+        <div className="pop-action-note" id={noteId}>
           {!locked && progress.total > 0 && (
             <p className="field-note">{t.progress(progress.done, progress.total)}</p>
           )}
@@ -207,6 +210,7 @@ const StepForm = ({ step, disabled, isSaving, onSave }: StepFormProps) => {
         <Button
           variant="filled"
           size="xl"
+          aria-describedby={noteId}
           disabled={locked || plan.mode === 'blocked' || !changed || isSaving}
           onClick={save}
         >

@@ -114,7 +114,7 @@ export const toDraft = (template: InspectionSheetTemplate): TemplateDraft => {
   }));
   return {
     itemId: template.itemId,
-    itemLabel: `${template.itemCode} · ${template.itemName}`,
+    itemLabel: `${template.itemName} (${template.itemCode})`,
     businessUnitId: template.businessUnitId,
     formLayoutCode: template.formLayoutCode,
     materialText: template.materialText ?? '',
@@ -127,7 +127,7 @@ export const toDraft = (template: InspectionSheetTemplate): TemplateDraft => {
     lotSources: (template.lotSources ?? []).map((source) => ({
       slotCode: source.slotCode,
       itemId: source.itemId,
-      label: `${source.itemCode} · ${source.itemName}`,
+      label: `${source.itemName} (${source.itemCode})`,
     })),
     steps: layoutSteps(template.formLayoutCode, saved),
   };

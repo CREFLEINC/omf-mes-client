@@ -3,6 +3,7 @@ import type { InspectionSheet, InspectionSheetNgWrite } from '@omf-mes/api-clien
 import { messages } from '@omf-mes/i18n';
 import { useState } from 'react';
 
+import { DateTimeField } from '../../patterns/date-time-field';
 import { masterName } from '../../patterns/master-name';
 import { PopSelect as Select } from '../../patterns/pop-select';
 
@@ -214,13 +215,11 @@ export const NgPanel = ({ sheet, disabled, isSaving, onSave }: NgPanelProps) => 
         );
         const when = (label: string, value: string, patch: (v: string) => Partial<NgDraft>) => (
           <div className="field-cell pop-inspection-sheet-when">
-            <TextField
+            <DateTimeField
               label={label}
-              type="datetime-local"
-              size="lg"
               value={value}
               disabled={disabled}
-              onChange={(event) => set(draft.key, patch(event.target.value))}
+              onChange={(next) => set(draft.key, patch(next))}
             />
             <Button
               size="lg"
@@ -316,7 +315,12 @@ export const NgPanel = ({ sheet, disabled, isSaving, onSave }: NgPanelProps) => 
         >
           {t.add}
         </Button>
-        <Button size="lg" disabled={disabled || isSaving || !changed} onClick={save}>
+        <Button
+          size="lg"
+          // ui-check-ignore: C-4 바뀐 값이 없거나 저장 중일 때만 잠긴다 — 고칠 것이 없다는 것 말고 사유가 없다
+          disabled={disabled || isSaving || !changed}
+          onClick={save}
+        >
           {isSaving ? messages.popInspectionSheet.saving : t.save}
         </Button>
       </div>

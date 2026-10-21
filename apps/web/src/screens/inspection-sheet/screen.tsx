@@ -3,6 +3,7 @@ import {
   Breadcrumb,
   Button,
   type Column,
+  DatePicker,
   Dialog,
   EmptyState,
   PageHeader,
@@ -95,7 +96,6 @@ const InspectionSheetScreenBody = () => {
     lot: useId(),
     status: useId(),
     from: useId(),
-    to: useId(),
     reason: useId(),
   };
   const [draft, setDraft] = useState<Filter>(EMPTY_FILTER);
@@ -160,7 +160,7 @@ const InspectionSheetScreenBody = () => {
       render: (row) => (
         <>
           <Ellipsis text={row.serialNo} />
-          <Ellipsis text={`${row.itemCode} · ${row.itemName}`} muted />
+          <Ellipsis text={`${row.itemName} (${row.itemCode})`} muted />
         </>
       ),
     },
@@ -196,7 +196,7 @@ const InspectionSheetScreenBody = () => {
       render: (row) => (
         <Ellipsis
           text={t.statuses[row.statusCode] ?? row.statusCode}
-          title={`${t.columns.approval}: ${[row.approvedByName, row.checkedByName].map((name) => name ?? '—').join(' · ')}`}
+          title={`${t.columns.approval}: ${[row.approvedByName, row.checkedByName].map((name) => name ?? '—').join(', ')}`}
         />
       ),
     },
@@ -294,24 +294,14 @@ const InspectionSheetScreenBody = () => {
           </div>
           <div className="field-cell">
             <label className="field-label" htmlFor={ids.from}>
-              {t.list.from}
+              {t.list.period}
             </label>
-            <TextField
+            <DatePicker
               id={ids.from}
-              type="date"
-              value={draft.from}
-              onChange={(e) => setDraft({ ...draft, from: e.target.value })}
-            />
-          </div>
-          <div className="field-cell">
-            <label className="field-label" htmlFor={ids.to}>
-              {t.list.to}
-            </label>
-            <TextField
-              id={ids.to}
-              type="date"
-              value={draft.to}
-              onChange={(e) => setDraft({ ...draft, to: e.target.value })}
+              mode="range"
+              placeholder={messages.common.selectDate}
+              value={[draft.from === '' ? null : draft.from, draft.to === '' ? null : draft.to]}
+              onChange={([from, to]) => setDraft({ ...draft, from: from ?? '', to: to ?? '' })}
             />
           </div>
           <div className="field-cell field-cell-unlabeled">
@@ -350,7 +340,7 @@ const InspectionSheetScreenBody = () => {
           {data !== null && (
             <>
               <h2 className="pane-title">
-                {`${t.detail.heading(data.serialNo)} · ${t.statuses[data.statusCode] ?? data.statusCode}`}
+                {`${t.detail.heading(data.serialNo)} (${t.statuses[data.statusCode] ?? data.statusCode})`}
               </h2>
               {!canSign && <p className="field-note">{t.actions.noPermission}</p>}
               <SaveErrorBanner
@@ -388,7 +378,11 @@ const InspectionSheetScreenBody = () => {
                   {t.print.button}
                 </Button>
                 {canSign && !completed && data.approvedBy === null && (
-                  <Button disabled={decision.isSaving} onClick={() => decide({ kind: 'approve' })}>
+                  <Button
+                    // ui-check-ignore: C-4 승인 요청을 보내는 동안에만 잠긴다
+                    disabled={decision.isSaving}
+                    onClick={() => decide({ kind: 'approve' })}
+                  >
                     {t.actions.approve}
                   </Button>
                 )}

@@ -2,7 +2,7 @@
 export const inspectionSheet = {
   title: '제품 검사표 조회',
   breadcrumbRoot: '품질 관리',
-  rule: 'POP에서 입력한 시리얼별 제품 검사표를 찾아 봅니다. 서명 권한이 있는 관리자는 단계 서명·승인·확인·승인 취소를 합니다. 승인과 확인이 모두 되면 완료되어 고칠 수 없습니다.',
+  rule: 'POP에서 입력한 시리얼별 제품 검사표를 찾아 봅니다. 서명 권한이 있는 관리자는 단계 서명, 승인, 확인, 승인 취소를 합니다. 승인과 확인이 모두 되면 완료되어 고칠 수 없습니다.',
 
   statuses: { IN_PROGRESS: '작성중', COMPLETED: '완료' } as Record<string, string>,
 
@@ -13,8 +13,7 @@ export const inspectionSheet = {
     lotNo: 'LOT 번호',
     status: '상태',
     statusAll: '전체',
-    from: '작성일(부터)',
-    to: '작성일(까지)',
+    period: '작성 기간',
     search: '찾기',
     empty: '조건에 맞는 검사표가 없습니다.',
     loading: '검사표를 불러오는 중입니다.',
@@ -25,8 +24,8 @@ export const inspectionSheet = {
   },
 
   columns: {
-    serialModel: '시리얼 · 모델',
-    lotWorkOrder: '생산 LOT · 작업지시',
+    serialModel: '시리얼과 모델',
+    lotWorkOrder: '생산 LOT과 작업지시',
     serialNo: '시리얼',
     model: '모델',
     lotNo: '생산 LOT',
@@ -34,13 +33,13 @@ export const inspectionSheet = {
     progress: '입력 단계',
     ng: 'NG 단계',
     status: '상태',
-    approval: '승인 · 확인',
+    approval: '승인과 확인',
     createdAt: '작성 일시',
     actions: '작업',
   },
 
   detail: {
-    heading: (serialNo: string) => `검사표 · ${serialNo}`,
+    heading: (serialNo: string) => `검사표 ${serialNo}`,
     loading: '검사표를 불러오는 중입니다.',
     loadFailed: '검사표를 불러오지 못했습니다.',
     close: '닫기',
@@ -56,7 +55,7 @@ export const inspectionSheet = {
     none: '—',
     header: '머리 값',
     headerFields: {
-      modelText: 'Model',
+      modelText: '모델',
       specText: '사양',
       destinationText: '발송지',
       pcbLotNo: 'PCB 기판 LOT',
@@ -65,9 +64,9 @@ export const inspectionSheet = {
       fwProductionVersion: '생산부 FW 버전',
       fwQualityVersion: '품질부 FW 버전',
       materialText: '재료',
-      structureText: '구조·중량',
+      structureText: '구조 및 중량',
       productNameText: '제품명',
-      powerText: '전압·주파수',
+      powerText: '전압 및 주파수',
       motorText: '전동기 수량',
       tempPackNote: '가포장(오포장) 상황 기록',
       overallResultCode: '제품 검사 결과',
@@ -91,12 +90,12 @@ export const inspectionSheet = {
     signRequired: '서명 필요',
     oqc: '(출하검사 화면)',
     items: (name: string) => `${name} 항목 판정`,
-    itemsShort: (ng: number): string => (ng > 0 ? `항목 · NG ${ng}` : '항목'),
+    itemsShort: (ng: number): string => (ng > 0 ? `항목 (NG ${ng})` : '항목'),
     itemsToggle: (name: string, ng: number) =>
-      ng > 0 ? `${name} 항목 보기 · NG ${ng}` : `${name} 항목 보기`,
+      ng > 0 ? `${name} 항목 보기 (NG ${ng})` : `${name} 항목 보기`,
     itemColumns: { code: '항목 번호', name: '검사 항목', method: '전수/발취', judgment: '판정' },
     methods: { FULL: '전수', SAMPLE: '발취' } as Record<string, string>,
-    ngs: 'NG·수리·재검 기록',
+    ngs: 'NG, 수리, 재검 기록',
     ngsEmpty: '기록한 NG가 없습니다.',
     ngColumns: {
       no: 'NG',
@@ -105,14 +104,14 @@ export const inspectionSheet = {
       repair: '수리',
       recheck: '재검',
     },
-    events: '서명·승인 이력',
+    events: '서명 및 승인 이력',
     eventsEmpty: '이력이 없습니다.',
     eventLabels: {
       SIGN_STEP: '단계 서명',
       APPROVE: '승인',
       CHECK: '확인',
       REOPEN: '승인 취소',
-      APPROVAL_CLEARED: '수정으로 승인·확인 풀림',
+      APPROVAL_CLEARED: '수정으로 승인과 확인 풀림',
     } as Record<string, string>,
   },
 
@@ -125,9 +124,9 @@ export const inspectionSheet = {
     signed: (step: string) => `${step}에 서명했습니다.`,
     approved: '승인했습니다.',
     checked: '확인했습니다.',
-    completed: '승인·확인이 모두 되어 검사표가 완료됐습니다.',
+    completed: '승인과 확인이 모두 되어 검사표가 완료됐습니다.',
     reopened: '승인을 취소했습니다. 검사표가 작성중으로 돌아갔습니다.',
-    noPermission: '서명·승인 권한이 없어 보기만 할 수 있습니다.',
+    noPermission: '서명 및 승인 권한이 없어 보기만 할 수 있습니다.',
   },
 
   print: {
@@ -140,7 +139,7 @@ export const inspectionSheet = {
 
   reopenDialog: {
     title: '승인 취소',
-    body: '승인·확인을 비우고 작성중으로 돌립니다. 사유는 이력에 남습니다.',
+    body: '승인과 확인을 비우고 작성중으로 돌립니다. 사유는 이력에 남습니다.',
     reason: '사유',
     required: '사유를 적으세요.',
     ok: '승인 취소',

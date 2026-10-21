@@ -252,7 +252,7 @@ describe('제품 검사표 조회', () => {
     expect(screen.getByText('배선 정리 불량 (작업)')).toBeInTheDocument();
     expect(screen.getByText('1.02')).toBeInTheDocument();
     expect(
-      await screen.findByText(/자재 · F537 PCB ASSY · ML-4M · 공급처 변경/u),
+      await screen.findByText(/자재, PCB ASSY \(F537\), ML-4M, 공급처 변경/u),
     ).toBeInTheDocument();
   });
 
@@ -314,7 +314,7 @@ describe('제품 검사표 조회', () => {
       expect(page).toHaveTextContent('배선 정리 불량');
       expect(page).toHaveTextContent('□OK ■NG');
       expect(page).toHaveTextContent('Hàng thay đổi (theo lịch sử đưa vào)');
-      expect(page).toHaveTextContent('Có · 자재 · ML-4M');
+      expect(page).toHaveTextContent('Có, 자재, ML-4M');
     });
     const { user } = setup(['W-03-13']);
     await open(user);
