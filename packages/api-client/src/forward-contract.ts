@@ -240,11 +240,16 @@ export interface OqcSerialScan {
   /** 모델의 확정 검사표 기준에 출하검사 단계가 있다 — false 면 시리얼 판정을 저장할 수 없다. */
   sheetStandardReady: boolean;
   shipmentStep?: OqcSerialStep;
-  /** 이 시리얼의 LOT 을 피킹한 열린 OQC 의뢰. */
-  openRequests: {
+  /**
+   * 이 시리얼의 LOT 을 피킹한 OQC 의뢰 — 대기·진행·완료(생략은 빠진다). 완료도 담는 것은 재검 회차가 같은 시리얼을
+   * 다시 찍기 때문이다. 시리얼로 의뢰를 열 때는 대기·진행만 고른다.
+   */
+  pickedRequests: {
     inspectionRequestId: number;
     inspectionRequestNo: string;
     shipmentRequestId: number;
+    /** `REQUESTED` · `IN_PROGRESS` · `COMPLETED`. */
+    statusCode: string;
   }[];
 }
 

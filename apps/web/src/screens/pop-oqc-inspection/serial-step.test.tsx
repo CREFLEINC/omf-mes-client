@@ -22,7 +22,14 @@ const scan: OqcSerialScan = {
   lotId: 50,
   lotNo: 'L-50',
   sheetStandardReady: true,
-  openRequests: [{ inspectionRequestId: 1, inspectionRequestNo: 'IRQ-1', shipmentRequestId: 30 }],
+  pickedRequests: [
+    {
+      inspectionRequestId: 1,
+      inspectionRequestNo: 'IRQ-1',
+      shipmentRequestId: 30,
+      statusCode: 'IN_PROGRESS',
+    },
+  ],
 };
 
 const Harness = ({ onSubmit }: { onSubmit: () => void }) => {

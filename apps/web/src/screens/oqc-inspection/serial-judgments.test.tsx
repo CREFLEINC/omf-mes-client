@@ -23,7 +23,14 @@ const scanOf = (overrides: Partial<OqcSerialScan> = {}): OqcSerialScan => ({
   lotId: 50,
   lotNo: 'L-50',
   sheetStandardReady: true,
-  openRequests: [{ inspectionRequestId: 1, inspectionRequestNo: 'IRQ-1', shipmentRequestId: 30 }],
+  pickedRequests: [
+    {
+      inspectionRequestId: 1,
+      inspectionRequestNo: 'IRQ-1',
+      shipmentRequestId: 30,
+      statusCode: 'IN_PROGRESS',
+    },
+  ],
   ...overrides,
 });
 
@@ -103,7 +110,7 @@ describe('시리얼 규칙', () => {
   it('다른 품목 · 이 의뢰가 피킹하지 않은 LOT · 중복 · 검사표 화면이 쓴 줄을 막는다', () => {
     const target = { inspectionRequestId: 1, itemId: 7, rows: [] as SerialRow[] };
     expect(checkScannedSerial(scanOf({ itemId: 8 }), target)).toBe(t.otherItem('SN-0011'));
-    expect(checkScannedSerial(scanOf({ openRequests: [] }), target)).toBe(t.notPicked('SN-0011'));
+    expect(checkScannedSerial(scanOf({ pickedRequests: [] }), target)).toBe(t.notPicked('SN-0011'));
     expect(checkScannedSerial(scanOf(), { ...target, rows: [toSerialRow(scanOf())] })).toBe(
       t.duplicate('SN-0011'),
     );
@@ -117,6 +124,18 @@ describe('시리얼 규칙', () => {
     });
     expect(checkScannedSerial(sheet, target)).toBe(t.sheetOwned('SN-0011'));
     expect(checkScannedSerial(scanOf(), target)).toBeNull();
+    // 재검(Q4) — 1회차 확정으로 의뢰가 완료여도 그 의뢰가 피킹한 LOT 이면 받는다.
+    const completed = scanOf({
+      pickedRequests: [
+        {
+          inspectionRequestId: 1,
+          inspectionRequestNo: 'IRQ-1',
+          shipmentRequestId: 30,
+          statusCode: 'COMPLETED',
+        },
+      ],
+    });
+    expect(checkScannedSerial(completed, target)).toBeNull();
   });
 
   it('수량과 모순되면 저장을 막는다 (Q3)', () => {

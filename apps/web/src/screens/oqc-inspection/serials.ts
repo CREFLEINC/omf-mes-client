@@ -31,7 +31,9 @@ export const checkScannedSerial = (
     return t.duplicate(scan.serialNo);
   if (scan.itemId !== target.itemId) return t.otherItem(scan.serialNo);
   if (
-    !scan.openRequests.some((request) => request.inspectionRequestId === target.inspectionRequestId)
+    !scan.pickedRequests.some(
+      (request) => request.inspectionRequestId === target.inspectionRequestId,
+    )
   ) {
     return t.notPicked(scan.serialNo);
   }
