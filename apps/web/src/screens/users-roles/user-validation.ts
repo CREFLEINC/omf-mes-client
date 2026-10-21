@@ -29,6 +29,7 @@ export const USER_FORM_FIELDS: readonly string[] = [
   'userName',
   'departmentId',
   'email',
+  'phoneNumber',
   'statusCode',
 ];
 
@@ -56,6 +57,35 @@ export const USER_CREATE_FORM_FIELDS: readonly string[] = [...USER_FORM_FIELDS, 
  * 「공백 없는 이름 @ 점이 있는 도메인」까지만 본다 — 나머지는 서버와 실제 발송이 가린다.
  */
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+/** 베트남 휴대폰 번호의 표준형 — 국가번호 84 + 이동통신 앞자리(3·5·7·8·9) + 8자리(001 R-14). */
+const VN_MOBILE = /^84[35789][0-9]{8}$/;
+
+/**
+ * 베트남 휴대폰 번호를 표준형 `84XXXXXXXXX` 로 바꾼다. 맞지 않으면 null.
+ *
+ * `0…`·`+84…`·`84…` 로 시작하는 입력을 받고 공백·하이픈은 무시한다. 서버 `readPhone()` 과
+ * 같은 규칙이다 — 화면은 먼저 알려 줄 뿐이고 문지기는 서버다.
+ */
+export const normalizePhone = (value: string): string | null => {
+  const compact = value.replace(/[\s-]/g, '');
+  const national = compact.startsWith('+84')
+    ? compact.slice(1)
+    : compact.startsWith('0')
+      ? `84${compact.slice(1)}`
+      : compact;
+
+  return VN_MOBILE.test(national) ? national : null;
+};
+
+/** 표준형을 국내 표기 `0912 345 678` 로 보인다. 표준형이 아니면 받은 그대로 둔다. */
+export const formatPhone = (stored: string | null | undefined): string => {
+  if (stored === null || stored === undefined) return '';
+  if (!VN_MOBILE.test(stored)) return stored;
+
+  const local = `0${stored.slice(2)}`;
+  return `${local.slice(0, 4)} ${local.slice(4, 7)} ${local.slice(7)}`;
+};
 
 export type UserFormMode = 'create' | 'edit';
 
@@ -116,6 +146,11 @@ export const validateUserForm = (
     } else if (values.email.trim().length > EMAIL_MAX) {
       errors.email = t.emailTooLong;
     }
+  }
+
+  // 비우면 삭제다 — 형식은 값이 있을 때만 본다.
+  if (values.phoneNumber.trim() !== '' && normalizePhone(values.phoneNumber) === null) {
+    errors.phoneNumber = t.phoneFormat;
   }
 
   return errors;

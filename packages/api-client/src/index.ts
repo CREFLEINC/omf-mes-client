@@ -13,8 +13,10 @@ export {
 } from './errors';
 export type { components, paths } from './generated/api';
 export type {
+  AppUserPhone,
   AppUserWorker,
   LineDefaultLocations,
+  LineDepartment,
   AttachmentTargetType,
   InspectionHistory,
   InspectionHistoryEvent,
