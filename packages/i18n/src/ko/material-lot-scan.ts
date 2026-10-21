@@ -42,8 +42,6 @@ export const materialLotScan = {
     scanLabel: '자재LOT 스캔',
     /** 스캔 구역의 지시. 손이 할 일을 짧게 - 칸 한 줄에 들어가야 한다. */
     prompt: '스캐너 단추를 누르세요',
-    /** 지시 아래 작은 안내. 이 구역이 무엇을 받는지. */
-    hint: '이 라인의 품목 라벨만 받습니다',
     manualLabel: '직접 입력',
     manualSubmit: '넣기',
     problem: {

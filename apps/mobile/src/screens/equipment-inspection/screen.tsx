@@ -481,7 +481,6 @@ export const EquipmentInspectionScreen = () => {
               {t.saveFailed.description}
             </AlertBanner>
           ) : null}
-          {worker === null ? <p className="inspection__note">{t.noWorker}</p> : null}
           {/* 항목 수가 설비마다 다르다. 완료 단추는 언제나 보여야 한다(설계 §3). */}
           <div className="action-bar">
             <Button

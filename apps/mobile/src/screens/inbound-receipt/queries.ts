@@ -1,4 +1,4 @@
-import { useQuery, type UseQueryResult } from '@tanstack/react-query';
+import { useQueries, useQuery, type UseQueryResult } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
 import { itemCodeOf } from '../../patterns/material-lot-no';
@@ -75,6 +75,50 @@ export const useScannedItem = (lotNo: string): UseQueryResult<number | null> => 
 
       return data.items.find((item) => item.itemCode === code)?.itemId ?? null;
     },
+  });
+};
+
+export interface OrderLines {
+  /** 하나라도 아직 오는 중인가. */
+  pending: boolean;
+  /** 하나라도 받지 못했는가. 받은 것은 그대로 보인다. */
+  failed: boolean;
+  /** 받은 발주의 라인. 발주와 짝으로 둔다 - 고르면 둘을 함께 싣는다. */
+  lines: { order: PurchaseOrder; line: PurchaseOrderLine }[];
+}
+
+/**
+ * 여러 발주의 상세 라인을 한꺼번에. 라벨이 없을 때 한 공급사의 받을 품목을 한 목록으로 늘어놓는다.
+ *
+ * 한 발주를 고를 때(`usePurchaseOrderLines`)와 같은 열쇠를 써, 그 품목을 고르면 다시 부르지 않는다.
+ */
+export const usePurchaseOrdersLines = (orders: readonly PurchaseOrder[]): OrderLines => {
+  const { client } = useApiClient();
+
+  return useQueries({
+    queries: orders.map((order) => ({
+      queryKey: receiptKeys.detail(order.purchaseOrderId),
+      queryFn: async () => {
+        const data = await runRequest(() =>
+          client.GET('/logistics/purchase-orders/{purchaseOrderId}', {
+            params: { path: { purchaseOrderId: order.purchaseOrderId } },
+          }),
+        );
+
+        return data.lines;
+      },
+    })),
+    combine: (results) => ({
+      pending: results.some((result) => result.isPending),
+      failed: results.some((result) => result.isError),
+      lines: results.flatMap((result, index) => {
+        const order = orders[index];
+
+        return order === undefined || result.data === undefined
+          ? []
+          : result.data.map((line) => ({ order, line }));
+      }),
+    }),
   });
 };
 

@@ -399,7 +399,6 @@ export const PutawayScreen = () => {
       {task === null ? (
         <section className="putaway__section">
           <h2>{t.tasks.legend}</h2>
-          {worker === null ? <p className="putaway__note">{t.noWorker}</p> : null}
           {workerId.isPending && worker !== null ? <p role="status">{t.worker.loading}</p> : null}
           {workerId.isError ? (
             <FailureBanner
@@ -555,11 +554,7 @@ export const PutawayScreen = () => {
                         ? t.location.notFound(scanned)
                         : undefined
                     }
-                    trailing={manualButton(
-                      locationField,
-                      t.location.manual,
-                      t.location.manualSubmit,
-                    )}
+                    tools={manualButton(locationField, t.location.manual, t.location.manualSubmit)}
                   />
                   {byCode.isError ? (
                     <FailureBanner
@@ -722,7 +717,7 @@ export const PutawayScreen = () => {
                   field={lotField}
                   label={required(t.lot.scanLabel)}
                   prompt={t.lot.scanPlaceholder}
-                  trailing={manualButton(lotField, t.lot.manual, t.lot.manualSubmit)}
+                  tools={manualButton(lotField, t.lot.manual, t.lot.manualSubmit)}
                 />
               )}
 
@@ -760,7 +755,6 @@ export const PutawayScreen = () => {
                   {t.saveFailed.description}
                 </AlertBanner>
               ) : null}
-              {worker === null ? <p className="putaway__note">{t.noWorker}</p> : null}
             </section>
           ) : null}
         </>

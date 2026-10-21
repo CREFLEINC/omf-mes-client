@@ -579,7 +579,6 @@ export const PackingRepackScreen = () => {
                 {t.saveFailed.description}
               </AlertBanner>
             ) : null}
-            {worker === null ? <p className="repack__note">{t.noWorker}</p> : null}
             {type === null ? <p className="repack__note">{t.noType}</p> : null}
             <div className="action-bar">
               <Button

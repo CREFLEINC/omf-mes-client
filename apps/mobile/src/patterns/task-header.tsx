@@ -64,9 +64,9 @@ const kindOf = (field: TaskHeaderField, index: number, fields: TaskHeaderField[]
  * 화면 밖으로 나갔다. 작업자는 실물 라벨과 화면을 대조하며 일하므로, 대조할 값이 늘 같은
  * 자리에 있어야 한다.
  *
- * 어두운 계기판(앱바)이 아래로 이어지고, 흰 작업 카드가 그 끝에 겹쳐 선다(사용자 결정
- * 2026-10-21, 개편 제안 v2). 카드는 맥락이고 그 아래 밝은 바탕이 할 일이다 - 둘이 같은 평면에
- * 있으면 어디부터가 입력인지 갈리지 않는다.
+ * 어두운 계기판(앱바)이 단계 막대까지 이어지고, 흰 작업 카드는 그 아래 작업대 위에 따로
+ * 선다(사용자 결정 2026-10-21 - 띠에 걸쳐 세운 개편 제안 v2 의 겹침은 되돌렸다). 카드는 맥락이고
+ * 그 아래 밝은 바탕이 할 일이다.
  *
  * 나머지 값은 「자세히」로 연다. 세로 720dp 에서 앱바·이 헤더·하단 확정 바를 빼면 본문이
  * 그리 넓지 않다.
@@ -95,9 +95,9 @@ export const TaskHeader = ({
 
   return (
     <div className="task-header" role="group" aria-label={t.label}>
-      <div className="task-header__panel" data-theme="dark">
-        {step === undefined ? null : (
-          /* 몇 번째인지는 단계 머리가 글자로 말한다. 이 막대는 눈으로 훑는 자리다. */
+      {step === undefined ? null : (
+        <div className="task-header__panel" data-theme="dark">
+          {/* 몇 번째인지는 단계 머리가 글자로 말한다. 이 막대는 눈으로 훑는 자리다. */}
           <div className="task-header__steps" aria-hidden="true">
             {Array.from({ length: step.total }, (_, index) => (
               <span
@@ -112,8 +112,8 @@ export const TaskHeader = ({
               />
             ))}
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
       <div className="task-header__card">
         <div className="task-header__head">

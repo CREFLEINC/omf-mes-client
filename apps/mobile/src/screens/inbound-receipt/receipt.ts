@@ -557,6 +557,64 @@ export const toOutboxDraft = (
   };
 };
 
+/** 라벨 없이 한꺼번에 받는 라인 하나 - 그 라인과 받을 수량(남은 수량 그대로). */
+export interface LotlessPick {
+  line: PurchaseOrderLine;
+  receivedQty: number;
+}
+
+/**
+ * 라벨 미부착 일괄 입하 — 한 자재 P/O 에서 체크한 라인들을 입하 한 건(라인 여럿)으로 담는다.
+ *
+ * 대부분은 문제없이 들어온다(사용자 판단 2026-10-21). 수량 · 상태에 이상이 없는 라인은 체크해
+ * 남은 수량 그대로 한 번에 등록하고, 문제가 있는 라인만 한 건씩 수량 단계로 간다. 한 건에 모아
+ * 담아 함께 들어가거나 함께 되돌아온다 - 일부만 등록되면 무엇이 남았는지 다시 가려야 한다.
+ *
+ * 라인마다 LOT 번호 없음 · 라벨 미부착 · 대체 사유를 싣는다. 포장 수 · 날짜는 비운다.
+ */
+export const toLotlessOutboxDraft = (
+  order: PurchaseOrder,
+  picks: readonly LotlessPick[],
+  substituteLotReasonCode: string,
+  now: Date,
+  workerNo: string,
+): OutboxDraft => {
+  const occurredAt = now.toISOString();
+  const body: InboundReceiptCreate = {
+    supplierId: order.supplierId,
+    plantId: order.plantId,
+    receiptDatetime: occurredAt,
+    deliveryNoteNo: null,
+    vehicleNo: null,
+    businessDate: businessDateOf(now),
+    occurredAt,
+    lines: picks.map(({ line, receivedQty }) => ({
+      purchaseOrderLineId: line.purchaseOrderLineId,
+      itemId: line.itemId,
+      receivedQty,
+      uomId: line.uomId,
+      packageCount: null,
+      supplierLotNo: null,
+      supplierLotMissing: true,
+      supplierLotLabelAttached: false,
+      substituteLotReasonCode,
+      manufacturedDate: null,
+      expiryDate: null,
+    })),
+  };
+
+  return {
+    label: messages.inboundReceipt.record,
+    workerNo,
+    idempotencyKey: createIdempotencyKey(),
+    method: 'POST',
+    path: RECEIPT_PATH,
+    body,
+    occurredAt,
+    confirmation: 'pending',
+  };
+};
+
 /**
  * 받을 것이 남은 줄을 위로 올린다.
  *

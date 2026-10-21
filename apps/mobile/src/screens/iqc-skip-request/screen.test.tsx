@@ -310,7 +310,8 @@ describe('긴급 IQC 생략 요청 화면', () => {
   });
 
   /* 누가 올린 요청인지 없이 기록을 남길 수 없다 - 계약이 사번 없는 쓰기를 받지 않는다. */
-  it('사번을 확인하기 전에는 다 채워도 요청할 수 없고 이유를 말한다', async () => {
+  /* 사번이 없다는 말은 셸이 앱바 아래에 들어서자마자 띄운다(layout 시험) - 화면은 막기만 한다. */
+  it('사번을 확인하기 전에는 다 채워도 요청할 수 없다', async () => {
     const user = userEvent.setup();
     renderWithProviders(
       <MemoryRouter>
@@ -324,7 +325,6 @@ describe('긴급 IQC 생략 요청 화면', () => {
     await screen.findByText('수입검사 대기 중');
     await user.type(screen.getByLabelText(/사유/), '라인 정지 임박');
 
-    expect(screen.getByText('사번을 먼저 확인하세요')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: '요청' })).toBeDisabled();
   });
 

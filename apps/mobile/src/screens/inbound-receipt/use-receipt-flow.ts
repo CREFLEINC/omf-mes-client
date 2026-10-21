@@ -12,6 +12,7 @@ import { useCodeValues } from '../../patterns/code-values';
 import { useToast } from '@crefle/web-ui';
 
 import { useBackStep } from '../../patterns/back-step';
+import { emptyLotlessFilter, type LotlessDone, type LotlessFilter } from './lotless';
 import { playErrorTone } from '../../patterns/error-tone';
 import { useScannedLot } from '../../patterns/lots';
 import { signal } from '../../patterns/scan-feedback';
@@ -21,6 +22,7 @@ import {
   receiptKeys,
   useOpenPurchaseOrders,
   usePurchaseOrderLines,
+  usePurchaseOrdersLines,
   useScannedItem,
 } from './queries';
 import {
@@ -37,6 +39,7 @@ import {
   queuedQtyOf,
   recordedOf,
   remainingQtyOf,
+  toLotlessOutboxDraft,
   sourceOf,
   splitQuantitiesOf,
   stepOf,
@@ -154,6 +157,24 @@ export const useReceiptFlow = () => {
   const [keypadFor, setKeypadFor] = useState<'received' | 'package' | null>(null);
   /* 담당자가 후보 밖에서 고르겠다고 한 상태. 한 번 넓히면 되돌리지 않는다. */
   const [showAllOrders, setShowAllOrders] = useState(false);
+  /*
+   * 라벨이 없을 때(LOT 번호 없음) 품목을 보고 있는 자재 P/O 와 입고 예정 목록의 거르기. 수량에서
+   * 라인을 바꾸러 돌아와도 남아 있어, 같은 자재 P/O 의 다른 품목을 바로 고르고 다시 거르지 않는다.
+   */
+  const [lotlessOrderId, setLotlessOrderIdState] = useState<number | null>(null);
+  const [lotlessFilter, setLotlessFilter] = useState<LotlessFilter>(emptyLotlessFilter);
+  /*
+   * 라벨 없이 한꺼번에 받으려고 체크한 라인과 방금 한꺼번에 등록한 결과. 자재 P/O 를 바꾸면 둘 다
+   * 거둔다 - 다른 자재 P/O 의 체크가 남으면 보이지 않는 라인이 함께 등록된다.
+   */
+  const [lotlessChecked, setLotlessChecked] = useState<number[]>([]);
+  const [lotlessDone, setLotlessDone] = useState<LotlessDone | null>(null);
+  const [lotlessBusy, setLotlessBusy] = useState(false);
+  const setLotlessOrderId = (next: number | null) => {
+    setLotlessOrderIdState(next);
+    setLotlessChecked([]);
+    setLotlessDone(null);
+  };
   /* 이 라벨에서 알아서 고르기를 이미 했는가. 한 라벨에 한 번만 한다 - 사람이 바꾼 것을 되돌리지 않는다. */
   const autoPickedFor = useRef<string | null>(null);
   /*
@@ -197,15 +218,12 @@ export const useReceiptFlow = () => {
     setKeypadFor(null);
 
     /*
-     * 잔여 수량을 미리 채운다(사용자 결정 2026-10-20). 대부분은 예정대로 도착해, 다시 치는 숫자
-     * 셋이 입하 한 건의 탭 절반이었다. 받을 것이 없는 라인은 채우지 않는다 - 0 을 채우면 그대로
-     * 등록을 눌러 수량 0 이 나간다.
+     * 수량을 미리 채우지 않는다(사용자 지시 2026-10-21 - 2026-10-20 의 「잔여 수량 미리 채움」을
+     * 되돌림). 세지 않고 등록을 누르는 일이 없게, 받은 수는 사람이 적는다. 받을 남은 수는 판에
+     * 「/300」 으로 보인다. 이상 없이 다 받는 라인은 품목 목록의 체크로 한꺼번에 등록한다.
      */
-    const remaining = remainingQtyOf(line, queuedFor(line.purchaseOrderLineId));
-    const planned = remaining > 0 ? String(remaining) : null;
-
-    setPlannedQty(planned);
-    patch({ purchaseOrderLine: line, ...LINE_SCOPED_BLANK, receivedQty: planned ?? '' });
+    setPlannedQty(null);
+    patch({ purchaseOrderLine: line, ...LINE_SCOPED_BLANK });
   };
 
   /** 실입하 수량을 고친다. 미리 채운 값 위의 첫 숫자는 새로 치기 시작한 것이다. */
@@ -258,6 +276,8 @@ export const useReceiptFlow = () => {
       setSplitExceptionType('');
       setSplitExceptionReason('');
       setShowAllOrders(false);
+      setLotlessOrderId(null);
+      setLotlessFilter(emptyLotlessFilter);
       setKeypadFor(null);
       setChangingLine(false);
       setPlannedQty(null);
@@ -441,7 +461,8 @@ export const useReceiptFlow = () => {
   const uoms = useUomCodes(true);
   /* 목록의 발주 라인은 품목 식별자만 준다. 그 번호로는 실물 라벨과 대조할 수 없다. */
   const itemLabels = useItemLabels((lines.data ?? []).map((each) => each.itemId));
-  const suppliers = useSuppliers(draft.unordered);
+  /* 무발주는 공급사를 고르고, 라벨이 없으면 공급사로 받을 품목을 가른다 - 둘 다 이름이 필요하다. */
+  const suppliers = useSuppliers(draft.unordered || draft.supplierLotMissing);
   /* 무발주는 작업자가 품목을 직접 고른다. 마스터가 커서 찾는 일에 화면을 통째로 내준다. */
   const [pickingItem, setPickingItem] = useState(false);
   /*
@@ -577,6 +598,8 @@ export const useReceiptFlow = () => {
     setSplitExceptionReason('');
     setSaveFailed(false);
     setShowAllOrders(false);
+    setLotlessOrderId(null);
+    setLotlessFilter(emptyLotlessFilter);
     setChangingLine(false);
     setPlannedQty(null);
   };
@@ -591,18 +614,17 @@ export const useReceiptFlow = () => {
    * 두지 않으면 수량을 적던 사람이 한 번에 작업 목록까지 나가고 적어 둔 것을 잃었다.
    *
    * - 수량 → 라인 고르기: 적은 것은 그대로 둔다. 같은 라인을 다시 고르면 이어서 적는다.
-   * - 라인을 바꾸러 온 자리 → 수량: 아무것도 바꾸지 않고 돌아간다.
    * - 발주 없이 받기 → 라인 고르기: 그 갈래를 접는다.
-   * - 라인 고르기 → 스캔: 라벨을 비운다. 다음 라벨을 받을 자리다.
+   * - 라벨 없이 본 자재 P/O 의 품목 → 입고 예정 목록.
+   * - 라인 고르기 → 스캔: 라벨을 비운다. 다음 라벨을 받을 자리다. 수량에서 라인을 바꾸러 온
+   *   자리도 같다 - 앱바의 「이전 단계」를 두 번 누르면 단계 1 로 가야 한다. 전에는 수량으로
+   *   되돌아가 2 → 3 으로 앞으로 갔다(사용자 지적 2026-10-21).
    *
    * 조건을 서로 배타로 둔다 - 품목을 찾는 화면(`pickingItem`)이 열려 있으면 그것이 먼저다.
    */
   useBackStep(step === 'qty' && !pickingItem, () => {
     setKeypadFor(null);
     setChangingLine(true);
-  });
-  useBackStep(step === 'line' && changingLine && !pickingItem, () => {
-    setChangingLine(false);
   });
   useBackStep(step === 'unordered' && !pickingItem, () => {
     patch({
@@ -614,7 +636,11 @@ export const useReceiptFlow = () => {
       exceptionReason: '',
     });
   });
-  useBackStep(step === 'line' && !changingLine && !pickingItem, () => {
+  const lotlessPicked = draft.supplierLotMissing && lotlessOrderId !== null;
+  useBackStep(step === 'line' && lotlessPicked && !pickingItem, () => {
+    setLotlessOrderId(null);
+  });
+  useBackStep(step === 'line' && !lotlessPicked && !pickingItem, () => {
     restart();
   });
 
@@ -807,6 +833,99 @@ export const useReceiptFlow = () => {
     setKeypadFor(null);
   };
 
+  /*
+   * 라벨 미부착 일괄 입하. 보고 있는 자재 P/O 의 라인을 흐름도 함께 읽는다 - 등록할 때 남은 수량을
+   * 그 순간의 값으로 다시 센다(화면이 그린 뒤 다른 입하가 담겼을 수 있다).
+   */
+  const lotlessOrder =
+    lotlessOrderId === null
+      ? undefined
+      : candidates?.data?.find((each) => each.purchaseOrderId === lotlessOrderId);
+  const lotlessLines = usePurchaseOrdersLines(lotlessOrder === undefined ? [] : [lotlessOrder]);
+  const lotlessLabels = useItemLabels(lotlessLines.lines.map((each) => each.line.itemId));
+  /* 체크한 라인 중 아직 받을 것이 남은 것만. 다 받은 라인은 체크해도 실리지 않는다. */
+  const lotlessPicks = lotlessLines.lines
+    .filter((each) => lotlessChecked.includes(each.line.purchaseOrderLineId))
+    .map((each) => ({
+      line: each.line,
+      receivedQty: remainingQtyOf(each.line, queuedFor(each.line.purchaseOrderLineId)),
+    }))
+    .filter((each) => each.receivedQty > 0);
+  /* 일괄 등록 단추가 잠긴 이유 하나. 위에서부터 처음 걸리는 것. */
+  const lotlessLock: 'noWorker' | 'noSubstituteReason' | 'noneChecked' | null =
+    worker === null
+      ? 'noWorker'
+      : draft.substituteLotReasonCode === ''
+        ? 'noSubstituteReason'
+        : lotlessPicks.length === 0
+          ? 'noneChecked'
+          : null;
+
+  const submitLotless = async () => {
+    if (lotlessOrder === undefined || worker === null || lotlessLock !== null || inFlight.current) {
+      return;
+    }
+
+    inFlight.current = true;
+    setLotlessBusy(true);
+
+    try {
+      const entry = toLotlessOutboxDraft(
+        lotlessOrder,
+        lotlessPicks,
+        draft.substituteLotReasonCode,
+        new Date(),
+        worker.workerNo,
+      );
+      /* 무엇을 얼마나 넣었는지 결과에 다시 보인다(현장 요청 2026-09-21) - 담은 것에서 읽는다. */
+      const items = lotlessPicks.map(({ line, receivedQty }) => {
+        const found = lotlessLabels.get(line.itemId);
+
+        return {
+          name: found === undefined ? t.po.itemUnknown : found.itemName,
+          qty: `${String(receivedQty)} ${uomOf(line.uomId)}`,
+        };
+      });
+
+      try {
+        await enqueue(entry);
+      } catch {
+        signal('reject');
+        setLotlessDone({ outcome: 'failed', items });
+        return;
+      }
+
+      const result = await flush().catch(() => null);
+      const mine = (each: { idempotencyKey: string }) =>
+        each.idempotencyKey === entry.idempotencyKey;
+
+      if (
+        (result !== null && result.rejected.some((each) => mine(each.entry))) ||
+        isRejected(entry.idempotencyKey)
+      ) {
+        signal('reject');
+        setLotlessDone({ outcome: 'rejected', items });
+        return;
+      }
+
+      const queued = result === null || result.remaining.some(mine);
+
+      if (!queued) {
+        void queryClient.invalidateQueries({ queryKey: receiptKeys.allOrders });
+        void queryClient.invalidateQueries({
+          queryKey: receiptKeys.detail(lotlessOrder.purchaseOrderId),
+        });
+      }
+
+      signal('confirm');
+      setLotlessChecked([]);
+      setLotlessDone({ outcome: queued ? 'queued' : 'sent', items });
+    } finally {
+      inFlight.current = false;
+      setLotlessBusy(false);
+    }
+  };
+
   /** 부족 납품을 「더 온다」로 받는다. 누르는 것이 곧 답이라 한 번에 등록한다. */
   const submitContinueUnder = () => {
     setContinueUnder(true);
@@ -848,6 +967,20 @@ export const useReceiptFlow = () => {
     keypadFor,
     setKeypadFor,
     setShowAllOrders,
+    lotlessOrderId,
+    setLotlessOrderId,
+    lotlessFilter,
+    setLotlessFilter,
+    lotlessChecked,
+    setLotlessChecked: (next: number[]) => {
+      setLotlessChecked(next);
+      setLotlessDone(null);
+    },
+    lotlessDone,
+    lotlessBusy,
+    lotlessLock,
+    lotlessPickCount: lotlessPicks.length,
+    submitLotless,
     patch,
     pickLine,
     takeExternalLot,

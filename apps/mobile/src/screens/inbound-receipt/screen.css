@@ -232,26 +232,6 @@
   height: 28px;
 }
 
-/*
- * 단추 둘을 한 줄에 나란히 — 직접 입력과 스캔으로 되돌리기(omf-all-around#34).
- *
- * ⚠ 둘이 남는 폭을 반씩 갖는다. 글자 길이에 맞추면 「직접 입력」과 「스캔으로 되돌리기」의
- *   폭이 배로 차이 나 한쪽만 누르기 쉬워진다 — 장갑 낀 손으로 누르는 화면이다.
- */
-.receipt__row {
-  display: flex;
-  gap: var(--space-2, 8px);
-}
-
-.receipt__row > * {
-  flex: 1 1 0;
-}
-
-/* 둘이 함께 선 줄(직접 입력 · 되돌리기)은 단추 안쪽 여백을 줄인다 - 반씩 나눈 폭에 글자가 든다. */
-.receipt__row .pda-button {
-  padding-inline: var(--space-2);
-}
-
 .receipt__zone-button {
   flex: 0 0 auto;
   border-radius: var(--radius-md);
@@ -365,15 +345,51 @@
   background: none;
 }
 
-/* 수량 판 안의 펼침 단추. 판 안이라 안쪽 여백을 줄여 수와 단위가 설 자리를 남긴다. */
-.receipt__extras-button.pda-button {
-  padding-inline: var(--space-3);
+/*
+ * 추가 정보. 접는 단추와 펼친 칸들이 한 카드다 - 수량 판 · 대체 LOT 사유와 같은 흰 카드에
+ * 작은 회색 이름표. 이름표는 왼쪽, 칸은 오른쪽에 한 줄씩 선다.
+ */
+.receipt__more {
+  display: flex;
+  flex-direction: column;
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  box-shadow: var(--elevation-1);
+}
+
+.receipt__more .receipt__disclosure {
+  background: transparent;
+  box-shadow: none;
+  border-radius: var(--radius-lg);
+  padding: var(--space-2) var(--space-3) var(--space-2) var(--space-4);
+}
+
+.receipt__more--open .receipt__disclosure {
+  border-end-start-radius: 0;
+  border-end-end-radius: 0;
 }
 
 .receipt__extras {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  align-items: start;
+  gap: var(--space-2) var(--space-3);
+  padding: var(--space-3) var(--space-4) var(--space-4);
+  border-top: 1px solid var(--outline-variant);
+}
+
+/* 이름표를 칸의 글자 줄에 맞춘다 - 칸 아래 오류가 붙어도 이름표는 칸 옆에 남는다. */
+.receipt__extras > .receipt__panel-label {
+  min-height: var(--control-height-lg);
   display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
+  align-items: center;
+  white-space: nowrap;
+}
+
+/* 포장 수는 수량 판처럼 수를 오른쪽에서 읽는다. */
+.receipt__extras-number {
+  text-align: end;
+  font-variant-numeric: tabular-nums;
 }
 
 .receipt__extras[hidden] {
@@ -442,4 +458,86 @@
   border: 2px solid var(--on-surface);
   padding: calc(var(--space-2) - 1px) calc(var(--space-3) - 1px);
   font-weight: 600;
+}
+
+/* 바 위의 한 줄 - 체크한 품목을 어떻게 등록하는지. */
+.receipt__bar-note {
+  margin: 0;
+  text-align: center;
+  font: var(--type-label-lg);
+  letter-spacing: var(--type-label-lg-tracking);
+  color: var(--on-surface-variant);
+}
+
+/*
+ * 추가 정보 펼침 줄 - 수량 카드 바로 아래. 무엇이 들어 있는지 작게 함께 적고 오른쪽 끝에 접힘 표시.
+ */
+.receipt__disclosure {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: var(--control-height-lg);
+  padding: var(--space-2) var(--space-3);
+  border: 0;
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  box-shadow: inset 0 0 0 1px var(--outline-variant);
+  color: var(--on-surface);
+  text-align: start;
+  cursor: pointer;
+}
+
+.receipt__disclosure-text {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  column-gap: var(--space-2);
+}
+
+.receipt__disclosure-text > strong {
+  font: var(--type-label-lg);
+  letter-spacing: var(--type-label-lg-tracking);
+  font-weight: 700;
+}
+
+.receipt__disclosure-text > span {
+  font: var(--type-label-sm);
+  letter-spacing: var(--type-label-sm-tracking);
+  color: var(--on-surface-muted);
+}
+
+/* 막대 범례의 색 점 - 막대의 초록(이미 받음) · 주황(이번)과 짝을 짓는다. */
+.receipt__legend-dot::before {
+  content: '';
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  margin-inline-end: var(--space-1);
+  border-radius: var(--radius-full);
+  vertical-align: middle;
+}
+
+.receipt__legend-dot--before::before {
+  background: var(--semantic-success);
+}
+
+.receipt__legend-dot--now::before {
+  background: var(--semantic-warning);
+}
+
+/* 수량 판과 같은 카드 - 흰 바탕 · 큰 모서리 · 옅은 그림자. 이름표는 작은 회색 글자. */
+.receipt__panel {
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  box-shadow: var(--elevation-1);
+}
+
+.receipt__panel-label {
+  font: var(--type-label-sm);
+  letter-spacing: var(--type-label-sm-tracking);
+  color: var(--on-surface-muted);
 }

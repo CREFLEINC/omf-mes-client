@@ -808,7 +808,6 @@ export const MaterialPickingScreen = () => {
           </div>
         )}
         {defaultIssueType !== null ? null : <p className="picking-out__note">{t.issueTypeNote}</p>}
-        {worker === null ? <p className="picking-out__note">{t.noWorker}</p> : null}
         {saveFailed ? <AlertBanner variant="error" title={t.saveFailed} /> : null}
         {queuedIssues === 0 ? null : <AlertBanner variant="warning" title={t.issueQueued} />}
         {/*

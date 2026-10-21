@@ -571,7 +571,6 @@ export const ProductReceiptScreen = () => {
                 {t.saveFailed.description}
               </AlertBanner>
             ) : null}
-            {worker === null ? <p className="product-receipt__note">{t.noWorker}</p> : null}
             {plantId === null ? <p className="product-receipt__note">{t.noPlant}</p> : null}
             <div className="action-bar">
               <Button

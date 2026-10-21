@@ -154,7 +154,8 @@ afterEach(() => {
 
 describe('설비 고장 보고 화면', () => {
   /* 누가 한 일인지 없이 기록을 남길 수 없다 - 서버가 사번 없는 쓰기를 받지 않는다. */
-  it('사번을 확인하기 전에는 다 채워도 보고할 수 없고 이유를 말한다', async () => {
+  /* 사번이 없다는 말은 셸이 앱바 아래에 들어서자마자 띄운다(layout 시험) - 화면은 막기만 한다. */
+  it('사번을 확인하기 전에는 다 채워도 보고할 수 없다', async () => {
     const user = userEvent.setup();
     renderWithProviders(<EquipmentFailureScreen />, {
       fetch: createStubFetch(routes()),
@@ -166,7 +167,6 @@ describe('설비 고장 보고 화면', () => {
     await user.type(screen.getByLabelText(/증상/), '유압 누유');
     await user.click(screen.getByRole('radio', { name: '설비가 멈췄다' }));
 
-    expect(screen.getByText('사번을 먼저 확인하세요')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: '고장 보고' })).toBeDisabled();
   });
 

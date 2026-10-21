@@ -1,5 +1,5 @@
 import { App } from '@capacitor/app';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useSyncExternalStore } from 'react';
 
 /*
  * 화면 안에서 단계를 밟아 들어간 자리들. 뒤로가기는 가장 안쪽 것부터 되돌린다.
@@ -9,17 +9,41 @@ import { useEffect, useRef } from 'react';
  */
 const steps: (() => void)[] = [];
 
+/* 앱바의 「이전 단계」 단추가 되돌릴 단계가 생기고 사라지는 것을 듣는다. */
+const listeners = new Set<() => void>();
+
+const notify = () => {
+  for (const listener of listeners) {
+    listener();
+  }
+};
+
 export const registerBackStep = (step: () => void): (() => void) => {
   steps.push(step);
+  notify();
 
   return () => {
     const at = steps.indexOf(step);
 
     if (at >= 0) {
       steps.splice(at, 1);
+      notify();
     }
   };
 };
+
+const subscribe = (listener: () => void) => {
+  listeners.add(listener);
+
+  return () => {
+    listeners.delete(listener);
+  };
+};
+
+const hasBackStep = () => steps.length > 0;
+
+/** 화면 안에 되돌릴 단계가 있는가. 앱바가 「이전 단계」 단추를 세울지 정한다. */
+export const useHasBackStep = (): boolean => useSyncExternalStore(subscribe, hasBackStep);
 
 /** 되돌릴 단계가 있으면 하나 되돌리고 참을 낸다. */
 export const runBackStep = (): boolean => {

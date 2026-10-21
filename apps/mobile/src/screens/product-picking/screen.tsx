@@ -700,7 +700,6 @@ export const ProductPickingScreen = () => {
             }}
             error={qtyMessage()}
           />
-          {worker === null ? <p className="picking__note">{t.noWorker}</p> : null}
           {pick.error === null || pick.error === undefined ? null : isConflict(
               toApiError(pick.error),
             ) ? (

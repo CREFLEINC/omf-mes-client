@@ -1,11 +1,13 @@
 import { Icon } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useId } from 'react';
-import { Link, Navigate, useParams } from 'react-router';
+import { Link, Navigate, useNavigate, useParams } from 'react-router';
 
+import { Button } from '../patterns/button';
 import { useOutbox } from '../patterns/outbox';
 import { useScreenTitle } from '../patterns/screen-title';
 import { useResumableTasks } from '../patterns/task-draft';
+import { useWorkerSession } from '../patterns/worker-session';
 import { useFrequentScreens } from './frequent-screens';
 import { areaOf, homeAreas, screenOf, type HomeScreen } from './home-menu';
 import './shell-home.css';
@@ -33,27 +35,18 @@ const ScreenChips = ({ screens }: { screens: HomeScreen[] }) => (
  * 업무 화면의 작업 한 행. 이름은 작업 이름뿐이고, 무엇을 하는 화면인지는 설명으로 붙인다 - 설명까지
  * 이름에 섞이면 낭독기가 행마다 긴 문장을 이름으로 읽는다.
  */
-const ScreenRow = ({ screen }: { screen: HomeScreen }) => {
-  const descriptionId = useId();
-
-  return (
-    <Link
-      to={screen.to}
-      className="shell-home__row"
-      aria-label={screen.label}
-      aria-describedby={descriptionId}
-    >
-      <span className="shell-home__tile-icon">
-        <Icon name={screen.icon} size={24} />
-      </span>
-      <span className="shell-home__text">
-        <strong>{screen.label}</strong>
-        <span id={descriptionId}>{screen.description}</span>
-      </span>
-      <Icon name="chevron_right" size={24} className="shell-home__chevron" />
-    </Link>
-  );
-};
+/* 이름 한 줄 - 이름 아래 설명은 두지 않는다(사용자 지시 2026-10-21). */
+const ScreenRow = ({ screen }: { screen: HomeScreen }) => (
+  <Link to={screen.to} className="shell-home__row">
+    <span className="shell-home__tile-icon">
+      <Icon name={screen.icon} size={24} />
+    </span>
+    <span className="shell-home__text">
+      <strong>{screen.label}</strong>
+    </span>
+    <Icon name="chevron_right" size={24} className="shell-home__chevron" />
+  </Link>
+);
 
 /**
  * 작업 목록의 첫 화면.
@@ -75,6 +68,8 @@ const ScreenRow = ({ screen }: { screen: HomeScreen }) => {
 export const ShellHome = () => {
   const resumable = useResumableTasks();
   const { pending, rejected } = useOutbox();
+  const { signOut } = useWorkerSession();
+  const navigate = useNavigate();
   const frequent = useFrequentScreens(FREQUENT_LIMIT)
     .map(screenOf)
     .filter((screen): screen is HomeScreen => screen !== undefined);
@@ -151,13 +146,14 @@ export const ShellHome = () => {
         <ul className="shell-home__areas">
           {homeAreas.map((area) => (
             <li key={area.id}>
+              {/* 업무는 한 줄 목록이다(사용자 지시 2026-10-21) - 아이콘 · 이름 · 작업 수 · 화살표. */}
               <Link to={`/screens/${area.id}`} className="shell-home__area">
                 <span className="shell-home__tile-icon">
                   <Icon name={area.icon} size={24} />
                 </span>
                 <strong>{area.label}</strong>
-                <span className="shell-home__area-summary">{area.summary}</span>
                 <span className="shell-home__area-count">{t.areas.count(area.screens.length)}</span>
+                <Icon name="chevron_right" size={24} className="shell-home__chevron" />
               </Link>
             </li>
           ))}
@@ -171,6 +167,36 @@ export const ShellHome = () => {
           <ScreenChips screens={frequent} />
         </section>
       )}
+
+      {/*
+       * 맨 아래 두 단추(사용자 지시 2026-10-21).
+       * - 사용자 전환: 교대 때 쓴다. 지금 사번을 내리고 사번 확인으로 간다 - 앱바의 사번 칩으로
+       *   가면 「사번 바꾸기」를 한 번 더 눌러야 한다.
+       * - 설정: 기기 등록 해제처럼 드물게 쓰는 것. 업무가 아니라 목록 행이 아닌 단추로 둔다.
+       */}
+      <div className="shell-home__tools">
+        <Button
+          variant="outlined"
+          size="xl"
+          onClick={() => {
+            signOut();
+            void navigate('/');
+          }}
+        >
+          <Icon name="switch_account" size={24} className="shell-home__tool-icon" />
+          {t.switchWorker}
+        </Button>
+        <Button
+          variant="outlined"
+          size="xl"
+          onClick={() => {
+            void navigate('/settings');
+          }}
+        >
+          <Icon name="settings" size={24} className="shell-home__tool-icon" />
+          {t.settings.label}
+        </Button>
+      </div>
     </nav>
   );
 };

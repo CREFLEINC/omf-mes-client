@@ -267,3 +267,55 @@
   outline: 2px solid var(--primary);
   outline-offset: 2px;
 }
+
+/*
+ * 업무는 위아래 한 줄 목록이다(사용자 지시 2026-10-21) - 두 칸 타일은 요약 글이 접혀 높이가
+ * 들쭉날쭉했다. 업무 화면의 작업 행과 같은 모양이다.
+ */
+.shell-home__areas {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.shell-home__area {
+  height: auto;
+  min-height: 56px;
+  flex-direction: row;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-2) var(--space-2) var(--space-3);
+}
+
+.shell-home__area strong {
+  flex: 1 1 auto;
+  min-width: 0;
+  margin-top: 0;
+}
+
+.shell-home__area-count {
+  margin-top: 0;
+  /* 수와 낱말이 갈려 두 줄로 서면 행이 들쭉날쭉하다. 긴 업무 이름 쪽이 접힌다. */
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
+.shell-home__row {
+  min-height: 56px;
+}
+
+/* 사용자 전환 · 설정. 업무 목록 아래 두 칸으로 나란히 - 주 단추가 아니라 외곽선이다. */
+.shell-home__tools {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-2);
+}
+
+.shell-home__tools > button {
+  min-width: 0;
+}
+
+.shell-home__tool-icon {
+  flex: 0 0 auto;
+  margin-inline-end: var(--space-2);
+}

@@ -40,8 +40,10 @@
   grid-row: 1;
   display: grid;
   place-items: center;
-  width: 28px;
+  min-width: 28px;
   height: 28px;
+  box-sizing: border-box;
+  padding-inline: 6px;
   border-radius: var(--radius-sm);
   background: var(--on-surface);
   color: var(--surface);

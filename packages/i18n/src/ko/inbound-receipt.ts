@@ -36,11 +36,8 @@ export const inboundReceipt = {
     reasonLabel: '대체 LOT 사유',
     reasonPlaceholder: '사유를 고르세요',
     reasonLoadFailed: '대체 LOT 사유를 불러오지 못했습니다',
-    back: '스캔으로 되돌리기',
     /** 스캔 구역의 지시. 단계 제목이 「라벨을 스캔하세요」라 여기서는 손이 할 일을 말한다. */
     prompt: '스캐너 단추를 누르세요',
-    /** 라벨의 형식. 다른 라벨을 쏘았을 때 무엇이 틀렸는지 견줄 수 있게 미리 보인다. */
-    hint: '제품코드 | 수량 | 날짜 | 공급사 | 번호',
     /** 라벨을 받은 뒤의 대기 줄. */
     standby: '다른 라벨이면 다시 스캔',
     /** 라벨이 없을 때의 두 길 위에 서는 이름. */
@@ -53,6 +50,84 @@ export const inboundReceipt = {
     checking: '라벨의 제품코드를 확인하는 중입니다',
     /* 연결이 없으면 확인하지 못한다. 막지는 않는다 - 서버가 등록할 때 같은 대조를 한다. */
     unverified: '라벨의 제품코드를 확인하지 못했습니다. 다르면 전송할 때 되돌아옵니다.',
+  },
+  /**
+   * 라벨이 없을 때(LOT 번호 없음) 받을 것을 고르는 길. 라벨 제품코드로 좁힐 수 없어 자재 P/O 번호를
+   * 늘어놓으면 무엇이 무엇인지 모른다 - 입고 예정을 공급사 · 자재 P/O · 발주일 · 입고예정일 표로
+   * 보이고 공급사명 · 기간으로 거른다. 행을 누르면 그 자재 P/O 의 품목 표로 간다(사용자 지시 2026-10-21).
+   */
+  lotless: {
+    orders: '입고 예정',
+    /** 공급사 이름을 받지 못했을 때. 번호라도 보여야 고를 수 있다. */
+    supplierUnknown: (id: number) => `공급사 #${String(id)}`,
+    /** 표의 컬럼 머리. */
+    columns: {
+      supplier: '공급사',
+      order: '자재 P/O',
+      orderDate: '발주일',
+      orderDateShort: '발주일',
+      /** 표 칸이 좁아 줄여 적는다. 온 이름은 낭독기와 기간 기준 단추에 쓴다. */
+      expectedDate: '예정일',
+      expectedDateFull: '입고예정일',
+      itemName: '품목명',
+      itemCode: '품목코드',
+      qty: '수량',
+      /** 품목 표의 수량 칸 - 이미 받은 수량/발주 수량. */
+      receivedOfOrdered: '입고/발주 수량',
+    },
+    orderCount: (count: number) => `입고 예정 ${String(count)}건`,
+    /** 입고 예정 행의 접근명. 화면은 칸으로 나눠 보이지만 낭독기는 한 번에 읽는다. */
+    orderRow: (supplier: string, orderNo: string, ordered: string, expected: string) =>
+      `${supplier} · ${orderNo} · 발주일 ${ordered} · 입고예정일 ${expected}`,
+    filter: {
+      open: '필터',
+      /** 접혀 있어도 걸러진 줄 안다. */
+      openActive: (count: number) => `필터 ${String(count)}`,
+      supplierName: '공급사명',
+      supplierNamePlaceholder: '공급사명 일부',
+      period: '기간',
+      basis: '기간 기준',
+      basisExpected: '입고예정일',
+      basisOrdered: '발주일',
+      periodAll: '전체 기간',
+      clear: '필터 지우기',
+      none: '조건에 맞는 입고 예정이 없습니다',
+    },
+    /** 품목 표 위에 보고 있는 구매 발주를 적는 이름표. */
+    info: { supplier: '공급사', order: '발주번호', itemName: '품목명', itemCode: '품목코드' },
+    /** 품목 표의 거르기 - 품목 찾기를 「필터」 단추로 접고 편다. */
+    itemFilter: {
+      open: '필터',
+      openActive: (count: number) => `필터 ${String(count)}`,
+    },
+    items: '받을 품목',
+    itemRow: (name: string, code: string, qty: string) => `${name} · ${code} · ${qty}`,
+    count: (count: number) => `품목 ${String(count)}건`,
+    /** 다 받은 라인을 거르는 단추. */
+    openOnly: '받을 것만',
+    /**
+     * 체크해 한꺼번에 등록하기. 거의 다 문제없이 들어오므로 이상 없는 품목은 남은 수량 그대로
+     * 한 번에 등록하고, 문제가 있는 품목만 따로 처리한다(사용자 지시 2026-10-21).
+     */
+    bulk: {
+      selectAll: '모두 선택',
+      selectRow: (name: string) => `${name} 선택`,
+      submit: (count: number) =>
+        count === 0 ? '체크한 품목 입하 등록' : `체크한 ${String(count)}건 입하 등록`,
+      prompt: '체크한 품목은 남은 수량 그대로 등록합니다',
+      noneChecked: '등록할 품목을 체크하세요',
+      done: {
+        sent: (count: number) => `${String(count)}건을 입하 등록했습니다`,
+        queued: (count: number) => `${String(count)}건을 담았습니다. 연결되면 보냅니다`,
+        rejected: (count: number) =>
+          `${String(count)}건 등록이 되돌아왔습니다. 전송 실패 목록을 확인하세요`,
+        failed: (count: number) => `${String(count)}건을 담지 못했습니다. 다시 누르세요`,
+      },
+    },
+    searchLabel: '품목 찾기',
+    searchPlaceholder: '품목명 또는 품목코드',
+    noMatch: (query: string) => `「${query}」에 맞는 품목이 없습니다`,
+    none: '이 자재 P/O에서 받을 품목이 없습니다',
   },
   po: {
     legend: '자재 P/O 선택',
@@ -167,9 +242,6 @@ export const inboundReceipt = {
     remaining: (qty: string, uom: string) => `잔여 수량 ${qty} ${uom}`,
     received: '실입하 수량',
     packageCount: '포장 수',
-    /* 두 칸을 오간다. 숫자판을 닫았다 다시 열지 않고 옆으로 옮긴다. */
-    previousField: '앞 칸',
-    nextField: '다음 칸',
     /** 수량 판의 숫자판 단추. */
     pad: '숫자판 열기',
     /**
@@ -179,6 +251,9 @@ export const inboundReceipt = {
     extras: '포장 수 · 제조일 · 유효기한',
     /** 수량 판 안의 펼침 단추. 판 안이라 짧게 쓰고, 무엇이 들었는지는 펼친 칸이 말한다. */
     extrasShort: '추가 정보',
+    /** 판 머리 뱃지 - 이번 것까지 받고 남는 수. 넘치면 넘친 수. */
+    leftChip: (qty: string, uom: string) => `잔량 ${qty} ${uom}`,
+    overChip: (qty: string, uom: string) => `초과 ${qty} ${uom}`,
     manufactured: '제조일',
     expiry: '유효기한',
     empty: '실입하 수량을 적으세요',
@@ -314,9 +389,15 @@ export const inboundReceipt = {
   steps: {
     scan: '자재 LOT 라벨을 스캔하세요',
     line: '자재 P/O 라인을 고르세요',
+    /** 라벨이 없을 때(LOT 번호 없음) 같은 단계의 두 화면 - 입고 예정 목록과 그 자재 P/O 의 품목 목록. */
+    lotlessOrder: '구매 발주 목록',
+    lotlessItem: '입고 품목 목록',
+    /** 라벨 없이 고르는 두 화면의 번호 - 단계 2 안의 첫째 · 둘째. */
+    lotlessOrderBadge: '2-1',
+    lotlessItemBadge: '2-2',
     unordered: '발주 없이 받을 품목과 수량을 적으세요',
     /* 칸 이름(「실입하 수량」)과 겹치지 않게 짧게 쓴다 — 겹치면 낭독기가 두 자리를 같은 이름으로 읽는다. */
-    qty: '수량을 확인하세요',
+    qty: '수량 확인',
   },
   /** 작업 헤더 — 처리 중인 값. 이름은 낭독기에만 준다. */
   header: {
@@ -326,16 +407,12 @@ export const inboundReceipt = {
     lot: '공급사 LOT',
     tolerance: '허용',
     lineOf: (purchaseOrderNo: string, lineNo: string) => `${purchaseOrderNo} · ${lineNo}번 라인`,
-    changeLine: '자재 P/O 라인 바꾸기',
   },
   /** 고를 것이 하나뿐이라 알아서 골랐다는 것. 조용히 건너뛰면 무엇을 골랐는지 모른다. */
   auto: {
     picked: (purchaseOrderNo: string, lineNo: string) =>
       `${purchaseOrderNo} · ${lineNo}번 라인을 골랐습니다`,
   },
-  /** 미리 채운 잔여 수량. 다르면 숫자를 누르면 새로 적힌다. */
-  plannedQty: '잔여 수량을 채워 두었습니다. 다르면 숫자를 누르세요.',
   /** 결과 화면에서 다음 라벨을 읽으면 그 자리에서 다음 입하가 시작된다. */
   nextScanPrompt: '다음 라벨을 스캔하세요',
-  nextScanHint: '바로 다음 입하가 시작됩니다',
 } as const;

@@ -459,7 +459,6 @@ export const EquipmentFailureScreen = () => {
           {t.saveFailed.description}
         </AlertBanner>
       ) : null}
-      {worker === null ? <AlertBanner variant="warning" title={t.noWorker} /> : null}
 
       <div className="action-bar">
         <Button

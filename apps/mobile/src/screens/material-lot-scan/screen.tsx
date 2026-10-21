@@ -413,14 +413,13 @@ export const MaterialLotScanScreen = () => {
             )}
             {/*
              * 스캔 칸 하나로 받는다. 스캐너를 기다리는 동안에는 키보드를 열지 않고, 직접
-             * 입력(구역 안 키보드 단추)을 누르면 그 칸이 열린다. 치는 도중 스캔이 오면 스캔값이 이긴다.
+             * 입력(구역 아래 키보드 단추)을 누르면 그 칸이 열린다. 치는 도중 스캔이 오면 스캔값이 이긴다.
              */}
             <ScanZone
               field={scanField}
               label={required(t.scan.scanLabel)}
               prompt={t.scan.prompt}
-              hint={t.scan.hint}
-              trailing={
+              tools={
                 <IconButton
                   className="material-lot-scan__zone-button"
                   icon={scanField.manual ? 'keyboard_return' : 'keyboard'}
@@ -466,7 +465,6 @@ export const MaterialLotScanScreen = () => {
                   {t.saveFailed.description}
                 </AlertBanner>
               ) : null}
-              {worker === null ? <p className="material-lot-scan__note">{t.noWorker}</p> : null}
               {plantId === null ? <p className="material-lot-scan__note">{t.noPlant}</p> : null}
             </section>
           ) : null}

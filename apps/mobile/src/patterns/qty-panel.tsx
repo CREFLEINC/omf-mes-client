@@ -21,8 +21,15 @@ export interface QtyPanelProps {
   onChange: (value: string) => void;
   /** 칸이 잡히면 숫자판을 연다. 단말 키보드는 부르지 않는다. */
   onFocus: () => void;
-  /** 숫자판 단추의 이름. */
-  padLabel: string;
+  /**
+   * 숫자판 단추의 이름. 넘기지 않으면 단추를 두지 않는다 - 칸을 누르면 숫자판이 열리므로 단추는
+   * 같은 일을 한 번 더 하는 것이다(입하 등록 수량 확인, 사용자 지시 2026-10-21).
+   */
+  padLabel?: string;
+  /** 수 뒤에 붙는 「/300」 같은 기준. 받을 것 중 얼마인지를 한 줄로 읽는다. */
+  of?: string;
+  /** 수를 오른쪽에 붙인다. 표의 수량 칸처럼 수는 오른쪽에서 읽는다. */
+  align?: 'start' | 'end';
   /** 판 머리 오른쪽의 판정(칩). */
   status?: ReactNode;
   /** 막대. 넘기지 않으면 그리지 않는다 - 견줄 예정이 없는 입하(발주 없음)가 그렇다. */
@@ -58,6 +65,8 @@ export const QtyPanel = ({
   onChange,
   onFocus,
   padLabel,
+  of,
+  align = 'start',
   status,
   meter,
   legend,
@@ -70,7 +79,28 @@ export const QtyPanel = ({
   const message = error ?? note;
 
   return (
-    <div className={error === undefined ? 'qty-panel' : 'qty-panel qty-panel--error'}>
+    /*
+     * 판 어디를 눌러도 칸이 잡히고 숫자판이 열린다(사용자 지시 2026-10-21) - 수 글자만 누를 수
+     * 있으면 장갑 낀 손가락이 비켜 간다. 판 안의 단추는 제 일을 한다. 초점과 낭독은 칸이 따로 받는다
+     * - 판은 누르는 자리를 넓힐 뿐이다.
+     */
+    <div
+      className={[
+        'qty-panel',
+        error === undefined ? '' : 'qty-panel--error',
+        align === 'end' ? 'qty-panel--end' : '',
+      ]
+        .filter((name) => name !== '')
+        .join(' ')}
+      onClick={(event) => {
+        if ((event.target as HTMLElement).closest('button, a, input') !== null) {
+          return;
+        }
+
+        inputRef.current?.focus();
+        onFocus();
+      }}
+    >
       <div className="qty-panel__head">
         <label htmlFor={id} className="qty-panel__label">
           {label}
@@ -85,6 +115,7 @@ export const QtyPanel = ({
           className="qty-panel__input"
           inputMode="none"
           autoComplete="off"
+          placeholder="0"
           value={value}
           aria-invalid={error === undefined ? undefined : true}
           aria-describedby={message === undefined ? undefined : messageId}
@@ -93,18 +124,21 @@ export const QtyPanel = ({
           }}
           onFocus={onFocus}
         />
+        {of === undefined ? null : <span className="qty-panel__of">{of}</span>}
         <span className="qty-panel__unit">{unit}</span>
         {extra === undefined ? null : <span className="qty-panel__extra">{extra}</span>}
-        <IconButton
-          className="qty-panel__pad"
-          icon="dialpad"
-          size="lg"
-          aria-label={padLabel}
-          onClick={() => {
-            inputRef.current?.focus();
-            onFocus();
-          }}
-        />
+        {padLabel === undefined ? null : (
+          <IconButton
+            className="qty-panel__pad"
+            icon="dialpad"
+            size="lg"
+            aria-label={padLabel}
+            onClick={() => {
+              inputRef.current?.focus();
+              onFocus();
+            }}
+          />
+        )}
       </div>
 
       {meter === undefined ? null : (
