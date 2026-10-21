@@ -13,22 +13,8 @@ export {
 } from './errors';
 export type { components, paths } from './generated/api';
 export type {
-  AppUserPhone,
   AppUserWorker,
   LineDefaultLocations,
-  LineDepartment,
-  NotificationEventForward,
-  NotificationRecipientMode,
-  NotificationSetting,
-  NotificationSettingRecipient,
-  NotificationSettingReplace,
-  NotificationSettingSummary,
-  NotificationSettingSummaryItem,
-  RecipientCandidate,
-  RecipientCandidatePage,
-  ZaloConnection,
-  ZaloConnectionReplace,
-  ZaloConnectionStatus,
   AttachmentTargetType,
   InspectionHistory,
   InspectionHistoryEvent,

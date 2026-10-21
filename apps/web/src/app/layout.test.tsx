@@ -910,8 +910,11 @@ describe('AppLayout', () => {
     expect(links.indexOf('/notification/zalo-connection')).toBe(
       links.indexOf('/notification/recipient-settings') + 1,
     );
-    expect(links.indexOf('/master-data/common-code')).toBe(
+    expect(links.indexOf('/notification/dispatch-history')).toBe(
       links.indexOf('/notification/zalo-connection') + 1,
+    );
+    expect(links.indexOf('/master-data/common-code')).toBe(
+      links.indexOf('/notification/dispatch-history') + 1,
     );
     expect(links.indexOf('/system/terminal-process-map')).toBe(
       links.indexOf('/master-data/common-code') + 1,
@@ -1039,6 +1042,7 @@ describe('AppLayout', () => {
       '/system/approval-route',
       '/notification/recipient-settings',
       '/notification/zalo-connection',
+      '/notification/dispatch-history',
       '/master-data/common-code',
       '/system/terminal-process-map',
     ]);
@@ -1660,7 +1664,7 @@ describe('AppLayout — 레일', () => {
 
     await collapseRail(user);
 
-    expect(within(navSidebar()).getAllByRole('link')).toHaveLength(47);
+    expect(within(navSidebar()).getAllByRole('link')).toHaveLength(48);
   });
 
   /*
@@ -1710,7 +1714,7 @@ describe('AppLayout — 레일과 검색', () => {
     await typeQuery(user, '실사');
     await collapseRail(user);
 
-    expect(within(navSidebar()).getAllByRole('link')).toHaveLength(47);
+    expect(within(navSidebar()).getAllByRole('link')).toHaveLength(48);
   });
 
   /** 섹션 밖 항목이 빠지면 레일에서 대시보드로 갈 길이 사라진다. */

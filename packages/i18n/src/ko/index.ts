@@ -60,6 +60,7 @@ import { documentProgress } from './document-progress';
 import { notificationCenter } from './notification-center';
 import { alarmRecipientSettings } from './alarm-recipient-settings';
 import { zaloConnection } from './zalo-connection';
+import { dispatchHistory } from './dispatch-history';
 import { iqcInspection } from './iqc-inspection';
 import { pqcInspection } from './pqc-inspection';
 import { productionResult } from './production-result';
@@ -207,6 +208,7 @@ export const ko = {
   notificationCenter,
   alarmRecipientSettings,
   zaloConnection,
+  dispatchHistory,
   iqcInspection,
   pqcInspection,
   productionResult,

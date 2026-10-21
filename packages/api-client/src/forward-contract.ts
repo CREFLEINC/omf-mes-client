@@ -13,24 +13,6 @@ export interface LineDefaultLocations {
   defaultScrapLocationId?: number | null;
 }
 
-/**
- * 001(omf-all-around#160) — 생산라인(설비 그룹)의 담당 부서. 계약 사본에 실리면 지운다.
- * 본문은 `departmentId` 만 싣는다(생략 = 유지, null = 해제). `departmentName` 은 응답에만 온다.
- */
-export interface LineDepartment {
-  departmentId?: number | null;
-  departmentName?: string | null;
-}
-
-/**
- * 001(omf-all-around#160) — 사용자 휴대폰 번호(`AppUser*.phoneNumber`). 계약 사본에 실리면 지운다.
- * 응답은 표준형 `84XXXXXXXXX` 이고 요청자에게 W-CO-02 권한이 있을 때만 실린다. 본문에서 생략 = 유지,
- * null = 삭제.
- */
-export interface AppUserPhone {
-  phoneNumber?: string | null;
-}
-
 export interface TerminalRegistrationConfirmation {
   terminalId: number;
   tokenVersion: number;
@@ -797,9 +779,9 @@ export type ProductionResultCreateForward = components['schemas']['ProductionRes
   defects?: ProductionResultDefectInput[];
 };
 
+/* `defects` 는 전달본 2026-10-21 에 실려(P-95) 생성 타입이 갖는다 — 덧대면 두 모양이 겹쳐 충돌한다. */
 export type ProductionResultForward = components['schemas']['ProductionResult'] & {
   workerAllocations?: ProductionResultWorkerAllocation[];
-  defects?: ProductionResultDefect[];
 };
 
 type DefectCodesPath = paths['/quality/defect-codes'];
@@ -833,115 +815,6 @@ interface Unused {
   patch?: never;
   trace?: never;
 }
-
-
-/* ── 001(omf-all-around#160) 부서×이벤트 알림 설정 — W-CO-11. 계약 사본(서버 장부 P-91·P-92)에 실리면 지운다. ── */
-
-/** 수신자를 정하는 방식. `APPROVER` 는 그 차례의 결재자가 받아 수신자 목록이 없다(FR-010). */
-export type NotificationRecipientMode = 'CONFIGURED' | 'APPROVER';
-
-/** 이벤트 카탈로그 한 줄 + `recipientMode`. */
-export type NotificationEventForward = components['schemas']['NotificationEvent'] & {
-  recipientMode?: NotificationRecipientMode;
-};
-
-/** Zalo 연결 상태 — W-CO-11 은 W-CO-12 권한 없이 상태만 본다. */
-export type ZaloConnectionStatus = 'NOT_CONFIGURED' | 'ACTIVE' | 'REAUTH_REQUIRED';
-
-export interface NotificationSettingSummaryItem {
-  eventCode: string;
-  enabled: boolean;
-  zaloEnabled: boolean;
-  recipientCount: number;
-  /** 수신자 중 전화번호가 없는 사람 수 — 그 사람은 알림센터로만 받는다 */
-  noPhoneCount: number;
-}
-
-export interface NotificationSettingSummary {
-  departmentId: number;
-  departmentName: string;
-  zaloStatus: ZaloConnectionStatus;
-  items: NotificationSettingSummaryItem[];
-}
-
-export interface NotificationSettingRecipient {
-  appUserId: number;
-  loginId: string;
-  userName: string;
-  departmentName: string | null;
-  active: boolean;
-  hasPhone: boolean;
-}
-
-export interface NotificationSetting {
-  departmentId: number;
-  eventCode: string;
-  enabled: boolean;
-  zaloEnabled: boolean;
-  /** `APPROVER` 이벤트는 언제나 빈 배열이다 */
-  recipients: NotificationSettingRecipient[];
-}
-
-export interface NotificationSettingReplace {
-  enabled: boolean;
-  zaloEnabled: boolean;
-  recipientUserIds: number[];
-}
-
-/** 수신자 후보 — 활성 사용자 전체. 전화번호 원문은 오지 않는다(FR-019). */
-export interface RecipientCandidate {
-  appUserId: number;
-  loginId: string;
-  userName: string;
-  departmentName: string | null;
-  hasPhone: boolean;
-}
-
-/** 저장소 공통 페이지 모양(서버 `pagedResponse`) — `{ items, page: PageMeta }`. */
-export interface RecipientCandidatePage {
-  items: RecipientCandidate[];
-  page: components['schemas']['PageMeta'];
-}
-
-export interface RecipientCandidateQuery {
-  keyword?: string;
-  page?: number;
-  size?: number;
-}
-
-/** 001 P-96 — Zalo 연결 설정(W-CO-12). 비밀값 원문은 내려오지 않는다(FR-028). */
-export interface ZaloConnection {
-  appId: string | null;
-  secretKeySet: boolean;
-  refreshTokenSet: boolean;
-  status: ZaloConnectionStatus;
-  accessTokenExpiresAt: string | null;
-  lastRefreshedAt: string | null;
-  lastErrorCode: string | null;
-  lastErrorMessage: string | null;
-  paramMaxLength: number;
-  /** 6개 이벤트 전부. 미설정이면 templateId null */
-  templates: { eventCode: string; templateId: string | null }[];
-  /** 서버 env `ZALO_DELIVERY_ENABLED` — 읽기 전용 */
-  deliveryEnabled: boolean;
-}
-
-/** 비밀값은 보낼 때만 교체한다 — 생략하면 유지, 빈 문자열은 400. */
-export interface ZaloConnectionReplace {
-  appId: string | null;
-  secretKey?: string;
-  refreshToken?: string;
-  paramMaxLength: number;
-  templates: { eventCode: string; templateId: string | null }[];
-}
-
-type NotificationEventsGet = paths['/app/notification-events']['get'];
-
-interface JsonResponse<T> {
-  headers: { [name: string]: unknown };
-  content: { 'application/json': T };
-}
-
 
 /** 서버 선행 P-79(omf-all-around#84) — 특채 요청 본문. */
 export interface ConcessionCreate {
@@ -1034,91 +907,6 @@ export interface ItemInspectionLevelHistoryQuery {
 type PageMeta = components['schemas']['PageMeta'];
 
 export interface ForwardPaths {
-  /** 001 P-91 — 카탈로그 한 줄에 `recipientMode` 를 더한다. */
-  '/app/notification-events': Omit<paths['/app/notification-events'], 'get'> & {
-    get: Omit<NotificationEventsGet, 'responses'> & {
-      responses: Omit<NotificationEventsGet['responses'], 200> & {
-        200: JsonResponse<{ items: NotificationEventForward[] }>;
-      };
-    };
-  };
-  /** 001 P-96 — Zalo 연결 설정. 조회 ETag 가 저장의 If-Match 다. */
-  '/app/zalo-connection': Unused & {
-    parameters: NoParameters;
-    get: {
-      parameters: NoParameters;
-      requestBody?: never;
-      responses: { 200: JsonResponse<ZaloConnection> };
-    };
-    put: {
-      parameters: {
-        query?: never;
-        header: { 'Idempotency-Key': string; 'If-Match': string };
-        path?: never;
-        cookie?: never;
-      };
-      requestBody: { content: { 'application/json': ZaloConnectionReplace } };
-      responses: { 200: JsonResponse<ZaloConnection> };
-    };
-    post?: never;
-  };
-  /** 001 P-92 — 한 부서의 6개 이벤트 요약. ETag 없음. */
-  '/app/notification-settings': Unused & {
-    parameters: NoParameters;
-    get: {
-      parameters: {
-        query: { departmentId: number };
-        header?: never;
-        path?: never;
-        cookie?: never;
-      };
-      requestBody?: never;
-      responses: { 200: JsonResponse<NotificationSettingSummary> };
-    };
-    put?: never;
-    post?: never;
-  };
-  /** 001 P-92 — 부서×이벤트 한 행. 상세 ETag 가 저장의 If-Match 다(행이 없으면 "1"). */
-  '/app/notification-settings/{departmentId}/{eventCode}': Unused & {
-    parameters: NoParameters;
-    get: {
-      parameters: {
-        query?: never;
-        header?: never;
-        path: { departmentId: number; eventCode: string };
-        cookie?: never;
-      };
-      requestBody?: never;
-      responses: { 200: JsonResponse<NotificationSetting> };
-    };
-    put: {
-      parameters: {
-        query?: never;
-        header: { 'Idempotency-Key': string; 'If-Match': string };
-        path: { departmentId: number; eventCode: string };
-        cookie?: never;
-      };
-      requestBody: { content: { 'application/json': NotificationSettingReplace } };
-      responses: { 200: JsonResponse<NotificationSetting> };
-    };
-    post?: never;
-  };
-  /** 001 P-92 — 수신자 후보(활성 사용자 전체). */
-  '/app/notification-settings/recipient-candidates': Unused & {
-    parameters: NoParameters;
-    get: {
-      parameters: {
-        query?: RecipientCandidateQuery;
-        header?: never;
-        path?: never;
-        cookie?: never;
-      };
-      requestBody?: never;
-      responses: { 200: JsonResponse<RecipientCandidatePage> };
-    };
-    put?: never;
-    post?: never;
-  };
   /** 특채 조회(GET)에 요청(POST)을 더한다 — 서버 선행 P-79. */
   '/quality/concessions': Omit<ConcessionsPath, 'post'> & {
     post: {

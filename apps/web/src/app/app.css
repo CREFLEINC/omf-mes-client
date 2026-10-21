@@ -7842,6 +7842,26 @@ button.app-button-neutral {
   }
 }
 
+/* W-CO-13 알림 발송 이력(001) — 처리 결과 표 아래에 Zalo 발송 상세. */
+.dispatch-pane {
+  display: grid;
+  align-content: start;
+  gap: var(--space-4);
+  margin-top: var(--space-4);
+  padding: var(--space-5);
+}
+
+.dispatch-pane > .pane-title {
+  margin: 0;
+}
+
+.dispatch-pages {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+}
+
 /* 규범 2 — 컨트롤 상자의 윗선에 맞춘다. 버튼에는 라벨 층이 없어 그만큼 내려 준다. */
 .scan-row {
   display: flex;

@@ -270,6 +270,7 @@ export const WEB_SCREENS: readonly WebScreen[] = [
   { path: '/notification/recipient-settings', code: 'W-CO-11', name: '알림 수신자 설정' },
   /* 001(omf-all-around#160) — Zalo 연결 정보. 알림센터가 정본이고 Zalo 는 부가 전달이다. */
   { path: '/notification/zalo-connection', code: 'W-CO-12', name: '알림 연결 설정' },
+  { path: '/notification/dispatch-history', code: 'W-CO-13', name: '알림 발송 이력' },
   { path: '/notification/notices', code: 'W-CO-04', name: '공지·전달 게시/조회' },
 
   /* ── 시스템 관리 ──────────────────────────────────────────────────────── */
