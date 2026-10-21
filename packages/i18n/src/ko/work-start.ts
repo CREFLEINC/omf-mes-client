@@ -60,7 +60,7 @@ export const workStart = {
     checking: '확인 중',
 
     /** ⛔ 미등록과 퇴사를 가른다 — 사용자가 할 일이 다르다. */
-    unknown: '등록되지 않은 사번입니다.',
+    unknown: '이 공장에 등록되지 않은 사번입니다.',
     inactive: '재직 중이 아닌 사번입니다.',
     lookupFailed: '사번을 확인하지 못했습니다. 다시 시도해 주세요.',
     /**

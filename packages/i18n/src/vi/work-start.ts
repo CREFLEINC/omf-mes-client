@@ -39,7 +39,7 @@ export const workStart: Translated<typeof ko.workStart> = {
     change: 'Nhập lại',
     checking: 'Đang kiểm tra',
 
-    unknown: 'Mã nhân viên chưa được đăng ký.',
+    unknown: 'Mã nhân viên chưa được đăng ký ở nhà máy này.',
     inactive: 'Mã nhân viên này không còn làm việc.',
     lookupFailed: 'Không xác nhận được mã nhân viên. Hãy thử lại.',
     retry: 'Thử lại',
