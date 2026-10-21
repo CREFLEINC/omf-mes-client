@@ -1,6 +1,7 @@
 import {
   AlertBanner,
   Button,
+  Checkbox,
   Chip,
   Dialog,
   EmptyState,
@@ -28,7 +29,7 @@ export interface RecipientPickerProps {
 /**
  * 수신자 추가 창 — 검색 + 표 행 체크로 여럿을 고른다.
  *
- * DS 에 다중 선택 부품이 없어 `Dialog` · `SearchInput` · `Table(selectable)` 을 조합한다
+ * DS 에 다중 선택 부품이 없어 `Dialog` · `SearchInput` · `Table` · `Checkbox` 를 조합한다
  * (설계 W-CO-11). 조합물은 이 화면 슬라이스가 소유한다.
  *
  * ⭐ **고른 사람은 쪽을 넘겨도 남는다** — 이름순으로 흩어진 사람을 한 번에 더할 수 있어야 한다.
@@ -59,21 +60,33 @@ export const RecipientPicker = ({ open, existingIds, onAdd, onClose }: Recipient
     setPage(1);
   };
 
-  /** 표가 주는 것은 이 쪽의 선택 결과다 — 다른 쪽에서 고른 사람은 건드리지 않는다. */
-  const changeSelection = (nextIds: string[]): void => {
-    const selected = new Set(nextIds);
+  /** 한 줄을 고르거나 푼다. 다른 쪽에서 고른 사람은 그대로 남는다. */
+  const toggle = (row: Candidate, checked: boolean): void => {
     setPicked((current) => {
       const next = new Map(current);
-      for (const row of rows) {
-        if (existingIds.has(row.appUserId)) continue;
-        if (selected.has(String(row.appUserId))) next.set(row.appUserId, row);
-        else next.delete(row.appUserId);
-      }
+      if (checked) next.set(row.appUserId, row);
+      else next.delete(row.appUserId);
       return next;
     });
   };
 
+  /*
+   * 체크 열을 직접 둔다 — DS `Table` 의 선택 열은 행마다 막을 수 없는데, 이미 수신자인 사람은
+   * 고를 수 없어야 한다(다시 더해도 서버가 중복으로 거절한다).
+   */
   const columns: Column<Candidate>[] = [
+    {
+      key: 'pick',
+      header: '',
+      render: (row) => (
+        <Checkbox
+          aria-label={t.values.selectRow(row.userName)}
+          checked={existingIds.has(row.appUserId) || picked.has(row.appUserId)}
+          disabled={existingIds.has(row.appUserId)}
+          onChange={(event) => toggle(row, event.target.checked)}
+        />
+      ),
+    },
     {
       key: 'userName',
       header: t.columns.userName,
@@ -137,9 +150,6 @@ export const RecipientPicker = ({ open, existingIds, onAdd, onClose }: Recipient
         getRowId={(row) => String(row.appUserId)}
         density="compact"
         caption={t.picker.caption}
-        selectable
-        selectedIds={[...picked.keys()].map(String)}
-        onSelectionChange={changeSelection}
         empty={<EmptyState size="sm" title={t.state.candidatesEmpty} />}
       />
     );

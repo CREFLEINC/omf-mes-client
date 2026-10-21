@@ -46,18 +46,19 @@ export const useEvents = (): UseQueryResult<NotificationEvent[]> => {
  * 부서 선택지 — 사용 중인 부서만 받는다(설계 W-CO-11 표시 항목). 미사용 부서의 설정은
  * 고칠 일이 없고, 지금 보던 부서가 미사용이 되면 URL 값은 남지만 선택지에서 빠진다.
  */
-export const useDepartments = (): UseQueryResult<Department[]> => {
+export const useDepartments = (): UseQueryResult<{ items: Department[]; truncated: boolean }> => {
   const { client } = useApiClient();
   return useQuery({
     queryKey: alarmRecipientKeys.departments,
-    queryFn: async () =>
-      (
-        await runRequest(() =>
-          client.GET('/mdm/departments', {
-            params: { query: { includeInactive: false, size: 100 } },
-          }),
-        )
-      ).items,
+    queryFn: async () => {
+      const response = await runRequest(() =>
+        client.GET('/mdm/departments', {
+          params: { query: { includeInactive: false, size: 100 } },
+        }),
+      );
+      /* 잘렸으면 그 사실을 밝힌다 — 감추면 찾는 부서가 왜 없는지 알 수 없다(W-05-12 와 같다). */
+      return { items: response.items, truncated: response.page.total > response.items.length };
+    },
   });
 };
 
