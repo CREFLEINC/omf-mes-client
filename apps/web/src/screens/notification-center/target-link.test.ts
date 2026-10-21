@@ -11,7 +11,7 @@ const viewOf = (overrides: Parameters<typeof notificationFixture>[0] = {}) =>
   toNotificationView(notificationFixture(overrides));
 
 /** 화면이 만든 제목 — **푼 이름**이다. 링크 이름이 이것을 쓰는지가 이 파일의 한 축이다. */
-const TITLE = '합성 이벤트 가';
+const TITLE = '생산 실행';
 
 const APPROVAL = { targetTypeCode: 'APPROVAL_REQUEST', targetId: 7201 } as const;
 
@@ -28,7 +28,7 @@ describe('toTargetLink — 대응표에 있는 유형', () => {
    * ⭐ **이름이 화면이 만든 제목을 쓴다 — 원본 코드가 아니다.**
    *
    * 카드 제목이 풀린 이름인데 그 옆 링크만 코드를 들면, 보조 기술 사용자에게 카드는
-   * 「합성 이벤트 가」로 링크는 「SYN-EVENT-01 …」로 들려 **둘을 잇는 글자가 없다.**
+   * 「생산 실행」로 링크는 「WORK_SESSION_STARTED …」로 들려 **둘을 잇는 글자가 없다.**
    */
   it('링크 이름이 카드 제목과 같은 글자를 든다', () => {
     const link = toTargetLink(viewOf({ ...APPROVAL, eventCode: 'SYN-EVENT-07' }), TITLE);

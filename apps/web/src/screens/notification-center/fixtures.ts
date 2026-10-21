@@ -25,7 +25,7 @@ type NotificationEvent = components['schemas']['NotificationEvent'];
  */
 const BASE_NOTIFICATION: Notification = {
   notificationId: 7101,
-  eventCode: 'SYN-EVENT-01',
+  eventCode: 'WORK_SESSION_STARTED',
   message: '합성 알림 문구 가입니다.',
   occurredAt: '2026-08-17T14:05:00+09:00',
   read: false,
@@ -49,7 +49,7 @@ export const notificationFixtures: Notification[] = [
   notificationFixture(),
   notificationFixture({
     notificationId: 7102,
-    eventCode: 'SYN-EVENT-02',
+    eventCode: 'WORK_ORDER_CLOSED',
     message: '합성 알림 문구 나입니다.',
     occurredAt: '2026-08-16T09:30:00+09:00',
     read: true,
@@ -58,7 +58,7 @@ export const notificationFixtures: Notification[] = [
   }),
   notificationFixture({
     notificationId: 7103,
-    eventCode: 'SYN-EVENT-03',
+    eventCode: 'EQUIPMENT_BREAKDOWN_OCCURRED',
     /* 본문이 공백뿐인 건 — 카드가 빈 자리를 그리지 않는지 재는 자리다. */
     message: '   ',
     occurredAt: '2026-08-15T23:45:00+09:00',
@@ -78,17 +78,17 @@ export const notificationListBody = (
 /**
  * 알림 유형 목록.
  *
- * ⭐ **셋째 알림(`SYN-EVENT-03`)의 유형을 일부러 빼 두었다** — 「목록에 없는 코드는 원문을
+ * ⭐ **셋째 알림(`EQUIPMENT_BREAKDOWN_OCCURRED`)의 유형을 일부러 빼 두었다** — 「목록에 없는 코드는 원문을
  * 그대로 보인다」가 이 화면의 규율인데, 픽스처가 전부 풀리면 그 갈래를 잴 수 없다.
  *
  * ⚠ **이름이 코드와 뚜렷이 다르다.** 이름이 코드를 닮으면 「풀렸다」와 「원문으로 낙하했다」를
  * 시험이 가리지 못한다.
  */
 export const notificationEventFixtures: NotificationEvent[] = [
-  { eventCode: 'SYN-EVENT-01', eventName: '합성 이벤트 가' },
-  { eventCode: 'SYN-EVENT-02', eventName: '합성 이벤트 나' },
+  { eventCode: 'WORK_SESSION_STARTED', eventName: '생산 실행' },
+  { eventCode: 'WORK_ORDER_CLOSED', eventName: '생산 마감' },
   /* 이름이 빈 항목 — 빈 제목을 그리지 않고 코드로 낙하하는지 재는 자리다. */
-  { eventCode: 'SYN-EVENT-04', eventName: '   ' },
+  { eventCode: 'APPROVAL_ACTION_REQUIRED', eventName: '   ' },
 ];
 
 export const notificationEventListBody = (

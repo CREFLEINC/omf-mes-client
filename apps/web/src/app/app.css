@@ -7691,84 +7691,103 @@ button.app-button-neutral {
   margin-top: var(--space-5);
 }
 
-/* W-CO-11 알람 수신자 설정 — 이벤트 목록과 편집 규칙의 위계를 유지한다. */
+/* W-CO-11 알람 수신자 설정(001 재설계) — 부서 고르기 · 이벤트 요약 표 · 설정 패널. */
+.alarm-department-bar {
+  max-width: 28rem;
+  margin-bottom: var(--space-4);
+}
+
 .alarm-recipient-layout {
-  grid-template-columns: minmax(18rem, 2fr) minmax(32rem, 5fr);
+  grid-template-columns: minmax(0, 3fr) minmax(0, 4fr);
+}
+
+/*
+ * 좁으면 위아래로 쌓는다 — 이 규칙이 `.two-pane` 보다 뒤에 있어 공용 접힘(1280px)을 덮으므로
+ * 같은 기준점을 여기서 다시 건다. 고정 하한을 두면 사이드바가 펼쳐진 1024px 에서 가로로 넘친다.
+ */
+@media (max-width: 1280px) {
+  .alarm-recipient-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 
 .alarm-recipient-pane {
+  min-width: 0;
   display: grid;
   align-content: start;
   gap: var(--space-4);
   padding: var(--space-5);
 }
 
-.alarm-recipient-pane > .pane-title,
-.alarm-recipient-heading > .pane-title {
+.alarm-recipient-pane > .pane-title {
   margin: 0;
 }
 
-.alarm-recipient-heading {
+.alarm-switches {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.alarm-switches > div {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.alarm-recipients {
+  display: grid;
+  gap: var(--space-3);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--outline-variant);
+}
+
+.alarm-recipients-heading {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: var(--space-3);
 }
 
-.alarm-recipient-rules {
-  display: grid;
-  gap: var(--space-3);
+.alarm-recipients-heading > h3 {
+  margin: 0;
+  font: var(--type-title-sm);
+  letter-spacing: var(--type-title-sm-tracking);
 }
 
-.alarm-recipient-rule {
+.alarm-recipient-list {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.alarm-recipient-list > li {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: var(--control-height-md);
+  border-bottom: 1px solid var(--outline-variant);
+}
+
+.alarm-recipient-list > li > :first-child {
+  flex: 1;
   min-width: 0;
+}
+
+.alarm-approver-notice,
+.alarm-recipients > .field-note {
   margin: 0;
-  padding: var(--space-4);
-  border: 1px solid var(--outline-variant);
-  border-radius: var(--radius-md);
 }
 
-.alarm-recipient-rule > legend {
-  padding: 0 var(--space-1);
-  color: var(--on-surface-variant);
-  font: var(--type-label-md);
-}
-
-.alarm-recipient-rule-grid {
+.alarm-picker {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr)) auto;
   gap: var(--space-3);
-  align-items: start;
 }
 
-.alarm-recipient-rule-grid > .field-cell {
-  align-items: stretch;
-}
-
-.alarm-recipient-remove {
-  margin-top: var(--field-label-layer);
-}
-
-.alarm-zalo-setting {
-  display: grid;
-  gap: var(--space-1);
-  padding-top: var(--space-4);
-  border-top: 1px solid var(--outline-variant);
-}
-
-.alarm-zalo-setting > p,
-.alarm-preview-meta {
-  margin: 0;
-}
-
-@media (max-width: 1100px) {
-  .alarm-recipient-rule-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .alarm-recipient-remove {
-    margin-top: 0;
-  }
+.alarm-picker-pages {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
 }
 
 /* 규범 2 — 컨트롤 상자의 윗선에 맞춘다. 버튼에는 라벨 층이 없어 그만큼 내려 준다. */

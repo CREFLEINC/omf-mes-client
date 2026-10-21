@@ -2,73 +2,94 @@ import type { ko } from '../ko';
 import type { Translated } from './translated';
 
 /**
- * 알람 수신자 설정 — 알림 유형마다 받을 사람을 정한다.
+ * 알람 수신자 설정 — 부서 × 이벤트마다 받을 사람을 정한다(001 재설계).
  *
- * ⚠ **화면 이름은 사이드바와 글자가 같아야 한다**(`Thiết lập người nhận cảnh báo`). 사이드바
+ * ⚠ **화면 이름은 사이드바와 글자가 같아야 한다**(`Thiết lập người nhận thông báo`). 사이드바
  * 라벨은 `apps/web/src/app/nav-tree.ts` 가 들고 있어 이 파일과 갈릴 수 있다 — 메뉴에서 누른
  * 이름과 열린 화면의 제목이 다르면 사용자는 다른 자리에 왔다고 읽는다.
  *
- * ⚠ **알림(`thông báo`)과 알람(`cảnh báo`)을 섞지 않는다.** 이 화면은 **알람** 수신자를
- * 정하지만 고르는 축은 **알림 유형**이다 — 용어집이 가른 두 말을 그대로 지킨다.
+ * ⚠ **알림(`thông báo`)과 사건(`sự kiện`)을 섞지 않는다.** 고르는 축은 이벤트(`sự kiện`)이고
+ * 가는 것은 알림이다 — 용어집이 가른 두 말을 그대로 지킨다.
  */
 export const alarmRecipientSettings: Translated<typeof ko.alarmRecipientSettings> = {
-  title: 'Thiết lập người nhận cảnh báo',
+  title: 'Thiết lập người nhận thông báo',
   breadcrumbRoot: 'Quản trị hệ thống',
-  description: 'Chỉ định tổ chức · vai trò hoặc người dùng sẽ nhận theo từng loại thông báo.',
+  description:
+    'Bật hoặc tắt từng sự kiện thông báo theo phòng ban, chọn có gửi thêm qua Zalo và người nhận.',
   panes: {
-    events: 'Loại thông báo',
-    recipients: 'Quy tắc nhận',
-    preview: 'Xem trước người nhận thực tế',
+    events: 'Sự kiện',
+    setting: (eventName: string): string => `Thiết lập: ${eventName}`,
   },
   fields: {
-    recipientType: 'Cách chỉ định',
-    businessUnit: 'Đơn vị kinh doanh',
-    role: 'Vai trò',
-    user: 'Người dùng',
-    zalo: 'Thông báo Zalo',
+    department: 'Phòng ban',
+    enabled: 'Nhận thông báo',
+    zalo: 'Gửi cả qua Zalo',
+    recipients: (count: number): string => `Người nhận (${String(count)})`,
   },
   values: {
-    role: 'Tổ chức · vai trò',
-    user: 'Cá nhân',
-    inactive: ' (ngừng dùng)',
-    statusActive: 'Đang dùng',
-    statusInactive: 'Ngừng dùng',
+    on: 'Bật',
+    off: 'Tắt',
+    approver: 'Người phê duyệt',
+    noPhone: 'Không có số điện thoại',
+    inactive: 'Ngừng sử dụng',
+    hasPhone: 'Có',
+    alreadyAdded: 'Đã thêm',
+    selectRow: (userName: string): string => `Chọn ${userName}`,
+    noDepartment: '—',
   },
   actions: {
-    add: 'Thêm quy tắc nhận',
-    remove: 'Bỏ quy tắc nhận',
-    preview: 'Xem trước',
+    add: 'Thêm',
+    remove: 'Bỏ',
+    revert: 'Hoàn tác',
     save: 'Lưu',
+    reload: 'Tải lại',
+    cancel: 'Hủy',
+    discard: 'Bỏ thay đổi và chuyển',
+    search: 'Tìm',
+    prevPage: 'Trang trước',
+    nextPage: 'Trang sau',
+    addSelected: (count: number): string => `Thêm (${String(count)})`,
   },
   state: {
-    loading: 'Đang tải thiết lập',
-    noEvents: 'Không có loại thông báo nào để thiết lập.',
-    noRecipients: 'Chưa đăng ký quy tắc nhận nào.',
-    /** ⚠ 막는 말이 아니다 — 받을 사람이 없다는 사실과 **저장은 된다**는 사실을 함께 말한다. */
-    noRecipientsWarning: 'Không có quy tắc nhận nên không ai nhận thông báo này. Vẫn lưu lại được.',
-    saved: 'Đã lưu thiết lập người nhận.',
-    clean: 'Không có nội dung nào thay đổi nên không cần lưu.',
-    previewEmpty: 'Với quy tắc hiện tại chưa xác định được người nhận nào.',
-    lookupLoading: 'Đang tải danh sách lựa chọn.',
-    previewReady: (count: number, resolvedAt: string): string =>
-      `Cơ sở ${resolvedAt} · ${String(count)} người sau khi bỏ trùng`,
-    /** ⚠ Zalo 가 꺼져도 알림센터 수신은 산다 — 그 사실을 빼면 전부 끊긴 것으로 읽힌다. */
-    zaloDisabled:
-      'Thông báo Zalo chưa đăng ký nơi nhận nên chưa bật được. Việc nhận ở trung tâm thông báo không bị ảnh hưởng.',
+    selectDepartment: 'Chọn phòng ban để xem thiết lập sự kiện của phòng ban đó.',
+    noDepartments: 'Không có phòng ban',
+    departmentsTruncated:
+      'Danh sách phòng ban chỉ hiển thị một phần. Nếu không thấy phòng ban cần tìm, hãy báo cho người phụ trách.',
+    noEvents: 'Không có sự kiện để thiết lập.',
+    noRecipients: 'Chưa chỉ định người nhận.',
+    noRecipientsWarning: 'Không có người nhận nên thông báo sẽ không được gửi',
+    noPhoneNotice: (count: number): string =>
+      `${String(count)} người nhận không có số điện thoại chỉ nhận qua trung tâm thông báo`,
+    zaloHelp: 'Dù gửi thất bại, trung tâm thông báo vẫn nhận',
+    zaloNeedsEnabled: 'Phải bật thông báo thì mới gửi được qua Zalo',
+    approverNotice:
+      'Người phê duyệt đến lượt sẽ nhận. Đó là người được chỉ định trong luồng phê duyệt (W-06-15).',
+    saved: 'Đã lưu',
+    conflict: 'Người khác đã lưu trước. Hãy tải lại rồi lưu',
+    zaloNotActive:
+      'Chưa thiết lập kết nối Zalo nên hiện chỉ gửi đến trung tâm thông báo — Thiết lập kết nối thông báo (W-CO-12)',
+    unsavedTitle: 'Có thay đổi chưa lưu',
+    unsavedBody: 'Nếu chuyển đi, nội dung đã sửa sẽ mất. Bỏ thay đổi và chuyển?',
+    candidatesEmpty: 'Không có kết quả tìm kiếm',
+    pageOf: (page: number, totalPages: number): string => `${String(page)} / ${String(totalPages)}`,
+  },
+  picker: {
+    title: 'Thêm người nhận',
+    searchLabel: 'Tên hoặc tên đăng nhập',
+    caption: 'Ứng viên người nhận',
   },
   errors: {
-    requiredBusinessUnit: 'Hãy chọn đơn vị kinh doanh.',
-    requiredRole: 'Hãy chọn vai trò.',
-    requiredUser: 'Hãy chọn người dùng.',
-    duplicate: 'Quy tắc nhận giống hệt đã có rồi.',
-    lookupFailed: 'Không tải được danh sách lựa chọn. Hãy thử lại.',
-    lookupIncomplete: 'Không tải được toàn bộ danh sách lựa chọn.',
+    inactiveRecipient: 'Không thể đặt người dùng ngừng sử dụng làm người nhận. Hãy bỏ rồi lưu.',
+    lookupFailed: 'Không tải được danh sách. Hãy thử lại.',
   },
   columns: {
-    event: 'Loại thông báo',
-    count: 'Số thiết lập',
-    user: 'Người dùng',
+    event: 'Sự kiện',
+    enabled: 'Thông báo',
+    zalo: 'Zalo',
+    recipients: 'Người nhận',
+    userName: 'Tên',
+    loginId: 'Tên đăng nhập',
     department: 'Phòng ban',
-    status: 'Trạng thái',
+    phone: 'Số điện thoại',
   },
 };

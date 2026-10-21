@@ -834,6 +834,89 @@ interface Unused {
   trace?: never;
 }
 
+
+/* ── 001(omf-all-around#160) 부서×이벤트 알림 설정 — W-CO-11. 계약 사본(P-85·P-86)에 실리면 지운다. ── */
+
+/** 수신자를 정하는 방식. `APPROVER` 는 그 차례의 결재자가 받아 수신자 목록이 없다(FR-010). */
+export type NotificationRecipientMode = 'CONFIGURED' | 'APPROVER';
+
+/** 이벤트 카탈로그 한 줄 + `recipientMode`. */
+export type NotificationEventForward = components['schemas']['NotificationEvent'] & {
+  recipientMode?: NotificationRecipientMode;
+};
+
+/** Zalo 연결 상태 — W-CO-11 은 W-CO-12 권한 없이 상태만 본다. */
+export type ZaloConnectionStatus = 'NOT_CONFIGURED' | 'ACTIVE' | 'REAUTH_REQUIRED';
+
+export interface NotificationSettingSummaryItem {
+  eventCode: string;
+  enabled: boolean;
+  zaloEnabled: boolean;
+  recipientCount: number;
+  /** 수신자 중 전화번호가 없는 사람 수 — 그 사람은 알림센터로만 받는다 */
+  noPhoneCount: number;
+}
+
+export interface NotificationSettingSummary {
+  departmentId: number;
+  departmentName: string;
+  zaloStatus: ZaloConnectionStatus;
+  items: NotificationSettingSummaryItem[];
+}
+
+export interface NotificationSettingRecipient {
+  appUserId: number;
+  loginId: string;
+  userName: string;
+  departmentName: string | null;
+  active: boolean;
+  hasPhone: boolean;
+}
+
+export interface NotificationSetting {
+  departmentId: number;
+  eventCode: string;
+  enabled: boolean;
+  zaloEnabled: boolean;
+  /** `APPROVER` 이벤트는 언제나 빈 배열이다 */
+  recipients: NotificationSettingRecipient[];
+}
+
+export interface NotificationSettingReplace {
+  enabled: boolean;
+  zaloEnabled: boolean;
+  recipientUserIds: number[];
+}
+
+/** 수신자 후보 — 활성 사용자 전체. 전화번호 원문은 오지 않는다(FR-019). */
+export interface RecipientCandidate {
+  appUserId: number;
+  loginId: string;
+  userName: string;
+  departmentName: string | null;
+  hasPhone: boolean;
+}
+
+/** 저장소 공통 페이지 모양(서버 `pagedResponse`) — `{ items, page: PageMeta }`. */
+export interface RecipientCandidatePage {
+  items: RecipientCandidate[];
+  page: components['schemas']['PageMeta'];
+}
+
+export interface RecipientCandidateQuery {
+  keyword?: string;
+  page?: number;
+  size?: number;
+}
+
+type NotificationEventsGet = paths['/app/notification-events']['get'];
+
+interface JsonResponse<T> {
+  headers: { [name: string]: unknown };
+  content: { 'application/json': T };
+}
+
+
 /** 서버 선행 P-79(omf-all-around#84) — 특채 요청 본문. */
 export interface ConcessionCreate {
   nonconformanceId: number;
@@ -925,6 +1008,71 @@ export interface ItemInspectionLevelHistoryQuery {
 type PageMeta = components['schemas']['PageMeta'];
 
 export interface ForwardPaths {
+  /** 001 P-85 — 카탈로그 한 줄에 `recipientMode` 를 더한다. */
+  '/app/notification-events': Omit<paths['/app/notification-events'], 'get'> & {
+    get: Omit<NotificationEventsGet, 'responses'> & {
+      responses: Omit<NotificationEventsGet['responses'], 200> & {
+        200: JsonResponse<{ items: NotificationEventForward[] }>;
+      };
+    };
+  };
+  /** 001 P-86 — 한 부서의 6개 이벤트 요약. ETag 없음. */
+  '/app/notification-settings': Unused & {
+    parameters: NoParameters;
+    get: {
+      parameters: {
+        query: { departmentId: number };
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: { 200: JsonResponse<NotificationSettingSummary> };
+    };
+    put?: never;
+    post?: never;
+  };
+  /** 001 P-86 — 부서×이벤트 한 행. 상세 ETag 가 저장의 If-Match 다(행이 없으면 "1"). */
+  '/app/notification-settings/{departmentId}/{eventCode}': Unused & {
+    parameters: NoParameters;
+    get: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: { departmentId: number; eventCode: string };
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: { 200: JsonResponse<NotificationSetting> };
+    };
+    put: {
+      parameters: {
+        query?: never;
+        header: { 'Idempotency-Key': string; 'If-Match': string };
+        path: { departmentId: number; eventCode: string };
+        cookie?: never;
+      };
+      requestBody: { content: { 'application/json': NotificationSettingReplace } };
+      responses: { 200: JsonResponse<NotificationSetting> };
+    };
+    post?: never;
+  };
+  /** 001 P-86 — 수신자 후보(활성 사용자 전체). */
+  '/app/notification-settings/recipient-candidates': Unused & {
+    parameters: NoParameters;
+    get: {
+      parameters: {
+        query?: RecipientCandidateQuery;
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: { 200: JsonResponse<RecipientCandidatePage> };
+    };
+    put?: never;
+    post?: never;
+  };
   /** 특채 조회(GET)에 요청(POST)을 더한다 — 서버 선행 P-79. */
   '/quality/concessions': Omit<ConcessionsPath, 'post'> & {
     post: {
