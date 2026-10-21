@@ -1,6 +1,8 @@
 import { AlertBanner, Dialog } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 
+import { CrewSections } from './crew-sections';
+import type { WorkOrderCrew } from './queries';
 import type { WorkOrder } from './types';
 import { FourMInputsPanel } from '../four-m-inputs/panel';
 import { formatPlantDateTime } from '../../patterns/plant-time';
@@ -15,6 +17,7 @@ export interface DetailDialogProps {
   itemLabel: (itemIdText: string) => string;
   /** 표의 상태 열과 같은 표시명 — 상세만 코드 원문을 찍지 않는다. */
   statusLabel: (statusCode: string) => string;
+  crew: { data: WorkOrderCrew | undefined; isLoading: boolean; isError: boolean };
   onClose: () => void;
 }
 
@@ -53,6 +56,7 @@ export const DetailDialog = ({
   isOpen,
   itemLabel,
   statusLabel,
+  crew,
   onClose,
 }: DetailDialogProps) => (
   <Dialog
@@ -90,6 +94,8 @@ export const DetailDialog = ({
             </div>
           ))}
         </dl>
+
+        <CrewSections crew={crew.data} isLoading={crew.isLoading} isError={crew.isError} />
 
         {/* 4M 변경품이 이 W/O 에 투입됐는지(omf-all-around#63 2단계) — 없으면 없다고 적는다. */}
         <FourMInputsPanel workOrderId={workOrder.workOrderId} />

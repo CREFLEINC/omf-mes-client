@@ -742,6 +742,41 @@ export type WorkOrderForward = components['schemas']['WorkOrder'] & {
   plannedEquipmentName?: string | null;
 };
 
+/**
+ * 서버 선행 — 세션 참여자에 사번·이름·참여 분(서버 계산, 참여 구간마다)을 싣는다. 계약 사본에
+ * 오르기 전 서버는 싣지 않을 수 있어 선택으로 둔다. 역할의 옛 값 `OPERATOR` 는 부로 읽는다.
+ */
+export type WorkSessionWorkerForward = components['schemas']['WorkSessionWorker'] & {
+  workerNo?: string;
+  workerName?: string;
+  participatedMinutes?: number;
+};
+
+/** 서버 선행 — 실적을 참여자에게 나눈 몫. 배분이 없으면 빈 배열이다. */
+export interface ProductionResultWorkerAllocation {
+  workerId: number;
+  workerNo: string;
+  workerName: string;
+  workerRoleCode: string;
+  participatedMinutes: number;
+  shareRatio: number;
+  goodQty: number;
+  defectQty: number;
+  holdQty: number;
+  scrapQty: number;
+  reworkQty: number;
+}
+
+export type ProductionResultForward = components['schemas']['ProductionResult'] & {
+  workerAllocations?: ProductionResultWorkerAllocation[];
+};
+
+type SessionWorkersPath = paths['/production/work-sessions/{workSessionId}/workers'];
+type SessionWorkerLeavePath =
+  paths['/production/work-sessions/{workSessionId}/workers/{workSessionWorkerId}:leave'];
+type ProductionResultsPath = paths['/production/production-results'];
+type ProductionResultsGet = ProductionResultsPath['get'];
+
 type WorkOrdersPath = paths['/production/work-orders'];
 type WorkOrdersGet = WorkOrdersPath['get'];
 type WorkOrderPath = paths['/production/work-orders/{workOrderId}'];
@@ -1532,6 +1567,59 @@ export interface ForwardPaths {
     head?: never;
     patch?: never;
     trace?: never;
+  };
+  /** 참여·이탈에 현장 작업자 사번 헤더를 더한다. 단말 토큰으로 부르면 서버가 필수로 본다. */
+  '/production/work-sessions/{workSessionId}/workers': Omit<SessionWorkersPath, 'get' | 'post'> & {
+    get: Omit<SessionWorkersPath['get'], 'responses'> & {
+      responses: Omit<SessionWorkersPath['get']['responses'], 200> & {
+        200: {
+          headers: { [name: string]: unknown };
+          content: { 'application/json': WorkSessionWorkerForward[] };
+        };
+      };
+    };
+    post: Omit<SessionWorkersPath['post'], 'parameters' | 'responses'> & {
+      parameters: Omit<SessionWorkersPath['post']['parameters'], 'header'> & {
+        header: SessionWorkersPath['post']['parameters']['header'] & { 'X-Worker-No'?: string };
+      };
+      responses: Omit<SessionWorkersPath['post']['responses'], 201> & {
+        201: {
+          headers: { [name: string]: unknown };
+          content: { 'application/json': WorkSessionWorkerForward };
+        };
+      };
+    };
+  };
+  '/production/work-sessions/{workSessionId}/workers/{workSessionWorkerId}:leave': Omit<
+    SessionWorkerLeavePath,
+    'post'
+  > & {
+    post: Omit<SessionWorkerLeavePath['post'], 'parameters' | 'responses'> & {
+      parameters: Omit<SessionWorkerLeavePath['post']['parameters'], 'header'> & {
+        header: SessionWorkerLeavePath['post']['parameters']['header'] & { 'X-Worker-No'?: string };
+      };
+      responses: Omit<SessionWorkerLeavePath['post']['responses'], 200> & {
+        200: {
+          headers: { [name: string]: unknown };
+          content: { 'application/json': WorkSessionWorkerForward };
+        };
+      };
+    };
+  };
+  '/production/production-results': Omit<ProductionResultsPath, 'get'> & {
+    get: Omit<ProductionResultsGet, 'responses'> & {
+      responses: Omit<ProductionResultsGet['responses'], 200> & {
+        200: {
+          headers: { [name: string]: unknown };
+          content: {
+            'application/json': {
+              items: ProductionResultForward[];
+              page: components['schemas']['PageMeta'];
+            };
+          };
+        };
+      };
+    };
   };
   '/production/work-orders': Omit<WorkOrdersPath, 'get'> & {
     get: Omit<WorkOrdersGet, 'parameters' | 'responses'> & {

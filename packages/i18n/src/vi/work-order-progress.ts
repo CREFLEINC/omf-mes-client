@@ -136,8 +136,44 @@ export const workOrderProgress: Translated<typeof ko.workOrderProgress> = {
     closedAt: 'Đóng',
     remarks: 'Ghi chú',
 
-    historyUnavailable:
-      'Lịch sử kết quả, LOT sản xuất và phiên làm việc hiện chưa hiện ở cửa sổ này.',
+    historyUnavailable: 'Lịch sử kết quả và LOT sản xuất hiện chưa hiện ở cửa sổ này.',
+
+    crewLoading: 'Đang nhận phiên làm việc và kết quả theo người làm.',
+    crewLoadError: 'Chưa nhận được phiên làm việc và kết quả theo người làm.',
+    sessionsTruncated: 'Không tải được một phần phiên làm việc.',
+    resultsTruncated: 'Không tải được một phần kết quả.',
+    unknownWorker: 'Không rõ',
+    roles: { MAIN: 'Chính', SUB: 'Phụ', BOTH: 'Chính·Phụ' },
+    workerLabel: (workerName: string, workerNo: string): string => `${workerName} (${workerNo})`,
+    sessions: {
+      heading: 'Phiên làm việc',
+      session: (sessionNo: number): string => `Phiên ${String(sessionNo)}`,
+      startedAt: 'Bắt đầu',
+      endedAt: 'Kết thúc',
+      ongoing: 'Đang làm',
+      empty: 'Không có phiên làm việc.',
+      noParticipants: 'Không có người tham gia.',
+      columns: {
+        worker: 'Người làm',
+        role: 'Chính/Phụ',
+        joinedAt: 'Tham gia',
+        leftAt: 'Rời',
+        minutes: 'Số phút tham gia',
+      },
+    },
+    workerResults: {
+      heading: 'Kết quả theo người làm',
+      empty: 'Không có kết quả.',
+      columns: {
+        worker: 'Người làm',
+        role: 'Chính/Phụ',
+        goodQty: 'Đạt',
+        defectQty: 'Lỗi',
+        holdQty: 'Tạm giữ',
+        scrapQty: 'Phế liệu',
+        reworkQty: 'Làm lại',
+      },
+    },
   },
 
   /** 집계는 조회 시점의 스냅샷이라 언제 기준인지가 값의 일부다. */
