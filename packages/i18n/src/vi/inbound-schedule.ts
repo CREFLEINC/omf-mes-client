@@ -12,6 +12,8 @@ export const inboundSchedule: Translated<typeof ko.inboundSchedule> = {
   panes: {
     filter: 'Điều kiện tra cứu',
     list: 'Danh sách kế hoạch nhập hàng',
+    orders: 'Danh sách đơn đặt hàng',
+    lines: 'Dòng đơn đặt hàng',
   },
   fields: {
     periodFrom: 'Hạn giao từ',
@@ -27,6 +29,7 @@ export const inboundSchedule: Translated<typeof ko.inboundSchedule> = {
     prevPage: 'Trước',
     nextPage: 'Sau',
     goFirstPage: 'Về trang đầu',
+    selectOrder: (purchaseOrderNo: string): string => `Xem dòng của ${purchaseOrderNo}`,
     overReceiptSplit: 'Tách phần nhập vượt',
     overReceiptSplitRow: (purchaseOrderNo: string): string =>
       `Chuyển đến tách phần nhập vượt của ${purchaseOrderNo}`,
@@ -34,19 +37,19 @@ export const inboundSchedule: Translated<typeof ko.inboundSchedule> = {
   reasons: {
     periodInvalid: 'Hạn giao phải là ngày có thật. Hãy chọn lại ngày bắt đầu và ngày kết thúc.',
     periodReversed: 'Hạn giao đến không được sớm hơn hạn giao từ.',
-    referencesFailed:
-      'Không tải được tên nhà cung cấp, mặt hàng và đơn vị. Lý do sẽ hiện ở chỗ của tên.',
   },
   loading: {
     list: 'Đang tải danh sách kế hoạch nhập hàng',
+    lines: 'Đang tải dòng đơn đặt hàng',
   },
   table: {
     receiptStatus: 'Trạng thái',
     expectedReceiptDate: 'Hạn giao',
     purchaseOrderNo: 'Số đơn đặt hàng',
-    lineNo: 'Dòng',
+    lineNo: 'No.',
     supplierCode: 'Mã nhà cung cấp',
     supplierName: 'Tên nhà cung cấp',
+    openLines: 'Mặt hàng chưa nhập',
     itemCode: 'Mã mặt hàng',
     itemName: 'Tên mặt hàng',
     orderedQty: 'Số lượng đặt',
@@ -54,7 +57,12 @@ export const inboundSchedule: Translated<typeof ko.inboundSchedule> = {
     remainingQty: 'Còn lại',
     uom: 'Đơn vị',
     storageLocation: 'Kho',
-    actions: 'Đi tới',
+  },
+  detail: {
+    purchaseOrderNo: 'Số đơn mua',
+    supplierCode: 'Mã nhà cung cấp',
+    supplierName: 'Tên nhà cung cấp',
+    expectedReceiptDate: 'Ngày giao',
   },
   receiptStatus: {
     NOT_STARTED: 'Chưa nhận',
@@ -104,14 +112,23 @@ export const inboundSchedule: Translated<typeof ko.inboundSchedule> = {
     notQueriedDescription: 'Hãy sửa hạn giao theo hướng dẫn ở dòng điều kiện rồi tra cứu.',
     beyondLastTitle: 'Trang này không có kết quả',
     beyondLastDescription: 'Hãy về trang đầu.',
+    noOrderTitle: 'Hãy chọn đơn đặt hàng',
+    noOrderDescription: 'Bấm số đơn ở danh sách bên trái để xem các dòng.',
+    noLinesTitle: 'Đơn này không có dòng nào',
   },
   values: {
+    /** 열린 발주가 납기 안에 있다. */
+    onTrack: 'Bình thường',
     empty: '—',
     unknown: 'Không xác định',
     referenceLoading: 'Đang tải tên',
     referenceFailed: 'Không tải được tên',
     overdue: 'Trễ hạn',
     noDueDate: 'Chưa có hạn giao',
+    lineRatio: (open: number, total: number): string => `${String(open)} / ${String(total)}`,
+    linesOf: (purchaseOrderNo: string, supplierName: string): string =>
+      `${purchaseOrderNo} · ${supplierName}`,
+    matchedLine: 'Mặt hàng đã tìm',
     inactiveSuffix: ' (không dùng)',
   },
 };

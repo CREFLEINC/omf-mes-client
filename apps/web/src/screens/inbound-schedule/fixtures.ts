@@ -1,4 +1,4 @@
-import type { InboundScheduleLine } from './types';
+import type { InboundScheduleLine, PurchaseOrderSummary } from './types';
 
 /**
  * 테스트 전용 예시 데이터. 런타임 코드는 이 모듈을 참조하지 않는다 —
@@ -35,6 +35,12 @@ const BASE_LINE: InboundScheduleLine = {
   lineNo: 1,
   itemId: 8301,
   uomId: 8501,
+  itemCode: 'SAMPLE-ITEM-01',
+  itemName: '합성 품목 가',
+  supplierCode: 'SAMPLE-SUP-01',
+  supplierName: '합성 공급사 가',
+  uomCode: 'SAMPLE-EA',
+  uomName: '합성 단위 개',
   orderedQty: 100,
   receivedQty: 0,
   remainingQty: 100,
@@ -105,6 +111,81 @@ export const scheduleFixtures = (today: string): InboundScheduleLine[] => [
   }),
 ];
 
+const BASE_ORDER: PurchaseOrderSummary = {
+  purchaseOrderId: 7101,
+  purchaseOrderNo: 'SAMPLE-PO-0001',
+  erpPurchaseOrderNo: 'SAMPLE-ERP-0001',
+  supplierId: 8101,
+  plantId: 8201,
+  orderDate: '2026-10-01',
+  expectedReceiptDate: '2026-10-10',
+  statusCode: 'CONFIRMED',
+  supplierCode: 'SAMPLE-SUP-01',
+  supplierName: '합성 공급사 가',
+  lineCount: 2,
+  openLineCount: 2,
+  matchedLineCount: null,
+  uomId: 8501,
+  uomCode: 'SAMPLE-EA',
+  orderedQtyTotal: 150,
+  receivedQtyTotal: 0,
+  remainingQtyTotal: 150,
+  receiptStatusCode: 'NOT_STARTED',
+};
+
+/** 한 항목만 다른 발주 묶음을 만든다. */
+export const orderSummary = (
+  overrides: Partial<PurchaseOrderSummary> = {},
+): PurchaseOrderSummary => ({ ...BASE_ORDER, ...overrides });
+
+/**
+ * 왼쪽 표 응답의 네 발주(server #762).
+ *
+ * - 7101 — **어제** 납기 · 미착수 · 남은 라인 있음 → **지연**
+ * - 7102 — **오늘** 납기 · 부분 입하 → 지연 아님(당일 미포함)
+ * - 7103 — 어제 납기지만 **모든 라인이 취소됐다**(남은 라인 0) → 지연 아님, 「취소」
+ * - 7104 — 납기 **없음** · 입하 완료 · **라인 단위가 섞여** 합계가 null → 「—」
+ */
+export const orderFixtures = (today: string): PurchaseOrderSummary[] => [
+  orderSummary({ expectedReceiptDate: shiftDate(today, -1) }),
+  orderSummary({
+    purchaseOrderId: 7102,
+    purchaseOrderNo: 'SAMPLE-PO-0002',
+    erpPurchaseOrderNo: null,
+    supplierId: 8103,
+    supplierCode: 'SAMPLE-SUP-03',
+    supplierName: '합성 공급사 다',
+    expectedReceiptDate: today,
+    lineCount: 3,
+    openLineCount: 1,
+    orderedQtyTotal: 50,
+    receivedQtyTotal: 20,
+    remainingQtyTotal: 30,
+    receiptStatusCode: 'PARTIAL',
+  }),
+  orderSummary({
+    purchaseOrderId: 7103,
+    purchaseOrderNo: 'SAMPLE-PO-0003',
+    expectedReceiptDate: shiftDate(today, -1),
+    lineCount: 1,
+    openLineCount: 0,
+    remainingQtyTotal: 0,
+    receiptStatusCode: 'CANCELLED',
+  }),
+  orderSummary({
+    purchaseOrderId: 7104,
+    purchaseOrderNo: 'SAMPLE-PO-0004',
+    expectedReceiptDate: null,
+    openLineCount: 0,
+    uomId: null,
+    uomCode: null,
+    orderedQtyTotal: null,
+    receivedQtyTotal: null,
+    remainingQtyTotal: null,
+    receiptStatusCode: 'COMPLETED',
+  }),
+];
+
 /**
  * 참조 목록의 응답 본문. **화면이 읽는 필드만 담는다** — 스텁 응답은 JSON이라
  * 계약의 모든 필드를 갖출 필요가 없고, 갖추면 무엇을 읽는지가 오히려 가려진다.
@@ -124,10 +205,6 @@ export const plantFixtures = [
 export const itemDetailFixtures: Record<number, { item: Record<string, unknown> }> = {
   8301: { item: { itemId: 8301, itemCode: 'SAMPLE-ITEM-01', itemName: '합성 품목 가' } },
 };
-
-export const uomFixtures = [
-  { uomId: 8501, uomCode: 'SAMPLE-EA', uomName: '합성 단위 개', isActive: true },
-];
 
 /** 공통코드 `SL_TYPE` — 창고 이름. `SAMPLE-SL9` 는 일부러 없다(코드를 그대로 낸다). */
 export const storageLocationFixtures = [

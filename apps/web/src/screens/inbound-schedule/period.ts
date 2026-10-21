@@ -53,11 +53,35 @@ const isDate = (value: string): boolean => {
   return made.getFullYear() === year && made.getMonth() === month - 1 && made.getDate() === day;
 };
 
-/** 주소가 담은 기간. **깨진 값도 그대로 읽는다** — 조건 줄이 고칠 수 있어야 한다. */
-export const readPeriod = (params: URLSearchParams): PeriodInput => ({
-  from: params.get('from') ?? '',
-  to: params.get('to') ?? '',
+/** 기본 기간의 반폭 — 오늘 앞뒤로 4주(사용자 지시 2026-10-21). */
+export const DEFAULT_PERIOD_DAYS = 28;
+
+/** `YYYY-MM-DD` 에 날수를 더한다. UTC 자정으로 계산해 실행 환경의 시간대를 타지 않는다. */
+export const addDays = (date: string, days: number): string => {
+  const [year, month, day] = date.split('-').map(Number);
+  const made = new Date(Date.UTC(year ?? 0, (month ?? 1) - 1, (day ?? 1) + days));
+
+  return made.toISOString().slice(0, 10);
+};
+
+/** 들어왔을 때의 기간 — 공장 현지 오늘 앞뒤로 4주. 초기화도 여기로 돌아온다. */
+export const defaultPeriod = (today: string): PeriodInput => ({
+  from: addDays(today, -DEFAULT_PERIOD_DAYS),
+  to: addDays(today, DEFAULT_PERIOD_DAYS),
 });
+
+/**
+ * 주소가 담은 기간. **깨진 값도 그대로 읽는다** — 조건 줄이 고칠 수 있어야 한다.
+ *
+ * 키가 **없으면 기본 기간**, 키가 있는데 비었으면 그쪽을 비운 것이다(사용자가 지운 기간).
+ */
+export const readPeriod = (params: URLSearchParams, fallback: PeriodInput): PeriodInput => ({
+  from: params.get('from') ?? fallback.from,
+  to: params.get('to') ?? fallback.to,
+});
+
+/** 납기 표기 — `YYYY.MM.DD`(사용자 지시 2026-10-21). 주소·요청은 `YYYY-MM-DD` 그대로다. */
+export const formatDate = (date: string): string => date.replaceAll('-', '.');
 
 /**
  * 조회할 수 있는 기간인지 판정한다. `null`이면 조회할 수 있고, 아니면 그 사유가 곧 반환값이다.

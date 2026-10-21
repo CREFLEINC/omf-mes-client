@@ -18,6 +18,8 @@ export const inboundSchedule = {
   panes: {
     filter: '조회 조건',
     list: '입하 예정 목록',
+    orders: '구매발주 목록',
+    lines: '발주 라인',
   },
   fields: {
     periodFrom: '납기 시작',
@@ -34,6 +36,8 @@ export const inboundSchedule = {
     nextPage: '다음',
     goFirstPage: '첫 쪽으로',
     /** 행의 바로가기. 그 화면이 발주를 주소로 받는다(`po`) — 고른 채로 열린다. */
+    /* 왼쪽 표의 발주번호 단추. 줄마다 글자가 달라도 「고른다」는 뜻을 접근 이름에 담는다. */
+    selectOrder: (purchaseOrderNo: string): string => `${purchaseOrderNo} 라인 보기`,
     overReceiptSplit: '초과 입하 분리',
     /* 행마다 글자가 같다 — 접근 이름에 발주번호를 넣어 어느 발주인지 밝힌다. */
     overReceiptSplitRow: (purchaseOrderNo: string): string =>
@@ -43,23 +47,20 @@ export const inboundSchedule = {
   reasons: {
     periodInvalid: '납기는 있는 날짜여야 합니다. 시작일과 종료일을 다시 고르세요.',
     periodReversed: '납기 종료는 시작보다 앞설 수 없습니다.',
-    /*
-     * 이름을 못 불러온 것이지 자료가 없는 것이 아니다 — 둘을 섞으면 목록이 비어 보인다.
-     * **문구에 적은 대상과 「다시 시도」가 다시 부르는 대상이 같아야 한다.**
-     */
-    referencesFailed: '공급사·품목·단위 이름을 불러오지 못했습니다. 이름 자리에 사유가 표시됩니다.',
   },
   loading: {
     list: '입하 예정 목록을 불러오는 중',
+    lines: '발주 라인을 불러오는 중',
   },
-  /** 표의 머리글. 열 구성과 폭의 근거는 screens/inbound-schedule/schedule-table.tsx에 있다. */
+  /** 표의 머리글. 열 구성과 폭의 근거는 screens/inbound-schedule/order-table.tsx · line-table.tsx 에 있다. */
   table: {
     receiptStatus: '상태',
     expectedReceiptDate: '납기',
     purchaseOrderNo: '발주번호',
-    lineNo: '라인',
+    lineNo: 'No.',
     supplierCode: '공급사 코드',
     supplierName: '공급사명',
+    openLines: '미입고 품목',
     itemCode: '품목코드',
     itemName: '품목명',
     orderedQty: '발주 수량',
@@ -67,7 +68,13 @@ export const inboundSchedule = {
     remainingQty: '남은 수량',
     uom: '단위',
     storageLocation: '창고',
-    actions: '바로가기',
+  },
+  /** 발주 상세(오른쪽) 머리의 이름표. */
+  detail: {
+    purchaseOrderNo: '발주번호',
+    supplierCode: '공급사 코드',
+    supplierName: '공급사명',
+    expectedReceiptDate: '납기',
   },
   /** 입하 진행(`receiptStatusCode`). 서버가 정한다 — 취소는 라인 ERP 취소 · 헤더 취소 둘 다다. */
   receiptStatus: {
@@ -124,8 +131,13 @@ export const inboundSchedule = {
     notQueriedDescription: '조건 줄의 안내에 따라 납기를 고친 뒤 조회하세요.',
     beyondLastTitle: '이 쪽에는 결과가 없습니다',
     beyondLastDescription: '첫 쪽으로 이동하세요.',
+    noOrderTitle: '발주를 고르세요',
+    noOrderDescription: '왼쪽 목록에서 발주번호를 누르면 라인이 보입니다.',
+    noLinesTitle: '이 발주에는 라인이 없습니다',
   },
   values: {
+    /** 열린 발주가 납기 안에 있다. */
+    onTrack: '정상',
     /** 값이 없는 칸. 빈 칸으로 두면 자료가 없는 것인지 화면이 빠뜨린 것인지 구분되지 않는다. */
     empty: '—',
     /** 이름 목록은 왔는데 그 안에 없다 — **값이 잘못됐다**는 신호다. */
@@ -138,6 +150,13 @@ export const inboundSchedule = {
     overdue: '지연',
     /** 납기가 없는 발주. 목록 맨 뒤로 간다. */
     noDueDate: '납기 없음',
+    /** 남은 라인 / 전체 라인 */
+    lineRatio: (open: number, total: number): string => `${String(open)} / ${String(total)}`,
+    /** 오른쪽 표 제목 — 고른 발주와 공급사. */
+    linesOf: (purchaseOrderNo: string, supplierName: string): string =>
+      `${purchaseOrderNo} · ${supplierName}`,
+    /** 품목코드로 찾은 라인의 표식(보조기술용). 줄 배경이 함께 바뀐다. */
+    matchedLine: '찾은 품목',
     /*
      * 미사용 참조에 붙이는 표식. **선택지에서 빼지 않는다** — 지금은 쓰지 않는 거래처·공장을
      * 참조하는 과거 발주가 있다. 빼면 그 발주들을 조건으로 찾을 방법이 사라진다.

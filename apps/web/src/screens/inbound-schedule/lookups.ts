@@ -8,7 +8,8 @@ import { runRequest, toApiError } from '../../patterns/request';
 import type { LookupEntry, PageMeta } from './types';
 
 /**
- * 내부 번호(FK)·코드로 이어진 값을 이름으로 푼다 — 공급사·공장·품목·단위, 그리고 창고 코드.
+ * 내부 번호(FK)·코드로 이어진 값을 이름으로 푼다 — 공급사·공장(조건 선택지)·품목(조건 칩), 그리고 창고 코드.
+ * 표의 공급사·품목·단위 이름은 응답에 함께 온다(server #762) — 여기서 풀지 않는다.
  *
  * **넷은 목록으로 받고 품목만 번호로 하나씩 푼다.** 가름의 잣대는 마스터의 크기다 —
  * 품목은 수천 건이라 목록 한 쪽으로는 이름 대부분이 「알 수 없음」으로 선다(omf-all-around#37).
@@ -92,19 +93,6 @@ export const describeReference = (state: ReferenceState): string => {
   }
 };
 
-/**
- * 표의 **코드 열**. 이름 열과 짝이다 — 풀지 못한 갈래(불러오는 중·실패·알 수 없음)의 사유는
- * 이 열 하나에만 낸다. 두 열에 같은 사유를 되풀이하면 한 줄이 사유로 덮인다.
- */
-export const describeReferenceCode = (state: ReferenceState): string =>
-  state.kind === 'named' ? (state.code ?? state.label) : describeReference(state);
-
-/** 표의 **이름 열**. 풀지 못했으면 「—」다 — 사유는 코드 열이 밝힌다. */
-export const describeReferenceName = (state: ReferenceState): string =>
-  state.kind === 'named' && state.name !== undefined && state.name !== ''
-    ? state.name
-    : t.values.empty;
-
 /** 참조가 매 렌더 새로 만들어지면 이 값을 의존성에 둔 계산이 멈추지 않는다. */
 const EMPTY_ENTRIES: LookupEntry[] = [];
 
@@ -132,7 +120,6 @@ export const lookupNote = (lookup: LookupResult): string | undefined => {
 export const lookupKeys = {
   suppliers: ['inbound-schedule-lookups', 'suppliers'] as const,
   plants: ['inbound-schedule-lookups', 'plants'] as const,
-  uoms: ['inbound-schedule-lookups', 'uoms'] as const,
   itemName: (itemId: number) => ['inbound-schedule-lookups', 'item', itemId] as const,
   storageLocations: ['inbound-schedule-lookups', 'code', 'SL_TYPE'] as const,
 };
@@ -200,41 +187,6 @@ export const usePlantOptions = (): LookupResult => {
         name: item.plantName,
       })) ?? EMPTY_ENTRIES,
     truncated: data !== undefined && isTruncated(data.page, data.items.length),
-    isError: query.isError,
-    isLoading: query.isPending,
-    refetch: () => {
-      void query.refetch();
-    },
-  };
-};
-
-/**
- * 단위 — 표의 단위 칸이 쓴다. **코드만 낸다**(`EA`·`KG`) — 수량 옆 좁은 칸이라 「코드 · 이름」은
- * 접힌다. 끝까지 받는다 — 첫 쪽 밖의 단위가 「알 수 없음」으로 서지 않게.
- */
-export const useUomOptions = (): LookupResult => {
-  const { client } = useApiClient();
-
-  const query = useQuery({
-    queryKey: lookupKeys.uoms,
-    queryFn: () =>
-      fetchAllPages((page, size) =>
-        runRequest(() =>
-          client.GET('/mdm/uoms', { params: { query: { includeInactive: true, page, size } } }),
-        ),
-      ),
-  });
-
-  const data = query.data;
-
-  return {
-    entries:
-      data?.items.map((item) => ({
-        value: String(item.uomId),
-        label: item.uomCode,
-        isActive: item.isActive,
-      })) ?? EMPTY_ENTRIES,
-    truncated: data?.truncated === true,
     isError: query.isError,
     isLoading: query.isPending,
     refetch: () => {

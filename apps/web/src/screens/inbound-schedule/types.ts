@@ -48,6 +48,13 @@ export interface InboundScheduleLine {
   lineNo: number;
   itemId: number;
   uomId: number;
+  /** 이름 칸(server #762) — 품목·공급사·단위를 따로 부르지 않는다. */
+  itemCode: string;
+  itemName: string;
+  supplierCode: string;
+  supplierName: string;
+  uomCode: string;
+  uomName: string;
   orderedQty: number;
   receivedQty: number;
   /** 파생 — 발주 − 누적 입하. 초과 입하면 0 에서 자르고, 취소된 라인은 0 이다. */
@@ -86,7 +93,69 @@ export interface InboundScheduleQuery {
   overdueOnly?: boolean;
   /** 첫 쪽이면 싣지 않는다 — 서버 기본값이 1이다. */
   page?: number;
-  /** 서버 상한 200. 화면은 늘 20 을 싣는다(`screen.tsx` `LIST_PAGE_SIZE`). */
+  /** 서버 상한 200. */
+  size?: number;
+}
+
+/**
+ * 오른쪽 표 — 고른 P/O 의 라인(server #762 `purchaseOrderId`). ⚠ 서버 기본이 미완료만이라 **`openOnly=false`
+ * 를 늘 싣는다** — 고른 발주의 라인은 다 들어온 것까지 다 보여야 한다.
+ */
+export interface PurchaseOrderLinesQuery {
+  purchaseOrderId: number;
+  openOnly: false;
+  size: number;
+}
+
+/**
+ * 왼쪽 표 — P/O 묶음 한 줄(server #762 · `GET /logistics/purchase-orders` 의 `PurchaseOrderListItem`).
+ * 계약 사본(`gen:api`)에 실리기 전이라 손으로 옮긴다.
+ */
+export interface PurchaseOrderSummary {
+  purchaseOrderId: number;
+  purchaseOrderNo: string;
+  erpPurchaseOrderNo?: string | null;
+  supplierId: number;
+  plantId: number;
+  orderDate: string;
+  expectedReceiptDate?: string | null;
+  statusCode: string;
+  supplierCode: string;
+  supplierName: string;
+  /** 취소 포함 전체 라인 수 */
+  lineCount: number;
+  /** 남은 라인 수 */
+  openLineCount: number;
+  /** `itemId` 로 찾았을 때 그 품목 라인 수. 아니면 null */
+  matchedLineCount: number | null;
+  /**
+   * 취소되지 않은 라인의 합계. ⭐ 라인 단위가 둘 이상이면 다섯 칸 모두 null 이다 — 화면은 「—」.
+   */
+  uomId: number | null;
+  uomCode: string | null;
+  orderedQtyTotal: number | null;
+  receivedQtyTotal: number | null;
+  remainingQtyTotal: number | null;
+  /** 서버 판정 — 라인과 같은 어휘 */
+  receiptStatusCode: ReceiptStatusCode;
+}
+
+export interface PurchaseOrderSummaryListResult {
+  items: PurchaseOrderSummary[];
+  page: PageMeta;
+}
+
+/** 왼쪽 표 조회 질의 — 기존 P/O 목록 질의에 #762 가 더한 조건. 채운 조건만 키가 실린다. */
+export interface PurchaseOrderSummaryQuery {
+  expectedReceiptDateFrom?: string;
+  expectedReceiptDateTo?: string;
+  supplierId?: number;
+  plantId?: number;
+  itemId?: number;
+  q?: string;
+  openOnly?: boolean;
+  overdueOnly?: boolean;
+  page?: number;
   size?: number;
 }
 

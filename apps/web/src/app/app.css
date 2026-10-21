@@ -6352,19 +6352,200 @@ dl.filter-bar.approval-inbox-detail-facts {
 }
 
 /*
- * W-01-09 입하 예정 — 14열(P/O 라인 한 줄). 열별 폭의 도출 표는 screens/inbound-schedule/schedule-table.tsx에 있다
- * (지정 폭 1,360px + 흡수 열 공급사명·품목명 둘 × 176px = 1,712px).
+ * W-01-09 입하 예정 — 왼쪽 P/O 묶음 표 · 오른쪽 라인 표.
  *
  * **행은 한 줄이다**(사용자 지시 2026-10-20). 고정 배치로 열 폭을 지키고 칸 안에서 줄을 바꾸지 않는다 —
  * 자동 배치에서는 긴 이름 하나가 다른 열을 밀어낸다. 넘치는 이름은 `.inbound-schedule-one-line` 이 말줄임한다.
  */
 .wide-table.inbound-schedule-table table {
-  min-width: 107rem;
   table-layout: fixed;
+}
+
+/* 두 표(server #762) — 열별 폭의 도출 표는 order-table.tsx · line-table.tsx 에 있다. */
+.wide-table.inbound-schedule-orders table {
+  min-width: 32rem;
+}
+
+.wide-table.inbound-schedule-lines table {
+  min-width: 48rem;
+}
+
+/*
+ * 왼쪽 발주 묶음 · 오른쪽 고른 발주의 라인(사용자 결정 2026-10-20). 창이 1440px 보다 좁으면 위아래로 쌓는다.
+ * 나란히 설 때 표가 칸보다 넓으면 각 칸 안에서 가로로 넘긴다(표 최소 폭은 위 두 규칙).
+ */
+.inbound-schedule-split {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-4);
+  align-items: start;
+}
+
+@media (min-width: 1440px) {
+  /*
+   * 두 표가 창 바닥에서 멈춘다(사용자 지시 2026-10-21) — `--split-top` 은 표 구획의 창 안 윗변(screen.tsx).
+   * 남은 높이에서 바닥 여백을 빼고, 넘치는 줄은 각 표 안에서 스크롤한다(머리줄은 고정).
+   */
+  .inbound-schedule-split {
+    height: calc(100dvh - var(--split-top, 20rem) - var(--space-6));
+    min-height: 20rem;
+    align-items: stretch;
+  }
+
+  .inbound-schedule-pane {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+    min-height: 0;
+  }
+
+  .inbound-schedule-pane > .inbound-schedule-table {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: auto;
+  }
+
+  .inbound-schedule-table thead th {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    background: var(--surface-container);
+  }
+
+  .inbound-schedule-split {
+    /* 발주 목록 : 상세 = 1 : 2(사용자 지시 2026-10-21). 목록은 칸이 다섯이라 좁아도 된다. */
+    grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
+  }
+}
+
+/*
+ * 발주번호는 다른 칸과 같은 글자로 보인다(사용자 지시 2026-10-21) — 줄 전체가 고르는 자리라 링크처럼
+ * 꾸밀 까닭이 없다. 단추는 키보드로 고르는 자리로만 남는다(초점 테두리는 `.link-cell` 것을 그대로 쓴다).
+ */
+.inbound-schedule-orders .link-cell {
+  color: inherit;
+  text-decoration: none;
+}
+
+.inbound-schedule-orders .link-cell:hover {
+  background: none;
+}
+
+/*
+ * 발주 상세 머리 — 발주번호를 제목처럼 크게, 나머지는 세로 구분선으로 나눈 이름표·값 칸.
+ * 바탕은 표와 구분되는 한 단 높은 면이다.
+ */
+.inbound-schedule-order-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-4) var(--space-6);
+  padding: var(--space-4) var(--space-5);
+  background: var(--surface-container);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-md);
+}
+
+.inbound-schedule-order-title {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.inbound-schedule-order-eyebrow,
+.inbound-schedule-order-facts dt {
+  font: var(--type-label-md);
+  color: var(--on-surface-variant);
+}
+
+.inbound-schedule-order-no {
+  font: var(--type-title-sm);
+  color: var(--on-surface);
+}
+
+.inbound-schedule-order-facts {
+  display: flex;
+  flex-wrap: wrap;
+  margin: 0;
+}
+
+.inbound-schedule-order-facts > div {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: 0 var(--space-5);
+  border-left: 1px solid var(--outline-variant);
+}
+
+.inbound-schedule-order-facts dd {
+  margin: 0;
+  font: var(--type-title-sm);
+  color: var(--on-surface);
+}
+
+.inbound-schedule-order-link {
+  margin-left: auto;
+  font: var(--type-label-lg);
+  color: var(--primary-text);
+}
+
+/* 발주 줄은 어디를 눌러도 고른다(order-table.tsx). */
+.inbound-schedule-orders tbody tr {
+  cursor: pointer;
+}
+
+.inbound-schedule-orders tbody tr:hover > td {
+  background: var(--surface-container);
+}
+
+/*
+ * 고른 발주는 줄 배경으로 알린다 — 오른쪽이 어느 발주의 라인인지 왼쪽에서 바로 읽힌다.
+ * **칸(td)에 칠한다** — 표 부품이 칸 배경·hover 를 따로 칠해 줄(tr) 배경은 가려진다. 마우스를
+ * 올렸다 떼도 남도록 hover 보다 우선한다(사용자 지시 2026-10-21 「선택 행 하이라이트 유지」).
+ */
+/* 붉은 계열(primary)은 쓰지 않는다 — 문제가 있다는 뜻으로 읽힌다(사용자 지시 2026-10-21). 정보 파랑이다. */
+.inbound-schedule-orders tbody tr:has([aria-current='true']) > td,
+.inbound-schedule-orders tbody tr:has([aria-current='true']):hover > td {
+  background: var(--semantic-info-container);
+}
+
+.inbound-schedule-orders tbody tr:has([aria-current='true']) > td:first-child {
+  box-shadow: inset 3px 0 0 var(--semantic-info);
+}
+
+.inbound-schedule-lines tbody tr:has([data-matched]) > td {
+  background: var(--surface-container-high);
+}
+
+/* 조회·초기화는 같은 폭(사용자 지시 2026-10-21) — 상세 조건 펼치기(글자 단추)는 제 폭이다. */
+.inbound-schedule-actions {
+  align-items: center;
+}
+
+.inbound-schedule-actions > button:not([aria-expanded]) {
+  min-width: 5.5rem;
 }
 
 .inbound-schedule-table td {
   white-space: nowrap;
+}
+
+/*
+ * 잘린 이름의 전체 — 마우스를 올리면 곧바로 뜬다(사용자 지시 2026-10-21; 브라우저 `title` 은 1초 가까이 늦다).
+ * 표가 스크롤 상자 안이라 잘리지 않게 창 기준(fixed)으로 띄운다. 좌표는 receipt-status.tsx `OneLine` 이 잰다.
+ */
+.inbound-schedule-tip {
+  position: fixed;
+  z-index: 20;
+  max-width: 32rem;
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-sm);
+  background: var(--on-surface);
+  color: var(--surface);
+  font: var(--type-body-sm);
+  white-space: normal;
+  pointer-events: none;
+  box-shadow: var(--elevation-2);
 }
 
 .inbound-schedule-one-line {
@@ -6388,9 +6569,10 @@ dl.filter-bar.approval-inbox-detail-facts {
  *
  * ⛔ **품목 선택 창(`<dialog>`)은 뺀다.** 그 창은 조건 줄 안에 그려져, 구획 전체에 걸면 창의 글자까지 작아진다.
  */
-/* 품목코드 칸 — 스캔한 긴 코드가 잘리지 않는 폭. */
-.inbound-schedule-scan {
-  min-width: 20rem;
+
+/* 빠른 조회 칸들은 조건 줄(납기 뒤 · 조회 단추 앞)의 칸으로 그대로 선다. */
+.inbound-schedule-quick {
+  display: contents;
 }
 
 .inbound-schedule-filter .filter-bar > :not(dialog) {
@@ -6462,6 +6644,14 @@ dl.filter-bar.approval-inbox-detail-facts {
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
+}
+
+/* 좌우로 나란히 — 짧은 켜짐 표시 둘을 한 줄에 둔다. */
+.check-group.check-group-row {
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-4);
 }
 
 @media (max-width: 720px) {
