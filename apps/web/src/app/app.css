@@ -13627,6 +13627,31 @@ button.app-button-neutral {
   box-shadow: inset 0 -1px 0 var(--outline-variant);
 }
 
+/* 탭 막대 + 오른쪽 일 단추 자리(`patterns/hub-actions.tsx`). 밑줄은 줄 전체에 긋는다. */
+.hub-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  box-shadow: inset 0 -1px 0 var(--outline-variant);
+}
+
+.hub-bar > .hub-tabs {
+  flex: 1;
+  min-width: 0;
+  box-shadow: none;
+}
+
+.hub-actions {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.hub-actions:empty {
+  display: none;
+}
+
 .hub-tab {
   flex: none;
   padding: var(--space-2) var(--space-4);
@@ -16387,4 +16412,104 @@ body:has(.goods-receipt-post-form) > [role='listbox'] {
   clip: rect(0 0 0 0);
   white-space: nowrap;
   border: 0;
+}
+
+/*
+ * 입하 예정 — 초과분 잇기(서버 장부 P-100). 조건 줄 끝의 진입 단추와 오른쪽에서 열리는 잇기 창.
+ * 고른 줄 표시는 발주 목록과 같은 정보 파랑이다(붉은 계열은 문제로 읽힌다).
+ */
+.po-board-tools {
+  margin-left: auto;
+}
+
+.po-board-tool-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.25rem;
+  height: 1.25rem;
+  margin-left: var(--space-2);
+  padding: 0 var(--space-1);
+  border-radius: 999px;
+  background: var(--semantic-warning-container);
+  color: var(--semantic-on-warning-container, var(--on-surface));
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.excess-dialog {
+  --dialog-max-lg: 72rem;
+}
+
+.excess-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.excess-lead,
+.excess-guide-hint {
+  margin: 0;
+  color: var(--on-surface-variant);
+}
+
+.excess-guide {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.excess-table {
+  max-height: 40vh;
+  overflow: auto;
+}
+
+.excess-table tbody tr {
+  cursor: pointer;
+}
+
+.excess-table tbody tr:has([aria-current='true']) > td,
+.excess-table tbody tr:has([aria-current='true']):hover > td {
+  background: var(--semantic-info-container);
+}
+
+.excess-table tbody tr:has([aria-current='true']) > td:first-child {
+  box-shadow: inset 3px 0 0 var(--semantic-info);
+}
+
+.excess-receipt-cell {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.excess-section-title {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-3);
+  margin: 0 0 var(--space-2);
+  font-size: 1rem;
+}
+
+.excess-section-sub {
+  color: var(--on-surface-variant);
+  font-size: 0.875rem;
+  font-weight: 400;
+}
+
+.excess-footer {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+}
+
+.excess-confirm {
+  flex: 1;
+  margin: 0;
+}
+
+.excess-note {
+  max-width: none;
+  margin: 0;
 }

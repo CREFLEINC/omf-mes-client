@@ -1,3 +1,4 @@
+import type { ExcessCandidate, InboundExcess } from './excess-types';
 import type { InboundScheduleLine, PurchaseOrderSummary } from './types';
 
 /**
@@ -210,3 +211,73 @@ export const itemDetailFixtures: Record<number, { item: Record<string, unknown> 
 export const storageLocationFixtures = [
   { code: 'SAMPLE-SL1', codeName: '합성 자재창고', isActive: true },
 ];
+
+/**
+ * 잇지 않은 초과분 하나 — 7101 발주의 7301 라인(같은 공장·공급사·품목·단위, 남은 자리 100)에 이을 수 있다.
+ * 처음 P/O 는 목록에 없는 다른 발주(SAMPLE-PO-0099)다. 번호는 모두 합성 값이다.
+ */
+const BASE_EXCESS: InboundExcess = {
+  inboundReceiptExcessId: 9501,
+  excessQty: 30,
+  linkedAt: null,
+  linkedOrderLine: null,
+  inboundReceiptId: 9401,
+  inboundReceiptNo: 'SAMPLE-IR-0001',
+  receiptDatetime: '2026-10-20T02:00:00.000Z',
+  inboundReceiptLineId: 9411,
+  lineNo: 1,
+  receivedQty: 130,
+  sourceOrderLine: {
+    purchaseOrderLineId: 7399,
+    purchaseOrderId: 7199,
+    purchaseOrderNo: 'SAMPLE-PO-0099',
+    erpPurchaseOrderNo: null,
+    lineNo: 1,
+  },
+  plantId: 8201,
+  supplierId: 8101,
+  supplierCode: 'SAMPLE-SUP-01',
+  supplierName: '합성 공급사 가',
+  itemId: 8301,
+  itemCode: 'SAMPLE-ITEM-01',
+  itemName: '합성 품목 가',
+  uomId: 8501,
+  uomCode: 'SAMPLE-EA',
+  lotId: 9601,
+  lotNo: 'SAMPLE-LOT-0001',
+};
+
+export const excessFixture = (overrides: Partial<InboundExcess> = {}): InboundExcess => ({
+  ...BASE_EXCESS,
+  ...overrides,
+});
+
+/** 같은 초과분이 7301 에 이어진 모양. */
+export const linkedExcessFixture = (overrides: Partial<InboundExcess> = {}): InboundExcess =>
+  excessFixture({
+    linkedAt: '2026-10-21T03:00:00.000Z',
+    linkedOrderLine: {
+      purchaseOrderLineId: 7301,
+      purchaseOrderId: 7101,
+      purchaseOrderNo: 'SAMPLE-PO-0001',
+      erpPurchaseOrderNo: 'SAMPLE-ERP-0001',
+      lineNo: 1,
+    },
+    ...overrides,
+  });
+
+/** 7101 발주 7301 라인 후보 — 남은 수량이 초과분과 다르다. */
+export const candidateFixture = (overrides: Partial<ExcessCandidate> = {}): ExcessCandidate => ({
+  purchaseOrderLineId: 7301,
+  purchaseOrderId: 7101,
+  purchaseOrderNo: 'SAMPLE-PO-0001',
+  erpPurchaseOrderNo: 'SAMPLE-ERP-0001',
+  lineNo: 1,
+  orderDate: '2026-10-01',
+  expectedReceiptDate: '2026-10-10',
+  orderedQty: 100,
+  receivedQty: 0,
+  roomQty: 100,
+  exactMatch: false,
+  ...overrides,
+});

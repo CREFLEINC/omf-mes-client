@@ -1,9 +1,21 @@
+import { Button } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useMemo, useRef } from 'react';
 import { useSearchParams } from 'react-router';
 
+import { HubActions, useHubActionsTarget } from '../../patterns/hub-actions';
 import { plantToday } from '../../patterns/plant-time';
 import { PaneSplitter, useFitToViewport, usePaneSplit } from '../../patterns/po-board';
+import {
+  readExcessEntry,
+  withExcessEntry,
+  withoutExcessEntry,
+  type ExcessEntry,
+} from './excess-entry';
+import { excessesByLine } from './excess-match';
+import { ExcessPanel } from './excess-panel';
+import { EXCESS_PAGE_SIZE, isExcessUnavailable, useInboundExcesses } from './excess-queries';
+import type { InboundExcess } from './excess-types';
 import { ScheduleFilterBar } from './filter-bar';
 import {
   DEFAULT_FILTERS,
@@ -50,6 +62,7 @@ const t = messages.inboundSchedule;
 const EMPTY_ROWS: PurchaseOrderSummary[] = [];
 const EMPTY_LINES: InboundScheduleLine[] = [];
 const NO_ITEM_IDS: readonly number[] = [];
+const NO_EXCESSES: InboundExcess[] = [];
 
 /** 왼쪽 표 한 쪽 20줄(사용자 지시 2026-10-20). 서버 기본(50)보다 작게 실어 보낸다 — 상한은 200. */
 export const LIST_PAGE_SIZE = 20;
@@ -80,8 +93,13 @@ const toSelectOptions = (lookup: LookupResult): SelectOption[] =>
  * 고른 발주는 주소(`po`)에 둔다. 결과가 하나뿐이면 저절로 고른다 — 품목코드 스캔이 발주 하나로 좁혀지면
  * 곧바로 라인이 보인다.
  *
- * 조회 전용이라 편집 폼이 없다. 조회 조건과 쪽은 전부 주소가 소유한다 — 새로고침·뒤로가기·공유가
- * 같은 결과를 낸다. 조건이 바뀌면 쪽은 첫 쪽으로 돌아간다(`applyQuery`).
+ * 조회 조건과 쪽은 전부 주소가 소유한다 — 새로고침·뒤로가기·공유가 같은 결과를 낸다. 조건이 바뀌면 쪽은
+ * 첫 쪽으로 돌아간다(`applyQuery`).
+ *
+ * **입하·입고 일을 이 화면으로 모은다**(사용자 지시 2026-10-21). 첫 일이 **초과분 잇기**다(서버 장부 P-100) —
+ * 조건 줄 끝의 「초과분 잇기」와, 고른 발주의 라인에 맞는 초과분이 있을 때만 서는 「초과분」 칸이 잇기 창을 연다.
+ * 창은 주소(`excess=1`)가 연다 — 「초과 입하 분리」의 등록 결과가 창을 연 채로 건너온다. 권한이 없거나(403)
+ * 서버가 그 경로를 모르면(404) 두 길 모두 서지 않는다.
  */
 export const InboundScheduleScreen = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -156,6 +174,64 @@ export const InboundScheduleScreen = () => {
     setSearchParams(toSearchParams(nextPeriod, nextFilters, nextPage, fallbackPeriod));
   };
 
+  /*
+   * 초과분 — 잇지 않은 것 전부(진입 단추의 수 · 라인 칸)와, 고른 발주 공급사의 이은 것(라인 칸의 「이음」).
+   * 둘 다 잇기 창과 같은 캐시 키라 창을 열어도 다시 부르지 않는다.
+   */
+  const unlinkedExcesses = useInboundExcesses({ linked: false, size: EXCESS_PAGE_SIZE });
+  const excessAvailable =
+    unlinkedExcesses.isSuccess && !isExcessUnavailable(unlinkedExcesses.error);
+  const linkedExcesses = useInboundExcesses(
+    { linked: true, supplierId: selectedOrder?.supplierId ?? 0, size: EXCESS_PAGE_SIZE },
+    excessAvailable && selectedOrder !== null,
+  );
+  const lineRows = lines.data?.items ?? EMPTY_LINES;
+  const lineExcesses = useMemo(
+    () =>
+      excessesByLine(
+        lineRows,
+        excessAvailable ? (unlinkedExcesses.data?.items ?? NO_EXCESSES) : NO_EXCESSES,
+        linkedExcesses.data?.items ?? NO_EXCESSES,
+      ),
+    [lineRows, excessAvailable, unlinkedExcesses.data, linkedExcesses.data],
+  );
+  const unlinkedCount = unlinkedExcesses.data?.page.total ?? 0;
+
+  const excessEntry = readExcessEntry(searchParams);
+  const openExcess = (entry: Partial<ExcessEntry> = {}): void => {
+    setSearchParams(withExcessEntry(searchParams, entry));
+  };
+  const closeExcess = (): void => {
+    setSearchParams(withoutExcessEntry(searchParams));
+  };
+
+  /*
+   * 「초과분 잇기」 진입 단추 — **탭 막대 오른쪽**(셸의 일 단추 자리)에 둔다. 조건 줄은 이미 꽉 차 있어 거기 두면
+   * 한 줄이 더 생긴다. 셸 밖에서 화면만 그리면(시험) 자리가 없어 조건 줄 끝에 둔다.
+   */
+  const hubActionsTarget = useHubActionsTarget();
+  const excessEntryButton = excessAvailable ? (
+    <Button
+      variant={unlinkedCount > 0 ? 'outlined' : 'text'}
+      size="sm"
+      aria-label={
+        unlinkedCount > 0
+          ? `${t.excess.entry} — ${t.excess.entryCount(unlinkedCount)}`
+          : t.excess.entry
+      }
+      onClick={() => {
+        openExcess();
+      }}
+    >
+      {t.excess.entry}
+      {unlinkedCount > 0 && (
+        <span className="po-board-tool-count" aria-hidden="true">
+          {unlinkedCount}
+        </span>
+      )}
+    </Button>
+  ) : null;
+
   /** 발주를 고른다 — 조건·쪽은 그대로 두고 `po` 만 바꾼다. */
   const selectOrder = (purchaseOrderId: number): void => {
     const next = toSearchParams(period, filters, page, fallbackPeriod);
@@ -206,6 +282,7 @@ export const InboundScheduleScreen = () => {
           onReset={() => {
             applyQuery(fallbackPeriod, DEFAULT_FILTERS);
           }}
+          tools={hubActionsTarget === null ? excessEntryButton : undefined}
           quick={
             <QuickLookupBar
               ref={quickRef}
@@ -264,14 +341,28 @@ export const InboundScheduleScreen = () => {
           ) : (
             <LineTable
               order={selectedOrder}
-              rows={lines.data?.items ?? EMPTY_LINES}
+              rows={lineRows}
               isLoading={lines.isPending}
               storageLocationNameOf={storageLocationNameOf}
               matchedItemId={appliedItemId}
+              lineExcesses={lineExcesses}
+              onOpenExcess={openExcess}
             />
           )}
         </section>
       </div>
+
+      {hubActionsTarget !== null && excessEntryButton !== null && (
+        <HubActions target={hubActionsTarget}>{excessEntryButton}</HubActions>
+      )}
+
+      {excessEntry !== null && (
+        <ExcessPanel
+          entry={excessEntry}
+          currentOrderId={selectedOrder?.purchaseOrderId ?? null}
+          onClose={closeExcess}
+        />
+      )}
     </>
   );
 };

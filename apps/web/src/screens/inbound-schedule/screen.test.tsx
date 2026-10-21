@@ -12,8 +12,12 @@ import {
   type StubFetch,
   type StubRoute,
 } from '../../test/api-harness';
+import type { InboundExcess } from './excess-types';
 import {
+  candidateFixture,
+  excessFixture,
   itemDetailFixtures,
+  linkedExcessFixture,
   partnerFixtures,
   plantFixtures,
   orderFixtures,
@@ -36,6 +40,8 @@ const PARTNERS_PATH = '/mdm/partners';
 const PLANTS_PATH = '/mdm/plants';
 const CODE_VALUES_PATH = '/mdm/code-values';
 const ITEM_PATH_PREFIX = '/mdm/items/';
+/** 초과분 잇기(서버 장부 P-100) — 계약 밖 경로 넷. */
+const EXCESS_PATH = '/logistics/inbound-excesses';
 
 /** 참조 목록이 만드는 표시 이름 —「코드 · 이름」이다. 화면이 이 형태로 푼다. */
 const SUPPLIER_LABEL = 'SAMPLE-SUP-01 · 합성 공급사 가';
@@ -143,8 +149,49 @@ const linesRoute = (lines: unknown[] = LINES): StubRoute => ({
   },
 });
 
+/** 초과분 목록 — `linked` 질의로 안 이은 것·이은 것을 가른다. 기본은 둘 다 비어 있다. */
+const excessListRoute = (
+  unlinked: InboundExcess[] = [],
+  linked: InboundExcess[] = [],
+): StubRoute => ({
+  match: (request) => isGet(request, EXCESS_PATH),
+  respond: (request) =>
+    jsonResponse(
+      listBody(new URL(request.url).searchParams.get('linked') === 'true' ? linked : unlinked),
+    ),
+});
+
+const failingExcessListRoute = (status: number): StubRoute => ({
+  match: (request) => isGet(request, EXCESS_PATH),
+  respond: () => jsonResponse({ message: '' }, { status }),
+});
+
+const candidatesRoute = (items: unknown[]): StubRoute => ({
+  match: (request) =>
+    request.method === 'GET' &&
+    /^\/logistics\/inbound-excesses\/\d+\/candidates$/.test(new URL(request.url).pathname),
+  respond: () => jsonResponse({ items }),
+});
+
+/** `:link`·`:unlink` — 본문을 모은다. 응답은 주어진 것(기본 200 한 행). */
+const excessWriteRoute = (
+  action: 'link' | 'unlink',
+  bodies: unknown[],
+  respond: () => Response = () => jsonResponse(linkedExcessFixture()),
+): StubRoute => ({
+  match: (request) =>
+    request.method === 'POST' && new URL(request.url).pathname.endsWith(`:${action}`),
+  respond: async (request) => {
+    const text = await request.clone().text();
+    bodies.push(text === '' ? null : JSON.parse(text));
+
+    return respond();
+  },
+});
+
 const lookupRoutes = (): StubRoute[] => [
   linesRoute(),
+  excessListRoute(),
   lookupRoute(PARTNERS_PATH, partnerFixtures),
   lookupRoute(PLANTS_PATH, plantFixtures),
   storageLocationRoute(),
@@ -994,5 +1041,237 @@ describe('InboundScheduleScreen — 발주일과 폭 조절', () => {
     await user.keyboard('{ArrowRight}{ArrowRight}');
 
     expect(Number(splitter.getAttribute('aria-valuenow'))).toBe(before + 4);
+  });
+});
+
+describe('InboundScheduleScreen — 초과분 잇기', () => {
+  const te = t.excess;
+  const QTY = '30 SAMPLE-EA';
+  const ORDER_LINE = te.orderLine('SAMPLE-PO-0001', 1);
+
+  it('잇지 않은 초과분이 없으면 조건 줄 끝 단추는 이름만 있고 수가 붙지 않는다', async () => {
+    renderScreen([listRoute(), ...lookupRoutes()]);
+
+    expect(await screen.findByRole('button', { name: te.entry })).toBeInTheDocument();
+  });
+
+  it('잇지 않은 초과분이 있으면 단추에 그 수가 붙고, 누르면 창이 주소로 열리고 닫으면 주소에서 빠진다', async () => {
+    const { user } = renderScreen([
+      excessListRoute([excessFixture()]),
+      listRoute(),
+      ...lookupRoutes(),
+    ]);
+
+    await user.click(
+      await screen.findByRole('button', { name: `${te.entry} — ${te.entryCount(1)}` }),
+    );
+
+    const dialog = await screen.findByRole('dialog', { name: te.title });
+    expect(currentLocation()).toContain('excess=1');
+    /* 고를 것이 하나뿐이라 저절로 골랐다 — 후보를 부르기 전이라도 다음 할 일이 「P/O 라인 고르기」다. */
+    expect(await within(dialog).findByText(te.hints.line)).toBeInTheDocument();
+
+    /* 닫기는 창 머리의 단추 하나다(디자인 시스템) — 아래에는 할 일(잇기)만 둔다. */
+    await user.click(within(dialog).getByRole('button', { name: messages.common.close }));
+
+    await waitFor(() => {
+      expect(currentLocation()).not.toContain('excess');
+    });
+  });
+
+  it.each([403, 404])(
+    '초과분 경로가 %i 이면 단추도 「초과분」 칸도 서지 않는다',
+    async (status) => {
+      renderScreen([failingExcessListRoute(status), listRoute(), ...lookupRoutes()], '?po=7101');
+
+      await within(linesPane()).findByText('SAMPLE-ITEM-01');
+
+      expect(screen.queryByRole('button', { name: new RegExp(te.entry) })).toBeNull();
+      expect(within(linesPane()).queryByRole('columnheader', { name: te.lineColumn })).toBeNull();
+    },
+  );
+
+  it('맞는 초과분이 없는 발주에는 「초과분」 칸이 서지 않는다', async () => {
+    renderScreen(
+      [excessListRoute([excessFixture({ itemId: 8999 })]), listRoute(), ...lookupRoutes()],
+      '?po=7101',
+    );
+
+    await within(linesPane()).findByText('SAMPLE-ITEM-01');
+    await screen.findByRole('button', { name: `${te.entry} — ${te.entryCount(1)}` });
+
+    expect(within(linesPane()).queryByRole('columnheader', { name: te.lineColumn })).toBeNull();
+  });
+
+  it('라인의 「잇기」를 누르면 그 초과분·라인을 고른 채로 열리고, 문장을 읽고 「잇기」만 누르면 된다', async () => {
+    const bodies: unknown[] = [];
+    const { requests, user } = renderScreen(
+      [
+        excessListRoute([excessFixture()]),
+        candidatesRoute([
+          /* 수량 일치 후보가 따로 있어도 사람이 라인에서 고른 줄이 남는다. */
+          candidateFixture({
+            purchaseOrderLineId: 7388,
+            purchaseOrderId: 7188,
+            purchaseOrderNo: 'SAMPLE-PO-0088',
+            roomQty: 30,
+            exactMatch: true,
+          }),
+          candidateFixture(),
+        ]),
+        excessWriteRoute('link', bodies),
+        listRoute(),
+        ...lookupRoutes(),
+      ],
+      '?po=7101',
+    );
+
+    await user.click(
+      await within(linesPane()).findByRole('button', { name: te.lineLinkableLabel(1, QTY) }),
+    );
+
+    const dialog = await screen.findByRole('dialog', { name: te.title });
+    expect(await within(dialog).findByText(te.confirmLink(QTY, ORDER_LINE))).toBeInTheDocument();
+    /* 후보 표식 — 수량 일치 · 보던 발주. */
+    expect(within(dialog).getByText(te.candidates.exact)).toBeInTheDocument();
+    expect(within(dialog).getByText(te.candidates.current)).toBeInTheDocument();
+
+    await user.click(within(dialog).getByRole('button', { name: te.actions.link }));
+
+    expect(await within(dialog).findByText(te.done.linked(QTY, ORDER_LINE))).toBeInTheDocument();
+    expect(bodies).toEqual([{ purchaseOrderLineId: 7301 }]);
+    expect(
+      requests.some(
+        (request) =>
+          request.method === 'POST' && request.url.pathname === `${EXCESS_PATH}/9501:link`,
+      ),
+    ).toBe(true);
+  });
+
+  it('라인을 고르기 전에는 「잇기」가 잠기고 무엇을 고를지 말한다', async () => {
+    const { user } = renderScreen(
+      [
+        excessListRoute([
+          excessFixture(),
+          excessFixture({ inboundReceiptExcessId: 9502, lineNo: 2 }),
+        ]),
+        candidatesRoute([
+          candidateFixture(),
+          candidateFixture({ purchaseOrderLineId: 7302, lineNo: 2 }),
+        ]),
+        listRoute(),
+        ...lookupRoutes(),
+      ],
+      '?excess=1',
+    );
+
+    const dialog = await screen.findByRole('dialog', { name: te.title });
+    expect(await within(dialog).findByText(te.blocked.noExcess)).toBeInTheDocument();
+    expect(within(dialog).getByRole('button', { name: te.actions.link })).toBeDisabled();
+
+    await user.click(
+      within(dialog).getByRole('button', { name: te.pickExcess('SAMPLE-IR-0001', 2) }),
+    );
+
+    expect(await within(dialog).findByText(te.blocked.noLine)).toBeInTheDocument();
+    expect(within(dialog).getByRole('button', { name: te.actions.link })).toBeDisabled();
+
+    await user.click(
+      await within(dialog).findByRole('button', { name: te.pickLine('SAMPLE-PO-0001', 2) }),
+    );
+
+    expect(
+      within(dialog).getByText(te.confirmLink(QTY, te.orderLine('SAMPLE-PO-0001', 2))),
+    ).toBeInTheDocument();
+    expect(within(dialog).getByRole('button', { name: te.actions.link })).toBeEnabled();
+  });
+
+  it('후보가 없으면 추가 P/O 를 기다린다고 말한다', async () => {
+    renderScreen(
+      [excessListRoute([excessFixture()]), candidatesRoute([]), listRoute(), ...lookupRoutes()],
+      '?excess=1',
+    );
+
+    const dialog = await screen.findByRole('dialog', { name: te.title });
+
+    expect(await within(dialog).findByText(te.candidates.emptyTitle)).toBeInTheDocument();
+  });
+
+  it('「초과 입하 분리」에서 건너온 전표의 초과분은 앞에 서고 「방금 등록」이 붙는다', async () => {
+    renderScreen(
+      [
+        excessListRoute([
+          excessFixture({ inboundReceiptExcessId: 9500, inboundReceiptNo: 'SAMPLE-IR-0000' }),
+          excessFixture(),
+        ]),
+        candidatesRoute([candidateFixture()]),
+        listRoute(),
+        ...lookupRoutes(),
+      ],
+      '?excess=1&excessReceipt=SAMPLE-IR-0001',
+    );
+
+    const dialog = await screen.findByRole('dialog', { name: te.title });
+    const table = (await within(dialog).findAllByRole('table'))[0] as HTMLElement;
+    const firstRow = (await within(table).findAllByRole('row'))[1] as HTMLElement;
+
+    expect(within(firstRow).getByText('SAMPLE-IR-0001')).toBeInTheDocument();
+    expect(within(firstRow).getByText(te.justRegistered)).toBeInTheDocument();
+    /* 그 전표의 초과분이 하나뿐이라 골라 두고, 후보도 하나뿐이라 골라 둔다. */
+    expect(await within(dialog).findByText(te.confirmLink(QTY, ORDER_LINE))).toBeInTheDocument();
+  });
+
+  it('이은 초과분은 「이음」으로 보이고, 눌러 연 창에서 풀 수 있다', async () => {
+    const bodies: unknown[] = [];
+    const { user } = renderScreen(
+      [
+        excessListRoute([], [linkedExcessFixture()]),
+        excessWriteRoute('unlink', bodies, () => jsonResponse(excessFixture())),
+        listRoute(),
+        ...lookupRoutes(),
+      ],
+      '?po=7101',
+    );
+
+    await user.click(
+      await within(linesPane()).findByRole('button', { name: te.lineLinkedLabel(1, QTY) }),
+    );
+
+    const dialog = await screen.findByRole('dialog', { name: te.title });
+    expect(await within(dialog).findByText(te.confirmUnlink(QTY, ORDER_LINE))).toBeInTheDocument();
+
+    await user.click(within(dialog).getByRole('button', { name: te.actions.unlink }));
+
+    expect(await within(dialog).findByText(te.done.unlinked(QTY, ORDER_LINE))).toBeInTheDocument();
+    expect(bodies).toEqual([null]);
+  });
+
+  it('잇기가 막히면(이미 이어짐) 서버 사유를 배너로 내고 창은 열린 채다', async () => {
+    const { user } = renderScreen(
+      [
+        excessListRoute([excessFixture()]),
+        candidatesRoute([candidateFixture()]),
+        excessWriteRoute('link', [], () =>
+          jsonResponse(
+            {
+              errors: [
+                { scope: 'screen', code: 'STATE_LOCKED', message: '이미 이어진 초과분입니다.' },
+              ],
+            },
+            { status: 400 },
+          ),
+        ),
+        listRoute(),
+        ...lookupRoutes(),
+      ],
+      '?excess=1',
+    );
+
+    const dialog = await screen.findByRole('dialog', { name: te.title });
+    await within(dialog).findByText(te.confirmLink(QTY, ORDER_LINE));
+    await user.click(within(dialog).getByRole('button', { name: te.actions.link }));
+
+    expect(await within(dialog).findByText('이미 이어진 초과분입니다.')).toBeInTheDocument();
+    expect(screen.getByRole('dialog', { name: te.title })).toBeInTheDocument();
   });
 });

@@ -135,4 +135,94 @@ export const inboundSchedule: Translated<typeof ko.inboundSchedule> = {
     matchedLine: 'Mặt hàng đã tìm',
     inactiveSuffix: ' (không dùng)',
   },
+  excess: {
+    entry: 'Nối phần vượt',
+    entryCount: (count: number): string => `${String(count)} phần vượt chưa nối`,
+    title: 'Nối phần vượt',
+    lead: 'Nối phần nhận nhiều hơn P/O và chưa ghi vào P/O (phần vượt) vào dòng P/O bổ sung do ERP tạo. Khi nối, số đã nhận của dòng đó tăng thêm bằng phần vượt. Nếu nối nhầm, hãy gỡ ở 「Phần vượt đã nối」.',
+    steps: {
+      label: 'Các bước',
+      pick: 'Chọn phần vượt',
+      line: 'Chọn dòng P/O',
+      link: 'Nối',
+    },
+    hints: {
+      pick: 'Bấm vào phần vượt cần nối trong danh sách.',
+      line: 'Bấm vào dòng P/O cần nối trong các ứng viên bên dưới. Dòng 「Khớp số lượng」 thường là P/O bổ sung đúng.',
+      link: 'Đọc câu xác nhận rồi bấm 「Nối」.',
+      unlink: 'Bấm vào phần vượt cần gỡ rồi bấm 「Gỡ」.',
+    },
+    tabs: {
+      label: 'Phân loại phần vượt',
+      unlinked: 'Phần vượt chưa nối',
+      linked: 'Phần vượt đã nối',
+    },
+    table: {
+      receiptNo: 'Số nhập hàng',
+      receiptDate: 'Ngày nhập hàng',
+      supplier: 'Nhà cung cấp',
+      item: 'Mặt hàng',
+      lot: 'LOT',
+      excessQty: 'Phần vượt',
+      sourceOrder: 'P/O ban đầu',
+      linkedOrder: 'P/O đã nối',
+      linkedAt: 'Ngày nối',
+    },
+    candidates: {
+      title: 'Các dòng P/O có thể nối',
+      purchaseOrderNo: 'Số đơn đặt hàng',
+      orderDate: 'Ngày đặt hàng',
+      dueDate: 'Hạn giao',
+      ordered: 'Đặt',
+      received: 'Đã nhận',
+      room: 'Có thể nhận',
+      exact: 'Khớp số lượng',
+      current: 'Đơn đang xem',
+      emptyTitle: 'Chưa có dòng P/O nào có thể nối',
+      emptyDescription:
+        'Khi ERP tạo P/O bổ sung và chuyển sang MES thì sẽ hiện ở đây. Chỉ hiện các dòng cùng nhà cung cấp·mặt hàng·đơn vị và nhận được toàn bộ phần vượt.',
+      loading: 'Đang tải ứng viên',
+      pickFirst: 'Chọn phần vượt ở trên thì sẽ thấy các dòng P/O có thể nối.',
+    },
+    orderLine: (purchaseOrderNo: string, lineNo: number): string =>
+      `${purchaseOrderNo} · dòng ${String(lineNo)}`,
+    pickExcess: (receiptNo: string, lineNo: number): string =>
+      `Chọn phần vượt dòng ${String(lineNo)} của ${receiptNo}`,
+    pickLine: (purchaseOrderNo: string, lineNo: number): string =>
+      `Chọn dòng ${String(lineNo)} của ${purchaseOrderNo}`,
+    justRegistered: 'Vừa đăng ký',
+    actions: {
+      link: 'Nối',
+      unlink: 'Gỡ',
+    },
+    confirmLink: (qty: string, order: string): string =>
+      `Nối phần vượt ${qty} vào ${order}. Số đã nhận của dòng đó tăng thêm ${qty}.`,
+    confirmUnlink: (qty: string, order: string): string =>
+      `Gỡ phần vượt ${qty} đã nối vào ${order}. Số đã nhận của dòng đó giảm ${qty} và trở lại thành phần vượt chưa nối.`,
+    blocked: {
+      noExcess: 'Hãy chọn phần vượt cần nối trước.',
+      noLine: 'Hãy chọn dòng P/O cần nối.',
+      noLinked: 'Hãy chọn phần vượt cần gỡ.',
+    },
+    done: {
+      linked: (qty: string, order: string): string => `Đã nối phần vượt ${qty} vào ${order}.`,
+      unlinked: (qty: string, order: string): string => `Đã gỡ phần vượt ${qty} khỏi ${order}.`,
+    },
+    empty: {
+      unlinkedTitle: 'Không có phần vượt chưa nối',
+      unlinkedDescription:
+        'Khi đăng ký số lượng đến nhiều hơn đơn ở 「Tách phần nhập vượt」, phần vượt đó sẽ hiện ở đây.',
+      linkedTitle: 'Không có phần vượt đã nối',
+    },
+    truncated: (shown: number, total: number): string =>
+      `Chỉ hiện ${String(shown)} mục đầu (tổng ${String(total)} mục).`,
+    loading: 'Đang tải phần vượt',
+    lineColumn: 'Phần vượt',
+    lineLinkable: (qty: string): string => `Nối ${qty}`,
+    lineLinkableLabel: (lineNo: number, qty: string): string =>
+      `Nối phần vượt ${qty} vào dòng ${String(lineNo)}`,
+    lineLinked: (qty: string): string => `Đã nối ${qty}`,
+    lineLinkedLabel: (lineNo: number, qty: string): string =>
+      `Xem phần vượt ${qty} đã nối vào dòng ${String(lineNo)}`,
+  },
 };
