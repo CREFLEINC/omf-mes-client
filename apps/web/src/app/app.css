@@ -14036,6 +14036,11 @@ button.app-button-neutral {
  * ⭐ 오류 띠가 뜨고 사라질 때 창 높이는 그대로고 이 칸만 줄었다 는다 — 빈 자리를 늘 비워 두는
  *    쪽보다 낫다. 늘 비워 두면 오류가 없는 평소에 빈 띠 자리가 계속 보인다.
  */
+/* 줄 아무 곳이나 눌러 고른다(dialog.tsx). */
+.item-picker-results tbody tr {
+  cursor: pointer;
+}
+
 .item-picker-results {
   flex: 1 1 auto;
   min-block-size: 0;

@@ -179,6 +179,16 @@ export const ItemPickerDialog = ({
         />
       ),
     },
+    /* 유형을 먼저 — 같은 코드 체계 안에서 원자재·제품을 먼저 가르고 코드·이름을 읽는다(#133). */
+    {
+      key: 'itemTypeCode',
+      header: t.columns.itemType,
+      width: '128px',
+      /* 서버가 준 코드 그대로다 — 이름은 유형 목록이 갖고, 없으면 지어내지 않는다. */
+      render: (row) =>
+        types.data?.find((option) => option.code === row.itemTypeCode)?.codeName ??
+        row.itemTypeCode,
+    },
     /* 글자 열은 왼쪽 정렬이다 — 머리줄과 값이 같은 줄에 선다(검사기준 검색 창과 같은 모양 · #133). */
     {
       key: 'itemCode',
@@ -197,15 +207,6 @@ export const ItemPickerDialog = ({
           {addedItemIds.includes(row.itemId) ? ` · ${t.alreadyAdded}` : ''}
         </span>
       ),
-    },
-    {
-      key: 'itemTypeCode',
-      header: t.columns.itemType,
-      width: '128px',
-      /* 서버가 준 코드 그대로다 — 이름은 유형 목록이 갖고, 없으면 지어내지 않는다. */
-      render: (row) =>
-        types.data?.find((option) => option.code === row.itemTypeCode)?.codeName ??
-        row.itemTypeCode,
     },
     ...(showAvailability
       ? [
@@ -328,7 +329,21 @@ export const ItemPickerDialog = ({
           </div>
         )}
 
-        <div className="item-picker-results">
+        {/*
+         * 줄 아무 곳이나 눌러도 그 품목을 고른다(#133) — 눌린 줄의 선택 칸으로 넘긴다. 선택 칸 자체·단추를
+         * 누른 것은 그 부품이 처리하므로 건너뛴다. 키보드는 종전처럼 선택 칸으로 고른다.
+         */}
+        <div
+          className="item-picker-results"
+          onClick={(event) => {
+            const target = event.target as Element;
+            if (target.closest('input, button, a, label') !== null) return;
+            target
+              .closest('tbody tr')
+              ?.querySelector<HTMLInputElement>('input[type="checkbox"]')
+              ?.click();
+          }}
+        >
           <Table
             columns={columns}
             rows={rows}
