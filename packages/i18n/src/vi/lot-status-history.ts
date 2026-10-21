@@ -194,6 +194,7 @@ export const lotStatusHistory: Translated<typeof ko.lotStatusHistory> = {
       initialQty: 'Số lượng ban đầu',
       expiryDate: 'Hạn sử dụng',
       manufacturedAt: 'Thời điểm sản xuất',
+      fourMChange: 'Hàng thay đổi 4M',
     },
     transition: 'Xử lý đánh giá · chuyển đổi',
     transitionNote:

@@ -584,6 +584,8 @@ describe('AppLayout', () => {
       '/quality/approvals',
       /* W-03-10 — 여기서 정한 처분이 폐기·재등록·재작업 화면의 진입을 연다. */
       '/quality/dispositions',
+      /* W-03-12 — 품목별 IQC 검사 수준(설계보다 앞선 화면). */
+      '/quality/inspection-levels',
     ];
     const start = links.indexOf(qualityOrder[0] ?? '');
 
@@ -764,9 +766,9 @@ describe('AppLayout', () => {
       'href',
       '/production/work-order-progress',
     );
-    /* 품질 관리의 끝(처분 판정) 바로 뒤가 섹션의 시작이다. */
+    /* 품질 관리의 끝(검사 수준 관리) 바로 뒤가 섹션의 시작이다. */
     expect(links.indexOf('/production/production-orders')).toBe(
-      links.indexOf('/quality/dispositions') + 1,
+      links.indexOf('/quality/inspection-levels') + 1,
     );
     expect(links.indexOf('/production/work-order-release')).toBe(
       links.indexOf('/production/production-orders') + 1,
@@ -998,6 +1000,7 @@ describe('AppLayout', () => {
       '/quality/suspicious-material-hold',
       '/quality/approvals',
       '/quality/dispositions',
+      '/quality/inspection-levels',
       /* 생산 관리 — ERP W/O(조회·변경 확인) → 배포 → (긴급) → 진행 → 마감. */
       '/production/production-orders' /* ← ERP W/O */,
       '/production/work-order-release',
@@ -1652,7 +1655,7 @@ describe('AppLayout — 레일', () => {
 
     await collapseRail(user);
 
-    expect(within(navSidebar()).getAllByRole('link')).toHaveLength(45);
+    expect(within(navSidebar()).getAllByRole('link')).toHaveLength(46);
   });
 
   /*
@@ -1702,7 +1705,7 @@ describe('AppLayout — 레일과 검색', () => {
     await typeQuery(user, '실사');
     await collapseRail(user);
 
-    expect(within(navSidebar()).getAllByRole('link')).toHaveLength(45);
+    expect(within(navSidebar()).getAllByRole('link')).toHaveLength(46);
   });
 
   /** 섹션 밖 항목이 빠지면 레일에서 대시보드로 갈 길이 사라진다. */

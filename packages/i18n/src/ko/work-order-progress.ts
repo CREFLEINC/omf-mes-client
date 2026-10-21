@@ -198,11 +198,51 @@ export const workOrderProgress = {
     closedAt: '마감',
     remarks: '비고',
 
-    /**
-     * ⛔ 스펙은 여기에 실적 이력·생산LOT·세션을 함께 그린다고 적었으나, 그것들을 받으려면
-     * W/O 하나마다 조회를 여러 번 더 내야 한다. 지금은 **받은 것만** 보이고 그 사실을 적는다.
-     */
-    historyUnavailable: '실적 이력·생산LOT·세션은 아직 이 창에서 보이지 않습니다.',
+    /** ⛔ 아직 그리지 않는 것을 적지 않으면 「이 W/O 는 실적이 없구나」로 읽힌다. */
+    historyUnavailable: '실적 이력·생산LOT은 아직 이 창에서 보이지 않습니다.',
+
+    crewLoading: '작업 세션·작업자별 실적을 받는 중입니다.',
+    crewLoadError: '작업 세션·작업자별 실적을 받지 못했습니다.',
+    sessionsTruncated: '작업 세션 일부를 불러오지 못했습니다.',
+    resultsTruncated: '실적 일부를 불러오지 못했습니다.',
+    unknownWorker: '알 수 없음',
+    roles: { MAIN: '정', SUB: '부', BOTH: '정·부' },
+    workerLabel: (workerName: string, workerNo: string): string => `${workerName} (${workerNo})`,
+    sessions: {
+      heading: '작업 세션',
+      session: (sessionNo: number): string => `세션 ${String(sessionNo)}`,
+      startedAt: '시작',
+      endedAt: '종료',
+      ongoing: '진행 중',
+      empty: '작업 세션이 없습니다.',
+      noParticipants: '참여자가 없습니다.',
+      columns: {
+        worker: '작업자',
+        role: '정/부',
+        joinedAt: '참여',
+        leftAt: '이탈',
+        minutes: '참여 분',
+      },
+    },
+    defectTypes: {
+      heading: '불량 유형별',
+      empty: '불량 기록이 없습니다.',
+      untyped: '유형 없음',
+      columns: { type: '불량 유형', qty: '수량' },
+    },
+    workerResults: {
+      heading: '작업자별 실적',
+      empty: '실적이 없습니다.',
+      columns: {
+        worker: '작업자',
+        role: '정/부',
+        goodQty: '양품',
+        defectQty: '불량',
+        holdQty: '보류',
+        scrapQty: '스크랩',
+        reworkQty: '재작업',
+      },
+    },
   },
 
   /** L-5 — 집계는 조회 시점의 스냅샷이라 언제 기준인지가 값의 일부다. */

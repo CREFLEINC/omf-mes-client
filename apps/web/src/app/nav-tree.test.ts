@@ -230,6 +230,7 @@ describe('주 메뉴 트리', () => {
       '/quality/suspicious-material-hold → report_problem',
       '/quality/approvals → approval',
       '/quality/dispositions → gavel',
+      '/quality/inspection-levels → tune',
       '/production/production-orders → account_tree',
       '/production/po-change-review → account_tree',
       '/production/work-order-release → rocket_launch',

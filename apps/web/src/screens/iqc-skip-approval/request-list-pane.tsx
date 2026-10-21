@@ -1,7 +1,16 @@
-import { AlertBanner, Button, type Column, EmptyState, SkeletonText, Table } from '@crefle/web-ui';
+import {
+  AlertBanner,
+  Button,
+  Chip,
+  type Column,
+  EmptyState,
+  SkeletonText,
+  Table,
+} from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
 
+import { statusBadgeOf } from './labels';
 import { PageNav } from './page-nav';
 import type { PageView } from './pagination';
 import type { RequestRow } from './types';
@@ -9,38 +18,47 @@ import type { RequestRow } from './types';
 const t = messages.iqcSkipApproval;
 
 /**
- * 표의 열 폭.
+ * 표의 열 폭(omf-all-around#134).
  *
- * **흡수 열은 사유 하나뿐이고 나머지 다섯은 폭을 지정한다.** 흡수 열이 둘이면 좁은 화면에서
- * 둘 다 짓눌린다. 지정 폭의 합은 **728px**이고, 사유에 **192px**을 예산으로 잡으면 합이
- * `.wide-table`의 최소 폭(58rem = 928px) 안에 든다.
+ * **흡수 열은 사유 하나뿐이고 나머지 여섯은 폭을 지정한다.** 긴 값(대상·사유·상신자)은 한 줄
+ * 말줄임이고 전체 값은 마우스를 올리면 보인다(`title`). 그래서 표가 1024 폭 창에서도 가로로
+ * 넘치지 않는다 — 지정 폭 합 **612px** + 사유 하한 **74px** = `TABLE_MIN_WIDTH_PX`(686px, 1024 폭
+ * 창에서 사이드바를 연 채 표가 받는 폭 실측). 칸 좌우 여백은 8px씩이다(CSS).
  *
- * | 열 | 폭 | 근거 |
+ * | 열 | 폭 | 근거(실측 글자 폭 + 여백 16px) |
  * | --- | ---: | --- |
- * | 요청번호 | 132px | `SYNTH-REQ-001` 형식 한 줄 |
- * | 승인 유형 | 152px | 고정 코드 `IQC_SKIP` |
- * | 대상 | 200px | 서버가 만든 표시명. 접혀도 읽힌다 |
- * | **사유 첫 줄** | **미지정(예산 192px)** | 남는 폭을 흡수하는 유일한 열 |
- * | 상신자 | 96px | 사람 이름 |
- * | 상신 일시 | 148px | `2026-08-06 14:20` 한 줄 |
+ * | 요청번호 | 148px | `AP-20261021-0001` 굵게 131px |
+ * | 승인 유형 | 72px | 「IQC 생략」 56px |
+ * | 대상 | 100px | 「입하 LOT #16」 83px |
+ * | **사유 첫 줄** | **미지정** | 남는 폭을 흡수하는 유일한 열 |
+ * | 상신자 | 72px | 사람 이름 — 길면 말줄임 |
+ * | 상태 | 84px | 배지 「결재 대기」 |
+ * | 상신 일시 | 136px | `2026-08-06 14:20` 119px |
  *
- * **「단계」 열도 「상태」 열도 두지 않는다.** 열을 늘리는 것보다 줄이는 것이 먼저다 —
- * 이름 칸이 이미 둘(대상·사유)이라 여기서 더 늘리면 어느 칸도 읽히지 않는다.
- * 진행은 뒤 회차의 상세가 말한다.
+ * **상태 열을 둔다.** 「결재 대기만 보기」를 끄면 대기·승인·반려가 섞이는데 상태가 없으면
+ * 고르기 전에는 구분할 수 없다. 진행 단계는 여전히 상세가 말한다.
  */
 export const REQUEST_COLUMN_WIDTH = {
-  approvalRequestNo: '132px',
-  approvalTypeCode: '152px',
-  target: '200px',
-  requester: '96px',
-  requestedAt: '148px',
+  approvalRequestNo: '148px',
+  approvalTypeCode: '72px',
+  target: '100px',
+  requester: '72px',
+  status: '84px',
+  requestedAt: '136px',
 } as const;
 
-/** 흡수 열(사유)의 예산. 지정 폭 합과 더해 최소 폭 안에 든다 — 이 값이 곧 그 열의 하한이다. */
-export const REASON_COLUMN_BUDGET_PX = 192;
+/** 흡수 열(사유)의 하한. 지정 폭 합과 더해 표 최소 폭이 된다. */
+export const REASON_COLUMN_MIN_PX = 74;
 
-/** `.wide-table`이 주는 표 최소 폭(58rem). 배치 규범 문서가 근거를 갖는다. */
-export const WIDE_TABLE_MIN_WIDTH_PX = 928;
+/** 표 최소 폭 — 이보다 좁으면 그때만 가로로 넘긴다. CSS(`.iqc-skip-approval-table`)와 같은 값. */
+export const TABLE_MIN_WIDTH_PX = 686;
+
+/** 한 줄 말줄임 칸 — 전체 값은 `title`로 보인다. */
+const Ellipsis = ({ text }: { text: string }) => (
+  <span className="iqc-skip-approval-ellipsis" title={text}>
+    {text}
+  </span>
+);
 
 export interface RequestListPaneProps {
   rows: RequestRow[];
@@ -64,11 +82,11 @@ export interface RequestListPaneProps {
 /**
  * 요청 목록 — 판정할 것을 찾아 고르는 자리.
  *
- * **열은 여섯이다**(요청번호·승인 유형·대상·사유 첫 줄·상신자·상신 일시). 계약이 이 리소스의
+ * **열은 일곱이다**(요청번호·승인 유형·대상·사유 첫 줄·상신자·상태·상신 일시). 계약이 이 리소스의
  * 업무 값을 **사유 하나**로 두어 수량·금액 컬럼이 아예 없으므로, 사유의 첫 줄이 곧 요약
  * 자리다 — 별도의 요약 열을 만들지 않는다(`omf-mes#87`).
  *
- * **승인 유형 열은 고정 OpenAPI 코드 `IQC_SKIP`을 그대로 낸다.**
+ * **승인 유형·대상·상태는 사용자 용어로 낸다**(`labels.ts`) — 표에 없는 코드는 그대로다.
  *
  * **정렬 가능한 열도 선택 열도 두지 않는다.** 계약의 목록 쿼리에 정렬 파라미터가 없고
  * 일괄로 할 쓰기가 없다 — 눌러도 아무 일이 없는 칸이 된다.
@@ -93,7 +111,7 @@ export const RequestListPane = ({
       render: (row) => (
         <button
           type="button"
-          className="link-cell"
+          className="link-cell iqc-skip-approval-request-no"
           /*
            * 보이는 글자(요청번호)를 그대로 담아 음성 조작이 그 말로 이 버튼을 부를 수 있게 한다.
            * 계약이 요청번호를 UNIQUE로 두어 행마다 이름이 갈린다 — 대상 표시명은 갈리지 않는다
@@ -113,32 +131,45 @@ export const RequestListPane = ({
       key: 'approvalTypeCode',
       header: t.fields.approvalTypeCode,
       width: REQUEST_COLUMN_WIDTH.approvalTypeCode,
-      /* 코드 문자열 그대로다 — 값 목록이 확정되기 전에 화면이 이름을 지어내지 않는다. */
-      render: (row) => row.approvalTypeCode,
+      render: (row) => <Ellipsis text={row.approvalTypeCode} />,
     },
     {
       key: 'target',
       header: t.fields.target,
       width: REQUEST_COLUMN_WIDTH.target,
-      /* 서버가 만든 표시명 그대로다. 유형 코드로 이름을 지어내지 않는다. */
-      render: (row) => row.targetName,
+      render: (row) => <Ellipsis text={row.targetName} />,
     },
     {
       key: 'reason',
       header: t.fields.reason,
-      /* 남는 폭을 흡수하는 유일한 열. 예산은 `REASON_COLUMN_BUDGET_PX`가 갖는다. */
-      render: (row) => row.reasonFirstLine,
+      /* 남는 폭을 흡수하는 유일한 열. */
+      render: (row) => <Ellipsis text={row.reasonFirstLine} />,
     },
     {
       key: 'requester',
       header: t.fields.requestedByName,
       width: REQUEST_COLUMN_WIDTH.requester,
-      render: (row) => row.requesterName,
+      render: (row) => <Ellipsis text={row.requesterName} />,
+    },
+    {
+      key: 'status',
+      header: t.fields.status,
+      width: REQUEST_COLUMN_WIDTH.status,
+      align: 'center',
+      render: (row) => {
+        const badge = statusBadgeOf(row.statusCode);
+        return (
+          <Chip variant="status" size="sm" status={badge.tone}>
+            {badge.label}
+          </Chip>
+        );
+      },
     },
     {
       key: 'requestedAt',
       header: t.fields.requestedAt,
       width: REQUEST_COLUMN_WIDTH.requestedAt,
+      align: 'end',
       /* **시각까지 낸다** — 같은 날 올라온 요청들의 앞뒤가 결재 차례를 읽는 단서다. */
       render: (row) => row.requestedAtText,
     },
@@ -194,11 +225,10 @@ export const RequestListPane = ({
     return (
       <>
         {/*
-         * 여섯 열의 폭 예산이 최소 928px이라 좁은 화면에서는 짓누르는 대신 가로로 넘긴다
-         * (배치 규범 문서의 `.wide-table`). 넘침이 곧 가로 스크롤이 되는 상자는 디자인 시스템
-         * `Table`이 이미 갖고 있다 — 우리가 만들지 않는다.
+         * 표가 `TABLE_MIN_WIDTH_PX`보다 좁아질 때만 가로로 넘긴다. 넘침이 곧 가로 스크롤이 되는
+         * 상자는 디자인 시스템 `Table`이 이미 갖고 있다 — 우리가 만들지 않는다.
          */}
-        <div className="wide-table">
+        <div className="wide-table iqc-skip-approval-table">
           <Table
             density="compact"
             columns={columns}

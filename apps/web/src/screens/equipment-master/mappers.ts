@@ -1,4 +1,4 @@
-import type { components, LineDefaultLocations } from '@omf-mes/api-client';
+import type { components, LineDefaultLocations, LineDepartment } from '@omf-mes/api-client';
 
 import { isMeasurement } from './inspection-item-validation';
 import type {
@@ -11,9 +11,13 @@ import type {
   InspectionItemFormValues,
 } from './types';
 
-/* 기본 위치 셋은 생성 타입에 없어 덧댄다 — `LineDefaultLocations` 를 지울 때 함께 지운다. */
-type EquipmentGroupCreate = components['schemas']['EquipmentGroupCreate'] & LineDefaultLocations;
-type EquipmentGroupUpdate = components['schemas']['EquipmentGroupUpdate'] & LineDefaultLocations;
+/* 기본 위치 셋·담당 부서는 생성 타입에 없어 덧댄다 — 선행 타입을 지울 때 함께 지운다. */
+type EquipmentGroupCreate = components['schemas']['EquipmentGroupCreate'] &
+  LineDefaultLocations &
+  Pick<LineDepartment, 'departmentId'>;
+type EquipmentGroupUpdate = components['schemas']['EquipmentGroupUpdate'] &
+  LineDefaultLocations &
+  Pick<LineDepartment, 'departmentId'>;
 type EquipmentCreate = components['schemas']['EquipmentCreate'];
 type EquipmentUpdate = components['schemas']['EquipmentUpdate'];
 
@@ -41,6 +45,7 @@ export const groupToFormValues = (group: EquipmentGroup): GroupFormValues => ({
   defaultWipLocationId: optionalIdToText((group as LineDefaultLocations).defaultWipLocationId),
   defaultFgLocationId: optionalIdToText((group as LineDefaultLocations).defaultFgLocationId),
   defaultScrapLocationId: optionalIdToText((group as LineDefaultLocations).defaultScrapLocationId),
+  departmentId: optionalIdToText((group as LineDepartment).departmentId),
 });
 
 /**
@@ -60,6 +65,7 @@ export const emptyGroupFormValues = (): GroupFormValues => ({
   defaultWipLocationId: '',
   defaultFgLocationId: '',
   defaultScrapLocationId: '',
+  departmentId: '',
 });
 
 /**
@@ -85,6 +91,7 @@ export const toGroupUpdate = (
   defaultWipLocationId: textToOptionalId(values.defaultWipLocationId),
   defaultFgLocationId: textToOptionalId(values.defaultFgLocationId),
   defaultScrapLocationId: textToOptionalId(values.defaultScrapLocationId),
+  departmentId: textToOptionalId(values.departmentId),
 });
 
 /**
@@ -106,7 +113,8 @@ export const isSameGroupValues = (a: GroupFormValues, b: GroupFormValues): boole
   a.parentGroupId === b.parentGroupId &&
   a.defaultWipLocationId === b.defaultWipLocationId &&
   a.defaultFgLocationId === b.defaultFgLocationId &&
-  a.defaultScrapLocationId === b.defaultScrapLocationId;
+  a.defaultScrapLocationId === b.defaultScrapLocationId &&
+  a.departmentId === b.departmentId;
 
 /* ── 설비 ─────────────────────────────────────────────────────────── */
 

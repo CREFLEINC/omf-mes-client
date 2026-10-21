@@ -231,6 +231,8 @@ export const WEB_SCREENS: readonly WebScreen[] = [
   { path: '/quality/dispositions', code: 'W-03-10', name: '처분 판정 처리(재작업/폐기/정상)' },
   /* ⭐ 설계보다 앞선 화면이다(omf-all-around#107) — 화면 코드는 사용자 결정으로 부여했다. */
   { path: '/quality/pqc-inspections', code: 'W-03-11', name: 'PQC 검사 등록·조회' },
+  /* ⭐ 설계보다 앞선 화면이다(omf-all-around#64 · 서버 장부 P-87) — 다음 빈 번호로 받았다. */
+  { path: '/quality/inspection-levels', code: 'W-03-12', name: '검사 수준 관리' },
 
   /* ── 설비/툴 ──────────────────────────────────────────────────────────── */
   /*
@@ -265,7 +267,7 @@ export const WEB_SCREENS: readonly WebScreen[] = [
    * ⚠ **알림센터(`W-CO-03`)와 다른 화면이다** — IA §3-2 가 그 구분을 따로 적었다. 알림센터는
    * 「내 알림을 보는 곳」이고 이것은 관리자가 「누가 받을지」를 정하는 곳이다. v1.5 신설(DR-003).
    */
-  { path: '/notification/recipient-settings', code: 'W-CO-11', name: '알람 수신자 설정' },
+  { path: '/notification/recipient-settings', code: 'W-CO-11', name: '알림 수신자 설정' },
   { path: '/notification/notices', code: 'W-CO-04', name: '공지·전달 게시/조회' },
 
   /* ── 시스템 관리 ──────────────────────────────────────────────────────── */

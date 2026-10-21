@@ -33,6 +33,7 @@ export const runningChange: Translated<typeof ko.runningChange> = {
      */
     itemCodeLabel: 'Mã thành phẩm',
     inputQtyLabel: 'Số lượng đưa vào',
+    fourMChangeMark: 'Hàng thay đổi 4M',
     moldSectionLabel: 'Thông tin khuôn',
     moldNoLabel: 'Số khuôn',
     moldNameLabel: 'Tên khuôn',

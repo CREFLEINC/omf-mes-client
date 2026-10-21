@@ -13,6 +13,24 @@ export interface LineDefaultLocations {
   defaultScrapLocationId?: number | null;
 }
 
+/**
+ * 001(omf-all-around#160) — 생산라인(설비 그룹)의 담당 부서. 계약 사본에 실리면 지운다.
+ * 본문은 `departmentId` 만 싣는다(생략 = 유지, null = 해제). `departmentName` 은 응답에만 온다.
+ */
+export interface LineDepartment {
+  departmentId?: number | null;
+  departmentName?: string | null;
+}
+
+/**
+ * 001(omf-all-around#160) — 사용자 휴대폰 번호(`AppUser*.phoneNumber`). 계약 사본에 실리면 지운다.
+ * 응답은 표준형 `84XXXXXXXXX` 이고 요청자에게 W-CO-02 권한이 있을 때만 실린다. 본문에서 생략 = 유지,
+ * null = 삭제.
+ */
+export interface AppUserPhone {
+  phoneNumber?: string | null;
+}
+
 export interface TerminalRegistrationConfirmation {
   terminalId: number;
   tokenVersion: number;
@@ -160,10 +178,35 @@ export interface InspectionDefectInput {
 }
 
 /** 서버 선행 P-47 — 사유를 실으면 서버가 확정과 한 트랜잭션에서 그 회차의 불량 기록을 이 값으로 갈아 끼운다. */
+/**
+ * 서버 선행 P-86(omf-all-around#63) — IQC 판정 때 자재 LOT 의 4M 변경품(변경 종류 = 공통코드 `FOUR_M_CHANGE_TYPE`).
+ * 쓰기 본문에서 생략하면 그대로, `null` 이면 변경품 아님. 조회(의뢰·LOT 목록)는 변경품일 때만 키가 있다.
+ */
+export interface FourMChangeForward {
+  changeTypeCode: string;
+  remarks?: string;
+}
+
+/** 서버 선행 P-86(omf-all-around#63) — 의뢰 LOT 의 4M 변경품. */
+export type InspectionRequestForward = components['schemas']['InspectionRequest'] & {
+  fourMChange?: FourMChangeForward;
+};
+
+/** 서버 선행 P-86(omf-all-around#63) — LOT 목록·단건(`GET /trace/lots`(+`/{lotId}`))이 4M 변경품을 싣는다. */
+export type LotForward = components['schemas']['Lot'] & {
+  fourMChange?: FourMChangeForward;
+};
+
+/** 서버 선행 P-86(omf-all-around#63 2단계) — 자재 투입이 투입 LOT 의 4M 변경품을 싣는다. */
+export type MaterialConsumptionForward = components['schemas']['MaterialConsumption'] & {
+  fourMChange?: FourMChangeForward;
+};
+
 export type InspectionResultConfirmForward = components['schemas']['InspectionResultConfirm'] & {
   defects?: InspectionDefectInput[];
   /** 서버 선행 P-70(omf-all-around#125·#126) — IQC·OQC 판정이 합격판정개수 기준 자동 판정과 다르면 필수(maxLength 500). */
   judgmentChangeReason?: string;
+  fourMChange?: FourMChangeForward | null;
 };
 
 type InspectionConfirmPath = paths['/quality/inspection-results/{inspectionResultId}:confirm'];
@@ -176,9 +219,11 @@ export type InspectionResultCreateForward = components['schemas']['InspectionRes
   defects?: InspectionDefectInput[];
   /** 서버 선행 P-70(omf-all-around#125·#126) — statusCode=CONFIRMED 저장의 판정 변경 사유(IQC·OQC). `:confirm` 과 같은 규칙. */
   judgmentChangeReason?: string;
+  fourMChange?: FourMChangeForward | null;
 };
 export type InspectionResultUpdateForward = components['schemas']['InspectionResultUpdate'] & {
   defects?: InspectionDefectInput[];
+  fourMChange?: FourMChangeForward | null;
 };
 
 type InspectionResultsPath = paths['/quality/inspection-results'];
@@ -697,6 +742,75 @@ export type WorkOrderForward = components['schemas']['WorkOrder'] & {
   plannedEquipmentName?: string | null;
 };
 
+/**
+ * 서버 선행 — 세션 참여자에 사번·이름·참여 분(서버 계산, 참여 구간마다)을 싣는다. 계약 사본에
+ * 오르기 전 서버는 싣지 않을 수 있어 선택으로 둔다. 역할의 옛 값 `OPERATOR` 는 부로 읽는다.
+ */
+export type WorkSessionWorkerForward = components['schemas']['WorkSessionWorker'] & {
+  workerNo?: string;
+  workerName?: string;
+  participatedMinutes?: number;
+};
+
+/** 서버 선행 — 실적을 참여자에게 나눈 몫. 배분이 없으면 빈 배열이다. */
+export interface ProductionResultWorkerAllocation {
+  workerId: number;
+  workerNo: string;
+  workerName: string;
+  workerRoleCode: string;
+  participatedMinutes: number;
+  shareRatio: number;
+  goodQty: number;
+  defectQty: number;
+  holdQty: number;
+  scrapQty: number;
+  reworkQty: number;
+}
+
+/** 서버 선행 — 실적과 함께 적는 불량 한 줄. 코드는 W/O 공정에 매핑된 상세 코드다. */
+export interface ProductionResultDefectInput {
+  defectCodeId: number;
+  qty: number;
+}
+
+/**
+ * 서버 선행 — 실적에 붙은 불량 기록. 이름은 불량 코드의 기본 이름이다. 대분류 칸은 상세 코드일
+ * 때만 실린다(관리웹에서 대분류로 단 옛 기록에는 없다).
+ */
+export interface ProductionResultDefect {
+  defectRecordId: number;
+  defectCodeId: number;
+  defectCode: string;
+  defectName: string;
+  nameKo?: string | null;
+  nameVi?: string | null;
+  parentDefectCodeId?: number | null;
+  parentDefectCode?: string | null;
+  parentDefectName?: string | null;
+  parentNameKo?: string | null;
+  parentNameVi?: string | null;
+  qty: number;
+}
+
+/** 서버 선행 — `defects` 만 보내면 서버가 `defectQty` 를 그 합으로 채운다. 양품 0 도 받는다. */
+export type ProductionResultCreateForward = components['schemas']['ProductionResultCreate'] & {
+  defects?: ProductionResultDefectInput[];
+};
+
+export type ProductionResultForward = components['schemas']['ProductionResult'] & {
+  workerAllocations?: ProductionResultWorkerAllocation[];
+  defects?: ProductionResultDefect[];
+};
+
+type DefectCodesPath = paths['/quality/defect-codes'];
+type DefectCodesGet = DefectCodesPath['get'];
+
+type SessionWorkersPath = paths['/production/work-sessions/{workSessionId}/workers'];
+type SessionWorkerLeavePath =
+  paths['/production/work-sessions/{workSessionId}/workers/{workSessionWorkerId}:leave'];
+type ProductionResultsPath = paths['/production/production-results'];
+type ProductionResultsGet = ProductionResultsPath['get'];
+
 type WorkOrdersPath = paths['/production/work-orders'];
 type WorkOrdersGet = WorkOrdersPath['get'];
 type WorkOrderPath = paths['/production/work-orders/{workOrderId}'];
@@ -720,6 +834,89 @@ interface Unused {
   trace?: never;
 }
 
+
+/* ── 001(omf-all-around#160) 부서×이벤트 알림 설정 — W-CO-11. 계약 사본(P-85·P-86)에 실리면 지운다. ── */
+
+/** 수신자를 정하는 방식. `APPROVER` 는 그 차례의 결재자가 받아 수신자 목록이 없다(FR-010). */
+export type NotificationRecipientMode = 'CONFIGURED' | 'APPROVER';
+
+/** 이벤트 카탈로그 한 줄 + `recipientMode`. */
+export type NotificationEventForward = components['schemas']['NotificationEvent'] & {
+  recipientMode?: NotificationRecipientMode;
+};
+
+/** Zalo 연결 상태 — W-CO-11 은 W-CO-12 권한 없이 상태만 본다. */
+export type ZaloConnectionStatus = 'NOT_CONFIGURED' | 'ACTIVE' | 'REAUTH_REQUIRED';
+
+export interface NotificationSettingSummaryItem {
+  eventCode: string;
+  enabled: boolean;
+  zaloEnabled: boolean;
+  recipientCount: number;
+  /** 수신자 중 전화번호가 없는 사람 수 — 그 사람은 알림센터로만 받는다 */
+  noPhoneCount: number;
+}
+
+export interface NotificationSettingSummary {
+  departmentId: number;
+  departmentName: string;
+  zaloStatus: ZaloConnectionStatus;
+  items: NotificationSettingSummaryItem[];
+}
+
+export interface NotificationSettingRecipient {
+  appUserId: number;
+  loginId: string;
+  userName: string;
+  departmentName: string | null;
+  active: boolean;
+  hasPhone: boolean;
+}
+
+export interface NotificationSetting {
+  departmentId: number;
+  eventCode: string;
+  enabled: boolean;
+  zaloEnabled: boolean;
+  /** `APPROVER` 이벤트는 언제나 빈 배열이다 */
+  recipients: NotificationSettingRecipient[];
+}
+
+export interface NotificationSettingReplace {
+  enabled: boolean;
+  zaloEnabled: boolean;
+  recipientUserIds: number[];
+}
+
+/** 수신자 후보 — 활성 사용자 전체. 전화번호 원문은 오지 않는다(FR-019). */
+export interface RecipientCandidate {
+  appUserId: number;
+  loginId: string;
+  userName: string;
+  departmentName: string | null;
+  hasPhone: boolean;
+}
+
+/** 저장소 공통 페이지 모양(서버 `pagedResponse`) — `{ items, page: PageMeta }`. */
+export interface RecipientCandidatePage {
+  items: RecipientCandidate[];
+  page: components['schemas']['PageMeta'];
+}
+
+export interface RecipientCandidateQuery {
+  keyword?: string;
+  page?: number;
+  size?: number;
+}
+
+type NotificationEventsGet = paths['/app/notification-events']['get'];
+
+interface JsonResponse<T> {
+  headers: { [name: string]: unknown };
+  content: { 'application/json': T };
+}
+
+
 /** 서버 선행 P-79(omf-all-around#84) — 특채 요청 본문. */
 export interface ConcessionCreate {
   nonconformanceId: number;
@@ -740,7 +937,142 @@ type ConcessionResponse = {
   content: { 'application/json': components['schemas']['Concession'] };
 };
 
+/** 서버 선행 P-87(omf-all-around#64) — IQC 검사 수준. 무검사·수월·보통·엄격. */
+export type InspectionLevelCode = 'NONE' | 'REDUCED' | 'NORMAL' | 'TIGHTENED';
+
+/** 서버 선행 P-87 — 품목별 검사 수준과 자동 전환 상태. */
+export interface ItemInspectionLevel {
+  itemInspectionLevelId: number;
+  itemId: number;
+  itemCode: string;
+  itemName: string;
+  inspectionLevelCode: InspectionLevelCode;
+  autoSwitchEnabled: boolean;
+  /** 지금 수준에서의 연속 합격 LOT 수. */
+  consecutiveAcceptCount: number;
+  updatedAt: string;
+  /** 수정의 If-Match 값 — 목록 행마다 실린다. */
+  versionNo: number;
+}
+
+export interface ItemInspectionLevelCreate {
+  itemId: number;
+  inspectionLevelCode: InspectionLevelCode;
+  autoSwitchEnabled?: boolean;
+  /** 선택 — 비우면 이력의 사유가 null. */
+  reason?: string;
+}
+
+/** 생략 = 유지. 수준이 바뀌면 사유 필수. */
+export interface ItemInspectionLevelUpdate {
+  inspectionLevelCode?: InspectionLevelCode;
+  autoSwitchEnabled?: boolean;
+  reason?: string;
+}
+
+export interface ItemInspectionLevelListQuery {
+  itemId?: number;
+  inspectionLevelCode?: InspectionLevelCode;
+  q?: string;
+  page?: number;
+  size?: number;
+}
+
+/** 서버 선행 P-87 — 전환 이력. 자동은 연속 합격 수 또는 불합격 의뢰, 수동은 사유를 싣는다. */
+export interface ItemInspectionLevelHistory {
+  itemInspectionLevelHistoryId: number;
+  itemId: number;
+  itemCode: string;
+  itemName: string;
+  /** 최초 지정이면 null. */
+  fromLevelCode: InspectionLevelCode | null;
+  toLevelCode: InspectionLevelCode;
+  changeTypeCode: 'AUTO' | 'MANUAL';
+  consecutiveAcceptCount: number | null;
+  inspectionRequestId: number | null;
+  inspectionRequestNo: string | null;
+  reason: string | null;
+  changedAt: string;
+  changedByName: string | null;
+}
+
+export interface ItemInspectionLevelHistoryQuery {
+  itemId?: number;
+  changeTypeCode?: 'AUTO' | 'MANUAL';
+  from?: string;
+  to?: string;
+  page?: number;
+  size?: number;
+}
+
+type PageMeta = components['schemas']['PageMeta'];
+
 export interface ForwardPaths {
+  /** 001 P-85 — 카탈로그 한 줄에 `recipientMode` 를 더한다. */
+  '/app/notification-events': Omit<paths['/app/notification-events'], 'get'> & {
+    get: Omit<NotificationEventsGet, 'responses'> & {
+      responses: Omit<NotificationEventsGet['responses'], 200> & {
+        200: JsonResponse<{ items: NotificationEventForward[] }>;
+      };
+    };
+  };
+  /** 001 P-86 — 한 부서의 6개 이벤트 요약. ETag 없음. */
+  '/app/notification-settings': Unused & {
+    parameters: NoParameters;
+    get: {
+      parameters: {
+        query: { departmentId: number };
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: { 200: JsonResponse<NotificationSettingSummary> };
+    };
+    put?: never;
+    post?: never;
+  };
+  /** 001 P-86 — 부서×이벤트 한 행. 상세 ETag 가 저장의 If-Match 다(행이 없으면 "1"). */
+  '/app/notification-settings/{departmentId}/{eventCode}': Unused & {
+    parameters: NoParameters;
+    get: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: { departmentId: number; eventCode: string };
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: { 200: JsonResponse<NotificationSetting> };
+    };
+    put: {
+      parameters: {
+        query?: never;
+        header: { 'Idempotency-Key': string; 'If-Match': string };
+        path: { departmentId: number; eventCode: string };
+        cookie?: never;
+      };
+      requestBody: { content: { 'application/json': NotificationSettingReplace } };
+      responses: { 200: JsonResponse<NotificationSetting> };
+    };
+    post?: never;
+  };
+  /** 001 P-86 — 수신자 후보(활성 사용자 전체). */
+  '/app/notification-settings/recipient-candidates': Unused & {
+    parameters: NoParameters;
+    get: {
+      parameters: {
+        query?: RecipientCandidateQuery;
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: { 200: JsonResponse<RecipientCandidatePage> };
+    };
+    put?: never;
+    post?: never;
+  };
   /** 특채 조회(GET)에 요청(POST)을 더한다 — 서버 선행 P-79. */
   '/quality/concessions': Omit<ConcessionsPath, 'post'> & {
     post: {
@@ -1128,6 +1460,76 @@ export interface ForwardPaths {
     patch?: never;
     trace?: never;
   };
+  /** 참여·이탈에 현장 작업자 사번 헤더를 더한다. 단말 토큰으로 부르면 서버가 필수로 본다. */
+  '/production/work-sessions/{workSessionId}/workers': Omit<SessionWorkersPath, 'get' | 'post'> & {
+    get: Omit<SessionWorkersPath['get'], 'responses'> & {
+      responses: Omit<SessionWorkersPath['get']['responses'], 200> & {
+        200: {
+          headers: { [name: string]: unknown };
+          content: { 'application/json': WorkSessionWorkerForward[] };
+        };
+      };
+    };
+    post: Omit<SessionWorkersPath['post'], 'parameters' | 'responses'> & {
+      parameters: Omit<SessionWorkersPath['post']['parameters'], 'header'> & {
+        header: SessionWorkersPath['post']['parameters']['header'] & { 'X-Worker-No'?: string };
+      };
+      responses: Omit<SessionWorkersPath['post']['responses'], 201> & {
+        201: {
+          headers: { [name: string]: unknown };
+          content: { 'application/json': WorkSessionWorkerForward };
+        };
+      };
+    };
+  };
+  '/production/work-sessions/{workSessionId}/workers/{workSessionWorkerId}:leave': Omit<
+    SessionWorkerLeavePath,
+    'post'
+  > & {
+    post: Omit<SessionWorkerLeavePath['post'], 'parameters' | 'responses'> & {
+      parameters: Omit<SessionWorkerLeavePath['post']['parameters'], 'header'> & {
+        header: SessionWorkerLeavePath['post']['parameters']['header'] & { 'X-Worker-No'?: string };
+      };
+      responses: Omit<SessionWorkerLeavePath['post']['responses'], 200> & {
+        200: {
+          headers: { [name: string]: unknown };
+          content: { 'application/json': WorkSessionWorkerForward };
+        };
+      };
+    };
+  };
+  /** 공정에 매핑된 불량 코드만 받는 `processId` 를 더한다 — 서버 선행. */
+  '/quality/defect-codes': Omit<DefectCodesPath, 'get'> & {
+    get: Omit<DefectCodesGet, 'parameters'> & {
+      parameters: Omit<DefectCodesGet['parameters'], 'query'> & {
+        query?: NonNullable<DefectCodesGet['parameters']['query']> & { processId?: number };
+      };
+    };
+  };
+  '/production/production-results': Omit<ProductionResultsPath, 'get' | 'post'> & {
+    post: Omit<ProductionResultsPath['post'], 'requestBody' | 'responses'> & {
+      requestBody: { content: { 'application/json': ProductionResultCreateForward } };
+      responses: Omit<ProductionResultsPath['post']['responses'], 201> & {
+        201: {
+          headers: { [name: string]: unknown };
+          content: { 'application/json': ProductionResultForward };
+        };
+      };
+    };
+    get: Omit<ProductionResultsGet, 'responses'> & {
+      responses: Omit<ProductionResultsGet['responses'], 200> & {
+        200: {
+          headers: { [name: string]: unknown };
+          content: {
+            'application/json': {
+              items: ProductionResultForward[];
+              page: components['schemas']['PageMeta'];
+            };
+          };
+        };
+      };
+    };
+  };
   '/production/work-orders': Omit<WorkOrdersPath, 'get'> & {
     get: Omit<WorkOrdersGet, 'parameters' | 'responses'> & {
       /**
@@ -1275,6 +1677,83 @@ export interface ForwardPaths {
     head?: never;
     patch?: never;
     trace?: never;
+  };
+  /** 서버 선행 P-87(omf-all-around#64) — 품목 검사 수준 목록·지정. */
+  '/quality/item-inspection-levels': Unused & {
+    parameters: NoParameters;
+    get: {
+      parameters: {
+        query?: ItemInspectionLevelListQuery;
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        200: {
+          headers: { [name: string]: unknown };
+          content: { 'application/json': { items: ItemInspectionLevel[]; page: PageMeta } };
+        };
+      };
+    };
+    put?: never;
+    post: {
+      parameters: {
+        query?: never;
+        header: { 'Idempotency-Key': string };
+        path?: never;
+        cookie?: never;
+      };
+      requestBody: { content: { 'application/json': ItemInspectionLevelCreate } };
+      responses: {
+        201: {
+          headers: { [name: string]: unknown };
+          content: { 'application/json': ItemInspectionLevel };
+        };
+      };
+    };
+  };
+  /** 서버 선행 P-87 — 수동 변경. */
+  '/quality/item-inspection-levels/{itemInspectionLevelId}': Unused & {
+    parameters: NoParameters;
+    get?: never;
+    put: {
+      parameters: {
+        query?: never;
+        header: { 'Idempotency-Key': string; 'If-Match': string };
+        path: { itemInspectionLevelId: number };
+        cookie?: never;
+      };
+      requestBody: { content: { 'application/json': ItemInspectionLevelUpdate } };
+      responses: {
+        200: {
+          headers: { [name: string]: unknown };
+          content: { 'application/json': ItemInspectionLevel };
+        };
+      };
+    };
+    post?: never;
+  };
+  /** 서버 선행 P-87 — 전환 이력. */
+  '/quality/item-inspection-level-histories': Unused & {
+    parameters: NoParameters;
+    get: {
+      parameters: {
+        query?: ItemInspectionLevelHistoryQuery;
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        200: {
+          headers: { [name: string]: unknown };
+          content: { 'application/json': { items: ItemInspectionLevelHistory[]; page: PageMeta } };
+        };
+      };
+    };
+    put?: never;
+    post?: never;
   };
 }
 

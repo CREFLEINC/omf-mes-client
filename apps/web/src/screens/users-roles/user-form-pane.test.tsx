@@ -12,6 +12,7 @@ const values: UserFormValues = {
   userName: '합성 사용자 A',
   departmentId: '3001',
   email: 'syn.user.a@example.invalid',
+  phoneNumber: '',
   statusCode: 'SYN-STATUS-A',
 };
 
@@ -211,6 +212,30 @@ describe('UserFormPane 입력', () => {
 
     await user.type(within(pane()).getByRole('textbox', { name: '이메일' }), 'a');
     expect(onChange).toHaveBeenCalledWith({ email: 'a' });
+  });
+
+  /* 001 W-CO-02 — 이메일 옆, 필수 아님. 오류는 그 칸에 잇는다. */
+  it('휴대폰 번호는 이메일 다음 칸이고 필수가 아니며, 고치면 상위에 알린다', async () => {
+    const { onChange, user } = renderPane();
+
+    const textboxes = within(pane()).getAllByRole('textbox');
+    const email = within(pane()).getByRole('textbox', { name: '이메일' });
+    const phone = within(pane()).getByRole('textbox', { name: '휴대폰 번호' });
+    expect(textboxes.indexOf(phone)).toBe(textboxes.indexOf(email) + 1);
+    expect(phone).not.toHaveAttribute('aria-required');
+
+    await user.type(phone, '0');
+    expect(onChange).toHaveBeenCalledWith({ phoneNumber: '0' });
+  });
+
+  it('US5-2 휴대폰 번호 형식 오류가 그 칸에 나온다', () => {
+    const message = '베트남 휴대폰 번호 형식이 아닙니다 (예: 0912 345 678)';
+    renderPane({
+      values: { ...values, phoneNumber: '0212' },
+      fieldErrors: { phoneNumber: message },
+    });
+
+    expect(within(pane()).getByText(message)).toBeInTheDocument();
   });
 
   it('부서를 고르면 상위에 알린다', async () => {

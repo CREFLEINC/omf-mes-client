@@ -60,7 +60,7 @@ export const workStart = {
     checking: '확인 중',
 
     /** ⛔ 미등록과 퇴사를 가른다 — 사용자가 할 일이 다르다. */
-    unknown: '등록되지 않은 사번입니다.',
+    unknown: '이 공장에 등록되지 않은 사번입니다.',
     inactive: '재직 중이 아닌 사번입니다.',
     lookupFailed: '사번을 확인하지 못했습니다. 다시 시도해 주세요.',
     /**
@@ -69,6 +69,25 @@ export const workStart = {
      * 조회가 다시 일어나지 않는다 — 버튼이 없으면 단말을 새로 켜야 풀린다.
      */
     retry: '다시 시도',
+  },
+
+  /** 함께 일하는 작업자 — 사번을 확인한 사람이 정, 더한 사람은 부다. */
+  coWorkers: {
+    title: '작업자',
+    count: (count: number, max: number): string => `${String(count)}/${String(max)}`,
+    main: '정',
+    sub: '부',
+    name: (workerName: string, workerNo: string): string => `${workerName} (${workerNo})`,
+    add: '+ 부 작업자',
+    remove: (name: string): string => `${name} 빼기`,
+    dialogTitle: '부 작업자 추가',
+    cancel: '취소',
+    confirm: '추가',
+    duplicate: '이미 들어간 작업자입니다.',
+    otherPlant: '다른 공장 작업자는 넣을 수 없습니다.',
+    failed: '처리하지 못했습니다. 다시 시도해 주세요.',
+    loadFailed: '작업자를 불러오지 못했습니다.',
+    unknown: '알 수 없음',
   },
 
   /** ② 작업지시 목록 구획. */

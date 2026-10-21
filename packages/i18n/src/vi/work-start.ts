@@ -39,10 +39,28 @@ export const workStart: Translated<typeof ko.workStart> = {
     change: 'Nhập lại',
     checking: 'Đang kiểm tra',
 
-    unknown: 'Mã nhân viên chưa được đăng ký.',
+    unknown: 'Mã nhân viên chưa được đăng ký ở nhà máy này.',
     inactive: 'Mã nhân viên này không còn làm việc.',
     lookupFailed: 'Không xác nhận được mã nhân viên. Hãy thử lại.',
     retry: 'Thử lại',
+  },
+
+  coWorkers: {
+    title: 'Người làm',
+    count: (count: number, max: number): string => `${String(count)}/${String(max)}`,
+    main: 'Chính',
+    sub: 'Phụ',
+    name: (workerName: string, workerNo: string): string => `${workerName} (${workerNo})`,
+    add: '+ Người phụ',
+    remove: (name: string): string => `Bỏ ${name}`,
+    dialogTitle: 'Thêm người phụ',
+    cancel: 'Hủy',
+    confirm: 'Thêm',
+    duplicate: 'Người này đã có trong danh sách.',
+    otherPlant: 'Không thể thêm người của nhà máy khác.',
+    failed: 'Không xử lý được. Hãy thử lại.',
+    loadFailed: 'Không tải được danh sách người làm.',
+    unknown: 'Không rõ',
   },
 
   list: {

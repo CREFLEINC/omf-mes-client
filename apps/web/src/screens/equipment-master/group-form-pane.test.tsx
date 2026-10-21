@@ -17,6 +17,7 @@ const values: GroupFormValues = {
   defaultWipLocationId: '',
   defaultFgLocationId: '',
   defaultScrapLocationId: '',
+  departmentId: '',
 };
 
 const renderPane = (overrides: Partial<GroupFormPaneProps> = {}) => {
@@ -40,6 +41,11 @@ const renderPane = (overrides: Partial<GroupFormPaneProps> = {}) => {
         defaultFgLocationId: [],
         defaultScrapLocationId: [],
       }}
+      departmentOptions={[
+        { value: '', label: t.form.departmentNone },
+        { value: '7', label: 'D-PRD1 · 생산1팀' },
+      ]}
+      departmentNote={t.form.departmentHelp}
       isActive
       isDirty={false}
       isSaving={false}
@@ -228,5 +234,28 @@ describe('GroupFormPane', () => {
     await user.click(screen.getByRole('option', { name: /WH20-DEF/ }));
 
     expect(onChange).toHaveBeenCalledWith({ defaultWipLocationId: '301' });
+  });
+
+  /* 001 W-05-12 — 알림 대상 부서. 상위 그룹에서 이어받지 않는다는 사실을 칸 곁에 밝힌다. */
+  it('담당 부서를 그룹유형 다음에 선택칸으로 두고 도움말을 붙인다', () => {
+    renderPane();
+
+    const department = screen.getByRole('combobox', { name: t.fields.department });
+    expect(department).not.toHaveAttribute('aria-required');
+    expect(screen.getByText(t.form.departmentHelp)).toBeInTheDocument();
+    const order = screen.getAllByRole('combobox');
+    expect(order.indexOf(department)).toBe(
+      order.indexOf(screen.getByRole('combobox', { name: t.fields.groupType })) + 1,
+    );
+  });
+
+  it('담당 부서를 고르면 그 칸만 바꾸고, 지정 없음을 고르면 비운다', async () => {
+    const user = userEvent.setup();
+    const { onChange } = renderPane({ values: { ...values, departmentId: '7' } });
+
+    await user.click(screen.getByRole('combobox', { name: t.fields.department }));
+    await user.click(screen.getByRole('option', { name: t.form.departmentNone }));
+
+    expect(onChange).toHaveBeenCalledWith({ departmentId: '' });
   });
 });

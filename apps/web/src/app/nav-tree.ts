@@ -326,6 +326,13 @@ export const NAV_GROUPS: readonly NavGroup[] = [
         label: '처분 판정 처리',
         labelVi: 'Ra quyết định xử lý',
       },
+      /* W-03-12 — 품목별 IQC 검사 수준과 자동 전환 이력(omf-all-around#64). */
+      {
+        to: '/quality/inspection-levels',
+        icon: 'tune',
+        label: '검사 수준 관리',
+        labelVi: 'Quản lý mức kiểm tra',
+      },
     ],
   },
   /*
