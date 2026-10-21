@@ -8,7 +8,13 @@ import { describe, expect, it } from 'vitest';
 import { jsonResponse, renderWithProviders, type StubFetch } from '../../test/api-harness';
 import { toResultCreateBody } from './queries';
 import { SerialJudgments } from './serial-judgments';
-import { checkScannedSerial, serialBlockedReason, toSerialRow, type SerialRow } from './serials';
+import {
+  checkScannedSerial,
+  requestsToOpen,
+  serialBlockedReason,
+  toSerialRow,
+  type SerialRow,
+} from './serials';
 
 /** 시리얼 OQC(omf-all-around#68 · 서버 선행 P-101) — 「검사한 시리얼」 구획. */
 
@@ -120,6 +126,20 @@ describe('시리얼 규칙', () => {
       ],
     });
     expect(checkScannedSerial(completed, target)).toBeNull();
+  });
+
+  it('시리얼로 여는 의뢰 — 대기·진행이 있으면 그것만, 없으면 완료된 의뢰(재검사)', () => {
+    const request = (id: number, statusCode: string) => ({
+      inspectionRequestId: id,
+      inspectionRequestNo: `IRQ-${String(id)}`,
+      shipmentRequestId: 30,
+      statusCode,
+    });
+    expect(requestsToOpen([request(1, 'COMPLETED'), request(2, 'IN_PROGRESS')])).toEqual([
+      request(2, 'IN_PROGRESS'),
+    ]);
+    expect(requestsToOpen([request(1, 'COMPLETED')])).toEqual([request(1, 'COMPLETED')]);
+    expect(requestsToOpen([])).toEqual([]);
   });
 
   it('수량과 모순되면 저장을 막는다 (Q3)', () => {

@@ -457,7 +457,7 @@ export const OqcInspectionScreen = () => {
               setDraft(EMPTY_QUANTITY_DRAFT);
               setJudgment('');
               setChangeReason('');
-              setSerialDraft({ inspectionRequestId: null, rows: [] });
+              /* 시리얼로 연 완료 의뢰면 그 시리얼이 첫 줄로 남는다 — 재검사하려고 찍은 것이다. */
               setIsReinspecting(true);
             }}
             onCancelReinspection={() => {

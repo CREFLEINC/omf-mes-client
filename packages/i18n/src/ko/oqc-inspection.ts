@@ -358,15 +358,17 @@ export const oqcInspection = {
    */
   serials: {
     openByScan: '시리얼로 의뢰 열기',
-    openByScanHelp: '시리얼을 스캔하면 그 LOT 을 피킹한 열린 OQC 의뢰를 엽니다.',
+    openByScanHelp:
+      '시리얼을 스캔하면 그 LOT 을 피킹한 OQC 의뢰를 엽니다. 대기·진행 의뢰가 없으면 완료된 의뢰를 열어 재검사 회차를 더할 수 있습니다.',
     scanLabel: '시리얼 스캔',
     scanPlaceholder: '시리얼 번호를 스캔하거나 입력 후 Enter',
     scanning: '시리얼을 확인하는 중…',
     heading: '검사한 시리얼',
     help: '검사한 시리얼을 스캔하고 OK/NG 를 고릅니다. 판정과 함께 저장되고 시리얼별 출하검사 기록으로 남습니다.',
     notFound: (serialNo: string): string => `없는 시리얼입니다: ${serialNo}`,
-    noOpenRequest: (serialNo: string): string =>
-      `시리얼 ${serialNo} 의 LOT 을 피킹한 열린 OQC 의뢰가 없습니다.`,
+    noPickedRequest: (serialNo: string): string =>
+      `시리얼 ${serialNo} 의 LOT 을 피킹한 OQC 의뢰가 없습니다.`,
+    completedRequest: (requestNo: string): string => `${requestNo} (완료 · 재검사)`,
     pickRequest: '이 시리얼의 LOT 을 피킹한 OQC 의뢰가 여럿입니다. 열 의뢰를 고르세요.',
     duplicate: (serialNo: string): string => `이미 목록에 있는 시리얼입니다: ${serialNo}`,
     otherItem: (serialNo: string): string => `시리얼 ${serialNo} 은 이 의뢰의 품목이 아닙니다.`,

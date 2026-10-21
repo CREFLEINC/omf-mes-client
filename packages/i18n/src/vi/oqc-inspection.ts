@@ -203,15 +203,17 @@ export const oqcInspection: Translated<typeof ko.oqcInspection> = {
   },
   serials: {
     openByScan: 'Mở yêu cầu bằng số serial',
-    openByScanHelp: 'Quét số serial để mở yêu cầu OQC đang mở đã lấy hàng LOT đó.',
+    openByScanHelp:
+      'Quét số serial để mở yêu cầu OQC đã lấy hàng LOT đó. Nếu không có yêu cầu đang chờ/đang làm, sẽ mở yêu cầu đã hoàn thành để thêm lượt kiểm tra lại.',
     scanLabel: 'Quét serial',
     scanPlaceholder: 'Quét hoặc nhập số serial rồi nhấn Enter',
     scanning: 'Đang kiểm tra serial…',
     heading: 'Serial đã kiểm tra',
     help: 'Quét serial đã kiểm tra và chọn OK/NG. Lưu cùng với đánh giá và ghi thành hồ sơ kiểm tra xuất hàng theo từng serial.',
     notFound: (serialNo: string): string => `Không có số serial: ${serialNo}`,
-    noOpenRequest: (serialNo: string): string =>
-      `Không có yêu cầu OQC đang mở đã lấy hàng LOT của serial ${serialNo}.`,
+    noPickedRequest: (serialNo: string): string =>
+      `Không có yêu cầu OQC đã lấy hàng LOT của serial ${serialNo}.`,
+    completedRequest: (requestNo: string): string => `${requestNo} (đã hoàn thành · kiểm tra lại)`,
     pickRequest: 'Có nhiều yêu cầu OQC đã lấy hàng LOT của serial này. Hãy chọn yêu cầu cần mở.',
     duplicate: (serialNo: string): string => `Serial đã có trong danh sách: ${serialNo}`,
     otherItem: (serialNo: string): string =>

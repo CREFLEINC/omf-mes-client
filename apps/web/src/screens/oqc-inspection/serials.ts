@@ -40,6 +40,18 @@ export const checkScannedSerial = (
   return null;
 };
 
+const OPEN_STATUS_CODES = ['REQUESTED', 'IN_PROGRESS'];
+
+/**
+ * 시리얼로 열 의뢰 후보. 대기·진행 의뢰가 있으면 그것만, 없으면 완료된 의뢰(재검사 회차를 더하러 연다 · 담당자 요청 2026-10-21).
+ */
+export const requestsToOpen = (
+  picked: OqcSerialScan['pickedRequests'],
+): OqcSerialScan['pickedRequests'] => {
+  const open = picked.filter((request) => OPEN_STATUS_CODES.includes(request.statusCode));
+  return open.length > 0 ? open : picked;
+};
+
 /** 1차가 OK 로 남은 시리얼은 NG 로 바꿀 수 없다(서버와 같은 규칙). */
 export const isNgLocked = (row: SerialRow): boolean => row.previous?.firstJudgmentCode === 'OK';
 

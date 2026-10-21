@@ -5,14 +5,13 @@ import { useState } from 'react';
 
 import { useSerialLookup } from './queries';
 import { SerialScanField } from './serial-scan-field';
+import { requestsToOpen } from './serials';
 
 const t = messages.oqcInspection.serials;
 
-/** 시리얼로 여는 것은 대기·진행 의뢰뿐이다 — 완료된 의뢰의 재검은 목록에서 고른 뒤 회차를 더한다. */
-const OPEN_STATUS_CODES = ['REQUESTED', 'IN_PROGRESS'];
-
 /**
- * 「시리얼로 의뢰 열기」 — 왼쪽 목록 위(omf-all-around#68). 그 시리얼의 LOT 을 피킹한 열린 OQC 의뢰를 연다.
+ * 「시리얼로 의뢰 열기」 — 왼쪽 목록 위(omf-all-around#68). 그 시리얼의 LOT 을 피킹한 OQC 의뢰를 연다 — 대기·진행이
+ * 없으면 완료된 의뢰를 연다(재검사 회차를 더하러).
  * 여럿이면 고르게 한다 — 화면이 하나를 짐작하지 않는다.
  */
 export const SerialOpenByScan = ({
@@ -29,10 +28,8 @@ export const SerialOpenByScan = ({
     const found = await lookup(serialNo);
     if (found.kind === 'notFound') return setError(t.notFound(serialNo));
     if (found.kind === 'failed') return setError(t.lookupFailed);
-    const requests = found.scan.pickedRequests.filter((request) =>
-      OPEN_STATUS_CODES.includes(request.statusCode),
-    );
-    if (requests.length === 0) return setError(t.noOpenRequest(found.scan.serialNo));
+    const requests = requestsToOpen(found.scan.pickedRequests);
+    if (requests.length === 0) return setError(t.noPickedRequest(found.scan.serialNo));
     setError(null);
     const [only] = requests;
     if (requests.length === 1 && only !== undefined)
@@ -62,7 +59,9 @@ export const SerialOpenByScan = ({
                 onOpen(request.inspectionRequestId, choices);
               }}
             >
-              {request.inspectionRequestNo}
+              {request.statusCode === 'COMPLETED'
+                ? t.completedRequest(request.inspectionRequestNo)
+                : request.inspectionRequestNo}
             </Button>
           ))}
         </div>
