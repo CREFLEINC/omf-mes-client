@@ -112,12 +112,16 @@ describe('toWorkerResults', () => {
         }),
         result(3, 102, 10, { workerAllocations: [allocation(102, 'MAIN', 10)] }),
         result(4, 105, 7, { workerAllocations: [] }),
+        /* 그 구간에 없던 참여자의 0 몫 줄은 작업자를 새로 세우지 않는다. */
+        result(5, 101, 3, {
+          workerAllocations: [allocation(101, 'MAIN', 3), allocation(109, 'SUB', 0)],
+        }),
       ],
       known,
     );
 
     expect(rows.map((row) => [row.workerId, row.role, row.goodQty, row.workerName])).toEqual([
-      [101, 'MAIN', 50, '작업자101'],
+      [101, 'MAIN', 53, '작업자101'],
       [102, 'BOTH', 50, '작업자102'],
       [105, 'MAIN', 7, '작업자105'],
     ]);

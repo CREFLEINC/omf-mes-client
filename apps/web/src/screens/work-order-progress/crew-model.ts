@@ -80,6 +80,7 @@ export const toSessionViews = (
  * ⛔ 정정된 원본은 세지 않는다 — 정정은 덧붙는 레코드라 원본과 정정본이 둘 다 오는데, 서버
  *    집계와 같게 정정되지 않은 잎만 센다.
  * ⚠ 배분이 없는 실적(세션 없이 적었거나 참여자가 없던 세션)은 실적을 적은 사람의 몫이다.
+ * ⚠ 서버는 그 구간에 참여하지 않은 세션 참여자도 0 몫으로 싣는다 — 몫이 없는 줄은 세지 않는다.
  */
 export const toWorkerResults = (
   results: readonly ProductionResultForward[],
@@ -127,6 +128,7 @@ export const toWorkerResults = (
       continue;
     }
     for (const allocation of allocations) {
+      if (QTY_KEYS.every((key) => allocation[key] === 0)) continue;
       add(
         allocation.workerId,
         allocation.workerNo,
