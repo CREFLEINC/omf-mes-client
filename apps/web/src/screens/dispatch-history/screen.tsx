@@ -50,8 +50,8 @@ export const DispatchHistoryScreen = () => {
     if (hasPeriod) return;
     const seeded = defaultPeriod(new Date());
     setPeriod(seeded);
-    setSearchParams(toSearchParams(seeded, appliedFilters), { replace: true });
-  }, [hasPeriod, appliedFilters, setSearchParams]);
+    setSearchParams((prev) => toSearchParams(seeded, readFilters(prev)), { replace: true });
+  }, [hasPeriod, setSearchParams]);
 
   const periodReason = validatePeriod(applied);
   const query =
