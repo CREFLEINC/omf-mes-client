@@ -86,7 +86,8 @@ export const FourMInputsPanel = ({ workOrderId, estimate = false }: FourMInputsP
         <p className="field-note">{t.none}</p>
       ) : (
         <Table
-          caption={t.heading}
+          /* 제목은 위 h3 가 이미 보인다 — 표의 접근 이름으로만 남긴다. */
+          caption={<span className="four-m-inputs-caption">{t.heading}</span>}
           density="compact"
           zebra={false}
           rows={inputs.data}
