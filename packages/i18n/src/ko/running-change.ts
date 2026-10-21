@@ -40,6 +40,8 @@ export const runningChange = {
      */
     itemCodeLabel: '제품 코드',
     inputQtyLabel: '투입 수량',
+    /* IQC 에서 적은 4M 변경품(omf-all-around#63) — 표시만 한다. */
+    fourMChangeMark: '4M 변경품',
     moldSectionLabel: '금형 정보',
     moldNoLabel: '금형 번호',
     moldNameLabel: '금형명',

@@ -15664,3 +15664,15 @@ body:has(.goods-receipt-post-form) > [role='listbox'] {
 .iqc-inspection-four-m-fields {
   grid-template-columns: minmax(0, 12rem) minmax(0, 1fr);
 }
+
+/* 4M 변경 자재 투입(omf-all-around#63 2단계) — 작업지시 진행 상세·LOT 상태 상세가 함께 쓰는 구획. */
+.four-m-inputs {
+  display: grid;
+  gap: var(--space-2);
+  margin-block: var(--space-4);
+}
+
+.four-m-inputs > h3,
+.four-m-inputs > .field-note {
+  margin: 0;
+}

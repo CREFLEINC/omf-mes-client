@@ -27,6 +27,7 @@ export type {
   FourMChangeForward,
   InspectionRequestForward,
   LotForward,
+  MaterialConsumptionForward,
   InspectionResultConfirmForward,
   InspectionResultCreateForward,
   InspectionResultUpdateForward,

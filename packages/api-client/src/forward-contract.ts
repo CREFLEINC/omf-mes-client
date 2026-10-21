@@ -174,8 +174,13 @@ export type InspectionRequestForward = components['schemas']['InspectionRequest'
   fourMChange?: FourMChangeForward;
 };
 
-/** 서버 선행 P-86(omf-all-around#63) — LOT 목록(`GET /trace/lots`)만 4M 변경품을 싣는다. */
+/** 서버 선행 P-86(omf-all-around#63) — LOT 목록·단건(`GET /trace/lots`(+`/{lotId}`))이 4M 변경품을 싣는다. */
 export type LotForward = components['schemas']['Lot'] & {
+  fourMChange?: FourMChangeForward;
+};
+
+/** 서버 선행 P-86(omf-all-around#63 2단계) — 자재 투입이 투입 LOT 의 4M 변경품을 싣는다. */
+export type MaterialConsumptionForward = components['schemas']['MaterialConsumption'] & {
   fourMChange?: FourMChangeForward;
 };
 
