@@ -267,6 +267,13 @@ export const NAV_GROUPS: readonly NavGroup[] = [
         label: '검사기준',
         labelVi: 'Tiêu chuẩn kiểm tra',
       },
+      /* W-06-24 — OA 제품 검사표의 모델별 단계·항목(omf-all-around#89). 검사기준 바로 뒤 — 같은 「기준」 갈래다. */
+      {
+        to: '/master-data/inspection-sheet-template',
+        icon: 'checklist',
+        label: '검사표 기준',
+        labelVi: 'Tiêu chuẩn phiếu kiểm tra',
+      },
       /* 품질 코드 — 불량·원인과 판정유형은 둘 다 판정에 붙이는 코드 마스터다. */
       {
         to: '/master-data/defect-cause-code',
@@ -291,6 +298,13 @@ export const NAV_GROUPS: readonly NavGroup[] = [
         icon: 'analytics',
         label: '검사실적·검사결과 조회',
         labelVi: 'Tra cứu thực hiện · kết quả kiểm tra',
+      },
+      /* W-03-13 — OA 제품 검사표(시리얼별) 조회·서명(omf-all-around#89). 검사실적 조회 바로 뒤 — 같은 「조회」 갈래다. */
+      {
+        to: '/quality/inspection-sheets',
+        icon: 'assignment',
+        label: '제품 검사표 조회',
+        labelVi: 'Tra cứu phiếu kiểm tra sản phẩm',
       },
       /* LOT 상태 — 조회에서 찾은 LOT 을 판정·전이한다. */
       {

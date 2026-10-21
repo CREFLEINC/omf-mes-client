@@ -959,6 +959,291 @@ export interface ItemInspectionLevelHistoryQuery {
 
 type PageMeta = components['schemas']['PageMeta'];
 
+/** 서버 선행 P-102(omf-all-around#89) — OA 제품 검사표. 출력 양식 · 단계 · 판정. */
+export type InspectionSheetLayoutCode = 'OP' | 'PP';
+export type InspectionSheetStepCode =
+  | 'PROCESS_1'
+  | 'PROCESS_2'
+  | 'PROCESS_3'
+  | 'PROCESS_4'
+  | 'PROCESS_5'
+  | 'SHIPMENT'
+  | 'CROSS_CHECK'
+  | 'SAMPLING';
+export type InspectionSheetJudgment = 'OK' | 'NG';
+export type InspectionSheetMethodCode = 'FULL' | 'SAMPLE';
+export type InspectionSheetLotSlot = 'PCB' | 'SD' | 'STAPLE';
+
+export interface InspectionSheetTemplateItem {
+  inspectionSheetTemplateItemId: number;
+  sequenceNo: number;
+  checkItemCode: string;
+  nameKo: string;
+  nameVi: string | null;
+  methodCode: InspectionSheetMethodCode;
+}
+
+export interface InspectionSheetTemplateStep {
+  stepCode: InspectionSheetStepCode;
+  sequenceNo: number;
+  nameKo: string;
+  nameVi: string | null;
+  signRequired: boolean;
+  items: InspectionSheetTemplateItem[];
+}
+
+interface InspectionSheetTemplateContent {
+  materialText?: string | null;
+  structureText?: string | null;
+  rohsFlag: boolean;
+  productNameText?: string | null;
+  powerText?: string | null;
+  motorText?: string | null;
+  remarks?: string | null;
+}
+
+/** 서버 선행 P-102 — 검사표 기준. 목록은 `lotSources`·`steps` 를 싣지 않는다. */
+export interface InspectionSheetTemplate extends Required<InspectionSheetTemplateContent> {
+  inspectionSheetTemplateId: number;
+  itemId: number;
+  itemCode: string;
+  itemName: string;
+  templateVersion: number;
+  businessUnitId: number;
+  formLayoutCode: InspectionSheetLayoutCode;
+  statusCode: 'DRAFT' | 'CONFIRMED' | 'OBSOLETE';
+  confirmedBy: number | null;
+  confirmedAt: string | null;
+  lotSources?: {
+    slotCode: InspectionSheetLotSlot;
+    itemId: number;
+    itemCode: string;
+    itemName: string;
+  }[];
+  steps?: InspectionSheetTemplateStep[];
+}
+
+/** 작성중 판만 고친다. 단계·항목·LOT 칸은 통째로 갈아 끼운다 — 배열 순서가 순번이다. */
+export interface InspectionSheetTemplateUpdate extends InspectionSheetTemplateContent {
+  lotSources: { slotCode: InspectionSheetLotSlot; itemId: number }[];
+  steps: {
+    stepCode: InspectionSheetStepCode;
+    nameKo: string;
+    nameVi?: string | null;
+    signRequired: boolean;
+    items: {
+      checkItemCode: string;
+      nameKo: string;
+      nameVi?: string | null;
+      methodCode: InspectionSheetMethodCode;
+    }[];
+  }[];
+}
+
+export interface InspectionSheetTemplateCreate extends InspectionSheetTemplateUpdate {
+  itemId: number;
+  businessUnitId: number;
+  formLayoutCode: InspectionSheetLayoutCode;
+}
+
+export interface InspectionSheetTemplateListQuery {
+  itemId?: number;
+  statusCode?: InspectionSheetTemplate['statusCode'];
+  page?: number;
+  size?: number;
+}
+
+/** 서버 선행 P-102 — 머리 값. 보낸 값으로 통째로 바꾼다(생략 = 비움). */
+export interface InspectionSheetHeaderUpdate {
+  modelText?: string | null;
+  specText?: string | null;
+  destinationText?: string | null;
+  pcbLotNo?: string | null;
+  sdLotNo?: string | null;
+  stapleLotNo?: string | null;
+  fwProductionVersion?: string | null;
+  fwQualityVersion?: string | null;
+  materialText?: string | null;
+  structureText?: string | null;
+  rohsFlag: boolean;
+  productNameText?: string | null;
+  powerText?: string | null;
+  motorText?: string | null;
+  tempPackNote?: string | null;
+  overallResultCode?: InspectionSheetJudgment | null;
+}
+
+export interface InspectionSheetNgWrite {
+  foundDepartmentCode?: 'PRODUCTION' | 'QUALITY' | null;
+  foundStepCode?: string | null;
+  occurrenceProcessText?: string | null;
+  standardNo?: string | null;
+  checkItemCode?: string | null;
+  ngContent: string;
+  investigationText?: string | null;
+  ngTypeCode?: 'WORK' | 'PART' | null;
+  repairDepartmentCode?: 'PRODUCTION' | 'TECH' | null;
+  repairWorkerNo?: string | null;
+  repairedAt?: string | null;
+  recheckResultCode?: InspectionSheetJudgment | null;
+  recheckWorkerNo?: string | null;
+  recheckedAt?: string | null;
+}
+
+export interface InspectionSheetNg extends Required<InspectionSheetNgWrite> {
+  sequenceNo: number;
+  repairWorkerName: string | null;
+  recheckWorkerName: string | null;
+}
+
+export interface InspectionSheetStepResult {
+  firstJudgmentCode: InspectionSheetJudgment;
+  finalJudgmentCode: InspectionSheetJudgment;
+  /** OQC = 시리얼 OQC(#68)가 쓴 출하검사 줄. */
+  sourceCode: 'SHEET' | 'OQC';
+  inspectedWorkerNo: string | null;
+  inspectedWorkerName: string | null;
+  inspectedAt: string;
+  signedBy: number | null;
+  signedByName: string | null;
+  signedAt: string | null;
+}
+
+export interface InspectionSheetStep {
+  stepCode: InspectionSheetStepCode;
+  sequenceNo: number;
+  nameKo: string;
+  nameVi: string | null;
+  signRequired: boolean;
+  /** 아직 안 쓴 단계는 null. */
+  result: InspectionSheetStepResult | null;
+  items: (InspectionSheetTemplateItem & { judgmentCode: InspectionSheetJudgment | null })[];
+}
+
+/** 서버 선행 P-102 — 시리얼 1대의 제품 검사표. */
+export interface InspectionSheet extends Required<InspectionSheetHeaderUpdate> {
+  inspectionSheetId: number;
+  serialNumberId: number;
+  serialNo: string;
+  itemId: number;
+  itemCode: string;
+  itemName: string;
+  lotId: number;
+  lotNo: string;
+  workOrderId: number | null;
+  workOrderNo: string | null;
+  inspectionSheetTemplateId: number;
+  templateVersion: number;
+  formLayoutCode: InspectionSheetLayoutCode;
+  statusCode: 'IN_PROGRESS' | 'COMPLETED';
+  /** W/O 투입 기록에서 찾은 칸별 자재 LOT 번호(W/O 단위). */
+  lotCandidates: { pcb: string[]; sd: string[]; staple: string[] };
+  /** 서버 선행 P-102 S4 — 이 W/O 에 투입된 4M 변경품 자재 LOT(W/O 단위 · 시리얼별 투입 기록 없음). */
+  fourMChanges: {
+    lotNo: string;
+    itemCode: string;
+    itemName: string;
+    changeTypeCode: string;
+    remarks: string | null;
+  }[];
+  writtenWorkerNo: string | null;
+  writtenWorkerName: string | null;
+  createdAt: string;
+  approvedBy: number | null;
+  approvedByName: string | null;
+  approvedAt: string | null;
+  checkedBy: number | null;
+  checkedByName: string | null;
+  checkedAt: string | null;
+  steps: InspectionSheetStep[];
+  ngs: InspectionSheetNg[];
+  events: {
+    /** APPROVAL_CLEARED = 승인·확인 중 하나만 된 검사표를 고쳐 그 승인·확인이 비워졌다. */
+    eventCode: 'SIGN_STEP' | 'APPROVE' | 'CHECK' | 'REOPEN' | 'APPROVAL_CLEARED';
+    stepCode: string | null;
+    reason: string | null;
+    /** POP 작업자가 고쳤으면 null — 이름은 작업자 이름이다. */
+    actedBy: number | null;
+    actedByName: string | null;
+    actedAt: string;
+  }[];
+}
+
+/** 1차·최종 판정을 함께 빼면 항목 판정만 임시 저장한다(서버 선행 P-102 · 판정이 기록된 단계는 400). */
+export interface InspectionSheetStepWrite {
+  firstJudgmentCode?: InspectionSheetJudgment;
+  finalJudgmentCode?: InspectionSheetJudgment;
+  items: { inspectionSheetTemplateItemId: number; judgmentCode: InspectionSheetJudgment }[];
+}
+
+/** 서버 선행 P-102 S3 — 제품 검사표 목록 한 줄. */
+export interface InspectionSheetSummary {
+  inspectionSheetId: number;
+  serialNo: string;
+  itemCode: string;
+  itemName: string;
+  lotNo: string;
+  workOrderNo: string | null;
+  statusCode: InspectionSheet['statusCode'];
+  recordedStepCount: number;
+  stepCount: number;
+  /** 1차 판정이 NG 였던 단계 수. */
+  ngStepCount: number;
+  writtenWorkerName: string | null;
+  approvedByName: string | null;
+  checkedByName: string | null;
+  createdAt: string;
+}
+
+export interface InspectionSheetListQuery {
+  serialNo?: string;
+  lotNo?: string;
+  workOrderId?: number;
+  itemId?: number;
+  statusCode?: InspectionSheet['statusCode'];
+  /** 작성 시각(UTC) — 이상. */
+  createdFrom?: string;
+  /** 작성 시각(UTC) — 미만. */
+  createdTo?: string;
+  page?: number;
+  size?: number;
+}
+
+type Json<T> = { headers: { [name: string]: unknown }; content: { 'application/json': T } };
+type Op<P, B, R> = { parameters: P; responses: R } & ([B] extends [never]
+  ? { requestBody?: never }
+  : { requestBody: B });
+interface Params<Q, H, Path> {
+  query?: Q;
+  header: H;
+  path: Path;
+  cookie?: never;
+}
+type IdemHeader = { 'Idempotency-Key': string; 'X-Worker-No'?: string };
+type LockHeader = IdemHeader & { 'If-Match': string };
+type SheetId = { inspectionSheetId: number };
+type TemplateId = { inspectionSheetTemplateId: number };
+type SheetAction<Path, B = never> = Unused & {
+  parameters: NoParameters;
+  get?: never;
+  put?: never;
+  post: Op<
+    Params<never, LockHeader, Path>,
+    [B] extends [never] ? never : { content: { 'application/json': B } },
+    { 200: Json<InspectionSheet> }
+  >;
+};
+type SheetPut<Path, B> = Unused & {
+  parameters: NoParameters;
+  get?: never;
+  post?: never;
+  put: Op<
+    Params<never, LockHeader, Path>,
+    { content: { 'application/json': B } },
+    { 200: Json<InspectionSheet> }
+  >;
+};
+
 export interface ForwardPaths {
   /** 특채 조회(GET)에 요청(POST)을 더한다 — 서버 선행 P-79. */
   '/quality/concessions': Omit<ConcessionsPath, 'post'> & {
@@ -1694,6 +1979,95 @@ export interface ForwardPaths {
     put?: never;
     post?: never;
   };
+  /** 서버 선행 P-102(omf-all-around#89) — 검사표 기준 목록·등록. */
+  '/quality/inspection-sheet-templates': Unused & {
+    parameters: NoParameters;
+    put?: never;
+    get: Op<
+      { query?: InspectionSheetTemplateListQuery; header?: never; path?: never; cookie?: never },
+      never,
+      { 200: Json<{ items: InspectionSheetTemplate[]; page: PageMeta }> }
+    >;
+    post: Op<
+      { query?: never; header: { 'Idempotency-Key': string }; path?: never; cookie?: never },
+      { content: { 'application/json': InspectionSheetTemplateCreate } },
+      { 201: Json<InspectionSheetTemplate> }
+    >;
+  };
+  /** 서버 선행 P-102 — 검사표 기준 상세(ETag)·수정(작성중만). */
+  '/quality/inspection-sheet-templates/{inspectionSheetTemplateId}': Unused & {
+    parameters: NoParameters;
+    post?: never;
+    get: Op<
+      { query?: never; header?: never; path: TemplateId; cookie?: never },
+      never,
+      { 200: Json<InspectionSheetTemplate> }
+    >;
+    put: Op<
+      Params<never, LockHeader, TemplateId>,
+      { content: { 'application/json': InspectionSheetTemplateUpdate } },
+      { 200: Json<InspectionSheetTemplate> }
+    >;
+  };
+  /** 서버 선행 P-102 — 검사표 기준 확정. */
+  '/quality/inspection-sheet-templates/{inspectionSheetTemplateId}:confirm': Unused & {
+    parameters: NoParameters;
+    get?: never;
+    put?: never;
+    post: Op<Params<never, LockHeader, TemplateId>, never, { 200: Json<InspectionSheetTemplate> }>;
+  };
+  /** 서버 선행 P-102 — 시리얼로 검사표 열기(없으면 만든다). */
+  '/quality/inspection-sheets:open-by-serial': Unused & {
+    parameters: NoParameters;
+    get?: never;
+    put?: never;
+    post: Op<
+      { query?: never; header: IdemHeader; path?: never; cookie?: never },
+      { content: { 'application/json': { serialNo: string } } },
+      { 200: Json<InspectionSheet> }
+    >;
+  };
+  /** 서버 선행 P-102 — 검사표 상세(ETag). */
+  '/quality/inspection-sheets/{inspectionSheetId}': Unused & {
+    parameters: NoParameters;
+    put?: never;
+    post?: never;
+    get: Op<
+      { query?: never; header?: { 'X-Worker-No'?: string }; path: SheetId; cookie?: never },
+      never,
+      { 200: Json<InspectionSheet> }
+    >;
+  };
+  '/quality/inspection-sheets/{inspectionSheetId}/header': SheetPut<
+    SheetId,
+    InspectionSheetHeaderUpdate
+  >;
+  '/quality/inspection-sheets/{inspectionSheetId}/steps/{stepCode}': SheetPut<
+    SheetId & { stepCode: InspectionSheetStepCode },
+    InspectionSheetStepWrite
+  >;
+  '/quality/inspection-sheets/{inspectionSheetId}/ngs': SheetPut<
+    SheetId,
+    { ngs: InspectionSheetNgWrite[] }
+  >;
+  /** 서버 선행 P-102 S3 — 목록(LOT·시리얼·W/O). */
+  '/quality/inspection-sheets': Unused & {
+    parameters: NoParameters;
+    put?: never;
+    post?: never;
+    get: Op<
+      { query?: InspectionSheetListQuery; header?: never; path?: never; cookie?: never },
+      never,
+      { 200: Json<{ items: InspectionSheetSummary[]; page: PageMeta }> }
+    >;
+  };
+  /** 서버 선행 P-102 S3 — 단계 서명 · 승인 · 확인 · 승인 취소(W-03-14). */
+  '/quality/inspection-sheets/{inspectionSheetId}/steps/{stepCode}:sign': SheetAction<
+    SheetId & { stepCode: InspectionSheetStepCode }
+  >;
+  '/quality/inspection-sheets/{inspectionSheetId}:approve': SheetAction<SheetId>;
+  '/quality/inspection-sheets/{inspectionSheetId}:check': SheetAction<SheetId>;
+  '/quality/inspection-sheets/{inspectionSheetId}:reopen': SheetAction<SheetId, { reason: string }>;
 }
 
 /** 같은 경로를 forward 가 다시 적으면 그쪽이 이긴다 — 교집합이면 좁은 쪽 enum 이 남는다(omf-all-around#58 첨부 대상). */

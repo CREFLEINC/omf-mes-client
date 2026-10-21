@@ -14,6 +14,7 @@ import { useHref, useLinkClickHandler, useLocation } from 'react-router';
 import { LocaleSelect } from '../patterns/locale-select';
 import { localizedLabel } from '../patterns/localized-label';
 import { useSession, useSignOut } from '../patterns/session';
+import { OA_ONLY_PATHS, useOaAccess } from '../patterns/oa-access';
 import { toWebAccess } from '../patterns/web-access';
 import { readAppVersion } from './app-version';
 import {
@@ -314,7 +315,14 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
    * 「볼 수 없다」인지 갈리지 않는다. 판정할 근거가 없으면(세션이 권한 목록을 주지 않으면)
    * 거르지 않는다 — 계약이 「모른다」와 「없다」를 갈라 두었다.
    */
-  const access = toWebAccess(session?.permissions);
+  const oaAccess = useOaAccess();
+  const permissionAccess = toWebAccess(session?.permissions);
+  /* OA 공장 전용 화면은 계정 범위에 OA 공장이 «없다고 확인됐을 때만» 감춘다(omf-all-around#89). */
+  const access = {
+    ...permissionAccess,
+    allows: (path: string) =>
+      !(oaAccess === 'not-oa' && OA_ONLY_PATHS.has(path)) && permissionAccess.allows(path),
+  };
   const allowedGroups = filterNavGroupsByAccess(NAV_GROUPS, access);
   const isLeadAllowed = isNavEntryAllowed(NAV_LEAD, access);
 

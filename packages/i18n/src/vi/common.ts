@@ -19,6 +19,11 @@ export const common: Translated<typeof ko.common> = {
   retry: 'Thử lại',
   includeInactive: 'Gồm cả mục ngừng dùng',
   discardChangesConfirm: 'Nội dung đã nhập chưa được lưu. Bỏ thay đổi?',
+  oaOnly: {
+    checking: 'Đang kiểm tra nhà máy có được dùng màn hình này không.',
+    notice:
+      'Màn hình này chỉ dành cho bộ phận OA. Phạm vi nhà máy của tài khoản đăng nhập không có nhà máy OA. Nếu cần, hãy đề nghị quản trị hệ thống cấp phạm vi nhà máy.',
+  },
   shell: {
     brand: 'OMF-MES Di động',
     main: 'Nội dung chính',
