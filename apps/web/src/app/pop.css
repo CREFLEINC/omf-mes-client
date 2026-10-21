@@ -4114,7 +4114,7 @@
 /* ── P-02-04 생산 작업 ─────────────────────────────────────────────── */
 
 /*
- * 실제 생산수량 — **이름 옆에 칸이 선다**(사용자 지시 2026-09-10). 위아래로 쌓으면 이름 한
+ * 양품 수량 — **이름 옆에 칸이 선다**(사용자 지시 2026-09-10). 위아래로 쌓으면 이름 한
  * 줄이 값과 키패드 사이에 끼어, 눈이 값에서 키패드로 가는 길을 한 번 끊는다.
  *
  * ⛔ 디자인 시스템의 내부 클래스를 이름으로 겨냥하지 않는다 — **자리로 잡는다.** 이 구획에서
@@ -4132,6 +4132,50 @@
    */
   grid-template-columns: max-content minmax(0, 14rem) 1fr;
   align-items: center;
+  gap: var(--space-3);
+}
+
+/* 키패드가 지금 치는 칸 — 양품·불량 칸이 여럿이라 어느 칸에 들어가는지 테두리로 보인다. */
+.pop-ui .production-flow-qty.is-active input {
+  outline: 3px solid var(--primary);
+  outline-offset: 1px;
+}
+
+/* 불량 — 줄마다 「유형 · 수량 · 빼기」가 한 줄로 선다. */
+.pop-ui .production-flow-defects {
+  display: grid;
+  gap: var(--space-2);
+  margin-block: var(--space-3);
+}
+
+.pop-ui .production-flow-defects > h3 {
+  margin: 0;
+}
+
+.pop-ui .production-flow-defect-rows {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.pop-ui .production-flow-defect-row {
+  display: grid;
+  grid-template-columns: minmax(0, 16rem) minmax(0, 14rem) max-content;
+  align-items: start;
+  gap: var(--space-3);
+}
+
+.pop-ui .production-flow-defect-actions {
+  display: flex;
+  gap: var(--space-3);
+}
+
+/* 불량 유형 타일 — 장갑 낀 손가락으로 누를 수 있게 큼직하게 늘어놓는다. */
+.pop-ui .production-flow-defect-tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(10rem, 1fr));
   gap: var(--space-3);
 }
 

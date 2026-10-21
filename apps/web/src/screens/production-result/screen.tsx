@@ -1,14 +1,32 @@
-import { AlertBanner, Button, Card, Checkbox, Chip, Dialog, TextField } from '@crefle/web-ui';
+import {
+  AlertBanner,
+  Button,
+  Card,
+  Checkbox,
+  Chip,
+  Dialog,
+  IconButton,
+  TextField,
+} from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { NumericKeypad } from '@omf-mes/ui';
 import { useQueryClient } from '@tanstack/react-query';
-import { useEffect, useId, useRef, useState } from 'react';
+import { useEffect, useId, useMemo, useRef, useState } from 'react';
 
 import { OutboxStallBanner } from '../../patterns/outbox-stall-banner';
 import { soleProcessIdOf, usePopIdentity } from '../../patterns/pop-identity';
 import { PopSelect as Select } from '../../patterns/pop-select';
 import { PopWorkerMissingBanner } from '../../patterns/pop-worker-missing-banner';
 import { PopWorkerTag } from '../../patterns/pop-worker-tag';
+import {
+  areDefectRowsReady,
+  checkDefectRows,
+  defectLabelOf,
+  groupDefectCodes,
+  toDefectInputs,
+  type DefectRowDraft,
+} from './defect-draft';
+import { DefectPicker } from './defect-picker';
 import { useResultEntry } from './entry-context';
 import { useFlowGates } from './flow-gating';
 import { useDocumentIssue, useLotComplete, useSerialIssue } from './flow-mutations';
@@ -58,7 +76,7 @@ import {
   parseGoodQty,
   remainingQty,
 } from './quantity-draft';
-import { useWorkOrder, useWorkOrderPqc } from './queries';
+import { useProcessDefectCodes, useWorkOrder, useWorkOrderPqc } from './queries';
 import { PqcSplit } from './pqc-split';
 import { buildSaveBody } from './save-request';
 import { useUomLookup } from './uom-lookup';
@@ -202,6 +220,19 @@ export const ProductionFlowScreen = () => {
   const uom = useUomLookup();
 
   const [actualQty, setActualQty] = useState('');
+  /*
+   * 불량 줄. 수량 칸이 여럿이라 키패드는 하나만 두고 지금 고른 칸(`activeQty`)에 친다 — 양품이면
+   * `'good'`, 불량이면 그 줄의 키다.
+   */
+  const [defectRows, setDefectRows] = useState<DefectRowDraft[]>([]);
+  const [activeQty, setActiveQty] = useState<string>('good');
+  const [pickingRowKey, setPickingRowKey] = useState<string | null>(null);
+  /** 불량만 보낸 저장이 큐에 있다 — 라벨로 이어지지 않는다 */
+  const [isDefectOnlyPending, setDefectOnlyPending] = useState(false);
+  const [isDefectSaved, setDefectSaved] = useState(false);
+  const nextDefectKey = useRef(1);
+  const defectCodes = useProcessDefectCodes(workOrder.data?.processId ?? null);
+  const defectMajors = useMemo(() => groupDefectCodes(defectCodes.data ?? []), [defectCodes.data]);
   const [outputPhase, setOutputPhase] = useState<OutputPhase>('idle');
   const [scanValue, setScanValue] = useState('');
   const [scanMismatch, setScanMismatch] = useState(false);
@@ -275,6 +306,11 @@ export const ProductionFlowScreen = () => {
   const tagPrinter = defaultPrinter(tagPrinters.data);
   const serialCount = serials.data?.page.total ?? null;
   const parsedQty = parseGoodQty(actualQty);
+  const defectChecks = checkDefectRows(defectRows);
+  const defectInputs = toDefectInputs(defectRows);
+  const areDefectsReady = areDefectRowsReady(defectRows);
+  /** 양품 없이 불량만 적는다 — LOT·라벨로 이어지지 않는다. */
+  const isDefectOnly = (parsedQty === null || parsedQty === 0) && defectInputs.length > 0;
   /*
    * 이 작업지시의 잔여수량 — **서버가 낸 값을 쓴다**(`quantity-draft`). 화면이 식을 새로
    * 세우지 않는다. 받지 못했으면 `null` 이고, 그것은 0 이 아니라 «모른다»다.
@@ -524,9 +560,19 @@ export const ProductionFlowScreen = () => {
   };
 
   const onResultApplied = (outboxEntry: OutboxEntry): void => {
+    /* 실린 불량은 이 실적과 함께 적혔다 — 줄을 비운다. */
+    setDefectRows([]);
+    setActiveQty('good');
     const allocation = outboxEntry.body.lotAllocations?.[0];
     const lotId = allocation?.lotId;
-    if (lotId === undefined) return;
+    if (lotId === undefined) {
+      /* 불량만 적은 실적이다 — 라벨로 이어지지 않고 처음 상태로 돌아간다. */
+      setDefectOnlyPending(false);
+      setDefectSaved(true);
+      setOutputPhase('idle');
+      void workOrder.refetch();
+      return;
+    }
 
     setAppliedLotId(lotId);
     /* 이 LOT 에 실제로 실린 수량 — 큐에 들어간 본문이 정본이다. */
@@ -602,7 +648,10 @@ export const ProductionFlowScreen = () => {
   }, [complete.error, outputPhase]);
 
   useEffect(() => {
-    if (outbox.rejection !== null && outputPhase === 'queued') setOutputPhase('idle');
+    if (outbox.rejection !== null && outputPhase === 'queued') {
+      setOutputPhase('idle');
+      setDefectOnlyPending(false);
+    }
   }, [outbox.rejection, outputPhase]);
 
   useEffect(() => {
@@ -736,6 +785,7 @@ export const ProductionFlowScreen = () => {
     hasTagDocuments &&
     lotPrinter !== null &&
     lotPrint.isShellAvailable &&
+    areDefectsReady &&
     outputPhase === 'idle' &&
     !outbox.isPendingForLot(lot.lotId) &&
     currentIssue === null &&
@@ -757,6 +807,60 @@ export const ProductionFlowScreen = () => {
           ? t.quantity.remainingNotAsked
           : t.quantity.remainingUnknown;
 
+  /* 불량만 적을 때는 LOT·프린터·라벨이 필요 없다 — 사번·작업지시·투입 게이트만 본다. */
+  const canSaveDefectsOnly =
+    isDefectOnly &&
+    areDefectsReady &&
+    entry.workerNo !== null &&
+    entry.workOrderId !== null &&
+    gates.input === 'allowed' &&
+    outputPhase === 'idle' &&
+    (lot?.uomId ?? workOrder.data?.uomId) !== undefined;
+  /** 불량 줄을 고칠 수 있는가 — 저장이 나간 뒤에는 그 실적에 실린 값이라 잠근다. */
+  const areDefectsLocked = outputPhase !== 'idle' || entry.workOrderId === null;
+
+  const queueDefectsOnly = (): void => {
+    const uomId = lot?.uomId ?? workOrder.data?.uomId;
+    if (!canSaveDefectsOnly || entry.workerNo === null || entry.workOrderId === null) return;
+    if (uomId === undefined) return;
+
+    setDefectSaved(false);
+    setDefectOnlyPending(true);
+    setOutputPhase('queued');
+    outbox.enqueue(
+      entry.workerNo,
+      buildSaveBody({
+        workOrderId: entry.workOrderId,
+        lotId: null,
+        uomId,
+        goodQty: 0,
+        draft: { goodQty: '0', remarks: '' },
+        occurredAt: new Date().toISOString(),
+        defects: defectInputs,
+      }),
+    );
+  };
+
+  const addDefectRow = (): void => {
+    const key = `defect-${String(nextDefectKey.current)}`;
+    nextDefectKey.current += 1;
+    setDefectSaved(false);
+    setDefectRows((rows) => [...rows, { key, defectCodeId: null, qty: '' }]);
+    setActiveQty(key);
+    setPickingRowKey(key);
+  };
+
+  const updateDefectRow = (key: string, patch: Partial<DefectRowDraft>): void => {
+    setDefectRows((rows) => rows.map((row) => (row.key === key ? { ...row, ...patch } : row)));
+  };
+
+  const removeDefectRow = (key: string): void => {
+    setDefectRows((rows) => rows.filter((row) => row.key !== key));
+    if (activeQty === key) setActiveQty('good');
+  };
+
+  const activeDefectRow = defectRows.find((row) => row.key === activeQty) ?? null;
+
   const queueOutput = (): void => {
     if (!canOutput || lot === null || parsedQty === null || entry.workOrderId === null) return;
     if (entry.workerNo === null) return;
@@ -771,6 +875,7 @@ export const ProductionFlowScreen = () => {
         goodQty: parsedQty,
         draft: { goodQty: actualQty, remarks: '' },
         occurredAt: new Date().toISOString(),
+        defects: defectInputs,
       }),
     );
   };
@@ -884,7 +989,7 @@ export const ProductionFlowScreen = () => {
   const outputStatus = (() => {
     switch (outputPhase) {
       case 'queued':
-        return outbox.isOnline ? t.flow.output.saving : t.flow.output.queued;
+        return outbox.isOnline || isDefectOnlyPending ? t.flow.output.saving : t.flow.output.queued;
       case 'issuing':
         return t.flow.output.issuing;
       case 'printing':
@@ -1123,13 +1228,17 @@ export const ProductionFlowScreen = () => {
                 disabled={isQuantityLocked}
                 inputMode="decimal"
                 trailingIcon={uomLabel}
+                containerClassName={
+                  activeQty === 'good' ? 'production-flow-qty is-active' : 'production-flow-qty'
+                }
+                onFocus={() => setActiveQty('good')}
                 /*
                  * ⛔ **LOT 이 없을 때는 수량을 나무라지 않는다**(사용자 지시 2026-09-16). 「0보다
                  *    큰 수량을 입력하세요」는 «넣을 수 있는데 잘못 넣었다»는 말인데, 그 상태는
                  *    애초에 넣을 곳이 없다 — 위 배너가 이미 진짜 할 일을 말하고 있다.
                  */
                 error={
-                  lot !== null && (parsedQty === null || parsedQty <= 0)
+                  lot !== null && !isDefectOnly && (parsedQty === null || parsedQty <= 0)
                     ? t.flow.quantity.invalid
                     : undefined
                 }
@@ -1157,11 +1266,113 @@ export const ProductionFlowScreen = () => {
                   />
                 </div>
               )}
+              <section className="production-flow-defects" aria-label={t.flow.defects.title}>
+                <h3>{t.flow.defects.title}</h3>
+                {defectRows.length > 0 && (
+                  <ul className="production-flow-defect-rows">
+                    {defectRows.map((row, index) => {
+                      const check = defectChecks.get(row.key);
+                      const rowName = t.flow.defects.row(index + 1);
+                      return (
+                        <li
+                          key={row.key}
+                          className="production-flow-defect-row"
+                          aria-label={rowName}
+                        >
+                          <Button
+                            type="button"
+                            variant="outlined"
+                            size="lg"
+                            disabled={areDefectsLocked}
+                            aria-label={`${t.flow.defects.type}: ${
+                              defectLabelOf(defectMajors, row.defectCodeId) ?? t.flow.defects.choose
+                            }`}
+                            onClick={() => {
+                              setActiveQty(row.key);
+                              setPickingRowKey(row.key);
+                            }}
+                          >
+                            {defectLabelOf(defectMajors, row.defectCodeId) ?? t.flow.defects.choose}
+                          </Button>
+                          <TextField
+                            label={t.flow.defects.qty}
+                            value={row.qty}
+                            disabled={areDefectsLocked}
+                            inputMode="decimal"
+                            trailingIcon={uomLabel}
+                            containerClassName={
+                              activeQty === row.key
+                                ? 'production-flow-qty is-active'
+                                : 'production-flow-qty'
+                            }
+                            error={
+                              check?.duplicate === true
+                                ? t.flow.defects.duplicate
+                                : check?.qtyInvalid === true
+                                  ? t.flow.quantity.invalid
+                                  : undefined
+                            }
+                            onFocus={() => setActiveQty(row.key)}
+                            onChange={(event) =>
+                              updateDefectRow(row.key, { qty: quantityInput(event.target.value) })
+                            }
+                          />
+                          <IconButton
+                            icon="close"
+                            size="lg"
+                            aria-label={t.flow.defects.remove(rowName)}
+                            disabled={areDefectsLocked}
+                            onClick={() => removeDefectRow(row.key)}
+                          />
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
+                <div className="production-flow-defect-actions">
+                  <Button
+                    type="button"
+                    variant="outlined"
+                    size="lg"
+                    disabled={areDefectsLocked}
+                    onClick={addDefectRow}
+                  >
+                    {t.flow.defects.add}
+                  </Button>
+                  {/* 양품이 없으면 라벨로 이어지지 않는다 — 불량만 저장하는 단추가 그 자리에 선다. */}
+                  {isDefectOnly && (
+                    <Button
+                      type="button"
+                      size="lg"
+                      disabled={!canSaveDefectsOnly}
+                      onClick={queueDefectsOnly}
+                    >
+                      {t.flow.defects.saveOnly}
+                    </Button>
+                  )}
+                </div>
+                {isDefectSaved && (
+                  <div className="banner-slot">
+                    <AlertBanner variant="success" title={t.flow.defects.saved} />
+                  </div>
+                )}
+              </section>
+              <DefectPicker
+                open={pickingRowKey !== null}
+                majors={defectMajors}
+                isLoading={defectCodes.isPending}
+                isError={defectCodes.isError}
+                onPick={(defectCodeId) => {
+                  if (pickingRowKey !== null) updateDefectRow(pickingRowKey, { defectCodeId });
+                  setPickingRowKey(null);
+                }}
+                onClose={() => setPickingRowKey(null)}
+              />
               <NumericKeypad
-                value={actualQty}
+                value={activeDefectRow?.qty ?? actualQty}
                 /* 수를 받는 칸이다 — 앞자리 0 을 쌓지 않는다(사번 칸은 켜지 않는다). */
                 dropLeadingZero
-                disabled={isQuantityLocked}
+                disabled={activeDefectRow === null ? isQuantityLocked : areDefectsLocked}
                 label={t.quantity.keypadLabel}
                 backspaceLabel={t.quantity.backspace}
                 clearLabel={t.quantity.clearGlyph}
@@ -1174,7 +1385,10 @@ export const ProductionFlowScreen = () => {
                  */
                 allowDecimal={uom.decimalScaleOf(lot?.uomId ?? workOrder.data?.uomId) > 0}
                 decimalLabel={t.quantity.decimalKey}
-                onChange={setActualQty}
+                onChange={(value) => {
+                  if (activeDefectRow === null) setActualQty(value);
+                  else updateDefectRow(activeDefectRow.key, { qty: value });
+                }}
               />
             </Card.Body>
           </Card>

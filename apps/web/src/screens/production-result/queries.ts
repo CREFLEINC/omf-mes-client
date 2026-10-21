@@ -2,6 +2,7 @@ import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
 import { runRequest } from '../../patterns/request';
+import type { ProcessDefectCode } from './defect-draft';
 import type { InspectionRequest, Lot, WorkOrder } from './types';
 
 /**
@@ -13,6 +14,35 @@ export const productionResultKeys = {
   workOrder: (workOrderId: number) => ['production-result', 'work-order', workOrderId] as const,
   lots: (workOrderId: number) => ['production-result', 'lots', workOrderId] as const,
   pqc: (workOrderId: number) => ['production-result', 'pqc', workOrderId] as const,
+  defectCodes: (processId: number) => ['production-result', 'defect-codes', processId] as const,
+};
+
+/** 한 공정에 매핑된 불량 코드는 수십 건이다 — 한 쪽에 다 받는다. */
+const DEFECT_CODE_PAGE_SIZE = 200;
+
+/**
+ * 이 W/O 공정에 매핑된 불량 코드. 서버가 매핑으로 거르고, 저장 검증도 같은 기준이라 여기서 고른
+ * 코드는 저장에서 통과한다.
+ */
+export const useProcessDefectCodes = (
+  processId: number | null,
+): UseQueryResult<ProcessDefectCode[]> => {
+  const { client } = useApiClient();
+
+  return useQuery({
+    queryKey: productionResultKeys.defectCodes(processId ?? 0),
+    enabled: processId !== null,
+    queryFn: async () => {
+      if (processId === null) throw new Error('공정을 모르면 불량 코드를 조회하지 않습니다.');
+
+      const data = await runRequest(() =>
+        client.GET('/quality/defect-codes', {
+          params: { query: { processId, page: 1, size: DEFECT_CODE_PAGE_SIZE } },
+        }),
+      );
+      return data.items;
+    },
+  });
 };
 
 /** 서버가 인라인으로 낼 수 있는 오류를 이 화면의 어느 칸에 놓을지. 없는 칸은 적지 않는다. */
