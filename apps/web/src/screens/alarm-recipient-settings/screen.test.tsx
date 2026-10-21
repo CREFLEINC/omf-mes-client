@@ -136,7 +136,7 @@ const setup = (options: SetupOptions = {}) => {
             hasPhone: false,
           },
         ];
-        return jsonResponse({ items, page: 1, size: 20, total: items.length });
+        return jsonResponse({ items, page: { page: 1, size: 20, total: items.length } });
       },
     },
     {

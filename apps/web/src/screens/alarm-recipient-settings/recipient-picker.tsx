@@ -51,7 +51,7 @@ export const RecipientPicker = ({ open, existingIds, onAdd, onClose }: Recipient
   }, [open]);
 
   const rows = candidates.data?.items ?? [];
-  const total = candidates.data?.total ?? 0;
+  const total = candidates.data?.page.total ?? 0;
   const totalPages = Math.max(1, Math.ceil(total / CANDIDATE_PAGE_SIZE));
 
   const applySearch = (value: string): void => {
