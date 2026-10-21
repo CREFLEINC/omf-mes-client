@@ -1,7 +1,14 @@
 import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
+import { fetchAllPages } from '../../patterns/fetch-all-pages';
 import { runRequest } from '../../patterns/request';
+import {
+  toSessionViews,
+  toWorkerResults,
+  type SessionView,
+  type WorkerResultRow,
+} from './crew-model';
 import type { ProgressListQuery } from './filters';
 import type { WorkOrder, WorkOrderListResponse } from './types';
 
@@ -11,6 +18,7 @@ export const workOrderProgressKeys = {
   list: (query: ProgressListQuery | null) =>
     ['work-order-progress', 'list', query === null ? null : { ...query }] as const,
   detail: (workOrderId: number | null) => ['work-order-progress', 'detail', workOrderId] as const,
+  crew: (workOrderId: number | null) => ['work-order-progress', 'crew', workOrderId] as const,
 };
 
 /**
@@ -59,6 +67,97 @@ export const useWorkOrderDetail = (workOrderId: number | null): UseQueryResult<W
           params: { path: { workOrderId } },
         }),
       );
+    },
+  });
+};
+
+export interface WorkOrderCrew {
+  sessions: SessionView[];
+  workerResults: WorkerResultRow[];
+  /** 다 받지 못한 것 — 무엇이 빠졌는지 말하려고 갈라 둔다 */
+  sessionsTruncated: boolean;
+  resultsTruncated: boolean;
+}
+
+/**
+ * 고른 W/O 의 작업 세션·참여자와 작업자별 실적.
+ *
+ * ⚠ 세션 목록은 열린 것과 끝난 것을, 참여자는 남은 사람과 떠난 사람을 따로 내려 준다 — 둘 다
+ *   받아 합친다. 세션마다 참여자 조회가 따로 나가므로 창을 열 때만 부른다.
+ */
+export const useWorkOrderCrew = (workOrderId: number | null): UseQueryResult<WorkOrderCrew> => {
+  const { client } = useApiClient();
+
+  return useQuery({
+    queryKey: workOrderProgressKeys.crew(workOrderId),
+    enabled: workOrderId !== null,
+    queryFn: async () => {
+      if (workOrderId === null) throw new Error('고르기 전에는 세션을 조회하지 않습니다.');
+
+      const sessionsOf = (open: boolean) =>
+        fetchAllPages((page, size) =>
+          runRequest(() =>
+            client.GET('/production/work-sessions', {
+              params: { query: { workOrderId, open, page, size } },
+            }),
+          ),
+        );
+      const [openSessions, closedSessions, results] = await Promise.all([
+        sessionsOf(true),
+        sessionsOf(false),
+        fetchAllPages((page, size) =>
+          runRequest(() =>
+            client.GET('/production/production-results', {
+              params: { query: { workOrderId, page, size } },
+            }),
+          ),
+        ),
+      ]);
+      const sessions = [...openSessions.items, ...closedSessions.items];
+      const workersOf = (workSessionId: number, active: boolean) =>
+        runRequest(() =>
+          client.GET('/production/work-sessions/{workSessionId}/workers', {
+            params: { path: { workSessionId }, query: { active } },
+          }),
+        );
+      const workers = await Promise.all(
+        sessions.map(async (session) => {
+          const [present, left] = await Promise.all([
+            workersOf(session.workSessionId, true),
+            workersOf(session.workSessionId, false),
+          ]);
+          return [session.workSessionId, [...present, ...left]] as const;
+        }),
+      );
+      const views = toSessionViews(sessions, new Map(workers));
+      const workerResults = toWorkerResults(
+        results.items,
+        views.flatMap((view) => view.participants),
+      );
+
+      /* 배분이 없던 실적은 이름을 모를 수 있다 — 작업자 상세로 풀고, 못 풀면 「알 수 없음」으로 둔다. */
+      const named = await Promise.all(
+        workerResults.map(async (row) => {
+          if (row.workerName !== null) return row;
+          try {
+            const { worker } = await runRequest(() =>
+              client.GET('/mdm/workers/{workerId}', {
+                params: { path: { workerId: row.workerId } },
+              }),
+            );
+            return { ...row, workerNo: worker.workerNo, workerName: worker.workerName };
+          } catch {
+            return row;
+          }
+        }),
+      );
+
+      return {
+        sessions: views,
+        workerResults: named,
+        sessionsTruncated: openSessions.truncated || closedSessions.truncated,
+        resultsTruncated: results.truncated,
+      };
     },
   });
 };

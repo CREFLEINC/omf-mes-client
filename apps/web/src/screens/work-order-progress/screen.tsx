@@ -25,7 +25,12 @@ import { useItemNames, useProductionLineLookup, useProductionOrderLookup } from 
 import { PageNav } from './page-nav';
 import { toPageView } from './pagination';
 import { defaultPeriod } from './period';
-import { useWorkOrderDetail, useWorkOrderProgressList, workOrderProgressKeys } from './queries';
+import {
+  useWorkOrderCrew,
+  useWorkOrderDetail,
+  useWorkOrderProgressList,
+  workOrderProgressKeys,
+} from './queries';
 import { toWorkOrderRow } from './row-view';
 import { type SortKey, type SortState } from './sort';
 import { useWorkOrderStatusOptions } from './status-options';
@@ -110,6 +115,7 @@ export const WorkOrderProgressScreen = ({ now }: WorkOrderProgressScreenProps) =
 
   const list = useWorkOrderProgressList(toProgressListQuery(filters, sort, page, offsetMinutes));
   const detail = useWorkOrderDetail(selectedWorkOrderId);
+  const crew = useWorkOrderCrew(selectedWorkOrderId);
   const lines = useProductionLineLookup();
   const orders = useProductionOrderLookup();
   const statuses = useWorkOrderStatusOptions();
@@ -230,6 +236,11 @@ export const WorkOrderProgressScreen = ({ now }: WorkOrderProgressScreenProps) =
         itemLabel={(itemIdText) => items.labelOf(itemIdText)}
         statusLabel={(statusCode) => statuses.labelOf(statusCode)}
         workOrder={detail.data ?? null}
+        crew={{
+          data: crew.data,
+          isLoading: selectedWorkOrderId !== null && crew.isPending,
+          isError: crew.isError,
+        }}
         onClose={() => {
           setSearchParams(withSelectedWorkOrder(searchParams, null));
         }}

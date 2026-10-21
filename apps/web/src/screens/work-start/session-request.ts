@@ -39,6 +39,8 @@ export interface SessionRequestInput {
    * 결과만 여기로 온다.
    */
   controlOverride?: ControlOverride | null;
+  /** 부 작업자. 시작한 사람(정)은 서버가 사번 헤더로 넣으므로 여기 싣지 않는다. */
+  coWorkerIds?: readonly number[];
 }
 
 export const toSessionRequest = ({
@@ -46,10 +48,12 @@ export const toSessionRequest = ({
   equipmentId,
   startedAt,
   controlOverride = null,
+  coWorkerIds = [],
 }: SessionRequestInput): WorkSessionCreate => ({
   workOrderId: workOrder.workOrderId,
   startedAt,
   ...(equipmentId === null ? {} : { equipmentId }),
   ...(workOrder.plannedMoldId === undefined ? {} : { moldId: workOrder.plannedMoldId }),
   ...(controlOverride === null ? {} : { controlOverride }),
+  ...(coWorkerIds.length === 0 ? {} : { workerIds: [...coWorkerIds] }),
 });
