@@ -9,6 +9,8 @@ import {
   renderWithProviders,
   type StubRoute,
 } from '../../test/api-harness';
+import { SessionProvider } from '../../patterns/session';
+import { SYNTHETIC_SESSION } from '../../test/session-harness';
 import { AlarmRecipientSettingsScreen } from './screen';
 import type { Setting, SettingRecipient, SettingSummary } from './types';
 
@@ -50,6 +52,8 @@ const person = (
 interface SetupOptions {
   route?: string;
   zaloStatus?: SettingSummary['zaloStatus'];
+  /** 세션의 기능 권한 — W-CO-12 링크 여부를 가른다 */
+  permissions?: string[];
   /** 이벤트별 상세. 없으면 미설정 기본값(끔·끔·0) */
   settings?: Record<string, Partial<Setting>>;
   respondPut?: (request: Request) => Response;
@@ -160,10 +164,16 @@ const setup = (options: SetupOptions = {}) => {
     },
   ];
 
-  const view = renderWithProviders(<AlarmRecipientSettingsScreen />, {
-    fetch: createStubFetch(routes),
-    route: options.route ?? `/notification/recipient-settings?department=${String(DEPT)}`,
-  });
+  const view = renderWithProviders(
+    <SessionProvider>
+      <AlarmRecipientSettingsScreen />
+    </SessionProvider>,
+    {
+      fetch: createStubFetch(routes),
+      route: options.route ?? `/notification/recipient-settings?department=${String(DEPT)}`,
+      session: { ...SYNTHETIC_SESSION, permissions: options.permissions ?? ['W-CO-11'] },
+    },
+  );
   return { ...view, writes, candidateQueries };
 };
 
@@ -384,6 +394,22 @@ describe('AlarmRecipientSettingsScreen — 부서 × 이벤트', () => {
     setup({ zaloStatus: 'NOT_CONFIGURED' });
 
     expect(await screen.findByText(t.state.zaloNotActive)).toBeInTheDocument();
+  });
+
+  it('W-CO-12 권한이 있으면 배너에 알림 연결 설정으로 가는 링크를 단다', async () => {
+    setup({ zaloStatus: 'REAUTH_REQUIRED', permissions: ['W-CO-11', 'W-CO-12'] });
+
+    expect(await screen.findByRole('link', { name: t.actions.openConnection })).toHaveAttribute(
+      'href',
+      '/notification/zalo-connection',
+    );
+  });
+
+  it('W-CO-12 권한이 없으면 링크 없이 안내만 보인다', async () => {
+    setup({ zaloStatus: 'NOT_CONFIGURED' });
+
+    expect(await screen.findByText(t.state.zaloNotActive)).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: t.actions.openConnection })).toBeNull();
   });
 
   it('Zalo 연결이 ACTIVE 면 배너가 없다', async () => {

@@ -771,6 +771,13 @@ export const NAV_GROUPS: readonly NavGroup[] = [
         label: '알림 수신자 설정',
         labelVi: 'Thiết lập người nhận thông báo',
       },
+      /* W-CO-12 — 알림이 «어디로» 나가는지. 받을 사람을 정한 다음이다(001). */
+      {
+        to: '/notification/zalo-connection',
+        icon: 'link',
+        label: '알림 연결 설정',
+        labelVi: 'Thiết lập kết nối thông báo',
+      },
       {
         to: '/master-data/common-code',
         icon: 'list_alt',

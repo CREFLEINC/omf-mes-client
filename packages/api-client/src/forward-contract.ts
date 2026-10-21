@@ -841,6 +841,32 @@ export interface RecipientCandidateQuery {
   size?: number;
 }
 
+/** 001 P-88 — Zalo 연결 설정(W-CO-12). 비밀값 원문은 내려오지 않는다(FR-028). */
+export interface ZaloConnection {
+  appId: string | null;
+  secretKeySet: boolean;
+  refreshTokenSet: boolean;
+  status: ZaloConnectionStatus;
+  accessTokenExpiresAt: string | null;
+  lastRefreshedAt: string | null;
+  lastErrorCode: string | null;
+  lastErrorMessage: string | null;
+  paramMaxLength: number;
+  /** 6개 이벤트 전부. 미설정이면 templateId null */
+  templates: { eventCode: string; templateId: string | null }[];
+  /** 서버 env `ZALO_DELIVERY_ENABLED` — 읽기 전용 */
+  deliveryEnabled: boolean;
+}
+
+/** 비밀값은 보낼 때만 교체한다 — 생략하면 유지, 빈 문자열은 400. */
+export interface ZaloConnectionReplace {
+  appId: string | null;
+  secretKey?: string;
+  refreshToken?: string;
+  paramMaxLength: number;
+  templates: { eventCode: string; templateId: string | null }[];
+}
+
 type NotificationEventsGet = paths['/app/notification-events']['get'];
 
 interface JsonResponse<T> {
@@ -947,6 +973,26 @@ export interface ForwardPaths {
         200: JsonResponse<{ items: NotificationEventForward[] }>;
       };
     };
+  };
+  /** 001 P-88 — Zalo 연결 설정. 조회 ETag 가 저장의 If-Match 다. */
+  '/app/zalo-connection': Unused & {
+    parameters: NoParameters;
+    get: {
+      parameters: NoParameters;
+      requestBody?: never;
+      responses: { 200: JsonResponse<ZaloConnection> };
+    };
+    put: {
+      parameters: {
+        query?: never;
+        header: { 'Idempotency-Key': string; 'If-Match': string };
+        path?: never;
+        cookie?: never;
+      };
+      requestBody: { content: { 'application/json': ZaloConnectionReplace } };
+      responses: { 200: JsonResponse<ZaloConnection> };
+    };
+    post?: never;
   };
   /** 001 P-86 — 한 부서의 6개 이벤트 요약. ETag 없음. */
   '/app/notification-settings': Unused & {

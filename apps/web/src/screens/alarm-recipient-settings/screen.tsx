@@ -14,9 +14,11 @@ import {
 import { messages } from '@omf-mes/i18n';
 import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useId, useState } from 'react';
-import { useSearchParams } from 'react-router';
+import { Link, useSearchParams } from 'react-router';
 
 import { SaveErrorBanner } from '../../patterns/master';
+import { useSession } from '../../patterns/session';
+import { toWebAccess } from '../../patterns/web-access';
 import {
   addRecipients,
   hasInactiveRecipient,
@@ -41,6 +43,7 @@ import { SelectField } from './select-field';
 import type { NotificationEvent, SettingDraft, SettingSummaryItem } from './types';
 
 const t = messages.alarmRecipientSettings;
+const ZALO_CONNECTION_PATH = '/notification/zalo-connection';
 
 /** 아직 한 번도 저장하지 않은 행의 요약 — 서버의 미설정 기본값과 같다(끔·끔·0). */
 const EMPTY_SUMMARY = { enabled: false, zaloEnabled: false, recipientCount: 0, noPhoneCount: 0 };
@@ -72,6 +75,9 @@ export const AlarmRecipientSettingsScreen = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const queryClient = useQueryClient();
   const zaloNoteId = useId();
+  const { session } = useSession();
+  /* W-CO-12 권한이 있을 때만 연결 설정으로 가는 길을 단다 — 사이드바와 같은 판정이다. */
+  const canOpenConnection = toWebAccess(session?.permissions).allows(ZALO_CONNECTION_PATH);
 
   const departments = useDepartments();
   const events = useEvents();
@@ -420,7 +426,16 @@ export const AlarmRecipientSettingsScreen = () => {
       {/* 연결이 없어도 Switch 는 켤 수 있다 — 지금은 알림센터로만 간다는 사실만 밝힌다. */}
       {summary.data !== undefined && summary.data.zaloStatus !== 'ACTIVE' && (
         <div className="banner-slot">
-          <AlertBanner variant="warning">{t.state.zaloNotActive}</AlertBanner>
+          <AlertBanner
+            variant="warning"
+            action={
+              canOpenConnection ? (
+                <Link to={ZALO_CONNECTION_PATH}>{t.actions.openConnection}</Link>
+              ) : undefined
+            }
+          >
+            {t.state.zaloNotActive}
+          </AlertBanner>
         </div>
       )}
 

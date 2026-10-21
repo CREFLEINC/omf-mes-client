@@ -26,6 +26,8 @@ export type {
   NotificationSettingSummaryItem,
   RecipientCandidate,
   RecipientCandidatePage,
+  ZaloConnection,
+  ZaloConnectionReplace,
   ZaloConnectionStatus,
   AttachmentTargetType,
   InspectionHistory,

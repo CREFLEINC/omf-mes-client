@@ -906,8 +906,12 @@ describe('AppLayout', () => {
       links.indexOf('/system/approval-route') + 1,
     );
     /* 시스템 공통 설정 — 결재·알림 설정 뒤에 공통코드·조직, 그리고 단말 매핑이 선다. */
-    expect(links.indexOf('/master-data/common-code')).toBe(
+    /* W-CO-12 — 받을 사람 다음에 «어디로» 나가는지(001). */
+    expect(links.indexOf('/notification/zalo-connection')).toBe(
       links.indexOf('/notification/recipient-settings') + 1,
+    );
+    expect(links.indexOf('/master-data/common-code')).toBe(
+      links.indexOf('/notification/zalo-connection') + 1,
     );
     expect(links.indexOf('/system/terminal-process-map')).toBe(
       links.indexOf('/master-data/common-code') + 1,
@@ -1034,6 +1038,7 @@ describe('AppLayout', () => {
       '/system/users-roles',
       '/system/approval-route',
       '/notification/recipient-settings',
+      '/notification/zalo-connection',
       '/master-data/common-code',
       '/system/terminal-process-map',
     ]);
@@ -1655,7 +1660,7 @@ describe('AppLayout — 레일', () => {
 
     await collapseRail(user);
 
-    expect(within(navSidebar()).getAllByRole('link')).toHaveLength(46);
+    expect(within(navSidebar()).getAllByRole('link')).toHaveLength(47);
   });
 
   /*
@@ -1705,7 +1710,7 @@ describe('AppLayout — 레일과 검색', () => {
     await typeQuery(user, '실사');
     await collapseRail(user);
 
-    expect(within(navSidebar()).getAllByRole('link')).toHaveLength(46);
+    expect(within(navSidebar()).getAllByRole('link')).toHaveLength(47);
   });
 
   /** 섹션 밖 항목이 빠지면 레일에서 대시보드로 갈 길이 사라진다. */

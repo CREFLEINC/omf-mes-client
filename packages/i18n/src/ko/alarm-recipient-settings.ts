@@ -31,6 +31,7 @@ export const alarmRecipientSettings = {
     revert: '되돌리기',
     save: '저장',
     reload: '다시 불러오기',
+    openConnection: '알림 연결 설정 열기',
     cancel: '취소',
     discard: '버리고 이동',
     search: '검색',

@@ -268,6 +268,8 @@ export const WEB_SCREENS: readonly WebScreen[] = [
    * 「내 알림을 보는 곳」이고 이것은 관리자가 「누가 받을지」를 정하는 곳이다. v1.5 신설(DR-003).
    */
   { path: '/notification/recipient-settings', code: 'W-CO-11', name: '알람 수신자 설정' },
+  /* 001(omf-all-around#160) — Zalo 연결 정보. 알림센터가 정본이고 Zalo 는 부가 전달이다. */
+  { path: '/notification/zalo-connection', code: 'W-CO-12', name: '알림 연결 설정' },
   { path: '/notification/notices', code: 'W-CO-04', name: '공지·전달 게시/조회' },
 
   /* ── 시스템 관리 ──────────────────────────────────────────────────────── */
