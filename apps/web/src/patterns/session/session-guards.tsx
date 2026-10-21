@@ -93,7 +93,8 @@ export const GuestOnly = ({ children }: { children: ReactNode }) => {
    * 이미 로그인한 사람이 주소창으로 `/login`을 열었을 때다. 로그인 화면을 보이면 자기가
    * 로그인된 줄 모르고 자격을 한 번 더 친다.
    */
-  if (status === 'authenticated') return <Navigate to={resolveReturnPath(location.state)} replace />;
+  if (status === 'authenticated')
+    return <Navigate to={resolveReturnPath(location.state)} replace />;
 
   return children;
 };

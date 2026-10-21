@@ -19,8 +19,6 @@ import { WorkOrderCloseScreen } from '../screens/work-order-close/screen';
 import { EmergencyWorkOrderScreen } from '../screens/emergency-work-order/screen';
 import { MaterialIssueRequestScreen } from '../screens/material-issue-request/screen';
 import { WorkOrderProgressScreen } from '../screens/work-order-progress/screen';
-import { WorkOrderReleaseScreen } from '../screens/work-order-release/screen';
-import { WorkOrderAssignmentScreen } from '../screens/work-order/screen';
 import { GoodsReceiptScreen } from '../screens/goods-receipt/screen';
 import { InboundScheduleScreen } from '../screens/inbound-schedule/screen';
 import { InspectionStandardScreen } from '../screens/inspection-standard/screen';
@@ -64,7 +62,12 @@ import { PasswordChangeScreen } from '../screens/password-change/screen';
 import { PoRegisterScreen } from '../screens/po-register/screen';
 import { PoChangeReviewScreen } from '../screens/po-change-review/screen';
 import { ProductionOrderScreen } from '../screens/production-order/screen';
-import { ProductionPlanScreen } from '../screens/production-plan/screen';
+import {
+  LegacyAssignmentRedirect,
+  LegacyPlanRedirect,
+  LegacyReleaseRedirect,
+} from '../screens/production-order/process/legacy-redirects';
+import { ProductionOrderProcessScreen } from '../screens/production-order/process/process-screen';
 import { PutawayRuleScreen } from '../screens/putaway-rule/screen';
 import { DispositionDecisionScreen } from '../screens/disposition-decision/screen';
 import { PqcInspectionRegisterScreen } from '../screens/pqc-inspection-register/screen';
@@ -317,17 +320,22 @@ export const appRouter = createBrowserRouter([
       { path: 'logistics/document-progress', element: <DocumentProgressScreen /> },
       /* W-02-01 — 생산의 첫 화면이며 주소는 API 리소스가 아니라 화면을 가리킨다. */
       { path: 'production/production-orders', element: <ProductionOrderScreen /> },
+      /* W-02-01 처리 화면 — 주소에 업무 번호(ERP W/O 번호)를 쓴다. W-02-02~04 를 단계로 합쳤다. */
+      {
+        path: 'production/production-orders/:productionOrderNo',
+        element: <ProductionOrderProcessScreen />,
+      },
       /*
        * W-02-06 — P/O 수신·조회 바로 뒤다. 받은 P/O 가 «바뀌었을 때» 판정하는 자리라
        * 그 화면이 만든 목록 위에서 이어진다.
        */
       { path: 'production/po-change-review', element: <PoChangeReviewScreen /> },
       /* W-02-02 — P/O를 고른 뒤 계획을 편성하므로 생산의 둘째 공개 화면이다. */
-      { path: 'production/production-plans', element: <ProductionPlanScreen /> },
+      { path: 'production/production-plans', element: <LegacyPlanRedirect /> },
       /* W-02-03 — 생산계획의 W/O에 4M 자원을 배정하고 유효성을 점검한다. */
-      { path: 'production/work-order-assignments', element: <WorkOrderAssignmentScreen /> },
+      { path: 'production/work-order-assignments', element: <LegacyAssignmentRedirect /> },
       /* W-02-04 — 4M 배정을 마친 W/O를 확정·배포하고 생산LOT을 선발행한다. */
-      { path: 'production/work-order-release', element: <WorkOrderReleaseScreen /> },
+      { path: 'production/work-order-release', element: <LegacyReleaseRedirect /> },
       /* W-02-05 — 같은 생산 섹션의 마감·모니터링 화면이다. */
       { path: 'production/work-order-close', element: <WorkOrderCloseScreen /> },
       /*

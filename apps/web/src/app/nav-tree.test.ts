@@ -233,7 +233,6 @@ describe('주 메뉴 트리', () => {
       '/quality/inspection-levels → tune',
       '/production/production-orders → account_tree',
       '/production/po-change-review → account_tree',
-      '/production/work-order-release → rocket_launch',
       '/production/emergency-work-orders → bolt',
       '/production/work-order-progress → monitoring',
       '/production/work-order-close → archive',

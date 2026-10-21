@@ -1,11 +1,11 @@
 export const productionOrder = {
-  title: 'ERP W/O 수신·조회',
+  title: 'ERP W/O 처리',
   breadcrumbRoot: '생산 관리',
   fields: {
     productionOrderNo: 'ERP W/O 번호',
     erpProductionOrderNo: 'ERP 원번호',
     item: '품목',
-    orderedQty: '주문수량·단위',
+    orderedQty: '주문 수량',
     dueDate: '납기일',
     workOrderProgress: 'W/O 생성/예정',
     statusCode: '상태',
@@ -34,7 +34,7 @@ export const productionOrder = {
     prevPage: '이전',
     nextPage: '다음',
     integrationSync: '연계 현황 보기',
-    productionPlan: 'W/O 전개·편성',
+    productionPlan: '생산계획',
     autoPlan: '자동 계획 실행',
   },
   values: {
@@ -68,9 +68,9 @@ export const productionOrder = {
   },
   autoPlan: {
     confirmed: '계획을 확정했습니다',
-    draft: '작성 중 계획이 있습니다 · 라인을 정해 확정하세요',
+    draft: '작성 중 계획이 있습니다. 라인을 정해 확정하세요',
     notPlanned: '계획을 만들지 못했습니다',
-    running: '자동 계획이 진행 중입니다 · 잠시 뒤 다시 실행하세요',
+    running: '자동 계획이 진행 중입니다. 잠시 뒤 다시 실행하세요',
   },
   basic: {
     heading: '기본 정보',
@@ -78,7 +78,7 @@ export const productionOrder = {
     /** 말풍선 — 제목 한 줄, 뜻 한 줄, 보충 한 줄(사용자 지시 2026-09-20). */
     workOrderProgressTooltip: [
       'W/O 생성 현황',
-      '앞 숫자: 생성 완료 · 뒤 숫자: 생성 예정',
+      '앞 숫자: 생성 완료, 뒤 숫자: 생성 예정',
       '0 / 0은 생산계획이 없는 경우입니다.',
     ],
     loading: 'ERP W/O 기본 정보 불러오는 중',
@@ -102,11 +102,11 @@ export const productionOrder = {
     columns: {
       planNo: '계획 번호',
       planDate: '계획일',
-      plannedQty: '계획수량·단위',
+      plannedQty: '계획 수량',
       workOrderNo: 'W/O 번호',
       workOrderType: 'W/O 유형',
-      orderQty: '지시수량·단위',
-      plannedRange: '계획 시작일·종료일',
+      orderQty: '지시 수량',
+      plannedRange: '계획 시작일과 종료일',
       status: '상태',
     },
   },

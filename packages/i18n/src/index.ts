@@ -60,3 +60,4 @@ export const messages: Messages = new Proxy({} as Messages, {
   getOwnPropertyDescriptor: (_target, key) =>
     Reflect.getOwnPropertyDescriptor(LOCALES[active], key),
 });
+export { named } from './named';
