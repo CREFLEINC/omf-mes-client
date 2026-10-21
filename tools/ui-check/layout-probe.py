@@ -115,9 +115,10 @@ BELOW = """() => {
   const vis = e => { const r = e.getBoundingClientRect(); return r.width > 0 && r.height > 0; };
   const t = [...(document.querySelector('main') || document.body).querySelectorAll('table')].filter(vis)[0];
   if (!t) return 0;
-  const bottom = t.getBoundingClientRect().bottom;
+  const tr = t.getBoundingClientRect();
+  // 목록 오른쪽에 나란히 놓인 편집 영역(2단)은 아래 적층이 아니므로 목록 폭 안에서 시작하는 요소만 센다.
   return [...document.querySelectorAll('main section, main [class*=pane], main h2, main h3, main dl, main table')]
-    .filter(e => vis(e) && e.getBoundingClientRect().top > bottom + 40 && !e.closest('[role=dialog]'))
+    .filter(e => { const r = e.getBoundingClientRect(); return vis(e) && r.top > tr.bottom + 40 && r.left < tr.right - 8 && !e.closest('[role=dialog]'); })
     .reduce((n, e) => n + (e.children.length ? 0 : e.innerText.length) + (e.matches('dl, table') ? e.innerText.length : 0), 0);
 }"""
 
