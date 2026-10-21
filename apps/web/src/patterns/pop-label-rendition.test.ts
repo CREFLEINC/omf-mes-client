@@ -24,15 +24,9 @@ describe('fetchLabelRendition — 준비된 문서 종류만 배포 호출', () 
     const { get, client } = clientSpy();
     const bytes = new Uint8Array([137, 80, 78, 71]).buffer;
     get.mockResolvedValue({ data: bytes, response: new Response(bytes) });
-    await expect(fetchLabelRendition(client, 44101, 'png', 'MATERIAL_LOT_LABEL')).resolves.toEqual(
-      bytes,
-    );
-    expect(get).toHaveBeenCalledWith(
-      '/app/document-issues/{documentIssueLogId}/rendition',
-      expect.objectContaining({
-        params: { path: { documentIssueLogId: 44101 }, query: { format: 'png' } },
-      }),
-    );
+    await expect(fetchLabelRendition(client, 44101, 'png', 'MATERIAL_LOT_LABEL')).resolves.toEqual(bytes);
+    expect(get).toHaveBeenCalledWith('/app/document-issues/{documentIssueLogId}/rendition',
+      expect.objectContaining({ params: { path: { documentIssueLogId: 44101 }, query: { format: 'png' } } }));
   });
 
   /*
@@ -51,15 +45,9 @@ describe('fetchLabelRendition — 준비된 문서 종류만 배포 호출', () 
     const { get, client } = clientSpy();
     const bytes = new TextEncoder().encode('SIZE 60 mm,40 mm').buffer;
     get.mockResolvedValue({ data: bytes, response: new Response(bytes) });
-    await expect(fetchLabelRendition(client, 44102, 'tspl', 'MATERIAL_LOT_LABEL')).resolves.toEqual(
-      bytes,
-    );
-    expect(get).toHaveBeenCalledWith(
-      '/app/document-issues/{documentIssueLogId}/rendition',
-      expect.objectContaining({
-        params: { path: { documentIssueLogId: 44102 }, query: { format: 'tspl' } },
-      }),
-    );
+    await expect(fetchLabelRendition(client, 44102, 'tspl', 'MATERIAL_LOT_LABEL')).resolves.toEqual(bytes);
+    expect(get).toHaveBeenCalledWith('/app/document-issues/{documentIssueLogId}/rendition',
+      expect.objectContaining({ params: { path: { documentIssueLogId: 44102 }, query: { format: 'tspl' } } }));
   });
   /*
    * 서버가 생산 LOT 라벨의 그림을 그려 준다(실측 2026-09-15). 없던 시절의 가정을 남겨 두어

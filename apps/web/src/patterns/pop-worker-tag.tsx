@@ -23,5 +23,7 @@ export interface PopWorkerTagProps {
  * 막혔는지 짚을 곳이 없다. 「모른다」를 「없다」와 다르게 적는다.
  */
 export const PopWorkerTag = ({ workerNo }: PopWorkerTagProps) => (
-  <span className="pop-worker-tag">{workerNo === null ? t.unknown : `${t.label} ${workerNo}`}</span>
+  <span className="pop-worker-tag">
+    {workerNo === null ? t.unknown : `${t.label} ${workerNo}`}
+  </span>
 );

@@ -2,12 +2,7 @@ import { act, waitFor } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { describe, expect, it } from 'vitest';
 
-import {
-  createStubFetch,
-  jsonResponse,
-  renderHookWithProviders,
-  renderWithProviders,
-} from '../test/api-harness';
+import { createStubFetch, jsonResponse, renderHookWithProviders, renderWithProviders } from '../test/api-harness';
 import { popAccessKeys, useAccessiblePopScreens } from './pop-access';
 import { PopIdentityProvider } from './pop-identity';
 
@@ -43,16 +38,12 @@ describe('useAccessiblePopScreens — [화면 이동] 후보', () => {
       </PopIdentityProvider>
     );
     renderWithProviders(
-      <Identity>
-        <Probe />
-      </Identity>,
+      <Identity><Probe /></Identity>,
       {
-        fetch: createStubFetch([
-          {
-            match: (request) => request.url.endsWith('/mdm/terminals/5/accessible-screens'),
-            respond: () => jsonResponse({ screenCodes: ['P-01-01', 'W-06-01'] }),
-          },
-        ]),
+        fetch: createStubFetch([{
+          match: (request) => request.url.endsWith('/mdm/terminals/5/accessible-screens'),
+          respond: () => jsonResponse({ screenCodes: ['P-01-01', 'W-06-01'] }),
+        }]),
         session: null,
       },
     );
@@ -68,22 +59,14 @@ describe('useAccessiblePopScreens — [화면 이동] 후보', () => {
       return null;
     };
     renderWithProviders(
-      <PopIdentityProvider
-        value={{ terminalId: 5, processes: [], equipment: null, workerNo: null }}
-      >
+      <PopIdentityProvider value={{ terminalId: 5, processes: [], equipment: null, workerNo: null }}>
         <Probe />
       </PopIdentityProvider>,
       {
-        fetch: createStubFetch([
-          {
-            match: (request) => request.url.endsWith('/mdm/terminals/5/accessible-screens'),
-            respond: () =>
-              jsonResponse(
-                { errors: [{ scope: 'screen', code: 'PERMISSION_DENIED', message: '권한 없음' }] },
-                { status: 401 },
-              ),
-          },
-        ]),
+        fetch: createStubFetch([{
+          match: (request) => request.url.endsWith('/mdm/terminals/5/accessible-screens'),
+          respond: () => jsonResponse({ errors: [{ scope: 'screen', code: 'PERMISSION_DENIED', message: '권한 없음' }] }, { status: 401 }),
+        }]),
         session: null,
       },
     );
@@ -100,24 +83,16 @@ describe('useAccessiblePopScreens — [화면 이동] 후보', () => {
       return null;
     };
     const { queryClient } = renderWithProviders(
-      <PopIdentityProvider
-        value={{ terminalId: 5, processes: [], equipment: null, workerNo: null }}
-      >
+      <PopIdentityProvider value={{ terminalId: 5, processes: [], equipment: null, workerNo: null }}>
         <Probe />
       </PopIdentityProvider>,
       {
-        fetch: createStubFetch([
-          {
-            match: (request) => request.url.endsWith('/mdm/terminals/5/accessible-screens'),
-            respond: () =>
-              fail
-                ? jsonResponse(
-                    { errors: [{ scope: 'screen', code: 'UNAVAILABLE', message: '점검 중' }] },
-                    { status: 503 },
-                  )
-                : jsonResponse({ screenCodes: ['P-01-01'] }),
-          },
-        ]),
+        fetch: createStubFetch([{
+          match: (request) => request.url.endsWith('/mdm/terminals/5/accessible-screens'),
+          respond: () => fail
+            ? jsonResponse({ errors: [{ scope: 'screen', code: 'UNAVAILABLE', message: '점검 중' }] }, { status: 503 })
+            : jsonResponse({ screenCodes: ['P-01-01'] }),
+        }]),
         session: null,
       },
     );
