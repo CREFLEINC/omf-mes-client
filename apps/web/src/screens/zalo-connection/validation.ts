@@ -7,7 +7,9 @@ const t = messages.zaloConnection.errors;
 const APP_ID = /^[0-9]{1,40}$/;
 const TEMPLATE_ID = /^[A-Za-z0-9]{1,40}$/;
 const INTEGER = /^[0-9]+$/;
-const SECRET_MAX = 500;
+/** 서버 계약(P-96)의 상한 — 비밀 키 200자, 갱신 토큰 2000자. */
+const SECRET_KEY_MAX = 200;
+const REFRESH_TOKEN_MAX = 2000;
 
 export const toFormValues = (connection: Connection): ConnectionFormValues => ({
   appId: connection.appId ?? '',
@@ -19,10 +21,10 @@ export const toFormValues = (connection: Connection): ConnectionFormValues => ({
   ),
 });
 
-const secretError = (value: string | null): string | undefined => {
+const secretError = (value: string | null, max: number): string | undefined => {
   if (value === null) return undefined;
   if (value === '') return t.secretRequired;
-  return value.length > SECRET_MAX ? t.secretTooLong : undefined;
+  return value.length > max ? t.secretTooLong(max) : undefined;
 };
 
 /** 화면 검증 — 서버도 같은 규칙으로 400 을 낸다. 키는 계약 칸 이름(템플릿은 `templates.<코드>`). */
@@ -31,9 +33,9 @@ export const validateConnection = (values: ConnectionFormValues): Record<string,
   const appId = values.appId.trim();
   if (appId !== '' && !APP_ID.test(appId)) errors.appId = t.appId;
 
-  const secretKey = secretError(values.secretKey);
+  const secretKey = secretError(values.secretKey, SECRET_KEY_MAX);
   if (secretKey !== undefined) errors.secretKey = secretKey;
-  const refreshToken = secretError(values.refreshToken);
+  const refreshToken = secretError(values.refreshToken, REFRESH_TOKEN_MAX);
   if (refreshToken !== undefined) errors.refreshToken = refreshToken;
 
   const length = values.paramMaxLength.trim();

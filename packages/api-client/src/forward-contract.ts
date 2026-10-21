@@ -801,7 +801,7 @@ interface Unused {
 }
 
 
-/* ── 001(omf-all-around#160) 부서×이벤트 알림 설정 — W-CO-11. 계약 사본(P-85·P-86)에 실리면 지운다. ── */
+/* ── 001(omf-all-around#160) 부서×이벤트 알림 설정 — W-CO-11. 계약 사본(서버 장부 P-91·P-92)에 실리면 지운다. ── */
 
 /** 수신자를 정하는 방식. `APPROVER` 는 그 차례의 결재자가 받아 수신자 목록이 없다(FR-010). */
 export type NotificationRecipientMode = 'CONFIGURED' | 'APPROVER';
@@ -875,7 +875,7 @@ export interface RecipientCandidateQuery {
   size?: number;
 }
 
-/** 001 P-88 — Zalo 연결 설정(W-CO-12). 비밀값 원문은 내려오지 않는다(FR-028). */
+/** 001 P-96 — Zalo 연결 설정(W-CO-12). 비밀값 원문은 내려오지 않는다(FR-028). */
 export interface ZaloConnection {
   appId: string | null;
   secretKeySet: boolean;
@@ -1000,7 +1000,7 @@ export interface ItemInspectionLevelHistoryQuery {
 type PageMeta = components['schemas']['PageMeta'];
 
 export interface ForwardPaths {
-  /** 001 P-85 — 카탈로그 한 줄에 `recipientMode` 를 더한다. */
+  /** 001 P-91 — 카탈로그 한 줄에 `recipientMode` 를 더한다. */
   '/app/notification-events': Omit<paths['/app/notification-events'], 'get'> & {
     get: Omit<NotificationEventsGet, 'responses'> & {
       responses: Omit<NotificationEventsGet['responses'], 200> & {
@@ -1008,7 +1008,7 @@ export interface ForwardPaths {
       };
     };
   };
-  /** 001 P-88 — Zalo 연결 설정. 조회 ETag 가 저장의 If-Match 다. */
+  /** 001 P-96 — Zalo 연결 설정. 조회 ETag 가 저장의 If-Match 다. */
   '/app/zalo-connection': Unused & {
     parameters: NoParameters;
     get: {
@@ -1028,7 +1028,7 @@ export interface ForwardPaths {
     };
     post?: never;
   };
-  /** 001 P-86 — 한 부서의 6개 이벤트 요약. ETag 없음. */
+  /** 001 P-92 — 한 부서의 6개 이벤트 요약. ETag 없음. */
   '/app/notification-settings': Unused & {
     parameters: NoParameters;
     get: {
@@ -1044,7 +1044,7 @@ export interface ForwardPaths {
     put?: never;
     post?: never;
   };
-  /** 001 P-86 — 부서×이벤트 한 행. 상세 ETag 가 저장의 If-Match 다(행이 없으면 "1"). */
+  /** 001 P-92 — 부서×이벤트 한 행. 상세 ETag 가 저장의 If-Match 다(행이 없으면 "1"). */
   '/app/notification-settings/{departmentId}/{eventCode}': Unused & {
     parameters: NoParameters;
     get: {
@@ -1069,7 +1069,7 @@ export interface ForwardPaths {
     };
     post?: never;
   };
-  /** 001 P-86 — 수신자 후보(활성 사용자 전체). */
+  /** 001 P-92 — 수신자 후보(활성 사용자 전체). */
   '/app/notification-settings/recipient-candidates': Unused & {
     parameters: NoParameters;
     get: {

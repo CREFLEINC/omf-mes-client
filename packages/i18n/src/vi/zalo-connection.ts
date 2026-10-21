@@ -52,7 +52,7 @@ export const zaloConnection: Translated<typeof ko.zaloConnection> = {
   errors: {
     appId: 'ID ứng dụng gồm 1–40 chữ số.',
     secretRequired: 'Hãy nhập giá trị mới. Nếu không muốn thay đổi, hãy bấm [Không thay đổi].',
-    secretTooLong: 'Không được quá 500 ký tự.',
+    secretTooLong: (max: number): string => `Không được quá ${String(max)} ký tự.`,
     paramMaxLength: 'Hãy nhập số nguyên từ 20 đến 400.',
     templateId: 'ID mẫu tin gồm 1–40 chữ cái tiếng Anh hoặc chữ số, hoặc để trống.',
   },
