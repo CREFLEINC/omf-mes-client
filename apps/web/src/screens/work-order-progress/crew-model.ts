@@ -102,7 +102,7 @@ export const toDefectTypes = (results: readonly ProductionResultForward[]): Defe
       rows.set(defect.defectCodeId, {
         defectCodeId: defect.defectCodeId,
         label:
-          defect.parentDefectName === null
+          defect.parentDefectName == null
             ? defect.defectName
             : `${defect.parentDefectName} › ${defect.defectName}`,
         qty: (current?.qty ?? 0) + defect.qty,

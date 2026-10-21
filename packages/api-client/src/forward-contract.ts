@@ -755,15 +755,20 @@ export interface ProductionResultDefectInput {
   qty: number;
 }
 
-/** 서버 선행 — 실적에 붙은 불량 기록. 이름은 불량 코드의 기본 이름이다. */
+/**
+ * 서버 선행 — 실적에 붙은 불량 기록. 이름은 불량 코드의 기본 이름이다. 대분류 칸은 상세 코드일
+ * 때만 실린다(관리웹에서 대분류로 단 옛 기록에는 없다).
+ */
 export interface ProductionResultDefect {
   defectRecordId: number;
   defectCodeId: number;
   defectCode: string;
   defectName: string;
-  parentDefectCodeId: number | null;
-  parentDefectCode: string | null;
-  parentDefectName: string | null;
+  nameKo?: string | null;
+  nameVi?: string | null;
+  parentDefectCodeId?: number | null;
+  parentDefectCode?: string | null;
+  parentDefectName?: string | null;
   qty: number;
 }
 

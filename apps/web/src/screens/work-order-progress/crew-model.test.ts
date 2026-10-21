@@ -146,11 +146,18 @@ describe('toDefectTypes', () => {
       result(2, 101, 10, { correctsProductionResultId: 1, defects: [defect(11, 3)] }),
       result(3, 101, 0, { defects: [defect(11, 2), defect(12, 1, null)] }),
       result(4, 101, 5),
+      /* 대분류로 단 옛 기록 — 대분류 칸이 아예 없다. */
+      result(5, 101, 0, {
+        defects: [
+          { defectRecordId: 99, defectCodeId: 1, defectCode: 'A', defectName: '외관', qty: 6 },
+        ],
+      }),
     ]);
 
     expect(rows).toEqual([
       { defectCodeId: 11, label: '외관 › 긁힘', qty: 5 },
       { defectCodeId: 12, label: '찍힘', qty: 1 },
+      { defectCodeId: 1, label: '외관', qty: 6 },
     ]);
   });
 });
