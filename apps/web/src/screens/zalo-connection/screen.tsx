@@ -10,11 +10,12 @@ import {
 } from '@crefle/web-ui';
 import type { ZaloConnectionStatus } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
+import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState, type ReactNode } from 'react';
 
 import { SaveErrorBanner } from '../../patterns/master';
 import { formatPlantDateTime } from '../../patterns/plant-time';
-import { useConnection, useEventNames, useReplaceConnection } from './queries';
+import { useConnection, useEventNames, useReplaceConnection, zaloConnectionKeys } from './queries';
 import { paramsOf } from './template-params';
 import type { ConnectionFormValues } from './types';
 import { sameValues, toFormValues, toReplaceBody, validateConnection } from './validation';
@@ -37,6 +38,7 @@ type SecretField = 'secretKey' | 'refreshToken';
  * 비밀값은 다시 보이지 않는다. [바꾸기]로 새 값을 넣을 때만 보낸다.
  */
 export const ZaloConnectionScreen = () => {
+  const queryClient = useQueryClient();
   const connection = useConnection();
   const events = useEventNames();
   const [values, setValues] = useState<ConnectionFormValues | null>(null);
@@ -55,6 +57,11 @@ export const ZaloConnectionScreen = () => {
   }, [connection.data]);
 
   const replace = useReplaceConnection((saved) => {
+    /*
+     * ⭐ 조회 캐시도 저장 응답으로 바꾼다 — 상태 Chip·「등록됨」은 캐시를 읽으므로, 폼만 다시 채우면
+     * 첫 조회(미설정)가 새로 고칠 때까지 남는다(G2 실측).
+     */
+    queryClient.setQueryData(zaloConnectionKeys.connection, saved);
     seed(toFormValues(saved));
     setFlash(t.state.saved);
   });

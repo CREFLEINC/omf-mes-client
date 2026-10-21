@@ -42,10 +42,15 @@ const connection = (overrides: Partial<ZaloConnection> = {}): ZaloConnection => 
 });
 
 const setup = (
-  options: { data?: ZaloConnection; respondPut?: (request: Request) => Response } = {},
+  options: {
+    data?: ZaloConnection;
+    /** 저장 뒤 서버가 돌려주는 값(PUT 응답이자 그 뒤의 GET) */
+    saved?: ZaloConnection;
+    respondPut?: (request: Request) => Response;
+  } = {},
 ) => {
   const writes: Request[] = [];
-  const data = options.data ?? connection();
+  let data = options.data ?? connection();
   renderWithProviders(<ZaloConnectionScreen />, {
     fetch: createStubFetch([
       {
@@ -65,9 +70,9 @@ const setup = (
           request.method === 'PUT' && new URL(request.url).pathname === '/app/zalo-connection',
         respond: (request) => {
           writes.push(request.clone());
-          return (options.respondPut ?? (() => jsonResponse(data, { headers: { ETag: '"6"' } })))(
-            request,
-          );
+          if (options.respondPut !== undefined) return options.respondPut(request);
+          data = options.saved ?? data;
+          return jsonResponse(data, { headers: { ETag: '"6"' } });
         },
       },
     ]),
@@ -197,5 +202,49 @@ describe('ZaloConnectionScreen', () => {
     expect(await screen.findByText(t.status.NOT_CONFIGURED)).toBeInTheDocument();
     expect(screen.getAllByText(t.values.notRegistered)).toHaveLength(2);
     expect(screen.queryByText(t.state.reauth)).toBeNull();
+  });
+
+  it('US7-1 저장하면 응답 값으로 상태·칸을 다시 그린다 — 첫 조회(미설정)가 남지 않는다', async () => {
+    const user = userEvent.setup();
+    const empty = connection({
+      status: 'NOT_CONFIGURED',
+      appId: null,
+      secretKeySet: false,
+      refreshTokenSet: false,
+      accessTokenExpiresAt: null,
+      lastRefreshedAt: null,
+    });
+    setup({
+      data: empty,
+      saved: connection({
+        appId: '123',
+        accessTokenExpiresAt: null,
+        lastRefreshedAt: null,
+        templates: CODES.map((eventCode, index) => ({
+          eventCode,
+          templateId: `${String(index + 1)}00`,
+        })),
+      }),
+    });
+
+    await user.type(await screen.findByRole('textbox', { name: t.fields.appId }), '123');
+    await user.click(
+      screen.getByRole('button', { name: `${t.fields.secretKey} ${t.actions.change}` }),
+    );
+    await user.type(screen.getByLabelText(t.fields.secretKey), 'sk');
+    await user.click(
+      screen.getByRole('button', { name: `${t.fields.refreshToken} ${t.actions.change}` }),
+    );
+    await user.type(screen.getByLabelText(t.fields.refreshToken), 'rt');
+    await user.click(screen.getByRole('button', { name: t.actions.save }));
+
+    expect(await screen.findByText(t.state.saved)).toBeInTheDocument();
+    expect(await screen.findByText(t.status.ACTIVE)).toBeInTheDocument();
+    expect(screen.queryByText(t.status.NOT_CONFIGURED)).toBeNull();
+    expect(screen.getAllByText(t.values.registered)).toHaveLength(2);
+    expect(screen.getByRole('textbox', { name: t.fields.appId })).toHaveValue('123');
+    expect(screen.getByRole('textbox', { name: t.fields.templateId('생산 실행') })).toHaveValue(
+      '100',
+    );
   });
 });
