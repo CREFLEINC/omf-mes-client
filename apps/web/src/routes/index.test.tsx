@@ -297,42 +297,14 @@ const notificationCenterRoutes = (): StubRoute[] => [
   },
 ];
 
-/** W-CO-11 첫 진입 — 이벤트·전체 설정·선택 이벤트 상세와 세 참조 목록. */
+/** W-CO-11 첫 진입 — 부서를 고르기 전이라 이벤트 카탈로그와 부서 목록만 부른다(001 재설계). */
 const alarmRecipientRoutes = (): StubRoute[] => [
   {
     match: (request) => isGet(request, '/app/notification-events'),
     respond: () =>
-      jsonResponse({ items: [{ eventCode: 'SYN-EVENT-A', eventName: '합성 알림 가' }] }),
+      jsonResponse({ items: [{ eventCode: 'WORK_SESSION_STARTED', eventName: '생산 실행' }] }),
   },
-  {
-    match: (request) => {
-      const url = new URL(request.url);
-      return (
-        request.method === 'GET' &&
-        url.pathname === '/app/notification-subscriptions' &&
-        !url.searchParams.has('eventCode')
-      );
-    },
-    respond: () => jsonResponse({ items: [{ eventCode: 'SYN-EVENT-A', recipients: [] }] }),
-  },
-  {
-    match: (request) => {
-      const url = new URL(request.url);
-      return (
-        request.method === 'GET' &&
-        url.pathname === '/app/notification-subscriptions' &&
-        url.searchParams.get('eventCode') === 'SYN-EVENT-A'
-      );
-    },
-    respond: () =>
-      jsonResponse(
-        { items: [{ eventCode: 'SYN-EVENT-A', recipients: [] }] },
-        { headers: { ETag: '"subscription-1"' } },
-      ),
-  },
-  lookupRoute('/mdm/business-units', []),
-  lookupRoute('/app/roles', []),
-  lookupRoute('/app/users', []),
+  lookupRoute('/mdm/departments', []),
 ];
 
 /** W-01-01이 첫 진입에 부르는 것 — 검사 대기 큐 하나다. 고른 의뢰가 없으면 그것뿐이다. */
@@ -1671,9 +1643,11 @@ describe('appRouter — 알람 수신자 설정의 진입 경로', () => {
         name: messages.alarmRecipientSettings.title,
       }),
     ).toBeInTheDocument();
-    await waitFor(() =>
-      expect(currentLocation()).toBe('/notification/recipient-settings?event=SYN-EVENT-A'),
-    );
+    /* 부서를 고르기 전에는 주소에 아무것도 적지 않는다 — 어느 부서의 설정인지가 먼저다. */
+    expect(
+      await screen.findByText(messages.alarmRecipientSettings.state.selectDepartment),
+    ).toBeInTheDocument();
+    expect(currentLocation()).toBe('/notification/recipient-settings');
   });
 });
 

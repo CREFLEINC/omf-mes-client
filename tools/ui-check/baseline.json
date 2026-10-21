@@ -89,6 +89,10 @@
       "n": 2,
       "text": "type=\"date\""
     },
+    "C-12|apps/web/src/screens/dispatch-history/screen.tsx|386dffa088a0": {
+      "n": 2,
+      "text": "type=\"date\""
+    },
     "C-12|apps/web/src/screens/disposal-issue/disposal-form.tsx|4479db5fdf1f": {
       "n": 1,
       "text": "type=\"time\""
@@ -617,17 +621,9 @@
       "n": 1,
       "text": "가운뎃점: { path: '/quality/lot-status-transition', code: 'W-03-02', name: 'Lot Status 판정·전이 처리' },"
     },
-    "C-13|apps/web/src/screens/alarm-recipient-settings/screen.tsx|23b9eb27af6e": {
+    "C-13|apps/web/src/screens/alarm-recipient-settings/screen.tsx|515be9cc1529": {
       "n": 1,
-      "text": "가운뎃점: label: `${item.roleCode} · ${item.roleName}${item.isActive ? '' : inactive}`,"
-    },
-    "C-13|apps/web/src/screens/alarm-recipient-settings/screen.tsx|62f8a44fce28": {
-      "n": 1,
-      "text": "가운뎃점: label: `${item.loginId} · ${item.userName}${item.isActive ? '' : inactive}`,"
-    },
-    "C-13|apps/web/src/screens/alarm-recipient-settings/screen.tsx|642be59d8dd0": {
-      "n": 1,
-      "text": "가운뎃점: label: `${item.businessUnitCode} · ${item.businessUnitName}${item.isActive ? '' : inactive}`,"
+      "text": "가운뎃점: label: `${item.departmentCode} · ${item.departmentName}`,"
     },
     "C-13|apps/web/src/screens/approval-route/approver-options.ts|a5d5454dc233": {
       "n": 1,
@@ -745,6 +741,10 @@
       "n": 1,
       "text": "가운뎃점: label: `${categories.get(defect.parentId ?? 0)?.name ?? t.groupHeaderOrphan} / ${defect.code} · ${defect.name}`,"
     },
+    "C-13|apps/web/src/screens/dispatch-history/screen.tsx|515be9cc1529": {
+      "n": 1,
+      "text": "가운뎃점: label: `${item.departmentCode} · ${item.departmentName}`,"
+    },
     "C-13|apps/web/src/screens/disposal-issue/fixtures.ts|1f5c94c4553c": {
       "n": 1,
       "text": "가운뎃점: export const PARTNER_LABEL = 'SAMPLE-PT-01 · 합성 폐기업체 가';"
@@ -852,6 +852,10 @@
     "C-13|apps/web/src/screens/equipment-master/inspection-assign-dialog.tsx|fff28782881e": {
       "n": 1,
       "text": "가운뎃점: label: `${item.itemCode} · ${item.itemName}`,"
+    },
+    "C-13|apps/web/src/screens/equipment-master/queries.ts|515be9cc1529": {
+      "n": 1,
+      "text": "가운뎃점: label: `${item.departmentCode} · ${item.departmentName}`,"
     },
     "C-13|apps/web/src/screens/equipment-master/screen.tsx|0264be111051": {
       "n": 1,
@@ -1329,6 +1333,10 @@
       "n": 1,
       "text": "가운뎃점: label: `${item.itemCode} · ${item.itemName}`,"
     },
+    "C-13|apps/web/src/screens/production-result/defect-picker.tsx|c25bf7d6079a": {
+      "n": 1,
+      "text": "가운뎃점: title={major === null ? t.pickerTitle : `${t.pickerTitle} · ${major.name}`}"
+    },
     "C-13|apps/web/src/screens/production-result/flow-gating.ts|ebdf7662a399": {
       "n": 1,
       "text": "가운뎃점: throw new Error('단말·공정을 모르면 기능 구성을 조회하지 않습니다.');"
@@ -1785,18 +1793,6 @@
       "n": 1,
       "text": "가운뎃점: <p className=\"worker-card__name\">{`${worker.workerName} · ${worker.workerNo}`}</p>"
     },
-    "C-13|packages/i18n/src/ko/alarm-recipient-settings.ts|2c71000eaae5": {
-      "n": 1,
-      "text": "가운뎃점: `${resolvedAt} 기준 · 중복을 제외한 ${String(count)}명`,"
-    },
-    "C-13|packages/i18n/src/ko/alarm-recipient-settings.ts|2e30eab46b77": {
-      "n": 1,
-      "text": "가운뎃점: description: '알림 유형마다 받을 조직·역할 또는 사용자를 지정합니다.',"
-    },
-    "C-13|packages/i18n/src/ko/alarm-recipient-settings.ts|8f2c8526fb28": {
-      "n": 1,
-      "text": "가운뎃점: role: '조직·역할',"
-    },
     "C-13|packages/i18n/src/ko/approval-inbox.ts|9a587266d47b": {
       "n": 1,
       "text": "가운뎃점: lockNote: '승인은 자물쇠를 풀 뿐 실행하지 않습니다. 전기·출고는 대상 화면에서 따로 합니다.',"
@@ -1988,6 +1984,10 @@
     "C-13|packages/i18n/src/ko/defect-cause-code.ts|f825a8186b83": {
       "n": 1,
       "text": "가운뎃점: title: '불량·원인코드',"
+    },
+    "C-13|packages/i18n/src/ko/dispatch-history.ts|20361bb74342": {
+      "n": 1,
+      "text": "가운뎃점: `성공 ${String(sent)} · 실패 ${String(failed)} · 대기 ${String(pending)} · 만료 ${String(expired)} · 번호없음 ${String(noPhone"
     },
     "C-13|packages/i18n/src/ko/disposal-issue.ts|3bc40293eb1a": {
       "n": 1,
@@ -2877,6 +2877,10 @@
       "n": 1,
       "text": "가운뎃점: completed: 'LOT 마감 완료 · 다음 LOT으로 전환합니다.',"
     },
+    "C-13|packages/i18n/src/ko/production-result.ts|668f11b810d7": {
+      "n": 1,
+      "text": "가운뎃점: queued: '불량을 저장했습니다 · 연결되면 보냅니다.',"
+    },
     "C-13|packages/i18n/src/ko/production-result.ts|709d2cf5dc62": {
       "n": 1,
       "text": "가운뎃점: splitNote: '검사 수량 · 판정 · 결과 확정',"
@@ -3369,6 +3373,10 @@
       "n": 1,
       "text": "개발 사정 표현: preparing: '단말 등록 확인 및 업무 준비 중…',"
     },
+    "C-13|packages/i18n/src/ko/zalo-connection.ts|46c02f069166": {
+      "n": 1,
+      "text": "가운뎃점: templateId: '템플릿 ID는 영문·숫자 1~40자이거나 비워 둡니다.',"
+    },
     "C-4|apps/mobile/src/screens/device-registration/screen.tsx|241a8f22210a": {
       "n": 1,
       "text": "<Button type=\"submit\" disabled={code.trim() === '' || phase === 'offline'}>"
@@ -3469,9 +3477,9 @@
       "n": 1,
       "text": "<Button variant=\"filled\" disabled={picked === null} onClick={() => {"
     },
-    "C-4|apps/web/src/screens/alarm-recipient-settings/screen.tsx|3b5bf42e0eae": {
+    "C-4|apps/web/src/screens/alarm-recipient-settings/recipient-picker.tsx|161e7e1b7fb5": {
       "n": 1,
-      "text": "<Button disabled={!isDirty || replace.isSaving} onClick={() => validat"
+      "text": "<Button disabled={picked.size === 0} onClick={() => { onAdd([...picked.v"
     },
     "C-4|apps/web/src/screens/approval-inbox/decision-pane.tsx|c98617546d25": {
       "n": 1,
@@ -3488,6 +3496,10 @@
     "C-4|apps/web/src/screens/common-code/qualification-pane.tsx|a4258bd2d5e0": {
       "n": 1,
       "text": "<Button disabled={!isDirty} onClick={onSave}>"
+    },
+    "C-4|apps/web/src/screens/dispatch-history/screen.tsx|8f50b1600bbc": {
+      "n": 1,
+      "text": "<Button disabled={draftReason !== null} onClick={search}>"
     },
     "C-4|apps/web/src/screens/disposal-issue/gi-filter-bar.tsx|24b95f1cb120": {
       "n": 1,
@@ -4642,7 +4654,7 @@
       "text": "font-size: var(--font-size-xs, 0.75rem);"
     },
     "TOKEN|apps/web/src/app/app.css|8ce053828340": {
-      "n": 4,
+      "n": 3,
       "text": "font: var(--type-label-md);"
     },
     "TOKEN|apps/web/src/app/app.css|b6601986e388": {

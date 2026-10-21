@@ -1,52 +1,88 @@
+/**
+ * W-CO-11 알림 수신자 설정 — 부서 × 이벤트 단위(001 재설계, omf-all-around#160).
+ * 수신자는 개인 지정만 남았고 미리보기는 없앴다(결정 #19).
+ */
 export const alarmRecipientSettings = {
-  title: '알람 수신자 설정',
+  /* 설계 W-CO-11·사이드바와 같은 글자다. */
+  title: '알림 수신자 설정',
   breadcrumbRoot: '시스템 관리',
-  description: '알림 유형마다 받을 조직·역할 또는 사용자를 지정합니다.',
-  panes: { events: '알림 유형', recipients: '수신 규칙', preview: '실제 수신자 미리보기' },
+  description: '부서마다 알림 이벤트를 켜고 끄며, Zalo 부가 전달 여부와 받을 사람을 정합니다.',
+  panes: { events: '이벤트', setting: (eventName: string): string => `설정: ${eventName}` },
   fields: {
-    recipientType: '지정 방식',
-    businessUnit: '사업부',
-    role: '역할',
-    user: '사용자',
-    zalo: 'Zalo 알림',
+    department: '부서',
+    enabled: '알림 받기',
+    zalo: 'Zalo로도 보내기',
+    recipients: (count: number): string => `수신자 (${String(count)})`,
   },
   values: {
-    role: '조직·역할',
-    user: '개인',
-    inactive: ' (비활성)',
-    /** 미리보기 표의 상태 칸. 위 `inactive`는 선택칸 이름에 붙는 꼬리라 앞 공백이 있어 다르다. */
-    statusActive: '사용 중',
-    statusInactive: '비활성',
+    on: '켬',
+    off: '끔',
+    approver: '결재자',
+    /** 수신자 행에 붙는 표식. 이 사람은 Zalo 를 받지 못하고 알림센터로만 받는다. */
+    noPhone: '전화번호 없음',
+    inactive: '비활성',
+    /** 후보 표의 전화번호 칸 */
+    hasPhone: '있음',
+    alreadyAdded: '이미 추가됨',
+    selectRow: (userName: string): string => `${userName} 선택`,
+    noDepartment: '—',
   },
-  actions: { add: '수신 규칙 추가', remove: '수신 규칙 제거', preview: '미리보기', save: '저장' },
+  actions: {
+    add: '추가',
+    remove: '해제',
+    revert: '되돌리기',
+    save: '저장',
+    reload: '다시 불러오기',
+    openConnection: '알림 연결 설정 열기',
+    cancel: '취소',
+    discard: '버리고 이동',
+    search: '검색',
+    prevPage: '이전 쪽',
+    nextPage: '다음 쪽',
+    addSelected: (count: number): string => `추가 (${String(count)})`,
+  },
   state: {
-    loading: '설정을 불러오는 중',
-    noEvents: '설정할 알림 유형이 없습니다.',
-    noRecipients: '등록된 수신 규칙이 없습니다.',
-    noRecipientsWarning: '수신 규칙이 없어 이 알림을 받을 사람이 없습니다. 저장은 할 수 있습니다.',
-    saved: '수신자 설정을 저장했습니다.',
-    clean: '바뀐 내용이 없어 저장할 필요가 없습니다.',
-    previewEmpty: '현재 규칙으로 확인된 수신자가 없습니다.',
-    lookupLoading: '선택 목록을 불러오는 중입니다.',
-    previewReady: (count: number, resolvedAt: string): string =>
-      `${resolvedAt} 기준 · 중복을 제외한 ${String(count)}명`,
-    zaloDisabled:
-      'Zalo 알림은 받을 곳이 아직 등록되지 않아 켤 수 없습니다. 알림센터 수신에는 영향을 주지 않습니다.',
+    selectDepartment: '부서를 고르면 그 부서의 이벤트 설정이 보입니다.',
+    noDepartments: '부서가 없습니다',
+    departmentsTruncated:
+      '부서 목록이 일부만 표시됩니다. 찾는 부서가 없으면 담당자에게 알려 주세요.',
+    noEvents: '설정할 이벤트가 없습니다.',
+    noRecipients: '지정한 수신자가 없습니다.',
+    /** US4-4 — 켜 두었는데 받을 사람이 없다. 저장은 막지 않는다. */
+    noRecipientsWarning: '수신자가 없어 알림이 가지 않습니다',
+    /** US4-5 — 전화번호가 없는 수신자는 Zalo 를 받지 못한다. */
+    noPhoneNotice: (count: number): string =>
+      `전화번호가 없는 수신자 ${String(count)}명은 알림센터로만 받습니다`,
+    zaloHelp: '실패해도 알림센터는 받습니다',
+    zaloNeedsEnabled: '알림을 켜야 Zalo도 보낼 수 있습니다',
+    approverNotice: '그 차례의 결재자가 받습니다. 결재선(W-06-15)에서 정한 사람입니다.',
+    saved: '저장했습니다',
+    /** US4-6 — 409. */
+    conflict: '다른 사람이 먼저 저장했습니다. 다시 불러온 뒤 저장하세요',
+    zaloNotActive: 'Zalo 연결이 설정되지 않아 지금은 알림센터로만 갑니다 — 알림 연결 설정(W-CO-12)',
+    unsavedTitle: '저장하지 않은 변경이 있습니다',
+    unsavedBody: '이동하면 고친 내용이 사라집니다. 버리고 이동할까요?',
+    candidatesEmpty: '검색 결과 없음',
+    pageOf: (page: number, totalPages: number): string => `${String(page)} / ${String(totalPages)}`,
+  },
+  picker: {
+    title: '수신자 추가',
+    searchLabel: '이름 또는 로그인 ID',
+    caption: '수신자 후보',
   },
   errors: {
-    requiredBusinessUnit: '사업부를 선택해 주세요.',
-    requiredRole: '역할을 선택해 주세요.',
-    requiredUser: '사용자를 선택해 주세요.',
-    duplicate: '같은 수신 규칙이 이미 있습니다.',
-    lookupFailed: '선택 목록을 불러오지 못했습니다. 다시 시도해 주세요.',
-    /** 쪽을 다 돌았는데 서버가 말한 수에 못 미친다 — 반쪽 목록으로 고르게 두지 않는다. */
-    lookupIncomplete: '선택 목록을 전부 불러오지 못했습니다.',
+    /** 서버도 400 으로 막는다 — 화면이 먼저 알린다. */
+    inactiveRecipient: '비활성 사용자는 수신자로 둘 수 없습니다. 해제한 뒤 저장하세요.',
+    lookupFailed: '목록을 불러오지 못했습니다. 다시 시도해 주세요.',
   },
   columns: {
-    event: '알림 유형',
-    count: '설정 수',
-    user: '사용자',
+    event: '이벤트',
+    enabled: '알림',
+    zalo: 'Zalo',
+    recipients: '수신자',
+    userName: '이름',
+    loginId: '로그인 ID',
     department: '부서',
-    status: '상태',
+    phone: '전화번호',
   },
 } as const;

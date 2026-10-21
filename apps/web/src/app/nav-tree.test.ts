@@ -279,6 +279,8 @@ describe('주 메뉴 트리', () => {
       '/system/users-roles → manage_accounts',
       '/system/approval-route → approval',
       '/notification/recipient-settings → notifications_active',
+      '/notification/zalo-connection → link',
+      '/notification/dispatch-history → history',
       '/master-data/common-code → list_alt',
       '/system/terminal-process-map → tablet_android',
     ]);

@@ -1,7 +1,7 @@
 /**
  * P-02-04 작업실적 등록(LOT·제품 선택).
  *
- * 이 화면의 말은 「실적」이고 받는 수량은 **양품 하나**다 — 불량·손실은 이 화면에 오지 않는다.
+ * 이 화면의 말은 「실적」이고 받는 수량은 양품과 불량 유형별 수량이다(불량은 기록만 — 재고를 움직이지 않는다).
  */
 export const productionResult = {
   /* 화면 이름은 「생산 작업」이다(사용자 지시 2026-10-19 · omf-all-around#107). 실적은 그 안의 한 구획이다. */
@@ -42,8 +42,33 @@ export const productionResult = {
     quantity: {
       title: '생산 수량',
       target: '생산 목표수량',
-      actual: '실제 생산수량',
+      actual: '양품 수량',
       invalid: '0보다 큰 수량을 입력하세요.',
+    },
+    defects: {
+      title: '불량',
+      add: '+ 불량',
+      row: (index: number): string => `불량 ${String(index)}`,
+      type: '불량 유형',
+      choose: '유형 선택',
+      qty: '불량 수량',
+      remove: (label: string): string => `${label} 빼기`,
+      duplicate: '이미 있는 불량 유형입니다.',
+      typeMissing: '유형을 고르세요',
+      qtyMissing: '수량을 넣으세요',
+      noProcess: '공정이 없는 W/O라 불량 유형을 고를 수 없습니다.',
+      /* 키패드 이름 — 지금 어느 칸에 치는지 말한다. 칸 이름과 겹치지 않게 「키패드」를 붙인다. */
+      keypadGood: '양품 수량 키패드',
+      keypadFor: (target: string): string => `불량 수량 — ${target} 키패드`,
+      pickerTitle: '불량 유형',
+      back: '← 대분류',
+      cancel: '취소',
+      loading: '불량 유형을 불러오는 중입니다.',
+      loadFailed: '불량 유형을 불러오지 못했습니다.',
+      empty: '이 공정에 정해진 불량 유형이 없습니다.',
+      saveOnly: '불량 저장',
+      saved: '불량을 기록했습니다.',
+      queued: '불량을 저장했습니다 · 연결되면 보냅니다.',
     },
     tag: {
       title: '인식표',

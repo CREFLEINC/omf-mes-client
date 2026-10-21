@@ -2,7 +2,13 @@ import { messages } from '@omf-mes/i18n';
 import { describe, expect, it } from 'vitest';
 
 import { INITIAL_PASSWORD_MIN_LENGTH } from './initial-password';
-import { USER_CREATE_FORM_FIELDS, USER_FORM_FIELDS, validateUserForm } from './user-validation';
+import {
+  formatPhone,
+  normalizePhone,
+  USER_CREATE_FORM_FIELDS,
+  USER_FORM_FIELDS,
+  validateUserForm,
+} from './user-validation';
 import type { UserFormValues } from './types';
 
 const t = messages.usersRoles.user.validation;
@@ -14,6 +20,7 @@ const valid: UserFormValues = {
   userName: '합성 사용자 A',
   departmentId: '3001',
   email: 'syn.user.a@example.invalid',
+  phoneNumber: '',
   statusCode: 'SYN-STATUS-A',
 };
 
@@ -25,6 +32,7 @@ describe('USER_FORM_FIELDS', () => {
       'userName',
       'departmentId',
       'email',
+      'phoneNumber',
       'statusCode',
     ]);
   });
@@ -203,5 +211,48 @@ describe('validateUserForm — 수정', () => {
   it('비밀번호가 비어 있거나 규칙을 어겨도 password 오류를 만들지 않는다', () => {
     expect(validateUserForm({ ...valid, password: '' }, 'edit').password).toBeUndefined();
     expect(validateUserForm({ ...valid, password: 'abcdefgh' }, 'edit').password).toBeUndefined();
+  });
+});
+
+/* 001 W-CO-02 — 서버 `readPhone()`(T025)과 같은 입력표. 화면이 먼저 알려 줄 뿐 문지기는 서버다. */
+describe('베트남 휴대폰 번호', () => {
+  it.each(['0912345678', '+84912345678', '84912345678', '0912 345-678', ' 0912-345-678 '])(
+    'US5-3 같은 번호의 여러 표기 %s 는 표준형 84912345678 이 된다',
+    (input) => {
+      expect(normalizePhone(input)).toBe('84912345678');
+    },
+  );
+
+  it.each([
+    ['유선', '0212345678'],
+    ['9자리', '091234567'],
+    ['11자리', '09123456789'],
+    ['문자 포함', '0912abc678'],
+    ['국가번호 아님', '+82912345678'],
+    ['빈 문자열', ''],
+  ])('US5-2 형식이 틀린 번호(%s)는 거부한다', (_label, input) => {
+    expect(normalizePhone(input)).toBeNull();
+  });
+
+  it('US5-2 형식이 틀린 번호는 폼 검증이 그 칸의 오류로 막는다', () => {
+    expect(validateUserForm({ ...valid, phoneNumber: '0212345678' }, 'edit')).toEqual({
+      phoneNumber: t.phoneFormat,
+    });
+  });
+
+  it('US5-3 표기가 달라도 맞는 번호는 통과한다', () => {
+    expect(validateUserForm({ ...valid, phoneNumber: '+84 912 345 678' }, 'edit')).toEqual({});
+  });
+
+  /* 필수가 아니다 — 비우면 번호를 지운다. */
+  it('비우면 오류가 아니다', () => {
+    expect(validateUserForm({ ...valid, phoneNumber: '   ' }, 'edit')).toEqual({});
+  });
+
+  it('표준형을 국내 표기 0912 345 678 로 보이고, 표준형이 아니면 그대로 둔다', () => {
+    expect(formatPhone('84912345678')).toBe('0912 345 678');
+    expect(formatPhone(null)).toBe('');
+    expect(formatPhone(undefined)).toBe('');
+    expect(formatPhone('12345')).toBe('12345');
   });
 });

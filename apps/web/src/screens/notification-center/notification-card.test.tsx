@@ -16,7 +16,7 @@ const t = messages.notificationCenter;
  */
 const renderCard = (
   overrides: Parameters<typeof notificationFixture>[0] = {},
-  title = 'SYN-EVENT-01',
+  title = 'WORK_SESSION_STARTED',
   extra: Partial<{ isRead: boolean; isPending: boolean }> = {},
 ) => {
   const onRead = vi.fn();
@@ -83,7 +83,7 @@ describe('NotificationCard', () => {
   it('제목 · 발생 시각 · 본문을 그린다', () => {
     renderCard();
 
-    expect(screen.getByText('SYN-EVENT-01')).toBeInTheDocument();
+    expect(screen.getByText('WORK_SESSION_STARTED')).toBeInTheDocument();
     expect(screen.getByText('2026-08-17 12:05')).toBeInTheDocument();
     expect(screen.getByText('합성 알림 문구 가입니다.')).toBeInTheDocument();
   });
@@ -95,10 +95,10 @@ describe('NotificationCard', () => {
    * `view.eventCode`가 그때도 같은 자리에 있어 **다른 시험은 하나도 울지 않는다.**
    */
   it('제목이 푼 이름이면 코드 대신 그 이름이 선다', () => {
-    renderCard({}, '합성 이벤트 가');
+    renderCard({}, '생산 실행');
 
-    expect(screen.getByText('합성 이벤트 가')).toBeInTheDocument();
-    expect(screen.queryByText('SYN-EVENT-01')).not.toBeInTheDocument();
+    expect(screen.getByText('생산 실행')).toBeInTheDocument();
+    expect(screen.queryByText('WORK_SESSION_STARTED')).not.toBeInTheDocument();
   });
 
   it('시각에 원문을 함께 둔다 — 표기 조각만으로는 언제인지 되짚을 수 없다', () => {
@@ -124,7 +124,7 @@ describe('NotificationCard', () => {
    * 그대로 남는다 — 사용자는 자기가 누른 것이 먹혔는지 알 수 없다.
    */
   it('서버가 아직 안 읽음이라 해도 화면 판정이 읽음이면 읽음으로 보인다', () => {
-    renderCard({ read: false }, 'SYN-EVENT-01', { isRead: true });
+    renderCard({ read: false }, 'WORK_SESSION_STARTED', { isRead: true });
 
     expect(screen.getByText(t.card.read)).toBeInTheDocument();
     expect(screen.queryByText(t.card.unread)).not.toBeInTheDocument();
@@ -157,7 +157,7 @@ describe('NotificationCard', () => {
   it('카드가 자기 제목을 이름으로 든다', () => {
     renderCard();
 
-    expect(screen.getByRole('button', { name: 'SYN-EVENT-01' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'WORK_SESSION_STARTED' })).toBeInTheDocument();
   });
 
   /**
@@ -170,17 +170,17 @@ describe('NotificationCard', () => {
   it('카드가 제목을 aria-labelledby로 가리킨다 — 이름을 직접 박지 않는다', () => {
     renderCard();
 
-    const card = screen.getByRole('button', { name: 'SYN-EVENT-01' });
+    const card = screen.getByRole('button', { name: 'WORK_SESSION_STARTED' });
 
     expect(card).toHaveAttribute('aria-labelledby', titleIdOf(7101));
     expect(card).not.toHaveAttribute('aria-label');
   });
 
   it('제목이 이름으로 풀리면 카드의 접근성 이름도 그 이름이다', () => {
-    renderCard({}, '합성 이벤트 가');
+    renderCard({}, '생산 실행');
 
     /* 보이는 글자와 들리는 이름이 같은 자리에서 나온다. */
-    expect(screen.getByRole('button', { name: '합성 이벤트 가' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '생산 실행' })).toBeInTheDocument();
   });
 
   it('카드가 둘이면 각자 자기 제목을 가리킨다 — 상수 id면 둘 다 앞 카드를 가리킨다', () => {
@@ -188,16 +188,16 @@ describe('NotificationCard', () => {
       <>
         <NotificationCard
           view={toNotificationView(notificationFixture())}
-          title="SYN-EVENT-01"
+          title="WORK_SESSION_STARTED"
           isRead={false}
           isPending={false}
           onRead={() => undefined}
         />
         <NotificationCard
           view={toNotificationView(
-            notificationFixture({ notificationId: 7102, eventCode: 'SYN-EVENT-02' }),
+            notificationFixture({ notificationId: 7102, eventCode: 'WORK_ORDER_CLOSED' }),
           )}
-          title="SYN-EVENT-02"
+          title="WORK_ORDER_CLOSED"
           isRead={false}
           isPending={false}
           onRead={() => undefined}
@@ -207,8 +207,8 @@ describe('NotificationCard', () => {
 
     /* 짝 양성 — 카드가 실제로 둘이다. 그래야 아래 이름 단언이 뜻을 갖는다. */
     expect(screen.getAllByRole('button')).toHaveLength(2);
-    expect(screen.getByRole('button', { name: 'SYN-EVENT-01' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'SYN-EVENT-02' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'WORK_SESSION_STARTED' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'WORK_ORDER_CLOSED' })).toBeInTheDocument();
   });
 
   it('제목 id가 알림 번호로 격리된다', () => {
@@ -220,7 +220,7 @@ describe('NotificationCard — 누름', () => {
   it('안 읽은 카드를 누르면 그 번호를 알린다', async () => {
     const { onRead, user } = renderCard();
 
-    await user.click(screen.getByRole('button', { name: 'SYN-EVENT-01' }));
+    await user.click(screen.getByRole('button', { name: 'WORK_SESSION_STARTED' }));
 
     expect(onRead).toHaveBeenCalledWith(7101);
   });
@@ -235,7 +235,7 @@ describe('NotificationCard — 누름', () => {
     const { onRead, user } = renderCard({ read: true });
 
     /* 짝 양성 — 그 카드는 실제로 눌린다(버튼으로 남아 있다). */
-    const card = screen.getByRole('button', { name: 'SYN-EVENT-01' });
+    const card = screen.getByRole('button', { name: 'WORK_SESSION_STARTED' });
     expect(card).toBeInTheDocument();
 
     await user.click(card);
@@ -250,22 +250,22 @@ describe('NotificationCard — 누름', () => {
   it('읽은 카드도 버튼으로 남는다', () => {
     renderCard({ read: true });
 
-    expect(screen.getByRole('button', { name: 'SYN-EVENT-01' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'WORK_SESSION_STARTED' })).toBeInTheDocument();
   });
 
   it('나가는 중인 카드는 잠긴다', () => {
-    renderCard({}, 'SYN-EVENT-01', { isPending: true });
+    renderCard({}, 'WORK_SESSION_STARTED', { isPending: true });
 
-    expect(screen.getByRole('button', { name: 'SYN-EVENT-01' })).toHaveAttribute(
+    expect(screen.getByRole('button', { name: 'WORK_SESSION_STARTED' })).toHaveAttribute(
       'aria-disabled',
       'true',
     );
   });
 
   it('나가는 중인 카드를 눌러도 부르지 않는다', async () => {
-    const { onRead, user } = renderCard({}, 'SYN-EVENT-01', { isPending: true });
+    const { onRead, user } = renderCard({}, 'WORK_SESSION_STARTED', { isPending: true });
 
-    await user.click(screen.getByRole('button', { name: 'SYN-EVENT-01' }));
+    await user.click(screen.getByRole('button', { name: 'WORK_SESSION_STARTED' }));
 
     expect(onRead).not.toHaveBeenCalled();
   });
@@ -275,14 +275,14 @@ describe('NotificationCard — 누름', () => {
     const { container } = render(
       <NotificationCard
         view={toNotificationView(notificationFixture())}
-        title="SYN-EVENT-01"
+        title="WORK_SESSION_STARTED"
         isRead={false}
         isPending={false}
         onRead={() => undefined}
       />,
     );
 
-    const card = screen.getByRole('button', { name: 'SYN-EVENT-01' });
+    const card = screen.getByRole('button', { name: 'WORK_SESSION_STARTED' });
 
     expect(card.querySelector('button, a, [role="button"]')).toBeNull();
     expect(container.querySelector('button button')).toBeNull();
