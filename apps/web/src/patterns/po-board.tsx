@@ -1,7 +1,7 @@
 import { useLayoutEffect, useRef, useState, type CSSProperties } from 'react';
 
 /**
- * 발주 목록 · 발주 상세 두 표 배치(W-01-09 입하 예정 · W-01-03 초과 입하 분리)가 함께 쓰는 조각.
+ * 발주 목록 · 발주 상세 두 표 배치(W-01-09 입하 예정)가 함께 쓰는 조각.
  * 모양은 app.css `.po-board-*` 가 정한다.
  */
 

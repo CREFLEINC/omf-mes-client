@@ -314,10 +314,11 @@ interface SummaryItem {
 }
 
 export interface SplitLineTableProps extends SplitLineColumnsInput {
-  /** 고른 발주. 제목줄의 자료는 목록 응답의 행에 이미 있어 상세 경로를 부르지 않는다. */
+  /** 받을 발주 — 머리줄의 값. */
   purchaseOrder: PoView;
-  /** 공급사는 **위 구획이 실패 안내와 복구를 소유**하므로 이름만 받는다. */
+  /** 공급사 이름. 실패했으면 그 사실(`supplierFailed`)을 함께 받아 아래 안내와 복구 수단에 넣는다. */
   supplierName: string;
+  supplierFailed?: boolean;
   rows: readonly SplitLineView[];
   isLoading: boolean;
   /** 공장 — 이름이 이 구획의 제목줄에서만 보여 실패 안내와 다시 시도도 여기가 소유한다. */
@@ -335,6 +336,7 @@ export interface SplitLineTableProps extends SplitLineColumnsInput {
 export const SplitLineTable = ({
   purchaseOrder,
   supplierName,
+  supplierFailed = false,
   rows,
   isLoading,
   plantLookup,
@@ -376,8 +378,9 @@ export const SplitLineTable = ({
     },
   ];
 
-  /* 이 구획이 이름을 내는 참조 셋 중 **하나라도** 실패하면 안내와 복구 수단을 낸다. */
-  const hasReferenceError = itemNames.isError || uomLookup.isError || plantLookup.isError;
+  /* 이 구획이 이름을 내는 참조 넷 중 **하나라도** 실패하면 안내와 복구 수단을 낸다. */
+  const hasReferenceError =
+    supplierFailed || itemNames.isError || uomLookup.isError || plantLookup.isError;
 
   return (
     <>

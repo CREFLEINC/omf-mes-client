@@ -31,7 +31,7 @@ export const purchaseOrder = (overrides: Partial<PoView> = {}): PoView => ({
 });
 
 /**
- * 화면 수준 테스트가 목록 응답으로 쓰는 세 건. 화면이 다뤄야 하는 까다로운 입력을 일부러 담는다.
+ * 「입하 등록」 창 시험이 발주 상세로 쓰는 세 건. 창이 다뤄야 하는 까다로운 입력을 일부러 담는다.
  *
  * - 9001 — 값이 전부 채워져 있다. 라인 픽스처가 이 발주의 것이다
  * - 9002 — **공급사 번호가 참조 목록에 없고** 입고 예정일이 `null`이다
@@ -99,6 +99,15 @@ export const purchaseOrderLineFixtures: PoLineView[] = [
     toleranceOverQty: 5,
   }),
 ];
+
+/**
+ * 발주 상세 응답(`GET /logistics/purchase-orders/{id}`) — 「입하 등록」 창이 머리와 라인을 이 하나로 받는다.
+ * 창이 읽는 필드만 담는다(계약 `PurchaseOrderDetailResponse` 의 나머지는 창이 그리지도 보내지도 않는다).
+ */
+export const purchaseOrderDetailBody = (
+  order: PoView = purchaseOrder(),
+  lines: PoLineView[] = purchaseOrderLineFixtures,
+): { purchaseOrder: PoView; lines: PoLineView[] } => ({ purchaseOrder: order, lines });
 
 /**
  * 참조 응답의 본문. **화면이 읽는 필드만 담는다** — 스텁 응답은 JSON이라

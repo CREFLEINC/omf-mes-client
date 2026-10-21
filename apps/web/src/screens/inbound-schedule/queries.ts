@@ -15,7 +15,7 @@ import type {
  * - 왼쪽: `GET /logistics/purchase-orders` — P/O 묶음. 묶음 값(라인 수·합계·진행)과 납기·지연·공급사 검색 조건
  * - 오른쪽: `GET /logistics/purchase-order-lines?purchaseOrderId=` — 고른 P/O 의 라인. 이름 칸이 함께 온다
  *
- * **쓰기 오퍼레이션이 없다.** 입하 등록은 「자재 입고 처리」·「초과 입하 분리」가 한다.
+ * **쓰기 오퍼레이션이 없다.** 입하 등록은 「입하 등록」 창(`over-receipt-split/register-panel.tsx`)이 한다.
  */
 
 /**

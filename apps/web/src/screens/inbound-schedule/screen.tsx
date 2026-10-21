@@ -6,6 +6,8 @@ import { useSearchParams } from 'react-router';
 import { HubActions, useHubActionsTarget } from '../../patterns/hub-actions';
 import { plantToday } from '../../patterns/plant-time';
 import { PaneSplitter, useFitToViewport, usePaneSplit } from '../../patterns/po-board';
+import { useSession } from '../../patterns/session';
+import { ReceiptRegisterPanel } from '../over-receipt-split/register-panel';
 import {
   readExcessEntry,
   withExcessEntry,
@@ -14,7 +16,12 @@ import {
 } from './excess-entry';
 import { excessesByLine } from './excess-match';
 import { ExcessPanel } from './excess-panel';
-import { EXCESS_PAGE_SIZE, isExcessUnavailable, useInboundExcesses } from './excess-queries';
+import {
+  EXCESS_PAGE_SIZE,
+  excessKeys,
+  isExcessUnavailable,
+  useInboundExcesses,
+} from './excess-queries';
 import type { InboundExcess } from './excess-types';
 import { ScheduleFilterBar } from './filter-bar';
 import {
@@ -48,7 +55,8 @@ import {
 } from './period';
 import { LineTable } from './line-table';
 import { OrderTable } from './order-table';
-import { usePurchaseOrderLines, usePurchaseOrderSummaries } from './queries';
+import { scheduleKeys, usePurchaseOrderLines, usePurchaseOrderSummaries } from './queries';
+import { readRegisterEntry, withoutRegisterEntry, withRegisterEntry } from './register-entry';
 import type {
   InboundScheduleLine,
   PurchaseOrderSummary,
@@ -66,6 +74,15 @@ const NO_EXCESSES: InboundExcess[] = [];
 
 /** 왼쪽 표 한 쪽 20줄(사용자 지시 2026-10-20). 서버 기본(50)보다 작게 실어 보낸다 — 상한은 200. */
 export const LIST_PAGE_SIZE = 20;
+
+/**
+ * 「입하 등록」의 권한 — 화면 코드 W-01-03(옛 「초과 입하 분리」)이다. 서버의 `:split` 경로가 이 코드로 막는다.
+ * 세션이 권한 목록을 주지 않았으면(모름) 단추를 세운다 — 막는 것은 서버다(`patterns/web-access.ts` 와 같은 잣대).
+ */
+const REGISTER_PERMISSION = 'W-01-03';
+
+/** 등록 뒤 함께 다시 읽을 것 — 이 화면의 두 표(받은 수량·진행)와 초과분 목록(새 초과분). */
+const REGISTER_REFRESH_KEYS = [scheduleKeys.all, excessKeys.all] as const;
 
 /**
  * 참조 목록을 선택지로 옮긴다.
@@ -96,14 +113,20 @@ const toSelectOptions = (lookup: LookupResult): SelectOption[] =>
  * 조회 조건과 쪽은 전부 주소가 소유한다 — 새로고침·뒤로가기·공유가 같은 결과를 낸다. 조건이 바뀌면 쪽은
  * 첫 쪽으로 돌아간다(`applyQuery`).
  *
- * **입하·입고 일을 이 화면으로 모은다**(사용자 지시 2026-10-21). 첫 일이 **초과분 발주 연결**이다(서버 장부 P-100) —
- * 탭 줄 끝의 「초과분 연결」과, 고른 발주의 라인에 맞는 초과분이 있을 때만 서는 「초과분」 칸이 연결 창을 연다.
- * 창은 주소(`excess=1`)가 연다 — 「초과 입하 분리」의 등록 결과가 창을 연 채로 건너온다. 권한이 없거나(403)
- * 서버가 그 경로를 모르면(404) 두 길 모두 서지 않는다.
+ * **입하·입고 일을 이 화면으로 모은다**(사용자 지시 2026-10-21). 일마다 오른쪽 창이 열리고, 창은 주소가 연다.
+ *
+ * - **입하 등록**(`register=1` · W-01-03) — 고른 발주 머리의 「입하 등록」. 도착 수량·LOT 을 받아 전표를 만든다.
+ *   옛 「초과 입하 분리」 탭이 이 창이 됐다.
+ * - **초과분 발주 연결**(`excess=1` · 서버 장부 P-100) — 탭 줄 끝의 「초과분 연결」과, 고른 발주의 라인에 맞는
+ *   초과분이 있을 때만 서는 「초과분」 칸이 연다. 입하 등록 결과의 「초과분 발주 연결」도 이 창으로 온다.
+ *   권한이 없거나(403) 서버가 그 경로를 모르면(404) 두 길 모두 서지 않는다.
  */
 export const InboundScheduleScreen = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const { splitRef, aboveRef } = useFitToViewport();
+  const { session } = useSession();
+  const canRegister =
+    session?.permissions === undefined || session.permissions.includes(REGISTER_PERMISSION);
   const split = usePaneSplit('omf-mes:inbound-schedule:split', 0.4);
   const quickRef = useRef<QuickLookupHandle>(null);
 
@@ -197,12 +220,21 @@ export const InboundScheduleScreen = () => {
   );
   const unlinkedCount = unlinkedExcesses.data?.page.total ?? 0;
 
+  /* 창은 한 번에 하나다 — 하나를 열면 다른 하나의 키를 걷는다. */
   const excessEntry = readExcessEntry(searchParams);
   const openExcess = (entry: Partial<ExcessEntry> = {}): void => {
-    setSearchParams(withExcessEntry(searchParams, entry));
+    setSearchParams(withExcessEntry(withoutRegisterEntry(searchParams), entry));
   };
   const closeExcess = (): void => {
     setSearchParams(withoutExcessEntry(searchParams));
+  };
+
+  const registerPoId = canRegister ? readRegisterEntry(searchParams) : null;
+  const openRegister = (purchaseOrderId: number): void => {
+    setSearchParams(withRegisterEntry(searchParams, purchaseOrderId));
+  };
+  const closeRegister = (): void => {
+    setSearchParams(withoutRegisterEntry(searchParams));
   };
 
   /*
@@ -347,6 +379,7 @@ export const InboundScheduleScreen = () => {
               matchedItemId={appliedItemId}
               lineExcesses={lineExcesses}
               onOpenExcess={openExcess}
+              onRegister={canRegister ? openRegister : undefined}
             />
           )}
         </section>
@@ -354,6 +387,19 @@ export const InboundScheduleScreen = () => {
 
       {hubActionsTarget !== null && excessEntryButton !== null && (
         <HubActions target={hubActionsTarget}>{excessEntryButton}</HubActions>
+      )}
+
+      {registerPoId !== null && (
+        <ReceiptRegisterPanel
+          /* 다른 발주를 열면 창을 새로 세운다 — 앞 발주의 초안이 남지 않는다. */
+          key={registerPoId}
+          purchaseOrderId={registerPoId}
+          refreshKeys={REGISTER_REFRESH_KEYS}
+          onOpenExcess={(receiptNo) => {
+            openExcess({ receiptNo });
+          }}
+          onClose={closeRegister}
+        />
       )}
 
       {excessEntry !== null && (

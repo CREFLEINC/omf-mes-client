@@ -37,13 +37,12 @@ export const inboundSchedule = {
     prevPage: '이전',
     nextPage: '다음',
     goFirstPage: '첫 쪽으로',
-    /** 행의 바로가기. 그 화면이 발주를 주소로 받는다(`po`) — 고른 채로 열린다. */
     /* 왼쪽 표의 발주번호 단추. 줄마다 글자가 달라도 「고른다」는 뜻을 접근 이름에 담는다. */
     selectOrder: (purchaseOrderNo: string): string => `${purchaseOrderNo} 라인 보기`,
-    overReceiptSplit: '초과 입하 분리',
-    /* 행마다 글자가 같다 — 접근 이름에 발주번호를 넣어 어느 발주인지 밝힌다. */
-    overReceiptSplitRow: (purchaseOrderNo: string): string =>
-      `${purchaseOrderNo} 초과 입하 분리로 이동`,
+    /** 고른 발주의 「입하 등록」 — 오른쪽에서 등록 창이 열린다. */
+    register: '입하 등록',
+    /* 발주마다 글자가 같다 — 접근 이름에 발주번호를 넣어 어느 발주인지 밝힌다. */
+    registerRow: (purchaseOrderNo: string): string => `${purchaseOrderNo} 입하 등록`,
   },
   /** 비활성 사유·실패 사유는 그 컨트롤이나 대상의 이름으로 시작한다(배치 규범 4). */
   reasons: {
@@ -223,7 +222,7 @@ export const inboundSchedule = {
       `${receiptNo} ${String(lineNo)}번 줄 초과분 선택`,
     pickLine: (purchaseOrderNo: string, lineNo: number): string =>
       `${purchaseOrderNo} ${String(lineNo)}번 줄 선택`,
-    /** 방금 「초과 입하 분리」에서 등록한 전표의 초과분. */
+    /** 방금 「입하 등록」에서 등록한 전표의 초과분. */
     justRegistered: '방금 등록',
     actions: {
       link: '연결',

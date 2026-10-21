@@ -5,6 +5,8 @@ import { useLocation, useNavigate } from 'react-router';
 import { describe, expect, it } from 'vitest';
 
 import { plantToday } from '../../patterns/plant-time';
+import { SessionProvider, type Session } from '../../patterns/session';
+import { SYNTHETIC_SESSION } from '../../test/session-harness';
 import {
   createStubFetch,
   jsonResponse,
@@ -224,16 +226,17 @@ const BackProbe = () => {
 const renderScreen = (
   routes: StubRoute[],
   search = '',
+  session: Session = SYNTHETIC_SESSION,
 ): { requests: RecordedRequest[]; user: ReturnType<typeof userEvent.setup> } => {
   const { fetch, requests } = createRecordingFetch(routes);
 
   renderWithProviders(
-    <>
+    <SessionProvider>
       <InboundScheduleScreen />
       <LocationProbe />
       <BackProbe />
-    </>,
-    { fetch, route: `${ROUTE}${search}` },
+    </SessionProvider>,
+    { fetch, route: `${ROUTE}${search}`, session },
   );
 
   return { requests, user: userEvent.setup() };
@@ -552,34 +555,115 @@ describe('InboundScheduleScreen — 표의 칸', () => {
   /* 품목은 번호로 하나씩 푼다 — 같은 품목이면 요청도 하나다. */
 });
 
-describe('InboundScheduleScreen — 행 바로가기', () => {
-  /*
-   * 「초과 입하 분리」는 발주를 주소(`po`)로 받는다 — 발주번호로 좁히고 미완료만을 꺼서
-   * 그 발주가 목록에 남아 고른 채로 열리게 한다.
-   */
+/** 「입하 등록」 창이 읽는 발주 상세 — 머리와 라인을 함께 준다(창은 발주 번호 하나로 선다). */
+const registerDetailRoute = (): StubRoute => ({
+  match: (request) => isGet(request, `${LIST_PATH}/7101`),
+  respond: () =>
+    jsonResponse({
+      purchaseOrder: {
+        purchaseOrderId: 7101,
+        purchaseOrderNo: 'SAMPLE-PO-0001',
+        supplierId: 8101,
+        plantId: 8201,
+        orderDate: '2026-10-01',
+        expectedReceiptDate: '2026-10-10',
+        statusCode: 'CONFIRMED',
+      },
+      lines: [
+        {
+          purchaseOrderLineId: 7301,
+          purchaseOrderId: 7101,
+          lineNo: 1,
+          itemId: 8301,
+          orderedQty: 100,
+          uomId: 8501,
+          receivedQty: 0,
+          toleranceOverQty: 0,
+        },
+      ],
+    }),
+});
 
-  it('고른 발주의 「초과 입하 분리」는 그 발주를 고른 채로 간다 — 라인마다 되풀이하지 않는다', async () => {
-    renderScreen([listRoute(), ...lookupRoutes()], '?po=7101');
+/** 창이 함께 묻는 단위·대체 LOT 사유 — 빈 목록이면 된다(창의 등록 흐름은 그 창의 시험이 잰다). */
+const registerLookupRoutes = (): StubRoute[] => [
+  registerDetailRoute(),
+  lookupRoute('/mdm/uoms', []),
+  {
+    match: (request) =>
+      isGet(request, CODE_VALUES_PATH) &&
+      new URL(request.url).searchParams.get('codeGroupCode') !== 'SL_TYPE',
+    respond: () => jsonResponse(listBody([])),
+  },
+];
+
+/*
+ * 「입하 등록」 — 옛 「초과 입하 분리」 탭이 이 화면의 창이 됐다(사용자 지시 2026-10-21). 고른 발주 머리에 단추 하나가
+ * 서고, 창은 주소(`register=1` + `po`)가 연다. 등록 흐름 자체는 `over-receipt-split/register-panel.test.tsx` 가 잰다.
+ */
+describe('InboundScheduleScreen — 입하 등록', () => {
+  it('고른 발주 머리에 「입하 등록」이 하나 서고, 누르면 그 발주로 창이 주소로 열리고 닫으면 빠진다', async () => {
+    const { user } = renderScreen(
+      [listRoute(), ...lookupRoutes(), ...registerLookupRoutes()],
+      '?po=7101',
+    );
 
     await within(linesPane()).findByText('SAMPLE-ITEM-01');
-
-    const links = within(linesPane()).getAllByRole('link', {
-      name: t.actions.overReceiptSplitRow('SAMPLE-PO-0001'),
+    const buttons = within(linesPane()).getAllByRole('button', {
+      name: t.actions.registerRow('SAMPLE-PO-0001'),
     });
-    expect(links).toHaveLength(1);
-    expect(links[0]).toHaveAttribute(
-      'href',
-      '/logistics/over-receipt-split?q=SAMPLE-PO-0001&open=0&po=7101',
-    );
+    expect(buttons).toHaveLength(1);
+
+    await user.click(buttons[0] as HTMLElement);
+
+    const dialog = await screen.findByRole('dialog', { name: messages.overReceiptSplit.title });
+    expect(new URLSearchParams(currentLocation().split('?')[1]).get('register')).toBe('1');
+    expect(await within(dialog).findByText('SAMPLE-PO-0001')).toBeInTheDocument();
+
+    /* 아무것도 넣지 않았으면 묻지 않고 닫힌다. */
+    await user.click(within(dialog).getByRole('button', { name: messages.common.cancel }));
+
+    await waitFor(() => {
+      expect(currentLocation()).not.toContain('register');
+    });
+    expect(currentLocation()).toContain('po=7101');
   });
 
-  it('취소된 발주에는 바로가기가 없다', async () => {
+  it('주소로 들어오면 목록 결과에 없는 발주도 창이 선다', async () => {
+    renderScreen(
+      [listRoute([]), ...lookupRoutes(), ...registerLookupRoutes()],
+      '?po=7101&register=1',
+    );
+
+    const dialog = await screen.findByRole('dialog', { name: messages.overReceiptSplit.title });
+
+    expect(await within(dialog).findByText('SAMPLE-PO-0001')).toBeInTheDocument();
+  });
+
+  it('취소된 발주에는 「입하 등록」이 없다', async () => {
     renderScreen([listRoute(), ...lookupRoutes()], '?po=7103');
 
     await within(linesPane()).findByRole('table');
     expect(within(linesPane()).getByText('SAMPLE-PO-0003')).toBeInTheDocument();
 
-    expect(within(linesPane()).queryByRole('link')).not.toBeInTheDocument();
+    expect(
+      within(linesPane()).queryByRole('button', { name: t.actions.registerRow('SAMPLE-PO-0003') }),
+    ).not.toBeInTheDocument();
+  });
+
+  it('입하 등록 권한(W-01-03)이 없으면 단추가 없고 주소로도 창이 서지 않는다', async () => {
+    renderScreen([listRoute(), ...lookupRoutes()], '?po=7101&register=1', {
+      ...SYNTHETIC_SESSION,
+      permissions: ['W-01-09'],
+    });
+
+    await within(linesPane()).findByText('SAMPLE-ITEM-01');
+
+    expect(
+      within(linesPane()).queryByRole('button', { name: t.actions.registerRow('SAMPLE-PO-0001') }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('dialog', { name: messages.overReceiptSplit.title }),
+    ).not.toBeInTheDocument();
   });
 
   /* 「자재 입고 처리」는 발주를 주소로 받지 않는다 — 열어도 그 발주가 서지 않아 바로가기를 두지 않는다. */
@@ -1197,7 +1281,7 @@ describe('InboundScheduleScreen — 초과분 발주 연결', () => {
     expect(await within(dialog).findByText(te.candidates.emptyTitle)).toBeInTheDocument();
   });
 
-  it('「초과 입하 분리」에서 건너온 전표의 초과분은 앞에 서고 「방금 등록」이 붙는다', async () => {
+  it('「입하 등록」에서 건너온 전표의 초과분은 앞에 서고 「방금 등록」이 붙는다', async () => {
     renderScreen(
       [
         excessListRoute([

@@ -2,29 +2,18 @@ import type { ko } from '../ko';
 import type { Translated } from './translated';
 
 export const overReceiptSplit: Translated<typeof ko.overReceiptSplit> = {
-  title: 'Tách phần nhập vượt',
-  breadcrumbRoot: 'Quản lý mua hàng / vật tư',
+  title: 'Đăng ký nhập hàng',
   panes: {
-    filter: 'Điều kiện tra cứu',
-    list: 'Danh sách đơn đặt hàng',
     lines: 'Các dòng của đơn đã chọn',
     register: 'Thông tin đăng ký',
     result: 'Kết quả đăng ký',
   },
   fields: {
-    supplier: 'Nhà cung cấp',
-    q: 'Tìm số đơn đặt hàng',
-    openOnly: 'Chỉ đơn chưa hoàn tất',
     receiptDatetime: 'Thời điểm nhập hàng',
     deliveryNoteNo: 'Số phiếu giao hàng',
     remarks: 'Ghi chú',
   },
   actions: {
-    prevPage: 'Trước',
-    nextPage: 'Sau',
-    goFirstPage: 'Về trang đầu',
-    select: 'Chọn',
-    deselect: 'Bỏ chọn',
     register: 'Đăng ký nhập hàng',
     confirmRegister: 'Đăng ký',
     backToEdit: 'Quay lại',
@@ -32,13 +21,10 @@ export const overReceiptSplit: Translated<typeof ko.overReceiptSplit> = {
     discardDraft: 'Bỏ nội dung đã nhập',
     keepEditing: 'Nhập tiếp',
     fillRemaining: 'Điền bằng số còn lại',
-    selectRow: (purchaseOrderNo: string): string => `Chọn ${purchaseOrderNo}`,
-    deselectRow: (purchaseOrderNo: string): string => `Bỏ chọn ${purchaseOrderNo}`,
   },
   reasons: {
-    referencesFailed: 'Không tải được tên nhà cung cấp. Lý do sẽ hiện ở chỗ của tên.',
     lineReferencesFailed:
-      'Không tải được tên mặt hàng, đơn vị và nhà máy. Lý do sẽ hiện ở chỗ của tên.',
+      'Không tải được tên nhà cung cấp, mặt hàng, đơn vị và nhà máy. Lý do sẽ hiện ở chỗ của tên.',
   },
   actionReasons: {
     noQty:
@@ -60,15 +46,7 @@ export const overReceiptSplit: Translated<typeof ko.overReceiptSplit> = {
     },
   },
   loading: {
-    purchaseOrders: 'Đang tải danh sách đơn đặt hàng',
     lines: 'Đang tải các dòng đơn đặt hàng',
-    codes: 'Đang tải danh sách chọn',
-  },
-  table: {
-    purchaseOrderNo: 'Số đơn đặt hàng',
-    supplier: 'Nhà cung cấp',
-    orderDate: 'Ngày đặt hàng',
-    expectedReceiptDate: 'Ngày dự kiến nhập kho',
   },
   lineTable: {
     lineNo: 'No.',
@@ -126,30 +104,11 @@ export const overReceiptSplit: Translated<typeof ko.overReceiptSplit> = {
     optional: '(tùy chọn)',
   },
   filters: {
-    all: 'Tất cả',
     lookupTruncated:
       'Danh sách chọn chỉ hiện một phần đầu. Nếu không thấy giá trị cần tìm, hãy báo người phụ trách.',
     lookupFailed: 'Không tải được danh sách chọn.',
-    chipSupplier: (value: string): string => `Nhà cung cấp: ${value}`,
-    chipQ: (value: string): string => `Số đơn đặt hàng: ${value}`,
-    chipRemoveSupplier: 'Bỏ điều kiện nhà cung cấp',
-    chipRemoveQ: 'Bỏ điều kiện số đơn đặt hàng',
-  },
-  pageNav: {
-    label: 'Chuyển trang',
-    range: (start: number, end: number, total: number): string =>
-      `${String(start)}–${String(end)} / Tổng ${String(total)} phiếu`,
-    totalOnly: (total: number): string => `Tổng ${String(total)} phiếu`,
   },
   empty: {
-    noResultTitle: 'Không có đơn đặt hàng nào khớp điều kiện',
-    noResultDescription: 'Hãy bớt điều kiện hoặc tắt 「Chỉ đơn chưa hoàn tất」 rồi tra cứu lại.',
-    beyondLastTitle: 'Trang này không có kết quả',
-    beyondLastDescription: 'Hãy về trang đầu.',
-    noSelectionTitle: 'Chọn một đơn đặt hàng để xem các dòng',
-    noSelectionDescription: 'Hãy bấm vào đơn đặt hàng có hàng đến vượt ở danh sách bên trái.',
-    listFailedTitle: 'Không tải được danh sách đơn nên không mở được đơn này',
-    listFailedDescription: 'Hãy bấm 「Thử lại」 ở trên để tải danh sách rồi chọn lại.',
     noLinesTitle: 'Đơn đặt hàng này không có dòng nào',
     noLinesDescription:
       'Đơn đặt hàng không chứa dòng mặt hàng nào nên không xác định được thứ cần nhận.',
@@ -160,7 +119,6 @@ export const overReceiptSplit: Translated<typeof ko.overReceiptSplit> = {
     referenceLoading: 'Đang tải tên',
     referenceFailed: 'Không tải được tên',
     notSplit: '—',
-    inactiveSuffix: ' (không dùng)',
     docStatus: {
       REGISTERED: 'Đã đăng ký',
       POSTED: 'Đã ghi sổ',

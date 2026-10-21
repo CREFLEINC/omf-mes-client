@@ -20,6 +20,7 @@ import { EmergencyWorkOrderScreen } from '../screens/emergency-work-order/screen
 import { MaterialIssueRequestScreen } from '../screens/material-issue-request/screen';
 import { WorkOrderProgressScreen } from '../screens/work-order-progress/screen';
 import { GoodsReceiptScreen } from '../screens/goods-receipt/screen';
+import { OverReceiptSplitRedirect } from '../screens/inbound-schedule/register-redirect';
 import { InboundScheduleScreen } from '../screens/inbound-schedule/screen';
 import { InspectionSheetScreen } from '../screens/inspection-sheet/screen';
 import { InspectionSheetTemplateScreen } from '../screens/inspection-sheet-template/screen';
@@ -59,7 +60,6 @@ import { NotificationCenterScreen } from '../screens/notification-center/screen'
 import { DispositionRequestScreen } from '../screens/disposition-request/screen';
 import { ReturnReceiptScreen } from '../screens/return-receipt/screen';
 import { OqcInspectionScreen } from '../screens/oqc-inspection/screen';
-import { OverReceiptSplitScreen } from '../screens/over-receipt-split/screen';
 import { PasswordChangeScreen } from '../screens/password-change/screen';
 import { PoRegisterScreen } from '../screens/po-register/screen';
 import { PoChangeReviewScreen } from '../screens/po-change-review/screen';
@@ -187,11 +187,10 @@ export const appRouter = createBrowserRouter([
        */
       { path: 'logistics/inbound-schedule', element: <InboundScheduleScreen /> },
       /*
-       * W-01-03 — 도메인 01의 **첫 쓰기 화면**이다. 앞머리는 같은 규칙(사이드바 섹션)을 따르고,
-       * 차례는 업무 순서를 따른다 — 도착 예정을 보고(입하 예정) 도착을 처리한 뒤(초과 입하 분리)
-       * 그 결과를 재고에서 확인한다.
+       * W-01-03 「입하 등록」 — **화면이 아니라 입하 예정 조회의 창이다**(사용자 지시 2026-10-21 — 입하·입고 일을
+       * 그 화면으로 모은다). 옛 「초과 입하 분리」 주소는 즐겨찾기가 죽지 않게 그 창으로 옮겨 준다.
        */
-      { path: 'logistics/over-receipt-split', element: <OverReceiptSplitScreen /> },
+      { path: 'logistics/over-receipt-split', element: <OverReceiptSplitRedirect /> },
       /*
        * W-01-11 — **이 저장소에서 처음으로 사이드바에 두지 않는 화면이다.**
        *
@@ -204,19 +203,18 @@ export const appRouter = createBrowserRouter([
        * 않는 것을 전제로 설계해야 하므로 진입 자체를 줄이는 편이 싸다(배너는 화면에 그대로
        * 두었다). **항상 비활성인 메뉴 항목**은 죽은 항목을 남긴다.
        *
-       * 그래서 **라우트만 연다.** 진입은 초과 입하 분리(W-01-03)의 등록 결과 구획에서
-       * **초과분이 실린 갈래의 전표마다** 서는 링크로만 하고, 그 링크가 이 주소를 가리키는지는
-       * `index.test.tsx`가 잇는다.
+       * 그래서 **라우트만 연다.** 입하 등록(W-01-03)의 결과는 더 이상 이리로 오지 않는다(서버 장부 P-100 —
+       * 초과분은 입하 예정 조회의 초과분 연결로 간다). 맥락(`receipt`)을 실은 주소로만 화면이 선다.
        *
        * 주소 앞머리는 다른 자재창고 화면과 같은 규칙(사이드바 섹션)을 따른다 — 메뉴에 서지
        * 않아도 이 화면이 속한 업무 묶음은 자재창고이고, 주소가 그 사실을 말해야 한다.
-       * **차례는 진입 경로를 따른다** — 초과 입하 분리 바로 뒤다. 메뉴가 없어 아래 화면들의
-       * 업무 순서 사슬(예정 → 초과 분리 → 입고 → 재고 → 실사 → 반품 → 폐기)에 들지 않으므로,
+       * **차례는 옛 진입 경로를 따른다** — 옛 초과 입하 분리 주소 바로 뒤다. 메뉴가 없어 아래 화면들의
+       * 업무 순서 사슬(예정 · 입하 등록 → 입고 → 재고 → 실사 → 반품 → 폐기)에 들지 않으므로,
        * 이 화면을 여는 화면 옆이 읽히는 자리다.
        */
       { path: 'logistics/po-register', element: <PoRegisterScreen /> },
       /*
-       * W-01-01 — **차례가 업무 순서다.** 도착을 처리한 뒤(초과 입하 분리) **받아들여도
+       * W-01-01 — **차례가 업무 순서다.** 도착을 처리한 뒤(입하 등록) **받아들여도
        * 되는지를 먼저 판정하고**(IQC 수입검사·판정) 그 다음 창고로 받아들인다.
        *
        * 합격이 곧 Release 이고 그 LOT 이 정상품 입하 처리로 넘어간다(스펙 §5-1) — 두 화면이
@@ -229,7 +227,7 @@ export const appRouter = createBrowserRouter([
       { path: 'logistics/iqc-inspection', element: <IqcInspectionScreen /> },
       /*
        * W-01-10 — 같은 규칙(사이드바 섹션)을 따르고 차례도 업무 순서다: 도착을 처리한 뒤
-       * (초과 입하 분리) 창고로 받아들이고(정상품 입하 처리) 그 결과를 재고에서 확인한다.
+       * (입하 등록) 창고로 받아들이고(정상품 입하 처리) 그 결과를 재고에서 확인한다.
        */
       { path: 'logistics/goods-receipt', element: <GoodsReceiptScreen /> },
       /*

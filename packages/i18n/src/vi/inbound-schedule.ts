@@ -32,9 +32,8 @@ export const inboundSchedule: Translated<typeof ko.inboundSchedule> = {
     nextPage: 'Sau',
     goFirstPage: 'Về trang đầu',
     selectOrder: (purchaseOrderNo: string): string => `Xem dòng của ${purchaseOrderNo}`,
-    overReceiptSplit: 'Tách phần nhập vượt',
-    overReceiptSplitRow: (purchaseOrderNo: string): string =>
-      `Chuyển đến tách phần nhập vượt của ${purchaseOrderNo}`,
+    register: 'Đăng ký nhập hàng',
+    registerRow: (purchaseOrderNo: string): string => `Đăng ký nhập hàng cho ${purchaseOrderNo}`,
   },
   reasons: {
     periodInvalid: 'Hạn giao phải là ngày có thật. Hãy chọn lại ngày bắt đầu và ngày kết thúc.',

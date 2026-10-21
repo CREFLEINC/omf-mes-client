@@ -343,30 +343,30 @@ describe('AppLayout', () => {
   });
 
   /*
-   * 입고 관리 — 도착 예정(ASN)을 보고 → 도착한 것 중 초과분을 떼어 내고(W-01-03 · 이 도메인의 첫
-   * 쓰기 화면) → 창고로 받아들인다(W-01-10). 같은 입고 건을 따라가는 한 흐름이라 한 줄로 묶었고,
-   * 탭 이름은 사이드바에 서지 않는다.
+   * 입고 관리 — 들어올 것을 보고(W-01-09) → 창고로 받아들인다(W-01-10). 같은 입고 건을 따라가는 한 흐름이라
+   * 한 줄로 묶었고, 탭 이름은 사이드바에 서지 않는다. 도착 등록(W-01-03 입하 등록)은 탭이 아니라 입하 예정
+   * 조회의 창이다(사용자 지시 2026-10-21) — 옛 「초과 입하 분리」 탭이 다시 서지 않는다.
    *
    * ⚠ 옛 이름 「정상품 입하 처리」는 입고 화면을 입하라 불렀다 — 입하는 «도착»이고 입고는
    * «창고로 받아들임»이다(`nav-tree.ts`).
    */
-  it('입고 관리 탭 막대가 입하 예정 조회 → 초과 입하 분리 → 자재 입고 처리 차례다', () => {
-    renderLayout('본문 내용', { route: '/logistics/over-receipt-split' });
+  it('입고 관리 탭 막대가 입하 예정 조회 → 자재 입고 처리 차례이고 초과 입하 분리 탭이 없다', () => {
+    renderLayout('본문 내용', { route: '/logistics/inbound-schedule' });
 
     const sidebar = navSidebar();
     const tabs = screen.getByRole('navigation', { name: '입고 관리' });
 
-    expect(within(tabs).getByRole('link', { name: '초과 입하 분리' })).toHaveAttribute(
+    expect(within(tabs).getByRole('link', { name: '입하 예정 조회' })).toHaveAttribute(
       'href',
-      '/logistics/over-receipt-split',
+      '/logistics/inbound-schedule',
     );
     expect(within(tabs).getByRole('link', { name: '자재 입고 처리' })).toHaveAttribute(
       'href',
       '/logistics/goods-receipt',
     );
+    expect(within(tabs).queryByRole('link', { name: '초과 입하 분리' })).toBeNull();
     expect(hubTabHrefs('입고 관리')).toEqual([
       '/logistics/inbound-schedule',
-      '/logistics/over-receipt-split',
       '/logistics/goods-receipt',
     ]);
     expect(within(sidebar).queryByRole('link', { name: '입하 예정 조회' })).toBeNull();
@@ -1066,11 +1066,7 @@ describe('AppLayout', () => {
         '/master-data/putaway-rule',
         '/master-data/warehouse-layout',
       ],
-      '입고 관리': [
-        '/logistics/inbound-schedule',
-        '/logistics/over-receipt-split',
-        '/logistics/goods-receipt',
-      ],
+      '입고 관리': ['/logistics/inbound-schedule', '/logistics/goods-receipt'],
       '재고 관리': ['/logistics/stock-status', '/logistics/stocktaking', '/logistics/stock-adjust'],
       '출고 관리': [
         '/production/material-issue-requests',

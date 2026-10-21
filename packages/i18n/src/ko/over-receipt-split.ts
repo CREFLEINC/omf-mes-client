@@ -1,7 +1,8 @@
 /**
- * W-01-03 초과 입하 분리. **자재창고 도메인의 첫 쓰기 화면**이다.
+ * W-01-03 입하 등록(옛 「초과 입하 분리」). **자재창고 도메인의 첫 쓰기**다 — 화면이 아니라 입하 예정 조회의
+ * 오른쪽 창이다(사용자 지시 2026-10-21).
  *
- * 대상 발주를 고르고, 라인마다 이번 도착 수량과 공급사 LOT 을 넣어 입하 전표 한 건으로 등록한다
+ * 고른 발주의 라인마다 이번 도착 수량과 공급사 LOT 을 넣어 입하 전표 한 건으로 등록한다
  * (`POST /logistics/inbound-receipts:split` · `NORMAL_ONLY`).
  *
  * **줄 하나 · LOT 하나다**(서버 장부 P-100 · 사용자 결정 2026-10-21). 발주보다 많이 와도 줄을 가르지 않고,
@@ -18,31 +19,19 @@
  * 불러오기 실패 · 정상. 넷을 뭉개면 정상 값이 「알 수 없음」으로 보여 뜻이 반대로 읽힌다.
  */
 export const overReceiptSplit = {
-  title: '초과 입하 분리',
-  breadcrumbRoot: '구매 / 자재 관리',
+  title: '입하 등록',
   panes: {
-    filter: '조회 조건',
-    list: '대상 발주 목록',
     lines: '고른 발주의 라인',
     register: '등록 정보',
     result: '등록 결과',
   },
   fields: {
-    supplier: '공급사',
-    q: '발주번호 검색',
-    /** 계약의 `openOnly`를 업무 낱말로 옮긴다 — 「아직 입하가 끝나지 않은 발주만」이다. */
-    openOnly: '미완료 발주만',
     /** 계약 필수. 영업일도 이 값의 날짜에서 나온다. */
     receiptDatetime: '입하 일시',
     deliveryNoteNo: '거래명세서번호',
     remarks: '비고',
   },
   actions: {
-    prevPage: '이전',
-    nextPage: '다음',
-    goFirstPage: '첫 쪽으로',
-    select: '선택',
-    deselect: '선택 해제',
     /** 등록 단추는 **하나다**(사용자 지시 2026-10-21 — 절차를 몰라도 진행할 수 있게). 전표는 늘 한 건이다. */
     register: '입하 등록',
     /** 등록 확인 창의 두 단추. 「확인/취소」로 두면 무엇을 누르는지 창을 다시 읽어야 한다. */
@@ -53,19 +42,11 @@ export const overReceiptSplit = {
     keepEditing: '계속 입력',
     /** 라인마다 잔량을 이번 도착 수량으로 넣는다 — 「전부 왔다」가 이 화면의 흔한 출발점이다. */
     fillRemaining: '잔량으로 채우기',
-    /*
-     * 행 안의 버튼은 보이는 글자가 행마다 같다. 접근 이름에 발주번호를 넣어 어느 건인지 밝히되,
-     * 보이는 글자를 그대로 담는다 — 담지 않으면 음성 조작이 「선택」으로 이 버튼을 부를 수 없다.
-     * **발주번호를 쓴다.** 내부 번호를 접근 이름에 넣으면 화면 밖으로 새어 나간다.
-     */
-    selectRow: (purchaseOrderNo: string): string => `${purchaseOrderNo} 선택`,
-    deselectRow: (purchaseOrderNo: string): string => `${purchaseOrderNo} 선택 해제`,
   },
   /** 실패 사유는 그 대상의 이름으로 시작한다(배치 규범 4). */
   reasons: {
-    referencesFailed: '공급사 이름을 불러오지 못했습니다. 이름 자리에 사유가 표시됩니다.',
     lineReferencesFailed:
-      '품목·단위·공장 이름을 불러오지 못했습니다. 이름 자리에 사유가 표시됩니다.',
+      '공급사·품목·단위·공장 이름을 불러오지 못했습니다. 이름 자리에 사유가 표시됩니다.',
   },
   /**
    * 등록 버튼이 잠긴 사유(배치 규범 4). **버튼 이름으로 시작한다** — 다만 아직 아무 수량도
@@ -94,16 +75,7 @@ export const overReceiptSplit = {
     },
   },
   loading: {
-    purchaseOrders: '대상 발주 목록을 불러오는 중',
     lines: '발주 라인을 불러오는 중',
-    codes: '선택지를 불러오는 중',
-  },
-  /** 목록 표의 머리글. 열 구성과 폭의 근거는 screens/over-receipt-split/po-table.tsx에 있다. */
-  table: {
-    purchaseOrderNo: '발주번호',
-    supplier: '공급사',
-    orderDate: '발주일',
-    expectedReceiptDate: '입고 예정일',
   },
   /**
    * 라인 표의 머리글과 칸 문구. 수량은 열마다 따로 선다 — 천 단위 구분이 있는 숫자가 한 칸에
@@ -180,30 +152,10 @@ export const overReceiptSplit = {
     optional: '(선택)',
   },
   filters: {
-    all: '전체',
     lookupTruncated: '선택지가 앞쪽 일부만 보입니다. 찾는 값이 없으면 담당자에게 알려 주세요.',
     lookupFailed: '선택지를 불러오지 못했습니다.',
-    chipSupplier: (value: string): string => `공급사: ${value}`,
-    chipQ: (value: string): string => `발주번호: ${value}`,
-    chipRemoveSupplier: '공급사 조건 제거',
-    chipRemoveQ: '발주번호 조건 제거',
-  },
-  /** 쪽 이동. 번호 목록을 두지 않는 근거는 screens/over-receipt-split/page-nav.tsx에 있다. */
-  pageNav: {
-    label: '쪽 이동',
-    range: (start: number, end: number, total: number): string =>
-      `${String(start)}–${String(end)} / 전체 ${String(total)}건`,
-    totalOnly: (total: number): string => `전체 ${String(total)}건`,
   },
   empty: {
-    noResultTitle: '조건에 맞는 발주가 없습니다',
-    noResultDescription: '조건을 줄이거나 「미완료 발주만」을 끈 뒤 다시 조회하세요.',
-    beyondLastTitle: '이 쪽에는 결과가 없습니다',
-    beyondLastDescription: '첫 쪽으로 이동하세요.',
-    noSelectionTitle: '발주를 고르면 라인이 보입니다',
-    noSelectionDescription: '왼쪽 목록에서 초과 도착이 생긴 발주를 누르세요.',
-    listFailedTitle: '대상 발주를 불러오지 못해 이 발주를 열 수 없습니다',
-    listFailedDescription: '위의 「다시 시도」로 목록을 불러온 뒤 다시 고르세요.',
     noLinesTitle: '이 발주에는 라인이 없습니다',
     noLinesDescription: '발주에 담긴 품목 줄이 하나도 없어 받을 것을 정할 수 없습니다.',
   },
@@ -214,7 +166,6 @@ export const overReceiptSplit = {
     referenceFailed: '이름을 불러오지 못했습니다',
     /** 수량을 넣지 않았거나 넣은 값이 수량이 아니어서 아직 가를 것이 없다. */
     notSplit: '—',
-    inactiveSuffix: ' (미사용)',
     /** 전표 진행 상태(`LOGISTICS_DOCUMENT_STATUS`). 모르는 코드는 그대로 낸다. */
     docStatus: {
       REGISTERED: '등록',
