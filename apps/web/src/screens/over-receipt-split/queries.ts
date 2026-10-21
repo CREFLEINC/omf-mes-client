@@ -46,14 +46,12 @@ const PO_LIST_KEY = ['purchase-orders', 'list'] as const;
 export const poKeys = {
   lists: PO_LIST_KEY,
   list: (query: PoListQuery) => [...PO_LIST_KEY, query] as const,
-  lines: (purchaseOrderId: number | null) =>
-    ['purchase-orders', 'lines', purchaseOrderId] as const,
+  lines: (purchaseOrderId: number | null) => ['purchase-orders', 'lines', purchaseOrderId] as const,
+  codeValues: (codeGroupCode: string) =>
+    ['over-receipt-split', 'code-values', codeGroupCode] as const,
 };
 
-const fetchPurchaseOrders = async (
-  client: Client,
-  query: PoListQuery,
-): Promise<PoListResult> => {
+const fetchPurchaseOrders = async (client: Client, query: PoListQuery): Promise<PoListResult> => {
   const data = await runRequest(() =>
     client.GET('/logistics/purchase-orders', { params: { query } }),
   );
@@ -113,6 +111,27 @@ export const usePurchaseOrderLines = (
 
       return fetchPurchaseOrderLines(client, purchaseOrderId);
     },
+  });
+};
+
+type CodeValue = components['schemas']['CodeValue'];
+
+/** 공통 코드 값 목록. 그룹 코드로 부른다 — 채번 식별자는 환경마다 다르다(공유계약 G-32). */
+export const useCodeValues = (
+  codeGroupCode: string,
+  enabled: boolean,
+): UseQueryResult<CodeValue[]> => {
+  const { client } = useApiClient();
+
+  return useQuery({
+    queryKey: poKeys.codeValues(codeGroupCode),
+    enabled,
+    queryFn: () =>
+      runRequest(() =>
+        client.GET('/mdm/code-values', {
+          params: { query: { codeGroupCode, page: 1, size: 200 } },
+        }),
+      ).then((response) => response.items),
   });
 };
 

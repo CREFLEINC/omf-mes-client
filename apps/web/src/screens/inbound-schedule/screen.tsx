@@ -1,8 +1,9 @@
 import { messages } from '@omf-mes/i18n';
-import { useLayoutEffect, useMemo, useRef } from 'react';
+import { useMemo, useRef } from 'react';
 import { useSearchParams } from 'react-router';
 
 import { plantToday } from '../../patterns/plant-time';
+import { useFitToViewport } from '../../patterns/po-board';
 import { ScheduleFilterBar } from './filter-bar';
 import {
   DEFAULT_FILTERS,
@@ -82,38 +83,6 @@ const toSelectOptions = (lookup: LookupResult): SelectOption[] =>
  * 조회 전용이라 편집 폼이 없다. 조회 조건과 쪽은 전부 주소가 소유한다 — 새로고침·뒤로가기·공유가
  * 같은 결과를 낸다. 조건이 바뀌면 쪽은 첫 쪽으로 돌아간다(`applyQuery`).
  */
-/**
- * 두 표가 창 바닥에서 멈추게 한다(사용자 지시 2026-10-21) — 표 구획의 **창 안 윗변**을 `--split-top` 으로
- * 실어, CSS 가 남은 높이만큼만 쓰고 넘치는 줄은 표 안에서 스크롤한다. 조건 줄이 펼쳐지거나 창 크기가
- * 바뀌면 윗변이 움직이므로 다시 잰다.
- */
-const useFitToViewport = () => {
-  const splitRef = useRef<HTMLDivElement>(null);
-  const aboveRef = useRef<HTMLElement>(null);
-
-  useLayoutEffect(() => {
-    const split = splitRef.current;
-    if (split === null) return;
-
-    const measure = (): void => {
-      split.style.setProperty('--split-top', `${String(split.getBoundingClientRect().top)}px`);
-    };
-    measure();
-
-    /* 시험 환경(jsdom)에는 `ResizeObserver` 가 없다 — 없으면 창 크기 변화만 따른다. */
-    const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(measure);
-    if (aboveRef.current !== null) observer?.observe(aboveRef.current);
-    window.addEventListener('resize', measure);
-
-    return () => {
-      observer?.disconnect();
-      window.removeEventListener('resize', measure);
-    };
-  }, []);
-
-  return { splitRef, aboveRef };
-};
-
 export const InboundScheduleScreen = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const { splitRef, aboveRef } = useFitToViewport();
@@ -209,7 +178,7 @@ export const InboundScheduleScreen = () => {
        * 조건과 목록을 다른 구획에 둔다 — 한 상자에 있으면 조건 줄의 끝과 표의 시작이 갈리지 않는다.
        * 결과가 없어도 조건 구획은 감추지 않는다 — 조건을 고칠 수단이 사라지면 안 된다.
        */}
-      <section ref={aboveRef} className="pane inbound-schedule-filter" aria-label={t.panes.filter}>
+      <section ref={aboveRef} className="pane po-board-filter" aria-label={t.panes.filter}>
         <ScheduleFilterBar
           appliedPeriod={period}
           appliedFilters={filters}
@@ -253,8 +222,8 @@ export const InboundScheduleScreen = () => {
         />
       </section>
 
-      <div ref={splitRef} className="inbound-schedule-split">
-        <section className="pane inbound-schedule-pane" aria-label={t.panes.orders}>
+      <div ref={splitRef} className="po-board-split">
+        <section className="pane po-board-pane" aria-label={t.panes.orders}>
           {!list.isError && (
             <>
               <OrderTable
@@ -281,7 +250,7 @@ export const InboundScheduleScreen = () => {
           )}
         </section>
 
-        <section className="pane inbound-schedule-pane" aria-label={t.panes.lines}>
+        <section className="pane po-board-pane" aria-label={t.panes.lines}>
           {lines.isError ? (
             <LoadErrorBanner
               error={lines.error}

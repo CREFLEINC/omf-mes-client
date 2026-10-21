@@ -18,6 +18,8 @@ const renderForm = (
       values={EMPTY_HEADER_DRAFT}
       fieldErrors={{}}
       isSaving={false}
+      exceptionTypeOptions={[]}
+      exceptionTypeState="ready"
       onChange={onChange}
       {...overrides}
     />,
@@ -60,10 +62,34 @@ describe('ExcessForm', () => {
    * **초과분의 수입검사 대상 여부는 보내지 않는다** — 계약의 분리 등록 요청에 그 자리가 없다.
    * 지어내지 않고 안내만 남긴다(계획 결정 14).
    */
-  it('초과분 수입검사를 보내지 않는다는 안내를 낸다', () => {
+  it('수입검사 여부는 품목 기준정보가 정한다는 안내를 낸다', () => {
     renderForm();
 
-    expect(screen.getByText(t.notes.excessInspection)).toBeInTheDocument();
+    expect(screen.getByText(t.notes.iqcByItem)).toBeInTheDocument();
+  });
+
+  it('코드 사전에서 받은 선택지를 이름으로 낸다', async () => {
+    const { user } = renderForm({
+      exceptionTypeOptions: [{ value: 'OVER_DELIVERY', label: '초과입하' }],
+    });
+
+    await user.click(screen.getByRole('combobox', { name: t.fields.exceptionType }));
+
+    expect(screen.getByRole('option', { name: '초과입하' })).toBeInTheDocument();
+    expect(screen.queryByText(messages.pendingCode.note)).not.toBeInTheDocument();
+  });
+
+  it('선택지를 불러오는 동안에는 칸이 잠기고 그 사실을 밝힌다', () => {
+    renderForm({ exceptionTypeState: 'loading' });
+
+    expect(screen.getByRole('combobox', { name: t.fields.exceptionType })).toBeDisabled();
+    expect(screen.getByText(t.loading.codes)).toBeInTheDocument();
+  });
+
+  it('예외 유형 오류를 그 칸 아래에 낸다', () => {
+    renderForm({ fieldErrors: { exceptionTypeCode: t.errors.exceptionTypeRequired } });
+
+    expect(screen.getByText(t.errors.exceptionTypeRequired)).toBeInTheDocument();
   });
 
   it('친 사유를 올린다', async () => {

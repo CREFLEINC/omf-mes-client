@@ -175,6 +175,8 @@ export interface CreatedReceiptView {
   inboundReceiptId: number;
   inboundReceiptNo: string;
   statusCode: string;
+  /** 초과분 전표에만 실린다 — 등록 결과에서 어느 전표가 초과분인지 가르는 단서다. */
+  exceptionTypeCode: string | null;
 }
 
 /** 등록 응답 한 건을 화면 타입으로 옮기는 **유일한 지점**이다. */
@@ -182,6 +184,7 @@ export const toCreatedReceiptView = (data: InboundReceiptResponse): CreatedRecei
   inboundReceiptId: data.inboundReceiptId,
   inboundReceiptNo: data.inboundReceiptNo,
   statusCode: data.statusCode,
+  exceptionTypeCode: data.exceptionTypeCode ?? null,
 });
 
 /**
@@ -196,6 +199,7 @@ export const toCreatedReceiptView = (data: InboundReceiptResponse): CreatedRecei
  * 아니라 사용자가 방금 누른 버튼이라, 화면이 지어내는 것이 아니라 이미 아는 것이다.
  */
 export interface CreatedResult {
-  hasExcess: boolean;
+  /** 제출한 갈래 — 결과에서 어느 전표가 초과분인지 가르는 단서의 하나다. */
+  mode: SplitMode;
   receipts: CreatedReceiptView[];
 }

@@ -118,10 +118,10 @@ export const lookupNote = (lookup: LookupResult): string | undefined => {
 };
 
 export const lookupKeys = {
-  suppliers: ['inbound-schedule-lookups', 'suppliers'] as const,
-  plants: ['inbound-schedule-lookups', 'plants'] as const,
-  itemName: (itemId: number) => ['inbound-schedule-lookups', 'item', itemId] as const,
-  storageLocations: ['inbound-schedule-lookups', 'code', 'SL_TYPE'] as const,
+  suppliers: ['po-board-lookups', 'suppliers'] as const,
+  plants: ['po-board-lookups', 'plants'] as const,
+  itemName: (itemId: number) => ['po-board-lookups', 'item', itemId] as const,
+  storageLocations: ['po-board-lookups', 'code', 'SL_TYPE'] as const,
 };
 
 /**

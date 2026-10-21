@@ -109,7 +109,7 @@ export const PoFilterBar = ({
         />
 
         <div className="field-cell field-cell-unlabeled">
-          <div className="check-group">
+          <div className="check-group check-group-row">
             <Checkbox
               checked={filters.openOnly}
               onChange={(event) => {
@@ -126,7 +126,7 @@ export const PoFilterBar = ({
          * 비활성 사유가 붙는 자리가 없다 — 조건 없이도 조회가 열려 있다.
          */}
         <div className="field-cell field-cell-unlabeled">
-          <div className="filter-actions">
+          <div className="filter-actions po-board-actions">
             <Button disabled={isLocked} onClick={search}>
               {messages.common.search}
             </Button>
@@ -136,9 +136,6 @@ export const PoFilterBar = ({
           </div>
         </div>
       </div>
-
-      {/* 기본이 켬이라는 사실은 화면에서 읽혀야 한다 — 무엇이 빠져 보이는지 설명이 없으면 안 된다. */}
-      <p className="field-note">{t.filters.openOnlyNote}</p>
 
       {chips.length > 0 && (
         <div className="filter-bar">

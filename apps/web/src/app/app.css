@@ -6355,18 +6355,18 @@ dl.filter-bar.approval-inbox-detail-facts {
  * W-01-09 입하 예정 — 왼쪽 P/O 묶음 표 · 오른쪽 라인 표.
  *
  * **행은 한 줄이다**(사용자 지시 2026-10-20). 고정 배치로 열 폭을 지키고 칸 안에서 줄을 바꾸지 않는다 —
- * 자동 배치에서는 긴 이름 하나가 다른 열을 밀어낸다. 넘치는 이름은 `.inbound-schedule-one-line` 이 말줄임한다.
+ * 자동 배치에서는 긴 이름 하나가 다른 열을 밀어낸다. 넘치는 이름은 `.po-board-one-line` 이 말줄임한다.
  */
-.wide-table.inbound-schedule-table table {
+.wide-table.po-board-table table {
   table-layout: fixed;
 }
 
 /* 두 표(server #762) — 열별 폭의 도출 표는 order-table.tsx · line-table.tsx 에 있다. */
-.wide-table.inbound-schedule-orders table {
+.wide-table.po-board-orders table {
   min-width: 32rem;
 }
 
-.wide-table.inbound-schedule-lines table {
+.wide-table.po-board-lines table {
   min-width: 48rem;
 }
 
@@ -6374,7 +6374,7 @@ dl.filter-bar.approval-inbox-detail-facts {
  * 왼쪽 발주 묶음 · 오른쪽 고른 발주의 라인(사용자 결정 2026-10-20). 창이 1440px 보다 좁으면 위아래로 쌓는다.
  * 나란히 설 때 표가 칸보다 넓으면 각 칸 안에서 가로로 넘긴다(표 최소 폭은 위 두 규칙).
  */
-.inbound-schedule-split {
+.po-board-split {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   gap: var(--space-4);
@@ -6386,33 +6386,43 @@ dl.filter-bar.approval-inbox-detail-facts {
    * 두 표가 창 바닥에서 멈춘다(사용자 지시 2026-10-21) — `--split-top` 은 표 구획의 창 안 윗변(screen.tsx).
    * 남은 높이에서 바닥 여백을 빼고, 넘치는 줄은 각 표 안에서 스크롤한다(머리줄은 고정).
    */
-  .inbound-schedule-split {
+  .po-board-split {
     height: calc(100dvh - var(--split-top, 20rem) - var(--space-6));
     min-height: 20rem;
     align-items: stretch;
   }
 
-  .inbound-schedule-pane {
+  .po-board-pane {
     display: flex;
     flex-direction: column;
     gap: var(--space-3);
     min-height: 0;
   }
 
-  .inbound-schedule-pane > .inbound-schedule-table {
+  .po-board-pane > .po-board-table {
     flex: 1 1 auto;
     min-height: 0;
     overflow: auto;
   }
 
-  .inbound-schedule-table thead th {
+  /* 초과 입하 분리 — 오른쪽 구획은 라인 · 등록 정보 · 결과를 통째로 스크롤한다(등록 단추가 표 아래라서). */
+  .po-board-pane.po-board-scroll {
+    overflow: auto;
+  }
+
+  .po-board-pane.po-board-scroll > .po-board-table {
+    flex: 0 0 auto;
+    overflow: visible;
+  }
+
+  .po-board-table thead th {
     position: sticky;
     top: 0;
     z-index: 1;
     background: var(--surface-container);
   }
 
-  .inbound-schedule-split {
+  .po-board-split {
     /* 발주 목록 : 상세 = 1 : 2(사용자 지시 2026-10-21). 목록은 칸이 다섯이라 좁아도 된다. */
     grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
   }
@@ -6422,12 +6432,12 @@ dl.filter-bar.approval-inbox-detail-facts {
  * 발주번호는 다른 칸과 같은 글자로 보인다(사용자 지시 2026-10-21) — 줄 전체가 고르는 자리라 링크처럼
  * 꾸밀 까닭이 없다. 단추는 키보드로 고르는 자리로만 남는다(초점 테두리는 `.link-cell` 것을 그대로 쓴다).
  */
-.inbound-schedule-orders .link-cell {
+.po-board-orders .link-cell {
   color: inherit;
   text-decoration: none;
 }
 
-.inbound-schedule-orders .link-cell:hover {
+.po-board-orders .link-cell:hover {
   background: none;
 }
 
@@ -6435,7 +6445,7 @@ dl.filter-bar.approval-inbox-detail-facts {
  * 발주 상세 머리 — 발주번호를 제목처럼 크게, 나머지는 세로 구분선으로 나눈 이름표·값 칸.
  * 바탕은 표와 구분되는 한 단 높은 면이다.
  */
-.inbound-schedule-order-head {
+.po-board-order-head {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -6446,30 +6456,30 @@ dl.filter-bar.approval-inbox-detail-facts {
   border-radius: var(--radius-md);
 }
 
-.inbound-schedule-order-title {
+.po-board-order-title {
   display: flex;
   flex-direction: column;
   gap: var(--space-1);
 }
 
-.inbound-schedule-order-eyebrow,
-.inbound-schedule-order-facts dt {
+.po-board-order-eyebrow,
+.po-board-order-facts dt {
   font: var(--type-label-md);
   color: var(--on-surface-variant);
 }
 
-.inbound-schedule-order-no {
+.po-board-order-no {
   font: var(--type-title-sm);
   color: var(--on-surface);
 }
 
-.inbound-schedule-order-facts {
+.po-board-order-facts {
   display: flex;
   flex-wrap: wrap;
   margin: 0;
 }
 
-.inbound-schedule-order-facts > div {
+.po-board-order-facts > div {
   display: flex;
   flex-direction: column;
   gap: var(--space-1);
@@ -6477,24 +6487,267 @@ dl.filter-bar.approval-inbox-detail-facts {
   border-left: 1px solid var(--outline-variant);
 }
 
-.inbound-schedule-order-facts dd {
+.po-board-order-facts dd {
   margin: 0;
   font: var(--type-title-sm);
   color: var(--on-surface);
 }
 
-.inbound-schedule-order-link {
+.po-board-order-link {
   margin-left: auto;
   font: var(--type-label-lg);
   color: var(--primary-text);
 }
 
+/* 초과 입하 분리 — 등록 정보·결과는 라인 표 아래에 가는 선으로 나눈다. */
+.po-board-register {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--outline-variant);
+}
+
+/*
+ * W-01-03 초과 입하 분리 — 라인 표(수량 · LOT 줄) · 표 위 도구 · 요약 · 등록 확인 · 결과.
+ * 열별 폭의 도출 표는 split-line-table.tsx 에 있다.
+ */
+.wide-table.ors-lines table {
+  min-width: 62rem;
+}
+
+.ors-lines td {
+  white-space: nowrap;
+  /* LOT 입력이 빈 수량 칸 위로 이어진다 — 표 부품에 칸 병합이 없다. */
+  overflow: visible;
+}
+
+.ors-item-name {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+  max-width: 100%;
+}
+
+.ors-item-name > .po-board-one-line {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+/* LOT 줄 — 발주 라인 아래 한 단 낮은 면. 위 경계선을 지워 그 줄에 딸린 것으로 읽힌다. */
+.ors-lines tbody tr:has([data-lot-row]) > td {
+  background: var(--surface-container-low);
+  border-top: 0;
+}
+
+.ors-lot-part {
+  font: var(--type-label-md);
+  color: var(--on-surface-variant);
+}
+
+.ors-lot-editor {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  width: max-content;
+  max-width: 44rem;
+}
+
+.ors-lot-editor > :first-child {
+  width: 22rem;
+}
+
+.ors-lot-editor > label {
+  margin-top: var(--space-2);
+}
+
+/* 표 위 도구 — 라벨 스캔 칸과 「잔량으로 채우기」. */
+.ors-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--space-3) var(--space-4);
+}
+
+.ors-scan {
+  min-width: 26rem;
+}
+
+/* 등록 단추 위의 요약 — 무엇이 몇 건 만들어지는지. */
+.ors-totals {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-4);
+  font: var(--type-label-lg);
+  color: var(--on-surface-variant);
+}
+
+.ors-totals strong {
+  color: var(--on-surface);
+}
+
+/* 등록 결과 — 전표마다 구분 칩 · 번호 · 상태 · (초과분만) 다음 길. */
+.ors-result {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.ors-result-lead {
+  margin: 0;
+}
+
+.ors-result-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-2);
+}
+
+.ors-result-item {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.ors-result-no {
+  font: var(--type-title-sm);
+}
+
+/* 등록 확인 창 — 실리는 줄 · 전표 머리 · 되돌릴 수 없다는 경고 띠. */
+.ors-confirm {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.ors-confirm p,
+.ors-confirm dl,
+.ors-confirm dd {
+  margin: 0;
+}
+
+.ors-confirm-target {
+  font: var(--type-title-sm);
+}
+
+.ors-confirm-lead {
+  color: var(--on-surface-variant);
+}
+
+.ors-confirm-group {
+  display: grid;
+  gap: var(--space-2);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--outline-variant);
+}
+
+.ors-confirm-group-title {
+  margin: 0;
+  font: var(--type-label-lg);
+  color: var(--on-surface-variant);
+}
+
+.ors-confirm-lines {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-3);
+}
+
+.ors-confirm-line {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--space-1) var(--space-4);
+  align-items: baseline;
+}
+
+.ors-confirm-line-head {
+  display: flex;
+  gap: var(--space-2);
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.ors-confirm-line-no {
+  font: var(--type-label-md);
+  color: var(--on-surface-variant);
+}
+
+.ors-confirm-line-qty {
+  display: flex;
+  gap: var(--space-3);
+  white-space: nowrap;
+}
+
+.ors-confirm-excess {
+  color: var(--semantic-warning);
+}
+
+.ors-confirm-line-lots {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-4);
+  font: var(--type-body-sm);
+  color: var(--on-surface-variant);
+}
+
+.ors-confirm-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-3) var(--space-5);
+}
+
+.ors-confirm-grid > div {
+  display: grid;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.ors-confirm-grid dt {
+  font: var(--type-label-sm);
+  color: var(--on-surface-muted);
+}
+
+.ors-confirm-grid dd {
+  overflow-wrap: anywhere;
+}
+
+.ors-confirm-wide {
+  grid-column: 1 / -1;
+}
+
+.ors-confirm-warning {
+  display: grid;
+  gap: var(--space-1);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-md);
+  background: var(--semantic-warning-container);
+}
+
+.ors-confirm-warning p {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.ors-confirm-effects {
+  color: var(--on-surface-variant);
+  font: var(--type-body-sm);
+}
+
 /* 발주 줄은 어디를 눌러도 고른다(order-table.tsx). */
-.inbound-schedule-orders tbody tr {
+.po-board-orders tbody tr {
   cursor: pointer;
 }
 
-.inbound-schedule-orders tbody tr:hover > td {
+.po-board-orders tbody tr:hover > td {
   background: var(--surface-container);
 }
 
@@ -6504,29 +6757,29 @@ dl.filter-bar.approval-inbox-detail-facts {
  * 올렸다 떼도 남도록 hover 보다 우선한다(사용자 지시 2026-10-21 「선택 행 하이라이트 유지」).
  */
 /* 붉은 계열(primary)은 쓰지 않는다 — 문제가 있다는 뜻으로 읽힌다(사용자 지시 2026-10-21). 정보 파랑이다. */
-.inbound-schedule-orders tbody tr:has([aria-current='true']) > td,
-.inbound-schedule-orders tbody tr:has([aria-current='true']):hover > td {
+.po-board-orders tbody tr:has([aria-current='true']) > td,
+.po-board-orders tbody tr:has([aria-current='true']):hover > td {
   background: var(--semantic-info-container);
 }
 
-.inbound-schedule-orders tbody tr:has([aria-current='true']) > td:first-child {
+.po-board-orders tbody tr:has([aria-current='true']) > td:first-child {
   box-shadow: inset 3px 0 0 var(--semantic-info);
 }
 
-.inbound-schedule-lines tbody tr:has([data-matched]) > td {
+.po-board-lines tbody tr:has([data-matched]) > td {
   background: var(--surface-container-high);
 }
 
 /* 조회·초기화는 같은 폭(사용자 지시 2026-10-21) — 상세 조건 펼치기(글자 단추)는 제 폭이다. */
-.inbound-schedule-actions {
+.po-board-actions {
   align-items: center;
 }
 
-.inbound-schedule-actions > button:not([aria-expanded]) {
+.po-board-actions > button:not([aria-expanded]) {
   min-width: 5.5rem;
 }
 
-.inbound-schedule-table td {
+.po-board-table td {
   white-space: nowrap;
 }
 
@@ -6534,7 +6787,7 @@ dl.filter-bar.approval-inbox-detail-facts {
  * 잘린 이름의 전체 — 마우스를 올리면 곧바로 뜬다(사용자 지시 2026-10-21; 브라우저 `title` 은 1초 가까이 늦다).
  * 표가 스크롤 상자 안이라 잘리지 않게 창 기준(fixed)으로 띄운다. 좌표는 receipt-status.tsx `OneLine` 이 잰다.
  */
-.inbound-schedule-tip {
+.po-board-tip {
   position: fixed;
   z-index: 20;
   max-width: 32rem;
@@ -6548,7 +6801,7 @@ dl.filter-bar.approval-inbox-detail-facts {
   box-shadow: var(--elevation-2);
 }
 
-.inbound-schedule-one-line {
+.po-board-one-line {
   display: block;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -6556,7 +6809,7 @@ dl.filter-bar.approval-inbox-detail-facts {
 }
 
 /* 상태 칩과 지연 칩은 한 줄로 나란히 선다. */
-.inbound-schedule-status {
+.po-board-status {
   display: inline-flex;
   align-items: center;
   gap: var(--space-2);
@@ -6571,11 +6824,11 @@ dl.filter-bar.approval-inbox-detail-facts {
  */
 
 /* 빠른 조회 칸들은 조건 줄(납기 뒤 · 조회 단추 앞)의 칸으로 그대로 선다. */
-.inbound-schedule-quick {
+.po-board-quick {
   display: contents;
 }
 
-.inbound-schedule-filter .filter-bar > :not(dialog) {
+.po-board-filter .filter-bar > :not(dialog) {
   --type-body-lg: var(--type-body-sm);
   --type-body-lg-tracking: var(--type-body-sm-tracking, 0);
 }

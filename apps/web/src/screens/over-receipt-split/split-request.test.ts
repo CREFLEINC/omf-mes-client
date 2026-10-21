@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest';
 
-import { purchaseOrder, purchaseOrderLineFixtures } from './fixtures';
+import { LABEL_9301, purchaseOrder, purchaseOrderLineFixtures } from './fixtures';
+import {
+  createDrafts,
+  setDraftLot,
+  setDraftQty,
+  type LineDrafts,
+  type LotDraft,
+} from './line-draft';
 import { toSplitLines } from './split-calc';
 import { EMPTY_HEADER_DRAFT, type HeaderDraft } from './types';
 import {
@@ -36,8 +43,29 @@ const header = (patch: Partial<HeaderDraft> = {}): HeaderDraft => ({
  * 9401(잔량 60 · 허용 5 → 한도 65)에 66을 넣으면 정량 65 · 초과 1로 갈린다.
  * 두 갈래가 **한 줄에서 동시에** 나오는 입력이라 두 part를 함께 검사할 수 있다.
  */
-const rowsWith = (drafts: Record<number, string>) =>
-  toSplitLines(purchaseOrderLineFixtures, drafts);
+/** 정량분은 라벨 번호, 초과분은 「라벨 없음 · 기타」 — 두 part 가 보낼 수 있는 모양이다. */
+const draftsWith = (
+  texts: Record<number, string>,
+  lots: { normal?: Partial<LotDraft>; excess?: Partial<LotDraft> } = {},
+): LineDrafts =>
+  Object.entries(texts).reduce<LineDrafts>(
+    (drafts, [lineId, text]) =>
+      setDraftLot(
+        setDraftLot(setDraftQty(drafts, Number(lineId), text), Number(lineId), 'normal', {
+          lotNo: LABEL_9301,
+          ...lots.normal,
+        }),
+        Number(lineId),
+        'excess',
+        { labelMissing: true, reasonCode: 'OTHER', ...lots.excess },
+      ),
+    createDrafts(purchaseOrderLineFixtures),
+  );
+
+const rowsWith = (
+  texts: Record<number, string>,
+  lots: { normal?: Partial<LotDraft>; excess?: Partial<LotDraft> } = {},
+) => toSplitLines(purchaseOrderLineFixtures, draftsWith(texts, lots));
 
 const input = (drafts: Record<number, string>, patch: Partial<HeaderDraft> = {}) => ({
   purchaseOrder: PO,
@@ -57,6 +85,7 @@ describe('toSplitParts — 어느 라인이 어느 쪽에 실리는가', () => {
         itemId: 9301,
         receivedQty: 65,
         uomId: 9501,
+        supplierLotNo: LABEL_9301,
         supplierLotMissing: false,
       },
     ]);
@@ -70,7 +99,13 @@ describe('toSplitParts — 어느 라인이 어느 쪽에 실리는가', () => {
     const parts = toSplitParts(rowsWith({ 9401: '66' }));
 
     expect(parts.excess).toEqual([
-      { itemId: 9301, receivedQty: 1, uomId: 9501, supplierLotMissing: false },
+      {
+        itemId: 9301,
+        receivedQty: 1,
+        uomId: 9501,
+        supplierLotMissing: true,
+        substituteLotReasonCode: 'OTHER',
+      },
     ]);
     expect(Object.keys(parts.excess[0] ?? {})).not.toContain('purchaseOrderLineId');
   });
@@ -105,17 +140,42 @@ describe('toSplitParts — 어느 라인이 어느 쪽에 실리는가', () => {
   });
 
   /*
-   * LOT 입력을 열지 않으므로 「공급사 LOT 없음」은 늘 거짓이다 — 참으로 보내면 계약이
-   * 대체 사유 코드를 필수로 요구하는데 그 값 목록이 없어 막다른 길이 된다.
+   * **LOT 세 모양** — 서버가 LOT 번호 없는 줄을 받지 않는다(`supplierLotMissing=false` 면 번호 필수).
+   * 라벨이 붙었으면 번호만, 라벨 없이 번호를 받아 적었으면 부착 거짓, 번호도 없으면 없음 + 사유다.
    */
-  it('공급사 LOT 없음을 거짓으로 고정해 싣는다', () => {
-    const parts = toSplitParts(rowsWith({ 9401: '66' }));
+  it('라벨이 붙은 LOT 은 번호만 싣는다', () => {
+    const line = toSplitParts(rowsWith({ 9401: '10' })).normal[0];
 
-    expect(parts.normal[0]?.supplierLotMissing).toBe(false);
-    expect(parts.excess[0]?.supplierLotMissing).toBe(false);
+    expect(line?.supplierLotNo).toBe(LABEL_9301);
+    expect(line?.supplierLotMissing).toBe(false);
+    expect(Object.keys(line ?? {})).not.toContain('supplierLotLabelAttached');
+    expect(Object.keys(line ?? {})).not.toContain('substituteLotReasonCode');
   });
 
-  /* 이 화면은 입하 예정 축을 쓰지 않는다 — 지어낸 예정 라인을 붙이지 않는다. */
+  it('라벨 없이 받아 적은 번호는 부착 거짓으로 싣는다', () => {
+    const line = toSplitParts(
+      rowsWith({ 9401: '10' }, { normal: { lotNo: 'DN-LOT-7', labelMissing: true } }),
+    ).normal[0];
+
+    expect(line).toMatchObject({
+      supplierLotNo: 'DN-LOT-7',
+      supplierLotMissing: false,
+      supplierLotLabelAttached: false,
+    });
+  });
+
+  it('번호가 없으면 없음과 대체 사유를 싣는다', () => {
+    const line = toSplitParts(
+      rowsWith(
+        { 9401: '10' },
+        { normal: { lotNo: '', labelMissing: true, reasonCode: 'NO_LABEL' } },
+      ),
+    ).normal[0];
+
+    expect(line).toMatchObject({ supplierLotMissing: true, substituteLotReasonCode: 'NO_LABEL' });
+    expect(Object.keys(line ?? {})).not.toContain('supplierLotNo');
+  });
+
   it('입하 예정 라인을 싣지 않는다', () => {
     const parts = toSplitParts(rowsWith({ 9401: '66' }));
 

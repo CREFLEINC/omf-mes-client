@@ -23,7 +23,9 @@ describe('toPageView — 지금 어디를 보고 있는가', () => {
 
   /* 보이는 것이 없으면 범위를 지어내지 않는다. 전체 건수는 그대로 밝힌다. */
   it('보이는 행이 없으면 범위 대신 전체 건수만 밝힌다', () => {
-    expect(toPageView({ page: 9, size: 50, total: 45 }, 0).rangeLabel).toBe(t.pageNav.totalOnly(45));
+    expect(toPageView({ page: 9, size: 50, total: 45 }, 0).rangeLabel).toBe(
+      t.pageNav.totalOnly(45),
+    );
   });
 
   /*

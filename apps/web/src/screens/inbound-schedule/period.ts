@@ -81,7 +81,7 @@ export const readPeriod = (params: URLSearchParams, fallback: PeriodInput): Peri
 });
 
 /** 납기 표기 — `YYYY.MM.DD`(사용자 지시 2026-10-21). 주소·요청은 `YYYY-MM-DD` 그대로다. */
-export const formatDate = (date: string): string => date.replaceAll('-', '.');
+export { formatDotDate as formatDate } from '../../patterns/po-board';
 
 /**
  * 조회할 수 있는 기간인지 판정한다. `null`이면 조회할 수 있고, 아니면 그 사유가 곧 반환값이다.

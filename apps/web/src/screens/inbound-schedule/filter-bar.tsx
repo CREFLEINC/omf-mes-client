@@ -140,7 +140,7 @@ export const ScheduleFilterBar = ({
          * 사유는 감추지 않고 항상 보이는 DOM 텍스트로 렌더해 aria-describedby로 잇는다.
          */}
         <div className="field-cell field-cell-unlabeled">
-          <div className="filter-actions inbound-schedule-actions">
+          <div className="filter-actions po-board-actions">
             <Button
               disabled={searchReason !== null}
               aria-describedby={searchReason === null ? undefined : reasonId}

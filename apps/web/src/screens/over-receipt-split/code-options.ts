@@ -1,53 +1,55 @@
+import type { components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 
+import { masterName } from '../../patterns/master-name';
 import type { SelectOption } from './types';
 
 /**
- * 값 목록이 확정되지 않은 선택지와 그 안내를 한 파일에 격리한다.
+ * 공통 코드 선택지 — 서버 `GET /mdm/code-values?codeGroupCode=` 로 받는다(공유계약 G-32).
+ * 채번 식별자(`codeGroupId`)는 환경마다 달라 **코드 그룹 코드**로만 부른다.
  *
- * **값을 지어내지 않는 것이 이 파일의 목적이다.** 착수 이슈가 미결로 남긴 것을 화면이
- * 그럴듯한 예시로 메우면, 사용자는 고를 수 있다고 믿고 고르는데 서버는 그 값을 모른다 —
- * 되돌릴 수 없는 쓰기 화면에서 그 어긋남은 막다른 길이 된다.
- *
- * 값이 확정되면 **이 파일의 배열만 채우면 된다.** 화면·요청 조립은 배열을 읽을 뿐이라
- * 다른 자리를 고칠 필요가 없다(W-01-07·W-01-09가 세운 형태).
- *
- * 이 화면이 소유한다 — 다른 화면 슬라이스의 같은 이름 파일을 참조하지 않는다.
+ * 두 그룹 모두 초기 시드가 있고 ⭐ 고객이 늘린다 — 화면에 값을 적지 않는다.
  */
 
 const t = messages.overReceiptSplit;
 
-/**
- * 예외 유형 코드 목록. **비어 있다.**
- *
- * 계약이 「확정된 값 목록이 아직 없다 — 서버가 내려주는 선택지를 그대로 쓴다」고 적었고,
- * 그 선택지를 주는 오퍼레이션이 아직 없다. 채우는 순간 짝 제약(유형을 고르면 사유가 필수)이
- * 화면에서 살아난다 — 그 규칙은 이미 `validation.ts`에 심어 두었다.
- */
-export const PLACEHOLDER_EXCEPTION_TYPE_CODES: readonly string[] = [];
+type CodeValue = components['schemas']['CodeValue'];
+
+/** 예외 유형 — 초과분 전표에 실린다. 시드: CUSTOMER_SUPPLY · FREE_SAMPLE · URGENT_RECEIPT · OVER_DELIVERY */
+export const EXCEPTION_TYPE_GROUP = 'INBOUND_RECEIPT_EXCEPTION_TYPE';
+/** 대체 LOT 사유 — 라벨 없는 줄에 필수. 시드: NO_LABEL · LABEL_DAMAGED · FORMAT_UNRECOGNIZED · BULK_UNLABELED · OTHER */
+export const SUBSTITUTE_LOT_REASON_GROUP = 'SUBSTITUTE_LOT_REASON';
 
 /**
- * 예외 유형 선택지.
- *
- * **자리표시 값을 하나 넣어 두지 않는다.** 넣으면 사용자가 그것을 고를 수 있고, 고르는 순간
- * 초과 사유가 필수가 되며, 등록하면 서버가 모르는 코드가 전표에 실린다.
+ * 이 화면이 만드는 초과분은 정의상 「초과입하」다 — 기본값으로 둔다(서버는 강제하지 않는다 · 실측).
+ * 목록에 없으면(고객이 뺐으면) 기본값을 두지 않는다 — 없는 코드를 보내면 400 이다.
  */
-export const exceptionTypeOptions = (): SelectOption[] =>
-  PLACEHOLDER_EXCEPTION_TYPE_CODES.map((code) => ({ value: code, label: code }));
+export const DEFAULT_EXCEPTION_TYPE = 'OVER_DELIVERY';
 
-/** 선택지가 왜 비어 있는지 밝히는 안내. 비어 있는 선택칸만 두면 고장으로 읽힌다. */
-export const exceptionTypeNote = (): string => messages.pendingCode.note;
+/** 쓰는 값만, 표시 순서대로, 현재 언어의 이름으로. */
+export const toCodeOptions = (values: readonly CodeValue[] | undefined): SelectOption[] =>
+  (values ?? [])
+    .filter((value) => value.isActive)
+    .slice()
+    .sort((left, right) => left.displayOrder - right.displayOrder)
+    .map((value) => ({ value: value.code, label: masterName(value, value.codeName) }));
 
-/** 선택칸 트리거에 보이는 자리표시 문구. */
-export const exceptionTypePlaceholder = (): string => messages.pendingCode.placeholder;
+export const defaultExceptionType = (options: readonly SelectOption[]): string =>
+  options.some((option) => option.value === DEFAULT_EXCEPTION_TYPE) ? DEFAULT_EXCEPTION_TYPE : '';
 
-/**
- * 초과분의 수입검사 대상 여부 — **보내는 값이 없고 안내만 남는다.**
- *
- * 착수 이슈는 「정량분 값을 그대로 승계한다」를 후보로 두었으나, 계약의 분리 등록 요청에는
- * 검사 관련 필드가 하나도 없다(실측). 승계해 보낼 자리 자체가 없으므로 **보내지 않고**,
- * 화면이 그 사실을 밝히는 것까지가 이번 범위다.
- *
- * 문구를 상수로 한 곳에 두는 이유는 이 사정이 풀렸을 때 고칠 자리를 하나로 남기기 위해서다.
- */
-export const EXCESS_INSPECTION_NOTE: string = t.notes.excessInspection;
+export type CodeListState = 'ready' | 'loading' | 'failed';
+
+/** 선택지 칸 아래의 안내 — 비어 있는 까닭(불러오는 중 · 실패 · 값 없음)을 밝힌다. */
+export const codeListNote = (
+  options: readonly SelectOption[],
+  state: CodeListState,
+): string | undefined => {
+  if (state === 'loading') return t.loading.codes;
+  if (state === 'failed') return t.filters.lookupFailed;
+
+  return options.length === 0 ? messages.pendingCode.note : undefined;
+};
+
+/** 코드 → 표시 이름. 목록에 없으면 코드 그대로(뜻을 지어내지 않는다). */
+export const codeLabel = (options: readonly SelectOption[], code: string): string =>
+  options.find((option) => option.value === code)?.label ?? code;

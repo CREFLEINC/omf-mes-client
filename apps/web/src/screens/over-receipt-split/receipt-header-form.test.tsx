@@ -66,10 +66,7 @@ describe('ReceiptHeaderForm', () => {
     renderForm({ fieldErrors: { receiptDatetime: t.errors.receiptDatetimeRequired } });
 
     expect(screen.getByText(t.errors.receiptDatetimeRequired)).toBeInTheDocument();
-    expect(screen.getByLabelText(t.fields.receiptDatetime)).toHaveAttribute(
-      'aria-invalid',
-      'true',
-    );
+    expect(screen.getByLabelText(t.fields.receiptDatetime)).toHaveAttribute('aria-invalid', 'true');
   });
 
   /*

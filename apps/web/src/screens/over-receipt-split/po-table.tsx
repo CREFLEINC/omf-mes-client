@@ -1,15 +1,14 @@
-import { Button, Chip, type Column, EmptyState, SkeletonText, Table } from '@crefle/web-ui';
+import { Button, type Column, EmptyState, SkeletonText, Table } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
 
+import { formatDotDate, OneLine } from '../../patterns/po-board';
 import { describeReference, toReference, type ReferenceSource } from './lookups';
 import type { PoView } from './types';
 
 const t = messages.overReceiptSplit;
 
 /** 값이 없는 칸은 비워 두지 않는다 — 자료가 없는 것인지 화면이 빠뜨린 것인지 구분되지 않는다. */
-const orEmptyMark = (value: string | null): ReactNode => value ?? t.values.empty;
-
 export interface PoColumnsInput {
   selectedPoId: number | null;
   supplierLookup: ReferenceSource;
@@ -52,7 +51,36 @@ export const buildPoColumns = ({
   isLocked,
   onToggleSelect,
 }: PoColumnsInput): Column<PoView>[] => [
-  { key: 'purchaseOrderNo', header: t.table.purchaseOrderNo, width: '160px' },
+  {
+    key: 'expectedReceiptDate',
+    header: t.table.expectedReceiptDate,
+    width: '104px',
+    render: (row) =>
+      row.expectedReceiptDate === null ? t.values.empty : formatDotDate(row.expectedReceiptDate),
+  },
+  {
+    key: 'purchaseOrderNo',
+    header: t.table.purchaseOrderNo,
+    width: '120px',
+    /*
+     * 고르는 단추 — 줄 어디를 눌러도 고르고(아래 표 상자가 받는다) 키보드로 고르는 자리는 이 단추다.
+     * 단추의 click(Enter·Space 포함)도 표 상자로 올라가 거기서 고른다.
+     * 고른 줄은 `aria-current` 로 알리고 줄 배경이 따라간다(app.css `.po-board-orders`).
+     * 접근 이름에 **발주번호**를 넣는다 — 내부 번호는 화면 밖으로 새는 또 하나의 경로다.
+     */
+    render: (row) => (
+      <button
+        type="button"
+        className="link-cell"
+        disabled={isLocked}
+        aria-current={row.purchaseOrderId === selectedPoId ? true : undefined}
+        aria-label={t.actions.selectRow(row.purchaseOrderNo)}
+        data-po-id={row.purchaseOrderId}
+      >
+        {row.purchaseOrderNo}
+      </button>
+    ),
+  },
   {
     key: 'supplier',
     header: t.table.supplier,
@@ -60,58 +88,15 @@ export const buildPoColumns = ({
      * **번호를 문자열로 바꾸는 자리가 없다**(#44). 이름으로 풀 수 없는 세 갈래(미도착·목록에
      * 없음·실패)는 전부 문구로 갈리며, 어느 갈래에도 원시 번호가 담기지 않는다.
      */
-    render: (row) => describeReference(toReference(supplierLookup, row.supplierId)),
-  },
-  { key: 'orderDate', header: t.table.orderDate, width: '120px' },
-  {
-    key: 'expectedReceiptDate',
-    header: t.table.expectedReceiptDate,
-    width: '120px',
-    render: (row) => orEmptyMark(row.expectedReceiptDate),
-  },
-  {
-    key: 'statusCode',
-    header: t.table.status,
-    width: '152px',
-    /*
-     * **값에 따라 변형을 가르지 않는다.** 값 집합이 확정되지 않아(공유계약 G-2) 색을 가르면
-     * 뜻을 지어내는 것이 된다. 코드는 번역하지 않고 그대로 낸다.
-     */
     render: (row) => (
-      <Chip variant="status" size="sm">
-        {row.statusCode}
-      </Chip>
+      <OneLine text={describeReference(toReference(supplierLookup, row.supplierId))} />
     ),
   },
   {
-    key: 'select',
-    header: t.table.select,
-    width: '88px',
-    render: (row) => {
-      const selected = row.purchaseOrderId === selectedPoId;
-
-      return (
-        /*
-         * 접근 이름에 **발주번호**를 넣는다 — 「선택」이 행마다 되풀이되면 어느 건인지 알 수 없다.
-         * 내부 번호를 넣지 않는 이유는 그것이 화면 밖으로 새는 또 하나의 경로이기 때문이다.
-         */
-        <Button
-          variant="outlined"
-          size="sm"
-          disabled={isLocked}
-          aria-label={
-            selected
-              ? t.actions.deselectRow(row.purchaseOrderNo)
-              : t.actions.selectRow(row.purchaseOrderNo)
-          }
-          onClick={() => {
-            onToggleSelect(row.purchaseOrderId);
-          }}
-        >
-          {selected ? t.actions.deselect : t.actions.select}
-        </Button>
-      );
-    },
+    key: 'orderDate',
+    header: t.table.orderDate,
+    width: '104px',
+    render: (row) => formatDotDate(row.orderDate),
   },
 ];
 
@@ -183,15 +168,25 @@ export const PoTable = ({
        * `.wide-table`이 표에 최소 폭을 준다 — 폭이 모자라면 짓누르는 대신 가로로 넘긴다.
        * 스크롤 상자는 디자인 시스템 `Table`이 이미 갖고 있어 우리가 만들지 않는다.
        */}
-      <div className="wide-table">
+      {/*
+       * **줄 어디를 눌러도 고른다**(입하 예정 조회와 같다). 표 부품에 줄 클릭이 없어 감싼 상자가 받는다 —
+       * 누른 줄 안의 발주번호 단추(`data-po-id`)로 어느 발주인지 안다. 이미 고른 발주는 다시 고르지 않는다.
+       */}
+      {/* eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions */}
+      <div
+        className="wide-table po-board-table po-board-orders"
+        onClick={(event) => {
+          if (isLocked) return;
+          const row = (event.target as HTMLElement).closest('tbody tr');
+          const id = row?.querySelector<HTMLElement>('[data-po-id]')?.dataset.poId;
+          if (id !== undefined && Number(id) !== selectedPoId) onToggleSelect(Number(id));
+        }}
+      >
         <Table
           density="compact"
           columns={columns}
           rows={rows}
           /*
-           * 선택 열을 쓰지 않아도 지정한다 — 미지정이면 인덱스가 React key가 되어
-           * 쪽이 바뀔 때 앞 쪽의 행이 남아 보일 수 있다.
-           *
            * **여기의 `String()`은 화면에 나오지 않는다** — React key로만 쓰이며 셀 텍스트가 되지 않는다.
            */
           getRowId={(row) => String(row.purchaseOrderId)}

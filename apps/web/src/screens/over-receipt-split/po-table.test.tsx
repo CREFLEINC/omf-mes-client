@@ -64,8 +64,13 @@ const renderTable = (overrides: Partial<PoTableProps> = {}) => {
 const table = (): HTMLElement => screen.getByRole('table');
 
 describe('buildPoColumns — 열 구성과 폭', () => {
-  it('열이 여섯이다', () => {
-    expect(columnsWith()).toHaveLength(6);
+  it('열이 넷이다 — 납기 · 발주번호 · 공급사 · 발주일', () => {
+    expect(columnsWith().map((column) => column.key)).toEqual([
+      'expectedReceiptDate',
+      'purchaseOrderNo',
+      'supplier',
+      'orderDate',
+    ]);
   });
 
   /*
@@ -160,12 +165,12 @@ describe('PoTable — 고르기', () => {
     ).toBeInTheDocument();
   });
 
-  it('고른 행은 선택 해제로 바뀐다', () => {
+  it('고른 행은 aria-current 로 알린다', () => {
     renderTable({ selectedPoId: 9001 });
 
     expect(
-      screen.getByRole('button', { name: t.actions.deselectRow('PO-2026-900001') }),
-    ).toBeInTheDocument();
+      screen.getByRole('button', { name: t.actions.selectRow('PO-2026-900001') }),
+    ).toHaveAttribute('aria-current', 'true');
   });
 
   it('누르면 그 발주의 번호를 넘긴다', async () => {

@@ -157,12 +157,20 @@ describe('toCreatedReceiptView — 만들어진 전표', () => {
    * `toEqual`이라 키가 하나라도 늘면 여전히 실패한다 — 사업부·입하일시처럼 화면이 쓰지 않는
    * 값이 슬그머니 따라 들어오는 경로는 그대로 막혀 있다.
    */
-  it('전표번호·상태와 링크 열쇠 셋만 옮긴다', () => {
+  it('전표번호·상태·예외 유형과 링크 열쇠만 옮긴다', () => {
     expect(toCreatedReceiptView(CREATED)).toEqual({
       inboundReceiptId: 9601,
       inboundReceiptNo: 'IR-2026-900010',
       statusCode: 'SAMPLE_IR_STATUS_A',
+      exceptionTypeCode: null,
     });
+  });
+
+  /* 초과분 전표에만 실리는 값이다 — 결과 구획이 이것으로 전표를 가른다. */
+  it('예외 유형이 있으면 그대로 옮긴다', () => {
+    expect(
+      toCreatedReceiptView({ ...CREATED, exceptionTypeCode: 'OVER_DELIVERY' }).exceptionTypeCode,
+    ).toBe('OVER_DELIVERY');
   });
 
   /*

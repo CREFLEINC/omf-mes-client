@@ -1,8 +1,15 @@
 import { messages } from '@omf-mes/i18n';
 import { describe, expect, it } from 'vitest';
 
-import { createDrafts, setDraftQty, type LineDrafts } from './line-draft';
-import { normalLimit, remainingQty, splitLineQty, toSplitLines } from './split-calc';
+import { createDrafts, setDraftLot, setDraftQty, type LineDrafts } from './line-draft';
+import {
+  FAR_OVER_ORDERED_TIMES,
+  hasLineError,
+  normalLimit,
+  remainingQty,
+  splitLineQty,
+  toSplitLines,
+} from './split-calc';
 import type { PoLineView } from './types';
 
 /**
@@ -180,5 +187,77 @@ describe('toSplitLines — 라인과 초안을 읽는 자리에서 파생한다'
 
   it('라인 순서를 바꾸지 않는다', () => {
     expect(toSplitLines(lines, draftsFor(lines, {})).map((row) => row.line.lineNo)).toEqual([1, 2]);
+  });
+});
+
+describe('toSplitLines — LOT 사유는 그 쪽이 실릴 때만 센다', () => {
+  const lines = [line()];
+  const LABEL = 'SAMPLE-ITEM-01|66|260806|SAMPLE-SUP-01|0001';
+  const codeOf = () => 'SAMPLE-ITEM-01';
+
+  it('수량이 없으면 LOT 이 비어 있어도 사유가 없다', () => {
+    const rows = toSplitLines(lines, draftsFor(lines, {}), codeOf);
+
+    expect(rows[0]?.lotError).toBeNull();
+    expect(rows[0]?.excessLotError).toBeNull();
+  });
+
+  it('정량분이 실리는데 LOT 이 비어 있으면 사유가 붙는다', () => {
+    const rows = toSplitLines(lines, draftsFor(lines, { 9401: '10' }), codeOf);
+
+    expect(rows[0]?.lotError).toBe(t.errors.lotRequired);
+    expect(rows[0]?.excessLotError).toBeNull();
+    expect(hasLineError(rows)).toBe(true);
+  });
+
+  it('초과분이 갈리면 초과분 LOT 도 따로 본다', () => {
+    const drafts = setDraftLot(draftsFor(lines, { 9401: '66' }), 9401, 'normal', { lotNo: LABEL });
+    const rows = toSplitLines(lines, drafts, codeOf);
+
+    expect(rows[0]?.lotError).toBeNull();
+    expect(rows[0]?.excessLotError).toBe(t.errors.lotRequired);
+  });
+
+  /* 서버가 같은 공장의 두 전표에 같은 LOT 번호를 허용하지 않는다(`uq_lot`) — 초과분 쪽에 사유를 붙인다. */
+  it('정량분과 초과분에 같은 번호를 쓰면 초과분에 사유가 붙는다', () => {
+    const drafts = setDraftLot(
+      setDraftLot(draftsFor(lines, { 9401: '66' }), 9401, 'normal', { lotNo: LABEL }),
+      9401,
+      'excess',
+      { lotNo: LABEL },
+    );
+    const rows = toSplitLines(lines, drafts, codeOf);
+
+    expect(rows[0]?.excessLotError).toBe(t.errors.lotDuplicate);
+  });
+
+  it('라벨의 품목코드가 줄의 품목과 다르면 사유가 붙고, 품목을 아직 모르면 묻지 않는다', () => {
+    const drafts = setDraftLot(draftsFor(lines, { 9401: '10' }), 9401, 'normal', { lotNo: LABEL });
+
+    expect(toSplitLines(lines, drafts, () => 'OTHER-ITEM')[0]?.lotError).toBe(
+      t.errors.lotItemMismatch('OTHER-ITEM'),
+    );
+    expect(toSplitLines(lines, drafts)[0]?.lotError).toBeNull();
+  });
+});
+
+describe('toSplitLines — 자릿수 경고', () => {
+  const lines = [line()];
+
+  it('발주의 두 배를 넘으면 막지 않고 경고를 붙인다', () => {
+    const rows = toSplitLines(lines, draftsFor(lines, { 9401: '250' }));
+
+    expect(rows[0]?.qtyWarning).toBe(t.warnings.qtyFarOverOrdered('2.5'));
+    expect(rows[0]?.qtyError).toBeNull();
+    expect(rows[0]?.split).toEqual({ normalQty: 65, excessQty: 185 });
+  });
+
+  it('두 배까지는 경고가 없다', () => {
+    const rows = toSplitLines(
+      lines,
+      draftsFor(lines, { 9401: String(100 * FAR_OVER_ORDERED_TIMES) }),
+    );
+
+    expect(rows[0]?.qtyWarning).toBeNull();
   });
 });

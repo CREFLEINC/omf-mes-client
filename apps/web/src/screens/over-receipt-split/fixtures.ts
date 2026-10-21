@@ -126,10 +126,73 @@ export const plantFixtures = [
 ];
 
 export const itemFixtures = [
-  { itemId: 9301, itemCode: 'SAMPLE-ITEM-01', itemName: '합성 품목 가', isActive: true },
-  { itemId: 9302, itemCode: 'SAMPLE-ITEM-02', itemName: '합성 품목 나', isActive: true },
+  {
+    itemId: 9301,
+    itemCode: 'SAMPLE-ITEM-01',
+    itemName: '합성 품목 가',
+    isActive: true,
+    inspectionRequired: true,
+  },
+  {
+    itemId: 9302,
+    itemCode: 'SAMPLE-ITEM-02',
+    itemName: '합성 품목 나',
+    isActive: true,
+    inspectionRequired: false,
+  },
 ];
 
 export const uomFixtures = [
   { uomId: 9501, uomCode: 'SAMPLE-EA', uomName: '합성 단위 개', isActive: true },
 ];
+
+/** 코드 사전 — 서버 시드 그대로(2026-09-03 등재). 이름은 합성이다. */
+export const exceptionTypeFixtures = [
+  {
+    codeValueId: 9701,
+    codeGroupId: 97,
+    code: 'CUSTOMER_SUPPLY',
+    codeName: '고객 사급',
+    isActive: true,
+    displayOrder: 10,
+  },
+  {
+    codeValueId: 9702,
+    codeGroupId: 97,
+    code: 'OVER_DELIVERY',
+    codeName: '초과입하',
+    isActive: true,
+    displayOrder: 40,
+  },
+  {
+    codeValueId: 9703,
+    codeGroupId: 97,
+    code: 'URGENT_RECEIPT',
+    codeName: '긴급 입하',
+    isActive: false,
+    displayOrder: 30,
+  },
+];
+
+export const lotReasonFixtures = [
+  {
+    codeValueId: 9801,
+    codeGroupId: 98,
+    code: 'NO_LABEL',
+    codeName: '라벨 없음',
+    isActive: true,
+    displayOrder: 10,
+  },
+  {
+    codeValueId: 9802,
+    codeGroupId: 98,
+    code: 'OTHER',
+    codeName: '기타',
+    isActive: true,
+    displayOrder: 90,
+  },
+];
+
+/** 9301(SAMPLE-ITEM-01)의 사전부착 라벨 — 수량 66 · 공급사 SAMPLE-SUP-01. */
+export const LABEL_9301 = 'SAMPLE-ITEM-01|66|260806|SAMPLE-SUP-01|0001';
+export const LABEL_9301_SECOND = 'SAMPLE-ITEM-01|10|260806|SAMPLE-SUP-01|0002';

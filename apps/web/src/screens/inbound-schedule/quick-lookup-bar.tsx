@@ -145,7 +145,7 @@ export const QuickLookupBar = forwardRef<QuickLookupHandle, QuickLookupBarProps>
     const isToday = appliedPeriod.from === today && appliedPeriod.to === today;
 
     return (
-      <div className="inbound-schedule-quick">
+      <div className="po-board-quick">
         <div className="field-cell wide-select">
           <TextField
             label={t.quick.supplier}

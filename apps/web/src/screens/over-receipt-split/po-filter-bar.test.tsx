@@ -96,11 +96,6 @@ describe('PoFilterBar — 모아서 적용', () => {
   });
 
   /* 기본이 켬이라는 사실을 밝히지 않으면 무엇이 빠져 보이는지 알 수 없다. */
-  it('미완료만이 기본이라는 사실을 밝힌다', () => {
-    renderBar();
-
-    expect(screen.getByText(t.filters.openOnlyNote)).toBeInTheDocument();
-  });
 });
 
 describe('PoFilterBar — 주소가 정본이다', () => {

@@ -34,7 +34,7 @@ export interface OrderTableProps {
  * | 발주번호 | 120px | 10자 ASCII 80px + 여백. 이 칸이 고르는 단추다 |
  * | **공급사명** | **미지정** | 남는 폭을 흡수한다. 넘치면 말줄임 |
  * | 미입고 품목 | 96px | 「99 / 99」 + 여백 |
- * | 합 | 384px + 흡수 | `.inbound-schedule-orders` 최소 폭 `36rem`(576px) |
+ * | 합 | 384px + 흡수 | `.po-board-orders` 최소 폭 `36rem`(576px) |
  */
 export const OrderTable = ({
   rows,
@@ -150,7 +150,7 @@ export const OrderTable = ({
      */
     // eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions
     <div
-      className="wide-table inbound-schedule-table inbound-schedule-orders"
+      className="wide-table po-board-table po-board-orders"
       onClick={(event) => {
         const row = (event.target as HTMLElement).closest('tbody tr');
         const id = row?.querySelector<HTMLElement>('[data-po-id]')?.dataset.poId;

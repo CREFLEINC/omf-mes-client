@@ -1,12 +1,15 @@
-import { parseQty, readDraftQty, type LineDrafts } from './line-draft';
+import { messages } from '@omf-mes/i18n';
+
+import { parseQty, readDraft, type LineDrafts, type LotDraft } from './line-draft';
+import { lotDraftError } from './lot-format';
 import type { PoLineView } from './types';
 
 /**
  * **정량분과 초과분을 가르는 유일한 자리.**
  *
- * 이 화면의 핵심 규칙이며, 표도 (뒤따르는 PR의) 요청 조립도 이 모듈의 결과를 받는다.
- * 두 곳에서 다시 계산하면 규칙이 갈려 **보이는 값과 보내는 값이 달라진다** —
- * 되돌릴 수 없는 쓰기라 그 어긋남은 잘못된 전표로 남는다.
+ * 이 화면의 핵심 규칙이며, 표도 요청 조립도 이 모듈의 결과를 받는다. 두 곳에서 다시 계산하면
+ * 규칙이 갈려 **보이는 값과 보내는 값이 달라진다** — 되돌릴 수 없는 쓰기라 그 어긋남은
+ * 잘못된 전표로 남는다.
  *
  * | 규칙 | 값 |
  * | --- | --- |
@@ -22,6 +25,11 @@ import type { PoLineView } from './types';
  *
  * 이 화면이 소유한다 — 다른 화면 슬라이스의 같은 이름 파일을 참조하지 않는다.
  */
+
+const t = messages.overReceiptSplit;
+
+/** 발주의 이 배수를 넘는 도착은 자릿수 실수일 가능성이 크다 — 막지 않고 한 번 더 보게 한다. */
+export const FAR_OVER_ORDERED_TIMES = 2;
 
 /** 아직 받을 것이 남은 수량. 누적 입하가 발주를 넘겼으면 더 받을 「정량」이 없다는 뜻으로 0이다. */
 export const remainingQty = (orderedQty: number, receivedQty: number): number =>
@@ -53,49 +61,91 @@ export const splitLineQty = (input: SplitQtyInput): SplitQty => {
   return { normalQty, excessQty: input.arrivedQty - normalQty };
 };
 
-/**
- * 한 줄이 화면에 보이는 모습 전부. **읽는 자리에서 파생한다** —
- * 표는 이 값을 그리기만 하고 잔량·한도·가르기를 다시 계산하지 않는다.
- */
 export interface SplitLineView {
   line: PoLineView;
-  /** 사용자가 친 그대로. 입력칸의 `value`가 된다 */
   qtyText: string;
-  /** 형식 오류의 사유. 없으면 `null` — 빈 칸도 `null`이다(오류가 아니다) */
   qtyError: string | null;
+  /** 막지 않는 안내 — 발주의 몇 배가 왔다 등. */
+  qtyWarning: string | null;
   remainingQty: number;
   normalLimit: number;
-  /** 수량으로 읽힐 때만 갈린다. 미입력·형식 오류면 `null`이며 그 줄은 계산에서 빠진다 */
+  /** 수량이 없거나 잘못됐으면 `null` — 가를 것이 없다. */
   split: SplitQty | null;
+  lot: LotDraft;
+  excessLot: LotDraft;
+  /** 정량분이 실릴 때만 잰다. 실리지 않는 쪽의 LOT 칸은 비어 있어도 잘못이 아니다. */
+  lotError: string | null;
+  excessLotError: string | null;
 }
 
-/** 라인 목록과 초안을 한 벌의 표시값으로 옮긴다. 라인 순서를 바꾸지 않는다. */
+/** 품목 번호 → 품목코드. 아직 못 받았으면 `null` — 그때는 라벨의 품목코드 일치를 묻지 않는다. */
+export type ItemCodeResolver = (itemId: number) => string | null;
+
+const NO_ITEM_CODES: ItemCodeResolver = () => null;
+
+const warningOf = (arrivedQty: number, orderedQty: number): string | null => {
+  if (orderedQty <= 0 || arrivedQty <= orderedQty * FAR_OVER_ORDERED_TIMES) return null;
+
+  const times = arrivedQty / orderedQty;
+
+  return t.warnings.qtyFarOverOrdered(Number.isInteger(times) ? String(times) : times.toFixed(1));
+};
+
+/**
+ * 라인과 초안을 **읽는 자리에서** 파생한다. 표와 요청 조립이 같은 결과를 받는다.
+ *
+ * LOT 오류는 **그 쪽이 실릴 때만** 센다 — 정량분 0 인 줄의 정량분 LOT 이 비어 있는 것은 잘못이 아니다.
+ * 같은 LOT 번호가 양쪽에 있으면 초과분 쪽에 사유를 붙인다(서버가 초과분 `supplierLotNo` 를 짚는다).
+ */
 export const toSplitLines = (
   lines: readonly PoLineView[],
   drafts: LineDrafts,
+  itemCodeOf: ItemCodeResolver = NO_ITEM_CODES,
 ): SplitLineView[] =>
   lines.map((line) => {
-    const qtyText = readDraftQty(drafts, line.purchaseOrderLineId);
-    const parsed = parseQty(qtyText);
+    const draft = readDraft(drafts, line.purchaseOrderLineId);
+    const parsed = parseQty(draft.qtyText);
+    const split =
+      parsed.kind === 'qty'
+        ? splitLineQty({
+            arrivedQty: parsed.value,
+            orderedQty: line.orderedQty,
+            receivedQty: line.receivedQty,
+            toleranceOverQty: line.toleranceOverQty,
+          })
+        : null;
+    const itemCode = itemCodeOf(line.itemId);
+
+    const lotError =
+      split !== null && split.normalQty > 0 ? lotDraftError(draft.lot, itemCode) : null;
+    let excessLotError =
+      split !== null && split.excessQty > 0 ? lotDraftError(draft.excessLot, itemCode) : null;
+    if (
+      excessLotError === null &&
+      split !== null &&
+      split.normalQty > 0 &&
+      split.excessQty > 0 &&
+      draft.lot.lotNo.trim() !== '' &&
+      draft.lot.lotNo.trim() === draft.excessLot.lotNo.trim()
+    ) {
+      excessLotError = t.errors.lotDuplicate;
+    }
 
     return {
       line,
-      qtyText,
+      qtyText: draft.qtyText,
       qtyError: parsed.kind === 'invalid' ? parsed.message : null,
+      qtyWarning: parsed.kind === 'qty' ? warningOf(parsed.value, line.orderedQty) : null,
       remainingQty: remainingQty(line.orderedQty, line.receivedQty),
       normalLimit: normalLimit(line.orderedQty, line.receivedQty, line.toleranceOverQty),
-      /*
-       * 잘못된 수량을 그대로 넘기면 `NaN`이 계산에 들어가 정량·초과가 둘 다 `NaN`이 되고,
-       * 그 값이 요청 본문에까지 흘러간다.
-       */
-      split:
-        parsed.kind === 'qty'
-          ? splitLineQty({
-              arrivedQty: parsed.value,
-              orderedQty: line.orderedQty,
-              receivedQty: line.receivedQty,
-              toleranceOverQty: line.toleranceOverQty,
-            })
-          : null,
+      split,
+      lot: draft.lot,
+      excessLot: draft.excessLot,
+      lotError,
+      excessLotError,
     };
   });
+
+/** 수량·LOT 중 고치지 않은 사유가 하나라도 붙어 있는가. 등록을 막는 조건이다. */
+export const hasLineError = (rows: readonly SplitLineView[]): boolean =>
+  rows.some((row) => row.qtyError !== null || row.lotError !== null || row.excessLotError !== null);

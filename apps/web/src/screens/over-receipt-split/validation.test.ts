@@ -2,6 +2,7 @@ import { messages } from '@omf-mes/i18n';
 import { describe, expect, it } from 'vitest';
 
 import { purchaseOrderLineFixtures } from './fixtures';
+import { createDrafts, setDraftLot, setDraftQty, type LineDrafts } from './line-draft';
 import { toSplitLines } from './split-calc';
 import { EMPTY_HEADER_DRAFT, type SplitMode } from './types';
 import {
@@ -9,7 +10,7 @@ import {
   RECEIPT_FORM_FIELDS,
   canSubmit,
   modeBlockReason,
-  qtyErrorReason,
+  lineErrorReason,
   validateHeader,
 } from './validation';
 
@@ -95,12 +96,12 @@ describe('modeBlockReason — 왜 막혔는지', () => {
   it('버튼별 사유가 그 버튼 이름으로 시작한다', () => {
     expect(t.actionReasons.bothNeedsExcess.startsWith(t.actions.registerBoth)).toBe(true);
     expect(t.actionReasons.bothNeedsNormal.startsWith(t.actions.registerBoth)).toBe(true);
-    expect(
-      t.actionReasons.normalOnlyNeedsNormal.startsWith(t.actions.registerNormalOnly),
-    ).toBe(true);
-    expect(
-      t.actionReasons.excessOnlyNeedsExcess.startsWith(t.actions.registerExcessOnly),
-    ).toBe(true);
+    expect(t.actionReasons.normalOnlyNeedsNormal.startsWith(t.actions.registerNormalOnly)).toBe(
+      true,
+    );
+    expect(t.actionReasons.excessOnlyNeedsExcess.startsWith(t.actions.registerExcessOnly)).toBe(
+      true,
+    );
   });
 });
 
@@ -158,13 +159,28 @@ describe('validateHeader — 머리 입력', () => {
 
   it('예외 유형과 사유를 함께 채우면 오류가 없다', () => {
     expect(
-      validateHeader(header({ exceptionTypeCode: 'SAMPLE_EXCEPTION', exceptionReason: '합성 사유' })),
+      validateHeader(
+        header({ exceptionTypeCode: 'SAMPLE_EXCEPTION', exceptionReason: '합성 사유' }),
+      ),
     ).toEqual({});
   });
 
   /* 그 반대 — 유형 없이 사유만 채우는 것은 막지 않는다. 계약이 사유를 선택으로 두었다. */
   it('예외 유형 없이 사유만 채우는 것은 오류가 아니다', () => {
     expect(validateHeader(header({ exceptionReason: '초과가 온 사정' }))).toEqual({});
+  });
+
+  /* 초과분 줄은 발주에 묶이지 않아 서버가 예외 유형을 요구한다 — 초과분이 실리는 갈래에서만 필수다. */
+  it('초과분이 실리는 갈래에서는 예외 유형이 필수다', () => {
+    expect(validateHeader(header(), { needsExceptionType: true })).toEqual({
+      exceptionTypeCode: t.errors.exceptionTypeRequired,
+    });
+    expect(validateHeader(header(), { needsExceptionType: false })).toEqual({});
+    expect(
+      validateHeader(header({ exceptionTypeCode: 'OVER_DELIVERY', exceptionReason: '합성 사유' }), {
+        needsExceptionType: true,
+      }),
+    ).toEqual({});
   });
 
   /* 여러 칸이 동시에 잘못됐으면 **전부** 낸다 — 하나씩 고치게 하면 저장을 여러 번 눌러야 한다. */
@@ -211,20 +227,39 @@ describe('RECEIPT_FORM_FIELDS', () => {
  * 고치지 않은 수량이 남은 채로 등록하면 **그 줄만 빠진 전표**가 만들어진다.
  * 되돌릴 수 없는 쓰기라 빠뜨린 줄을 나중에 알아채도 화면이 고칠 수 없다.
  */
-describe('qtyErrorReason — 고치지 않은 수량', () => {
-  const rowsWith = (drafts: Record<number, string>) =>
-    toSplitLines(purchaseOrderLineFixtures, drafts);
+describe('lineErrorReason — 고치지 않은 줄', () => {
+  const draftsWith = (
+    texts: Record<number, string>,
+    lotNo = 'SAMPLE-ITEM-01|66|260806|SAMPLE-SUP-01|0001',
+  ): LineDrafts =>
+    Object.entries(texts).reduce<LineDrafts>(
+      (drafts, [lineId, text]) =>
+        setDraftLot(
+          setDraftLot(setDraftQty(drafts, Number(lineId), text), Number(lineId), 'normal', {
+            lotNo,
+          }),
+          Number(lineId),
+          'excess',
+          { labelMissing: true, reasonCode: 'OTHER' },
+        ),
+      createDrafts(purchaseOrderLineFixtures),
+    );
+  const rowsWith = (texts: Record<number, string>, lotNo?: string) =>
+    toSplitLines(purchaseOrderLineFixtures, draftsWith(texts, lotNo));
 
-  it('사유가 붙은 줄이 있으면 등록을 막을 사유를 낸다', () => {
-    expect(qtyErrorReason(rowsWith({ 9401: '0' }))).toBe(t.errors.qtyInvalidBlocked);
-    expect(qtyErrorReason(rowsWith({ 9401: '66', 9402: 'abc' }))).toBe(
-      t.errors.qtyInvalidBlocked,
+  it('수량에 사유가 붙은 줄이 있으면 등록을 막을 사유를 낸다', () => {
+    expect(lineErrorReason(rowsWith({ 9401: '0' }))).toBe(t.errors.lineInvalidBlocked);
+    expect(lineErrorReason(rowsWith({ 9401: '66', 9402: 'abc' }))).toBe(
+      t.errors.lineInvalidBlocked,
     );
   });
 
-  /* 짝 방향 — 정상 입력과 빈 칸에는 사유를 내지 않는다. 빈 칸은 「이번에 받지 않는다」이다. */
+  it('LOT 에 사유가 붙은 줄이 있어도 막는다', () => {
+    expect(lineErrorReason(rowsWith({ 9401: '66' }, ''))).toBe(t.errors.lineInvalidBlocked);
+  });
+
   it('정상 입력과 빈 칸에는 사유가 없다', () => {
-    expect(qtyErrorReason(rowsWith({ 9401: '66' }))).toBeNull();
-    expect(qtyErrorReason(rowsWith({}))).toBeNull();
+    expect(lineErrorReason(rowsWith({ 9401: '66' }))).toBeNull();
+    expect(lineErrorReason(rowsWith({}))).toBeNull();
   });
 });

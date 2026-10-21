@@ -56,7 +56,7 @@ export interface LineTableProps {
  * | 발주·입하·남은 수량 | 88px × 3 | 천 단위 7자 + 여백 |
  * | 단위 | 56px | 코드 3자 + 여백 |
  * | 창고 | 184px | 「VICT 자재창고_…」 같은 긴 이름 + 여백. 넘치면 말줄임(전체는 마우스를 올리면) |
- * | 합 | 756px + 흡수 | `.inbound-schedule-lines` 최소 폭 `48rem`(768px) |
+ * | 합 | 756px + 흡수 | `.po-board-lines` 최소 폭 `48rem`(768px) |
  */
 export const LineTable = ({
   order,
@@ -140,12 +140,12 @@ export const LineTable = ({
        * 발주 머리(사용자 지시 2026-10-21 — 「밋밋하다」). 이름표 + 값의 칸을 구분선으로 나눠 세운다.
        * 발주번호도 다른 값과 같은 글자다 — 상태는 왼쪽 표가 말한다.
        */}
-      <header className="inbound-schedule-order-head">
-        <div className="inbound-schedule-order-title">
-          <span className="inbound-schedule-order-eyebrow">{t.detail.purchaseOrderNo}</span>
-          <span className="inbound-schedule-order-no">{order.purchaseOrderNo}</span>
+      <header className="po-board-order-head">
+        <div className="po-board-order-title">
+          <span className="po-board-order-eyebrow">{t.detail.purchaseOrderNo}</span>
+          <span className="po-board-order-no">{order.purchaseOrderNo}</span>
         </div>
-        <dl className="inbound-schedule-order-facts">
+        <dl className="po-board-order-facts">
           <div>
             <dt>{t.detail.supplierCode}</dt>
             <dd>{orEmpty(order.supplierCode)}</dd>
@@ -174,7 +174,7 @@ export const LineTable = ({
         {/* 취소된 발주는 더 받을 것이 없다 — 바로가기를 두면 할 일이 있는 것처럼 읽힌다. */}
         {order.receiptStatusCode !== 'CANCELLED' && (
           <Link
-            className="inbound-schedule-order-link"
+            className="po-board-order-link"
             to={overReceiptSplitPath(order)}
             aria-label={t.actions.overReceiptSplitRow(order.purchaseOrderNo)}
           >
@@ -188,7 +188,7 @@ export const LineTable = ({
           <SkeletonText lines={3} />
         </div>
       ) : (
-        <div className="wide-table inbound-schedule-table inbound-schedule-lines">
+        <div className="wide-table po-board-table po-board-lines">
           <Table
             density="compact"
             caption={<span className="erp-data-table-caption">{t.panes.lines}</span>}

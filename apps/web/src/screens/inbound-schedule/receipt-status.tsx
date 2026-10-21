@@ -1,5 +1,4 @@
 import { Chip } from '@crefle/web-ui';
-import { useState } from 'react';
 import { messages } from '@omf-mes/i18n';
 
 import type { ReceiptStatusCode } from './types';
@@ -35,7 +34,7 @@ export const ReceiptStatusCell = ({
   code === undefined || code === '' ? (
     t.values.empty
   ) : (
-    <span className="inbound-schedule-status">
+    <span className="po-board-status">
       <Chip variant="status" status={receiptTone(code)} size="sm">
         {receiptLabel(code)}
       </Chip>
@@ -85,38 +84,4 @@ export const formatQty = (value: number | null | undefined): string =>
 export const orEmpty = (value: string | null | undefined): string =>
   value === null || value === undefined || value === '' ? t.values.empty : value;
 
-/**
- * 칸 안 한 줄 — 넘치면 말줄임. **잘렸을 때만** 마우스를 올리는 즉시 전체 값을 띄운다(사용자 지시 2026-10-21).
- * 브라우저 `title` 은 뜨기까지 늦어 쓰지 않는다. 이름 열이 쓴다(공급사명·품목명·창고).
- */
-export const OneLine = ({ text }: { text: string }) => {
-  const [tip, setTip] = useState<{ left?: number; right?: number; top: number } | null>(null);
-
-  return (
-    <span
-      className="inbound-schedule-one-line"
-      aria-label={text}
-      onMouseEnter={(event) => {
-        const el = event.currentTarget;
-        if (el.scrollWidth <= el.clientWidth) return;
-        const rect = el.getBoundingClientRect();
-        /* 창 오른쪽 절반의 칸은 오른쪽 끝에 맞춰 띄운다 — 창 밖으로 넘치지 않게. */
-        setTip(
-          rect.left > window.innerWidth / 2
-            ? { right: window.innerWidth - rect.right, top: rect.bottom + 4 }
-            : { left: rect.left, top: rect.bottom + 4 },
-        );
-      }}
-      onMouseLeave={() => {
-        setTip(null);
-      }}
-    >
-      {text}
-      {tip !== null && (
-        <span className="inbound-schedule-tip" role="tooltip" style={tip}>
-          {text}
-        </span>
-      )}
-    </span>
-  );
-};
+export { OneLine } from '../../patterns/po-board';
