@@ -138,7 +138,7 @@ export const popRoutes: RouteObject[] = [
    */
   { path: '/pop/material-defect', element: <PopMaterialDefectScreen /> },
   /*
-   * P-02-15 — 제품 검사표 입력(omf-all-around#89 · 설계보다 앞선 화면, 서버 장부 P-88). 시리얼 1대의 OA 제품
+   * P-02-15 — 제품 검사표 입력(omf-all-around#89 · 설계보다 앞선 화면, 서버 장부 P-102). 시리얼 1대의 OA 제품
    * 검사표 — 머리 값과 단계별 항목 판정. ⚠ 진입에 질의 문자열이 없다 — 시리얼 스캔부터 시작한다.
    */
   { path: '/pop/inspection-sheet', element: <PopInspectionSheetScreen /> },

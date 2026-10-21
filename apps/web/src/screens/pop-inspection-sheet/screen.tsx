@@ -14,7 +14,7 @@ import { StepPanel } from './step-panel';
 const t = messages.popInspectionSheet;
 
 /**
- * P-02-15 제품 검사표 입력(POP · omf-all-around#89 · 설계보다 앞선 화면, 서버 장부 P-88).
+ * P-02-15 제품 검사표 입력(POP · omf-all-around#89 · 설계보다 앞선 화면, 서버 장부 P-102).
  *
  * 종이 성적서(OP·PP향 제품검사표)를 대신한다 — 시리얼을 스캔하면 그 기기의 검사표를 열고(없으면 서버가 만든다),
  * 머리 값을 확인하고 단계마다 항목 판정을 넣는다. 서명·승인과 출력은 관리웹 「제품 검사표 조회」가 한다.

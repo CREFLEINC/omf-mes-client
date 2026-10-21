@@ -959,7 +959,7 @@ export interface ItemInspectionLevelHistoryQuery {
 
 type PageMeta = components['schemas']['PageMeta'];
 
-/** 서버 선행 P-88(omf-all-around#89) — OA 제품 검사표. 출력 양식 · 단계 · 판정. */
+/** 서버 선행 P-102(omf-all-around#89) — OA 제품 검사표. 출력 양식 · 단계 · 판정. */
 export type InspectionSheetLayoutCode = 'OP' | 'PP';
 export type InspectionSheetStepCode =
   | 'PROCESS_1'
@@ -1002,7 +1002,7 @@ interface InspectionSheetTemplateContent {
   remarks?: string | null;
 }
 
-/** 서버 선행 P-88 — 검사표 기준. 목록은 `lotSources`·`steps` 를 싣지 않는다. */
+/** 서버 선행 P-102 — 검사표 기준. 목록은 `lotSources`·`steps` 를 싣지 않는다. */
 export interface InspectionSheetTemplate extends Required<InspectionSheetTemplateContent> {
   inspectionSheetTemplateId: number;
   itemId: number;
@@ -1053,7 +1053,7 @@ export interface InspectionSheetTemplateListQuery {
   size?: number;
 }
 
-/** 서버 선행 P-88 — 머리 값. 보낸 값으로 통째로 바꾼다(생략 = 비움). */
+/** 서버 선행 P-102 — 머리 값. 보낸 값으로 통째로 바꾼다(생략 = 비움). */
 export interface InspectionSheetHeaderUpdate {
   modelText?: string | null;
   specText?: string | null;
@@ -1120,7 +1120,7 @@ export interface InspectionSheetStep {
   items: (InspectionSheetTemplateItem & { judgmentCode: InspectionSheetJudgment | null })[];
 }
 
-/** 서버 선행 P-88 — 시리얼 1대의 제품 검사표. */
+/** 서버 선행 P-102 — 시리얼 1대의 제품 검사표. */
 export interface InspectionSheet extends Required<InspectionSheetHeaderUpdate> {
   inspectionSheetId: number;
   serialNumberId: number;
@@ -1138,7 +1138,7 @@ export interface InspectionSheet extends Required<InspectionSheetHeaderUpdate> {
   statusCode: 'IN_PROGRESS' | 'COMPLETED';
   /** W/O 투입 기록에서 찾은 칸별 자재 LOT 번호(W/O 단위). */
   lotCandidates: { pcb: string[]; sd: string[]; staple: string[] };
-  /** 서버 선행 P-88 S4 — 이 W/O 에 투입된 4M 변경품 자재 LOT(W/O 단위 · 시리얼별 투입 기록 없음). */
+  /** 서버 선행 P-102 S4 — 이 W/O 에 투입된 4M 변경품 자재 LOT(W/O 단위 · 시리얼별 투입 기록 없음). */
   fourMChanges: {
     lotNo: string;
     itemCode: string;
@@ -1169,14 +1169,14 @@ export interface InspectionSheet extends Required<InspectionSheetHeaderUpdate> {
   }[];
 }
 
-/** 1차·최종 판정을 함께 빼면 항목 판정만 임시 저장한다(서버 선행 P-88 · 판정이 기록된 단계는 400). */
+/** 1차·최종 판정을 함께 빼면 항목 판정만 임시 저장한다(서버 선행 P-102 · 판정이 기록된 단계는 400). */
 export interface InspectionSheetStepWrite {
   firstJudgmentCode?: InspectionSheetJudgment;
   finalJudgmentCode?: InspectionSheetJudgment;
   items: { inspectionSheetTemplateItemId: number; judgmentCode: InspectionSheetJudgment }[];
 }
 
-/** 서버 선행 P-88 S3 — 제품 검사표 목록 한 줄. */
+/** 서버 선행 P-102 S3 — 제품 검사표 목록 한 줄. */
 export interface InspectionSheetSummary {
   inspectionSheetId: number;
   serialNo: string;
@@ -1979,7 +1979,7 @@ export interface ForwardPaths {
     put?: never;
     post?: never;
   };
-  /** 서버 선행 P-88(omf-all-around#89) — 검사표 기준 목록·등록. */
+  /** 서버 선행 P-102(omf-all-around#89) — 검사표 기준 목록·등록. */
   '/quality/inspection-sheet-templates': Unused & {
     parameters: NoParameters;
     put?: never;
@@ -1994,7 +1994,7 @@ export interface ForwardPaths {
       { 201: Json<InspectionSheetTemplate> }
     >;
   };
-  /** 서버 선행 P-88 — 검사표 기준 상세(ETag)·수정(작성중만). */
+  /** 서버 선행 P-102 — 검사표 기준 상세(ETag)·수정(작성중만). */
   '/quality/inspection-sheet-templates/{inspectionSheetTemplateId}': Unused & {
     parameters: NoParameters;
     post?: never;
@@ -2009,14 +2009,14 @@ export interface ForwardPaths {
       { 200: Json<InspectionSheetTemplate> }
     >;
   };
-  /** 서버 선행 P-88 — 검사표 기준 확정. */
+  /** 서버 선행 P-102 — 검사표 기준 확정. */
   '/quality/inspection-sheet-templates/{inspectionSheetTemplateId}:confirm': Unused & {
     parameters: NoParameters;
     get?: never;
     put?: never;
     post: Op<Params<never, LockHeader, TemplateId>, never, { 200: Json<InspectionSheetTemplate> }>;
   };
-  /** 서버 선행 P-88 — 시리얼로 검사표 열기(없으면 만든다). */
+  /** 서버 선행 P-102 — 시리얼로 검사표 열기(없으면 만든다). */
   '/quality/inspection-sheets:open-by-serial': Unused & {
     parameters: NoParameters;
     get?: never;
@@ -2027,7 +2027,7 @@ export interface ForwardPaths {
       { 200: Json<InspectionSheet> }
     >;
   };
-  /** 서버 선행 P-88 — 검사표 상세(ETag). */
+  /** 서버 선행 P-102 — 검사표 상세(ETag). */
   '/quality/inspection-sheets/{inspectionSheetId}': Unused & {
     parameters: NoParameters;
     put?: never;
@@ -2050,7 +2050,7 @@ export interface ForwardPaths {
     SheetId,
     { ngs: InspectionSheetNgWrite[] }
   >;
-  /** 서버 선행 P-88 S3 — 목록(LOT·시리얼·W/O). */
+  /** 서버 선행 P-102 S3 — 목록(LOT·시리얼·W/O). */
   '/quality/inspection-sheets': Unused & {
     parameters: NoParameters;
     put?: never;
@@ -2061,7 +2061,7 @@ export interface ForwardPaths {
       { 200: Json<{ items: InspectionSheetSummary[]; page: PageMeta }> }
     >;
   };
-  /** 서버 선행 P-88 S3 — 단계 서명 · 승인 · 확인 · 승인 취소(W-03-14). */
+  /** 서버 선행 P-102 S3 — 단계 서명 · 승인 · 확인 · 승인 취소(W-03-14). */
   '/quality/inspection-sheets/{inspectionSheetId}/steps/{stepCode}:sign': SheetAction<
     SheetId & { stepCode: InspectionSheetStepCode }
   >;

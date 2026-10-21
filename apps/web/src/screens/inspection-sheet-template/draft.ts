@@ -10,7 +10,7 @@ import { ko, messages, vi } from '@omf-mes/i18n';
 
 const t = messages.inspectionSheetTemplate;
 
-/** 출력 양식이 칸을 가진 단계 — 서버도 같은 목록으로 막는다(장부 P-88). */
+/** 출력 양식이 칸을 가진 단계 — 서버도 같은 목록으로 막는다(장부 P-102). */
 export const LAYOUT_STEPS: Record<InspectionSheetLayoutCode, readonly InspectionSheetStepCode[]> = {
   OP: ['PROCESS_1', 'PROCESS_2', 'PROCESS_3', 'PROCESS_4', 'PROCESS_5', 'SHIPMENT', 'CROSS_CHECK'],
   PP: ['PROCESS_1', 'PROCESS_2', 'PROCESS_3', 'SHIPMENT', 'CROSS_CHECK', 'SAMPLING'],

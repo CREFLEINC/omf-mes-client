@@ -4,7 +4,7 @@ import { useApiClient } from './api-context';
 import { runRequest } from './request';
 import { useSession } from './session';
 
-/** 공통코드 그룹 — 제품 검사표를 쓰는 공장(OA) 코드(서버 장부 P-88). */
+/** 공통코드 그룹 — 제품 검사표를 쓰는 공장(OA) 코드(서버 장부 P-102). */
 export const OA_PLANT_GROUP = 'INSPECTION_SHEET_PLANT';
 
 /** OA 공장 전용 화면의 주소 — 계정 범위에 OA 공장이 없으면 메뉴에서 감춘다(omf-all-around#89 · 담당자 결정 2026-10-21). */

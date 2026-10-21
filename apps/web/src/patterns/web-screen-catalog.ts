@@ -233,9 +233,9 @@ export const WEB_SCREENS: readonly WebScreen[] = [
   { path: '/quality/pqc-inspections', code: 'W-03-11', name: 'PQC 검사 등록·조회' },
   /* ⭐ 설계보다 앞선 화면이다(omf-all-around#64 · 서버 장부 P-87) — 다음 빈 번호로 받았다. */
   { path: '/quality/inspection-levels', code: 'W-03-12', name: '검사 수준 관리' },
-  /* ⭐ 설계보다 앞선 화면이다(omf-all-around#89 · 서버 장부 P-88). */
+  /* ⭐ 설계보다 앞선 화면이다(omf-all-around#89 · 서버 장부 P-102). */
   { path: '/master-data/inspection-sheet-template', code: 'W-06-24', name: '검사표 기준' },
-  /* ⭐ 설계보다 앞선 화면이다(omf-all-around#89 · 서버 장부 P-88). 서명·승인은 같은 화면의 권한 W-03-14 로 가른다. */
+  /* ⭐ 설계보다 앞선 화면이다(omf-all-around#89 · 서버 장부 P-102). 서명·승인은 같은 화면의 권한 W-03-14 로 가른다. */
   { path: '/quality/inspection-sheets', code: 'W-03-13', name: '제품 검사표 조회' },
 
   /* ── 설비/툴 ──────────────────────────────────────────────────────────── */
