@@ -997,7 +997,7 @@ describe('appRouter — 재고조정의 진입 경로', () => {
  * 곧 일반 구매 발주 등록이다. 그래서 메뉴에는 없고, 맥락(`receipt`)을 실은 주소로만 화면이 선다.
  *
  * 초과 입하 분리의 등록 결과는 더 이상 이 화면으로 가지 않는다(서버 장부 P-100) — 초과분은 줄의
- * `excessQty` 로 실리고 「입하 예정 조회」의 초과분 잇기로 간다. 그 링크도 여기서 함께 잰다.
+ * `excessQty` 로 실리고 「입하 예정 조회」의 초과분 연결로 간다. 그 링크도 여기서 함께 잰다.
  */
 const PO_REGISTER_ENTRY = '/logistics/po-register?receipt=9101';
 
@@ -1030,7 +1030,7 @@ describe('appRouter — 신규 P/O 등록의 진입 경로', () => {
    * 파일에 있고 서로를 참조하지 않는다 — 한쪽만 고치면 죽은 링크가 남는데, 그 슬라이스의 시험은
    * `href` 글자만 보고 화면 시험은 라우트를 거치지 않아 **어느 쪽도 그 어긋남을 잡지 못한다.**
    */
-  it('초과 입하 분리 등록 결과의 초과분 잇기 링크가 가리키는 주소가 라우트 표에 있다', () => {
+  it('초과 입하 분리 등록 결과의 초과분 연결 링크가 가리키는 주소가 라우트 표에 있다', () => {
     const [pathname] = excessLinkPath('SAMPLE-IR-9101').split('?');
 
     expect(pathname).toBe('/logistics/inbound-schedule');

@@ -2,9 +2,9 @@ import type { InboundExcess } from './excess-types';
 import type { InboundScheduleLine } from './types';
 
 /**
- * 고른 발주의 라인마다 **이을 수 있는 초과분 · 이미 이어진 초과분**을 가린다 — 상세 표가 그 줄에 잇기 길을 세운다.
+ * 고른 발주의 라인마다 **연결할 수 있는 초과분 · 이미 연결된 초과분**을 가린다 — 상세 표가 그 줄에 연결 단추를 세운다.
  *
- * 서버의 후보 규칙(장부 P-100 `candidates`)을 화면이 **미리 짐작**하는 자리다. 정본은 서버다 — 잇기 창은
+ * 서버의 후보 규칙(장부 P-100 `candidates`)을 화면이 **미리 짐작**하는 자리다. 정본은 서버다 — 연결 창은
  * 언제나 서버 후보를 다시 받고, 여기서 맞다고 본 줄이 거기 없으면 그 줄을 고르지 않는다.
  *
  * | 조건 | 값 |
@@ -28,9 +28,9 @@ export const canTakeExcess = (line: InboundScheduleLine, excess: InboundExcess):
   roomOf(line) >= excess.excessQty;
 
 export interface LineExcesses {
-  /** 이 줄에 이을 수 있는 안 이은 초과분. */
+  /** 이 줄에 연결할 수 있는 미연결 초과분. */
   linkable: InboundExcess[];
-  /** 이 줄에 이미 이어진 초과분. */
+  /** 이 줄에 이미 연결된 초과분. */
   linked: InboundExcess[];
 }
 

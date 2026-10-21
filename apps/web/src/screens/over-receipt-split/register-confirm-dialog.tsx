@@ -32,7 +32,7 @@ const orEmpty = (value: string): string => (value.trim() === '' ? t.values.empty
  * 등록 확인 — **되돌릴 수 없는 쓰기 앞의 마지막 자리.** 전표 한 건에 어느 줄이 얼마나 실리고, 그중 얼마가
  * P/O 에 들어가며 얼마가 추가 P/O 를 기다리는지, LOT 은 무엇인지 한 창에서 읽고 누른다.
  *
- * 고를 것이 없다 — 전표는 늘 한 건이다(서버 장부 P-100). 초과 몫은 같은 줄에 실리고 뒤에 잇는다.
+ * 고를 것이 없다 — 전표는 늘 한 건이다(서버 장부 P-100). 초과 몫은 같은 줄에 실리고 나중에 추가 발주에 연결한다.
  */
 export const RegisterConfirmDialog = ({
   counts,
@@ -139,9 +139,6 @@ export const RegisterConfirmDialog = ({
             <strong>{t.dialog.registerIrreversible}</strong>
           </p>
           <p className="ors-confirm-effects">{t.dialog.registerEffects}</p>
-          {counts.excessLines > 0 && (
-            <p className="ors-confirm-effects">{t.dialog.registerExcessNext}</p>
-          )}
         </div>
       </div>
     </Dialog>

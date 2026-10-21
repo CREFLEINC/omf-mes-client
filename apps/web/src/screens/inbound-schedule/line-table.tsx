@@ -42,11 +42,11 @@ export interface LineTableProps {
   /** 품목 조건으로 찾았으면 그 품목. 그 라인을 강조한다. */
   matchedItemId: number | null;
   /**
-   * 라인마다 이을 수 있는 · 이미 이어진 초과분(`excess-match.ts`). 비었으면 「초과분」 열을 세우지 않는다 —
+   * 라인마다 연결할 수 있는 · 이미 연결된 초과분(`excess-match.ts`). 비었으면 「초과분」 열을 세우지 않는다 —
    * 드문 일이라 늘 칸을 먹지 않는다(사용자 지시 2026-10-21 「자주 쓰지 않는 일은 눈에 띄지 않게」).
    */
   lineExcesses?: ReadonlyMap<number, LineExcesses>;
-  /** 초과분 잇기 창을 그 초과분·라인을 고른 채로 연다. */
+  /** 초과분 연결 창을 그 초과분·라인을 고른 채로 연다. */
   onOpenExcess?: (entry: Partial<ExcessEntry>) => void;
 }
 
@@ -55,8 +55,8 @@ const NO_LINE_EXCESSES: ReadonlyMap<number, LineExcesses> = new Map();
 const te = messages.inboundSchedule.excess;
 
 /**
- * 「초과분」 칸 — 이 줄에 이을 수 있는 초과분이 있으면 「500 잇기」, 이미 이었으면 「500 이음」.
- * 누르면 잇기 창이 그 초과분과 이 줄을 고른 채로 열린다 — 사람은 문장을 읽고 「잇기」만 누른다.
+ * 「초과분」 칸 — 이 줄에 연결할 수 있는 초과분이 있으면 「500 연결」, 이미 연결했으면 「500 연결됨」.
+ * 누르면 연결 창이 그 초과분과 이 줄을 고른 채로 열린다 — 사람은 「연결」만 누른다.
  */
 const ExcessCell = ({
   row,

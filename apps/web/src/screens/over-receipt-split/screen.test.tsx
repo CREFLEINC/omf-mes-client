@@ -1819,7 +1819,6 @@ describe('OverReceiptSplitScreen — 만들어지는 전표는 늘 한 건이다
 
     expect(within(dialog).getByText(t.dialog.registerLead(1, 0))).toBeInTheDocument();
     expect(within(dialog).queryAllByRole('checkbox')).toHaveLength(0);
-    expect(within(dialog).queryByText(t.dialog.registerExcessNext)).not.toBeInTheDocument();
 
     await user.click(within(dialog).getByRole('button', { name: t.actions.confirmRegister }));
 
@@ -1828,8 +1827,8 @@ describe('OverReceiptSplitScreen — 만들어지는 전표는 늘 한 건이다
     });
   });
 
-  /* 초과 몫이 있으면 요약과 확인 창이 그 사실과 다음 일(잇기)을 말한다 — 그래도 전표는 한 건이다. */
-  it('초과 몫이 있으면 요약과 확인 창이 그 줄과 다음 일을 밝힌다', async () => {
+  /* 초과 몫이 있으면 요약과 확인 창이 그 사실을 말한다 — 그래도 전표는 한 건이다. */
+  it('초과 몫이 있으면 요약과 확인 창이 그 줄을 밝힌다', async () => {
     const { user } = renderScreen(allRoutes());
 
     await setupRegister(user);
@@ -1843,7 +1842,6 @@ describe('OverReceiptSplitScreen — 만들어지는 전표는 늘 한 건이다
 
     expect(within(dialog).getByText(t.dialog.registerLead(1, 1))).toBeInTheDocument();
     expect(within(dialog).getByText(t.dialog.excessOf('65', '1'))).toBeInTheDocument();
-    expect(within(dialog).getByText(t.dialog.registerExcessNext)).toBeInTheDocument();
     expect(within(dialog).queryAllByRole('checkbox')).toHaveLength(0);
   });
 
@@ -2511,15 +2509,15 @@ describe('OverReceiptSplitScreen — 취소와 초안 파기 확인', () => {
 });
 
 /**
- * **초과분 잇기로 가는 길** — 초과 몫은 P/O 에 들어가지 않고 ERP 가 만들 추가 P/O 를 기다린다(서버 장부 P-100).
- * 잇는 일은 「입하 예정 조회」가 한다 — 이 화면은 등록 결과에서 그 사실을 밝히고 그리로 가는 길만 세운다.
+ * **초과분 연결로 가는 길** — 초과 몫은 P/O 에 들어가지 않고 ERP 가 만들 추가 P/O 를 기다린다(서버 장부 P-100).
+ * 연결은 「입하 예정 조회」가 한다 — 이 화면은 등록 결과에서 그 사실을 밝히고 그리로 가는 길만 세운다.
  *
- * 등록 전에는 길이 없다 — 이을 초과분이 아직 없다. 초과 몫을 실은 등록 뒤에만 선다.
+ * 등록 전에는 길이 없다 — 연결할 초과분이 아직 없다. 초과 몫을 실은 등록 뒤에만 선다.
  */
-describe('OverReceiptSplitScreen — 초과분 잇기로 가는 길', () => {
+describe('OverReceiptSplitScreen — 초과분 연결로 가는 길', () => {
   const resultPane = (): HTMLElement => screen.getByRole('status', { name: t.panes.result });
 
-  /* 한도 안의 등록은 이을 것이 없다 — 길이 서면 할 일이 남은 것처럼 읽힌다. */
+  /* 한도 안의 등록은 연결할 것이 없다 — 길이 서면 할 일이 남은 것처럼 읽힌다. */
   it('초과 몫이 없는 등록 결과에는 이동 경로가 없다', async () => {
     const { user } = renderScreen(allRoutes());
 
@@ -2535,8 +2533,8 @@ describe('OverReceiptSplitScreen — 초과분 잇기로 가는 길', () => {
     expect(within(resultPane()).queryAllByRole('link')).toHaveLength(0);
   });
 
-  /* 초과 몫을 실었으면 어느 줄에 얼마가 남았는지와 이을 자리가 결과에 선다. */
-  it('초과 몫을 실은 등록 결과에는 그 몫과 잇기로 가는 링크가 선다', async () => {
+  /* 초과 몫을 실었으면 어느 줄에 얼마가 남았는지와 연결할 자리가 결과에 선다. */
+  it('초과 몫을 실은 등록 결과에는 그 몫과 연결로 가는 링크가 선다', async () => {
     const { user } = renderScreen(allRoutes());
 
     await setupRegister(user);
@@ -2556,7 +2554,7 @@ describe('OverReceiptSplitScreen — 초과분 잇기로 가는 길', () => {
   /*
    * **실은 초과 몫이 앞 등록에서 눌어붙지 않는다.** 화면은 성공한 뒤에도 그 자리에 남으므로 한 화면에서
    * 두 번 등록하는 것은 실제 조작이다. 앞의 초과 몫을 매 제출마다 새로 적지 않으면 뒤의 한도 안 등록에
-   * 잇기 길이 되살아난다. 링크가 섰다가 **사라지는 것**까지 한 시험에서 본다.
+   * 연결 길이 되살아난다. 링크가 섰다가 **사라지는 것**까지 한 시험에서 본다.
    */
   it('초과 몫을 실은 뒤 한도 안으로 다시 등록하면 이동 경로가 사라진다', async () => {
     const { user } = renderScreen(allRoutes());
@@ -2599,10 +2597,10 @@ describe('OverReceiptSplitScreen — 초과분 잇기로 가는 길', () => {
   });
 
   /*
-   * **C37의 화면 몫** — 누르면 잇기 창을 여는 주소로 가고 **뒤로가기 한 번**으로 이 결과 화면에 돌아온다.
+   * **C37의 화면 몫** — 누르면 연결 창을 여는 주소로 가고 **뒤로가기 한 번**으로 이 결과 화면에 돌아온다.
    * 도착한 화면의 라우트가 실재하는지는 `routes/index.test.tsx` 가 잰다.
    */
-  it('링크를 누르면 입하 예정 조회의 잇기 주소로 가고 뒤로가기 한 번에 돌아온다', async () => {
+  it('링크를 누르면 입하 예정 조회의 연결 주소로 가고 뒤로가기 한 번에 돌아온다', async () => {
     const { user } = renderScreen(allRoutes());
 
     await setupRegister(user);
@@ -2708,7 +2706,7 @@ describe('OverReceiptSplitScreen — 라벨 스캔과 LOT', () => {
 
   /*
    * 초과 몫이 있어도 예외 유형·초과 사유를 묻지 않는다 — 이 전표는 발주에 묶인 정상 입하이고, 초과 몫은
-   * 뒤에 추가 P/O 에 잇는다. 예외 유형 사전도 부르지 않는다.
+   * 나중에 추가 P/O 에 연결한다. 예외 유형 사전도 부르지 않는다.
    */
   it('초과 몫이 있어도 예외 유형·초과 사유 칸이 없고 그 사전을 부르지 않는다', async () => {
     const { requests, user } = renderScreen(allRoutes());

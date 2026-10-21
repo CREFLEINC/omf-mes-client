@@ -161,10 +161,10 @@ export const toCreatedReceiptView = (data: InboundReceiptResponse): CreatedRecei
  * 한 번의 등록이 남긴 것 — **만들어진 전표와 P/O 에 넣지 않은 초과 몫.**
  *
  * 초과 몫은 화면이 보낸 값이다(응답 줄을 다시 읽지 않는다) — 결과 구획이 「무엇이 추가 P/O 를 기다리는가」를
- * 말하고 잇는 자리로 가는 길을 세우는 데 쓴다.
+ * 말하고 연결하는 자리로 가는 길을 세우는 데 쓴다.
  */
 export interface CreatedResult {
   receipts: CreatedReceiptView[];
-  /** 초과 몫이 실린 줄 — 줄번호와 수량. 비었으면 이을 것이 없다. */
+  /** 초과 몫이 실린 줄 — 줄번호와 수량. 비었으면 연결할 것이 없다. */
   excessLines: { lineNo: number; excessQty: number }[];
 }

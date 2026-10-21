@@ -6688,12 +6688,6 @@ body.po-board-resizing {
   font: var(--type-title-sm);
 }
 
-.ors-legend {
-  margin: 0;
-  font: var(--type-body-sm);
-  color: var(--on-surface-variant);
-}
-
 /* 표 위 도구 — 라벨 스캔 칸과 「잔량으로 채우기」. */
 .ors-toolbar {
   display: flex;
@@ -16415,7 +16409,7 @@ body:has(.goods-receipt-post-form) > [role='listbox'] {
 }
 
 /*
- * 입하 예정 — 초과분 잇기(서버 장부 P-100). 조건 줄 끝의 진입 단추와 오른쪽에서 열리는 잇기 창.
+ * 입하 예정 — 초과분 발주 연결(서버 장부 P-100). 탭 줄 끝의 진입 단추와 오른쪽에서 열리는 연결 창.
  * 고른 줄 표시는 발주 목록과 같은 정보 파랑이다(붉은 계열은 문제로 읽힌다).
  */
 .po-board-tools {
@@ -16445,12 +16439,6 @@ body:has(.goods-receipt-post-form) > [role='listbox'] {
   display: flex;
   flex-direction: column;
   gap: var(--space-4);
-}
-
-.excess-lead,
-.excess-guide-hint {
-  margin: 0;
-  color: var(--on-surface-variant);
 }
 
 .excess-guide {
@@ -16506,10 +16494,5 @@ body:has(.goods-receipt-post-form) > [role='listbox'] {
 
 .excess-confirm {
   flex: 1;
-  margin: 0;
-}
-
-.excess-note {
-  max-width: none;
   margin: 0;
 }

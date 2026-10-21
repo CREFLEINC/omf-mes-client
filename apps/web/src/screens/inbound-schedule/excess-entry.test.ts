@@ -2,13 +2,13 @@ import { describe, expect, it } from 'vitest';
 
 import { readExcessEntry, withExcessEntry, withoutExcessEntry } from './excess-entry';
 
-describe('readExcessEntry — 잇기 창은 주소가 연다', () => {
+describe('readExcessEntry — 연결 창은 주소가 연다', () => {
   it('excess=1 이 없으면 닫혀 있다', () => {
     expect(readExcessEntry(new URLSearchParams('po=7101'))).toBeNull();
     expect(readExcessEntry(new URLSearchParams('excess=0'))).toBeNull();
   });
 
-  it('키가 없으면 안 이은 탭으로, 고른 것 없이 연다', () => {
+  it('키가 없으면 「미연결」 탭으로, 고른 것 없이 연다', () => {
     expect(readExcessEntry(new URLSearchParams('excess=1'))).toEqual({
       tab: 'unlinked',
       receiptNo: null,

@@ -168,32 +168,24 @@ export const inboundSchedule = {
     inactiveSuffix: ' (미사용)',
   },
   /**
-   * 초과분 잇기(서버 장부 P-100) — P/O 보다 많이 받아 P/O 에 넣지 않은 몫을 ERP 가 만든 추가 P/O 라인에 잇는다.
-   * 서버가 후보를 제안하고 사람이 확정한다. 입하·입고 일을 이 화면으로 모으는 첫 걸음이다(사용자 지시 2026-10-21).
-   * 「잇다 · 풀다」가 이 일의 두 낱말이다 — 「연결 · 해제」보다 짧고, 무엇이 무엇에 붙는지 읽힌다.
+   * 초과분 발주 연결(서버 장부 P-100) — 발주보다 많이 받아 P/O 에 넣지 않은 몫을 ERP 가 만든 추가 발주 라인에
+   * 연결한다. 서버가 후보를 제안하고 사람이 확정한다. 입하·입고 일을 이 화면으로 모으는 첫 걸음이다(사용자 지시 2026-10-21).
    */
   excess: {
-    /** 조건 줄 오른쪽 끝의 진입 단추. 잇지 않은 초과분이 있으면 그 수가 붙는다. */
-    entry: '초과분 잇기',
-    entryCount: (count: number): string => `잇지 않은 초과분 ${String(count)}건`,
-    title: '초과분 잇기',
-    lead: 'P/O 보다 많이 받아 P/O 에 넣지 않은 몫(초과분)을 ERP 가 만든 추가 P/O 라인에 잇습니다. 이으면 그 라인의 받은 수량이 초과분만큼 늘어납니다. 잘못 이었으면 「이은 초과분」에서 풉니다.',
+    /** 탭 줄 오른쪽의 진입 단추. 미연결 초과분이 있으면 그 수가 붙는다. */
+    entry: '초과분 연결',
+    entryCount: (count: number): string => `미연결 초과분 ${String(count)}건`,
+    title: '초과분 발주 연결',
     steps: {
       label: '진행 단계',
-      pick: '초과분 고르기',
-      line: 'P/O 라인 고르기',
-      link: '잇기',
-    },
-    hints: {
-      pick: '이을 초과분을 목록에서 누르세요.',
-      line: '아래 후보에서 이을 P/O 라인을 누르세요. 「수량 일치」 라인이 대개 맞는 추가 P/O 입니다.',
-      link: '확인 문장을 읽고 「잇기」를 누르세요.',
-      unlink: '풀 초과분을 누른 뒤 「풀기」를 누르세요.',
+      pick: '초과분 선택',
+      line: '발주 라인 선택',
+      link: '연결',
     },
     tabs: {
       label: '초과분 구분',
-      unlinked: '잇지 않은 초과분',
-      linked: '이은 초과분',
+      unlinked: '미연결',
+      linked: '연결됨',
     },
     table: {
       receiptNo: '입하번호',
@@ -201,77 +193,69 @@ export const inboundSchedule = {
       supplier: '공급사',
       item: '품목',
       lot: 'LOT',
-      excessQty: '초과분',
-      sourceOrder: '처음 P/O',
-      linkedOrder: '이은 P/O',
-      linkedAt: '이은 날',
+      excessQty: '초과 수량',
+      sourceOrder: '원 발주',
+      linkedOrder: '연결 발주',
+      linkedAt: '연결일',
     },
     candidates: {
-      title: '이을 수 있는 P/O 라인',
+      title: '연결할 발주 라인',
       purchaseOrderNo: '발주번호',
       orderDate: '발주일',
       dueDate: '납기',
-      ordered: '발주',
-      received: '받음',
-      /** 발주 + 초과 허용치 − 받은 수량 */
-      room: '받을 수 있음',
-      /** 남은 수량이 초과분과 같다 — 대개 그 초과분 때문에 만든 추가 P/O 다. */
+      ordered: '발주 수량',
+      received: '입하 수량',
+      /** 발주 + 초과 허용치 − 입하 수량 */
+      room: '연결 가능',
+      /** 남은 수량이 초과분과 같다 — 대개 그 초과분 때문에 만든 추가 발주다. */
       exact: '수량 일치',
       /** 상세에서 보던 발주의 라인. */
-      current: '보던 발주',
-      emptyTitle: '이을 수 있는 P/O 라인이 아직 없습니다',
-      emptyDescription:
-        'ERP 가 추가 P/O 를 만들어 MES 로 넘어오면 여기에 나타납니다. 같은 공급사·품목·단위이고 초과분을 다 받을 수 있는 라인만 보입니다.',
-      loading: '후보를 불러오는 중',
-      pickFirst: '위에서 초과분을 고르면 이을 수 있는 P/O 라인이 보입니다.',
+      current: '선택한 발주',
+      emptyTitle: '연결할 발주 라인이 없습니다',
+      emptyDescription: 'ERP 에서 추가 발주가 들어오면 여기에 표시됩니다.',
+      loading: '발주 라인을 불러오는 중',
     },
     /** 「PO-2026-0012 · 10번 줄」 */
     orderLine: (purchaseOrderNo: string, lineNo: number): string =>
       `${purchaseOrderNo} · ${String(lineNo)}번 줄`,
-    /** 줄 고르기 단추의 접근 이름 — 보이는 글자(번호)를 담는다. */
+    /** 줄 선택 단추의 접근 이름 — 보이는 글자(번호)를 담는다. */
     pickExcess: (receiptNo: string, lineNo: number): string =>
-      `${receiptNo} ${String(lineNo)}번 줄 초과분 고르기`,
+      `${receiptNo} ${String(lineNo)}번 줄 초과분 선택`,
     pickLine: (purchaseOrderNo: string, lineNo: number): string =>
-      `${purchaseOrderNo} ${String(lineNo)}번 줄 고르기`,
+      `${purchaseOrderNo} ${String(lineNo)}번 줄 선택`,
     /** 방금 「초과 입하 분리」에서 등록한 전표의 초과분. */
     justRegistered: '방금 등록',
     actions: {
-      link: '잇기',
-      unlink: '풀기',
+      link: '연결',
+      unlink: '연결 해제',
     },
-    /**
-     * 누르기 전에 무엇이 바뀌는지 — 단추 옆에 늘 보인다. 수량 뒤에 조사를 붙이지 않는다(받침이 수마다 다르다) —
-     * 화살표로 무엇이 어디로 가는지 적는다.
-     */
-    confirmLink: (qty: string, order: string): string =>
-      `초과분 ${qty} → ${order}. 그 라인의 받은 수량이 ${qty} 늘어납니다.`,
-    confirmUnlink: (qty: string, order: string): string =>
-      `${order} 에서 초과분 ${qty} 풀기. 그 라인의 받은 수량이 ${qty} 줄고, 다시 잇지 않은 초과분이 됩니다.`,
+    /** 단추 옆에 늘 보이는 요약. 수량 뒤에 조사를 붙이지 않는다(받침이 단위마다 다르다). */
+    confirmLink: (qty: string, order: string): string => `초과분 ${qty} → ${order}`,
+    confirmUnlink: (qty: string, order: string): string => `${order}의 초과분 ${qty} 연결 해제`,
     blocked: {
-      noExcess: '먼저 이을 초과분을 고르세요.',
-      noLine: '이을 P/O 라인을 고르세요.',
-      noLinked: '풀 초과분을 고르세요.',
+      noExcess: '연결할 초과분을 선택하세요.',
+      noLine: '연결할 발주 라인을 선택하세요.',
+      noLinked: '연결을 해제할 초과분을 선택하세요.',
     },
     done: {
-      linked: (qty: string, order: string): string => `이었습니다 — 초과분 ${qty} → ${order}`,
-      unlinked: (qty: string, order: string): string => `풀었습니다 — ${order} 에서 초과분 ${qty}`,
+      linked: (qty: string, order: string): string => `연결했습니다: 초과분 ${qty} → ${order}`,
+      unlinked: (qty: string, order: string): string =>
+        `연결을 해제했습니다: ${order}의 초과분 ${qty}`,
     },
     empty: {
-      unlinkedTitle: '잇지 않은 초과분이 없습니다',
-      unlinkedDescription:
-        '「초과 입하 분리」에서 발주보다 많이 온 수량을 등록하면 그 초과분이 여기에 나타납니다.',
-      linkedTitle: '이은 초과분이 없습니다',
+      unlinkedTitle: '미연결 초과분이 없습니다',
+      linkedTitle: '연결된 초과분이 없습니다',
     },
     truncated: (shown: number, total: number): string =>
-      `앞쪽 ${String(shown)}건만 보입니다(전체 ${String(total)}건).`,
+      `${String(shown)}건까지만 표시합니다 (전체 ${String(total)}건).`,
     loading: '초과분을 불러오는 중',
     /** 상세 표의 열 — 이 발주에 맞는 초과분이 있을 때만 선다. */
     lineColumn: '초과분',
-    lineLinkable: (qty: string): string => `${qty} 잇기`,
+    lineLinkable: (qty: string): string => `${qty} 연결`,
     lineLinkableLabel: (lineNo: number, qty: string): string =>
-      `${String(lineNo)}번 줄에 초과분 ${qty} 잇기`,
-    lineLinked: (qty: string): string => `${qty} 이음`,
+      `${String(lineNo)}번 줄에 초과분 ${qty} 연결`,
+    lineLinked: (qty: string): string => `${qty} 연결됨`,
     lineLinkedLabel: (lineNo: number, qty: string): string =>
-      `${String(lineNo)}번 줄에 이은 초과분 ${qty} 보기`,
+      `${String(lineNo)}번 줄에 연결된 초과분 ${qty} 보기`,
   },
 } as const;

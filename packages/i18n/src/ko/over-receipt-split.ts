@@ -6,7 +6,7 @@
  *
  * **줄 하나 · LOT 하나다**(서버 장부 P-100 · 사용자 결정 2026-10-21). 발주보다 많이 와도 줄을 가르지 않고,
  * 「P/O 반영」과 「초과분」 두 몫으로 나눠 보인다 — 초과분은 그 줄의 `excessQty` 로 실려 P/O 에 넣지 않고,
- * ERP 가 만든 추가 P/O 에 뒤에 잇는다(「입하 예정 조회」의 초과분 잇기).
+ * ERP 가 만든 추가 발주에 나중에 연결한다(「입하 예정 조회」의 초과분 연결).
  *
  * **두 몫은 화면이 만든 값이다.** 발주 + 초과 허용치 − 누적 입하까지가 P/O 반영, 그보다 많이
  * 도착한 몫이 초과분이다 — 요청 조립도 같은 계산을 받는다(`split-calc.ts`).
@@ -87,11 +87,10 @@ export const overReceiptSplit = {
       register: '등록',
     },
     hints: {
-      select: '왼쪽 목록에서 도착한 자재의 발주를 누르세요.',
-      lines:
-        '라벨을 스캔하거나 「이번 도착」 칸에 수량을 넣으세요. 발주보다 많이 온 몫은 화면이 초과분으로 가릅니다.',
-      info: '입하 일시를 확인하세요. 거래명세서번호와 비고는 있으면 적습니다.',
-      register: '「입하 등록」을 누르면 실릴 내용을 확인한 뒤 등록합니다.',
+      select: '도착한 자재의 발주를 선택하세요.',
+      lines: '라벨을 스캔하거나 「이번 도착」에 수량을 입력하세요.',
+      info: '입하 일시를 확인하세요.',
+      register: '「입하 등록」을 눌러 등록하세요.',
     },
   },
   loading: {
@@ -143,15 +142,11 @@ export const overReceiptSplit = {
     lotNoPlaceholder: '라벨을 스캔하거나 LOT 번호 입력',
     lotMissing: '라벨 없음',
     lotReasonPlaceholder: '사유 선택',
-    /** 표 위의 설명 — 두 낱말의 뜻을 표가 있는 자리에서 바로 읽는다. */
-    legend:
-      '도착한 수량은 LOT 하나로 받습니다. 그중 발주 수량과 허용치 안의 몫은 P/O 에 반영되고, 넘는 몫은 초과분으로 남아 ERP 가 추가 P/O 를 만들면 「입하 예정 조회」에서 잇습니다.',
   },
   /** 라벨 스캔 칸 — 라벨의 품목코드로 줄을 찾아 수량과 LOT 을 채운다. */
   scan: {
     label: '라벨 스캔',
     placeholder: '공급사 LOT 라벨을 스캔하세요',
-    hint: '스캐너가 없으면 「이번 도착」 칸에 수량을 넣고, LOT 줄에서 번호를 치거나 「라벨 없음」을 고르세요.',
     /** 「3번 줄에 담았습니다 — 수량 5,000」 */
     added: (lineNo: number, qty: string): string =>
       `${String(lineNo)}번 줄에 담았습니다 — 수량 ${qty}`,
@@ -241,10 +236,9 @@ export const overReceiptSplit = {
       `거래명세서번호는 ${String(max)}자를 넘을 수 없습니다.`,
     /**
      * 이미 다 받은 줄(발주 + 허용치 − 누적 입하 = 0)에 수량을 넣었다 — 전부 초과분인 줄은 서버가 받지 않는다
-     * (`excessQty` 는 `receivedQty` 보다 작아야 한다). 추가 P/O 가 오면 그 발주로 받는다.
+     * (`excessQty` 는 `receivedQty` 보다 작아야 한다). 추가 발주가 오면 그 발주로 받는다.
      */
-    qtyNoRoom:
-      '이미 다 받은 줄이라 이 줄로는 받을 수 없습니다. 추가 P/O 가 생기면 그 발주에서 받으세요.',
+    qtyNoRoom: '발주 수량을 모두 받은 줄입니다. 추가 발주로 받으세요.',
     /** LOT — 서버가 LOT 번호 없는 줄을 받지 않는다. 번호가 없으면 「라벨 없음」과 사유가 선다. */
     lotRequired: 'LOT 번호를 넣거나 「라벨 없음」을 고르세요.',
     lotReasonRequired: '라벨이 없으면 대체 LOT 사유를 고르세요.',
@@ -267,8 +261,6 @@ export const overReceiptSplit = {
   },
   notes: {
     headerShared: '영업일은 입하 일시의 날짜입니다.',
-    /** 수입검사 여부는 품목 기준정보가 정한다 — 줄의 IQC 표식이 그 사실이다. */
-    iqcByItem: 'IQC 표식이 붙은 품목은 등록하면 수입검사 의뢰가 함께 만들어집니다.',
     registerRecheck:
       '등록됐는지 확인한 뒤 다시 시도하세요. 확인하지 않고 다시 보내면 같은 입하가 두 번 등록될 수 있습니다.',
   },
@@ -277,11 +269,10 @@ export const overReceiptSplit = {
     count: (count: number): string => `전표 ${String(count)}건을 만들었습니다.`,
     receiptNo: '전표번호',
     status: '상태',
-    /** 초과분을 실었으면 그 몫이 아직 P/O 에 들어가지 않았다는 사실과 이을 자리. */
+    /** 초과분을 실었으면 그 몫과 연결할 자리. */
     excessLine: (lineNo: number, qty: string): string => `${String(lineNo)}번 줄 ${qty}`,
-    excessWaiting: (lines: string): string =>
-      `초과분(${lines})은 P/O 에 넣지 않았습니다. ERP 가 추가 P/O 를 만들면 잇습니다.`,
-    goLinkExcess: '입하 예정 조회에서 초과분 잇기',
+    excessWaiting: (lines: string): string => `미연결 초과분: ${lines}`,
+    goLinkExcess: '초과분 발주 연결',
   },
   dialog: {
     discardTitle: '입력한 도착 수량을 버립니다',
@@ -289,8 +280,8 @@ export const overReceiptSplit = {
     registerTitle: '입하를 등록합니다',
     registerLead: (lines: number, excessLines: number): string =>
       excessLines === 0
-        ? `입하 전표 한 건에 ${String(lines)}줄을 싣습니다.`
-        : `입하 전표 한 건에 ${String(lines)}줄을 싣습니다. 그중 ${String(excessLines)}줄은 초과분이 있어 그 몫은 P/O 에 넣지 않습니다.`,
+        ? `입하 전표 1건에 ${String(lines)}줄을 등록합니다.`
+        : `입하 전표 1건에 ${String(lines)}줄을 등록합니다. 그중 ${String(excessLines)}줄에 초과분이 있습니다.`,
     registerGroupLines: '실리는 줄',
     registerGroupHeader: '입하 정보',
     registerIrreversible: '등록한 전표는 이 화면에서 되돌릴 수 없습니다. 취소는 승인을 거칩니다.',
@@ -299,8 +290,6 @@ export const overReceiptSplit = {
     /** 「P/O 반영 4,500 · 초과분 500」 */
     excessOf: (normalQty: string, excessQty: string): string =>
       `P/O 반영 ${normalQty} · 초과분 ${excessQty}`,
-    registerExcessNext:
-      '초과분은 재고로는 바로 쓰이고, ERP 가 추가 P/O 를 만들면 「입하 예정 조회」에서 그 P/O 에 잇습니다.',
     lotOf: (lotNo: string): string => `LOT ${lotNo}`,
     lotMissingOf: (reason: string): string => `라벨 없음 (${reason})`,
   },

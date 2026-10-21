@@ -53,11 +53,10 @@ export const overReceiptSplit: Translated<typeof ko.overReceiptSplit> = {
       register: 'Đăng ký',
     },
     hints: {
-      select: 'Hãy bấm vào đơn đặt hàng của vật tư vừa đến ở danh sách bên trái.',
-      lines:
-        'Hãy quét nhãn hoặc nhập số lượng vào ô 「Đến lần này」. Phần đến nhiều hơn đơn đặt sẽ được màn hình tự tách thành phần vượt.',
-      info: 'Hãy kiểm tra thời điểm nhập hàng. Số phiếu giao hàng và ghi chú thì ghi nếu có.',
-      register: 'Bấm 「Đăng ký nhập hàng」 để xem nội dung sẽ ghi rồi đăng ký.',
+      select: 'Hãy chọn đơn đặt hàng của vật tư vừa đến.',
+      lines: 'Hãy quét nhãn hoặc nhập số lượng vào 「Đến lần này」.',
+      info: 'Hãy kiểm tra thời điểm nhập hàng.',
+      register: 'Bấm 「Đăng ký nhập hàng」 để đăng ký.',
     },
   },
   loading: {
@@ -94,13 +93,10 @@ export const overReceiptSplit: Translated<typeof ko.overReceiptSplit> = {
     lotNoPlaceholder: 'Quét nhãn hoặc nhập số LOT',
     lotMissing: 'Không có nhãn',
     lotReasonPlaceholder: 'Chọn lý do',
-    legend:
-      'Số lượng đến được nhận bằng một LOT. Phần trong số lượng đặt và dung sai được ghi vào P/O; phần vượt được giữ lại và nối vào P/O bổ sung do ERP tạo tại 「Tra cứu dự kiến nhập hàng」.',
   },
   scan: {
     label: 'Quét nhãn',
     placeholder: 'Hãy quét nhãn LOT của nhà cung cấp',
-    hint: 'Không có máy quét thì nhập số lượng vào ô 「Đến lần này」, rồi ở dòng LOT nhập số hoặc chọn 「Không có nhãn」.',
     added: (lineNo: number, qty: string): string =>
       `Đã đưa vào dòng ${String(lineNo)} — số lượng ${qty}`,
     notFound: (itemCode: string): string => `Mặt hàng 「${itemCode}」 không có trong đơn này.`,
@@ -178,8 +174,7 @@ export const overReceiptSplit: Translated<typeof ko.overReceiptSplit> = {
     receiptDatetimeRequired: 'Hãy nhập thời điểm nhập hàng.',
     deliveryNoteNoTooLong: (max: number): string =>
       `Số phiếu giao hàng không được vượt quá ${String(max)} ký tự.`,
-    qtyNoRoom:
-      'Dòng này đã nhận đủ nên không thể nhận thêm qua dòng này. Khi có P/O bổ sung, hãy nhận theo đơn đó.',
+    qtyNoRoom: 'Dòng này đã nhận đủ số lượng đặt. Hãy nhận theo P/O bổ sung.',
     lotRequired: 'Hãy nhập số LOT hoặc chọn 「Không có nhãn」.',
     lotReasonRequired: 'Không có nhãn thì hãy chọn lý do LOT thay thế.',
     lotFormat:
@@ -195,7 +190,6 @@ export const overReceiptSplit: Translated<typeof ko.overReceiptSplit> = {
   },
   notes: {
     headerShared: 'Ngày làm việc là ngày của thời điểm nhập hàng.',
-    iqcByItem: 'Mặt hàng có dấu IQC sẽ được tạo kèm yêu cầu kiểm tra đầu vào khi đăng ký.',
     registerRecheck:
       'Hãy kiểm tra xem đã đăng ký chưa rồi mới thử lại. Gửi lại mà không kiểm tra thì cùng một lần nhập hàng có thể bị đăng ký hai lần.',
   },
@@ -204,17 +198,16 @@ export const overReceiptSplit: Translated<typeof ko.overReceiptSplit> = {
     receiptNo: 'Số phiếu',
     status: 'Trạng thái',
     excessLine: (lineNo: number, qty: string): string => `dòng ${String(lineNo)} ${qty}`,
-    excessWaiting: (lines: string): string =>
-      `Phần vượt (${lines}) chưa được ghi vào P/O. Khi ERP tạo P/O bổ sung thì nối vào.`,
-    goLinkExcess: 'Nối phần vượt tại Tra cứu dự kiến nhập hàng',
+    excessWaiting: (lines: string): string => `Phần vượt chưa liên kết: ${lines}`,
+    goLinkExcess: 'Liên kết phần vượt với P/O',
   },
   dialog: {
     discardTitle: 'Bỏ số lượng đến đã nhập',
     registerTitle: 'Đăng ký nhập hàng',
     registerLead: (lines: number, excessLines: number): string =>
       excessLines === 0
-        ? `Ghi ${String(lines)} dòng vào một phiếu nhập hàng.`
-        : `Ghi ${String(lines)} dòng vào một phiếu nhập hàng. Trong đó ${String(excessLines)} dòng có phần vượt, phần đó không ghi vào P/O.`,
+        ? `Đăng ký ${String(lines)} dòng vào 1 phiếu nhập hàng.`
+        : `Đăng ký ${String(lines)} dòng vào 1 phiếu nhập hàng. Trong đó ${String(excessLines)} dòng có phần vượt.`,
     registerGroupLines: 'Các dòng được ghi',
     registerGroupHeader: 'Thông tin nhập hàng',
     registerIrreversible:
@@ -223,8 +216,6 @@ export const overReceiptSplit: Translated<typeof ko.overReceiptSplit> = {
       'Số đã nhận lũy kế của dòng đơn sẽ tăng, mặt hàng thuộc diện kiểm tra đầu vào sẽ được tạo kèm yêu cầu kiểm tra.',
     excessOf: (normalQty: string, excessQty: string): string =>
       `Ghi vào P/O ${normalQty} · Phần vượt ${excessQty}`,
-    registerExcessNext:
-      'Phần vượt được dùng làm tồn kho ngay; khi ERP tạo P/O bổ sung thì nối vào P/O đó tại 「Tra cứu dự kiến nhập hàng」.',
     lotOf: (lotNo: string): string => `LOT ${lotNo}`,
     lotMissingOf: (reason: string): string => `Không có nhãn (${reason})`,
   },

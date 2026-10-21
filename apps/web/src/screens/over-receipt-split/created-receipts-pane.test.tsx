@@ -33,9 +33,9 @@ describe('docStatusLabel', () => {
   });
 });
 
-describe('excessLinkPath — 초과분 잇기 자리', () => {
-  /* 잇기는 「입하 예정 조회」가 연다 — `excess=1` 이 창을 열고 `excessReceipt` 가 방금 만든 전표를 앞에 세운다. */
-  it('입하 예정 조회로 가고 잇기 창과 방금 만든 전표를 싣는다', () => {
+describe('excessLinkPath — 초과분 연결 자리', () => {
+  /* 연결은 「입하 예정 조회」가 연다 — `excess=1` 이 창을 열고 `excessReceipt` 가 방금 만든 전표를 앞에 세운다. */
+  it('입하 예정 조회로 가고 연결 창과 방금 만든 전표를 싣는다', () => {
     const [pathname, query = ''] = excessLinkPath('IR-2026-900010').split('?');
     const params = new URLSearchParams(query);
 
@@ -63,8 +63,8 @@ describe('CreatedReceiptsPane', () => {
     expect(within(pane).getByText('SAMPLE_IR_STATUS_B')).toBeInTheDocument();
   });
 
-  /* 초과 몫은 P/O 에 들어가지 않았다 — 그 사실과 이을 자리를 결과 자리에서 함께 읽는다. */
-  it('초과분을 실었으면 줄마다 몫을 밝히고 잇기로 가는 링크를 세운다', () => {
+  /* 초과 몫은 P/O 에 들어가지 않았다 — 그 사실과 연결할 자리를 결과 자리에서 함께 읽는다. */
+  it('초과분을 실었으면 줄마다 몫을 밝히고 연결로 가는 링크를 세운다', () => {
     const pane = renderPane({
       receipts: [RECEIPT],
       excessLines: [

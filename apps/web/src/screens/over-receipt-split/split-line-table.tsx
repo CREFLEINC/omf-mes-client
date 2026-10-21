@@ -402,10 +402,6 @@ export const SplitLineTable = ({
 
       <div className="ors-section-head">
         <h3 className="ors-section-title">{t.form.linesTitle}</h3>
-        {/* 두 낱말의 뜻을 표가 있는 자리에서 바로 읽는다 — 절차를 몰라도 표가 무엇을 가르는지 안다. */}
-        <p className="ors-legend">
-          {t.lineTable.legend} {t.notes.iqcByItem}
-        </p>
       </div>
 
       {toolbar}

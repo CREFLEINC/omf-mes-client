@@ -1044,18 +1044,18 @@ describe('InboundScheduleScreen — 발주일과 폭 조절', () => {
   });
 });
 
-describe('InboundScheduleScreen — 초과분 잇기', () => {
+describe('InboundScheduleScreen — 초과분 발주 연결', () => {
   const te = t.excess;
   const QTY = '30 SAMPLE-EA';
   const ORDER_LINE = te.orderLine('SAMPLE-PO-0001', 1);
 
-  it('잇지 않은 초과분이 없으면 조건 줄 끝 단추는 이름만 있고 수가 붙지 않는다', async () => {
+  it('미연결 초과분이 없으면 탭 줄 끝 단추는 이름만 있고 수가 붙지 않는다', async () => {
     renderScreen([listRoute(), ...lookupRoutes()]);
 
     expect(await screen.findByRole('button', { name: te.entry })).toBeInTheDocument();
   });
 
-  it('잇지 않은 초과분이 있으면 단추에 그 수가 붙고, 누르면 창이 주소로 열리고 닫으면 주소에서 빠진다', async () => {
+  it('미연결 초과분이 있으면 단추에 그 수가 붙고, 누르면 창이 주소로 열리고 닫으면 주소에서 빠진다', async () => {
     const { user } = renderScreen([
       excessListRoute([excessFixture()]),
       listRoute(),
@@ -1068,10 +1068,10 @@ describe('InboundScheduleScreen — 초과분 잇기', () => {
 
     const dialog = await screen.findByRole('dialog', { name: te.title });
     expect(currentLocation()).toContain('excess=1');
-    /* 고를 것이 하나뿐이라 저절로 골랐다 — 후보를 부르기 전이라도 다음 할 일이 「P/O 라인 고르기」다. */
-    expect(await within(dialog).findByText(te.hints.line)).toBeInTheDocument();
+    /* 고를 것이 하나뿐이라 저절로 골랐다 — 다음 할 일은 발주 라인 선택이다. */
+    expect(await within(dialog).findByText(te.blocked.noLine)).toBeInTheDocument();
 
-    /* 닫기는 창 머리의 단추 하나다(디자인 시스템) — 아래에는 할 일(잇기)만 둔다. */
+    /* 닫기는 창 머리의 단추 하나다(디자인 시스템) — 아래에는 할 일(연결)만 둔다. */
     await user.click(within(dialog).getByRole('button', { name: messages.common.close }));
 
     await waitFor(() => {
@@ -1103,7 +1103,7 @@ describe('InboundScheduleScreen — 초과분 잇기', () => {
     expect(within(linesPane()).queryByRole('columnheader', { name: te.lineColumn })).toBeNull();
   });
 
-  it('라인의 「잇기」를 누르면 그 초과분·라인을 고른 채로 열리고, 문장을 읽고 「잇기」만 누르면 된다', async () => {
+  it('라인의 「연결」을 누르면 그 초과분·라인을 고른 채로 열리고, 「연결」만 누르면 된다', async () => {
     const bodies: unknown[] = [];
     const { requests, user } = renderScreen(
       [
@@ -1132,7 +1132,7 @@ describe('InboundScheduleScreen — 초과분 잇기', () => {
 
     const dialog = await screen.findByRole('dialog', { name: te.title });
     expect(await within(dialog).findByText(te.confirmLink(QTY, ORDER_LINE))).toBeInTheDocument();
-    /* 후보 표식 — 수량 일치 · 보던 발주. */
+    /* 후보 표식 — 수량 일치 · 선택한 발주. */
     expect(within(dialog).getByText(te.candidates.exact)).toBeInTheDocument();
     expect(within(dialog).getByText(te.candidates.current)).toBeInTheDocument();
 
@@ -1148,7 +1148,7 @@ describe('InboundScheduleScreen — 초과분 잇기', () => {
     ).toBe(true);
   });
 
-  it('라인을 고르기 전에는 「잇기」가 잠기고 무엇을 고를지 말한다', async () => {
+  it('라인을 고르기 전에는 「연결」이 잠기고 무엇을 고를지 말한다', async () => {
     const { user } = renderScreen(
       [
         excessListRoute([
@@ -1186,7 +1186,7 @@ describe('InboundScheduleScreen — 초과분 잇기', () => {
     expect(within(dialog).getByRole('button', { name: te.actions.link })).toBeEnabled();
   });
 
-  it('후보가 없으면 추가 P/O 를 기다린다고 말한다', async () => {
+  it('후보가 없으면 연결할 발주 라인이 없다고 말한다', async () => {
     renderScreen(
       [excessListRoute([excessFixture()]), candidatesRoute([]), listRoute(), ...lookupRoutes()],
       '?excess=1',
@@ -1221,7 +1221,7 @@ describe('InboundScheduleScreen — 초과분 잇기', () => {
     expect(await within(dialog).findByText(te.confirmLink(QTY, ORDER_LINE))).toBeInTheDocument();
   });
 
-  it('이은 초과분은 「이음」으로 보이고, 눌러 연 창에서 풀 수 있다', async () => {
+  it('연결된 초과분은 「연결됨」으로 보이고, 눌러 연 창에서 해제할 수 있다', async () => {
     const bodies: unknown[] = [];
     const { user } = renderScreen(
       [
@@ -1246,7 +1246,7 @@ describe('InboundScheduleScreen — 초과분 잇기', () => {
     expect(bodies).toEqual([null]);
   });
 
-  it('잇기가 막히면(이미 이어짐) 서버 사유를 배너로 내고 창은 열린 채다', async () => {
+  it('연결이 막히면(이미 연결됨) 서버 사유를 배너로 내고 창은 열린 채다', async () => {
     const { user } = renderScreen(
       [
         excessListRoute([excessFixture()]),
@@ -1255,7 +1255,7 @@ describe('InboundScheduleScreen — 초과분 잇기', () => {
           jsonResponse(
             {
               errors: [
-                { scope: 'screen', code: 'STATE_LOCKED', message: '이미 이어진 초과분입니다.' },
+                { scope: 'screen', code: 'STATE_LOCKED', message: '이미 연결된 초과분입니다.' },
               ],
             },
             { status: 400 },
@@ -1271,7 +1271,7 @@ describe('InboundScheduleScreen — 초과분 잇기', () => {
     await within(dialog).findByText(te.confirmLink(QTY, ORDER_LINE));
     await user.click(within(dialog).getByRole('button', { name: te.actions.link }));
 
-    expect(await within(dialog).findByText('이미 이어진 초과분입니다.')).toBeInTheDocument();
+    expect(await within(dialog).findByText('이미 연결된 초과분입니다.')).toBeInTheDocument();
     expect(screen.getByRole('dialog', { name: te.title })).toBeInTheDocument();
   });
 });

@@ -17,15 +17,15 @@ import type {
 import { scheduleKeys } from './queries';
 
 /**
- * 초과분 잇기의 읽기 둘 · 쓰기 둘(서버 장부 P-100).
+ * 초과분 발주 연결의 읽기 둘 · 쓰기 둘(서버 장부 P-100).
  *
  * ⚠ **네 경로 모두 계약 사본 밖이다** — 생성 타입에 없어 이 네 경로만 받는 모양으로 클라이언트를 **좁혀 본다**
  * (`queries.ts` 의 `InboundScheduleClient` 와 같은 길). 실행은 같은 클라이언트가 한다 — 인증 쿠키·질의
  * 직렬화·오류 정규화가 그대로 선다. 계약에 실리면 이 타입과 넓힘을 지운다.
  *
- * **멱등 키를 보내지 않는다** — 계약 밖 경로라 요구하지 않고, 두 번 이으면 서버가 400 `STATE_LOCKED` 로 막는다.
+ * **멱등 키를 보내지 않는다** — 계약 밖 경로라 요구하지 않고, 두 번 연결하면 서버가 400 `STATE_LOCKED` 로 막는다.
  *
- * 권한은 「초과 입하 분리」(W-01-03)와 같다 — 없으면 403 이고, 그때 화면은 잇기 자리를 감춘다.
+ * 권한은 「초과 입하 분리」(W-01-03)와 같다 — 없으면 403 이고, 그때 화면은 연결 자리를 감춘다.
  */
 interface InboundExcessClient {
   GET(
@@ -60,7 +60,7 @@ export const excessKeys = {
 };
 
 /**
- * 권한이 없거나(403) 서버가 아직 이 경로를 모르면(404) **잇기 자리를 감춘다** — 할 수 없는 일의 단추를 세우지 않는다.
+ * 권한이 없거나(403) 서버가 아직 이 경로를 모르면(404) **연결 자리를 감춘다** — 할 수 없는 일의 단추를 세우지 않는다.
  * 그 밖의 실패(연결·5xx)는 감추지 않고 알린다.
  */
 export const isExcessUnavailable = (error: unknown): boolean =>
@@ -83,7 +83,7 @@ export const useInboundExcesses = (
   });
 };
 
-/** 고른 초과분을 이을 수 있는 P/O 라인. 고르기 전에는 부르지 않는다. */
+/** 고른 초과분을 연결할 수 있는 P/O 라인. 고르기 전에는 부르지 않는다. */
 export const useExcessCandidates = (
   inboundReceiptExcessId: number | null,
 ): UseQueryResult<ExcessCandidateListResult> => {
@@ -113,7 +113,7 @@ export interface LinkVariables {
 }
 
 /**
- * 잇기·풀기 뒤에 다시 읽을 것 — 초과분 목록·후보, 그리고 **P/O 라인의 받은 수량**이 바뀌므로 입하 예정의
+ * 연결·해제 뒤에 다시 읽을 것 — 초과분 목록·후보, 그리고 **P/O 라인의 받은 수량**이 바뀌므로 입하 예정의
  * 두 표와 다른 화면이 든 발주 라인(`purchase-orders`)까지.
  */
 const useInvalidateAfterLink = (): (() => Promise<void>) => {

@@ -213,7 +213,7 @@ export const storageLocationFixtures = [
 ];
 
 /**
- * 잇지 않은 초과분 하나 — 7101 발주의 7301 라인(같은 공장·공급사·품목·단위, 남은 자리 100)에 이을 수 있다.
+ * 미연결 초과분 하나 — 7101 발주의 7301 라인(같은 공장·공급사·품목·단위, 남은 자리 100)에 연결할 수 있다.
  * 처음 P/O 는 목록에 없는 다른 발주(SAMPLE-PO-0099)다. 번호는 모두 합성 값이다.
  */
 const BASE_EXCESS: InboundExcess = {
@@ -252,7 +252,7 @@ export const excessFixture = (overrides: Partial<InboundExcess> = {}): InboundEx
   ...overrides,
 });
 
-/** 같은 초과분이 7301 에 이어진 모양. */
+/** 같은 초과분이 7301 에 연결된 모양. */
 export const linkedExcessFixture = (overrides: Partial<InboundExcess> = {}): InboundExcess =>
   excessFixture({
     linkedAt: '2026-10-21T03:00:00.000Z',

@@ -123,7 +123,7 @@ const isSameHeader = (left: HeaderDraft, right: HeaderDraft): boolean =>
  *
  * **전표는 늘 한 건이다**(서버 장부 P-100 · 사용자 결정 2026-10-21). 발주보다 많이 와도 줄을 가르지 않고,
  * 줄 하나 · LOT 하나로 받아 P/O 에 넣지 않는 몫을 그 줄의 `excessQty` 로 싣는다. 그 몫은 ERP 가 추가 P/O 를
- * 만들면 「입하 예정 조회」의 초과분 잇기에서 잇는다.
+ * 만들면 「입하 예정 조회」의 초과분 연결에서 연결한다.
  *
  * **되돌릴 수 없는 쓰기다.** 계약의 입하 취소는 승인을 타므로(실측) 잘못 만들어진 전표를
  * 이 화면이 되돌릴 수 없다. 그래서 보내기 전에 네 겹으로 막는다 —
@@ -512,9 +512,7 @@ export const OverReceiptSplitScreen = () => {
             }
           }}
         />
-        {scanNote === null ? (
-          <span className="field-note">{t.scan.hint}</span>
-        ) : (
+        {scanNote !== null && (
           <span className="field-note" role="status">
             {scanNote}
           </span>

@@ -7,8 +7,8 @@ import type { CreatedResult } from './types';
 const t = messages.overReceiptSplit;
 
 /**
- * 초과분 잇기 자리 — 「입하 예정 조회」가 연다(사용자 지시 2026-10-21 — 입하·입고 일을 그 화면으로 모은다).
- * `excess=1` 이 잇기 창을 열고, `excessReceipt` 가 방금 만든 전표의 초과분을 앞에 세운다.
+ * 초과분 연결 자리 — 「입하 예정 조회」가 연다(사용자 지시 2026-10-21 — 입하·입고 일을 그 화면으로 모은다).
+ * `excess=1` 이 연결 창을 열고, `excessReceipt` 가 방금 만든 전표의 초과분을 앞에 세운다.
  * 주소 키는 그 화면의 `excess-entry.ts` 가 정한다.
  */
 export const excessLinkPath = (inboundReceiptNo: string): string =>
@@ -25,8 +25,8 @@ export interface CreatedReceiptsPaneProps {
  * 등록 결과. **전표 번호는 사용자 대면 업무 번호라 낸다.** 사라지는 알림으로 내지 않는다 —
  * 나중에 조회할 번호를 몇 초 뒤에 없애면 적어 둘 틈이 없다.
  *
- * 초과 몫을 실었으면 **그 몫이 아직 P/O 에 들어가지 않았다는 사실과 이을 자리**를 함께 낸다 —
- * 추가 P/O 는 ERP 가 만들고, 생기면 사람이 잇는다(서버 장부 P-100).
+ * 초과 몫을 실었으면 **그 몫이 아직 P/O 에 들어가지 않았다는 사실과 연결할 자리**를 함께 낸다 —
+ * 추가 P/O 는 ERP 가 만들고, 생기면 사람이 연결한다(서버 장부 P-100).
  */
 export const CreatedReceiptsPane = ({ result }: CreatedReceiptsPaneProps) => {
   const first = result.receipts[0];

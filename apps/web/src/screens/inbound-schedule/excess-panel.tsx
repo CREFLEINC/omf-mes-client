@@ -99,12 +99,12 @@ export interface ExcessPanelProps {
 }
 
 /**
- * 초과분 잇기 창(서버 장부 P-100) — **오른쪽에서 열리는 넓은 창이다.** 입하 예정의 두 표를 덮지 않고 옆에 세워
- * 「어느 추가 P/O 에 잇는가」를 보던 맥락에서 정한다.
+ * 초과분 발주 연결 창(서버 장부 P-100) — **오른쪽에서 열리는 넓은 창이다.** 입하 예정의 두 표를 덮지 않고 옆에
+ * 세워 「어느 추가 발주에 연결하는가」를 보던 맥락에서 정한다.
  *
- * 절차를 몰라도 진행하도록 **세 단계 안내**(초과분 고르기 → P/O 라인 고르기 → 잇기)를 위에 두고, 단추 옆에
- * **누르면 무엇이 바뀌는지**를 문장으로 늘 보인다. 후보는 서버가 정하고(같은 공장·공급사·품목·단위 · 다 받을 수
- * 있는 라인 · 수량 일치가 먼저) 사람이 고른다. 이은 것은 「이은 초과분」 탭에서 푼다 — 잘못 이은 것을 되돌리는 길이다.
+ * 위에 세 단계(초과분 선택 → 발주 라인 선택 → 연결)를 두고, 단추 옆에 무엇이 어디로 가는지 요약을 늘 보인다.
+ * 후보는 서버가 정하고(같은 공장·공급사·품목·단위 · 다 받을 수 있는 라인 · 수량 일치가 먼저) 사람이 고른다.
+ * 연결한 것은 「연결됨」 탭에서 해제한다 — 잘못 연결한 것을 되돌리는 길이다.
  */
 export const ExcessPanel = ({ entry, currentOrderId, onClose }: ExcessPanelProps) => {
   const [tab, setTab] = useState<ExcessTab>(entry.tab);
@@ -230,18 +230,13 @@ export const ExcessPanel = ({ entry, currentOrderId, onClose }: ExcessPanelProps
 
   /* ── 단계 안내 ── */
   const step: 'pick' | 'line' | 'link' =
-    selectedExcess === null
-      ? 'pick'
-      : tab === 'linked' || selectedCandidate !== null
-        ? 'link'
-        : 'line';
+    selectedExcess === null ? 'pick' : selectedCandidate !== null ? 'link' : 'line';
   const stepOrder = ['pick', 'line', 'link'] as const;
   const stepIndex = stepOrder.indexOf(step);
   const stepItems: StepperItem[] = stepOrder.map((key, index) => ({
     label: t.steps[key],
     status: index < stepIndex ? 'complete' : index === stepIndex ? 'current' : 'pending',
   }));
-  const hint = tab === 'linked' ? t.hints.unlink : t.hints[step];
 
   /* ── 단추 옆 문장 — 막힌 사유이거나, 누르면 바뀌는 것 ── */
   const sentence = ((): string => {
@@ -444,15 +439,10 @@ export const ExcessPanel = ({ entry, currentOrderId, onClose }: ExcessPanelProps
             rows={rows}
             getRowId={(row) => String(row.inboundReceiptExcessId)}
             empty={
-              kind === 'unlinked' ? (
-                <EmptyState
-                  size="sm"
-                  title={t.empty.unlinkedTitle}
-                  description={t.empty.unlinkedDescription}
-                />
-              ) : (
-                <EmptyState size="sm" title={t.empty.linkedTitle} />
-              )
+              <EmptyState
+                size="sm"
+                title={kind === 'unlinked' ? t.empty.unlinkedTitle : t.empty.linkedTitle}
+              />
             }
           />
         </div>
@@ -462,12 +452,10 @@ export const ExcessPanel = ({ entry, currentOrderId, onClose }: ExcessPanelProps
   };
 
   const candidatePane = (): ReactNode => {
-    if (tab !== 'unlinked') return null;
+    /* 초과분을 고르기 전에는 후보 구획을 세우지 않는다 — 무엇을 고를지는 단추 옆 문장이 말한다. */
+    if (tab !== 'unlinked' || selectedExcess === null) return null;
 
     const body = ((): ReactNode => {
-      if (selectedExcess === null) {
-        return <p className="field-note excess-note">{t.candidates.pickFirst}</p>;
-      }
       if (candidates.isError) {
         return (
           <LoadErrorBanner
@@ -517,12 +505,10 @@ export const ExcessPanel = ({ entry, currentOrderId, onClose }: ExcessPanelProps
       <section className="excess-section" aria-label={t.candidates.title}>
         <h3 className="excess-section-title">
           {t.candidates.title}
-          {selectedExcess !== null && (
-            <span className="excess-section-sub">
-              {selectedExcess.itemCode} ·{' '}
-              {qtyWithUom(selectedExcess.excessQty, selectedExcess.uomCode)}
-            </span>
-          )}
+          <span className="excess-section-sub">
+            {selectedExcess.itemCode} ·{' '}
+            {qtyWithUom(selectedExcess.excessQty, selectedExcess.uomCode)}
+          </span>
         </h3>
         {body}
       </section>
@@ -553,14 +539,12 @@ export const ExcessPanel = ({ entry, currentOrderId, onClose }: ExcessPanelProps
       }
     >
       <div className="excess-panel">
-        <p className="excess-lead">{t.lead}</p>
-
-        <nav className="excess-guide" aria-label={t.steps.label}>
-          <Stepper size="sm" steps={stepItems} />
-          <p className="excess-guide-hint" aria-live="polite">
-            {hint}
-          </p>
-        </nav>
+        {/* 단계는 연결하는 길에만 있다 — 「연결됨」 탭은 고르고 해제하는 한 걸음이다. */}
+        {tab === 'unlinked' && (
+          <nav className="excess-guide" aria-label={t.steps.label}>
+            <Stepper size="sm" steps={stepItems} />
+          </nav>
+        )}
 
         {done !== null && (
           <div role="status">
