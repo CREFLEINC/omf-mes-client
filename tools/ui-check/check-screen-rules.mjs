@@ -238,7 +238,10 @@ const stringsIn = (expr) => {
 const valueStrings = (e) => {
   if (!e) return [];
   if (ts.isParenthesizedExpression(e) || ts.isAsExpression(e)) return valueStrings(e.expression);
-  if (isStr(e) || ts.isTemplateExpression(e)) return [textOf(e)];
+  if (isStr(e)) return [textOf(e)];
+  // 템플릿의 ${...} 자리에 든 문자열(예: `${'Cancel'}`)도 화면에 그대로 보이므로 따로 꺼낸다.
+  if (ts.isTemplateExpression(e))
+    return [textOf(e), ...e.templateSpans.flatMap((s) => valueStrings(s.expression))];
   if (ts.isConditionalExpression(e))
     return [...valueStrings(e.whenTrue), ...valueStrings(e.whenFalse)];
   if (ts.isBinaryExpression(e) && /^(\+|\?\?|\|\||&&)$/.test(e.operatorToken.getText()))

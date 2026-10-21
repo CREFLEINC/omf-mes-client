@@ -12,6 +12,7 @@
   P-8 제목 단계        화면 제목이 headline-lg인가, 아래 단계 제목이 위 단계보다 큰가, 상자 안에 상자가 한 겹이라도 있는가 (C-19)
   P-9 조회 조건 칸     조회 조건 칸 폭이 좁음(160), 보통(240), 넓음(320) 중 하나인가, 칸 간격이 같은가 (C-19)
   P-10 같은 이름 조작  확인 창 밖 화면에 접근 이름이 같은 버튼, 체크박스, 입력 칸이 두 곳에 보이는가 (C-1)
+                       보이는 입력 칸에 접근 이름(aria-label, aria-labelledby, label, title)이 없으면 「이름 없음」으로 위반이다
   P-11 입력 값 잘림     입력 칸(참조 선택 포함)에 들어 있는 값이 칸 폭보다 길어 잘리는가 (C-19, T-W-C 편집 영역)
   P-12 행 안 높이       표 한 행 안 입력과 버튼의 높이가 서로 다른가 (C-19)
   P-13 내부 번호 노출   보이는 문구에 「설비(1)」처럼 이름 대신 괄호 숫자가 있는가 (C-13)
@@ -32,7 +33,8 @@ Playwright(Python)가 필요하다. 이 검사는 목 데이터에 의존하므�
 판정은 자동 측정값이고, 최종 판단은 캡처를 함께 보고 사람이 한다.
 """
 import argparse, json, pathlib, re, sys, time
-from playwright.sync_api import sync_playwright
+from urllib.parse import urlsplit
+from playwright.sync_api import Error as PlaywrightError, sync_playwright
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 
@@ -53,7 +55,7 @@ SNAP = """() => {
           table: tb ? {left: Math.round(tb.left), right: Math.round(tb.right)} : null};
 }"""
 
-ROW = """() => {
+ROW = r"""() => {
   const vis = e => { const r = e.getBoundingClientRect(); return r.width > 0 && r.height > 0; };
   const t = [...(document.querySelector('main') || document.body).querySelectorAll('table')].filter(vis)[0];
   if (!t) return null;
@@ -168,7 +170,7 @@ FILTER = """() => {
   return {widths, gaps};
 }"""
 
-DUP = """() => {
+DUP = r"""() => {
   const vis = e => { const r = e.getBoundingClientRect(); const s = getComputedStyle(e); return r.width > 0 && r.height > 0 && s.visibility !== 'hidden'; };
   const dialogOpen = document.querySelector('[role=dialog][aria-modal=true], dialog[open]');
   const scope = dialogOpen || document.querySelector('main') || document.body;
@@ -178,6 +180,30 @@ DUP = """() => {
     .map(b => nameOf(b).trim().replace(/\s+/g, ' ')).filter(Boolean);
   const count = {}; names.forEach(n => count[n] = (count[n] || 0) + 1);
   return Object.entries(count).filter(([, c]) => c > 1).map(([n, c]) => `${n} ×${c}`);
+}"""
+
+UNNAMED = r"""() => {
+  // 접근 이름이 없는 입력 칸. aria-label, 글자가 있는 aria-labelledby, 연결된 label(감싸는 label 포함), title만 이름으로 본다.
+  // placeholder는 값을 넣으면 사라지므로 이름으로 세지 않는다(P-10 nameOf와 같은 기준).
+  const vis = e => { const r = e.getBoundingClientRect(); const s = getComputedStyle(e); return r.width > 0 && r.height > 0 && s.visibility !== 'hidden'; };
+  const sel = 'input:not([type=hidden]), select, textarea, [role=combobox], [role=textbox], [role=spinbutton], [contenteditable=true]';
+  const scopes = [document.querySelector('main') || document.body, ...document.querySelectorAll('[role=dialog], dialog[open]')];
+  const ctrls = [...new Set(scopes.flatMap(sc => [...sc.querySelectorAll(sel)]))].filter(vis);
+  const text = e => (e && e.innerText || '').trim().replace(/\s+/g, ' ');
+  const named = e => {
+    if ((e.getAttribute('aria-label') || '').trim()) return true;
+    const ids = (e.getAttribute('aria-labelledby') || '').split(/\s+/).filter(Boolean);
+    if (ids.some(id => text(document.getElementById(id)))) return true;
+    if (e.labels && [...e.labels].some(l => text(l))) return true;
+    return !!(e.getAttribute('title') || '').trim();
+  };
+  const where = e => {
+    const tag = e.tagName.toLowerCase() + (e.getAttribute('type') ? `[type=${e.getAttribute('type')}]` : '') + (e.getAttribute('role') ? `[role=${e.getAttribute('role')}]` : '');
+    const tr = e.closest('tr');
+    const near = tr ? '행 ' + text(tr.querySelector('td, th')) : text(e.closest('section, fieldset, [role=dialog], form')?.querySelector('h2, h3, h4, legend'));
+    return `이름 없음 ${tag}` + (near ? ` (${near.slice(0, 20)})` : '');
+  };
+  return ctrls.filter(e => !named(e)).map(where);
 }"""
 
 CLIP = """() => {
@@ -214,7 +240,7 @@ ROWH = """() => {
   return out;
 }"""
 
-WRAPPED_TITLES = """() => {
+WRAPPED_TITLES = r"""() => {
   // 글자 줄 수로 본다. 줄 높이의 1.5배보다 높은 글자 덩어리는 접힌 것이다.
   const vis = e => { const r = e.getBoundingClientRect(); return r.width > 0 && r.height > 0; };
   const main = document.querySelector('main') || document.body;
@@ -254,7 +280,7 @@ STEP_OVERFLOW = """() => {
   return Math.max(0, Math.round(bottom - limit));
 }"""
 
-INTERNAL_ID = """() => {
+INTERNAL_ID = r"""() => {
   const vis = e => { const r = e.getBoundingClientRect(); return r.width > 0 && r.height > 0; };
   const walker = document.createTreeWalker(document.querySelector('main') || document.body, NodeFilter.SHOW_TEXT);
   const out = [];
@@ -292,6 +318,11 @@ def judge(page, route, out, tag):
         if "로그인 상태를 확인" not in page.inner_text("body"):
             break
         time.sleep(0.5)
+    # 로그인 화면 등 다른 경로로 옮겨졌으면 요청한 화면을 잰 것이 아니므로 실행 오류로 남긴다(조회 문자열은 비교하지 않는다).
+    landed = urlsplit(page.url).path.rstrip("/") or "/"
+    wanted = urlsplit(route).path.rstrip("/") or "/"
+    if landed != wanted:
+        return {"route": route, "error": f"경로 이탈: {landed}(으)로 이동"}
     s0 = snap(page)
     page.screenshot(path=str(out / f"{tag}-entry.png"))
     r["P-5 진입 직후 오류"] = "위반" if s0["alerts"] else "통과"
@@ -313,7 +344,7 @@ def judge(page, route, out, tag):
         uneven = len(set(fb["gaps"])) > 1 if fb["gaps"] else False
         r["P-9 조회 조건 칸"] = (f"위반(폭 {odd}" + (f", 간격 {fb['gaps']}" if uneven else "") + ")") if (odd or uneven) else "통과"
         r["filter"] = fb
-    dup = page.evaluate(DUP)
+    dup = page.evaluate(DUP) + page.evaluate(UNNAMED)
     r["P-10 같은 이름 조작"] = f"위반({', '.join(dup[:4])})" if dup else "통과"
     clip = page.evaluate(CLIP)
     r["P-11 입력 값 잘림"] = f"위반({', '.join(clip[:4])})" if clip else "통과"
@@ -330,8 +361,9 @@ def judge(page, route, out, tag):
     try:
         if btn.count() and btn.first.is_enabled():
             btn.first.click(timeout=2000)
-    except Exception:
-        pass
+    except PlaywrightError as e:
+        # 조회를 누르지 못해도 첫 화면 상태로 이어서 잰다. 원인은 notes에 남긴다.
+        r.setdefault("notes", []).append(f"조회 누름 실패: {e.__class__.__name__}")
     s1 = snap(page)
     info = page.evaluate(ROW)
     if not info:
@@ -353,8 +385,9 @@ def judge(page, route, out, tag):
     try:
         px = int(row.get_attribute("data-probe-x") or 4)
         row.click(position={"x": px, "y": 6}, timeout=2000)
-    except Exception:
-        pass
+    except PlaywrightError as e:
+        # 누르지 못하면 화면 변화가 없어 P-1이 위반으로 나온다. 사람이 구분하도록 notes에 남긴다.
+        r.setdefault("notes", []).append(f"행 누름 실패: {e.__class__.__name__}")
     s2 = snap(page)
     page.mouse.move(1, 1)
     time.sleep(0.3)
@@ -366,8 +399,8 @@ def judge(page, route, out, tag):
     if not changed and info["ctrls"]:
         try:
             row.locator("button, a").first.click(timeout=2000)
-        except Exception:
-            pass
+        except PlaywrightError as e:
+            r.setdefault("notes", []).append(f"행 버튼 누름 실패: {e.__class__.__name__}")
         s2 = snap(page)
     page.screenshot(path=str(out / f"{tag}-selected.png"))
     maxy = max((h["y"] for h in s1["heads"]), default=0)
@@ -391,7 +424,7 @@ def judge(page, route, out, tag):
         r["P-6 표 셀 줄바꿈"] = f"위반({len(wraps2)}칸, 선택 후)"
         r["wrapped"] = wraps2[:8]
     # 선택 뒤에 나타나는 편집 영역과 상세도 같은 기준으로 본다.
-    for key, js, label in (("P-11 입력 값 잘림", CLIP, "선택 후"), ("P-13 내부 번호 노출", INTERNAL_ID, "선택 후"), ("P-14 제목과 라벨 줄바꿈", WRAPPED_TITLES, "선택 후")):
+    for key, js, label in (("P-10 같은 이름 조작", UNNAMED, "선택 후"), ("P-11 입력 값 잘림", CLIP, "선택 후"), ("P-13 내부 번호 노출", INTERNAL_ID, "선택 후"), ("P-14 제목과 라벨 줄바꿈", WRAPPED_TITLES, "선택 후")):
         found = page.evaluate(js)
         if found and r.get(key) == "통과":
             r[key] = f"위반({', '.join(found[:3])}, {label})"
@@ -445,7 +478,7 @@ if __name__ == "__main__":
             tag = route.strip("/").replace("/", "_") or "root"
             try:
                 results.append(judge(page, route, out, tag))
-            except Exception as e:
+            except Exception as e:  # 한 경로의 예기치 않은 오류로 나머지 경로 검사가 멈추지 않게 넓게 받고, 실행 오류로 기록한다.
                 results.append({"route": route, "error": f"{e.__class__.__name__}: {str(e)[:100]}"})
             print(json.dumps(results[-1], ensure_ascii=False), flush=True)
         b.close()
