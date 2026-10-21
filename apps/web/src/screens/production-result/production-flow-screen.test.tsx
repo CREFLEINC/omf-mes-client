@@ -2193,4 +2193,45 @@ describe('ProductionFlowScreen 불량', () => {
       within(defectSection()).getByRole('listitem', { name: t.flow.defects.row(1) }),
     ).toBeInTheDocument();
   });
+
+  it('불량만 저장이 서버에서 거부되면 「기록했습니다」를 지우고 거부 띠만 남긴다', async () => {
+    const user = userEvent.setup();
+    renderScreen(
+      [],
+      [
+        {
+          match: (request) =>
+            request.method === 'POST' && pathOf(request) === '/production/production-results',
+          respond: () =>
+            jsonResponse(
+              {
+                errors: [
+                  {
+                    scope: 'field',
+                    field: 'defects[0].defectCodeId',
+                    code: 'INVALID',
+                    message: '합성 거부',
+                  },
+                ],
+              },
+              { status: 400 },
+            ),
+        },
+        ...defectRoutes,
+      ],
+    );
+    const good = await screen.findByLabelText(t.flow.quantity.actual);
+    await waitFor(() => expect(good).toBeEnabled());
+    await user.clear(good);
+    await user.type(good, '0');
+    await user.click(within(defectSection()).getByRole('button', { name: t.flow.defects.add }));
+    await pickDefect(user, '긁힘');
+    await user.type(within(defectSection()).getByLabelText(t.flow.defects.qty), '2');
+    await user.click(
+      within(defectSection()).getByRole('button', { name: t.flow.defects.saveOnly }),
+    );
+
+    expect(await screen.findByText(t.save.failTitle)).toBeInTheDocument();
+    await waitFor(() => expect(screen.queryByText(t.flow.defects.saved)).toBeNull());
+  });
 });

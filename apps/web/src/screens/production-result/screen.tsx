@@ -654,6 +654,11 @@ export const ProductionFlowScreen = () => {
     if (outbox.rejection !== null && outputPhase === 'queued') setOutputPhase('idle');
   }, [outbox.rejection, outputPhase]);
 
+  /* 서버가 거부하면 넣자마자 낸 「기록했습니다」는 사실이 아니다 — 거부 띠만 남긴다. */
+  useEffect(() => {
+    if (outbox.rejection !== null) setDefectNotice(null);
+  }, [outbox.rejection]);
+
   useEffect(() => {
     const lot = currentLot.data;
     const nextLotId = lot?.lotId ?? null;
@@ -1326,9 +1331,13 @@ export const ProductionFlowScreen = () => {
                                 ? t.flow.defects.duplicate
                                 : check?.qtyInvalid === true
                                   ? t.flow.quantity.invalid
-                                  : check?.qtyMissing === true && check.typeMissing === false
-                                    ? t.flow.defects.qtyMissing
-                                    : undefined
+                                  : undefined
+                            }
+                            /* 막 고른 줄에 수량이 없는 것은 잘못이 아니라 다음 할 일이다 — 빨간 오류로 세우지 않는다. */
+                            helperText={
+                              check?.qtyMissing === true && check.typeMissing === false
+                                ? t.flow.defects.qtyMissing
+                                : undefined
                             }
                             onFocus={() => setActiveQty(row.key)}
                             onChange={(event) =>
