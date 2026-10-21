@@ -767,9 +767,43 @@ export interface ProductionResultWorkerAllocation {
   reworkQty: number;
 }
 
+/** 서버 선행 — 실적과 함께 적는 불량 한 줄. 코드는 W/O 공정에 매핑된 상세 코드다. */
+export interface ProductionResultDefectInput {
+  defectCodeId: number;
+  qty: number;
+}
+
+/**
+ * 서버 선행 — 실적에 붙은 불량 기록. 이름은 불량 코드의 기본 이름이다. 대분류 칸은 상세 코드일
+ * 때만 실린다(관리웹에서 대분류로 단 옛 기록에는 없다).
+ */
+export interface ProductionResultDefect {
+  defectRecordId: number;
+  defectCodeId: number;
+  defectCode: string;
+  defectName: string;
+  nameKo?: string | null;
+  nameVi?: string | null;
+  parentDefectCodeId?: number | null;
+  parentDefectCode?: string | null;
+  parentDefectName?: string | null;
+  parentNameKo?: string | null;
+  parentNameVi?: string | null;
+  qty: number;
+}
+
+/** 서버 선행 — `defects` 만 보내면 서버가 `defectQty` 를 그 합으로 채운다. 양품 0 도 받는다. */
+export type ProductionResultCreateForward = components['schemas']['ProductionResultCreate'] & {
+  defects?: ProductionResultDefectInput[];
+};
+
 export type ProductionResultForward = components['schemas']['ProductionResult'] & {
   workerAllocations?: ProductionResultWorkerAllocation[];
+  defects?: ProductionResultDefect[];
 };
+
+type DefectCodesPath = paths['/quality/defect-codes'];
+type DefectCodesGet = DefectCodesPath['get'];
 
 type SessionWorkersPath = paths['/production/work-sessions/{workSessionId}/workers'];
 type SessionWorkerLeavePath =
@@ -1510,7 +1544,24 @@ export interface ForwardPaths {
       };
     };
   };
-  '/production/production-results': Omit<ProductionResultsPath, 'get'> & {
+  /** 공정에 매핑된 불량 코드만 받는 `processId` 를 더한다 — 서버 선행. */
+  '/quality/defect-codes': Omit<DefectCodesPath, 'get'> & {
+    get: Omit<DefectCodesGet, 'parameters'> & {
+      parameters: Omit<DefectCodesGet['parameters'], 'query'> & {
+        query?: NonNullable<DefectCodesGet['parameters']['query']> & { processId?: number };
+      };
+    };
+  };
+  '/production/production-results': Omit<ProductionResultsPath, 'get' | 'post'> & {
+    post: Omit<ProductionResultsPath['post'], 'requestBody' | 'responses'> & {
+      requestBody: { content: { 'application/json': ProductionResultCreateForward } };
+      responses: Omit<ProductionResultsPath['post']['responses'], 201> & {
+        201: {
+          headers: { [name: string]: unknown };
+          content: { 'application/json': ProductionResultForward };
+        };
+      };
+    };
     get: Omit<ProductionResultsGet, 'responses'> & {
       responses: Omit<ProductionResultsGet['responses'], 200> & {
         200: {

@@ -41,6 +41,7 @@ const crew = (overrides: Partial<WorkOrderCrew> = {}): WorkOrderCrew => ({
       reworkQty: 0,
     },
   ],
+  defectTypes: [{ defectCodeId: 11, label: '외관 › 긁힘', qty: 4 }],
   sessionsTruncated: false,
   resultsTruncated: false,
   ...overrides,
@@ -94,6 +95,31 @@ describe('CrewSections', () => {
     );
     expect(headers()).toContain(t.workerResults.columns.scrapQty);
     expect(headers()).not.toContain(t.workerResults.columns.holdQty);
+  });
+
+  it('불량을 유형별로 보이고, 없으면 그 사실을 적는다', () => {
+    const { rerender } = render(<CrewSections crew={crew()} isLoading={false} isError={false} />);
+    const section = () => within(screen.getByRole('region', { name: t.defectTypes.heading }));
+
+    expect(
+      section()
+        .getAllByRole('columnheader')
+        .map((cell) => cell.textContent),
+    ).toEqual([t.defectTypes.columns.type, t.defectTypes.columns.qty]);
+    expect(section().getByText('외관 › 긁힘')).toBeInTheDocument();
+    expect(section().getByText('4')).toBeInTheDocument();
+
+    rerender(
+      <CrewSections
+        crew={crew({ defectTypes: [{ defectCodeId: null, label: null, qty: 2 }] })}
+        isLoading={false}
+        isError={false}
+      />,
+    );
+    expect(section().getByText(t.defectTypes.untyped)).toBeInTheDocument();
+
+    rerender(<CrewSections crew={crew({ defectTypes: [] })} isLoading={false} isError={false} />);
+    expect(section().getByText(t.defectTypes.empty)).toBeInTheDocument();
   });
 
   it('이름·사번을 모르면 내부 번호 대신 「알 수 없음」이다', () => {

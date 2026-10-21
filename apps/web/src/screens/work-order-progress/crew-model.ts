@@ -1,3 +1,4 @@
+import { masterName } from '../../patterns/master-name';
 import type {
   ProductionResultForward,
   WorkSessionWorkerForward,
@@ -74,6 +75,61 @@ export const toSessionViews = (
         .sort(byJoinedAt),
     }));
 
+export interface DefectTypeRow {
+  /** 유형 없이 수량만 남은 불량은 `null` 한 줄로 모은다 */
+  defectCodeId: number | null;
+  /** 「대분류 › 상세」 — 대분류를 모르면 상세 이름만. 유형 없음이면 `null` */
+  label: string | null;
+  qty: number;
+}
+
+/** 정정되지 않은 잎 실적 — 정정은 덧붙는 레코드라 원본과 정정본이 둘 다 온다. */
+const leafResults = (
+  results: readonly ProductionResultForward[],
+): readonly ProductionResultForward[] => {
+  const corrected = new Set(
+    results.flatMap((result) =>
+      result.correctsProductionResultId === undefined ? [] : [result.correctsProductionResultId],
+    ),
+  );
+  return results.filter((result) => !corrected.has(result.productionResultId));
+};
+
+/**
+ * 이 W/O 의 불량을 유형별로 합친다. 정정된 원본은 세지 않는다.
+ *
+ * ⚠ 서버는 유형 없이 불량 수량만 받기도 한다 — 실적의 불량 수량에서 유형별 합을 뺀 나머지를
+ *   「유형 없음」 한 줄로 모아, 합계가 「작업자별 실적」의 불량과 맞게 한다.
+ */
+export const toDefectTypes = (results: readonly ProductionResultForward[]): DefectTypeRow[] => {
+  const rows = new Map<number | null, DefectTypeRow>();
+  const add = (defectCodeId: number | null, label: string | null, qty: number) => {
+    rows.set(defectCodeId, { defectCodeId, label, qty: (rows.get(defectCodeId)?.qty ?? 0) + qty });
+  };
+  for (const result of leafResults(results)) {
+    const defects = result.defects ?? [];
+    for (const defect of defects) {
+      const name = masterName(defect, defect.defectName);
+      add(
+        defect.defectCodeId,
+        defect.parentDefectName == null
+          ? name
+          : `${masterName(
+              { nameKo: defect.parentNameKo, nameVi: defect.parentNameVi },
+              defect.parentDefectName,
+            )} › ${name}`,
+        defect.qty,
+      );
+    }
+    const untyped = result.defectQty - defects.reduce((sum, defect) => sum + defect.qty, 0);
+    if (untyped > 0) add(null, null, untyped);
+  }
+  /* 「유형 없음」은 맨 끝 — 유형별 줄을 다 읽은 뒤의 나머지다. */
+  return [...rows.values()].sort(
+    (left, right) => Number(left.defectCodeId === null) - Number(right.defectCodeId === null),
+  );
+};
+
 /**
  * 이 W/O 의 실적을 작업자별로 합친다.
  *
@@ -86,11 +142,6 @@ export const toWorkerResults = (
   results: readonly ProductionResultForward[],
   known: readonly ParticipantRow[],
 ): WorkerResultRow[] => {
-  const corrected = new Set(
-    results.flatMap((result) =>
-      result.correctsProductionResultId === undefined ? [] : [result.correctsProductionResultId],
-    ),
-  );
   const rows = new Map<number, WorkerResultRow>();
   const add = (
     workerId: number,
@@ -118,9 +169,7 @@ export const toWorkerResults = (
     rows.set(workerId, row);
   };
 
-  for (const result of results) {
-    if (corrected.has(result.productionResultId)) continue;
-
+  for (const result of leafResults(results)) {
     const allocations = result.workerAllocations ?? [];
     if (allocations.length === 0) {
       const person = known.find((participant) => participant.workerId === result.workerId);

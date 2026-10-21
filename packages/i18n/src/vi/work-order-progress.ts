@@ -161,6 +161,12 @@ export const workOrderProgress: Translated<typeof ko.workOrderProgress> = {
         minutes: 'Số phút tham gia',
       },
     },
+    defectTypes: {
+      heading: 'Theo loại lỗi',
+      empty: 'Không có ghi nhận lỗi.',
+      untyped: 'Không có loại',
+      columns: { type: 'Loại lỗi', qty: 'Số lượng' },
+    },
     workerResults: {
       heading: 'Kết quả theo người làm',
       empty: 'Không có kết quả.',
