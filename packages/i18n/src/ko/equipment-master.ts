@@ -139,6 +139,10 @@ export const equipmentMaster = {
     parentNone: '없음 (최상위)',
     locationNone: '지정 없음',
     locationNeedsPlant: '공장을 고르면 그 공장의 위치가 나옵니다.',
+    departmentNone: '지정 없음',
+    /** 알림 대상 판정 근거 — 상위 그룹에서 이어받지 않는다는 것을 함께 밝힌다(001 W-05-12). */
+    departmentHelp:
+      '이 라인의 W/O와 설비에서 생기는 알림이 이 부서의 알림 설정으로 갑니다. 상위 그룹의 부서는 이어받지 않습니다.',
   },
   equipmentForm: {
     createTitle: '설비 등록',
@@ -205,6 +209,7 @@ export const equipmentMaster = {
     defaultWipLocation: '기본 WIP 위치',
     defaultFgLocation: '기본 완제품 위치',
     defaultScrapLocation: '기본 스크랩 위치',
+    department: '담당 부서',
     isActive: '사용',
   },
   /**

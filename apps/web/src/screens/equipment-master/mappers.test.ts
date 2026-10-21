@@ -36,6 +36,7 @@ describe('groupToFormValues', () => {
       defaultWipLocationId: '',
       defaultFgLocationId: '',
       defaultScrapLocationId: '',
+      departmentId: '',
     });
   });
 
@@ -50,7 +51,17 @@ describe('groupToFormValues', () => {
       defaultWipLocationId: '301',
       defaultFgLocationId: '',
       defaultScrapLocationId: '',
+      departmentId: '',
     });
+  });
+
+  it('담당 부서를 문자열로 옮긴다 — 서버 선행 칸이라 없으면 빈 값이다', () => {
+    expect(
+      groupToFormValues({ ...makeGroup(101, 'GRP-A'), departmentId: 7 } as ReturnType<
+        typeof makeGroup
+      >).departmentId,
+    ).toBe('7');
+    expect(groupToFormValues(makeGroup(101, 'GRP-A')).departmentId).toBe('');
   });
 
   /* 널과 없음을 다른 모양으로 두면 「고르지 않음」이 두 값이 되어 비교가 어긋난다. */
@@ -73,6 +84,7 @@ describe('emptyGroupFormValues', () => {
       defaultWipLocationId: '',
       defaultFgLocationId: '',
       defaultScrapLocationId: '',
+      departmentId: '',
     });
   });
 });
@@ -87,6 +99,7 @@ describe('toGroupUpdate', () => {
     defaultWipLocationId: '',
     defaultFgLocationId: '',
     defaultScrapLocationId: '',
+    departmentId: '',
   };
 
   it('코드와 이름의 앞뒤 공백을 떼고 보낸다', () => {
@@ -140,6 +153,12 @@ describe('toGroupUpdate', () => {
       defaultScrapLocationId: null,
     });
   });
+
+  /* 생략은 「유지」라 비운 칸을 생략하면 해제가 서버에 닿지 않는다 — 언제나 싣는다. */
+  it('담당 부서는 고른 것은 숫자로, 비운 것은 널로 보낸다 — 널이면 서버가 해제한다', () => {
+    expect(toGroupUpdate({ ...values, departmentId: '7' }, true).departmentId).toBe(7);
+    expect(toGroupUpdate({ ...values, departmentId: '' }, true).departmentId).toBeNull();
+  });
 });
 
 describe('toGroupCreate', () => {
@@ -152,6 +171,7 @@ describe('toGroupCreate', () => {
     defaultWipLocationId: '',
     defaultFgLocationId: '',
     defaultScrapLocationId: '',
+    departmentId: '',
   };
 
   it('수정 본문에 공장을 더한 형태이고 공장은 숫자다', () => {
@@ -164,6 +184,7 @@ describe('toGroupCreate', () => {
       defaultWipLocationId: null,
       defaultFgLocationId: null,
       defaultScrapLocationId: null,
+      departmentId: null,
     });
   });
 
@@ -183,6 +204,7 @@ describe('isSameGroupValues', () => {
     defaultWipLocationId: '',
     defaultFgLocationId: '',
     defaultScrapLocationId: '',
+    departmentId: '',
   };
 
   it('모든 칸이 같으면 참이다', () => {
@@ -198,6 +220,7 @@ describe('isSameGroupValues', () => {
     ['defaultScrapLocationId', '303'],
     ['groupTypeCode', 'WORK_AREA'],
     ['parentGroupId', '99'],
+    ['departmentId', '7'],
   ] as const)('%s 가 다르면 거짓이다', (field, value) => {
     expect(isSameGroupValues(base, { ...base, [field]: value })).toBe(false);
   });

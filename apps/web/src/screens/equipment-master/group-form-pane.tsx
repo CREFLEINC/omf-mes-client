@@ -35,6 +35,10 @@ export interface GroupFormPaneProps {
   locationOptions: Record<LocationField, CodeOption[]>;
   /** 위치 선택지가 잘렸거나 공장을 아직 고르지 않았을 때의 안내 */
   locationNote?: string;
+  /** 담당 부서 선택지 — 「지정 없음」이 첫 줄이다. */
+  departmentOptions: CodeOption[];
+  /** 담당 부서 칸의 안내. 목록이 잘렸거나 실패했으면 그 사실이 도움말을 대신한다 */
+  departmentNote: string;
   isActive: boolean;
   isDirty: boolean;
   isSaving: boolean;
@@ -56,6 +60,8 @@ export const GroupFormPane = ({
   parentOptions,
   locationOptions,
   locationNote,
+  departmentOptions,
+  departmentNote,
   isActive,
   isDirty,
   isSaving,
@@ -110,6 +116,15 @@ export const GroupFormPane = ({
           value={values.groupTypeCode}
           onChange={(value) => onChange({ groupTypeCode: value })}
           error={fieldErrors.groupTypeCode}
+        />
+
+        <SelectField
+          label={t.fields.department}
+          options={departmentOptions}
+          value={values.departmentId}
+          onChange={(value) => onChange({ departmentId: value })}
+          note={departmentNote}
+          error={fieldErrors.departmentId}
         />
 
         <SelectField

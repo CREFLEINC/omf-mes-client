@@ -9,6 +9,7 @@ import {
   SkeletonText,
   Table,
 } from '@crefle/web-ui';
+import type { LineDepartment } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { type ReactNode, useEffect, useState } from 'react';
 
@@ -150,6 +151,12 @@ export const GroupListPane = ({
       key: 'plantId',
       header: t.fields.plant,
       render: (row) => lookupLabel(plants, String(row.group.plantId)),
+    },
+    {
+      key: 'departmentName',
+      header: t.fields.department,
+      /* 응답이 이름을 함께 내린다(선행 칸) — 따로 풀지 않는다. 비면 비어 있음이 보여야 한다. */
+      render: (row) => (row.group as LineDepartment).departmentName ?? '—',
     },
     {
       key: 'isActive',

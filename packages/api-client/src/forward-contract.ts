@@ -13,6 +13,24 @@ export interface LineDefaultLocations {
   defaultScrapLocationId?: number | null;
 }
 
+/**
+ * 001(omf-all-around#160) — 생산라인(설비 그룹)의 담당 부서. 계약 사본에 실리면 지운다.
+ * 본문은 `departmentId` 만 싣는다(생략 = 유지, null = 해제). `departmentName` 은 응답에만 온다.
+ */
+export interface LineDepartment {
+  departmentId?: number | null;
+  departmentName?: string | null;
+}
+
+/**
+ * 001(omf-all-around#160) — 사용자 휴대폰 번호(`AppUser*.phoneNumber`). 계약 사본에 실리면 지운다.
+ * 응답은 표준형 `84XXXXXXXXX` 이고 요청자에게 W-CO-02 권한이 있을 때만 실린다. 본문에서 생략 = 유지,
+ * null = 삭제.
+ */
+export interface AppUserPhone {
+  phoneNumber?: string | null;
+}
+
 export interface TerminalRegistrationConfirmation {
   terminalId: number;
   tokenVersion: number;

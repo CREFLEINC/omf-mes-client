@@ -42,6 +42,33 @@ export const plantsResponse = (items: Plant[] = plantItems) => ({
   page: pageOf(items),
 });
 
+type Department = components['schemas']['Department'];
+
+/** 담당 부서 선택지(001 W-05-12). 미사용 하나를 섞어 선택지에서 빠지는지 잰다. */
+export const departmentItems: Department[] = [
+  {
+    departmentId: 7,
+    departmentCode: 'D-PRD1',
+    departmentName: '생산1팀',
+    parentDepartmentId: null,
+    businessUnitId: null,
+    isActive: true,
+  },
+  {
+    departmentId: 8,
+    departmentCode: 'D-OLD',
+    departmentName: '폐지된 팀',
+    parentDepartmentId: null,
+    businessUnitId: null,
+    isActive: false,
+  },
+];
+
+export const departmentsResponse = (items: Department[] = departmentItems) => ({
+  items,
+  page: pageOf(items),
+});
+
 type Process = components['schemas']['Process'];
 
 export const processItems: Process[] = [

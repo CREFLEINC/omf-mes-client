@@ -134,6 +134,7 @@ export const usersRoles: Translated<typeof ko.usersRoles> = {
       userName: 'Tên',
       department: 'Phòng ban',
       email: 'Thư điện tử',
+      phoneNumber: 'Số điện thoại di động',
       status: 'Tình trạng làm việc',
       initialPassword: 'Mật khẩu ban đầu',
     },
@@ -155,6 +156,7 @@ export const usersRoles: Translated<typeof ko.usersRoles> = {
       userNameTooLong: 'Tên không được quá 200 ký tự.',
       emailTooLong: 'Thư điện tử không được quá 200 ký tự.',
       emailFormat: 'Không đúng dạng thư điện tử. Hãy nhập theo dạng «tên@tên miền».',
+      phoneFormat: 'Không đúng dạng số điện thoại di động Việt Nam (ví dụ: 0912 345 678)',
       /** 빈 값은 이 키를 쓰지 않는다 — 그 갈래는 이미 있는 `required`를 그대로 쓴다. */
       initialPasswordWeak: (minLength: number): string =>
         `Mật khẩu ban đầu phải có tối thiểu ${String(minLength)} ký tự, gồm cả chữ cái và chữ số.`,

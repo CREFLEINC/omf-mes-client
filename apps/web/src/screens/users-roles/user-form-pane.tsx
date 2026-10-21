@@ -114,6 +114,7 @@ export const UserFormPane = ({
   const passwordId = useId();
   const userNameId = useId();
   const emailId = useId();
+  const phoneId = useId();
   const saveLabel = mode === 'create' ? t.actions.addUser : messages.common.save;
 
   return (
@@ -239,6 +240,24 @@ export const UserFormPane = ({
             value={values.email}
             onChange={(event) => onChange({ email: event.target.value })}
             error={fieldErrors.email}
+          />
+        </div>
+
+        {/*
+         * 001 W-CO-02 — 이메일 옆. 비우면 번호를 지운다(필수 아님). 저장은 표준형으로 나가고
+         * 표시는 국내 표기다. 목록 표에는 열을 두지 않는다 — 개인정보 노출을 줄인다(FR-019).
+         */}
+        <div className="field-cell urf-phone">
+          <FieldLabel htmlFor={phoneId} label={t.user.fields.phoneNumber} />
+          <TextField
+            id={phoneId}
+            type="tel"
+            inputMode="tel"
+            autoComplete="off"
+            placeholder="0912 345 678"
+            value={values.phoneNumber}
+            onChange={(event) => onChange({ phoneNumber: event.target.value })}
+            error={fieldErrors.phoneNumber}
           />
         </div>
 
