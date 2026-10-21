@@ -31,7 +31,10 @@ export const validatePeriod = (input: PeriodInput): string | null => {
   return daysInclusive(input) > MAX_PERIOD_DAYS ? t.periodTooLong : null;
 };
 
-/** RFC3339 로 바꾼다. 종료는 그날 23:59:59 — 마지막 날 건이 빠지지 않게 한다. */
+/**
+ * RFC3339 로 바꾼다. ⭐ **끝은 다음 날 00:00 이다** — 서버가 `[from, to)` 반열린 구간으로 읽으므로
+ * 23:59:59 로 두면 마지막 1초에 생긴 건이 빠진다. 날짜 넘김(월말·연말)은 UTC 자정 산술로 한다.
+ */
 export const toPeriodQuery = (
   input: PeriodInput,
   offsetMinutes: number,
@@ -39,7 +42,9 @@ export const toPeriodQuery = (
   const sign = offsetMinutes < 0 ? '-' : '+';
   const absolute = Math.abs(offsetMinutes);
   const zone = `${sign}${pad(Math.floor(absolute / 60), 2)}:${pad(absolute % 60, 2)}`;
-  return { from: `${input.from}T00:00:00${zone}`, to: `${input.to}T23:59:59${zone}` };
+  const next = new Date(Date.parse(`${input.to}T00:00:00Z`) + DAY_MS);
+  const nextDay = `${pad(next.getUTCFullYear(), 4)}-${pad(next.getUTCMonth() + 1, 2)}-${pad(next.getUTCDate(), 2)}`;
+  return { from: `${input.from}T00:00:00${zone}`, to: `${nextDay}T00:00:00${zone}` };
 };
 
 /** 오늘을 마지막 날로 두고 오늘을 포함해 7일. */

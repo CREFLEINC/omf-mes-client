@@ -20,8 +20,8 @@ const DELIVERY_SIZE = 200;
 export const dispatchHistoryKeys = {
   dispatches: (query: NotificationDispatchQuery | null) =>
     ['dispatch-history', 'dispatches', query] as const,
-  deliveries: (notificationEventId: number | null) =>
-    ['dispatch-history', 'deliveries', notificationEventId ?? 0] as const,
+  deliveries: (notificationEventId: number | null, period: { from: string; to: string } | null) =>
+    ['dispatch-history', 'deliveries', notificationEventId ?? 0, period] as const,
   events: ['dispatch-history', 'events'] as const,
   departments: ['dispatch-history', 'departments'] as const,
 };
@@ -44,17 +44,28 @@ export const useDispatches = (
   });
 };
 
+/**
+ * 고른 이벤트의 Zalo 발송. ⭐ **기간도 싣는다** — 서버가 `from`·`to` 를 필수로 받는다. 목록에
+ * 적용된 기간을 그대로 넘긴다(그 이벤트는 그 기간 안에서 골랐다).
+ */
 export const useDeliveries = (
   notificationEventId: number | null,
+  period: { from: string; to: string } | null,
 ): UseQueryResult<{ items: ZaloDelivery[]; page: PageMeta }> => {
   const { client } = useApiClient();
   return useQuery({
-    queryKey: dispatchHistoryKeys.deliveries(notificationEventId),
-    enabled: notificationEventId !== null,
+    queryKey: dispatchHistoryKeys.deliveries(notificationEventId, period),
+    enabled: notificationEventId !== null && period !== null,
     queryFn: () =>
       runRequest(() =>
         client.GET('/app/zalo-deliveries', {
-          params: { query: { notificationEventId: notificationEventId ?? 0, size: DELIVERY_SIZE } },
+          params: {
+            query: {
+              ...(period ?? { from: '', to: '' }),
+              notificationEventId: notificationEventId ?? 0,
+              size: DELIVERY_SIZE,
+            },
+          },
         }),
       ),
   });

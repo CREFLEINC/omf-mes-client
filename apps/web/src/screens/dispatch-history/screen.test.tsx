@@ -5,7 +5,7 @@ import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 
 import { createStubFetch, jsonResponse, renderWithProviders } from '../../test/api-harness';
-import { defaultPeriod, validatePeriod } from './period';
+import { defaultPeriod, toPeriodQuery, validatePeriod } from './period';
 import { DispatchHistoryScreen } from './screen';
 
 const t = messages.dispatchHistory;
@@ -72,7 +72,15 @@ const setup = (
       {
         match: (request) => new URL(request.url).pathname === '/app/zalo-deliveries',
         respond: (request) => {
-          deliveryQueries.push(new URL(request.url));
+          const url = new URL(request.url);
+          deliveryQueries.push(url);
+          /* 계약대로 기간이 없으면 400 — 스텁이 서버보다 너그러우면 화면의 결손을 덮는다. */
+          if (!url.searchParams.has('from') || !url.searchParams.has('to')) {
+            return jsonResponse(
+              { code: 'REQUIRED', message: '기간이 필요합니다' },
+              { status: 400 },
+            );
+          }
           const rows = options.deliveries ?? [delivery(1)];
           return jsonResponse({ items: rows, page: { page: 1, size: 200, total: rows.length } });
         },
@@ -119,6 +127,13 @@ describe('period', () => {
     expect(validatePeriod({ from: '2026-10-01', to: '2026-11-01' })).toBe(t.errors.periodTooLong);
     expect(validatePeriod({ from: '2026-10-21', to: '2026-10-20' })).toBe(t.errors.periodReversed);
     expect(validatePeriod({ from: '', to: '2026-10-20' })).toBe(t.errors.periodRequired);
+  });
+
+  it('끝은 다음 날 0시다 — 월말·연말도 넘긴다', () => {
+    expect(toPeriodQuery({ from: '2026-12-25', to: '2026-12-31' }, 420)).toEqual({
+      from: '2026-12-25T00:00:00+07:00',
+      to: '2027-01-01T00:00:00+07:00',
+    });
   });
 
   it('기본 기간은 오늘을 포함한 7일이다', () => {
@@ -172,7 +187,8 @@ describe('DispatchHistoryScreen', () => {
     await waitFor(() => expect(dispatchQueries.length).toBeGreaterThan(0));
     const params = (dispatchQueries.at(-1) as URL).searchParams;
     expect(params.get('from')).toMatch(/^2026-10-15T00:00:00[+-]\d{2}:\d{2}$/);
-    expect(params.get('to')).toMatch(/^2026-10-21T23:59:59[+-]\d{2}:\d{2}$/);
+    /* 서버는 [from, to) — 끝은 마지막 날 다음 날 0시다. */
+    expect(params.get('to')).toMatch(/^2026-10-22T00:00:00[+-]\d{2}:\d{2}$/);
     expect(params.get('eventCode')).toBe('WORK_ORDER_CLOSED');
     expect(params.get('departmentId')).toBe('7');
     expect(params.get('status')).toBe('SKIPPED');
@@ -203,7 +219,7 @@ describe('DispatchHistoryScreen', () => {
     expect(dispatchQueries).toHaveLength(0);
   });
 
-  it('행을 고르면 그 이벤트의 Zalo 발송 상세를 부르고 SENDING 을 「대기」로 보인다', async () => {
+  it('US8-1 행을 고르면 기간과 함께 Zalo 발송 상세를 부르고 SENDING 을 「대기」로 보인다', async () => {
     const user = userEvent.setup();
     const { deliveryQueries } = setup({
       deliveries: [
@@ -219,6 +235,10 @@ describe('DispatchHistoryScreen', () => {
     await waitFor(() =>
       expect(deliveryQueries.at(-1)?.searchParams.get('notificationEventId')).toBe('9001'),
     );
+    /* 서버가 기간을 필수로 받는다 — 목록에 적용된 기간을 그대로 싣는다. */
+    const deliveryParams = (deliveryQueries.at(-1) as URL).searchParams;
+    expect(deliveryParams.get('from')).toMatch(/^2026-10-15T00:00:00[+-]\d{2}:\d{2}$/);
+    expect(deliveryParams.get('to')).toMatch(/^2026-10-22T00:00:00[+-]\d{2}:\d{2}$/);
     const sending = (await deliveryPane().findByText('수신자 2')).closest('tr') as HTMLElement;
     expect(within(sending).getByText(t.deliveryStatus.PENDING)).toBeInTheDocument();
     expect(deliveryPane().getByText('-108 전화번호 오류')).toBeInTheDocument();

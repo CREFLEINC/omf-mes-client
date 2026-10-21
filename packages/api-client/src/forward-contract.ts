@@ -914,8 +914,8 @@ export interface NotificationDispatch {
   occurredAt: string;
   departmentId: number | null;
   departmentName: string | null;
-  targetTypeCode: string;
-  targetId: number | null;
+  targetTypeCode: 'WORK_ORDER' | 'EQUIPMENT' | 'APPROVAL_REQUEST';
+  targetId: number;
   /** 예: WO 번호, 설비 코드, 결재 요청 번호 */
   targetLabel: string | null;
   dispatchStatus: 'NOTIFIED' | 'SKIPPED';
@@ -955,9 +955,10 @@ export interface ZaloDelivery {
   trackingId: string;
 }
 
+/** 기간(`from`·`to`)은 필수다 — 상세를 한 이벤트로 좁혀도 서버가 요구한다(최대 31일). */
 export interface ZaloDeliveryQuery {
-  from?: string;
-  to?: string;
+  from: string;
+  to: string;
   eventCode?: string;
   departmentId?: number;
   status?: ZaloDeliveryStatus;
@@ -1113,7 +1114,7 @@ export interface ForwardPaths {
     parameters: NoParameters;
     get: {
       parameters: {
-        query?: ZaloDeliveryQuery;
+        query: ZaloDeliveryQuery;
         header?: never;
         path?: never;
         cookie?: never;

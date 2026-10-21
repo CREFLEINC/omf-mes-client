@@ -54,18 +54,22 @@ export const DispatchHistoryScreen = () => {
   }, [hasPeriod, setSearchParams]);
 
   const periodReason = validatePeriod(applied);
+  const periodQuery =
+    periodReason === null && hasPeriod
+      ? toPeriodQuery(applied, -new Date().getTimezoneOffset())
+      : null;
   const query =
-    periodReason === null
+    periodQuery !== null
       ? {
-          ...toPeriodQuery(applied, -new Date().getTimezoneOffset()),
+          ...periodQuery,
           ...toFilterQuery(appliedFilters),
           page,
           size: PAGE_SIZE,
         }
       : null;
 
-  const dispatches = useDispatches(hasPeriod ? query : null);
-  const deliveries = useDeliveries(selected);
+  const dispatches = useDispatches(query);
+  const deliveries = useDeliveries(selected, periodQuery);
   const events = useEvents();
   const departments = useDepartments();
 
