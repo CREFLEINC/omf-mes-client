@@ -412,6 +412,17 @@ export const IqcInspectionScreen = () => {
     setSearchParams(next);
   };
 
+  /* 상세에서 목록으로 — 고른 의뢰만 주소에서 뺀다(검색 조건 · 쪽은 그대로). */
+  const [confirmingLeave, setConfirmingLeave] = useState(false);
+  useEffect(() => {
+    setConfirmingLeave(false);
+  }, [selectedId]);
+  const backToList = (): void => {
+    const next = new URLSearchParams(searchParams);
+    next.delete(URL_KEYS.selected);
+    setSearchParams(next);
+  };
+
   /**
    * 표 자리에 그릴 것. **네 갈래를 가른다** — 실패 · 부르는 중 · 이 쪽에 없음 · 조건에 맞는 것 없음.
    *
@@ -574,181 +585,177 @@ export const IqcInspectionScreen = () => {
    * ⛔ 실패를 「고르지 않음」으로 접지 않는다. 접으면 고른 것이 사라진 것처럼 보여
    * 사용자가 다시 고르는데, 다시 골라도 같은 실패가 온다.
    */
-  const detailContent =
-    selectedId === null ? (
-      /* 고르기 전 — 고른 뒤 첫 구획과 같은 제목 아래 한 줄 안내(단말기-공정 매핑의 빈 상태와 같은 모양). */
-      <section className="iqc-inspection-section">
-        <h3>{t.detail.sectionTitle}</h3>
-        <p className="field-note">{t.detail.nothingSelected}</p>
-      </section>
-    ) : detail.isError ? (
-      <QueueLoadErrorBanner
-        error={toApiError(detail.error)}
-        onRetry={() => void detail.refetch()}
+  const detailContent = detail.isError ? (
+    <QueueLoadErrorBanner error={toApiError(detail.error)} onRetry={() => void detail.refetch()} />
+  ) : detail.data === undefined ? (
+    <p className="field-note">{t.detail.loading}</p>
+  ) : (
+    <>
+      <RequestDetailPane
+        detail={detail.data}
+        uomCode={uomCode}
+        itemNames={itemNames}
+        lotNumbers={lotNumbers}
       />
-    ) : detail.data === undefined ? (
-      <p className="field-note">{t.detail.loading}</p>
-    ) : (
-      <>
-        <RequestDetailPane
-          detail={detail.data}
+      {rounds.isPending ? (
+        <p className="field-note">{t.result.loading}</p>
+      ) : isClosed && round !== null ? (
+        <ClosedSummary
+          round={round}
+          fourMChangeLabel={
+            detail.data.fourMChange === null
+              ? null
+              : [
+                  fourMOptions.find(
+                    (option) => option.value === detail.data.fourMChange?.changeTypeCode,
+                  )?.label ?? detail.data.fourMChange.changeTypeCode,
+                  detail.data.fourMChange.remarks,
+                ]
+                  .filter((part) => part !== undefined && part !== '')
+                  .join(' · ')
+          }
+          judgmentOptions={judgmentOptions}
           uomCode={uomCode}
-          itemNames={itemNames}
-          lotNumbers={lotNumbers}
+          followUp={
+            followUp.data?.isDefective === true ? (
+              <RejectedLotGuide nonconformanceId={followUp.data.nonconformanceId} />
+            ) : null
+          }
         />
-        {rounds.isPending ? (
-          <p className="field-note">{t.result.loading}</p>
-        ) : isClosed && round !== null ? (
-          <ClosedSummary
-            round={round}
-            fourMChangeLabel={
-              detail.data.fourMChange === null
-                ? null
-                : [
-                    fourMOptions.find(
-                      (option) => option.value === detail.data.fourMChange?.changeTypeCode,
-                    )?.label ?? detail.data.fourMChange.changeTypeCode,
-                    detail.data.fourMChange.remarks,
-                  ]
-                    .filter((part) => part !== undefined && part !== '')
-                    .join(' · ')
-            }
-            judgmentOptions={judgmentOptions}
-            uomCode={uomCode}
-            followUp={
-              followUp.data?.isDefective === true ? (
-                <RejectedLotGuide nonconformanceId={followUp.data.nonconformanceId} />
-              ) : null
-            }
-          />
-        ) : (
-          <ResultFormPane
-            /*
-             * ⭐ 재검사 중에는 **회차를 넘기지 않는다.** 넘기면 그 회차가 확정본이라 칸이
-             * 잠긴 채로 남는다 — 지금 쓰는 것은 확정본이 아니라 «아직 없는 새 회차»다.
-             */
-            round={isReinspectingNow ? null : round}
-            inspectedQty={inspectedQty}
-            saveBlockedReason={
-              session?.worker === null
-                ? t.result.workerNotLinked
+      ) : (
+        <ResultFormPane
+          /*
+           * ⭐ 재검사 중에는 **회차를 넘기지 않는다.** 넘기면 그 회차가 확정본이라 칸이
+           * 잠긴 채로 남는다 — 지금 쓰는 것은 확정본이 아니라 «아직 없는 새 회차»다.
+           */
+          round={isReinspectingNow ? null : round}
+          inspectedQty={inspectedQty}
+          saveBlockedReason={
+            session?.worker === null
+              ? t.result.workerNotLinked
+              : fourMBlocked
+                ? t.result.fourMChange.blocked
+                : null
+          }
+          uomCode={uomCode}
+          hasChanges={hasChanges}
+          draft={draft}
+          onChange={changeDraftAndJudge}
+          onSave={() => {
+            saveDraft(detail.data.inspectionRequestId, inspectedQty, detail.data.uomId);
+          }}
+          isSaving={save.isSaving || rounds.isFetching}
+          isSaved={isSaved}
+          fieldErrors={save.fieldErrors}
+          saveError={save.error}
+          onReload={() => void rounds.refetch()}
+          judgmentOptions={judgmentOptions}
+          judgment={judgment}
+          onJudgmentChange={(next) => {
+            /* 불합격이 아닌 판정으로 바꾸면 사유 입력을 비운다 — 다시 불합격을 골라도 이전 사유가 되살아나지 않는다(#122 검증). */
+            if (next !== REJECTED_JUDGMENT) setRejection(EMPTY_REJECTION);
+            setJudgment(next);
+          }}
+          onConfirm={() => {
+            const defects = rejectionRows(round?.rejectedQty ?? 0, inspectedQty);
+            confirm.write({
+              overallJudgmentCode: judgment,
+              ...(defects.length === 0 ? {} : { defects }),
+              ...(needsChangeReason ? { judgmentChangeReason: changeReason.trim() } : {}),
+              ...(fourMValue === undefined ? {} : { fourMChange: fourMValue }),
+            });
+          }}
+          isConfirming={confirm.isSaving}
+          confirmError={confirm.error}
+          judgmentDetail={
+            <>
+              {acceptanceNumber !== null && isOpenRound && (
+                <JudgmentChange
+                  acceptanceNumber={acceptanceNumber}
+                  expectedLabel={
+                    expectedJudgment === null
+                      ? null
+                      : (judgmentOptions.find((option) => option.value === expectedJudgment)
+                          ?.label ?? expectedJudgment)
+                  }
+                  needsReason={needsChangeReason}
+                  reason={changeReason}
+                  onReasonChange={setChangeReason}
+                  disabled={confirm.isSaving}
+                />
+              )}
+              {hasFourMTarget && isOpenRound && (
+                <FourMChange
+                  draft={fourM}
+                  options={fourMOptions}
+                  onChange={(next) => {
+                    setIsSaved(false);
+                    setFourM(next);
+                  }}
+                  disabled={confirm.isSaving}
+                />
+              )}
+              {isRejected && (
+                <RejectionReason
+                  codes={defectCodes.data ?? []}
+                  causes={causeCodes.data ?? []}
+                  draft={rejection}
+                  onChange={setRejection}
+                  disabled={confirm.isSaving}
+                />
+              )}
+            </>
+          }
+          reinspectReplacement={
+            followUp.data?.isDefective === true ? (
+              <RejectedLotGuide nonconformanceId={followUp.data.nonconformanceId} />
+            ) : null
+          }
+          confirmOnlyBlockedReason={
+            isRejected && 'blocked' in resolvedDefect
+              ? resolvedDefect.blocked
+              : needsChangeReason && changeReason.trim() === ''
+                ? t.result.judgmentChange.required
                 : fourMBlocked
                   ? t.result.fourMChange.blocked
                   : null
-            }
-            uomCode={uomCode}
-            hasChanges={hasChanges}
-            draft={draft}
-            onChange={changeDraftAndJudge}
-            onSave={() => {
-              saveDraft(selectedId, inspectedQty, detail.data.uomId);
-            }}
-            isSaving={save.isSaving || rounds.isFetching}
-            isSaved={isSaved}
-            fieldErrors={save.fieldErrors}
-            saveError={save.error}
-            onReload={() => void rounds.refetch()}
-            judgmentOptions={judgmentOptions}
-            judgment={judgment}
-            onJudgmentChange={(next) => {
-              /* 불합격이 아닌 판정으로 바꾸면 사유 입력을 비운다 — 다시 불합격을 골라도 이전 사유가 되살아나지 않는다(#122 검증). */
-              if (next !== REJECTED_JUDGMENT) setRejection(EMPTY_REJECTION);
-              setJudgment(next);
-            }}
-            onConfirm={() => {
-              const defects = rejectionRows(round?.rejectedQty ?? 0, inspectedQty);
-              confirm.write({
-                overallJudgmentCode: judgment,
-                ...(defects.length === 0 ? {} : { defects }),
-                ...(needsChangeReason ? { judgmentChangeReason: changeReason.trim() } : {}),
-                ...(fourMValue === undefined ? {} : { fourMChange: fourMValue }),
-              });
-            }}
-            isConfirming={confirm.isSaving}
-            confirmError={confirm.error}
-            judgmentDetail={
-              <>
-                {acceptanceNumber !== null && isOpenRound && (
-                  <JudgmentChange
-                    acceptanceNumber={acceptanceNumber}
-                    expectedLabel={
-                      expectedJudgment === null
-                        ? null
-                        : (judgmentOptions.find((option) => option.value === expectedJudgment)
-                            ?.label ?? expectedJudgment)
-                    }
-                    needsReason={needsChangeReason}
-                    reason={changeReason}
-                    onReasonChange={setChangeReason}
-                    disabled={confirm.isSaving}
-                  />
-                )}
-                {hasFourMTarget && isOpenRound && (
-                  <FourMChange
-                    draft={fourM}
-                    options={fourMOptions}
-                    onChange={(next) => {
-                      setIsSaved(false);
-                      setFourM(next);
-                    }}
-                    disabled={confirm.isSaving}
-                  />
-                )}
-                {isRejected && (
-                  <RejectionReason
-                    codes={defectCodes.data ?? []}
-                    causes={causeCodes.data ?? []}
-                    draft={rejection}
-                    onChange={setRejection}
-                    disabled={confirm.isSaving}
-                  />
-                )}
-              </>
-            }
-            reinspectReplacement={
-              followUp.data?.isDefective === true ? (
-                <RejectedLotGuide nonconformanceId={followUp.data.nonconformanceId} />
-              ) : null
-            }
-            confirmOnlyBlockedReason={
-              isRejected && 'blocked' in resolvedDefect
-                ? resolvedDefect.blocked
-                : needsChangeReason && changeReason.trim() === ''
-                  ? t.result.judgmentChange.required
-                  : fourMBlocked
-                    ? t.result.fourMChange.blocked
-                    : null
-            }
-            isJustConfirmed={isJustConfirmed}
-            isReinspecting={isReinspectingNow}
-            onStartReinspection={() => {
-              /* 새 회차는 빈 칸에서 시작한다 — 앞 회차의 값이 남으면 그대로 저장된다. */
-              setIsSaved(false);
-              setDraft(EMPTY_QUANTITY_DRAFT);
-              setJudgment('');
-              setRejection(EMPTY_REJECTION);
-              setSavedRejection(EMPTY_REJECTION);
-              setChangeReason('');
-              setIsReinspecting(true);
-            }}
-            onCancelReinspection={() => {
-              setIsReinspecting(false);
-              /*
-               * ⛔ **확정본의 값을 되돌려 놓는다.** 비우면 그만둔 자리에 확정된 회차가
-               * «수량 없이» 놓인다 — 판정이 끝난 기록인데 화면이 비어 있으니 검사자는
-               * 자기가 방금 그것을 지웠다고 읽는다.
-               */
-              setDraft(draftOf(round));
-              setJudgment(storedJudgment);
-            }}
-          />
-        )}
+          }
+          isJustConfirmed={isJustConfirmed}
+          isReinspecting={isReinspectingNow}
+          onStartReinspection={() => {
+            /* 새 회차는 빈 칸에서 시작한다 — 앞 회차의 값이 남으면 그대로 저장된다. */
+            setIsSaved(false);
+            setDraft(EMPTY_QUANTITY_DRAFT);
+            setJudgment('');
+            setRejection(EMPTY_REJECTION);
+            setSavedRejection(EMPTY_REJECTION);
+            setChangeReason('');
+            setIsReinspecting(true);
+          }}
+          onCancelReinspection={() => {
+            setIsReinspecting(false);
+            /*
+             * ⛔ **확정본의 값을 되돌려 놓는다.** 비우면 그만둔 자리에 확정된 회차가
+             * «수량 없이» 놓인다 — 판정이 끝난 기록인데 화면이 비어 있으니 검사자는
+             * 자기가 방금 그것을 지웠다고 읽는다.
+             */
+            setDraft(draftOf(round));
+            setJudgment(storedJudgment);
+          }}
+        />
+      )}
 
-        {/*
-         * 참고 정보 — 판정 작업과 떼어 한 묶음으로(omf-all-around#133). 측정치는 검사와 가장 가까워 맨 위,
-         * 이전 회차가 그 아래 한 줄씩 서고, 첨부 문서·검사 이력은 넓으면 나란히 선다. 내용과 동작은 그대로다.
-         */}
-        <div className="iqc-inspection-aux">
+      {/*
+       * 참고 정보 — 판정 작업과 떼어 한 묶음으로(omf-all-around#133). 측정치는 검사와 가장 가까워 맨 위,
+       * 이전 회차가 그 아래 한 줄씩 서고, 첨부 문서·검사 이력은 넓으면 나란히 선다. 내용과 동작은 그대로다.
+       */}
+      {/*
+       * 참고 정보 — 판정보다 뒤에, 펼쳐 보는 구획으로(omf-all-around#133). 측정치는 검사와 가장 가까워 펼친 채 시작하고,
+       * 이전 회차 · 첨부 문서 · 검사 이력은 접힌 채 시작한다. 내용과 동작은 그대로다.
+       */}
+      <div className="iqc-inspection-aux">
+        <details className="iqc-inspection-fold" open>
+          <summary>{messages.iqcInspection.measurements.caption}</summary>
           {/*
            * ⚠ **`isPending` 이 아니라 `isLoading` 이다.** 측정치 조회는 회차가 없을 때
            * 비활성이고, 비활성이면 `isPending` 이 계속 참이라 아직 시작하지 않은 의뢰의
@@ -759,20 +766,31 @@ export const IqcInspectionScreen = () => {
             rows={measurementRows}
             isLoading={itemSpecs.isLoading || measurements.isLoading}
           />
-          {/* ⛔ 읽기 전용이다 — 앞 회차는 정정하지 않고 새 회차를 쌓는다(§5-3). */}
-          <RoundHistory rounds={historyRounds} uomCode={uomCode} />
+        </details>
+        {/* ⛔ 읽기 전용이다 — 앞 회차는 정정하지 않고 새 회차를 쌓는다(§5-3). 회차가 둘 이상일 때만 선다. */}
+        {historyRounds.length > 0 && (
+          <details className="iqc-inspection-fold">
+            <summary>{messages.iqcInspection.history.heading}</summary>
+            <RoundHistory rounds={historyRounds} uomCode={uomCode} />
+          </details>
+        )}
 
-          {/* LOT 별 시험성적서 등 검사 문서(#58) — 대상 LOT 이 있을 때만. */}
-          {detail.data.lotId !== null && (
+        {/* LOT 별 시험성적서 등 검사 문서(#58) — 대상 LOT 이 있을 때만. */}
+        {detail.data.lotId !== null && (
+          <details className="iqc-inspection-fold">
+            <summary>{messages.inspectionDocuments.heading}</summary>
             <AttachmentPanel
               key={detail.data.lotId}
               targetTypeCode="LOT"
               targetId={detail.data.lotId}
             />
-          )}
+          </details>
+        )}
 
-          {/* 검사 대상 이력(#61) — 회차를 저장·확정하면 새로 부른다. */}
-          {selectedId !== null && (
+        {/* 검사 대상 이력(#61) — 회차를 저장·확정하면 새로 부른다. */}
+        {selectedId !== null && (
+          <details className="iqc-inspection-fold">
+            <summary>{messages.inspectionHistory.heading}</summary>
             <InspectionHistoryPanel
               key={`${String(selectedId)}-${String(historyRounds.length)}`}
               inspectionRequestId={selectedId}
@@ -781,10 +799,11 @@ export const IqcInspectionScreen = () => {
               }
               revision={`${String(rounds.data?.length ?? 0)}:${JSON.stringify(round ?? null)}`}
             />
-          )}
-        </div>
-      </>
-    );
+          </details>
+        )}
+      </div>
+    </>
+  );
 
   return (
     <>
@@ -798,8 +817,15 @@ export const IqcInspectionScreen = () => {
         }
       />
 
-      <div className="two-pane iqc-inspection-panes">
-        <section className="pane iqc-inspection-queue-pane" aria-label={t.queue.heading}>
+      {/*
+       * 목록과 상세(판정)를 한 화면에 나란히 두지 않고 갈아 끼운다(omf-all-around#133) — 의뢰를 고르면(`?ir=`)
+       * 상세만, 목록으로 돌아오면 목록만 선다. 검색 조건 · 쪽은 주소에 남아 돌아와도 그대로다.
+       */}
+      {selectedId === null ? (
+        <section
+          className="pane iqc-inspection-panes iqc-inspection-queue-pane"
+          aria-label={t.queue.heading}
+        >
           {/* 검색 묶음 — LOT 스캔과 조회 조건이 같은 격자·높이로 선다. */}
           <div className="iqc-inspection-search">
             {/* LOT 바코드로 대기 의뢰를 바로 연다(#58) — 목록 조건은 그대로 두고 선택만 한다. */}
@@ -833,11 +859,39 @@ export const IqcInspectionScreen = () => {
            */}
           {queue.data !== undefined && <PageNav view={pageView} onChange={goToPage} />}
         </section>
-
-        <section className="pane iqc-inspection-detail" aria-label={t.detail.heading}>
+      ) : (
+        <section
+          className="pane iqc-inspection-panes iqc-inspection-detail"
+          aria-label={t.detail.heading}
+        >
+          {/*
+           * 목록으로 — 저장하지 않은 입력이 있으면 바로 떠나지 않고 한 번 묻는다. 떠나면 그 입력은 버려진다
+           * (의뢰가 바뀌면 초안을 비우는 종전 규칙 그대로).
+           */}
+          <div className="iqc-inspection-back">
+            {confirmingLeave ? (
+              <>
+                <span className="field-note">{t.detail.leaveUnsaved}</span>
+                <Button variant="text" size="sm" onClick={() => setConfirmingLeave(false)}>
+                  {t.detail.keepEditing}
+                </Button>
+                <Button variant="outlined" size="sm" onClick={backToList}>
+                  {t.detail.leaveAnyway}
+                </Button>
+              </>
+            ) : (
+              <Button
+                variant="text"
+                size="sm"
+                onClick={() => (hasChanges ? setConfirmingLeave(true) : backToList())}
+              >
+                {t.detail.backToList}
+              </Button>
+            )}
+          </div>
           {detailContent}
         </section>
-      </div>
+      )}
     </>
   );
 };

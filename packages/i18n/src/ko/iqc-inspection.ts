@@ -102,11 +102,13 @@ export const iqcInspection = {
 
   /** 우측 창 — 고른 의뢰의 상세(스펙 §4-A 여섯 항목). */
   detail: {
+    backToList: '← 목록',
+    leaveUnsaved: '저장하지 않은 입력이 있습니다. 목록으로 가면 입력이 사라집니다.',
+    keepEditing: '계속 입력',
+    leaveAnyway: '버리고 목록으로',
     heading: '대상',
     /** 상세 카드 첫 구획의 제목 — 참고 정보(읽기 전용)임을 입력 구획과 가른다. */
     sectionTitle: '검사 기본 정보',
-    /** 아무것도 고르지 않았다. 무엇을 해야 하는지 말한다. */
-    nothingSelected: '왼쪽 목록에서 검사할 항목을 선택해 주세요.',
     loading: '의뢰를 불러오는 중입니다.',
     fields: {
       inspectionRequestNo: '의뢰번호',

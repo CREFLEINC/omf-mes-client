@@ -14108,21 +14108,6 @@ button.app-button-neutral {
   margin-inline: auto;
 }
 
-/*
- * 두 칸 배치(1281px 이상)에서 대기 목록을 넓히고 상세 카드를 줄인다 — 공용 .two-pane(2fr : 3fr)은 그대로 둔다.
- * 1280px 이하는 공용 규칙대로 위아래로 쌓인다.
- */
-@media (min-width: 1281px) {
-  .two-pane.iqc-inspection-panes {
-    /*
-     * 상세(작업 영역)를 넓힌다 — 넓은 화면에서 수량·판정이 두 칸으로 서고(#133 스크롤 줄이기), 목록은 LOT 번호를
-     * 말줄임(전체는 마우스 올림)으로 담는다.
-     */
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr);
-    align-items: start;
-  }
-}
-
 /* 조회 조건 — 조회·초기화 묶음은 그 줄의 오른쪽 끝(줄이 바뀌어도 그 줄의 끝)에 선다. */
 .iqc-inspection-panes .iqc-inspection-filter-actions {
   margin-left: auto;
@@ -14137,15 +14122,15 @@ button.app-button-neutral {
  * 대기 목록(왼쪽 창의 표) — 글자 칸은 왼쪽, 상태는 가운데, 일시는 오른쪽. 머리줄도 같은 기준이다.
  * 상세 창의 표(측정·회차)는 위 가운데 정렬 그대로 둔다.
  */
-.iqc-inspection-panes > .pane:first-child th:nth-child(1),
-.iqc-inspection-panes > .pane:first-child td:nth-child(1),
-.iqc-inspection-panes > .pane:first-child th:nth-child(2),
-.iqc-inspection-panes > .pane:first-child td:nth-child(2) {
+.iqc-inspection-queue-pane th:nth-child(1),
+.iqc-inspection-queue-pane td:nth-child(1),
+.iqc-inspection-queue-pane th:nth-child(2),
+.iqc-inspection-queue-pane td:nth-child(2) {
   text-align: left;
 }
 
-.iqc-inspection-panes > .pane:first-child th:nth-child(4),
-.iqc-inspection-panes > .pane:first-child td:nth-child(4) {
+.iqc-inspection-queue-pane th:nth-child(4),
+.iqc-inspection-queue-pane td:nth-child(4) {
   text-align: right;
 }
 
@@ -14153,50 +14138,48 @@ button.app-button-neutral {
  * 열 폭을 내용이 아니라 지정 폭(품목 30% · 상태 64px · 일시 136px)으로 잡는다 — 내용 폭으로 잡으면 긴 LOT 번호가
  * 표를 창 밖으로 밀어 일시가 잘린다(1024 폭). 남는 폭은 LOT 칸이 받고, 모자라면 말줄임이다.
  */
-.iqc-inspection-panes > .pane:first-child table {
+.iqc-inspection-queue-pane table {
   table-layout: fixed;
   width: 100%;
 }
 
-.iqc-inspection-panes > .pane:first-child th {
+.iqc-inspection-queue-pane th {
   color: var(--on-surface-muted);
   font: var(--type-label-sm);
   letter-spacing: var(--type-label-sm-tracking);
   border-bottom: 1px solid var(--outline-variant);
 }
 
-.iqc-inspection-panes > .pane:first-child td {
+.iqc-inspection-queue-pane td {
   padding-block: var(--space-3);
   vertical-align: middle;
 }
 
 /* 줄무늬 바탕을 지운다 — 구분은 얇은 선으로, 강조는 고른 줄에만. */
-.iqc-inspection-panes > .pane:first-child tbody tr,
-.iqc-inspection-panes > .pane:first-child tbody tr:nth-child(even) {
+.iqc-inspection-queue-pane tbody tr,
+.iqc-inspection-queue-pane tbody tr:nth-child(even) {
   background: transparent;
 }
 
 /* 줄 — 마우스를 올리면 옅게, 고른 줄은 바탕 + 왼쪽 강조선으로 확실히 가른다. */
-.iqc-inspection-panes > .pane:first-child tbody tr {
+.iqc-inspection-queue-pane tbody tr {
   transition: background-color 0.12s ease;
   /* 줄 아무 곳이나 눌러 고른다(queue-table.tsx). */
   cursor: pointer;
 }
 
-.iqc-inspection-panes > .pane:first-child tbody tr:nth-child(n):hover {
+.iqc-inspection-queue-pane tbody tr:nth-child(n):hover {
   background: var(--state-hover-neutral);
 }
 
-.iqc-inspection-panes
-  > .pane:first-child
+.iqc-inspection-queue-pane
   tbody
   tr:nth-child(n):has(.iqc-inspection-queue-item[aria-current='true']) {
   background: var(--surface-container-high);
 }
 
 /* 표 줄(tr)에는 그림자가 안 그려진다 — 강조선은 첫 칸에 긋는다. */
-.iqc-inspection-panes
-  > .pane:first-child
+.iqc-inspection-queue-pane
   tbody
   tr:has(.iqc-inspection-queue-item[aria-current='true'])
   > td:first-child {
@@ -14354,17 +14337,12 @@ button.app-button-neutral {
   }
 }
 
-/* 상세 창 — 고르기 전 안내는 카드 안 제목 아래 한 줄. */
-.iqc-inspection-panes > .pane:last-child > .iqc-inspection-section:only-child > .field-note {
-  color: var(--on-surface-variant);
-}
-
 /*
  * ⛔ 아래 감춘 글자(절대 위치)의 기준 상자를 이 화면 안에 둔다. 기준이 앱 셸까지 올라가면 그 글자가
  * 본문(main)의 스크롤 영역 밖으로 빠져 문서 전체가 길어지고, 스크롤하면 사이드바가 따라 올라가 끊겨
  * 보이며 카드 아래에 빈 공간이 생긴다(실측: 감춘 표 제목의 아래끝 = 문서 높이).
  */
-.two-pane.iqc-inspection-panes {
+.iqc-inspection-panes {
   position: relative;
 }
 
@@ -14393,41 +14371,13 @@ button.app-button-neutral {
   border-top: 1px solid var(--outline-variant);
 }
 
-.iqc-inspection-panes > .pane > .iqc-inspection-section:first-child {
+.iqc-inspection-panes.pane > .iqc-inspection-section:first-child {
   padding-top: 0;
   border-top: 0;
 }
 
-.iqc-inspection-panes > .pane > .iqc-inspection-section:last-child {
+.iqc-inspection-panes.pane > .iqc-inspection-section:last-child {
   padding-bottom: 0;
-}
-
-/*
- * 스크롤 줄이기(omf-all-around#133) — 두 칸 배치(1281px 이상)에서 목록 카드는 화면에 붙어 있고 표만 안에서 구른다.
- * 상세를 아래로 읽어 내려가도 목록이 따라 사라지지 않는다. 쌓이는 배치(1280px 이하)는 종전 그대로다.
- */
-@media (min-width: 1281px) {
-  .iqc-inspection-panes > .iqc-inspection-queue-pane {
-    position: sticky;
-    top: var(--space-4);
-    display: flex;
-    flex-direction: column;
-    max-height: calc(100vh - 7.5rem);
-  }
-
-  .iqc-inspection-queue-pane > .iqc-inspection-queue-rows {
-    flex: 1 1 auto;
-    min-height: 8rem;
-    overflow-y: auto;
-  }
-}
-
-/* 쌓이는 배치(1280px 이하) — 목록이 길어도 상세가 멀리 밀리지 않게 표만 안에서 구른다(약 5줄). */
-@media (max-width: 1280px) {
-  .iqc-inspection-queue-pane > .iqc-inspection-queue-rows {
-    max-height: 22rem;
-    overflow-y: auto;
-  }
 }
 
 /* 상세 카드 — 칸 폭으로 배치를 고른다(창 폭이 아니라 카드 폭이 정한다). */
@@ -14533,33 +14483,66 @@ button.app-button-neutral {
   }
 }
 
-/* 참고 정보 — 측정치 · 이전 회차는 한 줄씩, 첨부 문서 · 검사 이력은 넓으면 두 칸. */
-.iqc-inspection-aux {
-  display: grid;
-  margin-top: var(--space-5);
-  padding-top: var(--space-2);
-  border-top: 1px solid var(--outline-variant);
+/* 상세 맨 위 「← 목록」 줄 — 저장 안 한 입력이 있으면 같은 줄에서 한 번 묻는다. */
+.iqc-inspection-back {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
 }
 
-.iqc-inspection-panes .iqc-inspection-aux > * {
-  min-width: 0;
-  padding-block: var(--space-4);
+.iqc-inspection-back > .field-note {
+  max-width: none;
+  margin: 0;
 }
 
-.iqc-inspection-panes .iqc-inspection-aux > .iqc-inspection-section:first-child {
+/* 「← 목록」 바로 아래 첫 구획은 위 구분선 없이 붙는다. */
+.iqc-inspection-panes .iqc-inspection-back + .iqc-inspection-section {
+  padding-top: 0;
   border-top: 0;
 }
 
-@container (min-width: 40rem) {
-  .iqc-inspection-aux {
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-    column-gap: var(--space-5);
-  }
+/*
+ * 참고 정보 — 측정치 · 이전 회차 · 첨부 문서 · 검사 이력을 판정 뒤에 접었다 펴는 구획으로 쌓는다(#133).
+ * 펼친 구획의 제목은 접는 줄(summary)이 맡고, 구획 안의 원래 제목은 감춘다(같은 말이 두 번 서지 않게).
+ */
+.iqc-inspection-aux {
+  display: grid;
+  margin-top: var(--space-4);
+  border-top: 1px solid var(--outline-variant);
+}
 
-  /* 측정치 · 이전 회차는 표가 넓어 한 줄을 다 쓰고, 첨부 문서 · 검사 이력이 나란히 선다. */
-  .iqc-inspection-aux > .iqc-inspection-section {
-    grid-column: 1 / -1;
-  }
+.iqc-inspection-fold {
+  border-bottom: 1px solid var(--outline-variant);
+}
+
+.iqc-inspection-fold > summary {
+  padding-block: var(--space-3);
+  font: var(--type-title-sm);
+  cursor: pointer;
+}
+
+.iqc-inspection-fold[open] > summary {
+  padding-bottom: var(--space-2);
+}
+
+.iqc-inspection-fold > * + * {
+  margin-bottom: var(--space-4);
+}
+
+.iqc-inspection-panes .iqc-inspection-fold > section {
+  padding-block: 0;
+  border-top: 0;
+}
+
+.iqc-inspection-fold > section > h3:first-child {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
 }
 
 /* 검사 문서 첨부(omf-all-around#58) — 고른 파일 한 줄: 이름 · 크기 · [제거], 사전 검사 오류는 그 아래. */

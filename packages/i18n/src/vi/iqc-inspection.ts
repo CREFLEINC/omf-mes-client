@@ -47,9 +47,12 @@ export const iqcInspection: Translated<typeof ko.iqcInspection> = {
   },
 
   detail: {
+    backToList: '← Danh sách',
+    leaveUnsaved: 'Có nội dung chưa lưu. Quay lại danh sách sẽ mất nội dung đã nhập.',
+    keepEditing: 'Tiếp tục nhập',
+    leaveAnyway: 'Bỏ và về danh sách',
     heading: 'Đối tượng',
     sectionTitle: 'Thông tin kiểm tra cơ bản',
-    nothingSelected: 'Hãy chọn mục cần kiểm tra ở danh sách bên trái.',
     loading: 'Đang tải yêu cầu.',
     fields: {
       inspectionRequestNo: 'Số yêu cầu',

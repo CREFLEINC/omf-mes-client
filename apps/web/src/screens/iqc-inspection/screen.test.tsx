@@ -308,6 +308,17 @@ const openButton = (no: string) =>
 const findOpenButton = (no: string) =>
   screen.findByRole('button', { name: (accessibleName: string) => accessibleName.includes(no) });
 
+/*
+ * #133 — 목록과 상세가 갈아 끼워진다. 상세에서 다른 의뢰로 가려면 「← 목록」으로 돌아가 고른다.
+ * 저장 안 한 입력이 있으면 한 번 묻는데, 이 도우미는 「버리고 목록으로」를 고른다.
+ */
+const goToRequest = async (no: string): Promise<void> => {
+  await userEvent.click(screen.getByRole('button', { name: t.detail.backToList }));
+  const leave = screen.queryByRole('button', { name: t.detail.leaveAnyway });
+  if (leave !== null) await userEvent.click(leave);
+  await userEvent.click(await findOpenButton(no));
+};
+
 /** [임시 저장]은 마지막 저장 상태와 달라진 것이 있을 때만 켜진다 — 누르기 전에 한 칸을 바꾼다. */
 const editQuantity = async (): Promise<void> => {
   await userEvent.type(screen.getByLabelText(t.result.fields.held), '1');
@@ -375,17 +386,19 @@ describe('IqcInspectionScreen', () => {
     expect(lastQuery(sent)?.get('pendingOnly')).toBe('true');
   });
 
-  it('의뢰를 고르면 그 줄이 현재가 된다', async () => {
+  it('의뢰를 고르면 목록 대신 그 의뢰의 상세가 선다(#133)', async () => {
     renderScreen();
 
     await findOpenButton('IR-2026-0002');
     await userEvent.click(openButton('IR-2026-0002'));
 
-    await waitFor(() => expect(openButton('IR-2026-0002')).toHaveAttribute('aria-current', 'true'));
+    expect(await screen.findByText(t.detail.sectionTitle)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: t.detail.backToList })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: t.pageNav.next })).not.toBeInTheDocument();
   });
 
-  it('쪽을 옮겨도 조건과 고른 의뢰는 그대로다', async () => {
-    const { sent } = renderScreen('/?it=1001&ir=1002', () =>
+  it('쪽을 옮겨도 조건은 그대로이고, 상세에서 목록으로 돌아와도 조건이 남는다', async () => {
+    const { sent } = renderScreen('/?it=1001', () =>
       jsonResponse(queueResponse(queueItems, pageOf(120, 1, 50))),
     );
 
@@ -394,7 +407,13 @@ describe('IqcInspectionScreen', () => {
 
     await waitFor(() => expect(lastQuery(sent)?.get('page')).toBe('2'));
     expect(lastQuery(sent)?.get('itemId')).toBe('1001');
-    expect(openButton('IR-2026-0002')).toHaveAttribute('aria-current', 'true');
+
+    await userEvent.click(await findOpenButton('IR-2026-0002'));
+    await userEvent.click(await screen.findByRole('button', { name: t.detail.backToList }));
+
+    await findOpenButton('IR-2026-0002');
+    expect(lastQuery(sent)?.get('itemId')).toBe('1001');
+    expect(lastQuery(sent)?.get('page')).toBe('2');
   });
 
   it('조회가 실패하면 배너를 세우고 다시 시도할 자리를 준다', async () => {
@@ -448,10 +467,23 @@ describe('IqcInspectionScreen', () => {
     expect(await screen.findByRole('navigation', { name: t.pageNav.label })).toBeInTheDocument();
   });
 
-  it('아무것도 고르지 않았으면 무엇을 해야 하는지 말한다', async () => {
+  it('처음에는 목록만 선다 — 상세는 의뢰를 고른 뒤에 연다(#133)', async () => {
     renderScreen();
 
-    expect(await screen.findByText(t.detail.nothingSelected)).toBeInTheDocument();
+    await findOpenButton('IR-2026-0001');
+    expect(screen.queryByText(t.detail.sectionTitle)).not.toBeInTheDocument();
+  });
+
+  it('저장 안 한 입력이 있으면 목록으로 가기 전에 한 번 묻는다', async () => {
+    renderScreen('/?ir=1001', () => jsonResponse(queueResponse()), []);
+
+    await screen.findByText(t.result.confirmBlockedByUnsaved);
+    await userEvent.type(screen.getByLabelText(t.result.fields.accepted), '1');
+    await userEvent.click(screen.getByRole('button', { name: t.detail.backToList }));
+
+    expect(screen.getByText(t.detail.leaveUnsaved)).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: t.detail.keepEditing }));
+    expect(screen.getByLabelText(t.result.fields.accepted)).toHaveValue('1');
   });
 
   it('의뢰를 고르면 그 의뢰의 상세가 선다 — 목록과 상세가 같은 건을 가리킨다', async () => {
@@ -489,7 +521,7 @@ describe('IqcInspectionScreen', () => {
     await userEvent.type(screen.getByLabelText(t.result.fields.accepted), '123');
     expect(screen.getByLabelText(t.result.fields.accepted)).toHaveValue('123');
 
-    await userEvent.click(openButton('IR-2026-0002'));
+    await goToRequest('IR-2026-0002');
 
     await waitFor(() => expect(screen.getByLabelText(t.result.fields.accepted)).toHaveValue(''));
   });
@@ -859,7 +891,8 @@ describe('IqcInspectionScreen', () => {
     renderScreen('/?ir=9999');
 
     expect(await screen.findByRole('button', { name: messages.common.retry })).toBeInTheDocument();
-    expect(screen.queryByText(t.detail.nothingSelected)).not.toBeInTheDocument();
+    /* 실패해도 목록으로 접지 않고 상세 자리에 머문다 — 돌아가는 길은 「← 목록」이다. */
+    expect(screen.getByRole('button', { name: t.detail.backToList })).toBeInTheDocument();
   });
 
   it('조건에 맞는 것이 없으면 조건을 넓히라고 말한다', async () => {
@@ -963,7 +996,7 @@ describe('IqcInspectionScreen — 재검사 회차', () => {
 
     await userEvent.click(screen.getByRole('button', { name: t.result.reinspect }));
 
-    expect(screen.getByText(t.history.heading)).toBeInTheDocument();
+    expect(screen.getAllByText(t.history.heading).length).toBeGreaterThan(0);
   });
 
   it('회차가 둘이면 앞 회차가 이력에 남는다', async () => {
@@ -973,7 +1006,7 @@ describe('IqcInspectionScreen — 재검사 회차', () => {
     ]);
 
     await screen.findByText(t.result.round(2));
-    expect(screen.getByText(t.history.heading)).toBeInTheDocument();
+    expect(screen.getAllByText(t.history.heading).length).toBeGreaterThan(0);
   });
 });
 
@@ -1003,7 +1036,7 @@ describe('IqcInspectionScreen — 확정 결과 문면', () => {
     await userEvent.click(screen.getByRole('button', { name: t.result.confirm }));
     await screen.findByText(t.result.confirmSucceeded);
 
-    await userEvent.click(openButton(queueItems[1]!.inspectionRequestNo));
+    await goToRequest(queueItems[1]!.inspectionRequestNo);
 
     await waitFor(() =>
       expect(screen.queryByText(t.result.confirmSucceeded)).not.toBeInTheDocument(),
@@ -1452,7 +1485,7 @@ describe('IqcInspectionScreen — 재검사 저장 뒤', () => {
     await userEvent.click(screen.getByRole('button', { name: t.result.reinspect }));
     expect(screen.getByText(t.result.reinspectRound)).toBeInTheDocument();
 
-    await userEvent.click(openButton(queueItems[1]!.inspectionRequestNo));
+    await goToRequest(queueItems[1]!.inspectionRequestNo);
 
     await waitFor(() => expect(screen.getByText(t.result.round(1))).toBeInTheDocument());
     expect(screen.queryByText(t.result.reinspectRound)).not.toBeInTheDocument();
