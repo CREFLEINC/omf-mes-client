@@ -14224,11 +14224,6 @@ button.app-button-neutral {
   background: none;
 }
 
-.iqc-inspection-panes .iqc-inspection-queue-item:hover .iqc-inspection-queue-item-name {
-  text-decoration: underline;
-  text-underline-offset: 2px;
-}
-
 .iqc-inspection-panes .iqc-inspection-queue-item-name,
 .iqc-inspection-panes .iqc-inspection-queue-item-code {
   max-width: 100%;
@@ -14440,9 +14435,40 @@ button.app-button-neutral {
   container-type: inline-size;
 }
 
-/* 수량 · 판정 — 넓으면 두 칸, 가운데 얇은 세로 구분선. 좁으면 위아래. */
+/*
+ * 수량 · 판정 — 넓으면 두 칸, 가운데 얇은 세로 구분선. 좁으면 위아래.
+ * 두 칸은 서로 높이를 맞추지 않는다 — 판정 쪽에 사유 칸이 열려도 수량 칸은 제 높이 그대로다.
+ */
 .iqc-inspection-work {
   display: grid;
+  align-items: start;
+}
+
+.iqc-inspection-work > .iqc-inspection-section {
+  align-content: start;
+}
+
+/* 입력 현황 아래 안내 한 줄(「검사수량과 일치합니다」 등)의 자리를 늘 비워 둔다 — 줄이 생겨도 아래가 밀리지 않는다. */
+.iqc-inspection-work .iqc-inspection-progress {
+  min-height: 96px;
+  align-content: start;
+}
+
+/*
+ * 판정 칸 — 판정에 따라 열리는 칸(변경 사유 · 불합격 사유 · 4M)이 많아도 저장 · 확정 줄을 밀지 않게
+ * 그 칸들만 안에서 구른다. 제목과 종합 판정 선택은 맨 위에 그대로 있다.
+ */
+.iqc-inspection-judgment-detail {
+  display: grid;
+  align-content: start;
+  gap: var(--space-3);
+  max-height: 18rem;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.iqc-inspection-judgment-detail:empty {
+  display: none;
 }
 
 @container (min-width: 40rem) {
@@ -14454,6 +14480,32 @@ button.app-button-neutral {
   .iqc-inspection-work > .iqc-inspection-section + .iqc-inspection-section {
     padding-inline-start: var(--space-5);
     border-inline-start: 1px solid var(--outline-variant);
+  }
+
+  /*
+   * 두 칸 배치에서는 판정 칸 높이를 수량 칸에 맞춘다 — 판정 칸은 줄 높이 계산에서 빠지고(`contain: size`)
+   * 수량 칸이 정한 높이만큼 늘어나, 사유 칸이 열려도 저장 · 확정 줄이 제자리에 있다. 넘치면 칸 안에서 구른다.
+   */
+  .iqc-inspection-work {
+    align-items: stretch;
+  }
+
+  .iqc-inspection-work > .iqc-inspection-section:last-child {
+    contain: size;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .iqc-inspection-work .iqc-inspection-judgment-detail {
+    flex: 1 1 auto;
+    min-height: 0;
+    max-height: none;
+  }
+
+  /* 판정 칸이 반 폭이라 4M 종류 · 내용을 위아래로 둔다(나란히 두면 내용 칸이 잘린다). */
+  .iqc-inspection-work .iqc-inspection-four-m-fields {
+    grid-template-columns: minmax(0, 1fr);
   }
 
   /* 수량 칸이 반 폭이라 합격·불합격·보류 세 칸이 좁다 — 두 칸 배치에서만 단위를 칸 아래로 내리지 않고 줄인다. */

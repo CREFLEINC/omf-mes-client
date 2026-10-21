@@ -137,7 +137,7 @@ export const iqcInspection: Translated<typeof ko.iqcInspection> = {
     },
     fourMChange: {
       label: 'Hàng thay đổi 4M',
-      hint: 'Đánh dấu nếu nhà cung cấp đã thay đổi con người, thiết bị, vật liệu hoặc phương pháp.',
+      hint: 'Vật tư có thay đổi con người, thiết bị, vật liệu hoặc phương pháp',
       changeType: 'Loại thay đổi',
       changeTypePlaceholder: 'Chọn loại thay đổi',
       changeTypeMissing: 'Hãy chọn loại thay đổi.',

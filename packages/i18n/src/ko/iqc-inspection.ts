@@ -252,7 +252,7 @@ export const iqcInspection = {
     /* 4M 변경품(omf-all-around#63) — 공급사가 사람·설비·자재·방법을 바꿔 보낸 자재 LOT. 내부 「4M 자원배정」과 다른 말이다. */
     fourMChange: {
       label: '4M 변경품',
-      hint: '공급사가 사람·설비·자재·방법을 바꿔 보낸 자재면 체크하세요.',
+      hint: '사람·설비·자재·방법이 바뀌어 들어온 자재',
       changeType: '변경 종류',
       changeTypePlaceholder: '변경 종류 선택',
       changeTypeMissing: '변경 종류를 선택하세요.',

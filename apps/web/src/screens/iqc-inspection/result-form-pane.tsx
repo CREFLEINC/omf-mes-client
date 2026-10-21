@@ -352,7 +352,8 @@ export const ResultFormPane = ({
               <p className="field-note">{t.judgmentUnknown(judgment)}</p>
             )}
           </div>
-          {judgmentDetail}
+          {/* 판정에 따라 열리는 칸(자동 판정 근거 · 변경 사유 · 4M · 불합격 사유) — 넘치면 여기만 구른다(#133). */}
+          <div className="iqc-inspection-judgment-detail">{judgmentDetail}</div>
 
           <SaveErrorBanner error={saveError ?? confirmError} onReload={onReload} />
 
@@ -446,9 +447,15 @@ export const ResultFormPane = ({
                  * ⛔ **확정은 되돌릴 수 없다** — 누르기 전에 그 사실을 알린다. 이 순간 LOT 상태가
                  * 전이하고 보류 해제가 기록된다. 흐린 보조 글이 아니라 DS 경고 띠로 둔다.
                  */}
-                <AlertBanner className="iqc-inspection-submit-banner" variant="warning">
-                  {t.confirmNote}
-                </AlertBanner>
+                {/*
+                 * 막힌 동안에는 막힌 까닭 하나만 보인다 — 누를 수 없는 단추 앞에서 「누르면 되돌릴 수 없다」를
+                 * 함께 띄우면 띠가 둘이라 무엇을 할지 흐려진다(#133). 누를 수 있게 되면 경고가 선다.
+                 */}
+                {confirmBlockedReason === null && (
+                  <AlertBanner className="iqc-inspection-submit-banner" variant="warning">
+                    {t.confirmNote}
+                  </AlertBanner>
+                )}
               </>
             )}
           </div>

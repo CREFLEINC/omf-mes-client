@@ -207,9 +207,20 @@ describe('ResultFormPane', () => {
   const confirmButton = () => screen.queryByRole('button', { name: t.confirm });
 
   it('⛔ 확정이 되돌릴 수 없다는 사실을 누르기 전에 알린다', () => {
+    renderPane({ accepted: '480', rejected: '15', held: '5' }, savedRound, 500, {
+      judgment: 'ACCEPTED',
+    });
+
+    expect(confirmButton()).toBeEnabled();
+    expect(screen.getByText(t.confirmNote)).toBeInTheDocument();
+  });
+
+  /* #133 — 막힌 동안에는 막힌 까닭 하나만 — 경고 띠를 겹쳐 띄우지 않는다. */
+  it('확정이 막힌 동안에는 되돌릴 수 없다는 경고 대신 막힌 까닭만 보인다', () => {
     renderPane();
 
-    expect(screen.getByText(t.confirmNote)).toBeInTheDocument();
+    expect(confirmButton()).toBeDisabled();
+    expect(screen.queryByText(t.confirmNote)).not.toBeInTheDocument();
   });
 
   /* ⭐ 회차를 «있는 것»으로 둔다 — 회차가 없으면 합계와 무관하게 확정 자체가 불가능하다. */
