@@ -789,7 +789,8 @@ export interface ItemInspectionLevelCreate {
   itemId: number;
   inspectionLevelCode: InspectionLevelCode;
   autoSwitchEnabled?: boolean;
-  reason: string;
+  /** 선택 — 비우면 이력의 사유가 null. */
+  reason?: string;
 }
 
 /** 생략 = 유지. 수준이 바뀌면 사유 필수. */

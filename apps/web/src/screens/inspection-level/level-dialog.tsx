@@ -33,7 +33,7 @@ export interface LevelDialogProps {
   onSave: (values: LevelDialogValues) => void;
 }
 
-/** 검사 수준 지정·수동 변경 창. 사유는 둘 다 필수다 — 이력에 남는다. */
+/** 검사 수준 지정·수동 변경 창. 사유는 이력에 남는다 — 수준 변경은 필수, 최초 지정은 선택(담당자 결정 2026-10-21). */
 export const LevelDialog = ({
   row,
   fieldErrors,
@@ -57,7 +57,7 @@ export const LevelDialog = ({
     if (item === null) found.itemId = t.dialog.noItem;
     if (row !== null && level === row.inspectionLevelCode)
       found.inspectionLevelCode = t.dialog.sameLevel;
-    if (reason.trim() === '') found.reason = t.dialog.reasonRequired;
+    if (row !== null && reason.trim() === '') found.reason = t.dialog.reasonRequired;
     setErrors(found);
     if (Object.keys(found).length > 0 || item === null) return;
     onSave({ itemId: item.itemId, level, autoSwitchEnabled, reason: reason.trim() });
@@ -133,7 +133,7 @@ export const LevelDialog = ({
               maxLength={500}
               onChange={(event) => setReason(event.target.value)}
               error={shown.reason || undefined}
-              aria-required
+              aria-required={row !== null}
             />
           </div>
         </div>

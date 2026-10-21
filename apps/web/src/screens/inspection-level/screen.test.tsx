@@ -64,6 +64,16 @@ const HISTORY_ROWS = [
     inspectionRequestNo: null,
     reason: 'OA 품목 지정',
   }),
+  history({
+    itemInspectionLevelHistoryId: 4,
+    itemCode: 'OA-002',
+    fromLevelCode: null,
+    toLevelCode: 'TIGHTENED',
+    changeTypeCode: 'MANUAL',
+    consecutiveAcceptCount: null,
+    inspectionRequestNo: null,
+    reason: null,
+  }),
 ];
 
 const page = (items: unknown[]) => ({ items, page: { page: 1, size: 50, total: items.length } });
@@ -87,6 +97,31 @@ const setup = () => {
       respond: () => jsonResponse(page(HISTORY_ROWS)),
     },
     { match: (r) => r.method === 'PUT', respond: () => jsonResponse({ ...level, versionNo: 4 }) },
+    {
+      match: (r) => r.method === 'POST' && new URL(r.url).pathname.endsWith(LEVELS),
+      respond: () =>
+        jsonResponse({ ...level, itemInspectionLevelId: 6, versionNo: 1 }, { status: 201 }),
+    },
+    {
+      match: (r) => new URL(r.url).pathname.endsWith('/mdm/code-values'),
+      respond: () => jsonResponse(page([])),
+    },
+    {
+      match: (r) => new URL(r.url).pathname.endsWith('/mdm/items'),
+      respond: () =>
+        jsonResponse(
+          page([
+            {
+              itemId: 4001,
+              itemCode: 'OA-002',
+              itemName: 'OA 부품',
+              itemTypeCode: 'RAW_MATERIAL',
+              baseUomId: 1,
+              isActive: true,
+            },
+          ]),
+        ),
+    },
   ]);
   const fetch: StubFetch = async (request) => {
     requests.push({
@@ -119,6 +154,30 @@ describe('검사 수준 관리', () => {
     expect(within(historyTable()).getByText('OA 품목 지정')).toBeInTheDocument();
     expect(within(historyTable()).getByText('보통 (최초 지정)')).toBeInTheDocument();
     expect(within(historyTable()).getByText('수월 → 엄격')).toBeInTheDocument();
+    const blank = within(historyTable()).getByRole('row', { name: /OA-002/ });
+    expect(blank).toHaveTextContent('—');
+  });
+
+  it('품목 추가는 사유 없이도 지정한다 — 사유 칸을 싣지 않는다', async () => {
+    const { user, requests } = setup();
+    await user.click(await screen.findByRole('button', { name: t.list.add }));
+    expect(screen.getByLabelText(t.dialog.reason)).not.toHaveAttribute('aria-required', 'true');
+
+    await user.click(screen.getByRole('button', { name: t.dialog.pickItem }));
+    const picker = within(screen.getAllByRole('dialog').at(-1)!);
+    await user.type(picker.getByLabelText(messages.itemPicker.keywordLabel), 'OA');
+    await user.click(picker.getByRole('button', { name: messages.itemPicker.search }));
+    await user.click(await picker.findByRole('checkbox', { name: 'OA-002' }));
+    await user.click(picker.getByRole('button', { name: t.dialog.pickConfirm }));
+    await user.click(screen.getByRole('button', { name: messages.common.save }));
+
+    await waitFor(() => expect(requests.some((r) => r.method === 'POST')).toBe(true));
+    expect(screen.queryByText(t.dialog.reasonRequired)).not.toBeInTheDocument();
+    expect(JSON.parse(requests.find((r) => r.method === 'POST')?.body ?? '{}')).toEqual({
+      itemId: 4001,
+      inspectionLevelCode: 'NORMAL',
+      autoSwitchEnabled: true,
+    });
   });
 
   it('수준 변경은 사유가 없으면 보내지 않고, 사유를 넣으면 줄의 판으로 잠가 보낸다', async () => {

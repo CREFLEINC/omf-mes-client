@@ -42,7 +42,7 @@ export const historyReason = (row: ItemInspectionLevelHistory): string => {
       return t.history.acceptStreak(row.consecutiveAcceptCount);
     return t.history.rejected(row.inspectionRequestNo ?? '');
   }
-  return row.reason ?? '';
+  return row.reason ?? '—';
 };
 
 interface WriteVariables {
@@ -85,7 +85,7 @@ export const InspectionLevelScreen = () => {
               itemId: values.itemId,
               inspectionLevelCode: values.level,
               autoSwitchEnabled: values.autoSwitchEnabled,
-              reason: values.reason,
+              reason: values.reason === '' ? undefined : values.reason,
             },
           })
         : client.PUT('/quality/item-inspection-levels/{itemInspectionLevelId}', {
