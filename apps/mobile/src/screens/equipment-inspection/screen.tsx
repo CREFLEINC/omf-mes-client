@@ -1,7 +1,5 @@
 import {
   AlertBanner,
-  Button,
-  Card,
   Chip,
   Progress,
   RadioGroup,
@@ -17,6 +15,8 @@ import { Link } from 'react-router';
 
 import { useAdvanceTo } from '../../patterns/advance-to';
 import { useBackStep } from '../../patterns/back-step';
+import { Button } from '../../patterns/button';
+import { Card } from '../../patterns/card';
 import { DockedNumberPad } from '../../patterns/docked-number-pad';
 import { useEquipments, type Equipment } from '../../patterns/equipments';
 import { playErrorTone } from '../../patterns/error-tone';

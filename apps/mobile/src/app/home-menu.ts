@@ -7,6 +7,8 @@ export interface HomeScreen {
   label: string;
   /** Material Symbols 이름. 글자를 다 읽기 전에 모양으로 먼저 찾는다. */
   icon: string;
+  /** 무엇을 하는 화면인지 한 줄. 업무 화면의 행에 이름 아래로 선다. */
+  description: string;
 }
 
 export interface HomeArea {
@@ -38,11 +40,36 @@ export const homeAreas: HomeArea[] = [
     summary: t.areas.inbound.summary,
     icon: 'local_shipping',
     screens: [
-      { to: '/inbound-receipt', label: messages.inboundReceipt.title, icon: 'local_shipping' },
-      { to: '/material-lot-scan', label: messages.materialLotScan.title, icon: 'qr_code_scanner' },
-      { to: '/inbound-variance', label: messages.inboundVariance.title, icon: 'report' },
-      { to: '/recycle-entry', label: messages.recycleEntry.title, icon: 'recycling' },
-      { to: '/iqc-skip-request', label: messages.iqcSkipRequest.title, icon: 'bolt' },
+      {
+        to: '/inbound-receipt',
+        label: messages.inboundReceipt.title,
+        icon: 'local_shipping',
+        description: t.screens.inboundReceipt,
+      },
+      {
+        to: '/material-lot-scan',
+        label: messages.materialLotScan.title,
+        icon: 'qr_code_scanner',
+        description: t.screens.materialLotScan,
+      },
+      {
+        to: '/inbound-variance',
+        label: messages.inboundVariance.title,
+        icon: 'report',
+        description: t.screens.inboundVariance,
+      },
+      {
+        to: '/recycle-entry',
+        label: messages.recycleEntry.title,
+        icon: 'recycling',
+        description: t.screens.recycleEntry,
+      },
+      {
+        to: '/iqc-skip-request',
+        label: messages.iqcSkipRequest.title,
+        icon: 'bolt',
+        description: t.screens.iqcSkipRequest,
+      },
     ],
   },
   {
@@ -51,12 +78,42 @@ export const homeAreas: HomeArea[] = [
     summary: t.areas.warehouse.summary,
     icon: 'warehouse',
     screens: [
-      { to: '/putaway', label: messages.putaway.title, icon: 'shelves' },
-      { to: '/temporary-putaway', label: messages.temporaryPutaway.title, icon: 'move_to_inbox' },
-      { to: '/stock-transfer', label: messages.stockTransfer.title, icon: 'swap_horiz' },
-      { to: '/material-picking', label: messages.materialPicking.title, icon: 'outbox' },
-      { to: '/physical-count', label: messages.physicalCount.title, icon: 'fact_check' },
-      { to: '/material-location', label: messages.materialLocation.title, icon: 'pin_drop' },
+      {
+        to: '/putaway',
+        label: messages.putaway.title,
+        icon: 'shelves',
+        description: t.screens.putaway,
+      },
+      {
+        to: '/temporary-putaway',
+        label: messages.temporaryPutaway.title,
+        icon: 'move_to_inbox',
+        description: t.screens.temporaryPutaway,
+      },
+      {
+        to: '/stock-transfer',
+        label: messages.stockTransfer.title,
+        icon: 'swap_horiz',
+        description: t.screens.stockTransfer,
+      },
+      {
+        to: '/material-picking',
+        label: messages.materialPicking.title,
+        icon: 'outbox',
+        description: t.screens.materialPicking,
+      },
+      {
+        to: '/physical-count',
+        label: messages.physicalCount.title,
+        icon: 'fact_check',
+        description: t.screens.physicalCount,
+      },
+      {
+        to: '/material-location',
+        label: messages.materialLocation.title,
+        icon: 'pin_drop',
+        description: t.screens.materialLocation,
+      },
     ],
   },
   {
@@ -65,11 +122,36 @@ export const homeAreas: HomeArea[] = [
     summary: t.areas.shopfloor.summary,
     icon: 'factory',
     screens: [
-      { to: '/shopfloor-receipt', label: messages.shopfloorReceipt.title, icon: 'factory' },
-      { to: '/wip-handover', label: messages.wipHandover.title, icon: 'sync_alt' },
-      { to: '/repair-roundtrip', label: messages.repairRoundtrip.title, icon: 'build' },
-      { to: '/equipment-inspection', label: messages.equipmentInspection.title, icon: 'checklist' },
-      { to: '/equipment-failure', label: messages.equipmentFailureReport.title, icon: 'warning' },
+      {
+        to: '/shopfloor-receipt',
+        label: messages.shopfloorReceipt.title,
+        icon: 'factory',
+        description: t.screens.shopfloorReceipt,
+      },
+      {
+        to: '/wip-handover',
+        label: messages.wipHandover.title,
+        icon: 'sync_alt',
+        description: t.screens.wipHandover,
+      },
+      {
+        to: '/repair-roundtrip',
+        label: messages.repairRoundtrip.title,
+        icon: 'build',
+        description: t.screens.repairRoundtrip,
+      },
+      {
+        to: '/equipment-inspection',
+        label: messages.equipmentInspection.title,
+        icon: 'checklist',
+        description: t.screens.equipmentInspection,
+      },
+      {
+        to: '/equipment-failure',
+        label: messages.equipmentFailureReport.title,
+        icon: 'warning',
+        description: t.screens.equipmentFailure,
+      },
     ],
   },
   {
@@ -78,9 +160,24 @@ export const homeAreas: HomeArea[] = [
     summary: t.areas.shipping.summary,
     icon: 'inventory_2',
     screens: [
-      { to: '/product-receipt', label: messages.productReceipt.title, icon: 'warehouse' },
-      { to: '/product-picking', label: messages.productPicking.title, icon: 'inventory' },
-      { to: '/packing-repack', label: messages.packingRepack.title, icon: 'inventory_2' },
+      {
+        to: '/product-receipt',
+        label: messages.productReceipt.title,
+        icon: 'warehouse',
+        description: t.screens.productReceipt,
+      },
+      {
+        to: '/product-picking',
+        label: messages.productPicking.title,
+        icon: 'inventory',
+        description: t.screens.productPicking,
+      },
+      {
+        to: '/packing-repack',
+        label: messages.packingRepack.title,
+        icon: 'inventory_2',
+        description: t.screens.packingRepack,
+      },
     ],
   },
 ];

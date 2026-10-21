@@ -1,9 +1,11 @@
-import { AlertBanner, Button, Card, Dialog, TextField } from '@crefle/web-ui';
+import { AlertBanner, Dialog, Icon } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { NumericKeypad } from '@omf-mes/ui';
-import { useEffect, useState } from 'react';
+import { useEffect, useId, useState } from 'react';
 import { useNavigate } from 'react-router';
 
+import { Button } from '../../patterns/button';
+import { Card } from '../../patterns/card';
 import { useDeviceRegistration } from '../../patterns/device-registration';
 import { useDeviceTokenState } from '../../patterns/load-failure';
 import { LocalNetworkNotice } from '../../patterns/local-network';
@@ -36,6 +38,9 @@ export const WorkerSignInScreen = () => {
   const [rejected, setRejected] = useState<SignInResult | null>(null);
   const [asking, setAsking] = useState(false);
   const [releaseFailed, setReleaseFailed] = useState(false);
+  const entryId = useId();
+  const messageId = useId();
+  const unknown = rejected?.kind === 'unknown';
   const { unregister } = useDeviceRegistration();
   /*
    * 등록을 풀면 담아 둔 것이 함께 사라진다. 몇 건인지 모른 채 누르게 두지 않는다(설계 §5-5).
@@ -265,15 +270,36 @@ export const WorkerSignInScreen = () => {
       {/* 등록된 기기도 업데이트 뒤에는 이 권한이 없을 수 있다. 사번을 넣기 전에 알린다. */}
       <LocalNetworkNotice />
 
-      <TextField
-        label={t.label}
-        value={entry}
-        readOnly
-        size="xl"
-        fullWidth
-        helperText={t.hint}
-        error={rejected?.kind === 'unknown' ? t.unknown : undefined}
-      />
+      {/*
+        누른 사번은 글자 칸이 아니라 큰 고정폭 숫자로 선다. 작업자는 키패드를 보며 누르다 눈을 들어
+        자릿수를 세는데, 입력 칸 크기의 글씨는 한눈에 몇 자리인지 읽히지 않았다. 손으로 쓰는 칸이
+        아니라 키패드가 채우는 칸이라 읽기 전용이다.
+      */}
+      <div className="worker-sign-in__entry">
+        <label htmlFor={entryId} className="worker-sign-in__label">
+          {t.label}
+        </label>
+        <input
+          id={entryId}
+          className={
+            unknown ? 'worker-sign-in__pin worker-sign-in__pin--error' : 'worker-sign-in__pin'
+          }
+          value={entry}
+          readOnly
+          aria-invalid={unknown || undefined}
+          aria-describedby={messageId}
+        />
+        <p
+          id={messageId}
+          className={
+            unknown
+              ? 'worker-sign-in__message worker-sign-in__message--error'
+              : 'worker-sign-in__message'
+          }
+        >
+          {unknown ? t.unknown : t.hint}
+        </p>
+      </div>
 
       <NumericKeypad
         value={entry}
@@ -291,6 +317,7 @@ export const WorkerSignInScreen = () => {
         maxLength={MAX_WORKER_NO_LENGTH}
         label={t.keypad.label}
         backspaceLabel={t.keypad.backspace}
+        backspaceGlyph={<Icon name="backspace" size={24} />}
         clearLabel={t.keypad.clear}
       />
 

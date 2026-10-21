@@ -1,7 +1,9 @@
-import { AlertBanner, Button, Card, TextField } from '@crefle/web-ui';
+import { AlertBanner, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useState } from 'react';
 
+import { Button } from '../../patterns/button';
+import { Card } from '../../patterns/card';
 import { readDeviceModel } from '../../patterns/device-model';
 import { LocalNetworkNotice } from '../../patterns/local-network';
 import { useScreenTitle } from '../../patterns/screen-title';

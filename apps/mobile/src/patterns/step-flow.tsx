@@ -81,8 +81,17 @@ export const StepSection = ({ title, index, total, children }: StepSectionProps)
 
   return (
     <section ref={ref} className="step-section" aria-labelledby={headingId}>
+      {/*
+       * 번호 칸이 눈에 먼저 걸리고, 「단계 2/3」 글자는 낭독기와 오른쪽 끝의 작은 확인이다. 글자를
+       * 먼저 두는 것은 머리를 화면에 들일 때 그 줄부터 읽히게 하려는 것이다 - 자리는 CSS 가 옮긴다.
+       */}
       <p className="step-section__count">{t.step(index, total)}</p>
-      <h2 id={headingId}>{title}</h2>
+      <span className="step-section__badge" aria-hidden="true">
+        {index}
+      </span>
+      <h2 id={headingId} className="step-section__title">
+        {title}
+      </h2>
       {children}
     </section>
   );

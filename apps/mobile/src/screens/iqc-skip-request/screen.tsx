@@ -1,10 +1,12 @@
-import { AlertBanner, Button, Card, Chip, TextArea, TextField } from '@crefle/web-ui';
+import { AlertBanner, Chip, TextArea, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useRef, useState } from 'react';
 import { Link } from 'react-router';
 
 import { useAdvanceTo } from '../../patterns/advance-to';
 import { useBackStep } from '../../patterns/back-step';
+import { Button } from '../../patterns/button';
+import { Card } from '../../patterns/card';
 import { displayNameOf, useCodeValues } from '../../patterns/code-values';
 import { useScannedLot } from '../../patterns/lots';
 import { uomLabelOf, useItem, useUomCodes } from '../../patterns/masters';

@@ -1,19 +1,12 @@
-import {
-  AlertBanner,
-  Button,
-  Card,
-  Chip,
-  Radio,
-  RadioGroup,
-  Select,
-  TextField,
-} from '@crefle/web-ui';
+import { AlertBanner, Chip, Radio, RadioGroup, Select, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router';
 
 import { useAdvanceTo } from '../../patterns/advance-to';
+import { Button } from '../../patterns/button';
+import { Card } from '../../patterns/card';
 import { DockedNumberPad } from '../../patterns/docked-number-pad';
 import { useBackStep } from '../../patterns/back-step';
 import { LOT_HOLD_REASON, displayNameOf, useCodeValues } from '../../patterns/code-values';

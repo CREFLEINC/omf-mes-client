@@ -1,6 +1,7 @@
-import { Button } from '@crefle/web-ui';
+import { Icon } from '@crefle/web-ui';
 import { useId } from 'react';
 
+import { Button } from './button';
 import './bottom-action-bar.css';
 
 export interface BottomAction {
@@ -45,7 +46,8 @@ export const BottomActionBar = ({ primary, secondary }: BottomActionBarProps) =>
     <div className="bottom-action-bar">
       {locked ? (
         <p id={reasonId} className="bottom-action-bar__reason">
-          {primary.lockReason}
+          <Icon name="lock" size={16} />
+          <span>{primary.lockReason}</span>
         </p>
       ) : null}
       <Button

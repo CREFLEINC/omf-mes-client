@@ -1,8 +1,9 @@
-import { AlertBanner, Button, Select, TextField } from '@crefle/web-ui';
+import { AlertBanner, Select, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useRef, useState } from 'react';
 import { Link } from 'react-router';
 
+import { Button } from '../../patterns/button';
 import { useItem, useItemLabels } from '../../patterns/masters';
 import type { MaterialLotCodes } from '../../patterns/material-lot-no';
 import { useOutbox } from '../../patterns/outbox';

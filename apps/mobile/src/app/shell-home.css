@@ -1,70 +1,177 @@
 .shell-home {
   display: flex;
   flex-direction: column;
-  gap: var(--space-5, 20px);
-  padding: var(--space-4, 16px);
+  gap: var(--space-5);
+  padding: var(--space-4);
 }
 
 .shell-home__group {
   display: flex;
   flex-direction: column;
-  gap: var(--space-2, 8px);
+  gap: var(--space-2);
 }
 
-.shell-home__tiles,
+/* 이름은 낭독기에만. 카드 안에 이미 같은 이름표가 서 있다. */
+.shell-home__hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.shell-home__chips,
 .shell-home__areas,
 .shell-home__resume,
-.shell-home__status {
+.shell-home__status,
+.shell-home__rows {
   margin: 0;
   padding: 0;
   list-style: none;
 }
 
-/*
- * 두 줄로 세운다. 한 칸이 150px 아래로 줄어드는 화면에서는 한 줄로 내려간다 - 베트남어 이름이
- * 길어 좁은 칸에서는 세 줄로 접힌다.
- */
-.shell-home__tiles {
+/* 아이콘 칸. 모양으로 먼저 찾고 글자로 확인한다. 아이콘은 빨강이 아니라 차콜이다. */
+.shell-home__tile-icon {
+  flex: 0 0 auto;
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-  gap: var(--space-2, 8px);
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-sm);
+  background: var(--surface-container);
+  color: var(--on-surface);
 }
 
-/* 타일 전체가 누르는 자리다. 글자만 눌리면 장갑 낀 손이 빗나간다. */
-.shell-home__tile {
-  box-sizing: border-box;
-  height: 100%;
-  min-height: 88px;
+.shell-home__chevron {
+  flex: 0 0 auto;
+  color: var(--on-surface-muted);
+}
+
+/* 카드 안의 글자 묶음 — 작은 이름표 · 굵은 이름 · 한 줄 설명. */
+.shell-home__text {
+  flex: 1 1 auto;
+  min-width: 0;
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
-  gap: var(--space-2, 8px);
-  padding: var(--space-3, 12px);
-  border: 1px solid var(--outline-variant, #d7d7dd);
-  border-radius: var(--radius-md, 12px);
-  background: var(--surface-container-low, #f7f7f9);
+  gap: 2px;
+}
+
+/* 「이어서 하기」 이름표. 카드의 빨강 아이콘 칸과 같은 색이라 한 덩어리로 읽힌다. */
+.shell-home__resume-card .shell-home__text small {
+  font: var(--type-label-sm);
+  letter-spacing: var(--type-label-sm-tracking);
+  font-weight: 600;
+  color: var(--on-primary-container);
+}
+
+.shell-home__text strong {
+  font: var(--type-title-sm);
+  letter-spacing: var(--type-title-sm-tracking);
+  font-weight: 600;
+  color: var(--on-surface);
+}
+
+.shell-home__text > span {
+  font: var(--type-body-sm);
+  letter-spacing: var(--type-body-sm-tracking);
+  color: var(--on-surface-muted);
+}
+
+.shell-home__resume {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+/*
+ * 이어서 할 작업. 화면에서 «주 단추 말고» 빨강을 쓰는 단 하나의 자리다 - 연한 빨강 아이콘 칸과
+ * 떠 있는 흰 카드로, 다른 무엇보다 먼저 눈에 걸린다.
+ */
+.shell-home__resume-card {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: 72px;
+  box-sizing: border-box;
+  padding: var(--space-3) var(--space-2) var(--space-3) var(--space-3);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  box-shadow: var(--elevation-2);
   color: inherit;
   text-decoration: none;
 }
 
-.shell-home__tile strong {
-  font: var(--type-title-sm);
-  letter-spacing: var(--type-title-sm-tracking);
-  font-weight: 600;
+.shell-home__resume-icon {
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: var(--radius-md);
+  background: var(--primary-container);
+  color: var(--on-primary-container);
 }
 
-.shell-home__icon {
-  color: var(--primary-text);
+.shell-home__status {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-2);
+}
+
+.shell-home__stat {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: 60px;
+  box-sizing: border-box;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--surface-container);
+  color: var(--on-surface-variant);
+  text-decoration: none;
+}
+
+/* 수가 먼저 눈에 걸리고 이름은 그 아래 작은 글씨다. 낭독기는 「전송 대기 2건」으로 읽는다. */
+.shell-home__stat-text {
+  display: flex;
+  flex-direction: column-reverse;
+  min-width: 0;
+}
+
+.shell-home__stat-text span {
+  font: var(--type-label-sm);
+  letter-spacing: var(--type-label-sm-tracking);
+  color: var(--on-surface-muted);
+}
+
+.shell-home__stat-text strong {
+  font: var(--type-title-lg);
+  letter-spacing: var(--type-title-lg-tracking);
+  font-weight: 700;
+  color: var(--on-surface);
+  font-variant-numeric: tabular-nums;
+}
+
+.shell-home__stat--rejected {
+  background: var(--semantic-error-container);
+  color: var(--on-semantic-error-container);
+}
+
+.shell-home__stat--rejected .shell-home__stat-text strong,
+.shell-home__stat--rejected .shell-home__stat-text span {
+  color: var(--on-semantic-error-container);
 }
 
 /*
- * 네 업무는 두 줄 두 칸으로 한 화면에 다 선다. 작업 타일보다 크게 두고 무엇이 들었는지 한 줄을
- * 함께 적는다 - 업무 이름만으로는 어느 쪽인지 헷갈리는 작업이 있다.
+ * 네 업무는 두 줄 두 칸으로 한 화면에 다 선다. 한 칸이 150px 아래로 줄어드는 화면에서는 한 줄로
+ * 내려간다 - 베트남어 이름이 길어 좁은 칸에서는 세 줄로 접힌다. 무엇이 들었는지 한 줄을 함께
+ * 적는다 - 업무 이름만으로는 어느 쪽인지 헷갈리는 작업이 있다.
  */
 .shell-home__areas {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-  gap: var(--space-2, 8px);
+  gap: var(--space-2);
 }
 
 .shell-home__area {
@@ -73,100 +180,90 @@
   min-height: 132px;
   display: flex;
   flex-direction: column;
-  gap: var(--space-1, 4px);
-  padding: var(--space-4, 16px) var(--space-3, 12px);
-  border: 1px solid var(--outline, #c9c7cf);
-  border-radius: var(--radius-lg, 16px);
-  background: var(--surface, #fff);
+  align-items: flex-start;
+  gap: var(--space-1);
+  padding: var(--space-3);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
   color: inherit;
   text-decoration: none;
 }
 
 .shell-home__area strong {
-  margin-top: var(--space-1, 4px);
-  font: var(--type-title-lg);
-  letter-spacing: var(--type-title-lg-tracking);
+  margin-top: var(--space-1);
+  font: var(--type-title-sm);
+  letter-spacing: var(--type-title-sm-tracking);
+  font-weight: 700;
 }
 
 /* 태그로 고르지 않는다 - 아이콘도 span 이라, 글꼴이 덮이면 아이콘 이름이 글자로 샌다. */
 .shell-home__area-summary {
-  font: var(--type-body-sm);
-  letter-spacing: var(--type-body-sm-tracking);
-  color: var(--on-surface-variant);
+  font: var(--type-label-sm);
+  letter-spacing: var(--type-label-sm-tracking);
+  font-weight: 400;
+  color: var(--on-surface-muted);
 }
 
-/* 몇 개가 들었는지는 맨 아래에 붙인다. 요약이 두 줄로 접혀도 같은 자리에 선다. */
+/* 몇 개가 들었는지는 맨 아래에 붙인다. 요약이 두 줄로 접혀도 같은 높이에 선다. */
 .shell-home__area-count {
   margin-top: auto;
-  font: var(--type-label-lg);
-  letter-spacing: var(--type-label-lg-tracking);
-  color: var(--primary-text);
-}
-
-.shell-home__area:focus-visible {
-  outline: 2px solid var(--primary, currentColor);
-  outline-offset: 2px;
-}
-
-.shell-home__tile:focus-visible,
-.shell-home__resume-card:focus-visible,
-.shell-home__stat:focus-visible {
-  outline: 2px solid var(--primary, currentColor);
-  outline-offset: 2px;
-}
-
-.shell-home__resume {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2, 8px);
-}
-
-/* 이어서 할 작업. 다른 타일보다 먼저 눈에 걸리게 테두리를 강조색으로 준다. */
-.shell-home__resume-card {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1, 4px);
-  min-height: 72px;
-  box-sizing: border-box;
-  padding: var(--space-3, 12px) var(--space-4, 16px);
-  border: 2px solid var(--primary, currentColor);
-  border-radius: var(--radius-md, 12px);
-  background: var(--surface, #fff);
-  color: inherit;
-  text-decoration: none;
-}
-
-.shell-home__resume-card span {
-  font: var(--type-body-sm);
-  letter-spacing: var(--type-body-sm-tracking);
+  font: var(--type-label-sm);
+  letter-spacing: var(--type-label-sm-tracking);
+  font-weight: 600;
   color: var(--on-surface-variant);
 }
 
-.shell-home__status {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: var(--space-2, 8px);
+/* 자주 쓰는 작업. 지름길이라 낮은 칩으로 접혀 선다 - 장갑 낀 손이 짚을 높이(48px)는 지킨다. */
+.shell-home__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
 }
 
-.shell-home__stat {
+.shell-home__chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: var(--control-height-lg);
+  box-sizing: border-box;
+  padding: 0 var(--space-4) 0 var(--space-3);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  color: var(--on-surface);
+  font: var(--type-label-lg);
+  letter-spacing: var(--type-label-lg-tracking);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+/* 업무 하나의 작업들. 행 전체가 누르는 곳이다 - 글자만 눌리면 장갑 낀 손이 빗나간다. */
+.shell-home__rows {
   display: flex;
   flex-direction: column;
-  gap: var(--space-1, 4px);
-  min-height: 72px;
+  gap: var(--space-2);
+}
+
+.shell-home__row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: 64px;
   box-sizing: border-box;
-  padding: var(--space-3, 12px);
-  border-radius: var(--radius-md, 12px);
-  background: var(--surface-container, #eee);
+  padding: var(--space-2) var(--space-2) var(--space-2) var(--space-3);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
   color: inherit;
   text-decoration: none;
 }
 
-.shell-home__stat strong {
-  font: var(--type-title-lg);
-  letter-spacing: var(--type-title-lg-tracking);
-  font-variant-numeric: tabular-nums;
-}
-
-.shell-home__stat--rejected strong {
-  color: var(--semantic-error-text);
+.shell-home__area:focus-visible,
+.shell-home__chip:focus-visible,
+.shell-home__resume-card:focus-visible,
+.shell-home__stat:focus-visible,
+.shell-home__row:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
 }

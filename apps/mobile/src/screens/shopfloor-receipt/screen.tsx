@@ -1,10 +1,12 @@
-import { AlertBanner, Button, Card, Select, TextField } from '@crefle/web-ui';
+import { AlertBanner, Select, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router';
 
 import { useBackStep } from '../../patterns/back-step';
+import { Button } from '../../patterns/button';
+import { Card } from '../../patterns/card';
 import { DockedNumberPad } from '../../patterns/docked-number-pad';
 import { useCodeValues } from '../../patterns/code-values';
 import { useLotNos } from '../../patterns/handling-units';
