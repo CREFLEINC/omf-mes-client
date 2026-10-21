@@ -63,7 +63,8 @@ export const judgeRelease = (
 
 interface Inspection {
   fact: WorkOrderReleaseFact;
-  etag: string;
+  /** 판정에 쓴 상세의 ETag. 없으면 null이고, 빈 If-Match를 보내지 않는다. */
+  etag: string | null;
   verdict: ReleaseVerdict;
 }
 
@@ -86,20 +87,23 @@ const inspect = async (
   });
   return {
     fact,
-    etag: detail.response.headers.get('ETag') ?? '',
+    etag: detail.response.headers.get('ETag'),
     verdict: judgeRelease(fact, item.item, lotSize),
   };
 };
 
 /**
- * W/O 한 건을 배포한다. 최신 상세의 ETag로 보내고, 판정이 막히면 보내지 않고 건너뛴다.
+ * W/O 한 건을 배포한다. 판정에 쓴 상세의 ETag로 보내고, 판정이 막히거나 ETag가 없으면 보내지 않는다.
  * `lotSize`가 null이면 품목 기본 LOT 크기를 쓴다(작업함 일괄 배포). 처리 화면은 사용자가 정한 값을 넘긴다.
+ * `idempotencyKey`를 주면 그 키로 보낸다. 처리 화면은 같은 W/O와 LOT 크기의 배포가 반영될 때까지 같은 키를
+ * 다시 쓴다(되돌릴 수 없는 쓰기의 `until-applied` 수명).
  */
 export const releaseWorkOrder = async (
   client: Client,
   queryClient: QueryClient,
   target: ReleaseTarget,
   lotSize: number | null,
+  idempotencyKey: string = createIdempotencyKey(),
 ): Promise<ReleaseAttempt> => {
   const outcome = (status: ReleaseAttemptStatus, reason: string | null): ReleaseAttempt => ({
     ...target,
@@ -109,11 +113,12 @@ export const releaseWorkOrder = async (
   try {
     const { etag, verdict } = await inspect(client, queryClient, target.workOrderId, lotSize);
     if (!verdict.ready) return outcome('skipped', verdict.reason);
+    if (etag === null) return outcome('failed', messages.save.staleToken);
     await runRequest(() =>
       client.POST('/production/work-orders/{workOrderId}:release', {
         params: {
           path: { workOrderId: target.workOrderId },
-          header: { 'Idempotency-Key': createIdempotencyKey(), 'If-Match': etag },
+          header: { 'Idempotency-Key': idempotencyKey, 'If-Match': etag },
         },
         body: { lotSize: verdict.lotSize },
       }),

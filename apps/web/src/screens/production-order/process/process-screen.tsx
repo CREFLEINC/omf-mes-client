@@ -7,13 +7,15 @@
  *       편집 영역 안에서만 스크롤하고 머리를 고정한다(높이가 모자랄 때 ②, 구성안 8장).
  */
 import { AlertBanner, Button, SkeletonText, useToast } from '@crefle/web-ui';
+import { createIdempotencyKey, type ApiError } from '@omf-mes/api-client';
 import { messages, named } from '@omf-mes/i18n';
 import { useQueryClient } from '@tanstack/react-query';
-import { useCallback, useEffect, useId, useMemo, useState } from 'react';
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router';
 
 import { ActionBar } from '../../../patterns/action-bar';
 import { useApiClient } from '../../../patterns/api-context';
+import { SaveErrorBanner } from '../../../patterns/master';
 import { plantToday } from '../../../patterns/plant-time';
 import {
   ProcessPage,
@@ -35,7 +37,7 @@ import { useProductionOrderCodeNames } from '../code-names';
 import { useItemCodeNames } from '../item-lookups';
 import { useAutoPlanMutation } from '../mutations';
 import { useUomReferenceLookup } from '../reference-lookups';
-import { invalidateFlow, releaseWorkOrder } from '../release-runner';
+import { apiErrorText, invalidateFlow, releaseWorkOrder } from '../release-runner';
 import { ProcessStateChip, ReasonChips } from '../worklist-chips';
 import {
   processPath,
@@ -171,6 +173,8 @@ const ProcessWorkspace = ({ order }: { order: ProductionOrderFact }) => {
   );
   const [planBusy, setPlanBusy] = useState(false);
   const [planFailures, setPlanFailures] = useState<string[]>([]);
+  /* 불러온 뒤 서버 계획이 바뀌어 저장이 409로 돌아온 경우. 덮어쓰지 않고 다시 불러오기를 안내한다. */
+  const [planConflict, setPlanConflict] = useState<ApiError | null>(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const planLines = (lines.data?.items ?? []).map((line) => ({
     id: line.productionLineId,
@@ -236,6 +240,8 @@ const ProcessWorkspace = ({ order }: { order: ProductionOrderFact }) => {
   const [lotSizeTexts, setLotSizeTexts] = useState<Record<number, string>>({});
   const [failures, setFailures] = useState<string[]>([]);
   const [releasing, setReleasing] = useState(false);
+  /* 같은 W/O와 LOT 크기의 배포는 반영될 때까지 같은 멱등 키를 다시 쓴다(옛 배포 화면의 until-applied 수명). */
+  const releaseKeys = useRef(new Map<string, string>());
   const releaseLines =
     unreleased.data === undefined
       ? undefined
@@ -321,6 +327,7 @@ const ProcessWorkspace = ({ order }: { order: ProductionOrderFact }) => {
     async (confirm: boolean) => {
       setPlanBusy(true);
       setPlanFailures([]);
+      setPlanConflict(null);
       const result = await runPlanStep(
         client,
         editor.rows,
@@ -333,8 +340,14 @@ const ProcessWorkspace = ({ order }: { order: ProductionOrderFact }) => {
       setPlanBusy(false);
       setConfirmOpen(false);
       if (result.failures.length > 0) {
+        const conflict = result.failures.find((failure) => failure.error?.kind === 'conflict');
+        if (conflict?.error !== undefined && conflict.error !== null) {
+          setPlanConflict(conflict.error);
+        }
         setPlanFailures(
-          result.failures.flatMap((failure) => (failure.message === null ? [] : [failure.message])),
+          result.failures.flatMap((failure) =>
+            failure.message === null || failure.error?.kind === 'conflict' ? [] : [failure.message],
+          ),
         );
         return;
       }
@@ -382,14 +395,18 @@ const ProcessWorkspace = ({ order }: { order: ProductionOrderFact }) => {
     setFailures([]);
     const attempts = [];
     for (const line of releaseLines) {
-      attempts.push(
-        await releaseWorkOrder(
-          client,
-          queryClient,
-          { workOrderId: line.workOrder.workOrderId, workOrderNo: line.workOrder.workOrderNo },
-          line.lotSize,
-        ),
+      const signature = `${String(line.workOrder.workOrderId)}:${String(line.lotSize)}`;
+      const key = releaseKeys.current.get(signature) ?? createIdempotencyKey();
+      releaseKeys.current.set(signature, key);
+      const attempt = await releaseWorkOrder(
+        client,
+        queryClient,
+        { workOrderId: line.workOrder.workOrderId, workOrderNo: line.workOrder.workOrderNo },
+        line.lotSize,
+        key,
       );
+      if (attempt.status === 'released') releaseKeys.current.delete(signature);
+      attempts.push(attempt);
     }
     await invalidateFlow(queryClient);
     setReleasing(false);
@@ -498,48 +515,60 @@ const ProcessWorkspace = ({ order }: { order: ProductionOrderFact }) => {
         );
       case 'plan':
         return (
-          <PlanStep
-            rows={editor.rows}
-            orderQty={order.orderQty}
-            uomLabel={uomLabelOf(order.uomId)}
-            plantId={order.plantId}
-            lines={planLines}
-            statusNameOf={codeNames.productionPlanStatus}
-            disabled={planBusy || !master.complete}
-            failures={planFailures}
-            onAdd={() =>
-              editor.add({
-                planDate: plantToday(),
-                plannedQty: String(
-                  Math.max(
-                    0,
-                    order.orderQty -
-                      editor.rows.reduce(
-                        (sum, row) => sum + (Number(row.draft.plannedQty) || 0),
-                        0,
-                      ),
+          <>
+            <SaveErrorBanner
+              error={planConflict}
+              onReload={() => {
+                setPlanConflict(null);
+                setPlanFailures([]);
+                editor.discard();
+              }}
+            />
+            <PlanStep
+              rows={editor.rows}
+              orderQty={order.orderQty}
+              uomLabel={uomLabelOf(order.uomId)}
+              plantId={order.plantId}
+              lines={planLines}
+              statusNameOf={codeNames.productionPlanStatus}
+              disabled={planBusy || !master.complete}
+              failures={planFailures}
+              onAdd={() =>
+                editor.add({
+                  planDate: plantToday(),
+                  plannedQty: String(
+                    Math.max(
+                      0,
+                      order.orderQty -
+                        editor.rows.reduce(
+                          (sum, row) => sum + (Number(row.draft.plannedQty) || 0),
+                          0,
+                        ),
+                    ),
                   ),
-                ),
-                bomId,
-                routingId,
-                plannedLineId: editor.rows.at(-1)?.draft.plannedLineId ?? '',
-              })
-            }
-            onChange={editor.change}
-            onRemove={(row) => {
-              if (row.productionPlanId === null) {
-                editor.remove(row.key);
-                return;
+                  bomId,
+                  routingId,
+                  plannedLineId: editor.rows.at(-1)?.draft.plannedLineId ?? '',
+                })
               }
-              void deletePlan(client, row.productionPlanId).then(async (message) => {
-                if (message !== null) setPlanFailures([message]);
-                else {
+              onChange={editor.change}
+              onRemove={(row) => {
+                if (row.productionPlanId === null) {
                   editor.remove(row.key);
-                  await invalidateFlow(queryClient);
+                  return;
                 }
-              });
-            }}
-          />
+                setPlanConflict(null);
+                void deletePlan(client, row.productionPlanId, row.versionNo).then(async (error) => {
+                  if (error?.kind === 'conflict') setPlanConflict(error);
+                  else if (error !== null) setPlanFailures([apiErrorText(error)]);
+                  else {
+                    editor.remove(row.key);
+                    await invalidateFlow(queryClient);
+                  }
+                });
+              }}
+            />
+          </>
         );
       case 'assign':
         return (

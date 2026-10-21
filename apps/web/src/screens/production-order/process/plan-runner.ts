@@ -1,6 +1,7 @@
-import { createIdempotencyKey, type ApiClient } from '@omf-mes/api-client';
+import { createIdempotencyKey, type ApiClient, type ApiError } from '@omf-mes/api-client';
+import { messages } from '@omf-mes/i18n';
 
-import { runRequest, runRequestWithResponse, toApiError } from '../../../patterns/request';
+import { ApiRequestError, runRequest, toApiError } from '../../../patterns/request';
 import type {
   ProductionPlanDraftErrors,
   ProductionPlanDraftField,
@@ -32,6 +33,8 @@ export interface PlanRowFailure {
   key: string;
   errors: ProductionPlanDraftErrors;
   message: string | null;
+  /** 서버가 돌려준 실패. 409(충돌)면 화면이 다시 불러오기를 안내한다. */
+  error: ApiError | null;
 }
 
 export interface PlanRunResult {
@@ -40,7 +43,9 @@ export interface PlanRunResult {
   confirmed: number;
 }
 
-const fieldErrors = (cause: unknown): { errors: ProductionPlanDraftErrors; message: string } => {
+const fieldErrors = (
+  cause: unknown,
+): { errors: ProductionPlanDraftErrors; message: string; error: ApiError } => {
   const error = toApiError(cause);
   const errors: ProductionPlanDraftErrors = {};
   if (error.kind === 'validation') {
@@ -49,16 +54,22 @@ const fieldErrors = (cause: unknown): { errors: ProductionPlanDraftErrors; messa
       if (field !== undefined) errors[field] = { message: item.message };
     }
   }
-  return { errors, message: apiErrorText(error) };
+  return { errors, message: apiErrorText(error), error };
 };
 
-const etagOf = async (client: Client, productionPlanId: number): Promise<string> => {
-  const detail = await runRequestWithResponse(() =>
-    client.GET('/planning/production-plans/{productionPlanId}', {
-      params: { path: { productionPlanId } },
-    }),
-  );
-  return detail.response.headers.get('ETag') ?? '';
+/** 토큰이 없어 보내지 않은 쓰기. 빈 If-Match를 보내지 않고 다시 불러오기를 안내한다(`requireIfMatch`와 같은 판단). */
+const staleToken = (): ApiError => ({
+  kind: 'validation',
+  errors: [{ scope: 'screen', code: 'STALE_TOKEN', message: messages.save.staleToken }],
+});
+
+/**
+ * 편집 세션에 불러온 시점의 판을 If-Match로 쓴다. 요청 직전에 다시 받은 판을 쓰면 그사이 다른 사람이나
+ * 자동 계획이 바꾼 계획을 409 없이 덮어쓴다. 판이 없으면 보내지 않는다.
+ */
+const ifMatchOf = (versionNo: number | null | undefined): string => {
+  if (versionNo === null || versionNo === undefined) throw new ApiRequestError(staleToken());
+  return String(versionNo);
 };
 
 /** 바뀐 줄을 저장한다. `confirm`이면 저장에 성공한 뒤 확정 전 계획을 모두 확정한다. */
@@ -69,12 +80,13 @@ export const runPlanStep = async (
   confirm: boolean,
 ): Promise<PlanRunResult> => {
   const result: PlanRunResult = { saved: [], failures: [], confirmed: 0 };
-  const planIds: number[] = [];
+  /* 확정할 계획과 그 판. 방금 저장한 계획은 저장 응답의 판을 쓴다. */
+  const toConfirm = new Map<number, number | null>();
   for (const row of rows) {
     if (row.confirmed) continue;
     const prepared = prepareProductionPlanRow(row, context);
     if (!prepared.ok) {
-      result.failures.push({ key: row.key, errors: prepared.errors, message: null });
+      result.failures.push({ key: row.key, errors: prepared.errors, message: null, error: null });
       continue;
     }
     try {
@@ -88,43 +100,39 @@ export const runPlanStep = async (
         );
         const plan = toProductionPlanFact(created);
         result.saved.push({ key: row.key, plan });
-        planIds.push(plan.productionPlanId);
+        toConfirm.set(plan.productionPlanId, plan.versionNo);
       } else if (command.kind === 'update' && row.productionPlanId !== null) {
         const id = row.productionPlanId;
         const body = command.body;
-        const updated = await runRequest(async () =>
+        const ifMatch = ifMatchOf(row.versionNo);
+        const updated = await runRequest(() =>
           client.PUT('/planning/production-plans/{productionPlanId}', {
             params: {
               path: { productionPlanId: id },
-              header: {
-                'Idempotency-Key': createIdempotencyKey(),
-                'If-Match': await etagOf(client, id),
-              },
+              header: { 'Idempotency-Key': createIdempotencyKey(), 'If-Match': ifMatch },
             },
             body,
           }),
         );
-        result.saved.push({ key: row.key, plan: toProductionPlanFact(updated) });
-        planIds.push(id);
+        const plan = toProductionPlanFact(updated);
+        result.saved.push({ key: row.key, plan });
+        toConfirm.set(id, plan.versionNo);
       } else if (row.productionPlanId !== null) {
-        planIds.push(row.productionPlanId);
+        toConfirm.set(row.productionPlanId, row.versionNo);
       }
     } catch (cause) {
-      const { errors, message } = fieldErrors(cause);
-      result.failures.push({ key: row.key, errors, message });
+      result.failures.push({ key: row.key, ...fieldErrors(cause) });
     }
   }
   if (!confirm || result.failures.length > 0) return result;
-  for (const id of planIds) {
+  for (const [id, versionNo] of toConfirm) {
     try {
-      await runRequest(async () =>
+      const ifMatch = ifMatchOf(versionNo);
+      await runRequest(() =>
         client.POST('/planning/production-plans/{productionPlanId}:confirm', {
           params: {
             path: { productionPlanId: id },
-            header: {
-              'Idempotency-Key': createIdempotencyKey(),
-              'If-Match': await etagOf(client, id),
-            },
+            header: { 'Idempotency-Key': createIdempotencyKey(), 'If-Match': ifMatch },
           },
         }),
       );
@@ -133,35 +141,31 @@ export const runPlanStep = async (
       const row =
         rows.find((item) => item.productionPlanId === id) ??
         result.saved.find((item) => item.plan.productionPlanId === id);
-      result.failures.push({
-        key: row?.key ?? String(id),
-        errors: {},
-        message: fieldErrors(cause).message,
-      });
+      const { message, error } = fieldErrors(cause);
+      result.failures.push({ key: row?.key ?? String(id), errors: {}, message, error });
     }
   }
   return result;
 };
 
-/** 계획 하나를 지운다(작성 중 계획만). */
+/** 계획 하나를 지운다(작성 중 계획만). 불러온 시점의 판으로 잠근다. 실패하면 그 오류를 돌려준다. */
 export const deletePlan = async (
   client: Client,
   productionPlanId: number,
-): Promise<string | null> => {
+  versionNo: number | null,
+): Promise<ApiError | null> => {
   try {
-    await runRequest(async () =>
+    const ifMatch = ifMatchOf(versionNo);
+    await runRequest(() =>
       client.DELETE('/planning/production-plans/{productionPlanId}', {
         params: {
           path: { productionPlanId },
-          header: {
-            'Idempotency-Key': createIdempotencyKey(),
-            'If-Match': await etagOf(client, productionPlanId),
-          },
+          header: { 'Idempotency-Key': createIdempotencyKey(), 'If-Match': ifMatch },
         },
       }),
     );
     return null;
   } catch (cause) {
-    return apiErrorText(toApiError(cause));
+    return toApiError(cause);
   }
 };

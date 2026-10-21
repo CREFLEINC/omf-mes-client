@@ -31,6 +31,11 @@ export interface ProductionPlanEditorRow {
 export interface ProductionPlanEditorStateRow extends ProductionPlanEditorRow {
   productionPlanId: number | null;
   baseline: ProductionPlanUpdateBaseline | null;
+  /**
+   * 이 줄을 편집 세션에 불러온 시점의 판(`versionNo`). 고친 줄은 다시 조회해도 이 값을 그대로 두므로,
+   * 그사이 서버가 바뀌었으면 저장이 409로 돌아온다(낙관적 잠금).
+   */
+  versionNo: number | null;
   isDirty: boolean;
 }
 
@@ -83,6 +88,7 @@ const rowFromProductionPlan = (
   isDirty: false,
   draft: draftFromProductionPlan(plan),
   baseline: baselineFromProductionPlan(plan),
+  versionNo: plan.versionNo,
   errors: {},
 });
 
@@ -141,6 +147,7 @@ export const appendProductionPlanRow = (
       remarks: '',
     },
     baseline: null,
+    versionNo: null,
     errors: {},
   },
 ];
