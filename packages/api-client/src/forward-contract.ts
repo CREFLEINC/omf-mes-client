@@ -1163,7 +1163,7 @@ export interface ForwardPaths {
     patch?: never;
     trace?: never;
   };
-  /** 참여·이탈에 현장 작업자 사번 헤더를 더한다 — 작업 시작·종료와 같다. */
+  /** 참여·이탈에 현장 작업자 사번 헤더를 더한다. 단말 토큰으로 부르면 서버가 필수로 본다. */
   '/production/work-sessions/{workSessionId}/workers': Omit<SessionWorkersPath, 'get' | 'post'> & {
     get: Omit<SessionWorkersPath['get'], 'responses'> & {
       responses: Omit<SessionWorkersPath['get']['responses'], 200> & {
@@ -1175,7 +1175,7 @@ export interface ForwardPaths {
     };
     post: Omit<SessionWorkersPath['post'], 'parameters' | 'responses'> & {
       parameters: Omit<SessionWorkersPath['post']['parameters'], 'header'> & {
-        header: SessionWorkersPath['post']['parameters']['header'] & { 'X-Worker-No': string };
+        header: SessionWorkersPath['post']['parameters']['header'] & { 'X-Worker-No'?: string };
       };
       responses: Omit<SessionWorkersPath['post']['responses'], 201> & {
         201: {
@@ -1191,7 +1191,7 @@ export interface ForwardPaths {
   > & {
     post: Omit<SessionWorkerLeavePath['post'], 'parameters' | 'responses'> & {
       parameters: Omit<SessionWorkerLeavePath['post']['parameters'], 'header'> & {
-        header: SessionWorkerLeavePath['post']['parameters']['header'] & { 'X-Worker-No': string };
+        header: SessionWorkerLeavePath['post']['parameters']['header'] & { 'X-Worker-No'?: string };
       };
       responses: Omit<SessionWorkerLeavePath['post']['responses'], 200> & {
         200: {
