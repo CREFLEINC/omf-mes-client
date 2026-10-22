@@ -446,7 +446,9 @@ export const ProductionFlowScreen = () => {
     setScanValue('');
     setOutputPhase('scanReady');
     const items = error.kind === 'validation' || error.kind === 'stateLocked' ? error.errors : [];
-    const refreshed = (await lotDetail.refetch()).data?.lot;
+    /* 다시 읽지 못했으면 옛 값으로 단정하지 않는다 — 「실적이 없다」로 읽으면 같은 실적을 또 올린다. */
+    const reread = await lotDetail.refetch();
+    const refreshed = reread.isError ? undefined : reread.data?.lot;
     const judgment = refreshed?.progress?.completionJudgmentCode ?? null;
     const reasonItem = items.find((item) => item.field === 'completionVarianceReasonCode');
 
@@ -465,9 +467,9 @@ export const ProductionFlowScreen = () => {
       void currentLot.refetch();
       return;
     }
-    if (items.some((item) => item.code === 'STATE_LOCKED')) {
+    if (refreshed !== undefined && items.some((item) => item.code === 'STATE_LOCKED')) {
       setCompleteFailure(
-        (refreshed?.progress?.goodQty ?? 0) === 0
+        (refreshed.progress?.goodQty ?? 0) === 0
           ? t.flow.scan.noAllocation
           : judgment === 'UNDER'
             ? t.flow.scan.workOrderClosed
