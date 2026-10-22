@@ -179,10 +179,7 @@ describe('WorkOrderCloseAction', () => {
     [
       '권한이 꺼진 단말',
       { gate: 'denied' as const },
-      t.blocked.denied(
-        `${messages.workOrderClose.breadcrumbRoot} › ${messages.workOrderClose.title}`,
-        `${messages.terminalProcessMap.breadcrumbRoot} › ${messages.terminalProcessMap.title}`,
-      ),
+      t.blocked.denied(messages.workOrderClose.menuPath, messages.terminalProcessMap.menuPath),
     ],
     ['오프라인', { isOnline: false }, t.blocked.offline],
     ['보내지 못한 실적', { pendingCount: 2 }, t.blocked.pending(2)],

@@ -77,9 +77,7 @@ export const WorkOrderCloseInputPane = ({
             </Radio>
           </div>
           <p className="field-note" id={carryOverNoteId}>
-            {t.remainder.carryOverNote(
-              `${messages.productionOrder.breadcrumbRoot} › ${messages.productionOrder.title}`,
-            )}
+            {t.remainder.carryOverNote(messages.productionOrder.menuPath)}
           </p>
         </fieldset>
       ) : null}

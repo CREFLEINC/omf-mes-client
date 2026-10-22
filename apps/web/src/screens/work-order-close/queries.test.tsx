@@ -26,6 +26,7 @@ const DETAIL_PATH = '/production/work-orders/702';
 
 const filters = (overrides: Partial<WorkOrderCloseFilters> = {}): WorkOrderCloseFilters => ({
   statusCode: 'SYN-CALLER-STATUS',
+  completionJudgmentCode: null,
   productionOrderId: 501,
   plannedStartFrom: '2026-08-23T09:00:00+09:00',
   plannedStartTo: '2026-08-23T17:00:00+09:00',
@@ -65,6 +66,8 @@ const closeFact = (workOrderId: number) => ({
   closeDispositionCode: null,
   closedWorkerNo: null,
   closedWorkerName: null,
+  closedByUserName: null,
+  closeJudgmentCode: null,
   voidedLotCount: null,
 });
 
@@ -96,6 +99,7 @@ describe('workOrderCloseKeys', () => {
       'work-order-close',
       'candidates',
       'SYN-CALLER-STATUS',
+      null,
       501,
       '2026-08-23T09:00:00+09:00',
       '2026-08-23T17:00:00+09:00',
@@ -103,6 +107,7 @@ describe('workOrderCloseKeys', () => {
     ]);
     [
       filters({ statusCode: 'SYN-OTHER-STATUS' }),
+      filters({ completionJudgmentCode: 'UNDER' }),
       filters({ productionOrderId: 502 }),
       filters({ plannedStartFrom: '2026-08-24T09:00:00+09:00' }),
       filters({ plannedStartTo: '2026-08-24T17:00:00+09:00' }),

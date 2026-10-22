@@ -34,7 +34,7 @@ describe('WorkOrderCloseConfirmDialog', () => {
       '작업지시 마감은 되돌릴 수 없습니다. 정정이 필요하면 생산실적을 상계 처리하세요.',
     );
     expect(t.erp(erpResultMenuPath())).toBe(
-      `ERP 실적 송신은 마감과 함께 대기열에 올라갑니다. 송신 결과는 ${messages.integrationSync.breadcrumbRoot} › ${messages.integrationSync.title}에서 확인하세요.`,
+      `ERP 실적 송신은 마감과 함께 대기열에 올라갑니다. 송신 결과는 ${messages.integrationSync.menuPath}에서 확인하세요.`,
     );
     expect(t.cancel).toBe('취소');
     expect(t.confirm).toBe('작업지시 마감');

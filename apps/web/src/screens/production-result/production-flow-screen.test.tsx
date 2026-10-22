@@ -2751,7 +2751,7 @@ describe('ProductionFlowScreen 미달 LOT 마감', () => {
     expect(
       await screen.findByText(
         t.flow.scan.workOrderClosed(
-          `${messages.workOrderClose.breadcrumbRoot} › ${messages.workOrderClose.title}`,
+          messages.workOrderClose.menuPath,
           messages.workOrderClose.correction.pane,
         ),
       ),

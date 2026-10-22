@@ -24,7 +24,10 @@ import {
   toWorkOrderCloseProductionOrderOptions,
 } from './code-options';
 import { WorkOrderCloseFilterBar } from './filter-bar';
-import { toWorkOrderCloseFilterInitialization } from './filter-initialization';
+import {
+  DEFAULT_STATUS_FILTER,
+  toWorkOrderCloseFilterInitialization,
+} from './filter-initialization';
 import type { WorkOrderCloseConfirmDetail } from './close-confirm-dialog';
 import { WorkOrderCloseExecution } from './close-execution';
 import {
@@ -50,6 +53,7 @@ import {
 } from './detail-summary-pane';
 import { WorkOrderCloseOutboundItemsPane } from './outbound-items-pane';
 import { WorkOrderCloseResultPane } from './close-result-pane';
+import { SessionForceEndDialog } from './session-force-end-dialog';
 import { WorkOrderResultCorrectionWorkspace } from './result-correction-workspace';
 import {
   useWorkOrderCloseCandidates,
@@ -61,6 +65,7 @@ import {
   useWorkOrderCloseProductionOrders,
   type WorkOrderCloseDetailFact,
   type WorkOrderCloseOpenLots,
+  type WorkOrderCloseOpenSessionView,
   type WorkOrderCloseOutboundItemSetting,
 } from './queries';
 
@@ -299,6 +304,7 @@ export const WorkOrderCloseCandidateScreen = () => {
   const detail = useWorkOrderCloseDetail(state.selectedWorkOrderId);
   const openSession = useWorkOrderCloseOpenSession(closeSelectedWorkOrderId);
   const openLots = useWorkOrderCloseOpenLots(closeSelectedWorkOrderId);
+  const [forceEndTarget, setForceEndTarget] = useState<WorkOrderCloseOpenSessionView | null>(null);
   const snapshot = useMemo(
     () =>
       toWorkOrderCloseCandidateSnapshot({
@@ -512,7 +518,10 @@ export const WorkOrderCloseCandidateScreen = () => {
         productionOrderOptions={toWorkOrderCloseProductionOrderOptions(
           productionOrders.data?.items ?? [],
         )}
-        statusOptions={toWorkOrderCloseCodeOptions(status.data?.items ?? [])}
+        statusOptions={[
+          { value: DEFAULT_STATUS_FILTER, label: messages.workOrderClose.filter.closableStatuses },
+          ...toWorkOrderCloseCodeOptions(status.data?.items ?? []),
+        ]}
         productionOrderUnavailableReason={productionOrderReason(productionOrders)}
         statusUnavailableReason={initialization.statusUnavailableReason}
         onSearch={(next) => dispatch({ type: 'SEARCH', filters: next })}
@@ -586,6 +595,7 @@ export const WorkOrderCloseCandidateScreen = () => {
                 state={readinessState}
                 openSessions={openSession.data?.sessions ?? []}
                 onRecheckSessions={() => void openSession.refetch()}
+                onForceEnd={setForceEndTarget}
               />
             )}
             {outboundState.kind === 'HIDDEN' ? null : (
@@ -626,6 +636,13 @@ export const WorkOrderCloseCandidateScreen = () => {
           </div>
         )}
       </div>
+      {forceEndTarget === null ? null : (
+        <SessionForceEndDialog
+          key={forceEndTarget.workSessionId}
+          session={forceEndTarget}
+          onClose={() => setForceEndTarget(null)}
+        />
+      )}
     </div>
   );
 };

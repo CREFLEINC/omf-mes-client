@@ -9,7 +9,11 @@ import {
   type WorkOrderCloseUomReferenceSource,
 } from './candidate-references';
 import type { WorkOrderCloseFilterValues } from './filter-bar';
-import type { WorkOrderCloseFilterInitialization } from './filter-initialization';
+import {
+  canFilterByJudgment,
+  DEFAULT_STATUS_FILTER,
+  type WorkOrderCloseFilterInitialization,
+} from './filter-initialization';
 import type { WorkOrderCloseCandidateFact, WorkOrderCloseFilters } from './queries';
 
 export interface WorkOrderCloseCandidateScreenState {
@@ -42,6 +46,7 @@ const initialFilters = (statusCode = ''): WorkOrderCloseFilterValues => ({
   plannedStartFrom: '',
   plannedStartTo: '',
   statusCode,
+  judgmentCode: '',
 });
 
 const stateForInitialization = (
@@ -78,7 +83,9 @@ export const reduceWorkOrderCloseCandidateScreen = (
     case 'RESET':
       return {
         ...state,
-        appliedFilters: initialFilters(state.initializationKind === 'READY' ? 'IN_PROGRESS' : ''),
+        appliedFilters: initialFilters(
+          state.initializationKind === 'READY' ? DEFAULT_STATUS_FILTER : '',
+        ),
         page: 1,
         selectedWorkOrderId: null,
       };
@@ -123,6 +130,9 @@ export const toWorkOrderCloseCandidateFilters = (
 
   return {
     statusCode: canLoadCandidates ? state.appliedFilters.statusCode : null,
+    completionJudgmentCode: canFilterByJudgment(state.appliedFilters.statusCode)
+      ? optionalFilter(state.appliedFilters.judgmentCode)
+      : null,
     productionOrderId: canLoadCandidates ? productionOrderId : null,
     plannedStartFrom: optionalFilter(state.appliedFilters.plannedStartFrom),
     plannedStartTo: optionalFilter(state.appliedFilters.plannedStartTo),

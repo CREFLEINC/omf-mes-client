@@ -13,11 +13,14 @@ export type WorkOrderCloseResultState =
   | { kind: 'UNAVAILABLE'; onRetry: () => void }
   | { kind: 'RESOLVED'; detail: WorkOrderCloseDetailFact; reasonLabel: (code: string) => string };
 
-/** 관리웹 마감은 마감자 칸이 없다 — 지어내지 않고 모른다고 둔다. */
-const closedByLabel = (detail: WorkOrderCloseDetailFact): string =>
-  detail.closedWorkerName === null || detail.closedWorkerNo === null
-    ? t.values.unknown
-    : t.values.popWorker(detail.closedWorkerName, detail.closedWorkerNo);
+/** POP 작업자 → 관리웹 계정 순서. 둘 다 없으면(이 기능 전 마감) 지어내지 않는다. */
+const closedByLabel = (detail: WorkOrderCloseDetailFact): string => {
+  if (detail.closedWorkerName !== null && detail.closedWorkerNo !== null) {
+    return t.values.popWorker(detail.closedWorkerName, detail.closedWorkerNo);
+  }
+
+  return detail.closedByUserName ?? t.values.unknown;
+};
 
 const dispositionLabel = (code: WorkOrderForward['closeDispositionCode'] | null): string =>
   code === null || code === undefined
@@ -55,13 +58,14 @@ export const WorkOrderCloseResultPane = ({
   }
 
   const { detail } = state;
-  const judgment = detail.progress?.completionJudgmentCode;
+  /* 마감 시점 판정 — 지금 판정은 마감 뒤 지연 실적으로 바뀔 수 있다. */
+  const judgment = detail.closeJudgmentCode;
   const fields: [label: string, value: string][] = [
     [t.fields.closedAt, formatPlantDateTime(detail.closedAt) ?? t.values.unknown],
     [t.fields.closedBy, closedByLabel(detail)],
     [
       t.fields.judgment,
-      judgment === undefined
+      judgment === null
         ? t.values.unknown
         : messages.workOrderClose.detailSummary.judgments[judgment],
     ],

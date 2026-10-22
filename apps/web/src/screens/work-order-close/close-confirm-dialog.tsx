@@ -8,8 +8,7 @@ export interface WorkOrderCloseConfirmDetail {
 }
 
 /** ERP 송신 결과를 보는 화면의 경로. 메뉴 이름이 바뀌어도 어긋나지 않게 그 화면의 문구로 짓는다. */
-export const erpResultMenuPath = (): string =>
-  `${messages.integrationSync.breadcrumbRoot} › ${messages.integrationSync.title}`;
+export const erpResultMenuPath = (): string => messages.integrationSync.menuPath;
 
 export interface WorkOrderCloseConfirmDialogProps {
   workOrderNo: string;

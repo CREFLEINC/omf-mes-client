@@ -26,6 +26,9 @@ export interface WorkOrderCloseFact extends WorkOrderFact {
   /** POP 마감일 때만 있다 */
   closedWorkerNo: string | null;
   closedWorkerName: string | null;
+  /** 관리웹 마감일 때만 있다 */
+  closedByUserName: string | null;
+  closeJudgmentCode: 'UNDER' | 'NORMAL' | 'OVER' | null;
   voidedLotCount: number | null;
 }
 
@@ -36,6 +39,7 @@ export interface WorkOrderCloseDetailFact extends WorkOrderCloseFact {
 
 export interface WorkOrderCloseFilters {
   statusCode: string | null;
+  completionJudgmentCode: string | null;
   productionOrderId: number | null;
   plannedStartFrom: string | null;
   plannedStartTo: string | null;
@@ -110,6 +114,7 @@ export const workOrderCloseKeys = {
       'work-order-close',
       'candidates',
       filters.statusCode,
+      filters.completionJudgmentCode,
       filters.productionOrderId,
       filters.plannedStartFrom,
       filters.plannedStartTo,
@@ -139,6 +144,8 @@ export const toWorkOrderCloseFact = (workOrder: WorkOrderForward): WorkOrderClos
   closeDispositionCode: workOrder.closeDispositionCode ?? null,
   closedWorkerNo: workOrder.closedWorkerNo ?? null,
   closedWorkerName: workOrder.closedWorkerName ?? null,
+  closedByUserName: workOrder.closedByUserName ?? null,
+  closeJudgmentCode: workOrder.closeJudgmentCode ?? null,
   voidedLotCount: workOrder.voidedLotCount ?? null,
 });
 
@@ -167,6 +174,12 @@ export const useWorkOrderCloseCandidates = (
           params: {
             query: {
               statusCode,
+              ...(filters.completionJudgmentCode === null
+                ? {}
+                : {
+                    completionJudgmentCode: filters.completionJudgmentCode as
+                      'UNDER' | 'NORMAL' | 'OVER',
+                  }),
               ...(filters.productionOrderId === null
                 ? {}
                 : { productionOrderId: filters.productionOrderId }),

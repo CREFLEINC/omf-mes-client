@@ -17,7 +17,10 @@ const closed = (overrides: Partial<WorkOrderCloseDetailFact>): WorkOrderCloseDet
     closedWorkerName: '합성 작업자',
     completionVarianceReasonCode: 'EQUIPMENT_FAILURE',
     voidedLotCount: 2,
-    progress: { goodQty: 4, achievementRate: 0.4, completionJudgmentCode: 'UNDER' },
+    closedByUserName: null,
+    closeJudgmentCode: 'UNDER',
+    /* 마감 뒤 지연 실적으로 지금 판정은 정상이 됐다 — 마감 결과는 마감 시점 판정을 보인다. */
+    progress: { goodQty: 10, achievementRate: 1, completionJudgmentCode: 'NORMAL' },
     ...overrides,
   }) as WorkOrderCloseDetailFact;
 
@@ -46,7 +49,25 @@ describe('WorkOrderCloseResultPane', () => {
     expect(valueOf(t.fields.voidedLots)).toHaveTextContent('2건');
   });
 
-  it('관리웹 마감·정상 마감은 없는 값을 지어내지 않는다', () => {
+  it('관리웹 마감은 계정 이름을 마감자로 보인다', () => {
+    render(
+      <WorkOrderCloseResultPane
+        state={{
+          kind: 'RESOLVED',
+          detail: closed({
+            closedWorkerNo: null,
+            closedWorkerName: null,
+            closedByUserName: '합성 관리자',
+          }),
+          reasonLabel: (code) => code,
+        }}
+      />,
+    );
+
+    expect(valueOf(t.fields.closedBy)).toHaveTextContent('합성 관리자');
+  });
+
+  it('마감자·처분·사유·폐번 건수가 없으면 지어내지 않는다', () => {
     render(
       <WorkOrderCloseResultPane
         state={{
@@ -57,6 +78,7 @@ describe('WorkOrderCloseResultPane', () => {
             closeDispositionCode: null,
             completionVarianceReasonCode: null,
             voidedLotCount: null,
+            closeJudgmentCode: null,
           }),
           reasonLabel: (code) => code,
         }}

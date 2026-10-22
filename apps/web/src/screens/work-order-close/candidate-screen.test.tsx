@@ -927,7 +927,8 @@ describe('WorkOrderCloseCandidateScreen', () => {
     api.releaseStatus();
     expect(await screen.findByRole('button', { name: 'SYN-WO-701 선택' })).toBeVisible();
     const first = candidateUrls(api.urls)[0]!;
-    expect(first.searchParams.get('statusCode')).toBe('IN_PROGRESS');
+    expect(first.searchParams.get('statusCode')).toBe('IN_PROGRESS,SUSPENDED');
+    expect(first.searchParams.has('completionJudgmentCode')).toBe(false);
     expect(first.searchParams.get('page')).toBe('1');
     expect(api.urls.filter((url) => url.pathname === '/mdm/items/910001')).toHaveLength(1);
     expect(
@@ -961,7 +962,7 @@ describe('WorkOrderCloseCandidateScreen', () => {
     } else {
       expect(await screen.findByRole('button', { name: 'SYN-WO-701 선택' })).toBeVisible();
       const request = candidateUrls(api.urls)[0]!;
-      expect(request.searchParams.get('statusCode')).toBe('IN_PROGRESS');
+      expect(request.searchParams.get('statusCode')).toBe('IN_PROGRESS,SUSPENDED');
     }
   });
 

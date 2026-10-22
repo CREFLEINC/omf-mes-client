@@ -9,6 +9,8 @@
 export const integrationSync = {
   title: '연계 동기화 현황',
   breadcrumbRoot: '시스템 관리',
+  /** 메뉴에서 이 화면까지의 경로 — 다른 화면이 「어디로 가라」고 안내할 때 쓴다. 메뉴 라벨과 같아야 한다(app/nav-menu-path.test.ts). */
+  menuPath: '시스템 관리 › ERP 연동 현황·이력 › 연동 현황·이력',
   fields: {
     periodFrom: '기간 시작',
     periodTo: '기간 종료',

@@ -486,7 +486,7 @@ export const ProductionFlowScreen = () => {
           ? t.flow.scan.noAllocation
           : judgment === 'UNDER'
             ? t.flow.scan.workOrderClosed(
-                `${messages.workOrderClose.breadcrumbRoot} › ${messages.workOrderClose.title}`,
+                messages.workOrderClose.menuPath,
                 messages.workOrderClose.correction.pane,
               )
             : (items[0]?.message ?? t.flow.scan.failed),

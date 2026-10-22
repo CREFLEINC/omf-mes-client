@@ -39,10 +39,7 @@ export interface WorkOrderCloseActionProps {
 /** 왜 지금 마감할 수 없는가. 없으면 null. */
 const blockedReason = (props: WorkOrderCloseActionProps): string | null => {
   if (props.gate === 'denied' || props.gate === 'unidentified') {
-    return t.blocked.denied(
-      `${messages.workOrderClose.breadcrumbRoot} › ${messages.workOrderClose.title}`,
-      `${messages.terminalProcessMap.breadcrumbRoot} › ${messages.terminalProcessMap.title}`,
-    );
+    return t.blocked.denied(messages.workOrderClose.menuPath, messages.terminalProcessMap.menuPath);
   }
   if (props.gate === 'checking') return t.blocked.checking;
   if (props.gate === 'unavailable') return t.blocked.unavailable;
@@ -255,11 +252,7 @@ export const WorkOrderCloseAction = (props: WorkOrderCloseActionProps) => {
                       </Button>
                     ))}
                   </div>
-                  <p className="field-note">
-                    {t.carryOverNote(
-                      `${messages.productionOrder.breadcrumbRoot} › ${messages.productionOrder.title}`,
-                    )}
-                  </p>
+                  <p className="field-note">{t.carryOverNote(messages.productionOrder.menuPath)}</p>
                 </fieldset>
               )}
 

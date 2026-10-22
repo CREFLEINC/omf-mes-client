@@ -112,6 +112,7 @@ export type {
   TerminalProcessReplaceForward,
   ProductionConflictResponseForward,
   WorkSessionForward,
+  WorkSessionForceEnd,
   WorkSessionWorkerForward,
   ProductionResultForward,
   ProductionResultCreateForward,
