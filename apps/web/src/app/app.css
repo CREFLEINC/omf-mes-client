@@ -14173,7 +14173,7 @@ button.app-button-neutral {
 /* 첫 칸(자재 LOT)은 표 왼쪽 끝과 띄운다(#133). */
 .iqc-inspection-queue-rows th:first-child,
 .iqc-inspection-queue-rows td:first-child {
-  padding-inline-start: var(--space-5);
+  padding-inline-start: var(--space-7);
 }
 
 /* 줄무늬 바탕을 지운다 — 구분은 얇은 선으로, 강조는 고른 줄에만. */
