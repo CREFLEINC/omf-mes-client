@@ -237,7 +237,7 @@ export const toWorkOrderCloseConfirmDetails = (source: {
 /** 마감과 함께 일어나는 일. 진행 중 LOT 을 모르면 없다고 단정하지 않는다. */
 export const toWorkOrderCloseWarnings = (source: {
   detailState: WorkOrderCloseDetailScreenState;
-  openLots: WorkOrderCloseOpenLots | 'UNKNOWN' | undefined;
+  openLots: WorkOrderCloseOpenLots | 'UNKNOWN' | 'CHECKING' | undefined;
 }): string[] => {
   if (source.detailState.kind !== 'RESOLVED') return [];
 
@@ -248,6 +248,8 @@ export const toWorkOrderCloseWarnings = (source: {
   const openLots = source.openLots;
   if (openLots === 'UNKNOWN') {
     warnings.push(confirmText.openLotsUnknown);
+  } else if (openLots === 'CHECKING') {
+    warnings.push(confirmText.openLotsChecking);
   } else if (openLots !== undefined) {
     if (openLots.lotNos.length > 0) {
       warnings.push(confirmText.openLots(openLots.lotNos.length, openLots.lotNos.join(', ')));
@@ -486,13 +488,16 @@ export const WorkOrderCloseCandidateScreen = () => {
       kind: 'RESOLVED',
       blockers,
     };
-  const executionRequest = toWorkOrderCloseExecutionRequest({
+  /* 그대로 남는 LOT 을 알리기 전에는 마감을 열지 않는다 — 확인 창이 그 사실을 빼고 묻게 된다. */
+  const isCheckingOpenLots = closeSelectedWorkOrderId !== null && openLots.isPending;
+  const executionCandidate = toWorkOrderCloseExecutionRequest({
     selectedWorkOrderId: state.selectedWorkOrderId,
     detailState,
     judgment,
     blockers,
     draft: inputDraft,
   });
+  const executionRequest = isCheckingOpenLots ? null : executionCandidate;
   const confirmDetails = toWorkOrderCloseConfirmDetails({
     detailState,
     judgment,
@@ -501,7 +506,7 @@ export const WorkOrderCloseCandidateScreen = () => {
   });
   const closeWarnings = toWorkOrderCloseWarnings({
     detailState,
-    openLots: openLots.isError ? 'UNKNOWN' : openLots.data,
+    openLots: openLots.isError ? 'UNKNOWN' : openLots.isPending ? 'CHECKING' : openLots.data,
   });
   const updateDraft = (
     update: (current: WorkOrderCloseInputDraft) => WorkOrderCloseInputDraft,
@@ -546,7 +551,7 @@ export const WorkOrderCloseCandidateScreen = () => {
             {state.selectedWorkOrderId === null ? null : (
               <WorkOrderCloseResultPane
                 state={
-                  detail.isFetching
+                  detail.isPending
                     ? { kind: 'CHECKING' }
                     : detail.isError || detail.data === undefined
                       ? { kind: 'UNAVAILABLE', onRetry: () => void detail.refetch() }

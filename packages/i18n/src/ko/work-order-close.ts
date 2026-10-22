@@ -96,9 +96,10 @@ export const workOrderClose = {
     plannedStartTo: '계획 시작일(까지)',
     status: '마감 상태',
     judgment: '판정',
-    judgmentUnavailable: '마감·취소 상태에서는 판정으로 거를 수 없습니다.',
+    judgmentUnavailable:
+      '마감 또는 취소 상태가 들어간 조회는 판정으로 거르지 않습니다. 판정으로 거르려면 진행, 중단, 완료 중에서 상태를 고르세요.',
     /** 처음 조회하는 진행·중단을 한 선택지로 — 마감할 수 있는 작업지시가 머무는 상태다. */
-    closableStatuses: '진행·중단',
+    closableStatuses: '진행 또는 중단',
     all: '전체',
     search: '조회',
     reset: '초기화',
@@ -130,6 +131,7 @@ export const workOrderClose = {
     openLots: (count: number, lotNos: string): string =>
       `마감되지 않은 LOT ${String(count)}건(${lotNos})은 그 상태로 남습니다.`,
     /* 한 쪽만 읽어 진행 여부를 모르는 LOT 이 남았을 때 — 없다고 단정하지 않는다. */
+    openLotsChecking: '진행 중인 LOT 을 확인하는 중입니다. 확인이 끝나면 마감할 수 있습니다.',
     openLotsUnknown:
       '진행 중인 LOT 을 확인하지 못했습니다. 마감해도 진행 중인 LOT 은 그 상태로 남습니다.',
     uncheckedLots: (count: number): string =>
@@ -174,12 +176,12 @@ export const workOrderClose = {
     complete: '현재 입력 조건이 모두 갖춰졌습니다.',
     blockers: {
       STATUS_NOT_CLOSABLE:
-        '이 작업지시는 지금 상태에서 마감할 수 없습니다. 진행·중단·완료 상태인 작업지시만 마감할 수 있으니, 목록의 상태를 확인하세요.',
+        '이 작업지시는 지금 상태에서 마감할 수 없습니다. 진행, 중단, 완료 상태인 작업지시만 마감할 수 있으니, 목록의 상태를 확인하세요.',
       OPEN_SESSION: '열린 작업 세션(중단 포함)이 있어 마감할 수 없습니다.',
       REMAINDER_DISPOSITION_REQUIRED:
         '미달이라 잔량 처리를 골라야 마감할 수 있습니다. 위 「잔량 처리」에서 이월 또는 소멸을 고르세요.',
       VARIANCE_REASON_REQUIRED:
-        '미달·초과라 변동 사유를 골라야 마감할 수 있습니다. 위 「변동 사유」에서 고르세요.',
+        '미달이나 초과라 변동 사유를 골라야 마감할 수 있습니다. 위 「변동 사유」에서 고르세요.',
     },
   },
   input: {
@@ -239,14 +241,18 @@ export const workOrderClose = {
   forceEnd: {
     title: '작업 세션을 강제로 끝낼까요?',
     effect:
-      '강제 종료하면 그 단말의 작업 세션이 바로 끝납니다. 그 단말에서 중단·재개·종료를 누르면 「이미 종료된 작업 세션」으로 거부되고, 작업을 이어 가려면 작업 시작을 다시 해야 합니다. 이미 입력했거나 아직 보내지 못한 실적·자재 투입은 그대로 저장됩니다.',
+      '강제 종료하면 그 단말의 작업 세션이 바로 끝납니다. 그 단말에서 중단, 재개, 종료를 누르면 「이미 종료된 작업 세션」으로 거부되고, 작업을 이어 가려면 작업 시작을 다시 해야 합니다. 이미 입력했거나 아직 보내지 못한 실적과 자재 투입은 그대로 저장됩니다.',
     notify: '강제 종료하기 전에 그 단말의 작업자에게 알리세요.',
     reason: '강제 종료 사유',
     reasonHelp: '누가 왜 세션을 닫았는지 기록으로 남습니다.',
     reasonRequired: '강제 종료 사유를 입력하세요.',
+    reasonTooLong: (max: number): string => `강제 종료 사유를 ${String(max)}자 이하로 줄이세요.`,
     cancel: '취소',
     confirm: '강제 종료',
     done: (terminal: string): string => `${terminal} 의 작업 세션을 강제 종료했습니다.`,
+    /* 그사이 그 단말이나 다른 사람이 먼저 끝냈다 — 실패가 아니라 이미 이루어진 일이다. */
+    alreadyEnded: (terminal: string): string =>
+      `${terminal} 의 작업 세션은 이미 끝나 있었습니다. 마감 조건을 다시 확인했습니다.`,
   },
   /** 마감된 W/O 의 마감 결과 — 무엇을 어떻게 닫았는지 정정 전에 본다. */
   closeResult: {
@@ -256,6 +262,8 @@ export const workOrderClose = {
     fields: {
       closedAt: '마감 일시',
       closedBy: '마감자',
+      closedByNo: '사번',
+      closedVia: '마감 경로',
       judgment: '판정',
       disposition: '잔량 처리',
       reason: '변동 사유',
@@ -264,7 +272,8 @@ export const workOrderClose = {
     values: {
       none: '없음',
       unknown: '확인할 수 없음',
-      popWorker: (name: string, workerNo: string): string => `${name}(${workerNo}) · POP`,
+      pop: 'POP',
+      web: '관리웹',
     },
   },
   correction: {

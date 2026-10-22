@@ -50,8 +50,9 @@ describe('WorkOrderCloseFilterBar', () => {
       plannedStartTo: '계획 시작일(까지)',
       status: '마감 상태',
       judgment: '판정',
-      judgmentUnavailable: '마감·취소 상태에서는 판정으로 거를 수 없습니다.',
-      closableStatuses: '진행·중단',
+      judgmentUnavailable:
+        '마감 또는 취소 상태가 들어간 조회는 판정으로 거르지 않습니다. 판정으로 거르려면 진행, 중단, 완료 중에서 상태를 고르세요.',
+      closableStatuses: '진행 또는 중단',
       all: '전체',
       search: '조회',
       reset: '초기화',
@@ -228,5 +229,9 @@ describe('WorkOrderCloseFilterBar', () => {
     const judgment = screen.getByRole('combobox', { name: t.judgment });
     expect(judgment).toBeDisabled();
     expect(judgment).toHaveAccessibleDescription(t.judgmentUnavailable);
+    await user.click(screen.getByRole('button', { name: t.search }));
+    expect(onSearch).toHaveBeenLastCalledWith(
+      expect.objectContaining({ statusCode: 'CLOSED', judgmentCode: '' }),
+    );
   });
 });

@@ -28,7 +28,7 @@ const valueOf = (label: string) =>
   within(screen.getByRole('region', { name: t.pane })).getByText(label).nextElementSibling;
 
 describe('WorkOrderCloseResultPane', () => {
-  it('마감 일시·마감자·판정·잔량 처리·사유·폐번 LOT 을 한 칸에 하나씩 보인다', () => {
+  it('마감 일시, 마감자, 사번, 마감 경로, 판정, 잔량 처리, 사유, 폐번 LOT 을 한 칸에 하나씩 보인다', () => {
     render(
       <WorkOrderCloseResultPane
         state={{
@@ -40,9 +40,9 @@ describe('WorkOrderCloseResultPane', () => {
     );
 
     expect(valueOf(t.fields.closedAt)).toHaveTextContent('2026-10-22 15:30');
-    expect(valueOf(t.fields.closedBy)).toHaveTextContent(
-      t.values.popWorker('합성 작업자', '900028'),
-    );
+    expect(valueOf(t.fields.closedBy)).toHaveTextContent('합성 작업자');
+    expect(valueOf(t.fields.closedByNo)).toHaveTextContent('900028');
+    expect(valueOf(t.fields.closedVia)).toHaveTextContent(t.values.pop);
     expect(valueOf(t.fields.judgment)).toHaveTextContent('미달');
     expect(valueOf(t.fields.disposition)).toHaveTextContent('소멸');
     expect(valueOf(t.fields.reason)).toHaveTextContent('설비 고장');
@@ -65,9 +65,11 @@ describe('WorkOrderCloseResultPane', () => {
     );
 
     expect(valueOf(t.fields.closedBy)).toHaveTextContent('합성 관리자');
+    expect(valueOf(t.fields.closedByNo)).toHaveTextContent(t.values.none);
+    expect(valueOf(t.fields.closedVia)).toHaveTextContent(t.values.web);
   });
 
-  it('마감자·처분·사유·폐번 건수가 없으면 지어내지 않는다', () => {
+  it('마감자, 처분, 사유, 폐번 건수가 없으면 지어내지 않는다', () => {
     render(
       <WorkOrderCloseResultPane
         state={{
@@ -86,6 +88,7 @@ describe('WorkOrderCloseResultPane', () => {
     );
 
     expect(valueOf(t.fields.closedBy)).toHaveTextContent(t.values.unknown);
+    expect(valueOf(t.fields.closedVia)).toHaveTextContent(t.values.unknown);
     expect(valueOf(t.fields.disposition)).toHaveTextContent(t.values.none);
     expect(valueOf(t.fields.reason)).toHaveTextContent(t.values.none);
     expect(valueOf(t.fields.voidedLots)).toHaveTextContent(t.values.unknown);

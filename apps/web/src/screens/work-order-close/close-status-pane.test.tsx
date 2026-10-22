@@ -18,12 +18,12 @@ describe('WorkOrderCloseStatusPane', () => {
     expect(t.complete).toBe('현재 입력 조건이 모두 갖춰졌습니다.');
     expect(t.blockers).toEqual({
       STATUS_NOT_CLOSABLE:
-        '이 작업지시는 지금 상태에서 마감할 수 없습니다. 진행·중단·완료 상태인 작업지시만 마감할 수 있으니, 목록의 상태를 확인하세요.',
+        '이 작업지시는 지금 상태에서 마감할 수 없습니다. 진행, 중단, 완료 상태인 작업지시만 마감할 수 있으니, 목록의 상태를 확인하세요.',
       OPEN_SESSION: '열린 작업 세션(중단 포함)이 있어 마감할 수 없습니다.',
       REMAINDER_DISPOSITION_REQUIRED:
         '미달이라 잔량 처리를 골라야 마감할 수 있습니다. 위 「잔량 처리」에서 이월 또는 소멸을 고르세요.',
       VARIANCE_REASON_REQUIRED:
-        '미달·초과라 변동 사유를 골라야 마감할 수 있습니다. 위 「변동 사유」에서 고르세요.',
+        '미달이나 초과라 변동 사유를 골라야 마감할 수 있습니다. 위 「변동 사유」에서 고르세요.',
     });
   });
 
@@ -93,7 +93,7 @@ describe('WorkOrderCloseStatusPane', () => {
     expect(screen.queryByRole('button')).not.toBeInTheDocument();
   });
 
-  it('열린 세션이 막으면 단말·작업자·시작·상태를 한 칸에 하나씩 보이고 끝낼 곳과 다시 확인을 준다', async () => {
+  it('열린 세션이 막으면 단말, 작업자, 시작, 상태를 한 칸에 하나씩 보이고 끝낼 곳과 다시 확인을 준다', async () => {
     const onRecheckSessions = vi.fn();
     render(
       <WorkOrderCloseStatusPane

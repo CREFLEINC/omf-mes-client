@@ -13,13 +13,31 @@ export type WorkOrderCloseResultState =
   | { kind: 'UNAVAILABLE'; onRetry: () => void }
   | { kind: 'RESOLVED'; detail: WorkOrderCloseDetailFact; reasonLabel: (code: string) => string };
 
-/** POP 작업자 → 관리웹 계정 순서. 둘 다 없으면(이 기능 전 마감) 지어내지 않는다. */
-const closedByLabel = (detail: WorkOrderCloseDetailFact): string => {
-  if (detail.closedWorkerName !== null && detail.closedWorkerNo !== null) {
-    return t.values.popWorker(detail.closedWorkerName, detail.closedWorkerNo);
+/**
+ * 마감자 · 사번 · 마감 경로를 한 칸에 하나씩. POP 작업자 → 관리웹 계정 순서이고, 둘 다 없으면
+ * (이 기능 전 마감) 지어내지 않는다.
+ */
+const closerFields = (detail: WorkOrderCloseDetailFact): [string, string][] => {
+  if (detail.closedWorkerName !== null) {
+    return [
+      [t.fields.closedBy, detail.closedWorkerName],
+      [t.fields.closedByNo, detail.closedWorkerNo ?? t.values.unknown],
+      [t.fields.closedVia, t.values.pop],
+    ];
+  }
+  if (detail.closedByUserName !== null) {
+    return [
+      [t.fields.closedBy, detail.closedByUserName],
+      [t.fields.closedByNo, t.values.none],
+      [t.fields.closedVia, t.values.web],
+    ];
   }
 
-  return detail.closedByUserName ?? t.values.unknown;
+  return [
+    [t.fields.closedBy, t.values.unknown],
+    [t.fields.closedByNo, t.values.unknown],
+    [t.fields.closedVia, t.values.unknown],
+  ];
 };
 
 const dispositionLabel = (code: WorkOrderForward['closeDispositionCode'] | null): string =>
@@ -62,7 +80,7 @@ export const WorkOrderCloseResultPane = ({
   const judgment = detail.closeJudgmentCode;
   const fields: [label: string, value: string][] = [
     [t.fields.closedAt, formatPlantDateTime(detail.closedAt) ?? t.values.unknown],
-    [t.fields.closedBy, closedByLabel(detail)],
+    ...closerFields(detail),
     [
       t.fields.judgment,
       judgment === null

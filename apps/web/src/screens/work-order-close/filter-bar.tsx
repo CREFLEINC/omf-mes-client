@@ -130,7 +130,14 @@ export const WorkOrderCloseFilterBar = ({
             id={statusId}
             options={statusOptions}
             value={draft.statusCode === '' ? null : draft.statusCode}
-            onChange={(statusCode) => setDraft((current) => ({ ...current, statusCode }))}
+            onChange={(statusCode) =>
+              setDraft((current) => ({
+                ...current,
+                statusCode,
+                /* 판정으로 거를 수 없는 상태로 바꾸면 고른 판정을 남기지 않는다 — 보이지 않는 조건이 된다. */
+                judgmentCode: canFilterByJudgment(statusCode) ? current.judgmentCode : '',
+              }))
+            }
           />
           {statusReason === null ? null : (
             <p className="field-note" id={statusNoteId}>

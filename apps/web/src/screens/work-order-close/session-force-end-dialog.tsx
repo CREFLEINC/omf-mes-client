@@ -1,7 +1,8 @@
 import { Button, Dialog, TextArea, useToast } from '@crefle/web-ui';
 import type { components, WorkSessionForceEnd } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
-import { type JSX, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
+import { type JSX, useEffect, useId, useRef, useState } from 'react';
 
 import { useApiClient } from '../../patterns/api-context';
 import { SaveErrorBanner, useMasterWrite } from '../../patterns/master';
@@ -9,6 +10,8 @@ import { formatPlantDateTime } from '../../patterns/plant-time';
 import { workOrderCloseKeys, type WorkOrderCloseOpenSessionView } from './queries';
 
 const t = messages.workOrderClose.forceEnd;
+/** 서버가 받는 사유 길이의 상한 */
+const REASON_MAX_LENGTH = 500;
 const sessionText = messages.workOrderClose.status.sessions;
 
 export interface SessionForceEndDialogProps {
@@ -49,7 +52,26 @@ export const SessionForceEndDialog = ({
       onClose();
     },
   });
+  const queryClient = useQueryClient();
+  const isAlreadyEnded = write.error?.kind === 'stateLocked';
+  /* 이미 끝난 세션이면 실패로 붙잡지 않는다 — 그 사실을 알리고 마감 조건을 다시 읽은 뒤 닫는다. */
+  const handledAlreadyEnded = useRef(false);
+  useEffect(() => {
+    if (!isAlreadyEnded || handledAlreadyEnded.current) return;
+    handledAlreadyEnded.current = true;
+    void queryClient.invalidateQueries({ queryKey: workOrderCloseKeys.all });
+    toast.show({ variant: 'info', description: t.alreadyEnded(terminalOf(session)) });
+    onClose();
+  }, [isAlreadyEnded, onClose, queryClient, session, toast]);
+  const noteId = useId();
   const trimmed = reason.trim();
+  /* 글자 수 상한은 칸이 막지 않는다(붙여넣기를 자르지 않게) — 넘으면 보내기 전에 막는다. */
+  const blockedReason =
+    trimmed === ''
+      ? t.reasonRequired
+      : trimmed.length > REASON_MAX_LENGTH
+        ? t.reasonTooLong(REASON_MAX_LENGTH)
+        : null;
   const worker =
     session.workerName === null || session.workerNo === null
       ? sessionText.unknown
@@ -82,7 +104,8 @@ export const SessionForceEndDialog = ({
           </Button>
           <Button
             variant="filled"
-            disabled={trimmed === '' || write.isSaving}
+            aria-describedby={blockedReason === null ? undefined : noteId}
+            disabled={blockedReason !== null || write.isSaving}
             loading={write.isSaving}
             onClick={() => write.write({ reason: trimmed })}
           >
@@ -108,6 +131,7 @@ export const SessionForceEndDialog = ({
         rows={2}
         fullWidth
         required
+        maxLength={REASON_MAX_LENGTH}
         helperText={write.fieldErrors.reason === undefined ? t.reasonHelp : undefined}
         error={write.fieldErrors.reason}
         onChange={(event) => {
@@ -115,6 +139,11 @@ export const SessionForceEndDialog = ({
           write.clearFieldError('reason');
         }}
       />
+      {blockedReason !== null && (
+        <p className="field-note" id={noteId}>
+          {blockedReason}
+        </p>
+      )}
     </Dialog>
   );
 };

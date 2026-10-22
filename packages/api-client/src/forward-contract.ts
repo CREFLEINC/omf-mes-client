@@ -810,25 +810,6 @@ export interface WorkSessionForceEnd {
   reason: string;
 }
 
-/** 서버 선행 P-104 — 마감을 막은 열린 작업 세션 한 건(중단 포함). 작업자는 그 세션의 주작업자다. */
-export interface OpenWorkSession {
-  workSessionId: number;
-  terminalId: number;
-  terminalCode: string;
-  workerId?: number;
-  workerNo?: string;
-  workerName?: string;
-  startedAt: string;
-  /** RUNNING(진행) · STOPPED(중단) */
-  statusCode: string;
-}
-
-/** 서버 선행 P-104 — 마감 409 OPEN_SESSION_EXISTS 가 열린 세션들을 싣는다. */
-export type ProductionConflictResponseForward =
-  components['schemas']['ProductionConflictResponse'] & {
-    openSessions?: OpenWorkSession[];
-  };
-
 /** 서버 선행 P-104 — 세션 조회(목록·단건)가 단말 코드와 주작업자를 싣는다. */
 export type WorkSessionForward = components['schemas']['WorkSession'] & {
   terminalCode?: string;

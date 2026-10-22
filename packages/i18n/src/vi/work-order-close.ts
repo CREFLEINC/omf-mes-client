@@ -109,8 +109,9 @@ export const workOrderClose: Translated<typeof ko.workOrderClose> = {
     plannedStartTo: 'Ngày bắt đầu kế hoạch (đến)',
     status: 'Trạng thái đóng',
     judgment: 'Đánh giá',
-    judgmentUnavailable: 'Ở trạng thái đã đóng hoặc đã hủy thì không lọc theo đánh giá được.',
-    closableStatuses: 'Đang làm · Tạm dừng',
+    judgmentUnavailable:
+      'Khi tra cứu có trạng thái đã đóng hoặc đã hủy thì không lọc theo đánh giá. Muốn lọc theo đánh giá, hãy chọn trạng thái đang làm, tạm dừng hoặc hoàn thành.',
+    closableStatuses: 'Đang làm hoặc tạm dừng',
     all: 'Tất cả',
     search: 'Tra cứu',
     reset: 'Đặt lại',
@@ -142,6 +143,7 @@ export const workOrderClose: Translated<typeof ko.workOrderClose> = {
       `${String(count)} LOT phát trước chưa có kết quả sẽ bị hủy số cùng lúc đóng.`,
     openLots: (count: number, lotNos: string): string =>
       `${String(count)} LOT chưa đóng (${lotNos}) sẽ giữ nguyên trạng thái.`,
+    openLotsChecking: 'Đang kiểm tra LOT đang thực hiện. Kiểm tra xong mới đóng được.',
     openLotsUnknown:
       'Chưa kiểm tra được LOT đang thực hiện. Dù đóng, LOT đang thực hiện vẫn giữ nguyên trạng thái.',
     uncheckedLots: (count: number): string =>
@@ -252,9 +254,13 @@ export const workOrderClose: Translated<typeof ko.workOrderClose> = {
     reason: 'Lý do buộc kết thúc',
     reasonHelp: 'Ai đã đóng phiên và vì sao sẽ được ghi lại.',
     reasonRequired: 'Hãy nhập lý do buộc kết thúc.',
+    reasonTooLong: (max: number): string =>
+      `Hãy rút gọn lý do buộc kết thúc còn ${String(max)} ký tự trở xuống.`,
     cancel: 'Hủy',
     confirm: 'Buộc kết thúc',
     done: (terminal: string): string => `Đã buộc kết thúc phiên làm việc của ${terminal}.`,
+    alreadyEnded: (terminal: string): string =>
+      `Phiên làm việc của ${terminal} đã kết thúc từ trước. Đã kiểm tra lại điều kiện đóng.`,
   },
   closeResult: {
     pane: 'Kết quả đóng',
@@ -263,6 +269,8 @@ export const workOrderClose: Translated<typeof ko.workOrderClose> = {
     fields: {
       closedAt: 'Thời điểm đóng',
       closedBy: 'Người đóng',
+      closedByNo: 'Mã nhân viên',
+      closedVia: 'Nơi đóng',
       judgment: 'Đánh giá',
       disposition: 'Xử lý lượng còn lại',
       reason: 'Lý do chênh lệch',
@@ -271,7 +279,8 @@ export const workOrderClose: Translated<typeof ko.workOrderClose> = {
     values: {
       none: 'Không có',
       unknown: 'Không xác định được',
-      popWorker: (name: string, workerNo: string): string => `${name} (${workerNo}) · POP`,
+      pop: 'POP',
+      web: 'Web quản lý',
     },
   },
   correction: {
