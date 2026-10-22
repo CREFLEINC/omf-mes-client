@@ -235,12 +235,12 @@ export const ResultFormPane = ({
           ? { value: 100, tone: 'error' as const }
           : {
               value: inspectedMicro > 0n ? Number((totals.sum * 10000n) / inspectedMicro) / 100 : 0,
-              /* 브랜드 주색이 빨강이라 «진행 중»은 정보색으로 — 초과(오류색 빨강)와 헷갈리지 않게(#133). */
-              tone: 'info' as const,
+              /* 미입력이 남았으면 주의색(노랑) — 완료(초록) · 초과(빨강)와 갈린다(#133). */
+              tone: 'warning' as const,
             };
   const sumText = totals.kind === 'counted' ? formatMicro(totals.sum) : unknownValue;
   const inspectedText = withUom(String(inspectedQty), uomCode);
-  /* 오른쪽 상태 — 잔여 N · 입력 완료 · N 초과. 음수 잔여는 보이지 않는다(#133). */
+  /* 오른쪽 상태 — 미입력 N · 입력 완료 · N 초과. 음수는 보이지 않는다(#133). */
   const statusText =
     totals.kind !== 'counted'
       ? `${t.remaining} ${unknownValue}`
@@ -271,8 +271,8 @@ export const ResultFormPane = ({
   return (
     <form aria-label={t.heading} onSubmit={submit}>
       {/*
-       * 수량과 판정은 한 작업이라 나란히 둔다 — 상세 창이 넓으면 두 칸, 좁으면 위아래(omf-all-around#133).
-       * 저장·확정은 그 아래 한 줄로 떼어, 창을 내려도 화면 아래에 붙어 있게 한다.
+       * 위에서 아래로 한 줄기 — 검사 수량 → 판정 → 4M 변경 정보, 그 아래 저장·확정(omf-all-around#133).
+       * 판정 칸이 늘어도 수량 칸 옆에 빈 자리가 생기지 않는다. 저장·확정은 창을 내려도 화면 아래에 붙어 있다.
        */}
       <div className="iqc-inspection-work">
         {/* ── 검사 결과 수량 — 검사수량을 합격·불합격·보류로 나눈 결과와 그 입력 현황 ── */}
@@ -341,7 +341,7 @@ export const ResultFormPane = ({
         </section>
 
         {/* ── 판정 — 종합 판정을 고르고, 임시 저장 뒤 확정한다 ── */}
-        <section className="iqc-inspection-section">
+        <section className="iqc-inspection-section iqc-inspection-judgment-section">
           <h3>{t.judgmentSectionTitle}</h3>
 
           {/*
@@ -375,13 +375,6 @@ export const ResultFormPane = ({
           {/* 판정에 따라 열리는 칸(자동 판정 근거 · 변경 사유 · 4M · 불합격 사유) — 넘치면 여기만 구른다(#133). */}
           <div className="iqc-inspection-judgment-detail">{judgmentDetail}</div>
 
-          {fourMSlot !== null && (
-            <div className="iqc-inspection-four-m-block">
-              <h4>{t.fourMChange.sectionTitle}</h4>
-              {fourMSlot}
-            </div>
-          )}
-
           <SaveErrorBanner error={saveError ?? confirmError} onReload={onReload} />
 
           {/*
@@ -390,6 +383,14 @@ export const ResultFormPane = ({
            */}
           {isJustConfirmed && <p className="field-note">{t.confirmSucceeded}</p>}
         </section>
+
+        {/* ── 4M 변경 정보 — 판정과 다른 업무라 판정 아래 따로 선다(#133) ── */}
+        {fourMSlot !== null && (
+          <section className="iqc-inspection-section iqc-inspection-four-m-block">
+            <h3>{t.fourMChange.sectionTitle}</h3>
+            {fourMSlot}
+          </section>
+        )}
       </div>
 
       {/*

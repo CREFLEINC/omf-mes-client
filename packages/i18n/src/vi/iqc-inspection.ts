@@ -97,7 +97,7 @@ export const iqcInspection: Translated<typeof ko.iqcInspection> = {
       held: 'Số lượng tạm giữ',
     },
     sum: 'Tổng',
-    remaining: 'Còn lại',
+    remaining: 'Chưa nhập',
     complete: 'Đã nhập đủ',
     overBy: (over: string): string => `Vượt ${over}`,
     short: (remaining: string): string => `Còn thiếu ${remaining}.`,

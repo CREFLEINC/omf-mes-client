@@ -173,7 +173,7 @@ export const iqcInspection = {
     },
     /** 실시간 합계. 어긋난 값을 감추지 않는다. */
     sum: '합계',
-    remaining: '잔여',
+    remaining: '미입력',
     complete: '입력 완료',
     overBy: (over: string): string => `${over} 초과`,
     short: (remaining: string): string => `${remaining} 남았습니다.`,

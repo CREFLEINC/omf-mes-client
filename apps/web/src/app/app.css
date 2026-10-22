@@ -14428,35 +14428,29 @@ button.app-button-neutral {
   display: none;
 }
 
-@container (min-width: 40rem) {
-  /* 수량 칸(세 입력)이 판정 칸(선택 하나)보다 넓다. */
-  .iqc-inspection-work {
-    grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+/*
+ * 위에서 아래로 한 줄기(#133) — 검사 수량 → 판정 → 4M 변경 정보. 넓으면 판정 구획 안만 두 칸:
+ * 왼쪽 최종 판정 선택, 오른쪽 그 판정에 따른 칸(자동 판정 안내 · 변경 사유 · 불합격 사유). 제목과 알림은 두 칸을 다 쓴다.
+ * 오른쪽 칸은 높이 상한 안에서 구르므로 판정이 바뀌어도 아래 4M · 저장 줄이 크게 밀리지 않는다.
+ */
+@container (min-width: 48rem) {
+  .iqc-inspection-judgment-section {
+    grid-template-columns: minmax(14rem, 20rem) minmax(0, 1fr);
     column-gap: var(--space-5);
+    align-items: start;
   }
 
-  .iqc-inspection-work > .iqc-inspection-section + .iqc-inspection-section {
-    padding-inline-start: var(--space-5);
-    border-inline-start: 1px solid var(--outline-variant);
+  .iqc-inspection-judgment-section > * {
+    grid-column: 1 / -1;
   }
 
-  /*
-   * 두 칸 배치에서 판정 칸은 제 내용 높이대로 선다 — 조건부 칸이 없으면 수량 칸과 비슷한 높이라 빈 자리가 없고,
-   * 사유 · 4M 칸이 열려도 그 칸들은 `.iqc-inspection-judgment-detail` 의 상한(아래) 안에서 구르므로 저장 · 확정 줄은
-   * 그 상한만큼만 내려간다(#133).
-   */
-  .iqc-inspection-work .iqc-inspection-judgment-detail {
-    max-height: 14rem;
+  .iqc-inspection-judgment-section > .iqc-inspection-judgment-field {
+    grid-column: 1;
   }
 
-  /* 판정 칸이 반 폭이라 4M 종류 · 내용을 위아래로 둔다(나란히 두면 내용 칸이 잘린다). */
-  .iqc-inspection-work .iqc-inspection-four-m-fields {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  /* 수량 칸이 반 폭이라 합격·불합격·보류 세 칸이 좁다 — 두 칸 배치에서만 단위를 칸 아래로 내리지 않고 줄인다. */
-  .iqc-inspection-work .iqc-inspection-qty {
-    gap: var(--space-2);
+  .iqc-inspection-judgment-section > .iqc-inspection-judgment-detail {
+    grid-column: 2;
+    max-height: 18rem;
   }
 }
 
@@ -14554,19 +14548,17 @@ button.app-button-neutral {
   box-shadow: inset 0 0 0 1px var(--semantic-error-text);
 }
 
-/* 4M 변경 정보(#133) — 판정과 다른 업무라 판정 아래 얇은 선과 소제목으로 뗀다(상자는 두지 않는다). */
-.iqc-inspection-four-m-block {
-  display: grid;
-  gap: var(--space-2);
-  margin-top: var(--space-3);
-  padding-top: var(--space-3);
-  border-top: 1px solid var(--outline-variant);
+/* 4M 변경 정보(#133) — 판정 아래 따로 선 구획. 체크 · 안내를 한 줄에, 체크하면 비고 칸(최대 40rem). */
+.iqc-inspection-four-m-block .iqc-inspection-four-m {
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  column-gap: var(--space-3);
+  margin-top: 0;
 }
 
-.iqc-inspection-four-m-block > h4 {
-  margin: 0;
-  font: var(--type-title-sm);
-  letter-spacing: var(--type-title-sm-tracking);
+.iqc-inspection-four-m-block .iqc-inspection-four-m > .field-cell {
+  grid-column: 1 / -1;
+  max-width: 40rem;
 }
 
 /* 「← 목록」 바로 아래 첫 구획은 위 구분선 없이 붙는다. */
