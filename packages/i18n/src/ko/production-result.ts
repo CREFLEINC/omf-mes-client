@@ -29,9 +29,15 @@ export const productionResult = {
       pageDown: '페이지 아래',
       pagePosition: (page: number, totalPages: number) =>
         `${String(totalPages)}쪽 중 ${String(page)}쪽`,
-      /** 무엇이 문제 · 어디서 확인 · 어떤 조치 — 서버가 고를 미마감 LOT 이 남지 않았다. */
-      /* 배포된 W/O 에 LOT 을 더 발행하는 화면은 없다 — 할 수 있는 조치만 적는다. 메뉴 이름은 지금 표기 그대로. */
-      none: '이 W/O에 생산할 LOT이 남아 있지 않습니다(모든 LOT 마감). 생산을 마쳤으면 관리웹 「생산 관리 › W/O 마감·ERP 실적 송신」에서 마감하고, 더 만들어야 하면 관리자에게 알리세요.',
+      /*
+       * 무엇이 문제 · 어디서 확인 · 어떤 조치. 0건은 다 마감했을 때만이 아니다(미발행·폐번) — 원인을
+       * 단정하지 않는다. 배포된 W/O 에 LOT 을 더 발행하는 화면은 없어 할 수 있는 조치만 적는다.
+       */
+      none: (closeMenu: string): string =>
+        `이 W/O에 생산할 LOT이 없습니다. 생산을 마쳤으면 관리웹 「${closeMenu}」에서 마감하고, 더 만들어야 하면 관리자에게 알리세요.`,
+      /** 서버가 현재 LOT 을 한 건으로 정하지 못했다(옛 서버) — 엉뚱한 LOT 에 실적이 붙지 않게 막는다. */
+      unreliable: (lotNos: string): string =>
+        `서버가 현재 LOT을 하나로 정하지 못했습니다(LOT ${lotNos}). 다른 LOT에 실적이 붙지 않도록 입력을 막았습니다. 관리자에게 서버가 최신 판인지 확인을 요청하세요.`,
       loadFailed: '현재 LOT을 불러오지 못했습니다. 연결을 확인하고 「다시 시도」를 누르세요.',
     },
     quantity: {

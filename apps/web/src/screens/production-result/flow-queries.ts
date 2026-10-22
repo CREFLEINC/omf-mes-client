@@ -40,6 +40,20 @@ export const productionFlowKeys = {
 };
 
 /**
+ * 서버가 현재 LOT 을 한 건으로 정하지 못했다는 사실 — `currentOnly` 를 모르는 옛 서버는 전체 목록을
+ * 준다. 그 첫 줄을 현재 LOT 으로 읽으면 다른 LOT 에 실적이 붙으므로 쓰지 않고 막는다.
+ */
+export class CurrentLotUnreliableError extends Error {
+  readonly lotNos: string[];
+
+  constructor(lotNos: string[]) {
+    super('서버가 현재 LOT을 하나로 정하지 못했습니다.');
+    this.name = 'CurrentLotUnreliableError';
+    this.lotNos = lotNos;
+  }
+}
+
+/**
  * 서버가 고른 현재 LOT 한 건(`currentOnly`). 그 W/O 의 미마감 생산 LOT 중 진행 중이 먼저, 그다음
  * 회차가 앞선 것이다 — 화면이 목록 첫 줄을 현재 LOT 으로 추측하지 않는다. 0건이면 생산할 LOT 이
  * 남지 않은 것이다.
@@ -59,6 +73,10 @@ export const useCurrentLot = (workOrderId: number | null): UseQueryResult<Lot | 
       const data = await runRequest(() =>
         client.GET('/trace/lots', { params: { query: { workOrderId, currentOnly: true } } }),
       );
+      const [first] = data.items;
+      if (data.items.length > 1 || (first?.completedAt ?? null) !== null) {
+        throw new CurrentLotUnreliableError(data.items.map((lot) => lot.lotNo));
+      }
 
       return data.items[0] ?? null;
     },

@@ -22,6 +22,9 @@ const LOT_ETAG = '"7"';
 const WORK_ORDER_ID = 701;
 const WORK_SESSION_ID = 8801;
 const pathOf = (request: Request): string => new URL(request.url).pathname;
+const NO_LOT_TEXT = t.flow.currentLot.none(
+  `${messages.productionOrder.breadcrumbRoot} › ${messages.workOrderClose.title}`,
+);
 
 const routes = (writes: Request[]): StubRoute[] => [
   {
@@ -1674,7 +1677,7 @@ describe('ProductionFlowScreen · 자동 종료는 한 번만 나간다', () => 
 
     renderScreen(writes, [emptyLots]);
 
-    await screen.findByText(t.flow.currentLot.none);
+    await screen.findByText(NO_LOT_TEXT);
 
     expect(screen.getByLabelText(t.flow.quantity.actual)).toBeDisabled();
     expect(screen.queryByText(t.flow.quantity.invalid)).not.toBeInTheDocument();
@@ -1694,7 +1697,7 @@ describe('ProductionFlowScreen · 자동 종료는 한 번만 나간다', () => 
 
     renderScreen(writes, [emptyLots]);
 
-    expect(await screen.findByText(t.flow.currentLot.none)).toBeInTheDocument();
+    expect(await screen.findByText(NO_LOT_TEXT)).toBeInTheDocument();
     expect(writes.some((request) => pathOf(request) === END_PATH)).toBe(false);
   });
 });
@@ -2877,7 +2880,7 @@ describe('ProductionFlowScreen 현재 LOT', () => {
     await user.type(scan, LOT_NO);
 
     expect((await screen.findAllByText(NEXT_LOT_NO)).length).toBeGreaterThan(0);
-    expect(screen.queryByText(t.flow.currentLot.none)).toBeNull();
+    expect(screen.queryByText(NO_LOT_TEXT)).toBeNull();
     expect(currentOnly.every((value) => value === 'true')).toBe(true);
   });
 
@@ -2892,7 +2895,32 @@ describe('ProductionFlowScreen 현재 LOT', () => {
       ],
     );
 
-    expect(await screen.findByText(t.flow.currentLot.none)).toBeInTheDocument();
+    expect(await screen.findByText(NO_LOT_TEXT)).toBeInTheDocument();
+  });
+
+  it.each([
+    ['두 건 이상', [lotRow(LOT_ID, LOT_NO), lotRow(NEXT_LOT_ID, NEXT_LOT_NO)]],
+    [
+      '이미 마감된 한 건',
+      [{ ...lotRow(LOT_ID, LOT_NO), completedAt: '2026-10-22T09:00:00+09:00' }],
+    ],
+  ])('서버가 현재 LOT 을 하나로 정하지 못하면(%s) 쓰지 않고 막는다', async (_case, items) => {
+    renderScreen(
+      [],
+      [
+        {
+          match: (request) =>
+            pathOf(request) === '/trace/lots' &&
+            new URL(request.url).searchParams.get('completed') !== 'true',
+          respond: () => jsonResponse({ items, page: { page: 1, size: 20, total: items.length } }),
+        },
+      ],
+    );
+
+    const lotNos = items.map((item) => item.lotNo).join(', ');
+    expect(await screen.findByText(t.flow.currentLot.unreliable(lotNos))).toBeInTheDocument();
+    expect(screen.getByLabelText(t.flow.quantity.actual)).toBeDisabled();
+    expect(screen.getByRole('button', { name: t.flow.output.issue })).toBeDisabled();
   });
 
   it('현재 LOT 을 못 불러오면 다시 시도할 길을 준다', async () => {

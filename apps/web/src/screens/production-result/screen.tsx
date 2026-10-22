@@ -43,6 +43,7 @@ import {
 } from './session';
 import { buildProductionLotLabel } from './label-tspl';
 import {
+  CurrentLotUnreliableError,
   defaultPrinter,
   latestIssue,
   useCompletedLots,
@@ -1233,27 +1234,42 @@ export const ProductionFlowScreen = () => {
         </div>
       )}
 
-      {currentLot.isError && (
+      {currentLot.error instanceof CurrentLotUnreliableError ? (
         <div className="banner-slot">
           <AlertBanner
-            variant="error"
-            title={t.flow.currentLot.loadFailed}
-            action={
-              <Button
-                variant="outlined"
-                size="sm"
-                disabled={currentLot.isFetching}
-                onClick={() => void currentLot.refetch()}
-              >
-                {t.flow.retry}
-              </Button>
-            }
+            variant="warning"
+            title={t.flow.currentLot.unreliable(currentLot.error.lotNos.join(', '))}
           />
         </div>
+      ) : (
+        currentLot.isError && (
+          <div className="banner-slot">
+            <AlertBanner
+              variant="error"
+              title={t.flow.currentLot.loadFailed}
+              action={
+                <Button
+                  variant="outlined"
+                  size="sm"
+                  disabled={currentLot.isFetching}
+                  onClick={() => void currentLot.refetch()}
+                >
+                  {t.flow.retry}
+                </Button>
+              }
+            />
+          </div>
+        )
       )}
       {currentLot.data === null && (
         <div className="banner-slot">
-          <AlertBanner variant="info" title={t.flow.currentLot.none} />
+          <AlertBanner
+            variant="info"
+            title={t.flow.currentLot.none(
+              /* 메뉴 이름은 그 화면의 문구를 받아 쓴다 — 이름이 바뀌어도 어긋나지 않게. */
+              `${messages.productionOrder.breadcrumbRoot} › ${messages.workOrderClose.title}`,
+            )}
+          />
         </div>
       )}
       {workOrderPqc.isError && (
