@@ -1,13 +1,14 @@
 import { screen, waitFor } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import {
   createStubFetch,
   jsonResponse,
+  renderHookWithProviders,
   renderWithProviders,
   type StubRoute,
 } from '../../test/api-harness';
-import { usePrinters, useSerials, useTagIssueSummary } from './flow-queries';
+import { useCurrentLot, usePrinters, useSerials, useTagIssueSummary } from './flow-queries';
 
 const pathOf = (request: Request): string => new URL(request.url).pathname;
 
@@ -112,5 +113,37 @@ describe('P-02-04 계약 경계 조회', () => {
     await screen.findByText('ready');
     await waitFor(() => expect(documentTypes).toHaveLength(2));
     expect(documentTypes.sort()).toEqual(['IDENTIFICATION_TAG', 'PRODUCTION_LOT_LABEL']);
+  });
+});
+
+describe('useCurrentLot', () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it('배포 빌드에서도 서버에 현재 LOT 한 건을 묻고, 0건이면 null 이다', async () => {
+    vi.stubEnv('MODE', 'production');
+    const urls: URL[] = [];
+    let items: unknown[] = [{ lotId: 11, lotNo: 'LOT-11' }];
+    const fetch = createStubFetch([
+      {
+        match: (request) => pathOf(request) === '/trace/lots',
+        respond: (request) => {
+          urls.push(new URL(request.url));
+          return jsonResponse({ items, page: { page: 1, size: 1, total: items.length } });
+        },
+      },
+    ]);
+
+    const { result } = renderHookWithProviders(() => useCurrentLot(701), { fetch });
+    await waitFor(() => expect(result.current.data).toEqual({ lotId: 11, lotNo: 'LOT-11' }));
+    expect(urls[0]?.searchParams.get('workOrderId')).toBe('701');
+    expect(urls[0]?.searchParams.get('currentOnly')).toBe('true');
+    expect(urls[0]?.searchParams.has('completed')).toBe(false);
+    expect(urls[0]?.searchParams.has('size')).toBe(false);
+
+    items = [];
+    await result.current.refetch();
+    await waitFor(() => expect(result.current.data).toBeNull());
   });
 });

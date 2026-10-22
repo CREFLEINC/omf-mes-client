@@ -25,10 +25,8 @@ export const productionResult: Translated<typeof ko.productionResult> = {
       pageDown: 'Trang dưới',
       pagePosition: (page: number, totalPages: number) =>
         `Trang ${String(page)}/${String(totalPages)}`,
-      none: 'Không có LOT để sản xuất. Hãy đóng W/O trên Web quản trị.',
-      loadFailed: 'Không tải được LOT hiện tại.',
-      ambiguous:
-        'Lệnh sản xuất này có từ hai LOT đang chạy trở lên nên không xác định được LOT hiện tại. Hãy đóng LOT trên Web quản trị trước.',
+      none: 'W/O này không còn LOT để sản xuất (mọi LOT đã đóng). Nếu đã sản xuất xong, hãy đóng ở «Đóng W/O» trên Web quản trị; nếu cần làm thêm, hãy nhờ quản trị viên phát hành thêm LOT ở «Xác nhận · phát hành W/O».',
+      loadFailed: 'Không tải được LOT hiện tại. Hãy kiểm tra kết nối rồi bấm «Thử lại».',
     },
     quantity: {
       title: 'Số lượng sản xuất',

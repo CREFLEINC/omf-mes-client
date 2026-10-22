@@ -46,7 +46,6 @@ import {
   defaultPrinter,
   latestIssue,
   useCompletedLots,
-  CurrentLotAmbiguousError,
   useCurrentLot,
   useLotDetail,
   useItem,
@@ -355,7 +354,6 @@ export const ProductionFlowScreen = () => {
     parsedQty === null || serialCount === null
       ? null
       : missingIdentificationCount(parsedQty, serialCount);
-  const isCurrentLotAmbiguous = currentLot.error instanceof CurrentLotAmbiguousError;
   const lot = currentLot.data ?? null;
   /* 진척은 상세에만 실린다(#1095) — 목록의 줄에서 찾으면 늘 「모름」이 된다. */
   const serverAppliedQty = appliedGoodQty(lotDetail.data?.lot);
@@ -1235,19 +1233,22 @@ export const ProductionFlowScreen = () => {
         </div>
       )}
 
-      {/*
-       * ⛔ **가릴 수 없는 것과 못 불러온 것을 갈라 말한다**(#1095). 앞엣것은 다시 시도해도
-       *    풀리지 않고 작업자가 할 일이 다르다 — 「불러오지 못했다」로 뭉뚱그리면 현장이
-       *    새로고침만 반복한다.
-       */}
       {currentLot.isError && (
         <div className="banner-slot">
           <AlertBanner
-            variant={isCurrentLotAmbiguous ? 'warning' : 'error'}
-            title={isCurrentLotAmbiguous ? undefined : t.flow.currentLot.loadFailed}
-          >
-            {isCurrentLotAmbiguous ? t.flow.currentLot.ambiguous : undefined}
-          </AlertBanner>
+            variant="error"
+            title={t.flow.currentLot.loadFailed}
+            action={
+              <Button
+                variant="outlined"
+                size="sm"
+                disabled={currentLot.isFetching}
+                onClick={() => void currentLot.refetch()}
+              >
+                {t.flow.retry}
+              </Button>
+            }
+          />
         </div>
       )}
       {currentLot.data === null && (
