@@ -520,7 +520,10 @@ export const WorkOrderCloseCandidateScreen = () => {
       />
       <div className="work-order-close-content">
         <WorkOrderCloseCandidateListPane
-          rows={toWorkOrderCloseCandidateRows(candidates, itemNames.items, uoms)}
+          rows={toWorkOrderCloseCandidateRows(candidates, itemNames.items, uoms, (code) => {
+            const value = status.data?.items.find((item) => item.code === code);
+            return value === undefined ? code : toWorkOrderCloseCodeLabel(value);
+          })}
           selectedWorkOrderId={state.selectedWorkOrderId}
           isLoading={initialization.kind === 'CHECKING' || candidate.isFetching}
           loadError={loadError}

@@ -1,3 +1,5 @@
+import { messages } from '@omf-mes/i18n';
+
 import type { WorkOrderCloseCandidateRow } from './candidate-list-pane';
 import {
   describeWorkOrderCloseItemReference,
@@ -8,7 +10,7 @@ import {
 } from './candidate-references';
 import type { WorkOrderCloseFilterValues } from './filter-bar';
 import type { WorkOrderCloseFilterInitialization } from './filter-initialization';
-import type { WorkOrderCloseFact, WorkOrderCloseFilters } from './queries';
+import type { WorkOrderCloseCandidateFact, WorkOrderCloseFilters } from './queries';
 
 export interface WorkOrderCloseCandidateScreenState {
   initializationKind: WorkOrderCloseFilterInitialization['kind'];
@@ -128,10 +130,15 @@ export const toWorkOrderCloseCandidateFilters = (
   };
 };
 
+const listText = messages.workOrderClose.candidateList;
+
+const achievementLabel = (rate: number): string => `${String(Math.round(rate * 100))}%`;
+
 export const toWorkOrderCloseCandidateRows = (
-  candidates: readonly WorkOrderCloseFact[],
+  candidates: readonly WorkOrderCloseCandidateFact[],
   itemReferences: readonly WorkOrderCloseItemReference[],
   uomSource: WorkOrderCloseUomReferenceSource,
+  statusLabel: (statusCode: string) => string = (statusCode) => statusCode,
 ): WorkOrderCloseCandidateRow[] =>
   candidates.map((candidate) => {
     const itemReference = itemReferences.find((reference) => reference.itemId === candidate.itemId);
@@ -144,6 +151,21 @@ export const toWorkOrderCloseCandidateRows = (
       workOrderId: candidate.workOrderId,
       workOrderNo: candidate.workOrderNo,
       itemLabel,
+      statusLabel: statusLabel(candidate.statusCode),
       quantityLabel: toWorkOrderCloseQuantityLabel(candidate.orderQty, uom),
+      goodQtyLabel:
+        candidate.progress === null
+          ? listText.values.unknown
+          : toWorkOrderCloseQuantityLabel(candidate.progress.goodQty, uom),
+      achievementLabel:
+        candidate.progress === null
+          ? listText.values.unknown
+          : achievementLabel(candidate.progress.achievementRate),
+      judgmentLabel:
+        candidate.progress === null
+          ? listText.values.unknown
+          : messages.workOrderClose.detailSummary.judgments[
+              candidate.progress.completionJudgmentCode
+            ],
     };
   });

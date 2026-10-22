@@ -42,8 +42,13 @@ export interface WorkOrderCloseFilters {
   page: number;
 }
 
+/** 목록 줄도 진척을 싣는다 — 미달 건을 열어 보지 않고 찾게 한다. */
+export interface WorkOrderCloseCandidateFact extends WorkOrderCloseFact {
+  progress: WorkOrderProgress | null;
+}
+
 export interface WorkOrderCloseCandidatesResponse {
-  items: WorkOrderCloseFact[];
+  items: WorkOrderCloseCandidateFact[];
   page: PageMeta;
 }
 
@@ -177,7 +182,13 @@ export const useWorkOrderCloseCandidates = (
         }),
       );
 
-      return { items: data.items.map(toWorkOrderCloseFact), page: data.page };
+      return {
+        items: data.items.map((item) => ({
+          ...toWorkOrderCloseFact(item),
+          progress: item.progress === undefined ? null : { ...item.progress },
+        })),
+        page: data.page,
+      };
     },
   });
 };

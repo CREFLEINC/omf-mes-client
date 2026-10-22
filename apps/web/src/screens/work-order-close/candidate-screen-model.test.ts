@@ -12,7 +12,7 @@ import {
 } from './candidate-screen-model';
 import type { WorkOrderCloseFilterValues } from './filter-bar';
 import type { WorkOrderCloseFilterInitialization } from './filter-initialization';
-import type { WorkOrderCloseFact } from './queries';
+import type { WorkOrderCloseCandidateFact } from './queries';
 
 const t = messages.workOrderClose.candidateReferences;
 const emptyFilters: WorkOrderCloseFilterValues = {
@@ -70,7 +70,11 @@ const clearMissing = (
     type: 'CLEAR_MISSING_SELECTION',
     snapshot,
   });
-const fact = (workOrderId: number, itemId = 910001, uomId = 920001): WorkOrderCloseFact => ({
+const fact = (
+  workOrderId: number,
+  itemId = 910001,
+  uomId = 920001,
+): WorkOrderCloseCandidateFact => ({
   workOrderId,
   workOrderNo: `SYN-WO-${String(workOrderId)}`,
   productionPlanId: 501,
@@ -96,6 +100,7 @@ const fact = (workOrderId: number, itemId = 910001, uomId = 920001): WorkOrderCl
   closedWorkerNo: null,
   closedWorkerName: null,
   voidedLotCount: null,
+  progress: null,
   defaultWipLocationId: null,
   defaultFgLocationId: null,
   defaultScrapLocationId: null,
@@ -227,13 +232,21 @@ describe('work-order close candidate projections', () => {
         workOrderId: 702,
         workOrderNo: 'SYN-WO-702',
         itemLabel: 'SYN-ITEM-2 · Synthetic Item 2',
+        statusLabel: 'IN_PROGRESS',
         quantityLabel: '12.5 SYN-KG · Synthetic Kilogram',
+        goodQtyLabel: '—',
+        achievementLabel: '—',
+        judgmentLabel: '—',
       },
       {
         workOrderId: 701,
         workOrderNo: 'SYN-WO-701',
         itemLabel: 'SYN-ITEM · Synthetic Item',
+        statusLabel: 'IN_PROGRESS',
         quantityLabel: '12.5 SYN-EA · Synthetic Each',
+        goodQtyLabel: '—',
+        achievementLabel: '—',
+        judgmentLabel: '—',
       },
     ]);
     expect({ candidates, namedReferences, source }).toEqual(snapshot);
@@ -262,10 +275,40 @@ describe('work-order close candidate projections', () => {
           workOrderId: 701,
           workOrderNo: 'SYN-WO-701',
           itemLabel,
+          statusLabel: 'IN_PROGRESS',
           quantityLabel: `12.5 ${uomLabel}`,
+          goodQtyLabel: '—',
+          achievementLabel: '—',
+          judgmentLabel: '—',
         },
       ]);
       expect(JSON.stringify(rows)).not.toMatch(/910001|920001/);
     },
   );
+
+  it('목록 줄에 상태 이름·양품·달성률·판정을 한 칸에 하나씩 싣는다', () => {
+    const rows = toWorkOrderCloseCandidateRows(
+      [
+        {
+          ...fact(701),
+          progress: { goodQty: 4, achievementRate: 0.4, completionJudgmentCode: 'UNDER' },
+        },
+      ],
+      [{ itemId: 910001, status: 'named', label: 'SYN-ITEM' }],
+      {
+        entries: [{ uomId: 920001, label: 'EA' }],
+        isLoading: false,
+        isError: false,
+        truncated: false,
+      },
+      (code) => (code === 'IN_PROGRESS' ? '진행' : code),
+    );
+
+    expect(rows[0]).toMatchObject({
+      statusLabel: '진행',
+      goodQtyLabel: '4 EA',
+      achievementLabel: '40%',
+      judgmentLabel: '미달',
+    });
+  });
 });

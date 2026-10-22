@@ -59,9 +59,17 @@ export const workOrderClose: Translated<typeof ko.workOrderClose> = {
   },
   candidateList: {
     pane: 'Danh sách lệnh sản xuất ứng viên đóng',
-    fields: { workOrderNo: 'Số W/O', item: 'Mặt hàng', quantity: 'Số lượng lệnh' },
+    fields: {
+      workOrderNo: 'Số W/O',
+      item: 'Mặt hàng',
+      status: 'Trạng thái',
+      quantity: 'Số lượng lệnh',
+      goodQty: 'Đạt',
+      achievementRate: 'Tỷ lệ đạt',
+      judgment: 'Đánh giá',
+    },
     actions: { select: (workOrderNo: string) => `Chọn ${workOrderNo}` },
-    values: { missingItem: 'Không có tên hiển thị mặt hàng' },
+    values: { missingItem: 'Không có tên hiển thị mặt hàng', unknown: '—' },
     loading: 'Đang tải danh sách lệnh sản xuất ứng viên đóng.',
     empty: {
       title: 'Không có lệnh sản xuất ứng viên đóng.',

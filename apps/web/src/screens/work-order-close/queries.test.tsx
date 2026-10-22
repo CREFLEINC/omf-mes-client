@@ -154,7 +154,7 @@ describe('work-order close reads', () => {
     expect(requests).toHaveLength(0);
   });
 
-  it('gets candidates with exact filters, preserves server order and page, and exposes only three close facts', async () => {
+  it('gets candidates with exact filters, preserves server order and page, and keeps list progress', async () => {
     const { fetch, requests } = recordingFetch([
       getRoute(LIST_PATH, {
         items: [
@@ -200,15 +200,15 @@ describe('work-order close reads', () => {
           completedAt: '2026-08-23T10:00:00+09:00',
           completionVarianceReasonCode: 'SYN-VARIANCE',
           closedAt: '2026-08-23T11:00:00+09:00',
+          progress: { achievementRate: 1, completionJudgmentCode: 'NORMAL', goodQty: 12.5 },
         },
-        closeFact(701),
+        { ...closeFact(701), progress: null },
       ],
       page: { page: 3, size: 20, total: 22 },
     });
     expect(result.current.data?.items[0]).not.toHaveProperty('versionNo');
     expect(result.current.data?.items[0]).not.toHaveProperty('releasedAt');
     expect(result.current.data?.items[0]).not.toHaveProperty('operationSettingsSnapshot');
-    expect(result.current.data?.items[0]).not.toHaveProperty('progress');
     expect(result.current.data?.items[0]).not.toHaveProperty('preIssuedLots');
   });
 

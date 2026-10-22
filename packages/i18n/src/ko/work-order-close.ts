@@ -45,9 +45,17 @@ export const workOrderClose = {
   },
   candidateList: {
     pane: '마감 후보 작업지시 목록',
-    fields: { workOrderNo: 'W/O 번호', item: '품목', quantity: '지시 수량' },
+    fields: {
+      workOrderNo: 'W/O 번호',
+      item: '품목',
+      status: '상태',
+      quantity: '지시 수량',
+      goodQty: '양품',
+      achievementRate: '달성률',
+      judgment: '판정',
+    },
     actions: { select: (workOrderNo: string): string => `${workOrderNo} 선택` },
-    values: { missingItem: '품목 표시명 없음' },
+    values: { missingItem: '품목 표시명 없음', unknown: '—' },
     loading: '마감 후보 작업지시 목록을 불러오는 중입니다.',
     empty: {
       title: '마감 후보 작업지시가 없습니다.',
