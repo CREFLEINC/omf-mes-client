@@ -19058,3 +19058,370 @@ body:has(.goods-receipt-post-form) > [role='listbox'] {
 .sheet-print__footer p {
   margin: 0;
 }
+
+/*
+ * W-03-11 PQC 검사 등록·조회 관리웹(omf-all-around#135) — IQC 판정 화면(#133)과 같은 짜임·모양.
+ * POP 의 PQC 패널(분할 화면)은 `pqc-panel`·`pop-*` 그대로다 — 이 규칙은 관리웹 상세·목록만 잡는다.
+ */
+.pqc-web-detail,
+.pqc-web-list {
+  position: relative;
+  container-type: inline-size;
+}
+
+.pqc-web-list {
+  display: grid;
+  gap: var(--space-3);
+}
+
+/* 목록 — 의뢰번호 · 작업지시 · 품목은 왼쪽, 검사 수량 · 상태는 가운데. 줄 아무 곳이나 눌러 연다. */
+.pqc-web-queue table {
+  table-layout: fixed;
+  width: 100%;
+}
+
+.pqc-web-queue th:nth-child(n + 4),
+.pqc-web-queue td:nth-child(n + 4) {
+  text-align: center;
+}
+
+.pqc-web-queue th:first-child,
+.pqc-web-queue td:first-child {
+  padding-inline-start: var(--space-7);
+}
+
+.pqc-web-queue tbody tr {
+  cursor: pointer;
+}
+
+.pqc-web-queue tbody tr:hover {
+  background: var(--state-hover-neutral);
+}
+
+.pqc-web-queue-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  line-height: 1.35;
+}
+
+.pqc-web-queue-item-name {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.pqc-web-queue-item-code {
+  color: var(--on-surface-muted);
+  font: var(--type-body-sm);
+}
+
+/* 목록으로 — 크게, 그 아래 구획과 띄운다. */
+.pqc-web-back {
+  margin-bottom: var(--space-3);
+}
+
+.pqc-web-back-button {
+  font: var(--type-title-sm);
+  letter-spacing: var(--type-title-sm-tracking);
+}
+
+/* 구획 — 제목 · 얇은 구분선 · 간격(IQC 와 같다). 첫 구획(기본 정보)은 선이 없다. */
+.pqc-web-section {
+  display: grid;
+  gap: var(--space-3);
+  padding-block: var(--space-5);
+  border-top: 1px solid var(--outline-variant);
+}
+
+.pqc-web-summary {
+  padding-top: 0;
+  border-top: 0;
+}
+
+.pqc-web-section h3 {
+  margin: 0;
+  color: var(--on-surface);
+  font: var(--type-title-sm);
+  letter-spacing: var(--type-title-sm-tracking);
+}
+
+.pqc-web-section p,
+.pqc-web-section dl,
+.pqc-web-section dd {
+  margin: 0;
+}
+
+.pqc-web-section-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-2) var(--space-3);
+}
+
+.pqc-web-section-meta {
+  margin-inline-start: auto;
+  color: var(--on-surface-muted);
+}
+
+/* 기본 정보 — 좁으면 두 칸, 넓으면 네 칸. 첫 줄(대상)은 굵게. */
+.pqc-web-facts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-3) var(--space-5);
+}
+
+@container (min-width: 48rem) {
+  .pqc-web-facts {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 2fr) minmax(0, 0.8fr);
+  }
+}
+
+.pqc-web-fact {
+  display: grid;
+  align-content: start;
+  gap: var(--space-1);
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.pqc-web-fact-key {
+  font: var(--type-title-sm);
+  letter-spacing: var(--type-title-sm-tracking);
+}
+
+.pqc-web-fact-item {
+  display: grid;
+}
+
+.pqc-web-fact-item-code {
+  color: var(--on-surface-muted);
+  font: var(--type-body-sm);
+}
+
+/* 검사 항목별 결과 — 테두리 상자 표, 항목명은 칸 가운데 · 필수는 이름 바로 왼쪽(IQC 와 같다). */
+.pqc-web-table-box {
+  overflow: hidden;
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-md);
+}
+
+.pqc-web-table-box th,
+.pqc-web-table-box td {
+  text-align: center;
+  vertical-align: middle;
+}
+
+.pqc-web-item-cell {
+  display: grid;
+  grid-template-columns: minmax(2.75rem, 1fr) minmax(0, auto) minmax(2.75rem, 1fr);
+  align-items: center;
+  column-gap: var(--space-2);
+}
+
+.pqc-web-item-cell > :not(.pqc-web-item-name) {
+  grid-column: 1;
+  justify-self: end;
+}
+
+.pqc-web-item-name {
+  grid-column: 2;
+  grid-row: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.pqc-web-value-cell,
+.pqc-web-judgment-cell {
+  display: inline-flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.pqc-web-value-cell input {
+  text-align: center;
+}
+
+.pqc-web-judgment-buttons {
+  display: inline-flex;
+  gap: var(--space-2);
+}
+
+/* 검사 수량 입력 — 검사 수량 · 합격 · 불합격 · 보류 네 칸, 칸 옆 단위, 넘치면 네 칸 테두리 빨강. */
+.pqc-web-qty {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  align-items: start;
+  gap: var(--space-4);
+}
+
+@container (max-width: 40rem) {
+  .pqc-web-qty {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.pqc-web-qty input {
+  text-align: center;
+}
+
+.pqc-web-qty[data-over] [class*='_inputWrap'] {
+  box-shadow: inset 0 0 0 1px var(--semantic-error-text);
+}
+
+.pqc-web-qty-field {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  column-gap: var(--space-2);
+}
+
+.pqc-web-qty-unit {
+  display: flex;
+  align-items: center;
+  height: var(--control-height-md);
+  margin-top: var(--field-label-layer);
+  color: var(--on-surface);
+  font-weight: 600;
+}
+
+/* 입력 현황 — 진행 노랑 · 완료 초록 · 초과 빨강(막대 색은 Progress tone). */
+.pqc-web-progress {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.pqc-web-progress-row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: var(--space-2) var(--space-4);
+}
+
+.pqc-web-progress-sum,
+.pqc-web-progress-status {
+  font-weight: 600;
+}
+
+.pqc-web-progress-label {
+  color: var(--on-surface-muted);
+  font-weight: 400;
+}
+
+.pqc-web-progress[data-state='done'] .pqc-web-progress-status {
+  color: var(--semantic-success-text);
+}
+
+.pqc-web-progress[data-state='over'] .pqc-web-progress-status,
+.pqc-web-progress[data-state='over'] > .field-note {
+  color: var(--semantic-error-text);
+}
+
+.pqc-web-progress[data-state='over'] > .field-note {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  max-width: none;
+}
+
+.pqc-web-progress[data-state='over'] > .field-note::before {
+  content: 'error';
+  font-family: 'Material Symbols Rounded';
+  font-size: 16px;
+  line-height: 1;
+}
+
+/* 판정 — 최종 판정(20rem) · 불합격 처분. 고른 판정을 왼쪽 강조선 색으로. */
+.pqc-web-judgment {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: var(--space-4) var(--space-7);
+}
+
+.pqc-web-judgment-field {
+  align-items: stretch;
+  width: 100%;
+  max-width: 20rem;
+}
+
+.pqc-web-judgment-field[data-judgment='ACCEPTED'] button[role='combobox'] {
+  box-shadow: inset 3px 0 0 var(--semantic-success);
+}
+
+.pqc-web-judgment-field[data-judgment='REJECTED'] button[role='combobox'] {
+  box-shadow: inset 3px 0 0 var(--semantic-error);
+}
+
+.pqc-web-judgment-field[data-judgment='HELD'] button[role='combobox'] {
+  box-shadow: inset 3px 0 0 var(--semantic-warning);
+}
+
+.pqc-web-label-hint {
+  margin-left: var(--space-2);
+  color: var(--on-surface-muted);
+  font: var(--type-label-sm);
+  font-weight: 400;
+}
+
+.pqc-web-disposition {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-5);
+}
+
+/* 저장 · 확정 줄 — 오른쪽 끝 단추 묶음, 바로 왼쪽에 지금 상황 한 줄(표식·글 폭만큼 바탕). */
+.pqc-web-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+  padding-top: var(--space-3);
+}
+
+.pqc-web-action-notes {
+  display: flex;
+  flex: 1 1 16rem;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+  min-width: 0;
+}
+
+.pqc-web-action-notes > .field-note {
+  margin: 0;
+}
+
+.pqc-web-action-note {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-sm);
+  font: var(--type-body-md);
+}
+
+.pqc-web-action-note[data-tone='info'] {
+  background: var(--semantic-info-container);
+  color: var(--on-semantic-info-container);
+}
+
+.pqc-web-action-note[data-tone='warning'] {
+  background: var(--semantic-warning-container);
+  color: var(--on-semantic-warning-container);
+}
+
+.pqc-web-action-buttons {
+  display: flex;
+  gap: var(--space-2);
+  margin-inline-start: auto;
+}

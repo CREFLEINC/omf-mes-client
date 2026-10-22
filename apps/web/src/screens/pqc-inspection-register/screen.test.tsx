@@ -117,13 +117,12 @@ const renderScreen = (options: RenderOptions = {}) => {
   return { saves, queueQueries, releaseSave: () => releaseSave() };
 };
 
+const web = t.web;
+
+/* 목록 줄의 의뢰번호 단추로 상세를 연다(#135 — 목록과 상세가 나뉜 화면). */
 const openRequest = async (user: ReturnType<typeof userEvent.setup>) => {
-  await user.click(
-    await screen.findByRole('button', {
-      name: messages.oqcInspection.queue.openRow(REQUEST.inspectionRequestNo),
-    }),
-  );
-  return within(screen.getByRole('region', { name: t.detail.paneLabel }));
+  await user.click(await screen.findByRole('button', { name: REQUEST.inspectionRequestNo }));
+  return within(await screen.findByRole('region', { name: t.detail.paneLabel }));
 };
 
 describe('PqcInspectionRegisterScreen (W-03-11)', () => {
@@ -135,41 +134,58 @@ describe('PqcInspectionRegisterScreen (W-03-11)', () => {
     expect(queueQueries[0]?.get('pendingOnly')).toBe('true');
   });
 
-  it('패널 머리줄은 내부 id 가 아니라 W/O 번호·품목 코드를 보인다 — LOT 이 없으면 「—」', async () => {
-    const user = userEvent.setup();
+  it('목록은 내부 번호가 아니라 작업지시 번호·품목 이름·코드를 보인다(#135)', async () => {
     renderScreen();
 
-    await user.click(
-      await screen.findByRole('button', {
-        name: messages.oqcInspection.queue.openRow(REQUEST.inspectionRequestNo),
-      }),
-    );
+    expect(await screen.findByText('WO-20261016-0701')).toBeInTheDocument();
+    expect(await screen.findByText('합성 품목')).toBeInTheDocument();
+    expect(screen.getByText('F534F50200')).toBeInTheDocument();
+  });
 
-    const header = await screen.findByLabelText(pqc.detail.heading);
-    await waitFor(() =>
-      expect(header).toHaveTextContent(
-        `${pqc.detail.fields.workOrderId} WO-20261016-0701 · ${pqc.detail.fields.itemId} F534F50200 · ${pqc.detail.fields.lotId} ${pqc.emptyValue}`,
-      ),
-    );
+  it('상세의 검사 기본 정보는 작업지시 번호·품목 이름·코드를 보이고, LOT 이 없으면 「—」(#135)', async () => {
+    const user = userEvent.setup();
+    renderScreen();
+    await openRequest(user);
+
+    const summary = await screen.findByRole('region', { name: web.summary.heading });
+    await waitFor(() => expect(summary).toHaveTextContent('WO-20261016-0701'));
+    expect(summary).toHaveTextContent('합성 품목');
+    expect(summary).toHaveTextContent('F534F50200');
+    expect(summary).toHaveTextContent(web.summary.inspectionTypeName);
+    expect(summary).toHaveTextContent(`${web.summary.lot}${pqc.emptyValue}`);
+  });
+
+  it('목록으로 돌아갈 때 저장하지 않은 입력이 있으면 한 번 묻는다(#135)', async () => {
+    const user = userEvent.setup();
+    renderScreen();
+    const pane = await openRequest(user);
+
+    await user.type(await pane.findByRole('textbox', { name: web.quantity.accepted }), '1');
+    await user.click(screen.getByRole('button', { name: t.detail.backToList }));
+    expect(await screen.findByText(t.detail.leaveUnsaved)).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: t.detail.keepEditing }));
+    expect(pane.getByRole('textbox', { name: web.quantity.accepted })).toHaveValue('1');
+
+    await user.click(screen.getByRole('button', { name: t.detail.backToList }));
+    await user.click(await screen.findByRole('button', { name: t.detail.leaveAnyway }));
+    expect(
+      await screen.findByRole('button', { name: REQUEST.inspectionRequestNo }),
+    ).toBeInTheDocument();
   });
 
   it('고른 의뢰를 판정해 바로 저장한다 — 사번 헤더를 싣지 않는다', async () => {
     const user = userEvent.setup();
     const { saves } = renderScreen();
 
-    await user.click(
-      await screen.findByRole('button', {
-        name: messages.oqcInspection.queue.openRow(REQUEST.inspectionRequestNo),
-      }),
-    );
-    const pane = within(screen.getByRole('region', { name: t.detail.paneLabel }));
+    const pane = await openRequest(user);
 
-    await user.type(await pane.findByRole('textbox', { name: pqc.result.fields.accepted }), '5');
-    await user.type(pane.getByRole('textbox', { name: pqc.result.fields.rejected }), '0');
-    await user.type(pane.getByRole('textbox', { name: pqc.result.fields.held }), '0');
-    await user.click(pane.getByRole('combobox', { name: pqc.result.judgment }));
+    await user.type(await pane.findByRole('textbox', { name: web.quantity.accepted }), '5');
+    await user.type(pane.getByRole('textbox', { name: web.quantity.rejected }), '0');
+    await user.type(pane.getByRole('textbox', { name: web.quantity.held }), '0');
+    await user.click(pane.getByRole('combobox', { name: web.judgment.label }));
     await user.click(await screen.findByRole('option', { name: '합격' }));
-    await user.click(pane.getByRole('button', { name: pqc.result.confirm }));
+    await user.click(pane.getByRole('button', { name: web.actions.confirm }));
 
     await waitFor(() => expect(saves).toHaveLength(1));
     const [saved] = saves;
@@ -185,14 +201,14 @@ describe('PqcInspectionRegisterScreen (W-03-11)', () => {
     const { saves, releaseSave } = renderScreen({ holdSave: true });
     const pane = await openRequest(user);
 
-    await user.type(await pane.findByRole('textbox', { name: pqc.result.fields.accepted }), '5');
+    await user.type(await pane.findByRole('textbox', { name: web.quantity.accepted }), '5');
     await waitFor(() => expect(pane.getByRole('button', { name: pqc.result.save })).toBeEnabled());
     await user.click(pane.getByRole('button', { name: pqc.result.save }));
 
     await waitFor(() => expect(saves).toHaveLength(1));
     expect(pane.queryByText(pqc.result.saved)).not.toBeInTheDocument();
     expect(pane.getByRole('button', { name: pqc.result.save })).toBeDisabled();
-    expect(pane.getByRole('button', { name: pqc.result.confirm })).toBeDisabled();
+    expect(pane.getByRole('button', { name: web.actions.confirm })).toBeDisabled();
 
     releaseSave();
     expect(await pane.findByText(pqc.result.saved)).toBeInTheDocument();
@@ -203,13 +219,13 @@ describe('PqcInspectionRegisterScreen (W-03-11)', () => {
     const { saves, queueQueries } = renderScreen();
     const pane = await openRequest(user);
 
-    await user.type(await pane.findByRole('textbox', { name: pqc.result.fields.accepted }), '5');
-    await user.type(pane.getByRole('textbox', { name: pqc.result.fields.rejected }), '0');
-    await user.type(pane.getByRole('textbox', { name: pqc.result.fields.held }), '0');
-    await user.click(pane.getByRole('combobox', { name: pqc.result.judgment }));
+    await user.type(await pane.findByRole('textbox', { name: web.quantity.accepted }), '5');
+    await user.type(pane.getByRole('textbox', { name: web.quantity.rejected }), '0');
+    await user.type(pane.getByRole('textbox', { name: web.quantity.held }), '0');
+    await user.click(pane.getByRole('combobox', { name: web.judgment.label }));
     await user.click(await screen.findByRole('option', { name: '합격' }));
     const before = queueQueries.length;
-    await user.click(pane.getByRole('button', { name: pqc.result.confirm }));
+    await user.click(pane.getByRole('button', { name: web.actions.confirm }));
 
     await waitFor(() => expect(saves).toHaveLength(1));
     await waitFor(() => expect(queueQueries.length).toBeGreaterThan(before));
@@ -222,7 +238,7 @@ describe('PqcInspectionRegisterScreen (W-03-11)', () => {
 
     expect(await pane.findByText(messages.httpError.description)).toBeInTheDocument();
     expect(pane.getByRole('button', { name: pqc.result.save })).toBeDisabled();
-    expect(pane.getByRole('button', { name: pqc.result.confirm })).toBeDisabled();
+    expect(pane.getByRole('button', { name: web.actions.confirm })).toBeDisabled();
   });
 
   it('저장 뒤 재조회가 사람이 고친 칸을 되돌리지 않는다(리뷰 m1)', async () => {
@@ -233,7 +249,7 @@ describe('PqcInspectionRegisterScreen (W-03-11)', () => {
     });
     const pane = await openRequest(user);
 
-    const accepted = await pane.findByRole('textbox', { name: pqc.result.fields.accepted });
+    const accepted = await pane.findByRole('textbox', { name: web.quantity.accepted });
     await waitFor(() => expect(accepted).toHaveValue('3'));
     await user.clear(accepted);
     await user.type(accepted, '4');
@@ -242,6 +258,6 @@ describe('PqcInspectionRegisterScreen (W-03-11)', () => {
     await user.click(pane.getByRole('button', { name: pqc.result.save }));
 
     expect(await pane.findByText(pqc.result.saved)).toBeInTheDocument();
-    expect(pane.getByRole('textbox', { name: pqc.result.fields.accepted })).toHaveValue('4');
+    expect(pane.getByRole('textbox', { name: web.quantity.accepted })).toHaveValue('4');
   });
 });
