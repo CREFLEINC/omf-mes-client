@@ -181,7 +181,7 @@ export const MaterialDefectPane = ({ selection, isLocked }: MaterialDefectPanePr
       <h3>{t.affected.heading}</h3>
       <p className="field-note">
         <Chip variant="status" size="sm" status="warning">
-          {t.affected.estimate}
+          {affected.data?.basis === 'LOT_GENEALOGY_ESTIMATE' ? t.affected.genealogy : t.affected.estimate}
         </Chip>
       </p>
       {affected.isError ? (

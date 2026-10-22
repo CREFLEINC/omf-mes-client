@@ -76,6 +76,8 @@ export const materialDefect = {
     caption: 'Danh sách LOT sản xuất bị ảnh hưởng',
     estimate:
       'Ước tính theo lệnh sản xuất — toàn bộ LOT sản xuất của lệnh đã dùng vật tư này. Có thể rộng hơn các LOT thực sự sử dụng.',
+    genealogy:
+      'Ước tính theo thời điểm đưa vào — LOT sản xuất làm ra trước khi đưa LOT tiếp theo của cùng vật tư, cùng lệnh sản xuất.',
     none: 'Không có lệnh sản xuất nào đã dùng vật tư này.',
     loading: 'Đang tải phạm vi ảnh hưởng.',
     loadFailed: 'Không tải được phạm vi ảnh hưởng.',

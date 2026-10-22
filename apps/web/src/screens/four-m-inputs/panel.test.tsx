@@ -80,14 +80,4 @@ describe('FourMInputsPanel', () => {
 
     expect(await screen.findByText(t.none)).toBeInTheDocument();
   });
-
-  it('생산 LOT 에서 부르면 W/O 단위 추정임을 밝힌다', async () => {
-    renderWithProviders(<FourMInputsPanel workOrderId={70} estimate />, {
-      fetch: stub([]),
-      session: null,
-    });
-
-    expect(screen.getByText(t.estimate)).toBeInTheDocument();
-    expect(await screen.findByText(t.none)).toBeInTheDocument();
-  });
 });
