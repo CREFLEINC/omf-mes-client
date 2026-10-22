@@ -104,6 +104,8 @@ export interface ResultFormPaneProps {
   saveBlockedReason?: string | null;
   /** 종합 판정 바로 아래 칸 — 불합격 사유(omf-all-around#106). 화면이 판정에 따라 채운다. */
   judgmentDetail?: ReactNode;
+  /** 최종 판정 라벨 옆 보조 글 — 자동 판정 기준(#133). 없으면 두지 않는다 */
+  judgmentHint?: string;
   /** 4M 변경 정보 — 판정과 다른 업무라 판정 아래 소제목을 두고 따로 선다(#133). 없으면 구획을 두지 않는다 */
   fourMSlot?: ReactNode;
   /**
@@ -148,6 +150,7 @@ export const ResultFormPane = ({
   saveBlockedReason = null,
   judgmentDetail = null,
   fourMSlot = null,
+  judgmentHint,
   confirmOnlyBlockedReason = null,
   reinspectReplacement = null,
 }: ResultFormPaneProps) => {
@@ -357,7 +360,7 @@ export const ResultFormPane = ({
             className="field-cell iqc-inspection-judgment-field"
             data-judgment={judgment === '' ? undefined : judgment}
           >
-            <FieldLabel htmlFor={judgmentId} label={t.judgment} required />
+            <FieldLabel htmlFor={judgmentId} label={t.judgment} required hint={judgmentHint} />
             <Select
               id={judgmentId}
               options={judgmentOptions}

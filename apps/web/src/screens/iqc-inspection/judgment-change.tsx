@@ -47,7 +47,6 @@ export const needsJudgmentChangeReason = (
 ): boolean => expected !== null && judgment !== '' && judgment !== expected;
 
 export interface JudgmentChangeProps {
-  acceptanceNumber: number;
   needsReason: boolean;
   reason: string;
   onReasonChange: (reason: string) => void;
@@ -55,11 +54,10 @@ export interface JudgmentChangeProps {
 }
 
 /**
- * 종합 판정 아래 — 자동 판정의 기준 한 줄과, 다르게 고르면 필수 「판정 변경 사유」 칸(omf-all-around#125).
+ * 최종 판정과 다르게 고르면 필수 「판정 변경 사유」 칸(omf-all-around#125). 자동 판정 기준 글은 최종 판정 라벨 옆에 선다(#133).
  * 사유는 확정 요청에만 실린다(서버가 검사 비고 맨 앞에 남긴다 · P-70).
  */
 export const JudgmentChange = ({
-  acceptanceNumber,
   needsReason,
   reason,
   onReasonChange,
@@ -70,10 +68,6 @@ export const JudgmentChange = ({
 
   return (
     <>
-      <p className="field-note">
-        {/* 기준 한 줄만 — 자동으로 고른 결과는 바로 위 최종 판정 칸이 이미 보인다(#133). */}
-        {t.basis(acceptanceNumber)}
-      </p>
       {needsReason && (
         <div className="field-cell">
           <FieldLabel htmlFor={reasonId} label={t.reason} required />

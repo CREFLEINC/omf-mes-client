@@ -684,7 +684,6 @@ export const IqcInspectionScreen = () => {
             <>
               {acceptanceNumber !== null && isOpenRound && (
                 <JudgmentChange
-                  acceptanceNumber={acceptanceNumber}
                   needsReason={needsChangeReason}
                   reason={changeReason}
                   onReasonChange={setChangeReason}
@@ -701,6 +700,11 @@ export const IqcInspectionScreen = () => {
                 />
               )}
             </>
+          }
+          judgmentHint={
+            acceptanceNumber !== null && isOpenRound
+              ? t.result.judgmentChange.basis(acceptanceNumber)
+              : undefined
           }
           fourMSlot={
             hasFourMTarget && isOpenRound ? (
