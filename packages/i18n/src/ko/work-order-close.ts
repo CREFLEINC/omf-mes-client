@@ -130,10 +130,10 @@ export const workOrderClose = {
       `실적이 없는 선발행 LOT ${String(count)}건은 마감과 함께 폐번됩니다.`,
     openLots: (count: number, lotNos: string): string =>
       `마감되지 않은 LOT ${String(count)}건(${lotNos})은 그 상태로 남습니다.`,
-    /* 한 쪽만 읽어 진행 여부를 모르는 LOT 이 남았을 때 — 없다고 단정하지 않는다. */
     openLotsChecking: '진행 중인 LOT 을 확인하는 중입니다. 확인이 끝나면 마감할 수 있습니다.',
     openLotsUnknown:
       '진행 중인 LOT 을 확인하지 못했습니다. 마감해도 진행 중인 LOT 은 그 상태로 남습니다.',
+    /* 한 쪽만 읽어 진행 여부를 모르는 LOT 이 남았을 때 — 없다고 단정하지 않는다. */
     uncheckedLots: (count: number): string =>
       `확인하지 못한 미완료 LOT ${String(count)}건이 더 있습니다. 마감해도 그 LOT 은 그 상태로 남습니다.`,
     cancel: '취소',
