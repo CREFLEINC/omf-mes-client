@@ -1,7 +1,7 @@
 import { Button, Dialog } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { useContext, useEffect } from 'react';
-import { UNSAFE_DataRouterContext, useBlocker } from 'react-router';
+import { useEffect } from 'react';
+import { useBlocker } from 'react-router';
 
 const t = messages.routing.discard;
 
@@ -29,30 +29,35 @@ export const DiscardDialog = ({ onStay, onLeave }: DiscardDialogProps) => (
   </Dialog>
 );
 
-/** 다른 화면으로 가는 이동만 막는다 — 같은 화면 안의 Rev·품목 선택은 화면이 따로 묻는다. */
-const RouteBlocker = ({ when }: { when: boolean }) => {
-  const blocker = useBlocker(
-    ({ currentLocation, nextLocation }) =>
-      when && currentLocation.pathname !== nextLocation.pathname,
-  );
-  if (blocker.state !== 'blocked') return null;
-  return <DiscardDialog onStay={() => blocker.reset()} onLeave={() => blocker.proceed()} />;
-};
+export interface LeaveGuardProps {
+  when: boolean;
+  /**
+   * 같은 화면 안에서도 바뀌면 편집 대상이 바뀌는 질의 이름(예: 품목·Rev). 「뒤로」로 그 값만 바뀌어도
+   * 편집이 사라지므로 막는다.
+   */
+  watchedParams?: readonly string[];
+  /** 화면이 이미 물어 확인받은 이동 — 이번 한 번은 막지 않는다. 이동이 끝나면 화면이 되돌린다. */
+  bypassRef?: { current: boolean };
+}
 
 /**
- * 저장하지 않은 변경이 있는 동안 다른 화면으로 가는 이동(메뉴·뒤로가기)을 확인하고, 새로 고침·탭
- * 닫기는 브라우저 확인으로 막는다.
- *
- * ⚠ 화면 이동을 막는 것은 데이터 라우터에서만 된다 — 그 밖(일부 시험의 `MemoryRouter`)에서는
- *   브라우저 확인만 건다.
+ * 저장하지 않은 변경이 있는 동안 다른 화면으로 가거나 편집 대상(질의)이 바뀌는 이동(메뉴·뒤로가기)을
+ * 확인하고, 새로 고침·탭 닫기는 브라우저 확인으로 막는다. 데이터 라우터 안에서만 쓴다.
  */
-export const LeaveGuard = ({ when }: { when: boolean }) => {
-  const hasDataRouter = useContext(UNSAFE_DataRouterContext) !== null;
+export const LeaveGuard = ({ when, watchedParams = [], bypassRef }: LeaveGuardProps) => {
+  const blocker = useBlocker(({ currentLocation, nextLocation }) => {
+    if (!when || bypassRef?.current === true) return false;
+    if (currentLocation.pathname !== nextLocation.pathname) return true;
+    const current = new URLSearchParams(currentLocation.search);
+    const next = new URLSearchParams(nextLocation.search);
+    return watchedParams.some((name) => current.get(name) !== next.get(name));
+  });
   useEffect(() => {
     if (!when) return;
     const onBeforeUnload = (event: BeforeUnloadEvent) => event.preventDefault();
     window.addEventListener('beforeunload', onBeforeUnload);
     return () => window.removeEventListener('beforeunload', onBeforeUnload);
   }, [when]);
-  return hasDataRouter ? <RouteBlocker when={when} /> : null;
+  if (blocker.state !== 'blocked') return null;
+  return <DiscardDialog onStay={() => blocker.reset()} onLeave={() => blocker.proceed()} />;
 };

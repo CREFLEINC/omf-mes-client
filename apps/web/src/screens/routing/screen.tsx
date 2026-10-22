@@ -10,7 +10,7 @@ import {
 } from '@crefle/web-ui';
 import type { ApiClient, ApiError, components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router';
 
 import { useApiClient } from '../../patterns/api-context';
@@ -90,6 +90,9 @@ interface OperationDialogState {
 }
 
 const t = messages.routing;
+
+/** 바뀌면 편집 대상이 바뀌는 질의 — 품목과 Rev. */
+const EDIT_TARGET_PARAMS = ['item', 'rev'] as const;
 
 /**
  * 조회 실패의 원인을 한 줄 안내로 옮긴다.
@@ -329,14 +332,19 @@ const RoutingWorkspace = () => {
     });
   };
 
-  /** 품목을 바꾸면 Rev 선택을 지운다 — 다른 품목의 Rev를 가리키면 안 된다. */
   /** 다른 품목·Rev 로 옮기기 전 저장하지 않은 편집이 있으면 먼저 묻는다 — 옮기면 그 편집은 사라진다. */
   const [pendingMove, setPendingMove] = useState<(() => void) | null>(null);
+  /** 화면이 물어 확인받은 이동은 이동 감시(`LeaveGuard`)가 다시 묻지 않게 한다 */
+  const confirmedMoveRef = useRef(false);
   const guardMove = (move: () => void) => {
     if (hasUnsavedChanges) setPendingMove(() => move);
     else move();
   };
+  useEffect(() => {
+    confirmedMoveRef.current = false;
+  }, [searchParams]);
 
+  /** 품목을 바꾸면 Rev 선택을 지운다 — 다른 품목의 Rev를 가리키면 안 된다. */
   const handleSelectItem = (itemId: number) => {
     guardMove(() => {
       resetHeaderEditing();
@@ -526,6 +534,7 @@ const RoutingWorkspace = () => {
        * 201 응답에는 ETag가 없다 — 새 판을 고르면 상세를 다시 조회하게 되고
        * 그 조회가 잠금 토큰을 확보한다. 여기서 옮기지 않으면 사용자가 방금 만든 판을 직접 찾아야 한다.
        */
+      confirmedMoveRef.current = true;
       updateParams({ rev: String(saved.routingId) });
       toast.show({ variant: 'success', description: messages.common.created });
     },
@@ -557,6 +566,8 @@ const RoutingWorkspace = () => {
     onSuccess: (saved) => {
       setCreateValues(null);
       setCreateFieldErrors({});
+      /* 방금 저장했으니 잃을 편집이 없다 — 이동 감시가 묻지 않게 한다. */
+      confirmedMoveRef.current = true;
       updateParams({ rev: String(saved.routingId) });
       toast.show({ variant: 'success', description: messages.common.created });
     },
@@ -779,13 +790,18 @@ const RoutingWorkspace = () => {
 
   return (
     <>
-      <LeaveGuard when={hasUnsavedChanges} />
+      <LeaveGuard
+        when={hasUnsavedChanges}
+        watchedParams={EDIT_TARGET_PARAMS}
+        bypassRef={confirmedMoveRef}
+      />
       {pendingMove !== null && (
         <DiscardDialog
           onStay={() => setPendingMove(null)}
           onLeave={() => {
             const move = pendingMove;
             setPendingMove(null);
+            confirmedMoveRef.current = true;
             move();
           }}
         />
