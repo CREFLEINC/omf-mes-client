@@ -682,6 +682,9 @@ const RoutingWorkspace = () => {
   const removeBlockedReason = (draft: OperationDraft): string | null => {
     const operationId = draft.routingOperationId;
     if (operationId === null) return null;
+    /* 관계를 모르는 채 지우게 두면 서버가 라인 저장 전체를 거부한다 — 알 때까지 막는다. */
+    if (dependencyList.isPending) return t.actionReasons.removeBlockedWhileCheckingDependencies;
+    if (dependencyList.isError) return t.actionReasons.removeBlockedByDependencyLoadError;
 
     const relations = (dependencyList.data?.items ?? []).filter(
       (item) =>
@@ -694,7 +697,7 @@ const RoutingWorkspace = () => {
       const row = operationDrafts[index];
 
       return row === undefined
-        ? String(id)
+        ? t.dependencies.unknownOperation
         : t.dependencies.operationOption(index + 1, row.operationName);
     };
 

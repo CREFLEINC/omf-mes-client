@@ -105,7 +105,8 @@ export const DependencyDialog = ({
   const labelById = new Map(
     operations.map((operation) => [String(operation.routingOperationId), operation.label]),
   );
-  const operationLabel = (operationId: string): string => labelById.get(operationId) ?? operationId;
+  const operationLabel = (operationId: string): string =>
+    labelById.get(operationId) ?? td.unknownOperation;
   const operationOptions: SelectOption[] = operations.map((operation) => ({
     value: String(operation.routingOperationId),
     label: operation.label,
@@ -303,7 +304,12 @@ export const DependencyDialog = ({
     );
   };
 
-  const saveBlockedReason = hasErrors ? td.saveBlockedByInvalid : null;
+  const saveBlockedReason = ((): string | null => {
+    if (hasErrors) return td.saveBlockedByInvalid;
+    if (types.isPending) return td.saveBlockedWhileLoadingTypes;
+
+    return null;
+  })();
   const canSave = isDirty && !hasErrors && types.data !== undefined && !write.isSaving;
 
   return (

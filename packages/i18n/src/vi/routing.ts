@@ -42,6 +42,10 @@ export const routing: Translated<typeof ko.routing> = {
     dependenciesBlockedByUnsaved:
       'Không thể thiết lập trước sau khi còn dòng công đoạn chưa lưu. Hãy lưu hoặc hủy công đoạn trước.',
     dependenciesNeedOperations: 'Cần lưu ít nhất 2 công đoạn mới thiết lập được trước sau.',
+    removeBlockedWhileCheckingDependencies:
+      'Đang kiểm tra quan hệ trước sau. Hãy thử lại sau giây lát.',
+    removeBlockedByDependencyLoadError:
+      'Không tải được quan hệ trước sau nên không xác nhận được có xóa được hay không. Hãy tải lại trang rồi thử lại.',
     removeBlockedByDependencies: (relations: string): string =>
       `Công đoạn này đang có quan hệ trước sau (${relations}). Hãy xóa quan hệ đó ở [Thiết lập trước sau] trước rồi mới xóa công đoạn.`,
     compareRevisionsUnavailable:
@@ -224,11 +228,13 @@ export const routing: Translated<typeof ko.routing> = {
     rowField: (rowNo: number, field: string): string => `${field} dòng ${String(rowNo)}`,
     add: 'Thêm quan hệ',
     operationOption: (displayNo: number, name: string): string => `${String(displayNo)}. ${name}`,
+    unknownOperation: 'Công đoạn không xác định',
     loading: 'Đang tải quan hệ trước sau',
     noneTitle: 'Chưa có quan hệ trước sau',
     noneDescription: 'Dùng «Thêm quan hệ» để định thứ tự giữa các công đoạn.',
     typesLoadFailed:
       'Không tải được danh sách loại quan hệ. Hãy thử lại. Chưa tải xong thì chưa lưu được.',
+    saveBlockedWhileLoadingTypes: 'Đang tải danh sách loại quan hệ. Hãy lưu sau giây lát.',
     saveBlockedByInvalid:
       'Hãy sửa các vấn đề được đánh dấu trong bảng rồi mới lưu quan hệ trước sau.',
     stateLocked:

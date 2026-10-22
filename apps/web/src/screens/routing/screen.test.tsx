@@ -728,11 +728,22 @@ const renderDraftOperations = (extraRoutes: StubRoute[] = []) =>
       operationListRoute(),
       processListRoute(),
       ...extraRoutes,
+      /* 삭제 아이콘은 선후행을 확인한 뒤에야 풀린다 — 관계 없는 Rev 를 기본으로 둔다. */
+      dependencyListRoute(),
     ],
     '?item=5001&rev=7003',
   );
 
 const operationsRegion = (): HTMLElement => screen.getByRole('region', { name: '공정 라인' });
+
+const removeOperationButton = async (displayNo: number): Promise<HTMLElement> => {
+  const button = within(operationsRegion()).getByRole('button', {
+    name: `${String(displayNo)}번 공정 삭제`,
+  });
+  await waitFor(() => expect(button).toBeEnabled());
+
+  return button;
+};
 
 const operationRows = (): HTMLElement[] => within(operationsRegion()).getAllByRole('row').slice(1);
 
@@ -990,9 +1001,7 @@ describe('RoutingScreen — 공정 라인 편집과 일괄 저장', () => {
     const { requests, user } = renderDraftOperations([operationSaveRoute()]);
     await screen.findByText('1차 사출');
 
-    await user.click(
-      within(operationRows()[0] as HTMLElement).getByRole('button', { name: '1번 공정 삭제' }),
-    );
+    await user.click(await removeOperationButton(1));
 
     expect(operationNames()).toEqual(['2차 조립']);
     expect(savePuts(requests)).toHaveLength(0);
@@ -1002,9 +1011,7 @@ describe('RoutingScreen — 공정 라인 편집과 일괄 저장', () => {
     const { user } = renderDraftOperations([operationSaveRoute()]);
     await screen.findByText('1차 사출');
 
-    await user.click(
-      within(operationRows()[0] as HTMLElement).getByRole('button', { name: '1번 공정 삭제' }),
-    );
+    await user.click(await removeOperationButton(1));
     await user.click(within(operationsRegion()).getByRole('button', { name: '취소' }));
 
     expect(operationNames()).toEqual(['1차 사출', '2차 조립']);
@@ -1311,7 +1318,7 @@ describe('RoutingScreen — 신규 Rev 발행과 첫 Rev 등록', () => {
     const { user } = renderDraftOperations([transitionRoute('new-revision')]);
     await screen.findByText('1차 사출');
 
-    await user.click(within(operationsRegion()).getByRole('button', { name: '1번 공정 삭제' }));
+    await user.click(await removeOperationButton(1));
 
     expect(within(revisionRegion()).getByRole('button', { name: '신규 Rev 발행' })).toBeDisabled();
     expect(
@@ -1632,7 +1639,7 @@ describe('RoutingScreen — 공정 선후행 설정', () => {
     const { user } = renderDraftOperations();
 
     await screen.findByText('1차 사출');
-    await user.click(within(operationsRegion()).getByRole('button', { name: '2번 공정 삭제' }));
+    await user.click(await removeOperationButton(2));
 
     expect(within(operationsRegion()).getByRole('button', { name: '선후행 설정' })).toBeDisabled();
     expect(
@@ -1685,6 +1692,55 @@ describe('RoutingScreen — 선후행이 걸린 공정 삭제와 서버 거부',
     expect(within(operationsRegion()).getByRole('button', { name: '1번 공정 수정' })).toBeEnabled();
   });
 
+  it.each([
+    [
+      '받는 중',
+      (): Promise<Response> => new Promise<Response>(() => undefined),
+      '선후행을 확인하는 중입니다. 잠시 뒤 다시 시도하세요.',
+    ],
+    [
+      '실패',
+      async (): Promise<Response> => jsonResponse({ message: '합성 실패' }, { status: 500 }),
+      '선후행을 불러오지 못해 지울 수 있는지 확인할 수 없습니다. 새로고침한 뒤 다시 시도하세요.',
+    ],
+  ])('선후행 목록이 %s이면 삭제도 막고 그 까닭을 말한다', async (_case, respond, reason) => {
+    renderDraftOperations([{ match: (request) => isGet(request, DEPENDENCIES_PATH), respond }]);
+
+    await screen.findByText('1차 사출');
+    const button = within(operationsRegion()).getByRole('button', { name: '1번 공정 삭제' });
+    await waitFor(() => expect(button).toHaveAccessibleDescription(reason));
+    expect(button).toBeDisabled();
+  });
+
+  it('관계가 가리키는 공정이 표에 없으면 내부 번호 대신 「알 수 없는 공정」이라 말한다', async () => {
+    renderDraftOperations([dependencyListRoute([{ ...savedFs, successorOperationId: 9999 }])]);
+
+    await screen.findByText('1차 사출');
+    await waitFor(() =>
+      expect(
+        within(operationsRegion()).getByRole('button', { name: '1번 공정 삭제' }),
+      ).toHaveAccessibleDescription(
+        '이 공정에 선후행이 걸려 있습니다(1. 1차 사출 → 알 수 없는 공정). 먼저 [선후행 설정]에서 그 관계를 지우고 공정을 지우세요.',
+      ),
+    );
+  });
+
+  it('관계 유형 목록을 받는 동안에는 선후행 저장을 막고 그 까닭을 말한다', async () => {
+    const { user } = renderDraftOperations([
+      {
+        match: (request) => isGet(request, '/mdm/code-values'),
+        respond: () => new Promise<Response>(() => undefined),
+      },
+    ]);
+
+    const dialog = await openDependencies(user);
+
+    expect(within(dialog).getByRole('button', { name: '저장' })).toBeDisabled();
+    expect(
+      await within(dialog).findByText('관계 유형 목록을 불러오는 중입니다. 잠시 뒤 저장하세요.'),
+    ).toBeInTheDocument();
+  });
+
   it('서버가 공정 삭제를 거부하면 서버 문구를 띠로 보인다', async () => {
     const { user } = renderDraftOperations([
       dependencyListRoute(),
@@ -1694,7 +1750,7 @@ describe('RoutingScreen — 선후행이 걸린 공정 삭제와 서버 거부',
     ]);
 
     await screen.findByText('1차 사출');
-    await user.click(within(operationsRegion()).getByRole('button', { name: '2번 공정 삭제' }));
+    await user.click(await removeOperationButton(2));
     await user.click(within(operationsRegion()).getByRole('button', { name: '저장' }));
 
     expect(

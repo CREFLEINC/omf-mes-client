@@ -43,6 +43,9 @@ export const routing = {
     dependenciesBlockedByUnsaved:
       '선후행 설정은 저장하지 않은 공정 라인이 있으면 할 수 없습니다. 먼저 공정을 저장하거나 취소하세요.',
     dependenciesNeedOperations: '선후행 설정은 공정이 2건 이상 저장돼 있어야 할 수 있습니다.',
+    removeBlockedWhileCheckingDependencies: '선후행을 확인하는 중입니다. 잠시 뒤 다시 시도하세요.',
+    removeBlockedByDependencyLoadError:
+      '선후행을 불러오지 못해 지울 수 있는지 확인할 수 없습니다. 새로고침한 뒤 다시 시도하세요.',
     removeBlockedByDependencies: (relations: string): string =>
       `이 공정에 선후행이 걸려 있습니다(${relations}). 먼저 [선후행 설정]에서 그 관계를 지우고 공정을 지우세요.`,
     compareRevisionsUnavailable:
@@ -233,11 +236,13 @@ export const routing = {
     rowField: (rowNo: number, field: string): string => `${String(rowNo)}번째 줄 ${field}`,
     add: '관계 추가',
     operationOption: (displayNo: number, name: string): string => `${String(displayNo)}. ${name}`,
+    unknownOperation: '알 수 없는 공정',
     loading: '선후행을 불러오는 중',
     noneTitle: '등록된 선후행이 없습니다',
     noneDescription: '「관계 추가」로 공정 사이의 순서를 정하세요.',
     typesLoadFailed:
       '관계 유형 목록을 불러오지 못했습니다. 다시 시도하세요. 불러오기 전에는 저장할 수 없습니다.',
+    saveBlockedWhileLoadingTypes: '관계 유형 목록을 불러오는 중입니다. 잠시 뒤 저장하세요.',
     saveBlockedByInvalid: '선후행 저장은 표에 표시된 문제를 고쳐야 할 수 있습니다.',
     stateLocked:
       '이 Rev는 이미 확정돼 선후행을 바꿀 수 없습니다. 목록을 새로 읽었습니다 — 바꾸려면 신규 Rev를 발행하세요.',
