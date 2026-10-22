@@ -68,7 +68,7 @@ export const SuspiciousMaterialHoldFlow = ({
         onApplied={clear}
         onReload={clear}
       />
-      {/* omf-all-around#108 — 고른 LOT 하나의 자재 불량 기록과 영향 생산 LOT(작업지시 기준 추정). */}
+      {/* omf-all-around#108 — 고른 LOT 하나의 자재 불량 기록과 영향 생산 LOT(계보 기준 추정 · #166). */}
       <MaterialDefectPane selection={candidateReady ? selection : []} isLocked={pinned} />
     </div>
   );

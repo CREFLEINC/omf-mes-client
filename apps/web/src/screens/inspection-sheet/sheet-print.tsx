@@ -104,7 +104,11 @@ export const SheetPrint = ({ sheet, lang, changeTypeLabel }: SheetPrintProps) =>
     sheet.fourMChanges.length === 0
       ? l.fourMNone
       : `${l.fourMYes}, ${sheet.fourMChanges
-          .map((c) => `${changeTypeLabel(c.changeTypeCode)}, ${c.lotNo}`)
+          .map((c) =>
+            c.changeTypeCode === undefined
+              ? c.lotNo
+              : `${changeTypeLabel(c.changeTypeCode)}, ${c.lotNo}`,
+          )
           .join(', ')}`;
   const rohs = sheet.rohsFlag ? `■${l.rohsYes} □${l.rohsNo}` : `□${l.rohsYes} ■${l.rohsNo}`;
   /** 이름 · 값 두 쌍을 한 줄에 — 양식의 「생산부 F/W | 값 | 품질부 F/W | 값」 줄. */

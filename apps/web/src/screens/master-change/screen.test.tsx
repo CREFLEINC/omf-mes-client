@@ -595,7 +595,7 @@ describe('MasterChangeScreen — 조회 실패', () => {
     renderScreen([failingListRoute(500, { message: '' })]);
 
     expect(
-      await screen.findByText('잠시 뒤 다시 시도하세요. 반복되면 담당자에게 알려 주세요.'),
+      await screen.findByText('잠시 뒤 재시도하세요. 지속적인 요청 불가 시 담당자에게 문의하세요.'),
     ).toBeInTheDocument();
   });
 

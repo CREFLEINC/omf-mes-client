@@ -308,10 +308,29 @@ const openButton = (no: string) =>
 const findOpenButton = (no: string) =>
   screen.findByRole('button', { name: (accessibleName: string) => accessibleName.includes(no) });
 
+/*
+ * #133 — 목록과 상세가 갈아 끼워진다. 상세에서 다른 의뢰로 가려면 「← 목록」으로 돌아가 고른다.
+ * 저장 안 한 입력이 있으면 한 번 묻는데, 이 도우미는 「버리고 목록으로」를 고른다.
+ */
+const goToRequest = async (no: string): Promise<void> => {
+  await userEvent.click(screen.getByRole('button', { name: t.detail.backToList }));
+  const leave = screen.queryByRole('button', { name: t.detail.leaveAnyway });
+  if (leave !== null) await userEvent.click(leave);
+  await userEvent.click(await findOpenButton(no));
+};
+
 /** [임시 저장]은 마지막 저장 상태와 달라진 것이 있을 때만 켜진다 — 누르기 전에 한 칸을 바꾼다. */
 const editQuantity = async (): Promise<void> => {
   await userEvent.type(screen.getByLabelText(t.result.fields.held), '1');
 };
+
+/*
+ * 입력 칸 위의 검사 회차(「N회차」) — 아래 검사 항목별 결과의 측정 회차와 같은 글이라(#133) 입력 영역 안에서만 찾는다.
+ */
+const findRound = async (round: number): Promise<HTMLElement> =>
+  within(await screen.findByRole('form', { name: t.result.heading })).findByText(
+    t.result.round(round),
+  );
 
 describe('IqcInspectionScreen', () => {
   it('검사 대기 큐를 그린다', async () => {
@@ -375,17 +394,26 @@ describe('IqcInspectionScreen', () => {
     expect(lastQuery(sent)?.get('pendingOnly')).toBe('true');
   });
 
-  it('의뢰를 고르면 그 줄이 현재가 된다', async () => {
+  it('의뢰를 고르면 목록 대신 그 의뢰의 상세가 선다(#133)', async () => {
     renderScreen();
 
     await findOpenButton('IR-2026-0002');
     await userEvent.click(openButton('IR-2026-0002'));
 
-    await waitFor(() => expect(openButton('IR-2026-0002')).toHaveAttribute('aria-current', 'true'));
+    expect(await screen.findByRole('button', { name: t.detail.backToList })).toBeInTheDocument();
+    /* 「검사 기본 정보」는 상자 제목이 아니라 경로의 한 단계로만 선다(#133). */
+    expect(screen.queryByRole('heading', { name: t.detail.sectionTitle })).not.toBeInTheDocument();
+    expect(
+      within(screen.getByRole('navigation', { name: messages.common.shell.breadcrumb })).getByText(
+        t.detail.sectionTitle,
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: t.detail.backToList })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: t.pageNav.next })).not.toBeInTheDocument();
   });
 
-  it('쪽을 옮겨도 조건과 고른 의뢰는 그대로다', async () => {
-    const { sent } = renderScreen('/?it=1001&ir=1002', () =>
+  it('쪽을 옮겨도 조건은 그대로이고, 상세에서 목록으로 돌아와도 조건이 남는다', async () => {
+    const { sent } = renderScreen('/?it=1001', () =>
       jsonResponse(queueResponse(queueItems, pageOf(120, 1, 50))),
     );
 
@@ -394,7 +422,13 @@ describe('IqcInspectionScreen', () => {
 
     await waitFor(() => expect(lastQuery(sent)?.get('page')).toBe('2'));
     expect(lastQuery(sent)?.get('itemId')).toBe('1001');
-    expect(openButton('IR-2026-0002')).toHaveAttribute('aria-current', 'true');
+
+    await userEvent.click(await findOpenButton('IR-2026-0002'));
+    await userEvent.click(await screen.findByRole('button', { name: t.detail.backToList }));
+
+    await findOpenButton('IR-2026-0002');
+    expect(lastQuery(sent)?.get('itemId')).toBe('1001');
+    expect(lastQuery(sent)?.get('page')).toBe('2');
   });
 
   it('조회가 실패하면 배너를 세우고 다시 시도할 자리를 준다', async () => {
@@ -448,33 +482,49 @@ describe('IqcInspectionScreen', () => {
     expect(await screen.findByRole('navigation', { name: t.pageNav.label })).toBeInTheDocument();
   });
 
-  it('아무것도 고르지 않았으면 무엇을 해야 하는지 말한다', async () => {
+  it('처음에는 목록만 선다 — 상세는 의뢰를 고른 뒤에 연다(#133)', async () => {
     renderScreen();
 
-    expect(await screen.findByText(t.detail.nothingSelected)).toBeInTheDocument();
+    await findOpenButton('IR-2026-0001');
+    expect(screen.queryByText(t.detail.sectionTitle)).not.toBeInTheDocument();
+  });
+
+  it('저장 안 한 입력이 있으면 목록으로 가기 전에 한 번 묻는다', async () => {
+    renderScreen('/?ir=1001', () => jsonResponse(queueResponse()), []);
+
+    await screen.findByText(t.result.confirmBlockedByUnsaved);
+    await userEvent.type(screen.getByLabelText(t.result.fields.accepted), '1');
+    await userEvent.click(screen.getByRole('button', { name: t.detail.backToList }));
+
+    expect(screen.getByText(t.detail.leaveUnsaved)).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: t.detail.keepEditing }));
+    expect(screen.getByLabelText(t.result.fields.accepted)).toHaveValue('1');
   });
 
   it('의뢰를 고르면 그 의뢰의 상세가 선다 — 목록과 상세가 같은 건을 가리킨다', async () => {
     renderScreen('/?ir=1002');
 
     expect(await screen.findByText(t.detail.fields.inspectionPlanVersionId)).toBeInTheDocument();
-    expect(await screen.findByText(t.detail.planVersionNote)).toBeInTheDocument();
   });
 
   it('회차에 저장된 수량이 편집 칸에 되돌아온다', async () => {
     renderScreen('/?ir=1001');
 
-    await screen.findByText(t.result.round(1));
+    await findRound(1);
 
     expect(screen.getByLabelText(t.result.fields.accepted)).toHaveValue('480');
     expect(screen.getByLabelText(t.result.fields.rejected)).toHaveValue('15');
     expect(screen.getByLabelText(t.result.fields.held)).toHaveValue('5');
   });
 
-  it('되돌아온 수량이 합계 제약을 만족하면 일치한다고 말한다', async () => {
+  it('되돌아온 수량이 합계 제약을 만족하면 미입력이 0 이다', async () => {
     renderScreen('/?ir=1001');
 
-    expect(await screen.findByText(t.result.matched)).toBeInTheDocument();
+    await waitFor(() =>
+      expect(document.querySelector('.iqc-inspection-progress-status')?.textContent).toBe(
+        `${t.result.remaining} 0`,
+      ),
+    );
   });
 
   /*
@@ -489,7 +539,7 @@ describe('IqcInspectionScreen', () => {
     await userEvent.type(screen.getByLabelText(t.result.fields.accepted), '123');
     expect(screen.getByLabelText(t.result.fields.accepted)).toHaveValue('123');
 
-    await userEvent.click(openButton('IR-2026-0002'));
+    await goToRequest('IR-2026-0002');
 
     await waitFor(() => expect(screen.getByLabelText(t.result.fields.accepted)).toHaveValue(''));
   });
@@ -510,7 +560,7 @@ describe('IqcInspectionScreen', () => {
     testSession = SYNTHETIC_SESSION;
     renderScreen('/?ir=1001');
 
-    await screen.findByText(t.result.round(1));
+    await findRound(1);
     expect(screen.queryByText(t.result.workerNotLinked)).not.toBeInTheDocument();
   });
 
@@ -520,7 +570,7 @@ describe('IqcInspectionScreen', () => {
     const { writes } = renderScreen('/?ir=1002', () => jsonResponse(queueResponse()), []);
 
     await screen.findByText(t.result.confirmBlockedByUnsaved);
-    expect(await screen.findByText(/^50\b/)).toBeInTheDocument();
+    expect((await screen.findAllByText(/^50\b/)).length).toBeGreaterThan(0);
     await userEvent.type(screen.getByLabelText(t.result.fields.accepted), '50');
     await userEvent.click(screen.getByRole('button', { name: t.result.save }));
 
@@ -563,7 +613,7 @@ describe('IqcInspectionScreen', () => {
   it('작성중 회차가 있으면 그것을 고치고 잠금 토큰을 싣는다', async () => {
     const { writes } = renderScreen('/?ir=1001');
 
-    await screen.findByText(t.result.round(1));
+    await findRound(1);
     await editQuantity();
     await userEvent.click(screen.getByRole('button', { name: t.result.save }));
 
@@ -578,7 +628,7 @@ describe('IqcInspectionScreen', () => {
   it('저장이 끝나면 회차를 다시 부른다 — 화면과 서버가 갈리지 않게', async () => {
     const { writes, sent } = renderScreen('/?ir=1001');
 
-    await screen.findByText(t.result.round(1));
+    await findRound(1);
     const before = queueCalls(sent).length;
     await editQuantity();
     await userEvent.click(screen.getByRole('button', { name: t.result.save }));
@@ -594,12 +644,50 @@ describe('IqcInspectionScreen', () => {
   it('저장한 뒤 값을 더 고치면 「저장했습니다」를 지운다 — 저장되지 않은 변경이 있다', async () => {
     renderScreen('/?ir=1001');
 
-    await screen.findByText(t.result.round(1));
+    await findRound(1);
     await editQuantity();
     await userEvent.click(screen.getByRole('button', { name: t.result.save }));
     await screen.findByText(t.result.saved);
 
     await userEvent.type(screen.getByLabelText(t.result.fields.accepted), '9');
+
+    await waitFor(() => expect(screen.queryByText(t.result.saved)).not.toBeInTheDocument());
+  });
+
+  /*
+   * ⭐ 실검증에서 잡은 자리다(#133). 저장 뒤 다시 부른 회차의 수량이 저장 전과 다르면(= 거의 항상) 회차를 되돌리는
+   * 자리가 「저장했습니다」까지 지워, 저장이 됐는지 화면이 말하지 않았다.
+   */
+  it('저장 뒤 다시 부른 회차 수량이 바뀌어도 「저장했습니다」를 남긴다', async () => {
+    renderScreen('/?ir=1001', undefined, [draftRound], [], itemSpecsResponse(), [
+      {
+        ...draftRound,
+        heldQty: draftRound.heldQty + 1,
+        versionNo: (draftRound.versionNo ?? 1) + 1,
+      },
+    ]);
+
+    await findRound(1);
+    await editQuantity();
+    await userEvent.click(screen.getByRole('button', { name: t.result.save }));
+
+    await screen.findByText(t.result.saved);
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    expect(screen.getByText(t.result.saved)).toBeInTheDocument();
+  });
+
+  it('저장한 뒤 판정을 바꾸면 「저장했습니다」를 지운다 — 수량 말고 다른 칸도 저장되지 않은 변경이다', async () => {
+    renderScreen('/?ir=1001');
+
+    await findRound(1);
+    await editQuantity();
+    await userEvent.click(screen.getByRole('button', { name: t.result.save }));
+    await screen.findByText(t.result.saved);
+
+    await userEvent.click(screen.getByLabelText(t.result.judgment));
+    const options = await screen.findAllByRole('option');
+    const other = options.find((option) => option.getAttribute('aria-selected') !== 'true');
+    await userEvent.click(other as HTMLElement);
 
     await waitFor(() => expect(screen.queryByText(t.result.saved)).not.toBeInTheDocument());
   });
@@ -680,7 +768,7 @@ describe('IqcInspectionScreen', () => {
   it('검사기준이 없는 의뢰도 항목 없이 수량·판정으로 확정한다', async () => {
     const { sent, writes } = renderScreen('/?ir=1004');
 
-    await screen.findByText(t.result.round(1));
+    await findRound(1);
     await userEvent.click(await screen.findByRole('button', { name: t.result.confirm }));
 
     await waitFor(() => expect(writes).toHaveLength(1));
@@ -691,7 +779,7 @@ describe('IqcInspectionScreen', () => {
   it('확정하면 되돌릴 수 없는 쓰기가 잠금 토큰과 함께 나간다', async () => {
     const { writes } = renderScreen('/?ir=1001');
 
-    await screen.findByText(t.result.round(1));
+    await findRound(1);
     await userEvent.click(await screen.findByRole('button', { name: t.result.confirm }));
 
     await waitFor(() => expect(writes).toHaveLength(1));
@@ -715,7 +803,7 @@ describe('IqcInspectionScreen', () => {
     };
     const { writes } = renderScreen('/?ir=1001');
 
-    await screen.findByText(t.result.round(1));
+    await findRound(1);
     expect(
       await screen.findByText(new RegExp(t.result.judgmentChange.basis(5))),
     ).toBeInTheDocument();
@@ -733,6 +821,47 @@ describe('IqcInspectionScreen', () => {
     });
   });
 
+  /* 사유는 임시 저장에 실리지 않는다(확정에만) — 친 사유를 두고 떠나면 사라지므로 묻는다(#133 실검증). */
+  it('판정 변경 사유만 쳐도 목록으로 가기 전에 묻는다', async () => {
+    samplingVersion = {
+      samplingMethodCode: 'FULL_INSPECTION',
+      samplingRatio: null,
+      acceptanceNumber: 5,
+    };
+    renderScreen('/?ir=1001');
+
+    await findRound(1);
+    const reason = await screen.findByLabelText(new RegExp(t.result.judgmentChange.reason));
+    await userEvent.type(reason, '재확인');
+    await userEvent.click(screen.getByRole('button', { name: t.detail.backToList }));
+
+    expect(screen.getByText(t.detail.leaveUnsaved)).toBeInTheDocument();
+  });
+
+  /* 확정 직전에 고른 값이 「바뀐 것」으로 남아도 이미 확정에 실렸다 — 확정 뒤 목록으로 갈 때 묻지 않는다(#133 실검증). */
+  it('판정 확정 뒤에는 목록으로 갈 때 묻지 않는다', async () => {
+    samplingVersion = {
+      samplingMethodCode: 'FULL_INSPECTION',
+      samplingRatio: null,
+      acceptanceNumber: 5,
+    };
+    const { writes } = renderScreen('/?ir=1001', undefined, [draftRound], [], itemSpecsResponse(), [
+      { ...draftRound, statusCode: 'CONFIRMED', confirmedAt: '2026-10-22T04:00:00.000Z' },
+    ]);
+
+    await findRound(1);
+    const reason = await screen.findByLabelText(new RegExp(t.result.judgmentChange.reason));
+    await userEvent.type(reason, '재확인');
+    await userEvent.click(screen.getByRole('button', { name: t.result.confirm }));
+    await waitFor(() => expect(writes).toHaveLength(1));
+    await waitFor(() =>
+      expect(screen.queryByRole('button', { name: t.result.confirm })).not.toBeInTheDocument(),
+    );
+
+    await userEvent.click(screen.getByRole('button', { name: t.detail.backToList }));
+    expect(screen.queryByText(t.detail.leaveUnsaved)).not.toBeInTheDocument();
+  });
+
   it('수량을 고치면 판정을 자동으로 채운다 — 자동 판정과 같으면 사유 칸이 없다', async () => {
     samplingVersion = {
       samplingMethodCode: 'FULL_INSPECTION',
@@ -741,7 +870,7 @@ describe('IqcInspectionScreen', () => {
     };
     const { writes } = renderScreen('/?ir=1001');
 
-    await screen.findByText(t.result.round(1));
+    await findRound(1);
     /* 보류 5 가 있어 자동 판정은 보류다 — 저장된 합격과 다르다. */
     expect(
       await screen.findByLabelText(new RegExp(t.result.judgmentChange.reason)),
@@ -772,7 +901,7 @@ describe('IqcInspectionScreen', () => {
     };
     const { writes } = renderScreen('/?ir=1001');
 
-    await screen.findByText(t.result.round(1));
+    await findRound(1);
     await userEvent.click(await screen.findByRole('button', { name: t.result.confirm }));
 
     await waitFor(() => expect(writes).toHaveLength(1));
@@ -804,7 +933,7 @@ describe('IqcInspectionScreen', () => {
 
     confirmResponder = failOnce;
 
-    await screen.findByText(t.result.round(1));
+    await findRound(1);
     const button = await screen.findByRole('button', { name: t.result.confirm });
 
     await userEvent.click(button);
@@ -826,7 +955,7 @@ describe('IqcInspectionScreen', () => {
   it('임시 저장이 고른 판정을 함께 싣는다 — 싣지 않으면 저장 뒤 되돌아간다', async () => {
     const { writes } = renderScreen('/?ir=1001');
 
-    await screen.findByText(t.result.round(1));
+    await findRound(1);
 
     await userEvent.click(screen.getByLabelText(t.result.judgment));
     await userEvent.click(await screen.findByRole('option', { name: '보류' }));
@@ -859,7 +988,8 @@ describe('IqcInspectionScreen', () => {
     renderScreen('/?ir=9999');
 
     expect(await screen.findByRole('button', { name: messages.common.retry })).toBeInTheDocument();
-    expect(screen.queryByText(t.detail.nothingSelected)).not.toBeInTheDocument();
+    /* 실패해도 목록으로 접지 않고 상세 자리에 머문다 — 돌아가는 길은 「← 목록」이다. */
+    expect(screen.getByRole('button', { name: t.detail.backToList })).toBeInTheDocument();
   });
 
   it('조건에 맞는 것이 없으면 조건을 넓히라고 말한다', async () => {
@@ -891,7 +1021,7 @@ describe('IqcInspectionScreen — 재검사 회차', () => {
       confirmedRound,
     ]);
 
-    await screen.findByText(t.result.round(1));
+    await findRound(1);
     await userEvent.click(screen.getByRole('button', { name: t.result.reinspect }));
     await editQuantity();
     await userEvent.click(screen.getByRole('button', { name: t.result.save }));
@@ -926,7 +1056,7 @@ describe('IqcInspectionScreen — 재검사 회차', () => {
       confirmedRound,
     ]);
 
-    await screen.findByText(t.result.round(1));
+    await findRound(1);
     await userEvent.click(screen.getByRole('button', { name: t.result.reinspect }));
 
     expect(writes).toHaveLength(0);
@@ -944,7 +1074,7 @@ describe('IqcInspectionScreen — 재검사 회차', () => {
       [expiredMeasurement],
     );
 
-    await screen.findByText(t.result.round(1));
+    await findRound(1);
     expect(await screen.findByText(t.measurements.calibrationExpired)).toBeInTheDocument();
 
     await userEvent.click(screen.getByRole('button', { name: t.result.reinspect }));
@@ -958,12 +1088,12 @@ describe('IqcInspectionScreen — 재검사 회차', () => {
   it('재검사 중에는 확정본이 이전 회차 이력으로 옮겨 간다', async () => {
     renderScreen('/?ir=1001', () => jsonResponse(queueResponse()), [confirmedRound]);
 
-    await screen.findByText(t.result.round(1));
+    await findRound(1);
     expect(screen.queryByText(t.history.heading)).not.toBeInTheDocument();
 
     await userEvent.click(screen.getByRole('button', { name: t.result.reinspect }));
 
-    expect(screen.getByText(t.history.heading)).toBeInTheDocument();
+    expect(screen.getAllByText(t.history.heading).length).toBeGreaterThan(0);
   });
 
   it('회차가 둘이면 앞 회차가 이력에 남는다', async () => {
@@ -972,8 +1102,8 @@ describe('IqcInspectionScreen — 재검사 회차', () => {
       confirmedRound,
     ]);
 
-    await screen.findByText(t.result.round(2));
-    expect(screen.getByText(t.history.heading)).toBeInTheDocument();
+    await findRound(2);
+    expect(screen.getAllByText(t.history.heading).length).toBeGreaterThan(0);
   });
 });
 
@@ -984,7 +1114,7 @@ describe('IqcInspectionScreen — 확정 결과 문면', () => {
       { ...draftRound, acceptedQty: 500, rejectedQty: 0, heldQty: 0 },
     ]);
 
-    await screen.findByText(t.result.round(1));
+    await findRound(1);
     await userEvent.click(screen.getByLabelText(t.result.judgment));
     await userEvent.click(await screen.findByRole('option', { name: '합격' }));
     await userEvent.click(screen.getByRole('button', { name: t.result.confirm }));
@@ -997,13 +1127,13 @@ describe('IqcInspectionScreen — 확정 결과 문면', () => {
       { ...draftRound, acceptedQty: 500, rejectedQty: 0, heldQty: 0 },
     ]);
 
-    await screen.findByText(t.result.round(1));
+    await findRound(1);
     await userEvent.click(screen.getByLabelText(t.result.judgment));
     await userEvent.click(await screen.findByRole('option', { name: '합격' }));
     await userEvent.click(screen.getByRole('button', { name: t.result.confirm }));
     await screen.findByText(t.result.confirmSucceeded);
 
-    await userEvent.click(openButton(queueItems[1]!.inspectionRequestNo));
+    await goToRequest(queueItems[1]!.inspectionRequestNo);
 
     await waitFor(() =>
       expect(screen.queryByText(t.result.confirmSucceeded)).not.toBeInTheDocument(),
@@ -1016,7 +1146,7 @@ describe('IqcInspectionScreen — 불합격 사유', () => {
   const rejectedRound = { ...draftRound, acceptedQty: 485, rejectedQty: 15, heldQty: 0 };
 
   const chooseRejected = async (): Promise<void> => {
-    await screen.findByText(t.result.round(1));
+    await findRound(1);
     await userEvent.click(screen.getByLabelText(t.result.judgment));
     await userEvent.click(await screen.findByRole('option', { name: '불합격' }));
   };
@@ -1403,13 +1533,13 @@ describe('IqcInspectionScreen — 재검사 저장 뒤', () => {
       [confirmedRound, reinspectionRound],
     );
 
-    await screen.findByText(t.result.round(1));
+    await findRound(1);
     await userEvent.click(screen.getByRole('button', { name: t.result.reinspect }));
     await editQuantity();
     await userEvent.click(screen.getByRole('button', { name: t.result.save }));
 
     /* 저장이 끝나면 화면은 새로 생긴 2회차를 그린다 — 재검사 모드가 풀린 자리다. */
-    await screen.findByText(t.result.round(2));
+    await findRound(2);
 
     await editQuantity();
     await userEvent.click(screen.getByRole('button', { name: t.result.save }));
@@ -1432,7 +1562,7 @@ describe('IqcInspectionScreen — 재검사 저장 뒤', () => {
   it('재검사를 그만두면 확정본 수량이 돌아온다', async () => {
     renderScreen('/?ir=1001', () => jsonResponse(queueResponse()), [confirmedRound]);
 
-    await screen.findByText(t.result.round(1));
+    await findRound(1);
     const accepted = () => screen.getByLabelText(t.result.fields.accepted) as HTMLInputElement;
     const stored = accepted().value;
     expect(stored).not.toBe('');
@@ -1448,13 +1578,13 @@ describe('IqcInspectionScreen — 재검사 저장 뒤', () => {
   it('다른 의뢰로 옮기면 재검사 모드가 풀린다', async () => {
     renderScreen('/?ir=1001', () => jsonResponse(queueResponse()), [confirmedRound]);
 
-    await screen.findByText(t.result.round(1));
+    await findRound(1);
     await userEvent.click(screen.getByRole('button', { name: t.result.reinspect }));
     expect(screen.getByText(t.result.reinspectRound)).toBeInTheDocument();
 
-    await userEvent.click(openButton(queueItems[1]!.inspectionRequestNo));
+    await goToRequest(queueItems[1]!.inspectionRequestNo);
 
-    await waitFor(() => expect(screen.getByText(t.result.round(1))).toBeInTheDocument());
+    await findRound(1);
     expect(screen.queryByText(t.result.reinspectRound)).not.toBeInTheDocument();
   });
 });
@@ -1471,7 +1601,7 @@ describe('IqcInspectionScreen — 임시 저장 단추', () => {
       [saved],
     );
 
-    await screen.findByText(t.result.round(1));
+    await findRound(1);
     const save = screen.getByRole('button', { name: t.result.save });
     expect(save).toBeDisabled();
 
@@ -1521,7 +1651,7 @@ describe('IqcInspectionScreen — 단위 조회', () => {
   it('단위 목록을 계약 최대 크기(200)로 한 번에 부른다 — 기본 크기(50)면 뒤쪽 단위가 잘린다', async () => {
     const { sent } = renderScreen('/?ir=1001');
 
-    await screen.findByText(t.result.round(1));
+    await findRound(1);
     await waitFor(() => expect(sent.some((url) => url.pathname === '/mdm/uoms')).toBe(true));
 
     const call = sent.find((url) => url.pathname === '/mdm/uoms');
