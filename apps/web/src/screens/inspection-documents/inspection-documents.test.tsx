@@ -54,6 +54,21 @@ describe('LotScan', () => {
     expect(await screen.findByText(t.scan.noRequest)).toBeInTheDocument();
     expect(onFound).not.toHaveBeenCalled();
   });
+
+  /* 스캐너는 칸에 이어 친다 — 못 찾은 번호가 남아 있으면 다음 번호가 뒤에 붙는다(#133). */
+  it('못 찾으면 번호를 골라 두어 다음 스캔이 덮어쓴다', async () => {
+    const onFound = vi.fn();
+    renderWithProviders(<LotScan inspectionTypeCode="IQC" onFound={onFound} />, {
+      fetch: stub([]),
+    });
+    const box = screen.getByRole('textbox', { name: t.scan.label });
+    await userEvent.type(box, 'MLOT-8801{Enter}');
+    await screen.findByText(t.scan.noRequest);
+
+    expect(box).toHaveFocus();
+    await userEvent.keyboard('MLOT-8802');
+    expect(box).toHaveValue('MLOT-8802');
+  });
 });
 
 describe('AttachmentPanel', () => {

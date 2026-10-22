@@ -388,6 +388,11 @@ export const IqcInspectionScreen = () => {
         rejection.description !== savedRejection.description ||
         rejection.causeId !== savedRejection.causeId)) ||
     fourMChanged;
+  /*
+   * 떠날 때 물을 입력 — 판정 변경 사유는 임시 저장에 실리지 않고 확정에만 실리므로(P-70) 위 「바뀐 것」에 없다.
+   * 그래도 친 사유는 떠나면 사라지므로 묻는다(#133 실검증).
+   */
+  const hasUnsavedInput = hasChanges || changeReason.trim() !== '';
 
   const rows = queue.data?.rows ?? [];
   const pageView = toPageView(queue.data?.page ?? { page, size: 0, total: 0 }, rows.length);
@@ -926,7 +931,7 @@ export const IqcInspectionScreen = () => {
               variant="text"
               size="md"
               className="iqc-inspection-back-button"
-              onClick={() => (hasChanges ? setConfirmingLeave(true) : backToList())}
+              onClick={() => (hasUnsavedInput ? setConfirmingLeave(true) : backToList())}
             >
               {t.detail.backToList}
             </Button>

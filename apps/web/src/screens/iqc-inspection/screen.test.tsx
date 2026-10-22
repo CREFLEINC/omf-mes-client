@@ -821,6 +821,23 @@ describe('IqcInspectionScreen', () => {
     });
   });
 
+  /* 사유는 임시 저장에 실리지 않는다(확정에만) — 친 사유를 두고 떠나면 사라지므로 묻는다(#133 실검증). */
+  it('판정 변경 사유만 쳐도 목록으로 가기 전에 묻는다', async () => {
+    samplingVersion = {
+      samplingMethodCode: 'FULL_INSPECTION',
+      samplingRatio: null,
+      acceptanceNumber: 5,
+    };
+    renderScreen('/?ir=1001');
+
+    await findRound(1);
+    const reason = await screen.findByLabelText(new RegExp(t.result.judgmentChange.reason));
+    await userEvent.type(reason, '재확인');
+    await userEvent.click(screen.getByRole('button', { name: t.detail.backToList }));
+
+    expect(screen.getByText(t.detail.leaveUnsaved)).toBeInTheDocument();
+  });
+
   it('수량을 고치면 판정을 자동으로 채운다 — 자동 판정과 같으면 사유 칸이 없다', async () => {
     samplingVersion = {
       samplingMethodCode: 'FULL_INSPECTION',
