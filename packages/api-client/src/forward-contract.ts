@@ -781,6 +781,11 @@ export type WorkOrderForward = components['schemas']['WorkOrder'] & {
   closedWorkerId?: number;
   closedWorkerNo?: string;
   closedWorkerName?: string;
+  /** 서버 선행 P-104 — 관리웹에서 마감한 계정. POP 마감이면 없다. */
+  closedByUserId?: number;
+  closedByUserName?: string;
+  /** 서버 선행 P-104 — 마감 시점 판정. `progress` 는 «지금» 판정이라 마감 뒤 지연 실적으로 바뀐다. */
+  closeJudgmentCode?: 'UNDER' | 'NORMAL' | 'OVER';
   /** 서버 선행 P-104 — 마감으로 폐번된 선발행 LOT 수. 상세의 마감된 W/O 에만 있다. */
   voidedLotCount?: number;
 };

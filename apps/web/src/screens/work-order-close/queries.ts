@@ -26,6 +26,9 @@ export interface WorkOrderCloseFact extends WorkOrderFact {
   /** POP 마감일 때만 있다 */
   closedWorkerNo: string | null;
   closedWorkerName: string | null;
+  /** 관리웹 마감일 때만 있다 */
+  closedByUserName: string | null;
+  closeJudgmentCode: 'UNDER' | 'NORMAL' | 'OVER' | null;
   voidedLotCount: number | null;
 }
 
@@ -139,6 +142,8 @@ export const toWorkOrderCloseFact = (workOrder: WorkOrderForward): WorkOrderClos
   closeDispositionCode: workOrder.closeDispositionCode ?? null,
   closedWorkerNo: workOrder.closedWorkerNo ?? null,
   closedWorkerName: workOrder.closedWorkerName ?? null,
+  closedByUserName: workOrder.closedByUserName ?? null,
+  closeJudgmentCode: workOrder.closeJudgmentCode ?? null,
   voidedLotCount: workOrder.voidedLotCount ?? null,
 });
 

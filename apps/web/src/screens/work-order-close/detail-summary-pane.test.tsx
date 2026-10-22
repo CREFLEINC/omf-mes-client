@@ -35,6 +35,8 @@ const detail = (overrides: Partial<WorkOrderCloseDetailFact> = {}): WorkOrderClo
   closeDispositionCode: null,
   closedWorkerNo: null,
   closedWorkerName: null,
+  closedByUserName: null,
+  closeJudgmentCode: null,
   voidedLotCount: null,
   defaultWipLocationId: null,
   defaultFgLocationId: null,

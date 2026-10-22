@@ -65,6 +65,8 @@ const closeFact = (workOrderId: number) => ({
   closeDispositionCode: null,
   closedWorkerNo: null,
   closedWorkerName: null,
+  closedByUserName: null,
+  closeJudgmentCode: null,
   voidedLotCount: null,
 });
 
