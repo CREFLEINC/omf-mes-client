@@ -409,7 +409,8 @@ export const WorkOrderResultCorrectionWorkspace = ({
         <AlertBanner variant="warning">{t.truncated}</AlertBanner>
       ) : (
         <>
-          {(workers.isError || workers.data?.truncated === true) && (
+          {/* 실적이 없으면 표시할 등록자도 없다 — 경고가 없는 문제를 알린다. */}
+          {rows.length > 0 && (workers.isError || workers.data?.truncated === true) && (
             <AlertBanner variant="warning">{t.workersUnavailable}</AlertBanner>
           )}
           <div className="wide-table work-order-close-table production-result-correction-table">

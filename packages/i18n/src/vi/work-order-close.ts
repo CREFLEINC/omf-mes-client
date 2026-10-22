@@ -229,6 +229,24 @@ export const workOrderClose: Translated<typeof ko.workOrderClose> = {
     lockedFallback: 'Mục gửi này không thay đổi được.',
     sendTiming: (note: string) => `Thời điểm gửi: ${note}`,
   },
+  closeResult: {
+    pane: 'Kết quả đóng',
+    loading: 'Đang tải kết quả đóng.',
+    loadFailed: 'Không tải được kết quả đóng. Hãy bấm thử lại.',
+    fields: {
+      closedAt: 'Thời điểm đóng',
+      closedBy: 'Người đóng',
+      judgment: 'Đánh giá',
+      disposition: 'Xử lý lượng còn lại',
+      reason: 'Lý do chênh lệch',
+      voidedLots: 'LOT bị hủy số',
+    },
+    values: {
+      none: 'Không có',
+      unknown: 'Không xác định được',
+      popWorker: (name: string, workerNo: string): string => `${name} (${workerNo}) · POP`,
+    },
+  },
   correction: {
     pane: 'Sửa kết quả sản xuất',
     heading: (workOrderNo: string) => `Danh sách kết quả — ${workOrderNo}`,

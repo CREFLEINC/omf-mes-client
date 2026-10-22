@@ -62,6 +62,10 @@ const closeFact = (workOrderId: number) => ({
   completedAt: null,
   completionVarianceReasonCode: null,
   closedAt: null,
+  closeDispositionCode: null,
+  closedWorkerNo: null,
+  closedWorkerName: null,
+  voidedLotCount: null,
 });
 
 const recordingFetch = (routes: StubRoute[]): { fetch: StubFetch; requests: URL[] } => {

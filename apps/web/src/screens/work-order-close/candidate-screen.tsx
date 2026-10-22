@@ -49,6 +49,7 @@ import {
   type WorkOrderCloseDetailSummaryState,
 } from './detail-summary-pane';
 import { WorkOrderCloseOutboundItemsPane } from './outbound-items-pane';
+import { WorkOrderCloseResultPane } from './close-result-pane';
 import { WorkOrderResultCorrectionWorkspace } from './result-correction-workspace';
 import {
   useWorkOrderCloseCandidates,
@@ -295,7 +296,7 @@ export const WorkOrderCloseCandidateScreen = () => {
   const candidates = candidate.data?.items ?? [];
   const itemNames = useWorkOrderCloseItemNames(candidates.map((item) => item.itemId));
   const uoms = useWorkOrderCloseUomLookup();
-  const detail = useWorkOrderCloseDetail(closeSelectedWorkOrderId);
+  const detail = useWorkOrderCloseDetail(state.selectedWorkOrderId);
   const openSession = useWorkOrderCloseOpenSession(closeSelectedWorkOrderId);
   const openLots = useWorkOrderCloseOpenLots(closeSelectedWorkOrderId);
   const snapshot = useMemo(
@@ -529,13 +530,33 @@ export const WorkOrderCloseCandidateScreen = () => {
           onChangePage={(nextPage) => dispatch({ type: 'CHANGE_PAGE', page: nextPage })}
         />
         {correctionMode ? (
-          <WorkOrderResultCorrectionWorkspace
-            workOrderId={state.selectedWorkOrderId}
-            workOrderNo={
-              candidates.find((item) => item.workOrderId === state.selectedWorkOrderId)
-                ?.workOrderNo ?? ''
-            }
-          />
+          <div className="work-order-close-detail">
+            {state.selectedWorkOrderId === null ? null : (
+              <WorkOrderCloseResultPane
+                state={
+                  detail.isFetching
+                    ? { kind: 'CHECKING' }
+                    : detail.isError || detail.data === undefined
+                      ? { kind: 'UNAVAILABLE', onRetry: () => void detail.refetch() }
+                      : {
+                          kind: 'RESOLVED',
+                          detail: detail.data,
+                          reasonLabel: (code) => {
+                            const reason = reasons.data?.items.find((item) => item.code === code);
+                            return reason === undefined ? code : toWorkOrderCloseCodeLabel(reason);
+                          },
+                        }
+                }
+              />
+            )}
+            <WorkOrderResultCorrectionWorkspace
+              workOrderId={state.selectedWorkOrderId}
+              workOrderNo={
+                candidates.find((item) => item.workOrderId === state.selectedWorkOrderId)
+                  ?.workOrderNo ?? ''
+              }
+            />
+          </div>
         ) : (
           <div className="work-order-close-detail">
             <WorkOrderCloseDetailSummaryPane state={detailPaneState} />

@@ -1,4 +1,4 @@
-import type { components, WorkSessionForward } from '@omf-mes/api-client';
+import type { components, WorkOrderForward, WorkSessionForward } from '@omf-mes/api-client';
 import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
@@ -22,6 +22,11 @@ export interface WorkOrderCloseFact extends WorkOrderFact {
   completedAt: string | null;
   completionVarianceReasonCode: string | null;
   closedAt: string | null;
+  closeDispositionCode: 'CARRY_OVER' | 'WRITE_OFF' | null;
+  /** POP 마감일 때만 있다 */
+  closedWorkerNo: string | null;
+  closedWorkerName: string | null;
+  voidedLotCount: number | null;
 }
 
 export interface WorkOrderCloseDetailFact extends WorkOrderCloseFact {
@@ -121,11 +126,15 @@ export const workOrderCloseKeys = {
 export const workOrderCloseDetailPath = (workOrderId: number): string =>
   `/production/work-orders/${workOrderId}`;
 
-export const toWorkOrderCloseFact = (workOrder: WorkOrder): WorkOrderCloseFact => ({
+export const toWorkOrderCloseFact = (workOrder: WorkOrderForward): WorkOrderCloseFact => ({
   ...toWorkOrderFact(workOrder),
   completedAt: workOrder.completedAt ?? null,
   completionVarianceReasonCode: workOrder.completionVarianceReasonCode ?? null,
   closedAt: workOrder.closedAt ?? null,
+  closeDispositionCode: workOrder.closeDispositionCode ?? null,
+  closedWorkerNo: workOrder.closedWorkerNo ?? null,
+  closedWorkerName: workOrder.closedWorkerName ?? null,
+  voidedLotCount: workOrder.voidedLotCount ?? null,
 });
 
 export const toWorkOrderCloseDetailFact = (workOrder: WorkOrder): WorkOrderCloseDetailFact => ({

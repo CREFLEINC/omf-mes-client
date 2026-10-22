@@ -218,6 +218,25 @@ export const workOrderClose = {
     lockedFallback: '이 송신 항목은 변경할 수 없습니다.',
     sendTiming: (note: string): string => `송신 시점: ${note}`,
   },
+  /** 마감된 W/O 의 마감 결과 — 무엇을 어떻게 닫았는지 정정 전에 본다. */
+  closeResult: {
+    pane: '마감 결과',
+    loading: '마감 결과를 불러오는 중입니다.',
+    loadFailed: '마감 결과를 불러오지 못했습니다. 다시 시도를 누르세요.',
+    fields: {
+      closedAt: '마감 일시',
+      closedBy: '마감자',
+      judgment: '판정',
+      disposition: '잔량 처리',
+      reason: '변동 사유',
+      voidedLots: '폐번된 LOT',
+    },
+    values: {
+      none: '없음',
+      unknown: '확인할 수 없음',
+      popWorker: (name: string, workerNo: string): string => `${name}(${workerNo}) · POP`,
+    },
+  },
   correction: {
     pane: '생산실적 정정',
     heading: (workOrderNo: string): string => `실적 목록 — ${workOrderNo}`,
