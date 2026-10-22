@@ -1,4 +1,4 @@
-import { AlertBanner, Button, Progress, Select, TextField } from '@crefle/web-ui';
+import { Button, Icon, Progress, Select, TextField } from '@crefle/web-ui';
 import type { ApiError } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useId, useState, type FormEvent, type ReactElement, type ReactNode } from 'react';
@@ -453,20 +453,22 @@ export const ResultFormPane = ({
               {showErrors && hasQuantityError(errors) && (
                 <p className="field-note">{t.saveBlockedByInvalid}</p>
               )}
-              {/* 막혔으면 «무엇이» 막혔는지 단추 바로 옆 정보 띠로 밝힌다(공유계약 G-23). */}
+              {/* 막혔으면 «무엇이» 막혔는지 단추 바로 왼쪽 한 줄로 밝힌다(공유계약 G-23 · 띠 대신 글줄 #133). */}
               {confirmBlockedReason !== null && (
-                <AlertBanner className="iqc-inspection-submit-banner" variant="info">
+                <p className="iqc-inspection-action-note" data-tone="info">
+                  <Icon name="info" size={18} aria-hidden />
                   {confirmBlockedReason}
-                </AlertBanner>
+                </p>
               )}
               {/*
-               * ⛔ **확정은 되돌릴 수 없다** — 누르기 전에 그 사실을 DS 경고 띠로 알린다. 이 순간 LOT 상태가 전이하고
-               * 보류 해제가 기록된다. 막힌 동안에는 막힌 까닭 하나만 보인다 — 띠가 둘이면 무엇을 할지 흐려진다.
+               * ⛔ **확정은 되돌릴 수 없다** — 누르기 전에 그 사실을 경고색 글줄로 알린다. 이 순간 LOT 상태가 전이하고
+               * 보류 해제가 기록된다. 막힌 동안에는 막힌 까닭 하나만 보인다 — 둘이면 무엇을 할지 흐려진다.
                */}
               {confirmBlockedReason === null && (
-                <AlertBanner className="iqc-inspection-submit-banner" variant="warning">
+                <p className="iqc-inspection-action-note" data-tone="warning">
+                  <Icon name="warning" size={18} aria-hidden />
                   {t.confirmNote}
-                </AlertBanner>
+                </p>
               )}
             </div>
 

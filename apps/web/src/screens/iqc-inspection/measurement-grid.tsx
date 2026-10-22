@@ -73,29 +73,29 @@ export interface MeasurementGridProps {
 
 const columns: Column<MeasurementRow>[] = [
   {
+    /*
+     * 필수 여부 — 항목 열 왼쪽의 좁은 열에 DS 상태 칩(중립)으로. 항목 열에는 번호·이름만 서서
+     * 이름끼리 한 줄로 맞는다(#133). 머리줄 글은 화면 읽기용으로만 둔다.
+     */
+    key: 'required',
+    header: <span className="iqc-inspection-visually-hidden">{t.requiredMark}</span>,
+    width: '40px',
+    render: (row) =>
+      row.required ? (
+        <Chip variant="status" size="sm" status="idle">
+          {t.requiredMark}
+        </Chip>
+      ) : null,
+  },
+  {
     key: 'item',
     header: t.columns.item,
     /*
-     * 항목명 + 「필수」 칩이 서는 폭. 다섯 열 모두 폭을 주어 표가 카드보다 넓을 때 남는 폭을
-     * 폭 비율대로 나눠 갖게 한다(항목 열이 혼자 받지 않게). 긴 항목명은 칸 안에서 줄을 바꾼다.
+     * 다섯 열 모두 폭을 주어 표가 카드보다 넓을 때 남는 폭을 폭 비율대로 나눠 갖게 한다
+     * (항목 열이 혼자 받지 않게). 긴 항목명은 칸 안에서 줄을 바꾼다.
      */
     width: '160px',
-    render: (row) => (
-      <>
-        {/*
-         * 필수 여부는 항목명 «앞»의 DS 상태 칩(중립)으로 — 새 배지 모양을 만들지 않는다.
-         * 필수가 아니면 칩 자리를 비우지 않고 항목명만 선다.
-         */}
-        {row.required && (
-          <span className="iqc-inspection-required">
-            <Chip variant="status" size="sm" status="idle">
-              {t.requiredMark}
-            </Chip>
-          </span>
-        )}
-        {row.displayNo}. {row.itemName}
-      </>
-    ),
+    render: (row) => `${String(row.displayNo)}. ${row.itemName}`,
   },
   {
     key: 'spec',
@@ -154,6 +154,7 @@ export const MeasurementGrid = ({ rows, isLoading }: MeasurementGridProps) => (
     )}
 
     <Table
+      className="iqc-inspection-measurements"
       caption={<span className="iqc-inspection-table-caption">{t.caption}</span>}
       density="compact"
       columns={columns}

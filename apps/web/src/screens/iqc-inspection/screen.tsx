@@ -759,17 +759,17 @@ export const IqcInspectionScreen = () => {
           }}
         />
       )}
+    </>
+  );
 
-      {/*
-       * 참고 정보 — 판정 작업과 떼어 한 묶음으로(omf-all-around#133). 측정치는 검사와 가장 가까워 맨 위,
-       * 이전 회차가 그 아래 한 줄씩 서고, 첨부 문서·검사 이력은 넓으면 나란히 선다. 내용과 동작은 그대로다.
-       */}
-      {/*
-       * 참고 정보 — 판정보다 뒤에, 펼쳐 보는 구획으로(omf-all-around#133). 측정치는 검사와 가장 가까워 펼친 채 시작하고,
-       * 이전 회차 · 첨부 문서 · 검사 이력은 접힌 채 시작한다. 내용과 동작은 그대로다.
-       */}
-      <div className="iqc-inspection-aux">
-        <details className="iqc-inspection-fold" open>
+  /*
+   * 참고 정보 — 판정보다 뒤에, 상세 카드 밖에 구획마다 상자 하나로(omf-all-around#133). 측정치는 검사와 가장 가까워
+   * 펼친 채 시작하고, 이전 회차 · 첨부 문서 · 검사 이력은 접힌 채 시작한다. 내용과 동작은 그대로다.
+   */
+  const auxContent =
+    detail.isError || detail.data === undefined ? null : (
+      <div className="iqc-inspection-panes iqc-inspection-aux">
+        <details className="pane iqc-inspection-fold" open>
           <summary>{messages.iqcInspection.measurements.caption}</summary>
           {/*
            * ⚠ **`isPending` 이 아니라 `isLoading` 이다.** 측정치 조회는 회차가 없을 때
@@ -784,7 +784,7 @@ export const IqcInspectionScreen = () => {
         </details>
         {/* ⛔ 읽기 전용이다 — 앞 회차는 정정하지 않고 새 회차를 쌓는다(§5-3). 회차가 둘 이상일 때만 선다. */}
         {historyRounds.length > 0 && (
-          <details className="iqc-inspection-fold">
+          <details className="pane iqc-inspection-fold">
             <summary>{messages.iqcInspection.history.heading}</summary>
             <RoundHistory
               rounds={historyRounds}
@@ -796,7 +796,7 @@ export const IqcInspectionScreen = () => {
 
         {/* LOT 별 시험성적서 등 검사 문서(#58) — 대상 LOT 이 있을 때만. */}
         {detail.data.lotId !== null && (
-          <details className="iqc-inspection-fold">
+          <details className="pane iqc-inspection-fold">
             <summary>{messages.inspectionDocuments.heading}</summary>
             <AttachmentPanel
               key={detail.data.lotId}
@@ -808,7 +808,7 @@ export const IqcInspectionScreen = () => {
 
         {/* 검사 대상 이력(#61) — 회차를 저장·확정하면 새로 부른다. */}
         {selectedId !== null && (
-          <details className="iqc-inspection-fold">
+          <details className="pane iqc-inspection-fold">
             <summary>{messages.inspectionHistory.heading}</summary>
             <InspectionHistoryPanel
               hideSourceLot
@@ -822,8 +822,7 @@ export const IqcInspectionScreen = () => {
           </details>
         )}
       </div>
-    </>
-  );
+    );
 
   return (
     <>
@@ -934,6 +933,7 @@ export const IqcInspectionScreen = () => {
           {detailContent}
         </section>
       )}
+      {selectedId !== null && auxContent}
     </>
   );
 };

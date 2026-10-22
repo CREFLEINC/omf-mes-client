@@ -169,7 +169,7 @@ export const RejectionReason = ({
             }}
           />
           {majorMissing && (
-            <span id={`${majorId}-error`} className="iqc-inspection-sr-only">
+            <span id={`${majorId}-error`} className="iqc-inspection-visually-hidden">
               {t.majorMissing}
             </span>
           )}
@@ -189,7 +189,7 @@ export const RejectionReason = ({
             }}
           />
           {minorMissing && (
-            <span id={`${minorId}-error`} className="iqc-inspection-sr-only">
+            <span id={`${minorId}-error`} className="iqc-inspection-visually-hidden">
               {t.minorMissing}
             </span>
           )}
