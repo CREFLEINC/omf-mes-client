@@ -172,12 +172,10 @@ export const iqcInspection = {
       held: '보류수량',
     },
     /** 실시간 합계. 어긋난 값을 감추지 않는다. */
-    sum: '합계',
+    sum: '입력 완료',
     remaining: '미입력',
-    complete: '입력 완료',
     overBy: (over: string): string => `${over} 초과`,
     short: (remaining: string): string => `${remaining} 남았습니다.`,
-    matched: '검사수량과 일치합니다.',
     /** 진행 막대의 접근 이름. */
     progressLabel: '검사수량 대비 입력 합계',
     /** 넘겼다. 0으로 깎아 감추지 않는다. */

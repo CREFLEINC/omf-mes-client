@@ -85,11 +85,12 @@ describe('ResultFormPane', () => {
     expect(onChange).toHaveBeenCalledWith({ ...EMPTY_QUANTITY_DRAFT, accepted: '4' });
   });
 
-  it('합계가 맞으면 「입력 완료」와 일치 안내, 막대는 성공색(#133)', () => {
+  it('합계가 맞으면 「입력 완료 500 / 500」 · 미입력 0, 따로 일치 문장은 없다(#133)', () => {
     renderPane({ accepted: '480', rejected: '15', held: '5' });
 
-    expect(screen.getByText(t.complete)).toBeInTheDocument();
-    expect(screen.getByText(t.matched)).toBeInTheDocument();
+    expect(sumText()).toBe(`${t.sum} 500 / 500`);
+    expect(screen.getByText(`${t.remaining} 0`)).toBeInTheDocument();
+    expect(screen.queryByText('검사수량과 일치합니다.')).not.toBeInTheDocument();
   });
 
   it('모자라면 「합계 / 검사수량」·잔여·막대와 남은 양 안내로 보인다(#133)', () => {
@@ -114,7 +115,7 @@ describe('ResultFormPane', () => {
   it('소수 합이 부동소수 오차로 어긋나지 않는다', () => {
     renderPane({ accepted: '0.1', rejected: '0.2', held: '0' }, null, 0.3);
 
-    expect(screen.getByText(t.matched)).toBeInTheDocument();
+    expect(screen.getByText(`${t.remaining} 0`)).toBeInTheDocument();
   });
 
   it('오류를 타이핑마다 보이지 않는다 — 「0.5」를 치는 도중 「0.」에서 틀렸다고 하지 않는다', () => {
@@ -139,7 +140,7 @@ describe('ResultFormPane', () => {
     /* 0으로 읽고 세면 abc + 500 + 빈칸 = 500 이 되어 「일치합니다」가 거짓이 된다. */
     renderPane({ accepted: 'abc', rejected: '500', held: '' });
 
-    expect(screen.queryByText(t.matched)).not.toBeInTheDocument();
+    expect(screen.queryByText(`${t.remaining} 0`)).not.toBeInTheDocument();
   });
 
   it('셀 수 없으면 합계·잔여도 숫자로 내지 않는다 — 0으로 읽은 합은 그 숫자가 거짓이다', () => {

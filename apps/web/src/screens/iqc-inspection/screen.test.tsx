@@ -509,11 +509,10 @@ describe('IqcInspectionScreen', () => {
     expect(screen.getByLabelText(t.result.fields.held)).toHaveValue('5');
   });
 
-  it('되돌아온 수량이 합계 제약을 만족하면 입력 완료 · 일치한다고 말한다', async () => {
+  it('되돌아온 수량이 합계 제약을 만족하면 미입력이 0 이다', async () => {
     renderScreen('/?ir=1001');
 
-    expect(await screen.findByText(t.result.complete)).toBeInTheDocument();
-    expect(screen.getByText(t.result.matched)).toBeInTheDocument();
+    expect(await screen.findByText(new RegExp(`${t.result.remaining} 0`))).toBeInTheDocument();
   });
 
   /*

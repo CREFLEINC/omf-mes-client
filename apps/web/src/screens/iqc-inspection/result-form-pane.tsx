@@ -214,8 +214,9 @@ export const ResultFormPane = ({
   const totalsNote =
     totals.kind === 'uncountable'
       ? null
-      : totals.matches
-        ? t.matched
+      : /* 맞으면 문장을 두지 않는다 — 「검사수량과 일치합니다」는 담당자가 지웠다(#133 용어 정정 7). */
+        totals.matches
+        ? null
         : isOver
           ? t.over(overText)
           : t.short(withUom(formatMicro(totals.remaining), uomCode));
@@ -240,15 +241,13 @@ export const ResultFormPane = ({
             };
   const sumText = totals.kind === 'counted' ? formatMicro(totals.sum) : unknownValue;
   const inspectedText = withUom(String(inspectedQty), uomCode);
-  /* 오른쪽 상태 — 미입력 N · 입력 완료 · N 초과. 음수는 보이지 않는다(#133). */
+  /* 오른쪽 상태 — 미입력 N(맞으면 0) · N 초과. 음수는 보이지 않는다(#133). */
   const statusText =
     totals.kind !== 'counted'
       ? `${t.remaining} ${unknownValue}`
-      : totals.matches
-        ? t.complete
-        : isOver
-          ? t.overBy(overText)
-          : `${t.remaining} ${withUom(formatMicro(totals.remaining), uomCode)}`;
+      : isOver
+        ? t.overBy(overText)
+        : `${t.remaining} ${withUom(formatMicro(totals.remaining), uomCode)}`;
 
   const field = (key: keyof QuantityDraft, label: string, invalid: boolean): ReactElement => (
     /* 단위 코드는 칸 바로 옆 글자로 — 입력값 자체에는 넣지 않는다. 모르면 붙이지 않는다. */
@@ -325,7 +324,8 @@ export const ResultFormPane = ({
           >
             <div className="iqc-inspection-progress-row">
               <span className="iqc-inspection-progress-sum">
-                <span className="iqc-inspection-visually-hidden">{t.sum} </span>
+                {/* 「입력 완료 15 / 20 EA」 — 숫자 앞 이름표(#133 용어 정정 5). */}
+                <span className="iqc-inspection-progress-label">{t.sum} </span>
                 {totals.kind === 'counted' ? `${sumText} / ${inspectedText}` : sumText}
               </span>
               <span className="iqc-inspection-progress-status">{statusText}</span>

@@ -14548,6 +14548,12 @@ button.app-button-neutral {
   box-shadow: inset 0 0 0 1px var(--semantic-error-text);
 }
 
+/* 입력 현황 「입력 완료」 — 숫자 앞 이름표는 보조 글색으로(#133). */
+.iqc-inspection-progress-label {
+  color: var(--on-surface-muted);
+  font-weight: 400;
+}
+
 /* 4M 변경 정보(#133) — 판정 아래 따로 선 구획. 체크 · 안내를 한 줄에, 체크하면 비고 칸(최대 40rem). */
 .iqc-inspection-four-m-block .iqc-inspection-four-m {
   grid-template-columns: auto minmax(0, 1fr);
