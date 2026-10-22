@@ -654,6 +654,40 @@ describe('IqcInspectionScreen', () => {
     await waitFor(() => expect(screen.queryByText(t.result.saved)).not.toBeInTheDocument());
   });
 
+  /*
+   * ⭐ 실검증에서 잡은 자리다(#133). 저장 뒤 다시 부른 회차의 수량이 저장 전과 다르면(= 거의 항상) 회차를 되돌리는
+   * 자리가 「저장했습니다」까지 지워, 저장이 됐는지 화면이 말하지 않았다.
+   */
+  it('저장 뒤 다시 부른 회차 수량이 바뀌어도 「저장했습니다」를 남긴다', async () => {
+    renderScreen('/?ir=1001', undefined, [draftRound], [], itemSpecsResponse(), [
+      { ...draftRound, heldQty: draftRound.heldQty + 1, versionNo: draftRound.versionNo + 1 },
+    ]);
+
+    await findRound(1);
+    await editQuantity();
+    await userEvent.click(screen.getByRole('button', { name: t.result.save }));
+
+    await screen.findByText(t.result.saved);
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    expect(screen.getByText(t.result.saved)).toBeInTheDocument();
+  });
+
+  it('저장한 뒤 판정을 바꾸면 「저장했습니다」를 지운다 — 수량 말고 다른 칸도 저장되지 않은 변경이다', async () => {
+    renderScreen('/?ir=1001');
+
+    await findRound(1);
+    await editQuantity();
+    await userEvent.click(screen.getByRole('button', { name: t.result.save }));
+    await screen.findByText(t.result.saved);
+
+    await userEvent.click(screen.getByLabelText(t.result.judgment));
+    const options = await screen.findAllByRole('option');
+    const other = options.find((option) => option.getAttribute('aria-selected') !== 'true');
+    await userEvent.click(other as HTMLElement);
+
+    await waitFor(() => expect(screen.queryByText(t.result.saved)).not.toBeInTheDocument());
+  });
+
   it('검사 시점에 고정된 기준 버전으로 항목을 부른다 — 최신 기준을 따로 찾지 않는다', async () => {
     const { sent } = renderScreen('/?ir=1001');
 

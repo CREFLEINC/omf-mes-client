@@ -307,7 +307,10 @@ export const IqcInspectionScreen = () => {
         };
 
   useEffect(() => {
-    setIsSaved(false);
+    /*
+     * ⚠ 「저장했습니다」는 여기서 지우지 않는다 — 저장 뒤 다시 부른 회차 값으로 이 자리가 다시 돌면 방금 한 저장을
+     * 지워 버린다(#133 실검증). 고른 의뢰가 바뀔 때(아래)와 값을 고칠 때(`changeDraft` 등) 지운다.
+     */
     setIsJustConfirmed(false);
     /*
      * ⭐ 재검사 모드도 함께 푼다 — 저장이 새 회차를 만들면 `roundId` 가 바뀌어 여기로 오고,
@@ -327,6 +330,7 @@ export const IqcInspectionScreen = () => {
   /* 되살린 기록의 코드가 코드 마스터에 없어 사유 글만 되살렸는가 — 그러면 코드를 새로 고르기 전에는 기록을 건드리지 않는다. */
   const restoredTextOnly = useRef(false);
   useEffect(() => {
+    setIsSaved(false);
     setRejection(EMPTY_REJECTION);
     setSavedRejection(EMPTY_REJECTION);
     setChangeReason('');
@@ -671,6 +675,7 @@ export const IqcInspectionScreen = () => {
           onJudgmentChange={(next) => {
             /* 불합격이 아닌 판정으로 바꾸면 사유 입력을 비운다 — 다시 불합격을 골라도 이전 사유가 되살아나지 않는다(#122 검증). */
             if (next !== REJECTED_JUDGMENT) setRejection(EMPTY_REJECTION);
+            setIsSaved(false);
             setJudgment(next);
           }}
           onConfirm={() => {
@@ -691,7 +696,10 @@ export const IqcInspectionScreen = () => {
                   codes={defectCodes.data ?? []}
                   causes={causeCodes.data ?? []}
                   draft={rejection}
-                  onChange={setRejection}
+                  onChange={(next) => {
+                    setIsSaved(false);
+                    setRejection(next);
+                  }}
                   disabled={confirm.isSaving}
                 />
               )}
@@ -702,7 +710,10 @@ export const IqcInspectionScreen = () => {
               <JudgmentChange
                 needsReason={needsChangeReason}
                 reason={changeReason}
-                onReasonChange={setChangeReason}
+                onReasonChange={(next) => {
+                  setIsSaved(false);
+                  setChangeReason(next);
+                }}
                 disabled={confirm.isSaving}
               />
             ) : null
