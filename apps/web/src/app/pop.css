@@ -9131,3 +9131,11 @@
 .production-flow-reason-body:focus {
   outline: none;
 }
+
+/* 미달 사유 창의 「목표 · 실적」 한 줄 — 사유를 왜 묻는지 숫자로 보인다. */
+.production-flow-reason-body .pop-figures-line {
+  margin: 0 0 var(--space-3);
+  font: var(--type-body-lg);
+  letter-spacing: var(--type-body-lg-tracking);
+}
+
