@@ -1,7 +1,15 @@
-import { AlertBanner, Button, Dialog, TextField, useToast } from '@crefle/web-ui';
+import {
+  AlertBanner,
+  Button,
+  type Column,
+  Dialog,
+  Table,
+  TextField,
+  useToast,
+} from '@crefle/web-ui';
 import type { components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
-import { useId, useRef, useState } from 'react';
+import { useId, useState } from 'react';
 import { useNavigate } from 'react-router';
 
 import { masterName } from '../../patterns/master-name';
@@ -9,15 +17,18 @@ import { SaveErrorBanner } from '../../patterns/master';
 import type { FlowGateVerdict } from './flow-gating';
 import { useVarianceReasons } from './flow-queries';
 import { formatQty } from './quantity-draft';
-import { buildSessionEnd, useWorkSessionEnd } from './session';
 import {
   CLOSABLE_STATUSES,
+  type CloseSessionView,
+  planCloseSessions,
   useCloseOpenLots,
+  useCloseSequence,
+  useCloseSessions,
   useCloseTarget,
-  useWorkOrderCloseWrite,
 } from './wo-close';
 
 const t = messages.productionResult.flow.woClose;
+const st = t.sessions;
 
 type WorkOrderClose = components['schemas']['WorkOrderClose'];
 type Disposition = NonNullable<WorkOrderClose['remainderDispositionCode']>;
@@ -27,27 +38,27 @@ export interface WorkOrderCloseActionProps {
   workOrderNo: string;
   statusCode: string;
   workerNo: string | null;
+  /** 이 단말. 마감 전에 이 단말의 진행 중 세션만 끝낸다 */
+  terminalId: number | null;
   gate: FlowGateVerdict;
   isOnline: boolean;
   pendingCount: number;
-  /** 이 단말이 이 작업지시에 열어 둔 세션. 마감 전에 닫는다 — 열린 세션이 있으면 서버가 거부한다 */
-  ownSessionId: number | null;
-  isOwnSessionPending: boolean;
   uomLabel: string;
 }
 
 /** 왜 지금 마감할 수 없는가. 없으면 null. */
 const blockedReason = (props: WorkOrderCloseActionProps): string | null => {
-  if (props.gate === 'denied' || props.gate === 'unidentified') {
+  if (props.gate === 'unidentified') return t.blocked.unidentified;
+  if (props.gate === 'denied') {
     return t.blocked.denied(messages.workOrderClose.menuPath, messages.terminalProcessMap.menuPath);
   }
   if (props.gate === 'checking') return t.blocked.checking;
   if (props.gate === 'unavailable') return t.blocked.unavailable;
+  if (props.statusCode === 'CANCELLED') return t.blocked.cancelled;
   if (!CLOSABLE_STATUSES.includes(props.statusCode)) return t.blocked.status;
   if (!props.isOnline) return t.blocked.offline;
   /* 보내지 못한 실적이 남은 채 마감하면 판정이 그 수량을 빼고 내려진다. */
   if (props.pendingCount > 0) return t.blocked.pending(props.pendingCount);
-  if (props.isOwnSessionPending) return t.blocked.session;
   if (props.workerNo === null || props.workerNo.trim() === '')
     return messages.popChrome.workerMissing;
 
@@ -57,11 +68,11 @@ const blockedReason = (props: WorkOrderCloseActionProps): string | null => {
 /**
  * P-02-04 의 작업지시 마감 — 관리웹 W/O 마감과 같은 판정·입력을 현장에서 한다.
  *
- * 판정은 서버가 낸 값이다. 이 단말의 세션이 열려 있으면 먼저 닫고 마감한다 — 열린 세션이 있으면
- * 서버가 마감을 거부한다.
+ * 판정은 서버가 낸 값이다. 이 단말이 끝낼 수 없는 세션(다른 단말, 이 단말의 중단 세션)이 열려
+ * 있으면 아무것도 보내지 않고 막는다 — 이 단말 세션만 끝내 놓고 마감이 거부되면 작업만 끊긴다.
  */
 export const WorkOrderCloseAction = (props: WorkOrderCloseActionProps) => {
-  const { workOrderId, workOrderNo, workerNo, ownSessionId, uomLabel } = props;
+  const { workOrderId, workOrderNo, workerNo, terminalId, uomLabel } = props;
   const toast = useToast();
   const navigate = useNavigate();
   const noteId = useId();
@@ -69,31 +80,29 @@ export const WorkOrderCloseAction = (props: WorkOrderCloseActionProps) => {
   const [disposition, setDisposition] = useState<Disposition | null>(null);
   const [reasonCode, setReasonCode] = useState<string | null>(null);
   const [remarks, setRemarks] = useState('');
-  const pendingBody = useRef<WorkOrderClose | null>(null);
 
   const target = useCloseTarget(workOrderId, isOpen);
   const openLots = useCloseOpenLots(workOrderId, isOpen);
+  const sessions = useCloseSessions(workOrderId, isOpen);
   const reasons = useVarianceReasons(isOpen);
 
-  const closeWrite = useWorkOrderCloseWrite({
+  const sequence = useCloseSequence({
     workOrderId,
     workerNo: workerNo ?? '',
-    onSuccess: () => {
+    onClosed: () => {
       toast.show({ variant: 'success', description: t.done(workOrderNo) });
       void navigate('/pop/work-start');
     },
-  });
-  const sessionEnd = useWorkSessionEnd({
-    workSessionId: ownSessionId,
-    workerNo: workerNo ?? '',
-    onSuccess: () => {
-      if (pendingBody.current !== null) closeWrite.write(pendingBody.current);
+    recheckSessions: async () => {
+      const result = await sessions.refetch();
+      return result.data === undefined ? null : planCloseSessions(result.data, terminalId);
     },
   });
 
   if (props.statusCode === 'CLOSED') return null;
 
   const reason = blockedReason(props);
+  const plan = sessions.data === undefined ? null : planCloseSessions(sessions.data, terminalId);
   const progress = target.data?.progress;
   const judgment = progress?.completionJudgmentCode ?? null;
   const savedReason = target.data?.completionVarianceReasonCode ?? null;
@@ -108,12 +117,13 @@ export const WorkOrderCloseAction = (props: WorkOrderCloseActionProps) => {
   const needsDisposition = judgment === 'UNDER';
   const needsReason = judgment === 'UNDER' || judgment === 'OVER';
   const missing =
-    needsDisposition && disposition === null
-      ? t.needRemainder
-      : needsReason && effectiveReason === null
-        ? t.needReason
-        : null;
-  const isSaving = closeWrite.isSaving || sessionEnd.isSaving;
+    judgment === null
+      ? t.judgmentMissing
+      : needsDisposition && disposition === null
+        ? t.needRemainder
+        : needsReason && effectiveReason === null
+          ? t.needReason
+          : null;
 
   const body = (): WorkOrderClose | null => {
     if (judgment === null || missing !== null) return null;
@@ -127,29 +137,46 @@ export const WorkOrderCloseAction = (props: WorkOrderCloseActionProps) => {
       ...(disposition === 'WRITE_OFF' && trimmed !== '' ? { remarks: trimmed } : {}),
     };
   };
-
-  const submit = () => {
-    const next = body();
-    if (next === null || isSaving) return;
-
-    if (ownSessionId === null) {
-      closeWrite.write(next);
-      return;
-    }
-    pendingBody.current = next;
-    sessionEnd.write(buildSessionEnd(new Date()));
-  };
+  const canSubmit =
+    body() !== null && plan !== null && plan.blockers.length === 0 && !sequence.isSaving;
 
   const close = () => {
-    if (isSaving) return;
+    if (sequence.isSaving) return;
     setIsOpen(false);
-    closeWrite.reset();
-    sessionEnd.reset();
+    sequence.reset();
   };
 
+  const sessionColumns: Column<CloseSessionView>[] = [
+    { key: 'terminal', header: st.terminal, render: (row) => row.terminalCode ?? st.unknown },
+    {
+      key: 'worker',
+      header: st.worker,
+      render: (row) =>
+        row.workerName === null || row.workerNo === null
+          ? st.unknown
+          : st.workerValue(row.workerName, row.workerNo),
+    },
+    { key: 'state', header: st.state, render: (row) => (row.isRunning ? st.RUNNING : st.STOPPED) },
+    {
+      key: 'where',
+      header: st.where,
+      render: (row) =>
+        row.terminalId === terminalId
+          ? st.here(messages.workHoldRegister.title)
+          : st.other(messages.workOrderClose.menuPath),
+    },
+  ];
+
+  const endFailureText =
+    sequence.endFailure === 'forbidden'
+      ? t.endForbidden
+      : sequence.endFailure === 'notFound'
+        ? t.endNotFound
+        : sequence.endFailure === 'other'
+          ? t.endFailed
+          : null;
   const variance = progress?.varianceQty;
   const voided = target.data?.preIssuedLots?.withoutResultCount ?? 0;
-  const lotNos = openLots.data ?? [];
 
   return (
     <div className="production-flow-wo-close">
@@ -179,27 +206,60 @@ export const WorkOrderCloseAction = (props: WorkOrderCloseActionProps) => {
           onClose={close}
           footer={
             <>
-              <Button variant="outlined" size="xl" disabled={isSaving} onClick={close}>
+              <Button variant="outlined" size="xl" disabled={sequence.isSaving} onClick={close}>
                 {t.cancel}
               </Button>
               <Button
                 size="xl"
-                disabled={body() === null || isSaving}
-                loading={isSaving}
-                onClick={submit}
+                disabled={!canSubmit}
+                loading={sequence.isSaving}
+                onClick={() => {
+                  const next = body();
+                  if (next === null || plan === null || !canSubmit) return;
+                  sequence.start(next, plan.ownSessionId);
+                }}
               >
                 {t.confirm}
               </Button>
             </>
           }
         >
-          {sessionEnd.error !== null ? (
+          {endFailureText !== null && (
             <div className="banner-slot">
-              <AlertBanner variant="error" title={t.endFailed} />
+              <AlertBanner variant="error" title={endFailureText} />
             </div>
-          ) : (
-            <SaveErrorBanner error={closeWrite.error} />
           )}
+          {sequence.endedButNotClosed && (
+            <div className="banner-slot">
+              <AlertBanner variant="warning" title={t.endedButNotClosed} />
+            </div>
+          )}
+          <SaveErrorBanner error={sequence.closeError} />
+
+          {sessions.isPending ? (
+            <p role="status">{st.checking}</p>
+          ) : sessions.isError ? (
+            <AlertBanner
+              variant="error"
+              title={st.loadFailed}
+              action={
+                <Button variant="outlined" size="sm" onClick={() => void sessions.refetch()}>
+                  {messages.common.retry}
+                </Button>
+              }
+            />
+          ) : plan !== null && plan.blockers.length > 0 ? (
+            <div className="banner-slot">
+              <AlertBanner variant="warning" title={st.blocked} />
+              <Table
+                density="compact"
+                caption={st.listLabel}
+                columns={sessionColumns}
+                rows={plan.blockers}
+                getRowId={(row) => String(row.workSessionId)}
+              />
+            </div>
+          ) : null}
 
           {target.isPending ? (
             <p role="status">{t.loading}</p>
@@ -235,6 +295,18 @@ export const WorkOrderCloseAction = (props: WorkOrderCloseActionProps) => {
                   </div>
                 )}
               </dl>
+
+              {judgment === null && (
+                <AlertBanner
+                  variant="error"
+                  title={t.judgmentMissing}
+                  action={
+                    <Button variant="outlined" size="sm" onClick={() => void target.refetch()}>
+                      {messages.common.retry}
+                    </Button>
+                  }
+                />
+              )}
 
               {needsDisposition && (
                 <fieldset className="field-cell">
@@ -293,8 +365,24 @@ export const WorkOrderCloseAction = (props: WorkOrderCloseActionProps) => {
               )}
 
               {voided > 0 && <p>{t.voidedSlots(voided)}</p>}
-              {lotNos.length > 0 && <p>{t.openLots(lotNos.length, lotNos.join(', '))}</p>}
-              {missing !== null && <p className="field-note">{missing}</p>}
+              {openLots.isError ? (
+                <p>{t.openLotsUnknown}</p>
+              ) : (
+                <>
+                  {(openLots.data?.lotNos.length ?? 0) > 0 && (
+                    <p>
+                      {t.openLots(
+                        openLots.data?.lotNos.length ?? 0,
+                        openLots.data?.lotNos.join(', ') ?? '',
+                      )}
+                    </p>
+                  )}
+                  {(openLots.data?.uncheckedCount ?? 0) > 0 && (
+                    <p>{t.uncheckedLots(openLots.data?.uncheckedCount ?? 0)}</p>
+                  )}
+                </>
+              )}
+              {missing !== null && judgment !== null && <p className="field-note">{missing}</p>}
               <p>{t.irreversible}</p>
             </>
           )}

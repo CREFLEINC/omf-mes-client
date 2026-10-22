@@ -162,6 +162,36 @@ export const productionResult: Translated<typeof ko.productionResult> = {
       needRemainder:
         'Vì thiếu nên phải chọn xử lý lượng còn lại (chuyển sang kỳ sau hoặc xóa bỏ) mới đóng được.',
       needReason: 'Vì thiếu hoặc vượt nên phải chọn lý do mới đóng được.',
+      judgmentMissing:
+        'Không tải được đánh giá nên chưa đóng được. Hãy kiểm tra kết nối rồi bấm «Thử lại».',
+      openLotsUnknown:
+        'Chưa kiểm tra được LOT đang thực hiện. Dù đóng, LOT đang thực hiện vẫn giữ nguyên trạng thái.',
+      uncheckedLots: (count: number): string =>
+        `Còn ${String(count)} LOT chưa hoàn thành chưa kiểm tra được. Dù đóng, các LOT đó vẫn giữ nguyên trạng thái.`,
+      sessions: {
+        checking: 'Đang kiểm tra phiên làm việc của lệnh sản xuất này.',
+        loadFailed: 'Không kiểm tra được phiên làm việc. Hãy kiểm tra kết nối rồi bấm «Thử lại».',
+        blocked:
+          'Các phiên làm việc dưới đây đang mở nên chưa đóng được. Hãy kết thúc phiên ở nơi kết thúc rồi bấm lại.',
+        listLabel: 'Phiên làm việc đang mở',
+        terminal: 'Máy',
+        worker: 'Công nhân',
+        state: 'Trạng thái',
+        where: 'Nơi kết thúc',
+        RUNNING: 'Đang làm',
+        STOPPED: 'Tạm dừng',
+        unknown: 'Không xác định được',
+        workerValue: (name: string, workerNo: string): string => `${name} (${workerNo})`,
+        here: (holdScreen: string): string => `Màn hình «${holdScreen}» của máy này`,
+        other: (webMenu: string): string =>
+          `Máy đó, hoặc buộc kết thúc ở ${webMenu} trên web quản lý`,
+      },
+      endForbidden:
+        'Máy này không có quyền kết thúc phiên làm việc nên chưa đóng. Hãy nhờ quản trị viên buộc kết thúc phiên trên web quản lý.',
+      endNotFound:
+        'Không tìm thấy phiên làm việc của máy này nên chưa đóng. Có thể đã kết thúc rồi, hãy đóng cửa sổ và mở lại.',
+      endedButNotClosed:
+        'Phiên làm việc của máy này đã kết thúc nhưng lệnh sản xuất chưa được đóng. Hãy xem lý do bên dưới rồi bấm lại.',
       cancel: 'Hủy',
       confirm: 'Đóng',
       done: (workOrderNo: string): string =>
@@ -177,7 +207,9 @@ export const productionResult: Translated<typeof ko.productionResult> = {
           `Còn ${String(count)} kết quả chưa gửi. Hãy đóng sau khi đã gửi hết kết quả.`,
         status:
           'Lệnh sản xuất này chưa bắt đầu làm nên chưa đóng được. Chỉ đóng được lệnh đã bắt đầu làm.',
-        session: 'Đang kiểm tra phiên làm việc. Hãy bấm lại sau giây lát.',
+        unidentified:
+          'Chưa xác định được máy hoặc công đoạn nên chưa đóng được. Hãy nhờ quản trị viên kiểm tra đăng ký máy và ánh xạ công đoạn.',
+        cancelled: 'Lệnh sản xuất đã hủy thì không đóng được.',
       },
       endFailed:
         'Không kết thúc được phiên làm việc của máy này nên chưa đóng. Hãy kiểm tra kết nối rồi bấm lại.',

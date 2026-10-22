@@ -16,6 +16,7 @@ import { LoadErrorBanner } from './load-error-banner';
 import { EndConfirmDialog } from './end-confirm-dialog';
 import { toEndGroup, toResumeGroup, toStopGroup, type HoldTarget } from './event-request';
 import { useWorkHoldOutbox, type OutboxDraft } from './outbox';
+import { DIRECTION_END } from './codes';
 import { useOpenSession, useSessionEvents, useWorkOrderNo, workHoldKeys } from './queries';
 import { useHoldReasons } from './reason-options';
 import { SessionPanel } from './session-panel';
@@ -62,11 +63,11 @@ export const WorkHoldRegisterScreen = () => {
 
   const session = useOpenSession(workOrderId);
   const workOrderNo = useWorkOrderNo(workOrderId);
-  /** 이 화면에서 방금 세션을 끝냈는가 — 「세션 없음」을 끝낸 결과로 말한다 */
-  const [endedHere, setEndedHere] = useState(false);
   const events = useSessionEvents(session.session?.workSessionId ?? null);
   const reasons = useHoldReasons();
   const outbox = useWorkHoldOutbox();
+  /* 종료가 서버에 닿은 뒤에만 「끝냈다」고 말한다 — 큐에 담기만 한 동안은 세션이 아직 열려 있다. */
+  const endedHere = outbox.lastSentType === DIRECTION_END;
   const queryClient = useQueryClient();
 
   /**
@@ -179,7 +180,6 @@ export const WorkHoldRegisterScreen = () => {
 
     setEndConfirmOpen(false);
     submit((target) => toEndGroup(endedAt, target));
-    setEndedHere(true);
   };
 
   return (

@@ -1348,8 +1348,7 @@ export const ProductionFlowScreen = () => {
                   gate={gates.close}
                   isOnline={outbox.isOnline}
                   pendingCount={outbox.pendingCount}
-                  ownSessionId={openSession.session?.workSessionId ?? null}
-                  isOwnSessionPending={openSession.isPending}
+                  terminalId={identity.terminalId}
                   uomLabel={uom.labelOf(workOrder.data.uomId) ?? ''}
                 />
               )}

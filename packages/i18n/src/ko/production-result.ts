@@ -171,7 +171,36 @@ export const productionResult = {
         `마감되지 않은 LOT ${String(count)}건(${lotNos})은 그 상태로 남습니다.`,
       irreversible: '마감하면 되돌릴 수 없습니다. ERP 실적 송신은 마감과 함께 대기열에 올라갑니다.',
       needRemainder: '미달이라 잔량 처리(이월 또는 소멸)를 골라야 마감할 수 있습니다.',
-      needReason: '미달·초과라 사유를 골라야 마감할 수 있습니다.',
+      needReason: '미달이나 초과라 사유를 골라야 마감할 수 있습니다.',
+      judgmentMissing:
+        '판정을 불러오지 못해 마감할 수 없습니다. 연결을 확인하고 「다시 시도」를 누르세요.',
+      openLotsUnknown:
+        '진행 중인 LOT 을 확인하지 못했습니다. 마감해도 진행 중인 LOT 은 그 상태로 남습니다.',
+      uncheckedLots: (count: number): string =>
+        `확인하지 못한 미완료 LOT ${String(count)}건이 더 있습니다. 마감해도 그 LOT 은 그 상태로 남습니다.`,
+      sessions: {
+        checking: '이 작업지시의 작업 세션을 확인하는 중입니다.',
+        loadFailed: '작업 세션을 확인하지 못했습니다. 연결을 확인하고 「다시 시도」를 누르세요.',
+        blocked:
+          '아래 작업 세션이 열려 있어 마감할 수 없습니다. 끝낼 곳에서 세션을 끝낸 뒤 다시 누르세요.',
+        listLabel: '열린 작업 세션',
+        terminal: '단말',
+        worker: '작업자',
+        state: '상태',
+        where: '끝낼 곳',
+        RUNNING: '진행',
+        STOPPED: '중단',
+        unknown: '확인할 수 없음',
+        workerValue: (name: string, workerNo: string): string => `${name}(${workerNo})`,
+        here: (holdScreen: string): string => `이 단말의 「${holdScreen}」 화면`,
+        other: (webMenu: string): string => `그 단말, 또는 관리웹 ${webMenu}의 강제 종료`,
+      },
+      endForbidden:
+        '이 단말의 작업 세션을 끝낼 권한이 없어 마감하지 않았습니다. 관리자에게 관리웹에서 세션을 강제 종료해 달라고 요청하세요.',
+      endNotFound:
+        '이 단말의 작업 세션을 찾지 못해 마감하지 않았습니다. 이미 끝났을 수 있으니 창을 닫고 다시 여세요.',
+      endedButNotClosed:
+        '이 단말의 작업 세션은 끝났지만 작업지시는 마감되지 않았습니다. 아래 까닭을 확인한 뒤 다시 누르세요.',
       cancel: '취소',
       confirm: '마감',
       done: (workOrderNo: string): string =>
@@ -187,7 +216,9 @@ export const productionResult = {
           `아직 보내지 못한 실적 ${String(count)}건이 있습니다. 실적이 모두 보내진 뒤 마감하세요.`,
         status:
           '이 작업지시는 아직 작업이 시작되지 않아 마감할 수 없습니다. 작업을 시작한 작업지시만 마감할 수 있습니다.',
-        session: '작업 세션을 확인하는 중입니다. 잠시 뒤 다시 누르세요.',
+        unidentified:
+          '이 단말이나 공정을 확인하지 못해 마감할 수 없습니다. 관리자에게 단말 등록과 공정 매핑을 확인해 달라고 요청하세요.',
+        cancelled: '취소된 작업지시는 마감할 수 없습니다.',
       },
       endFailed:
         '이 단말의 작업 세션을 끝내지 못해 마감하지 않았습니다. 연결을 확인하고 다시 누르세요.',
