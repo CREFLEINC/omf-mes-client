@@ -104,6 +104,8 @@ export interface ResultFormPaneProps {
   saveBlockedReason?: string | null;
   /** 종합 판정 바로 아래 칸 — 불합격 사유(omf-all-around#106). 화면이 판정에 따라 채운다. */
   judgmentDetail?: ReactNode;
+  /** 4M 변경 정보 — 판정과 다른 업무라 판정 아래 소제목을 두고 따로 선다(#133). 없으면 구획을 두지 않는다 */
+  fourMSlot?: ReactNode;
   /**
    * 확정된 회차의 「재검사」 자리를 대신할 안내(omf-all-around#106 후속) — LOT 이 불량이면 재검 회차를 확정할 수
    * 없어 처분·반품으로 잇는다. 없으면 종전대로 「재검사」 단추다.
@@ -145,6 +147,7 @@ export const ResultFormPane = ({
   onCancelReinspection,
   saveBlockedReason = null,
   judgmentDetail = null,
+  fourMSlot = null,
   confirmOnlyBlockedReason = null,
   reinspectReplacement = null,
 }: ResultFormPaneProps) => {
@@ -206,14 +209,16 @@ export const ResultFormPane = ({
    * 것이고, 그때 「일치합니다」든 「남아 있습니다」든 내면 **거짓을 말하는 것**이다. 무엇을
    * 고쳐야 하는지는 그 칸의 오류가 이미 말한다.
    */
+  const isOver = totals.kind === 'counted' && totals.remaining < 0n;
+  const overText = isOver ? withUom(formatMicro(-totals.remaining), uomCode) : '';
   const totalsNote =
     totals.kind === 'uncountable'
       ? null
       : totals.matches
-        ? null
-        : totals.remaining > 0n
-          ? null
-          : t.over(withUom(formatMicro(-totals.remaining), uomCode));
+        ? t.matched
+        : isOver
+          ? t.over(overText)
+          : t.short(withUom(formatMicro(totals.remaining), uomCode));
 
   /**
    * 진행 막대 — **보이기 위한 값일 뿐이다**(합계·잔여 계산은 위 `toTotals` 그대로).
@@ -225,16 +230,25 @@ export const ResultFormPane = ({
       ? { value: 0, tone: 'idle' as const }
       : totals.matches
         ? { value: 100, tone: 'success' as const }
-        : totals.remaining < 0n
-          ? { value: 100, tone: 'warning' as const }
+        : /* 넘기면 가득 채우되 오류색 — 정상 완료(성공색)와 헷갈리지 않게(#133). */
+          totals.remaining < 0n
+          ? { value: 100, tone: 'error' as const }
           : {
               value: inspectedMicro > 0n ? Number((totals.sum * 10000n) / inspectedMicro) / 100 : 0,
-              tone: 'primary' as const,
+              /* 브랜드 주색이 빨강이라 «진행 중»은 정보색으로 — 초과(오류색 빨강)와 헷갈리지 않게(#133). */
+              tone: 'info' as const,
             };
   const sumText = totals.kind === 'counted' ? formatMicro(totals.sum) : unknownValue;
   const inspectedText = withUom(String(inspectedQty), uomCode);
-  const remainingText =
-    totals.kind === 'counted' ? withUom(formatMicro(totals.remaining), uomCode) : unknownValue;
+  /* 오른쪽 상태 — 잔여 N · 입력 완료 · N 초과. 음수 잔여는 보이지 않는다(#133). */
+  const statusText =
+    totals.kind !== 'counted'
+      ? `${t.remaining} ${unknownValue}`
+      : totals.matches
+        ? t.complete
+        : isOver
+          ? t.overBy(overText)
+          : `${t.remaining} ${withUom(formatMicro(totals.remaining), uomCode)}`;
 
   const field = (key: keyof QuantityDraft, label: string, invalid: boolean): ReactElement => (
     /* 단위 코드는 칸 바로 옆 글자로 — 입력값 자체에는 넣지 않는다. 모르면 붙이지 않는다. */
@@ -293,7 +307,7 @@ export const ResultFormPane = ({
             </>
           )}
 
-          <div className="iqc-inspection-qty">
+          <div className="iqc-inspection-qty" data-over={isOver ? '' : undefined}>
             {field('accepted', t.fields.accepted, errors.accepted)}
             {field('rejected', t.fields.rejected, errors.rejected)}
             {field('held', t.fields.held, errors.held)}
@@ -303,15 +317,18 @@ export const ResultFormPane = ({
           {isConfirmed && <p className="field-note">{t.confirmed}</p>}
 
           {/* 입력 현황 — 「합계 / 검사수량」 · 잔여 · 막대 · 한 줄 안내. 계산은 그대로다. */}
-          <div className="iqc-inspection-progress">
+          <div
+            className="iqc-inspection-progress"
+            data-state={
+              isOver ? 'over' : totals.kind === 'counted' && totals.matches ? 'done' : undefined
+            }
+          >
             <div className="iqc-inspection-progress-row">
               <span className="iqc-inspection-progress-sum">
-                <span className="iqc-inspection-progress-label">{t.sum} </span>
+                <span className="iqc-inspection-visually-hidden">{t.sum} </span>
                 {totals.kind === 'counted' ? `${sumText} / ${inspectedText}` : sumText}
               </span>
-              <span>
-                {t.remaining} {remainingText}
-              </span>
+              <span className="iqc-inspection-progress-status">{statusText}</span>
             </div>
             <Progress
               value={progress.value}
@@ -357,6 +374,13 @@ export const ResultFormPane = ({
           </div>
           {/* 판정에 따라 열리는 칸(자동 판정 근거 · 변경 사유 · 4M · 불합격 사유) — 넘치면 여기만 구른다(#133). */}
           <div className="iqc-inspection-judgment-detail">{judgmentDetail}</div>
+
+          {fourMSlot !== null && (
+            <div className="iqc-inspection-four-m-block">
+              <h4>{t.fourMChange.sectionTitle}</h4>
+              {fourMSlot}
+            </div>
+          )}
 
           <SaveErrorBanner error={saveError ?? confirmError} onReload={onReload} />
 

@@ -14530,49 +14530,43 @@ button.app-button-neutral {
   margin: 0;
 }
 
-/*
- * 저장하지 않고 떠날지 묻는 줄(#133) — 경고 바탕 위에 제목 · 설명(왼쪽)과 두 단추(오른쪽). 좁으면 단추가 아래로 내려간다.
- * [저장하지 않고 이동]은 되돌릴 수 없는 동작이라 테두리 단추를 오류색으로 가른다(.production-plan-remove-action 과 같은 풀이).
- */
-.iqc-inspection-leave {
-  display: flex;
-  flex: 1 1 100%;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-2) var(--space-4);
-  padding: var(--space-3) var(--space-4);
-  border: 1px solid var(--semantic-warning);
-  border-radius: var(--radius-sm);
-  background: var(--semantic-warning-container);
-}
-
-.iqc-inspection-leave-text {
-  display: grid;
-  gap: var(--space-1);
-  min-width: 0;
-}
-
-.iqc-inspection-leave-text > .field-note {
-  max-width: none;
-  margin: 0;
-}
-
-.iqc-inspection-leave-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-2);
-}
-
+/* 저장하지 않고 떠날지 묻는 팝업(#133) — [저장하지 않고 이동]은 되돌릴 수 없어 테두리 단추를 오류색으로 가른다. */
 .iqc-inspection-leave-discard:not(:disabled) {
   border-color: var(--semantic-error-text);
   color: var(--semantic-error-text);
 }
 
-/* 입력 현황 「입력 완료」 — 숫자 앞 이름표는 보조 글색으로(#133). */
-.iqc-inspection-progress-label {
-  color: var(--on-surface-muted);
-  font-weight: 400;
+/*
+ * 입력 현황 상태(#133) — 완료는 성공색, 초과는 오류색(막대 · 오른쪽 상태 · 안내 · 세 수량 칸 테두리).
+ * 넘친 칸을 하나로 가릴 수 없어(합계가 넘친 것) 세 칸을 함께 짚는다.
+ */
+.iqc-inspection-progress[data-state='done'] .iqc-inspection-progress-status {
+  color: var(--semantic-success-text);
+}
+
+.iqc-inspection-progress[data-state='over'] .iqc-inspection-progress-status,
+.iqc-inspection-progress[data-state='over'] > .field-note {
+  color: var(--semantic-error-text);
+}
+
+/* DS 입력칸 테두리는 감싸개의 안쪽 그림자다 — 그 색만 오류색으로 바꾼다. */
+.iqc-inspection-qty[data-over] [class*='_inputWrap'] {
+  box-shadow: inset 0 0 0 1px var(--semantic-error-text);
+}
+
+/* 4M 변경 정보(#133) — 판정과 다른 업무라 판정 아래 얇은 선과 소제목으로 뗀다(상자는 두지 않는다). */
+.iqc-inspection-four-m-block {
+  display: grid;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--outline-variant);
+}
+
+.iqc-inspection-four-m-block > h4 {
+  margin: 0;
+  font: var(--type-title-sm);
+  letter-spacing: var(--type-title-sm-tracking);
 }
 
 /* 「← 목록」 바로 아래 첫 구획은 위 구분선 없이 붙는다. */

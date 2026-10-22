@@ -172,12 +172,16 @@ export const iqcInspection = {
       held: '보류수량',
     },
     /** 실시간 합계. 어긋난 값을 감추지 않는다. */
-    sum: '입력 완료',
-    remaining: '미입력',
+    sum: '합계',
+    remaining: '잔여',
+    complete: '입력 완료',
+    overBy: (over: string): string => `${over} 초과`,
+    short: (remaining: string): string => `${remaining} 남았습니다.`,
+    matched: '검사수량과 일치합니다.',
     /** 진행 막대의 접근 이름. */
     progressLabel: '검사수량 대비 입력 합계',
     /** 넘겼다. 0으로 깎아 감추지 않는다. */
-    over: (over: string): string => `검사수량보다 ${over}만큼 많습니다. 수량을 줄여 주세요.`,
+    over: (over: string): string => `검사수량보다 ${over} 많습니다.`,
     quantityInvalid: '0 이상의 숫자로 입력해 주세요. 소수점은 여섯 자리까지 됩니다.',
     /**
      * 임시 저장. ⭐ **합계가 맞지 않아도 눌린다** — 판정을 확정하는 것이 아니라 하던 일을
@@ -252,6 +256,7 @@ export const iqcInspection = {
     /** 합격판정개수 기준 자동 판정(omf-all-around#125) — 기준에 합격판정개수가 있을 때만 선다. */
     /* 4M 변경품(omf-all-around#63) — 공급사가 사람·설비·자재·방법을 바꿔 보낸 자재 LOT. 내부 「4M 자원배정」과 다른 말이다. */
     fourMChange: {
+      sectionTitle: '4M 변경 정보',
       label: '4M 변경품',
       hint: '사람·설비·자재·방법이 바뀌어 들어온 자재',
       remarks: '비고',

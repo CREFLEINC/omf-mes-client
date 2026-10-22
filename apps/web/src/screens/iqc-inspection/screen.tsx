@@ -1,4 +1,4 @@
-import { Breadcrumb, Button, PageHeader } from '@crefle/web-ui';
+import { Breadcrumb, Button, Dialog, PageHeader } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
@@ -691,17 +691,6 @@ export const IqcInspectionScreen = () => {
                   disabled={confirm.isSaving}
                 />
               )}
-              {hasFourMTarget && isOpenRound && (
-                <FourMChange
-                  draft={fourM}
-                  missing={fourMBlocked}
-                  onChange={(next) => {
-                    setIsSaved(false);
-                    setFourM(next);
-                  }}
-                  disabled={confirm.isSaving}
-                />
-              )}
               {isRejected && (
                 <RejectionReason
                   codes={defectCodes.data ?? []}
@@ -712,6 +701,19 @@ export const IqcInspectionScreen = () => {
                 />
               )}
             </>
+          }
+          fourMSlot={
+            hasFourMTarget && isOpenRound ? (
+              <FourMChange
+                draft={fourM}
+                missing={fourMBlocked}
+                onChange={(next) => {
+                  setIsSaved(false);
+                  setFourM(next);
+                }}
+                disabled={confirm.isSaving}
+              />
+            ) : null
           }
           reinspectReplacement={
             followUp.data?.isDefective === true ? (
@@ -886,41 +888,44 @@ export const IqcInspectionScreen = () => {
            * (의뢰가 바뀌면 초안을 비우는 종전 규칙 그대로).
            */}
           <div className="iqc-inspection-back">
-            {confirmingLeave ? (
-              /* 떠날지 묻는 줄 — 제목 · 한 줄 설명, 오른쪽에 [계속 작성](일반) [저장하지 않고 이동](위험)(#133). */
-              <div className="iqc-inspection-leave" role="group" aria-label={t.detail.leaveUnsaved}>
-                <div className="iqc-inspection-leave-text">
-                  <strong>{t.detail.leaveUnsaved}</strong>
-                  <span className="field-note">{t.detail.leaveUnsavedNote}</span>
-                </div>
-                <div className="iqc-inspection-leave-actions">
-                  <Button
-                    variant="outlined"
-                    size="md"
-                    className="app-button-neutral"
-                    onClick={() => setConfirmingLeave(false)}
-                  >
-                    {t.detail.keepEditing}
-                  </Button>
-                  <Button
-                    variant="outlined"
-                    size="md"
-                    className="iqc-inspection-leave-discard"
-                    onClick={backToList}
-                  >
-                    {t.detail.leaveAnyway}
-                  </Button>
-                </div>
-              </div>
-            ) : (
-              <Button
-                variant="text"
-                size="md"
-                className="iqc-inspection-back-button"
-                onClick={() => (hasChanges ? setConfirmingLeave(true) : backToList())}
+            <Button
+              variant="text"
+              size="md"
+              className="iqc-inspection-back-button"
+              onClick={() => (hasChanges ? setConfirmingLeave(true) : backToList())}
+            >
+              {t.detail.backToList}
+            </Button>
+            {/*
+             * 저장하지 않고 떠날지 묻는 팝업(#133) — 한 줄 설명, [계속 작성](일반) [저장하지 않고 이동](위험).
+             * 닫기(×·Esc·바깥)는 «계속 작성»과 같다 — 입력은 그대로 남는다.
+             */}
+            {confirmingLeave && (
+              <Dialog
+                open
+                onClose={() => setConfirmingLeave(false)}
+                title={t.detail.leaveUnsaved}
+                footer={
+                  <>
+                    <Button
+                      variant="outlined"
+                      className="app-button-neutral"
+                      onClick={() => setConfirmingLeave(false)}
+                    >
+                      {t.detail.keepEditing}
+                    </Button>
+                    <Button
+                      variant="outlined"
+                      className="iqc-inspection-leave-discard"
+                      onClick={backToList}
+                    >
+                      {t.detail.leaveAnyway}
+                    </Button>
+                  </>
+                }
               >
-                {t.detail.backToList}
-              </Button>
+                <p>{t.detail.leaveUnsavedNote}</p>
+              </Dialog>
             )}
           </div>
           {detailContent}
