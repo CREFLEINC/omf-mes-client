@@ -348,18 +348,21 @@ export const iqcInspection = {
     /** 기준 버전에 항목이 하나도 없다. 화면이 고칠 수 있는 것이 아니다. */
     noItems: '이 검사 기준 버전에는 점검 항목이 없습니다. 기준정보 담당자에게 문의하세요.',
     columns: {
-      item: '항목',
+      item: '검사 항목',
       spec: '규격',
-      sample: '샘플',
-      value: '측정치',
+      sample: '측정 회차',
+      value: '측정 결과',
       judgment: '판정',
     },
     /** 필수 항목 표시. 라벨 문자열에 붙이지 않고 따로 낸다 — 접근 이름이 흐려지지 않게. */
     requiredMark: '필수',
     /** 측정치 판정(`INSPECTION_MEASUREMENT_JUDGMENT`)의 화면 이름(#133) — 모르는 코드는 코드 그대로 보인다. */
     judgmentNames: { ACCEPTED: '합격', REJECTED: '불합격' } as Record<string, string>,
-    /** 「3 중 1」 — 이 항목이 요구하는 샘플 수 안에서 몇 번째인가. */
-    sampleOf: (sampleNo: number, count: number): string => `${count} 중 ${sampleNo}`,
+    /** 「2회차」 — 이 항목을 기준이 정한 횟수만큼 잴 때 몇 번째인가(#133). */
+    sampleOf: (sampleNo: number): string => `${String(sampleNo)}회차`,
+    /** 예/아니오 항목의 결과(#133). */
+    booleanTrue: '양호',
+    booleanFalse: '불량',
     /**
      * 규격 — **한쪽만 있는 것도 규격이다.** 계약이 상하한을 「둘 다 있을 때만」 견주므로
      * 한쪽만 있는 항목이 정상이고, 「9.9 이상」 같은 공차는 실제 검사기준에 흔하다.
@@ -368,7 +371,10 @@ export const iqcInspection = {
     range: (lower: number, upper: number): string => `${lower} ~ ${upper}`,
     atLeast: (lower: number): string => `${lower} 이상`,
     atMost: (upper: number): string => `${upper} 이하`,
-    target: (value: number): string => `목표 ${value}`,
+    target: (value: number): string => `기준값 ${value}`,
+    /** 기준값과 상하한이 대칭일 때(#133). */
+    tolerance: (value: number, delta: number): string => `${value} ± ${delta}`,
+    withTarget: (limits: string, value: number): string => `${limits} (기준값 ${value})`,
     /** 아직 재지 않았다. 빈 칸으로 두면 「없음」인지 「못 불러왔는지」 구분되지 않는다. */
     notMeasured: '—',
     /**

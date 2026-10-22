@@ -14655,6 +14655,28 @@ button.app-button-neutral {
   padding-block: var(--space-3);
 }
 
+/* 검사 항목별 결과(#133) — 표를 얇은 테두리 상자로, 예/아니오 측정치는 표식 + 양호(성공색) · 불량(오류색). */
+.iqc-inspection-table-box {
+  overflow: hidden;
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-md);
+}
+
+.iqc-inspection-measured-flag {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  vertical-align: middle;
+}
+
+.iqc-inspection-measured-flag[data-ok='true'] > :first-child {
+  color: var(--semantic-success);
+}
+
+.iqc-inspection-measured-flag[data-ok='false'] > :first-child {
+  color: var(--semantic-error);
+}
+
 /* 빈 표 안내는 줄 높이 한가운데에 — 공용 안내 글의 위·아래 여백을 뺀다(#133). */
 .iqc-inspection-fold [class*='_emptyCell'] > td .field-note {
   margin-block: 0;

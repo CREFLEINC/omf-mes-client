@@ -1,5 +1,6 @@
-import { AlertBanner, Chip, Table, type Column } from '@crefle/web-ui';
+import { AlertBanner, Chip, Icon, Table, type Column } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
+import type { ReactNode } from 'react';
 
 import { hasCalibrationWarning, type MeasurementRow, type SpecRange } from './measurement-rows';
 
@@ -37,14 +38,25 @@ const describeLimits = (spec: SpecRange): string | null => {
   return null;
 };
 
+/** 부동소수 뺄셈 찌꺼기(0.09999…)를 지운다 — 규격 값은 소수 여섯째 자리를 넘지 않는다. */
+const tidy = (value: number): number => Number(value.toFixed(6));
+
+/**
+ * 규격 — 기준값과 상하한이 대칭이면 「100 ± 0.5」, 아니면 범위 뒤에 기준값을 괄호로(#133).
+ * 「목표 100 · 99.5 ~ 100.5」보다 한눈에 읽힌다.
+ */
 const describeSpec = (spec: SpecRange): string => {
+  const { target, lower, upper } = spec;
+
+  if (target !== null && lower !== null && upper !== null) {
+    const below = tidy(target - lower);
+    if (below === tidy(upper - target)) return t.tolerance(target, below);
+  }
+
   const limits = describeLimits(spec);
-  const parts: string[] = [];
+  if (limits === null) return target === null ? t.notMeasured : t.target(target);
 
-  if (spec.target !== null) parts.push(t.target(spec.target));
-  if (limits !== null) parts.push(limits);
-
-  return parts.length === 0 ? t.notMeasured : parts.join(' · ');
+  return target === null ? limits : t.withTarget(limits, target);
 };
 
 /**
@@ -54,15 +66,29 @@ const describeSpec = (spec: SpecRange): string => {
  * (`num_nonnulls ≤ 1`), 채워진 것을 그대로 보이면 된다. 입력은 자료형을 알아야 하지만
  * 표시는 자료가 스스로 말한다.
  */
-const describeValue = (row: MeasurementRow): string => {
+const describeValue = (row: MeasurementRow): ReactNode => {
   const measured = row.measured;
 
   if (measured === null) return t.notMeasured;
   if (measured.numericValue !== null) return String(measured.numericValue);
   if (measured.textValue !== null) return measured.textValue;
-  if (measured.booleanValue !== null) return String(measured.booleanValue);
+  /* 예/아니오 항목(외관 등) — 내부 값(true/false) 대신 양호 · 불량을 표식과 함께(#133). */
+  if (measured.booleanValue !== null) {
+    return (
+      <span className="iqc-inspection-measured-flag" data-ok={measured.booleanValue}>
+        <Icon name={measured.booleanValue ? 'check_circle' : 'cancel'} size={18} aria-hidden />
+        {measured.booleanValue ? t.booleanTrue : t.booleanFalse}
+      </span>
+    );
+  }
 
   return t.notMeasured;
+};
+
+/** 판정 이름표 — 합격은 성공색, 불합격은 오류색, 모르는 코드는 중립(#133). */
+const JUDGMENT_STATUS: Record<string, 'success' | 'error'> = {
+  ACCEPTED: 'success',
+  REJECTED: 'error',
 };
 
 export interface MeasurementGridProps {
@@ -95,7 +121,7 @@ const columns: Column<MeasurementRow>[] = [
      * (항목 열이 혼자 받지 않게). 긴 항목명은 칸 안에서 줄을 바꾼다.
      */
     width: '160px',
-    render: (row) => `${String(row.displayNo)}. ${row.itemName}`,
+    render: (row) => row.itemName,
   },
   {
     key: 'spec',
@@ -108,7 +134,7 @@ const columns: Column<MeasurementRow>[] = [
     header: t.columns.sample,
     width: '96px',
     align: 'end',
-    render: (row) => t.sampleOf(row.sampleNo, row.sampleCount),
+    render: (row) => t.sampleOf(row.sampleNo),
   },
   {
     key: 'value',
@@ -134,9 +160,17 @@ const columns: Column<MeasurementRow>[] = [
     header: t.columns.judgment,
     width: '96px',
     render: (row) =>
-      row.measured === null
-        ? t.notMeasured
-        : (t.judgmentNames[row.measured.judgmentCode] ?? row.measured.judgmentCode),
+      row.measured === null ? (
+        t.notMeasured
+      ) : (
+        <Chip
+          variant="status"
+          size="sm"
+          status={JUDGMENT_STATUS[row.measured.judgmentCode] ?? 'idle'}
+        >
+          {t.judgmentNames[row.measured.judgmentCode] ?? row.measured.judgmentCode}
+        </Chip>
+      ),
   },
 ];
 
@@ -156,13 +190,16 @@ export const MeasurementGrid = ({ rows, isLoading }: MeasurementGridProps) => (
       </div>
     )}
 
-    <Table
-      caption={<span className="iqc-inspection-table-caption">{t.caption}</span>}
-      density="compact"
-      columns={columns}
-      rows={rows}
-      getRowId={(row) => row.key}
-      empty={<p className="field-note">{isLoading ? t.loading : t.noItems}</p>}
-    />
+    {/* 표 전체를 얇은 테두리 상자로 감싼다(#133). */}
+    <div className="iqc-inspection-table-box">
+      <Table
+        caption={<span className="iqc-inspection-table-caption">{t.caption}</span>}
+        density="compact"
+        columns={columns}
+        rows={rows}
+        getRowId={(row) => row.key}
+        empty={<p className="field-note">{isLoading ? t.loading : t.noItems}</p>}
+      />
+    </div>
   </section>
 );

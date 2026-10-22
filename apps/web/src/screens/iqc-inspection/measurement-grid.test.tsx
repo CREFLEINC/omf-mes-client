@@ -30,16 +30,20 @@ describe('MeasurementGrid', () => {
   it('항목마다 요구하는 샘플 수만큼 줄을 그린다', () => {
     renderGrid([dimensionSpec]);
 
-    expect(screen.getAllByText(t.sampleOf(1, 3))).toHaveLength(1);
-    expect(screen.getByText(t.sampleOf(3, 3))).toBeInTheDocument();
+    expect(screen.getAllByText(t.sampleOf(1))).toHaveLength(1);
+    expect(screen.getByText(t.sampleOf(3))).toBeInTheDocument();
   });
 
-  it('채번 값이 아니라 목록 내 위치로 1부터 보인다', () => {
+  it('항목은 채번 값 순서로 서고 이름만 보인다(#133)', () => {
     renderGrid(itemSpecs);
 
-    /* 시퀀스는 5·10·20 이지만 화면에는 1·2·3 으로 선다. */
-    expect(screen.getByText(`1. ${optionalSpec.inspectionItemName}`)).toBeInTheDocument();
-    expect(screen.getByText(`3. ${appearanceSpec.inspectionItemName}`)).toBeInTheDocument();
+    /* 시퀀스 5·10·20 순 — 번호는 붙이지 않는다. */
+    const names = screen
+      .getAllByRole('row')
+      .slice(1)
+      .map((row) => row.textContent ?? '');
+    expect(names[0]).toContain(optionalSpec.inspectionItemName);
+    expect(names.at(-1)).toContain(appearanceSpec.inspectionItemName);
   });
 
   it('필수 항목을 표시한다', () => {
@@ -57,12 +61,36 @@ describe('MeasurementGrid', () => {
     expect(within(body).queryByText(t.requiredMark)).not.toBeInTheDocument();
   });
 
-  it('규격을 목표와 상하한으로 보인다', () => {
+  it('기준값과 상하한이 대칭이면 「기준값 ± 공차」로 보인다(#133)', () => {
     renderGrid([dimensionSpec]);
 
-    expect(screen.getAllByText(`${t.target(10)} · ${t.range(9.9, 10.1)}`).length).toBeGreaterThan(
-      0,
+    expect(screen.getAllByText(t.tolerance(10, 0.1)).length).toBeGreaterThan(0);
+  });
+
+  it('대칭이 아니면 범위 뒤에 기준값을 붙인다', () => {
+    renderGrid([{ ...dimensionSpec, upperLimit: 10.3 }]);
+
+    expect(screen.getAllByText(t.withTarget(t.range(9.9, 10.3), 10)).length).toBeGreaterThan(0);
+  });
+
+  it('예/아니오 측정치는 양호 · 불량으로, 판정은 이름표로 보인다(#133)', () => {
+    renderGrid(
+      [appearanceSpec],
+      [
+        {
+          ...normalMeasurement,
+          inspectionItemSpecId: appearanceSpec.inspectionItemSpecId,
+          sampleNo: 1,
+          numericValue: undefined,
+          booleanValue: true,
+          judgmentCode: 'ACCEPTED',
+        },
+      ],
     );
+
+    expect(screen.getByText(t.booleanTrue)).toBeInTheDocument();
+    expect(screen.getByText(t.judgmentNames.ACCEPTED as string)).toBeInTheDocument();
+    expect(screen.queryByText('true')).not.toBeInTheDocument();
   });
 
   /*
