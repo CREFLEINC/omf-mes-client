@@ -660,7 +660,11 @@ describe('IqcInspectionScreen', () => {
    */
   it('저장 뒤 다시 부른 회차 수량이 바뀌어도 「저장했습니다」를 남긴다', async () => {
     renderScreen('/?ir=1001', undefined, [draftRound], [], itemSpecsResponse(), [
-      { ...draftRound, heldQty: draftRound.heldQty + 1, versionNo: draftRound.versionNo + 1 },
+      {
+        ...draftRound,
+        heldQty: draftRound.heldQty + 1,
+        versionNo: (draftRound.versionNo ?? 1) + 1,
+      },
     ]);
 
     await findRound(1);

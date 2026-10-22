@@ -14134,14 +14134,19 @@ button.app-button-neutral {
   text-align: left;
 }
 
-.iqc-inspection-queue-rows th:nth-child(4),
-.iqc-inspection-queue-rows td:nth-child(4) {
-  text-align: right;
+.iqc-inspection-queue-rows th:nth-child(n + 3),
+.iqc-inspection-queue-rows td:nth-child(n + 3) {
+  text-align: center;
+}
+
+/* 정렬 단추가 든 일시 머리칸도 가운데(#133). */
+.iqc-inspection-queue-rows th:nth-child(4) > button {
+  margin-inline: auto;
 }
 
 /*
- * 열 폭을 내용이 아니라 지정 폭(품목 36% · 상태 5rem · 일시 10rem)으로 잡는다 — 내용 폭으로 잡으면 긴 LOT 번호가
- * 표를 창 밖으로 밀어 일시가 잘린다(1024 폭). 남는 폭은 LOT 칸이 받고, 모자라면 말줄임이다.
+ * 열 폭을 내용이 아니라 지정 폭(품목 40 · LOT 35 · 상태 10 · 일시 15 %)으로 잡는다(#133) — 내용 폭으로 잡으면 긴 LOT
+ * 번호가 표를 창 밖으로 밀어 일시가 잘린다(1024 폭). 모자라면 칸 안에서 말줄임이다.
  */
 .iqc-inspection-queue-rows table {
   table-layout: fixed;
@@ -14220,7 +14225,14 @@ button.app-button-neutral {
   white-space: nowrap;
 }
 
+/* 품목명은 두 줄까지, 넘치면 말줄임(#133). */
 .iqc-inspection-panes .iqc-inspection-queue-item-name {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  white-space: normal;
+  overflow-wrap: anywhere;
   font-weight: 600;
 }
 

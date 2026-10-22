@@ -43,53 +43,13 @@ const columnsOf = (
   lotNumbers: NameLookup,
 ): Column<InspectionQueueRow>[] => [
   {
-    key: 'item',
-    header: t.columns.item,
-    /* 「이름 / 코드」 두 줄. 긴 이름은 한 줄 말줄임이고 전체 값은 마우스를 올리면 보인다. */
-    width: '36%',
-    /*
-     * **첫 칸이 곧 「이 줄을 연다」다** — 저장소의 목록 창들과 같은 관용구다. 종전에는 그 자리가
-     * 의뢰번호였는데, 고르는 데 필요한 값이 아니고 고른 뒤 우측 창이 먼저 보여 주므로
-     * **검사자가 실제로 찾는 값**(무엇을 검사하는가)에 자리를 내줬다(사용자 지시 2026-09-21).
-     *
-     * 이름과 코드를 **두 줄로** 세운다 — 좁은 칸에서 한 줄로 붙이면 이름이 잘려 무엇인지 알 수
-     * 없다. 못 푼 갈래는 줄이 하나뿐이라 풀이가 네 갈래의 사유를 그 자리에 낸다.
-     */
-    render: (row) => {
-      const parts = itemNames.partsOf(row.itemId);
-      const label = itemNames.labelOf(row.itemId);
-
-      return (
-        <button
-          type="button"
-          className="link-cell iqc-inspection-queue-item"
-          aria-current={row.inspectionRequestId === selectedId ? 'true' : undefined}
-          title={parts === null ? label : `${parts.name} · ${parts.code}`}
-          aria-label={t.openRow(
-            parts === null ? label : `${parts.name} ${parts.code}`,
-            row.inspectionRequestNo,
-          )}
-          onClick={() => onSelect(row.inspectionRequestId)}
-        >
-          {parts === null ? (
-            <span className="iqc-inspection-queue-item-name">{label}</span>
-          ) : (
-            <>
-              <span className="iqc-inspection-queue-item-name">{parts.name}</span>
-              <span className="iqc-inspection-queue-item-code">{parts.code}</span>
-            </>
-          )}
-        </button>
-      );
-    },
-  },
-  {
+    /* 첫 칸은 자재 LOT — 검사자가 손에 든 LOT 으로 줄을 찾는다(#133 · 담당자 지시). */
     key: 'lotId',
     header: t.columns.lotId,
+    width: '35%',
     /*
-     * **폭을 지정하지 않는 흡수 열이 여기 하나다.** LOT 번호는 길이가 들쭉날쭉하고
-     * (`040101-00076|3925|260920|105900|0001`) 이 표에서 유일하게 길이가 정해지지 않은 값이라,
-     * 남는 폭을 이 칸이 받는다. 그래도 좁으면 칸 안에서 줄을 바꾼다(`iqc-inspection-lot`).
+     * 열 폭은 품목 40 · LOT 35 · 상태 10 · 일시 15(%)로 고정한다(#133) — 값 길이로 폭이 흔들리지 않는다.
+     * LOT 번호는 한 줄이고, 모자라면 앞 마디만 말줄임이다(`iqc-inspection-lot`).
      *
      * 없는 것이 정상이다(작업지시 대상 검사 등) — 빈 칸으로 두면 못 불러온 것과 구분되지 않아
      * 풀이가 네 갈래를 서로 다른 글자로 낸다.
@@ -125,9 +85,50 @@ const columnsOf = (
     },
   },
   {
+    key: 'item',
+    header: t.columns.item,
+    /* 「이름 / 코드」. 긴 이름은 두 줄까지 보이고 넘으면 말줄임, 전체 값은 마우스를 올리면 보인다(#133). */
+    width: '40%',
+    /*
+     * **이 칸이 곧 「이 줄을 연다」다**(둘째 칸 · #133) — 저장소의 목록 창들과 같은 관용구다. 종전에는 그 자리가
+     * 의뢰번호였는데, 고르는 데 필요한 값이 아니고 고른 뒤 우측 창이 먼저 보여 주므로
+     * **검사자가 실제로 찾는 값**(무엇을 검사하는가)에 자리를 내줬다(사용자 지시 2026-09-21).
+     *
+     * 이름과 코드를 **두 줄로** 세운다 — 좁은 칸에서 한 줄로 붙이면 이름이 잘려 무엇인지 알 수
+     * 없다. 못 푼 갈래는 줄이 하나뿐이라 풀이가 네 갈래의 사유를 그 자리에 낸다.
+     */
+    render: (row) => {
+      const parts = itemNames.partsOf(row.itemId);
+      const label = itemNames.labelOf(row.itemId);
+
+      return (
+        <button
+          type="button"
+          className="link-cell iqc-inspection-queue-item"
+          aria-current={row.inspectionRequestId === selectedId ? 'true' : undefined}
+          title={parts === null ? label : `${parts.name} · ${parts.code}`}
+          aria-label={t.openRow(
+            parts === null ? label : `${parts.name} ${parts.code}`,
+            row.inspectionRequestNo,
+          )}
+          onClick={() => onSelect(row.inspectionRequestId)}
+        >
+          {parts === null ? (
+            <span className="iqc-inspection-queue-item-name">{label}</span>
+          ) : (
+            <>
+              <span className="iqc-inspection-queue-item-name">{parts.name}</span>
+              <span className="iqc-inspection-queue-item-code">{parts.code}</span>
+            </>
+          )}
+        </button>
+      );
+    },
+  },
+  {
     key: 'statusCode',
     header: t.columns.statusCode,
-    width: '5rem',
+    width: '10%',
     render: (row) => {
       const badge = toStatusBadge(row.statusCode);
 
@@ -141,8 +142,7 @@ const columnsOf = (
   {
     key: 'requestedAt',
     header: t.columns.requestedAt,
-    /* 날짜·시각이 한 줄로 보이는 폭. */
-    width: '10rem',
+    width: '15%',
     sortable: true,
     /* 정렬은 원문(RFC3339)으로 한다 — 표기용 문자열로 정렬하면 형식이 아닌 값이 섞일 때 어긋난다. */
     sortAccessor: (row) => row.requestedAt,

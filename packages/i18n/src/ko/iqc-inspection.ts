@@ -68,7 +68,7 @@ export const iqcInspection = {
   filters: {
     item: '품목',
     /** 창을 여는 칸이다 — 「치세요」가 아니라 「고르세요」로 적는다. */
-    itemPlaceholder: '품목 선택',
+    itemPlaceholder: '품목을 선택하세요',
     itemPick: '선택',
     itemClear: '품목 조건 지우기',
     supplier: '공급사',
@@ -81,7 +81,7 @@ export const iqcInspection = {
      */
     supplierLoadFailed: '공급사 선택지를 불러오지 못했습니다.',
     keyword: '의뢰번호',
-    keywordPlaceholder: '의뢰번호 입력',
+    keywordPlaceholder: '의뢰번호를 입력하세요',
     apply: '조회',
     reset: '초기화',
     /**

@@ -23,8 +23,8 @@ export const inspectionDocuments = {
   columns: { fileName: '파일', uploadedAt: '올린 시각', size: '크기' },
   scan: {
     label: 'LOT 스캔',
-    placeholder: 'LOT 바코드 스캔 또는 번호 입력',
-    find: '찾기',
+    placeholder: 'LOT 바코드 스캔 또는 번호를 입력하세요',
+    find: '검색',
     notFound: '이 번호의 LOT 이 없습니다.',
     noRequest: '이 LOT 의 대기 중인 수입검사 의뢰가 없습니다.',
     failed: 'LOT 을 찾지 못했습니다. 연결을 확인한 뒤 다시 시도하세요.',
