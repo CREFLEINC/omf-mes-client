@@ -56,6 +56,7 @@ export const iqcInspection: Translated<typeof ko.iqcInspection> = {
     heading: 'Đối tượng',
     sectionTitle: 'Thông tin kiểm tra cơ bản',
     loading: 'Đang tải yêu cầu.',
+    inspectionTypeNames: { IQC: 'Kiểm tra đầu vào' } as Record<string, string>,
     fields: {
       inspectionRequestNo: 'Số yêu cầu',
       inspectionTypeCode: 'Loại kiểm tra',

@@ -98,7 +98,14 @@ export const RequestDetailPane = ({
       emphasized: true,
     },
     /* 둘째 줄 — 의뢰의 부가 정보(검사 유형 · 기준 버전 · 의뢰 일시 · 검사 수준). 값은 굵게 하지 않는다(#133). */
-    { key: 'type', label: t.fields.inspectionTypeCode, value: detail.inspectionTypeCode },
+    {
+      key: 'type',
+      label: t.fields.inspectionTypeCode,
+      value:
+        t.inspectionTypeNames[detail.inspectionTypeCode] === undefined
+          ? detail.inspectionTypeCode
+          : `${detail.inspectionTypeCode} (${t.inspectionTypeNames[detail.inspectionTypeCode]})`,
+    },
     {
       key: 'plan',
       label: t.fields.inspectionPlanVersionId,

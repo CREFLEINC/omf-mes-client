@@ -14655,6 +14655,11 @@ button.app-button-neutral {
   padding-block: var(--space-3);
 }
 
+/* 빈 표 안내는 줄 높이 한가운데에 — 공용 안내 글의 위·아래 여백을 뺀다(#133). */
+.iqc-inspection-fold [class*='_emptyCell'] > td .field-note {
+  margin-block: 0;
+}
+
 /* 첨부 문서 — 안내는 한 줄로 길게(폭 제한 없이), 올리기 단추는 표 바로 아래 오른쪽 끝. */
 .iqc-inspection-fold .inspection-documents {
   display: grid;

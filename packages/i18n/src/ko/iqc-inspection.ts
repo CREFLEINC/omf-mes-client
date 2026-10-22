@@ -113,6 +113,8 @@ export const iqcInspection = {
     /** 상세 카드 첫 구획의 제목 — 참고 정보(읽기 전용)임을 입력 구획과 가른다. */
     sectionTitle: '검사 기본 정보',
     loading: '의뢰를 불러오는 중입니다.',
+    /** 검사 유형 코드 옆에 붙이는 이름(#133) — 모르는 코드는 코드만 보인다. */
+    inspectionTypeNames: { IQC: '수입검사' } as Record<string, string>,
     fields: {
       inspectionRequestNo: '의뢰번호',
       inspectionTypeCode: '검사 유형',
@@ -121,10 +123,10 @@ export const iqcInspection = {
        * 이 검사는 당시 버전으로 남는다. 버전을 감추면 검사자도, 나중에 결과를 읽는 사람도
        * 어느 기준으로 잰 값인지 알 수 없다.
        */
-      inspectionPlanVersionId: '적용 검사기준',
+      inspectionPlanVersionId: '적용 검사 기준',
       lotId: '대상 LOT',
       itemId: '품목',
-      targetQty: '총 검사수량',
+      targetQty: '총 검사 수량',
       /** 의뢰가 만들어진 시각(`requestedAt`) — 목록 열 「의뢰 일시」와 같은 값이다. */
       requestedAt: '의뢰 일시',
       /** 품목의 현재 IQC 검사 수준 — 이 화면에서 바로 바꾼다(omf-all-around#133). */
@@ -168,19 +170,19 @@ export const iqcInspection = {
       fourMChange: '4M 변경품',
     },
     fields: {
-      inspectedQty: '총 검사수량',
-      accepted: '합격수량',
-      rejected: '불합격수량',
-      held: '보류수량',
+      inspectedQty: '총 검사 수량',
+      accepted: '합격 수량',
+      rejected: '불합격 수량',
+      held: '보류 수량',
     },
     /** 실시간 합계. 어긋난 값을 감추지 않는다. */
     sum: '입력 완료',
     remaining: '미입력',
     overBy: (over: string): string => `${over} 초과`,
     /** 진행 막대의 접근 이름. */
-    progressLabel: '검사수량 대비 입력 합계',
+    progressLabel: '검사 수량 대비 입력 합계',
     /** 넘겼다. 0으로 깎아 감추지 않는다. */
-    over: (over: string): string => `검사수량보다 ${over} 많습니다.`,
+    over: (over: string): string => `검사 수량보다 ${over} 많습니다.`,
     quantityInvalid: '0 이상의 숫자로 입력해 주세요. 소수점은 여섯 자리까지 됩니다.',
     /**
      * 임시 저장. ⭐ **합계가 맞지 않아도 눌린다** — 판정을 확정하는 것이 아니라 하던 일을
@@ -344,7 +346,7 @@ export const iqcInspection = {
     caption: '검사 항목별 결과',
     loading: '점검 항목을 불러오는 중입니다.',
     /** 기준 버전에 항목이 하나도 없다. 화면이 고칠 수 있는 것이 아니다. */
-    noItems: '이 검사기준 버전에는 점검 항목이 없습니다. 기준정보 담당자에게 문의하세요.',
+    noItems: '이 검사 기준 버전에는 점검 항목이 없습니다. 기준정보 담당자에게 문의하세요.',
     columns: {
       item: '항목',
       spec: '규격',
