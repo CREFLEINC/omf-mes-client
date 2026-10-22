@@ -78,6 +78,8 @@ export const routing: Translated<typeof ko.routing> = {
   discard: {
     title: 'Có thay đổi chưa lưu',
     body: 'Nếu chuyển đi bây giờ, thông tin Routing và công đoạn đã sửa ở Rev này sẽ mất vì chưa lưu. Muốn giữ lại, hãy bấm «Tiếp tục sửa» rồi lưu.',
+    bodyCreating:
+      'Nếu chuyển đi bây giờ, nội dung đăng ký Rev đầu tiên đã nhập sẽ mất vì chưa lưu. Muốn giữ lại, hãy bấm «Tiếp tục sửa» rồi đăng ký.',
     stay: 'Tiếp tục sửa',
     confirm: 'Chuyển mà không lưu',
   },

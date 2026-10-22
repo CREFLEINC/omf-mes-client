@@ -1678,6 +1678,7 @@ describe('RoutingScreen — 저장하지 않고 옮기기', () => {
     await user.click(screen.getByRole('button', { name: 'Rev 2' }));
 
     const dialog = await screen.findByRole('dialog', { name: discard.title });
+    expect(within(dialog).getByText(discard.body)).toBeInTheDocument();
     await user.click(within(dialog).getByRole('button', { name: discard.stay }));
 
     expect(screen.queryByRole('dialog', { name: discard.title })).toBeNull();
@@ -1742,11 +1743,14 @@ describe('RoutingScreen — 저장하지 않고 옮기기', () => {
     await user.click(await screen.findByRole('button', { name: 'Routing 등록' }));
     await user.type(await screen.findByLabelText('Routing 코드'), 'LEFTOVER');
     await user.click(screen.getByRole('button', { name: 'ITM-002' }));
-    await user.click(
-      within(await screen.findByRole('dialog', { name: discard.title })).getByRole('button', {
-        name: discard.confirm,
-      }),
-    );
+    const dialog = await screen.findByRole('dialog', { name: discard.title });
+    expect(
+      within(dialog).getByText(
+        '지금 옮기면 입력한 첫 Rev 등록 내용이 저장되지 않고 사라집니다. 남기려면 「계속 편집」을 누른 뒤 등록하세요.',
+      ),
+    ).toBeInTheDocument();
+    expect(within(dialog).queryByText(discard.body)).toBeNull();
+    await user.click(within(dialog).getByRole('button', { name: discard.confirm }));
 
     expect(screen.queryByDisplayValue('LEFTOVER')).toBeNull();
     await user.click(screen.getByRole('button', { name: 'ITM-003' }));

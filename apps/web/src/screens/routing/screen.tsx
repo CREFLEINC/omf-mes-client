@@ -553,6 +553,7 @@ const RoutingWorkspace = () => {
    * 섞으면 「기준값이 서버에서 왔는가」가 흐려지고, 등록 성공 후 어느 쪽을 비울지도 갈린다.
    */
   const [createValues, setCreateValues] = useState<RoutingHeaderFormValues | null>(null);
+  const discardBody = createValues === null ? t.discard.body : t.discard.bodyCreating;
   const hasUnsavedChanges =
     isHeaderDirty ||
     isOperationsDirty ||
@@ -826,9 +827,11 @@ const RoutingWorkspace = () => {
         when={hasUnsavedChanges}
         watchedParams={EDIT_TARGET_PARAMS}
         bypassRef={confirmedMoveRef}
+        discardBody={discardBody}
       />
       {pendingMove !== null && (
         <DiscardDialog
+          body={discardBody}
           onStay={() => setPendingMove(null)}
           onLeave={() => {
             const move = pendingMove;
