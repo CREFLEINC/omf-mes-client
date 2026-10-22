@@ -175,7 +175,6 @@ export const iqcInspection = {
     sum: '입력 완료',
     remaining: '미입력',
     overBy: (over: string): string => `${over} 초과`,
-    short: (remaining: string): string => `${remaining} 남았습니다.`,
     /** 진행 막대의 접근 이름. */
     progressLabel: '검사수량 대비 입력 합계',
     /** 넘겼다. 0으로 깎아 감추지 않는다. */

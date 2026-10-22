@@ -40,7 +40,10 @@ export const useLevelWrite = (onSuccess: () => void) => {
                 'If-Match': String(row.versionNo),
               },
             },
-            body: { inspectionLevelCode: values.level, reason: values.reason },
+            body: {
+              inspectionLevelCode: values.level,
+              reason: values.reason === '' ? undefined : values.reason,
+            },
           }),
     etagPath: null,
     invalidateKeys: [inspectionLevelKeys.all],

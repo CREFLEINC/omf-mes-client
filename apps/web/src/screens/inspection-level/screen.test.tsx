@@ -172,7 +172,6 @@ describe('검사 수준 관리', () => {
     await user.click(screen.getByRole('button', { name: messages.common.save }));
 
     await waitFor(() => expect(requests.some((r) => r.method === 'POST')).toBe(true));
-    expect(screen.queryByText(t.dialog.reasonRequired)).not.toBeInTheDocument();
     expect(JSON.parse(requests.find((r) => r.method === 'POST')?.body ?? '{}')).toEqual({
       itemId: 4001,
       inspectionLevelCode: 'NORMAL',
@@ -180,7 +179,7 @@ describe('검사 수준 관리', () => {
     expect(screen.queryByRole('checkbox', { name: '자동 전환 사용' })).not.toBeInTheDocument();
   });
 
-  it('수준 변경은 사유가 없으면 보내지 않고, 사유를 넣으면 줄의 판으로 잠가 보낸다', async () => {
+  it('수준 변경은 사유 없이도 보내고(#133), 사유를 넣으면 실어 줄의 판으로 잠가 보낸다', async () => {
     const { user, requests } = setup();
     await user.click(
       await screen.findByRole('button', { name: t.actions.changeLevelRow('PPAD003200') }),
@@ -190,10 +189,7 @@ describe('검사 수준 관리', () => {
       within(screen.getByRole('dialog')).getByRole('combobox', { name: t.dialog.level }),
     );
     await user.click(screen.getByRole('option', { name: '엄격' }));
-    await user.click(screen.getByRole('button', { name: messages.common.save }));
-    expect(await screen.findByText(t.dialog.reasonRequired)).toBeInTheDocument();
-    expect(requests.some((r) => r.method === 'PUT')).toBe(false);
-
+    expect(screen.getByLabelText(t.dialog.reason)).not.toHaveAttribute('aria-required', 'true');
     await user.type(screen.getByLabelText(t.dialog.reason), '고객 클레임');
     await user.click(screen.getByRole('button', { name: messages.common.save }));
 
@@ -204,6 +200,23 @@ describe('검사 수준 관리', () => {
     expect(JSON.parse(put?.body ?? '{}')).toEqual({
       inspectionLevelCode: 'TIGHTENED',
       reason: '고객 클레임',
+    });
+  });
+
+  it('사유를 비우고 수준을 바꾸면 사유 없이 보낸다(#133)', async () => {
+    const { user, requests } = setup();
+    await user.click(
+      await screen.findByRole('button', { name: t.actions.changeLevelRow('PPAD003200') }),
+    );
+    await user.click(
+      within(screen.getByRole('dialog')).getByRole('combobox', { name: t.dialog.level }),
+    );
+    await user.click(screen.getByRole('option', { name: '엄격' }));
+    await user.click(screen.getByRole('button', { name: messages.common.save }));
+
+    await waitFor(() => expect(requests.some((r) => r.method === 'PUT')).toBe(true));
+    expect(JSON.parse(requests.find((r) => r.method === 'PUT')?.body ?? '{}')).toEqual({
+      inspectionLevelCode: 'TIGHTENED',
     });
   });
 

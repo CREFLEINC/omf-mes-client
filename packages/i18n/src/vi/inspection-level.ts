@@ -43,14 +43,13 @@ export const inspectionLevel = {
 
   dialog: {
     addTitle: 'Chỉ định mức kiểm tra',
-    changeTitle: (itemCode: string) => `Đổi mức — ${itemCode}`,
+    changeTitle: 'Đổi mức kiểm tra',
     item: 'Vật tư',
     pickItem: 'Tìm vật tư',
     pickConfirm: 'Chọn',
     noItem: 'Hãy chọn vật tư.',
     level: 'Mức kiểm tra',
     reason: 'Lý do',
-    reasonRequired: 'Hãy nhập lý do.',
     sameLevel: 'Trùng với mức hiện tại. Hãy chọn mức khác.',
     duplicate: 'Vật tư này đã được chỉ định mức kiểm tra. Hãy dùng Đổi mức trong danh sách.',
   },

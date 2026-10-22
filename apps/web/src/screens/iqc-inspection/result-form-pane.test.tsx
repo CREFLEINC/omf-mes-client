@@ -62,6 +62,9 @@ const savedRound = toInspectionResultRound(draftRound);
 /** 입력 현황의 「합계 / 검사수량」 — 「합계」는 화면에서 감추고 읽기용으로만 둔다. */
 const sumText = (): string | null | undefined =>
   document.querySelector('.iqc-inspection-progress-sum')?.textContent;
+/** 오른쪽 상태 「미입력 N」 — 이름표와 숫자가 다른 요소라 글자를 이어 읽는다(#133). */
+const statusText = (): string | null | undefined =>
+  document.querySelector('.iqc-inspection-progress-status')?.textContent;
 
 describe('ResultFormPane', () => {
   it('회차를 밝힌다', () => {
@@ -89,17 +92,17 @@ describe('ResultFormPane', () => {
     renderPane({ accepted: '480', rejected: '15', held: '5' });
 
     expect(sumText()).toBe(`${t.sum} 500 / 500`);
-    expect(screen.getByText(`${t.remaining} 0`)).toBeInTheDocument();
+    expect(statusText()).toBe(`${t.remaining} 0`);
     expect(screen.queryByText('검사수량과 일치합니다.')).not.toBeInTheDocument();
   });
 
-  it('모자라면 「합계 / 검사수량」·잔여·막대와 남은 양 안내로 보인다(#133)', () => {
+  it('모자라면 「입력 완료 N / M」·미입력·막대로 보이고 따로 문장은 없다(#133)', () => {
     renderPane({ accepted: '400', rejected: '0', held: '0' });
 
     expect(sumText()).toBe(`${t.sum} 400 / 500`);
-    expect(screen.getByText(`${t.remaining} 100`)).toBeInTheDocument();
+    expect(statusText()).toBe(`${t.remaining} 100`);
     expect(screen.getByRole('progressbar')).toHaveAttribute('aria-valuenow', '80');
-    expect(screen.getByText(t.short('100'))).toBeInTheDocument();
+    expect(screen.queryByText(/남았습니다/)).not.toBeInTheDocument();
     expect(screen.queryByText(t.over('100'))).not.toBeInTheDocument();
   });
 
@@ -115,7 +118,7 @@ describe('ResultFormPane', () => {
   it('소수 합이 부동소수 오차로 어긋나지 않는다', () => {
     renderPane({ accepted: '0.1', rejected: '0.2', held: '0' }, null, 0.3);
 
-    expect(screen.getByText(`${t.remaining} 0`)).toBeInTheDocument();
+    expect(statusText()).toBe(`${t.remaining} 0`);
   });
 
   it('오류를 타이핑마다 보이지 않는다 — 「0.5」를 치는 도중 「0.」에서 틀렸다고 하지 않는다', () => {
@@ -140,7 +143,7 @@ describe('ResultFormPane', () => {
     /* 0으로 읽고 세면 abc + 500 + 빈칸 = 500 이 되어 「일치합니다」가 거짓이 된다. */
     renderPane({ accepted: 'abc', rejected: '500', held: '' });
 
-    expect(screen.queryByText(`${t.remaining} 0`)).not.toBeInTheDocument();
+    expect(statusText()).not.toBe(`${t.remaining} 0`);
   });
 
   it('셀 수 없으면 합계·잔여도 숫자로 내지 않는다 — 0으로 읽은 합은 그 숫자가 거짓이다', () => {
@@ -148,7 +151,7 @@ describe('ResultFormPane', () => {
 
     const empty = messages.iqcInspection.queue.emptyValue;
     expect(sumText()).toBe(`${t.sum} ${empty}`);
-    expect(screen.getByText(`${t.remaining} ${empty}`)).toBeInTheDocument();
+    expect(statusText()).toBe(`${t.remaining} ${empty}`);
     expect(screen.getByRole('progressbar')).toHaveAttribute('aria-valuenow', '0');
   });
 
@@ -429,7 +432,7 @@ describe('ResultFormPane — 미결과 결과 문면', () => {
 
     expect(screen.getByText('500 EA')).toBeInTheDocument();
     expect(sumText()).toBe(`${t.sum} 400 / 500 EA`);
-    expect(screen.getByText(`${t.remaining} 100 EA`)).toBeInTheDocument();
+    expect(statusText()).toBe(`${t.remaining} 100 EA`);
     expect(screen.getAllByText('EA')).toHaveLength(3);
     expect(screen.getByLabelText(t.fields.accepted)).toHaveValue('400');
   });

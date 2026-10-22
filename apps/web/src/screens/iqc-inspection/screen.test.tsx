@@ -512,7 +512,11 @@ describe('IqcInspectionScreen', () => {
   it('되돌아온 수량이 합계 제약을 만족하면 미입력이 0 이다', async () => {
     renderScreen('/?ir=1001');
 
-    expect(await screen.findByText(new RegExp(`${t.result.remaining} 0`))).toBeInTheDocument();
+    await waitFor(() =>
+      expect(document.querySelector('.iqc-inspection-progress-status')?.textContent).toBe(
+        `${t.result.remaining} 0`,
+      ),
+    );
   });
 
   /*

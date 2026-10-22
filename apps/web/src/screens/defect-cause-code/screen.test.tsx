@@ -224,7 +224,7 @@ describe('DefectCauseCodeScreen — 목록 조회', () => {
     expect(screen.queryByRole('table')).not.toBeInTheDocument();
     // 서버가 빈 message를 줘도 배너에 제목만 남으면 안 된다 — 무엇을 하라는 안내가 사라진다.
     expect(
-      screen.getByText('잠시 뒤 다시 시도하세요. 반복되면 담당자에게 알려 주세요.'),
+      screen.getByText('잠시 뒤 재시도하세요. 지속적인 요청 불가 시 담당자에게 문의하세요.'),
     ).toBeInTheDocument();
   });
 
@@ -758,7 +758,7 @@ describe('DefectCauseCodeScreen — 상세 조회', () => {
 
     expect(await screen.findByText('목록을 불러오지 못했습니다')).toBeInTheDocument();
     expect(
-      screen.getByText('잠시 뒤 다시 시도하세요. 반복되면 담당자에게 알려 주세요.'),
+      screen.getByText('잠시 뒤 재시도하세요. 지속적인 요청 불가 시 담당자에게 문의하세요.'),
     ).toBeInTheDocument();
     expect(screen.queryByLabelText('코드')).not.toBeInTheDocument();
   });
@@ -1294,7 +1294,7 @@ describe('DefectCauseCodeScreen — 사용 중지', () => {
 
     const dialog = await screen.findByRole('dialog');
     expect(
-      within(dialog).getByText('잠시 뒤 다시 시도하세요. 반복되면 담당자에게 알려 주세요.'),
+      within(dialog).getByText('잠시 뒤 재시도하세요. 지속적인 요청 불가 시 담당자에게 문의하세요.'),
     ).toBeInTheDocument();
   });
 

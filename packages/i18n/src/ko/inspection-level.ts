@@ -43,14 +43,13 @@ export const inspectionLevel = {
 
   dialog: {
     addTitle: '검사 수준 지정',
-    changeTitle: (itemCode: string) => `수준 변경 — ${itemCode}`,
+    changeTitle: '검사 수준 변경',
     item: '품목',
     pickItem: '품목 찾기',
     pickConfirm: '선택',
     noItem: '품목을 고르세요.',
     level: '검사 수준',
     reason: '사유',
-    reasonRequired: '사유를 입력하세요.',
     sameLevel: '지금과 같은 수준입니다. 다른 수준을 고르세요.',
     duplicate: '이미 검사 수준을 지정한 품목입니다. 목록에서 수준 변경을 쓰세요.',
   },

@@ -34,7 +34,7 @@ export interface LevelDialogProps {
   onSave: (values: LevelDialogValues) => void;
 }
 
-/** 검사 수준 지정·수동 변경 창. 사유는 이력에 남는다 — 수준 변경은 필수, 최초 지정은 선택(담당자 결정 2026-10-21). */
+/** 검사 수준 지정·수동 변경 창. 사유는 선택이고 넣으면 이력에 남는다(omf-all-around#133 — 예전에는 수준 변경 때 필수). */
 export const LevelDialog = ({
   row,
   presetItem,
@@ -60,7 +60,6 @@ export const LevelDialog = ({
     if (item === null) found.itemId = t.dialog.noItem;
     if (row !== null && level === row.inspectionLevelCode)
       found.inspectionLevelCode = t.dialog.sameLevel;
-    if (row !== null && reason.trim() === '') found.reason = t.dialog.reasonRequired;
     setErrors(found);
     if (Object.keys(found).length > 0 || item === null) return;
     onSave({ itemId: item.itemId, level, reason: reason.trim() });
@@ -71,7 +70,9 @@ export const LevelDialog = ({
       <Dialog
         open
         onClose={onClose}
-        title={row === null ? t.dialog.addTitle : t.dialog.changeTitle(row.itemCode)}
+        /* 닫기는 [취소]로 — 우상단 × 를 두지 않는다(#133). Esc · 바깥 누름은 그대로 [취소]와 같다. */
+        showCloseButton={false}
+        title={row === null ? t.dialog.addTitle : t.dialog.changeTitle}
         footer={
           <>
             <Button variant="outlined" onClick={onClose}>
@@ -85,10 +86,14 @@ export const LevelDialog = ({
       >
         {banner}
 
-        <div className="form-grid">
+        {/* 품목 · 검사 수준 · 사유를 한 열로 — 위에서 아래로 읽고 고른다(#133). */}
+        <div className="form-grid inspection-level-form">
           <div className="field-cell">
             <span className="field-label">{t.dialog.item}</span>
-            <p>{item === null ? '—' : `${item.itemCode} · ${item.itemName}`}</p>
+            {/* 품목은 이 창의 대상이라 값을 한 단계 크게(#133). 품목 코드는 제목에 되풀이하지 않는다. */}
+            <p className="inspection-level-form-item">
+              {item === null ? '—' : `${item.itemCode} · ${item.itemName}`}
+            </p>
             {row === null && presetItem === undefined && (
               <Button variant="outlined" size="sm" onClick={() => setPicking(true)}>
                 {t.dialog.pickItem}
@@ -121,11 +126,11 @@ export const LevelDialog = ({
             </label>
             <TextField
               id={reasonId}
+              fullWidth
               value={reason}
               maxLength={500}
               onChange={(event) => setReason(event.target.value)}
               error={shown.reason || undefined}
-              aria-required={row !== null}
             />
           </div>
         </div>

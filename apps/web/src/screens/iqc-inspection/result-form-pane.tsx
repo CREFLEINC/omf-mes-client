@@ -219,7 +219,8 @@ export const ResultFormPane = ({
         ? null
         : isOver
           ? t.over(overText)
-          : t.short(withUom(formatMicro(totals.remaining), uomCode));
+          : /* 모자랄 때는 오른쪽 「미입력 N」이 이미 말한다 — 문장을 두지 않는다(#133). */
+            null;
 
   /**
    * 진행 막대 — **보이기 위한 값일 뿐이다**(합계·잔여 계산은 위 `toTotals` 그대로).
@@ -241,13 +242,15 @@ export const ResultFormPane = ({
             };
   const sumText = totals.kind === 'counted' ? formatMicro(totals.sum) : unknownValue;
   const inspectedText = withUom(String(inspectedQty), uomCode);
-  /* 오른쪽 상태 — 미입력 N(맞으면 0) · N 초과. 음수는 보이지 않는다(#133). */
-  const statusText =
-    totals.kind !== 'counted'
-      ? `${t.remaining} ${unknownValue}`
-      : isOver
-        ? t.overBy(overText)
-        : `${t.remaining} ${withUom(formatMicro(totals.remaining), uomCode)}`;
+  /* 오른쪽 상태 — 「미입력 N」(이름표는 왼쪽 「입력 완료」와 같은 보조색) · 넘치면 「N 초과」. 음수는 보이지 않는다(#133). */
+  const statusText: ReactNode = isOver ? (
+    t.overBy(overText)
+  ) : (
+    <>
+      <span className="iqc-inspection-progress-label">{t.remaining} </span>
+      {totals.kind === 'counted' ? withUom(formatMicro(totals.remaining), uomCode) : unknownValue}
+    </>
+  );
 
   const field = (key: keyof QuantityDraft, label: string, invalid: boolean): ReactElement => (
     /* 단위 코드는 칸 바로 옆 글자로 — 입력값 자체에는 넣지 않는다. 모르면 붙이지 않는다. */
@@ -286,7 +289,7 @@ export const ResultFormPane = ({
             ) : null}
             {/* 기준값(검사수량)은 제목 줄 오른쪽 끝에 — 세 칸은 이 값을 나눈 결과다. 따로 한 줄을 쓰지 않는다(#133). */}
             <dl className="iqc-inspection-qty-base">
-              <dt className="field-label">{t.fields.inspectedQty}</dt>
+              <dt className="iqc-inspection-progress-label">{t.fields.inspectedQty}</dt>
               <dd>{inspectedText}</dd>
             </dl>
           </div>
