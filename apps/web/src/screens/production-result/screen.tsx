@@ -340,6 +340,9 @@ export const ProductionFlowScreen = () => {
   const remaining = reportedRemaining === null ? null : Math.max(0, reportedRemaining);
   /** 지금 입력이 잔여를 넘는가. 잔여를 모르면 넘는지도 모른다 — 그때는 묻지 않는다. */
   const isOverrun = exceedsRemaining(actualQty, remaining);
+  /* 달성은 화면이 세지 않는다 — 서버가 W/O 축으로 낸 완료 판정이 정상·초과면 지시 수량에 이르렀다. */
+  const completionJudgment = workOrder.data?.progress?.completionJudgmentCode;
+  const isPlanAchieved = completionJudgment === 'NORMAL' || completionJudgment === 'OVER';
   const tagMissing =
     parsedQty === null || serialCount === null
       ? null
@@ -1332,7 +1335,11 @@ export const ProductionFlowScreen = () => {
                * ⛔ 막지 않는다 — 초과 생산은 허용이다(✓확정 QA #27 · `P-02-06` §5-4).
                * ⚠ 잔여를 모르면 넘었는지도 모른다 — `isOverrun` 이 그때 `false` 라 서지 않는다.
                */}
-              {isOverrun && parsedQty !== null && remaining !== null && (
+              {/*
+               * 초과는 «새로 칠 때만» 말한다 — 저장 뒤에는 칸에 저장한 수가 다시 서고 잔여가 0 이 되어,
+               * 다 만든 작업이 초과로 읽힌다. 그때는 서버의 완료 판정으로 달성을 말한다.
+               */}
+              {isOverrun && !isQuantityLocked && parsedQty !== null && remaining !== null ? (
                 <div className="production-flow-inline-note">
                   <AlertBanner
                     variant="warning"
@@ -1346,6 +1353,12 @@ export const ProductionFlowScreen = () => {
                     }
                   />
                 </div>
+              ) : (
+                isPlanAchieved && (
+                  <div className="production-flow-inline-note">
+                    <AlertBanner variant="success" title={t.overrun.achieved} />
+                  </div>
+                )
               )}
               <section className="production-flow-defects" aria-label={t.flow.defects.title}>
                 <h3>{t.flow.defects.title}</h3>
