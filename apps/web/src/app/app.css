@@ -2111,6 +2111,21 @@ main > * + * {
   justify-content: flex-end;
 }
 
+.work-order-close-confirm-details {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: var(--space-1) var(--space-4);
+  margin: 0;
+}
+
+.work-order-close-confirm-details > div {
+  display: contents;
+}
+
+.work-order-close-confirm-details dd {
+  margin: 0;
+}
+
 @media (max-width: 1280px) {
   .work-order-close-content {
     grid-template-columns: 1fr;

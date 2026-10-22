@@ -70,7 +70,7 @@ const QUANTITY_FIELDS = [
   t.fields.holdQty,
   t.fields.scrapQty,
   t.fields.reworkQty,
-  t.fields.varianceQty,
+  t.fields.shortfallQty,
 ] as const;
 
 describe('WorkOrderCloseDetailSummaryPane', () => {
@@ -113,7 +113,7 @@ describe('WorkOrderCloseDetailSummaryPane', () => {
     expect(within(stat(t.fields.scrapQty)).getByText('4')).toBeVisible();
     expect(within(stat(t.fields.reworkQty)).getByText('5')).toBeVisible();
     expect(within(stat(t.fields.achievementRate)).getByText('17')).toBeVisible();
-    expect(within(stat(t.fields.varianceQty)).getByText('73')).toBeVisible();
+    expect(within(stat(t.fields.shortfallQty)).getByText('73')).toBeVisible();
     expect(within(stat(t.fields.judgment)).getByText(t.judgments.UNDER)).toBeVisible();
     expect(within(stat(t.fields.slotCount)).getByText('9')).toBeVisible();
     expect(within(stat(t.fields.withResultCount)).getByText('6')).toBeVisible();
@@ -142,7 +142,8 @@ describe('WorkOrderCloseDetailSummaryPane', () => {
     expect(within(stat(t.fields.judgment)).getByText(label)).toBeVisible();
     expect(within(stat(t.fields.goodQty)).getByText('1')).toBeVisible();
     expect(within(stat(t.fields.achievementRate)).getByText('987')).toBeVisible();
-    expect(within(stat(t.fields.varianceQty)).getByText('-432')).toBeVisible();
+    expect(within(stat(t.fields.overageQty)).getByText('432')).toBeVisible();
+    expect(screen.queryByText('-432')).not.toBeInTheDocument();
     expect(screen.queryByText(code)).not.toBeInTheDocument();
   });
 

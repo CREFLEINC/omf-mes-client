@@ -15,6 +15,8 @@ import type { Translated } from './translated';
 export const workOrderClose: Translated<typeof ko.workOrderClose> = {
   title: 'Đóng W/O · gửi kết quả sang ERP',
   breadcrumbRoot: 'Quản lý sản xuất',
+  description:
+    'Đóng lệnh sản xuất đã xong việc và gửi kết quả sản xuất sang ERP. Đã đóng thì không hoàn tác được.',
   detailSummary: {
     pane: 'Tóm tắt chi tiết đóng lệnh sản xuất',
     heading: 'Chi tiết đóng lệnh sản xuất',
@@ -38,6 +40,8 @@ export const workOrderClose: Translated<typeof ko.workOrderClose> = {
       reworkQty: 'Số lượng làm lại',
       achievementRate: 'Tỷ lệ đạt',
       varianceQty: 'Số lượng chênh lệch',
+      shortfallQty: 'Số lượng thiếu',
+      overageQty: 'Số lượng vượt',
       judgment: 'Đánh giá khi đóng',
       slotCount: 'Tất cả LOT phát trước',
       withResultCount: 'Có kết quả',
@@ -114,11 +118,27 @@ export const workOrderClose: Translated<typeof ko.workOrderClose> = {
     target: (workOrderNo: string) => `Lệnh sản xuất đích: ${workOrderNo}`,
     irreversible:
       'Đóng lệnh sản xuất không hoàn tác được. Nếu cần sửa thì hãy xử lý bù trừ kết quả sản xuất.',
-    erp: 'Việc gửi sang ERP được tiến hành riêng, và xác nhận này không có nghĩa là đã gửi xong sang ERP.',
+    erp: (menuPath: string): string =>
+      `Kết quả sản xuất sẽ vào hàng đợi gửi sang ERP cùng lúc đóng. Hãy xem kết quả gửi ở ${menuPath}.`,
+    fields: {
+      judgment: 'Đánh giá',
+      remainder: 'Xử lý lượng còn lại',
+      reason: 'Lý do chênh lệch',
+      remarks: 'Lý do xóa bỏ (ghi chú)',
+    },
+    voidedSlots: (count: number): string =>
+      `${String(count)} LOT phát trước chưa có kết quả sẽ bị hủy số cùng lúc đóng.`,
+    openLots: (count: number, lotNos: string): string =>
+      `${String(count)} LOT chưa đóng (${lotNos}) sẽ giữ nguyên trạng thái.`,
+    openLotsUnknown:
+      'Chưa kiểm tra được LOT đang thực hiện. Dù đóng, LOT đang thực hiện vẫn giữ nguyên trạng thái.',
+    uncheckedLots: (count: number): string =>
+      `Còn ${String(count)} LOT chưa hoàn thành chưa kiểm tra được. Dù đóng, các LOT đó vẫn giữ nguyên trạng thái.`,
     cancel: 'Hủy',
     confirm: 'Đóng lệnh sản xuất',
   },
-  closeSuccess: 'Đã đóng lệnh sản xuất. Việc gửi sang ERP được tiến hành riêng.',
+  closeSuccess: (workOrderNo: string, menuPath: string): string =>
+    `Đã đóng ${workOrderNo}. Hãy xem kết quả gửi sang ERP ở ${menuPath}.`,
   readState: {
     progressUnavailable: 'Không xác nhận được đánh giá kết quả sản xuất.',
     openSessionFailed: 'Không xác nhận được có phiên làm việc đang mở hay không.',

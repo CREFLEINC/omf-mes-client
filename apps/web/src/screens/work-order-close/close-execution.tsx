@@ -1,10 +1,14 @@
 import type { ApiError, components } from '@omf-mes/api-client';
-import { Button, useToast } from '@crefle/web-ui';
+import { AlertBanner, Button, useToast } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useState } from 'react';
 import { useApiClient } from '../../patterns/api-context';
 import { SaveErrorBanner } from '../../patterns/master';
-import { WorkOrderCloseConfirmDialog } from './close-confirm-dialog';
+import {
+  erpResultMenuPath,
+  WorkOrderCloseConfirmDialog,
+  type WorkOrderCloseConfirmDetail,
+} from './close-confirm-dialog';
 import { useWorkOrderCloseMutation } from './mutations';
 import { workOrderCloseDetailPath } from './queries';
 type WorkOrderClose = components['schemas']['WorkOrderClose'];
@@ -13,6 +17,8 @@ export interface WorkOrderCloseExecutionProps {
   workOrderId: number;
   workOrderNo: string;
   request: WorkOrderClose | null;
+  details: readonly WorkOrderCloseConfirmDetail[];
+  warnings: readonly string[];
   onClearSelection: () => void;
   onReloadCandidates: () => Promise<unknown>;
   onReloadDetail: () => Promise<unknown>;
@@ -34,7 +40,10 @@ export const WorkOrderCloseExecution = (props: WorkOrderCloseExecutionProps) => 
     onSuccess: () => {
       setConfirmation(null);
       props.onClearSelection();
-      toast.show({ variant: 'success', description: messages.workOrderClose.closeSuccess });
+      toast.show({
+        variant: 'success',
+        description: messages.workOrderClose.closeSuccess(props.workOrderNo, erpResultMenuPath()),
+      });
     },
   });
   useEffect(() => {
@@ -53,6 +62,15 @@ export const WorkOrderCloseExecution = (props: WorkOrderCloseExecutionProps) => 
   };
   return (
     <>
+      {props.warnings.length === 0 ? null : (
+        <div className="banner-slot">
+          <AlertBanner variant="info">
+            {props.warnings.map((warning) => (
+              <p key={warning}>{warning}</p>
+            ))}
+          </AlertBanner>
+        </div>
+      )}
       <div className="work-order-close-actions">
         <Button
           disabled={request === null || write.isSaving}
@@ -68,6 +86,8 @@ export const WorkOrderCloseExecution = (props: WorkOrderCloseExecutionProps) => 
       {confirmation === null || (request === null && !write.isSaving) ? null : (
         <WorkOrderCloseConfirmDialog
           workOrderNo={props.workOrderNo}
+          details={props.details}
+          warnings={props.warnings}
           banner={
             <>
               <SaveErrorBanner error={write.error} onReload={reload} />

@@ -12,6 +12,7 @@ import {
   toWorkOrderCloseSelectedDraft,
   WorkOrderCloseCandidateScreen,
 } from './candidate-screen';
+import { erpResultMenuPath } from './close-confirm-dialog';
 import { toWorkOrderCloseDetailFact } from './queries';
 
 const t = messages.workOrderClose;
@@ -22,9 +23,14 @@ const paths = {
   detail: (workOrderId: number) => `/production/work-orders/${String(workOrderId)}`,
   close: (workOrderId: number) => `/production/work-orders/${String(workOrderId)}:close`,
   sessions: '/production/work-sessions',
+  lots: '/trace/lots',
   outbound: '/integration/outbound-item-settings',
   uoms: '/mdm/uoms',
 };
+const closeSuccessText = messages.workOrderClose.closeSuccess(
+  'SYN-WO-DETAIL-701',
+  erpResultMenuPath(),
+);
 type LookupMode = 'ready' | 'pending' | 'pending-error' | 'error' | 'truncated';
 type ReasonMode = LookupMode | 'empty' | 'changed';
 type Judgment = 'UNDER' | 'NORMAL' | 'OVER' | null;
@@ -69,7 +75,6 @@ const detailBody = (
   extra: Record<string, unknown> = {},
 ) => ({
   ...workOrder(workOrderId),
-  ...extra,
   workOrderNo: `SYN-WO-DETAIL-${String(workOrderId)}`,
   orderQty: 99,
   progress:
@@ -80,6 +85,7 @@ const detailBody = (
           ...{ varianceQty: -432, completionJudgmentCode: judgment },
         },
   preIssuedLots: { slotCount: 9, withResultCount: 6, withoutResultCount: 0 },
+  ...extra,
 });
 const detailResponse = (
   workOrderId: number,
@@ -186,6 +192,7 @@ const makeApi = (
   let releaseDetail: (() => void) | undefined;
   let detailJudgment: Judgment = 'OVER';
   let detailExtra: Record<string, unknown> = {};
+  let openLotsBody: unknown = { items: [], page: { page: 1, size: 100, total: 0 } };
   let currentDetailEtag = detailEtag;
   let sessionMode: 'ready' | 'pending-ready' | 'pending-error' | 'error' = 'ready';
   let releaseSession: (() => void) | undefined;
@@ -279,6 +286,7 @@ const makeApi = (
         ? gate(response, (release) => (releaseSession = release))
         : response;
     }
+    if (url.pathname === paths.lots) return jsonResponse(openLotsBody);
     if (url.pathname.startsWith('/mdm/items/'))
       return jsonResponse(itemBody(Number(url.pathname.split('/').at(-1))));
     if (url.pathname === paths.outbound) {
@@ -309,6 +317,7 @@ const makeApi = (
     setDetailEtag: (etag: string) => ((detailMode = 'pending-ready'), (currentDetailEtag = etag)),
     setJudgment: (judgment: Judgment) => (detailJudgment = judgment),
     setDetailExtra: (extra: Record<string, unknown>) => (detailExtra = extra),
+    setOpenLots: (body: unknown) => (openLotsBody = body),
     setSessionMode: (mode: typeof sessionMode) => (sessionMode = mode),
     setHasOpenSession: (value: boolean) => (hasOpenSession = value),
     setReasonMode: (mode: ReasonMode) => (reasonMode = mode),
@@ -504,7 +513,7 @@ describe('WorkOrderCloseCandidateScreen', () => {
     await waitFor(() => expect(api.closeRequests).toHaveLength(1));
     const key = expect.stringMatching(/^[0-9a-f-]{36}$/i);
     expect(api.closeRequests[0]).toEqual({ path: paths.close(701), body, etag: detailEtag, key });
-    expect(await screen.findByText(t.closeSuccess)).toBeVisible();
+    expect(await screen.findByText(closeSuccessText)).toBeVisible();
     expect(screen.getByText(t.detailSummary.selection.title)).toBeVisible();
     expect(document.body).not.toHaveTextContent(/ERP 반영 완료|outbox 적재 완료/);
   });
@@ -524,7 +533,7 @@ describe('WorkOrderCloseCandidateScreen', () => {
     api.setOutboundMode('ready');
     api.releaseOutbound();
     api.releaseClose();
-    expect(await screen.findByText(t.closeSuccess)).toBeVisible();
+    expect(await screen.findByText(closeSuccessText)).toBeVisible();
     await user.click(await selectCloseTarget(user));
     api.setOutboundMode('pending-ready');
     void queryClient.invalidateQueries({ queryKey: outboundQueryKey });
@@ -632,7 +641,8 @@ describe('WorkOrderCloseCandidateScreen', () => {
     expect(await within(pane).findByText('SYN-WO-DETAIL-701')).toBeVisible();
     expect(pane).toHaveTextContent('99');
     expect(pane).toHaveTextContent('987');
-    expect(pane).toHaveTextContent('-432');
+    expect(pane).toHaveTextContent(t.detailSummary.fields.overageQty);
+    expect(pane).not.toHaveTextContent('-432');
     expect(pane).toHaveTextContent(t.detailSummary.judgments.OVER);
     expect(pane).toHaveTextContent('9');
     expect(pane).toHaveTextContent('6');
@@ -712,6 +722,45 @@ describe('WorkOrderCloseCandidateScreen', () => {
     await user.click(within(status).getByRole('button', { name: messages.common.retry }));
     await waitFor(() => expect(detailUrls(api.urls)).toHaveLength(3));
     expect(api.urls.slice(progressBefore).map((url) => url.pathname)).toEqual([paths.detail(701)]);
+  });
+
+  it('확인 창이 고른 내용과 폐번·남는 LOT 을 되풀이하고, 화면에도 미리 알린다', async () => {
+    const user = userEvent.setup();
+    const api = makeApi();
+    api.setJudgment('UNDER');
+    api.setDetailExtra({
+      preIssuedLots: { slotCount: 9, withResultCount: 6, withoutResultCount: 3 },
+    });
+    api.setOpenLots({
+      items: [
+        { lotId: 1, lotNo: 'LOT-SYN-ACTIVE', lifecycleStatusCode: 'ACTIVE' },
+        { lotId: 2, lotNo: 'LOT-SYN-WAITING', lifecycleStatusCode: 'WAITING' },
+      ],
+      page: { page: 1, size: 100, total: 2 },
+    });
+    renderWithProviders(<View />, { fetch: api.fetch });
+    const action = await selectCloseTarget(user);
+    const input = await screen.findByRole('region', { name: t.input.pane });
+    await user.click(dispositionField(input));
+    await user.click(reasonField(input));
+    await user.click(screen.getByRole('option', { name: 'Synthetic second reason' }));
+
+    const voided = t.confirm.voidedSlots(3);
+    const remaining = t.confirm.openLots(1, 'LOT-SYN-ACTIVE');
+    expect(await screen.findByText(remaining)).toBeVisible();
+    expect(screen.getByText(voided)).toBeVisible();
+
+    await waitFor(() => expect(action).toBeEnabled());
+    await user.click(action);
+    const dialog = screen.getByRole('dialog');
+    const valueOf = (label: string) => within(dialog).getByText(label).nextElementSibling;
+    expect(valueOf(t.confirm.fields.judgment)).toHaveTextContent(t.detailSummary.judgments.UNDER);
+    expect(valueOf(t.detailSummary.fields.overageQty)).toHaveTextContent('432');
+    expect(valueOf(t.confirm.fields.remainder)).toHaveTextContent(t.input.remainder.WRITE_OFF);
+    expect(valueOf(t.confirm.fields.reason)).toHaveTextContent('Synthetic second reason');
+    expect(dialog).toHaveTextContent(voided);
+    expect(dialog).toHaveTextContent(remaining);
+    expect(dialog).not.toHaveTextContent('LOT-SYN-WAITING');
   });
 
   it('W/O 에 실린 사유를 미리 골라 두고 어디서 온 값인지 적는다', async () => {

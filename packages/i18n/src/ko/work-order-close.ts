@@ -1,6 +1,8 @@
 export const workOrderClose = {
   title: 'W/O 마감·ERP 실적 송신',
   breadcrumbRoot: '생산 관리',
+  description:
+    '작업이 끝난 작업지시를 마감하고 생산 실적을 ERP 로 보냅니다. 마감하면 되돌릴 수 없습니다.',
   detailSummary: {
     pane: '작업지시 마감 상세 요약',
     heading: '작업지시 마감 상세',
@@ -24,6 +26,8 @@ export const workOrderClose = {
       reworkQty: '재작업 수량',
       achievementRate: '달성률',
       varianceQty: '차이 수량',
+      shortfallQty: '미달 수량',
+      overageQty: '초과 수량',
       judgment: '마감 판정',
       slotCount: '선발행 LOT 전체',
       withResultCount: '실적 있음',
@@ -98,11 +102,29 @@ export const workOrderClose = {
     title: (workOrderNo: string): string => `작업지시 마감 — ${workOrderNo}`,
     target: (workOrderNo: string): string => `대상 작업지시: ${workOrderNo}`,
     irreversible: '작업지시 마감은 되돌릴 수 없습니다. 정정이 필요하면 생산실적을 상계 처리하세요.',
-    erp: 'ERP 송신은 별도로 진행되며, 이 확인은 ERP 송신 완료를 의미하지 않습니다.',
+    /* 마감과 함께 송신 대기열에 오를 뿐 보낸 결과는 이 화면에 없다 — 어디서 보는지 함께 말한다. */
+    erp: (menuPath: string): string =>
+      `ERP 실적 송신은 마감과 함께 대기열에 올라갑니다. 송신 결과는 ${menuPath}에서 확인하세요.`,
+    fields: {
+      judgment: '판정',
+      remainder: '잔량 처리',
+      reason: '변동 사유',
+      remarks: '소멸 사유(비고)',
+    },
+    voidedSlots: (count: number): string =>
+      `실적이 없는 선발행 LOT ${String(count)}건은 마감과 함께 폐번됩니다.`,
+    openLots: (count: number, lotNos: string): string =>
+      `마감되지 않은 LOT ${String(count)}건(${lotNos})은 그 상태로 남습니다.`,
+    /* 한 쪽만 읽어 진행 여부를 모르는 LOT 이 남았을 때 — 없다고 단정하지 않는다. */
+    openLotsUnknown:
+      '진행 중인 LOT 을 확인하지 못했습니다. 마감해도 진행 중인 LOT 은 그 상태로 남습니다.',
+    uncheckedLots: (count: number): string =>
+      `확인하지 못한 미완료 LOT ${String(count)}건이 더 있습니다. 마감해도 그 LOT 은 그 상태로 남습니다.`,
     cancel: '취소',
     confirm: '작업지시 마감',
   },
-  closeSuccess: '작업지시가 마감되었습니다. ERP 송신은 별도로 진행됩니다.',
+  closeSuccess: (workOrderNo: string, menuPath: string): string =>
+    `${workOrderNo} 마감을 마쳤습니다. ERP 송신 결과는 ${menuPath}에서 확인하세요.`,
   readState: {
     progressUnavailable: '생산 실적 판정을 확인할 수 없습니다.',
     openSessionFailed: '열린 작업 세션 여부를 확인할 수 없습니다.',

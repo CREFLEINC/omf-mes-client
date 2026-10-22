@@ -95,6 +95,7 @@ export const workOrderCloseKeys = {
   detail: (workOrderId: number | null) => ['work-order-close', 'detail', workOrderId] as const,
   openSession: (workOrderId: number | null) =>
     ['work-order-close', 'open-session', workOrderId] as const,
+  openLots: (workOrderId: number | null) => ['work-order-close', 'open-lots', workOrderId] as const,
   outboundItemSettings: () => ['work-order-close', 'outbound-item-settings'] as const,
   productionOrders: () => ['work-order-close', 'lookups', 'production-orders'] as const,
   codeValues: (codeGroupCode: string) =>
@@ -206,6 +207,50 @@ export const useWorkOrderCloseOpenSession = (
       );
 
       return { hasOpenSession: data.items.length > 0 };
+    },
+  });
+};
+
+/** 진행 중(실적이 붙었고 아직 완료되지 않은) LOT. 쪽을 넘긴 나머지는 건수로만 안다. */
+export interface WorkOrderCloseOpenLots {
+  lotNos: string[];
+  /** 받은 쪽 밖에 더 있을 수 있는 미완료 LOT 수. 진행 중인지는 모른다 */
+  uncheckedCount: number;
+}
+
+const OPEN_LOT_PAGE_SIZE = 100;
+
+/*
+ * 마감은 진행 중 LOT 을 막지 않는다(서버도 보지 않는다) — 그 LOT 이 그대로 남는다는 사실을
+ * 확인 창에서 알리려고 읽는다. 실적 없는 대기 슬롯은 마감 때 폐번되므로 여기서 뺀다.
+ */
+export const useWorkOrderCloseOpenLots = (
+  workOrderId: number | null,
+): UseQueryResult<WorkOrderCloseOpenLots> => {
+  const { client } = useApiClient();
+
+  return useQuery({
+    queryKey: workOrderCloseKeys.openLots(workOrderId),
+    enabled: workOrderId !== null,
+    queryFn: async () => {
+      if (workOrderId === null) {
+        throw new Error('A work order is required to load its open LOTs.');
+      }
+
+      const data = await runRequest(() =>
+        client.GET('/trace/lots', {
+          params: {
+            query: { workOrderId, completed: false, page: 1, size: OPEN_LOT_PAGE_SIZE },
+          },
+        }),
+      );
+
+      return {
+        lotNos: data.items
+          .filter((lot) => lot.lifecycleStatusCode === 'ACTIVE')
+          .map((lot) => lot.lotNo),
+        uncheckedCount: Math.max(0, data.page.total - data.items.length),
+      };
     },
   });
 };
