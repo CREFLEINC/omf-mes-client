@@ -3,7 +3,7 @@ import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
 
 import { useApiClient } from '../../patterns/api-context';
-import { requireIfMatch, useMasterWrite, type MasterWriteResult } from '../../patterns/master';
+import { useMasterWrite, type MasterWriteResult } from '../../patterns/master';
 import { runRequest } from '../../patterns/request';
 import { RUNNING_STATUS_CODE } from '../work-hold-register/types';
 import { buildSessionEnd } from './session';
@@ -23,29 +23,39 @@ const closeKeys = {
   sessions: (workOrderId: number) => ['production-flow', 'close-sessions', workOrderId] as const,
 };
 
+export interface CloseTarget {
+  workOrder: WorkOrderForward;
+  /** 이 응답의 잠금 값. 마감은 이것을 `If-Match` 로 싣는다 */
+  etag: string | null;
+}
+
 /**
  * 창을 열 때 다시 읽는 마감 대상. 마감은 `If-Match` 가 필수라, 판정과 잠금 값이 같은 응답에서
- * 와야 한다 — 화면이 오래 들고 있던 상세로 판정하면 그사이 쌓인 실적이 빠진다.
+ * 와야 한다. 잠금 값은 경로마다 하나만 보관되어 화면의 상세 조회가 다시 읽히면 바뀌므로, 이
+ * 응답을 받은 순간의 값을 함께 잡아 둔다 — 창이 보인 판정과 다른 판의 잠금 값으로 마감하지 않게.
  */
 export const useCloseTarget = (
   workOrderId: number,
   enabled: boolean,
-): UseQueryResult<WorkOrderForward> => {
-  const { client } = useApiClient();
+): UseQueryResult<CloseTarget> => {
+  const { client, etags } = useApiClient();
 
   return useQuery({
     queryKey: closeKeys.target(workOrderId),
     enabled,
     staleTime: 0,
-    queryFn: async () =>
-      (await runRequest(() =>
+    queryFn: async () => {
+      const workOrder = (await runRequest(() =>
         client.GET('/production/work-orders/{workOrderId}', {
           params: {
             path: { workOrderId },
             query: { withProgress: true, withPreIssuedLots: true },
           },
         }),
-      )) as WorkOrderForward,
+      )) as WorkOrderForward;
+
+      return { workOrder, etag: etags.ifMatch(workOrderClosePath(workOrderId)) ?? null };
+    },
   });
 };
 
@@ -86,6 +96,11 @@ export const useCloseOpenLots = (
   });
 };
 
+export interface CloseAttempt {
+  body: WorkOrderClose;
+  etag: string;
+}
+
 /**
  * 작업지시 마감. 되돌릴 수 없는 전이라 멱등 키는 적용될 때까지 같은 값을 쓴다.
  * ⛔ 오프라인 큐에 싣지 않는다 — `If-Match` 가 필수라 큐가 잠금 값을 실어 보낼 수 없다.
@@ -98,23 +113,24 @@ export const useWorkOrderCloseWrite = ({
   workOrderId: number;
   workerNo: string;
   onSuccess: () => void;
-}): MasterWriteResult<WorkOrderClose> => {
+}): MasterWriteResult<CloseAttempt> => {
   const { client } = useApiClient();
 
-  return useMasterWrite<WorkOrderClose, components['schemas']['WorkOrder']>({
-    request: (body, headers) =>
+  return useMasterWrite<CloseAttempt, components['schemas']['WorkOrder']>({
+    request: (variables, headers) =>
       client.POST('/production/work-orders/{workOrderId}:close', {
         params: {
           path: { workOrderId },
           header: {
             'Idempotency-Key': headers['Idempotency-Key'],
-            'If-Match': requireIfMatch(headers),
+            'If-Match': variables.etag,
             'X-Worker-No': workerNo,
           },
         },
-        body,
+        body: variables.body,
       }),
-    etagPath: workOrderClosePath(workOrderId),
+    /* 잠금 값은 창이 판정을 읽은 응답의 것을 싣는다(`useCloseTarget`) — 보관소의 최신 값이 아니다. */
+    etagPath: null,
     invalidateKeys: [['production-flow'], ['production-result']],
     knownFields: [],
     keyLifetime: 'until-applied',
@@ -196,15 +212,21 @@ interface SessionEndAttempt {
   body: WorkSessionEnd;
 }
 
-export type CloseEndFailure = 'forbidden' | 'notFound' | 'other';
+/**
+ * 세션 끝내기 실패 — 응답 모양이 아니라 상태 코드로 가른다. 권한·없음 응답도 오류 봉투로 와서
+ * 모양으로 가르면 검증 오류에 섞인다. 서버가 까닭을 준 그 밖의 거부는 서버 문구를 그대로 보인다.
+ */
+export type CloseEndFailure = 'forbidden' | 'notFound' | 'server' | 'other';
 
 export interface CloseSequence {
-  start: (body: WorkOrderClose, ownSessionId: number | null) => void;
+  start: (attempt: CloseAttempt, ownSessionId: number | null) => void;
   reset: () => void;
+  /** 보내는 중이거나, 이미 끝난 세션을 확인하려고 다시 읽는 중 */
   isSaving: boolean;
   /** 이 단말 세션을 끝내지 못했다. 이미 끝나 있던 것(STATE_LOCKED)은 실패가 아니다 */
   endFailure: CloseEndFailure | null;
-  closeError: MasterWriteResult<WorkOrderClose>['error'];
+  endError: MasterWriteResult<SessionEndAttempt>['error'];
+  closeError: MasterWriteResult<CloseAttempt>['error'];
   /** 이 단말 세션은 끝났는데 마감은 되지 않았다 — 따로 알린다 */
   endedButNotClosed: boolean;
 }
@@ -230,13 +252,14 @@ export const useCloseSequence = ({
 }): CloseSequence => {
   const { client } = useApiClient();
   const attempt = useRef<SessionEndAttempt | null>(null);
-  const pendingBody = useRef<WorkOrderClose | null>(null);
+  const pendingClose = useRef<CloseAttempt | null>(null);
   const [endedSessionId, setEndedSessionId] = useState<number | null>(null);
+  const [isRechecking, setIsRechecking] = useState(false);
 
   const closeWrite = useWorkOrderCloseWrite({ workOrderId, workerNo, onSuccess: onClosed });
   const proceedToClose = (workSessionId: number) => {
     setEndedSessionId(workSessionId);
-    if (pendingBody.current !== null) closeWrite.write(pendingBody.current);
+    if (pendingClose.current !== null) closeWrite.write(pendingClose.current);
   };
   const endWrite = useMasterWrite<SessionEndAttempt, components['schemas']['WorkSession']>({
     request: (variables, headers) =>
@@ -257,19 +280,25 @@ export const useCloseSequence = ({
   const endError = endWrite.error;
   const alreadyEnded = endError?.kind === 'stateLocked';
   const handled = useRef<SessionEndAttempt | null>(null);
+  const recheckRef = useRef(recheckSessions);
+  recheckRef.current = recheckSessions;
+  const proceedRef = useRef(proceedToClose);
+  proceedRef.current = proceedToClose;
   useEffect(() => {
     const current = attempt.current;
     if (!alreadyEnded || current === null || handled.current === current) return;
     handled.current = current;
-    void recheckSessions().then((plan) => {
-      if (plan !== null && plan.blockers.length === 0) proceedToClose(current.workSessionId);
+    setIsRechecking(true);
+    void recheckRef.current().then((plan) => {
+      setIsRechecking(false);
+      if (plan !== null && plan.blockers.length === 0) proceedRef.current(current.workSessionId);
     });
-  });
+  }, [alreadyEnded]);
 
-  const start = (body: WorkOrderClose, ownSessionId: number | null) => {
-    pendingBody.current = body;
+  const start = (next: CloseAttempt, ownSessionId: number | null) => {
+    pendingClose.current = next;
     if (ownSessionId === null || ownSessionId === endedSessionId) {
-      closeWrite.write(body);
+      closeWrite.write(next);
       return;
     }
     if (attempt.current?.workSessionId !== ownSessionId) {
@@ -278,27 +307,32 @@ export const useCloseSequence = ({
     endWrite.write(attempt.current);
   };
 
+  const endStatus = endError !== null && 'status' in endError ? endError.status : undefined;
   const endFailure: CloseEndFailure | null =
     endError === null || alreadyEnded
       ? null
-      : endError.kind === 'http' && endError.status === 403
+      : endStatus === 403
         ? 'forbidden'
-        : endError.kind === 'http' && endError.status === 404
+        : endStatus === 404
           ? 'notFound'
-          : 'other';
+          : endError.kind === 'validation'
+            ? 'server'
+            : 'other';
 
   return {
     start,
     reset: () => {
       attempt.current = null;
-      pendingBody.current = null;
+      pendingClose.current = null;
       handled.current = null;
       setEndedSessionId(null);
+      setIsRechecking(false);
       endWrite.reset();
       closeWrite.reset();
     },
-    isSaving: endWrite.isSaving || closeWrite.isSaving,
+    isSaving: endWrite.isSaving || closeWrite.isSaving || isRechecking,
     endFailure,
+    endError: endFailure === 'server' ? endError : null,
     closeError: closeWrite.error,
     endedButNotClosed: endedSessionId !== null && closeWrite.error !== null,
   };

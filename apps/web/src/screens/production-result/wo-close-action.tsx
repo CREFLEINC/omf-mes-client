@@ -76,6 +76,7 @@ export const WorkOrderCloseAction = (props: WorkOrderCloseActionProps) => {
   const toast = useToast();
   const navigate = useNavigate();
   const noteId = useId();
+  const submitNoteId = useId();
   const [isOpen, setIsOpen] = useState(false);
   const [disposition, setDisposition] = useState<Disposition | null>(null);
   const [reasonCode, setReasonCode] = useState<string | null>(null);
@@ -95,7 +96,10 @@ export const WorkOrderCloseAction = (props: WorkOrderCloseActionProps) => {
     },
     recheckSessions: async () => {
       const result = await sessions.refetch();
-      return result.data === undefined ? null : planCloseSessions(result.data, terminalId);
+      /* 다시 읽지 못했으면 막는 세션이 없다고 볼 수 없다 — 마감으로 넘어가지 않는다. */
+      return result.isError || result.data === undefined
+        ? null
+        : planCloseSessions(result.data, terminalId);
     },
   });
 
@@ -103,9 +107,10 @@ export const WorkOrderCloseAction = (props: WorkOrderCloseActionProps) => {
 
   const reason = blockedReason(props);
   const plan = sessions.data === undefined ? null : planCloseSessions(sessions.data, terminalId);
-  const progress = target.data?.progress;
+  const workOrder = target.data?.workOrder;
+  const progress = workOrder?.progress;
   const judgment = progress?.completionJudgmentCode ?? null;
-  const savedReason = target.data?.completionVarianceReasonCode ?? null;
+  const savedReason = workOrder?.completionVarianceReasonCode ?? null;
   const reasonList = reasons.data ?? [];
   /* LOT 을 미달로 마감할 때 고른 사유가 W/O 에 실려 있다 — 같은 것을 다시 고르게 하지 않는다. */
   const effectiveReason =
@@ -137,8 +142,25 @@ export const WorkOrderCloseAction = (props: WorkOrderCloseActionProps) => {
       ...(disposition === 'WRITE_OFF' && trimmed !== '' ? { remarks: trimmed } : {}),
     };
   };
-  const canSubmit =
-    body() !== null && plan !== null && plan.blockers.length === 0 && !sequence.isSaving;
+  const etag = target.data?.etag ?? null;
+  /*
+   * 창 안 [마감]을 막는 까닭 — 하나만 보인다. 다시 읽는 동안에도 막는다: 앞서 읽은 판정이나
+   * 세션으로 보내지 않게.
+   */
+  const submitBlocked = ((): { text: string; shownAbove: boolean } | null => {
+    if (sessions.isPending || sessions.isFetching) return { text: st.checking, shownAbove: true };
+    if (sessions.isError || plan === null) return { text: st.loadFailed, shownAbove: true };
+    if (plan.blockers.length > 0) return { text: st.blocked, shownAbove: true };
+    if (target.isPending || target.isFetching) return { text: t.loading, shownAbove: true };
+    if (target.isError || etag === null) return { text: t.loadFailed, shownAbove: true };
+    if (judgment === null) return { text: t.judgmentMissing, shownAbove: true };
+    if (missing !== null) return { text: missing, shownAbove: false };
+    if (openLots.isPending) return { text: t.openLotsChecking, shownAbove: false };
+
+    return null;
+  })();
+  const submitBlockedReason = submitBlocked?.text ?? null;
+  const canSubmit = submitBlockedReason === null && !sequence.isSaving;
 
   const close = () => {
     if (sequence.isSaving) return;
@@ -176,7 +198,7 @@ export const WorkOrderCloseAction = (props: WorkOrderCloseActionProps) => {
           ? t.endFailed
           : null;
   const variance = progress?.varianceQty;
-  const voided = target.data?.preIssuedLots?.withoutResultCount ?? 0;
+  const voided = workOrder?.preIssuedLots?.withoutResultCount ?? 0;
 
   return (
     <div className="production-flow-wo-close">
@@ -213,10 +235,11 @@ export const WorkOrderCloseAction = (props: WorkOrderCloseActionProps) => {
                 size="xl"
                 disabled={!canSubmit}
                 loading={sequence.isSaving}
+                aria-describedby={submitBlockedReason === null ? undefined : submitNoteId}
                 onClick={() => {
                   const next = body();
-                  if (next === null || plan === null || !canSubmit) return;
-                  sequence.start(next, plan.ownSessionId);
+                  if (next === null || plan === null || etag === null || !canSubmit) return;
+                  sequence.start({ body: next, etag }, plan.ownSessionId);
                 }}
               >
                 {t.confirm}
@@ -234,6 +257,7 @@ export const WorkOrderCloseAction = (props: WorkOrderCloseActionProps) => {
               <AlertBanner variant="warning" title={t.endedButNotClosed} />
             </div>
           )}
+          <SaveErrorBanner error={sequence.endError} />
           <SaveErrorBanner error={sequence.closeError} />
 
           {sessions.isPending ? (
@@ -278,7 +302,7 @@ export const WorkOrderCloseAction = (props: WorkOrderCloseActionProps) => {
               <dl className="pop-figures">
                 <div>
                   <dt>{t.fields.orderQty}</dt>
-                  <dd>{`${formatQty(target.data.orderQty)} ${uomLabel}`.trim()}</dd>
+                  <dd>{`${formatQty(target.data.workOrder.orderQty)} ${uomLabel}`.trim()}</dd>
                 </div>
                 <div>
                   <dt>{t.fields.goodQty}</dt>
@@ -382,9 +406,17 @@ export const WorkOrderCloseAction = (props: WorkOrderCloseActionProps) => {
                   )}
                 </>
               )}
-              {missing !== null && judgment !== null && <p className="field-note">{missing}</p>}
               <p>{t.irreversible}</p>
             </>
+          )}
+          {/* 창 위에 이미 띠로 선 까닭은 단추에만 이어 둔다 — 같은 말을 두 번 보이지 않게. */}
+          {submitBlocked !== null && (
+            <p
+              className={submitBlocked.shownAbove ? 'visually-hidden' : 'field-note'}
+              id={submitNoteId}
+            >
+              {submitBlocked.text}
+            </p>
           )}
         </Dialog>
       )}

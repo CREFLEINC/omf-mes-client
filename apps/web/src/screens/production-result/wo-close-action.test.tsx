@@ -67,7 +67,7 @@ interface Scenario {
   sessions?: () => unknown[];
   end?: (attempt: number) => Response;
   close?: (attempt: number) => Response;
-  lots?: () => Response;
+  lots?: () => Response | Promise<Response>;
 }
 
 const stateLocked = (message: string) =>
@@ -237,12 +237,13 @@ describe('WorkOrderCloseAction — 이 단말이 끝낼 수 없는 세션', () =
       renderAction(routes(writes, { sessions }));
 
       const dialog = await openDialog(user);
-      expect(await within(dialog).findByText(t.sessions.blocked)).toBeVisible();
+      expect((await within(dialog).findAllByText(t.sessions.blocked))[0]).toBeVisible();
       const row = within(dialog).getByText(terminal).closest('tr') as HTMLElement;
       expect(within(row).getByText(where)).toBeVisible();
       expect(within(row).getByText('합성 작업자(900028)')).toBeVisible();
       await within(dialog).findByText(t.judgments.NORMAL);
       expect(confirmOf(dialog)).toBeDisabled();
+      expect(confirmOf(dialog)).toHaveAccessibleDescription(t.sessions.blocked);
       expect(writes).toHaveLength(0);
     },
   );
@@ -356,7 +357,12 @@ describe('WorkOrderCloseAction — 실패 경로', () => {
     renderAction(
       routes(writes, {
         sessions: ownRunning,
-        end: () => jsonResponse({ message: '합성 거부' }, { status }),
+        /* 권한·없음 응답도 계약의 오류 봉투로 온다. */
+        end: () =>
+          jsonResponse(
+            { errors: [{ scope: 'screen', code: 'SYN_DENIED', message: '합성 거부' }] },
+            { status },
+          ),
       }),
     );
 
@@ -369,14 +375,128 @@ describe('WorkOrderCloseAction — 실패 경로', () => {
     expect(writes.map((write) => write.path)).toEqual([END]);
   });
 
+  it('세션 끝내기를 서버가 까닭과 함께 거부하면 그 문구를 보이고 마감하지 않는다', async () => {
+    const writes: Recorded[] = [];
+    const user = userEvent.setup();
+    const message = '세션 종료 시각이 시작보다 앞섭니다. 단말 시계를 확인하세요.';
+    renderAction(
+      routes(writes, {
+        sessions: ownRunning,
+        end: () =>
+          jsonResponse(
+            { errors: [{ scope: 'field', field: 'endedAt', code: 'INVALID', message }] },
+            { status: 400 },
+          ),
+      }),
+    );
+
+    const dialog = await openDialog(user);
+    await within(dialog).findByText(t.judgments.NORMAL);
+    await waitFor(() => expect(confirmOf(dialog)).toBeEnabled());
+    await user.click(confirmOf(dialog));
+
+    expect(await within(dialog).findByText(message)).toBeVisible();
+    expect(writes.map((write) => write.path)).toEqual([END]);
+  });
+
+  it.each([
+    [
+      '다른 단말 세션이 남아 있으면',
+      () =>
+        jsonResponse({
+          items: [session(77, 11, 'RUNNING')],
+          page: { page: 1, size: 50, total: 1 },
+        }),
+      t.sessions.blocked,
+    ],
+    [
+      '다시 읽지 못하면',
+      () => jsonResponse({ message: '합성 실패' }, { status: 500 }),
+      t.sessions.loadFailed,
+    ],
+  ])(
+    '이미 끝난 세션을 확인하려고 다시 읽었는데 %s 마감하지 않는다',
+    async (_case, secondRead, reason) => {
+      const writes: Recorded[] = [];
+      const user = userEvent.setup();
+      let reads = 0;
+      const base = routes(writes, {
+        sessions: ownRunning,
+        end: () => stateLocked('이미 종료된 작업 세션입니다.'),
+      });
+      renderAction([
+        {
+          match: (request) =>
+            request.method === 'GET' &&
+            new URL(request.url).pathname === '/production/work-sessions',
+          respond: () => {
+            reads += 1;
+            return reads === 1
+              ? jsonResponse({ items: ownRunning(), page: { page: 1, size: 50, total: 1 } })
+              : secondRead();
+          },
+        },
+        ...base,
+      ]);
+
+      const dialog = await openDialog(user);
+      await within(dialog).findByText(t.judgments.NORMAL);
+      await waitFor(() => expect(confirmOf(dialog)).toBeEnabled());
+      await user.click(confirmOf(dialog));
+
+      await waitFor(() => expect(confirmOf(dialog)).toHaveAccessibleDescription(reason));
+      expect(writes.map((write) => write.path)).toEqual([END]);
+    },
+  );
+
+  it('창을 닫았다 다시 열면 앞 시도의 실패를 지우고 세션과 판정을 다시 읽는다', async () => {
+    const writes: Recorded[] = [];
+    const user = userEvent.setup();
+    let reads = 0;
+    renderAction(
+      routes(writes, {
+        sessions: () => {
+          reads += 1;
+          return ownRunning();
+        },
+        end: () => jsonResponse({ message: '합성 실패' }, { status: 500 }),
+      }),
+    );
+
+    let dialog = await openDialog(user);
+    await within(dialog).findByText(t.judgments.NORMAL);
+    await waitFor(() => expect(confirmOf(dialog)).toBeEnabled());
+    await user.click(confirmOf(dialog));
+    expect(await within(dialog).findByText(t.endFailed)).toBeVisible();
+
+    await user.click(within(dialog).getByRole('button', { name: t.cancel }));
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    const readsBefore = reads;
+    dialog = await openDialog(user);
+
+    await waitFor(() => expect(reads).toBeGreaterThan(readsBefore));
+    expect(within(dialog).queryByText(t.endFailed)).toBeNull();
+  });
+
+  it('진행 중 LOT 을 확인하는 동안에는 마감을 막고 그 까닭을 단추에 잇는다', async () => {
+    const user = userEvent.setup();
+    renderAction(routes([], { lots: () => new Promise<Response>(() => undefined) }));
+
+    const dialog = await openDialog(user);
+    await within(dialog).findByText(t.judgments.NORMAL);
+    await waitFor(() => expect(confirmOf(dialog)).toHaveAccessibleDescription(t.openLotsChecking));
+    expect(confirmOf(dialog)).toBeDisabled();
+  });
+
   it('판정이 없으면 그 까닭을 말하고 마감을 막는다', async () => {
     const writes: Recorded[] = [];
     const user = userEvent.setup();
     renderAction(routes(writes, { judgment: null }));
 
     const dialog = await openDialog(user);
-    expect(await within(dialog).findByText(t.judgmentMissing)).toBeVisible();
+    expect((await within(dialog).findAllByText(t.judgmentMissing))[0]).toBeVisible();
     expect(confirmOf(dialog)).toBeDisabled();
+    expect(confirmOf(dialog)).toHaveAccessibleDescription(t.judgmentMissing);
   });
 
   it.each([

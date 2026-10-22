@@ -164,6 +164,7 @@ export const productionResult: Translated<typeof ko.productionResult> = {
       needReason: 'Vì thiếu hoặc vượt nên phải chọn lý do mới đóng được.',
       judgmentMissing:
         'Không tải được đánh giá nên chưa đóng được. Hãy kiểm tra kết nối rồi bấm «Thử lại».',
+      openLotsChecking: 'Đang kiểm tra LOT đang thực hiện. Kiểm tra xong mới đóng được.',
       openLotsUnknown:
         'Chưa kiểm tra được LOT đang thực hiện. Dù đóng, LOT đang thực hiện vẫn giữ nguyên trạng thái.',
       uncheckedLots: (count: number): string =>
