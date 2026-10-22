@@ -388,11 +388,6 @@ export const IqcInspectionScreen = () => {
         rejection.description !== savedRejection.description ||
         rejection.causeId !== savedRejection.causeId)) ||
     fourMChanged;
-  /*
-   * 떠날 때 물을 입력 — 판정 변경 사유는 임시 저장에 실리지 않고 확정에만 실리므로(P-70) 위 「바뀐 것」에 없다.
-   * 그래도 친 사유는 떠나면 사라지므로 묻는다(#133 실검증).
-   */
-  const hasUnsavedInput = hasChanges || changeReason.trim() !== '';
 
   const rows = queue.data?.rows ?? [];
   const pageView = toPageView(queue.data?.page ?? { page, size: 0, total: 0 }, rows.length);
@@ -480,6 +475,11 @@ export const IqcInspectionScreen = () => {
   const isOpenRound = isReinspectingNow || round?.statusCode !== 'CONFIRMED';
   const expectedJudgment = isOpenRound ? expectedJudgmentOf(draft, acceptanceNumber) : null;
   const needsChangeReason = needsJudgmentChangeReason(judgment, expectedJudgment);
+  /*
+   * 떠날 때 물을 입력 — 판정 변경 사유는 임시 저장에 실리지 않고 확정에만 실리므로(P-70) 위 「바뀐 것」에 없다.
+   * 그래도 친 사유는 떠나면 사라지므로 묻는다(#133 실검증). 사유 칸이 서 있을 때만 묻는다(확정된 회차 · 자동 판정과 같은 판정에는 칸이 없다).
+   */
+  const hasUnsavedInput = hasChanges || (needsChangeReason && changeReason.trim() !== '');
   const changeDraftAndJudge = (next: QuantityDraft): void => {
     changeDraft(next);
     const expected = isOpenRound ? expectedJudgmentOf(next, acceptanceNumber) : null;
