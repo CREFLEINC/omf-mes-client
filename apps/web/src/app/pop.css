@@ -9118,3 +9118,16 @@
   min-width: 0;
   overflow-wrap: anywhere;
 }
+
+/* 미달 사유 — 장갑 낀 손가락으로 누를 수 있게 큼직한 타일로 늘어놓는다. */
+.pop-ui .production-flow-reason-tiles,
+.production-flow-reason-tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(12rem, 1fr));
+  gap: var(--space-3);
+}
+
+/* 미달 사유 창의 첫 포커스 자리 — 스캔 Enter 가 단추를 누르지 않게 두는 자리라 테두리를 그리지 않는다. */
+.production-flow-reason-body:focus {
+  outline: none;
+}

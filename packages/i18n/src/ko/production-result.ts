@@ -135,6 +135,18 @@ export const productionResult = {
       completed: 'LOT 마감 완료 · 다음 LOT으로 전환합니다.',
       failed: 'LOT을 마감하지 못했습니다. 같은 라벨을 다시 스캔하세요.',
       alreadyCompleted: '이미 마감된 LOT입니다. 현재 LOT 상태를 다시 불러옵니다.',
+      noAllocation: '이 LOT에 저장된 실적이 없어 마감할 수 없습니다. 실적을 먼저 저장하세요.',
+      workOrderClosed:
+        'MES W/O가 이미 마감돼 미달로 마감할 수 없습니다. 관리자에게 W/O 마감 해제를 요청하세요.',
+    },
+    /** 목표에 못 미친 LOT 을 마감할 때 — 서버가 사유를 필수로 받는다. */
+    underReason: {
+      title: '미달 사유',
+      summary: (target: string, actual: string): string => `목표 ${target} · 실적 ${actual}`,
+      cancel: '취소',
+      loading: '미달 사유를 불러오는 중입니다.',
+      loadFailed: '미달 사유를 불러오지 못했습니다.',
+      empty: '고를 수 있는 미달 사유가 없습니다.',
     },
     /**
      * 작업 세션 자동 종료 — 마지막 LOT 을 마감해 더 생산할 것이 남지 않았을 때 닫는다.

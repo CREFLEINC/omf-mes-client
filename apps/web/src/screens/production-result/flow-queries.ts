@@ -37,6 +37,7 @@ export const productionFlowKeys = {
   tagIssueSummary: (serialIds: readonly number[]) =>
     ['production-flow', 'tag-issue-summary', ...serialIds] as const,
   reissueReasons: ['production-flow', 'reissue-reasons'] as const,
+  varianceReasons: ['production-flow', 'variance-reasons'] as const,
 };
 
 /**
@@ -267,6 +268,33 @@ export const useReissueReasons = (enabled: boolean): UseQueryResult<CodeValue[]>
       );
 
       return data.items;
+    },
+  });
+};
+
+/** 미달 사유 — W/O 마감(W-02-05)과 같은 코드 그룹이다. 서버가 같은 그룹으로 대조한다. */
+export const useVarianceReasons = (enabled: boolean): UseQueryResult<CodeValue[]> => {
+  const { client } = useApiClient();
+
+  return useQuery({
+    queryKey: productionFlowKeys.varianceReasons,
+    enabled,
+    queryFn: async () => {
+      const data = await runRequest(() =>
+        client.GET('/mdm/code-values', {
+          params: {
+            query: {
+              codeGroupCode: 'WORK_ORDER_COMPLETION_VARIANCE_REASON',
+              page: 1,
+              size: 100,
+            },
+          },
+        }),
+      );
+
+      return data.items
+        .filter((item) => item.isActive)
+        .sort((left, right) => left.displayOrder - right.displayOrder);
     },
   });
 };
