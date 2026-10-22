@@ -2450,6 +2450,37 @@ describe('ProductionFlowScreen 미달 LOT 마감', () => {
     );
   });
 
+  it('스캐너가 붙이는 Enter 로 사유 창이 닫히지 않는다', async () => {
+    const writes: Request[] = [];
+    const user = userEvent.setup();
+    renderScreen(writes, [lotDetailJudged('UNDER'), reasonCodes, completeRoute(writes)]);
+
+    await user.type(await reachScan(user), `${LOT_NO}{Enter}`);
+
+    const dialog = await screen.findByRole('dialog', { name: t.flow.underReason.title });
+    expect(dialog).toBeVisible();
+    expect(
+      within(dialog).getByRole('button', { name: t.flow.underReason.cancel }),
+    ).not.toHaveFocus();
+    expect(await completeBodies(writes)).toHaveLength(0);
+  });
+
+  it('마감한 뒤에는 라벨 카드의 양품 수량을 마감 전 값으로 남기지 않는다', async () => {
+    const writes: Request[] = [];
+    const user = userEvent.setup();
+    renderScreen(writes, [lotDetailJudged('NORMAL'), completeRoute(writes)]);
+
+    await user.type(await reachScan(user), LOT_NO);
+    await waitFor(async () => expect(await completeBodies(writes)).toHaveLength(1));
+
+    const card = screen.getByRole('heading', { name: t.flow.output.title }).closest('section, div');
+    await waitFor(() =>
+      expect(
+        within(card as HTMLElement).getByText(t.flow.quantity.actual).nextElementSibling,
+      ).toHaveTextContent('—'),
+    );
+  });
+
   it('정상 LOT 은 사유 없이 바로 마감한다', async () => {
     const writes: Request[] = [];
     const user = userEvent.setup();
