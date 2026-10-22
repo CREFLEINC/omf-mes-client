@@ -3,7 +3,7 @@ import type { FourMChangeForward } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useId } from 'react';
 
-import { ErrorText, FieldLabel } from './field-label';
+import { FieldLabel } from './field-label';
 
 const t = messages.iqcInspection.result.fourMChange;
 
@@ -67,16 +67,17 @@ export const FourMChange = ({ draft, missing, onChange, disabled }: FourMChangeP
       >
         <span className="iqc-inspection-four-m-label">{t.label}</span>
       </Checkbox>
-      <p className="field-note">{t.hint}</p>
       {draft.checked && (
         <div className="field-cell">
           <FieldLabel htmlFor={remarksId} label={t.remarks} required />
           <TextField
             id={remarksId}
             fullWidth
+            placeholder={t.remarksPlaceholder}
             value={draft.remarks}
             maxLength={FOUR_M_REMARKS_MAX}
-            error={missing ? <ErrorText>{t.remarksMissing}</ErrorText> : undefined}
+            containerClassName="iqc-inspection-border-only"
+            error={missing ? t.remarksMissing : undefined}
             disabled={disabled}
             onChange={(event) => {
               onChange({ ...draft, remarks: event.target.value });

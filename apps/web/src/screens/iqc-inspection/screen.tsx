@@ -903,13 +903,14 @@ export const IqcInspectionScreen = () => {
               {t.detail.backToList}
             </Button>
             {/*
-             * 저장하지 않고 떠날지 묻는 팝업(#133) — 한 줄 설명, [계속 작성](일반) [저장하지 않고 이동](위험).
-             * 닫기(×·Esc·바깥)는 «계속 작성»과 같다 — 입력은 그대로 남는다.
+             * 저장하지 않고 떠날지 묻는 팝업(#133) — 한 줄 설명, [계속 작성](테두리) [저장하지 않고 이동](채움).
+             * × 는 두지 않는다. Esc·바깥 누름은 «계속 작성»과 같다 — 입력은 그대로 남는다.
              */}
             {confirmingLeave && (
               <Dialog
                 open
                 onClose={() => setConfirmingLeave(false)}
+                showCloseButton={false}
                 title={t.detail.leaveUnsaved}
                 footer={
                   <>
@@ -920,11 +921,7 @@ export const IqcInspectionScreen = () => {
                     >
                       {t.detail.keepEditing}
                     </Button>
-                    <Button
-                      variant="outlined"
-                      className="iqc-inspection-leave-discard"
-                      onClick={backToList}
-                    >
+                    <Button variant="filled" onClick={backToList}>
                       {t.detail.leaveAnyway}
                     </Button>
                   </>

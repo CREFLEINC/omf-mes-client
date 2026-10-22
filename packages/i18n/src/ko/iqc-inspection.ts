@@ -103,8 +103,8 @@ export const iqcInspection = {
   /** 우측 창 — 고른 의뢰의 상세(스펙 §4-A 여섯 항목). */
   detail: {
     backToList: '← 목록',
-    leaveUnsaved: '저장하지 않은 변경사항이 있습니다.',
-    leaveUnsavedNote: '이동하면 변경사항이 사라집니다.',
+    leaveUnsaved: '변경사항을 저장하지 않았습니다',
+    leaveUnsavedNote: '저장하지 않고 이동하면 입력한 내용이 사라집니다.',
     keepEditing: '계속 작성',
     leaveAnyway: '저장하지 않고 이동',
     heading: '대상',
@@ -195,7 +195,7 @@ export const iqcInspection = {
 
     /** 종합 판정. ⛔ 값 목록을 화면에 고정하지 않는다 — 공통코드 조회로 채운다. */
     judgment: '최종 판정',
-    judgmentPlaceholder: '판정을 선택해 주세요',
+    judgmentPlaceholder: '최종 판정을 선택하세요',
     /**
      * 코드값 시드가 아직 안 들어가 목록이 빌 수 있다. ⛔ **감추지 않고 사유를 밝힌다**
      * (공유계약 G-2) — 감추면 그 자리가 왜 없는지 사용자가 알 수 없다.
@@ -237,7 +237,8 @@ export const iqcInspection = {
       required: '불합격이면 불량 코드를 골라야 확정할 수 있습니다.',
       minorRequired: '이 대분류에는 상세 코드가 있습니다. 상세 코드를 고르세요.',
       noCodes: '등록된 불량 코드가 없습니다. 기준정보 > 불량·원인 코드에서 먼저 등록하세요.',
-      selectPlaceholder: '선택하세요',
+      majorPlaceholder: '불량 대분류를 선택하세요',
+      minorPlaceholder: '불량 상세를 선택하세요',
       /** 칸 아래 필수 누락 표시 — 확정이 막힌 이유(required·minorRequired)는 확정 단추 곁에 그대로 둔다. */
       majorMissing: '불량 대분류를 선택하세요.',
       minorMissing: '불량 상세를 선택하세요.',
@@ -256,6 +257,7 @@ export const iqcInspection = {
       label: '4M 변경품',
       hint: '사람·설비·자재·방법 중 변경 사항이 있는 경우 선택',
       remarks: '비고',
+      remarksPlaceholder: '비고를 입력하세요',
       remarksMissing: '비고를 입력하세요.',
       blocked: '4M 변경품은 비고를 입력해야 저장할 수 있습니다.',
     },
@@ -263,6 +265,7 @@ export const iqcInspection = {
       basis: (acceptanceNumber: number): string =>
         `자동 판정: 불합격 수량 ${String(acceptanceNumber)}개 이하 → 합격`,
       reason: '판정 변경 사유',
+      reasonPlaceholder: '판정 변경 사유를 입력하세요',
       required: '자동 판정과 다른 판정은 변경 사유를 입력해야 확정할 수 있습니다.',
       reasonMissing: '판정 변경 사유를 입력하세요.',
     },

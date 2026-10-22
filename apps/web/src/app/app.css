@@ -14519,12 +14519,6 @@ button.app-button-neutral {
   margin: 0;
 }
 
-/* 저장하지 않고 떠날지 묻는 팝업(#133) — [저장하지 않고 이동]은 되돌릴 수 없어 테두리 단추를 오류색으로 가른다. */
-.iqc-inspection-leave-discard:not(:disabled) {
-  border-color: var(--semantic-error-text);
-  color: var(--semantic-error-text);
-}
-
 /*
  * 입력 현황 상태(#133) — 완료는 성공색, 초과는 오류색(막대 · 오른쪽 상태 · 안내 · 세 수량 칸 테두리).
  * 넘친 칸을 하나로 가릴 수 없어(합계가 넘친 것) 세 칸을 함께 짚는다.
@@ -14570,9 +14564,20 @@ button.app-button-neutral {
   min-width: 0;
 }
 
+/* 필수 칸 누락은 빨간 테두리만 보인다(#133) — 안내 글은 화면 읽기용으로만 남긴다. */
+.iqc-inspection-border-only > p,
+.iqc-inspection-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
 /*
  * 빨간 안내 글 왼쪽에 오류 아이콘(#133) — 이 화면이 직접 그리는 `.field-error` 와 수량 초과 안내.
- * DS 입력칸의 오류는 `ErrorText`(field-label.tsx)가 같은 아이콘을 넣는다.
  */
 .iqc-inspection-detail .field-error,
 .iqc-inspection-progress[data-state='over'] > .field-note {

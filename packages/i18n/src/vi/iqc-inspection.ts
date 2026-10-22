@@ -48,8 +48,8 @@ export const iqcInspection: Translated<typeof ko.iqcInspection> = {
 
   detail: {
     backToList: '← Danh sách',
-    leaveUnsaved: 'Có thay đổi chưa lưu.',
-    leaveUnsavedNote: 'Nếu rời đi, các thay đổi sẽ bị mất.',
+    leaveUnsaved: 'Chưa lưu thay đổi',
+    leaveUnsavedNote: 'Nếu rời đi mà không lưu, nội dung đã nhập sẽ bị mất.',
     keepEditing: 'Tiếp tục soạn',
     leaveAnyway: 'Rời đi không lưu',
     heading: 'Đối tượng',
@@ -108,7 +108,7 @@ export const iqcInspection: Translated<typeof ko.iqcInspection> = {
     saveBlockedByInvalid: 'Hãy sửa các ô số lượng rồi mới lưu được.',
 
     judgment: 'Đánh giá cuối cùng',
-    judgmentPlaceholder: 'Hãy chọn đánh giá',
+    judgmentPlaceholder: 'Hãy chọn đánh giá cuối cùng',
     judgmentUnavailable: 'Danh sách giá trị đánh giá chưa được chuẩn bị. Hãy hỏi người phụ trách.',
     judgmentUnknown: (code: string): string =>
       `Đánh giá đã lưu (${code}) không có trong danh sách.`,
@@ -135,7 +135,8 @@ export const iqcInspection: Translated<typeof ko.iqcInspection> = {
       required: 'Nếu không đạt, phải chọn mã lỗi mới xác nhận được.',
       minorRequired: 'Nhóm lỗi này có mã chi tiết. Hãy chọn mã chi tiết.',
       noCodes: 'Chưa có mã lỗi nào. Hãy đăng ký trước tại Thông tin cơ sở > Mã lỗi·nguyên nhân.',
-      selectPlaceholder: 'Hãy chọn',
+      majorPlaceholder: 'Hãy chọn nhóm lỗi chính',
+      minorPlaceholder: 'Hãy chọn chi tiết lỗi',
       majorMissing: 'Hãy chọn nhóm lỗi.',
       minorMissing: 'Hãy chọn mã lỗi chi tiết.',
       cause: 'Nguyên nhân dự đoán',
@@ -147,6 +148,7 @@ export const iqcInspection: Translated<typeof ko.iqcInspection> = {
       label: 'Hàng thay đổi 4M',
       hint: 'Chọn khi có thay đổi về con người, thiết bị, vật liệu hoặc phương pháp',
       remarks: 'Ghi chú',
+      remarksPlaceholder: 'Hãy nhập ghi chú',
       remarksMissing: 'Hãy nhập ghi chú.',
       blocked: 'Hàng thay đổi 4M phải nhập ghi chú mới lưu được.',
     },
@@ -154,6 +156,7 @@ export const iqcInspection: Translated<typeof ko.iqcInspection> = {
       basis: (acceptanceNumber: number): string =>
         `Tự động đánh giá: số không đạt ≤ ${String(acceptanceNumber)} → đạt`,
       reason: 'Lý do thay đổi đánh giá',
+      reasonPlaceholder: 'Hãy nhập lý do thay đổi đánh giá',
       required: 'Đánh giá khác với đánh giá tự động phải nhập lý do thay đổi mới xác nhận được.',
       reasonMissing: 'Hãy nhập lý do thay đổi đánh giá.',
     },

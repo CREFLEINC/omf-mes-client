@@ -1,14 +1,3 @@
-import { Icon } from '@crefle/web-ui';
-import type { ReactNode } from 'react';
-
-/** 빨간 안내 글 — 왼쪽에 오류 아이콘을 붙인다(#133). DS 입력칸의 `error` 에 그대로 넘긴다. */
-export const ErrorText = ({ children }: { children: ReactNode }) => (
-  <>
-    <Icon name="error" size={16} aria-hidden />
-    {children}
-  </>
-);
-
 export interface FieldLabelProps {
   /** 이 라벨이 가리키는 컨트롤의 id */
   htmlFor: string;

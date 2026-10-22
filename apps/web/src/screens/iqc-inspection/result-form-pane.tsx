@@ -402,7 +402,10 @@ export const ResultFormPane = ({
         {/* ── 4M 변경 정보 — 판정과 다른 업무라 판정 아래 따로 선다(#133) ── */}
         {fourMSlot !== null && (
           <section className="iqc-inspection-section iqc-inspection-four-m-block">
-            <h3>{t.fourMChange.sectionTitle}</h3>
+            <h3>
+              {t.fourMChange.sectionTitle}
+              <span className="iqc-inspection-label-hint">{t.fourMChange.hint}</span>
+            </h3>
             {fourMSlot}
           </section>
         )}

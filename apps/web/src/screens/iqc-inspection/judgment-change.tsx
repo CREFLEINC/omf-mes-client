@@ -2,7 +2,7 @@ import { TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useId } from 'react';
 
-import { ErrorText, FieldLabel } from './field-label';
+import { FieldLabel } from './field-label';
 import {
   hasQuantityError,
   toSendableNumber,
@@ -74,10 +74,12 @@ export const JudgmentChange = ({
           <TextField
             id={reasonId}
             fullWidth
+            containerClassName="iqc-inspection-border-only"
+            placeholder={t.reasonPlaceholder}
             value={reason}
             maxLength={JUDGMENT_CHANGE_REASON_MAX}
             disabled={disabled}
-            error={missing ? <ErrorText>{t.reasonMissing}</ErrorText> : undefined}
+            error={missing ? t.reasonMissing : undefined}
             onChange={(event) => {
               onReasonChange(event.target.value);
             }}
