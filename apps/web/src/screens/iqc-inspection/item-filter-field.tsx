@@ -54,6 +54,8 @@ export const ItemFilterField = ({ value, onChange }: ItemFilterFieldProps) => {
       {isPickerOpen && (
         <ItemPickerDialog
           multiple={false}
+          /* 검색 · 표 · 쪽 넘김 · 취소/선택만 — 닫기(X)와 꼬리말 안내를 걷는다(#133 · 검사기준 검색 창과 같은 모양). */
+          compact
           includeInactive
           showAvailability={false}
           confirmLabel={t.itemPick}

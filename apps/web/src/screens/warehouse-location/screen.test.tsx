@@ -177,7 +177,7 @@ describe('WarehouseLocationScreen — 창고 목록 조회', () => {
     expect(screen.queryByText('아직 등록된 창고가 없습니다')).not.toBeInTheDocument();
     // 서버가 빈 message를 줘도 배너에 제목만 남으면 안 된다 — 무엇을 하라는 안내가 사라진다.
     expect(
-      screen.getByText('잠시 뒤 다시 시도하세요. 반복되면 담당자에게 알려 주세요.'),
+      screen.getByText('잠시 뒤 재시도하세요. 지속적인 요청 불가 시 담당자에게 문의하세요.'),
     ).toBeInTheDocument();
   });
 

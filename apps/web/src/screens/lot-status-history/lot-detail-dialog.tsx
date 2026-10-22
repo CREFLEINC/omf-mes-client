@@ -113,7 +113,7 @@ export const LotDetailDialog = ({
                           {t.detail.fields.fourMChange}
                         </Chip>{' '}
                         {[
-                          fourMTypeLabel(detail.data.fourMChange.changeTypeCode),
+                          fourMTypeLabel(detail.data.fourMChange.changeTypeCode ?? ''),
                           detail.data.fourMChange.remarks,
                         ]
                           .filter((part) => part !== undefined && part !== '')

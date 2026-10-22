@@ -44,7 +44,8 @@ export const zaloConnection: Translated<typeof ko.zaloConnection> = {
   state: {
     saved: 'Đã lưu',
     copied: 'Đã sao chép tên tham số',
-    reauth: 'Hãy nhận mã làm mới mới từ người phụ trách Zalo của khách hàng rồi đăng ký bằng [Thay đổi]',
+    reauth:
+      'Hãy nhận mã làm mới mới từ người phụ trách Zalo của khách hàng rồi đăng ký bằng [Thay đổi]',
     deliveryDisabled: 'Máy chủ này đang tắt gửi Zalo',
     lastError: (code: string, message: string): string => `${code} ${message}`.trim(),
     conflict: 'Người khác đã lưu trước. Hãy tải lại rồi lưu',

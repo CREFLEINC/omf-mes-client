@@ -1,6 +1,7 @@
 import { Table, type Column } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 
+import type { CodeOption } from './code-options';
 import { formatDateTime, type InspectionResultRound } from './types';
 import { withUom } from './uom-lookup';
 
@@ -14,9 +15,8 @@ import { withUom } from './uom-lookup';
  * ⭐ **회차가 하나뿐이면 아무것도 그리지 않는다.** 「이전 회차 없음」을 내면 재검사가 없는
  * 대다수 의뢰에서 화면이 없는 것을 설명하느라 길어진다 — 이력은 쌓였을 때만 볼 것이다.
  *
- * ⛔ **판정을 표시명으로 옮기지 않는다.** 옮기려면 공통코드 조회가 하나 더 필요한데, 그
- * 조회가 실패하면 이력이 통째로 비어 보인다. 이 표가 하는 일은 「앞에 무엇이 있었나」를
- * 남기는 것이라 코드 그대로가 오히려 정확하다 — 값이 사라진 코드도 그대로 남는다.
+ * 판정은 화면이 이미 부른 종합 판정 선택지의 표시명으로 보인다(새 조회를 얹지 않는다). 선택지에
+ * 없거나 아직 못 불렀으면 **코드 그대로** 남긴다 — 이력이 비어 보이지 않고, 값이 사라진 코드도 남는다.
  *
  * 이 화면이 소유한다 — 다른 화면 슬라이스의 같은 이름 부품을 참조하지 않는다.
  */
@@ -24,7 +24,10 @@ import { withUom } from './uom-lookup';
 const t = messages.iqcInspection.history;
 
 /** 수량 칸에는 단위 코드를 붙인다(모르면 숫자만). */
-const columnsOf = (uomCode: string | null): Column<InspectionResultRound>[] => [
+const columnsOf = (
+  uomCode: string | null,
+  judgmentOptions: readonly CodeOption[],
+): Column<InspectionResultRound>[] => [
   {
     key: 'inspectionRound',
     header: t.columns.round,
@@ -34,7 +37,9 @@ const columnsOf = (uomCode: string | null): Column<InspectionResultRound>[] => [
   {
     key: 'overallJudgmentCode',
     header: t.columns.judgment,
-    render: (row) => row.overallJudgmentCode,
+    render: (row) =>
+      judgmentOptions.find((option) => option.value === row.overallJudgmentCode)?.label ??
+      row.overallJudgmentCode,
   },
   {
     key: 'acceptedQty',
@@ -64,9 +69,11 @@ export interface RoundHistoryProps {
   rounds: InspectionResultRound[];
   /** 수량 옆에 붙일 단위 코드. 모르면 `null` */
   uomCode: string | null;
+  /** 종합 판정 선택지 — 코드를 표시명으로 옮길 때만 쓴다. 비어 있으면 코드 그대로다 */
+  judgmentOptions?: readonly CodeOption[];
 }
 
-export const RoundHistory = ({ rounds, uomCode }: RoundHistoryProps) => {
+export const RoundHistory = ({ rounds, uomCode, judgmentOptions = [] }: RoundHistoryProps) => {
   if (rounds.length === 0) return null;
 
   return (
@@ -76,7 +83,7 @@ export const RoundHistory = ({ rounds, uomCode }: RoundHistoryProps) => {
         /* 구획 제목(「이전 회차」)이 이미 보인다 — 표 제목은 접근 이름으로만 남긴다. */
         caption={<span className="iqc-inspection-table-caption">{t.caption}</span>}
         density="compact"
-        columns={columnsOf(uomCode)}
+        columns={columnsOf(uomCode, judgmentOptions)}
         rows={rounds}
         getRowId={(row) => String(row.inspectionResultId)}
       />
