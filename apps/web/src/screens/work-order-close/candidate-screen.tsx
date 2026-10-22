@@ -349,12 +349,25 @@ export const WorkOrderCloseCandidateScreen = () => {
       hasOpenSession = openSession.data.hasOpenSession;
     }
   }
+  /* LOT 을 미달로 마감할 때 고른 사유가 W/O 에 실려 있다 — 같은 것을 다시 고르게 하지 않는다. */
+  const savedReasonCode =
+    detailState.kind === 'RESOLVED' ? detailState.detail.completionVarianceReasonCode : null;
+  const isReasonPrefilled =
+    judgment !== null &&
+    judgment !== 'NORMAL' &&
+    draft.varianceReasonCode === '' &&
+    savedReasonCode !== null &&
+    reasonOptions.some((option) => option.value === savedReasonCode);
+  const seededDraft =
+    isReasonPrefilled && savedReasonCode !== null
+      ? setWorkOrderCloseVarianceReasonCode(draft, savedReasonCode)
+      : draft;
   const inputDraft =
     judgment === 'NORMAL' ||
-    draft.varianceReasonCode === '' ||
-    reasonOptions.some((option) => option.value === draft.varianceReasonCode)
-      ? draft
-      : setWorkOrderCloseVarianceReasonCode(draft, '');
+    seededDraft.varianceReasonCode === '' ||
+    reasonOptions.some((option) => option.value === seededDraft.varianceReasonCode)
+      ? seededDraft
+      : setWorkOrderCloseVarianceReasonCode(seededDraft, '');
   const unavailableState = unavailable;
   const readinessInput = workOrderCloseReadinessInputFrom;
   const blockers =
@@ -446,6 +459,7 @@ export const WorkOrderCloseCandidateScreen = () => {
                 draft={inputDraft}
                 reasonOptions={reasonOptions}
                 reasonUnavailableReason={null}
+                isReasonPrefilled={isReasonPrefilled}
                 onRemainderDispositionChange={(value) =>
                   updateDraft((current) => setWorkOrderCloseRemainderDisposition(current, value))
                 }

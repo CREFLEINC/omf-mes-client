@@ -138,11 +138,15 @@ export const workOrderClose = {
       legend: '잔량 처리',
       CARRY_OVER: '이월',
       WRITE_OFF: '소멸',
+      /* 서버가 이월 W/O 를 만들지 않는다 — 고르기만 하면 잔량이 다시 편성될 것으로 오해한다. */
+      carryOverNote: (menuPath: string): string =>
+        `이월 W/O 는 자동으로 만들어지지 않습니다 — ${menuPath}에서 새로 편성하세요.`,
     },
     reason: {
       label: '변동 사유',
       placeholder: '사유를 선택하세요.',
       empty: '선택할 사유가 없습니다.',
+      prefilled: 'LOT 마감 때 고른 사유입니다. 바꿀 수 있습니다.',
     },
     /** 소멸을 골랐을 때만 — 소멸은 아무 자원도 만들지 않아 이유가 여기와 처분 코드에만 남는다. */
     remarks: {

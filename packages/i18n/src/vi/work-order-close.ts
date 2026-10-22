@@ -154,11 +154,14 @@ export const workOrderClose: Translated<typeof ko.workOrderClose> = {
       legend: 'Xử lý lượng còn lại',
       CARRY_OVER: 'Chuyển sang kỳ sau',
       WRITE_OFF: 'Xóa bỏ',
+      carryOverNote: (menuPath: string): string =>
+        `W/O chuyển sang kỳ sau không được tạo tự động — hãy lập mới ở ${menuPath}.`,
     },
     reason: {
       label: 'Lý do chênh lệch',
       placeholder: 'Hãy chọn lý do.',
       empty: 'Không có lý do nào để chọn.',
+      prefilled: 'Đây là lý do đã chọn khi đóng LOT. Có thể đổi.',
     },
     /** 소멸은 다른 전표를 만들지 않아 이유가 이 비고에만 남는다 — 그 사실을 그대로 옮긴다. */
     remarks: {

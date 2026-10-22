@@ -63,8 +63,13 @@ const workOrder = (id: number, itemId = 910001) => ({
   priorityNo: 1,
   statusCode: 'IN_PROGRESS',
 });
-const detailBody = (workOrderId: number, judgment: Judgment = 'OVER') => ({
+const detailBody = (
+  workOrderId: number,
+  judgment: Judgment = 'OVER',
+  extra: Record<string, unknown> = {},
+) => ({
   ...workOrder(workOrderId),
+  ...extra,
   workOrderNo: `SYN-WO-DETAIL-${String(workOrderId)}`,
   orderQty: 99,
   progress:
@@ -76,8 +81,12 @@ const detailBody = (workOrderId: number, judgment: Judgment = 'OVER') => ({
         },
   preIssuedLots: { slotCount: 9, withResultCount: 6, withoutResultCount: 0 },
 });
-const detailResponse = (workOrderId: number, judgment: Judgment, etag = detailEtag) =>
-  jsonResponse(detailBody(workOrderId, judgment), { headers: { ETag: etag } });
+const detailResponse = (
+  workOrderId: number,
+  judgment: Judgment,
+  etag = detailEtag,
+  extra: Record<string, unknown> = {},
+) => jsonResponse(detailBody(workOrderId, judgment, extra), { headers: { ETag: etag } });
 const errorResponse = (status: number, body: unknown = { message: 'Synthetic HTTP failure' }) =>
   jsonResponse(body, { status });
 const reasonValue = (code: string, codeName: string, displayOrder: number, isActive = true) => ({
@@ -176,6 +185,7 @@ const makeApi = (
   let detailMode: 'ready' | 'pending-ready' | 'pending-error' | 'error' = 'ready';
   let releaseDetail: (() => void) | undefined;
   let detailJudgment: Judgment = 'OVER';
+  let detailExtra: Record<string, unknown> = {};
   let currentDetailEtag = detailEtag;
   let sessionMode: 'ready' | 'pending-ready' | 'pending-error' | 'error' = 'ready';
   let releaseSession: (() => void) | undefined;
@@ -254,12 +264,12 @@ const makeApi = (
       if (detailMode.startsWith('pending'))
         return gate(
           detailMode === 'pending-ready'
-            ? detailResponse(workOrderId, detailJudgment, currentDetailEtag)
+            ? detailResponse(workOrderId, detailJudgment, currentDetailEtag, detailExtra)
             : jsonResponse({ message: 'failure' }, { status: 500 }),
           (release) => (releaseDetail = release),
         );
       if (detailMode === 'error') return jsonResponse({ message: 'failure' }, { status: 500 });
-      return detailResponse(workOrderId, detailJudgment, currentDetailEtag);
+      return detailResponse(workOrderId, detailJudgment, currentDetailEtag, detailExtra);
     }
     if (url.pathname === paths.sessions) {
       const response = sessionMode.endsWith('error')
@@ -298,6 +308,7 @@ const makeApi = (
     setDetailMode: (mode: typeof detailMode) => (detailMode = mode),
     setDetailEtag: (etag: string) => ((detailMode = 'pending-ready'), (currentDetailEtag = etag)),
     setJudgment: (judgment: Judgment) => (detailJudgment = judgment),
+    setDetailExtra: (extra: Record<string, unknown>) => (detailExtra = extra),
     setSessionMode: (mode: typeof sessionMode) => (sessionMode = mode),
     setHasOpenSession: (value: boolean) => (hasOpenSession = value),
     setReasonMode: (mode: ReasonMode) => (reasonMode = mode),
@@ -701,6 +712,39 @@ describe('WorkOrderCloseCandidateScreen', () => {
     await user.click(within(status).getByRole('button', { name: messages.common.retry }));
     await waitFor(() => expect(detailUrls(api.urls)).toHaveLength(3));
     expect(api.urls.slice(progressBefore).map((url) => url.pathname)).toEqual([paths.detail(701)]);
+  });
+
+  it('W/O 에 실린 사유를 미리 골라 두고 어디서 온 값인지 적는다', async () => {
+    const user = userEvent.setup();
+    const api = makeApi();
+    api.setJudgment('UNDER');
+    api.setDetailExtra({ completionVarianceReasonCode: 'SYN-SECOND' });
+    renderWithProviders(<WorkOrderCloseCandidateScreen />, { fetch: api.fetch });
+    await user.click(await screen.findByRole('button', { name: 'SYN-WO-701 선택' }));
+
+    const input = await screen.findByRole('region', { name: t.input.pane });
+    expect(reasonField(input)).toHaveTextContent('Synthetic second reason');
+    expect(within(input).getByText(t.input.reason.prefilled)).toBeVisible();
+    const status = screen.getByRole('region', { name: t.status.pane });
+    expect(blocks(status)).toEqual([t.status.blockers.REMAINDER_DISPOSITION_REQUIRED]);
+
+    await user.click(reasonField(input));
+    await user.click(screen.getByRole('option', { name: 'Synthetic first reason' }));
+    expect(reasonField(input)).toHaveTextContent('Synthetic first reason');
+    expect(within(input).queryByText(t.input.reason.prefilled)).toBeNull();
+  });
+
+  it('목록에 없는 사유가 실려 있으면 미리 고르지 않는다', async () => {
+    const user = userEvent.setup();
+    const api = makeApi();
+    api.setJudgment('UNDER');
+    api.setDetailExtra({ completionVarianceReasonCode: 'SYN-INACTIVE' });
+    renderWithProviders(<WorkOrderCloseCandidateScreen />, { fetch: api.fetch });
+    await user.click(await screen.findByRole('button', { name: 'SYN-WO-701 선택' }));
+
+    const input = await screen.findByRole('region', { name: t.input.pane });
+    expect(within(input).queryByText(t.input.reason.prefilled)).toBeNull();
+    expect(reasonField(input)).not.toHaveTextContent('Synthetic');
   });
 
   it('uses named reasons and preserves UNDER blocker order without raw session facts', async () => {
