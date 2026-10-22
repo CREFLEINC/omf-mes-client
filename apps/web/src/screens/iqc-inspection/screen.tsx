@@ -478,8 +478,10 @@ export const IqcInspectionScreen = () => {
   /*
    * 떠날 때 물을 입력 — 판정 변경 사유는 임시 저장에 실리지 않고 확정에만 실리므로(P-70) 위 「바뀐 것」에 없다.
    * 그래도 친 사유는 떠나면 사라지므로 묻는다(#133 실검증). 사유 칸이 서 있을 때만 묻는다(확정된 회차 · 자동 판정과 같은 판정에는 칸이 없다).
+   * ⛔ 확정된 회차는 고칠 칸이 없으니 묻지 않는다 — 확정 직전에 고른 값이 「바뀐 것」으로 남아 있어도 이미 확정에 실렸다.
    */
-  const hasUnsavedInput = hasChanges || (needsChangeReason && changeReason.trim() !== '');
+  const hasUnsavedInput =
+    isOpenRound && (hasChanges || (needsChangeReason && changeReason.trim() !== ''));
   const changeDraftAndJudge = (next: QuantityDraft): void => {
     changeDraft(next);
     const expected = isOpenRound ? expectedJudgmentOf(next, acceptanceNumber) : null;

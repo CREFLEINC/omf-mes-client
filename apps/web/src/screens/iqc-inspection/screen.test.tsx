@@ -838,6 +838,30 @@ describe('IqcInspectionScreen', () => {
     expect(screen.getByText(t.detail.leaveUnsaved)).toBeInTheDocument();
   });
 
+  /* 확정 직전에 고른 값이 「바뀐 것」으로 남아도 이미 확정에 실렸다 — 확정 뒤 목록으로 갈 때 묻지 않는다(#133 실검증). */
+  it('판정 확정 뒤에는 목록으로 갈 때 묻지 않는다', async () => {
+    samplingVersion = {
+      samplingMethodCode: 'FULL_INSPECTION',
+      samplingRatio: null,
+      acceptanceNumber: 5,
+    };
+    const { writes } = renderScreen('/?ir=1001', undefined, [draftRound], [], itemSpecsResponse(), [
+      { ...draftRound, statusCode: 'CONFIRMED', confirmedAt: '2026-10-22T04:00:00.000Z' },
+    ]);
+
+    await findRound(1);
+    const reason = await screen.findByLabelText(new RegExp(t.result.judgmentChange.reason));
+    await userEvent.type(reason, '재확인');
+    await userEvent.click(screen.getByRole('button', { name: t.result.confirm }));
+    await waitFor(() => expect(writes).toHaveLength(1));
+    await waitFor(() =>
+      expect(screen.queryByRole('button', { name: t.result.confirm })).not.toBeInTheDocument(),
+    );
+
+    await userEvent.click(screen.getByRole('button', { name: t.detail.backToList }));
+    expect(screen.queryByText(t.detail.leaveUnsaved)).not.toBeInTheDocument();
+  });
+
   it('수량을 고치면 판정을 자동으로 채운다 — 자동 판정과 같으면 사유 칸이 없다', async () => {
     samplingVersion = {
       samplingMethodCode: 'FULL_INSPECTION',
