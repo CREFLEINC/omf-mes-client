@@ -68,7 +68,7 @@ import { ResultFormPane } from './result-form-pane';
 import { RoundHistory } from './round-history';
 import { AttachmentPanel } from '../inspection-documents/attachment-panel';
 import { LotScan } from '../inspection-documents/lot-scan';
-import { InspectionHistoryPanel } from '../inspection-history/panel';
+import { InspectionHistoryPanel, useInspectionHistory } from '../inspection-history/panel';
 import { latestRound, previousRounds } from './types';
 import { type ItemNameParts, useItemNames, useLotNumbers } from './reference-lookup';
 import { useUomLookup } from './uom-lookup';
@@ -766,6 +766,10 @@ export const IqcInspectionScreen = () => {
    * 참고 정보 — 판정보다 뒤에, 상세 카드 밖에 구획마다 상자 하나로(omf-all-around#133). 측정치는 검사와 가장 가까워
    * 펼친 채 시작하고, 이전 회차 · 첨부 문서 · 검사 이력은 접힌 채 시작한다. 내용과 동작은 그대로다.
    */
+  /* 회차가 바뀐 표식 — 저장·확정·재검사 뒤 이력을 새로 부른다. 접는 줄의 건수도 같은 조회를 쓴다(#133). */
+  const historyRevision = `${String(rounds.data?.length ?? 0)}:${JSON.stringify(round ?? null)}`;
+  const historyCount = useInspectionHistory(selectedId, historyRevision).data?.events.length;
+
   const auxContent =
     detail.isError || detail.data === undefined ? null : (
       <div className="iqc-inspection-panes iqc-inspection-aux">
@@ -797,7 +801,10 @@ export const IqcInspectionScreen = () => {
         {/* LOT 별 시험성적서 등 검사 문서(#58) — 대상 LOT 이 있을 때만. */}
         {detail.data.lotId !== null && (
           <details className="pane iqc-inspection-fold">
-            <summary>{messages.inspectionDocuments.heading}</summary>
+            <summary>
+              {messages.inspectionDocuments.heading}
+              <span className="iqc-inspection-label-hint">{messages.inspectionDocuments.help}</span>
+            </summary>
             <AttachmentPanel
               key={detail.data.lotId}
               targetTypeCode="LOT"
@@ -809,7 +816,14 @@ export const IqcInspectionScreen = () => {
         {/* 검사 대상 이력(#61) — 회차를 저장·확정하면 새로 부른다. */}
         {selectedId !== null && (
           <details className="pane iqc-inspection-fold">
-            <summary>{messages.inspectionHistory.heading}</summary>
+            <summary>
+              {messages.inspectionHistory.heading}
+              {historyCount !== undefined && (
+                <span className="iqc-inspection-fold-count">
+                  {messages.iqcInspection.detail.historyCount(historyCount)}
+                </span>
+              )}
+            </summary>
             <InspectionHistoryPanel
               hideSourceLot
               key={`${String(selectedId)}-${String(historyRounds.length)}`}
@@ -817,7 +831,7 @@ export const IqcInspectionScreen = () => {
               judgmentLabelOf={(code) =>
                 judgmentOptions.find((option) => option.value === code)?.label ?? code
               }
-              revision={`${String(rounds.data?.length ?? 0)}:${JSON.stringify(round ?? null)}`}
+              revision={historyRevision}
             />
           </details>
         )}

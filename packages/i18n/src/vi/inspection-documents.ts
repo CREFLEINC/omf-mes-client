@@ -1,14 +1,14 @@
 /** Đính kèm tài liệu kiểm tra · quét LOT (omf-all-around#58). */
 export const inspectionDocuments = {
-  heading: 'Tài liệu đính kèm',
-  help: 'PDF · hình ảnh · Excel/Word/PowerPoint · CSV, mỗi file tối đa 10MB',
+  heading: 'Tệp đính kèm',
+  help: 'PDF · hình ảnh · Excel/Word/PowerPoint · CSV, giới hạn 10MB mỗi tệp',
   upload: 'Chọn file',
   uploading: 'Đang tải lên…',
   open: 'Mở',
   openFailed: 'Không mở được tài liệu. Hãy kiểm tra kết nối rồi thử lại.',
-  none: 'Chưa có tài liệu đính kèm.',
-  loading: 'Đang tải tài liệu đính kèm.',
-  loadFailed: 'Không tải được tài liệu đính kèm.',
+  none: 'Không có tệp đính kèm.',
+  loading: 'Đang tải tệp đính kèm.',
+  loadFailed: 'Không tải được tệp đính kèm.',
   tooLarge: 'Không thể tải file lớn hơn 10MB. Hãy giảm độ phân giải của PDF scan.',
   uploaded: 'Đã tải tài liệu lên.',
   submit: 'Tải lên',
@@ -19,7 +19,7 @@ export const inspectionDocuments = {
   pending: (count: number): string => `Chờ tải lên ${String(count)} file`,
   unsupported:
     'Định dạng không được hỗ trợ. Chỉ tải được PDF · hình ảnh · Excel/Word/PowerPoint · CSV · TXT.',
-  caption: 'Danh sách tài liệu đính kèm',
+  caption: 'Danh sách tệp đính kèm',
   columns: { fileName: 'File', uploadedAt: 'Thời điểm tải lên', size: 'Dung lượng' },
   scan: {
     label: 'Quét LOT',

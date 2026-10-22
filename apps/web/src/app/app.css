@@ -14670,7 +14670,17 @@ button.app-button-neutral {
   margin-top: 0;
 }
 
-/* 검사 이력 — 전달 문서 · 대상 LOT 은 항목명 위 · 값 아래 두 칸, 그 아래 사건 목록. */
+/* 접는 줄 오른쪽 끝의 건수(검사 이력 · #133). 접기 표식(▶)이 남게 줄 모양은 그대로 두고 오른쪽으로 띄운다. */
+.iqc-inspection-fold-count {
+  float: inline-end;
+  color: var(--on-surface-muted);
+  font: var(--type-body-md);
+}
+
+/*
+ * 검사 이력(#133) — 전달 문서는 항목명 · 값을 한 줄에, 얇은 줄로 떼고 그 아래 사건 목록.
+ * 사건 한 줄은 왼쪽 표식, 오른쪽에 작업 이름 · 처리 결과 · 일시를 위아래로.
+ */
 .iqc-inspection-fold .inspection-history {
   display: grid;
   gap: var(--space-3);
@@ -14681,10 +14691,65 @@ button.app-button-neutral {
   flex-wrap: wrap;
   gap: var(--space-2) var(--space-6);
   margin: 0;
+  padding-bottom: var(--space-3);
+  border-bottom: 1px solid var(--outline-variant);
+}
+
+.iqc-inspection-fold .inspection-history > dl > .field-cell {
+  flex-direction: row;
+  align-items: baseline;
+  gap: var(--space-3);
 }
 
 .iqc-inspection-fold .inspection-history dd {
   margin: 0;
+  font: var(--type-body-lg);
+}
+
+.iqc-inspection-fold .inspection-history-events > li {
+  grid-template-columns: 2rem minmax(0, 1fr);
+  grid-template-areas:
+    'icon title'
+    'icon detail'
+    'icon at';
+  align-items: center;
+  row-gap: var(--space-1);
+  padding-block: var(--space-3);
+  border-top: 0;
+}
+
+.iqc-inspection-fold .inspection-history-events > li::before {
+  grid-area: icon;
+  color: var(--on-surface-muted);
+  font-family: 'Material Symbols Rounded';
+  font-size: 20px;
+  line-height: 1;
+  content: 'assignment_turned_in';
+}
+
+.iqc-inspection-fold .inspection-history-events > li[data-event='RESULT_SAVED']::before {
+  content: 'save';
+}
+
+.iqc-inspection-fold .inspection-history-events > li[data-event='RESULT_CONFIRMED']::before {
+  content: 'task_alt';
+}
+
+.iqc-inspection-fold .inspection-history-events > li[data-event='LOT_STATUS_CHANGED']::before {
+  content: 'swap_horiz';
+}
+
+.iqc-inspection-fold .inspection-history-events > li > .field-label {
+  grid-area: title;
+  font: var(--type-title-sm);
+}
+
+.iqc-inspection-fold .inspection-history-events > li > .field-note {
+  grid-area: detail;
+}
+
+.iqc-inspection-fold .inspection-history-events > li > .inspection-history-at {
+  grid-area: at;
 }
 
 /*

@@ -50,6 +50,7 @@ export const iqcInspection: Translated<typeof ko.iqcInspection> = {
     backToList: '← Danh sách',
     leaveUnsaved: 'Chưa lưu thay đổi',
     leaveUnsavedNote: 'Nếu rời đi mà không lưu, nội dung đã nhập sẽ bị mất.',
+    historyCount: (count: number): string => `${String(count)} mục`,
     keepEditing: 'Tiếp tục soạn',
     leaveAnyway: 'Rời đi không lưu',
     heading: 'Đối tượng',

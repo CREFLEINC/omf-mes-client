@@ -186,21 +186,19 @@ export const AttachmentPanel = ({ targetTypeCode, targetId }: AttachmentPanelPro
   ];
 
   return (
+    /* 제목과 허용 형식 안내는 이 구획을 접는 줄(부르는 화면)이 맡는다(#133). */
     <section aria-label={t.heading} className="inspection-documents">
-      <h3>{t.heading}</h3>
-      <p className="field-note">{t.help}</p>
       {list.isError ? (
         <p className="field-note">{t.loadFailed}</p>
-      ) : list.isPending || list.data.length === 0 ? (
-        /* 올린 문서가 없으면 빈 표 대신 한 줄만 — 업로드 대기 파일과 헷갈리지 않고 자리도 덜 쓴다(#133). */
-        <p className="field-note">{list.isPending ? t.loading : t.none}</p>
       ) : (
+        /* 올린 파일이 없어도 표 모양은 그대로 두고 줄 안에 없다고 적는다(#133). */
         <Table
           caption={t.caption}
           density="compact"
           columns={columns}
-          rows={list.data}
+          rows={list.data ?? []}
           getRowId={(row) => String(row.attachmentId)}
+          empty={<p className="field-note">{list.isPending ? t.loading : t.none}</p>}
         />
       )}
       <SaveErrorBanner error={upload.error} />

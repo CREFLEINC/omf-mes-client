@@ -105,6 +105,8 @@ export const iqcInspection = {
     backToList: '← 목록',
     leaveUnsaved: '변경사항을 저장하지 않았습니다',
     leaveUnsavedNote: '저장하지 않고 이동하면 입력한 내용이 사라집니다.',
+    /** 검사 이력 접는 줄 오른쪽 끝의 건수(#133). */
+    historyCount: (count: number): string => `${String(count)}건`,
     keepEditing: '계속 작성',
     leaveAnyway: '저장하지 않고 이동',
     heading: '대상',
