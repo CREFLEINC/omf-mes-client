@@ -22,7 +22,7 @@ export const lotGenealogyKeys = {
 const BasisNote = ({ basis }: { basis: TraceBasis }) => <p className="field-note">{t.basis[basis]}</p>;
 
 /**
- * 생산 LOT 의 투입 자재(omf-all-around#166 · 서버 선행 P-103) — 전 자재를 보이고 4M 변경품은 변경 종류를 단다.
+ * 생산 LOT 의 투입 자재(omf-all-around#166 · 서버 선행 P-107) — 전 자재를 보이고 4M 변경품은 변경 종류를 단다.
  * ⛔ 읽기 전용이다.
  */
 export const ProductionLotInputs = ({ lotId }: { lotId: number }) => {
@@ -75,7 +75,7 @@ export const ProductionLotInputs = ({ lotId }: { lotId: number }) => {
   );
 };
 
-/** 자재 LOT 이 들어간 생산 LOT·시리얼(omf-all-around#166 · 서버 선행 P-103). ⛔ 읽기 전용이다. */
+/** 자재 LOT 이 들어간 생산 LOT·시리얼(omf-all-around#166 · 서버 선행 P-107). ⛔ 읽기 전용이다. */
 export const MaterialLotUsage = ({ lotId }: { lotId: number }) => {
   const { client } = useApiClient();
   const [page, setPage] = useState(1);

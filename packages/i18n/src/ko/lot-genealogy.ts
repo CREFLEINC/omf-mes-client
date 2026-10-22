@@ -1,4 +1,4 @@
-/** 투입 자재 계보(omf-all-around#166 · 서버 선행 P-103) — LOT 상태 상세의 투입 자재·들어간 제품. */
+/** 투입 자재 계보(omf-all-around#166 · 서버 선행 P-107) — LOT 상태 상세의 투입 자재·들어간 제품. */
 export const lotGenealogy = {
   inputs: {
     heading: '투입 자재',

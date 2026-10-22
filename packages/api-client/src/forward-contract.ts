@@ -100,12 +100,12 @@ export interface DefectRecordCreate {
 }
 
 /**
- * 서버 선행 P-103(omf-all-around#166) — 무엇으로 셌는가. 둘 다 추정이다: 투입 시각 기준 계보 ·
+ * 서버 선행 P-107(omf-all-around#166) — 무엇으로 셌는가. 둘 다 추정이다: 투입 시각 기준 계보 ·
  * 계보가 없는 작업지시(배포 전)의 작업지시 단위.
  */
 export type TraceBasis = 'LOT_GENEALOGY_ESTIMATE' | 'WORK_ORDER_ESTIMATE';
 
-/** 서버 선행 P-103 — 생산 LOT·시리얼에 들어간 자재 LOT 한 줄. */
+/** 서버 선행 P-107 — 생산 LOT·시리얼에 들어간 자재 LOT 한 줄. */
 export interface InputMaterial {
   lotId: number;
   lotNo: string;
@@ -120,14 +120,14 @@ export interface InputMaterials {
   items: InputMaterial[];
 }
 
-/** 서버 선행 P-103 — 자재 LOT 이 들어간 시리얼(쪽). */
+/** 서버 선행 P-107 — 자재 LOT 이 들어간 시리얼(쪽). */
 export interface UsedSerials {
   basis: TraceBasis;
   items: { serialNumberId: number; serialNo: string; lotId: number; lotNo: string; producedAt?: string }[];
   page: { page: number; size: number; total: number };
 }
 
-/** 서버 선행 P-52(omf-all-around#108) — 자재 LOT 이 들어간 생산 LOT(P-103 부터 계보 기준). */
+/** 서버 선행 P-52(omf-all-around#108) — 자재 LOT 이 들어간 생산 LOT(P-107 부터 계보 기준). */
 export interface AffectedProductionLots {
   basis: TraceBasis;
   workOrders: { workOrderId: number; workOrderNo: string }[];
@@ -1357,7 +1357,7 @@ export interface ForwardPaths {
     patch?: never;
     trace?: never;
   };
-  /** 생산 LOT 투입 자재 — 서버 선행 P-103. */
+  /** 생산 LOT 투입 자재 — 서버 선행 P-107. */
   '/trace/lots/{lotId}/input-materials': {
     parameters: { query?: never; header?: never; path: { lotId: number }; cookie?: never };
     get: {
@@ -1378,7 +1378,7 @@ export interface ForwardPaths {
     patch?: never;
     trace?: never;
   };
-  /** 자재 LOT 이 들어간 시리얼 — 서버 선행 P-103. */
+  /** 자재 LOT 이 들어간 시리얼 — 서버 선행 P-107. */
   '/trace/lots/{lotId}/used-serials': {
     parameters: { query?: { page?: number; size?: number }; header?: never; path: { lotId: number }; cookie?: never };
     get: {
@@ -1399,7 +1399,7 @@ export interface ForwardPaths {
     patch?: never;
     trace?: never;
   };
-  /** 시리얼 투입 자재 — 서버 선행 P-103. */
+  /** 시리얼 투입 자재 — 서버 선행 P-107. */
   '/trace/serial-numbers/{serialNo}/input-materials': {
     parameters: { query?: never; header?: never; path: { serialNo: string }; cookie?: never };
     get: {
