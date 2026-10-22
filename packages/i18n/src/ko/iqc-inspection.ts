@@ -124,6 +124,14 @@ export const iqcInspection = {
       targetQty: '검사수량',
       /** 의뢰가 만들어진 시각(`requestedAt`) — 목록 열 「의뢰 일시」와 같은 값이다. */
       requestedAt: '의뢰 일시',
+      /** 품목의 현재 IQC 검사 수준 — 이 화면에서 바로 바꾼다(omf-all-around#133). */
+      inspectionLevel: '검사 수준',
+    },
+    level: {
+      unset: '미지정',
+      loadFailed: '불러오지 못함',
+      change: '변경',
+      set: '지정',
     },
     /**
      * 기준 버전이 고정된다는 사실을 화면이 말한다 — 숫자만 보이면 왜 중요한지 알 수 없다.
@@ -253,14 +261,10 @@ export const iqcInspection = {
     fourMChange: {
       label: '4M 변경품',
       hint: '사람·설비·자재·방법이 바뀌어 들어온 자재',
-      changeType: '변경 종류',
-      changeTypePlaceholder: '변경 종류 선택',
-      changeTypeMissing: '변경 종류를 선택하세요.',
-      noChangeTypes:
-        '변경 종류 목록이 비어 있습니다. 기준정보에서 「4M 변경 종류」를 등록해 주세요.',
       remarks: '변경 내용',
-      remarksPlaceholder: '무엇이 바뀌었는지 입력(선택)',
-      blocked: '4M 변경품은 변경 종류를 선택해야 저장할 수 있습니다.',
+      remarksPlaceholder: '무엇이 바뀌었는지 입력',
+      remarksMissing: '변경 내용을 입력하세요.',
+      blocked: '4M 변경품은 변경 내용을 입력해야 저장할 수 있습니다.',
     },
     judgmentChange: {
       basis: (acceptanceNumber: number): string =>

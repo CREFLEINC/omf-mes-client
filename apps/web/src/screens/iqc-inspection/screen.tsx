@@ -62,6 +62,7 @@ import {
 import { sampleQtyOf } from './sample-qty';
 import { QueueFilterBar } from './queue-filter-bar';
 import { QueueTable } from './queue-table';
+import { ItemLevel } from './item-level';
 import { RequestDetailPane } from './request-detail-pane';
 import { ResultFormPane } from './result-form-pane';
 import { RoundHistory } from './round-history';
@@ -69,8 +70,12 @@ import { AttachmentPanel } from '../inspection-documents/attachment-panel';
 import { LotScan } from '../inspection-documents/lot-scan';
 import { InspectionHistoryPanel } from '../inspection-history/panel';
 import { latestRound, previousRounds } from './types';
-import { useItemNames, useLotNumbers } from './reference-lookup';
+import { type ItemNameParts, useItemNames, useLotNumbers } from './reference-lookup';
 import { useUomLookup } from './uom-lookup';
+
+/** 품목 풀이 → 검사 수준 창의 품목. 못 풀었으면 창을 열지 않는다(#133). */
+const toLevelItem = (parts: ItemNameParts | null) =>
+  parts === null ? null : { itemCode: parts.code, itemName: parts.name };
 
 /** 끝난 검사 의뢰 — 입력 화면 대신 요약을 보인다(3단계 검증). */
 const REQUEST_COMPLETED = 'COMPLETED';
@@ -230,7 +235,8 @@ export const IqcInspectionScreen = () => {
   /* 서버 기록과 같으면 싣지 않는다 — 생략은 «그대로»라 다른 회차·경로가 남긴 기록을 덮지 않는다. */
   const fourMChanged = hasFourMTarget && !isSameFourM(fourM, storedFourM);
   const fourMValue = fourMChanged ? fourMBodyOf(fourM) : undefined;
-  const fourMBlocked = hasFourMTarget && isFourMIncomplete(fourM);
+  /* 손대지 않은 예전 기록(변경 종류만 있고 내용 없음)은 막지 않는다 — 고칠 때만 내용을 요구한다(#133). */
+  const fourMBlocked = fourMChanged && isFourMIncomplete(fourM);
   const isRejected = judgment === REJECTED_JUDGMENT;
   const defectCodes = useDefectCodes(isRejected);
   /* 추정 원인(omf-all-around#130) — 선택 입력. 불합격일 때만 부른다. */
@@ -596,6 +602,13 @@ export const IqcInspectionScreen = () => {
         uomCode={uomCode}
         itemNames={itemNames}
         lotNumbers={lotNumbers}
+        levelSlot={
+          <ItemLevel
+            key={detail.data.itemId}
+            itemId={detail.data.itemId}
+            item={toLevelItem(itemNames.partsOf(detail.data.itemId))}
+          />
+        }
       />
       {rounds.isPending ? (
         <p className="field-note">{t.result.loading}</p>
@@ -687,7 +700,7 @@ export const IqcInspectionScreen = () => {
               {hasFourMTarget && isOpenRound && (
                 <FourMChange
                   draft={fourM}
-                  options={fourMOptions}
+                  missing={fourMBlocked}
                   onChange={(next) => {
                     setIsSaved(false);
                     setFourM(next);

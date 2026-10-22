@@ -10,7 +10,7 @@ export const inspectionLevel = {
     TIGHTENED: '엄격',
   } as Record<string, string>,
 
-  rule: 'IQC 판정 결과로 자동 전환합니다 — 보통에서 15 LOT 연속 합격이면 수월, 불합격이면 엄격, 엄격에서 5 LOT 연속 합격이면 보통. 무검사는 자동 전환하지 않습니다. 샘플 수량과 판정 기준은 바뀌지 않습니다.',
+  rule: '사용자가 정한 수준을 그대로 씁니다 — IQC 판정 결과로 자동 전환하지 않습니다. 샘플 수량과 판정 기준은 바뀌지 않습니다.',
 
   list: {
     heading: '품목별 검사 수준',
@@ -30,24 +30,13 @@ export const inspectionLevel = {
     itemCode: '품목 코드',
     itemName: '품목명',
     level: '현재 수준',
-    autoSwitch: '자동 전환',
-    streak: '연속 합격',
     updatedAt: '수정 일시',
     actions: '작업',
-  },
-
-  values: {
-    autoOn: '사용',
-    autoOff: '미사용',
-    streak: (count: number) => `${String(count)} LOT`,
   },
 
   actions: {
     changeLevel: '수준 변경',
     changeLevelRow: (itemCode: string) => `${itemCode} 수준 변경`,
-    turnAutoOn: '자동 켜기',
-    turnAutoOff: '자동 끄기',
-    turnAutoRow: (itemCode: string, on: boolean) => `${itemCode} 자동 전환 ${on ? '켜기' : '끄기'}`,
     showHistory: '이력',
     showHistoryRow: (itemCode: string) => `${itemCode} 전환 이력 보기`,
   },
@@ -60,7 +49,6 @@ export const inspectionLevel = {
     pickConfirm: '선택',
     noItem: '품목을 고르세요.',
     level: '검사 수준',
-    autoSwitch: '자동 전환 사용',
     reason: '사유',
     reasonRequired: '사유를 입력하세요.',
     sameLevel: '지금과 같은 수준입니다. 다른 수준을 고르세요.',

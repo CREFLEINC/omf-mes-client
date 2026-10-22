@@ -62,6 +62,13 @@ export const iqcInspection: Translated<typeof ko.iqcInspection> = {
       itemId: 'Mặt hàng',
       targetQty: 'Số lượng kiểm tra',
       requestedAt: 'Thời điểm yêu cầu',
+      inspectionLevel: 'Mức kiểm tra',
+    },
+    level: {
+      unset: 'Chưa chỉ định',
+      loadFailed: 'Không tải được',
+      change: 'Đổi',
+      set: 'Chỉ định',
     },
     planVersionNote: 'Cố định tại thời điểm yêu cầu',
     noPlanVersion: 'Không có tiêu chuẩn',
@@ -140,14 +147,10 @@ export const iqcInspection: Translated<typeof ko.iqcInspection> = {
     fourMChange: {
       label: 'Hàng thay đổi 4M',
       hint: 'Vật tư có thay đổi con người, thiết bị, vật liệu hoặc phương pháp',
-      changeType: 'Loại thay đổi',
-      changeTypePlaceholder: 'Chọn loại thay đổi',
-      changeTypeMissing: 'Hãy chọn loại thay đổi.',
-      noChangeTypes:
-        'Danh sách loại thay đổi trống. Hãy đăng ký «Loại thay đổi 4M» trong dữ liệu chuẩn.',
       remarks: 'Nội dung thay đổi',
-      remarksPlaceholder: 'Nhập nội dung thay đổi (tùy chọn)',
-      blocked: 'Hàng thay đổi 4M phải chọn loại thay đổi mới lưu được.',
+      remarksPlaceholder: 'Nhập nội dung thay đổi',
+      remarksMissing: 'Hãy nhập nội dung thay đổi.',
+      blocked: 'Hàng thay đổi 4M phải nhập nội dung thay đổi mới lưu được.',
     },
     judgmentChange: {
       basis: (acceptanceNumber: number): string =>

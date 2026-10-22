@@ -25,13 +25,14 @@ const lotNumbers: NameLookup = {
 };
 
 describe('RequestDetailPane', () => {
-  it('스펙이 정한 여섯 항목을 보인다', () => {
+  it('스펙이 정한 여섯 항목과 검사 수준(#133)을 보인다', () => {
     renderWithProviders(
       <RequestDetailPane
         detail={toInspectionRequestDetail(waitingRequest)}
         uomCode={null}
         itemNames={itemNames}
         lotNumbers={lotNumbers}
+        levelSlot={<span>보통</span>}
       />,
     );
 

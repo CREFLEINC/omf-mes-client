@@ -141,13 +141,13 @@ const levelTable = () => screen.getByRole('table', { name: t.list.caption });
 const historyTable = () => screen.getByRole('table', { name: t.history.caption });
 
 describe('검사 수준 관리', () => {
-  it('품목별 현재 수준·자동 전환·연속 합격을 보이고, 이력의 사유를 구분해 보인다', async () => {
+  it('품목별 현재 수준을 보이고 자동 전환 칸은 없다, 이력의 사유를 구분해 보인다(#133)', async () => {
     setup();
 
     const row = await within(levelTable()).findByRole('row', { name: /PPAD003200/ });
     expect(row).toHaveTextContent('보통');
-    expect(row).toHaveTextContent('사용');
-    expect(row).toHaveTextContent('7 LOT');
+    expect(row).not.toHaveTextContent('7 LOT');
+    expect(screen.queryByRole('columnheader', { name: '자동 전환' })).not.toBeInTheDocument();
 
     await within(historyTable()).findByText('15 LOT 연속 합격');
     expect(within(historyTable()).getByText('불합격 — 의뢰 IR-10')).toBeInTheDocument();
@@ -176,8 +176,8 @@ describe('검사 수준 관리', () => {
     expect(JSON.parse(requests.find((r) => r.method === 'POST')?.body ?? '{}')).toEqual({
       itemId: 4001,
       inspectionLevelCode: 'NORMAL',
-      autoSwitchEnabled: true,
     });
+    expect(screen.queryByRole('checkbox', { name: '자동 전환 사용' })).not.toBeInTheDocument();
   });
 
   it('수준 변경은 사유가 없으면 보내지 않고, 사유를 넣으면 줄의 판으로 잠가 보낸다', async () => {
@@ -217,18 +217,6 @@ describe('검사 수준 관리', () => {
 
     expect(await screen.findByText(t.dialog.sameLevel)).toBeInTheDocument();
     expect(requests.some((r) => r.method === 'PUT')).toBe(false);
-  });
-
-  it('자동 끄기는 자동 전환 사용만 바꿔 보낸다', async () => {
-    const { user, requests } = setup();
-    await user.click(
-      await screen.findByRole('button', { name: t.actions.turnAutoRow('PPAD003200', false) }),
-    );
-
-    await waitFor(() => expect(requests.some((r) => r.method === 'PUT')).toBe(true));
-    expect(JSON.parse(requests.find((r) => r.method === 'PUT')?.body ?? '{}')).toEqual({
-      autoSwitchEnabled: false,
-    });
   });
 
   it('줄의 「이력」을 누르면 그 품목의 이력만 조회한다', async () => {

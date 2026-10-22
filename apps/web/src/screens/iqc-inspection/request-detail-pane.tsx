@@ -30,6 +30,8 @@ export interface RequestDetailPaneProps {
   itemNames: ItemNameLookup;
   /** 자재 LOT 번호 풀이. 검사자가 손에 든 라벨과 대조하는 값이다. */
   lotNumbers: NameLookup;
+  /** 「검사 수준」 칸 — 품목의 현재 수준과 변경 버튼(omf-all-around#133). */
+  levelSlot?: ReactNode;
 }
 
 export const RequestDetailPane = ({
@@ -37,6 +39,7 @@ export const RequestDetailPane = ({
   uomCode,
   itemNames,
   lotNumbers,
+  levelSlot,
 }: RequestDetailPaneProps) => {
   const itemParts = itemNames.partsOf(detail.itemId);
   const itemLabel = itemNames.labelOf(detail.itemId);
@@ -94,7 +97,7 @@ export const RequestDetailPane = ({
       value: withUom(String(detail.targetQty), uomCode),
       emphasized: true,
     },
-    /* 둘째 줄 — 의뢰의 부가 정보(검사 유형 · 기준 버전 · 의뢰 일시). 값은 굵게 하지 않는다(#133). */
+    /* 둘째 줄 — 의뢰의 부가 정보(검사 유형 · 기준 버전 · 의뢰 일시 · 검사 수준). 값은 굵게 하지 않는다(#133). */
     { key: 'type', label: t.fields.inspectionTypeCode, value: detail.inspectionTypeCode },
     {
       key: 'plan',
@@ -109,6 +112,9 @@ export const RequestDetailPane = ({
     },
     /* 값만 따로 두면 무슨 시각인지 모른다 — 필드(`requestedAt`) 이름을 붙인다. */
     { key: 'at', label: t.fields.requestedAt, value: formatDateTime(detail.requestedAt) },
+    ...(levelSlot === undefined
+      ? []
+      : [{ key: 'level', label: t.fields.inspectionLevel, value: levelSlot }]),
   ];
 
   return (
