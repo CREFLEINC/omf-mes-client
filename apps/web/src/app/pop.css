@@ -9126,3 +9126,8 @@
   grid-template-columns: repeat(auto-fill, minmax(12rem, 1fr));
   gap: var(--space-3);
 }
+
+/* 미달 사유 창의 첫 포커스 자리 — 스캔 Enter 가 단추를 누르지 않게 두는 자리라 테두리를 그리지 않는다. */
+.production-flow-reason-body:focus {
+  outline: none;
+}

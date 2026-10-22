@@ -430,6 +430,9 @@ export const ProductionFlowScreen = () => {
       setOutputPhase('completed');
       setScanValue('');
       setScanMismatch(false);
+      /* 마감한 LOT 의 수량을 다음 LOT 이 서기 전까지 남기지 않는다 — 다음 LOT 이 서면 그 계획 수량이 들어온다. */
+      setActualQty('');
+      void lotDetail.refetch();
       /*
        * ⭐ **여기서 세션을 닫지 않는다.** 이 LOT 이 마지막인지는 아직 모른다 — 작업지시 하나에
        *    선발행 LOT 이 여럿 달릴 수 있어, 다시 읽어 「다음 LOT 이 없다」가 확인된 뒤에
