@@ -43,10 +43,10 @@ import {
 } from './session';
 import { buildProductionLotLabel } from './label-tspl';
 import {
+  CurrentLotUnreliableError,
   defaultPrinter,
   latestIssue,
   useCompletedLots,
-  CurrentLotAmbiguousError,
   useCurrentLot,
   useLotDetail,
   useItem,
@@ -355,8 +355,8 @@ export const ProductionFlowScreen = () => {
     parsedQty === null || serialCount === null
       ? null
       : missingIdentificationCount(parsedQty, serialCount);
-  const isCurrentLotAmbiguous = currentLot.error instanceof CurrentLotAmbiguousError;
-  const lot = currentLot.data ?? null;
+  /* 다시 읽기에 실패해도 React Query 는 앞 값을 남긴다 — 오류면 옛 LOT 으로 실적·마감을 내지 않게 비운다. */
+  const lot = currentLot.isError ? null : (currentLot.data ?? null);
   /* 진척은 상세에만 실린다(#1095) — 목록의 줄에서 찾으면 늘 「모름」이 된다. */
   const serverAppliedQty = appliedGoodQty(lotDetail.data?.lot);
   /** 서버가 이 LOT 을 미달·정상·초과로 판정한 값 — 마감 본문의 사유 여부를 이것으로 가른다 */
@@ -1235,24 +1235,42 @@ export const ProductionFlowScreen = () => {
         </div>
       )}
 
-      {/*
-       * ⛔ **가릴 수 없는 것과 못 불러온 것을 갈라 말한다**(#1095). 앞엣것은 다시 시도해도
-       *    풀리지 않고 작업자가 할 일이 다르다 — 「불러오지 못했다」로 뭉뚱그리면 현장이
-       *    새로고침만 반복한다.
-       */}
-      {currentLot.isError && (
+      {currentLot.error instanceof CurrentLotUnreliableError ? (
         <div className="banner-slot">
           <AlertBanner
-            variant={isCurrentLotAmbiguous ? 'warning' : 'error'}
-            title={isCurrentLotAmbiguous ? undefined : t.flow.currentLot.loadFailed}
-          >
-            {isCurrentLotAmbiguous ? t.flow.currentLot.ambiguous : undefined}
-          </AlertBanner>
+            variant="warning"
+            title={t.flow.currentLot.unreliable(currentLot.error.lotNos.join(', '))}
+          />
         </div>
+      ) : (
+        currentLot.isError && (
+          <div className="banner-slot">
+            <AlertBanner
+              variant="error"
+              title={t.flow.currentLot.loadFailed}
+              action={
+                <Button
+                  variant="outlined"
+                  size="sm"
+                  disabled={currentLot.isFetching}
+                  onClick={() => void currentLot.refetch()}
+                >
+                  {t.flow.retry}
+                </Button>
+              }
+            />
+          </div>
+        )
       )}
-      {currentLot.data === null && (
+      {currentLot.data === null && !currentLot.isError && (
         <div className="banner-slot">
-          <AlertBanner variant="info" title={t.flow.currentLot.none} />
+          <AlertBanner
+            variant="info"
+            title={t.flow.currentLot.none(
+              /* 메뉴 이름은 그 화면의 문구를 받아 쓴다 — 이름이 바뀌어도 어긋나지 않게. */
+              `${messages.workOrderClose.breadcrumbRoot} › ${messages.workOrderClose.title}`,
+            )}
+          />
         </div>
       )}
       {workOrderPqc.isError && (

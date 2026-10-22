@@ -287,4 +287,18 @@ describe('OperationsPane — 편집', () => {
 
     expect(screen.getAllByText(OPERATIONS_LOCK_REASON).length).toBeGreaterThan(0);
   });
+
+  it('잠긴 Rev 에서는 공정 수정·삭제 아이콘마다 까닭을 붙인다', () => {
+    renderPane({ isEditable: false });
+
+    const row = bodyRows()[0] as HTMLElement;
+    for (const icon of within(row).getAllByRole('button')) {
+      expect(icon).toBeDisabled();
+      expect(icon).toHaveAccessibleDescription(OPERATIONS_LOCK_REASON);
+    }
+    expect(within(row).getAllByRole('button')[0]?.parentElement).toHaveAttribute(
+      'title',
+      OPERATIONS_LOCK_REASON,
+    );
+  });
 });

@@ -75,6 +75,12 @@ export const routing: Translated<typeof ko.routing> = {
     operationsSaveBlockedByInvalid:
       'Việc lưu công đoạn không thực hiện được khi còn công đoạn chưa nhập xong. Hãy sửa công đoạn đó trong bảng.',
   },
+  discard: {
+    title: 'Có thay đổi chưa lưu',
+    body: 'Nếu chuyển đi bây giờ, thông tin Routing và công đoạn đã sửa ở Rev này sẽ mất vì chưa lưu. Muốn giữ lại, hãy bấm «Tiếp tục sửa» rồi lưu.',
+    stay: 'Tiếp tục sửa',
+    confirm: 'Chuyển mà không lưu',
+  },
   /** 확정·폐기 Rev의 편집 잠금 안내. 「어떻게 풀 것인가」를 함께 담는다. */
   stateLock: {
     title: 'Đây là Rev hiện không sửa được',

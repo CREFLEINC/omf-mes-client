@@ -1,5 +1,5 @@
 import { messages } from '@omf-mes/i18n';
-import { fireEvent, screen, waitFor, within } from '@testing-library/react';
+import { act, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 
@@ -84,14 +84,16 @@ const routingDetailRoute = (
   respond: () => jsonResponse({ routing, editability }, { headers: { ETag: etag } }),
 });
 
-const renderScreen = (
-  routes: StubRoute[],
-  search = '',
-): { requests: RecordedRequest[]; user: ReturnType<typeof userEvent.setup> } => {
+const renderScreen = (routes: StubRoute[], search = '') => {
   const { fetch, requests } = createRecordingFetch(routes);
-  renderWithProviders(<RoutingScreen />, { fetch, route: `${ROUTE}${search}` });
+  /* 앱처럼 데이터 라우터로 감싼다 — 저장하지 않은 편집의 이동 확인이 그 위에서만 선다. */
+  const { router } = renderWithProviders(<RoutingScreen />, {
+    fetch,
+    route: `${ROUTE}${search}`,
+    dataRouter: true,
+  });
 
-  return { requests, user: userEvent.setup() };
+  return { requests, router, user: userEvent.setup() };
 };
 
 const requestsTo = (requests: RecordedRequest[], pathname: string): RecordedRequest[] =>
@@ -1659,5 +1661,127 @@ describe('RoutingScreen — 공정 선후행 설정', () => {
       ),
     ).toBeInTheDocument();
     expect(within(operationsRegion()).getByRole('button', { name: '선후행 설정' })).toBeDisabled();
+  });
+});
+
+describe('RoutingScreen — 저장하지 않고 옮기기', () => {
+  const discard = messages.routing.discard;
+
+  it('저장하지 않은 편집이 있으면 다른 Rev 로 옮기기 전에 묻고, 계속 편집하면 그대로 둔다', async () => {
+    const { user } = renderScreen(
+      [itemListRoute(), revisionListRoute(), routingDetailRoute()],
+      '?item=5001&rev=7003',
+    );
+
+    const code = await screen.findByLabelText('Routing 코드');
+    await user.type(code, '-X');
+    await user.click(screen.getByRole('button', { name: 'Rev 2' }));
+
+    const dialog = await screen.findByRole('dialog', { name: discard.title });
+    await user.click(within(dialog).getByRole('button', { name: discard.stay }));
+
+    expect(screen.queryByRole('dialog', { name: discard.title })).toBeNull();
+    expect(screen.getByRole('button', { name: 'Rev 3' })).toHaveAttribute('aria-current', 'true');
+    expect(screen.getByLabelText('Routing 코드')).toHaveValue('STANDARD-X');
+
+    await user.click(screen.getByRole('button', { name: 'Rev 2' }));
+    await user.click(
+      within(await screen.findByRole('dialog', { name: discard.title })).getByRole('button', {
+        name: discard.confirm,
+      }),
+    );
+
+    expect(screen.getByRole('button', { name: 'Rev 2' })).toHaveAttribute('aria-current', 'true');
+  });
+
+  it('뒤로가기로 앞 Rev 로 돌아가도 저장하지 않은 편집이 있으면 묻는다', async () => {
+    const { user, router } = renderScreen(
+      [itemListRoute(), revisionListRoute(), routingDetailRoute()],
+      '?item=5001&rev=7002',
+    );
+    if (router === null) throw new Error('데이터 라우터가 없습니다');
+
+    await screen.findByRole('button', { name: 'Rev 3' });
+    await user.click(screen.getByRole('button', { name: 'Rev 3' }));
+    await user.type(await screen.findByLabelText('Routing 코드'), '-X');
+
+    await act(async () => {
+      await router.navigate(-1);
+    });
+
+    const dialog = await screen.findByRole('dialog', { name: discard.title });
+    await user.click(within(dialog).getByRole('button', { name: discard.stay }));
+    expect(router.state.location.search).toContain('rev=7003');
+    expect(screen.getByLabelText('Routing 코드')).toHaveValue('STANDARD-X');
+  });
+
+  it('화면이 이미 물어 확인받은 Rev 이동은 다시 묻지 않는다', async () => {
+    const { user } = renderScreen(
+      [itemListRoute(), revisionListRoute(), routingDetailRoute()],
+      '?item=5001&rev=7003',
+    );
+
+    await user.type(await screen.findByLabelText('Routing 코드'), '-X');
+    await user.click(screen.getByRole('button', { name: 'Rev 2' }));
+    await user.click(
+      within(await screen.findByRole('dialog', { name: discard.title })).getByRole('button', {
+        name: discard.confirm,
+      }),
+    );
+
+    expect(screen.getByRole('button', { name: 'Rev 2' })).toHaveAttribute('aria-current', 'true');
+    expect(screen.queryByRole('dialog', { name: discard.title })).toBeNull();
+  });
+
+  it('첫 Rev 등록 칸을 두고 다른 품목으로 옮기면 그 칸을 비우고, 그 뒤 이동은 다시 묻지 않는다', async () => {
+    const { user } = renderScreen(
+      [itemListRoute(), revisionListRoute([]), processListRoute()],
+      '?item=5001',
+    );
+
+    await user.click(await screen.findByRole('button', { name: 'Routing 등록' }));
+    await user.type(await screen.findByLabelText('Routing 코드'), 'LEFTOVER');
+    await user.click(screen.getByRole('button', { name: 'ITM-002' }));
+    await user.click(
+      within(await screen.findByRole('dialog', { name: discard.title })).getByRole('button', {
+        name: discard.confirm,
+      }),
+    );
+
+    expect(screen.queryByDisplayValue('LEFTOVER')).toBeNull();
+    await user.click(screen.getByRole('button', { name: 'ITM-003' }));
+    expect(screen.queryByRole('dialog', { name: discard.title })).toBeNull();
+    expect(screen.getByRole('button', { name: 'ITM-003' })).toHaveAttribute('aria-current', 'true');
+  });
+
+  it('같은 품목을 다시 눌러도 묻지 않고, 그 뒤 뒤로가기는 여전히 묻는다', async () => {
+    const { user, router } = renderScreen(
+      [itemListRoute(), revisionListRoute(), routingDetailRoute()],
+      '?item=5001',
+    );
+    if (router === null) throw new Error('데이터 라우터가 없습니다');
+
+    await user.click(await screen.findByRole('button', { name: 'Rev 3' }));
+    await user.type(await screen.findByLabelText('Routing 코드'), '-X');
+    await user.click(screen.getByRole('button', { name: 'ITM-001' }));
+    expect(screen.queryByRole('dialog', { name: discard.title })).toBeNull();
+
+    await act(async () => {
+      await router.navigate(-1);
+    });
+    expect(await screen.findByRole('dialog', { name: discard.title })).toBeInTheDocument();
+  });
+
+  it('고친 것이 없으면 묻지 않고 옮긴다', async () => {
+    const { user } = renderScreen(
+      [itemListRoute(), revisionListRoute(), routingDetailRoute()],
+      '?item=5001&rev=7003',
+    );
+
+    await screen.findByLabelText('Routing 코드');
+    await user.click(screen.getByRole('button', { name: 'Rev 2' }));
+
+    expect(screen.queryByRole('dialog', { name: discard.title })).toBeNull();
+    expect(screen.getByRole('button', { name: 'Rev 2' })).toHaveAttribute('aria-current', 'true');
   });
 });

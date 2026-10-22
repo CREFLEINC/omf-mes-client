@@ -1,6 +1,6 @@
 import { Button, type Column, EmptyState, IconButton, SkeletonText, Table } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import type { ReactNode } from 'react';
+import { useId, type ReactNode } from 'react';
 
 import { DisabledAction } from './disabled-action';
 import { OPERATION_FLAG_KEYS } from './operation-order';
@@ -90,6 +90,7 @@ export const OperationsPane = ({
   onCancel,
   onOpenDependencies,
 }: OperationsPaneProps) => {
+  const lockNoteId = useId();
   const columns: Column<OperationDraft>[] = [
     {
       key: 'displayNo',
@@ -133,12 +134,17 @@ export const OperationsPane = ({
       key: 'rowActions',
       header: t.fields.rowActions,
       width: '96px',
+      /*
+       * 잠긴 Rev 에서는 아이콘마다 까닭을 붙인다 — 화면 위 안내만 두면 아이콘을 누르려던 사람은 왜
+       * 안 눌리는지 모른다. 비활성 단추는 마우스 올림을 받지 못해 감싼 칸이 툴팁을 진다.
+       */
       render: (row, rowIndex) => (
-        <>
+        <span className="routing-row-actions" title={isEditable ? undefined : lockReason}>
           <IconButton
             icon="edit"
             size="sm"
             aria-label={t.actions.editOperation(rowIndex + 1)}
+            aria-describedby={isEditable ? undefined : lockNoteId}
             disabled={!isEditable}
             onClick={() => onEdit(row.draftId)}
           />
@@ -146,10 +152,11 @@ export const OperationsPane = ({
             icon="delete"
             size="sm"
             aria-label={t.actions.removeOperation(rowIndex + 1)}
+            aria-describedby={isEditable ? undefined : lockNoteId}
             disabled={!isEditable}
             onClick={() => onRemove(row.draftId)}
           />
-        </>
+        </span>
       ),
     },
   ];
@@ -177,6 +184,11 @@ export const OperationsPane = ({
      */
     return (
       <div className="wide-table">
+        {!isEditable && (
+          <span id={lockNoteId} className="routing-visually-hidden">
+            {lockReason}
+          </span>
+        )}
         <Table
           density="compact"
           columns={columns}
