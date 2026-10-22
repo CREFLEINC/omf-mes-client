@@ -2702,6 +2702,61 @@ describe('ProductionFlowScreen 미달 LOT 마감', () => {
     expect(await screen.findByText(t.flow.scan.alreadyCompleted)).toBeInTheDocument();
   });
 
+  it('미달인데 W/O 가 마감돼 거부되면 그 사실과 할 일을 말한다', async () => {
+    const writes: Request[] = [];
+    const user = userEvent.setup();
+    renderScreen(writes, [
+      /* 실적은 올라가 있고(누계 7) 판정은 미달이다. */
+      lotDetailJudged(() => ({ completionJudgmentCode: 'UNDER', goodQty: 7 })),
+      reasonCodes,
+      completeRoute(writes, () =>
+        rejection('lotId', 'STATE_LOCKED', '마감된 MES W/O 의 LOT 은 미달로 완료할 수 없습니다.'),
+      ),
+    ]);
+
+    await user.type(await reachScan(user), LOT_NO);
+    await user.click(
+      within(await screen.findByRole('dialog')).getByRole('button', { name: '자재 부족' }),
+    );
+
+    expect(await screen.findByText(t.flow.scan.workOrderClosed)).toBeInTheDocument();
+  });
+
+  it('거부 뒤 LOT 을 다시 읽지 못하면 단정하지 않고 서버 문구를 보인다', async () => {
+    const writes: Request[] = [];
+    let attempts = 0;
+    const user = userEvent.setup();
+    renderScreen(writes, [
+      {
+        match: (request) => pathOf(request) === `/trace/lots/${String(LOT_ID)}`,
+        respond: () =>
+          attempts > 0
+            ? jsonResponse({ message: '합성 실패' }, { status: 500 })
+            : jsonResponse(
+                {
+                  lot: {
+                    lotId: LOT_ID,
+                    lotNo: LOT_NO,
+                    initialQty: 12,
+                    progress: { goodQty: 0, varianceQty: -12, completionJudgmentCode: 'NORMAL' },
+                  },
+                  externalReferences: [],
+                },
+                { headers: { ETag: LOT_ETAG } },
+              ),
+      },
+      completeRoute(writes, () => {
+        attempts += 1;
+        return rejection('lotId', 'STATE_LOCKED', '합성 — 서버가 낸 거부 문구');
+      }),
+    ]);
+
+    await user.type(await reachScan(user), LOT_NO);
+
+    expect(await screen.findByText('합성 — 서버가 낸 거부 문구')).toBeInTheDocument();
+    expect(screen.queryByText(t.flow.scan.noAllocation)).toBeNull();
+  });
+
   it('알 수 없는 거부는 서버 문구를 그대로 말한다', async () => {
     const writes: Request[] = [];
     const user = userEvent.setup();
