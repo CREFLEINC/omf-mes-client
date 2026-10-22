@@ -14447,6 +14447,12 @@ button.app-button-neutral {
   .iqc-inspection-judgment-section > .iqc-inspection-judgment-detail {
     grid-column: 2;
   }
+
+  /* 오른쪽 칸(불합격 사유)이 없으면 왼쪽 묶음이 구획 폭을 다 쓴다 — 판정 변경 사유 칸이 함께 넓어진다(최종 판정 선택은 20rem 그대로). */
+  .iqc-inspection-judgment-section:has(> .iqc-inspection-judgment-detail:empty)
+    > .iqc-inspection-judgment-main {
+    grid-column: 1 / -1;
+  }
 }
 
 /*
